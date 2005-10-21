@@ -133,7 +133,6 @@
 #include <asm/io.h>
 #include <asm/uaccess.h>
 
-
 /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
 #include "ec_device.h"
@@ -142,7 +141,6 @@
 #include "ec_dbg.h"
 
 /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
-
 
 #define RTL8139_DRIVER_NAME   DRV_NAME " Fast Ethernet driver " DRV_VERSION
 #define PFX DRV_NAME ": "
@@ -1053,7 +1051,7 @@ static int __devinit rtl8139_init_one (struct pci_dev *pdev,
           rtl_ecat_dev.lock = &tp->lock;
 	}
 
-	/* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+	/* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 
 	init_waitqueue_head (&tp->thr_wait);
 	init_completion (&tp->thr_exited);
@@ -1165,11 +1163,14 @@ static void __devexit rtl8139_remove_one (struct pci_dev *pdev)
 	assert (dev != NULL);
 	np = dev->priv;
 	assert (np != NULL);
-	/* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
-	/* EtherCATkarten nicht beim Stack angemeldet */
-        if (dev != rtl_ecat_dev.dev) {
-	    unregister_netdev (dev);
+
+        /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+        if (dev != rtl_ecat_dev.dev)
+        {
+          unregister_netdev (dev);
 	}
+
 	/* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 
 	__rtl8139_cleanup_dev (dev);
@@ -1376,14 +1377,18 @@ static int rtl8139_open (struct net_device *dev)
         EC_DBG(KERN_DEBUG "%s: open\n", dev->name);
 
 	/* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
-        if (dev != rtl_ecat_dev.dev) 
 
-	    retval = request_irq (dev->irq, rtl8139_interrupt, SA_SHIRQ, dev->name, dev);
-	else  {//ist Ethercatcard
-	    //rt_disable_irq(dev->irq);
-          retval =  rt_request_global_irq (dev->irq,rt_rtl8139_interrupt);
+        if (dev != rtl_ecat_dev.dev) 
+        {
+          retval = request_irq(dev->irq, rtl8139_interrupt, SA_SHIRQ, dev->name, dev);
+        }
+	else
+        {
+          //rt_disable_irq(dev->irq);
+          retval =  rt_request_global_irq(dev->irq,rt_rtl8139_interrupt);
 	  //rt_enable_irq(dev->irq);
         }
+
         if (retval)
           return retval;
 
@@ -1397,10 +1402,14 @@ static int rtl8139_open (struct net_device *dev)
         {
           /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
-          if (dev != rtl_ecat_dev.dev) 
+          if (dev != rtl_ecat_dev.dev)
+          {
             free_irq(dev->irq, dev);
+          }
           else
+          {
             rt_free_global_irq (dev->irq);
+          }
           
           /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 
@@ -1546,7 +1555,9 @@ static void rtl8139_hw_start (struct net_device *dev)
 	RTL_W16 (IntrMask, rtl8139_intr_mask);
 
 	/* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
         if (dev != rtl_ecat_dev.dev) netif_start_queue (dev);
+
 	/* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/        
 
         EC_DBG(KERN_DEBUG "%s: rtl8139_hw_start finished.\n", dev->name);
@@ -1834,7 +1845,9 @@ static void rtl8139_tx_timeout (struct net_device *dev)
 	rtl8139_hw_start (dev);
 
 	/* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
         if (dev != rtl_ecat_dev.dev) netif_wake_queue (dev);
+
 	/* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 
         EC_DBG(KERN_DEBUG "%s: tx_timeout finished.\n", dev->name);
@@ -1914,10 +1927,13 @@ static void rtl8139_tx_interrupt (struct net_device *dev,
 	tx_left = tp->cur_tx - dirty_tx;
 
 	/* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
-	if (dev == rtl_ecat_dev.dev) {
+
+	if (dev == rtl_ecat_dev.dev)
+        {
 	    (rtl_ecat_dev.tx_intr_cnt)++;
 	    rdtscl(rtl_ecat_dev.tx_time); // Get CPU cycles
 	}
+
 	/* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
 	while (tx_left > 0) {
@@ -2104,11 +2120,14 @@ static void rtl8139_rx_interrupt (struct net_device *dev,
 		 RTL_R16 (RxBufPtr), RTL_R8 (ChipCmd));
 
 	/* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
-	if (dev == rtl_ecat_dev.dev) {
-	    (rtl_ecat_dev.rx_intr_cnt)++;
-	    rdtscl(rtl_ecat_dev.rx_time); // Get CPU cycles
+
+	if (dev == rtl_ecat_dev.dev)
+        {
+          (rtl_ecat_dev.rx_intr_cnt)++;
+          rdtscl(rtl_ecat_dev.rx_time); // Get CPU cycles
 	}
-	/* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+	/* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 
 	while ((RTL_R8 (ChipCmd) & RxBufEmpty) == 0) {
 		int ring_offset = cur_rx % RX_BUF_LEN;
@@ -2128,10 +2147,10 @@ static void rtl8139_rx_interrupt (struct net_device *dev,
 		DPRINTK ("%s:  rtl8139_rx() status %4.4x, size %4.4x,"
 			 " cur %4.4x.\n", dev->name, rx_status,
 			 rx_size, cur_rx);
-#if RTL8139_DEBUG > 2
 
                 /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
-                        
+
+#if RTL8139_DEBUG > 2                        
                 if (dev == rtl_ecat_dev.dev)
 		{
 			int i;
@@ -2141,9 +2160,9 @@ static void rtl8139_rx_interrupt (struct net_device *dev,
 					rx_ring[ring_offset + i]);
 			EC_DBG (".\n");
 		}
+#endif
 
                 /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
-#endif
 
 		/* Packet copy from FIFO still in progress.
 		 * Theoretically, this should never happen
@@ -2211,8 +2230,6 @@ static void rtl8139_rx_interrupt (struct net_device *dev,
                   }
                   else
                   {
-//                    rdtscl(rtl_ecat_dev.rx_time); // Get CPU cycles
-                  
                     // Copy received data to ethercat-device buffer, skip Ethernet-II header
                     memcpy(rtl_ecat_dev.rx_data, &rx_ring[ring_offset + 4] + ETH_HLEN,
                            pkt_size - ETH_HLEN);
@@ -2385,7 +2402,7 @@ static void rt_rtl8139_interrupt(void)
   rtl8139_interrupt(rtl_ecat_dev.dev->irq, rtl_ecat_dev.dev, NULL);
 }
 
-/* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+/* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 
 static int rtl8139_close (struct net_device *dev)
 {
@@ -2412,7 +2429,6 @@ static int rtl8139_close (struct net_device *dev)
 	    }
 	}
 	
-
         /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 
 	DPRINTK ("%s: Shutting down ethercard, status was 0x%4.4x.\n",
@@ -2424,11 +2440,11 @@ static int rtl8139_close (struct net_device *dev)
 
         if (dev == rtl_ecat_dev.dev)
         {
-	    flags = rt_spin_lock_irqsave (&tp->lock);
+          flags = rt_spin_lock_irqsave(&tp->lock);
         }
 	else
         {
-	    spin_lock_irqsave (&tp->lock, flags);
+          spin_lock_irqsave(&tp->lock, flags);
         }
 
         /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
@@ -2452,8 +2468,8 @@ static int rtl8139_close (struct net_device *dev)
 	    synchronize_irq ();
 	}
 
-
         /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
 	EC_DBG ("rtl8139: freeing irq");
 	mdelay(1); //hm
 
@@ -2463,7 +2479,7 @@ static int rtl8139_close (struct net_device *dev)
 	} 
 	else
         {
-	    rt_disable_irq(dev->irq);
+          rt_disable_irq(dev->irq);
           rt_free_global_irq (dev->irq);
           rt_enable_irq(dev->irq);
 	}
@@ -2895,8 +2911,10 @@ static int rtl8139_suspend (struct pci_dev *pdev, u32 state)
 	unsigned long flags;
 
         /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
 	if (dev == rtl_ecat_dev.dev || !netif_running (dev))
-		return 0;
+          return 0;
+
         /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
 	netif_device_detach (dev);
@@ -2921,8 +2939,10 @@ static int rtl8139_resume (struct pci_dev *pdev)
 	struct net_device *dev = pci_get_drvdata (pdev);
 
         /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
 	if (dev == rtl_ecat_dev.dev || !netif_running (dev))
-		return 0;
+          return 0;
+
         /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 
         netif_device_attach (dev);
@@ -2957,18 +2977,10 @@ static int rtl8139_init_module (void)
 
         /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
-/*        if (ecat_dev)
-        {
-          EC_DBG(KERN_WARNING "EtherCAT device already exists!!!\n");
-          return -ENOMEM;
-        }
-*/
-//        if ((ecat_dev = (EtherCAT_device_t*) kmalloc(sizeof(EtherCAT_device_t), GFP_KERNEL)) == NULL)
-//          return -ENOMEM;
-
         EtherCAT_device_init(&rtl_ecat_dev);
 
-        printk(KERN_DEBUG "Driver rtl_ecat_dev has adress %X.\n", (unsigned) &rtl_ecat_dev);
+        printk(KERN_DEBUG "Driver rtl_ecat_dev has address %X.\n",
+               (unsigned) &rtl_ecat_dev);
 
         /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 
@@ -2982,12 +2994,7 @@ static void rtl8139_cleanup_module (void)
 
         /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
-//        if (ecat_dev)
-        {
-          EtherCAT_device_clear(&rtl_ecat_dev);
-//          kfree(ecat_dev);
-//          ecat_dev = NULL;
-        }
+        EtherCAT_device_clear(&rtl_ecat_dev);
 
         /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 }
