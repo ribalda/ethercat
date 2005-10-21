@@ -1,0 +1,8 @@
+TODO-Liste EtherCAT-Treiber
+
+$Date$
+$Author$
+
+- Konfiguration SSI-/Inkrementalgeberklemmen
+- Ethernet over EtherCAT (EoE)
+- Retry bei Asynchroner Kommunikation

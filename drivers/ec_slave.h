@@ -1,0 +1,67 @@
+/****************************************************************
+ *
+ *  e c _ s l a v e . h
+ *
+ *  Struktur für einen EtherCAT-Slave.
+ *
+ *  $Date$
+ *  $Author$
+ *
+ ***************************************************************/
+
+#ifndef _EC_SLAVE_H_
+#define _EC_SLAVE_H_
+
+#include "ec_types.h"
+
+/***************************************************************/
+
+/**
+   EtherCAT-Slave
+*/
+
+typedef struct
+{
+  // Base data
+  unsigned char type; /**< Slave-Typ */
+  unsigned char revision; /**< Revision */
+  unsigned short build; /**< Build-Nummer */
+
+  // Addresses
+  short ring_position; /**< (Negative) Position des Slaves im Bus */
+  unsigned short station_address; /**< Konfigurierte Slave-Adresse */
+
+  // Slave information interface
+  unsigned int vendor_id; /**< Identifikationsnummer des Herstellers */
+  unsigned int product_code; /**< Herstellerspezifischer Produktcode */
+  unsigned int revision_number; /**< Revisionsnummer */
+
+  const EtherCAT_slave_desc_t *desc; /**< Zeiger auf die Beschreibung
+                                        des Slave-Typs */
+
+  unsigned int logical_address0; /**< Konfigurierte, logische adresse */
+
+  EtherCAT_state_t current_state; /**< Aktueller Zustand */
+  EtherCAT_state_t requested_state; /**< Angeforderter Zustand */
+
+  unsigned char *process_data; /**< Zeiger auf den Speicherbereich
+                                  im Prozessdatenspeicher des Masters */
+}
+EtherCAT_slave_t;
+
+#define ECAT_INIT_SLAVE(TYPE) {0, 0, 0, 0, 0, 0, 0, 0, \
+                               TYPE, 0, ECAT_STATE_UNKNOWN, \
+                               ECAT_STATE_UNKNOWN, NULL}
+
+/***************************************************************/
+
+// Slave construction and deletion
+void EtherCAT_slave_init(EtherCAT_slave_t *);
+void EtherCAT_slave_clear(EtherCAT_slave_t *);
+
+int EtherCAT_read_value(EtherCAT_slave_t *, unsigned int);
+void EtherCAT_write_value(EtherCAT_slave_t *, unsigned int, int);
+
+/***************************************************************/
+
+#endif
