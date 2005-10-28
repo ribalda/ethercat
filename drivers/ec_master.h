@@ -51,8 +51,11 @@ typedef struct
   unsigned char *process_data; /**< Zeiger auf Speicher mit Prozessdaten */
   unsigned int process_data_length; /**< Länge der Prozessdaten */
 
-  EtherCAT_command_t cmd_ring[ECAT_COMMAND_RING_SIZE]; /** Statischer Kommandoring */
+  EtherCAT_command_t cmd_ring[ECAT_COMMAND_RING_SIZE]; /**< Statischer Kommandoring */
+  int cmd_reserved[ECAT_COMMAND_RING_SIZE]; /**< Reservierungsflags für die Kommandos */
   unsigned int cmd_ring_index; /**< Index des nächsten Kommandos im Ring */
+
+  int debug_level; /**< Debug-Level im Master-Code */
 }
 EtherCAT_master_t;
 
@@ -76,6 +79,7 @@ int EtherCAT_send(EtherCAT_master_t *);
 int EtherCAT_receive(EtherCAT_master_t *);
 int EtherCAT_write_process_data(EtherCAT_master_t *);
 int EtherCAT_read_process_data(EtherCAT_master_t *);
+void EtherCAT_clear_process_data(EtherCAT_master_t *);
 
 /***************************************************************/
 
@@ -125,7 +129,7 @@ int EtherCAT_state_change(EtherCAT_master_t *, EtherCAT_slave_t *, unsigned char
 
 // Private functions
 EtherCAT_command_t *alloc_cmd(EtherCAT_master_t *);
-void add_command(EtherCAT_master_t *, EtherCAT_command_t *);
+int add_command(EtherCAT_master_t *, EtherCAT_command_t *);
 void set_byte(unsigned char *, unsigned int, unsigned char);
 void set_word(unsigned char *, unsigned int, unsigned int);
 

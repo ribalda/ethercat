@@ -83,26 +83,28 @@ int EtherCAT_read_value(EtherCAT_slave_t *slave,
 {
   if (!slave->desc)
   {
-    EC_DBG(KERN_WARNING "EtherCAT: Reading failed - "
-           "Slave %04X (at %0X) has no description.\n",
+    EC_DBG(KERN_WARNING "EtherCAT: Reading failed on slave %04X (addr %0X)"
+           " - Slave has no description.\n",
            slave->station_address, (unsigned int) slave);
     return 0;
   }
 
   if (!slave->desc->read)
   {
-    EC_DBG(KERN_WARNING "EtherCAT: Reading failed - "
-           "Slave type (%s %s) has no read method.\n",
+    EC_DBG(KERN_WARNING "EtherCAT: Reading failed on slave %04X (addr %0X)"
+           " - Slave type (%s %s) has no read method.\n",
+           slave->station_address, (unsigned int) slave,
            slave->desc->vendor_name, slave->desc->product_name);
     return 0;
   }
 
   if (channel >= slave->desc->channels)
   {
-    EC_DBG(KERN_WARNING "EtherCAT: Reading failed - "
-           "Slave %4X (%s %s) has no channel %i.\n",
-           slave->station_address, slave->desc->vendor_name,
-           slave->desc->product_name, channel);
+    EC_DBG(KERN_WARNING "EtherCAT: Reading failed on slave %4X (addr %0X)"
+           " - Type (%s %s) has no channel %i.\n",
+           slave->station_address, (unsigned int) slave,
+           slave->desc->vendor_name, slave->desc->product_name,
+           channel);
     return 0;
   }
 
@@ -131,26 +133,28 @@ void EtherCAT_write_value(EtherCAT_slave_t *slave,
 {
   if (!slave->desc)
   {
-    EC_DBG(KERN_WARNING "EtherCAT: Writing failed - "
-           "Slave %04X (at %0X) has no description.\n",
+    EC_DBG(KERN_WARNING "EtherCAT: Writing failed on slave %04X (addr %0X)"
+           " - Slave has no description.\n",
            slave->station_address, (unsigned int) slave);
     return;
   }
 
   if (!slave->desc->write)
   {
-    EC_DBG(KERN_WARNING "EtherCAT: Writing failed - "
-           "Slave type (%s %s) has no write method.\n",
+    EC_DBG(KERN_WARNING "EtherCAT: Writing failed on slave %04X (addr %0X)"
+           " - Type (%s %s) has no write method.\n",
+           slave->station_address, (unsigned int) slave,
            slave->desc->vendor_name, slave->desc->product_name);
     return;
   }
 
   if (channel >= slave->desc->channels)
   {
-    EC_DBG(KERN_WARNING "EtherCAT: Writing failed - "
-           "Slave %4X (%s %s) has no channel %i.\n",
-           slave->station_address, slave->desc->vendor_name,
-           slave->desc->product_name, channel);
+    EC_DBG(KERN_WARNING "EtherCAT: Writing failed on slave %4X (addr %0X)"
+           " - Type (%s %s) has no channel %i.\n",
+           slave->station_address, (unsigned int) slave,
+           slave->desc->vendor_name, slave->desc->product_name,
+           channel);
     return;
   }
 

@@ -15,6 +15,7 @@
 
 #define EC_DBG(fmt, args...) SDBG_print("%s: " fmt, __FUNCTION__ , ## args)
 //#define EC_DBG(fmt, args...) printk(KERN_INFO fmt, ## args)
+
 #else
 #define EC_DBG(fmt, args...)
 #endif

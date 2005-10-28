@@ -13,6 +13,7 @@
 #include <linux/if_ether.h>
 #include <linux/netdevice.h>
 #include <rtai.h>
+#include <linux/delay.h>
 
 #include "ec_device.h"
 #include "ec_dbg.h"
@@ -237,7 +238,7 @@ int EtherCAT_device_send(EtherCAT_device_t *ecd,
   // Start sending of frame
   ecd->state = ECAT_DS_SENT;
   ecd->dev->hard_start_xmit(ecd->tx_skb, ecd->dev);
-  
+
   return 0;
 }
 
@@ -263,20 +264,15 @@ int EtherCAT_device_receive(EtherCAT_device_t *ecd,
                             unsigned int size)
 {
   int cnt;
-//  unsigned long flags;
-  
+
   if (ecd->state != ECAT_DS_RECEIVED)
   {
     EC_DBG(KERN_ERR "EtherCAT: receive - Nothing received!\n");
     return -1;
   }
-    
-//  flags = rt_spin_lock_irqsave(ecd->lock);
 
   cnt = min(ecd->rx_data_length, size);
   memcpy(data,ecd->rx_data, cnt);
-
-//  rt_spin_unlock_irqrestore(ecd->lock, flags);
 
   return cnt;
 }

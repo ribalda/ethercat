@@ -78,8 +78,6 @@ typedef struct EtherCAT_command
   unsigned int working_counter; /**< Working-Counter bei Empfang (wird vom Master gesetzt) */
 
   unsigned char data[ECAT_FRAME_BUFFER_SIZE]; /**< Kommandodaten */
-
-  unsigned char reserved; /**< Markiert, das das Kommando gerade benutzt wird */
 }
 EtherCAT_command_t;
 

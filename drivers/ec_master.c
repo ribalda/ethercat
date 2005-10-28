@@ -55,10 +55,12 @@ int EtherCAT_master_init(EtherCAT_master_t *master,
   master->process_data = NULL;
   master->process_data_length = 0;
   master->cmd_ring_index = 0;
+  master->debug_level = 0;
 
   for (i = 0; i < ECAT_COMMAND_RING_SIZE; i++)
   {
     EtherCAT_command_init(&master->cmd_ring[i]);
+    master->cmd_reserved[i] = 0;
   }
 
   return 0;
@@ -77,8 +79,6 @@ int EtherCAT_master_init(EtherCAT_master_t *master,
 
 void EtherCAT_master_clear(EtherCAT_master_t *master)
 {
-  EC_DBG("Master clear");
-
   // Remove all pending commands
   while (master->first_command)
   {
@@ -95,8 +95,6 @@ void EtherCAT_master_clear(EtherCAT_master_t *master)
   }
 
   master->process_data_length = 0;
-
-  EC_DBG("done...\n");
 }
 
 /***************************************************************/
@@ -464,12 +462,13 @@ int EtherCAT_async_send_receive(EtherCAT_master_t *master)
   
   // Send all commands
 
-  //EC_DBG("Master async send");
-
   for (i = 0; i < ECAT_NUM_RETRIES; i++)
   {
     ASYNC = 1;
-    if (EtherCAT_send(master) < 0) return -1;
+    if (EtherCAT_send(master) < 0)
+    {
+      return -1;
+    }
     ASYNC = 0;
 
     // Wait until something is received or an error has occurred
@@ -529,12 +528,22 @@ int EtherCAT_send(EtherCAT_master_t *master)
   EtherCAT_command_t *cmd;
   int cmdcnt = 0;
 
+  if (master->debug_level > 0)
+  {
+    EC_DBG(KERN_DEBUG "EtherCAT_send, first_command = %X\n", (int) master->first_command);
+  }
+
   length = 0;
   for (cmd = master->first_command; cmd != NULL; cmd = cmd->next)
   {
     if (cmd->state != ECAT_CS_READY) continue;
     length += cmd->data_length + 12;
     cmdcnt++;
+  }
+
+  if (master->debug_level > 0)
+  {
+    EC_DBG(KERN_DEBUG "%i commands to send.\n", cmdcnt);
   }
 
   if (length == 0)
@@ -546,11 +555,10 @@ int EtherCAT_send(EtherCAT_master_t *master)
   framelength = length + 2;
   if (framelength < 46) framelength = 46;
 
-  if (ASYNC && framelength > 46)
-    EC_DBG(KERN_WARNING "Framelength: %d", framelength);
-
-  if (ASYNC && cmdcnt > 1)
-    EC_DBG(KERN_WARNING "CMDcount: %d", cmdcnt);
+  if (master->debug_level > 0)
+  {
+    EC_DBG(KERN_DEBUG "framelength: %i\n", framelength);
+  }
 
   master->tx_data[0] = length & 0xFF;
   master->tx_data[1] = ((length & 0x700) >> 8) | 0x10;
@@ -562,6 +570,11 @@ int EtherCAT_send(EtherCAT_master_t *master)
 
     cmd->index = master->command_index;
     master->command_index = (master->command_index + 1) % 0x0100;
+
+    if (master->debug_level > 0)
+    {
+      EC_DBG(KERN_DEBUG "Sending command index %i\n", cmd->index);
+    }
 
     cmd->state = ECAT_CS_SENT;
 
@@ -617,6 +630,11 @@ int EtherCAT_send(EtherCAT_master_t *master)
   EC_DBG("\n");
   EC_DBG(KERN_DEBUG "-----------------------------------------------\n");
 #endif
+
+  if (master->debug_level > 0)
+  {
+    EC_DBG(KERN_DEBUG "device send...\n");
+  }
  
   // Send frame
   if (EtherCAT_device_send(master->dev, master->tx_data, framelength) != 0)
@@ -631,6 +649,11 @@ int EtherCAT_send(EtherCAT_master_t *master)
     }
     EC_DBG("\n");
     return -1;
+  }
+
+  if (master->debug_level > 0)
+  {
+    EC_DBG(KERN_DEBUG "EtherCAT_send done.\n");
   }
 
   return 0;
@@ -830,12 +853,12 @@ int EtherCAT_receive(EtherCAT_master_t *master)
 #define ECAT_FUNC_WRITE_FOOTER \
   cmd->data_length = length; \
   memcpy(cmd->data, data, length); \
-  add_command(master, cmd); \
+  if (add_command(master, cmd) < 0) return NULL; \
   return cmd
 
 #define ECAT_FUNC_READ_FOOTER \
   cmd->data_length = length; \
-  add_command(master, cmd); \
+  if (add_command(master, cmd) < 0) return NULL; \
   return cmd
 
 /***************************************************************/
@@ -1075,10 +1098,25 @@ EtherCAT_command_t *alloc_cmd(EtherCAT_master_t *master)
   for (j = 0; j < ECAT_COMMAND_RING_SIZE; j++) // Einmal rum suchen
   { 
     // Solange suchen, bis freies Kommando gefunden
-    if (master->cmd_ring[master->cmd_ring_index].reserved == 0)
+    if (master->cmd_reserved[master->cmd_ring_index] == 0)
     {
-      master->cmd_ring[master->cmd_ring_index].reserved = 1; // Belegen
+      master->cmd_reserved[master->cmd_ring_index] = 1; // Belegen
+
+      if (master->debug_level)
+      {
+        EC_DBG(KERN_DEBUG "Allocating command %i (addr %X).\n",
+               master->cmd_ring_index,
+               (int) &master->cmd_ring[master->cmd_ring_index]);
+      }
+
       return &master->cmd_ring[master->cmd_ring_index];
+    }
+
+    if (master->debug_level)
+    {
+      EC_DBG(KERN_DEBUG "Command %i (addr %X) is reserved...\n",
+             master->cmd_ring_index,
+             (int) &master->cmd_ring[master->cmd_ring_index]);
     }
 
     master->cmd_ring_index++;
@@ -1099,17 +1137,29 @@ EtherCAT_command_t *alloc_cmd(EtherCAT_master_t *master)
    @param cmd Zeiger auf das einzufügende Kommando
 */
 
-void add_command(EtherCAT_master_t *master,
-                 EtherCAT_command_t *cmd)
+int add_command(EtherCAT_master_t *master,
+                EtherCAT_command_t *new_cmd)
 {
-  EtherCAT_command_t **last_cmd;
+  EtherCAT_command_t *cmd, **last_cmd;
+
+  for (cmd = master->first_command; cmd != NULL; cmd = cmd->next)
+  {
+    if (cmd == new_cmd)
+    {
+      EC_DBG(KERN_WARNING "EtherCAT: Trying to add a command"
+             " that is already in the list!\n");
+      return -1;
+    }
+  }
 
   // Find the address of the last pointer in the list
   last_cmd = &(master->first_command);
   while (*last_cmd) last_cmd = &(*last_cmd)->next;
 
   // Let this pointer point to the new command
-  *last_cmd = cmd;
+  *last_cmd = new_cmd;
+
+  return 0;
 }
 
 /***************************************************************/
@@ -1131,6 +1181,7 @@ void EtherCAT_remove_command(EtherCAT_master_t *master,
                              EtherCAT_command_t *rem_cmd)
 {
   EtherCAT_command_t **last_cmd;
+  int i;
 
   last_cmd = &master->first_command;
   while (*last_cmd)
@@ -1138,9 +1189,19 @@ void EtherCAT_remove_command(EtherCAT_master_t *master,
     if (*last_cmd == rem_cmd)
     {
       *last_cmd = rem_cmd->next;
-
       EtherCAT_command_clear(rem_cmd);
 
+      // Reservierung des Kommandos aufheben
+      for (i = 0; i < ECAT_COMMAND_RING_SIZE; i++)
+      {
+        if (&master->cmd_ring[i] == rem_cmd)
+        {
+          master->cmd_reserved[i] = 0;
+          return;
+        }
+      }
+
+      EC_DBG(KERN_WARNING "EtherCAT: Could not remove command reservation!\n");
       return;
     }
 
@@ -1595,14 +1656,10 @@ int EtherCAT_activate_all_slaves(EtherCAT_master_t *master)
 
   for (i = 0; i < master->slave_count; i++)
   {
-    EC_DBG("Activate Slave: %d\n",i);
-
     if (EtherCAT_activate_slave(master, &master->slaves[i]) < 0)
     {
       return -1;
     }
-
-    EC_DBG("done...\n");
   }
 
   return 0;
@@ -1627,14 +1684,10 @@ int EtherCAT_deactivate_all_slaves(EtherCAT_master_t *master)
 
   for (i = 0; i < master->slave_count; i++)
   {
-    EC_DBG("Deactivate Slave: %d\n",i);
-    
     if (EtherCAT_deactivate_slave(master, &master->slaves[i]) < 0)
     {
       ret = -1;
     }
-    
-    EC_DBG("done...\n");
   }
 
   return ret;
@@ -1663,8 +1716,8 @@ int EtherCAT_write_process_data(EtherCAT_master_t *master)
   }
 
   if ((master->process_data_command
-       = EtherCAT_logical_read_write(master, 0,
-                                     master->process_data_length,
+       = EtherCAT_logical_read_write(master,
+                                     0, master->process_data_length,
                                      master->process_data)) == NULL)
   {
     EC_DBG(KERN_ERR "EtherCAT: Could not allocate process data command!\n");
@@ -1727,6 +1780,27 @@ int EtherCAT_read_process_data(EtherCAT_master_t *master)
   master->process_data_command = NULL;
 
   return ret;
+}
+
+/***************************************************************/
+
+/**
+   Verwirft ein zuvor gesendetes Prozessdatenkommando.
+
+   Diese Funktion sollte nach Ende des zyklischen Betriebes
+   aufgerufen werden, um das noch wartende Prozessdaten-Kommando
+   zu entfernen.
+
+   @param master EtherCAT-Master
+*/
+
+void EtherCAT_clear_process_data(EtherCAT_master_t *master)
+{
+  if (!master->process_data_command) return;
+
+  EtherCAT_remove_command(master, master->process_data_command);
+  EtherCAT_command_clear(master->process_data_command);
+  master->process_data_command = NULL;
 }
 
 /***************************************************************/
