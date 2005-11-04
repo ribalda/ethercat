@@ -288,12 +288,12 @@ int EtherCAT_device_receive(EtherCAT_device_t *ecd,
 
 void EtherCAT_device_call_isr(EtherCAT_device_t *ecd)
 {
-  EC_DBG(KERN_DEBUG "EtherCAT: Calling ISR...\n");
+//  EC_DBG(KERN_DEBUG "EtherCAT: Calling ISR...\n");
 
   // Manuell die ISR aufrufen
   rtl8139_interrupt(0, ecd->dev, NULL);
 
-  EC_DBG(KERN_DEBUG "EtherCAT: ISR finished.\n");
+//  EC_DBG(KERN_DEBUG "EtherCAT: ISR finished.\n");
 }
 
 /***************************************************************/

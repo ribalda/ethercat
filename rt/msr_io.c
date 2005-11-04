@@ -86,7 +86,7 @@ extern EtherCAT_device_t rtl_ecat_dev;
 static EtherCAT_slave_t ecat_slaves[] =
 {
     //Block 1
-  ECAT_INIT_SLAVE(Beckhoff_EK1100),
+/*  ECAT_INIT_SLAVE(Beckhoff_EK1100),
   ECAT_INIT_SLAVE(Beckhoff_EL4102),
   ECAT_INIT_SLAVE(Beckhoff_EL3162),
   ECAT_INIT_SLAVE(Beckhoff_EL1014),
@@ -103,7 +103,7 @@ static EtherCAT_slave_t ecat_slaves[] =
   ECAT_INIT_SLAVE(Beckhoff_EL2004),
   ECAT_INIT_SLAVE(Beckhoff_EL2004),
   ECAT_INIT_SLAVE(Beckhoff_EL2004),
-  ECAT_INIT_SLAVE(Beckhoff_EL2004),
+  ECAT_INIT_SLAVE(Beckhoff_EL2004), */
   //Block 2
   ECAT_INIT_SLAVE(Beckhoff_EK1100),
   ECAT_INIT_SLAVE(Beckhoff_EL4102),

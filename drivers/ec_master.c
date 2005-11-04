@@ -1767,6 +1767,8 @@ int EtherCAT_read_process_data(EtherCAT_master_t *master)
     return -1;
   }
 
+  EtherCAT_device_call_isr(master->dev);
+
   if (EtherCAT_receive(master) < 0)
   {
     EC_DBG(KERN_ERR "EtherCAT: Could not receive cyclic command!\n");
