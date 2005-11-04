@@ -1829,8 +1829,12 @@ static void rtl8139_tx_timeout (struct net_device *dev)
 			i == (int) (tp->dirty_tx % NUM_TX_DESC) ?
 				" (queue head)" : "");
 
+	/* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
 	/* Stop a shared interrupt from scavenging while we are. */
-	if(dev == rtl_ecat_dev.dev) {
+
+	if (dev == rtl_ecat_dev.dev)
+        {
 	    flags = rt_spin_lock_irqsave (&tp->lock);
 	    rtl8139_tx_clear (tp);
 	    rt_spin_unlock_irqrestore (&tp->lock,flags);
@@ -1840,6 +1844,9 @@ static void rtl8139_tx_timeout (struct net_device *dev)
 	    rtl8139_tx_clear (tp);
 	    spin_unlock_irqrestore (&tp->lock, flags);
 	}
+
+	/* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
+
 	/* ...and finally, reset everything */
 	rtl8139_hw_start (dev);
 
@@ -1906,12 +1913,17 @@ static int rtl8139_start_xmit (struct sk_buff *skb, struct net_device *dev)
           netif_stop_queue (dev);
         }
 
+	if (dev == rtl_ecat_dev.dev)
+        {
+          rt_spin_unlock_irq(&tp->lock);
+        }
+	else
+        {
+          spin_unlock_irq(&tp->lock);
+        }
+
 	/* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 
-	if(dev == rtl_ecat_dev.dev)
-	    rt_spin_unlock_irq(&tp->lock);
-	else
-	    spin_unlock_irq(&tp->lock);
 	DPRINTK ("%s: Queued Tx packet size %u to slot %d.\n",
 		 dev->name, len, entry);
 
@@ -2332,12 +2344,19 @@ static void rtl8139_interrupt (int irq, void *dev_instance,
 	int ackstat, status;
 	int link_changed = 0; /* avoid bogus "uninit" warning */
 
-	if(dev == rtl_ecat_dev.dev) {
-	    rt_spin_lock (&tp->lock);
-	    (rtl_ecat_dev.intr_cnt)++;
+        /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/        
+
+	if (dev == rtl_ecat_dev.dev)
+        {
+          rt_spin_lock(&tp->lock);
+          rtl_ecat_dev.intr_cnt++;
 	}
 	else
-	    spin_lock (&tp->lock);
+        {
+          spin_lock (&tp->lock);
+        }
+
+        /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 
 	do {
 		status = RTL_R16 (IntrStatus);
@@ -2403,10 +2422,18 @@ static void rtl8139_interrupt (int irq, void *dev_instance,
 		RTL_W16 (IntrStatus, 0xffff);
 	}
 
-	if(dev == rtl_ecat_dev.dev)
-	    rt_spin_unlock (&tp->lock);
+        /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+	if (dev == rtl_ecat_dev.dev)
+        {
+          rt_spin_unlock(&tp->lock);
+        }
 	else
-	    spin_unlock (&tp->lock);
+        {
+          spin_unlock(&tp->lock);
+        }
+
+        /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 
 	DPRINTK ("%s: exiting interrupt, intr_status=%#4.4x.\n",
 		 dev->name, RTL_R16 (IntrStatus));
@@ -2453,7 +2480,7 @@ static int rtl8139_close (struct net_device *dev)
 
         /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
-	mdelay(1); //hm
+	//mdelay(1);
 
         if (dev == rtl_ecat_dev.dev)
         {
@@ -2476,19 +2503,22 @@ static int rtl8139_close (struct net_device *dev)
 	tp->stats.rx_missed_errors += RTL_R32 (RxMissed);
 	RTL_W32 (RxMissed, 0);
 
-        if (dev == rtl_ecat_dev.dev) {
-	    rt_spin_unlock_irqrestore (&tp->lock, flags);
-	    synchronize_irq ();
-	}
-	else {
-	    spin_unlock_irqrestore (&tp->lock, flags);
-	    synchronize_irq ();
-	}
-
         /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
+        if (dev == rtl_ecat_dev.dev)
+        {
+          rt_spin_unlock_irqrestore (&tp->lock, flags);
+          synchronize_irq ();
+	}
+	else
+        {
+          spin_unlock_irqrestore (&tp->lock, flags);
+          synchronize_irq ();
+	}
+
 	EC_DBG ("rtl8139: freeing irq");
-	mdelay(1); //hm
+
+	//mdelay(1);
 
         if (dev != rtl_ecat_dev.dev)
         {
@@ -2836,20 +2866,27 @@ static struct net_device_stats *rtl8139_get_stats (struct net_device *dev)
 
 	EC_DBG("%s: rtl8139 GETSTATS called...",dev->name);
 
-	if (dev == rtl_ecat_dev.dev) {
-		flags = rt_spin_lock_irqsave (&tp->lock);
-		tp->stats.rx_missed_errors += RTL_R32 (RxMissed);
-		RTL_W32 (RxMissed, 0);
-		rt_spin_unlock_irqrestore (&tp->lock, flags);
+        /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+	if (dev == rtl_ecat_dev.dev)
+        {
+          flags = rt_spin_lock_irqsave (&tp->lock);
+          tp->stats.rx_missed_errors += RTL_R32 (RxMissed);
+          RTL_W32 (RxMissed, 0);
+          rt_spin_unlock_irqrestore (&tp->lock, flags);
 	}
-	else {
-	    if (netif_running(dev)) {
-		spin_lock_irqsave (&tp->lock, flags);
-		tp->stats.rx_missed_errors += RTL_R32 (RxMissed);
-		RTL_W32 (RxMissed, 0);
-		spin_unlock_irqrestore (&tp->lock, flags);
-	    }
+	else
+        {
+          if (netif_running(dev))
+          {
+            spin_lock_irqsave (&tp->lock, flags);
+            tp->stats.rx_missed_errors += RTL_R32 (RxMissed);
+            RTL_W32 (RxMissed, 0);
+            spin_unlock_irqrestore (&tp->lock, flags);
+          }
 	}
+
+        /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 
 	return &tp->stats;
 }
@@ -2910,16 +2947,22 @@ static void rtl8139_set_rx_mode (struct net_device *dev)
 	unsigned long flags;
 	struct rtl8139_private *tp = dev->priv;
 
-	if(dev == rtl_ecat_dev.dev) {
-	    flags = rt_spin_lock_irqsave (&tp->lock);
-	    __set_rx_mode(dev);
-	    rt_spin_unlock_irqrestore (&tp->lock, flags);
+        /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+	if (dev == rtl_ecat_dev.dev)
+        {
+          flags = rt_spin_lock_irqsave (&tp->lock);
+          __set_rx_mode(dev);
+          rt_spin_unlock_irqrestore (&tp->lock, flags);
 	}
-	else {
-	    spin_lock_irqsave (&tp->lock, flags);
-	    __set_rx_mode(dev);
-	    spin_unlock_irqrestore (&tp->lock, flags);
+	else
+        {
+          spin_lock_irqsave (&tp->lock, flags);
+          __set_rx_mode(dev);
+          spin_unlock_irqrestore (&tp->lock, flags);
 	}
+
+        /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 }
 
 #ifdef CONFIG_PM
@@ -2936,7 +2979,7 @@ static int rtl8139_suspend (struct pci_dev *pdev, u32 state)
 	if (dev == rtl_ecat_dev.dev || !netif_running (dev))
           return 0;
 
-        /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+        /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 
 	netif_device_detach (dev);
 
