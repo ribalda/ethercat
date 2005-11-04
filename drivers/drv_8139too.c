@@ -1803,12 +1803,11 @@ static void rtl8139_tx_timeout (struct net_device *dev)
         {
           if (rtl_ecat_dev.state != ECAT_DS_SENT)
           {
-            EC_DBG(KERN_WARNING "EtherCAT: Wrong status at timeout!\n");
+            EC_DBG(KERN_WARNING "EtherCAT: Wrong status at timeout: %i\n",
+                   rtl_ecat_dev.state);
           }
-          else
-          {
-            rtl_ecat_dev.state = ECAT_DS_TIMEOUT;
-          }
+
+          rtl_ecat_dev.state = ECAT_DS_TIMEOUT;
         }
 
         /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
@@ -1879,13 +1878,17 @@ static int rtl8139_start_xmit (struct sk_buff *skb, struct net_device *dev)
           return 0;
 	}
 
-        /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
-
 	/* Note: the chip doesn't have auto-pad! */
-	if(dev == rtl_ecat_dev.dev)
-	    rt_spin_lock_irq(&tp->lock);
+	if (dev == rtl_ecat_dev.dev)
+        {
+          rt_spin_lock_irq(&tp->lock);
+        }
 	else
-	    spin_lock_irq(&tp->lock);
+        {
+          spin_lock_irq(&tp->lock);
+        }
+
+        /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 
 	RTL_W32_F (TxStatus0 + (entry * sizeof (u32)),
 		   tp->tx_flag | max(len, (unsigned int)ETH_ZLEN));
@@ -1897,8 +1900,11 @@ static int rtl8139_start_xmit (struct sk_buff *skb, struct net_device *dev)
 
 	/* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
-	if (dev != rtl_ecat_dev.dev && ((tp->cur_tx - NUM_TX_DESC) == tp->dirty_tx))
+	if (dev != rtl_ecat_dev.dev
+            && ((tp->cur_tx - NUM_TX_DESC) == tp->dirty_tx))
+        {
           netif_stop_queue (dev);
+        }
 
 	/* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 
@@ -1930,11 +1936,11 @@ static void rtl8139_tx_interrupt (struct net_device *dev,
 
 	if (dev == rtl_ecat_dev.dev)
         {
-	    (rtl_ecat_dev.tx_intr_cnt)++;
-	    rdtscl(rtl_ecat_dev.tx_time); // Get CPU cycles
+          rtl_ecat_dev.tx_intr_cnt++;
+          rdtscl(rtl_ecat_dev.tx_time); // Get CPU cycles
 	}
 
-	/* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+        /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 
 	while (tx_left > 0) {
 		int entry = dirty_tx % NUM_TX_DESC;
@@ -2003,7 +2009,9 @@ static void rtl8139_tx_interrupt (struct net_device *dev,
                 /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
 		if (dev != rtl_ecat_dev.dev && netif_queue_stopped (dev))
+                {
                   netif_wake_queue (dev);
+                }
 
                 /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 	}
@@ -2123,7 +2131,7 @@ static void rtl8139_rx_interrupt (struct net_device *dev,
 
 	if (dev == rtl_ecat_dev.dev)
         {
-          (rtl_ecat_dev.rx_intr_cnt)++;
+          rtl_ecat_dev.rx_intr_cnt++;
           rdtscl(rtl_ecat_dev.rx_time); // Get CPU cycles
 	}
 
@@ -2153,12 +2161,10 @@ static void rtl8139_rx_interrupt (struct net_device *dev,
 #if RTL8139_DEBUG > 2                        
                 if (dev == rtl_ecat_dev.dev)
 		{
-			int i;
-			DPRINTK ("%s: Frame contents ", dev->name);
-			for (i = 0; i < 70; i++)
-				EC_DBG (" %2.2x",
-					rx_ring[ring_offset + i]);
-			EC_DBG (".\n");
+                  int i;
+                  DPRINTK("%s: Frame contents ", dev->name);
+                  for (i = 0; i < 70; i++) EC_DBG(" %2.2x", rx_ring[ring_offset + i]);
+                  EC_DBG(".\n");
 		}
 #endif
 
@@ -2203,13 +2209,12 @@ static void rtl8139_rx_interrupt (struct net_device *dev,
                   if (skb)
                   {
                     skb->dev = dev;
-                    skb_reserve (skb, 2);	/* 16 byte align the IP fields. */
-                    eth_copy_and_sum (skb, &rx_ring[ring_offset + 4], pkt_size, 0);
+                    skb_reserve(skb, 2);	/* 16 byte align the IP fields. */
+                    eth_copy_and_sum(skb, &rx_ring[ring_offset + 4], pkt_size, 0);
                     skb_put (skb, pkt_size);
-                    skb->protocol = eth_type_trans (skb, dev); // Entfernt auch den Ethernet Header!
+                    skb->protocol = eth_type_trans(skb, dev); // Entfernt auch den Ethernet Header!
                     netif_rx(skb);
-                 
-                    
+
                     dev->last_rx = jiffies;
                     tp->stats.rx_bytes += pkt_size;
                     tp->stats.rx_packets++;
@@ -2360,8 +2365,14 @@ static void rtl8139_interrupt (int irq, void *dev_instance,
 		DPRINTK ("%s: interrupt  status=%#4.4x ackstat=%#4.4x new intstat=%#4.4x.\n",
 			 dev->name, ackstat, status, RTL_R16 (IntrStatus));
 
+                /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
 		if ((dev == rtl_ecat_dev.dev || netif_running (dev)) && (status & RxAckBits))
-			rtl8139_rx_interrupt (dev, tp, ioaddr);
+                {
+                  rtl8139_rx_interrupt (dev, tp, ioaddr);
+                }
+
+                /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 
 		/* Check uncommon events with one test. */
 		if (status & (PCIErr | PCSTimeout | RxUnderrun | RxOverflow |
@@ -2369,11 +2380,17 @@ static void rtl8139_interrupt (int irq, void *dev_instance,
 			rtl8139_weird_interrupt (dev, tp, ioaddr,
 						 status, link_changed);
 
-		if ((dev == rtl_ecat_dev.dev || netif_running (dev)) && (status & (TxOK | TxErr))) {
+                /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+		if ((dev == rtl_ecat_dev.dev || netif_running (dev))
+                    && (status & (TxOK | TxErr)))
+                {
 			rtl8139_tx_interrupt (dev, tp, ioaddr);
 			if (status & TxErr)
 				RTL_W16 (IntrStatus, TxErr);
 		}
+
+                /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 
 		boguscnt--;
 	} while (boguscnt > 0);
@@ -2791,8 +2808,12 @@ static int netdev_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
 	struct mii_ioctl_data *data = (struct mii_ioctl_data *) & rq->ifr_data;
 	int rc;
 
+        /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
 	if (dev == rtl_ecat_dev.dev || !netif_running(dev))
 		return -EINVAL;
+
+        /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 
 	if (cmd == SIOCETHTOOL)
 		rc = netdev_ethtool_ioctl(dev, (void *) rq->ifr_data);
