@@ -12,7 +12,6 @@
 #include <linux/skbuff.h>
 #include <linux/if_ether.h>
 #include <linux/netdevice.h>
-#include <rtai.h>
 #include <linux/delay.h>
 
 #include "ec_device.h"
@@ -22,7 +21,7 @@
 
 /**
    EtherCAT-Geräte-Konstuktor.
-   
+
    Initialisiert ein EtherCAT-Gerät, indem es die Variablen
    in der Struktur auf die Default-Werte setzt.
 
@@ -48,7 +47,7 @@ void EtherCAT_device_init(EtherCAT_device_t *ecd)
 
 /**
    EtherCAT-Geräte-Destuktor.
-   
+
    Gibt den dynamisch allozierten Speicher des
    EtherCAT-Gerätes (die beiden Socket-Buffer) wieder frei.
 
@@ -76,7 +75,7 @@ void EtherCAT_device_clear(EtherCAT_device_t *ecd)
 
 /**
    Weist einem EtherCAT-Gerät das entsprechende net_device zu.
-   
+
    Prüft das net_device, allokiert Socket-Buffer in Sende- und
    Empfangsrichtung und weist dem EtherCAT-Gerät und den
    Socket-Buffern das net_device zu.
@@ -275,6 +274,26 @@ int EtherCAT_device_receive(EtherCAT_device_t *ecd,
   memcpy(data,ecd->rx_data, cnt);
 
   return cnt;
+}
+
+/***************************************************************/
+
+/**
+   Ruft manuell die Interrupt-Routine der Netzwerkkarte auf.
+
+   @param ecd EtherCAT-Gerät
+
+   @return Anzahl der kopierten Bytes bei Erfolg, sonst < 0
+*/
+
+void EtherCAT_device_call_isr(EtherCAT_device_t *ecd)
+{
+  EC_DBG(KERN_DEBUG "EtherCAT: Calling ISR...\n");
+
+  // Manuell die ISR aufrufen
+  rtl8139_interrupt(0, ecd->dev, NULL);
+
+  EC_DBG(KERN_DEBUG "EtherCAT: ISR finished.\n");
 }
 
 /***************************************************************/

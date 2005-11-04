@@ -37,9 +37,10 @@ void EtherCAT_slave_init(EtherCAT_slave_t *slave)
   slave->vendor_id = 0;
   slave->product_code = 0;
   slave->revision_number = 0;
-  
+  slave->serial_number = 0;
+
   slave->desc = 0;
-  
+
   slave->logical_address0 = 0;
 
   slave->current_state = ECAT_STATE_UNKNOWN;

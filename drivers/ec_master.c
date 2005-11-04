@@ -18,9 +18,6 @@
 #include "ec_master.h"
 #include "ec_dbg.h"
 
-// FIXME: Klappt nur solange, wie es nur einen Master gibt! fp
-static int ASYNC = 0;
-
 /***************************************************************/
 
 /**
@@ -159,13 +156,12 @@ int EtherCAT_check_slaves(EtherCAT_master_t *master,
   }
   else
   {
-    EC_DBG("EtherCAT: Slave count on bus: %i. Found: %i.\n",
-           cmd->working_counter, slave_count);
+    EC_DBG("EtherCAT: Found all %i slaves.\n", slave_count);
   }
 
   EtherCAT_remove_command(master, cmd);  
 
-   // For every slave in the list
+  // For every slave in the list
   for (i = 0; i < slave_count; i++)
   {
     cur = &slaves[i];
@@ -239,21 +235,28 @@ int EtherCAT_check_slaves(EtherCAT_master_t *master,
     if (EtherCAT_read_slave_information(master, cur->station_address,
                                         0x0008, &cur->vendor_id) != 0)
     {
-      EC_DBG(KERN_ERR "EtherCAT: Could not read SII!\n");
+      EC_DBG(KERN_ERR "EtherCAT: Could not read SII vendor id!\n");
       return -1;
     }
 
     if (EtherCAT_read_slave_information(master, cur->station_address,
                                         0x000A, &cur->product_code) != 0)
     {
-      EC_DBG(KERN_ERR "EtherCAT: Could not read SII!\n");
+      EC_DBG(KERN_ERR "EtherCAT: Could not read SII product code!\n");
       return -1;
     }
 
     if (EtherCAT_read_slave_information(master, cur->station_address,
                                         0x000E, &cur->revision_number) != 0)
     {
-      EC_DBG(KERN_ERR "EtherCAT: Could not read SII!\n");
+      EC_DBG(KERN_ERR "EtherCAT: Could not read SII revision number!\n");
+      return -1;
+    }
+
+    if (EtherCAT_read_slave_information(master, cur->station_address,
+                                        0x0012, &cur->serial_number) != 0)
+    {
+      EC_DBG(KERN_ERR "EtherCAT: Could not read SII serial number!\n");
       return -1;
     }
 
@@ -284,7 +287,8 @@ int EtherCAT_check_slaves(EtherCAT_master_t *master,
 
     if (!found)
     {
-      EC_DBG(KERN_ERR "EtherCAT: Unknown slave device (vendor %X, code %X) at position %i.\n",
+      EC_DBG(KERN_ERR "EtherCAT: Unknown slave device"
+             " (vendor %X, code %X) at position %i.\n",
              i, cur->vendor_id, cur->product_code);
       return -1;      
     }
@@ -312,8 +316,9 @@ int EtherCAT_check_slaves(EtherCAT_master_t *master,
     slaves[i].process_data = master->process_data + pos;
     slaves[i].logical_address0 = pos;
 
-    EC_DBG(KERN_DEBUG "EtherCAT: Slave %i - \"%s %s\" - Logical Address 0x%08X\n",
-           i, slaves[i].desc->vendor_name, slaves[i].desc->product_name, pos);
+    EC_DBG(KERN_DEBUG "EtherCAT: Slave %i - Address 0x%X, \"%s %s\", s/n %u\n",
+           i, pos, slaves[i].desc->vendor_name, slaves[i].desc->product_name,
+           slaves[i].serial_number);
 
     pos += slaves[i].desc->data_length;
   }  
@@ -451,7 +456,7 @@ int EtherCAT_read_slave_information(EtherCAT_master_t *master,
    entsprechenden Antworten.
 
    @param master EtherCAT-Master
-   
+
    @return 0 bei Erfolg, sonst < 0
 */
 
@@ -459,28 +464,30 @@ int EtherCAT_async_send_receive(EtherCAT_master_t *master)
 {
   unsigned int wait_cycles;
   int i;
-  
+
   // Send all commands
 
   for (i = 0; i < ECAT_NUM_RETRIES; i++)
   {
-    ASYNC = 1;
     if (EtherCAT_send(master) < 0)
     {
       return -1;
     }
-    ASYNC = 0;
 
     // Wait until something is received or an error has occurred
+
     wait_cycles = 10;
+    EtherCAT_device_call_isr(master->dev);
+
     while (master->dev->state == ECAT_DS_SENT && wait_cycles)
     {
       udelay(1000);
       wait_cycles--;
+      EtherCAT_device_call_isr(master->dev);
     }
-    
+
     //EC_DBG("Master async send: tries %d",tries_left);
-    
+
     if (!wait_cycles)
     {
       EC_DBG(KERN_ERR "EtherCAT: Asynchronous receive timeout.\n");
@@ -492,7 +499,7 @@ int EtherCAT_async_send_receive(EtherCAT_master_t *master)
       EC_DBG(KERN_ERR "EtherCAT: Asyncronous send error. State %i\n", master->dev->state);
       continue;
     }
-    
+
     // Receive all commands
     if (EtherCAT_receive(master) < 0)
     {
@@ -518,7 +525,7 @@ int EtherCAT_async_send_receive(EtherCAT_master_t *master)
    Danach wird die Sendefunktion des EtherCAT-Gerätes aufgerufen.
 
    @param master EtherCAT-Master
-   
+
    @return 0 bei Erfolg, sonst < 0
 */
 
@@ -614,7 +621,7 @@ int EtherCAT_send(EtherCAT_master_t *master)
 
   // Pad with zeros
   while (pos < 46) master->tx_data[pos++] = 0x00;
-  
+
   master->tx_data_length = framelength;
 
 #ifdef DEBUG_SEND_RECEIVE
@@ -635,7 +642,7 @@ int EtherCAT_send(EtherCAT_master_t *master)
   {
     EC_DBG(KERN_DEBUG "device send...\n");
   }
- 
+
   // Send frame
   if (EtherCAT_device_send(master->dev, master->tx_data, framelength) != 0)
   {
@@ -644,7 +651,7 @@ int EtherCAT_send(EtherCAT_master_t *master)
     EC_DBG(KERN_DEBUG);
     for (i = 0; i < framelength; i++)
     {
-      EC_DBG("%02X ", master->tx_data[i]);      
+      EC_DBG("%02X ", master->tx_data[i]);
       if ((i + 1) % 16 == 0) EC_DBG("\n" KERN_DEBUG);
     }
     EC_DBG("\n");
@@ -669,7 +676,7 @@ int EtherCAT_send(EtherCAT_master_t *master)
    allen gesendeten Kommandos ihre Antworten zu.
 
    @param master EtherCAT-Master
-   
+
    @return 0 bei Erfolg, sonst < 0
 */
 

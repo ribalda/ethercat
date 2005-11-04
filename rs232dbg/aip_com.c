@@ -810,7 +810,7 @@ int init_aip_com(void)
 //void cleanup_module(void)  Hm, IgH
 void cleanup_aip_com(void)
 {
-    int i;
+    unsigned int i;
     for (i = 0; i < RT_COM_CNT; i++) {
         struct rt_com_struct    *p = &(rt_com_table[i]);
         if (0 < p->used) {

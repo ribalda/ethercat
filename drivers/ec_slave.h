@@ -18,6 +18,9 @@
 
 /**
    EtherCAT-Slave
+
+   Achtung: Bei Änderungen dieser Struktur immer das Define
+   ECAT_INIT_SLAVE anpassen!
 */
 
 typedef struct
@@ -35,6 +38,7 @@ typedef struct
   unsigned int vendor_id; /**< Identifikationsnummer des Herstellers */
   unsigned int product_code; /**< Herstellerspezifischer Produktcode */
   unsigned int revision_number; /**< Revisionsnummer */
+  unsigned int serial_number; /**< Seriennummer der Klemme */
 
   const EtherCAT_slave_desc_t *desc; /**< Zeiger auf die Beschreibung
                                         des Slave-Typs */
@@ -49,7 +53,7 @@ typedef struct
 }
 EtherCAT_slave_t;
 
-#define ECAT_INIT_SLAVE(TYPE) {0, 0, 0, 0, 0, 0, 0, 0, \
+#define ECAT_INIT_SLAVE(TYPE) {0, 0, 0, 0, 0, 0, 0, 0, 0, \
                                TYPE, 0, ECAT_STATE_UNKNOWN, \
                                ECAT_STATE_UNKNOWN, NULL}
 

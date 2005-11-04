@@ -1,46 +1,21 @@
-#IgH
-KERNELDIR = /vol/projekte/msr_messen_steuern_regeln/linux/kernel/2.4.20/include/linux-2.4.20.CX1100-rthal5
-RTAIDIR   = /vol/projekte/msr_messen_steuern_regeln/linux/kernel/2.4.20/include/rtai-24.1.13
-RTLIBDIR = rt_lib
 
-#euler-nottuln
-#KERNELDIR = /usr/src/linux
-#RTAIDIR = /usr/src/rtai
+MSRDIR = /vol/projekte/msr_messen_steuern_regeln
+ECATDIR = $(MSRDIR)/ethercat
 
-#patra
-#KERNELDIR = /usr/src/linux-2.4.20.CX1100-rthal5
-#RTAIDIR   = /usr/src/rtai-24.1.13
+KERNELDIR = $(ECATDIR)/linux-2.4.20.CX1100-rthal5-kdb
+RTAIDIR   = $(MSRDIR)/linux/kernel/2.4.20/include/rtai-24.1.13
 
-RTLIBDIR=rt_lib
-
-#include $(KERNELDIR)/.config
-
-#CFLAGS = -DRTAI -D__KERNEL__ -DMODULE -I$(KERNELDIR)/include -I$(RTAIDIR)/include -I$(RTLIBDIR)/msr-include \
-#	-Wall -Wstrict-prototypes -Wno-trigraphs -O2 -fno-strict-aliasing -fno-common -fomit-frame-pointer \
-#	-pipe -mpreferred-stack-boundary=2 -march=i686 -nostdinc -iwithprefix include
-
-CFLAGS = -O2 -Wall -Wuninitialized -D__KERNEL__ -DMODULE -I$(KERNELDIR)/include -D_RTAI -I$(RTAIDIR)/include -I$(RTLIBDIR)/msr-include
-
-#CFLAGS += -DSIMULATION
-#LDFLAGS = 
-
-#VPATH = $(RTLIBDIR)/
+CFLAGS = -O2 -Wall -Wuninitialized -D__KERNEL__ -DMODULE \
+	-I$(KERNELDIR)/include -D_RTAI -I$(RTAIDIR)/include -I$(RTLIBDIR)/msr-include
 
 TARGET = sdbg
 MODULE = $(TARGET).o
 
 SRC = rs232dbg.c aip_com.c
 
-#Suchpfad für die Dateien aus dem RT-Lib-Verzeichnis
-VPATH = $(RTLIBDIR)/msr-core:$(RTLIBDIR)/msr-control:$(RTLIBDIR)/msr-math:$(RTLIBDIR)/msr-misc:$(RTLIBDIR)/msr-utils
-
-#Datei aus dem RT-Libverzeichnis für dies Projekt
-RTSRC = 
-
-ALLSRC = $(SRC) $(RTSRC)
+ALLSRC = $(SRC)
 
 OBJS = $(ALLSRC:.c=.o)  
-
 
 all: .depend $(TARGET).o Makefile
 
@@ -57,26 +32,6 @@ clean:
 depend .depend dep:
 	$(CC) $(CFLAGS) -M *.c > $@
 
-
-
-
 ifeq (.depend,$(wildcard .depend))
 include .depend
 endif
-
-
-#all: msr_module.o
-#
-#msr_io.o: msr_io.c msr_io.h
-#	$(CC) $(CFLAGS) -c -o $@ $<
-#
-#msr_module.o: msr_io.o
-#	$(LD) -r -o $@ $^
-#
-
-#                  $(CC) -c $(CFLAGS) $(CPPFLAGS) -o $@ $<
-
-
-#clean:
-#	rm -f *.o *~ core
-
