@@ -210,8 +210,7 @@ int EtherCAT_device_send(EtherCAT_device_t *ecd,
 
   if (ecd->state == ECAT_DS_SENT)
   {
-    EC_DBG(KERN_ERR "EtherCAT: Trying to send frame while last was not received!\n");
-    return -1;
+    EC_DBG(KERN_WARNING "EtherCAT: Trying to send frame while last was not received!\n");
   }
 
   skb_trim(ecd->tx_skb, 0); // Clear transmit socket buffer
