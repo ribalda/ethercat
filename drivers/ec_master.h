@@ -33,9 +33,8 @@ typedef struct
 
   EtherCAT_command_t *first_command; /**< Zeiger auf das erste
                                         Kommando in der Liste */
-  EtherCAT_command_t *process_data_command; /**< Zeiger Auf das Kommando
-                                               zum Senden und Empfangen
-                                               der Prozessdaten */
+  EtherCAT_command_t process_data_command; /**< Kommando zum Senden und
+                                              Empfangen der Prozessdaten */
 
   EtherCAT_device_t *dev; /**< Zeiger auf das zugewiesene EtherCAT-Gerät */
 
@@ -74,10 +73,14 @@ int EtherCAT_activate_all_slaves(EtherCAT_master_t *);
 int EtherCAT_deactivate_all_slaves(EtherCAT_master_t *);
 
 // Sending and receiving
+#if 0
 int EtherCAT_async_send_receive(EtherCAT_master_t *);
-int EtherCAT_send_receive_command(EtherCAT_master_t *, EtherCAT_command_t *);
 int EtherCAT_send(EtherCAT_master_t *);
 int EtherCAT_receive(EtherCAT_master_t *);
+#endif
+int EtherCAT_simple_send_receive(EtherCAT_master_t *, EtherCAT_command_t *);
+int EtherCAT_simple_send(EtherCAT_master_t *, EtherCAT_command_t *);
+int EtherCAT_simple_receive(EtherCAT_master_t *, EtherCAT_command_t *);
 
 int EtherCAT_write_process_data(EtherCAT_master_t *);
 int EtherCAT_read_process_data(EtherCAT_master_t *);
@@ -92,6 +95,7 @@ int EtherCAT_read_slave_information(EtherCAT_master_t *,
                                     unsigned int *);
 
 // EtherCAT commands
+#if 0
 EtherCAT_command_t *EtherCAT_read(EtherCAT_master_t *,
                                   unsigned short,
                                   unsigned short,
@@ -123,6 +127,7 @@ EtherCAT_command_t *EtherCAT_logical_read_write(EtherCAT_master_t *,
                                                 unsigned char *);
 
 void EtherCAT_remove_command(EtherCAT_master_t *, EtherCAT_command_t *);
+#endif
 
 // Slave states
 int EtherCAT_state_change(EtherCAT_master_t *, EtherCAT_slave_t *, unsigned char);
@@ -130,8 +135,10 @@ int EtherCAT_state_change(EtherCAT_master_t *, EtherCAT_slave_t *, unsigned char
 /***************************************************************/
 
 // Private functions
+#if 0
 EtherCAT_command_t *alloc_cmd(EtherCAT_master_t *);
 int add_command(EtherCAT_master_t *, EtherCAT_command_t *);
+#endif
 void set_byte(unsigned char *, unsigned int, unsigned char);
 void set_word(unsigned char *, unsigned int, unsigned int);
 void output_debug_data(unsigned char *, unsigned int);

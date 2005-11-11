@@ -18,21 +18,21 @@ RTAIDIR   = /vol/projekte/msr_messen_steuern_regeln/linux/kernel/2.4.20/include/
 RTLIBDIR = rt_lib
 endif
 
-CFLAGS = -O2 -Wall -Wuninitialized -D__KERNEL__ -DMODULE \
-	-I$(KERNELDIR)/include -D_RTAI -I$(RTAIDIR)/include \
-	-I$(RTLIBDIR)/msr-include
+CFLAGS = -O2 -Wall -Wuninitialized -D__KERNEL__ \
+	-DMODULE -I$(KERNELDIR)/include
 
 ifdef CONFIG_SMP
 	CFLAGS += -D__SMP__ -DSMP
 endif
 
 MODULE = ecat_8139too.o
-OBJ = ec_device.o ec_master.o ec_slave.o ec_command.o ec_types.o
+OBJ = drv_8139too.o ec_device.o ec_master.o \
+	ec_slave.o ec_command.o ec_types.o
 SRC = $(OBJ:.o=.c)
 
 #----------------------------------------------------------------
 
-all: .output_dirs .depend $(MODULE)
+all: .output_dirs depend $(MODULE)
 
 $(MODULE): $(OBJ)
 	$(LD) -r $(OBJ) -o $@
@@ -50,7 +50,7 @@ doc docs:
 	@echo "| RT_lib $(RTLIBDIR)"
 	@echo "x----------------------------"
 
-.depend:
+.depend depend dep:
 	$(CC) $(CFLAGS) -M $(SRC) > .depend
 
 clean:

@@ -52,7 +52,7 @@ OUTPUT_DIRECTORY       = ../src-docs
 # (Japanese with english messages), Korean, Norwegian, Polish, Portuguese, 
 # Romanian, Russian, Serbian, Slovak, Slovene, Spanish, Swedish and Ukrainian.
 
-OUTPUT_LANGUAGE        = German
+OUTPUT_LANGUAGE        =
 
 # If the EXTRACT_ALL tag is set to YES doxygen will assume all entities in 
 # documentation are documented, even if no documentation was available. 

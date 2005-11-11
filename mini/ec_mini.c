@@ -3,7 +3,7 @@
  * ec_mini.c
  *
  * Minimalmodul für EtherCAT
- *           
+ *
  * $Id$
  *
  ******************************************************************************/
@@ -278,7 +278,7 @@ int init()
     goto out_master;
   }
 
-  ecat_master->debug_level = 1;
+  //ecat_master->debug_level = 1;
 #endif
 
 #ifdef ECAT_SLAVES

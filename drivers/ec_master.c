@@ -45,7 +45,7 @@ int EtherCAT_master_init(EtherCAT_master_t *master,
   master->slaves = NULL;
   master->slave_count = 0;
   master->first_command = NULL;
-  master->process_data_command = NULL;
+  //master->process_data_command = NULL;
   master->dev = dev;
   master->command_index = 0x00;
   master->tx_data_length = 0;
@@ -76,11 +76,13 @@ int EtherCAT_master_init(EtherCAT_master_t *master,
 
 void EtherCAT_master_clear(EtherCAT_master_t *master)
 {
+#if 0
   // Remove all pending commands
   while (master->first_command)
   {
     EtherCAT_remove_command(master, master->first_command);
   }
+#endif
 
   // Remove all slaves
   EtherCAT_clear_slaves(master);
@@ -115,7 +117,7 @@ int EtherCAT_check_slaves(EtherCAT_master_t *master,
                           EtherCAT_slave_t *slaves,
                           unsigned int slave_count)
 {
-  EtherCAT_command_t *cmd;
+  EtherCAT_command_t cmd;
   EtherCAT_slave_t *cur;
   unsigned int i, j, found, length, pos;
   unsigned char data[2];
@@ -136,30 +138,20 @@ int EtherCAT_check_slaves(EtherCAT_master_t *master,
 
   // Determine number of slaves on bus
 
-  if ((cmd = EtherCAT_broadcast_read(master, 0x0000, 4)) == NULL)
-  {
-    return -1;
-  }
+  EtherCAT_command_broadcast_read(&cmd, 0x0000, 4);
 
-  if (EtherCAT_async_send_receive(master) != 0)
-  {
-    return -1;
-  }
+  if (EtherCAT_simple_send_receive(master, &cmd) < 0) return -1;
 
-  if (cmd->working_counter != slave_count)
+  if (cmd.working_counter != slave_count)
   {
     EC_DBG(KERN_ERR "EtherCAT: Wrong number of slaves on bus: %i / %i\n",
-           cmd->working_counter, slave_count);
-    EtherCAT_remove_command(master, cmd);
-
+           cmd.working_counter, slave_count);
     return -1;
   }
   else
   {
     EC_DBG("EtherCAT: Found all %i slaves.\n", slave_count);
   }
-
-  EtherCAT_remove_command(master, cmd);
 
   // For every slave in the list
   for (i = 0; i < slave_count; i++)
@@ -181,54 +173,30 @@ int EtherCAT_check_slaves(EtherCAT_master_t *master,
     data[0] = cur->station_address & 0x00FF;
     data[1] = (cur->station_address & 0xFF00) >> 8;
 
-    if ((cmd = EtherCAT_position_write(master, cur->ring_position, 0x0010, 2, data)) == NULL)
-    {
-      return -1;
-    }
+    EtherCAT_command_position_write(&cmd, cur->ring_position, 0x0010, 2, data);
+    if (EtherCAT_simple_send_receive(master, &cmd) < 0) return -1;
 
-    if (EtherCAT_async_send_receive(master) != 0)
-    {
-      return -1;
-    }
-
-    if (cmd->working_counter != 1)
+    if (cmd.working_counter != 1)
     {
       EC_DBG(KERN_ERR "EtherCAT: Slave %i did not repond while writing station address!\n", i);
       return -1;
     }
 
-    EtherCAT_remove_command(master, cmd);
-
     // Read base data
 
-    if ((cmd = EtherCAT_read(master, cur->station_address, 0x0000, 4)) == NULL)
+    EtherCAT_command_read(&cmd, cur->station_address, 0x0000, 4);
+    if (EtherCAT_simple_send_receive(master, &cmd) < 0) return -1;
+
+    if (cmd.working_counter != 1)
     {
-      EC_DBG(KERN_ERR "EtherCAT: Could not create command!\n");
-      return -1;
-    }
-
-    if (EtherCAT_async_send_receive(master) != 0)
-    {
-      EtherCAT_remove_command(master, cmd);
-
-      EC_DBG(KERN_ERR "EtherCAT: Could not send command!\n");
-      return -1;
-    }
-
-    if (cmd->working_counter != 1)
-    {
-      EtherCAT_remove_command(master, cmd);
-
       EC_DBG(KERN_ERR "EtherCAT: Slave %i did not respond while reading base data!\n", i);
       return -1;
     }
 
     // Get base data
-    cur->type = cmd->data[0];
-    cur->revision = cmd->data[1];
-    cur->build = cmd->data[2] | (cmd->data[3] << 8);
-
-    EtherCAT_remove_command(master, cmd);
+    cur->type = cmd.data[0];
+    cur->revision = cmd.data[1];
+    cur->build = cmd.data[2] | (cmd.data[3] << 8);
 
     // Read identification from "Slave Information Interface" (SII)
 
@@ -363,7 +331,7 @@ int EtherCAT_read_slave_information(EtherCAT_master_t *master,
                                     unsigned short int offset,
                                     unsigned int *target)
 {
-  EtherCAT_command_t *cmd;
+  EtherCAT_command_t cmd;
   unsigned char data[10];
   unsigned int tries_left;
 
@@ -376,63 +344,40 @@ int EtherCAT_read_slave_information(EtherCAT_master_t *master,
   data[4] = 0x00;
   data[5] = 0x00;
 
-  if ((cmd = EtherCAT_write(master, node_address, 0x502, 6, data)) == NULL)
-    return -2;
+  EtherCAT_command_write(&cmd, node_address, 0x502, 6, data);
+  if (EtherCAT_simple_send_receive(master, &cmd) < 0) return -3;
 
-  if (EtherCAT_async_send_receive(master) != 0)
+  if (cmd.working_counter != 1)
   {
-    EtherCAT_remove_command(master, cmd);
-    return -3;
-  }
-
-  if (cmd->working_counter != 1)
-  {
-    EtherCAT_remove_command(master, cmd);
     EC_DBG(KERN_ERR "EtherCAT: SII-read - Slave %04X did not respond!\n",
            node_address);
     return -4;
   }
 
-  EtherCAT_remove_command(master, cmd);
-
-  // Get status of read operation
-
-  // ?? FIXME warum hier tries ?? Hm
-
   // Der Slave legt die Informationen des Slave-Information-Interface
   // in das Datenregister und löscht daraufhin ein Busy-Bit. Solange
-  // den Status auslesen, bis das Bit weg ist. fp
+  // den Status auslesen, bis das Bit weg ist.
 
-  tries_left = 1000;
+  tries_left = 100;
   while (tries_left)
   {
     udelay(10);
 
-    if ((cmd = EtherCAT_read(master, node_address, 0x502, 10)) == NULL)
-      return -2;
+    EtherCAT_command_read(&cmd, node_address, 0x502, 10);
+    if (EtherCAT_simple_send_receive(master, &cmd) != 0) return -3;
 
-    if (EtherCAT_async_send_receive(master) != 0)
+    if (cmd.working_counter != 1)
     {
-      EtherCAT_remove_command(master, cmd);
-      return -3;
-    }
-
-    if (cmd->working_counter != 1)
-    {
-      EtherCAT_remove_command(master, cmd);
       EC_DBG(KERN_ERR "EtherCAT: SII-read status - Slave %04X did not respond!\n",
              node_address);
       return -4;
     }
 
-    if ((cmd->data[1] & 0x81) == 0)
+    if ((cmd.data[1] & 0x81) == 0)
     {
-      memcpy(target, cmd->data + 6, 4);
-      EtherCAT_remove_command(master, cmd);
+      memcpy(target, cmd.data + 6, 4);
       break;
     }
-
-    EtherCAT_remove_command(master, cmd);
 
     tries_left--;
   }
@@ -447,6 +392,7 @@ int EtherCAT_read_slave_information(EtherCAT_master_t *master,
   return 0;
 }
 
+#if 0
 /***************************************************************/
 
 /**
@@ -513,176 +459,6 @@ int EtherCAT_async_send_receive(EtherCAT_master_t *master)
   }
 
   return -1;
-}
-
-/***************************************************************/
-
-/**
-   Sendet ein einzelnes Kommando in einem Frame und
-   wartet auf dessen Empfang.
-
-   @param master EtherCAT-Master
-   @param cmd    Kommando zum Senden/Empfangen
-
-   @return 0 bei Erfolg, sonst < 0
-*/
-
-int EtherCAT_send_receive_command(EtherCAT_master_t *master,
-                                  EtherCAT_command_t *cmd)
-{
-  unsigned int length, framelength, i, tries_left, rx_data_length;
-  unsigned char command_type, command_index;
-
-  if (master->debug_level > 0)
-  {
-    EC_DBG(KERN_DEBUG "EtherCAT_send_receive_command\n");
-  }
-
-  if (cmd->state != ECAT_CS_READY)
-  {
-    EC_DBG(KERN_WARNING "EtherCAT_send_receive_command: Command not in ready state!\n");
-  }
-
-  length = cmd->data_length + 12;
-  framelength = length + 2;
-  if (framelength < 46) framelength = 46;
-
-  if (master->debug_level > 0)
-  {
-    EC_DBG(KERN_DEBUG "Frame length: %i\n", framelength);
-  }
-
-  master->tx_data[0] = length & 0xFF;
-  master->tx_data[1] = ((length & 0x700) >> 8) | 0x10;
-
-  cmd->index = master->command_index;
-  master->command_index = (master->command_index + 1) % 0x0100;
-
-  if (master->debug_level > 0)
-  {
-    EC_DBG(KERN_DEBUG "Sending command index %i\n", cmd->index);
-  }
-
-  cmd->state = ECAT_CS_SENT;
-
-  master->tx_data[2 + 0] = cmd->type;
-  master->tx_data[2 + 1] = cmd->index;
-  master->tx_data[2 + 2] = cmd->address.raw[0];
-  master->tx_data[2 + 3] = cmd->address.raw[1];
-  master->tx_data[2 + 4] = cmd->address.raw[2];
-  master->tx_data[2 + 5] = cmd->address.raw[3];
-  master->tx_data[2 + 6] = cmd->data_length & 0xFF;
-  master->tx_data[2 + 7] = (cmd->data_length & 0x700) >> 8;
-  master->tx_data[2 + 8] = 0x00;
-  master->tx_data[2 + 9] = 0x00;
-
-  if (cmd->type == ECAT_CMD_APWR
-      || cmd->type == ECAT_CMD_NPWR
-      || cmd->type == ECAT_CMD_BWR
-      || cmd->type == ECAT_CMD_LRW) // Write
-  {
-    for (i = 0; i < cmd->data_length; i++) master->tx_data[2 + 10 + i] = cmd->data[i];
-  }
-  else // Read
-  {
-    for (i = 0; i < cmd->data_length; i++) master->tx_data[2 + 10 + i] = 0x00;
-  }
-
-  master->tx_data[2 + 10 + cmd->data_length] = 0x00;
-  master->tx_data[2 + 11 + cmd->data_length] = 0x00;
-
-  // Pad with zeros
-  for (i = cmd->data_length + 12 + 2; i < 46; i++) master->tx_data[i] = 0x00;
-
-  master->tx_data_length = framelength;
-
-  if (master->debug_level > 0)
-  {
-    EC_DBG(KERN_DEBUG "device send...\n");
-  }
-
-  // Send frame
-  if (EtherCAT_device_send(master->dev, master->tx_data, framelength) != 0)
-  {
-    EC_DBG(KERN_ERR "EtherCAT: Could not send!\n");
-    return -1;
-  }
-
-  if (master->debug_level > 0)
-  {
-    EC_DBG(KERN_DEBUG "EtherCAT_send done.\n");
-  }
-
-  tries_left = 100;
-  while (cmd->state == ECAT_CS_SENT && tries_left)
-  {
-    udelay(10);
-    EtherCAT_device_call_isr(master->dev);
-    tries_left--;
-  }
-
-  rx_data_length = EtherCAT_device_receive(master->dev, master->rx_data,
-                                           ECAT_FRAME_BUFFER_SIZE);
-
-  if (rx_data_length < 2)
-  {
-    EC_DBG(KERN_ERR "EtherCAT: Received frame with incomplete EtherCAT header!\n");
-    EC_DBG(KERN_DEBUG "EtherCAT: tx_data content:\n");
-    output_debug_data(master->tx_data, master->tx_data_length);
-    EC_DBG(KERN_DEBUG "EtherCAT: rx_data content:\n");
-    output_debug_data(master->rx_data, rx_data_length);
-    return -1;
-  }
-
-  // Länge des gesamten Frames prüfen
-  length = ((master->rx_data[1] & 0x07) << 8) | (master->rx_data[0] & 0xFF);
-
-  if (length > rx_data_length)
-  {
-    EC_DBG(KERN_ERR "EtherCAT: Received corrupted frame (length does not match)!\n");
-    EC_DBG(KERN_DEBUG "EtherCAT: tx_data content:\n");
-    output_debug_data(master->tx_data, master->tx_data_length);
-    EC_DBG(KERN_DEBUG "EtherCAT: rx_data content:\n");
-    output_debug_data(master->rx_data, rx_data_length);
-    return -1;
-  }
-
-  command_type = master->rx_data[2];
-  command_index = master->rx_data[2 + 1];
-  length = (master->rx_data[2 + 6] & 0xFF) | ((master->rx_data[2 + 7] & 0x07) << 8);
-
-  if (rx_data_length - 2 < length + 12)
-  {
-    EC_DBG(KERN_ERR "EtherCAT: Received frame with incomplete command data!\n");
-    EC_DBG(KERN_DEBUG "EtherCAT: tx_data content:\n");
-    output_debug_data(master->tx_data, master->tx_data_length);
-    EC_DBG(KERN_DEBUG "EtherCAT: rx_data content:\n");
-    output_debug_data(master->rx_data, rx_data_length);
-    return -1;
-  }
-
-  if (cmd->state == ECAT_CS_SENT
-      && cmd->type == command_type
-      && cmd->index == command_index
-      && cmd->data_length == length)
-  {
-    cmd->state = ECAT_CS_RECEIVED;
-
-    // Empfangene Daten in Kommandodatenspeicher kopieren
-    memcpy(cmd->data, master->rx_data + 2 + 10, length);
-
-    // Working-Counter setzen
-    cmd->working_counter = ((master->rx_data[length + 2 + 10] & 0xFF)
-                            | ((master->rx_data[length + 2 + 11] & 0xFF) << 8));
-  }
-  else
-  {
-    EC_DBG(KERN_WARNING "EtherCAT: WARNING - Send/Receive anomaly!\n");
-  }
-
-  master->dev->state = ECAT_DS_READY;
-
-  return 0;
 }
 
 /***************************************************************/
@@ -960,8 +736,228 @@ int EtherCAT_receive(EtherCAT_master_t *master)
 
   return 0;
 }
+#endif
 
 /***************************************************************/
+
+/**
+   Sendet ein einzelnes Kommando in einem Frame und
+   wartet auf dessen Empfang.
+
+   @param master EtherCAT-Master
+   @param cmd    Kommando zum Senden/Empfangen
+
+   @return 0 bei Erfolg, sonst < 0
+*/
+
+int EtherCAT_simple_send_receive(EtherCAT_master_t *master,
+                                 EtherCAT_command_t *cmd)
+{
+  unsigned int tries_left;
+
+  if (EtherCAT_simple_send(master, cmd) < 0) return -1;
+
+  tries_left = 100;
+  while (cmd->state == ECAT_CS_SENT && tries_left)
+  {
+    udelay(10);
+    EtherCAT_device_call_isr(master->dev);
+    tries_left--;
+  }
+
+  if (EtherCAT_simple_receive(master, cmd) < 0) return -1;
+
+  return 0;
+}
+
+/***************************************************************/
+
+/**
+   Sendet ein einzelnes Kommando in einem Frame.
+
+   @param master EtherCAT-Master
+   @param cmd    Kommando zum Senden
+
+   @return 0 bei Erfolg, sonst < 0
+*/
+
+int EtherCAT_simple_send(EtherCAT_master_t *master,
+                         EtherCAT_command_t *cmd)
+{
+  unsigned int length, framelength, i;
+
+  if (master->debug_level > 0)
+  {
+    EC_DBG(KERN_DEBUG "EtherCAT_send_receive_command\n");
+  }
+
+  if (cmd->state != ECAT_CS_READY)
+  {
+    EC_DBG(KERN_WARNING "EtherCAT_send_receive_command: Command not in ready state!\n");
+  }
+
+  length = cmd->data_length + 12;
+  framelength = length + 2;
+  if (framelength < 46) framelength = 46;
+
+  if (master->debug_level > 0)
+  {
+    EC_DBG(KERN_DEBUG "Frame length: %i\n", framelength);
+  }
+
+  master->tx_data[0] = length & 0xFF;
+  master->tx_data[1] = ((length & 0x700) >> 8) | 0x10;
+
+  cmd->index = master->command_index;
+  master->command_index = (master->command_index + 1) % 0x0100;
+
+  if (master->debug_level > 0)
+  {
+    EC_DBG(KERN_DEBUG "Sending command index %i\n", cmd->index);
+  }
+
+  cmd->state = ECAT_CS_SENT;
+
+  master->tx_data[2 + 0] = cmd->type;
+  master->tx_data[2 + 1] = cmd->index;
+  master->tx_data[2 + 2] = cmd->address.raw[0];
+  master->tx_data[2 + 3] = cmd->address.raw[1];
+  master->tx_data[2 + 4] = cmd->address.raw[2];
+  master->tx_data[2 + 5] = cmd->address.raw[3];
+  master->tx_data[2 + 6] = cmd->data_length & 0xFF;
+  master->tx_data[2 + 7] = (cmd->data_length & 0x700) >> 8;
+  master->tx_data[2 + 8] = 0x00;
+  master->tx_data[2 + 9] = 0x00;
+
+  if (cmd->type == ECAT_CMD_APWR
+      || cmd->type == ECAT_CMD_NPWR
+      || cmd->type == ECAT_CMD_BWR
+      || cmd->type == ECAT_CMD_LRW) // Write
+  {
+    for (i = 0; i < cmd->data_length; i++) master->tx_data[2 + 10 + i] = cmd->data[i];
+  }
+  else // Read
+  {
+    for (i = 0; i < cmd->data_length; i++) master->tx_data[2 + 10 + i] = 0x00;
+  }
+
+  master->tx_data[2 + 10 + cmd->data_length] = 0x00;
+  master->tx_data[2 + 11 + cmd->data_length] = 0x00;
+
+  // Pad with zeros
+  for (i = cmd->data_length + 12 + 2; i < 46; i++) master->tx_data[i] = 0x00;
+
+  master->tx_data_length = framelength;
+
+  if (master->debug_level > 0)
+  {
+    EC_DBG(KERN_DEBUG "device send...\n");
+  }
+
+  // Send frame
+  if (EtherCAT_device_send(master->dev, master->tx_data, framelength) != 0)
+  {
+    EC_DBG(KERN_ERR "EtherCAT: Could not send!\n");
+    return -1;
+  }
+
+  if (master->debug_level > 0)
+  {
+    EC_DBG(KERN_DEBUG "EtherCAT_send done.\n");
+  }
+
+  return 0;
+}
+
+/***************************************************************/
+
+/**
+   Wartet auf den Empfang eines einzeln gesendeten
+   Kommandos.
+
+   @param master EtherCAT-Master
+   @param cmd    Gesendetes Kommando
+
+   @return 0 bei Erfolg, sonst < 0
+*/
+
+int EtherCAT_simple_receive(EtherCAT_master_t *master,
+                            EtherCAT_command_t *cmd)
+{
+  unsigned int rx_data_length, length;
+  unsigned char command_type, command_index;
+
+  rx_data_length = EtherCAT_device_receive(master->dev, master->rx_data,
+                                           ECAT_FRAME_BUFFER_SIZE);
+
+  if (rx_data_length < 2)
+  {
+    EC_DBG(KERN_ERR "EtherCAT: Received frame with incomplete EtherCAT header!\n");
+    EC_DBG(KERN_DEBUG "EtherCAT: tx_data content:\n");
+    output_debug_data(master->tx_data, master->tx_data_length);
+    EC_DBG(KERN_DEBUG "EtherCAT: rx_data content:\n");
+    output_debug_data(master->rx_data, rx_data_length);
+    return -1;
+  }
+
+  // Länge des gesamten Frames prüfen
+  length = ((master->rx_data[1] & 0x07) << 8) | (master->rx_data[0] & 0xFF);
+
+  if (length > rx_data_length)
+  {
+    EC_DBG(KERN_ERR "EtherCAT: Received corrupted frame (length does not match)!\n");
+    EC_DBG(KERN_DEBUG "EtherCAT: tx_data content:\n");
+    output_debug_data(master->tx_data, master->tx_data_length);
+    EC_DBG(KERN_DEBUG "EtherCAT: rx_data content:\n");
+    output_debug_data(master->rx_data, rx_data_length);
+    return -1;
+  }
+
+  command_type = master->rx_data[2];
+  command_index = master->rx_data[2 + 1];
+  length = (master->rx_data[2 + 6] & 0xFF) | ((master->rx_data[2 + 7] & 0x07) << 8);
+
+  if (rx_data_length - 2 < length + 12)
+  {
+    EC_DBG(KERN_ERR "EtherCAT: Received frame with incomplete command data!\n");
+    EC_DBG(KERN_DEBUG "EtherCAT: tx_data content:\n");
+    output_debug_data(master->tx_data, master->tx_data_length);
+    EC_DBG(KERN_DEBUG "EtherCAT: rx_data content:\n");
+    output_debug_data(master->rx_data, rx_data_length);
+    return -1;
+  }
+
+  if (cmd->state == ECAT_CS_SENT
+      && cmd->type == command_type
+      && cmd->index == command_index
+      && cmd->data_length == length)
+  {
+    cmd->state = ECAT_CS_RECEIVED;
+
+    // Empfangene Daten in Kommandodatenspeicher kopieren
+    memcpy(cmd->data, master->rx_data + 2 + 10, length);
+
+    // Working-Counter setzen
+    cmd->working_counter = ((master->rx_data[length + 2 + 10] & 0xFF)
+                            | ((master->rx_data[length + 2 + 11] & 0xFF) << 8));
+  }
+  else
+  {
+    EC_DBG(KERN_WARNING "EtherCAT: WARNING - Send/Receive anomaly!\n");
+    EC_DBG(KERN_DEBUG "EtherCAT: tx_data content:\n");
+    output_debug_data(master->tx_data, master->tx_data_length);
+    EC_DBG(KERN_DEBUG "EtherCAT: rx_data content:\n");
+    output_debug_data(master->rx_data, rx_data_length);
+  }
+
+  master->dev->state = ECAT_DS_READY;
+
+  return 0;
+}
+
+/***************************************************************/
+
+#if 0
 
 #define ECAT_FUNC_HEADER \
   EtherCAT_command_t *cmd; \
@@ -1332,6 +1328,7 @@ void EtherCAT_remove_command(EtherCAT_master_t *master,
 
   EC_DBG(KERN_WARNING "EtherCAT: Trying to remove non-existent command!\n");
 }
+#endif
 
 /***************************************************************/
 
@@ -1352,85 +1349,58 @@ int EtherCAT_state_change(EtherCAT_master_t *master,
                           EtherCAT_slave_t *slave,
                           unsigned char state_and_ack)
 {
-  EtherCAT_command_t *cmd;
+  EtherCAT_command_t cmd;
   unsigned char data[2];
   unsigned int tries_left;
 
   data[0] = state_and_ack;
   data[1] = 0x00;
 
-  if ((cmd = EtherCAT_write(master, slave->station_address,
-                            0x0120, 2, data)) == NULL)
-  {
-    EC_DBG(KERN_ERR "EtherCAT: Could not set state %02X - Out of memory!\n", state_and_ack);
-    return -1;
-  }
+  EtherCAT_command_write(&cmd, slave->station_address, 0x0120, 2, data);
 
-  if (EtherCAT_async_send_receive(master) != 0)
+  if (EtherCAT_simple_send_receive(master, &cmd) != 0)
   {
-    EtherCAT_remove_command(master, cmd);
-
     EC_DBG(KERN_ERR "EtherCAT: Could not set state %02X - Unable to send!\n", state_and_ack);
     return -2;
   }
 
-  if (cmd->working_counter != 1)
+  if (cmd.working_counter != 1)
   {
-    EtherCAT_remove_command(master, cmd);
-
     EC_DBG(KERN_ERR "EtherCAT: Could not set state %02X - Device did not respond!\n", state_and_ack);
     return -3;
   }
 
-  EtherCAT_remove_command(master, cmd);
-
   slave->requested_state = state_and_ack & 0x0F;
 
-  tries_left = 1000;
-
+  tries_left = 100;
   while (tries_left)
   {
     udelay(10);
 
-    if ((cmd = EtherCAT_read(master, slave->station_address,
-                             0x0130, 2)) == NULL)
-    {
-      EC_DBG(KERN_ERR "EtherCAT: Could not check state %02X - Out of memory!\n", state_and_ack);
-      return -1;
-    }
+    EtherCAT_command_read(&cmd, slave->station_address, 0x0130, 2);
 
-    if (EtherCAT_async_send_receive(master) != 0)
+    if (EtherCAT_simple_send_receive(master, &cmd) != 0)
     {
-      EtherCAT_remove_command(master, cmd);
-
       EC_DBG(KERN_ERR "EtherCAT: Could not check state %02X - Unable to send!\n", state_and_ack);
       return -2;
     }
 
-    if (cmd->working_counter != 1)
+    if (cmd.working_counter != 1)
     {
-      EtherCAT_remove_command(master, cmd);
-
       EC_DBG(KERN_ERR "EtherCAT: Could not check state %02X - Device did not respond!\n", state_and_ack);
       return -3;
     }
 
-    if (cmd->data[0] & 0x10) // State change error
+    if (cmd.data[0] & 0x10) // State change error
     {
-      EtherCAT_remove_command(master, cmd);
-
-      EC_DBG(KERN_ERR "EtherCAT: Could not set state %02X - Device refused state change (code %02X)!\n", state_and_ack, cmd->data[0]);
+      EC_DBG(KERN_ERR "EtherCAT: Could not set state %02X - Device refused state change (code %02X)!\n", state_and_ack, cmd.data[0]);
       return -4;
     }
 
-    if (cmd->data[0] == (state_and_ack & 0x0F)) // State change successful
+    if (cmd.data[0] == (state_and_ack & 0x0F)) // State change successful
     {
-      EtherCAT_remove_command(master, cmd);
-
       break;
     }
-
-    EtherCAT_remove_command(master, cmd);
 
     tries_left--;
   }
@@ -1464,7 +1434,7 @@ int EtherCAT_state_change(EtherCAT_master_t *master,
 int EtherCAT_activate_slave(EtherCAT_master_t *master,
                             EtherCAT_slave_t *slave)
 {
-  EtherCAT_command_t *cmd;
+  EtherCAT_command_t cmd;
   const EtherCAT_slave_desc_t *desc;
   unsigned char fmmu[16];
   unsigned char data[256];
@@ -1480,26 +1450,16 @@ int EtherCAT_activate_slave(EtherCAT_master_t *master,
 
   memset(data, 0x00, 256);
 
-  if ((cmd = EtherCAT_write(master, slave->station_address, 0x0600, 256, data)) == NULL)
-    return -1;
+  EtherCAT_command_write(&cmd, slave->station_address, 0x0600, 256, data);
 
-  if (EtherCAT_async_send_receive(master) < 0)
+  if (EtherCAT_simple_send_receive(master, &cmd) < 0) return -1;
+
+  if (cmd.working_counter != 1)
   {
-    EtherCAT_remove_command(master, cmd);
-
-    return -1;
-  }
-
-  if (cmd->working_counter != 1)
-  {
-    EtherCAT_remove_command(master, cmd);
-
     EC_DBG(KERN_ERR "EtherCAT: Resetting FMMUs - Slave %04X did not respond!\n",
            slave->station_address);
     return -2;
   }
-
-  EtherCAT_remove_command(master, cmd);
 
   // Resetting Sync Manager channels
 
@@ -1507,26 +1467,15 @@ int EtherCAT_activate_slave(EtherCAT_master_t *master,
   {
     memset(data, 0x00, 256);
 
-    if ((cmd = EtherCAT_write(master, slave->station_address, 0x0800, 256, data)) == NULL)
-      return -1;
+    EtherCAT_command_write(&cmd, slave->station_address, 0x0800, 256, data);
+    if (EtherCAT_simple_send_receive(master, &cmd) < 0) return -1;
 
-    if (EtherCAT_async_send_receive(master) < 0)
+    if (cmd.working_counter != 1)
     {
-      EtherCAT_remove_command(master, cmd);
-
-      return -1;
-    }
-
-    if (cmd->working_counter != 1)
-    {
-      EtherCAT_remove_command(master, cmd);
-
       EC_DBG(KERN_ERR "EtherCAT: Resetting SMs - Slave %04X did not respond!\n",
              slave->station_address);
       return -2;
     }
-
-    EtherCAT_remove_command(master, cmd);
   }
 
   // Init Mailbox communication
@@ -1535,50 +1484,28 @@ int EtherCAT_activate_slave(EtherCAT_master_t *master,
   {
     if (desc->sm0)
     {
-      if ((cmd = EtherCAT_write(master, slave->station_address, 0x0800, 8, desc->sm0)) == NULL)
-        return -1;
+      EtherCAT_command_write(&cmd, slave->station_address, 0x0800, 8, desc->sm0);
+      if (EtherCAT_simple_send_receive(master, &cmd) < 0) return -1;
 
-      if (EtherCAT_async_send_receive(master) < 0)
+      if (cmd.working_counter != 1)
       {
-        EtherCAT_remove_command(master, cmd);
-
-        return -1;
-      }
-
-      if (cmd->working_counter != 1)
-      {
-        EtherCAT_remove_command(master, cmd);
-
         EC_DBG(KERN_ERR "EtherCAT: Setting SM0 - Slave %04X did not respond!\n",
                slave->station_address);
         return -3;
       }
-
-      EtherCAT_remove_command(master, cmd);
     }
 
     if (desc->sm1)
     {
-      if ((cmd = EtherCAT_write(master, slave->station_address, 0x0808, 8, desc->sm1)) == NULL)
-        return -1;
+      EtherCAT_command_write(&cmd, slave->station_address, 0x0808, 8, desc->sm1);
+      if (EtherCAT_simple_send_receive(master, &cmd) < 0) return -1;
 
-      if (EtherCAT_async_send_receive(master) < 0)
+      if (cmd.working_counter != 1)
       {
-        EtherCAT_remove_command(master, cmd);
-
-        return -1;
-      }
-
-      if (cmd->working_counter != 1)
-      {
-        EtherCAT_remove_command(master, cmd);
-
         EC_DBG(KERN_ERR "EtherCAT: Setting SM1 - Slave %04X did not respond!\n",
                slave->station_address);
         return -2;
       }
-
-      EtherCAT_remove_command(master, cmd);
     }
   }
 
@@ -1600,26 +1527,15 @@ int EtherCAT_activate_slave(EtherCAT_master_t *master,
     fmmu[2] = (slave->logical_address0 & 0x00FF0000) >> 16;
     fmmu[3] = (slave->logical_address0 & 0xFF000000) >> 24;
 
-    if ((cmd = EtherCAT_write(master, slave->station_address, 0x0600, 16, fmmu)) == NULL)
-      return -1;
+    EtherCAT_command_write(&cmd, slave->station_address, 0x0600, 16, fmmu);
+    if (EtherCAT_simple_send_receive(master, &cmd) < 0) return -1;
 
-    if (EtherCAT_async_send_receive(master) < 0)
+    if (cmd.working_counter != 1)
     {
-      EtherCAT_remove_command(master, cmd);
-
-      return -1;
-    }
-
-    if (cmd->working_counter != 1)
-    {
-      EtherCAT_remove_command(master, cmd);
-
       EC_DBG(KERN_ERR "EtherCAT: Setting FMMU0 - Slave %04X did not respond!\n",
              slave->station_address);
       return -2;
     }
-
-    EtherCAT_remove_command(master, cmd);
   }
 
   // Set Sync Managers
@@ -1628,99 +1544,55 @@ int EtherCAT_activate_slave(EtherCAT_master_t *master,
   {
     if (desc->sm0)
     {
-      if ((cmd = EtherCAT_write(master, slave->station_address, 0x0800, 8, desc->sm0)) == NULL)
-        return -1;
+      EtherCAT_command_write(&cmd, slave->station_address, 0x0800, 8, desc->sm0);
+      if (EtherCAT_simple_send_receive(master, &cmd) < 0) return -1;
 
-      if (EtherCAT_async_send_receive(master) < 0)
+      if (cmd.working_counter != 1)
       {
-        EtherCAT_remove_command(master, cmd);
-
-        return -1;
-      }
-
-      if (cmd->working_counter != 1)
-      {
-        EtherCAT_remove_command(master, cmd);
-
         EC_DBG(KERN_ERR "EtherCAT: Setting SM0 - Slave %04X did not respond!\n",
                slave->station_address);
         return -3;
       }
-
-      EtherCAT_remove_command(master, cmd);
     }
 
     if (desc->sm1)
     {
-      if ((cmd = EtherCAT_write(master, slave->station_address, 0x0808, 8, desc->sm1)) == NULL)
-        return -1;
+      EtherCAT_command_write(&cmd, slave->station_address, 0x0808, 8, desc->sm1);
+      if (EtherCAT_simple_send_receive(master, &cmd) < 0) return -1;
 
-      if (EtherCAT_async_send_receive(master) < 0)
+      if (cmd.working_counter != 1)
       {
-        EtherCAT_remove_command(master, cmd);
-
-        return -1;
-      }
-
-      if (cmd->working_counter != 1)
-      {
-        EtherCAT_remove_command(master, cmd);
-
         EC_DBG(KERN_ERR "EtherCAT: Setting SM1 - Slave %04X did not respond!\n",
                slave->station_address);
         return -3;
       }
-
-      EtherCAT_remove_command(master, cmd);
     }
   }
 
   if (desc->sm2)
   {
-    if ((cmd = EtherCAT_write(master, slave->station_address, 0x0810, 8, desc->sm2)) == NULL)
-      return -1;
+    EtherCAT_command_write(&cmd, slave->station_address, 0x0810, 8, desc->sm2);
+    if (EtherCAT_simple_send_receive(master, &cmd) < 0) return -1;
 
-    if (EtherCAT_async_send_receive(master) < 0)
+    if (cmd.working_counter != 1)
     {
-      EtherCAT_remove_command(master, cmd);
-
-      return -1;
-    }
-
-    if (cmd->working_counter != 1)
-    {
-      EtherCAT_remove_command(master, cmd);
-
       EC_DBG(KERN_ERR "EtherCAT: Setting SM2 - Slave %04X did not respond!\n",
              slave->station_address);
       return -3;
     }
-
-    EtherCAT_remove_command(master, cmd);
   }
 
   if (desc->sm3)
   {
-    if ((cmd = EtherCAT_write(master, slave->station_address, 0x0818, 8, desc->sm3)) == NULL)
-      return -1;
+    EtherCAT_command_write(&cmd, slave->station_address, 0x0818, 8, desc->sm3);
+    if (EtherCAT_simple_send_receive(master, &cmd) < 0) return -1;
 
-    if (EtherCAT_async_send_receive(master) < 0)
+    if (cmd.working_counter != 1)
     {
-      EtherCAT_remove_command(master, cmd);
-
-      return -1;
-    }
-
-    if (cmd->working_counter != 1)
-    {
-      EtherCAT_remove_command(master, cmd);
-
       EC_DBG(KERN_ERR "EtherCAT: Setting SM3 - Slave %04X did not respond!\n",
              slave->station_address);
       return -3;
     }
-
-    EtherCAT_remove_command(master, cmd);
   }
 
   // Change state to SAVEOP
@@ -1830,27 +1702,12 @@ int EtherCAT_deactivate_all_slaves(EtherCAT_master_t *master)
 
 int EtherCAT_write_process_data(EtherCAT_master_t *master)
 {
-  if (master->process_data_command)
-  {
-    EtherCAT_remove_command(master, master->process_data_command);
-    EtherCAT_command_clear(master->process_data_command);
-    master->process_data_command = NULL;
-  }
+  EtherCAT_command_logical_read_write(&master->process_data_command,
+                                      0, master->process_data_length,
+                                      master->process_data);
 
-  if ((master->process_data_command
-       = EtherCAT_logical_read_write(master,
-                                     0, master->process_data_length,
-                                     master->process_data)) == NULL)
+  if (EtherCAT_simple_send(master, &master->process_data_command) < 0)
   {
-    EC_DBG(KERN_ERR "EtherCAT: Could not allocate process data command!\n");
-    return -1;
-  }
-
-  if (EtherCAT_send(master) < 0)
-  {
-    EtherCAT_remove_command(master, master->process_data_command);
-    EtherCAT_command_clear(master->process_data_command);
-    master->process_data_command = NULL;
     EC_DBG(KERN_ERR "EtherCAT: Could not send process data command!\n");
     return -1;
   }
@@ -1874,57 +1731,39 @@ int EtherCAT_write_process_data(EtherCAT_master_t *master)
 
 int EtherCAT_read_process_data(EtherCAT_master_t *master)
 {
-  int ret = -1;
+  EtherCAT_device_call_isr(master->dev);
 
-  if (!master->process_data_command)
+  if (EtherCAT_simple_receive(master, &master->process_data_command) < 0)
   {
-    EC_DBG(KERN_WARNING "EtherCAT: No process data command available!\n");
+    EC_DBG(KERN_ERR "EtherCAT: Could not receive cyclic command!\n");
     return -1;
   }
 
-  EtherCAT_device_call_isr(master->dev);
-
-  if (EtherCAT_receive(master) < 0)
-  {
-    EC_DBG(KERN_ERR "EtherCAT: Could not receive cyclic command!\n");
-  }
-  else if (master->process_data_command->state != ECAT_CS_RECEIVED)
+  if (master->process_data_command.state != ECAT_CS_RECEIVED)
   {
     EC_DBG(KERN_WARNING "EtherCAT: Process data command not received!\n");
-  }
-  else
-  {
-    // Daten von Kommando in Prozessdaten des Master kopieren
-    memcpy(master->process_data, master->process_data_command->data, master->process_data_length);
-    ret = 0;
+    return -1;
   }
 
-  EtherCAT_remove_command(master, master->process_data_command);
-  EtherCAT_command_clear(master->process_data_command);
-  master->process_data_command = NULL;
+  // Daten von Kommando in Prozessdaten des Master kopieren
+  memcpy(master->process_data, master->process_data_command.data,
+         master->process_data_length);
 
-  return ret;
+  return 0;
 }
 
 /***************************************************************/
 
 /**
-   Verwirft ein zuvor gesendetes Prozessdatenkommando.
-
-   Diese Funktion sollte nach Ende des zyklischen Betriebes
-   aufgerufen werden, um das noch wartende Prozessdaten-Kommando
-   zu entfernen.
+   Verwirft das zuletzt gesendete Prozessdatenkommando.
 
    @param master EtherCAT-Master
 */
 
 void EtherCAT_clear_process_data(EtherCAT_master_t *master)
 {
-  if (!master->process_data_command) return;
-
-  EtherCAT_remove_command(master, master->process_data_command);
-  EtherCAT_command_clear(master->process_data_command);
-  master->process_data_command = NULL;
+  EtherCAT_device_call_isr(master->dev);
+  master->dev->state = ECAT_DS_READY;
 }
 
 /***************************************************************/

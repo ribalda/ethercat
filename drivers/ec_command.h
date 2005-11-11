@@ -53,7 +53,7 @@ typedef union
   phy;
 
   unsigned long logical; /**< Logische Adresse */
-  unsigned char raw[4]; /**< Rohdaten für die generierung des Frames */
+  unsigned char raw[4]; /**< Rohdaten für die Generierung des Frames */
 }
 EtherCAT_address_t;
 
@@ -85,6 +85,36 @@ EtherCAT_command_t;
 
 void EtherCAT_command_init(EtherCAT_command_t *);
 void EtherCAT_command_clear(EtherCAT_command_t *);
+
+void EtherCAT_command_read(EtherCAT_command_t *,
+                           unsigned short,
+                           unsigned short,
+                           unsigned int);
+void EtherCAT_command_write(EtherCAT_command_t *,
+                            unsigned short,
+                            unsigned short,
+                            unsigned int,
+                            const unsigned char *);
+void EtherCAT_command_position_read(EtherCAT_command_t *,
+                                    short,
+                                    unsigned short,
+                                    unsigned int);
+void EtherCAT_command_position_write(EtherCAT_command_t *,
+                                     short,
+                                     unsigned short,
+                                     unsigned int,
+                                     const unsigned char *);
+void EtherCAT_command_broadcast_read(EtherCAT_command_t *,
+                                     unsigned short,
+                                     unsigned int);
+void EtherCAT_command_broadcast_write(EtherCAT_command_t *,
+                                      unsigned short,
+                                      unsigned int,
+                                      const unsigned char *);
+void EtherCAT_command_logical_read_write(EtherCAT_command_t *,
+                                         unsigned int,
+                                         unsigned int,
+                                         unsigned char *);
 
 /***************************************************************/
 

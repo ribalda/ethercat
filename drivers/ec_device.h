@@ -16,7 +16,7 @@
 
 /**
    Zustand eines EtherCAT-Gerätes.
-   
+
    Eine Für EtherCAT reservierte Netzwerkkarte kann bestimmte Zustände haben.
 */
 
