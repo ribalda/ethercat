@@ -217,14 +217,14 @@ int EtherCAT_check_slaves(EtherCAT_master_t *master,
     }
 
     if (EtherCAT_read_slave_information(master, cur->station_address,
-                                        0x000E, &cur->revision_number) != 0)
+                                        0x000C, &cur->revision_number) != 0)
     {
       EC_DBG(KERN_ERR "EtherCAT: Could not read SII revision number!\n");
       return -1;
     }
 
     if (EtherCAT_read_slave_information(master, cur->station_address,
-                                        0x0012, &cur->serial_number) != 0)
+                                        0x000E, &cur->serial_number) != 0)
     {
       EC_DBG(KERN_ERR "EtherCAT: Could not read SII serial number!\n");
       return -1;
