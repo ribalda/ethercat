@@ -75,8 +75,10 @@ int EtherCAT_deactivate_all_slaves(EtherCAT_master_t *);
 
 // Sending and receiving
 int EtherCAT_async_send_receive(EtherCAT_master_t *);
+int EtherCAT_send_receive_command(EtherCAT_master_t *, EtherCAT_command_t *);
 int EtherCAT_send(EtherCAT_master_t *);
 int EtherCAT_receive(EtherCAT_master_t *);
+
 int EtherCAT_write_process_data(EtherCAT_master_t *);
 int EtherCAT_read_process_data(EtherCAT_master_t *);
 void EtherCAT_clear_process_data(EtherCAT_master_t *);
@@ -132,6 +134,7 @@ EtherCAT_command_t *alloc_cmd(EtherCAT_master_t *);
 int add_command(EtherCAT_master_t *, EtherCAT_command_t *);
 void set_byte(unsigned char *, unsigned int, unsigned char);
 void set_word(unsigned char *, unsigned int, unsigned int);
+void output_debug_data(unsigned char *, unsigned int);
 
 /***************************************************************/
 

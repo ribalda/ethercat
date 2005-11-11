@@ -518,6 +518,176 @@ int EtherCAT_async_send_receive(EtherCAT_master_t *master)
 /***************************************************************/
 
 /**
+   Sendet ein einzelnes Kommando in einem Frame und
+   wartet auf dessen Empfang.
+
+   @param master EtherCAT-Master
+   @param cmd    Kommando zum Senden/Empfangen
+
+   @return 0 bei Erfolg, sonst < 0
+*/
+
+int EtherCAT_send_receive_command(EtherCAT_master_t *master,
+                                  EtherCAT_command_t *cmd)
+{
+  unsigned int length, framelength, i, tries_left, rx_data_length;
+  unsigned char command_type, command_index;
+
+  if (master->debug_level > 0)
+  {
+    EC_DBG(KERN_DEBUG "EtherCAT_send_receive_command\n");
+  }
+
+  if (cmd->state != ECAT_CS_READY)
+  {
+    EC_DBG(KERN_WARNING "EtherCAT_send_receive_command: Command not in ready state!\n");
+  }
+
+  length = cmd->data_length + 12;
+  framelength = length + 2;
+  if (framelength < 46) framelength = 46;
+
+  if (master->debug_level > 0)
+  {
+    EC_DBG(KERN_DEBUG "Frame length: %i\n", framelength);
+  }
+
+  master->tx_data[0] = length & 0xFF;
+  master->tx_data[1] = ((length & 0x700) >> 8) | 0x10;
+
+  cmd->index = master->command_index;
+  master->command_index = (master->command_index + 1) % 0x0100;
+
+  if (master->debug_level > 0)
+  {
+    EC_DBG(KERN_DEBUG "Sending command index %i\n", cmd->index);
+  }
+
+  cmd->state = ECAT_CS_SENT;
+
+  master->tx_data[2 + 0] = cmd->type;
+  master->tx_data[2 + 1] = cmd->index;
+  master->tx_data[2 + 2] = cmd->address.raw[0];
+  master->tx_data[2 + 3] = cmd->address.raw[1];
+  master->tx_data[2 + 4] = cmd->address.raw[2];
+  master->tx_data[2 + 5] = cmd->address.raw[3];
+  master->tx_data[2 + 6] = cmd->data_length & 0xFF;
+  master->tx_data[2 + 7] = (cmd->data_length & 0x700) >> 8;
+  master->tx_data[2 + 8] = 0x00;
+  master->tx_data[2 + 9] = 0x00;
+
+  if (cmd->type == ECAT_CMD_APWR
+      || cmd->type == ECAT_CMD_NPWR
+      || cmd->type == ECAT_CMD_BWR
+      || cmd->type == ECAT_CMD_LRW) // Write
+  {
+    for (i = 0; i < cmd->data_length; i++) master->tx_data[2 + 10 + i] = cmd->data[i];
+  }
+  else // Read
+  {
+    for (i = 0; i < cmd->data_length; i++) master->tx_data[2 + 10 + i] = 0x00;
+  }
+
+  master->tx_data[2 + 10 + cmd->data_length] = 0x00;
+  master->tx_data[2 + 11 + cmd->data_length] = 0x00;
+
+  // Pad with zeros
+  for (i = cmd->data_length + 12 + 2; i < 46; i++) master->tx_data[i] = 0x00;
+
+  master->tx_data_length = framelength;
+
+  if (master->debug_level > 0)
+  {
+    EC_DBG(KERN_DEBUG "device send...\n");
+  }
+
+  // Send frame
+  if (EtherCAT_device_send(master->dev, master->tx_data, framelength) != 0)
+  {
+    EC_DBG(KERN_ERR "EtherCAT: Could not send!\n");
+    return -1;
+  }
+
+  if (master->debug_level > 0)
+  {
+    EC_DBG(KERN_DEBUG "EtherCAT_send done.\n");
+  }
+
+  tries_left = 100;
+  while (cmd->state == ECAT_CS_SENT && tries_left)
+  {
+    udelay(10);
+    EtherCAT_device_call_isr(master->dev);
+    tries_left--;
+  }
+
+  rx_data_length = EtherCAT_device_receive(master->dev, master->rx_data,
+                                           ECAT_FRAME_BUFFER_SIZE);
+
+  if (rx_data_length < 2)
+  {
+    EC_DBG(KERN_ERR "EtherCAT: Received frame with incomplete EtherCAT header!\n");
+    EC_DBG(KERN_DEBUG "EtherCAT: tx_data content:\n");
+    output_debug_data(master->tx_data, master->tx_data_length);
+    EC_DBG(KERN_DEBUG "EtherCAT: rx_data content:\n");
+    output_debug_data(master->rx_data, rx_data_length);
+    return -1;
+  }
+
+  // Länge des gesamten Frames prüfen
+  length = ((master->rx_data[1] & 0x07) << 8) | (master->rx_data[0] & 0xFF);
+
+  if (length > rx_data_length)
+  {
+    EC_DBG(KERN_ERR "EtherCAT: Received corrupted frame (length does not match)!\n");
+    EC_DBG(KERN_DEBUG "EtherCAT: tx_data content:\n");
+    output_debug_data(master->tx_data, master->tx_data_length);
+    EC_DBG(KERN_DEBUG "EtherCAT: rx_data content:\n");
+    output_debug_data(master->rx_data, rx_data_length);
+    return -1;
+  }
+
+  command_type = master->rx_data[2];
+  command_index = master->rx_data[2 + 1];
+  length = (master->rx_data[2 + 6] & 0xFF) | ((master->rx_data[2 + 7] & 0x07) << 8);
+
+  if (rx_data_length - 2 < length + 12)
+  {
+    EC_DBG(KERN_ERR "EtherCAT: Received frame with incomplete command data!\n");
+    EC_DBG(KERN_DEBUG "EtherCAT: tx_data content:\n");
+    output_debug_data(master->tx_data, master->tx_data_length);
+    EC_DBG(KERN_DEBUG "EtherCAT: rx_data content:\n");
+    output_debug_data(master->rx_data, rx_data_length);
+    return -1;
+  }
+
+  if (cmd->state == ECAT_CS_SENT
+      && cmd->type == command_type
+      && cmd->index == command_index
+      && cmd->data_length == length)
+  {
+    cmd->state = ECAT_CS_RECEIVED;
+
+    // Empfangene Daten in Kommandodatenspeicher kopieren
+    memcpy(cmd->data, master->rx_data + 2 + 10, length);
+
+    // Working-Counter setzen
+    cmd->working_counter = ((master->rx_data[length + 2 + 10] & 0xFF)
+                            | ((master->rx_data[length + 2 + 11] & 0xFF) << 8));
+  }
+  else
+  {
+    EC_DBG(KERN_WARNING "EtherCAT: WARNING - Send/Receive anomaly!\n");
+  }
+
+  master->dev->state = ECAT_DS_READY;
+
+  return 0;
+}
+
+/***************************************************************/
+
+/**
    Sendet alle wartenden Kommandos.
 
    Errechnet erst die benötigte Gesamt-Rahmenlänge, und erstellt
@@ -648,13 +818,7 @@ int EtherCAT_send(EtherCAT_master_t *master)
   {
     EC_DBG(KERN_ERR "EtherCAT: Could not send!\n");
     EC_DBG(KERN_DEBUG "EtherCAT: tx_data content:\n");
-    EC_DBG(KERN_DEBUG);
-    for (i = 0; i < framelength; i++)
-    {
-      EC_DBG("%02X ", master->tx_data[i]);
-      if ((i + 1) % 16 == 0) EC_DBG("\n" KERN_DEBUG);
-    }
-    EC_DBG("\n");
+    output_debug_data(master->tx_data, framelength);
     return -1;
   }
 
@@ -685,7 +849,6 @@ int EtherCAT_receive(EtherCAT_master_t *master)
   EtherCAT_command_t *cmd;
   unsigned int length, pos, found, rx_data_length;
   unsigned int command_follows, command_type, command_index;
-  unsigned int i;
 
   // Copy received data into master buffer (with locking)
   rx_data_length = EtherCAT_device_receive(master->dev, master->rx_data,
@@ -707,21 +870,9 @@ int EtherCAT_receive(EtherCAT_master_t *master)
   {
     EC_DBG(KERN_ERR "EtherCAT: Received corrupted frame (illegal length)!\n");
     EC_DBG(KERN_DEBUG "EtherCAT: tx_data content:\n");
-    EC_DBG(KERN_DEBUG);
-    for (i = 0; i < master->tx_data_length; i++)
-    {
-      EC_DBG("%02X ", master->tx_data[i]);
-      if ((i + 1) % 16 == 0) EC_DBG("\n" KERN_DEBUG);
-    }
-    EC_DBG("\n");
+    output_debug_data(master->tx_data, master->tx_data_length);
     EC_DBG(KERN_DEBUG "EtherCAT: rx_data content:\n");
-    EC_DBG(KERN_DEBUG);
-    for (i = 0; i < rx_data_length; i++)
-    {
-      EC_DBG("%02X ", master->rx_data[i]);
-      if ((i + 1) % 16 == 0) EC_DBG("\n" KERN_DEBUG);
-    }
-    EC_DBG("\n");
+    output_debug_data(master->rx_data, rx_data_length);
     return -1;
   }
 
@@ -732,21 +883,9 @@ int EtherCAT_receive(EtherCAT_master_t *master)
   {
     EC_DBG(KERN_ERR "EtherCAT: Received corrupted frame (length does not match)!\n");
     EC_DBG(KERN_DEBUG "EtherCAT: tx_data content:\n");
-    EC_DBG(KERN_DEBUG);
-    for (i = 0; i < master->tx_data_length; i++)
-    {
-      EC_DBG("%02X ", master->tx_data[i]);
-      if ((i + 1) % 16 == 0) EC_DBG("\n" KERN_DEBUG);
-    }
-    EC_DBG("\n");
+    output_debug_data(master->tx_data, master->tx_data_length);
     EC_DBG(KERN_DEBUG "EtherCAT: rx_data content:\n");
-    EC_DBG(KERN_DEBUG);
-    for (i = 0; i < rx_data_length; i++)
-    {
-      EC_DBG("%02X ", master->rx_data[i]);
-      if ((i + 1) % 16 == 0) EC_DBG("\n" KERN_DEBUG);
-    }
-    EC_DBG("\n");
+    output_debug_data(master->rx_data, rx_data_length);
     return -1;
   }
 
@@ -758,21 +897,9 @@ int EtherCAT_receive(EtherCAT_master_t *master)
     {
       EC_DBG(KERN_ERR "EtherCAT: Received frame with incomplete command header!\n");
       EC_DBG(KERN_DEBUG "EtherCAT: tx_data content:\n");
-      EC_DBG(KERN_DEBUG);
-      for (i = 0; i < master->tx_data_length; i++)
-      {
-        EC_DBG("%02X ", master->tx_data[i]);
-        if ((i + 1) % 16 == 0) EC_DBG("\n" KERN_DEBUG);
-      }
-      EC_DBG("\n");
+      output_debug_data(master->tx_data, master->tx_data_length);
       EC_DBG(KERN_DEBUG "EtherCAT: rx_data content:\n");
-      EC_DBG(KERN_DEBUG);
-      for (i = 0; i < rx_data_length; i++)
-      {
-        EC_DBG("%02X ", master->rx_data[i]);
-        if ((i + 1) % 16 == 0) EC_DBG("\n" KERN_DEBUG);
-      }
-      EC_DBG("\n");
+      output_debug_data(master->rx_data, rx_data_length);
       return -1;
     }
 
@@ -786,21 +913,9 @@ int EtherCAT_receive(EtherCAT_master_t *master)
     {
       EC_DBG(KERN_ERR "EtherCAT: Received frame with incomplete command data!\n");
       EC_DBG(KERN_DEBUG "EtherCAT: tx_data content:\n");
-      EC_DBG(KERN_DEBUG);
-      for (i = 0; i < master->tx_data_length; i++)
-      {
-        EC_DBG("%02X ", master->tx_data[i]);
-        if ((i + 1) % 16 == 0) EC_DBG("\n" KERN_DEBUG);
-      }
-      EC_DBG("\n");
+      output_debug_data(master->tx_data, master->tx_data_length);
       EC_DBG(KERN_DEBUG "EtherCAT: rx_data content:\n");
-      EC_DBG(KERN_DEBUG);
-      for (i = 0; i < rx_data_length; i++)
-      {
-        EC_DBG("%02X ", master->rx_data[i]);
-        if ((i + 1) % 16 == 0) EC_DBG("\n" KERN_DEBUG);
-      }
-      EC_DBG("\n");
+      output_debug_data(master->rx_data, rx_data_length);
       return -1;
     }
 
@@ -1845,6 +1960,28 @@ void set_word(unsigned char *data,
 {
   data[offset] = value & 0xFF;
   data[offset + 1] = (value & 0xFF00) >> 8;
+}
+
+/***************************************************************/
+
+/**
+   Gibt Frame-Inhalte zwecks Debugging aus.
+
+   @param data Startadresse
+   @param length Länge der Daten
+*/
+
+void output_debug_data(unsigned char *data, unsigned int length)
+{
+  unsigned int i;
+
+  EC_DBG(KERN_DEBUG);
+  for (i = 0; i < length; i++)
+  {
+    EC_DBG("%02X ", data[i]);
+    if ((i + 1) % 16 == 0) EC_DBG("\n" KERN_DEBUG);
+  }
+  EC_DBG("\n");
 }
 
 /***************************************************************/

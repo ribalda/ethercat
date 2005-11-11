@@ -257,7 +257,7 @@ int EtherCAT_device_send(EtherCAT_device_t *ecd,
    @return Anzahl der kopierten Bytes bei Erfolg, sonst < 0
 */
 
-int EtherCAT_device_receive(EtherCAT_device_t *ecd, 
+int EtherCAT_device_receive(EtherCAT_device_t *ecd,
                             unsigned char *data,
                             unsigned int size)
 {
@@ -287,12 +287,7 @@ int EtherCAT_device_receive(EtherCAT_device_t *ecd,
 
 void EtherCAT_device_call_isr(EtherCAT_device_t *ecd)
 {
-//  EC_DBG(KERN_DEBUG "EtherCAT: Calling ISR...\n");
-
-  // Manuell die ISR aufrufen
   rtl8139_interrupt(0, ecd->dev, NULL);
-
-//  EC_DBG(KERN_DEBUG "EtherCAT: ISR finished.\n");
 }
 
 /***************************************************************/
