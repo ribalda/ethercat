@@ -31,8 +31,10 @@ typedef struct
                                mit Slave-Informationen */
   unsigned int slave_count; /**< Anzahl der Slaves in slaves */
 
+#if 0
   EtherCAT_command_t *first_command; /**< Zeiger auf das erste
                                         Kommando in der Liste */
+#endif
   EtherCAT_command_t process_data_command; /**< Kommando zum Senden und
                                               Empfangen der Prozessdaten */
 
@@ -50,9 +52,11 @@ typedef struct
   unsigned char *process_data; /**< Zeiger auf Speicher mit Prozessdaten */
   unsigned int process_data_length; /**< Länge der Prozessdaten */
 
+#if 0
   EtherCAT_command_t cmd_ring[ECAT_COMMAND_RING_SIZE]; /**< Statischer Kommandoring */
   int cmd_reserved[ECAT_COMMAND_RING_SIZE]; /**< Reservierungsflags für die Kommandos */
   unsigned int cmd_ring_index; /**< Index des nächsten Kommandos im Ring */
+#endif
 
   int debug_level; /**< Debug-Level im Master-Code */
 }

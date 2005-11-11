@@ -44,21 +44,23 @@ int EtherCAT_master_init(EtherCAT_master_t *master,
 
   master->slaves = NULL;
   master->slave_count = 0;
-  master->first_command = NULL;
+  //master->first_command = NULL;
   //master->process_data_command = NULL;
   master->dev = dev;
   master->command_index = 0x00;
   master->tx_data_length = 0;
   master->process_data = NULL;
   master->process_data_length = 0;
-  master->cmd_ring_index = 0;
+  //master->cmd_ring_index = 0;
   master->debug_level = 0;
 
+#if 0
   for (i = 0; i < ECAT_COMMAND_RING_SIZE; i++)
   {
     EtherCAT_command_init(&master->cmd_ring[i]);
     master->cmd_reserved[i] = 0;
   }
+#endif
 
   return 0;
 }
