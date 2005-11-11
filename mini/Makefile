@@ -18,10 +18,6 @@ RTAIDIR   = /vol/projekte/msr_messen_steuern_regeln/linux/kernel/2.4.20/include/
 RTLIBDIR = rt_lib
 endif
 
-ifeq (.depend,$(wildcard .depend))
-include .depend
-endif
-
 CFLAGS = -O2 -Wall -Wuninitialized -D__KERNEL__ \
 	-DMODULE -I$(KERNELDIR)/include
 
@@ -48,5 +44,11 @@ depend .depend dep:
 
 clean:
 	rm -f *.o *~ core .depend
+
+#----------------------------------------------------------------
+
+ifeq (.depend,$(wildcard .depend))
+include .depend
+endif
 
 #----------------------------------------------------------------
