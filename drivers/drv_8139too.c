@@ -775,7 +775,9 @@ static void __rtl8139_cleanup_dev (struct net_device *dev)
 static void rtl8139_chip_reset (void *ioaddr)
 {
 	int i;
-	int succ = 0 ;
+#ifdef ECAT_DEBUG
+	int succ = 0;
+#endif
 	/* Soft reset the chip. */
 	RTL_W8 (ChipCmd, CmdReset);
 
@@ -783,17 +785,20 @@ static void rtl8139_chip_reset (void *ioaddr)
 	for (i = 1000; i > 0; i--) {
 		barrier();
 		if ((RTL_R8 (ChipCmd) & CmdReset) == 0) {
+#ifdef ECAT_DEBUG
 		    succ = 1;
+#endif
 		    break;
 		}
 		udelay (10);
 	}
+#ifdef ECAT_DEBUG
 	EC_DBG("rtl8139 chipreset");
 	if(succ == 0)
 	    EC_DBG("failed");
 	else
 	    EC_DBG("success at count %d",i);
-
+#endif
 }
 
 
@@ -1379,9 +1384,11 @@ static int rtl8139_open (struct net_device *dev)
 	void *ioaddr = tp->mmio_addr;
 #endif
 
-        EC_DBG(KERN_DEBUG "%s: open\n", dev->name);
-
 	/* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+#ifdef ECAT_DEBUG
+        EC_DBG(KERN_DEBUG "%s: open\n", dev->name);
+#endif
 
         if (dev != rtl_ecat_dev.dev)
         {
@@ -1444,9 +1451,11 @@ static int rtl8139_open (struct net_device *dev)
                     dev->name);
 	}
 
-	/* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
-
+#ifdef ECAT_DEBUG
         EC_DBG(KERN_DEBUG "%s: open finished.\n", dev->name);
+#endif
+
+	/* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 
 	return 0;
 }
@@ -1471,7 +1480,14 @@ static void rtl_check_media (struct net_device *dev)
                         (mii_lpa & 0x0180) ? "100mbps " : "10mbps ",
 			tp->mii.full_duplex ? "full" : "half", mii_lpa);
 	}
+
+	/* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+#ifdef ECAT_DEBUG
         EC_DBG(KERN_DEBUG "rtl_check_media done.\n");
+#endif
+
+	/* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 }
 
 /* Start the hardware at open or resume. */
@@ -1482,7 +1498,13 @@ static void rtl8139_hw_start (struct net_device *dev)
 	u32 i;
 	u8 tmp;
 
+	/* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+#ifdef ECAT_DEBUG
         EC_DBG(KERN_DEBUG "%s: rtl8139_hw_start\n", dev->name);
+#endif
+
+	/* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 
 	/* Bring old chips out of low-power mode. */
 	if (rtl_chip_info[tp->chipset].flags & HasHltClk)
@@ -1553,9 +1575,11 @@ static void rtl8139_hw_start (struct net_device *dev)
           RTL_W16 (IntrMask, 0x0000);
         }
 
-	/* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
-
+#ifdef ECAT_DEBUG
         EC_DBG(KERN_DEBUG "%s: rtl8139_hw_start finished.\n", dev->name);
+#endif
+
+	/* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 }
 
 
@@ -1721,8 +1745,6 @@ static int rtl8139_thread (void *data)
 	struct rtl8139_private *tp = dev->priv;
 	unsigned long timeout;
 
-        EC_DBG(KERN_DEBUG "%s: thread\n", dev->name);
-
 	daemonize ();
 	reparent_to_init();
 	spin_lock_irq(&current->sigmask_lock);
@@ -1732,8 +1754,6 @@ static int rtl8139_thread (void *data)
 
 	strncpy (current->comm, dev->name, sizeof(current->comm) - 1);
 	current->comm[sizeof(current->comm) - 1] = '\0';
-
-        EC_DBG(KERN_DEBUG "%s: thread entering loop...\n", dev->name);
 
 	while (1) {
 		timeout = next_tick;
@@ -1751,17 +1771,11 @@ static int rtl8139_thread (void *data)
 			break;
 
 		rtnl_lock ();
-                EC_DBG(KERN_DEBUG "%s: thread iter\n", dev->name);
 		rtl8139_thread_iter (dev, tp, tp->mmio_addr);
-                EC_DBG(KERN_DEBUG "%s: thread iter finished.\n", dev->name);
 		rtnl_unlock ();
 	}
 
-        EC_DBG(KERN_DEBUG "%s: thread exiting...\n", dev->name);
-
 	complete_and_exit (&tp->thr_exited, 0);
-
-        EC_DBG(KERN_DEBUG "%s: thread exit.\n", dev->name);
 }
 
 
@@ -1782,8 +1796,6 @@ static void rtl8139_tx_timeout (struct net_device *dev)
 	u8 tmp8;
 	unsigned long flags;
 
-        EC_DBG(KERN_DEBUG "%s: tx_timeout\n", dev->name);
-
 	DPRINTK ("%s: Transmit timeout, status %2.2x %4.4x "
 		 "media %2.2x.\n", dev->name,
 		 RTL_R8 (ChipCmd),
@@ -1793,6 +1805,8 @@ static void rtl8139_tx_timeout (struct net_device *dev)
 	tp->xstats.tx_timeouts++;
 
         /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+        EC_DBG(KERN_DEBUG "%s: tx_timeout\n", dev->name);
 
         if (dev == rtl_ecat_dev.dev)
         {
@@ -1837,9 +1851,9 @@ static void rtl8139_tx_timeout (struct net_device *dev)
 
         if (dev != rtl_ecat_dev.dev) netif_wake_queue (dev);
 
-	/* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
-
         EC_DBG(KERN_DEBUG "%s: tx_timeout finished.\n", dev->name);
+
+	/* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 }
 
 static int rtl8139_start_xmit (struct sk_buff *skb, struct net_device *dev)
@@ -2470,8 +2484,6 @@ static int rtl8139_close (struct net_device *dev)
 	if (rtl_chip_info[tp->chipset].flags & HasHltClk)
 		RTL_W8 (HltClk, 'H');	/* 'R' would leave the clock running. */
 
-	EC_DBG ("rtl8139: closing done\n");
-
 	return 0;
 }
 
@@ -2786,8 +2798,6 @@ static struct net_device_stats *rtl8139_get_stats (struct net_device *dev)
 	void *ioaddr = tp->mmio_addr;
 	unsigned long flags;
 
-	EC_DBG("%s: rtl8139 GETSTATS called...",dev->name);
-
         /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
 	if (dev == rtl_ecat_dev.dev || netif_running(dev))
@@ -2941,9 +2951,6 @@ static int rtl8139_init_module (void)
         /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
         EtherCAT_device_init(&rtl_ecat_dev);
-
-        printk(KERN_DEBUG "Driver rtl_ecat_dev has address %X.\n",
-               (unsigned) &rtl_ecat_dev);
 
         /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 
