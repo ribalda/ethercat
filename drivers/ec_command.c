@@ -30,7 +30,6 @@ void EtherCAT_command_init(EtherCAT_command_t *cmd)
   cmd->type = ECAT_CMD_NONE;
   cmd->address.logical = 0x00000000;
   cmd->data_length = 0;
-  //cmd->next = NULL;
   cmd->state = ECAT_CS_READY;
   cmd->index = 0;
   cmd->working_counter = 0;

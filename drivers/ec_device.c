@@ -17,6 +17,8 @@
 #include "ec_device.h"
 #include "ec_dbg.h"
 
+extern void rtl8139_interrupt(int, void *, struct pt_regs *);
+
 /***************************************************************/
 
 /**

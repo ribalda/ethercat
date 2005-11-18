@@ -143,7 +143,7 @@ EtherCAT_slave_desc_t Beckhoff_EL5001[] =
 
 unsigned int slave_idents_count = 7;
 
-struct slave_ident slave_idents[] = 
+struct slave_ident slave_idents[] =
 {
   {0x00000002, 0x03F63052, Beckhoff_EL1014},
   {0x00000002, 0x044C2C52, Beckhoff_EK1100},

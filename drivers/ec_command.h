@@ -69,11 +69,6 @@ typedef struct EtherCAT_command
   EtherCAT_address_t address; /**< Adresse des/der Empfänger */
   unsigned int data_length; /**< Länge der zu sendenden und/oder empfangenen Daten */
 
-#if 0
-  struct EtherCAT_command *next; /**< (Für den Master) Zeiger auf nächstes Kommando
-                                    in der Liste */
-#endif
-
   EtherCAT_command_state_t state; /**< Zustand des Kommandos (bereit, gesendet, etc...) */
   unsigned char index; /**< Kommando-Index, mit der das Kommando gesendet wurde (wird
                           vom Master beim Senden gesetzt. */

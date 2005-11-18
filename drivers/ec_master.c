@@ -34,8 +34,6 @@
 int EtherCAT_master_init(EtherCAT_master_t *master,
                          EtherCAT_device_t *dev)
 {
-  unsigned int i;
-
   if (!dev)
   {
     EC_DBG(KERN_ERR "EtherCAT: Master init without device!\n");
@@ -44,23 +42,12 @@ int EtherCAT_master_init(EtherCAT_master_t *master,
 
   master->slaves = NULL;
   master->slave_count = 0;
-  //master->first_command = NULL;
-  //master->process_data_command = NULL;
   master->dev = dev;
   master->command_index = 0x00;
   master->tx_data_length = 0;
   master->process_data = NULL;
   master->process_data_length = 0;
-  //master->cmd_ring_index = 0;
   master->debug_level = 0;
-
-#if 0
-  for (i = 0; i < ECAT_COMMAND_RING_SIZE; i++)
-  {
-    EtherCAT_command_init(&master->cmd_ring[i]);
-    master->cmd_reserved[i] = 0;
-  }
-#endif
 
   return 0;
 }
@@ -78,14 +65,6 @@ int EtherCAT_master_init(EtherCAT_master_t *master,
 
 void EtherCAT_master_clear(EtherCAT_master_t *master)
 {
-#if 0
-  // Remove all pending commands
-  while (master->first_command)
-  {
-    EtherCAT_remove_command(master, master->first_command);
-  }
-#endif
-
   // Remove all slaves
   EtherCAT_clear_slaves(master);
 
@@ -96,6 +75,223 @@ void EtherCAT_master_clear(EtherCAT_master_t *master)
   }
 
   master->process_data_length = 0;
+}
+
+/***************************************************************/
+
+/**
+   Sendet ein einzelnes Kommando in einem Frame und
+   wartet auf dessen Empfang.
+
+   @param master EtherCAT-Master
+   @param cmd    Kommando zum Senden/Empfangen
+
+   @return 0 bei Erfolg, sonst < 0
+*/
+
+int EtherCAT_simple_send_receive(EtherCAT_master_t *master,
+                                 EtherCAT_command_t *cmd)
+{
+  unsigned int tries_left;
+
+  if (EtherCAT_simple_send(master, cmd) < 0) return -1;
+
+  tries_left = 100;
+  while (cmd->state == ECAT_CS_SENT && tries_left)
+  {
+    udelay(10);
+    EtherCAT_device_call_isr(master->dev);
+    tries_left--;
+  }
+
+  if (EtherCAT_simple_receive(master, cmd) < 0) return -1;
+
+  return 0;
+}
+
+/***************************************************************/
+
+/**
+   Sendet ein einzelnes Kommando in einem Frame.
+
+   @param master EtherCAT-Master
+   @param cmd    Kommando zum Senden
+
+   @return 0 bei Erfolg, sonst < 0
+*/
+
+int EtherCAT_simple_send(EtherCAT_master_t *master,
+                         EtherCAT_command_t *cmd)
+{
+  unsigned int length, framelength, i;
+
+  if (master->debug_level > 0)
+  {
+    EC_DBG(KERN_DEBUG "EtherCAT_send_receive_command\n");
+  }
+
+  if (cmd->state != ECAT_CS_READY)
+  {
+    EC_DBG(KERN_WARNING "EtherCAT_send_receive_command: Command not in ready state!\n");
+  }
+
+  length = cmd->data_length + 12;
+  framelength = length + 2;
+  if (framelength < 46) framelength = 46;
+
+  if (master->debug_level > 0)
+  {
+    EC_DBG(KERN_DEBUG "Frame length: %i\n", framelength);
+  }
+
+  master->tx_data[0] = length & 0xFF;
+  master->tx_data[1] = ((length & 0x700) >> 8) | 0x10;
+
+  cmd->index = master->command_index;
+  master->command_index = (master->command_index + 1) % 0x0100;
+
+  if (master->debug_level > 0)
+  {
+    EC_DBG(KERN_DEBUG "Sending command index %i\n", cmd->index);
+  }
+
+  cmd->state = ECAT_CS_SENT;
+
+  master->tx_data[2 + 0] = cmd->type;
+  master->tx_data[2 + 1] = cmd->index;
+  master->tx_data[2 + 2] = cmd->address.raw[0];
+  master->tx_data[2 + 3] = cmd->address.raw[1];
+  master->tx_data[2 + 4] = cmd->address.raw[2];
+  master->tx_data[2 + 5] = cmd->address.raw[3];
+  master->tx_data[2 + 6] = cmd->data_length & 0xFF;
+  master->tx_data[2 + 7] = (cmd->data_length & 0x700) >> 8;
+  master->tx_data[2 + 8] = 0x00;
+  master->tx_data[2 + 9] = 0x00;
+
+  if (cmd->type == ECAT_CMD_APWR
+      || cmd->type == ECAT_CMD_NPWR
+      || cmd->type == ECAT_CMD_BWR
+      || cmd->type == ECAT_CMD_LRW) // Write
+  {
+    for (i = 0; i < cmd->data_length; i++) master->tx_data[2 + 10 + i] = cmd->data[i];
+  }
+  else // Read
+  {
+    for (i = 0; i < cmd->data_length; i++) master->tx_data[2 + 10 + i] = 0x00;
+  }
+
+  master->tx_data[2 + 10 + cmd->data_length] = 0x00;
+  master->tx_data[2 + 11 + cmd->data_length] = 0x00;
+
+  // Pad with zeros
+  for (i = cmd->data_length + 12 + 2; i < 46; i++) master->tx_data[i] = 0x00;
+
+  master->tx_data_length = framelength;
+
+  if (master->debug_level > 0)
+  {
+    EC_DBG(KERN_DEBUG "device send...\n");
+  }
+
+  // Send frame
+  if (EtherCAT_device_send(master->dev, master->tx_data, framelength) != 0)
+  {
+    EC_DBG(KERN_ERR "EtherCAT: Could not send!\n");
+    return -1;
+  }
+
+  if (master->debug_level > 0)
+  {
+    EC_DBG(KERN_DEBUG "EtherCAT_send done.\n");
+  }
+
+  return 0;
+}
+
+/***************************************************************/
+
+/**
+   Wartet auf den Empfang eines einzeln gesendeten
+   Kommandos.
+
+   @param master EtherCAT-Master
+   @param cmd    Gesendetes Kommando
+
+   @return 0 bei Erfolg, sonst < 0
+*/
+
+int EtherCAT_simple_receive(EtherCAT_master_t *master,
+                            EtherCAT_command_t *cmd)
+{
+  unsigned int rx_data_length, length;
+  unsigned char command_type, command_index;
+
+  rx_data_length = EtherCAT_device_receive(master->dev, master->rx_data,
+                                           ECAT_FRAME_BUFFER_SIZE);
+
+  if (rx_data_length < 2)
+  {
+    EC_DBG(KERN_ERR "EtherCAT: Received frame with incomplete EtherCAT header!\n");
+    EC_DBG(KERN_DEBUG "EtherCAT: tx_data content:\n");
+    output_debug_data(master->tx_data, master->tx_data_length);
+    EC_DBG(KERN_DEBUG "EtherCAT: rx_data content:\n");
+    output_debug_data(master->rx_data, rx_data_length);
+    return -1;
+  }
+
+  // Länge des gesamten Frames prüfen
+  length = ((master->rx_data[1] & 0x07) << 8) | (master->rx_data[0] & 0xFF);
+
+  if (length > rx_data_length)
+  {
+    EC_DBG(KERN_ERR "EtherCAT: Received corrupted frame (length does not match)!\n");
+    EC_DBG(KERN_DEBUG "EtherCAT: tx_data content:\n");
+    output_debug_data(master->tx_data, master->tx_data_length);
+    EC_DBG(KERN_DEBUG "EtherCAT: rx_data content:\n");
+    output_debug_data(master->rx_data, rx_data_length);
+    return -1;
+  }
+
+  command_type = master->rx_data[2];
+  command_index = master->rx_data[2 + 1];
+  length = (master->rx_data[2 + 6] & 0xFF) | ((master->rx_data[2 + 7] & 0x07) << 8);
+
+  if (rx_data_length - 2 < length + 12)
+  {
+    EC_DBG(KERN_ERR "EtherCAT: Received frame with incomplete command data!\n");
+    EC_DBG(KERN_DEBUG "EtherCAT: tx_data content:\n");
+    output_debug_data(master->tx_data, master->tx_data_length);
+    EC_DBG(KERN_DEBUG "EtherCAT: rx_data content:\n");
+    output_debug_data(master->rx_data, rx_data_length);
+    return -1;
+  }
+
+  if (cmd->state == ECAT_CS_SENT
+      && cmd->type == command_type
+      && cmd->index == command_index
+      && cmd->data_length == length)
+  {
+    cmd->state = ECAT_CS_RECEIVED;
+
+    // Empfangene Daten in Kommandodatenspeicher kopieren
+    memcpy(cmd->data, master->rx_data + 2 + 10, length);
+
+    // Working-Counter setzen
+    cmd->working_counter = ((master->rx_data[length + 2 + 10] & 0xFF)
+                            | ((master->rx_data[length + 2 + 11] & 0xFF) << 8));
+  }
+  else
+  {
+    EC_DBG(KERN_WARNING "EtherCAT: WARNING - Send/Receive anomaly!\n");
+    EC_DBG(KERN_DEBUG "EtherCAT: tx_data content:\n");
+    output_debug_data(master->tx_data, master->tx_data_length);
+    EC_DBG(KERN_DEBUG "EtherCAT: rx_data content:\n");
+    output_debug_data(master->rx_data, rx_data_length);
+  }
+
+  master->dev->state = ECAT_DS_READY;
+
+  return 0;
 }
 
 /***************************************************************/
@@ -393,944 +589,6 @@ int EtherCAT_read_slave_information(EtherCAT_master_t *master,
 
   return 0;
 }
-
-#if 0
-/***************************************************************/
-
-/**
-   Führt ein asynchrones Senden und Empfangen aus.
-
-   Sendet alle wartenden Kommandos und wartet auf die
-   entsprechenden Antworten.
-
-   @param master EtherCAT-Master
-
-   @return 0 bei Erfolg, sonst < 0
-*/
-
-int EtherCAT_async_send_receive(EtherCAT_master_t *master)
-{
-  unsigned int wait_cycles;
-  int i;
-
-  // Send all commands
-
-  for (i = 0; i < ECAT_NUM_RETRIES; i++)
-  {
-    if (EtherCAT_send(master) < 0)
-    {
-      return -1;
-    }
-
-    // Wait until something is received or an error has occurred
-
-    wait_cycles = 10;
-    EtherCAT_device_call_isr(master->dev);
-
-    while (master->dev->state == ECAT_DS_SENT && wait_cycles)
-    {
-      udelay(1000);
-      wait_cycles--;
-      EtherCAT_device_call_isr(master->dev);
-    }
-
-    //EC_DBG("Master async send: tries %d",tries_left);
-
-    if (!wait_cycles)
-    {
-      EC_DBG(KERN_ERR "EtherCAT: Asynchronous receive timeout.\n");
-      continue;
-    }
-
-    if (master->dev->state != ECAT_DS_RECEIVED)
-    {
-      EC_DBG(KERN_ERR "EtherCAT: Asyncronous send error. State %i\n", master->dev->state);
-      continue;
-    }
-
-    // Receive all commands
-    if (EtherCAT_receive(master) < 0)
-    {
-      // Noch mal versuchen
-      master->dev->state = ECAT_DS_READY;
-      EC_DBG("Retry Asynchronous send/recieve: %d", i);
-      continue;
-    }
-
-    return 0; // Erfolgreich
-  }
-
-  return -1;
-}
-
-/***************************************************************/
-
-/**
-   Sendet alle wartenden Kommandos.
-
-   Errechnet erst die benötigte Gesamt-Rahmenlänge, und erstellt
-   dann alle Kommando-Bytefolgen im statischen Sendespeicher.
-   Danach wird die Sendefunktion des EtherCAT-Gerätes aufgerufen.
-
-   @param master EtherCAT-Master
-
-   @return 0 bei Erfolg, sonst < 0
-*/
-
-int EtherCAT_send(EtherCAT_master_t *master)
-{
-  unsigned int i, length, framelength, pos;
-  EtherCAT_command_t *cmd;
-  int cmdcnt = 0;
-
-  if (master->debug_level > 0)
-  {
-    EC_DBG(KERN_DEBUG "EtherCAT_send, first_command = %X\n", (int) master->first_command);
-  }
-
-  length = 0;
-  for (cmd = master->first_command; cmd != NULL; cmd = cmd->next)
-  {
-    if (cmd->state != ECAT_CS_READY) continue;
-    length += cmd->data_length + 12;
-    cmdcnt++;
-  }
-
-  if (master->debug_level > 0)
-  {
-    EC_DBG(KERN_DEBUG "%i commands to send.\n", cmdcnt);
-  }
-
-  if (length == 0)
-  {
-    EC_DBG(KERN_WARNING "EtherCAT: Nothing to send...\n");
-    return 0;
-  }
-
-  framelength = length + 2;
-  if (framelength < 46) framelength = 46;
-
-  if (master->debug_level > 0)
-  {
-    EC_DBG(KERN_DEBUG "framelength: %i\n", framelength);
-  }
-
-  master->tx_data[0] = length & 0xFF;
-  master->tx_data[1] = ((length & 0x700) >> 8) | 0x10;
-  pos = 2;
-
-  for (cmd = master->first_command; cmd != NULL; cmd = cmd->next)
-  {
-    if (cmd->state != ECAT_CS_READY) continue;
-
-    cmd->index = master->command_index;
-    master->command_index = (master->command_index + 1) % 0x0100;
-
-    if (master->debug_level > 0)
-    {
-      EC_DBG(KERN_DEBUG "Sending command index %i\n", cmd->index);
-    }
-
-    cmd->state = ECAT_CS_SENT;
-
-    master->tx_data[pos + 0] = cmd->type;
-    master->tx_data[pos + 1] = cmd->index;
-
-    master->tx_data[pos + 2] = cmd->address.raw[0];
-    master->tx_data[pos + 3] = cmd->address.raw[1];
-    master->tx_data[pos + 4] = cmd->address.raw[2];
-    master->tx_data[pos + 5] = cmd->address.raw[3];
-
-    master->tx_data[pos + 6] = cmd->data_length & 0xFF;
-    master->tx_data[pos + 7] = (cmd->data_length & 0x700) >> 8;
-
-    if (cmd->next) master->tx_data[pos + 7] |= 0x80;
-
-    master->tx_data[pos + 8] = 0x00;
-    master->tx_data[pos + 9] = 0x00;
-
-    if (cmd->type == ECAT_CMD_APWR
-        || cmd->type == ECAT_CMD_NPWR
-        || cmd->type == ECAT_CMD_BWR
-        || cmd->type == ECAT_CMD_LRW) // Write
-    {
-      for (i = 0; i < cmd->data_length; i++) master->tx_data[pos + 10 + i] = cmd->data[i];
-    }
-    else // Read
-    {
-      for (i = 0; i < cmd->data_length; i++) master->tx_data[pos + 10 + i] = 0x00;
-    }
-
-    master->tx_data[pos + 10 + cmd->data_length] = 0x00;
-    master->tx_data[pos + 11 + cmd->data_length] = 0x00;
-
-    pos += 12 + cmd->data_length;
-  }
-
-  // Pad with zeros
-  while (pos < 46) master->tx_data[pos++] = 0x00;
-
-  master->tx_data_length = framelength;
-
-#ifdef DEBUG_SEND_RECEIVE
-  EC_DBG(KERN_DEBUG "\n");
-  EC_DBG(KERN_DEBUG ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n");
-  EC_DBG(KERN_DEBUG);
-  for (i = 0; i < framelength; i++)
-  {
-    EC_DBG("%02X ", master->tx_data[i]);
-
-    if ((i + 1) % 16 == 0) EC_DBG("\n" KERN_DEBUG);
-  }
-  EC_DBG("\n");
-  EC_DBG(KERN_DEBUG "-----------------------------------------------\n");
-#endif
-
-  if (master->debug_level > 0)
-  {
-    EC_DBG(KERN_DEBUG "device send...\n");
-  }
-
-  // Send frame
-  if (EtherCAT_device_send(master->dev, master->tx_data, framelength) != 0)
-  {
-    EC_DBG(KERN_ERR "EtherCAT: Could not send!\n");
-    EC_DBG(KERN_DEBUG "EtherCAT: tx_data content:\n");
-    output_debug_data(master->tx_data, framelength);
-    return -1;
-  }
-
-  if (master->debug_level > 0)
-  {
-    EC_DBG(KERN_DEBUG "EtherCAT_send done.\n");
-  }
-
-  return 0;
-}
-
-/***************************************************************/
-
-/**
-   Holt alle empfangenen Kommandos vom EtherCAT-Gerät.
-
-   Kopiert einen empfangenen Rahmen vom EtherCAT-Gerät
-   in den Statischen Empfangsspeicher und ordnet dann
-   allen gesendeten Kommandos ihre Antworten zu.
-
-   @param master EtherCAT-Master
-
-   @return 0 bei Erfolg, sonst < 0
-*/
-
-int EtherCAT_receive(EtherCAT_master_t *master)
-{
-  EtherCAT_command_t *cmd;
-  unsigned int length, pos, found, rx_data_length;
-  unsigned int command_follows, command_type, command_index;
-
-  // Copy received data into master buffer (with locking)
-  rx_data_length = EtherCAT_device_receive(master->dev, master->rx_data,
-                                           ECAT_FRAME_BUFFER_SIZE);
-
-#ifdef DEBUG_SEND_RECEIVE
-  for (i = 0; i < rx_data_length; i++)
-  {
-    if (master->rx_data[i] == master->tx_data[i]) EC_DBG("   ");
-    else EC_DBG("%02X ", master->rx_data[i]);
-    if ((i + 1) % 16 == 0) EC_DBG("\n" KERN_DEBUG);
-  }
-  EC_DBG("\n");
-  EC_DBG(KERN_DEBUG "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n");
-  EC_DBG(KERN_DEBUG "\n");
-#endif
-
-  if (rx_data_length < 2)
-  {
-    EC_DBG(KERN_ERR "EtherCAT: Received corrupted frame (illegal length)!\n");
-    EC_DBG(KERN_DEBUG "EtherCAT: tx_data content:\n");
-    output_debug_data(master->tx_data, master->tx_data_length);
-    EC_DBG(KERN_DEBUG "EtherCAT: rx_data content:\n");
-    output_debug_data(master->rx_data, rx_data_length);
-    return -1;
-  }
-
-  // Länge des gesamten Frames prüfen
-  length = ((master->rx_data[1] & 0x07) << 8) | (master->rx_data[0] & 0xFF);
-
-  if (length > rx_data_length)
-  {
-    EC_DBG(KERN_ERR "EtherCAT: Received corrupted frame (length does not match)!\n");
-    EC_DBG(KERN_DEBUG "EtherCAT: tx_data content:\n");
-    output_debug_data(master->tx_data, master->tx_data_length);
-    EC_DBG(KERN_DEBUG "EtherCAT: rx_data content:\n");
-    output_debug_data(master->rx_data, rx_data_length);
-    return -1;
-  }
-
-  pos = 2; // LibPCAP: 16
-  command_follows = 1;
-  while (command_follows)
-  {
-    if (pos + 10 > rx_data_length)
-    {
-      EC_DBG(KERN_ERR "EtherCAT: Received frame with incomplete command header!\n");
-      EC_DBG(KERN_DEBUG "EtherCAT: tx_data content:\n");
-      output_debug_data(master->tx_data, master->tx_data_length);
-      EC_DBG(KERN_DEBUG "EtherCAT: rx_data content:\n");
-      output_debug_data(master->rx_data, rx_data_length);
-      return -1;
-    }
-
-    command_type = master->rx_data[pos];
-    command_index = master->rx_data[pos + 1];
-    length = (master->rx_data[pos + 6] & 0xFF)
-      | ((master->rx_data[pos + 7] & 0x07) << 8);
-    command_follows = master->rx_data[pos + 7] & 0x80;
-
-    if (pos + length + 12 > rx_data_length)
-    {
-      EC_DBG(KERN_ERR "EtherCAT: Received frame with incomplete command data!\n");
-      EC_DBG(KERN_DEBUG "EtherCAT: tx_data content:\n");
-      output_debug_data(master->tx_data, master->tx_data_length);
-      EC_DBG(KERN_DEBUG "EtherCAT: rx_data content:\n");
-      output_debug_data(master->rx_data, rx_data_length);
-      return -1;
-    }
-
-    found = 0;
-
-    for (cmd = master->first_command; cmd != NULL; cmd = cmd->next)
-    {
-      if (cmd->state == ECAT_CS_SENT
-          && cmd->type == command_type
-          && cmd->index == command_index
-          && cmd->data_length == length)
-      {
-        found = 1;
-        cmd->state = ECAT_CS_RECEIVED;
-
-        // Empfangene Daten in Kommandodatenspeicher kopieren
-        memcpy(cmd->data, master->rx_data + pos + 10, length);
-
-        // Working-Counter setzen
-        cmd->working_counter = (master->rx_data[pos + length + 10] & 0xFF)
-          | ((master->rx_data[pos + length + 11] & 0xFF) << 8);
-      }
-    }
-
-    if (!found)
-    {
-      EC_DBG(KERN_WARNING "EtherCAT: WARNING - Command not assigned!\n");
-    }
-
-    pos += length + 12;
-  }
-
-  for (cmd = master->first_command; cmd != NULL; cmd = cmd->next)
-  {
-    if (cmd->state == ECAT_CS_SENT)
-    {
-      EC_DBG(KERN_WARNING "EtherCAT: WARNING - One command received no response!\n");
-    }
-  }
-
-  master->dev->state = ECAT_DS_READY;
-
-  return 0;
-}
-#endif
-
-/***************************************************************/
-
-/**
-   Sendet ein einzelnes Kommando in einem Frame und
-   wartet auf dessen Empfang.
-
-   @param master EtherCAT-Master
-   @param cmd    Kommando zum Senden/Empfangen
-
-   @return 0 bei Erfolg, sonst < 0
-*/
-
-int EtherCAT_simple_send_receive(EtherCAT_master_t *master,
-                                 EtherCAT_command_t *cmd)
-{
-  unsigned int tries_left;
-
-  if (EtherCAT_simple_send(master, cmd) < 0) return -1;
-
-  tries_left = 100;
-  while (cmd->state == ECAT_CS_SENT && tries_left)
-  {
-    udelay(10);
-    EtherCAT_device_call_isr(master->dev);
-    tries_left--;
-  }
-
-  if (EtherCAT_simple_receive(master, cmd) < 0) return -1;
-
-  return 0;
-}
-
-/***************************************************************/
-
-/**
-   Sendet ein einzelnes Kommando in einem Frame.
-
-   @param master EtherCAT-Master
-   @param cmd    Kommando zum Senden
-
-   @return 0 bei Erfolg, sonst < 0
-*/
-
-int EtherCAT_simple_send(EtherCAT_master_t *master,
-                         EtherCAT_command_t *cmd)
-{
-  unsigned int length, framelength, i;
-
-  if (master->debug_level > 0)
-  {
-    EC_DBG(KERN_DEBUG "EtherCAT_send_receive_command\n");
-  }
-
-  if (cmd->state != ECAT_CS_READY)
-  {
-    EC_DBG(KERN_WARNING "EtherCAT_send_receive_command: Command not in ready state!\n");
-  }
-
-  length = cmd->data_length + 12;
-  framelength = length + 2;
-  if (framelength < 46) framelength = 46;
-
-  if (master->debug_level > 0)
-  {
-    EC_DBG(KERN_DEBUG "Frame length: %i\n", framelength);
-  }
-
-  master->tx_data[0] = length & 0xFF;
-  master->tx_data[1] = ((length & 0x700) >> 8) | 0x10;
-
-  cmd->index = master->command_index;
-  master->command_index = (master->command_index + 1) % 0x0100;
-
-  if (master->debug_level > 0)
-  {
-    EC_DBG(KERN_DEBUG "Sending command index %i\n", cmd->index);
-  }
-
-  cmd->state = ECAT_CS_SENT;
-
-  master->tx_data[2 + 0] = cmd->type;
-  master->tx_data[2 + 1] = cmd->index;
-  master->tx_data[2 + 2] = cmd->address.raw[0];
-  master->tx_data[2 + 3] = cmd->address.raw[1];
-  master->tx_data[2 + 4] = cmd->address.raw[2];
-  master->tx_data[2 + 5] = cmd->address.raw[3];
-  master->tx_data[2 + 6] = cmd->data_length & 0xFF;
-  master->tx_data[2 + 7] = (cmd->data_length & 0x700) >> 8;
-  master->tx_data[2 + 8] = 0x00;
-  master->tx_data[2 + 9] = 0x00;
-
-  if (cmd->type == ECAT_CMD_APWR
-      || cmd->type == ECAT_CMD_NPWR
-      || cmd->type == ECAT_CMD_BWR
-      || cmd->type == ECAT_CMD_LRW) // Write
-  {
-    for (i = 0; i < cmd->data_length; i++) master->tx_data[2 + 10 + i] = cmd->data[i];
-  }
-  else // Read
-  {
-    for (i = 0; i < cmd->data_length; i++) master->tx_data[2 + 10 + i] = 0x00;
-  }
-
-  master->tx_data[2 + 10 + cmd->data_length] = 0x00;
-  master->tx_data[2 + 11 + cmd->data_length] = 0x00;
-
-  // Pad with zeros
-  for (i = cmd->data_length + 12 + 2; i < 46; i++) master->tx_data[i] = 0x00;
-
-  master->tx_data_length = framelength;
-
-  if (master->debug_level > 0)
-  {
-    EC_DBG(KERN_DEBUG "device send...\n");
-  }
-
-  // Send frame
-  if (EtherCAT_device_send(master->dev, master->tx_data, framelength) != 0)
-  {
-    EC_DBG(KERN_ERR "EtherCAT: Could not send!\n");
-    return -1;
-  }
-
-  if (master->debug_level > 0)
-  {
-    EC_DBG(KERN_DEBUG "EtherCAT_send done.\n");
-  }
-
-  return 0;
-}
-
-/***************************************************************/
-
-/**
-   Wartet auf den Empfang eines einzeln gesendeten
-   Kommandos.
-
-   @param master EtherCAT-Master
-   @param cmd    Gesendetes Kommando
-
-   @return 0 bei Erfolg, sonst < 0
-*/
-
-int EtherCAT_simple_receive(EtherCAT_master_t *master,
-                            EtherCAT_command_t *cmd)
-{
-  unsigned int rx_data_length, length;
-  unsigned char command_type, command_index;
-
-  rx_data_length = EtherCAT_device_receive(master->dev, master->rx_data,
-                                           ECAT_FRAME_BUFFER_SIZE);
-
-  if (rx_data_length < 2)
-  {
-    EC_DBG(KERN_ERR "EtherCAT: Received frame with incomplete EtherCAT header!\n");
-    EC_DBG(KERN_DEBUG "EtherCAT: tx_data content:\n");
-    output_debug_data(master->tx_data, master->tx_data_length);
-    EC_DBG(KERN_DEBUG "EtherCAT: rx_data content:\n");
-    output_debug_data(master->rx_data, rx_data_length);
-    return -1;
-  }
-
-  // Länge des gesamten Frames prüfen
-  length = ((master->rx_data[1] & 0x07) << 8) | (master->rx_data[0] & 0xFF);
-
-  if (length > rx_data_length)
-  {
-    EC_DBG(KERN_ERR "EtherCAT: Received corrupted frame (length does not match)!\n");
-    EC_DBG(KERN_DEBUG "EtherCAT: tx_data content:\n");
-    output_debug_data(master->tx_data, master->tx_data_length);
-    EC_DBG(KERN_DEBUG "EtherCAT: rx_data content:\n");
-    output_debug_data(master->rx_data, rx_data_length);
-    return -1;
-  }
-
-  command_type = master->rx_data[2];
-  command_index = master->rx_data[2 + 1];
-  length = (master->rx_data[2 + 6] & 0xFF) | ((master->rx_data[2 + 7] & 0x07) << 8);
-
-  if (rx_data_length - 2 < length + 12)
-  {
-    EC_DBG(KERN_ERR "EtherCAT: Received frame with incomplete command data!\n");
-    EC_DBG(KERN_DEBUG "EtherCAT: tx_data content:\n");
-    output_debug_data(master->tx_data, master->tx_data_length);
-    EC_DBG(KERN_DEBUG "EtherCAT: rx_data content:\n");
-    output_debug_data(master->rx_data, rx_data_length);
-    return -1;
-  }
-
-  if (cmd->state == ECAT_CS_SENT
-      && cmd->type == command_type
-      && cmd->index == command_index
-      && cmd->data_length == length)
-  {
-    cmd->state = ECAT_CS_RECEIVED;
-
-    // Empfangene Daten in Kommandodatenspeicher kopieren
-    memcpy(cmd->data, master->rx_data + 2 + 10, length);
-
-    // Working-Counter setzen
-    cmd->working_counter = ((master->rx_data[length + 2 + 10] & 0xFF)
-                            | ((master->rx_data[length + 2 + 11] & 0xFF) << 8));
-  }
-  else
-  {
-    EC_DBG(KERN_WARNING "EtherCAT: WARNING - Send/Receive anomaly!\n");
-    EC_DBG(KERN_DEBUG "EtherCAT: tx_data content:\n");
-    output_debug_data(master->tx_data, master->tx_data_length);
-    EC_DBG(KERN_DEBUG "EtherCAT: rx_data content:\n");
-    output_debug_data(master->rx_data, rx_data_length);
-  }
-
-  master->dev->state = ECAT_DS_READY;
-
-  return 0;
-}
-
-/***************************************************************/
-
-#if 0
-
-#define ECAT_FUNC_HEADER \
-  EtherCAT_command_t *cmd; \
-  if ((cmd = alloc_cmd(master)) == NULL) \
-  { \
-    EC_DBG(KERN_ERR "EtherCAT: Out of memory while creating command!\n"); \
-    return NULL; \
-  } \
-  EtherCAT_command_init(cmd)
-
-#define ECAT_FUNC_WRITE_FOOTER \
-  cmd->data_length = length; \
-  memcpy(cmd->data, data, length); \
-  if (add_command(master, cmd) < 0) return NULL; \
-  return cmd
-
-#define ECAT_FUNC_READ_FOOTER \
-  cmd->data_length = length; \
-  if (add_command(master, cmd) < 0) return NULL; \
-  return cmd
-
-/***************************************************************/
-
-/**
-   Erstellt ein EtherCAT-NPRD-Kommando.
-
-   Alloziert ein "node-adressed physical read"-Kommando
-   und fügt es in die Liste des Masters ein.
-
-   @param master EtherCAT-Master
-   @param node_address Adresse des Knotens (Slaves)
-   @param offset Physikalische Speicheradresse im Slave
-   @param length Länge der zu lesenden Daten
-
-   @return Adresse des Kommandos bei Erfolg, sonst NULL
-*/
-
-EtherCAT_command_t *EtherCAT_read(EtherCAT_master_t *master,
-                                  unsigned short node_address,
-                                  unsigned short offset,
-                                  unsigned int length)
-{
-  if (node_address == 0x0000)
-    EC_DBG(KERN_WARNING "EtherCAT: Using node address 0x0000!\n");
-
-  ECAT_FUNC_HEADER;
-
-  cmd->type = ECAT_CMD_NPRD;
-  cmd->address.phy.dev.node = node_address;
-  cmd->address.phy.mem = offset;
-
-  ECAT_FUNC_READ_FOOTER;
-}
-
-/***************************************************************/
-
-/**
-   Erstellt ein EtherCAT-NPWR-Kommando.
-
-   Alloziert ein "node-adressed physical write"-Kommando
-   und fügt es in die Liste des Masters ein.
-
-   @param master EtherCAT-Master
-   @param node_address Adresse des Knotens (Slaves)
-   @param offset Physikalische Speicheradresse im Slave
-   @param length Länge der zu schreibenden Daten
-   @param data Zeiger auf Speicher mit zu schreibenden Daten
-
-   @return Adresse des Kommandos bei Erfolg, sonst NULL
-*/
-
-EtherCAT_command_t *EtherCAT_write(EtherCAT_master_t *master,
-                                   unsigned short node_address,
-                                   unsigned short offset,
-                                   unsigned int length,
-                                   const unsigned char *data)
-{
-  if (node_address == 0x0000)
-    EC_DBG(KERN_WARNING "WARNING: Using node address 0x0000!\n");
-
-  ECAT_FUNC_HEADER;
-
-  cmd->type = ECAT_CMD_NPWR;
-  cmd->address.phy.dev.node = node_address;
-  cmd->address.phy.mem = offset;
-
-  ECAT_FUNC_WRITE_FOOTER;
-}
-
-/***************************************************************/
-
-/**
-   Erstellt ein EtherCAT-APRD-Kommando.
-
-   Alloziert ein "autoincerement physical read"-Kommando
-   und fügt es in die Liste des Masters ein.
-
-   @param master EtherCAT-Master
-   @param ring_position (Negative) Position des Slaves im Bus
-   @param offset Physikalische Speicheradresse im Slave
-   @param length Länge der zu lesenden Daten
-
-   @return Adresse des Kommandos bei Erfolg, sonst NULL
-*/
-
-EtherCAT_command_t *EtherCAT_position_read(EtherCAT_master_t *master,
-                                           short ring_position,
-                                           unsigned short offset,
-                                           unsigned int length)
-{
-  ECAT_FUNC_HEADER;
-
-  cmd->type = ECAT_CMD_APRD;
-  cmd->address.phy.dev.pos = ring_position;
-  cmd->address.phy.mem = offset;
-
-  ECAT_FUNC_READ_FOOTER;
-}
-
-/***************************************************************/
-
-/**
-   Erstellt ein EtherCAT-APWR-Kommando.
-
-   Alloziert ein "autoincrement physical write"-Kommando
-   und fügt es in die Liste des Masters ein.
-
-   @param master EtherCAT-Master
-   @param ring_position (Negative) Position des Slaves im Bus
-   @param offset Physikalische Speicheradresse im Slave
-   @param length Länge der zu schreibenden Daten
-   @param data Zeiger auf Speicher mit zu schreibenden Daten
-
-   @return Adresse des Kommandos bei Erfolg, sonst NULL
-*/
-
-EtherCAT_command_t *EtherCAT_position_write(EtherCAT_master_t *master,
-                                            short ring_position,
-                                            unsigned short offset,
-                                            unsigned int length,
-                                            const unsigned char *data)
-{
-  ECAT_FUNC_HEADER;
-
-  cmd->type = ECAT_CMD_APWR;
-  cmd->address.phy.dev.pos = ring_position;
-  cmd->address.phy.mem = offset;
-
-  ECAT_FUNC_WRITE_FOOTER;
-}
-
-/***************************************************************/
-
-/**
-   Erstellt ein EtherCAT-BRD-Kommando.
-
-   Alloziert ein "broadcast read"-Kommando
-   und fügt es in die Liste des Masters ein.
-
-   @param master EtherCAT-Master
-   @param offset Physikalische Speicheradresse im Slave
-   @param length Länge der zu lesenden Daten
-
-   @return Adresse des Kommandos bei Erfolg, sonst NULL
-*/
-
-EtherCAT_command_t *EtherCAT_broadcast_read(EtherCAT_master_t *master,
-                                            unsigned short offset,
-                                            unsigned int length)
-{
-  ECAT_FUNC_HEADER;
-
-  cmd->type = ECAT_CMD_BRD;
-  cmd->address.phy.dev.node = 0x0000;
-  cmd->address.phy.mem = offset;
-
-  ECAT_FUNC_READ_FOOTER;
-}
-
-/***************************************************************/
-
-/**
-   Erstellt ein EtherCAT-BWR-Kommando.
-
-   Alloziert ein "broadcast write"-Kommando
-   und fügt es in die Liste des Masters ein.
-
-   @param master EtherCAT-Master
-   @param offset Physikalische Speicheradresse im Slave
-   @param length Länge der zu schreibenden Daten
-   @param data Zeiger auf Speicher mit zu schreibenden Daten
-
-   @return Adresse des Kommandos bei Erfolg, sonst NULL
-*/
-
-EtherCAT_command_t *EtherCAT_broadcast_write(EtherCAT_master_t *master,
-                                             unsigned short offset,
-                                             unsigned int length,
-                                             const unsigned char *data)
-{
-  ECAT_FUNC_HEADER;
-
-  cmd->type = ECAT_CMD_BWR;
-  cmd->address.phy.dev.node = 0x0000;
-  cmd->address.phy.mem = offset;
-
-  ECAT_FUNC_WRITE_FOOTER;
-}
-
-/***************************************************************/
-
-/**
-   Erstellt ein EtherCAT-LRW-Kommando.
-
-   Alloziert ein "logical read write"-Kommando
-   und fügt es in die Liste des Masters ein.
-
-   @param master EtherCAT-Master
-   @param offset Logische Speicheradresse
-   @param length Länge der zu lesenden/schreibenden Daten
-   @param data Zeiger auf Speicher mit zu lesenden/schreibenden Daten
-
-   @return Adresse des Kommandos bei Erfolg, sonst NULL
-*/
-
-EtherCAT_command_t *EtherCAT_logical_read_write(EtherCAT_master_t *master,
-                                                unsigned int offset,
-                                                unsigned int length,
-                                                unsigned char *data)
-{
-  ECAT_FUNC_HEADER;
-
-  cmd->type = ECAT_CMD_LRW;
-  cmd->address.logical = offset;
-
-  ECAT_FUNC_WRITE_FOOTER;
-}
-
-/***************************************************************/
-
-/**
-   Alloziert ein neues Kommando aus dem Kommandoring.
-
-   Durchsucht den Kommandoring nach einem freien Kommando,
-   reserviert es und gibt dessen Adresse zurück.
-
-   @param master EtherCAT-Master
-
-   @return Adresse des Kommandos bei Erfolg, sonst NULL
-*/
-
-EtherCAT_command_t *alloc_cmd(EtherCAT_master_t *master)
-{
-  int j;
-
-  for (j = 0; j < ECAT_COMMAND_RING_SIZE; j++) // Einmal rum suchen
-  {
-    // Solange suchen, bis freies Kommando gefunden
-    if (master->cmd_reserved[master->cmd_ring_index] == 0)
-    {
-      master->cmd_reserved[master->cmd_ring_index] = 1; // Belegen
-
-      if (master->debug_level)
-      {
-        EC_DBG(KERN_DEBUG "Allocating command %i (addr %X).\n",
-               master->cmd_ring_index,
-               (int) &master->cmd_ring[master->cmd_ring_index]);
-      }
-
-      return &master->cmd_ring[master->cmd_ring_index];
-    }
-
-    if (master->debug_level)
-    {
-      EC_DBG(KERN_DEBUG "Command %i (addr %X) is reserved...\n",
-             master->cmd_ring_index,
-             (int) &master->cmd_ring[master->cmd_ring_index]);
-    }
-
-    master->cmd_ring_index++;
-    master->cmd_ring_index %= ECAT_COMMAND_RING_SIZE;
-  }
-
-  EC_DBG(KERN_WARNING "EtherCAT: Command ring full!\n");
-
-  return NULL; // Nix gefunden
-}
-
-/***************************************************************/
-
-/**
-   Fügt ein Kommando in die Liste des Masters ein.
-
-   @param master EtherCAT-Master
-   @param cmd Zeiger auf das einzufügende Kommando
-*/
-
-int add_command(EtherCAT_master_t *master,
-                EtherCAT_command_t *new_cmd)
-{
-  EtherCAT_command_t *cmd, **last_cmd;
-
-  for (cmd = master->first_command; cmd != NULL; cmd = cmd->next)
-  {
-    if (cmd == new_cmd)
-    {
-      EC_DBG(KERN_WARNING "EtherCAT: Trying to add a command"
-             " that is already in the list!\n");
-      return -1;
-    }
-  }
-
-  // Find the address of the last pointer in the list
-  last_cmd = &(master->first_command);
-  while (*last_cmd) last_cmd = &(*last_cmd)->next;
-
-  // Let this pointer point to the new command
-  *last_cmd = new_cmd;
-
-  return 0;
-}
-
-/***************************************************************/
-
-/**
-   Entfernt ein Kommando aus der Liste und gibt es frei.
-
-   Prüft erst, ob das Kommando in der Liste des Masters
-   ist. Wenn ja, wird es entfernt und die Reservierung wird
-   aufgehoben.
-
-   @param master EtherCAT-Master
-   @param rem_cmd Zeiger auf das zu entfernende Kommando
-
-   @return 0 bei Erfolg, sonst < 0
-*/
-
-void EtherCAT_remove_command(EtherCAT_master_t *master,
-                             EtherCAT_command_t *rem_cmd)
-{
-  EtherCAT_command_t **last_cmd;
-  int i;
-
-  last_cmd = &master->first_command;
-  while (*last_cmd)
-  {
-    if (*last_cmd == rem_cmd)
-    {
-      *last_cmd = rem_cmd->next;
-      EtherCAT_command_clear(rem_cmd);
-
-      // Reservierung des Kommandos aufheben
-      for (i = 0; i < ECAT_COMMAND_RING_SIZE; i++)
-      {
-        if (&master->cmd_ring[i] == rem_cmd)
-        {
-          master->cmd_reserved[i] = 0;
-          return;
-        }
-      }
-
-      EC_DBG(KERN_WARNING "EtherCAT: Could not remove command reservation!\n");
-      return;
-    }
-
-    last_cmd = &(*last_cmd)->next;
-  }
-
-  EC_DBG(KERN_WARNING "EtherCAT: Trying to remove non-existent command!\n");
-}
-#endif
 
 /***************************************************************/
 
