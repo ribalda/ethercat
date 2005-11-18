@@ -15,17 +15,7 @@
 /**
    Maximale Größe eines EtherCAT-Frames
 */
-#define ECAT_FRAME_BUFFER_SIZE 1600
-
-/**
-   Anzahl der Kommandos in einem Master-Kommandoring
-*/
-#define ECAT_COMMAND_RING_SIZE 10
-
-/**
-   Anzahl der Versuche beim Asynchronen Senden/Empfangen
-*/
-#define ECAT_NUM_RETRIES 10
+#define ECAT_FRAME_BUFFER_SIZE 1500
 
 /**
    NULL-Define, falls noch nicht definiert.

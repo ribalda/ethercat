@@ -77,7 +77,7 @@ int EtherCAT_device_open(EtherCAT_device_t *);
 int EtherCAT_device_close(EtherCAT_device_t *);
 
 int EtherCAT_device_send(EtherCAT_device_t *, unsigned char *, unsigned int);
-int EtherCAT_device_receive(EtherCAT_device_t *, unsigned char *, unsigned int);
+int EtherCAT_device_receive(EtherCAT_device_t *, unsigned char *);
 void EtherCAT_device_call_isr(EtherCAT_device_t *);
 
 void EtherCAT_device_debug(EtherCAT_device_t *);

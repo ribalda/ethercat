@@ -253,28 +253,30 @@ int EtherCAT_device_send(EtherCAT_device_t *ecd,
 
    @param ecd EtherCAT-Gerät
    @param data Zeiger auf den Speicherbereich, in den die
-   empfangenen Daten kopiert werden sollen
-   @param size Größe des angegebenen Speicherbereichs
+               empfangenen Daten kopiert werden sollen
 
    @return Anzahl der kopierten Bytes bei Erfolg, sonst < 0
 */
 
 int EtherCAT_device_receive(EtherCAT_device_t *ecd,
-                            unsigned char *data,
-                            unsigned int size)
+                            unsigned char *data)
 {
-  int cnt;
-
   if (ecd->state != ECAT_DS_RECEIVED)
   {
     EC_DBG(KERN_ERR "EtherCAT: receive - Nothing received!\n");
     return -1;
   }
 
-  cnt = min(ecd->rx_data_length, size);
-  memcpy(data,ecd->rx_data, cnt);
+  if (ecd->rx_data_length > ECAT_FRAME_BUFFER_SIZE)
+  {
+    EC_DBG(KERN_ERR "EtherCAT: receive - Reveived frame too long (%i Bytes)!\n",
+           ecd->rx_data_length);
+    return -1;
+  }
 
-  return cnt;
+  memcpy(data, ecd->rx_data, ecd->rx_data_length);
+
+  return ecd->rx_data_length;
 }
 
 /***************************************************************/

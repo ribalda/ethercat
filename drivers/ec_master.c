@@ -25,7 +25,7 @@
 
    @param master Zeiger auf den zu initialisierenden
    EtherCAT-Master
-   @param dev Zeiger auf das EtherCAT-gerät, mit dem der
+   @param dev Zeiger auf das EtherCAT-Gerät, mit dem der
    Master arbeiten soll
 
    @return 0 bei Erfolg, sonst < 0 (= dev ist NULL)
@@ -96,10 +96,12 @@ int EtherCAT_simple_send_receive(EtherCAT_master_t *master,
 
   if (EtherCAT_simple_send(master, cmd) < 0) return -1;
 
-  tries_left = 100;
-  while (cmd->state == ECAT_CS_SENT && tries_left)
+  EtherCAT_device_call_isr(master->dev);
+
+  tries_left = 1000;
+  while (master->dev->state == ECAT_DS_SENT && tries_left)
   {
-    udelay(10);
+    udelay(1);
     EtherCAT_device_call_isr(master->dev);
     tries_left--;
   }
@@ -137,6 +139,13 @@ int EtherCAT_simple_send(EtherCAT_master_t *master,
 
   length = cmd->data_length + 12;
   framelength = length + 2;
+
+  if (framelength > ECAT_FRAME_BUFFER_SIZE)
+  {
+    EC_DBG(KERN_ERR "EtherCAT: Frame too long (%i)!\n", framelength);
+    return -1;
+  }
+
   if (framelength < 46) framelength = 46;
 
   if (master->debug_level > 0)
@@ -223,32 +232,32 @@ int EtherCAT_simple_send(EtherCAT_master_t *master,
 int EtherCAT_simple_receive(EtherCAT_master_t *master,
                             EtherCAT_command_t *cmd)
 {
-  unsigned int rx_data_length, length;
+  unsigned int length;
+  int receive_ret;
   unsigned char command_type, command_index;
 
-  rx_data_length = EtherCAT_device_receive(master->dev, master->rx_data,
-                                           ECAT_FRAME_BUFFER_SIZE);
+  if ((receive_ret = EtherCAT_device_receive(master->dev,
+                                             master->rx_data)) < 0)
+  {
+    return -1;
+  }
 
-  if (rx_data_length < 2)
+  master->rx_data_length = (unsigned int) receive_ret;
+
+  if (master->rx_data_length < 2)
   {
     EC_DBG(KERN_ERR "EtherCAT: Received frame with incomplete EtherCAT header!\n");
-    EC_DBG(KERN_DEBUG "EtherCAT: tx_data content:\n");
-    output_debug_data(master->tx_data, master->tx_data_length);
-    EC_DBG(KERN_DEBUG "EtherCAT: rx_data content:\n");
-    output_debug_data(master->rx_data, rx_data_length);
+    output_debug_data(master);
     return -1;
   }
 
   // Länge des gesamten Frames prüfen
   length = ((master->rx_data[1] & 0x07) << 8) | (master->rx_data[0] & 0xFF);
 
-  if (length > rx_data_length)
+  if (length > master->rx_data_length)
   {
     EC_DBG(KERN_ERR "EtherCAT: Received corrupted frame (length does not match)!\n");
-    EC_DBG(KERN_DEBUG "EtherCAT: tx_data content:\n");
-    output_debug_data(master->tx_data, master->tx_data_length);
-    EC_DBG(KERN_DEBUG "EtherCAT: rx_data content:\n");
-    output_debug_data(master->rx_data, rx_data_length);
+    output_debug_data(master);
     return -1;
   }
 
@@ -256,13 +265,10 @@ int EtherCAT_simple_receive(EtherCAT_master_t *master,
   command_index = master->rx_data[2 + 1];
   length = (master->rx_data[2 + 6] & 0xFF) | ((master->rx_data[2 + 7] & 0x07) << 8);
 
-  if (rx_data_length - 2 < length + 12)
+  if (master->rx_data_length - 2 < length + 12)
   {
     EC_DBG(KERN_ERR "EtherCAT: Received frame with incomplete command data!\n");
-    EC_DBG(KERN_DEBUG "EtherCAT: tx_data content:\n");
-    output_debug_data(master->tx_data, master->tx_data_length);
-    EC_DBG(KERN_DEBUG "EtherCAT: rx_data content:\n");
-    output_debug_data(master->rx_data, rx_data_length);
+    output_debug_data(master);
     return -1;
   }
 
@@ -283,10 +289,7 @@ int EtherCAT_simple_receive(EtherCAT_master_t *master,
   else
   {
     EC_DBG(KERN_WARNING "EtherCAT: WARNING - Send/Receive anomaly!\n");
-    EC_DBG(KERN_DEBUG "EtherCAT: tx_data content:\n");
-    output_debug_data(master->tx_data, master->tx_data_length);
-    EC_DBG(KERN_DEBUG "EtherCAT: rx_data content:\n");
-    output_debug_data(master->rx_data, rx_data_length);
+    output_debug_data(master);
   }
 
   master->dev->state = ECAT_DS_READY;
@@ -991,7 +994,23 @@ int EtherCAT_write_process_data(EtherCAT_master_t *master)
 
 int EtherCAT_read_process_data(EtherCAT_master_t *master)
 {
+  unsigned int tries_left;
+
   EtherCAT_device_call_isr(master->dev);
+
+  tries_left = 1000;
+  while (master->dev->state == ECAT_DS_SENT && tries_left)
+  {
+    udelay(1);
+    EtherCAT_device_call_isr(master->dev);
+    tries_left--;
+  }
+
+  if (!tries_left)
+  {
+    EC_DBG(KERN_ERR "EtherCAT: Timeout while receiving process data!\n");
+    return -1;
+  }
 
   if (EtherCAT_simple_receive(master, &master->process_data_command) < 0)
   {
@@ -1029,55 +1048,34 @@ void EtherCAT_clear_process_data(EtherCAT_master_t *master)
 /***************************************************************/
 
 /**
-   Setzt einen Byte-Wert im Speicher.
-
-   @param data Startadresse
-   @param offset Byte-Offset
-   @param value Wert
-*/
-
-void set_byte(unsigned char *data,
-              unsigned int offset,
-              unsigned char value)
-{
-  data[offset] = value;
-}
-
-/***************************************************************/
-
-/**
-   Setzt einen Word-Wert im Speicher.
-
-   @param data Startadresse
-   @param offset Byte-Offset
-   @param value Wert
-*/
-
-void set_word(unsigned char *data,
-              unsigned int offset,
-              unsigned int value)
-{
-  data[offset] = value & 0xFF;
-  data[offset + 1] = (value & 0xFF00) >> 8;
-}
-
-/***************************************************************/
-
-/**
    Gibt Frame-Inhalte zwecks Debugging aus.
 
    @param data Startadresse
    @param length Länge der Daten
 */
 
-void output_debug_data(unsigned char *data, unsigned int length)
+void output_debug_data(const EtherCAT_master_t *master)
 {
   unsigned int i;
 
+  EC_DBG(KERN_DEBUG "EtherCAT: tx_data content (%i Bytes):\n",
+         master->tx_data_length);
+
   EC_DBG(KERN_DEBUG);
-  for (i = 0; i < length; i++)
+  for (i = 0; i < master->tx_data_length; i++)
   {
-    EC_DBG("%02X ", data[i]);
+    EC_DBG("%02X ", master->tx_data[i]);
+    if ((i + 1) % 16 == 0) EC_DBG("\n" KERN_DEBUG);
+  }
+  EC_DBG("\n");
+
+  EC_DBG(KERN_DEBUG "EtherCAT: rx_data content (%i Bytes):\n",
+         master->rx_data_length);
+
+  EC_DBG(KERN_DEBUG);
+  for (i = 0; i < master->rx_data_length; i++)
+  {
+    EC_DBG("%02X ", master->rx_data[i]);
     if ((i + 1) % 16 == 0) EC_DBG("\n" KERN_DEBUG);
   }
   EC_DBG("\n");

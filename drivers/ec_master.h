@@ -44,6 +44,7 @@ typedef struct
   unsigned char rx_data[ECAT_FRAME_BUFFER_SIZE]; /**< Statische Speicher für
                                                     eine Kopie des Rx-Buffers
                                                     im EtherCAT-Gerät */
+  unsigned int rx_data_length; /**< Länge der Daten im Empfangsspeicher */
 
   unsigned char *process_data; /**< Zeiger auf Speicher mit Prozessdaten */
   unsigned int process_data_length; /**< Länge der Prozessdaten */
@@ -82,9 +83,7 @@ int EtherCAT_read_process_data(EtherCAT_master_t *);
 void EtherCAT_clear_process_data(EtherCAT_master_t *);
 
 // Private functions
-void set_byte(unsigned char *, unsigned int, unsigned char);
-void set_word(unsigned char *, unsigned int, unsigned int);
-void output_debug_data(unsigned char *, unsigned int);
+void output_debug_data(const EtherCAT_master_t *);
 
 /***************************************************************/
 
