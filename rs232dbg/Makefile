@@ -8,14 +8,14 @@
 #
 #----------------------------------------------------------------
 
-KERNEL_DIRS_FILE = ../kerneldirs.mk
+CONFIG_FILE = ../kerneldirs.mk
 
-ifeq ($(KERNEL_DIRS_FILE),$(wildcard $(KERNEL_DIRS_FILE)))
-include $(KERNEL_DIRS_FILE)
+ifeq ($(CONFIG_FILE),$(wildcard $(CONFIG_FILE)))
+include $(CONFIG_FILE)
 else
 KERNELDIR = /vol/projekte/msr_messen_steuern_regeln/linux/kernel/2.4.20/include/linux-2.4.20.CX1100-rthal5
 RTAIDIR   = /vol/projekte/msr_messen_steuern_regeln/linux/kernel/2.4.20/include/rtai-24.1.13
-RTLIBDIR = rt_lib
+RTLIBDIR  = rt_lib
 endif
 
 CFLAGS = -O2 -Wall -Wuninitialized -D__KERNEL__ -DMODULE \
