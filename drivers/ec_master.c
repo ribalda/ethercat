@@ -1050,8 +1050,7 @@ void EtherCAT_clear_process_data(EtherCAT_master_t *master)
 /**
    Gibt Frame-Inhalte zwecks Debugging aus.
 
-   @param data Startadresse
-   @param length Länge der Daten
+   @param master EtherCAT-Master
 */
 
 void output_debug_data(const EtherCAT_master_t *master)
