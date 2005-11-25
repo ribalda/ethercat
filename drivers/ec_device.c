@@ -17,7 +17,8 @@
 #include "ec_device.h"
 #include "ec_dbg.h"
 
-extern void rtl8139_interrupt(int, void *, struct pt_regs *);
+extern irqreturn_t rtl8139_interrupt(int, void *, struct pt_regs *);
+extern int rtl8139_poll(struct net_device *, int *);
 
 /***************************************************************/
 
@@ -291,7 +292,18 @@ int EtherCAT_device_receive(EtherCAT_device_t *ecd,
 
 void EtherCAT_device_call_isr(EtherCAT_device_t *ecd)
 {
-  rtl8139_interrupt(0, ecd->dev, NULL);
+    int budget;
+
+    budget = 1; /* Einen Frame empfangen */
+
+    rtl8139_interrupt(0, ecd->dev, NULL);
+    rtl8139_poll(ecd->dev, &budget);
+
+    if (budget != 0)
+    {
+        EC_DBG(KERN_ERR "EtherCAT: Warning - Budget is %d!\n",
+               budget);
+    }
 }
 
 /***************************************************************/

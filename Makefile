@@ -43,14 +43,14 @@ endif
 .mini:
 	$(MAKE) -C mini
 
-config $(CONFIG_FILE):
-	@echo "# EtherCAT Konfigurationsdatei" > $(CONFIG_FILE)
+config conf $(CONFIG_FILE):
+	@echo "# EtherCAT Konfigurationsdatei Kernel 2.6" > $(CONFIG_FILE)
 	@echo >> $(CONFIG_FILE)
-	@echo "KERNELDIR = /vol/projekte/msr_messen_steuern_regeln/linux/kernel/2.4.20/include/linux-2.4.20.CX1100-rthal5" >> $(CONFIG_FILE)
-	@echo "RTAIDIR   = /vol/projekte/msr_messen_steuern_regeln/linux/kernel/2.4.20/include/rtai-24.1.13" >> $(CONFIG_FILE)
-	@echo "RTLIBDIR  = rt_lib" >> $(CONFIG_FILE)
+	@echo "KERNELDIR = /usr/src/linux" >> $(CONFIG_FILE)
+	@echo "RTAIDIR   =" >> $(CONFIG_FILE)
+	@echo "RTLIBDIR  =" >> $(CONFIG_FILE)
 	@echo >> $(CONFIG_FILE)
-	@echo "GCC_SYSTEMDIR = /usr/lib/gcc-lib/i486-suse-linux/3.3/include" >> $(CONFIG_FILE)
+	@echo "#GCC_SYSTEMDIR = /usr/lib/gcc-lib/i486-suse-linux/3.3/include" >> $(CONFIG_FILE)
 	@echo >> $(CONFIG_FILE)
 	@echo "MAKE_RT    = yes" >> $(CONFIG_FILE)
 	@echo "MAKE_RS232 = yes" >> $(CONFIG_FILE)
