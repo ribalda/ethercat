@@ -109,7 +109,7 @@
 
 */
 
-#define DRV_NAME	"8139too_ecat"
+#define DRV_NAME	"8139too-ecat"
 #define DRV_VERSION	"0.9.27"
 
 
@@ -199,6 +199,8 @@ static int ec_device_index = -1;
 //#define ECAT_DEBUG
 
 EtherCAT_device_t rtl_ecat_dev;
+
+EXPORT_SYMBOL(rtl_ecat_dev);
 
 /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 

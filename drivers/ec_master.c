@@ -52,6 +52,8 @@ int EtherCAT_master_init(EtherCAT_master_t *master,
   return 0;
 }
 
+EXPORT_SYMBOL(EtherCAT_master_init);
+
 /***************************************************************/
 
 /**
@@ -76,6 +78,8 @@ void EtherCAT_master_clear(EtherCAT_master_t *master)
 
   master->process_data_length = 0;
 }
+
+EXPORT_SYMBOL(EtherCAT_master_clear);
 
 /***************************************************************/
 
@@ -497,6 +501,8 @@ int EtherCAT_check_slaves(EtherCAT_master_t *master,
 
   return 0;
 }
+
+EXPORT_SYMBOL(EtherCAT_check_slaves);
 
 /***************************************************************/
 
@@ -922,6 +928,8 @@ int EtherCAT_activate_all_slaves(EtherCAT_master_t *master)
   return 0;
 }
 
+EXPORT_SYMBOL(EtherCAT_activate_all_slaves);
+
 /***************************************************************/
 
 /**
@@ -950,6 +958,8 @@ int EtherCAT_deactivate_all_slaves(EtherCAT_master_t *master)
   return ret;
 }
 
+EXPORT_SYMBOL(EtherCAT_deactivate_all_slaves);
+
 /***************************************************************/
 
 /**
@@ -977,6 +987,8 @@ int EtherCAT_write_process_data(EtherCAT_master_t *master)
 
   return 0;
 }
+
+EXPORT_SYMBOL(EtherCAT_write_process_data);
 
 /***************************************************************/
 
@@ -1031,6 +1043,8 @@ int EtherCAT_read_process_data(EtherCAT_master_t *master)
   return 0;
 }
 
+EXPORT_SYMBOL(EtherCAT_read_process_data);
+
 /***************************************************************/
 
 /**
@@ -1044,6 +1058,8 @@ void EtherCAT_clear_process_data(EtherCAT_master_t *master)
   EtherCAT_device_call_isr(master->dev);
   master->dev->state = ECAT_DS_READY;
 }
+
+EXPORT_SYMBOL(EtherCAT_clear_process_data);
 
 /***************************************************************/
 

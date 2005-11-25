@@ -112,6 +112,8 @@ int EtherCAT_read_value(EtherCAT_slave_t *slave,
   return slave->desc->read(slave->process_data, channel);
 }
 
+EXPORT_SYMBOL(EtherCAT_read_value);
+
 /***************************************************************/
 
 /**
@@ -161,5 +163,7 @@ void EtherCAT_write_value(EtherCAT_slave_t *slave,
 
   slave->desc->write(slave->process_data, channel, value);
 }
+
+EXPORT_SYMBOL(EtherCAT_write_value);
 
 /***************************************************************/

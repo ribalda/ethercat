@@ -9,6 +9,8 @@
  *
  ***************************************************************/
 
+#include <linux/module.h>
+
 #ifndef _EC_TYPES_H_
 #define _EC_TYPES_H_
 

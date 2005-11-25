@@ -159,6 +159,8 @@ int EtherCAT_device_open(EtherCAT_device_t *ecd)
   return ecd->dev->open(ecd->dev);
 }
 
+EXPORT_SYMBOL(EtherCAT_device_open);
+
 /***************************************************************/
 
 /**
@@ -186,6 +188,8 @@ int EtherCAT_device_close(EtherCAT_device_t *ecd)
 
   return ecd->dev->stop(ecd->dev);
 }
+
+EXPORT_SYMBOL(EtherCAT_device_close);
 
 /***************************************************************/
 
@@ -341,5 +345,7 @@ void EtherCAT_device_debug(EtherCAT_device_t *ecd)
 
   EC_DBG(KERN_DEBUG "---EtherCAT device information end---\n");
 }
+
+EXPORT_SYMBOL(EtherCAT_device_debug);
 
 /***************************************************************/

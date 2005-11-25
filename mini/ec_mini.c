@@ -9,8 +9,6 @@
  ******************************************************************************/
 
 #include <linux/module.h>
-//#include <linux/slab.h>
-//#include <linux/delay.h>
 #include <linux/timer.h>
 
 #include "../drivers/ec_master.h"
@@ -94,7 +92,6 @@ static EtherCAT_slave_t ecat_slaves[] =
 
 #ifdef ECAT_CYCLIC_DATA
 
-double value;
 int dig1;
 
 struct timer_list timer;
@@ -182,7 +179,7 @@ static void run(unsigned long data)
         EtherCAT_read_process_data(ecat_master);
 
         // Daten lesen und skalieren
-        value = EtherCAT_read_value(&ecat_master->slaves[5], 0) / 3276.7;
+        //value = EtherCAT_read_value(&ecat_master->slaves[5], 0) / 3276.7;
         dig1 = EtherCAT_read_value(&ecat_master->slaves[3], 0);
     }
 
