@@ -9,6 +9,8 @@
  ******************************************************************************/
 
 #include <linux/module.h>
+//#include <linux/slab.h>
+#include <linux/delay.h>
 #include <linux/timer.h>
 
 #include "../drivers/ec_master.h"
@@ -44,22 +46,21 @@ static EtherCAT_slave_t ecat_slaves[] =
     ECAT_INIT_SLAVE(Beckhoff_EL4102),
     ECAT_INIT_SLAVE(Beckhoff_EL3162),
     ECAT_INIT_SLAVE(Beckhoff_EL1014),
-    ECAT_INIT_SLAVE(Beckhoff_EL2004),
-    ECAT_INIT_SLAVE(Beckhoff_EL3102),
+
     ECAT_INIT_SLAVE(Beckhoff_EL4102),
     ECAT_INIT_SLAVE(Beckhoff_EL4102),
     ECAT_INIT_SLAVE(Beckhoff_EL4102),
+
     ECAT_INIT_SLAVE(Beckhoff_EL3162),
     ECAT_INIT_SLAVE(Beckhoff_EL3162),
     ECAT_INIT_SLAVE(Beckhoff_EL3162),
     ECAT_INIT_SLAVE(Beckhoff_EL3102),
     ECAT_INIT_SLAVE(Beckhoff_EL3102),
-    ECAT_INIT_SLAVE(Beckhoff_EL2004),
-    ECAT_INIT_SLAVE(Beckhoff_EL2004),
-    ECAT_INIT_SLAVE(Beckhoff_EL2004),
-    ECAT_INIT_SLAVE(Beckhoff_EL2004),
+    ECAT_INIT_SLAVE(Beckhoff_EL3102),
+
 #endif
 
+#if 1
     // Block 2
     ECAT_INIT_SLAVE(Beckhoff_EK1100),
     ECAT_INIT_SLAVE(Beckhoff_EL4102),
@@ -67,6 +68,11 @@ static EtherCAT_slave_t ecat_slaves[] =
     ECAT_INIT_SLAVE(Beckhoff_EL3162),
     ECAT_INIT_SLAVE(Beckhoff_EL2004),
     ECAT_INIT_SLAVE(Beckhoff_EL3102),
+    ECAT_INIT_SLAVE(Beckhoff_EL2004),
+    ECAT_INIT_SLAVE(Beckhoff_EL2004),
+    ECAT_INIT_SLAVE(Beckhoff_EL2004),
+    ECAT_INIT_SLAVE(Beckhoff_EL2004),
+    ECAT_INIT_SLAVE(Beckhoff_EL2004),
 
     // Block 3
     ECAT_INIT_SLAVE(Beckhoff_EK1100),
@@ -82,6 +88,7 @@ static EtherCAT_slave_t ecat_slaves[] =
     ECAT_INIT_SLAVE(Beckhoff_EL1014),
     ECAT_INIT_SLAVE(Beckhoff_EL1014),
     ECAT_INIT_SLAVE(Beckhoff_EL1014)
+#endif
 };
 
 #define ECAT_SLAVES_COUNT (sizeof(ecat_slaves) / sizeof(EtherCAT_slave_t))
@@ -92,6 +99,7 @@ static EtherCAT_slave_t ecat_slaves[] =
 
 #ifdef ECAT_CYCLIC_DATA
 
+int value;
 int dig1;
 
 struct timer_list timer;
@@ -152,7 +160,7 @@ static void run(unsigned long data)
     static unsigned long int k = 0;
     static int firstrun = 1;
 
-    static int klemme = 12;
+    static int klemme = 0;
     static int kanal = 0;
     static int up_down = 0;
     int wrap = 0;
@@ -174,14 +182,15 @@ static void run(unsigned long data)
     // Prozessdaten lesen
     if (!firstrun)
     {
-        klemme = next2004(&wrap);
-
         EtherCAT_read_process_data(ecat_master);
 
         // Daten lesen und skalieren
-        //value = EtherCAT_read_value(&ecat_master->slaves[5], 0) / 3276.7;
-        dig1 = EtherCAT_read_value(&ecat_master->slaves[3], 0);
+//        value = EtherCAT_read_value(&ecat_master->slaves[5], 0) / 3276; //.7; FIXME kein FP im Kernel ohne Schutz !!
+//        dig1 = EtherCAT_read_value(&ecat_master->slaves[3], 0);
     }
+    else
+        klemme = next2004(&wrap);
+
 
 #if 0
     // Daten schreiben
@@ -208,8 +217,10 @@ static void run(unsigned long data)
         }
     }
 
-    if (klemme >= 0)
+    if (klemme >= 0) {
         EtherCAT_write_value(&ecat_master->slaves[klemme], kanal,up_down);
+	//printk("ECAT write: Klemme: %d, Kanal: %d, Wert: %d\n",klemme,kanal,up_down); 
+    }
 
 #if 0
     EtherCAT_write_value(&ecat_master->slaves[13], 1, ms > 500 ? 0 : 1);
@@ -223,7 +234,7 @@ static void run(unsigned long data)
     firstrun = 0;
 #endif
 
-    timer.expires += HZ / 100;
+    timer.expires += HZ / 1000;
     add_timer(&timer);
 }
 
@@ -308,11 +319,14 @@ int __init init_module()
 #ifdef ECAT_CYCLIC_DATA
     EC_DBG("Starting cyclic sample thread.\n");
 
+    schedule();
+    mdelay(1000);
+    schedule();
     init_timer(&timer);
 
     timer.function = run;
     timer.data = 0;
-    timer.expires = jiffies; // Das erste Mal sofort feuern
+    timer.expires = jiffies+10; // Das erste Mal sofort feuern
     last_start_jiffies = timer.expires;
     add_timer(&timer);
 

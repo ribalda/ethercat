@@ -27,6 +27,7 @@ else
 CONFIG_FILE = ../ethercat.conf
 PWD = $(shell pwd)
 
+
 include $(CONFIG_FILE) # Für KERNELDIR
 
 default:

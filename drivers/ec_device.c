@@ -9,6 +9,7 @@
  *
  ***************************************************************/
 
+#include <linux/module.h>
 #include <linux/skbuff.h>
 #include <linux/if_ether.h>
 #include <linux/netdevice.h>
@@ -159,8 +160,6 @@ int EtherCAT_device_open(EtherCAT_device_t *ecd)
   return ecd->dev->open(ecd->dev);
 }
 
-EXPORT_SYMBOL(EtherCAT_device_open);
-
 /***************************************************************/
 
 /**
@@ -188,8 +187,6 @@ int EtherCAT_device_close(EtherCAT_device_t *ecd)
 
   return ecd->dev->stop(ecd->dev);
 }
-
-EXPORT_SYMBOL(EtherCAT_device_close);
 
 /***************************************************************/
 
@@ -301,13 +298,16 @@ void EtherCAT_device_call_isr(EtherCAT_device_t *ecd)
     budget = 1; /* Einen Frame empfangen */
 
     rtl8139_interrupt(0, ecd->dev, NULL);
+    ecd->dev->quota = 1;
     rtl8139_poll(ecd->dev, &budget);
 
+/* HM
     if (budget != 0)
     {
         EC_DBG(KERN_ERR "EtherCAT: Warning - Budget is %d!\n",
                budget);
     }
+*/
 }
 
 /***************************************************************/
@@ -346,6 +346,10 @@ void EtherCAT_device_debug(EtherCAT_device_t *ecd)
   EC_DBG(KERN_DEBUG "---EtherCAT device information end---\n");
 }
 
+/***************************************************************/
+
+EXPORT_SYMBOL(EtherCAT_device_open);
+EXPORT_SYMBOL(EtherCAT_device_close);
+EXPORT_SYMBOL(EtherCAT_device_clear);
 EXPORT_SYMBOL(EtherCAT_device_debug);
 
-/***************************************************************/

@@ -9,6 +9,8 @@
  *
  ***************************************************************/
 
+#include <linux/module.h>
+
 #include "ec_globals.h"
 #include "ec_types.h"
 
@@ -78,7 +80,6 @@ EtherCAT_slave_desc_t Beckhoff_EK1100[] =
   0, 0,
   NULL, NULL
 }};
-EXPORT_SYMBOL(Beckhoff_EK1100);
 
 EtherCAT_slave_desc_t Beckhoff_EL1014[] =
 {{
@@ -89,7 +90,6 @@ EtherCAT_slave_desc_t Beckhoff_EL1014[] =
   1, 4,
   read_1014, NULL
 }};
-EXPORT_SYMBOL(Beckhoff_EL1014);
 
 EtherCAT_slave_desc_t Beckhoff_EL2004[] =
 {{
@@ -100,7 +100,6 @@ EtherCAT_slave_desc_t Beckhoff_EL2004[] =
   1, 4,
   NULL, write_2004
 }};
-EXPORT_SYMBOL(Beckhoff_EL2004);
 
 EtherCAT_slave_desc_t Beckhoff_EL3102[] =
 {{
@@ -111,7 +110,6 @@ EtherCAT_slave_desc_t Beckhoff_EL3102[] =
   6, 2,
   read_31xx, NULL
 }};
-EXPORT_SYMBOL(Beckhoff_EL3102);
 
 EtherCAT_slave_desc_t Beckhoff_EL3162[] =
 {{
@@ -122,7 +120,6 @@ EtherCAT_slave_desc_t Beckhoff_EL3162[] =
   6, 2,
   read_31xx, NULL
 }};
-EXPORT_SYMBOL(Beckhoff_EL3162);
 
 EtherCAT_slave_desc_t Beckhoff_EL4102[] =
 {{
@@ -133,7 +130,6 @@ EtherCAT_slave_desc_t Beckhoff_EL4102[] =
   4, 2,
   NULL, write_4102
 }};
-EXPORT_SYMBOL(Beckhoff_EL4102);
 
 EtherCAT_slave_desc_t Beckhoff_EL5001[] =
 {{
@@ -144,7 +140,6 @@ EtherCAT_slave_desc_t Beckhoff_EL5001[] =
   0, 0,
   NULL, NULL
 }};
-EXPORT_SYMBOL(Beckhoff_EL5001);
 
 /***************************************************************/
 
@@ -162,3 +157,11 @@ struct slave_ident slave_idents[] =
 };
 
 /***************************************************************/
+
+EXPORT_SYMBOL(Beckhoff_EK1100);
+EXPORT_SYMBOL(Beckhoff_EL1014);
+EXPORT_SYMBOL(Beckhoff_EL2004);
+EXPORT_SYMBOL(Beckhoff_EL3102);
+EXPORT_SYMBOL(Beckhoff_EL3162);
+EXPORT_SYMBOL(Beckhoff_EL4102);
+EXPORT_SYMBOL(Beckhoff_EL5001);

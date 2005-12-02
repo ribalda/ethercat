@@ -9,6 +9,7 @@
  *
  ***************************************************************/
 
+#include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/string.h>
 #include <linux/slab.h>
@@ -52,8 +53,6 @@ int EtherCAT_master_init(EtherCAT_master_t *master,
   return 0;
 }
 
-EXPORT_SYMBOL(EtherCAT_master_init);
-
 /***************************************************************/
 
 /**
@@ -79,8 +78,6 @@ void EtherCAT_master_clear(EtherCAT_master_t *master)
   master->process_data_length = 0;
 }
 
-EXPORT_SYMBOL(EtherCAT_master_clear);
-
 /***************************************************************/
 
 /**
@@ -98,19 +95,29 @@ int EtherCAT_simple_send_receive(EtherCAT_master_t *master,
 {
   unsigned int tries_left;
 
+//  EC_DBG("ECAT send...\n");  //HM
+
   if (EtherCAT_simple_send(master, cmd) < 0) return -1;
+
+//   EC_DBG("ECAT call isr \n");  //HM
+  udelay(3);  //FIXME nur zum Test HM
 
   EtherCAT_device_call_isr(master->dev);
 
-  tries_left = 1000;
+  tries_left = 100;
   while (master->dev->state == ECAT_DS_SENT && tries_left)
   {
     udelay(1);
+//    EC_DBG("ECAT call isr \n");  //HM
     EtherCAT_device_call_isr(master->dev);
     tries_left--;
   }
 
+//   EC_DBG("ECAT recieve \n");  //HM
+
   if (EtherCAT_simple_receive(master, cmd) < 0) return -1;
+
+//   EC_DBG("ECAT recieve done\n"); //HM
 
   return 0;
 }
@@ -502,8 +509,6 @@ int EtherCAT_check_slaves(EtherCAT_master_t *master,
   return 0;
 }
 
-EXPORT_SYMBOL(EtherCAT_check_slaves);
-
 /***************************************************************/
 
 /**
@@ -635,7 +640,11 @@ int EtherCAT_state_change(EtherCAT_master_t *master,
 
   if (cmd.working_counter != 1)
   {
-    EC_DBG(KERN_ERR "EtherCAT: Could not set state %02X - Device did not respond!\n", state_and_ack);
+    EC_DBG(KERN_ERR "EtherCAT: Could not set state %02X - Device \"%s %s\" (%d) did not respond!\n", 
+	   state_and_ack,
+	   slave->desc->vendor_name, 
+	   slave->desc->product_name,
+	   slave->ring_position*(-1));
     return -3;
   }
 
@@ -928,8 +937,6 @@ int EtherCAT_activate_all_slaves(EtherCAT_master_t *master)
   return 0;
 }
 
-EXPORT_SYMBOL(EtherCAT_activate_all_slaves);
-
 /***************************************************************/
 
 /**
@@ -957,8 +964,6 @@ int EtherCAT_deactivate_all_slaves(EtherCAT_master_t *master)
 
   return ret;
 }
-
-EXPORT_SYMBOL(EtherCAT_deactivate_all_slaves);
 
 /***************************************************************/
 
@@ -988,8 +993,6 @@ int EtherCAT_write_process_data(EtherCAT_master_t *master)
   return 0;
 }
 
-EXPORT_SYMBOL(EtherCAT_write_process_data);
-
 /***************************************************************/
 
 /**
@@ -1010,7 +1013,7 @@ int EtherCAT_read_process_data(EtherCAT_master_t *master)
 
   EtherCAT_device_call_isr(master->dev);
 
-  tries_left = 1000;
+  tries_left = 100;
   while (master->dev->state == ECAT_DS_SENT && tries_left)
   {
     udelay(1);
@@ -1043,8 +1046,6 @@ int EtherCAT_read_process_data(EtherCAT_master_t *master)
   return 0;
 }
 
-EXPORT_SYMBOL(EtherCAT_read_process_data);
-
 /***************************************************************/
 
 /**
@@ -1058,8 +1059,6 @@ void EtherCAT_clear_process_data(EtherCAT_master_t *master)
   EtherCAT_device_call_isr(master->dev);
   master->dev->state = ECAT_DS_READY;
 }
-
-EXPORT_SYMBOL(EtherCAT_clear_process_data);
 
 /***************************************************************/
 
@@ -1097,3 +1096,12 @@ void output_debug_data(const EtherCAT_master_t *master)
 }
 
 /***************************************************************/
+
+EXPORT_SYMBOL(EtherCAT_master_init);
+EXPORT_SYMBOL(EtherCAT_master_clear);
+EXPORT_SYMBOL(EtherCAT_read_process_data);
+EXPORT_SYMBOL(EtherCAT_write_process_data);
+EXPORT_SYMBOL(EtherCAT_check_slaves);
+EXPORT_SYMBOL(EtherCAT_activate_all_slaves);
+EXPORT_SYMBOL(EtherCAT_clear_process_data);
+EXPORT_SYMBOL(EtherCAT_deactivate_all_slaves);
