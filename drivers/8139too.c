@@ -109,7 +109,7 @@
 
 */
 
-#define DRV_NAME	"8139too-ecat"
+#define DRV_NAME	"8139too_ecat"
 #define DRV_VERSION	"0.9.27"
 
 
@@ -135,6 +135,8 @@
 /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
 #include "ec_device.h"
+#include "ec_master.h"
+#include "ec_module.h"
 
 /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 
@@ -192,12 +194,15 @@ static int debug = -1;
 
 /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
-// Device index for EtherCAT device selection
-static int ec_device_index = -1;
-
+// Uncomment for debugging
 //#define ECAT_DEBUG
 
-EtherCAT_device_t rtl_ecat_dev;
+// Device index for EtherCAT device selection
+static int ec_device_index = -1;
+static int ec_device_master_index = 0;
+
+static EtherCAT_device_t rtl_ecat_dev;
+static EtherCAT_master_t *rtl_ecat_master = NULL;
 
 /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 
@@ -653,8 +658,10 @@ MODULE_PARM_DESC (full_duplex, "8139too: Force full duplex for board(s) (1)");
 
 /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
-MODULE_PARM(ec_device_index, "i");
+module_param(ec_device_index, int, -1);
+module_param(ec_device_master_index, int, 0);
 MODULE_PARM_DESC(ec_device_index, "Index of the device reserved for EtherCAT.");
+MODULE_PARM_DESC(ec_device_master_index, "Index of the EtherCAT master to register the device.");
 
 /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 
@@ -1016,7 +1023,7 @@ static int __devinit rtl8139_init_one (struct pci_dev *pdev,
                 if (EtherCAT_device_assign(&rtl_ecat_dev, dev) < 0)
                   goto err_out;
 
-                strcpy(dev->name,"ECAT");  //device name überschreiben
+                strcpy(dev->name,"ecat0"); //device name überschreiben
 	}
 
 	/* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
@@ -2955,22 +2962,69 @@ static int __init rtl8139_init_module (void)
 
         /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
+        printk(KERN_INFO "Initializing RTL8139-EtherCAT module.\n");
+
         EtherCAT_device_init(&rtl_ecat_dev);
         rtl_ecat_dev.isr = rtl8139_interrupt;
 
-        /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
+        if (pci_module_init(&rtl8139_pci_driver) < 0)
+        {
+          printk(KERN_ERR "Could not init PCI module.\n");
+          return -1;
+        }
 
-	return pci_module_init (&rtl8139_pci_driver);
+        printk(KERN_INFO "EtherCAT device index is %i.\n", ec_device_index);
+
+        if (rtl_ecat_dev.dev)
+        {
+          if ((rtl_ecat_master = EtherCAT_master(ec_device_master_index)) == NULL)
+          {
+            printk(KERN_ERR "Could not get EtherCAT master %i.\n",
+                   ec_device_master_index);
+            goto out_module;
+          }
+
+          printk(KERN_INFO "Registering EtherCAT device...\n");
+          if (EtherCAT_register_device(rtl_ecat_master, &rtl_ecat_dev) < 0)
+          {
+            printk(KERN_ERR "Could not register device.\n");
+            goto out_module;
+          }
+
+          printk(KERN_INFO "EtherCAT device registered and opened.\n");
+        }
+        else
+        {
+          printk(KERN_WARNING "NO EtherCAT device registered!\n");
+        }
+
+        return 0;
+
+      out_module:
+
+        pci_unregister_driver(&rtl8139_pci_driver);
+        return -1;
+
+        /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 }
 
 
 static void __exit rtl8139_cleanup_module (void)
 {
-	pci_unregister_driver (&rtl8139_pci_driver);
-
         /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
+        printk(KERN_INFO "Cleaning up RTL8139-EtherCAT module...\n");
+
+        if (rtl_ecat_master && rtl_ecat_dev.dev)
+        {
+          printk(KERN_INFO "Unregistering RTL8139-EtherCAT device...\n");
+          EtherCAT_unregister_device(rtl_ecat_master, &rtl_ecat_dev);
+        }
+
+	pci_unregister_driver(&rtl8139_pci_driver);
         EtherCAT_device_clear(&rtl_ecat_dev);
+
+        printk(KERN_INFO "RTL8139-EtherCAT module cleaned up.\n");
 
         /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 }
@@ -2978,5 +3032,3 @@ static void __exit rtl8139_cleanup_module (void)
 
 module_init(rtl8139_init_module);
 module_exit(rtl8139_cleanup_module);
-
-EXPORT_SYMBOL(rtl_ecat_dev);

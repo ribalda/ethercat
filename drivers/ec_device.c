@@ -144,7 +144,7 @@ int EtherCAT_device_open(EtherCAT_device_t *ecd)
 
   if (!ecd->dev)
   {
-    printk(KERN_ERR "EtherCAT: No device to open!\n");
+    printk(KERN_ERR "EtherCAT: No net_device to open!\n");
     return -1;
   }
 
@@ -174,12 +174,9 @@ int EtherCAT_device_close(EtherCAT_device_t *ecd)
     return -1;
   }
 
-  printk("EtherCAT: txcnt: %u, rxcnt: %u\n",
+  printk("EtherCAT: Stopping device (txcnt: %u, rxcnt: %u)\n",
          (unsigned int) ecd->tx_intr_cnt,
          (unsigned int) ecd->rx_intr_cnt);
-
-  printk("EtherCAT: Stopping device at 0x%X\n",
-         (unsigned int) ecd->dev);
 
   return ecd->dev->stop(ecd->dev);
 }
@@ -329,9 +326,10 @@ void EtherCAT_device_debug(EtherCAT_device_t *ecd)
 
 /***************************************************************/
 
+EXPORT_SYMBOL(EtherCAT_device_init);
+EXPORT_SYMBOL(EtherCAT_device_clear);
+EXPORT_SYMBOL(EtherCAT_device_assign);
 EXPORT_SYMBOL(EtherCAT_device_open);
 EXPORT_SYMBOL(EtherCAT_device_close);
-EXPORT_SYMBOL(EtherCAT_device_clear);
-EXPORT_SYMBOL(EtherCAT_device_debug);
 
 /***************************************************************/

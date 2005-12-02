@@ -24,32 +24,21 @@
    Konstruktor des EtherCAT-Masters.
 
    @param master Zeiger auf den zu initialisierenden
-   EtherCAT-Master
-   @param dev Zeiger auf das EtherCAT-Gerät, mit dem der
-   Master arbeiten soll
+                 EtherCAT-Master
 
    @return 0 bei Erfolg, sonst < 0 (= dev ist NULL)
 */
 
-int EtherCAT_master_init(EtherCAT_master_t *master,
-                         EtherCAT_device_t *dev)
+void EtherCAT_master_init(EtherCAT_master_t *master)
 {
-  if (!dev)
-  {
-    printk(KERN_ERR "EtherCAT: Master init without device!\n");
-    return -1;
-  }
-
   master->slaves = NULL;
   master->slave_count = 0;
-  master->dev = dev;
+  master->dev = NULL;
   master->command_index = 0x00;
   master->tx_data_length = 0;
   master->process_data = NULL;
   master->process_data_length = 0;
   master->debug_level = 0;
-
-  return 0;
 }
 
 /***************************************************************/
@@ -75,6 +64,73 @@ void EtherCAT_master_clear(EtherCAT_master_t *master)
   }
 
   master->process_data_length = 0;
+}
+
+/***************************************************************/
+
+/**
+   Setzt das EtherCAT-Geraet, auf dem der Master arbeitet.
+
+   Registriert das Geraet beim master, der es daraufhin oeffnet.
+
+   @param master Der EtherCAT-Master
+   @param device Das EtherCAT-Geraet
+   @return 0, wenn alles o.k.,
+           < 0, wenn bereits ein Geraet registriert
+           oder das Geraet nicht geoeffnet werden konnte.
+*/
+
+int EtherCAT_register_device(EtherCAT_master_t *master,
+                             EtherCAT_device_t *device)
+{
+  if (!master || !device)
+  {
+    printk(KERN_ERR "EtherCAT: Illegal parameters for register_device()!\n");
+    return -1;
+  }
+
+  if (master->dev)
+  {
+    printk(KERN_ERR "EtherCAT: Master already has a device.\n");
+    return -1;
+  }
+
+  if (EtherCAT_device_open(device) < 0)
+  {
+    printk(KERN_ERR "EtherCAT: Could not open device %X!\n",
+           (unsigned int) master->dev);
+    return -1;
+  }
+
+  master->dev = device;
+
+  return 0;
+}
+
+/***************************************************************/
+
+/**
+   Loescht das EtherCAT-Geraet, auf dem der Master arbeitet.
+
+   @param master Der EtherCAT-Master
+   @param device Das EtherCAT-Geraet
+*/
+
+void EtherCAT_unregister_device(EtherCAT_master_t *master,
+                                EtherCAT_device_t *device)
+{
+  if (master->dev != device)
+  {
+    printk(KERN_WARNING "EtherCAT: Trying to unregister unknown device.\n");
+    return;
+  }
+
+  if (EtherCAT_device_close(master->dev) < 0)
+  {
+    printk(KERN_WARNING "EtherCAT: Could not close device!\n");
+  }
+
+  master->dev = NULL;
 }
 
 /***************************************************************/
@@ -325,17 +381,9 @@ int EtherCAT_check_slaves(EtherCAT_master_t *master,
   unsigned int i, j, found, length, pos;
   unsigned char data[2];
 
-  // EtherCAT_clear_slaves() must be called before!
-  if (master->slaves || master->slave_count)
-  {
-    printk(KERN_ERR "EtherCAT duplicate slave check!");
-    return -1;
-  }
-
-  // No slaves.
   if (slave_count == 0)
   {
-    printk(KERN_ERR "EtherCAT: No slaves in list!");
+    printk(KERN_ERR "EtherCAT: No slaves in list!\n");
     return -1;
   }
 
@@ -1090,9 +1138,13 @@ void output_debug_data(const EtherCAT_master_t *master)
 
 EXPORT_SYMBOL(EtherCAT_master_init);
 EXPORT_SYMBOL(EtherCAT_master_clear);
+EXPORT_SYMBOL(EtherCAT_register_device);
+EXPORT_SYMBOL(EtherCAT_unregister_device);
 EXPORT_SYMBOL(EtherCAT_read_process_data);
 EXPORT_SYMBOL(EtherCAT_write_process_data);
 EXPORT_SYMBOL(EtherCAT_check_slaves);
 EXPORT_SYMBOL(EtherCAT_activate_all_slaves);
 EXPORT_SYMBOL(EtherCAT_clear_process_data);
 EXPORT_SYMBOL(EtherCAT_deactivate_all_slaves);
+
+/***************************************************************/

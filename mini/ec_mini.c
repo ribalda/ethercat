@@ -15,27 +15,17 @@
 #include "../drivers/ec_master.h"
 #include "../drivers/ec_device.h"
 #include "../drivers/ec_types.h"
+#include "../drivers/ec_module.h"
 
 /******************************************************************************/
 
-#define ECAT
-
-#define ECAT_OPEN
-#define ECAT_MASTER
-#define ECAT_SLAVES
+// Auskommentieren, wenn keine zyklischen Daten erwuenscht
 #define ECAT_CYCLIC_DATA
 
 /******************************************************************************/
 
-#ifdef ECAT
-
-extern EtherCAT_device_t rtl_ecat_dev;
-
-#ifdef ECAT_MASTER
 static EtherCAT_master_t *ecat_master = NULL;
-#endif
 
-#ifdef ECAT_SLAVES
 static EtherCAT_slave_t ecat_slaves[] =
 {
 #if 0
@@ -91,10 +81,6 @@ static EtherCAT_slave_t ecat_slaves[] =
 
 #define ECAT_SLAVES_COUNT (sizeof(ecat_slaves) / sizeof(EtherCAT_slave_t))
 
-#endif // ECAT_SLAVES
-
-#endif // ECAT
-
 #ifdef ECAT_CYCLIC_DATA
 
 int value;
@@ -111,7 +97,6 @@ unsigned long last_start_jiffies;
  *
  *****************************************************************************/
 
-#ifdef ECAT
 #ifdef ECAT_CYCLIC_DATA
 
 static int next2004(int *wrap)
@@ -138,7 +123,6 @@ static int next2004(int *wrap)
     return -1;
 }
 #endif
-#endif
 
 /******************************************************************************
  *
@@ -152,7 +136,6 @@ static int next2004(int *wrap)
 
 static void run(unsigned long data)
 {
-#ifdef ECAT
     static int ms = 0;
     static int cnt = 0;
     static unsigned long int k = 0;
@@ -230,7 +213,6 @@ static void run(unsigned long data)
     rdtscl(k);
     EtherCAT_write_process_data(ecat_master);
     firstrun = 0;
-#endif
 
     timer.expires += HZ / 1000;
     add_timer(&timer);
@@ -246,119 +228,50 @@ static void run(unsigned long data)
 
 int __init init_module()
 {
-#ifdef ECAT
-#ifdef ECAT_OPEN
-    int rv = -1;
-#endif
-#endif
+  printk(KERN_INFO "=== Starting Minimal EtherCAT environment... ===\n");
 
-    printk(KERN_INFO "=== Starting Minimal EtherCAT environment... ===\n");
+  if ((ecat_master = EtherCAT_master(0)) == NULL)
+  {
+    printk(KERN_ERR "No EtherCAT master available!\n");
+    return -1;
+  }
 
-#ifdef ECAT
+  printk("Checking EtherCAT slaves.\n");
 
-    EtherCAT_device_debug(&rtl_ecat_dev);
+  if (EtherCAT_check_slaves(ecat_master, ecat_slaves, ECAT_SLAVES_COUNT) != 0)
+  {
+    printk(KERN_ERR "EtherCAT: Could not init slaves!\n");
+    return -1;
+  }
 
-#ifdef ECAT_OPEN
-    printk("Opening EtherCAT device.\n");
+  printk("Activating all EtherCAT slaves.\n");
 
-    // HIER PASSIERT DER FEHLER:
-    if (EtherCAT_device_open(&rtl_ecat_dev) < 0)
-    {
-        printk(KERN_ERR "msr_modul: Could not initialize EtherCAT NIC.\n");
-        goto out_nothing;
-    }
-
-    if (!rtl_ecat_dev.dev) // Es gibt kein EtherCAT-Device
-    {
-        printk(KERN_ERR "msr_modul: No EtherCAT device!\n");
-        goto out_close;
-    }
-#endif // ECAT_OPEN
-
-#ifdef ECAT_MASTER
-    printk("Initialising EtherCAT master\n");
-
-    if ((ecat_master = (EtherCAT_master_t *) kmalloc(sizeof(EtherCAT_master_t), GFP_KERNEL)) == 0)
-    {
-        printk(KERN_ERR "msr_modul: Could not alloc memory for EtherCAT master!\n");
-        goto out_close;
-    }
-
-    if (EtherCAT_master_init(ecat_master, &rtl_ecat_dev) < 0)
-    {
-        printk(KERN_ERR "EtherCAT could not init master!\n");
-        goto out_master;
-    }
-
-    //ecat_master->debug_level = 1;
-
-#endif // ECAT_MASTER
-
-#ifdef ECAT_SLAVES
-    printk("Checking EtherCAT slaves.\n");
-
-    if (EtherCAT_check_slaves(ecat_master, ecat_slaves, ECAT_SLAVES_COUNT) != 0)
-    {
-        printk(KERN_ERR "EtherCAT: Could not init slaves!\n");
-        goto out_masterclear;
-    }
-
-    printk("Activating all EtherCAT slaves.\n");
-
-    if (EtherCAT_activate_all_slaves(ecat_master) != 0)
-    {
-        printk(KERN_ERR "EtherCAT: Could not activate slaves!\n");
-        goto out_masterclear;
-    }
-#endif
-
-#endif // ECAT
+  if (EtherCAT_activate_all_slaves(ecat_master) != 0)
+  {
+    printk(KERN_ERR "EtherCAT: Could not activate slaves!\n");
+    return -1;
+  }
 
 #ifdef ECAT_CYCLIC_DATA
-    printk("Starting cyclic sample thread.\n");
+  printk("Starting cyclic sample thread.\n");
 
-    schedule();
-    mdelay(1000);
-    schedule();
-    init_timer(&timer);
+  schedule();
+  mdelay(1000);
+  schedule();
+  init_timer(&timer);
 
-    timer.function = run;
-    timer.data = 0;
-    timer.expires = jiffies+10; // Das erste Mal sofort feuern
-    last_start_jiffies = timer.expires;
-    add_timer(&timer);
+  timer.function = run;
+  timer.data = 0;
+  timer.expires = jiffies+10; // Das erste Mal sofort feuern
+  last_start_jiffies = timer.expires;
+  add_timer(&timer);
 
-    printk("Initialised sample thread.\n");
+  printk("Initialised sample thread.\n");
 #endif
 
-    printk(KERN_INFO "=== Minimal EtherCAT environment started. ===\n");
+  printk(KERN_INFO "=== Minimal EtherCAT environment started. ===\n");
 
-    return 0;
-
-#ifdef ECAT
-
-#ifdef ECAT_SLAVES
- out_masterclear:
-    printk(KERN_INFO "Clearing EtherCAT master.\n");
-    EtherCAT_master_clear(ecat_master);
-#endif
-
-#ifdef ECAT_MASTER
- out_master:
-    printk(KERN_INFO "Freeing EtherCAT master.\n");
-    kfree(ecat_master);
-#endif
-
-#ifdef ECAT_OPEN
- out_close:
-    printk(KERN_INFO "Closing device.\n");
-    EtherCAT_device_close(&rtl_ecat_dev);
-
- out_nothing:
-    return rv;
-#endif
-
-#endif // ECAT
+  return 0;
 }
 
 /******************************************************************************
@@ -371,48 +284,16 @@ void __exit cleanup_module()
 {
     printk(KERN_INFO "=== Stopping Minimal EtherCAT environment... ===\n");
 
-#ifdef ECAT_MASTER
-
-#ifdef ECAT
     if (ecat_master)
     {
-#endif
-        //ecat_master->debug_level = 1;
-
 #ifdef ECAT_CYCLIC_DATA
-
-        del_timer_sync(&timer);
-
-#ifdef ECAT
-        EtherCAT_clear_process_data(ecat_master);
-#endif
-
+      del_timer_sync(&timer);
+      EtherCAT_clear_process_data(ecat_master);
 #endif // ECAT_CYCLIC_DATA
 
-#ifdef ECAT
-
-#ifdef ECAT_SLAVES
-        printk(KERN_INFO "Deactivating slaves.\n");
-        EtherCAT_deactivate_all_slaves(ecat_master);
-#endif
-
-        printk(KERN_INFO "Clearing EtherCAT master.\n");
-        EtherCAT_master_clear(ecat_master);
-
-        printk(KERN_INFO "Freeing EtherCAT master.\n");
-        kfree(ecat_master);
-        ecat_master = NULL;
+      printk(KERN_INFO "Deactivating slaves.\n");
+      EtherCAT_deactivate_all_slaves(ecat_master);
     }
-#endif // ECAT
-
-#endif // ECAT_MASTER
-
-#ifdef ECAT
-#ifdef ECAT_OPEN
-    printk(KERN_INFO "Closing device.\n");
-    EtherCAT_device_close(&rtl_ecat_dev);
-#endif
-#endif
 
     printk(KERN_INFO "=== Minimal EtherCAT environment stopped. ===\n");
 }
