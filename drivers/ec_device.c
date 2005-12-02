@@ -16,7 +16,6 @@
 #include <linux/delay.h>
 
 #include "ec_device.h"
-#include "ec_dbg.h"
 
 /***************************************************************/
 
@@ -92,13 +91,13 @@ int EtherCAT_device_assign(EtherCAT_device_t *ecd,
 {
   if (!dev)
   {
-    EC_DBG("EtherCAT: Device is NULL!\n");
+    printk("EtherCAT: Device is NULL!\n");
     return -1;
   }
 
   if ((ecd->tx_skb = dev_alloc_skb(ECAT_FRAME_BUFFER_SIZE)) == NULL)
   {
-    EC_DBG(KERN_ERR "EtherCAT: Could not allocate device tx socket buffer!\n");
+    printk(KERN_ERR "EtherCAT: Could not allocate device tx socket buffer!\n");
     return -1;
   }
 
@@ -107,7 +106,7 @@ int EtherCAT_device_assign(EtherCAT_device_t *ecd,
     dev_kfree_skb(ecd->tx_skb);
     ecd->tx_skb = NULL;
 
-    EC_DBG(KERN_ERR "EtherCAT: Could not allocate device rx socket buffer!\n");
+    printk(KERN_ERR "EtherCAT: Could not allocate device rx socket buffer!\n");
     return -1;
   }
 
@@ -115,7 +114,7 @@ int EtherCAT_device_assign(EtherCAT_device_t *ecd,
   ecd->tx_skb->dev = dev;
   ecd->rx_skb->dev = dev;
 
-  EC_DBG("EtherCAT: Assigned Device %X.\n", (unsigned) dev);
+  printk("EtherCAT: Assigned Device %X.\n", (unsigned) dev);
 
   return 0;
 }
@@ -139,13 +138,13 @@ int EtherCAT_device_open(EtherCAT_device_t *ecd)
 {
   if (!ecd)
   {
-    EC_DBG(KERN_ERR "EtherCAT: Trying to open a NULL device!\n");
+    printk(KERN_ERR "EtherCAT: Trying to open a NULL device!\n");
     return -1;
   }
 
   if (!ecd->dev)
   {
-    EC_DBG(KERN_ERR "EtherCAT: No device to open!\n");
+    printk(KERN_ERR "EtherCAT: No device to open!\n");
     return -1;
   }
 
@@ -171,15 +170,15 @@ int EtherCAT_device_close(EtherCAT_device_t *ecd)
 {
   if (!ecd->dev)
   {
-    EC_DBG("EtherCAT: No device to close!\n");
+    printk("EtherCAT: No device to close!\n");
     return -1;
   }
 
-  EC_DBG("EtherCAT: txcnt: %u, rxcnt: %u\n",
+  printk("EtherCAT: txcnt: %u, rxcnt: %u\n",
          (unsigned int) ecd->tx_intr_cnt,
          (unsigned int) ecd->rx_intr_cnt);
 
-  EC_DBG("EtherCAT: Stopping device at 0x%X\n",
+  printk("EtherCAT: Stopping device at 0x%X\n",
          (unsigned int) ecd->dev);
 
   return ecd->dev->stop(ecd->dev);
@@ -211,7 +210,7 @@ int EtherCAT_device_send(EtherCAT_device_t *ecd,
 
   if (ecd->state == ECAT_DS_SENT)
   {
-    EC_DBG(KERN_WARNING "EtherCAT: Trying to send frame while last was not received!\n");
+    printk(KERN_WARNING "EtherCAT: Trying to send frame while last was not received!\n");
   }
 
   skb_trim(ecd->tx_skb, 0); // Clear transmit socket buffer
@@ -224,7 +223,7 @@ int EtherCAT_device_send(EtherCAT_device_t *ecd,
   // Add Ethernet-II-Header
   if ((eth = (struct ethhdr *) skb_push(ecd->tx_skb, ETH_HLEN)) == NULL)
   {
-    EC_DBG(KERN_ERR "EtherCAT: device_send - Could not allocate Ethernet-II header!\n");
+    printk(KERN_ERR "EtherCAT: device_send - Could not allocate Ethernet-II header!\n");
     return -1;
   }
 
@@ -262,13 +261,13 @@ int EtherCAT_device_receive(EtherCAT_device_t *ecd,
 {
   if (ecd->state != ECAT_DS_RECEIVED)
   {
-    EC_DBG(KERN_ERR "EtherCAT: receive - Nothing received!\n");
+    printk(KERN_ERR "EtherCAT: receive - Nothing received!\n");
     return -1;
   }
 
   if (ecd->rx_data_length > ECAT_FRAME_BUFFER_SIZE)
   {
-    EC_DBG(KERN_ERR "EtherCAT: receive - Reveived frame too long (%i Bytes)!\n",
+    printk(KERN_ERR "EtherCAT: receive - Reveived frame too long (%i Bytes)!\n",
            ecd->rx_data_length);
     return -1;
   }
@@ -303,29 +302,29 @@ void EtherCAT_device_call_isr(EtherCAT_device_t *ecd)
 
 void EtherCAT_device_debug(EtherCAT_device_t *ecd)
 {
-  EC_DBG(KERN_DEBUG "---EtherCAT device information begin---\n");
+  printk(KERN_DEBUG "---EtherCAT device information begin---\n");
 
   if (ecd)
   {
-    EC_DBG(KERN_DEBUG "Assigned net_device: %X\n", (unsigned) ecd->dev);
-    EC_DBG(KERN_DEBUG "Transmit socket buffer: %X\n", (unsigned) ecd->tx_skb);
-    EC_DBG(KERN_DEBUG "Receive socket buffer: %X\n", (unsigned) ecd->rx_skb);
-    EC_DBG(KERN_DEBUG "Time of last transmission: %u\n", (unsigned) ecd->tx_time);
-    EC_DBG(KERN_DEBUG "Time of last receive: %u\n", (unsigned) ecd->rx_time);
-    EC_DBG(KERN_DEBUG "Number of transmit interrupts: %u\n", (unsigned) ecd->tx_intr_cnt);
-    EC_DBG(KERN_DEBUG "Number of receive interrupts: %u\n", (unsigned) ecd->rx_intr_cnt);
-    EC_DBG(KERN_DEBUG "Total Number of interrupts: %u\n", (unsigned) ecd->intr_cnt);
-    EC_DBG(KERN_DEBUG "Actual device state: %i\n", (int) ecd->state);
-    EC_DBG(KERN_DEBUG "Receive buffer: %X\n", (unsigned) ecd->rx_data);
-    EC_DBG(KERN_DEBUG "Receive buffer fill state: %u/%u\n",
+    printk(KERN_DEBUG "Assigned net_device: %X\n", (unsigned) ecd->dev);
+    printk(KERN_DEBUG "Transmit socket buffer: %X\n", (unsigned) ecd->tx_skb);
+    printk(KERN_DEBUG "Receive socket buffer: %X\n", (unsigned) ecd->rx_skb);
+    printk(KERN_DEBUG "Time of last transmission: %u\n", (unsigned) ecd->tx_time);
+    printk(KERN_DEBUG "Time of last receive: %u\n", (unsigned) ecd->rx_time);
+    printk(KERN_DEBUG "Number of transmit interrupts: %u\n", (unsigned) ecd->tx_intr_cnt);
+    printk(KERN_DEBUG "Number of receive interrupts: %u\n", (unsigned) ecd->rx_intr_cnt);
+    printk(KERN_DEBUG "Total Number of interrupts: %u\n", (unsigned) ecd->intr_cnt);
+    printk(KERN_DEBUG "Actual device state: %i\n", (int) ecd->state);
+    printk(KERN_DEBUG "Receive buffer: %X\n", (unsigned) ecd->rx_data);
+    printk(KERN_DEBUG "Receive buffer fill state: %u/%u\n",
            (unsigned) ecd->rx_data_length, ECAT_FRAME_BUFFER_SIZE);
   }
   else
   {
-    EC_DBG(KERN_DEBUG "Device is NULL!\n");
+    printk(KERN_DEBUG "Device is NULL!\n");
   }
 
-  EC_DBG(KERN_DEBUG "---EtherCAT device information end---\n");
+  printk(KERN_DEBUG "---EtherCAT device information end---\n");
 }
 
 /***************************************************************/

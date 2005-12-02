@@ -17,7 +17,6 @@
 
 #include "ec_globals.h"
 #include "ec_master.h"
-#include "ec_dbg.h"
 
 /***************************************************************/
 
@@ -37,7 +36,7 @@ int EtherCAT_master_init(EtherCAT_master_t *master,
 {
   if (!dev)
   {
-    EC_DBG(KERN_ERR "EtherCAT: Master init without device!\n");
+    printk(KERN_ERR "EtherCAT: Master init without device!\n");
     return -1;
   }
 
@@ -95,12 +94,9 @@ int EtherCAT_simple_send_receive(EtherCAT_master_t *master,
 {
   unsigned int tries_left;
 
-//  EC_DBG("ECAT send...\n");  //HM
-
   if (EtherCAT_simple_send(master, cmd) < 0) return -1;
 
-//   EC_DBG("ECAT call isr \n");  //HM
-  udelay(3);  //FIXME nur zum Test HM
+  udelay(3);
 
   EtherCAT_device_call_isr(master->dev);
 
@@ -108,16 +104,11 @@ int EtherCAT_simple_send_receive(EtherCAT_master_t *master,
   while (master->dev->state == ECAT_DS_SENT && tries_left)
   {
     udelay(1);
-//    EC_DBG("ECAT call isr \n");  //HM
     EtherCAT_device_call_isr(master->dev);
     tries_left--;
   }
 
-//   EC_DBG("ECAT recieve \n");  //HM
-
   if (EtherCAT_simple_receive(master, cmd) < 0) return -1;
-
-//   EC_DBG("ECAT recieve done\n"); //HM
 
   return 0;
 }
@@ -140,12 +131,12 @@ int EtherCAT_simple_send(EtherCAT_master_t *master,
 
   if (master->debug_level > 0)
   {
-    EC_DBG(KERN_DEBUG "EtherCAT_send_receive_command\n");
+    printk(KERN_DEBUG "EtherCAT_send_receive_command\n");
   }
 
   if (cmd->state != ECAT_CS_READY)
   {
-    EC_DBG(KERN_WARNING "EtherCAT_send_receive_command: Command not in ready state!\n");
+    printk(KERN_WARNING "EtherCAT_send_receive_command: Command not in ready state!\n");
   }
 
   length = cmd->data_length + 12;
@@ -153,7 +144,7 @@ int EtherCAT_simple_send(EtherCAT_master_t *master,
 
   if (framelength > ECAT_FRAME_BUFFER_SIZE)
   {
-    EC_DBG(KERN_ERR "EtherCAT: Frame too long (%i)!\n", framelength);
+    printk(KERN_ERR "EtherCAT: Frame too long (%i)!\n", framelength);
     return -1;
   }
 
@@ -161,7 +152,7 @@ int EtherCAT_simple_send(EtherCAT_master_t *master,
 
   if (master->debug_level > 0)
   {
-    EC_DBG(KERN_DEBUG "Frame length: %i\n", framelength);
+    printk(KERN_DEBUG "Frame length: %i\n", framelength);
   }
 
   master->tx_data[0] = length & 0xFF;
@@ -172,7 +163,7 @@ int EtherCAT_simple_send(EtherCAT_master_t *master,
 
   if (master->debug_level > 0)
   {
-    EC_DBG(KERN_DEBUG "Sending command index %i\n", cmd->index);
+    printk(KERN_DEBUG "Sending command index %i\n", cmd->index);
   }
 
   cmd->state = ECAT_CS_SENT;
@@ -210,19 +201,19 @@ int EtherCAT_simple_send(EtherCAT_master_t *master,
 
   if (master->debug_level > 0)
   {
-    EC_DBG(KERN_DEBUG "device send...\n");
+    printk(KERN_DEBUG "device send...\n");
   }
 
   // Send frame
   if (EtherCAT_device_send(master->dev, master->tx_data, framelength) != 0)
   {
-    EC_DBG(KERN_ERR "EtherCAT: Could not send!\n");
+    printk(KERN_ERR "EtherCAT: Could not send!\n");
     return -1;
   }
 
   if (master->debug_level > 0)
   {
-    EC_DBG(KERN_DEBUG "EtherCAT_send done.\n");
+    printk(KERN_DEBUG "EtherCAT_send done.\n");
   }
 
   return 0;
@@ -257,7 +248,7 @@ int EtherCAT_simple_receive(EtherCAT_master_t *master,
 
   if (master->rx_data_length < 2)
   {
-    EC_DBG(KERN_ERR "EtherCAT: Received frame with incomplete EtherCAT header!\n");
+    printk(KERN_ERR "EtherCAT: Received frame with incomplete EtherCAT header!\n");
     output_debug_data(master);
     return -1;
   }
@@ -267,7 +258,7 @@ int EtherCAT_simple_receive(EtherCAT_master_t *master,
 
   if (length > master->rx_data_length)
   {
-    EC_DBG(KERN_ERR "EtherCAT: Received corrupted frame (length does not match)!\n");
+    printk(KERN_ERR "EtherCAT: Received corrupted frame (length does not match)!\n");
     output_debug_data(master);
     return -1;
   }
@@ -278,7 +269,7 @@ int EtherCAT_simple_receive(EtherCAT_master_t *master,
 
   if (master->rx_data_length - 2 < length + 12)
   {
-    EC_DBG(KERN_ERR "EtherCAT: Received frame with incomplete command data!\n");
+    printk(KERN_ERR "EtherCAT: Received frame with incomplete command data!\n");
     output_debug_data(master);
     return -1;
   }
@@ -299,7 +290,7 @@ int EtherCAT_simple_receive(EtherCAT_master_t *master,
   }
   else
   {
-    EC_DBG(KERN_WARNING "EtherCAT: WARNING - Send/Receive anomaly!\n");
+    printk(KERN_WARNING "EtherCAT: WARNING - Send/Receive anomaly!\n");
     output_debug_data(master);
   }
 
@@ -337,14 +328,14 @@ int EtherCAT_check_slaves(EtherCAT_master_t *master,
   // EtherCAT_clear_slaves() must be called before!
   if (master->slaves || master->slave_count)
   {
-    EC_DBG(KERN_ERR "EtherCAT duplicate slave check!");
+    printk(KERN_ERR "EtherCAT duplicate slave check!");
     return -1;
   }
 
   // No slaves.
   if (slave_count == 0)
   {
-    EC_DBG(KERN_ERR "EtherCAT: No slaves in list!");
+    printk(KERN_ERR "EtherCAT: No slaves in list!");
     return -1;
   }
 
@@ -356,13 +347,13 @@ int EtherCAT_check_slaves(EtherCAT_master_t *master,
 
   if (cmd.working_counter != slave_count)
   {
-    EC_DBG(KERN_ERR "EtherCAT: Wrong number of slaves on bus: %i / %i\n",
+    printk(KERN_ERR "EtherCAT: Wrong number of slaves on bus: %i / %i\n",
            cmd.working_counter, slave_count);
     return -1;
   }
   else
   {
-    EC_DBG("EtherCAT: Found all %i slaves.\n", slave_count);
+    printk("EtherCAT: Found all %i slaves.\n", slave_count);
   }
 
   // For every slave in the list
@@ -372,7 +363,7 @@ int EtherCAT_check_slaves(EtherCAT_master_t *master,
 
     if (!cur->desc)
     {
-      EC_DBG(KERN_ERR "EtherCAT: Slave %i has no description.\n", i);
+      printk(KERN_ERR "EtherCAT: Slave %i has no description.\n", i);
       return -1;
     }
 
@@ -390,7 +381,7 @@ int EtherCAT_check_slaves(EtherCAT_master_t *master,
 
     if (cmd.working_counter != 1)
     {
-      EC_DBG(KERN_ERR "EtherCAT: Slave %i did not repond while writing station address!\n", i);
+      printk(KERN_ERR "EtherCAT: Slave %i did not repond while writing station address!\n", i);
       return -1;
     }
 
@@ -401,7 +392,7 @@ int EtherCAT_check_slaves(EtherCAT_master_t *master,
 
     if (cmd.working_counter != 1)
     {
-      EC_DBG(KERN_ERR "EtherCAT: Slave %i did not respond while reading base data!\n", i);
+      printk(KERN_ERR "EtherCAT: Slave %i did not respond while reading base data!\n", i);
       return -1;
     }
 
@@ -415,28 +406,28 @@ int EtherCAT_check_slaves(EtherCAT_master_t *master,
     if (EtherCAT_read_slave_information(master, cur->station_address,
                                         0x0008, &cur->vendor_id) != 0)
     {
-      EC_DBG(KERN_ERR "EtherCAT: Could not read SII vendor id!\n");
+      printk(KERN_ERR "EtherCAT: Could not read SII vendor id!\n");
       return -1;
     }
 
     if (EtherCAT_read_slave_information(master, cur->station_address,
                                         0x000A, &cur->product_code) != 0)
     {
-      EC_DBG(KERN_ERR "EtherCAT: Could not read SII product code!\n");
+      printk(KERN_ERR "EtherCAT: Could not read SII product code!\n");
       return -1;
     }
 
     if (EtherCAT_read_slave_information(master, cur->station_address,
                                         0x000C, &cur->revision_number) != 0)
     {
-      EC_DBG(KERN_ERR "EtherCAT: Could not read SII revision number!\n");
+      printk(KERN_ERR "EtherCAT: Could not read SII revision number!\n");
       return -1;
     }
 
     if (EtherCAT_read_slave_information(master, cur->station_address,
                                         0x000E, &cur->serial_number) != 0)
     {
-      EC_DBG(KERN_ERR "EtherCAT: Could not read SII serial number!\n");
+      printk(KERN_ERR "EtherCAT: Could not read SII serial number!\n");
       return -1;
     }
 
@@ -453,7 +444,7 @@ int EtherCAT_check_slaves(EtherCAT_master_t *master,
 
         if (cur->desc != slave_idents[j].desc)
         {
-          EC_DBG(KERN_ERR "EtherCAT: Unexpected slave device \"%s %s\""
+          printk(KERN_ERR "EtherCAT: Unexpected slave device \"%s %s\""
                  " at position %i. Expected: \"%s %s\"\n",
                  slave_idents[j].desc->vendor_name,
                  slave_idents[j].desc->product_name, i,
@@ -467,7 +458,7 @@ int EtherCAT_check_slaves(EtherCAT_master_t *master,
 
     if (!found)
     {
-      EC_DBG(KERN_ERR "EtherCAT: Unknown slave device"
+      printk(KERN_ERR "EtherCAT: Unknown slave device"
              " (vendor %X, code %X) at position %i.\n",
              i, cur->vendor_id, cur->product_code);
       return -1;
@@ -483,7 +474,7 @@ int EtherCAT_check_slaves(EtherCAT_master_t *master,
   if ((master->process_data = (unsigned char *)
        kmalloc(sizeof(unsigned char) * length, GFP_KERNEL)) == NULL)
   {
-    EC_DBG(KERN_ERR "EtherCAT: Could not allocate %i bytes for process data.\n", length);
+    printk(KERN_ERR "EtherCAT: Could not allocate %i bytes for process data.\n", length);
     return -1;
   }
 
@@ -496,7 +487,7 @@ int EtherCAT_check_slaves(EtherCAT_master_t *master,
     slaves[i].process_data = master->process_data + pos;
     slaves[i].logical_address0 = pos;
 
-    EC_DBG(KERN_DEBUG "EtherCAT: Slave %i - Address 0x%X, \"%s %s\", s/n %u\n",
+    printk(KERN_DEBUG "EtherCAT: Slave %i - Address 0x%X, \"%s %s\", s/n %u\n",
            i, pos, slaves[i].desc->vendor_name, slaves[i].desc->product_name,
            slaves[i].serial_number);
 
@@ -561,7 +552,7 @@ int EtherCAT_read_slave_information(EtherCAT_master_t *master,
 
   if (cmd.working_counter != 1)
   {
-    EC_DBG(KERN_ERR "EtherCAT: SII-read - Slave %04X did not respond!\n",
+    printk(KERN_ERR "EtherCAT: SII-read - Slave %04X did not respond!\n",
            node_address);
     return -4;
   }
@@ -580,7 +571,7 @@ int EtherCAT_read_slave_information(EtherCAT_master_t *master,
 
     if (cmd.working_counter != 1)
     {
-      EC_DBG(KERN_ERR "EtherCAT: SII-read status - Slave %04X did not respond!\n",
+      printk(KERN_ERR "EtherCAT: SII-read status - Slave %04X did not respond!\n",
              node_address);
       return -4;
     }
@@ -596,7 +587,7 @@ int EtherCAT_read_slave_information(EtherCAT_master_t *master,
 
   if (!tries_left)
   {
-    EC_DBG(KERN_WARNING "EtherCAT: SSI-read. Slave %04X timed out!\n",
+    printk(KERN_WARNING "EtherCAT: SSI-read. Slave %04X timed out!\n",
            node_address);
     return -1;
   }
@@ -634,13 +625,13 @@ int EtherCAT_state_change(EtherCAT_master_t *master,
 
   if (EtherCAT_simple_send_receive(master, &cmd) != 0)
   {
-    EC_DBG(KERN_ERR "EtherCAT: Could not set state %02X - Unable to send!\n", state_and_ack);
+    printk(KERN_ERR "EtherCAT: Could not set state %02X - Unable to send!\n", state_and_ack);
     return -2;
   }
 
   if (cmd.working_counter != 1)
   {
-    EC_DBG(KERN_ERR "EtherCAT: Could not set state %02X - Device \"%s %s\" (%d) did not respond!\n", 
+    printk(KERN_ERR "EtherCAT: Could not set state %02X - Device \"%s %s\" (%d) did not respond!\n", 
 	   state_and_ack,
 	   slave->desc->vendor_name, 
 	   slave->desc->product_name,
@@ -659,19 +650,19 @@ int EtherCAT_state_change(EtherCAT_master_t *master,
 
     if (EtherCAT_simple_send_receive(master, &cmd) != 0)
     {
-      EC_DBG(KERN_ERR "EtherCAT: Could not check state %02X - Unable to send!\n", state_and_ack);
+      printk(KERN_ERR "EtherCAT: Could not check state %02X - Unable to send!\n", state_and_ack);
       return -2;
     }
 
     if (cmd.working_counter != 1)
     {
-      EC_DBG(KERN_ERR "EtherCAT: Could not check state %02X - Device did not respond!\n", state_and_ack);
+      printk(KERN_ERR "EtherCAT: Could not check state %02X - Device did not respond!\n", state_and_ack);
       return -3;
     }
 
     if (cmd.data[0] & 0x10) // State change error
     {
-      EC_DBG(KERN_ERR "EtherCAT: Could not set state %02X - Device refused state change (code %02X)!\n", state_and_ack, cmd.data[0]);
+      printk(KERN_ERR "EtherCAT: Could not set state %02X - Device refused state change (code %02X)!\n", state_and_ack, cmd.data[0]);
       return -4;
     }
 
@@ -685,7 +676,7 @@ int EtherCAT_state_change(EtherCAT_master_t *master,
 
   if (!tries_left)
   {
-    EC_DBG(KERN_ERR "EtherCAT: Could not check state %02X - Timeout while checking!\n", state_and_ack);
+    printk(KERN_ERR "EtherCAT: Could not check state %02X - Timeout while checking!\n", state_and_ack);
     return -5;
   }
 
@@ -734,7 +725,7 @@ int EtherCAT_activate_slave(EtherCAT_master_t *master,
 
   if (cmd.working_counter != 1)
   {
-    EC_DBG(KERN_ERR "EtherCAT: Resetting FMMUs - Slave %04X did not respond!\n",
+    printk(KERN_ERR "EtherCAT: Resetting FMMUs - Slave %04X did not respond!\n",
            slave->station_address);
     return -2;
   }
@@ -750,7 +741,7 @@ int EtherCAT_activate_slave(EtherCAT_master_t *master,
 
     if (cmd.working_counter != 1)
     {
-      EC_DBG(KERN_ERR "EtherCAT: Resetting SMs - Slave %04X did not respond!\n",
+      printk(KERN_ERR "EtherCAT: Resetting SMs - Slave %04X did not respond!\n",
              slave->station_address);
       return -2;
     }
@@ -767,7 +758,7 @@ int EtherCAT_activate_slave(EtherCAT_master_t *master,
 
       if (cmd.working_counter != 1)
       {
-        EC_DBG(KERN_ERR "EtherCAT: Setting SM0 - Slave %04X did not respond!\n",
+        printk(KERN_ERR "EtherCAT: Setting SM0 - Slave %04X did not respond!\n",
                slave->station_address);
         return -3;
       }
@@ -780,7 +771,7 @@ int EtherCAT_activate_slave(EtherCAT_master_t *master,
 
       if (cmd.working_counter != 1)
       {
-        EC_DBG(KERN_ERR "EtherCAT: Setting SM1 - Slave %04X did not respond!\n",
+        printk(KERN_ERR "EtherCAT: Setting SM1 - Slave %04X did not respond!\n",
                slave->station_address);
         return -2;
       }
@@ -810,7 +801,7 @@ int EtherCAT_activate_slave(EtherCAT_master_t *master,
 
     if (cmd.working_counter != 1)
     {
-      EC_DBG(KERN_ERR "EtherCAT: Setting FMMU0 - Slave %04X did not respond!\n",
+      printk(KERN_ERR "EtherCAT: Setting FMMU0 - Slave %04X did not respond!\n",
              slave->station_address);
       return -2;
     }
@@ -827,7 +818,7 @@ int EtherCAT_activate_slave(EtherCAT_master_t *master,
 
       if (cmd.working_counter != 1)
       {
-        EC_DBG(KERN_ERR "EtherCAT: Setting SM0 - Slave %04X did not respond!\n",
+        printk(KERN_ERR "EtherCAT: Setting SM0 - Slave %04X did not respond!\n",
                slave->station_address);
         return -3;
       }
@@ -840,7 +831,7 @@ int EtherCAT_activate_slave(EtherCAT_master_t *master,
 
       if (cmd.working_counter != 1)
       {
-        EC_DBG(KERN_ERR "EtherCAT: Setting SM1 - Slave %04X did not respond!\n",
+        printk(KERN_ERR "EtherCAT: Setting SM1 - Slave %04X did not respond!\n",
                slave->station_address);
         return -3;
       }
@@ -854,7 +845,7 @@ int EtherCAT_activate_slave(EtherCAT_master_t *master,
 
     if (cmd.working_counter != 1)
     {
-      EC_DBG(KERN_ERR "EtherCAT: Setting SM2 - Slave %04X did not respond!\n",
+      printk(KERN_ERR "EtherCAT: Setting SM2 - Slave %04X did not respond!\n",
              slave->station_address);
       return -3;
     }
@@ -867,7 +858,7 @@ int EtherCAT_activate_slave(EtherCAT_master_t *master,
 
     if (cmd.working_counter != 1)
     {
-      EC_DBG(KERN_ERR "EtherCAT: Setting SM3 - Slave %04X did not respond!\n",
+      printk(KERN_ERR "EtherCAT: Setting SM3 - Slave %04X did not respond!\n",
              slave->station_address);
       return -3;
     }
@@ -986,7 +977,7 @@ int EtherCAT_write_process_data(EtherCAT_master_t *master)
 
   if (EtherCAT_simple_send(master, &master->process_data_command) < 0)
   {
-    EC_DBG(KERN_ERR "EtherCAT: Could not send process data command!\n");
+    printk(KERN_ERR "EtherCAT: Could not send process data command!\n");
     return -1;
   }
 
@@ -1023,19 +1014,19 @@ int EtherCAT_read_process_data(EtherCAT_master_t *master)
 
   if (!tries_left)
   {
-    EC_DBG(KERN_ERR "EtherCAT: Timeout while receiving process data!\n");
+    printk(KERN_ERR "EtherCAT: Timeout while receiving process data!\n");
     return -1;
   }
 
   if (EtherCAT_simple_receive(master, &master->process_data_command) < 0)
   {
-    EC_DBG(KERN_ERR "EtherCAT: Could not receive cyclic command!\n");
+    printk(KERN_ERR "EtherCAT: Could not receive cyclic command!\n");
     return -1;
   }
 
   if (master->process_data_command.state != ECAT_CS_RECEIVED)
   {
-    EC_DBG(KERN_WARNING "EtherCAT: Process data command not received!\n");
+    printk(KERN_WARNING "EtherCAT: Process data command not received!\n");
     return -1;
   }
 
@@ -1072,27 +1063,27 @@ void output_debug_data(const EtherCAT_master_t *master)
 {
   unsigned int i;
 
-  EC_DBG(KERN_DEBUG "EtherCAT: tx_data content (%i Bytes):\n",
+  printk(KERN_DEBUG "EtherCAT: tx_data content (%i Bytes):\n",
          master->tx_data_length);
 
-  EC_DBG(KERN_DEBUG);
+  printk(KERN_DEBUG);
   for (i = 0; i < master->tx_data_length; i++)
   {
-    EC_DBG("%02X ", master->tx_data[i]);
-    if ((i + 1) % 16 == 0) EC_DBG("\n" KERN_DEBUG);
+    printk("%02X ", master->tx_data[i]);
+    if ((i + 1) % 16 == 0) printk("\n" KERN_DEBUG);
   }
-  EC_DBG("\n");
+  printk("\n");
 
-  EC_DBG(KERN_DEBUG "EtherCAT: rx_data content (%i Bytes):\n",
+  printk(KERN_DEBUG "EtherCAT: rx_data content (%i Bytes):\n",
          master->rx_data_length);
 
-  EC_DBG(KERN_DEBUG);
+  printk(KERN_DEBUG);
   for (i = 0; i < master->rx_data_length; i++)
   {
-    EC_DBG("%02X ", master->rx_data[i]);
-    if ((i + 1) % 16 == 0) EC_DBG("\n" KERN_DEBUG);
+    printk("%02X ", master->rx_data[i]);
+    if ((i + 1) % 16 == 0) printk("\n" KERN_DEBUG);
   }
-  EC_DBG("\n");
+  printk("\n");
 }
 
 /***************************************************************/

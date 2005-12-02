@@ -16,7 +16,7 @@ endif
 
 #----------------------------------------------------------------
 
-all: .rs232dbg .drivers .rt .mini
+all: .drivers .rt .mini
 
 doc docs:
 	doxygen Doxyfile
@@ -32,14 +32,6 @@ else
 	@echo "Skipping Real-Time."
 endif
 
-ifeq ($(MAKE_RS232),yes)
-.rs232dbg:
-	$(MAKE) -C rs232dbg
-else
-.rs232dbg:
-	@echo "Skipping rs232dbg."
-endif
-
 .mini:
 	$(MAKE) -C mini
 
@@ -50,17 +42,13 @@ config conf $(CONFIG_FILE):
 	@echo "RTAIDIR   =" >> $(CONFIG_FILE)
 	@echo "RTLIBDIR  =" >> $(CONFIG_FILE)
 	@echo >> $(CONFIG_FILE)
-	@echo "#GCC_SYSTEMDIR = /usr/lib/gcc-lib/i486-suse-linux/3.3/include" >> $(CONFIG_FILE)
-	@echo >> $(CONFIG_FILE)
 	@echo "MAKE_RT    = yes" >> $(CONFIG_FILE)
-	@echo "MAKE_RS232 = yes" >> $(CONFIG_FILE)
 	@echo >> $(CONFIG_FILE)
 	@echo "$(CONFIG_FILE) erstellt."
 
 clean:
 	$(MAKE) -C rt clean
 	$(MAKE) -C drivers clean
-	$(MAKE) -C rs232dbg clean
 	$(MAKE) -C mini clean
 
 #----------------------------------------------------------------

@@ -12,7 +12,6 @@
 #include <linux/slab.h>
 
 #include "ec_command.h"
-#include "ec_dbg.h"
 
 /***************************************************************/
 
@@ -79,7 +78,7 @@ void EtherCAT_command_read(EtherCAT_command_t *cmd,
                            unsigned int length)
 {
   if (node_address == 0x0000)
-    EC_DBG(KERN_WARNING "EtherCAT: Using node address 0x0000!\n");
+    printk(KERN_WARNING "EtherCAT: Using node address 0x0000!\n");
 
   ECAT_FUNC_HEADER;
 
@@ -112,7 +111,7 @@ void EtherCAT_command_write(EtherCAT_command_t *cmd,
                             const unsigned char *data)
 {
   if (node_address == 0x0000)
-    EC_DBG(KERN_WARNING "EtherCAT: Using node address 0x0000!\n");
+    printk(KERN_WARNING "EtherCAT: Using node address 0x0000!\n");
 
   ECAT_FUNC_HEADER;
 
