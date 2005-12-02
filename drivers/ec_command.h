@@ -71,7 +71,7 @@ typedef struct EtherCAT_command
 
   EtherCAT_command_state_t state; /**< Zustand des Kommandos (bereit, gesendet, etc...) */
   unsigned char index; /**< Kommando-Index, mit der das Kommando gesendet wurde (wird
-                          vom Master beim Senden gesetzt. */
+                            vom Master beim Senden gesetzt. */
   unsigned int working_counter; /**< Working-Counter bei Empfang (wird vom Master gesetzt) */
 
   unsigned char data[ECAT_FRAME_BUFFER_SIZE]; /**< Kommandodaten */

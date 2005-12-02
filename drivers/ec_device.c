@@ -18,9 +18,6 @@
 #include "ec_device.h"
 #include "ec_dbg.h"
 
-extern irqreturn_t rtl8139_interrupt(int, void *, struct pt_regs *);
-extern int rtl8139_poll(struct net_device *, int *);
-
 /***************************************************************/
 
 /**
@@ -44,7 +41,7 @@ void EtherCAT_device_init(EtherCAT_device_t *ecd)
   ecd->intr_cnt = 0;
   ecd->state = ECAT_DS_READY;
   ecd->rx_data_length = 0;
-  ecd->lock = NULL;
+  ecd->isr = NULL;
 }
 
 /***************************************************************/
@@ -293,21 +290,7 @@ int EtherCAT_device_receive(EtherCAT_device_t *ecd,
 
 void EtherCAT_device_call_isr(EtherCAT_device_t *ecd)
 {
-    int budget;
-
-    budget = 1; /* Einen Frame empfangen */
-
-    rtl8139_interrupt(0, ecd->dev, NULL);
-    ecd->dev->quota = 1;
-    rtl8139_poll(ecd->dev, &budget);
-
-/* HM
-    if (budget != 0)
-    {
-        EC_DBG(KERN_ERR "EtherCAT: Warning - Budget is %d!\n",
-               budget);
-    }
-*/
+    if (ecd->isr) ecd->isr(0, ecd->dev, NULL);
 }
 
 /***************************************************************/
@@ -336,7 +319,6 @@ void EtherCAT_device_debug(EtherCAT_device_t *ecd)
     EC_DBG(KERN_DEBUG "Receive buffer: %X\n", (unsigned) ecd->rx_data);
     EC_DBG(KERN_DEBUG "Receive buffer fill state: %u/%u\n",
            (unsigned) ecd->rx_data_length, ECAT_FRAME_BUFFER_SIZE);
-    EC_DBG(KERN_DEBUG "Lock: %X\n", (unsigned) ecd->lock);
   }
   else
   {
@@ -353,3 +335,4 @@ EXPORT_SYMBOL(EtherCAT_device_close);
 EXPORT_SYMBOL(EtherCAT_device_clear);
 EXPORT_SYMBOL(EtherCAT_device_debug);
 
+/***************************************************************/

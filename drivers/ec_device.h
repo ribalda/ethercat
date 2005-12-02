@@ -12,6 +12,8 @@
 #ifndef _EC_DEVICE_H_
 #define _EC_DEVICE_H_
 
+#include <linux/interrupt.h>
+
 #include "ec_globals.h"
 
 /**
@@ -33,9 +35,6 @@ typedef enum
                        Gerät einen Fehler festgestellt. */
 }
 EtherCAT_device_state_t;
-
-#define ECAT_BUS_TIME(ecd_ptr) ((((ecd_ptr)->rx_time - \
-                                  (ecd_ptr)->tx_time) * 1000) / cpu_khz)
 
 /***************************************************************/
 
@@ -63,7 +62,7 @@ typedef struct
                                                     empfangene Rahmen */
   volatile unsigned int rx_data_length; /**< Länge des zuletzt
                                            empfangenen Rahmens */
-  spinlock_t *lock; /**< Zeiger auf das Spinlock des net_devices */
+  irqreturn_t (*isr)(int, void *, struct pt_regs *); /**< Adresse der ISR */
 }
 EtherCAT_device_t;
 
