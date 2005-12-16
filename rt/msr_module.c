@@ -158,8 +158,6 @@ static EtherCAT_slave_t ecat_slaves[] =
     ECAT_INIT_SLAVE(Beckhoff_EL3102),
     ECAT_INIT_SLAVE(Beckhoff_EL3102),
     ECAT_INIT_SLAVE(Beckhoff_EL3102),
-    ECAT_INIT_SLAVE(Beckhoff_EL3102),
-
     ECAT_INIT_SLAVE(Beckhoff_EL4102),
     ECAT_INIT_SLAVE(Beckhoff_EL4102),
     ECAT_INIT_SLAVE(Beckhoff_EL4102),
