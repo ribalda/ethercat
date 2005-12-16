@@ -156,7 +156,7 @@ int EtherCAT_simple_send_receive(EtherCAT_master_t *master,
 
   EtherCAT_device_call_isr(master->dev);
 
-  tries_left = 100;
+  tries_left = 20;
   while (master->dev->state == ECAT_DS_SENT && tries_left)
   {
     udelay(1);
@@ -1052,7 +1052,7 @@ int EtherCAT_read_process_data(EtherCAT_master_t *master)
 
   EtherCAT_device_call_isr(master->dev);
 
-  tries_left = 100;
+  tries_left = 20;
   while (master->dev->state == ECAT_DS_SENT && tries_left)
   {
     udelay(1);
