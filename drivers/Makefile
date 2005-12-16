@@ -20,6 +20,11 @@ obj-m := 8139too-ecat.o ecat-master.o
 ecat-master-objs := ec_module.o ec_master.o ec_device.o \
 			ec_slave.o ec_command.o ec_types.o
 
+REV = `svnversion $(src)`
+DATE = `date`
+
+EXTRA_CFLAGS = -DEC_REV="$(REV)" -DEC_USER="$(USER)" -DEC_DATE="$(DATE)"
+
 #----------------------------------------------------------------
 
 else
@@ -27,16 +32,13 @@ else
 #----------------------------------------------------------------
 # Default-Abschnitt
 
-CONFIG_FILE = ../ethercat.conf
-PWD = $(shell pwd)
-
-include $(CONFIG_FILE)
+include ../ethercat.conf
 
 default:
-	$(MAKE) -C $(KERNELDIR) M=$(PWD) modules
+	$(MAKE) -C $(KERNELDIR) M=`pwd` modules
 
 clean:
-	$(MAKE) -C $(KERNELDIR) M=$(PWD) clean
+	$(MAKE) -C $(KERNELDIR) M=`pwd` clean
 
 #----------------------------------------------------------------
 

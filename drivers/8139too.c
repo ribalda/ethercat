@@ -138,6 +138,13 @@
 #include "ec_master.h"
 #include "ec_module.h"
 
+#define LITERAL(X) #X
+#define STRINGIFY(X) LITERAL(X)
+
+#define COMPILE_INFO "Revision " STRINGIFY(EC_REV) \
+                     ", compiled by " STRINGIFY(EC_USER) \
+                     " at " STRINGIFY(EC_DATE)
+
 /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 
 #define RTL8139_DRIVER_NAME   DRV_NAME " Fast Ethernet driver " DRV_VERSION
@@ -642,10 +649,14 @@ struct rtl8139_private {
 	unsigned long fifo_copy_timeout;
 };
 
+/* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
 MODULE_AUTHOR ("Wilhelm Hagemeister <hm@igh-essen.com>, Florian Pose <fp@igh-essen.com>");
 MODULE_DESCRIPTION ("RealTek RTL-8139 Fast Ethernet driver with EtherCAT functionality");
 MODULE_LICENSE("GPL");
-MODULE_VERSION(DRV_VERSION);
+MODULE_VERSION(COMPILE_INFO);
+
+/* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 
 module_param(multicast_filter_limit, int, 0);
 module_param_array(media, int, NULL, 0);
@@ -2962,7 +2973,7 @@ static int __init rtl8139_init_module (void)
 
         /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
-        printk(KERN_INFO "Initializing RTL8139-EtherCAT module.\n");
+        printk(KERN_INFO "Initializing RTL8139-EtherCAT module. %s\n", COMPILE_INFO);
 
         EtherCAT_device_init(&rtl_ecat_dev);
         rtl_ecat_dev.isr = rtl8139_interrupt;

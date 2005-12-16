@@ -26,7 +26,14 @@
 
 /******************************************************************************/
 
-#define SUBVERSION_ID "$Id$"
+#define LITERAL(X) #X
+#define STRINGIFY(X) LITERAL(X)
+
+#define COMPILE_INFO "Revision " STRINGIFY(EC_REV) \
+                     ", compiled by " STRINGIFY(EC_USER) \
+                     " at " STRINGIFY(EC_DATE)
+
+/******************************************************************************/
 
 int ecat_master_count = 1;
 EtherCAT_master_t *ecat_masters = NULL;
@@ -37,7 +44,7 @@ int *ecat_masters_reserved = NULL;
 MODULE_AUTHOR ("Wilhelm Hagemeister <hm@igh-essen.com>, Florian Pose <fp@igh-essen.com>");
 MODULE_DESCRIPTION ("EtherCAT master driver module");
 MODULE_LICENSE("GPL");
-MODULE_VERSION(SUBVERSION_ID);
+MODULE_VERSION(COMPILE_INFO);
 
 module_param(ecat_master_count, int, 1);
 MODULE_PARM_DESC(ecat_master_count, "Number of EtherCAT master to initialize.");
@@ -66,7 +73,7 @@ int __init ecat_init_module(void)
 {
   unsigned int i;
 
-  printk(KERN_ERR "EtherCAT: Master driver %s\n", SUBVERSION_ID);
+  printk(KERN_ERR "EtherCAT: Master driver, %s\n", COMPILE_INFO);
 
   if (ecat_master_count < 1)
   {
