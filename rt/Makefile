@@ -1,64 +1,81 @@
-#----------------------------------------------------------------
-#
-#  Makefile
-#
-#  EtherCAT-RT-Modul
-#
-#  $Id$
-#
-#----------------------------------------------------------------
+# Comment/uncomment the following line to disable/enable debugging
+#DEBUG = y
 
-CONFIG_FILE = ../ethercat.conf
 
-ifeq ($(CONFIG_FILE),$(wildcard $(CONFIG_FILE)))
-include $(CONFIG_FILE)
+# Add your debugging flag (or not) to CFLAGS
+ifeq ($(DEBUG),y)
+  DEBFLAGS = -O -g -DSHORT_DEBUG # "-O" is needed to expand inlines
 else
-KERNELDIR = /vol/projekte/msr_messen_steuern_regeln/linux/kernel/2.4.20/include/linux-2.4.20.CX1100-rthal5
-RTAIDIR   = /vol/projekte/msr_messen_steuern_regeln/linux/kernel/2.4.20/include/rtai-24.1.13
-RTLIBDIR  = rt_lib
+  DEBFLAGS = -O2
 endif
 
-CFLAGS = -O2 -Wall -Wuninitialized -D__KERNEL__ -DMODULE -DSERIALDEBUG -DMSR_NO_PROC -I$(KERNELDIR)/include -D_RTAI -I$(RTAIDIR)/include -I$(RTLIBDIR)/msr-include
+CFLAGS += $(DEBFLAGS)
+CFLAGS += -I.. 
+
+RTLIB = /vol/projekte/msr_messen_steuern_regeln/linux/kernel_space/rt_lib-4.0.0-2.6krnl
 
 #Suchpfad für die Dateien aus dem RT-Lib-Verzeichnis
-VPATH = $(RTLIBDIR)/msr-core:$(RTLIBDIR)/msr-control:$(RTLIBDIR)/msr-math:$(RTLIBDIR)/msr-misc:$(RTLIBDIR)/msr-utils
+VPATH := $(RTLIB)/msr-core:$(RTLIB)/msr-control:$(RTLIB)/msr-hwdriver:$(RTLIB)/msr-math:$(RTLIB)/msr-misc:$(RTLIB)/msr-utils
 
-MODULE = msr_modul.o
-SRC = msr_io.c
-RTSRC = msr_main.c msr_lists.c msr_charbuf.c msr_reg.c msr_interpreter.c \
-	msr_utils.c msr_messages.c msr_base64.c msr_proc.c msr_error_reg.c
-ALLSRC = $(SRC) $(RTSRC)
-OBJ = $(ALLSRC:.c=.o)
+#Datei aus dem RT-Libverzeichnis für dies Projekt
+RTSRC := msr_main.o msr_lists.o msr_charbuf.o msr_reg.o msr_interpreter.o msr_utils.o msr_messages.o msr_functiongen.o msr_base64.o msr_watchdog.o msr_proc.o msr_error_reg.o
 
-#----------------------------------------------------------------
+ifneq ($(KERNELRELEASE),)
+# call from kernel build system
 
-all: .output_dirs .depend $(MODULE) Makefile
 
-$(MODULE): $(OBJ)
-	@echo "Making module"
-	$(LD) -r $(OBJ) -o $@
+EXTRA_CFLAGS := -I$(RTLIB)/msr-include -D_SIMULATION -I/usr/include -mhard-float
 
-.c.o:
-	@echo "Making obj $@"
-	$(CC) -c $(CFLAGS) $< -o $@
+#EXTRA_LDFLAGS :=  -L/usr/lib -lm
 
-.output_dirs:
-	@echo "x-- Directories -------------"
-	@echo "| Kernel $(KERNELDIR)"
-	@echo "| RTAI   $(RTAIDIR)"
-	@echo "| RT_lib $(RTLIBDIR)"
-	@echo "x----------------------------"
+msr_modul-y := msr_module.o \
+	msr_jitter.o \
+	rt_lib/msr-core/msr_lists.o \
+	rt_lib/msr-core/msr_main.o \
+	rt_lib/msr-core/msr_charbuf.o \
+	rt_lib/msr-core/msr_reg.o \
+	rt_lib/msr-core/msr_interpreter.o \
+	rt_lib/msr-core/msr_messages.o \
+	rt_lib/msr-core/msr_proc.o \
+	rt_lib/msr-core/msr_error_reg.o \
+	rt_lib/msr-utils/msr_utils.o \
+	rt_lib/msr-math/msr_base64.o \
+	libm.o 
 
-depend .depend dep:
-	$(CC) $(CFLAGS) -M $(SRC) > .depend
+
+obj-m	:= msr_modul.o
+
+
+
+else
+
+
+KERNELDIR := /lib/modules/$(shell uname -r)/build
+PWD       := $(shell pwd)
+
+
+
+
+default:
+	$(MAKE) -C $(KERNELDIR) M=$(PWD) modules
+
+endif
+
 
 clean:
-	rm -f *.o *~ core .depend
+	rm -f core .depend
+	rm -rf .tmp_versions
+	find -L -maxdepth 3 -name "*.o" -exec rm {} \;	
+	find -L -maxdepth 3 -name "*~" -exec rm {} \;	
+	find -L -maxdepth 3 -name "*.cmd" -exec rm {} \;	
+	find -L -maxdepth 3 -name "*.ko" -exec rm {} \;	
+	find -L -maxdepth 3 -name "*.mod.c" -exec rm {} \;	
 
-#----------------------------------------------------------------
+depend .depend dep:
+	$(CC) $(CFLAGS) -M *.c > .depend
+
+
 
 ifeq (.depend,$(wildcard .depend))
 include .depend
 endif
-
-#----------------------------------------------------------------

@@ -255,9 +255,6 @@ int __init init_module()
 #ifdef ECAT_CYCLIC_DATA
   printk("Starting cyclic sample thread.\n");
 
-  schedule();
-  mdelay(1000);
-  schedule();
   init_timer(&timer);
 
   timer.function = run;

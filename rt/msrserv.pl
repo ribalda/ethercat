@@ -1,18 +1,42 @@
 #!/usr/bin/perl -w
-
+#------------------------------------------------------------
+#
+# (C) Copyright
+#     Diese Software ist geistiges Eigentum der 
+#     Ingenieurgemeinschaft IgH. Sie darf von 
+#     Toyota Motorsport GmbH
+#     beliebig kopiert und veraendert werden. 
+#     Die Weitergabe an Dritte ist untersagt.
+#     Dieser Urhebrrechtshinweis muss erhalten
+#     bleiben.
+#
+#     Ingenieurgemeinschaft IgH
+#     Heinz-Baecker-Strasse 34
+#     D-45356 Essen
+#     Tel.:  +49-201/61 99 31
+#     Fax.:  +49-201/61 98 36
+#     WWW:   http://www.igh-essen.com
+#     Email: msr@igh-essen.com
+#
+#------------------------------------------------------------
+#
 # Multithreaded Server 
 # according to the example from "Programming Perl"
+# this code is improved according to the example from 
+# perldoc perlipc, so now safely being usable under Perl 5.8 
+# (see note (*))
 #
 # works with read/write on a device-file  
 #
 # $Revision: 1.1 $
-# $Date: 2002/07/09 10:10:59 $
+# $Date: 2004/10/01 16:00:42 $
 # $RCSfile: msrserv.pl,v $
 #
+#------------------------------------------------------------
 
 require 5.002;
 use strict;
-BEGIN { $ENV{PATH} = '/usr/bin:/bin' }
+BEGIN { $ENV{PATH} = '/opt/msr/bin:/usr/bin:/bin' }
 use Socket;
 use Carp;
 use FileHandle;
@@ -23,6 +47,7 @@ use Sys::Syslog qw(:DEFAULT setlogsock);
 use vars qw (
 	     $self $pid $dolog $port $dev %opts $selfbase
 	     $len $offset $stream $written $read $log $blksize
+	     $instdir
 	     $authfile %authhosts
 	     );
 
@@ -33,13 +58,13 @@ setlogsock("unix");
 # Prototypes and some little Tools
 sub spawn;
 sub logmsg { 
-  my ($level, @text) = @_;
-  syslog("daemon|$level", @text) if $dolog;
+  my ($level, $debug, @text) = @_;
+  syslog("daemon|$level", @text) if $debug > $dolog;
 #  print STDERR "daemon|$level", @text, "\n" if $dolog;
 }
 sub out {
   my $waitpid = wait; 
-  logmsg("notice", "$waitpid exited");
+  logmsg("notice", 2, "$waitpid exited");
   unlink "$selfbase.pid";
   exit 0;
 }
@@ -68,7 +93,8 @@ $dolog = $opts{"l"};
 $port = $opts{"p"};
 $dev = $opts{"d"};
 $blksize = 1024; # try to write as much bytes
-$authfile = "/opt/kbw/etc/hosts.auth"; 
+$instdir = "/opt/msr";
+$authfile = "$instdir/etc/hosts.auth"; 
 
 # Start logging
 openlog($self, 'pid');
@@ -80,12 +106,12 @@ $| = 1;
 if ($pid = fork) {
 #  open LOG, ">$log" if $dolog;
 #  close LOG;
-  logmsg("notice", "forked process: $pid\n");
+  logmsg("notice", 2, "forked process: $pid\n");
   exit 0;
 }
 
 # Server tells about startup success
-open (PID, ">$selfbase.pid");
+open (PID, ">/$instdir/var/run/$selfbase.pid");
 print PID "$$\n";
 close PID;
 
@@ -107,106 +133,122 @@ listen (Server, SOMAXCONN)
 %authhosts = ();
 # get authorized hosts
 open (AUTH, $authfile) 
-  or logmsg ("notice", "Could not read allowed hosts file: $authfile");
+  or logmsg ("notice", 2, "Could not read allowed hosts file: $authfile");
 while (<AUTH>) {
     chomp;
     my $host = lc $_;
-    logmsg ("notice", "Authorized host: $host");
-    $authhosts{$_} = 1 if $host =~ /^[\d\w]/;
+     if ($host =~ /^[\d\w]/) {
+	 $authhosts{$_} = 1;
+	 logmsg ("notice", 2, "Authorized host: >$host<");
+     }
 }
 close (AUTH);
 
 # tell about open server socket
-logmsg ("notice", "Server started at port $port");
+logmsg ("notice", 2, "Server started at port $port");
 
-my $waitpid = 0;
+my $waitedpid = 0;
 my $paddr;
 
 # wait for children to return, thus avoiding zombies
+# improvement (*)
+use POSIX ":sys_wait_h";
 sub REAPER {
-  $waitpid = wait;
-  $SIG{CHLD} = \&REAPER; 
-  logmsg ("notice", "reaped $waitpid", ($? ? " with exit $?" : ""));
+  my $child;
+  while (($waitedpid = waitpid(-1,WNOHANG)) > 0) {
+    logmsg ("notice", 2, "reaped $waitedpid", ($? ? " with exit $?" : ""));
+  }
+  $SIG{CHLD} = \&REAPER;  # loathe sysV
 }
 
 # also all sub-processes should wait for their children
 $SIG{CHLD} = \&REAPER;
 
 # start a new server for every incoming request
-for ( ; $paddr = accept(Client, Server); close (Client)) {
-  my ($port, $iaddr) = sockaddr_in($paddr);
-  my $name = lc gethostbyaddr($iaddr, AF_INET);
-  my $ipaddr = inet_ntoa($iaddr);
-  my $n = 0;
+# improvement (*) -- loop forever
 
-# tell about the requesting client
-  logmsg ("info", "Connection from $ipaddr ($name) at port $port");
-
-  spawn sub {
-    my ($head, $hlen, $pos, $pegel, $typ, $siz, $nch, $nrec, $dat, $i, $j, $n, $llen); 
-    my ($watchpegel, $shmpegel);
-    my ($rin, $rout, $in, $line, $data_requested, $oversample);
-    my (@channels);
+while ( 1 ) {
+  for ( $waitedpid = 0;
+	($paddr = accept(Client,Server)) || $waitedpid;
+	$waitedpid = 0, close Client ) {
+    next if $waitedpid and not $paddr;
+    my ($port, $iaddr) = sockaddr_in($paddr);
+    my $name = lc gethostbyaddr($iaddr, AF_INET);
+    my $ipaddr = inet_ntoa($iaddr);
+    my $n = 0;
     
+# tell about the requesting client
+    logmsg ("info", 2, "Connection from >$ipaddr< ($name) at port $port");
+    
+    spawn sub {
+      my ($head, $hlen, $pos, $pegel, $typ, $siz, $nch, $nrec, $dat, $i, $j, $n, $llen); 
+      my ($watchpegel, $shmpegel);
+      my ($rin, $rout, $in, $line, $data_requested, $oversample);
+      my (@channels);
+      
 #   to use stdio on writing to Client
-    Client->autoflush();
-
+      Client->autoflush();
+      
 #   Open Device 
-    sysopen (DEV, "$dev", O_RDWR | O_NONBLOCK, 0666) or die("can't open $dev");
-
+      sysopen (DEV, "$dev", O_RDWR | O_NONBLOCK, 0666) or die("can't open $dev");
+      
 #   Bitmask to check for input on stdin
-    $rin = "";
-    vec($rin, fileno(Client), 1) = 1; 
-
+      $rin = "";
+      vec($rin, fileno(Client), 1) = 1; 
+      
 #   check for authorized hosts
-    my $access = 'allow';
-    $access = 'allow' if $authhosts{$ipaddr};
-    $line = "<remote_host host=\"$ipaddr\" access=\"$access\">\n";
-    $len = length $line;
-    $offset = 0;
-    while ($len) {
+      my $access = 'deny';
+      $access = 'allow' if $authhosts{$ipaddr};
+      $line = "<remote_host host=\"$ipaddr\" access=\"$access\">\n";
+      logmsg ("info", 2, $line);
+      $len = length $line;
+      $offset = 0;
+      while ($len) {
 	$written = syswrite (DEV, $line, $len, $offset);
 	$len -= $written;
 	$offset += $written;
-    }
-
-    while ( 1 ) {
-      $in = select ($rout=$rin, undef, undef, 0.0); # poll client
+      }
+      
+      while ( 1 ) {
+	$in = select ($rout=$rin, undef, undef, 0.0); # poll client
 #     look for any Input from Client
-      if ($in) {
+	if ($in) {
 #       exit on EOF
-	$len = sysread (Client, $line, $blksize) or exit;
-	logmsg("info", "got $len bytes: \"$line\""); 
-	$offset = 0;
+	  $len = sysread (Client, $line, $blksize) or exit;
+	  logmsg("info", 0, "got $len bytes: \"$line\""); 
+	  $offset = 0;
 #       copy request to device
-	while ($len) {
-	  $written = syswrite (DEV, $line, $len, $offset);
-	  $len -= $written;
-	  $offset += $written;
+	  while ($len) {
+	    $written = syswrite (DEV, $line, $len, $offset);
+	    $len -= $written;
+	    $offset += $written;
+	  }
+	}
+#     look for some output from device
+	if ($len = sysread DEV, $stream, $blksize) {
+	  print Client $stream;
+	} else {
+	  select undef, undef, undef, 0.1; # calm down if nothing on device
 	}
       }
-#     look for some output from device
-      if ($len = sysread DEV, $stream, $blksize) {
-	print Client $stream;
-      } else {
-	select undef, undef, undef, 0.1; # calm down if nothing on device
-      }
-    }
+    };
+    logmsg("info", 2, "spawned\n");
   }
+  logmsg("info", 2, "server loop\n");
 }
 
 sub spawn {
   my $coderef = shift;
-
+  
   unless (@_ == 0 && $coderef && ref($coderef) eq 'CODE') {
     confess "usage: spawn CODEREF";
   }
   my $pid; 
   if (!defined($pid = fork)) {
-    logmsg ("notice", "fork failed: $!");
+    logmsg ("notice", 2, "fork failed: $!");
     return;
   } elsif ($pid) {
-    logmsg ("notice", "Request $pid");
+    logmsg ("notice", 2, "Request $pid");
     return; # Parent
   }
 
