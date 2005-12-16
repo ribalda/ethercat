@@ -26,7 +26,7 @@ unsigned char sm0_2004[] = {0x00, 0x0F, 0x01, 0x00, 0x46, 0x00, 0x01, 0x00};
 unsigned char sm2_31xx[] = {0x00, 0x10, 0x04, 0x00, 0x24, 0x00, 0x00, 0x00};
 unsigned char sm3_31xx[] = {0x00, 0x11, 0x06, 0x00, 0x20, 0x00, 0x01, 0x00};
 
-unsigned char sm2_4102[] = {0x00, 0x10, 0x04, 0x00, 0x24, 0x00, 0x01, 0x00};
+unsigned char sm2_41xx[] = {0x00, 0x10, 0x04, 0x00, 0x24, 0x00, 0x01, 0x00};
 
 
 unsigned char fmmu0_1014[] = {0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x07,
@@ -38,7 +38,7 @@ unsigned char fmmu0_2004[] = {0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x07,
 unsigned char fmmu0_31xx[] = {0x00, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x07,
                               0x00, 0x11, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00};
 
-unsigned char fmmu0_4102[] = {0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x07,
+unsigned char fmmu0_41xx[] = {0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x07,
                               0x00, 0x10, 0x00, 0x02, 0x01, 0x00, 0x00, 0x00};
 
 int read_1014(unsigned char *data, unsigned int channel)
@@ -63,7 +63,7 @@ int read_31xx(unsigned char *data, unsigned int channel)
   return (short int) ((data[channel * 3 + 2] << 8) | data[channel * 3 + 1]);
 }
 
-void write_4102(unsigned char *data, unsigned int channel, int value)
+void write_41xx(unsigned char *data, unsigned int channel, int value)
 {
   data[channel * 3 + 1] = (value & 0xFF00) >> 8;
   data[channel * 3 + 2] = value & 0xFF;
@@ -103,7 +103,7 @@ EtherCAT_slave_desc_t Beckhoff_EL2004[] =
 
 EtherCAT_slave_desc_t Beckhoff_EL3102[] =
 {{
-  "Beckhoff", "EL3102", "2x Analog Input Diff",
+  "Beckhoff", "EL3102", "2x Analog Input diff.",
   ECAT_ST_MAILBOX,
   sm0_multi, sm1_multi, sm2_31xx, sm3_31xx,
   fmmu0_31xx,
@@ -125,10 +125,20 @@ EtherCAT_slave_desc_t Beckhoff_EL4102[] =
 {{
   "Beckhoff", "EL4102", "2x Analog Output",
   ECAT_ST_MAILBOX,
-  sm0_multi, sm1_multi, sm2_4102, NULL,
-  fmmu0_4102,
+  sm0_multi, sm1_multi, sm2_41xx, NULL,
+  fmmu0_41xx,
   4, 2,
-  NULL, write_4102
+  NULL, write_41xx
+}};
+
+EtherCAT_slave_desc_t Beckhoff_EL4132[] =
+{{
+  "Beckhoff", "EL4132", "2x Analog Output diff.",
+  ECAT_ST_MAILBOX,
+  sm0_multi, sm1_multi, sm2_41xx, NULL,
+  fmmu0_41xx,
+  4, 2,
+  NULL, write_41xx
 }};
 
 EtherCAT_slave_desc_t Beckhoff_EL5001[] =
@@ -153,6 +163,7 @@ struct slave_ident slave_idents[] =
   {0x00000002, 0x0C1E3052, Beckhoff_EL3102},
   {0x00000002, 0x0C5A3052, Beckhoff_EL3162},
   {0x00000002, 0x10063052, Beckhoff_EL4102},
+  {0x00000002, 0x10243052, Beckhoff_EL4132},
   {0x00000002, 0x13893052, Beckhoff_EL5001}
 };
 
@@ -164,4 +175,5 @@ EXPORT_SYMBOL(Beckhoff_EL2004);
 EXPORT_SYMBOL(Beckhoff_EL3102);
 EXPORT_SYMBOL(Beckhoff_EL3162);
 EXPORT_SYMBOL(Beckhoff_EL4102);
+EXPORT_SYMBOL(Beckhoff_EL4132);
 EXPORT_SYMBOL(Beckhoff_EL5001);

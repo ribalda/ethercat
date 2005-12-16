@@ -97,6 +97,7 @@ extern EtherCAT_slave_desc_t Beckhoff_EL2004[];
 extern EtherCAT_slave_desc_t Beckhoff_EL3102[];
 extern EtherCAT_slave_desc_t Beckhoff_EL3162[];
 extern EtherCAT_slave_desc_t Beckhoff_EL4102[];
+extern EtherCAT_slave_desc_t Beckhoff_EL4132[];
 extern EtherCAT_slave_desc_t Beckhoff_EL5001[];
 
 /***************************************************************/

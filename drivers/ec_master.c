@@ -508,7 +508,7 @@ int EtherCAT_check_slaves(EtherCAT_master_t *master,
     {
       printk(KERN_ERR "EtherCAT: Unknown slave device"
              " (vendor %X, code %X) at position %i.\n",
-             i, cur->vendor_id, cur->product_code);
+             cur->vendor_id, cur->product_code, i);
       return -1;
     }
   }
