@@ -63,6 +63,8 @@ typedef struct
   volatile unsigned int rx_data_length; /**< Länge des zuletzt
                                            empfangenen Rahmens */
   irqreturn_t (*isr)(int, void *, struct pt_regs *); /**< Adresse der ISR */
+  struct module *module; /**< Zeiger auf das Modul, das das Gerät zur
+                            Verfügung stellt. */
 }
 EtherCAT_device_t;
 

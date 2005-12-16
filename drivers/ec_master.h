@@ -60,8 +60,8 @@ void EtherCAT_master_init(EtherCAT_master_t *);
 void EtherCAT_master_clear(EtherCAT_master_t *);
 
 // Registration of devices
-int EtherCAT_register_device(EtherCAT_master_t *, EtherCAT_device_t *);
-void EtherCAT_unregister_device(EtherCAT_master_t *, EtherCAT_device_t *);
+int EtherCAT_master_open(EtherCAT_master_t *, EtherCAT_device_t *);
+void EtherCAT_master_close(EtherCAT_master_t *, EtherCAT_device_t *);
 
 // Sending and receiving
 int EtherCAT_simple_send_receive(EtherCAT_master_t *, EtherCAT_command_t *);

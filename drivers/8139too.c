@@ -202,7 +202,7 @@ static int ec_device_index = -1;
 static int ec_device_master_index = 0;
 
 static EtherCAT_device_t rtl_ecat_dev;
-static EtherCAT_master_t *rtl_ecat_master = NULL;
+int rtl_ecat_dev_registered = 0;
 
 /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 
@@ -2966,6 +2966,7 @@ static int __init rtl8139_init_module (void)
 
         EtherCAT_device_init(&rtl_ecat_dev);
         rtl_ecat_dev.isr = rtl8139_interrupt;
+        rtl_ecat_dev.module = THIS_MODULE;
 
         if (pci_module_init(&rtl8139_pci_driver) < 0)
         {
@@ -2977,19 +2978,14 @@ static int __init rtl8139_init_module (void)
 
         if (rtl_ecat_dev.dev)
         {
-          if ((rtl_ecat_master = EtherCAT_master(ec_device_master_index)) == NULL)
-          {
-            printk(KERN_ERR "Could not get EtherCAT master %i.\n",
-                   ec_device_master_index);
-            goto out_module;
-          }
-
           printk(KERN_INFO "Registering EtherCAT device...\n");
-          if (EtherCAT_register_device(rtl_ecat_master, &rtl_ecat_dev) < 0)
+          if (EtherCAT_register_device(ec_device_master_index, &rtl_ecat_dev) < 0)
           {
             printk(KERN_ERR "Could not register device.\n");
             goto out_module;
           }
+
+          rtl_ecat_dev_registered = 1;
 
           printk(KERN_INFO "EtherCAT device registered and opened.\n");
         }
@@ -3015,10 +3011,10 @@ static void __exit rtl8139_cleanup_module (void)
 
         printk(KERN_INFO "Cleaning up RTL8139-EtherCAT module...\n");
 
-        if (rtl_ecat_master && rtl_ecat_dev.dev)
+        if (rtl_ecat_dev_registered && rtl_ecat_dev.dev)
         {
           printk(KERN_INFO "Unregistering RTL8139-EtherCAT device...\n");
-          EtherCAT_unregister_device(rtl_ecat_master, &rtl_ecat_dev);
+          EtherCAT_unregister_device(ec_device_master_index, &rtl_ecat_dev);
         }
 
 	pci_unregister_driver(&rtl8139_pci_driver);

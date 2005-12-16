@@ -41,6 +41,7 @@ void EtherCAT_device_init(EtherCAT_device_t *ecd)
   ecd->state = ECAT_DS_READY;
   ecd->rx_data_length = 0;
   ecd->isr = NULL;
+  ecd->module = NULL;
 }
 
 /***************************************************************/

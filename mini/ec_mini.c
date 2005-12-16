@@ -230,9 +230,9 @@ int __init init_module()
 {
   printk(KERN_INFO "=== Starting Minimal EtherCAT environment... ===\n");
 
-  if ((ecat_master = EtherCAT_master(0)) == NULL)
+  if ((ecat_master = EtherCAT_request(0)) == NULL)
   {
-    printk(KERN_ERR "No EtherCAT master available!\n");
+    printk(KERN_ERR "EtherCAT master 0 not available!\n");
     return -1;
   }
 
@@ -290,6 +290,8 @@ void __exit cleanup_module()
 
       printk(KERN_INFO "Deactivating slaves.\n");
       EtherCAT_deactivate_all_slaves(ecat_master);
+
+      EtherCAT_release(ecat_master);
     }
 
     printk(KERN_INFO "=== Minimal EtherCAT environment stopped. ===\n");

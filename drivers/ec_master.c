@@ -69,9 +69,9 @@ void EtherCAT_master_clear(EtherCAT_master_t *master)
 /***************************************************************/
 
 /**
-   Setzt das EtherCAT-Geraet, auf dem der Master arbeitet.
+   Öffnet ein EtherCAT-Geraet für den Master.
 
-   Registriert das Geraet beim master, der es daraufhin oeffnet.
+   Registriert das Geraet beim Master, der es daraufhin oeffnet.
 
    @param master Der EtherCAT-Master
    @param device Das EtherCAT-Geraet
@@ -80,12 +80,12 @@ void EtherCAT_master_clear(EtherCAT_master_t *master)
            oder das Geraet nicht geoeffnet werden konnte.
 */
 
-int EtherCAT_register_device(EtherCAT_master_t *master,
-                             EtherCAT_device_t *device)
+int EtherCAT_master_open(EtherCAT_master_t *master,
+                         EtherCAT_device_t *device)
 {
   if (!master || !device)
   {
-    printk(KERN_ERR "EtherCAT: Illegal parameters for register_device()!\n");
+    printk(KERN_ERR "EtherCAT: Illegal parameters for master_open()!\n");
     return -1;
   }
 
@@ -110,18 +110,18 @@ int EtherCAT_register_device(EtherCAT_master_t *master,
 /***************************************************************/
 
 /**
-   Loescht das EtherCAT-Geraet, auf dem der Master arbeitet.
+   Schliesst das EtherCAT-Geraet, auf dem der Master arbeitet.
 
    @param master Der EtherCAT-Master
    @param device Das EtherCAT-Geraet
 */
 
-void EtherCAT_unregister_device(EtherCAT_master_t *master,
-                                EtherCAT_device_t *device)
+void EtherCAT_master_close(EtherCAT_master_t *master,
+                           EtherCAT_device_t *device)
 {
   if (master->dev != device)
   {
-    printk(KERN_WARNING "EtherCAT: Trying to unregister unknown device.\n");
+    printk(KERN_WARNING "EtherCAT: Trying to close an unknown device!\n");
     return;
   }
 
@@ -1138,8 +1138,8 @@ void output_debug_data(const EtherCAT_master_t *master)
 
 EXPORT_SYMBOL(EtherCAT_master_init);
 EXPORT_SYMBOL(EtherCAT_master_clear);
-EXPORT_SYMBOL(EtherCAT_register_device);
-EXPORT_SYMBOL(EtherCAT_unregister_device);
+EXPORT_SYMBOL(EtherCAT_master_open);
+EXPORT_SYMBOL(EtherCAT_master_close);
 EXPORT_SYMBOL(EtherCAT_read_process_data);
 EXPORT_SYMBOL(EtherCAT_write_process_data);
 EXPORT_SYMBOL(EtherCAT_check_slaves);
