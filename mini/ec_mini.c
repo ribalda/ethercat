@@ -228,47 +228,51 @@ static void run(unsigned long data)
 
 int __init init_module()
 {
-  printk(KERN_INFO "=== Starting Minimal EtherCAT environment... ===\n");
+    printk(KERN_INFO "=== Starting Minimal EtherCAT environment... ===\n");
 
-  if ((ecat_master = EtherCAT_request(0)) == NULL)
-  {
-    printk(KERN_ERR "EtherCAT master 0 not available!\n");
-    return -1;
-  }
+    if ((ecat_master = EtherCAT_request(0)) == NULL) {
+        printk(KERN_ERR "EtherCAT master 0 not available!\n");
+        goto out_return;
+    }
 
-  printk("Checking EtherCAT slaves.\n");
+    printk("Checking EtherCAT slaves.\n");
 
-  if (EtherCAT_check_slaves(ecat_master, ecat_slaves, ECAT_SLAVES_COUNT) != 0)
-  {
-    printk(KERN_ERR "EtherCAT: Could not init slaves!\n");
-    return -1;
-  }
+    if (EtherCAT_check_slaves(ecat_master, ecat_slaves, ECAT_SLAVES_COUNT) != 0) {
+        printk(KERN_ERR "EtherCAT: Could not init slaves!\n");
+        goto out_release_master;
+    }
 
-  printk("Activating all EtherCAT slaves.\n");
+    printk("Activating all EtherCAT slaves.\n");
 
-  if (EtherCAT_activate_all_slaves(ecat_master) != 0)
-  {
-    printk(KERN_ERR "EtherCAT: Could not activate slaves!\n");
-    return -1;
-  }
+    if (EtherCAT_activate_all_slaves(ecat_master) != 0)
+    {
+        printk(KERN_ERR "EtherCAT: Could not activate slaves!\n");
+        goto out_release_master;
+    }
 
 #ifdef ECAT_CYCLIC_DATA
-  printk("Starting cyclic sample thread.\n");
+    printk("Starting cyclic sample thread.\n");
 
-  init_timer(&timer);
+    init_timer(&timer);
 
-  timer.function = run;
-  timer.data = 0;
-  timer.expires = jiffies+10; // Das erste Mal sofort feuern
-  last_start_jiffies = timer.expires;
-  add_timer(&timer);
+    timer.function = run;
+    timer.data = 0;
+    timer.expires = jiffies+10; // Das erste Mal sofort feuern
+    last_start_jiffies = timer.expires;
+    add_timer(&timer);
 
-  printk("Initialised sample thread.\n");
+    printk("Initialised sample thread.\n");
 #endif
 
-  printk(KERN_INFO "=== Minimal EtherCAT environment started. ===\n");
+    printk(KERN_INFO "=== Minimal EtherCAT environment started. ===\n");
 
-  return 0;
+    return 0;
+
+ out_release_master:
+  EtherCAT_release(ecat_master);
+
+ out_return:
+  return -1;
 }
 
 /******************************************************************************
@@ -284,14 +288,14 @@ void __exit cleanup_module()
     if (ecat_master)
     {
 #ifdef ECAT_CYCLIC_DATA
-      del_timer_sync(&timer);
-      EtherCAT_clear_process_data(ecat_master);
+        del_timer_sync(&timer);
+        EtherCAT_clear_process_data(ecat_master);
 #endif // ECAT_CYCLIC_DATA
 
-      printk(KERN_INFO "Deactivating slaves.\n");
-      EtherCAT_deactivate_all_slaves(ecat_master);
+        printk(KERN_INFO "Deactivating slaves.\n");
+        EtherCAT_deactivate_all_slaves(ecat_master);
 
-      EtherCAT_release(ecat_master);
+        EtherCAT_release(ecat_master);
     }
 
     printk(KERN_INFO "=== Minimal EtherCAT environment stopped. ===\n");

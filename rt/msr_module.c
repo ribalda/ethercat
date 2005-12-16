@@ -31,7 +31,7 @@
 *           *** empty log message ***
 *
 *
-*
+*           Hello Emacs: -*- c-basic-offset: 2; -*-
 *
 **************************************************************************************************/
 
@@ -163,7 +163,8 @@ static EtherCAT_slave_t ecat_slaves[] =
     ECAT_INIT_SLAVE(Beckhoff_EL4102),
     ECAT_INIT_SLAVE(Beckhoff_EL4102),
     ECAT_INIT_SLAVE(Beckhoff_EL4102),
-    ECAT_INIT_SLAVE(Beckhoff_EL4102)
+    ECAT_INIT_SLAVE(Beckhoff_EL4102),
+    ECAT_INIT_SLAVE(Beckhoff_EL4132)
 
 
 #endif
@@ -294,8 +295,8 @@ static void msr_controller_run(void)
 *
 * Parameter: Zeiger auf msr_data
 *
-* RÅ¸ckgabe: 
-*               
+* RÅ¸ckgabe:
+*
 * Status: exp
 *
 ***************************************************************************************************
@@ -305,10 +306,10 @@ static void msr_controller_run(void)
 void msr_run(unsigned irq)
 {
 
-    static int counter = 0;
+  static int counter = 0;
 #ifdef USE_MSR_LIB
 
-    timeval_add(&process_time,&process_time,&msr_time_increment); 
+    timeval_add(&process_time,&process_time,&msr_time_increment);
 
     MSR_ADEOS_INTERRUPT_CODE(
 	msr_controller_run();
@@ -318,7 +319,7 @@ void msr_run(unsigned irq)
     msr_controller_run();
 #endif
     /* und wieder in die Timerliste eintragen */
-    /* und neu in die Taskqueue eintragen */    
+    /* und neu in die Taskqueue eintragen */
 //    timer.expires += 1;
 //    add_timer(&timer);
 
@@ -382,52 +383,42 @@ int msr_globals_register(void)
 
 int __init init_module()
 {
-    int result = 0;
-
     struct ipipe_domain_attr attr; //ipipe
 
-    //als allererstes die RT-lib initialisieren    
+    // Als allererstes die RT-lib initialisieren
 #ifdef USE_MSR_LIB
-    result = msr_rtlib_init(1,MSR_ABTASTFREQUENZ,10,&msr_globals_register); 
-
-    if (result < 0) {
+    if (msr_rtlib_init(1,MSR_ABTASTFREQUENZ,10,&msr_globals_register) < 0) {
         msr_print_warn("msr_modul: can't initialize rtlib!");
-        return result;
+        goto out_return;
     }
 #endif
 
     msr_jitter_init();
-  printk(KERN_INFO "=== Starting EtherCAT environment... ===\n");
 
-  if ((ecat_master = EtherCAT_request(0)) == NULL)
-  {
-    printk(KERN_ERR "EtherCAT master 0 not available!\n");
-    msr_rtlib_cleanup();    
-    return -1;
-  }
+    printk(KERN_INFO "=== Starting EtherCAT environment... ===\n");
 
-  printk("Checking EtherCAT slaves.\n");
+    if ((ecat_master = EtherCAT_request(0)) == NULL) {
+        printk(KERN_ERR "EtherCAT master 0 not available!\n");
+        goto out_msr_cleanup;
+    }
 
-  if (EtherCAT_check_slaves(ecat_master, ecat_slaves, ECAT_SLAVES_COUNT) != 0)
-  {
-    printk(KERN_ERR "EtherCAT: Could not init slaves!\n");
-    msr_rtlib_cleanup();    
-    return -1;
-  }
+    printk("Checking EtherCAT slaves.\n");
 
-  printk("Activating all EtherCAT slaves.\n");
+    if (EtherCAT_check_slaves(ecat_master, ecat_slaves, ECAT_SLAVES_COUNT) != 0) {
+        printk(KERN_ERR "EtherCAT: Could not init slaves!\n");
+        goto out_release_master;
+    }
 
-  if (EtherCAT_activate_all_slaves(ecat_master) != 0)
-  {
-    printk(KERN_ERR "EtherCAT: Could not activate slaves!\n");
-    msr_rtlib_cleanup();    
-    return -1;
-  }
+    printk("Activating all EtherCAT slaves.\n");
 
+    if (EtherCAT_activate_all_slaves(ecat_master) != 0) {
+        printk(KERN_ERR "EtherCAT: Could not activate slaves!\n");
+        goto out_release_master;
+    }
 
-  do_gettimeofday(&process_time);			       
-  msr_time_increment.tv_sec=0;
-  msr_time_increment.tv_usec=(unsigned int)(1000000/MSR_ABTASTFREQUENZ);
+    do_gettimeofday(&process_time);
+    msr_time_increment.tv_sec=0;
+    msr_time_increment.tv_usec=(unsigned int)(1000000/MSR_ABTASTFREQUENZ);
 
     ipipe_init_attr (&attr);
     attr.name     = "IPIPE-MSR-MODULE";
@@ -435,16 +426,16 @@ int __init init_module()
     attr.entry    = &domain_entry;
     ipipe_register_domain(&this_domain,&attr);
 
-    //den Timertakt
-/*
-  init_timer(&timer);
+    return 0;
 
-  timer.function = msr_run;
-  timer.data = 0;
-  timer.expires = jiffies+10; // Das erste Mal sofort feuern
-  add_timer(&timer);
-*/
-  return 0; /* succeed */
+ out_release_master:
+    EtherCAT_release(ecat_master);
+
+ out_msr_cleanup:
+    msr_rtlib_cleanup();
+
+ out_return:
+    return -1;
 }
 
 
@@ -454,30 +445,23 @@ void __exit cleanup_module()
 {
     msr_print_info("msk_modul: unloading...");
 
-
-//    del_timer_sync(&timer);
     ipipe_tune_timer(1000000000UL/HZ,0); //alten Timertakt wieder herstellen
-
     ipipe_unregister_domain(&this_domain);
-
-
 
     printk(KERN_INFO "=== Stopping EtherCAT environment... ===\n");
 
     if (ecat_master)
     {
-      EtherCAT_clear_process_data(ecat_master);
-      printk(KERN_INFO "Deactivating slaves.\n");
-      EtherCAT_deactivate_all_slaves(ecat_master);
-
-      EtherCAT_release(ecat_master);
+        EtherCAT_clear_process_data(ecat_master);
+        printk(KERN_INFO "Deactivating slaves.\n");
+        EtherCAT_deactivate_all_slaves(ecat_master);
+        EtherCAT_release(ecat_master);
     }
 
     printk(KERN_INFO "=== EtherCAT environment stopped. ===\n");
 
-//    msr_controller_cleanup(); 
 #ifdef USE_MSR_LIB
-    msr_rtlib_cleanup();    
+    msr_rtlib_cleanup();
 #endif
 }
 
@@ -487,7 +471,7 @@ MODULE_DESCRIPTION ("EtherCAT test environment");
 
 module_init(init_module);
 module_exit(cleanup_module);
- 
+
 
 
 
