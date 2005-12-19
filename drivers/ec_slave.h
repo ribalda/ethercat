@@ -1,20 +1,19 @@
-/****************************************************************
+/******************************************************************************
  *
  *  e c _ s l a v e . h
  *
  *  Struktur für einen EtherCAT-Slave.
  *
- *  $Date$
- *  $Author$
+ *  $Id$
  *
- ***************************************************************/
+ *****************************************************************************/
 
 #ifndef _EC_SLAVE_H_
 #define _EC_SLAVE_H_
 
 #include "ec_types.h"
 
-/***************************************************************/
+/*****************************************************************************/
 
 /**
    EtherCAT-Slave
@@ -50,6 +49,7 @@ typedef struct
 
   unsigned char *process_data; /**< Zeiger auf den Speicherbereich
                                   im Prozessdatenspeicher des Masters */
+  int error_reported; /**< Ein Zugriffsfehler wurde bereits gemeldet. */
 }
 EtherCAT_slave_t;
 
@@ -57,7 +57,7 @@ EtherCAT_slave_t;
                                TYPE, 0, ECAT_STATE_UNKNOWN, \
                                ECAT_STATE_UNKNOWN, NULL}
 
-/***************************************************************/
+/*****************************************************************************/
 
 // Slave construction and deletion
 void EtherCAT_slave_init(EtherCAT_slave_t *);
@@ -66,6 +66,6 @@ void EtherCAT_slave_clear(EtherCAT_slave_t *);
 int EtherCAT_read_value(EtherCAT_slave_t *, unsigned int);
 void EtherCAT_write_value(EtherCAT_slave_t *, unsigned int, int);
 
-/***************************************************************/
+/*****************************************************************************/
 
 #endif

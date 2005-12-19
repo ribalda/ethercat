@@ -1,13 +1,12 @@
-/****************************************************************
+/******************************************************************************
  *
  *  e c _ d e v i c e . h
  *
  *  Struktur für ein EtherCAT-Gerät.
  *
- *  $Date$
- *  $Author$
+ *  $Id$
  *
- ***************************************************************/
+ *****************************************************************************/
 
 #ifndef _EC_DEVICE_H_
 #define _EC_DEVICE_H_
@@ -36,7 +35,7 @@ typedef enum
 }
 EtherCAT_device_state_t;
 
-/***************************************************************/
+/*****************************************************************************/
 
 /**
    EtherCAT-Gerät.
@@ -65,10 +64,12 @@ typedef struct
   irqreturn_t (*isr)(int, void *, struct pt_regs *); /**< Adresse der ISR */
   struct module *module; /**< Zeiger auf das Modul, das das Gerät zur
                             Verfügung stellt. */
+  int error_reported; /**< Zeigt an, ob ein Fehler im zyklischen Code
+                         bereits gemeldet wurde. */
 }
 EtherCAT_device_t;
 
-/***************************************************************/
+/*****************************************************************************/
 
 void EtherCAT_device_init(EtherCAT_device_t *);
 int EtherCAT_device_assign(EtherCAT_device_t *, struct net_device *);
@@ -83,6 +84,6 @@ void EtherCAT_device_call_isr(EtherCAT_device_t *);
 
 void EtherCAT_device_debug(EtherCAT_device_t *);
 
-/***************************************************************/
+/*****************************************************************************/
 
 #endif

@@ -1,19 +1,18 @@
-/****************************************************************
+/******************************************************************************
  *
  *  e c _ c o m m a n d . c
  *
  *  Methoden für ein EtherCAT-Kommando.
  *
- *  $Date$
- *  $Author$
+ *  $Id$
  *
- ***************************************************************/
+ *****************************************************************************/
 
 #include <linux/slab.h>
 
 #include "ec_command.h"
 
-/***************************************************************/
+/*****************************************************************************/
 
 /**
    Kommando-Konstruktor.
@@ -34,7 +33,7 @@ void EtherCAT_command_init(EtherCAT_command_t *cmd)
   cmd->working_counter = 0;
 }
 
-/***************************************************************/
+/*****************************************************************************/
 
 /**
    Kommando-Destruktor.
@@ -49,7 +48,7 @@ void EtherCAT_command_clear(EtherCAT_command_t *cmd)
   EtherCAT_command_init(cmd);
 }
 
-/***************************************************************/
+/*****************************************************************************/
 
 #define ECAT_FUNC_HEADER \
   EtherCAT_command_init(cmd)
@@ -61,7 +60,7 @@ void EtherCAT_command_clear(EtherCAT_command_t *cmd)
 #define ECAT_FUNC_READ_FOOTER \
   cmd->data_length = length;
 
-/***************************************************************/
+/*****************************************************************************/
 
 /**
    Initialisiert ein EtherCAT-NPRD-Kommando.
@@ -77,8 +76,8 @@ void EtherCAT_command_read(EtherCAT_command_t *cmd,
                            unsigned short offset,
                            unsigned int length)
 {
-  if (node_address == 0x0000)
-    printk(KERN_WARNING "EtherCAT: Using node address 0x0000!\n");
+  if (unlikely(node_address == 0x0000))
+    printk(KERN_WARNING "EtherCAT: Warning - Using node address 0x0000!\n");
 
   ECAT_FUNC_HEADER;
 
@@ -89,7 +88,7 @@ void EtherCAT_command_read(EtherCAT_command_t *cmd,
   ECAT_FUNC_READ_FOOTER;
 }
 
-/***************************************************************/
+/*****************************************************************************/
 
 /**
    Initialisiert ein EtherCAT-NPWR-Kommando.
@@ -110,8 +109,8 @@ void EtherCAT_command_write(EtherCAT_command_t *cmd,
                             unsigned int length,
                             const unsigned char *data)
 {
-  if (node_address == 0x0000)
-    printk(KERN_WARNING "EtherCAT: Using node address 0x0000!\n");
+  if (unlikely(node_address == 0x0000))
+    printk(KERN_WARNING "EtherCAT: Warning - Using node address 0x0000!\n");
 
   ECAT_FUNC_HEADER;
 
@@ -122,7 +121,7 @@ void EtherCAT_command_write(EtherCAT_command_t *cmd,
   ECAT_FUNC_WRITE_FOOTER;
 }
 
-/***************************************************************/
+/*****************************************************************************/
 
 /**
    Initialisiert ein EtherCAT-APRD-Kommando.
@@ -150,7 +149,7 @@ void EtherCAT_command_position_read(EtherCAT_command_t *cmd,
   ECAT_FUNC_READ_FOOTER;
 }
 
-/***************************************************************/
+/*****************************************************************************/
 
 /**
    Initialisiert ein EtherCAT-APWR-Kommando.
@@ -180,7 +179,7 @@ void EtherCAT_command_position_write(EtherCAT_command_t *cmd,
   ECAT_FUNC_WRITE_FOOTER;
 }
 
-/***************************************************************/
+/*****************************************************************************/
 
 /**
    Initialisiert ein EtherCAT-BRD-Kommando.
@@ -206,7 +205,7 @@ void EtherCAT_command_broadcast_read(EtherCAT_command_t *cmd,
   ECAT_FUNC_READ_FOOTER;
 }
 
-/***************************************************************/
+/*****************************************************************************/
 
 /**
    Initialisiert ein EtherCAT-BWR-Kommando.
@@ -234,7 +233,7 @@ void EtherCAT_command_broadcast_write(EtherCAT_command_t *cmd,
   ECAT_FUNC_WRITE_FOOTER;
 }
 
-/***************************************************************/
+/*****************************************************************************/
 
 /**
    Initialisiert ein EtherCAT-LRW-Kommando.
@@ -261,4 +260,4 @@ void EtherCAT_command_logical_read_write(EtherCAT_command_t *cmd,
   ECAT_FUNC_WRITE_FOOTER;
 }
 
-/***************************************************************/
+/*****************************************************************************/

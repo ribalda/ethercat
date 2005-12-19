@@ -6,8 +6,8 @@
  *
  *  Autoren: Wilhelm Hagemeister, Florian Pose
  *
- *  $Date: 2005-11-18 11:30:01 +0100 (Fre, 18 Nov 2005) $
- *  $Author: fp $
+ *  $Date$
+ *  $Author$
  *
  *  (C) Copyright IgH 2005
  *  Ingenieurgemeinschaft IgH

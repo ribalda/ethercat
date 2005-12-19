@@ -1,13 +1,12 @@
-/****************************************************************
+/******************************************************************************
  *
  *  e c _ d e v i c e . c
  *
  *  Methoden für ein EtherCAT-Gerät.
  *
- *  $Date$
- *  $Author$
+ *  $Id$
  *
- ***************************************************************/
+ *****************************************************************************/
 
 #include <linux/module.h>
 #include <linux/skbuff.h>
@@ -17,7 +16,7 @@
 
 #include "ec_device.h"
 
-/***************************************************************/
+/*****************************************************************************/
 
 /**
    EtherCAT-Geräte-Konstuktor.
@@ -42,9 +41,10 @@ void EtherCAT_device_init(EtherCAT_device_t *ecd)
   ecd->rx_data_length = 0;
   ecd->isr = NULL;
   ecd->module = NULL;
+  ecd->error_reported = 0;
 }
 
-/***************************************************************/
+/*****************************************************************************/
 
 /**
    EtherCAT-Geräte-Destuktor.
@@ -59,20 +59,18 @@ void EtherCAT_device_clear(EtherCAT_device_t *ecd)
 {
   ecd->dev = NULL;
 
-  if (ecd->tx_skb)
-  {
+  if (ecd->tx_skb) {
     dev_kfree_skb(ecd->tx_skb);
     ecd->tx_skb = NULL;
   }
 
-  if (ecd->rx_skb)
-  {
+  if (ecd->rx_skb) {
     dev_kfree_skb(ecd->rx_skb);
     ecd->rx_skb = NULL;
   }
 }
 
-/***************************************************************/
+/*****************************************************************************/
 
 /**
    Weist einem EtherCAT-Gerät das entsprechende net_device zu.
@@ -90,23 +88,19 @@ void EtherCAT_device_clear(EtherCAT_device_t *ecd)
 int EtherCAT_device_assign(EtherCAT_device_t *ecd,
                            struct net_device *dev)
 {
-  if (!dev)
-  {
+  if (!dev) {
     printk("EtherCAT: Device is NULL!\n");
     return -1;
   }
 
-  if ((ecd->tx_skb = dev_alloc_skb(ECAT_FRAME_BUFFER_SIZE)) == NULL)
-  {
+  if ((ecd->tx_skb = dev_alloc_skb(ECAT_FRAME_BUFFER_SIZE)) == NULL) {
     printk(KERN_ERR "EtherCAT: Could not allocate device tx socket buffer!\n");
     return -1;
   }
 
-  if ((ecd->rx_skb = dev_alloc_skb(ECAT_FRAME_BUFFER_SIZE)) == NULL)
-  {
+  if ((ecd->rx_skb = dev_alloc_skb(ECAT_FRAME_BUFFER_SIZE)) == NULL) {
     dev_kfree_skb(ecd->tx_skb);
     ecd->tx_skb = NULL;
-
     printk(KERN_ERR "EtherCAT: Could not allocate device rx socket buffer!\n");
     return -1;
   }
@@ -120,7 +114,7 @@ int EtherCAT_device_assign(EtherCAT_device_t *ecd,
   return 0;
 }
 
-/***************************************************************/
+/*****************************************************************************/
 
 /**
    Führt die open()-Funktion des Netzwerktreibers aus.
@@ -137,14 +131,12 @@ int EtherCAT_device_assign(EtherCAT_device_t *ecd,
 
 int EtherCAT_device_open(EtherCAT_device_t *ecd)
 {
-  if (!ecd)
-  {
+  if (!ecd) {
     printk(KERN_ERR "EtherCAT: Trying to open a NULL device!\n");
     return -1;
   }
 
-  if (!ecd->dev)
-  {
+  if (!ecd->dev) {
     printk(KERN_ERR "EtherCAT: No net_device to open!\n");
     return -1;
   }
@@ -157,7 +149,7 @@ int EtherCAT_device_open(EtherCAT_device_t *ecd)
   return ecd->dev->open(ecd->dev);
 }
 
-/***************************************************************/
+/*****************************************************************************/
 
 /**
    Führt die stop()-Funktion des net_devices aus.
@@ -169,8 +161,7 @@ int EtherCAT_device_open(EtherCAT_device_t *ecd)
 
 int EtherCAT_device_close(EtherCAT_device_t *ecd)
 {
-  if (!ecd->dev)
-  {
+  if (!ecd->dev) {
     printk("EtherCAT: No device to close!\n");
     return -1;
   }
@@ -182,7 +173,7 @@ int EtherCAT_device_close(EtherCAT_device_t *ecd)
   return ecd->dev->stop(ecd->dev);
 }
 
-/***************************************************************/
+/*****************************************************************************/
 
 /**
    Sendet einen Rahmen über das EtherCAT-Gerät.
@@ -206,28 +197,34 @@ int EtherCAT_device_send(EtherCAT_device_t *ecd,
   unsigned char *frame_data;
   struct ethhdr *eth;
 
-  if (ecd->state == ECAT_DS_SENT)
-  {
-    printk(KERN_WARNING "EtherCAT: Trying to send frame while last was not received!\n");
+  if (unlikely(ecd->state == ECAT_DS_SENT)) {
+    printk(KERN_WARNING "EtherCAT: Warning - Trying to send frame"
+           " while last was not received!\n");
   }
 
-  skb_trim(ecd->tx_skb, 0); // Clear transmit socket buffer
-  skb_reserve(ecd->tx_skb, ETH_HLEN); // Reserve space for Ethernet-II header
+  // Clear transmit socket buffer and reserve
+  // space for Ethernet-II header
+  skb_trim(ecd->tx_skb, 0);
+  skb_reserve(ecd->tx_skb, ETH_HLEN);
 
   // Copy data to socket buffer
   frame_data = skb_put(ecd->tx_skb, length);
   memcpy(frame_data, data, length);
 
   // Add Ethernet-II-Header
-  if ((eth = (struct ethhdr *) skb_push(ecd->tx_skb, ETH_HLEN)) == NULL)
-  {
-    printk(KERN_ERR "EtherCAT: device_send - Could not allocate Ethernet-II header!\n");
+  if (unlikely((eth = (struct ethhdr *)
+                skb_push(ecd->tx_skb, ETH_HLEN)) == NULL)) {
+    printk(KERN_ERR "EtherCAT: device_send -"
+           " Could not allocate Ethernet-II header!\n");
     return -1;
   }
 
-  eth->h_proto = htons(0x88A4); // Protocol type
-  memcpy(eth->h_source, ecd->dev->dev_addr, ecd->dev->addr_len); // Hardware address
-  memset(eth->h_dest, 0xFF, ecd->dev->addr_len); // Broadcast address
+  // Protocol type
+  eth->h_proto = htons(0x88A4);
+  // Hardware address
+  memcpy(eth->h_source, ecd->dev->dev_addr, ecd->dev->addr_len);
+  // Broadcast address
+  memset(eth->h_dest, 0xFF, ecd->dev->addr_len);
 
   rdtscl(ecd->tx_time); // Get CPU cycles
 
@@ -238,14 +235,14 @@ int EtherCAT_device_send(EtherCAT_device_t *ecd,
   return 0;
 }
 
-/***************************************************************/
+/*****************************************************************************/
 
 /**
    Holt einen empfangenen Rahmen von der Netzwerkkarte.
 
    Zuerst wird geprüft, ob überhaupt ein Rahmen empfangen
-   wurde. Wenn ja, wird diesem mit Hilfe eines Spin-Locks
-   in den angegebenen Speicherbereich kopiert.
+   wurde. Wenn ja, wird dieser in den angegebenen
+   Speicherbereich kopiert.
 
    @param ecd EtherCAT-Gerät
    @param data Zeiger auf den Speicherbereich, in den die
@@ -257,17 +254,26 @@ int EtherCAT_device_send(EtherCAT_device_t *ecd,
 int EtherCAT_device_receive(EtherCAT_device_t *ecd,
                             unsigned char *data)
 {
-  if (ecd->state != ECAT_DS_RECEIVED)
-  {
-    printk(KERN_ERR "EtherCAT: receive - Nothing received!\n");
+  if (unlikely(ecd->state != ECAT_DS_RECEIVED)) {
+    if (likely(ecd->error_reported)) {
+      printk(KERN_ERR "EtherCAT: receive - Nothing received!\n");
+      ecd->error_reported = 1;
+    }
     return -1;
   }
 
-  if (ecd->rx_data_length > ECAT_FRAME_BUFFER_SIZE)
-  {
-    printk(KERN_ERR "EtherCAT: receive - Reveived frame too long (%i Bytes)!\n",
-           ecd->rx_data_length);
+  if (unlikely(ecd->rx_data_length > ECAT_FRAME_BUFFER_SIZE)) {
+    if (likely(ecd->error_reported)) {
+      printk(KERN_ERR "EtherCAT: receive - "
+             " Reveived frame too long (%i Bytes)!\n",
+             ecd->rx_data_length);
+      ecd->error_reported = 1;
+    }
     return -1;
+  }
+
+  if (unlikely(ecd->error_reported)) {
+    ecd->error_reported = 0;
   }
 
   memcpy(data, ecd->rx_data, ecd->rx_data_length);
@@ -275,7 +281,7 @@ int EtherCAT_device_receive(EtherCAT_device_t *ecd,
   return ecd->rx_data_length;
 }
 
-/***************************************************************/
+/*****************************************************************************/
 
 /**
    Ruft manuell die Interrupt-Routine der Netzwerkkarte auf.
@@ -287,10 +293,10 @@ int EtherCAT_device_receive(EtherCAT_device_t *ecd,
 
 void EtherCAT_device_call_isr(EtherCAT_device_t *ecd)
 {
-    if (ecd->isr) ecd->isr(0, ecd->dev, NULL);
+  if (likely(ecd->isr)) ecd->isr(0, ecd->dev, NULL);
 }
 
-/***************************************************************/
+/*****************************************************************************/
 
 /**
    Gibt alle Informationen über das Device-Objekt aus.
@@ -304,16 +310,26 @@ void EtherCAT_device_debug(EtherCAT_device_t *ecd)
 
   if (ecd)
   {
-    printk(KERN_DEBUG "Assigned net_device: %X\n", (unsigned) ecd->dev);
-    printk(KERN_DEBUG "Transmit socket buffer: %X\n", (unsigned) ecd->tx_skb);
-    printk(KERN_DEBUG "Receive socket buffer: %X\n", (unsigned) ecd->rx_skb);
-    printk(KERN_DEBUG "Time of last transmission: %u\n", (unsigned) ecd->tx_time);
-    printk(KERN_DEBUG "Time of last receive: %u\n", (unsigned) ecd->rx_time);
-    printk(KERN_DEBUG "Number of transmit interrupts: %u\n", (unsigned) ecd->tx_intr_cnt);
-    printk(KERN_DEBUG "Number of receive interrupts: %u\n", (unsigned) ecd->rx_intr_cnt);
-    printk(KERN_DEBUG "Total Number of interrupts: %u\n", (unsigned) ecd->intr_cnt);
-    printk(KERN_DEBUG "Actual device state: %i\n", (int) ecd->state);
-    printk(KERN_DEBUG "Receive buffer: %X\n", (unsigned) ecd->rx_data);
+    printk(KERN_DEBUG "Assigned net_device: %X\n",
+           (unsigned) ecd->dev);
+    printk(KERN_DEBUG "Transmit socket buffer: %X\n",
+           (unsigned) ecd->tx_skb);
+    printk(KERN_DEBUG "Receive socket buffer: %X\n",
+           (unsigned) ecd->rx_skb);
+    printk(KERN_DEBUG "Time of last transmission: %u\n",
+           (unsigned) ecd->tx_time);
+    printk(KERN_DEBUG "Time of last receive: %u\n",
+           (unsigned) ecd->rx_time);
+    printk(KERN_DEBUG "Number of transmit interrupts: %u\n",
+           (unsigned) ecd->tx_intr_cnt);
+    printk(KERN_DEBUG "Number of receive interrupts: %u\n",
+           (unsigned) ecd->rx_intr_cnt);
+    printk(KERN_DEBUG "Total Number of interrupts: %u\n",
+           (unsigned) ecd->intr_cnt);
+    printk(KERN_DEBUG "Actual device state: %i\n",
+           (int) ecd->state);
+    printk(KERN_DEBUG "Receive buffer: %X\n",
+           (unsigned) ecd->rx_data);
     printk(KERN_DEBUG "Receive buffer fill state: %u/%u\n",
            (unsigned) ecd->rx_data_length, ECAT_FRAME_BUFFER_SIZE);
   }
@@ -325,7 +341,7 @@ void EtherCAT_device_debug(EtherCAT_device_t *ecd)
   printk(KERN_DEBUG "---EtherCAT device information end---\n");
 }
 
-/***************************************************************/
+/*****************************************************************************/
 
 EXPORT_SYMBOL(EtherCAT_device_init);
 EXPORT_SYMBOL(EtherCAT_device_clear);
@@ -333,4 +349,4 @@ EXPORT_SYMBOL(EtherCAT_device_assign);
 EXPORT_SYMBOL(EtherCAT_device_open);
 EXPORT_SYMBOL(EtherCAT_device_close);
 
-/***************************************************************/
+/*****************************************************************************/

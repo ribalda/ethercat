@@ -1,13 +1,12 @@
-/****************************************************************
+/******************************************************************************
  *
  *  e c _ m a s t e r . c
  *
  *  Methoden für einen EtherCAT-Master.
  *
- *  $Date$
- *  $Author$
+ *  $Id$
  *
- ***************************************************************/
+ *****************************************************************************/
 
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -18,13 +17,13 @@
 #include "ec_globals.h"
 #include "ec_master.h"
 
-/***************************************************************/
+/*****************************************************************************/
 
 /**
    Konstruktor des EtherCAT-Masters.
 
    @param master Zeiger auf den zu initialisierenden
-                 EtherCAT-Master
+   EtherCAT-Master
 
    @return 0 bei Erfolg, sonst < 0 (= dev ist NULL)
 */
@@ -41,7 +40,7 @@ void EtherCAT_master_init(EtherCAT_master_t *master)
   master->debug_level = 0;
 }
 
-/***************************************************************/
+/*****************************************************************************/
 
 /**
    Destruktor eines EtherCAT-Masters.
@@ -57,8 +56,7 @@ void EtherCAT_master_clear(EtherCAT_master_t *master)
   // Remove all slaves
   EtherCAT_clear_slaves(master);
 
-  if (master->process_data)
-  {
+  if (master->process_data) {
     kfree(master->process_data);
     master->process_data = NULL;
   }
@@ -66,7 +64,7 @@ void EtherCAT_master_clear(EtherCAT_master_t *master)
   master->process_data_length = 0;
 }
 
-/***************************************************************/
+/*****************************************************************************/
 
 /**
    Öffnet ein EtherCAT-Geraet für den Master.
@@ -76,27 +74,26 @@ void EtherCAT_master_clear(EtherCAT_master_t *master)
    @param master Der EtherCAT-Master
    @param device Das EtherCAT-Geraet
    @return 0, wenn alles o.k.,
-           < 0, wenn bereits ein Geraet registriert
-           oder das Geraet nicht geoeffnet werden konnte.
+   < 0, wenn bereits ein Geraet registriert
+   oder das Geraet nicht geoeffnet werden konnte.
 */
 
 int EtherCAT_master_open(EtherCAT_master_t *master,
                          EtherCAT_device_t *device)
 {
-  if (!master || !device)
-  {
-    printk(KERN_ERR "EtherCAT: Illegal parameters for master_open()!\n");
+  if (!master || !device) {
+    printk(KERN_ERR "EtherCAT: Illegal parameters"
+           " for master_open()!\n");
     return -1;
   }
 
-  if (master->dev)
-  {
-    printk(KERN_ERR "EtherCAT: Master already has a device.\n");
+  if (master->dev) {
+    printk(KERN_ERR "EtherCAT: Master already"
+           " has a device.\n");
     return -1;
   }
 
-  if (EtherCAT_device_open(device) < 0)
-  {
+  if (EtherCAT_device_open(device) < 0) {
     printk(KERN_ERR "EtherCAT: Could not open device %X!\n",
            (unsigned int) master->dev);
     return -1;
@@ -107,7 +104,7 @@ int EtherCAT_master_open(EtherCAT_master_t *master,
   return 0;
 }
 
-/***************************************************************/
+/*****************************************************************************/
 
 /**
    Schliesst das EtherCAT-Geraet, auf dem der Master arbeitet.
@@ -119,21 +116,21 @@ int EtherCAT_master_open(EtherCAT_master_t *master,
 void EtherCAT_master_close(EtherCAT_master_t *master,
                            EtherCAT_device_t *device)
 {
-  if (master->dev != device)
-  {
-    printk(KERN_WARNING "EtherCAT: Trying to close an unknown device!\n");
+  if (master->dev != device) {
+    printk(KERN_WARNING "EtherCAT: Warning -"
+           " Trying to close an unknown device!\n");
     return;
   }
 
-  if (EtherCAT_device_close(master->dev) < 0)
-  {
-    printk(KERN_WARNING "EtherCAT: Could not close device!\n");
+  if (EtherCAT_device_close(master->dev) < 0) {
+    printk(KERN_WARNING "EtherCAT: Warning -"
+           " Could not close device!\n");
   }
 
   master->dev = NULL;
 }
 
-/***************************************************************/
+/*****************************************************************************/
 
 /**
    Sendet ein einzelnes Kommando in einem Frame und
@@ -150,26 +147,28 @@ int EtherCAT_simple_send_receive(EtherCAT_master_t *master,
 {
   unsigned int tries_left;
 
-  if (EtherCAT_simple_send(master, cmd) < 0) return -1;
+  if (unlikely(EtherCAT_simple_send(master, cmd) < 0))
+    return -1;
 
   udelay(3);
 
   EtherCAT_device_call_isr(master->dev);
 
   tries_left = 20;
-  while (master->dev->state == ECAT_DS_SENT && tries_left)
-  {
+  while (unlikely(master->dev->state == ECAT_DS_SENT
+                  && tries_left)) {
     udelay(1);
     EtherCAT_device_call_isr(master->dev);
     tries_left--;
   }
 
-  if (EtherCAT_simple_receive(master, cmd) < 0) return -1;
+  if (unlikely(EtherCAT_simple_receive(master, cmd) < 0))
+    return -1;
 
   return 0;
 }
 
-/***************************************************************/
+/*****************************************************************************/
 
 /**
    Sendet ein einzelnes Kommando in einem Frame.
@@ -185,29 +184,27 @@ int EtherCAT_simple_send(EtherCAT_master_t *master,
 {
   unsigned int length, framelength, i;
 
-  if (master->debug_level > 0)
-  {
+  if (unlikely(master->debug_level > 0)) {
     printk(KERN_DEBUG "EtherCAT_send_receive_command\n");
   }
 
-  if (cmd->state != ECAT_CS_READY)
-  {
-    printk(KERN_WARNING "EtherCAT_send_receive_command: Command not in ready state!\n");
+  if (unlikely(cmd->state != ECAT_CS_READY)) {
+    printk(KERN_WARNING "EtherCAT_send_receive_command:"
+           "Command not in ready state!\n");
   }
 
   length = cmd->data_length + 12;
   framelength = length + 2;
 
-  if (framelength > ECAT_FRAME_BUFFER_SIZE)
-  {
-    printk(KERN_ERR "EtherCAT: Frame too long (%i)!\n", framelength);
+  if (unlikely(framelength > ECAT_FRAME_BUFFER_SIZE)) {
+    printk(KERN_ERR "EtherCAT: Frame too long (%i)!\n",
+           framelength);
     return -1;
   }
 
   if (framelength < 46) framelength = 46;
 
-  if (master->debug_level > 0)
-  {
+  if (unlikely(master->debug_level > 0)) {
     printk(KERN_DEBUG "Frame length: %i\n", framelength);
   }
 
@@ -217,8 +214,7 @@ int EtherCAT_simple_send(EtherCAT_master_t *master,
   cmd->index = master->command_index;
   master->command_index = (master->command_index + 1) % 0x0100;
 
-  if (master->debug_level > 0)
-  {
+  if (unlikely(master->debug_level > 0)) {
     printk(KERN_DEBUG "Sending command index %i\n", cmd->index);
   }
 
@@ -235,14 +231,15 @@ int EtherCAT_simple_send(EtherCAT_master_t *master,
   master->tx_data[2 + 8] = 0x00;
   master->tx_data[2 + 9] = 0x00;
 
-  if (cmd->type == ECAT_CMD_APWR
-      || cmd->type == ECAT_CMD_NPWR
-      || cmd->type == ECAT_CMD_BWR
-      || cmd->type == ECAT_CMD_LRW) // Write
+  if (likely(cmd->type == ECAT_CMD_APWR
+             || cmd->type == ECAT_CMD_NPWR
+             || cmd->type == ECAT_CMD_BWR
+             || cmd->type == ECAT_CMD_LRW)) // Write commands
   {
-    for (i = 0; i < cmd->data_length; i++) master->tx_data[2 + 10 + i] = cmd->data[i];
+    for (i = 0; i < cmd->data_length; i++)
+      master->tx_data[2 + 10 + i] = cmd->data[i];
   }
-  else // Read
+  else // Read commands
   {
     for (i = 0; i < cmd->data_length; i++) master->tx_data[2 + 10 + i] = 0x00;
   }
@@ -255,27 +252,26 @@ int EtherCAT_simple_send(EtherCAT_master_t *master,
 
   master->tx_data_length = framelength;
 
-  if (master->debug_level > 0)
-  {
+  if (unlikely(master->debug_level > 0)) {
     printk(KERN_DEBUG "device send...\n");
   }
 
   // Send frame
-  if (EtherCAT_device_send(master->dev, master->tx_data, framelength) != 0)
-  {
+  if (unlikely(EtherCAT_device_send(master->dev,
+                                    master->tx_data,
+                                    framelength) != 0)) {
     printk(KERN_ERR "EtherCAT: Could not send!\n");
     return -1;
   }
 
-  if (master->debug_level > 0)
-  {
+  if (unlikely(master->debug_level > 0)) {
     printk(KERN_DEBUG "EtherCAT_send done.\n");
   }
 
   return 0;
 }
 
-/***************************************************************/
+/*****************************************************************************/
 
 /**
    Wartet auf den Empfang eines einzeln gesendeten
@@ -291,49 +287,49 @@ int EtherCAT_simple_receive(EtherCAT_master_t *master,
                             EtherCAT_command_t *cmd)
 {
   unsigned int length;
-  int receive_ret;
+  int ret;
   unsigned char command_type, command_index;
 
-  if ((receive_ret = EtherCAT_device_receive(master->dev,
-                                             master->rx_data)) < 0)
-  {
+  if (unlikely((ret = EtherCAT_device_receive(master->dev,
+                                              master->rx_data)) < 0))
     return -1;
-  }
 
-  master->rx_data_length = (unsigned int) receive_ret;
+  master->rx_data_length = (unsigned int) ret;
 
-  if (master->rx_data_length < 2)
-  {
-    printk(KERN_ERR "EtherCAT: Received frame with incomplete EtherCAT header!\n");
+  if (unlikely(master->rx_data_length < 2)) {
+    printk(KERN_ERR "EtherCAT: Received frame with"
+           " incomplete EtherCAT header!\n");
     output_debug_data(master);
     return -1;
   }
 
   // Länge des gesamten Frames prüfen
-  length = ((master->rx_data[1] & 0x07) << 8) | (master->rx_data[0] & 0xFF);
+  length = ((master->rx_data[1] & 0x07) << 8)
+    | (master->rx_data[0] & 0xFF);
 
-  if (length > master->rx_data_length)
-  {
-    printk(KERN_ERR "EtherCAT: Received corrupted frame (length does not match)!\n");
+  if (unlikely(length > master->rx_data_length)) {
+    printk(KERN_ERR "EtherCAT: Received corrupted"
+           " frame (length does not match)!\n");
     output_debug_data(master);
     return -1;
   }
 
   command_type = master->rx_data[2];
   command_index = master->rx_data[2 + 1];
-  length = (master->rx_data[2 + 6] & 0xFF) | ((master->rx_data[2 + 7] & 0x07) << 8);
+  length = (master->rx_data[2 + 6] & 0xFF)
+    | ((master->rx_data[2 + 7] & 0x07) << 8);
 
-  if (master->rx_data_length - 2 < length + 12)
-  {
-    printk(KERN_ERR "EtherCAT: Received frame with incomplete command data!\n");
+  if (unlikely(master->rx_data_length - 2 < length + 12)) {
+    printk(KERN_ERR "EtherCAT: Received frame with"
+           " incomplete command data!\n");
     output_debug_data(master);
     return -1;
   }
 
-  if (cmd->state == ECAT_CS_SENT
-      && cmd->type == command_type
-      && cmd->index == command_index
-      && cmd->data_length == length)
+  if (likely(cmd->state == ECAT_CS_SENT
+             && cmd->type == command_type
+             && cmd->index == command_index
+             && cmd->data_length == length))
   {
     cmd->state = ECAT_CS_RECEIVED;
 
@@ -355,7 +351,7 @@ int EtherCAT_simple_receive(EtherCAT_master_t *master,
   return 0;
 }
 
-/***************************************************************/
+/*****************************************************************************/
 
 /**
    Überprüft die angeschlossenen Slaves.
@@ -381,8 +377,7 @@ int EtherCAT_check_slaves(EtherCAT_master_t *master,
   unsigned int i, j, found, length, pos;
   unsigned char data[2];
 
-  if (slave_count == 0)
-  {
+  if (unlikely(!slave_count)) {
     printk(KERN_ERR "EtherCAT: No slaves in list!\n");
     return -1;
   }
@@ -391,27 +386,25 @@ int EtherCAT_check_slaves(EtherCAT_master_t *master,
 
   EtherCAT_command_broadcast_read(&cmd, 0x0000, 4);
 
-  if (EtherCAT_simple_send_receive(master, &cmd) < 0) return -1;
+  if (unlikely(EtherCAT_simple_send_receive(master, &cmd) < 0))
+    return -1;
 
-  if (cmd.working_counter != slave_count)
-  {
+  if (unlikely(cmd.working_counter != slave_count)) {
     printk(KERN_ERR "EtherCAT: Wrong number of slaves on bus: %i / %i\n",
            cmd.working_counter, slave_count);
     return -1;
   }
   else
-  {
     printk("EtherCAT: Found all %i slaves.\n", slave_count);
-  }
 
   // For every slave in the list
   for (i = 0; i < slave_count; i++)
   {
     cur = &slaves[i];
 
-    if (!cur->desc)
-    {
-      printk(KERN_ERR "EtherCAT: Slave %i has no description.\n", i);
+    if (unlikely(!cur->desc)) {
+      printk(KERN_ERR "EtherCAT: Slave %i has"
+             " no description.\n", i);
       return -1;
     }
 
@@ -424,23 +417,28 @@ int EtherCAT_check_slaves(EtherCAT_master_t *master,
     data[0] = cur->station_address & 0x00FF;
     data[1] = (cur->station_address & 0xFF00) >> 8;
 
-    EtherCAT_command_position_write(&cmd, cur->ring_position, 0x0010, 2, data);
-    if (EtherCAT_simple_send_receive(master, &cmd) < 0) return -1;
+    EtherCAT_command_position_write(&cmd, cur->ring_position,
+                                    0x0010, 2, data);
 
-    if (cmd.working_counter != 1)
-    {
-      printk(KERN_ERR "EtherCAT: Slave %i did not repond while writing station address!\n", i);
+    if (unlikely(EtherCAT_simple_send_receive(master, &cmd) < 0))
+      return -1;
+
+    if (unlikely(cmd.working_counter != 1)) {
+      printk(KERN_ERR "EtherCAT: Slave %i did not repond"
+             " while writing station address!\n", i);
       return -1;
     }
 
     // Read base data
 
     EtherCAT_command_read(&cmd, cur->station_address, 0x0000, 4);
-    if (EtherCAT_simple_send_receive(master, &cmd) < 0) return -1;
 
-    if (cmd.working_counter != 1)
-    {
-      printk(KERN_ERR "EtherCAT: Slave %i did not respond while reading base data!\n", i);
+    if (unlikely(EtherCAT_simple_send_receive(master, &cmd) < 0))
+      return -1;
+
+    if (unlikely(cmd.working_counter != 1)) {
+      printk(KERN_ERR "EtherCAT: Slave %i did not respond"
+             " while reading base data!\n", i);
       return -1;
     }
 
@@ -451,29 +449,37 @@ int EtherCAT_check_slaves(EtherCAT_master_t *master,
 
     // Read identification from "Slave Information Interface" (SII)
 
-    if (EtherCAT_read_slave_information(master, cur->station_address,
-                                        0x0008, &cur->vendor_id) != 0)
+    if (unlikely(EtherCAT_read_slave_information(master,
+                                                 cur->station_address,
+                                                 0x0008,
+                                                 &cur->vendor_id) != 0))
     {
       printk(KERN_ERR "EtherCAT: Could not read SII vendor id!\n");
       return -1;
     }
 
-    if (EtherCAT_read_slave_information(master, cur->station_address,
-                                        0x000A, &cur->product_code) != 0)
+    if (unlikely(EtherCAT_read_slave_information(master,
+                                                 cur->station_address,
+                                                 0x000A,
+                                                 &cur->product_code) != 0))
     {
       printk(KERN_ERR "EtherCAT: Could not read SII product code!\n");
       return -1;
     }
 
-    if (EtherCAT_read_slave_information(master, cur->station_address,
-                                        0x000C, &cur->revision_number) != 0)
+    if (unlikely(EtherCAT_read_slave_information(master,
+                                                 cur->station_address,
+                                                 0x000C,
+                                                 &cur->revision_number) != 0))
     {
       printk(KERN_ERR "EtherCAT: Could not read SII revision number!\n");
       return -1;
     }
 
-    if (EtherCAT_read_slave_information(master, cur->station_address,
-                                        0x000E, &cur->serial_number) != 0)
+    if (unlikely(EtherCAT_read_slave_information(master,
+                                                 cur->station_address,
+                                                 0x000E,
+                                                 &cur->serial_number) != 0))
     {
       printk(KERN_ERR "EtherCAT: Could not read SII serial number!\n");
       return -1;
@@ -483,17 +489,16 @@ int EtherCAT_check_slaves(EtherCAT_master_t *master,
 
     found = 0;
 
-    for (j = 0; j < slave_idents_count; j++)
+    for (j = 0; j < slave_ident_count; j++)
     {
-      if (slave_idents[j].vendor_id == cur->vendor_id
-          && slave_idents[j].product_code == cur->product_code)
+      if (unlikely(slave_idents[j].vendor_id == cur->vendor_id
+                   && slave_idents[j].product_code == cur->product_code))
       {
         found = 1;
 
-        if (cur->desc != slave_idents[j].desc)
-        {
-          printk(KERN_ERR "EtherCAT: Unexpected slave device \"%s %s\""
-                 " at position %i. Expected: \"%s %s\"\n",
+        if (unlikely(cur->desc != slave_idents[j].desc)) {
+          printk(KERN_ERR "EtherCAT: Unexpected slave device"
+                 " \"%s %s\" at position %i. Expected: \"%s %s\"\n",
                  slave_idents[j].desc->vendor_name,
                  slave_idents[j].desc->product_name, i,
                  cur->desc->vendor_name, cur->desc->product_name);
@@ -504,8 +509,7 @@ int EtherCAT_check_slaves(EtherCAT_master_t *master,
       }
     }
 
-    if (!found)
-    {
+    if (unlikely(!found)) {
       printk(KERN_ERR "EtherCAT: Unknown slave device"
              " (vendor %X, code %X) at position %i.\n",
              cur->vendor_id, cur->product_code, i);
@@ -519,10 +523,11 @@ int EtherCAT_check_slaves(EtherCAT_master_t *master,
     length += slaves[i].desc->data_length;
   }
 
-  if ((master->process_data = (unsigned char *)
-       kmalloc(sizeof(unsigned char) * length, GFP_KERNEL)) == NULL)
-  {
-    printk(KERN_ERR "EtherCAT: Could not allocate %i bytes for process data.\n", length);
+  if (unlikely((master->process_data = (unsigned char *)
+                kmalloc(sizeof(unsigned char)
+                        * length, GFP_KERNEL)) == NULL)) {
+    printk(KERN_ERR "EtherCAT: Could not allocate %i"
+           " bytes for process data.\n", length);
     return -1;
   }
 
@@ -535,8 +540,10 @@ int EtherCAT_check_slaves(EtherCAT_master_t *master,
     slaves[i].process_data = master->process_data + pos;
     slaves[i].logical_address0 = pos;
 
-    printk(KERN_DEBUG "EtherCAT: Slave %i - Address 0x%X, \"%s %s\", s/n %u\n",
-           i, pos, slaves[i].desc->vendor_name, slaves[i].desc->product_name,
+    printk(KERN_DEBUG "EtherCAT: Slave %i -"
+           " Address 0x%X, \"%s %s\", s/n %u\n",
+           i, pos, slaves[i].desc->vendor_name,
+           slaves[i].desc->product_name,
            slaves[i].serial_number);
 
     pos += slaves[i].desc->data_length;
@@ -548,7 +555,7 @@ int EtherCAT_check_slaves(EtherCAT_master_t *master,
   return 0;
 }
 
-/***************************************************************/
+/*****************************************************************************/
 
 /**
    Entfernt den Zeiger auf das Slave-Array.
@@ -562,7 +569,7 @@ void EtherCAT_clear_slaves(EtherCAT_master_t *master)
   master->slave_count = 0;
 }
 
-/***************************************************************/
+/*****************************************************************************/
 
 /**
    Liest Daten aus dem Slave-Information-Interface
@@ -596,12 +603,13 @@ int EtherCAT_read_slave_information(EtherCAT_master_t *master,
   data[5] = 0x00;
 
   EtherCAT_command_write(&cmd, node_address, 0x502, 6, data);
-  if (EtherCAT_simple_send_receive(master, &cmd) < 0) return -3;
 
-  if (cmd.working_counter != 1)
-  {
-    printk(KERN_ERR "EtherCAT: SII-read - Slave %04X did not respond!\n",
-           node_address);
+  if (unlikely(EtherCAT_simple_send_receive(master, &cmd) < 0))
+    return -3;
+
+  if (unlikely(cmd.working_counter != 1)) {
+    printk(KERN_ERR "EtherCAT: SII-read - Slave"
+           " %04X did not respond!\n", node_address);
     return -4;
   }
 
@@ -610,22 +618,22 @@ int EtherCAT_read_slave_information(EtherCAT_master_t *master,
   // den Status auslesen, bis das Bit weg ist.
 
   tries_left = 100;
-  while (tries_left)
+  while (likely(tries_left))
   {
     udelay(10);
 
     EtherCAT_command_read(&cmd, node_address, 0x502, 10);
-    if (EtherCAT_simple_send_receive(master, &cmd) != 0) return -3;
 
-    if (cmd.working_counter != 1)
-    {
-      printk(KERN_ERR "EtherCAT: SII-read status - Slave %04X did not respond!\n",
-             node_address);
+    if (unlikely(EtherCAT_simple_send_receive(master, &cmd) != 0))
+      return -3;
+
+    if (unlikely(cmd.working_counter != 1)) {
+      printk(KERN_ERR "EtherCAT: SII-read status -"
+             " Slave %04X did not respond!\n", node_address);
       return -4;
     }
 
-    if ((cmd.data[1] & 0x81) == 0)
-    {
+    if (likely((cmd.data[1] & 0x81) == 0)) {
       memcpy(target, cmd.data + 6, 4);
       break;
     }
@@ -633,17 +641,16 @@ int EtherCAT_read_slave_information(EtherCAT_master_t *master,
     tries_left--;
   }
 
-  if (!tries_left)
-  {
-    printk(KERN_WARNING "EtherCAT: SSI-read. Slave %04X timed out!\n",
-           node_address);
+  if (unlikely(!tries_left)) {
+    printk(KERN_WARNING "EtherCAT: SSI-read."
+           " Slave %04X timed out!\n", node_address);
     return -1;
   }
 
   return 0;
 }
 
-/***************************************************************/
+/*****************************************************************************/
 
 /**
    Ändert den Zustand eines Slaves (asynchron).
@@ -669,62 +676,63 @@ int EtherCAT_state_change(EtherCAT_master_t *master,
   data[0] = state_and_ack;
   data[1] = 0x00;
 
-  EtherCAT_command_write(&cmd, slave->station_address, 0x0120, 2, data);
+  EtherCAT_command_write(&cmd, slave->station_address,
+                         0x0120, 2, data);
 
-  if (EtherCAT_simple_send_receive(master, &cmd) != 0)
-  {
-    printk(KERN_ERR "EtherCAT: Could not set state %02X - Unable to send!\n", state_and_ack);
+  if (unlikely(EtherCAT_simple_send_receive(master, &cmd) != 0)) {
+    printk(KERN_ERR "EtherCAT: Could not set state %02X -"
+           " Unable to send!\n", state_and_ack);
     return -2;
   }
 
-  if (cmd.working_counter != 1)
-  {
-    printk(KERN_ERR "EtherCAT: Could not set state %02X - Device \"%s %s\" (%d) did not respond!\n", 
-	   state_and_ack,
-	   slave->desc->vendor_name, 
-	   slave->desc->product_name,
-	   slave->ring_position*(-1));
+  if (unlikely(cmd.working_counter != 1)) {
+    printk(KERN_ERR "EtherCAT: Could not set state %02X -"
+           " Device \"%s %s\" (%d) did not respond!\n",
+           state_and_ack, slave->desc->vendor_name,
+           slave->desc->product_name, slave->ring_position*(-1));
     return -3;
   }
 
   slave->requested_state = state_and_ack & 0x0F;
 
   tries_left = 100;
-  while (tries_left)
+  while (likely(tries_left))
   {
     udelay(10);
 
     EtherCAT_command_read(&cmd, slave->station_address, 0x0130, 2);
 
-    if (EtherCAT_simple_send_receive(master, &cmd) != 0)
-    {
-      printk(KERN_ERR "EtherCAT: Could not check state %02X - Unable to send!\n", state_and_ack);
+    if (unlikely(EtherCAT_simple_send_receive(master, &cmd) != 0)) {
+      printk(KERN_ERR "EtherCAT: Could not check"
+             " state %02X - Unable to send!\n", state_and_ack);
       return -2;
     }
 
-    if (cmd.working_counter != 1)
-    {
-      printk(KERN_ERR "EtherCAT: Could not check state %02X - Device did not respond!\n", state_and_ack);
+    if (unlikely(cmd.working_counter != 1)) {
+      printk(KERN_ERR "EtherCAT: Could not check"
+             " state %02X - Device did not respond!\n",
+             state_and_ack);
       return -3;
     }
 
-    if (cmd.data[0] & 0x10) // State change error
-    {
-      printk(KERN_ERR "EtherCAT: Could not set state %02X - Device refused state change (code %02X)!\n", state_and_ack, cmd.data[0]);
+    if (unlikely(cmd.data[0] & 0x10)) { // State change error
+      printk(KERN_ERR "EtherCAT: Could not set state %02X -"
+             " Device refused state change (code %02X)!\n",
+             state_and_ack, cmd.data[0]);
       return -4;
     }
 
-    if (cmd.data[0] == (state_and_ack & 0x0F)) // State change successful
-    {
+    if (likely(cmd.data[0] == (state_and_ack & 0x0F))) {
+      // State change successful
       break;
     }
 
     tries_left--;
   }
 
-  if (!tries_left)
-  {
-    printk(KERN_ERR "EtherCAT: Could not check state %02X - Timeout while checking!\n", state_and_ack);
+  if (unlikely(!tries_left)) {
+    printk(KERN_ERR "EtherCAT: Could not check state %02X -"
+           " Timeout while checking!\n", state_and_ack);
     return -5;
   }
 
@@ -733,7 +741,7 @@ int EtherCAT_state_change(EtherCAT_master_t *master,
   return 0;
 }
 
-/***************************************************************/
+/*****************************************************************************/
 
 /**
    Konfiguriert einen Slave und setzt den Operational-Zustand.
@@ -758,22 +766,23 @@ int EtherCAT_activate_slave(EtherCAT_master_t *master,
 
   desc = slave->desc;
 
-  if (EtherCAT_state_change(master, slave, ECAT_STATE_INIT) != 0)
-  {
+  if (unlikely(EtherCAT_state_change(master, slave,
+                                     ECAT_STATE_INIT) != 0))
     return -1;
-  }
 
   // Resetting FMMU's
 
   memset(data, 0x00, 256);
 
-  EtherCAT_command_write(&cmd, slave->station_address, 0x0600, 256, data);
+  EtherCAT_command_write(&cmd, slave->station_address,
+                         0x0600, 256, data);
 
-  if (EtherCAT_simple_send_receive(master, &cmd) < 0) return -1;
+  if (unlikely(EtherCAT_simple_send_receive(master, &cmd) < 0))
+    return -1;
 
-  if (cmd.working_counter != 1)
-  {
-    printk(KERN_ERR "EtherCAT: Resetting FMMUs - Slave %04X did not respond!\n",
+  if (unlikely(cmd.working_counter != 1)) {
+    printk(KERN_ERR "EtherCAT: Resetting FMMUs -"
+           " Slave %04X did not respond!\n",
            slave->station_address);
     return -2;
   }
@@ -784,12 +793,15 @@ int EtherCAT_activate_slave(EtherCAT_master_t *master,
   {
     memset(data, 0x00, 256);
 
-    EtherCAT_command_write(&cmd, slave->station_address, 0x0800, 256, data);
-    if (EtherCAT_simple_send_receive(master, &cmd) < 0) return -1;
+    EtherCAT_command_write(&cmd, slave->station_address,
+                           0x0800, 256, data);
 
-    if (cmd.working_counter != 1)
-    {
-      printk(KERN_ERR "EtherCAT: Resetting SMs - Slave %04X did not respond!\n",
+    if (unlikely(EtherCAT_simple_send_receive(master, &cmd) < 0))
+      return -1;
+
+    if (unlikely(cmd.working_counter != 1)) {
+      printk(KERN_ERR "EtherCAT: Resetting SMs -"
+             " Slave %04X did not respond!\n",
              slave->station_address);
       return -2;
     }
@@ -801,12 +813,15 @@ int EtherCAT_activate_slave(EtherCAT_master_t *master,
   {
     if (desc->sm0)
     {
-      EtherCAT_command_write(&cmd, slave->station_address, 0x0800, 8, desc->sm0);
-      if (EtherCAT_simple_send_receive(master, &cmd) < 0) return -1;
+      EtherCAT_command_write(&cmd, slave->station_address,
+                             0x0800, 8, desc->sm0);
 
-      if (cmd.working_counter != 1)
-      {
-        printk(KERN_ERR "EtherCAT: Setting SM0 - Slave %04X did not respond!\n",
+      if (unlikely(EtherCAT_simple_send_receive(master, &cmd) < 0))
+        return -1;
+
+      if (unlikely(cmd.working_counter != 1)) {
+        printk(KERN_ERR "EtherCAT: Setting SM0 -"
+               " Slave %04X did not respond!\n",
                slave->station_address);
         return -3;
       }
@@ -814,12 +829,15 @@ int EtherCAT_activate_slave(EtherCAT_master_t *master,
 
     if (desc->sm1)
     {
-      EtherCAT_command_write(&cmd, slave->station_address, 0x0808, 8, desc->sm1);
-      if (EtherCAT_simple_send_receive(master, &cmd) < 0) return -1;
+      EtherCAT_command_write(&cmd, slave->station_address,
+                             0x0808, 8, desc->sm1);
 
-      if (cmd.working_counter != 1)
-      {
-        printk(KERN_ERR "EtherCAT: Setting SM1 - Slave %04X did not respond!\n",
+      if (unlikely(EtherCAT_simple_send_receive(master, &cmd) < 0))
+        return -1;
+
+      if (unlikely(cmd.working_counter != 1)) {
+        printk(KERN_ERR "EtherCAT: Setting SM1 -"
+               " Slave %04X did not respond!\n",
                slave->station_address);
         return -2;
       }
@@ -828,10 +846,9 @@ int EtherCAT_activate_slave(EtherCAT_master_t *master,
 
   // Change state to PREOP
 
-  if (EtherCAT_state_change(master, slave, ECAT_STATE_PREOP) != 0)
-  {
+  if (unlikely(EtherCAT_state_change(master, slave,
+                                     ECAT_STATE_PREOP) != 0))
     return -5;
-  }
 
   // Set FMMU's
 
@@ -844,12 +861,15 @@ int EtherCAT_activate_slave(EtherCAT_master_t *master,
     fmmu[2] = (slave->logical_address0 & 0x00FF0000) >> 16;
     fmmu[3] = (slave->logical_address0 & 0xFF000000) >> 24;
 
-    EtherCAT_command_write(&cmd, slave->station_address, 0x0600, 16, fmmu);
-    if (EtherCAT_simple_send_receive(master, &cmd) < 0) return -1;
+    EtherCAT_command_write(&cmd, slave->station_address,
+                           0x0600, 16, fmmu);
 
-    if (cmd.working_counter != 1)
-    {
-      printk(KERN_ERR "EtherCAT: Setting FMMU0 - Slave %04X did not respond!\n",
+    if (unlikely(EtherCAT_simple_send_receive(master, &cmd) < 0))
+      return -1;
+
+    if (unlikely(cmd.working_counter != 1)) {
+      printk(KERN_ERR "EtherCAT: Setting FMMU0 -"
+             " Slave %04X did not respond!\n",
              slave->station_address);
       return -2;
     }
@@ -861,12 +881,15 @@ int EtherCAT_activate_slave(EtherCAT_master_t *master,
   {
     if (desc->sm0)
     {
-      EtherCAT_command_write(&cmd, slave->station_address, 0x0800, 8, desc->sm0);
-      if (EtherCAT_simple_send_receive(master, &cmd) < 0) return -1;
+      EtherCAT_command_write(&cmd, slave->station_address,
+                             0x0800, 8, desc->sm0);
 
-      if (cmd.working_counter != 1)
-      {
-        printk(KERN_ERR "EtherCAT: Setting SM0 - Slave %04X did not respond!\n",
+      if (unlikely(EtherCAT_simple_send_receive(master, &cmd) < 0))
+        return -1;
+
+      if (unlikely(cmd.working_counter != 1)) {
+        printk(KERN_ERR "EtherCAT: Setting SM0 -"
+               " Slave %04X did not respond!\n",
                slave->station_address);
         return -3;
       }
@@ -874,12 +897,15 @@ int EtherCAT_activate_slave(EtherCAT_master_t *master,
 
     if (desc->sm1)
     {
-      EtherCAT_command_write(&cmd, slave->station_address, 0x0808, 8, desc->sm1);
-      if (EtherCAT_simple_send_receive(master, &cmd) < 0) return -1;
+      EtherCAT_command_write(&cmd, slave->station_address,
+                             0x0808, 8, desc->sm1);
 
-      if (cmd.working_counter != 1)
-      {
-        printk(KERN_ERR "EtherCAT: Setting SM1 - Slave %04X did not respond!\n",
+      if (unlikely(EtherCAT_simple_send_receive(master, &cmd) < 0))
+        return -1;
+
+      if (unlikely(cmd.working_counter != 1)) {
+        printk(KERN_ERR "EtherCAT: Setting SM1 -"
+               " Slave %04X did not respond!\n",
                slave->station_address);
         return -3;
       }
@@ -888,12 +914,15 @@ int EtherCAT_activate_slave(EtherCAT_master_t *master,
 
   if (desc->sm2)
   {
-    EtherCAT_command_write(&cmd, slave->station_address, 0x0810, 8, desc->sm2);
-    if (EtherCAT_simple_send_receive(master, &cmd) < 0) return -1;
+    EtherCAT_command_write(&cmd, slave->station_address,
+                           0x0810, 8, desc->sm2);
 
-    if (cmd.working_counter != 1)
-    {
-      printk(KERN_ERR "EtherCAT: Setting SM2 - Slave %04X did not respond!\n",
+    if (unlikely(EtherCAT_simple_send_receive(master, &cmd) < 0))
+      return -1;
+
+    if (unlikely(cmd.working_counter != 1)) {
+      printk(KERN_ERR "EtherCAT: Setting SM2 -"
+             " Slave %04X did not respond!\n",
              slave->station_address);
       return -3;
     }
@@ -901,33 +930,34 @@ int EtherCAT_activate_slave(EtherCAT_master_t *master,
 
   if (desc->sm3)
   {
-    EtherCAT_command_write(&cmd, slave->station_address, 0x0818, 8, desc->sm3);
-    if (EtherCAT_simple_send_receive(master, &cmd) < 0) return -1;
+    EtherCAT_command_write(&cmd, slave->station_address,
+                           0x0818, 8, desc->sm3);
 
-    if (cmd.working_counter != 1)
-    {
-      printk(KERN_ERR "EtherCAT: Setting SM3 - Slave %04X did not respond!\n",
+    if (unlikely(EtherCAT_simple_send_receive(master, &cmd) < 0))
+      return -1;
+
+    if (unlikely(cmd.working_counter != 1)) {
+      printk(KERN_ERR "EtherCAT: Setting SM3 -"
+             " Slave %04X did not respond!\n",
              slave->station_address);
       return -3;
     }
   }
 
   // Change state to SAVEOP
-  if (EtherCAT_state_change(master, slave, ECAT_STATE_SAVEOP) != 0)
-  {
+  if (unlikely(EtherCAT_state_change(master, slave,
+                                     ECAT_STATE_SAVEOP) != 0))
     return -12;
-  }
 
   // Change state to OP
-  if (EtherCAT_state_change(master, slave, ECAT_STATE_OP) != 0)
-  {
+  if (unlikely(EtherCAT_state_change(master, slave,
+                                     ECAT_STATE_OP) != 0))
     return -13;
-  }
 
   return 0;
 }
 
-/***************************************************************/
+/*****************************************************************************/
 
 /**
    Setzt einen Slave zurück in den Init-Zustand.
@@ -939,17 +969,16 @@ int EtherCAT_activate_slave(EtherCAT_master_t *master,
 */
 
 int EtherCAT_deactivate_slave(EtherCAT_master_t *master,
-                            EtherCAT_slave_t *slave)
+                              EtherCAT_slave_t *slave)
 {
-  if (EtherCAT_state_change(master, slave, ECAT_STATE_INIT) != 0)
-  {
+  if (unlikely(EtherCAT_state_change(master, slave,
+                                     ECAT_STATE_INIT) != 0))
     return -1;
-  }
 
   return 0;
 }
 
-/***************************************************************/
+/*****************************************************************************/
 
 /**
    Aktiviert alle Slaves.
@@ -967,16 +996,15 @@ int EtherCAT_activate_all_slaves(EtherCAT_master_t *master)
 
   for (i = 0; i < master->slave_count; i++)
   {
-    if (EtherCAT_activate_slave(master, &master->slaves[i]) < 0)
-    {
+    if (unlikely(EtherCAT_activate_slave(master,
+                                         &master->slaves[i]) < 0))
       return -1;
-    }
   }
 
   return 0;
 }
 
-/***************************************************************/
+/*****************************************************************************/
 
 /**
    Deaktiviert alle Slaves.
@@ -995,16 +1023,15 @@ int EtherCAT_deactivate_all_slaves(EtherCAT_master_t *master)
 
   for (i = 0; i < master->slave_count; i++)
   {
-    if (EtherCAT_deactivate_slave(master, &master->slaves[i]) < 0)
-    {
+    if (unlikely(EtherCAT_deactivate_slave(master,
+                                           &master->slaves[i]) < 0))
       ret = -1;
-    }
   }
 
   return ret;
 }
 
-/***************************************************************/
+/*****************************************************************************/
 
 /**
    Sendet alle Prozessdaten an die Slaves.
@@ -1023,16 +1050,18 @@ int EtherCAT_write_process_data(EtherCAT_master_t *master)
                                       0, master->process_data_length,
                                       master->process_data);
 
-  if (EtherCAT_simple_send(master, &master->process_data_command) < 0)
+  if (unlikely(EtherCAT_simple_send(master,
+                                    &master->process_data_command) < 0))
   {
-    printk(KERN_ERR "EtherCAT: Could not send process data command!\n");
+    printk(KERN_ERR "EtherCAT: Could not send"
+           " process data command!\n");
     return -1;
   }
 
   return 0;
 }
 
-/***************************************************************/
+/*****************************************************************************/
 
 /**
    Empfängt alle Prozessdaten von den Slaves.
@@ -1053,26 +1082,28 @@ int EtherCAT_read_process_data(EtherCAT_master_t *master)
   EtherCAT_device_call_isr(master->dev);
 
   tries_left = 20;
-  while (master->dev->state == ECAT_DS_SENT && tries_left)
+  while (unlikely(master->dev->state == ECAT_DS_SENT
+                  && tries_left))
   {
     udelay(1);
     EtherCAT_device_call_isr(master->dev);
     tries_left--;
   }
 
-  if (!tries_left)
+  if (unlikely(!tries_left))
   {
     printk(KERN_ERR "EtherCAT: Timeout while receiving process data!\n");
     return -1;
   }
 
-  if (EtherCAT_simple_receive(master, &master->process_data_command) < 0)
+  if (unlikely(EtherCAT_simple_receive(master,
+                                       &master->process_data_command) < 0))
   {
     printk(KERN_ERR "EtherCAT: Could not receive cyclic command!\n");
     return -1;
   }
 
-  if (master->process_data_command.state != ECAT_CS_RECEIVED)
+  if (unlikely(master->process_data_command.state != ECAT_CS_RECEIVED))
   {
     printk(KERN_WARNING "EtherCAT: Process data command not received!\n");
     return -1;
@@ -1085,7 +1116,7 @@ int EtherCAT_read_process_data(EtherCAT_master_t *master)
   return 0;
 }
 
-/***************************************************************/
+/*****************************************************************************/
 
 /**
    Verwirft das zuletzt gesendete Prozessdatenkommando.
@@ -1099,7 +1130,7 @@ void EtherCAT_clear_process_data(EtherCAT_master_t *master)
   master->dev->state = ECAT_DS_READY;
 }
 
-/***************************************************************/
+/*****************************************************************************/
 
 /**
    Gibt Frame-Inhalte zwecks Debugging aus.
@@ -1134,7 +1165,7 @@ void output_debug_data(const EtherCAT_master_t *master)
   printk("\n");
 }
 
-/***************************************************************/
+/*****************************************************************************/
 
 EXPORT_SYMBOL(EtherCAT_master_init);
 EXPORT_SYMBOL(EtherCAT_master_clear);
@@ -1147,4 +1178,4 @@ EXPORT_SYMBOL(EtherCAT_activate_all_slaves);
 EXPORT_SYMBOL(EtherCAT_clear_process_data);
 EXPORT_SYMBOL(EtherCAT_deactivate_all_slaves);
 
-/***************************************************************/
+/*****************************************************************************/

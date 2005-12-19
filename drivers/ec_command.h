@@ -1,13 +1,12 @@
-/****************************************************************
+/******************************************************************************
  *
  *  e c _ c o m m a n d . h
  *
  *  Struktur für ein EtherCAT-Kommando.
  *
- *  $Date$
- *  $Author$
+ *  $Id$
  *
- ***************************************************************/
+ *****************************************************************************/
 
 #ifndef _EC_COMMAND_H_
 #define _EC_COMMAND_H_
@@ -57,7 +56,7 @@ typedef union
 }
 EtherCAT_address_t;
 
-/***************************************************************/
+/*****************************************************************************/
 
 /**
    EtherCAT-Kommando.
@@ -67,18 +66,21 @@ typedef struct EtherCAT_command
 {
   EtherCAT_cmd_type_t type; /**< Typ des Kommandos (APRD, NPWR, etc...) */
   EtherCAT_address_t address; /**< Adresse des/der Empfänger */
-  unsigned int data_length; /**< Länge der zu sendenden und/oder empfangenen Daten */
+  unsigned int data_length; /**< Länge der zu sendenden und/oder
+                               empfangenen Daten */
 
-  EtherCAT_command_state_t state; /**< Zustand des Kommandos (bereit, gesendet, etc...) */
-  unsigned char index; /**< Kommando-Index, mit der das Kommando gesendet wurde (wird
-                            vom Master beim Senden gesetzt. */
-  unsigned int working_counter; /**< Working-Counter bei Empfang (wird vom Master gesetzt) */
+  EtherCAT_command_state_t state; /**< Zustand des Kommandos
+                                     (bereit, gesendet, etc...) */
+  unsigned char index; /**< Kommando-Index, mit der das Kommando gesendet
+                          wurde (wird vom Master beim Senden gesetzt. */
+  unsigned int working_counter; /**< Working-Counter bei Empfang (wird
+                                   vom Master gesetzt) */
 
   unsigned char data[ECAT_FRAME_BUFFER_SIZE]; /**< Kommandodaten */
 }
 EtherCAT_command_t;
 
-/***************************************************************/
+/*****************************************************************************/
 
 void EtherCAT_command_init(EtherCAT_command_t *);
 void EtherCAT_command_clear(EtherCAT_command_t *);
@@ -113,6 +115,6 @@ void EtherCAT_command_logical_read_write(EtherCAT_command_t *,
                                          unsigned int,
                                          unsigned char *);
 
-/***************************************************************/
+/*****************************************************************************/
 
 #endif

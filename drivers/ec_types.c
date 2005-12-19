@@ -1,20 +1,21 @@
-/****************************************************************
+/******************************************************************************
  *
  *  e c _ t y p e s . c
  *
  *  EtherCAT-Slave-Typen.
  *
- *  $Date: 2005-09-07 17:50:50 +0200 (Mit, 07 Sep 2005) $
- *  $Author: fp $
+ *  $Id$
  *
- ***************************************************************/
+ *****************************************************************************/
 
 #include <linux/module.h>
 
 #include "ec_globals.h"
 #include "ec_types.h"
 
-/***************************************************************/
+/*****************************************************************************/
+
+/* Konfigurationen der Sync-Manager */
 
 unsigned char sm0_multi[] = {0x00, 0x18, 0xF6, 0x00, 0x26, 0x00, 0x01, 0x00};
 unsigned char sm1_multi[] = {0xF6, 0x18, 0xF6, 0x00, 0x22, 0x00, 0x01, 0x00};
@@ -28,6 +29,7 @@ unsigned char sm3_31xx[] = {0x00, 0x11, 0x06, 0x00, 0x20, 0x00, 0x01, 0x00};
 
 unsigned char sm2_41xx[] = {0x00, 0x10, 0x04, 0x00, 0x24, 0x00, 0x01, 0x00};
 
+/* Konfigurationen der Memory-Management-Units */
 
 unsigned char fmmu0_1014[] = {0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x07,
                               0x00, 0x10, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00};
@@ -40,6 +42,10 @@ unsigned char fmmu0_31xx[] = {0x00, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x07,
 
 unsigned char fmmu0_41xx[] = {0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x07,
                               0x00, 0x10, 0x00, 0x02, 0x01, 0x00, 0x00, 0x00};
+
+/*****************************************************************************/
+
+/* Lese- und Schreibfunktionen */
 
 int read_1014(unsigned char *data, unsigned int channel)
 {
@@ -69,7 +75,9 @@ void write_41xx(unsigned char *data, unsigned int channel, int value)
   data[channel * 3 + 2] = value & 0xFF;
 }
 
-/***************************************************************/
+/*****************************************************************************/
+
+/* Klemmen-Objekte */
 
 EtherCAT_slave_desc_t Beckhoff_EK1100[] =
 {{
@@ -151,11 +159,17 @@ EtherCAT_slave_desc_t Beckhoff_EL5001[] =
   NULL, NULL
 }};
 
-/***************************************************************/
+/*****************************************************************************/
 
-unsigned int slave_idents_count = 7;
+/**
+   Beziehung zwischen Identifikationsnummern und Klemmen-Objekt.
 
-struct slave_ident slave_idents[] =
+   Diese Tabelle stellt die Beziehungen zwischen bestimmten Kombinationen
+   aus Vendor-IDs und Product-Codes und der entsprechenden Klemme her.
+   Neue Klemmen müssen hier eingetragen werden.
+*/
+
+EtherCAT_slave_ident_t slave_idents[] =
 {
   {0x00000002, 0x03F63052, Beckhoff_EL1014},
   {0x00000002, 0x044C2C52, Beckhoff_EK1100},
@@ -167,7 +181,11 @@ struct slave_ident slave_idents[] =
   {0x00000002, 0x13893052, Beckhoff_EL5001}
 };
 
-/***************************************************************/
+unsigned int slave_ident_count = sizeof(slave_idents)
+     / sizeof(EtherCAT_slave_ident_t);
+
+
+/*****************************************************************************/
 
 EXPORT_SYMBOL(Beckhoff_EK1100);
 EXPORT_SYMBOL(Beckhoff_EL1014);
@@ -177,3 +195,5 @@ EXPORT_SYMBOL(Beckhoff_EL3162);
 EXPORT_SYMBOL(Beckhoff_EL4102);
 EXPORT_SYMBOL(Beckhoff_EL4132);
 EXPORT_SYMBOL(Beckhoff_EL5001);
+
+/*****************************************************************************/

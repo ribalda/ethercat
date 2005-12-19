@@ -1,13 +1,12 @@
-/****************************************************************
+/******************************************************************************
  *
  *  e c _ t y p e s . h
  *
  *  EtherCAT-Slave-Typen.
  *
- *  $Date: 2005-09-07 17:50:50 +0200 (Mit, 07 Sep 2005) $
- *  $Author: fp $
+ *  $Id$
  *
- ***************************************************************/
+ *****************************************************************************/
 
 #ifndef _EC_TYPES_H_
 #define _EC_TYPES_H_
@@ -26,7 +25,7 @@ typedef enum
 }
 EtherCAT_slave_type_t;
 
-/***************************************************************/
+/*****************************************************************************/
 
 /**
    Beschreibung eines EtherCAT-Slave-Typs.
@@ -67,7 +66,7 @@ typedef struct slave_desc
 }
 EtherCAT_slave_desc_t;
 
-/***************************************************************/
+/*****************************************************************************/
 
 /**
    Identifikation eines Slave-Typs.
@@ -76,20 +75,21 @@ EtherCAT_slave_desc_t;
    Produktcodes zu den einzelnen Slave-Typen verwendet.
 */
 
-struct slave_ident
+typedef struct slave_ident
 {
   const unsigned int vendor_id; /**< Hersteller-Code */
   const unsigned int product_code; /**< Herstellerspezifischer Produktcode */
   const EtherCAT_slave_desc_t *desc; /**< Zeiger auf den dazugehörigen
                                         Slave-Typ */
-};
+}
+EtherCAT_slave_ident_t;
 
-extern struct slave_ident slave_idents[]; /**< Statisches Array der
-                                             Slave-Identifikationen */
-extern unsigned int slave_idents_count; /**< Anzahl der bekannten Slave-
-                                           Identifikationen */
+extern EtherCAT_slave_ident_t slave_idents[]; /**< Statisches Array der
+                                                 Slave-Identifikationen */
+extern unsigned int slave_ident_count; /**< Anzahl der vorhandenen
+                                          Slave-Identifikationen */
 
-/***************************************************************/
+/*****************************************************************************/
 
 extern EtherCAT_slave_desc_t Beckhoff_EK1100[];
 extern EtherCAT_slave_desc_t Beckhoff_EL1014[];
@@ -100,6 +100,6 @@ extern EtherCAT_slave_desc_t Beckhoff_EL4102[];
 extern EtherCAT_slave_desc_t Beckhoff_EL4132[];
 extern EtherCAT_slave_desc_t Beckhoff_EL5001[];
 
-/***************************************************************/
+/*****************************************************************************/
 
 #endif
