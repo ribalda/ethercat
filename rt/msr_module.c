@@ -248,7 +248,7 @@ static void msr_controller_run(void)
 
     ms++;
     ms %= 1000;
-    if (cnt++ > 20)
+    if (cnt++ > 200)
     {
         cnt = 0;
 
@@ -321,16 +321,16 @@ void msr_run(unsigned irq)
 //    timer.expires += 1;
 //    add_timer(&timer);
 
-    ipipe_control_irq(irq,0,IPIPE_ENABLE_MASK);  //nicht weiterreichen
+    ipipe_control_irq(irq,0,IPIPE_ENABLE_MASK);  //Interrupt bestŽätigen
     if(counter++ > HZREDUCTION) {
-	ipipe_propagate_irq(irq);  //wie lange braucht der Rest der Pipeline ??
+	ipipe_propagate_irq(irq);  //und weiterreichen
 	counter = 0;
     }
 
 
 }
 
-void domain_entry (int iflag) {
+void domain_entry (void) {
     printk("Domain %s started.\n",	ipipe_current_domain->name);
 
 
