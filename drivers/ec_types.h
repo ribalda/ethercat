@@ -11,6 +11,8 @@
 #ifndef _EC_TYPES_H_
 #define _EC_TYPES_H_
 
+/*****************************************************************************/
+
 /**
    Typ eines EtherCAT-Slaves.
 
@@ -60,9 +62,9 @@ typedef struct slave_desc
 
   int (*read) (unsigned char *, unsigned int); /**< Funktion zum Dekodieren
                                                   und Lesen der Kanaldaten */
-  void (*write) (unsigned char *, unsigned int, int); /**< Funktion zum Kodieren
-                                                         und Schreiben der
-                                                         Kanaldaten */
+  void (*write) (unsigned char *, unsigned int, int); /**< Funktion zum
+                                                         Kodieren und Schreiben
+                                                         der Kanaldaten */
 }
 EtherCAT_slave_desc_t;
 

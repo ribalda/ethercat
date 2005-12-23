@@ -11,6 +11,8 @@
 #ifndef _EC_GLOBALS_
 #define _EC_GLOBALS_
 
+/*****************************************************************************/
+
 /**
    Maximale Größe eines EtherCAT-Frames
 */
@@ -23,6 +25,8 @@
 #ifndef NULL
 #define NULL ((void *) 0)
 #endif
+
+/*****************************************************************************/
 
 /**
    EtherCAT-Kommando-Typ
@@ -40,6 +44,8 @@ typedef enum
   ECAT_CMD_LRW = 0x0C   /**< Logical read/write */
 }
 EtherCAT_cmd_type_t;
+
+/*****************************************************************************/
 
 /**
    Zustand eines EtherCAT-Slaves

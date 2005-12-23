@@ -13,6 +13,8 @@
 
 #include "ec_globals.h"
 
+/*****************************************************************************/
+
 /**
    Status eines EtherCAT-Kommandos.
 */
@@ -22,6 +24,8 @@ typedef enum
   ECAT_CS_READY, ECAT_CS_SENT, ECAT_CS_RECEIVED
 }
 EtherCAT_command_state_t;
+
+/*****************************************************************************/
 
 /**
    EtherCAT-Adresse.

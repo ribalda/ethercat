@@ -1,8 +1,9 @@
 TODO-Liste EtherCAT-Treiber
 
-$Date$
-$Author$
+$Id$
 
-- Konfiguration SSI-/Inkrementalgeberklemmen
+- Klasse für Prozessdaten, Kapselung
+- Senden/Empfangen mit Warten, dynamische Wartezeiten
+- Konfiguration SSI-/Inkrementalgeberklemmen (CoE)
 - Ethernet over EtherCAT (EoE)
-- Retry bei Asynchroner Kommunikation
+- eepro100-Kartentreiber
