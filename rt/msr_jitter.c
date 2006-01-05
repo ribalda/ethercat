@@ -130,7 +130,6 @@ void msr_jitter_run(unsigned int hz) {
 
     int i,hit;
     static int firstrun = 1;
-    static int counter = 0;
     static unsigned long k,j = 0;
     unsigned int dt,jitter;
 

@@ -6,7 +6,7 @@
  *
  * $Id$
  *
- ******************************************************************************/
+ *****************************************************************************/
 
 #include <linux/module.h>
 #include <linux/delay.h>
@@ -17,12 +17,12 @@
 #include "../drivers/ec_types.h"
 #include "../drivers/ec_module.h"
 
-/******************************************************************************/
+/*****************************************************************************/
 
 // Auskommentieren, wenn keine zyklischen Daten erwuenscht
 #define ECAT_CYCLIC_DATA
 
-/******************************************************************************/
+/*****************************************************************************/
 
 static EtherCAT_master_t *ecat_master = NULL;
 
@@ -30,52 +30,52 @@ static EtherCAT_slave_t ecat_slaves[] =
 {
 #if 0
     // Block 1
-    ECAT_INIT_SLAVE(Beckhoff_EK1100),
-    ECAT_INIT_SLAVE(Beckhoff_EL4102),
-    ECAT_INIT_SLAVE(Beckhoff_EL3162),
-    ECAT_INIT_SLAVE(Beckhoff_EL1014),
+    ECAT_INIT_SLAVE(Beckhoff_EK1100, 1),
+    ECAT_INIT_SLAVE(Beckhoff_EL4102, 1),
+    ECAT_INIT_SLAVE(Beckhoff_EL3162, 1),
+    ECAT_INIT_SLAVE(Beckhoff_EL1014, 1),
 
-    ECAT_INIT_SLAVE(Beckhoff_EL4102),
-    ECAT_INIT_SLAVE(Beckhoff_EL4102),
-    ECAT_INIT_SLAVE(Beckhoff_EL4102),
+    ECAT_INIT_SLAVE(Beckhoff_EL4102, 1),
+    ECAT_INIT_SLAVE(Beckhoff_EL4102, 1),
+    ECAT_INIT_SLAVE(Beckhoff_EL4102, 1),
 
-    ECAT_INIT_SLAVE(Beckhoff_EL3162),
-    ECAT_INIT_SLAVE(Beckhoff_EL3162),
-    ECAT_INIT_SLAVE(Beckhoff_EL3162),
-    ECAT_INIT_SLAVE(Beckhoff_EL3102),
-    ECAT_INIT_SLAVE(Beckhoff_EL3102),
-    ECAT_INIT_SLAVE(Beckhoff_EL3102),
+    ECAT_INIT_SLAVE(Beckhoff_EL3162, 1),
+    ECAT_INIT_SLAVE(Beckhoff_EL3162, 1),
+    ECAT_INIT_SLAVE(Beckhoff_EL3162, 1),
+    ECAT_INIT_SLAVE(Beckhoff_EL3102, 1),
+    ECAT_INIT_SLAVE(Beckhoff_EL3102, 1),
+    ECAT_INIT_SLAVE(Beckhoff_EL3102, 1),
 
 #endif
 
 #if 1
     // Block 2
-    ECAT_INIT_SLAVE(Beckhoff_EK1100),
-    ECAT_INIT_SLAVE(Beckhoff_EL4102),
-    ECAT_INIT_SLAVE(Beckhoff_EL1014),
-    ECAT_INIT_SLAVE(Beckhoff_EL3162),
-    ECAT_INIT_SLAVE(Beckhoff_EL2004),
-    ECAT_INIT_SLAVE(Beckhoff_EL3102),
-    ECAT_INIT_SLAVE(Beckhoff_EL2004),
-    ECAT_INIT_SLAVE(Beckhoff_EL2004),
-    ECAT_INIT_SLAVE(Beckhoff_EL2004),
-    ECAT_INIT_SLAVE(Beckhoff_EL2004),
-    ECAT_INIT_SLAVE(Beckhoff_EL2004),
+    ECAT_INIT_SLAVE(Beckhoff_EK1100, 1),
+    ECAT_INIT_SLAVE(Beckhoff_EL4102, 1),
+    ECAT_INIT_SLAVE(Beckhoff_EL1014, 1),
+    ECAT_INIT_SLAVE(Beckhoff_EL3162, 1),
+    ECAT_INIT_SLAVE(Beckhoff_EL2004, 1),
+    ECAT_INIT_SLAVE(Beckhoff_EL3102, 1),
+    ECAT_INIT_SLAVE(Beckhoff_EL2004, 1),
+    ECAT_INIT_SLAVE(Beckhoff_EL2004, 1),
+    ECAT_INIT_SLAVE(Beckhoff_EL2004, 1),
+    ECAT_INIT_SLAVE(Beckhoff_EL2004, 1),
+    ECAT_INIT_SLAVE(Beckhoff_EL2004, 1),
 
     // Block 3
-    ECAT_INIT_SLAVE(Beckhoff_EK1100),
-    ECAT_INIT_SLAVE(Beckhoff_EL1014),
-    ECAT_INIT_SLAVE(Beckhoff_EL1014),
-    ECAT_INIT_SLAVE(Beckhoff_EL1014),
-    ECAT_INIT_SLAVE(Beckhoff_EL1014),
-    ECAT_INIT_SLAVE(Beckhoff_EL1014),
-    ECAT_INIT_SLAVE(Beckhoff_EL2004),
-    ECAT_INIT_SLAVE(Beckhoff_EL2004),
-    ECAT_INIT_SLAVE(Beckhoff_EL2004),
-    ECAT_INIT_SLAVE(Beckhoff_EL2004),
-    ECAT_INIT_SLAVE(Beckhoff_EL1014),
-    ECAT_INIT_SLAVE(Beckhoff_EL1014),
-    ECAT_INIT_SLAVE(Beckhoff_EL1014)
+    ECAT_INIT_SLAVE(Beckhoff_EK1100, 1),
+    ECAT_INIT_SLAVE(Beckhoff_EL1014, 1),
+    ECAT_INIT_SLAVE(Beckhoff_EL1014, 1),
+    ECAT_INIT_SLAVE(Beckhoff_EL1014, 1),
+    ECAT_INIT_SLAVE(Beckhoff_EL1014, 1),
+    ECAT_INIT_SLAVE(Beckhoff_EL1014, 1),
+    ECAT_INIT_SLAVE(Beckhoff_EL2004, 1),
+    ECAT_INIT_SLAVE(Beckhoff_EL2004, 1),
+    ECAT_INIT_SLAVE(Beckhoff_EL2004, 1),
+    ECAT_INIT_SLAVE(Beckhoff_EL2004, 1),
+    ECAT_INIT_SLAVE(Beckhoff_EL1014, 1),
+    ECAT_INIT_SLAVE(Beckhoff_EL1014, 1),
+    ECAT_INIT_SLAVE(Beckhoff_EL1014, 1)
 #endif
 };
 
@@ -136,7 +136,7 @@ static int next2004(int *wrap)
 
 static void run(unsigned long data)
 {
-    static int ms = 0;
+  static int ms = 0;
     static int cnt = 0;
     static unsigned long int k = 0;
     static int firstrun = 1;
@@ -149,37 +149,7 @@ static void run(unsigned long data)
     ms++;
     ms %= 1000;
 
-#if 0
-    ecat_tx_delay = ((unsigned int) (100000 / HZ) * (ecat_master->dev->tx_time-k))
-        / (current_cpu_data.loops_per_jiffy / 10);
-    ecat_rx_delay = ((unsigned int) (100000 / HZ) * (ecat_master->dev->rx_time-k))
-        / (current_cpu_data.loops_per_jiffy / 10);
-
-    rx_intr = ecat_master->dev->rx_intr_cnt;
-    tx_intr = ecat_master->dev->tx_intr_cnt;
-    total_intr = ecat_master->dev->intr_cnt;
-#endif
-
-    // Prozessdaten lesen
-    if (!firstrun)
-    {
-        EtherCAT_read_process_data(ecat_master);
-
-        // Daten lesen und skalieren
-//        value = EtherCAT_read_value(&ecat_master->slaves[5], 0) / 3276; //.7; FIXME kein FP im Kernel ohne Schutz !!
-//        dig1 = EtherCAT_read_value(&ecat_master->slaves[3], 0);
-    }
-    else
-        klemme = next2004(&wrap);
-
-
-#if 0
-    // Daten schreiben
-    EtherCAT_write_value(&ecat_master->slaves[4], 0, ms > 500 ? 1 : 0);
-    EtherCAT_write_value(&ecat_master->slaves[4], 1, ms > 500 ? 0 : 1);
-    EtherCAT_write_value(&ecat_master->slaves[4], 2, ms > 500 ? 0 : 1);
-    EtherCAT_write_value(&ecat_master->slaves[4], 3, ms > 500 ? 1 : 0);
-#endif
+    if (firstrun) klemme = next2004(&wrap);
 
     if (cnt++ > 20)
     {
@@ -198,20 +168,12 @@ static void run(unsigned long data)
         }
     }
 
-    if (klemme >= 0) {
-        EtherCAT_write_value(&ecat_master->slaves[klemme], kanal,up_down);
-	//printk("ECAT write: Klemme: %d, Kanal: %d, Wert: %d\n",klemme,kanal,up_down); 
-    }
+    if (klemme >= 0)
+        EtherCAT_write_value(&ecat_slaves[klemme], kanal, up_down);
 
-#if 0
-    EtherCAT_write_value(&ecat_master->slaves[13], 1, ms > 500 ? 0 : 1);
-    EtherCAT_write_value(&ecat_master->slaves[14], 2, ms > 500 ? 0 : 1);
-    EtherCAT_write_value(&ecat_master->slaves[15], 3, ms > 500 ? 1 : 0);
-#endif
-
-    // Prozessdaten schreiben
+    // Prozessdaten lesen und schreiben
     rdtscl(k);
-    EtherCAT_write_process_data(ecat_master);
+    EtherCAT_process_data_cycle(ecat_master, 1);
     firstrun = 0;
 
     timer.expires += HZ / 1000;
@@ -224,10 +186,12 @@ static void run(unsigned long data)
  *
  * Function: init
  *
- ******************************************************************************/
+ *****************************************************************************/
 
 int __init init_module()
 {
+    unsigned int i;
+
     printk(KERN_INFO "=== Starting Minimal EtherCAT environment... ===\n");
 
     if ((ecat_master = EtherCAT_request(0)) == NULL) {
@@ -237,17 +201,19 @@ int __init init_module()
 
     printk("Checking EtherCAT slaves.\n");
 
-    if (EtherCAT_check_slaves(ecat_master, ecat_slaves, ECAT_SLAVES_COUNT) != 0) {
+    if (EtherCAT_check_slaves(ecat_master, ecat_slaves,
+                              ECAT_SLAVES_COUNT) != 0) {
         printk(KERN_ERR "EtherCAT: Could not init slaves!\n");
         goto out_release_master;
     }
 
     printk("Activating all EtherCAT slaves.\n");
 
-    if (EtherCAT_activate_all_slaves(ecat_master) != 0)
-    {
-        printk(KERN_ERR "EtherCAT: Could not activate slaves!\n");
-        goto out_release_master;
+    for (i = 0; i < ECAT_SLAVES_COUNT; i++) {
+        if (EtherCAT_activate_slave(ecat_master, &ecat_slaves[i]) != 0) {
+            printk(KERN_ERR "EtherCAT: Could not activate slave %i!\n", i);
+            goto out_release_master;
+        }
     }
 
 #ifdef ECAT_CYCLIC_DATA
@@ -279,21 +245,25 @@ int __init init_module()
  *
  * Function: cleanup
  *
- ******************************************************************************/
+ *****************************************************************************/
 
 void __exit cleanup_module()
 {
+    unsigned int i;
+
     printk(KERN_INFO "=== Stopping Minimal EtherCAT environment... ===\n");
 
     if (ecat_master)
     {
 #ifdef ECAT_CYCLIC_DATA
         del_timer_sync(&timer);
-        EtherCAT_clear_process_data(ecat_master);
 #endif // ECAT_CYCLIC_DATA
 
         printk(KERN_INFO "Deactivating slaves.\n");
-        EtherCAT_deactivate_all_slaves(ecat_master);
+
+        for (i = 0; i < ECAT_SLAVES_COUNT; i++) {
+            EtherCAT_deactivate_slave(ecat_master, &ecat_slaves[i]);
+        }
 
         EtherCAT_release(ecat_master);
     }
@@ -311,3 +281,9 @@ module_init(init_module);
 module_exit(cleanup_module);
 
 /*****************************************************************************/
+
+/* Emacs-Konfiguration
+;;; Local Variables: ***
+;;; c-basic-offset:4 ***
+;;; End: ***
+*/

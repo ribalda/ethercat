@@ -22,22 +22,20 @@
 /**
    Konstruktor des EtherCAT-Masters.
 
-   @param master Zeiger auf den zu initialisierenden
-   EtherCAT-Master
-
-   @return 0 bei Erfolg, sonst < 0 (= dev ist NULL)
+   @param master Zeiger auf den zu initialisierenden EtherCAT-Master
 */
 
 void EtherCAT_master_init(EtherCAT_master_t *master)
 {
-  master->slaves = NULL;
-  master->slave_count = 0;
   master->dev = NULL;
   master->command_index = 0x00;
   master->tx_data_length = 0;
-  master->process_data = NULL;
-  master->process_data_length = 0;
+  master->rx_data_length = 0;
+  master->domain_count = 0;
   master->debug_level = 0;
+  master->tx_time = 0;
+  master->rx_time = 0;
+  master->rx_tries = 0;
 }
 
 /*****************************************************************************/
@@ -53,15 +51,14 @@ void EtherCAT_master_init(EtherCAT_master_t *master)
 
 void EtherCAT_master_clear(EtherCAT_master_t *master)
 {
-  // Remove all slaves
-  EtherCAT_clear_slaves(master);
+  unsigned int i;
 
-  if (master->process_data) {
-    kfree(master->process_data);
-    master->process_data = NULL;
+  // Remove domains
+  for (i = 0; i < master->domain_count; i++) {
+    EtherCAT_domain_clear(master->domains + i);
   }
 
-  master->process_data_length = 0;
+  master->domain_count = 0;
 }
 
 /*****************************************************************************/
@@ -82,14 +79,12 @@ int EtherCAT_master_open(EtherCAT_master_t *master,
                          EtherCAT_device_t *device)
 {
   if (!master || !device) {
-    printk(KERN_ERR "EtherCAT: Illegal parameters"
-           " for master_open()!\n");
+    printk(KERN_ERR "EtherCAT: Illegal parameters for master_open()!\n");
     return -1;
   }
 
   if (master->dev) {
-    printk(KERN_ERR "EtherCAT: Master already"
-           " has a device.\n");
+    printk(KERN_ERR "EtherCAT: Master already has a device.\n");
     return -1;
   }
 
@@ -197,8 +192,7 @@ int EtherCAT_simple_send(EtherCAT_master_t *master,
   framelength = length + 2;
 
   if (unlikely(framelength > ECAT_FRAME_BUFFER_SIZE)) {
-    printk(KERN_ERR "EtherCAT: Frame too long (%i)!\n",
-           framelength);
+    printk(KERN_ERR "EtherCAT: Frame too long (%i)!\n", framelength);
     return -1;
   }
 
@@ -256,6 +250,9 @@ int EtherCAT_simple_send(EtherCAT_master_t *master,
     printk(KERN_DEBUG "device send...\n");
   }
 
+  // Zeit nehmen
+  rdtscl(master->tx_time);
+
   // Send frame
   if (unlikely(EtherCAT_device_send(master->dev,
                                     master->tx_data,
@@ -297,8 +294,8 @@ int EtherCAT_simple_receive(EtherCAT_master_t *master,
   master->rx_data_length = (unsigned int) ret;
 
   if (unlikely(master->rx_data_length < 2)) {
-    printk(KERN_ERR "EtherCAT: Received frame with"
-           " incomplete EtherCAT header!\n");
+    printk(KERN_ERR "EtherCAT: Received frame with incomplete"
+           " EtherCAT header!\n");
     output_debug_data(master);
     return -1;
   }
@@ -308,8 +305,8 @@ int EtherCAT_simple_receive(EtherCAT_master_t *master,
     | (master->rx_data[0] & 0xFF);
 
   if (unlikely(length > master->rx_data_length)) {
-    printk(KERN_ERR "EtherCAT: Received corrupted"
-           " frame (length does not match)!\n");
+    printk(KERN_ERR "EtherCAT: Received corrupted frame (length does"
+           " not match)!\n");
     output_debug_data(master);
     return -1;
   }
@@ -337,8 +334,9 @@ int EtherCAT_simple_receive(EtherCAT_master_t *master,
     memcpy(cmd->data, master->rx_data + 2 + 10, length);
 
     // Working-Counter setzen
-    cmd->working_counter = ((master->rx_data[length + 2 + 10] & 0xFF)
-                            | ((master->rx_data[length + 2 + 11] & 0xFF) << 8));
+    cmd->working_counter
+      = ((master->rx_data[length + 2 + 10] & 0xFF)
+         | ((master->rx_data[length + 2 + 11] & 0xFF) << 8));
   }
   else
   {
@@ -374,8 +372,17 @@ int EtherCAT_check_slaves(EtherCAT_master_t *master,
 {
   EtherCAT_command_t cmd;
   EtherCAT_slave_t *cur;
-  unsigned int i, j, found, length, pos;
+  unsigned int i, j, found, size, offset;
   unsigned char data[2];
+  EtherCAT_domain_t *dom;
+
+  // Clear domains
+  for (i = 0; i < master->domain_count; i++) {
+    printk(KERN_DEBUG "EtherCAT: Clearing domain %i!\n",
+           master->domains[i].number);
+    EtherCAT_domain_clear(master->domains + i);
+  }
+  master->domain_count = 0;
 
   if (unlikely(!slave_count)) {
     printk(KERN_ERR "EtherCAT: No slaves in list!\n");
@@ -394,8 +401,8 @@ int EtherCAT_check_slaves(EtherCAT_master_t *master,
            cmd.working_counter, slave_count);
     return -1;
   }
-  else
-    printk("EtherCAT: Found all %i slaves.\n", slave_count);
+
+  printk("EtherCAT: Found all %i slaves.\n", slave_count);
 
   // For every slave in the list
   for (i = 0; i < slave_count; i++)
@@ -403,8 +410,7 @@ int EtherCAT_check_slaves(EtherCAT_master_t *master,
     cur = &slaves[i];
 
     if (unlikely(!cur->desc)) {
-      printk(KERN_ERR "EtherCAT: Slave %i has"
-             " no description.\n", i);
+      printk(KERN_ERR "EtherCAT: Slave %i has no description.\n", i);
       return -1;
     }
 
@@ -443,6 +449,7 @@ int EtherCAT_check_slaves(EtherCAT_master_t *master,
     }
 
     // Get base data
+
     cur->type = cmd.data[0];
     cur->revision = cmd.data[1];
     cur->build = cmd.data[2] | (cmd.data[3] << 8);
@@ -515,58 +522,77 @@ int EtherCAT_check_slaves(EtherCAT_master_t *master,
              cur->vendor_id, cur->product_code, i);
       return -1;
     }
+
+    // Check, if process data domain already exists...
+    found = 0;
+    for (j = 0; j < master->domain_count; j++) {
+      if (cur->domain == master->domains[j].number) {
+        found = 1;
+      }
+    }
+
+    // Create process data domain
+    if (!found) {
+      if (master->domain_count + 1 >= ECAT_MAX_DOMAINS) {
+        printk(KERN_ERR "EtherCAT: Too many domains!\n");
+        return -1;
+      }
+
+      EtherCAT_domain_init(&master->domains[master->domain_count]);
+      master->domains[master->domain_count].number = cur->domain;
+      master->domain_count++;
+    }
   }
 
-  length = 0;
-  for (i = 0; i < slave_count; i++)
+  // Calculate domain sizes
+  offset = 0;
+  for (i = 0; i < master->domain_count; i++)
   {
-    length += slaves[i].desc->data_length;
+    dom = master->domains + i;
+
+    dom->logical_offset = offset;
+
+    // For every slave in the list
+    size = 0;
+    for (j = 0; j < slave_count; j++) {
+      if (slaves[j].domain == dom->number) {
+        size += slaves[j].desc->process_data_size;
+      }
+    }
+
+    if (size > ECAT_FRAME_BUFFER_SIZE - 14) {
+      printk(KERN_ERR "EtherCAT: Oversized domain %i: %i / %i Bytes!\n",
+             dom->number, size, ECAT_FRAME_BUFFER_SIZE - 14);
+      return -1;
+    }
+
+    if (!(dom->data = (unsigned char *) kmalloc(sizeof(unsigned char)
+                                               * size, GFP_KERNEL))) {
+      printk(KERN_ERR "EtherCAT: Could not allocate"
+             " %i bytes of domain data.\n", size);
+      return -1;
+    }
+
+    dom->data_size = size;
+    memset(dom->data, 0x00, size);
+
+    printk(KERN_INFO "EtherCAT: Domain %i: %i Bytes of process data.\n",
+           dom->number, size);
+
+    // Set logical addresses and data pointers of domain slaves
+    size = 0;
+    for (j = 0; j < slave_count; j++) {
+      if (slaves[j].domain == dom->number) {
+        slaves[j].process_data = dom->data + size;
+        slaves[j].logical_address = dom->logical_offset + size;
+        size += slaves[j].desc->process_data_size;
+      }
+    }
+
+    offset += size;
   }
-
-  if (unlikely((master->process_data = (unsigned char *)
-                kmalloc(sizeof(unsigned char)
-                        * length, GFP_KERNEL)) == NULL)) {
-    printk(KERN_ERR "EtherCAT: Could not allocate %i"
-           " bytes for process data.\n", length);
-    return -1;
-  }
-
-  master->process_data_length = length;
-  memset(master->process_data, 0x00, length);
-
-  pos = 0;
-  for (i = 0; i < slave_count; i++)
-  {
-    slaves[i].process_data = master->process_data + pos;
-    slaves[i].logical_address0 = pos;
-
-    printk(KERN_DEBUG "EtherCAT: Slave %i -"
-           " Address 0x%X, \"%s %s\", s/n %u\n",
-           i, pos, slaves[i].desc->vendor_name,
-           slaves[i].desc->product_name,
-           slaves[i].serial_number);
-
-    pos += slaves[i].desc->data_length;
-  }
-
-  master->slaves = slaves;
-  master->slave_count = slave_count;
 
   return 0;
-}
-
-/*****************************************************************************/
-
-/**
-   Entfernt den Zeiger auf das Slave-Array.
-
-   @param master EtherCAT-Master
-*/
-
-void EtherCAT_clear_slaves(EtherCAT_master_t *master)
-{
-  master->slaves = NULL;
-  master->slave_count = 0;
 }
 
 /*****************************************************************************/
@@ -605,12 +631,12 @@ int EtherCAT_read_slave_information(EtherCAT_master_t *master,
   EtherCAT_command_write(&cmd, node_address, 0x502, 6, data);
 
   if (unlikely(EtherCAT_simple_send_receive(master, &cmd) < 0))
-    return -3;
+    return -1;
 
   if (unlikely(cmd.working_counter != 1)) {
-    printk(KERN_ERR "EtherCAT: SII-read - Slave"
-           " %04X did not respond!\n", node_address);
-    return -4;
+    printk(KERN_ERR "EtherCAT: SII-read - Slave %04X did not respond!\n",
+           node_address);
+    return -1;
   }
 
   // Der Slave legt die Informationen des Slave-Information-Interface
@@ -625,12 +651,12 @@ int EtherCAT_read_slave_information(EtherCAT_master_t *master,
     EtherCAT_command_read(&cmd, node_address, 0x502, 10);
 
     if (unlikely(EtherCAT_simple_send_receive(master, &cmd) != 0))
-      return -3;
+      return -1;
 
     if (unlikely(cmd.working_counter != 1)) {
       printk(KERN_ERR "EtherCAT: SII-read status -"
              " Slave %04X did not respond!\n", node_address);
-      return -4;
+      return -1;
     }
 
     if (likely((cmd.data[1] & 0x81) == 0)) {
@@ -642,8 +668,8 @@ int EtherCAT_read_slave_information(EtherCAT_master_t *master,
   }
 
   if (unlikely(!tries_left)) {
-    printk(KERN_WARNING "EtherCAT: SSI-read."
-           " Slave %04X timed out!\n", node_address);
+    printk(KERN_WARNING "EtherCAT: SSI-read. Slave %04X timed out!\n",
+           node_address);
     return -1;
   }
 
@@ -784,7 +810,7 @@ int EtherCAT_activate_slave(EtherCAT_master_t *master,
     printk(KERN_ERR "EtherCAT: Resetting FMMUs -"
            " Slave %04X did not respond!\n",
            slave->station_address);
-    return -2;
+    return -1;
   }
 
   // Resetting Sync Manager channels
@@ -803,7 +829,7 @@ int EtherCAT_activate_slave(EtherCAT_master_t *master,
       printk(KERN_ERR "EtherCAT: Resetting SMs -"
              " Slave %04X did not respond!\n",
              slave->station_address);
-      return -2;
+      return -1;
     }
   }
 
@@ -823,7 +849,7 @@ int EtherCAT_activate_slave(EtherCAT_master_t *master,
         printk(KERN_ERR "EtherCAT: Setting SM0 -"
                " Slave %04X did not respond!\n",
                slave->station_address);
-        return -3;
+        return -1;
       }
     }
 
@@ -839,7 +865,7 @@ int EtherCAT_activate_slave(EtherCAT_master_t *master,
         printk(KERN_ERR "EtherCAT: Setting SM1 -"
                " Slave %04X did not respond!\n",
                slave->station_address);
-        return -2;
+        return -1;
       }
     }
   }
@@ -848,18 +874,24 @@ int EtherCAT_activate_slave(EtherCAT_master_t *master,
 
   if (unlikely(EtherCAT_state_change(master, slave,
                                      ECAT_STATE_PREOP) != 0))
-    return -5;
+    return -1;
 
   // Set FMMU's
 
   if (desc->fmmu0)
   {
+    if (unlikely(!slave->process_data)) {
+      printk(KERN_ERR "EtherCAT: Warning - Slave %04X is not assigned to any"
+             " process data object!\n", slave->station_address);
+      return -1;
+    }
+
     memcpy(fmmu, desc->fmmu0, 16);
 
-    fmmu[0] = slave->logical_address0 & 0x000000FF;
-    fmmu[1] = (slave->logical_address0 & 0x0000FF00) >> 8;
-    fmmu[2] = (slave->logical_address0 & 0x00FF0000) >> 16;
-    fmmu[3] = (slave->logical_address0 & 0xFF000000) >> 24;
+    fmmu[0] = slave->logical_address & 0x000000FF;
+    fmmu[1] = (slave->logical_address & 0x0000FF00) >> 8;
+    fmmu[2] = (slave->logical_address & 0x00FF0000) >> 16;
+    fmmu[3] = (slave->logical_address & 0xFF000000) >> 24;
 
     EtherCAT_command_write(&cmd, slave->station_address,
                            0x0600, 16, fmmu);
@@ -871,7 +903,7 @@ int EtherCAT_activate_slave(EtherCAT_master_t *master,
       printk(KERN_ERR "EtherCAT: Setting FMMU0 -"
              " Slave %04X did not respond!\n",
              slave->station_address);
-      return -2;
+      return -1;
     }
   }
 
@@ -891,7 +923,7 @@ int EtherCAT_activate_slave(EtherCAT_master_t *master,
         printk(KERN_ERR "EtherCAT: Setting SM0 -"
                " Slave %04X did not respond!\n",
                slave->station_address);
-        return -3;
+        return -1;
       }
     }
 
@@ -907,7 +939,7 @@ int EtherCAT_activate_slave(EtherCAT_master_t *master,
         printk(KERN_ERR "EtherCAT: Setting SM1 -"
                " Slave %04X did not respond!\n",
                slave->station_address);
-        return -3;
+        return -1;
       }
     }
   }
@@ -924,7 +956,7 @@ int EtherCAT_activate_slave(EtherCAT_master_t *master,
       printk(KERN_ERR "EtherCAT: Setting SM2 -"
              " Slave %04X did not respond!\n",
              slave->station_address);
-      return -3;
+      return -1;
     }
   }
 
@@ -940,19 +972,19 @@ int EtherCAT_activate_slave(EtherCAT_master_t *master,
       printk(KERN_ERR "EtherCAT: Setting SM3 -"
              " Slave %04X did not respond!\n",
              slave->station_address);
-      return -3;
+      return -1;
     }
   }
 
   // Change state to SAVEOP
   if (unlikely(EtherCAT_state_change(master, slave,
                                      ECAT_STATE_SAVEOP) != 0))
-    return -12;
+    return -1;
 
   // Change state to OP
   if (unlikely(EtherCAT_state_change(master, slave,
                                      ECAT_STATE_OP) != 0))
-    return -13;
+    return -1;
 
   return 0;
 }
@@ -981,153 +1013,76 @@ int EtherCAT_deactivate_slave(EtherCAT_master_t *master,
 /*****************************************************************************/
 
 /**
-   Aktiviert alle Slaves.
-
-   @see EtherCAT_activate_slave
+   Sendet und empfängt Prozessdaten der angegebenen Domäne
 
    @param master EtherCAT-Master
+          domain Domäne
 
    @return 0 bei Erfolg, sonst < 0
 */
 
-int EtherCAT_activate_all_slaves(EtherCAT_master_t *master)
+int EtherCAT_process_data_cycle(EtherCAT_master_t *master,
+                                unsigned int domain)
 {
-  unsigned int i;
+  unsigned int i, tries;
+  EtherCAT_domain_t *dom = NULL;
 
-  for (i = 0; i < master->slave_count; i++)
-  {
-    if (unlikely(EtherCAT_activate_slave(master,
-                                         &master->slaves[i]) < 0))
-      return -1;
+  for (i = 0; i < master->domain_count; i++) {
+    if (master->domains[i].number == domain) {
+      dom = master->domains + i;
+      break;
+    }
   }
 
-  return 0;
-}
-
-/*****************************************************************************/
-
-/**
-   Deaktiviert alle Slaves.
-
-   @see EtherCAT_deactivate_slave
-
-   @param master EtherCAT-Master
-
-   @return 0 bei Erfolg, sonst < 0
-*/
-
-int EtherCAT_deactivate_all_slaves(EtherCAT_master_t *master)
-{
-  unsigned int i;
-  int ret = 0;
-
-  for (i = 0; i < master->slave_count; i++)
-  {
-    if (unlikely(EtherCAT_deactivate_slave(master,
-                                           &master->slaves[i]) < 0))
-      ret = -1;
-  }
-
-  return ret;
-}
-
-/*****************************************************************************/
-
-/**
-   Sendet alle Prozessdaten an die Slaves.
-
-   Erstellt ein "logical read write"-Kommando mit den
-   Prozessdaten des Masters und sendet es an den Bus.
-
-   @param master EtherCAT-Master
-
-   @return 0 bei Erfolg, sonst < 0
-*/
-
-int EtherCAT_write_process_data(EtherCAT_master_t *master)
-{
-  EtherCAT_command_logical_read_write(&master->process_data_command,
-                                      0, master->process_data_length,
-                                      master->process_data);
-
-  if (unlikely(EtherCAT_simple_send(master,
-                                    &master->process_data_command) < 0))
-  {
-    printk(KERN_ERR "EtherCAT: Could not send"
-           " process data command!\n");
+  if (unlikely(!dom)) {
+    printk(KERN_ERR "EtherCAT: No such domain: %i!\n", domain);
     return -1;
   }
 
-  return 0;
-}
+  EtherCAT_command_logical_read_write(&dom->command,
+                                      dom->logical_offset, dom->data_size,
+                                      dom->data);
 
-/*****************************************************************************/
-
-/**
-   Empfängt alle Prozessdaten von den Slaves.
-
-   Empfängt ein zuvor gesendetes "logical read write"-Kommando
-   und kopiert die empfangenen daten in den Prozessdatenspeicher
-   des Masters.
-
-   @param master EtherCAT-Master
-
-   @return 0 bei Erfolg, sonst < 0
-*/
-
-int EtherCAT_read_process_data(EtherCAT_master_t *master)
-{
-  unsigned int tries_left;
-
-  EtherCAT_device_call_isr(master->dev);
-
-  tries_left = 20;
-  while (unlikely(master->dev->state == ECAT_DS_SENT
-                  && tries_left))
-  {
-    udelay(1);
-    EtherCAT_device_call_isr(master->dev);
-    tries_left--;
+  if (unlikely(EtherCAT_simple_send(master, &dom->command) < 0)) {
+    printk(KERN_ERR "EtherCAT: Could not send process data command!\n");
+    return -1;
   }
 
-  if (unlikely(!tries_left))
-  {
+  udelay(3);
+
+#if 1
+  // Warten
+  tries = 0;
+  EtherCAT_device_call_isr(master->dev);
+  while (unlikely(master->dev->state == ECAT_DS_SENT && tries < 100)) {
+    udelay(1);
+    EtherCAT_device_call_isr(master->dev);
+    tries++;
+  }
+
+  rdtscl(master->rx_time);
+  master->rx_tries = tries;
+
+  if (unlikely(tries == 100)) {
     printk(KERN_ERR "EtherCAT: Timeout while receiving process data!\n");
     return -1;
   }
 
-  if (unlikely(EtherCAT_simple_receive(master,
-                                       &master->process_data_command) < 0))
-  {
+  if (unlikely(EtherCAT_simple_receive(master, &dom->command) < 0)) {
     printk(KERN_ERR "EtherCAT: Could not receive cyclic command!\n");
     return -1;
   }
 
-  if (unlikely(master->process_data_command.state != ECAT_CS_RECEIVED))
-  {
+  if (unlikely(dom->command.state != ECAT_CS_RECEIVED)) {
     printk(KERN_WARNING "EtherCAT: Process data command not received!\n");
     return -1;
   }
 
-  // Daten von Kommando in Prozessdaten des Master kopieren
-  memcpy(master->process_data, master->process_data_command.data,
-         master->process_data_length);
+  // Daten vom Kommando in den Prozessdatenspeicher kopieren
+  memcpy(dom->data, dom->command.data, dom->data_size);
+#endif
 
   return 0;
-}
-
-/*****************************************************************************/
-
-/**
-   Verwirft das zuletzt gesendete Prozessdatenkommando.
-
-   @param master EtherCAT-Master
-*/
-
-void EtherCAT_clear_process_data(EtherCAT_master_t *master)
-{
-  EtherCAT_device_call_isr(master->dev);
-  master->dev->state = ECAT_DS_READY;
 }
 
 /*****************************************************************************/
@@ -1171,11 +1126,15 @@ EXPORT_SYMBOL(EtherCAT_master_init);
 EXPORT_SYMBOL(EtherCAT_master_clear);
 EXPORT_SYMBOL(EtherCAT_master_open);
 EXPORT_SYMBOL(EtherCAT_master_close);
-EXPORT_SYMBOL(EtherCAT_read_process_data);
-EXPORT_SYMBOL(EtherCAT_write_process_data);
 EXPORT_SYMBOL(EtherCAT_check_slaves);
-EXPORT_SYMBOL(EtherCAT_activate_all_slaves);
-EXPORT_SYMBOL(EtherCAT_clear_process_data);
-EXPORT_SYMBOL(EtherCAT_deactivate_all_slaves);
+EXPORT_SYMBOL(EtherCAT_activate_slave);
+EXPORT_SYMBOL(EtherCAT_deactivate_slave);
+EXPORT_SYMBOL(EtherCAT_process_data_cycle);
 
 /*****************************************************************************/
+
+/* Emacs-Konfiguration
+;;; Local Variables: ***
+;;; c-basic-offset:2 ***
+;;; End: ***
+*/

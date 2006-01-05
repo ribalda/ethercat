@@ -19,6 +19,11 @@
 #define ECAT_FRAME_BUFFER_SIZE 1500
 
 /**
+   Maximale Anzahl der Prozessdatendomänen in einem Master
+*/
+#define ECAT_MAX_DOMAINS 10
+
+/**
    NULL-Define, falls noch nicht definiert.
 */
 
@@ -66,6 +71,10 @@ typedef enum
                                 (dies ist kein eigener Zustand) */
 }
 EtherCAT_state_t;
+
+/*****************************************************************************/
+
+typedef struct EtherCAT_master EtherCAT_master_t;
 
 /*****************************************************************************/
 

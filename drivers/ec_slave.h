@@ -42,20 +42,21 @@ typedef struct
   const EtherCAT_slave_desc_t *desc; /**< Zeiger auf die Beschreibung
                                         des Slave-Typs */
 
-  unsigned int logical_address0; /**< Konfigurierte, logische adresse */
+  unsigned int logical_address; /**< Konfigurierte, logische adresse */
 
   EtherCAT_state_t current_state; /**< Aktueller Zustand */
   EtherCAT_state_t requested_state; /**< Angeforderter Zustand */
 
   unsigned char *process_data; /**< Zeiger auf den Speicherbereich
-                                  im Prozessdatenspeicher des Masters */
-  int error_reported; /**< Ein Zugriffsfehler wurde bereits gemeldet. */
+                                  innerhalb eines Prozessdatenobjekts */
+  unsigned int domain; /**< Prozessdatendomäne */
+  int error_reported; /**< Ein Zugriffsfehler wurde bereits gemeldet */
 }
 EtherCAT_slave_t;
 
-#define ECAT_INIT_SLAVE(TYPE) {0, 0, 0, 0, 0, 0, 0, 0, 0, \
-                               TYPE, 0, ECAT_STATE_UNKNOWN, \
-                               ECAT_STATE_UNKNOWN, NULL}
+#define ECAT_INIT_SLAVE(TYPE, DOMAIN) {0, 0, 0, 0, 0, 0, 0, 0, 0, \
+                                       TYPE, 0, ECAT_STATE_UNKNOWN, \
+                                       ECAT_STATE_UNKNOWN, NULL, DOMAIN, 0}
 
 /*****************************************************************************/
 
@@ -69,3 +70,9 @@ void EtherCAT_write_value(EtherCAT_slave_t *, unsigned int, int);
 /*****************************************************************************/
 
 #endif
+
+/* Emacs-Konfiguration
+;;; Local Variables: ***
+;;; c-basic-offset:2 ***
+;;; End: ***
+*/

@@ -239,7 +239,7 @@ EtherCAT_master_t *EtherCAT_request(int index)
 /*****************************************************************************/
 
 /**
-   Gibt einen zuvor reservierten EtherCAT-Master wieder frei.
+   Gibt einen zuvor angeforderten EtherCAT-Master wieder frei.
 
    @param master Zeiger auf den freizugebenden EtherCAT-Master.
 */
@@ -267,7 +267,7 @@ void EtherCAT_release(EtherCAT_master_t *master)
     }
   }
 
-  printk(KERN_WARNING "EtherCAT: Master %X was never reserved!\n",
+  printk(KERN_WARNING "EtherCAT: Master %X was never requested!\n",
          (unsigned int) master);
 }
 

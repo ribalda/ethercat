@@ -57,8 +57,8 @@ typedef struct slave_desc
   const unsigned char *fmmu0; /**< Konfigurationsdaten
                                  der ersten FMMU */
 
-  const unsigned int data_length; /**< Länge der Prozessdaten in Bytes */
-  const unsigned int channels; /**< Anzahl der Kanäle */
+  const unsigned int process_data_size; /**< Länge der Prozessdaten in Bytes */
+  const unsigned int channel_count; /**< Anzahl der Kanäle */
 
   int (*read) (unsigned char *, unsigned int); /**< Funktion zum Dekodieren
                                                   und Lesen der Kanaldaten */

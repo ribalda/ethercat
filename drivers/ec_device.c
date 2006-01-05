@@ -131,6 +131,8 @@ int EtherCAT_device_assign(EtherCAT_device_t *ecd,
 
 int EtherCAT_device_open(EtherCAT_device_t *ecd)
 {
+  unsigned int i;
+
   if (!ecd) {
     printk(KERN_ERR "EtherCAT: Trying to open a NULL device!\n");
     return -1;
@@ -140,6 +142,9 @@ int EtherCAT_device_open(EtherCAT_device_t *ecd)
     printk(KERN_ERR "EtherCAT: No net_device to open!\n");
     return -1;
   }
+
+  // Device could have received frames before
+  for (i = 0; i < 4; i++) EtherCAT_device_call_isr(ecd);
 
   // Reset old device state
   ecd->state = ECAT_DS_READY;
@@ -265,7 +270,7 @@ int EtherCAT_device_receive(EtherCAT_device_t *ecd,
   if (unlikely(ecd->rx_data_length > ECAT_FRAME_BUFFER_SIZE)) {
     if (likely(ecd->error_reported)) {
       printk(KERN_ERR "EtherCAT: receive - "
-             " Reveived frame too long (%i Bytes)!\n",
+             " Reveived frame is too long (%i Bytes)!\n",
              ecd->rx_data_length);
       ecd->error_reported = 1;
     }
@@ -284,7 +289,7 @@ int EtherCAT_device_receive(EtherCAT_device_t *ecd,
 /*****************************************************************************/
 
 /**
-   Ruft manuell die Interrupt-Routine der Netzwerkkarte auf.
+   Ruft die Interrupt-Routine der Netzwerkkarte auf.
 
    @param ecd EtherCAT-Gerät
 
@@ -350,3 +355,9 @@ EXPORT_SYMBOL(EtherCAT_device_open);
 EXPORT_SYMBOL(EtherCAT_device_close);
 
 /*****************************************************************************/
+
+/* Emacs-Konfiguration
+;;; Local Variables: ***
+;;; c-basic-offset:2 ***
+;;; End: ***
+*/

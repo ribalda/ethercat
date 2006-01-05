@@ -20,6 +20,9 @@
 
    Initialisiert einen EtherCAT-Slave.
 
+   ACHTUNG! Dieser Konstruktor wird quasi nie aufgerufen. Bitte immer das
+   Makro ECAT_INIT_SLAVE() in ec_slave.h anpassen!
+
    @param slave Zeiger auf den zu initialisierenden Slave
 */
 
@@ -35,9 +38,11 @@ void EtherCAT_slave_init(EtherCAT_slave_t *slave)
   slave->revision_number = 0;
   slave->serial_number = 0;
   slave->desc = NULL;
-  slave->logical_address0 = 0;
+  slave->logical_address = 0;
   slave->current_state = ECAT_STATE_UNKNOWN;
   slave->requested_state = ECAT_STATE_UNKNOWN;
+  slave->process_data = NULL;
+  slave->domain = 0;
   slave->error_reported = 0;
 }
 
@@ -97,13 +102,23 @@ int EtherCAT_read_value(EtherCAT_slave_t *slave,
     return 0;
   }
 
-  if (unlikely(channel >= slave->desc->channels)) {
+  if (unlikely(channel >= slave->desc->channel_count)) {
     if (likely(slave->error_reported)) {
       printk(KERN_WARNING "EtherCAT: Reading failed on slave %4X (addr %0X)"
              " - Type (%s %s) has no channel %i.\n",
              slave->station_address, (unsigned int) slave,
              slave->desc->vendor_name, slave->desc->product_name,
              channel);
+      slave->error_reported = 1;
+    }
+    return 0;
+  }
+
+  if (unlikely(!slave->process_data)) {
+    if (likely(slave->error_reported)) {
+      printk(KERN_WARNING "EtherCAT: Reading failed on slave %4X (addr %0X)"
+             " - Slave does not belong to any process data object!\n",
+             slave->station_address, (unsigned int) slave);
       slave->error_reported = 1;
     }
     return 0;
@@ -156,13 +171,23 @@ void EtherCAT_write_value(EtherCAT_slave_t *slave,
     return;
   }
 
-  if (unlikely(channel >= slave->desc->channels)) {
+  if (unlikely(channel >= slave->desc->channel_count)) {
     if (likely(slave->error_reported)) {
       printk(KERN_WARNING "EtherCAT: Writing failed on slave %4X (addr %0X)"
              " - Type (%s %s) has no channel %i.\n",
              slave->station_address, (unsigned int) slave,
              slave->desc->vendor_name, slave->desc->product_name,
              channel);
+      slave->error_reported = 1;
+    }
+    return;
+  }
+
+  if (unlikely(!slave->process_data)) {
+    if (likely(slave->error_reported)) {
+      printk(KERN_WARNING "EtherCAT: Writing failed on slave %4X (addr %0X)"
+             " - Slave does not belong to any process data object!\n",
+             slave->station_address, (unsigned int) slave);
       slave->error_reported = 1;
     }
     return;
@@ -180,3 +205,9 @@ EXPORT_SYMBOL(EtherCAT_write_value);
 EXPORT_SYMBOL(EtherCAT_read_value);
 
 /*****************************************************************************/
+
+/* Emacs-Konfiguration
+;;; Local Variables: ***
+;;; c-basic-offset:2 ***
+;;; End: ***
+*/

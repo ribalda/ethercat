@@ -1,43 +1,23 @@
-/**************************************************************************************************
-*
-*                          msr_module.c
-*
-*           Kernelmodul fÅ¸r 2.6 Kernel zur MeÅﬂdatenerfassung, Steuerung und Regelung
-*           Zeitgeber ist der Timerinterrupt (tq)
-*           
-*           Autor: Wilhelm Hagemeister
-*
-*           (C) Copyright IgH 2002
-*           Ingenieurgemeinschaft IgH
-*           Heinz-BÅ‰cker Str. 34
-*           D-45356 Essen
-*           Tel.: +49 201/61 99 31
-*           Fax.: +49 201/61 98 36
-*           E-mail: hm@igh-essen.com
-*
-*
-*           $RCSfile: msr_module.c,v $
-*           $Revision: 1.1 $
-*           $Author: hm $
-*           $Date: 2005/11/14 20:32:57 $
-*           $State: Exp $
-*
-*
-*           $Log: msr_module.c,v $
-*           Revision 1.1  2005/11/14 20:32:57  hm
-*           Initial revision
-*
-*           Revision 1.13  2005/06/17 11:35:13  hm
-*           *** empty log message ***
-*
-*
-*           Hello Emacs: -*- c-basic-offset: 2; -*-
-*
-**************************************************************************************************/
-
-
-/*--includes-------------------------------------------------------------------------------------*/
- 
+/******************************************************************************
+ *
+ *  msr_module.c
+ *
+ *  Kernelmodul fÅ¸r 2.6 Kernel zur MeÅﬂdatenerfassung, Steuerung und Regelung.
+ *  Zeitgeber ist der Timerinterrupt (tq)
+ *
+ *  Autor: Wilhelm Hagemeister
+ *
+ *  (C) Copyright IgH 2002
+ *  Ingenieurgemeinschaft IgH
+ *  Heinz-BÅ‰cker Str. 34
+ *  D-45356 Essen
+ *  Tel.: +49 201/61 99 31
+ *  Fax.: +49 201/61 98 36
+ *  E-mail: hm@igh-essen.com
+ *
+ *  $Id$
+ *
+ *****************************************************************************/
 
 #ifndef __KERNEL__
 #  define __KERNEL__
@@ -51,7 +31,7 @@
 
 #include <linux/sched.h>
 #include <linux/kernel.h>
-#include <linux/vmalloc.h> 
+#include <linux/vmalloc.h>
 #include <linux/fs.h>     /* everything... */
 #include <linux/proc_fs.h>
 #include <linux/time.h>
@@ -84,12 +64,9 @@
 
 #include "msr_jitter.h"
 
-MODULE_AUTHOR("Wilhelm Hagemeister, Ingenieurgemeinschaft IgH");
-MODULE_LICENSE("GPL");
+#define TSC2US(T) ((unsigned long) (T) * 1000UL / cpu_khz)
 
-/*--external functions---------------------------------------------------------------------------*/
-
-/*--external data--------------------------------------------------------------------------------*/
+/*--external data------------------------------------------------------------*/
 
 #define HZREDUCTION (MSR_ABTASTFREQUENZ/HZ)
 
@@ -99,12 +76,10 @@ extern struct msr_char_buf *msr_kanal_puffer;
 
 extern int proc_abtastfrequenz;
 
-/*--public data----------------------------------------------------------------------------------*/
-/*--local data-----------------------------------------------------------------------------------*/
-//struct timer_list timer;
+/*--local data---------------------------------------------------------------*/
 
-extern struct timeval process_time;           
-struct timeval msr_time_increment;                    // Increment per Interrupt
+extern struct timeval process_time;
+struct timeval msr_time_increment; // Increment per Interrupt
 
 //adeos
 
@@ -116,55 +91,51 @@ static EtherCAT_master_t *ecat_master = NULL;
 
 static EtherCAT_slave_t ecat_slaves[] =
 {
-
-
 #if 1
     // Block 1
-    ECAT_INIT_SLAVE(Beckhoff_EK1100),
-    ECAT_INIT_SLAVE(Beckhoff_EL4102),
-    ECAT_INIT_SLAVE(Beckhoff_EL1014),
-    ECAT_INIT_SLAVE(Beckhoff_EL3162),
-    ECAT_INIT_SLAVE(Beckhoff_EL2004),
-    ECAT_INIT_SLAVE(Beckhoff_EL3102),
-    ECAT_INIT_SLAVE(Beckhoff_EL2004),
-    ECAT_INIT_SLAVE(Beckhoff_EL2004),
-    ECAT_INIT_SLAVE(Beckhoff_EL2004),
-    ECAT_INIT_SLAVE(Beckhoff_EL2004),
-    ECAT_INIT_SLAVE(Beckhoff_EL2004),
+    ECAT_INIT_SLAVE(Beckhoff_EK1100, 0),
+    ECAT_INIT_SLAVE(Beckhoff_EL4102, 0),
+    ECAT_INIT_SLAVE(Beckhoff_EL1014, 0),
+    ECAT_INIT_SLAVE(Beckhoff_EL3162, 0),
+    ECAT_INIT_SLAVE(Beckhoff_EL2004, 0),
+    ECAT_INIT_SLAVE(Beckhoff_EL3102, 0),
+    ECAT_INIT_SLAVE(Beckhoff_EL2004, 0),
+    ECAT_INIT_SLAVE(Beckhoff_EL2004, 0),
+    ECAT_INIT_SLAVE(Beckhoff_EL2004, 0),
+    ECAT_INIT_SLAVE(Beckhoff_EL2004, 0),
+    ECAT_INIT_SLAVE(Beckhoff_EL2004, 0),
 
     // Block 2
-    ECAT_INIT_SLAVE(Beckhoff_EK1100),
-    ECAT_INIT_SLAVE(Beckhoff_EL1014),
-    ECAT_INIT_SLAVE(Beckhoff_EL1014),
-    ECAT_INIT_SLAVE(Beckhoff_EL1014),
-    ECAT_INIT_SLAVE(Beckhoff_EL1014),
-    ECAT_INIT_SLAVE(Beckhoff_EL1014),
-    ECAT_INIT_SLAVE(Beckhoff_EL2004),
-    ECAT_INIT_SLAVE(Beckhoff_EL2004),
-    ECAT_INIT_SLAVE(Beckhoff_EL2004),
-    ECAT_INIT_SLAVE(Beckhoff_EL2004),
-    ECAT_INIT_SLAVE(Beckhoff_EL1014),
-    ECAT_INIT_SLAVE(Beckhoff_EL1014),
-    ECAT_INIT_SLAVE(Beckhoff_EL1014)
+    ECAT_INIT_SLAVE(Beckhoff_EK1100, 1),
+    ECAT_INIT_SLAVE(Beckhoff_EL1014, 1),
+    ECAT_INIT_SLAVE(Beckhoff_EL1014, 1),
+    ECAT_INIT_SLAVE(Beckhoff_EL1014, 1),
+    ECAT_INIT_SLAVE(Beckhoff_EL1014, 1),
+    ECAT_INIT_SLAVE(Beckhoff_EL1014, 1),
+    ECAT_INIT_SLAVE(Beckhoff_EL2004, 1),
+    ECAT_INIT_SLAVE(Beckhoff_EL2004, 1),
+    ECAT_INIT_SLAVE(Beckhoff_EL2004, 1),
+    ECAT_INIT_SLAVE(Beckhoff_EL2004, 1),
+    ECAT_INIT_SLAVE(Beckhoff_EL1014, 1),
+    ECAT_INIT_SLAVE(Beckhoff_EL1014, 1),
+    ECAT_INIT_SLAVE(Beckhoff_EL1014, 1)
 #endif
 
-#if 1
+#if 0
     // Block 3
-   ,ECAT_INIT_SLAVE(Beckhoff_EK1100),
-    ECAT_INIT_SLAVE(Beckhoff_EL3162),
-    ECAT_INIT_SLAVE(Beckhoff_EL3162),
-    ECAT_INIT_SLAVE(Beckhoff_EL3162),
-    ECAT_INIT_SLAVE(Beckhoff_EL3162),
-    ECAT_INIT_SLAVE(Beckhoff_EL3102),
-    ECAT_INIT_SLAVE(Beckhoff_EL3102),
-    ECAT_INIT_SLAVE(Beckhoff_EL3102),
-    ECAT_INIT_SLAVE(Beckhoff_EL4102),
-    ECAT_INIT_SLAVE(Beckhoff_EL4102),
-    ECAT_INIT_SLAVE(Beckhoff_EL4102),
-    ECAT_INIT_SLAVE(Beckhoff_EL4102),
-    ECAT_INIT_SLAVE(Beckhoff_EL4132)
-
-
+   ,ECAT_INIT_SLAVE(Beckhoff_EK1100, 2),
+    ECAT_INIT_SLAVE(Beckhoff_EL3162, 2),
+    ECAT_INIT_SLAVE(Beckhoff_EL3162, 2),
+    ECAT_INIT_SLAVE(Beckhoff_EL3162, 2),
+    ECAT_INIT_SLAVE(Beckhoff_EL3162, 2),
+    ECAT_INIT_SLAVE(Beckhoff_EL3102, 2),
+    ECAT_INIT_SLAVE(Beckhoff_EL3102, 2),
+    ECAT_INIT_SLAVE(Beckhoff_EL3102, 2),
+    ECAT_INIT_SLAVE(Beckhoff_EL4102, 2),
+    ECAT_INIT_SLAVE(Beckhoff_EL4102, 2),
+    ECAT_INIT_SLAVE(Beckhoff_EL4102, 2),
+    ECAT_INIT_SLAVE(Beckhoff_EL4102, 2),
+    ECAT_INIT_SLAVE(Beckhoff_EL4132, 2)
 #endif
 };
 
@@ -182,8 +153,6 @@ int dig1;
  * Function: next2004
  *
  *****************************************************************************/
-
-
 
 static int next2004(int *wrap)
 {
@@ -228,23 +197,17 @@ static void msr_controller_run(void)
     static int up_down = 0;
     int wrap = 0;
 
+    static unsigned int debug_counter = 0;
+    unsigned long t1, t2, t3, t4, t5, t6, t7;
+    static unsigned long lt = 0;
+    unsigned int tr1, tr2;
+
+    rdtscl(t1);
 
     // Prozessdaten lesen
     msr_jitter_run(MSR_ABTASTFREQUENZ);
 
-    if (!firstrun)
-    {
-        EtherCAT_read_process_data(ecat_master);
-
-        // Daten lesen und skalieren
-#ifdef USE_MSR_LIB
-        value = EtherCAT_read_value(&ecat_master->slaves[5], 0) / 3276.0; 
-        dig1 = EtherCAT_read_value(&ecat_master->slaves[2], 0);
-#endif
-    }
-    else
-        klemme = next2004(&wrap);
-
+    if (firstrun) klemme = next2004(&wrap);
 
     ms++;
     ms %= 1000;
@@ -266,8 +229,7 @@ static void msr_controller_run(void)
     }
 
     if (klemme >= 0) {
-        EtherCAT_write_value(&ecat_master->slaves[klemme], kanal,up_down);
-	//printk("ECAT write: Klemme: %d, Kanal: %d, Wert: %d\n",klemme,kanal,up_down); 
+        EtherCAT_write_value(&ecat_slaves[klemme], kanal, up_down);
     }
 
 #if 0
@@ -278,32 +240,63 @@ static void msr_controller_run(void)
 
     // Prozessdaten schreiben
     rdtscl(k);
-    EtherCAT_write_process_data(ecat_master);
-    firstrun = 0;
+    rdtscl(t2);
 
+    EtherCAT_process_data_cycle(ecat_master, 0);
+
+    t3 = ecat_master->tx_time;
+    t4 = ecat_master->rx_time;
+    tr1 = ecat_master->rx_tries;
+
+    EtherCAT_process_data_cycle(ecat_master, 1);
+
+    t5 = ecat_master->tx_time;
+    t6 = ecat_master->rx_time;
+    tr2 = ecat_master->rx_tries;
+
+    //EtherCAT_process_data_cycle(ecat_master, 2);
+
+    // Daten lesen und skalieren
+#ifdef USE_MSR_LIB
+    value = EtherCAT_read_value(&ecat_slaves[5], 0) / 3276.0;
+    dig1 = EtherCAT_read_value(&ecat_slaves[2], 0);
+#endif
+
+    rdtscl(t7);
+
+    if (debug_counter == MSR_ABTASTFREQUENZ) {
+      printk(KERN_DEBUG "%lu: %luéµs + %luéµs + %luéµs + %luéµs + %luéµs +"
+             " %luéµs = %luéµs (%u %u)\n",
+             TSC2US(t1 - lt),
+             TSC2US(t2 - t1), TSC2US(t3 - t2), TSC2US(t4 - t3),
+             TSC2US(t5 - t4), TSC2US(t6 - t5), TSC2US(t7 - t6),
+             TSC2US(t7 - t1), tr1, tr2);
+      debug_counter = 0;
+    }
+
+    lt = t1;
+
+    firstrun = 0;
+    debug_counter++;
 }
 
-/*
-***************************************************************************************************
-*
-* Function: msr_run(_interrupt)
-*
-* Beschreibung: Routine wird zyklisch im Timerinterrupt ausgefÅ¸hrt
-*               (hier muÅﬂ alles rein, was Echtzeit ist ...)
-*
-* Parameter: Zeiger auf msr_data
-*
-* RÅ¸ckgabe:
-*
-* Status: exp
-*
-***************************************************************************************************
-*/
-
+/******************************************************************************
+ *
+ *  Function: msr_run(_interrupt)
+ *
+ *  Beschreibung: Routine wird zyklisch im Timerinterrupt ausgefÅ¸hrt
+ *                (hier muÅﬂ alles rein, was Echtzeit ist ...)
+ *
+ *  Parameter: Zeiger auf msr_data
+ *
+ *  RÅ¸ckgabe:
+ *
+ *  Status: exp
+ *
+ *****************************************************************************/
 
 void msr_run(unsigned irq)
 {
-
   static int counter = 0;
 #ifdef USE_MSR_LIB
 
@@ -318,45 +311,40 @@ void msr_run(unsigned irq)
 #endif
     /* und wieder in die Timerliste eintragen */
     /* und neu in die Taskqueue eintragen */
-//    timer.expires += 1;
-//    add_timer(&timer);
+    //timer.expires += 1;
+    //add_timer(&timer);
 
     ipipe_control_irq(irq,0,IPIPE_ENABLE_MASK);  //Interrupt besté‰tigen
     if(counter++ > HZREDUCTION) {
 	ipipe_propagate_irq(irq);  //und weiterreichen
 	counter = 0;
     }
-
-
 }
 
-void domain_entry (void) {
-    printk("Domain %s started.\n",	ipipe_current_domain->name);
-
+void domain_entry (void)
+{
+    printk("Domain %s started.\n", ipipe_current_domain->name);
 
     ipipe_get_sysinfo(&sys_info);
     ipipe_virtualize_irq(ipipe_current_domain,sys_info.archdep.tmirq,
 			 &msr_run, NULL, IPIPE_HANDLE_MASK);
 
-    ipipe_tune_timer(1000000000UL/MSR_ABTASTFREQUENZ,0); 
-
+    ipipe_tune_timer(1000000000UL/MSR_ABTASTFREQUENZ,0);
 }
 
-/*
-*******************************************************************************
-*
-* Function: msr_register_channels
-*
-* Beschreibung: Kané‰le registrieren
-*
-* Parameter:
-*
-* Ré¸ckgabe: 
-*               
-* Status: exp
-*
-*******************************************************************************
-*/
+/******************************************************************************
+ *
+ *  Function: msr_register_channels
+ *
+ *  Beschreibung: Kané‰le registrieren
+ *
+ *  Parameter:
+ *
+ *  Ré¸ckgabe:
+ *
+ *  Status: exp
+ *
+ *****************************************************************************/
 
 int msr_globals_register(void)
 {
@@ -364,23 +352,23 @@ int msr_globals_register(void)
     msr_reg_kanal("/value", "V", &value, TDBL);
     msr_reg_kanal("/dig1", "", &dig1, TINT);
 #endif
-/*  msr_reg_kanal("/Taskinfo/Ecat/TX-Delay","us",&ecat_tx_delay,TUINT);
-  msr_reg_kanal("/Taskinfo/Ecat/RX-Delay","us",&ecat_rx_delay,TUINT);
-  msr_reg_kanal("/Taskinfo/Ecat/TX-Cnt","",&tx_intr,TUINT);
-  msr_reg_kanal("/Taskinfo/Ecat/RX-Cnt","",&rx_intr,TUINT);
-  msr_reg_kanal("/Taskinfo/Ecat/Total-Cnt","",&total_intr,TUINT);
-*/
+#if 0
+    msr_reg_kanal("/Taskinfo/Ecat/TX-Delay","us",&ecat_tx_delay,TUINT);
+    msr_reg_kanal("/Taskinfo/Ecat/RX-Delay","us",&ecat_rx_delay,TUINT);
+    msr_reg_kanal("/Taskinfo/Ecat/TX-Cnt","",&tx_intr,TUINT);
+    msr_reg_kanal("/Taskinfo/Ecat/RX-Cnt","",&rx_intr,TUINT);
+    msr_reg_kanal("/Taskinfo/Ecat/Total-Cnt","",&total_intr,TUINT);
+#endif
   return 0;
 }
 
-
-/****************************************************************************************************
+/******************************************************************************
  * the init/clean material
- ****************************************************************************************************/
-
+ *****************************************************************************/
 
 int __init init_module()
 {
+    unsigned int i;
     struct ipipe_domain_attr attr; //ipipe
 
     // Als allererstes die RT-lib initialisieren
@@ -409,9 +397,10 @@ int __init init_module()
 
     printk("Activating all EtherCAT slaves.\n");
 
-    if (EtherCAT_activate_all_slaves(ecat_master) != 0) {
-        printk(KERN_ERR "EtherCAT: Could not activate slaves!\n");
-        goto out_release_master;
+    for (i = 0; i < ECAT_SLAVES_COUNT; i++) {
+        if (EtherCAT_activate_slave(ecat_master, ecat_slaves + i) < 0) {
+            goto out_release_master;
+        }
     }
 
     do_gettimeofday(&process_time);
@@ -436,11 +425,12 @@ int __init init_module()
     return -1;
 }
 
+/*****************************************************************************/
 
-//****************************************************************************
 void __exit cleanup_module()
-
 {
+    unsigned int i;
+
     msr_print_info("msk_modul: unloading...");
 
     ipipe_tune_timer(1000000000UL/HZ,0); //alten Timertakt wieder herstellen
@@ -450,9 +440,14 @@ void __exit cleanup_module()
 
     if (ecat_master)
     {
-        EtherCAT_clear_process_data(ecat_master);
         printk(KERN_INFO "Deactivating slaves.\n");
-        EtherCAT_deactivate_all_slaves(ecat_master);
+
+        for (i = 0; i < ECAT_SLAVES_COUNT; i++) {
+            if (EtherCAT_deactivate_slave(ecat_master, ecat_slaves + i) < 0) {
+                printk(KERN_WARNING "Warning - Could not deactivate slave!\n");
+            }
+        }
+
         EtherCAT_release(ecat_master);
     }
 
@@ -463,6 +458,8 @@ void __exit cleanup_module()
 #endif
 }
 
+/*****************************************************************************/
+
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR ("Wilhelm Hagemeister <hm@igh-essen.com>");
 MODULE_DESCRIPTION ("EtherCAT test environment");
@@ -470,18 +467,4 @@ MODULE_DESCRIPTION ("EtherCAT test environment");
 module_init(init_module);
 module_exit(cleanup_module);
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+/*****************************************************************************/
