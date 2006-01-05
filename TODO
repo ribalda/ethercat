@@ -2,8 +2,7 @@ TODO-Liste EtherCAT-Treiber
 
 $Id$
 
-- Klasse für Prozessdaten, Kapselung
-- Senden/Empfangen mit Warten, dynamische Wartezeiten
+- Dynamische Wartezeiten
 - Konfiguration SSI-/Inkrementalgeberklemmen (CoE)
 - Ethernet over EtherCAT (EoE)
 - eepro100-Kartentreiber
