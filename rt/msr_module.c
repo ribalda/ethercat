@@ -399,6 +399,7 @@ int __init init_module()
 
     for (i = 0; i < ECAT_SLAVES_COUNT; i++) {
         if (EtherCAT_activate_slave(ecat_master, ecat_slaves + i) < 0) {
+            printk(KERN_ERR "EtherCAT: Could not activate slave %i!\n", i);
             goto out_release_master;
         }
     }
@@ -436,10 +437,10 @@ void __exit cleanup_module()
     ipipe_tune_timer(1000000000UL/HZ,0); //alten Timertakt wieder herstellen
     ipipe_unregister_domain(&this_domain);
 
-    printk(KERN_INFO "=== Stopping EtherCAT environment... ===\n");
-
     if (ecat_master)
     {
+        printk(KERN_INFO "=== Stopping EtherCAT environment... ===\n");
+
         printk(KERN_INFO "Deactivating slaves.\n");
 
         for (i = 0; i < ECAT_SLAVES_COUNT; i++) {
@@ -449,9 +450,9 @@ void __exit cleanup_module()
         }
 
         EtherCAT_release(ecat_master);
-    }
 
-    printk(KERN_INFO "=== EtherCAT environment stopped. ===\n");
+        printk(KERN_INFO "=== EtherCAT environment stopped. ===\n");
+    }
 
 #ifdef USE_MSR_LIB
     msr_rtlib_cleanup();

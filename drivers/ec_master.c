@@ -706,17 +706,16 @@ int EtherCAT_state_change(EtherCAT_master_t *master,
                          0x0120, 2, data);
 
   if (unlikely(EtherCAT_simple_send_receive(master, &cmd) != 0)) {
-    printk(KERN_ERR "EtherCAT: Could not set state %02X -"
-           " Unable to send!\n", state_and_ack);
-    return -2;
+    printk(KERN_ERR "EtherCAT: Could not set state %02X - Unable to send!\n",
+           state_and_ack);
+    return -1;
   }
 
   if (unlikely(cmd.working_counter != 1)) {
-    printk(KERN_ERR "EtherCAT: Could not set state %02X -"
-           " Device \"%s %s\" (%d) did not respond!\n",
-           state_and_ack, slave->desc->vendor_name,
-           slave->desc->product_name, slave->ring_position*(-1));
-    return -3;
+    printk(KERN_ERR "EtherCAT: Could not set state %02X - Device \"%s %s\""
+           " (%d) did not respond!\n", state_and_ack, slave->desc->vendor_name,
+           slave->desc->product_name, slave->ring_position * (-1));
+    return -1;
   }
 
   slave->requested_state = state_and_ack & 0x0F;
@@ -729,23 +728,21 @@ int EtherCAT_state_change(EtherCAT_master_t *master,
     EtherCAT_command_read(&cmd, slave->station_address, 0x0130, 2);
 
     if (unlikely(EtherCAT_simple_send_receive(master, &cmd) != 0)) {
-      printk(KERN_ERR "EtherCAT: Could not check"
-             " state %02X - Unable to send!\n", state_and_ack);
-      return -2;
+      printk(KERN_ERR "EtherCAT: Could not check state %02X - Unable to"
+             " send!\n", state_and_ack);
+      return -1;
     }
 
     if (unlikely(cmd.working_counter != 1)) {
-      printk(KERN_ERR "EtherCAT: Could not check"
-             " state %02X - Device did not respond!\n",
-             state_and_ack);
-      return -3;
+      printk(KERN_ERR "EtherCAT: Could not check state %02X - Device did not"
+             " respond!\n", state_and_ack);
+      return -1;
     }
 
     if (unlikely(cmd.data[0] & 0x10)) { // State change error
-      printk(KERN_ERR "EtherCAT: Could not set state %02X -"
-             " Device refused state change (code %02X)!\n",
-             state_and_ack, cmd.data[0]);
-      return -4;
+      printk(KERN_ERR "EtherCAT: Could not set state %02X - Device refused"
+             " state change (code %02X)!\n", state_and_ack, cmd.data[0]);
+      return -1;
     }
 
     if (likely(cmd.data[0] == (state_and_ack & 0x0F))) {
@@ -757,9 +754,9 @@ int EtherCAT_state_change(EtherCAT_master_t *master,
   }
 
   if (unlikely(!tries_left)) {
-    printk(KERN_ERR "EtherCAT: Could not check state %02X -"
-           " Timeout while checking!\n", state_and_ack);
-    return -5;
+    printk(KERN_ERR "EtherCAT: Could not check state %02X - Timeout while"
+           " checking!\n", state_and_ack);
+    return -1;
   }
 
   slave->current_state = state_and_ack & 0x0F;
@@ -792,24 +789,21 @@ int EtherCAT_activate_slave(EtherCAT_master_t *master,
 
   desc = slave->desc;
 
-  if (unlikely(EtherCAT_state_change(master, slave,
-                                     ECAT_STATE_INIT) != 0))
+  if (unlikely(EtherCAT_state_change(master, slave, ECAT_STATE_INIT) != 0))
     return -1;
 
   // Resetting FMMU's
 
   memset(data, 0x00, 256);
 
-  EtherCAT_command_write(&cmd, slave->station_address,
-                         0x0600, 256, data);
+  EtherCAT_command_write(&cmd, slave->station_address, 0x0600, 256, data);
 
   if (unlikely(EtherCAT_simple_send_receive(master, &cmd) < 0))
     return -1;
 
   if (unlikely(cmd.working_counter != 1)) {
-    printk(KERN_ERR "EtherCAT: Resetting FMMUs -"
-           " Slave %04X did not respond!\n",
-           slave->station_address);
+    printk(KERN_ERR "EtherCAT: Resetting FMMUs - Slave %04X did not"
+           " respond!\n", slave->station_address);
     return -1;
   }
 
@@ -819,16 +813,14 @@ int EtherCAT_activate_slave(EtherCAT_master_t *master,
   {
     memset(data, 0x00, 256);
 
-    EtherCAT_command_write(&cmd, slave->station_address,
-                           0x0800, 256, data);
+    EtherCAT_command_write(&cmd, slave->station_address, 0x0800, 256, data);
 
     if (unlikely(EtherCAT_simple_send_receive(master, &cmd) < 0))
       return -1;
 
     if (unlikely(cmd.working_counter != 1)) {
-      printk(KERN_ERR "EtherCAT: Resetting SMs -"
-             " Slave %04X did not respond!\n",
-             slave->station_address);
+      printk(KERN_ERR "EtherCAT: Resetting SMs - Slave %04X did not"
+             " respond!\n", slave->station_address);
       return -1;
     }
   }
@@ -839,24 +831,23 @@ int EtherCAT_activate_slave(EtherCAT_master_t *master,
   {
     if (desc->sm0)
     {
-      EtherCAT_command_write(&cmd, slave->station_address,
-                             0x0800, 8, desc->sm0);
+      EtherCAT_command_write(&cmd, slave->station_address, 0x0800, 8,
+                             desc->sm0);
 
       if (unlikely(EtherCAT_simple_send_receive(master, &cmd) < 0))
         return -1;
 
       if (unlikely(cmd.working_counter != 1)) {
-        printk(KERN_ERR "EtherCAT: Setting SM0 -"
-               " Slave %04X did not respond!\n",
-               slave->station_address);
+        printk(KERN_ERR "EtherCAT: Setting SM0 - Slave %04X did not"
+               " respond!\n", slave->station_address);
         return -1;
       }
     }
 
     if (desc->sm1)
     {
-      EtherCAT_command_write(&cmd, slave->station_address,
-                             0x0808, 8, desc->sm1);
+      EtherCAT_command_write(&cmd, slave->station_address, 0x0808, 8,
+                             desc->sm1);
 
       if (unlikely(EtherCAT_simple_send_receive(master, &cmd) < 0))
         return -1;
@@ -872,8 +863,7 @@ int EtherCAT_activate_slave(EtherCAT_master_t *master,
 
   // Change state to PREOP
 
-  if (unlikely(EtherCAT_state_change(master, slave,
-                                     ECAT_STATE_PREOP) != 0))
+  if (unlikely(EtherCAT_state_change(master, slave, ECAT_STATE_PREOP) != 0))
     return -1;
 
   // Set FMMU's
@@ -893,16 +883,14 @@ int EtherCAT_activate_slave(EtherCAT_master_t *master,
     fmmu[2] = (slave->logical_address & 0x00FF0000) >> 16;
     fmmu[3] = (slave->logical_address & 0xFF000000) >> 24;
 
-    EtherCAT_command_write(&cmd, slave->station_address,
-                           0x0600, 16, fmmu);
+    EtherCAT_command_write(&cmd, slave->station_address, 0x0600, 16, fmmu);
 
     if (unlikely(EtherCAT_simple_send_receive(master, &cmd) < 0))
       return -1;
 
     if (unlikely(cmd.working_counter != 1)) {
-      printk(KERN_ERR "EtherCAT: Setting FMMU0 -"
-             " Slave %04X did not respond!\n",
-             slave->station_address);
+      printk(KERN_ERR "EtherCAT: Setting FMMU0 - Slave %04X did not"
+             " respond!\n", slave->station_address);
       return -1;
     }
   }
@@ -913,32 +901,30 @@ int EtherCAT_activate_slave(EtherCAT_master_t *master,
   {
     if (desc->sm0)
     {
-      EtherCAT_command_write(&cmd, slave->station_address,
-                             0x0800, 8, desc->sm0);
+      EtherCAT_command_write(&cmd, slave->station_address, 0x0800, 8,
+                             desc->sm0);
 
       if (unlikely(EtherCAT_simple_send_receive(master, &cmd) < 0))
         return -1;
 
       if (unlikely(cmd.working_counter != 1)) {
-        printk(KERN_ERR "EtherCAT: Setting SM0 -"
-               " Slave %04X did not respond!\n",
-               slave->station_address);
+        printk(KERN_ERR "EtherCAT: Setting SM0 - Slave %04X did not"
+               " respond!\n", slave->station_address);
         return -1;
       }
     }
 
     if (desc->sm1)
     {
-      EtherCAT_command_write(&cmd, slave->station_address,
-                             0x0808, 8, desc->sm1);
+      EtherCAT_command_write(&cmd, slave->station_address, 0x0808, 8,
+                             desc->sm1);
 
       if (unlikely(EtherCAT_simple_send_receive(master, &cmd) < 0))
         return -1;
 
       if (unlikely(cmd.working_counter != 1)) {
-        printk(KERN_ERR "EtherCAT: Setting SM1 -"
-               " Slave %04X did not respond!\n",
-               slave->station_address);
+        printk(KERN_ERR "EtherCAT: Setting SM1 - Slave %04X did not"
+               " respond!\n", slave->station_address);
         return -1;
       }
     }
@@ -946,15 +932,13 @@ int EtherCAT_activate_slave(EtherCAT_master_t *master,
 
   if (desc->sm2)
   {
-    EtherCAT_command_write(&cmd, slave->station_address,
-                           0x0810, 8, desc->sm2);
+    EtherCAT_command_write(&cmd, slave->station_address, 0x0810, 8, desc->sm2);
 
     if (unlikely(EtherCAT_simple_send_receive(master, &cmd) < 0))
       return -1;
 
     if (unlikely(cmd.working_counter != 1)) {
-      printk(KERN_ERR "EtherCAT: Setting SM2 -"
-             " Slave %04X did not respond!\n",
+      printk(KERN_ERR "EtherCAT: Setting SM2 - Slave %04X did not respond!\n",
              slave->station_address);
       return -1;
     }
@@ -962,28 +946,24 @@ int EtherCAT_activate_slave(EtherCAT_master_t *master,
 
   if (desc->sm3)
   {
-    EtherCAT_command_write(&cmd, slave->station_address,
-                           0x0818, 8, desc->sm3);
+    EtherCAT_command_write(&cmd, slave->station_address, 0x0818, 8, desc->sm3);
 
     if (unlikely(EtherCAT_simple_send_receive(master, &cmd) < 0))
       return -1;
 
     if (unlikely(cmd.working_counter != 1)) {
-      printk(KERN_ERR "EtherCAT: Setting SM3 -"
-             " Slave %04X did not respond!\n",
+      printk(KERN_ERR "EtherCAT: Setting SM3 - Slave %04X did not respond!\n",
              slave->station_address);
       return -1;
     }
   }
 
   // Change state to SAVEOP
-  if (unlikely(EtherCAT_state_change(master, slave,
-                                     ECAT_STATE_SAVEOP) != 0))
+  if (unlikely(EtherCAT_state_change(master, slave, ECAT_STATE_SAVEOP) != 0))
     return -1;
 
   // Change state to OP
-  if (unlikely(EtherCAT_state_change(master, slave,
-                                     ECAT_STATE_OP) != 0))
+  if (unlikely(EtherCAT_state_change(master, slave, ECAT_STATE_OP) != 0))
     return -1;
 
   return 0;
