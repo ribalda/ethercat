@@ -33,9 +33,7 @@ void EtherCAT_master_init(EtherCAT_master_t *master)
   master->rx_data_length = 0;
   master->domain_count = 0;
   master->debug_level = 0;
-  master->tx_time = 0;
-  master->rx_time = 0;
-  master->rx_tries = 0;
+  master->bus_time = 0;
 }
 
 /*****************************************************************************/
@@ -249,9 +247,6 @@ int EtherCAT_simple_send(EtherCAT_master_t *master,
   if (unlikely(master->debug_level > 0)) {
     printk(KERN_DEBUG "device send...\n");
   }
-
-  // Zeit nehmen
-  rdtscl(master->tx_time);
 
   // Send frame
   if (unlikely(EtherCAT_device_send(master->dev,
@@ -995,18 +990,21 @@ int EtherCAT_deactivate_slave(EtherCAT_master_t *master,
 /**
    Sendet und empfängt Prozessdaten der angegebenen Domäne
 
-   @param master EtherCAT-Master
-          domain Domäne
+   @param master     EtherCAT-Master
+          domain     Domäne
+          timeout_us Timeout in Mikrosekunden
 
    @return 0 bei Erfolg, sonst < 0
 */
 
-int EtherCAT_process_data_cycle(EtherCAT_master_t *master,
-                                unsigned int domain)
+int EtherCAT_process_data_cycle(EtherCAT_master_t *master, unsigned int domain,
+                                unsigned int timeout_us)
 {
-  unsigned int i, tries;
-  EtherCAT_domain_t *dom = NULL;
+  unsigned int i;
+  EtherCAT_domain_t *dom;
+  unsigned long start_ticks, end_ticks, timeout_ticks;
 
+  dom = NULL;
   for (i = 0; i < master->domain_count; i++) {
     if (master->domains[i].number == domain) {
       dom = master->domains + i;
@@ -1023,27 +1021,26 @@ int EtherCAT_process_data_cycle(EtherCAT_master_t *master,
                                       dom->logical_offset, dom->data_size,
                                       dom->data);
 
+  rdtscl(start_ticks); // Sendezeit nehmen
+
   if (unlikely(EtherCAT_simple_send(master, &dom->command) < 0)) {
     printk(KERN_ERR "EtherCAT: Could not send process data command!\n");
     return -1;
   }
 
-  udelay(3);
+  timeout_ticks = timeout_us * cpu_khz / 1000;
 
-#if 1
   // Warten
-  tries = 0;
-  EtherCAT_device_call_isr(master->dev);
-  while (unlikely(master->dev->state == ECAT_DS_SENT && tries < 100)) {
-    udelay(1);
+  do {
     EtherCAT_device_call_isr(master->dev);
-    tries++;
+    rdtscl(end_ticks); // Empfangszeit nehmen
   }
+  while (unlikely(master->dev->state == ECAT_DS_SENT
+                  && end_ticks - start_ticks < timeout_ticks));
 
-  rdtscl(master->rx_time);
-  master->rx_tries = tries;
+  master->bus_time = (end_ticks - start_ticks) * 1000 / cpu_khz;
 
-  if (unlikely(tries == 100)) {
+  if (unlikely(end_ticks - start_ticks >= timeout_ticks)) {
     printk(KERN_ERR "EtherCAT: Timeout while receiving process data!\n");
     return -1;
   }
@@ -1060,7 +1057,6 @@ int EtherCAT_process_data_cycle(EtherCAT_master_t *master,
 
   // Daten vom Kommando in den Prozessdatenspeicher kopieren
   memcpy(dom->data, dom->command.data, dom->data_size);
-#endif
 
   return 0;
 }

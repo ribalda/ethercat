@@ -3,9 +3,8 @@
  *  msr_module.c
  *
  *  Kernelmodul fÅ¸r 2.6 Kernel zur MeÅﬂdatenerfassung, Steuerung und Regelung.
- *  Zeitgeber ist der Timerinterrupt (tq)
  *
- *  Autor: Wilhelm Hagemeister
+ *  Autor: Wilhelm Hagemeister, Florian Pose
  *
  *  (C) Copyright IgH 2002
  *  Ingenieurgemeinschaft IgH
@@ -40,7 +39,7 @@
 
 // Defines/Makros
 #define TSC2US(T1, T2) ((T2 - T1) * 1000UL / cpu_khz)
-#define HZREDUCTION (MSR_ABTASTFREQUENZ/HZ)
+#define HZREDUCTION (MSR_ABTASTFREQUENZ / HZ)
 
 /*****************************************************************************/
 /* Globale Variablen */
@@ -56,11 +55,11 @@ static struct ipipe_sysinfo sys_info;
 // EtherCAT
 
 static EtherCAT_master_t *ecat_master = NULL;
-static unsigned long ecat_bus_time = 0;
+static unsigned int ecat_bus_time = 0;
+static unsigned int ecat_timeouts = 0;
 
 static EtherCAT_slave_t ecat_slaves[] =
 {
-#if 1
     // Block 1
     ECAT_INIT_SLAVE(Beckhoff_EK1100, 0),
     ECAT_INIT_SLAVE(Beckhoff_EL4102, 0),
@@ -68,10 +67,6 @@ static EtherCAT_slave_t ecat_slaves[] =
     ECAT_INIT_SLAVE(Beckhoff_EL3162, 0),
     ECAT_INIT_SLAVE(Beckhoff_EL2004, 0),
     ECAT_INIT_SLAVE(Beckhoff_EL3102, 0),
-    ECAT_INIT_SLAVE(Beckhoff_EL2004, 0),
-    ECAT_INIT_SLAVE(Beckhoff_EL2004, 0),
-    ECAT_INIT_SLAVE(Beckhoff_EL2004, 0),
-    ECAT_INIT_SLAVE(Beckhoff_EL2004, 0),
     ECAT_INIT_SLAVE(Beckhoff_EL2004, 0),
 
     // Block 2
@@ -88,24 +83,6 @@ static EtherCAT_slave_t ecat_slaves[] =
     ECAT_INIT_SLAVE(Beckhoff_EL1014, 1),
     ECAT_INIT_SLAVE(Beckhoff_EL1014, 1),
     ECAT_INIT_SLAVE(Beckhoff_EL1014, 1)
-#endif
-
-#if 0
-    // Block 3
-   ,ECAT_INIT_SLAVE(Beckhoff_EK1100, 2),
-    ECAT_INIT_SLAVE(Beckhoff_EL3162, 2),
-    ECAT_INIT_SLAVE(Beckhoff_EL3162, 2),
-    ECAT_INIT_SLAVE(Beckhoff_EL3162, 2),
-    ECAT_INIT_SLAVE(Beckhoff_EL3162, 2),
-    ECAT_INIT_SLAVE(Beckhoff_EL3102, 2),
-    ECAT_INIT_SLAVE(Beckhoff_EL3102, 2),
-    ECAT_INIT_SLAVE(Beckhoff_EL3102, 2),
-    ECAT_INIT_SLAVE(Beckhoff_EL4102, 2),
-    ECAT_INIT_SLAVE(Beckhoff_EL4102, 2),
-    ECAT_INIT_SLAVE(Beckhoff_EL4102, 2),
-    ECAT_INIT_SLAVE(Beckhoff_EL4102, 2),
-    ECAT_INIT_SLAVE(Beckhoff_EL4132, 2)
-#endif
 };
 
 #define ECAT_SLAVES_COUNT (sizeof(ecat_slaves) / sizeof(EtherCAT_slave_t))
@@ -157,7 +134,6 @@ static void msr_controller_run(void)
 {
     static int ms = 0;
     static int cnt = 0;
-    static unsigned long int k = 0;
     static int firstrun = 1;
 
     static int klemme = 0;
@@ -166,9 +142,9 @@ static void msr_controller_run(void)
     int wrap = 0;
 
     static unsigned int debug_counter = 0;
-    unsigned long t1, t2, t3, t4, t5, t6, t7;
+    unsigned long t1, t2, t3;
+    unsigned int bustime1, bustime2;
     static unsigned long lt = 0;
-    unsigned int tr1, tr2;
 
     rdtscl(t1);
 
@@ -200,33 +176,21 @@ static void msr_controller_run(void)
         EtherCAT_write_value(&ecat_slaves[klemme], kanal, up_down);
     }
 
-#if 0
-    EtherCAT_write_value(&ecat_master->slaves[13], 1, ms > 500 ? 0 : 1);
-    EtherCAT_write_value(&ecat_master->slaves[14], 2, ms > 500 ? 0 : 1);
-    EtherCAT_write_value(&ecat_master->slaves[15], 3, ms > 500 ? 1 : 0);
-#endif
-
     // Prozessdaten schreiben
-    rdtscl(k);
+
     rdtscl(t2);
 
-    EtherCAT_process_data_cycle(ecat_master, 0);
+    if (EtherCAT_process_data_cycle(ecat_master, 0, 40) < 0)
+        ecat_timeouts++;
+    bustime1 = ecat_master->bus_time;
 
-    t3 = ecat_master->tx_time;
-    t4 = ecat_master->rx_time;
-    tr1 = ecat_master->rx_tries;
+    if (EtherCAT_process_data_cycle(ecat_master, 1, 40) < 0)
+        ecat_timeouts++;
+    bustime2 = ecat_master->bus_time;
 
-    EtherCAT_process_data_cycle(ecat_master, 1);
+    rdtscl(t3);
 
-    t5 = ecat_master->tx_time;
-    t6 = ecat_master->rx_time;
-    tr2 = ecat_master->rx_tries;
-
-    //EtherCAT_process_data_cycle(ecat_master, 2);
-
-    rdtscl(t7);
-
-    ecat_bus_time = TSC2US(t2, t7);
+    ecat_bus_time = TSC2US(t2, t3);
 
     // Daten lesen und skalieren
 #ifdef USE_MSR_LIB
@@ -235,12 +199,8 @@ static void msr_controller_run(void)
 #endif
 
     if (debug_counter == MSR_ABTASTFREQUENZ) {
-      printk(KERN_DEBUG "%lu: %luéµs + %luéµs + %luéµs + %luéµs + %luéµs +"
-             " %luéµs = %luéµs (%u %u)\n",
-             TSC2US(lt, t1),
-             TSC2US(t1, t2), TSC2US(t2, t3), TSC2US(t3, t4),
-             TSC2US(t4, t5), TSC2US(t5, t6), TSC2US(t6, t7),
-             TSC2US(t1, t7), tr1, tr2);
+      printk(KERN_DEBUG "%lu: %luéµs + %uéµs + %uéµs = %luéµs\n", TSC2US(lt, t1),
+             TSC2US(t1, t2), bustime1, bustime2, TSC2US(t1, t3));
       debug_counter = 0;
     }
 
@@ -318,6 +278,7 @@ int msr_globals_register(void)
 #endif
 
     msr_reg_kanal("/Taskinfo/EtherCAT/BusTime", "us", &ecat_bus_time, TUINT);
+    msr_reg_kanal("/Taskinfo/EtherCAT/Timeouts", "", &ecat_timeouts, TUINT);
 
     return 0;
 }

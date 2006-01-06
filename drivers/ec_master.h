@@ -39,9 +39,7 @@ struct EtherCAT_master
   EtherCAT_domain_t domains[ECAT_MAX_DOMAINS]; /** Prozessdatendomänen */
   unsigned int domain_count;
   int debug_level; /**< Debug-Level im Master-Code */
-  unsigned long tx_time; /**< Zeit des letzten Sendens */
-  unsigned long rx_time; /**< Zeit des letzten Empfangs */
-  unsigned int rx_tries; /**< Anzahl Warteschleifen beim letzen Enpfang */
+  unsigned int bus_time; /**< Letzte Bus-Zeit in Mikrosekunden */
 };
 
 /*****************************************************************************/
@@ -70,7 +68,8 @@ int EtherCAT_state_change(EtherCAT_master_t *, EtherCAT_slave_t *,
                           unsigned char);
 
 // Process data
-int EtherCAT_process_data_cycle(EtherCAT_master_t *, unsigned int);
+int EtherCAT_process_data_cycle(EtherCAT_master_t *, unsigned int,
+                                unsigned int);
 
 // Private functions
 void output_debug_data(const EtherCAT_master_t *);
