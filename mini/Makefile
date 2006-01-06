@@ -24,17 +24,11 @@ else
 #----------------------------------------------------------------
 # Default-Abschnitt
 
-CONFIG_FILE = ../ethercat.conf
-PWD = $(shell pwd)
-
-
-include $(CONFIG_FILE) # Für KERNELDIR
-
-default:
-	$(MAKE) -C $(KERNELDIR) M=$(PWD) modules
+modules:
+	$(MAKE) -C ..
 
 clean:
-	$(MAKE) -C $(KERNELDIR) M=$(PWD) clean
+	$(MAKE) -C .. clean
 
 #----------------------------------------------------------------
 

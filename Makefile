@@ -1,4 +1,4 @@
-#----------------------------------------------------------------
+#------------------------------------------------------------------------------
 #
 #  Globales Makefile
 #
@@ -6,27 +6,30 @@
 #
 #  $Id$
 #
-#----------------------------------------------------------------
+#------------------------------------------------------------------------------
 
-CONFIG_FILE = ethercat.conf
+ifneq ($(KERNELRELEASE),)
 
-ifeq ($(CONFIG_FILE),$(wildcard $(CONFIG_FILE)))
-include $(CONFIG_FILE)
-endif
+#------------------------------------------------------------------------------
+# Kbuild-Abschnitt
 
-obj-m := drivers/ mini/
+obj-m := drivers/ rt/ mini/
 
-ifeq ($(MAKE_RT),yes)
-obj-m += rt/
-endif
+#------------------------------------------------------------------------------
 
-#----------------------------------------------------------------
+else
 
-all:
+#------------------------------------------------------------------------------
+# Default-Abschnitt
+
+include ethercat.conf
+
+modules:
 	$(MAKE) -C $(KERNELDIR) M=`pwd` modules
 
 clean:
 	$(MAKE) -C $(KERNELDIR) M=`pwd` clean
+	rm -rvf */.tmp_versions
 
 doc docs:
 	doxygen Doxyfile
@@ -43,3 +46,5 @@ config conf $(CONFIG_FILE):
 	@echo "$(CONFIG_FILE) erstellt."
 
 #----------------------------------------------------------------
+
+endif
