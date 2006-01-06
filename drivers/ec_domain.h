@@ -32,6 +32,7 @@ typedef struct EtherCAT_domain
   unsigned char *data; /**< Zeiger auf Speicher mit Prozessdaten */
   unsigned int data_size; /**< Größe des Prozessdatenspeichers */
   unsigned int logical_offset; /**< Logische Basisaddresse */
+  unsigned int response_count; /**< Anzahl antwortender Slaves */
 }
 EtherCAT_domain_t;
 

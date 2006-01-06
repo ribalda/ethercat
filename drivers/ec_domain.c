@@ -27,6 +27,7 @@ void EtherCAT_domain_init(EtherCAT_domain_t *dom)
   dom->data = NULL;
   dom->data_size = 0;
   dom->logical_offset = 0;
+  dom->response_count = 0;
 }
 
 /*****************************************************************************/

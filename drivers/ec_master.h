@@ -40,6 +40,9 @@ struct EtherCAT_master
   unsigned int domain_count;
   int debug_level; /**< Debug-Level im Master-Code */
   unsigned int bus_time; /**< Letzte Bus-Zeit in Mikrosekunden */
+  unsigned int frames_lost; /**< Anzahl verlorene Frames */
+  unsigned long t_lost_output; /*<< Timer-Ticks bei der letzten Ausgabe von
+                                 verlorenen Frames */
 };
 
 /*****************************************************************************/
@@ -73,6 +76,7 @@ int EtherCAT_process_data_cycle(EtherCAT_master_t *, unsigned int,
 
 // Private functions
 void output_debug_data(const EtherCAT_master_t *);
+void ecat_output_lost_frames(EtherCAT_master_t *);
 
 /*****************************************************************************/
 

@@ -135,23 +135,22 @@ static void msr_controller_run(void)
     static int ms = 0;
     static int cnt = 0;
     static int firstrun = 1;
+    static unsigned int debug_counter = 0;
 
     static int klemme = 0;
     static int kanal = 0;
     static int up_down = 0;
     int wrap = 0;
 
-    static unsigned int debug_counter = 0;
-    unsigned long t1, t2, t3;
-    unsigned int bustime1, bustime2;
-    static unsigned long lt = 0;
-
-    rdtscl(t1);
+    unsigned long t_bus_start, t_bus_end;
 
     // Prozessdaten lesen
     msr_jitter_run(MSR_ABTASTFREQUENZ);
 
-    if (firstrun) klemme = next2004(&wrap);
+    if (firstrun) {
+        klemme = next2004(&wrap);
+        firstrun = 0;
+    }
 
     ms++;
     ms %= 1000;
@@ -176,21 +175,26 @@ static void msr_controller_run(void)
         EtherCAT_write_value(&ecat_slaves[klemme], kanal, up_down);
     }
 
+    if (debug_counter == 0) {
+        ecat_master->debug_level = 0;
+    }
+
     // Prozessdaten schreiben
 
-    rdtscl(t2);
+    rdtscl(t_bus_start);
 
     if (EtherCAT_process_data_cycle(ecat_master, 0, 40) < 0)
         ecat_timeouts++;
-    bustime1 = ecat_master->bus_time;
 
     if (EtherCAT_process_data_cycle(ecat_master, 1, 40) < 0)
         ecat_timeouts++;
-    bustime2 = ecat_master->bus_time;
 
-    rdtscl(t3);
+    rdtscl(t_bus_end);
+    ecat_bus_time = TSC2US(t_bus_start, t_bus_end);
 
-    ecat_bus_time = TSC2US(t2, t3);
+    if (debug_counter == 0) {
+        ecat_master->debug_level = 0;
+    }
 
     // Daten lesen und skalieren
 #ifdef USE_MSR_LIB
@@ -198,16 +202,8 @@ static void msr_controller_run(void)
     dig1 = EtherCAT_read_value(&ecat_slaves[2], 0);
 #endif
 
-    if (debug_counter == MSR_ABTASTFREQUENZ) {
-      printk(KERN_DEBUG "%lu: %luŽµs + %uŽµs + %uŽµs = %luŽµs\n", TSC2US(lt, t1),
-             TSC2US(t1, t2), bustime1, bustime2, TSC2US(t1, t3));
-      debug_counter = 0;
-    }
-
-    lt = t1;
-
-    firstrun = 0;
     debug_counter++;
+    if (debug_counter >= MSR_ABTASTFREQUENZ * 5) debug_counter = 0;
 }
 
 /******************************************************************************

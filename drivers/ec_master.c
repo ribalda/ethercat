@@ -34,6 +34,8 @@ void EtherCAT_master_init(EtherCAT_master_t *master)
   master->domain_count = 0;
   master->debug_level = 0;
   master->bus_time = 0;
+  master->frames_lost = 0;
+  master->t_lost_output = 0;
 }
 
 /*****************************************************************************/
@@ -289,8 +291,8 @@ int EtherCAT_simple_receive(EtherCAT_master_t *master,
   master->rx_data_length = (unsigned int) ret;
 
   if (unlikely(master->rx_data_length < 2)) {
-    printk(KERN_ERR "EtherCAT: Received frame with incomplete"
-           " EtherCAT header!\n");
+    printk(KERN_ERR "EtherCAT: Received frame with incomplete EtherCAT"
+           " header!\n");
     output_debug_data(master);
     return -1;
   }
@@ -332,6 +334,10 @@ int EtherCAT_simple_receive(EtherCAT_master_t *master,
     cmd->working_counter
       = ((master->rx_data[length + 2 + 10] & 0xFF)
          | ((master->rx_data[length + 2 + 11] & 0xFF) << 8));
+
+    if (unlikely(master->debug_level > 1)) {
+      output_debug_data(master);
+    }
   }
   else
   {
@@ -539,7 +545,8 @@ int EtherCAT_check_slaves(EtherCAT_master_t *master,
     }
   }
 
-  // Calculate domain sizes
+  // Calculate domain sizes and addresses
+
   offset = 0;
   for (i = 0; i < master->domain_count; i++)
   {
@@ -547,7 +554,7 @@ int EtherCAT_check_slaves(EtherCAT_master_t *master,
 
     dom->logical_offset = offset;
 
-    // For every slave in the list
+    // Calculate size of the domain
     size = 0;
     for (j = 0; j < slave_count; j++) {
       if (slaves[j].domain == dom->number) {
@@ -563,16 +570,16 @@ int EtherCAT_check_slaves(EtherCAT_master_t *master,
 
     if (!(dom->data = (unsigned char *) kmalloc(sizeof(unsigned char)
                                                * size, GFP_KERNEL))) {
-      printk(KERN_ERR "EtherCAT: Could not allocate"
-             " %i bytes of domain data.\n", size);
+      printk(KERN_ERR "EtherCAT: Could not allocate %i bytes of domain"
+             " data.\n", size);
       return -1;
     }
 
     dom->data_size = size;
     memset(dom->data, 0x00, size);
 
-    printk(KERN_INFO "EtherCAT: Domain %i: %i Bytes of process data.\n",
-           dom->number, size);
+    printk(KERN_INFO "EtherCAT: Domain %i: Offset 0x%04X, %i Bytes of"
+           " process data.\n", dom->number, dom->logical_offset, size);
 
     // Set logical addresses and data pointers of domain slaves
     size = 0;
@@ -581,6 +588,10 @@ int EtherCAT_check_slaves(EtherCAT_master_t *master,
         slaves[j].process_data = dom->data + size;
         slaves[j].logical_address = dom->logical_offset + size;
         size += slaves[j].desc->process_data_size;
+
+        printk(KERN_INFO "EtherCAT:    Slave %i: Logical Address 0x%04X, %i"
+               " bytes of process data.\n", j, slaves[j].logical_address,
+               slaves[j].desc->process_data_size);
       }
     }
 
@@ -1004,6 +1015,9 @@ int EtherCAT_process_data_cycle(EtherCAT_master_t *master, unsigned int domain,
   EtherCAT_domain_t *dom;
   unsigned long start_ticks, end_ticks, timeout_ticks;
 
+  ecat_output_lost_frames(master); // Evtl. verlorene Frames ausgeben
+
+  // Domäne bestimmen
   dom = NULL;
   for (i = 0; i < master->domain_count; i++) {
     if (master->domains[i].number == domain) {
@@ -1041,7 +1055,9 @@ int EtherCAT_process_data_cycle(EtherCAT_master_t *master, unsigned int domain,
   master->bus_time = (end_ticks - start_ticks) * 1000 / cpu_khz;
 
   if (unlikely(end_ticks - start_ticks >= timeout_ticks)) {
-    printk(KERN_ERR "EtherCAT: Timeout while receiving process data!\n");
+    master->dev->state = ECAT_DS_READY;
+    master->frames_lost++;
+    ecat_output_lost_frames(master);
     return -1;
   }
 
@@ -1053,6 +1069,12 @@ int EtherCAT_process_data_cycle(EtherCAT_master_t *master, unsigned int domain,
   if (unlikely(dom->command.state != ECAT_CS_RECEIVED)) {
     printk(KERN_WARNING "EtherCAT: Process data command not received!\n");
     return -1;
+  }
+
+  if (dom->command.working_counter != dom->response_count) {
+    dom->response_count = dom->command.working_counter;
+    printk(KERN_INFO "EtherCAT: Domain %i State change - %i slaves"
+           " responding.\n", dom->number, dom->response_count);
   }
 
   // Daten vom Kommando in den Prozessdatenspeicher kopieren
@@ -1094,6 +1116,28 @@ void output_debug_data(const EtherCAT_master_t *master)
     if ((i + 1) % 16 == 0) printk("\n" KERN_DEBUG);
   }
   printk("\n");
+}
+
+/*****************************************************************************/
+
+/**
+   Gibt von Zeit zu Zeit die Anzahl verlorener Frames aus.
+
+   @param master EtherCAT-Master
+*/
+
+void ecat_output_lost_frames(EtherCAT_master_t *master)
+{
+  unsigned long int t;
+
+  if (master->frames_lost) {
+    rdtscl(t);
+    if ((t - master->t_lost_output) / cpu_khz > 1000) {
+      printk(KERN_ERR "EtherCAT: %u frame(s) LOST!\n", master->frames_lost);
+      master->frames_lost = 0;
+      master->t_lost_output = t;
+    }
+  }
 }
 
 /*****************************************************************************/
