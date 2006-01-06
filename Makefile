@@ -29,7 +29,7 @@ modules:
 
 clean:
 	$(MAKE) -C $(KERNELDIR) M=`pwd` clean
-	rm -rvf */.tmp_versions
+	@rm -rf */.tmp_versions
 
 doc docs:
 	doxygen Doxyfile

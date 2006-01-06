@@ -37,11 +37,17 @@ else
 #------------------------------------------------------------------------------
 # Default-Abschnitt
 
-default:
-	$(MAKE) -C ..
+ifneq ($(wildcard ethercat.conf),)
+include ethercat.conf
+else
+KERNELDIR = /lib/modules/`uname -r`/build
+endif
+
+modules:
+	$(MAKE) -C $(KERNELDIR) M=`pwd` modules
 
 clean:
-	$(MAKE) -C .. clean
+	$(MAKE) -C $(KERNELDIR) M=`pwd` clean
 
 #------------------------------------------------------------------------------
 
