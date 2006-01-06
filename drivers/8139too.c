@@ -1991,13 +1991,17 @@ static void rtl8139_tx_interrupt (struct net_device *dev,
 		tx_left--;
 	}
 
+        /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
 #ifndef RTL8139_NDEBUG
-	if (tp->cur_tx - dirty_tx > NUM_TX_DESC) {
+	if (dev != rtl_ecat_dev.dev && tp->cur_tx - dirty_tx > NUM_TX_DESC) {
 		printk (KERN_ERR "%s: Out-of-sync dirty pointer, %ld vs. %ld.\n",
 		        dev->name, dirty_tx, tp->cur_tx);
 		dirty_tx += NUM_TX_DESC;
 	}
 #endif /* RTL8139_NDEBUG */
+
+        /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 
 	/* only wake the queue if we did work, and the queue is stopped */
 	if (tp->dirty_tx != dirty_tx) {
