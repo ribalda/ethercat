@@ -19,75 +19,44 @@
  *
  *****************************************************************************/
 
-#ifndef __KERNEL__
-#  define __KERNEL__
-#endif
-#ifndef MODULE
-#  define MODULE
-#endif
-
-#include <linux/config.h>
+// Linux
 #include <linux/module.h>
-
-#include <linux/sched.h>
-#include <linux/kernel.h>
-#include <linux/vmalloc.h>
-#include <linux/fs.h>     /* everything... */
-#include <linux/proc_fs.h>
-#include <linux/time.h>
-#include <linux/timer.h>
-#include <linux/timex.h>  /* fuer get_cycles */
-#include <linux/errno.h>  /* error codes */
-#include <asm/msr.h> /* maschine-specific registers */
-#include <linux/param.h> /* fuer HZ */
 #include <linux/ipipe.h>
 
-#include "msr_param.h"   //wird im Projektverzeichnis erwartet
-
-//#include <msr_control.h>
-#include <msr_lists.h>
-#include <msr_charbuf.h>
-#include <msr_reg.h>
-#include <msr_error_reg.h>
-#include <msr_messages.h>
-#include <msr_proc.h>
-#include <msr_utils.h>
+// RT_lib
 #include <msr_main.h>
-
-
+#include <msr_utils.h>
+#include <msr_messages.h>
 #include <msr_float.h>
+#include <msr_reg.h>
+#include "msr_param.h"
+#include "msr_jitter.h"
 
+// EtherCAT
 #include "../drivers/ec_master.h"
 #include "../drivers/ec_device.h"
 #include "../drivers/ec_types.h"
 #include "../drivers/ec_module.h"
 
-#include "msr_jitter.h"
-
-#define TSC2US(T) ((unsigned long) (T) * 1000UL / cpu_khz)
-
-/*--external data------------------------------------------------------------*/
-
+// Defines/Makros
+#define TSC2US(T1, T2) ((T2 - T1) * 1000UL / cpu_khz)
 #define HZREDUCTION (MSR_ABTASTFREQUENZ/HZ)
 
-extern wait_queue_head_t msr_read_waitqueue;
+/*****************************************************************************/
+/* Globale Variablen */
 
-extern struct msr_char_buf *msr_kanal_puffer;
-
-extern int proc_abtastfrequenz;
-
-/*--local data---------------------------------------------------------------*/
-
+// RT_lib
 extern struct timeval process_time;
 struct timeval msr_time_increment; // Increment per Interrupt
 
-//adeos
-
+// Adeos
 static struct ipipe_domain this_domain;
-
 static struct ipipe_sysinfo sys_info;
 
+// EtherCAT
+
 static EtherCAT_master_t *ecat_master = NULL;
+static unsigned long ecat_bus_time = 0;
 
 static EtherCAT_slave_t ecat_slaves[] =
 {
@@ -178,7 +147,6 @@ static int next2004(int *wrap)
     return -1;
 }
 
-
 /******************************************************************************
  *
  * Function: msr_controller_run()
@@ -256,21 +224,23 @@ static void msr_controller_run(void)
 
     //EtherCAT_process_data_cycle(ecat_master, 2);
 
+    rdtscl(t7);
+
+    ecat_bus_time = TSC2US(t2, t7);
+
     // Daten lesen und skalieren
 #ifdef USE_MSR_LIB
     value = EtherCAT_read_value(&ecat_slaves[5], 0) / 3276.0;
     dig1 = EtherCAT_read_value(&ecat_slaves[2], 0);
 #endif
 
-    rdtscl(t7);
-
     if (debug_counter == MSR_ABTASTFREQUENZ) {
       printk(KERN_DEBUG "%lu: %luŽµs + %luŽµs + %luŽµs + %luŽµs + %luŽµs +"
              " %luŽµs = %luŽµs (%u %u)\n",
-             TSC2US(t1 - lt),
-             TSC2US(t2 - t1), TSC2US(t3 - t2), TSC2US(t4 - t3),
-             TSC2US(t5 - t4), TSC2US(t6 - t5), TSC2US(t7 - t6),
-             TSC2US(t7 - t1), tr1, tr2);
+             TSC2US(lt, t1),
+             TSC2US(t1, t2), TSC2US(t2, t3), TSC2US(t3, t4),
+             TSC2US(t4, t5), TSC2US(t5, t6), TSC2US(t6, t7),
+             TSC2US(t1, t7), tr1, tr2);
       debug_counter = 0;
     }
 
@@ -297,31 +267,25 @@ static void msr_controller_run(void)
 
 void msr_run(unsigned irq)
 {
-  static int counter = 0;
+    static int counter = 0;
+
 #ifdef USE_MSR_LIB
-
-    timeval_add(&process_time,&process_time,&msr_time_increment);
-
-    MSR_ADEOS_INTERRUPT_CODE(
-	msr_controller_run();
-	msr_write_kanal_list();
-	);
+    timeval_add(&process_time, &process_time, &msr_time_increment);
+    MSR_ADEOS_INTERRUPT_CODE(msr_controller_run(); msr_write_kanal_list(););
 #else
     msr_controller_run();
 #endif
-    /* und wieder in die Timerliste eintragen */
-    /* und neu in die Taskqueue eintragen */
-    //timer.expires += 1;
-    //add_timer(&timer);
 
     ipipe_control_irq(irq,0,IPIPE_ENABLE_MASK);  //Interrupt bestŽätigen
-    if(counter++ > HZREDUCTION) {
+    if (counter++ > HZREDUCTION) {
 	ipipe_propagate_irq(irq);  //und weiterreichen
 	counter = 0;
     }
 }
 
-void domain_entry (void)
+/*****************************************************************************/
+
+void domain_entry(void)
 {
     printk("Domain %s started.\n", ipipe_current_domain->name);
 
@@ -352,14 +316,10 @@ int msr_globals_register(void)
     msr_reg_kanal("/value", "V", &value, TDBL);
     msr_reg_kanal("/dig1", "", &dig1, TINT);
 #endif
-#if 0
-    msr_reg_kanal("/Taskinfo/Ecat/TX-Delay","us",&ecat_tx_delay,TUINT);
-    msr_reg_kanal("/Taskinfo/Ecat/RX-Delay","us",&ecat_rx_delay,TUINT);
-    msr_reg_kanal("/Taskinfo/Ecat/TX-Cnt","",&tx_intr,TUINT);
-    msr_reg_kanal("/Taskinfo/Ecat/RX-Cnt","",&rx_intr,TUINT);
-    msr_reg_kanal("/Taskinfo/Ecat/Total-Cnt","",&total_intr,TUINT);
-#endif
-  return 0;
+
+    msr_reg_kanal("/Taskinfo/EtherCAT/BusTime", "us", &ecat_bus_time, TUINT);
+
+    return 0;
 }
 
 /******************************************************************************
@@ -434,7 +394,7 @@ void __exit cleanup_module()
 
     msr_print_info("msk_modul: unloading...");
 
-    ipipe_tune_timer(1000000000UL/HZ,0); //alten Timertakt wieder herstellen
+    ipipe_tune_timer(1000000000UL / HZ, 0); //alten Timertakt wieder herstellen
     ipipe_unregister_domain(&this_domain);
 
     if (ecat_master)

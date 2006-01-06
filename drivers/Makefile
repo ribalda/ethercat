@@ -32,13 +32,11 @@ else
 #------------------------------------------------------------------------------
 # Default-Abschnitt
 
-include ../ethercat.conf
-
 modules:
-	$(MAKE) -C $(KERNELDIR) M=`pwd` modules
+	$(MAKE) -C ..
 
 clean:
-	$(MAKE) -C $(KERNELDIR) M=`pwd` clean
+	$(MAKE) -C .. clean
 
 #------------------------------------------------------------------------------
 
