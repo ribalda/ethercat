@@ -2479,8 +2479,8 @@ irqreturn_t rtl8139_interrupt (int irq, void *dev_instance,
           }
           else
           {
-            /* Beim EtherCAT-Device einfach einen Frame empfangen */
-            rtl8139_rx(dev, tp, 1);
+            /* Beim EtherCAT-Device einfach alle Frames empfangen */
+            rtl8139_rx(dev, tp, 100); // FIXME Das ist echt dirty...
           }
 	}
 

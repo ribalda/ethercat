@@ -62,27 +62,7 @@ static EtherCAT_slave_t ecat_slaves[] =
 {
     // Block 1
     ECAT_INIT_SLAVE(Beckhoff_EK1100, 0),
-    ECAT_INIT_SLAVE(Beckhoff_EL4102, 0),
-    ECAT_INIT_SLAVE(Beckhoff_EL1014, 0),
-    ECAT_INIT_SLAVE(Beckhoff_EL3162, 0),
-    ECAT_INIT_SLAVE(Beckhoff_EL2004, 0),
-    ECAT_INIT_SLAVE(Beckhoff_EL3102, 0),
-    ECAT_INIT_SLAVE(Beckhoff_EL2004, 0),
-
-    // Block 2
-    ECAT_INIT_SLAVE(Beckhoff_EK1100, 1),
-    ECAT_INIT_SLAVE(Beckhoff_EL1014, 1),
-    ECAT_INIT_SLAVE(Beckhoff_EL1014, 1),
-    ECAT_INIT_SLAVE(Beckhoff_EL1014, 1),
-    ECAT_INIT_SLAVE(Beckhoff_EL1014, 1),
-    ECAT_INIT_SLAVE(Beckhoff_EL1014, 1),
-    ECAT_INIT_SLAVE(Beckhoff_EL2004, 1),
-    ECAT_INIT_SLAVE(Beckhoff_EL2004, 1),
-    ECAT_INIT_SLAVE(Beckhoff_EL2004, 1),
-    ECAT_INIT_SLAVE(Beckhoff_EL2004, 1),
-    ECAT_INIT_SLAVE(Beckhoff_EL1014, 1),
-    ECAT_INIT_SLAVE(Beckhoff_EL1014, 1),
-    ECAT_INIT_SLAVE(Beckhoff_EL1014, 1)
+    ECAT_INIT_SLAVE(Beckhoff_EL3102, 0)
 };
 
 #define ECAT_SLAVES_COUNT (sizeof(ecat_slaves) / sizeof(EtherCAT_slave_t))
@@ -96,111 +76,31 @@ int dig1;
 
 /******************************************************************************
  *
- * Function: next2004
- *
- *****************************************************************************/
-
-static int next2004(int *wrap)
-{
-    static int i = 0;
-    unsigned int j = 0;
-
-    *wrap = 0;
-
-    for (j = 0; j < ECAT_SLAVES_COUNT; j++)
-    {
-        i++;
-
-        i %= ECAT_SLAVES_COUNT;
-
-        if (i == 0) *wrap = 1;
-
-        if (ecat_slaves[i].desc == Beckhoff_EL2004)
-        {
-            return i;
-        }
-    }
-
-    return -1;
-}
-
-/******************************************************************************
- *
  * Function: msr_controller_run()
  *
  *****************************************************************************/
 
 static void msr_controller_run(void)
 {
-    static int ms = 0;
-    static int cnt = 0;
-    static int firstrun = 1;
     static unsigned int debug_counter = 0;
-
-    static int klemme = 0;
-    static int kanal = 0;
-    static int up_down = 0;
-    int wrap = 0;
-
-    unsigned long t_bus_start, t_bus_end;
 
     // Prozessdaten lesen
     msr_jitter_run(MSR_ABTASTFREQUENZ);
 
-    if (firstrun) {
-        klemme = next2004(&wrap);
-        firstrun = 0;
-    }
-
-    ms++;
-    ms %= 1000;
-    if (cnt++ > 200)
-    {
-        cnt = 0;
-
-        if (++kanal > 3)
-        {
-            kanal = 0;
-            klemme = next2004(&wrap);
-
-            if (wrap == 1)
-            {
-                if (up_down == 1) up_down = 0;
-                else up_down = 1;
-            }
-        }
-    }
-
-    if (klemme >= 0) {
-        EtherCAT_write_value(&ecat_slaves[klemme], kanal, up_down);
-    }
-
     if (debug_counter == 0) {
-        ecat_master->debug_level = 0;
+        ecat_master->debug_level = 2;
     }
 
     // Prozessdaten schreiben
 
-    rdtscl(t_bus_start);
-
     if (EtherCAT_process_data_cycle(ecat_master, 0, 40) < 0)
         ecat_timeouts++;
-
-    if (EtherCAT_process_data_cycle(ecat_master, 1, 40) < 0)
-        ecat_timeouts++;
-
-    rdtscl(t_bus_end);
-    ecat_bus_time = TSC2US(t_bus_start, t_bus_end);
 
     if (debug_counter == 0) {
         ecat_master->debug_level = 0;
     }
 
-    // Daten lesen und skalieren
-#ifdef USE_MSR_LIB
-    value = EtherCAT_read_value(&ecat_slaves[5], 0) / 3276.0;
-    dig1 = EtherCAT_read_value(&ecat_slaves[2], 0);
-#endif
+    value = EtherCAT_read_value(&ecat_slaves[1], 0);
 
     debug_counter++;
     if (debug_counter >= MSR_ABTASTFREQUENZ * 5) debug_counter = 0;
