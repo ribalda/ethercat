@@ -27,6 +27,8 @@
 
 struct EtherCAT_master
 {
+  EtherCAT_slave_t *bus_slaves; /**< Array von Slaves auf dem Bus */
+  unsigned int bus_slaves_count; /**< Anzahl Slaves auf dem Bus */
   EtherCAT_device_t *dev; /**< Zeiger auf das zugewiesene EtherCAT-Gerät */
   unsigned char command_index; /**< Aktueller Kommando-Index */
   unsigned char tx_data[ECAT_FRAME_BUFFER_SIZE]; /**< Statischer Speicher
@@ -47,6 +49,17 @@ struct EtherCAT_master
 
 /*****************************************************************************/
 
+// Public methods
+
+void *EtherCAT_register_slave(EtherCAT_master_t *, unsigned int,
+                              const char *, const char *, unsigned int);
+int EtherCAT_activate_slave(EtherCAT_master_t *, EtherCAT_slave_t *);
+int EtherCAT_deactivate_slave(EtherCAT_master_t *, EtherCAT_slave_t *);
+int EtherCAT_process_data_cycle(EtherCAT_master_t *, unsigned int,
+                                unsigned int);
+
+// Private Methods
+
 // Master creation and deletion
 void EtherCAT_master_init(EtherCAT_master_t *);
 void EtherCAT_master_clear(EtherCAT_master_t *);
@@ -61,20 +74,14 @@ int EtherCAT_simple_send(EtherCAT_master_t *, EtherCAT_command_t *);
 int EtherCAT_simple_receive(EtherCAT_master_t *, EtherCAT_command_t *);
 
 // Slave management
-int EtherCAT_check_slaves(EtherCAT_master_t *, EtherCAT_slave_t *,
-                          unsigned int);
+int EtherCAT_scan_for_slaves(EtherCAT_master_t *);
 int EtherCAT_read_slave_information(EtherCAT_master_t *, unsigned short int,
                                     unsigned short int, unsigned int *);
-int EtherCAT_activate_slave(EtherCAT_master_t *, EtherCAT_slave_t *);
-int EtherCAT_deactivate_slave(EtherCAT_master_t *, EtherCAT_slave_t *);
 int EtherCAT_state_change(EtherCAT_master_t *, EtherCAT_slave_t *,
                           unsigned char);
 
-// Process data
-int EtherCAT_process_data_cycle(EtherCAT_master_t *, unsigned int,
-                                unsigned int);
+// Misc.
 
-// Private functions
 void output_debug_data(const EtherCAT_master_t *);
 void ecat_output_lost_frames(EtherCAT_master_t *);
 

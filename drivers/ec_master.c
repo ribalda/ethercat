@@ -27,6 +27,8 @@
 
 void EtherCAT_master_init(EtherCAT_master_t *master)
 {
+  master->bus_slaves = NULL;
+  master->bus_slaves_count = 0;
   master->dev = NULL;
   master->command_index = 0x00;
   master->tx_data_length = 0;
@@ -51,11 +53,9 @@ void EtherCAT_master_init(EtherCAT_master_t *master)
 
 void EtherCAT_master_clear(EtherCAT_master_t *master)
 {
-  unsigned int i;
-
-  // Remove domains
-  for (i = 0; i < master->domain_count; i++) {
-    EtherCAT_domain_clear(master->domains + i);
+  if (master->bus_slaves) {
+    kfree(master->bus_slaves);
+    master->bus_slaves = NULL;
   }
 
   master->domain_count = 0;
@@ -353,42 +353,19 @@ int EtherCAT_simple_receive(EtherCAT_master_t *master,
 /*****************************************************************************/
 
 /**
-   Überprüft die angeschlossenen Slaves.
-
-   Vergleicht die an den Bus angeschlossenen Slaves mit
-   den im statischen-Slave-Array vorgegebenen Konfigurationen.
-   Stimmen Anzahl oder Typen nicht überein, gibt diese
-   Methode einen Fehler aus.
+   Durchsucht den Bus nach Slaves.
 
    @param master Der EtherCAT-Master
-   @param slaves Zeiger auf ein statisches Slave-Array
-   @param slave_count Anzahl der Slaves im Array
 
    @return 0 bei Erfolg, sonst < 0
 */
 
-int EtherCAT_check_slaves(EtherCAT_master_t *master,
-                          EtherCAT_slave_t *slaves,
-                          unsigned int slave_count)
+int EtherCAT_scan_for_slaves(EtherCAT_master_t *master)
 {
   EtherCAT_command_t cmd;
   EtherCAT_slave_t *cur;
-  unsigned int i, j, found, size, offset;
+  unsigned int i, j;
   unsigned char data[2];
-  EtherCAT_domain_t *dom;
-
-  // Clear domains
-  for (i = 0; i < master->domain_count; i++) {
-    printk(KERN_DEBUG "EtherCAT: Clearing domain %i!\n",
-           master->domains[i].number);
-    EtherCAT_domain_clear(master->domains + i);
-  }
-  master->domain_count = 0;
-
-  if (unlikely(!slave_count)) {
-    printk(KERN_ERR "EtherCAT: No slaves in list!\n");
-    return -1;
-  }
 
   // Determine number of slaves on bus
 
@@ -397,44 +374,24 @@ int EtherCAT_check_slaves(EtherCAT_master_t *master,
   if (unlikely(EtherCAT_simple_send_receive(master, &cmd) < 0))
     return -1;
 
-  if (unlikely(cmd.working_counter != slave_count)) {
-    printk(KERN_ERR "EtherCAT: Wrong number of slaves on bus: %i / %i\n",
-           cmd.working_counter, slave_count);
+  master->bus_slaves_count = cmd.working_counter;
+  printk("EtherCAT: Found %i slaves on bus.\n", master->bus_slaves_count);
+
+  if (!master->bus_slaves_count) return 0;
+
+  if (!(master->bus_slaves =
+        (EtherCAT_slave_t *) kmalloc(master->bus_slaves_count *
+                                     sizeof(EtherCAT_slave_t), GFP_KERNEL))) {
+    printk(KERN_ERR "EtherCAT: Could not allocate memory for bus slaves!\n");
     return -1;
   }
 
-  printk("EtherCAT: Found all %i slaves.\n", slave_count);
-
   // For every slave in the list
-  for (i = 0; i < slave_count; i++)
+  for (i = 0; i < master->bus_slaves_count; i++)
   {
-    cur = &slaves[i];
+    cur = master->bus_slaves + i;
 
-    if (unlikely(!cur->desc)) {
-      printk(KERN_ERR "EtherCAT: Slave %i has no description.\n", i);
-      return -1;
-    }
-
-    // Set ring position
-    cur->ring_position = -i;
-    cur->station_address = i + 1;
-
-    // Write station address
-
-    data[0] = cur->station_address & 0x00FF;
-    data[1] = (cur->station_address & 0xFF00) >> 8;
-
-    EtherCAT_command_position_write(&cmd, cur->ring_position,
-                                    0x0010, 2, data);
-
-    if (unlikely(EtherCAT_simple_send_receive(master, &cmd) < 0))
-      return -1;
-
-    if (unlikely(cmd.working_counter != 1)) {
-      printk(KERN_ERR "EtherCAT: Slave %i did not repond"
-             " while writing station address!\n", i);
-      return -1;
-    }
+    EtherCAT_slave_init(cur);
 
     // Read base data
 
@@ -495,110 +452,122 @@ int EtherCAT_check_slaves(EtherCAT_master_t *master,
 
     // Search for identification in "database"
 
-    found = 0;
-
     for (j = 0; j < slave_ident_count; j++)
     {
       if (unlikely(slave_idents[j].vendor_id == cur->vendor_id
                    && slave_idents[j].product_code == cur->product_code))
       {
-        found = 1;
-
-        if (unlikely(cur->desc != slave_idents[j].desc)) {
-          printk(KERN_ERR "EtherCAT: Unexpected slave device"
-                 " \"%s %s\" at position %i. Expected: \"%s %s\"\n",
-                 slave_idents[j].desc->vendor_name,
-                 slave_idents[j].desc->product_name, i,
-                 cur->desc->vendor_name, cur->desc->product_name);
-          return -1;
-        }
-
+        cur->desc = slave_idents[j].desc;
         break;
       }
     }
 
-    if (unlikely(!found)) {
-      printk(KERN_ERR "EtherCAT: Unknown slave device"
-             " (vendor %X, code %X) at position %i.\n",
-             cur->vendor_id, cur->product_code, i);
+    if (unlikely(!cur->desc)) {
+      printk(KERN_ERR "EtherCAT: Unknown slave device (vendor %X, code %X) at "
+             " position %i.\n", cur->vendor_id, cur->product_code, i);
       return -1;
     }
 
-    // Check, if process data domain already exists...
-    found = 0;
-    for (j = 0; j < master->domain_count; j++) {
-      if (cur->domain == master->domains[j].number) {
-        found = 1;
-      }
-    }
+    // Set ring position
+    cur->ring_position = -i;
+    cur->station_address = i + 1;
 
-    // Create process data domain
-    if (!found) {
-      if (master->domain_count + 1 >= ECAT_MAX_DOMAINS) {
-        printk(KERN_ERR "EtherCAT: Too many domains!\n");
-        return -1;
-      }
+    // Write station address
 
-      EtherCAT_domain_init(&master->domains[master->domain_count]);
-      master->domains[master->domain_count].number = cur->domain;
-      master->domain_count++;
-    }
-  }
+    data[0] = cur->station_address & 0x00FF;
+    data[1] = (cur->station_address & 0xFF00) >> 8;
 
-  // Calculate domain sizes and addresses
+    EtherCAT_command_position_write(&cmd, cur->ring_position,
+                                    0x0010, 2, data);
 
-  offset = 0;
-  for (i = 0; i < master->domain_count; i++)
-  {
-    dom = master->domains + i;
+    if (unlikely(EtherCAT_simple_send_receive(master, &cmd) < 0))
+      return -1;
 
-    dom->logical_offset = offset;
-
-    // Calculate size of the domain
-    size = 0;
-    for (j = 0; j < slave_count; j++) {
-      if (slaves[j].domain == dom->number) {
-        size += slaves[j].desc->process_data_size;
-      }
-    }
-
-    if (size > ECAT_FRAME_BUFFER_SIZE - 14) {
-      printk(KERN_ERR "EtherCAT: Oversized domain %i: %i / %i Bytes!\n",
-             dom->number, size, ECAT_FRAME_BUFFER_SIZE - 14);
+    if (unlikely(cmd.working_counter != 1)) {
+      printk(KERN_ERR "EtherCAT: Slave %i did not repond"
+             " while writing station address!\n", i);
       return -1;
     }
-
-    if (!(dom->data = (unsigned char *) kmalloc(sizeof(unsigned char)
-                                               * size, GFP_KERNEL))) {
-      printk(KERN_ERR "EtherCAT: Could not allocate %i bytes of domain"
-             " data.\n", size);
-      return -1;
-    }
-
-    dom->data_size = size;
-    memset(dom->data, 0x00, size);
-
-    printk(KERN_INFO "EtherCAT: Domain %i: Offset 0x%04X, %i Bytes of"
-           " process data.\n", dom->number, dom->logical_offset, size);
-
-    // Set logical addresses and data pointers of domain slaves
-    size = 0;
-    for (j = 0; j < slave_count; j++) {
-      if (slaves[j].domain == dom->number) {
-        slaves[j].process_data = dom->data + size;
-        slaves[j].logical_address = dom->logical_offset + size;
-        size += slaves[j].desc->process_data_size;
-
-        printk(KERN_INFO "EtherCAT:    Slave %i: Logical Address 0x%04X, %i"
-               " bytes of process data.\n", j, slaves[j].logical_address,
-               slaves[j].desc->process_data_size);
-      }
-    }
-
-    offset += size;
   }
 
   return 0;
+}
+
+/*****************************************************************************/
+
+/**
+   Registriert einen Slave beim Master.
+
+   @param master Der EtherCAT-Master
+
+   @return 0 bei Erfolg, sonst < 0
+*/
+
+void *EtherCAT_register_slave(EtherCAT_master_t *master,
+                              unsigned int bus_index,
+                              const char *vendor_name,
+                              const char *product_name,
+                              unsigned int domain)
+{
+  EtherCAT_slave_t *slave;
+  EtherCAT_domain_t *dom;
+  unsigned int j;
+
+  if (bus_index >= master->bus_slaves_count) {
+    printk(KERN_ERR "EtherCAT: Illegal bus index! (%i / %i)\n", bus_index,
+           master->bus_slaves_count);
+    return NULL;
+  }
+
+  slave = master->bus_slaves + bus_index;
+
+  if (slave->process_data) {
+    printk(KERN_ERR "EtherCAT: Slave %i is already registered!\n", bus_index);
+    return NULL;
+  }
+
+  if (strcmp(vendor_name, slave->desc->vendor_name) ||
+      strcmp(product_name, slave->desc->product_name)) {
+    printk(KERN_ERR "Invalid Slave Type! Requested: \"%s %s\", present: \"%s"
+           "%s\".\n", vendor_name, product_name, slave->desc->vendor_name,
+           slave->desc->product_name);
+    return NULL;
+  }
+
+  // Check, if process data domain already exists...
+  dom = NULL;
+  for (j = 0; j < master->domain_count; j++) {
+    if (domain == master->domains[j].number) {
+      dom = master->domains + j;
+    }
+  }
+
+  // Create process data domain
+  if (!dom) {
+    if (master->domain_count > ECAT_MAX_DOMAINS - 1) {
+      printk(KERN_ERR "EtherCAT: Too many domains!\n");
+      return NULL;
+    }
+
+    dom = master->domains + master->domain_count;
+    EtherCAT_domain_init(dom);
+    dom->number = domain;
+    dom->logical_offset = master->domain_count * ECAT_FRAME_BUFFER_SIZE;
+    master->domain_count++;
+  }
+
+  if (dom->data_size + slave->desc->process_data_size
+      > ECAT_FRAME_BUFFER_SIZE - 14) {
+    printk(KERN_ERR "EtherCAT: Oversized domain %i: %i / %i Bytes!\n",
+           dom->number, dom->data_size + slave->desc->process_data_size,
+           ECAT_FRAME_BUFFER_SIZE - 14);
+    return NULL;
+  }
+
+  slave->process_data = dom->data + dom->data_size;
+  dom->data_size += slave->desc->process_data_size;
+
+  return slave->process_data;
 }
 
 /*****************************************************************************/
@@ -1142,11 +1111,8 @@ void ecat_output_lost_frames(EtherCAT_master_t *master)
 
 /*****************************************************************************/
 
-EXPORT_SYMBOL(EtherCAT_master_init);
-EXPORT_SYMBOL(EtherCAT_master_clear);
 EXPORT_SYMBOL(EtherCAT_master_open);
 EXPORT_SYMBOL(EtherCAT_master_close);
-EXPORT_SYMBOL(EtherCAT_check_slaves);
 EXPORT_SYMBOL(EtherCAT_activate_slave);
 EXPORT_SYMBOL(EtherCAT_deactivate_slave);
 EXPORT_SYMBOL(EtherCAT_process_data_cycle);

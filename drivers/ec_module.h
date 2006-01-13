@@ -26,9 +26,6 @@
 
 /*****************************************************************************/
 
-int __init ecat_init_module(void);
-void __exit ecat_cleanup_module(void);
-
 // Registration of devices
 int EtherCAT_register_device(int, EtherCAT_device_t *);
 void EtherCAT_unregister_device(int, EtherCAT_device_t *);

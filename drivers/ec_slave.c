@@ -49,21 +49,6 @@ void EtherCAT_slave_init(EtherCAT_slave_t *slave)
 /*****************************************************************************/
 
 /**
-   EtherCAT-Slave-Destruktor.
-
-   Im Moment ohne Funktionalität.
-
-   @param slave Zeiger auf den zu zerstörenden Slave
-*/
-
-void EtherCAT_slave_clear(EtherCAT_slave_t *slave)
-{
-  // Nothing yet...
-}
-
-/*****************************************************************************/
-
-/**
    Liest einen bestimmten Kanal des Slaves als Integer-Wert.
 
    Prüft zuerst, ob der entsprechende Slave eine

@@ -24,6 +24,9 @@
 
 #include "ec_module.h"
 
+int __init ecat_init_module(void);
+void __exit ecat_cleanup_module(void);
+
 /*****************************************************************************/
 
 #define LIT(X) #X
@@ -227,6 +230,11 @@ EtherCAT_master_t *EtherCAT_request(int index)
   if (!try_module_get(ecat_masters[index].dev->module)) {
     printk(KERN_ERR "EtherCAT: Could not reserve device module!\n");
     return NULL;
+  }
+
+  if (EtherCAT_scan_for_slaves(&ecat_masters[index]) != 0) {
+      printk(KERN_ERR "EtherCAT: Could not scan for slaves!\n");
+      return NULL;
   }
 
   ecat_masters_reserved[index] = 1;

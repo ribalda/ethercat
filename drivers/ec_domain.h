@@ -29,8 +29,8 @@ typedef struct EtherCAT_domain
   unsigned int number; /*<< Domänen-Identifikation */
   EtherCAT_command_t command; /**< Kommando zum Senden und Empfangen der
                                  Prozessdaten */
-  unsigned char *data; /**< Zeiger auf Speicher mit Prozessdaten */
-  unsigned int data_size; /**< Größe des Prozessdatenspeichers */
+  unsigned char data[ECAT_FRAME_BUFFER_SIZE]; /**< Prozessdaten-Array */
+  unsigned int data_size; /**< Größe der Prozessdaten */
   unsigned int logical_offset; /**< Logische Basisaddresse */
   unsigned int response_count; /**< Anzahl antwortender Slaves */
 }
@@ -39,7 +39,6 @@ EtherCAT_domain_t;
 /*****************************************************************************/
 
 void EtherCAT_domain_init(EtherCAT_domain_t *);
-void EtherCAT_domain_clear(EtherCAT_domain_t *);
 
 /*****************************************************************************/
 

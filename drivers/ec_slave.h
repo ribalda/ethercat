@@ -62,7 +62,6 @@ EtherCAT_slave_t;
 
 // Slave construction and deletion
 void EtherCAT_slave_init(EtherCAT_slave_t *);
-void EtherCAT_slave_clear(EtherCAT_slave_t *);
 
 int EtherCAT_read_value(EtherCAT_slave_t *, unsigned int);
 void EtherCAT_write_value(EtherCAT_slave_t *, unsigned int, int);
