@@ -109,7 +109,7 @@
 
 */
 
-#define DRV_NAME	"8139too_ecat"
+#define DRV_NAME	"8139too_ec"
 #define DRV_VERSION	"0.9.27"
 
 
@@ -134,16 +134,14 @@
 
 /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
-#include "ec_device.h"
-#include "ec_master.h"
-#include "ec_module.h"
+#include "../include/EtherCAT_dev.h"
 
-#define LITERAL(X) #X
-#define STRINGIFY(X) LITERAL(X)
+#define LIT(X) #X
+#define STR(X) LIT(X)
 
-#define COMPILE_INFO "Revision " STRINGIFY(EC_REV) \
-                     ", compiled by " STRINGIFY(EC_USER) \
-                     " at " STRINGIFY(EC_DATE)
+#define COMPILE_INFO "Revision " STR(EC_REV) \
+                     ", compiled by " STR(EC_USER) \
+                     " at " STR(EC_DATE)
 
 /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 
@@ -202,14 +200,14 @@ static int debug = -1;
 /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
 // Uncomment for debugging
-//#define ECAT_DEBUG
+//#define EC_DEBUG
 
 // Device index for EtherCAT device selection
 static int ec_device_index = -1;
 static int ec_device_master_index = 0;
 
-static EtherCAT_device_t rtl_ecat_dev;
-int rtl_ecat_dev_registered = 0;
+static ec_device_t *rtl_ec_dev;
+int rtl_ec_dev_registered = 0;
 
 /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 
@@ -1028,13 +1026,12 @@ static int __devinit rtl8139_init_one (struct pci_dev *pdev,
 	/* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
 	if (board_idx == ec_device_index)
-        {
-                printk("EtherCAT registering board %d.\n", board_idx);
+    {
+          printk(KERN_INFO "Registering EtherCAT device...\n");
+          rtl_ec_dev = EtherCAT_dev_register(ec_device_master_index, dev,
+                                             rtl8139_interrupt, THIS_MODULE);
 
-                if (EtherCAT_device_assign(&rtl_ecat_dev, dev) < 0)
-                  goto err_out;
-
-                strcpy(dev->name,"ecat0"); //device name überschreiben
+          if (rtl_ec_dev) strcpy(dev->name, "ec0");
 	}
 
 	/* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
@@ -1095,7 +1092,7 @@ static int __devinit rtl8139_init_one (struct pci_dev *pdev,
 	/* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
 	/* EtherCAT-Karten nicht beim Stack anmelden. */
-        if (dev != rtl_ecat_dev.dev)
+    if (!EtherCAT_dev_is_ec(rtl_ec_dev, dev))
 	{
                 DPRINTK("About to register device named %s (%p)...\n", dev->name, dev);
                 i = register_netdev (dev);
@@ -1193,7 +1190,7 @@ static void __devexit rtl8139_remove_one (struct pci_dev *pdev)
 
         /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
-        if (dev != rtl_ecat_dev.dev)
+        if (!EtherCAT_dev_is_ec(rtl_ec_dev, dev))
         {
                 unregister_netdev (dev);
 	}
@@ -1402,11 +1399,11 @@ static int rtl8139_open (struct net_device *dev)
 
 	/* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
-#ifdef ECAT_DEBUG
+#ifdef EC_DEBUG
         printk(KERN_DEBUG "%s: open\n", dev->name);
 #endif
 
-        if (dev != rtl_ecat_dev.dev)
+        if (!EtherCAT_dev_is_ec(rtl_ec_dev, dev))
         {
                 retval = request_irq(dev->irq, rtl8139_interrupt, SA_SHIRQ, dev->name, dev);
                 if (retval)
@@ -1423,7 +1420,7 @@ static int rtl8139_open (struct net_device *dev)
         {
                 /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
-                if (dev != rtl_ecat_dev.dev)
+                if (!EtherCAT_dev_is_ec(rtl_ec_dev, dev))
                 {
                           free_irq(dev->irq, dev);
                 }
@@ -1448,7 +1445,7 @@ static int rtl8139_open (struct net_device *dev)
 
         /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
-        if (dev != rtl_ecat_dev.dev)
+        if (!EtherCAT_dev_is_ec(rtl_ec_dev, dev))
         {
                 netif_start_queue (dev);
 
@@ -1543,7 +1540,7 @@ static void rtl8139_hw_start (struct net_device *dev)
 
 	/* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
-        if (dev != rtl_ecat_dev.dev)
+        if (!EtherCAT_dev_is_ec(rtl_ec_dev, dev))
         {
                 /* Enable all known interrupts by setting the interrupt mask. */
                 RTL_W16 (IntrMask, rtl8139_intr_mask);
@@ -1807,15 +1804,9 @@ static void rtl8139_tx_timeout (struct net_device *dev)
 
         printk(KERN_DEBUG "%s: tx_timeout\n", dev->name);
 
-        if (dev == rtl_ecat_dev.dev)
+        if (EtherCAT_dev_is_ec(rtl_ec_dev, dev))
         {
-                if (rtl_ecat_dev.state != ECAT_DS_SENT)
-                {
-                        printk(KERN_WARNING "EtherCAT: Wrong status at timeout: %i\n",
-                               rtl_ecat_dev.state);
-                }
-
-                rtl_ecat_dev.state = ECAT_DS_TIMEOUT;
+          EtherCAT_dev_state(rtl_ec_dev, EC_DEVICE_STATE_TIMEOUT);
         }
 
 	/* disable Tx ASAP, if not already */
@@ -1823,7 +1814,7 @@ static void rtl8139_tx_timeout (struct net_device *dev)
 	if (tmp8 & CmdTxEnb)
                 RTL_W8 (ChipCmd, CmdRxEnb);
 
-        if (dev != rtl_ecat_dev.dev)
+        if (!EtherCAT_dev_is_ec(rtl_ec_dev, dev))
         {
                 spin_lock(&tp->rx_lock);
 
@@ -1873,16 +1864,16 @@ static int rtl8139_start_xmit (struct sk_buff *skb, struct net_device *dev)
                         memset(tp->tx_buf[entry], 0, ETH_ZLEN);
 
                 skb_copy_and_csum_dev(skb, tp->tx_buf[entry]);
-                if (dev != rtl_ecat_dev.dev) dev_kfree_skb(skb);
+                if (!EtherCAT_dev_is_ec(rtl_ec_dev, dev)) dev_kfree_skb(skb);
 	}
         else
         {
-                if (dev != rtl_ecat_dev.dev) dev_kfree_skb(skb);
+                if (!EtherCAT_dev_is_ec(rtl_ec_dev, dev)) dev_kfree_skb(skb);
                 tp->stats.tx_dropped++;
                 return 0;
 	}
 
-	if (dev != rtl_ecat_dev.dev)
+	if (!EtherCAT_dev_is_ec(rtl_ec_dev, dev))
         {
                 spin_lock_irq(&tp->lock);
         }
@@ -1899,7 +1890,7 @@ static int rtl8139_start_xmit (struct sk_buff *skb, struct net_device *dev)
 
 	/* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
-	if (dev != rtl_ecat_dev.dev)
+	if (!EtherCAT_dev_is_ec(rtl_ec_dev, dev))
         {
                 if ((tp->cur_tx - NUM_TX_DESC) == tp->dirty_tx)
                         netif_stop_queue (dev);
@@ -1931,11 +1922,13 @@ static void rtl8139_tx_interrupt (struct net_device *dev,
 
 	/* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
-	if (dev == rtl_ecat_dev.dev)
-        {
-                rtl_ecat_dev.tx_intr_cnt++;
-                rdtscl(rtl_ecat_dev.tx_time); // Get CPU cycles
+#if 0
+	if (EtherCAT_dev_is_ec(rtl_ec_dev, dev))
+    {
+                rtl_ec_dev.tx_intr_cnt++;
+                rdtscl(rtl_ec_dev.tx_time); // Get CPU cycles
 	}
+#endif
 
         /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 
@@ -1968,9 +1961,9 @@ static void rtl8139_tx_interrupt (struct net_device *dev,
 
                         /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
-                        if (dev == rtl_ecat_dev.dev)
+                        if (EtherCAT_dev_is_ec(rtl_ec_dev, dev))
                         {
-                                rtl_ecat_dev.state = ECAT_DS_ERROR;
+                          EtherCAT_dev_state(rtl_ec_dev, EC_DEVICE_STATE_ERROR);
                         }
 
                         /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
@@ -1994,7 +1987,7 @@ static void rtl8139_tx_interrupt (struct net_device *dev,
         /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
 #ifndef RTL8139_NDEBUG
-	if (dev != rtl_ecat_dev.dev && tp->cur_tx - dirty_tx > NUM_TX_DESC) {
+	if (!EtherCAT_dev_is_ec(rtl_ec_dev, dev) && tp->cur_tx - dirty_tx > NUM_TX_DESC) {
 		printk (KERN_ERR "%s: Out-of-sync dirty pointer, %ld vs. %ld.\n",
 		        dev->name, dirty_tx, tp->cur_tx);
 		dirty_tx += NUM_TX_DESC;
@@ -2010,7 +2003,7 @@ static void rtl8139_tx_interrupt (struct net_device *dev,
 
                 /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
-		if (dev != rtl_ecat_dev.dev)
+		if (!EtherCAT_dev_is_ec(rtl_ec_dev, dev))
                 {
                         netif_wake_queue (dev);
                 }
@@ -2051,9 +2044,9 @@ static void rtl8139_rx_err (u32 rx_status, struct net_device *dev,
 
         /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
-        if (dev == rtl_ecat_dev.dev)
+        if (EtherCAT_dev_is_ec(rtl_ec_dev, dev))
         {
-                rtl_ecat_dev.state = ECAT_DS_ERROR;
+          EtherCAT_dev_state(rtl_ec_dev, EC_DEVICE_STATE_ERROR);
         }
 
         /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
@@ -2159,16 +2152,17 @@ static int rtl8139_rx(struct net_device *dev, struct rtl8139_private *tp,
 		 RTL_R16 (RxBufPtr), RTL_R8 (ChipCmd));
 
         /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
-
-	if (dev == rtl_ecat_dev.dev)
+#if 0
+	if (EtherCAT_dev_is_ec(rtl_ec_dev, dev))
 	{
-                rtl_ecat_dev.rx_intr_cnt++;
-                rdtscl(rtl_ecat_dev.rx_time); // Get CPU cycles
+                rtl_ec_dev.rx_intr_cnt++;
+                rdtscl(rtl_ec_dev.rx_time); // Get CPU cycles
 	}
+#endif
 
         /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 
-	while ((dev == rtl_ecat_dev.dev || netif_running(dev))
+	while ((EtherCAT_dev_is_ec(rtl_ec_dev, dev) || netif_running(dev))
 	       && received < budget
 	       && (RTL_R8 (ChipCmd) & RxBufEmpty) == 0) {
 		u32 ring_offset = cur_rx % RX_BUF_LEN;
@@ -2185,7 +2179,7 @@ static int rtl8139_rx(struct net_device *dev, struct rtl8139_private *tp,
 
                 /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
-		if (dev != rtl_ecat_dev.dev && netif_msg_rx_status(tp))
+		if (!EtherCAT_dev_is_ec(rtl_ec_dev, dev) && netif_msg_rx_status(tp))
                         printk(KERN_DEBUG "%s:  rtl8139_rx() status %4.4x, size %4.4x,"
                                " cur %4.4x.\n", dev->name, rx_status,
                                rx_size, cur_rx);
@@ -2241,7 +2235,7 @@ no_early_rx:
 
                 /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
-                if (dev != rtl_ecat_dev.dev)
+                if (!EtherCAT_dev_is_ec(rtl_ec_dev, dev))
                 {
                         /* Malloc up new buffer, compatible with net-2e. */
                         /* Omit the four octet CRC from the length. */
@@ -2274,23 +2268,14 @@ no_early_rx:
                 }
                 else
                 {
-                        if (rtl_ecat_dev.state != ECAT_DS_SENT)
-                        {
-                                printk(KERN_WARNING "EtherCAT: Received frame while not in SENT state!\n");
-                        }
-                        else
-                        {
-                                // Copy received data to ethercat-device buffer, skip Ethernet-II header
-                                memcpy(rtl_ecat_dev.rx_data, &rx_ring[ring_offset + 4] + ETH_HLEN,
-                                       pkt_size - ETH_HLEN);
-                                rtl_ecat_dev.rx_data_length = pkt_size - ETH_HLEN;
-
-                                rtl_ecat_dev.state = ECAT_DS_RECEIVED;
-
-                                dev->last_rx = jiffies;
-                                tp->stats.rx_bytes += pkt_size;
-                                tp->stats.rx_packets++;
-                        }
+                  if (EtherCAT_dev_receive(rtl_ec_dev,
+                                           &rx_ring[ring_offset + 4] + ETH_HLEN,
+                                           pkt_size - ETH_HLEN) == 0)
+                  {
+                    dev->last_rx = jiffies;
+                    tp->stats.rx_bytes += pkt_size;
+                    tp->stats.rx_packets++;
+                  }
                 }
 
                 /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
@@ -2415,9 +2400,11 @@ irqreturn_t rtl8139_interrupt (int irq, void *dev_instance,
 
         /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
-	if (dev == rtl_ecat_dev.dev)
+	if (EtherCAT_dev_is_ec(rtl_ec_dev, dev))
         {
-                rtl_ecat_dev.intr_cnt++;
+#if 0 // FIXME
+                rtl_ec_dev.intr_cnt++;
+#endif
                 status = RTL_R16 (IntrStatus);
 	}
 	else
@@ -2440,7 +2427,7 @@ irqreturn_t rtl8139_interrupt (int irq, void *dev_instance,
 
         /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
-	if (dev != rtl_ecat_dev.dev)
+	if (!EtherCAT_dev_is_ec(rtl_ec_dev, dev))
         {
                 /* close possible race's with dev_close */
                 if (unlikely(!netif_running(dev))) {
@@ -2459,7 +2446,6 @@ irqreturn_t rtl8139_interrupt (int irq, void *dev_instance,
 	ackstat = status & ~(RxAckBits | TxErr);
 	if (ackstat) {
 		RTL_W16 (IntrStatus, ackstat);
-		//printk("ECAT-NIC ack\n"); //HM
 	}
 
 	/* Receive packets are processed by poll routine.
@@ -2469,7 +2455,7 @@ irqreturn_t rtl8139_interrupt (int irq, void *dev_instance,
 
 	if (status & RxAckBits)
         {
-          if (dev != rtl_ecat_dev.dev)
+          if (!EtherCAT_dev_is_ec(rtl_ec_dev, dev))
           {
             /* Polling vormerken */
             if (netif_rx_schedule_prep(dev)) {
@@ -2499,7 +2485,7 @@ irqreturn_t rtl8139_interrupt (int irq, void *dev_instance,
  out:
         /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
-	if (dev != rtl_ecat_dev.dev)
+	if (!EtherCAT_dev_is_ec(rtl_ec_dev, dev))
         {
           spin_unlock (&tp->lock);
         }
@@ -2533,7 +2519,7 @@ static int rtl8139_close (struct net_device *dev)
 
         /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
-        if (dev != rtl_ecat_dev.dev)
+        if (!EtherCAT_dev_is_ec(rtl_ec_dev, dev))
         {
                 netif_stop_queue(dev);
                 if (tp->thr_pid >= 0) {
@@ -2798,7 +2784,7 @@ static int netdev_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
 
         /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
-	if (dev == rtl_ecat_dev.dev || !netif_running(dev))
+	if (EtherCAT_dev_is_ec(rtl_ec_dev, dev) || !netif_running(dev))
 		return -EINVAL;
 
         /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
@@ -2819,7 +2805,7 @@ static struct net_device_stats *rtl8139_get_stats (struct net_device *dev)
 
         /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
-	if (dev == rtl_ecat_dev.dev || netif_running(dev))
+	if (EtherCAT_dev_is_ec(rtl_ec_dev, dev) || netif_running(dev))
         {
                 spin_lock_irqsave (&tp->lock, flags);
                 tp->stats.rx_missed_errors += RTL_R32 (RxMissed);
@@ -2906,7 +2892,7 @@ static int rtl8139_suspend (struct pci_dev *pdev, pm_message_t state)
 
         /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
-	if (dev == rtl_ecat_dev.dev || !netif_running (dev))
+	if (EtherCAT_dev_is_ec(rtl_ec_dev, dev) || !netif_running (dev))
                 return 0;
 
         /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
@@ -2939,7 +2925,7 @@ static int rtl8139_resume (struct pci_dev *pdev)
 
         /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
-	if (dev == rtl_ecat_dev.dev || !netif_running (dev))
+	if (EtherCAT_dev_is_ec(rtl_ec_dev, dev) || !netif_running (dev))
                 return 0;
 
         /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
@@ -2975,69 +2961,54 @@ static int __init rtl8139_init_module (void)
 	printk (KERN_INFO RTL8139_DRIVER_NAME "\n");
 #endif
 
-        /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+    /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
-        printk(KERN_INFO "Initializing RTL8139-EtherCAT module. %s\n", COMPILE_INFO);
+    printk(KERN_INFO "Initializing RTL8139-EtherCAT module. %s\n", COMPILE_INFO);
+    printk(KERN_INFO "EtherCAT device index is %i.\n", ec_device_index);
 
-        EtherCAT_device_init(&rtl_ecat_dev);
-        rtl_ecat_dev.isr = rtl8139_interrupt;
-        rtl_ecat_dev.module = THIS_MODULE;
+    if (pci_module_init(&rtl8139_pci_driver) < 0)
+    {
+      printk(KERN_ERR "Could not init PCI module.\n");
+      goto out_ec_dev;
+    }
 
-        if (pci_module_init(&rtl8139_pci_driver) < 0)
-        {
-          printk(KERN_ERR "Could not init PCI module.\n");
-          return -1;
-        }
+    if (!rtl_ec_dev)
+    {
+      printk(KERN_WARNING "NO EtherCAT device registered!\n");
+    }
 
-        printk(KERN_INFO "EtherCAT device index is %i.\n", ec_device_index);
+    return 0;
 
-        if (rtl_ecat_dev.dev)
-        {
-          printk(KERN_INFO "Registering EtherCAT device...\n");
-          if (EtherCAT_register_device(ec_device_master_index, &rtl_ecat_dev) < 0)
-          {
-            printk(KERN_ERR "Could not register device.\n");
-            goto out_module;
-          }
+ out_ec_dev:
+    if (rtl_ec_dev) {
+      printk(KERN_INFO "Unregistering RTL8139-EtherCAT device...\n");
+      EtherCAT_dev_unregister(ec_device_master_index);
+      rtl_ec_dev = NULL;
+    }
 
-          rtl_ecat_dev_registered = 1;
+    return -1;
 
-          printk(KERN_INFO "EtherCAT device registered and opened.\n");
-        }
-        else
-        {
-          printk(KERN_WARNING "NO EtherCAT device registered!\n");
-        }
-
-        return 0;
-
-      out_module:
-
-        pci_unregister_driver(&rtl8139_pci_driver);
-        return -1;
-
-        /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
+    /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 }
 
 
 static void __exit rtl8139_cleanup_module (void)
 {
-        /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+  /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
-        printk(KERN_INFO "Cleaning up RTL8139-EtherCAT module...\n");
+  printk(KERN_INFO "Cleaning up RTL8139-EtherCAT module...\n");
 
-        if (rtl_ecat_dev_registered && rtl_ecat_dev.dev)
-        {
-          printk(KERN_INFO "Unregistering RTL8139-EtherCAT device...\n");
-          EtherCAT_unregister_device(ec_device_master_index, &rtl_ecat_dev);
-        }
+  if (rtl_ec_dev) {
+    printk(KERN_INFO "Unregistering RTL8139-EtherCAT device...\n");
+    EtherCAT_dev_unregister(ec_device_master_index);
+    rtl_ec_dev = NULL;
+  }
 
-	pci_unregister_driver(&rtl8139_pci_driver);
-        EtherCAT_device_clear(&rtl_ecat_dev);
+  pci_unregister_driver(&rtl8139_pci_driver);
 
-        printk(KERN_INFO "RTL8139-EtherCAT module cleaned up.\n");
+  printk(KERN_INFO "RTL8139-EtherCAT module cleaned up.\n");
 
-        /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
+  /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 }
 
 

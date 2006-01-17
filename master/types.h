@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- *  e c _ t y p e s . h
+ *  t y p e s . h
  *
  *  EtherCAT-Slave-Typen.
  *
@@ -23,9 +23,9 @@
 
 typedef enum
 {
-  ECAT_ST_SIMPLE, ECAT_ST_MAILBOX, ECAT_ST_SIMPLE_NOSYNC
+  EC_SIMPLE_SLAVE, EC_MAILBOX_SLAVE, EC_NOSYNC_SLAVE
 }
-EtherCAT_slave_type_t;
+ec_slave_type_t;
 
 /*****************************************************************************/
 
@@ -43,7 +43,7 @@ typedef struct slave_desc
   const char *product_name; /**< Name des Slaves-Typs */
   const char *product_desc; /**< Genauere Beschreibung des Slave-Typs */
 
-  const EtherCAT_slave_type_t type; /**< Art des Slave-Typs */
+  const ec_slave_type_t type; /**< Art des Slave-Typs */
 
   const unsigned char *sm0; /**< Konfigurationsdaten des
                                ersten Sync-Managers */
@@ -66,7 +66,7 @@ typedef struct slave_desc
                                                          Kodieren und Schreiben
                                                          der Kanaldaten */
 }
-EtherCAT_slave_desc_t;
+ec_slave_desc_t;
 
 /*****************************************************************************/
 
@@ -81,26 +81,15 @@ typedef struct slave_ident
 {
   const unsigned int vendor_id; /**< Hersteller-Code */
   const unsigned int product_code; /**< Herstellerspezifischer Produktcode */
-  const EtherCAT_slave_desc_t *desc; /**< Zeiger auf den dazugehörigen
+  const ec_slave_desc_t *desc; /**< Zeiger auf den dazugehörigen
                                         Slave-Typ */
 }
-EtherCAT_slave_ident_t;
+ec_slave_ident_t;
 
-extern EtherCAT_slave_ident_t slave_idents[]; /**< Statisches Array der
-                                                 Slave-Identifikationen */
+extern ec_slave_ident_t slave_idents[]; /**< Statisches Array der
+                                           Slave-Identifikationen */
 extern unsigned int slave_ident_count; /**< Anzahl der vorhandenen
                                           Slave-Identifikationen */
-
-/*****************************************************************************/
-
-extern EtherCAT_slave_desc_t Beckhoff_EK1100[];
-extern EtherCAT_slave_desc_t Beckhoff_EL1014[];
-extern EtherCAT_slave_desc_t Beckhoff_EL2004[];
-extern EtherCAT_slave_desc_t Beckhoff_EL3102[];
-extern EtherCAT_slave_desc_t Beckhoff_EL3162[];
-extern EtherCAT_slave_desc_t Beckhoff_EL4102[];
-extern EtherCAT_slave_desc_t Beckhoff_EL4132[];
-extern EtherCAT_slave_desc_t Beckhoff_EL5001[];
 
 /*****************************************************************************/
 

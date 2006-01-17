@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- *  e c _ t y p e s . c
+ *  t y p e s . c
  *
  *  EtherCAT-Slave-Typen.
  *
@@ -10,8 +10,8 @@
 
 #include <linux/module.h>
 
-#include "ec_globals.h"
-#include "ec_types.h"
+#include "globals.h"
+#include "types.h"
 
 /*****************************************************************************/
 
@@ -54,12 +54,10 @@ int read_1014(unsigned char *data, unsigned int channel)
 
 void write_2004(unsigned char *data, unsigned int channel, int value)
 {
-  if (value)
-  {
+  if (value) {
     data[0] |= (1 << channel);
   }
-  else
-  {
+  else {
     data[0] &= ~(1 << channel);
   }
 }
@@ -79,80 +77,80 @@ void write_41xx(unsigned char *data, unsigned int channel, int value)
 
 /* Klemmen-Objekte */
 
-EtherCAT_slave_desc_t Beckhoff_EK1100[] =
+ec_slave_desc_t Beckhoff_EK1100[] =
 {{
   "Beckhoff", "EK1100", "Bus Coupler",
-  ECAT_ST_SIMPLE_NOSYNC,
+  EC_NOSYNC_SLAVE,
   NULL, NULL, NULL, NULL,
   NULL,
   0, 0,
   NULL, NULL
 }};
 
-EtherCAT_slave_desc_t Beckhoff_EL1014[] =
+ec_slave_desc_t Beckhoff_EL1014[] =
 {{
   "Beckhoff", "EL1014", "4x Digital Input",
-  ECAT_ST_SIMPLE,
+  EC_SIMPLE_SLAVE,
   sm0_1014, NULL, NULL, NULL,
   fmmu0_1014,
   1, 4,
   read_1014, NULL
 }};
 
-EtherCAT_slave_desc_t Beckhoff_EL2004[] =
+ec_slave_desc_t Beckhoff_EL2004[] =
 {{
   "Beckhoff", "EL2004", "4x Digital Output",
-  ECAT_ST_SIMPLE,
+  EC_SIMPLE_SLAVE,
   sm0_2004, NULL, NULL, NULL,
   fmmu0_2004,
   1, 4,
   NULL, write_2004
 }};
 
-EtherCAT_slave_desc_t Beckhoff_EL3102[] =
+ec_slave_desc_t Beckhoff_EL3102[] =
 {{
   "Beckhoff", "EL3102", "2x Analog Input diff.",
-  ECAT_ST_MAILBOX,
+  EC_MAILBOX_SLAVE,
   sm0_multi, sm1_multi, sm2_31xx, sm3_31xx,
   fmmu0_31xx,
   6, 2,
   read_31xx, NULL
 }};
 
-EtherCAT_slave_desc_t Beckhoff_EL3162[] =
+ec_slave_desc_t Beckhoff_EL3162[] =
 {{
   "Beckhoff", "EL3162", "2x Analog Input",
-  ECAT_ST_MAILBOX,
+  EC_MAILBOX_SLAVE,
   sm0_multi, sm1_multi, sm2_31xx, sm3_31xx,
   fmmu0_31xx,
   6, 2,
   read_31xx, NULL
 }};
 
-EtherCAT_slave_desc_t Beckhoff_EL4102[] =
+ec_slave_desc_t Beckhoff_EL4102[] =
 {{
   "Beckhoff", "EL4102", "2x Analog Output",
-  ECAT_ST_MAILBOX,
+  EC_MAILBOX_SLAVE,
   sm0_multi, sm1_multi, sm2_41xx, NULL,
   fmmu0_41xx,
   4, 2,
   NULL, write_41xx
 }};
 
-EtherCAT_slave_desc_t Beckhoff_EL4132[] =
+ec_slave_desc_t Beckhoff_EL4132[] =
 {{
   "Beckhoff", "EL4132", "2x Analog Output diff.",
-  ECAT_ST_MAILBOX,
+  EC_MAILBOX_SLAVE,
   sm0_multi, sm1_multi, sm2_41xx, NULL,
   fmmu0_41xx,
   4, 2,
   NULL, write_41xx
 }};
 
-EtherCAT_slave_desc_t Beckhoff_EL5001[] =
+ec_slave_desc_t Beckhoff_EL5001[] =
 {{
   "Beckhoff", "EL5001", "SSI-Interface",
-  ECAT_ST_SIMPLE,
+  EC_SIMPLE_SLAVE,
   NULL, NULL, NULL, NULL, // Noch nicht eingepflegt...
   NULL,
   0, 0,
@@ -169,7 +167,7 @@ EtherCAT_slave_desc_t Beckhoff_EL5001[] =
    Neue Klemmen müssen hier eingetragen werden.
 */
 
-EtherCAT_slave_ident_t slave_idents[] =
+ec_slave_ident_t slave_idents[] =
 {
   {0x00000002, 0x03F63052, Beckhoff_EL1014},
   {0x00000002, 0x044C2C52, Beckhoff_EK1100},
@@ -182,18 +180,7 @@ EtherCAT_slave_ident_t slave_idents[] =
 };
 
 unsigned int slave_ident_count = sizeof(slave_idents)
-     / sizeof(EtherCAT_slave_ident_t);
+     / sizeof(ec_slave_ident_t);
 
-
-/*****************************************************************************/
-
-EXPORT_SYMBOL(Beckhoff_EK1100);
-EXPORT_SYMBOL(Beckhoff_EL1014);
-EXPORT_SYMBOL(Beckhoff_EL2004);
-EXPORT_SYMBOL(Beckhoff_EL3102);
-EXPORT_SYMBOL(Beckhoff_EL3162);
-EXPORT_SYMBOL(Beckhoff_EL4102);
-EXPORT_SYMBOL(Beckhoff_EL4132);
-EXPORT_SYMBOL(Beckhoff_EL5001);
 
 /*****************************************************************************/

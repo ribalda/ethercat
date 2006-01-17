@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- *  e c _ s l a v e . h
+ *  s l a v e . h
  *
  *  Struktur für einen EtherCAT-Slave.
  *
@@ -11,7 +11,7 @@
 #ifndef _EC_SLAVE_H_
 #define _EC_SLAVE_H_
 
-#include "ec_types.h"
+#include "types.h"
 
 /*****************************************************************************/
 
@@ -39,32 +39,34 @@ typedef struct
   unsigned int revision_number; /**< Revisionsnummer */
   unsigned int serial_number; /**< Seriennummer der Klemme */
 
-  const EtherCAT_slave_desc_t *desc; /**< Zeiger auf die Beschreibung
+  const ec_slave_desc_t *desc; /**< Zeiger auf die Beschreibung
                                         des Slave-Typs */
 
   unsigned int logical_address; /**< Konfigurierte, logische adresse */
 
-  EtherCAT_state_t current_state; /**< Aktueller Zustand */
-  EtherCAT_state_t requested_state; /**< Angeforderter Zustand */
+  ec_slave_state_t current_state; /**< Aktueller Zustand */
+  ec_slave_state_t requested_state; /**< Angeforderter Zustand */
 
   unsigned char *process_data; /**< Zeiger auf den Speicherbereich
                                   innerhalb eines Prozessdatenobjekts */
   unsigned int domain; /**< Prozessdatendomäne */
   int error_reported; /**< Ein Zugriffsfehler wurde bereits gemeldet */
 }
-EtherCAT_slave_t;
+ec_slave_t;
 
-#define ECAT_INIT_SLAVE(TYPE, DOMAIN) {0, 0, 0, 0, 0, 0, 0, 0, 0, \
+#define EC_INIT_SLAVE(TYPE, DOMAIN) {0, 0, 0, 0, 0, 0, 0, 0, 0, \
                                        TYPE, 0, ECAT_STATE_UNKNOWN, \
-                                       ECAT_STATE_UNKNOWN, NULL, DOMAIN, 0}
+                                       EC_STATE_UNKNOWN, NULL, DOMAIN, 0}
 
 /*****************************************************************************/
 
 // Slave construction and deletion
-void EtherCAT_slave_init(EtherCAT_slave_t *);
+void ec_slave_init(ec_slave_t *);
 
+#if 0
 int EtherCAT_read_value(EtherCAT_slave_t *, unsigned int);
 void EtherCAT_write_value(EtherCAT_slave_t *, unsigned int, int);
+#endif
 
 /*****************************************************************************/
 

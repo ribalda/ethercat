@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- *  e c _ d o m a i n . h
+ *  d o m a i n . h
  *
  *  Struktur für eine Gruppe von EtherCAT-Slaves.
  *
@@ -11,9 +11,9 @@
 #ifndef _EC_DOMAIN_H_
 #define _EC_DOMAIN_H_
 
-#include "ec_globals.h"
-#include "ec_slave.h"
-#include "ec_command.h"
+#include "globals.h"
+#include "slave.h"
+#include "command.h"
 
 /*****************************************************************************/
 
@@ -24,21 +24,21 @@
    Menge von Slaves.
 */
 
-typedef struct EtherCAT_domain
+typedef struct ec_domain
 {
   unsigned int number; /*<< Domänen-Identifikation */
-  EtherCAT_command_t command; /**< Kommando zum Senden und Empfangen der
-                                 Prozessdaten */
-  unsigned char data[ECAT_FRAME_BUFFER_SIZE]; /**< Prozessdaten-Array */
+  ec_command_t command; /**< Kommando zum Senden und Empfangen der
+                           Prozessdaten */
+  unsigned char data[EC_FRAME_SIZE]; /**< Prozessdaten-Array */
   unsigned int data_size; /**< Größe der Prozessdaten */
   unsigned int logical_offset; /**< Logische Basisaddresse */
   unsigned int response_count; /**< Anzahl antwortender Slaves */
 }
-EtherCAT_domain_t;
+ec_domain_t;
 
 /*****************************************************************************/
 
-void EtherCAT_domain_init(EtherCAT_domain_t *);
+void ec_domain_init(ec_domain_t *);
 
 /*****************************************************************************/
 

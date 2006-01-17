@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- *  e c _ s l a v e . c
+ *  s l a v e . c
  *
  *  Methoden für einen EtherCAT-Slave.
  *
@@ -10,8 +10,8 @@
 
 #include <linux/module.h>
 
-#include "ec_globals.h"
-#include "ec_slave.h"
+#include "globals.h"
+#include "slave.h"
 
 /*****************************************************************************/
 
@@ -26,7 +26,7 @@
    @param slave Zeiger auf den zu initialisierenden Slave
 */
 
-void EtherCAT_slave_init(EtherCAT_slave_t *slave)
+void ec_slave_init(ec_slave_t *slave)
 {
   slave->type = 0;
   slave->revision = 0;
@@ -39,8 +39,8 @@ void EtherCAT_slave_init(EtherCAT_slave_t *slave)
   slave->serial_number = 0;
   slave->desc = NULL;
   slave->logical_address = 0;
-  slave->current_state = ECAT_STATE_UNKNOWN;
-  slave->requested_state = ECAT_STATE_UNKNOWN;
+  slave->current_state = EC_SLAVE_STATE_UNKNOWN;
+  slave->requested_state = EC_SLAVE_STATE_UNKNOWN;
   slave->process_data = NULL;
   slave->domain = 0;
   slave->error_reported = 0;
@@ -48,6 +48,7 @@ void EtherCAT_slave_init(EtherCAT_slave_t *slave)
 
 /*****************************************************************************/
 
+#if 0
 /**
    Liest einen bestimmten Kanal des Slaves als Integer-Wert.
 
@@ -188,6 +189,7 @@ void EtherCAT_write_value(EtherCAT_slave_t *slave,
 
 EXPORT_SYMBOL(EtherCAT_write_value);
 EXPORT_SYMBOL(EtherCAT_read_value);
+#endif
 
 /*****************************************************************************/
 

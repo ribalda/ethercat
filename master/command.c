@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- *  e c _ c o m m a n d . c
+ *  c o m m a n d . c
  *
  *  Methoden für ein EtherCAT-Kommando.
  *
@@ -10,7 +10,7 @@
 
 #include <linux/slab.h>
 
-#include "ec_command.h"
+#include "command.h"
 
 /*****************************************************************************/
 
@@ -23,12 +23,12 @@
    @param cmd Zeiger auf das zu initialisierende Kommando.
 */
 
-void EtherCAT_command_init(EtherCAT_command_t *cmd)
+void ec_command_init(ec_command_t *cmd)
 {
-  cmd->type = ECAT_CMD_NONE;
+  cmd->type = EC_COMMAND_NONE;
   cmd->address.logical = 0x00000000;
   cmd->data_length = 0;
-  cmd->state = ECAT_CS_READY;
+  cmd->state = EC_COMMAND_STATE_READY;
   cmd->index = 0;
   cmd->working_counter = 0;
 }
@@ -43,21 +43,21 @@ void EtherCAT_command_init(EtherCAT_command_t *cmd)
    @param cmd Zeiger auf das zu initialisierende Kommando.
 */
 
-void EtherCAT_command_clear(EtherCAT_command_t *cmd)
+void ec_command_clear(ec_command_t *cmd)
 {
-  EtherCAT_command_init(cmd);
+  ec_command_init(cmd);
 }
 
 /*****************************************************************************/
 
-#define ECAT_FUNC_HEADER \
-  EtherCAT_command_init(cmd)
+#define EC_FUNC_HEADER \
+  ec_command_init(cmd)
 
-#define ECAT_FUNC_WRITE_FOOTER \
+#define EC_FUNC_WRITE_FOOTER \
   cmd->data_length = length; \
   memcpy(cmd->data, data, length);
 
-#define ECAT_FUNC_READ_FOOTER \
+#define EC_FUNC_READ_FOOTER \
   cmd->data_length = length;
 
 /*****************************************************************************/
@@ -71,21 +71,19 @@ void EtherCAT_command_clear(EtherCAT_command_t *cmd)
    @param length Länge der zu lesenden Daten
 */
 
-void EtherCAT_command_read(EtherCAT_command_t *cmd,
-                           unsigned short node_address,
-                           unsigned short offset,
-                           unsigned int length)
+void ec_command_read(ec_command_t *cmd, unsigned short node_address,
+                     unsigned short offset, unsigned int length)
 {
   if (unlikely(node_address == 0x0000))
     printk(KERN_WARNING "EtherCAT: Warning - Using node address 0x0000!\n");
 
-  ECAT_FUNC_HEADER;
+  EC_FUNC_HEADER;
 
-  cmd->type = ECAT_CMD_NPRD;
+  cmd->type = EC_COMMAND_NPRD;
   cmd->address.phy.dev.node = node_address;
   cmd->address.phy.mem = offset;
 
-  ECAT_FUNC_READ_FOOTER;
+  EC_FUNC_READ_FOOTER;
 }
 
 /*****************************************************************************/
@@ -103,22 +101,20 @@ void EtherCAT_command_read(EtherCAT_command_t *cmd,
    @param data Zeiger auf Speicher mit zu schreibenden Daten
 */
 
-void EtherCAT_command_write(EtherCAT_command_t *cmd,
-                            unsigned short node_address,
-                            unsigned short offset,
-                            unsigned int length,
-                            const unsigned char *data)
+void ec_command_write(ec_command_t *cmd, unsigned short node_address,
+                      unsigned short offset, unsigned int length,
+                      const unsigned char *data)
 {
   if (unlikely(node_address == 0x0000))
     printk(KERN_WARNING "EtherCAT: Warning - Using node address 0x0000!\n");
 
-  ECAT_FUNC_HEADER;
+  EC_FUNC_HEADER;
 
-  cmd->type = ECAT_CMD_NPWR;
+  cmd->type = EC_COMMAND_NPWR;
   cmd->address.phy.dev.node = node_address;
   cmd->address.phy.mem = offset;
 
-  ECAT_FUNC_WRITE_FOOTER;
+  EC_FUNC_WRITE_FOOTER;
 }
 
 /*****************************************************************************/
@@ -135,18 +131,16 @@ void EtherCAT_command_write(EtherCAT_command_t *cmd,
    @param length Länge der zu lesenden Daten
 */
 
-void EtherCAT_command_position_read(EtherCAT_command_t *cmd,
-                                    short ring_position,
-                                    unsigned short offset,
-                                    unsigned int length)
+void ec_command_position_read(ec_command_t *cmd, short ring_position,
+                              unsigned short offset, unsigned int length)
 {
-  ECAT_FUNC_HEADER;
+  EC_FUNC_HEADER;
 
-  cmd->type = ECAT_CMD_APRD;
+  cmd->type = EC_COMMAND_APRD;
   cmd->address.phy.dev.pos = ring_position;
   cmd->address.phy.mem = offset;
 
-  ECAT_FUNC_READ_FOOTER;
+  EC_FUNC_READ_FOOTER;
 }
 
 /*****************************************************************************/
@@ -164,19 +158,17 @@ void EtherCAT_command_position_read(EtherCAT_command_t *cmd,
    @param data Zeiger auf Speicher mit zu schreibenden Daten
 */
 
-void EtherCAT_command_position_write(EtherCAT_command_t *cmd,
-                                     short ring_position,
-                                     unsigned short offset,
-                                     unsigned int length,
-                                     const unsigned char *data)
+void ec_command_position_write(ec_command_t *cmd, short ring_position,
+                               unsigned short offset, unsigned int length,
+                               const unsigned char *data)
 {
-  ECAT_FUNC_HEADER;
+  EC_FUNC_HEADER;
 
-  cmd->type = ECAT_CMD_APWR;
+  cmd->type = EC_COMMAND_APWR;
   cmd->address.phy.dev.pos = ring_position;
   cmd->address.phy.mem = offset;
 
-  ECAT_FUNC_WRITE_FOOTER;
+  EC_FUNC_WRITE_FOOTER;
 }
 
 /*****************************************************************************/
@@ -192,17 +184,16 @@ void EtherCAT_command_position_write(EtherCAT_command_t *cmd,
    @param length Länge der zu lesenden Daten
 */
 
-void EtherCAT_command_broadcast_read(EtherCAT_command_t *cmd,
-                                     unsigned short offset,
-                                     unsigned int length)
+void ec_command_broadcast_read(ec_command_t *cmd, unsigned short offset,
+                               unsigned int length)
 {
-  ECAT_FUNC_HEADER;
+  EC_FUNC_HEADER;
 
-  cmd->type = ECAT_CMD_BRD;
+  cmd->type = EC_COMMAND_BRD;
   cmd->address.phy.dev.node = 0x0000;
   cmd->address.phy.mem = offset;
 
-  ECAT_FUNC_READ_FOOTER;
+  EC_FUNC_READ_FOOTER;
 }
 
 /*****************************************************************************/
@@ -219,18 +210,16 @@ void EtherCAT_command_broadcast_read(EtherCAT_command_t *cmd,
    @param data Zeiger auf Speicher mit zu schreibenden Daten
 */
 
-void EtherCAT_command_broadcast_write(EtherCAT_command_t *cmd,
-                                      unsigned short offset,
-                                      unsigned int length,
-                                      const unsigned char *data)
+void ec_command_broadcast_write(ec_command_t *cmd, unsigned short offset,
+                                unsigned int length, const unsigned char *data)
 {
-  ECAT_FUNC_HEADER;
+  EC_FUNC_HEADER;
 
-  cmd->type = ECAT_CMD_BWR;
+  cmd->type = EC_COMMAND_BWR;
   cmd->address.phy.dev.node = 0x0000;
   cmd->address.phy.mem = offset;
 
-  ECAT_FUNC_WRITE_FOOTER;
+  EC_FUNC_WRITE_FOOTER;
 }
 
 /*****************************************************************************/
@@ -247,17 +236,15 @@ void EtherCAT_command_broadcast_write(EtherCAT_command_t *cmd,
    @param data Zeiger auf Speicher mit zu lesenden/schreibenden Daten
 */
 
-void EtherCAT_command_logical_read_write(EtherCAT_command_t *cmd,
-                                         unsigned int offset,
-                                         unsigned int length,
-                                         unsigned char *data)
+void ec_command_logical_read_write(ec_command_t *cmd, unsigned int offset,
+                                   unsigned int length, unsigned char *data)
 {
-  ECAT_FUNC_HEADER;
+  EC_FUNC_HEADER;
 
-  cmd->type = ECAT_CMD_LRW;
+  cmd->type = EC_COMMAND_LRW;
   cmd->address.logical = offset;
 
-  ECAT_FUNC_WRITE_FOOTER;
+  EC_FUNC_WRITE_FOOTER;
 }
 
 /*****************************************************************************/

@@ -13,9 +13,9 @@ ifneq ($(KERNELRELEASE),)
 #----------------------------------------------------------------
 # Kbuild-Abschnitt
 
-obj-m := ec_mini_mod.o
+obj-m := ec_mini.o
 
-ec_mini_mod-objs := ec_mini.o
+ec_mini-objs := mini.o
 
 #----------------------------------------------------------------
 

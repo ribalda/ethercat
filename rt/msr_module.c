@@ -32,10 +32,7 @@
 #include "msr_jitter.h"
 
 // EtherCAT
-#include "../drivers/ec_master.h"
-#include "../drivers/ec_device.h"
-#include "../drivers/ec_types.h"
-#include "../drivers/ec_module.h"
+#include "../include/EtherCAT_rt.h"
 
 // Defines/Makros
 #define TSC2US(T1, T2) ((T2 - T1) * 1000UL / cpu_khz)
@@ -54,16 +51,18 @@ static struct ipipe_sysinfo sys_info;
 
 // EtherCAT
 
-static EtherCAT_master_t *ecat_master = NULL;
+ec_master_t *master = NULL;
 static unsigned int ecat_bus_time = 0;
 static unsigned int ecat_timeouts = 0;
 
-static EtherCAT_slave_t ecat_slaves[] =
+#if 0
+static ec_slave_t slaves[] =
 {
     // Block 1
     ECAT_INIT_SLAVE(Beckhoff_EK1100, 0),
     ECAT_INIT_SLAVE(Beckhoff_EL3102, 0)
 };
+#endif
 
 #define ECAT_SLAVES_COUNT (sizeof(ecat_slaves) / sizeof(EtherCAT_slave_t))
 
@@ -87,20 +86,22 @@ static void msr_controller_run(void)
     // Prozessdaten lesen
     msr_jitter_run(MSR_ABTASTFREQUENZ);
 
+#if 0
     if (debug_counter == 0) {
-        ecat_master->debug_level = 2;
+        master->debug_level = 2;
     }
+#endif
 
-    // Prozessdaten schreiben
+    // Prozessdaten lesen und schreiben
+    EtherCAT_rt_domain_cycle(master, 0, 40);
 
-    if (EtherCAT_process_data_cycle(ecat_master, 0, 40) < 0)
-        ecat_timeouts++;
-
+#if 0
     if (debug_counter == 0) {
-        ecat_master->debug_level = 0;
+        master->debug_level = 0;
     }
+#endif
 
-    value = EtherCAT_read_value(&ecat_slaves[1], 0);
+    //    value = EtherCAT_read_value(&ecat_slaves[1], 0);
 
     debug_counter++;
     if (debug_counter >= MSR_ABTASTFREQUENZ * 5) debug_counter = 0;
@@ -183,9 +184,8 @@ int msr_globals_register(void)
  * the init/clean material
  *****************************************************************************/
 
-int __init init_module()
+int __init init_rt_module(void)
 {
-    unsigned int i;
     struct ipipe_domain_attr attr; //ipipe
 
     // Als allererstes die RT-lib initialisieren
@@ -200,25 +200,24 @@ int __init init_module()
 
     printk(KERN_INFO "=== Starting EtherCAT environment... ===\n");
 
-    if ((ecat_master = EtherCAT_request(0)) == NULL) {
+    if ((master = EtherCAT_rt_request_master(0)) == NULL) {
         printk(KERN_ERR "EtherCAT master 0 not available!\n");
         goto out_msr_cleanup;
     }
 
+#if 0
     printk("Checking EtherCAT slaves.\n");
-
-    if (EtherCAT_check_slaves(ecat_master, ecat_slaves, ECAT_SLAVES_COUNT) != 0) {
+    if (EtherCAT_check_slaves(master, ecat_slaves, ECAT_SLAVES_COUNT) != 0) {
         printk(KERN_ERR "EtherCAT: Could not init slaves!\n");
         goto out_release_master;
     }
+#endif
 
     printk("Activating all EtherCAT slaves.\n");
 
-    for (i = 0; i < ECAT_SLAVES_COUNT; i++) {
-        if (EtherCAT_activate_slave(ecat_master, ecat_slaves + i) < 0) {
-            printk(KERN_ERR "EtherCAT: Could not activate slave %i!\n", i);
-            goto out_release_master;
-        }
+    if (EtherCAT_rt_activate_slaves(master) < 0) {
+      printk(KERN_ERR "EtherCAT: Could not activate slaves!\n");
+      goto out_release_master;
     }
 
     do_gettimeofday(&process_time);
@@ -234,7 +233,7 @@ int __init init_module()
     return 0;
 
  out_release_master:
-    EtherCAT_release(ecat_master);
+    EtherCAT_rt_release_master(master);
 
  out_msr_cleanup:
     msr_rtlib_cleanup();
@@ -245,28 +244,24 @@ int __init init_module()
 
 /*****************************************************************************/
 
-void __exit cleanup_module()
+void __exit cleanup_rt_module(void)
 {
-    unsigned int i;
-
     msr_print_info("msk_modul: unloading...");
 
     ipipe_tune_timer(1000000000UL / HZ, 0); //alten Timertakt wieder herstellen
     ipipe_unregister_domain(&this_domain);
 
-    if (ecat_master)
+    if (master)
     {
         printk(KERN_INFO "=== Stopping EtherCAT environment... ===\n");
 
         printk(KERN_INFO "Deactivating slaves.\n");
 
-        for (i = 0; i < ECAT_SLAVES_COUNT; i++) {
-            if (EtherCAT_deactivate_slave(ecat_master, ecat_slaves + i) < 0) {
-                printk(KERN_WARNING "Warning - Could not deactivate slave!\n");
-            }
+        if (EtherCAT_rt_deactivate_slaves(master) < 0) {
+          printk(KERN_WARNING "Warning - Could not deactivate slaves!\n");
         }
 
-        EtherCAT_release(ecat_master);
+        EtherCAT_rt_release_master(master);
 
         printk(KERN_INFO "=== EtherCAT environment stopped. ===\n");
     }
@@ -282,7 +277,7 @@ MODULE_LICENSE("GPL");
 MODULE_AUTHOR ("Wilhelm Hagemeister <hm@igh-essen.com>");
 MODULE_DESCRIPTION ("EtherCAT test environment");
 
-module_init(init_module);
-module_exit(cleanup_module);
+module_init(init_rt_module);
+module_exit(cleanup_rt_module);
 
 /*****************************************************************************/
