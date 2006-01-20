@@ -14,8 +14,11 @@
 #include <linux/slab.h>
 #include <linux/delay.h>
 
+#include "../include/EtherCAT_rt.h"
 #include "globals.h"
 #include "master.h"
+#include "slave.h"
+#include "types.h"
 #include "device.h"
 #include "command.h"
 
@@ -26,8 +29,7 @@
 int ec_simple_send(ec_master_t *, ec_command_t *);
 int ec_simple_receive(ec_master_t *, ec_command_t *);
 void ec_output_debug_data(const ec_master_t *);
-int ec_read_slave_information(ec_master_t *, unsigned short, unsigned short,
-                              unsigned int *);
+int ec_sii_read(ec_master_t *, unsigned short, unsigned short, unsigned int *);
 void ec_output_lost_frames(ec_master_t *);
 
 /*****************************************************************************/
@@ -354,7 +356,7 @@ int ec_simple_receive(ec_master_t *master, ec_command_t *cmd)
 int ec_scan_for_slaves(ec_master_t *master)
 {
   ec_command_t cmd;
-  ec_slave_t *cur;
+  ec_slave_t *slave;
   unsigned int i, j;
   unsigned char data[2];
 
@@ -380,53 +382,71 @@ int ec_scan_for_slaves(ec_master_t *master)
   // For every slave in the list
   for (i = 0; i < master->bus_slaves_count; i++)
   {
-    cur = master->bus_slaves + i;
+    slave = master->bus_slaves + i;
 
-    ec_slave_init(cur);
+    ec_slave_init(slave);
 
-    // Read base data
+    // Set ring position
+    slave->ring_position = -i;
+    slave->station_address = i + 1;
 
-    ec_command_read(&cmd, cur->station_address, 0x0000, 4);
+    // Write station address
+
+    data[0] = slave->station_address & 0x00FF;
+    data[1] = (slave->station_address & 0xFF00) >> 8;
+
+    ec_command_position_write(&cmd, slave->ring_position, 0x0010, 2, data);
 
     if (unlikely(ec_simple_send_receive(master, &cmd) < 0))
       return -1;
 
     if (unlikely(cmd.working_counter != 1)) {
-      printk(KERN_ERR "EtherCAT: Slave %i did not respond"
-             " while reading base data!\n", i);
+      printk(KERN_ERR "EtherCAT: Slave %i did not repond while writing"
+             " station address!\n", i);
+      return -1;
+    }
+
+    // Read base data
+
+    ec_command_read(&cmd, slave->station_address, 0x0000, 4);
+
+    if (unlikely(ec_simple_send_receive(master, &cmd) < 0))
+      return -1;
+
+    if (unlikely(cmd.working_counter != 1)) {
+      printk(KERN_ERR "EtherCAT: Slave %i did not respond while reading base"
+             " data!\n", i);
       return -1;
     }
 
     // Get base data
 
-    cur->type = cmd.data[0];
-    cur->revision = cmd.data[1];
-    cur->build = cmd.data[2] | (cmd.data[3] << 8);
+    slave->base_type = cmd.data[0];
+    slave->base_revision = cmd.data[1];
+    slave->base_build = cmd.data[2] | (cmd.data[3] << 8);
 
     // Read identification from "Slave Information Interface" (SII)
 
-    if (unlikely(ec_read_slave_information(master, cur->station_address,
-                                           0x0008, &cur->vendor_id) != 0)) {
+    if (unlikely(ec_sii_read(master, slave->station_address, 0x0008,
+                             &slave->sii_vendor_id) != 0)) {
       printk(KERN_ERR "EtherCAT: Could not read SII vendor id!\n");
       return -1;
     }
 
-    if (unlikely(ec_read_slave_information(master, cur->station_address,
-                                           0x000A, &cur->product_code) != 0)) {
+    if (unlikely(ec_sii_read(master, slave->station_address, 0x000A,
+                             &slave->sii_product_code) != 0)) {
       printk(KERN_ERR "EtherCAT: Could not read SII product code!\n");
       return -1;
     }
 
-    if (unlikely(ec_read_slave_information(master, cur->station_address,
-                                           0x000C,
-                                           &cur->revision_number) != 0)) {
+    if (unlikely(ec_sii_read(master, slave->station_address, 0x000C,
+                             &slave->sii_revision_number) != 0)) {
       printk(KERN_ERR "EtherCAT: Could not read SII revision number!\n");
       return -1;
     }
 
-    if (unlikely(ec_read_slave_information(master, cur->station_address,
-                                           0x000E,
-                                           &cur->serial_number) != 0)) {
+    if (unlikely(ec_sii_read(master, slave->station_address, 0x000E,
+                             &slave->sii_serial_number) != 0)) {
       printk(KERN_ERR "EtherCAT: Could not read SII serial number!\n");
       return -1;
     }
@@ -435,37 +455,18 @@ int ec_scan_for_slaves(ec_master_t *master)
 
     for (j = 0; j < slave_ident_count; j++)
     {
-      if (unlikely(slave_idents[j].vendor_id == cur->vendor_id
-                   && slave_idents[j].product_code == cur->product_code))
+      if (unlikely(slave_idents[j].vendor_id == slave->sii_vendor_id
+                   && slave_idents[j].product_code == slave->sii_product_code))
       {
-        cur->desc = slave_idents[j].desc;
+        slave->type = slave_idents[j].type;
         break;
       }
     }
 
-    if (unlikely(!cur->desc)) {
+    if (unlikely(!slave->type)) {
       printk(KERN_ERR "EtherCAT: Unknown slave device (vendor %X, code %X) at "
-             " position %i.\n", cur->vendor_id, cur->product_code, i);
-      return -1;
-    }
-
-    // Set ring position
-    cur->ring_position = -i;
-    cur->station_address = i + 1;
-
-    // Write station address
-
-    data[0] = cur->station_address & 0x00FF;
-    data[1] = (cur->station_address & 0xFF00) >> 8;
-
-    ec_command_position_write(&cmd, cur->ring_position, 0x0010, 2, data);
-
-    if (unlikely(ec_simple_send_receive(master, &cmd) < 0))
-      return -1;
-
-    if (unlikely(cmd.working_counter != 1)) {
-      printk(KERN_ERR "EtherCAT: Slave %i did not repond"
-             " while writing station address!\n", i);
+             " position %i.\n", slave->sii_vendor_id, slave->sii_product_code,
+             i);
       return -1;
     }
   }
@@ -488,10 +489,8 @@ int ec_scan_for_slaves(ec_master_t *master)
    @return 0 bei Erfolg, sonst < 0
 */
 
-int ec_read_slave_information(ec_master_t *master,
-                              unsigned short int node_address,
-                              unsigned short int offset,
-                              unsigned int *target)
+int ec_sii_read(ec_master_t *master, unsigned short int node_address,
+                unsigned short int offset, unsigned int *target)
 {
   ec_command_t cmd;
   unsigned char data[10];
@@ -588,13 +587,11 @@ int ec_state_change(ec_master_t *master, ec_slave_t *slave,
   }
 
   if (unlikely(cmd.working_counter != 1)) {
-    printk(KERN_ERR "EtherCAT: Could not set state %02X - Device \"%s %s\""
-           " (%d) did not respond!\n", state_and_ack, slave->desc->vendor_name,
-           slave->desc->product_name, slave->ring_position * (-1));
+    printk(KERN_ERR "EtherCAT: Could not set state %02X - Device %i (%s %s)"
+           " did not respond!\n", state_and_ack, slave->ring_position * (-1),
+           slave->type->vendor_name, slave->type->product_name);
     return -1;
   }
-
-  slave->requested_state = state_and_ack & 0x0F;
 
   tries_left = 100;
   while (likely(tries_left))
@@ -634,8 +631,6 @@ int ec_state_change(ec_master_t *master, ec_slave_t *slave,
            " checking!\n", state_and_ack);
     return -1;
   }
-
-  slave->current_state = state_and_ack & 0x0F;
 
   return 0;
 }
@@ -711,11 +706,14 @@ void ec_output_lost_frames(ec_master_t *master)
    @return 0 bei Erfolg, sonst < 0
 */
 
-void *EtherCAT_rt_register_slave(ec_master_t *master, unsigned int bus_index,
-                              const char *vendor_name,
-                              const char *product_name, unsigned int domain)
+ec_slave_t *EtherCAT_rt_register_slave(ec_master_t *master,
+                                       unsigned int bus_index,
+                                       const char *vendor_name,
+                                       const char *product_name,
+                                       unsigned int domain)
 {
   ec_slave_t *slave;
+  const ec_slave_type_t *type;
   ec_domain_t *dom;
   unsigned int j;
 
@@ -727,16 +725,18 @@ void *EtherCAT_rt_register_slave(ec_master_t *master, unsigned int bus_index,
 
   slave = master->bus_slaves + bus_index;
 
-  if (slave->process_data) {
+  if (slave->registered) {
     printk(KERN_ERR "EtherCAT: Slave %i is already registered!\n", bus_index);
     return NULL;
   }
 
-  if (strcmp(vendor_name, slave->desc->vendor_name) ||
-      strcmp(product_name, slave->desc->product_name)) {
+  type = slave->type;
+
+  if (strcmp(vendor_name, type->vendor_name) ||
+      strcmp(product_name, type->product_name)) {
     printk(KERN_ERR "Invalid Slave Type! Requested: \"%s %s\", present: \"%s"
-           "%s\".\n", vendor_name, product_name, slave->desc->vendor_name,
-           slave->desc->product_name);
+           " %s\".\n", vendor_name, product_name, type->vendor_name,
+           type->product_name);
     return NULL;
   }
 
@@ -762,17 +762,18 @@ void *EtherCAT_rt_register_slave(ec_master_t *master, unsigned int bus_index,
     master->domain_count++;
   }
 
-  if (dom->data_size + slave->desc->process_data_size > EC_FRAME_SIZE - 14) {
+  if (dom->data_size + type->process_data_size > EC_FRAME_SIZE - 14) {
     printk(KERN_ERR "EtherCAT: Oversized domain %i: %i / %i Bytes!\n",
-           dom->number, dom->data_size + slave->desc->process_data_size,
+           dom->number, dom->data_size + type->process_data_size,
            EC_FRAME_SIZE - 14);
     return NULL;
   }
 
   slave->process_data = dom->data + dom->data_size;
-  dom->data_size += slave->desc->process_data_size;
+  dom->data_size += type->process_data_size;
+  slave->registered = 1;
 
-  return slave->process_data;
+  return slave;
 }
 
 /*****************************************************************************/
@@ -795,14 +796,14 @@ int EtherCAT_rt_activate_slaves(ec_master_t *master)
   unsigned int i;
   ec_slave_t *slave;
   ec_command_t cmd;
-  const ec_slave_desc_t *desc;
+  const ec_slave_type_t *type;
   unsigned char fmmu[16];
   unsigned char data[256];
 
   for (i = 0; i < master->bus_slaves_count; i++)
   {
     slave = master->bus_slaves + i;
-    desc = slave->desc;
+    type = slave->type;
 
     if (unlikely(ec_state_change(master, slave, EC_SLAVE_STATE_INIT) != 0))
       return -1;
@@ -824,7 +825,7 @@ int EtherCAT_rt_activate_slaves(ec_master_t *master)
 
     // Resetting Sync Manager channels
 
-    if (desc->type != EC_NOSYNC_SLAVE)
+    if (type->features != EC_NOSYNC_SLAVE)
     {
       memset(data, 0x00, 256);
 
@@ -840,14 +841,21 @@ int EtherCAT_rt_activate_slaves(ec_master_t *master)
       }
     }
 
+    // Check if slave was registered...
+
+    if (!slave->registered) {
+      printk(KERN_INFO "EtherCAT: Slave %i (%s %s) was not registered.\n",
+             i, type->vendor_name, type->product_name);
+      continue;
+    }
+
     // Init Mailbox communication
 
-    if (desc->type == EC_MAILBOX_SLAVE)
+    if (type->features == EC_MAILBOX_SLAVE)
     {
-      if (desc->sm0)
+      if (type->sm0)
       {
-        ec_command_write(&cmd, slave->station_address, 0x0800, 8,
-                         desc->sm0);
+        ec_command_write(&cmd, slave->station_address, 0x0800, 8, type->sm0);
 
         if (unlikely(ec_simple_send_receive(master, &cmd) < 0))
           return -1;
@@ -859,10 +867,9 @@ int EtherCAT_rt_activate_slaves(ec_master_t *master)
         }
       }
 
-      if (desc->sm1)
+      if (type->sm1)
       {
-        ec_command_write(&cmd, slave->station_address, 0x0808, 8,
-                         desc->sm1);
+        ec_command_write(&cmd, slave->station_address, 0x0808, 8, type->sm1);
 
         if (unlikely(ec_simple_send_receive(master, &cmd) < 0))
           return -1;
@@ -883,7 +890,7 @@ int EtherCAT_rt_activate_slaves(ec_master_t *master)
 
     // Set FMMU's
 
-    if (desc->fmmu0)
+    if (type->fmmu0)
     {
       if (unlikely(!slave->process_data)) {
         printk(KERN_ERR "EtherCAT: Warning - Slave %04X is not assigned to any"
@@ -891,7 +898,7 @@ int EtherCAT_rt_activate_slaves(ec_master_t *master)
         return -1;
       }
 
-      memcpy(fmmu, desc->fmmu0, 16);
+      memcpy(fmmu, type->fmmu0, 16);
 
       fmmu[0] = slave->logical_address & 0x000000FF;
       fmmu[1] = (slave->logical_address & 0x0000FF00) >> 8;
@@ -912,12 +919,11 @@ int EtherCAT_rt_activate_slaves(ec_master_t *master)
 
     // Set Sync Managers
 
-    if (desc->type != EC_MAILBOX_SLAVE)
+    if (type->features != EC_MAILBOX_SLAVE)
     {
-      if (desc->sm0)
+      if (type->sm0)
       {
-        ec_command_write(&cmd, slave->station_address, 0x0800, 8,
-                         desc->sm0);
+        ec_command_write(&cmd, slave->station_address, 0x0800, 8, type->sm0);
 
         if (unlikely(ec_simple_send_receive(master, &cmd) < 0))
           return -1;
@@ -929,10 +935,9 @@ int EtherCAT_rt_activate_slaves(ec_master_t *master)
         }
       }
 
-      if (desc->sm1)
+      if (type->sm1)
       {
-        ec_command_write(&cmd, slave->station_address, 0x0808, 8,
-                         desc->sm1);
+        ec_command_write(&cmd, slave->station_address, 0x0808, 8, type->sm1);
 
         if (unlikely(ec_simple_send_receive(master, &cmd) < 0))
           return -1;
@@ -945,9 +950,9 @@ int EtherCAT_rt_activate_slaves(ec_master_t *master)
       }
     }
 
-    if (desc->sm2)
+    if (type->sm2)
     {
-      ec_command_write(&cmd, slave->station_address, 0x0810, 8, desc->sm2);
+      ec_command_write(&cmd, slave->station_address, 0x0810, 8, type->sm2);
 
       if (unlikely(ec_simple_send_receive(master, &cmd) < 0))
         return -1;
@@ -959,9 +964,9 @@ int EtherCAT_rt_activate_slaves(ec_master_t *master)
       }
     }
 
-    if (desc->sm3)
+    if (type->sm3)
     {
-      ec_command_write(&cmd, slave->station_address, 0x0818, 8, desc->sm3);
+      ec_command_write(&cmd, slave->station_address, 0x0818, 8, type->sm3);
 
       if (unlikely(ec_simple_send_receive(master, &cmd) < 0))
         return -1;
@@ -1024,8 +1029,8 @@ int EtherCAT_rt_deactivate_slaves(ec_master_t *master)
    @return 0 bei Erfolg, sonst < 0
 */
 
-int EtherCAT_rt_domain_cycle(ec_master_t *master, unsigned int domain,
-                             unsigned int timeout_us)
+int EtherCAT_rt_exchange_io(ec_master_t *master, unsigned int domain,
+                            unsigned int timeout_us)
 {
   unsigned int i;
   ec_domain_t *dom;
@@ -1103,7 +1108,7 @@ int EtherCAT_rt_domain_cycle(ec_master_t *master, unsigned int domain,
 EXPORT_SYMBOL(EtherCAT_rt_register_slave);
 EXPORT_SYMBOL(EtherCAT_rt_activate_slaves);
 EXPORT_SYMBOL(EtherCAT_rt_deactivate_slaves);
-EXPORT_SYMBOL(EtherCAT_rt_domain_cycle);
+EXPORT_SYMBOL(EtherCAT_rt_exchange_io);
 
 /*****************************************************************************/
 

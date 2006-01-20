@@ -32,7 +32,7 @@ ec_device_t *EtherCAT_dev_register(unsigned int, struct net_device *,
                                    irqreturn_t (*)(int, void *,
                                                    struct pt_regs *),
                                    struct module *);
-void EtherCAT_dev_unregister(unsigned int);
+void EtherCAT_dev_unregister(unsigned int, ec_device_t *);
 int EtherCAT_dev_is_ec(ec_device_t *, struct net_device *);
 void EtherCAT_dev_state(ec_device_t *, ec_device_state_t);
 int EtherCAT_dev_receive(ec_device_t *, void *, unsigned int);

@@ -168,6 +168,7 @@ ec_device_t *EtherCAT_dev_register(unsigned int master_index,
                                    struct module *module)
 {
   ec_device_t *ecd;
+  ec_master_t *master;
 
   if (master_index >= ec_master_count) {
     printk(KERN_ERR "EtherCAT: Master %i does not exist!\n", master_index);
@@ -179,13 +180,15 @@ ec_device_t *EtherCAT_dev_register(unsigned int master_index,
     return NULL;
   }
 
-  if (ec_masters[master_index].device_registered) {
+  master = ec_masters + master_index;
+
+  if (master->device_registered) {
     printk(KERN_ERR "EtherCAT: Master %i already has a device!\n",
            master_index);
     return NULL;
   }
 
-  ecd = &ec_masters[master_index].device;
+  ecd = &master->device;
 
   if (ec_device_init(ecd) < 0) {
     return NULL;
@@ -196,6 +199,8 @@ ec_device_t *EtherCAT_dev_register(unsigned int master_index,
   ecd->rx_skb->dev = dev;
   ecd->isr = isr;
   ecd->module = module;
+
+  master->device_registered = 1;
 
   return ecd;
 }
@@ -209,15 +214,24 @@ ec_device_t *EtherCAT_dev_register(unsigned int master_index,
    @param device Das EtherCAT-Geraet
 */
 
-void EtherCAT_dev_unregister(unsigned int master_index)
+void EtherCAT_dev_unregister(unsigned int master_index, ec_device_t *ecd)
 {
+  ec_master_t *master;
+
   if (master_index >= ec_master_count) {
     printk(KERN_WARNING "EtherCAT: Master %i does not exist!\n", master_index);
     return;
   }
 
-  ec_masters[master_index].device_registered = 0;
-  ec_device_clear(&ec_masters[master_index].device);
+  master = ec_masters + master_index;
+
+  if (!master->device_registered || &master->device != ecd) {
+    printk(KERN_ERR "EtherCAT: Unable to unregister device!\n");
+    return;
+  }
+
+  master->device_registered = 0;
+  ec_device_clear(ecd);
 }
 
 /******************************************************************************
@@ -235,7 +249,7 @@ void EtherCAT_dev_unregister(unsigned int master_index)
    @returns Zeiger auf EtherCAT-Master oder NULL, wenn Parameter ungueltig.
 */
 
-ec_master_t *EtherCAT_rt_request_master(int index)
+ec_master_t *EtherCAT_rt_request_master(unsigned int index)
 {
   ec_master_t *master;
 
@@ -334,3 +348,9 @@ EXPORT_SYMBOL(EtherCAT_rt_request_master);
 EXPORT_SYMBOL(EtherCAT_rt_release_master);
 
 /*****************************************************************************/
+
+/* Emacs-Konfiguration
+;;; Local Variables: ***
+;;; c-basic-offset:2 ***
+;;; End: ***
+*/

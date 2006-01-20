@@ -55,23 +55,23 @@ ec_master_t *master = NULL;
 static unsigned int ecat_bus_time = 0;
 static unsigned int ecat_timeouts = 0;
 
-#if 0
-static ec_slave_t slaves[] =
-{
-    // Block 1
-    ECAT_INIT_SLAVE(Beckhoff_EK1100, 0),
-    ECAT_INIT_SLAVE(Beckhoff_EL3102, 0)
-};
-#endif
+ec_slave_t *s_controller;
+ec_slave_t *s_analog_in;
 
-#define ECAT_SLAVES_COUNT (sizeof(ecat_slaves) / sizeof(EtherCAT_slave_t))
-
-#define USE_MSR_LIB
-
-#ifdef USE_MSR_LIB
 double value;
 int dig1;
-#endif
+
+/*****************************************************************************/
+
+static int register_slaves(void)
+{
+    s_controller = EtherCAT_rt_register_slave(master, 0,
+                                              "Beckhoff", "EK1100", 0);
+    s_analog_in = EtherCAT_rt_register_slave(master, 1,
+                                             "Beckhoff", "EL3102", 0);
+
+    return !s_controller || !s_analog_in;
+}
 
 /******************************************************************************
  *
@@ -93,7 +93,7 @@ static void msr_controller_run(void)
 #endif
 
     // Prozessdaten lesen und schreiben
-    EtherCAT_rt_domain_cycle(master, 0, 40);
+    EtherCAT_rt_exchange_io(master, 0, 40);
 
 #if 0
     if (debug_counter == 0) {
@@ -126,12 +126,10 @@ void msr_run(unsigned irq)
 {
     static int counter = 0;
 
-#ifdef USE_MSR_LIB
+    // Schreibe Kanal1 von Klemme X auf 1
+
     timeval_add(&process_time, &process_time, &msr_time_increment);
     MSR_ADEOS_INTERRUPT_CODE(msr_controller_run(); msr_write_kanal_list(););
-#else
-    msr_controller_run();
-#endif
 
     ipipe_control_irq(irq,0,IPIPE_ENABLE_MASK);  //Interrupt bestŽätigen
     if (counter++ > HZREDUCTION) {
@@ -169,10 +167,8 @@ void domain_entry(void)
 
 int msr_globals_register(void)
 {
-#ifdef USE_MSR_LIB
     msr_reg_kanal("/value", "V", &value, TDBL);
     msr_reg_kanal("/dig1", "", &dig1, TINT);
-#endif
 
     msr_reg_kanal("/Taskinfo/EtherCAT/BusTime", "us", &ecat_bus_time, TUINT);
     msr_reg_kanal("/Taskinfo/EtherCAT/Timeouts", "", &ecat_timeouts, TUINT);
@@ -189,29 +185,25 @@ int __init init_rt_module(void)
     struct ipipe_domain_attr attr; //ipipe
 
     // Als allererstes die RT-lib initialisieren
-#ifdef USE_MSR_LIB
     if (msr_rtlib_init(1,MSR_ABTASTFREQUENZ,10,&msr_globals_register) < 0) {
         msr_print_warn("msr_modul: can't initialize rtlib!");
         goto out_return;
     }
-#endif
 
     msr_jitter_init();
 
     printk(KERN_INFO "=== Starting EtherCAT environment... ===\n");
 
     if ((master = EtherCAT_rt_request_master(0)) == NULL) {
-        printk(KERN_ERR "EtherCAT master 0 not available!\n");
+        printk(KERN_ERR "Error requesting master 0!\n");
         goto out_msr_cleanup;
     }
 
-#if 0
-    printk("Checking EtherCAT slaves.\n");
-    if (EtherCAT_check_slaves(master, ecat_slaves, ECAT_SLAVES_COUNT) != 0) {
+    printk("Registering EtherCAT slaves.\n");
+    if (register_slaves()) {
         printk(KERN_ERR "EtherCAT: Could not init slaves!\n");
         goto out_release_master;
     }
-#endif
 
     printk("Activating all EtherCAT slaves.\n");
 
@@ -266,9 +258,7 @@ void __exit cleanup_rt_module(void)
         printk(KERN_INFO "=== EtherCAT environment stopped. ===\n");
     }
 
-#ifdef USE_MSR_LIB
     msr_rtlib_cleanup();
-#endif
 }
 
 /*****************************************************************************/
@@ -281,3 +271,9 @@ module_init(init_rt_module);
 module_exit(cleanup_rt_module);
 
 /*****************************************************************************/
+
+/* Emacs-Konfiguration
+;;; Local Variables: ***
+;;; c-basic-offset:4 ***
+;;; End: ***
+*/

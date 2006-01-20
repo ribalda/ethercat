@@ -59,7 +59,7 @@ static void run(unsigned long data)
 
     // Prozessdaten lesen und schreiben
     rdtscl(k);
-    EtherCAT_rt_domain_cycle(master, 1, 100);
+    EtherCAT_rt_exchange_io(master, 1, 100);
     firstrun = 0;
 
     timer.expires += HZ / 1000;

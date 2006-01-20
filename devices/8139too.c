@@ -2982,7 +2982,7 @@ static int __init rtl8139_init_module (void)
  out_ec_dev:
     if (rtl_ec_dev) {
       printk(KERN_INFO "Unregistering RTL8139-EtherCAT device...\n");
-      EtherCAT_dev_unregister(ec_device_master_index);
+      EtherCAT_dev_unregister(ec_device_master_index, rtl_ec_dev);
       rtl_ec_dev = NULL;
     }
 
@@ -2998,13 +2998,13 @@ static void __exit rtl8139_cleanup_module (void)
 
   printk(KERN_INFO "Cleaning up RTL8139-EtherCAT module...\n");
 
+  pci_unregister_driver(&rtl8139_pci_driver);
+
   if (rtl_ec_dev) {
     printk(KERN_INFO "Unregistering RTL8139-EtherCAT device...\n");
-    EtherCAT_dev_unregister(ec_device_master_index);
+    EtherCAT_dev_unregister(ec_device_master_index, rtl_ec_dev);
     rtl_ec_dev = NULL;
   }
-
-  pci_unregister_driver(&rtl8139_pci_driver);
 
   printk(KERN_INFO "RTL8139-EtherCAT module cleaned up.\n");
 

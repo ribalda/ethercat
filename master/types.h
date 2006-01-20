@@ -11,12 +11,14 @@
 #ifndef _EC_TYPES_H_
 #define _EC_TYPES_H_
 
+#include "../include/EtherCAT_rt.h"
+
 /*****************************************************************************/
 
 /**
-   Typ eines EtherCAT-Slaves.
+   Features eines EtherCAT-Slaves.
 
-   Dieser Typ muss für die Konfiguration bekannt sein. Der
+   Diese Angabe muss für die Konfiguration bekannt sein. Der
    Master entscheidet danach, ober bspw. Mailboxes konfigurieren,
    oder Sync-Manager setzen soll.
 */
@@ -25,7 +27,7 @@ typedef enum
 {
   EC_SIMPLE_SLAVE, EC_MAILBOX_SLAVE, EC_NOSYNC_SLAVE
 }
-ec_slave_type_t;
+ec_slave_features_t;
 
 /*****************************************************************************/
 
@@ -37,13 +39,13 @@ ec_slave_type_t;
    Slave-internen Sync-Manager und FMMU's.
 */
 
-typedef struct slave_desc
+struct ec_slave_type
 {
   const char *vendor_name; /**< Name des Herstellers */
   const char *product_name; /**< Name des Slaves-Typs */
   const char *product_desc; /**< Genauere Beschreibung des Slave-Typs */
 
-  const ec_slave_type_t type; /**< Art des Slave-Typs */
+  ec_slave_features_t features; /**< Features des Slave-Typs */
 
   const unsigned char *sm0; /**< Konfigurationsdaten des
                                ersten Sync-Managers */
@@ -57,16 +59,8 @@ typedef struct slave_desc
   const unsigned char *fmmu0; /**< Konfigurationsdaten
                                  der ersten FMMU */
 
-  const unsigned int process_data_size; /**< Länge der Prozessdaten in Bytes */
-  const unsigned int channel_count; /**< Anzahl der Kanäle */
-
-  int (*read) (unsigned char *, unsigned int); /**< Funktion zum Dekodieren
-                                                  und Lesen der Kanaldaten */
-  void (*write) (unsigned char *, unsigned int, int); /**< Funktion zum
-                                                         Kodieren und Schreiben
-                                                         der Kanaldaten */
-}
-ec_slave_desc_t;
+  unsigned int process_data_size; /**< Länge der Prozessdaten in Bytes */
+};
 
 /*****************************************************************************/
 
@@ -79,10 +73,9 @@ ec_slave_desc_t;
 
 typedef struct slave_ident
 {
-  const unsigned int vendor_id; /**< Hersteller-Code */
-  const unsigned int product_code; /**< Herstellerspezifischer Produktcode */
-  const ec_slave_desc_t *desc; /**< Zeiger auf den dazugehörigen
-                                        Slave-Typ */
+  unsigned int vendor_id; /**< Hersteller-Code */
+  unsigned int product_code; /**< Herstellerspezifischer Produktcode */
+  const ec_slave_type_t *type; /**< Zeiger auf den entsprechenden Slave-Typ */
 }
 ec_slave_ident_t;
 

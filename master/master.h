@@ -25,7 +25,7 @@
    dem zugewiesenen EtherCAT-Gerät.
 */
 
-typedef struct ec_master
+struct ec_master
 {
   ec_slave_t *bus_slaves; /**< Array von Slaves auf dem Bus */
   unsigned int bus_slaves_count; /**< Anzahl Slaves auf dem Bus */
@@ -46,8 +46,7 @@ typedef struct ec_master
   unsigned int frames_lost; /**< Anzahl verlorene Frames */
   unsigned long t_lost_output; /*<< Timer-Ticks bei der letzten Ausgabe von
                                  verlorenen Frames */
-}
-ec_master_t;
+};
 
 /*****************************************************************************/
 

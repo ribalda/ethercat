@@ -45,116 +45,60 @@ unsigned char fmmu0_41xx[] = {0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x07,
 
 /*****************************************************************************/
 
-/* Lese- und Schreibfunktionen */
-
-int read_1014(unsigned char *data, unsigned int channel)
-{
-  return (data[0] >> channel) & 0x01;
-}
-
-void write_2004(unsigned char *data, unsigned int channel, int value)
-{
-  if (value) {
-    data[0] |= (1 << channel);
-  }
-  else {
-    data[0] &= ~(1 << channel);
-  }
-}
-
-int read_31xx(unsigned char *data, unsigned int channel)
-{
-  return (short int) ((data[channel * 3 + 2] << 8) | data[channel * 3 + 1]);
-}
-
-void write_41xx(unsigned char *data, unsigned int channel, int value)
-{
-  data[channel * 3 + 1] = (value & 0xFF00) >> 8;
-  data[channel * 3 + 2] = value & 0xFF;
-}
-
-/*****************************************************************************/
-
 /* Klemmen-Objekte */
 
-ec_slave_desc_t Beckhoff_EK1100[] =
+ec_slave_type_t Beckhoff_EK1100[] =
 {{
   "Beckhoff", "EK1100", "Bus Coupler",
-  EC_NOSYNC_SLAVE,
-  NULL, NULL, NULL, NULL,
-  NULL,
-  0, 0,
-  NULL, NULL
+  EC_NOSYNC_SLAVE, NULL, NULL, NULL, NULL, NULL, 0
 }};
 
-ec_slave_desc_t Beckhoff_EL1014[] =
+ec_slave_type_t Beckhoff_EK1110[] =
+{{
+  "Beckhoff", "EK1110", "Extension terminal",
+  EC_NOSYNC_SLAVE, NULL, NULL, NULL, NULL, NULL, 0
+}};
+
+ec_slave_type_t Beckhoff_EL1014[] =
 {{
   "Beckhoff", "EL1014", "4x Digital Input",
-  EC_SIMPLE_SLAVE,
-  sm0_1014, NULL, NULL, NULL,
-  fmmu0_1014,
-  1, 4,
-  read_1014, NULL
+  EC_SIMPLE_SLAVE, sm0_1014, NULL, NULL, NULL, fmmu0_1014, 1
 }};
 
-ec_slave_desc_t Beckhoff_EL2004[] =
+ec_slave_type_t Beckhoff_EL2004[] =
 {{
   "Beckhoff", "EL2004", "4x Digital Output",
-  EC_SIMPLE_SLAVE,
-  sm0_2004, NULL, NULL, NULL,
-  fmmu0_2004,
-  1, 4,
-  NULL, write_2004
+  EC_SIMPLE_SLAVE, sm0_2004, NULL, NULL, NULL, fmmu0_2004, 1
 }};
 
-ec_slave_desc_t Beckhoff_EL3102[] =
+ec_slave_type_t Beckhoff_EL3102[] =
 {{
   "Beckhoff", "EL3102", "2x Analog Input diff.",
-  EC_MAILBOX_SLAVE,
-  sm0_multi, sm1_multi, sm2_31xx, sm3_31xx,
-  fmmu0_31xx,
-  6, 2,
-  read_31xx, NULL
+  EC_MAILBOX_SLAVE, sm0_multi, sm1_multi, sm2_31xx, sm3_31xx, fmmu0_31xx, 6
 }};
 
-ec_slave_desc_t Beckhoff_EL3162[] =
+ec_slave_type_t Beckhoff_EL3162[] =
 {{
   "Beckhoff", "EL3162", "2x Analog Input",
-  EC_MAILBOX_SLAVE,
-  sm0_multi, sm1_multi, sm2_31xx, sm3_31xx,
-  fmmu0_31xx,
-  6, 2,
-  read_31xx, NULL
+  EC_MAILBOX_SLAVE, sm0_multi, sm1_multi, sm2_31xx, sm3_31xx, fmmu0_31xx, 6
 }};
 
-ec_slave_desc_t Beckhoff_EL4102[] =
+ec_slave_type_t Beckhoff_EL4102[] =
 {{
   "Beckhoff", "EL4102", "2x Analog Output",
-  EC_MAILBOX_SLAVE,
-  sm0_multi, sm1_multi, sm2_41xx, NULL,
-  fmmu0_41xx,
-  4, 2,
-  NULL, write_41xx
+  EC_MAILBOX_SLAVE, sm0_multi, sm1_multi, sm2_41xx, NULL, fmmu0_41xx, 4
 }};
 
-ec_slave_desc_t Beckhoff_EL4132[] =
+ec_slave_type_t Beckhoff_EL4132[] =
 {{
   "Beckhoff", "EL4132", "2x Analog Output diff.",
-  EC_MAILBOX_SLAVE,
-  sm0_multi, sm1_multi, sm2_41xx, NULL,
-  fmmu0_41xx,
-  4, 2,
-  NULL, write_41xx
+  EC_MAILBOX_SLAVE, sm0_multi, sm1_multi, sm2_41xx, NULL, fmmu0_41xx, 4
 }};
 
-ec_slave_desc_t Beckhoff_EL5001[] =
+ec_slave_type_t Beckhoff_EL5001[] =
 {{
-  "Beckhoff", "EL5001", "SSI-Interface",
-  EC_SIMPLE_SLAVE,
-  NULL, NULL, NULL, NULL, // Noch nicht eingepflegt...
-  NULL,
-  0, 0,
-  NULL, NULL
+  "Beckhoff", "EL5001", "SSI-Interface", // Noch nicht eingepflegt...
+  EC_SIMPLE_SLAVE, NULL, NULL, NULL, NULL, NULL, 0
 }};
 
 /*****************************************************************************/
@@ -171,6 +115,7 @@ ec_slave_ident_t slave_idents[] =
 {
   {0x00000002, 0x03F63052, Beckhoff_EL1014},
   {0x00000002, 0x044C2C52, Beckhoff_EK1100},
+  {0x00000002, 0x04562C52, Beckhoff_EK1110},
   {0x00000002, 0x07D43052, Beckhoff_EL2004},
   {0x00000002, 0x0C1E3052, Beckhoff_EL3102},
   {0x00000002, 0x0C5A3052, Beckhoff_EL3162},
