@@ -33,7 +33,7 @@
 
 // EtherCAT
 #include "../include/EtherCAT_rt.h"
-#include "../eclib/eclib.h"
+#include "../libec/libec.h"
 
 // Defines/Makros
 #define TSC2US(T1, T2) ((T2 - T1) * 1000UL / cpu_khz)
@@ -51,11 +51,7 @@ static struct ipipe_domain this_domain;
 static struct ipipe_sysinfo sys_info;
 
 // EtherCAT
-
 ec_master_t *master = NULL;
-static unsigned int ecat_bus_time = 0;
-static unsigned int ecat_timeouts = 0;
-
 ec_slave_t *s_in1, *s_out1, *s_out2, *s_out3;
 
 double value;
@@ -90,18 +86,22 @@ static void msr_controller_run(void)
     }
     else {
         // "Star Trek"-Effekte
-        *((unsigned char *) s_out1->process_data) = jiffies;
-        *((unsigned char *) s_out2->process_data) = jiffies >> 4;
-        *((unsigned char *) s_out3->process_data) = jiffies >> 8;
+        LEC_write_EL20XX(s_out1, 0, jiffies & 1);
+        LEC_write_EL20XX(s_out1, 1, (jiffies >> 1) & 1);
+        LEC_write_EL20XX(s_out1, 2, (jiffies >> 2) & 1);
+        LEC_write_EL20XX(s_out1, 3, (jiffies >> 3) & 1);
+        LEC_write_EL20XX(s_out2, 0, (jiffies >> 4) & 1);
+        LEC_write_EL20XX(s_out2, 1, (jiffies >> 3) & 1);
+        LEC_write_EL20XX(s_out2, 2, (jiffies >> 2) & 1);
+        LEC_write_EL20XX(s_out2, 3, (jiffies >> 6) & 1);
+        LEC_write_EL20XX(s_out3, 0, (jiffies >> 7) & 1);
+        LEC_write_EL20XX(s_out3, 1, (jiffies >> 2) & 1);
+        LEC_write_EL20XX(s_out3, 2, (jiffies >> 8) & 1);
 
         counter = MSR_ABTASTFREQUENZ / 4;
     }
 
-    if (((char *) s_in1->process_data)[2] < 0)
-        ((unsigned char *) s_out3->process_data)[0] |= 8;
-    else
-        ((unsigned char *) s_out3->process_data)[0] &= ~8;
-
+    LEC_write_EL20XX(s_out3, 3, LEC_read_EL31XX(s_in1, 0) < 0);
 
     // Prozessdaten lesen und schreiben
     EtherCAT_rt_domain_xio(master, 0, 40);
@@ -167,9 +167,6 @@ int msr_globals_register(void)
 {
     msr_reg_kanal("/value", "V", &value, TDBL);
     msr_reg_kanal("/dig1", "", &dig1, TINT);
-
-    msr_reg_kanal("/Taskinfo/EtherCAT/BusTime", "us", &ecat_bus_time, TUINT);
-    msr_reg_kanal("/Taskinfo/EtherCAT/Timeouts", "", &ecat_timeouts, TUINT);
 
     return 0;
 }

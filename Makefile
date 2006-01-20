@@ -13,7 +13,7 @@ ifneq ($(KERNELRELEASE),)
 #------------------------------------------------------------------------------
 # Kbuild-Abschnitt
 
-obj-m := master/ devices/ rt/ mini/
+obj-m := master/ devices/ libec/ rt/ mini/
 
 #------------------------------------------------------------------------------
 
@@ -25,7 +25,7 @@ else
 include ethercat.conf
 
 modules:
-	$(MAKE) -C $(KERNELDIR) M=`pwd` modules
+	$(MAKE) -C $(KERNELDIR) M=`pwd`
 
 clean:
 	$(MAKE) -C $(KERNELDIR) M=`pwd` clean
