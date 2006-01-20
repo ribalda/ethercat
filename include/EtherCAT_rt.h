@@ -30,14 +30,16 @@ ec_slave_t *EtherCAT_rt_register_slave(ec_master_t *master,
                                        unsigned int slave_index,
                                        const char *vendor_name,
                                        const char *product_name,
-                                       unsigned int domain);
+                                       int domain);
 
 int EtherCAT_rt_activate_slaves(ec_master_t *master);
 
 int EtherCAT_rt_deactivate_slaves(ec_master_t *master);
 
-int EtherCAT_rt_exchange_io(ec_master_t *master, unsigned int domain,
-                            unsigned int timeout_us);
+int EtherCAT_rt_domain_xio(ec_master_t *master, unsigned int domain,
+                           unsigned int timeout_us);
+
+void EtherCAT_rt_debug_level(ec_master_t *master, int level);
 
 /*****************************************************************************/
 

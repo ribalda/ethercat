@@ -81,6 +81,35 @@ void ec_master_clear(ec_master_t *master)
 /*****************************************************************************/
 
 /**
+   Setzt den Master in den Ausgangszustand.
+
+   Bei einem "release" sollte immer diese Funktion aufgerufen werden,
+   da sonst Slave-Liste, Domains, etc. weiter existieren.
+
+   @param master Zeiger auf den zurückzusetzenden Master
+*/
+
+void ec_master_reset(ec_master_t *master)
+{
+  if (master->bus_slaves) {
+    kfree(master->bus_slaves);
+    master->bus_slaves = NULL;
+  }
+
+  master->bus_slaves_count = 0;
+  master->command_index = 0;
+  master->tx_data_length = 0;
+  master->rx_data_length = 0;
+  master->domain_count = 0;
+  master->debug_level = 0;
+  master->bus_time = 0;
+  master->frames_lost = 0;
+  master->t_lost_output = 0;
+}
+
+/*****************************************************************************/
+
+/**
    Öffnet das EtherCAT-Geraet des Masters.
 
    @param master Der EtherCAT-Master
@@ -710,12 +739,17 @@ ec_slave_t *EtherCAT_rt_register_slave(ec_master_t *master,
                                        unsigned int bus_index,
                                        const char *vendor_name,
                                        const char *product_name,
-                                       unsigned int domain)
+                                       int domain)
 {
   ec_slave_t *slave;
   const ec_slave_type_t *type;
   ec_domain_t *dom;
   unsigned int j;
+
+  if (domain < 0) {
+    printk(KERN_ERR "EtherCAT: Invalid domain: %i\n", domain);
+    return NULL;
+  }
 
   if (bus_index >= master->bus_slaves_count) {
     printk(KERN_ERR "EtherCAT: Illegal bus index! (%i / %i)\n", bus_index,
@@ -734,7 +768,7 @@ ec_slave_t *EtherCAT_rt_register_slave(ec_master_t *master,
 
   if (strcmp(vendor_name, type->vendor_name) ||
       strcmp(product_name, type->product_name)) {
-    printk(KERN_ERR "Invalid Slave Type! Requested: \"%s %s\", present: \"%s"
+    printk(KERN_ERR "Invalid Slave Type! Requested: \"%s %s\", found: \"%s"
            " %s\".\n", vendor_name, product_name, type->vendor_name,
            type->product_name);
     return NULL;
@@ -745,6 +779,7 @@ ec_slave_t *EtherCAT_rt_register_slave(ec_master_t *master,
   for (j = 0; j < master->domain_count; j++) {
     if (domain == master->domains[j].number) {
       dom = master->domains + j;
+      break;
     }
   }
 
@@ -770,8 +805,10 @@ ec_slave_t *EtherCAT_rt_register_slave(ec_master_t *master,
   }
 
   slave->process_data = dom->data + dom->data_size;
-  dom->data_size += type->process_data_size;
+  slave->logical_address = dom->data_size;
   slave->registered = 1;
+
+  dom->data_size += type->process_data_size;
 
   return slave;
 }
@@ -1029,8 +1066,8 @@ int EtherCAT_rt_deactivate_slaves(ec_master_t *master)
    @return 0 bei Erfolg, sonst < 0
 */
 
-int EtherCAT_rt_exchange_io(ec_master_t *master, unsigned int domain,
-                            unsigned int timeout_us)
+int EtherCAT_rt_domain_xio(ec_master_t *master, unsigned int domain,
+                           unsigned int timeout_us)
 {
   unsigned int i;
   ec_domain_t *dom;
@@ -1105,10 +1142,22 @@ int EtherCAT_rt_exchange_io(ec_master_t *master, unsigned int domain,
 
 /*****************************************************************************/
 
+/**
+   Setzt die Debug-Ebene des Masters.
+*/
+
+void EtherCAT_rt_debug_level(ec_master_t *master, int level)
+{
+  master->debug_level = level;
+}
+
+/*****************************************************************************/
+
 EXPORT_SYMBOL(EtherCAT_rt_register_slave);
 EXPORT_SYMBOL(EtherCAT_rt_activate_slaves);
 EXPORT_SYMBOL(EtherCAT_rt_deactivate_slaves);
-EXPORT_SYMBOL(EtherCAT_rt_exchange_io);
+EXPORT_SYMBOL(EtherCAT_rt_domain_xio);
+EXPORT_SYMBOL(EtherCAT_rt_debug_level);
 
 /*****************************************************************************/
 

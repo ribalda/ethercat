@@ -324,6 +324,8 @@ void EtherCAT_rt_release_master(ec_master_t *master)
       }
 
       ec_master_close(master);
+      ec_master_reset(master);
+
       module_put(master->device.module);
       ec_masters_reserved[i] = 0;
 

@@ -33,6 +33,7 @@
 
 // EtherCAT
 #include "../include/EtherCAT_rt.h"
+#include "../eclib/eclib.h"
 
 // Defines/Makros
 #define TSC2US(T1, T2) ((T2 - T1) * 1000UL / cpu_khz)
@@ -55,8 +56,7 @@ ec_master_t *master = NULL;
 static unsigned int ecat_bus_time = 0;
 static unsigned int ecat_timeouts = 0;
 
-ec_slave_t *s_controller;
-ec_slave_t *s_analog_in;
+ec_slave_t *s_in1, *s_out1, *s_out2, *s_out3;
 
 double value;
 int dig1;
@@ -65,12 +65,12 @@ int dig1;
 
 static int register_slaves(void)
 {
-    s_controller = EtherCAT_rt_register_slave(master, 0,
-                                              "Beckhoff", "EK1100", 0);
-    s_analog_in = EtherCAT_rt_register_slave(master, 1,
-                                             "Beckhoff", "EL3102", 0);
+    s_in1 = EtherCAT_rt_register_slave(master, 1, "Beckhoff", "EL3102", 0);
+    s_out1 = EtherCAT_rt_register_slave(master, 8, "Beckhoff", "EL2004", 0);
+    s_out2 = EtherCAT_rt_register_slave(master, 9, "Beckhoff", "EL2004", 0);
+    s_out3 = EtherCAT_rt_register_slave(master, 10, "Beckhoff", "EL2004", 0);
 
-    return !s_controller || !s_analog_in;
+    return !s_in1 || !s_out1 || !s_out2 || !s_out3;
 }
 
 /******************************************************************************
@@ -81,30 +81,30 @@ static int register_slaves(void)
 
 static void msr_controller_run(void)
 {
-    static unsigned int debug_counter = 0;
+    static unsigned int counter = 0;
 
-    // Prozessdaten lesen
     msr_jitter_run(MSR_ABTASTFREQUENZ);
 
-#if 0
-    if (debug_counter == 0) {
-        master->debug_level = 2;
+    if (counter) {
+        counter--;
     }
-#endif
+    else {
+        // "Star Trek"-Effekte
+        *((unsigned char *) s_out1->process_data) = jiffies;
+        *((unsigned char *) s_out2->process_data) = jiffies >> 4;
+        *((unsigned char *) s_out3->process_data) = jiffies >> 8;
+
+        counter = MSR_ABTASTFREQUENZ / 4;
+    }
+
+    if (((char *) s_in1->process_data)[2] < 0)
+        ((unsigned char *) s_out3->process_data)[0] |= 8;
+    else
+        ((unsigned char *) s_out3->process_data)[0] &= ~8;
+
 
     // Prozessdaten lesen und schreiben
-    EtherCAT_rt_exchange_io(master, 0, 40);
-
-#if 0
-    if (debug_counter == 0) {
-        master->debug_level = 0;
-    }
-#endif
-
-    //    value = EtherCAT_read_value(&ecat_slaves[1], 0);
-
-    debug_counter++;
-    if (debug_counter >= MSR_ABTASTFREQUENZ * 5) debug_counter = 0;
+    EtherCAT_rt_domain_xio(master, 0, 40);
 }
 
 /******************************************************************************
@@ -125,8 +125,6 @@ static void msr_controller_run(void)
 void msr_run(unsigned irq)
 {
     static int counter = 0;
-
-    // Schreibe Kanal1 von Klemme X auf 1
 
     timeval_add(&process_time, &process_time, &msr_time_increment);
     MSR_ADEOS_INTERRUPT_CODE(msr_controller_run(); msr_write_kanal_list(););

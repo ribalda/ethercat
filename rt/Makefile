@@ -11,7 +11,7 @@ ifneq ($(KERNELRELEASE),)
 #------------------------------------------------------------------------------
 # Kbuild-Abschnitt
 
-obj-m	:= msr_modul.o
+obj-m := msr_modul.o
 
 msr_modul-objs := msr_module.o \
 		msr_jitter.o \

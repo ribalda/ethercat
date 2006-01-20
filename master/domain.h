@@ -26,7 +26,7 @@
 
 typedef struct ec_domain
 {
-  unsigned int number; /*<< Domänen-Identifikation */
+  int number; /*<< Domänen-Identifikation */
   ec_command_t command; /**< Kommando zum Senden und Empfangen der
                            Prozessdaten */
   unsigned char data[EC_FRAME_SIZE]; /**< Prozessdaten-Array */

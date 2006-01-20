@@ -23,10 +23,10 @@
 
 void ec_domain_init(ec_domain_t *dom)
 {
-  dom->number = 0;
+  dom->number = -1;
   dom->data_size = 0;
   dom->logical_offset = 0;
-  dom->response_count = 0;
+  dom->response_count = 0xFFFFFFFF;
 
   memset(dom->data, 0x00, EC_FRAME_SIZE);
 }
