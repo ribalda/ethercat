@@ -31,9 +31,6 @@ clean:
 	$(MAKE) -C $(KERNELDIR) M=`pwd` clean
 	@rm -rf */.tmp_versions
 
-doc docs:
-	doxygen Doxyfile
-
 config conf $(CONFIG_FILE):
 	@echo "# EtherCAT Konfigurationsdatei Kernel 2.6" > $(CONFIG_FILE)
 	@echo >> $(CONFIG_FILE)

@@ -18,7 +18,7 @@
 /**
    Konstruktor einer EtherCAT-Domäne.
 
-   @param pd Zeiger auf die zu initialisierende Domäne
+   @param dom Zeiger auf die zu initialisierende Domäne
 */
 
 void ec_domain_init(ec_domain_t *dom)

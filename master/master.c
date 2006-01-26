@@ -139,7 +139,6 @@ int ec_master_open(ec_master_t *master)
    Schliesst das EtherCAT-Geraet, auf dem der Master arbeitet.
 
    @param master Der EtherCAT-Master
-   @param device Das EtherCAT-Geraet
 */
 
 void ec_master_close(ec_master_t *master)
@@ -731,6 +730,10 @@ void ec_output_lost_frames(ec_master_t *master)
    Registriert einen Slave beim Master.
 
    @param master Der EtherCAT-Master
+   @param bus_index Index des Slaves im EtherCAT-Bus
+   @param vendor_name String mit dem Herstellernamen
+   @param product_name String mit dem Produktnamen
+   @param domain Domäne, in der der Slave sein soll
 
    @return 0 bei Erfolg, sonst < 0
 */
@@ -816,14 +819,13 @@ ec_slave_t *EtherCAT_rt_register_slave(ec_master_t *master,
 /*****************************************************************************/
 
 /**
-   Konfiguriert einen Slave und setzt den Operational-Zustand.
+   Konfiguriert alle Slaves und setzt den Operational-Zustand.
 
-   Führt eine komplette Konfiguration eines Slaves durch,
-   setzt Sync-Manager und FMMU's, führt die entsprechenden
+   Führt die komplette Konfiguration und Aktivierunge aller registrierten
+   Slaves durch. Setzt Sync-Manager und FMMU's, führt die entsprechenden
    Zustandsübergänge durch, bis der Slave betriebsbereit ist.
 
    @param master EtherCAT-Master
-   @param slave Zu aktivierender Slave
 
    @return 0 bei Erfolg, sonst < 0
 */
@@ -1030,10 +1032,9 @@ int EtherCAT_rt_activate_slaves(ec_master_t *master)
 /*****************************************************************************/
 
 /**
-   Setzt einen Slave zurück in den Init-Zustand.
+   Setzt alle Slaves zurück in den Init-Zustand.
 
    @param master EtherCAT-Master
-   @param slave Zu deaktivierender Slave
 
    @return 0 bei Erfolg, sonst < 0
 */
@@ -1059,9 +1060,9 @@ int EtherCAT_rt_deactivate_slaves(ec_master_t *master)
 /**
    Sendet und empfängt Prozessdaten der angegebenen Domäne
 
-   @param master     EtherCAT-Master
-          domain     Domäne
-          timeout_us Timeout in Mikrosekunden
+   @param master EtherCAT-Master
+   @param domain Domäne
+   @param timeout_us Timeout in Mikrosekunden
 
    @return 0 bei Erfolg, sonst < 0
 */

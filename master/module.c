@@ -151,14 +151,16 @@ void __exit ec_cleanup_module(void)
  *****************************************************************************/
 
 /**
-   Setzt das EtherCAT-Geraet, auf dem der Master arbeitet.
+   Registeriert das EtherCAT-Geraet fuer einen EtherCAT-Master.
 
+   @param master_index Index des EtherCAT-Masters
+   @param dev Das net_device des EtherCAT-Geraetes
+   @param isr Funktionszeiger auf die Interrupt-Service-Routine
+   @param module Zeiger auf das Modul (fuer try_module_lock())
 
-   @param master Der EtherCAT-Master
-   @param device Das EtherCAT-Geraet
    @return 0, wenn alles o.k.,
-   < 0, wenn bereits ein Geraet registriert
-   oder das Geraet nicht geoeffnet werden konnte.
+           < 0, wenn bereits ein Geraet registriert oder das Geraet nicht
+                geoeffnet werden konnte.
 */
 
 ec_device_t *EtherCAT_dev_register(unsigned int master_index,
@@ -208,10 +210,10 @@ ec_device_t *EtherCAT_dev_register(unsigned int master_index,
 /*****************************************************************************/
 
 /**
-   Loescht das EtherCAT-Geraet, auf dem der Master arbeitet.
+   Entfernt das EtherCAT-Geraet eines EtherCAT-Masters.
 
-   @param master Der EtherCAT-Master
-   @param device Das EtherCAT-Geraet
+   @param master_index Der Index des EtherCAT-Masters
+   @param ecd Das EtherCAT-Geraet
 */
 
 void EtherCAT_dev_unregister(unsigned int master_index, ec_device_t *ecd)

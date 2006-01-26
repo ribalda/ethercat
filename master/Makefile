@@ -38,8 +38,14 @@ endif
 modules:
 	$(MAKE) -C $(KERNELDIR) M=`pwd` modules
 
-clean:
+clean: cleandoc
 	$(MAKE) -C $(KERNELDIR) M=`pwd` clean
+
+doc:
+	doxygen Doxyfile
+
+cleandoc:
+	@rm -rf doc
 
 #------------------------------------------------------------------------------
 
