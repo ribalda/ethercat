@@ -20,6 +20,9 @@ typedef struct ec_slave_type ec_slave_type_t;
 struct ec_slave;
 typedef struct ec_slave ec_slave_t;
 
+struct ec_slave_init;
+typedef struct ec_slave_init ec_slave_init_t;
+
 /*****************************************************************************/
 
 ec_master_t *EtherCAT_rt_request_master(unsigned int master_index);
@@ -31,6 +34,10 @@ ec_slave_t *EtherCAT_rt_register_slave(ec_master_t *master,
                                        const char *vendor_name,
                                        const char *product_name,
                                        int domain);
+
+int EtherCAT_rt_register_slave_list(ec_master_t *master,
+                                    const ec_slave_init_t *slaves,
+                                    unsigned int count);
 
 int EtherCAT_rt_activate_slaves(ec_master_t *master);
 
@@ -80,6 +87,26 @@ struct ec_slave
     unsigned int domain; /**< Prozessdatendomäne */
 
     int error_reported; /**< Ein Zugriffsfehler wurde bereits gemeldet */
+};
+
+/*****************************************************************************/
+
+/**
+   Beschreibung eines EtherCAT-Slave-Typs.
+
+   Diese Beschreibung dient zur Konfiguration einer bestimmten
+   Slave-Art. Sie enthält die Konfigurationsdaten für die
+   Slave-internen Sync-Manager und FMMU's.
+*/
+
+struct ec_slave_init
+{
+    ec_slave_t **slave_ptr; /**< Zeiger auf den Slave-Zeiger, der mit der
+                               Adresse des Slaves belegt werden soll. */
+    unsigned int bus_index; /**< Bus-Index des zu registrierenden Slaves */
+    const char *vendor_name; /**< Name des Herstellers */
+    const char *product_name; /**< Name des Slaves-Typs */
+    unsigned int domain; /**< Domäne, in der registriert werden soll. */
 };
 
 /*****************************************************************************/

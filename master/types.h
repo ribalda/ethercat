@@ -25,7 +25,7 @@
 
 typedef enum
 {
-  EC_SIMPLE_SLAVE, EC_MAILBOX_SLAVE, EC_NOSYNC_SLAVE
+    EC_SIMPLE_SLAVE, EC_MAILBOX_SLAVE, EC_NOSYNC_SLAVE
 }
 ec_slave_features_t;
 
@@ -41,25 +41,25 @@ ec_slave_features_t;
 
 struct ec_slave_type
 {
-  const char *vendor_name; /**< Name des Herstellers */
-  const char *product_name; /**< Name des Slaves-Typs */
-  const char *product_desc; /**< Genauere Beschreibung des Slave-Typs */
+    const char *vendor_name; /**< Name des Herstellers */
+    const char *product_name; /**< Name des Slaves-Typs */
+    const char *product_desc; /**< Genauere Beschreibung des Slave-Typs */
 
-  ec_slave_features_t features; /**< Features des Slave-Typs */
+    ec_slave_features_t features; /**< Features des Slave-Typs */
 
-  const unsigned char *sm0; /**< Konfigurationsdaten des
-                               ersten Sync-Managers */
-  const unsigned char *sm1; /**< Konfigurationsdaten des
-                               zweiten Sync-Managers */
-  const unsigned char *sm2; /**< Konfigurationsdaten des
-                               dritten Sync-Managers */
-  const unsigned char *sm3; /**< Konfigurationsdaten des
-                               vierten Sync-Managers */
+    const unsigned char *sm0; /**< Konfigurationsdaten des
+                                 ersten Sync-Managers */
+    const unsigned char *sm1; /**< Konfigurationsdaten des
+                                 zweiten Sync-Managers */
+    const unsigned char *sm2; /**< Konfigurationsdaten des
+                                 dritten Sync-Managers */
+    const unsigned char *sm3; /**< Konfigurationsdaten des
+                                 vierten Sync-Managers */
 
-  const unsigned char *fmmu0; /**< Konfigurationsdaten
-                                 der ersten FMMU */
+    const unsigned char *fmmu0; /**< Konfigurationsdaten
+                                   der ersten FMMU */
 
-  unsigned int process_data_size; /**< Länge der Prozessdaten in Bytes */
+    unsigned int process_data_size; /**< Länge der Prozessdaten in Bytes */
 };
 
 /*****************************************************************************/
@@ -73,9 +73,9 @@ struct ec_slave_type
 
 typedef struct slave_ident
 {
-  unsigned int vendor_id; /**< Hersteller-Code */
-  unsigned int product_code; /**< Herstellerspezifischer Produktcode */
-  const ec_slave_type_t *type; /**< Zeiger auf den entsprechenden Slave-Typ */
+    unsigned int vendor_id; /**< Hersteller-Code */
+    unsigned int product_code; /**< Herstellerspezifischer Produktcode */
+    const ec_slave_type_t *type; /**< Zeiger auf den entsprechenden Typ */
 }
 ec_slave_ident_t;
 

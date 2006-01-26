@@ -57,17 +57,14 @@ ec_slave_t *s_in1, *s_out1, *s_out2, *s_out3;
 double value;
 int dig1;
 
-/*****************************************************************************/
+ec_slave_init_t slaves[] = {
+    {&s_in1, 1, "Beckhoff", "EL3102", 0},
+    {&s_out1, 8, "Beckhoff", "EL2004", 0},
+    {&s_out2, 9, "Beckhoff", "EL2004", 0},
+    {&s_out3, 10, "Beckhoff", "EL2004", 0}
+};
 
-static int register_slaves(void)
-{
-    s_in1 = EtherCAT_rt_register_slave(master, 1, "Beckhoff", "EL3102", 0);
-    s_out1 = EtherCAT_rt_register_slave(master, 8, "Beckhoff", "EL2004", 0);
-    s_out2 = EtherCAT_rt_register_slave(master, 9, "Beckhoff", "EL2004", 0);
-    s_out3 = EtherCAT_rt_register_slave(master, 10, "Beckhoff", "EL2004", 0);
-
-    return !s_in1 || !s_out1 || !s_out2 || !s_out3;
-}
+#define SLAVE_COUNT (sizeof(slaves) / sizeof(ec_slave_init_t))
 
 /******************************************************************************
  *
@@ -194,28 +191,25 @@ int __init init_rt_module(void)
         goto out_msr_cleanup;
     }
 
-    printk("Registering EtherCAT slaves.\n");
-    if (register_slaves()) {
-        printk(KERN_ERR "EtherCAT: Could not init slaves!\n");
+    if (EtherCAT_rt_register_slave_list(master, slaves, SLAVE_COUNT)) {
+        printk(KERN_ERR "EtherCAT: Could not register slaves!\n");
         goto out_release_master;
     }
 
-    printk("Activating all EtherCAT slaves.\n");
-
     if (EtherCAT_rt_activate_slaves(master) < 0) {
-      printk(KERN_ERR "EtherCAT: Could not activate slaves!\n");
-      goto out_release_master;
+        printk(KERN_ERR "EtherCAT: Could not activate slaves!\n");
+        goto out_release_master;
     }
 
     do_gettimeofday(&process_time);
-    msr_time_increment.tv_sec=0;
-    msr_time_increment.tv_usec=(unsigned int)(1000000/MSR_ABTASTFREQUENZ);
+    msr_time_increment.tv_sec = 0;
+    msr_time_increment.tv_usec = (unsigned int) (1000000 / MSR_ABTASTFREQUENZ);
 
-    ipipe_init_attr (&attr);
-    attr.name     = "IPIPE-MSR-MODULE";
+    ipipe_init_attr(&attr);
+    attr.name = "IPIPE-MSR-MODULE";
     attr.priority = IPIPE_ROOT_PRIO + 1;
-    attr.entry    = &domain_entry;
-    ipipe_register_domain(&this_domain,&attr);
+    attr.entry = &domain_entry;
+    ipipe_register_domain(&this_domain, &attr);
 
     return 0;
 

@@ -12,8 +12,8 @@
 #include <linux/delay.h>
 #include <linux/timer.h>
 
-#include "../include/EtherCAT_rt.h"
-#include "../include/EtherCAT_si.h"
+#include "../include/EtherCAT_rt.h" // Echtzeitschnittstelle
+#include "../include/EtherCAT_si.h" // Slave-Interface-Makros
 
 /*****************************************************************************/
 
@@ -26,15 +26,13 @@ int dig1;
 struct timer_list timer;
 unsigned long last_start_jiffies;
 
-/*****************************************************************************/
+ec_slave_init_t slaves[] = {
+    // Zeiger, Index, Herstellername, Produktname, Domäne
+    {  &s_out, 9,     "Beckhoff",     "EL2004",    1      },
+    {  &s_in,  1,     "Beckhoff",     "EL3102",    1      }
+};
 
-int __init check_slaves(void)
-{
-    s_in = EtherCAT_rt_register_slave(master, 1, "Beckhoff", "EL3102", 1);
-    s_out = EtherCAT_rt_register_slave(master, 9, "Beckhoff", "EL2004", 1);
-
-    return s_in && s_out;
-}
+#define SLAVE_COUNT (sizeof(slaves) / sizeof(ec_slave_init_t))
 
 /*****************************************************************************/
 
@@ -69,14 +67,16 @@ int __init init_mini_module(void)
         goto out_return;
     }
 
-    if (!check_slaves()) {
+    //EtherCAT_rt_debug_level(master, 2);
+
+    if (EtherCAT_rt_register_slave_list(master, slaves, SLAVE_COUNT)) {
         printk(KERN_ERR "Could not register slaves!\n");
         goto out_release_master;
     }
 
     printk("Activating all EtherCAT slaves.\n");
 
-    if (EtherCAT_rt_activate_slaves(master) != 0) {
+    if (EtherCAT_rt_activate_slaves(master)) {
         printk(KERN_ERR "EtherCAT: Could not activate slaves!\n");
         goto out_release_master;
     }

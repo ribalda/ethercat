@@ -615,7 +615,7 @@ int ec_state_change(ec_master_t *master, ec_slave_t *slave,
   }
 
   if (unlikely(cmd.working_counter != 1)) {
-    printk(KERN_ERR "EtherCAT: Could not set state %02X - Device %i (%s %s)"
+    printk(KERN_ERR "EtherCAT: Could not set state %02X - Slave %i (%s %s)"
            " did not respond!\n", state_and_ack, slave->ring_position * (-1),
            slave->type->vendor_name, slave->type->product_name);
     return -1;
@@ -735,7 +735,7 @@ void ec_output_lost_frames(ec_master_t *master)
    @param product_name String mit dem Produktnamen
    @param domain Domäne, in der der Slave sein soll
 
-   @return 0 bei Erfolg, sonst < 0
+   @return Zeiger auf den Slave bei Erfolg, sonst NULL
 */
 
 ec_slave_t *EtherCAT_rt_register_slave(ec_master_t *master,
@@ -814,6 +814,37 @@ ec_slave_t *EtherCAT_rt_register_slave(ec_master_t *master,
   dom->data_size += type->process_data_size;
 
   return slave;
+}
+
+/*****************************************************************************/
+
+/**
+   Registriert eine ganze Liste von Slaves beim Master.
+
+   @param master Der EtherCAT-Master
+   @param slaves Array von Slave-Initialisierungsstrukturen
+   @param count Anzahl der Strukturen in "slaves"
+
+   @return 0 bei Erfolg, sonst < 0
+*/
+
+int EtherCAT_rt_register_slave_list(ec_master_t *master,
+                                    const ec_slave_init_t *slaves,
+                                    unsigned int count)
+{
+  unsigned int i;
+
+  for (i = 0; i < count; i++)
+  {
+    if ((*(slaves[i].slave_ptr) =
+         EtherCAT_rt_register_slave(master, slaves[i].bus_index,
+                                    slaves[i].vendor_name,
+                                    slaves[i].product_name,
+                                    slaves[i].domain)) == NULL)
+      return -1;
+  }
+
+  return 0;
 }
 
 /*****************************************************************************/
@@ -1046,7 +1077,7 @@ int EtherCAT_rt_deactivate_slaves(ec_master_t *master)
 
   for (i = 0; i < master->bus_slaves_count; i++)
   {
-    slave = master->bus_slaves + 1;
+    slave = master->bus_slaves + i;
 
     if (unlikely(ec_state_change(master, slave, EC_SLAVE_STATE_INIT) != 0))
       return -1;
@@ -1155,6 +1186,7 @@ void EtherCAT_rt_debug_level(ec_master_t *master, int level)
 /*****************************************************************************/
 
 EXPORT_SYMBOL(EtherCAT_rt_register_slave);
+EXPORT_SYMBOL(EtherCAT_rt_register_slave_list);
 EXPORT_SYMBOL(EtherCAT_rt_activate_slaves);
 EXPORT_SYMBOL(EtherCAT_rt_deactivate_slaves);
 EXPORT_SYMBOL(EtherCAT_rt_domain_xio);
