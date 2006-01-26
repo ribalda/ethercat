@@ -33,7 +33,7 @@
 
 // EtherCAT
 #include "../include/EtherCAT_rt.h"
-#include "../libec/libec.h"
+#include "../include/EtherCAT_si.h"
 
 // Defines/Makros
 #define TSC2US(T1, T2) ((T2 - T1) * 1000UL / cpu_khz)
@@ -86,22 +86,22 @@ static void msr_controller_run(void)
     }
     else {
         // "Star Trek"-Effekte
-        LEC_write_EL20XX(s_out1, 0, jiffies & 1);
-        LEC_write_EL20XX(s_out1, 1, (jiffies >> 1) & 1);
-        LEC_write_EL20XX(s_out1, 2, (jiffies >> 2) & 1);
-        LEC_write_EL20XX(s_out1, 3, (jiffies >> 3) & 1);
-        LEC_write_EL20XX(s_out2, 0, (jiffies >> 4) & 1);
-        LEC_write_EL20XX(s_out2, 1, (jiffies >> 3) & 1);
-        LEC_write_EL20XX(s_out2, 2, (jiffies >> 2) & 1);
-        LEC_write_EL20XX(s_out2, 3, (jiffies >> 6) & 1);
-        LEC_write_EL20XX(s_out3, 0, (jiffies >> 7) & 1);
-        LEC_write_EL20XX(s_out3, 1, (jiffies >> 2) & 1);
-        LEC_write_EL20XX(s_out3, 2, (jiffies >> 8) & 1);
+        EC_WRITE_EL20XX(s_out1, 0, jiffies & 1);
+        EC_WRITE_EL20XX(s_out1, 1, (jiffies >> 1) & 1);
+        EC_WRITE_EL20XX(s_out1, 2, (jiffies >> 2) & 1);
+        EC_WRITE_EL20XX(s_out1, 3, (jiffies >> 3) & 1);
+        EC_WRITE_EL20XX(s_out2, 0, (jiffies >> 4) & 1);
+        EC_WRITE_EL20XX(s_out2, 1, (jiffies >> 3) & 1);
+        EC_WRITE_EL20XX(s_out2, 2, (jiffies >> 2) & 1);
+        EC_WRITE_EL20XX(s_out2, 3, (jiffies >> 6) & 1);
+        EC_WRITE_EL20XX(s_out3, 0, (jiffies >> 7) & 1);
+        EC_WRITE_EL20XX(s_out3, 1, (jiffies >> 2) & 1);
+        EC_WRITE_EL20XX(s_out3, 2, (jiffies >> 8) & 1);
 
         counter = MSR_ABTASTFREQUENZ / 4;
     }
 
-    LEC_write_EL20XX(s_out3, 3, LEC_read_EL31XX(s_in1, 0) < 0);
+    EC_WRITE_EL20XX(s_out3, 3, EC_READ_EL31XX(s_in1, 0) < 0);
 
     // Prozessdaten lesen und schreiben
     EtherCAT_rt_domain_xio(master, 0, 40);

@@ -25,7 +25,7 @@ msr_modul-objs := msr_module.o \
 		rt_lib/msr-core/msr_error_reg.o \
 		rt_lib/msr-utils/msr_utils.o \
 		rt_lib/msr-math/msr_base64.o \
-		libm.o libec.o
+		libm.o
 
 EXTRA_CFLAGS := -I $(src)/rt_lib/msr-include -D_SIMULATION \
 		-I/usr/include -mhard-float
