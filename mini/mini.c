@@ -20,11 +20,7 @@
 ec_master_t *master = NULL;
 ec_slave_t *s_in, *s_out;
 
-int value;
-int dig1;
-
 struct timer_list timer;
-unsigned long last_start_jiffies;
 
 ec_slave_init_t slaves[] = {
     // Zeiger, Index, Herstellername, Produktname, Domäne
@@ -38,20 +34,13 @@ ec_slave_init_t slaves[] = {
 
 void run(unsigned long data)
 {
-    static int ms = 0;
-    static unsigned long int k = 0;
-    static int firstrun = 1;
-
-    ms++;
-    ms %= 1000;
-
+    // Klemmen-IO
     EC_WRITE_EL20XX(s_out, 3, EC_READ_EL31XX(s_in, 0) < 0);
 
     // Prozessdaten lesen und schreiben
-    rdtscl(k);
     EtherCAT_rt_domain_xio(master, 1, 100);
-    firstrun = 0;
 
+    // Timer neu starten
     timer.expires += HZ / 1000;
     add_timer(&timer);
 }
@@ -66,8 +55,6 @@ int __init init_mini_module(void)
         printk(KERN_ERR "EtherCAT master 0 not available!\n");
         goto out_return;
     }
-
-    //EtherCAT_rt_debug_level(master, 2);
 
     if (EtherCAT_rt_register_slave_list(master, slaves, SLAVE_COUNT)) {
         printk(KERN_ERR "Could not register slaves!\n");
@@ -86,12 +73,8 @@ int __init init_mini_module(void)
     init_timer(&timer);
 
     timer.function = run;
-    timer.data = 0;
     timer.expires = jiffies + 10; // Das erste Mal sofort feuern
-    last_start_jiffies = timer.expires;
     add_timer(&timer);
-
-    printk("Initialised sample thread.\n");
 
     printk(KERN_INFO "=== Minimal EtherCAT environment started. ===\n");
 

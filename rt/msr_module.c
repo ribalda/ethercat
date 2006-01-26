@@ -58,9 +58,9 @@ double value;
 int dig1;
 
 ec_slave_init_t slaves[] = {
-    {&s_in1, 1, "Beckhoff", "EL3102", 0},
-    {&s_out1, 8, "Beckhoff", "EL2004", 0},
-    {&s_out2, 9, "Beckhoff", "EL2004", 0},
+    {&s_in1,   1, "Beckhoff", "EL3102", 0},
+    {&s_out1,  8, "Beckhoff", "EL2004", 0},
+    {&s_out2,  9, "Beckhoff", "EL2004", 0},
     {&s_out3, 10, "Beckhoff", "EL2004", 0}
 };
 
