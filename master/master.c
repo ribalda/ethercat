@@ -415,6 +415,7 @@ int ec_scan_for_slaves(ec_master_t *master)
     ec_slave_init(slave);
 
     // Set ring position
+
     slave->ring_position = -i;
     slave->station_address = i + 1;
 
@@ -492,10 +493,10 @@ int ec_scan_for_slaves(ec_master_t *master)
     }
 
     if (unlikely(!slave->type)) {
-      printk(KERN_ERR "EtherCAT: Unknown slave device (vendor %X, code %X) at "
-             " position %i.\n", slave->sii_vendor_id, slave->sii_product_code,
-             i);
-      return -1;
+      printk(KERN_WARNING "EtherCAT: Unknown slave device (vendor 0x%08X, code"
+             " 0x%08X) at position %i.\n", slave->sii_vendor_id,
+             slave->sii_product_code, i);
+      return 0;
     }
   }
 
@@ -615,9 +616,8 @@ int ec_state_change(ec_master_t *master, ec_slave_t *slave,
   }
 
   if (unlikely(cmd.working_counter != 1)) {
-    printk(KERN_ERR "EtherCAT: Could not set state %02X - Slave %i (%s %s)"
-           " did not respond!\n", state_and_ack, slave->ring_position * (-1),
-           slave->type->vendor_name, slave->type->product_name);
+    printk(KERN_ERR "EtherCAT: Could not set state %02X - Slave %i did not"
+           " respond!\n", state_and_ack, slave->ring_position * (-1));
     return -1;
   }
 
@@ -635,14 +635,15 @@ int ec_state_change(ec_master_t *master, ec_slave_t *slave,
     }
 
     if (unlikely(cmd.working_counter != 1)) {
-      printk(KERN_ERR "EtherCAT: Could not check state %02X - Device did not"
-             " respond!\n", state_and_ack);
+      printk(KERN_ERR "EtherCAT: Could not check state %02X - Device %i did"
+             " not respond!\n", state_and_ack, slave->ring_position * (-1));
       return -1;
     }
 
     if (unlikely(cmd.data[0] & 0x10)) { // State change error
-      printk(KERN_ERR "EtherCAT: Could not set state %02X - Device refused"
-             " state change (code %02X)!\n", state_and_ack, cmd.data[0]);
+      printk(KERN_ERR "EtherCAT: Could not set state %02X - Device %i refused"
+             " state change (code %02X)!\n", state_and_ack,
+             slave->ring_position * (-1), cmd.data[0]);
       return -1;
     }
 
@@ -655,8 +656,9 @@ int ec_state_change(ec_master_t *master, ec_slave_t *slave,
   }
 
   if (unlikely(!tries_left)) {
-    printk(KERN_ERR "EtherCAT: Could not check state %02X - Timeout while"
-           " checking!\n", state_and_ack);
+    printk(KERN_ERR "EtherCAT: Could not check state %02X of slave %i -"
+           " Timeout while checking!\n", state_and_ack,
+           slave->ring_position * (-1));
     return -1;
   }
 
@@ -767,6 +769,11 @@ ec_slave_t *EtherCAT_rt_register_slave(ec_master_t *master,
     return NULL;
   }
 
+  if (!slave->type) {
+    printk(KERN_ERR "EtherCAT: Unknown slave at position %i!\n", bus_index);
+    return NULL;
+  }
+
   type = slave->type;
 
   if (strcmp(vendor_name, type->vendor_name) ||
@@ -873,10 +880,17 @@ int EtherCAT_rt_activate_slaves(ec_master_t *master)
   for (i = 0; i < master->bus_slaves_count; i++)
   {
     slave = master->bus_slaves + i;
-    type = slave->type;
 
     if (unlikely(ec_state_change(master, slave, EC_SLAVE_STATE_INIT) != 0))
       return -1;
+
+    // Check if slave was registered...
+    if (!slave->registered) {
+      printk(KERN_INFO "EtherCAT: Slave %i was not registered.\n", i);
+      continue;
+    }
+
+    type = slave->type;
 
     // Resetting FMMU's
 
@@ -909,14 +923,6 @@ int EtherCAT_rt_activate_slaves(ec_master_t *master)
                " respond!\n", slave->station_address);
         return -1;
       }
-    }
-
-    // Check if slave was registered...
-
-    if (!slave->registered) {
-      printk(KERN_INFO "EtherCAT: Slave %i (%s %s) was not registered.\n",
-             i, type->vendor_name, type->product_name);
-      continue;
     }
 
     // Init Mailbox communication
