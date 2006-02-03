@@ -18,14 +18,15 @@
 /*****************************************************************************/
 
 ec_master_t *master = NULL;
-ec_slave_t *s_in, *s_out;
+ec_slave_t *s_in, *s_out, *s_ssi;
 
 struct timer_list timer;
 
 ec_slave_init_t slaves[] = {
     // Zeiger, Index, Herstellername, Produktname, Domäne
-    {  &s_out, 9,     "Beckhoff",     "EL2004",    1      },
-    {  &s_in,  1,     "Beckhoff",     "EL3102",    1      }
+    {  &s_out, 2,     "Beckhoff",     "EL2004",    1      },
+    {  &s_in,  1,     "Beckhoff",     "EL3102",    1      },
+    {  &s_ssi, 7,     "Beckhoff",     "EL5001",    1      }
 };
 
 #define SLAVE_COUNT (sizeof(slaves) / sizeof(ec_slave_init_t))
@@ -67,6 +68,17 @@ int __init init_mini_module(void)
         printk(KERN_ERR "EtherCAT: Could not activate slaves!\n");
         goto out_release_master;
     }
+
+    printk("Configuring EtherCAT slaves.\n");
+
+    EtherCAT_rt_debug_level(master, 2);
+
+    if (EtherCAT_rt_canopen_sdo_write(master, s_ssi, 0x4067, 2, 2)) {
+        printk(KERN_ERR "EtherCAT: Could not set SSI baud rate!\n");
+        goto out_release_master;
+    }
+
+    EtherCAT_rt_debug_level(master, 0);
 
     printk("Starting cyclic sample thread.\n");
 

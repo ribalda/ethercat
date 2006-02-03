@@ -15,7 +15,8 @@ ifneq ($(KERNELRELEASE),)
 
 obj-m := ec_master.o
 
-ec_master-objs := module.o master.o device.o slave.o command.o types.o domain.o
+ec_master-objs := module.o master.o device.o slave.o command.o types.o \
+			domain.o canopen.o
 
 REV = `svnversion $(src)`
 DATE = `date`

@@ -47,8 +47,7 @@ int *ec_masters_reserved = NULL;
 
 /*****************************************************************************/
 
-MODULE_AUTHOR ("Wilhelm Hagemeister <hm@igh-essen.com>,"
-               "Florian Pose <fp@igh-essen.com>");
+MODULE_AUTHOR ("Florian Pose <fp@igh-essen.com>");
 MODULE_DESCRIPTION ("EtherCAT master driver module");
 MODULE_LICENSE("GPL");
 MODULE_VERSION(COMPILE_INFO);

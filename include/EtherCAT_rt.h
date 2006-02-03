@@ -48,6 +48,11 @@ int EtherCAT_rt_domain_xio(ec_master_t *master, unsigned int domain,
 
 void EtherCAT_rt_debug_level(ec_master_t *master, int level);
 
+int EtherCAT_rt_canopen_sdo_write(ec_master_t *master, ec_slave_t *slave,
+                                  unsigned int sdo_index,
+                                  unsigned char sdo_subindex,
+                                  unsigned int value, unsigned int size);
+
 /*****************************************************************************/
 
 /**

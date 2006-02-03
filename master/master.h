@@ -50,8 +50,6 @@ struct ec_master
 
 /*****************************************************************************/
 
-// Private Methods
-
 // Master creation and deletion
 void ec_master_init(ec_master_t *);
 void ec_master_clear(ec_master_t *);
@@ -63,6 +61,9 @@ void ec_master_close(ec_master_t *);
 
 // Slave management
 int ec_scan_for_slaves(ec_master_t *);
+
+// Data
+int ec_simple_send_receive(ec_master_t *, ec_command_t *);
 
 /*****************************************************************************/
 

@@ -306,7 +306,8 @@ int ec_simple_receive(ec_master_t *master, ec_command_t *cmd)
   int ret;
   unsigned char command_type, command_index;
 
-  if (unlikely((ret = ec_device_receive(&master->device, master->rx_data)) < 0))
+  if (unlikely((ret = ec_device_receive(&master->device,
+                                        master->rx_data)) < 0))
     return -1;
 
   master->rx_data_length = (unsigned int) ret;
