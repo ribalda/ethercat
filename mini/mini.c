@@ -73,7 +73,7 @@ int __init init_mini_module(void)
 
     EtherCAT_rt_debug_level(master, 2);
 
-    if (EtherCAT_rt_canopen_sdo_write(master, s_ssi, 0x4067, 2, 2)) {
+    if (EtherCAT_rt_canopen_sdo_write(master, s_ssi, 0x4067, 0, 2, 2)) {
         printk(KERN_ERR "EtherCAT: Could not set SSI baud rate!\n");
         goto out_release_master;
     }
