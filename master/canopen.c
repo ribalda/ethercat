@@ -19,9 +19,9 @@
 /*****************************************************************************/
 
 int EtherCAT_rt_canopen_sdo_write(ec_master_t *master, ec_slave_t *slave,
-                                        unsigned int sdo_index,
-                                        unsigned char sdo_subindex,
-                                        unsigned int value, unsigned int size)
+                                  unsigned int sdo_index,
+                                  unsigned char sdo_subindex,
+                                  unsigned int value, unsigned int size)
 {
     unsigned char data[0xF6];
     ec_command_t cmd;

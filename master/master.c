@@ -233,7 +233,7 @@ int ec_simple_send(ec_master_t *master, ec_command_t *cmd)
   master->command_index = (master->command_index + 1) % 0x0100;
 
   if (unlikely(master->debug_level > 0)) {
-    printk(KERN_DEBUG "EtherCAT: Sending command index %i\n", cmd->index);
+    printk(KERN_DEBUG "EtherCAT: Sending command index 0x%X\n", cmd->index);
   }
 
   cmd->state = EC_COMMAND_STATE_SENT;

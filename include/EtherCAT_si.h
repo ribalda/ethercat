@@ -39,6 +39,17 @@
 
 /*****************************************************************************/
 
+#define EC_READ_EL5001(SLAVE) \
+    ((unsigned int) (EC_PROC_DATA(SLAVE)[1] | \
+                     (EC_PROC_DATA(SLAVE)[2] << 8) | \
+                     (EC_PROC_DATA(SLAVE)[3] << 16) | \
+                     (EC_PROC_DATA(SLAVE)[4] << 24)))
+
+#define EC_READ_EL5001_STATE(SLAVE) \
+    ((unsigned char) EC_PROC_DATA(SLAVE)[0])
+
+/*****************************************************************************/
+
 /* Emacs-Konfiguration
 ;;; Local Variables: ***
 ;;; c-basic-offset:4 ***
