@@ -52,16 +52,15 @@ static struct ipipe_sysinfo sys_info;
 
 // EtherCAT
 ec_master_t *master = NULL;
-ec_slave_t *s_in1, *s_out1, *s_out2, *s_out3;
+ec_slave_t *s_in1, *s_out1, *s_ssi, *s_inc;
 
-double value;
-int dig1;
+uint16_t angle0;
 
 ec_slave_init_t slaves[] = {
-    {&s_in1,   1, "Beckhoff", "EL3102", 0},
-    {&s_out1,  8, "Beckhoff", "EL2004", 0},
-    {&s_out2,  9, "Beckhoff", "EL2004", 0},
-    {&s_out3, 10, "Beckhoff", "EL2004", 0}
+    {&s_in1,  "1", "Beckhoff", "EL3102", 0},
+    {&s_out1, "2", "Beckhoff", "EL2004", 0},
+    {&s_ssi,  "3", "Beckhoff", "EL5001", 0},
+    {&s_inc,  "0:4", "Beckhoff", "EL5101", 0}
 };
 
 #define SLAVE_COUNT (sizeof(slaves) / sizeof(ec_slave_init_t))
@@ -78,30 +77,29 @@ static void msr_controller_run(void)
 
     msr_jitter_run(MSR_ABTASTFREQUENZ);
 
+    EC_WRITE_EL20XX(s_out1, 3, EC_READ_EL31XX(s_in1, 0) < 0);
+
+    if (!counter) {
+        EtherCAT_rt_debug_level(master, 2);
+    }
+
+    // Prozessdaten lesen und schreiben
+    EtherCAT_rt_domain_xio(master, 0, 40);
+
     if (counter) {
         counter--;
     }
     else {
-        // "Star Trek"-Effekte
-        EC_WRITE_EL20XX(s_out1, 0, jiffies & 1);
-        EC_WRITE_EL20XX(s_out1, 1, (jiffies >> 1) & 1);
-        EC_WRITE_EL20XX(s_out1, 2, (jiffies >> 2) & 1);
-        EC_WRITE_EL20XX(s_out1, 3, (jiffies >> 3) & 1);
-        EC_WRITE_EL20XX(s_out2, 0, (jiffies >> 4) & 1);
-        EC_WRITE_EL20XX(s_out2, 1, (jiffies >> 3) & 1);
-        EC_WRITE_EL20XX(s_out2, 2, (jiffies >> 2) & 1);
-        EC_WRITE_EL20XX(s_out2, 3, (jiffies >> 6) & 1);
-        EC_WRITE_EL20XX(s_out3, 0, (jiffies >> 7) & 1);
-        EC_WRITE_EL20XX(s_out3, 1, (jiffies >> 2) & 1);
-        EC_WRITE_EL20XX(s_out3, 2, (jiffies >> 8) & 1);
+        EtherCAT_rt_debug_level(master, 0);
+        printk("SSI status=0x%X value=%u\n",
+               EC_READ_EL5001_STATE(s_ssi), EC_READ_EL5001_VALUE(s_ssi));
+        printk("INC status=0x%X value=%u\n",
+               EC_READ_EL5101_STATE(s_inc), EC_READ_EL5101_VALUE(s_inc));
 
-        counter = MSR_ABTASTFREQUENZ / 4;
+        counter = MSR_ABTASTFREQUENZ * 5;
     }
 
-    EC_WRITE_EL20XX(s_out3, 3, EC_READ_EL31XX(s_in1, 0) < 0);
-
-    // Prozessdaten lesen und schreiben
-    EtherCAT_rt_domain_xio(master, 0, 40);
+    angle0 = EC_READ_EL5101_VALUE(s_inc);
 }
 
 /******************************************************************************
@@ -143,7 +141,7 @@ void domain_entry(void)
     ipipe_virtualize_irq(ipipe_current_domain,sys_info.archdep.tmirq,
 			 &msr_run, NULL, IPIPE_HANDLE_MASK);
 
-    ipipe_tune_timer(1000000000UL/MSR_ABTASTFREQUENZ,0);
+    ipipe_tune_timer(1000000000UL / MSR_ABTASTFREQUENZ, 0);
 }
 
 /******************************************************************************
@@ -162,8 +160,9 @@ void domain_entry(void)
 
 int msr_globals_register(void)
 {
-    msr_reg_kanal("/value", "V", &value, TDBL);
-    msr_reg_kanal("/dig1", "", &dig1, TINT);
+    //msr_reg_kanal("/value", "V", &value, TDBL);
+    //msr_reg_kanal("/dig1", "", &dig1, TINT);
+    msr_reg_kanal("/angle0", "", &angle0, TINT);
 
     return 0;
 }
@@ -198,6 +197,16 @@ int __init init_rt_module(void)
 
     if (EtherCAT_rt_activate_slaves(master) < 0) {
         printk(KERN_ERR "EtherCAT: Could not activate slaves!\n");
+        goto out_release_master;
+    }
+
+    if (EtherCAT_rt_canopen_sdo_write(master, s_ssi, 0x4067, 0, 1, 2)) {
+        printk(KERN_ERR "EtherCAT: Could not set SSI baud rate!\n");
+        goto out_release_master;
+    }
+
+    if (EtherCAT_rt_canopen_sdo_write(master, s_ssi, 0x4061, 4, 1, 1)) {
+        printk(KERN_ERR "EtherCAT: Could not set SSI feature bit!\n");
         goto out_release_master;
     }
 

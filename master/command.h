@@ -30,13 +30,12 @@ ec_command_state_t;
 /**
    EtherCAT-Adresse.
 
-   Im EtherCAT-Rahmen sind 4 Bytes für die Adresse reserviert, die
-   ja nach Kommandoty eine andere bedeutung haben: Bei Autoinkrement-
-   befehlen sind die ersten zwei Bytes die (negative)
-   Autoinkrement-Adresse, bei Knoten-adressierten Befehlen entsprechen
-   sie der Knotenadresse. Das dritte und vierte Byte entspricht in
-   diesen Fällen der physikalischen Speicheradresse auf dem Slave.
-   Bei einer logischen Adressierung entsprechen alle vier Bytes
+   Im EtherCAT-Rahmen sind 4 Bytes für die Adresse reserviert, die je nach
+   Kommandotyp, eine andere Bedeutung haben können: Bei Autoinkrementbefehlen
+   sind die ersten zwei Bytes die (negative) Autoinkrement-Adresse, bei Knoten-
+   adressierten Befehlen entsprechen sie der Knotenadresse. Das dritte und
+   vierte Byte entspricht in diesen Fällen der physikalischen Speicheradresse
+   auf dem Slave. Bei einer logischen Adressierung entsprechen alle vier Bytes
    der logischen Adresse.
 */
 
@@ -53,7 +52,7 @@ typedef union
 
     unsigned short mem; /**< Physikalische Speicheradresse im Slave */
   }
-  phy;
+  phy; /**< Physikalische Adresse */
 
   unsigned long logical; /**< Logische Adresse */
   unsigned char raw[4]; /**< Rohdaten für die Generierung des Frames */
@@ -68,12 +67,12 @@ ec_address_t;
 
 typedef struct ec_command
 {
-  ec_command_type_t type; /**< Typ des Kommandos (APRD, NPWR, etc...) */
+  ec_command_type_t type; /**< Typ des Kommandos (APRD, NPWR, etc) */
   ec_address_t address; /**< Adresse des/der Empfänger */
   unsigned int data_length; /**< Länge der zu sendenden und/oder
                                empfangenen Daten */
   ec_command_state_t state; /**< Zustand des Kommandos
-                           (bereit, gesendet, etc...) */
+                           (bereit, gesendet, etc) */
   unsigned char index; /**< Kommando-Index, mit der das Kommando gesendet
                           wurde (wird vom Master beim Senden gesetzt. */
   unsigned int working_counter; /**< Working-Counter bei Empfang (wird

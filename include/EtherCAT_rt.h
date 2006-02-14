@@ -30,7 +30,7 @@ ec_master_t *EtherCAT_rt_request_master(unsigned int master_index);
 void EtherCAT_rt_release_master(ec_master_t *master);
 
 ec_slave_t *EtherCAT_rt_register_slave(ec_master_t *master,
-                                       unsigned int slave_index,
+                                       const char *address,
                                        const char *vendor_name,
                                        const char *product_name,
                                        int domain);
@@ -106,9 +106,10 @@ struct ec_slave
 
 struct ec_slave_init
 {
-    ec_slave_t **slave_ptr; /**< Zeiger auf den Slave-Zeiger, der mit der
-                               Adresse des Slaves belegt werden soll. */
-    unsigned int bus_index; /**< Bus-Index des zu registrierenden Slaves */
+    ec_slave_t **slave_ptr; /**< Zeiger auf den Slave-Zeiger, der später auf
+                               die Slave-Struktur zeigen soll. */
+    const char *address; /**< ASCII-kodierte Bus-Adresse des zu
+                            registrierenden Slaves \sa ec_address */
     const char *vendor_name; /**< Name des Herstellers */
     const char *product_name; /**< Name des Slaves-Typs */
     unsigned int domain; /**< Domäne, in der registriert werden soll. */

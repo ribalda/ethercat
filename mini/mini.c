@@ -24,9 +24,9 @@ struct timer_list timer;
 
 ec_slave_init_t slaves[] = {
     // Zeiger, Index, Herstellername, Produktname, Domäne
-    {  &s_out, 2,     "Beckhoff",     "EL2004",    1      },
-    {  &s_in,  1,     "Beckhoff",     "EL3102",    1      },
-    {  &s_ssi, 7,     "Beckhoff",     "EL5001",    1      }
+    {  &s_in,  "1",   "Beckhoff",     "EL3102",    1      },
+    {  &s_out, "2",   "Beckhoff",     "EL2004",    1      },
+    {  &s_ssi, "3",   "Beckhoff",     "EL5001",    1      }
 };
 
 #define SLAVE_COUNT (sizeof(slaves) / sizeof(ec_slave_init_t))
@@ -35,11 +35,27 @@ ec_slave_init_t slaves[] = {
 
 void run(unsigned long data)
 {
+    static unsigned int counter;
+
     // Klemmen-IO
     EC_WRITE_EL20XX(s_out, 3, EC_READ_EL31XX(s_in, 0) < 0);
 
+    if (!counter) {
+        EtherCAT_rt_debug_level(master, 2);
+    }
+
     // Prozessdaten lesen und schreiben
     EtherCAT_rt_domain_xio(master, 1, 100);
+
+    if (counter) {
+        counter--;
+    }
+    else {
+        EtherCAT_rt_debug_level(master, 0);
+        printk("SSI status=%X value=%u\n",
+               EC_READ_EL5001_STATE(s_ssi), EC_READ_EL5001_VALUE(s_ssi));
+        counter = 1000;
+    }
 
     // Timer neu starten
     timer.expires += HZ / 1000;
@@ -71,14 +87,15 @@ int __init init_mini_module(void)
 
     printk("Configuring EtherCAT slaves.\n");
 
-    EtherCAT_rt_debug_level(master, 2);
-
     if (EtherCAT_rt_canopen_sdo_write(master, s_ssi, 0x4067, 0, 2, 2)) {
         printk(KERN_ERR "EtherCAT: Could not set SSI baud rate!\n");
         goto out_release_master;
     }
 
-    EtherCAT_rt_debug_level(master, 0);
+    if (EtherCAT_rt_canopen_sdo_write(master, s_ssi, 0x4061, 4, 1, 1)) {
+        printk(KERN_ERR "EtherCAT: Could not set SSI feature bit!\n");
+        goto out_release_master;
+    }
 
     printk("Starting cyclic sample thread.\n");
 

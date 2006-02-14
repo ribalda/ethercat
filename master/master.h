@@ -61,6 +61,7 @@ void ec_master_close(ec_master_t *);
 
 // Slave management
 int ec_scan_for_slaves(ec_master_t *);
+ec_slave_t *ec_address(const ec_master_t *, const char *);
 
 // Data
 int ec_simple_send_receive(ec_master_t *, ec_command_t *);

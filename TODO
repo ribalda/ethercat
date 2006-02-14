@@ -6,3 +6,5 @@ $Id$
 - Konfiguration SSI-/Inkrementalgeberklemmen (CoE)
 - Ethernet over EtherCAT (EoE)
 - eepro100-Kartentreiber
+- Proc/SysFS-Interface mit Baumdarstellung des Busses
+

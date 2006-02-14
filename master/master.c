@@ -36,11 +36,11 @@ void ec_output_lost_frames(ec_master_t *);
 
 /**
    Konstruktor des EtherCAT-Masters.
-
-   @param master Zeiger auf den zu initialisierenden EtherCAT-Master
 */
 
-void ec_master_init(ec_master_t *master)
+void ec_master_init(ec_master_t *master
+                    /**< Zeiger auf den zu initialisierenden EtherCAT-Master */
+                    )
 {
   master->bus_slaves = NULL;
   master->bus_slaves_count = 0;
@@ -62,11 +62,11 @@ void ec_master_init(ec_master_t *master)
 
    Entfernt alle Kommandos aus der Liste, löscht den Zeiger
    auf das Slave-Array und gibt die Prozessdaten frei.
-
-   @param master Zeiger auf den zu löschenden Master
 */
 
-void ec_master_clear(ec_master_t *master)
+void ec_master_clear(ec_master_t *master
+                     /**< Zeiger auf den zu löschenden Master */
+                     )
 {
   if (master->bus_slaves) {
     kfree(master->bus_slaves);
@@ -85,11 +85,11 @@ void ec_master_clear(ec_master_t *master)
 
    Bei einem "release" sollte immer diese Funktion aufgerufen werden,
    da sonst Slave-Liste, Domains, etc. weiter existieren.
-
-   @param master Zeiger auf den zurückzusetzenden Master
 */
 
-void ec_master_reset(ec_master_t *master)
+void ec_master_reset(ec_master_t *master
+                     /**< Zeiger auf den zurückzusetzenden Master */
+                     )
 {
   if (master->bus_slaves) {
     kfree(master->bus_slaves);
@@ -112,13 +112,11 @@ void ec_master_reset(ec_master_t *master)
 /**
    Öffnet das EtherCAT-Geraet des Masters.
 
-   @param master Der EtherCAT-Master
-
-   @return 0, wenn alles o.k., < 0, wenn das Geraet nicht geoeffnet werden
-           konnte.
+   \return 0, wenn alles o.k., < 0, wenn kein Gerät registriert wurde oder
+   es nicht geoeffnet werden konnte.
 */
 
-int ec_master_open(ec_master_t *master)
+int ec_master_open(ec_master_t *master /**< Der EtherCAT-Master */)
 {
   if (!master->device_registered) {
     printk(KERN_ERR "EtherCAT: No device registered!\n");
@@ -137,11 +135,9 @@ int ec_master_open(ec_master_t *master)
 
 /**
    Schliesst das EtherCAT-Geraet, auf dem der Master arbeitet.
-
-   @param master Der EtherCAT-Master
 */
 
-void ec_master_close(ec_master_t *master)
+void ec_master_close(ec_master_t *master /**< EtherCAT-Master */)
 {
   if (!master->device_registered) {
     printk(KERN_WARNING "EtherCAT: Warning -"
@@ -160,13 +156,14 @@ void ec_master_close(ec_master_t *master)
    Sendet ein einzelnes Kommando in einem Frame und
    wartet auf dessen Empfang.
 
-   @param master EtherCAT-Master
-   @param cmd    Kommando zum Senden/Empfangen
-
-   @return 0 bei Erfolg, sonst < 0
+   \return 0 bei Erfolg, sonst < 0
 */
 
-int ec_simple_send_receive(ec_master_t *master, ec_command_t *cmd)
+int ec_simple_send_receive(ec_master_t *master,
+                           /**< EtherCAT-Master */
+                           ec_command_t *cmd
+                           /**< Kommando zum Senden/Empfangen */
+                           )
 {
   unsigned int tries_left;
 
@@ -194,13 +191,12 @@ int ec_simple_send_receive(ec_master_t *master, ec_command_t *cmd)
 /**
    Sendet ein einzelnes Kommando in einem Frame.
 
-   @param master EtherCAT-Master
-   @param cmd    Kommando zum Senden
-
-   @return 0 bei Erfolg, sonst < 0
+   \return 0 bei Erfolg, sonst < 0
 */
 
-int ec_simple_send(ec_master_t *master, ec_command_t *cmd)
+int ec_simple_send(ec_master_t *master, /**< EtherCAT-Master */
+                   ec_command_t *cmd /**< Kommando zum Senden */
+                   )
 {
   unsigned int length, framelength, i;
 
@@ -294,13 +290,12 @@ int ec_simple_send(ec_master_t *master, ec_command_t *cmd)
    Wartet auf den Empfang eines einzeln gesendeten
    Kommandos.
 
-   @param master EtherCAT-Master
-   @param cmd    Gesendetes Kommando
-
-   @return 0 bei Erfolg, sonst < 0
+   \return 0 bei Erfolg, sonst < 0
 */
 
-int ec_simple_receive(ec_master_t *master, ec_command_t *cmd)
+int ec_simple_receive(ec_master_t *master, /**< EtherCAT-Master */
+                      ec_command_t *cmd /**< Gesendetes Kommando */
+                      )
 {
   unsigned int length;
   int ret;
@@ -377,12 +372,10 @@ int ec_simple_receive(ec_master_t *master, ec_command_t *cmd)
 /**
    Durchsucht den Bus nach Slaves.
 
-   @param master Der EtherCAT-Master
-
    @return 0 bei Erfolg, sonst < 0
 */
 
-int ec_scan_for_slaves(ec_master_t *master)
+int ec_scan_for_slaves(ec_master_t *master /**< EtherCAT-Master */)
 {
   ec_command_t cmd;
   ec_slave_t *slave;
@@ -510,17 +503,19 @@ int ec_scan_for_slaves(ec_master_t *master)
    Liest Daten aus dem Slave-Information-Interface
    eines EtherCAT-Slaves.
 
-   @param master EtherCAT-Master
-   @param node_address Knotenadresse des Slaves
-   @param offset Adresse des zu lesenden SII-Registers
-   @param target Zeiger auf einen 4 Byte großen Speicher
-   zum Ablegen der Daten
-
-   @return 0 bei Erfolg, sonst < 0
+   \return 0 bei Erfolg, sonst < 0
 */
 
-int ec_sii_read(ec_master_t *master, unsigned short int node_address,
-                unsigned short int offset, unsigned int *target)
+int ec_sii_read(ec_master_t *master,
+                /**< EtherCAT-Master */
+                unsigned short int node_address,
+                /**< Knotenadresse des Slaves */
+                unsigned short int offset,
+                /**< Adresse des zu lesenden SII-Registers */
+                unsigned int *target
+                /**< Zeiger auf einen 4 Byte großen Speicher zum Ablegen der
+                   Daten */
+                )
 {
   ec_command_t cmd;
   unsigned char data[10];
@@ -586,20 +581,18 @@ int ec_sii_read(ec_master_t *master, unsigned short int node_address,
 /*****************************************************************************/
 
 /**
-   Ändert den Zustand eines Slaves (asynchron).
+   Ändert den Zustand eines Slaves.
 
-   Führt eine (asynchrone) Zustandsänderung bei einem Slave durch.
-
-   @param master EtherCAT-Master
-   @param slave Slave, dessen Zustand geändert werden soll
-   @param state_and_ack Neuer Zustand, evtl. mit gesetztem
-   Acknowledge-Flag
-
-   @return 0 bei Erfolg, sonst < 0
+   \return 0 bei Erfolg, sonst < 0
 */
 
-int ec_state_change(ec_master_t *master, ec_slave_t *slave,
-                    unsigned char state_and_ack)
+int ec_state_change(ec_master_t *master,
+                    /**<EtherCAT-Master */
+                    ec_slave_t *slave,
+                    /**< Slave, dessen Zustand geändert werden soll */
+                    unsigned char state_and_ack
+                    /**< Neuer Zustand, evtl. mit gesetztem Acknowledge-Flag */
+                    )
 {
   ec_command_t cmd;
   unsigned char data[2];
@@ -670,11 +663,9 @@ int ec_state_change(ec_master_t *master, ec_slave_t *slave,
 
 /**
    Gibt Frame-Inhalte zwecks Debugging aus.
-
-   @param master EtherCAT-Master
 */
 
-void ec_output_debug_data(const ec_master_t *master)
+void ec_output_debug_data(const ec_master_t *master /**< EtherCAT-Master */)
 {
   unsigned int i;
 
@@ -705,11 +696,9 @@ void ec_output_debug_data(const ec_master_t *master)
 
 /**
    Gibt von Zeit zu Zeit die Anzahl verlorener Frames aus.
-
-   @param master EtherCAT-Master
 */
 
-void ec_output_lost_frames(ec_master_t *master)
+void ec_output_lost_frames(ec_master_t *master /**< EtherCAT-Master */)
 {
   unsigned long int t;
 
@@ -723,6 +712,92 @@ void ec_output_lost_frames(ec_master_t *master)
   }
 }
 
+/*****************************************************************************/
+
+/**
+   Wandelt eine ASCII-kodierte Bus-Adresse in einen Slave-Zeiger.
+
+   Gültige Adress-Strings sind Folgende:
+
+   - \a "X" = der X. Slave im Bus,
+   - \a "X:Y" = der Y. Slave hinter dem X. Buskoppler,
+   - \a "#X" = der Slave mit der SSID X,
+   - \a "#X:Y" = der Y. Slave hinter dem Buskoppler mit der SSID X.
+
+   \return Zeiger auf Slave bei Erfolg, sonst NULL
+*/
+
+ec_slave_t *ec_address(const ec_master_t *master,
+                       /**< EtherCAT-Master */
+                       const char *address
+                       /**< Address-String */
+                       )
+{
+  unsigned long first, second;
+  char *remainder, *remainder2;
+  unsigned int i;
+  int coupler_idx, slave_idx;
+  ec_slave_t *slave;
+
+  if (!address || address[0] == 0) return NULL;
+
+  if (address[0] == '#') {
+    printk(KERN_ERR "EtherCAT: Bus ID - #<SSID> not implemented yet!\n");
+    return NULL;
+  }
+
+  first = simple_strtoul(address, &remainder, 0);
+  if (remainder == address) {
+    printk(KERN_ERR "EtherCAT: Bus ID - First number empty!\n");
+    return NULL;
+  }
+
+  if (!remainder[0]) { // absolute position
+    if (first < master->bus_slaves_count) {
+      return master->bus_slaves + first;
+    }
+
+    printk(KERN_ERR "EtherCAT: Bus ID - Absolute position illegal!\n");
+  }
+
+  else if (remainder[0] == ':') { // field position
+
+    remainder++;
+    second = simple_strtoul(remainder, &remainder2, 0);
+
+    if (remainder2 == remainder) {
+      printk(KERN_ERR "EtherCAT: Bus ID - Sencond number empty!\n");
+      return NULL;
+    }
+
+    if (remainder2[0]) {
+      printk(KERN_ERR "EtherCAT: Bus ID - Illegal trailer (2)!\n");
+      return NULL;
+    }
+
+    coupler_idx = -1;
+    slave_idx = 0;
+    for (i = 0; i < master->bus_slaves_count; i++, slave_idx++) {
+      slave = master->bus_slaves + i;
+      if (!slave->type) continue;
+
+      if (strcmp(slave->type->vendor_name, "Beckhoff") == 0 &&
+          strcmp(slave->type->product_name, "EK1100") == 0) {
+        coupler_idx++;
+        slave_idx = 0;
+      }
+
+      if (coupler_idx == first && slave_idx == second) return slave;
+    }
+  }
+
+  else {
+    printk(KERN_ERR "EtherCAT: Bus ID - Illegal trailer!\n");
+  }
+
+  return NULL;
+}
+
 /******************************************************************************
  *
  * Echtzeitschnittstelle
@@ -732,20 +807,21 @@ void ec_output_lost_frames(ec_master_t *master)
 /**
    Registriert einen Slave beim Master.
 
-   @param master Der EtherCAT-Master
-   @param bus_index Index des Slaves im EtherCAT-Bus
-   @param vendor_name String mit dem Herstellernamen
-   @param product_name String mit dem Produktnamen
-   @param domain Domäne, in der der Slave sein soll
-
-   @return Zeiger auf den Slave bei Erfolg, sonst NULL
+   \return Zeiger auf den Slave bei Erfolg, sonst NULL
 */
 
 ec_slave_t *EtherCAT_rt_register_slave(ec_master_t *master,
-                                       unsigned int bus_index,
+                                       /**< EtherCAT-Master */
+                                       const char *address,
+                                       /**< ASCII-Addresse des Slaves, siehe
+                                          auch ec_address() */
                                        const char *vendor_name,
+                                       /**< Herstellername */
                                        const char *product_name,
-                                       int domain)
+                                       /**< Produktname */
+                                       int domain
+                                       /**< Domäne */
+                                       )
 {
   ec_slave_t *slave;
   const ec_slave_type_t *type;
@@ -757,21 +833,20 @@ ec_slave_t *EtherCAT_rt_register_slave(ec_master_t *master,
     return NULL;
   }
 
-  if (bus_index >= master->bus_slaves_count) {
-    printk(KERN_ERR "EtherCAT: Illegal bus index! (%i / %i)\n", bus_index,
-           master->bus_slaves_count);
+  if ((slave = ec_address(master, address)) == NULL) {
+    printk(KERN_ERR "EtherCAT: Illegal address: \"%s\"\n", address);
     return NULL;
   }
 
-  slave = master->bus_slaves + bus_index;
-
   if (slave->registered) {
-    printk(KERN_ERR "EtherCAT: Slave %i is already registered!\n", bus_index);
+    printk(KERN_ERR "EtherCAT: Slave \"%s\" (position %i) has already been"
+           " registered!\n", address, slave->ring_position * (-1));
     return NULL;
   }
 
   if (!slave->type) {
-    printk(KERN_ERR "EtherCAT: Unknown slave at position %i!\n", bus_index);
+    printk(KERN_ERR "EtherCAT: Slave \"%s\" (position %i) has unknown type!\n",
+           address, slave->ring_position * (-1));
     return NULL;
   }
 
@@ -829,23 +904,24 @@ ec_slave_t *EtherCAT_rt_register_slave(ec_master_t *master,
 /**
    Registriert eine ganze Liste von Slaves beim Master.
 
-   @param master Der EtherCAT-Master
-   @param slaves Array von Slave-Initialisierungsstrukturen
-   @param count Anzahl der Strukturen in "slaves"
-
-   @return 0 bei Erfolg, sonst < 0
+   \return 0 bei Erfolg, sonst < 0
 */
 
 int EtherCAT_rt_register_slave_list(ec_master_t *master,
+                                    /**< EtherCAT-Master */
                                     const ec_slave_init_t *slaves,
-                                    unsigned int count)
+                                    /**< Array von Slave-Initialisierungs-
+                                       strukturen */
+                                    unsigned int count
+                                    /**< Anzahl der Strukturen in \a slaves */
+                                    )
 {
   unsigned int i;
 
   for (i = 0; i < count; i++)
   {
     if ((*(slaves[i].slave_ptr) =
-         EtherCAT_rt_register_slave(master, slaves[i].bus_index,
+         EtherCAT_rt_register_slave(master, slaves[i].address,
                                     slaves[i].vendor_name,
                                     slaves[i].product_name,
                                     slaves[i].domain)) == NULL)
@@ -864,12 +940,10 @@ int EtherCAT_rt_register_slave_list(ec_master_t *master,
    Slaves durch. Setzt Sync-Manager und FMMU's, führt die entsprechenden
    Zustandsübergänge durch, bis der Slave betriebsbereit ist.
 
-   @param master EtherCAT-Master
-
-   @return 0 bei Erfolg, sonst < 0
+   \return 0 bei Erfolg, sonst < 0
 */
 
-int EtherCAT_rt_activate_slaves(ec_master_t *master)
+int EtherCAT_rt_activate_slaves(ec_master_t *master /**< EtherCAT-Master */)
 {
   unsigned int i;
   ec_slave_t *slave;
@@ -1072,12 +1146,10 @@ int EtherCAT_rt_activate_slaves(ec_master_t *master)
 /**
    Setzt alle Slaves zurück in den Init-Zustand.
 
-   @param master EtherCAT-Master
-
-   @return 0 bei Erfolg, sonst < 0
+   \return 0 bei Erfolg, sonst < 0
 */
 
-int EtherCAT_rt_deactivate_slaves(ec_master_t *master)
+int EtherCAT_rt_deactivate_slaves(ec_master_t *master /**< EtherCAT-Master */)
 {
   ec_slave_t *slave;
   unsigned int i;
@@ -1098,15 +1170,16 @@ int EtherCAT_rt_deactivate_slaves(ec_master_t *master)
 /**
    Sendet und empfängt Prozessdaten der angegebenen Domäne
 
-   @param master EtherCAT-Master
-   @param domain Domäne
-   @param timeout_us Timeout in Mikrosekunden
-
-   @return 0 bei Erfolg, sonst < 0
+   \return 0 bei Erfolg, sonst < 0
 */
 
-int EtherCAT_rt_domain_xio(ec_master_t *master, unsigned int domain,
-                           unsigned int timeout_us)
+int EtherCAT_rt_domain_xio(ec_master_t *master,
+                           /**< EtherCAT-Master */
+                           unsigned int domain,
+                           /**< Domäne */
+                           unsigned int timeout_us
+                           /**< Timeout in Mikrosekunden */
+                           )
 {
   unsigned int i;
   ec_domain_t *dom;
@@ -1183,9 +1256,18 @@ int EtherCAT_rt_domain_xio(ec_master_t *master, unsigned int domain,
 
 /**
    Setzt die Debug-Ebene des Masters.
+
+   Folgende Debug-level sind definiert:
+
+   - 1: Nur Positionsmarken in bestimmten Funktionen
+   - 2: Komplette Frame-Inhalte
 */
 
-void EtherCAT_rt_debug_level(ec_master_t *master, int level)
+void EtherCAT_rt_debug_level(ec_master_t *master,
+                             /**< EtherCAT-Master */
+                             int level
+                             /**< Debug-Level */
+                             )
 {
   master->debug_level = level;
 }
