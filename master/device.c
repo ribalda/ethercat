@@ -347,7 +347,7 @@ void EtherCAT_dev_state(ec_device_t *ecd, ec_device_state_t state)
 
 int EtherCAT_dev_is_ec(ec_device_t *ecd, struct net_device *dev)
 {
-  return ecd->dev == dev;
+  return ecd && ecd->dev == dev;
 }
 
 /*****************************************************************************/

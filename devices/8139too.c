@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- *  drv_8139too.c
+ *  8 1 3 9 t o o . c
  *
  *  EtherCAT-Treiber für RTL8139-kompatible Netzwerkkarten.
  *
