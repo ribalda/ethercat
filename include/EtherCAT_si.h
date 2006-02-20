@@ -17,7 +17,7 @@
 
 /*****************************************************************************/
 
-#define EC_WRITE_EL20XX(SLAVE, CHANNEL, VALUE) \
+#define EC_WRITE_EL200X(SLAVE, CHANNEL, VALUE) \
     do { \
         if (VALUE) EC_PROC_DATA(SLAVE)[0] |=  (1 << (CHANNEL)); \
         else       EC_PROC_DATA(SLAVE)[0] &= ~(1 << (CHANNEL)); \
@@ -25,13 +25,17 @@
 
 /*****************************************************************************/
 
-#define EC_READ_EL31XX(SLAVE, CHANNEL) \
-    ((short int) ((EC_PROC_DATA(SLAVE)[(CHANNEL) * 3 + 2] << 8) | \
-                   EC_PROC_DATA(SLAVE)[(CHANNEL) * 3 + 1]))
+#define EC_READ_EL310X(SLAVE, CHANNEL) \
+    ((signed short int) ((EC_PROC_DATA(SLAVE)[(CHANNEL) * 3 + 2] << 8) | \
+                          EC_PROC_DATA(SLAVE)[(CHANNEL) * 3 + 1]))
+
+#define EC_READ_EL316X(SLAVE, CHANNEL) \
+    ((unsigned short int) ((EC_PROC_DATA(SLAVE)[(CHANNEL) * 3 + 2] << 8) | \
+                            EC_PROC_DATA(SLAVE)[(CHANNEL) * 3 + 1]))
 
 /*****************************************************************************/
 
-#define EC_WRITE_EL41XX(SLAVE, CHANNEL, VALUE) \
+#define EC_WRITE_EL410X(SLAVE, CHANNEL, VALUE) \
     do { \
         EC_PROC_DATA(SLAVE)[(CHANNEL) * 3 + 1] = ((VALUE) & 0xFF00) >> 8; \
         EC_PROC_DATA(SLAVE)[(CHANNEL) * 3 + 2] =  (VALUE) & 0xFF; \
