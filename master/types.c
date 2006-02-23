@@ -88,12 +88,12 @@ const ec_sync_t el31X2_sm3 = {
 
 const ec_slave_type_t Beckhoff_EL3102 = {
     "Beckhoff", "EL3102", "2x Analog Input diff.",
-    {&mailbox_sm0, &mailbox_sm1, &el31X2_sm2, &el31X2_sm2, NULL}
+    {&mailbox_sm0, &mailbox_sm1, &el31X2_sm2, &el31X2_sm3, NULL}
 };
 
 const ec_slave_type_t Beckhoff_EL3162 = {
     "Beckhoff", "EL3102", "2x Analog Input",
-    {&mailbox_sm0, &mailbox_sm1, &el31X2_sm2, &el31X2_sm2, NULL}
+    {&mailbox_sm0, &mailbox_sm1, &el31X2_sm2, &el31X2_sm3, NULL}
 };
 
 /*****************************************************************************/

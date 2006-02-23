@@ -205,7 +205,7 @@ ec_slave_t *EtherCAT_rt_register_slave_field(
     ec_master_t *master;
     const ec_sync_t *sync;
     const ec_field_t *field;
-    unsigned int field_idx, found, i, j;
+    unsigned int field_idx, i, j;
     uint32_t field_offset;
 
     if (!field_count) {
@@ -234,8 +234,7 @@ ec_slave_t *EtherCAT_rt_register_slave_field(
     }
 
     field_idx = 0;
-    found = 0;
-    for (i = 0; type->sync_managers[i] && !found; i++) {
+    for (i = 0; type->sync_managers[i]; i++) {
         sync = type->sync_managers[i];
         field_offset = 0;
         for (j = 0; sync->fields[j]; j++) {
@@ -252,9 +251,10 @@ ec_slave_t *EtherCAT_rt_register_slave_field(
         }
     }
 
-    printk(KERN_ERR "EtherCAT: Slave %i (\"%s %s\") has less than %i fields of"
-           " type %i, starting at %i!\n", slave->ring_position,
-           vendor_name, product_name, field_count, field_type, field_index);
+    printk(KERN_ERR "EtherCAT: Slave %i (\"%s %s\") has less than %i field(s)"
+	   " of type %i, starting at %i (only %i)!\n", slave->ring_position,
+           vendor_name, product_name, field_count, field_type, field_index,
+	   field_idx);
     return NULL;
 }
 
