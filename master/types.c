@@ -25,14 +25,14 @@ const ec_sync_t mailbox_sm1 = {0x18F6, 246, 0x22, {NULL}};
 /*****************************************************************************/
 
 const ec_slave_type_t Beckhoff_EK1100 = {
-    "Beckhoff", "EK1100", "Bus Coupler", EC_NOSYNC_SLAVE,
+    "Beckhoff", "EK1100", "Bus Coupler",
     {NULL} // Keine Sync-Manager
 };
 
 /*****************************************************************************/
 
 const ec_slave_type_t Beckhoff_EK1110 = {
-    "Beckhoff", "EK1110", "Extension terminal", EC_NOSYNC_SLAVE,
+    "Beckhoff", "EK1110", "Extension terminal",
     {NULL} // Keine Sync-Manager
 };
 
@@ -46,7 +46,7 @@ const ec_sync_t el1014_sm0 = { // Inputs
 };
 
 const ec_slave_type_t Beckhoff_EL1014 = {
-    "Beckhoff", "EL1014", "4x Digital Input", EC_SIMPLE_SLAVE,
+    "Beckhoff", "EL1014", "4x Digital Input",
     {&el1014_sm0, NULL}
 };
 
@@ -60,12 +60,12 @@ const ec_sync_t el20XX_sm0 = {
 };
 
 const ec_slave_type_t Beckhoff_EL2004 = {
-    "Beckhoff", "EL2004", "4x Digital Output", EC_SIMPLE_SLAVE,
+    "Beckhoff", "EL2004", "4x Digital Output",
     {&el20XX_sm0, NULL}
 };
 
 const ec_slave_type_t Beckhoff_EL2032 = {
-    "Beckhoff", "EL2032", "2x Digital Output (2A)", EC_SIMPLE_SLAVE,
+    "Beckhoff", "EL2032", "2x Digital Output (2A)",
     {&el20XX_sm0, NULL}
 };
 
@@ -87,12 +87,12 @@ const ec_sync_t el31X2_sm3 = {
 };
 
 const ec_slave_type_t Beckhoff_EL3102 = {
-    "Beckhoff", "EL3102", "2x Analog Input diff.", EC_MAILBOX_SLAVE,
+    "Beckhoff", "EL3102", "2x Analog Input diff.",
     {&mailbox_sm0, &mailbox_sm1, &el31X2_sm2, &el31X2_sm2, NULL}
 };
 
 const ec_slave_type_t Beckhoff_EL3162 = {
-    "Beckhoff", "EL3102", "2x Analog Input", EC_MAILBOX_SLAVE,
+    "Beckhoff", "EL3102", "2x Analog Input",
     {&mailbox_sm0, &mailbox_sm1, &el31X2_sm2, &el31X2_sm2, NULL}
 };
 
@@ -106,12 +106,12 @@ const ec_sync_t el41X2_sm2 = {
 };
 
 const ec_slave_type_t Beckhoff_EL4102 = {
-    "Beckhoff", "EL4102", "2x Analog Output", EC_MAILBOX_SLAVE,
+    "Beckhoff", "EL4102", "2x Analog Output",
     {&mailbox_sm0, &mailbox_sm1, &el41X2_sm2, NULL}
 };
 
 const ec_slave_type_t Beckhoff_EL4132 = {
-    "Beckhoff", "EL4132", "2x Analog Output diff.", EC_MAILBOX_SLAVE,
+    "Beckhoff", "EL4132", "2x Analog Output diff.",
     {&mailbox_sm0, &mailbox_sm1, &el41X2_sm2, NULL}
 };
 
@@ -131,7 +131,7 @@ const ec_sync_t el5001_sm3 = {
 };
 
 const ec_slave_type_t Beckhoff_EL5001 = {
-    "Beckhoff", "EL5001", "SSI-Interface", EC_MAILBOX_SLAVE,
+    "Beckhoff", "EL5001", "SSI-Interface",
     {&mailbox_sm0, &mailbox_sm1, &el5001_sm2, &el5001_sm3, NULL}
 };
 
@@ -155,7 +155,7 @@ const ec_sync_t el5101_sm3 = {
 
 const ec_slave_type_t Beckhoff_EL5101 =
 {
-    "Beckhoff", "EL5101", "Incremental Encoder Interface", EC_MAILBOX_SLAVE,
+    "Beckhoff", "EL5101", "Incremental Encoder Interface",
     {&mailbox_sm0, &mailbox_sm1, &el5101_sm2, &el5101_sm3, NULL}
 };
 

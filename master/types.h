@@ -23,22 +23,6 @@
 /*****************************************************************************/
 
 /**
-   Features eines EtherCAT-Slaves.
-
-   Diese Angabe muss für die Konfiguration bekannt sein. Der
-   Master entscheidet danach, ober bspw. Mailboxes konfigurieren,
-   oder Sync-Manager setzen soll.
-*/
-
-typedef enum
-{
-    EC_SIMPLE_SLAVE, EC_MAILBOX_SLAVE, EC_NOSYNC_SLAVE
-}
-ec_slave_features_t;
-
-/*****************************************************************************/
-
-/**
    Prozessdatenfeld.
 */
 
@@ -79,7 +63,6 @@ typedef struct ec_slave_type
     const char *vendor_name; /**< Name des Herstellers */
     const char *product_name; /**< Name des Slaves-Typs */
     const char *description; /**< Genauere Beschreibung des Slave-Typs */
-    ec_slave_features_t features; /**< Features des Slave-Typs */
     const ec_sync_t *sync_managers[EC_MAX_SYNC]; /**< Sync-Manager
                                                     Konfigurationen */
 }
