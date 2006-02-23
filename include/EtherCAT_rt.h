@@ -14,106 +14,83 @@
 struct ec_master;
 typedef struct ec_master ec_master_t;
 
-struct ec_slave_type;
-typedef struct ec_slave_type ec_slave_type_t;
+struct ec_domain;
+typedef struct ec_domain ec_domain_t;
 
 struct ec_slave;
 typedef struct ec_slave ec_slave_t;
 
-struct ec_slave_init;
-typedef struct ec_slave_init ec_slave_init_t;
+typedef enum
+{
+    ec_sync,
+    ec_async
+}
+ec_domain_mode_t;
+
+typedef enum
+{
+    ec_status,
+    ec_control,
+    ec_ipvalue,
+    ec_opvalue
+}
+ec_field_type_t;
+
+typedef struct
+{
+    void **data;
+    const char *address;
+    const char *vendor;
+    const char *product;
+    ec_field_type_t field_type;
+    unsigned int field_index;
+    unsigned int field_count;
+}
+ec_field_init_t;
 
 /*****************************************************************************/
+// Master request functions
 
 ec_master_t *EtherCAT_rt_request_master(unsigned int master_index);
 
 void EtherCAT_rt_release_master(ec_master_t *master);
 
-ec_slave_t *EtherCAT_rt_register_slave(ec_master_t *master,
-                                       const char *address,
-                                       const char *vendor_name,
-                                       const char *product_name,
-                                       int domain);
+/*****************************************************************************/
+// Master methods
 
-int EtherCAT_rt_register_slave_list(ec_master_t *master,
-                                    const ec_slave_init_t *slaves,
-                                    unsigned int count);
+ec_domain_t *EtherCAT_rt_master_register_domain(ec_master_t *master,
+                                                ec_domain_mode_t mode,
+                                                unsigned int timeout_us);
 
-int EtherCAT_rt_activate_slaves(ec_master_t *master);
+int EtherCAT_rt_master_activate(ec_master_t *master);
 
-int EtherCAT_rt_deactivate_slaves(ec_master_t *master);
+int EtherCAT_rt_master_deactivate(ec_master_t *master);
 
-int EtherCAT_rt_domain_xio(ec_master_t *master, unsigned int domain,
-                           unsigned int timeout_us);
+void EtherCAT_rt_master_debug(ec_master_t *master, int level);
+void EtherCAT_rt_master_print(const ec_master_t *master);
 
-void EtherCAT_rt_debug_level(ec_master_t *master, int level);
+/*****************************************************************************/
+// Domain Methods
 
-int EtherCAT_rt_canopen_sdo_write(ec_master_t *master, ec_slave_t *slave,
+ec_slave_t *EtherCAT_rt_register_slave_field(ec_domain_t *domain,
+                                             const char *address,
+                                             const char *vendor_name,
+                                             const char *product_name,
+                                             void **data_ptr,
+                                             ec_field_type_t field_type,
+                                             unsigned int field_index,
+                                             unsigned int field_count);
+
+int EtherCAT_rt_domain_xio(ec_domain_t *domain);
+
+/*****************************************************************************/
+// Slave Methods
+
+int EtherCAT_rt_canopen_sdo_write(ec_slave_t *slave,
                                   unsigned int sdo_index,
                                   unsigned char sdo_subindex,
-                                  unsigned int value, unsigned int size);
-
-/*****************************************************************************/
-
-/**
-   EtherCAT-Slave
-*/
-
-struct ec_slave
-{
-    // Base data
-    unsigned char base_type; /**< Slave-Typ */
-    unsigned char base_revision; /**< Revision */
-    unsigned short base_build; /**< Build-Nummer */
-
-    // Addresses
-    short ring_position; /**< (Negative) Position des Slaves im Bus */
-    unsigned short station_address; /**< Konfigurierte Slave-Adresse */
-
-    // Slave information interface
-    unsigned int sii_vendor_id; /**< Identifikationsnummer des Herstellers */
-    unsigned int sii_product_code; /**< Herstellerspezifischer Produktcode */
-    unsigned int sii_revision_number; /**< Revisionsnummer */
-    unsigned int sii_serial_number; /**< Seriennummer der Klemme */
-
-    const ec_slave_type_t *type; /**< Zeiger auf die Beschreibung
-                                    des Slave-Typs */
-
-    unsigned int logical_address; /**< Konfigurierte, logische Adresse */
-
-    void *process_data; /**< Zeiger auf den Speicherbereich
-                           innerhalb eines Prozessdatenobjekts */
-    void *private_data; /**< Zeiger auf privaten Datenbereich */
-    int (*configure)(ec_slave_t *); /**< Zeiger auf die Funktion zur
-                                     Konfiguration */
-
-    unsigned char registered; /**< Der Slave wurde registriert */
-
-    unsigned int domain; /**< Prozessdatendomäne */
-
-    int error_reported; /**< Ein Zugriffsfehler wurde bereits gemeldet */
-};
-
-/*****************************************************************************/
-
-/**
-   Beschreibung eines EtherCAT-Slave-Typs.
-
-   Diese Beschreibung dient zur Konfiguration einer bestimmten
-   Slave-Art. Sie enthält die Konfigurationsdaten für die
-   Slave-internen Sync-Manager und FMMU's.
-*/
-
-struct ec_slave_init
-{
-    ec_slave_t **slave_ptr; /**< Zeiger auf den Slave-Zeiger, der später auf
-                               die Slave-Struktur zeigen soll. */
-    const char *address; /**< ASCII-kodierte Bus-Adresse des zu
-                            registrierenden Slaves \sa ec_address */
-    const char *vendor_name; /**< Name des Herstellers */
-    const char *product_name; /**< Name des Slaves-Typs */
-    unsigned int domain; /**< Domäne, in der registriert werden soll. */
-};
+                                  unsigned int value,
+                                  unsigned int size);
 
 /*****************************************************************************/
 

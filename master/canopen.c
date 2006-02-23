@@ -18,16 +18,26 @@
 
 /*****************************************************************************/
 
-int EtherCAT_rt_canopen_sdo_write(ec_master_t *master, ec_slave_t *slave,
-                                  unsigned int sdo_index,
-                                  unsigned char sdo_subindex,
-                                  unsigned int value, unsigned int size)
+/**
+   Schreibt ein CANopen-SDO (service data object).
+ */
+
+int EtherCAT_rt_canopen_sdo_write(
+    ec_slave_t *slave, /**< EtherCAT-Slave */
+    unsigned int sdo_index, /**< SDO-Index */
+    unsigned char sdo_subindex, /**< SDO-Subindex */
+    unsigned int value, /**< Neuer Wert */
+    unsigned int size /**< Größe des Datenfeldes */
+    )
 {
     unsigned char data[0xF6];
-    ec_command_t cmd;
+    ec_frame_t frame;
     unsigned int tries_left, i;
+    ec_master_t *master;
 
-    for (i = 0; i < 0xF6; i++) data[i] = 0x00;
+    memset(data, 0x00, 0xF6);
+
+    master = slave->master;
 
     if (size == 0 || size > 4) {
         printk(KERN_ERR "EtherCAT: Illegal SDO data size: %i!\n", size);
@@ -55,14 +65,14 @@ int EtherCAT_rt_canopen_sdo_write(ec_master_t *master, ec_slave_t *slave,
         value >>= 8;
     }
 
-    ec_command_write(&cmd, slave->station_address, 0x1800, 0xF6, data);
+    ec_frame_init_npwr(&frame, master, slave->station_address, 0x1800, 0xF6,
+                       data);
 
-    if (unlikely(ec_simple_send_receive(master, &cmd) < 0))
-        return -1;
+    if (unlikely(ec_frame_send_receive(&frame) < 0)) return -1;
 
-    if (unlikely(cmd.working_counter != 1)) {
+    if (unlikely(frame.working_counter != 1)) {
         printk(KERN_ERR "EtherCAT: Mailbox send - Slave %i did not respond!\n",
-               slave->ring_position * (-1));
+               slave->ring_position);
         return -1;
     }
 
@@ -71,18 +81,17 @@ int EtherCAT_rt_canopen_sdo_write(ec_master_t *master, ec_slave_t *slave,
     tries_left = 10;
     while (tries_left)
     {
-        ec_command_read(&cmd, slave->station_address, 0x808, 8);
+        ec_frame_init_nprd(&frame, master, slave->station_address, 0x808, 8);
 
-        if (unlikely(ec_simple_send_receive(master, &cmd) < 0))
-            return -1;
+        if (unlikely(ec_frame_send_receive(&frame) < 0)) return -1;
 
-        if (unlikely(cmd.working_counter != 1)) {
+        if (unlikely(frame.working_counter != 1)) {
             printk(KERN_ERR "EtherCAT: Mailbox check - Slave %i did not"
-                   " respond!\n", slave->ring_position * (-1));
+                   " respond!\n", slave->ring_position);
             return -1;
         }
 
-        if (cmd.data[5] & 8) { // Written bit is high
+        if (frame.data[5] & 8) { // Written bit is high
             break;
         }
 
@@ -92,30 +101,29 @@ int EtherCAT_rt_canopen_sdo_write(ec_master_t *master, ec_slave_t *slave,
 
     if (!tries_left) {
         printk(KERN_ERR "EtherCAT: Mailbox check - Slave %i timed out.\n",
-               slave->ring_position * (-1));
+               slave->ring_position);
         return -1;
     }
 
-    ec_command_read(&cmd, slave->station_address, 0x18F6, 0xF6);
+    ec_frame_init_nprd(&frame, master, slave->station_address, 0x18F6, 0xF6);
 
-    if (unlikely(ec_simple_send_receive(master, &cmd) < 0))
-        return -1;
+    if (unlikely(ec_frame_send_receive(&frame) < 0)) return -1;
 
-    if (unlikely(cmd.working_counter != 1)) {
+    if (unlikely(frame.working_counter != 1)) {
         printk(KERN_ERR "EtherCAT: Mailbox receive - Slave %i did not"
-               " respond!\n", slave->ring_position * (-1));
+               " respond!\n", slave->ring_position);
         return -1;
     }
 
-    if (cmd.data[5] != 0x03 // COE
-        || (cmd.data[7] >> 4) != 0x03 // SDO response
-        || (cmd.data[8] >> 5) != 0x03 // Initiate download response
-        || (cmd.data[9] != (sdo_index & 0xFF)) // Index
-        || (cmd.data[10] != ((sdo_index >> 8) & 0xFF))
-        || (cmd.data[11] != sdo_subindex)) // Subindex
+    if (frame.data[5] != 0x03 // COE
+        || (frame.data[7] >> 4) != 0x03 // SDO response
+        || (frame.data[8] >> 5) != 0x03 // Initiate download response
+        || (frame.data[9] != (sdo_index & 0xFF)) // Index
+        || (frame.data[10] != ((sdo_index >> 8) & 0xFF))
+        || (frame.data[11] != sdo_subindex)) // Subindex
     {
         printk(KERN_ERR "EtherCAT: Illegal mailbox response at slave %i!\n",
-               slave->ring_position * (-1));
+               slave->ring_position);
         return -1;
     }
 

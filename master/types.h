@@ -11,7 +11,14 @@
 #ifndef _EC_TYPES_H_
 #define _EC_TYPES_H_
 
+#include <linux/types.h>
+
 #include "../include/EtherCAT_rt.h"
+
+/*****************************************************************************/
+
+#define EC_MAX_FIELDS 10
+#define EC_MAX_SYNC   16
 
 /*****************************************************************************/
 
@@ -32,6 +39,34 @@ ec_slave_features_t;
 /*****************************************************************************/
 
 /**
+   Prozessdatenfeld.
+*/
+
+typedef struct
+{
+    ec_field_type_t type;
+    unsigned int size;
+}
+ec_field_t;
+
+/*****************************************************************************/
+
+/**
+   Sync-Manager.
+*/
+
+typedef struct
+{
+    uint16_t physical_start_address;
+    uint16_t size;
+    uint8_t control_byte;
+    const ec_field_t *fields[EC_MAX_FIELDS];
+}
+ec_sync_t;
+
+/*****************************************************************************/
+
+/**
    Beschreibung eines EtherCAT-Slave-Typs.
 
    Diese Beschreibung dient zur Konfiguration einer bestimmten
@@ -39,28 +74,16 @@ ec_slave_features_t;
    Slave-internen Sync-Manager und FMMU's.
 */
 
-struct ec_slave_type
+typedef struct ec_slave_type
 {
     const char *vendor_name; /**< Name des Herstellers */
     const char *product_name; /**< Name des Slaves-Typs */
-    const char *product_desc; /**< Genauere Beschreibung des Slave-Typs */
-
+    const char *description; /**< Genauere Beschreibung des Slave-Typs */
     ec_slave_features_t features; /**< Features des Slave-Typs */
-
-    const unsigned char *sm0; /**< Konfigurationsdaten des
-                                 ersten Sync-Managers */
-    const unsigned char *sm1; /**< Konfigurationsdaten des
-                                 zweiten Sync-Managers */
-    const unsigned char *sm2; /**< Konfigurationsdaten des
-                                 dritten Sync-Managers */
-    const unsigned char *sm3; /**< Konfigurationsdaten des
-                                 vierten Sync-Managers */
-
-    const unsigned char *fmmu0; /**< Konfigurationsdaten
-                                   der ersten FMMU */
-
-    unsigned int process_data_size; /**< Länge der Prozessdaten in Bytes */
-};
+    const ec_sync_t *sync_managers[EC_MAX_SYNC]; /**< Sync-Manager
+                                                    Konfigurationen */
+}
+ec_slave_type_t;
 
 /*****************************************************************************/
 
@@ -81,9 +104,13 @@ ec_slave_ident_t;
 
 extern ec_slave_ident_t slave_idents[]; /**< Statisches Array der
                                            Slave-Identifikationen */
-extern unsigned int slave_ident_count; /**< Anzahl der vorhandenen
-                                          Slave-Identifikationen */
 
 /*****************************************************************************/
 
 #endif
+
+/* Emacs-Konfiguration
+;;; Local Variables: ***
+;;; c-basic-offset:4 ***
+;;; End: ***
+*/

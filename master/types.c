@@ -15,134 +15,148 @@
 
 /*****************************************************************************/
 
-/*
-  Konfigurationen der Sync-Manager
-
-  Byte 1-2: Physical Start Address
-  Byte 3-4: Data Length
-  Byte   5: Control Byte
-  Byte   6: Status Byte (read only)
-  Byte 7-8: Enable
-*/
-
-unsigned char sm0_multi[] = {0x00, 0x18, 0xF6, 0x00, 0x26, 0x00, 0x01, 0x00};
-unsigned char sm1_multi[] = {0xF6, 0x18, 0xF6, 0x00, 0x22, 0x00, 0x01, 0x00};
-
-unsigned char sm0_1014[] = {0x00, 0x10, 0x01, 0x00, 0x00, 0x00, 0x01, 0x00};
-
-unsigned char sm0_20xx[] = {0x00, 0x0F, 0x01, 0x00, 0x46, 0x00, 0x01, 0x00};
-
-unsigned char sm2_31xx[] = {0x00, 0x10, 0x04, 0x00, 0x24, 0x00, 0x00, 0x00};
-unsigned char sm3_31xx[] = {0x00, 0x11, 0x06, 0x00, 0x20, 0x00, 0x01, 0x00};
-
-unsigned char sm2_41xx[] = {0x00, 0x10, 0x04, 0x00, 0x24, 0x00, 0x01, 0x00};
-
-unsigned char sm2_5001[] = {0x00, 0x10, 0x04, 0x00, 0x24, 0x00, 0x01, 0x00};
-unsigned char sm3_5001[] = {0x00, 0x11, 0x05, 0x00, 0x20, 0x00, 0x01, 0x00};
-
-unsigned char sm2_5101[] = {0x00, 0x10, 0x03, 0x00, 0x24, 0x00, 0x01, 0x00};
-unsigned char sm3_5101[] = {0x00, 0x11, 0x05, 0x00, 0x20, 0x00, 0x01, 0x00};
-
-/*
-  Konfigurationen der Memory-Management-Units
-
-  Byte   1-4: Logical Start Address (is set later)
-  Byte   5-6: Length
-  Byte     7: Logical start bit
-  Byte     8: Logical end bit
-  Byte  9-10: Physical start address
-  Byte    11: Physical start bit
-  Byte    12: Direction (1: in, 2: out)
-  Byte 13-14: Channel enable
-  Byte 15-16: Reserved
-*/
-
-unsigned char fmmu0_1014[] = {0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x07,
-                              0x00, 0x10, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00};
-
-unsigned char fmmu0_20xx[] = {0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x07,
-                              0x00, 0x0F, 0x00, 0x02, 0x01, 0x00, 0x00, 0x00};
-
-unsigned char fmmu0_31xx[] = {0x00, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x07,
-                              0x00, 0x11, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00};
-
-unsigned char fmmu0_41xx[] = {0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x07,
-                              0x00, 0x10, 0x00, 0x02, 0x01, 0x00, 0x00, 0x00};
-
-unsigned char fmmu0_5001[] = {0x00, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x07,
-                              0x00, 0x11, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00};
-
-unsigned char fmmu0_5101[] = {0x00, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x07,
-                              0x00, 0x11, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00};
+const ec_sync_t mailbox_sm0 = {0x1800, 246, 0x26, {NULL}};
+const ec_sync_t mailbox_sm1 = {0x18F6, 246, 0x22, {NULL}};
 
 /*****************************************************************************/
 
 /* Klemmen-Objekte */
 
-ec_slave_type_t Beckhoff_EK1100 =
-{
-    "Beckhoff", "EK1100", "Bus Coupler",
-    EC_NOSYNC_SLAVE, NULL, NULL, NULL, NULL, NULL, 0
+/*****************************************************************************/
+
+const ec_slave_type_t Beckhoff_EK1100 = {
+    "Beckhoff", "EK1100", "Bus Coupler", EC_NOSYNC_SLAVE,
+    {NULL} // Keine Sync-Manager
 };
 
-ec_slave_type_t Beckhoff_EK1110 =
-{
-    "Beckhoff", "EK1110", "Extension terminal",
-    EC_NOSYNC_SLAVE, NULL, NULL, NULL, NULL, NULL, 0
+/*****************************************************************************/
+
+const ec_slave_type_t Beckhoff_EK1110 = {
+    "Beckhoff", "EK1110", "Extension terminal", EC_NOSYNC_SLAVE,
+    {NULL} // Keine Sync-Manager
 };
 
-ec_slave_type_t Beckhoff_EL1014 =
-{
-    "Beckhoff", "EL1014", "4x Digital Input",
-    EC_SIMPLE_SLAVE, sm0_1014, NULL, NULL, NULL, fmmu0_1014, 1
+/*****************************************************************************/
+
+const ec_field_t el1014_in = {ec_ipvalue, 1};
+
+const ec_sync_t el1014_sm0 = { // Inputs
+    0x1000, 1, 0x00,
+    {&el1014_in, NULL}
 };
 
-ec_slave_type_t Beckhoff_EL2004 =
-{
-    "Beckhoff", "EL2004", "4x Digital Output",
-    EC_SIMPLE_SLAVE, sm0_20xx, NULL, NULL, NULL, fmmu0_20xx, 1
+const ec_slave_type_t Beckhoff_EL1014 = {
+    "Beckhoff", "EL1014", "4x Digital Input", EC_SIMPLE_SLAVE,
+    {&el1014_sm0, NULL}
 };
 
-ec_slave_type_t Beckhoff_EL2032 =
-{
-    "Beckhoff", "EL2032", "2x Digital Output (2A)",
-    EC_SIMPLE_SLAVE, sm0_20xx, NULL, NULL, NULL, fmmu0_20xx, 1
+/*****************************************************************************/
+
+const ec_field_t el20XX_out = {ec_opvalue, 1};
+
+const ec_sync_t el20XX_sm0 = {
+    0x0F00, 1, 0x46,
+    {&el20XX_out, NULL}
 };
 
-ec_slave_type_t Beckhoff_EL3102 =
-{
-    "Beckhoff", "EL3102", "2x Analog Input diff.",
-    EC_MAILBOX_SLAVE, sm0_multi, sm1_multi, sm2_31xx, sm3_31xx, fmmu0_31xx, 6
+const ec_slave_type_t Beckhoff_EL2004 = {
+    "Beckhoff", "EL2004", "4x Digital Output", EC_SIMPLE_SLAVE,
+    {&el20XX_sm0, NULL}
 };
 
-ec_slave_type_t Beckhoff_EL3162 =
-{
-    "Beckhoff", "EL3162", "2x Analog Input",
-    EC_MAILBOX_SLAVE, sm0_multi, sm1_multi, sm2_31xx, sm3_31xx, fmmu0_31xx, 6
+const ec_slave_type_t Beckhoff_EL2032 = {
+    "Beckhoff", "EL2032", "2x Digital Output (2A)", EC_SIMPLE_SLAVE,
+    {&el20XX_sm0, NULL}
 };
 
-ec_slave_type_t Beckhoff_EL4102 =
-{
-    "Beckhoff", "EL4102", "2x Analog Output",
-    EC_MAILBOX_SLAVE, sm0_multi, sm1_multi, sm2_41xx, NULL, fmmu0_41xx, 4
+/*****************************************************************************/
+
+const ec_field_t el31X2_st1 = {ec_status,  1};
+const ec_field_t el31X2_ip1 = {ec_ipvalue, 2};
+const ec_field_t el31X2_st2 = {ec_status,  1};
+const ec_field_t el31X2_ip2 = {ec_ipvalue, 2};
+
+const ec_sync_t el31X2_sm2 = {
+    0x1000, 4, 0x24,
+    {NULL}
 };
 
-ec_slave_type_t Beckhoff_EL4132 =
-{
-    "Beckhoff", "EL4132", "2x Analog Output diff.",
-    EC_MAILBOX_SLAVE, sm0_multi, sm1_multi, sm2_41xx, NULL, fmmu0_41xx, 4
+const ec_sync_t el31X2_sm3 = {
+    0x1100, 6, 0x20,
+    {&el31X2_st1, &el31X2_ip1, &el31X2_st2, &el31X2_ip2, NULL}
 };
 
-ec_slave_type_t Beckhoff_EL5001 =
-{
-    "Beckhoff", "EL5001", "SSI-Interface",
-    EC_MAILBOX_SLAVE, sm0_multi, sm1_multi, sm2_5001, sm3_5001, fmmu0_5001, 5
+const ec_slave_type_t Beckhoff_EL3102 = {
+    "Beckhoff", "EL3102", "2x Analog Input diff.", EC_MAILBOX_SLAVE,
+    {&mailbox_sm0, &mailbox_sm1, &el31X2_sm2, &el31X2_sm2, NULL}
 };
 
-ec_slave_type_t Beckhoff_EL5101 =
+const ec_slave_type_t Beckhoff_EL3162 = {
+    "Beckhoff", "EL3102", "2x Analog Input", EC_MAILBOX_SLAVE,
+    {&mailbox_sm0, &mailbox_sm1, &el31X2_sm2, &el31X2_sm2, NULL}
+};
+
+/*****************************************************************************/
+
+const ec_field_t el41X2_op = {ec_opvalue, 2};
+
+const ec_sync_t el41X2_sm2 = {
+    0x1000, 4, 0x24,
+    {&el41X2_op, &el41X2_op, NULL}
+};
+
+const ec_slave_type_t Beckhoff_EL4102 = {
+    "Beckhoff", "EL4102", "2x Analog Output", EC_MAILBOX_SLAVE,
+    {&mailbox_sm0, &mailbox_sm1, &el41X2_sm2, NULL}
+};
+
+const ec_slave_type_t Beckhoff_EL4132 = {
+    "Beckhoff", "EL4132", "2x Analog Output diff.", EC_MAILBOX_SLAVE,
+    {&mailbox_sm0, &mailbox_sm1, &el41X2_sm2, NULL}
+};
+
+/*****************************************************************************/
+
+const ec_field_t el5001_st = {ec_status,  1};
+const ec_field_t el5001_ip = {ec_ipvalue, 4};
+
+const ec_sync_t el5001_sm2 = {
+    0x1000, 4, 0x24,
+    {NULL}
+};
+
+const ec_sync_t el5001_sm3 = {
+    0x1100, 5, 0x20,
+    {&el5001_st, &el5001_ip, NULL}
+};
+
+const ec_slave_type_t Beckhoff_EL5001 = {
+    "Beckhoff", "EL5001", "SSI-Interface", EC_MAILBOX_SLAVE,
+    {&mailbox_sm0, &mailbox_sm1, &el5001_sm2, &el5001_sm3, NULL}
+};
+
+/*****************************************************************************/
+
+const ec_field_t el5101_ct = {ec_control, 1};
+const ec_field_t el5101_op = {ec_opvalue, 2};
+const ec_field_t el5101_st = {ec_status,  1};
+const ec_field_t el5101_ip = {ec_ipvalue, 2};
+const ec_field_t el5101_la = {ec_ipvalue, 2};
+
+const ec_sync_t el5101_sm2 = {
+    0x1000, 3, 0x24,
+    {&el5101_ct, &el5101_op, NULL}
+};
+
+const ec_sync_t el5101_sm3 = {
+    0x1100, 5, 0x20,
+    {&el5101_st, &el5101_ip, &el5101_la, NULL}
+};
+
+const ec_slave_type_t Beckhoff_EL5101 =
 {
-    "Beckhoff", "EL5101", "Incremental Encoder Interface",
-    EC_MAILBOX_SLAVE, sm0_multi, sm1_multi, sm2_5101, sm3_5101, fmmu0_5101, 5
+    "Beckhoff", "EL5101", "Incremental Encoder Interface", EC_MAILBOX_SLAVE,
+    {&mailbox_sm0, &mailbox_sm1, &el5101_sm2, &el5101_sm3, NULL}
 };
 
 /*****************************************************************************/
@@ -167,10 +181,14 @@ ec_slave_ident_t slave_idents[] =
     {0x00000002, 0x10063052, &Beckhoff_EL4102},
     {0x00000002, 0x10243052, &Beckhoff_EL4132},
     {0x00000002, 0x13893052, &Beckhoff_EL5001},
-    {0x00000002, 0x13ED3052, &Beckhoff_EL5101}
+    {0x00000002, 0x13ED3052, &Beckhoff_EL5101},
+    {}
 };
 
-unsigned int slave_ident_count = sizeof(slave_idents)
-     / sizeof(ec_slave_ident_t);
-
 /*****************************************************************************/
+
+/* Emacs-Konfiguration
+;;; Local Variables: ***
+;;; c-basic-offset:4 ***
+;;; End: ***
+*/

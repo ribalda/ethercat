@@ -7,4 +7,5 @@ $Id$
 - Ethernet over EtherCAT (EoE)
 - eepro100-Kartentreiber
 - Proc/SysFS-Interface mit Baumdarstellung des Busses
+- Anzahl unterstützter Sync-Manager/FMMUs auslesen
 

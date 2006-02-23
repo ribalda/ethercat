@@ -17,48 +17,51 @@
 
 /*****************************************************************************/
 
-ec_master_t *master = NULL;
-ec_slave_t *s_in, *s_out, *s_ssi;
+#define ABTASTFREQUENZ 1000
 
 struct timer_list timer;
 
-ec_slave_init_t slaves[] = {
-    // Zeiger, Index, Herstellername, Produktname, Domäne
-    {  &s_in,  "1",   "Beckhoff",     "EL3102",    1      },
-    {  &s_out, "2",   "Beckhoff",     "EL2004",    1      },
-    {  &s_ssi, "3",   "Beckhoff",     "EL5001",    1      }
-};
+/*****************************************************************************/
 
-#define SLAVE_COUNT (sizeof(slaves) / sizeof(ec_slave_init_t))
+// EtherCAT
+ec_master_t *master = NULL;
+ec_domain_t *domain1 = NULL;
+
+// Prozessdaten
+uint8_t *dig_out1;
+uint16_t *ssi_value;
+uint16_t *inc_value;
+
+uint32_t angle0;
+
+ec_field_init_t domain1_fields[] = {
+    {(void **) &dig_out1,    "2", "Beckhoff", "EL2004", ec_opvalue, 0, 1},
+    {(void **) &ssi_value,   "3", "Beckhoff", "EL5001", ec_ipvalue, 0, 1},
+    {(void **) &inc_value, "0:4", "Beckhoff", "EL5101", ec_ipvalue, 0, 1},
+    {}
+};
 
 /*****************************************************************************/
 
 void run(unsigned long data)
 {
-    static unsigned int counter;
-
-    // Klemmen-IO
-    EC_WRITE_EL20XX(s_out, 3, EC_READ_EL31XX(s_in, 0) < 0);
-
-    if (!counter) {
-        EtherCAT_rt_debug_level(master, 2);
-    }
+    static unsigned int counter = 0;
 
     // Prozessdaten lesen und schreiben
-    EtherCAT_rt_domain_xio(master, 1, 100);
+    EtherCAT_rt_domain_xio(domain1);
+
+    angle0 = (uint32_t) *inc_value;
 
     if (counter) {
         counter--;
     }
     else {
-        EtherCAT_rt_debug_level(master, 0);
-        printk("SSI status=%X value=%u\n",
-               EC_READ_EL5001_STATE(s_ssi), EC_READ_EL5001_VALUE(s_ssi));
-        counter = 1000;
+        counter = ABTASTFREQUENZ;
+        printk(KERN_INFO "angle0 = %i\n", angle0);
     }
 
     // Timer neu starten
-    timer.expires += HZ / 1000;
+    timer.expires += HZ / ABTASTFREQUENZ;
     add_timer(&timer);
 }
 
@@ -66,41 +69,52 @@ void run(unsigned long data)
 
 int __init init_mini_module(void)
 {
+    const ec_field_init_t *field;
+
     printk(KERN_INFO "=== Starting Minimal EtherCAT environment... ===\n");
 
     if ((master = EtherCAT_rt_request_master(0)) == NULL) {
-        printk(KERN_ERR "EtherCAT master 0 not available!\n");
+        printk(KERN_ERR "Error requesting master 0!\n");
         goto out_return;
     }
 
-    if (EtherCAT_rt_register_slave_list(master, slaves, SLAVE_COUNT)) {
-        printk(KERN_ERR "Could not register slaves!\n");
+    EtherCAT_rt_master_print(master);
+
+    printk(KERN_INFO "Registering domain...\n");
+
+    if (!(domain1 = EtherCAT_rt_master_register_domain(master, ec_sync, 100)))
+    {
+        printk(KERN_ERR "EtherCAT: Could not register domain!\n");
         goto out_release_master;
     }
 
-    printk("Activating all EtherCAT slaves.\n");
+    printk(KERN_INFO "Registering domain fields...\n");
 
-    if (EtherCAT_rt_activate_slaves(master)) {
-        printk(KERN_ERR "EtherCAT: Could not activate slaves!\n");
-        goto out_release_master;
+    for (field = domain1_fields; field->data; field++)
+    {
+        if (!EtherCAT_rt_register_slave_field(domain1,
+                                              field->address,
+                                              field->vendor,
+                                              field->product,
+                                              field->data,
+                                              field->field_type,
+                                              field->field_index,
+                                              field->field_count)) {
+            printk(KERN_ERR "EtherCAT: Could not register field!\n");
+            goto out_release_master;
+        }
     }
 
-    printk("Configuring EtherCAT slaves.\n");
+    printk(KERN_INFO "Activating master...\n");
 
-    if (EtherCAT_rt_canopen_sdo_write(master, s_ssi, 0x4067, 0, 2, 2)) {
-        printk(KERN_ERR "EtherCAT: Could not set SSI baud rate!\n");
-        goto out_release_master;
-    }
-
-    if (EtherCAT_rt_canopen_sdo_write(master, s_ssi, 0x4061, 4, 1, 1)) {
-        printk(KERN_ERR "EtherCAT: Could not set SSI feature bit!\n");
+    if (EtherCAT_rt_master_activate(master)) {
+        printk(KERN_ERR "EtherCAT: Could not activate master!\n");
         goto out_release_master;
     }
 
     printk("Starting cyclic sample thread.\n");
 
     init_timer(&timer);
-
     timer.function = run;
     timer.expires = jiffies + 10; // Das erste Mal sofort feuern
     add_timer(&timer);
@@ -126,9 +140,9 @@ void __exit cleanup_mini_module(void)
     {
         del_timer_sync(&timer);
 
-        printk(KERN_INFO "Deactivating slaves.\n");
+        printk(KERN_INFO "Deactivating master...\n");
 
-        EtherCAT_rt_deactivate_slaves(master);
+        EtherCAT_rt_master_deactivate(master);
         EtherCAT_rt_release_master(master);
     }
 
@@ -139,7 +153,7 @@ void __exit cleanup_mini_module(void)
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR ("Florian Pose <fp@igh-essen.com>");
-MODULE_DESCRIPTION ("Minimal EtherCAT environment");
+MODULE_DESCRIPTION ("EtherCAT minimal test environment");
 
 module_init(init_mini_module);
 module_exit(cleanup_mini_module);

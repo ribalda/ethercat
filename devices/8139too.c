@@ -2268,14 +2268,12 @@ no_early_rx:
                 }
                 else
                 {
-                  if (EtherCAT_dev_receive(rtl_ec_dev,
-                                           &rx_ring[ring_offset + 4] + ETH_HLEN,
-                                           pkt_size - ETH_HLEN) == 0)
-                  {
+                    EtherCAT_dev_receive(rtl_ec_dev,
+                                         &rx_ring[ring_offset + 4] + ETH_HLEN,
+                                         pkt_size - ETH_HLEN);
                     dev->last_rx = jiffies;
                     tp->stats.rx_bytes += pkt_size;
                     tp->stats.rx_packets++;
-                  }
                 }
 
                 /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
@@ -2466,7 +2464,7 @@ irqreturn_t rtl8139_interrupt (int irq, void *dev_instance,
           else
           {
             /* Beim EtherCAT-Device einfach alle Frames empfangen */
-            rtl8139_rx(dev, tp, 100); // FIXME Das ist echt dirty...
+            rtl8139_rx(dev, tp, 100); // FIXME
           }
 	}
 
