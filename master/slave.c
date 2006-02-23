@@ -432,6 +432,61 @@ void ec_slave_print(const ec_slave_t *slave /**< EtherCAT-Slave */)
 
 /*****************************************************************************/
 
+/**
+   Gibt die Zählerstände der CRC-Fault-Counter aus und setzt diese zurück.
+
+   \return 0 bei Erfolg, sonst < 0
+*/
+
+int ec_slave_check_crc(ec_slave_t *slave /**< EtherCAT-Slave */)
+{
+    ec_frame_t frame;
+    uint8_t data[4];
+    uint16_t crc[2];
+
+    ec_frame_init_nprd(&frame, slave->master, slave->station_address, 0x0300,
+                       4);
+
+    if (unlikely(ec_frame_send_receive(&frame))) {
+        printk(KERN_WARNING "EtherCAT: Reading CRC fault counters failed"
+               " on slave %i - Could not send command!\n",
+               slave->ring_position);
+        return -1;
+    }
+
+    if (unlikely(frame.working_counter != 1)) {
+        printk(KERN_WARNING "EtherCAT: Reading CRC fault counters -"
+               " Slave %i did not respond!\n", slave->ring_position);
+        return -1;
+    }
+
+    crc[0] = frame.data[0] | (frame.data[1] << 8);
+    crc[1] = frame.data[2] | (frame.data[3] << 8);
+
+    // No CRC faults.
+    if (!crc[0] && !crc[1]) return 0;
+
+    printk(KERN_INFO "EtherCAT: CRC faults on slave %i. A: %i, B: %i\n",
+           slave->ring_position, crc[0], crc[1]);
+
+    // Reset CRC counters
+    memset(data, 0x00, 4);
+    ec_frame_init_npwr(&frame, slave->master, slave->station_address, 0x0300,
+                       4, data);
+
+    if (unlikely(ec_frame_send_receive(&frame))) return -1;
+
+    if (unlikely(frame.working_counter != 1)) {
+        printk(KERN_ERR "EtherCAT: Resetting CRC fault counters - Slave"
+               " %i did not respond!\n", slave->ring_position);
+        return -1;
+    }
+
+    return 0;
+}
+
+/*****************************************************************************/
+
 /* Emacs-Konfiguration
 ;;; Local Variables: ***
 ;;; c-basic-offset:4 ***

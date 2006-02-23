@@ -8,64 +8,76 @@
  *
  *****************************************************************************/
 
-#define EC_PROC_DATA(SLAVE) ((unsigned char *) ((SLAVE)->process_data))
-
 /*****************************************************************************/
 
-#define EC_READ_EL10XX(SLAVE, CHANNEL) \
-    ((EC_PROC_DATA(SLAVE)[0] >> (CHANNEL)) & 0x01)
+// Bitwise read/write macros
 
-/*****************************************************************************/
+#define EC_READ_BIT(PD, CH) (*((uint8_t *) (PD)) >> (CH)) & 0x01)
 
-#define EC_WRITE_EL200X(SLAVE, CHANNEL, VALUE) \
+#define EC_WRITE_BIT(PD, CH, VAL) \
     do { \
-        if (VALUE) EC_PROC_DATA(SLAVE)[0] |=  (1 << (CHANNEL)); \
-        else       EC_PROC_DATA(SLAVE)[0] &= ~(1 << (CHANNEL)); \
+        if (VAL) *((uint8_t *) (PD)) |=  (1 << (CH)); \
+        else     *((uint8_t *) (PD)) &= ~(1 << (CH)); \
     } while (0)
 
 /*****************************************************************************/
 
-#define EC_READ_EL310X(SLAVE, CHANNEL) \
-    ((signed short int) ((EC_PROC_DATA(SLAVE)[(CHANNEL) * 3 + 2] << 8) | \
-                          EC_PROC_DATA(SLAVE)[(CHANNEL) * 3 + 1]))
+// Read macros
 
-#define EC_READ_EL316X(SLAVE, CHANNEL) \
-    ((unsigned short int) ((EC_PROC_DATA(SLAVE)[(CHANNEL) * 3 + 2] << 8) | \
-                            EC_PROC_DATA(SLAVE)[(CHANNEL) * 3 + 1]))
+#define EC_READ_U8(PD) \
+    (*((uint8_t *) (PD)))
+
+#define EC_READ_S8(PD) \
+    ((int8_t) *((uint8_t *) (PD)))
+
+#define EC_READ_U16(PD) \
+    ((uint16_t) (*((uint8_t *) (PD) + 0) << 0 | \
+                 *((uint8_t *) (PD) + 1) << 8))
+
+#define EC_READ_S16(PD) \
+    ((int16_t) (*((uint8_t *) (PD) + 0) << 0 | \
+                *((uint8_t *) (PD) + 1) << 8))
+
+#define EC_READ_U32(PD) \
+    ((uint32_t) (*((uint8_t *) (PD) + 0) <<  0 | \
+                 *((uint8_t *) (PD) + 1) <<  8 | \
+                 *((uint8_t *) (PD) + 2) << 16 | \
+                 *((uint8_t *) (PD) + 3) << 24))
+
+#define EC_READ_S32(PD) \
+    ((int32_t) (*((uint8_t *) (PD) + 0) <<  0 | \
+                *((uint8_t *) (PD) + 1) <<  8 | \
+                *((uint8_t *) (PD) + 2) << 16 | \
+                *((uint8_t *) (PD) + 3) << 24))
 
 /*****************************************************************************/
 
-#define EC_WRITE_EL410X(SLAVE, CHANNEL, VALUE) \
+// Write macros
+
+#define EC_WRITE_U8(PD, VAL) \
     do { \
-        EC_PROC_DATA(SLAVE)[(CHANNEL) * 3 + 1] = ((VALUE) & 0xFF00) >> 8; \
-        EC_PROC_DATA(SLAVE)[(CHANNEL) * 3 + 2] =  (VALUE) & 0xFF; \
+        *((uint8_t *)(PD)) = ((uint8_t) (VAL)); \
     } while (0)
 
-/*****************************************************************************/
+#define EC_WRITE_S8(PD, VAL) EC_WRITE_U8(PD, VAL)
 
-#define EC_CONF_EL5001_BAUD (0x4067)
+#define EC_WRITE_U16(PD, VAL) \
+    do { \
+        *((uint8_t *) (PD) + 0) = ((uint16_t) (VAL) >> 0) & 0xFF; \
+        *((uint8_t *) (PD) + 1) = ((uint16_t) (VAL) >> 8) & 0xFF; \
+    } while (0)
 
-#define EC_READ_EL5001_STATE(SLAVE) \
-    ((unsigned char) EC_PROC_DATA(SLAVE)[0])
+#define EC_WRITE_S16(PD, VAL) EC_WRITE_U16(PD, VAL)
 
-#define EC_READ_EL5001_VALUE(SLAVE) \
-    ((unsigned int) (EC_PROC_DATA(SLAVE)[1] | \
-                     (EC_PROC_DATA(SLAVE)[2] << 8) | \
-                     (EC_PROC_DATA(SLAVE)[3] << 16) | \
-                     (EC_PROC_DATA(SLAVE)[4] << 24)))
+#define EC_WRITE_U32(PD, VAL) \
+    do { \
+        *((uint8_t *) (PD) + 0) = ((uint32_t) (VAL) >>  0) & 0xFF; \
+        *((uint8_t *) (PD) + 1) = ((uint32_t) (VAL) >>  8) & 0xFF; \
+        *((uint8_t *) (PD) + 2) = ((uint32_t) (VAL) >> 16) & 0xFF; \
+        *((uint8_t *) (PD) + 3) = ((uint32_t) (VAL) >> 24) & 0xFF; \
+    } while (0)
 
-/*****************************************************************************/
-
-#define EC_READ_EL5101_STATE(SLAVE) \
-    ((unsigned char) EC_PROC_DATA(SLAVE)[0])
-
-#define EC_READ_EL5101_VALUE(SLAVE) \
-    ((unsigned int) (EC_PROC_DATA(SLAVE)[1] | \
-                     (EC_PROC_DATA(SLAVE)[2] << 8)))
-
-#define EC_READ_EL5101_LATCH(SLAVE) \
-    ((unsigned int) (EC_PROC_DATA(SLAVE)[3] | \
-                     (EC_PROC_DATA(SLAVE)[4] << 8)))
+#define EC_WRITE_S32(PD, VAL) EC_WRITE_U32(PD, VAL)
 
 /*****************************************************************************/
 

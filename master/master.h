@@ -47,6 +47,7 @@ struct ec_master
 void ec_master_init(ec_master_t *);
 void ec_master_clear(ec_master_t *);
 void ec_master_reset(ec_master_t *);
+void ec_master_clear_slaves(ec_master_t *);
 
 // Registration of devices
 int ec_master_open(ec_master_t *);

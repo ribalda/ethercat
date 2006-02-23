@@ -77,6 +77,7 @@ int ec_slave_set_fmmu(ec_slave_t *, const ec_domain_t *, const ec_sync_t *);
 
 // Misc
 void ec_slave_print(const ec_slave_t *);
+int ec_slave_check_crc(ec_slave_t *);
 
 /*****************************************************************************/
 

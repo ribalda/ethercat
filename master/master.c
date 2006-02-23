@@ -71,14 +71,7 @@ void ec_master_reset(ec_master_t *master
 {
     unsigned int i;
 
-    if (master->slaves) {
-        for (i = 0; i < master->slave_count; i++) {
-            ec_slave_clear(master->slaves + i);
-        }
-        kfree(master->slaves);
-        master->slaves = NULL;
-    }
-    master->slave_count = 0;
+    ec_master_clear_slaves(master);
 
     for (i = 0; i < master->domain_count; i++) {
         ec_domain_clear(master->domains[i]);
@@ -91,6 +84,26 @@ void ec_master_reset(ec_master_t *master
     master->bus_time = 0;
     master->frames_lost = 0;
     master->t_lost_output = 0;
+}
+
+/*****************************************************************************/
+
+/**
+   Entfernt alle Slaves.
+*/
+
+void ec_master_clear_slaves(ec_master_t *master /**< EtherCAT-Master */)
+{
+    unsigned int i;
+
+    if (master->slaves) {
+        for (i = 0; i < master->slave_count; i++) {
+            ec_slave_clear(master->slaves + i);
+        }
+        kfree(master->slaves);
+        master->slaves = NULL;
+    }
+    master->slave_count = 0;
 }
 
 /*****************************************************************************/
@@ -152,10 +165,9 @@ int ec_scan_for_slaves(ec_master_t *master /**< EtherCAT-Master */)
     unsigned int i;
     unsigned char data[2];
 
-    if (master->slaves || master->slave_count) {
-        printk(KERN_ERR "EtherCAT: Slave scan already done!\n");
-        return -1;
-    }
+    if (master->slaves || master->slave_count)
+        printk(KERN_WARNING "EtherCAT: Slave scan already done!\n");
+    ec_master_clear_slaves(master);
 
     // Determine number of slaves on bus
 
@@ -434,6 +446,8 @@ ec_domain_t *EtherCAT_rt_master_register_domain(ec_master_t *master,
     return domain;
 }
 
+/*****************************************************************************/
+
 /**
    Konfiguriert alle Slaves und setzt den Operational-Zustand.
 
@@ -485,6 +499,9 @@ int EtherCAT_rt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
         }
 
         type = slave->type;
+
+        // Check and reset CRC fault counters
+        ec_slave_check_crc(slave);
 
         // Resetting FMMU's
         if (slave->base_fmmu_count) {
@@ -580,6 +597,9 @@ int EtherCAT_rt_master_deactivate(ec_master_t *master /**< EtherCAT-Master */)
     for (i = 0; i < master->slave_count; i++)
     {
         slave = master->slaves + i;
+
+        // CRC-Zählerstände ausgeben
+        ec_slave_check_crc(slave);
 
         if (unlikely(ec_slave_state_change(slave, EC_SLAVE_STATE_INIT) != 0))
             return -1;
