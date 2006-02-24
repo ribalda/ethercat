@@ -118,8 +118,6 @@ int ec_frame_send(ec_frame_t *);
 int ec_frame_receive(ec_frame_t *);
 int ec_frame_send_receive(ec_frame_t *);
 
-void ec_frame_print(const ec_frame_t *);
-
 /*****************************************************************************/
 
 #endif

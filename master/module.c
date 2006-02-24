@@ -186,7 +186,7 @@ ec_device_t *EtherCAT_dev_register(unsigned int master_index,
 
     ecd = &master->device;
 
-    if (ec_device_init(ecd) < 0) return NULL;
+    if (ec_device_init(ecd, master) < 0) return NULL;
 
     ecd->dev = dev;
     ecd->tx_skb->dev = dev;

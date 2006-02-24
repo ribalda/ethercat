@@ -351,7 +351,7 @@ int ec_frame_receive(ec_frame_t *frame /**< Gesendeter Rahmen */)
     if (unlikely(received_length < EC_FRAME_HEADER_SIZE)) {
         printk(KERN_ERR "EtherCAT: Received frame with incomplete EtherCAT"
                " frame header!\n");
-        ec_frame_print(frame);
+        ec_device_debug(device);
         return -1;
     }
 
@@ -364,7 +364,7 @@ int ec_frame_receive(ec_frame_t *frame /**< Gesendeter Rahmen */)
     if (unlikely(frame_length > received_length)) {
         printk(KERN_ERR "EtherCAT: Received corrupted frame (length does"
                " not match)!\n");
-        ec_frame_print(frame);
+        ec_device_debug(device);
         return -1;
     }
 
@@ -378,7 +378,7 @@ int ec_frame_receive(ec_frame_t *frame /**< Gesendeter Rahmen */)
                  + data_length + EC_COMMAND_FOOTER_SIZE > received_length)) {
         printk(KERN_ERR "EtherCAT: Received frame with incomplete command"
                " data!\n");
-        ec_frame_print(frame);
+        ec_device_debug(device);
         return -1;
     }
 
@@ -387,7 +387,7 @@ int ec_frame_receive(ec_frame_t *frame /**< Gesendeter Rahmen */)
                  || frame->data_length != data_length))
     {
         printk(KERN_WARNING "EtherCAT: WARNING - Send/Receive anomaly!\n");
-        ec_frame_print(frame); // FIXME uninteressant...
+        ec_device_debug(device);
         ec_device_call_isr(device); // Empfangenes "vergessen"
         return -1;
     }
@@ -400,10 +400,6 @@ int ec_frame_receive(ec_frame_t *frame /**< Gesendeter Rahmen */)
 
     // Working-Counter setzen
     frame->working_counter = EC_READ_U16(data);
-
-    if (unlikely(frame->master->debug_level > 1)) {
-        ec_frame_print(frame);
-    }
 
     return 0;
 }
@@ -448,28 +444,6 @@ int ec_frame_send_receive(ec_frame_t *frame
     }
 
     return 0;
-}
-
-/*****************************************************************************/
-
-/**
-   Gibt Frame-Inhalte zwecks Debugging aus.
-*/
-
-void ec_frame_print(const ec_frame_t *frame /**< EtherCAT-Frame */)
-{
-    unsigned int i;
-
-    printk(KERN_DEBUG "EtherCAT: Frame contents (%i Bytes):\n",
-           frame->data_length);
-
-    printk(KERN_DEBUG);
-    for (i = 0; i < frame->data_length; i++)
-    {
-        printk("%02X ", frame->data[i]);
-        if ((i + 1) % 16 == 0) printk("\n" KERN_DEBUG);
-    }
-    printk("\n");
 }
 
 /*****************************************************************************/
