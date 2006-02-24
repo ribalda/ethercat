@@ -483,8 +483,8 @@ int EtherCAT_rt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
             return -1;
 
         // Check if slave was registered...
-        if (!slave->type || !slave->registered) {
-            printk(KERN_INFO "EtherCAT: Slave %i was not registered.\n", i);
+        if (!slave->type) {
+            printk(KERN_INFO "EtherCAT: Slave %i has unknown type!\n", i);
             continue;
         }
 
@@ -540,6 +540,14 @@ int EtherCAT_rt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
         // Change state to PREOP
         if (unlikely(ec_slave_state_change(slave, EC_SLAVE_STATE_PREOP)))
             return -1;
+
+        // Slaves that are not registered are only brought into PREOP
+        // state -> nice blinking and mailbox comm. possible
+        if (!slave->registered) {
+            printk(KERN_WARNING "EtherCAT: Slave %i was not registered!\n",
+                   slave->ring_position);
+            continue;
+        }
 
         // Set FMMUs
         for (j = 0; j < slave->fmmu_count; j++)

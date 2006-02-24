@@ -59,8 +59,9 @@ uint16_t *inc_value;
 uint32_t angle0;
 
 ec_field_init_t domain1_fields[] = {
+    {},
+    {(void **) &ssi_value,   "1", "Beckhoff", "EL5001", ec_ipvalue, 0, 1},
     {(void **) &dig_out1,    "2", "Beckhoff", "EL2004", ec_opvalue, 0, 1},
-    {(void **) &ssi_value,   "3", "Beckhoff", "EL5001", ec_ipvalue, 0, 1},
     {(void **) &inc_value, "0:4", "Beckhoff", "EL5101", ec_ipvalue, 0, 1},
     {}
 };
@@ -72,7 +73,7 @@ static void msr_controller_run(void)
     // Prozessdaten lesen und schreiben
     EtherCAT_rt_domain_xio(domain1);
 
-    angle0 = (uint32_t) *inc_value;
+    //angle0 = (uint32_t) *inc_value;
 }
 
 /*****************************************************************************/
@@ -165,14 +166,14 @@ int __init init_rt_module(void)
         goto out_release_master;
     }
 
-    EtherCAT_rt_master_debug(master, 2);
-    if (EtherCAT_rt_canopen_sdo_addr_read(master, "0:3", 0x100A, 1,
+#if 1
+    if (EtherCAT_rt_canopen_sdo_addr_read(master, "1", 0x100A, 1,
                                           &version)) {
         printk(KERN_ERR "Could not read SSI version!\n");
         goto out_release_master;
     }
     printk(KERN_INFO "Klemme 3 Software-version: %u\n", version);
-    EtherCAT_rt_master_debug(master, 0);
+#endif
 
     ipipe_init_attr(&attr);
     attr.name = "IPIPE-MSR-MODULE";
