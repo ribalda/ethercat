@@ -280,6 +280,7 @@ ec_master_t *EtherCAT_rt_request_master(unsigned int index)
 
  req_module_put:
     module_put(master->device.module);
+    ec_master_reset(master);
 
  req_return:
     return NULL;
