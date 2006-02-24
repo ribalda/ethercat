@@ -59,8 +59,8 @@ uint32_t k_angle;
 uint32_t k_pos;
 
 ec_field_init_t domain1_fields[] = {
-    {(void **) &r_ssi,   "1", "Beckhoff", "EL5001", ec_ipvalue, 0, 1},
-    {(void **) &r_inc, "0:3", "Beckhoff", "EL5101", ec_ipvalue, 0, 1},
+    {&r_ssi,   "1", "Beckhoff", "EL5001", ec_ipvalue, 0, 1},
+    {&r_inc, "0:3", "Beckhoff", "EL5101", ec_ipvalue, 0, 1},
     {}
 };
 
@@ -172,7 +172,7 @@ int __init init_rt_module(void)
         printk(KERN_ERR "Could not read SSI version!\n");
         goto out_release_master;
     }
-    printk(KERN_INFO "Klemme 3 Software-version: %u\n", version);
+    printk(KERN_INFO "Software-version: %u\n", version);
 #endif
 
     ipipe_init_attr(&attr);

@@ -27,17 +27,16 @@ struct timer_list timer;
 ec_master_t *master = NULL;
 ec_domain_t *domain1 = NULL;
 
-// Prozessdaten
-uint8_t *dig_out1;
-uint16_t *ssi_value;
-uint16_t *inc_value;
+// Datenfelder
+void *r_ssi;
+void *r_inc;
 
-uint32_t angle0;
+// Kanäle
+uint32_t k_angle, k_pos;
 
 ec_field_init_t domain1_fields[] = {
-    {(void **) &dig_out1,    "2", "Beckhoff", "EL2004", ec_opvalue, 0, 1},
-    {(void **) &ssi_value,   "3", "Beckhoff", "EL5001", ec_ipvalue, 0, 1},
-    {(void **) &inc_value, "0:4", "Beckhoff", "EL5101", ec_ipvalue, 0, 1},
+    {&r_ssi,   "1", "Beckhoff", "EL5001", ec_ipvalue, 0, 1},
+    {&r_inc, "0:3", "Beckhoff", "EL5101", ec_ipvalue, 0, 1},
     {}
 };
 
@@ -50,14 +49,16 @@ void run(unsigned long data)
     // Prozessdaten lesen und schreiben
     EtherCAT_rt_domain_xio(domain1);
 
-    angle0 = (uint32_t) *inc_value;
+    k_angle = EC_READ_U16(r_inc);
+    k_pos   = EC_READ_U32(r_ssi);
 
     if (counter) {
         counter--;
     }
     else {
         counter = ABTASTFREQUENZ;
-        printk(KERN_INFO "angle0 = %i\n", angle0);
+        printk(KERN_INFO "k_angle = %i\n", k_angle);
+        printk(KERN_INFO "k_pos   = %i\n", k_pos);
     }
 
     // Timer neu starten
