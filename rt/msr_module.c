@@ -52,17 +52,15 @@ ec_master_t *master = NULL;
 ec_domain_t *domain1 = NULL;
 
 // Prozessdaten
-uint8_t *dig_out1;
-uint16_t *ssi_value;
-uint16_t *inc_value;
+void *r_ssi;
+void *r_inc;
 
-uint32_t angle0;
+uint32_t k_angle;
+uint32_t k_pos;
 
 ec_field_init_t domain1_fields[] = {
-    {},
-    {(void **) &ssi_value,   "1", "Beckhoff", "EL5001", ec_ipvalue, 0, 1},
-    {(void **) &dig_out1,    "2", "Beckhoff", "EL2004", ec_opvalue, 0, 1},
-    {(void **) &inc_value, "0:4", "Beckhoff", "EL5101", ec_ipvalue, 0, 1},
+    {(void **) &r_ssi,   "1", "Beckhoff", "EL5001", ec_ipvalue, 0, 1},
+    {(void **) &r_inc, "0:3", "Beckhoff", "EL5101", ec_ipvalue, 0, 1},
     {}
 };
 
@@ -73,7 +71,18 @@ static void msr_controller_run(void)
     // Prozessdaten lesen und schreiben
     EtherCAT_rt_domain_xio(domain1);
 
-    //angle0 = (uint32_t) *inc_value;
+    k_angle = EC_READ_U16(r_inc);
+    k_pos = EC_READ_U32(r_ssi);
+}
+
+/*****************************************************************************/
+
+int msr_globals_register(void)
+{
+    msr_reg_kanal("/angle0", "", &k_angle, TUINT);
+    msr_reg_kanal("/pos0",   "", &k_pos,   TUINT);
+
+    return 0;
 }
 
 /*****************************************************************************/
@@ -102,15 +111,6 @@ void domain_entry(void)
 			 &msr_run, NULL, IPIPE_HANDLE_MASK);
 
     ipipe_tune_timer(1000000000UL / MSR_ABTASTFREQUENZ, 0);
-}
-
-/*****************************************************************************/
-
-int msr_globals_register(void)
-{
-    msr_reg_kanal("/angle0", "", &angle0, TUINT);
-
-    return 0;
 }
 
 /*****************************************************************************/

@@ -335,8 +335,7 @@ ec_slave_t *ec_address(const ec_master_t *master,
             slave = master->slaves + i;
             if (!slave->type) continue;
 
-            if (strcmp(slave->type->vendor_name, "Beckhoff") == 0 &&
-                strcmp(slave->type->product_name, "EK1100") == 0) {
+            if (slave->type->bus_coupler) {
                 coupler_idx++;
                 slave_idx = 0;
             }
@@ -543,7 +542,7 @@ int EtherCAT_rt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
 
         // Slaves that are not registered are only brought into PREOP
         // state -> nice blinking and mailbox comm. possible
-        if (!slave->registered) {
+        if (!slave->registered && !slave->type->bus_coupler) {
             printk(KERN_WARNING "EtherCAT: Slave %i was not registered!\n",
                    slave->ring_position);
             continue;
