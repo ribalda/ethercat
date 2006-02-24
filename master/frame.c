@@ -52,7 +52,7 @@ void ec_frame_init_nprd(ec_frame_t *frame,
                         )
 {
     if (unlikely(node_address == 0x0000))
-        printk(KERN_WARNING "EtherCAT: Warning - Using node address 0x0000!\n");
+        EC_WARN("Using node address 0x0000!\n");
 
     EC_FUNC_HEADER;
 
@@ -86,7 +86,7 @@ void ec_frame_init_npwr(ec_frame_t *frame,
                         )
 {
     if (unlikely(node_address == 0x0000))
-        printk(KERN_WARNING "EtherCAT: Warning - Using node address 0x0000!\n");
+        EC_WARN("Using node address 0x0000!\n");
 
     EC_FUNC_HEADER;
 
@@ -255,11 +255,11 @@ int ec_frame_send(ec_frame_t *frame /**< Rahmen zum Senden */)
     uint8_t *data;
 
     if (unlikely(frame->master->debug_level > 0)) {
-        printk(KERN_DEBUG "EtherCAT: ec_frame_send\n");
+        EC_DBG("ec_frame_send\n");
     }
 
     if (unlikely(frame->state != ec_frame_ready)) {
-        printk(KERN_WARNING "EtherCAT: Frame not in \"ready\" state!\n");
+        EC_WARN("Frame not in \"ready\" state!\n");
     }
 
     command_size = frame->data_length + EC_COMMAND_HEADER_SIZE
@@ -267,22 +267,21 @@ int ec_frame_send(ec_frame_t *frame /**< Rahmen zum Senden */)
     frame_size = command_size + EC_FRAME_HEADER_SIZE;
 
     if (unlikely(frame_size > EC_MAX_FRAME_SIZE)) {
-        printk(KERN_ERR "EtherCAT: Frame too long (%i)!\n", frame_size);
+        EC_ERR("Frame too long (%i)!\n", frame_size);
         return -1;
     }
 
     if (frame_size < EC_MIN_FRAME_SIZE) frame_size = EC_MIN_FRAME_SIZE;
 
     if (unlikely(frame->master->debug_level > 0)) {
-        printk(KERN_DEBUG "EtherCAT: Frame length: %i\n", frame_size);
+        EC_DBG("Frame length: %i\n", frame_size);
     }
 
     frame->index = frame->master->command_index;
     frame->master->command_index = (frame->master->command_index + 1) % 0x0100;
 
     if (unlikely(frame->master->debug_level > 0)) {
-        printk(KERN_DEBUG "EtherCAT: Sending command index 0x%X\n",
-               frame->index);
+        EC_DBG("Sending command index 0x%X\n", frame->index);
     }
 
     frame->state = ec_frame_sent;
@@ -338,7 +337,7 @@ int ec_frame_receive(ec_frame_t *frame /**< Gesendeter Rahmen */)
     ec_device_t *device;
 
     if (unlikely(frame->state != ec_frame_sent)) {
-        printk(KERN_ERR "EtherCAT: Frame was not sent!\n");
+        EC_ERR("Frame was not sent!\n");
         return -1;
     }
 
@@ -349,8 +348,7 @@ int ec_frame_receive(ec_frame_t *frame /**< Gesendeter Rahmen */)
     device->state = EC_DEVICE_STATE_READY;
 
     if (unlikely(received_length < EC_FRAME_HEADER_SIZE)) {
-        printk(KERN_ERR "EtherCAT: Received frame with incomplete EtherCAT"
-               " frame header!\n");
+        EC_ERR("Received frame with incomplete EtherCAT frame header!\n");
         ec_device_debug(device);
         return -1;
     }
@@ -362,8 +360,7 @@ int ec_frame_receive(ec_frame_t *frame /**< Gesendeter Rahmen */)
     data += EC_FRAME_HEADER_SIZE;
 
     if (unlikely(frame_length > received_length)) {
-        printk(KERN_ERR "EtherCAT: Received corrupted frame (length does"
-               " not match)!\n");
+        EC_ERR("Received corrupted frame (length does not match)!\n");
         ec_device_debug(device);
         return -1;
     }
@@ -376,8 +373,7 @@ int ec_frame_receive(ec_frame_t *frame /**< Gesendeter Rahmen */)
 
     if (unlikely(EC_FRAME_HEADER_SIZE + EC_COMMAND_HEADER_SIZE
                  + data_length + EC_COMMAND_FOOTER_SIZE > received_length)) {
-        printk(KERN_ERR "EtherCAT: Received frame with incomplete command"
-               " data!\n");
+        EC_ERR("Received frame with incomplete command data!\n");
         ec_device_debug(device);
         return -1;
     }
@@ -386,7 +382,7 @@ int ec_frame_receive(ec_frame_t *frame /**< Gesendeter Rahmen */)
                  || frame->index != command_index
                  || frame->data_length != data_length))
     {
-        printk(KERN_WARNING "EtherCAT: WARNING - Send/Receive anomaly!\n");
+        EC_WARN("WARNING - Send/Receive anomaly!\n");
         ec_device_debug(device);
         ec_device_call_isr(device); // Empfangenes "vergessen"
         return -1;
@@ -419,7 +415,7 @@ int ec_frame_send_receive(ec_frame_t *frame
     unsigned int tries_left;
 
     if (unlikely(ec_frame_send(frame) < 0)) {
-        printk(KERN_ERR "EtherCAT: Frame sending failed!\n");
+        EC_ERR("Frame sending failed!\n");
         return -1;
     }
 
@@ -434,12 +430,12 @@ int ec_frame_send_receive(ec_frame_t *frame
                     && tries_left));
 
     if (unlikely(!tries_left)) {
-        printk(KERN_ERR "EtherCAT: Frame timeout!\n");
+        EC_ERR("Frame timeout!\n");
         return -1;
     }
 
     if (unlikely(ec_frame_receive(frame) < 0)) {
-        printk(KERN_ERR "EtherCAT: Frame receiving failed!\n");
+        EC_ERR("Frame receiving failed!\n");
         return -1;
     }
 

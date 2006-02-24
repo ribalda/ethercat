@@ -119,12 +119,12 @@ void ec_master_clear_slaves(ec_master_t *master /**< EtherCAT-Master */)
 int ec_master_open(ec_master_t *master /**< Der EtherCAT-Master */)
 {
     if (!master->device_registered) {
-        printk(KERN_ERR "EtherCAT: No device registered!\n");
+        EC_ERR("No device registered!\n");
         return -1;
     }
 
     if (ec_device_open(&master->device) < 0) {
-        printk(KERN_ERR "EtherCAT: Could not open device!\n");
+        EC_ERR("Could not open device!\n");
         return -1;
     }
 
@@ -140,14 +140,12 @@ int ec_master_open(ec_master_t *master /**< Der EtherCAT-Master */)
 void ec_master_close(ec_master_t *master /**< EtherCAT-Master */)
 {
     if (!master->device_registered) {
-        printk(KERN_WARNING "EtherCAT: Warning -"
-               " Trying to close an unregistered device!\n");
+        EC_WARN("Warning - Trying to close an unregistered device!\n");
         return;
     }
 
-    if (ec_device_close(&master->device) < 0) {
-        printk(KERN_WARNING "EtherCAT: Warning - Could not close device!\n");
-    }
+    if (ec_device_close(&master->device) < 0)
+        EC_WARN("Warning - Could not close device!\n");
 }
 
 /*****************************************************************************/
@@ -167,7 +165,7 @@ int ec_scan_for_slaves(ec_master_t *master /**< EtherCAT-Master */)
     unsigned char data[2];
 
     if (master->slaves || master->slave_count)
-        printk(KERN_WARNING "EtherCAT: Slave scan already done!\n");
+        EC_WARN("Slave scan already done!\n");
     ec_master_clear_slaves(master);
 
     // Determine number of slaves on bus
@@ -176,15 +174,14 @@ int ec_scan_for_slaves(ec_master_t *master /**< EtherCAT-Master */)
     if (unlikely(ec_frame_send_receive(&frame) < 0)) return -1;
 
     master->slave_count = frame.working_counter;
-    printk("EtherCAT: Found %i slaves on bus.\n", master->slave_count);
+    EC_INFO("Found %i slaves on bus.\n", master->slave_count);
 
     if (!master->slave_count) return 0;
 
     if (!(master->slaves = (ec_slave_t *) kmalloc(master->slave_count
                                                       * sizeof(ec_slave_t),
                                                       GFP_KERNEL))) {
-        printk(KERN_ERR "EtherCAT: Could not allocate memory for bus"
-               " slaves!\n");
+        EC_ERR("Could not allocate memory for bus slaves!\n");
         return -1;
     }
 
@@ -210,8 +207,8 @@ int ec_scan_for_slaves(ec_master_t *master /**< EtherCAT-Master */)
         if (unlikely(ec_frame_send_receive(&frame) < 0)) return -1;
 
         if (unlikely(frame.working_counter != 1)) {
-            printk(KERN_ERR "EtherCAT: Slave %i did not repond while writing"
-                   " station address!\n", i);
+            EC_ERR("Slave %i did not repond while writing station address!\n",
+                   i);
             return -1;
         }
 
@@ -229,12 +226,10 @@ int ec_scan_for_slaves(ec_master_t *master /**< EtherCAT-Master */)
             ident++;
         }
 
-        if (!slave->type) {
-            printk(KERN_WARNING "EtherCAT: Unknown slave device (vendor"
-                   " 0x%08X, code 0x%08X) at position %i.\n",
-                   slave->sii_vendor_id, slave->sii_product_code, i);
-            return 0;
-        }
+        if (!slave->type)
+            EC_WARN("Unknown slave device (vendor 0x%08X, code 0x%08X) at"
+                    " position %i.\n", slave->sii_vendor_id,
+                    slave->sii_product_code, i);
     }
 
     return 0;
@@ -253,8 +248,7 @@ void ec_output_lost_frames(ec_master_t *master /**< EtherCAT-Master */)
     if (master->frames_lost) {
         rdtscl(t);
         if ((t - master->t_lost_output) / cpu_khz > 1000) {
-            printk(KERN_ERR "EtherCAT: %u frame(s) LOST!\n",
-                   master->frames_lost);
+            EC_WARN("%u frame(s) LOST!\n", master->frames_lost);
             master->frames_lost = 0;
             master->t_lost_output = t;
         }
@@ -291,15 +285,13 @@ ec_slave_t *ec_address(const ec_master_t *master,
     if (!address || address[0] == 0) return NULL;
 
     if (address[0] == '#') {
-        printk(KERN_ERR "EtherCAT: Bus ID \"%s\" - #<SSID> not implemented"
-               " yet!\n", address);
+        EC_ERR("Bus ID \"%s\" - #<SSID> not implemented yet!\n", address);
         return NULL;
     }
 
     first = simple_strtoul(address, &remainder, 0);
     if (remainder == address) {
-        printk(KERN_ERR "EtherCAT: Bus ID \"%s\" - First number empty!\n",
-               address);
+        EC_ERR("Bus ID \"%s\" - First number empty!\n", address);
         return NULL;
     }
 
@@ -308,8 +300,7 @@ ec_slave_t *ec_address(const ec_master_t *master,
             return master->slaves + first;
         }
 
-        printk(KERN_ERR "EtherCAT: Bus ID \"%s\" - Absolute position"
-               " illegal!\n", address);
+        EC_ERR("Bus ID \"%s\" - Absolute position illegal!\n", address);
     }
 
     else if (remainder[0] == ':') { // field position
@@ -318,14 +309,12 @@ ec_slave_t *ec_address(const ec_master_t *master,
         second = simple_strtoul(remainder, &remainder2, 0);
 
         if (remainder2 == remainder) {
-            printk(KERN_ERR "EtherCAT: Bus ID \"%s\" - Sencond number"
-                   " empty!\n", address);
+            EC_ERR("Bus ID \"%s\" - Sencond number empty!\n", address);
             return NULL;
         }
 
         if (remainder2[0]) {
-            printk(KERN_ERR "EtherCAT: Bus ID \"%s\" - Illegal trailer"
-                   " (2)!\n", address);
+            EC_ERR("Bus ID \"%s\" - Illegal trailer (2)!\n", address);
             return NULL;
         }
 
@@ -344,10 +333,10 @@ ec_slave_t *ec_address(const ec_master_t *master,
         }
     }
 
-    else {
-        printk(KERN_ERR "EtherCAT: Bus ID \"%s\" - Illegal trailer!\n",
-               address);
-    }
+    else
+        EC_ERR("Bus ID \"%s\" - Illegal trailer!\n", address);
+
+    // FIXME ???
 
     return NULL;
 }
@@ -419,12 +408,12 @@ ec_domain_t *EtherCAT_rt_master_register_domain(ec_master_t *master,
     ec_domain_t *domain;
 
     if (master->domain_count >= EC_MASTER_MAX_DOMAINS) {
-        printk(KERN_ERR "EtherCAT: Maximum number of domains reached!\n");
+        EC_ERR("Maximum number of domains reached!\n");
         return NULL;
     }
 
     if (!(domain = (ec_domain_t *) kmalloc(sizeof(ec_domain_t), GFP_KERNEL))) {
-        printk(KERN_ERR "EthertCAT: Error allocating domain memory!\n");
+        EC_ERR("Error allocating domain memory!\n");
         return NULL;
     }
 
@@ -457,18 +446,21 @@ int EtherCAT_rt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
     const ec_fmmu_t *fmmu;
     uint8_t data[256];
     uint32_t domain_offset;
+    unsigned int frame_count;
+    ec_domain_t *domain;
 
     // Domains erstellen
     domain_offset = 0;
     for (i = 0; i < master->domain_count; i++) {
-        ec_domain_t *domain = master->domains[i];
+        domain = master->domains[i];
         if (ec_domain_alloc(domain, domain_offset)) {
-            printk(KERN_INFO "EtherCAT: Failed to allocate domain %i!\n", i);
+            EC_ERR("Failed to allocate domain %i!\n", i);
             return -1;
         }
-        printk(KERN_INFO "EtherCAT: Domain %i - Allocated %i bytes (%i"
-               " Frame(s))\n", i, domain->data_size,
-               domain->data_size / EC_MAX_FRAME_SIZE + 1);
+        frame_count = domain->data_size / EC_MAX_FRAME_SIZE + 1;
+        if (!domain->data_size) frame_count = 0;
+        EC_INFO("Domain %i - Allocated %i bytes (%i Frame(s))\n", i,
+                domain->data_size, frame_count);
         domain_offset += domain->data_size;
     }
 
@@ -483,7 +475,7 @@ int EtherCAT_rt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
 
         // Check if slave was registered...
         if (!slave->type) {
-            printk(KERN_INFO "EtherCAT: Slave %i has unknown type!\n", i);
+            EC_WARN("Slave %i has unknown type!\n", i);
             continue;
         }
 
@@ -499,8 +491,8 @@ int EtherCAT_rt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
                                EC_FMMU_SIZE * slave->base_fmmu_count, data);
             if (unlikely(ec_frame_send_receive(&frame) < 0)) return -1;
             if (unlikely(frame.working_counter != 1)) {
-                printk(KERN_ERR "EtherCAT: Resetting FMMUs - Slave %i did"
-                       " not respond!\n", slave->ring_position);
+                EC_ERR("Resetting FMMUs - Slave %i did not respond!\n",
+                       slave->ring_position);
                 return -1;
             }
         }
@@ -512,8 +504,8 @@ int EtherCAT_rt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
                                EC_SYNC_SIZE * slave->base_sync_count, data);
             if (unlikely(ec_frame_send_receive(&frame) < 0)) return -1;
             if (unlikely(frame.working_counter != 1)) {
-                printk(KERN_ERR "EtherCAT: Resetting SMs - Slave %i did not"
-                       " respond!\n", slave->ring_position);
+                EC_ERR("Resetting SMs - Slave %i did not respond!\n",
+                       slave->ring_position);
                 return -1;
             }
         }
@@ -530,8 +522,8 @@ int EtherCAT_rt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
             if (unlikely(ec_frame_send_receive(&frame))) return -1;
 
             if (unlikely(frame.working_counter != 1)) {
-                printk(KERN_ERR "EtherCAT: Setting sync manager %i - Slave"
-                       " %i did not respond!\n", j, slave->ring_position);
+                EC_ERR("Setting sync manager %i - Slave %i did not respond!\n",
+                       j, slave->ring_position);
                 return -1;
             }
         }
@@ -543,8 +535,7 @@ int EtherCAT_rt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
         // Slaves that are not registered are only brought into PREOP
         // state -> nice blinking and mailbox comm. possible
         if (!slave->registered && !slave->type->bus_coupler) {
-            printk(KERN_WARNING "EtherCAT: Slave %i was not registered!\n",
-                   slave->ring_position);
+            EC_WARN("Slave %i was not registered!\n", slave->ring_position);
             continue;
         }
 
@@ -560,8 +551,8 @@ int EtherCAT_rt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
             if (unlikely(ec_frame_send_receive(&frame))) return -1;
 
             if (unlikely(frame.working_counter != 1)) {
-                printk(KERN_ERR "EtherCAT: Setting FMMU %i - Slave %i did not"
-                       " respond!\n", j, slave->ring_position);
+                EC_ERR("Setting FMMU %i - Slave %i did not respond!\n", j,
+                       slave->ring_position);
                 return -1;
             }
         }
@@ -624,7 +615,7 @@ void EtherCAT_rt_master_debug(ec_master_t *master,
 {
     master->debug_level = level;
 
-    printk(KERN_INFO "EtherCAT: Master debug level set to %i.\n", level);
+    EC_INFO("Master debug level set to %i.\n", level);
 }
 
 /*****************************************************************************/
@@ -639,13 +630,13 @@ void EtherCAT_rt_master_print(const ec_master_t *master
 {
     unsigned int i;
 
-    printk(KERN_INFO "EtherCAT: *** Begin master information ***\n");
+    EC_INFO("*** Begin master information ***\n");
 
     for (i = 0; i < master->slave_count; i++) {
         ec_slave_print(&master->slaves[i]);
     }
 
-    printk(KERN_INFO "EtherCAT: *** End master information ***\n");
+    EC_INFO("*** End master information ***\n");
 }
 
 /*****************************************************************************/

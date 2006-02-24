@@ -38,7 +38,7 @@ int EtherCAT_rt_canopen_sdo_write(ec_slave_t *slave, /**< EtherCAT-Slave */
     master = slave->master;
 
     if (size == 0 || size > 4) {
-        printk(KERN_ERR "EtherCAT: Illegal SDO data size: %i!\n", size);
+        EC_ERR("Illegal SDO data size: %i!\n", size);
         return -1;
     }
 
@@ -62,7 +62,7 @@ int EtherCAT_rt_canopen_sdo_write(ec_slave_t *slave, /**< EtherCAT-Slave */
     if (unlikely(ec_frame_send_receive(&frame) < 0)) return -1;
 
     if (unlikely(frame.working_counter != 1)) {
-        printk(KERN_ERR "EtherCAT: Mailbox send - Slave %i did not respond!\n",
+        EC_ERR("Mailbox send - Slave %i did not respond!\n",
                slave->ring_position);
         return -1;
     }
@@ -77,8 +77,8 @@ int EtherCAT_rt_canopen_sdo_write(ec_slave_t *slave, /**< EtherCAT-Slave */
         if (unlikely(ec_frame_send_receive(&frame) < 0)) return -1;
 
         if (unlikely(frame.working_counter != 1)) {
-            printk(KERN_ERR "EtherCAT: Mailbox check - Slave %i did not"
-                   " respond!\n", slave->ring_position);
+            EC_ERR("Mailbox check - Slave %i did not respond!\n",
+                   slave->ring_position);
             return -1;
         }
 
@@ -91,8 +91,7 @@ int EtherCAT_rt_canopen_sdo_write(ec_slave_t *slave, /**< EtherCAT-Slave */
     }
 
     if (!tries_left) {
-        printk(KERN_ERR "EtherCAT: Mailbox check - Slave %i timed out.\n",
-               slave->ring_position);
+        EC_ERR("Mailbox check - Slave %i timed out.\n", slave->ring_position);
         return -1;
     }
 
@@ -101,8 +100,8 @@ int EtherCAT_rt_canopen_sdo_write(ec_slave_t *slave, /**< EtherCAT-Slave */
     if (unlikely(ec_frame_send_receive(&frame) < 0)) return -1;
 
     if (unlikely(frame.working_counter != 1)) {
-        printk(KERN_ERR "EtherCAT: Mailbox receive - Slave %i did not"
-               " respond!\n", slave->ring_position);
+        EC_ERR("Mailbox receive - Slave %i did not respond!\n",
+               slave->ring_position);
         return -1;
     }
 
@@ -112,7 +111,7 @@ int EtherCAT_rt_canopen_sdo_write(ec_slave_t *slave, /**< EtherCAT-Slave */
         EC_READ_U16(frame.data + 9) != sdo_index || // Index
         EC_READ_U8 (frame.data + 11) != sdo_subindex) // Subindex
     {
-        printk(KERN_ERR "EtherCAT: Illegal mailbox response at slave %i!\n",
+        EC_ERR("Illegal mailbox response at slave %i!\n",
                slave->ring_position);
         return -1;
     }
@@ -156,7 +155,7 @@ int EtherCAT_rt_canopen_sdo_read(ec_slave_t *slave, /**< EtherCAT-Slave */
     if (unlikely(ec_frame_send_receive(&frame) < 0)) return -1;
 
     if (unlikely(frame.working_counter != 1)) {
-        printk(KERN_ERR "EtherCAT: Mailbox send - Slave %i did not respond!\n",
+        EC_ERR("Mailbox send - Slave %i did not respond!\n",
                slave->ring_position);
         return -1;
     }
@@ -171,8 +170,8 @@ int EtherCAT_rt_canopen_sdo_read(ec_slave_t *slave, /**< EtherCAT-Slave */
         if (unlikely(ec_frame_send_receive(&frame) < 0)) return -1;
 
         if (unlikely(frame.working_counter != 1)) {
-            printk(KERN_ERR "EtherCAT: Mailbox check - Slave %i did not"
-                   " respond!\n", slave->ring_position);
+            EC_ERR("Mailbox check - Slave %i did not respond!\n",
+                   slave->ring_position);
             return -1;
         }
 
@@ -185,8 +184,7 @@ int EtherCAT_rt_canopen_sdo_read(ec_slave_t *slave, /**< EtherCAT-Slave */
     }
 
     if (!tries_left) {
-        printk(KERN_ERR "EtherCAT: Mailbox check - Slave %i timed out.\n",
-               slave->ring_position);
+        EC_ERR("Mailbox check - Slave %i timed out.\n", slave->ring_position);
         return -1;
     }
 
@@ -195,8 +193,8 @@ int EtherCAT_rt_canopen_sdo_read(ec_slave_t *slave, /**< EtherCAT-Slave */
     if (unlikely(ec_frame_send_receive(&frame) < 0)) return -1;
 
     if (unlikely(frame.working_counter != 1)) {
-        printk(KERN_ERR "EtherCAT: Mailbox receive - Slave %i did not"
-               " respond!\n", slave->ring_position);
+        EC_ERR("Mailbox receive - Slave %i did not respond!\n",
+               slave->ring_position);
         return -1;
     }
 
@@ -206,7 +204,7 @@ int EtherCAT_rt_canopen_sdo_read(ec_slave_t *slave, /**< EtherCAT-Slave */
         EC_READ_U16(frame.data + 9) != sdo_index || // Index
         EC_READ_U8 (frame.data + 11) != sdo_subindex) // Subindex
     {
-        printk(KERN_ERR "EtherCAT: Illegal mailbox response at slave %i!\n",
+        EC_ERR("Illegal mailbox response at slave %i!\n",
                slave->ring_position);
         return -1;
     }

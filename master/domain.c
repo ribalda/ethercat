@@ -76,12 +76,12 @@ int ec_domain_reg_field(ec_domain_t *domain, /**< Domäne */
 
     if (!(field_reg = (ec_field_reg_t *) kmalloc(sizeof(ec_field_reg_t),
                                                  GFP_KERNEL))) {
-        printk(KERN_ERR "EtherCAT: Failed to allocate field registration.\n");
+        EC_ERR("Failed to allocate field registration.\n");
         return -1;
     }
 
     if (ec_slave_set_fmmu(slave, domain, sync)) {
-        printk(KERN_ERR "EtherCAT: FMMU configuration failed.\n");
+        EC_ERR("FMMU configuration failed.\n");
         kfree(field_reg);
         return -1;
     }
@@ -112,7 +112,7 @@ int ec_domain_alloc(ec_domain_t *domain, /**< Domäne */
     unsigned int i, j, found, data_offset;
 
     if (domain->data) {
-        printk(KERN_ERR "EtherCAT: Domain already allocated!\n");
+        EC_ERR("Domain already allocated!\n");
         return -1;
     }
 
@@ -133,13 +133,12 @@ int ec_domain_alloc(ec_domain_t *domain, /**< Domäne */
     }
 
     if (!domain->data_size) {
-        printk(KERN_WARNING "EtherCAT: Domain 0x%08X contains no data!\n",
-               (u32) domain);
+        EC_WARN("Domain 0x%08X contains no data!\n", (u32) domain);
     }
     else {
         // Prozessdaten allozieren
         if (!(domain->data = kmalloc(domain->data_size, GFP_KERNEL))) {
-            printk(KERN_ERR "EtherCAT: Failed to allocate domain data!\n");
+            EC_ERR("Failed to allocate domain data!\n");
             return -1;
         }
 
@@ -161,7 +160,7 @@ int ec_domain_alloc(ec_domain_t *domain, /**< Domäne */
             }
 
             if (!found) { // Sollte nie passieren
-                printk(KERN_ERR "EtherCAT: FMMU not found. Please report!\n");
+                EC_ERR("FMMU not found. Please report!\n");
                 return -1;
             }
         }
@@ -209,7 +208,7 @@ ec_slave_t *EtherCAT_rt_register_slave_field(
     uint32_t field_offset;
 
     if (!field_count) {
-        printk(KERN_ERR "EtherCAT: field_count may not be 0!\n");
+        EC_ERR("field_count may not be 0!\n");
         return NULL;
     }
 
@@ -219,17 +218,16 @@ ec_slave_t *EtherCAT_rt_register_slave_field(
     if ((slave = ec_address(master, address)) == NULL) return NULL;
 
     if (!(type = slave->type)) {
-        printk(KERN_ERR "EtherCAT: Slave \"%s\" (position %i) has unknown"
-               " type!\n", address, slave->ring_position);
+        EC_ERR("Slave \"%s\" (position %i) has unknown type!\n", address,
+               slave->ring_position);
         return NULL;
     }
 
     if (strcmp(vendor_name, type->vendor_name) ||
         strcmp(product_name, type->product_name)) {
-        printk(KERN_ERR "EtherCAT: Invalid slave type at position %i -"
-               " Requested: \"%s %s\", found: \"%s %s\".\n",
-               slave->ring_position, vendor_name, product_name,
-               type->vendor_name, type->product_name);
+        EC_ERR("Invalid slave type at position %i - Requested: \"%s %s\","
+               " found: \"%s %s\".\n", slave->ring_position, vendor_name,
+               product_name, type->vendor_name, type->product_name);
         return NULL;
     }
 
@@ -251,10 +249,9 @@ ec_slave_t *EtherCAT_rt_register_slave_field(
         }
     }
 
-    printk(KERN_ERR "EtherCAT: Slave %i (\"%s %s\") has less than %i field(s)"
-	   " of type %i, starting at %i (only %i)!\n", slave->ring_position,
-           vendor_name, product_name, field_count, field_type, field_index,
-	   field_idx);
+    EC_ERR("Slave %i (\"%s %s\") registration mismatch: Type %i, index %i,"
+           " count %i.\n", slave->ring_position, vendor_name, product_name,
+           field_type, field_index, field_count);
     return NULL;
 }
 
@@ -292,8 +289,7 @@ int EtherCAT_rt_domain_xio(ec_domain_t *domain /**< Domäne */)
                           domain->data + offset);
 
         if (unlikely(ec_frame_send(frame) < 0)) {
-            printk(KERN_ERR "EtherCAT: Could not send process data"
-                   " command!\n");
+            EC_ERR("Could not send process data command!\n");
             return -1;
         }
 
@@ -315,13 +311,12 @@ int EtherCAT_rt_domain_xio(ec_domain_t *domain /**< Domäne */)
         }
 
         if (unlikely(ec_frame_receive(frame) < 0)) {
-            printk(KERN_ERR "EtherCAT: Receive error!\n");
+            EC_ERR("Receive error!\n");
             return -1;
         }
 
         if (unlikely(frame->state != ec_frame_received)) {
-            printk(KERN_WARNING "EtherCAT: Process data command not"
-                   " received!\n");
+            EC_WARN("Process data command not received!\n");
             return -1;
         }
 
@@ -335,8 +330,8 @@ int EtherCAT_rt_domain_xio(ec_domain_t *domain /**< Domäne */)
 
     if (working_counter_sum != domain->response_count) {
         domain->response_count = working_counter_sum;
-        printk(KERN_INFO "EtherCAT: Domain %08X state change - %i slaves"
-               " responding.\n", (unsigned int) domain, working_counter_sum);
+        EC_INFO("Domain %08X state change - %i slaves responding.\n",
+                (u32) domain, working_counter_sum);
     }
 
     return 0;

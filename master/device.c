@@ -39,7 +39,7 @@ int ec_device_init(ec_device_t *device, /**< EtherCAT-Gerät */
     device->error_reported = 0;
 
     if ((device->tx_skb = dev_alloc_skb(ETH_HLEN + EC_MAX_FRAME_SIZE)) == NULL) {
-        printk(KERN_ERR "EtherCAT: Error allocating device socket buffer!\n");
+        EC_ERR("Error allocating device socket buffer!\n");
         return -1;
     }
 
@@ -85,17 +85,17 @@ int ec_device_open(ec_device_t *device /**< EtherCAT-Gerät */)
     unsigned int i;
 
     if (!device) {
-        printk(KERN_ERR "EtherCAT: Trying to open a NULL device!\n");
+        EC_ERR("Trying to open a NULL device!\n");
         return -1;
     }
 
     if (!device->dev) {
-        printk(KERN_ERR "EtherCAT: No net_device to open!\n");
+        EC_ERR("No net_device to open!\n");
         return -1;
     }
 
     if (device->open) {
-        printk(KERN_WARNING "EtherCAT: Device already opened!\n");
+        EC_WARN("Device already opened!\n");
     }
     else {
         // Device could have received frames before
@@ -122,12 +122,12 @@ int ec_device_open(ec_device_t *device /**< EtherCAT-Gerät */)
 int ec_device_close(ec_device_t *device /**< EtherCAT-Gerät */)
 {
     if (!device->dev) {
-        printk(KERN_ERR "EtherCAT: No device to close!\n");
+        EC_ERR("No device to close!\n");
         return -1;
     }
 
     if (!device->open) {
-        printk(KERN_WARNING "EtherCAT: Device already closed!\n");
+        EC_WARN("Device already closed!\n");
     }
     else {
         if (device->dev->stop(device->dev) == 0) device->open = 0;
@@ -186,7 +186,7 @@ void ec_device_send(ec_device_t *device, /**< EtherCAT-Gerät */
     device->rx_data_size = 0;
 
     if (unlikely(device->master->debug_level > 1)) {
-        printk(KERN_DEBUG "EtherCAT: Sending frame:\n");
+        EC_DBG("Sending frame:\n");
         ec_data_print(device->tx_skb->data + ETH_HLEN, device->tx_skb->len);
     }
 
@@ -240,31 +240,23 @@ void ec_device_call_isr(ec_device_t *device /**< EtherCAT-Gerät */)
 
 void ec_device_print(ec_device_t *device /**< EtherCAT-Gerät */)
 {
-    printk(KERN_DEBUG "---EtherCAT device information begin---\n");
+    EC_DBG("---EtherCAT device information begin---\n");
 
-    if (device)
-    {
-        printk(KERN_DEBUG "Assigned net_device: %X\n",
-               (unsigned) device->dev);
-        printk(KERN_DEBUG "Transmit socket buffer: %X\n",
-               (unsigned) device->tx_skb);
-        printk(KERN_DEBUG "Time of last transmission: %u\n",
-               (unsigned) device->tx_time);
-        printk(KERN_DEBUG "Time of last receive: %u\n",
-               (unsigned) device->rx_time);
-        printk(KERN_DEBUG "Actual device state: %i\n",
-               (int) device->state);
-        printk(KERN_DEBUG "Receive buffer: %X\n",
-               (unsigned) device->rx_data);
-        printk(KERN_DEBUG "Receive buffer fill state: %u/%u\n",
-               (unsigned) device->rx_data_size, EC_MAX_FRAME_SIZE);
+    if (device) {
+        EC_DBG("Assigned net_device: %X\n", (u32) device->dev);
+        EC_DBG("Transmit socket buffer: %X\n", (u32) device->tx_skb);
+        EC_DBG("Time of last transmission: %u\n", (u32) device->tx_time);
+        EC_DBG("Time of last receive: %u\n", (u32) device->rx_time);
+        EC_DBG("Actual device state: %i\n", (u8) device->state);
+        EC_DBG("Receive buffer: %X\n", (u32) device->rx_data);
+        EC_DBG("Receive buffer fill state: %u/%u\n",
+               (u32) device->rx_data_size, EC_MAX_FRAME_SIZE);
     }
-    else
-    {
-        printk(KERN_DEBUG "Device is NULL!\n");
+    else {
+        EC_DBG("Device is NULL!\n");
     }
 
-    printk(KERN_DEBUG "---EtherCAT device information end---\n");
+    EC_DBG("---EtherCAT device information end---\n");
 }
 
 /*****************************************************************************/
@@ -275,12 +267,12 @@ void ec_device_print(ec_device_t *device /**< EtherCAT-Gerät */)
 
 void ec_device_debug(const ec_device_t *device /**< EtherCAT-Gerät */)
 {
-    printk(KERN_DEBUG "EtherCAT: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n");
+    EC_DBG(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n");
     ec_data_print(device->tx_skb->data + ETH_HLEN, device->tx_skb->len);
-    printk(KERN_DEBUG "------------------------------------------------\n");
+    EC_DBG("------------------------------------------------\n");
     ec_data_print_diff(device->tx_skb->data + ETH_HLEN, device->rx_data,
                        device->rx_data_size);
-    printk(KERN_DEBUG "EtherCAT: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n");
+    EC_DBG("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n");
 }
 
 /*****************************************************************************/
@@ -295,10 +287,13 @@ void ec_data_print(const uint8_t *data /**< Daten */,
 {
     size_t i;
 
-    printk(KERN_DEBUG);
+    EC_DBG("");
     for (i = 0; i < size; i++) {
         printk("%02X ", data[i]);
-        if ((i + 1) % 16 == 0) printk("\n" KERN_DEBUG);
+        if ((i + 1) % 16 == 0) {
+            printk("\n");
+            EC_DBG("");
+        }
     }
     printk("\n");
 }
@@ -316,11 +311,14 @@ void ec_data_print_diff(const uint8_t *d1, /**< Daten 1 */
 {
     size_t i;
 
-    printk(KERN_DEBUG);
+    EC_DBG("");
     for (i = 0; i < size; i++) {
         if (d1[i] == d2[i]) printk(".. ");
         else printk("%02X ", d2[i]);
-        if ((i + 1) % 16 == 0) printk("\n" KERN_DEBUG);
+        if ((i + 1) % 16 == 0) {
+            printk("\n");
+            EC_DBG("");
+        }
     }
     printk("\n");
 }
@@ -365,7 +363,7 @@ void EtherCAT_dev_receive(ec_device_t *device, const void *data, size_t size)
     device->state = EC_DEVICE_STATE_RECEIVED;
 
     if (unlikely(device->master->debug_level > 1)) {
-        printk(KERN_DEBUG "EtherCAT: Received frame:\n");
+        EC_DBG("Received frame:\n");
         ec_data_print_diff(device->tx_skb->data + ETH_HLEN, device->rx_data,
                            device->rx_data_size);
     }

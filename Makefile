@@ -33,7 +33,6 @@ modules:
 
 clean:
 	$(MAKE) -C $(KERNELDIR) M=`pwd` clean
-	@rm -rf */.tmp_versions
 
 config conf $(CONFIG_FILE):
 	@echo "# EtherCAT Konfigurationsdatei Kernel 2.6" > $(CONFIG_FILE)

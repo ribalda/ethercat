@@ -30,6 +30,15 @@
 #define NULL ((void *) 0) /**< NULL-Define, falls noch nicht definiert. */
 #endif
 
+#define EC_INFO(fmt, args...) \
+    printk(KERN_INFO "EtherCAT: " fmt, ##args)
+#define EC_ERR(fmt, args...) \
+    printk(KERN_ERR "EtherCAT ERROR: " fmt, ##args)
+#define EC_WARN(fmt, args...) \
+    printk(KERN_WARNING "EtherCAT WARNING: " fmt, ##args)
+#define EC_DBG(fmt, args...) \
+    printk(KERN_DEBUG "EtherCAT DEBUG: " fmt, ##args)
+
 /*****************************************************************************/
 
 /**

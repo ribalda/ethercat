@@ -71,31 +71,25 @@ int __init ec_init_module(void)
 {
     unsigned int i;
 
-    printk(KERN_ERR "EtherCAT: Master driver, %s\n", COMPILE_INFO);
+    EC_INFO("Master driver, %s\n", COMPILE_INFO);
 
     if (ec_master_count < 1) {
-        printk(KERN_ERR "EtherCAT: Error - Illegal"
-               " ec_master_count: %i\n", ec_master_count);
+        EC_ERR("Error - Illegal ec_master_count: %i\n", ec_master_count);
         return -1;
     }
 
-    printk(KERN_ERR "EtherCAT: Initializing %i EtherCAT master(s)...\n",
-           ec_master_count);
+    EC_INFO("Initializing %i EtherCAT master(s)...\n", ec_master_count);
 
-    if ((ec_masters =
-         (ec_master_t *) kmalloc(sizeof(ec_master_t)
-                                 * ec_master_count,
-                                 GFP_KERNEL)) == NULL) {
-        printk(KERN_ERR "EtherCAT: Could not allocate"
-               " memory for EtherCAT master(s)!\n");
+    if ((ec_masters = (ec_master_t *) kmalloc(sizeof(ec_master_t)
+                                              * ec_master_count,
+                                              GFP_KERNEL)) == NULL) {
+        EC_ERR("Could not allocate memory for EtherCAT master(s)!\n");
         return -1;
     }
 
     if ((ec_masters_reserved =
-         (int *) kmalloc(sizeof(int) * ec_master_count,
-                         GFP_KERNEL)) == NULL) {
-        printk(KERN_ERR "EtherCAT: Could not allocate"
-               " memory for reservation flags!\n");
+         (int *) kmalloc(sizeof(int) * ec_master_count, GFP_KERNEL)) == NULL) {
+        EC_ERR("Could not allocate memory for reservation flags!\n");
         kfree(ec_masters);
         return -1;
     }
@@ -105,7 +99,7 @@ int __init ec_init_module(void)
         ec_masters_reserved[i] = 0;
     }
 
-    printk(KERN_ERR "EtherCAT: Master driver initialized.\n");
+    EC_INFO("Master driver initialized.\n");
 
     return 0;
 }
@@ -122,20 +116,19 @@ void __exit ec_cleanup_module(void)
 {
     unsigned int i;
 
-    printk(KERN_ERR "EtherCAT: Cleaning up master driver...\n");
+    EC_INFO("Cleaning up master driver...\n");
 
     if (ec_masters) {
         for (i = 0; i < ec_master_count; i++) {
             if (ec_masters_reserved[i]) {
-                printk(KERN_WARNING "EtherCAT: Warning -"
-                       " Master %i is still in use!\n", i);
+                EC_WARN("Master %i is still in use!\n", i);
             }
             ec_master_clear(&ec_masters[i]);
         }
         kfree(ec_masters);
     }
 
-    printk(KERN_ERR "EtherCAT: Master driver cleaned up.\n");
+    EC_INFO("Master driver cleaned up.\n");
 }
 
 /******************************************************************************
@@ -167,20 +160,19 @@ ec_device_t *EtherCAT_dev_register(unsigned int master_index,
     ec_master_t *master;
 
     if (master_index >= ec_master_count) {
-        printk(KERN_ERR "EtherCAT: Master %i does not exist!\n", master_index);
+        EC_ERR("Master %i does not exist!\n", master_index);
         return NULL;
     }
 
     if (!dev) {
-        printk("EtherCAT: Device is NULL!\n");
+        EC_WARN("Device is NULL!\n");
         return NULL;
     }
 
     master = ec_masters + master_index;
 
     if (master->device_registered) {
-        printk(KERN_ERR "EtherCAT: Master %i already has a device!\n",
-               master_index);
+        EC_ERR("Master %i already has a device!\n", master_index);
         return NULL;
     }
 
@@ -212,15 +204,14 @@ void EtherCAT_dev_unregister(unsigned int master_index, ec_device_t *ecd)
     ec_master_t *master;
 
     if (master_index >= ec_master_count) {
-        printk(KERN_WARNING "EtherCAT: Master %i does not exist!\n",
-               master_index);
+        EC_WARN("Master %i does not exist!\n", master_index);
         return;
     }
 
     master = ec_masters + master_index;
 
     if (!master->device_registered || &master->device != ecd) {
-        printk(KERN_ERR "EtherCAT: Unable to unregister device!\n");
+        EC_WARN("Unable to unregister device!\n");
         return;
     }
 
@@ -248,40 +239,39 @@ ec_master_t *EtherCAT_rt_request_master(unsigned int index)
     ec_master_t *master;
 
     if (index < 0 || index >= ec_master_count) {
-        printk(KERN_ERR "EtherCAT: Master %i does not exist!\n", index);
+        EC_ERR("Master %i does not exist!\n", index);
         goto req_return;
     }
 
     if (ec_masters_reserved[index]) {
-        printk(KERN_ERR "EtherCAT: Master %i already in use!\n", index);
+        EC_ERR("Master %i already in use!\n", index);
         goto req_return;
     }
 
     master = &ec_masters[index];
 
     if (!master->device_registered) {
-        printk(KERN_ERR "EtherCAT: Master %i has no device assigned yet!\n",
-               index);
+        EC_ERR("Master %i has no device assigned yet!\n", index);
         goto req_return;
     }
 
     if (!try_module_get(master->device.module)) {
-        printk(KERN_ERR "EtherCAT: Failed to reserve device module!\n");
+        EC_ERR("Failed to reserve device module!\n");
         goto req_return;
     }
 
     if (ec_master_open(master) < 0) {
-        printk(KERN_ERR "EtherCAT: Failed to open device!\n");
+        EC_ERR("Failed to open device!\n");
         goto req_module_put;
     }
 
     if (ec_scan_for_slaves(master) != 0) {
-        printk(KERN_ERR "EtherCAT: Bus scan failed!\n");
+        EC_ERR("Bus scan failed!\n");
         goto req_close;
     }
 
     ec_masters_reserved[index] = 1;
-    printk(KERN_INFO "EtherCAT: Reserved master %i.\n", index);
+    EC_INFO("Reserved master %i.\n", index);
 
     return master;
 
@@ -312,8 +302,7 @@ void EtherCAT_rt_release_master(ec_master_t *master)
         if (&ec_masters[i] == master)
         {
             if (!master->device_registered) {
-                printk(KERN_WARNING "EtherCAT: Failed to release device"
-                       "module because of no device!\n");
+                EC_WARN("Failed to release device module: No device!\n");
                 return;
             }
 
@@ -323,14 +312,13 @@ void EtherCAT_rt_release_master(ec_master_t *master)
             module_put(master->device.module);
             ec_masters_reserved[i] = 0;
 
-            printk(KERN_INFO "EtherCAT: Released master %i.\n", i);
+            EC_INFO("Released master %i.\n", i);
 
             return;
         }
     }
 
-    printk(KERN_WARNING "EtherCAT: Master %X was never requested!\n",
-           (unsigned int) master);
+    EC_WARN("Master %X was never requested!\n", (u32) master);
 }
 
 /*****************************************************************************/
