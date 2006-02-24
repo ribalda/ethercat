@@ -32,12 +32,12 @@ void __exit ec_cleanup_module(void);
 
 /*****************************************************************************/
 
-#define LIT(X) #X
-#define STR(X) LIT(X)
+#define EC_LIT(X) #X
+#define EC_STR(X) EC_LIT(X)
 
-#define COMPILE_INFO "Revision " STR(EC_REV) \
-                     ", compiled by " STR(EC_USER) \
-                     " at " STR(EC_DATE)
+#define COMPILE_INFO "Revision " EC_STR(EC_REV) \
+                     ", compiled by " EC_STR(EC_USER) \
+                     " at " EC_STR(EC_DATE)
 
 /*****************************************************************************/
 
