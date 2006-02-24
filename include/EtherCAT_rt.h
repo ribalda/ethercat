@@ -92,6 +92,24 @@ int EtherCAT_rt_canopen_sdo_write(ec_slave_t *slave,
                                   uint32_t value,
                                   size_t size);
 
+int EtherCAT_rt_canopen_sdo_read(ec_slave_t *slave,
+                                 uint16_t sdo_index,
+                                 uint8_t sdo_subindex,
+                                 uint32_t *value);
+
+int EtherCAT_rt_canopen_sdo_addr_write(ec_master_t *master,
+                                       const char *addr,
+                                       uint16_t sdo_index,
+                                       uint8_t sdo_subindex,
+                                       uint32_t value,
+                                       size_t size);
+
+int EtherCAT_rt_canopen_sdo_addr_read(ec_master_t *master,
+                                      const char *addr,
+                                      uint16_t sdo_index,
+                                      uint8_t sdo_subindex,
+                                      uint32_t *value);
+
 /*****************************************************************************/
 
 #endif

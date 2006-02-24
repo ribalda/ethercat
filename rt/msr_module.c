@@ -118,6 +118,7 @@ int __init init_rt_module(void)
 {
     struct ipipe_domain_attr attr; //ipipe
     const ec_field_init_t *field;
+    uint32_t version;
 
     // Als allererstes die RT-lib initialisieren
     if (msr_rtlib_init(1, MSR_ABTASTFREQUENZ, 10, &msr_globals_register) < 0) {
@@ -152,7 +153,7 @@ int __init init_rt_module(void)
                                               field->field_type,
                                               field->field_index,
                                               field->field_count)) {
-            printk(KERN_ERR "EtherCAT: Could not register field!\n");
+            printk(KERN_ERR "Could not register field!\n");
             goto out_release_master;
         }
     }
@@ -160,21 +161,18 @@ int __init init_rt_module(void)
     printk(KERN_INFO "Activating master...\n");
 
     if (EtherCAT_rt_master_activate(master)) {
-        printk(KERN_ERR "EtherCAT: Could not activate master!\n");
+        printk(KERN_ERR "Could not activate master!\n");
         goto out_release_master;
     }
 
-#if 0
-    if (EtherCAT_rt_canopen_sdo_write(master, "0:4", 0x4067, 0, 1, 2)) {
-        printk(KERN_ERR "EtherCAT: Could not set SSI baud rate!\n");
+    EtherCAT_rt_master_debug(master, 2);
+    if (EtherCAT_rt_canopen_sdo_addr_read(master, "0:3", 0x100A, 1,
+                                          &version)) {
+        printk(KERN_ERR "Could not read SSI version!\n");
         goto out_release_master;
     }
-
-    if (EtherCAT_rt_canopen_sdo_write(master, "0:4", 0x4061, 4, 1, 1)) {
-        printk(KERN_ERR "EtherCAT: Could not set SSI feature bit!\n");
-        goto out_release_master;
-    }
-#endif
+    printk(KERN_INFO "Klemme 3 Software-version: %u\n", version);
+    EtherCAT_rt_master_debug(master, 0);
 
     ipipe_init_attr(&attr);
     attr.name = "IPIPE-MSR-MODULE";
