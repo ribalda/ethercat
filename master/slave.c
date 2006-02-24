@@ -11,6 +11,7 @@
 #include <linux/module.h>
 #include <linux/delay.h>
 
+#include "../include/EtherCAT_si.h"
 #include "globals.h"
 #include "slave.h"
 #include "frame.h"
@@ -75,11 +76,11 @@ int ec_slave_fetch(ec_slave_t *slave /**< EtherCAT-Slave */)
         return -1;
     }
 
-    slave->base_type = frame.data[0];
-    slave->base_revision = frame.data[1];
-    slave->base_build = frame.data[2] | (frame.data[3] << 8);
-    slave->base_fmmu_count = frame.data[4];
-    slave->base_sync_count = frame.data[5];
+    slave->base_type =       EC_READ_U8 (frame.data);
+    slave->base_revision =   EC_READ_U8 (frame.data + 1);
+    slave->base_build =      EC_READ_U16(frame.data + 2);
+    slave->base_fmmu_count = EC_READ_U8 (frame.data + 4);
+    slave->base_sync_count = EC_READ_U8 (frame.data + 5);
 
     if (slave->base_fmmu_count > EC_MAX_FMMUS)
         slave->base_fmmu_count = EC_MAX_FMMUS;
@@ -135,12 +136,10 @@ int ec_slave_sii_read(ec_slave_t *slave,
 
     // Initiate read operation
 
-    data[0] = 0x00;
-    data[1] = 0x01;
-    data[2] = offset & 0xFF;
-    data[3] = (offset & 0xFF00) >> 8;
-    data[4] = 0x00;
-    data[5] = 0x00;
+    EC_WRITE_U8 (data,     0x00);
+    EC_WRITE_U8 (data + 1, 0x01);
+    EC_WRITE_U16(data + 2, offset);
+    EC_WRITE_U16(data + 4, 0x0000);
 
     ec_frame_init_npwr(&frame, slave->master, slave->station_address, 0x502, 6,
                        data);
@@ -173,7 +172,7 @@ int ec_slave_sii_read(ec_slave_t *slave,
             return -1;
         }
 
-        if (likely((frame.data[1] & 0x81) == 0)) {
+        if (likely((EC_READ_U8(frame.data + 1) & 0x81) == 0)) {
             memcpy(target, frame.data + 6, 4);
             break;
         }
@@ -208,8 +207,7 @@ void ec_slave_state_ack(ec_slave_t *slave,
     unsigned char data[2];
     unsigned int tries_left;
 
-    data[0] = state | EC_ACK;
-    data[1] = 0x00;
+    EC_WRITE_U16(data, state | EC_ACK);
 
     ec_frame_init_npwr(&frame, slave->master, slave->station_address, 0x0120,
                        2, data);
@@ -247,14 +245,14 @@ void ec_slave_state_ack(ec_slave_t *slave,
             return;
         }
 
-        if (unlikely(frame.data[0] != state)) {
+        if (unlikely(EC_READ_U8(frame.data) != state)) {
             printk(KERN_ERR "EtherCAT: Could not acknowledge state %02X on"
                    " slave %i (code %02X)!\n", state, slave->ring_position,
-                   frame.data[0]);
+                   EC_READ_U8(frame.data));
             return;
         }
 
-        if (likely(frame.data[0] == state)) {
+        if (likely(EC_READ_U8(frame.data) == state)) {
             printk(KERN_INFO "EtherCAT: Acknowleged state %02X on slave %i.\n",
                    state, slave->ring_position);
             return;
@@ -289,8 +287,7 @@ int ec_slave_state_change(ec_slave_t *slave,
     unsigned char data[2];
     unsigned int tries_left;
 
-    data[0] = state;
-    data[1] = 0x00;
+    EC_WRITE_U16(data, state);
 
     ec_frame_init_npwr(&frame, slave->master, slave->station_address, 0x0120,
                        2, data);
@@ -327,15 +324,15 @@ int ec_slave_state_change(ec_slave_t *slave,
             return -1;
         }
 
-        if (unlikely(frame.data[0] & 0x10)) { // State change error
+        if (unlikely(EC_READ_U8(frame.data) & 0x10)) { // State change error
             printk(KERN_ERR "EtherCAT: Could not set state %02X - Slave %i"
                    " refused state change (code %02X)!\n", state,
-                   slave->ring_position, frame.data[0]);
-            ec_slave_state_ack(slave, frame.data[0] & 0x0F);
+                   slave->ring_position, EC_READ_U8(frame.data));
+            ec_slave_state_ack(slave, EC_READ_U8(frame.data) & 0x0F);
             return -1;
         }
 
-        if (likely(frame.data[0] == (state & 0x0F))) {
+        if (likely(EC_READ_U8(frame.data) == (state & 0x0F))) {
             // State change successful
             break;
         }
@@ -442,7 +439,6 @@ int ec_slave_check_crc(ec_slave_t *slave /**< EtherCAT-Slave */)
 {
     ec_frame_t frame;
     uint8_t data[4];
-    uint16_t crc[2];
 
     ec_frame_init_nprd(&frame, slave->master, slave->station_address, 0x0300,
                        4);
@@ -460,17 +456,16 @@ int ec_slave_check_crc(ec_slave_t *slave /**< EtherCAT-Slave */)
         return -1;
     }
 
-    crc[0] = frame.data[0] | (frame.data[1] << 8);
-    crc[1] = frame.data[2] | (frame.data[3] << 8);
-
     // No CRC faults.
-    if (!crc[0] && !crc[1]) return 0;
+    if (!EC_READ_U16(frame.data) && !EC_READ_U16(frame.data + 2)) return 0;
 
     printk(KERN_INFO "EtherCAT: CRC faults on slave %i. A: %i, B: %i\n",
-           slave->ring_position, crc[0], crc[1]);
+           slave->ring_position, EC_READ_U16(frame.data),
+           EC_READ_U16(frame.data + 2));
 
     // Reset CRC counters
-    memset(data, 0x00, 4);
+    EC_WRITE_U16(data,     0x0000);
+    EC_WRITE_U16(data + 2, 0x0000);
     ec_frame_init_npwr(&frame, slave->master, slave->station_address, 0x0300,
                        4, data);
 

@@ -8,6 +8,8 @@
  *
  *****************************************************************************/
 
+#include <asm/byteorder.h>
+
 /*****************************************************************************/
 
 // Bitwise read/write macros
@@ -24,31 +26,14 @@
 
 // Read macros
 
-#define EC_READ_U8(PD) \
-    (*((uint8_t *) (PD)))
+#define EC_READ_U8(PD) ((uint8_t) *((uint8_t *) (PD)))
+#define EC_READ_S8(PD) ((int8_t)  *((uint8_t *) (PD)))
 
-#define EC_READ_S8(PD) \
-    ((int8_t) *((uint8_t *) (PD)))
+#define EC_READ_U16(PD) ((uint16_t) le16_to_cpup((void *) (PD)))
+#define EC_READ_S16(PD) ((int16_t)  le16_to_cpup((void *) (PD)))
 
-#define EC_READ_U16(PD) \
-    ((uint16_t) (*((uint8_t *) (PD) + 0) << 0 | \
-                 *((uint8_t *) (PD) + 1) << 8))
-
-#define EC_READ_S16(PD) \
-    ((int16_t) (*((uint8_t *) (PD) + 0) << 0 | \
-                *((uint8_t *) (PD) + 1) << 8))
-
-#define EC_READ_U32(PD) \
-    ((uint32_t) (*((uint8_t *) (PD) + 0) <<  0 | \
-                 *((uint8_t *) (PD) + 1) <<  8 | \
-                 *((uint8_t *) (PD) + 2) << 16 | \
-                 *((uint8_t *) (PD) + 3) << 24))
-
-#define EC_READ_S32(PD) \
-    ((int32_t) (*((uint8_t *) (PD) + 0) <<  0 | \
-                *((uint8_t *) (PD) + 1) <<  8 | \
-                *((uint8_t *) (PD) + 2) << 16 | \
-                *((uint8_t *) (PD) + 3) << 24))
+#define EC_READ_U32(PD) ((uint32_t) le32_to_cpup((void *) (PD)))
+#define EC_READ_S32(PD) ((int32_t)  le32_to_cpup((void *) (PD)))
 
 /*****************************************************************************/
 
@@ -63,18 +48,16 @@
 
 #define EC_WRITE_U16(PD, VAL) \
     do { \
-        *((uint8_t *) (PD) + 0) = ((uint16_t) (VAL) >> 0) & 0xFF; \
-        *((uint8_t *) (PD) + 1) = ((uint16_t) (VAL) >> 8) & 0xFF; \
+        *((uint16_t *) (PD)) = (uint16_t) (VAL); \
+        cpu_to_le16s(PD); \
     } while (0)
 
 #define EC_WRITE_S16(PD, VAL) EC_WRITE_U16(PD, VAL)
 
 #define EC_WRITE_U32(PD, VAL) \
     do { \
-        *((uint8_t *) (PD) + 0) = ((uint32_t) (VAL) >>  0) & 0xFF; \
-        *((uint8_t *) (PD) + 1) = ((uint32_t) (VAL) >>  8) & 0xFF; \
-        *((uint8_t *) (PD) + 2) = ((uint32_t) (VAL) >> 16) & 0xFF; \
-        *((uint8_t *) (PD) + 3) = ((uint32_t) (VAL) >> 24) & 0xFF; \
+        *((uint32_t *) (PD)) = (uint32_t) (VAL); \
+        cpu_to_le16s(PD); \
     } while (0)
 
 #define EC_WRITE_S32(PD, VAL) EC_WRITE_U32(PD, VAL)

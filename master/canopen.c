@@ -10,6 +10,7 @@
 
 #include <linux/delay.h>
 
+#include "../include/EtherCAT_si.h"
 #include "master.h"
 
 /*****************************************************************************/
@@ -22,13 +23,12 @@
    Schreibt ein CANopen-SDO (service data object).
  */
 
-int EtherCAT_rt_canopen_sdo_write(
-    ec_slave_t *slave, /**< EtherCAT-Slave */
-    unsigned int sdo_index, /**< SDO-Index */
-    unsigned char sdo_subindex, /**< SDO-Subindex */
-    unsigned int value, /**< Neuer Wert */
-    unsigned int size /**< Größe des Datenfeldes */
-    )
+int EtherCAT_rt_canopen_sdo_write(ec_slave_t *slave, /**< EtherCAT-Slave */
+                                  uint16_t sdo_index, /**< SDO-Index */
+                                  uint8_t sdo_subindex, /**< SDO-Subindex */
+                                  uint32_t value, /**< Neuer Wert */
+                                  size_t size /**< Größe des Datenfeldes */
+                                  )
 {
     unsigned char data[0xF6];
     ec_frame_t frame;
@@ -44,24 +44,17 @@ int EtherCAT_rt_canopen_sdo_write(
         return -1;
     }
 
-    data[0] = 0x0A; // Length of the Mailbox service data
-    data[1] = 0x00;
-    data[2] = slave->station_address & 0xFF; // Station address
-    data[3] = (slave->station_address >> 8) & 0xFF;
-    data[4] = 0x00; // Channel & priority
-    data[5] = 0x03; // CANopen over EtherCAT
-    data[6] = 0x00; // Number(7-0)
-    data[7] = 0x2 << 4; // Number(8) & Service = SDO Request (0x02)
-    data[8] = 0x01 // Size specified
-        | (0x1 << 1) // Transfer type = Expedited
-        | ((4 - size) << 2) // Data Set Size
-        | (0x1 << 5); // Command specifier = Initiate download request (0x01)
-    data[9] = sdo_index & 0xFF;
-    data[10] = (sdo_index >> 8) & 0xFF;
-    data[11] = sdo_subindex;
+    EC_WRITE_U16(data,      0x000A); // Length of the Mailbox service data
+    EC_WRITE_U16(data + 2,  slave->station_address); // Station address
+    EC_WRITE_U8 (data + 4,  0x00); // Channel & priority
+    EC_WRITE_U8 (data + 5,  0x03); // CANopen over EtherCAT
+    EC_WRITE_U16(data + 6,  0x2000); // Number & Service
+    EC_WRITE_U8 (data + 8,  0x13 | ((4 - size) << 2)); // Spec., exp., init.
+    EC_WRITE_U16(data + 9,  sdo_index);
+    EC_WRITE_U8 (data + 11, sdo_subindex);
 
     for (i = 0; i < size; i++) {
-        data[12 + i] = value & 0xFF;
+        EC_WRITE_U8(data + 12 + i, value & 0xFF);
         value >>= 8;
     }
 
@@ -91,7 +84,7 @@ int EtherCAT_rt_canopen_sdo_write(
             return -1;
         }
 
-        if (frame.data[5] & 8) { // Written bit is high
+        if (EC_READ_U8(frame.data + 5) & 8) { // Written bit is high
             break;
         }
 
@@ -115,12 +108,11 @@ int EtherCAT_rt_canopen_sdo_write(
         return -1;
     }
 
-    if (frame.data[5] != 0x03 // COE
-        || (frame.data[7] >> 4) != 0x03 // SDO response
-        || (frame.data[8] >> 5) != 0x03 // Initiate download response
-        || (frame.data[9] != (sdo_index & 0xFF)) // Index
-        || (frame.data[10] != ((sdo_index >> 8) & 0xFF))
-        || (frame.data[11] != sdo_subindex)) // Subindex
+    if (EC_READ_U8 (frame.data + 5) != 0x03 || // COE
+        EC_READ_U16(frame.data + 6) != 0x3000 || // SDO response
+        EC_READ_U8 (frame.data + 8) >> 5 != 0x03 || // Download response
+        EC_READ_U16(frame.data + 9) != sdo_index || // Index
+        EC_READ_U8 (frame.data + 11) != sdo_subindex) // Subindex
     {
         printk(KERN_ERR "EtherCAT: Illegal mailbox response at slave %i!\n",
                slave->ring_position);

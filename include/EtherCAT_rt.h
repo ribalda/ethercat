@@ -87,10 +87,10 @@ int EtherCAT_rt_domain_xio(ec_domain_t *domain);
 // Slave Methods
 
 int EtherCAT_rt_canopen_sdo_write(ec_slave_t *slave,
-                                  unsigned int sdo_index,
-                                  unsigned char sdo_subindex,
-                                  unsigned int value,
-                                  unsigned int size);
+                                  uint16_t sdo_index,
+                                  uint8_t sdo_subindex,
+                                  uint32_t value,
+                                  size_t size);
 
 /*****************************************************************************/
 

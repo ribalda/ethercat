@@ -15,6 +15,7 @@
 #include <linux/delay.h>
 
 #include "../include/EtherCAT_rt.h"
+#include "../include/EtherCAT_si.h"
 #include "globals.h"
 #include "master.h"
 #include "slave.h"
@@ -201,11 +202,10 @@ int ec_scan_for_slaves(ec_master_t *master /**< EtherCAT-Master */)
         slave = master->slaves + i;
 
         // Write station address
-        data[0] = slave->station_address & 0x00FF;
-        data[1] = (slave->station_address & 0xFF00) >> 8;
+        EC_WRITE_U16(data, slave->station_address);
 
-        ec_frame_init_apwr(&frame, master, slave->ring_position, 0x0010, 2,
-                           data);
+        ec_frame_init_apwr(&frame, master, slave->ring_position, 0x0010,
+                           sizeof(uint16_t), data);
 
         if (unlikely(ec_frame_send_receive(&frame) < 0)) return -1;
 
@@ -366,14 +366,11 @@ void ec_sync_config(const ec_sync_t *sync, /**< Sync-Manager */
                     uint8_t *data /**> Zeiger auf Konfigurationsspeicher */
                     )
 {
-    data[0] = sync->physical_start_address & 0xFF;
-    data[1] = (sync->physical_start_address >> 8) & 0xFF;
-    data[2] = sync->size & 0xFF;
-    data[3] = (sync->size >> 8) & 0xFF;
-    data[4] = sync->control_byte;
-    data[5] = 0x00;
-    data[6] = 0x01; // enable
-    data[7] = 0x00;
+    EC_WRITE_U16(data,     sync->physical_start_address);
+    EC_WRITE_U16(data + 2, sync->size);
+    EC_WRITE_U8 (data + 4, sync->control_byte);
+    EC_WRITE_U8 (data + 5, 0x00); // status byte (read only)
+    EC_WRITE_U16(data + 6, 0x0001); // enable
 }
 
 /*****************************************************************************/
@@ -389,22 +386,15 @@ void ec_fmmu_config(const ec_fmmu_t *fmmu, /**< Sync-Manager */
                     uint8_t *data /**> Zeiger auf Konfigurationsspeicher */
                     )
 {
-    data[0] = fmmu->logical_start_address & 0xFF;
-    data[1] = (fmmu->logical_start_address >> 8) & 0xFF;
-    data[2] = (fmmu->logical_start_address >> 16) & 0xFF;
-    data[3] = (fmmu->logical_start_address >> 24) & 0xFF;
-    data[4] = fmmu->sync->size & 0xFF;
-    data[5] = (fmmu->sync->size >> 8) & 0xFF;
-    data[6] = 0x00; // Logical start bit
-    data[7] = 0x07; // Logical end bit
-    data[8] = fmmu->sync->physical_start_address & 0xFF;
-    data[9] = (fmmu->sync->physical_start_address >> 8) & 0xFF;
-    data[10] = 0x00; // Physical start bit
-    data[11] = (fmmu->sync->control_byte & 0x04) ? 0x02 : 0x01;
-    data[12] = 0x01; // Enable
-    data[13] = 0x00; // res.
-    data[14] = 0x00; // res.
-    data[15] = 0x00; // res.
+    EC_WRITE_U32(data,      fmmu->logical_start_address);
+    EC_WRITE_U16(data + 4,  fmmu->sync->size);
+    EC_WRITE_U8 (data + 6,  0x00); // Logical start bit
+    EC_WRITE_U8 (data + 7,  0x07); // Logical end bit
+    EC_WRITE_U16(data + 8,  fmmu->sync->physical_start_address);
+    EC_WRITE_U8 (data + 10, 0x00); // Physical start bit
+    EC_WRITE_U8 (data + 11, (fmmu->sync->control_byte & 0x04) ? 0x02 : 0x01);
+    EC_WRITE_U16(data + 12, 0x0001); // Enable
+    EC_WRITE_U16(data + 14, 0x0000); // res.
 }
 
 /******************************************************************************

@@ -68,13 +68,12 @@ typedef union
 {
   struct
   {
-      uint16_t slave; /**< Adresse des Slaves */
+      uint16_t slave; /**< Adresse des Slaves (Ringposition oder Knoten) */
       uint16_t mem; /**< Physikalische Speicheradresse im Slave */
   }
   physical; /**< Physikalische Adresse */
 
   uint32_t logical; /**< Logische Adresse */
-  uint8_t raw[4]; /**< Rohdaten für die Generierung des Frames */
 }
 ec_address_t;
 

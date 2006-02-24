@@ -11,6 +11,7 @@
 #include <linux/slab.h>
 #include <linux/delay.h>
 
+#include "../include/EtherCAT_si.h"
 #include "frame.h"
 #include "master.h"
 
@@ -27,7 +28,8 @@
     memcpy(frame->data, data, length);
 
 #define EC_FUNC_READ_FOOTER \
-    frame->data_length = length;
+    frame->data_length = length; \
+    memset(frame->data, 0x00, length);
 
 /*****************************************************************************/
 
@@ -289,45 +291,30 @@ int ec_frame_send(ec_frame_t *frame /**< Rahmen zum Senden */)
     data = ec_device_prepare(&frame->master->device);
 
     // EtherCAT frame header
-    data[0] = command_size & 0xFF;
-    data[1] = ((command_size & 0x700) >> 8) | 0x10;
+    EC_WRITE_U16(data, (command_size & 0x7FF) | 0x1000);
     data += EC_FRAME_HEADER_SIZE;
 
     // EtherCAT command header
-    data[0] = frame->type;
-    data[1] = frame->index;
-    data[2] = frame->address.raw[0];
-    data[3] = frame->address.raw[1];
-    data[4] = frame->address.raw[2];
-    data[5] = frame->address.raw[3];
-    data[6] = frame->data_length & 0xFF;
-    data[7] = (frame->data_length & 0x700) >> 8;
-    data[8] = 0x00;
-    data[9] = 0x00;
+    EC_WRITE_U8 (data,     frame->type);
+    EC_WRITE_U8 (data + 1, frame->index);
+    EC_WRITE_U32(data + 2, frame->address.logical);
+    EC_WRITE_U16(data + 6, frame->data_length & 0x7FF);
+    EC_WRITE_U16(data + 8, 0x0000);
     data += EC_COMMAND_HEADER_SIZE;
 
-    if (likely(frame->type == ec_frame_type_apwr // Write commands
-               || frame->type == ec_frame_type_npwr
-               || frame->type == ec_frame_type_bwr
-               || frame->type == ec_frame_type_lrw)) {
-        memcpy(data, frame->data, frame->data_length);
-    }
-    else { // Read commands
-        memset(data, 0x00, frame->data_length);
-    }
+    // EtherCAT command data
+    memcpy(data, frame->data, frame->data_length);
+    data += frame->data_length;
 
     // EtherCAT command footer
-    data += frame->data_length;
-    data[0] = frame->working_counter & 0xFF;
-    data[1] = (frame->working_counter & 0xFF00) >> 8;
+    EC_WRITE_U16(data, frame->working_counter);
     data += EC_COMMAND_FOOTER_SIZE;
 
     // Pad with zeros
     for (i = EC_FRAME_HEADER_SIZE + EC_COMMAND_HEADER_SIZE
              + frame->data_length + EC_COMMAND_FOOTER_SIZE;
-         i < EC_MIN_FRAME_SIZE; i++) {
-        *data++ = 0x00;
-    }
+         i < EC_MIN_FRAME_SIZE; i++)
+        EC_WRITE_U8(data++, 0x00);
 
     // Send frame
     ec_device_send(&frame->master->device, frame_size);
@@ -371,7 +358,8 @@ int ec_frame_receive(ec_frame_t *frame /**< Gesendeter Rahmen */)
     data = ec_device_data(device);
 
     // Länge des gesamten Frames prüfen
-    frame_length = (data[0] & 0xFF) | ((data[1] & 0x07) << 8);
+    frame_length = EC_READ_U16(data) & 0x07FF;
+    data += EC_FRAME_HEADER_SIZE;
 
     if (unlikely(frame_length > received_length)) {
         printk(KERN_ERR "EtherCAT: Received corrupted frame (length does"
@@ -381,10 +369,10 @@ int ec_frame_receive(ec_frame_t *frame /**< Gesendeter Rahmen */)
     }
 
     // Command header
-    data += EC_FRAME_HEADER_SIZE;
-    command_type = data[0];
-    command_index = data[1];
-    data_length = (data[6] & 0xFF) | ((data[7] & 0x07) << 8);
+    command_type =  EC_READ_U8(data);
+    command_index = EC_READ_U8(data + 1);
+    data_length =   EC_READ_U16(data + 6) & 0x07FF;
+    data += EC_COMMAND_HEADER_SIZE;
 
     if (unlikely(EC_FRAME_HEADER_SIZE + EC_COMMAND_HEADER_SIZE
                  + data_length + EC_COMMAND_FOOTER_SIZE > received_length)) {
@@ -399,7 +387,7 @@ int ec_frame_receive(ec_frame_t *frame /**< Gesendeter Rahmen */)
                  || frame->data_length != data_length))
     {
         printk(KERN_WARNING "EtherCAT: WARNING - Send/Receive anomaly!\n");
-        ec_frame_print(frame);
+        ec_frame_print(frame); // FIXME uninteressant...
         ec_device_call_isr(device); // Empfangenes "vergessen"
         return -1;
     }
@@ -407,12 +395,11 @@ int ec_frame_receive(ec_frame_t *frame /**< Gesendeter Rahmen */)
     frame->state = ec_frame_received;
 
     // Empfangene Daten in Kommandodatenspeicher kopieren
-    data += EC_COMMAND_HEADER_SIZE;
     memcpy(frame->data, data, data_length);
     data += data_length;
 
     // Working-Counter setzen
-    frame->working_counter = (data[0] & 0xFF) | ((data[1] & 0xFF) << 8);
+    frame->working_counter = EC_READ_U16(data);
 
     if (unlikely(frame->master->debug_level > 1)) {
         ec_frame_print(frame);
