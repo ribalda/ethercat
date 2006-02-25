@@ -1,11 +1,12 @@
+
 TODO-Liste EtherCAT-Treiber
 
 $Id$
 
-- Dynamische Wartezeiten
-- Konfiguration SSI-/Inkrementalgeberklemmen (CoE)
+- Domains in Listen
+- Asynchroner Betrieb
+- Typeninformation aus Master entfernen?
 - Ethernet over EtherCAT (EoE)
 - eepro100-Kartentreiber
 - Proc/SysFS-Interface mit Baumdarstellung des Busses
-- Anzahl unterstützter Sync-Manager/FMMUs auslesen
-
+- Userspace-Tool zum Konfigurieren und visualisieren
