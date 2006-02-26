@@ -238,6 +238,8 @@ ec_master_t *EtherCAT_rt_request_master(unsigned int index)
 {
     ec_master_t *master;
 
+    EC_INFO("===== Starting master %i... =====\n", index);
+
     if (index < 0 || index >= ec_master_count) {
         EC_ERR("Master %i does not exist!\n", index);
         goto req_return;
@@ -271,7 +273,7 @@ ec_master_t *EtherCAT_rt_request_master(unsigned int index)
     }
 
     ec_masters_reserved[index] = 1;
-    EC_INFO("Reserved master %i.\n", index);
+    EC_INFO("===== Master %i ready. =====\n", index);
 
     return master;
 
@@ -283,6 +285,7 @@ ec_master_t *EtherCAT_rt_request_master(unsigned int index)
     ec_master_reset(master);
 
  req_return:
+    EC_INFO("===== Failed to start master %i =====\n", index);
     return NULL;
 }
 
@@ -296,30 +299,31 @@ ec_master_t *EtherCAT_rt_request_master(unsigned int index)
 
 void EtherCAT_rt_release_master(ec_master_t *master)
 {
-    unsigned int i;
+    unsigned int i, found;
 
-    for (i = 0; i < ec_master_count; i++)
-    {
-        if (&ec_masters[i] == master)
-        {
-            if (!master->device_registered) {
-                EC_WARN("Failed to release device module: No device!\n");
-                return;
-            }
-
-            ec_master_close(master);
-            ec_master_reset(master);
-
-            module_put(master->device.module);
-            ec_masters_reserved[i] = 0;
-
-            EC_INFO("Released master %i.\n", i);
-
-            return;
+    found = 0;
+    for (i = 0; i < ec_master_count; i++) {
+        if (&ec_masters[i] == master) {
+            found = 1;
+            break;
         }
     }
 
-    EC_WARN("Master %X was never requested!\n", (u32) master);
+    if (!found) {
+        EC_WARN("Master %X was never requested!\n", (u32) master);
+        return;
+    }
+
+    EC_INFO("===== Stopping master %i... =====\n", i);
+
+    ec_master_close(master);
+    ec_master_reset(master);
+
+    module_put(master->device.module);
+    ec_masters_reserved[i] = 0;
+
+    EC_INFO("===== Master %i stopped. =====\n", i);
+    return;
 }
 
 /*****************************************************************************/

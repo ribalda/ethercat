@@ -59,8 +59,8 @@ uint32_t k_angle;
 uint32_t k_pos;
 
 ec_field_init_t domain1_fields[] = {
-    {&r_ssi,   "1", "Beckhoff", "EL5001", ec_ipvalue, 0, 1},
-    {&r_inc, "0:3", "Beckhoff", "EL5101", ec_ipvalue, 0, 1},
+    {&r_ssi,  "1", "Beckhoff", "EL5001", ec_ipvalue, 0, 1},
+    {&r_inc, "10", "Beckhoff", "EL5101", ec_ipvalue, 0, 1},
     {}
 };
 
