@@ -279,7 +279,7 @@ int EtherCAT_rt_domain_xio(ec_domain_t *domain /**< Domäne */)
     frame = &domain->frame;
     working_counter_sum = 0;
 
-    ec_output_lost_frames(master); // Evtl. verlorene Frames ausgeben
+    ec_cyclic_output(master);
 
     rdtscl(start_ticks); // Sendezeit nehmen
     timeout_ticks = domain->timeout_us * cpu_khz / 1000;
@@ -309,10 +309,16 @@ int EtherCAT_rt_domain_xio(ec_domain_t *domain /**< Domäne */)
         master->bus_time = (end_ticks - start_ticks) * 1000 / cpu_khz;
 
         if (unlikely(end_ticks - start_ticks >= timeout_ticks)) {
-            master->device.state = EC_DEVICE_STATE_READY;
-            master->frames_lost++;
-            ec_output_lost_frames(master);
-            return -1;
+            if (master->device.state == EC_DEVICE_STATE_RECEIVED) {
+                master->frames_delayed++;
+                ec_cyclic_output(master);
+            }
+            else {
+                master->device.state = EC_DEVICE_STATE_READY;
+                master->frames_lost++;
+                ec_cyclic_output(master);
+                return -1;
+            }
         }
 
         if (unlikely(ec_frame_receive(frame) < 0)) {

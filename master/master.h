@@ -36,9 +36,10 @@ struct ec_master
     unsigned int domain_count; /**< Anzahl Domänen */
     int debug_level; /**< Debug-Level im Master-Code */
     unsigned int bus_time; /**< Letzte Bus-Zeit in Mikrosekunden */
-    unsigned int frames_lost; /**< Anzahl verlorene Frames */
-    unsigned long t_lost_output; /**< Timer-Ticks bei der letzten Ausgabe von
-                                   verlorenen Frames */
+    unsigned int frames_lost; /**< Anzahl verlorener Frames */
+    unsigned int frames_delayed; /**< Anzahl verzögerter Frames */
+    unsigned long t_last_cyclic_output; /**< Timer-Ticks bei den letzten
+                                           zyklischen Ausgaben */
 };
 
 /*****************************************************************************/
@@ -59,7 +60,7 @@ ec_slave_t *ec_address(const ec_master_t *, const char *);
 
 // Misc
 void ec_output_debug_data(const ec_master_t *);
-void ec_output_lost_frames(ec_master_t *);
+void ec_cyclic_output(ec_master_t *);
 
 /*****************************************************************************/
 

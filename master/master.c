@@ -39,7 +39,8 @@ void ec_master_init(ec_master_t *master /**< EtherCAT-Master */)
     master->debug_level = 0;
     master->bus_time = 0;
     master->frames_lost = 0;
-    master->t_lost_output = 0;
+    master->frames_delayed = 0;
+    master->t_last_cyclic_output = 0;
 }
 
 /*****************************************************************************/
@@ -84,7 +85,8 @@ void ec_master_reset(ec_master_t *master
     master->debug_level = 0;
     master->bus_time = 0;
     master->frames_lost = 0;
-    master->t_lost_output = 0;
+    master->frames_delayed = 0;
+    master->t_last_cyclic_output = 0;
 }
 
 /*****************************************************************************/
@@ -237,22 +239,30 @@ int ec_scan_for_slaves(ec_master_t *master /**< EtherCAT-Master */)
 /*****************************************************************************/
 
 /**
-   Gibt die Anzahl verlorener Frames aus.
+   Ausgaben während des zyklischen Betriebs.
+
+   Diese Funktion sorgt dafür, dass Ausgaben (Zählerstände) während
+   des zyklischen Betriebs nicht zu oft getätigt werden.
 
    Die Ausgabe erfolgt gesammelt höchstens einmal pro Sekunde.
 */
 
-void ec_output_lost_frames(ec_master_t *master /**< EtherCAT-Master */)
+void ec_cyclic_output(ec_master_t *master /**< EtherCAT-Master */)
 {
     unsigned long int t;
 
-    if (master->frames_lost) {
-        rdtscl(t);
-        if ((t - master->t_lost_output) / cpu_khz > 1000) {
+    rdtscl(t);
+
+    if ((t - master->t_last_cyclic_output) / cpu_khz > 1000) {
+        if (master->frames_lost) {
             EC_WARN("%u frame(s) LOST!\n", master->frames_lost);
             master->frames_lost = 0;
-            master->t_lost_output = t;
         }
+        if (master->frames_delayed) {
+            EC_WARN("%u frame(s) DELAYED!\n", master->frames_delayed);
+            master->frames_delayed = 0;
+        }
+        master->t_last_cyclic_output = t;
     }
 }
 
