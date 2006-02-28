@@ -5,3 +5,4 @@ $Id$
 
 - Keine applikationsseitige Dokumentation
 - Working-Counter erhöht um 2 bei manchen Klemmen
+- Seltsame CRC-Counter
