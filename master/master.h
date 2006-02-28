@@ -32,12 +32,12 @@ struct ec_master
     ec_device_t device; /**< EtherCAT-Gerät */
     unsigned int device_registered; /**< Ein Geraet hat sich registriert. */
     uint8_t command_index; /**< Aktueller Kommando-Index */
-    ec_domain_t *domains[EC_MASTER_MAX_DOMAINS]; /** Prozessdatendomänen */
-    unsigned int domain_count;
+    ec_domain_t *domains[EC_MASTER_MAX_DOMAINS]; /**< Prozessdatendomänen */
+    unsigned int domain_count; /**< Anzahl Domänen */
     int debug_level; /**< Debug-Level im Master-Code */
     unsigned int bus_time; /**< Letzte Bus-Zeit in Mikrosekunden */
     unsigned int frames_lost; /**< Anzahl verlorene Frames */
-    unsigned long t_lost_output; /*<< Timer-Ticks bei der letzten Ausgabe von
+    unsigned long t_lost_output; /**< Timer-Ticks bei der letzten Ausgabe von
                                    verlorenen Frames */
 };
 
