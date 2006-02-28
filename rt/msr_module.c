@@ -132,7 +132,7 @@ int __init init_rt_module(void)
         goto out_msr_cleanup;
     }
 
-    EtherCAT_rt_master_print(master);
+    //EtherCAT_rt_master_print(master);
 
     printk(KERN_INFO "Registering domain...\n");
 

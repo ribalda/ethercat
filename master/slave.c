@@ -58,6 +58,8 @@ void ec_slave_clear(ec_slave_t *slave /**< EtherCAT-Slave */)
 
 /**
    Liest alle benötigten Informationen aus einem Slave.
+
+   \return 0 wenn alles ok, < 0 bei Fehler.
 */
 
 int ec_slave_fetch(ec_slave_t *slave /**< EtherCAT-Slave */)
@@ -186,7 +188,7 @@ int ec_slave_sii_read(ec_slave_t *slave,
 /**
    Bestätigt einen Fehler beim Zustandswechsel.
 
-   FIXME Funktioniert noch nicht...
+   \todo Funktioniert noch nicht...
 */
 
 void ec_slave_state_ack(ec_slave_t *slave,
@@ -341,6 +343,8 @@ int ec_slave_set_fmmu(ec_slave_t *slave, /**< EtherCAT-Slave */
     for (i = 0; i < slave->fmmu_count; i++)
         if (slave->fmmus[i].domain == domain && slave->fmmus[i].sync == sync)
             return 0;
+
+    // Neue FMMU reservieren...
 
     if (slave->fmmu_count >= slave->base_fmmu_count) {
         EC_ERR("Slave %i FMMU limit reached!\n", slave->ring_position);

@@ -62,7 +62,7 @@ void ec_domain_clear(ec_domain_t *domain /**< Domäne */)
 /**
    Registriert ein Feld in einer Domäne.
 
-   \returns 0 bei Erfolg, < 0 bei Fehler
+   \return 0 bei Erfolg, < 0 bei Fehler
 */
 
 int ec_domain_reg_field(ec_domain_t *domain, /**< Domäne */
@@ -99,7 +99,12 @@ int ec_domain_reg_field(ec_domain_t *domain, /**< Domäne */
 /*****************************************************************************/
 
 /**
-    \returns 0 bei Erfolg, < 0 bei Fehler
+   Erzeugt eine Domäne.
+
+   Reserviert den Speicher einer Domäne, berechnet die logischen Adressen der
+   FMMUs und setzt die Prozessdatenzeiger der registrierten Felder.
+
+   \return 0 bei Erfolg, < 0 bei Fehler
 */
 
 int ec_domain_alloc(ec_domain_t *domain, /**< Domäne */
@@ -182,7 +187,7 @@ int ec_domain_alloc(ec_domain_t *domain, /**< Domäne */
  *****************************************************************************/
 
 /**
-   Registriert einer Domäne ein Datenfeld hinzu.
+   Registriert ein Datenfeld innerhalb einer Domäne.
 
    \return Zeiger auf den Slave bei Erfolg, sonst NULL
 */
@@ -258,7 +263,7 @@ ec_slave_t *EtherCAT_rt_register_slave_field(
 /*****************************************************************************/
 
 /**
-   Sendet und empfängt Prozessdaten der angegebenen Domäne
+   Sendet und empfängt Prozessdaten der angegebenen Domäne.
 
    \return 0 bei Erfolg, sonst < 0
 */

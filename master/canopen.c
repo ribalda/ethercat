@@ -115,7 +115,7 @@ int EtherCAT_rt_canopen_sdo_write(ec_slave_t *slave, /**< EtherCAT-Slave */
 /*****************************************************************************/
 
 /**
-   Schreibt ein CANopen-SDO (service data object).
+   Liest ein CANopen-SDO (service data object).
  */
 
 int EtherCAT_rt_canopen_sdo_read(ec_slave_t *slave, /**< EtherCAT-Slave */
@@ -202,6 +202,14 @@ int EtherCAT_rt_canopen_sdo_read(ec_slave_t *slave, /**< EtherCAT-Slave */
 
 /*****************************************************************************/
 
+/**
+   Schweibt ein CANopen-SDO (Variante mit Angabe des Masters und der Adresse).
+
+   Siehe EtherCAT_rt_canopen_sdo_write()
+
+   \return 0 wenn alles ok, < 0 bei Fehler
+ */
+
 int EtherCAT_rt_canopen_sdo_addr_write(ec_master_t *master,
                                        /**< EtherCAT-Master */
                                        const char *addr,
@@ -222,6 +230,14 @@ int EtherCAT_rt_canopen_sdo_addr_write(ec_master_t *master,
 }
 
 /*****************************************************************************/
+
+/**
+   Liest ein CANopen-SDO (Variante mit Angabe des Masters und der Adresse).
+
+   Siehe EtherCAT_rt_canopen_sdo_read()
+
+   \return 0 wenn alles ok, < 0 bei Fehler
+ */
 
 int EtherCAT_rt_canopen_sdo_addr_read(ec_master_t *master,
                                       /**< EtherCAT-Slave */

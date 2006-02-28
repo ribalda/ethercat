@@ -63,8 +63,8 @@ MODULE_PARM_DESC(ec_master_count, "Number of EtherCAT master to initialize.");
    Initialisiert soviele Master, wie im Parameter ec_master_count
    angegeben wurde (Default ist 1).
 
-   @returns 0, wenn alles o.k., -1 bei ungueltiger Anzahl Master
-   oder zu wenig Speicher.
+   \return 0 wenn alles ok, < 0 bei ungültiger Anzahl Master
+           oder zu wenig Speicher.
 */
 
 int __init ec_init_module(void)
@@ -140,23 +140,22 @@ void __exit ec_cleanup_module(void)
 /**
    Registeriert das EtherCAT-Geraet fuer einen EtherCAT-Master.
 
-   @param master_index Index des EtherCAT-Masters
-   @param dev Das net_device des EtherCAT-Geraetes
-   @param isr Funktionszeiger auf die Interrupt-Service-Routine
-   @param module Zeiger auf das Modul (fuer try_module_lock())
-
-   @return 0, wenn alles o.k.,
-   < 0, wenn bereits ein Geraet registriert oder das Geraet nicht
-   geoeffnet werden konnte.
+   \return 0 wenn alles ok, oder < 0 wenn bereits ein Gerät registriert
+           oder das Geraet nicht geöffnet werden konnte.
 */
 
 ec_device_t *EtherCAT_dev_register(unsigned int master_index,
-                                   struct net_device *dev,
+                                   /**< Index des EtherCAT-Masters */
+                                   struct net_device *net_dev,
+                                   /**< net_device des EtherCAT-Gerätes */
                                    irqreturn_t (*isr)(int, void *,
                                                       struct pt_regs *),
-                                   struct module *module)
+                                   /**< Interrupt-Service-Routine */
+                                   struct module *module
+                                   /**< Zeiger auf das Modul */
+                                   )
 {
-    ec_device_t *ecd;
+    ec_device_t *device;
     ec_master_t *master;
 
     if (master_index >= ec_master_count) {
@@ -164,7 +163,7 @@ ec_device_t *EtherCAT_dev_register(unsigned int master_index,
         return NULL;
     }
 
-    if (!dev) {
+    if (!net_dev) {
         EC_WARN("Device is NULL!\n");
         return NULL;
     }
@@ -176,30 +175,31 @@ ec_device_t *EtherCAT_dev_register(unsigned int master_index,
         return NULL;
     }
 
-    ecd = &master->device;
+    device = &master->device;
 
-    if (ec_device_init(ecd, master) < 0) return NULL;
+    if (ec_device_init(device, master) < 0) return NULL;
 
-    ecd->dev = dev;
-    ecd->tx_skb->dev = dev;
-    ecd->isr = isr;
-    ecd->module = module;
+    device->dev = net_dev;
+    device->tx_skb->dev = net_dev;
+    device->isr = isr;
+    device->module = module;
 
     master->device_registered = 1;
 
-    return ecd;
+    return device;
 }
 
 /*****************************************************************************/
 
 /**
-   Entfernt das EtherCAT-Geraet eines EtherCAT-Masters.
-
-   @param master_index Der Index des EtherCAT-Masters
-   @param ecd Das EtherCAT-Geraet
+   Hebt die Registrierung eines EtherCAT-Gerätes auf.
 */
 
-void EtherCAT_dev_unregister(unsigned int master_index, ec_device_t *ecd)
+void EtherCAT_dev_unregister(unsigned int master_index,
+                             /**< Index des EtherCAT-Masters */
+                             ec_device_t *device
+                             /**< EtherCAT-Geraet */
+                             )
 {
     ec_master_t *master;
 
@@ -210,13 +210,13 @@ void EtherCAT_dev_unregister(unsigned int master_index, ec_device_t *ecd)
 
     master = ec_masters + master_index;
 
-    if (!master->device_registered || &master->device != ecd) {
+    if (!master->device_registered || &master->device != device) {
         EC_WARN("Unable to unregister device!\n");
         return;
     }
 
     master->device_registered = 0;
-    ec_device_clear(ecd);
+    ec_device_clear(device);
 }
 
 /******************************************************************************
@@ -230,11 +230,12 @@ void EtherCAT_dev_unregister(unsigned int master_index, ec_device_t *ecd)
 
    Gibt einen Zeiger auf den reservierten EtherCAT-Master zurueck.
 
-   @param index Index des gewuenschten Masters
-   @returns Zeiger auf EtherCAT-Master oder NULL, wenn Parameter ungueltig.
+   \return Zeiger auf EtherCAT-Master oder NULL, wenn Parameter ungueltig.
 */
 
-ec_master_t *EtherCAT_rt_request_master(unsigned int index)
+ec_master_t *EtherCAT_rt_request_master(unsigned int index
+                                        /**< EtherCAT-Master-Index */
+                                        )
 {
     ec_master_t *master;
 
@@ -293,11 +294,9 @@ ec_master_t *EtherCAT_rt_request_master(unsigned int index)
 
 /**
    Gibt einen zuvor angeforderten EtherCAT-Master wieder frei.
-
-   @param master Zeiger auf den freizugebenden EtherCAT-Master.
 */
 
-void EtherCAT_rt_release_master(ec_master_t *master)
+void EtherCAT_rt_release_master(ec_master_t *master /**< EtherCAT-Masdter */)
 {
     unsigned int i, found;
 

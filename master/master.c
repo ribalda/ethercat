@@ -112,8 +112,8 @@ void ec_master_clear_slaves(ec_master_t *master /**< EtherCAT-Master */)
 /**
    Öffnet das EtherCAT-Geraet des Masters.
 
-   \return 0, wenn alles o.k., < 0, wenn kein Gerät registriert wurde oder
-   es nicht geoeffnet werden konnte.
+   \return 0 wenn alles ok, < 0 wenn kein Gerät registriert wurde oder
+           es nicht geoeffnet werden konnte.
 */
 
 int ec_master_open(ec_master_t *master /**< Der EtherCAT-Master */)
@@ -151,9 +151,12 @@ void ec_master_close(ec_master_t *master /**< EtherCAT-Master */)
 /*****************************************************************************/
 
 /**
-   Durchsucht den Bus nach Slaves.
+   Durchsucht den EtherCAT-Bus nach Slaves.
 
-   @return 0 bei Erfolg, sonst < 0
+   Erstellt ein Array mit allen Slave-Informationen die für den
+   weiteren Betrieb notwendig sind.
+
+   \return 0 bei Erfolg, sonst < 0
 */
 
 int ec_scan_for_slaves(ec_master_t *master /**< EtherCAT-Master */)
@@ -234,7 +237,9 @@ int ec_scan_for_slaves(ec_master_t *master /**< EtherCAT-Master */)
 /*****************************************************************************/
 
 /**
-   Gibt von Zeit zu Zeit die Anzahl verlorener Frames aus.
+   Gibt die Anzahl verlorener Frames aus.
+
+   Die Ausgabe erfolgt gesammelt höchstens einmal pro Sekunde.
 */
 
 void ec_output_lost_frames(ec_master_t *master /**< EtherCAT-Master */)
@@ -426,7 +431,7 @@ ec_domain_t *EtherCAT_rt_master_register_domain(ec_master_t *master,
    Konfiguriert alle Slaves und setzt den Operational-Zustand.
 
    Führt die komplette Konfiguration und Aktivierunge aller registrierten
-   Slaves durch. Setzt Sync-Manager und FMMU's, führt die entsprechenden
+   Slaves durch. Setzt Sync-Manager und FMMUs, führt die entsprechenden
    Zustandsübergänge durch, bis der Slave betriebsbereit ist.
 
    \return 0 bei Erfolg, sonst < 0
@@ -480,7 +485,7 @@ int EtherCAT_rt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
         // Check and reset CRC fault counters
         ec_slave_check_crc(slave);
 
-        // Resetting FMMU's
+        // Resetting FMMUs
         if (slave->base_fmmu_count) {
             memset(data, 0x00, EC_FMMU_SIZE * slave->base_fmmu_count);
             ec_frame_init_npwr(&frame, master, slave->station_address, 0x0600,

@@ -55,7 +55,7 @@ ec_sync_t;
 
    Diese Beschreibung dient zur Konfiguration einer bestimmten
    Slave-Art. Sie enthält die Konfigurationsdaten für die
-   Slave-internen Sync-Manager und FMMU's.
+   Slave-internen Sync-Manager und FMMUs.
 */
 
 typedef struct ec_slave_type

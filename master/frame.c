@@ -317,7 +317,7 @@ int ec_frame_send(ec_frame_t *frame /**< Rahmen zum Senden */)
 /*****************************************************************************/
 
 /**
-   Empfängt einen gesendeten Rahmen.
+   Wertet empfangene Daten zu einem Rahmen aus.
 
    \return 0 bei Erfolg, sonst < 0
 */
