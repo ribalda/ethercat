@@ -68,10 +68,8 @@ int ec_slave_fetch(ec_slave_t *slave /**< EtherCAT-Slave */)
     ec_frame_init_nprd(&frame, slave->master, slave->station_address,
                        0x0000, 6);
 
-    if (unlikely(ec_frame_send_receive(&frame))) return -1;
-
-    if (unlikely(frame.working_counter != 1)) {
-        EC_ERR("Slave %i did not respond while reading base data!\n",
+    if (unlikely(ec_frame_send_receive(&frame))) {
+        EC_ERR("Reading base datafrom slave %i failed!\n",
                slave->ring_position);
         return -1;
     }
@@ -141,13 +139,11 @@ int ec_slave_sii_read(ec_slave_t *slave,
     EC_WRITE_U16(data + 2, offset);
     EC_WRITE_U16(data + 4, 0x0000);
 
-    ec_frame_init_npwr(&frame, slave->master, slave->station_address, 0x502, 6,
-                       data);
+    ec_frame_init_npwr(&frame, slave->master, slave->station_address,
+                       0x502, 6, data);
 
-    if (unlikely(ec_frame_send_receive(&frame))) return -1;
-
-    if (unlikely(frame.working_counter != 1)) {
-        EC_ERR("SII-read - Slave %i did not respond!\n", slave->ring_position);
+    if (unlikely(ec_frame_send_receive(&frame))) {
+        EC_ERR("SII-read failed on slave %i!\n", slave->ring_position);
         return -1;
     }
 
@@ -160,13 +156,11 @@ int ec_slave_sii_read(ec_slave_t *slave,
     {
         udelay(10);
 
-        ec_frame_init_nprd(&frame, slave->master, slave->station_address, 0x502,
-                           10);
+        ec_frame_init_nprd(&frame, slave->master, slave->station_address,
+                           0x502, 10);
 
-        if (unlikely(ec_frame_send_receive(&frame))) return -1;
-
-        if (unlikely(frame.working_counter != 1)) {
-            EC_ERR("SII-read status - Slave %i did not respond!\n",
+        if (unlikely(ec_frame_send_receive(&frame))) {
+            EC_ERR("Getting SII-read status failed on slave %i!\n",
                    slave->ring_position);
             return -1;
         }
@@ -207,17 +201,12 @@ void ec_slave_state_ack(ec_slave_t *slave,
 
     EC_WRITE_U16(data, state | EC_ACK);
 
-    ec_frame_init_npwr(&frame, slave->master, slave->station_address, 0x0120,
-                       2, data);
+    ec_frame_init_npwr(&frame, slave->master, slave->station_address,
+                       0x0120, 2, data);
 
-    if (unlikely(ec_frame_send_receive(&frame) != 0)) {
-        EC_WARN("Could no acknowledge state %02X - Unable to send!\n", state);
-        return;
-    }
-
-    if (unlikely(frame.working_counter != 1)) {
-        EC_WARN("Could not acknowledge state %02X - Slave %i did not"
-                " respond!\n", state, slave->ring_position);
+    if (unlikely(ec_frame_send_receive(&frame))) {
+        EC_WARN("State %02X acknowledge failed on slave %i!\n",
+                state, slave->ring_position);
         return;
     }
 
@@ -229,15 +218,9 @@ void ec_slave_state_ack(ec_slave_t *slave,
         ec_frame_init_nprd(&frame, slave->master, slave->station_address,
                            0x0130, 2);
 
-        if (unlikely(ec_frame_send_receive(&frame) != 0)) {
-            EC_WARN("Could not check state acknowledgement %02X - Unable to"
-                    " send!\n", state);
-            return;
-        }
-
-        if (unlikely(frame.working_counter != 1)) {
-            EC_WARN("Could not check state acknowledgement %02X - Slave %i did"
-                    " not respond!\n", state, slave->ring_position);
+        if (unlikely(ec_frame_send_receive(&frame))) {
+            EC_WARN("State %02X acknowledge checking failed on slave %i!\n",
+                    state, slave->ring_position);
             return;
         }
 
@@ -284,17 +267,12 @@ int ec_slave_state_change(ec_slave_t *slave,
 
     EC_WRITE_U16(data, state);
 
-    ec_frame_init_npwr(&frame, slave->master, slave->station_address, 0x0120,
-                       2, data);
+    ec_frame_init_npwr(&frame, slave->master, slave->station_address,
+                       0x0120, 2, data);
 
-    if (unlikely(ec_frame_send_receive(&frame) != 0)) {
-        EC_ERR("Could not set state %02X - Unable to send!\n", state);
-        return -1;
-    }
-
-    if (unlikely(frame.working_counter != 1)) {
-        EC_ERR("Could not set state %02X - Slave %i did not respond!\n", state,
-               slave->ring_position);
+    if (unlikely(ec_frame_send_receive(&frame))) {
+        EC_ERR("Failed to set state %02X on slave %i!\n",
+               state, slave->ring_position);
         return -1;
     }
 
@@ -306,13 +284,8 @@ int ec_slave_state_change(ec_slave_t *slave,
         ec_frame_init_nprd(&frame, slave->master, slave->station_address,
                            0x0130, 2);
 
-        if (unlikely(ec_frame_send_receive(&frame) != 0)) {
-            EC_ERR("Could not check state %02X - Unable to send!\n", state);
-            return -1;
-        }
-
-        if (unlikely(frame.working_counter != 1)) {
-            EC_ERR("Could not check state %02X - Slave %i did not respond!\n",
+        if (unlikely(ec_frame_send_receive(&frame))) {
+            EC_ERR("Failed to check state %02X on slave %i!\n",
                    state, slave->ring_position);
             return -1;
         }
@@ -431,17 +404,11 @@ int ec_slave_check_crc(ec_slave_t *slave /**< EtherCAT-Slave */)
     ec_frame_t frame;
     uint8_t data[4];
 
-    ec_frame_init_nprd(&frame, slave->master, slave->station_address, 0x0300,
-                       4);
+    ec_frame_init_nprd(&frame, slave->master, slave->station_address,
+                       0x0300, 4);
 
     if (unlikely(ec_frame_send_receive(&frame))) {
-        EC_WARN("Reading CRC fault counters failed on slave %i - Could not"
-                " send command!\n", slave->ring_position);
-        return -1;
-    }
-
-    if (unlikely(frame.working_counter != 1)) {
-        EC_WARN("Reading CRC fault counters - Slave %i did not respond!\n",
+        EC_WARN("Reading CRC fault counters failed on slave %i!\n",
                 slave->ring_position);
         return -1;
     }
@@ -455,13 +422,11 @@ int ec_slave_check_crc(ec_slave_t *slave /**< EtherCAT-Slave */)
     // Reset CRC counters
     EC_WRITE_U16(data,     0x0000);
     EC_WRITE_U16(data + 2, 0x0000);
-    ec_frame_init_npwr(&frame, slave->master, slave->station_address, 0x0300,
-                       4, data);
+    ec_frame_init_npwr(&frame, slave->master, slave->station_address,
+                       0x0300, 4, data);
 
-    if (unlikely(ec_frame_send_receive(&frame))) return -1;
-
-    if (unlikely(frame.working_counter != 1)) {
-        EC_WARN("Resetting CRC fault counters - Slave %i did not respond!\n",
+    if (unlikely(ec_frame_send_receive(&frame))) {
+        EC_WARN("Resetting CRC fault counters failed on slave %i!\n",
                 slave->ring_position);
         return -1;
     }

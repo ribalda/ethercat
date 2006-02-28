@@ -405,6 +405,12 @@ int ec_frame_receive(ec_frame_t *frame /**< Gesendeter Rahmen */)
 /**
    Sendet einen einzeln Rahmen und wartet auf dessen Empfang.
 
+   Wenn der Working-Counter nicht gesetzt wurde, wird der Rahmen
+   nochmals gesendet.
+
+   \todo Das ist noch nicht schön, da hier zwei Protokollschichten
+   vermischt werden.
+
    \return 0 bei Erfolg, sonst < 0
 */
 
@@ -412,32 +418,49 @@ int ec_frame_send_receive(ec_frame_t *frame
                           /**< Rahmen zum Senden/Empfangen */
                           )
 {
-    unsigned int tries_left;
+    unsigned int timeout_tries_left, response_tries_left;
+    unsigned int tries;
 
-    if (unlikely(ec_frame_send(frame) < 0)) {
-        EC_ERR("Frame sending failed!\n");
-        return -1;
-    }
-
-    tries_left = 20;
+    tries = 0;
+    response_tries_left = 10;
     do
     {
-        udelay(1);
-        ec_device_call_isr(&frame->master->device);
-        tries_left--;
-    }
-    while (unlikely(!ec_device_received(&frame->master->device)
-                    && tries_left));
+        tries++;
+        if (unlikely(ec_frame_send(frame) < 0)) {
+            EC_ERR("Frame sending failed!\n");
+            return -1;
+        }
 
-    if (unlikely(!tries_left)) {
-        EC_ERR("Frame timeout!\n");
+        timeout_tries_left = 20;
+        do
+        {
+            udelay(1);
+            ec_device_call_isr(&frame->master->device);
+            timeout_tries_left--;
+        }
+        while (unlikely(!ec_device_received(&frame->master->device)
+                        && timeout_tries_left));
+
+        if (unlikely(!timeout_tries_left)) {
+            EC_ERR("Frame timeout!\n");
+            return -1;
+        }
+
+        if (unlikely(ec_frame_receive(frame) < 0)) {
+            EC_ERR("Frame receiving failed!\n");
+            return -1;
+        }
+
+        response_tries_left--;
+    }
+    while (unlikely(!frame->working_counter && response_tries_left));
+
+    if (unlikely(!response_tries_left)) {
+        EC_ERR("No response!");
         return -1;
     }
 
-    if (unlikely(ec_frame_receive(frame) < 0)) {
-        EC_ERR("Frame receiving failed!\n");
-        return -1;
-    }
+    if (tries > 1) EC_WARN("%i tries necessary...\n", tries);
 
     return 0;
 }

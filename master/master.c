@@ -204,11 +204,8 @@ int ec_scan_for_slaves(ec_master_t *master /**< EtherCAT-Master */)
         ec_frame_init_apwr(&frame, master, slave->ring_position, 0x0010,
                            sizeof(uint16_t), data);
 
-        if (unlikely(ec_frame_send_receive(&frame) < 0)) return -1;
-
-        if (unlikely(frame.working_counter != 1)) {
-            EC_ERR("Slave %i did not repond while writing station address!\n",
-                   i);
+        if (unlikely(ec_frame_send_receive(&frame) < 0)) {
+            EC_ERR("Writing station address failed on slave %i!\n", i);
             return -1;
         }
 
@@ -489,9 +486,8 @@ int EtherCAT_rt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
             memset(data, 0x00, EC_FMMU_SIZE * slave->base_fmmu_count);
             ec_frame_init_npwr(&frame, master, slave->station_address, 0x0600,
                                EC_FMMU_SIZE * slave->base_fmmu_count, data);
-            if (unlikely(ec_frame_send_receive(&frame) < 0)) return -1;
-            if (unlikely(frame.working_counter != 1)) {
-                EC_ERR("Resetting FMMUs - Slave %i did not respond!\n",
+            if (unlikely(ec_frame_send_receive(&frame) < 0)) {
+                EC_ERR("Resetting FMMUs failed on slave %i!\n",
                        slave->ring_position);
                 return -1;
             }
@@ -502,9 +498,8 @@ int EtherCAT_rt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
             memset(data, 0x00, EC_SYNC_SIZE * slave->base_sync_count);
             ec_frame_init_npwr(&frame, master, slave->station_address, 0x0800,
                                EC_SYNC_SIZE * slave->base_sync_count, data);
-            if (unlikely(ec_frame_send_receive(&frame) < 0)) return -1;
-            if (unlikely(frame.working_counter != 1)) {
-                EC_ERR("Resetting SMs - Slave %i did not respond!\n",
+            if (unlikely(ec_frame_send_receive(&frame) < 0)) {
+                EC_ERR("Resetting sync managers failed on slave %i!\n",
                        slave->ring_position);
                 return -1;
             }
@@ -519,10 +514,8 @@ int EtherCAT_rt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
             ec_frame_init_npwr(&frame, master, slave->station_address,
                                0x0800 + j * EC_SYNC_SIZE, EC_SYNC_SIZE, data);
 
-            if (unlikely(ec_frame_send_receive(&frame))) return -1;
-
-            if (unlikely(frame.working_counter != 1)) {
-                EC_ERR("Setting sync manager %i - Slave %i did not respond!\n",
+            if (unlikely(ec_frame_send_receive(&frame))) {
+                EC_ERR("Setting sync manager %i failed on slave %i!\n",
                        j, slave->ring_position);
                 return -1;
             }
@@ -548,11 +541,9 @@ int EtherCAT_rt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
             ec_frame_init_npwr(&frame, master, slave->station_address,
                                0x0600 + j * EC_FMMU_SIZE, EC_FMMU_SIZE, data);
 
-            if (unlikely(ec_frame_send_receive(&frame))) return -1;
-
-            if (unlikely(frame.working_counter != 1)) {
-                EC_ERR("Setting FMMU %i - Slave %i did not respond!\n", j,
-                       slave->ring_position);
+            if (unlikely(ec_frame_send_receive(&frame))) {
+                EC_ERR("Setting FMMU %i failed on slave %i!\n",
+                       j, slave->ring_position);
                 return -1;
             }
         }

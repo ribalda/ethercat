@@ -56,14 +56,11 @@ int EtherCAT_rt_canopen_sdo_write(ec_slave_t *slave, /**< EtherCAT-Slave */
         value >>= 8;
     }
 
-    ec_frame_init_npwr(&frame, master, slave->station_address, 0x1800, 0xF6,
-                       data);
+    ec_frame_init_npwr(&frame, master, slave->station_address,
+                       0x1800, 0xF6, data);
 
-    if (unlikely(ec_frame_send_receive(&frame) < 0)) return -1;
-
-    if (unlikely(frame.working_counter != 1)) {
-        EC_ERR("Mailbox send - Slave %i did not respond!\n",
-               slave->ring_position);
+    if (unlikely(ec_frame_send_receive(&frame) < 0)) {
+        EC_ERR("Mailbox sending failed on slave %i!\n", slave->ring_position);
         return -1;
     }
 
@@ -74,10 +71,8 @@ int EtherCAT_rt_canopen_sdo_write(ec_slave_t *slave, /**< EtherCAT-Slave */
     {
         ec_frame_init_nprd(&frame, master, slave->station_address, 0x808, 8);
 
-        if (unlikely(ec_frame_send_receive(&frame) < 0)) return -1;
-
-        if (unlikely(frame.working_counter != 1)) {
-            EC_ERR("Mailbox check - Slave %i did not respond!\n",
+        if (unlikely(ec_frame_send_receive(&frame) < 0)) {
+            EC_ERR("Mailbox checking failed on slave %i!\n",
                    slave->ring_position);
             return -1;
         }
@@ -97,10 +92,8 @@ int EtherCAT_rt_canopen_sdo_write(ec_slave_t *slave, /**< EtherCAT-Slave */
 
     ec_frame_init_nprd(&frame, master, slave->station_address, 0x18F6, 0xF6);
 
-    if (unlikely(ec_frame_send_receive(&frame) < 0)) return -1;
-
-    if (unlikely(frame.working_counter != 1)) {
-        EC_ERR("Mailbox receive - Slave %i did not respond!\n",
+    if (unlikely(ec_frame_send_receive(&frame) < 0)) {
+        EC_ERR("Mailbox receiving failed on slave %i!\n",
                slave->ring_position);
         return -1;
     }
@@ -149,14 +142,11 @@ int EtherCAT_rt_canopen_sdo_read(ec_slave_t *slave, /**< EtherCAT-Slave */
     EC_WRITE_U16(data + 9,  sdo_index);
     EC_WRITE_U8 (data + 11, sdo_subindex);
 
-    ec_frame_init_npwr(&frame, master, slave->station_address, 0x1800, 0xF6,
-                       data);
+    ec_frame_init_npwr(&frame, master, slave->station_address,
+                       0x1800, 0xF6, data);
 
-    if (unlikely(ec_frame_send_receive(&frame) < 0)) return -1;
-
-    if (unlikely(frame.working_counter != 1)) {
-        EC_ERR("Mailbox send - Slave %i did not respond!\n",
-               slave->ring_position);
+    if (unlikely(ec_frame_send_receive(&frame) < 0)) {
+        EC_ERR("Mailbox sending failed on slave %i!\n", slave->ring_position);
         return -1;
     }
 
@@ -167,10 +157,8 @@ int EtherCAT_rt_canopen_sdo_read(ec_slave_t *slave, /**< EtherCAT-Slave */
     {
         ec_frame_init_nprd(&frame, master, slave->station_address, 0x808, 8);
 
-        if (unlikely(ec_frame_send_receive(&frame) < 0)) return -1;
-
-        if (unlikely(frame.working_counter != 1)) {
-            EC_ERR("Mailbox check - Slave %i did not respond!\n",
+        if (unlikely(ec_frame_send_receive(&frame) < 0)) {
+            EC_ERR("Mailbox checking failed on slave %i!\n",
                    slave->ring_position);
             return -1;
         }
@@ -190,10 +178,8 @@ int EtherCAT_rt_canopen_sdo_read(ec_slave_t *slave, /**< EtherCAT-Slave */
 
     ec_frame_init_nprd(&frame, master, slave->station_address, 0x18F6, 0xF6);
 
-    if (unlikely(ec_frame_send_receive(&frame) < 0)) return -1;
-
-    if (unlikely(frame.working_counter != 1)) {
-        EC_ERR("Mailbox receive - Slave %i did not respond!\n",
+    if (unlikely(ec_frame_send_receive(&frame) < 0)) {
+        EC_ERR("Mailbox receiving failed on slave %i!\n",
                slave->ring_position);
         return -1;
     }
