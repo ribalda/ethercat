@@ -44,6 +44,7 @@ ec_field_reg_t;
 
 struct ec_domain
 {
+    struct list_head list; /**< Listenkopf */
     ec_master_t *master; /**< EtherCAT-Master, zu der die Domäne gehört. */
 
     unsigned char *data; /**< Prozessdaten */

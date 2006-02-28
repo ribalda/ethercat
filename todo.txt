@@ -3,7 +3,6 @@ TODO-Liste EtherCAT-Treiber
 
 $Id$
 
-- Domains in Listen
 - Asynchroner Betrieb
 - Typeninformation aus Master entfernen?
 - Ethernet over EtherCAT (EoE)

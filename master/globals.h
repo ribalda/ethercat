@@ -23,13 +23,10 @@
 #define EC_SYNC_SIZE 8 /**< Größe einer Sync-Manager-Konfigurationsseite */
 #define EC_FMMU_SIZE 16 /**< Größe einer FMMU-Konfigurationsseite */
 #define EC_MAX_FMMUS 16 /**< Maximale Anzahl FMMUs pro Slave */
-
 #define EC_MAX_DATA_SIZE (EC_MAX_FRAME_SIZE \
                           - EC_FRAME_HEADER_SIZE \
                           - EC_COMMAND_HEADER_SIZE \
                           - EC_COMMAND_FOOTER_SIZE) /**< Maximale Datengröße */
-
-#define EC_MASTER_MAX_DOMAINS 10 /**< Maximale Anzahl Domänen eines Masters */
 
 #ifndef NULL
 #define NULL ((void *) 0) /**< NULL-Define, falls noch nicht definiert. */

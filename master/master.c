@@ -35,12 +35,13 @@ void ec_master_init(ec_master_t *master /**< EtherCAT-Master */)
     master->slave_count = 0;
     master->device_registered = 0;
     master->command_index = 0x00;
-    master->domain_count = 0;
     master->debug_level = 0;
     master->bus_time = 0;
     master->frames_lost = 0;
     master->frames_delayed = 0;
     master->t_last_cyclic_output = 0;
+
+    INIT_LIST_HEAD(&master->domains);
 }
 
 /*****************************************************************************/
@@ -71,15 +72,16 @@ void ec_master_reset(ec_master_t *master
                      /**< Zeiger auf den zurückzusetzenden Master */
                      )
 {
-    unsigned int i;
+    ec_domain_t *domain, *next;
 
     ec_master_clear_slaves(master);
 
-    for (i = 0; i < master->domain_count; i++) {
-        ec_domain_clear(master->domains[i]);
-        kfree(master->domains[i]);
+    // Domain-Liste leeren
+    list_for_each_entry_safe(domain, next, &master->domains, list) {
+        ec_domain_clear(domain);
+        kfree(domain);
     }
-    master->domain_count = 0;
+    INIT_LIST_HEAD(&master->domains);
 
     master->command_index = 0;
     master->debug_level = 0;
@@ -418,19 +420,14 @@ ec_domain_t *EtherCAT_rt_master_register_domain(ec_master_t *master,
 {
     ec_domain_t *domain;
 
-    if (master->domain_count >= EC_MASTER_MAX_DOMAINS) {
-        EC_ERR("Maximum number of domains reached!\n");
-        return NULL;
-    }
-
     if (!(domain = (ec_domain_t *) kmalloc(sizeof(ec_domain_t), GFP_KERNEL))) {
         EC_ERR("Error allocating domain memory!\n");
         return NULL;
     }
 
     ec_domain_init(domain, master, mode, timeout_us);
-    master->domains[master->domain_count] = domain;
-    master->domain_count++;
+
+    list_add_tail(&domain->list, &master->domains);
 
     return domain;
 }
@@ -462,16 +459,15 @@ int EtherCAT_rt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
 
     // Domains erstellen
     domain_offset = 0;
-    for (i = 0; i < master->domain_count; i++) {
-        domain = master->domains[i];
+    list_for_each_entry(domain, &master->domains, list) {
         if (ec_domain_alloc(domain, domain_offset)) {
-            EC_ERR("Failed to allocate domain %i!\n", i);
+            EC_ERR("Failed to allocate domain %X!\n", (u32) domain);
             return -1;
         }
         frame_count = domain->data_size / EC_MAX_FRAME_SIZE + 1;
         if (!domain->data_size) frame_count = 0;
-        EC_INFO("Domain %i - Allocated %i bytes (%i Frame(s))\n", i,
-                domain->data_size, frame_count);
+        EC_INFO("Domain %X - Allocated %i bytes (%i Frame(s))\n",
+                (u32) domain, domain->data_size, frame_count);
         domain_offset += domain->data_size;
     }
 
