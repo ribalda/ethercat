@@ -59,7 +59,7 @@ int EtherCAT_rt_canopen_sdo_write(ec_slave_t *slave, /**< EtherCAT-Slave */
     ec_frame_init_npwr(&frame, master, slave->station_address,
                        0x1800, 0xF6, data);
 
-    if (unlikely(ec_frame_send_receive(&frame) < 0)) {
+    if (unlikely(ec_frame_send_receive(&frame))) {
         EC_ERR("Mailbox sending failed on slave %i!\n", slave->ring_position);
         return -1;
     }

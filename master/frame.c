@@ -19,7 +19,6 @@
 
 #define EC_FUNC_HEADER \
     frame->master = master; \
-    frame->state = ec_frame_ready; \
     frame->index = 0; \
     frame->working_counter = 0;
 
@@ -258,10 +257,6 @@ int ec_frame_send(ec_frame_t *frame /**< Rahmen zum Senden */)
         EC_DBG("ec_frame_send\n");
     }
 
-    if (unlikely(frame->state != ec_frame_ready)) {
-        EC_WARN("Frame not in \"ready\" state!\n");
-    }
-
     command_size = frame->data_length + EC_COMMAND_HEADER_SIZE
         + EC_COMMAND_FOOTER_SIZE;
     frame_size = command_size + EC_FRAME_HEADER_SIZE;
@@ -283,8 +278,6 @@ int ec_frame_send(ec_frame_t *frame /**< Rahmen zum Senden */)
     if (unlikely(frame->master->debug_level > 0)) {
         EC_DBG("Sending command index 0x%X\n", frame->index);
     }
-
-    frame->state = ec_frame_sent;
 
     // Zeiger auf Socket-Buffer holen
     data = ec_device_prepare(&frame->master->device);
@@ -336,11 +329,6 @@ int ec_frame_receive(ec_frame_t *frame /**< Gesendeter Rahmen */)
     uint8_t command_type, command_index;
     ec_device_t *device;
 
-    if (unlikely(frame->state != ec_frame_sent)) {
-        EC_ERR("Frame was not sent!\n");
-        return -1;
-    }
-
     device = &frame->master->device;
 
     if (!(received_length = ec_device_received(device))) return -1;
@@ -387,8 +375,6 @@ int ec_frame_receive(ec_frame_t *frame /**< Gesendeter Rahmen */)
         ec_device_call_isr(device); // Empfangenes "vergessen"
         return -1;
     }
-
-    frame->state = ec_frame_received;
 
     // Empfangene Daten in Kommandodatenspeicher kopieren
     memcpy(frame->data, data, data_length);

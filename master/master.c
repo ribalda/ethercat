@@ -164,24 +164,23 @@ int ec_scan_for_slaves(ec_master_t *master /**< EtherCAT-Master */)
     unsigned int i;
     unsigned char data[2];
 
-    if (master->slaves || master->slave_count)
-        EC_WARN("Slave scan already done!\n");
-    ec_master_clear_slaves(master);
+    if (master->slaves || master->slave_count) {
+        EC_ERR("Slave scan already done!\n");
+        return -1;
+    }
 
     // Determine number of slaves on bus
-
     ec_frame_init_brd(&frame, master, 0x0000, 4);
-    if (unlikely(ec_frame_send_receive(&frame) < 0)) return -1;
-
+    if (unlikely(ec_frame_send_receive(&frame))) return -1;
     master->slave_count = frame.working_counter;
     EC_INFO("Found %i slaves on bus.\n", master->slave_count);
 
     if (!master->slave_count) return 0;
 
     if (!(master->slaves = (ec_slave_t *) kmalloc(master->slave_count
-                                                      * sizeof(ec_slave_t),
-                                                      GFP_KERNEL))) {
-        EC_ERR("Could not allocate memory for bus slaves!\n");
+                                                  * sizeof(ec_slave_t),
+                                                  GFP_KERNEL))) {
+        EC_ERR("Could not allocate memory for slaves!\n");
         return -1;
     }
 
@@ -204,7 +203,7 @@ int ec_scan_for_slaves(ec_master_t *master /**< EtherCAT-Master */)
         ec_frame_init_apwr(&frame, master, slave->ring_position, 0x0010,
                            sizeof(uint16_t), data);
 
-        if (unlikely(ec_frame_send_receive(&frame) < 0)) {
+        if (unlikely(ec_frame_send_receive(&frame))) {
             EC_ERR("Writing station address failed on slave %i!\n", i);
             return -1;
         }
@@ -486,7 +485,7 @@ int EtherCAT_rt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
             memset(data, 0x00, EC_FMMU_SIZE * slave->base_fmmu_count);
             ec_frame_init_npwr(&frame, master, slave->station_address, 0x0600,
                                EC_FMMU_SIZE * slave->base_fmmu_count, data);
-            if (unlikely(ec_frame_send_receive(&frame) < 0)) {
+            if (unlikely(ec_frame_send_receive(&frame))) {
                 EC_ERR("Resetting FMMUs failed on slave %i!\n",
                        slave->ring_position);
                 return -1;
@@ -498,7 +497,7 @@ int EtherCAT_rt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
             memset(data, 0x00, EC_SYNC_SIZE * slave->base_sync_count);
             ec_frame_init_npwr(&frame, master, slave->station_address, 0x0800,
                                EC_SYNC_SIZE * slave->base_sync_count, data);
-            if (unlikely(ec_frame_send_receive(&frame) < 0)) {
+            if (unlikely(ec_frame_send_receive(&frame))) {
                 EC_ERR("Resetting sync managers failed on slave %i!\n",
                        slave->ring_position);
                 return -1;

@@ -16,23 +16,6 @@
 
 /*****************************************************************************/
 
-#define EC_MAX_DATA_SIZE (EC_MAX_FRAME_SIZE - EC_FRAME_HEADER_SIZE \
-                                            - EC_COMMAND_HEADER_SIZE \
-                                            - EC_COMMAND_FOOTER_SIZE)
-
-/*****************************************************************************/
-
-/**
-   Status eines EtherCAT-Rahmens.
-*/
-
-typedef enum {
-  ec_frame_ready, ec_frame_sent, ec_frame_received
-}
-ec_frame_state_t;
-
-/*****************************************************************************/
-
 /**
    EtherCAT-Rahmen-Typ
 */
@@ -44,9 +27,9 @@ typedef enum
   ec_frame_type_apwr = 0x02, /**< Auto-increment physical write */
   ec_frame_type_nprd = 0x04, /**< Node-addressed physical read */
   ec_frame_type_npwr = 0x05, /**< Node-addressed physical write */
-  ec_frame_type_brd = 0x07,  /**< Broadcast read */
-  ec_frame_type_bwr = 0x08,  /**< Broadcast write */
-  ec_frame_type_lrw = 0x0C   /**< Logical read/write */
+  ec_frame_type_brd  = 0x07, /**< Broadcast read */
+  ec_frame_type_bwr  = 0x08, /**< Broadcast write */
+  ec_frame_type_lrw  = 0x0C  /**< Logical read/write */
 }
 ec_frame_type_t;
 
@@ -90,7 +73,6 @@ typedef struct
     ec_address_t address; /**< Adresse des/der Empfänger */
     unsigned int data_length; /**< Länge der zu sendenden und/oder empfangenen
                                  Daten */
-    ec_frame_state_t state; /**< Zustand des Kommandos */
     uint8_t index; /**< Kommando-Index, mit dem der Frame gesendet wurde
                             (wird vom Master beim Senden gesetzt). */
     uint16_t working_counter; /**< Working-Counter */

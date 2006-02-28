@@ -311,12 +311,7 @@ int EtherCAT_rt_domain_xio(ec_domain_t *domain /**< Domäne */)
         }
 
         if (unlikely(ec_frame_receive(frame) < 0)) {
-            EC_ERR("Receive error!\n");
-            return -1;
-        }
-
-        if (unlikely(frame->state != ec_frame_received)) {
-            EC_WARN("Process data command not received!\n");
+            EC_ERR("Receiving process data failed!\n");
             return -1;
         }
 
