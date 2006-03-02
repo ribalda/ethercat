@@ -1925,18 +1925,6 @@ static void rtl8139_tx_interrupt (struct net_device *dev,
 	dirty_tx = tp->dirty_tx;
 	tx_left = tp->cur_tx - dirty_tx;
 
-	/* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
-
-#if 0
-	if (EtherCAT_dev_is_ec(rtl_ec_dev, dev))
-    {
-                rtl_ec_dev.tx_intr_cnt++;
-                rdtscl(rtl_ec_dev.tx_time); // Get CPU cycles
-	}
-#endif
-
-        /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
-
 	while (tx_left > 0) {
 		int entry = dirty_tx % NUM_TX_DESC;
 		int txstatus;
@@ -1967,9 +1955,7 @@ static void rtl8139_tx_interrupt (struct net_device *dev,
                         /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
                         if (EtherCAT_dev_is_ec(rtl_ec_dev, dev))
-                        {
-                          EtherCAT_dev_state(rtl_ec_dev, EC_DEVICE_STATE_ERROR);
-                        }
+                            EtherCAT_dev_state(rtl_ec_dev, EC_DEVICE_STATE_ERROR);
 
                         /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 
@@ -2155,17 +2141,6 @@ static int rtl8139_rx(struct net_device *dev, struct rtl8139_private *tp,
 		 " free to %4.4x, Cmd %2.2x.\n", dev->name, (u16)cur_rx,
 		 RTL_R16 (RxBufAddr),
 		 RTL_R16 (RxBufPtr), RTL_R8 (ChipCmd));
-
-        /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
-#if 0
-	if (EtherCAT_dev_is_ec(rtl_ec_dev, dev))
-	{
-                rtl_ec_dev.rx_intr_cnt++;
-                rdtscl(rtl_ec_dev.rx_time); // Get CPU cycles
-	}
-#endif
-
-        /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 
 	while ((EtherCAT_dev_is_ec(rtl_ec_dev, dev) || netif_running(dev))
 	       && received < budget

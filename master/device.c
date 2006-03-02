@@ -168,9 +168,8 @@ void ec_device_send(ec_device_t *device, /**< EtherCAT-Gerät */
 {
     struct ethhdr *eth;
 
-    if (unlikely(!device->link_state)) { // Link down
+    if (unlikely(!device->link_state)) // Link down
         return;
-    }
 
     // Framegröße auf (jetzt bekannte) Länge abschneiden
     skb_trim(device->tx_skb, length);

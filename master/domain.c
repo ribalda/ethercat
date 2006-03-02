@@ -180,6 +180,23 @@ int ec_domain_alloc(ec_domain_t *domain, /**< Domäne */
     return 0;
 }
 
+/*****************************************************************************/
+
+/**
+   Gibt die Anzahl der antwortenden Slaves aus.
+*/
+
+void ec_domain_response_count(ec_domain_t *domain, /**< Domäne */
+                              unsigned int count /**< Neue Anzahl */
+                              )
+{
+    if (count != domain->response_count) {
+        domain->response_count = count;
+        EC_INFO("Domain %08X state change - %i slaves responding.\n",
+                (u32) domain, count);
+    }
+}
+
 /******************************************************************************
  *
  * Echtzeitschnittstelle
@@ -281,6 +298,12 @@ int EtherCAT_rt_domain_xio(ec_domain_t *domain /**< Domäne */)
 
     ec_cyclic_output(master);
 
+    if (unlikely(!master->device.link_state)) {
+        ec_domain_response_count(domain, working_counter_sum);
+        ec_device_call_isr(&master->device);
+        return -1;
+    }
+
     rdtscl(start_ticks); // Sendezeit nehmen
     timeout_ticks = domain->timeout_us * cpu_khz / 1000;
 
@@ -297,10 +320,7 @@ int EtherCAT_rt_domain_xio(ec_domain_t *domain /**< Domäne */)
             master->device.state = EC_DEVICE_STATE_READY;
             master->frames_lost++;
             ec_cyclic_output(master);
-
-            // Falls Link down...
-            ec_device_call_isr(&master->device);
-
+            ec_domain_response_count(domain, working_counter_sum);
             return -1;
         }
 
@@ -323,12 +343,13 @@ int EtherCAT_rt_domain_xio(ec_domain_t *domain /**< Domäne */)
                 master->device.state = EC_DEVICE_STATE_READY;
                 master->frames_lost++;
                 ec_cyclic_output(master);
+                ec_domain_response_count(domain, working_counter_sum);
                 return -1;
             }
         }
 
         if (unlikely(ec_frame_receive(frame) < 0)) {
-            EC_ERR("Receiving process data failed!\n");
+            ec_domain_response_count(domain, working_counter_sum);
             return -1;
         }
 
@@ -340,11 +361,7 @@ int EtherCAT_rt_domain_xio(ec_domain_t *domain /**< Domäne */)
         offset += size;
     }
 
-    if (working_counter_sum != domain->response_count) {
-        domain->response_count = working_counter_sum;
-        EC_INFO("Domain %08X state change - %i slaves responding.\n",
-                (u32) domain, working_counter_sum);
-    }
+    ec_domain_response_count(domain, working_counter_sum);
 
     return 0;
 }
