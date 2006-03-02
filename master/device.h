@@ -43,6 +43,7 @@ struct ec_device
                               Verfügung stellt. */
     uint8_t error_reported; /**< Zeigt an, ob ein Fehler im zyklischen Code
                                bereits gemeldet wurde. */
+    uint8_t link_state; /**< Verbindungszustand */
 };
 
 /*****************************************************************************/

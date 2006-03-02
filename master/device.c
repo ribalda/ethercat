@@ -39,6 +39,7 @@ int ec_device_init(ec_device_t *device, /**< EtherCAT-Gerät */
     device->isr = NULL;
     device->module = NULL;
     device->error_reported = 0;
+    device->link_state = 0; // down
 
     if ((device->tx_skb = dev_alloc_skb(ETH_HLEN + EC_MAX_FRAME_SIZE)) == NULL) {
         EC_ERR("Error allocating device socket buffer!\n");
@@ -101,6 +102,7 @@ int ec_device_open(ec_device_t *device /**< EtherCAT-Gerät */)
 
     // Reset old device state
     device->state = EC_DEVICE_STATE_READY;
+    device->link_state = 0;
 
     if (device->dev->open(device->dev) == 0) device->open = 1;
 
@@ -165,6 +167,10 @@ void ec_device_send(ec_device_t *device, /**< EtherCAT-Gerät */
                     )
 {
     struct ethhdr *eth;
+
+    if (unlikely(!device->link_state)) { // Link down
+        return;
+    }
 
     // Framegröße auf (jetzt bekannte) Länge abschneiden
     skb_trim(device->tx_skb, length);
@@ -375,9 +381,26 @@ void EtherCAT_dev_receive(ec_device_t *device, /**< EtherCAT-Gerät */
 
 /*****************************************************************************/
 
+/**
+   Setzt einen neuen Verbindungszustand.
+*/
+
+void EtherCAT_dev_link_state(ec_device_t *device, /**< EtherCAT-Gerät */
+                             uint8_t state /**< Verbindungszustand */
+                             )
+{
+    if (state != device->link_state) {
+        device->link_state = state;
+        EC_INFO("Link state changed to %s.\n", (state ? "UP" : "DOWN"));
+    }
+}
+
+/*****************************************************************************/
+
 EXPORT_SYMBOL(EtherCAT_dev_is_ec);
 EXPORT_SYMBOL(EtherCAT_dev_state);
 EXPORT_SYMBOL(EtherCAT_dev_receive);
+EXPORT_SYMBOL(EtherCAT_dev_link_state);
 
 /*****************************************************************************/
 

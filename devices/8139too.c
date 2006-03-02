@@ -1471,7 +1471,12 @@ static void rtl_check_media (struct net_device *dev, unsigned int init_media)
 {
 	struct rtl8139_private *tp = netdev_priv(dev);
 
-	if (tp->phys[0] >= 0) {
+        if (EtherCAT_dev_is_ec(rtl_ec_dev, dev)) {
+            void __iomem *ioaddr = tp->mmio_addr;
+            uint16_t state = RTL_R16(BasicModeStatus) & BMSR_LSTATUS;
+            EtherCAT_dev_link_state(rtl_ec_dev, state ? 1 : 0);
+        }
+        else if (tp->phys[0] >= 0) {
 		mii_check_media(&tp->mii, netif_msg_link(tp), init_media);
 	}
 }
@@ -2400,9 +2405,6 @@ irqreturn_t rtl8139_interrupt (int irq, void *dev_instance,
 
 	if (EtherCAT_dev_is_ec(rtl_ec_dev, dev))
         {
-#if 0 // FIXME
-                rtl_ec_dev.intr_cnt++;
-#endif
                 status = RTL_R16 (IntrStatus);
 	}
 	else

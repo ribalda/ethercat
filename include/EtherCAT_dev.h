@@ -40,6 +40,7 @@ void EtherCAT_dev_unregister(unsigned int, ec_device_t *);
 int EtherCAT_dev_is_ec(const ec_device_t *, const struct net_device *);
 void EtherCAT_dev_state(ec_device_t *, ec_device_state_t);
 void EtherCAT_dev_receive(ec_device_t *, const void *, size_t);
+void EtherCAT_dev_link_state(ec_device_t *, uint8_t);
 
 /*****************************************************************************/
 

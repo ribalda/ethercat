@@ -253,6 +253,9 @@ int ec_frame_send(ec_frame_t *frame /**< Rahmen zum Senden */)
     unsigned int command_size, frame_size, i;
     uint8_t *data;
 
+    if (unlikely(!frame->master->device.link_state))
+        return -1;
+
     if (unlikely(frame->master->debug_level > 0)) {
         EC_DBG("ec_frame_send\n");
     }

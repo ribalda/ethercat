@@ -294,7 +294,13 @@ int EtherCAT_rt_domain_xio(ec_domain_t *domain /**< Domäne */)
                           domain->data + offset);
 
         if (unlikely(ec_frame_send(frame) < 0)) {
-            EC_ERR("Could not send process data command!\n");
+            master->device.state = EC_DEVICE_STATE_READY;
+            master->frames_lost++;
+            ec_cyclic_output(master);
+
+            // Falls Link down...
+            ec_device_call_isr(&master->device);
+
             return -1;
         }
 
