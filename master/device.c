@@ -19,6 +19,11 @@
 
 /*****************************************************************************/
 
+void ec_data_print(const uint8_t *, size_t);
+void ec_data_print_diff(const uint8_t *, const uint8_t *, size_t);
+
+/*****************************************************************************/
+
 /**
    EtherCAT-Geräte-Konstuktor.
 
@@ -26,25 +31,35 @@
 */
 
 int ec_device_init(ec_device_t *device, /**< EtherCAT-Gerät */
-                   ec_master_t *master /**< Zugehöriger Master */
+                   ec_master_t *master, /**< Zugehöriger Master */
+                   struct net_device *net_dev, /**< Net-Device */
+                   ec_isr_t isr, /**< Adresse der ISR */
+                   struct module *module /**< Modul-Adresse */
                    )
 {
+    struct ethhdr *eth;
+
     device->master = master;
-    device->dev = NULL;
+    device->dev = net_dev;
+    device->isr = isr;
+    device->module = module;
+
     device->open = 0;
-    device->tx_time = 0;
-    device->rx_time = 0;
-    device->state = EC_DEVICE_STATE_READY;
-    device->rx_data_size = 0;
-    device->isr = NULL;
-    device->module = NULL;
-    device->error_reported = 0;
     device->link_state = 0; // down
 
-    if ((device->tx_skb = dev_alloc_skb(ETH_HLEN + EC_MAX_FRAME_SIZE)) == NULL) {
+    if (!(device->tx_skb = dev_alloc_skb(ETH_HLEN + EC_MAX_FRAME_SIZE))) {
         EC_ERR("Error allocating device socket buffer!\n");
         return -1;
     }
+
+    device->tx_skb->dev = net_dev;
+
+    // Ethernet-II-Header hinzufuegen
+    skb_reserve(device->tx_skb, ETH_HLEN);
+    eth = (struct ethhdr *) skb_push(device->tx_skb, ETH_HLEN);
+    eth->h_proto = htons(0x88A4);
+    memcpy(eth->h_source, net_dev->dev_addr, net_dev->addr_len);
+    memset(eth->h_dest, 0xFF, net_dev->addr_len);
 
     return 0;
 }
@@ -61,13 +76,7 @@ int ec_device_init(ec_device_t *device, /**< EtherCAT-Gerät */
 void ec_device_clear(ec_device_t *device /**< EtherCAT-Gerät */)
 {
     if (device->open) ec_device_close(device);
-
-    device->dev = NULL;
-
-    if (device->tx_skb) {
-        dev_kfree_skb(device->tx_skb);
-        device->tx_skb = NULL;
-    }
+    if (device->tx_skb) dev_kfree_skb(device->tx_skb);
 }
 
 /*****************************************************************************/
@@ -100,8 +109,6 @@ int ec_device_open(ec_device_t *device /**< EtherCAT-Gerät */)
     // Device could have received frames before
     for (i = 0; i < 4; i++) ec_device_call_isr(device);
 
-    // Reset old device state
-    device->state = EC_DEVICE_STATE_READY;
     device->link_state = 0;
 
     if (device->dev->open(device->dev) == 0) device->open = 1;
@@ -127,10 +134,10 @@ int ec_device_close(ec_device_t *device /**< EtherCAT-Gerät */)
 
     if (!device->open) {
         EC_WARN("Device already closed!\n");
+        return 0;
     }
-    else {
-        if (device->dev->stop(device->dev) == 0) device->open = 0;
-    }
+
+    if (device->dev->stop(device->dev) == 0) device->open = 0;
 
     return !device->open ? 0 : -1;
 }
@@ -138,18 +145,14 @@ int ec_device_close(ec_device_t *device /**< EtherCAT-Gerät */)
 /*****************************************************************************/
 
 /**
-   Bereitet den geräteinternen Socket-Buffer auf den Versand vor.
+   Liefert einen Zeiger auf den Sende-Speicher.
 
    \return Zeiger auf den Speicher, in den die Frame-Daten sollen.
 */
 
-uint8_t *ec_device_prepare(ec_device_t *device /**< EtherCAT-Gerät */)
+uint8_t *ec_device_tx_data(ec_device_t *device /**< EtherCAT-Gerät */)
 {
-    skb_trim(device->tx_skb, 0); // Auf Länge 0 abschneiden
-    skb_reserve(device->tx_skb, ETH_HLEN); // Reserve für Ethernet-II-Header
-
-    // Vorerst Speicher für maximal langen Frame reservieren
-    return skb_put(device->tx_skb, EC_MAX_FRAME_SIZE);
+    return device->tx_skb->data + ETH_HLEN;
 }
 
 /*****************************************************************************/
@@ -163,60 +166,22 @@ uint8_t *ec_device_prepare(ec_device_t *device /**< EtherCAT-Gerät */)
 */
 
 void ec_device_send(ec_device_t *device, /**< EtherCAT-Gerät */
-                    unsigned int length /**< Länge der zu sendenden Daten */
+                    size_t size /**< Größe der zu sendenden Daten */
                     )
 {
-    struct ethhdr *eth;
-
     if (unlikely(!device->link_state)) // Link down
         return;
 
     // Framegröße auf (jetzt bekannte) Länge abschneiden
-    skb_trim(device->tx_skb, length);
-
-    // Ethernet-II-Header hinzufuegen
-    eth = (struct ethhdr *) skb_push(device->tx_skb, ETH_HLEN);
-    eth->h_proto = htons(0x88A4);
-    memcpy(eth->h_source, device->dev->dev_addr, device->dev->addr_len);
-    memset(eth->h_dest, 0xFF, device->dev->addr_len);
-
-    device->state = EC_DEVICE_STATE_SENT;
-    device->rx_data_size = 0;
+    device->tx_skb->len = ETH_HLEN + size;
 
     if (unlikely(device->master->debug_level > 1)) {
-        EC_DBG("Sending frame:\n");
-        ec_data_print(device->tx_skb->data + ETH_HLEN, device->tx_skb->len);
+        EC_DBG("sending frame:\n");
+        ec_data_print(device->tx_skb->data + ETH_HLEN, size);
     }
 
     // Senden einleiten
-    rdtscl(device->tx_time); // Get CPU cycles
     device->dev->hard_start_xmit(device->tx_skb, device->dev);
-}
-
-/*****************************************************************************/
-
-/**
-   Gibt die Anzahl der empfangenen Bytes zurück.
-
-   \return Empfangene Bytes, oder 0, wenn kein Frame empfangen wurde.
-*/
-
-unsigned int ec_device_received(const ec_device_t *device)
-{
-    return device->rx_data_size;
-}
-
-/*****************************************************************************/
-
-/**
-   Gibt die empfangenen Daten zurück.
-
-   \return Zeiger auf empfangene Daten.
-*/
-
-uint8_t *ec_device_data(ec_device_t *device)
-{
-    return device->rx_data;
 }
 
 /*****************************************************************************/
@@ -228,49 +193,6 @@ uint8_t *ec_device_data(ec_device_t *device)
 void ec_device_call_isr(ec_device_t *device /**< EtherCAT-Gerät */)
 {
     if (likely(device->isr)) device->isr(0, device->dev, NULL);
-}
-
-/*****************************************************************************/
-
-/**
-   Gibt alle Informationen über das Device-Objekt aus.
-*/
-
-void ec_device_print(ec_device_t *device /**< EtherCAT-Gerät */)
-{
-    EC_DBG("---EtherCAT device information begin---\n");
-
-    if (device) {
-        EC_DBG("Assigned net_device: %X\n", (u32) device->dev);
-        EC_DBG("Transmit socket buffer: %X\n", (u32) device->tx_skb);
-        EC_DBG("Time of last transmission: %u\n", (u32) device->tx_time);
-        EC_DBG("Time of last receive: %u\n", (u32) device->rx_time);
-        EC_DBG("Actual device state: %i\n", (u8) device->state);
-        EC_DBG("Receive buffer: %X\n", (u32) device->rx_data);
-        EC_DBG("Receive buffer fill state: %u/%u\n",
-               (u32) device->rx_data_size, EC_MAX_FRAME_SIZE);
-    }
-    else {
-        EC_DBG("Device is NULL!\n");
-    }
-
-    EC_DBG("---EtherCAT device information end---\n");
-}
-
-/*****************************************************************************/
-
-/**
-   Gibt das letzte Rahmenpaar aus.
-*/
-
-void ec_device_debug(const ec_device_t *device /**< EtherCAT-Gerät */)
-{
-    EC_DBG(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n");
-    ec_data_print(device->tx_skb->data + ETH_HLEN, device->tx_skb->len);
-    EC_DBG("--------------------------------------\n");
-    ec_data_print_diff(device->tx_skb->data + ETH_HLEN, device->rx_data,
-                       device->rx_data_size);
-    EC_DBG("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n");
 }
 
 /*****************************************************************************/
@@ -328,19 +250,6 @@ void ec_data_print_diff(const uint8_t *d1, /**< Daten 1 */
  *****************************************************************************/
 
 /**
-   Setzt den Zustand des EtherCAT-Gerätes.
-*/
-
-void EtherCAT_dev_state(ec_device_t *device,  /**< EtherCAT-Gerät */
-                        ec_device_state_t state /**< Neuer Zustand */
-                        )
-{
-    device->state = state;
-}
-
-/*****************************************************************************/
-
-/**
    Prüft, ob das Net-Device \a dev zum registrierten EtherCAT-Gerät gehört.
 
    \return 0 wenn nein, nicht-null wenn ja.
@@ -366,16 +275,12 @@ void EtherCAT_dev_receive(ec_device_t *device, /**< EtherCAT-Gerät */
                           size_t size /**< Größe der empfangenen Daten */
                           )
 {
-    // Copy received data to ethercat-device buffer
-    memcpy(device->rx_data, data, size);
-    device->rx_data_size = size;
-    device->state = EC_DEVICE_STATE_RECEIVED;
-
     if (unlikely(device->master->debug_level > 1)) {
         EC_DBG("Received frame:\n");
-        ec_data_print_diff(device->tx_skb->data + ETH_HLEN, device->rx_data,
-                           device->rx_data_size);
+        ec_data_print_diff(device->tx_skb->data + ETH_HLEN, data, size);
     }
+
+    ec_master_receive(device->master, data, size);
 }
 
 /*****************************************************************************/
@@ -397,7 +302,6 @@ void EtherCAT_dev_link_state(ec_device_t *device, /**< EtherCAT-Gerät */
 /*****************************************************************************/
 
 EXPORT_SYMBOL(EtherCAT_dev_is_ec);
-EXPORT_SYMBOL(EtherCAT_dev_state);
 EXPORT_SYMBOL(EtherCAT_dev_receive);
 EXPORT_SYMBOL(EtherCAT_dev_link_state);
 

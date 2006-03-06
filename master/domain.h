@@ -15,7 +15,7 @@
 
 #include "globals.h"
 #include "slave.h"
-#include "frame.h"
+#include "command.h"
 
 /*****************************************************************************/
 
@@ -46,17 +46,14 @@ struct ec_domain
 {
     struct list_head list; /**< Listenkopf */
     ec_master_t *master; /**< EtherCAT-Master, zu der die Domäne gehört. */
-
-    unsigned char *data; /**< Prozessdaten */
-    unsigned int data_size; /**< Größe der Prozessdaten */
-
-    ec_frame_t frame; /**< EtherCAT-Frame für die Prozessdaten */
-
+    uint8_t *data; /**< Prozessdaten */
+    size_t data_size; /**< Größe der Prozessdaten */
+    ec_command_t *commands; /**< EtherCAT-Kommandos für die Prozessdaten */
+    unsigned int command_count; /**< Anzahl allozierter Kommandos */
     ec_domain_mode_t mode;
     unsigned int timeout_us; /**< Timeout in Mikrosekunden. */
     unsigned int base_address; /**< Logische Basisaddresse der Domain */
     unsigned int response_count; /**< Anzahl antwortender Slaves */
-
     struct list_head field_regs; /**< Liste der Datenfeldregistrierungen */
 };
 

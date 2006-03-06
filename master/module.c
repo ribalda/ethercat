@@ -35,9 +35,9 @@ void __exit ec_cleanup_module(void);
 #define EC_LIT(X) #X
 #define EC_STR(X) EC_LIT(X)
 
-#define COMPILE_INFO "Revision " EC_STR(EC_REV) \
-                     ", compiled by " EC_STR(EC_USER) \
-                     " at " EC_STR(EC_DATE)
+#define COMPILE_INFO "Revision " EC_STR(SVNREV) \
+                     ", compiled by " EC_STR(USER) \
+                     " at " __DATE__ " " __TIME__
 
 /*****************************************************************************/
 
@@ -155,38 +155,35 @@ ec_device_t *EtherCAT_dev_register(unsigned int master_index,
                                    /**< Zeiger auf das Modul */
                                    )
 {
-    ec_device_t *device;
     ec_master_t *master;
-
-    if (master_index >= ec_master_count) {
-        EC_ERR("Master %i does not exist!\n", master_index);
-        return NULL;
-    }
 
     if (!net_dev) {
         EC_WARN("Device is NULL!\n");
         return NULL;
     }
 
+    if (master_index >= ec_master_count) {
+        EC_ERR("Master %i does not exist!\n", master_index);
+        return NULL;
+    }
+
     master = ec_masters + master_index;
 
-    if (master->device_registered) {
+    if (master->device) {
         EC_ERR("Master %i already has a device!\n", master_index);
         return NULL;
     }
 
-    device = &master->device;
+    if (!(master->device = (ec_device_t *) kmalloc(sizeof(ec_device_t),
+                                                   GFP_KERNEL))) {
+        EC_ERR("Failed allocating device!\n");
+        return NULL;
+    }
 
-    if (ec_device_init(device, master) < 0) return NULL;
+    if (ec_device_init(master->device, master, net_dev, isr, module))
+        return NULL;
 
-    device->dev = net_dev;
-    device->tx_skb->dev = net_dev;
-    device->isr = isr;
-    device->module = module;
-
-    master->device_registered = 1;
-
-    return device;
+    return master->device;
 }
 
 /*****************************************************************************/
@@ -210,13 +207,14 @@ void EtherCAT_dev_unregister(unsigned int master_index,
 
     master = ec_masters + master_index;
 
-    if (!master->device_registered || &master->device != device) {
+    if (!master->device || master->device != device) {
         EC_WARN("Unable to unregister device!\n");
         return;
     }
 
-    master->device_registered = 0;
-    ec_device_clear(device);
+    ec_device_clear(master->device);
+    kfree(master->device);
+    master->device = NULL;
 }
 
 /******************************************************************************
@@ -253,22 +251,24 @@ ec_master_t *EtherCAT_rt_request_master(unsigned int index
 
     master = &ec_masters[index];
 
-    if (!master->device_registered) {
+    if (!master->device) {
         EC_ERR("Master %i has no device assigned yet!\n", index);
         goto req_return;
     }
 
-    if (!try_module_get(master->device.module)) {
+    if (!try_module_get(master->device->module)) {
         EC_ERR("Failed to reserve device module!\n");
         goto req_return;
     }
 
-    if (ec_master_open(master) < 0) {
+    if (ec_master_open(master)) {
         EC_ERR("Failed to open device!\n");
         goto req_module_put;
     }
 
-    if (ec_scan_for_slaves(master) != 0) {
+    if (!master->device->link_state) EC_WARN("Link is DOWN.\n");
+
+    if (ec_master_bus_scan(master) != 0) {
         EC_ERR("Bus scan failed!\n");
         goto req_close;
     }
@@ -282,7 +282,7 @@ ec_master_t *EtherCAT_rt_request_master(unsigned int index
     ec_master_close(master);
 
  req_module_put:
-    module_put(master->device.module);
+    module_put(master->device->module);
     ec_master_reset(master);
 
  req_return:
@@ -318,7 +318,7 @@ void EtherCAT_rt_release_master(ec_master_t *master /**< EtherCAT-Masdter */)
     ec_master_close(master);
     ec_master_reset(master);
 
-    module_put(master->device.module);
+    module_put(master->device->module);
     ec_masters_reserved[i] = 0;
 
     EC_INFO("===== Master %i stopped. =====\n", i);

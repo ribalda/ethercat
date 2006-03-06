@@ -17,7 +17,7 @@
 
 /*****************************************************************************/
 
-#define ABTASTFREQUENZ 1000
+#define ABTASTFREQUENZ 100
 
 struct timer_list timer;
 
@@ -47,7 +47,9 @@ void run(unsigned long data)
     static unsigned int counter = 0;
 
     // Prozessdaten lesen und schreiben
-    EtherCAT_rt_domain_xio(domain1);
+    EtherCAT_rt_domain_queue(domain1);
+    EtherCAT_rt_master_xio(master);
+    EtherCAT_rt_domain_process(domain1);
 
     k_angle = EC_READ_U16(r_inc);
     k_pos   = EC_READ_U32(r_ssi);

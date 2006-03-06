@@ -21,7 +21,7 @@
 #include "slave.h"
 #include "types.h"
 #include "device.h"
-#include "frame.h"
+#include "command.h"
 
 /*****************************************************************************/
 
@@ -32,16 +32,12 @@
 void ec_master_init(ec_master_t *master /**< EtherCAT-Master */)
 {
     master->slaves = NULL;
-    master->slave_count = 0;
-    master->device_registered = 0;
-    master->command_index = 0x00;
-    master->debug_level = 0;
-    master->bus_time = 0;
-    master->frames_lost = 0;
-    master->frames_delayed = 0;
-    master->t_last_cyclic_output = 0;
+    master->device = NULL;
 
+    INIT_LIST_HEAD(&master->commands);
     INIT_LIST_HEAD(&master->domains);
+
+    ec_master_reset(master);
 }
 
 /*****************************************************************************/
@@ -56,7 +52,11 @@ void ec_master_init(ec_master_t *master /**< EtherCAT-Master */)
 void ec_master_clear(ec_master_t *master /**< EtherCAT-Master */)
 {
     ec_master_reset(master);
-    ec_device_clear(&master->device);
+
+    if (master->device) {
+        ec_device_clear(master->device);
+        kfree(master->device);
+    }
 }
 
 /*****************************************************************************/
@@ -72,35 +72,11 @@ void ec_master_reset(ec_master_t *master
                      /**< Zeiger auf den zurückzusetzenden Master */
                      )
 {
-    ec_domain_t *domain, *next;
-
-    ec_master_clear_slaves(master);
-
-    // Domain-Liste leeren
-    list_for_each_entry_safe(domain, next, &master->domains, list) {
-        ec_domain_clear(domain);
-        kfree(domain);
-    }
-    INIT_LIST_HEAD(&master->domains);
-
-    master->command_index = 0;
-    master->debug_level = 0;
-    master->bus_time = 0;
-    master->frames_lost = 0;
-    master->frames_delayed = 0;
-    master->t_last_cyclic_output = 0;
-}
-
-/*****************************************************************************/
-
-/**
-   Entfernt alle Slaves.
-*/
-
-void ec_master_clear_slaves(ec_master_t *master /**< EtherCAT-Master */)
-{
     unsigned int i;
+    ec_command_t *command, *next_command;
+    ec_domain_t *domain, *next_domain;
 
+    // Alle Slaves entfernen
     if (master->slaves) {
         for (i = 0; i < master->slave_count; i++) {
             ec_slave_clear(master->slaves + i);
@@ -109,6 +85,27 @@ void ec_master_clear_slaves(ec_master_t *master /**< EtherCAT-Master */)
         master->slaves = NULL;
     }
     master->slave_count = 0;
+
+    // Kommando-Warteschlange leeren
+    list_for_each_entry_safe(command, next_command, &master->commands, list) {
+        command->state = EC_CMD_ERROR;
+        list_del_init(&command->list);
+    }
+
+    // Domain-Liste leeren
+    list_for_each_entry_safe(domain, next_domain, &master->domains, list) {
+        list_del(&domain->list);
+        ec_domain_clear(domain);
+        kfree(domain);
+    }
+
+    master->command_index = 0;
+    master->debug_level = 0;
+    master->stats.timeouts = 0;
+    master->stats.delayed = 0;
+    master->stats.corrupted = 0;
+    master->stats.unmatched = 0;
+    master->stats.t_last = 0;
 }
 
 /*****************************************************************************/
@@ -122,12 +119,12 @@ void ec_master_clear_slaves(ec_master_t *master /**< EtherCAT-Master */)
 
 int ec_master_open(ec_master_t *master /**< Der EtherCAT-Master */)
 {
-    if (!master->device_registered) {
+    if (!master->device) {
         EC_ERR("No device registered!\n");
         return -1;
     }
 
-    if (ec_device_open(&master->device) < 0) {
+    if (ec_device_open(master->device)) {
         EC_ERR("Could not open device!\n");
         return -1;
     }
@@ -143,13 +140,260 @@ int ec_master_open(ec_master_t *master /**< Der EtherCAT-Master */)
 
 void ec_master_close(ec_master_t *master /**< EtherCAT-Master */)
 {
-    if (!master->device_registered) {
+    if (!master->device) {
         EC_WARN("Warning - Trying to close an unregistered device!\n");
         return;
     }
 
-    if (ec_device_close(&master->device) < 0)
+    if (ec_device_close(master->device))
         EC_WARN("Warning - Could not close device!\n");
+}
+
+/*****************************************************************************/
+
+/**
+   Stellt ein Kommando in die Warteschlange.
+*/
+
+void ec_master_queue_command(ec_master_t *master, /**< EtherCAT-Master */
+                             ec_command_t *command /**< Kommando */
+                             )
+{
+    ec_command_t *queued_command;
+
+    // Ist das Kommando schon in der Warteschlange?
+    list_for_each_entry(queued_command, &master->commands, list) {
+        if (queued_command == command) {
+            command->state = EC_CMD_QUEUED;
+            if (unlikely(master->debug_level))
+                EC_WARN("command already queued.\n");
+            return;
+        }
+    }
+
+    list_add_tail(&command->list, &master->commands);
+    command->state = EC_CMD_QUEUED;
+}
+
+/*****************************************************************************/
+
+/**
+   Sendet die Kommandos in der Warteschlange.
+
+   \return 0 bei Erfolg, sonst < 0
+*/
+
+void ec_master_send_commands(ec_master_t *master /**< EtherCAT-Master */)
+{
+    ec_command_t *command;
+    size_t command_size;
+    uint8_t *frame_data, *cur_data;
+    void *follows_word;
+    cycles_t start = 0, end;
+
+    if (unlikely(master->debug_level > 0)) {
+        EC_DBG("ec_master_send\n");
+        start = get_cycles();
+    }
+
+    // Zeiger auf Socket-Buffer holen
+    frame_data = ec_device_tx_data(master->device);
+    cur_data = frame_data + EC_FRAME_HEADER_SIZE;
+    follows_word = NULL;
+
+    // Aktuellen Frame mit Kommandos füllen
+    list_for_each_entry(command, &master->commands, list) {
+        if (command->state != EC_CMD_QUEUED) continue;
+
+        // Passt das aktuelle Kommando noch in den aktuellen Rahmen?
+        command_size = EC_COMMAND_HEADER_SIZE + command->data_size
+            + EC_COMMAND_FOOTER_SIZE;
+        if (cur_data - frame_data + command_size > EC_MAX_FRAME_SIZE) break;
+
+        command->state = EC_CMD_SENT;
+        command->index = master->command_index++;
+
+        if (unlikely(master->debug_level > 0))
+            EC_DBG("adding command 0x%02X\n", command->index);
+
+        // Command-Following-Flag im letzten Kommando setzen
+        if (follows_word)
+            EC_WRITE_U16(follows_word, EC_READ_U16(follows_word) | 0x8000);
+
+        // EtherCAT command header
+        EC_WRITE_U8 (cur_data,     command->type);
+        EC_WRITE_U8 (cur_data + 1, command->index);
+        EC_WRITE_U32(cur_data + 2, command->address.logical);
+        EC_WRITE_U16(cur_data + 6, command->data_size & 0x7FF);
+        EC_WRITE_U16(cur_data + 8, 0x0000);
+        follows_word = cur_data + 6;
+        cur_data += EC_COMMAND_HEADER_SIZE;
+
+        // EtherCAT command data
+        memcpy(cur_data, command->data, command->data_size);
+        cur_data += command->data_size;
+
+        // EtherCAT command footer
+        EC_WRITE_U16(cur_data, command->working_counter);
+        cur_data += EC_COMMAND_FOOTER_SIZE;
+    }
+
+    if (cur_data - frame_data == EC_FRAME_HEADER_SIZE) {
+        if (unlikely(master->debug_level > 0)) EC_DBG("nothing to send.\n");
+        return;
+    }
+
+    // EtherCAT frame header
+    EC_WRITE_U16(frame_data, ((cur_data - frame_data
+                               - EC_FRAME_HEADER_SIZE) & 0x7FF) | 0x1000);
+
+    // Rahmen auffüllen
+    while (cur_data - frame_data < EC_MIN_FRAME_SIZE)
+        EC_WRITE_U8(cur_data++, 0x00);
+
+    if (unlikely(master->debug_level > 0))
+        EC_DBG("Frame size: %i\n", cur_data - frame_data);
+
+    // Send frame
+    ec_device_send(master->device, cur_data - frame_data);
+
+    if (unlikely(master->debug_level > 0)) {
+        end = get_cycles();
+        EC_DBG("ec_master_send finished in %ius.\n",
+               (u32) (end - start) * 1000 / cpu_khz);
+    }
+}
+
+/*****************************************************************************/
+
+/**
+   Wertet einen empfangenen Rahmen aus.
+
+   \return 0 bei Erfolg, sonst < 0
+*/
+
+void ec_master_receive(ec_master_t *master, /**< EtherCAT-Master */
+                      const uint8_t *frame_data, /**< Empfangene Daten */
+                      size_t size /**< Anzahl empfangene Datenbytes */
+                      )
+{
+    size_t frame_size, data_size;
+    uint8_t command_type, command_index;
+    unsigned int cmd_follows, matched;
+    const uint8_t *cur_data;
+    ec_command_t *command;
+
+    if (unlikely(size < EC_FRAME_HEADER_SIZE)) {
+        master->stats.corrupted++;
+        ec_master_output_stats(master);
+        return;
+    }
+
+    cur_data = frame_data;
+
+    // Länge des gesamten Frames prüfen
+    frame_size = EC_READ_U16(cur_data) & 0x07FF;
+    cur_data += EC_FRAME_HEADER_SIZE;
+
+    if (unlikely(frame_size > size)) {
+        master->stats.corrupted++;
+        ec_master_output_stats(master);
+        return;
+    }
+
+    cmd_follows = 1;
+    while (cmd_follows) {
+        // Kommando-Header auswerten
+        command_type  = EC_READ_U8 (cur_data);
+        command_index = EC_READ_U8 (cur_data + 1);
+        data_size     = EC_READ_U16(cur_data + 6) & 0x07FF;
+        cmd_follows   = EC_READ_U16(cur_data + 6) & 0x8000;
+        cur_data += EC_COMMAND_HEADER_SIZE;
+
+        if (unlikely(cur_data - frame_data
+                     + data_size + EC_COMMAND_FOOTER_SIZE > size)) {
+            master->stats.corrupted++;
+            ec_master_output_stats(master);
+            return;
+        }
+
+        // Suche passendes Kommando in der Liste
+        matched = 0;
+        list_for_each_entry(command, &master->commands, list) {
+            if (command->state == EC_CMD_SENT
+                && command->type == command_type
+                && command->index == command_index
+                && command->data_size == data_size) {
+                matched = 1;
+                break;
+            }
+        }
+
+        // Kein passendes Kommando in der Liste gefunden
+        if (!matched) {
+            master->stats.unmatched++;
+            ec_master_output_stats(master);
+            cur_data += data_size + EC_COMMAND_FOOTER_SIZE;
+            continue;
+        }
+
+        // Empfangene Daten in Kommando-Datenspeicher kopieren
+        memcpy(command->data, cur_data, data_size);
+        cur_data += data_size;
+
+        // Working-Counter setzen
+        command->working_counter = EC_READ_U16(cur_data);
+        cur_data += EC_COMMAND_FOOTER_SIZE;
+
+        // Kommando aus der Liste entfernen
+        command->state = EC_CMD_RECEIVED;
+        list_del_init(&command->list);
+    }
+}
+
+/*****************************************************************************/
+
+/**
+   Sendet ein einzelnes Kommando und wartet auf den Empfang.
+
+   Wenn der Slave nicht antwortet, wird das Kommando
+   nochmals gesendet.
+
+   \return 0 bei Erfolg, sonst < 0
+*/
+
+int ec_master_simple_io(ec_master_t *master, /**< EtherCAT-Master */
+                        ec_command_t *command /**< Kommando */
+                        )
+{
+    unsigned int response_tries_left;
+
+    response_tries_left = 10;
+    do
+    {
+        ec_master_queue_command(master, command);
+        EtherCAT_rt_master_xio(master);
+
+        if (command->state == EC_CMD_RECEIVED) {
+            break;
+        }
+        else if (command->state == EC_CMD_TIMEOUT) {
+            EC_ERR("Simple IO TIMED OUT!\n");
+            return -1;
+        }
+        else if (command->state == EC_CMD_ERROR) {
+            EC_ERR("Simple IO command error!\n");
+            return -1;
+        }
+    }
+    while (unlikely(!command->working_counter && --response_tries_left));
+
+    if (unlikely(!response_tries_left)) {
+        EC_ERR("No response in simple IO!\n");
+        return -1;
+    }
+
+    return 0;
 }
 
 /*****************************************************************************/
@@ -163,9 +407,9 @@ void ec_master_close(ec_master_t *master /**< EtherCAT-Master */)
    \return 0 bei Erfolg, sonst < 0
 */
 
-int ec_scan_for_slaves(ec_master_t *master /**< EtherCAT-Master */)
+int ec_master_bus_scan(ec_master_t *master /**< EtherCAT-Master */)
 {
-    ec_frame_t frame;
+    ec_command_t command;
     ec_slave_t *slave;
     ec_slave_ident_t *ident;
     unsigned int i;
@@ -177,9 +421,9 @@ int ec_scan_for_slaves(ec_master_t *master /**< EtherCAT-Master */)
     }
 
     // Determine number of slaves on bus
-    ec_frame_init_brd(&frame, master, 0x0000, 4);
-    if (unlikely(ec_frame_send_receive(&frame))) return -1;
-    master->slave_count = frame.working_counter;
+    ec_command_init_brd(&command, 0x0000, 4);
+    if (unlikely(ec_master_simple_io(master, &command))) return -1;
+    master->slave_count = command.working_counter;
     EC_INFO("Found %i slaves on bus.\n", master->slave_count);
 
     if (!master->slave_count) return 0;
@@ -206,11 +450,9 @@ int ec_scan_for_slaves(ec_master_t *master /**< EtherCAT-Master */)
 
         // Write station address
         EC_WRITE_U16(data, slave->station_address);
-
-        ec_frame_init_apwr(&frame, master, slave->ring_position, 0x0010,
-                           sizeof(uint16_t), data);
-
-        if (unlikely(ec_frame_send_receive(&frame))) {
+        ec_command_init_apwr(&command, slave->ring_position,
+                             0x0010, sizeof(uint16_t), data);
+        if (unlikely(ec_master_simple_io(master, &command))) {
             EC_ERR("Writing station address failed on slave %i!\n", i);
             return -1;
         }
@@ -241,30 +483,36 @@ int ec_scan_for_slaves(ec_master_t *master /**< EtherCAT-Master */)
 /*****************************************************************************/
 
 /**
-   Ausgaben während des zyklischen Betriebs.
+   Statistik-Ausgaben während des zyklischen Betriebs.
 
-   Diese Funktion sorgt dafür, dass Ausgaben (Zählerstände) während
-   des zyklischen Betriebs nicht zu oft getätigt werden.
+   Diese Funktion sorgt dafür, dass Statistiken während des zyklischen
+   Betriebs bei Bedarf, aber nicht zu oft ausgegeben werden.
 
    Die Ausgabe erfolgt gesammelt höchstens einmal pro Sekunde.
 */
 
-void ec_cyclic_output(ec_master_t *master /**< EtherCAT-Master */)
+void ec_master_output_stats(ec_master_t *master /**< EtherCAT-Master */)
 {
-    unsigned long int t;
+    cycles_t t_now = get_cycles();
 
-    rdtscl(t);
-
-    if ((t - master->t_last_cyclic_output) / cpu_khz > 1000) {
-        if (master->frames_lost) {
-            EC_WARN("%u frame(s) LOST!\n", master->frames_lost);
-            master->frames_lost = 0;
+    if (unlikely((u32) (t_now - master->stats.t_last) / cpu_khz > 1000)) {
+        if (master->stats.timeouts) {
+            EC_WARN("%i commands TIMED OUT!\n", master->stats.timeouts);
+            master->stats.timeouts = 0;
         }
-        if (master->frames_delayed) {
-            EC_WARN("%u frame(s) DELAYED!\n", master->frames_delayed);
-            master->frames_delayed = 0;
+        if (master->stats.delayed) {
+            EC_WARN("%i frame(s) DELAYED!\n", master->stats.delayed);
+            master->stats.delayed = 0;
         }
-        master->t_last_cyclic_output = t;
+        if (master->stats.corrupted) {
+            EC_WARN("%i frame(s) CORRUPTED!\n", master->stats.corrupted);
+            master->stats.corrupted = 0;
+        }
+        if (master->stats.unmatched) {
+            EC_WARN("%i command(s) UNMATCHED!\n", master->stats.unmatched);
+            master->stats.unmatched = 0;
+        }
+        master->stats.t_last = t_now;
     }
 }
 
@@ -283,11 +531,11 @@ void ec_cyclic_output(ec_master_t *master /**< EtherCAT-Master */)
    \return Zeiger auf Slave bei Erfolg, sonst NULL
 */
 
-ec_slave_t *ec_address(const ec_master_t *master,
-                       /**< EtherCAT-Master */
-                       const char *address
-                       /**< Address-String */
-                       )
+ec_slave_t *ec_master_slave_address(const ec_master_t *master,
+                                    /**< EtherCAT-Master */
+                                    const char *address
+                                    /**< Address-String */
+                                    )
 {
     unsigned long first, second;
     char *remainder, *remainder2;
@@ -448,13 +696,12 @@ int EtherCAT_rt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
 {
     unsigned int i, j;
     ec_slave_t *slave;
-    ec_frame_t frame;
+    ec_command_t command;
     const ec_sync_t *sync;
     const ec_slave_type_t *type;
     const ec_fmmu_t *fmmu;
     uint8_t data[256];
     uint32_t domain_offset;
-    unsigned int frame_count;
     ec_domain_t *domain;
 
     // Domains erstellen
@@ -464,10 +711,6 @@ int EtherCAT_rt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
             EC_ERR("Failed to allocate domain %X!\n", (u32) domain);
             return -1;
         }
-        frame_count = domain->data_size / EC_MAX_FRAME_SIZE + 1;
-        if (!domain->data_size) frame_count = 0;
-        EC_INFO("Domain %X - Allocated %i bytes (%i Frame(s))\n",
-                (u32) domain, domain->data_size, frame_count);
         domain_offset += domain->data_size;
     }
 
@@ -494,9 +737,9 @@ int EtherCAT_rt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
         // Resetting FMMUs
         if (slave->base_fmmu_count) {
             memset(data, 0x00, EC_FMMU_SIZE * slave->base_fmmu_count);
-            ec_frame_init_npwr(&frame, master, slave->station_address, 0x0600,
-                               EC_FMMU_SIZE * slave->base_fmmu_count, data);
-            if (unlikely(ec_frame_send_receive(&frame))) {
+            ec_command_init_npwr(&command, slave->station_address, 0x0600,
+                                 EC_FMMU_SIZE * slave->base_fmmu_count, data);
+            if (unlikely(ec_master_simple_io(master, &command))) {
                 EC_ERR("Resetting FMMUs failed on slave %i!\n",
                        slave->ring_position);
                 return -1;
@@ -506,9 +749,9 @@ int EtherCAT_rt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
         // Resetting Sync Manager channels
         if (slave->base_sync_count) {
             memset(data, 0x00, EC_SYNC_SIZE * slave->base_sync_count);
-            ec_frame_init_npwr(&frame, master, slave->station_address, 0x0800,
-                               EC_SYNC_SIZE * slave->base_sync_count, data);
-            if (unlikely(ec_frame_send_receive(&frame))) {
+            ec_command_init_npwr(&command, slave->station_address, 0x0800,
+                                 EC_SYNC_SIZE * slave->base_sync_count, data);
+            if (unlikely(ec_master_simple_io(master, &command))) {
                 EC_ERR("Resetting sync managers failed on slave %i!\n",
                        slave->ring_position);
                 return -1;
@@ -521,10 +764,10 @@ int EtherCAT_rt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
             sync = type->sync_managers[j];
 
             ec_sync_config(sync, data);
-            ec_frame_init_npwr(&frame, master, slave->station_address,
-                               0x0800 + j * EC_SYNC_SIZE, EC_SYNC_SIZE, data);
-
-            if (unlikely(ec_frame_send_receive(&frame))) {
+            ec_command_init_npwr(&command, slave->station_address,
+                                 0x0800 + j * EC_SYNC_SIZE, EC_SYNC_SIZE,
+                                 data);
+            if (unlikely(ec_master_simple_io(master, &command))) {
                 EC_ERR("Setting sync manager %i failed on slave %i!\n",
                        j, slave->ring_position);
                 return -1;
@@ -548,10 +791,10 @@ int EtherCAT_rt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
             fmmu = &slave->fmmus[j];
 
             ec_fmmu_config(fmmu, data);
-            ec_frame_init_npwr(&frame, master, slave->station_address,
-                               0x0600 + j * EC_FMMU_SIZE, EC_FMMU_SIZE, data);
-
-            if (unlikely(ec_frame_send_receive(&frame))) {
+            ec_command_init_npwr(&command, slave->station_address,
+                                 0x0600 + j * EC_FMMU_SIZE, EC_FMMU_SIZE,
+                                 data);
+            if (unlikely(ec_master_simple_io(master, &command))) {
                 EC_ERR("Setting FMMU %i failed on slave %i!\n",
                        j, slave->ring_position);
                 return -1;
@@ -600,9 +843,78 @@ int EtherCAT_rt_master_deactivate(ec_master_t *master /**< EtherCAT-Master */)
 /*****************************************************************************/
 
 /**
+   Sendet und empfängt Kommandos.
+
+   \return 0 bei Erfolg, sonst < 0
+*/
+
+void EtherCAT_rt_master_xio(ec_master_t *master)
+{
+    ec_command_t *command, *next;
+    unsigned int commands_sent;
+    cycles_t t_start, t_end, t_timeout;
+
+    ec_master_output_stats(master);
+
+    if (unlikely(!master->device->link_state)) {
+        // Link DOWN, keines der Kommandos kann gesendet werden.
+        list_for_each_entry_safe(command, next, &master->commands, list) {
+            command->state = EC_CMD_ERROR;
+            list_del_init(&command->list);
+        }
+
+        // Device-Zustand abfragen
+        ec_device_call_isr(master->device);
+        return;
+    }
+
+    // Rahmen senden
+    ec_master_send_commands(master);
+
+    t_start = get_cycles(); // Sendezeit nehmen
+    t_timeout = 100 * cpu_khz / 1000; // 100us
+
+    do {
+        ec_device_call_isr(master->device);
+
+        t_end = get_cycles(); // Aktuelle Zeit nehmen
+        if (t_end - t_start >= t_timeout) break; // Timeout
+
+        commands_sent = 0;
+        list_for_each_entry_safe(command, next, &master->commands, list) {
+            if (command->state == EC_CMD_RECEIVED)
+                list_del_init(&command->list);
+            else if (command->state == EC_CMD_SENT)
+                commands_sent++;
+        }
+    } while (commands_sent);
+
+    // Zeit abgelaufen. Alle verbleibenden Kommandos entfernen.
+    list_for_each_entry_safe(command, next, &master->commands, list) {
+        switch (command->state) {
+            case EC_CMD_SENT:
+            case EC_CMD_QUEUED:
+                command->state = EC_CMD_TIMEOUT;
+                master->stats.timeouts++;
+                ec_master_output_stats(master);
+                break;
+            case EC_CMD_RECEIVED:
+                master->stats.delayed++;
+                ec_master_output_stats(master);
+                break;
+            default:
+                break;
+        }
+        list_del_init(&command->list);
+    }
+}
+
+/*****************************************************************************/
+
+/**
    Setzt die Debug-Ebene des Masters.
 
-   Folgende Debug-level sind definiert:
+   Folgende Debug-Level sind definiert:
 
    - 1: Nur Positionsmarken in bestimmten Funktionen
    - 2: Komplette Frame-Inhalte
@@ -614,9 +926,10 @@ void EtherCAT_rt_master_debug(ec_master_t *master,
                               /**< Debug-Level */
                               )
 {
-    master->debug_level = level;
-
-    EC_INFO("Master debug level set to %i.\n", level);
+    if (level != master->debug_level) {
+        master->debug_level = level;
+        EC_INFO("Master debug level set to %i.\n", level);
+    }
 }
 
 /*****************************************************************************/
@@ -632,11 +945,8 @@ void EtherCAT_rt_master_print(const ec_master_t *master
     unsigned int i;
 
     EC_INFO("*** Begin master information ***\n");
-
-    for (i = 0; i < master->slave_count; i++) {
+    for (i = 0; i < master->slave_count; i++)
         ec_slave_print(&master->slaves[i]);
-    }
-
     EC_INFO("*** End master information ***\n");
 }
 
@@ -645,6 +955,7 @@ void EtherCAT_rt_master_print(const ec_master_t *master
 EXPORT_SYMBOL(EtherCAT_rt_master_register_domain);
 EXPORT_SYMBOL(EtherCAT_rt_master_activate);
 EXPORT_SYMBOL(EtherCAT_rt_master_deactivate);
+EXPORT_SYMBOL(EtherCAT_rt_master_xio);
 EXPORT_SYMBOL(EtherCAT_rt_master_debug);
 EXPORT_SYMBOL(EtherCAT_rt_master_print);
 

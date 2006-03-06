@@ -63,8 +63,9 @@ ec_domain_t *EtherCAT_rt_master_register_domain(ec_master_t *master,
                                                 unsigned int timeout_us);
 
 int EtherCAT_rt_master_activate(ec_master_t *master);
-
 int EtherCAT_rt_master_deactivate(ec_master_t *master);
+
+void EtherCAT_rt_master_xio(ec_master_t *master);
 
 void EtherCAT_rt_master_debug(ec_master_t *master, int level);
 void EtherCAT_rt_master_print(const ec_master_t *master);
@@ -81,7 +82,11 @@ ec_slave_t *EtherCAT_rt_register_slave_field(ec_domain_t *domain,
                                              unsigned int field_index,
                                              unsigned int field_count);
 
-int EtherCAT_rt_domain_xio(ec_domain_t *domain);
+int EtherCAT_rt_register_domain_fields(ec_domain_t *domain,
+                                       ec_field_init_t *fields);
+
+void EtherCAT_rt_domain_queue(ec_domain_t *domain);
+void EtherCAT_rt_domain_process(ec_domain_t *domain);
 
 /*****************************************************************************/
 // Slave Methods

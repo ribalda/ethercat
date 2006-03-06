@@ -15,13 +15,10 @@ ifneq ($(KERNELRELEASE),)
 
 obj-m := ec_master.o
 
-ec_master-objs := module.o master.o device.o slave.o frame.o types.o \
+ec_master-objs := module.o master.o device.o slave.o command.o types.o \
 			domain.o canopen.o
 
-REV = `svnversion $(src)`
-DATE = `date`
-
-EXTRA_CFLAGS = -DEC_REV="$(REV)" -DEC_USER="$(USER)" -DEC_DATE="$(DATE)"
+EXTRA_CFLAGS := -DSVNREV=$(shell svnversion $(src)) -DUSER=$(USER)
 
 #------------------------------------------------------------------------------
 
@@ -48,7 +45,7 @@ doc:
 cleandoc:
 	@rm -rf doc
 
-.PHONY: doc
+.PHONY: doc cleandoc modules clean
 
 #------------------------------------------------------------------------------
 

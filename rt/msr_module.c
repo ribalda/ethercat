@@ -50,9 +50,11 @@ static struct ipipe_sysinfo sys_info;
 // EtherCAT
 ec_master_t *master = NULL;
 ec_domain_t *domain1 = NULL;
+ec_domain_t *domain2 = NULL;
 
 // Prozessdaten
 void *r_ssi;
+void *r_ssi2;
 void *r_inc;
 
 uint32_t k_angle;
@@ -60,7 +62,11 @@ uint32_t k_pos;
 
 ec_field_init_t domain1_fields[] = {
     {&r_ssi,  "1", "Beckhoff", "EL5001", ec_ipvalue, 0, 1},
-    {&r_inc, "10", "Beckhoff", "EL5101", ec_ipvalue, 0, 1},
+    {}
+};
+
+ec_field_init_t domain2_fields[] = {
+    {&r_ssi2,  "1", "Beckhoff", "EL5001", ec_ipvalue, 0, 1},
     {}
 };
 
@@ -68,11 +74,27 @@ ec_field_init_t domain1_fields[] = {
 
 static void msr_controller_run(void)
 {
-    // Prozessdaten lesen und schreiben
-    EtherCAT_rt_domain_xio(domain1);
+    static unsigned int counter = 0;
 
-    k_angle = EC_READ_U16(r_inc);
+    if (counter) counter--;
+    else {
+        //EtherCAT_rt_master_debug(master, 2);
+        counter = MSR_ABTASTFREQUENZ;
+    }
+
+    // Prozessdaten lesen und schreiben
+    EtherCAT_rt_domain_queue(domain1);
+    EtherCAT_rt_domain_queue(domain2);
+
+    EtherCAT_rt_master_xio(master);
+
+    EtherCAT_rt_domain_process(domain1);
+    EtherCAT_rt_domain_process(domain2);
+
+    //k_angle = EC_READ_U16(r_inc);
     k_pos = EC_READ_U32(r_ssi);
+
+    //EtherCAT_rt_master_debug(master, 0);
 }
 
 /*****************************************************************************/
@@ -118,7 +140,6 @@ void domain_entry(void)
 int __init init_rt_module(void)
 {
     struct ipipe_domain_attr attr; //ipipe
-    const ec_field_init_t *field;
     uint32_t version;
 
     // Als allererstes die RT-lib initialisieren
@@ -134,7 +155,7 @@ int __init init_rt_module(void)
 
     //EtherCAT_rt_master_print(master);
 
-    printk(KERN_INFO "Registering domain...\n");
+    printk(KERN_INFO "Registering domains...\n");
 
     if (!(domain1 = EtherCAT_rt_master_register_domain(master, ec_sync, 100)))
     {
@@ -142,32 +163,37 @@ int __init init_rt_module(void)
         goto out_release_master;
     }
 
+    if (!(domain2 = EtherCAT_rt_master_register_domain(master, ec_sync, 100)))
+    {
+        printk(KERN_ERR "EtherCAT: Could not register domain!\n");
+        goto out_release_master;
+    }
+
     printk(KERN_INFO "Registering domain fields...\n");
 
-    for (field = domain1_fields; field->data; field++)
-    {
-        if (!EtherCAT_rt_register_slave_field(domain1,
-                                              field->address,
-                                              field->vendor,
-                                              field->product,
-                                              field->data,
-                                              field->field_type,
-                                              field->field_index,
-                                              field->field_count)) {
-            printk(KERN_ERR "Could not register field!\n");
-            goto out_release_master;
-        }
+    if (EtherCAT_rt_register_domain_fields(domain1, domain1_fields)) {
+        printk(KERN_ERR "Failed to register domain fields.\n");
+        goto out_release_master;
+    }
+
+    if (EtherCAT_rt_register_domain_fields(domain2, domain2_fields)) {
+        printk(KERN_ERR "Failed to register domain fields.\n");
+        goto out_release_master;
     }
 
     printk(KERN_INFO "Activating master...\n");
+
+    //EtherCAT_rt_master_debug(master, 2);
 
     if (EtherCAT_rt_master_activate(master)) {
         printk(KERN_ERR "Could not activate master!\n");
         goto out_release_master;
     }
 
+    //EtherCAT_rt_master_debug(master, 0);
+
 #if 1
-    if (EtherCAT_rt_canopen_sdo_addr_read(master, "1", 0x100A, 1,
+    if (EtherCAT_rt_canopen_sdo_addr_read(master, "6", 0x100A, 1,
                                           &version)) {
         printk(KERN_ERR "Could not read SSI version!\n");
         goto out_release_master;
@@ -222,9 +248,16 @@ void __exit cleanup_rt_module(void)
 
 /*****************************************************************************/
 
+#define EC_LIT(X) #X
+#define EC_STR(X) EC_LIT(X)
+#define COMPILE_INFO "Revision " EC_STR(SVNREV) \
+                     ", compiled by " EC_STR(USER) \
+                     " at " __DATE__ " " __TIME__
+
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR ("Florian Pose <fp@igh-essen.com>");
 MODULE_DESCRIPTION ("EtherCAT real-time test environment");
+MODULE_VERSION(COMPILE_INFO);
 
 module_init(init_rt_module);
 module_exit(cleanup_rt_module);

@@ -28,10 +28,11 @@ int EtherCAT_rt_canopen_sdo_write(ec_slave_t *slave, /**< EtherCAT-Slave */
                                   size_t size /**< Größe des Datenfeldes */
                                   )
 {
-    unsigned char data[0xF6];
-    ec_frame_t frame;
-    unsigned int tries_left, i;
+    uint8_t data[0xF6];
+    ec_command_t command;
+    unsigned int i;
     ec_master_t *master;
+    cycles_t start, end, timeout;
 
     memset(data, 0x00, 0xF6);
 
@@ -56,53 +57,48 @@ int EtherCAT_rt_canopen_sdo_write(ec_slave_t *slave, /**< EtherCAT-Slave */
         value >>= 8;
     }
 
-    ec_frame_init_npwr(&frame, master, slave->station_address,
-                       0x1800, 0xF6, data);
-
-    if (unlikely(ec_frame_send_receive(&frame))) {
+    ec_command_init_npwr(&command, slave->station_address, 0x1800, 0xF6, data);
+    if (unlikely(ec_master_simple_io(master, &command))) {
         EC_ERR("Mailbox sending failed on slave %i!\n", slave->ring_position);
         return -1;
     }
 
     // Read "written bit" of Sync-Manager
+    start = get_cycles();
+    timeout = cpu_khz; // 1ms
 
-    tries_left = 10;
-    while (tries_left)
+    do
     {
-        ec_frame_init_nprd(&frame, master, slave->station_address, 0x808, 8);
-
-        if (unlikely(ec_frame_send_receive(&frame) < 0)) {
+        ec_command_init_nprd(&command, slave->station_address, 0x808, 8);
+        if (unlikely(ec_master_simple_io(master, &command))) {
             EC_ERR("Mailbox checking failed on slave %i!\n",
                    slave->ring_position);
             return -1;
         }
 
-        if (EC_READ_U8(frame.data + 5) & 8) { // Written bit is high
-            break;
-        }
+        end = get_cycles();
 
-        udelay(1000);
-        tries_left--;
+        if (EC_READ_U8(command.data + 5) & 8) break; // Written bit is high
     }
+    while ((end - start) < timeout);
 
-    if (!tries_left) {
+    if ((end - start) >= timeout) {
         EC_ERR("Mailbox check - Slave %i timed out.\n", slave->ring_position);
         return -1;
     }
 
-    ec_frame_init_nprd(&frame, master, slave->station_address, 0x18F6, 0xF6);
-
-    if (unlikely(ec_frame_send_receive(&frame) < 0)) {
+    ec_command_init_nprd(&command, slave->station_address, 0x18F6, 0xF6);
+    if (unlikely(ec_master_simple_io(master, &command))) {
         EC_ERR("Mailbox receiving failed on slave %i!\n",
                slave->ring_position);
         return -1;
     }
 
-    if (EC_READ_U8 (frame.data + 5) != 0x03 || // COE
-        EC_READ_U16(frame.data + 6) != 0x3000 || // SDO response
-        EC_READ_U8 (frame.data + 8) >> 5 != 0x03 || // Download response
-        EC_READ_U16(frame.data + 9) != sdo_index || // Index
-        EC_READ_U8 (frame.data + 11) != sdo_subindex) // Subindex
+    if (EC_READ_U8 (command.data + 5) != 0x03 || // COE
+        EC_READ_U16(command.data + 6) != 0x3000 || // SDO response
+        EC_READ_U8 (command.data + 8) >> 5 != 0x03 || // Download response
+        EC_READ_U16(command.data + 9) != sdo_index || // Index
+        EC_READ_U8 (command.data + 11) != sdo_subindex) // Subindex
     {
         EC_ERR("Illegal mailbox response at slave %i!\n",
                slave->ring_position);
@@ -125,12 +121,11 @@ int EtherCAT_rt_canopen_sdo_read(ec_slave_t *slave, /**< EtherCAT-Slave */
                                  )
 {
     unsigned char data[0xF6];
-    ec_frame_t frame;
-    unsigned int tries_left;
+    ec_command_t command;
     ec_master_t *master;
+    cycles_t start, end, timeout;
 
     memset(data, 0x00, 0xF6);
-
     master = slave->master;
 
     EC_WRITE_U16(data,      0x0006); // Length of the Mailbox service data
@@ -142,60 +137,58 @@ int EtherCAT_rt_canopen_sdo_read(ec_slave_t *slave, /**< EtherCAT-Slave */
     EC_WRITE_U16(data + 9,  sdo_index);
     EC_WRITE_U8 (data + 11, sdo_subindex);
 
-    ec_frame_init_npwr(&frame, master, slave->station_address,
-                       0x1800, 0xF6, data);
-
-    if (unlikely(ec_frame_send_receive(&frame) < 0)) {
+    ec_command_init_npwr(&command, slave->station_address, 0x1800, 0xF6, data);
+    if (unlikely(ec_master_simple_io(master, &command))) {
         EC_ERR("Mailbox sending failed on slave %i!\n", slave->ring_position);
         return -1;
     }
 
     // Read "written bit" of Sync-Manager
 
-    tries_left = 10;
-    while (tries_left)
-    {
-        ec_frame_init_nprd(&frame, master, slave->station_address, 0x808, 8);
+    start = get_cycles();
+    timeout = cpu_khz; // 1ms
 
-        if (unlikely(ec_frame_send_receive(&frame) < 0)) {
+    do
+    {
+        ec_command_init_nprd(&command, slave->station_address, 0x808, 8);
+        if (unlikely(ec_master_simple_io(master, &command))) {
             EC_ERR("Mailbox checking failed on slave %i!\n",
                    slave->ring_position);
             return -1;
         }
 
-        if (EC_READ_U8(frame.data + 5) & 8) { // Written bit is high
+        end = get_cycles();
+
+        if (EC_READ_U8(command.data + 5) & 8) { // Written bit is high
             break;
         }
-
-        udelay(1000);
-        tries_left--;
     }
+    while (likely((end - start) < timeout));
 
-    if (!tries_left) {
+    if (unlikely((end - start) >= timeout)) {
         EC_ERR("Mailbox check - Slave %i timed out.\n", slave->ring_position);
         return -1;
     }
 
-    ec_frame_init_nprd(&frame, master, slave->station_address, 0x18F6, 0xF6);
-
-    if (unlikely(ec_frame_send_receive(&frame) < 0)) {
+    ec_command_init_nprd(&command, slave->station_address, 0x18F6, 0xF6);
+    if (unlikely(ec_master_simple_io(master, &command))) {
         EC_ERR("Mailbox receiving failed on slave %i!\n",
                slave->ring_position);
         return -1;
     }
 
-    if (EC_READ_U8 (frame.data + 5) != 0x03 || // COE
-        EC_READ_U16(frame.data + 6) != 0x3000 || // SDO response
-        EC_READ_U8 (frame.data + 8) >> 5 != 0x02 || // Upload response
-        EC_READ_U16(frame.data + 9) != sdo_index || // Index
-        EC_READ_U8 (frame.data + 11) != sdo_subindex) // Subindex
+    if (EC_READ_U8 (command.data + 5) != 0x03 || // COE
+        EC_READ_U16(command.data + 6) != 0x3000 || // SDO response
+        EC_READ_U8 (command.data + 8) >> 5 != 0x02 || // Upload response
+        EC_READ_U16(command.data + 9) != sdo_index || // Index
+        EC_READ_U8 (command.data + 11) != sdo_subindex) // Subindex
     {
         EC_ERR("Illegal mailbox response at slave %i!\n",
                slave->ring_position);
         return -1;
     }
 
-    *value = EC_READ_U32(frame.data + 12);
+    *value = EC_READ_U32(command.data + 12);
 
     return 0;
 }
@@ -213,7 +206,8 @@ int EtherCAT_rt_canopen_sdo_read(ec_slave_t *slave, /**< EtherCAT-Slave */
 int EtherCAT_rt_canopen_sdo_addr_write(ec_master_t *master,
                                        /**< EtherCAT-Master */
                                        const char *addr,
-                                       /**< Addresse, siehe ec_address() */
+                                       /**< Addresse, siehe
+                                          ec_master_slave_address() */
                                        uint16_t index,
                                        /**< SDO-Index */
                                        uint8_t subindex,
@@ -225,7 +219,7 @@ int EtherCAT_rt_canopen_sdo_addr_write(ec_master_t *master,
                                        )
 {
     ec_slave_t *slave;
-    if (!(slave = ec_address(master, addr))) return -1;
+    if (!(slave = ec_master_slave_address(master, addr))) return -1;
     return EtherCAT_rt_canopen_sdo_write(slave, index, subindex, value, size);
 }
 
@@ -242,7 +236,8 @@ int EtherCAT_rt_canopen_sdo_addr_write(ec_master_t *master,
 int EtherCAT_rt_canopen_sdo_addr_read(ec_master_t *master,
                                       /**< EtherCAT-Slave */
                                       const char *addr,
-                                      /**< Addresse, siehe ec_address() */
+                                      /**< Addresse, siehe
+                                         ec_master_slave_address() */
                                       uint16_t index,
                                       /**< SDO-Index */
                                       uint8_t subindex,
@@ -252,7 +247,7 @@ int EtherCAT_rt_canopen_sdo_addr_read(ec_master_t *master,
                                       )
 {
     ec_slave_t *slave;
-    if (!(slave = ec_address(master, addr))) return -1;
+    if (!(slave = ec_master_slave_address(master, addr))) return -1;
     return EtherCAT_rt_canopen_sdo_read(slave, index, subindex, value);
 }
 

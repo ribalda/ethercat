@@ -12,6 +12,8 @@
 #include "domain.h"
 #include "master.h"
 
+void ec_domain_clear_field_regs(ec_domain_t *);
+
 /*****************************************************************************/
 
 /**
@@ -30,6 +32,8 @@ void ec_domain_init(ec_domain_t *domain, /**< Domäne */
 
     domain->data = NULL;
     domain->data_size = 0;
+    domain->commands = NULL;
+    domain->command_count = 0;
     domain->base_address = 0;
     domain->response_count = 0xFFFFFFFF;
 
@@ -44,17 +48,10 @@ void ec_domain_init(ec_domain_t *domain, /**< Domäne */
 
 void ec_domain_clear(ec_domain_t *domain /**< Domäne */)
 {
-    ec_field_reg_t *field_reg, *next;
+    if (domain->data) kfree(domain->data);
+    if (domain->commands) kfree(domain->commands);
 
-    if (domain->data) {
-        kfree(domain->data);
-        domain->data = NULL;
-    }
-
-    // Liste der registrierten Datenfelder löschen
-    list_for_each_entry_safe(field_reg, next, &domain->field_regs, list) {
-        kfree(field_reg);
-    }
+    ec_domain_clear_field_regs(domain);
 }
 
 /*****************************************************************************/
@@ -99,6 +96,22 @@ int ec_domain_reg_field(ec_domain_t *domain, /**< Domäne */
 /*****************************************************************************/
 
 /**
+   Gibt die Liste der registrierten Datenfelder frei.
+*/
+
+void ec_domain_clear_field_regs(ec_domain_t *domain)
+{
+    ec_field_reg_t *field_reg, *next;
+
+    list_for_each_entry_safe(field_reg, next, &domain->field_regs, list) {
+        list_del(&field_reg->list);
+        kfree(field_reg);
+    }
+}
+
+/*****************************************************************************/
+
+/**
    Erzeugt eine Domäne.
 
    Reserviert den Speicher einer Domäne, berechnet die logischen Adressen der
@@ -111,7 +124,7 @@ int ec_domain_alloc(ec_domain_t *domain, /**< Domäne */
                     uint32_t base_address /**< Logische Basisadresse */
                     )
 {
-    ec_field_reg_t *field_reg, *next;
+    ec_field_reg_t *field_reg;
     ec_slave_t *slave;
     ec_fmmu_t *fmmu;
     unsigned int i, j, found, data_offset;
@@ -139,43 +152,52 @@ int ec_domain_alloc(ec_domain_t *domain, /**< Domäne */
 
     if (!domain->data_size) {
         EC_WARN("Domain 0x%08X contains no data!\n", (u32) domain);
+        ec_domain_clear_field_regs(domain);
+        return 0;
     }
-    else {
-        // Prozessdaten allozieren
-        if (!(domain->data = kmalloc(domain->data_size, GFP_KERNEL))) {
-            EC_ERR("Failed to allocate domain data!\n");
+
+    // Prozessdaten allozieren
+    if (!(domain->data = kmalloc(domain->data_size, GFP_KERNEL))) {
+        EC_ERR("Failed to allocate domain data!\n");
+        return -1;
+    }
+
+    // Prozessdaten mit Nullen vorbelegen
+    memset(domain->data, 0x00, domain->data_size);
+
+    // Alle Prozessdatenzeiger setzen
+    list_for_each_entry(field_reg, &domain->field_regs, list) {
+        found = 0;
+        for (i = 0; i < field_reg->slave->fmmu_count; i++) {
+            fmmu = &field_reg->slave->fmmus[i];
+            if (fmmu->domain == domain && fmmu->sync == field_reg->sync) {
+                data_offset = fmmu->logical_start_address - base_address
+                    + field_reg->field_offset;
+                *field_reg->data_ptr = domain->data + data_offset;
+                found = 1;
+                break;
+            }
+        }
+
+        if (!found) { // Sollte nie passieren
+            EC_ERR("FMMU not found. Please report!\n");
             return -1;
         }
-
-        // Prozessdaten mit Nullen vorbelegen
-        memset(domain->data, 0x00, domain->data_size);
-
-        // Alle Prozessdatenzeiger setzen
-        list_for_each_entry(field_reg, &domain->field_regs, list) {
-            found = 0;
-            for (i = 0; i < field_reg->slave->fmmu_count; i++) {
-                fmmu = &field_reg->slave->fmmus[i];
-                if (fmmu->domain == domain && fmmu->sync == field_reg->sync) {
-                    data_offset = fmmu->logical_start_address - base_address
-                        + field_reg->field_offset;
-                    *field_reg->data_ptr = domain->data + data_offset;
-                    found = 1;
-                    break;
-                }
-            }
-
-            if (!found) { // Sollte nie passieren
-                EC_ERR("FMMU not found. Please report!\n");
-                return -1;
-            }
-        }
     }
 
-    // Registrierungsliste wird jetzt nicht mehr gebraucht.
-    list_for_each_entry_safe(field_reg, next, &domain->field_regs, list) {
-        kfree(field_reg);
+    // Kommando-Array erzeugen
+    domain->command_count = domain->data_size / EC_MAX_DATA_SIZE + 1;
+    if (!(domain->commands = (ec_command_t *) kmalloc(sizeof(ec_command_t)
+                                                      * domain->command_count,
+                                                      GFP_KERNEL))) {
+        EC_ERR("Failed to allocate domain command array!\n");
+        return -1;
     }
-    INIT_LIST_HEAD(&domain->field_regs); // wichtig!
+
+    EC_INFO("Domain %X - Allocated %i bytes in %i command(s)\n",
+            (u32) domain, domain->data_size, domain->command_count);
+
+    ec_domain_clear_field_regs(domain);
 
     return 0;
 }
@@ -192,8 +214,8 @@ void ec_domain_response_count(ec_domain_t *domain, /**< Domäne */
 {
     if (count != domain->response_count) {
         domain->response_count = count;
-        EC_INFO("Domain %08X state change - %i slaves responding.\n",
-                (u32) domain, count);
+        EC_INFO("Domain %08X state change - %i slave%s responding.\n",
+                (u32) domain, count, count == 1 ? "" : "s");
     }
 }
 
@@ -209,17 +231,28 @@ void ec_domain_response_count(ec_domain_t *domain, /**< Domäne */
    \return Zeiger auf den Slave bei Erfolg, sonst NULL
 */
 
-ec_slave_t *EtherCAT_rt_register_slave_field(
-    ec_domain_t *domain, /**< Domäne */
-    const char *address, /**< ASCII-Addresse des Slaves, siehe ec_address() */
-    const char *vendor_name, /**< Herstellername */
-    const char *product_name, /**< Produktname */
-    void **data_ptr, /**< Adresse des Zeigers auf die Prozessdaten */
-    ec_field_type_t field_type, /**< Typ des Datenfeldes */
-    unsigned int field_index, /**< Gibt an, ab welchem Feld mit Typ
-                                 \a field_type gezählt werden soll. */
-    unsigned int field_count /**< Anzahl Felder des selben Typs */
-    )
+ec_slave_t *EtherCAT_rt_register_slave_field(ec_domain_t *domain,
+                                             /**< Domäne */
+                                             const char *address,
+                                             /**< ASCII-Addresse des Slaves,
+                                                siehe ec_master_slave_address()
+                                             */
+                                             const char *vendor_name,
+                                             /**< Herstellername */
+                                             const char *product_name,
+                                             /**< Produktname */
+                                             void **data_ptr,
+                                             /**< Adresse des Zeigers auf die
+                                                Prozessdaten */
+                                             ec_field_type_t field_type,
+                                             /**< Typ des Datenfeldes */
+                                             unsigned int field_index,
+                                             /**< Gibt an, ab welchem Feld mit
+                                                Typ \a field_type gezählt
+                                                werden soll. */
+                                             unsigned int field_count
+                                             /**< Anzahl Felder selben Typs */
+                                             )
 {
     ec_slave_t *slave;
     const ec_slave_type_t *type;
@@ -237,7 +270,7 @@ ec_slave_t *EtherCAT_rt_register_slave_field(
     master = domain->master;
 
     // Adresse übersetzen
-    if ((slave = ec_address(master, address)) == NULL) return NULL;
+    if (!(slave = ec_master_slave_address(master, address))) return NULL;
 
     if (!(type = slave->type)) {
         EC_ERR("Slave \"%s\" (position %i) has unknown type!\n", address,
@@ -280,96 +313,96 @@ ec_slave_t *EtherCAT_rt_register_slave_field(
 /*****************************************************************************/
 
 /**
-   Sendet und empfängt Prozessdaten der angegebenen Domäne.
+   Registriert eine ganze Liste von Datenfeldern innerhalb einer Domäne.
+
+   Achtung: Die Liste muss mit einer NULL-Struktur ({}) abgeschlossen sein!
 
    \return 0 bei Erfolg, sonst < 0
 */
 
-int EtherCAT_rt_domain_xio(ec_domain_t *domain /**< Domäne */)
+int EtherCAT_rt_register_domain_fields(ec_domain_t *domain,
+                                       /**< Domäne */
+                                       ec_field_init_t *fields
+                                       /**< Array mit Datenfeldern */
+                                       )
 {
-    unsigned int offset, size, working_counter_sum;
-    unsigned long start_ticks, end_ticks, timeout_ticks;
-    ec_master_t *master;
-    ec_frame_t *frame;
+    ec_field_init_t *field;
 
-    master = domain->master;
-    frame = &domain->frame;
-    working_counter_sum = 0;
-
-    ec_cyclic_output(master);
-
-    if (unlikely(!master->device.link_state)) {
-        ec_domain_response_count(domain, working_counter_sum);
-        ec_device_call_isr(&master->device);
-        return -1;
-    }
-
-    rdtscl(start_ticks); // Sendezeit nehmen
-    timeout_ticks = domain->timeout_us * cpu_khz / 1000;
-
-    offset = 0;
-    while (offset < domain->data_size)
-    {
-        size = domain->data_size - offset;
-        if (size > EC_MAX_DATA_SIZE) size = EC_MAX_DATA_SIZE;
-
-        ec_frame_init_lrw(frame, master, domain->base_address + offset, size,
-                          domain->data + offset);
-
-        if (unlikely(ec_frame_send(frame) < 0)) {
-            master->device.state = EC_DEVICE_STATE_READY;
-            master->frames_lost++;
-            ec_cyclic_output(master);
-            ec_domain_response_count(domain, working_counter_sum);
+    for (field = fields; field->data; field++) {
+        if (!EtherCAT_rt_register_slave_field(domain, field->address,
+                                              field->vendor, field->product,
+                                              field->data, field->field_type,
+                                              field->field_index,
+                                              field->field_count)) {
             return -1;
         }
-
-        // Warten
-        do {
-            ec_device_call_isr(&master->device);
-            rdtscl(end_ticks); // Empfangszeit nehmen
-        }
-        while (unlikely(master->device.state == EC_DEVICE_STATE_SENT
-                        && end_ticks - start_ticks < timeout_ticks));
-
-        master->bus_time = (end_ticks - start_ticks) * 1000 / cpu_khz;
-
-        if (unlikely(end_ticks - start_ticks >= timeout_ticks)) {
-            if (master->device.state == EC_DEVICE_STATE_RECEIVED) {
-                master->frames_delayed++;
-                ec_cyclic_output(master);
-            }
-            else {
-                master->device.state = EC_DEVICE_STATE_READY;
-                master->frames_lost++;
-                ec_cyclic_output(master);
-                ec_domain_response_count(domain, working_counter_sum);
-                return -1;
-            }
-        }
-
-        if (unlikely(ec_frame_receive(frame) < 0)) {
-            ec_domain_response_count(domain, working_counter_sum);
-            return -1;
-        }
-
-        working_counter_sum += frame->working_counter;
-
-        // Daten vom Rahmen in den Prozessdatenspeicher kopieren
-        memcpy(domain->data + offset, frame->data, size);
-
-        offset += size;
     }
-
-    ec_domain_response_count(domain, working_counter_sum);
 
     return 0;
 }
 
 /*****************************************************************************/
 
+/**
+   Setzt Prozessdaten-Kommandos in die Warteschlange des Masters.
+*/
+
+void EtherCAT_rt_domain_queue(ec_domain_t *domain /**< Domäne */)
+{
+    unsigned int offset, i;
+    size_t size;
+
+    offset = 0;
+    for (i = 0; i < domain->command_count; i++) {
+        size = domain->data_size - offset;
+        if (size > EC_MAX_DATA_SIZE) size = EC_MAX_DATA_SIZE;
+        ec_command_init_lrw(domain->commands + i,
+                            domain->base_address + offset, size,
+                            domain->data + offset);
+        ec_master_queue_command(domain->master, domain->commands + i);
+        offset += size;
+    }
+}
+
+/*****************************************************************************/
+
+/**
+   Verarbeitet empfangene Prozessdaten.
+*/
+
+void EtherCAT_rt_domain_process(ec_domain_t *domain /**< Domäne */)
+{
+    unsigned int offset, working_counter_sum, i;
+    ec_command_t *command;
+    size_t size;
+
+    working_counter_sum = 0;
+
+    offset = 0;
+    for (i = 0; i < domain->command_count; i++) {
+        command = domain->commands + i;
+        size = domain->data_size - offset;
+        if (size > EC_MAX_DATA_SIZE) size = EC_MAX_DATA_SIZE;
+        if (command->state == EC_CMD_RECEIVED) {
+            // Daten vom Kommando- in den Prozessdatenspeicher kopieren
+            memcpy(domain->data + offset, command->data, size);
+            working_counter_sum += command->working_counter;
+        }
+        else if (unlikely(domain->master->debug_level)) {
+            EC_DBG("process data command not received!\n");
+        }
+        offset += size;
+    }
+
+    ec_domain_response_count(domain, working_counter_sum);
+}
+
+/*****************************************************************************/
+
 EXPORT_SYMBOL(EtherCAT_rt_register_slave_field);
-EXPORT_SYMBOL(EtherCAT_rt_domain_xio);
+EXPORT_SYMBOL(EtherCAT_rt_register_domain_fields);
+EXPORT_SYMBOL(EtherCAT_rt_domain_queue);
+EXPORT_SYMBOL(EtherCAT_rt_domain_process);
 
 /*****************************************************************************/
 

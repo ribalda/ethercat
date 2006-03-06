@@ -14,7 +14,8 @@
 #include "../include/EtherCAT_si.h"
 #include "globals.h"
 #include "slave.h"
-#include "frame.h"
+#include "command.h"
+#include "master.h"
 
 /*****************************************************************************/
 
@@ -64,23 +65,21 @@ void ec_slave_clear(ec_slave_t *slave /**< EtherCAT-Slave */)
 
 int ec_slave_fetch(ec_slave_t *slave /**< EtherCAT-Slave */)
 {
-    ec_frame_t frame;
+    ec_command_t command;
 
     // Read base data
-    ec_frame_init_nprd(&frame, slave->master, slave->station_address,
-                       0x0000, 6);
-
-    if (unlikely(ec_frame_send_receive(&frame))) {
+    ec_command_init_nprd(&command, slave->station_address, 0x0000, 6);
+    if (unlikely(ec_master_simple_io(slave->master, &command))) {
         EC_ERR("Reading base datafrom slave %i failed!\n",
                slave->ring_position);
         return -1;
     }
 
-    slave->base_type =       EC_READ_U8 (frame.data);
-    slave->base_revision =   EC_READ_U8 (frame.data + 1);
-    slave->base_build =      EC_READ_U16(frame.data + 2);
-    slave->base_fmmu_count = EC_READ_U8 (frame.data + 4);
-    slave->base_sync_count = EC_READ_U8 (frame.data + 5);
+    slave->base_type =       EC_READ_U8 (command.data);
+    slave->base_revision =   EC_READ_U8 (command.data + 1);
+    slave->base_build =      EC_READ_U16(command.data + 2);
+    slave->base_fmmu_count = EC_READ_U8 (command.data + 4);
+    slave->base_sync_count = EC_READ_U8 (command.data + 5);
 
     if (slave->base_fmmu_count > EC_MAX_FMMUS)
         slave->base_fmmu_count = EC_MAX_FMMUS;
@@ -130,9 +129,9 @@ int ec_slave_sii_read(ec_slave_t *slave,
                          der Daten */
                       )
 {
-    ec_frame_t frame;
+    ec_command_t command;
     unsigned char data[10];
-    unsigned int tries_left;
+    cycles_t start, end, timeout;
 
     // Initiate read operation
 
@@ -141,10 +140,8 @@ int ec_slave_sii_read(ec_slave_t *slave,
     EC_WRITE_U16(data + 2, offset);
     EC_WRITE_U16(data + 4, 0x0000);
 
-    ec_frame_init_npwr(&frame, slave->master, slave->station_address,
-                       0x502, 6, data);
-
-    if (unlikely(ec_frame_send_receive(&frame))) {
+    ec_command_init_npwr(&command, slave->station_address, 0x502, 6, data);
+    if (unlikely(ec_master_simple_io(slave->master, &command))) {
         EC_ERR("SII-read failed on slave %i!\n", slave->ring_position);
         return -1;
     }
@@ -153,29 +150,28 @@ int ec_slave_sii_read(ec_slave_t *slave,
     // in das Datenregister und löscht daraufhin ein Busy-Bit. Solange
     // den Status auslesen, bis das Bit weg ist.
 
-    tries_left = 100;
-    while (likely(tries_left))
+    start = get_cycles();
+    timeout = cpu_khz; // 1ms
+
+    do
     {
-        udelay(10);
-
-        ec_frame_init_nprd(&frame, slave->master, slave->station_address,
-                           0x502, 10);
-
-        if (unlikely(ec_frame_send_receive(&frame))) {
+        ec_command_init_nprd(&command, slave->station_address, 0x502, 10);
+        if (unlikely(ec_master_simple_io(slave->master, &command))) {
             EC_ERR("Getting SII-read status failed on slave %i!\n",
                    slave->ring_position);
             return -1;
         }
 
-        if (likely((EC_READ_U8(frame.data + 1) & 0x81) == 0)) {
-            memcpy(target, frame.data + 6, 4);
+        end = get_cycles();
+
+        if (likely((EC_READ_U8(command.data + 1) & 0x81) == 0)) {
+            memcpy(target, command.data + 6, 4);
             break;
         }
-
-        tries_left--;
     }
+    while (likely((end - start) < timeout));
 
-    if (unlikely(!tries_left)) {
+    if (unlikely((end - start) >= timeout)) {
         EC_ERR("SSI-read. Slave %i timed out!\n", slave->ring_position);
         return -1;
     }
@@ -197,52 +193,49 @@ void ec_slave_state_ack(ec_slave_t *slave,
                         /**< Alter Zustand */
                         )
 {
-    ec_frame_t frame;
+    ec_command_t command;
     unsigned char data[2];
-    unsigned int tries_left;
+    cycles_t start, end, timeout;
 
     EC_WRITE_U16(data, state | EC_ACK);
 
-    ec_frame_init_npwr(&frame, slave->master, slave->station_address,
-                       0x0120, 2, data);
-
-    if (unlikely(ec_frame_send_receive(&frame))) {
+    ec_command_init_npwr(&command, slave->station_address, 0x0120, 2, data);
+    if (unlikely(ec_master_simple_io(slave->master, &command))) {
         EC_WARN("State %02X acknowledge failed on slave %i!\n",
                 state, slave->ring_position);
         return;
     }
 
-    tries_left = 100;
-    while (likely(tries_left))
+    start = get_cycles();
+    timeout = cpu_khz; // 1ms
+
+    do
     {
-        udelay(10);
-
-        ec_frame_init_nprd(&frame, slave->master, slave->station_address,
-                           0x0130, 2);
-
-        if (unlikely(ec_frame_send_receive(&frame))) {
+        ec_command_init_nprd(&command, slave->station_address, 0x0130, 2);
+        if (unlikely(ec_master_simple_io(slave->master, &command))) {
             EC_WARN("State %02X acknowledge checking failed on slave %i!\n",
                     state, slave->ring_position);
             return;
         }
 
-        if (unlikely(EC_READ_U8(frame.data) != state)) {
+        end = get_cycles();
+
+        if (unlikely(EC_READ_U8(command.data) != state)) {
             EC_WARN("Could not acknowledge state %02X on slave %i (code"
                     " %02X)!\n", state, slave->ring_position,
-                    EC_READ_U8(frame.data));
+                    EC_READ_U8(command.data));
             return;
         }
 
-        if (likely(EC_READ_U8(frame.data) == state)) {
+        if (likely(EC_READ_U8(command.data) == state)) {
             EC_INFO("Acknowleged state %02X on slave %i.\n", state,
                     slave->ring_position);
             return;
         }
-
-        tries_left--;
     }
+    while (likely((end - start) < timeout));
 
-    if (unlikely(!tries_left)) {
+    if (unlikely((end - start) >= timeout)) {
         EC_WARN("Could not check state acknowledgement %02X of slave %i -"
                 " Timeout while checking!\n", state, slave->ring_position);
         return;
@@ -263,52 +256,51 @@ int ec_slave_state_change(ec_slave_t *slave,
                           /**< Neuer Zustand */
                           )
 {
-    ec_frame_t frame;
+    ec_command_t command;
     unsigned char data[2];
-    unsigned int tries_left;
+    cycles_t start, end, timeout;
 
     EC_WRITE_U16(data, state);
 
-    ec_frame_init_npwr(&frame, slave->master, slave->station_address,
-                       0x0120, 2, data);
-
-    if (unlikely(ec_frame_send_receive(&frame))) {
+    ec_command_init_npwr(&command, slave->station_address, 0x0120, 2, data);
+    if (unlikely(ec_master_simple_io(slave->master, &command))) {
         EC_ERR("Failed to set state %02X on slave %i!\n",
                state, slave->ring_position);
         return -1;
     }
 
-    tries_left = 100;
-    while (likely(tries_left))
+    start = get_cycles();
+    timeout = cpu_khz; // 1ms
+
+    do
     {
-        udelay(10);
+        udelay(100); // Dem Slave etwas Zeit lassen...
 
-        ec_frame_init_nprd(&frame, slave->master, slave->station_address,
-                           0x0130, 2);
-
-        if (unlikely(ec_frame_send_receive(&frame))) {
+        ec_command_init_nprd(&command, slave->station_address, 0x0130, 2);
+        if (unlikely(ec_master_simple_io(slave->master, &command))) {
             EC_ERR("Failed to check state %02X on slave %i!\n",
                    state, slave->ring_position);
             return -1;
         }
 
-        if (unlikely(EC_READ_U8(frame.data) & 0x10)) { // State change error
+        end = get_cycles();
+
+        if (unlikely(EC_READ_U8(command.data) & 0x10)) { // State change error
             EC_ERR("Could not set state %02X - Slave %i refused state change"
                    " (code %02X)!\n", state, slave->ring_position,
-                   EC_READ_U8(frame.data));
-            ec_slave_state_ack(slave, EC_READ_U8(frame.data) & 0x0F);
+                   EC_READ_U8(command.data));
+            ec_slave_state_ack(slave, EC_READ_U8(command.data) & 0x0F);
             return -1;
         }
 
-        if (likely(EC_READ_U8(frame.data) == (state & 0x0F))) {
+        if (likely(EC_READ_U8(command.data) == (state & 0x0F))) {
             // State change successful
             break;
         }
-
-        tries_left--;
     }
+    while (likely((end - start) < timeout));
 
-    if (unlikely(!tries_left)) {
+    if (unlikely((end - start) >= timeout)) {
         EC_ERR("Could not check state %02X of slave %i - Timeout!\n", state,
                slave->ring_position);
         return -1;
@@ -405,31 +397,27 @@ void ec_slave_print(const ec_slave_t *slave /**< EtherCAT-Slave */)
 
 int ec_slave_check_crc(ec_slave_t *slave /**< EtherCAT-Slave */)
 {
-    ec_frame_t frame;
+    ec_command_t command;
     uint8_t data[4];
 
-    ec_frame_init_nprd(&frame, slave->master, slave->station_address,
-                       0x0300, 4);
-
-    if (unlikely(ec_frame_send_receive(&frame))) {
+    ec_command_init_nprd(&command, slave->station_address, 0x0300, 4);
+    if (unlikely(ec_master_simple_io(slave->master, &command))) {
         EC_WARN("Reading CRC fault counters failed on slave %i!\n",
                 slave->ring_position);
         return -1;
     }
 
     // No CRC faults.
-    if (!EC_READ_U16(frame.data) && !EC_READ_U16(frame.data + 2)) return 0;
+    if (!EC_READ_U16(command.data) && !EC_READ_U16(command.data + 2)) return 0;
 
     EC_WARN("CRC faults on slave %i. A: %i, B: %i\n", slave->ring_position,
-            EC_READ_U16(frame.data), EC_READ_U16(frame.data + 2));
+            EC_READ_U16(command.data), EC_READ_U16(command.data + 2));
 
     // Reset CRC counters
     EC_WRITE_U16(data,     0x0000);
     EC_WRITE_U16(data + 2, 0x0000);
-    ec_frame_init_npwr(&frame, slave->master, slave->station_address,
-                       0x0300, 4, data);
-
-    if (unlikely(ec_frame_send_receive(&frame))) {
+    ec_command_init_npwr(&command, slave->station_address, 0x0300, 4, data);
+    if (unlikely(ec_master_simple_io(slave->master, &command))) {
         EC_WARN("Resetting CRC fault counters failed on slave %i!\n",
                 slave->ring_position);
         return -1;

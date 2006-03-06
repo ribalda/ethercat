@@ -1804,20 +1804,15 @@ static void rtl8139_tx_timeout (struct net_device *dev)
 				" (queue head)" : "");
 
 	tp->xstats.tx_timeouts++;
-
-        /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
-
-        printk(KERN_DEBUG "%s: tx_timeout\n", dev->name);
-
-        if (EtherCAT_dev_is_ec(rtl_ec_dev, dev))
-        {
-          EtherCAT_dev_state(rtl_ec_dev, EC_DEVICE_STATE_TIMEOUT);
-        }
+    printk(KERN_DEBUG "%s: tx_timeout\n", dev->name);
 
 	/* disable Tx ASAP, if not already */
 	tmp8 = RTL_R8 (ChipCmd);
 	if (tmp8 & CmdTxEnb)
                 RTL_W8 (ChipCmd, CmdRxEnb);
+
+    /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
 
         if (!EtherCAT_dev_is_ec(rtl_ec_dev, dev))
         {
@@ -1840,7 +1835,7 @@ static void rtl8139_tx_timeout (struct net_device *dev)
                 }
 
                 spin_unlock(&tp->rx_lock);
-	}
+        }
         else
         {
                 rtl8139_tx_clear (tp);
@@ -1951,14 +1946,6 @@ static void rtl8139_tx_interrupt (struct net_device *dev,
 				tp->stats.tx_carrier_errors++;
 			if (txstatus & TxOutOfWindow)
 				tp->stats.tx_window_errors++;
-
-                        /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
-
-                        if (EtherCAT_dev_is_ec(rtl_ec_dev, dev))
-                            EtherCAT_dev_state(rtl_ec_dev, EC_DEVICE_STATE_ERROR);
-
-                        /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
-
 		} else {
 			if (txstatus & TxUnderrun) {
 				/* Add 64 to the Tx FIFO threshold. */
@@ -2032,15 +2019,6 @@ static void rtl8139_rx_err (u32 rx_status, struct net_device *dev,
 	} else {
 		tp->xstats.rx_lost_in_ring++;
 	}
-
-        /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
-
-        if (EtherCAT_dev_is_ec(rtl_ec_dev, dev))
-        {
-          EtherCAT_dev_state(rtl_ec_dev, EC_DEVICE_STATE_ERROR);
-        }
-
-        /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 
 #ifndef CONFIG_8139_OLD_RX_RESET
 	tmp8 = RTL_R8 (ChipCmd);

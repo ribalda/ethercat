@@ -28,8 +28,9 @@ msr_modul-objs := msr_module.o \
 		rt_lib/msr-math/msr_hex_bin.o \
 		libm.o
 
-EXTRA_CFLAGS := -I $(src)/rt_lib/msr-include -D_SIMULATION \
-		-I/usr/include -mhard-float
+EXTRA_CFLAGS := -I$(src)/rt_lib/msr-include -D_SIMULATION \
+		-I/usr/include -mhard-float \
+		-DSVNREV=$(shell svnversion $(src)) -DUSER=$(USER)
 
 #------------------------------------------------------------------------------
 

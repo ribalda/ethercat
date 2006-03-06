@@ -15,8 +15,23 @@
 
 #include "device.h"
 #include "slave.h"
-#include "frame.h"
 #include "domain.h"
+
+/*****************************************************************************/
+
+/**
+   EtherCAT-Rahmen-Statistiken.
+*/
+
+typedef struct
+{
+    unsigned int timeouts; /**< Kommando-Timeouts */
+    unsigned int delayed; /**< Verzögerte Kommandos */
+    unsigned int corrupted; /**< Verfälschte Rahmen */
+    unsigned int unmatched; /**< Unpassende Kommandos */
+    cycles_t t_last; /**< Timestamp-Counter bei der letzten Ausgabe */
+}
+ec_stats_t;
 
 /*****************************************************************************/
 
@@ -31,16 +46,12 @@ struct ec_master
 {
     ec_slave_t *slaves; /**< Array von Slaves auf dem Bus */
     unsigned int slave_count; /**< Anzahl Slaves auf dem Bus */
-    ec_device_t device; /**< EtherCAT-Gerät */
-    unsigned int device_registered; /**< Ein Geraet hat sich registriert. */
+    ec_device_t *device; /**< EtherCAT-Gerät */
+    struct list_head commands; /**< Kommando-Liste */
     uint8_t command_index; /**< Aktueller Kommando-Index */
     struct list_head domains; /**< Liste der Prozessdatendomänen */
     int debug_level; /**< Debug-Level im Master-Code */
-    unsigned int bus_time; /**< Letzte Bus-Zeit in Mikrosekunden */
-    unsigned int frames_lost; /**< Anzahl verlorener Frames */
-    unsigned int frames_delayed; /**< Anzahl verzögerter Frames */
-    unsigned long t_last_cyclic_output; /**< Timer-Ticks bei den letzten
-                                           zyklischen Ausgaben */
+    ec_stats_t stats; /**< Rahmen-Statistiken */
 };
 
 /*****************************************************************************/
@@ -49,19 +60,23 @@ struct ec_master
 void ec_master_init(ec_master_t *);
 void ec_master_clear(ec_master_t *);
 void ec_master_reset(ec_master_t *);
-void ec_master_clear_slaves(ec_master_t *);
+
+// IO
+void ec_master_receive(ec_master_t *, const uint8_t *, size_t);
+void ec_master_queue_command(ec_master_t *, ec_command_t *);
+int ec_master_simple_io(ec_master_t *, ec_command_t *);
 
 // Registration of devices
 int ec_master_open(ec_master_t *);
 void ec_master_close(ec_master_t *);
 
 // Slave management
-int ec_scan_for_slaves(ec_master_t *);
-ec_slave_t *ec_address(const ec_master_t *, const char *);
+int ec_master_bus_scan(ec_master_t *);
+ec_slave_t *ec_master_slave_address(const ec_master_t *, const char *);
 
 // Misc
-void ec_output_debug_data(const ec_master_t *);
-void ec_cyclic_output(ec_master_t *);
+void ec_master_debug(const ec_master_t *);
+void ec_master_output_stats(ec_master_t *);
 
 /*****************************************************************************/
 
