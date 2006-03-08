@@ -413,7 +413,7 @@ int ec_master_bus_scan(ec_master_t *master /**< EtherCAT-Master */)
     ec_slave_t *slave;
     ec_slave_ident_t *ident;
     unsigned int i;
-    unsigned char data[2];
+    uint8_t data[2];
 
     if (master->slaves || master->slave_count) {
         EC_ERR("Slave scan already done!\n");

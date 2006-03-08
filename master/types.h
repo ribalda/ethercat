@@ -82,8 +82,8 @@ ec_slave_type_t;
 
 typedef struct slave_ident
 {
-    unsigned int vendor_id; /**< Hersteller-Code */
-    unsigned int product_code; /**< Herstellerspezifischer Produktcode */
+    uint32_t vendor_id; /**< Hersteller-Code */
+    uint32_t product_code; /**< Herstellerspezifischer Produktcode */
     const ec_slave_type_t *type; /**< Zeiger auf den entsprechenden Typ */
 }
 ec_slave_ident_t;

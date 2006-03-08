@@ -93,7 +93,7 @@ void ec_slave_clear(ec_slave_t *);
 
 // Slave control
 int ec_slave_fetch(ec_slave_t *);
-int ec_slave_sii_read(ec_slave_t *, unsigned short, unsigned int *);
+int ec_slave_sii_read(ec_slave_t *, uint16_t, uint32_t *);
 int ec_slave_state_change(ec_slave_t *, uint8_t);
 int ec_slave_set_fmmu(ec_slave_t *, const ec_domain_t *, const ec_sync_t *);
 

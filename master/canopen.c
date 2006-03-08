@@ -22,11 +22,11 @@
  */
 
 int EtherCAT_rt_canopen_sdo_write(ec_slave_t *slave, /**< EtherCAT-Slave */
-                                  uint16_t sdo_index, /**< SDO-Index */
-                                  uint8_t sdo_subindex, /**< SDO-Subindex */
-                                  uint32_t value, /**< Neuer Wert */
-                                  size_t size /**< Größe des Datenfeldes */
-                                  )
+                         uint16_t sdo_index, /**< SDO-Index */
+                         uint8_t sdo_subindex, /**< SDO-Subindex */
+                         uint32_t value, /**< Neuer Wert */
+                         size_t size /**< Größe des Datenfeldes */
+                         )
 {
     uint8_t data[0xF6];
     ec_command_t command;
@@ -115,12 +115,12 @@ int EtherCAT_rt_canopen_sdo_write(ec_slave_t *slave, /**< EtherCAT-Slave */
  */
 
 int EtherCAT_rt_canopen_sdo_read(ec_slave_t *slave, /**< EtherCAT-Slave */
-                                 uint16_t sdo_index, /**< SDO-Index */
-                                 uint8_t sdo_subindex, /**< SDO-Subindex */
-                                 uint32_t *value /**< Speicher für gel. Wert */
-                                 )
+                        uint16_t sdo_index, /**< SDO-Index */
+                        uint8_t sdo_subindex, /**< SDO-Subindex */
+                        uint32_t *value /**< Speicher für gel. Wert */
+                        )
 {
-    unsigned char data[0xF6];
+    uint8_t data[0xF6];
     ec_command_t command;
     ec_master_t *master;
     cycles_t start, end, timeout;

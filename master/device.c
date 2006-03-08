@@ -255,7 +255,7 @@ void ec_data_print_diff(const uint8_t *d1, /**< Daten 1 */
    \return 0 wenn nein, nicht-null wenn ja.
 */
 
-int EtherCAT_dev_is_ec(const ec_device_t *device,  /**< EtherCAT-Gerät */
+inline int EtherCAT_dev_is_ec(const ec_device_t *device, /**< EtherCAT-Gerät */
                        const struct net_device *dev /**< Net-Device */
                        )
 {

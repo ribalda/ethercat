@@ -127,7 +127,8 @@ int ec_domain_alloc(ec_domain_t *domain, /**< Domäne */
     ec_field_reg_t *field_reg;
     ec_slave_t *slave;
     ec_fmmu_t *fmmu;
-    unsigned int i, j, found, data_offset;
+    unsigned int i, j, found;
+    uint32_t data_offset;
 
     if (domain->data) {
         EC_ERR("Domain already allocated!\n");
@@ -349,8 +350,9 @@ int EtherCAT_rt_register_domain_fields(ec_domain_t *domain,
 
 void EtherCAT_rt_domain_queue(ec_domain_t *domain /**< Domäne */)
 {
-    unsigned int offset, i;
+    unsigned int i;
     size_t size;
+    off_t offset;
 
     offset = 0;
     for (i = 0; i < domain->command_count; i++) {
@@ -372,9 +374,10 @@ void EtherCAT_rt_domain_queue(ec_domain_t *domain /**< Domäne */)
 
 void EtherCAT_rt_domain_process(ec_domain_t *domain /**< Domäne */)
 {
-    unsigned int offset, working_counter_sum, i;
+    unsigned int working_counter_sum, i;
     ec_command_t *command;
     size_t size;
+    off_t offset;
 
     working_counter_sum = 0;
 

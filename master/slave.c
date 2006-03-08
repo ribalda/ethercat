@@ -122,15 +122,15 @@ int ec_slave_fetch(ec_slave_t *slave /**< EtherCAT-Slave */)
 
 int ec_slave_sii_read(ec_slave_t *slave,
                       /**< EtherCAT-Slave */
-                      unsigned short int offset,
+                      uint16_t offset,
                       /**< Adresse des zu lesenden SII-Registers */
-                      unsigned int *target
+                      uint32_t *target
                       /**< Zeiger auf einen 4 Byte großen Speicher zum Ablegen
                          der Daten */
                       )
 {
     ec_command_t command;
-    unsigned char data[10];
+    uint8_t data[10];
     cycles_t start, end, timeout;
 
     // Initiate read operation
@@ -194,7 +194,7 @@ void ec_slave_state_ack(ec_slave_t *slave,
                         )
 {
     ec_command_t command;
-    unsigned char data[2];
+    uint8_t data[2];
     cycles_t start, end, timeout;
 
     EC_WRITE_U16(data, state | EC_ACK);
@@ -257,7 +257,7 @@ int ec_slave_state_change(ec_slave_t *slave,
                           )
 {
     ec_command_t command;
-    unsigned char data[2];
+    uint8_t data[2];
     cycles_t start, end, timeout;
 
     EC_WRITE_U16(data, state);

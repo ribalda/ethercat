@@ -43,7 +43,7 @@ void __exit ec_cleanup_module(void);
 
 int ec_master_count = 1;
 ec_master_t *ec_masters = NULL;
-int *ec_masters_reserved = NULL;
+unsigned int *ec_masters_reserved = NULL;
 
 /*****************************************************************************/
 
@@ -88,7 +88,8 @@ int __init ec_init_module(void)
     }
 
     if ((ec_masters_reserved =
-         (int *) kmalloc(sizeof(int) * ec_master_count, GFP_KERNEL)) == NULL) {
+         (unsigned int *) kmalloc(sizeof(int) * ec_master_count,
+                                  GFP_KERNEL)) == NULL) {
         EC_ERR("Could not allocate memory for reservation flags!\n");
         kfree(ec_masters);
         return -1;

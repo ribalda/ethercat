@@ -52,7 +52,7 @@ struct ec_domain
     unsigned int command_count; /**< Anzahl allozierter Kommandos */
     ec_domain_mode_t mode;
     unsigned int timeout_us; /**< Timeout in Mikrosekunden. */
-    unsigned int base_address; /**< Logische Basisaddresse der Domain */
+    uint32_t base_address; /**< Logische Basisaddresse der Domain */
     unsigned int response_count; /**< Anzahl antwortender Slaves */
     struct list_head field_regs; /**< Liste der Datenfeldregistrierungen */
 };
