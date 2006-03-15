@@ -3,9 +3,14 @@ TODO-Liste EtherCAT-Treiber
 
 $Id$
 
+- Zyklisches Kommando: BRD auf 0x130 für Status und Anzahl Klemmen
 - Asynchroner Betrieb
-- Typeninformation aus Master entfernen?
+- SysFS-Interface implementieren
+- SDO Dictionary der Slaves auslesen und im SysFS darstellen
+- Typeninformation aus Master entfernen / XML-Dateien aus User-Space lesen
+- Secondary Slave Address ins EEPROM schreiben/lesen
+- Seltsame CRC-Counter untersuchen und Herrn Kümmel mailen
+- DLL-Link-States auslesen und Topologie berechnen
 - Ethernet over EtherCAT (EoE)
 - eepro100-Kartentreiber
-- Proc/SysFS-Interface mit Baumdarstellung des Busses
 - Userspace-Tool zum Konfigurieren und visualisieren
