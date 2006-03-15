@@ -1,15 +1,16 @@
 #------------------------------------------------------------------------------
 #
-# Makefile Echtzeitmodule
+#  Makefile Echtzeitmodule
 #
-# $Id$
+#  $Id$
 #
 #------------------------------------------------------------------------------
 
 ifneq ($(KERNELRELEASE),)
 
 #------------------------------------------------------------------------------
-# Kbuild-Abschnitt
+#  Kbuild-Abschnitt
+#------------------------------------------------------------------------------
 
 obj-m := msr_modul.o
 
@@ -37,12 +38,13 @@ EXTRA_CFLAGS := -I$(src)/rt_lib/msr-include -D_SIMULATION \
 else
 
 #------------------------------------------------------------------------------
-# Default-Abschnitt
+#  Default-Abschnitt
+#------------------------------------------------------------------------------
 
 ifneq ($(wildcard ethercat.conf),)
 include ethercat.conf
 else
-KERNELDIR = /lib/modules/`uname -r`/build
+KERNELDIR = /usr/src/linux
 endif
 
 modules:

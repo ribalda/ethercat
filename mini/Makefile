@@ -11,7 +11,8 @@
 ifneq ($(KERNELRELEASE),)
 
 #----------------------------------------------------------------
-# Kbuild-Abschnitt
+#  Kbuild-Abschnitt
+#----------------------------------------------------------------
 
 obj-m := ec_mini.o
 
@@ -22,12 +23,13 @@ ec_mini-objs := mini.o
 else
 
 #----------------------------------------------------------------
-# Default-Abschnitt
+#  Default-Abschnitt
+#----------------------------------------------------------------
 
 ifneq ($(wildcard ethercat.conf),)
 include ethercat.conf
 else
-KERNELDIR = /lib/modules/`uname -r`/build
+KERNELDIR = /usr/src/linux
 endif
 
 modules:
