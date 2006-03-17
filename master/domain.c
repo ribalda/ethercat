@@ -21,15 +21,10 @@ void ec_domain_clear_field_regs(ec_domain_t *);
 */
 
 void ec_domain_init(ec_domain_t *domain, /**< Domäne */
-                    ec_master_t *master, /**< Zugehöriger Master */
-                    ec_domain_mode_t mode, /**< Synchron/Asynchron */
-                    unsigned int timeout_us /**< Timeout in Mikrosekunden */
+                    ec_master_t *master /**< Zugehöriger Master */
                     )
 {
     domain->master = master;
-    domain->mode = mode;
-    domain->timeout_us = timeout_us;
-
     domain->data = NULL;
     domain->data_size = 0;
     domain->commands = NULL;
@@ -232,28 +227,27 @@ void ec_domain_response_count(ec_domain_t *domain, /**< Domäne */
    \return Zeiger auf den Slave bei Erfolg, sonst NULL
 */
 
-ec_slave_t *EtherCAT_rt_register_slave_field(ec_domain_t *domain,
-                                             /**< Domäne */
-                                             const char *address,
-                                             /**< ASCII-Addresse des Slaves,
-                                                siehe ec_master_slave_address()
-                                             */
-                                             const char *vendor_name,
-                                             /**< Herstellername */
-                                             const char *product_name,
-                                             /**< Produktname */
-                                             void **data_ptr,
-                                             /**< Adresse des Zeigers auf die
-                                                Prozessdaten */
-                                             ec_field_type_t field_type,
-                                             /**< Typ des Datenfeldes */
-                                             unsigned int field_index,
-                                             /**< Gibt an, ab welchem Feld mit
-                                                Typ \a field_type gezählt
-                                                werden soll. */
-                                             unsigned int field_count
-                                             /**< Anzahl Felder selben Typs */
-                                             )
+ec_slave_t *ecrt_domain_register_field(ec_domain_t *domain,
+                                       /**< Domäne */
+                                       const char *address,
+                                       /**< ASCII-Addresse des Slaves,
+                                          siehe ec_master_slave_address() */
+                                       const char *vendor_name,
+                                       /**< Herstellername */
+                                       const char *product_name,
+                                       /**< Produktname */
+                                       void **data_ptr,
+                                       /**< Adresse des Zeigers auf die
+                                          Prozessdaten */
+                                       const char *field_name,
+                                       /**< Name des Datenfeldes */
+                                       unsigned int field_index,
+                                       /**< Gibt an, ab welchem Feld mit
+                                          Typ \a field_type gezählt
+                                          werden soll. */
+                                       unsigned int field_count
+                                       /**< Anzahl Felder selben Typs */
+                                       )
 {
     ec_slave_t *slave;
     const ec_slave_type_t *type;
@@ -293,7 +287,7 @@ ec_slave_t *EtherCAT_rt_register_slave_field(ec_domain_t *domain,
         field_offset = 0;
         for (j = 0; sync->fields[j]; j++) {
             field = sync->fields[j];
-            if (field->type == field_type) {
+            if (!strcmp(field->name, field_name)) {
                 if (field_idx == field_index) {
                     ec_domain_reg_field(domain, slave, sync, field_offset,
                                         data_ptr++);
@@ -305,9 +299,9 @@ ec_slave_t *EtherCAT_rt_register_slave_field(ec_domain_t *domain,
         }
     }
 
-    EC_ERR("Slave %i (\"%s %s\") registration mismatch: Type %i, index %i,"
-           " count %i.\n", slave->ring_position, vendor_name, product_name,
-           field_type, field_index, field_count);
+    EC_ERR("Slave %i (\"%s %s\") registration mismatch: Field \"%s\","
+           " index %i, count %i.\n", slave->ring_position, vendor_name,
+           product_name, field_name, field_index, field_count);
     return NULL;
 }
 
@@ -321,23 +315,21 @@ ec_slave_t *EtherCAT_rt_register_slave_field(ec_domain_t *domain,
    \return 0 bei Erfolg, sonst < 0
 */
 
-int EtherCAT_rt_register_domain_fields(ec_domain_t *domain,
-                                       /**< Domäne */
-                                       ec_field_init_t *fields
-                                       /**< Array mit Datenfeldern */
-                                       )
+int ecrt_domain_register_field_list(ec_domain_t *domain,
+                                    /**< Domäne */
+                                    ec_field_init_t *fields
+                                    /**< Array mit Datenfeldern */
+                                    )
 {
     ec_field_init_t *field;
 
-    for (field = fields; field->data; field++) {
-        if (!EtherCAT_rt_register_slave_field(domain, field->address,
-                                              field->vendor, field->product,
-                                              field->data, field->field_type,
-                                              field->field_index,
-                                              field->field_count)) {
+    for (field = fields; field->data_ptr; field++)
+        if (!ecrt_domain_register_field(domain, field->slave_address,
+                                        field->vendor_name,
+                                        field->product_name, field->data_ptr,
+                                        field->field_name, field->field_index,
+                                        field->field_count))
             return -1;
-        }
-    }
 
     return 0;
 }
@@ -348,7 +340,7 @@ int EtherCAT_rt_register_domain_fields(ec_domain_t *domain,
    Setzt Prozessdaten-Kommandos in die Warteschlange des Masters.
 */
 
-void EtherCAT_rt_domain_queue(ec_domain_t *domain /**< Domäne */)
+void ecrt_domain_queue(ec_domain_t *domain /**< Domäne */)
 {
     unsigned int i;
     size_t size;
@@ -372,7 +364,7 @@ void EtherCAT_rt_domain_queue(ec_domain_t *domain /**< Domäne */)
    Verarbeitet empfangene Prozessdaten.
 */
 
-void EtherCAT_rt_domain_process(ec_domain_t *domain /**< Domäne */)
+void ecrt_domain_process(ec_domain_t *domain /**< Domäne */)
 {
     unsigned int working_counter_sum, i;
     ec_command_t *command;
@@ -402,10 +394,10 @@ void EtherCAT_rt_domain_process(ec_domain_t *domain /**< Domäne */)
 
 /*****************************************************************************/
 
-EXPORT_SYMBOL(EtherCAT_rt_register_slave_field);
-EXPORT_SYMBOL(EtherCAT_rt_register_domain_fields);
-EXPORT_SYMBOL(EtherCAT_rt_domain_queue);
-EXPORT_SYMBOL(EtherCAT_rt_domain_process);
+EXPORT_SYMBOL(ecrt_domain_register_field);
+EXPORT_SYMBOL(ecrt_domain_register_field_list);
+EXPORT_SYMBOL(ecrt_domain_queue);
+EXPORT_SYMBOL(ecrt_domain_process);
 
 /*****************************************************************************/
 

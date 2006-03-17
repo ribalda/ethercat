@@ -38,7 +38,7 @@ const ec_slave_type_t Beckhoff_EK1110 = {
 
 /*****************************************************************************/
 
-const ec_field_t el1014_in = {ec_ipvalue, 1};
+const ec_field_t el1014_in = {"InputValue", 1};
 
 const ec_sync_t el1014_sm0 = { // Inputs
     0x1000, 1, 0x00,
@@ -52,7 +52,7 @@ const ec_slave_type_t Beckhoff_EL1014 = {
 
 /*****************************************************************************/
 
-const ec_field_t el20XX_out = {ec_opvalue, 1};
+const ec_field_t el20XX_out = {"OutputValue", 1};
 
 const ec_sync_t el20XX_sm0 = {
     0x0F00, 1, 0x46,
@@ -71,10 +71,10 @@ const ec_slave_type_t Beckhoff_EL2032 = {
 
 /*****************************************************************************/
 
-const ec_field_t el31X2_st1 = {ec_status,  1};
-const ec_field_t el31X2_ip1 = {ec_ipvalue, 2};
-const ec_field_t el31X2_st2 = {ec_status,  1};
-const ec_field_t el31X2_ip2 = {ec_ipvalue, 2};
+const ec_field_t el31X2_st1 = {"Status",     1};
+const ec_field_t el31X2_ip1 = {"InputValue", 2};
+const ec_field_t el31X2_st2 = {"Status",     1};
+const ec_field_t el31X2_ip2 = {"InputValue", 2};
 
 const ec_sync_t el31X2_sm2 = {
     0x1000, 4, 0x24,
@@ -98,7 +98,7 @@ const ec_slave_type_t Beckhoff_EL3162 = {
 
 /*****************************************************************************/
 
-const ec_field_t el41X2_op = {ec_opvalue, 2};
+const ec_field_t el41X2_op = {"OutputValue", 2};
 
 const ec_sync_t el41X2_sm2 = {
     0x1000, 4, 0x24,
@@ -117,8 +117,8 @@ const ec_slave_type_t Beckhoff_EL4132 = {
 
 /*****************************************************************************/
 
-const ec_field_t el5001_st = {ec_status,  1};
-const ec_field_t el5001_ip = {ec_ipvalue, 4};
+const ec_field_t el5001_st = {"Status",     1};
+const ec_field_t el5001_ip = {"InputValue", 4};
 
 const ec_sync_t el5001_sm2 = {
     0x1000, 4, 0x24,
@@ -137,11 +137,11 @@ const ec_slave_type_t Beckhoff_EL5001 = {
 
 /*****************************************************************************/
 
-const ec_field_t el5101_ct = {ec_control, 1};
-const ec_field_t el5101_op = {ec_opvalue, 2};
-const ec_field_t el5101_st = {ec_status,  1};
-const ec_field_t el5101_ip = {ec_ipvalue, 2};
-const ec_field_t el5101_la = {ec_ipvalue, 2};
+const ec_field_t el5101_ct = {"Control",     1};
+const ec_field_t el5101_op = {"OutputValue", 2};
+const ec_field_t el5101_st = {"Status",      1};
+const ec_field_t el5101_ip = {"InputValue",  2};
+const ec_field_t el5101_la = {"LatchValue",  2};
 
 const ec_sync_t el5101_sm2 = {
     0x1000, 3, 0x24,

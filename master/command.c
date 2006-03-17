@@ -11,7 +11,6 @@
 #include <linux/slab.h>
 #include <linux/delay.h>
 
-#include "../include/EtherCAT_si.h"
 #include "command.h"
 #include "master.h"
 

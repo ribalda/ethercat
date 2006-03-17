@@ -13,11 +13,9 @@
 
 #include <linux/interrupt.h>
 
-#include "../include/EtherCAT_rt.h"
-#include "../include/EtherCAT_dev.h"
+#include "../include/ecrt.h"
+#include "../devices/ecdev.h"
 #include "globals.h"
-
-typedef irqreturn_t (*ec_isr_t)(int, void *, struct pt_regs *);
 
 /*****************************************************************************/
 

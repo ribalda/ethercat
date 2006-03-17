@@ -14,8 +14,7 @@
 #include <linux/slab.h>
 #include <linux/delay.h>
 
-#include "../include/EtherCAT_rt.h"
-#include "../include/EtherCAT_si.h"
+#include "../include/ecrt.h"
 #include "globals.h"
 #include "master.h"
 #include "slave.h"
@@ -372,24 +371,27 @@ int ec_master_simple_io(ec_master_t *master, /**< EtherCAT-Master */
     do
     {
         ec_master_queue_command(master, command);
-        EtherCAT_rt_master_xio(master);
+        ecrt_master_sync_io(master);
 
         if (command->state == EC_CMD_RECEIVED) {
             break;
         }
         else if (command->state == EC_CMD_TIMEOUT) {
-            EC_ERR("Simple IO TIMED OUT!\n");
+            EC_ERR("Simple-IO TIMEOUT!\n");
             return -1;
         }
         else if (command->state == EC_CMD_ERROR) {
-            EC_ERR("Simple IO command error!\n");
+            EC_ERR("Simple-IO command error!\n");
             return -1;
         }
+
+        // Keine direkte Antwort. Dem Slave Zeit lassen...
+        udelay(10);
     }
     while (unlikely(!command->working_counter && --response_tries_left));
 
     if (unlikely(!response_tries_left)) {
-        EC_ERR("No response in simple IO!\n");
+        EC_ERR("No response in simple-IO!\n");
         return -1;
     }
 
@@ -653,18 +655,12 @@ void ec_fmmu_config(const ec_fmmu_t *fmmu, /**< Sync-Manager */
  *****************************************************************************/
 
 /**
-   Registriert eine neue Domäne.
+   Erstellt eine neue Domäne.
 
    \return Zeiger auf die Domäne bei Erfolg, sonst NULL.
 */
 
-ec_domain_t *EtherCAT_rt_master_register_domain(ec_master_t *master,
-                                                /**< Domäne */
-                                                ec_domain_mode_t mode,
-                                                /**< Modus */
-                                                unsigned int timeout_us
-                                                /**< Timeout */
-                                                )
+ec_domain_t *ecrt_master_create_domain(ec_master_t *master /**< Master */)
 {
     ec_domain_t *domain;
 
@@ -673,8 +669,7 @@ ec_domain_t *EtherCAT_rt_master_register_domain(ec_master_t *master,
         return NULL;
     }
 
-    ec_domain_init(domain, master, mode, timeout_us);
-
+    ec_domain_init(domain, master);
     list_add_tail(&domain->list, &master->domains);
 
     return domain;
@@ -692,7 +687,7 @@ ec_domain_t *EtherCAT_rt_master_register_domain(ec_master_t *master,
    \return 0 bei Erfolg, sonst < 0
 */
 
-int EtherCAT_rt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
+int ecrt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
 {
     unsigned int i, j;
     ec_slave_t *slave;
@@ -817,11 +812,9 @@ int EtherCAT_rt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
 
 /**
    Setzt alle Slaves zurück in den Init-Zustand.
-
-   \return 0 bei Erfolg, sonst < 0
 */
 
-int EtherCAT_rt_master_deactivate(ec_master_t *master /**< EtherCAT-Master */)
+void ecrt_master_deactivate(ec_master_t *master /**< EtherCAT-Master */)
 {
     ec_slave_t *slave;
     unsigned int i;
@@ -829,26 +822,18 @@ int EtherCAT_rt_master_deactivate(ec_master_t *master /**< EtherCAT-Master */)
     for (i = 0; i < master->slave_count; i++)
     {
         slave = master->slaves + i;
-
-        // CRC-Zählerstände ausgeben
         ec_slave_check_crc(slave);
-
-        if (unlikely(ec_slave_state_change(slave, EC_SLAVE_STATE_INIT) != 0))
-            return -1;
+        ec_slave_state_change(slave, EC_SLAVE_STATE_INIT);
     }
-
-    return 0;
 }
 
 /*****************************************************************************/
 
 /**
-   Sendet und empfängt Kommandos.
-
-   \return 0 bei Erfolg, sonst < 0
+   Sendet und empfängt Kommandos synchron.
 */
 
-void EtherCAT_rt_master_xio(ec_master_t *master)
+void ecrt_master_sync_io(ec_master_t *master)
 {
     ec_command_t *command, *next;
     unsigned int commands_sent;
@@ -912,6 +897,69 @@ void EtherCAT_rt_master_xio(ec_master_t *master)
 /*****************************************************************************/
 
 /**
+   Sendet Kommandos asynchron.
+*/
+
+void ecrt_master_async_send(ec_master_t *master)
+{
+    ec_command_t *command, *next;
+
+    ec_master_output_stats(master);
+
+    if (unlikely(!master->device->link_state)) {
+        // Link DOWN, keines der Kommandos kann gesendet werden.
+        list_for_each_entry_safe(command, next, &master->commands, list) {
+            command->state = EC_CMD_ERROR;
+            list_del_init(&command->list);
+        }
+
+        // Device-Zustand abfragen
+        ec_device_call_isr(master->device);
+        return;
+    }
+
+    // Rahmen senden
+    ec_master_send_commands(master);
+}
+
+/*****************************************************************************/
+
+/**
+   Empfängt Kommandos asynchron.
+*/
+
+void ecrt_master_async_receive(ec_master_t *master)
+{
+    ec_command_t *command, *next;
+
+    ec_master_output_stats(master);
+
+    ec_device_call_isr(master->device);
+
+    // Alle empfangenen Kommandos aus der Liste entfernen
+    list_for_each_entry_safe(command, next, &master->commands, list)
+        if (command->state == EC_CMD_RECEIVED)
+            list_del_init(&command->list);
+
+    // Alle verbleibenden Kommandos entfernen.
+    list_for_each_entry_safe(command, next, &master->commands, list) {
+        switch (command->state) {
+            case EC_CMD_SENT:
+            case EC_CMD_QUEUED:
+                command->state = EC_CMD_TIMEOUT;
+                master->stats.timeouts++;
+                ec_master_output_stats(master);
+                break;
+            default:
+                break;
+        }
+        list_del_init(&command->list);
+    }
+}
+
+/*****************************************************************************/
+
+/**
    Setzt die Debug-Ebene des Masters.
 
    Folgende Debug-Level sind definiert:
@@ -920,11 +968,9 @@ void EtherCAT_rt_master_xio(ec_master_t *master)
    - 2: Komplette Frame-Inhalte
 */
 
-void EtherCAT_rt_master_debug(ec_master_t *master,
-                              /**< EtherCAT-Master */
-                              int level
-                              /**< Debug-Level */
-                              )
+void ecrt_master_debug(ec_master_t *master, /**< EtherCAT-Master */
+                       int level /**< Debug-Level */
+                       )
 {
     if (level != master->debug_level) {
         master->debug_level = level;
@@ -938,9 +984,7 @@ void EtherCAT_rt_master_debug(ec_master_t *master,
    Gibt alle Informationen zum Master aus.
 */
 
-void EtherCAT_rt_master_print(const ec_master_t *master
-                              /**< EtherCAT-Master */
-                              )
+void ecrt_master_print(const ec_master_t *master /**< EtherCAT-Master */)
 {
     unsigned int i;
 
@@ -952,12 +996,14 @@ void EtherCAT_rt_master_print(const ec_master_t *master
 
 /*****************************************************************************/
 
-EXPORT_SYMBOL(EtherCAT_rt_master_register_domain);
-EXPORT_SYMBOL(EtherCAT_rt_master_activate);
-EXPORT_SYMBOL(EtherCAT_rt_master_deactivate);
-EXPORT_SYMBOL(EtherCAT_rt_master_xio);
-EXPORT_SYMBOL(EtherCAT_rt_master_debug);
-EXPORT_SYMBOL(EtherCAT_rt_master_print);
+EXPORT_SYMBOL(ecrt_master_create_domain);
+EXPORT_SYMBOL(ecrt_master_activate);
+EXPORT_SYMBOL(ecrt_master_deactivate);
+EXPORT_SYMBOL(ecrt_master_sync_io);
+EXPORT_SYMBOL(ecrt_master_async_send);
+EXPORT_SYMBOL(ecrt_master_async_receive);
+EXPORT_SYMBOL(ecrt_master_debug);
+EXPORT_SYMBOL(ecrt_master_print);
 
 /*****************************************************************************/
 

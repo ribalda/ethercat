@@ -13,7 +13,7 @@
 
 #include <linux/types.h>
 
-#include "../include/EtherCAT_rt.h"
+#include "../include/ecrt.h"
 
 /*****************************************************************************/
 
@@ -28,8 +28,8 @@
 
 typedef struct
 {
-    ec_field_type_t type;
-    unsigned int size;
+    const char *name;
+    size_t size;
 }
 ec_field_t;
 

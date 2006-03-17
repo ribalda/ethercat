@@ -23,6 +23,7 @@
 #include <linux/ipipe.h>
 #include <linux/slab.h>
 #include <linux/vmalloc.h>
+#include <linux/delay.h>
 
 // RT_lib
 #include <msr_main.h>
@@ -34,8 +35,9 @@
 #include "msr_param.h"
 
 // EtherCAT
-#include "../include/EtherCAT_rt.h"
-#include "../include/EtherCAT_si.h"
+#include "../include/ecrt.h"
+
+//#define ASYNC
 
 // Defines/Makros
 #define HZREDUCTION (MSR_ABTASTFREQUENZ / HZ)
@@ -59,14 +61,17 @@ void *r_inc;
 
 uint32_t k_angle;
 uint32_t k_pos;
+uint32_t k_preio;
+uint32_t k_postio;
+uint32_t k_finished;
 
 ec_field_init_t domain1_fields[] = {
-    {&r_ssi,  "1", "Beckhoff", "EL5001", ec_ipvalue, 0, 1},
+    {&r_ssi,  "1", "Beckhoff", "EL5001", "InputValue", 0, 1},
     {}
 };
 
 ec_field_init_t domain2_fields[] = {
-    {&r_ssi2,  "1", "Beckhoff", "EL5001", ec_ipvalue, 0, 1},
+    {&r_ssi2,  "1", "Beckhoff", "EL5001", "InputValue", 0, 1},
     {}
 };
 
@@ -74,7 +79,10 @@ ec_field_init_t domain2_fields[] = {
 
 static void msr_controller_run(void)
 {
+    cycles_t offset;
     static unsigned int counter = 0;
+
+    offset = get_cycles();
 
     if (counter) counter--;
     else {
@@ -82,19 +90,37 @@ static void msr_controller_run(void)
         counter = MSR_ABTASTFREQUENZ;
     }
 
-    // Prozessdaten lesen und schreiben
-    EtherCAT_rt_domain_queue(domain1);
-    EtherCAT_rt_domain_queue(domain2);
+    k_preio = (uint32_t) (get_cycles() - offset) * 1e6 / cpu_khz;
 
-    EtherCAT_rt_master_xio(master);
+#ifdef ASYNC
+    // Empfangen
+    ecrt_master_async_receive(master);
+    ecrt_domain_process(domain1);
+    ecrt_domain_process(domain2);
 
-    EtherCAT_rt_domain_process(domain1);
-    EtherCAT_rt_domain_process(domain2);
-
-    //k_angle = EC_READ_U16(r_inc);
+    // Prozessdaten verarbeiten
     k_pos = EC_READ_U32(r_ssi);
 
-    //EtherCAT_rt_master_debug(master, 0);
+    // Senden
+    ecrt_domain_queue(domain1);
+    ecrt_domain_queue(domain2);
+    ecrt_master_async_send(master);
+#else
+    // Senden und empfangen
+    ecrt_domain_queue(domain1);
+    ecrt_domain_queue(domain2);
+    ecrt_master_sync_io(master);
+    ecrt_domain_process(domain1);
+    ecrt_domain_process(domain2);
+
+    // Prozessdaten verarbeiten
+    k_pos = EC_READ_U32(r_ssi);
+#endif
+
+    k_postio = (uint32_t) (get_cycles() - offset) * 1e6 / cpu_khz;
+
+    //ecrt_master_debug(master, 0);
+    k_finished = (uint32_t) (get_cycles() - offset) * 1e6 / cpu_khz;
 }
 
 /*****************************************************************************/
@@ -103,6 +129,10 @@ int msr_globals_register(void)
 {
     msr_reg_kanal("/angle0", "", &k_angle, TUINT);
     msr_reg_kanal("/pos0",   "", &k_pos,   TUINT);
+
+    msr_reg_kanal("/Timing/Pre-IO",   "ns", &k_preio,    TUINT);
+    msr_reg_kanal("/Timing/Post-IO",  "ns", &k_postio,   TUINT);
+    msr_reg_kanal("/Timing/Finished", "ns", &k_finished, TUINT);
 
     return 0;
 }
@@ -148,57 +178,61 @@ int __init init_rt_module(void)
         goto out_return;
     }
 
-    if ((master = EtherCAT_rt_request_master(0)) == NULL) {
+    if ((master = ecrt_request_master(0)) == NULL) {
         printk(KERN_ERR "Error requesting master 0!\n");
         goto out_msr_cleanup;
     }
 
-    //EtherCAT_rt_master_print(master);
+    //ecrt_master_print(master);
 
     printk(KERN_INFO "Registering domains...\n");
 
-    if (!(domain1 = EtherCAT_rt_master_register_domain(master, ec_sync, 100)))
-    {
+    if (!(domain1 = ecrt_master_create_domain(master))) {
         printk(KERN_ERR "EtherCAT: Could not register domain!\n");
         goto out_release_master;
     }
 
-    if (!(domain2 = EtherCAT_rt_master_register_domain(master, ec_sync, 100)))
-    {
+    if (!(domain2 = ecrt_master_create_domain(master))) {
         printk(KERN_ERR "EtherCAT: Could not register domain!\n");
         goto out_release_master;
     }
 
     printk(KERN_INFO "Registering domain fields...\n");
 
-    if (EtherCAT_rt_register_domain_fields(domain1, domain1_fields)) {
+    if (ecrt_domain_register_field_list(domain1, domain1_fields)) {
         printk(KERN_ERR "Failed to register domain fields.\n");
         goto out_release_master;
     }
 
-    if (EtherCAT_rt_register_domain_fields(domain2, domain2_fields)) {
+    if (ecrt_domain_register_field_list(domain2, domain2_fields)) {
         printk(KERN_ERR "Failed to register domain fields.\n");
         goto out_release_master;
     }
 
     printk(KERN_INFO "Activating master...\n");
 
-    //EtherCAT_rt_master_debug(master, 2);
+    //ecrt_master_debug(master, 2);
 
-    if (EtherCAT_rt_master_activate(master)) {
+    if (ecrt_master_activate(master)) {
         printk(KERN_ERR "Could not activate master!\n");
         goto out_release_master;
     }
 
-    //EtherCAT_rt_master_debug(master, 0);
+    //ecrt_master_debug(master, 0);
 
 #if 1
-    if (EtherCAT_rt_canopen_sdo_addr_read(master, "6", 0x100A, 1,
-                                          &version)) {
+    if (ecrt_master_sdo_read(master, "6", 0x100A, 1, &version)) {
         printk(KERN_ERR "Could not read SSI version!\n");
         goto out_release_master;
     }
     printk(KERN_INFO "Software-version: %u\n", version);
+#endif
+
+#ifdef ASYNC
+    ecrt_domain_queue(domain1);
+    ecrt_domain_queue(domain2);
+    ecrt_master_async_send(master);
+    udelay(100);
 #endif
 
     ipipe_init_attr(&attr);
@@ -210,7 +244,7 @@ int __init init_rt_module(void)
     return 0;
 
  out_release_master:
-    EtherCAT_rt_release_master(master);
+    ecrt_release_master(master);
 
  out_msr_cleanup:
     msr_rtlib_cleanup();
@@ -233,12 +267,8 @@ void __exit cleanup_rt_module(void)
         printk(KERN_INFO "=== Stopping EtherCAT environment... ===\n");
 
         printk(KERN_INFO "Deactivating master...\n");
-
-        if (EtherCAT_rt_master_deactivate(master) < 0) {
-          printk(KERN_WARNING "Warning - Could not deactivate master!\n");
-        }
-
-        EtherCAT_rt_release_master(master);
+        ecrt_master_deactivate(master);
+        ecrt_release_master(master);
 
         printk(KERN_INFO "=== EtherCAT environment stopped. ===\n");
     }

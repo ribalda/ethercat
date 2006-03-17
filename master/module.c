@@ -145,16 +145,15 @@ void __exit ec_cleanup_module(void)
            oder das Geraet nicht geöffnet werden konnte.
 */
 
-ec_device_t *EtherCAT_dev_register(unsigned int master_index,
-                                   /**< Index des EtherCAT-Masters */
-                                   struct net_device *net_dev,
-                                   /**< net_device des EtherCAT-Gerätes */
-                                   irqreturn_t (*isr)(int, void *,
-                                                      struct pt_regs *),
-                                   /**< Interrupt-Service-Routine */
-                                   struct module *module
-                                   /**< Zeiger auf das Modul */
-                                   )
+ec_device_t *ecdev_register(unsigned int master_index,
+                            /**< Index des EtherCAT-Masters */
+                            struct net_device *net_dev,
+                            /**< net_device des EtherCAT-Gerätes */
+                            ec_isr_t isr,
+                            /**< Interrupt-Service-Routine */
+                            struct module *module
+                            /**< Zeiger auf das Modul */
+                            )
 {
     ec_master_t *master;
 
@@ -193,11 +192,11 @@ ec_device_t *EtherCAT_dev_register(unsigned int master_index,
    Hebt die Registrierung eines EtherCAT-Gerätes auf.
 */
 
-void EtherCAT_dev_unregister(unsigned int master_index,
-                             /**< Index des EtherCAT-Masters */
-                             ec_device_t *device
-                             /**< EtherCAT-Geraet */
-                             )
+void ecdev_unregister(unsigned int master_index,
+                      /**< Index des EtherCAT-Masters */
+                      ec_device_t *device
+                      /**< EtherCAT-Geraet */
+                      )
 {
     ec_master_t *master;
 
@@ -232,9 +231,9 @@ void EtherCAT_dev_unregister(unsigned int master_index,
    \return Zeiger auf EtherCAT-Master oder NULL, wenn Parameter ungueltig.
 */
 
-ec_master_t *EtherCAT_rt_request_master(unsigned int index
-                                        /**< EtherCAT-Master-Index */
-                                        )
+ec_master_t *ecrt_request_master(unsigned int index
+                                 /**< EtherCAT-Master-Index */
+                                 )
 {
     ec_master_t *master;
 
@@ -297,7 +296,7 @@ ec_master_t *EtherCAT_rt_request_master(unsigned int index
    Gibt einen zuvor angeforderten EtherCAT-Master wieder frei.
 */
 
-void EtherCAT_rt_release_master(ec_master_t *master /**< EtherCAT-Masdter */)
+void ecrt_release_master(ec_master_t *master /**< EtherCAT-Masdter */)
 {
     unsigned int i, found;
 
@@ -331,10 +330,10 @@ void EtherCAT_rt_release_master(ec_master_t *master /**< EtherCAT-Masdter */)
 module_init(ec_init_module);
 module_exit(ec_cleanup_module);
 
-EXPORT_SYMBOL(EtherCAT_dev_register);
-EXPORT_SYMBOL(EtherCAT_dev_unregister);
-EXPORT_SYMBOL(EtherCAT_rt_request_master);
-EXPORT_SYMBOL(EtherCAT_rt_release_master);
+EXPORT_SYMBOL(ecdev_register);
+EXPORT_SYMBOL(ecdev_unregister);
+EXPORT_SYMBOL(ecrt_request_master);
+EXPORT_SYMBOL(ecrt_release_master);
 
 /*****************************************************************************/
 

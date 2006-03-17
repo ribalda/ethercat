@@ -11,7 +11,6 @@
 #include <linux/module.h>
 #include <linux/delay.h>
 
-#include "../include/EtherCAT_si.h"
 #include "globals.h"
 #include "slave.h"
 #include "command.h"

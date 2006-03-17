@@ -12,7 +12,6 @@
 #include <linux/slab.h>
 #include <linux/module.h>
 
-#include "../include/EtherCAT_si.h"
 #include "master.h"
 
 /*****************************************************************************/
@@ -21,7 +20,7 @@
    Schreibt ein CANopen-SDO (service data object).
  */
 
-int EtherCAT_rt_canopen_sdo_write(ec_slave_t *slave, /**< EtherCAT-Slave */
+int ecrt_slave_sdo_write(ec_slave_t *slave, /**< EtherCAT-Slave */
                          uint16_t sdo_index, /**< SDO-Index */
                          uint8_t sdo_subindex, /**< SDO-Subindex */
                          uint32_t value, /**< Neuer Wert */
@@ -114,7 +113,7 @@ int EtherCAT_rt_canopen_sdo_write(ec_slave_t *slave, /**< EtherCAT-Slave */
    Liest ein CANopen-SDO (service data object).
  */
 
-int EtherCAT_rt_canopen_sdo_read(ec_slave_t *slave, /**< EtherCAT-Slave */
+int ecrt_slave_sdo_read(ec_slave_t *slave, /**< EtherCAT-Slave */
                         uint16_t sdo_index, /**< SDO-Index */
                         uint8_t sdo_subindex, /**< SDO-Subindex */
                         uint32_t *value /**< Speicher für gel. Wert */
@@ -198,29 +197,28 @@ int EtherCAT_rt_canopen_sdo_read(ec_slave_t *slave, /**< EtherCAT-Slave */
 /**
    Schweibt ein CANopen-SDO (Variante mit Angabe des Masters und der Adresse).
 
-   Siehe EtherCAT_rt_canopen_sdo_write()
+   Siehe ecrt_slave_sdo_write()
 
    \return 0 wenn alles ok, < 0 bei Fehler
  */
 
-int EtherCAT_rt_canopen_sdo_addr_write(ec_master_t *master,
-                                       /**< EtherCAT-Master */
-                                       const char *addr,
-                                       /**< Addresse, siehe
-                                          ec_master_slave_address() */
-                                       uint16_t index,
-                                       /**< SDO-Index */
-                                       uint8_t subindex,
-                                       /**< SDO-Subindex */
-                                       uint32_t value,
-                                       /**< Neuer Wert */
-                                       size_t size
-                                       /**< Größe des Datenfeldes */
-                                       )
+int ecrt_master_sdo_write(ec_master_t *master,
+                          /**< EtherCAT-Master */
+                          const char *addr,
+                          /**< Addresse, siehe ec_master_slave_address() */
+                          uint16_t index,
+                          /**< SDO-Index */
+                          uint8_t subindex,
+                          /**< SDO-Subindex */
+                          uint32_t value,
+                          /**< Neuer Wert */
+                          size_t size
+                          /**< Größe des Datenfeldes */
+                          )
 {
     ec_slave_t *slave;
     if (!(slave = ec_master_slave_address(master, addr))) return -1;
-    return EtherCAT_rt_canopen_sdo_write(slave, index, subindex, value, size);
+    return ecrt_slave_sdo_write(slave, index, subindex, value, size);
 }
 
 /*****************************************************************************/
@@ -228,35 +226,34 @@ int EtherCAT_rt_canopen_sdo_addr_write(ec_master_t *master,
 /**
    Liest ein CANopen-SDO (Variante mit Angabe des Masters und der Adresse).
 
-   Siehe EtherCAT_rt_canopen_sdo_read()
+   Siehe ecrt_slave_sdo_read()
 
    \return 0 wenn alles ok, < 0 bei Fehler
  */
 
-int EtherCAT_rt_canopen_sdo_addr_read(ec_master_t *master,
-                                      /**< EtherCAT-Slave */
-                                      const char *addr,
-                                      /**< Addresse, siehe
-                                         ec_master_slave_address() */
-                                      uint16_t index,
-                                      /**< SDO-Index */
-                                      uint8_t subindex,
-                                      /**< SDO-Subindex */
-                                      uint32_t *value
-                                      /**< Speicher für gel. Wert */
-                                      )
+int ecrt_master_sdo_read(ec_master_t *master,
+                         /**< EtherCAT-Slave */
+                         const char *addr,
+                         /**< Addresse, siehe ec_master_slave_address() */
+                         uint16_t index,
+                         /**< SDO-Index */
+                         uint8_t subindex,
+                         /**< SDO-Subindex */
+                         uint32_t *value
+                         /**< Speicher für gel. Wert */
+                         )
 {
     ec_slave_t *slave;
     if (!(slave = ec_master_slave_address(master, addr))) return -1;
-    return EtherCAT_rt_canopen_sdo_read(slave, index, subindex, value);
+    return ecrt_slave_sdo_read(slave, index, subindex, value);
 }
 
 /*****************************************************************************/
 
-EXPORT_SYMBOL(EtherCAT_rt_canopen_sdo_write);
-EXPORT_SYMBOL(EtherCAT_rt_canopen_sdo_read);
-EXPORT_SYMBOL(EtherCAT_rt_canopen_sdo_addr_write);
-EXPORT_SYMBOL(EtherCAT_rt_canopen_sdo_addr_read);
+EXPORT_SYMBOL(ecrt_slave_sdo_write);
+EXPORT_SYMBOL(ecrt_slave_sdo_read);
+EXPORT_SYMBOL(ecrt_master_sdo_write);
+EXPORT_SYMBOL(ecrt_master_sdo_read);
 
 /*****************************************************************************/
 

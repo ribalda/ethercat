@@ -12,8 +12,9 @@
 #include <linux/delay.h>
 #include <linux/timer.h>
 
-#include "../include/EtherCAT_rt.h" // Echtzeitschnittstelle
-#include "../include/EtherCAT_si.h" // Slave-Interface-Makros
+#include "../include/ecrt.h" // Echtzeitschnittstelle
+
+//#define ASYNC
 
 /*****************************************************************************/
 
@@ -29,14 +30,12 @@ ec_domain_t *domain1 = NULL;
 
 // Datenfelder
 void *r_ssi;
-void *r_inc;
 
 // Kanäle
-uint32_t k_angle, k_pos;
+uint32_t k_pos;
 
 ec_field_init_t domain1_fields[] = {
-    {&r_ssi,   "1", "Beckhoff", "EL5001", ec_ipvalue, 0, 1},
-    {&r_inc, "0:3", "Beckhoff", "EL5101", ec_ipvalue, 0, 1},
+    {&r_ssi,   "1", "Beckhoff", "EL5001", "InputValue", 0, 1},
     {}
 };
 
@@ -46,20 +45,32 @@ void run(unsigned long data)
 {
     static unsigned int counter = 0;
 
-    // Prozessdaten lesen und schreiben
-    EtherCAT_rt_domain_queue(domain1);
-    EtherCAT_rt_master_xio(master);
-    EtherCAT_rt_domain_process(domain1);
+#ifdef ASYNC
+    // Prozessdaten emfpangen
+    ecrt_master_async_receive(master);
+    ecrt_domain_process(domain1);
 
-    k_angle = EC_READ_U16(r_inc);
+    // Prozessdaten verarbeiten
     k_pos   = EC_READ_U32(r_ssi);
+
+    // Prozessdaten senden
+    ecrt_domain_queue(domain1);
+    ecrt_master_async_send(master);
+#else
+    // Prozessdaten senden und emfpangen
+    ecrt_domain_queue(domain1);
+    ecrt_master_sync_io(master);
+    ecrt_domain_process(domain1);
+
+    // Prozessdaten verarbeiten
+    k_pos   = EC_READ_U32(r_ssi);
+#endif
 
     if (counter) {
         counter--;
     }
     else {
         counter = ABTASTFREQUENZ;
-        printk(KERN_INFO "k_angle = %i\n", k_angle);
         printk(KERN_INFO "k_pos   = %i\n", k_pos);
     }
 
@@ -72,20 +83,18 @@ void run(unsigned long data)
 
 int __init init_mini_module(void)
 {
-    const ec_field_init_t *field;
-
     printk(KERN_INFO "=== Starting Minimal EtherCAT environment... ===\n");
 
-    if ((master = EtherCAT_rt_request_master(0)) == NULL) {
+    if ((master = ecrt_request_master(0)) == NULL) {
         printk(KERN_ERR "Error requesting master 0!\n");
         goto out_return;
     }
 
-    EtherCAT_rt_master_print(master);
+    //ecrt_master_print(master);
 
     printk(KERN_INFO "Registering domain...\n");
 
-    if (!(domain1 = EtherCAT_rt_master_register_domain(master, ec_sync, 100)))
+    if (!(domain1 = ecrt_master_create_domain(master)))
     {
         printk(KERN_ERR "EtherCAT: Could not register domain!\n");
         goto out_release_master;
@@ -93,27 +102,23 @@ int __init init_mini_module(void)
 
     printk(KERN_INFO "Registering domain fields...\n");
 
-    for (field = domain1_fields; field->data; field++)
-    {
-        if (!EtherCAT_rt_register_slave_field(domain1,
-                                              field->address,
-                                              field->vendor,
-                                              field->product,
-                                              field->data,
-                                              field->field_type,
-                                              field->field_index,
-                                              field->field_count)) {
-            printk(KERN_ERR "EtherCAT: Could not register field!\n");
-            goto out_release_master;
-        }
+    if (ecrt_domain_register_field_list(domain1, domain1_fields)) {
+        printk(KERN_ERR "EtherCAT: Could not register field!\n");
+        goto out_release_master;
     }
 
     printk(KERN_INFO "Activating master...\n");
 
-    if (EtherCAT_rt_master_activate(master)) {
+    if (ecrt_master_activate(master)) {
         printk(KERN_ERR "EtherCAT: Could not activate master!\n");
         goto out_release_master;
     }
+
+#ifdef ASYNC
+    ecrt_domain_queue(domain1);
+    ecrt_master_async_send(master);
+    udelay(100);
+#endif
 
     printk("Starting cyclic sample thread.\n");
 
@@ -127,7 +132,7 @@ int __init init_mini_module(void)
     return 0;
 
  out_release_master:
-  EtherCAT_rt_release_master(master);
+  ecrt_release_master(master);
 
  out_return:
   return -1;
@@ -145,8 +150,8 @@ void __exit cleanup_mini_module(void)
 
         printk(KERN_INFO "Deactivating master...\n");
 
-        EtherCAT_rt_master_deactivate(master);
-        EtherCAT_rt_release_master(master);
+        ecrt_master_deactivate(master);
+        ecrt_release_master(master);
     }
 
     printk(KERN_INFO "=== Minimal EtherCAT environment stopped. ===\n");
