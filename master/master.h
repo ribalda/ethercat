@@ -52,6 +52,7 @@ struct ec_master
     struct list_head domains; /**< Liste der Prozessdatendomänen */
     int debug_level; /**< Debug-Level im Master-Code */
     ec_stats_t stats; /**< Rahmen-Statistiken */
+    unsigned int timeout; /**< Timeout für synchronen Datenaustausch */
 };
 
 /*****************************************************************************/

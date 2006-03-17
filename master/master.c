@@ -100,6 +100,7 @@ void ec_master_reset(ec_master_t *master
 
     master->command_index = 0;
     master->debug_level = 0;
+    master->timeout = 100; // us
     master->stats.timeouts = 0;
     master->stats.delayed = 0;
     master->stats.corrupted = 0;
@@ -857,7 +858,7 @@ void ecrt_master_sync_io(ec_master_t *master)
     ec_master_send_commands(master);
 
     t_start = get_cycles(); // Sendezeit nehmen
-    t_timeout = 100 * cpu_khz / 1000; // 100us
+    t_timeout = master->timeout * cpu_khz / 1000;
 
     do {
         ec_device_call_isr(master->device);
@@ -955,6 +956,37 @@ void ecrt_master_async_receive(ec_master_t *master)
         }
         list_del_init(&command->list);
     }
+}
+
+/*****************************************************************************/
+
+/**
+   Bereitet Synchronen Datenverkehr vor.
+
+   Fürgt einmal die Kommandos aller Domains zur Warteschlange hinzu, sendet
+   diese ab und wartet so lange, bis diese anschließend problemlos empfangen
+   werden können.
+*/
+
+void ecrt_master_prepare_async_io(ec_master_t *master)
+{
+    ec_domain_t *domain;
+    cycles_t t_start, t_end, t_timeout;
+
+    // Alle empfangenen Kommandos aus der Liste entfernen
+    list_for_each_entry(domain, &master->domains, list)
+        ecrt_domain_queue(domain);
+
+    ecrt_master_async_send(master);
+
+    t_start = get_cycles(); // Sendezeit nehmen
+    t_timeout = master->timeout * cpu_khz / 1000;
+
+    // Aktiv warten!
+    do {
+        t_end = get_cycles();
+    }
+    while (t_end - t_start < t_timeout);
 }
 
 /*****************************************************************************/

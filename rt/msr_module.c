@@ -37,7 +37,7 @@
 // EtherCAT
 #include "../include/ecrt.h"
 
-//#define ASYNC
+#define ASYNC
 
 // Defines/Makros
 #define HZREDUCTION (MSR_ABTASTFREQUENZ / HZ)
@@ -229,10 +229,8 @@ int __init init_rt_module(void)
 #endif
 
 #ifdef ASYNC
-    ecrt_domain_queue(domain1);
-    ecrt_domain_queue(domain2);
-    ecrt_master_async_send(master);
-    udelay(100);
+    // Einmal senden und warten...
+    ecrt_master_prepare_async_io(master);
 #endif
 
     ipipe_init_attr(&attr);

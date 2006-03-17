@@ -14,7 +14,7 @@
 
 #include "../include/ecrt.h" // Echtzeitschnittstelle
 
-//#define ASYNC
+#define ASYNC
 
 /*****************************************************************************/
 
@@ -115,9 +115,8 @@ int __init init_mini_module(void)
     }
 
 #ifdef ASYNC
-    ecrt_domain_queue(domain1);
-    ecrt_master_async_send(master);
-    udelay(100);
+    // Einmal senden und warten...
+    ecrt_master_prepare_async_io(master);
 #endif
 
     printk("Starting cyclic sample thread.\n");
