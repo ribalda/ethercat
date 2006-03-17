@@ -394,10 +394,32 @@ void ecrt_domain_process(ec_domain_t *domain /**< Domäne */)
 
 /*****************************************************************************/
 
+/**
+   Gibt den Status einer Domäne zurück.
+
+   \return 0 wenn alle Kommandos empfangen wurden, sonst -1.
+*/
+
+int ecrt_domain_state(ec_domain_t *domain /**< Domäne */)
+{
+    unsigned int i;
+    ec_command_t *command;
+
+    for (i = 0; i < domain->command_count; i++) {
+        command = domain->commands + i;
+        if (command->state != EC_CMD_RECEIVED) return -1;
+    }
+
+    return 0;
+}
+
+/*****************************************************************************/
+
 EXPORT_SYMBOL(ecrt_domain_register_field);
 EXPORT_SYMBOL(ecrt_domain_register_field_list);
 EXPORT_SYMBOL(ecrt_domain_queue);
 EXPORT_SYMBOL(ecrt_domain_process);
+EXPORT_SYMBOL(ecrt_domain_state);
 
 /*****************************************************************************/
 
