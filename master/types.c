@@ -92,7 +92,7 @@ const ec_slave_type_t Beckhoff_EL3102 = {
 };
 
 const ec_slave_type_t Beckhoff_EL3162 = {
-    "Beckhoff", "EL3102", "2x Analog Input", 0,
+    "Beckhoff", "EL3162", "2x Analog Input", 0,
     {&mailbox_sm0, &mailbox_sm1, &el31X2_sm2, &el31X2_sm3, NULL}
 };
 
