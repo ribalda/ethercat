@@ -254,7 +254,7 @@ ec_slave_t *ecrt_domain_register_field(ec_domain_t *domain,
     ec_master_t *master;
     const ec_sync_t *sync;
     const ec_field_t *field;
-    unsigned int field_idx, i, j;
+    unsigned int field_counter, i, j, orig_field_index, orig_field_count;
     uint32_t field_offset;
 
     if (!field_count) {
@@ -281,19 +281,22 @@ ec_slave_t *ecrt_domain_register_field(ec_domain_t *domain,
         return NULL;
     }
 
-    field_idx = 0;
+    orig_field_index = field_index;
+    orig_field_count = field_count;
+
+    field_counter = 0;
     for (i = 0; type->sync_managers[i]; i++) {
         sync = type->sync_managers[i];
         field_offset = 0;
         for (j = 0; sync->fields[j]; j++) {
             field = sync->fields[j];
             if (!strcmp(field->name, field_name)) {
-                if (field_idx == field_index) {
+                if (field_counter++ == field_index) {
                     ec_domain_reg_field(domain, slave, sync, field_offset,
                                         data_ptr++);
                     if (!(--field_count)) return slave;
+                    field_index++;
                 }
-                field_idx++;
             }
             field_offset += field->size;
         }
@@ -301,7 +304,7 @@ ec_slave_t *ecrt_domain_register_field(ec_domain_t *domain,
 
     EC_ERR("Slave %i (\"%s %s\") registration mismatch: Field \"%s\","
            " index %i, count %i.\n", slave->ring_position, vendor_name,
-           product_name, field_name, field_index, field_count);
+           product_name, field_name, orig_field_index, orig_field_count);
     return NULL;
 }
 
