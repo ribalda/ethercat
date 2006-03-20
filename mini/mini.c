@@ -45,7 +45,7 @@ ec_field_init_t domain1_fields[] = {
     {NULL,          "6", "Beckhoff", "EL1014", "InputValue",  0},
     {NULL,          "7", "Beckhoff", "EL2004", "OutputValue", 0},
     {NULL,          "8", "Beckhoff", "EL4132", "OutputValue", 0},
-    {NULL,          "9", "Beckhoff", "EL4132", "OutputValue", 0},
+    {NULL,   "#48879:8", "Beckhoff", "EL4132", "OutputValue", 0},
     {}
 };
 
@@ -143,6 +143,14 @@ int __init init_mini_module(void)
     }
 
     //ecrt_master_debug(master, 0);
+
+#if 0
+    printk(KERN_INFO "Writing alias...\n");
+    if (ecrt_master_write_slave_alias(master, "0", 0xBEEF)) {
+        printk(KERN_ERR "EtherCAT: Failed to write alias!\n");
+        goto out_deactivate;
+    }
+#endif
 
 #ifdef ASYNC
     // Einmal senden und warten...

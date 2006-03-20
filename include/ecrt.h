@@ -69,6 +69,8 @@ int ecrt_master_sdo_read(ec_master_t *master,
                          uint16_t sdo_index,
                          uint8_t sdo_subindex,
                          uint32_t *value);
+int ecrt_master_write_slave_alias(ec_master_t *master,
+                                  const char *slave_address, uint16_t alias);
 
 /*****************************************************************************/
 // Domain Methods

@@ -524,11 +524,13 @@ void ec_master_output_stats(ec_master_t *master /**< EtherCAT-Master */)
    Wandelt eine ASCII-kodierte Bus-Adresse in einen Slave-Zeiger.
 
    Gültige Adress-Strings sind Folgende:
-
    - \a "X" = der X. Slave im Bus,
    - \a "X:Y" = der Y. Slave hinter dem X. Buskoppler,
-   - \a "#X" = der Slave mit der SSID X,
-   - \a "#X:Y" = der Y. Slave hinter dem Buskoppler mit der SSID X.
+   - \a "#X" = der Slave mit dem Alias X,
+   - \a "#X:Y" = der Y. Slave hinter dem Buskoppler mit dem Alias X.
+
+   X und Y fangen immer bei 0 an und können auch hexadezimal oder oktal
+   angegeben werden (mit entsprechendem Prefix).
 
    \return Zeiger auf Slave bei Erfolg, sonst NULL
 */
@@ -541,65 +543,94 @@ ec_slave_t *ec_master_slave_address(const ec_master_t *master,
 {
     unsigned long first, second;
     char *remainder, *remainder2;
-    unsigned int i;
+    unsigned int i, alias_requested, alias_slave_index, alias_found;
     int coupler_idx, slave_idx;
     ec_slave_t *slave;
 
     if (!address || address[0] == 0) return NULL;
 
+    alias_requested = 0;
+    alias_slave_index = 0;
     if (address[0] == '#') {
-        EC_ERR("Bus ID \"%s\" - #<SSID> not implemented yet!\n", address);
-        return NULL;
+        alias_requested = 1;
+        address++;
     }
 
     first = simple_strtoul(address, &remainder, 0);
     if (remainder == address) {
-        EC_ERR("Bus ID \"%s\" - First number empty!\n", address);
+        EC_ERR("Slave address \"%s\" - First number empty!\n", address);
         return NULL;
     }
 
-    if (!remainder[0]) { // absolute position
-        if (first < master->slave_count) {
-            return master->slaves + first;
+    if (alias_requested) {
+        alias_found = 0;
+        for (i = 0; i < master->slave_count; i++) {
+            if (master->slaves[i].sii_alias == first) {
+                alias_slave_index = i;
+                alias_found = 1;
+                break;
+            }
         }
-
-        EC_ERR("Bus ID \"%s\" - Absolute position invalid!\n", address);
+        if (!alias_found) {
+            EC_ERR("Slave address \"%s\" - Alias not found!\n", address);
+            return NULL;
+        }
     }
 
+    if (!remainder[0]) { // absolute position
+        if (alias_requested) {
+            return master->slaves + alias_slave_index;
+        }
+        else {
+            if (first < master->slave_count) {
+                return master->slaves + first;
+            }
+            EC_ERR("Slave address \"%s\" - Absolute position invalid!\n",
+                   address);
+        }
+    }
     else if (remainder[0] == ':') { // field position
-
         remainder++;
         second = simple_strtoul(remainder, &remainder2, 0);
 
         if (remainder2 == remainder) {
-            EC_ERR("Bus ID \"%s\" - Sencond number empty!\n", address);
+            EC_ERR("Slave address \"%s\" - Second number empty!\n", address);
             return NULL;
         }
 
         if (remainder2[0]) {
-            EC_ERR("Bus ID \"%s\" - Invalid trailer (2)!\n", address);
+            EC_ERR("Slave address \"%s\" - Invalid trailer!\n", address);
             return NULL;
         }
 
-        coupler_idx = -1;
-        slave_idx = 0;
-        for (i = 0; i < master->slave_count; i++, slave_idx++) {
-            slave = master->slaves + i;
-            if (!slave->type) continue;
-
-            if (slave->type->bus_coupler) {
-                coupler_idx++;
-                slave_idx = 0;
+        if (alias_requested) {
+            for (i = alias_slave_index + 1; i < master->slave_count; i++) {
+                slave = master->slaves + i;
+                if (!slave->type || slave->type->bus_coupler) break;
+                if (i - alias_slave_index - 1 == second) return slave;
             }
-
-            if (coupler_idx == first && slave_idx == second) return slave;
+            EC_ERR("Slave address \"%s\" - Bus coupler %i has no %lu. slave"
+                   " following!\n", address,
+                   (master->slaves + alias_slave_index)->ring_position,
+                   second);
+            return NULL;
+        }
+        else {
+            coupler_idx = -1;
+            slave_idx = 0;
+            for (i = 0; i < master->slave_count; i++, slave_idx++) {
+                slave = master->slaves + i;
+                if (!slave->type) continue; // FIXME
+                if (slave->type->bus_coupler) {
+                    coupler_idx++;
+                    slave_idx = 0;
+                }
+                if (coupler_idx == first && slave_idx == second) return slave;
+            }
         }
     }
-
     else
-        EC_ERR("Bus ID \"%s\" - Invalid trailer!\n", address);
-
-    // FIXME ???
+        EC_ERR("Slave address \"%s\" - Invalid format!\n", address);
 
     return NULL;
 }
@@ -1030,6 +1061,29 @@ void ecrt_master_print(const ec_master_t *master /**< EtherCAT-Master */)
 
 /*****************************************************************************/
 
+/**
+   Schreibt den "Configured station alias".
+
+   \return 0, wenn alles ok, sonst < 0
+*/
+
+int ecrt_master_write_slave_alias(ec_master_t *master,
+                                  /** EtherCAT-Master */
+                                  const char *slave_address,
+                                  /** Slave-Adresse,
+                                      siehe ec_master_slave_address() */
+                                  uint16_t alias
+                                  /** Neuer Alias */
+                                  )
+{
+    ec_slave_t *slave;
+    if (!(slave = ec_master_slave_address(master, slave_address)))
+        return -1;
+    return ec_slave_sii_write(slave, 0x0004, alias);
+}
+
+/*****************************************************************************/
+
 EXPORT_SYMBOL(ecrt_master_create_domain);
 EXPORT_SYMBOL(ecrt_master_activate);
 EXPORT_SYMBOL(ecrt_master_deactivate);
@@ -1039,6 +1093,7 @@ EXPORT_SYMBOL(ecrt_master_async_send);
 EXPORT_SYMBOL(ecrt_master_async_receive);
 EXPORT_SYMBOL(ecrt_master_debug);
 EXPORT_SYMBOL(ecrt_master_print);
+EXPORT_SYMBOL(ecrt_master_write_slave_alias);
 
 /*****************************************************************************/
 
