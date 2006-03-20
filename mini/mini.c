@@ -29,19 +29,22 @@ ec_master_t *master = NULL;
 ec_domain_t *domain1 = NULL;
 
 // Datenfelder
+void *r_ssi_input, *r_ssi_status;
 void *r_field[9];
 void *r_4102[3];
 
 // Kanäle
 uint32_t k_pos;
+uint8_t k_stat;
 
 ec_field_init_t domain1_fields[] = {
-    {&r_field[0],   "1", "Beckhoff", "EL5001", "InputValue", 0, 1},
+    {&r_ssi_input,  "1", "Beckhoff", "EL5001", "InputValue",  0, 1},
+    {&r_ssi_status, "1", "Beckhoff", "EL5001", "Status",      0, 1},
     {&r_field[1],   "2", "Beckhoff", "EL4132", "OutputValue", 0, 1},
-    {&r_field[2],   "3", "Beckhoff", "EL3162", "InputValue", 0, 1},
-    {r_4102,        "4", "Beckhoff", "EL4102", "OutputValue", 0, 3},
-    {&r_field[4],   "5", "Beckhoff", "EL5001", "InputValue", 0, 1},
-    {&r_field[5],   "6", "Beckhoff", "EL1014", "InputValue", 0, 1},
+    {&r_field[2],   "3", "Beckhoff", "EL3162", "InputValue",  0, 1},
+    {r_4102,        "4", "Beckhoff", "EL4102", "OutputValue", 0, 2},
+    {&r_field[4],   "5", "Beckhoff", "EL5001", "InputValue",  0, 1},
+    {&r_field[5],   "6", "Beckhoff", "EL1014", "InputValue",  0, 1},
     {&r_field[6],   "7", "Beckhoff", "EL2004", "OutputValue", 0, 1},
     {&r_field[7],   "8", "Beckhoff", "EL4132", "OutputValue", 0, 1},
     {&r_field[8],   "9", "Beckhoff", "EL4132", "OutputValue", 0, 1},
@@ -60,7 +63,8 @@ void run(unsigned long data)
     ecrt_domain_process(domain1);
 
     // Prozessdaten verarbeiten
-    //  k_pos   = EC_READ_U32(r_ssi);
+    k_pos   = EC_READ_U32(r_ssi_input);
+    k_stat  = EC_READ_U8(r_ssi_status);
 
     // Prozessdaten senden
     ecrt_domain_queue(domain1);
@@ -80,7 +84,8 @@ void run(unsigned long data)
     }
     else {
         counter = ABTASTFREQUENZ;
-        printk(KERN_INFO "k_pos   = %i\n", k_pos);
+        printk(KERN_INFO "k_pos    = %i\n", k_pos);
+        printk(KERN_INFO "k_stat   = 0x%02X\n", k_stat);
     }
 
     // Timer neu starten
@@ -123,6 +128,23 @@ int __init init_mini_module(void)
         goto out_release_master;
     }
 
+    //ecrt_master_debug(master, 2);
+
+    if (ecrt_master_sdo_write(master, "1", 0x4061, 1,  0, 1) ||
+        ecrt_master_sdo_write(master, "1", 0x4061, 2,  1, 1) ||
+        ecrt_master_sdo_write(master, "1", 0x4061, 3,  1, 1) ||
+        ecrt_master_sdo_write(master, "1", 0x4066, 0,  0, 1) ||
+        ecrt_master_sdo_write(master, "1", 0x4067, 0,  4, 1) ||
+        ecrt_master_sdo_write(master, "1", 0x4068, 0,  0, 1) ||
+        ecrt_master_sdo_write(master, "1", 0x4069, 0, 25, 1) ||
+        ecrt_master_sdo_write(master, "1", 0x406A, 0, 25, 1) ||
+        ecrt_master_sdo_write(master, "1", 0x406B, 0, 50, 1)) {
+        printk(KERN_ERR "EtherCAT: Failed to configure SSI!\n");
+        goto out_deactivate;
+    }
+
+    //ecrt_master_debug(master, 0);
+
 #ifdef ASYNC
     // Einmal senden und warten...
     ecrt_master_prepare_async_io(master);
@@ -139,11 +161,14 @@ int __init init_mini_module(void)
 
     return 0;
 
+ out_deactivate:
+    ecrt_master_deactivate(master);
+
  out_release_master:
-  ecrt_release_master(master);
+    ecrt_release_master(master);
 
  out_return:
-  return -1;
+    return -1;
 }
 
 /*****************************************************************************/

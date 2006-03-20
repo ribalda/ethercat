@@ -564,7 +564,7 @@ ec_slave_t *ec_master_slave_address(const ec_master_t *master,
             return master->slaves + first;
         }
 
-        EC_ERR("Bus ID \"%s\" - Absolute position illegal!\n", address);
+        EC_ERR("Bus ID \"%s\" - Absolute position invalid!\n", address);
     }
 
     else if (remainder[0] == ':') { // field position
@@ -578,7 +578,7 @@ ec_slave_t *ec_master_slave_address(const ec_master_t *master,
         }
 
         if (remainder2[0]) {
-            EC_ERR("Bus ID \"%s\" - Illegal trailer (2)!\n", address);
+            EC_ERR("Bus ID \"%s\" - Invalid trailer (2)!\n", address);
             return NULL;
         }
 
@@ -598,7 +598,7 @@ ec_slave_t *ec_master_slave_address(const ec_master_t *master,
     }
 
     else
-        EC_ERR("Bus ID \"%s\" - Illegal trailer!\n", address);
+        EC_ERR("Bus ID \"%s\" - Invalid trailer!\n", address);
 
     // FIXME ???
 

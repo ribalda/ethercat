@@ -74,7 +74,7 @@ int __init ec_init_module(void)
     EC_INFO("Master driver, %s\n", COMPILE_INFO);
 
     if (ec_master_count < 1) {
-        EC_ERR("Error - Illegal ec_master_count: %i\n", ec_master_count);
+        EC_ERR("Error - Invalid ec_master_count: %i\n", ec_master_count);
         return -1;
     }
 
