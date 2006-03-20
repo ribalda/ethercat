@@ -1031,6 +1031,7 @@ void ecrt_master_print(const ec_master_t *master /**< EtherCAT-Master */)
 EXPORT_SYMBOL(ecrt_master_create_domain);
 EXPORT_SYMBOL(ecrt_master_activate);
 EXPORT_SYMBOL(ecrt_master_deactivate);
+EXPORT_SYMBOL(ecrt_master_prepare_async_io);
 EXPORT_SYMBOL(ecrt_master_sync_io);
 EXPORT_SYMBOL(ecrt_master_async_send);
 EXPORT_SYMBOL(ecrt_master_async_receive);

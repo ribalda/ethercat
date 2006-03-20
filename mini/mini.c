@@ -29,13 +29,22 @@ ec_master_t *master = NULL;
 ec_domain_t *domain1 = NULL;
 
 // Datenfelder
-void *r_ssi;
+void *r_field[9];
+void *r_4102[3];
 
 // Kanäle
 uint32_t k_pos;
 
 ec_field_init_t domain1_fields[] = {
-    {&r_ssi,   "1", "Beckhoff", "EL5001", "InputValue", 0, 1},
+    {&r_field[0],   "1", "Beckhoff", "EL5001", "InputValue", 0, 1},
+    {&r_field[1],   "2", "Beckhoff", "EL4132", "OutputValue", 0, 1},
+    {&r_field[2],   "3", "Beckhoff", "EL3162", "InputValue", 0, 1},
+    {r_4102,        "4", "Beckhoff", "EL4102", "OutputValue", 0, 3},
+    {&r_field[4],   "5", "Beckhoff", "EL5001", "InputValue", 0, 1},
+    {&r_field[5],   "6", "Beckhoff", "EL1014", "InputValue", 0, 1},
+    {&r_field[6],   "7", "Beckhoff", "EL2004", "OutputValue", 0, 1},
+    {&r_field[7],   "8", "Beckhoff", "EL4132", "OutputValue", 0, 1},
+    {&r_field[8],   "9", "Beckhoff", "EL4132", "OutputValue", 0, 1},
     {}
 };
 
@@ -51,7 +60,7 @@ void run(unsigned long data)
     ecrt_domain_process(domain1);
 
     // Prozessdaten verarbeiten
-    k_pos   = EC_READ_U32(r_ssi);
+    //  k_pos   = EC_READ_U32(r_ssi);
 
     // Prozessdaten senden
     ecrt_domain_queue(domain1);
@@ -90,7 +99,7 @@ int __init init_mini_module(void)
         goto out_return;
     }
 
-    //ecrt_master_print(master);
+    ecrt_master_print(master);
 
     printk(KERN_INFO "Registering domain...\n");
 
