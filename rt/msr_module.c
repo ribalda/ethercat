@@ -66,12 +66,12 @@ uint32_t k_postio;
 uint32_t k_finished;
 
 ec_field_init_t domain1_fields[] = {
-    {&r_ssi,  "1", "Beckhoff", "EL5001", "InputValue", 0, 1},
+    {&r_ssi,  "1", "Beckhoff", "EL5001", "InputValue", 0},
     {}
 };
 
 ec_field_init_t domain2_fields[] = {
-    {&r_ssi2,  "1", "Beckhoff", "EL5001", "InputValue", 0, 1},
+    {&r_ssi2,  "1", "Beckhoff", "EL5001", "InputValue", 0},
     {}
 };
 

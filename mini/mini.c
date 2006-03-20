@@ -29,25 +29,23 @@ ec_master_t *master = NULL;
 ec_domain_t *domain1 = NULL;
 
 // Datenfelder
-void *r_ssi_input, *r_ssi_status;
-void *r_field[9];
-void *r_4102[3];
+void *r_ssi_input, *r_ssi_status, *r_4102[3];
 
 // Kanäle
 uint32_t k_pos;
 uint8_t k_stat;
 
 ec_field_init_t domain1_fields[] = {
-    {&r_ssi_input,  "1", "Beckhoff", "EL5001", "InputValue",  0, 1},
-    {&r_ssi_status, "1", "Beckhoff", "EL5001", "Status",      0, 1},
-    {&r_field[1],   "2", "Beckhoff", "EL4132", "OutputValue", 0, 1},
-    {&r_field[2],   "3", "Beckhoff", "EL3162", "InputValue",  0, 1},
+    {&r_ssi_input,  "1", "Beckhoff", "EL5001", "InputValue",  0},
+    {&r_ssi_status, "1", "Beckhoff", "EL5001", "Status",      0},
+    {NULL,          "2", "Beckhoff", "EL4132", "OutputValue", 0},
+    {NULL,          "3", "Beckhoff", "EL3162", "InputValue",  0},
     {r_4102,        "4", "Beckhoff", "EL4102", "OutputValue", 0, 2},
-    {&r_field[4],   "5", "Beckhoff", "EL5001", "InputValue",  0, 1},
-    {&r_field[5],   "6", "Beckhoff", "EL1014", "InputValue",  0, 1},
-    {&r_field[6],   "7", "Beckhoff", "EL2004", "OutputValue", 0, 1},
-    {&r_field[7],   "8", "Beckhoff", "EL4132", "OutputValue", 0, 1},
-    {&r_field[8],   "9", "Beckhoff", "EL4132", "OutputValue", 0, 1},
+    {NULL,          "5", "Beckhoff", "EL5001", "InputValue",  0},
+    {NULL,          "6", "Beckhoff", "EL1014", "InputValue",  0},
+    {NULL,          "7", "Beckhoff", "EL2004", "OutputValue", 0},
+    {NULL,          "8", "Beckhoff", "EL4132", "OutputValue", 0},
+    {NULL,          "9", "Beckhoff", "EL4132", "OutputValue", 0},
     {}
 };
 
@@ -58,7 +56,7 @@ void run(unsigned long data)
     static unsigned int counter = 0;
 
 #ifdef ASYNC
-    // Prozessdaten emfpangen
+    // Prozessdaten empfangen
     ecrt_master_async_receive(master);
     ecrt_domain_process(domain1);
 
@@ -70,13 +68,14 @@ void run(unsigned long data)
     ecrt_domain_queue(domain1);
     ecrt_master_async_send(master);
 #else
-    // Prozessdaten senden und emfpangen
+    // Prozessdaten senden und empfangen
     ecrt_domain_queue(domain1);
     ecrt_master_sync_io(master);
     ecrt_domain_process(domain1);
 
     // Prozessdaten verarbeiten
-    k_pos   = EC_READ_U32(r_ssi);
+    k_pos   = EC_READ_U32(r_ssi_input);
+    k_stat  = EC_READ_U8(r_ssi_status);
 #endif
 
     if (counter) {

@@ -122,7 +122,7 @@ int ec_domain_alloc(ec_domain_t *domain, /**< Domäne */
     ec_field_reg_t *field_reg;
     ec_slave_t *slave;
     ec_fmmu_t *fmmu;
-    unsigned int i, j, found;
+    unsigned int i, j;
     uint32_t data_offset;
 
     if (domain->data) {
@@ -163,21 +163,14 @@ int ec_domain_alloc(ec_domain_t *domain, /**< Domäne */
 
     // Alle Prozessdatenzeiger setzen
     list_for_each_entry(field_reg, &domain->field_regs, list) {
-        found = 0;
         for (i = 0; i < field_reg->slave->fmmu_count; i++) {
             fmmu = &field_reg->slave->fmmus[i];
             if (fmmu->domain == domain && fmmu->sync == field_reg->sync) {
                 data_offset = fmmu->logical_start_address - base_address
                     + field_reg->field_offset;
                 *field_reg->data_ptr = domain->data + data_offset;
-                found = 1;
                 break;
             }
-        }
-
-        if (!found) { // Sollte nie passieren
-            EC_ERR("FMMU not found. Please report!\n");
-            return -1;
         }
     }
 
@@ -224,6 +217,12 @@ void ec_domain_response_count(ec_domain_t *domain, /**< Domäne */
 /**
    Registriert ein Datenfeld innerhalb einer Domäne.
 
+   - Ist \a data_ptr NULL, so wird der Slave nur auf den Typ überprüft.
+   - Wenn \a field_count 0 ist, wird angenommen, dass 1 Feld registriert werden
+     soll.
+   - Wenn \a field_count größer als 1 ist, wird angenommen, dass \a data_ptr
+     auf ein entsprechend großes Array zeigt.
+
    \return Zeiger auf den Slave bei Erfolg, sonst NULL
 */
 
@@ -257,11 +256,6 @@ ec_slave_t *ecrt_domain_register_field(ec_domain_t *domain,
     unsigned int field_counter, i, j, orig_field_index, orig_field_count;
     uint32_t field_offset;
 
-    if (!field_count) {
-        EC_ERR("field_count may not be 0!\n");
-        return NULL;
-    }
-
     master = domain->master;
 
     // Adresse übersetzen
@@ -281,6 +275,12 @@ ec_slave_t *ecrt_domain_register_field(ec_domain_t *domain,
         return NULL;
     }
 
+    if (!data_ptr) {
+        // Wenn data_ptr NULL, Slave als registriert ansehen (nicht warnen).
+        slave->registered = 1;
+    }
+
+    if (!field_count) field_count = 1;
     orig_field_index = field_index;
     orig_field_count = field_count;
 
@@ -292,8 +292,9 @@ ec_slave_t *ecrt_domain_register_field(ec_domain_t *domain,
             field = sync->fields[j];
             if (!strcmp(field->name, field_name)) {
                 if (field_counter++ == field_index) {
-                    ec_domain_reg_field(domain, slave, sync, field_offset,
-                                        data_ptr++);
+                    if (data_ptr)
+                        ec_domain_reg_field(domain, slave, sync, field_offset,
+                                            data_ptr++);
                     if (!(--field_count)) return slave;
                     field_index++;
                 }
@@ -326,7 +327,7 @@ int ecrt_domain_register_field_list(ec_domain_t *domain,
 {
     ec_field_init_t *field;
 
-    for (field = fields; field->data_ptr; field++)
+    for (field = fields; field->slave_address; field++)
         if (!ecrt_domain_register_field(domain, field->slave_address,
                                         field->vendor_name,
                                         field->product_name, field->data_ptr,
