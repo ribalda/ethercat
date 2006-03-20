@@ -43,9 +43,9 @@ ec_field_init_t domain1_fields[] = {
     {r_4102,        "4", "Beckhoff", "EL4102", "OutputValue", 0, 2},
     {NULL,          "5", "Beckhoff", "EL5001", "InputValue",  0},
     {NULL,          "6", "Beckhoff", "EL1014", "InputValue",  0},
-    {NULL,          "7", "Beckhoff", "EL2004", "OutputValue", 0},
+    {NULL,  "#0xBEEF:7", "Beckhoff", "EL2004", "OutputValue", 0},
     {NULL,          "8", "Beckhoff", "EL4132", "OutputValue", 0},
-    {NULL,   "#48879:8", "Beckhoff", "EL4132", "OutputValue", 0},
+    {NULL,   "#48879:9", "Beckhoff", "EL4132", "OutputValue", 0},
     {}
 };
 

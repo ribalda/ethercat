@@ -607,7 +607,7 @@ ec_slave_t *ec_master_slave_address(const ec_master_t *master,
             for (i = alias_slave_index + 1; i < master->slave_count; i++) {
                 slave = master->slaves + i;
                 if (!slave->type || slave->type->bus_coupler) break;
-                if (i - alias_slave_index - 1 == second) return slave;
+                if (i - alias_slave_index == second) return slave;
             }
             EC_ERR("Slave address \"%s\" - Bus coupler %i has no %lu. slave"
                    " following!\n", address,
@@ -620,7 +620,7 @@ ec_slave_t *ec_master_slave_address(const ec_master_t *master,
             slave_idx = 0;
             for (i = 0; i < master->slave_count; i++, slave_idx++) {
                 slave = master->slaves + i;
-                if (!slave->type) continue; // FIXME
+                if (!slave->type) continue;
                 if (slave->type->bus_coupler) {
                     coupler_idx++;
                     slave_idx = 0;
