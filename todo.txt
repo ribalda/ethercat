@@ -8,7 +8,6 @@ $Id$
 - SysFS-Interface implementieren
 - SDO Dictionary der Slaves auslesen und im SysFS darstellen
 - Typeninformation aus Master entfernen / XML-Dateien aus User-Space lesen
-- Secondary Slave Address ins EEPROM schreiben/lesen
 - Seltsame CRC-Counter untersuchen und Herrn Kümmel mailen
 - DLL-Link-States auslesen und Topologie berechnen
 - Ethernet over EtherCAT (EoE)
