@@ -11,6 +11,12 @@
 
 #include <asm/byteorder.h>
 
+#ifdef __KERNEL__
+#include <linux/types.h>
+#else
+#include <stdint.h>
+#endif
+
 /*****************************************************************************/
 
 struct ec_master;
