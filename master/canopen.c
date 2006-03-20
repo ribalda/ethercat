@@ -194,8 +194,10 @@ int ecrt_slave_sdo_read(ec_slave_t *slave, /**< EtherCAT-Slave */
     start = get_cycles();
     timeout = cpu_khz; // 1ms
 
-    do
+    while (1)
     {
+        udelay(10);
+
         ec_command_init_nprd(&command, slave->station_address, 0x808, 8);
         if (unlikely(ec_master_simple_io(master, &command))) {
             EC_ERR("Mailbox checking failed on slave %i!\n",
@@ -208,12 +210,12 @@ int ecrt_slave_sdo_read(ec_slave_t *slave, /**< EtherCAT-Slave */
         if (EC_READ_U8(command.data + 5) & 8) { // Written bit is high
             break;
         }
-    }
-    while (likely((end - start) < timeout));
 
-    if (unlikely((end - start) >= timeout)) {
-        EC_ERR("Mailbox check on slave %i timed out.\n", slave->ring_position);
-        return -1;
+        if (unlikely((end - start) >= timeout)) {
+            EC_ERR("Mailbox check on slave %i timed out.\n",
+                   slave->ring_position);
+            return -1;
+        }
     }
 
     ec_command_init_nprd(&command, slave->station_address, 0x18F6, 0xF6);

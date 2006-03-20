@@ -152,8 +152,10 @@ int ec_slave_sii_read(ec_slave_t *slave,
     start = get_cycles();
     timeout = cpu_khz; // 1ms
 
-    do
+    while (1)
     {
+        udelay(10);
+
         ec_command_init_nprd(&command, slave->station_address, 0x502, 10);
         if (unlikely(ec_master_simple_io(slave->master, &command))) {
             EC_ERR("Getting SII-read status failed on slave %i!\n",
@@ -165,17 +167,14 @@ int ec_slave_sii_read(ec_slave_t *slave,
 
         if (likely((EC_READ_U8(command.data + 1) & 0x81) == 0)) {
             memcpy(target, command.data + 6, 4);
-            break;
+            return 0;
+        }
+
+        if (unlikely((end - start) >= timeout)) {
+            EC_ERR("SSI-read. Slave %i timed out!\n", slave->ring_position);
+            return -1;
         }
     }
-    while (likely((end - start) < timeout));
-
-    if (unlikely((end - start) >= timeout)) {
-        EC_ERR("SSI-read. Slave %i timed out!\n", slave->ring_position);
-        return -1;
-    }
-
-    return 0;
 }
 
 /*****************************************************************************/
@@ -208,8 +207,10 @@ void ec_slave_state_ack(ec_slave_t *slave,
     start = get_cycles();
     timeout = cpu_khz; // 1ms
 
-    do
+    while (1)
     {
+        udelay(100); // Dem Slave etwas Zeit lassen...
+
         ec_command_init_nprd(&command, slave->station_address, 0x0130, 2);
         if (unlikely(ec_master_simple_io(slave->master, &command))) {
             EC_WARN("State %02X acknowledge checking failed on slave %i!\n",
@@ -231,13 +232,12 @@ void ec_slave_state_ack(ec_slave_t *slave,
                     slave->ring_position);
             return;
         }
-    }
-    while (likely((end - start) < timeout));
 
-    if (unlikely((end - start) >= timeout)) {
-        EC_WARN("Could not check state acknowledgement %02X of slave %i -"
-                " Timeout while checking!\n", state, slave->ring_position);
-        return;
+        if (unlikely((end - start) >= timeout)) {
+            EC_WARN("Could not check state acknowledgement %02X of slave %i -"
+                    " Timeout while checking!\n", state, slave->ring_position);
+            return;
+        }
     }
 }
 
@@ -271,7 +271,7 @@ int ec_slave_state_change(ec_slave_t *slave,
     start = get_cycles();
     timeout = cpu_khz; // 1ms
 
-    do
+    while (1)
     {
         udelay(100); // Dem Slave etwas Zeit lassen...
 
@@ -294,18 +294,15 @@ int ec_slave_state_change(ec_slave_t *slave,
 
         if (likely(EC_READ_U8(command.data) == (state & 0x0F))) {
             // State change successful
-            break;
+            return 0;
+        }
+
+        if (unlikely((end - start) >= timeout)) {
+            EC_ERR("Could not check state %02X of slave %i - Timeout!\n",
+                   state, slave->ring_position);
+            return -1;
         }
     }
-    while (likely((end - start) < timeout));
-
-    if (unlikely((end - start) >= timeout)) {
-        EC_ERR("Could not check state %02X of slave %i - Timeout!\n", state,
-               slave->ring_position);
-        return -1;
-    }
-
-    return 0;
 }
 
 /*****************************************************************************/

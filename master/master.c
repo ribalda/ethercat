@@ -369,13 +369,15 @@ int ec_master_simple_io(ec_master_t *master, /**< EtherCAT-Master */
     unsigned int response_tries_left;
 
     response_tries_left = 10;
-    do
+
+    while (1)
     {
         ec_master_queue_command(master, command);
         ecrt_master_sync_io(master);
 
         if (command->state == EC_CMD_RECEIVED) {
-            break;
+            if (likely(command->working_counter))
+                return 0;
         }
         else if (command->state == EC_CMD_TIMEOUT) {
             EC_ERR("Simple-IO TIMEOUT!\n");
@@ -388,15 +390,12 @@ int ec_master_simple_io(ec_master_t *master, /**< EtherCAT-Master */
 
         // Keine direkte Antwort. Dem Slave Zeit lassen...
         udelay(10);
-    }
-    while (unlikely(!command->working_counter && --response_tries_left));
 
-    if (unlikely(!response_tries_left)) {
-        EC_ERR("No response in simple-IO!\n");
-        return -1;
+        if (unlikely(--response_tries_left)) {
+            EC_ERR("No response in simple-IO!\n");
+            return -1;
+        }
     }
-
-    return 0;
 }
 
 /*****************************************************************************/
@@ -860,7 +859,8 @@ void ecrt_master_sync_io(ec_master_t *master)
     t_start = get_cycles(); // Sendezeit nehmen
     t_timeout = master->timeout * cpu_khz / 1000;
 
-    do {
+    while (1)
+    {
         ec_device_call_isr(master->device);
 
         t_end = get_cycles(); // Aktuelle Zeit nehmen
@@ -873,7 +873,9 @@ void ecrt_master_sync_io(ec_master_t *master)
             else if (command->state == EC_CMD_SENT)
                 commands_sent++;
         }
-    } while (commands_sent);
+
+        if (!commands_sent) break;
+    }
 
     // Zeit abgelaufen. Alle verbleibenden Kommandos entfernen.
     list_for_each_entry_safe(command, next, &master->commands, list) {
@@ -983,10 +985,10 @@ void ecrt_master_prepare_async_io(ec_master_t *master)
     t_timeout = master->timeout * cpu_khz / 1000;
 
     // Aktiv warten!
-    do {
+    while (1) {
         t_end = get_cycles();
+        if (t_end - t_start >= t_timeout) break;
     }
-    while (t_end - t_start < t_timeout);
 }
 
 /*****************************************************************************/
