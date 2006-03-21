@@ -1,13 +1,13 @@
 /******************************************************************************
  *
- * Oeffentliche EtherCAT-Schnittstellen fuer Echtzeitprozesse.
+ *  Oeffentliche EtherCAT-Schnittstellen fuer Echtzeitprozesse.
  *
- * $Id$
+ *  $Id$
  *
  *****************************************************************************/
 
-#ifndef _ETHERCAT_RT_H_
-#define _ETHERCAT_RT_H_
+#ifndef __ECRT_H__
+#define __ECRT_H__
 
 #include <asm/byteorder.h>
 
