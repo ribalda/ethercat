@@ -888,7 +888,7 @@ void ecrt_master_sync_io(ec_master_t *master)
     ec_master_send_commands(master);
 
     t_start = get_cycles(); // Sendezeit nehmen
-    t_timeout = (cycles_t) master->timeout * cpu_khz / 1000;
+    t_timeout = (cycles_t) master->timeout * (cpu_khz / 1000);
 
     while (1)
     {
@@ -1013,7 +1013,7 @@ void ecrt_master_prepare_async_io(ec_master_t *master)
     ecrt_master_async_send(master);
 
     t_start = get_cycles(); // Sendezeit nehmen
-    t_timeout = (cycles_t) master->timeout * cpu_khz / 1000;
+    t_timeout = (cycles_t) master->timeout * (cpu_khz / 1000);
 
     // Aktiv warten!
     while (1) {
