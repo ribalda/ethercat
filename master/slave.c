@@ -179,7 +179,7 @@ int ec_slave_sii_read(ec_slave_t *slave,
     // den Status auslesen, bis das Bit weg ist.
 
     start = get_cycles();
-    timeout = cpu_khz; // 1ms
+    timeout = (cycles_t) 100 * cpu_khz; // 100ms
 
     while (1)
     {
@@ -248,7 +248,7 @@ int ec_slave_sii_write(ec_slave_t *slave,
     // den Status auslesen, bis das Bit weg ist.
 
     start = get_cycles();
-    timeout = cpu_khz; // 1ms
+    timeout = (cycles_t) 100 * cpu_khz; // 100ms
 
     while (1)
     {
@@ -504,7 +504,7 @@ void ec_slave_state_ack(ec_slave_t *slave,
     }
 
     start = get_cycles();
-    timeout = cpu_khz; // 1ms
+    timeout = (cycles_t) 10 * cpu_khz; // 10ms
 
     while (1)
     {
@@ -568,7 +568,7 @@ int ec_slave_state_change(ec_slave_t *slave,
     }
 
     start = get_cycles();
-    timeout = cpu_khz; // 1ms
+    timeout = (cycles_t) 10 * cpu_khz; // 10ms
 
     while (1)
     {
