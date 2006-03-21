@@ -162,7 +162,7 @@ int ec_slave_sii_read(ec_slave_t *slave,
                       uint16_t offset,
                       /**< Adresse des zu lesenden SII-Registers */
                       uint32_t *target
-                      /**< Zeiger auf einen 4 Byte groÂßen Speicher zum Ablegen
+                      /**< Zeiger auf einen 4 Byte großen Speicher zum Ablegen
                          der Daten */
                       )
 {
