@@ -101,9 +101,9 @@ struct ec_slave
 
     struct list_head eeprom_strings; /**< Strings im EEPROM */
 
-    const char *eeprom_name; /**< Slave-Name laut Hersteller */
-    const char *eeprom_group; /**< Slave-Beschreibung laut Hersteller */
-    const char *eeprom_desc; /**< Slave-Beschreibung laut Hersteller */
+    char *eeprom_name; /**< Slave-Name laut Hersteller */
+    char *eeprom_group; /**< Slave-Beschreibung laut Hersteller */
+    char *eeprom_desc; /**< Slave-Beschreibung laut Hersteller */
 };
 
 /*****************************************************************************/

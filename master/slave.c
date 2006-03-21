@@ -2,7 +2,7 @@
  *
  *  s l a v e . c
  *
- *  Methoden fŽür einen EtherCAT-Slave.
+ *  Methoden für einen EtherCAT-Slave.
  *
  *  $Id$
  *
@@ -20,11 +20,12 @@
 
 int ec_slave_fetch_categories(ec_slave_t *);
 int ec_slave_fetch_strings(ec_slave_t *, const uint8_t *);
-void ec_slave_fetch_general(ec_slave_t *, const uint8_t *);
+int ec_slave_fetch_general(ec_slave_t *, const uint8_t *);
 void ec_slave_fetch_fmmu(ec_slave_t *, const uint8_t *);
 void ec_slave_fetch_sync(ec_slave_t *, const uint8_t *);
 void ec_slave_fetch_txpdo(ec_slave_t *, const uint8_t *);
 void ec_slave_fetch_rxpdo(ec_slave_t *, const uint8_t *);
+int ec_slave_locate_string(ec_slave_t *, unsigned int, char **);
 
 /*****************************************************************************/
 
@@ -161,7 +162,7 @@ int ec_slave_sii_read(ec_slave_t *slave,
                       uint16_t offset,
                       /**< Adresse des zu lesenden SII-Registers */
                       uint32_t *target
-                      /**< Zeiger auf einen 4 Byte groŽßen Speicher zum Ablegen
+                      /**< Zeiger auf einen 4 Byte groÂŽßen Speicher zum Ablegen
                          der Daten */
                       )
 {
@@ -316,8 +317,7 @@ int ec_slave_fetch_categories(ec_slave_t *slave /**< EtherCAT-Slave */)
         // read category header
         if (ec_slave_sii_read(slave, word_offset, &value)) {
             EC_ERR("Unable to read category header and size.\n");
-            kfree(cat_data);
-            return -1;
+            goto out_free;
         }
 
         // Last category?
@@ -330,8 +330,7 @@ int ec_slave_fetch_categories(ec_slave_t *slave /**< EtherCAT-Slave */)
         for (i = 0; i < word_count; i++) {
             if (ec_slave_sii_read(slave, word_offset + 2 + i, &value)) {
                 EC_ERR("Unable to read category data word %i.\n", i);
-                kfree(cat_data);
-                return -1;
+                goto out_free;
             }
 
             cat_data[i * 2]     = (value >> 0) & 0xFF;
@@ -348,14 +347,13 @@ int ec_slave_fetch_categories(ec_slave_t *slave /**< EtherCAT-Slave */)
         switch (header)
         {
             case 0x000A:
-                if (ec_slave_fetch_strings(slave, cat_data)) {
-                    kfree(cat_data);
-                    return -1;
-                }
+                if (ec_slave_fetch_strings(slave, cat_data))
+                    goto out_free;
                 break;
             case 0x001E:
             case 0x0001:
-                ec_slave_fetch_general(slave, cat_data);
+                if (ec_slave_fetch_general(slave, cat_data))
+                    goto out_free;
                 break;
             case 0x0028:
             case 0x0002:
@@ -383,6 +381,10 @@ int ec_slave_fetch_categories(ec_slave_t *slave /**< EtherCAT-Slave */)
 
     kfree(cat_data);
     return 0;
+
+ out_free:
+    kfree(cat_data);
+    return -1;
 }
 
 /*****************************************************************************/
@@ -430,10 +432,18 @@ int ec_slave_fetch_strings(ec_slave_t *slave, /**< EtherCAT-Slave */
    Holt die Daten einer General-Kategorie.
 */
 
-void ec_slave_fetch_general(ec_slave_t *slave, /**< EtherCAT-Slave */
-                            const uint8_t *data /**< Kategorie-Daten */
-                            )
+int ec_slave_fetch_general(ec_slave_t *slave, /**< EtherCAT-Slave */
+                           const uint8_t *data /**< Kategorie-Daten */
+                           )
 {
+    if (ec_slave_locate_string(slave, data[0], &slave->eeprom_group))
+        return -1;
+    if (ec_slave_locate_string(slave, data[1], &slave->eeprom_name))
+        return -1;
+    if (ec_slave_locate_string(slave, data[3], &slave->eeprom_desc))
+        return -1;
+
+    return 0;
 }
 
 /*****************************************************************************/
@@ -482,6 +492,37 @@ void ec_slave_fetch_rxpdo(ec_slave_t *slave, /**< EtherCAT-Slave */
                           const uint8_t *data /**< Kategorie-Daten */
                           )
 {
+}
+
+/*****************************************************************************/
+
+/**
+   Durchsucht die temporären Strings und dupliziert den gefundenen String.
+*/
+
+int ec_slave_locate_string(ec_slave_t *slave, unsigned int index, char **ptr)
+{
+    ec_slave_string_t *string;
+
+    if (*ptr) {
+        kfree(*ptr);
+        *ptr = NULL;
+    }
+
+    if (!index) return 0;
+
+    list_for_each_entry(string, &slave->eeprom_strings, list) {
+        if (!(--index)) {
+            if (!(*ptr = (char *) kmalloc(string->size + 1, GFP_KERNEL))) {
+                EC_ERR("Unable to allocate string memory.\n");
+                return -1;
+            }
+            memcpy(*ptr, string->data, string->size + 1);
+            break;
+        }
+    }
+
+    return 0;
 }
 
 /*****************************************************************************/
@@ -663,45 +704,47 @@ int ec_slave_set_fmmu(ec_slave_t *slave, /**< EtherCAT-Slave */
 
 void ec_slave_print(const ec_slave_t *slave /**< EtherCAT-Slave */)
 {
-    EC_INFO("--- EtherCAT slave information ---\n");
+    EC_INFO("x-- EtherCAT slave information ---------------\n");
 
     if (slave->type) {
-        EC_INFO("  Vendor \"%s\", Product \"%s\": %s\n",
+        EC_INFO("| Vendor \"%s\", Product \"%s\": %s\n",
                 slave->type->vendor_name, slave->type->product_name,
                 slave->type->description);
     }
     else {
-        EC_INFO("  *** This slave has no type information! ***\n");
+        EC_INFO("| *** This slave has no type information! ***\n");
     }
 
-    EC_INFO("  Ring position: %i, Station address: 0x%04X\n",
+    EC_INFO("| Ring position: %i, Station address: 0x%04X\n",
             slave->ring_position, slave->station_address);
 
-    EC_INFO("  Base information:\n");
-    EC_INFO("    Type %u, Revision %i, Build %i\n",
+    EC_INFO("| Base information:\n");
+    EC_INFO("|   Type %u, Revision %i, Build %i\n",
             slave->base_type, slave->base_revision, slave->base_build);
-    EC_INFO("    Supported FMMUs: %i, Sync managers: %i\n",
+    EC_INFO("|   Supported FMMUs: %i, Sync managers: %i\n",
             slave->base_fmmu_count, slave->base_sync_count);
 
-    EC_INFO("  EEPROM data:\n");
-    EC_INFO("    Configured station alias: 0x%04X (%i)\n", slave->sii_alias,
-            slave->sii_alias);
-    EC_INFO("    Vendor-ID: 0x%08X, Product code: 0x%08X\n",
+    EC_INFO("| EEPROM data:\n");
+    if (slave->sii_alias)
+        EC_INFO("|   Configured station alias: 0x%04X (%i)\n",
+                slave->sii_alias, slave->sii_alias);
+    EC_INFO("|   Vendor-ID: 0x%08X, Product code: 0x%08X\n",
             slave->sii_vendor_id, slave->sii_product_code);
-    EC_INFO("    Revision number: 0x%08X, Serial number: 0x%08X\n",
+    EC_INFO("|   Revision number: 0x%08X, Serial number: 0x%08X\n",
             slave->sii_revision_number, slave->sii_serial_number);
     if (slave->eeprom_name)
-        EC_INFO("    Name: %s\n", slave->eeprom_name);
+        EC_INFO("|   Name: %s\n", slave->eeprom_name);
     if (slave->eeprom_group)
-        EC_INFO("    Group: %s\n", slave->eeprom_group);
+        EC_INFO("|   Group: %s\n", slave->eeprom_group);
     if (slave->eeprom_desc)
-        EC_INFO("    Description: %s\n", slave->eeprom_desc);
+        EC_INFO("|   Description: %s\n", slave->eeprom_desc);
+    EC_INFO("x---------------------------------------------\n");
 }
 
 /*****************************************************************************/
 
 /**
-   Gibt die ZŽählerstände der CRC-Fault-Counter aus und setzt diese zurück.
+   Gibt die Zählerstände der CRC-Fault-Counter aus und setzt diese zurück.
 
    \return 0 bei Erfolg, sonst < 0
 */
