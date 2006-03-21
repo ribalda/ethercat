@@ -58,6 +58,7 @@ ec_fmmu_t;
 typedef struct
 {
     struct list_head list;
+    size_t size;
     char *data;
 }
 ec_slave_string_t;
@@ -98,7 +99,11 @@ struct ec_slave
     ec_fmmu_t fmmus[EC_MAX_FMMUS]; /**< FMMU-Konfigurationen */
     uint8_t fmmu_count; /**< Wieviele FMMUs schon benutzt sind. */
 
-    struct list_head cat_strings; /**< Strings im EEPROM */
+    struct list_head eeprom_strings; /**< Strings im EEPROM */
+
+    const char *eeprom_name; /**< Slave-Name laut Hersteller */
+    const char *eeprom_group; /**< Slave-Beschreibung laut Hersteller */
+    const char *eeprom_desc; /**< Slave-Beschreibung laut Hersteller */
 };
 
 /*****************************************************************************/

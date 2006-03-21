@@ -2,7 +2,7 @@
  *
  *  s l a v e . c
  *
- *  Methoden für einen EtherCAT-Slave.
+ *  Methoden fŽür einen EtherCAT-Slave.
  *
  *  $Id$
  *
@@ -53,7 +53,10 @@ void ec_slave_init(ec_slave_t *slave, /**< EtherCAT-Slave */
     slave->registered = 0;
     slave->fmmu_count = 0;
 
-    INIT_LIST_HEAD(&slave->cat_strings);
+    INIT_LIST_HEAD(&slave->eeprom_strings);
+    slave->eeprom_name = NULL;
+    slave->eeprom_group = NULL;
+    slave->eeprom_desc = NULL;
 }
 
 /*****************************************************************************/
@@ -67,16 +70,20 @@ void ec_slave_clear(ec_slave_t *slave /**< EtherCAT-Slave */)
     ec_slave_string_t *string, *next;
 
     // Alle Strings freigeben
-    list_for_each_entry_safe(string, next, &slave->cat_strings, list) {
+    list_for_each_entry_safe(string, next, &slave->eeprom_strings, list) {
         list_del(&string->list);
         kfree(string);
     }
+
+    if (slave->eeprom_name) kfree(slave->eeprom_name);
+    if (slave->eeprom_group) kfree(slave->eeprom_group);
+    if (slave->eeprom_desc) kfree(slave->eeprom_desc);
 }
 
 /*****************************************************************************/
 
 /**
-   Liest alle benötigten Informationen aus einem Slave.
+   Liest alle benŽötigten Informationen aus einem Slave.
 
    \return 0 wenn alles ok, < 0 bei Fehler.
 */
@@ -154,7 +161,7 @@ int ec_slave_sii_read(ec_slave_t *slave,
                       uint16_t offset,
                       /**< Adresse des zu lesenden SII-Registers */
                       uint32_t *target
-                      /**< Zeiger auf einen 4 Byte großen Speicher zum Ablegen
+                      /**< Zeiger auf einen 4 Byte groŽßen Speicher zum Ablegen
                          der Daten */
                       )
 {
@@ -175,7 +182,7 @@ int ec_slave_sii_read(ec_slave_t *slave,
     }
 
     // Der Slave legt die Informationen des Slave-Information-Interface
-    // in das Datenregister und löscht daraufhin ein Busy-Bit. Solange
+    // in das Datenregister und lŽöscht daraufhin ein Busy-Bit. Solange
     // den Status auslesen, bis das Bit weg ist.
 
     start = get_cycles();
@@ -244,7 +251,7 @@ int ec_slave_sii_write(ec_slave_t *slave,
     }
 
     // Der Slave legt die Informationen des Slave-Information-Interface
-    // in das Datenregister und löscht daraufhin ein Busy-Bit. Solange
+    // in das Datenregister und lŽöscht daraufhin ein Busy-Bit. Solange
     // den Status auslesen, bis das Bit weg ist.
 
     start = get_cycles();
@@ -399,17 +406,18 @@ int ec_slave_fetch_strings(ec_slave_t *slave, /**< EtherCAT-Slave */
     offset = 1;
     for (i = 0; i < string_count; i++) {
         size = data[offset];
-        // Speicher für String-Objekt und Daten in einem Rutsch allozieren
+        // Speicher fŽür String-Objekt und Daten in einem Rutsch allozieren
         if (!(string = (ec_slave_string_t *) kmalloc(sizeof(ec_slave_string_t)
                                                      + size + 1,
                                                      GFP_KERNEL))) {
             EC_ERR("Failed to allocate string memory.\n");
             return -1;
         }
-        string->data = (char *) (string + sizeof(ec_slave_string_t));
+        string->size = size;
+        string->data = (char *) string + sizeof(ec_slave_string_t);
         memcpy(string->data, data + offset + 1, size);
         string->data[size] = 0x00;
-        list_add_tail(&string->list, &slave->cat_strings);
+        list_add_tail(&string->list, &slave->eeprom_strings);
         offset += 1 + size;
     }
 
@@ -479,13 +487,13 @@ void ec_slave_fetch_rxpdo(ec_slave_t *slave, /**< EtherCAT-Slave */
 /*****************************************************************************/
 
 /**
-   Bestätigt einen Fehler beim Zustandswechsel.
+   BestŽätigt einen Fehler beim Zustandswechsel.
 
    \todo Funktioniert noch nicht...
 */
 
 void ec_slave_state_ack(ec_slave_t *slave,
-                        /**< Slave, dessen Zustand geändert werden soll */
+                        /**< Slave, dessen Zustand geŽändert werden soll */
                         uint8_t state
                         /**< Alter Zustand */
                         )
@@ -543,13 +551,13 @@ void ec_slave_state_ack(ec_slave_t *slave,
 /*****************************************************************************/
 
 /**
-   Ändert den Zustand eines Slaves.
+   ŽÄndert den Zustand eines Slaves.
 
    \return 0 bei Erfolg, sonst < 0
 */
 
 int ec_slave_state_change(ec_slave_t *slave,
-                          /**< Slave, dessen Zustand geändert werden soll */
+                          /**< Slave, dessen Zustand geŽändert werden soll */
                           uint8_t state
                           /**< Neuer Zustand */
                           )
@@ -610,17 +618,17 @@ int ec_slave_state_change(ec_slave_t *slave,
    Merkt eine FMMU-Konfiguration vor.
 
    Die FMMU wird so konfiguriert, dass sie den gesamten Datenbereich des
-   entsprechenden Sync-Managers abdeckt. Für jede Domäne werden separate
+   entsprechenden Sync-Managers abdeckt. FŽür jede DomŽäne werden separate
    FMMUs konfiguriert.
 
    Wenn die entsprechende FMMU bereits konfiguriert ist, wird dies als
-   Erfolg zurückgegeben.
+   Erfolg zurŽückgegeben.
 
    \return 0 bei Erfolg, sonst < 0
 */
 
 int ec_slave_set_fmmu(ec_slave_t *slave, /**< EtherCAT-Slave */
-                      const ec_domain_t *domain, /**< Domäne */
+                      const ec_domain_t *domain, /**< DomŽäne */
                       const ec_sync_t *sync  /**< Sync-Manager */
                       )
 {
@@ -650,13 +658,11 @@ int ec_slave_set_fmmu(ec_slave_t *slave, /**< EtherCAT-Slave */
 /*****************************************************************************/
 
 /**
-   Gibt alle Informationen über einen EtherCAT-Slave aus.
+   Gibt alle Informationen Žüber einen EtherCAT-Slave aus.
 */
 
 void ec_slave_print(const ec_slave_t *slave /**< EtherCAT-Slave */)
 {
-    ec_slave_string_t *string;
-
     EC_INFO("--- EtherCAT slave information ---\n");
 
     if (slave->type) {
@@ -677,24 +683,25 @@ void ec_slave_print(const ec_slave_t *slave /**< EtherCAT-Slave */)
     EC_INFO("    Supported FMMUs: %i, Sync managers: %i\n",
             slave->base_fmmu_count, slave->base_sync_count);
 
-    EC_INFO("  Slave information interface:\n");
+    EC_INFO("  EEPROM data:\n");
     EC_INFO("    Configured station alias: 0x%04X (%i)\n", slave->sii_alias,
             slave->sii_alias);
     EC_INFO("    Vendor-ID: 0x%08X, Product code: 0x%08X\n",
             slave->sii_vendor_id, slave->sii_product_code);
     EC_INFO("    Revision number: 0x%08X, Serial number: 0x%08X\n",
             slave->sii_revision_number, slave->sii_serial_number);
-
-    EC_INFO("    EEPROM strings:\n");
-    list_for_each_entry(string, &slave->cat_strings, list) {
-        EC_INFO("      * \"%s\"\n", string->data);
-    }
+    if (slave->eeprom_name)
+        EC_INFO("    Name: %s\n", slave->eeprom_name);
+    if (slave->eeprom_group)
+        EC_INFO("    Group: %s\n", slave->eeprom_group);
+    if (slave->eeprom_desc)
+        EC_INFO("    Description: %s\n", slave->eeprom_desc);
 }
 
 /*****************************************************************************/
 
 /**
-   Gibt die Zählerstände der CRC-Fault-Counter aus und setzt diese zurück.
+   Gibt die ZŽählerstŽände der CRC-Fault-Counter aus und setzt diese zurŽück.
 
    \return 0 bei Erfolg, sonst < 0
 */
