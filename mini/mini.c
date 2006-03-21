@@ -36,16 +36,14 @@ uint32_t k_pos;
 uint8_t k_stat;
 
 ec_field_init_t domain1_fields[] = {
-    {&r_ssi_input,  "1", "Beckhoff", "EL5001", "InputValue",  0},
-    {&r_ssi_status, "1", "Beckhoff", "EL5001", "Status",      0},
-    {NULL,          "2", "Beckhoff", "EL4132", "OutputValue", 0},
-    {NULL,          "3", "Beckhoff", "EL3162", "InputValue",  0},
-    {r_4102,        "4", "Beckhoff", "EL4102", "OutputValue", 0, 2},
-    {NULL,          "5", "Beckhoff", "EL5001", "InputValue",  0},
-    {NULL,          "6", "Beckhoff", "EL1014", "InputValue",  0},
-    {NULL,  "#0xBEEF:7", "Beckhoff", "EL2004", "OutputValue", 0},
-    {NULL,          "8", "Beckhoff", "EL4132", "OutputValue", 0},
-    {NULL,   "#48879:9", "Beckhoff", "EL4132", "OutputValue", 0},
+    {NULL, "1", "Beckhoff", "EL1014", "InputValue",  0},
+    {NULL, "2", "Beckhoff", "EL1014", "InputValue", 0},
+    {NULL, "3", "Beckhoff", "EL1014", "InputValue",  0},
+    {NULL, "4", "Beckhoff", "EL1014", "InputValue",  0},
+    {NULL, "5", "Beckhoff", "EL1014", "InputValue",  0},
+    {NULL, "6", "Beckhoff", "EL2004", "OutputValue", 0},
+    {NULL, "7", "Beckhoff", "EL2004", "OutputValue", 0},
+    {NULL, "8", "Beckhoff", "EL2004", "OutputValue", 0},
     {}
 };
 
@@ -61,8 +59,8 @@ void run(unsigned long data)
     ecrt_domain_process(domain1);
 
     // Prozessdaten verarbeiten
-    k_pos   = EC_READ_U32(r_ssi_input);
-    k_stat  = EC_READ_U8(r_ssi_status);
+    //k_pos   = EC_READ_U32(r_ssi_input);
+    //k_stat  = EC_READ_U8(r_ssi_status);
 
     // Prozessdaten senden
     ecrt_domain_queue(domain1);
@@ -74,8 +72,8 @@ void run(unsigned long data)
     ecrt_domain_process(domain1);
 
     // Prozessdaten verarbeiten
-    k_pos   = EC_READ_U32(r_ssi_input);
-    k_stat  = EC_READ_U8(r_ssi_status);
+    //k_pos   = EC_READ_U32(r_ssi_input);
+    //k_stat  = EC_READ_U8(r_ssi_status);
 #endif
 
     if (counter) {
@@ -83,8 +81,8 @@ void run(unsigned long data)
     }
     else {
         counter = ABTASTFREQUENZ;
-        printk(KERN_INFO "k_pos    = %i\n", k_pos);
-        printk(KERN_INFO "k_stat   = 0x%02X\n", k_stat);
+        //printk(KERN_INFO "k_pos    = %i\n", k_pos);
+        //printk(KERN_INFO "k_stat   = 0x%02X\n", k_stat);
     }
 
     // Timer neu starten
