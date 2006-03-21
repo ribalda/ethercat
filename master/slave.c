@@ -83,7 +83,7 @@ void ec_slave_clear(ec_slave_t *slave /**< EtherCAT-Slave */)
 /*****************************************************************************/
 
 /**
-   Liest alle benŽötigten Informationen aus einem Slave.
+   Liest alle benötigten Informationen aus einem Slave.
 
    \return 0 wenn alles ok, < 0 bei Fehler.
 */
@@ -182,7 +182,7 @@ int ec_slave_sii_read(ec_slave_t *slave,
     }
 
     // Der Slave legt die Informationen des Slave-Information-Interface
-    // in das Datenregister und lŽöscht daraufhin ein Busy-Bit. Solange
+    // in das Datenregister und löscht daraufhin ein Busy-Bit. Solange
     // den Status auslesen, bis das Bit weg ist.
 
     start = get_cycles();
@@ -251,7 +251,7 @@ int ec_slave_sii_write(ec_slave_t *slave,
     }
 
     // Der Slave legt die Informationen des Slave-Information-Interface
-    // in das Datenregister und lŽöscht daraufhin ein Busy-Bit. Solange
+    // in das Datenregister und löscht daraufhin ein Busy-Bit. Solange
     // den Status auslesen, bis das Bit weg ist.
 
     start = get_cycles();
@@ -406,7 +406,7 @@ int ec_slave_fetch_strings(ec_slave_t *slave, /**< EtherCAT-Slave */
     offset = 1;
     for (i = 0; i < string_count; i++) {
         size = data[offset];
-        // Speicher fŽür String-Objekt und Daten in einem Rutsch allozieren
+        // Speicher für String-Objekt und Daten in einem Rutsch allozieren
         if (!(string = (ec_slave_string_t *) kmalloc(sizeof(ec_slave_string_t)
                                                      + size + 1,
                                                      GFP_KERNEL))) {
@@ -487,13 +487,13 @@ void ec_slave_fetch_rxpdo(ec_slave_t *slave, /**< EtherCAT-Slave */
 /*****************************************************************************/
 
 /**
-   BestŽätigt einen Fehler beim Zustandswechsel.
+   Bestätigt einen Fehler beim Zustandswechsel.
 
    \todo Funktioniert noch nicht...
 */
 
 void ec_slave_state_ack(ec_slave_t *slave,
-                        /**< Slave, dessen Zustand geŽändert werden soll */
+                        /**< Slave, dessen Zustand geändert werden soll */
                         uint8_t state
                         /**< Alter Zustand */
                         )
@@ -551,13 +551,13 @@ void ec_slave_state_ack(ec_slave_t *slave,
 /*****************************************************************************/
 
 /**
-   ŽÄndert den Zustand eines Slaves.
+   Ändert den Zustand eines Slaves.
 
    \return 0 bei Erfolg, sonst < 0
 */
 
 int ec_slave_state_change(ec_slave_t *slave,
-                          /**< Slave, dessen Zustand geŽändert werden soll */
+                          /**< Slave, dessen Zustand geändert werden soll */
                           uint8_t state
                           /**< Neuer Zustand */
                           )
@@ -618,17 +618,17 @@ int ec_slave_state_change(ec_slave_t *slave,
    Merkt eine FMMU-Konfiguration vor.
 
    Die FMMU wird so konfiguriert, dass sie den gesamten Datenbereich des
-   entsprechenden Sync-Managers abdeckt. FŽür jede DomŽäne werden separate
+   entsprechenden Sync-Managers abdeckt. Für jede Domäne werden separate
    FMMUs konfiguriert.
 
    Wenn die entsprechende FMMU bereits konfiguriert ist, wird dies als
-   Erfolg zurŽückgegeben.
+   Erfolg zurückgegeben.
 
    \return 0 bei Erfolg, sonst < 0
 */
 
 int ec_slave_set_fmmu(ec_slave_t *slave, /**< EtherCAT-Slave */
-                      const ec_domain_t *domain, /**< DomŽäne */
+                      const ec_domain_t *domain, /**< Domäne */
                       const ec_sync_t *sync  /**< Sync-Manager */
                       )
 {
@@ -658,7 +658,7 @@ int ec_slave_set_fmmu(ec_slave_t *slave, /**< EtherCAT-Slave */
 /*****************************************************************************/
 
 /**
-   Gibt alle Informationen Žüber einen EtherCAT-Slave aus.
+   Gibt alle Informationen über einen EtherCAT-Slave aus.
 */
 
 void ec_slave_print(const ec_slave_t *slave /**< EtherCAT-Slave */)
@@ -701,7 +701,7 @@ void ec_slave_print(const ec_slave_t *slave /**< EtherCAT-Slave */)
 /*****************************************************************************/
 
 /**
-   Gibt die ZŽählerstŽände der CRC-Fault-Counter aus und setzt diese zurŽück.
+   Gibt die ZŽählerstände der CRC-Fault-Counter aus und setzt diese zurück.
 
    \return 0 bei Erfolg, sonst < 0
 */
