@@ -18,6 +18,16 @@
 
 /*****************************************************************************/
 
+int ec_slave_fetch_categories(ec_slave_t *);
+int ec_slave_fetch_strings(ec_slave_t *, const uint8_t *);
+void ec_slave_fetch_general(ec_slave_t *, const uint8_t *);
+void ec_slave_fetch_fmmu(ec_slave_t *, const uint8_t *);
+void ec_slave_fetch_sync(ec_slave_t *, const uint8_t *);
+void ec_slave_fetch_txpdo(ec_slave_t *, const uint8_t *);
+void ec_slave_fetch_rxpdo(ec_slave_t *, const uint8_t *);
+
+/*****************************************************************************/
+
 /**
    EtherCAT-Slave-Konstruktor.
 */
@@ -42,6 +52,8 @@ void ec_slave_init(ec_slave_t *slave, /**< EtherCAT-Slave */
     slave->type = NULL;
     slave->registered = 0;
     slave->fmmu_count = 0;
+
+    INIT_LIST_HEAD(&slave->cat_strings);
 }
 
 /*****************************************************************************/
@@ -52,7 +64,13 @@ void ec_slave_init(ec_slave_t *slave, /**< EtherCAT-Slave */
 
 void ec_slave_clear(ec_slave_t *slave /**< EtherCAT-Slave */)
 {
-    // Nichts freizugeben
+    ec_slave_string_t *string, *next;
+
+    // Alle Strings freigeben
+    list_for_each_entry_safe(string, next, &slave->cat_strings, list) {
+        list_del(&string->list);
+        kfree(string);
+    }
 }
 
 /*****************************************************************************/
@@ -111,6 +129,11 @@ int ec_slave_fetch(ec_slave_t *slave /**< EtherCAT-Slave */)
     if (unlikely(ec_slave_sii_read(slave, 0x000E,
                                    &slave->sii_serial_number))) {
         EC_ERR("Could not read SII serial number!\n");
+        return -1;
+    }
+
+    if (unlikely(ec_slave_fetch_categories(slave))) {
+        EC_ERR("Could not fetch category data!\n");
         return -1;
     }
 
@@ -177,7 +200,7 @@ int ec_slave_sii_read(ec_slave_t *slave,
         }
 
         if (unlikely((end - start) >= timeout)) {
-            EC_ERR("SSI-read. Slave %i timed out!\n", slave->ring_position);
+            EC_ERR("SII-read. Slave %i timed out!\n", slave->ring_position);
             return -1;
         }
     }
@@ -252,10 +275,205 @@ int ec_slave_sii_write(ec_slave_t *slave,
         }
 
         if (unlikely((end - start) >= timeout)) {
-            EC_ERR("SSI-write: Slave %i timed out!\n", slave->ring_position);
+            EC_ERR("SII-write: Slave %i timed out!\n", slave->ring_position);
             return -1;
         }
     }
+}
+
+/*****************************************************************************/
+
+/**
+   Holt Daten aus dem EEPROM.
+
+   \return 0, wenn alles ok, sonst < 0
+*/
+
+int ec_slave_fetch_categories(ec_slave_t *slave /**< EtherCAT-Slave */)
+{
+    uint16_t word_offset, header, word_count;
+    uint32_t value;
+    uint8_t *cat_data;
+    unsigned int i;
+
+    word_offset = 0x0040;
+
+    //EC_DBG("Slave %i...\n", slave->ring_position);
+
+    if (!(cat_data = (uint8_t *) kmalloc(0x10000, GFP_KERNEL))) {
+        EC_ERR("Failed to allocate 64k bytes for category data.\n");
+        return -1;
+    }
+
+    while (1) {
+        // read category header
+        if (ec_slave_sii_read(slave, word_offset, &value)) {
+            EC_ERR("Unable to read category header and size.\n");
+            kfree(cat_data);
+            return -1;
+        }
+
+        // Last category?
+        if ((value & 0xFFFF) == 0xFFFF) break;
+
+        header = value & 0x7FFF;
+        word_count = (value >> 16) & 0xFFFF;
+
+        // Fetch category data
+        for (i = 0; i < word_count; i++) {
+            if (ec_slave_sii_read(slave, word_offset + 2 + i, &value)) {
+                EC_ERR("Unable to read category data word %i.\n", i);
+                kfree(cat_data);
+                return -1;
+            }
+
+            cat_data[i * 2]     = (value >> 0) & 0xFF;
+            cat_data[i * 2 + 1] = (value >> 8) & 0xFF;
+
+            // read second word "on the fly"
+            if (i + 1 < word_count) {
+                i++;
+                cat_data[i * 2]     = (value >> 16) & 0xFF;
+                cat_data[i * 2 + 1] = (value >> 24) & 0xFF;
+            }
+        }
+
+        switch (header)
+        {
+            case 0x000A:
+                if (ec_slave_fetch_strings(slave, cat_data)) {
+                    kfree(cat_data);
+                    return -1;
+                }
+                break;
+            case 0x001E:
+            case 0x0001:
+                ec_slave_fetch_general(slave, cat_data);
+                break;
+            case 0x0028:
+            case 0x0002:
+                ec_slave_fetch_fmmu(slave, cat_data);
+                break;
+            case 0x0029:
+            case 0x0003:
+                ec_slave_fetch_sync(slave, cat_data);
+                break;
+            case 0x0032:
+            case 0x0004:
+                ec_slave_fetch_txpdo(slave, cat_data);
+                break;
+            case 0x0033:
+            case 0x0005:
+                ec_slave_fetch_rxpdo(slave, cat_data);
+                break;
+            default:
+                EC_WARN("Unknown category header 0x%04X in slave %i.\n",
+                        header, slave->ring_position);
+        }
+
+        word_offset += 2 + word_count;
+    }
+
+    kfree(cat_data);
+    return 0;
+}
+
+/*****************************************************************************/
+
+/**
+   Holt die Daten einer String-Kategorie.
+
+   \return 0 wenn alles ok, sonst < 0
+*/
+
+int ec_slave_fetch_strings(ec_slave_t *slave, /**< EtherCAT-Slave */
+                           const uint8_t *data /**< Kategoriedaten */
+                           )
+{
+    unsigned int string_count, i;
+    size_t size;
+    off_t offset;
+    ec_slave_string_t *string;
+
+    string_count = data[0];
+    offset = 1;
+    for (i = 0; i < string_count; i++) {
+        size = data[offset];
+        // Speicher für String-Objekt und Daten in einem Rutsch allozieren
+        if (!(string = (ec_slave_string_t *) kmalloc(sizeof(ec_slave_string_t)
+                                                     + size + 1,
+                                                     GFP_KERNEL))) {
+            EC_ERR("Failed to allocate string memory.\n");
+            return -1;
+        }
+        string->data = (char *) (string + sizeof(ec_slave_string_t));
+        memcpy(string->data, data + offset + 1, size);
+        string->data[size] = 0x00;
+        list_add_tail(&string->list, &slave->cat_strings);
+        offset += 1 + size;
+    }
+
+    return 0;
+}
+
+/*****************************************************************************/
+
+/**
+   Holt die Daten einer General-Kategorie.
+*/
+
+void ec_slave_fetch_general(ec_slave_t *slave, /**< EtherCAT-Slave */
+                            const uint8_t *data /**< Kategorie-Daten */
+                            )
+{
+}
+
+/*****************************************************************************/
+
+/**
+   Holt die Daten einer FMMU-Kategorie.
+*/
+
+void ec_slave_fetch_fmmu(ec_slave_t *slave, /**< EtherCAT-Slave */
+                         const uint8_t *data /**< Kategorie-Daten */
+                         )
+{
+}
+
+/*****************************************************************************/
+
+/**
+   Holt die Daten einer Sync-Manager-Kategorie.
+*/
+
+void ec_slave_fetch_sync(ec_slave_t *slave, /**< EtherCAT-Slave */
+                         const uint8_t *data /**< Kategorie-Daten */
+                         )
+{
+}
+
+/*****************************************************************************/
+
+/**
+   Holt die Daten einer TXPDO-Kategorie.
+*/
+
+void ec_slave_fetch_txpdo(ec_slave_t *slave, /**< EtherCAT-Slave */
+                          const uint8_t *data /**< Kategorie-Daten */
+                          )
+{
+}
+
+/*****************************************************************************/
+
+/**
+   Holt die Daten einer RXPDO-Kategorie.
+*/
+
+void ec_slave_fetch_rxpdo(ec_slave_t *slave, /**< EtherCAT-Slave */
+                          const uint8_t *data /**< Kategorie-Daten */
+                          )
+{
 }
 
 /*****************************************************************************/
@@ -437,6 +655,8 @@ int ec_slave_set_fmmu(ec_slave_t *slave, /**< EtherCAT-Slave */
 
 void ec_slave_print(const ec_slave_t *slave /**< EtherCAT-Slave */)
 {
+    ec_slave_string_t *string;
+
     EC_INFO("--- EtherCAT slave information ---\n");
 
     if (slave->type) {
@@ -464,6 +684,11 @@ void ec_slave_print(const ec_slave_t *slave /**< EtherCAT-Slave */)
             slave->sii_vendor_id, slave->sii_product_code);
     EC_INFO("    Revision number: 0x%08X, Serial number: 0x%08X\n",
             slave->sii_revision_number, slave->sii_serial_number);
+
+    EC_INFO("    EEPROM strings:\n");
+    list_for_each_entry(string, &slave->cat_strings, list) {
+        EC_INFO("      * \"%s\"\n", string->data);
+    }
 }
 
 /*****************************************************************************/

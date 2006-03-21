@@ -52,6 +52,19 @@ ec_fmmu_t;
 /*****************************************************************************/
 
 /**
+   EEPROM-String.
+*/
+
+typedef struct
+{
+    struct list_head list;
+    char *data;
+}
+ec_slave_string_t;
+
+/*****************************************************************************/
+
+/**
    EtherCAT-Slave
 */
 
@@ -84,6 +97,8 @@ struct ec_slave
 
     ec_fmmu_t fmmus[EC_MAX_FMMUS]; /**< FMMU-Konfigurationen */
     uint8_t fmmu_count; /**< Wieviele FMMUs schon benutzt sind. */
+
+    struct list_head cat_strings; /**< Strings im EEPROM */
 };
 
 /*****************************************************************************/
