@@ -21,10 +21,8 @@
 int ec_slave_fetch_categories(ec_slave_t *);
 int ec_slave_fetch_strings(ec_slave_t *, const uint8_t *);
 int ec_slave_fetch_general(ec_slave_t *, const uint8_t *);
-void ec_slave_fetch_fmmu(ec_slave_t *, const uint8_t *);
-void ec_slave_fetch_sync(ec_slave_t *, const uint8_t *);
-void ec_slave_fetch_txpdo(ec_slave_t *, const uint8_t *);
-void ec_slave_fetch_rxpdo(ec_slave_t *, const uint8_t *);
+int ec_slave_fetch_sync(ec_slave_t *, const uint8_t *, size_t);
+int ec_slave_fetch_pdo(ec_slave_t *, const uint8_t *, size_t, ec_pdo_type_t);
 int ec_slave_locate_string(ec_slave_t *, unsigned int, char **);
 
 /*****************************************************************************/
@@ -53,11 +51,12 @@ void ec_slave_init(ec_slave_t *slave, /**< EtherCAT-Slave */
     slave->type = NULL;
     slave->registered = 0;
     slave->fmmu_count = 0;
-
-    INIT_LIST_HEAD(&slave->eeprom_strings);
     slave->eeprom_name = NULL;
     slave->eeprom_group = NULL;
     slave->eeprom_desc = NULL;
+    INIT_LIST_HEAD(&slave->eeprom_strings);
+    INIT_LIST_HEAD(&slave->eeprom_syncs);
+    INIT_LIST_HEAD(&slave->eeprom_pdos);
 }
 
 /*****************************************************************************/
@@ -68,12 +67,36 @@ void ec_slave_init(ec_slave_t *slave, /**< EtherCAT-Slave */
 
 void ec_slave_clear(ec_slave_t *slave /**< EtherCAT-Slave */)
 {
-    ec_slave_string_t *string, *next;
+    ec_eeprom_string_t *string, *next_str;
+    ec_eeprom_sync_t *sync, *next_sync;
+    ec_eeprom_pdo_t *pdo, *next_pdo;
+    ec_eeprom_pdo_entry_t *entry, *next_ent;
 
     // Alle Strings freigeben
-    list_for_each_entry_safe(string, next, &slave->eeprom_strings, list) {
+    list_for_each_entry_safe(string, next_str, &slave->eeprom_strings, list) {
         list_del(&string->list);
         kfree(string);
+    }
+
+    // Alle Sync-Manager freigeben
+    list_for_each_entry_safe(sync, next_sync, &slave->eeprom_syncs, list) {
+        list_del(&sync->list);
+        kfree(sync);
+    }
+
+    // Alle PDOs freigeben
+    list_for_each_entry_safe(pdo, next_pdo, &slave->eeprom_pdos, list) {
+        list_del(&pdo->list);
+        if (pdo->name) kfree(pdo->name);
+
+        // Alle Entries innerhalb eines PDOs freigeben
+        list_for_each_entry_safe(entry, next_ent, &pdo->entries, list) {
+            list_del(&entry->list);
+            if (entry->name) kfree(entry->name);
+            kfree(entry);
+        }
+
+        kfree(pdo);
     }
 
     if (slave->eeprom_name) kfree(slave->eeprom_name);
@@ -299,7 +322,7 @@ int ec_slave_sii_write(ec_slave_t *slave,
 
 int ec_slave_fetch_categories(ec_slave_t *slave /**< EtherCAT-Slave */)
 {
-    uint16_t word_offset, header, word_count;
+    uint16_t word_offset, cat_type, word_count;
     uint32_t value;
     uint8_t *cat_data;
     unsigned int i;
@@ -314,16 +337,16 @@ int ec_slave_fetch_categories(ec_slave_t *slave /**< EtherCAT-Slave */)
     }
 
     while (1) {
-        // read category header
+        // read category type
         if (ec_slave_sii_read(slave, word_offset, &value)) {
-            EC_ERR("Unable to read category header and size.\n");
+            EC_ERR("Unable to read category header.\n");
             goto out_free;
         }
 
         // Last category?
         if ((value & 0xFFFF) == 0xFFFF) break;
 
-        header = value & 0x7FFF;
+        cat_type = value & 0x7FFF;
         word_count = (value >> 16) & 0xFFFF;
 
         // Fetch category data
@@ -344,36 +367,33 @@ int ec_slave_fetch_categories(ec_slave_t *slave /**< EtherCAT-Slave */)
             }
         }
 
-        switch (header)
+        switch (cat_type)
         {
             case 0x000A:
                 if (ec_slave_fetch_strings(slave, cat_data))
                     goto out_free;
                 break;
             case 0x001E:
-            case 0x0001:
                 if (ec_slave_fetch_general(slave, cat_data))
                     goto out_free;
                 break;
             case 0x0028:
-            case 0x0002:
-                ec_slave_fetch_fmmu(slave, cat_data);
                 break;
             case 0x0029:
-            case 0x0003:
-                ec_slave_fetch_sync(slave, cat_data);
+                if (ec_slave_fetch_sync(slave, cat_data, word_count))
+                    goto out_free;
                 break;
             case 0x0032:
-            case 0x0004:
-                ec_slave_fetch_txpdo(slave, cat_data);
+                if (ec_slave_fetch_pdo(slave, cat_data, word_count, EC_TX_PDO))
+                    goto out_free;
                 break;
             case 0x0033:
-            case 0x0005:
-                ec_slave_fetch_rxpdo(slave, cat_data);
+                if (ec_slave_fetch_pdo(slave, cat_data, word_count, EC_RX_PDO))
+                    goto out_free;
                 break;
             default:
-                EC_WARN("Unknown category header 0x%04X in slave %i.\n",
-                        header, slave->ring_position);
+                EC_WARN("Unknown category type 0x%04X in slave %i.\n",
+                        cat_type, slave->ring_position);
         }
 
         word_offset += 2 + word_count;
@@ -402,21 +422,20 @@ int ec_slave_fetch_strings(ec_slave_t *slave, /**< EtherCAT-Slave */
     unsigned int string_count, i;
     size_t size;
     off_t offset;
-    ec_slave_string_t *string;
+    ec_eeprom_string_t *string;
 
     string_count = data[0];
     offset = 1;
     for (i = 0; i < string_count; i++) {
         size = data[offset];
         // Speicher für String-Objekt und Daten in einem Rutsch allozieren
-        if (!(string = (ec_slave_string_t *) kmalloc(sizeof(ec_slave_string_t)
-                                                     + size + 1,
-                                                     GFP_KERNEL))) {
+        if (!(string = (ec_eeprom_string_t *)
+              kmalloc(sizeof(ec_eeprom_string_t) + size + 1, GFP_KERNEL))) {
             EC_ERR("Failed to allocate string memory.\n");
             return -1;
         }
         string->size = size;
-        string->data = (char *) string + sizeof(ec_slave_string_t);
+        string->data = (char *) string + sizeof(ec_eeprom_string_t);
         memcpy(string->data, data + offset + 1, size);
         string->data[size] = 0x00;
         list_add_tail(&string->list, &slave->eeprom_strings);
@@ -449,25 +468,36 @@ int ec_slave_fetch_general(ec_slave_t *slave, /**< EtherCAT-Slave */
 /*****************************************************************************/
 
 /**
-   Holt die Daten einer FMMU-Kategorie.
-*/
-
-void ec_slave_fetch_fmmu(ec_slave_t *slave, /**< EtherCAT-Slave */
-                         const uint8_t *data /**< Kategorie-Daten */
-                         )
-{
-}
-
-/*****************************************************************************/
-
-/**
    Holt die Daten einer Sync-Manager-Kategorie.
 */
 
-void ec_slave_fetch_sync(ec_slave_t *slave, /**< EtherCAT-Slave */
-                         const uint8_t *data /**< Kategorie-Daten */
-                         )
+int ec_slave_fetch_sync(ec_slave_t *slave, /**< EtherCAT-Slave */
+                        const uint8_t *data, /**< Kategorie-Daten */
+                        size_t word_count /**< Anzahl Words */
+                        )
 {
+    unsigned int sync_count, i;
+    ec_eeprom_sync_t *sync;
+
+    sync_count = word_count / 4; // Sync-Manager-Strunktur ist 4 Worte lang
+
+    for (i = 0; i < sync_count; i++, data += 8) {
+        if (!(sync = (ec_eeprom_sync_t *) kmalloc(sizeof(ec_eeprom_sync_t),
+                                                  GFP_KERNEL))) {
+            EC_ERR("Failed to allocate Sync-Manager memory.\n");
+            return -1;
+        }
+
+        sync->index = i;
+        sync->physical_start_address = *((uint16_t *) (data + 0));
+        sync->length                 = *((uint16_t *) (data + 2));
+        sync->control_register       = data[4];
+        sync->enable                 = data[6];
+
+        list_add_tail(&sync->list, &slave->eeprom_syncs);
+    }
+
+    return 0;
 }
 
 /*****************************************************************************/
@@ -476,22 +506,58 @@ void ec_slave_fetch_sync(ec_slave_t *slave, /**< EtherCAT-Slave */
    Holt die Daten einer TXPDO-Kategorie.
 */
 
-void ec_slave_fetch_txpdo(ec_slave_t *slave, /**< EtherCAT-Slave */
-                          const uint8_t *data /**< Kategorie-Daten */
-                          )
+int ec_slave_fetch_pdo(ec_slave_t *slave, /**< EtherCAT-Slave */
+                       const uint8_t *data, /**< Kategorie-Daten */
+                       size_t word_count, /**< Anzahl Worte */
+                       ec_pdo_type_t pdo_type /**< PDO-Typ */
+                       )
 {
-}
+    ec_eeprom_pdo_t *pdo;
+    ec_eeprom_pdo_entry_t *entry;
+    unsigned int entry_count, i;
 
-/*****************************************************************************/
+    while (word_count >= 4) {
+        if (!(pdo = (ec_eeprom_pdo_t *) kmalloc(sizeof(ec_eeprom_pdo_t),
+                                                GFP_KERNEL))) {
+            EC_ERR("Failed to allocate PDO memory.\n");
+            return -1;
+        }
 
-/**
-   Holt die Daten einer RXPDO-Kategorie.
-*/
+        INIT_LIST_HEAD(&pdo->entries);
+        pdo->type = pdo_type;
 
-void ec_slave_fetch_rxpdo(ec_slave_t *slave, /**< EtherCAT-Slave */
-                          const uint8_t *data /**< Kategorie-Daten */
-                          )
-{
+        pdo->index = *((uint16_t *) data);
+        entry_count = data[2];
+        pdo->sync_manager = data[3];
+        pdo->name = NULL;
+        ec_slave_locate_string(slave, data[5], &pdo->name);
+
+        list_add_tail(&pdo->list, &slave->eeprom_pdos);
+
+        word_count -= 4;
+        data += 8;
+
+        for (i = 0; i < entry_count; i++) {
+            if (!(entry = (ec_eeprom_pdo_entry_t *)
+                  kmalloc(sizeof(ec_eeprom_pdo_entry_t), GFP_KERNEL))) {
+                EC_ERR("Failed to allocate PDO entry memory.\n");
+                return -1;
+            }
+
+            entry->index = *((uint16_t *) data);
+            entry->subindex = data[2];
+            entry->name = NULL;
+            ec_slave_locate_string(slave, data[3], &entry->name);
+            entry->bit_length = data[5];
+
+            list_add_tail(&entry->list, &pdo->entries);
+
+            word_count -= 4;
+            data += 8;
+        }
+    }
+
+    return 0;
 }
 
 /*****************************************************************************/
@@ -502,26 +568,40 @@ void ec_slave_fetch_rxpdo(ec_slave_t *slave, /**< EtherCAT-Slave */
 
 int ec_slave_locate_string(ec_slave_t *slave, unsigned int index, char **ptr)
 {
-    ec_slave_string_t *string;
+    ec_eeprom_string_t *string;
+    char *err_string;
 
+    // Erst alten Speicher freigeben
     if (*ptr) {
         kfree(*ptr);
         *ptr = NULL;
     }
 
+    // Index 0 bedeutet "nicht belegt"
     if (!index) return 0;
 
+    // EEPROM-String mit Index finden und kopieren
     list_for_each_entry(string, &slave->eeprom_strings, list) {
-        if (!(--index)) {
-            if (!(*ptr = (char *) kmalloc(string->size + 1, GFP_KERNEL))) {
-                EC_ERR("Unable to allocate string memory.\n");
-                return -1;
-            }
-            memcpy(*ptr, string->data, string->size + 1);
-            break;
+        if (--index) continue;
+
+        if (!(*ptr = (char *) kmalloc(string->size + 1, GFP_KERNEL))) {
+            EC_ERR("Unable to allocate string memory.\n");
+            return -1;
         }
+        memcpy(*ptr, string->data, string->size + 1);
+        return 0;
     }
 
+    EC_WARN("String %i not found in slave %i.\n", index, slave->ring_position);
+
+    err_string = "(string not found)";
+
+    if (!(*ptr = (char *) kmalloc(strlen(err_string) + 1, GFP_KERNEL))) {
+        EC_ERR("Unable to allocate string memory.\n");
+        return -1;
+    }
+
+    memcpy(*ptr, err_string, strlen(err_string) + 1);
     return 0;
 }
 
@@ -704,6 +784,10 @@ int ec_slave_set_fmmu(ec_slave_t *slave, /**< EtherCAT-Slave */
 
 void ec_slave_print(const ec_slave_t *slave /**< EtherCAT-Slave */)
 {
+    ec_eeprom_sync_t *sync;
+    ec_eeprom_pdo_t *pdo;
+    ec_eeprom_pdo_entry_t *entry;
+
     EC_INFO("x-- EtherCAT slave information ---------------\n");
 
     if (slave->type) {
@@ -725,19 +809,46 @@ void ec_slave_print(const ec_slave_t *slave /**< EtherCAT-Slave */)
             slave->base_fmmu_count, slave->base_sync_count);
 
     EC_INFO("| EEPROM data:\n");
+
     if (slave->sii_alias)
         EC_INFO("|   Configured station alias: 0x%04X (%i)\n",
                 slave->sii_alias, slave->sii_alias);
+
     EC_INFO("|   Vendor-ID: 0x%08X, Product code: 0x%08X\n",
             slave->sii_vendor_id, slave->sii_product_code);
     EC_INFO("|   Revision number: 0x%08X, Serial number: 0x%08X\n",
             slave->sii_revision_number, slave->sii_serial_number);
+
     if (slave->eeprom_name)
         EC_INFO("|   Name: %s\n", slave->eeprom_name);
     if (slave->eeprom_group)
         EC_INFO("|   Group: %s\n", slave->eeprom_group);
     if (slave->eeprom_desc)
         EC_INFO("|   Description: %s\n", slave->eeprom_desc);
+
+    if (!list_empty(&slave->eeprom_syncs)) {
+        EC_INFO("|   Sync-Managers:\n");
+        list_for_each_entry(sync, &slave->eeprom_syncs, list) {
+            EC_INFO("|     %i: 0x%04X, length %i, control 0x%02X, %s\n",
+                    sync->index, sync->physical_start_address, sync->length,
+                    sync->control_register,
+                    sync->enable ? "enable" : "disable");
+        }
+    }
+
+    list_for_each_entry(pdo, &slave->eeprom_pdos, list) {
+        EC_INFO("|   %s \"%s\" (0x%04X), -> Sync-Manager %i\n",
+                pdo->type == EC_RX_PDO ? "RXPDO" : "TXPDO",
+                pdo->name ? pdo->name : "???",
+                pdo->index, pdo->sync_manager);
+
+        list_for_each_entry(entry, &pdo->entries, list) {
+            EC_INFO("|     \"%s\" 0x%04X:%X, %i Bit\n",
+                    entry->name ? entry->name : "???",
+                    entry->index, entry->subindex, entry->bit_length);
+        }
+    }
+
     EC_INFO("x---------------------------------------------\n");
 }
 

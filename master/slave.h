@@ -21,17 +21,18 @@
 
 typedef enum
 {
-    EC_SLAVE_STATE_UNKNOWN = 0x00, /**< Status unbekannt */
-    EC_SLAVE_STATE_INIT = 0x01,    /**< Init-Zustand (Keine Mailbox-
-                                      Kommunikation, Kein I/O) */
-    EC_SLAVE_STATE_PREOP = 0x02,   /**< Pre-Operational (Mailbox-
-                                      Kommunikation, Kein I/O) */
-    EC_SLAVE_STATE_SAVEOP = 0x04,  /**< Save-Operational (Mailbox-
-                                      Kommunikation und Input Update) */
-    EC_SLAVE_STATE_OP = 0x08,      /**< Operational, (Mailbox-
-                                      Kommunikation und Input/Output Update) */
-    EC_ACK = 0x10                  /**< Acknoledge-Bit beim Zustandswechsel
-                                      (dies ist kein eigener Zustand) */
+    EC_SLAVE_STATE_UNKNOWN = 0x00,
+    /**< Status unbekannt */
+    EC_SLAVE_STATE_INIT = 0x01,
+    /**< Init-Zustand (Keine Mailbox-Kommunikation, Kein I/O) */
+    EC_SLAVE_STATE_PREOP = 0x02,
+    /**< Pre-Operational (Mailbox-Kommunikation, Kein I/O) */
+    EC_SLAVE_STATE_SAVEOP = 0x04,
+    /**< Save-Operational (Mailbox-Kommunikation und Input Update) */
+    EC_SLAVE_STATE_OP = 0x08,
+    /**< Operational, (Mailbox-Kommunikation und Input/Output Update) */
+    EC_ACK = 0x10
+    /**< Acknoledge-Bit beim Zustandswechsel (kein eigener Zustand) */
 }
 ec_slave_state_t;
 
@@ -52,7 +53,7 @@ ec_fmmu_t;
 /*****************************************************************************/
 
 /**
-   EEPROM-String.
+   String im EEPROM eines EtherCAT-Slaves.
 */
 
 typedef struct
@@ -61,7 +62,70 @@ typedef struct
     size_t size;
     char *data;
 }
-ec_slave_string_t;
+ec_eeprom_string_t;
+
+/*****************************************************************************/
+
+/**
+   Sync-Manager-Konfiguration laut EEPROM.
+*/
+
+typedef struct
+{
+    struct list_head list;
+    unsigned int index;
+    uint16_t physical_start_address;
+    uint16_t length;
+    uint8_t control_register;
+    uint8_t enable;
+}
+ec_eeprom_sync_t;
+
+/*****************************************************************************/
+
+/**
+   PDO-Typ.
+*/
+
+typedef enum
+{
+    EC_RX_PDO,
+    EC_TX_PDO
+}
+ec_pdo_type_t;
+
+/*****************************************************************************/
+
+/**
+   PDO-Beschreibung im EEPROM.
+*/
+
+typedef struct
+{
+    struct list_head list;
+    ec_pdo_type_t type;
+    uint16_t index;
+    uint8_t sync_manager;
+    char *name;
+    struct list_head entries;
+}
+ec_eeprom_pdo_t;
+
+/*****************************************************************************/
+
+/**
+   PDO-Entry-Beschreibung im EEPROM.
+*/
+
+typedef struct
+{
+    struct list_head list;
+    uint16_t index;
+    uint8_t subindex;
+    char *name;
+    uint8_t bit_length;
+}
+ec_eeprom_pdo_entry_t;
 
 /*****************************************************************************/
 
@@ -100,6 +164,8 @@ struct ec_slave
     uint8_t fmmu_count; /**< Wieviele FMMUs schon benutzt sind. */
 
     struct list_head eeprom_strings; /**< Strings im EEPROM */
+    struct list_head eeprom_syncs; /**< Syncmanager-Konfigurationen (EEPROM) */
+    struct list_head eeprom_pdos; /**< PDO-Beschreibungen im EEPROM */
 
     char *eeprom_name; /**< Slave-Name laut Hersteller */
     char *eeprom_group; /**< Slave-Beschreibung laut Hersteller */
