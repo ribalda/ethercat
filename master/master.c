@@ -464,7 +464,7 @@ int ec_master_bus_scan(ec_master_t *master /**< EtherCAT-Master */)
 
         // Search for identification in "database"
         ident = slave_idents;
-        while (ident) {
+        while (ident->type) {
             if (unlikely(ident->vendor_id == slave->sii_vendor_id
                          && ident->product_code == slave->sii_product_code)) {
                 slave->type = ident->type;
