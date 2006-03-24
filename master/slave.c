@@ -329,8 +329,6 @@ int ec_slave_fetch_categories(ec_slave_t *slave /**< EtherCAT-Slave */)
 
     word_offset = 0x0040;
 
-    //EC_DBG("Slave %i...\n", slave->ring_position);
-
     if (!(cat_data = (uint8_t *) kmalloc(0x10000, GFP_KERNEL))) {
         EC_ERR("Failed to allocate 64k bytes for category data.\n");
         return -1;
@@ -482,8 +480,8 @@ int ec_slave_fetch_sync(ec_slave_t *slave, /**< EtherCAT-Slave */
     sync_count = word_count / 4; // Sync-Manager-Strunktur ist 4 Worte lang
 
     for (i = 0; i < sync_count; i++, data += 8) {
-        if (!(sync = (ec_eeprom_sync_t *) kmalloc(sizeof(ec_eeprom_sync_t),
-                                                  GFP_KERNEL))) {
+        if (!(sync = (ec_eeprom_sync_t *)
+              kmalloc(sizeof(ec_eeprom_sync_t), GFP_KERNEL))) {
             EC_ERR("Failed to allocate Sync-Manager memory.\n");
             return -1;
         }
@@ -517,8 +515,8 @@ int ec_slave_fetch_pdo(ec_slave_t *slave, /**< EtherCAT-Slave */
     unsigned int entry_count, i;
 
     while (word_count >= 4) {
-        if (!(pdo = (ec_eeprom_pdo_t *) kmalloc(sizeof(ec_eeprom_pdo_t),
-                                                GFP_KERNEL))) {
+        if (!(pdo = (ec_eeprom_pdo_t *)
+              kmalloc(sizeof(ec_eeprom_pdo_t), GFP_KERNEL))) {
             EC_ERR("Failed to allocate PDO memory.\n");
             return -1;
         }

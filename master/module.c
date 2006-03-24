@@ -75,24 +75,22 @@ int __init ec_init_module(void)
 
     if (ec_master_count < 1) {
         EC_ERR("Error - Invalid ec_master_count: %i\n", ec_master_count);
-        return -1;
+        goto out_return;
     }
 
     EC_INFO("Initializing %i EtherCAT master(s)...\n", ec_master_count);
 
-    if ((ec_masters = (ec_master_t *) kmalloc(sizeof(ec_master_t)
-                                              * ec_master_count,
-                                              GFP_KERNEL)) == NULL) {
+    if (!(ec_masters = (ec_master_t *)
+          kmalloc(sizeof(ec_master_t) * ec_master_count, GFP_KERNEL))) {
         EC_ERR("Could not allocate memory for EtherCAT master(s)!\n");
-        return -1;
+        goto out_return;
     }
 
-    if ((ec_masters_reserved =
-         (unsigned int *) kmalloc(sizeof(int) * ec_master_count,
-                                  GFP_KERNEL)) == NULL) {
+    if (!(ec_masters_reserved =
+          (unsigned int *) kmalloc(sizeof(int) * ec_master_count,
+                                   GFP_KERNEL))) {
         EC_ERR("Could not allocate memory for reservation flags!\n");
-        kfree(ec_masters);
-        return -1;
+        goto out_free_masters;
     }
 
     for (i = 0; i < ec_master_count; i++) {
@@ -101,8 +99,12 @@ int __init ec_init_module(void)
     }
 
     EC_INFO("Master driver initialized.\n");
-
     return 0;
+
+ out_free_masters:
+    kfree(ec_masters);
+ out_return:
+    return -1;
 }
 
 /*****************************************************************************/
@@ -119,15 +121,14 @@ void __exit ec_cleanup_module(void)
 
     EC_INFO("Cleaning up master driver...\n");
 
-    if (ec_masters) {
-        for (i = 0; i < ec_master_count; i++) {
-            if (ec_masters_reserved[i]) {
-                EC_WARN("Master %i is still in use!\n", i);
-            }
-            ec_master_clear(&ec_masters[i]);
-        }
-        kfree(ec_masters);
+    for (i = 0; i < ec_master_count; i++) {
+        if (ec_masters_reserved[i])
+            EC_WARN("Master %i is still in use!\n", i);
+        ec_master_clear(&ec_masters[i]);
     }
+
+    kfree(ec_masters);
+    kfree(ec_masters_reserved);
 
     EC_INFO("Master driver cleaned up.\n");
 }
@@ -174,14 +175,17 @@ ec_device_t *ecdev_register(unsigned int master_index,
         return NULL;
     }
 
-    if (!(master->device = (ec_device_t *) kmalloc(sizeof(ec_device_t),
-                                                   GFP_KERNEL))) {
+    if (!(master->device = (ec_device_t *)
+          kmalloc(sizeof(ec_device_t), GFP_KERNEL))) {
         EC_ERR("Failed allocating device!\n");
         return NULL;
     }
 
-    if (ec_device_init(master->device, master, net_dev, isr, module))
+    if (ec_device_init(master->device, master, net_dev, isr, module)) {
+        kfree(master->device);
+        master->device = NULL;
         return NULL;
+    }
 
     return master->device;
 }
