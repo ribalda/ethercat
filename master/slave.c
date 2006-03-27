@@ -871,14 +871,31 @@ int ec_slave_check_crc(ec_slave_t *slave /**< EtherCAT-Slave */)
     }
 
     // No CRC faults.
-    if (!EC_READ_U16(command.data) && !EC_READ_U16(command.data + 2)) return 0;
+    if (!EC_READ_U32(command.data)) return 0;
 
-    EC_WARN("CRC faults on slave %i. A: %i, B: %i\n", slave->ring_position,
-            EC_READ_U16(command.data), EC_READ_U16(command.data + 2));
+    if (EC_READ_U8(command.data))
+        EC_WARN("%3i RX-error%s on slave %i, channel A.\n",
+                EC_READ_U8(command.data),
+                EC_READ_U8(command.data) == 1 ? "" : "s",
+                slave->ring_position);
+    if (EC_READ_U8(command.data + 1))
+        EC_WARN("%3i invalid frame%s on slave %i, channel A.\n",
+                EC_READ_U8(command.data + 1),
+                EC_READ_U8(command.data + 1) == 1 ? "" : "s",
+                slave->ring_position);
+    if (EC_READ_U8(command.data + 2))
+        EC_WARN("%3i RX-error%s on slave %i, channel B.\n",
+                EC_READ_U8(command.data + 2),
+                EC_READ_U8(command.data + 2) == 1 ? "" : "s",
+                slave->ring_position);
+    if (EC_READ_U8(command.data + 3))
+        EC_WARN("%3i invalid frame%s on slave %i, channel B.\n",
+                EC_READ_U8(command.data + 3),
+                EC_READ_U8(command.data + 3) == 1 ? "" : "s",
+                slave->ring_position);
 
     // Reset CRC counters
-    EC_WRITE_U16(data,     0x0000);
-    EC_WRITE_U16(data + 2, 0x0000);
+    EC_WRITE_U32(data, 0x00000000);
     ec_command_init_npwr(&command, slave->station_address, 0x0300, 4, data);
     if (unlikely(ec_master_simple_io(slave->master, &command))) {
         EC_WARN("Resetting CRC fault counters failed on slave %i!\n",

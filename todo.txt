@@ -5,12 +5,12 @@ $Id$
 
 - Anzahl Frames, die die Karte Puffern kann
 - Mehrere Frames versenden
+- Typeninformation aus Master entfernen / XML-Dateien aus User-Space lesen
 - Kommandos mit dynamischem Speicher
 - Konfiguration Inkrementalgeberklemme
 - SSI-Klemme
 - SysFS-Interface implementieren
 - SDO Dictionary der Slaves auslesen und im SysFS darstellen
-- Typeninformation aus Master entfernen / XML-Dateien aus User-Space lesen
 - DLL-Link-States auslesen und Topologie berechnen
 - Ethernet over EtherCAT (EoE)
 - eepro100-Kartentreiber
