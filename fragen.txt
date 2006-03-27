@@ -3,4 +3,6 @@ Offene Fragen an Beckhoff
 
 $Id$
 
-(momentan keine)
+- Unbekannte Kategorien in Digital-IO-Slaves
+- Dokumentation EL5101
+- Dokumentation EL6601
