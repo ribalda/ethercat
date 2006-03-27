@@ -3,12 +3,16 @@ TODO-Liste EtherCAT-Treiber
 
 $Id$
 
-- Zyklisches Kommando: BRD auf 0x130 für Status und Anzahl Klemmen
 - Anzahl Frames, die die Karte Puffern kann
+- Mehrere Frames versenden
+- Kommandos mit dynamischem Speicher
+- Konfiguration Inkrementalgeberklemme
+- SSI-Klemme
 - SysFS-Interface implementieren
 - SDO Dictionary der Slaves auslesen und im SysFS darstellen
 - Typeninformation aus Master entfernen / XML-Dateien aus User-Space lesen
 - DLL-Link-States auslesen und Topologie berechnen
 - Ethernet over EtherCAT (EoE)
 - eepro100-Kartentreiber
+- Installationsanleitung / Dokumentation
 - Userspace-Tool zum Konfigurieren und visualisieren

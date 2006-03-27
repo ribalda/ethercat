@@ -50,6 +50,9 @@ struct ec_master
     struct list_head commands; /**< Kommando-Liste */
     uint8_t command_index; /**< Aktueller Kommando-Index */
     struct list_head domains; /**< Liste der Prozessdatendomänen */
+    ec_command_t watch_command; /**< Kommando zum Überwachen der Slaves */
+    unsigned int slaves_responding; /**< Anzahl antwortender Slaves */
+    ec_slave_state_t slave_states; /**< Zustände der antwortenden Slaves */
     int debug_level; /**< Debug-Level im Master-Code */
     ec_stats_t stats; /**< Rahmen-Statistiken */
     unsigned int timeout; /**< Timeout für synchronen Datenaustausch */

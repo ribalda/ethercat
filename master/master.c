@@ -101,6 +101,10 @@ void ec_master_reset(ec_master_t *master
     master->command_index = 0;
     master->debug_level = 0;
     master->timeout = 100; // us
+
+    master->slaves_responding = 0;
+    master->slave_states = EC_SLAVE_STATE_UNKNOWN;
+
     master->stats.timeouts = 0;
     master->stats.delayed = 0;
     master->stats.corrupted = 0;
@@ -389,7 +393,7 @@ int ec_master_simple_io(ec_master_t *master, /**< EtherCAT-Master */
         }
 
         // Keine direkte Antwort. Dem Slave Zeit lassen...
-        udelay(10);
+        udelay(100);
 
         if (unlikely(--response_tries_left)) {
             EC_ERR("No response in simple-IO!\n");
@@ -679,6 +683,58 @@ void ec_fmmu_config(const ec_fmmu_t *fmmu, /**< Sync-Manager */
     EC_WRITE_U16(data + 14, 0x0000); // res.
 }
 
+/*****************************************************************************/
+
+/**
+   Gibt Überwachungsinformationen aus.
+*/
+
+void ec_master_process_watch_command(ec_master_t *master
+                                     /**< EtherCAT-Master */
+                                     )
+{
+    unsigned int first;
+
+    first = 1;
+
+    if (master->watch_command.working_counter != master->slaves_responding ||
+        master->watch_command.data[0] != master->slave_states)
+    {
+        master->slaves_responding = master->watch_command.working_counter;
+        master->slave_states = master->watch_command.data[0];
+
+        EC_INFO("%i slave%s responding (", master->slaves_responding,
+                master->slaves_responding == 1 ? "" : "s");
+
+        if (master->slave_states & EC_SLAVE_STATE_INIT) {
+            printk("INIT");
+            first = 0;
+        }
+        if (master->slave_states & EC_SLAVE_STATE_PREOP) {
+            if (!first) {
+                printk(", ");
+                first = 0;
+            }
+            printk("PREOP");
+        }
+        if (master->slave_states & EC_SLAVE_STATE_SAVEOP) {
+            if (!first) {
+                printk(", ");
+                first = 0;
+            }
+            printk("SAVEOP");
+        }
+        if (master->slave_states & EC_SLAVE_STATE_OP) {
+            if (!first) {
+                printk(", ");
+                first = 0;
+            }
+            printk("OP");
+        }
+        printk(")\n");
+    }
+}
+
 /******************************************************************************
  *
  * Echtzeitschnittstelle
@@ -836,6 +892,9 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
             return -1;
     }
 
+    master->slaves_responding = master->slave_count;
+    master->slave_states = EC_SLAVE_STATE_OP;
+
     return 0;
 }
 
@@ -952,6 +1011,10 @@ void ecrt_master_async_send(ec_master_t *master)
         return;
     }
 
+    // Watch-Kommando hinzufügen
+    ec_command_init_brd(&master->watch_command, 0x130, 2);
+    ec_master_queue_command(master, &master->watch_command);
+
     // Rahmen senden
     ec_master_send_commands(master);
 }
@@ -965,8 +1028,6 @@ void ecrt_master_async_send(ec_master_t *master)
 void ecrt_master_async_receive(ec_master_t *master)
 {
     ec_command_t *command, *next;
-
-    ec_master_output_stats(master);
 
     ec_device_call_isr(master->device);
 
@@ -989,6 +1050,12 @@ void ecrt_master_async_receive(ec_master_t *master)
         }
         list_del_init(&command->list);
     }
+
+    // Watch-Kommando verarbeiten
+    ec_master_process_watch_command(master);
+
+    // Statistiken ausgeben
+    ec_master_output_stats(master);
 }
 
 /*****************************************************************************/

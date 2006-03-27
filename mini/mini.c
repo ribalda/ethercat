@@ -29,7 +29,7 @@ ec_master_t *master = NULL;
 ec_domain_t *domain1 = NULL;
 
 // Datenfelder
-void *r_ssi_input, *r_ssi_status, *r_4102[3];
+//void *r_ssi_input, *r_ssi_status, *r_4102[3];
 
 // Kanäle
 uint32_t k_pos;
@@ -37,13 +37,10 @@ uint8_t k_stat;
 
 ec_field_init_t domain1_fields[] = {
     {NULL, "1", "Beckhoff", "EL1014", "InputValue",  0},
-    {NULL, "2", "Beckhoff", "EL1014", "InputValue", 0},
-    {NULL, "3", "Beckhoff", "EL1014", "InputValue",  0},
-    {NULL, "4", "Beckhoff", "EL1014", "InputValue",  0},
-    {NULL, "5", "Beckhoff", "EL1014", "InputValue",  0},
-    {NULL, "6", "Beckhoff", "EL2004", "OutputValue", 0},
-    {NULL, "7", "Beckhoff", "EL2004", "OutputValue", 0},
-    {NULL, "8", "Beckhoff", "EL2004", "OutputValue", 0},
+    {NULL, "2", "Beckhoff", "EL2004", "OutputValue", 0},
+    //{NULL, "3", "Beckhoff", "EL3162", "InputValue",  0},
+    {NULL, "4", "Beckhoff", "EL4132", "OutputValue",  0},
+    {NULL, "6", "Beckhoff", "EL5001", "InputValue", 0},
     {}
 };
 
@@ -127,6 +124,7 @@ int __init init_mini_module(void)
 
     //ecrt_master_debug(master, 2);
 
+#if 0
     if (ecrt_master_sdo_write(master, "1", 0x4061, 1,  0, 1) ||
         ecrt_master_sdo_write(master, "1", 0x4061, 2,  1, 1) ||
         ecrt_master_sdo_write(master, "1", 0x4061, 3,  1, 1) ||
@@ -139,6 +137,7 @@ int __init init_mini_module(void)
         printk(KERN_ERR "EtherCAT: Failed to configure SSI!\n");
         goto out_deactivate;
     }
+#endif
 
     //ecrt_master_debug(master, 0);
 
@@ -166,8 +165,10 @@ int __init init_mini_module(void)
 
     return 0;
 
+#if 0
  out_deactivate:
     ecrt_master_deactivate(master);
+#endif
 
  out_release_master:
     ecrt_release_master(master);
