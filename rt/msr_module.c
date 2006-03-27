@@ -55,18 +55,20 @@ ec_domain_t *domain1 = NULL;
 ec_domain_t *domain2 = NULL;
 
 // Prozessdaten
-void *r_ssi;
+void *r_ssi, *r_ssi_st;
 void *r_ssi2;
 void *r_inc;
 
 uint32_t k_angle;
-uint32_t k_pos;
+uint32_t k_ssi_pos;
+uint32_t k_ssi_status;
 uint32_t k_preio;
 uint32_t k_postio;
 uint32_t k_finished;
 
 ec_field_init_t domain1_fields[] = {
-    {&r_ssi,  "1", "Beckhoff", "EL5001", "InputValue", 0},
+    {&r_ssi,    "1", "Beckhoff", "EL5001", "InputValue", 0},
+    {&r_ssi_st, "1", "Beckhoff", "EL5001", "Status",     0},
     {}
 };
 
@@ -99,7 +101,8 @@ static void msr_controller_run(void)
     ecrt_domain_process(domain2);
 
     // Prozessdaten verarbeiten
-    k_pos = EC_READ_U32(r_ssi);
+    k_ssi_pos = EC_READ_U32(r_ssi);
+    k_ssi_status = EC_READ_U32(r_ssi_st);
 
     // Senden
     ecrt_domain_queue(domain1);
@@ -114,7 +117,8 @@ static void msr_controller_run(void)
     ecrt_domain_process(domain2);
 
     // Prozessdaten verarbeiten
-    k_pos = EC_READ_U32(r_ssi);
+    k_ssi_pos = EC_READ_U32(r_ssi);
+    k_ssi_status = EC_READ_U32(r_ssi_st);
 #endif
 
     k_postio = (uint32_t) (get_cycles() - offset) * 1e6 / cpu_khz;
@@ -127,8 +131,9 @@ static void msr_controller_run(void)
 
 int msr_globals_register(void)
 {
-    msr_reg_kanal("/angle0", "", &k_angle, TUINT);
-    msr_reg_kanal("/pos0",   "", &k_pos,   TUINT);
+    msr_reg_kanal("/angle0",        "", &k_angle,      TUINT);
+    msr_reg_kanal("/pos0",          "", &k_ssi_pos,    TUINT);
+    msr_reg_kanal("/ssi-status0",   "", &k_ssi_status, TUINT);
 
     msr_reg_kanal("/Timing/Pre-IO",   "ns", &k_preio,    TUINT);
     msr_reg_kanal("/Timing/Post-IO",  "ns", &k_postio,   TUINT);
@@ -183,17 +188,17 @@ int __init init_rt_module(void)
         goto out_msr_cleanup;
     }
 
-    //ecrt_master_print(master);
+    ecrt_master_print(master);
 
     printk(KERN_INFO "Registering domains...\n");
 
     if (!(domain1 = ecrt_master_create_domain(master))) {
-        printk(KERN_ERR "EtherCAT: Could not register domain!\n");
+        printk(KERN_ERR "Could not register domain!\n");
         goto out_release_master;
     }
 
     if (!(domain2 = ecrt_master_create_domain(master))) {
-        printk(KERN_ERR "EtherCAT: Could not register domain!\n");
+        printk(KERN_ERR "Could not register domain!\n");
         goto out_release_master;
     }
 
@@ -220,12 +225,27 @@ int __init init_rt_module(void)
 
     //ecrt_master_debug(master, 0);
 
-#if 1
-    if (ecrt_master_sdo_read(master, "6", 0x100A, 1, &version)) {
+#if 0
+    if (ecrt_master_sdo_read(master, "1", 0x100A, 1, &version)) {
         printk(KERN_ERR "Could not read SSI version!\n");
-        goto out_release_master;
+        goto out_deactivate;
     }
     printk(KERN_INFO "Software-version: %u\n", version);
+#endif
+
+#if 0
+    if (ecrt_master_sdo_write(master, "1", 0x4061, 1,  0, 1) ||
+        ecrt_master_sdo_write(master, "1", 0x4061, 2,  1, 1) ||
+        ecrt_master_sdo_write(master, "1", 0x4061, 3,  1, 1) ||
+        ecrt_master_sdo_write(master, "1", 0x4066, 0,  0, 1) ||
+        ecrt_master_sdo_write(master, "1", 0x4067, 0,  4, 1) ||
+        ecrt_master_sdo_write(master, "1", 0x4068, 0,  0, 1) ||
+        ecrt_master_sdo_write(master, "1", 0x4069, 0, 25, 1) ||
+        ecrt_master_sdo_write(master, "1", 0x406A, 0, 25, 1) ||
+        ecrt_master_sdo_write(master, "1", 0x406B, 0, 50, 1)) {
+        printk(KERN_ERR "Failed to configure SSI slave!\n");
+        goto out_deactivate;
+    }
 #endif
 
 #ifdef ASYNC
@@ -241,12 +261,12 @@ int __init init_rt_module(void)
 
     return 0;
 
+ out_deactivate:
+    ecrt_master_deactivate(master);
  out_release_master:
     ecrt_release_master(master);
-
  out_msr_cleanup:
     msr_rtlib_cleanup();
-
  out_return:
     return -1;
 }

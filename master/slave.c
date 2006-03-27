@@ -48,6 +48,7 @@ void ec_slave_init(ec_slave_t *slave, /**< EtherCAT-Slave */
     slave->sii_product_code = 0;
     slave->sii_revision_number = 0;
     slave->sii_serial_number = 0;
+    slave->sii_mailbox_protocols = 0;
     slave->type = NULL;
     slave->registered = 0;
     slave->fmmu_count = 0;
@@ -160,6 +161,12 @@ int ec_slave_fetch(ec_slave_t *slave /**< EtherCAT-Slave */)
     if (unlikely(ec_slave_sii_read(slave, 0x000E,
                                    &slave->sii_serial_number))) {
         EC_ERR("Could not read SII serial number!\n");
+        return -1;
+    }
+
+    if (unlikely(ec_slave_sii_read(slave, 0x001C,
+                                   &slave->sii_mailbox_protocols))) {
+        EC_ERR("Could not read SII supported mailbox protocols!\n");
         return -1;
     }
 
@@ -785,6 +792,7 @@ void ec_slave_print(const ec_slave_t *slave /**< EtherCAT-Slave */)
     ec_eeprom_sync_t *sync;
     ec_eeprom_pdo_t *pdo;
     ec_eeprom_pdo_entry_t *entry;
+    int first;
 
     EC_INFO("x-- EtherCAT slave information ---------------\n");
 
@@ -805,6 +813,43 @@ void ec_slave_print(const ec_slave_t *slave /**< EtherCAT-Slave */)
             slave->base_type, slave->base_revision, slave->base_build);
     EC_INFO("|   Supported FMMUs: %i, Sync managers: %i\n",
             slave->base_fmmu_count, slave->base_sync_count);
+
+    EC_INFO("| Supported mailbox protocols: ");
+    if (!slave->sii_mailbox_protocols) {
+        printk("(none)");
+    }
+    else {
+        first = 1;
+        if (slave->sii_mailbox_protocols & EC_MBOX_AOE) {
+            printk("AoE");
+            first = 0;
+        }
+        if (slave->sii_mailbox_protocols & EC_MBOX_EOE) {
+            if (!first) printk(", ");
+            printk("EoE");
+            first = 0;
+        }
+        if (slave->sii_mailbox_protocols & EC_MBOX_COE) {
+            if (!first) printk(", ");
+            printk("CoE");
+            first = 0;
+        }
+        if (slave->sii_mailbox_protocols & EC_MBOX_FOE) {
+            if (!first) printk(", ");
+            printk("FoE");
+            first = 0;
+        }
+        if (slave->sii_mailbox_protocols & EC_MBOX_SOE) {
+            if (!first) printk(", ");
+            printk("SoE");
+            first = 0;
+        }
+        if (slave->sii_mailbox_protocols & EC_MBOX_VOE) {
+            if (!first) printk(", ");
+            printk("VoE");
+        }
+    }
+    printk("\n");
 
     EC_INFO("| EEPROM data:\n");
 
@@ -903,6 +948,115 @@ int ec_slave_check_crc(ec_slave_t *slave /**< EtherCAT-Slave */)
         return -1;
     }
 
+    return 0;
+}
+
+/*****************************************************************************/
+
+/**
+   Sendet ein Mailbox-Kommando.
+ */
+
+int ec_slave_mailbox_send(ec_slave_t *slave, /**< EtherCAT-Slave */
+                          uint8_t type, /**< Unterliegendes Protokoll */
+                          const uint8_t *prot_data, /**< Protokoll-Daten */
+                          size_t size /**< Datengröße */
+                          )
+{
+    uint8_t data[0xF6];
+    ec_command_t command;
+
+    if (unlikely(size + 6 > 0xF6)) {
+        EC_ERR("Data size does not fit in mailbox!\n");
+        return -1;
+    }
+
+    memset(data, 0x00, 0xF6);
+
+    EC_WRITE_U16(data,      size); // Length of the Mailbox service data
+    EC_WRITE_U16(data + 2,  slave->station_address); // Station address
+    EC_WRITE_U8 (data + 4,  0x00); // Channel & priority
+    EC_WRITE_U8 (data + 5,  type); // Underlying protocol type
+
+    memcpy(data + 6, prot_data, size);
+
+    ec_command_init_npwr(&command, slave->station_address, 0x1800, 0xF6, data);
+    if (unlikely(ec_master_simple_io(slave->master, &command))) {
+        EC_ERR("Mailbox sending failed on slave %i!\n", slave->ring_position);
+        return -1;
+    }
+
+    return 0;
+}
+
+/*****************************************************************************/
+
+/**
+   Sendet ein Mailbox-Kommando.
+ */
+
+int ec_slave_mailbox_receive(ec_slave_t *slave, /**< EtherCAT-Slave */
+                             uint8_t type, /**< Unterliegendes Protokoll */
+                             uint8_t *prot_data, /**< Protokoll-Daten */
+                             size_t *size /**< Datengröße des Puffers, später
+                                             Größe der gelesenen Daten */
+                             )
+{
+    ec_command_t command;
+    size_t data_size;
+    cycles_t start, end, timeout;
+
+    // Read "written bit" of Sync-Manager
+    start = get_cycles();
+    timeout = (cycles_t) 100 * cpu_khz; // 100ms
+
+    while (1)
+    {
+        ec_command_init_nprd(&command, slave->station_address, 0x808, 8);
+        if (unlikely(ec_master_simple_io(slave->master, &command))) {
+            EC_ERR("Mailbox checking failed on slave %i!\n",
+                   slave->ring_position);
+            return -1;
+        }
+
+        end = get_cycles();
+
+        if (EC_READ_U8(command.data + 5) & 8) break; // Written bit is high
+
+        if ((end - start) >= timeout) {
+            EC_ERR("Mailbox check - Slave %i timed out.\n",
+                   slave->ring_position);
+            return -1;
+        }
+
+        udelay(100);
+    }
+
+    if (unlikely(slave->master->debug_level) > 1)
+        EC_DBG("SDO download took %ius.\n", ((u32) (end - start) * 1000
+                                             / cpu_khz));
+
+    ec_command_init_nprd(&command, slave->station_address, 0x18F6, 0xF6);
+    if (unlikely(ec_master_simple_io(slave->master, &command))) {
+        EC_ERR("Mailbox receiving failed on slave %i!\n",
+               slave->ring_position);
+        return -1;
+    }
+
+    if (EC_READ_U8(command.data + 5) != type) { // nicht CoE
+        EC_ERR("Invalid mailbox response (non-CoE) at slave %i!\n",
+               slave->ring_position);
+        return -1;
+    }
+
+    if ((data_size = EC_READ_U16(command.data)) > *size) {
+        EC_ERR("CoE data does not fit in buffer (%i > %i).\n",
+               data_size, *size);
+        return -1;
+    }
+
+    memcpy(prot_data, command.data + 6, data_size);
+    *size = data_size;
     return 0;
 }
 

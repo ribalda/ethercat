@@ -711,24 +711,17 @@ void ec_master_process_watch_command(ec_master_t *master
             first = 0;
         }
         if (master->slave_states & EC_SLAVE_STATE_PREOP) {
-            if (!first) {
-                printk(", ");
-                first = 0;
-            }
+            if (!first) printk(", ");
             printk("PREOP");
+            first = 0;
         }
         if (master->slave_states & EC_SLAVE_STATE_SAVEOP) {
-            if (!first) {
-                printk(", ");
-                first = 0;
-            }
+            if (!first) printk(", ");
             printk("SAVEOP");
+            first = 0;
         }
         if (master->slave_states & EC_SLAVE_STATE_OP) {
-            if (!first) {
-                printk(", ");
-                first = 0;
-            }
+            if (!first) printk(", ");
             printk("OP");
         }
         printk(")\n");
@@ -859,6 +852,14 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
         // Change state to PREOP
         if (unlikely(ec_slave_state_change(slave, EC_SLAVE_STATE_PREOP)))
             return -1;
+
+        // Fetch SDO list
+        if (slave->sii_mailbox_protocols & EC_MBOX_COE) {
+            if (unlikely(ec_slave_fetch_sdo_list(slave))) {
+                EC_ERR("Could not fetch SDO list!\n");
+                return -1;
+            }
+        }
 
         // Slaves that are not registered are only brought into PREOP
         // state -> nice blinking and mailbox comm. possible

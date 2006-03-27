@@ -29,6 +29,8 @@ ec_sdo_abort_message_t;
 
 const ec_sdo_abort_message_t sdo_abort_messages[];
 
+void ec_canopen_abort_msg(uint32_t);
+
 /*****************************************************************************/
 
 /**
@@ -42,107 +44,44 @@ int ecrt_slave_sdo_write(ec_slave_t *slave, /**< EtherCAT-Slave */
                          size_t size /**< Größe des Datenfeldes */
                          )
 {
-    uint8_t data[0xF6];
-    ec_command_t command;
+    uint8_t data[0x0A];
     unsigned int i;
-    ec_master_t *master;
-    cycles_t start, end, timeout;
-    uint32_t abort_code;
-    const ec_sdo_abort_message_t *abort_msg;
-
-    memset(data, 0x00, 0xF6);
-
-    master = slave->master;
+    size_t rec_size;
 
     if (size == 0 || size > 4) {
         EC_ERR("Invalid SDO data size: %i!\n", size);
         return -1;
     }
 
-    EC_WRITE_U16(data,      0x000A); // Length of the Mailbox service data
-    EC_WRITE_U16(data + 2,  slave->station_address); // Station address
-    EC_WRITE_U8 (data + 4,  0x00); // Channel & priority
-    EC_WRITE_U8 (data + 5,  0x03); // CANopen over EtherCAT
-    EC_WRITE_U16(data + 6,  0x02 << 12); // Number (0), Service (SDO request)
-    EC_WRITE_U8 (data + 8,  0x23 | ((4 - size) << 2)); // Spec., exp., init.
-    EC_WRITE_U16(data + 9,  sdo_index);
-    EC_WRITE_U8 (data + 11, sdo_subindex);
+    EC_WRITE_U16(data,     0x02 << 12); // Number (0), Service (SDO request)
+    EC_WRITE_U8 (data + 2, 0x23 | ((4 - size) << 2)); // Spec., exp., init.
+    EC_WRITE_U16(data + 3, sdo_index);
+    EC_WRITE_U8 (data + 5, sdo_subindex);
 
     for (i = 0; i < size; i++) {
-        EC_WRITE_U8(data + 12 + i, value & 0xFF);
+        EC_WRITE_U8(data + 6 + i, value & 0xFF);
         value >>= 8;
     }
 
-    ec_command_init_npwr(&command, slave->station_address, 0x1800, 0xF6, data);
-    if (unlikely(ec_master_simple_io(master, &command))) {
-        EC_ERR("Mailbox sending failed on slave %i!\n", slave->ring_position);
-        return -1;
-    }
+    // Mailox senden und empfangen
+    if (ec_slave_mailbox_send(slave, 0x03, data, 0x0A)) return -1;
 
-    // Read "written bit" of Sync-Manager
-    start = get_cycles();
-    timeout = (cycles_t) 10 * cpu_khz; // 10ms
+    rec_size = 0x0A;
+    if (ec_slave_mailbox_receive(slave, 0x03, data, &rec_size)) return -1;
 
-    while (1)
-    {
-        udelay(100);
-
-        ec_command_init_nprd(&command, slave->station_address, 0x808, 8);
-        if (unlikely(ec_master_simple_io(master, &command))) {
-            EC_ERR("Mailbox checking failed on slave %i!\n",
-                   slave->ring_position);
-            return -1;
-        }
-
-        end = get_cycles();
-
-        if (EC_READ_U8(command.data + 5) & 8) break; // Written bit is high
-
-        if ((end - start) >= timeout) {
-            EC_ERR("Mailbox check - Slave %i timed out.\n",
-                   slave->ring_position);
-            return -1;
-        }
-    }
-
-    if (unlikely(slave->master->debug_level) > 1)
-        EC_DBG("SDO download took %ius.\n", ((u32) (end - start) * 1000
-                                             / cpu_khz));
-
-    ec_command_init_nprd(&command, slave->station_address, 0x18F6, 0xF6);
-    if (unlikely(ec_master_simple_io(master, &command))) {
-        EC_ERR("Mailbox receiving failed on slave %i!\n",
-               slave->ring_position);
-        return -1;
-    }
-
-    if (EC_READ_U8 (command.data + 5) != 0x03) { // nicht CoE
-        EC_ERR("Invalid mailbox response (non-CoE) at slave %i!\n",
-               slave->ring_position);
-        return -1;
-    }
-
-    if (EC_READ_U16(command.data + 6) >> 12 == 0x02 && // SDO request
-        EC_READ_U8 (command.data + 8) >> 5 == 0x04) { // Abort SDO transf. req.
+    if (EC_READ_U16(data) >> 12 == 0x02 && // SDO request
+        EC_READ_U8 (data + 2) >> 5 == 0x04) { // Abort SDO transf. req.
         EC_ERR("SDO download of 0x%04X:%X (value %X, size %X) aborted on slave"
                " %i.\n", sdo_index, sdo_subindex, value, size,
                slave->ring_position);
-        abort_code = EC_READ_U32(command.data + 12);
-        for (abort_msg = sdo_abort_messages; abort_msg->code; abort_msg++) {
-            if (abort_msg->code == abort_code) {
-                EC_ERR("SDO abort message 0x%08X: \"%s\".\n",
-                       abort_msg->code, abort_msg->message);
-                return -1;
-            }
-        }
-        EC_ERR("Unknown SDO abort code 0x%08X.\n", abort_code);
+        ec_canopen_abort_msg(EC_READ_U32(data + 6));
         return -1;
     }
 
-    if (EC_READ_U16(command.data + 6) >> 12 != 0x03 || // SDO response
-        EC_READ_U8 (command.data + 8) >> 5 != 0x03 || // Download response
-        EC_READ_U16(command.data + 9) != sdo_index || // Index
-        EC_READ_U8 (command.data + 11) != sdo_subindex) // Subindex
+    if (EC_READ_U16(data) >> 12 != 0x03 || // SDO response
+        EC_READ_U8 (data + 2) >> 5 != 0x03 || // Download response
+        EC_READ_U16(data + 3) != sdo_index || // Index
+        EC_READ_U8 (data + 5) != sdo_subindex) // Subindex
     {
         EC_ERR("Invalid SDO download response at slave %i!\n",
                slave->ring_position);
@@ -164,101 +103,37 @@ int ecrt_slave_sdo_read(ec_slave_t *slave, /**< EtherCAT-Slave */
                         uint32_t *value /**< Speicher für gel. Wert */
                         )
 {
-    uint8_t data[0xF6];
-    ec_command_t command;
-    ec_master_t *master;
-    cycles_t start, end, timeout;
-    uint32_t abort_code;
-    const ec_sdo_abort_message_t *abort_msg;
+    uint8_t data[0x0A];
+    size_t rec_size;
 
-    memset(data, 0x00, 0xF6);
-    master = slave->master;
+    EC_WRITE_U16(data,     0x2000); // Number (0), Service (SDO request)
+    EC_WRITE_U8 (data + 2, 0x1 << 1 | 0x2 << 5); // Exp., Upload request
+    EC_WRITE_U16(data + 3, sdo_index);
+    EC_WRITE_U8 (data + 5, sdo_subindex);
 
-    EC_WRITE_U16(data,      0x0006); // Length of the Mailbox service data
-    EC_WRITE_U16(data + 2,  slave->station_address); // Station address
-    EC_WRITE_U8 (data + 4,  0x00); // Channel & priority
-    EC_WRITE_U8 (data + 5,  0x03); // CANopen over EtherCAT
-    EC_WRITE_U16(data + 6,  0x2000); // Number (0), Service (SDO request)
-    EC_WRITE_U8 (data + 8,  0x1 << 1 | 0x2 << 5); // Exp., Upload request
-    EC_WRITE_U16(data + 9,  sdo_index);
-    EC_WRITE_U8 (data + 11, sdo_subindex);
+    if (ec_slave_mailbox_send(slave, 0x03, data, 6)) return -1;
 
-    ec_command_init_npwr(&command, slave->station_address, 0x1800, 0xF6, data);
-    if (unlikely(ec_master_simple_io(master, &command))) {
-        EC_ERR("Mailbox sending failed on slave %i!\n", slave->ring_position);
-        return -1;
-    }
+    rec_size = 6;
+    if (ec_slave_mailbox_receive(slave, 0x03, data, &rec_size)) return -1;
 
-    // Read "written bit" of Sync-Manager
-
-    start = get_cycles();
-    timeout = cpu_khz; // 1ms
-
-    while (1)
-    {
-        udelay(10);
-
-        ec_command_init_nprd(&command, slave->station_address, 0x808, 8);
-        if (unlikely(ec_master_simple_io(master, &command))) {
-            EC_ERR("Mailbox checking failed on slave %i!\n",
-                   slave->ring_position);
-            return -1;
-        }
-
-        end = get_cycles();
-
-        if (EC_READ_U8(command.data + 5) & 8) { // Written bit is high
-            break;
-        }
-
-        if (unlikely((end - start) >= timeout)) {
-            EC_ERR("Mailbox check on slave %i timed out.\n",
-                   slave->ring_position);
-            return -1;
-        }
-    }
-
-    ec_command_init_nprd(&command, slave->station_address, 0x18F6, 0xF6);
-    if (unlikely(ec_master_simple_io(master, &command))) {
-        EC_ERR("Mailbox receiving failed on slave %i!\n",
-               slave->ring_position);
-        return -1;
-    }
-
-    if (EC_READ_U8 (command.data + 5) != 0x03) { // nicht CoE
-        EC_ERR("Invalid mailbox response (non-CoE) at slave %i!\n",
-               slave->ring_position);
-        return -1;
-    }
-
-    if (EC_READ_U16(command.data + 6) >> 12 == 0x02 && // SDO request
-        EC_READ_U8 (command.data + 8) >> 5 == 0x04) { // Abort SDO transf. req.
+    if (EC_READ_U16(data    ) >> 12 == 0x02 && // SDO request
+        EC_READ_U8 (data + 2) >> 5 == 0x04) { // Abort SDO transf. req.
         EC_ERR("SDO upload of 0x%04X:%X aborted on slave %i.\n",
                sdo_index, sdo_subindex, slave->ring_position);
-        abort_code = EC_READ_U32(command.data + 12);
-        for (abort_msg = sdo_abort_messages; abort_msg->code; abort_msg++) {
-            if (abort_msg->code == abort_code) {
-                EC_ERR("SDO abort message 0x%08X: \"%s\".\n",
-                       abort_msg->code, abort_msg->message);
-                return -1;
-            }
-        }
-        EC_ERR("Unknown SDO abort code 0x%08X.\n", abort_code);
+        ec_canopen_abort_msg(EC_READ_U32(data + 6));
         return -1;
     }
 
-    if (EC_READ_U16(command.data + 6) >> 12 != 0x03 || // SDO response
-        EC_READ_U8 (command.data + 8) >> 5 != 0x02 || // Upload response
-        EC_READ_U16(command.data + 9) != sdo_index || // Index
-        EC_READ_U8 (command.data + 11) != sdo_subindex) // Subindex
-    {
+    if (EC_READ_U16(data) >> 12 != 0x03 || // SDO response
+        EC_READ_U8 (data + 2) >> 5 != 0x02 || // Upload response
+        EC_READ_U16(data + 3) != sdo_index || // Index
+        EC_READ_U8 (data + 5) != sdo_subindex) { // Subindex
         EC_ERR("Invalid SDO upload response at slave %i!\n",
                slave->ring_position);
         return -1;
     }
 
-    *value = EC_READ_U32(command.data + 12);
-
+    *value = EC_READ_U32(data + 6);
     return 0;
 }
 
@@ -316,6 +191,92 @@ int ecrt_master_sdo_read(ec_master_t *master,
     ec_slave_t *slave;
     if (!(slave = ec_master_slave_address(master, addr))) return -1;
     return ecrt_slave_sdo_read(slave, index, subindex, value);
+}
+
+/*****************************************************************************/
+
+/**
+   Holt das Object-Dictionary aus dem Slave.
+
+   \return 0, wenn alles ok, sonst < 0
+*/
+
+int ec_slave_fetch_sdo_list(ec_slave_t *slave /**< EtherCAT-Slave */)
+{
+    uint8_t data[0xF0];
+    size_t rec_size;
+
+    //EC_DBG("Fetching SDO list for slave %i...\n", slave->ring_position);
+
+    EC_WRITE_U16(data,     0x8000); // Number (0), Service (get OD request)
+    EC_WRITE_U8 (data + 2,   0x01); // Get OD List Request
+    EC_WRITE_U8 (data + 3,   0x00); // res.
+    EC_WRITE_U16(data + 4, 0x0000); // fragments left
+    EC_WRITE_U16(data + 6, 0x0001); // Deliver all SDOs!
+
+    if (ec_slave_mailbox_send(slave, 0x03, data, 8)) return -1;
+
+    do
+    {
+        rec_size = 0xF0;
+        if (ec_slave_mailbox_receive(slave, 0x03, data, &rec_size)) return -1;
+
+        if (EC_READ_U16(data) >> 12 == 0x02 && // SDO request
+            EC_READ_U8 (data + 2) >> 5 == 0x04) { // Abort SDO transf. req.
+            EC_ERR("SDO list download aborted on slave %i.\n",
+                   slave->ring_position);
+            ec_canopen_abort_msg(EC_READ_U32(data + 12));
+            return -1;
+        }
+
+        if (EC_READ_U16(data) >> 12 == 0x08 && // SDO information
+            (EC_READ_U8 (data + 2) & 0x7F) == 0x07) { // Get OD List response
+            EC_ERR("SDO information error response at slave %i!\n",
+                   slave->ring_position);
+            ec_canopen_abort_msg(EC_READ_U32(data + 6));
+            return -1;
+        }
+
+        if (EC_READ_U16(data) >> 12 != 0x08 || // SDO information
+            (EC_READ_U8 (data + 2) & 0x7F) != 0x02) { // Get OD List response
+            EC_ERR("Invalid SDO list response at slave %i!\n",
+                   slave->ring_position);
+            return -1;
+        }
+
+        if (rec_size < 8) {
+            EC_ERR("Invalid data size!\n");
+            return -1;
+        }
+
+#if 0
+        for (i = 0; i < (rec_size - 8) / 2; i++)
+            EC_INFO("Object 0x%04X\n", EC_READ_U16(data + 8 + i * 2));
+#endif
+    }
+    while (EC_READ_U8(data + 2) & 0x80);
+
+    return 0;
+}
+
+/*****************************************************************************/
+
+/**
+   Gibt eine SDO-Abort-Meldung aus.
+*/
+
+void ec_canopen_abort_msg(uint32_t abort_code)
+{
+    const ec_sdo_abort_message_t *abort_msg;
+
+    for (abort_msg = sdo_abort_messages; abort_msg->code; abort_msg++) {
+        if (abort_msg->code == abort_code) {
+            EC_ERR("SDO abort message 0x%08X: \"%s\".\n",
+                   abort_msg->code, abort_msg->message);
+            return;
+        }
+    }
+    EC_ERR("Unknown SDO abort code 0x%08X.\n", abort_code);
 }
 
 /*****************************************************************************/

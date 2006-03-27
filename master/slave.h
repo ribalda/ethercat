@@ -39,6 +39,22 @@ ec_slave_state_t;
 /*****************************************************************************/
 
 /**
+   Unterstützte Mailbox-Protokolle.
+*/
+
+enum
+{
+    EC_MBOX_AOE = 0x01, /**< ADS over EtherCAT */
+    EC_MBOX_EOE = 0x02, /**< Ethernet over EtherCAT */
+    EC_MBOX_COE = 0x04, /**< CANopen over EtherCAT */
+    EC_MBOX_FOE = 0x08, /**< File Service over EtherCAT */
+    EC_MBOX_SOE = 0x10, /**< Servo Profile over EtherCAT */
+    EC_MBOX_VOE = 0x20  /**< Vendor specific */
+};
+
+/*****************************************************************************/
+
+/**
    FMMU-Konfiguration.
 */
 
@@ -154,6 +170,7 @@ struct ec_slave
     uint32_t sii_product_code; /**< Herstellerspezifischer Produktcode */
     uint32_t sii_revision_number; /**< Revisionsnummer */
     uint32_t sii_serial_number; /**< Seriennummer der Klemme */
+    uint32_t sii_mailbox_protocols; /**< Unterstützte Mailbox-Protokolle */
 
     const ec_slave_type_t *type; /**< Zeiger auf die Beschreibung
                                     des Slave-Typs */
@@ -184,6 +201,13 @@ int ec_slave_sii_read(ec_slave_t *, uint16_t, uint32_t *);
 int ec_slave_sii_write(ec_slave_t *, uint16_t, uint16_t);
 int ec_slave_state_change(ec_slave_t *, uint8_t);
 int ec_slave_set_fmmu(ec_slave_t *, const ec_domain_t *, const ec_sync_t *);
+
+// Mailbox
+int ec_slave_mailbox_send(ec_slave_t *, uint8_t, const uint8_t *, size_t);
+int ec_slave_mailbox_receive(ec_slave_t *, uint8_t, uint8_t *, size_t *);
+
+// CANopen over EtherCAT
+int ec_slave_fetch_sdo_list(ec_slave_t *);
 
 // Misc
 void ec_slave_print(const ec_slave_t *);
