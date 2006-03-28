@@ -146,6 +146,23 @@ ec_eeprom_pdo_entry_t;
 /*****************************************************************************/
 
 /**
+   CANopen-SDO.
+*/
+
+typedef struct
+{
+    struct list_head list;
+    uint16_t index;
+    uint16_t type;
+    uint8_t max_subindex;
+    uint8_t features;
+    char *name;
+}
+ec_sdo_t;
+
+/*****************************************************************************/
+
+/**
    EtherCAT-Slave
 */
 
@@ -187,6 +204,8 @@ struct ec_slave
     char *eeprom_name; /**< Slave-Name laut Hersteller */
     char *eeprom_group; /**< Slave-Beschreibung laut Hersteller */
     char *eeprom_desc; /**< Slave-Beschreibung laut Hersteller */
+
+    struct list_head sdo_dictionary; /**< SDO-Verzeichnis des Slaves */
 };
 
 /*****************************************************************************/

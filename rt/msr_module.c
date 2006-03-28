@@ -188,8 +188,6 @@ int __init init_rt_module(void)
         goto out_msr_cleanup;
     }
 
-    ecrt_master_print(master);
-
     printk(KERN_INFO "Registering domains...\n");
 
     if (!(domain1 = ecrt_master_create_domain(master))) {
@@ -216,14 +214,19 @@ int __init init_rt_module(void)
 
     printk(KERN_INFO "Activating master...\n");
 
-    //ecrt_master_debug(master, 2);
-
     if (ecrt_master_activate(master)) {
         printk(KERN_ERR "Could not activate master!\n");
         goto out_release_master;
     }
 
+    //ecrt_master_debug(master, 2);
+    if (ecrt_master_fetch_sdo_lists(master)) {
+        printk(KERN_ERR "Failed to fetch SDO lists!\n");
+        goto out_deactivate;
+    }
     //ecrt_master_debug(master, 0);
+
+    ecrt_master_print(master);
 
 #if 1
     if (ecrt_master_sdo_read(master, "1", 0x100A, 1, &version)) {
@@ -231,9 +234,7 @@ int __init init_rt_module(void)
         goto out_deactivate;
     }
     printk(KERN_INFO "Software-version: %u\n", version);
-#endif
 
-#if 1
     if (ecrt_master_sdo_write(master, "1", 0x4061, 1,  0, 1) ||
         ecrt_master_sdo_write(master, "1", 0x4061, 2,  1, 1) ||
         ecrt_master_sdo_write(master, "1", 0x4061, 3,  1, 1) ||

@@ -94,7 +94,7 @@ int __init init_mini_module(void)
     printk(KERN_INFO "=== Starting Minimal EtherCAT environment... ===\n");
 
     if ((master = ecrt_request_master(0)) == NULL) {
-        printk(KERN_ERR "Error requesting master 0!\n");
+        printk(KERN_ERR "Requesting master 0 failed!\n");
         goto out_return;
     }
 
@@ -104,22 +104,27 @@ int __init init_mini_module(void)
 
     if (!(domain1 = ecrt_master_create_domain(master)))
     {
-        printk(KERN_ERR "EtherCAT: Could not register domain!\n");
+        printk(KERN_ERR "Domain creation failed!\n");
         goto out_release_master;
     }
 
     printk(KERN_INFO "Registering domain fields...\n");
 
     if (ecrt_domain_register_field_list(domain1, domain1_fields)) {
-        printk(KERN_ERR "EtherCAT: Could not register field!\n");
+        printk(KERN_ERR "Field registration failed!\n");
         goto out_release_master;
     }
 
     printk(KERN_INFO "Activating master...\n");
 
     if (ecrt_master_activate(master)) {
-        printk(KERN_ERR "EtherCAT: Could not activate master!\n");
+        printk(KERN_ERR "Failed to activate master!\n");
         goto out_release_master;
+    }
+
+    if (ecrt_master_fetch_sdo_lists(master)) {
+        printk(KERN_ERR "Failed to fetch SDO lists!\n");
+        goto out_deactivate;
     }
 
     //ecrt_master_debug(master, 2);
@@ -134,7 +139,7 @@ int __init init_mini_module(void)
         ecrt_master_sdo_write(master, "1", 0x4069, 0, 25, 1) ||
         ecrt_master_sdo_write(master, "1", 0x406A, 0, 25, 1) ||
         ecrt_master_sdo_write(master, "1", 0x406B, 0, 50, 1)) {
-        printk(KERN_ERR "EtherCAT: Failed to configure SSI!\n");
+        printk(KERN_ERR "Failed to configure SSI slave!\n");
         goto out_deactivate;
     }
 #endif
@@ -144,7 +149,7 @@ int __init init_mini_module(void)
 #if 0
     printk(KERN_INFO "Writing alias...\n");
     if (ecrt_master_write_slave_alias(master, "0", 0xBEEF)) {
-        printk(KERN_ERR "EtherCAT: Failed to write alias!\n");
+        printk(KERN_ERR "Failed to write alias!\n");
         goto out_deactivate;
     }
 #endif
@@ -162,17 +167,12 @@ int __init init_mini_module(void)
     add_timer(&timer);
 
     printk(KERN_INFO "=== Minimal EtherCAT environment started. ===\n");
-
     return 0;
 
-#if 0
  out_deactivate:
     ecrt_master_deactivate(master);
-#endif
-
  out_release_master:
     ecrt_release_master(master);
-
  out_return:
     return -1;
 }
@@ -183,12 +183,9 @@ void __exit cleanup_mini_module(void)
 {
     printk(KERN_INFO "=== Stopping Minimal EtherCAT environment... ===\n");
 
-    if (master)
-    {
+    if (master) {
         del_timer_sync(&timer);
-
         printk(KERN_INFO "Deactivating master...\n");
-
         ecrt_master_deactivate(master);
         ecrt_release_master(master);
     }

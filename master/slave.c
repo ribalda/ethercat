@@ -58,6 +58,7 @@ void ec_slave_init(ec_slave_t *slave, /**< EtherCAT-Slave */
     INIT_LIST_HEAD(&slave->eeprom_strings);
     INIT_LIST_HEAD(&slave->eeprom_syncs);
     INIT_LIST_HEAD(&slave->eeprom_pdos);
+    INIT_LIST_HEAD(&slave->sdo_dictionary);
 }
 
 /*****************************************************************************/
@@ -72,6 +73,7 @@ void ec_slave_clear(ec_slave_t *slave /**< EtherCAT-Slave */)
     ec_eeprom_sync_t *sync, *next_sync;
     ec_eeprom_pdo_t *pdo, *next_pdo;
     ec_eeprom_pdo_entry_t *entry, *next_ent;
+    ec_sdo_t *sdo, *next_sdo;
 
     // Alle Strings freigeben
     list_for_each_entry_safe(string, next_str, &slave->eeprom_strings, list) {
@@ -103,6 +105,13 @@ void ec_slave_clear(ec_slave_t *slave /**< EtherCAT-Slave */)
     if (slave->eeprom_name) kfree(slave->eeprom_name);
     if (slave->eeprom_group) kfree(slave->eeprom_group);
     if (slave->eeprom_desc) kfree(slave->eeprom_desc);
+
+    // Alle SDOs freigeben
+    list_for_each_entry_safe(sdo, next_sdo, &slave->sdo_dictionary, list) {
+        list_del(&sdo->list);
+        if (sdo->name) kfree(sdo->name);
+        kfree(sdo);
+    }
 }
 
 /*****************************************************************************/
@@ -792,6 +801,7 @@ void ec_slave_print(const ec_slave_t *slave /**< EtherCAT-Slave */)
     ec_eeprom_sync_t *sync;
     ec_eeprom_pdo_t *pdo;
     ec_eeprom_pdo_entry_t *entry;
+    ec_sdo_t *sdo;
     int first;
 
     EC_INFO("x-- EtherCAT slave information ---------------\n");
@@ -889,6 +899,16 @@ void ec_slave_print(const ec_slave_t *slave /**< EtherCAT-Slave */)
             EC_INFO("|     \"%s\" 0x%04X:%X, %i Bit\n",
                     entry->name ? entry->name : "???",
                     entry->index, entry->subindex, entry->bit_length);
+        }
+    }
+
+    if (!list_empty(&slave->sdo_dictionary)) {
+        EC_INFO("|   SDO-Dictionary:\n");
+        list_for_each_entry(sdo, &slave->sdo_dictionary, list) {
+            EC_INFO("|     0x%04X: \"%s\"\n", sdo->index,
+                    sdo->name ? sdo->name : "");
+            EC_INFO("|       Type 0x%04X, subindices: %i, features: 0x%02X\n",
+                    sdo->type, sdo->max_subindex, sdo->features);
         }
     }
 

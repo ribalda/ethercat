@@ -52,6 +52,7 @@ void ecrt_release_master(ec_master_t *master);
 ec_domain_t *ecrt_master_create_domain(ec_master_t *master);
 int ecrt_master_activate(ec_master_t *master);
 void ecrt_master_deactivate(ec_master_t *master);
+int ecrt_master_fetch_sdo_lists(ec_master_t *master);
 void ecrt_master_sync_io(ec_master_t *master);
 void ecrt_master_async_send(ec_master_t *master);
 void ecrt_master_async_receive(ec_master_t *master);

@@ -853,14 +853,6 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
         if (unlikely(ec_slave_state_change(slave, EC_SLAVE_STATE_PREOP)))
             return -1;
 
-        // Fetch SDO list
-        if (slave->sii_mailbox_protocols & EC_MBOX_COE) {
-            if (unlikely(ec_slave_fetch_sdo_list(slave))) {
-                EC_ERR("Could not fetch SDO list!\n");
-                return -1;
-            }
-        }
-
         // Slaves that are not registered are only brought into PREOP
         // state -> nice blinking and mailbox comm. possible
         if (!slave->registered && !slave->type->bus_coupler) {
@@ -916,6 +908,36 @@ void ecrt_master_deactivate(ec_master_t *master /**< EtherCAT-Master */)
         ec_slave_check_crc(slave);
         ec_slave_state_change(slave, EC_SLAVE_STATE_INIT);
     }
+}
+
+
+/*****************************************************************************/
+
+/**
+   Lädt die SDO-Dictionaries aller Slaves.
+
+   Slaves, die kein CoE unterstützen, werden ausgelassen.
+
+   \return 0 wenn alles ok, sonst < 0
+*/
+
+int ecrt_master_fetch_sdo_lists(ec_master_t *master /**< EtherCAT-Master */)
+{
+    ec_slave_t *slave;
+    unsigned int i;
+
+    for (i = 0; i < master->slave_count; i++) {
+        slave = master->slaves + i;
+        if (slave->sii_mailbox_protocols & EC_MBOX_COE) {
+            if (unlikely(ec_slave_fetch_sdo_list(slave))) {
+                EC_ERR("Failed to fetch SDO list on slave %i!\n",
+                       slave->ring_position);
+                return -1;
+            }
+        }
+    }
+
+    return 0;
 }
 
 /*****************************************************************************/
@@ -1155,6 +1177,7 @@ int ecrt_master_write_slave_alias(ec_master_t *master,
 EXPORT_SYMBOL(ecrt_master_create_domain);
 EXPORT_SYMBOL(ecrt_master_activate);
 EXPORT_SYMBOL(ecrt_master_deactivate);
+EXPORT_SYMBOL(ecrt_master_fetch_sdo_lists);
 EXPORT_SYMBOL(ecrt_master_prepare_async_io);
 EXPORT_SYMBOL(ecrt_master_sync_io);
 EXPORT_SYMBOL(ecrt_master_async_send);
