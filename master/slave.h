@@ -187,7 +187,11 @@ struct ec_slave
     uint32_t sii_product_code; /**< Herstellerspezifischer Produktcode */
     uint32_t sii_revision_number; /**< Revisionsnummer */
     uint32_t sii_serial_number; /**< Seriennummer der Klemme */
-    uint32_t sii_mailbox_protocols; /**< Unterstützte Mailbox-Protokolle */
+    uint16_t sii_rx_mailbox_offset; /**< Adresse der Mailbox (Master->Slave) */
+    uint16_t sii_rx_mailbox_size; /**< Adresse der Mailbox (Master->Slave) */
+    uint16_t sii_tx_mailbox_offset; /**< Adresse der Mailbox (Slave->Master) */
+    uint16_t sii_tx_mailbox_size; /**< Adresse der Mailbox (Slave->Master) */
+    uint16_t sii_mailbox_protocols; /**< Unterstützte Mailbox-Protokolle */
 
     const ec_slave_type_t *type; /**< Zeiger auf die Beschreibung
                                     des Slave-Typs */
@@ -216,8 +220,9 @@ void ec_slave_clear(ec_slave_t *);
 
 // Slave control
 int ec_slave_fetch(ec_slave_t *);
-int ec_slave_sii_read(ec_slave_t *, uint16_t, uint32_t *);
-int ec_slave_sii_write(ec_slave_t *, uint16_t, uint16_t);
+int ec_slave_sii_read16(ec_slave_t *, uint16_t, uint16_t *);
+int ec_slave_sii_read32(ec_slave_t *, uint16_t, uint32_t *);
+int ec_slave_sii_write16(ec_slave_t *, uint16_t, uint16_t);
 int ec_slave_state_change(ec_slave_t *, uint8_t);
 int ec_slave_set_fmmu(ec_slave_t *, const ec_domain_t *, const ec_sync_t *);
 

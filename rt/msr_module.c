@@ -38,6 +38,7 @@
 #include "../include/ecrt.h"
 
 #define ASYNC
+//#define BLOCK1
 
 // Defines/Makros
 #define HZREDUCTION (MSR_ABTASTFREQUENZ / HZ)
@@ -52,30 +53,33 @@ static struct ipipe_sysinfo sys_info;
 // EtherCAT
 ec_master_t *master = NULL;
 ec_domain_t *domain1 = NULL;
-ec_domain_t *domain2 = NULL;
 
 // Prozessdaten
+#ifdef BLOCK1
 void *r_ssi, *r_ssi_st;
-void *r_ssi2;
+#else
 void *r_inc;
+#endif
 
-uint32_t k_angle;
 uint32_t k_ssi_pos;
 uint32_t k_ssi_status;
+uint32_t k_angle;
 uint32_t k_preio;
 uint32_t k_postio;
 uint32_t k_finished;
 
+#ifdef BLOCK1
 ec_field_init_t domain1_fields[] = {
     {&r_ssi,    "1", "Beckhoff", "EL5001", "InputValue", 0},
     {&r_ssi_st, "1", "Beckhoff", "EL5001", "Status",     0},
     {}
 };
-
-ec_field_init_t domain2_fields[] = {
-    {&r_ssi2,  "1", "Beckhoff", "EL5001", "InputValue", 0},
+#else
+ec_field_init_t domain1_fields[] = {
+    {&r_inc,    "4", "Beckhoff", "EL5101", "InputValue", 0},
     {}
 };
+#endif
 
 /*****************************************************************************/
 
@@ -98,28 +102,33 @@ static void msr_controller_run(void)
     // Empfangen
     ecrt_master_async_receive(master);
     ecrt_domain_process(domain1);
-    ecrt_domain_process(domain2);
 
     // Prozessdaten verarbeiten
+#ifdef BLOCK1
     k_ssi_pos = EC_READ_U32(r_ssi);
     k_ssi_status = EC_READ_U32(r_ssi_st);
+#else
+    k_angle = EC_READ_U16(r_inc);
+#endif
 
     // Senden
     ecrt_domain_queue(domain1);
-    ecrt_domain_queue(domain2);
     ecrt_master_async_send(master);
 #else
     // Senden und empfangen
     ecrt_domain_queue(domain1);
-    ecrt_domain_queue(domain2);
     ecrt_master_sync_io(master);
     ecrt_domain_process(domain1);
-    ecrt_domain_process(domain2);
 
     // Prozessdaten verarbeiten
+#ifdef BLOCK1
     k_ssi_pos = EC_READ_U32(r_ssi);
     k_ssi_status = EC_READ_U32(r_ssi_st);
+#else
+    k_angle = EC_READ_U16(r_inc);
 #endif
+
+#endif // ASYNC
 
     k_postio = (uint32_t) (get_cycles() - offset) * 1e6 / cpu_khz;
 
@@ -195,19 +204,9 @@ int __init init_rt_module(void)
         goto out_release_master;
     }
 
-    if (!(domain2 = ecrt_master_create_domain(master))) {
-        printk(KERN_ERR "Could not register domain!\n");
-        goto out_release_master;
-    }
-
     printk(KERN_INFO "Registering domain fields...\n");
 
     if (ecrt_domain_register_field_list(domain1, domain1_fields)) {
-        printk(KERN_ERR "Failed to register domain fields.\n");
-        goto out_release_master;
-    }
-
-    if (ecrt_domain_register_field_list(domain2, domain2_fields)) {
         printk(KERN_ERR "Failed to register domain fields.\n");
         goto out_release_master;
     }
@@ -219,6 +218,8 @@ int __init init_rt_module(void)
         goto out_release_master;
     }
 
+    ecrt_master_print(master);
+
     //ecrt_master_debug(master, 2);
     if (ecrt_master_fetch_sdo_lists(master)) {
         printk(KERN_ERR "Failed to fetch SDO lists!\n");
@@ -228,7 +229,7 @@ int __init init_rt_module(void)
 
     ecrt_master_print(master);
 
-#if 1
+#ifdef BLOCK1
     if (ecrt_master_sdo_read(master, "1", 0x100A, 1, &version)) {
         printk(KERN_ERR "Could not read SSI version!\n");
         goto out_deactivate;

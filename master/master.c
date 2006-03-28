@@ -662,6 +662,26 @@ void ec_sync_config(const ec_sync_t *sync, /**< Sync-Manager */
 /*****************************************************************************/
 
 /**
+   Initialisiert eine Sync-Manager-Konfigurationsseite mit EEPROM-Daten.
+
+   Der mit \a data referenzierte Speicher muss mindestens EC_SYNC_SIZE Bytes
+   groß sein.
+*/
+
+void ec_eeprom_sync_config(const ec_eeprom_sync_t *sync, /**< Sync-Manager */
+                           uint8_t *data /**> Zeiger auf Konfig.-Speicher */
+                           )
+{
+    EC_WRITE_U16(data,     sync->physical_start_address);
+    EC_WRITE_U16(data + 2, sync->length);
+    EC_WRITE_U8 (data + 4, sync->control_register);
+    EC_WRITE_U8 (data + 5, 0x00); // status byte (read only)
+    EC_WRITE_U16(data + 6, sync->enable ? 0x0001 : 0x0000); // enable
+}
+
+/*****************************************************************************/
+
+/**
    Initialisiert eine FMMU-Konfigurationsseite.
 
    Der mit \a data referenzierte Speicher muss mindestens EC_FMMU_SIZE Bytes
@@ -778,6 +798,7 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
     uint8_t data[256];
     uint32_t domain_offset;
     ec_domain_t *domain;
+    ec_eeprom_sync_t *eeprom_sync;
 
     // Domains erstellen
     domain_offset = 0;
@@ -799,12 +820,8 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
             return -1;
 
         // Check if slave was registered...
-        if (!slave->type) {
-            EC_WARN("Slave %i has unknown type!\n", i);
-            continue;
-        }
-
         type = slave->type;
+        if (!type) EC_WARN("Slave %i has unknown type!\n", i);
 
         // Check and reset CRC fault counters
         ec_slave_check_crc(slave);
@@ -834,24 +851,41 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
         }
 
         // Set Sync Managers
-        for (j = 0; type->sync_managers[j] && j < EC_MAX_SYNC; j++)
-        {
-            sync = type->sync_managers[j];
-
-            ec_sync_config(sync, data);
-            ec_command_init_npwr(&command, slave->station_address,
-                                 0x0800 + j * EC_SYNC_SIZE, EC_SYNC_SIZE,
-                                 data);
-            if (unlikely(ec_master_simple_io(master, &command))) {
-                EC_ERR("Setting sync manager %i failed on slave %i!\n",
-                       j, slave->ring_position);
-                return -1;
+        if (type) {
+            for (j = 0; type->sync_managers[j] && j < EC_MAX_SYNC; j++)
+            {
+                sync = type->sync_managers[j];
+                ec_sync_config(sync, data);
+                ec_command_init_npwr(&command, slave->station_address,
+                                     0x0800 + j * EC_SYNC_SIZE, EC_SYNC_SIZE,
+                                     data);
+                if (unlikely(ec_master_simple_io(master, &command))) {
+                    EC_ERR("Setting sync manager %i failed on slave %i!\n",
+                           j, slave->ring_position);
+                    return -1;
+                }
+            }
+        }
+        else if (slave->sii_mailbox_protocols) { // Unknown slave, has mailbox
+            list_for_each_entry(eeprom_sync, &slave->eeprom_syncs, list) {
+                ec_eeprom_sync_config(eeprom_sync, data);
+                ec_command_init_npwr(&command, slave->station_address,
+                                     0x800 + eeprom_sync->index * EC_SYNC_SIZE,
+                                     EC_SYNC_SIZE, data);
+                if (unlikely(ec_master_simple_io(master, &command))) {
+                    EC_ERR("Setting sync manager %i failed on slave %i!\n",
+                           eeprom_sync->index, slave->ring_position);
+                    return -1;
+                }
             }
         }
 
         // Change state to PREOP
         if (unlikely(ec_slave_state_change(slave, EC_SLAVE_STATE_PREOP)))
             return -1;
+
+        // Stop activation here for slaves without type
+        if (!type) continue;
 
         // Slaves that are not registered are only brought into PREOP
         // state -> nice blinking and mailbox comm. possible
@@ -1169,7 +1203,7 @@ int ecrt_master_write_slave_alias(ec_master_t *master,
     ec_slave_t *slave;
     if (!(slave = ec_master_slave_address(master, slave_address)))
         return -1;
-    return ec_slave_sii_write(slave, 0x0004, alias);
+    return ec_slave_sii_write16(slave, 0x0004, alias);
 }
 
 /*****************************************************************************/

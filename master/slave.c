@@ -48,6 +48,10 @@ void ec_slave_init(ec_slave_t *slave, /**< EtherCAT-Slave */
     slave->sii_product_code = 0;
     slave->sii_revision_number = 0;
     slave->sii_serial_number = 0;
+    slave->sii_rx_mailbox_offset = 0;
+    slave->sii_rx_mailbox_size = 0;
+    slave->sii_tx_mailbox_offset = 0;
+    slave->sii_tx_mailbox_size = 0;
     slave->sii_mailbox_protocols = 0;
     slave->type = NULL;
     slave->registered = 0;
@@ -143,44 +147,29 @@ int ec_slave_fetch(ec_slave_t *slave /**< EtherCAT-Slave */)
     if (slave->base_fmmu_count > EC_MAX_FMMUS)
         slave->base_fmmu_count = EC_MAX_FMMUS;
 
-    // Read identification from "Slave Information Interface" (SII)
-
-    if (unlikely(ec_slave_sii_read(slave, 0x0004,
-                                   (uint32_t *) &slave->sii_alias))) {
-        EC_ERR("Could not read SII alias!\n");
+    if (ec_slave_sii_read16(slave, 0x0004, &slave->sii_alias))
         return -1;
-    }
-
-    if (unlikely(ec_slave_sii_read(slave, 0x0008, &slave->sii_vendor_id))) {
-        EC_ERR("Could not read SII vendor id!\n");
+    if (ec_slave_sii_read32(slave, 0x0008, &slave->sii_vendor_id))
         return -1;
-    }
-
-    if (unlikely(ec_slave_sii_read(slave, 0x000A, &slave->sii_product_code))) {
-        EC_ERR("Could not read SII product code!\n");
+    if (ec_slave_sii_read32(slave, 0x000A, &slave->sii_product_code))
         return -1;
-    }
-
-    if (unlikely(ec_slave_sii_read(slave, 0x000C,
-                                   &slave->sii_revision_number))) {
-        EC_ERR("Could not read SII revision number!\n");
+    if (ec_slave_sii_read32(slave, 0x000C, &slave->sii_revision_number))
         return -1;
-    }
-
-    if (unlikely(ec_slave_sii_read(slave, 0x000E,
-                                   &slave->sii_serial_number))) {
-        EC_ERR("Could not read SII serial number!\n");
+    if (ec_slave_sii_read32(slave, 0x000E, &slave->sii_serial_number))
         return -1;
-    }
-
-    if (unlikely(ec_slave_sii_read(slave, 0x001C,
-                                   &slave->sii_mailbox_protocols))) {
-        EC_ERR("Could not read SII supported mailbox protocols!\n");
+    if (ec_slave_sii_read16(slave, 0x0018, &slave->sii_rx_mailbox_offset))
         return -1;
-    }
+    if (ec_slave_sii_read16(slave, 0x0019, &slave->sii_rx_mailbox_size))
+        return -1;
+    if (ec_slave_sii_read16(slave, 0x001A, &slave->sii_tx_mailbox_offset))
+        return -1;
+    if (ec_slave_sii_read16(slave, 0x001B, &slave->sii_tx_mailbox_size))
+        return -1;
+    if (ec_slave_sii_read16(slave, 0x001C, &slave->sii_mailbox_protocols))
+        return -1;
 
     if (unlikely(ec_slave_fetch_categories(slave))) {
-        EC_ERR("Could not fetch category data!\n");
+        EC_ERR("Failed to fetch category data!\n");
         return -1;
     }
 
@@ -190,20 +179,84 @@ int ec_slave_fetch(ec_slave_t *slave /**< EtherCAT-Slave */)
 /*****************************************************************************/
 
 /**
-   Liest Daten aus dem Slave-Information-Interface
+   Liest 16 Bit aus dem Slave-Information-Interface
    eines EtherCAT-Slaves.
 
    \return 0 bei Erfolg, sonst < 0
 */
 
-int ec_slave_sii_read(ec_slave_t *slave,
-                      /**< EtherCAT-Slave */
-                      uint16_t offset,
-                      /**< Adresse des zu lesenden SII-Registers */
-                      uint32_t *target
-                      /**< Zeiger auf einen 4 Byte großen Speicher zum Ablegen
-                         der Daten */
-                      )
+int ec_slave_sii_read16(ec_slave_t *slave,
+                        /**< EtherCAT-Slave */
+                        uint16_t offset,
+                        /**< Adresse des zu lesenden SII-Registers */
+                        uint16_t *target
+                        /**< Speicher für Wert (16-Bit) */
+                        )
+{
+    ec_command_t command;
+    uint8_t data[10];
+    cycles_t start, end, timeout;
+
+    // Initiate read operation
+
+    EC_WRITE_U8 (data,     0x00); // read-only access
+    EC_WRITE_U8 (data + 1, 0x01); // request read operation
+    EC_WRITE_U32(data + 2, offset);
+
+    ec_command_init_npwr(&command, slave->station_address, 0x502, 6, data);
+    if (unlikely(ec_master_simple_io(slave->master, &command))) {
+        EC_ERR("SII-read failed on slave %i!\n", slave->ring_position);
+        return -1;
+    }
+
+    // Der Slave legt die Informationen des Slave-Information-Interface
+    // in das Datenregister und löscht daraufhin ein Busy-Bit. Solange
+    // den Status auslesen, bis das Bit weg ist.
+
+    start = get_cycles();
+    timeout = (cycles_t) 100 * cpu_khz; // 100ms
+
+    while (1)
+    {
+        udelay(10);
+
+        ec_command_init_nprd(&command, slave->station_address, 0x502, 10);
+        if (unlikely(ec_master_simple_io(slave->master, &command))) {
+            EC_ERR("Getting SII-read status failed on slave %i!\n",
+                   slave->ring_position);
+            return -1;
+        }
+
+        end = get_cycles();
+
+        if (likely((EC_READ_U8(command.data + 1) & 0x81) == 0)) {
+            *target = EC_READ_U16(command.data + 6);
+            return 0;
+        }
+
+        if (unlikely((end - start) >= timeout)) {
+            EC_ERR("SII-read. Slave %i timed out!\n", slave->ring_position);
+            return -1;
+        }
+    }
+}
+
+/*****************************************************************************/
+
+/**
+   Liest 32 Bit aus dem Slave-Information-Interface
+   eines EtherCAT-Slaves.
+
+   \return 0 bei Erfolg, sonst < 0
+*/
+
+int ec_slave_sii_read32(ec_slave_t *slave,
+                        /**< EtherCAT-Slave */
+                        uint16_t offset,
+                        /**< Adresse des zu lesenden SII-Registers */
+                        uint32_t *target
+                        /**< Speicher für Wert (32-Bit) */
+                        )
 {
     ec_command_t command;
     uint8_t data[10];
@@ -256,19 +309,19 @@ int ec_slave_sii_read(ec_slave_t *slave,
 /*****************************************************************************/
 
 /**
-   Schreibt Daten in das Slave-Information-Interface
+   Schreibt 16 Bit Daten in das Slave-Information-Interface
    eines EtherCAT-Slaves.
 
    \return 0 bei Erfolg, sonst < 0
 */
 
-int ec_slave_sii_write(ec_slave_t *slave,
-                       /**< EtherCAT-Slave */
-                       uint16_t offset,
-                       /**< Adresse des zu lesenden SII-Registers */
-                       uint16_t value
-                       /**< Zu schreibender Wert */
-                       )
+int ec_slave_sii_write16(ec_slave_t *slave,
+                         /**< EtherCAT-Slave */
+                         uint16_t offset,
+                         /**< Adresse des zu lesenden SII-Registers */
+                         uint16_t value
+                         /**< Zu schreibender Wert */
+                         )
 {
     ec_command_t command;
     uint8_t data[8];
@@ -352,7 +405,7 @@ int ec_slave_fetch_categories(ec_slave_t *slave /**< EtherCAT-Slave */)
 
     while (1) {
         // read category type
-        if (ec_slave_sii_read(slave, word_offset, &value)) {
+        if (ec_slave_sii_read32(slave, word_offset, &value)) {
             EC_ERR("Unable to read category header.\n");
             goto out_free;
         }
@@ -365,7 +418,7 @@ int ec_slave_fetch_categories(ec_slave_t *slave /**< EtherCAT-Slave */)
 
         // Fetch category data
         for (i = 0; i < word_count; i++) {
-            if (ec_slave_sii_read(slave, word_offset + 2 + i, &value)) {
+            if (ec_slave_sii_read32(slave, word_offset + 2 + i, &value)) {
                 EC_ERR("Unable to read category data word %i.\n", i);
                 goto out_free;
             }
@@ -824,11 +877,13 @@ void ec_slave_print(const ec_slave_t *slave /**< EtherCAT-Slave */)
     EC_INFO("|   Supported FMMUs: %i, Sync managers: %i\n",
             slave->base_fmmu_count, slave->base_sync_count);
 
-    EC_INFO("| Supported mailbox protocols: ");
-    if (!slave->sii_mailbox_protocols) {
-        printk("(none)");
-    }
-    else {
+    if (slave->sii_mailbox_protocols) {
+        EC_INFO("| Mailbox communication:\n");
+        EC_INFO("|   RX mailbox: 0x%04X/%i, TX mailbox: 0x%04X/%i\n",
+                slave->sii_rx_mailbox_offset, slave->sii_rx_mailbox_size,
+                slave->sii_tx_mailbox_offset, slave->sii_tx_mailbox_size);
+        EC_INFO("|   Supported protocols: ");
+
         first = 1;
         if (slave->sii_mailbox_protocols & EC_MBOX_AOE) {
             printk("AoE");
@@ -858,8 +913,8 @@ void ec_slave_print(const ec_slave_t *slave /**< EtherCAT-Slave */)
             if (!first) printk(", ");
             printk("VoE");
         }
+        printk("\n");
     }
-    printk("\n");
 
     EC_INFO("| EEPROM data:\n");
 
@@ -983,29 +1038,45 @@ int ec_slave_mailbox_send(ec_slave_t *slave, /**< EtherCAT-Slave */
                           size_t size /**< Datengröße */
                           )
 {
-    uint8_t data[0xF6];
+    size_t total_size;
+    uint8_t *data;
     ec_command_t command;
 
-    if (unlikely(size + 6 > 0xF6)) {
+    if (unlikely(!slave->sii_mailbox_protocols)) {
+        EC_ERR("Slave %i does not support mailbox communication!\n",
+               slave->ring_position);
+        return -1;
+    }
+
+    total_size = size + 6;
+    if (unlikely(total_size > slave->sii_rx_mailbox_size)) {
         EC_ERR("Data size does not fit in mailbox!\n");
         return -1;
     }
 
-    memset(data, 0x00, 0xF6);
+    if (!(data = kmalloc(slave->sii_rx_mailbox_size, GFP_KERNEL))) {
+        EC_ERR("Failed to allocate %i bytes of memory for mailbox data!\n",
+               slave->sii_rx_mailbox_size);
+        return -1;
+    }
 
+    memset(data, 0x00, slave->sii_rx_mailbox_size);
     EC_WRITE_U16(data,      size); // Length of the Mailbox service data
     EC_WRITE_U16(data + 2,  slave->station_address); // Station address
     EC_WRITE_U8 (data + 4,  0x00); // Channel & priority
     EC_WRITE_U8 (data + 5,  type); // Underlying protocol type
-
     memcpy(data + 6, prot_data, size);
 
-    ec_command_init_npwr(&command, slave->station_address, 0x1800, 0xF6, data);
+    ec_command_init_npwr(&command, slave->station_address,
+                         slave->sii_rx_mailbox_offset,
+                         slave->sii_rx_mailbox_size, data);
     if (unlikely(ec_master_simple_io(slave->master, &command))) {
         EC_ERR("Mailbox sending failed on slave %i!\n", slave->ring_position);
+        kfree(data);
         return -1;
     }
 
+    kfree(data);
     return 0;
 }
 
@@ -1032,6 +1103,7 @@ int ec_slave_mailbox_receive(ec_slave_t *slave, /**< EtherCAT-Slave */
 
     while (1)
     {
+        // FIXME: Zweiter Sync-Manager nicht immer TX-Mailbox?
         ec_command_init_nprd(&command, slave->station_address, 0x808, 8);
         if (unlikely(ec_master_simple_io(slave->master, &command))) {
             EC_ERR("Mailbox checking failed on slave %i!\n",
@@ -1041,7 +1113,8 @@ int ec_slave_mailbox_receive(ec_slave_t *slave, /**< EtherCAT-Slave */
 
         end = get_cycles();
 
-        if (EC_READ_U8(command.data + 5) & 8) break; // Written bit is high
+        if (EC_READ_U8(command.data + 5) & 8)
+            break; // Proceed with received data
 
         if ((end - start) >= timeout) {
             EC_ERR("Mailbox check - Slave %i timed out.\n",
@@ -1052,26 +1125,34 @@ int ec_slave_mailbox_receive(ec_slave_t *slave, /**< EtherCAT-Slave */
         udelay(100);
     }
 
-    if (unlikely(slave->master->debug_level) > 1)
-        EC_DBG("SDO download took %ius.\n", ((u32) (end - start) * 1000
-                                             / cpu_khz));
-
-    ec_command_init_nprd(&command, slave->station_address, 0x18F6, 0xF6);
+    ec_command_init_nprd(&command, slave->station_address,
+                         slave->sii_tx_mailbox_offset,
+                         slave->sii_tx_mailbox_size);
     if (unlikely(ec_master_simple_io(slave->master, &command))) {
         EC_ERR("Mailbox receiving failed on slave %i!\n",
                slave->ring_position);
         return -1;
     }
 
-    if (EC_READ_U8(command.data + 5) != type) { // nicht CoE
-        EC_ERR("Invalid mailbox response (non-CoE) at slave %i!\n",
+    if ((EC_READ_U8(command.data + 5) & 0x0F) != type) {
+        EC_ERR("Unexpected mailbox protocol 0x%02X (exp.: 0x%02X) at"
+               " slave %i!\n", EC_READ_U8(command.data + 5), type,
                slave->ring_position);
         return -1;
     }
 
+    if (unlikely(slave->master->debug_level) > 1)
+        EC_DBG("Mailbox receive took %ius.\n", ((u32) (end - start) * 1000
+                                                / cpu_khz));
+
     if ((data_size = EC_READ_U16(command.data)) > *size) {
-        EC_ERR("CoE data does not fit in buffer (%i > %i).\n",
+        EC_ERR("Mailbox service data does not fit into buffer (%i > %i).\n",
                data_size, *size);
+        return -1;
+    }
+
+    if (data_size > slave->sii_tx_mailbox_size - 6) {
+        EC_ERR("Currupt mailbox response detected!\n");
         return -1;
     }
 
