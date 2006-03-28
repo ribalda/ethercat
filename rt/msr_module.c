@@ -225,7 +225,7 @@ int __init init_rt_module(void)
 
     //ecrt_master_debug(master, 0);
 
-#if 0
+#if 1
     if (ecrt_master_sdo_read(master, "1", 0x100A, 1, &version)) {
         printk(KERN_ERR "Could not read SSI version!\n");
         goto out_deactivate;
@@ -233,7 +233,7 @@ int __init init_rt_module(void)
     printk(KERN_INFO "Software-version: %u\n", version);
 #endif
 
-#if 0
+#if 1
     if (ecrt_master_sdo_write(master, "1", 0x4061, 1,  0, 1) ||
         ecrt_master_sdo_write(master, "1", 0x4061, 2,  1, 1) ||
         ecrt_master_sdo_write(master, "1", 0x4061, 3,  1, 1) ||

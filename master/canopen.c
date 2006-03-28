@@ -103,21 +103,21 @@ int ecrt_slave_sdo_read(ec_slave_t *slave, /**< EtherCAT-Slave */
                         uint32_t *value /**< Speicher für gel. Wert */
                         )
 {
-    uint8_t data[0x0A];
+    uint8_t data[0x20];
     size_t rec_size;
 
-    EC_WRITE_U16(data,     0x2000); // Number (0), Service (SDO request)
-    EC_WRITE_U8 (data + 2, 0x1 << 1 | 0x2 << 5); // Exp., Upload request
+    EC_WRITE_U16(data,     0x2000); // Number (0), Service = SDO request
+    EC_WRITE_U8 (data + 2, 0x1 << 1 | 0x2 << 5); // Expedited upload request
     EC_WRITE_U16(data + 3, sdo_index);
     EC_WRITE_U8 (data + 5, sdo_subindex);
 
     if (ec_slave_mailbox_send(slave, 0x03, data, 6)) return -1;
 
-    rec_size = 6;
+    rec_size = 0x20;
     if (ec_slave_mailbox_receive(slave, 0x03, data, &rec_size)) return -1;
 
-    if (EC_READ_U16(data    ) >> 12 == 0x02 && // SDO request
-        EC_READ_U8 (data + 2) >> 5 == 0x04) { // Abort SDO transf. req.
+    if (EC_READ_U16(data) >> 12 == 0x02 && // SDO request
+        EC_READ_U8 (data + 2) >> 5 == 0x04) { // Abort SDO transfer request
         EC_ERR("SDO upload of 0x%04X:%X aborted on slave %i.\n",
                sdo_index, sdo_subindex, slave->ring_position);
         ec_canopen_abort_msg(EC_READ_U32(data + 6));
