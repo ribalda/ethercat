@@ -38,7 +38,7 @@
 #include "../include/ecrt.h"
 
 #define ASYNC
-//#define BLOCK1
+#define BLOCK1
 
 // Defines/Makros
 #define HZREDUCTION (MSR_ABTASTFREQUENZ / HZ)
@@ -70,8 +70,8 @@ uint32_t k_finished;
 
 #ifdef BLOCK1
 ec_field_init_t domain1_fields[] = {
-    {&r_ssi,    "1", "Beckhoff", "EL5001", "InputValue", 0},
-    {&r_ssi_st, "1", "Beckhoff", "EL5001", "Status",     0},
+    {&r_ssi,    "5", "Beckhoff", "EL5001", "InputValue", 0},
+    {&r_ssi_st, "5", "Beckhoff", "EL5001", "Status",     0},
     {}
 };
 #else
@@ -184,9 +184,10 @@ void domain_entry(void)
 int __init init_rt_module(void)
 {
     struct ipipe_domain_attr attr; //ipipe
-    uint32_t version;
+    uint8_t string[10];
+    size_t size;
 
-    // Als allererstes die RT-lib initialisieren
+    // Als allererstes die RT-Lib initialisieren
     if (msr_rtlib_init(1, MSR_ABTASTFREQUENZ, 10, &msr_globals_register) < 0) {
         msr_print_warn("msr_modul: can't initialize rtlib!");
         goto out_return;
@@ -230,21 +231,31 @@ int __init init_rt_module(void)
     ecrt_master_print(master);
 
 #ifdef BLOCK1
-    if (ecrt_master_sdo_read(master, "1", 0x100A, 1, &version)) {
+    size = 10;
+    if (ecrt_master_sdo_read(master, "1", 0x100A, 0, string, &size)) {
         printk(KERN_ERR "Could not read SSI version!\n");
         goto out_deactivate;
     }
-    printk(KERN_INFO "Software-version: %u\n", version);
+    string[size] = 0;
+    printk(KERN_INFO "Software-version 1: %s\n", string);
 
-    if (ecrt_master_sdo_write(master, "1", 0x4061, 1,  0, 1) ||
-        ecrt_master_sdo_write(master, "1", 0x4061, 2,  1, 1) ||
-        ecrt_master_sdo_write(master, "1", 0x4061, 3,  1, 1) ||
-        ecrt_master_sdo_write(master, "1", 0x4066, 0,  0, 1) ||
-        ecrt_master_sdo_write(master, "1", 0x4067, 0,  4, 1) ||
-        ecrt_master_sdo_write(master, "1", 0x4068, 0,  0, 1) ||
-        ecrt_master_sdo_write(master, "1", 0x4069, 0, 25, 1) ||
-        ecrt_master_sdo_write(master, "1", 0x406A, 0, 25, 1) ||
-        ecrt_master_sdo_write(master, "1", 0x406B, 0, 50, 1)) {
+    size = 10;
+    if (ecrt_master_sdo_read(master, "5", 0x100A, 0, string, &size)) {
+        printk(KERN_ERR "Could not read SSI version!\n");
+        goto out_deactivate;
+    }
+    string[size] = 0;
+    printk(KERN_INFO "Software-version 5: %s\n", string);
+
+    if (ecrt_master_sdo_exp_write(master, "5", 0x4061, 1,  0, 1) ||
+        ecrt_master_sdo_exp_write(master, "5", 0x4061, 2,  1, 1) ||
+        ecrt_master_sdo_exp_write(master, "5", 0x4061, 3,  1, 1) ||
+        ecrt_master_sdo_exp_write(master, "5", 0x4066, 0,  0, 1) ||
+        ecrt_master_sdo_exp_write(master, "5", 0x4067, 0,  4, 1) ||
+        ecrt_master_sdo_exp_write(master, "5", 0x4068, 0,  0, 1) ||
+        ecrt_master_sdo_exp_write(master, "5", 0x4069, 0, 25, 1) ||
+        ecrt_master_sdo_exp_write(master, "5", 0x406A, 0, 25, 1) ||
+        ecrt_master_sdo_exp_write(master, "5", 0x406B, 0, 50, 1)) {
         printk(KERN_ERR "Failed to configure SSI slave!\n");
         goto out_deactivate;
     }

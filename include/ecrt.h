@@ -59,17 +59,23 @@ void ecrt_master_async_receive(ec_master_t *master);
 void ecrt_master_prepare_async_io(ec_master_t *master);
 void ecrt_master_debug(ec_master_t *master, int level);
 void ecrt_master_print(const ec_master_t *master);
-int ecrt_master_sdo_write(ec_master_t *master,
-                          const char *slave_addr,
-                          uint16_t sdo_index,
-                          uint8_t sdo_subindex,
-                          uint32_t value,
-                          size_t size);
+int ecrt_master_sdo_exp_write(ec_master_t *master,
+                              const char *slave_addr,
+                              uint16_t sdo_index,
+                              uint8_t sdo_subindex,
+                              uint32_t value,
+                              size_t size);
+int ecrt_master_sdo_exp_read(ec_master_t *master,
+                             const char *slave_addr,
+                             uint16_t sdo_index,
+                             uint8_t sdo_subindex,
+                             uint32_t *value);
 int ecrt_master_sdo_read(ec_master_t *master,
                          const char *slave_addr,
                          uint16_t sdo_index,
                          uint8_t sdo_subindex,
-                         uint32_t *value);
+                         uint8_t *data,
+                         size_t *size);
 int ecrt_master_write_slave_alias(ec_master_t *master,
                                   const char *slave_address, uint16_t alias);
 
@@ -93,15 +99,20 @@ int ecrt_domain_state(ec_domain_t *domain);
 /*****************************************************************************/
 // Slave Methods
 
-int ecrt_slave_sdo_write(ec_slave_t *slave,
-                         uint16_t sdo_index,
-                         uint8_t sdo_subindex,
-                         uint32_t value,
-                         size_t size);
+int ecrt_slave_sdo_exp_write(ec_slave_t *slave,
+                             uint16_t sdo_index,
+                             uint8_t sdo_subindex,
+                             uint32_t value,
+                             size_t size);
+int ecrt_slave_sdo_exp_read(ec_slave_t *slave,
+                            uint16_t sdo_index,
+                            uint8_t sdo_subindex,
+                            uint32_t *value);
 int ecrt_slave_sdo_read(ec_slave_t *slave,
                         uint16_t sdo_index,
                         uint8_t sdo_subindex,
-                        uint32_t *value);
+                        uint8_t *data,
+                        size_t *size);
 
 /*****************************************************************************/
 // Bitwise read/write macros

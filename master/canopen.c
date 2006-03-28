@@ -35,15 +35,15 @@ int ec_slave_fetch_sdo_descriptions(ec_slave_t *);
 /*****************************************************************************/
 
 /**
-   Schreibt ein CANopen-SDO (service data object).
+   Schreibt ein CANopen-SDO (service data object), expedited.
  */
 
-int ecrt_slave_sdo_write(ec_slave_t *slave, /**< EtherCAT-Slave */
-                         uint16_t sdo_index, /**< SDO-Index */
-                         uint8_t sdo_subindex, /**< SDO-Subindex */
-                         uint32_t value, /**< Neuer Wert */
-                         size_t size /**< Größe des Datenfeldes */
-                         )
+int ecrt_slave_sdo_exp_write(ec_slave_t *slave, /**< EtherCAT-Slave */
+                             uint16_t sdo_index, /**< SDO-Index */
+                             uint8_t sdo_subindex, /**< SDO-Subindex */
+                             uint32_t value, /**< Neuer Wert */
+                             size_t size /**< Größe des Datenfeldes */
+                             )
 {
     uint8_t data[0x0A];
     unsigned int i;
@@ -95,14 +95,14 @@ int ecrt_slave_sdo_write(ec_slave_t *slave, /**< EtherCAT-Slave */
 /*****************************************************************************/
 
 /**
-   Liest ein CANopen-SDO (service data object).
+   Liest ein CANopen-SDO (service data object), expedited.
  */
 
-int ecrt_slave_sdo_read(ec_slave_t *slave, /**< EtherCAT-Slave */
-                        uint16_t sdo_index, /**< SDO-Index */
-                        uint8_t sdo_subindex, /**< SDO-Subindex */
-                        uint32_t *value /**< Speicher für gel. Wert */
-                        )
+int ecrt_slave_sdo_exp_read(ec_slave_t *slave, /**< EtherCAT-Slave */
+                            uint16_t sdo_index, /**< SDO-Index */
+                            uint8_t sdo_subindex, /**< SDO-Subindex */
+                            uint32_t *value /**< Speicher für gel. Wert */
+                            )
 {
     uint8_t data[0x20];
     size_t rec_size;
@@ -141,57 +141,149 @@ int ecrt_slave_sdo_read(ec_slave_t *slave, /**< EtherCAT-Slave */
 /*****************************************************************************/
 
 /**
-   Schweibt ein CANopen-SDO (Variante mit Angabe des Masters und der Adresse).
-
-   Siehe ecrt_slave_sdo_write()
-
-   \return 0 wenn alles ok, < 0 bei Fehler
+   Liest ein CANopen-SDO (service data object).
  */
 
-int ecrt_master_sdo_write(ec_master_t *master,
-                          /**< EtherCAT-Master */
-                          const char *addr,
-                          /**< Addresse, siehe ec_master_slave_address() */
-                          uint16_t index,
-                          /**< SDO-Index */
-                          uint8_t subindex,
-                          /**< SDO-Subindex */
-                          uint32_t value,
-                          /**< Neuer Wert */
-                          size_t size
-                          /**< Größe des Datenfeldes */
-                          )
+int ecrt_slave_sdo_read(ec_slave_t *slave, /**< EtherCAT-Slave */
+                        uint16_t sdo_index, /**< SDO-Index */
+                        uint8_t sdo_subindex, /**< SDO-Subindex */
+                        uint8_t *target, /**< Speicher für gel. Wert */
+                        size_t *size /**< Größe des Speichers */
+                        )
 {
-    ec_slave_t *slave;
-    if (!(slave = ec_master_slave_address(master, addr))) return -1;
-    return ecrt_slave_sdo_write(slave, index, subindex, value, size);
+    uint8_t data[0x20];
+    size_t rec_size, data_size;
+    uint32_t complete_size;
+
+    EC_WRITE_U16(data,     0x2000); // Number (0), Service = SDO request
+    EC_WRITE_U8 (data + 2, 0x2 << 5); // Initiate upload request
+    EC_WRITE_U16(data + 3, sdo_index);
+    EC_WRITE_U8 (data + 5, sdo_subindex);
+
+    if (ec_slave_mailbox_send(slave, 0x03, data, 6)) return -1;
+
+    rec_size = 0x20;
+    if (ec_slave_mailbox_receive(slave, 0x03, data, &rec_size)) return -1;
+
+    if (EC_READ_U16(data) >> 12 == 0x02 && // SDO request
+        EC_READ_U8 (data + 2) >> 5 == 0x04) { // Abort SDO transfer request
+        EC_ERR("SDO upload of 0x%04X:%X aborted on slave %i.\n",
+               sdo_index, sdo_subindex, slave->ring_position);
+        ec_canopen_abort_msg(EC_READ_U32(data + 6));
+        return -1;
+    }
+
+    if (EC_READ_U16(data) >> 12 != 0x03 || // SDO response
+        EC_READ_U8 (data + 2) >> 5 != 0x02 || // Initiate upload response
+        EC_READ_U16(data + 3) != sdo_index || // Index
+        EC_READ_U8 (data + 5) != sdo_subindex) { // Subindex
+        EC_ERR("Invalid SDO upload response at slave %i!\n",
+               slave->ring_position);
+        return -1;
+    }
+
+    if (rec_size < 10) {
+        EC_ERR("Received currupted SDO upload response!\n");
+        return -1;
+    }
+
+    if ((complete_size = EC_READ_U32(data + 6)) > *size) {
+        EC_ERR("SDO data does not fit into buffer (%i / %i)!\n",
+               complete_size, *size);
+        return -1;
+    }
+
+    data_size = rec_size - 10;
+
+    if (data_size == complete_size) {
+        memcpy(target, data + 10, data_size);
+    }
+    else {
+        EC_ERR("SDO data incomplete.\n");
+        return -1;
+    }
+
+    return 0;
 }
 
 /*****************************************************************************/
 
 /**
-   Liest ein CANopen-SDO (Variante mit Angabe des Masters und der Adresse).
+   Schreibt ein CANopen-SDO (Angabe des Masters und der Adresse), expedited.
 
-   Siehe ecrt_slave_sdo_read()
+   Siehe ecrt_slave_sdo_exp_write()
 
    \return 0 wenn alles ok, < 0 bei Fehler
  */
 
-int ecrt_master_sdo_read(ec_master_t *master,
-                         /**< EtherCAT-Slave */
-                         const char *addr,
-                         /**< Addresse, siehe ec_master_slave_address() */
-                         uint16_t index,
-                         /**< SDO-Index */
-                         uint8_t subindex,
-                         /**< SDO-Subindex */
-                         uint32_t *value
-                         /**< Speicher für gel. Wert */
+int ecrt_master_sdo_exp_write(ec_master_t *master,
+                              /**< EtherCAT-Master */
+                              const char *addr,
+                              /**< Addresse, siehe ec_master_slave_address() */
+                              uint16_t index,
+                              /**< SDO-Index */
+                              uint8_t subindex,
+                              /**< SDO-Subindex */
+                              uint32_t value,
+                              /**< Neuer Wert */
+                              size_t size
+                              /**< Größe des Datenfeldes */
+                              )
+{
+    ec_slave_t *slave;
+    if (!(slave = ec_master_slave_address(master, addr))) return -1;
+    return ecrt_slave_sdo_exp_write(slave, index, subindex, value, size);
+}
+
+/*****************************************************************************/
+
+/**
+   Liest ein CANopen-SDO (Angabe des Masters und der Adresse), expedited.
+
+   Siehe ecrt_slave_sdo_exp_read()
+
+   \return 0 wenn alles ok, < 0 bei Fehler
+ */
+
+int ecrt_master_sdo_exp_read(ec_master_t *master,
+                             /**< EtherCAT-Slave */
+                             const char *addr,
+                             /**< Addresse, siehe ec_master_slave_address() */
+                             uint16_t index,
+                             /**< SDO-Index */
+                             uint8_t subindex,
+                             /**< SDO-Subindex */
+                             uint32_t *value
+                             /**< Speicher für gel. Wert */
+                             )
+{
+    ec_slave_t *slave;
+    if (!(slave = ec_master_slave_address(master, addr))) return -1;
+    return ecrt_slave_sdo_exp_read(slave, index, subindex, value);
+}
+
+/*****************************************************************************/
+
+/**
+   Liest ein CANopen-SDO (Angabe des Masters und der Adresse), expedited.
+
+   Siehe ecrt_slave_sdo_exp_read()
+
+   \return 0 wenn alles ok, < 0 bei Fehler
+ */
+
+int ecrt_master_sdo_read(ec_master_t *master, /**< EtherCAT-Master */
+                         const char *addr, /**< Addresse, siehe
+                                              ec_master_slave_address() */
+                         uint16_t sdo_index, /**< SDO-Index */
+                         uint8_t sdo_subindex, /**< SDO-Subindex */
+                         uint8_t *target, /**< Speicher für gel. Wert */
+                         size_t *size /**< Größe des Speichers */
                          )
 {
     ec_slave_t *slave;
     if (!(slave = ec_master_slave_address(master, addr))) return -1;
-    return ecrt_slave_sdo_read(slave, index, subindex, value);
+    return ecrt_slave_sdo_read(slave, sdo_index, sdo_subindex, target, size);
 }
 
 /*****************************************************************************/
@@ -398,9 +490,11 @@ const ec_sdo_abort_message_t sdo_abort_messages[] = {
 
 /*****************************************************************************/
 
-EXPORT_SYMBOL(ecrt_slave_sdo_write);
+EXPORT_SYMBOL(ecrt_slave_sdo_exp_write);
+EXPORT_SYMBOL(ecrt_slave_sdo_exp_read);
 EXPORT_SYMBOL(ecrt_slave_sdo_read);
-EXPORT_SYMBOL(ecrt_master_sdo_write);
+EXPORT_SYMBOL(ecrt_master_sdo_exp_write);
+EXPORT_SYMBOL(ecrt_master_sdo_exp_read);
 EXPORT_SYMBOL(ecrt_master_sdo_read);
 
 /*****************************************************************************/
