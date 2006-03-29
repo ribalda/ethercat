@@ -250,7 +250,7 @@ int ec_slave_mailbox_receive(ec_slave_t *, uint8_t, uint8_t *, size_t *);
 int ec_slave_fetch_sdo_list(ec_slave_t *);
 
 // Misc
-void ec_slave_print(const ec_slave_t *);
+void ec_slave_print(const ec_slave_t *, unsigned int);
 int ec_slave_check_crc(ec_slave_t *);
 
 /*****************************************************************************/

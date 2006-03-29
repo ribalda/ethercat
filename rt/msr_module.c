@@ -200,36 +200,33 @@ int __init init_rt_module(void)
     }
 
     printk(KERN_INFO "Registering domains...\n");
-
     if (!(domain1 = ecrt_master_create_domain(master))) {
         printk(KERN_ERR "Could not register domain!\n");
         goto out_release_master;
     }
 
     printk(KERN_INFO "Registering domain fields...\n");
-
     if (ecrt_domain_register_field_list(domain1, domain1_fields)) {
         printk(KERN_ERR "Failed to register domain fields.\n");
         goto out_release_master;
     }
 
     printk(KERN_INFO "Activating master...\n");
-
     if (ecrt_master_activate(master)) {
         printk(KERN_ERR "Could not activate master!\n");
         goto out_release_master;
     }
 
-    ecrt_master_print(master);
-
-    //ecrt_master_debug(master, 2);
+#if 0
     if (ecrt_master_fetch_sdo_lists(master)) {
         printk(KERN_ERR "Failed to fetch SDO lists!\n");
         goto out_deactivate;
     }
-    //ecrt_master_debug(master, 0);
+    ecrt_master_print(master, 2);
+#else
+    ecrt_master_print(master, 0);
+#endif
 
-    ecrt_master_print(master);
 
 #ifdef BLOCK1
     if (!(slave = ecrt_master_get_slave(master, "1"))) {
@@ -287,7 +284,6 @@ int __init init_rt_module(void)
     attr.priority = IPIPE_ROOT_PRIO + 1;
     attr.entry = &domain_entry;
     ipipe_register_domain(&this_domain, &attr);
-
     return 0;
 
  out_deactivate:

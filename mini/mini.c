@@ -98,10 +98,7 @@ int __init init_mini_module(void)
         goto out_return;
     }
 
-    ecrt_master_print(master);
-
     printk(KERN_INFO "Registering domain...\n");
-
     if (!(domain1 = ecrt_master_create_domain(master)))
     {
         printk(KERN_ERR "Domain creation failed!\n");
@@ -109,25 +106,27 @@ int __init init_mini_module(void)
     }
 
     printk(KERN_INFO "Registering domain fields...\n");
-
     if (ecrt_domain_register_field_list(domain1, domain1_fields)) {
         printk(KERN_ERR "Field registration failed!\n");
         goto out_release_master;
     }
 
     printk(KERN_INFO "Activating master...\n");
-
     if (ecrt_master_activate(master)) {
         printk(KERN_ERR "Failed to activate master!\n");
         goto out_release_master;
     }
 
+#if 0
     if (ecrt_master_fetch_sdo_lists(master)) {
         printk(KERN_ERR "Failed to fetch SDO lists!\n");
         goto out_deactivate;
     }
+    ecrt_master_print(master, 2);
+#else
+    ecrt_master_print(master, 0);
+#endif
 
-    //ecrt_master_debug(master, 2);
 
 #if 0
     if (!(slave = ecrt_master_get_slave(master, "5"))) {
@@ -149,8 +148,6 @@ int __init init_mini_module(void)
     }
 #endif
 
-    //ecrt_master_debug(master, 0);
-
 #if 0
     printk(KERN_INFO "Writing alias...\n");
     if (ecrt_slave_sdo_write_exp16(slave, 0xBEEF)) {
@@ -165,7 +162,6 @@ int __init init_mini_module(void)
 #endif
 
     printk("Starting cyclic sample thread.\n");
-
     init_timer(&timer);
     timer.function = run;
     timer.expires = jiffies + 10; // Das erste Mal sofort feuern

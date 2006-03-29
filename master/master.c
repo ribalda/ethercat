@@ -1169,15 +1169,22 @@ void ecrt_master_debug(ec_master_t *master, /**< EtherCAT-Master */
 
 /**
    Gibt alle Informationen zum Master aus.
+
+   Verbosity:
+     0 - Nur Slavetypen und Adressen
+     1 - mit EEPROM-Informationen
+    >1 - mit SDO-Dictionaries
 */
 
-void ecrt_master_print(const ec_master_t *master /**< EtherCAT-Master */)
+void ecrt_master_print(const ec_master_t *master, /**< EtherCAT-Master */
+                       unsigned int verbosity /**< Geschwätzigkeit */
+                       )
 {
     unsigned int i;
 
     EC_INFO("*** Begin master information ***\n");
     for (i = 0; i < master->slave_count; i++)
-        ec_slave_print(&master->slaves[i]);
+        ec_slave_print(&master->slaves[i], verbosity);
     EC_INFO("*** End master information ***\n");
 }
 
