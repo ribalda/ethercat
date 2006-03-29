@@ -230,7 +230,7 @@ ec_slave_t *ecrt_domain_register_field(ec_domain_t *domain,
                                        /**< Domäne */
                                        const char *address,
                                        /**< ASCII-Addresse des Slaves,
-                                          siehe ec_master_slave_address() */
+                                          siehe ecrt_master_get_slave() */
                                        const char *vendor_name,
                                        /**< Herstellername */
                                        const char *product_name,
@@ -259,7 +259,7 @@ ec_slave_t *ecrt_domain_register_field(ec_domain_t *domain,
     master = domain->master;
 
     // Adresse übersetzen
-    if (!(slave = ec_master_slave_address(master, address))) return NULL;
+    if (!(slave = ecrt_master_get_slave(master, address))) return NULL;
 
     if (!(type = slave->type)) {
         EC_ERR("Slave \"%s\" (position %i) has unknown type!\n", address,

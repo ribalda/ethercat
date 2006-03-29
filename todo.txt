@@ -10,9 +10,9 @@ $Id$
 - Konfiguration Inkrementalgeberklemme
 - SSI-Klemme
 - SysFS-Interface implementieren
-- SDO Dictionary der Slaves auslesen und im SysFS darstellen
 - DLL-Link-States auslesen und Topologie berechnen
 - Ethernet over EtherCAT (EoE)
 - eepro100-Kartentreiber
+- Master mit eigener State-Machine -> run()
 - Installationsanleitung / Dokumentation
 - Userspace-Tool zum Konfigurieren und visualisieren

@@ -130,15 +130,20 @@ int __init init_mini_module(void)
     //ecrt_master_debug(master, 2);
 
 #if 0
-    if (ecrt_master_sdo_write(master, "1", 0x4061, 1,  0, 1) ||
-        ecrt_master_sdo_write(master, "1", 0x4061, 2,  1, 1) ||
-        ecrt_master_sdo_write(master, "1", 0x4061, 3,  1, 1) ||
-        ecrt_master_sdo_write(master, "1", 0x4066, 0,  0, 1) ||
-        ecrt_master_sdo_write(master, "1", 0x4067, 0,  4, 1) ||
-        ecrt_master_sdo_write(master, "1", 0x4068, 0,  0, 1) ||
-        ecrt_master_sdo_write(master, "1", 0x4069, 0, 25, 1) ||
-        ecrt_master_sdo_write(master, "1", 0x406A, 0, 25, 1) ||
-        ecrt_master_sdo_write(master, "1", 0x406B, 0, 50, 1)) {
+    if (!(slave = ecrt_master_get_slave(master, "5"))) {
+        printk(KERN_ERR "Failed to get slave 5!\n");
+        goto out_deactivate;
+    }
+
+    if (ecrt_slave_sdo_write_exp8(slave, 0x4061, 1,  0) ||
+        ecrt_slave_sdo_write_exp8(slave, 0x4061, 2,  1) ||
+        ecrt_slave_sdo_write_exp8(slave, 0x4061, 3,  1) ||
+        ecrt_slave_sdo_write_exp8(slave, 0x4066, 0,  0) ||
+        ecrt_slave_sdo_write_exp8(slave, 0x4067, 0,  4) ||
+        ecrt_slave_sdo_write_exp8(slave, 0x4068, 0,  0) ||
+        ecrt_slave_sdo_write_exp8(slave, 0x4069, 0, 25) ||
+        ecrt_slave_sdo_write_exp8(slave, 0x406A, 0, 25) ||
+        ecrt_slave_sdo_write_exp8(slave, 0x406B, 0, 50)) {
         printk(KERN_ERR "Failed to configure SSI slave!\n");
         goto out_deactivate;
     }
@@ -148,7 +153,7 @@ int __init init_mini_module(void)
 
 #if 0
     printk(KERN_INFO "Writing alias...\n");
-    if (ecrt_master_write_slave_alias(master, "0", 0xBEEF)) {
+    if (ecrt_slave_sdo_write_exp16(slave, 0xBEEF)) {
         printk(KERN_ERR "Failed to write alias!\n");
         goto out_deactivate;
     }

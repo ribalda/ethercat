@@ -539,11 +539,9 @@ void ec_master_output_stats(ec_master_t *master /**< EtherCAT-Master */)
    \return Zeiger auf Slave bei Erfolg, sonst NULL
 */
 
-ec_slave_t *ec_master_slave_address(const ec_master_t *master,
-                                    /**< EtherCAT-Master */
-                                    const char *address
-                                    /**< Address-String */
-                                    )
+ec_slave_t *ecrt_master_get_slave(const ec_master_t *master, /**< Master */
+                                  const char *address /**< Address-String */
+                                  )
 {
     unsigned long first, second;
     char *remainder, *remainder2;
@@ -1185,29 +1183,6 @@ void ecrt_master_print(const ec_master_t *master /**< EtherCAT-Master */)
 
 /*****************************************************************************/
 
-/**
-   Schreibt den "Configured station alias".
-
-   \return 0, wenn alles ok, sonst < 0
-*/
-
-int ecrt_master_write_slave_alias(ec_master_t *master,
-                                  /** EtherCAT-Master */
-                                  const char *slave_address,
-                                  /** Slave-Adresse,
-                                      siehe ec_master_slave_address() */
-                                  uint16_t alias
-                                  /** Neuer Alias */
-                                  )
-{
-    ec_slave_t *slave;
-    if (!(slave = ec_master_slave_address(master, slave_address)))
-        return -1;
-    return ec_slave_sii_write16(slave, 0x0004, alias);
-}
-
-/*****************************************************************************/
-
 EXPORT_SYMBOL(ecrt_master_create_domain);
 EXPORT_SYMBOL(ecrt_master_activate);
 EXPORT_SYMBOL(ecrt_master_deactivate);
@@ -1218,7 +1193,7 @@ EXPORT_SYMBOL(ecrt_master_async_send);
 EXPORT_SYMBOL(ecrt_master_async_receive);
 EXPORT_SYMBOL(ecrt_master_debug);
 EXPORT_SYMBOL(ecrt_master_print);
-EXPORT_SYMBOL(ecrt_master_write_slave_alias);
+EXPORT_SYMBOL(ecrt_master_get_slave);
 
 /*****************************************************************************/
 

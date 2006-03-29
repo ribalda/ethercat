@@ -186,6 +186,7 @@ int __init init_rt_module(void)
     struct ipipe_domain_attr attr; //ipipe
     uint8_t string[10];
     size_t size;
+    ec_slave_t *slave;
 
     // Als allererstes die RT-Lib initialisieren
     if (msr_rtlib_init(1, MSR_ABTASTFREQUENZ, 10, &msr_globals_register) < 0) {
@@ -231,31 +232,41 @@ int __init init_rt_module(void)
     ecrt_master_print(master);
 
 #ifdef BLOCK1
+    if (!(slave = ecrt_master_get_slave(master, "1"))) {
+        printk(KERN_ERR "Failed to get slave 1!\n");
+        goto out_deactivate;
+    }
+
     size = 10;
-    if (ecrt_master_sdo_read(master, "1", 0x100A, 0, string, &size)) {
+    if (ecrt_slave_sdo_read(slave, 0x100A, 0, string, &size)) {
         printk(KERN_ERR "Could not read SSI version!\n");
         goto out_deactivate;
     }
     string[size] = 0;
     printk(KERN_INFO "Software-version 1: %s\n", string);
 
+    if (!(slave = ecrt_master_get_slave(master, "5"))) {
+        printk(KERN_ERR "Failed to get slave 5!\n");
+        goto out_deactivate;
+    }
+
     size = 10;
-    if (ecrt_master_sdo_read(master, "5", 0x100A, 0, string, &size)) {
+    if (ecrt_slave_sdo_read(slave, 0x100A, 0, string, &size)) {
         printk(KERN_ERR "Could not read SSI version!\n");
         goto out_deactivate;
     }
     string[size] = 0;
     printk(KERN_INFO "Software-version 5: %s\n", string);
 
-    if (ecrt_master_sdo_exp_write(master, "5", 0x4061, 1,  0, 1) ||
-        ecrt_master_sdo_exp_write(master, "5", 0x4061, 2,  1, 1) ||
-        ecrt_master_sdo_exp_write(master, "5", 0x4061, 3,  1, 1) ||
-        ecrt_master_sdo_exp_write(master, "5", 0x4066, 0,  0, 1) ||
-        ecrt_master_sdo_exp_write(master, "5", 0x4067, 0,  4, 1) ||
-        ecrt_master_sdo_exp_write(master, "5", 0x4068, 0,  0, 1) ||
-        ecrt_master_sdo_exp_write(master, "5", 0x4069, 0, 25, 1) ||
-        ecrt_master_sdo_exp_write(master, "5", 0x406A, 0, 25, 1) ||
-        ecrt_master_sdo_exp_write(master, "5", 0x406B, 0, 50, 1)) {
+    if (ecrt_slave_sdo_write_exp8(slave, 0x4061, 1,  0) ||
+        ecrt_slave_sdo_write_exp8(slave, 0x4061, 2,  1) ||
+        ecrt_slave_sdo_write_exp8(slave, 0x4061, 3,  1) ||
+        ecrt_slave_sdo_write_exp8(slave, 0x4066, 0,  0) ||
+        ecrt_slave_sdo_write_exp8(slave, 0x4067, 0,  4) ||
+        ecrt_slave_sdo_write_exp8(slave, 0x4068, 0,  0) ||
+        ecrt_slave_sdo_write_exp8(slave, 0x4069, 0, 25) ||
+        ecrt_slave_sdo_write_exp8(slave, 0x406A, 0, 25) ||
+        ecrt_slave_sdo_write_exp8(slave, 0x406B, 0, 50)) {
         printk(KERN_ERR "Failed to configure SSI slave!\n");
         goto out_deactivate;
     }

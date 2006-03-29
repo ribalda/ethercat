@@ -76,7 +76,6 @@ void ec_master_close(ec_master_t *);
 
 // Slave management
 int ec_master_bus_scan(ec_master_t *);
-ec_slave_t *ec_master_slave_address(const ec_master_t *, const char *);
 
 // Misc
 void ec_master_debug(const ec_master_t *);

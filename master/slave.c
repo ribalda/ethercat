@@ -1163,6 +1163,24 @@ int ec_slave_mailbox_receive(ec_slave_t *slave, /**< EtherCAT-Slave */
 
 /*****************************************************************************/
 
+/**
+   Schreibt den "Configured station alias".
+   \return 0, wenn alles ok, sonst < 0
+*/
+
+int ecrt_slave_write_alias(ec_slave_t *slave, /** EtherCAT-Slave */
+                           uint16_t alias /** Neuer Alias */
+                           )
+{
+    return ec_slave_sii_write16(slave, 0x0004, alias);
+}
+
+/*****************************************************************************/
+
+EXPORT_SYMBOL(ecrt_slave_write_alias);
+
+/*****************************************************************************/
+
 /* Emacs-Konfiguration
 ;;; Local Variables: ***
 ;;; c-basic-offset:4 ***
