@@ -154,11 +154,27 @@ typedef struct
     struct list_head list;
     uint16_t index;
     uint16_t type;
-    uint8_t max_subindex;
     uint8_t features;
     char *name;
+    struct list_head entries;
 }
 ec_sdo_t;
+
+/*****************************************************************************/
+
+/**
+   CANopen-SDO-Entry.
+*/
+
+typedef struct
+{
+    struct list_head list;
+    uint8_t subindex;
+    uint16_t data_type;
+    uint16_t bit_length;
+    char *name;
+}
+ec_sdo_entry_t;
 
 /*****************************************************************************/
 

@@ -184,7 +184,7 @@ void domain_entry(void)
 int __init init_rt_module(void)
 {
     struct ipipe_domain_attr attr; //ipipe
-    uint8_t string[10];
+    uint8_t string[20];
     size_t size;
     ec_slave_t *slave;
 
@@ -242,7 +242,6 @@ int __init init_rt_module(void)
         printk(KERN_ERR "Could not read SSI version!\n");
         goto out_deactivate;
     }
-    string[size] = 0;
     printk(KERN_INFO "Software-version 1: %s\n", string);
 
     if (!(slave = ecrt_master_get_slave(master, "5"))) {
@@ -255,8 +254,14 @@ int __init init_rt_module(void)
         printk(KERN_ERR "Could not read SSI version!\n");
         goto out_deactivate;
     }
-    string[size] = 0;
     printk(KERN_INFO "Software-version 5: %s\n", string);
+
+    size = 20;
+    if (ecrt_slave_sdo_read(slave, 0x1008, 0, string, &size)) {
+        printk(KERN_ERR "Could not read string!\n");
+        goto out_deactivate;
+    }
+    printk(KERN_INFO "String: %s\n", string);
 
     if (ecrt_slave_sdo_write_exp8(slave, 0x4061, 1,  0) ||
         ecrt_slave_sdo_write_exp8(slave, 0x4061, 2,  1) ||
