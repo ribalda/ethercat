@@ -12,6 +12,7 @@ $Id$
 - SysFS-Interface implementieren
 - DLL-Link-States auslesen und Topologie berechnen
 - Ethernet over EtherCAT (EoE)
+- File access over EtherCAT (FoE)
 - eepro100-Kartentreiber
 - Master mit eigener State-Machine -> run()
 - Installationsanleitung / Dokumentation

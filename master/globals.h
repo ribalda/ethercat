@@ -26,11 +26,9 @@
 #define EC_MAX_DATA_SIZE (EC_MAX_FRAME_SIZE \
                           - EC_FRAME_HEADER_SIZE \
                           - EC_COMMAND_HEADER_SIZE \
-                          - EC_COMMAND_FOOTER_SIZE) /**< Maximale Datengröße */
-
-#ifndef NULL
-#define NULL ((void *) 0) /**< NULL-Define, falls noch nicht definiert. */
-#endif
+                          - EC_COMMAND_FOOTER_SIZE) /**< Maximale Datengröße
+                                                       bei einem Kommando pro
+                                                       Frame */
 
 #define EC_INFO(fmt, args...) \
     printk(KERN_INFO "EtherCAT: " fmt, ##args)

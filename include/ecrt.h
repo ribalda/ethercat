@@ -81,6 +81,7 @@ int ecrt_domain_register_field_list(ec_domain_t *domain,
 
 void ecrt_domain_queue(ec_domain_t *domain);
 void ecrt_domain_process(ec_domain_t *domain);
+
 int ecrt_domain_state(ec_domain_t *domain);
 
 /*****************************************************************************/
