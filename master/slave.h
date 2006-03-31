@@ -197,6 +197,11 @@ struct ec_slave
     uint16_t base_fmmu_count; /**< Anzahl unterstützter FMMUs */
     uint16_t base_sync_count; /**< Anzahl unterstützter Sync-Manager */
 
+    // Data link status
+    uint8_t dl_status_link[2]; /**< Verbindung erkannt */
+    uint8_t dl_status_loop[2]; /**< Loop geschlossen */
+    uint8_t dl_status_comm[2]; /**< Kommunikation */
+
     // Slave information interface
     uint16_t sii_alias; /**< Configured station alias */
     uint32_t sii_vendor_id; /**< Identifikationsnummer des Herstellers */

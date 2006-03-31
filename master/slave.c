@@ -35,12 +35,19 @@ void ec_slave_init(ec_slave_t *slave, /**< EtherCAT-Slave */
                    ec_master_t *master /**< EtherCAT-Master */
                    )
 {
+    unsigned int i;
+
     slave->master = master;
     slave->base_type = 0;
     slave->base_revision = 0;
     slave->base_build = 0;
     slave->base_fmmu_count = 0;
     slave->base_sync_count = 0;
+    for (i = 0; i < 2; i++) {
+        slave->dl_status_link[i] = 0;
+        slave->dl_status_loop[i] = 0;
+        slave->dl_status_comm[i] = 0;
+    }
     slave->ring_position = 0;
     slave->station_address = 0;
     slave->sii_alias = 0;
@@ -135,11 +142,13 @@ void ec_slave_clear(ec_slave_t *slave /**< EtherCAT-Slave */)
 int ec_slave_fetch(ec_slave_t *slave /**< EtherCAT-Slave */)
 {
     ec_command_t command;
+    unsigned int i;
+    uint16_t dl_status;
 
     // Read base data
     ec_command_init_nprd(&command, slave->station_address, 0x0000, 6);
     if (unlikely(ec_master_simple_io(slave->master, &command))) {
-        EC_ERR("Reading base datafrom slave %i failed!\n",
+        EC_ERR("Reading base data from slave %i failed!\n",
                slave->ring_position);
         return -1;
     }
@@ -153,6 +162,22 @@ int ec_slave_fetch(ec_slave_t *slave /**< EtherCAT-Slave */)
     if (slave->base_fmmu_count > EC_MAX_FMMUS)
         slave->base_fmmu_count = EC_MAX_FMMUS;
 
+    // Read DL status
+    ec_command_init_nprd(&command, slave->station_address, 0x0110, 2);
+    if (unlikely(ec_master_simple_io(slave->master, &command))) {
+        EC_ERR("Reading DL status from slave %i failed!\n",
+               slave->ring_position);
+        return -1;
+    }
+
+    dl_status = EC_READ_U16(command.data);
+    for (i = 0; i < 2; i++) {
+        slave->dl_status_link[i] = dl_status & (1 << (4 + i)) ? 1 : 0;
+        slave->dl_status_loop[i] = dl_status & (1 << (8 + i * 2)) ? 1 : 0;
+        slave->dl_status_comm[i] = dl_status & (1 << (9 + i * 2)) ? 1 : 0;
+    }
+
+    // Read EEPROM data
     if (ec_slave_sii_read16(slave, 0x0004, &slave->sii_alias))
         return -1;
     if (ec_slave_sii_read32(slave, 0x0008, &slave->sii_vendor_id))
@@ -869,7 +894,7 @@ void ec_slave_print(const ec_slave_t *slave, /**< EtherCAT-Slave */
     ec_eeprom_pdo_entry_t *pdo_entry;
     ec_sdo_t *sdo;
     ec_sdo_entry_t *sdo_entry;
-    int first;
+    int first, i;
 
     EC_INFO("x-- EtherCAT slave information ---------------\n");
 
@@ -887,6 +912,14 @@ void ec_slave_print(const ec_slave_t *slave, /**< EtherCAT-Slave */
 
     if (verbosity > 0) // Etwas geschwätziger
     {
+        EC_INFO("| Data link status:\n");
+        for (i = 0; i < 2; i++) {
+            EC_INFO("|   Port %i: link %s, loop %s, %s\n", i,
+                    slave->dl_status_link[i] ? "up" : "down",
+                    slave->dl_status_loop[i] ? "closed" : "open",
+                    slave->dl_status_comm[i] ? "comm. establ." : "no comm.");
+        }
+
         EC_INFO("| Base information:\n");
         EC_INFO("|   Type %u, Revision %i, Build %i\n",
                 slave->base_type, slave->base_revision, slave->base_build);

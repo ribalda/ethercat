@@ -38,7 +38,7 @@
 #include "../include/ecrt.h"
 
 #define ASYNC
-#define BLOCK1
+//#define BLOCK1
 
 // Defines/Makros
 #define HZREDUCTION (MSR_ABTASTFREQUENZ / HZ)
@@ -224,7 +224,7 @@ int __init init_rt_module(void)
     }
     ecrt_master_print(master, 2);
 #else
-    ecrt_master_print(master, 0);
+    ecrt_master_print(master, 1);
 #endif
 
 
