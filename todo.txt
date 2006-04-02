@@ -3,17 +3,18 @@ TODO-Liste EtherCAT-Treiber
 
 $Id$
 
+- Kommandos mit dynamischem Speicher
+- Master mit eigener State-Machine; run() bzw. in send()
+- Verteilen von empfangenen Mailbox-Daten?
+- Ethernet over EtherCAT (EoE)
 - Anzahl Frames, die die Karte Puffern kann
 - Mehrere Frames versenden
 - Typeninformation aus Master entfernen / XML-Dateien aus User-Space lesen
-- Kommandos mit dynamischem Speicher
 - Konfiguration Inkrementalgeberklemme
 - SSI-Klemme
 - SysFS-Interface implementieren
 - DLL-Link-States auslesen und Topologie berechnen
-- Ethernet over EtherCAT (EoE)
 - File access over EtherCAT (FoE)
 - eepro100-Kartentreiber
-- Master mit eigener State-Machine -> run()
 - Installationsanleitung / Dokumentation
 - Userspace-Tool zum Konfigurieren und visualisieren
