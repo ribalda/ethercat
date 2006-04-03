@@ -25,14 +25,12 @@ void ec_domain_init(ec_domain_t *domain, /**< Domäne */
                     )
 {
     domain->master = master;
-    domain->data = NULL;
     domain->data_size = 0;
-    domain->commands = NULL;
-    domain->command_count = 0;
     domain->base_address = 0;
     domain->response_count = 0xFFFFFFFF;
 
     INIT_LIST_HEAD(&domain->field_regs);
+    INIT_LIST_HEAD(&domain->commands);
 }
 
 /*****************************************************************************/
@@ -43,8 +41,12 @@ void ec_domain_init(ec_domain_t *domain, /**< Domäne */
 
 void ec_domain_clear(ec_domain_t *domain /**< Domäne */)
 {
-    if (domain->data) kfree(domain->data);
-    if (domain->commands) kfree(domain->commands);
+    ec_command_t *command, *next;
+
+    list_for_each_entry_safe(command, next, &domain->commands, list) {
+        ec_command_clear(command);
+        kfree(command);
+    }
 
     ec_domain_clear_field_regs(domain);
 }
@@ -66,8 +68,8 @@ int ec_domain_reg_field(ec_domain_t *domain, /**< Domäne */
 {
     ec_field_reg_t *field_reg;
 
-    if (!(field_reg = (ec_field_reg_t *) kmalloc(sizeof(ec_field_reg_t),
-                                                 GFP_KERNEL))) {
+    if (!(field_reg =
+          (ec_field_reg_t *) kmalloc(sizeof(ec_field_reg_t), GFP_KERNEL))) {
         EC_ERR("Failed to allocate field registration.\n");
         return -1;
     }
@@ -107,6 +109,35 @@ void ec_domain_clear_field_regs(ec_domain_t *domain)
 /*****************************************************************************/
 
 /**
+   Alloziert ein Prozessdatenkommando und fügt es in die Liste ein.
+*/
+
+int ec_domain_add_command(ec_domain_t *domain, /**< Domäne */
+                          uint32_t offset, /**< Logisches Offset */
+                          size_t data_size /**< Größe der Kommando-Daten */
+                          )
+{
+    ec_command_t *command;
+
+    if (!(command = kmalloc(sizeof(ec_command_t), GFP_KERNEL))) {
+        EC_ERR("Failed to allocate domain command!\n");
+        return -1;
+    }
+
+    ec_command_init(command);
+
+    if (ec_command_lrw(command, offset, data_size)) {
+        kfree(command);
+        return -1;
+    }
+
+    list_add_tail(&command->list, &domain->commands);
+    return 0;
+}
+
+/*****************************************************************************/
+
+/**
    Erzeugt eine Domäne.
 
    Reserviert den Speicher einer Domäne, berechnet die logischen Adressen der
@@ -122,19 +153,19 @@ int ec_domain_alloc(ec_domain_t *domain, /**< Domäne */
     ec_field_reg_t *field_reg;
     ec_slave_t *slave;
     ec_fmmu_t *fmmu;
-    unsigned int i, j;
-    uint32_t data_offset;
-
-    if (domain->data) {
-        EC_ERR("Domain already allocated!\n");
-        return -1;
-    }
+    unsigned int i, j, cmd_count;
+    uint32_t field_off, field_off_cmd;
+    uint32_t cmd_offset;
+    size_t cmd_data_size;
+    ec_command_t *command;
 
     domain->base_address = base_address;
 
-    // Größe der Prozessdaten berechnen
-    // und logische Adressen der FMMUs setzen
+    // Größe der Prozessdaten berechnen und Kommandos allozieren
     domain->data_size = 0;
+    cmd_offset = base_address;
+    cmd_data_size = 0;
+    cmd_count = 0;
     for (i = 0; i < domain->master->slave_count; i++) {
         slave = &domain->master->slaves[i];
         for (j = 0; j < slave->fmmu_count; j++) {
@@ -142,49 +173,57 @@ int ec_domain_alloc(ec_domain_t *domain, /**< Domäne */
             if (fmmu->domain == domain) {
                 fmmu->logical_start_address = base_address + domain->data_size;
                 domain->data_size += fmmu->sync->size;
+                if (cmd_data_size + fmmu->sync->size > EC_MAX_DATA_SIZE) {
+                    if (ec_domain_add_command(domain, cmd_offset,
+                                              cmd_data_size)) return -1;
+                    cmd_offset += cmd_data_size;
+                    cmd_data_size = 0;
+                    cmd_count++;
+                }
+                cmd_data_size += fmmu->sync->size;
             }
         }
     }
 
-    if (!domain->data_size) {
+    // Letztes Kommando allozieren
+    if (cmd_data_size) {
+        if (ec_domain_add_command(domain, cmd_offset, cmd_data_size))
+            return -1;
+        cmd_count++;
+    }
+
+    if (!cmd_count) {
         EC_WARN("Domain 0x%08X contains no data!\n", (u32) domain);
         ec_domain_clear_field_regs(domain);
         return 0;
     }
-
-    // Prozessdaten allozieren
-    if (!(domain->data = kmalloc(domain->data_size, GFP_KERNEL))) {
-        EC_ERR("Failed to allocate domain data!\n");
-        return -1;
-    }
-
-    // Prozessdaten mit Nullen vorbelegen
-    memset(domain->data, 0x00, domain->data_size);
 
     // Alle Prozessdatenzeiger setzen
     list_for_each_entry(field_reg, &domain->field_regs, list) {
         for (i = 0; i < field_reg->slave->fmmu_count; i++) {
             fmmu = &field_reg->slave->fmmus[i];
             if (fmmu->domain == domain && fmmu->sync == field_reg->sync) {
-                data_offset = fmmu->logical_start_address - base_address
-                    + field_reg->field_offset;
-                *field_reg->data_ptr = domain->data + data_offset;
+                field_off = fmmu->logical_start_address +
+                    field_reg->field_offset;
+                // Kommando suchen
+                list_for_each_entry(command, &domain->commands, list) {
+                    field_off_cmd = field_off - command->address.logical;
+                    if (field_off >= command->address.logical &&
+                        field_off_cmd < command->mem_size) {
+                        *field_reg->data_ptr = command->data + field_off_cmd;
+                    }
+                }
+                if (!field_reg->data_ptr) {
+                    EC_ERR("Failed to assign data pointer!\n");
+                    return -1;
+                }
                 break;
             }
         }
     }
 
-    // Kommando-Array erzeugen
-    domain->command_count = domain->data_size / EC_MAX_DATA_SIZE + 1;
-    if (!(domain->commands = (ec_command_t *) kmalloc(sizeof(ec_command_t)
-                                                      * domain->command_count,
-                                                      GFP_KERNEL))) {
-        EC_ERR("Failed to allocate domain command array!\n");
-        return -1;
-    }
-
     EC_INFO("Domain %X - Allocated %i bytes in %i command(s)\n",
-            (u32) domain, domain->data_size, domain->command_count);
+            (u32) domain, domain->data_size, cmd_count);
 
     ec_domain_clear_field_regs(domain);
 
@@ -346,19 +385,10 @@ int ecrt_domain_register_field_list(ec_domain_t *domain,
 
 void ecrt_domain_queue(ec_domain_t *domain /**< Domäne */)
 {
-    unsigned int i;
-    size_t size;
-    off_t offset;
+    ec_command_t *command;
 
-    offset = 0;
-    for (i = 0; i < domain->command_count; i++) {
-        size = domain->data_size - offset;
-        if (size > EC_MAX_DATA_SIZE) size = EC_MAX_DATA_SIZE;
-        ec_command_init_lrw(domain->commands + i,
-                            domain->base_address + offset, size,
-                            domain->data + offset);
-        ec_master_queue_command(domain->master, domain->commands + i);
-        offset += size;
+    list_for_each_entry(command, &domain->commands, list) {
+        ec_master_queue_command(domain->master, command);
     }
 }
 
@@ -370,27 +400,15 @@ void ecrt_domain_queue(ec_domain_t *domain /**< Domäne */)
 
 void ecrt_domain_process(ec_domain_t *domain /**< Domäne */)
 {
-    unsigned int working_counter_sum, i;
+    unsigned int working_counter_sum;
     ec_command_t *command;
-    size_t size;
-    off_t offset;
 
     working_counter_sum = 0;
 
-    offset = 0;
-    for (i = 0; i < domain->command_count; i++) {
-        command = domain->commands + i;
-        size = domain->data_size - offset;
-        if (size > EC_MAX_DATA_SIZE) size = EC_MAX_DATA_SIZE;
+    list_for_each_entry(command, &domain->commands, list) {
         if (command->state == EC_CMD_RECEIVED) {
-            // Daten vom Kommando- in den Prozessdatenspeicher kopieren
-            memcpy(domain->data + offset, command->data, size);
             working_counter_sum += command->working_counter;
         }
-        else if (unlikely(domain->master->debug_level)) {
-            EC_DBG("process data command not received!\n");
-        }
-        offset += size;
     }
 
     ec_domain_response_count(domain, working_counter_sum);
@@ -406,11 +424,9 @@ void ecrt_domain_process(ec_domain_t *domain /**< Domäne */)
 
 int ecrt_domain_state(ec_domain_t *domain /**< Domäne */)
 {
-    unsigned int i;
     ec_command_t *command;
 
-    for (i = 0; i < domain->command_count; i++) {
-        command = domain->commands + i;
+    list_for_each_entry(command, &domain->commands, list) {
         if (command->state != EC_CMD_RECEIVED) return -1;
     }
 

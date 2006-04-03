@@ -248,8 +248,8 @@ int ec_slave_state_change(ec_slave_t *, uint8_t);
 int ec_slave_set_fmmu(ec_slave_t *, const ec_domain_t *, const ec_sync_t *);
 
 // Mailbox
-int ec_slave_mailbox_send(ec_slave_t *, uint8_t, const uint8_t *, size_t);
-int ec_slave_mailbox_receive(ec_slave_t *, uint8_t, uint8_t *, size_t *);
+uint8_t *ec_slave_prepare_mailbox_send(ec_slave_t *, uint8_t, size_t);
+uint8_t *ec_slave_mailbox_receive(ec_slave_t *, uint8_t, size_t *);
 
 // CANopen over EtherCAT
 int ec_slave_fetch_sdo_list(ec_slave_t *);

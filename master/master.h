@@ -47,9 +47,10 @@ struct ec_master
     ec_slave_t *slaves; /**< Array von Slaves auf dem Bus */
     unsigned int slave_count; /**< Anzahl Slaves auf dem Bus */
     ec_device_t *device; /**< EtherCAT-Gerät */
-    struct list_head commands; /**< Kommando-Liste */
+    struct list_head command_queue; /**< Kommando-Warteschlange */
     uint8_t command_index; /**< Aktueller Kommando-Index */
     struct list_head domains; /**< Liste der Prozessdatendomänen */
+    ec_command_t simple_command; /**< Kommando für Initialisierungsphase */
     ec_command_t watch_command; /**< Kommando zum Überwachen der Slaves */
     unsigned int slaves_responding; /**< Anzahl antwortender Slaves */
     ec_slave_state_t slave_states; /**< Zustände der antwortenden Slaves */
@@ -68,7 +69,7 @@ void ec_master_reset(ec_master_t *);
 // IO
 void ec_master_receive(ec_master_t *, const uint8_t *, size_t);
 void ec_master_queue_command(ec_master_t *, ec_command_t *);
-int ec_master_simple_io(ec_master_t *, ec_command_t *);
+int ec_master_simple_io(ec_master_t *);
 
 // Registration of devices
 int ec_master_open(ec_master_t *);

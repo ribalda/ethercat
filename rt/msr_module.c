@@ -99,6 +99,7 @@ static void msr_controller_run(void)
     k_preio = (uint32_t) (get_cycles() - offset) * 1e6 / cpu_khz;
 
 #ifdef ASYNC
+
     // Empfangen
     ecrt_master_async_receive(master);
     ecrt_domain_process(domain1);
@@ -113,10 +114,14 @@ static void msr_controller_run(void)
 
     // Senden
     ecrt_domain_queue(domain1);
+    ecrt_master_run(master);
     ecrt_master_async_send(master);
-#else
+
+#else // ASYNC
+
     // Senden und empfangen
     ecrt_domain_queue(domain1);
+    ecrt_master_run(master);
     ecrt_master_sync_io(master);
     ecrt_domain_process(domain1);
 
@@ -184,9 +189,11 @@ void domain_entry(void)
 int __init init_rt_module(void)
 {
     struct ipipe_domain_attr attr; //ipipe
+#ifdef BLOCK1
     uint8_t string[20];
     size_t size;
     ec_slave_t *slave;
+#endif
 
     // Als allererstes die RT-Lib initialisieren
     if (msr_rtlib_init(1, MSR_ABTASTFREQUENZ, 10, &msr_globals_register) < 0) {
@@ -286,8 +293,10 @@ int __init init_rt_module(void)
     ipipe_register_domain(&this_domain, &attr);
     return 0;
 
+#ifdef BLOCK1
  out_deactivate:
     ecrt_master_deactivate(master);
+#endif
  out_release_master:
     ecrt_release_master(master);
  out_msr_cleanup:

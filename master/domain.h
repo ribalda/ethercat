@@ -46,10 +46,8 @@ struct ec_domain
 {
     struct list_head list; /**< Listenkopf */
     ec_master_t *master; /**< EtherCAT-Master, zu der die Domäne gehört. */
-    uint8_t *data; /**< Prozessdaten */
     size_t data_size; /**< Größe der Prozessdaten */
-    ec_command_t *commands; /**< EtherCAT-Kommandos für die Prozessdaten */
-    unsigned int command_count; /**< Anzahl allozierter Kommandos */
+    struct list_head commands; /**< EtherCAT-Kommandos für die Prozessdaten */
     uint32_t base_address; /**< Logische Basisaddresse der Domain */
     unsigned int response_count; /**< Anzahl antwortender Slaves */
     struct list_head field_regs; /**< Liste der Datenfeldregistrierungen */

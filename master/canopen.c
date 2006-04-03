@@ -48,19 +48,21 @@ int ec_slave_sdo_read_exp(ec_slave_t *slave, /**< EtherCAT-Slave */
                           uint8_t *target /**< Speicher für 4 Bytes */
                           )
 {
-    uint8_t data[0x20];
     size_t rec_size;
+    uint8_t *data;
 
+    if (!(data = ec_slave_prepare_mailbox_send(slave, 0x03, 6))) return -1;
     EC_WRITE_U16(data, 0x2 << 12); // SDO request
     EC_WRITE_U8 (data + 2, (0x1 << 1 // expedited transfer
                             | 0x2 << 5));  // initiate upload request
     EC_WRITE_U16(data + 3, sdo_index);
     EC_WRITE_U8 (data + 5, sdo_subindex);
+    if (unlikely(ec_master_simple_io(slave->master))) {
+        EC_ERR("Mailbox sending failed on slave %i!\n", slave->ring_position);
+        return -1;
+    }
 
-    if (ec_slave_mailbox_send(slave, 0x03, data, 6)) return -1;
-
-    rec_size = 0x20;
-    if (ec_slave_mailbox_receive(slave, 0x03, data, &rec_size)) return -1;
+    if (!(data = ec_slave_mailbox_receive(slave, 0x03, &rec_size))) return -1;
 
     if (EC_READ_U16(data) >> 12 == 0x2 && // SDO request
         EC_READ_U8 (data + 2) >> 5 == 0x4) { // Abort SDO transfer request
@@ -97,7 +99,7 @@ int ec_slave_sdo_write_exp(ec_slave_t *slave, /**< EtherCAT-Slave */
                            size_t size
                            )
 {
-    uint8_t data[0x0A];
+    uint8_t *data;
     size_t rec_size;
 
     if (size == 0 || size > 4) {
@@ -105,6 +107,7 @@ int ec_slave_sdo_write_exp(ec_slave_t *slave, /**< EtherCAT-Slave */
         return -1;
     }
 
+    if (!(data = ec_slave_prepare_mailbox_send(slave, 0x03, 0x0A))) return -1;
     EC_WRITE_U16(data, 0x2 << 12); // SDO request
     EC_WRITE_U8 (data + 2, (0x1 // size specified
                             | 0x1 << 1 // expedited transfer
@@ -112,15 +115,14 @@ int ec_slave_sdo_write_exp(ec_slave_t *slave, /**< EtherCAT-Slave */
                             | 0x1 << 5)); // initiate download request
     EC_WRITE_U16(data + 3, sdo_index);
     EC_WRITE_U8 (data + 5, sdo_subindex);
-
     memcpy(data + 6, sdo_data, size);
     if (size < 4) memset(data + 6 + size, 0x00, 4 - size);
+    if (unlikely(ec_master_simple_io(slave->master))) {
+        EC_ERR("Mailbox sending failed on slave %i!\n", slave->ring_position);
+        return -1;
+    }
 
-    // Mailox senden und empfangen
-    if (ec_slave_mailbox_send(slave, 0x03, data, 0x0A)) return -1;
-
-    rec_size = 0x0A;
-    if (ec_slave_mailbox_receive(slave, 0x03, data, &rec_size)) return -1;
+    if (!(data = ec_slave_mailbox_receive(slave, 0x03, &rec_size))) return -1;
 
     if (EC_READ_U16(data) >> 12 == 0x2 && // SDO request
         EC_READ_U8 (data + 2) >> 5 == 0x4) { // Abort SDO transfer request
@@ -158,19 +160,21 @@ int ecrt_slave_sdo_read(ec_slave_t *slave, /**< EtherCAT-Slave */
                         size_t *size /**< Größe des Speichers */
                         )
 {
-    uint8_t data[0x20];
+    uint8_t *data;
     size_t rec_size, data_size;
     uint32_t complete_size;
 
+    if (!(data = ec_slave_prepare_mailbox_send(slave, 0x03, 6))) return -1;
     EC_WRITE_U16(data, 0x2 << 12); // SDO request
     EC_WRITE_U8 (data + 2, 0x2 << 5); // initiate upload request
     EC_WRITE_U16(data + 3, sdo_index);
     EC_WRITE_U8 (data + 5, sdo_subindex);
+    if (unlikely(ec_master_simple_io(slave->master))) {
+        EC_ERR("Mailbox sending failed on slave %i!\n", slave->ring_position);
+        return -1;
+    }
 
-    if (ec_slave_mailbox_send(slave, 0x03, data, 6)) return -1;
-
-    rec_size = 0x20;
-    if (ec_slave_mailbox_receive(slave, 0x03, data, &rec_size)) return -1;
+    if (!(data = ec_slave_mailbox_receive(slave, 0x03, &rec_size))) return -1;
 
     if (EC_READ_U16(data) >> 12 == 0x2 && // SDO request
         EC_READ_U8 (data + 2) >> 5 == 0x4) { // Abort SDO transfer request
@@ -222,23 +226,26 @@ int ecrt_slave_sdo_read(ec_slave_t *slave, /**< EtherCAT-Slave */
 
 int ec_slave_fetch_sdo_list(ec_slave_t *slave /**< EtherCAT-Slave */)
 {
-    uint8_t data[0xF0];
+    uint8_t *data;
     size_t rec_size;
     unsigned int i, sdo_count;
     ec_sdo_t *sdo;
     uint16_t sdo_index;
 
+    if (!(data = ec_slave_prepare_mailbox_send(slave, 0x03, 8))) return -1;
     EC_WRITE_U16(data, 0x8 << 12); // SDO information
     EC_WRITE_U8 (data + 2, 0x01); // Get OD List Request
     EC_WRITE_U8 (data + 3, 0x00);
     EC_WRITE_U16(data + 4, 0x0000);
     EC_WRITE_U16(data + 6, 0x0001); // Deliver all SDOs!
-
-    if (ec_slave_mailbox_send(slave, 0x03, data, 8)) return -1;
+    if (unlikely(ec_master_simple_io(slave->master))) {
+        EC_ERR("Mailbox sending failed on slave %i!\n", slave->ring_position);
+        return -1;
+    }
 
     do {
-        rec_size = 0xF0;
-        if (ec_slave_mailbox_receive(slave, 0x03, data, &rec_size)) return -1;
+        if (!(data = ec_slave_mailbox_receive(slave, 0x03, &rec_size)))
+            return -1;
 
         if (EC_READ_U16(data) >> 12 == 0x8 && // SDO information
             (EC_READ_U8(data + 2) & 0x7F) == 0x07) { // Error response
@@ -290,21 +297,24 @@ int ec_slave_fetch_sdo_list(ec_slave_t *slave /**< EtherCAT-Slave */)
 
 int ec_slave_fetch_sdo_descriptions(ec_slave_t *slave /**< EtherCAT-Slave */)
 {
-    uint8_t data[0xF0];
+    uint8_t *data;
     size_t rec_size, name_size;
     ec_sdo_t *sdo;
 
     list_for_each_entry(sdo, &slave->sdo_dictionary, list) {
+        if (!(data = ec_slave_prepare_mailbox_send(slave, 0x03, 8))) return -1;
         EC_WRITE_U16(data, 0x8 << 12); // SDO information
         EC_WRITE_U8 (data + 2, 0x03); // Get object description request
         EC_WRITE_U8 (data + 3, 0x00);
         EC_WRITE_U16(data + 4, 0x0000);
         EC_WRITE_U16(data + 6, sdo->index); // SDO index
+        if (unlikely(ec_master_simple_io(slave->master))) {
+            EC_ERR("Mailbox sending failed on slave %i!\n",
+                   slave->ring_position);
+            return -1;
+        }
 
-        if (ec_slave_mailbox_send(slave, 0x03, data, 8)) return -1;
-
-        rec_size = 0xF0;
-        if (ec_slave_mailbox_receive(slave, 0x03, data, &rec_size))
+        if (!(data = ec_slave_mailbox_receive(slave, 0x03, &rec_size)))
             return -1;
 
         if (EC_READ_U16(data) >> 12 == 0x8 && // SDO information
@@ -370,12 +380,14 @@ int ec_slave_fetch_sdo_entries(ec_slave_t *slave, /**< EtherCAT-Slave */
                                uint8_t subindices /**< Anzahl Subindizes */
                                )
 {
-    uint8_t data[0xF0];
+    uint8_t *data;
     size_t rec_size, data_size;
     uint8_t i;
     ec_sdo_entry_t *entry;
 
     for (i = 1; i <= subindices; i++) {
+        if (!(data = ec_slave_prepare_mailbox_send(slave, 0x03, 10)))
+            return -1;
         EC_WRITE_U16(data, 0x8 << 12); // SDO information
         EC_WRITE_U8 (data + 2, 0x05); // Get entry description request
         EC_WRITE_U8 (data + 3, 0x00);
@@ -383,11 +395,13 @@ int ec_slave_fetch_sdo_entries(ec_slave_t *slave, /**< EtherCAT-Slave */
         EC_WRITE_U16(data + 6, sdo->index); // SDO index
         EC_WRITE_U8 (data + 8, i); // SDO subindex
         EC_WRITE_U8 (data + 9, 0x00); // value info (no values)
+        if (unlikely(ec_master_simple_io(slave->master))) {
+            EC_ERR("Mailbox sending failed on slave %i!\n",
+                   slave->ring_position);
+            return -1;
+        }
 
-        if (ec_slave_mailbox_send(slave, 0x03, data, 10)) return -1;
-
-        rec_size = 0xF0;
-        if (ec_slave_mailbox_receive(slave, 0x03, data, &rec_size))
+        if (!(data = ec_slave_mailbox_receive(slave, 0x03, &rec_size)))
             return -1;
 
         if (EC_READ_U16(data) >> 12 == 0x8 && // SDO information

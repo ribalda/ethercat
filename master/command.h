@@ -84,10 +84,12 @@ ec_address_t;
 
 typedef struct
 {
-    struct list_head list; /**< Nötig für Liste */
+    struct list_head list; /**< Kommando-Listeneintrag */
+    struct list_head queue; /**< Master-Kommando-Queue */
     ec_command_type_t type; /**< Typ des Kommandos (APRD, NPWR, etc) */
     ec_address_t address; /**< Adresse des/der Empfänger */
-    uint8_t data[EC_MAX_DATA_SIZE]; /**< Kommandodaten */
+    uint8_t *data; /**< Kommandodaten */
+    size_t mem_size; /**< Größe des Speichers */
     size_t data_size; /**< Länge der zu sendenden und/oder empfangenen Daten */
     uint8_t index; /**< Kommando-Index, wird vom Master beim Senden gesetzt. */
     uint16_t working_counter; /**< Working-Counter */
@@ -97,15 +99,16 @@ ec_command_t;
 
 /*****************************************************************************/
 
-void ec_command_init_nprd(ec_command_t *, uint16_t, uint16_t, size_t);
-void ec_command_init_npwr(ec_command_t *, uint16_t, uint16_t, size_t,
-                          const uint8_t *);
-void ec_command_init_aprd(ec_command_t *, uint16_t, uint16_t, size_t);
-void ec_command_init_apwr(ec_command_t *, uint16_t, uint16_t, size_t,
-                          const uint8_t *);
-void ec_command_init_brd(ec_command_t *, uint16_t, size_t);
-void ec_command_init_bwr(ec_command_t *, uint16_t, size_t, const uint8_t *);
-void ec_command_init_lrw(ec_command_t *, uint32_t, size_t, uint8_t *);
+void ec_command_init(ec_command_t *);
+void ec_command_clear(ec_command_t *);
+
+int ec_command_nprd(ec_command_t *, uint16_t, uint16_t, size_t);
+int ec_command_npwr(ec_command_t *, uint16_t, uint16_t, size_t);
+int ec_command_aprd(ec_command_t *, uint16_t, uint16_t, size_t);
+int ec_command_apwr(ec_command_t *, uint16_t, uint16_t, size_t);
+int ec_command_brd(ec_command_t *, uint16_t, size_t);
+int ec_command_bwr(ec_command_t *, uint16_t, size_t);
+int ec_command_lrw(ec_command_t *, uint32_t, size_t);
 
 /*****************************************************************************/
 
