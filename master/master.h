@@ -29,6 +29,7 @@ typedef struct
     unsigned int delayed; /**< Verzögerte Kommandos */
     unsigned int corrupted; /**< Verfälschte Rahmen */
     unsigned int unmatched; /**< Unpassende Kommandos */
+    unsigned int eoe_errors; /**< Ethernet-over-EtherCAT Fehler */
     cycles_t t_last; /**< Timestamp-Counter bei der letzten Ausgabe */
 }
 ec_stats_t;
@@ -57,6 +58,7 @@ struct ec_master
     int debug_level; /**< Debug-Level im Master-Code */
     ec_stats_t stats; /**< Rahmen-Statistiken */
     unsigned int timeout; /**< Timeout für synchronen Datenaustausch */
+    struct list_head eoe_slaves; /**< Ethernet over EtherCAT Slaves */
 };
 
 /*****************************************************************************/
@@ -69,7 +71,7 @@ void ec_master_reset(ec_master_t *);
 // IO
 void ec_master_receive(ec_master_t *, const uint8_t *, size_t);
 void ec_master_queue_command(ec_master_t *, ec_command_t *);
-int ec_master_simple_io(ec_master_t *);
+int ec_master_simple_io(ec_master_t *, ec_command_t *);
 
 // Registration of devices
 int ec_master_open(ec_master_t *);
@@ -81,6 +83,8 @@ int ec_master_bus_scan(ec_master_t *);
 // Misc
 void ec_master_debug(const ec_master_t *);
 void ec_master_output_stats(ec_master_t *);
+
+void ec_master_run_eoe(ec_master_t *);
 
 /*****************************************************************************/
 

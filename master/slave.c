@@ -43,11 +43,6 @@ void ec_slave_init(ec_slave_t *slave, /**< EtherCAT-Slave */
     slave->base_build = 0;
     slave->base_fmmu_count = 0;
     slave->base_sync_count = 0;
-    for (i = 0; i < 2; i++) {
-        slave->dl_status_link[i] = 0;
-        slave->dl_status_loop[i] = 0;
-        slave->dl_status_comm[i] = 0;
-    }
     slave->ring_position = 0;
     slave->station_address = 0;
     slave->sii_alias = 0;
@@ -66,10 +61,19 @@ void ec_slave_init(ec_slave_t *slave, /**< EtherCAT-Slave */
     slave->eeprom_name = NULL;
     slave->eeprom_group = NULL;
     slave->eeprom_desc = NULL;
+
+    ec_command_init(&slave->mbox_command);
+
     INIT_LIST_HEAD(&slave->eeprom_strings);
     INIT_LIST_HEAD(&slave->eeprom_syncs);
     INIT_LIST_HEAD(&slave->eeprom_pdos);
     INIT_LIST_HEAD(&slave->sdo_dictionary);
+
+    for (i = 0; i < 2; i++) {
+        slave->dl_status_link[i] = 0;
+        slave->dl_status_loop[i] = 0;
+        slave->dl_status_comm[i] = 0;
+    }
 }
 
 /*****************************************************************************/
@@ -129,6 +133,8 @@ void ec_slave_clear(ec_slave_t *slave /**< EtherCAT-Slave */)
         }
         kfree(sdo);
     }
+
+    ec_command_clear(&slave->mbox_command);
 }
 
 /*****************************************************************************/
@@ -149,7 +155,7 @@ int ec_slave_fetch(ec_slave_t *slave /**< EtherCAT-Slave */)
 
     // Read base data
     if (ec_command_nprd(command, slave->station_address, 0x0000, 6)) return -1;
-    if (unlikely(ec_master_simple_io(slave->master))) {
+    if (unlikely(ec_master_simple_io(slave->master, command))) {
         EC_ERR("Reading base data from slave %i failed!\n",
                slave->ring_position);
         return -1;
@@ -166,7 +172,7 @@ int ec_slave_fetch(ec_slave_t *slave /**< EtherCAT-Slave */)
 
     // Read DL status
     if (ec_command_nprd(command, slave->station_address, 0x0110, 2)) return -1;
-    if (unlikely(ec_master_simple_io(slave->master))) {
+    if (unlikely(ec_master_simple_io(slave->master, command))) {
         EC_ERR("Reading DL status from slave %i failed!\n",
                slave->ring_position);
         return -1;
@@ -236,7 +242,7 @@ int ec_slave_sii_read16(ec_slave_t *slave,
     EC_WRITE_U8 (command->data,     0x00); // read-only access
     EC_WRITE_U8 (command->data + 1, 0x01); // request read operation
     EC_WRITE_U32(command->data + 2, offset);
-    if (unlikely(ec_master_simple_io(slave->master))) {
+    if (unlikely(ec_master_simple_io(slave->master, command))) {
         EC_ERR("SII-read failed on slave %i!\n", slave->ring_position);
         return -1;
     }
@@ -254,7 +260,7 @@ int ec_slave_sii_read16(ec_slave_t *slave,
 
         if (ec_command_nprd(command, slave->station_address, 0x502, 10))
             return -1;
-        if (unlikely(ec_master_simple_io(slave->master))) {
+        if (unlikely(ec_master_simple_io(slave->master, command))) {
             EC_ERR("Getting SII-read status failed on slave %i!\n",
                    slave->ring_position);
             return -1;
@@ -301,7 +307,7 @@ int ec_slave_sii_read32(ec_slave_t *slave,
     EC_WRITE_U8 (command->data,     0x00); // read-only access
     EC_WRITE_U8 (command->data + 1, 0x01); // request read operation
     EC_WRITE_U32(command->data + 2, offset);
-    if (unlikely(ec_master_simple_io(slave->master))) {
+    if (unlikely(ec_master_simple_io(slave->master, command))) {
         EC_ERR("SII-read failed on slave %i!\n", slave->ring_position);
         return -1;
     }
@@ -319,7 +325,7 @@ int ec_slave_sii_read32(ec_slave_t *slave,
 
         if (ec_command_nprd(command, slave->station_address, 0x502, 10))
             return -1;
-        if (unlikely(ec_master_simple_io(slave->master))) {
+        if (unlikely(ec_master_simple_io(slave->master, command))) {
             EC_ERR("Getting SII-read status failed on slave %i!\n",
                    slave->ring_position);
             return -1;
@@ -370,7 +376,7 @@ int ec_slave_sii_write16(ec_slave_t *slave,
     EC_WRITE_U8 (command->data + 1, 0x02); // request write operation
     EC_WRITE_U32(command->data + 2, offset);
     EC_WRITE_U16(command->data + 6, value);
-    if (unlikely(ec_master_simple_io(slave->master))) {
+    if (unlikely(ec_master_simple_io(slave->master, command))) {
         EC_ERR("SII-write failed on slave %i!\n", slave->ring_position);
         return -1;
     }
@@ -388,7 +394,7 @@ int ec_slave_sii_write16(ec_slave_t *slave,
 
         if (ec_command_nprd(command, slave->station_address, 0x502, 2))
             return -1;
-        if (unlikely(ec_master_simple_io(slave->master))) {
+        if (unlikely(ec_master_simple_io(slave->master, command))) {
             EC_ERR("Getting SII-write status failed on slave %i!\n",
                    slave->ring_position);
             return -1;
@@ -726,7 +732,7 @@ void ec_slave_state_ack(ec_slave_t *slave,
 
     if (ec_command_npwr(command, slave->station_address, 0x0120, 2)) return;
     EC_WRITE_U16(command->data, state | EC_ACK);
-    if (unlikely(ec_master_simple_io(slave->master))) {
+    if (unlikely(ec_master_simple_io(slave->master, command))) {
         EC_WARN("State %02X acknowledge failed on slave %i!\n",
                 state, slave->ring_position);
         return;
@@ -741,7 +747,7 @@ void ec_slave_state_ack(ec_slave_t *slave,
 
         if (ec_command_nprd(command, slave->station_address, 0x0130, 2))
             return;
-        if (unlikely(ec_master_simple_io(slave->master))) {
+        if (unlikely(ec_master_simple_io(slave->master, command))) {
             EC_WARN("State %02X acknowledge checking failed on slave %i!\n",
                     state, slave->ring_position);
             return;
@@ -791,7 +797,7 @@ int ec_slave_state_change(ec_slave_t *slave,
 
     if (ec_command_npwr(command, slave->station_address, 0x0120, 2)) return -1;
     EC_WRITE_U16(command->data, state);
-    if (unlikely(ec_master_simple_io(slave->master))) {
+    if (unlikely(ec_master_simple_io(slave->master, command))) {
         EC_ERR("Failed to set state %02X on slave %i!\n",
                state, slave->ring_position);
         return -1;
@@ -806,7 +812,7 @@ int ec_slave_state_change(ec_slave_t *slave,
 
         if (ec_command_nprd(command, slave->station_address, 0x0130, 2))
             return -1;
-        if (unlikely(ec_master_simple_io(slave->master))) {
+        if (unlikely(ec_master_simple_io(slave->master, command))) {
             EC_ERR("Failed to check state %02X on slave %i!\n",
                    state, slave->ring_position);
             return -1;
@@ -1049,7 +1055,7 @@ int ec_slave_check_crc(ec_slave_t *slave /**< EtherCAT-Slave */)
     command = &slave->master->simple_command;
 
     if (ec_command_nprd(command, slave->station_address, 0x0300, 4)) return -1;
-    if (unlikely(ec_master_simple_io(slave->master))) {
+    if (unlikely(ec_master_simple_io(slave->master, command))) {
         EC_WARN("Reading CRC fault counters failed on slave %i!\n",
                 slave->ring_position);
         return -1;
@@ -1082,128 +1088,12 @@ int ec_slave_check_crc(ec_slave_t *slave /**< EtherCAT-Slave */)
     // Reset CRC counters
     if (ec_command_npwr(command, slave->station_address, 0x0300, 4)) return -1;
     EC_WRITE_U32(command->data, 0x00000000);
-    if (unlikely(ec_master_simple_io(slave->master))) {
+    if (unlikely(ec_master_simple_io(slave->master, command))) {
         EC_WARN("Resetting CRC fault counters failed on slave %i!\n",
                 slave->ring_position);
         return -1;
     }
 
-    return 0;
-}
-
-/*****************************************************************************/
-
-/**
-   Bereitet ein Mailbox-Send-Kommando vor.
- */
-
-uint8_t *ec_slave_prepare_mailbox_send(ec_slave_t *slave, /**< Slave */
-                                       uint8_t type, /**< Mailbox-Protokoll */
-                                       size_t size /**< Datengröße */
-                                       )
-{
-    size_t total_size;
-    ec_command_t *command;
-
-    if (unlikely(!slave->sii_mailbox_protocols)) {
-        EC_ERR("Slave %i does not support mailbox communication!\n",
-               slave->ring_position);
-        return NULL;
-    }
-
-    total_size = size + 6;
-    if (unlikely(total_size > slave->sii_rx_mailbox_size)) {
-        EC_ERR("Data size does not fit in mailbox!\n");
-        return NULL;
-    }
-
-    command = &slave->master->simple_command;
-
-    if (ec_command_npwr(command, slave->station_address,
-                        slave->sii_rx_mailbox_offset,
-                        slave->sii_rx_mailbox_size)) return NULL;
-    EC_WRITE_U16(command->data,     size); // Mailbox service data length
-    EC_WRITE_U16(command->data + 2, slave->station_address); // Station address
-    EC_WRITE_U8 (command->data + 4, 0x00); // Channel & priority
-    EC_WRITE_U8 (command->data + 5, type); // Underlying protocol type
-
-    return command->data + 6;
-}
-
-/*****************************************************************************/
-
-/**
-   Empfängt ein Mailbox-Kommando.
- */
-
-uint8_t *ec_slave_mailbox_receive(ec_slave_t *slave, /**< Slave */
-                                  uint8_t type, /**< Protokoll */
-                                  size_t *size /**< Größe der gelesenen
-                                                  Daten */
-                                  )
-{
-    ec_command_t *command;
-    size_t data_size;
-    cycles_t start, end, timeout;
-
-    command = &slave->master->simple_command;
-
-    // Read "written bit" of Sync-Manager
-    start = get_cycles();
-    timeout = (cycles_t) 100 * cpu_khz; // 100ms
-
-    while (1)
-    {
-        // FIXME: Zweiter Sync-Manager nicht immer TX-Mailbox?
-        if (ec_command_nprd(command, slave->station_address, 0x808, 8))
-            return NULL;
-        if (unlikely(ec_master_simple_io(slave->master))) {
-            EC_ERR("Mailbox checking failed on slave %i!\n",
-                   slave->ring_position);
-            return NULL;
-        }
-
-        end = get_cycles();
-
-        if (EC_READ_U8(command->data + 5) & 8)
-            break; // Proceed with received data
-
-        if ((end - start) >= timeout) {
-            EC_ERR("Mailbox check - Slave %i timed out.\n",
-                   slave->ring_position);
-            return NULL;
-        }
-
-        udelay(100);
-    }
-
-    if (ec_command_nprd(command, slave->station_address,
-                        slave->sii_tx_mailbox_offset,
-                        slave->sii_tx_mailbox_size)) return NULL;
-    if (unlikely(ec_master_simple_io(slave->master))) {
-        EC_ERR("Mailbox receiving failed on slave %i!\n",
-               slave->ring_position);
-        return NULL;
-    }
-
-    if ((EC_READ_U8(command->data + 5) & 0x0F) != type) {
-        EC_ERR("Unexpected mailbox protocol 0x%02X (exp.: 0x%02X) at"
-               " slave %i!\n", EC_READ_U8(command->data + 5), type,
-               slave->ring_position);
-        return NULL;
-    }
-
-    if (unlikely(slave->master->debug_level) > 1)
-        EC_DBG("Mailbox receive took %ius.\n", ((u32) (end - start) * 1000
-                                                / cpu_khz));
-
-    if ((data_size = EC_READ_U16(command->data)) >
-        slave->sii_tx_mailbox_size - 6) {
-        EC_ERR("Currupt mailbox response detected!\n");
-        return NULL;
-    }
-
-    *size = data_size;
     return 0;
 }
 

@@ -23,6 +23,20 @@
 /*****************************************************************************/
 
 /**
+   Besondere Slaves.
+*/
+
+typedef enum
+{
+    EC_TYPE_NORMAL,
+    EC_TYPE_BUS_COUPLER,
+    EC_TYPE_EOE
+}
+ec_special_type_t;
+
+/*****************************************************************************/
+
+/**
    Prozessdatenfeld.
 */
 
@@ -63,9 +77,7 @@ typedef struct ec_slave_type
     const char *vendor_name; /**< Name des Herstellers */
     const char *product_name; /**< Name des Slaves-Typs */
     const char *description; /**< Genauere Beschreibung des Slave-Typs */
-    uint8_t bus_coupler; /**< Dieser Typ ist ein Buskoppler. Diese dienen als
-                            Anker für die Adressierung und müssen nicht
-                            registriert werden. */
+    ec_special_type_t special; /**< Spezieller Slave-Typ */
     const ec_sync_t *sync_managers[EC_MAX_SYNC]; /**< Sync-Manager
                                                     Konfigurationen */
 }

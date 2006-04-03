@@ -21,6 +21,7 @@
 #include "types.h"
 #include "device.h"
 #include "command.h"
+#include "ethernet.h"
 
 /*****************************************************************************/
 
@@ -35,6 +36,7 @@ void ec_master_init(ec_master_t *master /**< EtherCAT-Master */)
 
     INIT_LIST_HEAD(&master->command_queue);
     INIT_LIST_HEAD(&master->domains);
+    INIT_LIST_HEAD(&master->eoe_slaves);
 
     ec_command_init(&master->simple_command);
     ec_command_init(&master->watch_command);
@@ -80,6 +82,7 @@ void ec_master_reset(ec_master_t *master
     unsigned int i;
     ec_command_t *command, *next_c;
     ec_domain_t *domain, *next_d;
+    ec_eoe_t *eoe, *next_eoe;
 
     // Alle Slaves entfernen
     if (master->slaves) {
@@ -102,6 +105,13 @@ void ec_master_reset(ec_master_t *master
         list_del(&domain->list);
         ec_domain_clear(domain);
         kfree(domain);
+    }
+
+    // EOE-Liste leeren
+    list_for_each_entry_safe(eoe, next_eoe, &master->domains, list) {
+        list_del(&eoe->list);
+        ec_eoe_clear(eoe);
+        kfree(eoe);
     }
 
     master->command_index = 0;
@@ -372,13 +382,13 @@ void ec_master_receive(ec_master_t *master, /**< EtherCAT-Master */
    \return 0 bei Erfolg, sonst < 0
 */
 
-int ec_master_simple_io(ec_master_t *master /**< EtherCAT-Master */)
+int ec_master_simple_io(ec_master_t *master, /**< EtherCAT-Master */
+                        ec_command_t *command /**< Kommando */
+                        )
 {
     unsigned int response_tries_left;
-    ec_command_t *command;
 
     response_tries_left = 10;
-    command = &master->simple_command;
 
     while (1)
     {
@@ -425,6 +435,7 @@ int ec_master_bus_scan(ec_master_t *master /**< EtherCAT-Master */)
     ec_slave_ident_t *ident;
     unsigned int i;
     ec_command_t *command;
+    ec_eoe_t *eoe;
 
     if (master->slaves || master->slave_count) {
         EC_ERR("Slave scan already done!\n");
@@ -435,7 +446,7 @@ int ec_master_bus_scan(ec_master_t *master /**< EtherCAT-Master */)
 
     // Determine number of slaves on bus
     if (ec_command_brd(command, 0x0000, 4)) return -1;
-    if (unlikely(ec_master_simple_io(master))) return -1;
+    if (unlikely(ec_master_simple_io(master, command))) return -1;
     master->slave_count = command->working_counter;
     EC_INFO("Found %i slaves on bus.\n", master->slave_count);
 
@@ -465,7 +476,7 @@ int ec_master_bus_scan(ec_master_t *master /**< EtherCAT-Master */)
         if (ec_command_apwr(command, slave->ring_position,
                             0x0010, sizeof(uint16_t))) return -1;
         EC_WRITE_U16(command->data, slave->station_address);
-        if (unlikely(ec_master_simple_io(master))) {
+        if (unlikely(ec_master_simple_io(master, command))) {
             EC_ERR("Writing station address failed on slave %i!\n", i);
             return -1;
         }
@@ -488,6 +499,17 @@ int ec_master_bus_scan(ec_master_t *master /**< EtherCAT-Master */)
             EC_WARN("Unknown slave device (vendor 0x%08X, code 0x%08X) at"
                     " position %i.\n", slave->sii_vendor_id,
                     slave->sii_product_code, i);
+
+        // Does the slave support EoE?
+        if (slave->sii_mailbox_protocols & EC_MBOX_EOE) {
+            if (!(eoe = kmalloc(sizeof(ec_eoe_t), GFP_KERNEL))) {
+                EC_ERR("Failed to allocate memory for EoE-Object.\n");
+                return -1;
+            }
+
+            ec_eoe_init(eoe, slave);
+            list_add_tail(&eoe->list, &master->eoe_slaves);
+        }
     }
 
     return 0;
@@ -524,6 +546,10 @@ void ec_master_output_stats(ec_master_t *master /**< EtherCAT-Master */)
         if (master->stats.unmatched) {
             EC_WARN("%i command(s) UNMATCHED!\n", master->stats.unmatched);
             master->stats.unmatched = 0;
+        }
+        if (master->stats.eoe_errors) {
+            EC_WARN("%i EOE ERROR(S)!\n", master->stats.eoe_errors);
+            master->stats.eoe_errors = 0;
         }
         master->stats.t_last = t_now;
     }
@@ -615,7 +641,8 @@ ec_slave_t *ecrt_master_get_slave(const ec_master_t *master, /**< Master */
         if (alias_requested) {
             for (i = alias_slave_index + 1; i < master->slave_count; i++) {
                 slave = master->slaves + i;
-                if (!slave->type || slave->type->bus_coupler) break;
+                if (!slave->type ||
+                    slave->type->special == EC_TYPE_BUS_COUPLER) break;
                 if (i - alias_slave_index == second) return slave;
             }
             EC_ERR("Slave address \"%s\" - Bus coupler %i has no %lu. slave"
@@ -630,7 +657,7 @@ ec_slave_t *ecrt_master_get_slave(const ec_master_t *master, /**< Master */
             for (i = 0; i < master->slave_count; i++, slave_idx++) {
                 slave = master->slaves + i;
                 if (!slave->type) continue;
-                if (slave->type->bus_coupler) {
+                if (slave->type->special == EC_TYPE_BUS_COUPLER) {
                     coupler_idx++;
                     slave_idx = 0;
                 }
@@ -845,7 +872,7 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
                                 EC_FMMU_SIZE * slave->base_fmmu_count))
                 return -1;
             memset(command->data, 0x00, EC_FMMU_SIZE * slave->base_fmmu_count);
-            if (unlikely(ec_master_simple_io(master))) {
+            if (unlikely(ec_master_simple_io(master, command))) {
                 EC_ERR("Resetting FMMUs failed on slave %i!\n",
                        slave->ring_position);
                 return -1;
@@ -858,7 +885,7 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
                                 EC_SYNC_SIZE * slave->base_sync_count))
                 return -1;
             memset(command->data, 0x00, EC_SYNC_SIZE * slave->base_sync_count);
-            if (unlikely(ec_master_simple_io(master))) {
+            if (unlikely(ec_master_simple_io(master, command))) {
                 EC_ERR("Resetting sync managers failed on slave %i!\n",
                        slave->ring_position);
                 return -1;
@@ -874,7 +901,7 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
                                     0x0800 + j * EC_SYNC_SIZE, EC_SYNC_SIZE))
                     return -1;
                 ec_sync_config(sync, command->data);
-                if (unlikely(ec_master_simple_io(master))) {
+                if (unlikely(ec_master_simple_io(master, command))) {
                     EC_ERR("Setting sync manager %i failed on slave %i!\n",
                            j, slave->ring_position);
                     return -1;
@@ -887,7 +914,7 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
                                     0x800 + eeprom_sync->index * EC_SYNC_SIZE,
                                     EC_SYNC_SIZE)) return -1;
                 ec_eeprom_sync_config(eeprom_sync, command->data);
-                if (unlikely(ec_master_simple_io(master))) {
+                if (unlikely(ec_master_simple_io(master, command))) {
                     EC_ERR("Setting sync manager %i failed on slave %i!\n",
                            eeprom_sync->index, slave->ring_position);
                     return -1;
@@ -903,8 +930,8 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
         if (!type) continue;
 
         // Slaves that are not registered are only brought into PREOP
-        // state -> nice blinking and mailbox comm. possible
-        if (!slave->registered && !slave->type->bus_coupler) {
+        // state -> nice blinking and mailbox communication possible
+        if (!slave->registered && !slave->type->special) {
             EC_WARN("Slave %i was not registered!\n", slave->ring_position);
             continue;
         }
@@ -917,7 +944,7 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
                                 0x0600 + j * EC_FMMU_SIZE, EC_FMMU_SIZE))
                 return -1;
             ec_fmmu_config(fmmu, command->data);
-            if (unlikely(ec_master_simple_io(master))) {
+            if (unlikely(ec_master_simple_io(master, command))) {
                 EC_ERR("Setting FMMU %i failed on slave %i!\n",
                        j, slave->ring_position);
                 return -1;
@@ -1147,6 +1174,9 @@ void ecrt_master_run(ec_master_t *master /**< EtherCAT-Master */)
     // Watchdog-Kommando
     ec_master_process_watch_command(master);
     ec_master_queue_command(master, &master->watch_command);
+
+    // Ethernet-over-EtherCAT
+    ec_master_run_eoe(master);
 }
 
 /*****************************************************************************/
@@ -1186,11 +1216,32 @@ void ecrt_master_print(const ec_master_t *master, /**< EtherCAT-Master */
                        )
 {
     unsigned int i;
+    ec_eoe_t *eoe;
 
     EC_INFO("*** Begin master information ***\n");
-    for (i = 0; i < master->slave_count; i++)
-        ec_slave_print(&master->slaves[i], verbosity);
+    if (master->slave_count) {
+        EC_INFO("Slave list:\n");
+        for (i = 0; i < master->slave_count; i++)
+            ec_slave_print(&master->slaves[i], verbosity);
+    }
+    if (!list_empty(&master->eoe_slaves)) {
+        EC_INFO("Ethernet-over-EtherCAT (EoE) objects:\n");
+        list_for_each_entry(eoe, &master->eoe_slaves, list) {
+            ec_eoe_print(eoe);
+        }
+    }
     EC_INFO("*** End master information ***\n");
+}
+
+/*****************************************************************************/
+
+void ec_master_run_eoe(ec_master_t *master /**< EtherCAT-Master */)
+{
+    ec_eoe_t *eoe;
+
+    list_for_each_entry(eoe, &master->eoe_slaves, list) {
+        ec_eoe_run(eoe);
+    }
 }
 
 /*****************************************************************************/

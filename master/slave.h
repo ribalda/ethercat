@@ -11,6 +11,10 @@
 #ifndef _EC_SLAVE_H_
 #define _EC_SLAVE_H_
 
+#include <linux/list.h>
+
+#include "globals.h"
+#include "command.h"
 #include "types.h"
 
 /*****************************************************************************/
@@ -44,11 +48,11 @@ ec_slave_state_t;
 
 enum
 {
-    EC_MBOX_AOE = 0x01, /**< ADS over EtherCAT */
-    EC_MBOX_EOE = 0x02, /**< Ethernet over EtherCAT */
-    EC_MBOX_COE = 0x04, /**< CANopen over EtherCAT */
-    EC_MBOX_FOE = 0x08, /**< File Service over EtherCAT */
-    EC_MBOX_SOE = 0x10, /**< Servo Profile over EtherCAT */
+    EC_MBOX_AOE = 0x01, /**< ADS-over-EtherCAT */
+    EC_MBOX_EOE = 0x02, /**< Ethernet-over-EtherCAT */
+    EC_MBOX_COE = 0x04, /**< CANopen-over-EtherCAT */
+    EC_MBOX_FOE = 0x08, /**< File-Access-over-EtherCAT */
+    EC_MBOX_SOE = 0x10, /**< Servo-Profile-over-EtherCAT */
     EC_MBOX_VOE = 0x20  /**< Vendor specific */
 };
 
@@ -231,6 +235,8 @@ struct ec_slave
     char *eeprom_desc; /**< Slave-Beschreibung laut Hersteller */
 
     struct list_head sdo_dictionary; /**< SDO-Verzeichnis des Slaves */
+
+    ec_command_t mbox_command; /**< Kommando für Mailbox-Kommunikation */
 };
 
 /*****************************************************************************/
@@ -246,10 +252,6 @@ int ec_slave_sii_read32(ec_slave_t *, uint16_t, uint32_t *);
 int ec_slave_sii_write16(ec_slave_t *, uint16_t, uint16_t);
 int ec_slave_state_change(ec_slave_t *, uint8_t);
 int ec_slave_set_fmmu(ec_slave_t *, const ec_domain_t *, const ec_sync_t *);
-
-// Mailbox
-uint8_t *ec_slave_prepare_mailbox_send(ec_slave_t *, uint8_t, size_t);
-uint8_t *ec_slave_mailbox_receive(ec_slave_t *, uint8_t, size_t *);
 
 // CANopen over EtherCAT
 int ec_slave_fetch_sdo_list(ec_slave_t *);

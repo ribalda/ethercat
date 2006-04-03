@@ -16,7 +16,7 @@ ifneq ($(KERNELRELEASE),)
 obj-m := ec_master.o
 
 ec_master-objs := module.o master.o device.o slave.o command.o types.o \
-			domain.o canopen.o
+			domain.o mailbox.o canopen.o ethernet.o
 
 EXTRA_CFLAGS := -DSVNREV=$(shell svnversion $(src)) -DUSER=$(USER)
 
