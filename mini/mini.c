@@ -1,10 +1,10 @@
 /******************************************************************************
  *
- * m i n i . c
+ *  m i n i . c
  *
- * Minimalmodul für EtherCAT
+ *  Minimalmodul für EtherCAT
  *
- * $Id$
+ *  $Id$
  *
  *****************************************************************************/
 
@@ -36,11 +36,8 @@ uint32_t k_pos;
 uint8_t k_stat;
 
 ec_field_init_t domain1_fields[] = {
-    {NULL, "1", "Beckhoff", "EL1014", "InputValue",  0},
-    {NULL, "2", "Beckhoff", "EL2004", "OutputValue", 0},
-    //{NULL, "3", "Beckhoff", "EL3162", "InputValue",  0},
-    {NULL, "4", "Beckhoff", "EL4132", "OutputValue",  0},
-    {NULL, "6", "Beckhoff", "EL5001", "InputValue", 0},
+    {NULL, "1", "Beckhoff", "EL5001", "InputValue", 0},
+    {NULL, "2", "Beckhoff", "EL4132", "OutputValue",  0},
     {}
 };
 
@@ -61,10 +58,12 @@ void run(unsigned long data)
 
     // Prozessdaten senden
     ecrt_domain_queue(domain1);
+    ecrt_master_run(master);
     ecrt_master_async_send(master);
 #else
     // Prozessdaten senden und empfangen
     ecrt_domain_queue(domain1);
+    ecrt_master_run(master);
     ecrt_master_sync_io(master);
     ecrt_domain_process(domain1);
 
@@ -170,8 +169,10 @@ int __init init_mini_module(void)
     printk(KERN_INFO "=== Minimal EtherCAT environment started. ===\n");
     return 0;
 
+#if 0
  out_deactivate:
     ecrt_master_deactivate(master);
+#endif
  out_release_master:
     ecrt_release_master(master);
  out_return:

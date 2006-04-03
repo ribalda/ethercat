@@ -33,7 +33,7 @@ KERNELDIR = /usr/src/linux
 endif
 
 modules:
-	$(MAKE) -C $(KERNELDIR) M=`pwd` modules
+	$(MAKE) -C $(KERNELDIR) M=`pwd`
 
 clean:
 	$(MAKE) -C $(KERNELDIR) M=`pwd` clean

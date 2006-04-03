@@ -906,6 +906,20 @@ void ec_slave_print(const ec_slave_t *slave, /**< EtherCAT-Slave */
     ec_sdo_entry_t *sdo_entry;
     int first, i;
 
+    if (!verbosity) {
+        if (slave->type) {
+            EC_INFO("%2i) %s %s: %s\n", slave->ring_position,
+                    slave->type->vendor_name, slave->type->product_name,
+                    slave->type->description);
+        }
+        else {
+            EC_INFO("%2i) UNKNOWN SLAVE: 0x%08X 0x%08X\n",
+                    slave->ring_position, slave->sii_vendor_id,
+                    slave->sii_product_code);
+        }
+        return;
+    }
+
     EC_INFO("x-- EtherCAT slave information ---------------\n");
 
     if (slave->type) {
@@ -920,101 +934,98 @@ void ec_slave_print(const ec_slave_t *slave, /**< EtherCAT-Slave */
     EC_INFO("| Ring position: %i, Station address: 0x%04X\n",
             slave->ring_position, slave->station_address);
 
-    if (verbosity > 0) // Etwas geschwätziger
-    {
-        EC_INFO("| Data link status:\n");
-        for (i = 0; i < 2; i++) {
-            EC_INFO("|   Port %i: link %s, loop %s, %s\n", i,
-                    slave->dl_status_link[i] ? "up" : "down",
-                    slave->dl_status_loop[i] ? "closed" : "open",
-                    slave->dl_status_comm[i] ? "comm. establ." : "no comm.");
+    EC_INFO("| Data link status:\n");
+    for (i = 0; i < 2; i++) {
+        EC_INFO("|   Port %i: link %s, loop %s, %s\n", i,
+                slave->dl_status_link[i] ? "up" : "down",
+                slave->dl_status_loop[i] ? "closed" : "open",
+                slave->dl_status_comm[i] ? "comm. establ." : "no comm.");
+    }
+
+    EC_INFO("| Base information:\n");
+    EC_INFO("|   Type %u, Revision %i, Build %i\n",
+            slave->base_type, slave->base_revision, slave->base_build);
+    EC_INFO("|   Supported FMMUs: %i, Sync managers: %i\n",
+            slave->base_fmmu_count, slave->base_sync_count);
+
+    if (slave->sii_mailbox_protocols) {
+        EC_INFO("| Mailbox communication:\n");
+        EC_INFO("|   RX mailbox: 0x%04X/%i, TX mailbox: 0x%04X/%i\n",
+                slave->sii_rx_mailbox_offset, slave->sii_rx_mailbox_size,
+                slave->sii_tx_mailbox_offset, slave->sii_tx_mailbox_size);
+        EC_INFO("|   Supported protocols: ");
+
+        first = 1;
+        if (slave->sii_mailbox_protocols & EC_MBOX_AOE) {
+            printk("AoE");
+            first = 0;
         }
-
-        EC_INFO("| Base information:\n");
-        EC_INFO("|   Type %u, Revision %i, Build %i\n",
-                slave->base_type, slave->base_revision, slave->base_build);
-        EC_INFO("|   Supported FMMUs: %i, Sync managers: %i\n",
-                slave->base_fmmu_count, slave->base_sync_count);
-
-        if (slave->sii_mailbox_protocols) {
-            EC_INFO("| Mailbox communication:\n");
-            EC_INFO("|   RX mailbox: 0x%04X/%i, TX mailbox: 0x%04X/%i\n",
-                    slave->sii_rx_mailbox_offset, slave->sii_rx_mailbox_size,
-                    slave->sii_tx_mailbox_offset, slave->sii_tx_mailbox_size);
-            EC_INFO("|   Supported protocols: ");
-
-            first = 1;
-            if (slave->sii_mailbox_protocols & EC_MBOX_AOE) {
-                printk("AoE");
-                first = 0;
-            }
-            if (slave->sii_mailbox_protocols & EC_MBOX_EOE) {
-                if (!first) printk(", ");
-                printk("EoE");
-                first = 0;
-            }
-            if (slave->sii_mailbox_protocols & EC_MBOX_COE) {
-                if (!first) printk(", ");
-                printk("CoE");
-                first = 0;
-            }
-            if (slave->sii_mailbox_protocols & EC_MBOX_FOE) {
-                if (!first) printk(", ");
-                printk("FoE");
-                first = 0;
-            }
-            if (slave->sii_mailbox_protocols & EC_MBOX_SOE) {
-                if (!first) printk(", ");
-                printk("SoE");
-                first = 0;
-            }
-            if (slave->sii_mailbox_protocols & EC_MBOX_VOE) {
-                if (!first) printk(", ");
-                printk("VoE");
-            }
-            printk("\n");
+        if (slave->sii_mailbox_protocols & EC_MBOX_EOE) {
+            if (!first) printk(", ");
+            printk("EoE");
+            first = 0;
         }
-
-        EC_INFO("| EEPROM data:\n");
-
-        if (slave->sii_alias)
-            EC_INFO("|   Configured station alias: 0x%04X (%i)\n",
-                    slave->sii_alias, slave->sii_alias);
-
-        EC_INFO("|   Vendor-ID: 0x%08X, Product code: 0x%08X\n",
-                slave->sii_vendor_id, slave->sii_product_code);
-        EC_INFO("|   Revision number: 0x%08X, Serial number: 0x%08X\n",
-                slave->sii_revision_number, slave->sii_serial_number);
-
-        if (slave->eeprom_name)
-            EC_INFO("|   Name: %s\n", slave->eeprom_name);
-        if (slave->eeprom_group)
-            EC_INFO("|   Group: %s\n", slave->eeprom_group);
-        if (slave->eeprom_desc)
-            EC_INFO("|   Description: %s\n", slave->eeprom_desc);
-
-        if (!list_empty(&slave->eeprom_syncs)) {
-            EC_INFO("|   Sync-Managers:\n");
-            list_for_each_entry(sync, &slave->eeprom_syncs, list) {
-                EC_INFO("|     %i: 0x%04X, length %i, control 0x%02X, %s\n",
-                        sync->index, sync->physical_start_address,
-                        sync->length, sync->control_register,
-                        sync->enable ? "enable" : "disable");
-            }
+        if (slave->sii_mailbox_protocols & EC_MBOX_COE) {
+            if (!first) printk(", ");
+            printk("CoE");
+            first = 0;
         }
+        if (slave->sii_mailbox_protocols & EC_MBOX_FOE) {
+            if (!first) printk(", ");
+            printk("FoE");
+            first = 0;
+        }
+        if (slave->sii_mailbox_protocols & EC_MBOX_SOE) {
+            if (!first) printk(", ");
+            printk("SoE");
+            first = 0;
+        }
+        if (slave->sii_mailbox_protocols & EC_MBOX_VOE) {
+            if (!first) printk(", ");
+            printk("VoE");
+        }
+        printk("\n");
+    }
 
-        list_for_each_entry(pdo, &slave->eeprom_pdos, list) {
-            EC_INFO("|   %s \"%s\" (0x%04X), -> Sync-Manager %i\n",
-                    pdo->type == EC_RX_PDO ? "RXPDO" : "TXPDO",
-                    pdo->name ? pdo->name : "???",
-                    pdo->index, pdo->sync_manager);
+    EC_INFO("| EEPROM data:\n");
 
-            list_for_each_entry(pdo_entry, &pdo->entries, list) {
-                EC_INFO("|     \"%s\" 0x%04X:%X, %i Bit\n",
-                        pdo_entry->name ? pdo_entry->name : "???",
-                        pdo_entry->index, pdo_entry->subindex,
-                        pdo_entry->bit_length);
-            }
+    if (slave->sii_alias)
+        EC_INFO("|   Configured station alias: 0x%04X (%i)\n",
+                slave->sii_alias, slave->sii_alias);
+
+    EC_INFO("|   Vendor-ID: 0x%08X, Product code: 0x%08X\n",
+            slave->sii_vendor_id, slave->sii_product_code);
+    EC_INFO("|   Revision number: 0x%08X, Serial number: 0x%08X\n",
+            slave->sii_revision_number, slave->sii_serial_number);
+
+    if (slave->eeprom_name)
+        EC_INFO("|   Name: %s\n", slave->eeprom_name);
+    if (slave->eeprom_group)
+        EC_INFO("|   Group: %s\n", slave->eeprom_group);
+    if (slave->eeprom_desc)
+        EC_INFO("|   Description: %s\n", slave->eeprom_desc);
+
+    if (!list_empty(&slave->eeprom_syncs)) {
+        EC_INFO("|   Sync-Managers:\n");
+        list_for_each_entry(sync, &slave->eeprom_syncs, list) {
+            EC_INFO("|     %i: 0x%04X, length %i, control 0x%02X, %s\n",
+                    sync->index, sync->physical_start_address,
+                    sync->length, sync->control_register,
+                    sync->enable ? "enable" : "disable");
+        }
+    }
+
+    list_for_each_entry(pdo, &slave->eeprom_pdos, list) {
+        EC_INFO("|   %s \"%s\" (0x%04X), -> Sync-Manager %i\n",
+                pdo->type == EC_RX_PDO ? "RXPDO" : "TXPDO",
+                pdo->name ? pdo->name : "???",
+                pdo->index, pdo->sync_manager);
+
+        list_for_each_entry(pdo_entry, &pdo->entries, list) {
+            EC_INFO("|     \"%s\" 0x%04X:%X, %i Bit\n",
+                    pdo_entry->name ? pdo_entry->name : "???",
+                    pdo_entry->index, pdo_entry->subindex,
+                    pdo_entry->bit_length);
         }
     }
 
