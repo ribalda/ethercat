@@ -36,6 +36,13 @@ void ec_eoe_run(ec_eoe_t *eoe)
     uint8_t *data;
     ec_master_t *master;
     size_t rec_size;
+#if 0
+    unsigned int i;
+    uint8_t fragment_number;
+    uint8_t complete_size;
+    uint8_t frame_number;
+    uint8_t last_fragment;
+#endif
 
     master = eoe->slave->master;
 
@@ -63,7 +70,6 @@ void ec_eoe_run(ec_eoe_t *eoe)
     }
 
     if (eoe->rx_state == EC_EOE_FETCHING) {
-        EC_DBG("EOE fetching\n");
         if (eoe->slave->mbox_command.state != EC_CMD_RECEIVED) {
             master->stats.eoe_errors++;
             eoe->rx_state = EC_EOE_IDLE;
@@ -74,7 +80,29 @@ void ec_eoe_run(ec_eoe_t *eoe)
             eoe->rx_state = EC_EOE_IDLE;
             return;
         }
-        EC_DBG("EOE received: %i\n", rec_size);
+
+#if 0
+        fragment_number = EC_READ_U16(data + 2) & 0x003F;
+        complete_size = (EC_READ_U16(data + 2) >> 6) & 0x003F;
+        frame_number = (EC_READ_U16(data + 2) >> 12) & 0x0003;
+        last_fragment = (EC_READ_U16(data + 2) >> 15) & 0x0001;
+
+        EC_DBG("EOE %s received, fragment: %i, complete size: %i (0x%02X),"
+               " frame %i%s\n",
+               fragment_number ? "fragment" : "initiate", fragment_number,
+               (complete_size - 31) / 32, complete_size, frame_number,
+               last_fragment ? ", last fragment" : "");
+        EC_DBG("");
+        for (i = 0; i < rec_size - 2; i++) {
+            printk("%02X ", data[i + 2]);
+            if ((i + 1) % 16 == 0) {
+                printk("\n");
+                EC_DBG("");
+            }
+        }
+        printk("\n");
+#endif
+
         eoe->rx_state = EC_EOE_IDLE;
         return;
     }
