@@ -38,7 +38,6 @@
 #include "../include/ecrt.h"
 
 #define ASYNC
-//#define BLOCK1
 
 // Defines/Makros
 #define HZREDUCTION (MSR_ABTASTFREQUENZ / HZ)
@@ -55,104 +54,48 @@ ec_master_t *master = NULL;
 ec_domain_t *domain1 = NULL;
 
 // Prozessdaten
-#ifdef BLOCK1
-void *r_ssi, *r_ssi_st;
-#else
-void *r_inc;
-#endif
+void *r_ssi;
 
-uint32_t k_ssi_pos;
-uint32_t k_ssi_status;
-uint32_t k_angle;
-uint32_t k_preio;
-uint32_t k_postio;
-uint32_t k_finished;
+// Kané‰le
+uint32_t k_pos;
 
-#ifdef BLOCK1
 ec_field_init_t domain1_fields[] = {
-    {&r_ssi,    "5", "Beckhoff", "EL5001", "InputValue", 0},
-    {&r_ssi_st, "5", "Beckhoff", "EL5001", "Status",     0},
+    {&r_ssi, "1", "Beckhoff", "EL5001", "InputValue", 0},
     {}
 };
-#else
-ec_field_init_t domain1_fields[] = {
-    {&r_inc,    "4", "Beckhoff", "EL5101", "InputValue", 0},
-    {}
-};
-#endif
 
 /*****************************************************************************/
 
 static void msr_controller_run(void)
 {
-    cycles_t offset;
-    static unsigned int counter = 0;
-
-    offset = get_cycles();
-
-    if (counter) counter--;
-    else {
-        //EtherCAT_rt_master_debug(master, 2);
-        counter = MSR_ABTASTFREQUENZ;
-    }
-
-    k_preio = (uint32_t) (get_cycles() - offset) * 1e6 / cpu_khz;
-
 #ifdef ASYNC
-
     // Empfangen
     ecrt_master_async_receive(master);
     ecrt_domain_process(domain1);
-
-    // Prozessdaten verarbeiten
-#ifdef BLOCK1
-    k_ssi_pos = EC_READ_U32(r_ssi);
-    k_ssi_status = EC_READ_U32(r_ssi_st);
 #else
-    k_angle = EC_READ_U16(r_inc);
-#endif
-
-    // Senden
-    ecrt_domain_queue(domain1);
-    ecrt_master_run(master);
-    ecrt_master_async_send(master);
-
-#else // ASYNC
-
     // Senden und empfangen
     ecrt_domain_queue(domain1);
     ecrt_master_run(master);
     ecrt_master_sync_io(master);
     ecrt_domain_process(domain1);
-
-    // Prozessdaten verarbeiten
-#ifdef BLOCK1
-    k_ssi_pos = EC_READ_U32(r_ssi);
-    k_ssi_status = EC_READ_U32(r_ssi_st);
-#else
-    k_angle = EC_READ_U16(r_inc);
 #endif
 
-#endif // ASYNC
+    // Prozessdaten verarbeiten
+    k_pos = EC_READ_U32(r_ssi);
 
-    k_postio = (uint32_t) (get_cycles() - offset) * 1e6 / cpu_khz;
-
-    //ecrt_master_debug(master, 0);
-    k_finished = (uint32_t) (get_cycles() - offset) * 1e6 / cpu_khz;
+#ifdef ASYNC
+    // Senden
+    ecrt_domain_queue(domain1);
+    ecrt_master_run(master);
+    ecrt_master_async_send(master);
+#endif
 }
 
 /*****************************************************************************/
 
 int msr_globals_register(void)
 {
-    msr_reg_kanal("/angle0",        "", &k_angle,      TUINT);
-    msr_reg_kanal("/pos0",          "", &k_ssi_pos,    TUINT);
-    msr_reg_kanal("/ssi-status0",   "", &k_ssi_status, TUINT);
-
-    msr_reg_kanal("/Timing/Pre-IO",   "ns", &k_preio,    TUINT);
-    msr_reg_kanal("/Timing/Post-IO",  "ns", &k_postio,   TUINT);
-    msr_reg_kanal("/Timing/Finished", "ns", &k_finished, TUINT);
-
+    msr_reg_kanal("/pos0", "", &k_pos, TUINT);
     return 0;
 }
 
@@ -189,9 +132,7 @@ void domain_entry(void)
 int __init init_rt_module(void)
 {
     struct ipipe_domain_attr attr; //ipipe
-#ifdef BLOCK1
-    uint8_t string[20];
-    size_t size;
+#if 0
     ec_slave_t *slave;
 #endif
 
@@ -205,6 +146,8 @@ int __init init_rt_module(void)
         printk(KERN_ERR "Error requesting master 0!\n");
         goto out_msr_cleanup;
     }
+
+    //ecrt_master_print(master, 2);
 
     printk(KERN_INFO "Registering domains...\n");
     if (!(domain1 = ecrt_master_create_domain(master))) {
@@ -224,7 +167,7 @@ int __init init_rt_module(void)
         goto out_release_master;
     }
 
-#if 0
+#if 1
     if (ecrt_master_fetch_sdo_lists(master)) {
         printk(KERN_ERR "Failed to fetch SDO lists!\n");
         goto out_deactivate;
@@ -234,38 +177,11 @@ int __init init_rt_module(void)
     ecrt_master_print(master, 1);
 #endif
 
-
-#ifdef BLOCK1
+#if 0
     if (!(slave = ecrt_master_get_slave(master, "1"))) {
         printk(KERN_ERR "Failed to get slave 1!\n");
         goto out_deactivate;
     }
-
-    size = 10;
-    if (ecrt_slave_sdo_read(slave, 0x100A, 0, string, &size)) {
-        printk(KERN_ERR "Could not read SSI version!\n");
-        goto out_deactivate;
-    }
-    printk(KERN_INFO "Software-version 1: %s\n", string);
-
-    if (!(slave = ecrt_master_get_slave(master, "5"))) {
-        printk(KERN_ERR "Failed to get slave 5!\n");
-        goto out_deactivate;
-    }
-
-    size = 10;
-    if (ecrt_slave_sdo_read(slave, 0x100A, 0, string, &size)) {
-        printk(KERN_ERR "Could not read SSI version!\n");
-        goto out_deactivate;
-    }
-    printk(KERN_INFO "Software-version 5: %s\n", string);
-
-    size = 20;
-    if (ecrt_slave_sdo_read(slave, 0x1008, 0, string, &size)) {
-        printk(KERN_ERR "Could not read string!\n");
-        goto out_deactivate;
-    }
-    printk(KERN_INFO "String: %s\n", string);
 
     if (ecrt_slave_sdo_write_exp8(slave, 0x4061, 1,  0) ||
         ecrt_slave_sdo_write_exp8(slave, 0x4061, 2,  1) ||
@@ -293,7 +209,7 @@ int __init init_rt_module(void)
     ipipe_register_domain(&this_domain, &attr);
     return 0;
 
-#ifdef BLOCK1
+#if 1
  out_deactivate:
     ecrt_master_deactivate(master);
 #endif
@@ -314,8 +230,7 @@ void __exit cleanup_rt_module(void)
     ipipe_tune_timer(1000000000UL / HZ, 0); //alten Timertakt wieder herstellen
     ipipe_unregister_domain(&this_domain);
 
-    if (master)
-    {
+    if (master) {
         printk(KERN_INFO "=== Stopping EtherCAT environment... ===\n");
 
         printk(KERN_INFO "Deactivating master...\n");

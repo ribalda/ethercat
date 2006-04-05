@@ -48,28 +48,25 @@ void run(unsigned long data)
     static unsigned int counter = 0;
 
 #ifdef ASYNC
-    // Prozessdaten empfangen
+    // Empfangen
     ecrt_master_async_receive(master);
     ecrt_domain_process(domain1);
-
-    // Prozessdaten verarbeiten
-    //k_pos   = EC_READ_U32(r_ssi_input);
-    //k_stat  = EC_READ_U8(r_ssi_status);
-
-    // Prozessdaten senden
-    ecrt_domain_queue(domain1);
-    ecrt_master_run(master);
-    ecrt_master_async_send(master);
 #else
-    // Prozessdaten senden und empfangen
+    // Senden und empfangen
     ecrt_domain_queue(domain1);
     ecrt_master_run(master);
     ecrt_master_sync_io(master);
     ecrt_domain_process(domain1);
+#endif
 
     // Prozessdaten verarbeiten
-    //k_pos   = EC_READ_U32(r_ssi_input);
-    //k_stat  = EC_READ_U8(r_ssi_status);
+    //k_pos = EC_READ_U32(r_ssi);
+
+#ifdef ASYNC
+    // Senden
+    ecrt_domain_queue(domain1);
+    ecrt_master_run(master);
+    ecrt_master_async_send(master);
 #endif
 
     if (counter) {
