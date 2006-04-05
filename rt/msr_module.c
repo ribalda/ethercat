@@ -60,7 +60,7 @@ void *r_ssi;
 uint32_t k_pos;
 
 ec_field_init_t domain1_fields[] = {
-    {&r_ssi, "1", "Beckhoff", "EL5001", "InputValue", 0},
+    {&r_ssi, "5", "Beckhoff", "EL5001", "InputValue", 0},
     {}
 };
 
@@ -143,15 +143,15 @@ int __init init_rt_module(void)
     }
 
     if ((master = ecrt_request_master(0)) == NULL) {
-        printk(KERN_ERR "Error requesting master 0!\n");
+        printk(KERN_ERR "Failed to request master 0!\n");
         goto out_msr_cleanup;
     }
 
     //ecrt_master_print(master, 2);
 
-    printk(KERN_INFO "Registering domains...\n");
+    printk(KERN_INFO "Creating domains...\n");
     if (!(domain1 = ecrt_master_create_domain(master))) {
-        printk(KERN_ERR "Could not register domain!\n");
+        printk(KERN_ERR "Failed to create domains!\n");
         goto out_release_master;
     }
 
@@ -167,7 +167,7 @@ int __init init_rt_module(void)
         goto out_release_master;
     }
 
-#if 1
+#if 0
     if (ecrt_master_fetch_sdo_lists(master)) {
         printk(KERN_ERR "Failed to fetch SDO lists!\n");
         goto out_deactivate;
@@ -209,7 +209,7 @@ int __init init_rt_module(void)
     ipipe_register_domain(&this_domain, &attr);
     return 0;
 
-#if 1
+#if 0
  out_deactivate:
     ecrt_master_deactivate(master);
 #endif
