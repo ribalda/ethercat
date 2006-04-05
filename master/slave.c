@@ -717,8 +717,6 @@ int ec_slave_locate_string(ec_slave_t *slave, unsigned int index, char **ptr)
 
 /**
    Bestätigt einen Fehler beim Zustandswechsel.
-
-   \todo Funktioniert noch nicht...
 */
 
 void ec_slave_state_ack(ec_slave_t *slave,
@@ -735,8 +733,8 @@ void ec_slave_state_ack(ec_slave_t *slave,
     if (ec_command_npwr(command, slave->station_address, 0x0120, 2)) return;
     EC_WRITE_U16(command->data, state | EC_ACK);
     if (unlikely(ec_master_simple_io(slave->master, command))) {
-        EC_WARN("State %02X acknowledge failed on slave %i!\n",
-                state, slave->ring_position);
+        EC_WARN("Acknowledge sending failed on slave %i!\n",
+                slave->ring_position);
         return;
     }
 
@@ -750,29 +748,22 @@ void ec_slave_state_ack(ec_slave_t *slave,
         if (ec_command_nprd(command, slave->station_address, 0x0130, 2))
             return;
         if (unlikely(ec_master_simple_io(slave->master, command))) {
-            EC_WARN("State %02X acknowledge checking failed on slave %i!\n",
-                    state, slave->ring_position);
+            EC_WARN("Acknowledge checking failed on slave %i!\n",
+                    slave->ring_position);
             return;
         }
 
         end = get_cycles();
 
-        if (unlikely(EC_READ_U8(command->data) != state)) {
-            EC_WARN("Could not acknowledge state %02X on slave %i (code"
-                    " %02X)!\n", state, slave->ring_position,
-                    EC_READ_U8(command->data));
-            return;
-        }
-
         if (likely(EC_READ_U8(command->data) == state)) {
-            EC_INFO("Acknowleged state %02X on slave %i.\n", state,
+            EC_INFO("Acknowleged state 0x%02X on slave %i.\n", state,
                     slave->ring_position);
             return;
         }
 
         if (unlikely((end - start) >= timeout)) {
-            EC_WARN("Could not check state acknowledgement %02X of slave %i -"
-                    " Timeout while checking!\n", state, slave->ring_position);
+            EC_WARN("Failed to check state acknowledgement 0x%02X on slave %i"
+                    " - Timeout!\n", state,slave->ring_position);
             return;
         }
     }
