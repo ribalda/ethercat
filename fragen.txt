@@ -3,7 +3,4 @@ Offene Fragen an Beckhoff
 
 $Id$
 
-- Unbekannte Kategorien in Digital-IO-Slaves
-- Neue Firmware für EL5101
-- SSI-Klemme geht immer noch nicht?
-- Dokumentation EL6601
+(keine)
