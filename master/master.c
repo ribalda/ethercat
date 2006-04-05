@@ -116,7 +116,7 @@ void ec_master_reset(ec_master_t *master
 
     master->command_index = 0;
     master->debug_level = 0;
-    master->timeout = 100; // us
+    master->timeout = 500; // 500us
 
     master->slaves_responding = 0;
     master->slave_states = EC_SLAVE_STATE_UNKNOWN;
@@ -790,7 +790,7 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
     const ec_fmmu_t *fmmu;
     uint32_t domain_offset;
     ec_domain_t *domain;
-    ec_eeprom_sync_t *eeprom_sync;
+    ec_eeprom_sync_t *eeprom_sync, mbox_sync;
 
     command = &master->simple_command;
 
@@ -852,6 +852,8 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
         }
 
         // Set Sync Managers
+
+        // Known slave type, take type's SM information
         if (type) {
             for (j = 0; type->sync_managers[j] && j < EC_MAX_SYNC; j++)
             {
@@ -867,18 +869,59 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
                 }
             }
         }
-        else if (slave->sii_mailbox_protocols) { // Unknown slave, has mailbox
-            list_for_each_entry(eeprom_sync, &slave->eeprom_syncs, list) {
-                if (ec_command_npwr(command, slave->station_address,
-                                    0x800 + eeprom_sync->index * EC_SYNC_SIZE,
-                                    EC_SYNC_SIZE)) return -1;
-                ec_eeprom_sync_config(eeprom_sync, command->data);
-                if (unlikely(ec_master_simple_io(master, command))) {
-                    EC_ERR("Setting sync manager %i failed on slave %i!\n",
-                           eeprom_sync->index, slave->ring_position);
-                    return -1;
-                }
+
+        // Unknown slave type, but has mailbox
+        else if (slave->sii_mailbox_protocols) {
+
+            // Does the device supply SM configurations in its EEPROM?
+	    if (!list_empty(&slave->eeprom_syncs)) {
+		list_for_each_entry(eeprom_sync, &slave->eeprom_syncs, list) {
+		    EC_INFO("Sync manager %i...\n", eeprom_sync->index);
+		    if (ec_command_npwr(command, slave->station_address,
+					0x800 + eeprom_sync->index *
+					EC_SYNC_SIZE,
+					EC_SYNC_SIZE)) return -1;
+		    ec_eeprom_sync_config(eeprom_sync, command->data);
+		    if (unlikely(ec_master_simple_io(master, command))) {
+			EC_ERR("Setting sync manager %i failed on slave %i!\n",
+			       eeprom_sync->index, slave->ring_position);
+			return -1;
+		    }
+		}
             }
+
+            // No sync manager information; guess mailbox settings
+	    else {
+		mbox_sync.physical_start_address =
+                    slave->sii_rx_mailbox_offset;
+		mbox_sync.length = slave->sii_rx_mailbox_size;
+		mbox_sync.control_register = 0x26;
+		mbox_sync.enable = 1;
+		if (ec_command_npwr(command, slave->station_address,
+				    0x800,EC_SYNC_SIZE)) return -1;
+		ec_eeprom_sync_config(&mbox_sync, command->data);
+		if (unlikely(ec_master_simple_io(master, command))) {
+		    EC_ERR("Setting sync manager 0 failed on slave %i!\n",
+			   slave->ring_position);
+		    return -1;
+		}
+
+		mbox_sync.physical_start_address =
+                    slave->sii_tx_mailbox_offset;
+		mbox_sync.length = slave->sii_tx_mailbox_size;
+		mbox_sync.control_register = 0x22;
+		mbox_sync.enable = 1;
+		if (ec_command_npwr(command, slave->station_address,
+				    0x808, EC_SYNC_SIZE)) return -1;
+		ec_eeprom_sync_config(&mbox_sync, command->data);
+		if (unlikely(ec_master_simple_io(master, command))) {
+		    EC_ERR("Setting sync manager 1 failed on slave %i!\n",
+			   slave->ring_position);
+		    return -1;
+		}
+	    }
+	    EC_INFO("Mailbox configured for unknown slave %i\n",
+		    slave->ring_position);
         }
 
         // Change state to PREOP

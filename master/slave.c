@@ -88,8 +88,8 @@ void ec_slave_clear(ec_slave_t *slave /**< EtherCAT-Slave */)
     ec_eeprom_sync_t *sync, *next_sync;
     ec_eeprom_pdo_t *pdo, *next_pdo;
     ec_eeprom_pdo_entry_t *entry, *next_ent;
-    ec_sdo_t *sdo, *next_sdo;
-    ec_sdo_entry_t *en, *next_en;
+    //ec_sdo_t *sdo, *next_sdo;
+    //ec_sdo_entry_t *en, *next_en;
 
     // Alle Strings freigeben
     list_for_each_entry_safe(string, next_str, &slave->eeprom_strings, list) {
@@ -122,6 +122,7 @@ void ec_slave_clear(ec_slave_t *slave /**< EtherCAT-Slave */)
     if (slave->eeprom_group) kfree(slave->eeprom_group);
     if (slave->eeprom_desc) kfree(slave->eeprom_desc);
 
+#if 0
     // Alle SDOs freigeben
     list_for_each_entry_safe(sdo, next_sdo, &slave->sdo_dictionary, list) {
         list_del(&sdo->list);
@@ -135,6 +136,7 @@ void ec_slave_clear(ec_slave_t *slave /**< EtherCAT-Slave */)
     }
 
     ec_command_clear(&slave->mbox_command);
+#endif
 }
 
 /*****************************************************************************/
