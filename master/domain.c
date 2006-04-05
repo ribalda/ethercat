@@ -360,11 +360,11 @@ ec_slave_t *ecrt_domain_register_field(ec_domain_t *domain,
 
 int ecrt_domain_register_field_list(ec_domain_t *domain,
                                     /**< Domäne */
-                                    ec_field_init_t *fields
+                                    const ec_field_init_t *fields
                                     /**< Array mit Datenfeldern */
                                     )
 {
-    ec_field_init_t *field;
+    const ec_field_init_t *field;
 
     for (field = fields; field->slave_address; field++)
         if (!ecrt_domain_register_field(domain, field->slave_address,

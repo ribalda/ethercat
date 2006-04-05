@@ -79,7 +79,7 @@ ec_slave_t *ecrt_domain_register_field(ec_domain_t *domain,
                                        unsigned int field_index,
                                        unsigned int field_count);
 int ecrt_domain_register_field_list(ec_domain_t *domain,
-                                    ec_field_init_t *fields);
+                                    const ec_field_init_t *fields);
 
 void ecrt_domain_queue(ec_domain_t *domain);
 void ecrt_domain_process(ec_domain_t *domain);
