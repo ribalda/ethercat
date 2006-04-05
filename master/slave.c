@@ -856,10 +856,10 @@ int ec_slave_state_change(ec_slave_t *slave,
    \return 0 bei Erfolg, sonst < 0
 */
 
-int ec_slave_set_fmmu(ec_slave_t *slave, /**< EtherCAT-Slave */
-                      const ec_domain_t *domain, /**< Domäne */
-                      const ec_sync_t *sync  /**< Sync-Manager */
-                      )
+int ec_slave_prepare_fmmu(ec_slave_t *slave, /**< EtherCAT-Slave */
+                          const ec_domain_t *domain, /**< Domäne */
+                          const ec_sync_t *sync  /**< Sync-Manager */
+                          )
 {
     unsigned int i;
 

@@ -74,7 +74,7 @@ int ec_domain_reg_field(ec_domain_t *domain, /**< Domäne */
         return -1;
     }
 
-    if (ec_slave_set_fmmu(slave, domain, sync)) {
+    if (ec_slave_prepare_fmmu(slave, domain, sync)) {
         EC_ERR("FMMU configuration failed.\n");
         kfree(field_reg);
         return -1;
@@ -86,7 +86,6 @@ int ec_domain_reg_field(ec_domain_t *domain, /**< Domäne */
     field_reg->data_ptr = data_ptr;
 
     list_add_tail(&field_reg->list, &domain->field_regs);
-
     return 0;
 }
 

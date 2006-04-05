@@ -251,7 +251,8 @@ int ec_slave_sii_read16(ec_slave_t *, uint16_t, uint16_t *);
 int ec_slave_sii_read32(ec_slave_t *, uint16_t, uint32_t *);
 int ec_slave_sii_write16(ec_slave_t *, uint16_t, uint16_t);
 int ec_slave_state_change(ec_slave_t *, uint8_t);
-int ec_slave_set_fmmu(ec_slave_t *, const ec_domain_t *, const ec_sync_t *);
+int ec_slave_prepare_fmmu(ec_slave_t *, const ec_domain_t *,
+                          const ec_sync_t *);
 
 // CANopen over EtherCAT
 int ec_slave_fetch_sdo_list(ec_slave_t *);
