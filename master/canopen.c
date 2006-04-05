@@ -415,7 +415,7 @@ int ec_slave_fetch_sdo_entries(ec_slave_t *slave, /**< EtherCAT-Slave */
             EC_READ_U16(data + 6) != sdo->index || // SDO index
             EC_READ_U8(data + 8) != i) { // SDO subindex
             EC_ERR("Invalid entry description response at slave %i while"
-                   " fetching SDO 0x%04X:%i!\n", slave->ring_position,
+                   " fetching SDO entry 0x%04X:%i!\n", slave->ring_position,
                    sdo->index, i);
             ec_print_data(data, rec_size);
             return -1;
@@ -434,21 +434,19 @@ int ec_slave_fetch_sdo_entries(ec_slave_t *slave, /**< EtherCAT-Slave */
 
         if (!(entry = (ec_sdo_entry_t *)
               kmalloc(sizeof(ec_sdo_entry_t) + data_size + 1, GFP_KERNEL))) {
-            EC_ERR("Failed to allocate entry memory!\n");
+            EC_ERR("Failed to allocate entry!\n");
             return -1;
         }
 
         entry->subindex = i;
         entry->data_type = EC_READ_U16(data + 10);
         entry->bit_length = EC_READ_U16(data + 12);
-        if (!data_size) {
-            entry->name = NULL;
-        }
-        else {
-            entry->name = (uint8_t *) entry + sizeof(ec_sdo_entry_t);
-            memcpy(entry->name, data + 16, data_size);
-            entry->name[data_size] = 0;
-        }
+
+        // memory for name string appended to entry
+        entry->name = (uint8_t *) entry + sizeof(ec_sdo_entry_t);
+
+        memcpy(entry->name, data + 16, data_size);
+        entry->name[data_size] = 0;
 
         list_add_tail(&entry->list, &sdo->entries);
     }

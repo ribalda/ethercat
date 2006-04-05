@@ -126,6 +126,7 @@ void ec_slave_clear(ec_slave_t *slave /**< EtherCAT-Slave */)
     list_for_each_entry_safe(sdo, next_sdo, &slave->sdo_dictionary, list) {
         list_del(&sdo->list);
         if (sdo->name) kfree(sdo->name);
+
         // Alle Entries freigeben
         list_for_each_entry_safe(en, next_en, &sdo->entries, list) {
             list_del(&en->list);
@@ -541,6 +542,7 @@ int ec_slave_fetch_strings(ec_slave_t *slave, /**< EtherCAT-Slave */
             return -1;
         }
         string->size = size;
+        // string memory appended to string structure
         string->data = (char *) string + sizeof(ec_eeprom_string_t);
         memcpy(string->data, data + offset + 1, size);
         string->data[size] = 0x00;

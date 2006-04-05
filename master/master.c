@@ -86,9 +86,8 @@ void ec_master_reset(ec_master_t *master
 
     // Alle Slaves entfernen
     if (master->slaves) {
-        for (i = 0; i < master->slave_count; i++) {
+        for (i = 0; i < master->slave_count; i++)
             ec_slave_clear(master->slaves + i);
-        }
         kfree(master->slaves);
         master->slaves = NULL;
     }
@@ -108,7 +107,7 @@ void ec_master_reset(ec_master_t *master
     }
 
     // EOE-Liste leeren
-    list_for_each_entry_safe(eoe, next_eoe, &master->domains, list) {
+    list_for_each_entry_safe(eoe, next_eoe, &master->eoe_slaves, list) {
         list_del(&eoe->list);
         ec_eoe_clear(eoe);
         kfree(eoe);
@@ -411,10 +410,9 @@ int ec_master_bus_scan(ec_master_t *master /**< EtherCAT-Master */)
 
     if (!master->slave_count) return 0;
 
-    if (!(master->slaves = (ec_slave_t *) kmalloc(master->slave_count
-                                                  * sizeof(ec_slave_t),
-                                                  GFP_KERNEL))) {
-        EC_ERR("Could not allocate memory for slaves!\n");
+    if (!(master->slaves = (ec_slave_t *)
+          kmalloc(master->slave_count * sizeof(ec_slave_t), GFP_KERNEL))) {
+        EC_ERR("Failed to allocate slaves!\n");
         return -1;
     }
 
@@ -426,9 +424,8 @@ int ec_master_bus_scan(ec_master_t *master /**< EtherCAT-Master */)
         slave->station_address = i + 1;
     }
 
-    // For every slave in the list
-    for (i = 0; i < master->slave_count; i++)
-    {
+    // For every slave on the bus
+    for (i = 0; i < master->slave_count; i++) {
         slave = master->slaves + i;
 
         // Write station address
@@ -461,8 +458,8 @@ int ec_master_bus_scan(ec_master_t *master /**< EtherCAT-Master */)
 
         // Does the slave support EoE?
         if (slave->sii_mailbox_protocols & EC_MBOX_EOE) {
-            if (!(eoe = kmalloc(sizeof(ec_eoe_t), GFP_KERNEL))) {
-                EC_ERR("Failed to allocate memory for EoE-Object.\n");
+            if (!(eoe = (ec_eoe_t *) kmalloc(sizeof(ec_eoe_t), GFP_KERNEL))) {
+                EC_ERR("Failed to allocate EoE-Object.\n");
                 return -1;
             }
 

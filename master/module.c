@@ -176,7 +176,7 @@ ec_device_t *ecdev_register(unsigned int master_index,
 
     if (!(master->device = (ec_device_t *)
           kmalloc(sizeof(ec_device_t), GFP_KERNEL))) {
-        EC_ERR("Failed allocating device!\n");
+        EC_ERR("Failed to allocate device!\n");
         return NULL;
     }
 
