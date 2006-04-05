@@ -64,7 +64,7 @@ int ec_slave_sdo_read_exp(ec_slave_t *slave, /**< EtherCAT-Slave */
 
     if (EC_READ_U16(data) >> 12 == 0x2 && // SDO request
         EC_READ_U8 (data + 2) >> 5 == 0x4) { // Abort SDO transfer request
-        EC_ERR("SDO upload of 0x%04X:%X aborted on slave %i.\n",
+        EC_ERR("SDO upload 0x%04X:%X aborted on slave %i.\n",
                sdo_index, sdo_subindex, slave->ring_position);
         ec_canopen_abort_msg(EC_READ_U32(data + 6));
         return -1;
@@ -74,8 +74,11 @@ int ec_slave_sdo_read_exp(ec_slave_t *slave, /**< EtherCAT-Slave */
         EC_READ_U8 (data + 2) >> 5 != 0x2 || // Upload response
         EC_READ_U16(data + 3) != sdo_index || // Index
         EC_READ_U8 (data + 5) != sdo_subindex) { // Subindex
+        EC_ERR("SDO upload 0x%04X:%X failed:\n",
+               sdo_index, sdo_subindex, slave->ring_position);
         EC_ERR("Invalid SDO upload response at slave %i!\n",
                slave->ring_position);
+        ec_print_data(data, rec_size);
         return -1;
     }
 
@@ -121,9 +124,8 @@ int ec_slave_sdo_write_exp(ec_slave_t *slave, /**< EtherCAT-Slave */
 
     if (EC_READ_U16(data) >> 12 == 0x2 && // SDO request
         EC_READ_U8 (data + 2) >> 5 == 0x4) { // Abort SDO transfer request
-        EC_ERR("SDO download of 0x%04X:%X (%i bytes) aborted on!"
-               " slave %i.\n", sdo_index, sdo_subindex, size,
-               slave->ring_position);
+        EC_ERR("SDO download 0x%04X:%X (%i bytes) aborted on slave %i.\n",
+               sdo_index, sdo_subindex, size, slave->ring_position);
         ec_canopen_abort_msg(EC_READ_U32(data + 6));
         return -1;
     }
@@ -131,10 +133,12 @@ int ec_slave_sdo_write_exp(ec_slave_t *slave, /**< EtherCAT-Slave */
     if (EC_READ_U16(data) >> 12 != 0x3 || // SDO response
         EC_READ_U8 (data + 2) >> 5 != 0x3 || // Download response
         EC_READ_U16(data + 3) != sdo_index || // Index
-        EC_READ_U8 (data + 5) != sdo_subindex) // Subindex
-    {
+        EC_READ_U8 (data + 5) != sdo_subindex) { // Subindex
+        EC_ERR("SDO download 0x%04X:%X (%i bytes) failed:\n",
+               sdo_index, sdo_subindex, size);
         EC_ERR("Invalid SDO download response at slave %i!\n",
                slave->ring_position);
+        ec_print_data(data, rec_size);
         return -1;
     }
 
@@ -170,7 +174,7 @@ int ecrt_slave_sdo_read(ec_slave_t *slave, /**< EtherCAT-Slave */
 
     if (EC_READ_U16(data) >> 12 == 0x2 && // SDO request
         EC_READ_U8 (data + 2) >> 5 == 0x4) { // Abort SDO transfer request
-        EC_ERR("SDO upload of 0x%04X:%X aborted on slave %i.\n",
+        EC_ERR("SDO upload 0x%04X:%X aborted on slave %i.\n",
                sdo_index, sdo_subindex, slave->ring_position);
         ec_canopen_abort_msg(EC_READ_U32(data + 6));
         return -1;
@@ -180,13 +184,16 @@ int ecrt_slave_sdo_read(ec_slave_t *slave, /**< EtherCAT-Slave */
         EC_READ_U8 (data + 2) >> 5 != 0x2 || // Initiate upload response
         EC_READ_U16(data + 3) != sdo_index || // Index
         EC_READ_U8 (data + 5) != sdo_subindex) { // Subindex
+        EC_ERR("SDO upload 0x%04X:%X failed:\n", sdo_index, sdo_subindex);
         EC_ERR("Invalid SDO upload response at slave %i!\n",
                slave->ring_position);
+        ec_print_data(data, rec_size);
         return -1;
     }
 
     if (rec_size < 10) {
         EC_ERR("Received currupted SDO upload response!\n");
+        ec_print_data(data, rec_size);
         return -1;
     }
 
@@ -198,14 +205,12 @@ int ecrt_slave_sdo_read(ec_slave_t *slave, /**< EtherCAT-Slave */
 
     data_size = rec_size - 10;
 
-    if (data_size == complete_size) {
-        memcpy(target, data + 10, data_size);
-    }
-    else {
-        EC_ERR("SDO data incomplete.\n");
+    if (data_size != complete_size) {
+        EC_ERR("SDO data incomplete - Fragmenting not implemented.\n");
         return -1;
     }
 
+    memcpy(target, data + 10, data_size);
     return 0;
 }
 
@@ -233,8 +238,7 @@ int ec_slave_fetch_sdo_list(ec_slave_t *slave /**< EtherCAT-Slave */)
     EC_WRITE_U16(data + 6, 0x0001); // Deliver all SDOs!
 
     if (unlikely(ec_master_simple_io(slave->master, &slave->mbox_command))) {
-        EC_ERR("Mailbox checking failed on slave %i!\n",
-               slave->ring_position);
+        EC_ERR("Mailbox checking failed on slave %i!\n", slave->ring_position);
         return -1;
     }
 
@@ -254,11 +258,13 @@ int ec_slave_fetch_sdo_list(ec_slave_t *slave /**< EtherCAT-Slave */)
             (EC_READ_U8 (data + 2) & 0x7F) != 0x02) { // Get OD List response
             EC_ERR("Invalid SDO list response at slave %i!\n",
                    slave->ring_position);
+            ec_print_data(data, rec_size);
             return -1;
         }
 
         if (rec_size < 8) {
             EC_ERR("Invalid data size!\n");
+            ec_print_data(data, rec_size);
             return -1;
         }
 
@@ -271,11 +277,18 @@ int ec_slave_fetch_sdo_list(ec_slave_t *slave /**< EtherCAT-Slave */)
                 EC_ERR("Failed to allocate memory for SDO!\n");
                 return -1;
             }
+
+            // Initialize SDO object
             sdo->index = sdo_index;
+            sdo->type = 0x0000;
+            sdo->features = 0x00;
             sdo->name = NULL;
+            INIT_LIST_HEAD(&sdo->entries);
+
             list_add_tail(&sdo->list, &slave->sdo_dictionary);
         }
-    } while (EC_READ_U8(data + 2) & 0x80);
+    }
+    while (EC_READ_U8(data + 2) & 0x80);
 
     // Alle Beschreibungen laden
     if (ec_slave_fetch_sdo_descriptions(slave)) return -1;
@@ -321,17 +334,18 @@ int ec_slave_fetch_sdo_descriptions(ec_slave_t *slave /**< EtherCAT-Slave */)
             EC_ERR("Invalid object description response at slave %i while"
                    " fetching SDO 0x%04X!\n", slave->ring_position,
                    sdo->index);
+            ec_print_data(data, rec_size);
             return -1;
         }
 
         if (rec_size < 12) {
             EC_ERR("Invalid data size!\n");
+            ec_print_data(data, rec_size);
             return -1;
         }
 
         sdo->type = EC_READ_U16(data + 8);
         sdo->features = EC_READ_U8(data + 11);
-        INIT_LIST_HEAD(&sdo->entries);
 
         name_size = rec_size - 12;
         if (name_size) {
@@ -404,11 +418,13 @@ int ec_slave_fetch_sdo_entries(ec_slave_t *slave, /**< EtherCAT-Slave */
             EC_ERR("Invalid entry description response at slave %i while"
                    " fetching SDO 0x%04X:%i!\n", slave->ring_position,
                    sdo->index, i);
+            ec_print_data(data, rec_size);
             return -1;
         }
 
         if (rec_size < 16) {
             EC_ERR("Invalid data size!\n");
+            ec_print_data(data, rec_size);
             return -1;
         }
 
@@ -458,6 +474,7 @@ void ec_canopen_abort_msg(uint32_t abort_code)
             return;
         }
     }
+
     EC_ERR("Unknown SDO abort code 0x%08X.\n", abort_code);
 }
 
