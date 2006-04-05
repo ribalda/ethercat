@@ -38,6 +38,13 @@ const ec_slave_type_t Beckhoff_EK1110 = {
 
 /*****************************************************************************/
 
+const ec_slave_type_t Beckhoff_BK1120 = {
+    "Beckhoff", "BK1120", "KBUS Coupler", EC_TYPE_NORMAL,
+    {NULL} // Keine Sync-Manager
+};
+
+/*****************************************************************************/
+
 const ec_field_t el1014_in = {"InputValue", 1};
 
 const ec_sync_t el1014_sm0 = { // Inputs
@@ -76,10 +83,7 @@ const ec_field_t el31X2_ip1 = {"InputValue", 2};
 const ec_field_t el31X2_st2 = {"Status",     1};
 const ec_field_t el31X2_ip2 = {"InputValue", 2};
 
-const ec_sync_t el31X2_sm2 = {
-    0x1000, 4, 0x24,
-    {NULL}
-};
+const ec_sync_t el31X2_sm2 = {0x1000, 4, 0x24, {NULL}};
 
 const ec_sync_t el31X2_sm3 = {
     0x1100, 6, 0x20,
@@ -164,10 +168,28 @@ const ec_slave_type_t Beckhoff_EL5101 =
 const ec_sync_t el6601_sm0 = {0x1800, 522, 0x26, {NULL}};
 const ec_sync_t el6601_sm1 = {0x1C00, 522, 0x22, {NULL}};
 
-const ec_slave_type_t Beckhoff_EL6601 =
-{
+const ec_slave_type_t Beckhoff_EL6601 = {
     "Beckhoff", "EL6601", "1-Port Ethernet Switch Terminal", EC_TYPE_EOE,
     {&el6601_sm0, &el6601_sm1, NULL, NULL, NULL}
+};
+
+/*****************************************************************************/
+
+const ec_field_t trlinenc2_st = {"Status",     1};
+const ec_field_t trlinenc2_ip = {"InputValue", 4};
+
+const ec_sync_t trlinenc2_sm0 = {0x1800, 192, 0x26, {NULL}};
+const ec_sync_t trlinenc2_sm1 = {0x1C00, 192, 0x22, {NULL}};
+const ec_sync_t trlinenc2_sm2 = {0x1000,   4, 0x24, {NULL}};
+
+const ec_sync_t trlinenc2_sm3 = {
+    0x1100, 5, 0x20,
+    {&trlinenc2_st, &trlinenc2_ip, NULL}
+};
+
+const ec_slave_type_t TR_Electronic_LinEnc2 = {
+    "TR-Electronic", "LinEnc2", "SSI-Encoder", EC_TYPE_NORMAL,
+    {&trlinenc2_sm0, &trlinenc2_sm1, &trlinenc2_sm2, &trlinenc2_sm3, NULL}
 };
 
 /*****************************************************************************/
@@ -185,6 +207,7 @@ ec_slave_ident_t slave_idents[] =
     {0x00000002, 0x03F63052, &Beckhoff_EL1014},
     {0x00000002, 0x044C2C52, &Beckhoff_EK1100},
     {0x00000002, 0x04562C52, &Beckhoff_EK1110},
+    //{0x00000002, 0x04602C22, &Beckhoff_BK1120},
     {0x00000002, 0x07D43052, &Beckhoff_EL2004},
     {0x00000002, 0x07F03052, &Beckhoff_EL2032},
     {0x00000002, 0x0C1E3052, &Beckhoff_EL3102},
@@ -194,6 +217,7 @@ ec_slave_ident_t slave_idents[] =
     {0x00000002, 0x13893052, &Beckhoff_EL5001},
     {0x00000002, 0x13ED3052, &Beckhoff_EL5101},
     {0x00000002, 0x19C93052, &Beckhoff_EL6601},
+    {0x000000D4, 0x00000017, &TR_Electronic_LinEnc2},
     {}
 };
 
