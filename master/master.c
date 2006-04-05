@@ -131,47 +131,6 @@ void ec_master_reset(ec_master_t *master
 /*****************************************************************************/
 
 /**
-   Öffnet das EtherCAT-Geraet des Masters.
-
-   \return 0 wenn alles ok, < 0 wenn kein Gerät registriert wurde oder
-           es nicht geoeffnet werden konnte.
-*/
-
-int ec_master_open(ec_master_t *master /**< Der EtherCAT-Master */)
-{
-    if (!master->device) {
-        EC_ERR("No device registered!\n");
-        return -1;
-    }
-
-    if (ec_device_open(master->device)) {
-        EC_ERR("Could not open device!\n");
-        return -1;
-    }
-
-    return 0;
-}
-
-/*****************************************************************************/
-
-/**
-   Schliesst das EtherCAT-Geraet, auf dem der Master arbeitet.
-*/
-
-void ec_master_close(ec_master_t *master /**< EtherCAT-Master */)
-{
-    if (!master->device) {
-        EC_WARN("Warning - Trying to close an unregistered device!\n");
-        return;
-    }
-
-    if (ec_device_close(master->device))
-        EC_WARN("Warning - Could not close device!\n");
-}
-
-/*****************************************************************************/
-
-/**
    Stellt ein Kommando in die Warteschlange.
 */
 

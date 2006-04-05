@@ -82,14 +82,13 @@ int __init ec_init_module(void)
 
     if (!(ec_masters = (ec_master_t *)
           kmalloc(sizeof(ec_master_t) * ec_master_count, GFP_KERNEL))) {
-        EC_ERR("Could not allocate memory for EtherCAT master(s)!\n");
+        EC_ERR("Failed to allocate master(s)!\n");
         goto out_return;
     }
 
-    if (!(ec_masters_reserved =
-          (unsigned int *) kmalloc(sizeof(int) * ec_master_count,
-                                   GFP_KERNEL))) {
-        EC_ERR("Could not allocate memory for reservation flags!\n");
+    if (!(ec_masters_reserved = (unsigned int *)
+          kmalloc(sizeof(int) * ec_master_count, GFP_KERNEL))) {
+        EC_ERR("Failed to allocate reservation flags!\n");
         goto out_free_masters;
     }
 
@@ -241,7 +240,7 @@ ec_master_t *ecrt_request_master(unsigned int index
 {
     ec_master_t *master;
 
-    EC_INFO("===== Starting master %i... =====\n", index);
+    EC_INFO("Requesting master %i...\n", index);
 
     if (index < 0 || index >= ec_master_count) {
         EC_ERR("Master %i does not exist!\n", index);
@@ -249,48 +248,49 @@ ec_master_t *ecrt_request_master(unsigned int index
     }
 
     if (ec_masters_reserved[index]) {
-        EC_ERR("Master %i already in use!\n", index);
+        EC_ERR("Master %i is already in use!\n", index);
         goto req_return;
     }
 
+    ec_masters_reserved[index] = 1;
     master = &ec_masters[index];
 
     if (!master->device) {
-        EC_ERR("Master %i has no device assigned yet!\n", index);
-        goto req_return;
+        EC_ERR("Master %i has no assigned device!\n", index);
+        goto req_release;
     }
 
     if (!try_module_get(master->device->module)) {
         EC_ERR("Failed to reserve device module!\n");
-        goto req_return;
+        goto req_release;
     }
 
-    if (ec_master_open(master)) {
+    if (ec_device_open(master->device)) {
         EC_ERR("Failed to open device!\n");
         goto req_module_put;
     }
 
-    if (!master->device->link_state) EC_WARN("Link is DOWN.\n");
+    if (!master->device->link_state)
+        EC_WARN("Link is DOWN.\n");
 
     if (ec_master_bus_scan(master) != 0) {
         EC_ERR("Bus scan failed!\n");
         goto req_close;
     }
 
-    ec_masters_reserved[index] = 1;
-    EC_INFO("===== Master %i ready. =====\n", index);
-
+    EC_INFO("Master %i is ready.\n", index);
     return master;
 
  req_close:
-    ec_master_close(master);
-
+    if (ec_device_close(master->device))
+        EC_WARN("Warning - Failed to close device!\n");
  req_module_put:
     module_put(master->device->module);
     ec_master_reset(master);
-
+ req_release:
+    ec_masters_reserved[index] = 0;
  req_return:
-    EC_INFO("===== Failed to start master %i =====\n", index);
+    EC_ERR("Failed requesting master %i.\n", index);
     return NULL;
 }
 
@@ -300,7 +300,7 @@ ec_master_t *ecrt_request_master(unsigned int index
    Gibt einen zuvor angeforderten EtherCAT-Master wieder frei.
 */
 
-void ecrt_release_master(ec_master_t *master /**< EtherCAT-Masdter */)
+void ecrt_release_master(ec_master_t *master /**< EtherCAT-Master */)
 {
     unsigned int i, found;
 
@@ -313,19 +313,21 @@ void ecrt_release_master(ec_master_t *master /**< EtherCAT-Masdter */)
     }
 
     if (!found) {
-        EC_WARN("Master %X was never requested!\n", (u32) master);
+        EC_WARN("Master 0x%08X was never requested!\n", (u32) master);
         return;
     }
 
-    EC_INFO("===== Stopping master %i... =====\n", i);
+    EC_INFO("Releasing master %i...\n", i);
 
-    ec_master_close(master);
     ec_master_reset(master);
+
+    if (ec_device_close(master->device))
+        EC_WARN("Warning - Failed to close device!\n");
 
     module_put(master->device->module);
     ec_masters_reserved[i] = 0;
 
-    EC_INFO("===== Master %i stopped. =====\n", i);
+    EC_INFO("Released master %i.\n", i);
     return;
 }
 

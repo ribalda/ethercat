@@ -73,10 +73,6 @@ void ec_master_receive(ec_master_t *, const uint8_t *, size_t);
 void ec_master_queue_command(ec_master_t *, ec_command_t *);
 int ec_master_simple_io(ec_master_t *, ec_command_t *);
 
-// Registration of devices
-int ec_master_open(ec_master_t *);
-void ec_master_close(ec_master_t *);
-
 // Slave management
 int ec_master_bus_scan(ec_master_t *);
 
