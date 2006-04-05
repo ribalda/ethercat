@@ -333,6 +333,52 @@ void ecrt_release_master(ec_master_t *master /**< EtherCAT-Master */)
 
 /*****************************************************************************/
 
+/**
+   Gibt Frame-Inhalte zwecks Debugging aus.
+*/
+
+void ec_print_data(const uint8_t *data, size_t size)
+{
+    unsigned int i;
+
+    EC_DBG("");
+    for (i = 0; i < size; i++) {
+        printk("%02X ", data[i]);
+        if ((i + 1) % 16 == 0) {
+            printk("\n");
+            EC_DBG("");
+        }
+    }
+    printk("\n");
+}
+
+/*****************************************************************************/
+
+/**
+   Gibt Frame-Inhalte zwecks Debugging aus, differentiell.
+*/
+
+void ec_print_data_diff(const uint8_t *d1, /**< Daten 1 */
+                        const uint8_t *d2, /**< Daten 2 */
+                        size_t size /** Anzahl Bytes */
+                        )
+{
+    unsigned int i;
+
+    EC_DBG("");
+    for (i = 0; i < size; i++) {
+        if (d1[i] == d2[i]) printk(".. ");
+        else printk("%02X ", d2[i]);
+        if ((i + 1) % 16 == 0) {
+            printk("\n");
+            EC_DBG("");
+        }
+    }
+    printk("\n");
+}
+
+/*****************************************************************************/
+
 module_init(ec_init_module);
 module_exit(ec_cleanup_module);
 

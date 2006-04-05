@@ -19,11 +19,6 @@
 
 /*****************************************************************************/
 
-void ec_data_print(const uint8_t *, size_t);
-void ec_data_print_diff(const uint8_t *, const uint8_t *, size_t);
-
-/*****************************************************************************/
-
 /**
    EtherCAT-Geräte-Konstuktor.
 
@@ -177,7 +172,7 @@ void ec_device_send(ec_device_t *device, /**< EtherCAT-Gerät */
 
     if (unlikely(device->master->debug_level > 1)) {
         EC_DBG("sending frame:\n");
-        ec_data_print(device->tx_skb->data + ETH_HLEN, size);
+        ec_print_data(device->tx_skb->data + ETH_HLEN, size);
     }
 
     // Senden einleiten
@@ -193,54 +188,6 @@ void ec_device_send(ec_device_t *device, /**< EtherCAT-Gerät */
 void ec_device_call_isr(ec_device_t *device /**< EtherCAT-Gerät */)
 {
     if (likely(device->isr)) device->isr(0, device->dev, NULL);
-}
-
-/*****************************************************************************/
-
-/**
-   Gibt Frame-Inhalte zwecks Debugging aus.
-*/
-
-void ec_data_print(const uint8_t *data /**< Daten */,
-                   size_t size /**< Anzahl Bytes */
-                   )
-{
-    size_t i;
-
-    EC_DBG("");
-    for (i = 0; i < size; i++) {
-        printk("%02X ", data[i]);
-        if ((i + 1) % 16 == 0) {
-            printk("\n");
-            EC_DBG("");
-        }
-    }
-    printk("\n");
-}
-
-/*****************************************************************************/
-
-/**
-   Gibt Frame-Inhalte zwecks Debugging aus, differentiell.
-*/
-
-void ec_data_print_diff(const uint8_t *d1, /**< Daten 1 */
-                        const uint8_t *d2, /**< Daten 2 */
-                        size_t size /** Anzahl Bytes */
-                        )
-{
-    size_t i;
-
-    EC_DBG("");
-    for (i = 0; i < size; i++) {
-        if (d1[i] == d2[i]) printk(".. ");
-        else printk("%02X ", d2[i]);
-        if ((i + 1) % 16 == 0) {
-            printk("\n");
-            EC_DBG("");
-        }
-    }
-    printk("\n");
 }
 
 /******************************************************************************
@@ -277,7 +224,7 @@ void ecdev_receive(ec_device_t *device, /**< EtherCAT-Gerät */
 {
     if (unlikely(device->master->debug_level > 1)) {
         EC_DBG("Received frame:\n");
-        ec_data_print_diff(device->tx_skb->data + ETH_HLEN, data, size);
+        ec_print_data_diff(device->tx_skb->data + ETH_HLEN, data, size);
     }
 
     ec_master_receive(device->master, data, size);

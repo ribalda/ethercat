@@ -11,6 +11,8 @@
 #ifndef _EC_GLOBALS_
 #define _EC_GLOBALS_
 
+#include <linux/types.h>
+
 /*****************************************************************************/
 
 // EtherCAT-Protokoll
@@ -30,6 +32,8 @@
                                                        bei einem Kommando pro
                                                        Frame */
 
+/*****************************************************************************/
+
 #define EC_INFO(fmt, args...) \
     printk(KERN_INFO "EtherCAT: " fmt, ##args)
 #define EC_ERR(fmt, args...) \
@@ -38,6 +42,11 @@
     printk(KERN_WARNING "EtherCAT WARNING: " fmt, ##args)
 #define EC_DBG(fmt, args...) \
     printk(KERN_DEBUG "EtherCAT DEBUG: " fmt, ##args)
+
+/*****************************************************************************/
+
+extern void ec_print_data(const uint8_t *, size_t);
+extern void ec_print_data_diff(const uint8_t *, const uint8_t *, size_t);
 
 /*****************************************************************************/
 
