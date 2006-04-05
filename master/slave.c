@@ -27,6 +27,10 @@ int ec_slave_locate_string(ec_slave_t *, unsigned int, char **);
 
 /*****************************************************************************/
 
+const ec_code_msg_t al_status_messages[];
+
+/*****************************************************************************/
+
 /**
    EtherCAT-Slave-Konstruktor.
 */
@@ -762,11 +766,48 @@ void ec_slave_state_ack(ec_slave_t *slave,
         }
 
         if (unlikely((end - start) >= timeout)) {
-            EC_WARN("Failed to check state acknowledgement 0x%02X on slave %i"
-                    " - Timeout!\n", state,slave->ring_position);
+            EC_WARN("Failed to acknowledge state 0x%02X on slave %i"
+                    " - Timeout!\n", state, slave->ring_position);
             return;
         }
     }
+}
+
+/*****************************************************************************/
+
+/**
+   Reads the AL status code of a slave and displays it.
+
+   If the AL status code is not supported, or if no error occurred (both
+   resulting in code=0), nothing is displayed.
+*/
+
+void ec_slave_read_al_status_code(ec_slave_t *slave /**< EtherCAT-Slave */)
+{
+    ec_command_t *command;
+    uint16_t code;
+    const ec_code_msg_t *al_msg;
+
+    command = &slave->master->simple_command;
+
+    if (ec_command_nprd(command, slave->station_address, 0x0134, 2)) return;
+    if (unlikely(ec_master_simple_io(slave->master, command))) {
+        EC_WARN("Failed to read AL status code on slave %i!\n",
+                slave->ring_position);
+        return;
+    }
+
+    if (!(code = EC_READ_U16(command->data))) return;
+
+    for (al_msg = al_status_messages; al_msg->code; al_msg++) {
+        if (al_msg->code == code) {
+            EC_ERR("AL status message 0x%04X: \"%s\".\n",
+                   al_msg->code, al_msg->message);
+            return;
+        }
+    }
+
+    EC_ERR("Unknown AL status code 0x%04X.\n", code);
 }
 
 /*****************************************************************************/
@@ -791,7 +832,7 @@ int ec_slave_state_change(ec_slave_t *slave,
     if (ec_command_npwr(command, slave->station_address, 0x0120, 2)) return -1;
     EC_WRITE_U16(command->data, state);
     if (unlikely(ec_master_simple_io(slave->master, command))) {
-        EC_ERR("Failed to set state %02X on slave %i!\n",
+        EC_ERR("Failed to set state 0x%02X on slave %i!\n",
                state, slave->ring_position);
         return -1;
     }
@@ -806,7 +847,7 @@ int ec_slave_state_change(ec_slave_t *slave,
         if (ec_command_nprd(command, slave->station_address, 0x0130, 2))
             return -1;
         if (unlikely(ec_master_simple_io(slave->master, command))) {
-            EC_ERR("Failed to check state %02X on slave %i!\n",
+            EC_ERR("Failed to check state 0x%02X on slave %i!\n",
                    state, slave->ring_position);
             return -1;
         }
@@ -814,10 +855,12 @@ int ec_slave_state_change(ec_slave_t *slave,
         end = get_cycles();
 
         if (unlikely(EC_READ_U8(command->data) & 0x10)) { // State change error
-            EC_ERR("Could not set state %02X - Slave %i refused state change"
-                   " (code %02X)!\n", state, slave->ring_position,
+            EC_ERR("Failed to set state 0x%02X - Slave %i refused state change"
+                   " (code 0x%02X)!\n", state, slave->ring_position,
                    EC_READ_U8(command->data));
-            ec_slave_state_ack(slave, EC_READ_U8(command->data) & 0x0F);
+            state = EC_READ_U8(command->data) & 0x0F;
+            ec_slave_read_al_status_code(slave);
+            ec_slave_state_ack(slave, state);
             return -1;
         }
 
@@ -827,7 +870,7 @@ int ec_slave_state_change(ec_slave_t *slave,
         }
 
         if (unlikely((end - start) >= timeout)) {
-            EC_ERR("Could not check state %02X of slave %i - Timeout!\n",
+            EC_ERR("Failed to check state 0x%02X of slave %i - Timeout!\n",
                    state, slave->ring_position);
             return -1;
         }
@@ -1098,6 +1141,28 @@ int ecrt_slave_write_alias(ec_slave_t *slave, /** EtherCAT-Slave */
 {
     return ec_slave_sii_write16(slave, 0x0004, alias);
 }
+
+/*****************************************************************************/
+
+const ec_code_msg_t al_status_messages[] = {
+    {0x0001, "Unspecified error"},
+    {0x0011, "Invalud requested state change"},
+    {0x0012, "Unknown requested state"},
+    {0x0013, "Bootstrap not supported"},
+    {0x0014, "No valid firmware"},
+    {0x0015, "Invalid mailbox configuration"},
+    {0x0016, "Invalid mailbox configuration"},
+    {0x0017, "Invalid sync manager configuration"},
+    {0x0018, "No valid inputs available"},
+    {0x0019, "No valid outputs"},
+    {0x001A, "Synchronisation error"},
+    {0x001B, "Sync manager watchdog"},
+    {0x0020, "Slave needs cold start"},
+    {0x0021, "Slave needs INIT"},
+    {0x0022, "Slave needs PREOP"},
+    {0x0023, "Slave needs SAVEOP"},
+    {}
+};
 
 /*****************************************************************************/
 

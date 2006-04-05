@@ -50,6 +50,22 @@ extern void ec_print_data_diff(const uint8_t *, const uint8_t *, size_t);
 
 /*****************************************************************************/
 
+/**
+   Code - Message Pair.
+
+   Some EtherCAT commands support reading a status code to display a certain
+   message. This type allows to map a code to a message string.
+*/
+
+typedef struct
+{
+    uint32_t code; /**< Code */
+    const char *message; /**< Message belonging to \a code */
+}
+ec_code_msg_t;
+
+/*****************************************************************************/
+
 #endif
 
 /* Emacs-Konfiguration

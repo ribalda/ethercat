@@ -23,18 +23,7 @@ int ec_slave_fetch_sdo_entries(ec_slave_t *, ec_sdo_t *, uint8_t);
 
 /*****************************************************************************/
 
-/**
-   SDO Abort Code Messages
-*/
-
-typedef struct
-{
-    uint32_t code;
-    const char *message;
-}
-ec_sdo_abort_message_t;
-
-const ec_sdo_abort_message_t sdo_abort_messages[];
+const ec_code_msg_t sdo_abort_messages[];
 
 /*****************************************************************************/
 
@@ -462,7 +451,7 @@ int ec_slave_fetch_sdo_entries(ec_slave_t *slave, /**< EtherCAT-Slave */
 
 void ec_canopen_abort_msg(uint32_t abort_code)
 {
-    const ec_sdo_abort_message_t *abort_msg;
+    const ec_code_msg_t *abort_msg;
 
     for (abort_msg = sdo_abort_messages; abort_msg->code; abort_msg++) {
         if (abort_msg->code == abort_code) {
@@ -477,7 +466,7 @@ void ec_canopen_abort_msg(uint32_t abort_code)
 
 /*****************************************************************************/
 
-const ec_sdo_abort_message_t sdo_abort_messages[] = {
+const ec_code_msg_t sdo_abort_messages[] = {
     {0x05030000, "Toggle bit not changed"},
     {0x05040000, "SDO protocol timeout"},
     {0x05040001, "Client/Server command specifier not valid or unknown"},

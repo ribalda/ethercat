@@ -807,8 +807,7 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
     }
 
     // Slaves aktivieren
-    for (i = 0; i < master->slave_count; i++)
-    {
+    for (i = 0; i < master->slave_count; i++) {
         slave = master->slaves + i;
 
         // Change state to INIT
@@ -852,8 +851,7 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
 
         // Known slave type, take type's SM information
         if (type) {
-            for (j = 0; type->sync_managers[j] && j < EC_MAX_SYNC; j++)
-            {
+            for (j = 0; type->sync_managers[j] && j < EC_MAX_SYNC; j++) {
                 sync = type->sync_managers[j];
                 if (ec_command_npwr(command, slave->station_address,
                                     0x0800 + j * EC_SYNC_SIZE, EC_SYNC_SIZE))
@@ -936,8 +934,7 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
         }
 
         // Set FMMUs
-        for (j = 0; j < slave->fmmu_count; j++)
-        {
+        for (j = 0; j < slave->fmmu_count; j++) {
             fmmu = &slave->fmmus[j];
             if (ec_command_npwr(command, slave->station_address,
                                 0x0600 + j * EC_FMMU_SIZE, EC_FMMU_SIZE))
