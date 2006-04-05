@@ -74,8 +74,7 @@ int ec_slave_sdo_read_exp(ec_slave_t *slave, /**< EtherCAT-Slave */
         EC_READ_U8 (data + 2) >> 5 != 0x2 || // Upload response
         EC_READ_U16(data + 3) != sdo_index || // Index
         EC_READ_U8 (data + 5) != sdo_subindex) { // Subindex
-        EC_ERR("SDO upload 0x%04X:%X failed:\n",
-               sdo_index, sdo_subindex, slave->ring_position);
+        EC_ERR("SDO upload 0x%04X:%X failed:\n", sdo_index, sdo_subindex);
         EC_ERR("Invalid SDO upload response at slave %i!\n",
                slave->ring_position);
         ec_print_data(data, rec_size);
