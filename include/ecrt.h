@@ -109,7 +109,7 @@ int ecrt_slave_write_alias(ec_slave_t *slave, uint16_t alias);
 /*****************************************************************************/
 // Bitwise read/write macros
 
-#define EC_READ_BIT(PD, CH) (*((uint8_t *) (PD)) >> (CH)) & 0x01)
+#define EC_READ_BIT(PD, CH) ((*((uint8_t *) (PD)) >> (CH)) & 0x01)
 
 #define EC_WRITE_BIT(PD, CH, VAL) \
     do { \
