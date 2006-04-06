@@ -241,8 +241,8 @@ void ec_domain_response_count(ec_domain_t *domain, /**< Domäne */
 {
     if (count != domain->response_count) {
         domain->response_count = count;
-        EC_INFO("Domain %08X state change - %i slave%s responding.\n",
-                (u32) domain, count, count == 1 ? "" : "s");
+        EC_INFO("Domain 0x%08X working counter change: %i\n",
+                (u32) domain, count);
     }
 }
 

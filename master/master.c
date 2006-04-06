@@ -956,8 +956,8 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
             return -1;
     }
 
-    master->slaves_responding = master->slave_count;
-    master->slave_states = EC_SLAVE_STATE_OP;
+    master->slaves_responding = 0;
+    master->slave_states = EC_SLAVE_STATE_INIT;
 
     return 0;
 }
