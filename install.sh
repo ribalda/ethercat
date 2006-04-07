@@ -8,6 +8,16 @@
 #
 #------------------------------------------------------------------------------
 
+# install function
+
+install()
+{
+    echo "  installing $1"
+    if ! cp $1 $INSTALLDIR; then exit 1; fi
+}
+
+#------------------------------------------------------------------------------
+
 # Fetch parameter
 
 if [ $# -eq 0 ]; then
@@ -16,18 +26,19 @@ if [ $# -eq 0 ]; then
 fi
 
 INSTALLDIR=$1
+echo "EtherCAT installer. Target: $INSTALLDIR"
 
-# Create install directory
+# Create installation directory
 
 if [ ! -d $INSTALLDIR ]; then
-    echo "Creating directory $INSTALLDIR..."
+    echo "  creating target directory."
     if ! mkdir $INSTALLDIR; then exit 1; fi
 fi
 
 # Copy files
 
-if ! cp master/ec_master.ko   $INSTALLDIR; then exit -1; fi
-if ! cp devices/ec_8139too.ko $INSTALLDIR; then exit -1; fi
+install master/ec_master.ko
+install devices/ec_8139too.ko
 
 # Finished
 
