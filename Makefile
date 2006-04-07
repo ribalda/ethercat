@@ -1,8 +1,6 @@
 #------------------------------------------------------------------------------
 #
-#  Globales Makefile
-#
-#  IgH EtherCAT-Treiber
+#  EtherCAT Makefile
 #
 #  $Id$
 #
@@ -11,7 +9,7 @@
 ifneq ($(KERNELRELEASE),)
 
 #------------------------------------------------------------------------------
-# Kbuild-Abschnitt
+# kbuild section
 
 obj-m := master/ devices/
 
@@ -20,14 +18,16 @@ obj-m := master/ devices/
 else
 
 #------------------------------------------------------------------------------
-# Default-Abschnitt
+# default section
 
 ifneq ($(wildcard ethercat.conf),)
 include ethercat.conf
 else
-KERNELDIR := /usr/src/linux
-INSTALLDIR := /opt/ethercat
+KERNEL := `uname -r`
+DEVICEINDEX := 99
 endif
+
+KERNELDIR := /lib/modules/$(KERNEL)/build
 
 modules:
 	$(MAKE) -C $(KERNELDIR) M=`pwd`
@@ -36,7 +36,7 @@ clean:
 	$(MAKE) -C $(KERNELDIR) M=`pwd` clean
 
 install:
-	@./install.sh $(INSTALLDIR)
+	@./install.sh $(KERNEL) $(DEVICEINDEX)
 
 #------------------------------------------------------------------------------
 

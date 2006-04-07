@@ -8,11 +8,15 @@
 #
 #------------------------------------------------------------------------------
 
+CONFIGFILE=/etc/sysconfig/ethercat
+
+#------------------------------------------------------------------------------
+
 # install function
 
 install()
 {
-    echo "  installing $1"
+    echo "    $1"
     if ! cp $1 $INSTALLDIR; then exit 1; fi
 }
 
@@ -20,28 +24,48 @@ install()
 
 # Fetch parameter
 
-if [ $# -eq 0 ]; then
-    echo "Usage: $0 <INSTALLDIR>"
+if [ $# -ne 2 ]; then
+    echo "Usage: $0 <KERNEL> <DEVICEINDEX>"
     exit 1
 fi
 
-INSTALLDIR=$1
-echo "EtherCAT installer. Target: $INSTALLDIR"
+KERNEL=$1
+DEVICEINDEX=$2
 
-# Create installation directory
-
-if [ ! -d $INSTALLDIR ]; then
-    echo "  creating target directory."
-    if ! mkdir $INSTALLDIR; then exit 1; fi
-fi
+INSTALLDIR=/lib/modules/$KERNEL/kernel/drivers/net
+echo "EtherCAT installer - Kernel: $KERNEL"
 
 # Copy files
 
+echo "  installing modules..."
 install master/ec_master.ko
 install devices/ec_8139too.ko
 
-# Finished
+# Update dependencies
 
+echo "  building module dependencies..."
+depmod
+
+# Create configuration file
+
+if [ -f $CONFIGFILE ]; then
+    echo "  notice: using existing configuration file."
+else
+    echo "  creating $CONFIGFILE..."
+    echo "DEVICEINDEX=$DEVICEINDEX" > $CONFIGFILE || exit 1
+fi
+
+# Install rc script
+
+echo "  installing startup script..."
+cp ethercat.sh /etc/init.d/ethercat || exit 1
+if [ ! -L /usr/sbin/rcethercat ]; then
+    ln -s /etc/init.d/ethercat /usr/sbin/rcethercat || exit 1
+fi
+
+# Finish
+
+echo "EtherCAT installer done."
 exit 0
 
 #------------------------------------------------------------------------------

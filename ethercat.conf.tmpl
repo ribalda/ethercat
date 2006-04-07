@@ -10,9 +10,9 @@
 #------------------------------------------------------------------------------
 
 # The kernel to compile the EtherCAT sources against
-KERNELDIR = /usr/src/linux
+KERNEL := `uname -r`
 
-# Install directory used by "make install"
-INSTALLDIR := /opt/ethercat
+# PCI index of the EtherCAT device
+DEVICEINDEX := 99
 
 #------------------------------------------------------------------------------
