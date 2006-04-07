@@ -25,7 +25,7 @@ install()
 # Fetch parameter
 
 if [ $# -ne 2 ]; then
-    echo "Usage: $0 <KERNEL> <DEVICEINDEX>"
+    echo "This script is called by \"make\". Run \"make install\" instead."
     exit 1
 fi
 

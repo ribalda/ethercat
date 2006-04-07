@@ -1,0 +1,50 @@
+-------------------------------------------------------------------------------
+
+$Id$
+
+-------------------------------------------------------------------------------
+
+General Information
+===================
+
+This is an Open-Source EtherCAT master implementation for Linux 2.6.
+
+For more information, see
+
+http://etherlab.org
+
+or contact
+
+Florian Pose <fp@igh-essen.com>
+Ingenieurgemeinschaft IgH
+Heinz-Baecker-Str. 34
+D-45356 Essen
+http://igh-essen.com
+
+-------------------------------------------------------------------------------
+
+Installation
+============
+
+1) Create a copy of the configuration template:
+
+  $ cp ethercat.conf.tmpl ethercat.conf
+
+2) Adjust the Variables in the configuration file to your needs.
+
+3) Build the EtherCAT master and network device driver modules:
+
+  $ make
+
+4) Install the the EtherCAT master (as root):
+
+  # make install
+
+  This will create the following files and directories:
+    - /etc/sysconfig/ethercat (configuration file)
+    - /etc/init.d/ethercat    (startup script)
+    - /usr/sbin/rcethercat    (link to startup script)
+
+  The modules will be placed in /lib/modules/`uname -r`/kernel/drivers/net.
+
+-------------------------------------------------------------------------------
