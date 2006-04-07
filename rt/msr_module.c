@@ -55,12 +55,15 @@ ec_domain_t *domain1 = NULL;
 
 // Prozessdaten
 void *r_ssi;
+void *r_ssi_st;
 
 // Kané‰le
-uint32_t k_pos;
+uint32_t k_ssi;
+uint32_t k_ssi_st;
 
 ec_field_init_t domain1_fields[] = {
-    {&r_ssi, "5", "Beckhoff", "EL5001", "InputValue", 0},
+    {&r_ssi,    "5", "Beckhoff", "EL5001", "InputValue", 0},
+    {&r_ssi_st, "5", "Beckhoff", "EL5001", "Status",     0},
     {}
 };
 
@@ -81,7 +84,8 @@ static void msr_controller_run(void)
 #endif
 
     // Prozessdaten verarbeiten
-    k_pos = EC_READ_U32(r_ssi);
+    k_ssi =    EC_READ_U32(r_ssi);
+    k_ssi_st = EC_READ_U8 (r_ssi_st);
 
 #ifdef ASYNC
     // Senden
@@ -95,7 +99,8 @@ static void msr_controller_run(void)
 
 int msr_globals_register(void)
 {
-    msr_reg_kanal("/pos0", "", &k_pos, TUINT);
+    msr_reg_kanal("/ssi_position", "", &k_ssi,    TUINT);
+    msr_reg_kanal("/ssi_status",   "", &k_ssi_st, TUINT);
     return 0;
 }
 
@@ -132,7 +137,7 @@ void domain_entry(void)
 int __init init_rt_module(void)
 {
     struct ipipe_domain_attr attr; //ipipe
-#if 0
+#if 1
     ec_slave_t *slave;
 #endif
 
@@ -177,21 +182,24 @@ int __init init_rt_module(void)
     ecrt_master_print(master, 1);
 #endif
 
-#if 0
-    if (!(slave = ecrt_master_get_slave(master, "1"))) {
-        printk(KERN_ERR "Failed to get slave 1!\n");
+#if 1
+    if (!(slave = ecrt_master_get_slave(master, "5"))) {
+        printk(KERN_ERR "Failed to get slave!\n");
         goto out_deactivate;
     }
 
-    if (ecrt_slave_sdo_write_exp8(slave, 0x4061, 1,  0) ||
-        ecrt_slave_sdo_write_exp8(slave, 0x4061, 2,  1) ||
-        ecrt_slave_sdo_write_exp8(slave, 0x4061, 3,  1) ||
-        ecrt_slave_sdo_write_exp8(slave, 0x4066, 0,  0) ||
-        ecrt_slave_sdo_write_exp8(slave, 0x4067, 0,  4) ||
-        ecrt_slave_sdo_write_exp8(slave, 0x4068, 0,  0) ||
-        ecrt_slave_sdo_write_exp8(slave, 0x4069, 0, 25) ||
-        ecrt_slave_sdo_write_exp8(slave, 0x406A, 0, 25) ||
-        ecrt_slave_sdo_write_exp8(slave, 0x406B, 0, 50)) {
+    if (
+        ecrt_slave_sdo_write_exp8(slave, 0x4061, 1,  1) || // disable frame error bit
+        ecrt_slave_sdo_write_exp8(slave, 0x4061, 2,  0) || // power failure bit
+        ecrt_slave_sdo_write_exp8(slave, 0x4061, 3,  1) || // inhibit time
+        ecrt_slave_sdo_write_exp8(slave, 0x4061, 4,  0) || // test mode
+        ecrt_slave_sdo_write_exp8(slave, 0x4066, 0,  1) || // dualcode
+        ecrt_slave_sdo_write_exp8(slave, 0x4067, 0,  5) || // 125kbaud
+        ecrt_slave_sdo_write_exp8(slave, 0x4068, 0,  0) || // single-turn
+        ecrt_slave_sdo_write_exp8(slave, 0x4069, 0, 25) || // frame size
+        ecrt_slave_sdo_write_exp8(slave, 0x406A, 0, 25) || // data length
+        ecrt_slave_sdo_write_exp16(slave, 0x406B, 0, 30000) // inhibit time in us
+        ) {
         printk(KERN_ERR "Failed to configure SSI slave!\n");
         goto out_deactivate;
     }
@@ -209,7 +217,7 @@ int __init init_rt_module(void)
     ipipe_register_domain(&this_domain, &attr);
     return 0;
 
-#if 0
+#if 1
  out_deactivate:
     ecrt_master_deactivate(master);
 #endif
