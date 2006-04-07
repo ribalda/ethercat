@@ -26,6 +26,7 @@ ifneq ($(wildcard ethercat.conf),)
 include ethercat.conf
 else
 KERNELDIR := /usr/src/linux
+INSTALLDIR := /opt/ethercat
 endif
 
 modules:
@@ -33,6 +34,9 @@ modules:
 
 clean:
 	$(MAKE) -C $(KERNELDIR) M=`pwd` clean
+
+install:
+	@./install.sh $(INSTALLDIR)
 
 #------------------------------------------------------------------------------
 

@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 #
-#  EtherCAT Konfigurationsdatei Kernel 2.6
+#  EtherCAT configuration file
 #
 #  $Id$
 #
@@ -9,5 +9,10 @@
 #
 #------------------------------------------------------------------------------
 
+# The kernel to compile the EtherCAT sources against
 KERNELDIR = /usr/src/linux
 
+# Install directory used by "make install"
+INSTALLDIR := /opt/ethercat
+
+#------------------------------------------------------------------------------
