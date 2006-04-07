@@ -124,6 +124,7 @@ void ec_master_reset(ec_master_t *master
     master->stats.delayed = 0;
     master->stats.corrupted = 0;
     master->stats.unmatched = 0;
+    master->stats.eoe_errors = 0;
     master->stats.t_last = 0;
 }
 
