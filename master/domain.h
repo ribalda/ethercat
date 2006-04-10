@@ -62,8 +62,6 @@ int ec_domain_init(ec_domain_t *, ec_master_t *, unsigned int);
 void ec_domain_clear(struct kobject *);
 int ec_domain_alloc(ec_domain_t *, uint32_t);
 
-ssize_t ec_show_domain_attribute(struct kobject *, struct attribute *, char *);
-
 /*****************************************************************************/
 
 #endif

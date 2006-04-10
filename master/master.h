@@ -85,7 +85,6 @@ int ec_master_bus_scan(ec_master_t *);
 void ec_master_debug(const ec_master_t *);
 void ec_master_output_stats(ec_master_t *);
 void ec_master_run_eoe(ec_master_t *);
-ssize_t ec_show_master_attribute(struct kobject *, struct attribute *, char *);
 
 /*****************************************************************************/
 

@@ -15,6 +15,7 @@
 /*****************************************************************************/
 
 void ec_domain_clear_field_regs(ec_domain_t *);
+ssize_t ec_show_domain_attribute(struct kobject *, struct attribute *, char *);
 
 /*****************************************************************************/
 

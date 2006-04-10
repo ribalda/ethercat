@@ -25,6 +25,10 @@
 
 /*****************************************************************************/
 
+ssize_t ec_show_master_attribute(struct kobject *, struct attribute *, char *);
+
+/*****************************************************************************/
+
 static struct attribute attr_slave_count = {
     .name = "slave_count",
     .owner = THIS_MODULE,
