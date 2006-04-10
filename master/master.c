@@ -169,84 +169,98 @@ void ec_master_send_commands(ec_master_t *master /**< EtherCAT-Master */)
     uint8_t *frame_data, *cur_data;
     void *follows_word;
     cycles_t start = 0, end;
+    unsigned int frame_count, more_commands_waiting;
+
+    frame_count = 0;
 
     if (unlikely(master->debug_level > 0)) {
-        EC_DBG("ec_master_send\n");
+        EC_DBG("ec_master_send_commands\n");
         start = get_cycles();
     }
 
-    // Zeiger auf Socket-Buffer holen
-    frame_data = ec_device_tx_data(master->device);
-    cur_data = frame_data + EC_FRAME_HEADER_SIZE;
-    follows_word = NULL;
+    do {
+        // Zeiger auf Socket-Buffer holen
+        frame_data = ec_device_tx_data(master->device);
+        cur_data = frame_data + EC_FRAME_HEADER_SIZE;
+        follows_word = NULL;
+        more_commands_waiting = 0;
 
-    // Aktuellen Frame mit Kommandos füllen
-    list_for_each_entry(command, &master->command_queue, queue) {
-        if (command->state != EC_CMD_QUEUED) continue;
+        // Aktuellen Frame mit Kommandos füllen
+        list_for_each_entry(command, &master->command_queue, queue) {
+            if (command->state != EC_CMD_QUEUED) continue;
 
-        // Passt das aktuelle Kommando noch in den aktuellen Rahmen?
-        command_size = EC_COMMAND_HEADER_SIZE + command->data_size
-            + EC_COMMAND_FOOTER_SIZE;
-        if (cur_data - frame_data + command_size > EC_MAX_FRAME_SIZE) break;
+            // Passt das aktuelle Kommando noch in den aktuellen Rahmen?
+            command_size = EC_COMMAND_HEADER_SIZE + command->data_size
+                + EC_COMMAND_FOOTER_SIZE;
+            if (cur_data - frame_data + command_size > EC_MAX_FRAME_SIZE) {
+                more_commands_waiting = 1;
+                break;
+            }
 
-        command->state = EC_CMD_SENT;
-        command->index = master->command_index++;
+            command->state = EC_CMD_SENT;
+            command->index = master->command_index++;
+
+            if (unlikely(master->debug_level > 0))
+                EC_DBG("adding command 0x%02X\n", command->index);
+
+            // Command-Following-Flag im letzten Kommando setzen
+            if (follows_word)
+                EC_WRITE_U16(follows_word, EC_READ_U16(follows_word) | 0x8000);
+
+            // EtherCAT command header
+            EC_WRITE_U8 (cur_data,     command->type);
+            EC_WRITE_U8 (cur_data + 1, command->index);
+            EC_WRITE_U32(cur_data + 2, command->address.logical);
+            EC_WRITE_U16(cur_data + 6, command->data_size & 0x7FF);
+            EC_WRITE_U16(cur_data + 8, 0x0000);
+            follows_word = cur_data + 6;
+            cur_data += EC_COMMAND_HEADER_SIZE;
+
+            // EtherCAT command data
+            memcpy(cur_data, command->data, command->data_size);
+            cur_data += command->data_size;
+
+            // EtherCAT command footer
+            EC_WRITE_U16(cur_data, 0x0000); // Working counter
+            cur_data += EC_COMMAND_FOOTER_SIZE;
+        }
+
+        if (cur_data - frame_data == EC_FRAME_HEADER_SIZE) {
+            if (unlikely(master->debug_level > 0))
+                EC_DBG("nothing to send.\n");
+            break;
+        }
+
+        // EtherCAT frame header
+        EC_WRITE_U16(frame_data, ((cur_data - frame_data
+                                   - EC_FRAME_HEADER_SIZE) & 0x7FF) | 0x1000);
+
+        // Rahmen auffüllen
+        while (cur_data - frame_data < EC_MIN_FRAME_SIZE)
+            EC_WRITE_U8(cur_data++, 0x00);
 
         if (unlikely(master->debug_level > 0))
-            EC_DBG("adding command 0x%02X\n", command->index);
+            EC_DBG("frame size: %i\n", cur_data - frame_data);
 
-        // Command-Following-Flag im letzten Kommando setzen
-        if (follows_word)
-            EC_WRITE_U16(follows_word, EC_READ_U16(follows_word) | 0x8000);
-
-        // EtherCAT command header
-        EC_WRITE_U8 (cur_data,     command->type);
-        EC_WRITE_U8 (cur_data + 1, command->index);
-        EC_WRITE_U32(cur_data + 2, command->address.logical);
-        EC_WRITE_U16(cur_data + 6, command->data_size & 0x7FF);
-        EC_WRITE_U16(cur_data + 8, 0x0000);
-        follows_word = cur_data + 6;
-        cur_data += EC_COMMAND_HEADER_SIZE;
-
-        // EtherCAT command data
-        memcpy(cur_data, command->data, command->data_size);
-        cur_data += command->data_size;
-
-        // EtherCAT command footer
-        EC_WRITE_U16(cur_data, 0x0000); // Working counter
-        cur_data += EC_COMMAND_FOOTER_SIZE;
+        // Send frame
+        ec_device_send(master->device, cur_data - frame_data);
+        frame_count++;
     }
-
-    if (cur_data - frame_data == EC_FRAME_HEADER_SIZE) {
-        if (unlikely(master->debug_level > 0)) EC_DBG("nothing to send.\n");
-        return;
-    }
-
-    // EtherCAT frame header
-    EC_WRITE_U16(frame_data, ((cur_data - frame_data
-                               - EC_FRAME_HEADER_SIZE) & 0x7FF) | 0x1000);
-
-    // Rahmen auffüllen
-    while (cur_data - frame_data < EC_MIN_FRAME_SIZE)
-        EC_WRITE_U8(cur_data++, 0x00);
-
-    if (unlikely(master->debug_level > 0))
-        EC_DBG("Frame size: %i\n", cur_data - frame_data);
-
-    // Send frame
-    ec_device_send(master->device, cur_data - frame_data);
+    while (more_commands_waiting);
 
     if (unlikely(master->debug_level > 0)) {
         end = get_cycles();
-        EC_DBG("ec_master_send finished in %ius.\n",
-               (u32) (end - start) * 1000 / cpu_khz);
+        EC_DBG("ec_master_send_commands sent %i frames in %ius.\n",
+               frame_count, (u32) (end - start) * 1000 / cpu_khz);
     }
 }
 
 /*****************************************************************************/
 
 /**
-   Wertet einen empfangenen Rahmen aus.
+   Processes a received frame.
+
+   This function is called by the network driver for every received frame.
 
    \return 0 bei Erfolg, sonst < 0
 */

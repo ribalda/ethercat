@@ -3,6 +3,8 @@ TODO-Liste EtherCAT-Treiber
 
 $Id$
 
+- Addressierung von Alias-Slaves
+- Proc-Interface
 - Verteilen von empfangenen Mailbox-Daten?
 - Ethernet over EtherCAT (EoE)
 - Anzahl Frames, die die Karte Puffern kann
