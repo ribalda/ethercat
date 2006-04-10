@@ -12,6 +12,7 @@
 #define _EC_MASTER_H_
 
 #include <linux/list.h>
+#include <linux/sysfs.h>
 
 #include "device.h"
 #include "slave.h"
@@ -45,6 +46,9 @@ ec_stats_t;
 
 struct ec_master
 {
+    struct list_head list; /**< Noetig fuer Master-Liste */
+    struct kobject kobj; /**< Kernel-Object */
+    unsigned int index; /**< Master-Index */
     ec_slave_t *slaves; /**< Array von Slaves auf dem Bus */
     unsigned int slave_count; /**< Anzahl Slaves auf dem Bus */
     ec_device_t *device; /**< EtherCAT-Gerät */
@@ -59,13 +63,14 @@ struct ec_master
     ec_stats_t stats; /**< Rahmen-Statistiken */
     unsigned int timeout; /**< Timeout für synchronen Datenaustausch */
     struct list_head eoe_slaves; /**< Ethernet over EtherCAT Slaves */
+    unsigned int reserved; /**< Master durch Echtzeitprozess reserviert */
 };
 
 /*****************************************************************************/
 
 // Master creation and deletion
-void ec_master_init(ec_master_t *);
-void ec_master_clear(ec_master_t *);
+int ec_master_init(ec_master_t *, unsigned int);
+void ec_master_clear(struct kobject *);
 void ec_master_reset(ec_master_t *);
 
 // IO
@@ -79,8 +84,8 @@ int ec_master_bus_scan(ec_master_t *);
 // Misc
 void ec_master_debug(const ec_master_t *);
 void ec_master_output_stats(ec_master_t *);
-
 void ec_master_run_eoe(ec_master_t *);
+ssize_t ec_show_master_attribute(struct kobject *, struct attribute *, char *);
 
 /*****************************************************************************/
 

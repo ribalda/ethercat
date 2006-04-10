@@ -41,9 +41,8 @@ void __exit ec_cleanup_module(void);
 
 /*****************************************************************************/
 
-int ec_master_count = 1;
-ec_master_t *ec_masters = NULL;
-unsigned int *ec_masters_reserved = NULL;
+static int ec_master_count = 1;
+static struct list_head ec_masters;
 
 /*****************************************************************************/
 
@@ -70,6 +69,7 @@ MODULE_PARM_DESC(ec_master_count, "Number of EtherCAT master to initialize.");
 int __init ec_init_module(void)
 {
     unsigned int i;
+    ec_master_t *master, *next;
 
     EC_INFO("Master driver, %s\n", COMPILE_INFO);
 
@@ -80,28 +80,36 @@ int __init ec_init_module(void)
 
     EC_INFO("Initializing %i EtherCAT master(s)...\n", ec_master_count);
 
-    if (!(ec_masters = (ec_master_t *)
-          kmalloc(sizeof(ec_master_t) * ec_master_count, GFP_KERNEL))) {
-        EC_ERR("Failed to allocate master(s)!\n");
-        goto out_return;
-    }
-
-    if (!(ec_masters_reserved = (unsigned int *)
-          kmalloc(sizeof(int) * ec_master_count, GFP_KERNEL))) {
-        EC_ERR("Failed to allocate reservation flags!\n");
-        goto out_free_masters;
-    }
+    INIT_LIST_HEAD(&ec_masters);
 
     for (i = 0; i < ec_master_count; i++) {
-        ec_master_init(ec_masters + i);
-        ec_masters_reserved[i] = 0;
+        if (!(master =
+              (ec_master_t *) kmalloc(sizeof(ec_master_t), GFP_KERNEL))) {
+            EC_ERR("Failed to allocate memory for EtherCAT master %i.\n", i);
+            goto out_free;
+        }
+
+        if (ec_master_init(master, i)) // kobject_put is done inside...
+            goto out_free;
+
+        if (kobject_add(&master->kobj)) {
+            EC_ERR("Failed to add kobj.\n");
+            kobject_put(&master->kobj); // free master
+            goto out_free;
+        }
+
+        list_add_tail(&master->list, &ec_masters);
     }
 
     EC_INFO("Master driver initialized.\n");
     return 0;
 
- out_free_masters:
-    kfree(ec_masters);
+ out_free:
+    list_for_each_entry_safe(master, next, &ec_masters, list) {
+        list_del(&master->list);
+        kobject_del(&master->kobj);
+        kobject_put(&master->kobj);
+    }
  out_return:
     return -1;
 }
@@ -116,20 +124,36 @@ int __init ec_init_module(void)
 
 void __exit ec_cleanup_module(void)
 {
-    unsigned int i;
+    ec_master_t *master, *next;
 
     EC_INFO("Cleaning up master driver...\n");
 
-    for (i = 0; i < ec_master_count; i++) {
-        if (ec_masters_reserved[i])
-            EC_WARN("Master %i is still in use!\n", i);
-        ec_master_clear(&ec_masters[i]);
+    list_for_each_entry_safe(master, next, &ec_masters, list) {
+        list_del(&master->list);
+        kobject_del(&master->kobj);
+        kobject_put(&master->kobj); // free master
     }
 
-    kfree(ec_masters);
-    kfree(ec_masters_reserved);
-
     EC_INFO("Master driver cleaned up.\n");
+}
+
+/*****************************************************************************/
+
+/**
+   Gets a handle to a certain master.
+   \returns pointer to master
+*/
+
+ec_master_t *ec_find_master(unsigned int master_index)
+{
+    ec_master_t *master;
+
+    list_for_each_entry(master, &ec_masters, list) {
+        if (master->index == master_index) return master;
+    }
+
+    EC_ERR("Master %i does not exist!\n", master_index);
+    return NULL;
 }
 
 /******************************************************************************
@@ -162,23 +186,20 @@ ec_device_t *ecdev_register(unsigned int master_index,
         return NULL;
     }
 
-    if (master_index >= ec_master_count) {
-        EC_ERR("Master %i does not exist!\n", master_index);
-        return NULL;
-    }
+    if (!(master = ec_find_master(master_index))) return NULL;
 
-    master = ec_masters + master_index;
-
+    // critical section start
     if (master->device) {
         EC_ERR("Master %i already has a device!\n", master_index);
         return NULL;
     }
 
-    if (!(master->device = (ec_device_t *)
-          kmalloc(sizeof(ec_device_t), GFP_KERNEL))) {
+    if (!(master->device =
+          (ec_device_t *) kmalloc(sizeof(ec_device_t), GFP_KERNEL))) {
         EC_ERR("Failed to allocate device!\n");
         return NULL;
     }
+    // critical section end
 
     if (ec_device_init(master->device, master, net_dev, isr, module)) {
         kfree(master->device);
@@ -208,7 +229,7 @@ void ecdev_unregister(unsigned int master_index,
         return;
     }
 
-    master = ec_masters + master_index;
+    if (!(master = ec_find_master(master_index))) return;
 
     if (!master->device || master->device != device) {
         EC_WARN("Unable to unregister device!\n");
@@ -234,29 +255,26 @@ void ecdev_unregister(unsigned int master_index,
    \return Zeiger auf EtherCAT-Master oder NULL, wenn Parameter ungueltig.
 */
 
-ec_master_t *ecrt_request_master(unsigned int index
+ec_master_t *ecrt_request_master(unsigned int master_index
                                  /**< EtherCAT-Master-Index */
                                  )
 {
     ec_master_t *master;
 
-    EC_INFO("Requesting master %i...\n", index);
+    EC_INFO("Requesting master %i...\n", master_index);
 
-    if (index < 0 || index >= ec_master_count) {
-        EC_ERR("Master %i does not exist!\n", index);
+    if (!(master = ec_find_master(master_index))) goto req_return;
+
+    // begin critical section
+    if (master->reserved) {
+        EC_ERR("Master %i is already in use!\n", master_index);
         goto req_return;
     }
-
-    if (ec_masters_reserved[index]) {
-        EC_ERR("Master %i is already in use!\n", index);
-        goto req_return;
-    }
-
-    ec_masters_reserved[index] = 1;
-    master = &ec_masters[index];
+    master->reserved = 1;
+    // end critical section
 
     if (!master->device) {
-        EC_ERR("Master %i has no assigned device!\n", index);
+        EC_ERR("Master %i has no assigned device!\n", master_index);
         goto req_release;
     }
 
@@ -270,15 +288,14 @@ ec_master_t *ecrt_request_master(unsigned int index
         goto req_module_put;
     }
 
-    if (!master->device->link_state)
-        EC_WARN("Link is DOWN.\n");
+    if (!master->device->link_state) EC_WARN("Link is DOWN.\n");
 
-    if (ec_master_bus_scan(master) != 0) {
+    if (ec_master_bus_scan(master)) {
         EC_ERR("Bus scan failed!\n");
         goto req_close;
     }
 
-    EC_INFO("Master %i is ready.\n", index);
+    EC_INFO("Master %i is ready.\n", master_index);
     return master;
 
  req_close:
@@ -288,9 +305,9 @@ ec_master_t *ecrt_request_master(unsigned int index
     module_put(master->device->module);
     ec_master_reset(master);
  req_release:
-    ec_masters_reserved[index] = 0;
+    master->reserved = 0;
  req_return:
-    EC_ERR("Failed requesting master %i.\n", index);
+    EC_ERR("Failed requesting master %i.\n", master_index);
     return NULL;
 }
 
@@ -302,22 +319,12 @@ ec_master_t *ecrt_request_master(unsigned int index
 
 void ecrt_release_master(ec_master_t *master /**< EtherCAT-Master */)
 {
-    unsigned int i, found;
+    EC_INFO("Releasing master %i...\n", master->index);
 
-    found = 0;
-    for (i = 0; i < ec_master_count; i++) {
-        if (&ec_masters[i] == master) {
-            found = 1;
-            break;
-        }
-    }
-
-    if (!found) {
-        EC_WARN("Master 0x%08X was never requested!\n", (u32) master);
+    if (!master->reserved) {
+        EC_ERR("Master %i was never requested!\n", master->index);
         return;
     }
-
-    EC_INFO("Releasing master %i...\n", i);
 
     ec_master_reset(master);
 
@@ -325,9 +332,9 @@ void ecrt_release_master(ec_master_t *master /**< EtherCAT-Master */)
         EC_WARN("Warning - Failed to close device!\n");
 
     module_put(master->device->module);
-    ec_masters_reserved[i] = 0;
+    master->reserved = 0;
 
-    EC_INFO("Released master %i.\n", i);
+    EC_INFO("Released master %i.\n", master->index);
     return;
 }
 

@@ -25,23 +25,64 @@
 
 /*****************************************************************************/
 
+static struct attribute attr_slave_count = {
+    .name = "slave_count",
+    .owner = THIS_MODULE,
+    .mode = S_IRUGO
+};
+
+static struct attribute *ec_def_attrs[] = {
+    &attr_slave_count,
+    NULL,
+};
+
+static struct sysfs_ops ec_sysfs_ops = {
+    .show = &ec_show_master_attribute,
+    .store = NULL
+};
+
+static struct kobj_type ktype_ec_master = {
+    .release = ec_master_clear,
+    .sysfs_ops = &ec_sysfs_ops,
+    .default_attrs = ec_def_attrs
+};
+
+/*****************************************************************************/
+
 /**
    Konstruktor des EtherCAT-Masters.
 */
 
-void ec_master_init(ec_master_t *master /**< EtherCAT-Master */)
+int ec_master_init(ec_master_t *master, /**< EtherCAT-Master */
+                   unsigned int index /**< Master-Index */
+                   )
 {
+    EC_INFO("Initializing master %i.\n", index);
+
+    master->index = index;
     master->slaves = NULL;
     master->device = NULL;
+    master->reserved = 0;
 
     INIT_LIST_HEAD(&master->command_queue);
     INIT_LIST_HEAD(&master->domains);
     INIT_LIST_HEAD(&master->eoe_slaves);
 
+    // Init kobject and add it to the hierarchy
+    memset(&master->kobj, 0x00, sizeof(struct kobject));
+    kobject_init(&master->kobj);
+    master->kobj.ktype = &ktype_ec_master;
+    if (kobject_set_name(&master->kobj, "ethercat%i", index)) {
+        EC_ERR("Failed to set kobj name.\n");
+        kobject_put(&master->kobj);
+        return -1;
+    }
+
     ec_command_init(&master->simple_command);
     ec_command_init(&master->watch_command);
 
     ec_master_reset(master);
+    return 0;
 }
 
 /*****************************************************************************/
@@ -53,8 +94,12 @@ void ec_master_init(ec_master_t *master /**< EtherCAT-Master */)
    auf das Slave-Array und gibt die Prozessdaten frei.
 */
 
-void ec_master_clear(ec_master_t *master /**< EtherCAT-Master */)
+void ec_master_clear(struct kobject *kobj /**< KObject des Masters */)
 {
+    ec_master_t *master = container_of(kobj, ec_master_t, kobj);
+
+    EC_INFO("Clearing master %i...\n", master->index);
+
     ec_master_reset(master);
 
     if (master->device) {
@@ -64,6 +109,8 @@ void ec_master_clear(ec_master_t *master /**< EtherCAT-Master */)
 
     ec_command_clear(&master->simple_command);
     ec_command_clear(&master->watch_command);
+
+    EC_INFO("Master %i cleared.\n", master->index);
 }
 
 /*****************************************************************************/
@@ -102,8 +149,8 @@ void ec_master_reset(ec_master_t *master
     // Domain-Liste leeren
     list_for_each_entry_safe(domain, next_d, &master->domains, list) {
         list_del(&domain->list);
-        ec_domain_clear(domain);
-        kfree(domain);
+        kobject_del(&domain->kobj);
+        kobject_put(&domain->kobj);
     }
 
     // EOE-Liste leeren
@@ -709,6 +756,28 @@ void ec_fmmu_config(const ec_fmmu_t *fmmu, /**< Sync-Manager */
 /*****************************************************************************/
 
 /**
+   Formatiert Attribut-Daten für lesenden Zugriff im SysFS
+
+   \return Anzahl Bytes im Speicher
+*/
+
+ssize_t ec_show_master_attribute(struct kobject *kobj, /**< KObject */
+                                 struct attribute *attr, /**< Attribut */
+                                 char *buffer /**< Speicher für die Daten */
+                                 )
+{
+    ec_master_t *master = container_of(kobj, ec_master_t, kobj);
+
+    if (attr == &attr_slave_count) {
+        return sprintf(buffer, "%i\n", master->slave_count);
+    }
+
+    return 0;
+}
+
+/*****************************************************************************/
+
+/**
    Gibt Überwachungsinformationen aus.
 */
 
@@ -767,17 +836,37 @@ void ec_master_process_watch_command(ec_master_t *master
 
 ec_domain_t *ecrt_master_create_domain(ec_master_t *master /**< Master */)
 {
-    ec_domain_t *domain;
+    ec_domain_t *domain, *last_domain;
+    unsigned int index;
 
     if (!(domain = (ec_domain_t *) kmalloc(sizeof(ec_domain_t), GFP_KERNEL))) {
         EC_ERR("Error allocating domain memory!\n");
-        return NULL;
+        goto out_return;
     }
 
-    ec_domain_init(domain, master);
-    list_add_tail(&domain->list, &master->domains);
+    if (list_empty(&master->domains)) index = 0;
+    else {
+        last_domain = list_entry(master->domains.prev, ec_domain_t, list);
+        index = last_domain->index + 1;
+    }
 
+    if (ec_domain_init(domain, master, index)) {
+        EC_ERR("Failed to init domain.\n");
+        goto out_return;
+    }
+
+    if (kobject_add(&domain->kobj)) {
+        EC_ERR("Failed to add domain kobject.\n");
+        goto out_put;
+    }
+
+    list_add_tail(&domain->list, &master->domains);
     return domain;
+
+ out_put:
+    kobject_put(&domain->kobj);
+ out_return:
+    return NULL;
 }
 
 /*****************************************************************************/

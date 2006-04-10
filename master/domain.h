@@ -12,6 +12,7 @@
 #define _EC_DOMAIN_H_
 
 #include <linux/list.h>
+#include <linux/kobject.h>
 
 #include "globals.h"
 #include "slave.h"
@@ -44,7 +45,9 @@ ec_field_reg_t;
 
 struct ec_domain
 {
+    struct kobject kobj; /**< Kobject der Domäne */
     struct list_head list; /**< Listenkopf */
+    unsigned int index; /**< Domänen-Index */
     ec_master_t *master; /**< EtherCAT-Master, zu der die Domäne gehört. */
     size_t data_size; /**< Größe der Prozessdaten */
     struct list_head commands; /**< EtherCAT-Kommandos für die Prozessdaten */
@@ -55,16 +58,18 @@ struct ec_domain
 
 /*****************************************************************************/
 
-void ec_domain_init(ec_domain_t *, ec_master_t *);
-void ec_domain_clear(ec_domain_t *);
+int ec_domain_init(ec_domain_t *, ec_master_t *, unsigned int);
+void ec_domain_clear(struct kobject *);
 int ec_domain_alloc(ec_domain_t *, uint32_t);
+
+ssize_t ec_show_domain_attribute(struct kobject *, struct attribute *, char *);
 
 /*****************************************************************************/
 
 #endif
 
 /* Emacs-Konfiguration
-   ;;; Local Variables: ***
-   ;;; c-basic-offset:4 ***
+;;; Local Variables: ***
+;;; c-basic-offset:4 ***
 ;;; End: ***
 */

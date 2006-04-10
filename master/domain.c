@@ -12,7 +12,33 @@
 #include "domain.h"
 #include "master.h"
 
+/*****************************************************************************/
+
 void ec_domain_clear_field_regs(ec_domain_t *);
+
+/*****************************************************************************/
+
+static struct attribute attr_data_size = {
+    .name = "data_size",
+    .owner = THIS_MODULE,
+    .mode = S_IRUGO
+};
+
+static struct attribute *def_attrs[] = {
+    &attr_data_size,
+    NULL,
+};
+
+static struct sysfs_ops sysfs_ops = {
+    .show = &ec_show_domain_attribute,
+    .store = NULL
+};
+
+static struct kobj_type ktype_ec_domain = {
+    .release = ec_domain_clear,
+    .sysfs_ops = &sysfs_ops,
+    .default_attrs = def_attrs
+};
 
 /*****************************************************************************/
 
@@ -20,17 +46,31 @@ void ec_domain_clear_field_regs(ec_domain_t *);
    Konstruktor einer EtherCAT-Domäne.
 */
 
-void ec_domain_init(ec_domain_t *domain, /**< Domäne */
-                    ec_master_t *master /**< Zugehöriger Master */
-                    )
+int ec_domain_init(ec_domain_t *domain, /**< Domäne */
+                   ec_master_t *master, /**< Zugehöriger Master */
+                   unsigned int index /**< Domänen-Index */
+                   )
 {
     domain->master = master;
+    domain->index = index;
     domain->data_size = 0;
     domain->base_address = 0;
     domain->response_count = 0xFFFFFFFF;
 
     INIT_LIST_HEAD(&domain->field_regs);
     INIT_LIST_HEAD(&domain->commands);
+
+    // Init kobject and add it to the hierarchy
+    memset(&domain->kobj, 0x00, sizeof(struct kobject));
+    kobject_init(&domain->kobj);
+    domain->kobj.ktype = &ktype_ec_domain;
+    domain->kobj.parent = &master->kobj;
+    if (kobject_set_name(&domain->kobj, "domain%i", index)) {
+        EC_ERR("Failed to set kobj name.\n");
+        return -1;
+    }
+
+    return 0;
 }
 
 /*****************************************************************************/
@@ -39,9 +79,14 @@ void ec_domain_init(ec_domain_t *domain, /**< Domäne */
    Destruktor einer EtherCAT-Domäne.
 */
 
-void ec_domain_clear(ec_domain_t *domain /**< Domäne */)
+void ec_domain_clear(struct kobject *kobj /**< Kobject der Domäne */)
 {
     ec_command_t *command, *next;
+    ec_domain_t *domain;
+
+    domain = container_of(kobj, ec_domain_t, kobj);
+
+    EC_INFO("Clearing domain %i.\n", domain->index);
 
     list_for_each_entry_safe(command, next, &domain->commands, list) {
         ec_command_clear(command);
@@ -49,6 +94,8 @@ void ec_domain_clear(ec_domain_t *domain /**< Domäne */)
     }
 
     ec_domain_clear_field_regs(domain);
+
+    kfree(domain);
 }
 
 /*****************************************************************************/
@@ -192,7 +239,7 @@ int ec_domain_alloc(ec_domain_t *domain, /**< Domäne */
     }
 
     if (!cmd_count) {
-        EC_WARN("Domain 0x%08X contains no data!\n", (u32) domain);
+        EC_WARN("Domain %i contains no data!\n", domain->index);
         ec_domain_clear_field_regs(domain);
         return 0;
     }
@@ -221,8 +268,9 @@ int ec_domain_alloc(ec_domain_t *domain, /**< Domäne */
         }
     }
 
-    EC_INFO("Domain %X - Allocated %i bytes in %i command(s)\n",
-            (u32) domain, domain->data_size, cmd_count);
+    EC_INFO("Domain %i - Allocated %i bytes in %i command%s\n",
+            domain->index, domain->data_size, cmd_count,
+            cmd_count == 1 ? "" : "s");
 
     ec_domain_clear_field_regs(domain);
 
@@ -241,9 +289,30 @@ void ec_domain_response_count(ec_domain_t *domain, /**< Domäne */
 {
     if (count != domain->response_count) {
         domain->response_count = count;
-        EC_INFO("Domain 0x%08X working counter change: %i\n",
-                (u32) domain, count);
+        EC_INFO("Domain %i working counter change: %i\n", domain->index, count);
     }
+}
+
+/*****************************************************************************/
+
+/**
+   Formatiert Attribut-Daten für lesenden Zugriff im SysFS
+
+   \return Anzahl Bytes im Speicher
+*/
+
+ssize_t ec_show_domain_attribute(struct kobject *kobj, /**< KObject */
+                                 struct attribute *attr, /**< Attribut */
+                                 char *buffer /**< Speicher für die Daten */
+                                 )
+{
+    ec_domain_t *domain = container_of(kobj, ec_domain_t, kobj);
+
+    if (attr == &attr_data_size) {
+        return sprintf(buffer, "%i\n", domain->data_size);
+    }
+
+    return 0;
 }
 
 /******************************************************************************
