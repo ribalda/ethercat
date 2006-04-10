@@ -157,8 +157,8 @@ typedef struct
 {
     struct list_head list;
     uint16_t index;
-    uint16_t type;
-    uint8_t features;
+    //uint16_t type;
+    uint8_t object_code;
     char *name;
     struct list_head entries;
 }

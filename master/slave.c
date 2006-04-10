@@ -1059,8 +1059,7 @@ void ec_slave_print(const ec_slave_t *slave, /**< EtherCAT-Slave */
         list_for_each_entry(sdo, &slave->sdo_dictionary, list) {
             EC_INFO("      0x%04X \"%s\"\n", sdo->index,
                     sdo->name ? sdo->name : "");
-            EC_INFO("        Type 0x%04X, features: 0x%02X\n",
-                    sdo->type, sdo->features);
+            EC_INFO("        Object code: 0x%02X\n", sdo->object_code);
             list_for_each_entry(sdo_entry, &sdo->entries, list) {
                 EC_INFO("        0x%04X:%i \"%s\", type 0x%04X, %i bits\n",
                         sdo->index, sdo_entry->subindex,

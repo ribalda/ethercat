@@ -268,8 +268,8 @@ int ec_slave_fetch_sdo_list(ec_slave_t *slave /**< EtherCAT-Slave */)
 
             // Initialize SDO object
             sdo->index = sdo_index;
-            sdo->type = 0x0000;
-            sdo->features = 0x00;
+            //sdo->unkown = 0x0000;
+            sdo->object_code = 0x00;
             sdo->name = NULL;
             INIT_LIST_HEAD(&sdo->entries);
 
@@ -332,8 +332,11 @@ int ec_slave_fetch_sdo_descriptions(ec_slave_t *slave /**< EtherCAT-Slave */)
             return -1;
         }
 
-        sdo->type = EC_READ_U16(data + 8);
-        sdo->features = EC_READ_U8(data + 11);
+        EC_DBG("object desc response:\n");
+        ec_print_data(data, rec_size);
+
+        //sdo->unknown = EC_READ_U16(data + 8);
+        sdo->object_code = EC_READ_U8(data + 11);
 
         name_size = rec_size - 12;
         if (name_size) {
