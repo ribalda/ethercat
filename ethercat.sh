@@ -14,7 +14,7 @@ CONFIGFILE=/etc/sysconfig/ethercat
 
 print_usage()
 {
-    echo "Usage $0 { start | stop }"
+    echo "Usage: $0 { start | stop | restart }"
 }
 
 unload_module()
@@ -45,19 +45,22 @@ else
 fi
 
 case $ACTION in
-    start)
+    start | restart)
 	echo "Starting EtherCAT master..."
+
 	# remove modules
 	unload_module 8139too
 	unload_module 8139cp
 	unload_module ec_8139too
 	unload_module ec_master
+
 	echo "  loading master modules..."
 	if ! modprobe ec_8139too ec_device_index=$DEVICEINDEX; then
 	    echo "ERROR: Failed to load module!"
 	    exit 1
 	fi
 	;;
+
     stop)
 	echo "Stopping EtherCAT master..."
 	unload_module ec_8139too
@@ -66,6 +69,7 @@ case $ACTION in
 	    echo "Warning: Failed to restore 8139too module."
 	fi
 	;;
+
     *)
 	print_usage
 	exit 1
