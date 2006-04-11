@@ -28,25 +28,11 @@ ssize_t ec_show_slave_attribute(struct kobject *, struct attribute *, char *);
 
 /*****************************************************************************/
 
-static struct attribute attr_ring_position = {
-    .name = "ring_position", .owner = THIS_MODULE, .mode = S_IRUGO
-};
-
-static struct attribute attr_station_address = {
-    .name = "station_address", .owner = THIS_MODULE, .mode = S_IRUGO
-};
-
-static struct attribute attr_vendor_name = {
-    .name = "vendor_name", .owner = THIS_MODULE, .mode = S_IRUGO
-};
-
-static struct attribute attr_product_name = {
-    .name = "product_name", .owner = THIS_MODULE, .mode = S_IRUGO
-};
-
-static struct attribute attr_product_desc = {
-    .name = "product_description", .owner = THIS_MODULE, .mode = S_IRUGO
-};
+EC_SYSFS_READ_ATTR(ring_position);
+EC_SYSFS_READ_ATTR(station_address);
+EC_SYSFS_READ_ATTR(vendor_name);
+EC_SYSFS_READ_ATTR(product_name);
+EC_SYSFS_READ_ATTR(product_desc);
 
 static struct attribute *def_attrs[] = {
     &attr_ring_position,

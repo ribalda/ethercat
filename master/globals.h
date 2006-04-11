@@ -43,6 +43,14 @@
 #define EC_DBG(fmt, args...) \
     printk(KERN_DEBUG "EtherCAT DEBUG: " fmt, ##args)
 
+#define EC_LIT(X) #X
+#define EC_STR(X) EC_LIT(X)
+
+#define EC_SYSFS_READ_ATTR(NAME) \
+    static struct attribute attr_##NAME = { \
+        .name = EC_STR(NAME), .owner = THIS_MODULE, .mode = S_IRUGO \
+    }
+
 /*****************************************************************************/
 
 extern void ec_print_data(const uint8_t *, size_t);

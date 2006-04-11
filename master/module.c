@@ -22,6 +22,7 @@
 #include <linux/kernel.h>
 #include <linux/init.h>
 
+#include "globals.h"
 #include "master.h"
 #include "device.h"
 
@@ -31,9 +32,6 @@ int __init ec_init_module(void);
 void __exit ec_cleanup_module(void);
 
 /*****************************************************************************/
-
-#define EC_LIT(X) #X
-#define EC_STR(X) EC_LIT(X)
 
 #define COMPILE_INFO "Revision " EC_STR(SVNREV) \
                      ", compiled by " EC_STR(USER) \

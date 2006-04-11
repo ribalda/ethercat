@@ -29,11 +29,7 @@ ssize_t ec_show_master_attribute(struct kobject *, struct attribute *, char *);
 
 /*****************************************************************************/
 
-static struct attribute attr_slave_count = {
-    .name = "slave_count",
-    .owner = THIS_MODULE,
-    .mode = S_IRUGO
-};
+EC_SYSFS_READ_ATTR(slave_count);
 
 static struct attribute *ec_def_attrs[] = {
     &attr_slave_count,

@@ -19,11 +19,7 @@ ssize_t ec_show_domain_attribute(struct kobject *, struct attribute *, char *);
 
 /*****************************************************************************/
 
-static struct attribute attr_data_size = {
-    .name = "data_size",
-    .owner = THIS_MODULE,
-    .mode = S_IRUGO
-};
+EC_SYSFS_READ_ATTR(data_size);
 
 static struct attribute *def_attrs[] = {
     &attr_data_size,
