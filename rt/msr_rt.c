@@ -62,8 +62,8 @@ uint32_t k_ssi;
 uint32_t k_ssi_st;
 
 ec_field_init_t domain1_fields[] = {
-    {&r_ssi,    "5", "Beckhoff", "EL5001", "InputValue", 0},
-    {&r_ssi_st, "5", "Beckhoff", "EL5001", "Status",     0},
+    {&r_ssi,    "0:3", "Beckhoff", "EL5001", "InputValue", 0},
+    {&r_ssi_st, "0:3", "Beckhoff", "EL5001", "Status",     0},
     {}
 };
 
@@ -183,7 +183,7 @@ int __init init_rt_module(void)
 #endif
 
 #if 1
-    if (!(slave = ecrt_master_get_slave(master, "5"))) {
+    if (!(slave = ecrt_master_get_slave(master, "0:3"))) {
         printk(KERN_ERR "Failed to get slave!\n");
         goto out_deactivate;
     }
@@ -201,6 +201,17 @@ int __init init_rt_module(void)
         ecrt_slave_sdo_write_exp16(slave, 0x406B, 0, 30000) // inhibit time in us
         ) {
         printk(KERN_ERR "Failed to configure SSI slave!\n");
+        goto out_deactivate;
+    }
+#endif
+
+#if 0
+    if (!(slave = ecrt_master_get_slave(master, "1:0"))) {
+        printk(KERN_ERR "Failed to get slave!\n");
+        goto out_deactivate;
+    }
+    if (ecrt_slave_write_alias(slave, 0x5678)) {
+        printk(KERN_ERR "Failed to write alias!\n");
         goto out_deactivate;
     }
 #endif

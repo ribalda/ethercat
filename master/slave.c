@@ -29,7 +29,7 @@ ssize_t ec_show_slave_attribute(struct kobject *, struct attribute *, char *);
 /*****************************************************************************/
 
 EC_SYSFS_READ_ATTR(ring_position);
-EC_SYSFS_READ_ATTR(station_address);
+EC_SYSFS_READ_ATTR(coupler_address);
 EC_SYSFS_READ_ATTR(vendor_name);
 EC_SYSFS_READ_ATTR(product_name);
 EC_SYSFS_READ_ATTR(product_desc);
@@ -37,7 +37,7 @@ EC_SYSFS_READ_ATTR(type);
 
 static struct attribute *def_attrs[] = {
     &attr_ring_position,
-    &attr_station_address,
+    &attr_coupler_address,
     &attr_vendor_name,
     &attr_product_name,
     &attr_product_desc,
@@ -89,8 +89,8 @@ int ec_slave_init(ec_slave_t *slave, /**< EtherCAT-Slave */
     }
 
     slave->master = master;
-    slave->buscoupler_index = 0;
-    slave->index_after_buscoupler = 0xFFFF;
+    slave->coupler_index = 0;
+    slave->coupler_subindex = 0xFFFF;
     slave->base_type = 0;
     slave->base_revision = 0;
     slave->base_build = 0;
@@ -1211,8 +1211,9 @@ ssize_t ec_show_slave_attribute(struct kobject *kobj, /**< KObject */
     if (attr == &attr_ring_position) {
         return sprintf(buffer, "%i\n", slave->ring_position);
     }
-    else if (attr == &attr_station_address) {
-        return sprintf(buffer, "%i\n", slave->station_address);
+    else if (attr == &attr_coupler_address) {
+        return sprintf(buffer, "%i:%i\n", slave->coupler_index,
+                       slave->coupler_subindex);
     }
     else if (attr == &attr_vendor_name) {
         if (slave->type)

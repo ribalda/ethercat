@@ -455,7 +455,8 @@ int ec_master_bus_scan(ec_master_t *master /**< EtherCAT-Master */)
     unsigned int i;
     ec_command_t *command;
     ec_eoe_t *eoe;
-    uint16_t buscoupler_index, index_after_buscoupler;
+    uint16_t coupler_index, coupler_subindex;
+    uint16_t reverse_coupler_index, current_coupler_index;
 
     if (!list_empty(&master->slaves)) {
         EC_ERR("Slave scan already done!\n");
@@ -490,8 +491,10 @@ int ec_master_bus_scan(ec_master_t *master /**< EtherCAT-Master */)
         list_add_tail(&slave->list, &master->slaves);
     }
 
-    buscoupler_index = 0xFFFF;
-    index_after_buscoupler = 0;
+    coupler_index = 0;
+    reverse_coupler_index = 0xFFFF;
+    current_coupler_index = 0x3FFF;
+    coupler_subindex = 0;
 
     // For every slave on the bus
     list_for_each_entry(slave, &master->slaves, list) {
@@ -520,20 +523,22 @@ int ec_master_bus_scan(ec_master_t *master /**< EtherCAT-Master */)
             ident++;
         }
 
-        if (!slave->type)
+        if (!slave->type) {
             EC_WARN("Unknown slave device (vendor 0x%08X, code 0x%08X) at"
                     " position %i.\n", slave->sii_vendor_id,
                     slave->sii_product_code, i);
-        else {
-            if (slave->type->special == EC_TYPE_BUS_COUPLER) {
-                buscoupler_index++;
-                index_after_buscoupler = 0;
-            }
+        }
+        else if (slave->type->special == EC_TYPE_BUS_COUPLER) {
+            if (slave->sii_alias)
+                current_coupler_index = reverse_coupler_index--;
+            else
+                current_coupler_index = coupler_index++;
+            coupler_subindex = 0;
         }
 
-        slave->buscoupler_index = buscoupler_index;
-        slave->index_after_buscoupler = index_after_buscoupler;
-        index_after_buscoupler++;
+        slave->coupler_index = current_coupler_index;
+        slave->coupler_subindex = coupler_subindex;
+        coupler_subindex++;
 
         // Does the slave support EoE?
         if (slave->sii_mailbox_protocols & EC_MBOX_EOE) {
@@ -679,10 +684,15 @@ ec_slave_t *ecrt_master_get_slave(const ec_master_t *master, /**< Master */
         }
 
         if (alias_requested) {
+            if (!alias_slave->type ||
+                alias_slave->type->special != EC_TYPE_BUS_COUPLER) {
+                EC_ERR("Slave address \"%s\": Alias slave must be bus coupler"
+                       " in colon mode.\n", address);
+                return NULL;
+            }
             list_for_each_entry(slave, &master->slaves, list) {
-                if (slave->buscoupler_index == alias_slave->buscoupler_index
-                    && alias_slave->index_after_buscoupler == 0
-                    && slave->index_after_buscoupler == second)
+                if (slave->coupler_index == alias_slave->coupler_index
+                    && slave->coupler_subindex == second)
                     return slave;
             }
             EC_ERR("Slave address \"%s\" - Bus coupler %i has no %lu. slave"
@@ -692,8 +702,8 @@ ec_slave_t *ecrt_master_get_slave(const ec_master_t *master, /**< Master */
         }
         else {
             list_for_each_entry(slave, &master->slaves, list) {
-                if (slave->buscoupler_index == first
-                    && slave->index_after_buscoupler == second) return slave;
+                if (slave->coupler_index == first
+                    && slave->coupler_subindex == second) return slave;
             }
         }
     }

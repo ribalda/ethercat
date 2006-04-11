@@ -196,8 +196,8 @@ struct ec_slave
     // Addresses
     uint16_t ring_position; /**< Position des Slaves im Bus */
     uint16_t station_address; /**< Konfigurierte Slave-Adresse */
-    uint16_t buscoupler_index; /**< Letzter Buskoppler */
-    uint16_t index_after_buscoupler; /**< Index hinter letztem Buskoppler */
+    uint16_t coupler_index; /**< Letzter Buskoppler */
+    uint16_t coupler_subindex; /**< Index hinter letztem Buskoppler */
 
     // Base data
     uint8_t base_type; /**< Slave-Typ */

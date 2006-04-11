@@ -42,6 +42,7 @@ sub query_slaves
     my $vendor_name;
     my @slaves;
     my $slave;
+    my $abs;
 
     unless (opendir $dirhandle, $master_dir) {
 	print "Failed to open directory \"$master_dir\".\n";
@@ -55,8 +56,8 @@ sub query_slaves
 	$slave = {};
 	$slave->{'ring_position'} =
 	    &read_integer("$slave_dir/ring_position");
-	$slave->{'station_address'} =
-	    &read_integer("$slave_dir/station_address");
+	$slave->{'coupler_address'} =
+	    &read_string("$slave_dir/coupler_address");
 	$slave->{'vendor_name'} =
 	    &read_string("$slave_dir/vendor_name");
 	$slave->{'product_name'} =
@@ -72,31 +73,17 @@ sub query_slaves
 
     @slaves = sort { $a->{'ring_position'} <=> $b->{'ring_position'} } @slaves;
 
-    my $coupler_index = -1;
-    my $slave_index = 0;
-    my $abs;
-    my $rel;
     print "EtherCAT bus listing for master $master_index:\n";
     for $slave (@slaves) {
 	if ($slave->{'type'} eq "coupler") {
 	    print "--------------------------------------------------------\n";
-	    $coupler_index++;
-	    $slave_index = 0;
 	}
 
 	$abs = sprintf "%i", $slave->{'ring_position'};
-	$rel = sprintf "%i:%i", $coupler_index, $slave_index;
-	printf("%4s %6s   %-15s %-15s %-15s\n", $abs, $rel,
-	       $slave->{'vendor_name'}, $slave->{'product_name'},
-	       $slave->{'product_desc'});
-
-	if ($slave->{'type'} eq "coupler") {
-	    print "--------------------------------------------------------\n";
-	}
-
-	$slave_index++;
+	printf(" %3s %8s   %-12s %-10s %s\n", $abs,
+	       $slave->{'coupler_address'}, $slave->{'vendor_name'},
+	       $slave->{'product_name'}, $slave->{'product_desc'});
     }
-    print "--------------------------------------------------------\n";
 }
 
 #------------------------------------------------------------------------------
