@@ -33,6 +33,7 @@ EC_SYSFS_READ_ATTR(station_address);
 EC_SYSFS_READ_ATTR(vendor_name);
 EC_SYSFS_READ_ATTR(product_name);
 EC_SYSFS_READ_ATTR(product_desc);
+EC_SYSFS_READ_ATTR(type);
 
 static struct attribute *def_attrs[] = {
     &attr_ring_position,
@@ -40,6 +41,7 @@ static struct attribute *def_attrs[] = {
     &attr_vendor_name,
     &attr_product_name,
     &attr_product_desc,
+    &attr_type,
     NULL,
 };
 
@@ -1223,6 +1225,14 @@ ssize_t ec_show_slave_attribute(struct kobject *kobj, /**< KObject */
     else if (attr == &attr_product_desc) {
         if (slave->type)
             return sprintf(buffer, "%s\n", slave->type->description);
+    }
+    else if (attr == &attr_type) {
+        if (slave->type) {
+            if (slave->type->special == EC_TYPE_BUS_COUPLER)
+                return sprintf(buffer, "coupler\n");
+            else
+                return sprintf(buffer, "normal\n");
+        }
     }
 
     return 0;
