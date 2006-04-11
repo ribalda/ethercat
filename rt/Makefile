@@ -12,22 +12,28 @@ ifneq ($(KERNELRELEASE),)
 #  Kbuild-Abschnitt
 #------------------------------------------------------------------------------
 
-obj-m := msr_modul.o
+ifneq ($(wildcard $(src)/rt.conf),)
+include $(src)/rt.conf
+else
+MODULENAME := rt
+endif
 
-msr_modul-objs := msr_module.o \
-		rt_lib/msr-core/msr_lists.o \
-		rt_lib/msr-core/msr_main.o \
-		rt_lib/msr-core/msr_charbuf.o \
-		rt_lib/msr-core/msr_reg.o \
-		rt_lib/msr-core/msr_interpreter.o \
-		rt_lib/msr-core/msr_messages.o \
-		rt_lib/msr-core/msr_proc.o \
-		rt_lib/msr-core/msr_error_reg.o \
-		rt_lib/msr-utils/msr_utils.o \
-		rt_lib/msr-utils/msr_time.o \
-		rt_lib/msr-math/msr_base64.o \
-		rt_lib/msr-math/msr_hex_bin.o \
-		libm.o
+obj-m := $(MODULENAME).o
+
+$(MODULENAME)-objs := msr_rt.o \
+			rt_lib/msr-core/msr_lists.o \
+			rt_lib/msr-core/msr_main.o \
+			rt_lib/msr-core/msr_charbuf.o \
+			rt_lib/msr-core/msr_reg.o \
+			rt_lib/msr-core/msr_interpreter.o \
+			rt_lib/msr-core/msr_messages.o \
+			rt_lib/msr-core/msr_proc.o \
+			rt_lib/msr-core/msr_error_reg.o \
+			rt_lib/msr-utils/msr_utils.o \
+			rt_lib/msr-utils/msr_time.o \
+			rt_lib/msr-math/msr_base64.o \
+			rt_lib/msr-math/msr_hex_bin.o \
+			libm.o
 
 EXTRA_CFLAGS := -I$(src)/rt_lib/msr-include -D_SIMULATION \
 		-I/usr/include -mhard-float \
@@ -41,17 +47,23 @@ else
 #  Default-Abschnitt
 #------------------------------------------------------------------------------
 
-ifneq ($(wildcard ethercat.conf),)
-include ethercat.conf
+ifneq ($(wildcard rt.conf),)
+include rt.conf
 else
-KERNELDIR = /usr/src/linux
+MODULENAME := msr_rt
+KERNEL := $(shell uname -r)
 endif
 
+KERNELDIR := /lib/modules/$(KERNEL)/build
+
 modules:
-	$(MAKE) -C $(KERNELDIR) M=`pwd` modules
+	$(MAKE) -C $(KERNELDIR) M=`pwd`
 
 clean:
 	$(MAKE) -C $(KERNELDIR) M=`pwd` clean
+
+install:
+	@./install.sh $(MODULENAME) $(KERNEL)
 
 #------------------------------------------------------------------------------
 

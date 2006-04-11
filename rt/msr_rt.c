@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- *  msr_module.c
+ *  m s r _ r t . c
  *
  *  Kernelmodul für 2.6 Kernel zur Meßdatenerfassung, Steuerung und Regelung.
  *
@@ -143,7 +143,7 @@ int __init init_rt_module(void)
 
     // Als allererstes die RT-Lib initialisieren
     if (msr_rtlib_init(1, MSR_ABTASTFREQUENZ, 10, &msr_globals_register) < 0) {
-        msr_print_warn("msr_modul: can't initialize rtlib!");
+        printk(KERN_ERR "Failed to initialize rtlib!\n");
         goto out_return;
     }
 
@@ -233,20 +233,15 @@ int __init init_rt_module(void)
 
 void __exit cleanup_rt_module(void)
 {
-    msr_print_info("msk_modul: unloading...");
+    printk(KERN_INFO "Cleanign up rt module...\n");
 
-    ipipe_tune_timer(1000000000UL / HZ, 0); //alten Timertakt wieder herstellen
+    ipipe_tune_timer(1000000000UL / HZ, 0); // Alten Timertakt wiederherstellen
     ipipe_unregister_domain(&this_domain);
 
-    if (master) {
-        printk(KERN_INFO "=== Stopping EtherCAT environment... ===\n");
-
-        printk(KERN_INFO "Deactivating master...\n");
-        ecrt_master_deactivate(master);
-        ecrt_release_master(master);
-
-        printk(KERN_INFO "=== EtherCAT environment stopped. ===\n");
-    }
+    printk(KERN_INFO "=== Stopping EtherCAT environment... ===\n");
+    ecrt_master_deactivate(master);
+    ecrt_release_master(master);
+    printk(KERN_INFO "=== EtherCAT environment stopped. ===\n");
 
     msr_rtlib_cleanup();
 }

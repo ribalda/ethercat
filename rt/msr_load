@@ -1,5 +1,5 @@
 #!/bin/sh 
-module="msr_modul"
+module="msr_rt"
 device="msr"
 mode="664"
 
