@@ -222,6 +222,7 @@ struct ec_slave
     uint16_t sii_tx_mailbox_offset; /**< Adresse der Mailbox (Slave->Master) */
     uint16_t sii_tx_mailbox_size; /**< Adresse der Mailbox (Slave->Master) */
     uint16_t sii_mailbox_protocols; /**< Unterstützte Mailbox-Protokolle */
+    uint8_t sii_physical_layer[4]; /**< Uebertragungsarten der Ports */
 
     const ec_slave_type_t *type; /**< Zeiger auf die Beschreibung
                                     des Slave-Typs */

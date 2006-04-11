@@ -124,6 +124,7 @@ int ec_slave_init(ec_slave_t *slave, /**< EtherCAT-Slave */
         slave->dl_link[i] = 0;
         slave->dl_loop[i] = 0;
         slave->dl_signal[i] = 0;
+        slave->sii_physical_layer[i] = 0xFF;
     }
 
     return 0;
@@ -619,12 +620,17 @@ int ec_slave_fetch_general(ec_slave_t *slave, /**< EtherCAT-Slave */
                            const uint8_t *data /**< Kategorie-Daten */
                            )
 {
+    unsigned int i;
+
     if (ec_slave_locate_string(slave, data[0], &slave->eeprom_group))
         return -1;
     if (ec_slave_locate_string(slave, data[1], &slave->eeprom_name))
         return -1;
     if (ec_slave_locate_string(slave, data[3], &slave->eeprom_desc))
         return -1;
+
+    for (i = 0; i < 4; i++)
+        slave->sii_physical_layer[i] = (data[4] & (0x03 << (i * 2))) >> (i * 2);
 
     return 0;
 }
@@ -1011,7 +1017,22 @@ void ec_slave_print(const ec_slave_t *slave, /**< EtherCAT-Slave */
 
     EC_INFO("  Data link status:\n");
     for (i = 0; i < 4; i++) {
-        EC_INFO("    Port %i: link %s, loop %s, %s\n", i,
+        EC_INFO("    Port %i (", i);
+        switch (slave->sii_physical_layer[i]) {
+            case 0x00:
+                printk("EBUS");
+                break;
+            case 0x01:
+                printk("100BASE-TX");
+                break;
+            case 0x02:
+                printk("100BASE-FX");
+                break;
+            default:
+                printk("unknown");
+        }
+        printk(")\n");
+        EC_INFO("      link %s, loop %s, %s\n",
                 slave->dl_link[i] ? "up" : "down",
                 slave->dl_loop[i] ? "closed" : "open",
                 slave->dl_signal[i] ? "signal detected" : "no signal");
