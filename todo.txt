@@ -18,6 +18,7 @@ $Id$
 - SSI-Klemme
 
 - eepro100-Kartentreiber
+- VLAN tagging
 
 - Installationsanleitung / Dokumentation
 
