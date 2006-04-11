@@ -2,7 +2,7 @@
 #
 #  Makefile
 #
-#  IgH EtherCAT-Treiber
+#  IgH EtherCAT master module
 #
 #  $Id$
 #
@@ -11,7 +11,7 @@
 ifneq ($(KERNELRELEASE),)
 
 #------------------------------------------------------------------------------
-# Kbuild-Abschnitt
+#  kbuild section
 
 obj-m := ec_master.o
 
@@ -25,27 +25,21 @@ EXTRA_CFLAGS := -DSVNREV=$(shell svnversion $(src)) -DUSER=$(USER)
 else
 
 #------------------------------------------------------------------------------
-# Default-Abschnitt
+#  default section
 
-ifneq ($(wildcard ethercat.conf),)
-include ethercat.conf
+ifneq ($(wildcard ../ethercat.conf),)
+include ../ethercat.conf
 else
-KERNELDIR = /lib/modules/`uname -r`/build
+KERNEL := $(shell uname -r)
 endif
 
+KERNELDIR = /lib/modules/$(KERNEL)/build
+
 modules:
-	$(MAKE) -C $(KERNELDIR) M=`pwd` modules
+	$(MAKE) -C $(KERNELDIR) M=`pwd`
 
-clean: cleandoc
+clean:
 	$(MAKE) -C $(KERNELDIR) M=`pwd` clean
-
-doc:
-	doxygen Doxyfile
-
-cleandoc:
-	@rm -rf doc
-
-.PHONY: doc cleandoc modules clean
 
 #------------------------------------------------------------------------------
 

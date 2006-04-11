@@ -1,8 +1,8 @@
 #------------------------------------------------------------------------------
 #
-#  Makefile
+#  kbuild Makefile
 #
-#  IgH EtherCAT-Treiber - EtherCAT Geraete
+#  IgH EtherCAT master device modules
 #
 #  $Id$
 #
@@ -11,7 +11,7 @@
 ifneq ($(KERNELRELEASE),)
 
 #------------------------------------------------------------------------------
-# Kbuild-Abschnitt
+#  kbuild section
 
 obj-m := ec_8139too.o
 
@@ -27,16 +27,18 @@ EXTRA_CFLAGS = -DEC_REV="$(REV)" -DEC_USER="$(USER)" -DEC_DATE="$(DATE)"
 else
 
 #------------------------------------------------------------------------------
-# Default-Abschnitt
+#  default section
 
-ifneq ($(wildcard ethercat.conf),)
-include ethercat.conf
+ifneq ($(wildcard ../ethercat.conf),)
+include ../ethercat.conf
 else
-KERNELDIR = /lib/modules/`uname -r`/build
+KERNEL := $(shell uname -r)
 endif
 
+KERNELDIR := /lib/modules/$(KERNEL)/build
+
 modules:
-	$(MAKE) -C $(KERNELDIR) M=`pwd` modules
+	$(MAKE) -C $(KERNELDIR) M=`pwd`
 
 clean:
 	$(MAKE) -C $(KERNELDIR) M=`pwd` clean
