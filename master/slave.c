@@ -24,6 +24,31 @@ int ec_slave_fetch_general(ec_slave_t *, const uint8_t *);
 int ec_slave_fetch_sync(ec_slave_t *, const uint8_t *, size_t);
 int ec_slave_fetch_pdo(ec_slave_t *, const uint8_t *, size_t, ec_pdo_type_t);
 int ec_slave_locate_string(ec_slave_t *, unsigned int, char **);
+ssize_t ec_show_slave_attribute(struct kobject *, struct attribute *, char *);
+
+/*****************************************************************************/
+
+static struct attribute attr_ring_position = {
+    .name = "ring_position",
+    .owner = THIS_MODULE,
+    .mode = S_IRUGO
+};
+
+static struct attribute *def_attrs[] = {
+    &attr_ring_position,
+    NULL,
+};
+
+static struct sysfs_ops sysfs_ops = {
+    .show = &ec_show_slave_attribute,
+    .store = NULL
+};
+
+static struct kobj_type ktype_ec_slave = {
+    .release = ec_slave_clear,
+    .sysfs_ops = &sysfs_ops,
+    .default_attrs = def_attrs
+};
 
 /*****************************************************************************/
 
@@ -35,20 +60,36 @@ const ec_code_msg_t al_status_messages[];
    EtherCAT-Slave-Konstruktor.
 */
 
-void ec_slave_init(ec_slave_t *slave, /**< EtherCAT-Slave */
-                   ec_master_t *master /**< EtherCAT-Master */
-                   )
+int ec_slave_init(ec_slave_t *slave, /**< EtherCAT-Slave */
+                  ec_master_t *master, /**< EtherCAT-Master */
+                  uint16_t ring_position, /**< Ringposition */
+                  uint16_t station_address /**< Programmierte Adresse */
+                  )
 {
     unsigned int i;
 
+    slave->ring_position = ring_position;
+    slave->station_address = station_address;
+
+    // Init kobject and add it to the hierarchy
+    memset(&slave->kobj, 0x00, sizeof(struct kobject));
+    kobject_init(&slave->kobj);
+    slave->kobj.ktype = &ktype_ec_slave;
+    slave->kobj.parent = &master->kobj;
+    if (kobject_set_name(&slave->kobj, "slave%03i", slave->ring_position)) {
+        EC_ERR("Failed to set kobject name.\n");
+        kobject_put(&slave->kobj);
+        return -1;
+    }
+
     slave->master = master;
+    slave->buscoupler_index = 0;
+    slave->index_after_buscoupler = 0xFFFF;
     slave->base_type = 0;
     slave->base_revision = 0;
     slave->base_build = 0;
     slave->base_fmmu_count = 0;
     slave->base_sync_count = 0;
-    slave->ring_position = 0;
-    slave->station_address = 0;
     slave->sii_alias = 0;
     slave->sii_vendor_id = 0;
     slave->sii_product_code = 0;
@@ -78,6 +119,8 @@ void ec_slave_init(ec_slave_t *slave, /**< EtherCAT-Slave */
         slave->dl_status_loop[i] = 0;
         slave->dl_status_comm[i] = 0;
     }
+
+    return 0;
 }
 
 /*****************************************************************************/
@@ -86,14 +129,17 @@ void ec_slave_init(ec_slave_t *slave, /**< EtherCAT-Slave */
    EtherCAT-Slave-Destruktor.
 */
 
-void ec_slave_clear(ec_slave_t *slave /**< EtherCAT-Slave */)
+void ec_slave_clear(struct kobject *kobj /**< KObject des Slaves */)
 {
+    ec_slave_t *slave;
     ec_eeprom_string_t *string, *next_str;
     ec_eeprom_sync_t *sync, *next_sync;
     ec_eeprom_pdo_t *pdo, *next_pdo;
     ec_eeprom_pdo_entry_t *entry, *next_ent;
     ec_sdo_t *sdo, *next_sdo;
     ec_sdo_entry_t *en, *next_en;
+
+    slave = container_of(kobj, ec_slave_t, kobj);
 
     // Alle Strings freigeben
     list_for_each_entry_safe(string, next_str, &slave->eeprom_strings, list) {
@@ -1139,6 +1185,28 @@ int ecrt_slave_write_alias(ec_slave_t *slave, /** EtherCAT-Slave */
                            )
 {
     return ec_slave_sii_write16(slave, 0x0004, alias);
+}
+
+/*****************************************************************************/
+
+/**
+   Formatiert Attribut-Daten für lesenden Zugriff im SysFS
+
+   \return Anzahl Bytes im Speicher
+*/
+
+ssize_t ec_show_slave_attribute(struct kobject *kobj, /**< KObject */
+                                struct attribute *attr, /**< Attribut */
+                                char *buffer /**< Speicher für die Daten */
+                                )
+{
+    ec_slave_t *slave = container_of(kobj, ec_slave_t, kobj);
+
+    if (attr == &attr_ring_position) {
+        return sprintf(buffer, "%i\n", slave->ring_position);
+    }
+
+    return 0;
 }
 
 /*****************************************************************************/

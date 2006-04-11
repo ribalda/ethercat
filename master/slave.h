@@ -12,6 +12,7 @@
 #define _EC_SLAVE_H_
 
 #include <linux/list.h>
+#include <linux/kobject.h>
 
 #include "globals.h"
 #include "command.h"
@@ -188,11 +189,15 @@ ec_sdo_entry_t;
 
 struct ec_slave
 {
+    struct list_head list; /**< Noetig fuer Slave-Liste im Master */
+    struct kobject kobj; /**< Kernel-Object */
     ec_master_t *master; /**< EtherCAT-Master, zu dem der Slave gehört. */
 
     // Addresses
     uint16_t ring_position; /**< Position des Slaves im Bus */
     uint16_t station_address; /**< Konfigurierte Slave-Adresse */
+    uint16_t buscoupler_index; /**< Letzter Buskoppler */
+    uint16_t index_after_buscoupler; /**< Index hinter letztem Buskoppler */
 
     // Base data
     uint8_t base_type; /**< Slave-Typ */
@@ -242,8 +247,8 @@ struct ec_slave
 /*****************************************************************************/
 
 // Slave construction/destruction
-void ec_slave_init(ec_slave_t *, ec_master_t *);
-void ec_slave_clear(ec_slave_t *);
+int ec_slave_init(ec_slave_t *, ec_master_t *, uint16_t, uint16_t);
+void ec_slave_clear(struct kobject *);
 
 // Slave control
 int ec_slave_fetch(ec_slave_t *);

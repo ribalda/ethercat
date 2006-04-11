@@ -64,10 +64,10 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT-Master */
     EC_INFO("Initializing master %i.\n", index);
 
     master->index = index;
-    master->slaves = NULL;
     master->device = NULL;
     master->reserved = 0;
 
+    INIT_LIST_HEAD(&master->slaves);
     INIT_LIST_HEAD(&master->command_queue);
     INIT_LIST_HEAD(&master->domains);
     INIT_LIST_HEAD(&master->eoe_slaves);
@@ -130,24 +130,23 @@ void ec_master_reset(ec_master_t *master
                      /**< Zeiger auf den zurückzusetzenden Master */
                      )
 {
-    unsigned int i;
+    ec_slave_t *slave, *next_s;
     ec_command_t *command, *next_c;
     ec_domain_t *domain, *next_d;
     ec_eoe_t *eoe, *next_eoe;
 
     // Alle Slaves entfernen
-    if (master->slaves) {
-        for (i = 0; i < master->slave_count; i++)
-            ec_slave_clear(master->slaves + i);
-        kfree(master->slaves);
-        master->slaves = NULL;
+    list_for_each_entry_safe(slave, next_s, &master->slaves, list) {
+        list_del(&slave->list);
+        kobject_del(&slave->kobj);
+        kobject_put(&slave->kobj);
     }
     master->slave_count = 0;
 
     // Kommando-Warteschlange leeren
     list_for_each_entry_safe(command, next_c, &master->command_queue, queue) {
-        command->state = EC_CMD_ERROR;
         list_del_init(&command->queue);
+        command->state = EC_CMD_ERROR;
     }
 
     // Domain-Liste leeren
@@ -455,13 +454,14 @@ int ec_master_simple_io(ec_master_t *master, /**< EtherCAT-Master */
 
 int ec_master_bus_scan(ec_master_t *master /**< EtherCAT-Master */)
 {
-    ec_slave_t *slave;
+    ec_slave_t *slave, *next;
     ec_slave_ident_t *ident;
     unsigned int i;
     ec_command_t *command;
     ec_eoe_t *eoe;
+    uint16_t buscoupler_index, index_after_buscoupler;
 
-    if (master->slaves || master->slave_count) {
+    if (!list_empty(&master->slaves)) {
         EC_ERR("Slave scan already done!\n");
         return -1;
     }
@@ -476,35 +476,42 @@ int ec_master_bus_scan(ec_master_t *master /**< EtherCAT-Master */)
 
     if (!master->slave_count) return 0;
 
-    if (!(master->slaves = (ec_slave_t *)
-          kmalloc(master->slave_count * sizeof(ec_slave_t), GFP_KERNEL))) {
-        EC_ERR("Failed to allocate slaves!\n");
-        return -1;
-    }
-
     // Init slaves
     for (i = 0; i < master->slave_count; i++) {
-        slave = master->slaves + i;
-        ec_slave_init(slave, master);
-        slave->ring_position = i;
-        slave->station_address = i + 1;
+        if (!(slave = (ec_slave_t *) kmalloc(sizeof(ec_slave_t), GFP_KERNEL))) {
+            EC_ERR("Failed to allocate slave %i!\n", i);
+            goto out_free;
+        }
+
+        if (ec_slave_init(slave, master, i, i + 1)) goto out_free;
+
+        if (kobject_add(&slave->kobj)) {
+            EC_ERR("Failed to add kobject.\n");
+            kobject_put(&slave->kobj); // free
+            goto out_free;
+        }
+
+        list_add_tail(&slave->list, &master->slaves);
     }
 
+    buscoupler_index = 0xFFFF;
+    index_after_buscoupler = 0;
+
     // For every slave on the bus
-    for (i = 0; i < master->slave_count; i++) {
-        slave = master->slaves + i;
+    list_for_each_entry(slave, &master->slaves, list) {
 
         // Write station address
-        if (ec_command_apwr(command, slave->ring_position,
-                            0x0010, sizeof(uint16_t))) return -1;
+        if (ec_command_apwr(command, slave->ring_position, 0x0010,
+                            sizeof(uint16_t))) goto out_free;
         EC_WRITE_U16(command->data, slave->station_address);
         if (unlikely(ec_master_simple_io(master, command))) {
-            EC_ERR("Writing station address failed on slave %i!\n", i);
-            return -1;
+            EC_ERR("Writing station address failed on slave %i!\n",
+                   slave->ring_position);
+            goto out_free;
         }
 
         // Fetch all slave information
-        if (ec_slave_fetch(slave)) return -1;
+        if (ec_slave_fetch(slave)) goto out_free;
 
         // Search for identification in "database"
         ident = slave_idents;
@@ -521,12 +528,22 @@ int ec_master_bus_scan(ec_master_t *master /**< EtherCAT-Master */)
             EC_WARN("Unknown slave device (vendor 0x%08X, code 0x%08X) at"
                     " position %i.\n", slave->sii_vendor_id,
                     slave->sii_product_code, i);
+        else {
+            if (slave->type->special == EC_TYPE_BUS_COUPLER) {
+                buscoupler_index++;
+                index_after_buscoupler = 0;
+            }
+        }
+
+        slave->buscoupler_index = buscoupler_index;
+        slave->index_after_buscoupler = index_after_buscoupler;
+        index_after_buscoupler++;
 
         // Does the slave support EoE?
         if (slave->sii_mailbox_protocols & EC_MBOX_EOE) {
             if (!(eoe = (ec_eoe_t *) kmalloc(sizeof(ec_eoe_t), GFP_KERNEL))) {
                 EC_ERR("Failed to allocate EoE-Object.\n");
-                return -1;
+                goto out_free;
             }
 
             ec_eoe_init(eoe, slave);
@@ -535,6 +552,14 @@ int ec_master_bus_scan(ec_master_t *master /**< EtherCAT-Master */)
     }
 
     return 0;
+
+ out_free:
+    list_for_each_entry_safe(slave, next, &master->slaves, list) {
+        list_del(&slave->list);
+        kobject_del(&slave->kobj);
+        kobject_put(&slave->kobj);
+    }
+    return -1;
 }
 
 /*****************************************************************************/
@@ -600,14 +625,12 @@ ec_slave_t *ecrt_master_get_slave(const ec_master_t *master, /**< Master */
 {
     unsigned long first, second;
     char *remainder, *remainder2;
-    unsigned int i, alias_requested, alias_slave_index, alias_found;
-    int coupler_idx, slave_idx;
-    ec_slave_t *slave;
+    unsigned int alias_requested, alias_found;
+    ec_slave_t *alias_slave = NULL, *slave;
 
     if (!address || address[0] == 0) return NULL;
 
     alias_requested = 0;
-    alias_slave_index = 0;
     if (address[0] == '#') {
         alias_requested = 1;
         address++;
@@ -621,9 +644,8 @@ ec_slave_t *ecrt_master_get_slave(const ec_master_t *master, /**< Master */
 
     if (alias_requested) {
         alias_found = 0;
-        for (i = 0; i < master->slave_count; i++) {
-            if (master->slaves[i].sii_alias == first) {
-                alias_slave_index = i;
+        list_for_each_entry(alias_slave, &master->slaves, list) {
+            if (alias_slave->sii_alias == first) {
                 alias_found = 1;
                 break;
             }
@@ -636,11 +658,11 @@ ec_slave_t *ecrt_master_get_slave(const ec_master_t *master, /**< Master */
 
     if (!remainder[0]) { // absolute position
         if (alias_requested) {
-            return master->slaves + alias_slave_index;
+            return alias_slave;
         }
         else {
-            if (first < master->slave_count) {
-                return master->slaves + first;
+            list_for_each_entry(slave, &master->slaves, list) {
+                if (slave->ring_position == first) return slave;
             }
             EC_ERR("Slave address \"%s\" - Absolute position invalid!\n",
                    address);
@@ -661,29 +683,21 @@ ec_slave_t *ecrt_master_get_slave(const ec_master_t *master, /**< Master */
         }
 
         if (alias_requested) {
-            for (i = alias_slave_index + 1; i < master->slave_count; i++) {
-                slave = master->slaves + i;
-                if (!slave->type ||
-                    slave->type->special == EC_TYPE_BUS_COUPLER) break;
-                if (i - alias_slave_index == second) return slave;
+            list_for_each_entry(slave, &master->slaves, list) {
+                if (slave->buscoupler_index == alias_slave->buscoupler_index
+                    && alias_slave->index_after_buscoupler == 0
+                    && slave->index_after_buscoupler == second)
+                    return slave;
             }
             EC_ERR("Slave address \"%s\" - Bus coupler %i has no %lu. slave"
-                   " following!\n", address,
-                   (master->slaves + alias_slave_index)->ring_position,
+                   " following!\n", address, alias_slave->ring_position,
                    second);
             return NULL;
         }
         else {
-            coupler_idx = -1;
-            slave_idx = 0;
-            for (i = 0; i < master->slave_count; i++, slave_idx++) {
-                slave = master->slaves + i;
-                if (!slave->type) continue;
-                if (slave->type->special == EC_TYPE_BUS_COUPLER) {
-                    coupler_idx++;
-                    slave_idx = 0;
-                }
-                if (coupler_idx == first && slave_idx == second) return slave;
+            list_for_each_entry(slave, &master->slaves, list) {
+                if (slave->buscoupler_index == first
+                    && slave->index_after_buscoupler == second) return slave;
             }
         }
     }
@@ -887,7 +901,7 @@ ec_domain_t *ecrt_master_create_domain(ec_master_t *master /**< Master */)
 
 int ecrt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
 {
-    unsigned int i, j;
+    unsigned int j;
     ec_slave_t *slave;
     ec_command_t *command;
     const ec_sync_t *sync;
@@ -915,8 +929,7 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
     }
 
     // Slaves aktivieren
-    for (i = 0; i < master->slave_count; i++) {
-        slave = master->slaves + i;
+    list_for_each_entry(slave, &master->slaves, list) {
 
         // Change state to INIT
         if (unlikely(ec_slave_state_change(slave, EC_SLAVE_STATE_INIT)))
@@ -924,7 +937,8 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
 
         // Check if slave was registered...
         type = slave->type;
-        if (!type) EC_WARN("Slave %i has unknown type!\n", i);
+        if (!type)
+            EC_WARN("Slave %i has unknown type!\n", slave->ring_position);
 
         // Check and reset CRC fault counters
         ec_slave_check_crc(slave);
@@ -1079,11 +1093,8 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
 void ecrt_master_deactivate(ec_master_t *master /**< EtherCAT-Master */)
 {
     ec_slave_t *slave;
-    unsigned int i;
 
-    for (i = 0; i < master->slave_count; i++)
-    {
-        slave = master->slaves + i;
+    list_for_each_entry(slave, &master->slaves, list) {
         ec_slave_check_crc(slave);
         ec_slave_state_change(slave, EC_SLAVE_STATE_INIT);
     }
@@ -1103,10 +1114,8 @@ void ecrt_master_deactivate(ec_master_t *master /**< EtherCAT-Master */)
 int ecrt_master_fetch_sdo_lists(ec_master_t *master /**< EtherCAT-Master */)
 {
     ec_slave_t *slave;
-    unsigned int i;
 
-    for (i = 0; i < master->slave_count; i++) {
-        slave = master->slaves + i;
+    list_for_each_entry(slave, &master->slaves, list) {
         if (slave->sii_mailbox_protocols & EC_MBOX_COE) {
             if (unlikely(ec_slave_fetch_sdo_list(slave))) {
                 EC_ERR("Failed to fetch SDO list on slave %i!\n",
@@ -1319,14 +1328,14 @@ void ecrt_master_print(const ec_master_t *master, /**< EtherCAT-Master */
                        unsigned int verbosity /**< Geschwätzigkeit */
                        )
 {
-    unsigned int i;
+    ec_slave_t *slave;
     ec_eoe_t *eoe;
 
     EC_INFO("*** Begin master information ***\n");
     if (master->slave_count) {
         EC_INFO("Slave list:\n");
-        for (i = 0; i < master->slave_count; i++)
-            ec_slave_print(&master->slaves[i], verbosity);
+        list_for_each_entry(slave, &master->slaves, list)
+            ec_slave_print(slave, verbosity);
     }
     if (!list_empty(&master->eoe_slaves)) {
         EC_INFO("Ethernet-over-EtherCAT (EoE) objects:\n");

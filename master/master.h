@@ -15,7 +15,6 @@
 #include <linux/sysfs.h>
 
 #include "device.h"
-#include "slave.h"
 #include "domain.h"
 
 /*****************************************************************************/
@@ -49,7 +48,7 @@ struct ec_master
     struct list_head list; /**< Noetig fuer Master-Liste */
     struct kobject kobj; /**< Kernel-Object */
     unsigned int index; /**< Master-Index */
-    ec_slave_t *slaves; /**< Array von Slaves auf dem Bus */
+    struct list_head slaves; /**< Liste der Slaves auf dem Bus */
     unsigned int slave_count; /**< Anzahl Slaves auf dem Bus */
     ec_device_t *device; /**< EtherCAT-Gerät */
     struct list_head command_queue; /**< Kommando-Warteschlange */

@@ -213,8 +213,7 @@ int ec_domain_alloc(ec_domain_t *domain, /**< Domäne */
     cmd_offset = base_address;
     cmd_data_size = 0;
     cmd_count = 0;
-    for (i = 0; i < domain->master->slave_count; i++) {
-        slave = &domain->master->slaves[i];
+    list_for_each_entry(slave, &domain->master->slaves, list) {
         for (j = 0; j < slave->fmmu_count; j++) {
             fmmu = &slave->fmmus[j];
             if (fmmu->domain == domain) {
