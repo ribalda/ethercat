@@ -207,9 +207,9 @@ struct ec_slave
     uint16_t base_sync_count; /**< Anzahl unterstützter Sync-Manager */
 
     // Data link status
-    uint8_t dl_status_link[2]; /**< Verbindung erkannt */
-    uint8_t dl_status_loop[2]; /**< Loop geschlossen */
-    uint8_t dl_status_comm[2]; /**< Kommunikation */
+    uint8_t dl_link[4]; /**< Verbindung erkannt */
+    uint8_t dl_loop[4]; /**< Loop geschlossen */
+    uint8_t dl_signal[4]; /**< Signal an RX-Seite erkannt */
 
     // Slave information interface
     uint16_t sii_alias; /**< Configured station alias */

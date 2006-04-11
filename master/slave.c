@@ -29,13 +29,31 @@ ssize_t ec_show_slave_attribute(struct kobject *, struct attribute *, char *);
 /*****************************************************************************/
 
 static struct attribute attr_ring_position = {
-    .name = "ring_position",
-    .owner = THIS_MODULE,
-    .mode = S_IRUGO
+    .name = "ring_position", .owner = THIS_MODULE, .mode = S_IRUGO
+};
+
+static struct attribute attr_station_address = {
+    .name = "station_address", .owner = THIS_MODULE, .mode = S_IRUGO
+};
+
+static struct attribute attr_vendor_name = {
+    .name = "vendor_name", .owner = THIS_MODULE, .mode = S_IRUGO
+};
+
+static struct attribute attr_product_name = {
+    .name = "product_name", .owner = THIS_MODULE, .mode = S_IRUGO
+};
+
+static struct attribute attr_product_desc = {
+    .name = "product_description", .owner = THIS_MODULE, .mode = S_IRUGO
 };
 
 static struct attribute *def_attrs[] = {
     &attr_ring_position,
+    &attr_station_address,
+    &attr_vendor_name,
+    &attr_product_name,
+    &attr_product_desc,
     NULL,
 };
 
@@ -114,10 +132,10 @@ int ec_slave_init(ec_slave_t *slave, /**< EtherCAT-Slave */
     INIT_LIST_HEAD(&slave->eeprom_pdos);
     INIT_LIST_HEAD(&slave->sdo_dictionary);
 
-    for (i = 0; i < 2; i++) {
-        slave->dl_status_link[i] = 0;
-        slave->dl_status_loop[i] = 0;
-        slave->dl_status_comm[i] = 0;
+    for (i = 0; i < 4; i++) {
+        slave->dl_link[i] = 0;
+        slave->dl_loop[i] = 0;
+        slave->dl_signal[i] = 0;
     }
 
     return 0;
@@ -230,10 +248,10 @@ int ec_slave_fetch(ec_slave_t *slave /**< EtherCAT-Slave */)
     }
 
     dl_status = EC_READ_U16(command->data);
-    for (i = 0; i < 2; i++) {
-        slave->dl_status_link[i] = dl_status & (1 << (4 + i)) ? 1 : 0;
-        slave->dl_status_loop[i] = dl_status & (1 << (8 + i * 2)) ? 1 : 0;
-        slave->dl_status_comm[i] = dl_status & (1 << (9 + i * 2)) ? 1 : 0;
+    for (i = 0; i < 4; i++) {
+        slave->dl_link[i] = dl_status & (1 << (4 + i)) ? 1 : 0;
+        slave->dl_loop[i] = dl_status & (1 << (8 + i * 2)) ? 1 : 0;
+        slave->dl_signal[i] = dl_status & (1 << (9 + i * 2)) ? 1 : 0;
     }
 
     // Read EEPROM data
@@ -1004,11 +1022,11 @@ void ec_slave_print(const ec_slave_t *slave, /**< EtherCAT-Slave */
     EC_INFO("  Station address: 0x%04X\n", slave->station_address);
 
     EC_INFO("  Data link status:\n");
-    for (i = 0; i < 2; i++) {
-        EC_INFO("    Port %i: link %s, loop %s, comm %s\n", i,
-                slave->dl_status_link[i] ? "up" : "down",
-                slave->dl_status_loop[i] ? "closed" : "open",
-                slave->dl_status_comm[i] ? "up" : "down");
+    for (i = 0; i < 4; i++) {
+        EC_INFO("    Port %i: link %s, loop %s, %s\n", i,
+                slave->dl_link[i] ? "up" : "down",
+                slave->dl_loop[i] ? "closed" : "open",
+                slave->dl_signal[i] ? "signal detected" : "no signal");
     }
 
     EC_INFO("  Base information:\n");
@@ -1204,6 +1222,21 @@ ssize_t ec_show_slave_attribute(struct kobject *kobj, /**< KObject */
 
     if (attr == &attr_ring_position) {
         return sprintf(buffer, "%i\n", slave->ring_position);
+    }
+    else if (attr == &attr_station_address) {
+        return sprintf(buffer, "%i\n", slave->station_address);
+    }
+    else if (attr == &attr_vendor_name) {
+        if (slave->type)
+            return sprintf(buffer, "%s\n", slave->type->vendor_name);
+    }
+    else if (attr == &attr_product_name) {
+        if (slave->type)
+            return sprintf(buffer, "%s\n", slave->type->product_name);
+    }
+    else if (attr == &attr_product_desc) {
+        if (slave->type)
+            return sprintf(buffer, "%s\n", slave->type->description);
     }
 
     return 0;
