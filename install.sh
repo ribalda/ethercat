@@ -63,6 +63,11 @@ if [ ! -L /usr/sbin/rcethercat ]; then
     ln -s /etc/init.d/ethercat /usr/sbin/rcethercat || exit 1
 fi
 
+# Install tools
+
+echo "  installing tools..."
+cp tools/ec_list.pl /usr/local/bin/ec_list || exit 1
+
 # Finish
 
 echo "EtherCAT installer done."
