@@ -13,9 +13,24 @@
 
 #include <linux/list.h>
 #include <linux/sysfs.h>
+#include <linux/timer.h>
 
 #include "device.h"
 #include "domain.h"
+
+/*****************************************************************************/
+
+/**
+   EtherCAT master mode.
+*/
+
+typedef enum
+{
+    EC_MASTER_MODE_IDLE,
+    EC_MASTER_MODE_FREERUN,
+    EC_MASTER_MODE_RUNNING
+}
+ec_master_mode_t;
 
 /*****************************************************************************/
 
@@ -63,6 +78,8 @@ struct ec_master
     unsigned int timeout; /**< Timeout für synchronen Datenaustausch */
     struct list_head eoe_slaves; /**< Ethernet over EtherCAT Slaves */
     unsigned int reserved; /**< Master durch Echtzeitprozess reserviert */
+    struct timer_list freerun_timer; /**< Timer fuer Free-Run-Modus. */
+    ec_master_mode_t mode; /**< Modus des Masters */
 };
 
 /*****************************************************************************/
@@ -71,6 +88,10 @@ struct ec_master
 int ec_master_init(ec_master_t *, unsigned int);
 void ec_master_clear(struct kobject *);
 void ec_master_reset(ec_master_t *);
+
+// Free-Run
+void ec_master_freerun_start(ec_master_t *);
+void ec_master_freerun_stop(ec_master_t *);
 
 // IO
 void ec_master_receive(ec_master_t *, const uint8_t *, size_t);

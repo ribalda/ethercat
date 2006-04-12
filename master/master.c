@@ -25,14 +25,17 @@
 
 /*****************************************************************************/
 
+void ec_master_freerun(unsigned long);
 ssize_t ec_show_master_attribute(struct kobject *, struct attribute *, char *);
 
 /*****************************************************************************/
 
 EC_SYSFS_READ_ATTR(slave_count);
+EC_SYSFS_READ_ATTR(mode);
 
 static struct attribute *ec_def_attrs[] = {
     &attr_slave_count,
+    &attr_mode,
     NULL,
 };
 
@@ -78,6 +81,11 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT-Master */
         return -1;
     }
 
+    // Init freerun timer
+    init_timer(&master->freerun_timer);
+    master->freerun_timer.function = ec_master_freerun;
+    master->freerun_timer.data = (unsigned long) master;
+
     ec_command_init(&master->simple_command);
     ec_command_init(&master->watch_command);
 
@@ -99,6 +107,8 @@ void ec_master_clear(struct kobject *kobj /**< KObject des Masters */)
     ec_master_t *master = container_of(kobj, ec_master_t, kobj);
 
     EC_INFO("Clearing master %i...\n", master->index);
+
+    del_timer_sync(&master->freerun_timer);
 
     ec_master_reset(master);
 
@@ -130,6 +140,8 @@ void ec_master_reset(ec_master_t *master
     ec_command_t *command, *next_c;
     ec_domain_t *domain, *next_d;
     ec_eoe_t *eoe, *next_eoe;
+
+    ec_master_freerun_stop(master);
 
     // Alle Slaves entfernen
     list_for_each_entry_safe(slave, next_s, &master->slaves, list) {
@@ -172,6 +184,8 @@ void ec_master_reset(ec_master_t *master
     master->stats.unmatched = 0;
     master->stats.eoe_errors = 0;
     master->stats.t_last = 0;
+
+    master->mode = EC_MASTER_MODE_IDLE;
 }
 
 /*****************************************************************************/
@@ -606,6 +620,61 @@ void ec_master_output_stats(ec_master_t *master /**< EtherCAT-Master */)
 /*****************************************************************************/
 
 /**
+   Starts Free-Run mode.
+*/
+
+void ec_master_freerun_start(ec_master_t *master /**< EtherCAT master */)
+{
+    if (master->mode == EC_MASTER_MODE_FREERUN) return;
+
+    if (master->mode == EC_MASTER_MODE_RUNNING) {
+        EC_ERR("ec_master_freerun_start: Master already running!\n");
+        return;
+    }
+
+    EC_INFO("Starting Free-Run mode.\n");
+
+    master->mode = EC_MASTER_MODE_FREERUN;
+
+    master->freerun_timer.expires = jiffies + 10;
+    add_timer(&master->freerun_timer);
+}
+
+/*****************************************************************************/
+
+/**
+   Stops Free-Run mode.
+*/
+
+void ec_master_freerun_stop(ec_master_t *master /**< EtherCAT master */)
+{
+    if (master->mode != EC_MASTER_MODE_FREERUN) return;
+
+    EC_INFO("Stopping Free-Run mode.\n");
+
+    del_timer_sync(&master->freerun_timer);
+    master->mode = EC_MASTER_MODE_IDLE;
+}
+
+/*****************************************************************************/
+
+/**
+   Free-Run mode function.
+*/
+
+void ec_master_freerun(unsigned long data)
+{
+    ec_master_t *master = (ec_master_t *) data;
+
+    // nop
+
+    master->freerun_timer.expires += HZ;
+    add_timer(&master->freerun_timer);
+}
+
+/*****************************************************************************/
+
+/**
    Wandelt eine ASCII-kodierte Bus-Adresse in einen Slave-Zeiger.
 
    Gültige Adress-Strings sind Folgende:
@@ -794,6 +863,16 @@ ssize_t ec_show_master_attribute(struct kobject *kobj, /**< KObject */
 
     if (attr == &attr_slave_count) {
         return sprintf(buffer, "%i\n", master->slave_count);
+    }
+    else if (attr == &attr_mode) {
+        switch (master->mode) {
+            case EC_MASTER_MODE_IDLE:
+                return sprintf(buffer, "IDLE\n");
+            case EC_MASTER_MODE_FREERUN:
+                return sprintf(buffer, "FREERUN\n");
+            case EC_MASTER_MODE_RUNNING:
+                return sprintf(buffer, "RUNNING\n");
+        }
     }
 
     return 0;

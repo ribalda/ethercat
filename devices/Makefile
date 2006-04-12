@@ -17,9 +17,8 @@ obj-m := ec_8139too.o
 
 ec_8139too-objs := 8139too.o
 
-REV = `svnversion $(src)`
-DATE = `date`
-
+REV := $(shell svnversion $(src))
+DATE := $(shell date)
 EXTRA_CFLAGS = -DEC_REV="$(REV)" -DEC_USER="$(USER)" -DEC_DATE="$(DATE)"
 
 #------------------------------------------------------------------------------

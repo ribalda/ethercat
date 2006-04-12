@@ -26,10 +26,12 @@ ec_device_t *ecdev_register(unsigned int master_index,
                             struct module *module);
 void ecdev_unregister(unsigned int master_index, ec_device_t *device);
 
+int ecdev_start(unsigned int master_index);
+void ecdev_stop(unsigned int master_index);
+
 /*****************************************************************************/
 // Device methods
 
-int ecdev_is_ec(const ec_device_t *device, const struct net_device *net_dev);
 void ecdev_receive(ec_device_t *device, const void *data, size_t size);
 void ecdev_link_state(ec_device_t *device, uint8_t newstate);
 

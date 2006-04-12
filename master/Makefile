@@ -33,7 +33,7 @@ else
 KERNEL := $(shell uname -r)
 endif
 
-KERNELDIR = /lib/modules/$(KERNEL)/build
+KERNELDIR := /lib/modules/$(KERNEL)/build
 
 modules:
 	$(MAKE) -C $(KERNELDIR) M=`pwd`

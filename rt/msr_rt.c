@@ -179,7 +179,7 @@ int __init init_rt_module(void)
     }
     ecrt_master_print(master, 2);
 #else
-    ecrt_master_print(master, 1);
+    ecrt_master_print(master, 0);
 #endif
 
 #if 1

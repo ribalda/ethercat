@@ -197,21 +197,6 @@ void ec_device_call_isr(ec_device_t *device /**< EtherCAT-Gerät */)
  *****************************************************************************/
 
 /**
-   Prüft, ob das Net-Device \a dev zum registrierten EtherCAT-Gerät gehört.
-
-   \return 0 wenn nein, nicht-null wenn ja.
-*/
-
-inline int ecdev_is_ec(const ec_device_t *device,  /**< EtherCAT-Gerät */
-                const struct net_device *dev /**< Net-Device */
-                )
-{
-    return device && device->dev == dev;
-}
-
-/*****************************************************************************/
-
-/**
    Nimmt einen Empfangenen Rahmen entgegen.
 
    Kopiert die empfangenen Daten in den Receive-Buffer.
@@ -240,6 +225,11 @@ void ecdev_link_state(ec_device_t *device, /**< EtherCAT-Gerät */
                       uint8_t state /**< Verbindungszustand */
                       )
 {
+    if (unlikely(!device)) {
+        EC_WARN("ecdev_link_state: no device!\n");
+        return;
+    }
+
     if (likely(state != device->link_state)) {
         device->link_state = state;
         EC_INFO("Link state changed to %s.\n", (state ? "UP" : "DOWN"));
@@ -248,7 +238,6 @@ void ecdev_link_state(ec_device_t *device, /**< EtherCAT-Gerät */
 
 /*****************************************************************************/
 
-EXPORT_SYMBOL(ecdev_is_ec);
 EXPORT_SYMBOL(ecdev_receive);
 EXPORT_SYMBOL(ecdev_link_state);
 
