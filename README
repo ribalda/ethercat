@@ -23,8 +23,24 @@ http://igh-essen.com
 
 -------------------------------------------------------------------------------
 
-Installation
+Requirements
 ============
+
+1) Software requirements
+
+Configured sources for the Linux 2.6 kernel are required to build the EtherCAT
+master.
+
+2) Hardware requirements
+
+The EtherCAT master needs a RTL8139 (or compatible) network interface card to
+run. Drivers for other widespread devices (i. e. Intel PRO/100) will be
+implemented soon.
+
+-------------------------------------------------------------------------------
+
+Building and installing
+=======================
 
 1) Create a copy of the configuration template:
 
@@ -45,6 +61,20 @@ Installation
     - /etc/init.d/ethercat    (startup script)
     - /usr/sbin/rcethercat    (link to startup script)
 
-  The modules will be placed in /lib/modules/`uname -r`/kernel/drivers/net.
+  The modules will be placed in /lib/modules/<KERNEL>/kernel/drivers/net
+  (where <KERNEL> is the Linux kernel version configured in ethercat.conf).
+
+-------------------------------------------------------------------------------
+
+Realtime & Tuning
+=================
+
+Realtime patches for the Linux kernel are supported, but not required. The
+realtime processing has to be done by the calling module (see API
+documentation). The EtherCAT master code itself is (except for the free-run
+mode) completely passive.
+
+To avoid frame timeouts, deactivating DMA access for hard drives is
+recommented (hdparm -d0 <DEV>).
 
 -------------------------------------------------------------------------------
