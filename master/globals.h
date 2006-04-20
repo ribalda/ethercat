@@ -13,23 +13,45 @@
 
 #include <linux/types.h>
 
-/*****************************************************************************/
+/******************************************************************************
+ *  EtherCAT master
+ *****************************************************************************/
 
-// EtherCAT-Protokoll
-#define EC_MAX_FRAME_SIZE 1500 /**< maximum size of an EtherCAT frame (without
-                                header and CRC) */
-#define EC_MIN_FRAME_SIZE 46 /** ... minimum size */
-#define EC_FRAME_HEADER_SIZE 2 /**< size of an EtherCAT frame header */
-#define EC_COMMAND_HEADER_SIZE 10 /**< size of an EtherCAT command header */
-#define EC_COMMAND_FOOTER_SIZE 2 /**< size of an EtherCAT command footer */
-#define EC_SYNC_SIZE 8 /**< size of a sync manager configuration page */
-#define EC_FMMU_SIZE 16 /**< size of an FMMU configuration page */
-#define EC_MAX_FMMUS 16 /**< maximum number of FMMUs per slave */
-#define EC_MAX_DATA_SIZE (EC_MAX_FRAME_SIZE \
-                          - EC_FRAME_HEADER_SIZE \
-                          - EC_COMMAND_HEADER_SIZE \
-                          - EC_COMMAND_FOOTER_SIZE) /**< maximum data size of a
-                                                       single command */
+#define EC_MASTER_VERSION_MAIN  1
+#define EC_MASTER_VERSION_SUB   0
+#define EC_MASTER_VERSION_EXTRA "trunk"
+
+/** maximum number of FMMUs per slave */
+#define EC_MAX_FMMUS 16
+
+/******************************************************************************
+ *  EtherCAT protocol
+ *****************************************************************************/
+
+/** maximum size of an EtherCAT frame (without header and CRC) */
+#define EC_MAX_FRAME_SIZE 1500
+
+/** ... minimum size */
+#define EC_MIN_FRAME_SIZE 46
+
+/** size of an EtherCAT frame header */
+#define EC_FRAME_HEADER_SIZE 2
+
+/** size of an EtherCAT command header */
+#define EC_COMMAND_HEADER_SIZE 10
+
+/** size of an EtherCAT command footer */
+#define EC_COMMAND_FOOTER_SIZE 2
+
+/** size of a sync manager configuration page */
+#define EC_SYNC_SIZE 8
+
+/** size of an FMMU configuration page */
+#define EC_FMMU_SIZE 16
+
+/** resulting maximum data size of a single command in a frame */
+#define EC_MAX_DATA_SIZE (EC_MAX_FRAME_SIZE - EC_FRAME_HEADER_SIZE \
+                          - EC_COMMAND_HEADER_SIZE - EC_COMMAND_FOOTER_SIZE)
 
 /*****************************************************************************/
 

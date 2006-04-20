@@ -33,7 +33,10 @@ void __exit ec_cleanup_module(void);
 
 /*****************************************************************************/
 
-#define COMPILE_INFO "Revision " EC_STR(SVNREV) \
+#define COMPILE_INFO EC_STR(EC_MASTER_VERSION_MAIN) \
+                     "." EC_STR(EC_MASTER_VERSION_SUB) \
+                     " (" EC_MASTER_VERSION_EXTRA ")" \
+                     " - rev. " EC_STR(SVNREV) \
                      ", compiled by " EC_STR(USER) \
                      " at " __DATE__ " " __TIME__
 
@@ -147,6 +150,54 @@ ec_master_t *ec_find_master(unsigned int master_index /**< master index */)
 
     EC_ERR("Master %i does not exist!\n", master_index);
     return NULL;
+}
+
+/*****************************************************************************/
+
+/**
+   Outputs frame contents for debugging purposes.
+*/
+
+void ec_print_data(const uint8_t *data, /**< pointer to data */
+                   size_t size /**< number of bytes to output */
+                   )
+{
+    unsigned int i;
+
+    EC_DBG("");
+    for (i = 0; i < size; i++) {
+        printk("%02X ", data[i]);
+        if ((i + 1) % 16 == 0) {
+            printk("\n");
+            EC_DBG("");
+        }
+    }
+    printk("\n");
+}
+
+/*****************************************************************************/
+
+/**
+   Outputs frame contents and differences for debugging purposes.
+*/
+
+void ec_print_data_diff(const uint8_t *d1, /**< first data */
+                        const uint8_t *d2, /**< second data */
+                        size_t size /** number of bytes to output */
+                        )
+{
+    unsigned int i;
+
+    EC_DBG("");
+    for (i = 0; i < size; i++) {
+        if (d1[i] == d2[i]) printk(".. ");
+        else printk("%02X ", d2[i]);
+        if ((i + 1) % 16 == 0) {
+            printk("\n");
+            EC_DBG("");
+        }
+    }
+    printk("\n");
 }
 
 /******************************************************************************
@@ -350,54 +401,6 @@ void ecrt_release_master(ec_master_t *master /**< EtherCAT master */)
 
     EC_INFO("Released master %i.\n", master->index);
     return;
-}
-
-/*****************************************************************************/
-
-/**
-   Outputs frame contents for debugging purposes.
-*/
-
-void ec_print_data(const uint8_t *data, /**< pointer to data */
-                   size_t size /**< number of bytes to output */
-                   )
-{
-    unsigned int i;
-
-    EC_DBG("");
-    for (i = 0; i < size; i++) {
-        printk("%02X ", data[i]);
-        if ((i + 1) % 16 == 0) {
-            printk("\n");
-            EC_DBG("");
-        }
-    }
-    printk("\n");
-}
-
-/*****************************************************************************/
-
-/**
-   Outputs frame contents and differences for debugging purposes.
-*/
-
-void ec_print_data_diff(const uint8_t *d1, /**< first data */
-                        const uint8_t *d2, /**< second data */
-                        size_t size /** number of bytes to output */
-                        )
-{
-    unsigned int i;
-
-    EC_DBG("");
-    for (i = 0; i < size; i++) {
-        if (d1[i] == d2[i]) printk(".. ");
-        else printk("%02X ", d2[i]);
-        if ((i + 1) % 16 == 0) {
-            printk("\n");
-            EC_DBG("");
-        }
-    }
-    printk("\n");
 }
 
 /*****************************************************************************/

@@ -17,7 +17,9 @@ obj-m := ec_8139too.o
 
 ec_8139too-objs := 8139too.o
 
-EXTRA_CFLAGS = -DEC_REV="$(shell svnversion $(src))" -DEC_USER="$(USER)"
+REV := $(shell svnversion $(src) 2>/dev/null)
+
+EXTRA_CFLAGS = -DEC_REV=$(REV) -DEC_USER=$(USER)
 
 #------------------------------------------------------------------------------
 
