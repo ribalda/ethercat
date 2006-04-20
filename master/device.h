@@ -2,7 +2,7 @@
  *
  *  d e v i c e . h
  *
- *  Struktur für ein EtherCAT-Gerät.
+ *  EtherCAT device structure.
  *
  *  $Id$
  *
@@ -20,23 +20,21 @@
 /*****************************************************************************/
 
 /**
-   EtherCAT-Gerät.
+   EtherCAT device.
 
-   Ein EtherCAT-Gerät ist eine Netzwerkkarte, die vom
-   EtherCAT-Master dazu verwendet wird, um Frames zu senden
-   und zu empfangen.
+   An EtherCAT device is a network interface card, that is owned by an
+   EtherCAT master to send and receive EtherCAT frames with.
 */
 
 struct ec_device
 {
-    ec_master_t *master; /**< EtherCAT-Master */
-    struct net_device *dev; /**< Zeiger auf das reservierte net_device */
-    uint8_t open; /**< Das net_device ist geoeffnet. */
-    struct sk_buff *tx_skb; /**< Zeiger auf Transmit-Socketbuffer */
-    ec_isr_t isr; /**< Adresse der ISR */
-    struct module *module; /**< Zeiger auf das Modul, das das Gerät zur
-                              Verfügung stellt. */
-    uint8_t link_state; /**< Verbindungszustand */
+    ec_master_t *master; /**< EtherCAT master */
+    struct net_device *dev; /**< pointer to the assigned net_device */
+    uint8_t open; /**< true, if the net_device has been opened */
+    struct sk_buff *tx_skb; /**< transmit socket buffer */
+    ec_isr_t isr; /**< pointer to the device's interrupt service routine */
+    struct module *module; /**< pointer to the device's owning module */
+    uint8_t link_state; /**< device link state */
 };
 
 /*****************************************************************************/
@@ -55,9 +53,3 @@ void ec_device_send(ec_device_t *, size_t);
 /*****************************************************************************/
 
 #endif
-
-/* Emacs-Konfiguration
-;;; Local Variables: ***
-;;; c-basic-offset:4 ***
-;;; End: ***
-*/

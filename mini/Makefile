@@ -2,7 +2,7 @@
 #
 #  Makefile
 #
-#  Minimales EtherCAT-Modul
+#  Minimal EtherCAT module.
 #
 #  $Id$
 #
@@ -11,7 +11,7 @@
 ifneq ($(KERNELRELEASE),)
 
 #----------------------------------------------------------------
-#  Kbuild-Abschnitt
+#  kbuild section
 #----------------------------------------------------------------
 
 obj-m := ec_mini.o
@@ -23,7 +23,7 @@ ec_mini-objs := mini.o
 else
 
 #----------------------------------------------------------------
-#  Default-Abschnitt
+#  default section
 #----------------------------------------------------------------
 
 ifneq ($(wildcard ethercat.conf),)

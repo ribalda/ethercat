@@ -2,7 +2,7 @@
  *
  *  s l a v e . h
  *
- *  Struktur für einen EtherCAT-Slave.
+ *  EtherCAT stave structure.
  *
  *  $Id$
  *
@@ -21,30 +21,30 @@
 /*****************************************************************************/
 
 /**
-   Zustand eines EtherCAT-Slaves.
+   State of an EtherCAT slave.
 */
 
 typedef enum
 {
     EC_SLAVE_STATE_UNKNOWN = 0x00,
-    /**< Status unbekannt */
+    /**< unknown state */
     EC_SLAVE_STATE_INIT = 0x01,
-    /**< Init-Zustand (Keine Mailbox-Kommunikation, Kein I/O) */
+    /**< INIT state (no mailbox communication, no IO) */
     EC_SLAVE_STATE_PREOP = 0x02,
-    /**< Pre-Operational (Mailbox-Kommunikation, Kein I/O) */
+    /**< PREOP state (mailbox communication, no IO) */
     EC_SLAVE_STATE_SAVEOP = 0x04,
-    /**< Save-Operational (Mailbox-Kommunikation und Input Update) */
+    /**< SAVEOP (mailbox communication and input update) */
     EC_SLAVE_STATE_OP = 0x08,
-    /**< Operational, (Mailbox-Kommunikation und Input/Output Update) */
+    /**< OP (mailbox communication and input/output update) */
     EC_ACK = 0x10
-    /**< Acknoledge-Bit beim Zustandswechsel (kein eigener Zustand) */
+    /**< Acknoledge bit (no state) */
 }
 ec_slave_state_t;
 
 /*****************************************************************************/
 
 /**
-   Unterstützte Mailbox-Protokolle.
+   Supported mailbox protocols.
 */
 
 enum
@@ -60,124 +60,124 @@ enum
 /*****************************************************************************/
 
 /**
-   FMMU-Konfiguration.
+   FMMU configuration.
 */
 
 typedef struct
 {
-    const ec_domain_t *domain;
-    const ec_sync_t *sync;
-    uint32_t logical_start_address;
+    const ec_domain_t *domain; /**< domain */
+    const ec_sync_t *sync; /**< sync manager */
+    uint32_t logical_start_address; /**< logical start address */
 }
 ec_fmmu_t;
 
 /*****************************************************************************/
 
 /**
-   String im EEPROM eines EtherCAT-Slaves.
+   String object (EEPROM).
 */
 
 typedef struct
 {
-    struct list_head list;
-    size_t size;
-    char *data;
+    struct list_head list; /**< list item */
+    size_t size; /**< size in bytes */
+    char *data; /**< string data */
 }
 ec_eeprom_string_t;
 
 /*****************************************************************************/
 
 /**
-   Sync-Manager-Konfiguration laut EEPROM.
+   Sync manager configuration (EEPROM).
 */
 
 typedef struct
 {
-    struct list_head list;
-    unsigned int index;
-    uint16_t physical_start_address;
-    uint16_t length;
-    uint8_t control_register;
-    uint8_t enable;
+    struct list_head list; /**< list item */
+    unsigned int index; /**< sync manager index */
+    uint16_t physical_start_address; /**< physical start address */
+    uint16_t length; /**< data length in bytes */
+    uint8_t control_register; /**< control register value */
+    uint8_t enable; /**< enable bit */
 }
 ec_eeprom_sync_t;
 
 /*****************************************************************************/
 
 /**
-   PDO-Typ.
+   PDO type.
 */
 
 typedef enum
 {
-    EC_RX_PDO,
-    EC_TX_PDO
+    EC_RX_PDO, /**< Reveive PDO */
+    EC_TX_PDO /**< Transmit PDO */
 }
 ec_pdo_type_t;
 
 /*****************************************************************************/
 
 /**
-   PDO-Beschreibung im EEPROM.
+   PDO description (EEPROM).
 */
 
 typedef struct
 {
-    struct list_head list;
-    ec_pdo_type_t type;
-    uint16_t index;
-    uint8_t sync_manager;
-    char *name;
-    struct list_head entries;
+    struct list_head list; /**< list item */
+    ec_pdo_type_t type; /**< PDO type */
+    uint16_t index; /**< PDO index */
+    uint8_t sync_manager; /**< assigned sync manager */
+    char *name; /**< PDO name */
+    struct list_head entries; /**< entry list */
 }
 ec_eeprom_pdo_t;
 
 /*****************************************************************************/
 
 /**
-   PDO-Entry-Beschreibung im EEPROM.
+   PDO entry description (EEPROM).
 */
 
 typedef struct
 {
-    struct list_head list;
-    uint16_t index;
-    uint8_t subindex;
-    char *name;
-    uint8_t bit_length;
+    struct list_head list; /**< list item */
+    uint16_t index; /**< PDO index */
+    uint8_t subindex; /**< entry subindex */
+    char *name; /**< entry name */
+    uint8_t bit_length; /**< entry length in bit */
 }
 ec_eeprom_pdo_entry_t;
 
 /*****************************************************************************/
 
 /**
-   CANopen-SDO.
+   CANopen SDO.
 */
 
 typedef struct
 {
-    struct list_head list;
-    uint16_t index;
+    struct list_head list; /**< list item */
+    uint16_t index; /**< SDO index */
     //uint16_t type;
-    uint8_t object_code;
-    char *name;
-    struct list_head entries;
+    uint8_t object_code; /**< object code */
+    char *name; /**< SDO name */
+    struct list_head entries; /**< entry list */
 }
 ec_sdo_t;
 
 /*****************************************************************************/
 
 /**
-   CANopen-SDO-Entry.
+   CANopen SDO entry.
 */
 
 typedef struct
 {
-    struct list_head list;
-    uint8_t subindex;
-    uint16_t data_type;
-    uint16_t bit_length;
-    char *name;
+    struct list_head list; /**< list item */
+    uint8_t subindex; /**< entry subindex */
+    uint16_t data_type; /**< entry data type */
+    uint16_t bit_length; /**< entry length in bit */
+    char *name; /**< entry name */
 }
 ec_sdo_entry_t;
 
@@ -189,69 +189,68 @@ ec_sdo_entry_t;
 
 struct ec_slave
 {
-    struct list_head list; /**< Noetig fuer Slave-Liste im Master */
-    struct kobject kobj; /**< Kernel-Object */
-    ec_master_t *master; /**< EtherCAT-Master, zu dem der Slave gehört. */
+    struct list_head list; /**< list item */
+    struct kobject kobj; /**< kobject */
+    ec_master_t *master; /**< master owning the slave */
 
-    // Addresses
-    uint16_t ring_position; /**< Position des Slaves im Bus */
-    uint16_t station_address; /**< Konfigurierte Slave-Adresse */
-    uint16_t coupler_index; /**< Letzter Buskoppler */
-    uint16_t coupler_subindex; /**< Index hinter letztem Buskoppler */
+    // addresses
+    uint16_t ring_position; /**< ring position */
+    uint16_t station_address; /**< configured station address */
+    uint16_t coupler_index; /**< index of the last bus coupler */
+    uint16_t coupler_subindex; /**< index of this slave after last coupler */
 
-    // Base data
-    uint8_t base_type; /**< Slave-Typ */
-    uint8_t base_revision; /**< Revision */
-    uint16_t base_build; /**< Build-Nummer */
-    uint16_t base_fmmu_count; /**< Anzahl unterstützter FMMUs */
-    uint16_t base_sync_count; /**< Anzahl unterstützter Sync-Manager */
+    // base data
+    uint8_t base_type; /**< slave type */
+    uint8_t base_revision; /**< revision */
+    uint16_t base_build; /**< build number */
+    uint16_t base_fmmu_count; /**< number of supported FMMUs */
+    uint16_t base_sync_count; /**< number of supported sync managers */
 
-    // Data link status
-    uint8_t dl_link[4]; /**< Verbindung erkannt */
-    uint8_t dl_loop[4]; /**< Loop geschlossen */
-    uint8_t dl_signal[4]; /**< Signal an RX-Seite erkannt */
+    // data link status
+    uint8_t dl_link[4]; /**< link detected */
+    uint8_t dl_loop[4]; /**< loop closed */
+    uint8_t dl_signal[4]; /**< detected signal on RX port */
 
-    // Slave information interface
-    uint16_t sii_alias; /**< Configured station alias */
-    uint32_t sii_vendor_id; /**< Identifikationsnummer des Herstellers */
-    uint32_t sii_product_code; /**< Herstellerspezifischer Produktcode */
-    uint32_t sii_revision_number; /**< Revisionsnummer */
-    uint32_t sii_serial_number; /**< Seriennummer der Klemme */
-    uint16_t sii_rx_mailbox_offset; /**< Adresse der Mailbox (Master->Slave) */
-    uint16_t sii_rx_mailbox_size; /**< Adresse der Mailbox (Master->Slave) */
-    uint16_t sii_tx_mailbox_offset; /**< Adresse der Mailbox (Slave->Master) */
-    uint16_t sii_tx_mailbox_size; /**< Adresse der Mailbox (Slave->Master) */
-    uint16_t sii_mailbox_protocols; /**< Unterstützte Mailbox-Protokolle */
-    uint8_t sii_physical_layer[4]; /**< Uebertragungsarten der Ports */
+    // slave information interface
+    uint16_t sii_alias; /**< configured station alias */
+    uint32_t sii_vendor_id; /**< vendor id */
+    uint32_t sii_product_code; /**< vendor's product code */
+    uint32_t sii_revision_number; /**< revision number */
+    uint32_t sii_serial_number; /**< serial number */
+    uint16_t sii_rx_mailbox_offset; /**< mailbox address (master to slave) */
+    uint16_t sii_rx_mailbox_size; /**< mailbox size (master to slave) */
+    uint16_t sii_tx_mailbox_offset; /**< mailbox address (slave to master) */
+    uint16_t sii_tx_mailbox_size; /**< mailbox size (slave to master) */
+    uint16_t sii_mailbox_protocols; /**< supported mailbox protocols */
+    uint8_t sii_physical_layer[4]; /**< port media */
 
-    const ec_slave_type_t *type; /**< Zeiger auf die Beschreibung
-                                    des Slave-Typs */
+    const ec_slave_type_t *type; /**< pointer to slave type object */
 
-    uint8_t registered; /**< Der Slave wurde registriert */
+    uint8_t registered; /**< true, if slave has been registered */
 
-    ec_fmmu_t fmmus[EC_MAX_FMMUS]; /**< FMMU-Konfigurationen */
-    uint8_t fmmu_count; /**< Wieviele FMMUs schon benutzt sind. */
+    ec_fmmu_t fmmus[EC_MAX_FMMUS]; /**< FMMU configurations */
+    uint8_t fmmu_count; /**< number of FMMUs used */
 
-    struct list_head eeprom_strings; /**< Strings im EEPROM */
-    struct list_head eeprom_syncs; /**< Syncmanager-Konfigurationen (EEPROM) */
-    struct list_head eeprom_pdos; /**< PDO-Beschreibungen im EEPROM */
+    struct list_head eeprom_strings; /**< EEPROM STRING categories */
+    struct list_head eeprom_syncs; /**< EEPROM SYNC MANAGER categories */
+    struct list_head eeprom_pdos; /**< EEPROM [RT]XPDO categories */
 
-    char *eeprom_name; /**< Slave-Name laut Hersteller */
-    char *eeprom_group; /**< Slave-Beschreibung laut Hersteller */
-    char *eeprom_desc; /**< Slave-Beschreibung laut Hersteller */
+    char *eeprom_name; /**< slave name acc. to EEPROM */
+    char *eeprom_group; /**< slave group acc. to EEPROM */
+    char *eeprom_desc; /**< slave description acc. to EEPROM */
 
-    struct list_head sdo_dictionary; /**< SDO-Verzeichnis des Slaves */
+    struct list_head sdo_dictionary; /**< SDO directory list */
 
-    ec_command_t mbox_command; /**< Kommando für Mailbox-Kommunikation */
+    ec_command_t mbox_command; /**< mailbox command */
 };
 
 /*****************************************************************************/
 
-// Slave construction/destruction
+// slave construction/destruction
 int ec_slave_init(ec_slave_t *, ec_master_t *, uint16_t, uint16_t);
 void ec_slave_clear(struct kobject *);
 
-// Slave control
+// slave control
 int ec_slave_fetch(ec_slave_t *);
 int ec_slave_sii_read16(ec_slave_t *, uint16_t, uint16_t *);
 int ec_slave_sii_read32(ec_slave_t *, uint16_t, uint32_t *);
@@ -260,19 +259,13 @@ int ec_slave_state_change(ec_slave_t *, uint8_t);
 int ec_slave_prepare_fmmu(ec_slave_t *, const ec_domain_t *,
                           const ec_sync_t *);
 
-// CANopen over EtherCAT
+// CoE
 int ec_slave_fetch_sdo_list(ec_slave_t *);
 
-// Misc
+// misc.
 void ec_slave_print(const ec_slave_t *, unsigned int);
 int ec_slave_check_crc(ec_slave_t *);
 
 /*****************************************************************************/
 
 #endif
-
-/* Emacs-Konfiguration
-;;; Local Variables: ***
-;;; c-basic-offset:4 ***
-;;; End: ***
-*/

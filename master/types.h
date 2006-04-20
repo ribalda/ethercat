@@ -2,7 +2,7 @@
  *
  *  t y p e s . h
  *
- *  EtherCAT-Slave-Typen.
+ *  EtherCAT slave types.
  *
  *  $Id$
  *
@@ -23,27 +23,27 @@
 /*****************************************************************************/
 
 /**
-   Besondere Slaves.
+   Special slaves.
 */
 
 typedef enum
 {
-    EC_TYPE_NORMAL,
-    EC_TYPE_BUS_COUPLER,
-    EC_TYPE_EOE
+    EC_TYPE_NORMAL, /**< no special slave */
+    EC_TYPE_BUS_COUPLER, /**< slave is a bus coupler */
+    EC_TYPE_EOE /**< slave is an EoE switch */
 }
 ec_special_type_t;
 
 /*****************************************************************************/
 
 /**
-   Prozessdatenfeld.
+   Process data field.
 */
 
 typedef struct
 {
-    const char *name;
-    size_t size;
+    const char *name; /**< field name */
+    size_t size; /**< field size in bytes */
 }
 ec_field_t;
 
@@ -55,60 +55,45 @@ ec_field_t;
 
 typedef struct
 {
-    uint16_t physical_start_address;
-    uint16_t size;
-    uint8_t control_byte;
-    const ec_field_t *fields[EC_MAX_FIELDS];
+    uint16_t physical_start_address; /**< physical start address */
+    uint16_t size; /**< size in bytes */
+    uint8_t control_byte; /**< control register value */
+    const ec_field_t *fields[EC_MAX_FIELDS]; /**< field array */
 }
 ec_sync_t;
 
 /*****************************************************************************/
 
 /**
-   Beschreibung eines EtherCAT-Slave-Typs.
-
-   Diese Beschreibung dient zur Konfiguration einer bestimmten
-   Slave-Art. Sie enthält die Konfigurationsdaten für die
-   Slave-internen Sync-Manager und FMMUs.
+   Slave description type.
 */
 
 typedef struct ec_slave_type
 {
-    const char *vendor_name; /**< Name des Herstellers */
-    const char *product_name; /**< Name des Slaves-Typs */
-    const char *description; /**< Genauere Beschreibung des Slave-Typs */
-    ec_special_type_t special; /**< Spezieller Slave-Typ */
-    const ec_sync_t *sync_managers[EC_MAX_SYNC]; /**< Sync-Manager
-                                                    Konfigurationen */
+    const char *vendor_name; /**< vendor name*/
+    const char *product_name; /**< product name */
+    const char *description; /**< free description */
+    ec_special_type_t special; /**< special slave type? */
+    const ec_sync_t *sync_managers[EC_MAX_SYNC]; /**< sync managers */
 }
 ec_slave_type_t;
 
 /*****************************************************************************/
 
 /**
-   Identifikation eines Slave-Typs.
-
-   Diese Struktur wird zur 1:n-Zuordnung von Hersteller- und
-   Produktcodes zu den einzelnen Slave-Typen verwendet.
+   Slave type identification.
 */
 
-typedef struct slave_ident
+typedef struct
 {
-    uint32_t vendor_id; /**< Hersteller-Code */
-    uint32_t product_code; /**< Herstellerspezifischer Produktcode */
-    const ec_slave_type_t *type; /**< Zeiger auf den entsprechenden Typ */
+    uint32_t vendor_id; /**< vendor id */
+    uint32_t product_code; /**< product code */
+    const ec_slave_type_t *type; /**< associated slave description object */
 }
 ec_slave_ident_t;
 
-extern ec_slave_ident_t slave_idents[]; /**< Statisches Array der
-                                           Slave-Identifikationen */
+extern ec_slave_ident_t slave_idents[]; /**< array with slave descriptions */
 
 /*****************************************************************************/
 
 #endif
-
-/* Emacs-Konfiguration
-;;; Local Variables: ***
-;;; c-basic-offset:4 ***
-;;; End: ***
-*/

@@ -2,7 +2,7 @@
  *
  *  m a i l b o x . h
  *
- *  Mailbox-Funktionen.
+ *  Mailbox functionality.
  *
  *  $Id$
  *
@@ -27,9 +27,3 @@ uint8_t *ec_slave_mbox_simple_receive(ec_slave_t *, uint8_t, size_t *);
 /*****************************************************************************/
 
 #endif
-
-/* Emacs-Konfiguration
-;;; Local Variables: ***
-;;; c-basic-offset:4 ***
-;;; End: ***
-*/

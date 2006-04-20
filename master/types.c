@@ -2,7 +2,7 @@
  *
  *  t y p e s . c
  *
- *  EtherCAT-Slave-Typen.
+ *  EtherCAT slave descriptions.
  *
  *  $Id$
  *
@@ -18,36 +18,34 @@
 const ec_sync_t mailbox_sm0 = {0x1800, 246, 0x26, {NULL}};
 const ec_sync_t mailbox_sm1 = {0x18F6, 246, 0x22, {NULL}};
 
-/*****************************************************************************/
-
-/* Klemmen-Objekte */
-
-/*****************************************************************************/
+/******************************************************************************
+ *  slave objects
+ *****************************************************************************/
 
 const ec_slave_type_t Beckhoff_EK1100 = {
     "Beckhoff", "EK1100", "Bus Coupler", EC_TYPE_BUS_COUPLER,
-    {NULL} // Keine Sync-Manager
+    {NULL} // no sync managers
 };
 
 /*****************************************************************************/
 
 const ec_slave_type_t Beckhoff_EK1110 = {
     "Beckhoff", "EK1110", "Extension terminal", EC_TYPE_NORMAL,
-    {NULL} // Keine Sync-Manager
+    {NULL} // no sync managers
 };
 
 /*****************************************************************************/
 
 const ec_slave_type_t Beckhoff_BK1120 = {
     "Beckhoff", "BK1120", "KBUS Coupler", EC_TYPE_NORMAL,
-    {NULL} // Keine Sync-Manager
+    {NULL} // no sync managers
 };
 
 /*****************************************************************************/
 
 const ec_field_t el1014_in = {"InputValue", 1};
 
-const ec_sync_t el1014_sm0 = { // Inputs
+const ec_sync_t el1014_sm0 = { // inputs
     0x1000, 1, 0x00,
     {&el1014_in, NULL}
 };
@@ -195,15 +193,10 @@ const ec_slave_type_t TR_Electronic_LinEnc2 = {
 /*****************************************************************************/
 
 /**
-   Beziehung zwischen Identifikationsnummern und Klemmen-Objekt.
-
-   Diese Tabelle stellt die Beziehungen zwischen bestimmten Kombinationen
-   aus Vendor-IDs und Product-Codes und der entsprechenden Klemme her.
-   Neue Klemmen müssen hier eingetragen werden.
+   Mapping between vendor IDs and product codes <=> slave objects.
 */
 
-ec_slave_ident_t slave_idents[] =
-{
+ec_slave_ident_t slave_idents[] = {
     {0x00000002, 0x03F63052, &Beckhoff_EL1014},
     {0x00000002, 0x044C2C52, &Beckhoff_EK1100},
     {0x00000002, 0x04562C52, &Beckhoff_EK1110},
@@ -222,9 +215,3 @@ ec_slave_ident_t slave_idents[] =
 };
 
 /*****************************************************************************/
-
-/* Emacs-Konfiguration
-;;; Local Variables: ***
-;;; c-basic-offset:4 ***
-;;; End: ***
-*/

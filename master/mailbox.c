@@ -2,7 +2,7 @@
  *
  *  m a i l b o x . c
  *
- *  Mailbox-Funktionen
+ *  Mailbox functionality.
  *
  *  $Id$
  *
@@ -18,12 +18,13 @@
 /*****************************************************************************/
 
 /**
-   Bereitet ein Mailbox-Send-Kommando vor.
- */
+   Prepares a mailbox-send command.
+   \return pointer to mailbox command data
+*/
 
-uint8_t *ec_slave_mbox_prepare_send(ec_slave_t *slave, /**< Slave */
-                                    uint8_t type, /**< Mailbox-Protokoll */
-                                    size_t size /**< Datengröße */
+uint8_t *ec_slave_mbox_prepare_send(ec_slave_t *slave, /**< slave */
+                                    uint8_t type, /**< mailbox protocol */
+                                    size_t size /**< size of the data */
                                     )
 {
     ec_command_t *command = &slave->mbox_command;
@@ -46,10 +47,10 @@ uint8_t *ec_slave_mbox_prepare_send(ec_slave_t *slave, /**< Slave */
                         slave->sii_rx_mailbox_size))
         return NULL;
 
-    EC_WRITE_U16(command->data,     size); // Mailbox service data length
-    EC_WRITE_U16(command->data + 2, slave->station_address); // Station address
-    EC_WRITE_U8 (command->data + 4, 0x00); // Channel & priority
-    EC_WRITE_U8 (command->data + 5, type); // Underlying protocol type
+    EC_WRITE_U16(command->data,     size); // mailbox service data length
+    EC_WRITE_U16(command->data + 2, slave->station_address); // station address
+    EC_WRITE_U8 (command->data + 4, 0x00); // hhannel & priority
+    EC_WRITE_U8 (command->data + 5, type); // underlying protocol type
 
     return command->data + 6;
 }
@@ -57,14 +58,15 @@ uint8_t *ec_slave_mbox_prepare_send(ec_slave_t *slave, /**< Slave */
 /*****************************************************************************/
 
 /**
-   Bereitet ein Kommando zum Abfragen des Mailbox-Zustandes vor.
- */
+   Prepares a command for checking the mailbox state.
+   \return 0 in case of success, else < 0
+*/
 
-int ec_slave_mbox_prepare_check(ec_slave_t *slave /**< Slave */)
+int ec_slave_mbox_prepare_check(ec_slave_t *slave /**< slave */)
 {
     ec_command_t *command = &slave->mbox_command;
 
-    // FIXME: Zweiter Sync-Manager nicht immer TX-Mailbox?
+    // FIXME: second sync manager?
     if (ec_command_nprd(command, slave->station_address, 0x808, 8))
         return -1;
 
@@ -74,10 +76,11 @@ int ec_slave_mbox_prepare_check(ec_slave_t *slave /**< Slave */)
 /*****************************************************************************/
 
 /**
-   Liest den Mailbox-Zustand aus einem empfangenen Kommando.
- */
+   Processes a mailbox state checking command.
+   \return 0 in case of success, else < 0
+*/
 
-int ec_slave_mbox_check(const ec_slave_t *slave /**< Slave */)
+int ec_slave_mbox_check(const ec_slave_t *slave /**< slave */)
 {
     return EC_READ_U8(slave->mbox_command.data + 5) & 8 ? 1 : 0;
 }
@@ -85,10 +88,11 @@ int ec_slave_mbox_check(const ec_slave_t *slave /**< Slave */)
 /*****************************************************************************/
 
 /**
-   Bereitet ein Kommando zum Laden von Daten von der Mailbox vor.
- */
+   Prepares a command to fetch mailbox data.
+   \return 0 in case of success, else < 0
+*/
 
-int ec_slave_mbox_prepare_fetch(ec_slave_t *slave /**< Slave */)
+int ec_slave_mbox_prepare_fetch(ec_slave_t *slave /**< slave */)
 {
     ec_command_t *command = &slave->mbox_command;
 
@@ -101,12 +105,13 @@ int ec_slave_mbox_prepare_fetch(ec_slave_t *slave /**< Slave */)
 /*****************************************************************************/
 
 /**
-   Verarbeitet empfangene Mailbox-Daten.
- */
+   Processes received mailbox data.
+   \return pointer to the received data
+*/
 
-uint8_t *ec_slave_mbox_fetch(ec_slave_t *slave, /**< Slave */
-                             uint8_t type, /**< Protokoll */
-                             size_t *size /**< Größe der empfangenen Daten */
+uint8_t *ec_slave_mbox_fetch(ec_slave_t *slave, /**< slave */
+                             uint8_t type, /**< expected mailbox protocol */
+                             size_t *size /**< size of the received data */
                              )
 {
     ec_command_t *command = &slave->mbox_command;
@@ -132,12 +137,12 @@ uint8_t *ec_slave_mbox_fetch(ec_slave_t *slave, /**< Slave */
 /*****************************************************************************/
 
 /**
-   Sendet und wartet auf den Empfang eines Mailbox-Kommandos.
- */
+   Sends a mailbox command and waits for its reception.
+   \return pointer to the received data
+*/
 
-uint8_t *ec_slave_mbox_simple_io(ec_slave_t *slave, /**< Slave */
-                                 size_t *size /**< Größe der gelesenen
-                                                 Daten */
+uint8_t *ec_slave_mbox_simple_io(ec_slave_t *slave, /**< slave */
+                                 size_t *size /**< size of the received data */
                                  )
 {
     uint8_t type;
@@ -158,13 +163,13 @@ uint8_t *ec_slave_mbox_simple_io(ec_slave_t *slave, /**< Slave */
 /*****************************************************************************/
 
 /**
-   Wartet auf den Empfang eines Mailbox-Kommandos.
- */
+   Waits for the reception of a mailbox command.
+   \return pointer to the received data
+*/
 
-uint8_t *ec_slave_mbox_simple_receive(ec_slave_t *slave, /**< Slave */
-                                      uint8_t type, /**< Protokoll */
-                                      size_t *size /**< Größe der gelesenen
-                                                      Daten */
+uint8_t *ec_slave_mbox_simple_receive(ec_slave_t *slave, /**< slave */
+                                      uint8_t type, /**< expected protocol */
+                                      size_t *size /**< received data size */
                                       )
 {
     cycles_t start, end, timeout;
@@ -186,7 +191,7 @@ uint8_t *ec_slave_mbox_simple_receive(ec_slave_t *slave, /**< Slave */
         end = get_cycles();
 
         if (ec_slave_mbox_check(slave))
-            break; // Proceed with receiving data
+            break; // proceed with receiving data
 
         if ((end - start) >= timeout) {
             EC_ERR("Mailbox check - Slave %i timed out.\n",

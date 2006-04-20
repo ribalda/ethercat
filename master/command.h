@@ -2,7 +2,7 @@
  *
  *  c o m m a n d . h
  *
- *  Struktur für ein EtherCAT-Kommando.
+ *  EtherCAT command structure.
  *
  *  $Id$
  *
@@ -18,7 +18,7 @@
 /*****************************************************************************/
 
 /**
-   EtherCAT-Kommando-Typ.
+   EtherCAT command type.
 */
 
 typedef enum
@@ -35,65 +35,57 @@ typedef enum
 ec_command_type_t;
 
 /**
-   EtherCAT-Kommando-Zustand.
+   EtherCAT command state.
 */
 
 typedef enum
 {
-    EC_CMD_INIT, /**< Neues Kommando */
-    EC_CMD_QUEUED, /**< Kommando in Warteschlange */
-    EC_CMD_SENT, /**< Kommando gesendet */
-    EC_CMD_RECEIVED, /**< Kommando empfangen */
-    EC_CMD_TIMEOUT, /**< Zeitgrenze überschritten */
-    EC_CMD_ERROR /**< Fehler beim Senden oder Empfangen */
+    EC_CMD_INIT, /**< new command */
+    EC_CMD_QUEUED, /**< command queued by master */
+    EC_CMD_SENT, /**< command has been sent */
+    EC_CMD_RECEIVED, /**< command has been received */
+    EC_CMD_TIMEOUT, /**< command timed out */
+    EC_CMD_ERROR /**< error while sending/receiving */
 }
 ec_command_state_t;
 
 /*****************************************************************************/
 
 /**
-   EtherCAT-Adresse.
-
-   Im EtherCAT-Kommando sind 4 Bytes für die Adresse reserviert, die je nach
-   Kommandotyp, eine andere Bedeutung haben können: Bei Autoinkrementbefehlen
-   sind die ersten zwei Bytes die (negative) Autoinkrement-Adresse, bei Knoten-
-   adressierten Befehlen entsprechen sie der Knotenadresse. Das dritte und
-   vierte Byte entspricht in diesen Fällen der physikalischen Speicheradresse
-   auf dem Slave. Bei einer logischen Adressierung entsprechen alle vier Bytes
-   der logischen Adresse.
+   EtherCAT address.
 */
 
 typedef union
 {
     struct
     {
-        uint16_t slave; /**< Adresse des Slaves (Ringposition oder Knoten) */
-        uint16_t mem; /**< Physikalische Speicheradresse im Slave */
+        uint16_t slave; /**< configured or autoincrement address */
+        uint16_t mem; /**< physical memory address */
     }
-    physical; /**< Physikalische Adresse */
+    physical; /**< physical address */
 
-    uint32_t logical; /**< Logische Adresse */
+    uint32_t logical; /**< logical address */
 }
 ec_address_t;
 
 /*****************************************************************************/
 
 /**
-   EtherCAT-Kommando.
+   EtherCAT command
 */
 
 typedef struct
 {
-    struct list_head list; /**< Kommando-Listeneintrag */
-    struct list_head queue; /**< Master-Kommando-Queue */
-    ec_command_type_t type; /**< Typ des Kommandos (APRD, NPWR, etc) */
-    ec_address_t address; /**< Adresse des/der Empfänger */
-    uint8_t *data; /**< Kommandodaten */
-    size_t mem_size; /**< Größe des Speichers */
-    size_t data_size; /**< Länge der zu sendenden und/oder empfangenen Daten */
-    uint8_t index; /**< Kommando-Index, wird vom Master beim Senden gesetzt. */
-    uint16_t working_counter; /**< Working-Counter */
-    ec_command_state_t state; /**< Zustand */
+    struct list_head list; /**< needed by domain command lists */
+    struct list_head queue; /**< master command queue item */
+    ec_command_type_t type; /**< command type (APRD, BWR, etc) */
+    ec_address_t address; /**< receipient address */
+    uint8_t *data; /**< command data */
+    size_t mem_size; /**< command \a data memory size */
+    size_t data_size; /**< size of the data in \a data */
+    uint8_t index; /**< command index (set by master) */
+    uint16_t working_counter; /**< working counter */
+    ec_command_state_t state; /**< command state */
 }
 ec_command_t;
 
@@ -113,9 +105,3 @@ int ec_command_lrw(ec_command_t *, uint32_t, size_t);
 /*****************************************************************************/
 
 #endif
-
-/* Emacs-Konfiguration
-;;; Local Variables: ***
-;;; c-basic-offset:4 ***
-;;; End: ***
-*/

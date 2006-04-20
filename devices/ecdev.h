@@ -1,8 +1,8 @@
 /******************************************************************************
  *
- * Oeffentliche EtherCAT-Schnittstellen fuer EtherCAT-Geraetetreiber.
+ *  EtherCAT interface for EtherCAT device drivers.
  *
- * $Id$
+ *  $Id$
  *
  *****************************************************************************/
 

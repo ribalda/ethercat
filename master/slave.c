@@ -2,7 +2,7 @@
  *
  *  s l a v e . c
  *
- *  Methoden für einen EtherCAT-Slave.
+ *  EtherCAT slave methods.
  *
  *  $Id$
  *
@@ -63,13 +63,14 @@ const ec_code_msg_t al_status_messages[];
 /*****************************************************************************/
 
 /**
-   EtherCAT-Slave-Konstruktor.
+   Slave constructor.
+   \return 0 in case of success, else < 0
 */
 
-int ec_slave_init(ec_slave_t *slave, /**< EtherCAT-Slave */
-                  ec_master_t *master, /**< EtherCAT-Master */
-                  uint16_t ring_position, /**< Ringposition */
-                  uint16_t station_address /**< Programmierte Adresse */
+int ec_slave_init(ec_slave_t *slave, /**< EtherCAT slave */
+                  ec_master_t *master, /**< EtherCAT master */
+                  uint16_t ring_position, /**< ring position */
+                  uint16_t station_address /**< station address to configure */
                   )
 {
     unsigned int i;
@@ -77,7 +78,7 @@ int ec_slave_init(ec_slave_t *slave, /**< EtherCAT-Slave */
     slave->ring_position = ring_position;
     slave->station_address = station_address;
 
-    // Init kobject and add it to the hierarchy
+    // init kobject and add it to the hierarchy
     memset(&slave->kobj, 0x00, sizeof(struct kobject));
     kobject_init(&slave->kobj);
     slave->kobj.ktype = &ktype_ec_slave;
@@ -133,10 +134,10 @@ int ec_slave_init(ec_slave_t *slave, /**< EtherCAT-Slave */
 /*****************************************************************************/
 
 /**
-   EtherCAT-Slave-Destruktor.
+   Slave destructor.
 */
 
-void ec_slave_clear(struct kobject *kobj /**< KObject des Slaves */)
+void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
 {
     ec_slave_t *slave;
     ec_eeprom_string_t *string, *next_str;
@@ -148,24 +149,24 @@ void ec_slave_clear(struct kobject *kobj /**< KObject des Slaves */)
 
     slave = container_of(kobj, ec_slave_t, kobj);
 
-    // Alle Strings freigeben
+    // free all string objects
     list_for_each_entry_safe(string, next_str, &slave->eeprom_strings, list) {
         list_del(&string->list);
         kfree(string);
     }
 
-    // Alle Sync-Manager freigeben
+    // free all sync managers
     list_for_each_entry_safe(sync, next_sync, &slave->eeprom_syncs, list) {
         list_del(&sync->list);
         kfree(sync);
     }
 
-    // Alle PDOs freigeben
+    // free all PDOs
     list_for_each_entry_safe(pdo, next_pdo, &slave->eeprom_pdos, list) {
         list_del(&pdo->list);
         if (pdo->name) kfree(pdo->name);
 
-        // Alle Entries innerhalb eines PDOs freigeben
+        // free all PDO entries
         list_for_each_entry_safe(entry, next_ent, &pdo->entries, list) {
             list_del(&entry->list);
             if (entry->name) kfree(entry->name);
@@ -179,12 +180,12 @@ void ec_slave_clear(struct kobject *kobj /**< KObject des Slaves */)
     if (slave->eeprom_group) kfree(slave->eeprom_group);
     if (slave->eeprom_desc) kfree(slave->eeprom_desc);
 
-    // Alle SDOs freigeben
+    // free all SDOs
     list_for_each_entry_safe(sdo, next_sdo, &slave->sdo_dictionary, list) {
         list_del(&sdo->list);
         if (sdo->name) kfree(sdo->name);
 
-        // Alle Entries freigeben
+        // free all SDO entries
         list_for_each_entry_safe(en, next_en, &sdo->entries, list) {
             list_del(&en->list);
             kfree(en);
@@ -198,12 +199,11 @@ void ec_slave_clear(struct kobject *kobj /**< KObject des Slaves */)
 /*****************************************************************************/
 
 /**
-   Liest alle benötigten Informationen aus einem Slave.
-
-   \return 0 wenn alles ok, < 0 bei Fehler.
+   Reads all necessary information from a slave.
+   \return 0 in case of success, else < 0
 */
 
-int ec_slave_fetch(ec_slave_t *slave /**< EtherCAT-Slave */)
+int ec_slave_fetch(ec_slave_t *slave /**< EtherCAT slave */)
 {
     ec_command_t *command;
     unsigned int i;
@@ -211,7 +211,7 @@ int ec_slave_fetch(ec_slave_t *slave /**< EtherCAT-Slave */)
 
     command = &slave->master->simple_command;
 
-    // Read base data
+    // read base data
     if (ec_command_nprd(command, slave->station_address, 0x0000, 6)) return -1;
     if (unlikely(ec_master_simple_io(slave->master, command))) {
         EC_ERR("Reading base data from slave %i failed!\n",
@@ -228,7 +228,7 @@ int ec_slave_fetch(ec_slave_t *slave /**< EtherCAT-Slave */)
     if (slave->base_fmmu_count > EC_MAX_FMMUS)
         slave->base_fmmu_count = EC_MAX_FMMUS;
 
-    // Read DL status
+    // read data link status
     if (ec_command_nprd(command, slave->station_address, 0x0110, 2)) return -1;
     if (unlikely(ec_master_simple_io(slave->master, command))) {
         EC_ERR("Reading DL status from slave %i failed!\n",
@@ -243,7 +243,7 @@ int ec_slave_fetch(ec_slave_t *slave /**< EtherCAT-Slave */)
         slave->dl_signal[i] = dl_status & (1 << (9 + i * 2)) ? 1 : 0;
     }
 
-    // Read EEPROM data
+    // read EEPROM data
     if (ec_slave_sii_read16(slave, 0x0004, &slave->sii_alias))
         return -1;
     if (ec_slave_sii_read32(slave, 0x0008, &slave->sii_vendor_id))
@@ -276,18 +276,16 @@ int ec_slave_fetch(ec_slave_t *slave /**< EtherCAT-Slave */)
 /*****************************************************************************/
 
 /**
-   Liest 16 Bit aus dem Slave-Information-Interface
-   eines EtherCAT-Slaves.
-
-   \return 0 bei Erfolg, sonst < 0
+   Reads 16 bit from the slave information interface (SII).
+   \return 0 in case of success, else < 0
 */
 
 int ec_slave_sii_read16(ec_slave_t *slave,
-                        /**< EtherCAT-Slave */
+                        /**< EtherCAT slave */
                         uint16_t offset,
-                        /**< Adresse des zu lesenden SII-Registers */
+                        /**< address of the SII register to read */
                         uint16_t *target
-                        /**< Speicher für Wert (16-Bit) */
+                        /**< target memory */
                         )
 {
     ec_command_t *command;
@@ -295,7 +293,7 @@ int ec_slave_sii_read16(ec_slave_t *slave,
 
     command = &slave->master->simple_command;
 
-    // Initiate read operation
+    // initiate read operation
     if (ec_command_npwr(command, slave->station_address, 0x502, 6)) return -1;
     EC_WRITE_U8 (command->data,     0x00); // read-only access
     EC_WRITE_U8 (command->data + 1, 0x01); // request read operation
@@ -304,10 +302,6 @@ int ec_slave_sii_read16(ec_slave_t *slave,
         EC_ERR("SII-read failed on slave %i!\n", slave->ring_position);
         return -1;
     }
-
-    // Der Slave legt die Informationen des Slave-Information-Interface
-    // in das Datenregister und löscht daraufhin ein Busy-Bit. Solange
-    // den Status auslesen, bis das Bit weg ist.
 
     start = get_cycles();
     timeout = (cycles_t) 100 * cpu_khz; // 100ms
@@ -326,6 +320,7 @@ int ec_slave_sii_read16(ec_slave_t *slave,
 
         end = get_cycles();
 
+        // check for "busy bit"
         if (likely((EC_READ_U8(command->data + 1) & 0x81) == 0)) {
             *target = EC_READ_U16(command->data + 6);
             return 0;
@@ -341,18 +336,16 @@ int ec_slave_sii_read16(ec_slave_t *slave,
 /*****************************************************************************/
 
 /**
-   Liest 32 Bit aus dem Slave-Information-Interface
-   eines EtherCAT-Slaves.
-
-   \return 0 bei Erfolg, sonst < 0
+   Reads 32 bit from the slave information interface (SII).
+   \return 0 in case of success, else < 0
 */
 
 int ec_slave_sii_read32(ec_slave_t *slave,
-                        /**< EtherCAT-Slave */
+                        /**< EtherCAT slave */
                         uint16_t offset,
-                        /**< Adresse des zu lesenden SII-Registers */
+                        /**< address of the SII register to read */
                         uint32_t *target
-                        /**< Speicher für Wert (32-Bit) */
+                        /**< target memory */
                         )
 {
     ec_command_t *command;
@@ -360,7 +353,7 @@ int ec_slave_sii_read32(ec_slave_t *slave,
 
     command = &slave->master->simple_command;
 
-    // Initiate read operation
+    // initiate read operation
     if (ec_command_npwr(command, slave->station_address, 0x502, 6)) return -1;
     EC_WRITE_U8 (command->data,     0x00); // read-only access
     EC_WRITE_U8 (command->data + 1, 0x01); // request read operation
@@ -369,10 +362,6 @@ int ec_slave_sii_read32(ec_slave_t *slave,
         EC_ERR("SII-read failed on slave %i!\n", slave->ring_position);
         return -1;
     }
-
-    // Der Slave legt die Informationen des Slave-Information-Interface
-    // in das Datenregister und löscht daraufhin ein Busy-Bit. Solange
-    // den Status auslesen, bis das Bit weg ist.
 
     start = get_cycles();
     timeout = (cycles_t) 100 * cpu_khz; // 100ms
@@ -391,6 +380,7 @@ int ec_slave_sii_read32(ec_slave_t *slave,
 
         end = get_cycles();
 
+        // check "busy bit"
         if (likely((EC_READ_U8(command->data + 1) & 0x81) == 0)) {
             *target = EC_READ_U32(command->data + 6);
             return 0;
@@ -406,18 +396,16 @@ int ec_slave_sii_read32(ec_slave_t *slave,
 /*****************************************************************************/
 
 /**
-   Schreibt 16 Bit Daten in das Slave-Information-Interface
-   eines EtherCAT-Slaves.
-
-   \return 0 bei Erfolg, sonst < 0
+   Writes 16 bit of data to the slave information interface (SII).
+   \return 0 in case of success, else < 0
 */
 
 int ec_slave_sii_write16(ec_slave_t *slave,
-                         /**< EtherCAT-Slave */
+                         /**< EtherCAT slave */
                          uint16_t offset,
-                         /**< Adresse des zu lesenden SII-Registers */
+                         /**< address of the SII register to write */
                          uint16_t value
-                         /**< Zu schreibender Wert */
+                         /**< new value */
                          )
 {
     ec_command_t *command;
@@ -428,7 +416,7 @@ int ec_slave_sii_write16(ec_slave_t *slave,
     EC_INFO("SII-write (slave %i, offset 0x%04X, value 0x%04X)\n",
             slave->ring_position, offset, value);
 
-    // Initiate write operation
+    // initiate write operation
     if (ec_command_npwr(command, slave->station_address, 0x502, 8)) return -1;
     EC_WRITE_U8 (command->data,     0x01); // enable write access
     EC_WRITE_U8 (command->data + 1, 0x02); // request write operation
@@ -438,10 +426,6 @@ int ec_slave_sii_write16(ec_slave_t *slave,
         EC_ERR("SII-write failed on slave %i!\n", slave->ring_position);
         return -1;
     }
-
-    // Der Slave legt die Informationen des Slave-Information-Interface
-    // in das Datenregister und löscht daraufhin ein Busy-Bit. Solange
-    // den Status auslesen, bis das Bit weg ist.
 
     start = get_cycles();
     timeout = (cycles_t) 100 * cpu_khz; // 100ms
@@ -460,6 +444,7 @@ int ec_slave_sii_write16(ec_slave_t *slave,
 
         end = get_cycles();
 
+        // check "busy bit"
         if (likely((EC_READ_U8(command->data + 1) & 0x82) == 0)) {
             if (EC_READ_U8(command->data + 1) & 0x40) {
                 EC_ERR("SII-write failed!\n");
@@ -481,12 +466,11 @@ int ec_slave_sii_write16(ec_slave_t *slave,
 /*****************************************************************************/
 
 /**
-   Holt Daten aus dem EEPROM.
-
-   \return 0, wenn alles ok, sonst < 0
+   Fetches data from slave's EEPROM.
+   \return 0 in case of success, else < 0
 */
 
-int ec_slave_fetch_categories(ec_slave_t *slave /**< EtherCAT-Slave */)
+int ec_slave_fetch_categories(ec_slave_t *slave /**< EtherCAT slave */)
 {
     uint16_t word_offset, cat_type, word_count;
     uint32_t value;
@@ -507,13 +491,13 @@ int ec_slave_fetch_categories(ec_slave_t *slave /**< EtherCAT-Slave */)
             goto out_free;
         }
 
-        // Last category?
+        // last category?
         if ((value & 0xFFFF) == 0xFFFF) break;
 
         cat_type = value & 0x7FFF;
         word_count = (value >> 16) & 0xFFFF;
 
-        // Fetch category data
+        // fetch category data
         for (i = 0; i < word_count; i++) {
             if (ec_slave_sii_read32(slave, word_offset + 2 + i, &value)) {
                 EC_ERR("Unable to read category data word %i.\n", i);
@@ -574,13 +558,12 @@ int ec_slave_fetch_categories(ec_slave_t *slave /**< EtherCAT-Slave */)
 /*****************************************************************************/
 
 /**
-   Holt die Daten einer String-Kategorie.
-
-   \return 0 wenn alles ok, sonst < 0
+   Fetches data from a STRING category.
+   \return 0 in case of success, else < 0
 */
 
-int ec_slave_fetch_strings(ec_slave_t *slave, /**< EtherCAT-Slave */
-                           const uint8_t *data /**< Kategoriedaten */
+int ec_slave_fetch_strings(ec_slave_t *slave, /**< EtherCAT slave */
+                           const uint8_t *data /**< category data */
                            )
 {
     unsigned int string_count, i;
@@ -592,7 +575,7 @@ int ec_slave_fetch_strings(ec_slave_t *slave, /**< EtherCAT-Slave */
     offset = 1;
     for (i = 0; i < string_count; i++) {
         size = data[offset];
-        // Speicher für String-Objekt und Daten in einem Rutsch allozieren
+        // allocate memory for string structure and data at a single blow
         if (!(string = (ec_eeprom_string_t *)
               kmalloc(sizeof(ec_eeprom_string_t) + size + 1, GFP_KERNEL))) {
             EC_ERR("Failed to allocate string memory.\n");
@@ -613,11 +596,12 @@ int ec_slave_fetch_strings(ec_slave_t *slave, /**< EtherCAT-Slave */
 /*****************************************************************************/
 
 /**
-   Holt die Daten einer General-Kategorie.
+   Fetches data from a GENERAL category.
+   \return 0 in case of success, else < 0
 */
 
-int ec_slave_fetch_general(ec_slave_t *slave, /**< EtherCAT-Slave */
-                           const uint8_t *data /**< Kategorie-Daten */
+int ec_slave_fetch_general(ec_slave_t *slave, /**< EtherCAT slave */
+                           const uint8_t *data /**< category data */
                            )
 {
     unsigned int i;
@@ -630,7 +614,8 @@ int ec_slave_fetch_general(ec_slave_t *slave, /**< EtherCAT-Slave */
         return -1;
 
     for (i = 0; i < 4; i++)
-        slave->sii_physical_layer[i] = (data[4] & (0x03 << (i * 2))) >> (i * 2);
+        slave->sii_physical_layer[i] =
+            (data[4] & (0x03 << (i * 2))) >> (i * 2);
 
     return 0;
 }
@@ -638,18 +623,19 @@ int ec_slave_fetch_general(ec_slave_t *slave, /**< EtherCAT-Slave */
 /*****************************************************************************/
 
 /**
-   Holt die Daten einer Sync-Manager-Kategorie.
+   Fetches data from a SYNC MANAGER category.
+   \return 0 in case of success, else < 0
 */
 
-int ec_slave_fetch_sync(ec_slave_t *slave, /**< EtherCAT-Slave */
-                        const uint8_t *data, /**< Kategorie-Daten */
-                        size_t word_count /**< Anzahl Words */
+int ec_slave_fetch_sync(ec_slave_t *slave, /**< EtherCAT slave */
+                        const uint8_t *data, /**< category data */
+                        size_t word_count /**< number of words */
                         )
 {
     unsigned int sync_count, i;
     ec_eeprom_sync_t *sync;
 
-    sync_count = word_count / 4; // Sync-Manager-Strunktur ist 4 Worte lang
+    sync_count = word_count / 4; // sync manager struct is 4 words long
 
     for (i = 0; i < sync_count; i++, data += 8) {
         if (!(sync = (ec_eeprom_sync_t *)
@@ -673,13 +659,14 @@ int ec_slave_fetch_sync(ec_slave_t *slave, /**< EtherCAT-Slave */
 /*****************************************************************************/
 
 /**
-   Holt die Daten einer TXPDO-Kategorie.
+   Fetches data from a [RT]XPDO category.
+   \return 0 in case of success, else < 0
 */
 
-int ec_slave_fetch_pdo(ec_slave_t *slave, /**< EtherCAT-Slave */
-                       const uint8_t *data, /**< Kategorie-Daten */
-                       size_t word_count, /**< Anzahl Worte */
-                       ec_pdo_type_t pdo_type /**< PDO-Typ */
+int ec_slave_fetch_pdo(ec_slave_t *slave, /**< EtherCAT slave */
+                       const uint8_t *data, /**< category data */
+                       size_t word_count, /**< number of words */
+                       ec_pdo_type_t pdo_type /**< PDO type */
                        )
 {
     ec_eeprom_pdo_t *pdo;
@@ -733,7 +720,8 @@ int ec_slave_fetch_pdo(ec_slave_t *slave, /**< EtherCAT-Slave */
 /*****************************************************************************/
 
 /**
-   Durchsucht die temporären Strings und dupliziert den gefundenen String.
+   Searches the string list for an index and allocates a new string.
+   \return 0 in case of success, else < 0
 */
 
 int ec_slave_locate_string(ec_slave_t *slave, unsigned int index, char **ptr)
@@ -778,13 +766,11 @@ int ec_slave_locate_string(ec_slave_t *slave, unsigned int index, char **ptr)
 /*****************************************************************************/
 
 /**
-   Bestätigt einen Fehler beim Zustandswechsel.
+   Acknowledges an error after a state transition.
 */
 
-void ec_slave_state_ack(ec_slave_t *slave,
-                        /**< Slave, dessen Zustand geändert werden soll */
-                        uint8_t state
-                        /**< Alter Zustand */
+void ec_slave_state_ack(ec_slave_t *slave, /**< EtherCAT slave */
+                        uint8_t state /**< previous state */
                         )
 {
     ec_command_t *command;
@@ -805,7 +791,7 @@ void ec_slave_state_ack(ec_slave_t *slave,
 
     while (1)
     {
-        udelay(100); // Dem Slave etwas Zeit lassen...
+        udelay(100); // wait a little bit...
 
         if (ec_command_nprd(command, slave->station_address, 0x0130, 2))
             return;
@@ -835,12 +821,11 @@ void ec_slave_state_ack(ec_slave_t *slave,
 
 /**
    Reads the AL status code of a slave and displays it.
-
    If the AL status code is not supported, or if no error occurred (both
    resulting in code=0), nothing is displayed.
 */
 
-void ec_slave_read_al_status_code(ec_slave_t *slave /**< EtherCAT-Slave */)
+void ec_slave_read_al_status_code(ec_slave_t *slave /**< EtherCAT slave */)
 {
     ec_command_t *command;
     uint16_t code;
@@ -871,15 +856,12 @@ void ec_slave_read_al_status_code(ec_slave_t *slave /**< EtherCAT-Slave */)
 /*****************************************************************************/
 
 /**
-   Ändert den Zustand eines Slaves.
-
-   \return 0 bei Erfolg, sonst < 0
+   Does a state transition.
+   \return 0 in case of success, else < 0
 */
 
-int ec_slave_state_change(ec_slave_t *slave,
-                          /**< Slave, dessen Zustand geändert werden soll */
-                          uint8_t state
-                          /**< Neuer Zustand */
+int ec_slave_state_change(ec_slave_t *slave, /**< EtherCAT slave */
+                          uint8_t state /**< new state */
                           )
 {
     ec_command_t *command;
@@ -900,7 +882,7 @@ int ec_slave_state_change(ec_slave_t *slave,
 
     while (1)
     {
-        udelay(100); // Dem Slave etwas Zeit lassen...
+        udelay(100); // wait a little bit
 
         if (ec_command_nprd(command, slave->station_address, 0x0130, 2))
             return -1;
@@ -912,7 +894,7 @@ int ec_slave_state_change(ec_slave_t *slave,
 
         end = get_cycles();
 
-        if (unlikely(EC_READ_U8(command->data) & 0x10)) { // State change error
+        if (unlikely(EC_READ_U8(command->data) & 0x10)) { // state change error
             EC_ERR("Failed to set state 0x%02X - Slave %i refused state change"
                    " (code 0x%02X)!\n", state, slave->ring_position,
                    EC_READ_U8(command->data));
@@ -922,10 +904,8 @@ int ec_slave_state_change(ec_slave_t *slave,
             return -1;
         }
 
-        if (likely(EC_READ_U8(command->data) == (state & 0x0F))) {
-            // State change successful
-            return 0;
-        }
+        if (likely(EC_READ_U8(command->data) == (state & 0x0F)))
+            return 0; // state change successful
 
         if (unlikely((end - start) >= timeout)) {
             EC_ERR("Failed to check state 0x%02X of slave %i - Timeout!\n",
@@ -938,31 +918,30 @@ int ec_slave_state_change(ec_slave_t *slave,
 /*****************************************************************************/
 
 /**
-   Merkt eine FMMU-Konfiguration vor.
-
-   Die FMMU wird so konfiguriert, dass sie den gesamten Datenbereich des
-   entsprechenden Sync-Managers abdeckt. Für jede Domäne werden separate
-   FMMUs konfiguriert.
-
-   Wenn die entsprechende FMMU bereits konfiguriert ist, wird dies als
-   Erfolg zurückgegeben.
-
-   \return 0 bei Erfolg, sonst < 0
+   Prepares an FMMU configuration.
+   Configuration data for the FMMU is saved in the slave structure and is
+   written to the slave in ecrt_master_activate().
+   The FMMU configuration is done in a way, that the complete data range
+   of the corresponding sync manager is covered. Seperate FMMUs arce configured
+   for each domain.
+   If the FMMU configuration is already prepared, the function returns with
+   success.
+   \return 0 in case of success, else < 0
 */
 
-int ec_slave_prepare_fmmu(ec_slave_t *slave, /**< EtherCAT-Slave */
-                          const ec_domain_t *domain, /**< Domäne */
-                          const ec_sync_t *sync  /**< Sync-Manager */
+int ec_slave_prepare_fmmu(ec_slave_t *slave, /**< EtherCAT slave */
+                          const ec_domain_t *domain, /**< domain */
+                          const ec_sync_t *sync  /**< sync manager */
                           )
 {
     unsigned int i;
 
-    // FMMU schon vorgemerkt?
+    // FMMU configuration already prepared?
     for (i = 0; i < slave->fmmu_count; i++)
         if (slave->fmmus[i].domain == domain && slave->fmmus[i].sync == sync)
             return 0;
 
-    // Neue FMMU reservieren...
+    // reserve new FMMU...
 
     if (slave->fmmu_count >= slave->base_fmmu_count) {
         EC_ERR("Slave %i FMMU limit reached!\n", slave->ring_position);
@@ -981,16 +960,15 @@ int ec_slave_prepare_fmmu(ec_slave_t *slave, /**< EtherCAT-Slave */
 /*****************************************************************************/
 
 /**
-   Gibt alle Informationen über einen EtherCAT-Slave aus.
-
+   Outputs all information about a certain slave.
    Verbosity:
-     0 - Nur Slavetypen und Adressen
-     1 - mit EEPROM-Informationen
-    >1 - mit SDO-Dictionaries
+   - 0: Only slave types and addresses
+   - 1: with EEPROM information
+   - >1: with SDO dictionaries
 */
 
-void ec_slave_print(const ec_slave_t *slave, /**< EtherCAT-Slave */
-                    unsigned int verbosity /**< Geschwätzigkeit */
+void ec_slave_print(const ec_slave_t *slave, /**< EtherCAT slave */
+                    unsigned int verbosity /**< verbosity level */
                     )
 {
     ec_eeprom_sync_t *sync;
@@ -1146,12 +1124,11 @@ void ec_slave_print(const ec_slave_t *slave, /**< EtherCAT-Slave */
 /*****************************************************************************/
 
 /**
-   Gibt die Zählerstände der CRC-Fault-Counter aus und setzt diese zurück.
-
-   \return 0 bei Erfolg, sonst < 0
+   Outputs the values of the CRC faoult counters and resets them.
+   \return 0 in case of success, else < 0
 */
 
-int ec_slave_check_crc(ec_slave_t *slave /**< EtherCAT-Slave */)
+int ec_slave_check_crc(ec_slave_t *slave /**< EtherCAT slave */)
 {
     ec_command_t *command;
 
@@ -1164,8 +1141,7 @@ int ec_slave_check_crc(ec_slave_t *slave /**< EtherCAT-Slave */)
         return -1;
     }
 
-    // No CRC faults.
-    if (!EC_READ_U32(command->data)) return 0;
+    if (!EC_READ_U32(command->data)) return 0; // no CRC faults
 
     if (EC_READ_U8(command->data))
         EC_WARN("%3i RX-error%s on slave %i, channel A.\n",
@@ -1188,7 +1164,7 @@ int ec_slave_check_crc(ec_slave_t *slave /**< EtherCAT-Slave */)
                 EC_READ_U8(command->data + 3) == 1 ? "" : "s",
                 slave->ring_position);
 
-    // Reset CRC counters
+    // reset CRC counters
     if (ec_command_npwr(command, slave->station_address, 0x0300, 4)) return -1;
     EC_WRITE_U32(command->data, 0x00000000);
     if (unlikely(ec_master_simple_io(slave->master, command))) {
@@ -1203,12 +1179,12 @@ int ec_slave_check_crc(ec_slave_t *slave /**< EtherCAT-Slave */)
 /*****************************************************************************/
 
 /**
-   Schreibt den "Configured station alias".
-   \return 0, wenn alles ok, sonst < 0
+   Writes the "configured station alias" to the slave's EEPROM.
+   \return 0 in case of success, else < 0
 */
 
-int ecrt_slave_write_alias(ec_slave_t *slave, /** EtherCAT-Slave */
-                           uint16_t alias /** Neuer Alias */
+int ecrt_slave_write_alias(ec_slave_t *slave, /** EtherCAT slave */
+                           uint16_t alias /** new alias */
                            )
 {
     return ec_slave_sii_write16(slave, 0x0004, alias);
@@ -1217,14 +1193,13 @@ int ecrt_slave_write_alias(ec_slave_t *slave, /** EtherCAT-Slave */
 /*****************************************************************************/
 
 /**
-   Formatiert Attribut-Daten für lesenden Zugriff im SysFS
-
-   \return Anzahl Bytes im Speicher
+   Formats attribute data for SysFS read access.
+   \return number of bytes to read
 */
 
-ssize_t ec_show_slave_attribute(struct kobject *kobj, /**< KObject */
-                                struct attribute *attr, /**< Attribut */
-                                char *buffer /**< Speicher für die Daten */
+ssize_t ec_show_slave_attribute(struct kobject *kobj, /**< slave's kobject */
+                                struct attribute *attr, /**< attribute */
+                                char *buffer /**< memory to store data */
                                 )
 {
     ec_slave_t *slave = container_of(kobj, ec_slave_t, kobj);
@@ -1287,10 +1262,3 @@ const ec_code_msg_t al_status_messages[] = {
 EXPORT_SYMBOL(ecrt_slave_write_alias);
 
 /*****************************************************************************/
-
-/* Emacs-Konfiguration
-;;; Local Variables: ***
-;;; c-basic-offset:4 ***
-;;; End: ***
-*/
-

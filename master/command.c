@@ -2,7 +2,7 @@
  *
  *  c o m m a n d . c
  *
- *  Methoden für ein EtherCAT-Kommando.
+ *  Methods of an EtherCAT command.
  *
  *  $Id$
  *
@@ -31,7 +31,7 @@
 /*****************************************************************************/
 
 /**
-   EtherCAT-Kommando-Konstruktor.
+   Command constructor.
 */
 
 void ec_command_init(ec_command_t *command)
@@ -49,7 +49,7 @@ void ec_command_init(ec_command_t *command)
 /*****************************************************************************/
 
 /**
-   EtherCAT-Kommando-Destruktor.
+   Command destructor.
 */
 
 void ec_command_clear(ec_command_t *command)
@@ -60,7 +60,8 @@ void ec_command_clear(ec_command_t *command)
 /*****************************************************************************/
 
 /**
-   Alloziert Speicher.
+   Allocates command data memory.
+   \return 0 in case of success, else < 0
 */
 
 int ec_command_prealloc(ec_command_t *command, size_t size)
@@ -85,19 +86,19 @@ int ec_command_prealloc(ec_command_t *command, size_t size)
 /*****************************************************************************/
 
 /**
-   Initialisiert ein EtherCAT-NPRD-Kommando.
-
+   Initializes an EtherCAT NPRD command.
    Node-adressed physical read.
+   \return 0 in case of success, else < 0
 */
 
 int ec_command_nprd(ec_command_t *command,
-                    /**< EtherCAT-Rahmen */
+                    /**< EtherCAT command */
                     uint16_t node_address,
-                    /**< Adresse des Knotens (Slaves) */
+                    /**< configured station address */
                     uint16_t offset,
-                    /**< Physikalische Speicheradresse im Slave */
+                    /**< physical memory address */
                     size_t data_size
-                    /**< Länge der zu lesenden Daten */
+                    /**< number of bytes to read */
                     )
 {
     if (unlikely(node_address == 0x0000))
@@ -113,19 +114,19 @@ int ec_command_nprd(ec_command_t *command,
 /*****************************************************************************/
 
 /**
-   Initialisiert ein EtherCAT-NPWR-Kommando.
-
+   Initializes an EtherCAT NPWR command.
    Node-adressed physical write.
+   \return 0 in case of success, else < 0
 */
 
 int ec_command_npwr(ec_command_t *command,
-                    /**< EtherCAT-Rahmen */
+                    /**< EtherCAT command */
                     uint16_t node_address,
-                    /**< Adresse des Knotens (Slaves) */
+                    /**< configured station address */
                     uint16_t offset,
-                    /**< Physikalische Speicheradresse im Slave */
+                    /**< physical memory address */
                     size_t data_size
-                    /**< Länge der zu schreibenden Daten */
+                    /**< number of bytes to write */
                     )
 {
     if (unlikely(node_address == 0x0000))
@@ -141,19 +142,19 @@ int ec_command_npwr(ec_command_t *command,
 /*****************************************************************************/
 
 /**
-   Initialisiert ein EtherCAT-APRD-Kommando.
-
+   Initializes an EtherCAT APRD command.
    Autoincrement physical read.
+   \return 0 in case of success, else < 0
 */
 
 int ec_command_aprd(ec_command_t *command,
-                    /**< EtherCAT-Rahmen */
+                    /**< EtherCAT command */
                     uint16_t ring_position,
-                    /**< Position des Slaves im Bus */
+                    /**< auto-increment position */
                     uint16_t offset,
-                    /**< Physikalische Speicheradresse im Slave */
+                    /**< physical memory address */
                     size_t data_size
-                    /**< Länge der zu lesenden Daten */
+                    /**< number of bytes to read */
                     )
 {
     EC_FUNC_HEADER;
@@ -166,19 +167,19 @@ int ec_command_aprd(ec_command_t *command,
 /*****************************************************************************/
 
 /**
-   Initialisiert ein EtherCAT-APWR-Kommando.
-
+   Initializes an EtherCAT APWR command.
    Autoincrement physical write.
+   \return 0 in case of success, else < 0
 */
 
 int ec_command_apwr(ec_command_t *command,
-                    /**< EtherCAT-Rahmen */
+                    /**< EtherCAT command */
                     uint16_t ring_position,
-                    /**< Position des Slaves im Bus */
+                    /**< auto-increment position */
                     uint16_t offset,
-                    /**< Physikalische Speicheradresse im Slave */
+                    /**< physical memory address */
                     size_t data_size
-                    /**< Länge der zu schreibenden Daten */
+                    /**< number of bytes to write */
                     )
 {
     EC_FUNC_HEADER;
@@ -191,17 +192,17 @@ int ec_command_apwr(ec_command_t *command,
 /*****************************************************************************/
 
 /**
-   Initialisiert ein EtherCAT-BRD-Kommando.
-
+   Initializes an EtherCAT BRD command.
    Broadcast read.
+   \return 0 in case of success, else < 0
 */
 
 int ec_command_brd(ec_command_t *command,
-                   /**< EtherCAT-Rahmen */
+                   /**< EtherCAT command */
                    uint16_t offset,
-                   /**< Physikalische Speicheradresse im Slave */
+                   /**< physical memory address */
                    size_t data_size
-                   /**< Länge der zu lesenden Daten */
+                   /**< number of bytes to read */
                    )
 {
     EC_FUNC_HEADER;
@@ -214,17 +215,17 @@ int ec_command_brd(ec_command_t *command,
 /*****************************************************************************/
 
 /**
-   Initialisiert ein EtherCAT-BWR-Kommando.
-
+   Initializes an EtherCAT BWR command.
    Broadcast write.
+   \return 0 in case of success, else < 0
 */
 
 int ec_command_bwr(ec_command_t *command,
-                   /**< EtherCAT-Rahmen */
+                   /**< EtherCAT command */
                    uint16_t offset,
-                   /**< Physikalische Speicheradresse im Slave */
+                   /**< physical memory address */
                    size_t data_size
-                   /**< Länge der zu schreibenden Daten */
+                   /**< number of bytes to write */
                    )
 {
     EC_FUNC_HEADER;
@@ -237,17 +238,17 @@ int ec_command_bwr(ec_command_t *command,
 /*****************************************************************************/
 
 /**
-   Initialisiert ein EtherCAT-LRW-Kommando.
-
+   Initializes an EtherCAT LRW command.
    Logical read write.
+   \return 0 in case of success, else < 0
 */
 
 int ec_command_lrw(ec_command_t *command,
-                   /**< EtherCAT-Rahmen */
+                   /**< EtherCAT command */
                    uint32_t offset,
-                   /**< Logische Startadresse */
+                   /**< logical address */
                    size_t data_size
-                   /**< Länge der zu lesenden/schreibenden Daten */
+                   /**< number of bytes to read/write */
                    )
 {
     EC_FUNC_HEADER;
@@ -257,9 +258,3 @@ int ec_command_lrw(ec_command_t *command,
 }
 
 /*****************************************************************************/
-
-/* Emacs-Konfiguration
-;;; Local Variables: ***
-;;; c-basic-offset:4 ***
-;;; End: ***
-*/

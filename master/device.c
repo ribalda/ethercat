@@ -2,7 +2,7 @@
  *
  *  d e v i c e . c
  *
- *  Methoden für ein EtherCAT-Gerät.
+ *  EtherCAT device methods.
  *
  *  $Id$
  *
@@ -20,16 +20,15 @@
 /*****************************************************************************/
 
 /**
-   EtherCAT-Geräte-Konstuktor.
-
-   \return 0 wenn alles ok, < 0 bei Fehler (zu wenig Speicher)
+   Device constructor.
+   \return 0 in case of success, else < 0
 */
 
-int ec_device_init(ec_device_t *device, /**< EtherCAT-Gerät */
-                   ec_master_t *master, /**< Zugehöriger Master */
-                   struct net_device *net_dev, /**< Net-Device */
-                   ec_isr_t isr, /**< Adresse der ISR */
-                   struct module *module /**< Modul-Adresse */
+int ec_device_init(ec_device_t *device, /**< EtherCAT device */
+                   ec_master_t *master, /**< master owning the device */
+                   struct net_device *net_dev, /**< net_device structure */
+                   ec_isr_t isr, /**< pointer to device's ISR */
+                   struct module *module /**< pointer to the owning module */
                    )
 {
     struct ethhdr *eth;
@@ -49,7 +48,7 @@ int ec_device_init(ec_device_t *device, /**< EtherCAT-Gerät */
 
     device->tx_skb->dev = net_dev;
 
-    // Ethernet-II-Header hinzufuegen
+    // add Ethernet-II-header
     skb_reserve(device->tx_skb, ETH_HLEN);
     eth = (struct ethhdr *) skb_push(device->tx_skb, ETH_HLEN);
     eth->h_proto = htons(0x88A4);
@@ -62,13 +61,10 @@ int ec_device_init(ec_device_t *device, /**< EtherCAT-Gerät */
 /*****************************************************************************/
 
 /**
-   EtherCAT-Geräte-Destuktor.
-
-   Gibt den dynamisch allozierten Speicher des
-   EtherCAT-Gerätes (den Sende-Socket-Buffer) wieder frei.
+   EtherCAT device destuctor.
 */
 
-void ec_device_clear(ec_device_t *device /**< EtherCAT-Gerät */)
+void ec_device_clear(ec_device_t *device /**< EtherCAT device */)
 {
     if (device->open) ec_device_close(device);
     if (device->tx_skb) dev_kfree_skb(device->tx_skb);
@@ -77,17 +73,11 @@ void ec_device_clear(ec_device_t *device /**< EtherCAT-Gerät */)
 /*****************************************************************************/
 
 /**
-   Führt die open()-Funktion des Netzwerktreibers aus.
-
-   Dies entspricht einem "ifconfig up". Vorher wird der Zeiger
-   auf das EtherCAT-Gerät auf Gültigkeit geprüft und der
-   Gerätezustand zurückgesetzt.
-
-   \return 0 bei Erfolg, < 0: Ungültiger Zeiger, oder open()
-           fehlgeschlagen
+   Opens the EtherCAT device.
+   \return 0 in case of success, else < 0
 */
 
-int ec_device_open(ec_device_t *device /**< EtherCAT-Gerät */)
+int ec_device_open(ec_device_t *device /**< EtherCAT device */)
 {
     unsigned int i;
 
@@ -101,7 +91,7 @@ int ec_device_open(ec_device_t *device /**< EtherCAT-Gerät */)
         return 0;
     }
 
-    // Device could have received frames before
+    // device could have received frames before
     for (i = 0; i < 4; i++) ec_device_call_isr(device);
 
     device->link_state = 0;
@@ -114,13 +104,11 @@ int ec_device_open(ec_device_t *device /**< EtherCAT-Gerät */)
 /*****************************************************************************/
 
 /**
-   Führt die stop()-Funktion des net_devices aus.
-
-   \return 0 bei Erfolg, < 0: Kein Gerät zum Schließen oder
-           Schließen fehlgeschlagen.
+   Stops the EtherCAT device.
+   \return 0 in case of success, else < 0
 */
 
-int ec_device_close(ec_device_t *device /**< EtherCAT-Gerät */)
+int ec_device_close(ec_device_t *device /**< EtherCAT device */)
 {
     if (!device->dev) {
         EC_ERR("No device to close!\n");
@@ -140,12 +128,11 @@ int ec_device_close(ec_device_t *device /**< EtherCAT-Gerät */)
 /*****************************************************************************/
 
 /**
-   Liefert einen Zeiger auf den Sende-Speicher.
-
-   \return Zeiger auf den Speicher, in den die Frame-Daten sollen.
+   Returns a pointer to the device's transmit memory.
+   \return pointer to the TX socket buffer
 */
 
-uint8_t *ec_device_tx_data(ec_device_t *device /**< EtherCAT-Gerät */)
+uint8_t *ec_device_tx_data(ec_device_t *device /**< EtherCAT device */)
 {
     return device->tx_skb->data + ETH_HLEN;
 }
@@ -153,21 +140,19 @@ uint8_t *ec_device_tx_data(ec_device_t *device /**< EtherCAT-Gerät */)
 /*****************************************************************************/
 
 /**
-   Sendet den Inhalt des Socket-Buffers.
-
-   Schneidet den Inhalt des Socket-Buffers auf die (nun bekannte) Größe zu,
-   fügt den Ethernet-II-Header an und ruft die start_xmit()-Funktion der
-   Netzwerkkarte auf.
+   Sends the content of the transmit socket buffer.
+   Cuts the socket buffer content to the (now known) size, and calls the
+   start_xmit() function of the assigned net_device.
 */
 
-void ec_device_send(ec_device_t *device, /**< EtherCAT-Gerät */
-                    size_t size /**< Größe der zu sendenden Daten */
+void ec_device_send(ec_device_t *device, /**< EtherCAT device */
+                    size_t size /**< number of bytes to send */
                     )
 {
     if (unlikely(!device->link_state)) // Link down
         return;
 
-    // Framegröße auf (jetzt bekannte) Länge abschneiden
+    // set the right length for the data
     device->tx_skb->len = ETH_HLEN + size;
 
     if (unlikely(device->master->debug_level > 1)) {
@@ -175,36 +160,33 @@ void ec_device_send(ec_device_t *device, /**< EtherCAT-Gerät */
         ec_print_data(device->tx_skb->data + ETH_HLEN, size);
     }
 
-    // Senden einleiten
+    // start sending
     device->dev->hard_start_xmit(device->tx_skb, device->dev);
 }
 
 /*****************************************************************************/
 
 /**
-   Ruft die Interrupt-Routine der Netzwerkkarte auf.
+   Calls the interrupt service routine of the assigned net_device.
 */
 
-void ec_device_call_isr(ec_device_t *device /**< EtherCAT-Gerät */)
+void ec_device_call_isr(ec_device_t *device /**< EtherCAT device */)
 {
     if (likely(device->isr)) device->isr(0, device->dev, NULL);
 }
 
 /******************************************************************************
- *
- * Treiberschnittstelle
- *
+ *  Device interface
  *****************************************************************************/
 
 /**
-   Nimmt einen Empfangenen Rahmen entgegen.
-
-   Kopiert die empfangenen Daten in den Receive-Buffer.
+   Accepts a received frame.
+   Forwards the received data to the master.
 */
 
-void ecdev_receive(ec_device_t *device, /**< EtherCAT-Gerät */
-                   const void *data, /**< Zeiger auf empfangene Daten */
-                   size_t size /**< Größe der empfangenen Daten */
+void ecdev_receive(ec_device_t *device, /**< EtherCAT device */
+                   const void *data, /**< pointer to receibed data */
+                   size_t size /**< number of bytes received */
                    )
 {
     if (unlikely(device->master->debug_level > 1)) {
@@ -218,11 +200,11 @@ void ecdev_receive(ec_device_t *device, /**< EtherCAT-Gerät */
 /*****************************************************************************/
 
 /**
-   Setzt einen neuen Verbindungszustand.
+   Sets a new link state.
 */
 
-void ecdev_link_state(ec_device_t *device, /**< EtherCAT-Gerät */
-                      uint8_t state /**< Verbindungszustand */
+void ecdev_link_state(ec_device_t *device, /**< EtherCAT device */
+                      uint8_t state /**< new link state */
                       )
 {
     if (unlikely(!device)) {
@@ -242,9 +224,3 @@ EXPORT_SYMBOL(ecdev_receive);
 EXPORT_SYMBOL(ecdev_link_state);
 
 /*****************************************************************************/
-
-/* Emacs-Konfiguration
-;;; Local Variables: ***
-;;; c-basic-offset:4 ***
-;;; End: ***
-*/

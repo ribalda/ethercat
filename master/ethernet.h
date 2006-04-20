@@ -43,9 +43,3 @@ void ec_eoe_run(ec_eoe_t *);
 void ec_eoe_print(const ec_eoe_t *);
 
 /*****************************************************************************/
-
-/* Emacs-Konfiguration
-;;; Local Variables: ***
-;;; c-basic-offset:4 ***
-;;; End: ***
-*/

@@ -9,7 +9,7 @@
 ifneq ($(KERNELRELEASE),)
 
 #------------------------------------------------------------------------------
-# kbuild section
+#  kbuild section
 
 obj-m := master/ devices/
 
@@ -18,7 +18,7 @@ obj-m := master/ devices/
 else
 
 #------------------------------------------------------------------------------
-# default section
+#  default section
 
 ifneq ($(wildcard ethercat.conf),)
 include ethercat.conf

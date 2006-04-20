@@ -2,7 +2,7 @@
  *
  *  m i n i . c
  *
- *  Minimalmodul für EtherCAT
+ *  Minimal module for EtherCAT.
  *
  *  $Id$
  *
@@ -12,31 +12,28 @@
 #include <linux/delay.h>
 #include <linux/timer.h>
 
-#include "../include/ecrt.h" // Echtzeitschnittstelle
+#include "../include/ecrt.h" // EtherCAT realtime interface
 
 #define ASYNC
+#define FREQUENCY 100
 
 /*****************************************************************************/
-
-#define ABTASTFREQUENZ 100
 
 struct timer_list timer;
-
-/*****************************************************************************/
 
 // EtherCAT
 ec_master_t *master = NULL;
 ec_domain_t *domain1 = NULL;
 
-// Datenfelder
+// data fields
 //void *r_ssi_input, *r_ssi_status, *r_4102[3];
 
-// Kanäle
+// channels
 uint32_t k_pos;
 uint8_t k_stat;
 
 ec_field_init_t domain1_fields[] = {
-    {NULL, "1", "Beckhoff", "EL5001", "InputValue", 0},
+    {NULL, "1", "Beckhoff", "EL5001", "InputValue",   0},
     {NULL, "2", "Beckhoff", "EL4132", "OutputValue",  0},
     {}
 };
@@ -48,22 +45,22 @@ void run(unsigned long data)
     static unsigned int counter = 0;
 
 #ifdef ASYNC
-    // Empfangen
+    // receive
     ecrt_master_async_receive(master);
     ecrt_domain_process(domain1);
 #else
-    // Senden und empfangen
+    // send and receive
     ecrt_domain_queue(domain1);
     ecrt_master_run(master);
     ecrt_master_sync_io(master);
     ecrt_domain_process(domain1);
 #endif
 
-    // Prozessdaten verarbeiten
+    // process data
     //k_pos = EC_READ_U32(r_ssi);
 
 #ifdef ASYNC
-    // Senden
+    // send
     ecrt_domain_queue(domain1);
     ecrt_master_run(master);
     ecrt_master_async_send(master);
@@ -73,13 +70,13 @@ void run(unsigned long data)
         counter--;
     }
     else {
-        counter = ABTASTFREQUENZ;
+        counter = FREQUENCY;
         //printk(KERN_INFO "k_pos    = %i\n", k_pos);
         //printk(KERN_INFO "k_stat   = 0x%02X\n", k_stat);
     }
 
-    // Timer neu starten
-    timer.expires += HZ / ABTASTFREQUENZ;
+    // restart timer
+    timer.expires += HZ / FREQUENCY;
     add_timer(&timer);
 }
 
@@ -153,14 +150,14 @@ int __init init_mini_module(void)
 #endif
 
 #ifdef ASYNC
-    // Einmal senden und warten...
+    // send once and wait...
     ecrt_master_prepare_async_io(master);
 #endif
 
     printk("Starting cyclic sample thread.\n");
     init_timer(&timer);
     timer.function = run;
-    timer.expires = jiffies + 10; // Das erste Mal sofort feuern
+    timer.expires = jiffies + 10;
     add_timer(&timer);
 
     printk(KERN_INFO "=== Minimal EtherCAT environment started. ===\n");
@@ -203,8 +200,3 @@ module_exit(cleanup_mini_module);
 
 /*****************************************************************************/
 
-/* Emacs-Konfiguration
-;;; Local Variables: ***
-;;; c-basic-offset:4 ***
-;;; End: ***
-*/

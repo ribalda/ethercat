@@ -2,7 +2,7 @@
  *
  *  d o m a i n . c
  *
- *  Methoden für Gruppen von EtherCAT-Slaves.
+ *  EtherCAT domain methods.
  *
  *  $Id$
  *
@@ -40,12 +40,13 @@ static struct kobj_type ktype_ec_domain = {
 /*****************************************************************************/
 
 /**
-   Konstruktor einer EtherCAT-Domäne.
+   Domain constructor.
+   \return 0 in case of success, else < 0
 */
 
-int ec_domain_init(ec_domain_t *domain, /**< Domäne */
-                   ec_master_t *master, /**< Zugehöriger Master */
-                   unsigned int index /**< Domänen-Index */
+int ec_domain_init(ec_domain_t *domain, /**< EtherCAT domain */
+                   ec_master_t *master, /**< owning master */
+                   unsigned int index /**< domain index */
                    )
 {
     domain->master = master;
@@ -57,7 +58,7 @@ int ec_domain_init(ec_domain_t *domain, /**< Domäne */
     INIT_LIST_HEAD(&domain->field_regs);
     INIT_LIST_HEAD(&domain->commands);
 
-    // Init kobject and add it to the hierarchy
+    // init kobject and add it to the hierarchy
     memset(&domain->kobj, 0x00, sizeof(struct kobject));
     kobject_init(&domain->kobj);
     domain->kobj.ktype = &ktype_ec_domain;
@@ -73,10 +74,10 @@ int ec_domain_init(ec_domain_t *domain, /**< Domäne */
 /*****************************************************************************/
 
 /**
-   Destruktor einer EtherCAT-Domäne.
+   Domain destructor.
 */
 
-void ec_domain_clear(struct kobject *kobj /**< Kobject der Domäne */)
+void ec_domain_clear(struct kobject *kobj /**< kobject of the domain */)
 {
     ec_command_t *command, *next;
     ec_domain_t *domain;
@@ -98,16 +99,16 @@ void ec_domain_clear(struct kobject *kobj /**< Kobject der Domäne */)
 /*****************************************************************************/
 
 /**
-   Registriert ein Feld in einer Domäne.
-
-   \return 0 bei Erfolg, < 0 bei Fehler
+   Registeres a data field in a domain.
+   \return 0 in case of success, else < 0
 */
 
-int ec_domain_reg_field(ec_domain_t *domain, /**< Domäne */
-                        ec_slave_t *slave, /**< Slave */
-                        const ec_sync_t *sync, /**< Sync-Manager */
-                        uint32_t field_offset, /**< Datenfeld-Offset */
-                        void **data_ptr /**< Adresse des Prozessdatenzeigers */
+int ec_domain_reg_field(ec_domain_t *domain, /**< EtherCAT domain */
+                        ec_slave_t *slave, /**< slave */
+                        const ec_sync_t *sync, /**< sync manager */
+                        uint32_t field_offset, /**< data field offset */
+                        void **data_ptr /**< pointer to the process data
+                                           pointer */
                         )
 {
     ec_field_reg_t *field_reg;
@@ -136,10 +137,10 @@ int ec_domain_reg_field(ec_domain_t *domain, /**< Domäne */
 /*****************************************************************************/
 
 /**
-   Gibt die Liste der registrierten Datenfelder frei.
+   Clears the list of the registered data fields.
 */
 
-void ec_domain_clear_field_regs(ec_domain_t *domain)
+void ec_domain_clear_field_regs(ec_domain_t *domain /**< EtherCAT domain */)
 {
     ec_field_reg_t *field_reg, *next;
 
@@ -152,12 +153,13 @@ void ec_domain_clear_field_regs(ec_domain_t *domain)
 /*****************************************************************************/
 
 /**
-   Alloziert ein Prozessdatenkommando und fügt es in die Liste ein.
+   Allocates a process data command and appends it to the list.
+   \return 0 in case of success, else < 0
 */
 
-int ec_domain_add_command(ec_domain_t *domain, /**< Domäne */
-                          uint32_t offset, /**< Logisches Offset */
-                          size_t data_size /**< Größe der Kommando-Daten */
+int ec_domain_add_command(ec_domain_t *domain, /**< EtherCAT domain */
+                          uint32_t offset, /**< logical offset */
+                          size_t data_size /**< size of the command data */
                           )
 {
     ec_command_t *command;
@@ -181,15 +183,14 @@ int ec_domain_add_command(ec_domain_t *domain, /**< Domäne */
 /*****************************************************************************/
 
 /**
-   Erzeugt eine Domäne.
-
-   Reserviert den Speicher einer Domäne, berechnet die logischen Adressen der
-   FMMUs und setzt die Prozessdatenzeiger der registrierten Felder.
-
-   \return 0 bei Erfolg, < 0 bei Fehler
+   Creates a domain.
+   Reserves domain memory, calculates the logical addresses of the
+   corresponding FMMUs and sets the process data pointer of the registered
+   data fields.
+   \return 0 in case of success, else < 0
 */
 
-int ec_domain_alloc(ec_domain_t *domain, /**< Domäne */
+int ec_domain_alloc(ec_domain_t *domain, /**< EtherCAT domain */
                     uint32_t base_address /**< Logische Basisadresse */
                     )
 {
@@ -276,30 +277,33 @@ int ec_domain_alloc(ec_domain_t *domain, /**< Domäne */
 /*****************************************************************************/
 
 /**
-   Gibt die Anzahl der antwortenden Slaves aus.
+   Sets the number of responding slaves and outputs it on demand.
+   This number isn't really the number of responding slaves, but the sum of
+   the working counters of all domain commands. Some slaves increase the
+   working counter by 2, some by 1.
 */
 
-void ec_domain_response_count(ec_domain_t *domain, /**< Domäne */
-                              unsigned int count /**< Neue Anzahl */
+void ec_domain_response_count(ec_domain_t *domain, /**< EtherCAT domain */
+                              unsigned int count /**< new WC sum */
                               )
 {
     if (count != domain->response_count) {
         domain->response_count = count;
-        EC_INFO("Domain %i working counter change: %i\n", domain->index, count);
+        EC_INFO("Domain %i working counter change: %i\n", domain->index,
+                count);
     }
 }
 
 /*****************************************************************************/
 
 /**
-   Formatiert Attribut-Daten für lesenden Zugriff im SysFS
-
-   \return Anzahl Bytes im Speicher
+   Formats attribute data for SysFS reading.
+   \return number of bytes to read
 */
 
-ssize_t ec_show_domain_attribute(struct kobject *kobj, /**< KObject */
-                                 struct attribute *attr, /**< Attribut */
-                                 char *buffer /**< Speicher für die Daten */
+ssize_t ec_show_domain_attribute(struct kobject *kobj, /**< kobject */
+                                 struct attribute *attr, /**< attribute */
+                                 char *buffer /**< memory to store data in */
                                  )
 {
     ec_domain_t *domain = container_of(kobj, ec_domain_t, kobj);
@@ -312,43 +316,39 @@ ssize_t ec_show_domain_attribute(struct kobject *kobj, /**< KObject */
 }
 
 /******************************************************************************
- *
- * Echtzeitschnittstelle
- *
+ *  Realtime interface
  *****************************************************************************/
 
 /**
-   Registriert ein Datenfeld innerhalb einer Domäne.
-
-   - Ist \a data_ptr NULL, so wird der Slave nur auf den Typ überprüft.
-   - Wenn \a field_count 0 ist, wird angenommen, dass 1 Feld registriert werden
-     soll.
-   - Wenn \a field_count größer als 1 ist, wird angenommen, dass \a data_ptr
-     auf ein entsprechend großes Array zeigt.
-
-   \return Zeiger auf den Slave bei Erfolg, sonst NULL
+   Registers a data field in a domain.
+   - If \a data_ptr is NULL, the slave is only checked against its type.
+   - If \a field_count is 0, it is assumed that one data field is to be
+   registered.
+   - If \a field_count is greater then 1, it is assumed that \a data_ptr
+   is an array of the respective size.
+   \return pointer to the slave on success, else NULL
 */
 
 ec_slave_t *ecrt_domain_register_field(ec_domain_t *domain,
-                                       /**< Domäne */
+                                       /**< EtherCAT domain */
                                        const char *address,
-                                       /**< ASCII-Addresse des Slaves,
-                                          siehe ecrt_master_get_slave() */
+                                       /**< ASCII address of the slave,
+                                          see ecrt_master_get_slave() */
                                        const char *vendor_name,
-                                       /**< Herstellername */
+                                       /**< vendor name */
                                        const char *product_name,
-                                       /**< Produktname */
+                                       /**< product name */
                                        void **data_ptr,
-                                       /**< Adresse des Zeigers auf die
-                                          Prozessdaten */
+                                       /**< address of the process data
+                                          pointer */
                                        const char *field_name,
-                                       /**< Name des Datenfeldes */
+                                       /**< data field name */
                                        unsigned int field_index,
-                                       /**< Gibt an, ab welchem Feld mit
-                                          Typ \a field_type gezählt
-                                          werden soll. */
+                                       /**< offset of data fields with
+                                          \a field_type  */
                                        unsigned int field_count
-                                       /**< Anzahl Felder selben Typs */
+                                       /**< number of data fields (with
+                                          the same type) to register */
                                        )
 {
     ec_slave_t *slave;
@@ -361,7 +361,7 @@ ec_slave_t *ecrt_domain_register_field(ec_domain_t *domain,
 
     master = domain->master;
 
-    // Adresse übersetzen
+    // translate address
     if (!(slave = ecrt_master_get_slave(master, address))) return NULL;
 
     if (!(type = slave->type)) {
@@ -379,7 +379,7 @@ ec_slave_t *ecrt_domain_register_field(ec_domain_t *domain,
     }
 
     if (!data_ptr) {
-        // Wenn data_ptr NULL, Slave als registriert ansehen (nicht warnen).
+        // data_ptr is NULL => mark slave as "registered" (do not warn)
         slave->registered = 1;
     }
 
@@ -415,17 +415,15 @@ ec_slave_t *ecrt_domain_register_field(ec_domain_t *domain,
 /*****************************************************************************/
 
 /**
-   Registriert eine ganze Liste von Datenfeldern innerhalb einer Domäne.
-
-   Achtung: Die Liste muss mit einer NULL-Struktur ({}) abgeschlossen sein!
-
-   \return 0 bei Erfolg, sonst < 0
+   Registeres a bunch of data fields.
+   Caution! The list has to be terminated with a NULL structure ({})!
+   \return 0 in case of success, else < 0
 */
 
 int ecrt_domain_register_field_list(ec_domain_t *domain,
-                                    /**< Domäne */
+                                    /**< EtherCAT domain */
                                     const ec_field_init_t *fields
-                                    /**< Array mit Datenfeldern */
+                                    /**< array of data field registrations */
                                     )
 {
     const ec_field_init_t *field;
@@ -444,10 +442,10 @@ int ecrt_domain_register_field_list(ec_domain_t *domain,
 /*****************************************************************************/
 
 /**
-   Setzt Prozessdaten-Kommandos in die Warteschlange des Masters.
+   Places all process data commands in the masters command queue.
 */
 
-void ecrt_domain_queue(ec_domain_t *domain /**< Domäne */)
+void ecrt_domain_queue(ec_domain_t *domain /**< EtherCAT domain */)
 {
     ec_command_t *command;
 
@@ -459,10 +457,10 @@ void ecrt_domain_queue(ec_domain_t *domain /**< Domäne */)
 /*****************************************************************************/
 
 /**
-   Verarbeitet empfangene Prozessdaten.
+   Processes received process data.
 */
 
-void ecrt_domain_process(ec_domain_t *domain /**< Domäne */)
+void ecrt_domain_process(ec_domain_t *domain /**< EtherCAT domain */)
 {
     unsigned int working_counter_sum;
     ec_command_t *command;
@@ -481,12 +479,11 @@ void ecrt_domain_process(ec_domain_t *domain /**< Domäne */)
 /*****************************************************************************/
 
 /**
-   Gibt den Status einer Domäne zurück.
-
-   \return 0 wenn alle Kommandos empfangen wurden, sonst -1.
+   Returns the state of a domain.
+   \return 0 if all commands were received, else -1.
 */
 
-int ecrt_domain_state(ec_domain_t *domain /**< Domäne */)
+int ecrt_domain_state(ec_domain_t *domain /**< EtherCAT domain */)
 {
     ec_command_t *command;
 
@@ -506,9 +503,3 @@ EXPORT_SYMBOL(ecrt_domain_process);
 EXPORT_SYMBOL(ecrt_domain_state);
 
 /*****************************************************************************/
-
-/* Emacs-Konfiguration
-;;; Local Variables: ***
-;;; c-basic-offset:4 ***
-;;; End: ***
-*/

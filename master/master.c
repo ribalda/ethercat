@@ -2,7 +2,7 @@
  *
  *  m a s t e r . c
  *
- *  Methoden für einen EtherCAT-Master.
+ *  EtherCAT master methods.
  *
  *  $Id$
  *
@@ -27,6 +27,7 @@
 
 void ec_master_freerun(unsigned long);
 ssize_t ec_show_master_attribute(struct kobject *, struct attribute *, char *);
+void ec_master_process_watch_command(ec_master_t *);
 
 /*****************************************************************************/
 
@@ -53,11 +54,12 @@ static struct kobj_type ktype_ec_master = {
 /*****************************************************************************/
 
 /**
-   Konstruktor des EtherCAT-Masters.
+   Master constructor.
+   \return 0 in case of success, else < 0
 */
 
-int ec_master_init(ec_master_t *master, /**< EtherCAT-Master */
-                   unsigned int index /**< Master-Index */
+int ec_master_init(ec_master_t *master, /**< EtherCAT master */
+                   unsigned int index /**< master index */
                    )
 {
     EC_INFO("Initializing master %i.\n", index);
@@ -71,7 +73,7 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT-Master */
     INIT_LIST_HEAD(&master->domains);
     INIT_LIST_HEAD(&master->eoe_slaves);
 
-    // Init kobject and add it to the hierarchy
+    // init kobject and add it to the hierarchy
     memset(&master->kobj, 0x00, sizeof(struct kobject));
     kobject_init(&master->kobj);
     master->kobj.ktype = &ktype_ec_master;
@@ -81,7 +83,7 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT-Master */
         return -1;
     }
 
-    // Init freerun timer
+    // init freerun timer
     init_timer(&master->freerun_timer);
     master->freerun_timer.function = ec_master_freerun;
     master->freerun_timer.data = (unsigned long) master;
@@ -96,13 +98,12 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT-Master */
 /*****************************************************************************/
 
 /**
-   Destruktor eines EtherCAT-Masters.
-
-   Entfernt alle Kommandos aus der Liste, löscht den Zeiger
-   auf das Slave-Array und gibt die Prozessdaten frei.
+   Master destructor.
+   Removes all pending commands, clears the slave list, clears all domains
+   and frees the device.
 */
 
-void ec_master_clear(struct kobject *kobj /**< KObject des Masters */)
+void ec_master_clear(struct kobject *kobj /**< kobject of the master */)
 {
     ec_master_t *master = container_of(kobj, ec_master_t, kobj);
 
@@ -126,15 +127,12 @@ void ec_master_clear(struct kobject *kobj /**< KObject des Masters */)
 /*****************************************************************************/
 
 /**
-   Setzt den Master zurück in den Ausgangszustand.
-
-   Bei einem "release" sollte immer diese Funktion aufgerufen werden,
-   da sonst Slave-Liste, Domains, etc. weiter existieren.
+   Resets the master.
+   Note: This function has to be called, everytime ec_master_release() is
+   called, to free the slave list, domains etc.
 */
 
-void ec_master_reset(ec_master_t *master
-                     /**< Zeiger auf den zurückzusetzenden Master */
-                     )
+void ec_master_reset(ec_master_t *master /**< EtherCAT master */)
 {
     ec_slave_t *slave, *next_s;
     ec_command_t *command, *next_c;
@@ -143,7 +141,7 @@ void ec_master_reset(ec_master_t *master
 
     ec_master_freerun_stop(master);
 
-    // Alle Slaves entfernen
+    // remove all slaves
     list_for_each_entry_safe(slave, next_s, &master->slaves, list) {
         list_del(&slave->list);
         kobject_del(&slave->kobj);
@@ -151,20 +149,20 @@ void ec_master_reset(ec_master_t *master
     }
     master->slave_count = 0;
 
-    // Kommando-Warteschlange leeren
+    // empty command queue
     list_for_each_entry_safe(command, next_c, &master->command_queue, queue) {
         list_del_init(&command->queue);
         command->state = EC_CMD_ERROR;
     }
 
-    // Domain-Liste leeren
+    // clear domains
     list_for_each_entry_safe(domain, next_d, &master->domains, list) {
         list_del(&domain->list);
         kobject_del(&domain->kobj);
         kobject_put(&domain->kobj);
     }
 
-    // EOE-Liste leeren
+    // clear EoE objects
     list_for_each_entry_safe(eoe, next_eoe, &master->eoe_slaves, list) {
         list_del(&eoe->list);
         ec_eoe_clear(eoe);
@@ -191,16 +189,16 @@ void ec_master_reset(ec_master_t *master
 /*****************************************************************************/
 
 /**
-   Stellt ein Kommando in die Warteschlange.
+   Places a command in the command queue.
 */
 
-void ec_master_queue_command(ec_master_t *master, /**< EtherCAT-Master */
-                             ec_command_t *command /**< Kommando */
+void ec_master_queue_command(ec_master_t *master, /**< EtherCAT master */
+                             ec_command_t *command /**< command */
                              )
 {
     ec_command_t *queued_command;
 
-    // Ist das Kommando schon in der Warteschlange?
+    // check, if the command is already queued
     list_for_each_entry(queued_command, &master->command_queue, queue) {
         if (queued_command == command) {
             command->state = EC_CMD_QUEUED;
@@ -217,12 +215,11 @@ void ec_master_queue_command(ec_master_t *master, /**< EtherCAT-Master */
 /*****************************************************************************/
 
 /**
-   Sendet die Kommandos in der Warteschlange.
-
-   \return 0 bei Erfolg, sonst < 0
+   Sends the commands in the queue.
+   \return 0 in case of success, else < 0
 */
 
-void ec_master_send_commands(ec_master_t *master /**< EtherCAT-Master */)
+void ec_master_send_commands(ec_master_t *master /**< EtherCAT master */)
 {
     ec_command_t *command;
     size_t command_size;
@@ -239,17 +236,17 @@ void ec_master_send_commands(ec_master_t *master /**< EtherCAT-Master */)
     }
 
     do {
-        // Zeiger auf Socket-Buffer holen
+        // fetch pointer to transmit socket buffer
         frame_data = ec_device_tx_data(master->device);
         cur_data = frame_data + EC_FRAME_HEADER_SIZE;
         follows_word = NULL;
         more_commands_waiting = 0;
 
-        // Aktuellen Frame mit Kommandos füllen
+        // fill current frame with commands
         list_for_each_entry(command, &master->command_queue, queue) {
             if (command->state != EC_CMD_QUEUED) continue;
 
-            // Passt das aktuelle Kommando noch in den aktuellen Rahmen?
+            // does the current command fit in the frame?
             command_size = EC_COMMAND_HEADER_SIZE + command->data_size
                 + EC_COMMAND_FOOTER_SIZE;
             if (cur_data - frame_data + command_size > EC_MAX_FRAME_SIZE) {
@@ -263,7 +260,7 @@ void ec_master_send_commands(ec_master_t *master /**< EtherCAT-Master */)
             if (unlikely(master->debug_level > 0))
                 EC_DBG("adding command 0x%02X\n", command->index);
 
-            // Command-Following-Flag im letzten Kommando setzen
+            // set "command following" flag in previous frame
             if (follows_word)
                 EC_WRITE_U16(follows_word, EC_READ_U16(follows_word) | 0x8000);
 
@@ -281,7 +278,7 @@ void ec_master_send_commands(ec_master_t *master /**< EtherCAT-Master */)
             cur_data += command->data_size;
 
             // EtherCAT command footer
-            EC_WRITE_U16(cur_data, 0x0000); // Working counter
+            EC_WRITE_U16(cur_data, 0x0000); // reset working counter
             cur_data += EC_COMMAND_FOOTER_SIZE;
         }
 
@@ -295,14 +292,14 @@ void ec_master_send_commands(ec_master_t *master /**< EtherCAT-Master */)
         EC_WRITE_U16(frame_data, ((cur_data - frame_data
                                    - EC_FRAME_HEADER_SIZE) & 0x7FF) | 0x1000);
 
-        // Rahmen auffüllen
+        // pad frame
         while (cur_data - frame_data < EC_MIN_FRAME_SIZE)
             EC_WRITE_U8(cur_data++, 0x00);
 
         if (unlikely(master->debug_level > 0))
             EC_DBG("frame size: %i\n", cur_data - frame_data);
 
-        // Send frame
+        // send frame
         ec_device_send(master->device, cur_data - frame_data);
         frame_count++;
     }
@@ -319,16 +316,14 @@ void ec_master_send_commands(ec_master_t *master /**< EtherCAT-Master */)
 
 /**
    Processes a received frame.
-
    This function is called by the network driver for every received frame.
-
-   \return 0 bei Erfolg, sonst < 0
+   \return 0 in case of success, else < 0
 */
 
-void ec_master_receive(ec_master_t *master, /**< EtherCAT-Master */
-                      const uint8_t *frame_data, /**< Empfangene Daten */
-                      size_t size /**< Anzahl empfangene Datenbytes */
-                      )
+void ec_master_receive(ec_master_t *master, /**< EtherCAT master */
+                       const uint8_t *frame_data, /**< received data */
+                       size_t size /**< size of the received data */
+                       )
 {
     size_t frame_size, data_size;
     uint8_t command_type, command_index;
@@ -344,7 +339,7 @@ void ec_master_receive(ec_master_t *master, /**< EtherCAT-Master */
 
     cur_data = frame_data;
 
-    // Länge des gesamten Frames prüfen
+    // check length of entire frame
     frame_size = EC_READ_U16(cur_data) & 0x07FF;
     cur_data += EC_FRAME_HEADER_SIZE;
 
@@ -356,7 +351,7 @@ void ec_master_receive(ec_master_t *master, /**< EtherCAT-Master */
 
     cmd_follows = 1;
     while (cmd_follows) {
-        // Kommando-Header auswerten
+        // process command header
         command_type  = EC_READ_U8 (cur_data);
         command_index = EC_READ_U8 (cur_data + 1);
         data_size     = EC_READ_U16(cur_data + 6) & 0x07FF;
@@ -370,7 +365,7 @@ void ec_master_receive(ec_master_t *master, /**< EtherCAT-Master */
             return;
         }
 
-        // Suche passendes Kommando in der Liste
+        // search for matching command in the queue
         matched = 0;
         list_for_each_entry(command, &master->command_queue, queue) {
             if (command->state == EC_CMD_SENT
@@ -382,7 +377,7 @@ void ec_master_receive(ec_master_t *master, /**< EtherCAT-Master */
             }
         }
 
-        // Kein passendes Kommando in der Liste gefunden
+        // no matching command was found
         if (!matched) {
             master->stats.unmatched++;
             ec_master_output_stats(master);
@@ -390,15 +385,15 @@ void ec_master_receive(ec_master_t *master, /**< EtherCAT-Master */
             continue;
         }
 
-        // Empfangene Daten in Kommando-Datenspeicher kopieren
+        // copy received data in the command memory
         memcpy(command->data, cur_data, data_size);
         cur_data += data_size;
 
-        // Working-Counter setzen
+        // set the command's working counter
         command->working_counter = EC_READ_U16(cur_data);
         cur_data += EC_COMMAND_FOOTER_SIZE;
 
-        // Kommando aus der Warteschlange entfernen
+        // dequeue the received command
         command->state = EC_CMD_RECEIVED;
         list_del_init(&command->queue);
     }
@@ -407,16 +402,13 @@ void ec_master_receive(ec_master_t *master, /**< EtherCAT-Master */
 /*****************************************************************************/
 
 /**
-   Sendet ein einzelnes Kommando und wartet auf den Empfang.
-
-   Wenn der Slave nicht antwortet, wird das Kommando
-   nochmals gesendet.
-
-   \return 0 bei Erfolg, sonst < 0
+   Sends a single command and waits for its reception.
+   If the slave doesn't respond, the command is sent again.
+   \return 0 in case of success, else < 0
 */
 
-int ec_master_simple_io(ec_master_t *master, /**< EtherCAT-Master */
-                        ec_command_t *command /**< Kommando */
+int ec_master_simple_io(ec_master_t *master, /**< EtherCAT master */
+                        ec_command_t *command /**< command */
                         )
 {
     unsigned int response_tries_left;
@@ -441,7 +433,7 @@ int ec_master_simple_io(ec_master_t *master, /**< EtherCAT-Master */
             return -1;
         }
 
-        // Keine direkte Antwort. Dem Slave Zeit lassen...
+        // no direct response, wait a little bit...
         udelay(100);
 
         if (unlikely(--response_tries_left)) {
@@ -454,15 +446,12 @@ int ec_master_simple_io(ec_master_t *master, /**< EtherCAT-Master */
 /*****************************************************************************/
 
 /**
-   Durchsucht den EtherCAT-Bus nach Slaves.
-
-   Erstellt ein Array mit allen Slave-Informationen die für den
-   weiteren Betrieb notwendig sind.
-
-   \return 0 bei Erfolg, sonst < 0
+   Scans the EtherCAT bus for slaves.
+   Creates a list of slave structures for further processing.
+   \return 0 in case of success, else < 0
 */
 
-int ec_master_bus_scan(ec_master_t *master /**< EtherCAT-Master */)
+int ec_master_bus_scan(ec_master_t *master /**< EtherCAT master */)
 {
     ec_slave_t *slave, *next;
     ec_slave_ident_t *ident;
@@ -479,7 +468,7 @@ int ec_master_bus_scan(ec_master_t *master /**< EtherCAT-Master */)
 
     command = &master->simple_command;
 
-    // Determine number of slaves on bus
+    // determine number of slaves on bus
     if (ec_command_brd(command, 0x0000, 4)) return -1;
     if (unlikely(ec_master_simple_io(master, command))) return -1;
     master->slave_count = command->working_counter;
@@ -487,7 +476,7 @@ int ec_master_bus_scan(ec_master_t *master /**< EtherCAT-Master */)
 
     if (!master->slave_count) return 0;
 
-    // Init slaves
+    // init slaves
     for (i = 0; i < master->slave_count; i++) {
         if (!(slave = (ec_slave_t *) kmalloc(sizeof(ec_slave_t), GFP_KERNEL))) {
             EC_ERR("Failed to allocate slave %i!\n", i);
@@ -510,10 +499,10 @@ int ec_master_bus_scan(ec_master_t *master /**< EtherCAT-Master */)
     current_coupler_index = 0x3FFF;
     coupler_subindex = 0;
 
-    // For every slave on the bus
+    // for every slave on the bus
     list_for_each_entry(slave, &master->slaves, list) {
 
-        // Write station address
+        // write station address
         if (ec_command_apwr(command, slave->ring_position, 0x0010,
                             sizeof(uint16_t))) goto out_free;
         EC_WRITE_U16(command->data, slave->station_address);
@@ -523,10 +512,10 @@ int ec_master_bus_scan(ec_master_t *master /**< EtherCAT-Master */)
             goto out_free;
         }
 
-        // Fetch all slave information
+        // fetch all slave information
         if (ec_slave_fetch(slave)) goto out_free;
 
-        // Search for identification in "database"
+        // search for identification in "database"
         ident = slave_idents;
         while (ident->type) {
             if (unlikely(ident->vendor_id == slave->sii_vendor_id
@@ -554,7 +543,7 @@ int ec_master_bus_scan(ec_master_t *master /**< EtherCAT-Master */)
         slave->coupler_subindex = coupler_subindex;
         coupler_subindex++;
 
-        // Does the slave support EoE?
+        // does the slave support EoE?
         if (slave->sii_mailbox_protocols & EC_MBOX_EOE) {
             if (!(eoe = (ec_eoe_t *) kmalloc(sizeof(ec_eoe_t), GFP_KERNEL))) {
                 EC_ERR("Failed to allocate EoE-Object.\n");
@@ -580,15 +569,12 @@ int ec_master_bus_scan(ec_master_t *master /**< EtherCAT-Master */)
 /*****************************************************************************/
 
 /**
-   Statistik-Ausgaben während des zyklischen Betriebs.
-
-   Diese Funktion sorgt dafür, dass Statistiken während des zyklischen
-   Betriebs bei Bedarf, aber nicht zu oft ausgegeben werden.
-
-   Die Ausgabe erfolgt gesammelt höchstens einmal pro Sekunde.
+   Output statistics in cyclic mode.
+   This function outputs statistical data on demand, but not more often than
+   necessary. The output happens at most once a second.
 */
 
-void ec_master_output_stats(ec_master_t *master /**< EtherCAT-Master */)
+void ec_master_output_stats(ec_master_t *master /**< EtherCAT master */)
 {
     cycles_t t_now = get_cycles();
 
@@ -620,7 +606,7 @@ void ec_master_output_stats(ec_master_t *master /**< EtherCAT-Master */)
 /*****************************************************************************/
 
 /**
-   Starts Free-Run mode.
+   Starts the Free-Run mode.
 */
 
 void ec_master_freerun_start(ec_master_t *master /**< EtherCAT master */)
@@ -636,6 +622,15 @@ void ec_master_freerun_start(ec_master_t *master /**< EtherCAT master */)
 
     master->mode = EC_MASTER_MODE_FREERUN;
 
+    if (master->watch_command.state == EC_CMD_INIT) {
+        if (ec_command_brd(&master->watch_command, 0x130, 2)) {
+            EC_ERR("Failed to allocate watchdog command!\n");
+            return;
+        }
+    }
+
+    ecrt_master_prepare_async_io(master);
+
     master->freerun_timer.expires = jiffies + 10;
     add_timer(&master->freerun_timer);
 }
@@ -643,7 +638,7 @@ void ec_master_freerun_start(ec_master_t *master /**< EtherCAT master */)
 /*****************************************************************************/
 
 /**
-   Stops Free-Run mode.
+   Stops the Free-Run mode.
 */
 
 void ec_master_freerun_stop(ec_master_t *master /**< EtherCAT master */)
@@ -662,11 +657,19 @@ void ec_master_freerun_stop(ec_master_t *master /**< EtherCAT master */)
    Free-Run mode function.
 */
 
-void ec_master_freerun(unsigned long data)
+void ec_master_freerun(unsigned long data /**< private timer data = master */)
 {
     ec_master_t *master = (ec_master_t *) data;
 
-    // nop
+    ecrt_master_async_receive(master);
+
+    // watchdog command
+    ec_master_process_watch_command(master);
+    ec_master_queue_command(master, &master->watch_command);
+
+    master->slave_count = master->watch_command.working_counter;
+
+    ecrt_master_async_send(master);
 
     master->freerun_timer.expires += HZ;
     add_timer(&master->freerun_timer);
@@ -675,22 +678,19 @@ void ec_master_freerun(unsigned long data)
 /*****************************************************************************/
 
 /**
-   Wandelt eine ASCII-kodierte Bus-Adresse in einen Slave-Zeiger.
-
-   Gültige Adress-Strings sind Folgende:
-   - \a "X" = der X. Slave im Bus,
-   - \a "X:Y" = der Y. Slave hinter dem X. Buskoppler,
-   - \a "#X" = der Slave mit dem Alias X,
-   - \a "#X:Y" = der Y. Slave hinter dem Buskoppler mit dem Alias X.
-
-   X und Y fangen immer bei 0 an und können auch hexadezimal oder oktal
-   angegeben werden (mit entsprechendem Prefix).
-
-   \return Zeiger auf Slave bei Erfolg, sonst NULL
+   Translates an ASCII coded bus-address to a slave pointer.
+   These are the valid addressing schemes:
+   - \a "X" = the X. slave on the bus,
+   - \a "X:Y" = the Y. slave after the X. branch (bus coupler),
+   - \a "#X" = the slave with alias X,
+   - \a "#X:Y" = the Y. slave after the branch (bus coupler) with alias X.
+   X and Y are zero-based indices and may be provided in hexadecimal or octal
+   notation (with respective prefix).
+   \return pointer to the slave on success, else NULL
 */
 
 ec_slave_t *ecrt_master_get_slave(const ec_master_t *master, /**< Master */
-                                  const char *address /**< Address-String */
+                                  const char *address /**< address string */
                                   )
 {
     unsigned long first, second;
@@ -785,14 +785,12 @@ ec_slave_t *ecrt_master_get_slave(const ec_master_t *master, /**< Master */
 /*****************************************************************************/
 
 /**
-   Initialisiert eine Sync-Manager-Konfigurationsseite.
-
-   Der mit \a data referenzierte Speicher muss mindestens EC_SYNC_SIZE Bytes
-   groß sein.
+   Initializes a sync manager configuration page.
+   The referenced memory (\a data) must be at least EC_SYNC_SIZE bytes.
 */
 
-void ec_sync_config(const ec_sync_t *sync, /**< Sync-Manager */
-                    uint8_t *data /**> Zeiger auf Konfigurationsspeicher */
+void ec_sync_config(const ec_sync_t *sync, /**< sync manager */
+                    uint8_t *data /**> configuration memory */
                     )
 {
     EC_WRITE_U16(data,     sync->physical_start_address);
@@ -805,14 +803,12 @@ void ec_sync_config(const ec_sync_t *sync, /**< Sync-Manager */
 /*****************************************************************************/
 
 /**
-   Initialisiert eine Sync-Manager-Konfigurationsseite mit EEPROM-Daten.
-
-   Der mit \a data referenzierte Speicher muss mindestens EC_SYNC_SIZE Bytes
-   groß sein.
+   Initializes a sync manager configuration page with EEPROM data.
+   The referenced memory (\a data) must be at least EC_SYNC_SIZE bytes.
 */
 
-void ec_eeprom_sync_config(const ec_eeprom_sync_t *sync, /**< Sync-Manager */
-                           uint8_t *data /**> Zeiger auf Konfig.-Speicher */
+void ec_eeprom_sync_config(const ec_eeprom_sync_t *sync, /**< sync manager */
+                           uint8_t *data /**> configuration memory */
                            )
 {
     EC_WRITE_U16(data,     sync->physical_start_address);
@@ -825,38 +821,35 @@ void ec_eeprom_sync_config(const ec_eeprom_sync_t *sync, /**< Sync-Manager */
 /*****************************************************************************/
 
 /**
-   Initialisiert eine FMMU-Konfigurationsseite.
-
-   Der mit \a data referenzierte Speicher muss mindestens EC_FMMU_SIZE Bytes
-   groß sein.
+   Initializes an FMMU configuration page.
+   The referenced memory (\a data) must be at least EC_FMMU_SIZE bytes.
 */
 
-void ec_fmmu_config(const ec_fmmu_t *fmmu, /**< Sync-Manager */
-                    uint8_t *data /**> Zeiger auf Konfigurationsspeicher */
+void ec_fmmu_config(const ec_fmmu_t *fmmu, /**< FMMU */
+                    uint8_t *data /**> configuration memory */
                     )
 {
     EC_WRITE_U32(data,      fmmu->logical_start_address);
     EC_WRITE_U16(data + 4,  fmmu->sync->size);
-    EC_WRITE_U8 (data + 6,  0x00); // Logical start bit
-    EC_WRITE_U8 (data + 7,  0x07); // Logical end bit
+    EC_WRITE_U8 (data + 6,  0x00); // logical start bit
+    EC_WRITE_U8 (data + 7,  0x07); // logical end bit
     EC_WRITE_U16(data + 8,  fmmu->sync->physical_start_address);
-    EC_WRITE_U8 (data + 10, 0x00); // Physical start bit
+    EC_WRITE_U8 (data + 10, 0x00); // physical start bit
     EC_WRITE_U8 (data + 11, (fmmu->sync->control_byte & 0x04) ? 0x02 : 0x01);
-    EC_WRITE_U16(data + 12, 0x0001); // Enable
-    EC_WRITE_U16(data + 14, 0x0000); // res.
+    EC_WRITE_U16(data + 12, 0x0001); // enable
+    EC_WRITE_U16(data + 14, 0x0000); // reserved
 }
 
 /*****************************************************************************/
 
 /**
-   Formatiert Attribut-Daten für lesenden Zugriff im SysFS
-
-   \return Anzahl Bytes im Speicher
+   Formats attribute data for SysFS read access.
+   \return number of bytes to read
 */
 
-ssize_t ec_show_master_attribute(struct kobject *kobj, /**< KObject */
-                                 struct attribute *attr, /**< Attribut */
-                                 char *buffer /**< Speicher für die Daten */
+ssize_t ec_show_master_attribute(struct kobject *kobj, /**< kobject */
+                                 struct attribute *attr, /**< attribute */
+                                 char *buffer /**< memory to store data */
                                  )
 {
     ec_master_t *master = container_of(kobj, ec_master_t, kobj);
@@ -881,11 +874,11 @@ ssize_t ec_show_master_attribute(struct kobject *kobj, /**< KObject */
 /*****************************************************************************/
 
 /**
-   Gibt Überwachungsinformationen aus.
+   Processes the watchdog command.
 */
 
 void ec_master_process_watch_command(ec_master_t *master
-                                     /**< EtherCAT-Master */
+                                     /**< EtherCAT master */
                                      )
 {
     unsigned int first;
@@ -926,18 +919,15 @@ void ec_master_process_watch_command(ec_master_t *master
 }
 
 /******************************************************************************
- *
- * Echtzeitschnittstelle
- *
+ *  Realtime interface
  *****************************************************************************/
 
 /**
-   Erstellt eine neue Domäne.
-
-   \return Zeiger auf die Domäne bei Erfolg, sonst NULL.
+   Creates a domain.
+   \return pointer to new domain on success, else NULL
 */
 
-ec_domain_t *ecrt_master_create_domain(ec_master_t *master /**< Master */)
+ec_domain_t *ecrt_master_create_domain(ec_master_t *master /**< master */)
 {
     ec_domain_t *domain, *last_domain;
     unsigned int index;
@@ -975,16 +965,14 @@ ec_domain_t *ecrt_master_create_domain(ec_master_t *master /**< Master */)
 /*****************************************************************************/
 
 /**
-   Konfiguriert alle Slaves und setzt den Operational-Zustand.
-
-   Führt die komplette Konfiguration und Aktivierunge aller registrierten
-   Slaves durch. Setzt Sync-Manager und FMMUs, führt die entsprechenden
-   Zustandsübergänge durch, bis der Slave betriebsbereit ist.
-
-   \return 0 bei Erfolg, sonst < 0
+   Configures all slaves and leads them to the OP state.
+   Does the complete configuration and activation for all slaves. Sets sync
+   managers and FMMUs, and does the appropriate transitions, until the slave
+   is operational.
+   \return 0 in case of success, else < 0
 */
 
-int ecrt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
+int ecrt_master_activate(ec_master_t *master /**< EtherCAT master */)
 {
     unsigned int j;
     ec_slave_t *slave;
@@ -998,12 +986,14 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
 
     command = &master->simple_command;
 
-    if (ec_command_brd(&master->watch_command, 0x130, 2)) {
-        EC_ERR("Failed to allocate watchdog command!\n");
-        return -1;
+    if (master->watch_command.state == EC_CMD_INIT) {
+        if (ec_command_brd(&master->watch_command, 0x130, 2)) {
+            EC_ERR("Failed to allocate watchdog command!\n");
+            return -1;
+        }
     }
 
-    // Domains erstellen
+    // allocate all domains
     domain_offset = 0;
     list_for_each_entry(domain, &master->domains, list) {
         if (ec_domain_alloc(domain, domain_offset)) {
@@ -1013,22 +1003,22 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
         domain_offset += domain->data_size;
     }
 
-    // Slaves aktivieren
+    // configure and activate slaves
     list_for_each_entry(slave, &master->slaves, list) {
 
-        // Change state to INIT
+        // change state to INIT
         if (unlikely(ec_slave_state_change(slave, EC_SLAVE_STATE_INIT)))
             return -1;
 
-        // Check if slave was registered...
+        // check for slave registration
         type = slave->type;
         if (!type)
             EC_WARN("Slave %i has unknown type!\n", slave->ring_position);
 
-        // Check and reset CRC fault counters
+        // check and reset CRC fault counters
         ec_slave_check_crc(slave);
 
-        // Resetting FMMUs
+        // reset FMMUs
         if (slave->base_fmmu_count) {
             if (ec_command_npwr(command, slave->station_address, 0x0600,
                                 EC_FMMU_SIZE * slave->base_fmmu_count))
@@ -1041,7 +1031,7 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
             }
         }
 
-        // Resetting Sync Manager channels
+        // reset sync managers
         if (slave->base_sync_count) {
             if (ec_command_npwr(command, slave->station_address, 0x0800,
                                 EC_SYNC_SIZE * slave->base_sync_count))
@@ -1054,10 +1044,8 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
             }
         }
 
-        // Set Sync Managers
-
-        // Known slave type, take type's SM information
-        if (type) {
+        // configure sync managers
+        if (type) { // known slave type, take type's SM information
             for (j = 0; type->sync_managers[j] && j < EC_MAX_SYNC; j++) {
                 sync = type->sync_managers[j];
                 if (ec_command_npwr(command, slave->station_address,
@@ -1071,11 +1059,8 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
                 }
             }
         }
-
-        // Unknown slave type, but has mailbox
-        else if (slave->sii_mailbox_protocols) {
-
-            // Does the device supply SM configurations in its EEPROM?
+        else if (slave->sii_mailbox_protocols) { // unknown type, but mailbox
+            // does the device supply SM configurations in its EEPROM?
 	    if (!list_empty(&slave->eeprom_syncs)) {
 		list_for_each_entry(eeprom_sync, &slave->eeprom_syncs, list) {
 		    EC_INFO("Sync manager %i...\n", eeprom_sync->index);
@@ -1091,9 +1076,7 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
 		    }
 		}
             }
-
-            // No sync manager information; guess mailbox settings
-	    else {
+	    else { // no sync manager information; guess mailbox settings
 		mbox_sync.physical_start_address =
                     slave->sii_rx_mailbox_offset;
 		mbox_sync.length = slave->sii_rx_mailbox_size;
@@ -1126,21 +1109,21 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
 		    slave->ring_position);
         }
 
-        // Change state to PREOP
+        // change state to PREOP
         if (unlikely(ec_slave_state_change(slave, EC_SLAVE_STATE_PREOP)))
             return -1;
 
-        // Stop activation here for slaves without type
+        // stop activation here for slaves without type
         if (!type) continue;
 
-        // Slaves that are not registered are only brought into PREOP
+        // slaves that are not registered are only brought into PREOP
         // state -> nice blinking and mailbox communication possible
         if (!slave->registered && !slave->type->special) {
             EC_WARN("Slave %i was not registered!\n", slave->ring_position);
             continue;
         }
 
-        // Set FMMUs
+        // configure FMMUs
         for (j = 0; j < slave->fmmu_count; j++) {
             fmmu = &slave->fmmus[j];
             if (ec_command_npwr(command, slave->station_address,
@@ -1154,11 +1137,11 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
             }
         }
 
-        // Change state to SAVEOP
+        // change state to SAVEOP
         if (unlikely(ec_slave_state_change(slave, EC_SLAVE_STATE_SAVEOP)))
             return -1;
 
-        // Change state to OP
+        // change state to OP
         if (unlikely(ec_slave_state_change(slave, EC_SLAVE_STATE_OP)))
             return -1;
     }
@@ -1172,10 +1155,10 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT-Master */)
 /*****************************************************************************/
 
 /**
-   Setzt alle Slaves zurück in den Init-Zustand.
+   Resets all slaves to INIT state.
 */
 
-void ecrt_master_deactivate(ec_master_t *master /**< EtherCAT-Master */)
+void ecrt_master_deactivate(ec_master_t *master /**< EtherCAT master */)
 {
     ec_slave_t *slave;
 
@@ -1189,14 +1172,12 @@ void ecrt_master_deactivate(ec_master_t *master /**< EtherCAT-Master */)
 /*****************************************************************************/
 
 /**
-   Lädt die SDO-Dictionaries aller Slaves.
-
-   Slaves, die kein CoE unterstützen, werden ausgelassen.
-
-   \return 0 wenn alles ok, sonst < 0
+   Fetches the SDO dictionaries of all slaves.
+   Slaves that do not support the CoE protocol are left out.
+   \return 0 in case of success, else < 0
 */
 
-int ecrt_master_fetch_sdo_lists(ec_master_t *master /**< EtherCAT-Master */)
+int ecrt_master_fetch_sdo_lists(ec_master_t *master /**< EtherCAT master */)
 {
     ec_slave_t *slave;
 
@@ -1216,27 +1197,26 @@ int ecrt_master_fetch_sdo_lists(ec_master_t *master /**< EtherCAT-Master */)
 /*****************************************************************************/
 
 /**
-   Sendet und empfängt Kommandos synchron.
+   Sends queued commands and waits for their reception.
 */
 
-void ecrt_master_sync_io(ec_master_t *master)
+void ecrt_master_sync_io(ec_master_t *master /**< EtherCAT master */)
 {
     ec_command_t *command, *n;
     unsigned int commands_sent;
     cycles_t t_start, t_end, t_timeout;
 
-    // Kommandos senden
+    // send commands
     ecrt_master_async_send(master);
 
-    t_start = get_cycles(); // Sendezeit nehmen
+    t_start = get_cycles(); // measure io time
     t_timeout = (cycles_t) master->timeout * (cpu_khz / 1000);
 
-    while (1) // Aktiv auf Empfang warten
-    {
+    while (1) { // active waiting
         ec_device_call_isr(master->device);
 
-        t_end = get_cycles(); // Aktuelle Zeit nehmen
-        if (t_end - t_start >= t_timeout) break; // Timeout
+        t_end = get_cycles(); // take current time
+        if (t_end - t_start >= t_timeout) break; // timeout!
 
         commands_sent = 0;
         list_for_each_entry_safe(command, n, &master->command_queue, queue) {
@@ -1249,7 +1229,7 @@ void ecrt_master_sync_io(ec_master_t *master)
         if (!commands_sent) break;
     }
 
-    // Zeit abgelaufen. Alle verbleibenden Kommandos entfernen.
+    // timeout; dequeue all commands
     list_for_each_entry_safe(command, n, &master->command_queue, queue) {
         switch (command->state) {
             case EC_CMD_SENT:
@@ -1272,46 +1252,46 @@ void ecrt_master_sync_io(ec_master_t *master)
 /*****************************************************************************/
 
 /**
-   Sendet Kommandos asynchron.
+   Asynchronous sending of commands.
 */
 
-void ecrt_master_async_send(ec_master_t *master)
+void ecrt_master_async_send(ec_master_t *master /**< EtherCAT master */)
 {
     ec_command_t *command, *n;
 
     if (unlikely(!master->device->link_state)) {
-        // Link DOWN, keines der Kommandos kann gesendet werden.
+        // link is down, no command can be sent
         list_for_each_entry_safe(command, n, &master->command_queue, queue) {
             command->state = EC_CMD_ERROR;
             list_del_init(&command->queue);
         }
 
-        // Device-Zustand abfragen
+        // query link state
         ec_device_call_isr(master->device);
         return;
     }
 
-    // Rahmen senden
+    // send frames
     ec_master_send_commands(master);
 }
 
 /*****************************************************************************/
 
 /**
-   Empfängt Kommandos asynchron.
+   Asynchronous receiving of commands.
 */
 
-void ecrt_master_async_receive(ec_master_t *master)
+void ecrt_master_async_receive(ec_master_t *master /**< EtherCAT master */)
 {
     ec_command_t *command, *next;
 
     ec_device_call_isr(master->device);
 
-    // Alle empfangenen Kommandos aus der Liste entfernen
+    // dequeue all received commands
     list_for_each_entry_safe(command, next, &master->command_queue, queue)
         if (command->state == EC_CMD_RECEIVED) list_del_init(&command->queue);
 
-    // Alle verbleibenden Kommandos entfernen.
+    // dequeue all remaining commands
     list_for_each_entry_safe(command, next, &master->command_queue, queue) {
         switch (command->state) {
             case EC_CMD_SENT:
@@ -1330,28 +1310,26 @@ void ecrt_master_async_receive(ec_master_t *master)
 /*****************************************************************************/
 
 /**
-   Bereitet Synchronen Datenverkehr vor.
-
-   Fürgt einmal die Kommandos aller Domains zur Warteschlange hinzu, sendet
-   diese ab und wartet so lange, bis diese anschließend problemlos empfangen
-   werden können.
+   Prepares synchronous IO.
+   Queues all domain commands and sends them. Then waits a certain time, so
+   that ecrt_master_sasync_receive() can be called securely.
 */
 
-void ecrt_master_prepare_async_io(ec_master_t *master)
+void ecrt_master_prepare_async_io(ec_master_t *master /**< EtherCAT master */)
 {
     ec_domain_t *domain;
     cycles_t t_start, t_end, t_timeout;
 
-    // Kommandos aller Domains in die Warteschlange setzen
+    // queue commands of all domains
     list_for_each_entry(domain, &master->domains, list)
         ecrt_domain_queue(domain);
 
     ecrt_master_async_send(master);
 
-    t_start = get_cycles(); // Sendezeit nehmen
+    t_start = get_cycles(); // take sending time
     t_timeout = (cycles_t) master->timeout * (cpu_khz / 1000);
 
-    // Aktiv warten!
+    // active waiting
     while (1) {
         t_end = get_cycles();
         if (t_end - t_start >= t_timeout) break;
@@ -1361,15 +1339,15 @@ void ecrt_master_prepare_async_io(ec_master_t *master)
 /*****************************************************************************/
 
 /**
-   Führt Routinen im zyklischen Betrieb aus.
+   Does all cyclic master work.
 */
 
-void ecrt_master_run(ec_master_t *master /**< EtherCAT-Master */)
+void ecrt_master_run(ec_master_t *master /**< EtherCAT master */)
 {
-    // Statistiken ausgeben
+    // output statistics
     ec_master_output_stats(master);
 
-    // Watchdog-Kommando
+    // watchdog command
     ec_master_process_watch_command(master);
     ec_master_queue_command(master, &master->watch_command);
 
@@ -1380,16 +1358,14 @@ void ecrt_master_run(ec_master_t *master /**< EtherCAT-Master */)
 /*****************************************************************************/
 
 /**
-   Setzt die Debug-Ebene des Masters.
-
-   Folgende Debug-Level sind definiert:
-
-   - 1: Nur Positionsmarken in bestimmten Funktionen
-   - 2: Komplette Frame-Inhalte
+   Sets the debug level of the master.
+   The following levels are valid:
+   - 1: only output positions marks and basic data
+   - 2: additional frame data output
 */
 
-void ecrt_master_debug(ec_master_t *master, /**< EtherCAT-Master */
-                       int level /**< Debug-Level */
+void ecrt_master_debug(ec_master_t *master, /**< EtherCAT master */
+                       int level /**< debug level */
                        )
 {
     if (level != master->debug_level) {
@@ -1401,16 +1377,15 @@ void ecrt_master_debug(ec_master_t *master, /**< EtherCAT-Master */
 /*****************************************************************************/
 
 /**
-   Gibt alle Informationen zum Master aus.
-
+   Outputs all master information.
    Verbosity:
-     0 - Nur Slavetypen und Adressen
-     1 - mit EEPROM-Informationen
-    >1 - mit SDO-Dictionaries
+   - 0: Only slave types and positions
+   - 1: with EEPROM contents
+   - >1: with SDO dictionaries
 */
 
-void ecrt_master_print(const ec_master_t *master, /**< EtherCAT-Master */
-                       unsigned int verbosity /**< Geschwätzigkeit */
+void ecrt_master_print(const ec_master_t *master, /**< EtherCAT master */
+                       unsigned int verbosity /**< verbosity level */
                        )
 {
     ec_slave_t *slave;
@@ -1433,7 +1408,11 @@ void ecrt_master_print(const ec_master_t *master, /**< EtherCAT-Master */
 
 /*****************************************************************************/
 
-void ec_master_run_eoe(ec_master_t *master /**< EtherCAT-Master */)
+/**
+   Does the Ethernet-over-EtherCAT processing.
+*/
+
+void ec_master_run_eoe(ec_master_t *master /**< EtherCAT master */)
 {
     ec_eoe_t *eoe;
 
@@ -1458,9 +1437,3 @@ EXPORT_SYMBOL(ecrt_master_print);
 EXPORT_SYMBOL(ecrt_master_get_slave);
 
 /*****************************************************************************/
-
-/* Emacs-Konfiguration
-;;; Local Variables: ***
-;;; c-basic-offset:4 ***
-;;; End: ***
-*/

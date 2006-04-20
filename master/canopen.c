@@ -28,14 +28,14 @@ const ec_code_msg_t sdo_abort_messages[];
 /*****************************************************************************/
 
 /**
-   Liest 32 Bit eines CANopen-SDOs im Expedited-Modus aus einem Slave.
-   \return 0 wenn alles ok, < 0 bei Fehler
+   Reads 32 bit of a CANopen SDO in expedited mode.
+   \return 0 in case of success, else < 0
  */
 
-int ec_slave_sdo_read_exp(ec_slave_t *slave, /**< EtherCAT-Slave */
-                          uint16_t sdo_index, /**< SDO-Index */
-                          uint8_t sdo_subindex, /**< SDO-Subindex */
-                          uint8_t *target /**< Speicher für 4 Bytes */
+int ec_slave_sdo_read_exp(ec_slave_t *slave, /**< EtherCAT slave */
+                          uint16_t sdo_index, /**< SDO index */
+                          uint8_t sdo_subindex, /**< SDO subindex */
+                          uint8_t *target /**< 4-byte memory */
                           )
 {
     size_t rec_size;
@@ -45,14 +45,14 @@ int ec_slave_sdo_read_exp(ec_slave_t *slave, /**< EtherCAT-Slave */
 
     EC_WRITE_U16(data, 0x2 << 12); // SDO request
     EC_WRITE_U8 (data + 2, (0x1 << 1 // expedited transfer
-                            | 0x2 << 5));  // initiate upload request
+                            | 0x2 << 5)); // initiate upload request
     EC_WRITE_U16(data + 3, sdo_index);
     EC_WRITE_U8 (data + 5, sdo_subindex);
 
     if (!(data = ec_slave_mbox_simple_io(slave, &rec_size))) return -1;
 
     if (EC_READ_U16(data) >> 12 == 0x2 && // SDO request
-        EC_READ_U8 (data + 2) >> 5 == 0x4) { // Abort SDO transfer request
+        EC_READ_U8 (data + 2) >> 5 == 0x4) { // abort SDO transfer request
         EC_ERR("SDO upload 0x%04X:%X aborted on slave %i.\n",
                sdo_index, sdo_subindex, slave->ring_position);
         ec_canopen_abort_msg(EC_READ_U32(data + 6));
@@ -60,9 +60,9 @@ int ec_slave_sdo_read_exp(ec_slave_t *slave, /**< EtherCAT-Slave */
     }
 
     if (EC_READ_U16(data) >> 12 != 0x3 || // SDO response
-        EC_READ_U8 (data + 2) >> 5 != 0x2 || // Upload response
-        EC_READ_U16(data + 3) != sdo_index || // Index
-        EC_READ_U8 (data + 5) != sdo_subindex) { // Subindex
+        EC_READ_U8 (data + 2) >> 5 != 0x2 || // upload response
+        EC_READ_U16(data + 3) != sdo_index || // index
+        EC_READ_U8 (data + 5) != sdo_subindex) { // subindex
         EC_ERR("SDO upload 0x%04X:%X failed:\n", sdo_index, sdo_subindex);
         EC_ERR("Invalid SDO upload response at slave %i!\n",
                slave->ring_position);
@@ -77,14 +77,14 @@ int ec_slave_sdo_read_exp(ec_slave_t *slave, /**< EtherCAT-Slave */
 /*****************************************************************************/
 
 /**
-   Beschreibt ein CANopen-SDO eines Slaves im Expedited-Modus.
-   \return 0 wenn alles ok, < 0 bei Fehler
+   Writes a CANopen SDO using expedited mode.
+   \return 0 in case of success, else < 0
  */
 
-int ec_slave_sdo_write_exp(ec_slave_t *slave, /**< EtherCAT-Slave */
-                           uint16_t sdo_index, /**< SDO-Index */
-                           uint8_t sdo_subindex, /**< SDO-Subindex */
-                           const uint8_t *sdo_data, /**< Neuer Wert */
+int ec_slave_sdo_write_exp(ec_slave_t *slave, /**< EtherCAT slave */
+                           uint16_t sdo_index, /**< SDO index */
+                           uint8_t sdo_subindex, /**< SDO subindex */
+                           const uint8_t *sdo_data, /**< new value */
                            size_t size
                            )
 {
@@ -111,7 +111,7 @@ int ec_slave_sdo_write_exp(ec_slave_t *slave, /**< EtherCAT-Slave */
     if (!(data = ec_slave_mbox_simple_io(slave, &rec_size))) return -1;
 
     if (EC_READ_U16(data) >> 12 == 0x2 && // SDO request
-        EC_READ_U8 (data + 2) >> 5 == 0x4) { // Abort SDO transfer request
+        EC_READ_U8 (data + 2) >> 5 == 0x4) { // abort SDO transfer request
         EC_ERR("SDO download 0x%04X:%X (%i bytes) aborted on slave %i.\n",
                sdo_index, sdo_subindex, size, slave->ring_position);
         ec_canopen_abort_msg(EC_READ_U32(data + 6));
@@ -119,9 +119,9 @@ int ec_slave_sdo_write_exp(ec_slave_t *slave, /**< EtherCAT-Slave */
     }
 
     if (EC_READ_U16(data) >> 12 != 0x3 || // SDO response
-        EC_READ_U8 (data + 2) >> 5 != 0x3 || // Download response
-        EC_READ_U16(data + 3) != sdo_index || // Index
-        EC_READ_U8 (data + 5) != sdo_subindex) { // Subindex
+        EC_READ_U8 (data + 2) >> 5 != 0x3 || // download response
+        EC_READ_U16(data + 3) != sdo_index || // index
+        EC_READ_U8 (data + 5) != sdo_subindex) { // subindex
         EC_ERR("SDO download 0x%04X:%X (%i bytes) failed:\n",
                sdo_index, sdo_subindex, size);
         EC_ERR("Invalid SDO download response at slave %i!\n",
@@ -136,15 +136,17 @@ int ec_slave_sdo_write_exp(ec_slave_t *slave, /**< EtherCAT-Slave */
 /*****************************************************************************/
 
 /**
-   Liest ein CANopen-SDO im "Normal-Modus" aus einem Slave.
-   \return 0 wenn alles ok, < 0 bei Fehler
+   Reads a CANopen SDO in normal mode.
+   \return 0 in case of success, else < 0
+
+   \todo size
  */
 
-int ecrt_slave_sdo_read(ec_slave_t *slave, /**< EtherCAT-Slave */
-                        uint16_t sdo_index, /**< SDO-Index */
-                        uint8_t sdo_subindex, /**< SDO-Subindex */
-                        uint8_t *target, /**< Speicher für gel. Wert */
-                        size_t *size /**< Größe des Speichers */
+int ecrt_slave_sdo_read(ec_slave_t *slave, /**< EtherCAT slave */
+                        uint16_t sdo_index, /**< SDO index */
+                        uint8_t sdo_subindex, /**< SDO subindex */
+                        uint8_t *target, /**< memory for value */
+                        size_t *size /**< target memory size */
                         )
 {
     uint8_t *data;
@@ -161,7 +163,7 @@ int ecrt_slave_sdo_read(ec_slave_t *slave, /**< EtherCAT-Slave */
     if (!(data = ec_slave_mbox_simple_io(slave, &rec_size))) return -1;
 
     if (EC_READ_U16(data) >> 12 == 0x2 && // SDO request
-        EC_READ_U8 (data + 2) >> 5 == 0x4) { // Abort SDO transfer request
+        EC_READ_U8 (data + 2) >> 5 == 0x4) { // abort SDO transfer request
         EC_ERR("SDO upload 0x%04X:%X aborted on slave %i.\n",
                sdo_index, sdo_subindex, slave->ring_position);
         ec_canopen_abort_msg(EC_READ_U32(data + 6));
@@ -169,9 +171,9 @@ int ecrt_slave_sdo_read(ec_slave_t *slave, /**< EtherCAT-Slave */
     }
 
     if (EC_READ_U16(data) >> 12 != 0x3 || // SDO response
-        EC_READ_U8 (data + 2) >> 5 != 0x2 || // Initiate upload response
-        EC_READ_U16(data + 3) != sdo_index || // Index
-        EC_READ_U8 (data + 5) != sdo_subindex) { // Subindex
+        EC_READ_U8 (data + 2) >> 5 != 0x2 || // initiate upload response
+        EC_READ_U16(data + 3) != sdo_index || // index
+        EC_READ_U8 (data + 5) != sdo_subindex) { // subindex
         EC_ERR("SDO upload 0x%04X:%X failed:\n", sdo_index, sdo_subindex);
         EC_ERR("Invalid SDO upload response at slave %i!\n",
                slave->ring_position);
@@ -205,11 +207,11 @@ int ecrt_slave_sdo_read(ec_slave_t *slave, /**< EtherCAT-Slave */
 /*****************************************************************************/
 
 /**
-   Lädt das gesamte SDO-Dictionary aus einem Slave.
-   \return 0, wenn alles ok, sonst < 0
+   Fetches the SDO dictionary of a slave.
+   \return 0 in case of success, else < 0
 */
 
-int ec_slave_fetch_sdo_list(ec_slave_t *slave /**< EtherCAT-Slave */)
+int ec_slave_fetch_sdo_list(ec_slave_t *slave /**< EtherCAT slave */)
 {
     uint8_t *data;
     size_t rec_size;
@@ -223,7 +225,7 @@ int ec_slave_fetch_sdo_list(ec_slave_t *slave /**< EtherCAT-Slave */)
     EC_WRITE_U8 (data + 2, 0x01); // Get OD List Request
     EC_WRITE_U8 (data + 3, 0x00);
     EC_WRITE_U16(data + 4, 0x0000);
-    EC_WRITE_U16(data + 6, 0x0001); // Deliver all SDOs!
+    EC_WRITE_U16(data + 6, 0x0001); // deliver all SDOs!
 
     if (unlikely(ec_master_simple_io(slave->master, &slave->mbox_command))) {
         EC_ERR("Mailbox checking failed on slave %i!\n", slave->ring_position);
@@ -235,7 +237,7 @@ int ec_slave_fetch_sdo_list(ec_slave_t *slave /**< EtherCAT-Slave */)
             return -1;
 
         if (EC_READ_U16(data) >> 12 == 0x8 && // SDO information
-            (EC_READ_U8(data + 2) & 0x7F) == 0x07) { // Error response
+            (EC_READ_U8(data + 2) & 0x7F) == 0x07) { // error response
             EC_ERR("SDO information error response at slave %i!\n",
                    slave->ring_position);
             ec_canopen_abort_msg(EC_READ_U32(data + 6));
@@ -259,7 +261,7 @@ int ec_slave_fetch_sdo_list(ec_slave_t *slave /**< EtherCAT-Slave */)
         sdo_count = (rec_size - 8) / 2;
         for (i = 0; i < sdo_count; i++) {
             sdo_index = EC_READ_U16(data + 8 + i * 2);
-            if (!sdo_index) continue; // Manchmal ist der Index 0... ???
+            if (!sdo_index) continue; // sometimes index is 0... ???
 
             if (!(sdo = (ec_sdo_t *) kmalloc(sizeof(ec_sdo_t), GFP_KERNEL))) {
                 EC_ERR("Failed to allocate memory for SDO!\n");
@@ -278,7 +280,7 @@ int ec_slave_fetch_sdo_list(ec_slave_t *slave /**< EtherCAT-Slave */)
     }
     while (EC_READ_U8(data + 2) & 0x80);
 
-    // Alle Beschreibungen laden
+    // Fetch all SDO descriptions
     if (ec_slave_fetch_sdo_descriptions(slave)) return -1;
 
     return 0;
@@ -287,11 +289,11 @@ int ec_slave_fetch_sdo_list(ec_slave_t *slave /**< EtherCAT-Slave */)
 /*****************************************************************************/
 
 /**
-   Holt die Beschreibungen zu allen bereits bekannten SDOs.
-   \return 0, wenn alles ok, sonst < 0
+   Fetches the SDO descriptions for the known SDOs.
+   \return 0 in case of success, else < 0
 */
 
-int ec_slave_fetch_sdo_descriptions(ec_slave_t *slave /**< EtherCAT-Slave */)
+int ec_slave_fetch_sdo_descriptions(ec_slave_t *slave /**< EtherCAT slave */)
 {
     uint8_t *data;
     size_t rec_size, name_size;
@@ -308,7 +310,7 @@ int ec_slave_fetch_sdo_descriptions(ec_slave_t *slave /**< EtherCAT-Slave */)
         if (!(data = ec_slave_mbox_simple_io(slave, &rec_size))) return -1;
 
         if (EC_READ_U16(data) >> 12 == 0x8 && // SDO information
-            (EC_READ_U8 (data + 2) & 0x7F) == 0x07) { // Error response
+            (EC_READ_U8 (data + 2) & 0x7F) == 0x07) { // error response
             EC_ERR("SDO information error response at slave %i while"
                    " fetching SDO 0x%04X!\n", slave->ring_position,
                    sdo->index);
@@ -354,7 +356,7 @@ int ec_slave_fetch_sdo_descriptions(ec_slave_t *slave /**< EtherCAT-Slave */)
             return -1;
         }
 
-        // Alle Entries (Subindizes) laden
+        // Fetch all entries (subindices)
         if (ec_slave_fetch_sdo_entries(slave, sdo, EC_READ_U8(data + 10)))
             return -1;
     }
@@ -365,13 +367,13 @@ int ec_slave_fetch_sdo_descriptions(ec_slave_t *slave /**< EtherCAT-Slave */)
 /*****************************************************************************/
 
 /**
-   Lädt alle Entries (Subindizes) zu einem SDO.
-   \return 0, wenn alles ok, sonst < 0
+   Fetches all entries (subindices) to an SDO.
+   \return 0 in case of success, else < 0
 */
 
-int ec_slave_fetch_sdo_entries(ec_slave_t *slave, /**< EtherCAT-Slave */
+int ec_slave_fetch_sdo_entries(ec_slave_t *slave, /**< EtherCAT slave */
                                ec_sdo_t *sdo, /**< SDO */
-                               uint8_t subindices /**< Anzahl Subindizes */
+                               uint8_t subindices /**< number of subindices */
                                )
 {
     uint8_t *data;
@@ -394,7 +396,7 @@ int ec_slave_fetch_sdo_entries(ec_slave_t *slave, /**< EtherCAT-Slave */
         if (!(data = ec_slave_mbox_simple_io(slave, &rec_size))) return -1;
 
         if (EC_READ_U16(data) >> 12 == 0x8 && // SDO information
-            (EC_READ_U8 (data + 2) & 0x7F) == 0x07) { // Error response
+            (EC_READ_U8 (data + 2) & 0x7F) == 0x07) { // error response
             EC_ERR("SDO information error response at slave %i while"
                    " fetching SDO entry 0x%04X:%i!\n", slave->ring_position,
                    sdo->index, i);
@@ -403,7 +405,7 @@ int ec_slave_fetch_sdo_entries(ec_slave_t *slave, /**< EtherCAT-Slave */
         }
 
         if (EC_READ_U16(data) >> 12 != 0x8 || // SDO information
-            (EC_READ_U8(data + 2) & 0x7F) != 0x06 || // entry descr. response
+            (EC_READ_U8(data + 2) & 0x7F) != 0x06 || // Entry desc. response
             EC_READ_U16(data + 6) != sdo->index || // SDO index
             EC_READ_U8(data + 8) != i) { // SDO subindex
             EC_ERR("Invalid entry description response at slave %i while"
@@ -449,7 +451,7 @@ int ec_slave_fetch_sdo_entries(ec_slave_t *slave, /**< EtherCAT-Slave */
 /*****************************************************************************/
 
 /**
-   Gibt eine SDO-Abort-Meldung aus.
+   Outputs an SDO abort message.
 */
 
 void ec_canopen_abort_msg(uint32_t abort_code)
@@ -506,21 +508,20 @@ const ec_code_msg_t sdo_abort_messages[] = {
     {}
 };
 
-/*****************************************************************************/
-// Echtzeitschnittstelle
-
-/*****************************************************************************/
+/******************************************************************************
+ *  Realtime interface
+ *****************************************************************************/
 
 /**
-   Liest ein 8-Bit CANopen-SDO im Expedited-Modus aus einem Slave.
-   Siehe ec_slave_sdo_read_exp()
-   \return 0 wenn alles ok, < 0 bei Fehler
+   Reads an 8-bit SDO in expedited mode.
+   See ec_slave_sdo_read_exp()
+   \return 0 in case of success, else < 0
  */
 
-int ecrt_slave_sdo_read_exp8(ec_slave_t *slave, /**< EtherCAT-Slave */
-                             uint16_t sdo_index, /**< SDO-Index */
-                             uint8_t sdo_subindex, /**< SDO-Subindex */
-                             uint8_t *target /**< Speicher für gel. Wert */
+int ecrt_slave_sdo_read_exp8(ec_slave_t *slave, /**< EtherCAT slave */
+                             uint16_t sdo_index, /**< SDO index */
+                             uint8_t sdo_subindex, /**< SDO subindex */
+                             uint8_t *target /**< memory for read value */
                              )
 {
     uint8_t data[4];
@@ -532,15 +533,15 @@ int ecrt_slave_sdo_read_exp8(ec_slave_t *slave, /**< EtherCAT-Slave */
 /*****************************************************************************/
 
 /**
-   Liest ein 16-Bit CANopen-SDO im Expedited-Modus aus einem Slave.
-   Siehe ec_slave_sdo_read_exp()
-   \return 0 wenn alles ok, < 0 bei Fehler
+   Reads a 16-bit SDO in expedited mode.
+   See ec_slave_sdo_read_exp()
+   \return 0 in case of success, else < 0
  */
 
-int ecrt_slave_sdo_read_exp16(ec_slave_t *slave, /**< EtherCAT-Slave */
-                              uint16_t sdo_index, /**< SDO-Index */
-                              uint8_t sdo_subindex, /**< SDO-Subindex */
-                              uint16_t *target /**< Speicher für gel. Wert */
+int ecrt_slave_sdo_read_exp16(ec_slave_t *slave, /**< EtherCAT slave */
+                              uint16_t sdo_index, /**< SDO index */
+                              uint8_t sdo_subindex, /**< SDO subindex */
+                              uint16_t *target /**< memory for read value */
                               )
 {
     uint8_t data[4];
@@ -552,15 +553,15 @@ int ecrt_slave_sdo_read_exp16(ec_slave_t *slave, /**< EtherCAT-Slave */
 /*****************************************************************************/
 
 /**
-   Liest ein 32-Bit CANopen-SDO im Expedited-Modus aus einem Slave.
-   Siehe ec_slave_sdo_read_exp()
-   \return 0 wenn alles ok, < 0 bei Fehler
+   Reads a 32-bit SDO in expedited mode.
+   See ec_slave_sdo_read_exp()
+   \return 0 in case of success, else < 0
  */
 
-int ecrt_slave_sdo_read_exp32(ec_slave_t *slave, /**< EtherCAT-Slave */
-                              uint16_t sdo_index, /**< SDO-Index */
-                              uint8_t sdo_subindex, /**< SDO-Subindex */
-                              uint32_t *target /**< Speicher für gel. Wert */
+int ecrt_slave_sdo_read_exp32(ec_slave_t *slave, /**< EtherCAT slave */
+                              uint16_t sdo_index, /**< SDO index */
+                              uint8_t sdo_subindex, /**< SDO subindex */
+                              uint32_t *target /**< memory for read value */
                               )
 {
     uint8_t data[4];
@@ -572,14 +573,14 @@ int ecrt_slave_sdo_read_exp32(ec_slave_t *slave, /**< EtherCAT-Slave */
 /*****************************************************************************/
 
 /**
-   Beschreibt ein 8-Bit CANopen-SDO eines Slaves im Expedited-Modus.
-   \return 0 wenn alles ok, < 0 bei Fehler
+   Writes an 8-bit SDO in expedited mode.
+   \return 0 in case of success, else < 0
  */
 
-int ecrt_slave_sdo_write_exp8(ec_slave_t *slave, /**< EtherCAT-Slave */
-                              uint16_t sdo_index, /**< SDO-Index */
-                              uint8_t sdo_subindex, /**< SDO-Subindex */
-                              uint8_t value /**< Neuer Wert */
+int ecrt_slave_sdo_write_exp8(ec_slave_t *slave, /**< EtherCAT slave */
+                              uint16_t sdo_index, /**< SDO index */
+                              uint8_t sdo_subindex, /**< SDO subindex */
+                              uint8_t value /**< new value */
                               )
 {
     return ec_slave_sdo_write_exp(slave, sdo_index, sdo_subindex, &value, 1);
@@ -588,14 +589,14 @@ int ecrt_slave_sdo_write_exp8(ec_slave_t *slave, /**< EtherCAT-Slave */
 /*****************************************************************************/
 
 /**
-   Beschreibt ein 16-Bit CANopen-SDO eines Slaves im Expedited-Modus.
-   \return 0 wenn alles ok, < 0 bei Fehler
+   Writes a 16-bit SDO in expedited mode.
+   \return 0 in case of success, else < 0
  */
 
-int ecrt_slave_sdo_write_exp16(ec_slave_t *slave, /**< EtherCAT-Slave */
-                               uint16_t sdo_index, /**< SDO-Index */
-                               uint8_t sdo_subindex, /**< SDO-Subindex */
-                               uint16_t value /**< Neuer Wert */
+int ecrt_slave_sdo_write_exp16(ec_slave_t *slave, /**< EtherCAT slave */
+                               uint16_t sdo_index, /**< SDO index */
+                               uint8_t sdo_subindex, /**< SDO subindex */
+                               uint16_t value /**< new value */
                                )
 {
     uint8_t data[2];
@@ -606,14 +607,14 @@ int ecrt_slave_sdo_write_exp16(ec_slave_t *slave, /**< EtherCAT-Slave */
 /*****************************************************************************/
 
 /**
-   Beschreibt ein 32-Bit CANopen-SDO eines Slaves im Expedited-Modus.
-   \return 0 wenn alles ok, < 0 bei Fehler
+   Writes a 32-bit SDO in expedited mode.
+   \return 0 in case of success, else < 0
  */
 
-int ecrt_slave_sdo_write_exp32(ec_slave_t *slave, /**< EtherCAT-Slave */
-                               uint16_t sdo_index, /**< SDO-Index */
-                               uint8_t sdo_subindex, /**< SDO-Subindex */
-                               uint32_t value /**< Neuer Wert */
+int ecrt_slave_sdo_write_exp32(ec_slave_t *slave, /**< EtherCAT slave */
+                               uint16_t sdo_index, /**< SDO index */
+                               uint8_t sdo_subindex, /**< SDO subindex */
+                               uint32_t value /**< new value */
                                )
 {
     uint8_t data[4];
@@ -632,9 +633,3 @@ EXPORT_SYMBOL(ecrt_slave_sdo_write_exp32);
 EXPORT_SYMBOL(ecrt_slave_sdo_read);
 
 /*****************************************************************************/
-
-/* Emacs-Konfiguration
-;;; Local Variables: ***
-;;; c-basic-offset:4 ***
-;;; End: ***
-*/

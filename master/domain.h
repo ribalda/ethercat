@@ -2,7 +2,7 @@
  *
  *  d o m a i n . h
  *
- *  Struktur für eine Gruppe von EtherCAT-Slaves.
+ *  EtherCAT domain structure.
  *
  *  $Id$
  *
@@ -21,39 +21,38 @@
 /*****************************************************************************/
 
 /**
-   Datenfeld-Konfiguration.
+   Data field registration type.
 */
 
 typedef struct
 {
-    struct list_head list;
-    ec_slave_t *slave;
-    const ec_sync_t *sync;
-    uint32_t field_offset;
-    void **data_ptr;
+    struct list_head list; /**< list item */
+    ec_slave_t *slave; /**< slave */
+    const ec_sync_t *sync; /**< sync manager */
+    uint32_t field_offset; /**< data field offset */
+    void **data_ptr; /**< pointer to process data pointer(s) */
 }
 ec_field_reg_t;
 
 /*****************************************************************************/
 
 /**
-   EtherCAT-Domäne
-
-   Verwaltet die Prozessdaten und das hierfür nötige Kommando einer bestimmten
-   Menge von Slaves.
+   EtherCAT domain.
+   Handles the process data and the therefore needed commands of a certain
+   group of slaves.
 */
 
 struct ec_domain
 {
-    struct kobject kobj; /**< Kobject der Domäne */
-    struct list_head list; /**< Listenkopf */
-    unsigned int index; /**< Domänen-Index */
-    ec_master_t *master; /**< EtherCAT-Master, zu der die Domäne gehört. */
-    size_t data_size; /**< Größe der Prozessdaten */
-    struct list_head commands; /**< EtherCAT-Kommandos für die Prozessdaten */
-    uint32_t base_address; /**< Logische Basisaddresse der Domain */
-    unsigned int response_count; /**< Anzahl antwortender Slaves */
-    struct list_head field_regs; /**< Liste der Datenfeldregistrierungen */
+    struct kobject kobj; /**< kobject */
+    struct list_head list; /**< list item */
+    unsigned int index; /**< domain index (just a number) */
+    ec_master_t *master; /**< EtherCAT master owning the domain */
+    size_t data_size; /**< size of the process data */
+    struct list_head commands; /**< process data commands */
+    uint32_t base_address; /**< logical offset address of the process data */
+    unsigned int response_count; /**< number of responding slaves */
+    struct list_head field_regs; /**< data field registrations */
 };
 
 /*****************************************************************************/
@@ -65,9 +64,3 @@ int ec_domain_alloc(ec_domain_t *, uint32_t);
 /*****************************************************************************/
 
 #endif
-
-/* Emacs-Konfiguration
-;;; Local Variables: ***
-;;; c-basic-offset:4 ***
-;;; End: ***
-*/

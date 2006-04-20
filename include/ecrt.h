@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- *  Oeffentliche EtherCAT-Schnittstellen fuer Echtzeitprozesse.
+ *  EtherCAT realtime interface.
  *
  *  $Id$
  *

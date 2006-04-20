@@ -2,9 +2,9 @@
  *
  *  m o d u l e . c
  *
- *  EtherCAT-Master-Treiber
+ *  EtherCAT master driver module.
  *
- *  Autoren: Wilhelm Hagemeister, Florian Pose
+ *  Author: Florian Pose <fp@igh-essen.com>
  *
  *  $Id$
  *
@@ -50,18 +50,14 @@ MODULE_LICENSE("GPL");
 MODULE_VERSION(COMPILE_INFO);
 
 module_param(ec_master_count, int, 1);
-MODULE_PARM_DESC(ec_master_count, "Number of EtherCAT master to initialize.");
+MODULE_PARM_DESC(ec_master_count, "number of EtherCAT masters to initialize");
 
 /*****************************************************************************/
 
 /**
-   Init-Funktion des EtherCAT-Master-Treibermodules
-
-   Initialisiert soviele Master, wie im Parameter ec_master_count
-   angegeben wurde (Default ist 1).
-
-   \return 0 wenn alles ok, < 0 bei ungültiger Anzahl Master
-           oder zu wenig Speicher.
+   Module initialization.
+   Initializes \a ec_master_count masters.
+   \return 0 on success, else < 0
 */
 
 int __init ec_init_module(void)
@@ -115,9 +111,8 @@ int __init ec_init_module(void)
 /*****************************************************************************/
 
 /**
-   Cleanup-Funktion des EtherCAT-Master-Treibermoduls
-
-   Entfernt alle Master-Instanzen.
+   Module cleanup.
+   Clears all master instances.
 */
 
 void __exit ec_cleanup_module(void)
@@ -142,7 +137,7 @@ void __exit ec_cleanup_module(void)
    \returns pointer to master
 */
 
-ec_master_t *ec_find_master(unsigned int master_index)
+ec_master_t *ec_find_master(unsigned int master_index /**< master index */)
 {
     ec_master_t *master;
 
@@ -155,26 +150,19 @@ ec_master_t *ec_find_master(unsigned int master_index)
 }
 
 /******************************************************************************
- *
- * Treiberschnittstelle
- *
+ *  Device interface
  *****************************************************************************/
 
 /**
-   Registeriert das EtherCAT-Geraet fuer einen EtherCAT-Master.
-
-   \return 0 wenn alles ok, oder < 0 wenn bereits ein Gerät registriert
-           oder das Geraet nicht geöffnet werden konnte.
+   Registeres an EtherCAT device for a certain master.
+   \return 0 on success, else < 0
 */
 
-ec_device_t *ecdev_register(unsigned int master_index,
-                            /**< Index des EtherCAT-Masters */
-                            struct net_device *net_dev,
-                            /**< net_device des EtherCAT-Gerätes */
-                            ec_isr_t isr,
-                            /**< Interrupt-Service-Routine */
-                            struct module *module
-                            /**< Zeiger auf das Modul */
+ec_device_t *ecdev_register(unsigned int master_index, /**< master index */
+                            struct net_device *net_dev, /**< net_device of
+                                                           the device */
+                            ec_isr_t isr, /**< interrupt service routine */
+                            struct module *module /**< pointer to the module */
                             )
 {
     ec_master_t *master;
@@ -218,13 +206,11 @@ ec_device_t *ecdev_register(unsigned int master_index,
 /*****************************************************************************/
 
 /**
-   Hebt die Registrierung eines EtherCAT-Gerätes auf.
+   Unregisteres an EtherCAT device.
 */
 
-void ecdev_unregister(unsigned int master_index,
-                      /**< Index des EtherCAT-Masters */
-                      ec_device_t *device
-                      /**< EtherCAT-Geraet */
+void ecdev_unregister(unsigned int master_index, /**< master index */
+                      ec_device_t *device /**< EtherCAT device */
                       )
 {
     ec_master_t *master;
@@ -244,12 +230,10 @@ void ecdev_unregister(unsigned int master_index,
 /*****************************************************************************/
 
 /**
-   Starts the master.
+   Starts the master associated with the device.
 */
 
-int ecdev_start(unsigned int master_index
-                /**< Index des EtherCAT-Masters */
-                )
+int ecdev_start(unsigned int master_index /**< master index */)
 {
     ec_master_t *master;
     if (!(master = ec_find_master(master_index))) return -1;
@@ -266,12 +250,10 @@ int ecdev_start(unsigned int master_index
 /*****************************************************************************/
 
 /**
-   Stops the master.
+   Stops the master associated with the device.
 */
 
-void ecdev_stop(unsigned int master_index
-                /**< Index des EtherCAT-Masters */
-                )
+void ecdev_stop(unsigned int master_index /**< master index */)
 {
     ec_master_t *master;
     if (!(master = ec_find_master(master_index))) return;
@@ -283,21 +265,16 @@ void ecdev_stop(unsigned int master_index
 }
 
 /******************************************************************************
- *
- * Echtzeitschnittstelle
- *
+ *  Realtime interface
  *****************************************************************************/
 
 /**
-   Reserviert einen bestimmten EtherCAT-Master und das zugehörige Gerät.
-
-   Gibt einen Zeiger auf den reservierten EtherCAT-Master zurueck.
-
-   \return Zeiger auf EtherCAT-Master oder NULL, wenn Parameter ungueltig.
+   Reserves an EtherCAT master for realtime operation.
+   \return pointer to reserved master, or NULL on error
 */
 
 ec_master_t *ecrt_request_master(unsigned int master_index
-                                 /**< EtherCAT-Master-Index */
+                                 /**< master index */
                                  )
 {
     ec_master_t *master;
@@ -351,10 +328,10 @@ ec_master_t *ecrt_request_master(unsigned int master_index
 /*****************************************************************************/
 
 /**
-   Gibt einen zuvor angeforderten EtherCAT-Master wieder frei.
+   Releases a reserved EtherCAT master.
 */
 
-void ecrt_release_master(ec_master_t *master /**< EtherCAT-Master */)
+void ecrt_release_master(ec_master_t *master /**< EtherCAT master */)
 {
     EC_INFO("Releasing master %i...\n", master->index);
 
@@ -378,10 +355,12 @@ void ecrt_release_master(ec_master_t *master /**< EtherCAT-Master */)
 /*****************************************************************************/
 
 /**
-   Gibt Frame-Inhalte zwecks Debugging aus.
+   Outputs frame contents for debugging purposes.
 */
 
-void ec_print_data(const uint8_t *data, size_t size)
+void ec_print_data(const uint8_t *data, /**< pointer to data */
+                   size_t size /**< number of bytes to output */
+                   )
 {
     unsigned int i;
 
@@ -399,12 +378,12 @@ void ec_print_data(const uint8_t *data, size_t size)
 /*****************************************************************************/
 
 /**
-   Gibt Frame-Inhalte zwecks Debugging aus, differentiell.
+   Outputs frame contents and differences for debugging purposes.
 */
 
-void ec_print_data_diff(const uint8_t *d1, /**< Daten 1 */
-                        const uint8_t *d2, /**< Daten 2 */
-                        size_t size /** Anzahl Bytes */
+void ec_print_data_diff(const uint8_t *d1, /**< first data */
+                        const uint8_t *d2, /**< second data */
+                        size_t size /** number of bytes to output */
                         )
 {
     unsigned int i;
@@ -434,9 +413,3 @@ EXPORT_SYMBOL(ecrt_request_master);
 EXPORT_SYMBOL(ecrt_release_master);
 
 /*****************************************************************************/
-
-/* Emacs-Konfiguration
-;;; Local Variables: ***
-;;; c-basic-offset:4 ***
-;;; End: ***
-*/
