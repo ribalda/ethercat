@@ -1,6 +1,0 @@
-
-Offene Fragen an Beckhoff
-
-$Id$
-
-(keine)

@@ -1,0 +1,22 @@
+
+EtherCAT master TODO
+====================
+
+$Id$
+
+- Mailbox-Handler
+- Dispatching of received mailbox data?
+- Ethernet over EtherCAT (EoE)
+- File access over EtherCAT (FoE)
+
+- Number of frames, the NIC can handle
+- Remove slave type information from master / read XML files from user space
+
+- eepro100 driver
+- VLAN tagging
+
+- Calculate bus topology
+
+- Documentation
+
+- User space tool for configuration and visualisation
