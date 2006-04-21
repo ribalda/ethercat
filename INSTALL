@@ -1,0 +1,34 @@
+-------------------------------------------------------------------------------
+
+This is the INSTALL file of the IgH EtherCAT Master.
+
+$Id$
+
+-------------------------------------------------------------------------------
+
+Building and installing
+==========================
+
+1) Create a copy of the configuration template:
+
+  $ cp ethercat.conf.tmpl ethercat.conf
+
+2) Adjust the variables in the configuration file to your needs.
+
+3) Build the EtherCAT master and network device driver modules:
+
+  $ make
+
+4) Install the the EtherCAT master (as root):
+
+  # make install
+
+  This will create the following files and directories:
+    - /etc/sysconfig/ethercat (configuration file)
+    - /etc/init.d/ethercat    (startup script)
+    - /usr/sbin/rcethercat    (link to startup script)
+
+  The modules will be placed in /lib/modules/<KERNEL>/kernel/drivers/net
+  (where <KERNEL> is the Linux kernel version configured in ethercat.conf).
+
+-------------------------------------------------------------------------------
