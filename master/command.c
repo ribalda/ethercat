@@ -6,6 +6,23 @@
  *
  *  $Id$
  *
+ *  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
+ *
+ *  This file is part of the IgH EtherCAT Master.
+ *
+ *  The IgH EtherCAT Master is free software; you can redistribute it
+ *  and/or modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; version 2 of the License.
+ *
+ *  The IgH EtherCAT Master is distributed in the hope that it will be
+ *  useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with the IgH EtherCAT Master; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ *
  *****************************************************************************/
 
 #include <linux/slab.h>
@@ -32,9 +49,10 @@
 
 /**
    Command constructor.
+   \ingroup Command
 */
 
-void ec_command_init(ec_command_t *command)
+void ec_command_init(ec_command_t *command /**< EtherCAT command */)
 {
     command->type = EC_CMD_NONE;
     command->address.logical = 0x00000000;
@@ -50,9 +68,10 @@ void ec_command_init(ec_command_t *command)
 
 /**
    Command destructor.
+   \ingroup Command
 */
 
-void ec_command_clear(ec_command_t *command)
+void ec_command_clear(ec_command_t *command /**< EtherCAT command */)
 {
     if (command->data) kfree(command->data);
 }
@@ -61,10 +80,14 @@ void ec_command_clear(ec_command_t *command)
 
 /**
    Allocates command data memory.
+   If the allocated memory is already larger than requested, nothing ist done.
    \return 0 in case of success, else < 0
+   \ingroup Command
 */
 
-int ec_command_prealloc(ec_command_t *command, size_t size)
+int ec_command_prealloc(ec_command_t *command, /**< EtherCAT command */
+                        size_t size /**< New size in bytes */
+                        )
 {
     if (size <= command->mem_size) return 0;
 
@@ -89,6 +112,7 @@ int ec_command_prealloc(ec_command_t *command, size_t size)
    Initializes an EtherCAT NPRD command.
    Node-adressed physical read.
    \return 0 in case of success, else < 0
+   \ingroup Command
 */
 
 int ec_command_nprd(ec_command_t *command,
@@ -117,6 +141,7 @@ int ec_command_nprd(ec_command_t *command,
    Initializes an EtherCAT NPWR command.
    Node-adressed physical write.
    \return 0 in case of success, else < 0
+   \ingroup Command
 */
 
 int ec_command_npwr(ec_command_t *command,
@@ -145,6 +170,7 @@ int ec_command_npwr(ec_command_t *command,
    Initializes an EtherCAT APRD command.
    Autoincrement physical read.
    \return 0 in case of success, else < 0
+   \ingroup Command
 */
 
 int ec_command_aprd(ec_command_t *command,
@@ -170,6 +196,7 @@ int ec_command_aprd(ec_command_t *command,
    Initializes an EtherCAT APWR command.
    Autoincrement physical write.
    \return 0 in case of success, else < 0
+   \ingroup Command
 */
 
 int ec_command_apwr(ec_command_t *command,
@@ -195,6 +222,7 @@ int ec_command_apwr(ec_command_t *command,
    Initializes an EtherCAT BRD command.
    Broadcast read.
    \return 0 in case of success, else < 0
+   \ingroup Command
 */
 
 int ec_command_brd(ec_command_t *command,
@@ -218,6 +246,7 @@ int ec_command_brd(ec_command_t *command,
    Initializes an EtherCAT BWR command.
    Broadcast write.
    \return 0 in case of success, else < 0
+   \ingroup Command
 */
 
 int ec_command_bwr(ec_command_t *command,
@@ -241,6 +270,7 @@ int ec_command_bwr(ec_command_t *command,
    Initializes an EtherCAT LRW command.
    Logical read write.
    \return 0 in case of success, else < 0
+   \ingroup Command
 */
 
 int ec_command_lrw(ec_command_t *command,

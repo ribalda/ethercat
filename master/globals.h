@@ -6,6 +6,23 @@
  *
  *  $Id$
  *
+ *  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
+ *
+ *  This file is part of the IgH EtherCAT Master.
+ *
+ *  The IgH EtherCAT Master is free software; you can redistribute it
+ *  and/or modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; version 2 of the License.
+ *
+ *  The IgH EtherCAT Master is distributed in the hope that it will be
+ *  useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with the IgH EtherCAT Master; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ *
  *****************************************************************************/
 
 #ifndef _EC_GLOBALS_
@@ -17,8 +34,13 @@
  *  EtherCAT master
  *****************************************************************************/
 
+/** master main version */
 #define EC_MASTER_VERSION_MAIN  1
+
+/** master sub version (after the dot) */
 #define EC_MASTER_VERSION_SUB   0
+
+/** master extra version (just a string) */
 #define EC_MASTER_VERSION_EXTRA "trunk"
 
 /** maximum number of FMMUs per slave */
@@ -31,7 +53,7 @@
 /** maximum size of an EtherCAT frame (without header and CRC) */
 #define EC_MAX_FRAME_SIZE 1500
 
-/** ... minimum size */
+/** minimum size of an EtherCAT frame (without header and CRC) */
 #define EC_MIN_FRAME_SIZE 46
 
 /** size of an EtherCAT frame header */

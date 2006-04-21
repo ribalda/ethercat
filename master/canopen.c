@@ -6,6 +6,23 @@
  *
  *  $Id$
  *
+ *  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
+ *
+ *  This file is part of the IgH EtherCAT Master.
+ *
+ *  The IgH EtherCAT Master is free software; you can redistribute it
+ *  and/or modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; version 2 of the License.
+ *
+ *  The IgH EtherCAT Master is distributed in the hope that it will be
+ *  useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with the IgH EtherCAT Master; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ *
  *****************************************************************************/
 
 #include <linux/delay.h>
@@ -30,7 +47,8 @@ const ec_code_msg_t sdo_abort_messages[];
 /**
    Reads 32 bit of a CANopen SDO in expedited mode.
    \return 0 in case of success, else < 0
- */
+   \ingroup Slave
+*/
 
 int ec_slave_sdo_read_exp(ec_slave_t *slave, /**< EtherCAT slave */
                           uint16_t sdo_index, /**< SDO index */
@@ -79,13 +97,14 @@ int ec_slave_sdo_read_exp(ec_slave_t *slave, /**< EtherCAT slave */
 /**
    Writes a CANopen SDO using expedited mode.
    \return 0 in case of success, else < 0
- */
+   \ingroup Slave
+*/
 
 int ec_slave_sdo_write_exp(ec_slave_t *slave, /**< EtherCAT slave */
                            uint16_t sdo_index, /**< SDO index */
                            uint8_t sdo_subindex, /**< SDO subindex */
                            const uint8_t *sdo_data, /**< new value */
-                           size_t size
+                           size_t size /**< Data size in bytes (1 - 4) */
                            )
 {
     uint8_t *data;
@@ -138,9 +157,9 @@ int ec_slave_sdo_write_exp(ec_slave_t *slave, /**< EtherCAT slave */
 /**
    Reads a CANopen SDO in normal mode.
    \return 0 in case of success, else < 0
-
+   \ingroup Slave
    \todo size
- */
+*/
 
 int ecrt_slave_sdo_read(ec_slave_t *slave, /**< EtherCAT slave */
                         uint16_t sdo_index, /**< SDO index */
@@ -209,6 +228,7 @@ int ecrt_slave_sdo_read(ec_slave_t *slave, /**< EtherCAT slave */
 /**
    Fetches the SDO dictionary of a slave.
    \return 0 in case of success, else < 0
+   \ingroup Slave
 */
 
 int ec_slave_fetch_sdo_list(ec_slave_t *slave /**< EtherCAT slave */)
@@ -291,6 +311,7 @@ int ec_slave_fetch_sdo_list(ec_slave_t *slave /**< EtherCAT slave */)
 /**
    Fetches the SDO descriptions for the known SDOs.
    \return 0 in case of success, else < 0
+   \ingroup Slave
 */
 
 int ec_slave_fetch_sdo_descriptions(ec_slave_t *slave /**< EtherCAT slave */)
@@ -369,6 +390,7 @@ int ec_slave_fetch_sdo_descriptions(ec_slave_t *slave /**< EtherCAT slave */)
 /**
    Fetches all entries (subindices) to an SDO.
    \return 0 in case of success, else < 0
+   \ingroup Slave
 */
 
 int ec_slave_fetch_sdo_entries(ec_slave_t *slave, /**< EtherCAT slave */
@@ -516,7 +538,8 @@ const ec_code_msg_t sdo_abort_messages[] = {
    Reads an 8-bit SDO in expedited mode.
    See ec_slave_sdo_read_exp()
    \return 0 in case of success, else < 0
- */
+   \ingroup Slave
+*/
 
 int ecrt_slave_sdo_read_exp8(ec_slave_t *slave, /**< EtherCAT slave */
                              uint16_t sdo_index, /**< SDO index */
@@ -536,7 +559,8 @@ int ecrt_slave_sdo_read_exp8(ec_slave_t *slave, /**< EtherCAT slave */
    Reads a 16-bit SDO in expedited mode.
    See ec_slave_sdo_read_exp()
    \return 0 in case of success, else < 0
- */
+   \ingroup Slave
+*/
 
 int ecrt_slave_sdo_read_exp16(ec_slave_t *slave, /**< EtherCAT slave */
                               uint16_t sdo_index, /**< SDO index */
@@ -556,7 +580,8 @@ int ecrt_slave_sdo_read_exp16(ec_slave_t *slave, /**< EtherCAT slave */
    Reads a 32-bit SDO in expedited mode.
    See ec_slave_sdo_read_exp()
    \return 0 in case of success, else < 0
- */
+   \ingroup Slave
+*/
 
 int ecrt_slave_sdo_read_exp32(ec_slave_t *slave, /**< EtherCAT slave */
                               uint16_t sdo_index, /**< SDO index */
@@ -575,7 +600,8 @@ int ecrt_slave_sdo_read_exp32(ec_slave_t *slave, /**< EtherCAT slave */
 /**
    Writes an 8-bit SDO in expedited mode.
    \return 0 in case of success, else < 0
- */
+   \ingroup Slave
+*/
 
 int ecrt_slave_sdo_write_exp8(ec_slave_t *slave, /**< EtherCAT slave */
                               uint16_t sdo_index, /**< SDO index */
@@ -591,7 +617,8 @@ int ecrt_slave_sdo_write_exp8(ec_slave_t *slave, /**< EtherCAT slave */
 /**
    Writes a 16-bit SDO in expedited mode.
    \return 0 in case of success, else < 0
- */
+   \ingroup Slave
+*/
 
 int ecrt_slave_sdo_write_exp16(ec_slave_t *slave, /**< EtherCAT slave */
                                uint16_t sdo_index, /**< SDO index */
@@ -609,7 +636,8 @@ int ecrt_slave_sdo_write_exp16(ec_slave_t *slave, /**< EtherCAT slave */
 /**
    Writes a 32-bit SDO in expedited mode.
    \return 0 in case of success, else < 0
- */
+   \ingroup Slave
+*/
 
 int ecrt_slave_sdo_write_exp32(ec_slave_t *slave, /**< EtherCAT slave */
                                uint16_t sdo_index, /**< SDO index */

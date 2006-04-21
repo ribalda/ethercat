@@ -6,6 +6,23 @@
  *
  *  $Id$
  *
+ *  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
+ *
+ *  This file is part of the IgH EtherCAT Master.
+ *
+ *  The IgH EtherCAT Master is free software; you can redistribute it
+ *  and/or modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; version 2 of the License.
+ *
+ *  The IgH EtherCAT Master is distributed in the hope that it will be
+ *  useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with the IgH EtherCAT Master; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ *
  *****************************************************************************/
 
 #include <linux/module.h>
@@ -22,6 +39,7 @@
 /**
    Device constructor.
    \return 0 in case of success, else < 0
+   \ingroup Device
 */
 
 int ec_device_init(ec_device_t *device, /**< EtherCAT device */
@@ -62,6 +80,7 @@ int ec_device_init(ec_device_t *device, /**< EtherCAT device */
 
 /**
    EtherCAT device destuctor.
+   \ingroup Device
 */
 
 void ec_device_clear(ec_device_t *device /**< EtherCAT device */)
@@ -75,6 +94,7 @@ void ec_device_clear(ec_device_t *device /**< EtherCAT device */)
 /**
    Opens the EtherCAT device.
    \return 0 in case of success, else < 0
+   \ingroup Device
 */
 
 int ec_device_open(ec_device_t *device /**< EtherCAT device */)
@@ -106,6 +126,7 @@ int ec_device_open(ec_device_t *device /**< EtherCAT device */)
 /**
    Stops the EtherCAT device.
    \return 0 in case of success, else < 0
+   \ingroup Device
 */
 
 int ec_device_close(ec_device_t *device /**< EtherCAT device */)
@@ -130,6 +151,7 @@ int ec_device_close(ec_device_t *device /**< EtherCAT device */)
 /**
    Returns a pointer to the device's transmit memory.
    \return pointer to the TX socket buffer
+   \ingroup Device
 */
 
 uint8_t *ec_device_tx_data(ec_device_t *device /**< EtherCAT device */)
@@ -143,6 +165,7 @@ uint8_t *ec_device_tx_data(ec_device_t *device /**< EtherCAT device */)
    Sends the content of the transmit socket buffer.
    Cuts the socket buffer content to the (now known) size, and calls the
    start_xmit() function of the assigned net_device.
+   \ingroup Device
 */
 
 void ec_device_send(ec_device_t *device, /**< EtherCAT device */
@@ -168,6 +191,7 @@ void ec_device_send(ec_device_t *device, /**< EtherCAT device */
 
 /**
    Calls the interrupt service routine of the assigned net_device.
+   \ingroup Device
 */
 
 void ec_device_call_isr(ec_device_t *device /**< EtherCAT device */)
@@ -182,6 +206,7 @@ void ec_device_call_isr(ec_device_t *device /**< EtherCAT device */)
 /**
    Accepts a received frame.
    Forwards the received data to the master.
+   \ingroup Device
 */
 
 void ecdev_receive(ec_device_t *device, /**< EtherCAT device */
@@ -201,6 +226,7 @@ void ecdev_receive(ec_device_t *device, /**< EtherCAT device */
 
 /**
    Sets a new link state.
+   \ingroup Device
 */
 
 void ecdev_link_state(ec_device_t *device, /**< EtherCAT device */

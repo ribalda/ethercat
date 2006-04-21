@@ -1,11 +1,20 @@
 -------------------------------------------------------------------------------
 
+This is the README file of the IgH EtherCAT Master.
+
 $Id$
+
+Contents:
+1) General Information
+2) Requirements
+3) Building and Installing
+4) Realtime & Tuning
+5) License
 
 -------------------------------------------------------------------------------
 
-General Information
-===================
+1) General Information
+======================
 
 This is an Open-Source EtherCAT master implementation for Linux 2.6.
 
@@ -23,8 +32,8 @@ http://igh-essen.com
 
 -------------------------------------------------------------------------------
 
-Requirements
-============
+2) Requirements
+===============
 
 1) Software requirements
 
@@ -39,8 +48,8 @@ implemented soon.
 
 -------------------------------------------------------------------------------
 
-Building and installing
-=======================
+3) Building and installing
+==========================
 
 1) Create a copy of the configuration template:
 
@@ -66,8 +75,8 @@ Building and installing
 
 -------------------------------------------------------------------------------
 
-Realtime & Tuning
-=================
+4) Realtime & Tuning
+====================
 
 Realtime patches for the Linux kernel are supported, but not required. The
 realtime processing has to be done by the calling module (see API
@@ -76,5 +85,27 @@ mode) completely passive.
 
 To avoid frame timeouts, deactivating DMA access for hard drives is
 recommented (hdparm -d0 <DEV>).
+
+-------------------------------------------------------------------------------
+
+5) License
+==========
+
+Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
+
+This file is part of the IgH EtherCAT Master.
+
+The IgH EtherCAT Master is free software; you can redistribute it
+and/or modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; version 2 of the License.
+
+The IgH EtherCAT Master is distributed in the hope that it will be
+useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with the IgH EtherCAT Master; if not, write to the Free Software
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 -------------------------------------------------------------------------------

@@ -6,6 +6,23 @@
  *
  *  $Id$
  *
+ *  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
+ *
+ *  This file is part of the IgH EtherCAT Master.
+ *
+ *  The IgH EtherCAT Master is free software; you can redistribute it
+ *  and/or modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; version 2 of the License.
+ *
+ *  The IgH EtherCAT Master is distributed in the hope that it will be
+ *  useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with the IgH EtherCAT Master; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ *
  *****************************************************************************/
 
 #include <linux/slab.h>
@@ -20,6 +37,7 @@
 /**
    Prepares a mailbox-send command.
    \return pointer to mailbox command data
+   \ingroup Slave
 */
 
 uint8_t *ec_slave_mbox_prepare_send(ec_slave_t *slave, /**< slave */
@@ -60,6 +78,7 @@ uint8_t *ec_slave_mbox_prepare_send(ec_slave_t *slave, /**< slave */
 /**
    Prepares a command for checking the mailbox state.
    \return 0 in case of success, else < 0
+   \ingroup Slave
 */
 
 int ec_slave_mbox_prepare_check(ec_slave_t *slave /**< slave */)
@@ -78,6 +97,7 @@ int ec_slave_mbox_prepare_check(ec_slave_t *slave /**< slave */)
 /**
    Processes a mailbox state checking command.
    \return 0 in case of success, else < 0
+   \ingroup Slave
 */
 
 int ec_slave_mbox_check(const ec_slave_t *slave /**< slave */)
@@ -90,6 +110,7 @@ int ec_slave_mbox_check(const ec_slave_t *slave /**< slave */)
 /**
    Prepares a command to fetch mailbox data.
    \return 0 in case of success, else < 0
+   \ingroup Slave
 */
 
 int ec_slave_mbox_prepare_fetch(ec_slave_t *slave /**< slave */)
@@ -107,6 +128,7 @@ int ec_slave_mbox_prepare_fetch(ec_slave_t *slave /**< slave */)
 /**
    Processes received mailbox data.
    \return pointer to the received data
+   \ingroup Slave
 */
 
 uint8_t *ec_slave_mbox_fetch(ec_slave_t *slave, /**< slave */
@@ -139,6 +161,7 @@ uint8_t *ec_slave_mbox_fetch(ec_slave_t *slave, /**< slave */
 /**
    Sends a mailbox command and waits for its reception.
    \return pointer to the received data
+   \ingroup Slave
 */
 
 uint8_t *ec_slave_mbox_simple_io(ec_slave_t *slave, /**< slave */
@@ -165,6 +188,7 @@ uint8_t *ec_slave_mbox_simple_io(ec_slave_t *slave, /**< slave */
 /**
    Waits for the reception of a mailbox command.
    \return pointer to the received data
+   \ingroup Slave
 */
 
 uint8_t *ec_slave_mbox_simple_receive(ec_slave_t *slave, /**< slave */

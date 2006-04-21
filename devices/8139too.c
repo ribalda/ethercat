@@ -4,21 +4,26 @@
  *
  *  EtherCAT driver for RTL8139-compatible NICs.
  *
- *  Authors: Florian Pose <fp@igh-essen.com>
- *           Wilhelm Hagemeister <hm@igh-essen.com>
+ *  $Id$
  *
- *  $Date$
- *  $Author$
+ *  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
  *
- *  (C) Copyright IgH 2006
- *  Ingenieurgemeinschaft IgH
- *  Heinz-Bäcker Str. 34
- *  D-45356 Essen
- *  Tel.: +49 201/61 99 31
- *  Fax.: +49 201/61 98 36
- *  E-mail: sp@igh-essen.com
+ *  This file is part of the IgH EtherCAT Master.
  *
- ******************************************************************************/
+ *  The IgH EtherCAT Master is free software; you can redistribute it
+ *  and/or modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; version 2 of the License.
+ *
+ *  The IgH EtherCAT Master is distributed in the hope that it will be
+ *  useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with the IgH EtherCAT Master; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ *
+ *****************************************************************************/
 
 /*
 	8139too.c: A RealTek RTL-8139 Fast Ethernet driver for Linux.

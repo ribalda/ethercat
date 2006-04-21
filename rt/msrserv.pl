@@ -1,30 +1,35 @@
 #!/usr/bin/perl -w
-#------------------------------------------------------------
+
+#------------------------------------------------------------------------------
 #
-# (C) Copyright
-#     Ingenieurgemeinschaft IgH
-#     Heinz-Baecker-Strasse 34
-#     D-45356 Essen
-#     Tel.:  +49-201/61 99 31
-#     Fax.:  +49-201/61 98 36
-#     WWW:   http://www.igh-essen.com
-#     Email: msr@igh-essen.com
+#  Copyright (C) 2006  Ingenieurgemeinschaft IgH
 #
-#------------------------------------------------------------
+#  This file is part of the IgH EtherCAT Master.
 #
-# Multithreaded Server
-# according to the example from "Programming Perl"
-# this code is improved according to the example from
-# perldoc perlipc, so now safely being usable under Perl 5.8
-# (see note (*))
+#  The IgH EtherCAT Master is free software; you can redistribute it
+#  and/or modify it under the terms of the GNU General Public License
+#  as published by the Free Software Foundation; version 2 of the License.
 #
-# works with read/write on a device-file
+#  The IgH EtherCAT Master is distributed in the hope that it will be
+#  useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
 #
-# $Revision: 1.1 $
-# $Date: 2004/10/01 16:00:42 $
-# $RCSfile: msrserv.pl,v $
+#  You should have received a copy of the GNU General Public License
+#  along with the IgH EtherCAT Master; if not, write to the Free Software
+#  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
-#------------------------------------------------------------
+#------------------------------------------------------------------------------
+#
+#  Multithreaded Server
+#  according to the example from "Programming Perl"
+#  this code is improved according to the example from
+#  perldoc perlipc, so now safely being usable under Perl 5.8
+#  (see note (*))
+#
+#  works with read/write on a device-file
+#
+#------------------------------------------------------------------------------
 
 require 5.002;
 use strict;
