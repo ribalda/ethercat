@@ -404,6 +404,7 @@ ec_master_t *ecrt_request_master(unsigned int master_index
  out_module_put:
     module_put(master->device->module);
     ec_master_reset(master);
+    ec_master_freerun_start(master);
  out_release:
     master->reserved = 0;
  out_return:
