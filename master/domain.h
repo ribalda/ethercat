@@ -1,9 +1,5 @@
 /******************************************************************************
  *
- *  d o m a i n . h
- *
- *  EtherCAT domain structure.
- *
  *  $Id$
  *
  *  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
@@ -25,6 +21,13 @@
  *
  *****************************************************************************/
 
+/**
+   \file
+   EtherCAT domain structure.
+*/
+
+/*****************************************************************************/
+
 #ifndef _EC_DOMAIN_H_
 #define _EC_DOMAIN_H_
 
@@ -34,15 +37,6 @@
 #include "globals.h"
 #include "slave.h"
 #include "command.h"
-
-/*****************************************************************************/
-
-/**
-   \defgroup Domain EtherCAT domain
-   Data types and methods for EtherCAT domains.
-   A domain handles process data IO with a group of slaves.
-   \{
-*/
 
 /*****************************************************************************/
 
@@ -80,8 +74,6 @@ struct ec_domain
     unsigned int response_count; /**< number of responding slaves */
     struct list_head field_regs; /**< data field registrations */
 };
-
-/** \} */
 
 /*****************************************************************************/
 

@@ -1,11 +1,5 @@
 /******************************************************************************
  *
- *  m o d u l e . c
- *
- *  EtherCAT master driver module.
- *
- *  Author: Florian Pose <fp@igh-essen.com>
- *
  *  $Id$
  *
  *  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
@@ -27,6 +21,13 @@
  *
  *****************************************************************************/
 
+/**
+   \file
+   EtherCAT master driver module.
+*/
+
+/*****************************************************************************/
+
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/init.h>
@@ -42,6 +43,10 @@ void __exit ec_cleanup_module(void);
 
 /*****************************************************************************/
 
+/**
+   Compile version info.
+*/
+
 #define COMPILE_INFO EC_STR(EC_MASTER_VERSION_MAIN) \
                      "." EC_STR(EC_MASTER_VERSION_SUB) \
                      " (" EC_MASTER_VERSION_EXTRA ")" \
@@ -56,6 +61,8 @@ static struct list_head ec_masters;
 
 /*****************************************************************************/
 
+/** \cond */
+
 MODULE_AUTHOR ("Florian Pose <fp@igh-essen.com>");
 MODULE_DESCRIPTION ("EtherCAT master driver module");
 MODULE_LICENSE("GPL");
@@ -63,6 +70,8 @@ MODULE_VERSION(COMPILE_INFO);
 
 module_param(ec_master_count, int, 1);
 MODULE_PARM_DESC(ec_master_count, "number of EtherCAT masters to initialize");
+
+/** \endcond */
 
 /*****************************************************************************/
 
@@ -214,8 +223,12 @@ void ec_print_data_diff(const uint8_t *d1, /**< first data */
  *****************************************************************************/
 
 /**
-   Registeres an EtherCAT device for a certain master.
+   Connects an EtherCAT device to a certain master.
+   The master will use the device for sending and receiving frames. It is
+   required that no other instance (for example the kernel IP stack) uses
+   the device.
    \return 0 on success, else < 0
+   \ingroup DeviceInterface
 */
 
 ec_device_t *ecdev_register(unsigned int master_index, /**< master index */
@@ -266,7 +279,12 @@ ec_device_t *ecdev_register(unsigned int master_index, /**< master index */
 /*****************************************************************************/
 
 /**
-   Unregisteres an EtherCAT device.
+   Disconnect an EtherCAT device from the master.
+   The device is disconnected from the master and all device ressources
+   are freed.
+   \attention Before calling this function, the ecdev_stop() function has
+   to be called, to be sure that the master does not use the device any more.
+   \ingroup DeviceInterface
 */
 
 void ecdev_unregister(unsigned int master_index, /**< master index */
@@ -291,6 +309,10 @@ void ecdev_unregister(unsigned int master_index, /**< master index */
 
 /**
    Starts the master associated with the device.
+   This function has to be called by the network device driver to tell the
+   master that the device is ready to send and receive data. The master
+   will enter the free-run mode then.
+   \ingroup DeviceInterface
 */
 
 int ecdev_start(unsigned int master_index /**< master index */)
@@ -311,6 +333,9 @@ int ecdev_start(unsigned int master_index /**< master index */)
 
 /**
    Stops the master associated with the device.
+   Tells the master to stop using the device for frame IO. Has to be called
+   before unregistering the device.
+   \ingroup DeviceInterface
 */
 
 void ecdev_stop(unsigned int master_index /**< master index */)
@@ -331,6 +356,7 @@ void ecdev_stop(unsigned int master_index /**< master index */)
 /**
    Reserves an EtherCAT master for realtime operation.
    \return pointer to reserved master, or NULL on error
+   \ingroup RealtimeInterface
 */
 
 ec_master_t *ecrt_request_master(unsigned int master_index
@@ -389,6 +415,7 @@ ec_master_t *ecrt_request_master(unsigned int master_index
 
 /**
    Releases a reserved EtherCAT master.
+   \ingroup RealtimeInterface
 */
 
 void ecrt_release_master(ec_master_t *master /**< EtherCAT master */)
@@ -414,6 +441,8 @@ void ecrt_release_master(ec_master_t *master /**< EtherCAT master */)
 
 /*****************************************************************************/
 
+/** \cond */
+
 module_init(ec_init_module);
 module_exit(ec_cleanup_module);
 
@@ -423,5 +452,7 @@ EXPORT_SYMBOL(ecdev_start);
 EXPORT_SYMBOL(ecdev_stop);
 EXPORT_SYMBOL(ecrt_request_master);
 EXPORT_SYMBOL(ecrt_release_master);
+
+/** \endcond */
 
 /*****************************************************************************/

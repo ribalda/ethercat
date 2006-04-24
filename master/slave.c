@@ -1,9 +1,5 @@
 /******************************************************************************
  *
- *  s l a v e . c
- *
- *  EtherCAT slave methods.
- *
  *  $Id$
  *
  *  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
@@ -25,6 +21,13 @@
  *
  *****************************************************************************/
 
+/**
+   \file
+   EtherCAT slave methods.
+*/
+
+/*****************************************************************************/
+
 #include <linux/module.h>
 #include <linux/delay.h>
 
@@ -44,6 +47,8 @@ int ec_slave_locate_string(ec_slave_t *, unsigned int, char **);
 ssize_t ec_show_slave_attribute(struct kobject *, struct attribute *, char *);
 
 /*****************************************************************************/
+
+/** \cond */
 
 EC_SYSFS_READ_ATTR(ring_position);
 EC_SYSFS_READ_ATTR(coupler_address);
@@ -73,6 +78,8 @@ static struct kobj_type ktype_ec_slave = {
     .default_attrs = def_attrs
 };
 
+/** \endcond */
+
 /*****************************************************************************/
 
 const ec_code_msg_t al_status_messages[];
@@ -82,7 +89,6 @@ const ec_code_msg_t al_status_messages[];
 /**
    Slave constructor.
    \return 0 in case of success, else < 0
-   \ingroup Slave
 */
 
 int ec_slave_init(ec_slave_t *slave, /**< EtherCAT slave */
@@ -153,7 +159,6 @@ int ec_slave_init(ec_slave_t *slave, /**< EtherCAT slave */
 
 /**
    Slave destructor.
-   \ingroup Slave
 */
 
 void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
@@ -220,7 +225,6 @@ void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
 /**
    Reads all necessary information from a slave.
    \return 0 in case of success, else < 0
-   \ingroup Slave
 */
 
 int ec_slave_fetch(ec_slave_t *slave /**< EtherCAT slave */)
@@ -298,7 +302,6 @@ int ec_slave_fetch(ec_slave_t *slave /**< EtherCAT slave */)
 /**
    Reads 16 bit from the slave information interface (SII).
    \return 0 in case of success, else < 0
-   \ingroup Slave
 */
 
 int ec_slave_sii_read16(ec_slave_t *slave,
@@ -359,7 +362,6 @@ int ec_slave_sii_read16(ec_slave_t *slave,
 /**
    Reads 32 bit from the slave information interface (SII).
    \return 0 in case of success, else < 0
-   \ingroup Slave
 */
 
 int ec_slave_sii_read32(ec_slave_t *slave,
@@ -420,7 +422,6 @@ int ec_slave_sii_read32(ec_slave_t *slave,
 /**
    Writes 16 bit of data to the slave information interface (SII).
    \return 0 in case of success, else < 0
-   \ingroup Slave
 */
 
 int ec_slave_sii_write16(ec_slave_t *slave,
@@ -491,7 +492,6 @@ int ec_slave_sii_write16(ec_slave_t *slave,
 /**
    Fetches data from slave's EEPROM.
    \return 0 in case of success, else < 0
-   \ingroup Slave
 */
 
 int ec_slave_fetch_categories(ec_slave_t *slave /**< EtherCAT slave */)
@@ -584,7 +584,6 @@ int ec_slave_fetch_categories(ec_slave_t *slave /**< EtherCAT slave */)
 /**
    Fetches data from a STRING category.
    \return 0 in case of success, else < 0
-   \ingroup Slave
 */
 
 int ec_slave_fetch_strings(ec_slave_t *slave, /**< EtherCAT slave */
@@ -623,7 +622,6 @@ int ec_slave_fetch_strings(ec_slave_t *slave, /**< EtherCAT slave */
 /**
    Fetches data from a GENERAL category.
    \return 0 in case of success, else < 0
-   \ingroup Slave
 */
 
 int ec_slave_fetch_general(ec_slave_t *slave, /**< EtherCAT slave */
@@ -651,7 +649,6 @@ int ec_slave_fetch_general(ec_slave_t *slave, /**< EtherCAT slave */
 /**
    Fetches data from a SYNC MANAGER category.
    \return 0 in case of success, else < 0
-   \ingroup Slave
 */
 
 int ec_slave_fetch_sync(ec_slave_t *slave, /**< EtherCAT slave */
@@ -688,7 +685,6 @@ int ec_slave_fetch_sync(ec_slave_t *slave, /**< EtherCAT slave */
 /**
    Fetches data from a [RT]XPDO category.
    \return 0 in case of success, else < 0
-   \ingroup Slave
 */
 
 int ec_slave_fetch_pdo(ec_slave_t *slave, /**< EtherCAT slave */
@@ -750,7 +746,6 @@ int ec_slave_fetch_pdo(ec_slave_t *slave, /**< EtherCAT slave */
 /**
    Searches the string list for an index and allocates a new string.
    \return 0 in case of success, else < 0
-   \ingroup Slave
    \todo documentation
 */
 
@@ -800,7 +795,6 @@ int ec_slave_locate_string(ec_slave_t *slave, /**< EtherCAT slave */
 
 /**
    Acknowledges an error after a state transition.
-   \ingroup Slave
 */
 
 void ec_slave_state_ack(ec_slave_t *slave, /**< EtherCAT slave */
@@ -857,7 +851,6 @@ void ec_slave_state_ack(ec_slave_t *slave, /**< EtherCAT slave */
    Reads the AL status code of a slave and displays it.
    If the AL status code is not supported, or if no error occurred (both
    resulting in code = 0), nothing is displayed.
-   \ingroup Slave
 */
 
 void ec_slave_read_al_status_code(ec_slave_t *slave /**< EtherCAT slave */)
@@ -893,7 +886,6 @@ void ec_slave_read_al_status_code(ec_slave_t *slave /**< EtherCAT slave */)
 /**
    Does a state transition.
    \return 0 in case of success, else < 0
-   \ingroup Slave
 */
 
 int ec_slave_state_change(ec_slave_t *slave, /**< EtherCAT slave */
@@ -963,7 +955,6 @@ int ec_slave_state_change(ec_slave_t *slave, /**< EtherCAT slave */
    If the FMMU configuration is already prepared, the function returns with
    success.
    \return 0 in case of success, else < 0
-   \ingroup Slave
 */
 
 int ec_slave_prepare_fmmu(ec_slave_t *slave, /**< EtherCAT slave */
@@ -1002,7 +993,6 @@ int ec_slave_prepare_fmmu(ec_slave_t *slave, /**< EtherCAT slave */
    - 0: Only slave types and addresses
    - 1: with EEPROM information
    - >1: with SDO dictionaries
-   \ingroup Slave
 */
 
 void ec_slave_print(const ec_slave_t *slave, /**< EtherCAT slave */
@@ -1164,7 +1154,6 @@ void ec_slave_print(const ec_slave_t *slave, /**< EtherCAT slave */
 /**
    Outputs the values of the CRC faoult counters and resets them.
    \return 0 in case of success, else < 0
-   \ingroup Slave
 */
 
 int ec_slave_check_crc(ec_slave_t *slave /**< EtherCAT slave */)
@@ -1218,24 +1207,9 @@ int ec_slave_check_crc(ec_slave_t *slave /**< EtherCAT slave */)
 /*****************************************************************************/
 
 /**
-   Writes the "configured station alias" to the slave's EEPROM.
-   \return 0 in case of success, else < 0
-   \ingroup Slave
-*/
-
-int ecrt_slave_write_alias(ec_slave_t *slave, /**< EtherCAT slave */
-                           uint16_t alias /**< new alias */
-                           )
-{
-    return ec_slave_sii_write16(slave, 0x0004, alias);
-}
-
-/*****************************************************************************/
-
-/**
    Formats attribute data for SysFS read access.
    \return number of bytes to read
-   \ingroup Slave
+   \ingroup RealTimeInterface
 */
 
 ssize_t ec_show_slave_attribute(struct kobject *kobj, /**< slave's kobject */
@@ -1278,6 +1252,10 @@ ssize_t ec_show_slave_attribute(struct kobject *kobj, /**< slave's kobject */
 
 /*****************************************************************************/
 
+/**
+   Application layer status messages.
+*/
+
 const ec_code_msg_t al_status_messages[] = {
     {0x0001, "Unspecified error"},
     {0x0011, "Invalud requested state change"},
@@ -1298,8 +1276,29 @@ const ec_code_msg_t al_status_messages[] = {
     {}
 };
 
+/******************************************************************************
+ *  Realtime interface
+ *****************************************************************************/
+
+/**
+   Writes the "configured station alias" to the slave's EEPROM.
+   \return 0 in case of success, else < 0
+   \ingroup RealtimeInterface
+*/
+
+int ecrt_slave_write_alias(ec_slave_t *slave, /**< EtherCAT slave */
+                           uint16_t alias /**< new alias */
+                           )
+{
+    return ec_slave_sii_write16(slave, 0x0004, alias);
+}
+
 /*****************************************************************************/
 
+/**< \cond */
+
 EXPORT_SYMBOL(ecrt_slave_write_alias);
+
+/**< \endcond */
 
 /*****************************************************************************/

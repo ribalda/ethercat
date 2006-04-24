@@ -1,9 +1,5 @@
 /******************************************************************************
  *
- *  e t h e r n e t . h
- *
- *  Ethernet-over-EtherCAT (EoE)
- *
  *  $Id$
  *
  *  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
@@ -25,20 +21,19 @@
  *
  *****************************************************************************/
 
+/**
+   \file
+   Ethernet-over-EtherCAT (EoE)
+*/
+
+/*****************************************************************************/
+
 #include <linux/list.h>
 
 #include "../include/ecrt.h"
 #include "globals.h"
 #include "slave.h"
 #include "command.h"
-
-/*****************************************************************************/
-
-/**
-   \defgroup EoE EtherCAT-over-Ethernet (EoE)
-   Data types and functions for Ethernet-over-EtherCAT.
-   \{
-*/
 
 /*****************************************************************************/
 
@@ -69,8 +64,6 @@ typedef struct
     ec_eoe_state_t rx_state; /**< state of the state machine */
 }
 ec_eoe_t;
-
-/** \} */
 
 /*****************************************************************************/
 

@@ -1,9 +1,5 @@
 /******************************************************************************
  *
- *  c a n o p e n . c
- *
- *  CANopen over EtherCAT
- *
  *  $Id$
  *
  *  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
@@ -24,6 +20,13 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  *****************************************************************************/
+
+/**
+   \file
+   Canopen-over-EtherCAT functions.
+*/
+
+/*****************************************************************************/
 
 #include <linux/delay.h>
 #include <linux/slab.h>
@@ -47,7 +50,6 @@ const ec_code_msg_t sdo_abort_messages[];
 /**
    Reads 32 bit of a CANopen SDO in expedited mode.
    \return 0 in case of success, else < 0
-   \ingroup Slave
 */
 
 int ec_slave_sdo_read_exp(ec_slave_t *slave, /**< EtherCAT slave */
@@ -97,7 +99,6 @@ int ec_slave_sdo_read_exp(ec_slave_t *slave, /**< EtherCAT slave */
 /**
    Writes a CANopen SDO using expedited mode.
    \return 0 in case of success, else < 0
-   \ingroup Slave
 */
 
 int ec_slave_sdo_write_exp(ec_slave_t *slave, /**< EtherCAT slave */
@@ -157,8 +158,8 @@ int ec_slave_sdo_write_exp(ec_slave_t *slave, /**< EtherCAT slave */
 /**
    Reads a CANopen SDO in normal mode.
    \return 0 in case of success, else < 0
-   \ingroup Slave
-   \todo size
+   \ingroup RealtimeInterface
+   \todo Make size non-pointer.
 */
 
 int ecrt_slave_sdo_read(ec_slave_t *slave, /**< EtherCAT slave */
@@ -228,7 +229,6 @@ int ecrt_slave_sdo_read(ec_slave_t *slave, /**< EtherCAT slave */
 /**
    Fetches the SDO dictionary of a slave.
    \return 0 in case of success, else < 0
-   \ingroup Slave
 */
 
 int ec_slave_fetch_sdo_list(ec_slave_t *slave /**< EtherCAT slave */)
@@ -311,7 +311,6 @@ int ec_slave_fetch_sdo_list(ec_slave_t *slave /**< EtherCAT slave */)
 /**
    Fetches the SDO descriptions for the known SDOs.
    \return 0 in case of success, else < 0
-   \ingroup Slave
 */
 
 int ec_slave_fetch_sdo_descriptions(ec_slave_t *slave /**< EtherCAT slave */)
@@ -390,7 +389,6 @@ int ec_slave_fetch_sdo_descriptions(ec_slave_t *slave /**< EtherCAT slave */)
 /**
    Fetches all entries (subindices) to an SDO.
    \return 0 in case of success, else < 0
-   \ingroup Slave
 */
 
 int ec_slave_fetch_sdo_entries(ec_slave_t *slave, /**< EtherCAT slave */
@@ -538,7 +536,7 @@ const ec_code_msg_t sdo_abort_messages[] = {
    Reads an 8-bit SDO in expedited mode.
    See ec_slave_sdo_read_exp()
    \return 0 in case of success, else < 0
-   \ingroup Slave
+   \ingroup RealtimeInterface
 */
 
 int ecrt_slave_sdo_read_exp8(ec_slave_t *slave, /**< EtherCAT slave */
@@ -559,7 +557,7 @@ int ecrt_slave_sdo_read_exp8(ec_slave_t *slave, /**< EtherCAT slave */
    Reads a 16-bit SDO in expedited mode.
    See ec_slave_sdo_read_exp()
    \return 0 in case of success, else < 0
-   \ingroup Slave
+   \ingroup RealtimeInterface
 */
 
 int ecrt_slave_sdo_read_exp16(ec_slave_t *slave, /**< EtherCAT slave */
@@ -580,7 +578,7 @@ int ecrt_slave_sdo_read_exp16(ec_slave_t *slave, /**< EtherCAT slave */
    Reads a 32-bit SDO in expedited mode.
    See ec_slave_sdo_read_exp()
    \return 0 in case of success, else < 0
-   \ingroup Slave
+   \ingroup RealtimeInterface
 */
 
 int ecrt_slave_sdo_read_exp32(ec_slave_t *slave, /**< EtherCAT slave */
@@ -600,7 +598,7 @@ int ecrt_slave_sdo_read_exp32(ec_slave_t *slave, /**< EtherCAT slave */
 /**
    Writes an 8-bit SDO in expedited mode.
    \return 0 in case of success, else < 0
-   \ingroup Slave
+   \ingroup RealtimeInterface
 */
 
 int ecrt_slave_sdo_write_exp8(ec_slave_t *slave, /**< EtherCAT slave */
@@ -617,7 +615,7 @@ int ecrt_slave_sdo_write_exp8(ec_slave_t *slave, /**< EtherCAT slave */
 /**
    Writes a 16-bit SDO in expedited mode.
    \return 0 in case of success, else < 0
-   \ingroup Slave
+   \ingroup RealtimeInterface
 */
 
 int ecrt_slave_sdo_write_exp16(ec_slave_t *slave, /**< EtherCAT slave */
@@ -636,7 +634,7 @@ int ecrt_slave_sdo_write_exp16(ec_slave_t *slave, /**< EtherCAT slave */
 /**
    Writes a 32-bit SDO in expedited mode.
    \return 0 in case of success, else < 0
-   \ingroup Slave
+   \ingroup RealtimeInterface
 */
 
 int ecrt_slave_sdo_write_exp32(ec_slave_t *slave, /**< EtherCAT slave */
@@ -652,6 +650,8 @@ int ecrt_slave_sdo_write_exp32(ec_slave_t *slave, /**< EtherCAT slave */
 
 /*****************************************************************************/
 
+/** \cond */
+
 EXPORT_SYMBOL(ecrt_slave_sdo_read_exp8);
 EXPORT_SYMBOL(ecrt_slave_sdo_read_exp16);
 EXPORT_SYMBOL(ecrt_slave_sdo_read_exp32);
@@ -659,5 +659,7 @@ EXPORT_SYMBOL(ecrt_slave_sdo_write_exp8);
 EXPORT_SYMBOL(ecrt_slave_sdo_write_exp16);
 EXPORT_SYMBOL(ecrt_slave_sdo_write_exp32);
 EXPORT_SYMBOL(ecrt_slave_sdo_read);
+
+/** \endcond */
 
 /*****************************************************************************/

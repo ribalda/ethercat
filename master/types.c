@@ -1,9 +1,5 @@
 /******************************************************************************
  *
- *  t y p e s . c
- *
- *  EtherCAT slave descriptions.
- *
  *  $Id$
  *
  *  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
@@ -24,6 +20,14 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  *****************************************************************************/
+
+/**
+   \file
+   EtherCAT slave descriptions.
+   \cond
+*/
+
+/*****************************************************************************/
 
 #include <linux/module.h>
 
@@ -206,6 +210,8 @@ const ec_slave_type_t TR_Electronic_LinEnc2 = {
     "TR-Electronic", "LinEnc2", "SSI-Encoder", EC_TYPE_NORMAL,
     {&trlinenc2_sm0, &trlinenc2_sm1, &trlinenc2_sm2, &trlinenc2_sm3, NULL}
 };
+
+/** \endcond */
 
 /*****************************************************************************/
 

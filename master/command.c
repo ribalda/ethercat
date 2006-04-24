@@ -1,9 +1,5 @@
 /******************************************************************************
  *
- *  c o m m a n d . c
- *
- *  Methods of an EtherCAT command.
- *
  *  $Id$
  *
  *  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
@@ -25,6 +21,13 @@
  *
  *****************************************************************************/
 
+/**
+   \file
+   Methods of an EtherCAT command.
+*/
+
+/*****************************************************************************/
+
 #include <linux/slab.h>
 #include <linux/delay.h>
 
@@ -32,6 +35,8 @@
 #include "master.h"
 
 /*****************************************************************************/
+
+/** \cond */
 
 #define EC_FUNC_HEADER \
     if (unlikely(ec_command_prealloc(command, data_size))) \
@@ -45,11 +50,12 @@
     memset(command->data, 0x00, data_size); \
     return 0;
 
+/** \endcond */
+
 /*****************************************************************************/
 
 /**
    Command constructor.
-   \ingroup Command
 */
 
 void ec_command_init(ec_command_t *command /**< EtherCAT command */)
@@ -68,7 +74,6 @@ void ec_command_init(ec_command_t *command /**< EtherCAT command */)
 
 /**
    Command destructor.
-   \ingroup Command
 */
 
 void ec_command_clear(ec_command_t *command /**< EtherCAT command */)
@@ -82,7 +87,6 @@ void ec_command_clear(ec_command_t *command /**< EtherCAT command */)
    Allocates command data memory.
    If the allocated memory is already larger than requested, nothing ist done.
    \return 0 in case of success, else < 0
-   \ingroup Command
 */
 
 int ec_command_prealloc(ec_command_t *command, /**< EtherCAT command */
@@ -112,7 +116,6 @@ int ec_command_prealloc(ec_command_t *command, /**< EtherCAT command */
    Initializes an EtherCAT NPRD command.
    Node-adressed physical read.
    \return 0 in case of success, else < 0
-   \ingroup Command
 */
 
 int ec_command_nprd(ec_command_t *command,
@@ -141,7 +144,6 @@ int ec_command_nprd(ec_command_t *command,
    Initializes an EtherCAT NPWR command.
    Node-adressed physical write.
    \return 0 in case of success, else < 0
-   \ingroup Command
 */
 
 int ec_command_npwr(ec_command_t *command,
@@ -170,7 +172,6 @@ int ec_command_npwr(ec_command_t *command,
    Initializes an EtherCAT APRD command.
    Autoincrement physical read.
    \return 0 in case of success, else < 0
-   \ingroup Command
 */
 
 int ec_command_aprd(ec_command_t *command,
@@ -196,7 +197,6 @@ int ec_command_aprd(ec_command_t *command,
    Initializes an EtherCAT APWR command.
    Autoincrement physical write.
    \return 0 in case of success, else < 0
-   \ingroup Command
 */
 
 int ec_command_apwr(ec_command_t *command,
@@ -222,7 +222,6 @@ int ec_command_apwr(ec_command_t *command,
    Initializes an EtherCAT BRD command.
    Broadcast read.
    \return 0 in case of success, else < 0
-   \ingroup Command
 */
 
 int ec_command_brd(ec_command_t *command,
@@ -246,7 +245,6 @@ int ec_command_brd(ec_command_t *command,
    Initializes an EtherCAT BWR command.
    Broadcast write.
    \return 0 in case of success, else < 0
-   \ingroup Command
 */
 
 int ec_command_bwr(ec_command_t *command,
@@ -270,7 +268,6 @@ int ec_command_bwr(ec_command_t *command,
    Initializes an EtherCAT LRW command.
    Logical read write.
    \return 0 in case of success, else < 0
-   \ingroup Command
 */
 
 int ec_command_lrw(ec_command_t *command,

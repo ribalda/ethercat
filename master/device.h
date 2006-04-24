@@ -1,9 +1,5 @@
 /******************************************************************************
  *
- *  d e v i c e . h
- *
- *  EtherCAT device structure.
- *
  *  $Id$
  *
  *  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
@@ -25,6 +21,13 @@
  *
  *****************************************************************************/
 
+/**
+   \file
+   EtherCAT device structure.
+*/
+
+/*****************************************************************************/
+
 #ifndef _EC_DEVICE_H_
 #define _EC_DEVICE_H_
 
@@ -37,18 +40,7 @@
 /*****************************************************************************/
 
 /**
-   \defgroup Device EtherCAT device
-   Data types and functions for EtherCAT devices.
-   An EtherCAT device is the connection from an EtherCAT master to a network
-   interface card.
-   \{
-*/
-
-/*****************************************************************************/
-
-/**
    EtherCAT device.
-
    An EtherCAT device is a network interface card, that is owned by an
    EtherCAT master to send and receive EtherCAT frames with.
 */
@@ -63,8 +55,6 @@ struct ec_device
     struct module *module; /**< pointer to the device's owning module */
     uint8_t link_state; /**< device link state */
 };
-
-/** \} */
 
 /*****************************************************************************/
 

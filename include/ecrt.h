@@ -1,7 +1,5 @@
 /******************************************************************************
  *
- *  EtherCAT realtime interface.
- *
  *  $Id$
  *
  *  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
@@ -22,6 +20,21 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  *****************************************************************************/
+
+/**
+   \file
+   EtherCAT realtime interface.
+*/
+
+/**
+   \defgroup RealtimeInterface EtherCAT realtime interface
+   EtherCAT interface for realtime modules.
+   This interface is designed for realtime modules that want to use EtherCAT.
+   There are functions to request a master, to map process data, to communicate
+   with slaves via CoE and to configure and activate the bus.
+*/
+
+/*****************************************************************************/
 
 #ifndef __ECRT_H__
 #define __ECRT_H__
@@ -57,14 +70,16 @@ typedef struct
 }
 ec_field_init_t;
 
-/*****************************************************************************/
-// Master request functions
+/******************************************************************************
+ *  Master request functions
+ *****************************************************************************/
 
 ec_master_t *ecrt_request_master(unsigned int master_index);
 void ecrt_release_master(ec_master_t *master);
 
-/*****************************************************************************/
-// Master methods
+/******************************************************************************
+ *  Master methods
+ *****************************************************************************/
 
 ec_domain_t *ecrt_master_create_domain(ec_master_t *master);
 
@@ -85,8 +100,9 @@ void ecrt_master_print(const ec_master_t *master, unsigned int verbosity);
 
 ec_slave_t *ecrt_master_get_slave(const ec_master_t *, const char *);
 
-/*****************************************************************************/
-// Domain Methods
+/******************************************************************************
+ *  Domain Methods
+ *****************************************************************************/
 
 ec_slave_t *ecrt_domain_register_field(ec_domain_t *domain,
                                        const char *address,
@@ -103,8 +119,9 @@ void ecrt_domain_process(ec_domain_t *domain);
 
 int ecrt_domain_state(ec_domain_t *domain);
 
-/*****************************************************************************/
-// Slave Methods
+/******************************************************************************
+ *  Slave Methods
+ *****************************************************************************/
 
 int ecrt_slave_sdo_read_exp8(ec_slave_t *slave, uint16_t sdo_index,
                               uint8_t sdo_subindex, uint8_t *value);
@@ -123,54 +140,151 @@ int ecrt_slave_sdo_read(ec_slave_t *slave, uint16_t sdo_index,
 
 int ecrt_slave_write_alias(ec_slave_t *slave, uint16_t alias);
 
-/*****************************************************************************/
-// Bitwise read/write macros
+/******************************************************************************
+ *  Bitwise read/write macros
+ *****************************************************************************/
 
-#define EC_READ_BIT(PD, CH) ((*((uint8_t *) (PD)) >> (CH)) & 0x01)
+/**
+   Read a certain bit of an EtherCAT data byte.
+   \param DATA EtherCAT data pointer
+   \param POS bit position
+*/
 
-#define EC_WRITE_BIT(PD, CH, VAL) \
+#define EC_READ_BIT(DATA, POS) ((*((uint8_t *) (DATA)) >> (POS)) & 0x01)
+
+/**
+   Write a certain bit of an EtherCAT data byte.
+   \param DATA EtherCAT data pointer
+   \param POS bit position
+   \param VAL new bit value
+*/
+
+#define EC_WRITE_BIT(DATA, POS, VAL) \
     do { \
-        if (VAL) *((uint8_t *) (PD)) |=  (1 << (CH)); \
-        else     *((uint8_t *) (PD)) &= ~(1 << (CH)); \
+        if (VAL) *((uint8_t *) (DATA)) |=  (1 << (POS)); \
+        else     *((uint8_t *) (DATA)) &= ~(1 << (POS)); \
     } while (0)
 
-/*****************************************************************************/
-// Read macros
+/******************************************************************************
+ *  Read macros
+ *****************************************************************************/
 
-#define EC_READ_U8(PD) ((uint8_t) *((uint8_t *) (PD)))
-#define EC_READ_S8(PD) ((int8_t)  *((uint8_t *) (PD)))
+/**
+   Read an 8-bit unsigned value from EtherCAT data.
+   \return EtherCAT data value
+*/
 
-#define EC_READ_U16(PD) ((uint16_t) le16_to_cpup((void *) (PD)))
-#define EC_READ_S16(PD) ((int16_t)  le16_to_cpup((void *) (PD)))
+#define EC_READ_U8(DATA) \
+    ((uint8_t) *((uint8_t *) (DATA)))
 
-#define EC_READ_U32(PD) ((uint32_t) le32_to_cpup((void *) (PD)))
-#define EC_READ_S32(PD) ((int32_t)  le32_to_cpup((void *) (PD)))
+/**
+   Read an 8-bit signed value from EtherCAT data.
+   \param DATA EtherCAT data pointer
+   \return EtherCAT data value
+*/
 
-/*****************************************************************************/
-// Write macros
+#define EC_READ_S8(DATA) \
+     ((int8_t)  *((uint8_t *) (DATA)))
 
-#define EC_WRITE_U8(PD, VAL) \
+/**
+   Read a 16-bit unsigned value from EtherCAT data.
+   \param DATA EtherCAT data pointer
+   \return EtherCAT data value
+*/
+
+#define EC_READ_U16(DATA) \
+     ((uint16_t) le16_to_cpup((void *) (DATA)))
+
+/**
+   Read a 16-bit signed value from EtherCAT data.
+   \param DATA EtherCAT data pointer
+   \return EtherCAT data value
+*/
+
+#define EC_READ_S16(DATA) \
+     ((int16_t)  le16_to_cpup((void *) (DATA)))
+
+/**
+   Read a 32-bit unsigned value from EtherCAT data.
+   \param DATA EtherCAT data pointer
+   \return EtherCAT data value
+*/
+
+#define EC_READ_U32(DATA) \
+     ((uint32_t) le32_to_cpup((void *) (DATA)))
+
+/**
+   Read a 32-bit signed value from EtherCAT data.
+   \param DATA EtherCAT data pointer
+   \return EtherCAT data value
+*/
+
+#define EC_READ_S32(DATA) \
+     ((int32_t)  le32_to_cpup((void *) (DATA)))
+
+
+/******************************************************************************
+ *  Write macros
+ *****************************************************************************/
+
+/**
+   Write an 8-bit unsigned value to EtherCAT data.
+   \param DATA EtherCAT data pointer
+   \param VAL new value
+*/
+
+#define EC_WRITE_U8(DATA, VAL) \
     do { \
-        *((uint8_t *)(PD)) = ((uint8_t) (VAL)); \
+        *((uint8_t *)(DATA)) = ((uint8_t) (VAL)); \
     } while (0)
 
-#define EC_WRITE_S8(PD, VAL) EC_WRITE_U8(PD, VAL)
+/**
+   Write an 8-bit signed value to EtherCAT data.
+   \param DATA EtherCAT data pointer
+   \param VAL new value
+*/
 
-#define EC_WRITE_U16(PD, VAL) \
+#define EC_WRITE_S8(DATA, VAL) EC_WRITE_U8(DATA, VAL)
+
+/**
+   Write a 16-bit unsigned value to EtherCAT data.
+   \param DATA EtherCAT data pointer
+   \param VAL new value
+*/
+
+#define EC_WRITE_U16(DATA, VAL) \
     do { \
-        *((uint16_t *) (PD)) = (uint16_t) (VAL); \
-        cpu_to_le16s(PD); \
+        *((uint16_t *) (DATA)) = (uint16_t) (VAL); \
+        cpu_to_le16s(DATA); \
     } while (0)
 
-#define EC_WRITE_S16(PD, VAL) EC_WRITE_U16(PD, VAL)
+/**
+   Write a 16-bit signed value to EtherCAT data.
+   \param DATA EtherCAT data pointer
+   \param VAL new value
+*/
 
-#define EC_WRITE_U32(PD, VAL) \
+#define EC_WRITE_S16(DATA, VAL) EC_WRITE_U16(DATA, VAL)
+
+/**
+   Write a 32-bit unsigned value to EtherCAT data.
+   \param DATA EtherCAT data pointer
+   \param VAL new value
+*/
+
+#define EC_WRITE_U32(DATA, VAL) \
     do { \
-        *((uint32_t *) (PD)) = (uint32_t) (VAL); \
-        cpu_to_le16s(PD); \
+        *((uint32_t *) (DATA)) = (uint32_t) (VAL); \
+        cpu_to_le16s(DATA); \
     } while (0)
 
-#define EC_WRITE_S32(PD, VAL) EC_WRITE_U32(PD, VAL)
+/**
+   Write a 32-bit signed value to EtherCAT data.
+   \param DATA EtherCAT data pointer
+   \param VAL new value
+*/
+
+#define EC_WRITE_S32(DATA, VAL) EC_WRITE_U32(DATA, VAL)
 
 /*****************************************************************************/
 

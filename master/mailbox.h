@@ -1,9 +1,5 @@
 /******************************************************************************
  *
- *  m a i l b o x . h
- *
- *  Mailbox functionality.
- *
  *  $Id$
  *
  *  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
@@ -24,6 +20,13 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  *****************************************************************************/
+
+/**
+   \file
+   Mailbox functionality.
+*/
+
+/*****************************************************************************/
 
 #ifndef _EC_MAILBOX_H_
 #define _EC_MAILBOX_H_

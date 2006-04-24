@@ -1,9 +1,5 @@
 /******************************************************************************
  *
- *  8 1 3 9 t o o . c
- *
- *  EtherCAT driver for RTL8139-compatible NICs.
- *
  *  $Id$
  *
  *  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
@@ -25,7 +21,16 @@
  *
  *****************************************************************************/
 
+/**
+   \file
+   EtherCAT driver for RTL8139-compatible NICs.
+*/
+
+/*****************************************************************************/
+
 /*
+  Former documentation:
+
 	8139too.c: A RealTek RTL-8139 Fast Ethernet driver for Linux.
 
 	Maintained by Jeff Garzik <jgarzik@pobox.com>

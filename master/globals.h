@@ -1,9 +1,5 @@
 /******************************************************************************
  *
- *  g l o b a l s . h
- *
- *  Global definitions and macros.
- *
  *  $Id$
  *
  *  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
@@ -24,6 +20,13 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  *****************************************************************************/
+
+/**
+   \file
+   Global definitions and macros.
+*/
+
+/*****************************************************************************/
 
 #ifndef _EC_GLOBALS_
 #define _EC_GLOBALS_
@@ -88,6 +91,10 @@
 
 #define EC_LIT(X) #X
 #define EC_STR(X) EC_LIT(X)
+
+/**
+   Convenience macro for defining SysFS attributes.
+*/
 
 #define EC_SYSFS_READ_ATTR(NAME) \
     static struct attribute attr_##NAME = { \

@@ -1,7 +1,5 @@
 /******************************************************************************
  *
- *  EtherCAT interface for EtherCAT device drivers.
- *
  *  $Id$
  *
  *  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
@@ -22,6 +20,22 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  *****************************************************************************/
+
+/**
+   \file
+   EtherCAT interface for EtherCAT device drivers.
+*/
+
+/**
+   \defgroup DeviceInterface EtherCAT device interface
+   Master interface for EtherCAT-capable network device drivers.
+   Through the EtherCAT device interface, EtherCAT-capable network device
+   drivers are able to connect their device(s) to the master, pass received
+   frames and notify the master about status changes. The master on his part,
+   can send his frames through connected devices.
+*/
+
+/*****************************************************************************/
 
 #ifndef _ETHERCAT_DEVICE_H_
 #define _ETHERCAT_DEVICE_H_

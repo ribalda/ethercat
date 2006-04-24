@@ -1,9 +1,5 @@
 /******************************************************************************
  *
- *  s l a v e . h
- *
- *  EtherCAT stave structure.
- *
  *  $Id$
  *
  *  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
@@ -25,6 +21,13 @@
  *
  *****************************************************************************/
 
+/**
+   \file
+   EtherCAT stave structure.
+*/
+
+/*****************************************************************************/
+
 #ifndef _EC_SLAVE_H_
 #define _EC_SLAVE_H_
 
@@ -34,14 +37,6 @@
 #include "globals.h"
 #include "command.h"
 #include "types.h"
-
-/*****************************************************************************/
-
-/**
-   \defgroup Slave EtherCAT slave
-   Data types and functions for EtherCAT slaves.
-   \{
-*/
 
 /*****************************************************************************/
 
@@ -209,7 +204,7 @@ ec_sdo_entry_t;
 /*****************************************************************************/
 
 /**
-   EtherCAT-Slave
+   EtherCAT slave.
 */
 
 struct ec_slave
@@ -268,8 +263,6 @@ struct ec_slave
 
     ec_command_t mbox_command; /**< mailbox command */
 };
-
-/** \} */
 
 /*****************************************************************************/
 

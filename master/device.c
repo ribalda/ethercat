@@ -1,9 +1,5 @@
 /******************************************************************************
  *
- *  d e v i c e . c
- *
- *  EtherCAT device methods.
- *
  *  $Id$
  *
  *  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
@@ -25,6 +21,13 @@
  *
  *****************************************************************************/
 
+/**
+   \file
+   EtherCAT device methods.
+*/
+
+/*****************************************************************************/
+
 #include <linux/module.h>
 #include <linux/skbuff.h>
 #include <linux/if_ether.h>
@@ -39,7 +42,6 @@
 /**
    Device constructor.
    \return 0 in case of success, else < 0
-   \ingroup Device
 */
 
 int ec_device_init(ec_device_t *device, /**< EtherCAT device */
@@ -80,7 +82,6 @@ int ec_device_init(ec_device_t *device, /**< EtherCAT device */
 
 /**
    EtherCAT device destuctor.
-   \ingroup Device
 */
 
 void ec_device_clear(ec_device_t *device /**< EtherCAT device */)
@@ -94,7 +95,6 @@ void ec_device_clear(ec_device_t *device /**< EtherCAT device */)
 /**
    Opens the EtherCAT device.
    \return 0 in case of success, else < 0
-   \ingroup Device
 */
 
 int ec_device_open(ec_device_t *device /**< EtherCAT device */)
@@ -126,7 +126,6 @@ int ec_device_open(ec_device_t *device /**< EtherCAT device */)
 /**
    Stops the EtherCAT device.
    \return 0 in case of success, else < 0
-   \ingroup Device
 */
 
 int ec_device_close(ec_device_t *device /**< EtherCAT device */)
@@ -151,7 +150,6 @@ int ec_device_close(ec_device_t *device /**< EtherCAT device */)
 /**
    Returns a pointer to the device's transmit memory.
    \return pointer to the TX socket buffer
-   \ingroup Device
 */
 
 uint8_t *ec_device_tx_data(ec_device_t *device /**< EtherCAT device */)
@@ -165,7 +163,6 @@ uint8_t *ec_device_tx_data(ec_device_t *device /**< EtherCAT device */)
    Sends the content of the transmit socket buffer.
    Cuts the socket buffer content to the (now known) size, and calls the
    start_xmit() function of the assigned net_device.
-   \ingroup Device
 */
 
 void ec_device_send(ec_device_t *device, /**< EtherCAT device */
@@ -191,7 +188,9 @@ void ec_device_send(ec_device_t *device, /**< EtherCAT device */
 
 /**
    Calls the interrupt service routine of the assigned net_device.
-   \ingroup Device
+   The master itself works without using interrupts. Therefore the processing
+   of received data and status changes of the network device has to be
+   done by the master calling the ISR "manually".
 */
 
 void ec_device_call_isr(ec_device_t *device /**< EtherCAT device */)
@@ -205,8 +204,9 @@ void ec_device_call_isr(ec_device_t *device /**< EtherCAT device */)
 
 /**
    Accepts a received frame.
-   Forwards the received data to the master.
-   \ingroup Device
+   Forwards the received data to the master. The master will analyze the frame
+   and dispatch the received commands to the sending instances.
+   \ingroup DeviceInterface
 */
 
 void ecdev_receive(ec_device_t *device, /**< EtherCAT device */
@@ -226,7 +226,9 @@ void ecdev_receive(ec_device_t *device, /**< EtherCAT device */
 
 /**
    Sets a new link state.
-   \ingroup Device
+   If the device notifies the master about the link being down, the master
+   will not try to send frames using this device.
+   \ingroup DeviceInterface
 */
 
 void ecdev_link_state(ec_device_t *device, /**< EtherCAT device */
@@ -246,7 +248,11 @@ void ecdev_link_state(ec_device_t *device, /**< EtherCAT device */
 
 /*****************************************************************************/
 
+/** \cond */
+
 EXPORT_SYMBOL(ecdev_receive);
 EXPORT_SYMBOL(ecdev_link_state);
+
+/** \endcond */
 
 /*****************************************************************************/

@@ -1,9 +1,5 @@
 /******************************************************************************
  *
- *  t y p e s . h
- *
- *  EtherCAT slave types.
- *
  *  $Id$
  *
  *  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
@@ -25,6 +21,13 @@
  *
  *****************************************************************************/
 
+/**
+   \file
+   EtherCAT slave types.
+*/
+
+/*****************************************************************************/
+
 #ifndef _EC_TYPES_H_
 #define _EC_TYPES_H_
 
@@ -41,7 +44,6 @@
 
 /**
    Special slaves.
-   \ingroup Slave
 */
 
 typedef enum
@@ -56,7 +58,6 @@ ec_special_type_t;
 
 /**
    Process data field.
-   \ingroup Slave
 */
 
 typedef struct
@@ -69,8 +70,7 @@ ec_field_t;
 /*****************************************************************************/
 
 /**
-   Sync-Manager.
-   \ingroup Slave
+   Sync manager.
 */
 
 typedef struct
@@ -86,7 +86,6 @@ ec_sync_t;
 
 /**
    Slave description type.
-   \ingroup Slave
 */
 
 typedef struct ec_slave_type
@@ -103,7 +102,6 @@ ec_slave_type_t;
 
 /**
    Slave type identification.
-   \ingroup Slave
 */
 
 typedef struct

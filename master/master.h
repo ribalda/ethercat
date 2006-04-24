@@ -1,9 +1,5 @@
 /******************************************************************************
  *
- *  m a s t e r . h
- *
- *  EtherCAT master structure.
- *
  *  $Id$
  *
  *  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
@@ -25,6 +21,13 @@
  *
  *****************************************************************************/
 
+/**
+   \file
+   EtherCAT master structure.
+*/
+
+/*****************************************************************************/
+
 #ifndef _EC_MASTER_H_
 #define _EC_MASTER_H_
 
@@ -34,14 +37,6 @@
 
 #include "device.h"
 #include "domain.h"
-
-/*****************************************************************************/
-
-/**
-   \defgroup Master EtherCAT master
-   Data types and functions of the EtherCAT master.
-   \{
-*/
 
 /*****************************************************************************/
 
@@ -60,7 +55,7 @@ ec_master_mode_t;
 /*****************************************************************************/
 
 /**
-   Cyclic EtherCAT statistics.
+   Cyclic statistics.
 */
 
 typedef struct
@@ -77,7 +72,7 @@ ec_stats_t;
 /*****************************************************************************/
 
 /**
-   EtherCAT-Master.
+   EtherCAT master.
    Manages slaves, domains and IO.
 */
 
@@ -105,8 +100,6 @@ struct ec_master
     ec_master_mode_t mode; /**< master mode */
 };
 
-/** \} */
-
 /*****************************************************************************/
 
 // master creation and deletion
@@ -127,7 +120,6 @@ int ec_master_simple_io(ec_master_t *, ec_command_t *);
 int ec_master_bus_scan(ec_master_t *);
 
 // misc.
-void ec_master_debug(const ec_master_t *);
 void ec_master_output_stats(ec_master_t *);
 void ec_master_run_eoe(ec_master_t *);
 

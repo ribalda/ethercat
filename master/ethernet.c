@@ -1,9 +1,5 @@
 /******************************************************************************
  *
- *  e t h e r n e t . c
- *
- *  Ethernet-over-EtherCAT (EoE)
- *
  *  $Id$
  *
  *  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
@@ -25,6 +21,13 @@
  *
  *****************************************************************************/
 
+/**
+   \file
+   Ethernet-over-EtherCAT (EoE).
+*/
+
+/*****************************************************************************/
+
 #include "../include/ecrt.h"
 #include "globals.h"
 #include "master.h"
@@ -35,7 +38,7 @@
 /*****************************************************************************/
 
 /**
-   \ingroup EoE
+   EoE constructor.
 */
 
 void ec_eoe_init(ec_eoe_t *eoe, ec_slave_t *slave)
@@ -47,7 +50,7 @@ void ec_eoe_init(ec_eoe_t *eoe, ec_slave_t *slave)
 /*****************************************************************************/
 
 /**
-   \ingroup EoE
+   EoE destructor.
 */
 
 void ec_eoe_clear(ec_eoe_t *eoe)
@@ -57,7 +60,7 @@ void ec_eoe_clear(ec_eoe_t *eoe)
 /*****************************************************************************/
 
 /**
-   \ingroup EoE
+   Runs the EoE state machine.
 */
 
 void ec_eoe_run(ec_eoe_t *eoe)
@@ -140,7 +143,7 @@ void ec_eoe_run(ec_eoe_t *eoe)
 /*****************************************************************************/
 
 /**
-   \ingroup EoE
+   Prints EoE object information.
 */
 
 void ec_eoe_print(const ec_eoe_t *eoe)

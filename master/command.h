@@ -1,9 +1,5 @@
 /******************************************************************************
  *
- *  c o m m a n d . h
- *
- *  EtherCAT command structure.
- *
  *  $Id$
  *
  *  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
@@ -25,22 +21,19 @@
  *
  *****************************************************************************/
 
+/**
+   \file
+   EtherCAT command structure.
+*/
+
+/*****************************************************************************/
+
 #ifndef _EC_COMMAND_H_
 #define _EC_COMMAND_H_
 
 #include <linux/list.h>
 
 #include "globals.h"
-
-/*****************************************************************************/
-
-/**
-   \defgroup Command EtherCAT command
-   Data types and functions for EtherCAT commands.
-   An EtherCAT command is sent and received using the ec_command_t data type.
-   It is passed to the master, which handles commands in a queue.
-   \{
-*/
 
 /*****************************************************************************/
 
@@ -98,7 +91,7 @@ ec_address_t;
 /*****************************************************************************/
 
 /**
-   EtherCAT command
+   EtherCAT command.
 */
 
 typedef struct
@@ -115,8 +108,6 @@ typedef struct
     ec_command_state_t state; /**< command state */
 }
 ec_command_t;
-
-/** \} */
 
 /*****************************************************************************/
 

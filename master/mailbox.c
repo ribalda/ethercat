@@ -1,9 +1,5 @@
 /******************************************************************************
  *
- *  m a i l b o x . c
- *
- *  Mailbox functionality.
- *
  *  $Id$
  *
  *  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
@@ -25,6 +21,13 @@
  *
  *****************************************************************************/
 
+/**
+   \file
+   Mailbox functionality.
+*/
+
+/*****************************************************************************/
+
 #include <linux/slab.h>
 #include <linux/delay.h>
 
@@ -37,7 +40,6 @@
 /**
    Prepares a mailbox-send command.
    \return pointer to mailbox command data
-   \ingroup Slave
 */
 
 uint8_t *ec_slave_mbox_prepare_send(ec_slave_t *slave, /**< slave */
@@ -78,7 +80,6 @@ uint8_t *ec_slave_mbox_prepare_send(ec_slave_t *slave, /**< slave */
 /**
    Prepares a command for checking the mailbox state.
    \return 0 in case of success, else < 0
-   \ingroup Slave
 */
 
 int ec_slave_mbox_prepare_check(ec_slave_t *slave /**< slave */)
@@ -97,7 +98,6 @@ int ec_slave_mbox_prepare_check(ec_slave_t *slave /**< slave */)
 /**
    Processes a mailbox state checking command.
    \return 0 in case of success, else < 0
-   \ingroup Slave
 */
 
 int ec_slave_mbox_check(const ec_slave_t *slave /**< slave */)
@@ -110,7 +110,6 @@ int ec_slave_mbox_check(const ec_slave_t *slave /**< slave */)
 /**
    Prepares a command to fetch mailbox data.
    \return 0 in case of success, else < 0
-   \ingroup Slave
 */
 
 int ec_slave_mbox_prepare_fetch(ec_slave_t *slave /**< slave */)
@@ -128,7 +127,6 @@ int ec_slave_mbox_prepare_fetch(ec_slave_t *slave /**< slave */)
 /**
    Processes received mailbox data.
    \return pointer to the received data
-   \ingroup Slave
 */
 
 uint8_t *ec_slave_mbox_fetch(ec_slave_t *slave, /**< slave */
@@ -161,7 +159,6 @@ uint8_t *ec_slave_mbox_fetch(ec_slave_t *slave, /**< slave */
 /**
    Sends a mailbox command and waits for its reception.
    \return pointer to the received data
-   \ingroup Slave
 */
 
 uint8_t *ec_slave_mbox_simple_io(ec_slave_t *slave, /**< slave */
@@ -188,7 +185,6 @@ uint8_t *ec_slave_mbox_simple_io(ec_slave_t *slave, /**< slave */
 /**
    Waits for the reception of a mailbox command.
    \return pointer to the received data
-   \ingroup Slave
 */
 
 uint8_t *ec_slave_mbox_simple_receive(ec_slave_t *slave, /**< slave */
