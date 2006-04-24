@@ -58,15 +58,22 @@ typedef struct ec_domain ec_domain_t;
 struct ec_slave;
 typedef struct ec_slave ec_slave_t;
 
+/**
+   Initialization type for field registrations.
+   This type is used as a parameter for the ec_domain_register_field_list()
+   function.
+*/
+
 typedef struct
 {
-    void **data_ptr;
-    const char *slave_address;
-    const char *vendor_name;
-    const char *product_name;
-    const char *field_name;
-    unsigned int field_index;
-    unsigned int field_count;
+    void **data_ptr; /**< address of the process data pointer */
+    const char *slave_address; /**< slave address string (see
+                                  ecrt_master_get_slave()) */
+    const char *vendor_name; /**< vendor name */
+    const char *product_name; /**< product name */
+    const char *field_name; /**< data field name */
+    unsigned int field_index; /**< index in data fields with same name */
+    unsigned int field_count; /**< number of data fields with same name */
 }
 ec_field_init_t;
 
