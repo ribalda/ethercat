@@ -120,7 +120,7 @@
 
 */
 
-#define DRV_NAME	"8139too_ec"
+#define DRV_NAME	"ec_8139too"
 #define DRV_VERSION	"0.9.27"
 
 #include <linux/config.h>
