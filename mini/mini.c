@@ -50,7 +50,7 @@ uint32_t k_pos;
 uint8_t k_stat;
 
 ec_field_init_t domain1_fields[] = {
-    {NULL, "1", "Beckhoff", "EL5001", "InputValue",   0},
+    {NULL, "3", "Beckhoff", "EL5001", "InputValue",   0},
     {NULL, "2", "Beckhoff", "EL4132", "OutputValue",  0},
     {}
 };
