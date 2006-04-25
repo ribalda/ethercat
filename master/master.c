@@ -574,7 +574,10 @@ int ec_master_bus_scan(ec_master_t *master /**< EtherCAT master */)
                 goto out_free;
             }
 
-            ec_eoe_init(eoe, slave);
+            if (ec_eoe_init(eoe, slave)) {
+                kfree(eoe);
+                goto out_free;
+            }
             list_add_tail(&eoe->list, &master->eoe_slaves);
         }
     }

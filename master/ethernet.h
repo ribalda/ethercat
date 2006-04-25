@@ -29,6 +29,7 @@
 /*****************************************************************************/
 
 #include <linux/list.h>
+#include <linux/netdevice.h>
 
 #include "../include/ecrt.h"
 #include "globals.h"
@@ -62,12 +63,13 @@ typedef struct
     struct list_head list; /**< list item */
     ec_slave_t *slave; /**< pointer to the corresponding slave */
     ec_eoe_state_t rx_state; /**< state of the state machine */
+    struct net_device *dev; /**< net_device for virtual ethernet device */
 }
 ec_eoe_t;
 
 /*****************************************************************************/
 
-void ec_eoe_init(ec_eoe_t *, ec_slave_t *);
+int ec_eoe_init(ec_eoe_t *, ec_slave_t *);
 void ec_eoe_clear(ec_eoe_t *);
 void ec_eoe_run(ec_eoe_t *);
 void ec_eoe_print(const ec_eoe_t *);

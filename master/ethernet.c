@@ -38,13 +38,61 @@
 /*****************************************************************************/
 
 /**
+   Contains the private data of an EoE net_device.
+*/
+
+typedef struct
+{
+    struct net_device_stats stats; /**< device statistics */
+    ec_eoe_t *eoe; /**< pointer to parent eoe object */
+}
+ec_eoedev_priv_t;
+
+/*****************************************************************************/
+
+void ec_eoedev_init(struct net_device *);
+int ec_eoedev_open(struct net_device *);
+int ec_eoedev_stop(struct net_device *);
+int ec_eoedev_tx(struct sk_buff *, struct net_device *);
+struct net_device_stats *ec_eoedev_stats(struct net_device *);
+
+/*****************************************************************************/
+
+/**
    EoE constructor.
 */
 
-void ec_eoe_init(ec_eoe_t *eoe, ec_slave_t *slave)
+int ec_eoe_init(ec_eoe_t *eoe, ec_slave_t *slave)
 {
+    ec_eoedev_priv_t *priv;
+    int result;
+
     eoe->slave = slave;
     eoe->rx_state = EC_EOE_IDLE;
+
+    if (!(eoe->dev =
+          alloc_netdev(sizeof(ec_eoedev_priv_t), "eoe%d", ec_eoedev_init))) {
+        EC_ERR("Unable to allocate net_device for EoE object!\n");
+        goto out_return;
+    }
+
+    // set EoE object reference
+    priv = netdev_priv(eoe->dev);
+    priv->eoe = eoe;
+
+    // connect the net_device to the kernel
+    if ((result = register_netdev(eoe->dev))) {
+        EC_ERR("Unable to register net_device: error %i\n", result);
+        goto out_free;
+    }
+
+    return 0;
+
+ out_free:
+    free_netdev(eoe->dev);
+    eoe->dev = NULL;
+ out_return:
+    return -1;
 }
 
 /*****************************************************************************/
@@ -55,6 +103,10 @@ void ec_eoe_init(ec_eoe_t *eoe, ec_slave_t *slave)
 
 void ec_eoe_clear(ec_eoe_t *eoe)
 {
+    if (eoe->dev) {
+        unregister_netdev(eoe->dev);
+        free_netdev(eoe->dev);
+    }
 }
 
 /*****************************************************************************/
@@ -150,6 +202,88 @@ void ec_eoe_print(const ec_eoe_t *eoe)
 {
     EC_INFO("  EoE slave %i\n", eoe->slave->ring_position);
     EC_INFO("    RX State %i\n", eoe->rx_state);
+}
+
+/*****************************************************************************/
+
+/**
+   Initializes a net_device structure for an EoE object.
+*/
+
+void ec_eoedev_init(struct net_device *dev /**< pointer to the net_device */)
+{
+    ec_eoedev_priv_t *priv;
+
+    // initialize net_device
+    ether_setup(dev);
+    dev->open = ec_eoedev_open;
+    dev->stop = ec_eoedev_stop;
+    dev->hard_start_xmit = ec_eoedev_tx;
+    dev->get_stats = ec_eoedev_stats;
+
+    // initialize private data
+    priv = netdev_priv(dev);
+    memset(priv, 0, sizeof(ec_eoedev_priv_t));
+}
+
+/*****************************************************************************/
+
+/**
+   Opens the virtual network device.
+*/
+
+int ec_eoedev_open(struct net_device *dev /**< EoE net_device */)
+{
+    ec_eoedev_priv_t *priv = netdev_priv(dev);
+    netif_start_queue(dev);
+    EC_INFO("%s (slave %i) opened.\n", dev->name,
+            priv->eoe->slave->ring_position);
+    return 0;
+}
+
+/*****************************************************************************/
+
+/**
+   Stops the virtual network device.
+*/
+
+int ec_eoedev_stop(struct net_device *dev /**< EoE net_device */)
+{
+    ec_eoedev_priv_t *priv = netdev_priv(dev);
+    netif_stop_queue(dev);
+    EC_INFO("%s (slave %i) stopped.\n", dev->name,
+            priv->eoe->slave->ring_position);
+    return 0;
+}
+
+/*****************************************************************************/
+
+/**
+   Transmits data via the virtual network device.
+*/
+
+int ec_eoedev_tx(struct sk_buff *skb, /**< transmit socket buffer */
+                 struct net_device *dev /**< EoE net_device */
+                 )
+{
+    ec_eoedev_priv_t *priv = netdev_priv(dev);
+    priv->stats.tx_packets++;
+    dev_kfree_skb(skb);
+    EC_INFO("EoE device sent %i octets.\n", skb->len);
+    return 0;
+}
+
+/*****************************************************************************/
+
+/**
+   Gets statistics about the virtual network device.
+*/
+
+struct net_device_stats *ec_eoedev_stats(struct net_device *dev
+                                         /**< EoE net_device */)
+{
+    ec_eoedev_priv_t *priv = netdev_priv(dev);
+    return &priv->stats;
 }
 
 /*****************************************************************************/
