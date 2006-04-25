@@ -21,23 +21,22 @@
  *
  *****************************************************************************/
 
-/**
-   \file
-   Just for the doxygen mainpage.
-*/
+// This file only contains the doxygen mainpage.
 
 /*****************************************************************************/
 
 /**
    \mainpage The IgH EtherCAT master
 
-   \section sec_docs Documentation
+   \section sec_general General information
 
-   You will find the code documentation in the modules section.
+   This HTML contains the complete code documentation.
 
-   There is an external API documentation for the realtime interface.
+   The API documentations are in the <a href="modules.html">modules
+   section</a>.
 
-   For information how to build and install, see the README file.
+   For information how to build and install, see the INSTALL file in the source
+   root.
 
    \section sec_contact Contact
 
