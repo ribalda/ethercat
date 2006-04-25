@@ -101,6 +101,8 @@ struct ec_master
     int (*request_cb)(void *); /**< lock request callback */
     void (*release_cb)(void *); /**< lock release callback */
     void *cb_data; /**< data parameter of locking callbacks */
+    struct workqueue_struct *eoe_wq; /**< work queue for EoE processing */
+    struct work_struct eoe_work; /**< EoE work object */
 };
 
 /*****************************************************************************/
@@ -124,7 +126,6 @@ int ec_master_bus_scan(ec_master_t *);
 
 // misc.
 void ec_master_output_stats(ec_master_t *);
-void ec_master_run_eoe(ec_master_t *);
 
 /*****************************************************************************/
 

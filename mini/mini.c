@@ -99,6 +99,19 @@ void run(unsigned long data)
 
 /*****************************************************************************/
 
+int request_lock(void *data)
+{
+    return 0;
+}
+
+/*****************************************************************************/
+
+void release_lock(void *data)
+{
+}
+
+/*****************************************************************************/
+
 int __init init_mini_module(void)
 {
     printk(KERN_INFO "=== Starting Minimal EtherCAT environment... ===\n");
@@ -107,6 +120,8 @@ int __init init_mini_module(void)
         printk(KERN_ERR "Requesting master 0 failed!\n");
         goto out_return;
     }
+
+    ecrt_master_callbacks(master, request_lock, release_lock, NULL);
 
     printk(KERN_INFO "Registering domain...\n");
     if (!(domain1 = ecrt_master_create_domain(master)))
@@ -137,6 +152,12 @@ int __init init_mini_module(void)
     ecrt_master_print(master, 0);
 #endif
 
+#if 1
+    if (ecrt_master_start_eoe(master)) {
+        printk(KERN_ERR "Failed to start EoE processing!\n");
+        goto out_deactivate;
+    }
+#endif
 
 #if 0
     if (!(slave = ecrt_master_get_slave(master, "5"))) {
@@ -180,7 +201,7 @@ int __init init_mini_module(void)
     printk(KERN_INFO "=== Minimal EtherCAT environment started. ===\n");
     return 0;
 
-#if 0
+#if 1
  out_deactivate:
     ecrt_master_deactivate(master);
 #endif

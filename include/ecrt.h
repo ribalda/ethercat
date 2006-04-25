@@ -105,6 +105,8 @@ void ecrt_master_prepare_async_io(ec_master_t *master);
 
 void ecrt_master_run(ec_master_t *master);
 
+int ecrt_master_start_eoe(ec_master_t *master);
+
 void ecrt_master_debug(ec_master_t *master, int level);
 void ecrt_master_print(const ec_master_t *master, unsigned int verbosity);
 

@@ -46,6 +46,7 @@
 /*****************************************************************************/
 
 void ec_master_freerun(unsigned long);
+void ec_master_run_eoe(void *);
 ssize_t ec_show_master_attribute(struct kobject *, struct attribute *, char *);
 void ec_master_process_watch_command(ec_master_t *);
 
@@ -112,6 +113,9 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     master->freerun_timer.function = ec_master_freerun;
     master->freerun_timer.data = (unsigned long) master;
 
+    master->eoe_wq = NULL;
+    INIT_WORK(&master->eoe_work, ec_master_run_eoe, master);
+
     ec_command_init(&master->simple_command);
     ec_command_init(&master->watch_command);
 
@@ -145,6 +149,8 @@ void ec_master_clear(struct kobject *kobj /**< kobject of the master */)
     ec_command_clear(&master->simple_command);
     ec_command_clear(&master->watch_command);
 
+    if (master->eoe_wq) destroy_workqueue(master->eoe_wq);
+
     EC_INFO("Master %i cleared.\n", master->index);
 }
 
@@ -162,6 +168,11 @@ void ec_master_reset(ec_master_t *master /**< EtherCAT master */)
     ec_command_t *command, *next_c;
     ec_domain_t *domain, *next_d;
     ec_eoe_t *eoe, *next_eoe;
+
+    // stop EoE processing
+    if (master->eoe_wq && !cancel_delayed_work(&master->eoe_work)) {
+        flush_workqueue(master->eoe_wq);
+    }
 
     ec_master_freerun_stop(master);
 
@@ -485,7 +496,6 @@ int ec_master_bus_scan(ec_master_t *master /**< EtherCAT master */)
     ec_slave_ident_t *ident;
     unsigned int i;
     ec_command_t *command;
-    ec_eoe_t *eoe;
     uint16_t coupler_index, coupler_subindex;
     uint16_t reverse_coupler_index, current_coupler_index;
 
@@ -570,20 +580,6 @@ int ec_master_bus_scan(ec_master_t *master /**< EtherCAT master */)
         slave->coupler_index = current_coupler_index;
         slave->coupler_subindex = coupler_subindex;
         coupler_subindex++;
-
-        // does the slave support EoE?
-        if (slave->sii_mailbox_protocols & EC_MBOX_EOE) {
-            if (!(eoe = (ec_eoe_t *) kmalloc(sizeof(ec_eoe_t), GFP_KERNEL))) {
-                EC_ERR("Failed to allocate EoE-Object.\n");
-                goto out_free;
-            }
-
-            if (ec_eoe_init(eoe, slave)) {
-                kfree(eoe);
-                goto out_free;
-            }
-            list_add_tail(&eoe->list, &master->eoe_slaves);
-        }
     }
 
     return 0;
@@ -848,13 +844,19 @@ void ec_master_process_watch_command(ec_master_t *master
    Does the Ethernet-over-EtherCAT processing.
 */
 
-void ec_master_run_eoe(ec_master_t *master /**< EtherCAT master */)
+void ec_master_run_eoe(void *data /**< work data (= master pointer) */)
 {
+    ec_master_t *master = (ec_master_t *) data;
+
+#if 0
     ec_eoe_t *eoe;
 
     list_for_each_entry(eoe, &master->eoe_slaves, list) {
         ec_eoe_run(eoe);
     }
+#endif
+
+    queue_delayed_work(master->eoe_wq, &master->eoe_work, HZ);
 }
 
 /******************************************************************************
@@ -1298,9 +1300,6 @@ void ecrt_master_run(ec_master_t *master /**< EtherCAT master */)
     // watchdog command
     ec_master_process_watch_command(master);
     ec_master_queue_command(master, &master->watch_command);
-
-    // Ethernet-over-EtherCAT
-    ec_master_run_eoe(master);
 }
 
 /*****************************************************************************/
@@ -1432,6 +1431,56 @@ void ecrt_master_callbacks(ec_master_t *master, /**< EtherCAT master */
 /*****************************************************************************/
 
 /**
+   Starts Ethernet-over-EtherCAT processing for all EoE-capable slaves.
+   \ingroup RealtimeInterface
+*/
+
+int ecrt_master_start_eoe(ec_master_t *master /**< EtherCAT master */)
+{
+    ec_eoe_t *eoe;
+    ec_slave_t *slave;
+
+    if (!master->request_cb || !master->release_cb) {
+        EC_ERR("EoE requires master callbacks to be set!\n");
+        return -1;
+    }
+
+    list_for_each_entry(slave, &master->slaves, list) {
+        // does the slave support EoE?
+        if (!(slave->sii_mailbox_protocols & EC_MBOX_EOE)) continue;
+
+        if (!(eoe = (ec_eoe_t *) kmalloc(sizeof(ec_eoe_t), GFP_KERNEL))) {
+            EC_ERR("Failed to allocate EoE-Object.\n");
+            return -1;
+        }
+        if (ec_eoe_init(eoe, slave)) {
+            kfree(eoe);
+            return -1;
+        }
+        list_add_tail(&eoe->list, &master->eoe_slaves);
+    }
+
+    if (list_empty(&master->eoe_slaves)) {
+        EC_WARN("start_eoe: no EoE-capable slaves present.\n");
+        return 0;
+    }
+
+    // create the EoE workqueue, if necessary
+    if (!master->eoe_wq) {
+        if (!(master->eoe_wq = create_singlethread_workqueue("eoework"))) {
+            EC_ERR("Failed to create EoE workqueue!\n");
+            return -1;
+        }
+    }
+
+    // start EoE processing
+    queue_work(master->eoe_wq, &master->eoe_work);
+    return 0;
+}
+
+/*****************************************************************************/
+
+/**
    Sets the debug level of the master.
    The following levels are valid:
    - 1: only output positions marks and basic data
@@ -1495,6 +1544,8 @@ EXPORT_SYMBOL(ecrt_master_sync_io);
 EXPORT_SYMBOL(ecrt_master_async_send);
 EXPORT_SYMBOL(ecrt_master_async_receive);
 EXPORT_SYMBOL(ecrt_master_run);
+EXPORT_SYMBOL(ecrt_master_callbacks);
+EXPORT_SYMBOL(ecrt_master_start_eoe);
 EXPORT_SYMBOL(ecrt_master_debug);
 EXPORT_SYMBOL(ecrt_master_print);
 EXPORT_SYMBOL(ecrt_master_get_slave);

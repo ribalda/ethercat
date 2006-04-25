@@ -180,6 +180,13 @@ int __init init_rt_module(void)
     }
 
 #if 0
+    if (ecrt_master_start_eoe(master)) {
+        printk(KERN_ERR "Failed to start EoE processing!\n");
+        goto out_deactivate;
+    }
+#endif
+
+#if 0
     if (ecrt_master_fetch_sdo_lists(master)) {
         printk(KERN_ERR "Failed to fetch SDO lists!\n");
         goto out_deactivate;
