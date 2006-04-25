@@ -88,6 +88,9 @@ void ecrt_release_master(ec_master_t *master);
  *  Master methods
  *****************************************************************************/
 
+void ecrt_master_callbacks(ec_master_t *master, int (*request_cb)(void *),
+                           void (*release_cb)(void *), void *cb_data);
+
 ec_domain_t *ecrt_master_create_domain(ec_master_t *master);
 
 int ecrt_master_activate(ec_master_t *master);

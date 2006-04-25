@@ -208,6 +208,10 @@ void ec_master_reset(ec_master_t *master /**< EtherCAT master */)
     master->stats.t_last = 0;
 
     master->mode = EC_MASTER_MODE_IDLE;
+
+    master->request_cb = NULL;
+    master->release_cb = NULL;
+    master->cb_data = NULL;
 }
 
 /*****************************************************************************/
@@ -1405,6 +1409,24 @@ ec_slave_t *ecrt_master_get_slave(const ec_master_t *master, /**< Master */
         EC_ERR("Slave address \"%s\" - Invalid format!\n", address);
 
     return NULL;
+}
+
+/*****************************************************************************/
+
+/**
+   Sets the locking callbacks.
+   \ingroup RealtimeInterface
+*/
+
+void ecrt_master_callbacks(ec_master_t *master, /**< EtherCAT master */
+                           int (*request_cb)(void *), /**< request lock CB */
+                           void (*release_cb)(void *), /**< release lock CB */
+                           void *cb_data /**< data parameter */
+                           )
+{
+    master->request_cb = request_cb;
+    master->release_cb = release_cb;
+    master->cb_data = cb_data;
 }
 
 /*****************************************************************************/

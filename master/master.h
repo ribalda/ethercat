@@ -98,6 +98,9 @@ struct ec_master
     unsigned int reserved; /**< true, if the master is reserved for RT */
     struct timer_list freerun_timer; /**< timer object for free run mode */
     ec_master_mode_t mode; /**< master mode */
+    int (*request_cb)(void *); /**< lock request callback */
+    void (*release_cb)(void *); /**< lock release callback */
+    void *cb_data; /**< data parameter of locking callbacks */
 };
 
 /*****************************************************************************/
