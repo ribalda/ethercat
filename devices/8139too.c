@@ -329,7 +329,12 @@ static struct pci_device_id rtl8139_pci_tbl[] = {
 
 	{0,}
 };
-MODULE_DEVICE_TABLE (pci, rtl8139_pci_tbl);
+
+/* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+//MODULE_DEVICE_TABLE (pci, rtl8139_pci_tbl);
+
+/* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 
 static struct {
 	const char str[ETH_GSTRING_LEN];
