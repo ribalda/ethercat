@@ -120,13 +120,11 @@ void ec_eoe_run(ec_eoe_t *eoe)
     uint8_t *data;
     ec_master_t *master;
     size_t rec_size;
-#if 0
     unsigned int i;
     uint8_t fragment_number;
     uint8_t complete_size;
     uint8_t frame_number;
     uint8_t last_fragment;
-#endif
 
     master = eoe->slave->master;
 
@@ -165,7 +163,6 @@ void ec_eoe_run(ec_eoe_t *eoe)
             return;
         }
 
-#if 0
         fragment_number = EC_READ_U16(data + 2) & 0x003F;
         complete_size = (EC_READ_U16(data + 2) >> 6) & 0x003F;
         frame_number = (EC_READ_U16(data + 2) >> 12) & 0x0003;
@@ -185,7 +182,6 @@ void ec_eoe_run(ec_eoe_t *eoe)
             }
         }
         printk("\n");
-#endif
 
         eoe->rx_state = EC_EOE_IDLE;
         return;

@@ -46,7 +46,7 @@
 /*****************************************************************************/
 
 void ec_master_freerun(unsigned long);
-void ec_master_run_eoe(void *);
+void ec_master_run_eoe(unsigned long);
 ssize_t ec_show_master_attribute(struct kobject *, struct attribute *, char *);
 void ec_master_process_watch_command(ec_master_t *);
 
@@ -113,8 +113,10 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     master->freerun_timer.function = ec_master_freerun;
     master->freerun_timer.data = (unsigned long) master;
 
-    master->eoe_wq = NULL;
-    INIT_WORK(&master->eoe_work, ec_master_run_eoe, master);
+    // init eoe timer
+    init_timer(&master->eoe_timer);
+    master->eoe_timer.function = ec_master_run_eoe;
+    master->eoe_timer.data = (unsigned long) master;
 
     ec_command_init(&master->simple_command);
     ec_command_init(&master->watch_command);
@@ -137,6 +139,7 @@ void ec_master_clear(struct kobject *kobj /**< kobject of the master */)
 
     EC_INFO("Clearing master %i...\n", master->index);
 
+    del_timer_sync(&master->eoe_timer);
     del_timer_sync(&master->freerun_timer);
 
     ec_master_reset(master);
@@ -148,8 +151,6 @@ void ec_master_clear(struct kobject *kobj /**< kobject of the master */)
 
     ec_command_clear(&master->simple_command);
     ec_command_clear(&master->watch_command);
-
-    if (master->eoe_wq) destroy_workqueue(master->eoe_wq);
 
     EC_INFO("Master %i cleared.\n", master->index);
 }
@@ -170,10 +171,9 @@ void ec_master_reset(ec_master_t *master /**< EtherCAT master */)
     ec_eoe_t *eoe, *next_eoe;
 
     // stop EoE processing
-    if (master->eoe_wq && !cancel_delayed_work(&master->eoe_work)) {
-        flush_workqueue(master->eoe_wq);
-    }
+    del_timer_sync(&master->eoe_timer);
 
+    // stop free-run mode
     ec_master_freerun_stop(master);
 
     // remove all slaves
@@ -264,15 +264,14 @@ void ec_master_send_commands(ec_master_t *master /**< EtherCAT master */)
     size_t command_size;
     uint8_t *frame_data, *cur_data;
     void *follows_word;
-    cycles_t start = 0, end;
+    cycles_t t_start, t_end;
     unsigned int frame_count, more_commands_waiting;
 
     frame_count = 0;
+    t_start = get_cycles();
 
-    if (unlikely(master->debug_level > 0)) {
+    if (unlikely(master->debug_level > 0))
         EC_DBG("ec_master_send_commands\n");
-        start = get_cycles();
-    }
 
     do {
         // fetch pointer to transmit socket buffer
@@ -294,6 +293,7 @@ void ec_master_send_commands(ec_master_t *master /**< EtherCAT master */)
             }
 
             command->state = EC_CMD_SENT;
+            command->t_sent = t_start;
             command->index = master->command_index++;
 
             if (unlikely(master->debug_level > 0))
@@ -345,9 +345,9 @@ void ec_master_send_commands(ec_master_t *master /**< EtherCAT master */)
     while (more_commands_waiting);
 
     if (unlikely(master->debug_level > 0)) {
-        end = get_cycles();
+        t_end = get_cycles();
         EC_DBG("ec_master_send_commands sent %i frames in %ius.\n",
-               frame_count, (u32) (end - start) * 1000 / cpu_khz);
+               frame_count, (u32) (t_end - t_start) * 1000 / cpu_khz);
     }
 }
 
@@ -844,19 +844,24 @@ void ec_master_process_watch_command(ec_master_t *master
    Does the Ethernet-over-EtherCAT processing.
 */
 
-void ec_master_run_eoe(void *data /**< work data (= master pointer) */)
+void ec_master_run_eoe(unsigned long data /**< master pointer */)
 {
     ec_master_t *master = (ec_master_t *) data;
-
-#if 0
     ec_eoe_t *eoe;
 
-    list_for_each_entry(eoe, &master->eoe_slaves, list) {
-        ec_eoe_run(eoe);
-    }
-#endif
+    if (!master->request_cb(master->cb_data)) goto restart_timer;
 
-    queue_delayed_work(master->eoe_wq, &master->eoe_work, HZ);
+    ecrt_master_async_receive(master);
+    list_for_each_entry(eoe, &master->eoe_slaves, list) {
+      ec_eoe_run(eoe);
+    }
+    ecrt_master_async_send(master);
+
+    master->release_cb(master->cb_data);
+
+ restart_timer:
+    master->eoe_timer.expires += HZ / 4;
+    add_timer(&master->eoe_timer);
 }
 
 /******************************************************************************
@@ -1232,26 +1237,32 @@ void ecrt_master_async_send(ec_master_t *master /**< EtherCAT master */)
 void ecrt_master_async_receive(ec_master_t *master /**< EtherCAT master */)
 {
     ec_command_t *command, *next;
+    cycles_t t_received, t_timeout;
 
     ec_device_call_isr(master->device);
+
+    t_received = get_cycles();
+    t_timeout = (cycles_t) master->timeout * (cpu_khz / 1000);
 
     // dequeue all received commands
     list_for_each_entry_safe(command, next, &master->command_queue, queue)
         if (command->state == EC_CMD_RECEIVED) list_del_init(&command->queue);
 
-    // dequeue all remaining commands
+    // dequeue all commands that timed out
     list_for_each_entry_safe(command, next, &master->command_queue, queue) {
         switch (command->state) {
             case EC_CMD_SENT:
             case EC_CMD_QUEUED:
-                command->state = EC_CMD_TIMEOUT;
-                master->stats.timeouts++;
-                ec_master_output_stats(master);
+                if (t_received - command->t_sent > t_timeout) {
+                    list_del_init(&command->queue);
+                    command->state = EC_CMD_TIMEOUT;
+                    master->stats.timeouts++;
+                    ec_master_output_stats(master);
+                }
                 break;
             default:
                 break;
         }
-        list_del_init(&command->queue);
     }
 }
 
@@ -1465,16 +1476,9 @@ int ecrt_master_start_eoe(ec_master_t *master /**< EtherCAT master */)
         return 0;
     }
 
-    // create the EoE workqueue, if necessary
-    if (!master->eoe_wq) {
-        if (!(master->eoe_wq = create_singlethread_workqueue("eoework"))) {
-            EC_ERR("Failed to create EoE workqueue!\n");
-            return -1;
-        }
-    }
-
     // start EoE processing
-    queue_work(master->eoe_wq, &master->eoe_work);
+    master->eoe_timer.expires = jiffies + 10;
+    add_timer(&master->eoe_timer);
     return 0;
 }
 

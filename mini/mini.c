@@ -28,6 +28,8 @@
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <linux/timer.h>
+#include <linux/spinlock.h>
+#include <linux/interrupt.h>
 
 #include "../include/ecrt.h" // EtherCAT realtime interface
 
@@ -41,6 +43,7 @@ struct timer_list timer;
 // EtherCAT
 ec_master_t *master = NULL;
 ec_domain_t *domain1 = NULL;
+spinlock_t master_lock = SPIN_LOCK_UNLOCKED;
 
 // data fields
 //void *r_ssi_input, *r_ssi_status, *r_4102[3];
@@ -60,6 +63,8 @@ ec_field_init_t domain1_fields[] = {
 void run(unsigned long data)
 {
     static unsigned int counter = 0;
+
+    spin_lock(&master_lock);
 
 #ifdef ASYNC
     // receive
@@ -83,6 +88,8 @@ void run(unsigned long data)
     ecrt_master_async_send(master);
 #endif
 
+    spin_unlock(&master_lock);
+
     if (counter) {
         counter--;
     }
@@ -101,13 +108,21 @@ void run(unsigned long data)
 
 int request_lock(void *data)
 {
-    return 0;
+    unsigned int tries = 0;
+    while (1) {
+        if (spin_trylock(&master_lock)) {
+            if (tries) printk(KERN_INFO "lock: %i tries needed.\n", tries);
+            return 1;
+        }
+        tries++;
+    }
 }
 
 /*****************************************************************************/
 
 void release_lock(void *data)
 {
+    spin_unlock(&master_lock);
 }
 
 /*****************************************************************************/
@@ -152,13 +167,6 @@ int __init init_mini_module(void)
     ecrt_master_print(master, 0);
 #endif
 
-#if 1
-    if (ecrt_master_start_eoe(master)) {
-        printk(KERN_ERR "Failed to start EoE processing!\n");
-        goto out_deactivate;
-    }
-#endif
-
 #if 0
     if (!(slave = ecrt_master_get_slave(master, "5"))) {
         printk(KERN_ERR "Failed to get slave 5!\n");
@@ -190,6 +198,13 @@ int __init init_mini_module(void)
 #ifdef ASYNC
     // send once and wait...
     ecrt_master_prepare_async_io(master);
+#endif
+
+#if 1
+    if (ecrt_master_start_eoe(master)) {
+        printk(KERN_ERR "Failed to start EoE processing!\n");
+        goto out_deactivate;
+    }
 #endif
 
     printk("Starting cyclic sample thread.\n");

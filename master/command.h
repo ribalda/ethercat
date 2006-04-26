@@ -32,6 +32,7 @@
 #define _EC_COMMAND_H_
 
 #include <linux/list.h>
+#include <linux/timex.h>
 
 #include "globals.h"
 
@@ -106,6 +107,7 @@ typedef struct
     uint8_t index; /**< command index (set by master) */
     uint16_t working_counter; /**< working counter */
     ec_command_state_t state; /**< command state */
+    cycles_t t_sent; /**< time, the commands was sent */
 }
 ec_command_t;
 

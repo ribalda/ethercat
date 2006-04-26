@@ -68,6 +68,7 @@ void ec_command_init(ec_command_t *command /**< EtherCAT command */)
     command->index = 0x00;
     command->working_counter = 0x00;
     command->state = EC_CMD_INIT;
+    command->t_sent = 0;
 }
 
 /*****************************************************************************/
