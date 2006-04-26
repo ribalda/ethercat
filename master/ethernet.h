@@ -64,6 +64,7 @@ typedef struct
     ec_slave_t *slave; /**< pointer to the corresponding slave */
     ec_eoe_state_t rx_state; /**< state of the state machine */
     struct net_device *dev; /**< net_device for virtual ethernet device */
+    uint8_t opened; /**< net_device is opened */
 }
 ec_eoe_t;
 

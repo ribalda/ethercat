@@ -28,6 +28,8 @@
 
 /*****************************************************************************/
 
+#include <linux/etherdevice.h>
+
 #include "../include/ecrt.h"
 #include "globals.h"
 #include "master.h"
@@ -55,6 +57,7 @@ int ec_eoedev_open(struct net_device *);
 int ec_eoedev_stop(struct net_device *);
 int ec_eoedev_tx(struct sk_buff *, struct net_device *);
 struct net_device_stats *ec_eoedev_stats(struct net_device *);
+void ec_eoedev_rx(struct net_device *, const uint8_t *, size_t);
 
 /*****************************************************************************/
 
@@ -69,6 +72,7 @@ int ec_eoe_init(ec_eoe_t *eoe, ec_slave_t *slave)
 
     eoe->slave = slave;
     eoe->rx_state = EC_EOE_IDLE;
+    eoe->opened = 0;
 
     if (!(eoe->dev =
           alloc_netdev(sizeof(ec_eoedev_priv_t), "eoe%d", ec_eoedev_init))) {
@@ -120,11 +124,10 @@ void ec_eoe_run(ec_eoe_t *eoe)
     uint8_t *data;
     ec_master_t *master;
     size_t rec_size;
-    unsigned int i;
-    uint8_t fragment_number;
-    uint8_t complete_size;
-    uint8_t frame_number;
-    uint8_t last_fragment;
+    uint8_t fragment_number, frame_number, last_fragment, time_appended;
+    uint8_t fragment_offset, frame_type;
+
+    if (!eoe->opened) return;
 
     master = eoe->slave->master;
 
@@ -163,25 +166,44 @@ void ec_eoe_run(ec_eoe_t *eoe)
             return;
         }
 
-        fragment_number = EC_READ_U16(data + 2) & 0x003F;
-        complete_size = (EC_READ_U16(data + 2) >> 6) & 0x003F;
-        frame_number = (EC_READ_U16(data + 2) >> 12) & 0x0003;
-        last_fragment = (EC_READ_U16(data + 2) >> 15) & 0x0001;
+        frame_type = EC_READ_U16(data) & 0x000F;
 
-        EC_DBG("EOE %s received, fragment: %i, complete size: %i (0x%02X),"
-               " frame %i%s\n",
-               fragment_number ? "fragment" : "initiate", fragment_number,
-               (complete_size - 31) / 32, complete_size, frame_number,
-               last_fragment ? ", last fragment" : "");
-        EC_DBG("");
-        for (i = 0; i < rec_size - 2; i++) {
-            printk("%02X ", data[i + 2]);
-            if ((i + 1) % 16 == 0) {
-                printk("\n");
-                EC_DBG("");
+        if (frame_type == 0x00) { // EoE Fragment Request
+            last_fragment = (EC_READ_U16(data) >> 8) & 0x0001;
+            time_appended = (EC_READ_U16(data) >> 9) & 0x0001;
+            fragment_number = EC_READ_U16(data + 2) & 0x003F;
+            fragment_offset = (EC_READ_U16(data + 2) >> 6) & 0x003F;
+            frame_number = (EC_READ_U16(data + 2) >> 12) & 0x000F;
+
+#if 0
+            EC_DBG("EOE fragment req received, fragment: %i, offset: %i,"
+                   " frame %i%s%s, %i bytes\n", fragment_number,
+                   fragment_offset, frame_number,
+                   last_fragment ? ", last fragment" : "",
+                   time_appended ? ", + timestamp" : "",
+                   time_appended ? rec_size - 8 : rec_size - 4);
+
+#if 0
+            EC_DBG("");
+            for (i = 0; i < rec_size - 4; i++) {
+                printk("%02X ", data[i + 4]);
+                if ((i + 1) % 16 == 0) {
+                    printk("\n");
+                    EC_DBG("");
+                }
             }
+            printk("\n");
+#endif
+#endif
+
+            ec_eoedev_rx(eoe->dev, data + 4,
+                         time_appended ? rec_size - 8 : rec_size - 4);
         }
-        printk("\n");
+        else {
+#if 1
+            EC_DBG("other frame received.\n");
+#endif
+        }
 
         eoe->rx_state = EC_EOE_IDLE;
         return;
@@ -198,6 +220,8 @@ void ec_eoe_print(const ec_eoe_t *eoe)
 {
     EC_INFO("  EoE slave %i\n", eoe->slave->ring_position);
     EC_INFO("    RX State %i\n", eoe->rx_state);
+    EC_INFO("    Assigned device: %s (%s)\n", eoe->dev->name,
+            eoe->opened ? "opened" : "closed");
 }
 
 /*****************************************************************************/
@@ -209,6 +233,7 @@ void ec_eoe_print(const ec_eoe_t *eoe)
 void ec_eoedev_init(struct net_device *dev /**< pointer to the net_device */)
 {
     ec_eoedev_priv_t *priv;
+    unsigned int i;
 
     // initialize net_device
     ether_setup(dev);
@@ -216,6 +241,8 @@ void ec_eoedev_init(struct net_device *dev /**< pointer to the net_device */)
     dev->stop = ec_eoedev_stop;
     dev->hard_start_xmit = ec_eoedev_tx;
     dev->get_stats = ec_eoedev_stats;
+
+    for (i = 0; i < 6; i++) dev->dev_addr[i] = (i + 1) | (i + 1) << 4;
 
     // initialize private data
     priv = netdev_priv(dev);
@@ -231,6 +258,7 @@ void ec_eoedev_init(struct net_device *dev /**< pointer to the net_device */)
 int ec_eoedev_open(struct net_device *dev /**< EoE net_device */)
 {
     ec_eoedev_priv_t *priv = netdev_priv(dev);
+    priv->eoe->opened = 1;
     netif_start_queue(dev);
     EC_INFO("%s (slave %i) opened.\n", dev->name,
             priv->eoe->slave->ring_position);
@@ -247,6 +275,7 @@ int ec_eoedev_stop(struct net_device *dev /**< EoE net_device */)
 {
     ec_eoedev_priv_t *priv = netdev_priv(dev);
     netif_stop_queue(dev);
+    priv->eoe->opened = 0;
     EC_INFO("%s (slave %i) stopped.\n", dev->name,
             priv->eoe->slave->ring_position);
     return 0;
@@ -267,6 +296,44 @@ int ec_eoedev_tx(struct sk_buff *skb, /**< transmit socket buffer */
     dev_kfree_skb(skb);
     EC_INFO("EoE device sent %i octets.\n", skb->len);
     return 0;
+}
+
+/*****************************************************************************/
+
+/**
+   Receives data from the bus and passes it to the network stack.
+*/
+
+void ec_eoedev_rx(struct net_device *dev, /**< EoE net_device */
+                 const uint8_t *data, /**< pointer to the data */
+                 size_t size /**< size of the received data */
+                 )
+{
+    ec_eoedev_priv_t *priv = netdev_priv(dev);
+    struct sk_buff *skb;
+
+    // allocate socket buffer
+    if (!(skb = dev_alloc_skb(size + 2))) {
+        if (printk_ratelimit())
+            EC_WARN("EoE RX: low on mem. frame dropped.\n");
+        priv->stats.rx_dropped++;
+        return;
+    }
+
+    // copy received data to socket buffer
+    memcpy(skb_put(skb, size), data, size);
+
+    // set socket buffer fields
+    skb->dev = dev;
+    skb->protocol = eth_type_trans(skb, dev);
+    skb->ip_summed = CHECKSUM_UNNECESSARY;
+
+    // update statistics
+    priv->stats.rx_packets++;
+    priv->stats.rx_bytes += size;
+
+    // pass socket buffer to network stack
+    netif_rx(skb);
 }
 
 /*****************************************************************************/
