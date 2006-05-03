@@ -53,12 +53,6 @@
  *  EtherCAT protocol
  *****************************************************************************/
 
-/** maximum size of an EtherCAT frame (without header and CRC) */
-#define EC_MAX_FRAME_SIZE 1500
-
-/** minimum size of an EtherCAT frame (without header and CRC) */
-#define EC_MIN_FRAME_SIZE 46
-
 /** size of an EtherCAT frame header */
 #define EC_FRAME_HEADER_SIZE 2
 
@@ -75,7 +69,7 @@
 #define EC_FMMU_SIZE 16
 
 /** resulting maximum data size of a single command in a frame */
-#define EC_MAX_DATA_SIZE (EC_MAX_FRAME_SIZE - EC_FRAME_HEADER_SIZE \
+#define EC_MAX_DATA_SIZE (ETH_DATA_LEN - EC_FRAME_HEADER_SIZE \
                           - EC_COMMAND_HEADER_SIZE - EC_COMMAND_FOOTER_SIZE)
 
 /*****************************************************************************/

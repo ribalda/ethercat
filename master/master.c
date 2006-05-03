@@ -287,7 +287,7 @@ void ec_master_send_commands(ec_master_t *master /**< EtherCAT master */)
             // does the current command fit in the frame?
             command_size = EC_COMMAND_HEADER_SIZE + command->data_size
                 + EC_COMMAND_FOOTER_SIZE;
-            if (cur_data - frame_data + command_size > EC_MAX_FRAME_SIZE) {
+            if (cur_data - frame_data + command_size > ETH_DATA_LEN) {
                 more_commands_waiting = 1;
                 break;
             }
@@ -332,7 +332,7 @@ void ec_master_send_commands(ec_master_t *master /**< EtherCAT master */)
                                    - EC_FRAME_HEADER_SIZE) & 0x7FF) | 0x1000);
 
         // pad frame
-        while (cur_data - frame_data < EC_MIN_FRAME_SIZE)
+        while (cur_data - frame_data < ETH_ZLEN - ETH_HLEN)
             EC_WRITE_U8(cur_data++, 0x00);
 
         if (unlikely(master->debug_level > 0))

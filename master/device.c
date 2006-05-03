@@ -61,7 +61,7 @@ int ec_device_init(ec_device_t *device, /**< EtherCAT device */
     device->open = 0;
     device->link_state = 0; // down
 
-    if (!(device->tx_skb = dev_alloc_skb(ETH_HLEN + EC_MAX_FRAME_SIZE))) {
+    if (!(device->tx_skb = dev_alloc_skb(ETH_FRAME_LEN))) {
         EC_ERR("Error allocating device socket buffer!\n");
         return -1;
     }
