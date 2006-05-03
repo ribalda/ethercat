@@ -39,18 +39,6 @@
 
 /*****************************************************************************/
 
-/**
-   Contains the private data of an EoE net_device.
-*/
-
-typedef struct
-{
-    ec_eoe_t *eoe; /**< pointer to parent eoe object */
-}
-ec_eoedev_priv_t;
-
-/*****************************************************************************/
-
 void ec_eoedev_init(struct net_device *);
 int ec_eoedev_open(struct net_device *);
 int ec_eoedev_stop(struct net_device *);
@@ -66,7 +54,7 @@ void ec_eoedev_rx(struct net_device *, const uint8_t *, size_t);
 
 int ec_eoe_init(ec_eoe_t *eoe, ec_slave_t *slave)
 {
-    ec_eoedev_priv_t *priv;
+    ec_eoe_t **priv;
     int result;
 
     eoe->slave = slave;
@@ -78,14 +66,14 @@ int ec_eoe_init(ec_eoe_t *eoe, ec_slave_t *slave)
     eoe->tx_queue_lock = SPIN_LOCK_UNLOCKED;
 
     if (!(eoe->dev =
-          alloc_netdev(sizeof(ec_eoedev_priv_t), "eoe%d", ec_eoedev_init))) {
+          alloc_netdev(sizeof(ec_eoe_t *), "eoe%d", ec_eoedev_init))) {
         EC_ERR("Unable to allocate net_device for EoE object!\n");
         goto out_return;
     }
 
     // set EoE object reference
     priv = netdev_priv(eoe->dev);
-    priv->eoe = eoe;
+    *priv = eoe;
 
     // connect the net_device to the kernel
     if ((result = register_netdev(eoe->dev))) {
@@ -235,7 +223,7 @@ void ec_eoe_print(const ec_eoe_t *eoe)
 
 void ec_eoedev_init(struct net_device *dev /**< pointer to the net_device */)
 {
-    ec_eoedev_priv_t *priv;
+    ec_eoe_t *priv;
     unsigned int i;
 
     // initialize net_device
@@ -249,7 +237,7 @@ void ec_eoedev_init(struct net_device *dev /**< pointer to the net_device */)
 
     // initialize private data
     priv = netdev_priv(dev);
-    memset(priv, 0, sizeof(ec_eoedev_priv_t));
+    memset(priv, 0, sizeof(ec_eoe_t *));
 }
 
 /*****************************************************************************/
@@ -260,7 +248,7 @@ void ec_eoedev_init(struct net_device *dev /**< pointer to the net_device */)
 
 int ec_eoedev_open(struct net_device *dev /**< EoE net_device */)
 {
-    ec_eoe_t *eoe = ((ec_eoedev_priv_t *) netdev_priv(dev))->eoe;
+    ec_eoe_t *eoe = *((ec_eoe_t **) netdev_priv(dev));
     eoe->opened = 1;
     netif_start_queue(dev);
     EC_INFO("%s (slave %i) opened.\n", dev->name, eoe->slave->ring_position);
@@ -275,7 +263,7 @@ int ec_eoedev_open(struct net_device *dev /**< EoE net_device */)
 
 int ec_eoedev_stop(struct net_device *dev /**< EoE net_device */)
 {
-    ec_eoe_t *eoe = ((ec_eoedev_priv_t *) netdev_priv(dev))->eoe;
+    ec_eoe_t *eoe = *((ec_eoe_t **) netdev_priv(dev));
     netif_stop_queue(dev);
     eoe->opened = 0;
     EC_INFO("%s (slave %i) stopped.\n", dev->name, eoe->slave->ring_position);
@@ -292,7 +280,7 @@ int ec_eoedev_tx(struct sk_buff *skb, /**< transmit socket buffer */
                  struct net_device *dev /**< EoE net_device */
                 )
 {
-    ec_eoe_t *eoe = ((ec_eoedev_priv_t *) netdev_priv(dev))->eoe;
+    ec_eoe_t *eoe = *((ec_eoe_t **) netdev_priv(dev));
 
     spin_lock_bh(&eoe->tx_queue_lock);
 
@@ -321,7 +309,7 @@ void ec_eoedev_rx(struct net_device *dev, /**< EoE net_device */
                   size_t size /**< size of the received data */
                  )
 {
-    ec_eoe_t *eoe = ((ec_eoedev_priv_t *) netdev_priv(dev))->eoe;
+    ec_eoe_t *eoe = *((ec_eoe_t **) netdev_priv(dev));
 
     // allocate socket buffer
     if (!(eoe->skb = dev_alloc_skb(size + 2))) {
@@ -357,7 +345,7 @@ void ec_eoedev_rx(struct net_device *dev, /**< EoE net_device */
 struct net_device_stats *ec_eoedev_stats(struct net_device *dev
                                          /**< EoE net_device */)
 {
-    ec_eoe_t *eoe = ((ec_eoedev_priv_t *) netdev_priv(dev))->eoe;
+    ec_eoe_t *eoe = *((ec_eoe_t **) netdev_priv(dev));
     return &eoe->stats;
 }
 
