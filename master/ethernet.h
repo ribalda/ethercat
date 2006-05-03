@@ -65,6 +65,11 @@ typedef struct
     ec_eoe_state_t rx_state; /**< state of the state machine */
     struct net_device *dev; /**< net_device for virtual ethernet device */
     uint8_t opened; /**< net_device is opened */
+    struct sk_buff *skb; /**< current rx socket buffer */
+    struct net_device_stats stats; /**< device statistics */
+    struct list_head tx_queue; /**< queue for frames to send */
+    unsigned int queued_frames; /**< number of frames in the queue */
+    spinlock_t tx_queue_lock; /**< spinlock for the send queue */
 }
 ec_eoe_t;
 

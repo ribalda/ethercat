@@ -45,7 +45,6 @@
 
 typedef struct
 {
-    struct net_device_stats stats; /**< device statistics */
     ec_eoe_t *eoe; /**< pointer to parent eoe object */
 }
 ec_eoedev_priv_t;
@@ -73,6 +72,10 @@ int ec_eoe_init(ec_eoe_t *eoe, ec_slave_t *slave)
     eoe->slave = slave;
     eoe->rx_state = EC_EOE_IDLE;
     eoe->opened = 0;
+    eoe->skb = NULL;
+    INIT_LIST_HEAD(&eoe->tx_queue);
+    eoe->queued_frames = 0;
+    eoe->tx_queue_lock = SPIN_LOCK_UNLOCKED;
 
     if (!(eoe->dev =
           alloc_netdev(sizeof(ec_eoedev_priv_t), "eoe%d", ec_eoedev_init))) {
@@ -257,11 +260,10 @@ void ec_eoedev_init(struct net_device *dev /**< pointer to the net_device */)
 
 int ec_eoedev_open(struct net_device *dev /**< EoE net_device */)
 {
-    ec_eoedev_priv_t *priv = netdev_priv(dev);
-    priv->eoe->opened = 1;
+    ec_eoe_t *eoe = ((ec_eoedev_priv_t *) netdev_priv(dev))->eoe;
+    eoe->opened = 1;
     netif_start_queue(dev);
-    EC_INFO("%s (slave %i) opened.\n", dev->name,
-            priv->eoe->slave->ring_position);
+    EC_INFO("%s (slave %i) opened.\n", dev->name, eoe->slave->ring_position);
     return 0;
 }
 
@@ -273,11 +275,10 @@ int ec_eoedev_open(struct net_device *dev /**< EoE net_device */)
 
 int ec_eoedev_stop(struct net_device *dev /**< EoE net_device */)
 {
-    ec_eoedev_priv_t *priv = netdev_priv(dev);
+    ec_eoe_t *eoe = ((ec_eoedev_priv_t *) netdev_priv(dev))->eoe;
     netif_stop_queue(dev);
-    priv->eoe->opened = 0;
-    EC_INFO("%s (slave %i) stopped.\n", dev->name,
-            priv->eoe->slave->ring_position);
+    eoe->opened = 0;
+    EC_INFO("%s (slave %i) stopped.\n", dev->name, eoe->slave->ring_position);
     return 0;
 }
 
@@ -289,12 +290,23 @@ int ec_eoedev_stop(struct net_device *dev /**< EoE net_device */)
 
 int ec_eoedev_tx(struct sk_buff *skb, /**< transmit socket buffer */
                  struct net_device *dev /**< EoE net_device */
-                 )
+                )
 {
-    ec_eoedev_priv_t *priv = netdev_priv(dev);
-    priv->stats.tx_packets++;
+    ec_eoe_t *eoe = ((ec_eoedev_priv_t *) netdev_priv(dev))->eoe;
+
+    spin_lock_bh(&eoe->tx_queue_lock);
+
+#if 0
+    eoe->stats.tx_packets++;
     dev_kfree_skb(skb);
     EC_INFO("EoE device sent %i octets.\n", skb->len);
+#endif
+
+    if (eoe->queued_frames == EC_EOE_TX_QUEUE_SIZE)
+        netif_stop_queue(dev);
+
+    spin_unlock_bh(&eoe->tx_queue_lock);
+
     return 0;
 }
 
@@ -305,35 +317,35 @@ int ec_eoedev_tx(struct sk_buff *skb, /**< transmit socket buffer */
 */
 
 void ec_eoedev_rx(struct net_device *dev, /**< EoE net_device */
-                 const uint8_t *data, /**< pointer to the data */
-                 size_t size /**< size of the received data */
+                  const uint8_t *data, /**< pointer to the data */
+                  size_t size /**< size of the received data */
                  )
 {
-    ec_eoedev_priv_t *priv = netdev_priv(dev);
-    struct sk_buff *skb;
+    ec_eoe_t *eoe = ((ec_eoedev_priv_t *) netdev_priv(dev))->eoe;
 
     // allocate socket buffer
-    if (!(skb = dev_alloc_skb(size + 2))) {
+    if (!(eoe->skb = dev_alloc_skb(size + 2))) {
         if (printk_ratelimit())
             EC_WARN("EoE RX: low on mem. frame dropped.\n");
-        priv->stats.rx_dropped++;
+        eoe->stats.rx_dropped++;
         return;
     }
 
     // copy received data to socket buffer
-    memcpy(skb_put(skb, size), data, size);
+    memcpy(skb_put(eoe->skb, size), data, size);
 
     // set socket buffer fields
-    skb->dev = dev;
-    skb->protocol = eth_type_trans(skb, dev);
-    skb->ip_summed = CHECKSUM_UNNECESSARY;
+    eoe->skb->dev = dev;
+    eoe->skb->protocol = eth_type_trans(eoe->skb, dev);
+    eoe->skb->ip_summed = CHECKSUM_UNNECESSARY;
 
     // update statistics
-    priv->stats.rx_packets++;
-    priv->stats.rx_bytes += size;
+    eoe->stats.rx_packets++;
+    eoe->stats.rx_bytes += size;
 
     // pass socket buffer to network stack
-    netif_rx(skb);
+    netif_rx(eoe->skb);
+    eoe->skb = NULL;
 }
 
 /*****************************************************************************/
@@ -345,8 +357,8 @@ void ec_eoedev_rx(struct net_device *dev, /**< EoE net_device */
 struct net_device_stats *ec_eoedev_stats(struct net_device *dev
                                          /**< EoE net_device */)
 {
-    ec_eoedev_priv_t *priv = netdev_priv(dev);
-    return &priv->stats;
+    ec_eoe_t *eoe = ((ec_eoedev_priv_t *) netdev_priv(dev))->eoe;
+    return &eoe->stats;
 }
 
 /*****************************************************************************/
