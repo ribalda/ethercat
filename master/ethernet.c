@@ -37,6 +37,8 @@
 #include "mailbox.h"
 #include "ethernet.h"
 
+#define EOE_DEBUG_LEVEL 1
+
 /*****************************************************************************/
 
 /**
@@ -93,7 +95,7 @@ int ec_eoe_init(ec_eoe_t *eoe, ec_slave_t *slave)
     priv = netdev_priv(eoe->dev);
     *priv = eoe;
 
-    //eoe->dev->mtu = slave->sii_rx_mailbox_size - ETH_HLEN - 10;
+    eoe->dev->mtu = slave->sii_rx_mailbox_size - ETH_HLEN - 10;
 
     // connect the net_device to the kernel
     if ((result = register_netdev(eoe->dev))) {
@@ -165,6 +167,9 @@ void ec_eoe_run(ec_eoe_t *eoe)
     uint8_t fragment_offset, frame_type;
     ec_eoe_frame_t *frame;
     unsigned int wakeup = 0;
+#if EOE_DEBUG_LEVEL > 1
+    unsigned int i;
+#endif
 
     if (!eoe->opened) return;
 
@@ -213,12 +218,26 @@ void ec_eoe_run(ec_eoe_t *eoe)
                 fragment_offset = (EC_READ_U16(data + 2) >> 6) & 0x003F;
                 frame_number = (EC_READ_U16(data + 2) >> 12) & 0x000F;
 
+#if EOE_DEBUG_LEVEL > 0
                 EC_DBG("EoE RX fragment %i, offset %i, frame %i%s%s,"
                        " %i octets\n", fragment_number, fragment_offset,
                        frame_number,
                        last_fragment ? ", last fragment" : "",
                        time_appended ? ", + timestamp" : "",
                        time_appended ? rec_size - 8 : rec_size - 4);
+
+#if EOE_DEBUG_LEVEL > 1
+                EC_DBG("");
+                for (i = 0; i < rec_size - 4; i++) {
+                    printk("%02X ", data[i + 4]);
+                    if ((i + 1) % 16 == 0) {
+                        printk("\n");
+                        EC_DBG("");
+                    }
+                }
+                printk("\n");
+#endif
+#endif
 
                 data_size = time_appended ? rec_size - 8 : rec_size - 4;
 
@@ -268,13 +287,16 @@ void ec_eoe_run(ec_eoe_t *eoe)
                     eoe->stats.rx_packets++;
                     eoe->stats.rx_bytes += eoe->skb->len;
 
+#if EOE_DEBUG_LEVEL > 0
                     EC_DBG("EoE RX frame completed with %u octets.\n",
                            eoe->skb->len);
+#endif
 
                     // pass socket buffer to network stack
                     eoe->skb->dev = eoe->dev;
                     eoe->skb->protocol = eth_type_trans(eoe->skb, eoe->dev);
-                    eoe->skb->ip_summed = CHECKSUM_NONE;
+                    eoe->skb->ip_summed = CHECKSUM_UNNECESSARY;
+                    eoe->skb->pkt_type = PACKET_HOST;
                     if (netif_rx(eoe->skb)) {
                         EC_WARN("EoE RX netif_rx failed.\n");
                     }
@@ -284,13 +306,17 @@ void ec_eoe_run(ec_eoe_t *eoe)
                 }
                 else {
                     eoe->expected_fragment++;
+#if EOE_DEBUG_LEVEL > 0
                     EC_DBG("EoE RX expecting fragment %i\n",
                            eoe->expected_fragment);
+#endif
                     eoe->state = EC_EOE_RX_START;
                 }
             }
             else {
+#if EOE_DEBUG_LEVEL > 0
                 EC_DBG("other frame received.\n");
+#endif
                 eoe->stats.rx_dropped++;
                 eoe->state = EC_EOE_TX_START;
             }
@@ -317,11 +343,25 @@ void ec_eoe_run(ec_eoe_t *eoe)
             eoe->queued_frames--;
             spin_unlock_bh(&eoe->tx_queue_lock);
 
+#if EOE_DEBUG_LEVEL > 0
             EC_DBG("EoE TX Sending frame with %i octets."
                    " (%i frames queued).\n",
                    frame->skb->len, eoe->queued_frames);
 
+#if EOE_DEBUG_LEVEL > 1
+            EC_DBG("");
+            for (i = 0; i < frame->skb->len; i++) {
+                printk("%02X ", frame->skb->data[i]);
+                if ((i + 1) % 16 == 0) {
+                    printk("\n");
+                    EC_DBG("");
+                }
+            }
+            printk("\n");
+#endif
+
             if (wakeup) EC_DBG("waking up TX queue...\n");
+#endif
 
             if (!(data = ec_slave_mbox_prepare_send(eoe->slave, 0x02,
                                                     frame->skb->len + 4))) {
@@ -481,10 +521,12 @@ int ec_eoedev_tx(struct sk_buff *skb, /**< transmit socket buffer */
     }
     spin_unlock_bh(&eoe->tx_queue_lock);
 
+#if EOE_DEBUG_LEVEL > 0
     EC_DBG("EoE TX queued frame with %i octets (%i frames queued).\n",
            skb->len, eoe->queued_frames);
     if (!eoe->tx_queue_active)
         EC_WARN("EoE TX queue is now full.\n");
+#endif
 
     return 0;
 }
