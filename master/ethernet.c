@@ -37,7 +37,7 @@
 #include "mailbox.h"
 #include "ethernet.h"
 
-#define EOE_DEBUG_LEVEL 1
+#define EOE_DEBUG_LEVEL 0
 
 /*****************************************************************************/
 
@@ -296,7 +296,7 @@ void ec_eoe_run(ec_eoe_t *eoe)
                     eoe->skb->dev = eoe->dev;
                     eoe->skb->protocol = eth_type_trans(eoe->skb, eoe->dev);
                     eoe->skb->ip_summed = CHECKSUM_UNNECESSARY;
-                    eoe->skb->pkt_type = PACKET_HOST;
+                    //eoe->skb->pkt_type = PACKET_HOST;
                     if (netif_rx(eoe->skb)) {
                         EC_WARN("EoE RX netif_rx failed.\n");
                     }
@@ -442,7 +442,8 @@ void ec_eoedev_init(struct net_device *dev /**< pointer to the net_device */)
     dev->hard_start_xmit = ec_eoedev_tx;
     dev->get_stats = ec_eoedev_stats;
 
-    for (i = 0; i < 6; i++) dev->dev_addr[i] = (i + 1) | (i + 1) << 4;
+    for (i = 0; i < ETH_ALEN; i++)
+        dev->dev_addr[i] = i | (i << 4);
 
     // initialize private data
     priv = netdev_priv(dev);
