@@ -39,6 +39,20 @@
 
 /*****************************************************************************/
 
+/**
+   Queued frame structure.
+*/
+
+typedef struct
+{
+    struct list_head queue; /**< list item */
+    struct sk_buff *skb; /**< socket buffer */
+}
+ec_eoe_frame_t;
+
+/*****************************************************************************/
+
+void ec_eoe_flush(ec_eoe_t *);
 void ec_eoedev_init(struct net_device *);
 int ec_eoedev_open(struct net_device *);
 int ec_eoedev_stop(struct net_device *);
@@ -58,12 +72,16 @@ int ec_eoe_init(ec_eoe_t *eoe, ec_slave_t *slave)
     int result;
 
     eoe->slave = slave;
-    eoe->rx_state = EC_EOE_IDLE;
+    eoe->state = EC_EOE_RX_START;
     eoe->opened = 0;
     eoe->skb = NULL;
+    eoe->expected_fragment = 0;
     INIT_LIST_HEAD(&eoe->tx_queue);
+    eoe->tx_queue_active = 0;
     eoe->queued_frames = 0;
     eoe->tx_queue_lock = SPIN_LOCK_UNLOCKED;
+    eoe->tx_frame_number = 0xFF;
+    memset(&eoe->stats, 0, sizeof(struct net_device_stats));
 
     if (!(eoe->dev =
           alloc_netdev(sizeof(ec_eoe_t *), "eoe%d", ec_eoedev_init))) {
@@ -74,6 +92,8 @@ int ec_eoe_init(ec_eoe_t *eoe, ec_slave_t *slave)
     // set EoE object reference
     priv = netdev_priv(eoe->dev);
     *priv = eoe;
+
+    //eoe->dev->mtu = slave->sii_rx_mailbox_size - ETH_HLEN - 10;
 
     // connect the net_device to the kernel
     if ((result = register_netdev(eoe->dev))) {
@@ -102,6 +122,31 @@ void ec_eoe_clear(ec_eoe_t *eoe)
         unregister_netdev(eoe->dev);
         free_netdev(eoe->dev);
     }
+
+    // empty transmit queue
+    ec_eoe_flush(eoe);
+}
+
+/*****************************************************************************/
+
+/**
+   Empties the transmit queue.
+*/
+
+void ec_eoe_flush(ec_eoe_t *eoe)
+{
+    ec_eoe_frame_t *frame, *next;
+
+    spin_lock_bh(&eoe->tx_queue_lock);
+
+    list_for_each_entry_safe(frame, next, &eoe->tx_queue, queue) {
+        list_del(&frame->queue);
+        dev_kfree_skb(frame->skb);
+        kfree(frame);
+    }
+    eoe->queued_frames = 0;
+
+    spin_unlock_bh(&eoe->tx_queue_lock);
 }
 
 /*****************************************************************************/
@@ -114,90 +159,214 @@ void ec_eoe_run(ec_eoe_t *eoe)
 {
     uint8_t *data;
     ec_master_t *master;
-    size_t rec_size;
+    size_t rec_size, data_size;
+    off_t offset;
     uint8_t fragment_number, frame_number, last_fragment, time_appended;
     uint8_t fragment_offset, frame_type;
+    ec_eoe_frame_t *frame;
+    unsigned int wakeup = 0;
 
     if (!eoe->opened) return;
 
     master = eoe->slave->master;
 
-    if (eoe->rx_state == EC_EOE_IDLE) {
-        ec_slave_mbox_prepare_check(eoe->slave);
-        ec_master_queue_command(master, &eoe->slave->mbox_command);
-        eoe->rx_state = EC_EOE_CHECKING;
-        return;
-    }
+    switch (eoe->state) {
+        case EC_EOE_RX_START:
+            ec_slave_mbox_prepare_check(eoe->slave);
+            ec_master_queue_command(master, &eoe->slave->mbox_command);
+            eoe->state = EC_EOE_RX_CHECK;
+            break;
 
-    if (eoe->rx_state == EC_EOE_CHECKING) {
-        if (eoe->slave->mbox_command.state != EC_CMD_RECEIVED) {
-            master->stats.eoe_errors++;
-            eoe->rx_state = EC_EOE_IDLE;
-            return;
-        }
-        if (!ec_slave_mbox_check(eoe->slave)) {
-            eoe->rx_state = EC_EOE_IDLE;
-            return;
-        }
-        ec_slave_mbox_prepare_fetch(eoe->slave);
-        ec_master_queue_command(master, &eoe->slave->mbox_command);
-        eoe->rx_state = EC_EOE_FETCHING;
-        return;
-    }
+        case EC_EOE_RX_CHECK:
+            if (eoe->slave->mbox_command.state != EC_CMD_RECEIVED) {
+                eoe->stats.rx_errors++;
+                eoe->state = EC_EOE_TX_START;
+                break;
+            }
+            if (!ec_slave_mbox_check(eoe->slave)) {
+                eoe->state = EC_EOE_TX_START;
+                break;
+            }
+            ec_slave_mbox_prepare_fetch(eoe->slave);
+            ec_master_queue_command(master, &eoe->slave->mbox_command);
+            eoe->state = EC_EOE_RX_FETCH;
+            break;
 
-    if (eoe->rx_state == EC_EOE_FETCHING) {
-        if (eoe->slave->mbox_command.state != EC_CMD_RECEIVED) {
-            master->stats.eoe_errors++;
-            eoe->rx_state = EC_EOE_IDLE;
-            return;
-        }
-        if (!(data = ec_slave_mbox_fetch(eoe->slave, 0x02, &rec_size))) {
-            master->stats.eoe_errors++;
-            eoe->rx_state = EC_EOE_IDLE;
-            return;
-        }
+        case EC_EOE_RX_FETCH:
+            if (eoe->slave->mbox_command.state != EC_CMD_RECEIVED) {
+                eoe->stats.rx_errors++;
+                eoe->state = EC_EOE_TX_START;
+                break;
+            }
+            if (!(data = ec_slave_mbox_fetch(eoe->slave, 0x02, &rec_size))) {
+                eoe->stats.rx_errors++;
+                eoe->state = EC_EOE_TX_START;
+                break;
+            }
 
-        frame_type = EC_READ_U16(data) & 0x000F;
+            frame_type = EC_READ_U16(data) & 0x000F;
 
-        if (frame_type == 0x00) { // EoE Fragment Request
-            last_fragment = (EC_READ_U16(data) >> 8) & 0x0001;
-            time_appended = (EC_READ_U16(data) >> 9) & 0x0001;
-            fragment_number = EC_READ_U16(data + 2) & 0x003F;
-            fragment_offset = (EC_READ_U16(data + 2) >> 6) & 0x003F;
-            frame_number = (EC_READ_U16(data + 2) >> 12) & 0x000F;
+            if (frame_type == 0x00) { // EoE Fragment Request
+                last_fragment = (EC_READ_U16(data) >> 8) & 0x0001;
+                time_appended = (EC_READ_U16(data) >> 9) & 0x0001;
+                fragment_number = EC_READ_U16(data + 2) & 0x003F;
+                fragment_offset = (EC_READ_U16(data + 2) >> 6) & 0x003F;
+                frame_number = (EC_READ_U16(data + 2) >> 12) & 0x000F;
 
-#if 0
-            EC_DBG("EOE fragment req received, fragment: %i, offset: %i,"
-                   " frame %i%s%s, %i bytes\n", fragment_number,
-                   fragment_offset, frame_number,
-                   last_fragment ? ", last fragment" : "",
-                   time_appended ? ", + timestamp" : "",
-                   time_appended ? rec_size - 8 : rec_size - 4);
+                EC_DBG("EoE RX fragment %i, offset %i, frame %i%s%s,"
+                       " %i octets\n", fragment_number, fragment_offset,
+                       frame_number,
+                       last_fragment ? ", last fragment" : "",
+                       time_appended ? ", + timestamp" : "",
+                       time_appended ? rec_size - 8 : rec_size - 4);
 
-#if 0
-            EC_DBG("");
-            for (i = 0; i < rec_size - 4; i++) {
-                printk("%02X ", data[i + 4]);
-                if ((i + 1) % 16 == 0) {
-                    printk("\n");
-                    EC_DBG("");
+                data_size = time_appended ? rec_size - 8 : rec_size - 4;
+
+                if (!fragment_number) {
+                    if (eoe->skb) {
+                        EC_WARN("EoE RX freeing old socket buffer...\n");
+                        dev_kfree_skb(eoe->skb);
+                    }
+
+                    // new socket buffer
+                    if (!(eoe->skb = dev_alloc_skb(fragment_offset * 32))) {
+                        if (printk_ratelimit())
+                            EC_WARN("EoE RX low on mem. frame dropped.\n");
+                        eoe->stats.rx_dropped++;
+                        eoe->state = EC_EOE_TX_START;
+                        break;
+                    }
+                    eoe->skb_offset = 0;
+                    eoe->skb_size = fragment_offset * 32;
+                    eoe->expected_fragment = 0;
+                }
+                else {
+                    if (!eoe->skb) {
+                        eoe->stats.rx_dropped++;
+                        eoe->state = EC_EOE_TX_START;
+                        break;
+                    }
+
+                    offset = fragment_offset * 32;
+                    if (offset != eoe->skb_offset ||
+                        offset + data_size > eoe->skb_size ||
+                        fragment_number != eoe->expected_fragment) {
+                        eoe->stats.rx_errors++;
+                        eoe->state = EC_EOE_TX_START;
+                        dev_kfree_skb(eoe->skb);
+                        eoe->skb = NULL;
+                        break;
+                    }
+                }
+
+                // copy fragment into socket buffer
+                memcpy(skb_put(eoe->skb, data_size), data + 4, data_size);
+                eoe->skb_offset += data_size;
+
+                if (last_fragment) {
+                    // update statistics
+                    eoe->stats.rx_packets++;
+                    eoe->stats.rx_bytes += eoe->skb->len;
+
+                    EC_DBG("EoE RX frame completed with %u octets.\n",
+                           eoe->skb->len);
+
+                    // pass socket buffer to network stack
+                    eoe->skb->dev = eoe->dev;
+                    eoe->skb->protocol = eth_type_trans(eoe->skb, eoe->dev);
+                    eoe->skb->ip_summed = CHECKSUM_NONE;
+                    if (netif_rx(eoe->skb)) {
+                        EC_WARN("EoE RX netif_rx failed.\n");
+                    }
+                    eoe->skb = NULL;
+
+                    eoe->state = EC_EOE_TX_START;
+                }
+                else {
+                    eoe->expected_fragment++;
+                    EC_DBG("EoE RX expecting fragment %i\n",
+                           eoe->expected_fragment);
+                    eoe->state = EC_EOE_RX_START;
                 }
             }
-            printk("\n");
-#endif
-#endif
+            else {
+                EC_DBG("other frame received.\n");
+                eoe->stats.rx_dropped++;
+                eoe->state = EC_EOE_TX_START;
+            }
+            break;
 
-            ec_eoedev_rx(eoe->dev, data + 4,
-                         time_appended ? rec_size - 8 : rec_size - 4);
-        }
-        else {
-#if 1
-            EC_DBG("other frame received.\n");
-#endif
-        }
+        case EC_EOE_TX_START:
+            spin_lock_bh(&eoe->tx_queue_lock);
 
-        eoe->rx_state = EC_EOE_IDLE;
-        return;
+            if (!eoe->queued_frames || list_empty(&eoe->tx_queue)) {
+                spin_unlock_bh(&eoe->tx_queue_lock);
+                eoe->state = EC_EOE_RX_START;
+                break;
+            }
+
+            // take the first frame out of the queue
+            frame = list_entry(eoe->tx_queue.next, ec_eoe_frame_t, queue);
+            list_del(&frame->queue);
+            if (!eoe->tx_queue_active &&
+                eoe->queued_frames == EC_EOE_TX_QUEUE_SIZE / 2) {
+                netif_wake_queue(eoe->dev);
+                eoe->tx_queue_active = 1;
+                wakeup = 1;
+            }
+            eoe->queued_frames--;
+            spin_unlock_bh(&eoe->tx_queue_lock);
+
+            EC_DBG("EoE TX Sending frame with %i octets."
+                   " (%i frames queued).\n",
+                   frame->skb->len, eoe->queued_frames);
+
+            if (wakeup) EC_DBG("waking up TX queue...\n");
+
+            if (!(data = ec_slave_mbox_prepare_send(eoe->slave, 0x02,
+                                                    frame->skb->len + 4))) {
+                dev_kfree_skb(frame->skb);
+                kfree(frame);
+                eoe->stats.tx_errors++;
+                eoe->state = EC_EOE_RX_START;
+                break;
+            }
+
+            eoe->tx_frame_number++;
+            eoe->tx_frame_number %= 16;
+
+            EC_WRITE_U16(data, 0x0100); // eoe fragment req.
+            EC_WRITE_U16(data + 2, (eoe->tx_frame_number & 0x0F) << 12);
+
+            memcpy(data + 4, frame->skb->data, frame->skb->len);
+            ec_master_queue_command(master, &eoe->slave->mbox_command);
+
+            eoe->last_tx_bytes = frame->skb->len;
+            dev_kfree_skb(frame->skb);
+            kfree(frame);
+
+            eoe->state = EC_EOE_TX_SENT;
+            break;
+
+        case EC_EOE_TX_SENT:
+            if (eoe->slave->mbox_command.state != EC_CMD_RECEIVED) {
+                eoe->stats.tx_errors++;
+                eoe->state = EC_EOE_RX_START;
+                break;
+            }
+            if (eoe->slave->mbox_command.working_counter != 1) {
+                eoe->stats.tx_errors++;
+                eoe->state = EC_EOE_RX_START;
+                break;
+            }
+
+            eoe->stats.tx_packets++;
+            eoe->stats.tx_bytes += eoe->last_tx_bytes;
+            eoe->state = EC_EOE_RX_START;
+            break;
+
+        default:
+            break;
     }
 }
 
@@ -210,7 +379,7 @@ void ec_eoe_run(ec_eoe_t *eoe)
 void ec_eoe_print(const ec_eoe_t *eoe)
 {
     EC_INFO("  EoE slave %i\n", eoe->slave->ring_position);
-    EC_INFO("    RX State %i\n", eoe->rx_state);
+    EC_INFO("    State %i\n", eoe->state);
     EC_INFO("    Assigned device: %s (%s)\n", eoe->dev->name,
             eoe->opened ? "opened" : "closed");
 }
@@ -249,8 +418,10 @@ void ec_eoedev_init(struct net_device *dev /**< pointer to the net_device */)
 int ec_eoedev_open(struct net_device *dev /**< EoE net_device */)
 {
     ec_eoe_t *eoe = *((ec_eoe_t **) netdev_priv(dev));
+    ec_eoe_flush(eoe);
     eoe->opened = 1;
     netif_start_queue(dev);
+    eoe->tx_queue_active = 1;
     EC_INFO("%s (slave %i) opened.\n", dev->name, eoe->slave->ring_position);
     return 0;
 }
@@ -265,7 +436,9 @@ int ec_eoedev_stop(struct net_device *dev /**< EoE net_device */)
 {
     ec_eoe_t *eoe = *((ec_eoe_t **) netdev_priv(dev));
     netif_stop_queue(dev);
+    eoe->tx_queue_active = 0;
     eoe->opened = 0;
+    ec_eoe_flush(eoe);
     EC_INFO("%s (slave %i) stopped.\n", dev->name, eoe->slave->ring_position);
     return 0;
 }
@@ -281,59 +454,39 @@ int ec_eoedev_tx(struct sk_buff *skb, /**< transmit socket buffer */
                 )
 {
     ec_eoe_t *eoe = *((ec_eoe_t **) netdev_priv(dev));
+    ec_eoe_frame_t *frame;
 
-    spin_lock_bh(&eoe->tx_queue_lock);
-
-#if 0
-    eoe->stats.tx_packets++;
-    dev_kfree_skb(skb);
-    EC_INFO("EoE device sent %i octets.\n", skb->len);
-#endif
-
-    if (eoe->queued_frames == EC_EOE_TX_QUEUE_SIZE)
-        netif_stop_queue(dev);
-
-    spin_unlock_bh(&eoe->tx_queue_lock);
-
-    return 0;
-}
-
-/*****************************************************************************/
-
-/**
-   Receives data from the bus and passes it to the network stack.
-*/
-
-void ec_eoedev_rx(struct net_device *dev, /**< EoE net_device */
-                  const uint8_t *data, /**< pointer to the data */
-                  size_t size /**< size of the received data */
-                 )
-{
-    ec_eoe_t *eoe = *((ec_eoe_t **) netdev_priv(dev));
-
-    // allocate socket buffer
-    if (!(eoe->skb = dev_alloc_skb(size + 2))) {
-        if (printk_ratelimit())
-            EC_WARN("EoE RX: low on mem. frame dropped.\n");
-        eoe->stats.rx_dropped++;
-        return;
+    if (skb->len + 10 > eoe->slave->sii_tx_mailbox_size) {
+        EC_WARN("EoE TX frame (%i octets) exceeds MTU. dropping.\n", skb->len);
+        dev_kfree_skb(skb);
+        eoe->stats.tx_dropped++;
+        return 0;
     }
 
-    // copy received data to socket buffer
-    memcpy(skb_put(eoe->skb, size), data, size);
+    if (!(frame =
+          (ec_eoe_frame_t *) kmalloc(sizeof(ec_eoe_frame_t), GFP_ATOMIC))) {
+        if (printk_ratelimit())
+            EC_WARN("EoE TX: low on mem. frame dropped.\n");
+        return 1;
+    }
 
-    // set socket buffer fields
-    eoe->skb->dev = dev;
-    eoe->skb->protocol = eth_type_trans(eoe->skb, dev);
-    eoe->skb->ip_summed = CHECKSUM_UNNECESSARY;
+    frame->skb = skb;
 
-    // update statistics
-    eoe->stats.rx_packets++;
-    eoe->stats.rx_bytes += size;
+    spin_lock_bh(&eoe->tx_queue_lock);
+    list_add_tail(&frame->queue, &eoe->tx_queue);
+    eoe->queued_frames++;
+    if (eoe->queued_frames == EC_EOE_TX_QUEUE_SIZE) {
+        netif_stop_queue(dev);
+        eoe->tx_queue_active = 0;
+    }
+    spin_unlock_bh(&eoe->tx_queue_lock);
 
-    // pass socket buffer to network stack
-    netif_rx(eoe->skb);
-    eoe->skb = NULL;
+    EC_DBG("EoE TX queued frame with %i octets (%i frames queued).\n",
+           skb->len, eoe->queued_frames);
+    if (!eoe->tx_queue_active)
+        EC_WARN("EoE TX queue is now full.\n");
+
+    return 0;
 }
 
 /*****************************************************************************/

@@ -50,7 +50,7 @@
 #define EC_MAX_FMMUS 16
 
 /** size of the EoE tx queue */
-#define EC_EOE_TX_QUEUE_SIZE 10
+#define EC_EOE_TX_QUEUE_SIZE 100
 
 /******************************************************************************
  *  EtherCAT protocol

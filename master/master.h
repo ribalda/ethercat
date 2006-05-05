@@ -64,7 +64,6 @@ typedef struct
     unsigned int delayed; /**< delayed commands */
     unsigned int corrupted; /**< corrupted frames */
     unsigned int unmatched; /**< unmatched commands */
-    unsigned int eoe_errors; /**< Ethernet-over-EtherCAT errors */
     cycles_t t_last; /**< time of last output */
 }
 ec_stats_t;

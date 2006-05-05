@@ -215,7 +215,6 @@ void ec_master_reset(ec_master_t *master /**< EtherCAT master */)
     master->stats.delayed = 0;
     master->stats.corrupted = 0;
     master->stats.unmatched = 0;
-    master->stats.eoe_errors = 0;
     master->stats.t_last = 0;
 
     master->mode = EC_MASTER_MODE_IDLE;
@@ -622,10 +621,6 @@ void ec_master_output_stats(ec_master_t *master /**< EtherCAT master */)
             EC_WARN("%i command(s) UNMATCHED!\n", master->stats.unmatched);
             master->stats.unmatched = 0;
         }
-        if (master->stats.eoe_errors) {
-            EC_WARN("%i EOE ERROR(S)!\n", master->stats.eoe_errors);
-            master->stats.eoe_errors = 0;
-        }
         master->stats.t_last = t_now;
     }
 }
@@ -860,7 +855,7 @@ void ec_master_run_eoe(unsigned long data /**< master pointer */)
     master->release_cb(master->cb_data);
 
  restart_timer:
-    master->eoe_timer.expires += HZ / 4;
+    master->eoe_timer.expires += HZ / 1000;
     add_timer(&master->eoe_timer);
 }
 
