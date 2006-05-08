@@ -41,19 +41,6 @@
 
 /*****************************************************************************/
 
-/**
-   Queued frame structure.
-*/
-
-typedef struct
-{
-    struct list_head queue; /**< list item */
-    struct sk_buff *skb; /**< socket buffer */
-}
-ec_eoe_frame_t;
-
-/*****************************************************************************/
-
 void ec_eoe_flush(ec_eoe_t *);
 void ec_eoedev_init(struct net_device *);
 int ec_eoedev_open(struct net_device *);
@@ -149,6 +136,78 @@ void ec_eoe_flush(ec_eoe_t *eoe)
     eoe->queued_frames = 0;
 
     spin_unlock_bh(&eoe->tx_queue_lock);
+}
+
+/*****************************************************************************/
+
+/**
+   Sends a frame or the next fragment.
+*/
+
+int ec_eoe_send(ec_eoe_t *eoe)
+{
+    ec_eoe_frame_t *frame = eoe->tx_frame;
+    size_t remaining_size, current_size, complete_offset;
+    unsigned int last_fragment;
+    uint8_t *data;
+#if EOE_DEBUG_LEVEL > 1
+    unsigned int i;
+#endif
+
+    remaining_size = frame->skb->len - eoe->tx_offset;
+
+    if (remaining_size <= eoe->slave->sii_tx_mailbox_size - 10) {
+        current_size = remaining_size;
+        last_fragment = 1;
+    }
+    else {
+        current_size = ((eoe->slave->sii_tx_mailbox_size - 10) / 32) * 32;
+        last_fragment = 0;
+    }
+
+    if (eoe->tx_fragment_number) {
+        complete_offset = eoe->tx_offset / 32;
+    }
+    else {
+        complete_offset = remaining_size / 32 + 1;
+    }
+
+#if EOE_DEBUG_LEVEL > 0
+    EC_DBG("EoE TX sending %sfragment %i with %i octets (%i)."
+           " %i frames queued.\n", last_fragment ? "last " : "",
+           eoe->tx_fragment_number, current_size, complete_offset,
+           eoe->queued_frames);
+#endif
+
+#if EOE_DEBUG_LEVEL > 1
+    EC_DBG("");
+    for (i = 0; i < current_size; i++) {
+        printk("%02X ", frame->skb->data[eoe->tx_offset + i]);
+        if ((i + 1) % 16 == 0) {
+            printk("\n");
+            EC_DBG("");
+        }
+    }
+    printk("\n");
+#endif
+
+    if (!(data = ec_slave_mbox_prepare_send(eoe->slave, 0x02,
+                                            current_size + 4)))
+        return -1;
+
+    EC_WRITE_U8 (data,     0x00); // eoe fragment req.
+    EC_WRITE_U8 (data + 1, last_fragment);
+    EC_WRITE_U16(data + 2, ((eoe->tx_fragment_number & 0x3F) |
+                            (complete_offset & 0x3F) << 6 |
+                            (eoe->tx_frame_number & 0x0F) << 12));
+
+    memcpy(data + 4, frame->skb->data + eoe->tx_offset, current_size);
+    ec_master_queue_command(eoe->slave->master, &eoe->slave->mbox_command);
+
+    eoe->tx_offset += current_size;
+    eoe->tx_fragment_number++;
+
+    return 0;
 }
 
 /*****************************************************************************/
@@ -343,28 +402,13 @@ void ec_eoe_run(ec_eoe_t *eoe)
             eoe->queued_frames--;
             spin_unlock_bh(&eoe->tx_queue_lock);
 
-#if EOE_DEBUG_LEVEL > 0
-            EC_DBG("EoE TX Sending frame with %i octets."
-                   " (%i frames queued).\n",
-                   frame->skb->len, eoe->queued_frames);
+            eoe->tx_frame_number++;
+            eoe->tx_frame_number %= 16;
+            eoe->tx_frame = frame;
+            eoe->tx_fragment_number = 0;
+            eoe->tx_offset = 0;
 
-#if EOE_DEBUG_LEVEL > 1
-            EC_DBG("");
-            for (i = 0; i < frame->skb->len; i++) {
-                printk("%02X ", frame->skb->data[i]);
-                if ((i + 1) % 16 == 0) {
-                    printk("\n");
-                    EC_DBG("");
-                }
-            }
-            printk("\n");
-#endif
-
-            if (wakeup) EC_DBG("waking up TX queue...\n");
-#endif
-
-            if (!(data = ec_slave_mbox_prepare_send(eoe->slave, 0x02,
-                                                    frame->skb->len + 4))) {
+            if (ec_eoe_send(eoe)) {
                 dev_kfree_skb(frame->skb);
                 kfree(frame);
                 eoe->stats.tx_errors++;
@@ -372,18 +416,9 @@ void ec_eoe_run(ec_eoe_t *eoe)
                 break;
             }
 
-            eoe->tx_frame_number++;
-            eoe->tx_frame_number %= 16;
-
-            EC_WRITE_U16(data, 0x0100); // eoe fragment req.
-            EC_WRITE_U16(data + 2, (eoe->tx_frame_number & 0x0F) << 12);
-
-            memcpy(data + 4, frame->skb->data, frame->skb->len);
-            ec_master_queue_command(master, &eoe->slave->mbox_command);
-
-            eoe->last_tx_bytes = frame->skb->len;
-            dev_kfree_skb(frame->skb);
-            kfree(frame);
+#if EOE_DEBUG_LEVEL > 0
+            if (wakeup) EC_DBG("waking up TX queue...\n");
+#endif
 
             eoe->state = EC_EOE_TX_SENT;
             break;
@@ -400,9 +435,24 @@ void ec_eoe_run(ec_eoe_t *eoe)
                 break;
             }
 
-            eoe->stats.tx_packets++;
-            eoe->stats.tx_bytes += eoe->last_tx_bytes;
-            eoe->state = EC_EOE_RX_START;
+            // frame completely sent
+            if (eoe->tx_offset >= eoe->tx_frame->skb->len) {
+                eoe->stats.tx_packets++;
+                eoe->stats.tx_bytes += eoe->tx_frame->skb->len;
+                dev_kfree_skb(eoe->tx_frame->skb);
+                kfree(eoe->tx_frame);
+                eoe->state = EC_EOE_RX_START;
+            }
+            else { // send next fragment
+                if (ec_eoe_send(eoe)) {
+                    dev_kfree_skb(eoe->tx_frame->skb);
+                    kfree(eoe->tx_frame);
+                    eoe->stats.tx_errors++;
+                    eoe->state = EC_EOE_RX_START;
+                    break;
+                }
+            }
+
             break;
 
         default:
@@ -497,12 +547,14 @@ int ec_eoedev_tx(struct sk_buff *skb, /**< transmit socket buffer */
     ec_eoe_t *eoe = *((ec_eoe_t **) netdev_priv(dev));
     ec_eoe_frame_t *frame;
 
-    if (skb->len + 10 > eoe->slave->sii_tx_mailbox_size) {
+#if 0
+    if (skb->len > eoe->slave->sii_tx_mailbox_size - 10) {
         EC_WARN("EoE TX frame (%i octets) exceeds MTU. dropping.\n", skb->len);
         dev_kfree_skb(skb);
         eoe->stats.tx_dropped++;
         return 0;
     }
+#endif
 
     if (!(frame =
           (ec_eoe_frame_t *) kmalloc(sizeof(ec_eoe_frame_t), GFP_ATOMIC))) {

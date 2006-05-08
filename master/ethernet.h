@@ -48,11 +48,22 @@ typedef enum
     EC_EOE_RX_CHECK, /**< checking frame was sent. */
     EC_EOE_RX_FETCH, /**< there is new data; fetching frame was sent. */
     EC_EOE_TX_START, /**< start sending a queued frame. */
-    EC_EOE_TX_SENT,  /**< queued frame was sent; start checking. */
-    EC_EOE_TX_CHECK, /**< check mailbox for acknowledgement. */
-    EC_EOE_TX_FETCH, /**< receive mailbox response */
+    EC_EOE_TX_SENT   /**< queued frame was sent. */
 }
 ec_eoe_state_t;
+
+/*****************************************************************************/
+
+/**
+   Queued frame structure.
+*/
+
+typedef struct
+{
+    struct list_head queue; /**< list item */
+    struct sk_buff *skb; /**< socket buffer */
+}
+ec_eoe_frame_t;
 
 /*****************************************************************************/
 
@@ -78,8 +89,10 @@ typedef struct
     unsigned int tx_queue_active; /**< kernel netif queue started */
     unsigned int queued_frames; /**< number of frames in the queue */
     spinlock_t tx_queue_lock; /**< spinlock for the send queue */
-    uint8_t tx_frame_number; /**< Number of the transmitted frame */
-    size_t last_tx_bytes; /**< number of bytes currently transmitted */
+    ec_eoe_frame_t *tx_frame; /**< current TX frame */
+    uint8_t tx_frame_number; /**< number of the transmitted frame */
+    uint8_t tx_fragment_number; /**< number of the fragment */
+    size_t tx_offset; /**< numbero of octets sent */
 }
 ec_eoe_t;
 
