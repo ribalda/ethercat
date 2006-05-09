@@ -42,7 +42,6 @@
 /*****************************************************************************/
 
 void ec_eoe_flush(ec_eoe_t *);
-void ec_eoedev_init(struct net_device *);
 
 // state functions
 void ec_eoe_state_rx_start(ec_eoe_t *);
@@ -56,7 +55,6 @@ int ec_eoedev_open(struct net_device *);
 int ec_eoedev_stop(struct net_device *);
 int ec_eoedev_tx(struct sk_buff *, struct net_device *);
 struct net_device_stats *ec_eoedev_stats(struct net_device *);
-void ec_eoedev_rx(struct net_device *, const uint8_t *, size_t);
 
 /*****************************************************************************/
 
