@@ -39,22 +39,6 @@
 /*****************************************************************************/
 
 /**
-   State of an EoE object.
-*/
-
-typedef enum
-{
-    EC_EOE_RX_START, /**< start receiving and check for data. */
-    EC_EOE_RX_CHECK, /**< checking frame was sent. */
-    EC_EOE_RX_FETCH, /**< there is new data; fetching frame was sent. */
-    EC_EOE_TX_START, /**< start sending a queued frame. */
-    EC_EOE_TX_SENT   /**< queued frame was sent. */
-}
-ec_eoe_state_t;
-
-/*****************************************************************************/
-
-/**
    Queued frame structure.
 */
 
@@ -67,34 +51,35 @@ ec_eoe_frame_t;
 
 /*****************************************************************************/
 
+typedef struct ec_eoe ec_eoe_t;
+
 /**
    Ethernet-over-EtherCAT (EoE) Object.
    The master creates one of these objects for each slave that supports the
    EoE protocol.
 */
 
-typedef struct
+struct ec_eoe
 {
     struct list_head list; /**< list item */
     ec_slave_t *slave; /**< pointer to the corresponding slave */
-    ec_eoe_state_t state; /**< state of the state machine */
+    void (*state)(ec_eoe_t *); /**< state function for the state machine */
     struct net_device *dev; /**< net_device for virtual ethernet device */
-    uint8_t opened; /**< net_device is opened */
-    struct sk_buff *skb; /**< current rx socket buffer */
-    off_t skb_offset; /**< current write pointer in the socket buffer */
-    size_t skb_size; /**< size of the allocated socket buffer memory */
-    uint8_t expected_fragment; /**< expected fragment */
     struct net_device_stats stats; /**< device statistics */
+    uint8_t opened; /**< net_device is opened */
+    struct sk_buff *rx_skb; /**< current rx socket buffer */
+    off_t rx_skb_offset; /**< current write pointer in the socket buffer */
+    size_t rx_skb_size; /**< size of the allocated socket buffer memory */
+    uint8_t rx_expected_fragment; /**< next expected fragment number */
     struct list_head tx_queue; /**< queue for frames to send */
     unsigned int tx_queue_active; /**< kernel netif queue started */
-    unsigned int queued_frames; /**< number of frames in the queue */
+    unsigned int tx_queued_frames; /**< number of frames in the queue */
     spinlock_t tx_queue_lock; /**< spinlock for the send queue */
     ec_eoe_frame_t *tx_frame; /**< current TX frame */
     uint8_t tx_frame_number; /**< number of the transmitted frame */
     uint8_t tx_fragment_number; /**< number of the fragment */
-    size_t tx_offset; /**< numbero of octets sent */
-}
-ec_eoe_t;
+    size_t tx_offset; /**< number of octets sent */
+};
 
 /*****************************************************************************/
 
