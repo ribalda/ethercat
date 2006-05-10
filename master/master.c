@@ -876,22 +876,23 @@ void ec_master_run_eoe(void *data /**< master pointer */)
     ec_eoe_t *eoe;
 
     // request_cb must return 0, if the lock has been aquired!
-    if (master->request_cb(master->cb_data)) goto queue;
+    if (!master->request_cb(master->cb_data))
+    {
+        ecrt_master_async_receive(master);
+        list_for_each_entry(eoe, &master->eoe_slaves, list) {
+            ec_eoe_run(eoe);
+        }
+        ecrt_master_async_send(master);
 
-    ecrt_master_async_receive(master);
-    list_for_each_entry(eoe, &master->eoe_slaves, list) {
-      ec_eoe_run(eoe);
+        master->release_cb(master->cb_data);
     }
-    ecrt_master_async_send(master);
 
-    master->release_cb(master->cb_data);
-
- queue:
 #ifdef EOE_TIMER
-    master->eoe_timer.expires += HZ / 1000;
+    master->eoe_timer.expires += HZ / EC_EOE_FREQUENCY;
     add_timer(&master->eoe_timer);
 #else
-    queue_delayed_work(master->eoe_workqueue, &master->eoe_work, HZ / 1000);
+    queue_delayed_work(master->eoe_workqueue, &master->eoe_work,
+                       HZ / EC_EOE_FREQUENCY);
 #endif
 }
 

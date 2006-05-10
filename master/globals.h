@@ -52,6 +52,9 @@
 /** size of the EoE tx queue */
 #define EC_EOE_TX_QUEUE_SIZE 100
 
+/** clock frequency for the EoE state machines */
+#define EC_EOE_FREQUENCY 1000
+
 /******************************************************************************
  *  EtherCAT protocol
  *****************************************************************************/
