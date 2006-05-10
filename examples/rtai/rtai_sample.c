@@ -100,7 +100,7 @@ void run(long data)
 int request_lock(void *data)
 {
     rt_sem_wait(&master_sem);
-    return 0;
+    return 0; // access allowed
 }
 
 /*****************************************************************************/
@@ -189,7 +189,7 @@ int __init init_mod(void)
     ecrt_master_prepare_async_io(master);
 #endif
 
-#if 0
+#if 1
     if (ecrt_master_start_eoe(master)) {
         printk(KERN_ERR "Failed to start EoE processing!\n");
         goto out_deactivate;
