@@ -35,6 +35,8 @@ obj-m := ec_rtai_sample.o
 
 ec_rtai_sample-objs := rtai_sample.o
 
+EXTRA_CFLAGS := -I/usr/realtime/include
+
 #------------------------------------------------------------------------------
 
 else

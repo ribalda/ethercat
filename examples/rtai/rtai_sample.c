@@ -1,8 +1,6 @@
 /******************************************************************************
  *
- *  m i n i . c
- *
- *  Minimal module for EtherCAT.
+ *  RTAI sample for the IgH EtherCAT master.
  *
  *  $Id$
  *
@@ -28,22 +26,26 @@
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <linux/timer.h>
-#include <linux/spinlock.h>
 #include <linux/interrupt.h>
+
+#include "rtai.h"
+#include "rtai_sched.h"
+#include "rtai_sem.h"
 
 #include "../../include/ecrt.h" // EtherCAT realtime interface
 
 #define ASYNC
-#define FREQUENCY 100
+#define TIMERTICKS 1000000
 
 /*****************************************************************************/
 
-struct timer_list timer;
+// RTAI
+RT_TASK task;
+SEM master_sem;
 
 // EtherCAT
 ec_master_t *master = NULL;
 ec_domain_t *domain1 = NULL;
-spinlock_t master_lock = SPIN_LOCK_UNLOCKED;
 
 // data fields
 //void *r_ssi_input, *r_ssi_status, *r_4102[3];
@@ -60,76 +62,63 @@ ec_field_init_t domain1_fields[] = {
 
 /*****************************************************************************/
 
-void run(unsigned long data)
+void run(long data)
 {
-    static unsigned int counter = 0;
-
-    spin_lock(&master_lock);
+    while (1) {
+        rt_sem_wait(&master_sem);
 
 #ifdef ASYNC
-    // receive
-    ecrt_master_async_receive(master);
-    ecrt_domain_process(domain1);
+        // receive
+        ecrt_master_async_receive(master);
+        ecrt_domain_process(domain1);
 #else
-    // send and receive
-    ecrt_domain_queue(domain1);
-    ecrt_master_run(master);
-    ecrt_master_sync_io(master);
-    ecrt_domain_process(domain1);
+        // send and receive
+        ecrt_domain_queue(domain1);
+        ecrt_master_run(master);
+        ecrt_master_sync_io(master);
+        ecrt_domain_process(domain1);
 #endif
 
-    // process data
-    //k_pos = EC_READ_U32(r_ssi);
+        // process data
+        //k_pos = EC_READ_U32(r_ssi);
 
 #ifdef ASYNC
-    // send
-    ecrt_domain_queue(domain1);
-    ecrt_master_run(master);
-    ecrt_master_async_send(master);
+        // send
+        ecrt_domain_queue(domain1);
+        ecrt_master_run(master);
+        ecrt_master_async_send(master);
 #endif
 
-    spin_unlock(&master_lock);
+        rt_sem_signal(&master_sem);
 
-    if (counter) {
-        counter--;
+        rt_task_wait_period();
     }
-    else {
-        counter = FREQUENCY;
-        //printk(KERN_INFO "k_pos    = %i\n", k_pos);
-        //printk(KERN_INFO "k_stat   = 0x%02X\n", k_stat);
-    }
-
-    // restart timer
-    timer.expires += HZ / FREQUENCY;
-    add_timer(&timer);
 }
 
 /*****************************************************************************/
 
 int request_lock(void *data)
 {
-    unsigned int tries = 0;
-    while (1) {
-        if (spin_trylock(&master_lock)) {
-            if (tries) printk(KERN_INFO "lock: %i tries needed.\n", tries);
-            return 1;
-        }
-        tries++;
-    }
+    rt_sem_wait(&master_sem);
+    return 0;
 }
 
 /*****************************************************************************/
 
 void release_lock(void *data)
 {
-    spin_unlock(&master_lock);
+    rt_sem_signal(&master_sem);
 }
 
 /*****************************************************************************/
 
-int __init init_mini_module(void)
+int __init init_mod(void)
 {
-    printk(KERN_INFO "=== Starting Minimal EtherCAT environment... ===\n");
+    RTIME tick_period, requested_ticks, now;
+
+    printk(KERN_INFO "=== Starting EtherCAT RTAI sample module... ===\n");
+
+    rt_sem_init(&master_sem, 1);
 
     if ((master = ecrt_request_master(0)) == NULL) {
         printk(KERN_ERR "Requesting master 0 failed!\n");
@@ -200,56 +189,71 @@ int __init init_mini_module(void)
     ecrt_master_prepare_async_io(master);
 #endif
 
-#if 1
+#if 0
     if (ecrt_master_start_eoe(master)) {
         printk(KERN_ERR "Failed to start EoE processing!\n");
         goto out_deactivate;
     }
 #endif
 
-    printk("Starting cyclic sample thread.\n");
-    init_timer(&timer);
-    timer.function = run;
-    timer.expires = jiffies + 10;
-    add_timer(&timer);
+    printk("Starting cyclic sample thread...\n");
+    requested_ticks = nano2count(TIMERTICKS);
+    tick_period = start_rt_timer(requested_ticks);
+    printk(KERN_INFO "RT timer started with %i/%i ticks.\n",
+           (int) tick_period, (int) requested_ticks);
 
-    printk(KERN_INFO "=== Minimal EtherCAT environment started. ===\n");
+    if (rt_task_init(&task, run, 0, 2000, 0, 1, NULL)) {
+        printk(KERN_ERR "Failed to init RTAI task!\n");
+        goto out_stop_timer;
+    }
+
+    now = rt_get_time();
+    if (rt_task_make_periodic(&task, now + tick_period, tick_period)) {
+        printk(KERN_ERR "Failed to run RTAI task!\n");
+        goto out_stop_task;
+    }
+
+    printk(KERN_INFO "=== EtherCAT RTAI sample module started. ===\n");
     return 0;
 
-#if 1
+ out_stop_task:
+    rt_task_delete(&task);
+ out_stop_timer:
+    stop_rt_timer();
  out_deactivate:
     ecrt_master_deactivate(master);
-#endif
  out_release_master:
     ecrt_release_master(master);
  out_return:
+    rt_sem_delete(&master_sem);
     return -1;
 }
 
 /*****************************************************************************/
 
-void __exit cleanup_mini_module(void)
+void __exit cleanup_mod(void)
 {
-    printk(KERN_INFO "=== Stopping Minimal EtherCAT environment... ===\n");
+    printk(KERN_INFO "=== Stopping EtherCAT RTAI sample module... ===\n");
 
-    if (master) {
-        del_timer_sync(&timer);
-        printk(KERN_INFO "Deactivating master...\n");
-        ecrt_master_deactivate(master);
-        ecrt_release_master(master);
-    }
+    printk(KERN_INFO "Stopping RT task...\n");
+    rt_task_delete(&task);
+    stop_rt_timer();
+    printk(KERN_INFO "Deactivating EtherCAT master...\n");
+    ecrt_master_deactivate(master);
+    ecrt_release_master(master);
+    rt_sem_delete(&master_sem);
 
-    printk(KERN_INFO "=== Minimal EtherCAT environment stopped. ===\n");
+    printk(KERN_INFO "=== EtherCAT RTAI sample module stopped. ===\n");
 }
 
 /*****************************************************************************/
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR ("Florian Pose <fp@igh-essen.com>");
-MODULE_DESCRIPTION ("EtherCAT minimal test environment");
+MODULE_DESCRIPTION ("EtherCAT RTAI sample module");
 
-module_init(init_mini_module);
-module_exit(cleanup_mini_module);
+module_init(init_mod);
+module_exit(cleanup_mod);
 
 /*****************************************************************************/
 
