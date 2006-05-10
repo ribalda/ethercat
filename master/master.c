@@ -46,7 +46,11 @@
 /*****************************************************************************/
 
 void ec_master_freerun(unsigned long);
+#ifdef EOE_TIMER
 void ec_master_run_eoe(unsigned long);
+#else
+void ec_master_run_eoe(void *);
+#endif
 ssize_t ec_show_master_attribute(struct kobject *, struct attribute *, char *);
 void ec_master_process_watch_command(ec_master_t *);
 
@@ -98,15 +102,8 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     INIT_LIST_HEAD(&master->domains);
     INIT_LIST_HEAD(&master->eoe_slaves);
 
-    // init kobject and add it to the hierarchy
-    memset(&master->kobj, 0x00, sizeof(struct kobject));
-    kobject_init(&master->kobj);
-    master->kobj.ktype = &ktype_ec_master;
-    if (kobject_set_name(&master->kobj, "ethercat%i", index)) {
-        EC_ERR("Failed to set kobj name.\n");
-        kobject_put(&master->kobj);
-        return -1;
-    }
+    ec_command_init(&master->simple_command);
+    ec_command_init(&master->watch_command);
 
     // init freerun timer
     init_timer(&master->freerun_timer);
@@ -114,15 +111,36 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     master->freerun_timer.data = (unsigned long) master;
 
     // init eoe timer
+#ifdef EOE_TIMER
     init_timer(&master->eoe_timer);
     master->eoe_timer.function = ec_master_run_eoe;
     master->eoe_timer.data = (unsigned long) master;
+#else
+    if (!(master->eoe_workqueue = create_singlethread_workqueue("EoE"))) {
+        EC_ERR("Failed to create EoE workqueue.\n");
+        goto out_return;
+    }
+    INIT_WORK(&master->eoe_work, ec_master_run_eoe, (void *) master);
+#endif
 
-    ec_command_init(&master->simple_command);
-    ec_command_init(&master->watch_command);
+    // init kobject and add it to the hierarchy
+    memset(&master->kobj, 0x00, sizeof(struct kobject));
+    kobject_init(&master->kobj);
+    master->kobj.ktype = &ktype_ec_master;
+    if (kobject_set_name(&master->kobj, "ethercat%i", index)) {
+        EC_ERR("Failed to set kobj name.\n");
+        goto out_kobj_put;
+    }
 
     ec_master_reset(master);
     return 0;
+
+ out_kobj_put:
+    kobject_put(&master->kobj);
+#ifndef EOE_TIMER
+ out_return:
+#endif
+    return -1;
 }
 
 /*****************************************************************************/
@@ -139,9 +157,6 @@ void ec_master_clear(struct kobject *kobj /**< kobject of the master */)
 
     EC_INFO("Clearing master %i...\n", master->index);
 
-    del_timer_sync(&master->eoe_timer);
-    del_timer_sync(&master->freerun_timer);
-
     ec_master_reset(master);
 
     if (master->device) {
@@ -151,6 +166,10 @@ void ec_master_clear(struct kobject *kobj /**< kobject of the master */)
 
     ec_command_clear(&master->simple_command);
     ec_command_clear(&master->watch_command);
+
+#ifndef EOE_TIMER
+    if (master->eoe_workqueue) destroy_workqueue(master->eoe_workqueue);
+#endif
 
     EC_INFO("Master %i cleared.\n", master->index);
 }
@@ -171,7 +190,15 @@ void ec_master_reset(ec_master_t *master /**< EtherCAT master */)
     ec_eoe_t *eoe, *next_eoe;
 
     // stop EoE processing
+#ifdef EOE_TIMER
     del_timer_sync(&master->eoe_timer);
+#else
+    if (master->eoe_workqueue) {
+        if (!cancel_delayed_work(&master->eoe_work)) {
+            flush_workqueue(master->eoe_workqueue);
+        }
+    }
+#endif
 
     // stop free-run mode
     ec_master_freerun_stop(master);
@@ -839,12 +866,17 @@ void ec_master_process_watch_command(ec_master_t *master
    Does the Ethernet-over-EtherCAT processing.
 */
 
+#ifdef EOE_TIMER
 void ec_master_run_eoe(unsigned long data /**< master pointer */)
+#else
+void ec_master_run_eoe(void *data /**< master pointer */)
+#endif
 {
     ec_master_t *master = (ec_master_t *) data;
     ec_eoe_t *eoe;
 
-    if (!master->request_cb(master->cb_data)) goto restart_timer;
+    // request_cb must return 0, if the lock has been aquired!
+    if (master->request_cb(master->cb_data)) goto queue;
 
     ecrt_master_async_receive(master);
     list_for_each_entry(eoe, &master->eoe_slaves, list) {
@@ -854,9 +886,13 @@ void ec_master_run_eoe(unsigned long data /**< master pointer */)
 
     master->release_cb(master->cb_data);
 
- restart_timer:
+ queue:
+#ifdef EOE_TIMER
     master->eoe_timer.expires += HZ / 1000;
     add_timer(&master->eoe_timer);
+#else
+    queue_delayed_work(master->eoe_workqueue, &master->eoe_work, HZ / 1000);
+#endif
 }
 
 /******************************************************************************
@@ -1420,6 +1456,9 @@ ec_slave_t *ecrt_master_get_slave(const ec_master_t *master, /**< Master */
 
 /**
    Sets the locking callbacks.
+   The request_cb function must return zero, to allow another instance
+   (the EoE process for example) to access the master. Non-zero means,
+   that access is forbidden at this time.
    \ingroup RealtimeInterface
 */
 
@@ -1472,8 +1511,12 @@ int ecrt_master_start_eoe(ec_master_t *master /**< EtherCAT master */)
     }
 
     // start EoE processing
+#ifdef EOE_TIMER
     master->eoe_timer.expires = jiffies + 10;
     add_timer(&master->eoe_timer);
+#else
+    queue_work(master->eoe_workqueue, &master->eoe_work);
+#endif
     return 0;
 }
 

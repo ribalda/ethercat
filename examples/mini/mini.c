@@ -108,21 +108,15 @@ void run(unsigned long data)
 
 int request_lock(void *data)
 {
-    unsigned int tries = 0;
-    while (1) {
-        if (spin_trylock(&master_lock)) {
-            if (tries) printk(KERN_INFO "lock: %i tries needed.\n", tries);
-            return 1;
-        }
-        tries++;
-    }
+    spin_lock_bh(&master_lock);
+    return 0; // access allowed
 }
 
 /*****************************************************************************/
 
 void release_lock(void *data)
 {
-    spin_unlock(&master_lock);
+    spin_unlock_bh(&master_lock);
 }
 
 /*****************************************************************************/
