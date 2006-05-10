@@ -42,7 +42,7 @@
 #include "msr_param.h"
 
 // EtherCAT
-#include "../include/ecrt.h"
+#include "../../include/ecrt.h"
 
 #define ASYNC
 

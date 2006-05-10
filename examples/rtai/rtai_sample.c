@@ -31,7 +31,7 @@
 #include <linux/spinlock.h>
 #include <linux/interrupt.h>
 
-#include "../include/ecrt.h" // EtherCAT realtime interface
+#include "../../include/ecrt.h" // EtherCAT realtime interface
 
 #define ASYNC
 #define FREQUENCY 100
