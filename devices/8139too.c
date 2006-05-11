@@ -2224,8 +2224,7 @@ no_early_rx:
                 else
                 {
                     ecdev_receive(rtl_ec_dev,
-                                  &rx_ring[ring_offset + 4] + ETH_HLEN,
-                                  pkt_size - ETH_HLEN);
+                                  &rx_ring[ring_offset + 4], pkt_size);
                     dev->last_rx = jiffies;
                     tp->stats.rx_bytes += pkt_size;
                     tp->stats.rx_packets++;

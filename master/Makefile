@@ -33,7 +33,7 @@ ifneq ($(KERNELRELEASE),)
 obj-m := ec_master.o
 
 ec_master-objs := module.o master.o device.o slave.o command.o types.o \
-			domain.o mailbox.o canopen.o ethernet.o
+			domain.o mailbox.o canopen.o ethernet.o debug.o
 
 REV := $(shell svnversion $(src) 2>/dev/null)
 
