@@ -28,35 +28,46 @@
 #include <linux/timer.h>
 #include <linux/interrupt.h>
 
+// RTAI
 #include "rtai.h"
 #include "rtai_sched.h"
 #include "rtai_sem.h"
 
-#include "../../include/ecrt.h" // EtherCAT realtime interface
+// EtherCAT realtime interface
+#include "../../include/ecrt.h"
 
+/*****************************************************************************/
+
+// comment this for synchronous IO
 #define ASYNC
-#define TIMERTICKS 1000000
+
+// RTAI task frequency in Hz
+#define FREQUENCY 10000
+
+#define TIMERTICKS (1000000000 / FREQUENCY)
 
 /*****************************************************************************/
 
 // RTAI
 RT_TASK task;
 SEM master_sem;
+cycles_t t_last_start = 0;
+cycles_t t_critical;
 
 // EtherCAT
 ec_master_t *master = NULL;
 ec_domain_t *domain1 = NULL;
 
 // data fields
-//void *r_ssi_input, *r_ssi_status, *r_4102[3];
+void *r_ssi_input;
 
 // channels
 uint32_t k_pos;
 uint8_t k_stat;
 
 ec_field_init_t domain1_fields[] = {
-    {NULL, "3", "Beckhoff", "EL5001", "InputValue",   0},
-    {NULL, "2", "Beckhoff", "EL4132", "OutputValue",  0},
+    {&r_ssi_input, "3", "Beckhoff", "EL5001", "InputValue",   0},
+    {NULL,         "2", "Beckhoff", "EL4132", "OutputValue",  0},
     {}
 };
 
@@ -64,7 +75,9 @@ ec_field_init_t domain1_fields[] = {
 
 void run(long data)
 {
-    while (1) {
+    while (1)
+    {
+        t_last_start = get_cycles();
         rt_sem_wait(&master_sem);
 
 #ifdef ASYNC
@@ -80,7 +93,7 @@ void run(long data)
 #endif
 
         // process data
-        //k_pos = EC_READ_U32(r_ssi);
+        k_pos = EC_READ_U32(r_ssi_input);
 
 #ifdef ASYNC
         // send
@@ -90,7 +103,6 @@ void run(long data)
 #endif
 
         rt_sem_signal(&master_sem);
-
         rt_task_wait_period();
     }
 }
@@ -99,8 +111,12 @@ void run(long data)
 
 int request_lock(void *data)
 {
+    // too close to the next RT cycle: deny access...
+    if (get_cycles() - t_last_start > t_critical) return -1;
+
+    // allow access
     rt_sem_wait(&master_sem);
-    return 0; // access allowed
+    return 0;
 }
 
 /*****************************************************************************/
@@ -119,6 +135,8 @@ int __init init_mod(void)
     printk(KERN_INFO "=== Starting EtherCAT RTAI sample module... ===\n");
 
     rt_sem_init(&master_sem, 1);
+
+    t_critical = cpu_khz * 800 / FREQUENCY; // ticks for 80%
 
     if ((master = ecrt_request_master(0)) == NULL) {
         printk(KERN_ERR "Requesting master 0 failed!\n");
