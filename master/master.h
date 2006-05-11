@@ -43,8 +43,7 @@
 // Uncomment this to do EoE within a kernel timer. Otherwise, it will be
 // done in a working queue.
 
-//#define EOE_TIMER
-
+#define EOE_TIMER
 
 /*****************************************************************************/
 
