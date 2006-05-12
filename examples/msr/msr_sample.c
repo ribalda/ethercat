@@ -33,6 +33,7 @@
 // RT_lib
 #include <msr_main.h>
 #include <msr_reg.h>
+#include <msr_time.h>
 #include "msr_param.h"
 
 // EtherCAT
@@ -50,17 +51,11 @@ RT_TASK task;
 SEM master_sem;
 cycles_t t_start = 0, t_critical;
 
-// MSR
-extern unsigned long msr_controller_execution_time;
-extern unsigned long msr_controller_call_time;
-extern wait_queue_head_t msr_read_waitqueue;
-int count_wakeup = 0;
-
 // EtherCAT
 ec_master_t *master = NULL;
 ec_domain_t *domain1 = NULL;
 
-// Prozessdaten
+// raw process data
 void *r_ssi;
 void *r_ssi_st;
 
@@ -76,57 +71,45 @@ ec_field_init_t domain1_fields[] = {
 
 /*****************************************************************************/
 
+void msr_controller_run(void)
+{
+    rt_sem_wait(&master_sem);
+
+#ifdef ASYNC
+    // Empfangen
+    ecrt_master_async_receive(master);
+    ecrt_domain_process(domain1);
+#else
+    // Senden und empfangen
+    ecrt_domain_queue(domain1);
+    ecrt_master_run(master);
+    ecrt_master_sync_io(master);
+    ecrt_domain_process(domain1);
+#endif
+
+    // Prozessdaten verarbeiten
+    k_ssi    = EC_READ_U32(r_ssi);
+    k_ssi_st = EC_READ_U8 (r_ssi_st);
+
+#ifdef ASYNC
+    // Senden
+    ecrt_domain_queue(domain1);
+    ecrt_master_run(master);
+    ecrt_master_async_send(master);
+#endif
+
+    rt_sem_signal(&master_sem);
+
+    msr_write_kanal_list();
+}
+
+/*****************************************************************************/
+
 void msr_run(long data)
 {
-    cycles_t t_last_start;
-
-    while (1)
-    {
-        t_last_start = t_start;
+    while (1) {
         t_start = get_cycles();
-
-        rt_sem_wait(&master_sem);
-
-#ifdef ASYNC
-        // Empfangen
-        ecrt_master_async_receive(master);
-        ecrt_domain_process(domain1);
-#else
-        // Senden und empfangen
-        ecrt_domain_queue(domain1);
-        ecrt_master_run(master);
-        ecrt_master_sync_io(master);
-        ecrt_domain_process(domain1);
-#endif
-
-        // Prozessdaten verarbeiten
-        k_ssi =    EC_READ_U32(r_ssi);
-        k_ssi_st = EC_READ_U8 (r_ssi_st);
-
-#ifdef ASYNC
-        // Senden
-        ecrt_domain_queue(domain1);
-        ecrt_master_run(master);
-        ecrt_master_async_send(master);
-#endif
-
-        rt_sem_signal(&master_sem);
-
-        /* write data to MSR ring buffers */
-        msr_write_kanal_list();
-
-        /* wake up MSR read queue */
-        if(++count_wakeup >= MSR_ABTASTFREQUENZ / 10) {
-            wake_up_interruptible(&msr_read_waitqueue);
-            count_wakeup = 0;
-        }
-
-        /* calculate timing */
-        msr_controller_execution_time =
-            (unsigned long) (get_cycles() - t_start) * 1000 / cpu_khz;
-        msr_controller_call_time =
-            (unsigned long) (t_start - t_last_start) * 1000 / cpu_khz;
-
+        MSR_RTAITHREAD_CODE(msr_controller_run(););
         rt_task_wait_period();
     }
 }
