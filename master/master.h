@@ -102,7 +102,10 @@ struct ec_master
     unsigned int timeout; /**< timeout in synchronous IO */
     struct list_head eoe_slaves; /**< Ethernet-over-EtherCAT slaves */
     unsigned int reserved; /**< true, if the master is reserved for RT */
-    struct timer_list freerun_timer; /**< timer object for free run mode */
+    struct workqueue_struct *workqueue; /**< master workqueue */
+    struct work_struct freerun_work; /**< free run work object */
+    void (*freerun_state)(ec_master_t *); /**< freerun state function */
+    ec_slave_t *freerun_slave; /**< current slave in bus scan */
     ec_master_mode_t mode; /**< master mode */
     int (*request_cb)(void *); /**< lock request callback */
     void (*release_cb)(void *); /**< lock release callback */
@@ -110,7 +113,6 @@ struct ec_master
 #ifdef EOE_TIMER
     struct timer_list eoe_timer; /** EoE timer object */
 #else
-    struct workqueue_struct *eoe_workqueue; /**< EoE workqueue */
     struct work_struct eoe_work; /**< work structure for EoE workqueue */
 #endif
 };

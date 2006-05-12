@@ -45,7 +45,7 @@
 
 /*****************************************************************************/
 
-void ec_master_freerun(unsigned long);
+void ec_master_freerun(void *);
 #ifdef EOE_TIMER
 void ec_master_run_eoe(unsigned long);
 #else
@@ -53,6 +53,11 @@ void ec_master_run_eoe(void *);
 #endif
 ssize_t ec_show_master_attribute(struct kobject *, struct attribute *, char *);
 void ec_master_process_watch_command(ec_master_t *);
+
+// state functions
+void ec_master_state_start(ec_master_t *);
+void ec_master_state_slave(ec_master_t *);
+void ec_master_state_finished(ec_master_t *);
 
 /*****************************************************************************/
 
@@ -105,10 +110,13 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     ec_command_init(&master->simple_command);
     ec_command_init(&master->watch_command);
 
-    // init freerun timer
-    init_timer(&master->freerun_timer);
-    master->freerun_timer.function = ec_master_freerun;
-    master->freerun_timer.data = (unsigned long) master;
+    if (!(master->workqueue = create_singlethread_workqueue("EoE"))) {
+        EC_ERR("Failed to create master workqueue.\n");
+        goto out_return;
+    }
+
+    // init freerun work
+    INIT_WORK(&master->freerun_work, ec_master_freerun, (void *) master);
 
     // init eoe timer
 #ifdef EOE_TIMER
@@ -116,10 +124,6 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     master->eoe_timer.function = ec_master_run_eoe;
     master->eoe_timer.data = (unsigned long) master;
 #else
-    if (!(master->eoe_workqueue = create_singlethread_workqueue("EoE"))) {
-        EC_ERR("Failed to create EoE workqueue.\n");
-        goto out_return;
-    }
     INIT_WORK(&master->eoe_work, ec_master_run_eoe, (void *) master);
 #endif
 
@@ -137,9 +141,7 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
 
  out_kobj_put:
     kobject_put(&master->kobj);
-#ifndef EOE_TIMER
  out_return:
-#endif
     return -1;
 }
 
@@ -167,9 +169,7 @@ void ec_master_clear(struct kobject *kobj /**< kobject of the master */)
     ec_command_clear(&master->simple_command);
     ec_command_clear(&master->watch_command);
 
-#ifndef EOE_TIMER
-    if (master->eoe_workqueue) destroy_workqueue(master->eoe_workqueue);
-#endif
+    destroy_workqueue(master->workqueue);
 
     EC_INFO("Master %i cleared.\n", master->index);
 }
@@ -193,10 +193,8 @@ void ec_master_reset(ec_master_t *master /**< EtherCAT master */)
 #ifdef EOE_TIMER
     del_timer_sync(&master->eoe_timer);
 #else
-    if (master->eoe_workqueue) {
-        if (!cancel_delayed_work(&master->eoe_work)) {
-            flush_workqueue(master->eoe_workqueue);
-        }
+    if (!cancel_delayed_work(&master->eoe_work)) {
+        flush_workqueue(master->eoe_workqueue);
     }
 #endif
 
@@ -678,10 +676,11 @@ void ec_master_freerun_start(ec_master_t *master /**< EtherCAT master */)
         }
     }
 
-    ecrt_master_prepare_async_io(master);
+    master->freerun_state = ec_master_state_start;
 
-    master->freerun_timer.expires = jiffies + 10;
-    add_timer(&master->freerun_timer);
+    ecrt_master_prepare_async_io(master); /** \todo necessary? */
+
+    queue_delayed_work(master->workqueue, &master->freerun_work, HZ);
 }
 
 /*****************************************************************************/
@@ -692,11 +691,23 @@ void ec_master_freerun_start(ec_master_t *master /**< EtherCAT master */)
 
 void ec_master_freerun_stop(ec_master_t *master /**< EtherCAT master */)
 {
+    ec_slave_t *slave, *next_slave;
+
     if (master->mode != EC_MASTER_MODE_FREERUN) return;
 
     EC_INFO("Stopping Free-Run mode.\n");
 
-    del_timer_sync(&master->freerun_timer);
+    if (!cancel_delayed_work(&master->freerun_work)) {
+        flush_workqueue(master->workqueue);
+    }
+
+    // remove slaves
+    list_for_each_entry_safe(slave, next_slave, &master->slaves, list) {
+        list_del(&slave->list);
+        kobject_del(&slave->kobj);
+        kobject_put(&slave->kobj);
+    }
+
     master->mode = EC_MASTER_MODE_IDLE;
 }
 
@@ -706,7 +717,7 @@ void ec_master_freerun_stop(ec_master_t *master /**< EtherCAT master */)
    Free-Run mode function.
 */
 
-void ec_master_freerun(unsigned long data /**< private timer data = master */)
+void ec_master_freerun(void *data /**< master pointer */)
 {
     ec_master_t *master = (ec_master_t *) data;
 
@@ -714,14 +725,101 @@ void ec_master_freerun(unsigned long data /**< private timer data = master */)
 
     // watchdog command
     ec_master_process_watch_command(master);
+
+    if (master->watch_command.working_counter != master->slave_count) {
+        master->slave_count = master->watch_command.working_counter;
+        EC_INFO("Freerun: Topology change detected.\n");
+        // reset freerun state machine
+        master->freerun_state = ec_master_state_start;
+    }
+
     ec_master_queue_command(master, &master->watch_command);
 
-    master->slave_count = master->watch_command.working_counter;
+    // execute freerun state machine
+    master->freerun_state(master);
 
     ecrt_master_async_send(master);
 
-    master->freerun_timer.expires += HZ;
-    add_timer(&master->freerun_timer);
+    queue_delayed_work(master->workqueue, &master->freerun_work, HZ);
+}
+
+/*****************************************************************************/
+
+/**
+   Free-Run state: Start.
+   Processes new slave count.
+*/
+
+void ec_master_state_start(ec_master_t *master /**< EtherCAT master*/)
+{
+    ec_slave_t *slave, *next_slave;
+    unsigned int i;
+
+    // remove slaves
+    list_for_each_entry_safe(slave, next_slave, &master->slaves, list) {
+        list_del(&slave->list);
+        kobject_del(&slave->kobj);
+        kobject_put(&slave->kobj);
+    }
+
+    if (!master->slave_count) {
+        // no slaves present -> finish state machine.
+        master->freerun_state = ec_master_state_finished;
+        EC_INFO("Freerun: No slaves found.\n");
+        return;
+    }
+
+    // init slaves
+    for (i = 0; i < master->slave_count; i++) {
+        if (!(slave = (ec_slave_t *) kmalloc(sizeof(ec_slave_t),
+                                             GFP_KERNEL))) {
+            EC_ERR("Failed to allocate slave %i!\n", i);
+            master->freerun_state = ec_master_state_finished;
+            return;
+        }
+
+        if (ec_slave_init(slave, master, i, i + 1)) {
+            master->freerun_state = ec_master_state_finished;
+            return;
+        }
+
+        if (kobject_add(&slave->kobj)) {
+            EC_ERR("Failed to add kobject.\n");
+            kobject_put(&slave->kobj); // free
+            master->freerun_state = ec_master_state_finished;
+            return;
+        }
+
+        list_add_tail(&slave->list, &master->slaves);
+    }
+
+    // begin scanning of slaves
+    master->freerun_slave = list_entry(master->slaves.next, ec_slave_t, list);
+    master->freerun_state = ec_master_state_slave;
+}
+
+/*****************************************************************************/
+
+/**
+   Free-Run state: Get Slave.
+   Executes the sub-statemachine of a slave.
+*/
+
+void ec_master_state_slave(ec_master_t *master /**< EtherCAT master*/)
+{
+    master->freerun_state = ec_master_state_finished;
+}
+
+/*****************************************************************************/
+
+/**
+   Free-Run state: Finished.
+   End state of the state machine. Does nothing.
+*/
+
+void ec_master_state_finished(ec_master_t *master /**< EtherCAT master*/)
+{
+    return;
 }
 
 /*****************************************************************************/
