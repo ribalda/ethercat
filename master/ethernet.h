@@ -66,7 +66,7 @@ struct ec_eoe
     void (*state)(ec_eoe_t *); /**< state function for the state machine */
     struct net_device *dev; /**< net_device for virtual ethernet device */
     struct net_device_stats stats; /**< device statistics */
-    uint8_t opened; /**< net_device is opened */
+    unsigned int opened; /**< net_device is opened */
     struct sk_buff *rx_skb; /**< current rx socket buffer */
     off_t rx_skb_offset; /**< current write pointer in the socket buffer */
     size_t rx_skb_size; /**< size of the allocated socket buffer memory */
@@ -86,6 +86,7 @@ struct ec_eoe
 int ec_eoe_init(ec_eoe_t *, ec_slave_t *);
 void ec_eoe_clear(ec_eoe_t *);
 void ec_eoe_run(ec_eoe_t *);
+unsigned int ec_eoe_active(const ec_eoe_t *);
 void ec_eoe_print(const ec_eoe_t *);
 
 /*****************************************************************************/

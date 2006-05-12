@@ -874,9 +874,14 @@ void ec_master_run_eoe(void *data /**< master pointer */)
 {
     ec_master_t *master = (ec_master_t *) data;
     ec_eoe_t *eoe;
+    unsigned int active = 0;
+
+    list_for_each_entry(eoe, &master->eoe_slaves, list) {
+        if (ec_eoe_active(eoe)) active++;
+    }
 
     // request_cb must return 0, if the lock has been aquired!
-    if (!master->request_cb(master->cb_data))
+    if (active && !master->request_cb(master->cb_data))
     {
         ecrt_master_async_receive(master);
         list_for_each_entry(eoe, &master->eoe_slaves, list) {

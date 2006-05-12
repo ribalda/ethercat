@@ -263,6 +263,18 @@ void ec_eoe_run(ec_eoe_t *eoe /**< EoE object */)
 /*****************************************************************************/
 
 /**
+   Returns the state of the device.
+   \return 1 if the device is "up", 0 if it is "down"
+*/
+
+unsigned int ec_eoe_active(const ec_eoe_t *eoe /**< EoE object */)
+{
+    return eoe->opened;
+}
+
+/*****************************************************************************/
+
+/**
    Prints EoE object information.
 */
 
