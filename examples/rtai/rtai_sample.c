@@ -23,17 +23,14 @@
  *
  *****************************************************************************/
 
+// Linux
 #include <linux/module.h>
-#include <linux/delay.h>
-#include <linux/timer.h>
-#include <linux/interrupt.h>
 
 // RTAI
-#include "rtai.h"
 #include "rtai_sched.h"
 #include "rtai_sem.h"
 
-// EtherCAT realtime interface
+// EtherCAT
 #include "../../include/ecrt.h"
 
 /*****************************************************************************/
@@ -63,7 +60,6 @@ void *r_ssi_input;
 
 // channels
 uint32_t k_pos;
-uint8_t k_stat;
 
 ec_field_init_t domain1_fields[] = {
     {&r_ssi_input, "3", "Beckhoff", "EL5001", "InputValue",   0},
@@ -207,12 +203,10 @@ int __init init_mod(void)
     ecrt_master_prepare_async_io(master);
 #endif
 
-#if 1
     if (ecrt_master_start_eoe(master)) {
         printk(KERN_ERR "Failed to start EoE processing!\n");
         goto out_deactivate;
     }
-#endif
 
     printk("Starting cyclic sample thread...\n");
     requested_ticks = nano2count(TIMERTICKS);
@@ -253,10 +247,8 @@ void __exit cleanup_mod(void)
 {
     printk(KERN_INFO "=== Stopping EtherCAT RTAI sample module... ===\n");
 
-    printk(KERN_INFO "Stopping RT task...\n");
     rt_task_delete(&task);
     stop_rt_timer();
-    printk(KERN_INFO "Deactivating EtherCAT master...\n");
     ecrt_master_deactivate(master);
     ecrt_release_master(master);
     rt_sem_delete(&master_sem);
