@@ -1,18 +1,15 @@
 #------------------------------------------------------------------------------
 #
-#  Configuration file for msr realtime modules
+#  Configuration file for MSR realtime modules
 #
 #  $Id$
 #
-#  This file is a versioned template configuration. Copy it to "rt.conf"
+#  This file is a versioned template configuration. Copy it to "kernel.conf"
 #  (which is ignored by Subversion) and adjust it to your needs.
 #
 #------------------------------------------------------------------------------
 
-# Module name (without extension)
-MODULENAME := ec_rt_sample
-
-# The kernel to compile the EtherCAT sources against
+# Kernel sources for module compilation
 KERNEL := `uname -r`
 
 #------------------------------------------------------------------------------

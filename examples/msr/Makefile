@@ -2,6 +2,8 @@
 #
 #  Makefile
 #
+#  Sample module for use with IgH MSR library.
+#
 #  $Id$
 #
 #  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
@@ -23,21 +25,17 @@
 #
 #------------------------------------------------------------------------------
 
-ifneq ($(KERNELRELEASE),)
+MODULE := ec_msr_sample
 
 #------------------------------------------------------------------------------
 #  kbuild section
 #------------------------------------------------------------------------------
 
-ifneq ($(wildcard $(src)/rt.conf),)
-include $(src)/rt.conf
-else
-MODULENAME := rt
-endif
+ifneq ($(KERNELRELEASE),)
 
-obj-m := $(MODULENAME).o
+obj-m := $(MODULE).o
 
-$(MODULENAME)-objs := msr_rt.o \
+$(MODULE)-objs := msr_sample.o \
 			rt_lib/msr-core/msr_lists.o \
 			rt_lib/msr-core/msr_main.o \
 			rt_lib/msr-core/msr_charbuf.o \
@@ -52,22 +50,18 @@ $(MODULENAME)-objs := msr_rt.o \
 			rt_lib/msr-math/msr_hex_bin.o \
 			libm.o
 
-EXTRA_CFLAGS := -I$(src)/rt_lib/msr-include -D_SIMULATION \
-		-I/usr/include -mhard-float \
-		-DSVNREV=$(shell svnversion $(src)) -DUSER=$(USER)
-
-#------------------------------------------------------------------------------
-
-else
+EXTRA_CFLAGS := -I$(src)/rt_lib/msr-include -I/usr/realtime/include \
+		-D_SIMULATION -mhard-float
 
 #------------------------------------------------------------------------------
 #  default section
 #------------------------------------------------------------------------------
 
-ifneq ($(wildcard rt.conf),)
-include rt.conf
 else
-MODULENAME := msr_rt
+
+ifneq ($(wildcard kernel.conf),)
+include kernel.conf
+else
 KERNEL := $(shell uname -r)
 endif
 
@@ -80,8 +74,8 @@ clean:
 	$(MAKE) -C $(KERNELDIR) M=`pwd` clean
 
 install:
-	@./install.sh $(MODULENAME) $(KERNEL)
-
-#------------------------------------------------------------------------------
+	@./install.sh $(MODULE) $(KERNEL)
 
 endif
+
+#------------------------------------------------------------------------------

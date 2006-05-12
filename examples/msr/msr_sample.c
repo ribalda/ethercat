@@ -1,8 +1,6 @@
 /******************************************************************************
  *
- *  m s r _ r t . c
- *
- *  Kernelmodul fÅ¸r 2.6 Kernel zur MeÅﬂdatenerfassung, Steuerung und Regelung.
+ *  Sample module for use with IgH MSR library.
  *
  *  $Id$
  *
@@ -27,18 +25,14 @@
 
 // Linux
 #include <linux/module.h>
-#include <linux/ipipe.h>
-#include <linux/slab.h>
-#include <linux/vmalloc.h>
-#include <linux/delay.h>
+
+// RTAI
+#include "rtai_sched.h"
+#include "rtai_sem.h"
 
 // RT_lib
 #include <msr_main.h>
-#include <msr_utils.h>
-#include <msr_messages.h>
-#include <msr_float.h>
 #include <msr_reg.h>
-#include <msr_time.h>
 #include "msr_param.h"
 
 // EtherCAT
@@ -46,15 +40,21 @@
 
 #define ASYNC
 
-// Defines/Makros
 #define HZREDUCTION (MSR_ABTASTFREQUENZ / HZ)
+#define TIMERTICKS (1000000000 / MSR_ABTASTFREQUENZ)
 
 /*****************************************************************************/
-/* Globale Variablen */
 
-// Adeos
-static struct ipipe_domain this_domain;
-static struct ipipe_sysinfo sys_info;
+// RTAI
+RT_TASK task;
+SEM master_sem;
+cycles_t t_start = 0, t_critical;
+
+// MSR
+extern unsigned long msr_controller_execution_time;
+extern unsigned long msr_controller_call_time;
+extern wait_queue_head_t msr_read_waitqueue;
+int count_wakeup = 0;
 
 // EtherCAT
 ec_master_t *master = NULL;
@@ -64,7 +64,7 @@ ec_domain_t *domain1 = NULL;
 void *r_ssi;
 void *r_ssi_st;
 
-// Kané‰le
+// Channels
 uint32_t k_ssi;
 uint32_t k_ssi_st;
 
@@ -76,35 +76,64 @@ ec_field_init_t domain1_fields[] = {
 
 /*****************************************************************************/
 
-static void msr_controller_run(void)
+void msr_run(long data)
 {
+    cycles_t t_last_start;
+
+    while (1)
+    {
+        t_last_start = t_start;
+        t_start = get_cycles();
+
+        rt_sem_wait(&master_sem);
+
 #ifdef ASYNC
-    // Empfangen
-    ecrt_master_async_receive(master);
-    ecrt_domain_process(domain1);
+        // Empfangen
+        ecrt_master_async_receive(master);
+        ecrt_domain_process(domain1);
 #else
-    // Senden und empfangen
-    ecrt_domain_queue(domain1);
-    ecrt_master_run(master);
-    ecrt_master_sync_io(master);
-    ecrt_domain_process(domain1);
+        // Senden und empfangen
+        ecrt_domain_queue(domain1);
+        ecrt_master_run(master);
+        ecrt_master_sync_io(master);
+        ecrt_domain_process(domain1);
 #endif
 
-    // Prozessdaten verarbeiten
-    k_ssi =    EC_READ_U32(r_ssi);
-    k_ssi_st = EC_READ_U8 (r_ssi_st);
+        // Prozessdaten verarbeiten
+        k_ssi =    EC_READ_U32(r_ssi);
+        k_ssi_st = EC_READ_U8 (r_ssi_st);
 
 #ifdef ASYNC
-    // Senden
-    ecrt_domain_queue(domain1);
-    ecrt_master_run(master);
-    ecrt_master_async_send(master);
+        // Senden
+        ecrt_domain_queue(domain1);
+        ecrt_master_run(master);
+        ecrt_master_async_send(master);
 #endif
+
+        rt_sem_signal(&master_sem);
+
+        /* write data to MSR ring buffers */
+        msr_write_kanal_list();
+
+        /* wake up MSR read queue */
+        if(++count_wakeup >= MSR_ABTASTFREQUENZ / 10) {
+            wake_up_interruptible(&msr_read_waitqueue);
+            count_wakeup = 0;
+        }
+
+        /* calculate timing */
+        msr_controller_execution_time =
+            (unsigned long) (get_cycles() - t_start) * 1000 / cpu_khz;
+        msr_controller_call_time =
+            (unsigned long) (t_start - t_last_start) * 1000 / cpu_khz;
+
+        rt_task_wait_period();
+    }
 }
 
 /*****************************************************************************/
 
-int msr_globals_register(void)
+int msr_reg(void)
 {
     msr_reg_kanal("/ssi_position", "", &k_ssi,    TUINT);
     msr_reg_kanal("/ssi_status",   "", &k_ssi_st, TUINT);
@@ -113,43 +142,38 @@ int msr_globals_register(void)
 
 /*****************************************************************************/
 
-void msr_run(unsigned irq)
+int request_lock(void *data)
 {
-    static int counter = 0;
+    // too close to the next RT cycle: deny access...
+    if (get_cycles() - t_start > t_critical) return -1;
 
-    MSR_ADEOS_INTERRUPT_CODE(msr_controller_run(); msr_write_kanal_list(););
-
-    ipipe_control_irq(irq, 0, IPIPE_ENABLE_MASK); // Interrupt besté‰tigen
-    if (++counter >= HZREDUCTION) {
-	ipipe_propagate_irq(irq);  // und weiterreichen
-	counter = 0;
-    }
+    // allow access
+    rt_sem_wait(&master_sem);
+    return 0;
 }
 
 /*****************************************************************************/
 
-void domain_entry(void)
+void release_lock(void *data)
 {
-    printk("Domain %s started.\n", ipipe_current_domain->name);
-
-    ipipe_get_sysinfo(&sys_info);
-    ipipe_virtualize_irq(ipipe_current_domain,sys_info.archdep.tmirq,
-			 &msr_run, NULL, IPIPE_HANDLE_MASK);
-
-    ipipe_tune_timer(1000000000UL / MSR_ABTASTFREQUENZ, 0);
+    rt_sem_signal(&master_sem);
 }
 
 /*****************************************************************************/
 
-int __init init_rt_module(void)
+int __init init_mod(void)
 {
-    struct ipipe_domain_attr attr; //ipipe
-#if 1
+    RTIME ticks;
+#if 0
     ec_slave_t *slave;
 #endif
 
-    // Als allererstes die RT-Lib initialisieren
-    if (msr_rtlib_init(1, MSR_ABTASTFREQUENZ, 10, &msr_globals_register) < 0) {
+    printk(KERN_INFO "=== Starting EtherCAT RTAI MSR sample module... ===\n");
+
+    rt_sem_init(&master_sem, 1);
+    t_critical = cpu_khz * 800 / MSR_ABTASTFREQUENZ; // ticks for 80%
+
+    if (msr_rtlib_init(1, MSR_ABTASTFREQUENZ, 10, &msr_reg) < 0) {
         printk(KERN_ERR "Failed to initialize rtlib!\n");
         goto out_return;
     }
@@ -159,7 +183,7 @@ int __init init_rt_module(void)
         goto out_msr_cleanup;
     }
 
-    //ecrt_master_print(master, 2);
+    ecrt_master_callbacks(master, request_lock, release_lock, NULL);
 
     printk(KERN_INFO "Creating domains...\n");
     if (!(domain1 = ecrt_master_create_domain(master))) {
@@ -180,13 +204,6 @@ int __init init_rt_module(void)
     }
 
 #if 0
-    if (ecrt_master_start_eoe(master)) {
-        printk(KERN_ERR "Failed to start EoE processing!\n");
-        goto out_deactivate;
-    }
-#endif
-
-#if 0
     if (ecrt_master_fetch_sdo_lists(master)) {
         printk(KERN_ERR "Failed to fetch SDO lists!\n");
         goto out_deactivate;
@@ -196,7 +213,7 @@ int __init init_rt_module(void)
     ecrt_master_print(master, 0);
 #endif
 
-#if 1
+#if 0
     if (!(slave = ecrt_master_get_slave(master, "0:3"))) {
         printk(KERN_ERR "Failed to get slave!\n");
         goto out_deactivate;
@@ -235,62 +252,63 @@ int __init init_rt_module(void)
     ecrt_master_prepare_async_io(master);
 #endif
 
-    ipipe_init_attr(&attr);
-    attr.name = "IPIPE-MSR-MODULE";
-    attr.priority = IPIPE_ROOT_PRIO + 1;
-    attr.entry = &domain_entry;
-    ipipe_register_domain(&this_domain, &attr);
+    if (ecrt_master_start_eoe(master)) {
+        printk(KERN_ERR "Failed to start EoE processing!\n");
+        goto out_deactivate;
+    }
+
+    printk("Starting cyclic sample thread...\n");
+    ticks = start_rt_timer(nano2count(TIMERTICKS));
+    if (rt_task_init(&task, msr_run, 0, 2000, 0, 1, NULL)) {
+        printk(KERN_ERR "Failed to init RTAI task!\n");
+        goto out_stop_timer;
+    }
+    if (rt_task_make_periodic(&task, rt_get_time() + ticks, ticks)) {
+        printk(KERN_ERR "Failed to run RTAI task!\n");
+        goto out_stop_task;
+    }
+
+    printk(KERN_INFO "=== EtherCAT RTAI MSR sample module started. ===\n");
     return 0;
 
-#if 1
+ out_stop_task:
+    rt_task_delete(&task);
+ out_stop_timer:
+    stop_rt_timer();
  out_deactivate:
     ecrt_master_deactivate(master);
-#endif
  out_release_master:
     ecrt_release_master(master);
  out_msr_cleanup:
     msr_rtlib_cleanup();
  out_return:
+    rt_sem_delete(&master_sem);
     return -1;
 }
 
 /*****************************************************************************/
 
-void __exit cleanup_rt_module(void)
+void __exit cleanup_mod(void)
 {
-    printk(KERN_INFO "Cleanign up rt module...\n");
+    printk(KERN_INFO "=== Unloading EtherCAT RTAI MSR sample module... ===\n");
 
-    ipipe_tune_timer(1000000000UL / HZ, 0); // Alten Timertakt wiederherstellen
-    ipipe_unregister_domain(&this_domain);
-
-    printk(KERN_INFO "=== Stopping EtherCAT environment... ===\n");
+    rt_task_delete(&task);
+    stop_rt_timer();
     ecrt_master_deactivate(master);
     ecrt_release_master(master);
-    printk(KERN_INFO "=== EtherCAT environment stopped. ===\n");
-
+    rt_sem_delete(&master_sem);
     msr_rtlib_cleanup();
+
+    printk(KERN_INFO "=== EtherCAT RTAI MSR sample module unloaded. ===\n");
 }
 
 /*****************************************************************************/
 
-#define EC_LIT(X) #X
-#define EC_STR(X) EC_LIT(X)
-#define COMPILE_INFO "Revision " EC_STR(SVNREV) \
-                     ", compiled by " EC_STR(USER) \
-                     " at " __DATE__ " " __TIME__
-
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR ("Florian Pose <fp@igh-essen.com>");
-MODULE_DESCRIPTION ("EtherCAT real-time test environment");
-MODULE_VERSION(COMPILE_INFO);
+MODULE_DESCRIPTION ("EtherCAT RTAI MSR sample module");
 
-module_init(init_rt_module);
-module_exit(cleanup_rt_module);
+module_init(init_mod);
+module_exit(cleanup_mod);
 
 /*****************************************************************************/
-
-/* Emacs-Konfiguration
-;;; Local Variables: ***
-;;; c-basic-offset:4 ***
-;;; End: ***
-*/
