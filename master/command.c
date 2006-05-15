@@ -29,7 +29,6 @@
 /*****************************************************************************/
 
 #include <linux/slab.h>
-#include <linux/delay.h>
 
 #include "command.h"
 #include "master.h"
