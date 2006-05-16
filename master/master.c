@@ -54,11 +54,6 @@ void ec_master_run_eoe(void *);
 ssize_t ec_show_master_attribute(struct kobject *, struct attribute *, char *);
 void ec_master_process_watch_command(ec_master_t *);
 
-// state functions
-void ec_master_state_start(ec_master_t *);
-void ec_master_state_slave(ec_master_t *);
-void ec_master_state_finished(ec_master_t *);
-
 /*****************************************************************************/
 
 /** \cond */
@@ -98,24 +93,21 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
 {
     EC_INFO("Initializing master %i.\n", index);
 
-    master->index = index;
-    master->device = NULL;
-    master->reserved = 0;
-
-    INIT_LIST_HEAD(&master->slaves);
-    INIT_LIST_HEAD(&master->command_queue);
-    INIT_LIST_HEAD(&master->domains);
-    INIT_LIST_HEAD(&master->eoe_slaves);
-
-    ec_command_init(&master->simple_command);
-    ec_command_init(&master->watch_command);
-
     if (!(master->workqueue = create_singlethread_workqueue("EoE"))) {
         EC_ERR("Failed to create master workqueue.\n");
         goto out_return;
     }
 
-    // init freerun work
+    if (ec_fsm_init(&master->fsm, master)) goto out_free_wq;
+
+    master->index = index;
+    master->device = NULL;
+    master->reserved = 0;
+    INIT_LIST_HEAD(&master->slaves);
+    INIT_LIST_HEAD(&master->command_queue);
+    INIT_LIST_HEAD(&master->domains);
+    INIT_LIST_HEAD(&master->eoe_slaves);
+    ec_command_init(&master->simple_command);
     INIT_WORK(&master->freerun_work, ec_master_freerun, (void *) master);
 
     // init eoe timer
@@ -133,14 +125,15 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     master->kobj.ktype = &ktype_ec_master;
     if (kobject_set_name(&master->kobj, "ethercat%i", index)) {
         EC_ERR("Failed to set kobj name.\n");
-        goto out_kobj_put;
+        kobject_put(&master->kobj);
+        return -1;
     }
 
     ec_master_reset(master);
     return 0;
 
- out_kobj_put:
-    kobject_put(&master->kobj);
+ out_free_wq:
+    destroy_workqueue(master->workqueue);
  out_return:
     return -1;
 }
@@ -160,16 +153,14 @@ void ec_master_clear(struct kobject *kobj /**< kobject of the master */)
     EC_INFO("Clearing master %i...\n", master->index);
 
     ec_master_reset(master);
+    ec_fsm_clear(&master->fsm);
+    ec_command_clear(&master->simple_command);
+    destroy_workqueue(master->workqueue);
 
     if (master->device) {
         ec_device_clear(master->device);
         kfree(master->device);
     }
-
-    ec_command_clear(&master->simple_command);
-    ec_command_clear(&master->watch_command);
-
-    destroy_workqueue(master->workqueue);
 
     EC_INFO("Master %i cleared.\n", master->index);
 }
@@ -184,7 +175,6 @@ void ec_master_clear(struct kobject *kobj /**< kobject of the master */)
 
 void ec_master_reset(ec_master_t *master /**< EtherCAT master */)
 {
-    ec_slave_t *slave, *next_s;
     ec_command_t *command, *next_c;
     ec_domain_t *domain, *next_d;
     ec_eoe_t *eoe, *next_eoe;
@@ -201,13 +191,7 @@ void ec_master_reset(ec_master_t *master /**< EtherCAT master */)
     // stop free-run mode
     ec_master_freerun_stop(master);
 
-    // remove all slaves
-    list_for_each_entry_safe(slave, next_s, &master->slaves, list) {
-        list_del(&slave->list);
-        kobject_del(&slave->kobj);
-        kobject_put(&slave->kobj);
-    }
-    master->slave_count = 0;
+    ec_master_clear_slaves(master);
 
     // empty command queue
     list_for_each_entry_safe(command, next_c, &master->command_queue, queue) {
@@ -233,9 +217,6 @@ void ec_master_reset(ec_master_t *master /**< EtherCAT master */)
     master->debug_level = 0;
     master->timeout = 500; // 500us
 
-    master->slaves_responding = 0;
-    master->slave_states = EC_SLAVE_STATE_UNKNOWN;
-
     master->stats.timeouts = 0;
     master->stats.delayed = 0;
     master->stats.corrupted = 0;
@@ -247,6 +228,26 @@ void ec_master_reset(ec_master_t *master /**< EtherCAT master */)
     master->request_cb = NULL;
     master->release_cb = NULL;
     master->cb_data = NULL;
+
+    ec_fsm_reset(&master->fsm);
+}
+
+/*****************************************************************************/
+
+/**
+   Clears all slaves.
+*/
+
+void ec_master_clear_slaves(ec_master_t *master)
+{
+    ec_slave_t *slave, *next_slave;
+
+    list_for_each_entry_safe(slave, next_slave, &master->slaves, list) {
+        list_del(&slave->list);
+        kobject_del(&slave->kobj);
+        kobject_put(&slave->kobj);
+    }
+    master->slave_count = 0;
 }
 
 /*****************************************************************************/
@@ -516,10 +517,10 @@ int ec_master_simple_io(ec_master_t *master, /**< EtherCAT master */
 
 int ec_master_bus_scan(ec_master_t *master /**< EtherCAT master */)
 {
-    ec_slave_t *slave, *next;
+    ec_slave_t *slave;
     ec_slave_ident_t *ident;
-    unsigned int i;
     ec_command_t *command;
+    unsigned int i;
     uint16_t coupler_index, coupler_subindex;
     uint16_t reverse_coupler_index, current_coupler_index;
 
@@ -540,7 +541,8 @@ int ec_master_bus_scan(ec_master_t *master /**< EtherCAT master */)
 
     // init slaves
     for (i = 0; i < master->slave_count; i++) {
-        if (!(slave = (ec_slave_t *) kmalloc(sizeof(ec_slave_t), GFP_KERNEL))) {
+        if (!(slave =
+              (ec_slave_t *) kmalloc(sizeof(ec_slave_t), GFP_KERNEL))) {
             EC_ERR("Failed to allocate slave %i!\n", i);
             goto out_free;
         }
@@ -591,7 +593,7 @@ int ec_master_bus_scan(ec_master_t *master /**< EtherCAT master */)
         if (!slave->type) {
             EC_WARN("Unknown slave device (vendor 0x%08X, code 0x%08X) at"
                     " position %i.\n", slave->sii_vendor_id,
-                    slave->sii_product_code, i);
+                    slave->sii_product_code, slave->ring_position);
         }
         else if (slave->type->special == EC_TYPE_BUS_COUPLER) {
             if (slave->sii_alias)
@@ -609,11 +611,7 @@ int ec_master_bus_scan(ec_master_t *master /**< EtherCAT master */)
     return 0;
 
  out_free:
-    list_for_each_entry_safe(slave, next, &master->slaves, list) {
-        list_del(&slave->list);
-        kobject_del(&slave->kobj);
-        kobject_put(&slave->kobj);
-    }
+    ec_master_clear_slaves(master);
     return -1;
 }
 
@@ -668,19 +666,8 @@ void ec_master_freerun_start(ec_master_t *master /**< EtherCAT master */)
     EC_INFO("Starting Free-Run mode.\n");
 
     master->mode = EC_MASTER_MODE_FREERUN;
-
-    if (master->watch_command.state == EC_CMD_INIT) {
-        if (ec_command_brd(&master->watch_command, 0x130, 2)) {
-            EC_ERR("Failed to allocate watchdog command!\n");
-            return;
-        }
-    }
-
-    master->freerun_state = ec_master_state_start;
-
-    ecrt_master_prepare_async_io(master); /** \todo necessary? */
-
-    queue_delayed_work(master->workqueue, &master->freerun_work, HZ);
+    ec_fsm_reset(&master->fsm);
+    queue_delayed_work(master->workqueue, &master->freerun_work, HZ / 100);
 }
 
 /*****************************************************************************/
@@ -691,8 +678,6 @@ void ec_master_freerun_start(ec_master_t *master /**< EtherCAT master */)
 
 void ec_master_freerun_stop(ec_master_t *master /**< EtherCAT master */)
 {
-    ec_slave_t *slave, *next_slave;
-
     if (master->mode != EC_MASTER_MODE_FREERUN) return;
 
     EC_INFO("Stopping Free-Run mode.\n");
@@ -701,13 +686,7 @@ void ec_master_freerun_stop(ec_master_t *master /**< EtherCAT master */)
         flush_workqueue(master->workqueue);
     }
 
-    // remove slaves
-    list_for_each_entry_safe(slave, next_slave, &master->slaves, list) {
-        list_del(&slave->list);
-        kobject_del(&slave->kobj);
-        kobject_put(&slave->kobj);
-    }
-
+    ec_master_clear_slaves(master);
     master->mode = EC_MASTER_MODE_IDLE;
 }
 
@@ -720,106 +699,18 @@ void ec_master_freerun_stop(ec_master_t *master /**< EtherCAT master */)
 void ec_master_freerun(void *data /**< master pointer */)
 {
     ec_master_t *master = (ec_master_t *) data;
+    unsigned long delay;
 
     ecrt_master_async_receive(master);
 
-    // watchdog command
-    ec_master_process_watch_command(master);
-
-    if (master->watch_command.working_counter != master->slave_count) {
-        master->slave_count = master->watch_command.working_counter;
-        EC_INFO("Freerun: Topology change detected.\n");
-        // reset freerun state machine
-        master->freerun_state = ec_master_state_start;
-    }
-
-    ec_master_queue_command(master, &master->watch_command);
-
     // execute freerun state machine
-    master->freerun_state(master);
+    ec_fsm_execute(&master->fsm);
 
     ecrt_master_async_send(master);
 
-    queue_delayed_work(master->workqueue, &master->freerun_work, HZ);
-}
-
-/*****************************************************************************/
-
-/**
-   Free-Run state: Start.
-   Processes new slave count.
-*/
-
-void ec_master_state_start(ec_master_t *master /**< EtherCAT master*/)
-{
-    ec_slave_t *slave, *next_slave;
-    unsigned int i;
-
-    // remove slaves
-    list_for_each_entry_safe(slave, next_slave, &master->slaves, list) {
-        list_del(&slave->list);
-        kobject_del(&slave->kobj);
-        kobject_put(&slave->kobj);
-    }
-
-    if (!master->slave_count) {
-        // no slaves present -> finish state machine.
-        master->freerun_state = ec_master_state_finished;
-        EC_INFO("Freerun: No slaves found.\n");
-        return;
-    }
-
-    // init slaves
-    for (i = 0; i < master->slave_count; i++) {
-        if (!(slave = (ec_slave_t *) kmalloc(sizeof(ec_slave_t),
-                                             GFP_KERNEL))) {
-            EC_ERR("Failed to allocate slave %i!\n", i);
-            master->freerun_state = ec_master_state_finished;
-            return;
-        }
-
-        if (ec_slave_init(slave, master, i, i + 1)) {
-            master->freerun_state = ec_master_state_finished;
-            return;
-        }
-
-        if (kobject_add(&slave->kobj)) {
-            EC_ERR("Failed to add kobject.\n");
-            kobject_put(&slave->kobj); // free
-            master->freerun_state = ec_master_state_finished;
-            return;
-        }
-
-        list_add_tail(&slave->list, &master->slaves);
-    }
-
-    // begin scanning of slaves
-    master->freerun_slave = list_entry(master->slaves.next, ec_slave_t, list);
-    master->freerun_state = ec_master_state_slave;
-}
-
-/*****************************************************************************/
-
-/**
-   Free-Run state: Get Slave.
-   Executes the sub-statemachine of a slave.
-*/
-
-void ec_master_state_slave(ec_master_t *master /**< EtherCAT master*/)
-{
-    master->freerun_state = ec_master_state_finished;
-}
-
-/*****************************************************************************/
-
-/**
-   Free-Run state: Finished.
-   End state of the state machine. Does nothing.
-*/
-
-void ec_master_state_finished(ec_master_t *master /**< EtherCAT master*/)
-{
-    return;
+    delay = HZ / 100;
+    if (ec_fsm_idle(&master->fsm)) delay = HZ;
+    queue_delayed_work(master->workqueue, &master->freerun_work, delay);
 }
 
 /*****************************************************************************/
@@ -909,53 +800,6 @@ ssize_t ec_show_master_attribute(struct kobject *kobj, /**< kobject */
     }
 
     return 0;
-}
-
-/*****************************************************************************/
-
-/**
-   Processes the watchdog command.
-*/
-
-void ec_master_process_watch_command(ec_master_t *master
-                                     /**< EtherCAT master */
-                                     )
-{
-    unsigned int first;
-
-    if (unlikely(master->watch_command.state == EC_CMD_INIT)) return;
-
-    first = 1;
-
-    if (master->watch_command.working_counter != master->slaves_responding ||
-        master->watch_command.data[0] != master->slave_states)
-    {
-        master->slaves_responding = master->watch_command.working_counter;
-        master->slave_states = master->watch_command.data[0];
-
-        EC_INFO("%i slave%s responding (", master->slaves_responding,
-                master->slaves_responding == 1 ? "" : "s");
-
-        if (master->slave_states & EC_SLAVE_STATE_INIT) {
-            printk("INIT");
-            first = 0;
-        }
-        if (master->slave_states & EC_SLAVE_STATE_PREOP) {
-            if (!first) printk(", ");
-            printk("PREOP");
-            first = 0;
-        }
-        if (master->slave_states & EC_SLAVE_STATE_SAVEOP) {
-            if (!first) printk(", ");
-            printk("SAVEOP");
-            first = 0;
-        }
-        if (master->slave_states & EC_SLAVE_STATE_OP) {
-            if (!first) printk(", ");
-            printk("OP");
-        }
-        printk(")\n");
-    }
 }
 
 /*****************************************************************************/
@@ -1068,13 +912,6 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT master */)
     ec_eeprom_sync_t *eeprom_sync, mbox_sync;
 
     command = &master->simple_command;
-
-    if (master->watch_command.state == EC_CMD_INIT) {
-        if (ec_command_brd(&master->watch_command, 0x130, 2)) {
-            EC_ERR("Failed to allocate watchdog command!\n");
-            return -1;
-        }
-    }
 
     // allocate all domains
     domain_offset = 0;
@@ -1228,9 +1065,6 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT master */)
         if (unlikely(ec_slave_state_change(slave, EC_SLAVE_STATE_OP)))
             return -1;
     }
-
-    master->slaves_responding = 0;
-    master->slave_states = EC_SLAVE_STATE_INIT;
 
     return 0;
 }
@@ -1443,9 +1277,8 @@ void ecrt_master_run(ec_master_t *master /**< EtherCAT master */)
     // output statistics
     ec_master_output_stats(master);
 
-    // watchdog command
-    ec_master_process_watch_command(master);
-    ec_master_queue_command(master, &master->watch_command);
+    // execute master state machine
+    ec_fsm_execute(&master->fsm);
 }
 
 /*****************************************************************************/

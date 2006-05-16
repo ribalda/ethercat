@@ -37,6 +37,7 @@
 
 #include "device.h"
 #include "domain.h"
+#include "fsm.h"
 
 /*****************************************************************************/
 
@@ -94,9 +95,6 @@ struct ec_master
     uint8_t command_index; /**< current command index */
     struct list_head domains; /**< list of domains */
     ec_command_t simple_command; /**< command structure for initialization */
-    ec_command_t watch_command; /**< command for watching the slaves */
-    unsigned int slaves_responding; /**< number of responding slaves */
-    ec_slave_state_t slave_states; /**< states of the responding slaves */
     int debug_level; /**< master debug level */
     ec_stats_t stats; /**< cyclic statistics */
     unsigned int timeout; /**< timeout in synchronous IO */
@@ -104,8 +102,7 @@ struct ec_master
     unsigned int reserved; /**< true, if the master is reserved for RT */
     struct workqueue_struct *workqueue; /**< master workqueue */
     struct work_struct freerun_work; /**< free run work object */
-    void (*freerun_state)(ec_master_t *); /**< freerun state function */
-    ec_slave_t *freerun_slave; /**< current slave in bus scan */
+    ec_fsm_t fsm; /**< master state machine */
     ec_master_mode_t mode; /**< master mode */
     int (*request_cb)(void *); /**< lock request callback */
     void (*release_cb)(void *); /**< lock release callback */
@@ -137,6 +134,7 @@ int ec_master_simple_io(ec_master_t *, ec_command_t *);
 int ec_master_bus_scan(ec_master_t *);
 
 // misc.
+void ec_master_clear_slaves(ec_master_t *);
 void ec_master_output_stats(ec_master_t *);
 
 /*****************************************************************************/

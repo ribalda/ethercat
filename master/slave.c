@@ -39,11 +39,6 @@
 /*****************************************************************************/
 
 int ec_slave_fetch_categories(ec_slave_t *);
-int ec_slave_fetch_strings(ec_slave_t *, const uint8_t *);
-int ec_slave_fetch_general(ec_slave_t *, const uint8_t *);
-int ec_slave_fetch_sync(ec_slave_t *, const uint8_t *, size_t);
-int ec_slave_fetch_pdo(ec_slave_t *, const uint8_t *, size_t, ec_pdo_type_t);
-int ec_slave_locate_string(ec_slave_t *, unsigned int, char **);
 ssize_t ec_show_slave_attribute(struct kobject *, struct attribute *, char *);
 
 /*****************************************************************************/
@@ -55,6 +50,7 @@ EC_SYSFS_READ_ATTR(coupler_address);
 EC_SYSFS_READ_ATTR(vendor_name);
 EC_SYSFS_READ_ATTR(product_name);
 EC_SYSFS_READ_ATTR(product_desc);
+EC_SYSFS_READ_ATTR(sii_desc);
 EC_SYSFS_READ_ATTR(type);
 
 static struct attribute *def_attrs[] = {
@@ -63,6 +59,7 @@ static struct attribute *def_attrs[] = {
     &attr_vendor_name,
     &attr_product_name,
     &attr_product_desc,
+    &attr_sii_desc,
     &attr_type,
     NULL,
 };
@@ -492,6 +489,7 @@ int ec_slave_sii_write16(ec_slave_t *slave,
 /**
    Fetches data from slave's EEPROM.
    \return 0 in case of success, else < 0
+   \todo memory allocation
 */
 
 int ec_slave_fetch_categories(ec_slave_t *slave /**< EtherCAT slave */)
@@ -1209,7 +1207,6 @@ int ec_slave_check_crc(ec_slave_t *slave /**< EtherCAT slave */)
 /**
    Formats attribute data for SysFS read access.
    \return number of bytes to read
-   \ingroup RealTimeInterface
 */
 
 ssize_t ec_show_slave_attribute(struct kobject *kobj, /**< slave's kobject */
@@ -1237,6 +1234,10 @@ ssize_t ec_show_slave_attribute(struct kobject *kobj, /**< slave's kobject */
     else if (attr == &attr_product_desc) {
         if (slave->type)
             return sprintf(buffer, "%s\n", slave->type->description);
+    }
+    else if (attr == &attr_sii_desc) {
+        if (slave->eeprom_desc)
+            return sprintf(buffer, "%s\n", slave->eeprom_desc);
     }
     else if (attr == &attr_type) {
         if (slave->type) {

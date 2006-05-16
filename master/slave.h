@@ -282,6 +282,13 @@ int ec_slave_prepare_fmmu(ec_slave_t *, const ec_domain_t *,
 // CoE
 int ec_slave_fetch_sdo_list(ec_slave_t *);
 
+// state machine
+int ec_slave_fetch_strings(ec_slave_t *, const uint8_t *);
+int ec_slave_fetch_general(ec_slave_t *, const uint8_t *);
+int ec_slave_fetch_sync(ec_slave_t *, const uint8_t *, size_t);
+int ec_slave_fetch_pdo(ec_slave_t *, const uint8_t *, size_t, ec_pdo_type_t);
+int ec_slave_locate_string(ec_slave_t *, unsigned int, char **);
+
 // misc.
 void ec_slave_print(const ec_slave_t *, unsigned int);
 int ec_slave_check_crc(ec_slave_t *);

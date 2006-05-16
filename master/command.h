@@ -115,6 +115,7 @@ ec_command_t;
 
 void ec_command_init(ec_command_t *);
 void ec_command_clear(ec_command_t *);
+int ec_command_prealloc(ec_command_t *, size_t);
 
 int ec_command_nprd(ec_command_t *, uint16_t, uint16_t, size_t);
 int ec_command_npwr(ec_command_t *, uint16_t, uint16_t, size_t);
