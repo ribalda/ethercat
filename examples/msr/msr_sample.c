@@ -207,12 +207,12 @@ int __init init_mod(void)
         ecrt_slave_sdo_write_exp8(slave, 0x4061, 2,  0) || // power failure bit
         ecrt_slave_sdo_write_exp8(slave, 0x4061, 3,  1) || // inhibit time
         ecrt_slave_sdo_write_exp8(slave, 0x4061, 4,  0) || // test mode
-        ecrt_slave_sdo_write_exp8(slave, 0x4066, 0,  1) || // dualcode
+        ecrt_slave_sdo_write_exp8(slave, 0x4066, 0,  0) || // graycode
         ecrt_slave_sdo_write_exp8(slave, 0x4067, 0,  5) || // 125kbaud
         ecrt_slave_sdo_write_exp8(slave, 0x4068, 0,  0) || // single-turn
         ecrt_slave_sdo_write_exp8(slave, 0x4069, 0, 25) || // frame size
         ecrt_slave_sdo_write_exp8(slave, 0x406A, 0, 25) || // data length
-        ecrt_slave_sdo_write_exp16(slave, 0x406B, 0, 30000) // inhibit time in us
+        ecrt_slave_sdo_write_exp16(slave, 0x406B, 0, 50) // inhibit time in us
         ) {
         printk(KERN_ERR "Failed to configure SSI slave!\n");
         goto out_deactivate;
