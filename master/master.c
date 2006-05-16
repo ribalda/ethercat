@@ -46,11 +46,7 @@
 /*****************************************************************************/
 
 void ec_master_freerun(void *);
-#ifdef EOE_TIMER
 void ec_master_run_eoe(unsigned long);
-#else
-void ec_master_run_eoe(void *);
-#endif
 ssize_t ec_show_master_attribute(struct kobject *, struct attribute *, char *);
 void ec_master_process_watch_command(ec_master_t *);
 
@@ -109,15 +105,9 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     INIT_LIST_HEAD(&master->eoe_slaves);
     ec_command_init(&master->simple_command);
     INIT_WORK(&master->freerun_work, ec_master_freerun, (void *) master);
-
-    // init eoe timer
-#ifdef EOE_TIMER
     init_timer(&master->eoe_timer);
     master->eoe_timer.function = ec_master_run_eoe;
     master->eoe_timer.data = (unsigned long) master;
-#else
-    INIT_WORK(&master->eoe_work, ec_master_run_eoe, (void *) master);
-#endif
 
     // init kobject and add it to the hierarchy
     memset(&master->kobj, 0x00, sizeof(struct kobject));
@@ -180,13 +170,7 @@ void ec_master_reset(ec_master_t *master /**< EtherCAT master */)
     ec_eoe_t *eoe, *next_eoe;
 
     // stop EoE processing
-#ifdef EOE_TIMER
     del_timer_sync(&master->eoe_timer);
-#else
-    if (!cancel_delayed_work(&master->eoe_work)) {
-        flush_workqueue(master->eoe_workqueue);
-    }
-#endif
 
     // stop free-run mode
     ec_master_freerun_stop(master);
@@ -808,11 +792,7 @@ ssize_t ec_show_master_attribute(struct kobject *kobj, /**< kobject */
    Does the Ethernet-over-EtherCAT processing.
 */
 
-#ifdef EOE_TIMER
 void ec_master_run_eoe(unsigned long data /**< master pointer */)
-#else
-void ec_master_run_eoe(void *data /**< master pointer */)
-#endif
 {
     ec_master_t *master = (ec_master_t *) data;
     ec_eoe_t *eoe;
@@ -834,13 +814,8 @@ void ec_master_run_eoe(void *data /**< master pointer */)
         master->release_cb(master->cb_data);
     }
 
-#ifdef EOE_TIMER
     master->eoe_timer.expires += HZ / EC_EOE_FREQUENCY;
     add_timer(&master->eoe_timer);
-#else
-    queue_delayed_work(master->eoe_workqueue, &master->eoe_work,
-                       HZ / EC_EOE_FREQUENCY);
-#endif
 }
 
 /******************************************************************************
@@ -1448,12 +1423,8 @@ int ecrt_master_start_eoe(ec_master_t *master /**< EtherCAT master */)
     }
 
     // start EoE processing
-#ifdef EOE_TIMER
     master->eoe_timer.expires = jiffies + 10;
     add_timer(&master->eoe_timer);
-#else
-    queue_work(master->eoe_workqueue, &master->eoe_work);
-#endif
     return 0;
 }
 

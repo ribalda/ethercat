@@ -41,13 +41,6 @@
 
 /*****************************************************************************/
 
-// Uncomment this to do EoE within a kernel timer. Otherwise, it will be
-// done in a working queue.
-
-#define EOE_TIMER
-
-/*****************************************************************************/
-
 /**
    EtherCAT master mode.
 */
@@ -107,11 +100,7 @@ struct ec_master
     int (*request_cb)(void *); /**< lock request callback */
     void (*release_cb)(void *); /**< lock release callback */
     void *cb_data; /**< data parameter of locking callbacks */
-#ifdef EOE_TIMER
     struct timer_list eoe_timer; /** EoE timer object */
-#else
-    struct work_struct eoe_work; /**< work structure for EoE workqueue */
-#endif
 };
 
 /*****************************************************************************/
