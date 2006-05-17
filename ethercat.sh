@@ -25,74 +25,110 @@
 #
 #------------------------------------------------------------------------------
 
-CONFIGFILE=/etc/sysconfig/ethercat
+### BEGIN INIT INFO
+# Provides:          EtherCAT
+# Required-Start:
+# Should-Start:
+# Required-Stop:
+# Should-Stop:
+# Default-Start:     3 5
+# Default-Stop:      0 1 2 6
+# Short-Description: EtherCAT master driver and network device
+# Description:
+### END INIT INFO
 
 #------------------------------------------------------------------------------
 
-print_usage()
-{
-    echo "Usage: $0 { start | stop | restart }"
-}
+ETHERCAT_CONFIG=/etc/sysconfig/ethercat
 
-unload_module()
-{
-    if lsmod | grep ^$1 > /dev/null; then
-	echo "  unloading module \"$1\"..."
-	rmmod $1 || exit 1
-    fi
-}
+test -r $ETHERCAT_CONFIG || { echo "$ETHERCAT_CONFIG not existing";
+	if [ "$1" = "stop" ]; then exit 0;
+	else exit 6; fi; }
+
+. $ETHERCAT_CONFIG
 
 #------------------------------------------------------------------------------
 
-# Get parameters
-if [ $# -eq 0 ]; then
-    print_usage
-    exit 1
-fi
+# Shell functions sourced from /etc/rc.status:
+#      rc_check         check and set local and overall rc status
+#      rc_status        check and set local and overall rc status
+#      rc_status -v     be verbose in local rc status and clear it afterwards
+#      rc_status -v -r  ditto and clear both the local and overall rc status
+#      rc_status -s     display "skipped" and exit with status 3
+#      rc_status -u     display "unused" and exit with status 3
+#      rc_failed        set local and overall rc status to failed
+#      rc_failed <num>  set local and overall rc status to <num>
+#      rc_reset         clear both the local and overall rc status
+#      rc_exit          exit appropriate to overall rc status
+#      rc_active        checks whether a service is activated by symlinks
+. /etc/rc.status
 
-ACTION=$1
+# Reset status of this service
+rc_reset
 
-# Load configuration from sysconfig
+# Return values acc. to LSB for all commands but status:
+# 0	  - success
+# 1       - generic or unspecified error
+# 2       - invalid or excess argument(s)
+# 3       - unimplemented feature (e.g. "reload")
+# 4       - user had insufficient privileges
+# 5       - program is not installed
+# 6       - program is not configured
+# 7       - program is not running
+# 8--199  - reserved (8--99 LSB, 100--149 distrib, 150--199 appl)
+#
+# Note that starting an already running service, stopping
+# or restarting a not-running service as well as the restart
+# with force-reload (in case signaling is not supported) are
+# considered a success.
 
-if [ -f $CONFIGFILE ]; then
-    . $CONFIGFILE
-else
-    echo "ERROR: Configuration file \"$CONFIGFILE\" not found!"
-    exit 1
-fi
+case "$1" in
+    start)
+	echo -n "Starting EtherCAT master... "
 
-case $ACTION in
-    start | restart)
-	echo "Starting EtherCAT master..."
+	# remove incompatible modules
+	for mod in 8139too 8139cp; do
+		if lsmod | grep "^$mod " > /dev/null; then
+			if ! rmmod $mod; then
+				/bin/false
+				rc_status -v
+				rc_exit
+			fi;
+		fi;
+	done
 
-	# remove modules
-	unload_module 8139too
-	unload_module 8139cp
-	unload_module ec_8139too
-	unload_module ec_master
+	modprobe ec_8139too ec_device_index=$DEVICEINDEX
 
-	echo "  loading master modules..."
-	if ! modprobe ec_8139too ec_device_index=$DEVICEINDEX; then
-	    echo "ERROR: Failed to load module!"
-	    exit 1
-	fi
+	rc_status -v
 	;;
 
     stop)
-	echo "Stopping EtherCAT master..."
-	unload_module ec_8139too
-	unload_module ec_master
+	echo -n "Shutting down EtherCAT master... "
+
+	for mod in ec_8139too ec_master; do
+		if lsmod | grep "^$mod " > /dev/null; then
+			if ! rmmod $mod; then
+				/bin/false
+				rc_status -v
+				rc_exit
+			fi;
+		fi;
+	done
+
 	if ! modprobe 8139too; then
 	    echo "Warning: Failed to restore 8139too module."
 	fi
+
+	rc_status -v
 	;;
 
-    *)
-	print_usage
-	exit 1
-esac
+    restart)
+	$0 stop
+	$0 start
 
-echo "done."
-exit 0
+	rc_status
+	;;
+esac
+rc_exit
 
 #------------------------------------------------------------------------------
