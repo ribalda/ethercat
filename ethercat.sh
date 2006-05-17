@@ -128,6 +128,26 @@ case "$1" in
 
 	rc_status
 	;;
+
+    status)
+	echo -n "Checking for EtherCAT... "
+
+	# Return value is slightly different for the status command:
+	# 0 - service up and running
+	# 1 - service dead, but /var/run/  pid  file exists
+	# 2 - service dead, but /var/lock/ lock file exists
+	# 3 - service not running (unused)
+	# 4 - service status unknown :-(
+	# 5--199 reserved (5--99 LSB, 100--149 distro, 150--199 appl.)
+
+	lsmod | grep "^ec_master " > /dev/null
+	master_running=$?
+	lsmod | grep "^ec_8139too " > /dev/null
+	device_running=$?
+	test $master_running -eq 0 -a $device_running -eq 0
+
+	rc_status -v
+	;;
 esac
 rc_exit
 
