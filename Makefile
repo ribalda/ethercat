@@ -58,7 +58,6 @@ doc:
 cleandoc:
 	@rm -rf doc
 
-
 install:
 	@./install.sh $(KERNEL) $(DEVICEINDEX)
 

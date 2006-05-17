@@ -76,6 +76,7 @@ fi
 
 echo "  installing startup script..."
 cp ethercat.sh /etc/init.d/ethercat || exit 1
+chmod +x /etc/init.d/ethercat || exit 1
 if [ ! -L /usr/sbin/rcethercat ]; then
     ln -s /etc/init.d/ethercat /usr/sbin/rcethercat || exit 1
 fi
@@ -84,6 +85,7 @@ fi
 
 echo "  installing tools..."
 cp tools/ec_list.pl /usr/local/bin/ec_list || exit 1
+chmod +x /usr/local/bin/ec_list || exit 1
 
 # Finish
 
