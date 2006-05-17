@@ -78,29 +78,38 @@ ec_stats_t;
 
 struct ec_master
 {
-    struct list_head list; /**< list item */
-    struct kobject kobj; /**< kobject */
+    struct list_head list; /**< list item for module's master list */
+    unsigned int reserved; /**< non-zero, if the master is reserved for RT */
     unsigned int index; /**< master index */
+
+    struct kobject kobj; /**< kobject */
+
     struct list_head slaves; /**< list of slaves on the bus */
     unsigned int slave_count; /**< number of slaves on the bus */
+
     ec_device_t *device; /**< EtherCAT device */
+
     struct list_head command_queue; /**< command queue */
     uint8_t command_index; /**< current command index */
+
     struct list_head domains; /**< list of domains */
+
     ec_command_t simple_command; /**< command structure for initialization */
+    unsigned int timeout; /**< timeout in synchronous IO */
+
     int debug_level; /**< master debug level */
     ec_stats_t stats; /**< cyclic statistics */
-    unsigned int timeout; /**< timeout in synchronous IO */
-    struct list_head eoe_slaves; /**< Ethernet-over-EtherCAT slaves */
-    unsigned int reserved; /**< true, if the master is reserved for RT */
+
     struct workqueue_struct *workqueue; /**< master workqueue */
     struct work_struct freerun_work; /**< free run work object */
     ec_fsm_t fsm; /**< master state machine */
     ec_master_mode_t mode; /**< master mode */
+
+    struct timer_list eoe_timer; /** EoE timer object */
+    struct list_head eoe_slaves; /**< Ethernet-over-EtherCAT slaves */
     int (*request_cb)(void *); /**< lock request callback */
     void (*release_cb)(void *); /**< lock release callback */
     void *cb_data; /**< data parameter of locking callbacks */
-    struct timer_list eoe_timer; /** EoE timer object */
 };
 
 /*****************************************************************************/
