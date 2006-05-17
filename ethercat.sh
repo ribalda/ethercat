@@ -27,10 +27,10 @@
 
 ### BEGIN INIT INFO
 # Provides:          EtherCAT
-# Required-Start:
-# Should-Start:
-# Required-Stop:
-# Should-Stop:
+# Required-Start:    $local_fs $syslog $network
+# Should-Start:      $time
+# Required-Stop:     $local_fs $syslog $network
+# Should-Stop:       $time
 # Default-Start:     3 5
 # Default-Stop:      0 1 2 6
 # Short-Description: EtherCAT master driver and network device
