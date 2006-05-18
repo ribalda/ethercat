@@ -2,7 +2,7 @@
 
 #------------------------------------------------------------------------------
 #
-#  EtherCAT rc script
+#  Init script for EtherCAT
 #
 #  $Id$
 #
@@ -36,14 +36,14 @@
 #------------------------------------------------------------------------------
 
 ### BEGIN INIT INFO
-# Provides:          EtherCAT
+# Provides:          IgH EtherCAT master
 # Required-Start:    $local_fs $syslog $network
 # Should-Start:      $time
 # Required-Stop:     $local_fs $syslog $network
 # Should-Stop:       $time
 # Default-Start:     3 5
 # Default-Stop:      0 1 2 6
-# Short-Description: EtherCAT master driver and network device
+# Short-Description: IgH EtherCAT master modules
 # Description:
 ### END INIT INFO
 
@@ -59,44 +59,13 @@ test -r $ETHERCAT_CONFIG || { echo "$ETHERCAT_CONFIG not existing";
 
 #------------------------------------------------------------------------------
 
-# Shell functions sourced from /etc/rc.status:
-#      rc_check         check and set local and overall rc status
-#      rc_status        check and set local and overall rc status
-#      rc_status -v     be verbose in local rc status and clear it afterwards
-#      rc_status -v -r  ditto and clear both the local and overall rc status
-#      rc_status -s     display "skipped" and exit with status 3
-#      rc_status -u     display "unused" and exit with status 3
-#      rc_failed        set local and overall rc status to failed
-#      rc_failed <num>  set local and overall rc status to <num>
-#      rc_reset         clear both the local and overall rc status
-#      rc_exit          exit appropriate to overall rc status
-#      rc_active        checks whether a service is activated by symlinks
 . /etc/rc.status
-
-# Reset status of this service
 rc_reset
-
-# Return values acc. to LSB for all commands but status:
-# 0	  - success
-# 1       - generic or unspecified error
-# 2       - invalid or excess argument(s)
-# 3       - unimplemented feature (e.g. "reload")
-# 4       - user had insufficient privileges
-# 5       - program is not installed
-# 6       - program is not configured
-# 7       - program is not running
-# 8--199  - reserved (8--99 LSB, 100--149 distrib, 150--199 appl)
-#
-# Note that starting an already running service, stopping
-# or restarting a not-running service as well as the restart
-# with force-reload (in case signaling is not supported) are
-# considered a success.
 
 case "$1" in
     start)
 	echo -n "Starting EtherCAT master... "
 
-	# remove incompatible modules
 	for mod in 8139too 8139cp; do
 		if lsmod | grep "^$mod " > /dev/null; then
 			if ! rmmod $mod; then
@@ -141,14 +110,6 @@ case "$1" in
 
     status)
 	echo -n "Checking for EtherCAT... "
-
-	# Return value is slightly different for the status command:
-	# 0 - service up and running
-	# 1 - service dead, but /var/run/  pid  file exists
-	# 2 - service dead, but /var/lock/ lock file exists
-	# 3 - service not running (unused)
-	# 4 - service status unknown :-(
-	# 5--199 reserved (5--99 LSB, 100--149 distro, 150--199 appl.)
 
 	lsmod | grep "^ec_master " > /dev/null
 	master_running=$?
