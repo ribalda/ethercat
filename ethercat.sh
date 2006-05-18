@@ -36,7 +36,7 @@
 #------------------------------------------------------------------------------
 
 ### BEGIN INIT INFO
-# Provides:          IgH EtherCAT master
+# Provides:          ethercat
 # Required-Start:    $local_fs $syslog $network
 # Should-Start:      $time
 # Required-Stop:     $local_fs $syslog $network
