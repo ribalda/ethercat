@@ -250,27 +250,18 @@ ec_device_t *ecdev_register(unsigned int master_index, /**< master index */
 {
     ec_master_t *master;
 
-    if (!net_dev) {
-        EC_WARN("Device is NULL!\n");
-        goto out_return;
-    }
-
     if (!(master = ec_find_master(master_index))) return NULL;
 
-    // critical section start
     if (master->device) {
         EC_ERR("Master %i already has a device!\n", master_index);
-        // critical section leave
         goto out_return;
     }
 
     if (!(master->device =
           (ec_device_t *) kmalloc(sizeof(ec_device_t), GFP_KERNEL))) {
         EC_ERR("Failed to allocate device!\n");
-        // critical section leave
         goto out_return;
     }
-    // critical section end
 
     if (ec_device_init(master->device, master, net_dev, isr, module)) {
         EC_ERR("Failed to init device!\n");
@@ -379,13 +370,11 @@ ec_master_t *ecrt_request_master(unsigned int master_index
 
     if (!(master = ec_find_master(master_index))) goto out_return;
 
-    // begin critical section
     if (master->reserved) {
         EC_ERR("Master %i is already in use!\n", master_index);
         goto out_return;
     }
     master->reserved = 1;
-    // end critical section
 
     if (!master->device) {
         EC_ERR("Master %i has no assigned device!\n", master_index);
