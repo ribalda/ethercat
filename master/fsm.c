@@ -151,7 +151,6 @@ void ec_fsm_master_start(ec_fsm_t *fsm)
 {
     ec_command_brd(&fsm->command, 0x0130, 2);
     ec_master_queue_command(fsm->master, &fsm->command);
-
     fsm->master_state = ec_fsm_master_wait;
 }
 
@@ -164,6 +163,9 @@ void ec_fsm_master_wait(ec_fsm_t *fsm)
     ec_slave_t *slave;
 
     if (command->state != EC_CMD_RECEIVED) {
+        if (!fsm->master->device->link_state)
+            // treat link down as topology change
+            fsm->master_slaves_responding = 0;
         fsm->master_state = ec_fsm_master_start;
         fsm->master_state(fsm); // execute immediately
         return;
