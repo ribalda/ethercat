@@ -33,34 +33,32 @@
 #
 #------------------------------------------------------------------------------
 
-ifneq ($(KERNELRELEASE),)
-
 #------------------------------------------------------------------------------
 #  kbuild section
+
+ifneq ($(KERNELRELEASE),)
 
 obj-m := master/ devices/
 
 #------------------------------------------------------------------------------
+#  default section
 
 else
-
-#------------------------------------------------------------------------------
-#  default section
 
 ifneq ($(wildcard ethercat.conf),)
 include ethercat.conf
 else
-KERNEL := `uname -r`
-DEVICEINDEX := 99
+KERNEL := $(shell uname -r)
 endif
 
-KERNELDIR := /lib/modules/$(KERNEL)/build
+KERNEL_DIR := /lib/modules/$(KERNEL)/build
+CURRENT_DIR := $(shell pwd)
 
 modules:
-	$(MAKE) -C $(KERNELDIR) M=`pwd`
+	$(MAKE) -C $(KERNEL_DIR) M=$(CURRENT_DIR)
 
 clean: cleandoc
-	$(MAKE) -C $(KERNELDIR) M=`pwd` clean
+	$(MAKE) -C $(KERNEL_DIR) M=$(CURRENT_DIR) clean
 
 doc:
 	doxygen Doxyfile
@@ -69,7 +67,7 @@ cleandoc:
 	@rm -rf doc
 
 install:
-	@./install.sh $(KERNEL) $(DEVICEINDEX)
+	@script/install.sh $(KERNEL)
 
 #------------------------------------------------------------------------------
 

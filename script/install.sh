@@ -2,7 +2,7 @@
 
 #------------------------------------------------------------------------------
 #
-#  Init script for EtherCAT
+#  EtherCAT install script
 #
 #  $Id$
 #
@@ -35,91 +35,80 @@
 #
 #------------------------------------------------------------------------------
 
-### BEGIN INIT INFO
-# Provides:          ethercat
-# Required-Start:    $local_fs $syslog $network
-# Should-Start:      $time
-# Required-Stop:     $local_fs $syslog $network
-# Should-Stop:       $time
-# Default-Start:     3 5
-# Default-Stop:      0 1 2 6
-# Short-Description: IgH EtherCAT master modules
-# Description:
-### END INIT INFO
+# Fetch parameters
+
+if [ $# -ne 1 ]; then
+    echo "This script is called by \"make\". Run \"make install\" instead."
+    exit 1
+fi
+
+KERNEL=$1
+
+if [ ! -d /lib/modules/$KERNEL ]; then
+    echo "Kernel \"$KERNEL\" does not exist in /lib/modules!"
+    exit 1
+fi
 
 #------------------------------------------------------------------------------
 
-ETHERCAT_CONFIG=/etc/sysconfig/ethercat
+# Copy files
 
-test -r $ETHERCAT_CONFIG || { echo "$ETHERCAT_CONFIG not existing";
-	if [ "$1" = "stop" ]; then exit 0;
-	else exit 6; fi; }
+INSTALLDIR=/lib/modules/$KERNEL/kernel/drivers/net
+MODULES=(master/ec_master.ko devices/ec_8139too.ko)
 
-. $ETHERCAT_CONFIG
+echo "EtherCAT installer - Kernel: $KERNEL"
+echo "  Installing modules"
+
+for mod in ${MODULES[*]}; do
+    echo "    $mod"
+    cp $mod $INSTALLDIR || exit 1
+done
 
 #------------------------------------------------------------------------------
 
-. /etc/rc.status
-rc_reset
+# Update dependencies
 
-case "$1" in
-    start)
-	echo -n "Starting EtherCAT master... "
+echo "  Building module dependencies"
+depmod
 
-	for mod in 8139too 8139cp; do
-		if lsmod | grep "^$mod " > /dev/null; then
-			if ! rmmod $mod; then
-				/bin/false
-				rc_status -v
-				rc_exit
-			fi;
-		fi;
-	done
+#------------------------------------------------------------------------------
 
-	modprobe ec_8139too ec_device_index=$DEVICEINDEX
+# Create configuration file
 
-	rc_status -v
-	;;
+CONFIGFILE=/etc/sysconfig/ethercat
 
-    stop)
-	echo -n "Shutting down EtherCAT master... "
+if [ -s $CONFIGFILE ]; then
+    echo "  Note: Using existing configuration file."
+else
+    echo "  Creating $CONFIGFILE"
+    cp script/sysconfig $CONFIGFILE || exit 1
+    echo "  Note: Please edit DEVICE_INDEX in $CONFIGFILE!"
+fi
 
-	for mod in ec_8139too ec_master; do
-		if lsmod | grep "^$mod " > /dev/null; then
-			if ! rmmod $mod; then
-				/bin/false
-				rc_status -v
-				rc_exit
-			fi;
-		fi;
-	done
+#------------------------------------------------------------------------------
 
-	if ! modprobe 8139too; then
-	    echo "Warning: Failed to restore 8139too module."
-	fi
+# Install rc script
 
-	rc_status -v
-	;;
+echo "  Installing startup script"
+cp script/ethercat.sh /etc/init.d/ethercat || exit 1
+chmod +x /etc/init.d/ethercat || exit 1
+if [ ! -L /usr/sbin/rcethercat ]; then
+    ln -s /etc/init.d/ethercat /usr/sbin/rcethercat || exit 1
+fi
 
-    restart)
-	$0 stop
-	$0 start
+#------------------------------------------------------------------------------
 
-	rc_status
-	;;
+# Install tools
 
-    status)
-	echo -n "Checking for EtherCAT... "
+echo "  Installing tools"
+cp script/ec_list.pl /usr/local/bin/ec_list || exit 1
+chmod +x /usr/local/bin/ec_list || exit 1
 
-	lsmod | grep "^ec_master " > /dev/null
-	master_running=$?
-	lsmod | grep "^ec_8139too " > /dev/null
-	device_running=$?
-	test $master_running -eq 0 -a $device_running -eq 0
+#------------------------------------------------------------------------------
 
-	rc_status -v
-	;;
-esac
-rc_exit
+# Finish
+
+echo "Done"
+exit 0
 
 #------------------------------------------------------------------------------

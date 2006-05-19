@@ -1,0 +1,21 @@
+#------------------------------------------------------------------------------
+#
+#  EtherCAT sysconfig file
+#
+#  $Id$
+#
+#------------------------------------------------------------------------------
+
+#
+#  PCI index of the (RTL8139-)EtherCAT device
+#  Setting this is mandatory for the EtherCAT init script!
+#
+#DEVICE_INDEX=99
+
+#
+#  Number of Ethernet-over-EtherCAT devices the master shall create
+#  on startup. Default is 0.
+#
+#EOE_DEVICES=0
+
+#------------------------------------------------------------------------------
