@@ -58,6 +58,7 @@ void ec_fsm_master_scan(ec_fsm_t *);
 void ec_fsm_master_conf(ec_fsm_t *);
 
 void ec_fsm_slave_start_reading(ec_fsm_t *);
+void ec_fsm_slave_read_status(ec_fsm_t *);
 void ec_fsm_slave_read_base(ec_fsm_t *);
 void ec_fsm_slave_read_dl(ec_fsm_t *);
 void ec_fsm_slave_prepare_sii(ec_fsm_t *);
@@ -425,6 +426,29 @@ void ec_fsm_slave_start_reading(ec_fsm_t *fsm)
     ec_command_apwr(command, fsm->slave->ring_position, 0x0010, 2);
     EC_WRITE_U16(command->data, fsm->slave->station_address);
     ec_master_queue_command(fsm->master, command);
+    fsm->slave_state = ec_fsm_slave_read_status;
+}
+
+/*****************************************************************************/
+
+/**
+   Slave state: Read status.
+*/
+
+void ec_fsm_slave_read_status(ec_fsm_t *fsm)
+{
+    ec_command_t *command = &fsm->command;
+
+    if (command->state != EC_CMD_RECEIVED || command->working_counter != 1) {
+        EC_ERR("FSM failed to write station address of slave %i.\n",
+               fsm->slave->ring_position);
+        fsm->slave_state = ec_fsm_slave_end;
+        return;
+    }
+
+    // read AL status
+    ec_command_nprd(command, fsm->slave->station_address, 0x0130, 2);
+    ec_master_queue_command(fsm->master, command);
     fsm->slave_state = ec_fsm_slave_read_base;
 }
 
@@ -437,12 +461,20 @@ void ec_fsm_slave_start_reading(ec_fsm_t *fsm)
 void ec_fsm_slave_read_base(ec_fsm_t *fsm)
 {
     ec_command_t *command = &fsm->command;
+    ec_slave_t *slave = fsm->slave;
 
     if (command->state != EC_CMD_RECEIVED || command->working_counter != 1) {
-        EC_ERR("FSM failed to write station address of slave %i.\n",
+        EC_ERR("FSM failed to read AL status of slave %i.\n",
                fsm->slave->ring_position);
         fsm->slave_state = ec_fsm_slave_end;
         return;
+    }
+
+    slave->current_state = EC_READ_U8(command->data);
+    if (slave->current_state & EC_ACK) {
+        EC_WARN("Slave %i has status error bit set (0x%02X)!\n",
+                slave->ring_position, slave->current_state);
+        slave->current_state &= 0x0F;
     }
 
     // read base data
