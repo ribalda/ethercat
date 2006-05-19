@@ -856,6 +856,7 @@ void ec_master_eoe_start(ec_master_t *master /**< EtherCAT master */)
                     eoe->dev->name, slave->ring_position);
             if (eoe->opened)
                 slave->requested_state = EC_SLAVE_STATE_OP;
+            break;
         }
 
         if (!found) {
