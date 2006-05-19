@@ -70,17 +70,15 @@ struct net_device_stats *ec_eoedev_stats(struct net_device *);
 
 /**
    EoE constructor.
-   Initializes the EoE object, creates a net_device and registeres it.
+   Initializes the EoE handler, creates a net_device and registeres it.
 */
 
-int ec_eoe_init(ec_eoe_t *eoe, /**< EoE object */
-                ec_slave_t *slave /**< assigned slave */
-                )
+int ec_eoe_init(ec_eoe_t *eoe /**< EoE handler */)
 {
     ec_eoe_t **priv;
     int result, i;
 
-    eoe->slave = slave;
+    eoe->slave = NULL;
     eoe->state = ec_eoe_state_rx_start;
     eoe->opened = 0;
     eoe->rx_skb = NULL;
@@ -95,7 +93,7 @@ int ec_eoe_init(ec_eoe_t *eoe, /**< EoE object */
 
     if (!(eoe->dev =
           alloc_netdev(sizeof(ec_eoe_t *), "eoe%d", ether_setup))) {
-        EC_ERR("Unable to allocate net_device for EoE object!\n");
+        EC_ERR("Unable to allocate net_device for EoE handler!\n");
         goto out_return;
     }
 
@@ -145,7 +143,7 @@ int ec_eoe_init(ec_eoe_t *eoe, /**< EoE object */
    Unregisteres the net_device and frees allocated memory.
 */
 
-void ec_eoe_clear(ec_eoe_t *eoe /**< EoE object */)
+void ec_eoe_clear(ec_eoe_t *eoe /**< EoE handler */)
 {
     if (eoe->dev) {
         unregister_netdev(eoe->dev);
@@ -169,7 +167,7 @@ void ec_eoe_clear(ec_eoe_t *eoe /**< EoE object */)
    Empties the transmit queue.
 */
 
-void ec_eoe_flush(ec_eoe_t *eoe /**< EoE object */)
+void ec_eoe_flush(ec_eoe_t *eoe /**< EoE handler */)
 {
     ec_eoe_frame_t *frame, *next;
 
@@ -191,7 +189,7 @@ void ec_eoe_flush(ec_eoe_t *eoe /**< EoE object */)
    Sends a frame or the next fragment.
 */
 
-int ec_eoe_send(ec_eoe_t *eoe /**< EoE object */)
+int ec_eoe_send(ec_eoe_t *eoe /**< EoE handler */)
 {
     size_t remaining_size, current_size, complete_offset;
     unsigned int last_fragment;
@@ -262,7 +260,7 @@ int ec_eoe_send(ec_eoe_t *eoe /**< EoE object */)
    Runs the EoE state machine.
 */
 
-void ec_eoe_run(ec_eoe_t *eoe /**< EoE object */)
+void ec_eoe_run(ec_eoe_t *eoe /**< EoE handler */)
 {
     if (!eoe->opened) return;
 
@@ -277,22 +275,25 @@ void ec_eoe_run(ec_eoe_t *eoe /**< EoE object */)
    \return 1 if the device is "up", 0 if it is "down"
 */
 
-unsigned int ec_eoe_active(const ec_eoe_t *eoe /**< EoE object */)
+unsigned int ec_eoe_active(const ec_eoe_t *eoe /**< EoE handler */)
 {
-    return eoe->opened;
+    return eoe->slave && eoe->opened;
 }
 
 /*****************************************************************************/
 
 /**
-   Prints EoE object information.
+   Prints EoE handler information.
 */
 
-void ec_eoe_print(const ec_eoe_t *eoe /**< EoE object */)
+void ec_eoe_print(const ec_eoe_t *eoe /**< EoE handler */)
 {
-    EC_INFO("  EoE slave %i\n", eoe->slave->ring_position);
-    EC_INFO("    Assigned device: %s (%s)\n", eoe->dev->name,
-            eoe->opened ? "opened" : "closed");
+    EC_INFO("  EoE handler %s\n", eoe->dev->name);
+    EC_INFO("    State: %s\n", eoe->opened ? "opened" : "closed");
+    if (eoe->slave)
+        EC_INFO("    Coupled to slave %i.\n", eoe->slave->ring_position);
+    else
+        EC_INFO("    Not coupled.\n");
 }
 
 /******************************************************************************
@@ -305,7 +306,7 @@ void ec_eoe_print(const ec_eoe_t *eoe /**< EoE object */)
    slave's mailbox for a new command.
 */
 
-void ec_eoe_state_rx_start(ec_eoe_t *eoe /**< EoE object */)
+void ec_eoe_state_rx_start(ec_eoe_t *eoe /**< EoE handler */)
 {
     ec_slave_mbox_prepare_check(eoe->slave);
     ec_master_queue_command(eoe->slave->master, &eoe->slave->mbox_command);
@@ -320,7 +321,7 @@ void ec_eoe_state_rx_start(ec_eoe_t *eoe /**< EoE object */)
    command, if new data is available.
 */
 
-void ec_eoe_state_rx_check(ec_eoe_t *eoe /**< EoE object */)
+void ec_eoe_state_rx_check(ec_eoe_t *eoe /**< EoE handler */)
 {
     if (eoe->slave->mbox_command.state != EC_CMD_RECEIVED) {
         eoe->stats.rx_errors++;
@@ -346,7 +347,7 @@ void ec_eoe_state_rx_check(ec_eoe_t *eoe /**< EoE object */)
    EoE command.
 */
 
-void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE object */)
+void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
 {
     size_t rec_size, data_size;
     uint8_t *data, frame_type, last_fragment, time_appended;
@@ -486,7 +487,7 @@ void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE object */)
    sequence is started instead.
 */
 
-void ec_eoe_state_tx_start(ec_eoe_t *eoe /**< EoE object */)
+void ec_eoe_state_tx_start(ec_eoe_t *eoe /**< EoE handler */)
 {
 #if EOE_DEBUG_LEVEL > 0
     unsigned int wakeup;
@@ -546,7 +547,7 @@ void ec_eoe_state_tx_start(ec_eoe_t *eoe /**< EoE object */)
    fragment, if necessary.
 */
 
-void ec_eoe_state_tx_sent(ec_eoe_t *eoe /**< EoE object */)
+void ec_eoe_state_tx_sent(ec_eoe_t *eoe /**< EoE handler */)
 {
     if (eoe->slave->mbox_command.state != EC_CMD_RECEIVED) {
         eoe->stats.tx_errors++;
@@ -595,7 +596,12 @@ int ec_eoedev_open(struct net_device *dev /**< EoE net_device */)
     eoe->opened = 1;
     netif_start_queue(dev);
     eoe->tx_queue_active = 1;
-    EC_INFO("%s (slave %i) opened.\n", dev->name, eoe->slave->ring_position);
+    EC_INFO("%s opened.\n", dev->name);
+    if (!eoe->slave)
+        EC_WARN("device %s is not coupled to any EoE slave!\n", dev->name);
+    else {
+        eoe->slave->requested_state = EC_SLAVE_STATE_OP;
+    }
     return 0;
 }
 
@@ -612,7 +618,12 @@ int ec_eoedev_stop(struct net_device *dev /**< EoE net_device */)
     eoe->tx_queue_active = 0;
     eoe->opened = 0;
     ec_eoe_flush(eoe);
-    EC_INFO("%s (slave %i) stopped.\n", dev->name, eoe->slave->ring_position);
+    EC_INFO("%s stopped.\n", dev->name);
+    if (!eoe->slave)
+        EC_WARN("device %s is not coupled to any EoE slave!\n", dev->name);
+    else {
+        eoe->slave->requested_state = EC_SLAVE_STATE_INIT;
+    }
     return 0;
 }
 

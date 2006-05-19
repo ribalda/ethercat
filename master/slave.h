@@ -272,6 +272,10 @@ struct ec_slave
     struct list_head sdo_dictionary; /**< SDO directory list */
 
     ec_command_t mbox_command; /**< mailbox command */
+
+    ec_slave_state_t requested_state; /**< requested slave state */
+    ec_slave_state_t current_state; /**< current slave state */
+    unsigned int state_error; /**< a state error has happened */
 };
 
 /*****************************************************************************/

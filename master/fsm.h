@@ -76,6 +76,9 @@ struct ec_fsm
     void (*sii_state)(ec_fsm_t *); /**< SII state function */
     uint16_t sii_offset; /**< input: offset in SII */
     uint32_t sii_result; /**< output: read SII value (32bit) */
+
+    void (*change_state)(ec_fsm_t *); /**< slave state change state function */
+    uint8_t change_new; /**< input: new state */
 };
 
 /*****************************************************************************/
@@ -84,7 +87,6 @@ int ec_fsm_init(ec_fsm_t *, ec_master_t *);
 void ec_fsm_clear(ec_fsm_t *);
 void ec_fsm_reset(ec_fsm_t *);
 void ec_fsm_execute(ec_fsm_t *);
-int ec_fsm_idle(const ec_fsm_t *);
 
 /*****************************************************************************/
 

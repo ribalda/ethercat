@@ -67,19 +67,22 @@ void __exit ec_cleanup_module(void);
 /*****************************************************************************/
 
 static int ec_master_count = 1;
+static int ec_eoe_devices = 0;
 static struct list_head ec_masters;
 
 /*****************************************************************************/
 
 /** \cond */
 
-MODULE_AUTHOR ("Florian Pose <fp@igh-essen.com>");
-MODULE_DESCRIPTION ("EtherCAT master driver module");
+module_param(ec_master_count, int, S_IRUGO);
+module_param(ec_eoe_devices, int, S_IRUGO);
+
+MODULE_AUTHOR("Florian Pose <fp@igh-essen.com>");
+MODULE_DESCRIPTION("EtherCAT master driver module");
 MODULE_LICENSE("GPL");
 MODULE_VERSION(COMPILE_INFO);
-
-module_param(ec_master_count, int, 1);
 MODULE_PARM_DESC(ec_master_count, "number of EtherCAT masters to initialize");
+MODULE_PARM_DESC(ec_eoe_devices, "number of EoE devices per master");
 
 /** \endcond */
 
@@ -114,7 +117,7 @@ int __init ec_init_module(void)
             goto out_free;
         }
 
-        if (ec_master_init(master, i)) // kobject_put is done inside...
+        if (ec_master_init(master, i, ec_eoe_devices))
             goto out_free;
 
         if (kobject_add(&master->kobj)) {
@@ -226,6 +229,41 @@ void ec_print_data_diff(const uint8_t *d1, /**< first data */
         }
     }
     printk("\n");
+}
+
+/*****************************************************************************/
+
+/**
+   Prints slave states in clear text.
+*/
+
+void ec_print_states(const uint8_t states /**< slave states */)
+{
+    unsigned int first = 1;
+
+    if (!states) {
+        printk("(unknown)");
+        return;
+    }
+
+    if (states & EC_SLAVE_STATE_INIT) {
+        printk("INIT");
+        first = 0;
+    }
+    if (states & EC_SLAVE_STATE_PREOP) {
+        if (!first) printk(", ");
+        printk("PREOP");
+        first = 0;
+    }
+    if (states & EC_SLAVE_STATE_SAVEOP) {
+        if (!first) printk(", ");
+        printk("SAVEOP");
+        first = 0;
+    }
+    if (states & EC_SLAVE_STATE_OP) {
+        if (!first) printk(", ");
+        printk("OP");
+    }
 }
 
 /******************************************************************************

@@ -115,6 +115,7 @@
 
 extern void ec_print_data(const uint8_t *, size_t);
 extern void ec_print_data_diff(const uint8_t *, const uint8_t *, size_t);
+extern void ec_print_states(uint8_t);
 
 /*****************************************************************************/
 

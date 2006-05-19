@@ -116,7 +116,9 @@ struct ec_master
     ec_master_mode_t mode; /**< master mode */
 
     struct timer_list eoe_timer; /** EoE timer object */
-    struct list_head eoe_slaves; /**< Ethernet-over-EtherCAT slaves */
+    unsigned int eoe_running; /**< non-zero, if EoE processing is active. */
+    struct list_head eoe_handlers; /**< Ethernet-over-EtherCAT handlers */
+    spinlock_t internal_lock; /**< spinlock used in freerun mode */
     int (*request_cb)(void *); /**< lock request callback */
     void (*release_cb)(void *); /**< lock release callback */
     void *cb_data; /**< data parameter of locking callbacks */
@@ -125,13 +127,17 @@ struct ec_master
 /*****************************************************************************/
 
 // master creation and deletion
-int ec_master_init(ec_master_t *, unsigned int);
+int ec_master_init(ec_master_t *, unsigned int, unsigned int);
 void ec_master_clear(struct kobject *);
 void ec_master_reset(ec_master_t *);
 
 // free run
 void ec_master_freerun_start(ec_master_t *);
 void ec_master_freerun_stop(ec_master_t *);
+
+// EoE
+void ec_master_eoe_start(ec_master_t *);
+void ec_master_eoe_stop(ec_master_t *);
 
 // IO
 void ec_master_receive(ec_master_t *, const uint8_t *, size_t);
@@ -143,6 +149,9 @@ int ec_master_bus_scan(ec_master_t *);
 
 // misc.
 void ec_master_clear_slaves(ec_master_t *);
+void ec_sync_config(const ec_sync_t *, uint8_t *);
+void ec_eeprom_sync_config(const ec_eeprom_sync_t *, uint8_t *);
+void ec_fmmu_config(const ec_fmmu_t *, uint8_t *);
 void ec_master_output_stats(ec_master_t *);
 
 /*****************************************************************************/

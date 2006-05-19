@@ -48,6 +48,10 @@
 
 /*****************************************************************************/
 
+extern const ec_code_msg_t al_status_messages[];
+
+/*****************************************************************************/
+
 int ec_slave_fetch_categories(ec_slave_t *);
 ssize_t ec_show_slave_attribute(struct kobject *, struct attribute *, char *);
 
@@ -86,10 +90,6 @@ static struct kobj_type ktype_ec_slave = {
 };
 
 /** \endcond */
-
-/*****************************************************************************/
-
-const ec_code_msg_t al_status_messages[];
 
 /*****************************************************************************/
 
@@ -144,6 +144,9 @@ int ec_slave_init(ec_slave_t *slave, /**< EtherCAT slave */
     slave->eeprom_name = NULL;
     slave->eeprom_group = NULL;
     slave->eeprom_desc = NULL;
+    slave->requested_state = EC_SLAVE_STATE_UNKNOWN;
+    slave->current_state = EC_SLAVE_STATE_UNKNOWN;
+    slave->state_error = 0;
 
     ec_command_init(&slave->mbox_command);
 
@@ -1260,32 +1263,6 @@ ssize_t ec_show_slave_attribute(struct kobject *kobj, /**< slave's kobject */
 
     return 0;
 }
-
-/*****************************************************************************/
-
-/**
-   Application layer status messages.
-*/
-
-const ec_code_msg_t al_status_messages[] = {
-    {0x0001, "Unspecified error"},
-    {0x0011, "Invalud requested state change"},
-    {0x0012, "Unknown requested state"},
-    {0x0013, "Bootstrap not supported"},
-    {0x0014, "No valid firmware"},
-    {0x0015, "Invalid mailbox configuration"},
-    {0x0016, "Invalid mailbox configuration"},
-    {0x0017, "Invalid sync manager configuration"},
-    {0x0018, "No valid inputs available"},
-    {0x0019, "No valid outputs"},
-    {0x001A, "Synchronisation error"},
-    {0x001B, "Sync manager watchdog"},
-    {0x0020, "Slave needs cold start"},
-    {0x0021, "Slave needs INIT"},
-    {0x0022, "Slave needs PREOP"},
-    {0x0023, "Slave needs SAVEOP"},
-    {}
-};
 
 /******************************************************************************
  *  Realtime interface

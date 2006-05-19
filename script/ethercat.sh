@@ -73,6 +73,10 @@ case "$1" in
 	    rc_exit
 	fi
 
+	if [ ! $EOE_DEVICES ]; then
+	    EOE_DEVICES=0
+	fi
+
 	for mod in 8139too 8139cp; do
 		if lsmod | grep "^$mod " > /dev/null; then
 			if ! rmmod $mod; then
@@ -83,7 +87,17 @@ case "$1" in
 		fi
 	done
 
-	modprobe ec_8139too ec_device_index=$DEVICE_INDEX
+	if ! modprobe ec_master ec_eoe_devices=$EOE_DEVICES; then
+	    /bin/false
+	    rc_status -v
+	    rc_exit
+	fi
+
+	if ! modprobe ec_8139too ec_device_index=$DEVICE_INDEX; then
+	    /bin/false
+	    rc_status -v
+	    rc_exit
+	fi
 
 	rc_status -v
 	;;
