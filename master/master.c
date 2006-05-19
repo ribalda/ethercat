@@ -683,7 +683,7 @@ void ec_master_freerun_start(ec_master_t *master /**< EtherCAT master */)
 
     master->mode = EC_MASTER_MODE_FREERUN;
     ec_fsm_reset(&master->fsm);
-    queue_delayed_work(master->workqueue, &master->freerun_work, HZ / 100);
+    queue_delayed_work(master->workqueue, &master->freerun_work, 1);
 }
 
 /*****************************************************************************/
@@ -731,7 +731,7 @@ void ec_master_freerun(void *data /**< master pointer */)
     // release master lock
     spin_unlock_bh(&master->internal_lock);
 
-    queue_delayed_work(master->workqueue, &master->freerun_work, HZ / 100);
+    queue_delayed_work(master->workqueue, &master->freerun_work, 1);
 }
 
 /*****************************************************************************/
