@@ -45,6 +45,12 @@
 
 /*****************************************************************************/
 
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Florian Pose <fp@igh-essen.com>");
+MODULE_DESCRIPTION("EtherCAT RTAI sample module");
+
+/*****************************************************************************/
+
 // comment this for synchronous IO
 #define ASYNC
 
@@ -267,10 +273,6 @@ void __exit cleanup_mod(void)
 }
 
 /*****************************************************************************/
-
-MODULE_LICENSE("GPL");
-MODULE_AUTHOR ("Florian Pose <fp@igh-essen.com>");
-MODULE_DESCRIPTION ("EtherCAT RTAI sample module");
 
 module_init(init_mod);
 module_exit(cleanup_mod);

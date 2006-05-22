@@ -90,26 +90,78 @@
 
 /*****************************************************************************/
 
+/**
+   Convenience macro for printing EtherCAT-specific information to syslog.
+   This will print the message in \a fmt with a prefixed "EtherCAT: ".
+   \param fmt format string (like in printf())
+   \param args arguments (optional)
+*/
+
 #define EC_INFO(fmt, args...) \
     printk(KERN_INFO "EtherCAT: " fmt, ##args)
+
+/**
+   Convenience macro for printing EtherCAT-specific errors to syslog.
+   This will print the message in \a fmt with a prefixed "EtherCAT ERROR: ".
+   \param fmt format string (like in printf())
+   \param args arguments (optional)
+*/
+
 #define EC_ERR(fmt, args...) \
     printk(KERN_ERR "EtherCAT ERROR: " fmt, ##args)
+
+/**
+   Convenience macro for printing EtherCAT-specific warnings to syslog.
+   This will print the message in \a fmt with a prefixed "EtherCAT WARNING: ".
+   \param fmt format string (like in printf())
+   \param args arguments (optional)
+*/
+
 #define EC_WARN(fmt, args...) \
     printk(KERN_WARNING "EtherCAT WARNING: " fmt, ##args)
+
+/**
+   Convenience macro for printing EtherCAT debug messages to syslog.
+   This will print the message in \a fmt with a prefixed "EtherCAT DEBUG: ".
+   \param fmt format string (like in printf())
+   \param args arguments (optional)
+*/
+
 #define EC_DBG(fmt, args...) \
     printk(KERN_DEBUG "EtherCAT DEBUG: " fmt, ##args)
 
+/**
+   Helper macro for EC_STR(), literates a macro argument.
+   \param X argument to literate.
+*/
+
 #define EC_LIT(X) #X
+
+/**
+   Converts a macro argument to a string.
+   \param X argument to stringify.
+*/
+
 #define EC_STR(X) EC_LIT(X)
 
 /**
-   Convenience macro for defining SysFS attributes.
+   Convenience macro for defining read-only SysFS attributes.
+   This results in creating a static variable called attr_\a NAME. The SysFS
+   file will be world-readable.
+   \param NAME name of the attribute to create.
 */
 
 #define EC_SYSFS_READ_ATTR(NAME) \
     static struct attribute attr_##NAME = { \
         .name = EC_STR(NAME), .owner = THIS_MODULE, .mode = S_IRUGO \
     }
+
+/**
+   Convenience macro for defining read-write SysFS attributes.
+   This results in creating a static variable called attr_\a NAME. The SysFS
+   file will be word-readable plus owner-writable.
+   \param NAME name of the attribute to create.
+*/
 
 #define EC_SYSFS_READ_WRITE_ATTR(NAME) \
     static struct attribute attr_##NAME = { \

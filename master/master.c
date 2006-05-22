@@ -58,7 +58,6 @@
 void ec_master_freerun(void *);
 void ec_master_eoe_run(unsigned long);
 ssize_t ec_show_master_attribute(struct kobject *, struct attribute *, char *);
-void ec_master_process_watch_command(ec_master_t *);
 
 /*****************************************************************************/
 
