@@ -6,7 +6,7 @@
 #
 #  Userspace tool for listing EtherCAT slaves.
 #
-#  $Id: slave.c 340 2006-04-11 10:17:30Z fp $
+#  $Id$
 #
 #  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
 #

@@ -4,7 +4,7 @@
 #
 #  Realtime module install script
 #
-#  $Id: install.sh 5 2006-04-07 13:49:10Z fp $
+#  $Id$
 #
 #  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
 #
