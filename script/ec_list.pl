@@ -42,6 +42,7 @@ use Getopt::Std;
 
 my $master_index;
 my $master_dir;
+my $show_sii_desc;
 
 #------------------------------------------------------------------------------
 
@@ -85,12 +86,18 @@ sub query_slaves
 	    &read_integer("$slave_dir/ring_position");
 	$slave->{'coupler_address'} =
 	    &read_string("$slave_dir/coupler_address");
-	$slave->{'vendor_name'} =
-	    &read_string("$slave_dir/vendor_name");
-	$slave->{'product_name'} =
-	    &read_string("$slave_dir/product_name");
-	$slave->{'product_desc'} =
-	    &read_string("$slave_dir/product_desc");
+	unless ($show_sii_desc) {
+	    $slave->{'vendor_name'} =
+		&read_string("$slave_dir/vendor_name");
+	    $slave->{'product_name'} =
+		&read_string("$slave_dir/product_name");
+	    $slave->{'product_desc'} =
+		&read_string("$slave_dir/product_desc");
+	}
+	else {
+	    $slave->{'sii_desc'} =
+		&read_string("$slave_dir/sii_desc");
+	}
 	$slave->{'type'} =
 	    &read_string("$slave_dir/type");
 
@@ -107,9 +114,14 @@ sub query_slaves
 	}
 
 	$abs = sprintf "%i", $slave->{'ring_position'};
-	printf(" %3s %8s   %-12s %-10s %s\n", $abs,
-	       $slave->{'coupler_address'}, $slave->{'vendor_name'},
-	       $slave->{'product_name'}, $slave->{'product_desc'});
+	printf(" %3s %8s   ", $abs, $slave->{'coupler_address'});
+	unless ($show_sii_desc) {
+	    printf("%-12s %-10s %s\n", $slave->{'vendor_name'},
+		   $slave->{'product_name'}, $slave->{'product_desc'});
+	}
+	else {
+	    printf("%s\n", $slave->{'sii_desc'});
+	}
     }
 }
 
@@ -151,9 +163,9 @@ sub get_options
     my %opt;
     my $optret;
 
-    $optret = getopts "m:h", \%opt;
+    $optret = getopts "m:sh", \%opt;
 
-    &print_usage if defined $opt{'h'} or $#ARGV > -1;
+    &print_usage if defined $opt{'h'} or $#ARGV > -1 or !$optret;
 
     if (defined $opt{'m'}) {
 	$master_index = $opt{'m'};
@@ -161,6 +173,8 @@ sub get_options
     else {
 	$master_index = 0;
     }
+
+    $show_sii_desc = defined $opt{'s'};
 }
 
 #------------------------------------------------------------------------------
@@ -168,7 +182,9 @@ sub get_options
 sub print_usage
 {
     print "Usage: ec_list [OPTIONS]\n";
-    print "        -m <IDX>    Query master IDX.\n";
+    print "        -m <IDX>    Query master <IDX>.\n";
+    print "        -s          Show SII slave description instead of";
+    print " vendor/product/description.\n";
     print "        -h          Show this help.\n";
     exit 0;
 }
