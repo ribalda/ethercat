@@ -54,6 +54,8 @@ extern const ec_code_msg_t al_status_messages[];
 
 int ec_slave_fetch_categories(ec_slave_t *);
 ssize_t ec_show_slave_attribute(struct kobject *, struct attribute *, char *);
+ssize_t ec_store_slave_attribute(struct kobject *, struct attribute *,
+                                 const char *, size_t);
 
 /*****************************************************************************/
 
@@ -66,6 +68,7 @@ EC_SYSFS_READ_ATTR(product_name);
 EC_SYSFS_READ_ATTR(product_desc);
 EC_SYSFS_READ_ATTR(sii_desc);
 EC_SYSFS_READ_ATTR(type);
+EC_SYSFS_READ_WRITE_ATTR(state);
 
 static struct attribute *def_attrs[] = {
     &attr_ring_position,
@@ -75,12 +78,13 @@ static struct attribute *def_attrs[] = {
     &attr_product_desc,
     &attr_sii_desc,
     &attr_type,
+    &attr_state,
     NULL,
 };
 
 static struct sysfs_ops sysfs_ops = {
-    .show = &ec_show_slave_attribute,
-    .store = NULL
+    .show = ec_show_slave_attribute,
+    .store = ec_store_slave_attribute
 };
 
 static struct kobj_type ktype_ec_slave = {
@@ -1260,8 +1264,61 @@ ssize_t ec_show_slave_attribute(struct kobject *kobj, /**< slave's kobject */
                 return sprintf(buffer, "normal\n");
         }
     }
+    else if (attr == &attr_state) {
+        switch (slave->current_state) {
+            case EC_SLAVE_STATE_INIT:
+                return sprintf(buffer, "INIT\n");
+            case EC_SLAVE_STATE_PREOP:
+                return sprintf(buffer, "PREOP\n");
+            case EC_SLAVE_STATE_SAVEOP:
+                return sprintf(buffer, "SAVEOP\n");
+            case EC_SLAVE_STATE_OP:
+                return sprintf(buffer, "OP\n");
+            default:
+                return sprintf(buffer, "UNKNOWN\n");
+        }
+    }
 
     return 0;
+}
+
+/*****************************************************************************/
+
+/**
+   Formats attribute data for SysFS write access.
+   \return number of bytes processed, or negative error code
+*/
+
+ssize_t ec_store_slave_attribute(struct kobject *kobj, /**< slave's kobject */
+                                 struct attribute *attr, /**< attribute */
+                                 const char *buffer, /**< memory with data */
+                                 size_t size /**< size of data to store */
+                                 )
+{
+    ec_slave_t *slave = container_of(kobj, ec_slave_t, kobj);
+
+    if (attr == &attr_state) {
+        if (!strcmp(buffer, "INIT\n")) {
+            slave->requested_state = EC_SLAVE_STATE_INIT;
+            return size;
+        }
+        else if (!strcmp(buffer, "PREOP\n")) {
+            slave->requested_state = EC_SLAVE_STATE_PREOP;
+            return size;
+        }
+        else if (!strcmp(buffer, "SAVEOP\n")) {
+            slave->requested_state = EC_SLAVE_STATE_SAVEOP;
+            return size;
+        }
+        else if (!strcmp(buffer, "OP\n")) {
+            slave->requested_state = EC_SLAVE_STATE_OP;
+            return size;
+        }
+
+        EC_ERR("Failed to set slave state!\n");
+    }
+
+    return -EINVAL;
 }
 
 /******************************************************************************

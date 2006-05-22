@@ -111,6 +111,11 @@
         .name = EC_STR(NAME), .owner = THIS_MODULE, .mode = S_IRUGO \
     }
 
+#define EC_SYSFS_READ_WRITE_ATTR(NAME) \
+    static struct attribute attr_##NAME = { \
+        .name = EC_STR(NAME), .owner = THIS_MODULE, .mode = S_IRUGO | S_IWUSR \
+    }
+
 /*****************************************************************************/
 
 extern void ec_print_data(const uint8_t *, size_t);
