@@ -151,6 +151,7 @@ int ec_slave_init(ec_slave_t *slave, /**< EtherCAT slave */
     slave->requested_state = EC_SLAVE_STATE_UNKNOWN;
     slave->current_state = EC_SLAVE_STATE_UNKNOWN;
     slave->state_error = 0;
+    slave->online = 1;
 
     ec_command_init(&slave->mbox_command);
 
@@ -839,6 +840,7 @@ void ec_slave_state_ack(ec_slave_t *slave, /**< EtherCAT slave */
         if (ec_command_nprd(command, slave->station_address, 0x0130, 2))
             return;
         if (unlikely(ec_master_simple_io(slave->master, command))) {
+            slave->current_state = EC_SLAVE_STATE_UNKNOWN;
             EC_WARN("Acknowledge checking failed on slave %i!\n",
                     slave->ring_position);
             return;
@@ -847,12 +849,14 @@ void ec_slave_state_ack(ec_slave_t *slave, /**< EtherCAT slave */
         end = get_cycles();
 
         if (likely(EC_READ_U8(command->data) == state)) {
+            slave->current_state = state;
             EC_INFO("Acknowleged state 0x%02X on slave %i.\n", state,
                     slave->ring_position);
             return;
         }
 
         if (unlikely((end - start) >= timeout)) {
+            slave->current_state = EC_SLAVE_STATE_UNKNOWN;
             EC_WARN("Failed to acknowledge state 0x%02X on slave %i"
                     " - Timeout!\n", state, slave->ring_position);
             return;
@@ -912,6 +916,8 @@ int ec_slave_state_change(ec_slave_t *slave, /**< EtherCAT slave */
 
     command = &slave->master->simple_command;
 
+    slave->requested_state = state;
+
     if (ec_command_npwr(command, slave->station_address, 0x0120, 2)) return -1;
     EC_WRITE_U16(command->data, state);
     if (unlikely(ec_master_simple_io(slave->master, command))) {
@@ -930,6 +936,7 @@ int ec_slave_state_change(ec_slave_t *slave, /**< EtherCAT slave */
         if (ec_command_nprd(command, slave->station_address, 0x0130, 2))
             return -1;
         if (unlikely(ec_master_simple_io(slave->master, command))) {
+            slave->current_state = EC_SLAVE_STATE_UNKNOWN;
             EC_ERR("Failed to check state 0x%02X on slave %i!\n",
                    state, slave->ring_position);
             return -1;
@@ -941,16 +948,20 @@ int ec_slave_state_change(ec_slave_t *slave, /**< EtherCAT slave */
             EC_ERR("Failed to set state 0x%02X - Slave %i refused state change"
                    " (code 0x%02X)!\n", state, slave->ring_position,
                    EC_READ_U8(command->data));
-            state = EC_READ_U8(command->data) & 0x0F;
+            slave->current_state = EC_READ_U8(command->data);
+            state = slave->current_state & 0x0F;
             ec_slave_read_al_status_code(slave);
             ec_slave_state_ack(slave, state);
             return -1;
         }
 
-        if (likely(EC_READ_U8(command->data) == (state & 0x0F)))
+        if (likely(EC_READ_U8(command->data) == (state & 0x0F))) {
+            slave->current_state = state;
             return 0; // state change successful
+        }
 
         if (unlikely((end - start) >= timeout)) {
+            slave->current_state = EC_SLAVE_STATE_UNKNOWN;
             EC_ERR("Failed to check state 0x%02X of slave %i - Timeout!\n",
                    state, slave->ring_position);
             return -1;
@@ -1300,18 +1311,22 @@ ssize_t ec_store_slave_attribute(struct kobject *kobj, /**< slave's kobject */
     if (attr == &attr_state) {
         if (!strcmp(buffer, "INIT\n")) {
             slave->requested_state = EC_SLAVE_STATE_INIT;
+            slave->state_error = 0;
             return size;
         }
         else if (!strcmp(buffer, "PREOP\n")) {
             slave->requested_state = EC_SLAVE_STATE_PREOP;
+            slave->state_error = 0;
             return size;
         }
         else if (!strcmp(buffer, "SAVEOP\n")) {
             slave->requested_state = EC_SLAVE_STATE_SAVEOP;
+            slave->state_error = 0;
             return size;
         }
         else if (!strcmp(buffer, "OP\n")) {
             slave->requested_state = EC_SLAVE_STATE_OP;
+            slave->state_error = 0;
             return size;
         }
 

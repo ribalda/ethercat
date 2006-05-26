@@ -64,6 +64,7 @@ struct ec_fsm
     void (*master_state)(ec_fsm_t *); /**< master state function */
     unsigned int master_slaves_responding; /**< number of responding slaves */
     ec_slave_state_t master_slave_states; /**< states of responding slaves */
+    unsigned int master_validation; /**< non-zero, if validation to do */
 
     void (*slave_state)(ec_fsm_t *); /**< slave state function */
     uint8_t slave_sii_num; /**< SII value iteration counter */
@@ -75,10 +76,13 @@ struct ec_fsm
 
     void (*sii_state)(ec_fsm_t *); /**< SII state function */
     uint16_t sii_offset; /**< input: offset in SII */
+    unsigned int sii_mode; /**< SII reading done by APRD (0) or NPRD (1) */
     uint32_t sii_result; /**< output: read SII value (32bit) */
+    cycles_t sii_start; /**< sii start */
 
     void (*change_state)(ec_fsm_t *); /**< slave state change state function */
     uint8_t change_new; /**< input: new state */
+    cycles_t change_start; /**< change start */
 };
 
 /*****************************************************************************/
