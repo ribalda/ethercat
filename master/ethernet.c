@@ -250,7 +250,6 @@ int ec_eoe_send(ec_eoe_t *eoe /**< EoE handler */)
 
     eoe->tx_offset += current_size;
     eoe->tx_fragment_number++;
-
     return 0;
 }
 
@@ -302,12 +301,15 @@ void ec_eoe_print(const ec_eoe_t *eoe /**< EoE handler */)
 
 /**
    State: RX_START.
-   Starts a new receiving sequence by queuing a command that checks the
-   slave's mailbox for a new command.
+   Starts a new receiving sequence by queueing a command that checks the
+   slave's mailbox for a new EoE command.
 */
 
 void ec_eoe_state_rx_start(ec_eoe_t *eoe /**< EoE handler */)
 {
+    if (!eoe->slave->online || !eoe->slave->master->device->link_state)
+        return;
+
     ec_slave_mbox_prepare_check(eoe->slave);
     ec_master_queue_command(eoe->slave->master, &eoe->slave->mbox_command);
     eoe->state = ec_eoe_state_rx_check;
@@ -493,6 +495,9 @@ void ec_eoe_state_tx_start(ec_eoe_t *eoe /**< EoE handler */)
     unsigned int wakeup;
 #endif
 
+    if (!eoe->slave->online || !eoe->slave->master->device->link_state)
+        return;
+
     spin_lock_bh(&eoe->tx_queue_lock);
 
     if (!eoe->tx_queued_frames || list_empty(&eoe->tx_queue)) {
@@ -601,6 +606,7 @@ int ec_eoedev_open(struct net_device *dev /**< EoE net_device */)
         EC_WARN("device %s is not coupled to any EoE slave!\n", dev->name);
     else {
         eoe->slave->requested_state = EC_SLAVE_STATE_OP;
+        eoe->slave->state_error = 0;
     }
     return 0;
 }
@@ -623,6 +629,7 @@ int ec_eoedev_stop(struct net_device *dev /**< EoE net_device */)
         EC_WARN("device %s is not coupled to any EoE slave!\n", dev->name);
     else {
         eoe->slave->requested_state = EC_SLAVE_STATE_INIT;
+        eoe->slave->state_error = 0;
     }
     return 0;
 }

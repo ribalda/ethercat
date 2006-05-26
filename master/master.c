@@ -853,14 +853,20 @@ void ec_master_eoe_start(ec_master_t *master /**< EtherCAT master */)
             coupled++;
             EC_INFO("Coupling device %s to slave %i.\n",
                     eoe->dev->name, slave->ring_position);
-            if (eoe->opened)
+            if (eoe->opened) {
                 slave->requested_state = EC_SLAVE_STATE_OP;
+            }
+            else {
+                slave->requested_state = EC_SLAVE_STATE_INIT;
+            }
+            slave->state_error = 0;
             break;
         }
 
         if (!found) {
             EC_WARN("No EoE handler for slave %i!\n", slave->ring_position);
             slave->requested_state = EC_SLAVE_STATE_INIT;
+            slave->state_error = 0;
         }
     }
 
@@ -898,6 +904,7 @@ void ec_master_eoe_stop(ec_master_t *master /**< EtherCAT master */)
     list_for_each_entry(eoe, &master->eoe_handlers, list) {
         if (eoe->slave) {
             eoe->slave->requested_state = EC_SLAVE_STATE_INIT;
+            eoe->slave->state_error = 0;
             eoe->slave = NULL;
         }
     }
@@ -906,7 +913,6 @@ void ec_master_eoe_stop(ec_master_t *master /**< EtherCAT master */)
 }
 
 /*****************************************************************************/
-
 /**
    Does the Ethernet-over-EtherCAT processing.
 */
