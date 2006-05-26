@@ -217,16 +217,17 @@ void ec_fsm_master_broadcast(ec_fsm_t *fsm /**< finite state machine */)
     fsm->master_slaves_responding = command->working_counter;
 
     if (topology_change) {
-        if (fsm->master_slaves_responding == master->slave_count) {
-            EC_INFO("%i slave%s responding (VALID).\n",
-                    fsm->master_slaves_responding,
-                    fsm->master_slaves_responding == 1 ? "" : "s");
-            fsm->master_validation = 1; // start validation later
-        }
-        else {
-            EC_WARN("%i slave%s responding. Invalid slave count!\n",
-                    fsm->master_slaves_responding,
-                    fsm->master_slaves_responding == 1 ? "" : "s");
+        EC_INFO("%i slave%s responding.\n",
+                fsm->master_slaves_responding,
+                fsm->master_slaves_responding == 1 ? "" : "s");
+
+        if (master->mode == EC_MASTER_MODE_RUNNING) {
+            if (fsm->master_slaves_responding == master->slave_count) {
+                fsm->master_validation = 1; // start validation later
+            }
+            else {
+                EC_WARN("Invalid slave count. Bus in tainted state.\n");
+            }
         }
     }
 
