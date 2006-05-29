@@ -66,7 +66,7 @@ EC_SYSFS_READ_ATTR(coupler_address);
 EC_SYSFS_READ_ATTR(vendor_name);
 EC_SYSFS_READ_ATTR(product_name);
 EC_SYSFS_READ_ATTR(product_desc);
-EC_SYSFS_READ_ATTR(sii_desc);
+EC_SYSFS_READ_ATTR(sii_name);
 EC_SYSFS_READ_ATTR(type);
 EC_SYSFS_READ_WRITE_ATTR(state);
 
@@ -76,7 +76,7 @@ static struct attribute *def_attrs[] = {
     &attr_vendor_name,
     &attr_product_name,
     &attr_product_desc,
-    &attr_sii_desc,
+    &attr_sii_name,
     &attr_type,
     &attr_state,
     NULL,
@@ -145,9 +145,10 @@ int ec_slave_init(ec_slave_t *slave, /**< EtherCAT slave */
     slave->type = NULL;
     slave->registered = 0;
     slave->fmmu_count = 0;
-    slave->eeprom_name = NULL;
     slave->eeprom_group = NULL;
-    slave->eeprom_desc = NULL;
+    slave->eeprom_image = NULL;
+    slave->eeprom_order = NULL;
+    slave->eeprom_name = NULL;
     slave->requested_state = EC_SLAVE_STATE_UNKNOWN;
     slave->current_state = EC_SLAVE_STATE_UNKNOWN;
     slave->state_error = 0;
@@ -215,9 +216,10 @@ void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
         kfree(pdo);
     }
 
-    if (slave->eeprom_name) kfree(slave->eeprom_name);
     if (slave->eeprom_group) kfree(slave->eeprom_group);
-    if (slave->eeprom_desc) kfree(slave->eeprom_desc);
+    if (slave->eeprom_image) kfree(slave->eeprom_image);
+    if (slave->eeprom_order) kfree(slave->eeprom_order);
+    if (slave->eeprom_name) kfree(slave->eeprom_name);
 
     // free all SDOs
     list_for_each_entry_safe(sdo, next_sdo, &slave->sdo_dictionary, list) {
@@ -648,9 +650,11 @@ int ec_slave_fetch_general(ec_slave_t *slave, /**< EtherCAT slave */
 
     if (ec_slave_locate_string(slave, data[0], &slave->eeprom_group))
         return -1;
-    if (ec_slave_locate_string(slave, data[1], &slave->eeprom_name))
+    if (ec_slave_locate_string(slave, data[1], &slave->eeprom_image))
         return -1;
-    if (ec_slave_locate_string(slave, data[3], &slave->eeprom_desc))
+    if (ec_slave_locate_string(slave, data[2], &slave->eeprom_order))
+        return -1;
+    if (ec_slave_locate_string(slave, data[3], &slave->eeprom_name))
         return -1;
 
     for (i = 0; i < 4; i++)
@@ -1126,12 +1130,14 @@ void ec_slave_print(const ec_slave_t *slave, /**< EtherCAT slave */
     EC_INFO("    Revision number: 0x%08X, Serial number: 0x%08X\n",
             slave->sii_revision_number, slave->sii_serial_number);
 
-    if (slave->eeprom_name)
-        EC_INFO("    Name: %s\n", slave->eeprom_name);
     if (slave->eeprom_group)
         EC_INFO("    Group: %s\n", slave->eeprom_group);
-    if (slave->eeprom_desc)
-        EC_INFO("    Description: %s\n", slave->eeprom_desc);
+    if (slave->eeprom_image)
+        EC_INFO("    Image: %s\n", slave->eeprom_image);
+    if (slave->eeprom_order)
+        EC_INFO("    Order#: %s\n", slave->eeprom_order);
+    if (slave->eeprom_name)
+        EC_INFO("    Name: %s\n", slave->eeprom_name);
 
     if (!list_empty(&slave->eeprom_syncs)) {
         EC_INFO("    Sync-Managers:\n");
@@ -1263,9 +1269,9 @@ ssize_t ec_show_slave_attribute(struct kobject *kobj, /**< slave's kobject */
         if (slave->type)
             return sprintf(buffer, "%s\n", slave->type->description);
     }
-    else if (attr == &attr_sii_desc) {
-        if (slave->eeprom_desc)
-            return sprintf(buffer, "%s\n", slave->eeprom_desc);
+    else if (attr == &attr_sii_name) {
+        if (slave->eeprom_name)
+            return sprintf(buffer, "%s\n", slave->eeprom_name);
     }
     else if (attr == &attr_type) {
         if (slave->type) {

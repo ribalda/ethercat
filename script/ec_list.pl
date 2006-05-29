@@ -42,7 +42,7 @@ use Getopt::Std;
 
 my $master_index;
 my $master_dir;
-my $show_sii_desc;
+my $show_sii_naming;
 
 #------------------------------------------------------------------------------
 
@@ -86,7 +86,7 @@ sub query_slaves
 	    &read_integer("$slave_dir/ring_position");
 	$slave->{'coupler_address'} =
 	    &read_string("$slave_dir/coupler_address");
-	unless ($show_sii_desc) {
+	unless ($show_sii_naming) {
 	    $slave->{'vendor_name'} =
 		&read_string("$slave_dir/vendor_name");
 	    $slave->{'product_name'} =
@@ -95,8 +95,8 @@ sub query_slaves
 		&read_string("$slave_dir/product_desc");
 	}
 	else {
-	    $slave->{'sii_desc'} =
-		&read_string("$slave_dir/sii_desc");
+	    $slave->{'sii_name'} =
+		&read_string("$slave_dir/sii_name");
 	}
 	$slave->{'type'} =
 	    &read_string("$slave_dir/type");
@@ -115,12 +115,12 @@ sub query_slaves
 
 	$abs = sprintf "%i", $slave->{'ring_position'};
 	printf(" %3s %8s   ", $abs, $slave->{'coupler_address'});
-	unless ($show_sii_desc) {
+	unless ($show_sii_naming) {
 	    printf("%-12s %-10s %s\n", $slave->{'vendor_name'},
 		   $slave->{'product_name'}, $slave->{'product_desc'});
 	}
 	else {
-	    printf("%s\n", $slave->{'sii_desc'});
+	    printf("%s\n", $slave->{'sii_name'});
 	}
     }
 }
@@ -174,7 +174,7 @@ sub get_options
 	$master_index = 0;
     }
 
-    $show_sii_desc = defined $opt{'s'};
+    $show_sii_naming = defined $opt{'s'};
 }
 
 #------------------------------------------------------------------------------
@@ -183,7 +183,7 @@ sub print_usage
 {
     print "Usage: ec_list [OPTIONS]\n";
     print "        -m <IDX>    Query master <IDX>.\n";
-    print "        -s          Show SII slave description instead of";
+    print "        -s          Show SII naming instead of";
     print " vendor/product/description.\n";
     print "        -h          Show this help.\n";
     exit 0;

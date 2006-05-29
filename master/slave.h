@@ -265,9 +265,10 @@ struct ec_slave
     struct list_head eeprom_syncs; /**< EEPROM SYNC MANAGER categories */
     struct list_head eeprom_pdos; /**< EEPROM [RT]XPDO categories */
 
-    char *eeprom_name; /**< slave name acc. to EEPROM */
     char *eeprom_group; /**< slave group acc. to EEPROM */
-    char *eeprom_desc; /**< slave description acc. to EEPROM */
+    char *eeprom_image; /**< slave image name acc. to EEPROM */
+    char *eeprom_order; /**< slave order number acc. to EEPROM */
+    char *eeprom_name; /**< slave name acc. to EEPROM */
 
     struct list_head sdo_dictionary; /**< SDO directory list */
 
