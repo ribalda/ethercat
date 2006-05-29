@@ -58,7 +58,7 @@ else
 ifneq ($(wildcard kernel.conf),)
 include kernel.conf
 else
-KERNELDIR = /usr/src/linux
+KERNELDIR := /lib/modules/`uname -r`/build
 endif
 
 modules:

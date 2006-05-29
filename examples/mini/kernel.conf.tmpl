@@ -1,13 +1,12 @@
 #------------------------------------------------------------------------------
 #
-#  EtherCAT Konfigurationsdatei Kernel 2.6
+#  Kernel configuration file for EtherCAT mini sample
 #
 #  $Id$
 #
-#  This file is a versioned template configuration. Copy it to "ethercat.conf"
+#  This file is a versioned template configuration. Copy it to "kernel.conf"
 #  (which is ignored by Subversion) and adjust it to your needs.
 #
 #------------------------------------------------------------------------------
 
-KERNELDIR = /usr/src/linux
-
+KERNELDIR = /lib/modules/`uname -r`/build
