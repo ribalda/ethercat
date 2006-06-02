@@ -45,7 +45,7 @@ obj-m := ec_master.o
 ec_master-objs := module.o master.o device.o slave.o command.o types.o \
 		domain.o mailbox.o canopen.o ethernet.o debug.o fsm.o
 
-REV := $(shell svnversion $(src) 2>/dev/null)
+REV := $(shell svnversion $(src) 2>/dev/null || echo "unknown")
 
 EXTRA_CFLAGS := -DSVNREV=$(REV) -DUSER=$(USER)
 
@@ -62,13 +62,14 @@ else
 KERNEL := $(shell uname -r)
 endif
 
-KERNELDIR := /lib/modules/$(KERNEL)/build
+KERNEL_DIR := /lib/modules/$(KERNEL)/build
+CURRENT_DIR := $(shell pwd)
 
 modules:
-	$(MAKE) -C $(KERNELDIR) M=`pwd`
+	$(MAKE) -C $(KERNEL_DIR) M=$(CURRENT_DIR)
 
 clean:
-	$(MAKE) -C $(KERNELDIR) M=`pwd` clean
+	$(MAKE) -C $(KERNEL_DIR) M=$(CURRENT_DIR) clean
 
 #------------------------------------------------------------------------------
 

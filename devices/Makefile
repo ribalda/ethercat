@@ -44,7 +44,7 @@ obj-m := ec_8139too.o
 
 ec_8139too-objs := 8139too.o
 
-REV := $(shell svnversion $(src) 2>/dev/null)
+REV := $(shell svnversion $(src) 2>/dev/null || echo "unknown")
 
 EXTRA_CFLAGS = -DEC_REV=$(REV) -DEC_USER=$(USER)
 
@@ -61,13 +61,14 @@ else
 KERNEL := $(shell uname -r)
 endif
 
-KERNELDIR := /lib/modules/$(KERNEL)/build
+KERNEL_DIR := /lib/modules/$(KERNEL)/build
+CURRENT_DIR := $(shell pwd)
 
 modules:
-	$(MAKE) -C $(KERNELDIR) M=`pwd`
+	$(MAKE) -C $(KERNEL_DIR) M=$(CURRENT_DIR)
 
 clean:
-	$(MAKE) -C $(KERNELDIR) M=`pwd` clean
+	$(MAKE) -C $(KERNEL_DIR) M=$(CURRENT_DIR) clean
 
 #------------------------------------------------------------------------------
 

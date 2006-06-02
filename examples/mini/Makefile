@@ -56,14 +56,16 @@ else
 ifneq ($(wildcard kernel.conf),)
 include kernel.conf
 else
-KERNELDIR := /lib/modules/`uname -r`/build
+KERNEL_DIR := /lib/modules/`uname -r`/build
 endif
 
+CURRENT_DIR := $(shell pwd)
+
 modules:
-	$(MAKE) -C $(KERNELDIR) M=`pwd`
+	$(MAKE) -C $(KERNEL_DIR) M=$(CURRENT_DIR)
 
 clean:
-	$(MAKE) -C $(KERNELDIR) M=`pwd` clean
+	$(MAKE) -C $(KERNEL_DIR) M=$(CURRENT_DIR) clean
 
 #----------------------------------------------------------------
 
