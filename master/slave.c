@@ -69,7 +69,7 @@ EC_SYSFS_READ_ATTR(product_desc);
 EC_SYSFS_READ_ATTR(sii_name);
 EC_SYSFS_READ_ATTR(type);
 EC_SYSFS_READ_WRITE_ATTR(state);
-EC_SYSFS_READ_ATTR(eeprom);
+EC_SYSFS_READ_WRITE_ATTR(eeprom);
 
 static struct attribute *def_attrs[] = {
     &attr_ring_position,
@@ -157,6 +157,8 @@ int ec_slave_init(ec_slave_t *slave, /**< EtherCAT slave */
     slave->current_state = EC_SLAVE_STATE_UNKNOWN;
     slave->state_error = 0;
     slave->online = 1;
+    slave->new_eeprom_data = NULL;
+    slave->new_eeprom_size = 0;
 
     ec_command_init(&slave->mbox_command);
 
@@ -239,6 +241,7 @@ void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
     }
 
     if (slave->eeprom_data) kfree(slave->eeprom_data);
+    if (slave->new_eeprom_data) kfree(slave->new_eeprom_data);
 
     ec_command_clear(&slave->mbox_command);
 }
@@ -1247,6 +1250,83 @@ int ec_slave_check_crc(ec_slave_t *slave /**< EtherCAT slave */)
 /*****************************************************************************/
 
 /**
+   Schedules an EEPROM write operation.
+   \return 0 in case of success, else < 0
+*/
+
+ssize_t ec_slave_write_eeprom(ec_slave_t *slave, /**< EtherCAT slave */
+                              const uint8_t *data, /**< new EEPROM data */
+                              size_t size /**< size of data in bytes */
+                              )
+{
+    uint16_t word_size, cat_type, cat_size;
+    const uint16_t *data_words, *next_header;
+    uint16_t *new_data;
+
+    if (!slave->master->eeprom_write_enable) {
+        EC_ERR("Writing EEPROMs not allowed! Enable via"
+               " eeprom_write_enable SysFS entry.\n");
+        return -1;
+    }
+
+    if (slave->master->mode != EC_MASTER_MODE_FREERUN) {
+        EC_ERR("Writing EEPROMs only allowed in freerun mode!\n");
+        return -1;
+    }
+
+    if (slave->new_eeprom_data) {
+        EC_ERR("Slave %i already has a pending EEPROM write operation!\n",
+               slave->ring_position);
+        return -1;
+    }
+
+    // coarse check of the data
+
+    if (size % 2) {
+        EC_ERR("EEPROM size is odd! Dropping.\n");
+        return -1;
+    }
+
+    data_words = (const uint16_t *) data;
+    word_size = size / 2;
+
+    if (word_size < 0x0041) {
+        EC_ERR("EEPROM data too short! Dropping.\n");
+        return -1;
+    }
+
+    next_header = data_words + 0x0040;
+    cat_type = EC_READ_U16(next_header);
+    while (cat_type != 0xFFFF) {
+        cat_type = EC_READ_U16(next_header);
+        cat_size = EC_READ_U16(next_header + 1);
+        if ((next_header + cat_size + 2) - data_words >= word_size) {
+            EC_ERR("EEPROM data seems to be corrupted! Dropping.\n");
+            return -1;
+        }
+        next_header += cat_size + 2;
+        cat_type = EC_READ_U16(next_header);
+    }
+
+    // data ok!
+
+    if (!(new_data = (uint16_t *) kmalloc(word_size * 2, GFP_KERNEL))) {
+        EC_ERR("Unable to allocate memory for new EEPROM data!\n");
+        return -1;
+    }
+    memcpy(new_data, data, size);
+
+    slave->new_eeprom_size = word_size;
+    slave->new_eeprom_data = new_data;
+
+    EC_INFO("EEPROM writing scheduled for slave %i, %i words.\n",
+            slave->ring_position, word_size);
+    return 0;
+}
+
+/*****************************************************************************/
+
+/**
    Formats attribute data for SysFS read access.
    \return number of bytes to read
 */
@@ -1358,6 +1438,10 @@ ssize_t ec_store_slave_attribute(struct kobject *kobj, /**< slave's kobject */
         }
 
         EC_ERR("Failed to set slave state!\n");
+    }
+    else if (attr == &attr_eeprom) {
+        if (!ec_slave_write_eeprom(slave, buffer, size))
+            return size;
     }
 
     return -EINVAL;

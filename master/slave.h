@@ -271,6 +271,9 @@ struct ec_slave
     char *eeprom_order; /**< slave order number acc. to EEPROM */
     char *eeprom_name; /**< slave name acc. to EEPROM */
 
+    uint16_t *new_eeprom_data; /**< new EEPROM data to write */
+    size_t new_eeprom_size; /**< size of new EEPROM data in words */
+
     struct list_head sdo_dictionary; /**< SDO directory list */
 
     ec_command_t mbox_command; /**< mailbox command */

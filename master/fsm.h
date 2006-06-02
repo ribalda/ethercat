@@ -71,7 +71,7 @@ struct ec_fsm
     void (*sii_state)(ec_fsm_t *); /**< SII state function */
     uint16_t sii_offset; /**< input: offset in SII */
     unsigned int sii_mode; /**< SII reading done by APRD (0) or NPRD (1) */
-    uint8_t sii_result[4]; /**< output: raw SII value (32bit) */
+    uint8_t sii_value[4]; /**< raw SII value (32bit) */
     cycles_t sii_start; /**< sii start */
 
     void (*change_state)(ec_fsm_t *); /**< slave state change state function */
