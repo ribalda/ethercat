@@ -261,10 +261,11 @@ struct ec_slave
     ec_fmmu_t fmmus[EC_MAX_FMMUS]; /**< FMMU configurations */
     uint8_t fmmu_count; /**< number of FMMUs used */
 
+    uint8_t *eeprom_data; /**< Complete EEPROM image */
+    uint16_t eeprom_size; /**< size of the EEPROM contents in byte */
     struct list_head eeprom_strings; /**< EEPROM STRING categories */
     struct list_head eeprom_syncs; /**< EEPROM SYNC MANAGER categories */
     struct list_head eeprom_pdos; /**< EEPROM [RT]XPDO categories */
-
     char *eeprom_group; /**< slave group acc. to EEPROM */
     char *eeprom_image; /**< slave image name acc. to EEPROM */
     char *eeprom_order; /**< slave order number acc. to EEPROM */

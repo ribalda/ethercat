@@ -69,6 +69,7 @@ EC_SYSFS_READ_ATTR(product_desc);
 EC_SYSFS_READ_ATTR(sii_name);
 EC_SYSFS_READ_ATTR(type);
 EC_SYSFS_READ_WRITE_ATTR(state);
+EC_SYSFS_READ_ATTR(eeprom);
 
 static struct attribute *def_attrs[] = {
     &attr_ring_position,
@@ -79,6 +80,7 @@ static struct attribute *def_attrs[] = {
     &attr_sii_name,
     &attr_type,
     &attr_state,
+    &attr_eeprom,
     NULL,
 };
 
@@ -145,6 +147,8 @@ int ec_slave_init(ec_slave_t *slave, /**< EtherCAT slave */
     slave->type = NULL;
     slave->registered = 0;
     slave->fmmu_count = 0;
+    slave->eeprom_data = NULL;
+    slave->eeprom_size = 0;
     slave->eeprom_group = NULL;
     slave->eeprom_image = NULL;
     slave->eeprom_order = NULL;
@@ -233,6 +237,8 @@ void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
         }
         kfree(sdo);
     }
+
+    if (slave->eeprom_data) kfree(slave->eeprom_data);
 
     ec_command_clear(&slave->mbox_command);
 }
@@ -1121,6 +1127,8 @@ void ec_slave_print(const ec_slave_t *slave, /**< EtherCAT slave */
 
     EC_INFO("  EEPROM data:\n");
 
+    EC_INFO("    EEPROM content size: %i Bytes\n", slave->eeprom_size);
+
     if (slave->sii_alias)
         EC_INFO("    Configured station alias: 0x%04X (%i)\n",
                 slave->sii_alias, slave->sii_alias);
@@ -1293,6 +1301,19 @@ ssize_t ec_show_slave_attribute(struct kobject *kobj, /**< slave's kobject */
                 return sprintf(buffer, "OP\n");
             default:
                 return sprintf(buffer, "UNKNOWN\n");
+        }
+    }
+    else if (attr == &attr_eeprom) {
+        if (slave->eeprom_data) {
+            if (slave->eeprom_size > PAGE_SIZE) {
+                EC_ERR("EEPROM contents of slave %i exceed 1 page (%i/%i).\n",
+                       slave->ring_position, slave->eeprom_size,
+                       (int) PAGE_SIZE);
+            }
+            else {
+                memcpy(buffer, slave->eeprom_data, slave->eeprom_size);
+                return slave->eeprom_size;
+            }
         }
     }
 
