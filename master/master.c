@@ -58,6 +58,8 @@
 void ec_master_freerun(void *);
 void ec_master_eoe_run(unsigned long);
 ssize_t ec_show_master_attribute(struct kobject *, struct attribute *, char *);
+ssize_t ec_store_master_attribute(struct kobject *, struct attribute *,
+                                  const char *, size_t);
 
 /*****************************************************************************/
 
@@ -65,16 +67,18 @@ ssize_t ec_show_master_attribute(struct kobject *, struct attribute *, char *);
 
 EC_SYSFS_READ_ATTR(slave_count);
 EC_SYSFS_READ_ATTR(mode);
+EC_SYSFS_READ_WRITE_ATTR(eeprom_write_enable);
 
 static struct attribute *ec_def_attrs[] = {
     &attr_slave_count,
     &attr_mode,
+    &attr_eeprom_write_enable,
     NULL,
 };
 
 static struct sysfs_ops ec_sysfs_ops = {
     .show = &ec_show_master_attribute,
-    .store = NULL
+    .store = ec_store_master_attribute
 };
 
 static struct kobj_type ktype_ec_master = {
@@ -243,6 +247,8 @@ void ec_master_reset(ec_master_t *master /**< EtherCAT master */)
     master->request_cb = NULL;
     master->release_cb = NULL;
     master->cb_data = NULL;
+
+    master->eeprom_write_enable = 0;
 
     ec_fsm_reset(&master->fsm);
 }
@@ -820,6 +826,44 @@ ssize_t ec_show_master_attribute(struct kobject *kobj, /**< kobject */
     }
 
     return 0;
+}
+
+/*****************************************************************************/
+
+/**
+   Formats attribute data for SysFS write access.
+   \return number of bytes processed, or negative error code
+*/
+
+ssize_t ec_store_master_attribute(struct kobject *kobj, /**< slave's kobject */
+                                  struct attribute *attr, /**< attribute */
+                                  const char *buffer, /**< memory with data */
+                                  size_t size /**< size of data to store */
+                                  )
+{
+    ec_master_t *master = container_of(kobj, ec_master_t, kobj);
+
+    if (attr == &attr_eeprom_write_enable) {
+        if (!strcmp(buffer, "1\n")) {
+            master->eeprom_write_enable = 1;
+            EC_INFO("Slave EEPROM writing enabled.\n");
+            return size;
+        }
+        else if (!strcmp(buffer, "0\n")) {
+            master->eeprom_write_enable = 0;
+            EC_INFO("Slave EEPROM writing disabled.\n");
+            return size;
+        }
+
+        EC_ERR("Invalid value for eeprom_write_enable!\n");
+
+        if (master->eeprom_write_enable) {
+            master->eeprom_write_enable = 0;
+            EC_INFO("Slave EEPROM writing disabled.\n");
+        }
+    }
+
+    return -EINVAL;
 }
 
 /*****************************************************************************/
