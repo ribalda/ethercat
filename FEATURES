@@ -1,0 +1,66 @@
+-------------------------------------------------------------------------------
+
+This is the FEATURES file of the IgH EtherCAT Master.
+
+$Id$
+
+-------------------------------------------------------------------------------
+
+General Features:
+
+* Runs as kernel module for Linux 2.6.
+
+* Comes with EtherCAT-capable network driver for RTL8139 and compatible
+  network interface cards.
+  - Interrupt-less network driver operation.
+  - Easy implementation of additional network drivers through common device
+    interface of the master.
+  - Runs even with PCMCIA cards.
+
+* Supports multiple EtherCAT masters on one machine.
+
+* Supports any realtime extension through independent architecture.
+  - RTAI, IPIPE, ADEOS, etc.
+  - Runs well even without realtime extensions.
+
+* Common kernel interface, for realtime modules using EtherCAT functionality.
+  - Synchronous and asynchronous sending and receiving of frames.
+  - Avoidance of unnecessary copy operations for process data.
+
+* Separating slave groups through domains.
+  - Handling of multiple slave groups with different sampling rates.
+  - Automatic calculation of process data mapping, FMMU- and sync manager
+    configuration within the domains.
+
+* Master finite state machine (FSM). Thus:
+  - Bus monitoring during realtime operation.
+  - Automatic reconfiguration of slaves on bus power failure during realtime
+    operation.
+  - Controlling of slave states during realtime operation.
+
+* Free-Run mode, if master is idle.
+  - Automatic scanning of slaves upon topology changes.
+  - Bus visualisation and EoE processing without realtime process connected.
+
+* Implements the CANopen-over-EtherCAT (CoE) protocol.
+  - Configuration of CoE-capable slaves via SDO interface.
+  - SDO dictionary listing.
+
+* Implements the Ethernet-over-EtherCAT (EoE) protocol.
+  - Creates virtual network devices that are automatically coupled to
+    EoE-capable	slaves.
+  - Thus natively supports either a switched or a routed EoE network
+    architecture.
+
+* User space interface via the System Filesystem (SysFS).
+  - User space tool for bus visualisation.
+  - Slave E²PROM image reading and writing.
+
+* Seamless integration in your favourite Linux distibution.
+  - Master and network device configuration via sysconfig files.
+  - UnitedLinux compatible init script for master control.
+
+* Virtual read-only network interface for debugging purposes and for
+  "sniffing" the EtherCAT traffic (through Ethereal, or others).
+
+-------------------------------------------------------------------------------
