@@ -1,21 +1,35 @@
+-------------------------------------------------------------------------------
 
 EtherCAT master TODO
-====================
 
 $Id$
 
-- Mailbox-Handler
-- Dispatching of received mailbox data?
-- File access over EtherCAT (FoE)
+-------------------------------------------------------------------------------
 
-- Number of frames the NIC can handle
-- Remove slave type information from master / read XML files from user space
+Important things to do:
 
-- eepro100 driver
-- VLAN tagging
+* New SDO-Configuration interface
 
-- Calculate bus topology
+* Remove slave type information from master / New RT Interface
 
-- Documentation
+* SysFS interface for Secondary slave address
 
-- User space tool for configuration and visualisation
+* Implement all EtherCAT commands
+
+* Determine number of frames the NIC can handle
+
+* Implement eepro100 driver
+
+-------------------------------------------------------------------------------
+
+Not-so-important things to do:
+
+* User space tool for configuration
+
+* Calculate bus topology
+
+* File access over EtherCAT (FoE)
+
+* Allow VLAN tagging
+
+-------------------------------------------------------------------------------
