@@ -343,6 +343,7 @@ static struct pci_device_id rtl8139_pci_tbl[] = {
 
 /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
+/* prevent driver from being loaded automatically */
 //MODULE_DEVICE_TABLE (pci, rtl8139_pci_tbl);
 
 /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
@@ -670,10 +671,8 @@ struct rtl8139_private {
 
 /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
-MODULE_AUTHOR("Wilhelm Hagemeister <hm@igh-essen.com>,"
-              " Florian Pose <fp@igh-essen.com>");
-MODULE_DESCRIPTION("RealTek RTL-8139 Fast Ethernet"
-                   " driver with EtherCAT functionality");
+MODULE_AUTHOR("Florian Pose <fp@igh-essen.com>");
+MODULE_DESCRIPTION("RealTek RTL-8139 EtherCAT driver");
 MODULE_LICENSE("GPL");
 MODULE_VERSION(COMPILE_INFO);
 
@@ -1416,12 +1415,9 @@ static int rtl8139_open (struct net_device *dev)
 
 	/* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
-#ifdef EC_DEBUG
-    printk(KERN_DEBUG "%s: open\n", dev->name);
-#endif
-
     if (dev != rtl_ec_net_dev) {
-	    retval = request_irq (dev->irq, rtl8139_interrupt, SA_SHIRQ, dev->name, dev);
+	    retval = request_irq(dev->irq, rtl8139_interrupt,
+                             SA_SHIRQ, dev->name, dev);
         if (retval)
             return retval;
     }
@@ -1821,12 +1817,6 @@ static void rtl8139_tx_timeout (struct net_device *dev)
 				" (queue head)" : "");
 
 	tp->xstats.tx_timeouts++;
-
-	/* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
-
-    printk(KERN_DEBUG "%s: tx_timeout\n", dev->name);
-
-	/* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 
 	/* disable Tx ASAP, if not already */
 	tmp8 = RTL_R8 (ChipCmd);
