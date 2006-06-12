@@ -35,10 +35,10 @@
 #
 #------------------------------------------------------------------------------
 
-ifneq ($(KERNELRELEASE),)
-
 #------------------------------------------------------------------------------
 #  kbuild section
+
+ifneq ($(KERNELRELEASE),)
 
 obj-m := ec_master.o
 
@@ -50,11 +50,9 @@ REV := $(shell svnversion $(src) 2>/dev/null || echo "unknown")
 EXTRA_CFLAGS := -DSVNREV=$(REV) -DUSER=$(USER)
 
 #------------------------------------------------------------------------------
+#  default section
 
 else
-
-#------------------------------------------------------------------------------
-#  default section
 
 ifneq ($(wildcard ../ethercat.conf),)
 include ../ethercat.conf
@@ -66,7 +64,12 @@ KERNEL_DIR := /lib/modules/$(KERNEL)/build
 CURRENT_DIR := $(shell pwd)
 
 modules:
-	$(MAKE) -C $(KERNEL_DIR) M=$(CURRENT_DIR)
+	$(MAKE) -C $(KERNEL_DIR) M=$(CURRENT_DIR) modules
+
+install: modules_install
+
+modules_install:
+	$(MAKE) -C $(KERNEL_DIR) M=$(CURRENT_DIR) modules_install
 
 clean:
 	$(MAKE) -C $(KERNEL_DIR) M=$(CURRENT_DIR) clean

@@ -49,24 +49,11 @@ if [ ! -d /lib/modules/$KERNEL ]; then
     exit 1
 fi
 
-#------------------------------------------------------------------------------
-
-# Copy files
-
-INSTALLDIR=/lib/modules/$KERNEL/kernel/drivers/net
-MODULES=(master/ec_master.ko devices/ec_8139too.ko)
-
 echo "EtherCAT installer - Kernel: $KERNEL"
-echo "  Installing modules"
-
-for mod in ${MODULES[*]}; do
-    echo "    $mod"
-    cp $mod $INSTALLDIR || exit 1
-done
 
 #------------------------------------------------------------------------------
 
-# Update dependencies
+# Update module dependencies
 
 echo "  Building module dependencies"
 depmod

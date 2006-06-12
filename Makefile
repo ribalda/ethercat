@@ -1,6 +1,8 @@
 #------------------------------------------------------------------------------
 #
-#  EtherCAT Makefile
+#  Makefile
+#  
+#  IgH EtherCAT master
 #
 #  $Id$
 #
@@ -55,7 +57,14 @@ KERNEL_DIR := /lib/modules/$(KERNEL)/build
 CURRENT_DIR := $(shell pwd)
 
 modules:
-	$(MAKE) -C $(KERNEL_DIR) M=$(CURRENT_DIR)
+	$(MAKE) -C $(KERNEL_DIR) M=$(CURRENT_DIR) modules
+
+install: modules_install
+	@script/install.sh $(KERNEL)
+
+modules_install:
+	$(MAKE) -C $(KERNEL_DIR) M=$(CURRENT_DIR)/master modules_install
+	$(MAKE) -C $(KERNEL_DIR) M=$(CURRENT_DIR)/devices modules_install
 
 clean: cleandoc
 	$(MAKE) -C $(KERNEL_DIR) M=$(CURRENT_DIR) clean
@@ -65,9 +74,6 @@ doc:
 
 cleandoc:
 	@rm -rf doc
-
-install:
-	@script/install.sh $(KERNEL)
 
 #------------------------------------------------------------------------------
 
