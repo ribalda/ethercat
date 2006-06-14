@@ -704,13 +704,13 @@ void ec_master_freerun_stop(ec_master_t *master /**< EtherCAT master */)
     ec_master_eoe_stop(master);
 
     EC_INFO("Stopping Free-Run mode.\n");
+    master->mode = EC_MASTER_MODE_IDLE;
 
     if (!cancel_delayed_work(&master->freerun_work)) {
         flush_workqueue(master->workqueue);
     }
 
     ec_master_clear_slaves(master);
-    master->mode = EC_MASTER_MODE_IDLE;
 }
 
 /*****************************************************************************/
@@ -736,7 +736,8 @@ void ec_master_freerun(void *data /**< master pointer */)
     // release master lock
     spin_unlock_bh(&master->internal_lock);
 
-    queue_delayed_work(master->workqueue, &master->freerun_work, 1);
+    if (master->mode == EC_MASTER_MODE_FREERUN)
+        queue_delayed_work(master->workqueue, &master->freerun_work, 1);
 }
 
 /*****************************************************************************/
