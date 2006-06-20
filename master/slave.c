@@ -166,6 +166,7 @@ int ec_slave_init(ec_slave_t *slave, /**< EtherCAT slave */
     INIT_LIST_HEAD(&slave->eeprom_syncs);
     INIT_LIST_HEAD(&slave->eeprom_pdos);
     INIT_LIST_HEAD(&slave->sdo_dictionary);
+    INIT_LIST_HEAD(&slave->varsize_fields);
 
     for (i = 0; i < 4; i++) {
         slave->dl_link[i] = 0;
@@ -192,6 +193,7 @@ void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
     ec_eeprom_pdo_entry_t *entry, *next_ent;
     ec_sdo_t *sdo, *next_sdo;
     ec_sdo_entry_t *en, *next_en;
+    ec_varsize_t *var, *next_var;
 
     slave = container_of(kobj, ec_slave_t, kobj);
 
@@ -238,6 +240,12 @@ void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
             kfree(en);
         }
         kfree(sdo);
+    }
+
+    // free information about variable sized data fields
+    list_for_each_entry_safe(var, next_var, &slave->varsize_fields, list) {
+        list_del(&var->list);
+        kfree(var);
     }
 
     if (slave->eeprom_data) kfree(slave->eeprom_data);
@@ -1447,6 +1455,43 @@ ssize_t ec_store_slave_attribute(struct kobject *kobj, /**< slave's kobject */
     return -EINVAL;
 }
 
+/*****************************************************************************/
+
+/**
+   \return size of sync manager contents
+*/
+
+size_t ec_slave_calc_sync_size(const ec_slave_t *slave, /**< EtherCAT slave */
+                               const ec_sync_t *sync /**< sync manager */
+                               )
+{
+    unsigned int i, found;
+    const ec_field_t *field;
+    const ec_varsize_t *var;
+    size_t size;
+
+    // if size is specified, return size
+    if (sync->size) return sync->size;
+
+    // sync manager has variable size (size == 0).
+
+    size = 0;
+    for (i = 0; (field = sync->fields[i]); i++) {
+        found = 0;
+        list_for_each_entry(var, &slave->varsize_fields, list) {
+            if (var->field != field) continue;
+            size += var->size;
+            found = 1;
+        }
+
+        if (!found) {
+            EC_WARN("Variable data field \"%s\" of slave %i has no size"
+                    " information!\n", field->name, slave->ring_position);
+        }
+    }
+    return size;
+}
+
 /******************************************************************************
  *  Realtime interface
  *****************************************************************************/
@@ -1466,9 +1511,75 @@ int ecrt_slave_write_alias(ec_slave_t *slave, /**< EtherCAT slave */
 
 /*****************************************************************************/
 
+/**
+   \return 0 in case of success, else < 0
+   \ingroup RealtimeInterface
+*/
+
+int ecrt_slave_field_size(ec_slave_t *slave, /**< EtherCAT slave */
+                          const char *field_name, /**< data field name */
+                          unsigned int field_index, /**< data field index */
+                          size_t size /**< new data field size */
+                          )
+{
+    unsigned int i, j, field_counter;
+    const ec_sync_t *sync;
+    const ec_field_t *field;
+    ec_varsize_t *var;
+
+    if (!slave->type) {
+        EC_ERR("Slave %i has no type information!\n", slave->ring_position);
+        return -1;
+    }
+
+    field_counter = 0;
+    for (i = 0; (sync = slave->type->sync_managers[i]); i++) {
+        for (j = 0; (field = sync->fields[j]); j++) {
+            if (!strcmp(field->name, field_name)) {
+                if (field_counter++ == field_index) {
+                    // is the size of this field variable?
+                    if (field->size) {
+                        EC_ERR("Field \"%s\"[%i] of slave %i has no variable"
+                               " size!\n", field->name, field_index,
+                               slave->ring_position);
+                        return -1;
+                    }
+                    // does a size specification already exist?
+                    list_for_each_entry(var, &slave->varsize_fields, list) {
+                        if (var->field == field) {
+                            EC_WARN("Resizing field \"%s\"[%i] of slave %i.\n",
+                                    field->name, field_index,
+                                    slave->ring_position);
+                            var->size = size;
+                            return 0;
+                        }
+                    }
+                    // create a new size specification...
+                    if (!(var = kmalloc(sizeof(ec_varsize_t), GFP_KERNEL))) {
+                        EC_ERR("Failed to allocate memory for varsize_t!\n");
+                        return -1;
+                    }
+                    var->field = field;
+                    var->size = size;
+                    list_add_tail(&var->list, &slave->varsize_fields);
+                    return 0;
+                }
+            }
+        }
+    }
+
+    EC_ERR("Slave %i (\"%s %s\") has no field \"%s\"[%i]!\n",
+           slave->ring_position, slave->type->vendor_name,
+           slave->type->product_name, field_name, field_index);
+    return -1;
+}
+
+/*****************************************************************************/
+
 /**< \cond */
 
 EXPORT_SYMBOL(ecrt_slave_write_alias);
+EXPORT_SYMBOL(ecrt_slave_field_size);
 
 /**< \endcond */
 

@@ -1128,7 +1128,7 @@ void ec_fsm_slave_sync(ec_fsm_t *fsm /**< finite state machine */)
     if (slave->type) {
         for (j = 0; slave->type->sync_managers[j] && j < EC_MAX_SYNC; j++) {
             sync = slave->type->sync_managers[j];
-            ec_sync_config(sync, command->data + EC_SYNC_SIZE * j);
+            ec_sync_config(sync, slave, command->data + EC_SYNC_SIZE * j);
         }
     }
 
@@ -1247,7 +1247,8 @@ void ec_fsm_slave_fmmu(ec_fsm_t *fsm /**< finite state machine */)
                     0x0600, EC_FMMU_SIZE * slave->base_fmmu_count);
     memset(command->data, 0x00, EC_FMMU_SIZE * slave->base_fmmu_count);
     for (j = 0; j < slave->fmmu_count; j++) {
-        ec_fmmu_config(&slave->fmmus[j], command->data + EC_FMMU_SIZE * j);
+        ec_fmmu_config(&slave->fmmus[j], slave,
+                       command->data + EC_FMMU_SIZE * j);
     }
 
     ec_master_queue_command(master, command);

@@ -214,6 +214,20 @@ ec_sdo_entry_t;
 /*****************************************************************************/
 
 /**
+   Variable-sized field information.
+*/
+
+typedef struct
+{
+    struct list_head list; /**< list item */
+    const ec_field_t *field; /**< data field */
+    size_t size; /**< field size */
+}
+ec_varsize_t;
+
+/*****************************************************************************/
+
+/**
    EtherCAT slave.
 */
 
@@ -282,6 +296,9 @@ struct ec_slave
     ec_slave_state_t current_state; /**< current slave state */
     unsigned int state_error; /**< a state error has happened */
     unsigned int online; /**< non-zero, if the slave responds. */
+
+    struct list_head varsize_fields; /**< size information for variable-sized
+                                        data fields. */
 };
 
 /*****************************************************************************/
@@ -310,6 +327,7 @@ int ec_slave_fetch_pdo(ec_slave_t *, const uint8_t *, size_t, ec_pdo_type_t);
 int ec_slave_locate_string(ec_slave_t *, unsigned int, char **);
 
 // misc.
+size_t ec_slave_calc_sync_size(const ec_slave_t *, const ec_sync_t *);
 void ec_slave_print(const ec_slave_t *, unsigned int);
 int ec_slave_check_crc(ec_slave_t *);
 

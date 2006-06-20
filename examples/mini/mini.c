@@ -57,14 +57,14 @@ spinlock_t master_lock = SPIN_LOCK_UNLOCKED;
 
 // data fields
 //void *r_ssi_input, *r_ssi_status, *r_4102[3];
+void *r_kbus_in;
 
 // channels
 uint32_t k_pos;
 uint8_t k_stat;
 
 ec_field_init_t domain1_fields[] = {
-    {NULL, "3", "Beckhoff", "EL5001", "InputValue",   0},
-    {NULL, "2", "Beckhoff", "EL4132", "OutputValue",  0},
+    {&r_kbus_in, "0", "Beckhoff", "BK1120", "Inputs", 0},
     {}
 };
 
@@ -133,6 +133,8 @@ void release_lock(void *data)
 
 int __init init_mini_module(void)
 {
+    ec_slave_t *slave;
+
     printk(KERN_INFO "=== Starting Minimal EtherCAT environment... ===\n");
 
     if ((master = ecrt_request_master(0)) == NULL) {
@@ -154,6 +156,15 @@ int __init init_mini_module(void)
         printk(KERN_ERR "Field registration failed!\n");
         goto out_release_master;
     }
+
+#if 1
+    printk(KERN_INFO "Setting variable data field sizes...\n");
+    if (!(slave = ecrt_master_get_slave(master, "0"))) {
+        printk(KERN_ERR "Failed to get slave!\n");
+        goto out_deactivate;
+    }
+    ecrt_slave_field_size(slave, "Inputs", 0, 1);
+#endif
 
     printk(KERN_INFO "Activating master...\n");
     if (ecrt_master_activate(master)) {
@@ -187,14 +198,6 @@ int __init init_mini_module(void)
         ecrt_slave_sdo_write_exp8(slave, 0x406A, 0, 25) ||
         ecrt_slave_sdo_write_exp8(slave, 0x406B, 0, 50)) {
         printk(KERN_ERR "Failed to configure SSI slave!\n");
-        goto out_deactivate;
-    }
-#endif
-
-#if 0
-    printk(KERN_INFO "Writing alias...\n");
-    if (ecrt_slave_sdo_write_exp16(slave, 0xBEEF)) {
-        printk(KERN_ERR "Failed to write alias!\n");
         goto out_deactivate;
     }
 #endif

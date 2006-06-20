@@ -225,7 +225,7 @@ int ec_domain_add_command(ec_domain_t *domain, /**< EtherCAT domain */
 */
 
 int ec_domain_alloc(ec_domain_t *domain, /**< EtherCAT domain */
-                    uint32_t base_address /**< Logische Basisadresse */
+                    uint32_t base_address /**< logical base address */
                     )
 {
     ec_field_reg_t *field_reg;
@@ -234,12 +234,12 @@ int ec_domain_alloc(ec_domain_t *domain, /**< EtherCAT domain */
     unsigned int i, j, cmd_count;
     uint32_t field_off, field_off_cmd;
     uint32_t cmd_offset;
-    size_t cmd_data_size;
+    size_t cmd_data_size, sync_size;
     ec_command_t *command;
 
     domain->base_address = base_address;
 
-    // Größe der Prozessdaten berechnen und Kommandos allozieren
+    // calculate size of process data and allocate memory
     domain->data_size = 0;
     cmd_offset = base_address;
     cmd_data_size = 0;
@@ -249,20 +249,21 @@ int ec_domain_alloc(ec_domain_t *domain, /**< EtherCAT domain */
             fmmu = &slave->fmmus[j];
             if (fmmu->domain == domain) {
                 fmmu->logical_start_address = base_address + domain->data_size;
-                domain->data_size += fmmu->sync->size;
-                if (cmd_data_size + fmmu->sync->size > EC_MAX_DATA_SIZE) {
+                sync_size = ec_slave_calc_sync_size(slave, fmmu->sync);
+                domain->data_size += sync_size;
+                if (cmd_data_size + sync_size > EC_MAX_DATA_SIZE) {
                     if (ec_domain_add_command(domain, cmd_offset,
                                               cmd_data_size)) return -1;
                     cmd_offset += cmd_data_size;
                     cmd_data_size = 0;
                     cmd_count++;
                 }
-                cmd_data_size += fmmu->sync->size;
+                cmd_data_size += sync_size;
             }
         }
     }
 
-    // Letztes Kommando allozieren
+    // allocate last command
     if (cmd_data_size) {
         if (ec_domain_add_command(domain, cmd_offset, cmd_data_size))
             return -1;
@@ -275,14 +276,14 @@ int ec_domain_alloc(ec_domain_t *domain, /**< EtherCAT domain */
         return 0;
     }
 
-    // Alle Prozessdatenzeiger setzen
+    // set all process data pointers
     list_for_each_entry(field_reg, &domain->field_regs, list) {
         for (i = 0; i < field_reg->slave->fmmu_count; i++) {
             fmmu = &field_reg->slave->fmmus[i];
             if (fmmu->domain == domain && fmmu->sync == field_reg->sync) {
                 field_off = fmmu->logical_start_address +
                     field_reg->field_offset;
-                // Kommando suchen
+                // search command
                 list_for_each_entry(command, &domain->commands, list) {
                     field_off_cmd = field_off - command->address.logical;
                     if (field_off >= command->address.logical &&

@@ -498,7 +498,7 @@ int ec_master_simple_io(ec_master_t *master, /**< EtherCAT master */
 {
     unsigned int response_tries_left;
 
-    response_tries_left = 10;
+    response_tries_left = 10000;
 
     while (1)
     {
@@ -748,11 +748,16 @@ void ec_master_freerun(void *data /**< master pointer */)
 */
 
 void ec_sync_config(const ec_sync_t *sync, /**< sync manager */
+                    const ec_slave_t *slave, /**< EtherCAT slave */
                     uint8_t *data /**> configuration memory */
                     )
 {
+    size_t sync_size;
+
+    sync_size = ec_slave_calc_sync_size(slave, sync);
+
     EC_WRITE_U16(data,     sync->physical_start_address);
-    EC_WRITE_U16(data + 2, sync->size);
+    EC_WRITE_U16(data + 2, sync_size);
     EC_WRITE_U8 (data + 4, sync->control_byte);
     EC_WRITE_U8 (data + 5, 0x00); // status byte (read only)
     EC_WRITE_U16(data + 6, 0x0001); // enable
@@ -784,11 +789,16 @@ void ec_eeprom_sync_config(const ec_eeprom_sync_t *sync, /**< sync manager */
 */
 
 void ec_fmmu_config(const ec_fmmu_t *fmmu, /**< FMMU */
+                    const ec_slave_t *slave, /**< EtherCAT slave */
                     uint8_t *data /**> configuration memory */
                     )
 {
+    size_t sync_size;
+
+    sync_size = ec_slave_calc_sync_size(slave, fmmu->sync);
+
     EC_WRITE_U32(data,      fmmu->logical_start_address);
-    EC_WRITE_U16(data + 4,  fmmu->sync->size);
+    EC_WRITE_U16(data + 4,  sync_size); // size of fmmu
     EC_WRITE_U8 (data + 6,  0x00); // logical start bit
     EC_WRITE_U8 (data + 7,  0x07); // logical end bit
     EC_WRITE_U16(data + 8,  fmmu->sync->physical_start_address);
@@ -1133,7 +1143,8 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT master */)
                 if (ec_command_npwr(command, slave->station_address,
                                     0x0800 + j * EC_SYNC_SIZE, EC_SYNC_SIZE))
                     return -1;
-                ec_sync_config(sync, command->data);
+                ec_sync_config(sync, slave, command->data);
+                EC_INFO("configuring sync.\n");
                 if (unlikely(ec_master_simple_io(master, command))) {
                     EC_ERR("Setting sync manager %i failed on slave %i!\n",
                            j, slave->ring_position);
@@ -1211,7 +1222,8 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT master */)
             if (ec_command_npwr(command, slave->station_address,
                                 0x0600 + j * EC_FMMU_SIZE, EC_FMMU_SIZE))
                 return -1;
-            ec_fmmu_config(fmmu, command->data);
+            ec_fmmu_config(fmmu, slave, command->data);
+            EC_INFO("configuring fmmu.\n");
             if (unlikely(ec_master_simple_io(master, command))) {
                 EC_ERR("Setting FMMU %i failed on slave %i!\n",
                        j, slave->ring_position);
