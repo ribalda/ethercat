@@ -48,8 +48,9 @@
 /*****************************************************************************/
 
 void ec_canopen_abort_msg(uint32_t);
-int ec_slave_fetch_sdo_descriptions(ec_slave_t *);
-int ec_slave_fetch_sdo_entries(ec_slave_t *, ec_sdo_t *, uint8_t);
+int ec_slave_fetch_sdo_descriptions(ec_slave_t *, ec_command_t *);
+int ec_slave_fetch_sdo_entries(ec_slave_t *, ec_command_t *,
+                               ec_sdo_t *, uint8_t);
 
 /*****************************************************************************/
 
@@ -68,10 +69,14 @@ int ec_slave_sdo_read_exp(ec_slave_t *slave, /**< EtherCAT slave */
                           uint8_t *target /**< 4-byte memory */
                           )
 {
+    ec_command_t command;
     size_t rec_size;
     uint8_t *data;
 
-    if (!(data = ec_slave_mbox_prepare_send(slave, 0x03, 6))) return -1;
+    ec_command_init(&command);
+
+    if (!(data = ec_slave_mbox_prepare_send(slave, &command, 0x03, 6)))
+        goto err;
 
     EC_WRITE_U16(data, 0x2 << 12); // SDO request
     EC_WRITE_U8 (data + 2, (0x1 << 1 // expedited transfer
@@ -79,14 +84,15 @@ int ec_slave_sdo_read_exp(ec_slave_t *slave, /**< EtherCAT slave */
     EC_WRITE_U16(data + 3, sdo_index);
     EC_WRITE_U8 (data + 5, sdo_subindex);
 
-    if (!(data = ec_slave_mbox_simple_io(slave, &rec_size))) return -1;
+    if (!(data = ec_slave_mbox_simple_io(slave, &command, &rec_size)))
+        goto err;
 
     if (EC_READ_U16(data) >> 12 == 0x2 && // SDO request
         EC_READ_U8 (data + 2) >> 5 == 0x4) { // abort SDO transfer request
         EC_ERR("SDO upload 0x%04X:%X aborted on slave %i.\n",
                sdo_index, sdo_subindex, slave->ring_position);
         ec_canopen_abort_msg(EC_READ_U32(data + 6));
-        return -1;
+        goto err;
     }
 
     if (EC_READ_U16(data) >> 12 != 0x3 || // SDO response
@@ -97,11 +103,16 @@ int ec_slave_sdo_read_exp(ec_slave_t *slave, /**< EtherCAT slave */
         EC_ERR("Invalid SDO upload response at slave %i!\n",
                slave->ring_position);
         ec_print_data(data, rec_size);
-        return -1;
+        goto err;
     }
 
     memcpy(target, data + 6, 4);
+
+    ec_command_clear(&command);
     return 0;
+ err:
+    ec_command_clear(&command);
+    return -1;
 }
 
 /*****************************************************************************/
@@ -120,13 +131,17 @@ int ec_slave_sdo_write_exp(ec_slave_t *slave, /**< EtherCAT slave */
 {
     uint8_t *data;
     size_t rec_size;
+    ec_command_t command;
+
+    ec_command_init(&command);
 
     if (size == 0 || size > 4) {
         EC_ERR("Invalid data size!\n");
-        return -1;
+        goto err;
     }
 
-    if (!(data = ec_slave_mbox_prepare_send(slave, 0x03, 0x0A))) return -1;
+    if (!(data = ec_slave_mbox_prepare_send(slave, &command, 0x03, 0x0A)))
+        goto err;
 
     EC_WRITE_U16(data, 0x2 << 12); // SDO request
     EC_WRITE_U8 (data + 2, (0x1 // size specified
@@ -138,7 +153,8 @@ int ec_slave_sdo_write_exp(ec_slave_t *slave, /**< EtherCAT slave */
     memcpy(data + 6, sdo_data, size);
     if (size < 4) memset(data + 6 + size, 0x00, 4 - size);
 
-    if (!(data = ec_slave_mbox_simple_io(slave, &rec_size))) return -1;
+    if (!(data = ec_slave_mbox_simple_io(slave, &command, &rec_size)))
+        goto err;
 
     if (EC_READ_U16(data) >> 12 == 0x2 && // SDO request
         EC_READ_U8 (data + 2) >> 5 == 0x4) { // abort SDO transfer request
@@ -160,7 +176,11 @@ int ec_slave_sdo_write_exp(ec_slave_t *slave, /**< EtherCAT slave */
         return -1;
     }
 
+    ec_command_clear(&command);
     return 0;
+ err:
+    ec_command_clear(&command);
+    return -1;
 }
 
 /*****************************************************************************/
@@ -182,22 +202,27 @@ int ecrt_slave_sdo_read(ec_slave_t *slave, /**< EtherCAT slave */
     uint8_t *data;
     size_t rec_size, data_size;
     uint32_t complete_size;
+    ec_command_t command;
 
-    if (!(data = ec_slave_mbox_prepare_send(slave, 0x03, 6))) return -1;
+    ec_command_init(&command);
+
+    if (!(data = ec_slave_mbox_prepare_send(slave, &command, 0x03, 6)))
+        goto err;
 
     EC_WRITE_U16(data, 0x2 << 12); // SDO request
     EC_WRITE_U8 (data + 2, 0x2 << 5); // initiate upload request
     EC_WRITE_U16(data + 3, sdo_index);
     EC_WRITE_U8 (data + 5, sdo_subindex);
 
-    if (!(data = ec_slave_mbox_simple_io(slave, &rec_size))) return -1;
+    if (!(data = ec_slave_mbox_simple_io(slave, &command, &rec_size)))
+        goto err;
 
     if (EC_READ_U16(data) >> 12 == 0x2 && // SDO request
         EC_READ_U8 (data + 2) >> 5 == 0x4) { // abort SDO transfer request
         EC_ERR("SDO upload 0x%04X:%X aborted on slave %i.\n",
                sdo_index, sdo_subindex, slave->ring_position);
         ec_canopen_abort_msg(EC_READ_U32(data + 6));
-        return -1;
+        goto err;
     }
 
     if (EC_READ_U16(data) >> 12 != 0x3 || // SDO response
@@ -208,30 +233,35 @@ int ecrt_slave_sdo_read(ec_slave_t *slave, /**< EtherCAT slave */
         EC_ERR("Invalid SDO upload response at slave %i!\n",
                slave->ring_position);
         ec_print_data(data, rec_size);
-        return -1;
+        goto err;
     }
 
     if (rec_size < 10) {
         EC_ERR("Received currupted SDO upload response!\n");
         ec_print_data(data, rec_size);
-        return -1;
+        goto err;
     }
 
     if ((complete_size = EC_READ_U32(data + 6)) > *size) {
         EC_ERR("SDO data does not fit into buffer (%i / %i)!\n",
                complete_size, *size);
-        return -1;
+        goto err;
     }
 
     data_size = rec_size - 10;
 
     if (data_size != complete_size) {
         EC_ERR("SDO data incomplete - Fragmenting not implemented.\n");
-        return -1;
+        goto err;
     }
 
     memcpy(target, data + 10, data_size);
+
+    ec_command_clear(&command);
     return 0;
+ err:
+    ec_command_clear(&command);
+    return -1;
 }
 
 /*****************************************************************************/
@@ -248,8 +278,12 @@ int ec_slave_fetch_sdo_list(ec_slave_t *slave /**< EtherCAT slave */)
     unsigned int i, sdo_count;
     ec_sdo_t *sdo;
     uint16_t sdo_index;
+    ec_command_t command;
 
-    if (!(data = ec_slave_mbox_prepare_send(slave, 0x03, 8))) return -1;
+    ec_command_init(&command);
+
+    if (!(data = ec_slave_mbox_prepare_send(slave, &command, 0x03, 8)))
+        goto err;
 
     EC_WRITE_U16(data, 0x8 << 12); // SDO information
     EC_WRITE_U8 (data + 2, 0x01); // Get OD List Request
@@ -257,21 +291,22 @@ int ec_slave_fetch_sdo_list(ec_slave_t *slave /**< EtherCAT slave */)
     EC_WRITE_U16(data + 4, 0x0000);
     EC_WRITE_U16(data + 6, 0x0001); // deliver all SDOs!
 
-    if (unlikely(ec_master_simple_io(slave->master, &slave->mbox_command))) {
+    if (unlikely(ec_master_simple_io(slave->master, &command))) {
         EC_ERR("Mailbox checking failed on slave %i!\n", slave->ring_position);
-        return -1;
+        goto err;
     }
 
     do {
-        if (!(data = ec_slave_mbox_simple_receive(slave, 0x03, &rec_size)))
-            return -1;
+        if (!(data = ec_slave_mbox_simple_receive(slave, &command,
+                                                  0x03, &rec_size)))
+            goto err;
 
         if (EC_READ_U16(data) >> 12 == 0x8 && // SDO information
             (EC_READ_U8(data + 2) & 0x7F) == 0x07) { // error response
             EC_ERR("SDO information error response at slave %i!\n",
                    slave->ring_position);
             ec_canopen_abort_msg(EC_READ_U32(data + 6));
-            return -1;
+            goto err;
         }
 
         if (EC_READ_U16(data) >> 12 != 0x8 || // SDO information
@@ -279,13 +314,13 @@ int ec_slave_fetch_sdo_list(ec_slave_t *slave /**< EtherCAT slave */)
             EC_ERR("Invalid SDO list response at slave %i!\n",
                    slave->ring_position);
             ec_print_data(data, rec_size);
-            return -1;
+            goto err;
         }
 
         if (rec_size < 8) {
             EC_ERR("Invalid data size!\n");
             ec_print_data(data, rec_size);
-            return -1;
+            goto err;
         }
 
         sdo_count = (rec_size - 8) / 2;
@@ -295,7 +330,7 @@ int ec_slave_fetch_sdo_list(ec_slave_t *slave /**< EtherCAT slave */)
 
             if (!(sdo = (ec_sdo_t *) kmalloc(sizeof(ec_sdo_t), GFP_KERNEL))) {
                 EC_ERR("Failed to allocate memory for SDO!\n");
-                return -1;
+                goto err;
             }
 
             // Initialize SDO object
@@ -311,9 +346,13 @@ int ec_slave_fetch_sdo_list(ec_slave_t *slave /**< EtherCAT slave */)
     while (EC_READ_U8(data + 2) & 0x80);
 
     // Fetch all SDO descriptions
-    if (ec_slave_fetch_sdo_descriptions(slave)) return -1;
+    if (ec_slave_fetch_sdo_descriptions(slave, &command)) goto err;
 
+    ec_command_clear(&command);
     return 0;
+ err:
+    ec_command_clear(&command);
+    return -1;
 }
 
 /*****************************************************************************/
@@ -323,21 +362,25 @@ int ec_slave_fetch_sdo_list(ec_slave_t *slave /**< EtherCAT slave */)
    \return 0 in case of success, else < 0
 */
 
-int ec_slave_fetch_sdo_descriptions(ec_slave_t *slave /**< EtherCAT slave */)
+int ec_slave_fetch_sdo_descriptions(ec_slave_t *slave, /**< EtherCAT slave */
+                                    ec_command_t *command /**< command */
+                                    )
 {
     uint8_t *data;
     size_t rec_size, name_size;
     ec_sdo_t *sdo;
 
     list_for_each_entry(sdo, &slave->sdo_dictionary, list) {
-        if (!(data = ec_slave_mbox_prepare_send(slave, 0x03, 8))) return -1;
+        if (!(data = ec_slave_mbox_prepare_send(slave, command, 0x03, 8)))
+            return -1;
         EC_WRITE_U16(data, 0x8 << 12); // SDO information
         EC_WRITE_U8 (data + 2, 0x03); // Get object description request
         EC_WRITE_U8 (data + 3, 0x00);
         EC_WRITE_U16(data + 4, 0x0000);
         EC_WRITE_U16(data + 6, sdo->index); // SDO index
 
-        if (!(data = ec_slave_mbox_simple_io(slave, &rec_size))) return -1;
+        if (!(data = ec_slave_mbox_simple_io(slave, command, &rec_size)))
+            return -1;
 
         if (EC_READ_U16(data) >> 12 == 0x8 && // SDO information
             (EC_READ_U8 (data + 2) & 0x7F) == 0x07) { // error response
@@ -364,8 +407,10 @@ int ec_slave_fetch_sdo_descriptions(ec_slave_t *slave /**< EtherCAT slave */)
             return -1;
         }
 
+#if 0
         EC_DBG("object desc response:\n");
         ec_print_data(data, rec_size);
+#endif
 
         //sdo->unknown = EC_READ_U16(data + 8);
         sdo->object_code = EC_READ_U8(data + 11);
@@ -387,7 +432,8 @@ int ec_slave_fetch_sdo_descriptions(ec_slave_t *slave /**< EtherCAT slave */)
         }
 
         // Fetch all entries (subindices)
-        if (ec_slave_fetch_sdo_entries(slave, sdo, EC_READ_U8(data + 10)))
+        if (ec_slave_fetch_sdo_entries(slave, command, sdo,
+                                       EC_READ_U8(data + 10)))
             return -1;
     }
 
@@ -402,6 +448,7 @@ int ec_slave_fetch_sdo_descriptions(ec_slave_t *slave /**< EtherCAT slave */)
 */
 
 int ec_slave_fetch_sdo_entries(ec_slave_t *slave, /**< EtherCAT slave */
+                               ec_command_t *command, /**< command */
                                ec_sdo_t *sdo, /**< SDO */
                                uint8_t subindices /**< number of subindices */
                                )
@@ -412,7 +459,7 @@ int ec_slave_fetch_sdo_entries(ec_slave_t *slave, /**< EtherCAT slave */
     ec_sdo_entry_t *entry;
 
     for (i = 1; i <= subindices; i++) {
-        if (!(data = ec_slave_mbox_prepare_send(slave, 0x03, 10)))
+        if (!(data = ec_slave_mbox_prepare_send(slave, command, 0x03, 10)))
             return -1;
 
         EC_WRITE_U16(data, 0x8 << 12); // SDO information
@@ -423,7 +470,8 @@ int ec_slave_fetch_sdo_entries(ec_slave_t *slave, /**< EtherCAT slave */
         EC_WRITE_U8 (data + 8, i); // SDO subindex
         EC_WRITE_U8 (data + 9, 0x00); // value info (no values)
 
-        if (!(data = ec_slave_mbox_simple_io(slave, &rec_size))) return -1;
+        if (!(data = ec_slave_mbox_simple_io(slave, command, &rec_size)))
+            return -1;
 
         if (EC_READ_U16(data) >> 12 == 0x8 && // SDO information
             (EC_READ_U8 (data + 2) & 0x7F) == 0x07) { // error response

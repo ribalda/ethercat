@@ -52,12 +52,12 @@
    \return pointer to mailbox command data
 */
 
-uint8_t *ec_slave_mbox_prepare_send(ec_slave_t *slave, /**< slave */
+uint8_t *ec_slave_mbox_prepare_send(const ec_slave_t *slave, /**< slave */
+                                    ec_command_t *command, /**< command */
                                     uint8_t type, /**< mailbox protocol */
                                     size_t size /**< size of the data */
                                     )
 {
-    ec_command_t *command = &slave->mbox_command;
     size_t total_size;
 
     if (unlikely(!slave->sii_mailbox_protocols)) {
@@ -92,10 +92,10 @@ uint8_t *ec_slave_mbox_prepare_send(ec_slave_t *slave, /**< slave */
    \return 0 in case of success, else < 0
 */
 
-int ec_slave_mbox_prepare_check(ec_slave_t *slave /**< slave */)
+int ec_slave_mbox_prepare_check(const ec_slave_t *slave, /**< slave */
+                                ec_command_t *command /**< command */
+                                )
 {
-    ec_command_t *command = &slave->mbox_command;
-
     // FIXME: second sync manager?
     if (ec_command_nprd(command, slave->station_address, 0x808, 8))
         return -1;
@@ -110,9 +110,9 @@ int ec_slave_mbox_prepare_check(ec_slave_t *slave /**< slave */)
    \return 0 in case of success, else < 0
 */
 
-int ec_slave_mbox_check(const ec_slave_t *slave /**< slave */)
+int ec_slave_mbox_check(const ec_command_t *command /**< command */)
 {
-    return EC_READ_U8(slave->mbox_command.data + 5) & 8 ? 1 : 0;
+    return EC_READ_U8(command->data + 5) & 8 ? 1 : 0;
 }
 
 /*****************************************************************************/
@@ -122,10 +122,10 @@ int ec_slave_mbox_check(const ec_slave_t *slave /**< slave */)
    \return 0 in case of success, else < 0
 */
 
-int ec_slave_mbox_prepare_fetch(ec_slave_t *slave /**< slave */)
+int ec_slave_mbox_prepare_fetch(const ec_slave_t *slave, /**< slave */
+                                ec_command_t *command /**< command */
+                                )
 {
-    ec_command_t *command = &slave->mbox_command;
-
     if (ec_command_nprd(command, slave->station_address,
                         slave->sii_tx_mailbox_offset,
                         slave->sii_tx_mailbox_size)) return -1;
@@ -139,12 +139,12 @@ int ec_slave_mbox_prepare_fetch(ec_slave_t *slave /**< slave */)
    \return pointer to the received data
 */
 
-uint8_t *ec_slave_mbox_fetch(ec_slave_t *slave, /**< slave */
+uint8_t *ec_slave_mbox_fetch(const ec_slave_t *slave, /**< slave */
+                             ec_command_t *command, /**< command */
                              uint8_t type, /**< expected mailbox protocol */
                              size_t *size /**< size of the received data */
                              )
 {
-    ec_command_t *command = &slave->mbox_command;
     size_t data_size;
 
     if ((EC_READ_U8(command->data + 5) & 0x0F) != type) {
@@ -171,14 +171,13 @@ uint8_t *ec_slave_mbox_fetch(ec_slave_t *slave, /**< slave */
    \return pointer to the received data
 */
 
-uint8_t *ec_slave_mbox_simple_io(ec_slave_t *slave, /**< slave */
+uint8_t *ec_slave_mbox_simple_io(const ec_slave_t *slave, /**< slave */
+                                 ec_command_t *command, /**< command */
                                  size_t *size /**< size of the received data */
                                  )
 {
     uint8_t type;
-    ec_command_t *command;
 
-    command = &slave->mbox_command;
     type = EC_READ_U8(command->data + 5);
 
     if (unlikely(ec_master_simple_io(slave->master, command))) {
@@ -187,7 +186,7 @@ uint8_t *ec_slave_mbox_simple_io(ec_slave_t *slave, /**< slave */
         return NULL;
     }
 
-    return ec_slave_mbox_simple_receive(slave, type, size);
+    return ec_slave_mbox_simple_receive(slave, command, type, size);
 }
 
 /*****************************************************************************/
@@ -197,21 +196,20 @@ uint8_t *ec_slave_mbox_simple_io(ec_slave_t *slave, /**< slave */
    \return pointer to the received data
 */
 
-uint8_t *ec_slave_mbox_simple_receive(ec_slave_t *slave, /**< slave */
+uint8_t *ec_slave_mbox_simple_receive(const ec_slave_t *slave, /**< slave */
+                                      ec_command_t *command, /**< command */
                                       uint8_t type, /**< expected protocol */
                                       size_t *size /**< received data size */
                                       )
 {
     cycles_t start, end, timeout;
-    ec_command_t *command;
 
-    command = &slave->mbox_command;
     start = get_cycles();
     timeout = (cycles_t) 100 * cpu_khz; // 100ms
 
     while (1)
     {
-        if (ec_slave_mbox_prepare_check(slave)) return NULL;
+        if (ec_slave_mbox_prepare_check(slave, command)) return NULL;
         if (unlikely(ec_master_simple_io(slave->master, command))) {
             EC_ERR("Mailbox checking failed on slave %i!\n",
                    slave->ring_position);
@@ -220,7 +218,7 @@ uint8_t *ec_slave_mbox_simple_receive(ec_slave_t *slave, /**< slave */
 
         end = get_cycles();
 
-        if (ec_slave_mbox_check(slave))
+        if (ec_slave_mbox_check(command))
             break; // proceed with receiving data
 
         if ((end - start) >= timeout) {
@@ -232,7 +230,7 @@ uint8_t *ec_slave_mbox_simple_receive(ec_slave_t *slave, /**< slave */
         udelay(100);
     }
 
-    if (ec_slave_mbox_prepare_fetch(slave)) return NULL;
+    if (ec_slave_mbox_prepare_fetch(slave, command)) return NULL;
     if (unlikely(ec_master_simple_io(slave->master, command))) {
         EC_ERR("Mailbox receiving failed on slave %i!\n",
                slave->ring_position);
@@ -243,7 +241,7 @@ uint8_t *ec_slave_mbox_simple_receive(ec_slave_t *slave, /**< slave */
         EC_DBG("Mailbox receive took %ius.\n", ((u32) (end - start) * 1000
                                                 / cpu_khz));
 
-    return ec_slave_mbox_fetch(slave, type, size);
+    return ec_slave_mbox_fetch(slave, command, type, size);
 }
 
 /*****************************************************************************/

@@ -79,6 +79,7 @@ int ec_eoe_init(ec_eoe_t *eoe /**< EoE handler */)
     int result, i;
 
     eoe->slave = NULL;
+    ec_command_init(&eoe->command);
     eoe->state = ec_eoe_state_rx_start;
     eoe->opened = 0;
     eoe->rx_skb = NULL;
@@ -159,6 +160,8 @@ void ec_eoe_clear(ec_eoe_t *eoe /**< EoE handler */)
     }
 
     if (eoe->rx_skb) dev_kfree_skb(eoe->rx_skb);
+
+    ec_command_clear(&eoe->command);
 }
 
 /*****************************************************************************/
@@ -235,8 +238,8 @@ int ec_eoe_send(ec_eoe_t *eoe /**< EoE handler */)
     printk("\n");
 #endif
 
-    if (!(data = ec_slave_mbox_prepare_send(eoe->slave, 0x02,
-                                            current_size + 4)))
+    if (!(data = ec_slave_mbox_prepare_send(eoe->slave, &eoe->command,
+                                            0x02, current_size + 4)))
         return -1;
 
     EC_WRITE_U8 (data,     0x00); // eoe fragment req.
@@ -246,7 +249,7 @@ int ec_eoe_send(ec_eoe_t *eoe /**< EoE handler */)
                             (eoe->tx_frame_number & 0x0F) << 12));
 
     memcpy(data + 4, eoe->tx_frame->skb->data + eoe->tx_offset, current_size);
-    ec_master_queue_command(eoe->slave->master, &eoe->slave->mbox_command);
+    ec_master_queue_command(eoe->slave->master, &eoe->command);
 
     eoe->tx_offset += current_size;
     eoe->tx_fragment_number++;
@@ -310,8 +313,8 @@ void ec_eoe_state_rx_start(ec_eoe_t *eoe /**< EoE handler */)
     if (!eoe->slave->online || !eoe->slave->master->device->link_state)
         return;
 
-    ec_slave_mbox_prepare_check(eoe->slave);
-    ec_master_queue_command(eoe->slave->master, &eoe->slave->mbox_command);
+    ec_slave_mbox_prepare_check(eoe->slave, &eoe->command);
+    ec_master_queue_command(eoe->slave->master, &eoe->command);
     eoe->state = ec_eoe_state_rx_check;
 }
 
@@ -325,19 +328,19 @@ void ec_eoe_state_rx_start(ec_eoe_t *eoe /**< EoE handler */)
 
 void ec_eoe_state_rx_check(ec_eoe_t *eoe /**< EoE handler */)
 {
-    if (eoe->slave->mbox_command.state != EC_CMD_RECEIVED) {
+    if (eoe->command.state != EC_CMD_RECEIVED) {
         eoe->stats.rx_errors++;
         eoe->state = ec_eoe_state_tx_start;
         return;
     }
 
-    if (!ec_slave_mbox_check(eoe->slave)) {
+    if (!ec_slave_mbox_check(&eoe->command)) {
         eoe->state = ec_eoe_state_tx_start;
         return;
     }
 
-    ec_slave_mbox_prepare_fetch(eoe->slave);
-    ec_master_queue_command(eoe->slave->master, &eoe->slave->mbox_command);
+    ec_slave_mbox_prepare_fetch(eoe->slave, &eoe->command);
+    ec_master_queue_command(eoe->slave->master, &eoe->command);
     eoe->state = ec_eoe_state_rx_fetch;
 }
 
@@ -356,13 +359,14 @@ void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
     uint8_t frame_number, fragment_offset, fragment_number;
     off_t offset;
 
-    if (eoe->slave->mbox_command.state != EC_CMD_RECEIVED) {
+    if (eoe->command.state != EC_CMD_RECEIVED) {
         eoe->stats.rx_errors++;
         eoe->state = ec_eoe_state_tx_start;
         return;
     }
 
-    if (!(data = ec_slave_mbox_fetch(eoe->slave, 0x02, &rec_size))) {
+    if (!(data = ec_slave_mbox_fetch(eoe->slave, &eoe->command,
+                                     0x02, &rec_size))) {
         eoe->stats.rx_errors++;
         eoe->state = ec_eoe_state_tx_start;
         return;
@@ -554,13 +558,13 @@ void ec_eoe_state_tx_start(ec_eoe_t *eoe /**< EoE handler */)
 
 void ec_eoe_state_tx_sent(ec_eoe_t *eoe /**< EoE handler */)
 {
-    if (eoe->slave->mbox_command.state != EC_CMD_RECEIVED) {
+    if (eoe->command.state != EC_CMD_RECEIVED) {
         eoe->stats.tx_errors++;
         eoe->state = ec_eoe_state_rx_start;
         return;
     }
 
-    if (eoe->slave->mbox_command.working_counter != 1) {
+    if (eoe->command.working_counter != 1) {
         eoe->stats.tx_errors++;
         eoe->state = ec_eoe_state_rx_start;
         return;

@@ -160,8 +160,6 @@ int ec_slave_init(ec_slave_t *slave, /**< EtherCAT slave */
     slave->new_eeprom_data = NULL;
     slave->new_eeprom_size = 0;
 
-    ec_command_init(&slave->mbox_command);
-
     INIT_LIST_HEAD(&slave->eeprom_strings);
     INIT_LIST_HEAD(&slave->eeprom_syncs);
     INIT_LIST_HEAD(&slave->eeprom_pdos);
@@ -250,8 +248,6 @@ void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
 
     if (slave->eeprom_data) kfree(slave->eeprom_data);
     if (slave->new_eeprom_data) kfree(slave->new_eeprom_data);
-
-    ec_command_clear(&slave->mbox_command);
 }
 
 /*****************************************************************************/
