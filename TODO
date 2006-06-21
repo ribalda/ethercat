@@ -12,7 +12,11 @@ Important things to do:
 
 * Remove slave type information from master / New RT Interface
 
-* SysFS interface for Secondary slave address
+* Always use state machines / remove simple IO code
+
+* SysFS interface
+  - Add secondary slave address
+  - Add SDO dictionary
 
 * Implement all EtherCAT commands
 
