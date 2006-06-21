@@ -1144,7 +1144,6 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT master */)
                                     0x0800 + j * EC_SYNC_SIZE, EC_SYNC_SIZE))
                     return -1;
                 ec_sync_config(sync, slave, command->data);
-                EC_INFO("configuring sync.\n");
                 if (unlikely(ec_master_simple_io(master, command))) {
                     EC_ERR("Setting sync manager %i failed on slave %i!\n",
                            j, slave->ring_position);
@@ -1223,7 +1222,6 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT master */)
                                 0x0600 + j * EC_FMMU_SIZE, EC_FMMU_SIZE))
                 return -1;
             ec_fmmu_config(fmmu, slave, command->data);
-            EC_INFO("configuring fmmu.\n");
             if (unlikely(ec_master_simple_io(master, command))) {
                 EC_ERR("Setting FMMU %i failed on slave %i!\n",
                        j, slave->ring_position);
