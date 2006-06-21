@@ -79,7 +79,7 @@ uint8_t *ec_slave_mbox_prepare_send(ec_slave_t *slave, /**< slave */
 
     EC_WRITE_U16(command->data,     size); // mailbox service data length
     EC_WRITE_U16(command->data + 2, slave->station_address); // station address
-    EC_WRITE_U8 (command->data + 4, 0x00); // hhannel & priority
+    EC_WRITE_U8 (command->data + 4, 0x00); // channel & priority
     EC_WRITE_U8 (command->data + 5, type); // underlying protocol type
 
     return command->data + 6;

@@ -145,6 +145,8 @@ int ecrt_domain_state(ec_domain_t *domain);
  *  Slave Methods
  *****************************************************************************/
 
+/* there SDO functions are deprecated! */
+
 int ecrt_slave_sdo_read_exp8(ec_slave_t *slave, uint16_t sdo_index,
                               uint8_t sdo_subindex, uint8_t *value);
 int ecrt_slave_sdo_read_exp16(ec_slave_t *slave, uint16_t sdo_index,
