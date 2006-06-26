@@ -55,7 +55,11 @@
 /*****************************************************************************/
 
 struct ec_device;
-typedef struct ec_device ec_device_t;
+typedef struct ec_device ec_device_t; /**< \see ec_device */
+
+/**
+   Interrupt-Service-Routine Type
+*/
 
 typedef irqreturn_t (*ec_isr_t)(int, void *, struct pt_regs *);
 

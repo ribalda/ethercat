@@ -61,7 +61,7 @@ ec_eoe_frame_t;
 
 /*****************************************************************************/
 
-typedef struct ec_eoe ec_eoe_t;
+typedef struct ec_eoe ec_eoe_t; /**< \see ec_eoe */
 
 /**
    Ethernet-over-EtherCAT (EoE) handler.

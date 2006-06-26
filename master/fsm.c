@@ -44,10 +44,6 @@
 
 /*****************************************************************************/
 
-const ec_code_msg_t al_status_messages[];
-
-/*****************************************************************************/
-
 void ec_fsm_master_start(ec_fsm_t *);
 void ec_fsm_master_broadcast(ec_fsm_t *);
 void ec_fsm_master_proc_states(ec_fsm_t *);
@@ -1675,6 +1671,32 @@ void ec_fsm_change_status(ec_fsm_t *fsm /**< finite state machine */)
 /*****************************************************************************/
 
 /**
+   Application layer status messages.
+*/
+
+const ec_code_msg_t al_status_messages[] = {
+    {0x0001, "Unspecified error"},
+    {0x0011, "Invalud requested state change"},
+    {0x0012, "Unknown requested state"},
+    {0x0013, "Bootstrap not supported"},
+    {0x0014, "No valid firmware"},
+    {0x0015, "Invalid mailbox configuration"},
+    {0x0016, "Invalid mailbox configuration"},
+    {0x0017, "Invalid sync manager configuration"},
+    {0x0018, "No valid inputs available"},
+    {0x0019, "No valid outputs"},
+    {0x001A, "Synchronisation error"},
+    {0x001B, "Sync manager watchdog"},
+    {0x0020, "Slave needs cold start"},
+    {0x0021, "Slave needs INIT"},
+    {0x0022, "Slave needs PREOP"},
+    {0x0023, "Slave needs SAVEOP"},
+    {}
+};
+
+/*****************************************************************************/
+
+/**
    Change state: CODE.
 */
 
@@ -1788,31 +1810,5 @@ void ec_fsm_change_end(ec_fsm_t *fsm /**< finite state machine */)
 void ec_fsm_change_error(ec_fsm_t *fsm /**< finite state machine */)
 {
 }
-
-/*****************************************************************************/
-
-/**
-   Application layer status messages.
-*/
-
-const ec_code_msg_t al_status_messages[] = {
-    {0x0001, "Unspecified error"},
-    {0x0011, "Invalud requested state change"},
-    {0x0012, "Unknown requested state"},
-    {0x0013, "Bootstrap not supported"},
-    {0x0014, "No valid firmware"},
-    {0x0015, "Invalid mailbox configuration"},
-    {0x0016, "Invalid mailbox configuration"},
-    {0x0017, "Invalid sync manager configuration"},
-    {0x0018, "No valid inputs available"},
-    {0x0019, "No valid outputs"},
-    {0x001A, "Synchronisation error"},
-    {0x001B, "Sync manager watchdog"},
-    {0x0020, "Slave needs cold start"},
-    {0x0021, "Slave needs INIT"},
-    {0x0022, "Slave needs PREOP"},
-    {0x0023, "Slave needs SAVEOP"},
-    {}
-};
 
 /*****************************************************************************/

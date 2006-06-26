@@ -60,13 +60,13 @@
 /*****************************************************************************/
 
 struct ec_master;
-typedef struct ec_master ec_master_t;
+typedef struct ec_master ec_master_t; /**< \see ec_master */
 
 struct ec_domain;
-typedef struct ec_domain ec_domain_t;
+typedef struct ec_domain ec_domain_t; /**< \see ec_domain */
 
 struct ec_slave;
-typedef struct ec_slave ec_slave_t;
+typedef struct ec_slave ec_slave_t; /**< \see ec_slave */
 
 /**
    Initialization type for field registrations.

@@ -47,8 +47,8 @@
 
 /*****************************************************************************/
 
-#define EC_MAX_FIELDS 10
-#define EC_MAX_SYNC   16
+#define EC_MAX_FIELDS 10 /**< maximal number of data fields per sync manager */
+#define EC_MAX_SYNC   16 /**< maximal number of sync managers per type */
 
 /*****************************************************************************/
 

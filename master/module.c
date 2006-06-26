@@ -66,9 +66,9 @@ void __exit ec_cleanup_module(void);
 
 /*****************************************************************************/
 
-static int ec_master_count = 1;
-static int ec_eoe_devices = 0;
-static struct list_head ec_masters;
+static int ec_master_count = 1; /**< parameter value, number of masters */
+static int ec_eoe_devices = 0; /**< parameter value, number of EoE interf. */
+static struct list_head ec_masters; /**< list of masters */
 
 /*****************************************************************************/
 

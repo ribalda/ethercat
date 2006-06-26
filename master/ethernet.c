@@ -47,6 +47,14 @@
 #include "mailbox.h"
 #include "ethernet.h"
 
+/**
+   Defines the debug level of EoE processing
+
+   0 = No debug messages.
+   1 = Output actions.
+   2 = Output actions and frame data.
+*/
+
 #define EOE_DEBUG_LEVEL 0
 
 /*****************************************************************************/

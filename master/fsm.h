@@ -47,9 +47,7 @@
 
 /*****************************************************************************/
 
-typedef struct ec_fsm ec_fsm_t;
-
-/*****************************************************************************/
+typedef struct ec_fsm ec_fsm_t; /**< \see ec_fsm */
 
 /**
    Finite state machine of an EtherCAT master.

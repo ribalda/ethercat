@@ -54,10 +54,6 @@ int ec_slave_fetch_sdo_entries(ec_slave_t *, ec_command_t *,
 
 /*****************************************************************************/
 
-const ec_code_msg_t sdo_abort_messages[];
-
-/*****************************************************************************/
-
 /**
    Reads 32 bit of a CANopen SDO in expedited mode.
    \return 0 in case of success, else < 0
@@ -529,25 +525,11 @@ int ec_slave_fetch_sdo_entries(ec_slave_t *slave, /**< EtherCAT slave */
 /*****************************************************************************/
 
 /**
-   Outputs an SDO abort message.
+   SDO abort messages.
+   The "abort SDO transfer request" supplies an abort code,
+   which can be translated to clear text. This table does
+   the mapping of the codes and messages.
 */
-
-void ec_canopen_abort_msg(uint32_t abort_code)
-{
-    const ec_code_msg_t *abort_msg;
-
-    for (abort_msg = sdo_abort_messages; abort_msg->code; abort_msg++) {
-        if (abort_msg->code == abort_code) {
-            EC_ERR("SDO abort message 0x%08X: \"%s\".\n",
-                   abort_msg->code, abort_msg->message);
-            return;
-        }
-    }
-
-    EC_ERR("Unknown SDO abort code 0x%08X.\n", abort_code);
-}
-
-/*****************************************************************************/
 
 const ec_code_msg_t sdo_abort_messages[] = {
     {0x05030000, "Toggle bit not changed"},
@@ -585,6 +567,27 @@ const ec_code_msg_t sdo_abort_messages[] = {
      " dictionary is present"},
     {}
 };
+
+/*****************************************************************************/
+
+/**
+   Outputs an SDO abort message.
+*/
+
+void ec_canopen_abort_msg(uint32_t abort_code)
+{
+    const ec_code_msg_t *abort_msg;
+
+    for (abort_msg = sdo_abort_messages; abort_msg->code; abort_msg++) {
+        if (abort_msg->code == abort_code) {
+            EC_ERR("SDO abort message 0x%08X: \"%s\".\n",
+                   abort_msg->code, abort_msg->message);
+            return;
+        }
+    }
+
+    EC_ERR("Unknown SDO abort code 0x%08X.\n", abort_code);
+}
 
 /******************************************************************************
  *  Realtime interface

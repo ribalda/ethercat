@@ -115,7 +115,7 @@ struct ec_master
     ec_fsm_t fsm; /**< master state machine */
     ec_master_mode_t mode; /**< master mode */
 
-    struct timer_list eoe_timer; /** EoE timer object */
+    struct timer_list eoe_timer; /**< EoE timer object */
     unsigned int eoe_running; /**< non-zero, if EoE processing is active. */
     struct list_head eoe_handlers; /**< Ethernet-over-EtherCAT handlers */
     spinlock_t internal_lock; /**< spinlock used in freerun mode */
