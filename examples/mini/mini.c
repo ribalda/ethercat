@@ -57,14 +57,15 @@ spinlock_t master_lock = SPIN_LOCK_UNLOCKED;
 
 // data fields
 //void *r_ssi_input, *r_ssi_status, *r_4102[3];
-void *r_kbus_in;
+void *r_kbus_in, *r_kbus_out;
 
 // channels
 uint32_t k_pos;
 uint8_t k_stat;
 
 ec_field_init_t domain1_fields[] = {
-    {&r_kbus_in, "0", "Beckhoff", "BK1120", "Inputs", 0},
+    //{&r_kbus_out, "0", "Beckhoff", "BK1120", "Outputs", 0},
+    //{&r_kbus_in,  "0", "Beckhoff", "BK1120", "Inputs",  0},
     {}
 };
 
@@ -73,6 +74,7 @@ ec_field_init_t domain1_fields[] = {
 void run(unsigned long data)
 {
     static unsigned int counter = 0;
+    unsigned int i;
 
     spin_lock(&master_lock);
 
@@ -105,8 +107,9 @@ void run(unsigned long data)
     }
     else {
         counter = FREQUENCY;
-        //printk(KERN_INFO "k_pos    = %i\n", k_pos);
-        //printk(KERN_INFO "k_stat   = 0x%02X\n", k_stat);
+        printk(KERN_INFO "input = ");
+        for (i = 0; i < 22; i++) printk("%02X ", *((uint8_t *) r_kbus_in + i));
+        printk("\n");
     }
 
     // restart timer
@@ -163,7 +166,8 @@ int __init init_mini_module(void)
         printk(KERN_ERR "Failed to get slave!\n");
         goto out_deactivate;
     }
-    ecrt_slave_field_size(slave, "Inputs", 0, 1);
+    ecrt_slave_field_size(slave, "Outputs", 0, 0x16);
+    ecrt_slave_field_size(slave, "Inputs", 0, 0x16);
 #endif
 
     printk(KERN_INFO "Activating master...\n");
@@ -172,7 +176,7 @@ int __init init_mini_module(void)
         goto out_release_master;
     }
 
-#if 0
+#if 1
     if (ecrt_master_fetch_sdo_lists(master)) {
         printk(KERN_ERR "Failed to fetch SDO lists!\n");
         goto out_deactivate;

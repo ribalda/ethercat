@@ -67,6 +67,7 @@ const ec_slave_type_t Beckhoff_EK1110 = {
 
 /*****************************************************************************/
 
+const ec_field_t bk1120_out = {"Outputs", 0}; // variable size
 const ec_field_t bk1120_in = {"Inputs", 0}; // variable size
 
 const ec_sync_t bk1120_sm0 = {0x1C00, 264, 0x26, {NULL}};
@@ -74,7 +75,7 @@ const ec_sync_t bk1120_sm1 = {0x1E00, 264, 0x22, {NULL}};
 
 const ec_sync_t bk1120_sm2 = { // outputs
     0x1000, 0, 0x24, // variable size
-    {NULL}
+    {&bk1120_out, NULL}
 };
 
 const ec_sync_t bk1120_sm3 = { // inputs
@@ -89,6 +90,20 @@ const ec_slave_type_t Beckhoff_BK1120 = {
 
 /*****************************************************************************/
 
+const ec_field_t el1004_in = {"InputValue", 1};
+
+const ec_sync_t el1004_sm0 = { // inputs
+    0x1000, 1, 0x00,
+    {&el1004_in, NULL}
+};
+
+const ec_slave_type_t Beckhoff_EL1004 = {
+    "Beckhoff", "EL1004", "4x Digital Input, 3ms", EC_TYPE_NORMAL,
+    {&el1004_sm0, NULL}
+};
+
+/*****************************************************************************/
+
 const ec_field_t el1014_in = {"InputValue", 1};
 
 const ec_sync_t el1014_sm0 = { // inputs
@@ -97,7 +112,7 @@ const ec_sync_t el1014_sm0 = { // inputs
 };
 
 const ec_slave_type_t Beckhoff_EL1014 = {
-    "Beckhoff", "EL1014", "4x Digital Input", EC_TYPE_NORMAL,
+    "Beckhoff", "EL1014", "4x Digital Input, 10us", EC_TYPE_NORMAL,
     {&el1014_sm0, NULL}
 };
 
@@ -244,6 +259,7 @@ const ec_slave_type_t TR_Electronic_LinEnc2 = {
 */
 
 ec_slave_ident_t slave_idents[] = {
+    {0x00000002, 0x03EC3052, &Beckhoff_EL1004},
     {0x00000002, 0x03F63052, &Beckhoff_EL1014},
     {0x00000002, 0x044C2C52, &Beckhoff_EK1100},
     {0x00000002, 0x04562C52, &Beckhoff_EK1110},
