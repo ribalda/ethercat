@@ -66,14 +66,14 @@ case "$1" in
     start)
 	echo -n "Starting EtherCAT master "
 
-	if [ ! $DEVICE_INDEX ]; then
+	if [ -z "$DEVICE_INDEX" ]; then
 	    echo "ERROR: DEVICE_INDEX not set!"
 	    /bin/false
 	    rc_status -v
 	    rc_exit
 	fi
 
-	if [ ! $EOE_DEVICES ]; then
+	if [ -z "$EOE_DEVICES" ]; then
 	    EOE_DEVICES=0
 	fi
 
@@ -97,6 +97,50 @@ case "$1" in
 	    /bin/false
 	    rc_status -v
 	    rc_exit
+	fi
+
+	# Build EoE bridge
+	if [ -n "$EOE_BRIDGE" ]; then
+
+		EOE_INTERFACES=`/sbin/ifconfig -a | grep -o -E "^eoe[0-9]+ "`
+
+		# add bridge, if it does not already exist
+		if ! /sbin/brctl show | grep -E -q "^$EOE_BRIDGE"; then
+			if ! /sbin/brctl addbr $EOE_BRIDGE; then
+				/bin/false
+				rc_status -v
+				rc_exit
+			fi
+		fi
+
+		# free all interfaces of their addresses and add them to the bridge
+		for interface in $EOE_INTERFACES $EOE_EXTRA_INTERFACES; do
+			if ! /sbin/ifconfig $interface 0.0.0.0 up; then
+				/bin/false
+				rc_status -v
+				rc_exit
+			fi
+			if ! /sbin/brctl show | grep -E -q "^$EOE_BRIDGE.*$interface"; then
+				if ! /sbin/brctl addif $EOE_BRIDGE $interface; then
+					/bin/false
+					rc_status -v
+					rc_exit
+				fi
+			fi
+		done
+		if [ -n "$EOE_IP_ADDRESS" -a -n "$EOE_IP_NETMASK" ]; then
+			if ! /sbin/ifconfig $EOE_BRIDGE $EOE_IP_ADDRESS \
+				netmask $EOE_IP_NETMASK; then
+				/bin/false
+				rc_status -v
+				rc_exit
+			fi
+		fi
+		if ! /sbin/ifconfig $EOE_BRIDGE up; then
+			/bin/false
+			rc_status -v
+			rc_exit
+		fi
 	fi
 
 	rc_status -v

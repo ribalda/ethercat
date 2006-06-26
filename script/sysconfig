@@ -18,4 +18,34 @@
 #
 #EOE_DEVICES=0
 
+#
+#  Bridge all EoE interfaces after master startup
+#  This variable shall contain the name of the EoE bridge to set up.
+#  If the variable is empty or undefined, no EoE bridge will be built.
+#
+#EOE_BRIDGE=eoebr0
+
+#
+#  IP address of the EoE bridge
+#  Set both EOE_IP_ADDRESS and EOE_IP_NETMASK to let the local host communicate
+#  with devices on the EoE bridge.
+#
+#EOE_IP_ADDRESS=192.168.X.X
+
+#
+#  IP netmask of the EoE bridge
+#  See EOE_IP_ADDRESS.
+#
+#EOE_IP_NETMASK=255.255.255.0
+
+#
+#  List of extra interfaces to include in the EoE bridge.
+#  Set this to interconnect the EoE bridge with other local interfaces.
+#  If EOE_BRIDGE is empty or undefined, setting this variable has no effect.
+#  Important: The IP address of these interfaces will be cleared. Set
+#  EOE_IP_ADDRESS and EOE_IP_NETMASK accordingly to enable IP traffic to
+#  extra interfaces.
+#
+#EOE_EXTRA_INTERFACES=eth0
+
 #------------------------------------------------------------------------------
