@@ -61,6 +61,7 @@ endif
 
 KERNEL_DIR := /lib/modules/$(KERNEL)/build
 CURRENT_DIR := $(shell pwd)
+INSTALL_MOD_DIR := ethercat/devices
 
 modules:
 	$(MAKE) -C $(KERNEL_DIR) M=$(CURRENT_DIR) modules
@@ -68,7 +69,8 @@ modules:
 install: modules_install
 
 modules_install:
-	$(MAKE) -C $(KERNEL_DIR) M=$(CURRENT_DIR) modules_install
+	$(MAKE) -C $(KERNEL_DIR) M=$(CURRENT_DIR) \
+		INSTALL_MOD_DIR=$(INSTALL_MOD_DIR) modules_install
 
 clean:
 	$(MAKE) -C $(KERNEL_DIR) M=$(CURRENT_DIR) clean

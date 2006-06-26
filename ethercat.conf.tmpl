@@ -12,6 +12,6 @@
 #
 # The kernel to compile the EtherCAT sources against
 #
-KERNEL := `uname -r`
+KERNEL := $(shell uname -r)
 
 #------------------------------------------------------------------------------
