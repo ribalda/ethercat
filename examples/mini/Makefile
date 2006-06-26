@@ -56,7 +56,7 @@ else
 ifneq ($(wildcard kernel.conf),)
 include kernel.conf
 else
-KERNEL_DIR := /lib/modules/`uname -r`/build
+KERNEL_DIR := /lib/modules/$(shell uname -r)/build
 endif
 
 CURRENT_DIR := $(shell pwd)
