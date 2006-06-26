@@ -141,6 +141,23 @@ case "$1" in
 			rc_status -v
 			rc_exit
 		fi
+
+		# install new default gateway
+		if [ -n "$EOE_GATEWAY" ]; then
+			while /sbin/route -n | grep -E -q "^0.0.0.0"; do
+				if ! /sbin/route del default; then
+					echo "Failed to remove default route!" 1>&2
+					/bin/false
+					rc_status -v
+					rc_exit
+				fi
+			done
+			if ! /sbin/route add default gw $EOE_GATEWAY; then
+				/bin/false
+				rc_status -v
+				rc_exit
+			fi
+		fi
 	fi
 
 	rc_status -v

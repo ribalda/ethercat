@@ -39,6 +39,13 @@
 #EOE_IP_NETMASK=255.255.255.0
 
 #
+#  Renew default gateway after bridge installation.
+#  Set this to the new default gateway, if the default route shall
+#  be renewed after the bridge has been installed.
+#
+#EOE_GATEWAY=192.168.X.X
+
+#
 #  List of extra interfaces to include in the EoE bridge.
 #  Set this to interconnect the EoE bridge with other local interfaces.
 #  If EOE_BRIDGE is empty or undefined, setting this variable has no effect.
