@@ -211,7 +211,7 @@ int ecrt_slave_field_size(ec_slave_t *slave, const char *field_name,
 */
 
 #define EC_READ_S8(DATA) \
-     ((int8_t)  *((uint8_t *) (DATA)))
+     ((int8_t) *((uint8_t *) (DATA)))
 
 /**
    Read a 16-bit unsigned value from EtherCAT data.
@@ -229,7 +229,7 @@ int ecrt_slave_field_size(ec_slave_t *slave, const char *field_name,
 */
 
 #define EC_READ_S16(DATA) \
-     ((int16_t)  le16_to_cpup((void *) (DATA)))
+     ((int16_t) le16_to_cpup((void *) (DATA)))
 
 /**
    Read a 32-bit unsigned value from EtherCAT data.
@@ -247,7 +247,7 @@ int ecrt_slave_field_size(ec_slave_t *slave, const char *field_name,
 */
 
 #define EC_READ_S32(DATA) \
-     ((int32_t)  le32_to_cpup((void *) (DATA)))
+     ((int32_t) le32_to_cpup((void *) (DATA)))
 
 
 /******************************************************************************
