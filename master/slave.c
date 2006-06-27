@@ -155,7 +155,7 @@ int ec_slave_init(ec_slave_t *slave, /**< EtherCAT slave */
     slave->eeprom_name = NULL;
     slave->requested_state = EC_SLAVE_STATE_UNKNOWN;
     slave->current_state = EC_SLAVE_STATE_UNKNOWN;
-    slave->state_error = 0;
+    slave->error_flag = 0;
     slave->online = 1;
     slave->new_eeprom_data = NULL;
     slave->new_eeprom_size = 0;
@@ -1424,22 +1424,22 @@ ssize_t ec_store_slave_attribute(struct kobject *kobj, /**< slave's kobject */
     if (attr == &attr_state) {
         if (!strcmp(buffer, "INIT\n")) {
             slave->requested_state = EC_SLAVE_STATE_INIT;
-            slave->state_error = 0;
+            slave->error_flag = 0;
             return size;
         }
         else if (!strcmp(buffer, "PREOP\n")) {
             slave->requested_state = EC_SLAVE_STATE_PREOP;
-            slave->state_error = 0;
+            slave->error_flag = 0;
             return size;
         }
         else if (!strcmp(buffer, "SAVEOP\n")) {
             slave->requested_state = EC_SLAVE_STATE_SAVEOP;
-            slave->state_error = 0;
+            slave->error_flag = 0;
             return size;
         }
         else if (!strcmp(buffer, "OP\n")) {
             slave->requested_state = EC_SLAVE_STATE_OP;
-            slave->state_error = 0;
+            slave->error_flag = 0;
             return size;
         }
 

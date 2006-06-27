@@ -292,7 +292,7 @@ struct ec_slave
 
     ec_slave_state_t requested_state; /**< requested slave state */
     ec_slave_state_t current_state; /**< current slave state */
-    unsigned int state_error; /**< a state error has happened */
+    unsigned int error_flag; /**< stop processing after an error */
     unsigned int online; /**< non-zero, if the slave responds. */
 
     struct list_head varsize_fields; /**< size information for variable-sized
