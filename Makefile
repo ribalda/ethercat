@@ -69,6 +69,7 @@ modules_install:
 
 clean: cleandoc
 	$(MAKE) -C $(KERNEL_DIR) M=$(CURRENT_DIR) clean
+	@rm -f Modules.symvers
 
 doc:
 	doxygen Doxyfile

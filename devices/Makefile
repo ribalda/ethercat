@@ -74,6 +74,7 @@ modules_install:
 
 clean:
 	$(MAKE) -C $(KERNEL_DIR) M=$(CURRENT_DIR) clean
+	@rm -f Modules.symvers
 
 #------------------------------------------------------------------------------
 
