@@ -57,7 +57,7 @@ void ec_fsm_master_conf(ec_fsm_t *);
 void ec_fsm_master_eeprom(ec_fsm_t *);
 
 void ec_fsm_slave_start_reading(ec_fsm_t *);
-void ec_fsm_slave_read_status(ec_fsm_t *);
+void ec_fsm_slave_read_state(ec_fsm_t *);
 void ec_fsm_slave_read_base(ec_fsm_t *);
 void ec_fsm_slave_read_dl(ec_fsm_t *);
 void ec_fsm_slave_eeprom_size(ec_fsm_t *);
@@ -99,7 +99,7 @@ void ec_fsm_change_error(ec_fsm_t *);
 
 int ec_fsm_init(ec_fsm_t *fsm, /**< finite state machine */
                 ec_master_t *master /**< EtherCAT master */
-                )
+    )
 {
     fsm->master = master;
     fsm->master_state = ec_fsm_master_start;
@@ -109,7 +109,7 @@ int ec_fsm_init(ec_fsm_t *fsm, /**< finite state machine */
 
     ec_command_init(&fsm->command);
     if (ec_command_prealloc(&fsm->command, EC_MAX_DATA_SIZE)) {
-        EC_ERR("FSM failed to allocate FSM command.\n");
+        EC_ERR("Failed to allocate FSM command.\n");
         return -1;
     }
 
@@ -290,36 +290,35 @@ void ec_fsm_master_action_next_slave_state(ec_fsm_t *fsm
     ec_slave_t *slave = fsm->slave;
 
     // have all states been read?
-    if (slave->list.next == &master->slaves) {
-
-        // check, if a bus validation has to be done
-        if (fsm->master_validation) {
-            fsm->master_validation = 0;
-            list_for_each_entry(slave, &master->slaves, list) {
-                if (slave->online) continue;
-
-                // At least one slave is offline. validate!
-                EC_INFO("Validating bus.\n");
-                fsm->slave = list_entry(master->slaves.next, ec_slave_t, list);
-                fsm->master_state = ec_fsm_master_validate_vendor;
-                fsm->sii_offset = 0x0008; // vendor ID
-                fsm->sii_mode = 0;
-                fsm->sii_state = ec_fsm_sii_start_reading;
-                fsm->sii_state(fsm); // execute immediately
-                return;
-            }
-        }
-
-        fsm->master_state = ec_fsm_master_proc_states;
-        fsm->master_state(fsm); // execute immediately
+    if (slave->list.next != &master->slaves) {
+        // process next slave
+        fsm->slave = list_entry(fsm->slave->list.next, ec_slave_t, list);
+        ec_command_nprd(&fsm->command, fsm->slave->station_address, 0x0130, 2);
+        ec_master_queue_command(master, &fsm->command);
+        fsm->master_state = ec_fsm_master_states;
         return;
     }
 
-    // process next slave
-    fsm->slave = list_entry(fsm->slave->list.next, ec_slave_t, list);
-    ec_command_nprd(&fsm->command, fsm->slave->station_address, 0x0130, 2);
-    ec_master_queue_command(master, &fsm->command);
-    fsm->master_state = ec_fsm_master_states;
+    // all slave stated read; check, if a bus validation has to be done
+    if (fsm->master_validation) {
+        fsm->master_validation = 0;
+        list_for_each_entry(slave, &master->slaves, list) {
+            if (slave->online) continue;
+
+            // At least one slave is offline. validate!
+            EC_INFO("Validating bus.\n");
+            fsm->slave = list_entry(master->slaves.next, ec_slave_t, list);
+            fsm->master_state = ec_fsm_master_validate_vendor;
+            fsm->sii_offset = 0x0008; // vendor ID
+            fsm->sii_mode = 0;
+            fsm->sii_state = ec_fsm_sii_start_reading;
+            fsm->sii_state(fsm); // execute immediately
+            return;
+        }
+    }
+
+    fsm->master_state = ec_fsm_master_proc_states;
+    fsm->master_state(fsm); // execute immediately
 }
 
 /*****************************************************************************/
@@ -412,6 +411,14 @@ void ec_fsm_master_proc_states(ec_fsm_t *fsm /**< finite state machine */)
         list_for_each_entry(slave, &master->slaves, list) {
             if (!slave->new_eeprom_data) continue;
 
+            if (!slave->online || slave->error_flag) {
+                kfree(slave->new_eeprom_data);
+                slave->new_eeprom_data = NULL;
+                EC_ERR("Discarding EEPROM data, slave %i not ready.\n",
+                       slave->ring_position);
+                continue;
+            }
+
             // found pending EEPROM write operation. execute it!
             EC_INFO("Writing EEPROM of slave %i...\n", slave->ring_position);
             fsm->sii_offset = 0x0000;
@@ -444,7 +451,7 @@ void ec_fsm_master_validate_vendor(ec_fsm_t *fsm /**< finite state machine */)
     fsm->sii_state(fsm); // execute SII state machine
 
     if (fsm->sii_state == ec_fsm_sii_error) {
-	fsm->slave->error_flag = 1;
+        fsm->slave->error_flag = 1;
         EC_ERR("Failed to validate vendor ID of slave %i.\n",
                slave->ring_position);
         fsm->master_state = ec_fsm_master_start;
@@ -483,7 +490,7 @@ void ec_fsm_master_validate_product(ec_fsm_t *fsm /**< finite state machine */)
     fsm->sii_state(fsm); // execute SII state machine
 
     if (fsm->sii_state == ec_fsm_sii_error) {
-	fsm->slave->error_flag = 1;
+        fsm->slave->error_flag = 1;
         EC_ERR("Failed to validate product code of slave %i.\n",
                slave->ring_position);
         fsm->master_state = ec_fsm_master_start;
@@ -622,7 +629,7 @@ void ec_fsm_master_scan(ec_fsm_t *fsm /**< finite state machine */)
             }
 
             if (!slave->type) {
-                EC_WARN("FSM: Unknown slave device (vendor 0x%08X,"
+                EC_WARN("Unknown slave device (vendor 0x%08X,"
                         " code 0x%08X) at position %i.\n",
                         slave->sii_vendor_id, slave->sii_product_code,
                         slave->ring_position);
@@ -640,8 +647,8 @@ void ec_fsm_master_scan(ec_fsm_t *fsm /**< finite state machine */)
 
             // determine initial state.
             if ((slave->type &&
-		 (slave->type->special == EC_TYPE_BUS_COUPLER ||
-		  slave->type->special == EC_TYPE_INFRA))) {
+                 (slave->type->special == EC_TYPE_BUS_COUPLER ||
+                  slave->type->special == EC_TYPE_INFRA))) {
                 slave->requested_state = EC_SLAVE_STATE_OP;
             }
             else {
@@ -702,7 +709,7 @@ void ec_fsm_master_eeprom(ec_fsm_t *fsm /**< finite state machine */)
     fsm->sii_state(fsm); // execute SII state machine
 
     if (fsm->sii_state == ec_fsm_sii_error) {
-	fsm->slave->error_flag = 1;
+        fsm->slave->error_flag = 1;
         EC_ERR("Failed to write EEPROM contents to slave %i.\n",
                slave->ring_position);
         kfree(slave->new_eeprom_data);
@@ -751,7 +758,7 @@ void ec_fsm_slave_start_reading(ec_fsm_t *fsm /**< finite state machine */)
     ec_command_apwr(command, fsm->slave->ring_position, 0x0010, 2);
     EC_WRITE_U16(command->data, fsm->slave->station_address);
     ec_master_queue_command(fsm->master, command);
-    fsm->slave_state = ec_fsm_slave_read_status;
+    fsm->slave_state = ec_fsm_slave_read_state;
 }
 
 /*****************************************************************************/
@@ -760,18 +767,19 @@ void ec_fsm_slave_start_reading(ec_fsm_t *fsm /**< finite state machine */)
    Slave state: READ_STATUS.
 */
 
-void ec_fsm_slave_read_status(ec_fsm_t *fsm /**< finite state machine */)
+void ec_fsm_slave_read_state(ec_fsm_t *fsm /**< finite state machine */)
 {
     ec_command_t *command = &fsm->command;
 
     if (command->state != EC_CMD_RECEIVED || command->working_counter != 1) {
-        EC_ERR("FSM failed to write station address of slave %i.\n",
-               fsm->slave->ring_position);
+        fsm->slave->error_flag = 1;
         fsm->slave_state = ec_fsm_slave_end;
+        EC_ERR("Failed to write station address of slave %i.\n",
+               fsm->slave->ring_position);
         return;
     }
 
-    // read AL status
+    // Read AL state
     ec_command_nprd(command, fsm->slave->station_address, 0x0130, 2);
     ec_master_queue_command(fsm->master, command);
     fsm->slave_state = ec_fsm_slave_read_base;
@@ -790,15 +798,15 @@ void ec_fsm_slave_read_base(ec_fsm_t *fsm /**< finite state machine */)
 
     if (command->state != EC_CMD_RECEIVED || command->working_counter != 1) {
         fsm->slave->error_flag = 1;
-        EC_ERR("FSM failed to read AL status of slave %i.\n",
-               fsm->slave->ring_position);
         fsm->slave_state = ec_fsm_slave_end;
+        EC_ERR("Failed to read AL state of slave %i.\n",
+               fsm->slave->ring_position);
         return;
     }
 
     slave->current_state = EC_READ_U8(command->data);
     if (slave->current_state & EC_ACK) {
-        EC_WARN("Slave %i has status error bit set (0x%02X)!\n",
+        EC_WARN("Slave %i has state error bit set (0x%02X)!\n",
                 slave->ring_position, slave->current_state);
         slave->current_state &= 0x0F;
     }
@@ -822,9 +830,9 @@ void ec_fsm_slave_read_dl(ec_fsm_t *fsm /**< finite state machine */)
 
     if (command->state != EC_CMD_RECEIVED || command->working_counter != 1) {
         fsm->slave->error_flag = 1;
-        EC_ERR("FSM failed to read base data of slave %i.\n",
-               slave->ring_position);
         fsm->slave_state = ec_fsm_slave_end;
+        EC_ERR("Failed to read base data of slave %i.\n",
+               slave->ring_position);
         return;
     }
 
@@ -859,9 +867,9 @@ void ec_fsm_slave_eeprom_size(ec_fsm_t *fsm /**< finite state machine */)
 
     if (command->state != EC_CMD_RECEIVED || command->working_counter != 1) {
         fsm->slave->error_flag = 1;
-        EC_ERR("FSM failed to read DL status of slave %i.\n",
-               slave->ring_position);
         fsm->slave_state = ec_fsm_slave_end;
+        EC_ERR("Failed to read DL status of slave %i.\n",
+               slave->ring_position);
         return;
     }
 
@@ -896,7 +904,7 @@ void ec_fsm_slave_fetch_eeprom(ec_fsm_t *fsm /**< finite state machine */)
     fsm->sii_state(fsm);
 
     if (fsm->sii_state == ec_fsm_sii_error) {
-	fsm->slave->error_flag = 1;
+        fsm->slave->error_flag = 1;
         fsm->slave_state = ec_fsm_slave_end;
         EC_ERR("Failed to read EEPROM size of slave %i.\n",
                slave->ring_position);
@@ -926,9 +934,9 @@ void ec_fsm_slave_fetch_eeprom(ec_fsm_t *fsm /**< finite state machine */)
     if (!(slave->eeprom_data =
           (uint8_t *) kmalloc(slave->eeprom_size, GFP_ATOMIC))) {
         fsm->slave->error_flag = 1;
+        fsm->slave_state = ec_fsm_slave_end;
         EC_ERR("Failed to allocate EEPROM data on slave %i.\n",
                slave->ring_position);
-        fsm->slave_state = ec_fsm_slave_end;
         return;
     }
 
@@ -956,7 +964,7 @@ void ec_fsm_slave_fetch_eeprom2(ec_fsm_t *fsm /**< finite state machine */)
     fsm->sii_state(fsm);
 
     if (fsm->sii_state == ec_fsm_sii_error) {
-	fsm->slave->error_flag = 1;
+        fsm->slave->error_flag = 1;
         fsm->slave_state = ec_fsm_slave_end;
         EC_ERR("Failed to fetch EEPROM contents of slave %i.\n",
                slave->ring_position);
@@ -1045,7 +1053,7 @@ void ec_fsm_slave_fetch_eeprom2(ec_fsm_t *fsm /**< finite state machine */)
         cat_word += cat_size + 2;
     }
 
- end:
+end:
     fsm->slave->error_flag = 1;
     fsm->slave_state = ec_fsm_slave_end;
 }
@@ -1065,7 +1073,7 @@ void ec_fsm_slave_conf(ec_fsm_t *fsm /**< finite state machine */)
     fsm->change_state(fsm); // execute state change state machine
 
     if (fsm->change_state == ec_fsm_change_error) {
-	slave->error_flag = 1;
+        slave->error_flag = 1;
         fsm->slave_state = ec_fsm_slave_end;
         return;
     }
@@ -1074,7 +1082,7 @@ void ec_fsm_slave_conf(ec_fsm_t *fsm /**< finite state machine */)
 
     // slave is now in INIT
     if (slave->current_state == slave->requested_state) {
-        fsm->slave_state = ec_fsm_slave_end;
+        fsm->slave_state = ec_fsm_slave_end; // successful
         return;
     }
 
@@ -1116,10 +1124,10 @@ void ec_fsm_slave_sync(ec_fsm_t *fsm /**< finite state machine */)
     ec_eeprom_sync_t *eeprom_sync, mbox_sync;
 
     if (command->state != EC_CMD_RECEIVED || command->working_counter != 1) {
-        EC_ERR("Failed to reset FMMUs of slave %i.\n",
-               slave->ring_position);
         slave->error_flag = 1;
         fsm->slave_state = ec_fsm_slave_end;
+        EC_ERR("Failed to reset FMMUs of slave %i.\n",
+               slave->ring_position);
         return;
     }
 
@@ -1149,9 +1157,9 @@ void ec_fsm_slave_sync(ec_fsm_t *fsm /**< finite state machine */)
         if (!list_empty(&slave->eeprom_syncs)) {
             list_for_each_entry(eeprom_sync, &slave->eeprom_syncs, list) {
                 if (eeprom_sync->index >= slave->base_sync_count) {
-                    EC_ERR("Invalid sync manager configuration found!");
                     fsm->slave->error_flag = 1;
                     fsm->slave_state = ec_fsm_slave_end;
+                    EC_ERR("Invalid sync manager configuration found!");
                     return;
                 }
                 ec_eeprom_sync_config(eeprom_sync,
@@ -1199,10 +1207,10 @@ void ec_fsm_slave_preop(ec_fsm_t *fsm /**< finite state machine */)
     ec_slave_t *slave = fsm->slave;
 
     if (command->state != EC_CMD_RECEIVED || command->working_counter != 1) {
-        EC_ERR("Failed to set sync managers on slave %i.\n",
-               slave->ring_position);
         slave->error_flag = 1;
         fsm->slave_state = ec_fsm_slave_end;
+        EC_ERR("Failed to set sync managers on slave %i.\n",
+               slave->ring_position);
         return;
     }
 
@@ -1229,7 +1237,7 @@ void ec_fsm_slave_fmmu(ec_fsm_t *fsm /**< finite state machine */)
     fsm->change_state(fsm); // execute state change state machine
 
     if (fsm->change_state == ec_fsm_change_error) {
-	slave->error_flag = 1;
+        slave->error_flag = 1;
         fsm->slave_state = ec_fsm_slave_end;
         return;
     }
@@ -1238,13 +1246,13 @@ void ec_fsm_slave_fmmu(ec_fsm_t *fsm /**< finite state machine */)
 
     // slave is now in PREOP
     if (slave->current_state == slave->requested_state) {
-        fsm->slave_state = ec_fsm_slave_end;
+        fsm->slave_state = ec_fsm_slave_end; // successful
         return;
     }
 
     // stop activation here for slaves without type
     if (!slave->type) {
-        fsm->slave_state = ec_fsm_slave_end;
+        fsm->slave_state = ec_fsm_slave_end; // successful
         return;
     }
 
@@ -1280,10 +1288,10 @@ void ec_fsm_slave_saveop(ec_fsm_t *fsm /**< finite state machine */)
 
     if (fsm->slave->base_fmmu_count && (command->state != EC_CMD_RECEIVED ||
                                         command->working_counter != 1)) {
-        EC_ERR("FSM failed to set FMMUs on slave %i.\n",
-               fsm->slave->ring_position);
         fsm->slave->error_flag = 1;
         fsm->slave_state = ec_fsm_slave_end;
+        EC_ERR("Failed to set FMMUs on slave %i.\n",
+               fsm->slave->ring_position);
         return;
     }
 
@@ -1306,7 +1314,7 @@ void ec_fsm_slave_op(ec_fsm_t *fsm /**< finite state machine */)
     fsm->change_state(fsm); // execute state change state machine
 
     if (fsm->change_state == ec_fsm_change_error) {
-	fsm->slave->error_flag = 1;
+        fsm->slave->error_flag = 1;
         fsm->slave_state = ec_fsm_slave_end;
         return;
     }
@@ -1315,7 +1323,7 @@ void ec_fsm_slave_op(ec_fsm_t *fsm /**< finite state machine */)
 
     // slave is now in SAVEOP
     if (fsm->slave->current_state == fsm->slave->requested_state) {
-        fsm->slave_state = ec_fsm_slave_end;
+        fsm->slave_state = ec_fsm_slave_end; // successful
         return;
     }
 
@@ -1338,7 +1346,7 @@ void ec_fsm_slave_op2(ec_fsm_t *fsm /**< finite state machine */)
     fsm->change_state(fsm); // execute state change state machine
 
     if (fsm->change_state == ec_fsm_change_error) {
-	fsm->slave->error_flag = 1;
+        fsm->slave->error_flag = 1;
         fsm->slave_state = ec_fsm_slave_end;
         return;
     }
@@ -1346,7 +1354,7 @@ void ec_fsm_slave_op2(ec_fsm_t *fsm /**< finite state machine */)
     if (fsm->change_state != ec_fsm_change_end) return;
 
     // slave is now in OP
-    fsm->slave_state = ec_fsm_slave_end;
+    fsm->slave_state = ec_fsm_slave_end; // successful
 }
 
 /*****************************************************************************/
@@ -1609,16 +1617,16 @@ void ec_fsm_change_check(ec_fsm_t *fsm /**< finite state machine */)
     ec_slave_t *slave = fsm->slave;
 
     if (command->state != EC_CMD_RECEIVED) {
+        fsm->change_state = ec_fsm_change_error;
         EC_ERR("Failed to send state command to slave %i!\n",
                fsm->slave->ring_position);
-        fsm->change_state = ec_fsm_change_error;
         return;
     }
 
     if (command->working_counter != 1) {
+        fsm->change_state = ec_fsm_change_error;
         EC_ERR("Failed to set state 0x%02X on slave %i: Slave did not"
                " respond.\n", fsm->change_new, fsm->slave->ring_position);
-        fsm->change_state = ec_fsm_change_error;
         return;
     }
 
@@ -1642,9 +1650,9 @@ void ec_fsm_change_status(ec_fsm_t *fsm /**< finite state machine */)
     ec_slave_t *slave = fsm->slave;
 
     if (command->state != EC_CMD_RECEIVED || command->working_counter != 1) {
+        fsm->change_state = ec_fsm_change_error;
         EC_ERR("Failed to check state 0x%02X on slave %i.\n",
                fsm->change_new, slave->ring_position);
-        fsm->change_state = ec_fsm_change_error;
         return;
     }
 
@@ -1722,8 +1730,8 @@ void ec_fsm_change_code(ec_fsm_t *fsm /**< finite state machine */)
     const ec_code_msg_t *al_msg;
 
     if (command->state != EC_CMD_RECEIVED || command->working_counter != 1) {
-        EC_ERR("Reception of AL status code command failed.\n");
         fsm->change_state = ec_fsm_change_error;
+        EC_ERR("Reception of AL status code command failed.\n");
         return;
     }
 
@@ -1757,8 +1765,8 @@ void ec_fsm_change_ack(ec_fsm_t *fsm /**< finite state machine */)
     ec_slave_t *slave = fsm->slave;
 
     if (command->state != EC_CMD_RECEIVED || command->working_counter != 1) {
-        EC_ERR("Reception of state ack command failed.\n");
         fsm->change_state = ec_fsm_change_error;
+        EC_ERR("Reception of state ack command failed.\n");
         return;
     }
 
@@ -1781,23 +1789,23 @@ void ec_fsm_change_ack2(ec_fsm_t *fsm /**< finite state machine */)
     ec_slave_t *slave = fsm->slave;
 
     if (command->state != EC_CMD_RECEIVED || command->working_counter != 1) {
-        EC_ERR("Reception of state ack check command failed.\n");
         fsm->change_state = ec_fsm_change_error;
+        EC_ERR("Reception of state ack check command failed.\n");
         return;
     }
 
     slave->current_state = EC_READ_U8(command->data);
 
     if (slave->current_state == fsm->change_new) {
+        fsm->change_state = ec_fsm_change_error;
         EC_INFO("Acknowleged state 0x%02X on slave %i.\n",
                 slave->current_state, slave->ring_position);
-        fsm->change_state = ec_fsm_change_error;
         return;
     }
 
+    fsm->change_state = ec_fsm_change_error;
     EC_WARN("Failed to acknowledge state 0x%02X on slave %i"
             " - Timeout!\n", fsm->change_new, slave->ring_position);
-    fsm->change_state = ec_fsm_change_error;
 }
 
 /*****************************************************************************/

@@ -1422,28 +1422,23 @@ ssize_t ec_store_slave_attribute(struct kobject *kobj, /**< slave's kobject */
     ec_slave_t *slave = container_of(kobj, ec_slave_t, kobj);
 
     if (attr == &attr_state) {
-        if (!strcmp(buffer, "INIT\n")) {
+        if (!strcmp(buffer, "INIT\n"))
             slave->requested_state = EC_SLAVE_STATE_INIT;
-            slave->error_flag = 0;
-            return size;
-        }
-        else if (!strcmp(buffer, "PREOP\n")) {
+        else if (!strcmp(buffer, "PREOP\n"))
             slave->requested_state = EC_SLAVE_STATE_PREOP;
-            slave->error_flag = 0;
-            return size;
-        }
-        else if (!strcmp(buffer, "SAVEOP\n")) {
+        else if (!strcmp(buffer, "SAVEOP\n"))
             slave->requested_state = EC_SLAVE_STATE_SAVEOP;
-            slave->error_flag = 0;
-            return size;
-        }
-        else if (!strcmp(buffer, "OP\n")) {
+        else if (!strcmp(buffer, "OP\n"))
             slave->requested_state = EC_SLAVE_STATE_OP;
-            slave->error_flag = 0;
-            return size;
+        else {
+            EC_ERR("Invalid slave state \"%s\"!\n", buffer);
+            return -EINVAL;
         }
 
-        EC_ERR("Failed to set slave state!\n");
+        EC_INFO("Accepted new state %s for slave %i.\n",
+                buffer, slave->ring_position);
+        slave->error_flag = 0;
+        return size;
     }
     else if (attr == &attr_eeprom) {
         if (!ec_slave_write_eeprom(slave, buffer, size))
