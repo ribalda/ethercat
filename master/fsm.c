@@ -636,7 +636,9 @@ void ec_fsm_master_scan(ec_fsm_t *fsm /**< finite state machine */)
             }
 
             // determine initial state.
-            if ((slave->type && slave->type->special == EC_TYPE_BUS_COUPLER)) {
+            if ((slave->type &&
+		 (slave->type->special == EC_TYPE_BUS_COUPLER ||
+		  slave->type->special == EC_TYPE_INFRA))) {
                 slave->requested_state = EC_SLAVE_STATE_OP;
             }
             else {

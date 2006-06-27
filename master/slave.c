@@ -1369,6 +1369,8 @@ ssize_t ec_show_slave_attribute(struct kobject *kobj, /**< slave's kobject */
         if (slave->type) {
             if (slave->type->special == EC_TYPE_BUS_COUPLER)
                 return sprintf(buffer, "coupler\n");
+	    else if (slave->type->special == EC_TYPE_INFRA)
+                return sprintf(buffer, "infrastructure\n");
             else
                 return sprintf(buffer, "normal\n");
         }

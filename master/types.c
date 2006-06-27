@@ -61,7 +61,7 @@ const ec_slave_type_t Beckhoff_EK1100 = {
 /*****************************************************************************/
 
 const ec_slave_type_t Beckhoff_EK1110 = {
-    "Beckhoff", "EK1110", "Extension terminal", EC_TYPE_NORMAL,
+    "Beckhoff", "EK1110", "Extension terminal", EC_TYPE_INFRA,
     {NULL} // no sync managers
 };
 

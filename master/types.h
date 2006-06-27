@@ -60,6 +60,7 @@ typedef enum
 {
     EC_TYPE_NORMAL, /**< no special slave */
     EC_TYPE_BUS_COUPLER, /**< slave is a bus coupler */
+    EC_TYPE_INFRA, /**< infrastructure slaves, that contain no process data */
     EC_TYPE_EOE /**< slave is an EoE switch */
 }
 ec_special_type_t;
