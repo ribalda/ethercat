@@ -394,7 +394,7 @@ void ec_master_send_datagrams(ec_master_t *master /**< EtherCAT master */)
     if (unlikely(master->debug_level > 0)) {
         t_end = get_cycles();
         EC_DBG("ec_master_send_datagrams sent %i frames in %ius.\n",
-               frame_count, (u32) (t_end - t_start) * 1000 / cpu_khz);
+               frame_count, (unsigned int) (t_end - t_start) * 1000 / cpu_khz);
     }
 }
 

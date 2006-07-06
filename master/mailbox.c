@@ -238,8 +238,8 @@ uint8_t *ec_slave_mbox_simple_receive(const ec_slave_t *slave, /**< slave */
     }
 
     if (unlikely(slave->master->debug_level) > 1)
-        EC_DBG("Mailbox receive took %ius.\n", ((u32) (end - start) * 1000
-                                                / cpu_khz));
+        EC_DBG("Mailbox receive took %ius.\n",
+               ((unsigned int) (end - start) * 1000 / cpu_khz));
 
     return ec_slave_mbox_fetch(slave, datagram, type, size);
 }
