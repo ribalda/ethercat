@@ -38,6 +38,7 @@
 
 /*****************************************************************************/
 
+#include <linux/netdevice.h>
 #include <linux/etherdevice.h>
 
 #include "../include/ecrt.h"

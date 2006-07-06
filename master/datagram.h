@@ -42,6 +42,7 @@
 #define _EC_DATAGRAM_H_
 
 #include <linux/list.h>
+#include <linux/time.h>
 #include <linux/timex.h>
 
 #include "globals.h"

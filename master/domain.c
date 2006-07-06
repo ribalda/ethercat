@@ -38,6 +38,8 @@
 
 /*****************************************************************************/
 
+#include <linux/module.h>
+
 #include "globals.h"
 #include "domain.h"
 #include "master.h"
