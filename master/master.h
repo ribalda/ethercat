@@ -71,10 +71,10 @@ ec_master_mode_t;
 
 typedef struct
 {
-    unsigned int timeouts; /**< command timeouts */
-    unsigned int delayed; /**< delayed commands */
+    unsigned int timeouts; /**< datagram timeouts */
+    unsigned int delayed; /**< delayed datagrams */
     unsigned int corrupted; /**< corrupted frames */
-    unsigned int unmatched; /**< unmatched commands */
+    unsigned int unmatched; /**< unmatched datagrams */
     cycles_t t_last; /**< time of last output */
 }
 ec_stats_t;
@@ -99,12 +99,12 @@ struct ec_master
 
     ec_device_t *device; /**< EtherCAT device */
 
-    struct list_head command_queue; /**< command queue */
-    uint8_t command_index; /**< current command index */
+    struct list_head datagram_queue; /**< datagram queue */
+    uint8_t datagram_index; /**< current datagram index */
 
     struct list_head domains; /**< list of domains */
 
-    ec_command_t simple_command; /**< command structure for initialization */
+    ec_datagram_t simple_datagram; /**< datagram structure for initialization */
     unsigned int timeout; /**< timeout in synchronous IO */
 
     int debug_level; /**< master debug level */
@@ -143,8 +143,8 @@ void ec_master_eoe_stop(ec_master_t *);
 
 // IO
 void ec_master_receive(ec_master_t *, const uint8_t *, size_t);
-void ec_master_queue_command(ec_master_t *, ec_command_t *);
-int ec_master_simple_io(ec_master_t *, ec_command_t *);
+void ec_master_queue_datagram(ec_master_t *, ec_datagram_t *);
+int ec_master_simple_io(ec_master_t *, ec_datagram_t *);
 
 // slave management
 int ec_master_bus_scan(ec_master_t *);

@@ -48,8 +48,8 @@
 /*****************************************************************************/
 
 void ec_canopen_abort_msg(uint32_t);
-int ec_slave_fetch_sdo_descriptions(ec_slave_t *, ec_command_t *);
-int ec_slave_fetch_sdo_entries(ec_slave_t *, ec_command_t *,
+int ec_slave_fetch_sdo_descriptions(ec_slave_t *, ec_datagram_t *);
+int ec_slave_fetch_sdo_entries(ec_slave_t *, ec_datagram_t *,
                                ec_sdo_t *, uint8_t);
 
 /*****************************************************************************/
@@ -65,13 +65,13 @@ int ec_slave_sdo_read_exp(ec_slave_t *slave, /**< EtherCAT slave */
                           uint8_t *target /**< 4-byte memory */
                           )
 {
-    ec_command_t command;
+    ec_datagram_t datagram;
     size_t rec_size;
     uint8_t *data;
 
-    ec_command_init(&command);
+    ec_datagram_init(&datagram);
 
-    if (!(data = ec_slave_mbox_prepare_send(slave, &command, 0x03, 6)))
+    if (!(data = ec_slave_mbox_prepare_send(slave, &datagram, 0x03, 6)))
         goto err;
 
     EC_WRITE_U16(data, 0x2 << 12); // SDO request
@@ -80,7 +80,7 @@ int ec_slave_sdo_read_exp(ec_slave_t *slave, /**< EtherCAT slave */
     EC_WRITE_U16(data + 3, sdo_index);
     EC_WRITE_U8 (data + 5, sdo_subindex);
 
-    if (!(data = ec_slave_mbox_simple_io(slave, &command, &rec_size)))
+    if (!(data = ec_slave_mbox_simple_io(slave, &datagram, &rec_size)))
         goto err;
 
     if (EC_READ_U16(data) >> 12 == 0x2 && // SDO request
@@ -104,10 +104,10 @@ int ec_slave_sdo_read_exp(ec_slave_t *slave, /**< EtherCAT slave */
 
     memcpy(target, data + 6, 4);
 
-    ec_command_clear(&command);
+    ec_datagram_clear(&datagram);
     return 0;
  err:
-    ec_command_clear(&command);
+    ec_datagram_clear(&datagram);
     return -1;
 }
 
@@ -127,16 +127,16 @@ int ec_slave_sdo_write_exp(ec_slave_t *slave, /**< EtherCAT slave */
 {
     uint8_t *data;
     size_t rec_size;
-    ec_command_t command;
+    ec_datagram_t datagram;
 
-    ec_command_init(&command);
+    ec_datagram_init(&datagram);
 
     if (size == 0 || size > 4) {
         EC_ERR("Invalid data size!\n");
         goto err;
     }
 
-    if (!(data = ec_slave_mbox_prepare_send(slave, &command, 0x03, 0x0A)))
+    if (!(data = ec_slave_mbox_prepare_send(slave, &datagram, 0x03, 0x0A)))
         goto err;
 
     EC_WRITE_U16(data, 0x2 << 12); // SDO request
@@ -149,7 +149,7 @@ int ec_slave_sdo_write_exp(ec_slave_t *slave, /**< EtherCAT slave */
     memcpy(data + 6, sdo_data, size);
     if (size < 4) memset(data + 6 + size, 0x00, 4 - size);
 
-    if (!(data = ec_slave_mbox_simple_io(slave, &command, &rec_size)))
+    if (!(data = ec_slave_mbox_simple_io(slave, &datagram, &rec_size)))
         goto err;
 
     if (EC_READ_U16(data) >> 12 == 0x2 && // SDO request
@@ -172,10 +172,10 @@ int ec_slave_sdo_write_exp(ec_slave_t *slave, /**< EtherCAT slave */
         return -1;
     }
 
-    ec_command_clear(&command);
+    ec_datagram_clear(&datagram);
     return 0;
  err:
-    ec_command_clear(&command);
+    ec_datagram_clear(&datagram);
     return -1;
 }
 
@@ -198,11 +198,11 @@ int ecrt_slave_sdo_read(ec_slave_t *slave, /**< EtherCAT slave */
     uint8_t *data;
     size_t rec_size, data_size;
     uint32_t complete_size;
-    ec_command_t command;
+    ec_datagram_t datagram;
 
-    ec_command_init(&command);
+    ec_datagram_init(&datagram);
 
-    if (!(data = ec_slave_mbox_prepare_send(slave, &command, 0x03, 6)))
+    if (!(data = ec_slave_mbox_prepare_send(slave, &datagram, 0x03, 6)))
         goto err;
 
     EC_WRITE_U16(data, 0x2 << 12); // SDO request
@@ -210,7 +210,7 @@ int ecrt_slave_sdo_read(ec_slave_t *slave, /**< EtherCAT slave */
     EC_WRITE_U16(data + 3, sdo_index);
     EC_WRITE_U8 (data + 5, sdo_subindex);
 
-    if (!(data = ec_slave_mbox_simple_io(slave, &command, &rec_size)))
+    if (!(data = ec_slave_mbox_simple_io(slave, &datagram, &rec_size)))
         goto err;
 
     if (EC_READ_U16(data) >> 12 == 0x2 && // SDO request
@@ -253,10 +253,10 @@ int ecrt_slave_sdo_read(ec_slave_t *slave, /**< EtherCAT slave */
 
     memcpy(target, data + 10, data_size);
 
-    ec_command_clear(&command);
+    ec_datagram_clear(&datagram);
     return 0;
  err:
-    ec_command_clear(&command);
+    ec_datagram_clear(&datagram);
     return -1;
 }
 
@@ -274,11 +274,11 @@ int ec_slave_fetch_sdo_list(ec_slave_t *slave /**< EtherCAT slave */)
     unsigned int i, sdo_count;
     ec_sdo_t *sdo;
     uint16_t sdo_index;
-    ec_command_t command;
+    ec_datagram_t datagram;
 
-    ec_command_init(&command);
+    ec_datagram_init(&datagram);
 
-    if (!(data = ec_slave_mbox_prepare_send(slave, &command, 0x03, 8)))
+    if (!(data = ec_slave_mbox_prepare_send(slave, &datagram, 0x03, 8)))
         goto err;
 
     EC_WRITE_U16(data, 0x8 << 12); // SDO information
@@ -287,13 +287,13 @@ int ec_slave_fetch_sdo_list(ec_slave_t *slave /**< EtherCAT slave */)
     EC_WRITE_U16(data + 4, 0x0000);
     EC_WRITE_U16(data + 6, 0x0001); // deliver all SDOs!
 
-    if (unlikely(ec_master_simple_io(slave->master, &command))) {
+    if (unlikely(ec_master_simple_io(slave->master, &datagram))) {
         EC_ERR("Mailbox checking failed on slave %i!\n", slave->ring_position);
         goto err;
     }
 
     do {
-        if (!(data = ec_slave_mbox_simple_receive(slave, &command,
+        if (!(data = ec_slave_mbox_simple_receive(slave, &datagram,
                                                   0x03, &rec_size)))
             goto err;
 
@@ -342,12 +342,12 @@ int ec_slave_fetch_sdo_list(ec_slave_t *slave /**< EtherCAT slave */)
     while (EC_READ_U8(data + 2) & 0x80);
 
     // Fetch all SDO descriptions
-    if (ec_slave_fetch_sdo_descriptions(slave, &command)) goto err;
+    if (ec_slave_fetch_sdo_descriptions(slave, &datagram)) goto err;
 
-    ec_command_clear(&command);
+    ec_datagram_clear(&datagram);
     return 0;
  err:
-    ec_command_clear(&command);
+    ec_datagram_clear(&datagram);
     return -1;
 }
 
@@ -359,7 +359,7 @@ int ec_slave_fetch_sdo_list(ec_slave_t *slave /**< EtherCAT slave */)
 */
 
 int ec_slave_fetch_sdo_descriptions(ec_slave_t *slave, /**< EtherCAT slave */
-                                    ec_command_t *command /**< command */
+                                    ec_datagram_t *datagram /**< datagram */
                                     )
 {
     uint8_t *data;
@@ -367,7 +367,7 @@ int ec_slave_fetch_sdo_descriptions(ec_slave_t *slave, /**< EtherCAT slave */
     ec_sdo_t *sdo;
 
     list_for_each_entry(sdo, &slave->sdo_dictionary, list) {
-        if (!(data = ec_slave_mbox_prepare_send(slave, command, 0x03, 8)))
+        if (!(data = ec_slave_mbox_prepare_send(slave, datagram, 0x03, 8)))
             return -1;
         EC_WRITE_U16(data, 0x8 << 12); // SDO information
         EC_WRITE_U8 (data + 2, 0x03); // Get object description request
@@ -375,7 +375,7 @@ int ec_slave_fetch_sdo_descriptions(ec_slave_t *slave, /**< EtherCAT slave */
         EC_WRITE_U16(data + 4, 0x0000);
         EC_WRITE_U16(data + 6, sdo->index); // SDO index
 
-        if (!(data = ec_slave_mbox_simple_io(slave, command, &rec_size)))
+        if (!(data = ec_slave_mbox_simple_io(slave, datagram, &rec_size)))
             return -1;
 
         if (EC_READ_U16(data) >> 12 == 0x8 && // SDO information
@@ -428,7 +428,7 @@ int ec_slave_fetch_sdo_descriptions(ec_slave_t *slave, /**< EtherCAT slave */
         }
 
         // Fetch all entries (subindices)
-        if (ec_slave_fetch_sdo_entries(slave, command, sdo,
+        if (ec_slave_fetch_sdo_entries(slave, datagram, sdo,
                                        EC_READ_U8(data + 10)))
             return -1;
     }
@@ -444,7 +444,7 @@ int ec_slave_fetch_sdo_descriptions(ec_slave_t *slave, /**< EtherCAT slave */
 */
 
 int ec_slave_fetch_sdo_entries(ec_slave_t *slave, /**< EtherCAT slave */
-                               ec_command_t *command, /**< command */
+                               ec_datagram_t *datagram, /**< datagram */
                                ec_sdo_t *sdo, /**< SDO */
                                uint8_t subindices /**< number of subindices */
                                )
@@ -455,7 +455,7 @@ int ec_slave_fetch_sdo_entries(ec_slave_t *slave, /**< EtherCAT slave */
     ec_sdo_entry_t *entry;
 
     for (i = 1; i <= subindices; i++) {
-        if (!(data = ec_slave_mbox_prepare_send(slave, command, 0x03, 10)))
+        if (!(data = ec_slave_mbox_prepare_send(slave, datagram, 0x03, 10)))
             return -1;
 
         EC_WRITE_U16(data, 0x8 << 12); // SDO information
@@ -466,7 +466,7 @@ int ec_slave_fetch_sdo_entries(ec_slave_t *slave, /**< EtherCAT slave */
         EC_WRITE_U8 (data + 8, i); // SDO subindex
         EC_WRITE_U8 (data + 9, 0x00); // value info (no values)
 
-        if (!(data = ec_slave_mbox_simple_io(slave, command, &rec_size)))
+        if (!(data = ec_slave_mbox_simple_io(slave, datagram, &rec_size)))
             return -1;
 
         if (EC_READ_U16(data) >> 12 == 0x8 && // SDO information

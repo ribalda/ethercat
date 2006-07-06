@@ -42,7 +42,7 @@
 #define __EC_STATES__
 
 #include "../include/ecrt.h"
-#include "command.h"
+#include "datagram.h"
 #include "slave.h"
 
 /*****************************************************************************/
@@ -57,7 +57,7 @@ struct ec_fsm
 {
     ec_master_t *master; /**< master the FSM runs on */
     ec_slave_t *slave; /**< slave the FSM runs on */
-    ec_command_t command; /**< command used in the state machine */
+    ec_datagram_t datagram; /**< datagram used in the state machine */
 
     void (*master_state)(ec_fsm_t *); /**< master state function */
     unsigned int master_slaves_responding; /**< number of responding slaves */

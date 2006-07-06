@@ -44,7 +44,7 @@
 #include "../include/ecrt.h"
 #include "globals.h"
 #include "slave.h"
-#include "command.h"
+#include "datagram.h"
 
 /*****************************************************************************/
 
@@ -73,7 +73,7 @@ struct ec_eoe
 {
     struct list_head list; /**< list item */
     ec_slave_t *slave; /**< pointer to the corresponding slave */
-    ec_command_t command; /**< command */
+    ec_datagram_t datagram; /**< datagram */
     void (*state)(ec_eoe_t *); /**< state function for the state machine */
     struct net_device *dev; /**< net_device for virtual ethernet device */
     struct net_device_stats stats; /**< device statistics */

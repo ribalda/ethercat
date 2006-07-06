@@ -46,7 +46,7 @@
 
 #include "globals.h"
 #include "slave.h"
-#include "command.h"
+#include "datagram.h"
 
 /*****************************************************************************/
 
@@ -68,7 +68,7 @@ ec_field_reg_t;
 
 /**
    EtherCAT domain.
-   Handles the process data and the therefore needed commands of a certain
+   Handles the process data and the therefore needed datagrams of a certain
    group of slaves.
 */
 
@@ -79,7 +79,7 @@ struct ec_domain
     unsigned int index; /**< domain index (just a number) */
     ec_master_t *master; /**< EtherCAT master owning the domain */
     size_t data_size; /**< size of the process data */
-    struct list_head commands; /**< process data commands */
+    struct list_head datagrams; /**< process data datagrams */
     uint32_t base_address; /**< logical offset address of the process data */
     unsigned int response_count; /**< number of responding slaves */
     struct list_head field_regs; /**< data field registrations */

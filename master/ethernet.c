@@ -87,7 +87,7 @@ int ec_eoe_init(ec_eoe_t *eoe /**< EoE handler */)
     int result, i;
 
     eoe->slave = NULL;
-    ec_command_init(&eoe->command);
+    ec_datagram_init(&eoe->datagram);
     eoe->state = ec_eoe_state_rx_start;
     eoe->opened = 0;
     eoe->rx_skb = NULL;
@@ -169,7 +169,7 @@ void ec_eoe_clear(ec_eoe_t *eoe /**< EoE handler */)
 
     if (eoe->rx_skb) dev_kfree_skb(eoe->rx_skb);
 
-    ec_command_clear(&eoe->command);
+    ec_datagram_clear(&eoe->datagram);
 }
 
 /*****************************************************************************/
@@ -246,7 +246,7 @@ int ec_eoe_send(ec_eoe_t *eoe /**< EoE handler */)
     printk("\n");
 #endif
 
-    if (!(data = ec_slave_mbox_prepare_send(eoe->slave, &eoe->command,
+    if (!(data = ec_slave_mbox_prepare_send(eoe->slave, &eoe->datagram,
                                             0x02, current_size + 4)))
         return -1;
 
@@ -257,7 +257,7 @@ int ec_eoe_send(ec_eoe_t *eoe /**< EoE handler */)
                             (eoe->tx_frame_number & 0x0F) << 12));
 
     memcpy(data + 4, eoe->tx_frame->skb->data + eoe->tx_offset, current_size);
-    ec_master_queue_command(eoe->slave->master, &eoe->command);
+    ec_master_queue_datagram(eoe->slave->master, &eoe->datagram);
 
     eoe->tx_offset += current_size;
     eoe->tx_fragment_number++;
@@ -312,8 +312,8 @@ void ec_eoe_print(const ec_eoe_t *eoe /**< EoE handler */)
 
 /**
    State: RX_START.
-   Starts a new receiving sequence by queueing a command that checks the
-   slave's mailbox for a new EoE command.
+   Starts a new receiving sequence by queueing a datagram that checks the
+   slave's mailbox for a new EoE datagram.
 */
 
 void ec_eoe_state_rx_start(ec_eoe_t *eoe /**< EoE handler */)
@@ -321,8 +321,8 @@ void ec_eoe_state_rx_start(ec_eoe_t *eoe /**< EoE handler */)
     if (!eoe->slave->online || !eoe->slave->master->device->link_state)
         return;
 
-    ec_slave_mbox_prepare_check(eoe->slave, &eoe->command);
-    ec_master_queue_command(eoe->slave->master, &eoe->command);
+    ec_slave_mbox_prepare_check(eoe->slave, &eoe->datagram);
+    ec_master_queue_datagram(eoe->slave->master, &eoe->datagram);
     eoe->state = ec_eoe_state_rx_check;
 }
 
@@ -330,25 +330,25 @@ void ec_eoe_state_rx_start(ec_eoe_t *eoe /**< EoE handler */)
 
 /**
    State: RX_CHECK.
-   Processes the checking command sent in RX_START and issues a receive
-   command, if new data is available.
+   Processes the checking datagram sent in RX_START and issues a receive
+   datagram, if new data is available.
 */
 
 void ec_eoe_state_rx_check(ec_eoe_t *eoe /**< EoE handler */)
 {
-    if (eoe->command.state != EC_CMD_RECEIVED) {
+    if (eoe->datagram.state != EC_CMD_RECEIVED) {
         eoe->stats.rx_errors++;
         eoe->state = ec_eoe_state_tx_start;
         return;
     }
 
-    if (!ec_slave_mbox_check(&eoe->command)) {
+    if (!ec_slave_mbox_check(&eoe->datagram)) {
         eoe->state = ec_eoe_state_tx_start;
         return;
     }
 
-    ec_slave_mbox_prepare_fetch(eoe->slave, &eoe->command);
-    ec_master_queue_command(eoe->slave->master, &eoe->command);
+    ec_slave_mbox_prepare_fetch(eoe->slave, &eoe->datagram);
+    ec_master_queue_datagram(eoe->slave->master, &eoe->datagram);
     eoe->state = ec_eoe_state_rx_fetch;
 }
 
@@ -357,7 +357,7 @@ void ec_eoe_state_rx_check(ec_eoe_t *eoe /**< EoE handler */)
 /**
    State: RX_FETCH.
    Checks if the requested data of RX_CHECK was received and processes the
-   EoE command.
+   EoE datagram.
 */
 
 void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
@@ -367,13 +367,13 @@ void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
     uint8_t frame_number, fragment_offset, fragment_number;
     off_t offset;
 
-    if (eoe->command.state != EC_CMD_RECEIVED) {
+    if (eoe->datagram.state != EC_CMD_RECEIVED) {
         eoe->stats.rx_errors++;
         eoe->state = ec_eoe_state_tx_start;
         return;
     }
 
-    if (!(data = ec_slave_mbox_fetch(eoe->slave, &eoe->command,
+    if (!(data = ec_slave_mbox_fetch(eoe->slave, &eoe->datagram,
                                      0x02, &rec_size))) {
         eoe->stats.rx_errors++;
         eoe->state = ec_eoe_state_tx_start;
@@ -560,19 +560,19 @@ void ec_eoe_state_tx_start(ec_eoe_t *eoe /**< EoE handler */)
 
 /**
    State: TX SENT.
-   Checks is the previous transmit command succeded and sends the next
+   Checks is the previous transmit datagram succeded and sends the next
    fragment, if necessary.
 */
 
 void ec_eoe_state_tx_sent(ec_eoe_t *eoe /**< EoE handler */)
 {
-    if (eoe->command.state != EC_CMD_RECEIVED) {
+    if (eoe->datagram.state != EC_CMD_RECEIVED) {
         eoe->stats.tx_errors++;
         eoe->state = ec_eoe_state_rx_start;
         return;
     }
 
-    if (eoe->command.working_counter != 1) {
+    if (eoe->datagram.working_counter != 1) {
         eoe->stats.tx_errors++;
         eoe->state = ec_eoe_state_rx_start;
         return;

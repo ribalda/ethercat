@@ -45,7 +45,7 @@
 #include <linux/kobject.h>
 
 #include "globals.h"
-#include "command.h"
+#include "datagram.h"
 #include "types.h"
 
 /*****************************************************************************/

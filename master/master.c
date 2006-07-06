@@ -50,7 +50,7 @@
 #include "slave.h"
 #include "types.h"
 #include "device.h"
-#include "command.h"
+#include "datagram.h"
 #include "ethernet.h"
 
 /*****************************************************************************/
@@ -110,10 +110,10 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     master->device = NULL;
     master->reserved = 0;
     INIT_LIST_HEAD(&master->slaves);
-    INIT_LIST_HEAD(&master->command_queue);
+    INIT_LIST_HEAD(&master->datagram_queue);
     INIT_LIST_HEAD(&master->domains);
     INIT_LIST_HEAD(&master->eoe_handlers);
-    ec_command_init(&master->simple_command);
+    ec_datagram_init(&master->simple_datagram);
     INIT_WORK(&master->freerun_work, ec_master_freerun, (void *) master);
     init_timer(&master->eoe_timer);
     master->eoe_timer.function = ec_master_eoe_run;
@@ -171,7 +171,7 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
 
 /**
    Master destructor.
-   Removes all pending commands, clears the slave list, clears all domains
+   Removes all pending datagrams, clears the slave list, clears all domains
    and frees the device.
 */
 
@@ -184,7 +184,7 @@ void ec_master_clear(struct kobject *kobj /**< kobject of the master */)
 
     ec_master_reset(master);
     ec_fsm_clear(&master->fsm);
-    ec_command_clear(&master->simple_command);
+    ec_datagram_clear(&master->simple_datagram);
     destroy_workqueue(master->workqueue);
 
     // clear EoE objects
@@ -212,17 +212,18 @@ void ec_master_clear(struct kobject *kobj /**< kobject of the master */)
 
 void ec_master_reset(ec_master_t *master /**< EtherCAT master */)
 {
-    ec_command_t *command, *next_c;
+    ec_datagram_t *datagram, *next_c;
     ec_domain_t *domain, *next_d;
 
     ec_master_eoe_stop(master);
     ec_master_freerun_stop(master);
     ec_master_clear_slaves(master);
 
-    // empty command queue
-    list_for_each_entry_safe(command, next_c, &master->command_queue, queue) {
-        list_del_init(&command->queue);
-        command->state = EC_CMD_ERROR;
+    // empty datagram queue
+    list_for_each_entry_safe(datagram, next_c,
+                             &master->datagram_queue, queue) {
+        list_del_init(&datagram->queue);
+        datagram->state = EC_CMD_ERROR;
     }
 
     // clear domains
@@ -232,7 +233,7 @@ void ec_master_reset(ec_master_t *master /**< EtherCAT master */)
         kobject_put(&domain->kobj);
     }
 
-    master->command_index = 0;
+    master->datagram_index = 0;
     master->debug_level = 0;
     master->timeout = 500; // 500us
 
@@ -274,97 +275,97 @@ void ec_master_clear_slaves(ec_master_t *master)
 /*****************************************************************************/
 
 /**
-   Places a command in the command queue.
+   Places a datagram in the datagram queue.
 */
 
-void ec_master_queue_command(ec_master_t *master, /**< EtherCAT master */
-                             ec_command_t *command /**< command */
-                             )
+void ec_master_queue_datagram(ec_master_t *master, /**< EtherCAT master */
+                              ec_datagram_t *datagram /**< datagram */
+                              )
 {
-    ec_command_t *queued_command;
+    ec_datagram_t *queued_datagram;
 
-    // check, if the command is already queued
-    list_for_each_entry(queued_command, &master->command_queue, queue) {
-        if (queued_command == command) {
-            command->state = EC_CMD_QUEUED;
+    // check, if the datagram is already queued
+    list_for_each_entry(queued_datagram, &master->datagram_queue, queue) {
+        if (queued_datagram == datagram) {
+            datagram->state = EC_CMD_QUEUED;
             if (unlikely(master->debug_level))
-                EC_WARN("command already queued.\n");
+                EC_WARN("datagram already queued.\n");
             return;
         }
     }
 
-    list_add_tail(&command->queue, &master->command_queue);
-    command->state = EC_CMD_QUEUED;
+    list_add_tail(&datagram->queue, &master->datagram_queue);
+    datagram->state = EC_CMD_QUEUED;
 }
 
 /*****************************************************************************/
 
 /**
-   Sends the commands in the queue.
+   Sends the datagrams in the queue.
    \return 0 in case of success, else < 0
 */
 
-void ec_master_send_commands(ec_master_t *master /**< EtherCAT master */)
+void ec_master_send_datagrams(ec_master_t *master /**< EtherCAT master */)
 {
-    ec_command_t *command;
-    size_t command_size;
+    ec_datagram_t *datagram;
+    size_t datagram_size;
     uint8_t *frame_data, *cur_data;
     void *follows_word;
     cycles_t t_start, t_end;
-    unsigned int frame_count, more_commands_waiting;
+    unsigned int frame_count, more_datagrams_waiting;
 
     frame_count = 0;
     t_start = get_cycles();
 
     if (unlikely(master->debug_level > 0))
-        EC_DBG("ec_master_send_commands\n");
+        EC_DBG("ec_master_send_datagrams\n");
 
     do {
         // fetch pointer to transmit socket buffer
         frame_data = ec_device_tx_data(master->device);
         cur_data = frame_data + EC_FRAME_HEADER_SIZE;
         follows_word = NULL;
-        more_commands_waiting = 0;
+        more_datagrams_waiting = 0;
 
-        // fill current frame with commands
-        list_for_each_entry(command, &master->command_queue, queue) {
-            if (command->state != EC_CMD_QUEUED) continue;
+        // fill current frame with datagrams
+        list_for_each_entry(datagram, &master->datagram_queue, queue) {
+            if (datagram->state != EC_CMD_QUEUED) continue;
 
-            // does the current command fit in the frame?
-            command_size = EC_COMMAND_HEADER_SIZE + command->data_size
-                + EC_COMMAND_FOOTER_SIZE;
-            if (cur_data - frame_data + command_size > ETH_DATA_LEN) {
-                more_commands_waiting = 1;
+            // does the current datagram fit in the frame?
+            datagram_size = EC_DATAGRAM_HEADER_SIZE + datagram->data_size
+                + EC_DATAGRAM_FOOTER_SIZE;
+            if (cur_data - frame_data + datagram_size > ETH_DATA_LEN) {
+                more_datagrams_waiting = 1;
                 break;
             }
 
-            command->state = EC_CMD_SENT;
-            command->t_sent = t_start;
-            command->index = master->command_index++;
+            datagram->state = EC_CMD_SENT;
+            datagram->t_sent = t_start;
+            datagram->index = master->datagram_index++;
 
             if (unlikely(master->debug_level > 0))
-                EC_DBG("adding command 0x%02X\n", command->index);
+                EC_DBG("adding datagram 0x%02X\n", datagram->index);
 
-            // set "command following" flag in previous frame
+            // set "datagram following" flag in previous frame
             if (follows_word)
                 EC_WRITE_U16(follows_word, EC_READ_U16(follows_word) | 0x8000);
 
-            // EtherCAT command header
-            EC_WRITE_U8 (cur_data,     command->type);
-            EC_WRITE_U8 (cur_data + 1, command->index);
-            EC_WRITE_U32(cur_data + 2, command->address.logical);
-            EC_WRITE_U16(cur_data + 6, command->data_size & 0x7FF);
+            // EtherCAT datagram header
+            EC_WRITE_U8 (cur_data,     datagram->type);
+            EC_WRITE_U8 (cur_data + 1, datagram->index);
+            EC_WRITE_U32(cur_data + 2, datagram->address.logical);
+            EC_WRITE_U16(cur_data + 6, datagram->data_size & 0x7FF);
             EC_WRITE_U16(cur_data + 8, 0x0000);
             follows_word = cur_data + 6;
-            cur_data += EC_COMMAND_HEADER_SIZE;
+            cur_data += EC_DATAGRAM_HEADER_SIZE;
 
-            // EtherCAT command data
-            memcpy(cur_data, command->data, command->data_size);
-            cur_data += command->data_size;
+            // EtherCAT datagram data
+            memcpy(cur_data, datagram->data, datagram->data_size);
+            cur_data += datagram->data_size;
 
-            // EtherCAT command footer
+            // EtherCAT datagram footer
             EC_WRITE_U16(cur_data, 0x0000); // reset working counter
-            cur_data += EC_COMMAND_FOOTER_SIZE;
+            cur_data += EC_DATAGRAM_FOOTER_SIZE;
         }
 
         if (cur_data - frame_data == EC_FRAME_HEADER_SIZE) {
@@ -388,11 +389,11 @@ void ec_master_send_commands(ec_master_t *master /**< EtherCAT master */)
         ec_device_send(master->device, cur_data - frame_data);
         frame_count++;
     }
-    while (more_commands_waiting);
+    while (more_datagrams_waiting);
 
     if (unlikely(master->debug_level > 0)) {
         t_end = get_cycles();
-        EC_DBG("ec_master_send_commands sent %i frames in %ius.\n",
+        EC_DBG("ec_master_send_datagrams sent %i frames in %ius.\n",
                frame_count, (u32) (t_end - t_start) * 1000 / cpu_khz);
     }
 }
@@ -411,10 +412,10 @@ void ec_master_receive(ec_master_t *master, /**< EtherCAT master */
                        )
 {
     size_t frame_size, data_size;
-    uint8_t command_type, command_index;
+    uint8_t datagram_type, datagram_index;
     unsigned int cmd_follows, matched;
     const uint8_t *cur_data;
-    ec_command_t *command;
+    ec_datagram_t *datagram;
 
     if (unlikely(size < EC_FRAME_HEADER_SIZE)) {
         master->stats.corrupted++;
@@ -436,64 +437,64 @@ void ec_master_receive(ec_master_t *master, /**< EtherCAT master */
 
     cmd_follows = 1;
     while (cmd_follows) {
-        // process command header
-        command_type  = EC_READ_U8 (cur_data);
-        command_index = EC_READ_U8 (cur_data + 1);
-        data_size     = EC_READ_U16(cur_data + 6) & 0x07FF;
-        cmd_follows   = EC_READ_U16(cur_data + 6) & 0x8000;
-        cur_data += EC_COMMAND_HEADER_SIZE;
+        // process datagram header
+        datagram_type  = EC_READ_U8 (cur_data);
+        datagram_index = EC_READ_U8 (cur_data + 1);
+        data_size      = EC_READ_U16(cur_data + 6) & 0x07FF;
+        cmd_follows    = EC_READ_U16(cur_data + 6) & 0x8000;
+        cur_data += EC_DATAGRAM_HEADER_SIZE;
 
         if (unlikely(cur_data - frame_data
-                     + data_size + EC_COMMAND_FOOTER_SIZE > size)) {
+                     + data_size + EC_DATAGRAM_FOOTER_SIZE > size)) {
             master->stats.corrupted++;
             ec_master_output_stats(master);
             return;
         }
 
-        // search for matching command in the queue
+        // search for matching datagram in the queue
         matched = 0;
-        list_for_each_entry(command, &master->command_queue, queue) {
-            if (command->state == EC_CMD_SENT
-                && command->type == command_type
-                && command->index == command_index
-                && command->data_size == data_size) {
+        list_for_each_entry(datagram, &master->datagram_queue, queue) {
+            if (datagram->state == EC_CMD_SENT
+                && datagram->type == datagram_type
+                && datagram->index == datagram_index
+                && datagram->data_size == data_size) {
                 matched = 1;
                 break;
             }
         }
 
-        // no matching command was found
+        // no matching datagram was found
         if (!matched) {
             master->stats.unmatched++;
             ec_master_output_stats(master);
-            cur_data += data_size + EC_COMMAND_FOOTER_SIZE;
+            cur_data += data_size + EC_DATAGRAM_FOOTER_SIZE;
             continue;
         }
 
-        // copy received data in the command memory
-        memcpy(command->data, cur_data, data_size);
+        // copy received data in the datagram memory
+        memcpy(datagram->data, cur_data, data_size);
         cur_data += data_size;
 
-        // set the command's working counter
-        command->working_counter = EC_READ_U16(cur_data);
-        cur_data += EC_COMMAND_FOOTER_SIZE;
+        // set the datagram's working counter
+        datagram->working_counter = EC_READ_U16(cur_data);
+        cur_data += EC_DATAGRAM_FOOTER_SIZE;
 
-        // dequeue the received command
-        command->state = EC_CMD_RECEIVED;
-        list_del_init(&command->queue);
+        // dequeue the received datagram
+        datagram->state = EC_CMD_RECEIVED;
+        list_del_init(&datagram->queue);
     }
 }
 
 /*****************************************************************************/
 
 /**
-   Sends a single command and waits for its reception.
-   If the slave doesn't respond, the command is sent again.
+   Sends a single datagram and waits for its reception.
+   If the slave doesn't respond, the datagram is sent again.
    \return 0 in case of success, else < 0
 */
 
 int ec_master_simple_io(ec_master_t *master, /**< EtherCAT master */
-                        ec_command_t *command /**< command */
+                        ec_datagram_t *datagram /**< datagram */
                         )
 {
     unsigned int response_tries_left;
@@ -502,19 +503,19 @@ int ec_master_simple_io(ec_master_t *master, /**< EtherCAT master */
 
     while (1)
     {
-        ec_master_queue_command(master, command);
+        ec_master_queue_datagram(master, datagram);
         ecrt_master_sync_io(master);
 
-        if (command->state == EC_CMD_RECEIVED) {
-            if (likely(command->working_counter))
+        if (datagram->state == EC_CMD_RECEIVED) {
+            if (likely(datagram->working_counter))
                 return 0;
         }
-        else if (command->state == EC_CMD_TIMEOUT) {
+        else if (datagram->state == EC_CMD_TIMEOUT) {
             EC_ERR("Simple-IO TIMEOUT!\n");
             return -1;
         }
-        else if (command->state == EC_CMD_ERROR) {
-            EC_ERR("Simple-IO command error!\n");
+        else if (datagram->state == EC_CMD_ERROR) {
+            EC_ERR("Simple-IO datagram error!\n");
             return -1;
         }
 
@@ -540,7 +541,7 @@ int ec_master_bus_scan(ec_master_t *master /**< EtherCAT master */)
 {
     ec_slave_t *slave;
     ec_slave_ident_t *ident;
-    ec_command_t *command;
+    ec_datagram_t *datagram;
     unsigned int i;
     uint16_t coupler_index, coupler_subindex;
     uint16_t reverse_coupler_index, current_coupler_index;
@@ -550,12 +551,12 @@ int ec_master_bus_scan(ec_master_t *master /**< EtherCAT master */)
         return -1;
     }
 
-    command = &master->simple_command;
+    datagram = &master->simple_datagram;
 
     // determine number of slaves on bus
-    if (ec_command_brd(command, 0x0000, 4)) return -1;
-    if (unlikely(ec_master_simple_io(master, command))) return -1;
-    master->slave_count = command->working_counter;
+    if (ec_datagram_brd(datagram, 0x0000, 4)) return -1;
+    if (unlikely(ec_master_simple_io(master, datagram))) return -1;
+    master->slave_count = datagram->working_counter;
     EC_INFO("Found %i slaves on bus.\n", master->slave_count);
 
     if (!master->slave_count) return 0;
@@ -588,10 +589,10 @@ int ec_master_bus_scan(ec_master_t *master /**< EtherCAT master */)
     list_for_each_entry(slave, &master->slaves, list) {
 
         // write station address
-        if (ec_command_apwr(command, slave->ring_position, 0x0010,
+        if (ec_datagram_apwr(datagram, slave->ring_position, 0x0010,
                             sizeof(uint16_t))) goto out_free;
-        EC_WRITE_U16(command->data, slave->station_address);
-        if (unlikely(ec_master_simple_io(master, command))) {
+        EC_WRITE_U16(datagram->data, slave->station_address);
+        if (unlikely(ec_master_simple_io(master, datagram))) {
             EC_ERR("Writing station address failed on slave %i!\n",
                    slave->ring_position);
             goto out_free;
@@ -650,7 +651,7 @@ void ec_master_output_stats(ec_master_t *master /**< EtherCAT master */)
 
     if (unlikely((u32) (t_now - master->stats.t_last) / cpu_khz > 1000)) {
         if (master->stats.timeouts) {
-            EC_WARN("%i commands TIMED OUT!\n", master->stats.timeouts);
+            EC_WARN("%i datagrams TIMED OUT!\n", master->stats.timeouts);
             master->stats.timeouts = 0;
         }
         if (master->stats.delayed) {
@@ -662,7 +663,7 @@ void ec_master_output_stats(ec_master_t *master /**< EtherCAT master */)
             master->stats.corrupted = 0;
         }
         if (master->stats.unmatched) {
-            EC_WARN("%i command(s) UNMATCHED!\n", master->stats.unmatched);
+            EC_WARN("%i datagram(s) UNMATCHED!\n", master->stats.unmatched);
             master->stats.unmatched = 0;
         }
         master->stats.t_last = t_now;
@@ -1075,7 +1076,7 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT master */)
 {
     unsigned int j;
     ec_slave_t *slave;
-    ec_command_t *command;
+    ec_datagram_t *datagram;
     const ec_sync_t *sync;
     const ec_slave_type_t *type;
     const ec_fmmu_t *fmmu;
@@ -1083,7 +1084,7 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT master */)
     ec_domain_t *domain;
     ec_eeprom_sync_t *eeprom_sync, mbox_sync;
 
-    command = &master->simple_command;
+    datagram = &master->simple_datagram;
 
     // allocate all domains
     domain_offset = 0;
@@ -1112,11 +1113,12 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT master */)
 
         // reset FMMUs
         if (slave->base_fmmu_count) {
-            if (ec_command_npwr(command, slave->station_address, 0x0600,
-                                EC_FMMU_SIZE * slave->base_fmmu_count))
+            if (ec_datagram_npwr(datagram, slave->station_address, 0x0600,
+                                 EC_FMMU_SIZE * slave->base_fmmu_count))
                 return -1;
-            memset(command->data, 0x00, EC_FMMU_SIZE * slave->base_fmmu_count);
-            if (unlikely(ec_master_simple_io(master, command))) {
+            memset(datagram->data, 0x00,
+                   EC_FMMU_SIZE * slave->base_fmmu_count);
+            if (unlikely(ec_master_simple_io(master, datagram))) {
                 EC_ERR("Resetting FMMUs failed on slave %i!\n",
                        slave->ring_position);
                 return -1;
@@ -1125,11 +1127,11 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT master */)
 
         // reset sync managers
         if (slave->base_sync_count) {
-            if (ec_command_npwr(command, slave->station_address, 0x0800,
+            if (ec_datagram_npwr(datagram, slave->station_address, 0x0800,
                                 EC_SYNC_SIZE * slave->base_sync_count))
                 return -1;
-            memset(command->data, 0x00, EC_SYNC_SIZE * slave->base_sync_count);
-            if (unlikely(ec_master_simple_io(master, command))) {
+            memset(datagram->data, 0x00, EC_SYNC_SIZE * slave->base_sync_count);
+            if (unlikely(ec_master_simple_io(master, datagram))) {
                 EC_ERR("Resetting sync managers failed on slave %i!\n",
                        slave->ring_position);
                 return -1;
@@ -1140,11 +1142,11 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT master */)
         if (type) { // known slave type, take type's SM information
             for (j = 0; type->sync_managers[j] && j < EC_MAX_SYNC; j++) {
                 sync = type->sync_managers[j];
-                if (ec_command_npwr(command, slave->station_address,
+                if (ec_datagram_npwr(datagram, slave->station_address,
                                     0x0800 + j * EC_SYNC_SIZE, EC_SYNC_SIZE))
                     return -1;
-                ec_sync_config(sync, slave, command->data);
-                if (unlikely(ec_master_simple_io(master, command))) {
+                ec_sync_config(sync, slave, datagram->data);
+                if (unlikely(ec_master_simple_io(master, datagram))) {
                     EC_ERR("Setting sync manager %i failed on slave %i!\n",
                            j, slave->ring_position);
                     return -1;
@@ -1156,12 +1158,12 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT master */)
 	    if (!list_empty(&slave->eeprom_syncs)) {
 		list_for_each_entry(eeprom_sync, &slave->eeprom_syncs, list) {
 		    EC_INFO("Sync manager %i...\n", eeprom_sync->index);
-		    if (ec_command_npwr(command, slave->station_address,
-					0x800 + eeprom_sync->index *
-					EC_SYNC_SIZE,
-					EC_SYNC_SIZE)) return -1;
-		    ec_eeprom_sync_config(eeprom_sync, command->data);
-		    if (unlikely(ec_master_simple_io(master, command))) {
+		    if (ec_datagram_npwr(datagram, slave->station_address,
+                                 0x800 + eeprom_sync->index *
+                                 EC_SYNC_SIZE,
+                                 EC_SYNC_SIZE)) return -1;
+		    ec_eeprom_sync_config(eeprom_sync, datagram->data);
+		    if (unlikely(ec_master_simple_io(master, datagram))) {
 			EC_ERR("Setting sync manager %i failed on slave %i!\n",
 			       eeprom_sync->index, slave->ring_position);
 			return -1;
@@ -1174,10 +1176,10 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT master */)
 		mbox_sync.length = slave->sii_rx_mailbox_size;
 		mbox_sync.control_register = 0x26;
 		mbox_sync.enable = 1;
-		if (ec_command_npwr(command, slave->station_address,
-				    0x800,EC_SYNC_SIZE)) return -1;
-		ec_eeprom_sync_config(&mbox_sync, command->data);
-		if (unlikely(ec_master_simple_io(master, command))) {
+		if (ec_datagram_npwr(datagram, slave->station_address,
+                             0x800,EC_SYNC_SIZE)) return -1;
+		ec_eeprom_sync_config(&mbox_sync, datagram->data);
+		if (unlikely(ec_master_simple_io(master, datagram))) {
 		    EC_ERR("Setting sync manager 0 failed on slave %i!\n",
 			   slave->ring_position);
 		    return -1;
@@ -1188,10 +1190,10 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT master */)
 		mbox_sync.length = slave->sii_tx_mailbox_size;
 		mbox_sync.control_register = 0x22;
 		mbox_sync.enable = 1;
-		if (ec_command_npwr(command, slave->station_address,
-				    0x808, EC_SYNC_SIZE)) return -1;
-		ec_eeprom_sync_config(&mbox_sync, command->data);
-		if (unlikely(ec_master_simple_io(master, command))) {
+		if (ec_datagram_npwr(datagram, slave->station_address,
+                             0x808, EC_SYNC_SIZE)) return -1;
+		ec_eeprom_sync_config(&mbox_sync, datagram->data);
+		if (unlikely(ec_master_simple_io(master, datagram))) {
 		    EC_ERR("Setting sync manager 1 failed on slave %i!\n",
 			   slave->ring_position);
 		    return -1;
@@ -1218,11 +1220,11 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT master */)
         // configure FMMUs
         for (j = 0; j < slave->fmmu_count; j++) {
             fmmu = &slave->fmmus[j];
-            if (ec_command_npwr(command, slave->station_address,
-                                0x0600 + j * EC_FMMU_SIZE, EC_FMMU_SIZE))
+            if (ec_datagram_npwr(datagram, slave->station_address,
+                                 0x0600 + j * EC_FMMU_SIZE, EC_FMMU_SIZE))
                 return -1;
-            ec_fmmu_config(fmmu, slave, command->data);
-            if (unlikely(ec_master_simple_io(master, command))) {
+            ec_fmmu_config(fmmu, slave, datagram->data);
+            if (unlikely(ec_master_simple_io(master, datagram))) {
                 EC_ERR("Setting FMMU %i failed on slave %i!\n",
                        j, slave->ring_position);
                 return -1;
@@ -1288,17 +1290,17 @@ int ecrt_master_fetch_sdo_lists(ec_master_t *master /**< EtherCAT master */)
 /*****************************************************************************/
 
 /**
-   Sends queued commands and waits for their reception.
+   Sends queued datagrams and waits for their reception.
    \ingroup RealtimeInterface
 */
 
 void ecrt_master_sync_io(ec_master_t *master /**< EtherCAT master */)
 {
-    ec_command_t *command, *n;
-    unsigned int commands_sent;
+    ec_datagram_t *datagram, *n;
+    unsigned int datagrams_sent;
     cycles_t t_start, t_end, t_timeout;
 
-    // send commands
+    // send datagrams
     ecrt_master_async_send(master);
 
     t_start = get_cycles(); // measure io time
@@ -1310,23 +1312,23 @@ void ecrt_master_sync_io(ec_master_t *master /**< EtherCAT master */)
         t_end = get_cycles(); // take current time
         if (t_end - t_start >= t_timeout) break; // timeout!
 
-        commands_sent = 0;
-        list_for_each_entry_safe(command, n, &master->command_queue, queue) {
-            if (command->state == EC_CMD_RECEIVED)
-                list_del_init(&command->queue);
-            else if (command->state == EC_CMD_SENT)
-                commands_sent++;
+        datagrams_sent = 0;
+        list_for_each_entry_safe(datagram, n, &master->datagram_queue, queue) {
+            if (datagram->state == EC_CMD_RECEIVED)
+                list_del_init(&datagram->queue);
+            else if (datagram->state == EC_CMD_SENT)
+                datagrams_sent++;
         }
 
-        if (!commands_sent) break;
+        if (!datagrams_sent) break;
     }
 
-    // timeout; dequeue all commands
-    list_for_each_entry_safe(command, n, &master->command_queue, queue) {
-        switch (command->state) {
+    // timeout; dequeue all datagrams
+    list_for_each_entry_safe(datagram, n, &master->datagram_queue, queue) {
+        switch (datagram->state) {
             case EC_CMD_SENT:
             case EC_CMD_QUEUED:
-                command->state = EC_CMD_TIMEOUT;
+                datagram->state = EC_CMD_TIMEOUT;
                 master->stats.timeouts++;
                 ec_master_output_stats(master);
                 break;
@@ -1337,26 +1339,26 @@ void ecrt_master_sync_io(ec_master_t *master /**< EtherCAT master */)
             default:
                 break;
         }
-        list_del_init(&command->queue);
+        list_del_init(&datagram->queue);
     }
 }
 
 /*****************************************************************************/
 
 /**
-   Asynchronous sending of commands.
+   Asynchronous sending of datagrams.
    \ingroup RealtimeInterface
 */
 
 void ecrt_master_async_send(ec_master_t *master /**< EtherCAT master */)
 {
-    ec_command_t *command, *n;
+    ec_datagram_t *datagram, *n;
 
     if (unlikely(!master->device->link_state)) {
-        // link is down, no command can be sent
-        list_for_each_entry_safe(command, n, &master->command_queue, queue) {
-            command->state = EC_CMD_ERROR;
-            list_del_init(&command->queue);
+        // link is down, no datagram can be sent
+        list_for_each_entry_safe(datagram, n, &master->datagram_queue, queue) {
+            datagram->state = EC_CMD_ERROR;
+            list_del_init(&datagram->queue);
         }
 
         // query link state
@@ -1365,19 +1367,19 @@ void ecrt_master_async_send(ec_master_t *master /**< EtherCAT master */)
     }
 
     // send frames
-    ec_master_send_commands(master);
+    ec_master_send_datagrams(master);
 }
 
 /*****************************************************************************/
 
 /**
-   Asynchronous receiving of commands.
+   Asynchronous receiving of datagrams.
    \ingroup RealtimeInterface
 */
 
 void ecrt_master_async_receive(ec_master_t *master /**< EtherCAT master */)
 {
-    ec_command_t *command, *next;
+    ec_datagram_t *datagram, *next;
     cycles_t t_received, t_timeout;
 
     ec_device_call_isr(master->device);
@@ -1385,18 +1387,19 @@ void ecrt_master_async_receive(ec_master_t *master /**< EtherCAT master */)
     t_received = get_cycles();
     t_timeout = (cycles_t) master->timeout * (cpu_khz / 1000);
 
-    // dequeue all received commands
-    list_for_each_entry_safe(command, next, &master->command_queue, queue)
-        if (command->state == EC_CMD_RECEIVED) list_del_init(&command->queue);
+    // dequeue all received datagrams
+    list_for_each_entry_safe(datagram, next, &master->datagram_queue, queue)
+        if (datagram->state == EC_CMD_RECEIVED)
+            list_del_init(&datagram->queue);
 
-    // dequeue all commands that timed out
-    list_for_each_entry_safe(command, next, &master->command_queue, queue) {
-        switch (command->state) {
+    // dequeue all datagrams that timed out
+    list_for_each_entry_safe(datagram, next, &master->datagram_queue, queue) {
+        switch (datagram->state) {
             case EC_CMD_SENT:
             case EC_CMD_QUEUED:
-                if (t_received - command->t_sent > t_timeout) {
-                    list_del_init(&command->queue);
-                    command->state = EC_CMD_TIMEOUT;
+                if (t_received - datagram->t_sent > t_timeout) {
+                    list_del_init(&datagram->queue);
+                    datagram->state = EC_CMD_TIMEOUT;
                     master->stats.timeouts++;
                     ec_master_output_stats(master);
                 }
@@ -1411,7 +1414,7 @@ void ecrt_master_async_receive(ec_master_t *master /**< EtherCAT master */)
 
 /**
    Prepares synchronous IO.
-   Queues all domain commands and sends them. Then waits a certain time, so
+   Queues all domain datagrams and sends them. Then waits a certain time, so
    that ecrt_master_sasync_receive() can be called securely.
    \ingroup RealtimeInterface
 */
@@ -1421,7 +1424,7 @@ void ecrt_master_prepare_async_io(ec_master_t *master /**< EtherCAT master */)
     ec_domain_t *domain;
     cycles_t t_start, t_end, t_timeout;
 
-    // queue commands of all domains
+    // queue datagrams of all domains
     list_for_each_entry(domain, &master->domains, list)
         ecrt_domain_queue(domain);
 

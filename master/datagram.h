@@ -33,13 +33,13 @@
 
 /**
    \file
-   EtherCAT command structure.
+   EtherCAT datagram structure.
 */
 
 /*****************************************************************************/
 
-#ifndef _EC_COMMAND_H_
-#define _EC_COMMAND_H_
+#ifndef _EC_DATAGRAM_H_
+#define _EC_DATAGRAM_H_
 
 #include <linux/list.h>
 #include <linux/timex.h>
@@ -49,7 +49,7 @@
 /*****************************************************************************/
 
 /**
-   EtherCAT command type.
+   EtherCAT datagram type.
 */
 
 typedef enum
@@ -63,22 +63,22 @@ typedef enum
     EC_CMD_BWR  = 0x08, /**< Broadcast write */
     EC_CMD_LRW  = 0x0C  /**< Logical read/write */
 }
-ec_command_type_t;
+ec_datagram_type_t;
 
 /**
-   EtherCAT command state.
+   EtherCAT datagram state.
 */
 
 typedef enum
 {
-    EC_CMD_INIT, /**< new command */
-    EC_CMD_QUEUED, /**< command queued by master */
-    EC_CMD_SENT, /**< command has been sent */
-    EC_CMD_RECEIVED, /**< command has been received */
-    EC_CMD_TIMEOUT, /**< command timed out */
+    EC_CMD_INIT, /**< new datagram */
+    EC_CMD_QUEUED, /**< datagram queued by master */
+    EC_CMD_SENT, /**< datagram has been sent */
+    EC_CMD_RECEIVED, /**< datagram has been received */
+    EC_CMD_TIMEOUT, /**< datagram timed out */
     EC_CMD_ERROR /**< error while sending/receiving */
 }
-ec_command_state_t;
+ec_datagram_state_t;
 
 /*****************************************************************************/
 
@@ -102,38 +102,38 @@ ec_address_t;
 /*****************************************************************************/
 
 /**
-   EtherCAT command.
+   EtherCAT datagram.
 */
 
 typedef struct
 {
-    struct list_head list; /**< needed by domain command lists */
-    struct list_head queue; /**< master command queue item */
-    ec_command_type_t type; /**< command type (APRD, BWR, etc) */
+    struct list_head list; /**< needed by domain datagram lists */
+    struct list_head queue; /**< master datagram queue item */
+    ec_datagram_type_t type; /**< datagram type (APRD, BWR, etc) */
     ec_address_t address; /**< receipient address */
-    uint8_t *data; /**< command data */
-    size_t mem_size; /**< command \a data memory size */
+    uint8_t *data; /**< datagram data */
+    size_t mem_size; /**< datagram \a data memory size */
     size_t data_size; /**< size of the data in \a data */
-    uint8_t index; /**< command index (set by master) */
+    uint8_t index; /**< datagram index (set by master) */
     uint16_t working_counter; /**< working counter */
-    ec_command_state_t state; /**< command state */
-    cycles_t t_sent; /**< time, the commands was sent */
+    ec_datagram_state_t state; /**< datagram state */
+    cycles_t t_sent; /**< time, the datagrams was sent */
 }
-ec_command_t;
+ec_datagram_t;
 
 /*****************************************************************************/
 
-void ec_command_init(ec_command_t *);
-void ec_command_clear(ec_command_t *);
-int ec_command_prealloc(ec_command_t *, size_t);
+void ec_datagram_init(ec_datagram_t *);
+void ec_datagram_clear(ec_datagram_t *);
+int ec_datagram_prealloc(ec_datagram_t *, size_t);
 
-int ec_command_nprd(ec_command_t *, uint16_t, uint16_t, size_t);
-int ec_command_npwr(ec_command_t *, uint16_t, uint16_t, size_t);
-int ec_command_aprd(ec_command_t *, uint16_t, uint16_t, size_t);
-int ec_command_apwr(ec_command_t *, uint16_t, uint16_t, size_t);
-int ec_command_brd(ec_command_t *, uint16_t, size_t);
-int ec_command_bwr(ec_command_t *, uint16_t, size_t);
-int ec_command_lrw(ec_command_t *, uint32_t, size_t);
+int ec_datagram_nprd(ec_datagram_t *, uint16_t, uint16_t, size_t);
+int ec_datagram_npwr(ec_datagram_t *, uint16_t, uint16_t, size_t);
+int ec_datagram_aprd(ec_datagram_t *, uint16_t, uint16_t, size_t);
+int ec_datagram_apwr(ec_datagram_t *, uint16_t, uint16_t, size_t);
+int ec_datagram_brd(ec_datagram_t *, uint16_t, size_t);
+int ec_datagram_bwr(ec_datagram_t *, uint16_t, size_t);
+int ec_datagram_lrw(ec_datagram_t *, uint32_t, size_t);
 
 /*****************************************************************************/
 

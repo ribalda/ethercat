@@ -72,11 +72,11 @@
 /** size of an EtherCAT frame header */
 #define EC_FRAME_HEADER_SIZE 2
 
-/** size of an EtherCAT command header */
-#define EC_COMMAND_HEADER_SIZE 10
+/** size of an EtherCAT datagram header */
+#define EC_DATAGRAM_HEADER_SIZE 10
 
-/** size of an EtherCAT command footer */
-#define EC_COMMAND_FOOTER_SIZE 2
+/** size of an EtherCAT datagram footer */
+#define EC_DATAGRAM_FOOTER_SIZE 2
 
 /** size of a sync manager configuration page */
 #define EC_SYNC_SIZE 8
@@ -84,9 +84,9 @@
 /** size of an FMMU configuration page */
 #define EC_FMMU_SIZE 16
 
-/** resulting maximum data size of a single command in a frame */
+/** resulting maximum data size of a single datagram in a frame */
 #define EC_MAX_DATA_SIZE (ETH_DATA_LEN - EC_FRAME_HEADER_SIZE \
-                          - EC_COMMAND_HEADER_SIZE - EC_COMMAND_FOOTER_SIZE)
+                          - EC_DATAGRAM_HEADER_SIZE - EC_DATAGRAM_FOOTER_SIZE)
 
 /*****************************************************************************/
 
@@ -178,7 +178,7 @@ extern void ec_print_states(uint8_t);
 
 /**
    Code - Message pair.
-   Some EtherCAT commands support reading a status code to display a certain
+   Some EtherCAT datagrams support reading a status code to display a certain
    message. This type allows to map a code to a message string.
 */
 

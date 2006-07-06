@@ -90,7 +90,7 @@ int ec_domain_init(ec_domain_t *domain, /**< EtherCAT domain */
     domain->response_count = 0xFFFFFFFF;
 
     INIT_LIST_HEAD(&domain->field_regs);
-    INIT_LIST_HEAD(&domain->commands);
+    INIT_LIST_HEAD(&domain->datagrams);
 
     // init kobject and add it to the hierarchy
     memset(&domain->kobj, 0x00, sizeof(struct kobject));
@@ -113,16 +113,16 @@ int ec_domain_init(ec_domain_t *domain, /**< EtherCAT domain */
 
 void ec_domain_clear(struct kobject *kobj /**< kobject of the domain */)
 {
-    ec_command_t *command, *next;
+    ec_datagram_t *datagram, *next;
     ec_domain_t *domain;
 
     domain = container_of(kobj, ec_domain_t, kobj);
 
     EC_INFO("Clearing domain %i.\n", domain->index);
 
-    list_for_each_entry_safe(command, next, &domain->commands, list) {
-        ec_command_clear(command);
-        kfree(command);
+    list_for_each_entry_safe(datagram, next, &domain->datagrams, list) {
+        ec_datagram_clear(datagram);
+        kfree(datagram);
     }
 
     ec_domain_clear_field_regs(domain);
@@ -187,30 +187,30 @@ void ec_domain_clear_field_regs(ec_domain_t *domain /**< EtherCAT domain */)
 /*****************************************************************************/
 
 /**
-   Allocates a process data command and appends it to the list.
+   Allocates a process data datagram and appends it to the list.
    \return 0 in case of success, else < 0
 */
 
-int ec_domain_add_command(ec_domain_t *domain, /**< EtherCAT domain */
-                          uint32_t offset, /**< logical offset */
-                          size_t data_size /**< size of the command data */
-                          )
+int ec_domain_add_datagram(ec_domain_t *domain, /**< EtherCAT domain */
+                           uint32_t offset, /**< logical offset */
+                           size_t data_size /**< size of the datagram data */
+                           )
 {
-    ec_command_t *command;
+    ec_datagram_t *datagram;
 
-    if (!(command = kmalloc(sizeof(ec_command_t), GFP_KERNEL))) {
-        EC_ERR("Failed to allocate domain command!\n");
+    if (!(datagram = kmalloc(sizeof(ec_datagram_t), GFP_KERNEL))) {
+        EC_ERR("Failed to allocate domain datagram!\n");
         return -1;
     }
 
-    ec_command_init(command);
+    ec_datagram_init(datagram);
 
-    if (ec_command_lrw(command, offset, data_size)) {
-        kfree(command);
+    if (ec_datagram_lrw(datagram, offset, data_size)) {
+        kfree(datagram);
         return -1;
     }
 
-    list_add_tail(&command->list, &domain->commands);
+    list_add_tail(&datagram->list, &domain->datagrams);
     return 0;
 }
 
@@ -235,7 +235,7 @@ int ec_domain_alloc(ec_domain_t *domain, /**< EtherCAT domain */
     uint32_t field_off, field_off_cmd;
     uint32_t cmd_offset;
     size_t cmd_data_size, sync_size;
-    ec_command_t *command;
+    ec_datagram_t *datagram;
 
     domain->base_address = base_address;
 
@@ -252,8 +252,8 @@ int ec_domain_alloc(ec_domain_t *domain, /**< EtherCAT domain */
                 sync_size = ec_slave_calc_sync_size(slave, fmmu->sync);
                 domain->data_size += sync_size;
                 if (cmd_data_size + sync_size > EC_MAX_DATA_SIZE) {
-                    if (ec_domain_add_command(domain, cmd_offset,
-                                              cmd_data_size)) return -1;
+                    if (ec_domain_add_datagram(domain, cmd_offset,
+                                               cmd_data_size)) return -1;
                     cmd_offset += cmd_data_size;
                     cmd_data_size = 0;
                     cmd_count++;
@@ -263,9 +263,9 @@ int ec_domain_alloc(ec_domain_t *domain, /**< EtherCAT domain */
         }
     }
 
-    // allocate last command
+    // allocate last datagram
     if (cmd_data_size) {
-        if (ec_domain_add_command(domain, cmd_offset, cmd_data_size))
+        if (ec_domain_add_datagram(domain, cmd_offset, cmd_data_size))
             return -1;
         cmd_count++;
     }
@@ -283,12 +283,12 @@ int ec_domain_alloc(ec_domain_t *domain, /**< EtherCAT domain */
             if (fmmu->domain == domain && fmmu->sync == field_reg->sync) {
                 field_off = fmmu->logical_start_address +
                     field_reg->field_offset;
-                // search command
-                list_for_each_entry(command, &domain->commands, list) {
-                    field_off_cmd = field_off - command->address.logical;
-                    if (field_off >= command->address.logical &&
-                        field_off_cmd < command->mem_size) {
-                        *field_reg->data_ptr = command->data + field_off_cmd;
+                // search datagram
+                list_for_each_entry(datagram, &domain->datagrams, list) {
+                    field_off_cmd = field_off - datagram->address.logical;
+                    if (field_off >= datagram->address.logical &&
+                        field_off_cmd < datagram->mem_size) {
+                        *field_reg->data_ptr = datagram->data + field_off_cmd;
                     }
                 }
                 if (!field_reg->data_ptr) {
@@ -300,7 +300,7 @@ int ec_domain_alloc(ec_domain_t *domain, /**< EtherCAT domain */
         }
     }
 
-    EC_INFO("Domain %i - Allocated %i bytes in %i command%s\n",
+    EC_INFO("Domain %i - Allocated %i bytes in %i datagram%s\n",
             domain->index, domain->data_size, cmd_count,
             cmd_count == 1 ? "" : "s");
 
@@ -314,7 +314,7 @@ int ec_domain_alloc(ec_domain_t *domain, /**< EtherCAT domain */
 /**
    Sets the number of responding slaves and outputs it on demand.
    This number isn't really the number of responding slaves, but the sum of
-   the working counters of all domain commands. Some slaves increase the
+   the working counters of all domain datagrams. Some slaves increase the
    working counter by 2, some by 1.
 */
 
@@ -479,16 +479,16 @@ int ecrt_domain_register_field_list(ec_domain_t *domain,
 /*****************************************************************************/
 
 /**
-   Places all process data commands in the masters command queue.
+   Places all process data datagrams in the masters datagram queue.
    \ingroup RealtimeInterface
 */
 
 void ecrt_domain_queue(ec_domain_t *domain /**< EtherCAT domain */)
 {
-    ec_command_t *command;
+    ec_datagram_t *datagram;
 
-    list_for_each_entry(command, &domain->commands, list) {
-        ec_master_queue_command(domain->master, command);
+    list_for_each_entry(datagram, &domain->datagrams, list) {
+        ec_master_queue_datagram(domain->master, datagram);
     }
 }
 
@@ -502,13 +502,13 @@ void ecrt_domain_queue(ec_domain_t *domain /**< EtherCAT domain */)
 void ecrt_domain_process(ec_domain_t *domain /**< EtherCAT domain */)
 {
     unsigned int working_counter_sum;
-    ec_command_t *command;
+    ec_datagram_t *datagram;
 
     working_counter_sum = 0;
 
-    list_for_each_entry(command, &domain->commands, list) {
-        if (command->state == EC_CMD_RECEIVED) {
-            working_counter_sum += command->working_counter;
+    list_for_each_entry(datagram, &domain->datagrams, list) {
+        if (datagram->state == EC_CMD_RECEIVED) {
+            working_counter_sum += datagram->working_counter;
         }
     }
 
@@ -519,16 +519,16 @@ void ecrt_domain_process(ec_domain_t *domain /**< EtherCAT domain */)
 
 /**
    Returns the state of a domain.
-   \return 0 if all commands were received, else -1.
+   \return 0 if all datagrams were received, else -1.
    \ingroup RealtimeInterface
 */
 
 int ecrt_domain_state(ec_domain_t *domain /**< EtherCAT domain */)
 {
-    ec_command_t *command;
+    ec_datagram_t *datagram;
 
-    list_for_each_entry(command, &domain->commands, list) {
-        if (command->state != EC_CMD_RECEIVED) return -1;
+    list_for_each_entry(datagram, &domain->datagrams, list) {
+        if (datagram->state != EC_CMD_RECEIVED) return -1;
     }
 
     return 0;
