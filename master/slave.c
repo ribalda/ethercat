@@ -539,7 +539,7 @@ int ec_slave_fetch_categories(ec_slave_t *slave /**< EtherCAT slave */)
 
     word_offset = 0x0040;
 
-    if (!(cat_data = (uint8_t *) kmalloc(0x10000, GFP_KERNEL))) {
+    if (!(cat_data = (uint8_t *) kmalloc(0x10000, GFP_ATOMIC))) {
         EC_ERR("Failed to allocate 64k bytes for category data.\n");
         return -1;
     }
@@ -637,7 +637,7 @@ int ec_slave_fetch_strings(ec_slave_t *slave, /**< EtherCAT slave */
         size = data[offset];
         // allocate memory for string structure and data at a single blow
         if (!(string = (ec_eeprom_string_t *)
-              kmalloc(sizeof(ec_eeprom_string_t) + size + 1, GFP_KERNEL))) {
+              kmalloc(sizeof(ec_eeprom_string_t) + size + 1, GFP_ATOMIC))) {
             EC_ERR("Failed to allocate string memory.\n");
             return -1;
         }
@@ -701,7 +701,7 @@ int ec_slave_fetch_sync(ec_slave_t *slave, /**< EtherCAT slave */
 
     for (i = 0; i < sync_count; i++, data += 8) {
         if (!(sync = (ec_eeprom_sync_t *)
-              kmalloc(sizeof(ec_eeprom_sync_t), GFP_KERNEL))) {
+              kmalloc(sizeof(ec_eeprom_sync_t), GFP_ATOMIC))) {
             EC_ERR("Failed to allocate Sync-Manager memory.\n");
             return -1;
         }
@@ -737,7 +737,7 @@ int ec_slave_fetch_pdo(ec_slave_t *slave, /**< EtherCAT slave */
 
     while (word_count >= 4) {
         if (!(pdo = (ec_eeprom_pdo_t *)
-              kmalloc(sizeof(ec_eeprom_pdo_t), GFP_KERNEL))) {
+              kmalloc(sizeof(ec_eeprom_pdo_t), GFP_ATOMIC))) {
             EC_ERR("Failed to allocate PDO memory.\n");
             return -1;
         }
@@ -758,7 +758,7 @@ int ec_slave_fetch_pdo(ec_slave_t *slave, /**< EtherCAT slave */
 
         for (i = 0; i < entry_count; i++) {
             if (!(entry = (ec_eeprom_pdo_entry_t *)
-                  kmalloc(sizeof(ec_eeprom_pdo_entry_t), GFP_KERNEL))) {
+                  kmalloc(sizeof(ec_eeprom_pdo_entry_t), GFP_ATOMIC))) {
                 EC_ERR("Failed to allocate PDO entry memory.\n");
                 return -1;
             }
@@ -808,7 +808,7 @@ int ec_slave_locate_string(ec_slave_t *slave, /**< EtherCAT slave */
     list_for_each_entry(string, &slave->eeprom_strings, list) {
         if (--index) continue;
 
-        if (!(*ptr = (char *) kmalloc(string->size + 1, GFP_KERNEL))) {
+        if (!(*ptr = (char *) kmalloc(string->size + 1, GFP_ATOMIC))) {
             EC_ERR("Unable to allocate string memory.\n");
             return -1;
         }
@@ -820,7 +820,7 @@ int ec_slave_locate_string(ec_slave_t *slave, /**< EtherCAT slave */
 
     err_string = "(string not found)";
 
-    if (!(*ptr = (char *) kmalloc(strlen(err_string) + 1, GFP_KERNEL))) {
+    if (!(*ptr = (char *) kmalloc(strlen(err_string) + 1, GFP_ATOMIC))) {
         EC_ERR("Unable to allocate string memory.\n");
         return -1;
     }
