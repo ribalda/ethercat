@@ -1494,6 +1494,37 @@ size_t ec_slave_calc_sync_size(const ec_slave_t *slave, /**< EtherCAT slave */
     return size;
 }
 
+/*****************************************************************************/
+
+/**
+   Calculates the size of a sync manager by evaluating PDO sizes.
+   \return sync manager size
+*/
+
+uint16_t ec_slave_calc_eeprom_sync_size(const ec_slave_t *slave,
+                                        /**< EtherCAT slave */
+                                        const ec_eeprom_sync_t *sync
+                                        /**< sync manager */
+                                        )
+{
+    ec_eeprom_pdo_t *pdo;
+    ec_eeprom_pdo_entry_t *pdo_entry;
+    uint16_t size;
+
+    if (sync->length) return sync->length;
+
+    size = 0;
+    list_for_each_entry(pdo, &slave->eeprom_pdos, list) {
+        if (pdo->sync_manager != sync->index) continue;
+
+        list_for_each_entry(pdo_entry, &pdo->entries, list) {
+            size += pdo_entry->bit_length / 8;
+        }
+    }
+
+    return size;
+}
+
 /******************************************************************************
  *  Realtime interface
  *****************************************************************************/

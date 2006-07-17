@@ -1163,7 +1163,7 @@ void ec_fsm_slave_sync(ec_fsm_t *fsm /**< finite state machine */)
                     EC_ERR("Invalid sync manager configuration found!");
                     return;
                 }
-                ec_eeprom_sync_config(eeprom_sync,
+                ec_eeprom_sync_config(eeprom_sync, slave,
                                       datagram->data + EC_SYNC_SIZE
                                       * eeprom_sync->index);
             }
@@ -1176,14 +1176,14 @@ void ec_fsm_slave_sync(ec_fsm_t *fsm /**< finite state machine */)
             mbox_sync.length = slave->sii_rx_mailbox_size;
             mbox_sync.control_register = 0x26;
             mbox_sync.enable = 1;
-            ec_eeprom_sync_config(&mbox_sync, datagram->data);
+            ec_eeprom_sync_config(&mbox_sync, slave, datagram->data);
 
             mbox_sync.physical_start_address =
                 slave->sii_tx_mailbox_offset;
             mbox_sync.length = slave->sii_tx_mailbox_size;
             mbox_sync.control_register = 0x22;
             mbox_sync.enable = 1;
-            ec_eeprom_sync_config(&mbox_sync,
+            ec_eeprom_sync_config(&mbox_sync, slave,
                                   datagram->data + EC_SYNC_SIZE);
         }
 

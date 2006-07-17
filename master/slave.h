@@ -326,6 +326,9 @@ int ec_slave_locate_string(ec_slave_t *, unsigned int, char **);
 
 // misc.
 size_t ec_slave_calc_sync_size(const ec_slave_t *, const ec_sync_t *);
+uint16_t ec_slave_calc_eeprom_sync_size(const ec_slave_t *,
+                                        const ec_eeprom_sync_t *);
+
 void ec_slave_print(const ec_slave_t *, unsigned int);
 int ec_slave_check_crc(ec_slave_t *);
 

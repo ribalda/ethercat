@@ -772,11 +772,16 @@ void ec_sync_config(const ec_sync_t *sync, /**< sync manager */
 */
 
 void ec_eeprom_sync_config(const ec_eeprom_sync_t *sync, /**< sync manager */
+                           const ec_slave_t *slave, /**< EtherCAT slave */
                            uint8_t *data /**> configuration memory */
                            )
 {
+    size_t sync_size;
+
+    sync_size = ec_slave_calc_eeprom_sync_size(slave, sync);
+
     EC_WRITE_U16(data,     sync->physical_start_address);
-    EC_WRITE_U16(data + 2, sync->length);
+    EC_WRITE_U16(data + 2, sync_size);
     EC_WRITE_U8 (data + 4, sync->control_register);
     EC_WRITE_U8 (data + 5, 0x00); // status byte (read only)
     EC_WRITE_U16(data + 6, sync->enable ? 0x0001 : 0x0000); // enable
@@ -1130,7 +1135,8 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT master */)
             if (ec_datagram_npwr(datagram, slave->station_address, 0x0800,
                                 EC_SYNC_SIZE * slave->base_sync_count))
                 return -1;
-            memset(datagram->data, 0x00, EC_SYNC_SIZE * slave->base_sync_count);
+            memset(datagram->data, 0x00,
+                   EC_SYNC_SIZE * slave->base_sync_count);
             if (unlikely(ec_master_simple_io(master, datagram))) {
                 EC_ERR("Resetting sync managers failed on slave %i!\n",
                        slave->ring_position);
@@ -1139,11 +1145,27 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT master */)
         }
 
         // configure sync managers
-        if (type) { // known slave type, take type's SM information
+
+        // does the slave provide sync manager information?
+        if (!list_empty(&slave->eeprom_syncs)) {
+            list_for_each_entry(eeprom_sync, &slave->eeprom_syncs, list) {
+                if (ec_datagram_npwr(datagram, slave->station_address,
+                                     0x800 + eeprom_sync->index *
+                                     EC_SYNC_SIZE,
+                                     EC_SYNC_SIZE)) return -1;
+                ec_eeprom_sync_config(eeprom_sync, slave, datagram->data);
+                if (unlikely(ec_master_simple_io(master, datagram))) {
+                    EC_ERR("Setting sync manager %i failed on slave %i!\n",
+                           eeprom_sync->index, slave->ring_position);
+                    return -1;
+                }
+            }
+        }
+        else if (type) { // known slave type, take type's SM information
             for (j = 0; type->sync_managers[j] && j < EC_MAX_SYNC; j++) {
                 sync = type->sync_managers[j];
                 if (ec_datagram_npwr(datagram, slave->station_address,
-                                    0x0800 + j * EC_SYNC_SIZE, EC_SYNC_SIZE))
+                                     0x0800 + j * EC_SYNC_SIZE, EC_SYNC_SIZE))
                     return -1;
                 ec_sync_config(sync, slave, datagram->data);
                 if (unlikely(ec_master_simple_io(master, datagram))) {
@@ -1153,54 +1175,34 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT master */)
                 }
             }
         }
-        else if (slave->sii_mailbox_protocols) { // unknown type, but mailbox
-            // does the device supply SM configurations in its EEPROM?
-	    if (!list_empty(&slave->eeprom_syncs)) {
-		list_for_each_entry(eeprom_sync, &slave->eeprom_syncs, list) {
-		    EC_INFO("Sync manager %i...\n", eeprom_sync->index);
-		    if (ec_datagram_npwr(datagram, slave->station_address,
-                                 0x800 + eeprom_sync->index *
-                                 EC_SYNC_SIZE,
-                                 EC_SYNC_SIZE)) return -1;
-		    ec_eeprom_sync_config(eeprom_sync, datagram->data);
-		    if (unlikely(ec_master_simple_io(master, datagram))) {
-			EC_ERR("Setting sync manager %i failed on slave %i!\n",
-			       eeprom_sync->index, slave->ring_position);
-			return -1;
-		    }
-		}
+        else { // no sync manager information; guess mailbox settings
+            mbox_sync.physical_start_address =
+                slave->sii_rx_mailbox_offset;
+            mbox_sync.length = slave->sii_rx_mailbox_size;
+            mbox_sync.control_register = 0x26;
+            mbox_sync.enable = 1;
+            if (ec_datagram_npwr(datagram, slave->station_address,
+                                 0x800,EC_SYNC_SIZE)) return -1;
+            ec_eeprom_sync_config(&mbox_sync, slave, datagram->data);
+            if (unlikely(ec_master_simple_io(master, datagram))) {
+                EC_ERR("Setting sync manager 0 failed on slave %i!\n",
+                       slave->ring_position);
+                return -1;
             }
-	    else { // no sync manager information; guess mailbox settings
-		mbox_sync.physical_start_address =
-                    slave->sii_rx_mailbox_offset;
-		mbox_sync.length = slave->sii_rx_mailbox_size;
-		mbox_sync.control_register = 0x26;
-		mbox_sync.enable = 1;
-		if (ec_datagram_npwr(datagram, slave->station_address,
-                             0x800,EC_SYNC_SIZE)) return -1;
-		ec_eeprom_sync_config(&mbox_sync, datagram->data);
-		if (unlikely(ec_master_simple_io(master, datagram))) {
-		    EC_ERR("Setting sync manager 0 failed on slave %i!\n",
-			   slave->ring_position);
-		    return -1;
-		}
 
-		mbox_sync.physical_start_address =
-                    slave->sii_tx_mailbox_offset;
-		mbox_sync.length = slave->sii_tx_mailbox_size;
-		mbox_sync.control_register = 0x22;
-		mbox_sync.enable = 1;
-		if (ec_datagram_npwr(datagram, slave->station_address,
-                             0x808, EC_SYNC_SIZE)) return -1;
-		ec_eeprom_sync_config(&mbox_sync, datagram->data);
-		if (unlikely(ec_master_simple_io(master, datagram))) {
+            mbox_sync.physical_start_address =
+                slave->sii_tx_mailbox_offset;
+            mbox_sync.length = slave->sii_tx_mailbox_size;
+            mbox_sync.control_register = 0x22;
+            mbox_sync.enable = 1;
+            if (ec_datagram_npwr(datagram, slave->station_address,
+                                 0x808, EC_SYNC_SIZE)) return -1;
+            ec_eeprom_sync_config(&mbox_sync, slave, datagram->data);
+            if (unlikely(ec_master_simple_io(master, datagram))) {
 		    EC_ERR("Setting sync manager 1 failed on slave %i!\n",
 			   slave->ring_position);
 		    return -1;
-		}
-	    }
-	    EC_INFO("Mailbox configured for unknown slave %i\n",
-		    slave->ring_position);
+            }
         }
 
         // change state to PREOP
