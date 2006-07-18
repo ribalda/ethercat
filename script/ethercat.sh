@@ -196,6 +196,8 @@ case "$1" in
 		fi;
 	done
 
+	sleep 1
+
 	# reload previous modules
 	if ! modprobe 8139too; then
 	    echo "Warning: Failed to restore 8139too module."
@@ -206,6 +208,9 @@ case "$1" in
 
     restart)
 	$0 stop || exit 1
+
+	sleep 1
+
 	$0 start
 
 	rc_status
