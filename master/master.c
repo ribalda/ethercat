@@ -68,11 +68,13 @@ ssize_t ec_store_master_attribute(struct kobject *, struct attribute *,
 EC_SYSFS_READ_ATTR(slave_count);
 EC_SYSFS_READ_ATTR(mode);
 EC_SYSFS_READ_WRITE_ATTR(eeprom_write_enable);
+EC_SYSFS_READ_WRITE_ATTR(debug_level);
 
 static struct attribute *ec_def_attrs[] = {
     &attr_slave_count,
     &attr_mode,
     &attr_eeprom_write_enable,
+    &attr_debug_level,
     NULL,
 };
 
@@ -317,7 +319,7 @@ void ec_master_send_datagrams(ec_master_t *master /**< EtherCAT master */)
     frame_count = 0;
     t_start = get_cycles();
 
-    if (unlikely(master->debug_level > 0))
+    if (unlikely(master->debug_level > 1))
         EC_DBG("ec_master_send_datagrams\n");
 
     do {
@@ -343,7 +345,7 @@ void ec_master_send_datagrams(ec_master_t *master /**< EtherCAT master */)
             datagram->t_sent = t_start;
             datagram->index = master->datagram_index++;
 
-            if (unlikely(master->debug_level > 0))
+            if (unlikely(master->debug_level > 1))
                 EC_DBG("adding datagram 0x%02X\n", datagram->index);
 
             // set "datagram following" flag in previous frame
@@ -369,7 +371,7 @@ void ec_master_send_datagrams(ec_master_t *master /**< EtherCAT master */)
         }
 
         if (cur_data - frame_data == EC_FRAME_HEADER_SIZE) {
-            if (unlikely(master->debug_level > 0))
+            if (unlikely(master->debug_level > 1))
                 EC_DBG("nothing to send.\n");
             break;
         }
@@ -382,7 +384,7 @@ void ec_master_send_datagrams(ec_master_t *master /**< EtherCAT master */)
         while (cur_data - frame_data < ETH_ZLEN - ETH_HLEN)
             EC_WRITE_U8(cur_data++, 0x00);
 
-        if (unlikely(master->debug_level > 0))
+        if (unlikely(master->debug_level > 1))
             EC_DBG("frame size: %i\n", cur_data - frame_data);
 
         // send frame
@@ -391,7 +393,7 @@ void ec_master_send_datagrams(ec_master_t *master /**< EtherCAT master */)
     }
     while (more_datagrams_waiting);
 
-    if (unlikely(master->debug_level > 0)) {
+    if (unlikely(master->debug_level > 1)) {
         t_end = get_cycles();
         EC_DBG("ec_master_send_datagrams sent %i frames in %ius.\n",
                frame_count, (unsigned int) (t_end - t_start) * 1000 / cpu_khz);
@@ -780,6 +782,14 @@ void ec_eeprom_sync_config(const ec_eeprom_sync_t *sync, /**< sync manager */
 
     sync_size = ec_slave_calc_eeprom_sync_size(slave, sync);
 
+    if (slave->master->debug_level) {
+        EC_INFO("Slave %i, sync manager %i:\n", slave->ring_position,
+                sync->index);
+        EC_INFO("  Address: 0x%04X\n", sync->physical_start_address);
+        EC_INFO("     Size: %i\n", sync_size);
+        EC_INFO("  Control: 0x%02X\n", sync->control_register);
+    }
+
     EC_WRITE_U16(data,     sync->physical_start_address);
     EC_WRITE_U16(data + 2, sync_size);
     EC_WRITE_U8 (data + 4, sync->control_register);
@@ -841,6 +851,9 @@ ssize_t ec_show_master_attribute(struct kobject *kobj, /**< kobject */
                 return sprintf(buffer, "RUNNING\n");
         }
     }
+    else if (attr == &attr_debug_level) {
+        return sprintf(buffer, "%i\n", master->debug_level);
+    }
 
     return 0;
 }
@@ -878,6 +891,24 @@ ssize_t ec_store_master_attribute(struct kobject *kobj, /**< slave's kobject */
             master->eeprom_write_enable = 0;
             EC_INFO("Slave EEPROM writing disabled.\n");
         }
+    }
+    else if (attr == &attr_debug_level) {
+        if (!strcmp(buffer, "0\n")) {
+            master->debug_level = 0;
+        }
+        else if (!strcmp(buffer, "1\n")) {
+            master->debug_level = 1;
+        }
+        else if (!strcmp(buffer, "2\n")) {
+            master->debug_level = 2;
+        }
+        else {
+            EC_ERR("Invalid debug level value!\n");
+            return -EINVAL;
+        }
+
+        EC_INFO("Master debug level set to %i.\n", master->debug_level);
+        return size;
     }
 
     return -EINVAL;
@@ -1161,6 +1192,7 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT master */)
                 }
             }
         }
+
         else if (type) { // known slave type, take type's SM information
             for (j = 0; type->sync_managers[j] && j < EC_MAX_SYNC; j++) {
                 sync = type->sync_managers[j];
@@ -1175,7 +1207,9 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT master */)
                 }
             }
         }
-        else { // no sync manager information; guess mailbox settings
+
+        // no sync manager information; guess mailbox settings
+        else if (slave->sii_mailbox_protocols) { 
             mbox_sync.physical_start_address =
                 slave->sii_rx_mailbox_offset;
             mbox_sync.length = slave->sii_rx_mailbox_size;
