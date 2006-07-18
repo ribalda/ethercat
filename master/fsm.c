@@ -1784,6 +1784,8 @@ void ec_fsm_change_ack(ec_fsm_t *fsm /**< finite state machine */)
         return;
     }
 
+    fsm->change_start = get_cycles();
+
     // read new AL status
     ec_datagram_nprd(datagram, slave->station_address, 0x0130, 2);
     ec_master_queue_datagram(fsm->master, datagram);
@@ -1801,6 +1803,7 @@ void ec_fsm_change_ack2(ec_fsm_t *fsm /**< finite state machine */)
 {
     ec_datagram_t *datagram = &fsm->datagram;
     ec_slave_t *slave = fsm->slave;
+    ec_slave_state_t ack_state;
 
     if (datagram->state != EC_CMD_RECEIVED || datagram->working_counter != 1) {
         fsm->change_state = ec_fsm_change_error;
@@ -1808,18 +1811,27 @@ void ec_fsm_change_ack2(ec_fsm_t *fsm /**< finite state machine */)
         return;
     }
 
-    slave->current_state = EC_READ_U8(datagram->data);
+    ack_state = EC_READ_U8(datagram->data);
 
-    if (slave->current_state == fsm->change_new) {
+    if (ack_state == slave->current_state) {
         fsm->change_state = ec_fsm_change_error;
         EC_INFO("Acknowleged state 0x%02X on slave %i.\n",
                 slave->current_state, slave->ring_position);
         return;
     }
 
-    fsm->change_state = ec_fsm_change_error;
-    EC_WARN("Failed to acknowledge state 0x%02X on slave %i"
-            " - Timeout!\n", fsm->change_new, slave->ring_position);
+    if (get_cycles() - fsm->change_start >= (cycles_t) 100 * cpu_khz) {
+        // timeout while checking
+        slave->current_state = EC_SLAVE_STATE_UNKNOWN;
+        fsm->change_state = ec_fsm_change_error;
+        EC_ERR("Timeout while acknowleging state 0x%02X on slave %i.\n",
+               fsm->change_new, slave->ring_position);
+        return;
+    }
+
+    // reread new AL status
+    ec_datagram_nprd(datagram, slave->station_address, 0x0130, 2);
+    ec_master_queue_datagram(fsm->master, datagram);
 }
 
 /*****************************************************************************/
