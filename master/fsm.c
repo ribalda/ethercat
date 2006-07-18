@@ -1143,8 +1143,24 @@ void ec_fsm_slave_sync(ec_fsm_t *fsm /**< finite state machine */)
                      EC_SYNC_SIZE * slave->base_sync_count);
     memset(datagram->data, 0x00, EC_SYNC_SIZE * slave->base_sync_count);
 
+
+    // does the slave supply sync manager configurations in its EEPROM?
+    if (!list_empty(&slave->eeprom_syncs)) {
+        list_for_each_entry(eeprom_sync, &slave->eeprom_syncs, list) {
+            if (eeprom_sync->index >= slave->base_sync_count) {
+                fsm->slave->error_flag = 1;
+                fsm->slave_state = ec_fsm_slave_end;
+                EC_ERR("Invalid sync manager configuration found!");
+                return;
+            }
+            ec_eeprom_sync_config(eeprom_sync, slave,
+                                  datagram->data + EC_SYNC_SIZE
+                                  * eeprom_sync->index);
+        }
+    }
+
     // known slave type, take type's SM information
-    if (slave->type) {
+    else if (slave->type) {
         for (j = 0; slave->type->sync_managers[j] && j < EC_MAX_SYNC; j++) {
             sync = slave->type->sync_managers[j];
             ec_sync_config(sync, slave, datagram->data + EC_SYNC_SIZE * j);
@@ -1154,38 +1170,21 @@ void ec_fsm_slave_sync(ec_fsm_t *fsm /**< finite state machine */)
     // unknown type, but slave has mailbox
     else if (slave->sii_mailbox_protocols)
     {
-        // does it supply sync manager configurations in its EEPROM?
-        if (!list_empty(&slave->eeprom_syncs)) {
-            list_for_each_entry(eeprom_sync, &slave->eeprom_syncs, list) {
-                if (eeprom_sync->index >= slave->base_sync_count) {
-                    fsm->slave->error_flag = 1;
-                    fsm->slave_state = ec_fsm_slave_end;
-                    EC_ERR("Invalid sync manager configuration found!");
-                    return;
-                }
-                ec_eeprom_sync_config(eeprom_sync, slave,
-                                      datagram->data + EC_SYNC_SIZE
-                                      * eeprom_sync->index);
-            }
-        }
+        // guess mailbox settings
+        mbox_sync.physical_start_address =
+            slave->sii_rx_mailbox_offset;
+        mbox_sync.length = slave->sii_rx_mailbox_size;
+        mbox_sync.control_register = 0x26;
+        mbox_sync.enable = 1;
+        ec_eeprom_sync_config(&mbox_sync, slave, datagram->data);
 
-        // no sync manager information; guess mailbox settings
-        else {
-            mbox_sync.physical_start_address =
-                slave->sii_rx_mailbox_offset;
-            mbox_sync.length = slave->sii_rx_mailbox_size;
-            mbox_sync.control_register = 0x26;
-            mbox_sync.enable = 1;
-            ec_eeprom_sync_config(&mbox_sync, slave, datagram->data);
-
-            mbox_sync.physical_start_address =
-                slave->sii_tx_mailbox_offset;
-            mbox_sync.length = slave->sii_tx_mailbox_size;
-            mbox_sync.control_register = 0x22;
-            mbox_sync.enable = 1;
-            ec_eeprom_sync_config(&mbox_sync, slave,
-                                  datagram->data + EC_SYNC_SIZE);
-        }
+        mbox_sync.physical_start_address =
+            slave->sii_tx_mailbox_offset;
+        mbox_sync.length = slave->sii_tx_mailbox_size;
+        mbox_sync.control_register = 0x22;
+        mbox_sync.enable = 1;
+        ec_eeprom_sync_config(&mbox_sync, slave,
+                              datagram->data + EC_SYNC_SIZE);
 
         EC_INFO("Mailbox configured for unknown slave %i\n",
                 slave->ring_position);
