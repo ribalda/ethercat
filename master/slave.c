@@ -853,10 +853,9 @@ void ec_slave_state_ack(ec_slave_t *slave, /**< EtherCAT slave */
     }
 
     start = get_cycles();
-    timeout = (cycles_t) 10 * cpu_khz; // 10ms
+    timeout = (cycles_t) 100 * cpu_khz; // 100ms
 
-    while (1)
-    {
+    while (1) {
         udelay(100); // wait a little bit...
 
         if (ec_datagram_nprd(datagram, slave->station_address, 0x0130, 2))
@@ -870,14 +869,14 @@ void ec_slave_state_ack(ec_slave_t *slave, /**< EtherCAT slave */
 
         end = get_cycles();
 
-        if (likely(EC_READ_U8(datagram->data) == state)) {
+        if (EC_READ_U8(datagram->data) == state) {
             slave->current_state = state;
             EC_INFO("Acknowleged state 0x%02X on slave %i.\n", state,
                     slave->ring_position);
             return;
         }
 
-        if (unlikely((end - start) >= timeout)) {
+        if (end - start >= timeout) {
             slave->current_state = EC_SLAVE_STATE_UNKNOWN;
             EC_WARN("Failed to acknowledge state 0x%02X on slave %i"
                     " - Timeout!\n", state, slave->ring_position);
