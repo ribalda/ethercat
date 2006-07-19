@@ -466,8 +466,6 @@ void ecrt_release_master(ec_master_t *master /**< EtherCAT master */)
     }
 
     ec_master_reset(master);
-
-    master->mode = EC_MASTER_MODE_IDLE;
     ec_master_freerun_start(master);
 
     module_put(master->device->module);

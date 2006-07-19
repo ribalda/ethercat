@@ -245,7 +245,7 @@ void ec_master_reset(ec_master_t *master /**< EtherCAT master */)
     master->stats.unmatched = 0;
     master->stats.t_last = 0;
 
-    master->mode = EC_MASTER_MODE_IDLE;
+    master->mode = EC_MASTER_MODE_ORPHANED;
 
     master->request_cb = NULL;
     master->release_cb = NULL;
@@ -707,7 +707,7 @@ void ec_master_freerun_stop(ec_master_t *master /**< EtherCAT master */)
     ec_master_eoe_stop(master);
 
     EC_INFO("Stopping Free-Run mode.\n");
-    master->mode = EC_MASTER_MODE_IDLE;
+    master->mode = EC_MASTER_MODE_ORPHANED;
 
     if (!cancel_delayed_work(&master->freerun_work)) {
         flush_workqueue(master->workqueue);
@@ -843,8 +843,8 @@ ssize_t ec_show_master_attribute(struct kobject *kobj, /**< kobject */
     }
     else if (attr == &attr_mode) {
         switch (master->mode) {
-            case EC_MASTER_MODE_IDLE:
-                return sprintf(buffer, "IDLE\n");
+            case EC_MASTER_MODE_ORPHANED:
+                return sprintf(buffer, "ORPHANED\n");
             case EC_MASTER_MODE_FREERUN:
                 return sprintf(buffer, "FREERUN\n");
             case EC_MASTER_MODE_RUNNING:
