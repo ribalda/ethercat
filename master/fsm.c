@@ -46,15 +46,13 @@
 
 void ec_fsm_master_start(ec_fsm_t *);
 void ec_fsm_master_broadcast(ec_fsm_t *);
-void ec_fsm_master_proc_states(ec_fsm_t *);
-void ec_fsm_master_scan(ec_fsm_t *);
-void ec_fsm_master_states(ec_fsm_t *);
+void ec_fsm_master_read_states(ec_fsm_t *);
 void ec_fsm_master_validate_vendor(ec_fsm_t *);
 void ec_fsm_master_validate_product(ec_fsm_t *);
-void ec_fsm_master_reconfigure(ec_fsm_t *);
-void ec_fsm_master_address(ec_fsm_t *);
-void ec_fsm_master_conf(ec_fsm_t *);
-void ec_fsm_master_eeprom(ec_fsm_t *);
+void ec_fsm_master_rewrite_addresses(ec_fsm_t *);
+void ec_fsm_master_configure_slave(ec_fsm_t *);
+void ec_fsm_master_scan_slaves(ec_fsm_t *);
+void ec_fsm_master_write_eeprom(ec_fsm_t *);
 
 void ec_fsm_slave_start_reading(ec_fsm_t *);
 void ec_fsm_slave_read_state(ec_fsm_t *);
@@ -265,7 +263,7 @@ void ec_fsm_master_broadcast(ec_fsm_t *fsm /**< finite state machine */)
         // begin scanning of slaves
         fsm->slave = list_entry(master->slaves.next, ec_slave_t, list);
         fsm->slave_state = ec_fsm_slave_start_reading;
-        fsm->master_state = ec_fsm_master_scan;
+        fsm->master_state = ec_fsm_master_scan_slaves;
         fsm->master_state(fsm); // execute immediately
         return;
     }
@@ -274,7 +272,74 @@ void ec_fsm_master_broadcast(ec_fsm_t *fsm /**< finite state machine */)
     fsm->slave = list_entry(master->slaves.next, ec_slave_t, list);
     ec_datagram_nprd(&fsm->datagram, fsm->slave->station_address, 0x0130, 2);
     ec_master_queue_datagram(master, &fsm->datagram);
-    fsm->master_state = ec_fsm_master_states;
+    fsm->master_state = ec_fsm_master_read_states;
+}
+
+/*****************************************************************************/
+
+/**
+   Master action: PROC_STATES.
+   Processes the slave states.
+*/
+
+void ec_fsm_master_action_process_states(ec_fsm_t *fsm
+                                         /**< finite state machine */
+                                         )
+{
+    ec_master_t *master = fsm->master;
+    ec_slave_t *slave;
+
+    // check if any slaves are not in the state, they're supposed to be
+    list_for_each_entry(slave, &master->slaves, list) {
+        if (slave->error_flag ||
+            !slave->online ||
+            slave->requested_state == EC_SLAVE_STATE_UNKNOWN ||
+            slave->current_state == slave->requested_state) continue;
+
+        EC_INFO("Changing state of slave %i from ", slave->ring_position);
+        ec_print_states(slave->current_state);
+        printk(" to ");
+        ec_print_states(slave->requested_state);
+        printk(".\n");
+
+        fsm->slave = slave;
+        fsm->slave_state = ec_fsm_slave_conf;
+        fsm->change_new = EC_SLAVE_STATE_INIT;
+        fsm->change_state = ec_fsm_change_start;
+        fsm->master_state = ec_fsm_master_configure_slave;
+        fsm->master_state(fsm); // execute immediately
+        return;
+    }
+
+    if (master->mode == EC_MASTER_MODE_FREERUN) {
+        // nothing to configure. check for pending EEPROM write operations.
+        list_for_each_entry(slave, &master->slaves, list) {
+            if (!slave->new_eeprom_data) continue;
+
+            if (!slave->online || slave->error_flag) {
+                kfree(slave->new_eeprom_data);
+                slave->new_eeprom_data = NULL;
+                EC_ERR("Discarding EEPROM data, slave %i not ready.\n",
+                       slave->ring_position);
+                continue;
+            }
+
+            // found pending EEPROM write operation. execute it!
+            EC_INFO("Writing EEPROM of slave %i...\n", slave->ring_position);
+            fsm->sii_offset = 0x0000;
+            memcpy(fsm->sii_value, slave->new_eeprom_data, 2);
+            fsm->sii_mode = 1;
+            fsm->sii_state = ec_fsm_sii_start_writing;
+            fsm->slave = slave;
+            fsm->master_state = ec_fsm_master_write_eeprom;
+            fsm->master_state(fsm); // execute immediately
+            return;
+        }
+    }
+
+    // nothing to do. restart master state machine.
+    fsm->master_state = ec_fsm_master_start;
+    fsm->master_state(fsm); // execute immediately
 }
 
 /*****************************************************************************/
@@ -289,18 +354,20 @@ void ec_fsm_master_action_next_slave_state(ec_fsm_t *fsm
     ec_master_t *master = fsm->master;
     ec_slave_t *slave = fsm->slave;
 
-    // have all states been read?
+    // is there another slave to query?
     if (slave->list.next != &master->slaves) {
         // process next slave
         fsm->slave = list_entry(fsm->slave->list.next, ec_slave_t, list);
         ec_datagram_nprd(&fsm->datagram, fsm->slave->station_address,
                          0x0130, 2);
         ec_master_queue_datagram(master, &fsm->datagram);
-        fsm->master_state = ec_fsm_master_states;
+        fsm->master_state = ec_fsm_master_read_states;
         return;
     }
 
-    // all slave stated read; check, if a bus validation has to be done
+    // all slave states read
+
+    // check, if a bus validation has to be done
     if (fsm->master_validation) {
         fsm->master_validation = 0;
         list_for_each_entry(slave, &master->slaves, list) {
@@ -318,8 +385,7 @@ void ec_fsm_master_action_next_slave_state(ec_fsm_t *fsm
         }
     }
 
-    fsm->master_state = ec_fsm_master_proc_states;
-    fsm->master_state(fsm); // execute immediately
+    ec_fsm_master_action_process_states(fsm);
 }
 
 /*****************************************************************************/
@@ -329,7 +395,7 @@ void ec_fsm_master_action_next_slave_state(ec_fsm_t *fsm
    Fetches the AL- and online state of a slave.
 */
 
-void ec_fsm_master_states(ec_fsm_t *fsm /**< finite state machine */)
+void ec_fsm_master_read_states(ec_fsm_t *fsm /**< finite state machine */)
 {
     ec_slave_t *slave = fsm->slave;
     ec_datagram_t *datagram = &fsm->datagram;
@@ -376,71 +442,6 @@ void ec_fsm_master_states(ec_fsm_t *fsm /**< finite state machine */)
 /*****************************************************************************/
 
 /**
-   Master state: PROC_STATES.
-   Processes the slave states.
-*/
-
-void ec_fsm_master_proc_states(ec_fsm_t *fsm /**< finite state machine */)
-{
-    ec_master_t *master = fsm->master;
-    ec_slave_t *slave;
-
-    // check if any slaves are not in the state, they're supposed to be
-    list_for_each_entry(slave, &master->slaves, list) {
-        if (slave->error_flag ||
-            !slave->online ||
-            slave->requested_state == EC_SLAVE_STATE_UNKNOWN ||
-            slave->current_state == slave->requested_state) continue;
-
-        EC_INFO("Changing state of slave %i from ", slave->ring_position);
-        ec_print_states(slave->current_state);
-        printk(" to ");
-        ec_print_states(slave->requested_state);
-        printk(".\n");
-
-        fsm->slave = slave;
-        fsm->slave_state = ec_fsm_slave_conf;
-        fsm->change_new = EC_SLAVE_STATE_INIT;
-        fsm->change_state = ec_fsm_change_start;
-        fsm->master_state = ec_fsm_master_conf;
-        fsm->master_state(fsm); // execute immediately
-        return;
-    }
-
-    if (master->mode == EC_MASTER_MODE_FREERUN) {
-        // nothing to configure. check for pending EEPROM write operations.
-        list_for_each_entry(slave, &master->slaves, list) {
-            if (!slave->new_eeprom_data) continue;
-
-            if (!slave->online || slave->error_flag) {
-                kfree(slave->new_eeprom_data);
-                slave->new_eeprom_data = NULL;
-                EC_ERR("Discarding EEPROM data, slave %i not ready.\n",
-                       slave->ring_position);
-                continue;
-            }
-
-            // found pending EEPROM write operation. execute it!
-            EC_INFO("Writing EEPROM of slave %i...\n", slave->ring_position);
-            fsm->sii_offset = 0x0000;
-            memcpy(fsm->sii_value, slave->new_eeprom_data, 2);
-            fsm->sii_mode = 1;
-            fsm->sii_state = ec_fsm_sii_start_writing;
-            fsm->slave = slave;
-            fsm->master_state = ec_fsm_master_eeprom;
-            fsm->master_state(fsm); // execute immediately
-            return;
-        }
-    }
-
-    // nothing to do. restart master state machine.
-    fsm->master_state = ec_fsm_master_start;
-    fsm->master_state(fsm); // execute immediately
-}
-
-/*****************************************************************************/
-
-/**
    Master state: VALIDATE_VENDOR.
    Validates the vendor ID of a slave.
 */
@@ -480,6 +481,37 @@ void ec_fsm_master_validate_vendor(ec_fsm_t *fsm /**< finite state machine */)
 /*****************************************************************************/
 
 /**
+   Master action: ADDRESS.
+   Looks for slave, that have lost their configuration and writes
+   their station address, so that they can be reconfigured later.
+*/
+
+void ec_fsm_master_action_addresses(ec_fsm_t *fsm /**< finite state machine */)
+{
+    ec_datagram_t *datagram = &fsm->datagram;
+
+    while (fsm->slave->online) {
+        if (fsm->slave->list.next == &fsm->master->slaves) { // last slave?
+            fsm->master_state = ec_fsm_master_start;
+            fsm->master_state(fsm); // execute immediately
+            return;
+        }
+        // check next slave
+        fsm->slave = list_entry(fsm->slave->list.next, ec_slave_t, list);
+    }
+
+    EC_INFO("Reinitializing slave %i.\n", fsm->slave->ring_position);
+
+    // write station address
+    ec_datagram_apwr(datagram, fsm->slave->ring_position, 0x0010, 2);
+    EC_WRITE_U16(datagram->data, fsm->slave->station_address);
+    ec_master_queue_datagram(fsm->master, datagram);
+    fsm->master_state = ec_fsm_master_rewrite_addresses;
+}
+
+/*****************************************************************************/
+
+/**
    Master state: VALIDATE_PRODUCT.
    Validates the product ID of a slave.
 */
@@ -513,7 +545,8 @@ void ec_fsm_master_validate_product(ec_fsm_t *fsm /**< finite state machine */)
     // have all states been validated?
     if (slave->list.next == &fsm->master->slaves) {
         fsm->slave = list_entry(fsm->master->slaves.next, ec_slave_t, list);
-        fsm->master_state = ec_fsm_master_reconfigure;
+        // start writing addresses to offline slaves
+        ec_fsm_master_action_addresses(fsm);
         return;
     }
 
@@ -529,42 +562,13 @@ void ec_fsm_master_validate_product(ec_fsm_t *fsm /**< finite state machine */)
 /*****************************************************************************/
 
 /**
-   Master state: RECONFIGURE.
-   Looks for slave, that have lost their configuration and writes
-   their station address, so that they can be reconfigured later.
-*/
-
-void ec_fsm_master_reconfigure(ec_fsm_t *fsm /**< finite state machine */)
-{
-    ec_datagram_t *datagram = &fsm->datagram;
-
-    while (fsm->slave->online) {
-        if (fsm->slave->list.next == &fsm->master->slaves) { // last slave?
-            fsm->master_state = ec_fsm_master_start;
-            fsm->master_state(fsm); // execute immediately
-            return;
-        }
-        // check next slave
-        fsm->slave = list_entry(fsm->slave->list.next, ec_slave_t, list);
-    }
-
-    EC_INFO("Reinitializing slave %i.\n", fsm->slave->ring_position);
-
-    // write station address
-    ec_datagram_apwr(datagram, fsm->slave->ring_position, 0x0010, 2);
-    EC_WRITE_U16(datagram->data, fsm->slave->station_address);
-    ec_master_queue_datagram(fsm->master, datagram);
-    fsm->master_state = ec_fsm_master_address;
-}
-
-/*****************************************************************************/
-
-/**
    Master state: ADDRESS.
    Checks, if the new station address has been written to the slave.
 */
 
-void ec_fsm_master_address(ec_fsm_t *fsm /**< finite state machine */)
+void ec_fsm_master_rewrite_addresses(ec_fsm_t *fsm
+                                     /**< finite state machine */
+                                     )
 {
     ec_slave_t *slave = fsm->slave;
     ec_datagram_t *datagram = &fsm->datagram;
@@ -582,8 +586,8 @@ void ec_fsm_master_address(ec_fsm_t *fsm /**< finite state machine */)
 
     // check next slave
     fsm->slave = list_entry(fsm->slave->list.next, ec_slave_t, list);
-    fsm->master_state = ec_fsm_master_reconfigure;
-    fsm->master_state(fsm); // execute immediately
+    // Write new station address to slave
+    ec_fsm_master_action_addresses(fsm);
 }
 
 /*****************************************************************************/
@@ -593,7 +597,7 @@ void ec_fsm_master_address(ec_fsm_t *fsm /**< finite state machine */)
    Executes the sub-statemachine for the scanning of a slave.
 */
 
-void ec_fsm_master_scan(ec_fsm_t *fsm /**< finite state machine */)
+void ec_fsm_master_scan_slaves(ec_fsm_t *fsm /**< finite state machine */)
 {
     ec_master_t *master = fsm->master;
     ec_slave_t *slave = fsm->slave;
@@ -689,12 +693,14 @@ void ec_fsm_master_scan(ec_fsm_t *fsm /**< finite state machine */)
    Starts configuring a slave.
 */
 
-void ec_fsm_master_conf(ec_fsm_t *fsm /**< finite state machine */)
+void ec_fsm_master_configure_slave(ec_fsm_t *fsm
+                                   /**< finite state machine */
+                                   )
 {
     fsm->slave_state(fsm); // execute slave's state machine
     if (fsm->slave_state != ec_fsm_slave_end) return;
-    fsm->master_state = ec_fsm_master_proc_states;
-    fsm->master_state(fsm); // execute immediately
+
+    ec_fsm_master_action_process_states(fsm);
 }
 
 /*****************************************************************************/
@@ -703,7 +709,7 @@ void ec_fsm_master_conf(ec_fsm_t *fsm /**< finite state machine */)
    Master state: EEPROM.
 */
 
-void ec_fsm_master_eeprom(ec_fsm_t *fsm /**< finite state machine */)
+void ec_fsm_master_write_eeprom(ec_fsm_t *fsm /**< finite state machine */)
 {
     ec_slave_t *slave = fsm->slave;
 
@@ -736,7 +742,7 @@ void ec_fsm_master_eeprom(ec_fsm_t *fsm /**< finite state machine */)
     slave->new_eeprom_data = NULL;
 
     // restart master state machine.
-    fsm->master_state = ec_fsm_master_start;
+    fsm->master_state = ec_fsm_master_start; // TODO: Scan slaves!
     fsm->master_state(fsm); // execute immediately
     return;
 }
