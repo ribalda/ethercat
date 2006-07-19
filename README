@@ -60,8 +60,8 @@ See the INSTALL file.
 
 Realtime patches for the Linux kernel are supported, but not required. The
 realtime processing has to be done by the calling module (see API
-documentation). The EtherCAT master code itself is (except for the free-run
-mode) completely passive.
+documentation). The EtherCAT master code itself is completely passive (except
+for the idle mode).
 
 To avoid frame timeouts, deactivating DMA access for hard drives is
 recommented (hdparm -d0 <DEV>).

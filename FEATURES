@@ -38,7 +38,7 @@ General Features:
     operation.
   - Controlling of slave states during realtime operation.
 
-* Free-Run mode, if master is idle.
+* Special Idle mode, when master is not in use.
   - Automatic scanning of slaves upon topology changes.
   - Bus visualisation and EoE processing without realtime process connected.
 
