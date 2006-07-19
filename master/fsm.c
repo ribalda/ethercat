@@ -55,12 +55,12 @@ void ec_fsm_master_scan_slaves(ec_fsm_t *);
 void ec_fsm_master_write_eeprom(ec_fsm_t *);
 
 void ec_fsm_slavescan_start(ec_fsm_t *);
+void ec_fsm_slavescan_address(ec_fsm_t *);
 void ec_fsm_slavescan_state(ec_fsm_t *);
 void ec_fsm_slavescan_base(ec_fsm_t *);
 void ec_fsm_slavescan_datalink(ec_fsm_t *);
 void ec_fsm_slavescan_eeprom_size(ec_fsm_t *);
 void ec_fsm_slavescan_eeprom_data(ec_fsm_t *);
-void ec_fsm_slavescan_eeprom_data2(ec_fsm_t *);
 void ec_fsm_slavescan_end(ec_fsm_t *);
 
 void ec_fsm_slaveconf_init(ec_fsm_t *);
@@ -765,16 +765,16 @@ void ec_fsm_slavescan_start(ec_fsm_t *fsm /**< finite state machine */)
     ec_datagram_apwr(datagram, fsm->slave->ring_position, 0x0010, 2);
     EC_WRITE_U16(datagram->data, fsm->slave->station_address);
     ec_master_queue_datagram(fsm->master, datagram);
-    fsm->slave_state = ec_fsm_slavescan_state;
+    fsm->slave_state = ec_fsm_slavescan_address;
 }
 
 /*****************************************************************************/
 
 /**
-   Slave state: READ_STATUS.
+   Slave state: ADDRESS.
 */
 
-void ec_fsm_slavescan_state(ec_fsm_t *fsm /**< finite state machine */)
+void ec_fsm_slavescan_address(ec_fsm_t *fsm /**< finite state machine */)
 {
     ec_datagram_t *datagram = &fsm->datagram;
 
@@ -789,16 +789,16 @@ void ec_fsm_slavescan_state(ec_fsm_t *fsm /**< finite state machine */)
     // Read AL state
     ec_datagram_nprd(datagram, fsm->slave->station_address, 0x0130, 2);
     ec_master_queue_datagram(fsm->master, datagram);
-    fsm->slave_state = ec_fsm_slavescan_base;
+    fsm->slave_state = ec_fsm_slavescan_state;
 }
 
 /*****************************************************************************/
 
 /**
-   Slave state: READ_BASE.
+   Slave state: STATE.
 */
 
-void ec_fsm_slavescan_base(ec_fsm_t *fsm /**< finite state machine */)
+void ec_fsm_slavescan_state(ec_fsm_t *fsm /**< finite state machine */)
 {
     ec_datagram_t *datagram = &fsm->datagram;
     ec_slave_t *slave = fsm->slave;
@@ -821,16 +821,16 @@ void ec_fsm_slavescan_base(ec_fsm_t *fsm /**< finite state machine */)
     // read base data
     ec_datagram_nprd(datagram, fsm->slave->station_address, 0x0000, 6);
     ec_master_queue_datagram(fsm->master, datagram);
-    fsm->slave_state = ec_fsm_slavescan_datalink;
+    fsm->slave_state = ec_fsm_slavescan_base;
 }
 
 /*****************************************************************************/
 
 /**
-   Slave state: READ_DL.
+   Slave state: BASE.
 */
 
-void ec_fsm_slavescan_datalink(ec_fsm_t *fsm /**< finite state machine */)
+void ec_fsm_slavescan_base(ec_fsm_t *fsm /**< finite state machine */)
 {
     ec_datagram_t *datagram = &fsm->datagram;
     ec_slave_t *slave = fsm->slave;
@@ -855,17 +855,16 @@ void ec_fsm_slavescan_datalink(ec_fsm_t *fsm /**< finite state machine */)
     // read data link status
     ec_datagram_nprd(datagram, slave->station_address, 0x0110, 2);
     ec_master_queue_datagram(slave->master, datagram);
-    fsm->slave_state = ec_fsm_slavescan_eeprom_size;
+    fsm->slave_state = ec_fsm_slavescan_datalink;
 }
 
 /*****************************************************************************/
 
 /**
-   Slave state: EEPROM_SIZE.
-   Read the actual size of the EEPROM to allocate the EEPROM image.
+   Slave state: DATALINK.
 */
 
-void ec_fsm_slavescan_eeprom_size(ec_fsm_t *fsm /**< finite state machine */)
+void ec_fsm_slavescan_datalink(ec_fsm_t *fsm /**< finite state machine */)
 {
     ec_datagram_t *datagram = &fsm->datagram;
     ec_slave_t *slave = fsm->slave;
@@ -892,17 +891,17 @@ void ec_fsm_slavescan_eeprom_size(ec_fsm_t *fsm /**< finite state machine */)
     fsm->sii_offset = 0x0040; // first category header
     fsm->sii_mode = 1;
     fsm->sii_state = ec_fsm_sii_start_reading;
-    fsm->slave_state = ec_fsm_slavescan_eeprom_data;
+    fsm->slave_state = ec_fsm_slavescan_eeprom_size;
     fsm->slave_state(fsm); // execute state immediately
 }
 
 /*****************************************************************************/
 
 /**
-   Slave state: FETCH_EEPROM.
+   Slave state: EEPROM_SIZE.
 */
 
-void ec_fsm_slavescan_eeprom_data(ec_fsm_t *fsm /**< finite state machine */)
+void ec_fsm_slavescan_eeprom_size(ec_fsm_t *fsm /**< finite state machine */)
 {
     ec_slave_t *slave = fsm->slave;
     uint16_t cat_type, cat_size;
@@ -952,17 +951,17 @@ void ec_fsm_slavescan_eeprom_data(ec_fsm_t *fsm /**< finite state machine */)
     fsm->sii_offset = 0x0000;
     fsm->sii_mode = 1;
     fsm->sii_state = ec_fsm_sii_start_reading;
-    fsm->slave_state = ec_fsm_slavescan_eeprom_data2;
+    fsm->slave_state = ec_fsm_slavescan_eeprom_data;
     fsm->slave_state(fsm); // execute state immediately
 }
 
 /*****************************************************************************/
 
 /**
-   Slave state: FETCH_EEPROM2.
+   Slave state: EEPROM_DATA.
 */
 
-void ec_fsm_slavescan_eeprom_data2(ec_fsm_t *fsm /**< finite state machine */)
+void ec_fsm_slavescan_eeprom_data(ec_fsm_t *fsm /**< finite state machine */)
 {
     ec_slave_t *slave = fsm->slave;
     uint16_t *cat_word, cat_type, cat_size;
@@ -1059,6 +1058,8 @@ void ec_fsm_slavescan_eeprom_data2(ec_fsm_t *fsm /**< finite state machine */)
 
         cat_word += cat_size + 2;
     }
+
+    fsm->slave_state = ec_fsm_slavescan_end;
 
 end:
     fsm->slave->error_flag = 1;
