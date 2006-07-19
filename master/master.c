@@ -55,7 +55,7 @@
 
 /*****************************************************************************/
 
-void ec_master_freerun(void *);
+void ec_master_idle(void *);
 void ec_master_eoe_run(unsigned long);
 ssize_t ec_show_master_attribute(struct kobject *, struct attribute *, char *);
 ssize_t ec_store_master_attribute(struct kobject *, struct attribute *,
@@ -116,7 +116,7 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     INIT_LIST_HEAD(&master->domains);
     INIT_LIST_HEAD(&master->eoe_handlers);
     ec_datagram_init(&master->simple_datagram);
-    INIT_WORK(&master->freerun_work, ec_master_freerun, (void *) master);
+    INIT_WORK(&master->idle_work, ec_master_idle, (void *) master);
     init_timer(&master->eoe_timer);
     master->eoe_timer.function = ec_master_eoe_run;
     master->eoe_timer.data = (unsigned long) master;
@@ -218,7 +218,7 @@ void ec_master_reset(ec_master_t *master /**< EtherCAT master */)
     ec_domain_t *domain, *next_d;
 
     ec_master_eoe_stop(master);
-    ec_master_freerun_stop(master);
+    ec_master_idle_stop(master);
     ec_master_clear_slaves(master);
 
     // empty datagram queue
@@ -675,41 +675,43 @@ void ec_master_output_stats(ec_master_t *master /**< EtherCAT master */)
 /*****************************************************************************/
 
 /**
-   Starts the Free-Run mode.
+   Starts the Idle mode.
 */
 
-void ec_master_freerun_start(ec_master_t *master /**< EtherCAT master */)
+void ec_master_idle_start(ec_master_t *master /**< EtherCAT master */)
 {
-    if (master->mode == EC_MASTER_MODE_FREERUN) return;
+    if (master->mode == EC_MASTER_MODE_IDLE) return;
 
     if (master->mode == EC_MASTER_MODE_RUNNING) {
-        EC_ERR("ec_master_freerun_start: Master already running!\n");
+        EC_ERR("ec_master_idle_start: Master already running!\n");
         return;
     }
 
-    EC_INFO("Starting Free-Run mode.\n");
+    EC_INFO("Starting Idle mode.\n");
 
-    master->mode = EC_MASTER_MODE_FREERUN;
+    master->mode = EC_MASTER_MODE_IDLE;
     ec_fsm_reset(&master->fsm);
-    queue_delayed_work(master->workqueue, &master->freerun_work, 1);
+    queue_delayed_work(master->workqueue, &master->idle_work, 1);
 }
 
 /*****************************************************************************/
 
 /**
-   Stops the Free-Run mode.
+   Stops the Idle mode.
 */
 
-void ec_master_freerun_stop(ec_master_t *master /**< EtherCAT master */)
+void ec_master_idle_stop(ec_master_t *master /**< EtherCAT master */)
 {
-    if (master->mode != EC_MASTER_MODE_FREERUN) return;
+    if (master->mode != EC_MASTER_MODE_IDLE) return;
 
     ec_master_eoe_stop(master);
 
-    EC_INFO("Stopping Free-Run mode.\n");
-    master->mode = EC_MASTER_MODE_ORPHANED;
+    EC_INFO("Stopping Idle mode.\n");
+    master->mode = EC_MASTER_MODE_ORPHANED; // this is important for the
+                                            // IDLE work function to not
+                                            // queue itself again
 
-    if (!cancel_delayed_work(&master->freerun_work)) {
+    if (!cancel_delayed_work(&master->idle_work)) {
         flush_workqueue(master->workqueue);
     }
 
@@ -719,10 +721,10 @@ void ec_master_freerun_stop(ec_master_t *master /**< EtherCAT master */)
 /*****************************************************************************/
 
 /**
-   Free-Run mode function.
+   Idle mode function.
 */
 
-void ec_master_freerun(void *data /**< master pointer */)
+void ec_master_idle(void *data /**< master pointer */)
 {
     ec_master_t *master = (ec_master_t *) data;
 
@@ -739,8 +741,8 @@ void ec_master_freerun(void *data /**< master pointer */)
     // release master lock
     spin_unlock_bh(&master->internal_lock);
 
-    if (master->mode == EC_MASTER_MODE_FREERUN)
-        queue_delayed_work(master->workqueue, &master->freerun_work, 1);
+    if (master->mode == EC_MASTER_MODE_IDLE)
+        queue_delayed_work(master->workqueue, &master->idle_work, 1);
 }
 
 /*****************************************************************************/
@@ -845,8 +847,8 @@ ssize_t ec_show_master_attribute(struct kobject *kobj, /**< kobject */
         switch (master->mode) {
             case EC_MASTER_MODE_ORPHANED:
                 return sprintf(buffer, "ORPHANED\n");
-            case EC_MASTER_MODE_FREERUN:
-                return sprintf(buffer, "FREERUN\n");
+            case EC_MASTER_MODE_IDLE:
+                return sprintf(buffer, "IDLE\n");
             case EC_MASTER_MODE_RUNNING:
                 return sprintf(buffer, "RUNNING\n");
         }
@@ -1026,7 +1028,7 @@ void ec_master_eoe_run(unsigned long data /**< master pointer */)
         if (master->request_cb(master->cb_data))
             goto queue_timer;
     }
-    else if (master->mode == EC_MASTER_MODE_FREERUN) {
+    else if (master->mode == EC_MASTER_MODE_IDLE) {
         spin_lock(&master->internal_lock);
     }
     else
@@ -1043,7 +1045,7 @@ void ec_master_eoe_run(unsigned long data /**< master pointer */)
     if (master->mode == EC_MASTER_MODE_RUNNING) {
         master->release_cb(master->cb_data);
     }
-    else if (master->mode == EC_MASTER_MODE_FREERUN) {
+    else if (master->mode == EC_MASTER_MODE_IDLE) {
         spin_unlock(&master->internal_lock);
     }
 

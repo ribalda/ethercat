@@ -58,7 +58,7 @@
 typedef enum
 {
     EC_MASTER_MODE_ORPHANED,
-    EC_MASTER_MODE_FREERUN,
+    EC_MASTER_MODE_IDLE,
     EC_MASTER_MODE_RUNNING
 }
 ec_master_mode_t;
@@ -104,21 +104,22 @@ struct ec_master
 
     struct list_head domains; /**< list of domains */
 
-    ec_datagram_t simple_datagram; /**< datagram structure for initialization */
+    ec_datagram_t simple_datagram; /**< datagram structure for
+                                      initialization */
     unsigned int timeout; /**< timeout in synchronous IO */
 
     int debug_level; /**< master debug level */
     ec_stats_t stats; /**< cyclic statistics */
 
     struct workqueue_struct *workqueue; /**< master workqueue */
-    struct work_struct freerun_work; /**< free run work object */
+    struct work_struct idle_work; /**< free run work object */
     ec_fsm_t fsm; /**< master state machine */
     ec_master_mode_t mode; /**< master mode */
 
     struct timer_list eoe_timer; /**< EoE timer object */
     unsigned int eoe_running; /**< non-zero, if EoE processing is active. */
     struct list_head eoe_handlers; /**< Ethernet-over-EtherCAT handlers */
-    spinlock_t internal_lock; /**< spinlock used in freerun mode */
+    spinlock_t internal_lock; /**< spinlock used in idle mode */
     int (*request_cb)(void *); /**< lock request callback */
     void (*release_cb)(void *); /**< lock release callback */
     void *cb_data; /**< data parameter of locking callbacks */
@@ -134,8 +135,8 @@ void ec_master_clear(struct kobject *);
 void ec_master_reset(ec_master_t *);
 
 // free run
-void ec_master_freerun_start(ec_master_t *);
-void ec_master_freerun_stop(ec_master_t *);
+void ec_master_idle_start(ec_master_t *);
+void ec_master_idle_stop(ec_master_t *);
 
 // EoE
 void ec_master_eoe_start(ec_master_t *);

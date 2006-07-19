@@ -350,7 +350,7 @@ void ecdev_unregister(unsigned int master_index, /**< master index */
    Starts the master associated with the device.
    This function has to be called by the network device driver to tell the
    master that the device is ready to send and receive data. The master
-   will enter the free-run mode then.
+   will enter the idle mode then.
    \ingroup DeviceInterface
 */
 
@@ -364,7 +364,7 @@ int ecdev_start(unsigned int master_index /**< master index */)
         return -1;
     }
 
-    ec_master_freerun_start(master);
+    ec_master_idle_start(master);
     return 0;
 }
 
@@ -382,7 +382,7 @@ void ecdev_stop(unsigned int master_index /**< master index */)
     ec_master_t *master;
     if (!(master = ec_find_master(master_index))) return;
 
-    ec_master_freerun_stop(master);
+    ec_master_idle_stop(master);
 
     if (ec_device_close(master->device))
         EC_WARN("Failed to close device!\n");
@@ -424,7 +424,7 @@ ec_master_t *ecrt_request_master(unsigned int master_index
         goto out_release;
     }
 
-    ec_master_freerun_stop(master);
+    ec_master_idle_stop(master);
     ec_master_reset(master);
     master->mode = EC_MASTER_MODE_RUNNING;
 
@@ -441,7 +441,7 @@ ec_master_t *ecrt_request_master(unsigned int master_index
  out_module_put:
     module_put(master->device->module);
     ec_master_reset(master);
-    ec_master_freerun_start(master);
+    ec_master_idle_start(master);
  out_release:
     master->reserved = 0;
  out_return:
@@ -466,7 +466,7 @@ void ecrt_release_master(ec_master_t *master /**< EtherCAT master */)
     }
 
     ec_master_reset(master);
-    ec_master_freerun_start(master);
+    ec_master_idle_start(master);
 
     module_put(master->device->module);
     master->reserved = 0;

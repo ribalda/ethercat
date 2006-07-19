@@ -1281,8 +1281,8 @@ ssize_t ec_slave_write_eeprom(ec_slave_t *slave, /**< EtherCAT slave */
         return -1;
     }
 
-    if (slave->master->mode != EC_MASTER_MODE_FREERUN) {
-        EC_ERR("Writing EEPROMs only allowed in freerun mode!\n");
+    if (slave->master->mode != EC_MASTER_MODE_IDLE) {
+        EC_ERR("Writing EEPROMs only allowed in idle mode!\n");
         return -1;
     }
 

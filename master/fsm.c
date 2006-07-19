@@ -219,8 +219,8 @@ void ec_fsm_master_broadcast(ec_fsm_t *fsm /**< finite state machine */)
         printk(".\n");
     }
 
-    // topology change in free-run mode: clear all slaves and scan the bus
-    if (topology_change && master->mode == EC_MASTER_MODE_FREERUN) {
+    // topology change in idle mode: clear all slaves and scan the bus
+    if (topology_change && master->mode == EC_MASTER_MODE_IDLE) {
         EC_INFO("Scanning bus.\n");
 
         ec_master_eoe_stop(master);
@@ -311,7 +311,7 @@ void ec_fsm_master_action_process_states(ec_fsm_t *fsm
         return;
     }
 
-    if (master->mode == EC_MASTER_MODE_FREERUN) {
+    if (master->mode == EC_MASTER_MODE_IDLE) {
         // nothing to configure. check for pending EEPROM write operations.
         list_for_each_entry(slave, &master->slaves, list) {
             if (!slave->new_eeprom_data) continue;
@@ -670,7 +670,7 @@ void ec_fsm_master_scan_slaves(ec_fsm_t *fsm /**< finite state machine */)
             coupler_subindex++;
         }
 
-        if (master->mode == EC_MASTER_MODE_FREERUN) {
+        if (master->mode == EC_MASTER_MODE_IDLE) {
             // start EoE processing
             ec_master_eoe_start(master);
         }
