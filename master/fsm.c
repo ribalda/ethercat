@@ -1131,7 +1131,6 @@ void ec_fsm_slaveconf_init(ec_fsm_t *fsm /**< finite state machine */)
                      EC_SYNC_SIZE * slave->base_sync_count);
     memset(datagram->data, 0x00, EC_SYNC_SIZE * slave->base_sync_count);
 
-
     // does the slave supply sync manager configurations in its EEPROM?
     if (!list_empty(&slave->eeprom_syncs)) {
         list_for_each_entry(eeprom_sync, &slave->eeprom_syncs, list) {
