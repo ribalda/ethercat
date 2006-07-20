@@ -85,7 +85,7 @@ void ec_fsm_change_check(ec_fsm_t *);
 void ec_fsm_change_status(ec_fsm_t *);
 void ec_fsm_change_code(ec_fsm_t *);
 void ec_fsm_change_ack(ec_fsm_t *);
-void ec_fsm_change_ack2(ec_fsm_t *);
+void ec_fsm_change_check_ack(ec_fsm_t *);
 void ec_fsm_change_end(ec_fsm_t *);
 void ec_fsm_change_error(ec_fsm_t *);
 
@@ -1773,17 +1773,16 @@ void ec_fsm_change_ack(ec_fsm_t *fsm /**< finite state machine */)
     // read new AL status
     ec_datagram_nprd(datagram, slave->station_address, 0x0130, 2);
     ec_master_queue_datagram(fsm->master, datagram);
-    fsm->change_state = ec_fsm_change_ack2;
+    fsm->change_state = ec_fsm_change_check_ack;
 }
 
 /*****************************************************************************/
 
 /**
-   Change state: ACK.
-   Acknowledge 2.
+   Change state: CHECK ACK.
 */
 
-void ec_fsm_change_ack2(ec_fsm_t *fsm /**< finite state machine */)
+void ec_fsm_change_check_ack(ec_fsm_t *fsm /**< finite state machine */)
 {
     ec_datagram_t *datagram = &fsm->datagram;
     ec_slave_t *slave = fsm->slave;
