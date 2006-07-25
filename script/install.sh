@@ -90,6 +90,7 @@ fi
 echo "  Installing tools"
 cp script/lsec.pl /usr/local/bin/lsec || exit 1
 chmod +x /usr/local/bin/ec_list || exit 1
+rm -f /usr/local/bin/ec_list || exit 1
 ln -s /usr/local/bin/lsec /usr/local/bin/ec_list || exit 1
 
 #------------------------------------------------------------------------------
