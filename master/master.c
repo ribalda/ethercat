@@ -856,6 +856,9 @@ ssize_t ec_show_master_attribute(struct kobject *kobj, /**< kobject */
     else if (attr == &attr_debug_level) {
         return sprintf(buffer, "%i\n", master->debug_level);
     }
+    else if (attr == &attr_eeprom_write_enable) {
+        return sprintf(buffer, "%i\n", master->eeprom_write_enable);
+    }
 
     return 0;
 }
