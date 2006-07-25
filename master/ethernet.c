@@ -155,7 +155,7 @@ int ec_eoe_init(ec_eoe_t *eoe /**< EoE handler */)
 
 void ec_eoe_clear(ec_eoe_t *eoe /**< EoE handler */)
 {
-    if (eoe->dev) {
+    if (eoe->dev) { // TODO: dev never NULL?
         unregister_netdev(eoe->dev);
         free_netdev(eoe->dev);
     }
