@@ -53,10 +53,10 @@ ssize_t ec_show_domain_attribute(struct kobject *, struct attribute *, char *);
 
 /** \cond */
 
-EC_SYSFS_READ_ATTR(data_size);
+EC_SYSFS_READ_ATTR(image_size);
 
 static struct attribute *def_attrs[] = {
-    &attr_data_size,
+    &attr_image_size,
     NULL,
 };
 
@@ -345,7 +345,7 @@ ssize_t ec_show_domain_attribute(struct kobject *kobj, /**< kobject */
 {
     ec_domain_t *domain = container_of(kobj, ec_domain_t, kobj);
 
-    if (attr == &attr_data_size) {
+    if (attr == &attr_image_size) {
         return sprintf(buffer, "%i\n", domain->data_size);
     }
 

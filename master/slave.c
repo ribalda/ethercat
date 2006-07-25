@@ -62,22 +62,22 @@ ssize_t ec_store_slave_attribute(struct kobject *, struct attribute *,
 /** \cond */
 
 EC_SYSFS_READ_ATTR(ring_position);
-EC_SYSFS_READ_ATTR(coupler_address);
-EC_SYSFS_READ_ATTR(vendor_name);
-EC_SYSFS_READ_ATTR(product_name);
-EC_SYSFS_READ_ATTR(product_desc);
-EC_SYSFS_READ_ATTR(sii_name);
-EC_SYSFS_READ_ATTR(type);
+EC_SYSFS_READ_ATTR(advanced_position);
+EC_SYSFS_READ_ATTR(vendor_name); // deprecated
+EC_SYSFS_READ_ATTR(product_name); // deprecated
+EC_SYSFS_READ_ATTR(product_desc); // deprecated
+EC_SYSFS_READ_ATTR(name);
+EC_SYSFS_READ_ATTR(type); // deprecated
 EC_SYSFS_READ_WRITE_ATTR(state);
 EC_SYSFS_READ_WRITE_ATTR(eeprom);
 
 static struct attribute *def_attrs[] = {
     &attr_ring_position,
-    &attr_coupler_address,
+    &attr_advanced_position,
     &attr_vendor_name,
     &attr_product_name,
     &attr_product_desc,
-    &attr_sii_name,
+    &attr_name,
     &attr_type,
     &attr_state,
     &attr_eeprom,
@@ -1353,7 +1353,7 @@ ssize_t ec_show_slave_attribute(struct kobject *kobj, /**< slave's kobject */
     if (attr == &attr_ring_position) {
         return sprintf(buffer, "%i\n", slave->ring_position);
     }
-    else if (attr == &attr_coupler_address) {
+    else if (attr == &attr_advanced_position) {
         return sprintf(buffer, "%i:%i\n", slave->coupler_index,
                        slave->coupler_subindex);
     }
@@ -1369,7 +1369,7 @@ ssize_t ec_show_slave_attribute(struct kobject *kobj, /**< slave's kobject */
         if (slave->type)
             return sprintf(buffer, "%s\n", slave->type->description);
     }
-    else if (attr == &attr_sii_name) {
+    else if (attr == &attr_name) {
         if (slave->eeprom_name)
             return sprintf(buffer, "%s\n", slave->eeprom_name);
     }
