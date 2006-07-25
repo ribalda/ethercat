@@ -88,8 +88,9 @@ fi
 # Install tools
 
 echo "  Installing tools"
-cp script/ec_list.pl /usr/local/bin/ec_list || exit 1
+cp script/lsec.pl /usr/local/bin/lsec || exit 1
 chmod +x /usr/local/bin/ec_list || exit 1
+ln -s /usr/local/bin/lsec /usr/local/bin/ec_list || exit 1
 
 #------------------------------------------------------------------------------
 

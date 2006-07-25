@@ -2,7 +2,7 @@
 
 #------------------------------------------------------------------------------
 #
-#  e c _ l i s t . p l
+#  l s e c  -  List EtherCAT
 #
 #  Userspace tool for listing EtherCAT slaves.
 #
@@ -181,7 +181,7 @@ sub get_options
 
 sub print_usage
 {
-    print "Usage: ec_list [OPTIONS]\n";
+    print "Usage: $0 [OPTIONS]\n";
     print "        -m <IDX>    Query master <IDX>.\n";
     print "        -s          Show EEPROM name instead of";
     print " vendor/product/description.\n";
