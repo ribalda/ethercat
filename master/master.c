@@ -55,7 +55,7 @@
 
 /*****************************************************************************/
 
-void ec_master_idle(void *);
+void ec_master_idle_run(void *);
 void ec_master_eoe_run(unsigned long);
 ssize_t ec_show_master_attribute(struct kobject *, struct attribute *, char *);
 ssize_t ec_store_master_attribute(struct kobject *, struct attribute *,
@@ -116,7 +116,7 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     INIT_LIST_HEAD(&master->domains);
     INIT_LIST_HEAD(&master->eoe_handlers);
     ec_datagram_init(&master->simple_datagram);
-    INIT_WORK(&master->idle_work, ec_master_idle, (void *) master);
+    INIT_WORK(&master->idle_work, ec_master_idle_run, (void *) master);
     init_timer(&master->eoe_timer);
     master->eoe_timer.function = ec_master_eoe_run;
     master->eoe_timer.data = (unsigned long) master;
@@ -724,7 +724,7 @@ void ec_master_idle_stop(ec_master_t *master /**< EtherCAT master */)
    Idle mode function.
 */
 
-void ec_master_idle(void *data /**< master pointer */)
+void ec_master_idle_run(void *data /**< master pointer */)
 {
     ec_master_t *master = (ec_master_t *) data;
 
