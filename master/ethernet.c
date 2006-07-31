@@ -225,6 +225,7 @@ int ec_eoe_send(ec_eoe_t *eoe /**< EoE handler */)
         complete_offset = eoe->tx_offset / 32;
     }
     else {
+        // complete size in 32 bit blocks, rounded up.
         complete_offset = remaining_size / 32 + 1;
     }
 
