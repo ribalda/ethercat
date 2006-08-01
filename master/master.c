@@ -100,7 +100,7 @@ static struct kobj_type ktype_ec_master = {
 
 int ec_master_init(ec_master_t *master, /**< EtherCAT master */
                    unsigned int index, /**< master index */
-                   unsigned int eoe_devices /**< number of EoE devices */
+                   unsigned int eoeif_count /**< number of EoE interfaces */
                    )
 {
     ec_eoe_t *eoe, *next_eoe;
@@ -130,7 +130,7 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     }
 
     // create EoE handlers
-    for (i = 0; i < eoe_devices; i++) {
+    for (i = 0; i < eoeif_count; i++) {
         if (!(eoe = (ec_eoe_t *) kmalloc(sizeof(ec_eoe_t), GFP_KERNEL))) {
             EC_ERR("Failed to allocate EoE-Object.\n");
             goto out_clear_eoe;

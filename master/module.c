@@ -67,7 +67,7 @@ void __exit ec_cleanup_module(void);
 /*****************************************************************************/
 
 static int ec_master_count = 1; /**< parameter value, number of masters */
-static int ec_eoe_devices = 0; /**< parameter value, number of EoE interf. */
+static int ec_eoeif_count = 0; /**< parameter value, number of EoE interf. */
 static struct list_head ec_masters; /**< list of masters */
 
 /*****************************************************************************/
@@ -75,14 +75,14 @@ static struct list_head ec_masters; /**< list of masters */
 /** \cond */
 
 module_param(ec_master_count, int, S_IRUGO);
-module_param(ec_eoe_devices, int, S_IRUGO);
+module_param(ec_eoeif_count, int, S_IRUGO);
 
 MODULE_AUTHOR("Florian Pose <fp@igh-essen.com>");
 MODULE_DESCRIPTION("EtherCAT master driver module");
 MODULE_LICENSE("GPL");
 MODULE_VERSION(COMPILE_INFO);
 MODULE_PARM_DESC(ec_master_count, "number of EtherCAT masters to initialize");
-MODULE_PARM_DESC(ec_eoe_devices, "number of EoE devices per master");
+MODULE_PARM_DESC(ec_eoeif_count, "number of EoE interfaces per master");
 
 /** \endcond */
 
@@ -117,7 +117,7 @@ int __init ec_init_module(void)
             goto out_free;
         }
 
-        if (ec_master_init(master, i, ec_eoe_devices))
+        if (ec_master_init(master, i, ec_eoeif_count))
             goto out_free;
 
         if (kobject_add(&master->kobj)) {

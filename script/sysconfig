@@ -13,10 +13,10 @@
 #DEVICE_INDEX=99
 
 #
-#  Number of Ethernet-over-EtherCAT devices every master shall create
+#  Number of Ethernet-over-EtherCAT interfaces every master shall create
 #  on startup. Default is 0.
 #
-#EOE_DEVICES=0
+#EOE_INTERFACES=0
 
 #
 #  Bridge all EoE interfaces after master startup

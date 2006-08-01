@@ -65,7 +65,7 @@ test -r $ETHERCAT_CONFIG || { echo "$ETHERCAT_CONFIG not existing";
 build_eoe_bridge() {
         if [ -z "$EOE_BRIDGE" ]; then return; fi
 
-	EOE_INTERFACES=`/sbin/ifconfig -a | grep -o -E "^eoe[0-9]+ "`
+	EOEIF=`/sbin/ifconfig -a | grep -o -E "^eoe[0-9]+ "`
 
 	# add bridge, if it does not already exist
 	if ! /sbin/brctl show | grep -E -q "^$EOE_BRIDGE"; then
@@ -76,8 +76,8 @@ build_eoe_bridge() {
 		fi
 	fi
 
-       	# check if specified interfaces are bridged
-	for interf in $EOE_INTERFACES $EOE_EXTRA_INTERFACES; do
+    # check if specified interfaces are bridged
+	for interf in $EOEIF $EOE_EXTRA_INTERFACES; do
 	        # interface is already part of the bridge 
 	        if /sbin/brctl show $EOE_BRIDGE | grep -E -q $interf
 		        then continue
@@ -147,8 +147,12 @@ case "$1" in
 	    rc_exit
 	fi
 
-	if [ -z "$EOE_DEVICES" ]; then
-	    EOE_DEVICES=0
+	if [ -z "$EOE_INTERFACES" ]; then
+		if [ -n "$EOE_DEVICES"]; then # support legacy sysconfig files
+			EOE_INTERFACES=$EOE_DEVICES
+		else
+			EOE_INTERFACES=0
+		fi
 	fi
 
 	# unload conflicting modules at first
@@ -163,7 +167,7 @@ case "$1" in
 	done
 
 	# load master module
-	if ! modprobe ec_master ec_eoe_devices=$EOE_DEVICES; then
+	if ! modprobe ec_master ec_eoeif_count=$EOE_INTERFACES; then
 	    /bin/false
 	    rc_status -v
 	    rc_exit
