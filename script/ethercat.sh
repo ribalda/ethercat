@@ -148,7 +148,7 @@ case "$1" in
 	fi
 
 	if [ -z "$EOE_INTERFACES" ]; then
-		if [ -n "$EOE_DEVICES"]; then # support legacy sysconfig files
+		if [ -n "$EOE_DEVICES" ]; then # support legacy sysconfig files
 			EOE_INTERFACES=$EOE_DEVICES
 		else
 			EOE_INTERFACES=0
