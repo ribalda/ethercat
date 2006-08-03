@@ -41,6 +41,7 @@
 #include "globals.h"
 #include "fsm.h"
 #include "master.h"
+#include "mailbox.h"
 
 /*****************************************************************************/
 
@@ -73,6 +74,7 @@ void ec_fsm_slaveconf_init(ec_fsm_t *);
 void ec_fsm_slaveconf_sync(ec_fsm_t *);
 void ec_fsm_slaveconf_preop(ec_fsm_t *);
 void ec_fsm_slaveconf_fmmu(ec_fsm_t *);
+void ec_fsm_slaveconf_sdoconf(ec_fsm_t *);
 void ec_fsm_slaveconf_saveop(ec_fsm_t *);
 void ec_fsm_slaveconf_op(ec_fsm_t *);
 
@@ -90,8 +92,15 @@ void ec_fsm_change_code(ec_fsm_t *);
 void ec_fsm_change_ack(ec_fsm_t *);
 void ec_fsm_change_check_ack(ec_fsm_t *);
 
+void ec_fsm_coe_down_start(ec_fsm_t *);
+void ec_fsm_coe_down_request(ec_fsm_t *);
+void ec_fsm_coe_down_check(ec_fsm_t *);
+void ec_fsm_coe_down_fetch(ec_fsm_t *);
+
 void ec_fsm_end(ec_fsm_t *);
 void ec_fsm_error(ec_fsm_t *);
+
+void ec_canopen_abort_msg(uint32_t);
 
 /*****************************************************************************/
 
@@ -1403,6 +1412,7 @@ void ec_fsm_slaveconf_preop(ec_fsm_t *fsm /**< finite state machine */)
 void ec_fsm_slaveconf_fmmu(ec_fsm_t *fsm /**< finite state machine */)
 {
     ec_datagram_t *datagram = &fsm->datagram;
+    ec_slave_t *slave = fsm->slave;
 
     if (datagram->state != EC_DATAGRAM_RECEIVED
         || datagram->working_counter != 1) {
@@ -1412,6 +1422,51 @@ void ec_fsm_slaveconf_fmmu(ec_fsm_t *fsm /**< finite state machine */)
                fsm->slave->ring_position);
         return;
     }
+
+    // No CoE configuration to be applied? Jump to SAVEOP state.
+    if (list_empty(&slave->sdo_confs)) {
+        // set state to SAVEOP
+        fsm->slave_state = ec_fsm_slaveconf_saveop;
+        fsm->change_new = EC_SLAVE_STATE_SAVEOP;
+        fsm->change_state = ec_fsm_change_start;
+        fsm->change_state(fsm); // execute immediately
+        return;
+    }
+
+    fsm->slave_state = ec_fsm_slaveconf_sdoconf;
+    fsm->sdodata = list_entry(slave->sdo_confs.next, ec_sdo_data_t, list);
+    fsm->coe_state = ec_fsm_coe_down_start;
+    fsm->coe_state(fsm); // execute immediately
+}
+
+/*****************************************************************************/
+
+/**
+   Slave state: SDOCONF.
+*/
+
+void ec_fsm_slaveconf_sdoconf(ec_fsm_t *fsm /**< finite state machine */)
+{
+    fsm->coe_state(fsm); // execute CoE state machine
+
+    if (fsm->coe_state == ec_fsm_error) {
+        fsm->slave->error_flag = 1;
+        fsm->slave_state = ec_fsm_error;
+        return;
+    }
+
+    if (fsm->coe_state != ec_fsm_end) return;
+
+    // Another SDO to configure?
+    if (fsm->sdodata->list.next != &fsm->slave->sdo_confs) {
+        fsm->sdodata = list_entry(fsm->sdodata->list.next,
+                                  ec_sdo_data_t, list);
+        fsm->coe_state = ec_fsm_coe_down_start;
+        fsm->coe_state(fsm); // execute immediately
+        return;
+    }
+
+    // All SDOs are now configured.
 
     // set state to SAVEOP
     fsm->slave_state = ec_fsm_slaveconf_saveop;
@@ -1934,7 +1989,244 @@ void ec_fsm_change_check_ack(ec_fsm_t *fsm /**< finite state machine */)
     ec_master_queue_datagram(fsm->master, datagram);
 }
 
+/******************************************************************************
+ *  CoE state machine
+ *****************************************************************************/
+
+/**
+   CoE state: DOWN_START.
+*/
+
+void ec_fsm_coe_down_start(ec_fsm_t *fsm /**< finite state machine */)
+{
+    ec_datagram_t *datagram = &fsm->datagram;
+    ec_slave_t *slave = fsm->slave;
+    ec_sdo_data_t *sdodata = fsm->sdodata;
+    uint8_t *data;
+
+    EC_INFO("Downloading SDO 0x%04X:%i to slave %i.\n",
+            sdodata->index, sdodata->subindex, slave->ring_position);
+
+    if (slave->sii_rx_mailbox_size < 6 + 10 + sdodata->size) {
+        EC_ERR("SDO fragmenting not supported yet!\n");
+        fsm->coe_state = ec_fsm_error;
+        return;
+    }
+
+    if (!(data = ec_slave_mbox_prepare_send(slave, datagram, 0x03,
+                                            sdodata->size + 10))) {
+        fsm->coe_state = ec_fsm_error;
+        return;
+    }
+
+    EC_WRITE_U16(data, 0x2 << 12); // SDO request
+    EC_WRITE_U8 (data + 2, (0x1 // size specified
+                            | 0x1 << 5)); // Download request
+    EC_WRITE_U16(data + 3, sdodata->index);
+    EC_WRITE_U8 (data + 5, sdodata->subindex);
+    EC_WRITE_U32(data + 6, sdodata->size);
+    memcpy(data + 6, sdodata->data, sdodata->size);
+
+    ec_master_queue_datagram(fsm->master, datagram);
+    fsm->coe_state = ec_fsm_coe_down_request;
+}
+
 /*****************************************************************************/
+
+/**
+   CoE state: DOWN_REQUEST.
+*/
+
+void ec_fsm_coe_down_request(ec_fsm_t *fsm /**< finite state machine */)
+{
+    ec_datagram_t *datagram = &fsm->datagram;
+    ec_slave_t *slave = fsm->slave;
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED
+        || datagram->working_counter != 1) {
+        fsm->coe_state = ec_fsm_error;
+        EC_ERR("Reception of CoE download request failed.\n");
+        return;
+    }
+
+    fsm->coe_start = get_cycles();
+
+    ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
+    ec_master_queue_datagram(fsm->master, datagram);
+    fsm->coe_state = ec_fsm_coe_down_check;
+}
+
+/*****************************************************************************/
+
+/**
+   CoE state: DOWN_CHECK.
+*/
+
+void ec_fsm_coe_down_check(ec_fsm_t *fsm /**< finite state machine */)
+{
+    ec_datagram_t *datagram = &fsm->datagram;
+    ec_slave_t *slave = fsm->slave;
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED
+        || datagram->working_counter != 1) {
+        fsm->coe_state = ec_fsm_error;
+        EC_ERR("Reception of CoE mailbox check datagram failed.\n");
+        return;
+    }
+
+    if (!ec_slave_mbox_check(datagram)) {
+        if (get_cycles() - fsm->coe_start >= (cycles_t) 100 * cpu_khz) {
+            fsm->coe_state = ec_fsm_error;
+            EC_ERR("Timeout while checking SDO configuration on slave %i.\n",
+                   slave->ring_position);
+            return;
+        }
+
+        ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
+        ec_master_queue_datagram(fsm->master, datagram);
+        return;
+    }
+
+    // Fetch response
+    ec_slave_mbox_prepare_fetch(slave, datagram); // can not fail.
+    ec_master_queue_datagram(fsm->master, datagram);
+    fsm->coe_state = ec_fsm_coe_down_fetch;
+}
+
+/*****************************************************************************/
+
+/**
+   CoE state: DOWN_FETCH.
+*/
+
+void ec_fsm_coe_down_fetch(ec_fsm_t *fsm /**< finite state machine */)
+{
+    ec_datagram_t *datagram = &fsm->datagram;
+    ec_slave_t *slave = fsm->slave;
+    uint8_t *data;
+    size_t rec_size;
+    ec_sdo_data_t *sdodata = fsm->sdodata;
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED
+        || datagram->working_counter != 1) {
+        fsm->coe_state = ec_fsm_error;
+        EC_ERR("Reception of CoE download response failed.\n");
+        return;
+    }
+
+    if (!(data = ec_slave_mbox_fetch(slave, datagram, 0x03, &rec_size))) {
+        fsm->coe_state = ec_fsm_error;
+        return;
+    }
+
+    if (rec_size < 6) {
+        fsm->coe_state = ec_fsm_error;
+        EC_ERR("Received data is too small (%i bytes):\n", rec_size);
+        ec_print_data(data, rec_size);
+        return;
+    }
+
+    if (EC_READ_U16(data) >> 12 == 0x2 && // SDO request
+        EC_READ_U8 (data + 2) >> 5 == 0x4) { // abort SDO transfer request
+        fsm->coe_state = ec_fsm_error;
+        EC_ERR("SDO download 0x%04X:%X (%i bytes) aborted on slave %i.\n",
+               sdodata->index, sdodata->subindex, sdodata->size,
+               slave->ring_position);
+        if (rec_size < 10) {
+            EC_ERR("Incomplete Abort command:\n");
+            ec_print_data(data, rec_size);
+        }
+        else
+            ec_canopen_abort_msg(EC_READ_U32(data + 6));
+        return;
+    }
+
+    if (EC_READ_U16(data) >> 12 != 0x3 || // SDO response
+        EC_READ_U8 (data + 2) >> 5 != 0x3 || // Download response
+        EC_READ_U16(data + 3) != sdodata->index || // index
+        EC_READ_U8 (data + 5) != sdodata->subindex) { // subindex
+        fsm->coe_state = ec_fsm_error;
+        EC_ERR("SDO download 0x%04X:%X (%i bytes) failed:\n",
+               sdodata->index, sdodata->subindex, sdodata->size);
+        EC_ERR("Invalid SDO download response at slave %i!\n",
+               slave->ring_position);
+        ec_print_data(data, rec_size);
+        return;
+    }
+
+    fsm->coe_state = ec_fsm_end; // success
+}
+
+/*****************************************************************************/
+
+/**
+   SDO abort messages.
+   The "abort SDO transfer request" supplies an abort code,
+   which can be translated to clear text. This table does
+   the mapping of the codes and messages.
+*/
+
+const ec_code_msg_t sdo_abort_messages[] = {
+    {0x05030000, "Toggle bit not changed"},
+    {0x05040000, "SDO protocol timeout"},
+    {0x05040001, "Client/Server command specifier not valid or unknown"},
+    {0x05040005, "Out of memory"},
+    {0x06010000, "Unsupported access to an object"},
+    {0x06010001, "Attempt to read a write-only object"},
+    {0x06010002, "Attempt to write a read-only object"},
+    {0x06020000, "This object does not exist in the object directory"},
+    {0x06040041, "The object cannot be mapped into the PDO"},
+    {0x06040042, "The number and length of the objects to be mapped would"
+     " exceed the PDO length"},
+    {0x06040043, "General parameter incompatibility reason"},
+    {0x06040047, "Gerneral internal incompatibility in device"},
+    {0x06060000, "Access failure due to a hardware error"},
+    {0x06070010, "Data type does not match, length of service parameter does"
+     " not match"},
+    {0x06070012, "Data type does not match, length of service parameter too"
+     " high"},
+    {0x06070013, "Data type does not match, length of service parameter too"
+     " low"},
+    {0x06090011, "Subindex does not exist"},
+    {0x06090030, "Value range of parameter exceeded"},
+    {0x06090031, "Value of parameter written too high"},
+    {0x06090032, "Value of parameter written too low"},
+    {0x06090036, "Maximum value is less than minimum value"},
+    {0x08000000, "General error"},
+    {0x08000020, "Data cannot be transferred or stored to the application"},
+    {0x08000021, "Data cannot be transferred or stored to the application"
+     " because of local control"},
+    {0x08000022, "Data cannot be transferred or stored to the application"
+     " because of the present device state"},
+    {0x08000023, "Object dictionary dynamic generation fails or no object"
+     " dictionary is present"},
+    {}
+};
+
+/*****************************************************************************/
+
+/**
+   Outputs an SDO abort message.
+*/
+
+void ec_canopen_abort_msg(uint32_t abort_code)
+{
+    const ec_code_msg_t *abort_msg;
+
+    for (abort_msg = sdo_abort_messages; abort_msg->code; abort_msg++) {
+        if (abort_msg->code == abort_code) {
+            EC_ERR("SDO abort message 0x%08X: \"%s\".\n",
+                   abort_msg->code, abort_msg->message);
+            return;
+        }
+    }
+
+    EC_ERR("Unknown SDO abort code 0x%08X.\n", abort_code);
+}
+
+/******************************************************************************
+ *  Common state functions
+ *****************************************************************************/
 
 /**
    State: ERROR.

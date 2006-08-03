@@ -64,6 +64,7 @@ uint8_t k_stat;
 
 ec_pdo_reg_t domain1_pdos[] = {
     {"1", Beckhoff_EL4132_Output1, &r_ana_out},
+    {"8", Beckhoff_EL5001_Value, NULL},
     {}
 };
 
@@ -123,6 +124,8 @@ void release_lock(void *data)
 
 int __init init_mini_module(void)
 {
+    ec_slave_t *slave;
+
     printk(KERN_INFO "=== Starting Minimal EtherCAT environment... ===\n");
 
     if ((master = ecrt_request_master(0)) == NULL) {
@@ -144,6 +147,12 @@ int __init init_mini_module(void)
         printk(KERN_ERR "PDO registration failed!\n");
         goto out_release_master;
     }
+
+    if (!(slave = ecrt_master_get_slave(master, "8")))
+        goto out_release_master;
+
+    if (ecrt_slave_conf_sdo8(slave, 0x4061, 1, 0))
+        goto out_release_master;
 
     printk(KERN_INFO "Activating master...\n");
     if (ecrt_master_activate(master)) {

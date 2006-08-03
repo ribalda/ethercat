@@ -199,6 +199,18 @@ ec_sdo_entry_t;
 
 /*****************************************************************************/
 
+typedef struct
+{
+    struct list_head list;
+    uint16_t index;
+    uint8_t subindex;
+    uint8_t *data;
+    size_t size;
+}
+ec_sdo_data_t;
+
+/*****************************************************************************/
+
 /**
    FMMU configuration.
 */
@@ -291,6 +303,7 @@ struct ec_slave
     uint8_t fmmu_count; /**< number of FMMUs used */
 
     struct list_head sdo_dictionary; /**< SDO directory list */
+    struct list_head sdo_confs; /**< list of SDO configurations */
 
     struct list_head varsize_fields; /**< size information for variable-sized
                                         data fields. */

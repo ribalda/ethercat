@@ -155,6 +155,7 @@ int ec_slave_init(ec_slave_t *slave, /**< EtherCAT slave */
     INIT_LIST_HEAD(&slave->sii_syncs);
     INIT_LIST_HEAD(&slave->sii_pdos);
     INIT_LIST_HEAD(&slave->sdo_dictionary);
+    INIT_LIST_HEAD(&slave->sdo_confs);
     INIT_LIST_HEAD(&slave->varsize_fields);
 
     for (i = 0; i < 4; i++) {
@@ -182,6 +183,7 @@ void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
     ec_sii_pdo_entry_t *entry, *next_ent;
     ec_sdo_t *sdo, *next_sdo;
     ec_sdo_entry_t *en, *next_en;
+    ec_sdo_data_t *sdodata, *next_sdodata;
     ec_varsize_t *var, *next_var;
 
     slave = container_of(kobj, ec_slave_t, kobj);
@@ -229,6 +231,13 @@ void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
             kfree(en);
         }
         kfree(sdo);
+    }
+
+    // free all SDO configurations
+    list_for_each_entry_safe(sdodata, next_sdodata, &slave->sdo_confs, list) {
+        list_del(&sdodata->list);
+        kfree(sdodata->data);
+        kfree(sdodata);
     }
 
     // free information about variable sized data fields
@@ -913,9 +922,104 @@ int ec_slave_is_coupler(const ec_slave_t *slave)
         && slave->sii_product_code == 0x044C2C52;
 }
 
+/*****************************************************************************/
+
+/**
+   \return 0 in case of success, else < 0
+*/
+
+int ec_slave_conf_sdo(ec_slave_t *slave, /**< EtherCAT slave */
+                      uint16_t sdo_index, /**< SDO index */
+                      uint8_t sdo_subindex, /**< SDO subindex */
+                      const uint8_t *data, /**< SDO data */
+                      size_t size /**< SDO size in bytes */
+                      )
+{
+    ec_sdo_data_t *sdodata;
+
+    if (!(slave->sii_mailbox_protocols & EC_MBOX_COE)) {
+        EC_ERR("Slave %i does not support CoE!\n", slave->ring_position);
+        return -1;
+    }
+
+    if (!(sdodata = (ec_sdo_data_t *)
+          kmalloc(sizeof(ec_sdo_data_t), GFP_KERNEL))) {
+        EC_ERR("Failed to allocate memory for SDO configuration object!\n");
+        return -1;
+    }
+
+    if (!(sdodata->data = (uint8_t *) kmalloc(size, GFP_KERNEL))) {
+        EC_ERR("Failed to allocate memory for SDO configuration data!\n");
+        kfree(sdodata);
+        return -1;
+    }
+
+    sdodata->index = sdo_index;
+    sdodata->subindex = sdo_subindex;
+    memcpy(sdodata->data, data, size);
+    sdodata->size = size;
+
+    list_add_tail(&sdodata->list, &slave->sdo_confs);
+    return 0;
+}
+
 /******************************************************************************
  *  Realtime interface
  *****************************************************************************/
+
+/**
+   \return 0 in case of success, else < 0
+   \ingroup RealtimeInterface
+*/
+
+int ecrt_slave_conf_sdo8(ec_slave_t *slave, /**< EtherCAT slave */
+                         uint16_t sdo_index, /**< SDO index */
+                         uint8_t sdo_subindex, /**< SDO subindex */
+                         uint8_t value /**< new SDO value */
+                         )
+{
+    uint8_t data[1];
+    EC_WRITE_U8(data, value);
+    return ec_slave_conf_sdo(slave, sdo_index, sdo_subindex, data, 1);
+}
+
+/*****************************************************************************/
+
+/**
+   \return 0 in case of success, else < 0
+   \ingroup RealtimeInterface
+*/
+
+int ecrt_slave_conf_sdo16(ec_slave_t *slave, /**< EtherCAT slave */
+                          uint16_t sdo_index, /**< SDO index */
+                          uint8_t sdo_subindex, /**< SDO subindex */
+                          uint16_t value /**< new SDO value */
+                          )
+{
+    uint8_t data[2];
+    EC_WRITE_U16(data, value);
+    return ec_slave_conf_sdo(slave, sdo_index, sdo_subindex, data, 2);
+}
+
+/*****************************************************************************/
+
+/**
+   \return 0 in case of success, else < 0
+   \ingroup RealtimeInterface
+*/
+
+int ecrt_slave_conf_sdo32(ec_slave_t *slave, /**< EtherCAT slave */
+                          uint16_t sdo_index, /**< SDO index */
+                          uint8_t sdo_subindex, /**< SDO subindex */
+                          uint32_t value /**< new SDO value */
+                          )
+{
+    uint8_t data[4];
+    EC_WRITE_U32(data, value);
+    return ec_slave_conf_sdo(slave, sdo_index, sdo_subindex, data, 4);
+}
+
+/*****************************************************************************/
 
 /**
    \return 0 in case of success, else < 0
@@ -989,6 +1093,9 @@ int ecrt_slave_pdo_size(ec_slave_t *slave, /**< EtherCAT slave */
 
 /**< \cond */
 
+EXPORT_SYMBOL(ecrt_slave_conf_sdo8);
+EXPORT_SYMBOL(ecrt_slave_conf_sdo16);
+EXPORT_SYMBOL(ecrt_slave_conf_sdo32);
 EXPORT_SYMBOL(ecrt_slave_pdo_size);
 
 /**< \endcond */
