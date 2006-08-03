@@ -42,6 +42,7 @@
 
 // EtherCAT
 #include "../../include/ecrt.h"
+#include "../../include/ecdb.h"
 
 /*****************************************************************************/
 
@@ -51,12 +52,8 @@ MODULE_DESCRIPTION("EtherCAT RTAI sample module");
 
 /*****************************************************************************/
 
-// comment this for synchronous IO
-#define ASYNC
-
 // RTAI task frequency in Hz
 #define FREQUENCY 10000
-
 #define TIMERTICKS (1000000000 / FREQUENCY)
 
 /*****************************************************************************/
@@ -64,22 +61,20 @@ MODULE_DESCRIPTION("EtherCAT RTAI sample module");
 // RTAI
 RT_TASK task;
 SEM master_sem;
-cycles_t t_last_start = 0;
-cycles_t t_critical;
+cycles_t t_last_start = 0, t_critical;
 
 // EtherCAT
 ec_master_t *master = NULL;
 ec_domain_t *domain1 = NULL;
 
 // data fields
-void *r_ssi_input;
+void *r_ana_out;
 
 // channels
 uint32_t k_pos;
 
-ec_field_init_t domain1_fields[] = {
-    {&r_ssi_input, "3", "Beckhoff", "EL5001", "InputValue",   0},
-    {NULL,         "2", "Beckhoff", "EL4132", "OutputValue",  0},
+ec_pdo_reg_t domain1_pdos[] = {
+    {"2", Beckhoff_EL4132_Output1, &r_ana_out},
     {}
 };
 
@@ -92,27 +87,14 @@ void run(long data)
         t_last_start = get_cycles();
         rt_sem_wait(&master_sem);
 
-#ifdef ASYNC
-        // receive
-        ecrt_master_async_receive(master);
+        ecrt_master_receive(master);
         ecrt_domain_process(domain1);
-#else
-        // send and receive
-        ecrt_domain_queue(domain1);
-        ecrt_master_run(master);
-        ecrt_master_sync_io(master);
-        ecrt_domain_process(domain1);
-#endif
 
         // process data
-        k_pos = EC_READ_U32(r_ssi_input);
+        //k_pos = EC_READ_U32(r_ssi_input);
 
-#ifdef ASYNC
-        // send
-        ecrt_domain_queue(domain1);
         ecrt_master_run(master);
-        ecrt_master_async_send(master);
-#endif
+        ecrt_master_send(master);
 
         rt_sem_signal(&master_sem);
         rt_task_wait_period();
@@ -158,15 +140,14 @@ int __init init_mod(void)
     ecrt_master_callbacks(master, request_lock, release_lock, NULL);
 
     printk(KERN_INFO "Registering domain...\n");
-    if (!(domain1 = ecrt_master_create_domain(master)))
-    {
+    if (!(domain1 = ecrt_master_create_domain(master))) {
         printk(KERN_ERR "Domain creation failed!\n");
         goto out_release_master;
     }
 
-    printk(KERN_INFO "Registering domain fields...\n");
-    if (ecrt_domain_register_field_list(domain1, domain1_fields)) {
-        printk(KERN_ERR "Field registration failed!\n");
+    printk(KERN_INFO "Registering PDOs...\n");
+    if (ecrt_domain_register_pdo_list(domain1, domain1_pdos)) {
+        printk(KERN_ERR "PDO registration failed!\n");
         goto out_release_master;
     }
 
@@ -176,53 +157,7 @@ int __init init_mod(void)
         goto out_release_master;
     }
 
-#if 0
-    if (ecrt_master_fetch_sdo_lists(master)) {
-        printk(KERN_ERR "Failed to fetch SDO lists!\n");
-        goto out_deactivate;
-    }
-    ecrt_master_print(master, 2);
-#else
-    ecrt_master_print(master, 0);
-#endif
-
-#if 0
-    if (!(slave = ecrt_master_get_slave(master, "5"))) {
-        printk(KERN_ERR "Failed to get slave 5!\n");
-        goto out_deactivate;
-    }
-
-    if (ecrt_slave_sdo_write_exp8(slave, 0x4061, 1,  0) ||
-        ecrt_slave_sdo_write_exp8(slave, 0x4061, 2,  1) ||
-        ecrt_slave_sdo_write_exp8(slave, 0x4061, 3,  1) ||
-        ecrt_slave_sdo_write_exp8(slave, 0x4066, 0,  0) ||
-        ecrt_slave_sdo_write_exp8(slave, 0x4067, 0,  4) ||
-        ecrt_slave_sdo_write_exp8(slave, 0x4068, 0,  0) ||
-        ecrt_slave_sdo_write_exp8(slave, 0x4069, 0, 25) ||
-        ecrt_slave_sdo_write_exp8(slave, 0x406A, 0, 25) ||
-        ecrt_slave_sdo_write_exp8(slave, 0x406B, 0, 50)) {
-        printk(KERN_ERR "Failed to configure SSI slave!\n");
-        goto out_deactivate;
-    }
-#endif
-
-#if 0
-    printk(KERN_INFO "Writing alias...\n");
-    if (ecrt_slave_sdo_write_exp16(slave, 0xBEEF)) {
-        printk(KERN_ERR "Failed to write alias!\n");
-        goto out_deactivate;
-    }
-#endif
-
-#ifdef ASYNC
-    // send once and wait...
-    ecrt_master_prepare_async_io(master);
-#endif
-
-    if (ecrt_master_start_eoe(master)) {
-        printk(KERN_ERR "Failed to start EoE processing!\n");
-        goto out_deactivate;
-    }
+    ecrt_master_prepare(master);
 
     printk("Starting cyclic sample thread...\n");
     requested_ticks = nano2count(TIMERTICKS);
@@ -248,7 +183,6 @@ int __init init_mod(void)
     rt_task_delete(&task);
  out_stop_timer:
     stop_rt_timer();
- out_deactivate:
     ecrt_master_deactivate(master);
  out_release_master:
     ecrt_release_master(master);

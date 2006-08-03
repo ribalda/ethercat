@@ -33,48 +33,18 @@
 
 /**
    \file
-   EtherCAT domain structure.
+   EtherCAT Slave Database.
 */
 
 /*****************************************************************************/
 
-#ifndef _EC_DOMAIN_H_
-#define _EC_DOMAIN_H_
-
-#include <linux/list.h>
-#include <linux/kobject.h>
-
-#include "globals.h"
-#include "datagram.h"
-#include "master.h"
+#ifndef __ECDB_H__
+#define __ECDB_H__
 
 /*****************************************************************************/
 
-/**
-   EtherCAT domain.
-   Handles the process data and the therefore needed datagrams of a certain
-   group of slaves.
-*/
-
-struct ec_domain
-{
-    struct kobject kobj; /**< kobject */
-    struct list_head list; /**< list item */
-    unsigned int index; /**< domain index (just a number) */
-    ec_master_t *master; /**< EtherCAT master owning the domain */
-    size_t data_size; /**< size of the process data */
-    struct list_head datagrams; /**< process data datagrams */
-    uint32_t base_address; /**< logical offset address of the process data */
-    unsigned int response_count; /**< number of responding slaves */
-    struct list_head data_regs; /**< PDO data registrations */
-};
-
-/*****************************************************************************/
-
-int ec_domain_init(ec_domain_t *, ec_master_t *, unsigned int);
-void ec_domain_clear(struct kobject *);
-int ec_domain_alloc(ec_domain_t *, uint32_t);
-void ec_domain_queue(ec_domain_t *);
+#define Beckhoff_EL4132_Output1 0x00000002, 0x10243052, 0x6411, 1
+#define Beckhoff_EL4132_Output2 0x00000002, 0x10243052, 0x6411, 2
 
 /*****************************************************************************/
 

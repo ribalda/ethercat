@@ -163,7 +163,7 @@ case "$1" in
 		fi
 
 	    # unload conflicting modules at first
-		for mod in 8139too 8139cp; do
+		for mod in 8139too; do
 			if lsmod | grep "^$mod " > /dev/null; then
 				if ! rmmod $mod; then
 					/bin/false
@@ -175,6 +175,7 @@ case "$1" in
 
 	    # load master module
 		if ! modprobe ec_master ec_eoeif_count=$EOE_INTERFACES; then
+			modprobe 8139too
 			/bin/false
 			rc_status -v
 			rc_exit
@@ -182,6 +183,8 @@ case "$1" in
 
         # load device module
 		if ! modprobe ec_8139too ec_device_index=$DEVICE_INDEX; then
+			rmmod ec_master
+			modprobe 8139too
 			/bin/false
 			rc_status -v
 			rc_exit

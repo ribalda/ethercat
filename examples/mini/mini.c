@@ -42,8 +42,8 @@
 #include <linux/interrupt.h>
 
 #include "../../include/ecrt.h" // EtherCAT realtime interface
+#include "../../include/ecdb.h" // EtherCAT slave database
 
-#define ASYNC
 #define FREQUENCY 100
 
 /*****************************************************************************/
@@ -56,16 +56,14 @@ ec_domain_t *domain1 = NULL;
 spinlock_t master_lock = SPIN_LOCK_UNLOCKED;
 
 // data fields
-//void *r_ssi_input, *r_ssi_status, *r_4102[3];
-void *r_kbus_in, *r_kbus_out;
+void *r_ana_out;
 
 // channels
 uint32_t k_pos;
 uint8_t k_stat;
 
-ec_field_init_t domain1_fields[] = {
-    //{&r_kbus_out, "0", "Beckhoff", "BK1120", "Outputs", 0},
-    //{&r_kbus_in,  "0", "Beckhoff", "BK1120", "Inputs",  0},
+ec_pdo_reg_t domain1_pdos[] = {
+    {"1", Beckhoff_EL4132_Output1, &r_ana_out},
     {}
 };
 
@@ -74,31 +72,19 @@ ec_field_init_t domain1_fields[] = {
 void run(unsigned long data)
 {
     static unsigned int counter = 0;
-    unsigned int i;
 
     spin_lock(&master_lock);
 
-#ifdef ASYNC
     // receive
-    ecrt_master_async_receive(master);
+    ecrt_master_receive(master);
     ecrt_domain_process(domain1);
-#else
-    // send and receive
-    ecrt_domain_queue(domain1);
-    ecrt_master_run(master);
-    ecrt_master_sync_io(master);
-    ecrt_domain_process(domain1);
-#endif
 
     // process data
     //k_pos = EC_READ_U32(r_ssi);
 
-#ifdef ASYNC
     // send
-    ecrt_domain_queue(domain1);
     ecrt_master_run(master);
-    ecrt_master_async_send(master);
-#endif
+    ecrt_master_send(master);
 
     spin_unlock(&master_lock);
 
@@ -107,9 +93,10 @@ void run(unsigned long data)
     }
     else {
         counter = FREQUENCY;
-        printk(KERN_INFO "input = ");
-        for (i = 0; i < 22; i++) printk("%02X ", *((uint8_t *) r_kbus_in + i));
-        printk("\n");
+        //printk(KERN_INFO "input = ");
+        //for (i = 0; i < 22; i++)
+        //    printk("%02X ", *((uint8_t *) r_kbus_in + i));
+        //printk("\n");
     }
 
     // restart timer
@@ -136,8 +123,6 @@ void release_lock(void *data)
 
 int __init init_mini_module(void)
 {
-    ec_slave_t *slave;
-
     printk(KERN_INFO "=== Starting Minimal EtherCAT environment... ===\n");
 
     if ((master = ecrt_request_master(0)) == NULL) {
@@ -154,21 +139,11 @@ int __init init_mini_module(void)
         goto out_release_master;
     }
 
-    printk(KERN_INFO "Registering domain fields...\n");
-    if (ecrt_domain_register_field_list(domain1, domain1_fields)) {
-        printk(KERN_ERR "Field registration failed!\n");
+    printk(KERN_INFO "Registering PDOs...\n");
+    if (ecrt_domain_register_pdo_list(domain1, domain1_pdos)) {
+        printk(KERN_ERR "PDO registration failed!\n");
         goto out_release_master;
     }
-
-#if 1
-    printk(KERN_INFO "Setting variable data field sizes...\n");
-    if (!(slave = ecrt_master_get_slave(master, "0"))) {
-        printk(KERN_ERR "Failed to get slave!\n");
-        goto out_deactivate;
-    }
-    ecrt_slave_field_size(slave, "Outputs", 0, 0x16);
-    ecrt_slave_field_size(slave, "Inputs", 0, 0x16);
-#endif
 
     printk(KERN_INFO "Activating master...\n");
     if (ecrt_master_activate(master)) {
@@ -176,47 +151,7 @@ int __init init_mini_module(void)
         goto out_release_master;
     }
 
-#if 1
-    if (ecrt_master_fetch_sdo_lists(master)) {
-        printk(KERN_ERR "Failed to fetch SDO lists!\n");
-        goto out_deactivate;
-    }
-    ecrt_master_print(master, 2);
-#else
-    ecrt_master_print(master, 0);
-#endif
-
-#if 0
-    if (!(slave = ecrt_master_get_slave(master, "5"))) {
-        printk(KERN_ERR "Failed to get slave 5!\n");
-        goto out_deactivate;
-    }
-
-    if (ecrt_slave_sdo_write_exp8(slave, 0x4061, 1,  0) ||
-        ecrt_slave_sdo_write_exp8(slave, 0x4061, 2,  1) ||
-        ecrt_slave_sdo_write_exp8(slave, 0x4061, 3,  1) ||
-        ecrt_slave_sdo_write_exp8(slave, 0x4066, 0,  0) ||
-        ecrt_slave_sdo_write_exp8(slave, 0x4067, 0,  4) ||
-        ecrt_slave_sdo_write_exp8(slave, 0x4068, 0,  0) ||
-        ecrt_slave_sdo_write_exp8(slave, 0x4069, 0, 25) ||
-        ecrt_slave_sdo_write_exp8(slave, 0x406A, 0, 25) ||
-        ecrt_slave_sdo_write_exp8(slave, 0x406B, 0, 50)) {
-        printk(KERN_ERR "Failed to configure SSI slave!\n");
-        goto out_deactivate;
-    }
-#endif
-
-#ifdef ASYNC
-    // send once and wait...
-    ecrt_master_prepare_async_io(master);
-#endif
-
-#if 1
-    if (ecrt_master_start_eoe(master)) {
-        printk(KERN_ERR "Failed to start EoE processing!\n");
-        goto out_deactivate;
-    }
-#endif
+    ecrt_master_prepare(master);
 
     printk("Starting cyclic sample thread.\n");
     init_timer(&timer);
@@ -227,10 +162,6 @@ int __init init_mini_module(void)
     printk(KERN_INFO "=== Minimal EtherCAT environment started. ===\n");
     return 0;
 
-#if 1
- out_deactivate:
-    ecrt_master_deactivate(master);
-#endif
  out_release_master:
     ecrt_release_master(master);
  out_return:

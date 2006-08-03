@@ -237,33 +237,38 @@ void ec_print_data_diff(const uint8_t *d1, /**< first data */
    Prints slave states in clear text.
 */
 
-void ec_print_states(const uint8_t states /**< slave states */)
+size_t ec_state_string(uint8_t states, /**< slave states */
+                       char *buffer /**< target buffer (min. 25 bytes) */
+                       )
 {
+    off_t off = 0;
     unsigned int first = 1;
 
     if (!states) {
-        printk("(unknown)");
-        return;
+        off += sprintf(buffer + off, "(unknown)");
+        return off;
     }
 
     if (states & EC_SLAVE_STATE_INIT) {
-        printk("INIT");
+        off += sprintf(buffer + off, "INIT");
         first = 0;
     }
     if (states & EC_SLAVE_STATE_PREOP) {
-        if (!first) printk(", ");
-        printk("PREOP");
+        if (!first) off += sprintf(buffer + off, ", ");
+        off += sprintf(buffer + off, "PREOP");
         first = 0;
     }
     if (states & EC_SLAVE_STATE_SAVEOP) {
-        if (!first) printk(", ");
-        printk("SAVEOP");
+        if (!first) off += sprintf(buffer + off, ", ");
+        off += sprintf(buffer + off, "SAVEOP");
         first = 0;
     }
     if (states & EC_SLAVE_STATE_OP) {
-        if (!first) printk(", ");
-        printk("OP");
+        if (!first) off += sprintf(buffer + off, ", ");
+        off += sprintf(buffer + off, "OP");
     }
+
+    return off;
 }
 
 /******************************************************************************
@@ -426,7 +431,7 @@ ec_master_t *ecrt_request_master(unsigned int master_index
 
     ec_master_idle_stop(master);
     ec_master_reset(master);
-    master->mode = EC_MASTER_MODE_RUNNING;
+    master->mode = EC_MASTER_MODE_OPERATION;
 
     if (!master->device->link_state) EC_WARN("Link is DOWN.\n");
 

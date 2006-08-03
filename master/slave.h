@@ -44,9 +44,10 @@
 #include <linux/list.h>
 #include <linux/kobject.h>
 
+#include "../include/ecrt.h"
+
 #include "globals.h"
 #include "datagram.h"
-#include "types.h"
 
 /*****************************************************************************/
 
@@ -90,20 +91,6 @@ enum
 /*****************************************************************************/
 
 /**
-   FMMU configuration.
-*/
-
-typedef struct
-{
-    const ec_domain_t *domain; /**< domain */
-    const ec_sync_t *sync; /**< sync manager */
-    uint32_t logical_start_address; /**< logical start address */
-}
-ec_fmmu_t;
-
-/*****************************************************************************/
-
-/**
    String object (EEPROM).
 */
 
@@ -113,7 +100,7 @@ typedef struct
     size_t size; /**< size in bytes */
     char *data; /**< string data */
 }
-ec_eeprom_string_t;
+ec_sii_string_t;
 
 /*****************************************************************************/
 
@@ -130,7 +117,7 @@ typedef struct
     uint8_t control_register; /**< control register value */
     uint8_t enable; /**< enable bit */
 }
-ec_eeprom_sync_t;
+ec_sii_sync_t;
 
 /*****************************************************************************/
 
@@ -143,7 +130,7 @@ typedef enum
     EC_RX_PDO, /**< Reveive PDO */
     EC_TX_PDO /**< Transmit PDO */
 }
-ec_pdo_type_t;
+ec_sii_pdo_type_t;
 
 /*****************************************************************************/
 
@@ -154,13 +141,13 @@ ec_pdo_type_t;
 typedef struct
 {
     struct list_head list; /**< list item */
-    ec_pdo_type_t type; /**< PDO type */
+    ec_sii_pdo_type_t type; /**< PDO type */
     uint16_t index; /**< PDO index */
-    uint8_t sync_manager; /**< assigned sync manager */
+    uint8_t sync_index; /**< assigned sync manager */
     char *name; /**< PDO name */
     struct list_head entries; /**< entry list */
 }
-ec_eeprom_pdo_t;
+ec_sii_pdo_t;
 
 /*****************************************************************************/
 
@@ -176,7 +163,7 @@ typedef struct
     char *name; /**< entry name */
     uint8_t bit_length; /**< entry length in bit */
 }
-ec_eeprom_pdo_entry_t;
+ec_sii_pdo_entry_t;
 
 /*****************************************************************************/
 
@@ -188,7 +175,6 @@ typedef struct
 {
     struct list_head list; /**< list item */
     uint16_t index; /**< SDO index */
-    //uint16_t type;
     uint8_t object_code; /**< object code */
     char *name; /**< SDO name */
     struct list_head entries; /**< entry list */
@@ -214,13 +200,27 @@ ec_sdo_entry_t;
 /*****************************************************************************/
 
 /**
+   FMMU configuration.
+*/
+
+typedef struct
+{
+    const ec_domain_t *domain; /**< domain */
+    const ec_sii_sync_t *sync; /**< sync manager */
+    uint32_t logical_start_address; /**< logical start address */
+}
+ec_fmmu_t;
+
+/*****************************************************************************/
+
+/**
    Variable-sized field information.
 */
 
 typedef struct
 {
     struct list_head list; /**< list item */
-    const ec_field_t *field; /**< data field */
+    const ec_sii_pdo_t *pdo; /**< PDO */
     size_t size; /**< field size */
 }
 ec_varsize_t;
@@ -236,6 +236,12 @@ struct ec_slave
     struct list_head list; /**< list item */
     struct kobject kobj; /**< kobject */
     ec_master_t *master; /**< master owning the slave */
+
+    ec_slave_state_t requested_state; /**< requested slave state */
+    ec_slave_state_t current_state; /**< current slave state */
+    unsigned int error_flag; /**< stop processing after an error */
+    unsigned int online; /**< non-zero, if the slave responds. */
+    uint8_t registered; /**< true, if slave has been registered */
 
     // addresses
     uint16_t ring_position; /**< ring position */
@@ -255,6 +261,12 @@ struct ec_slave
     uint8_t dl_loop[4]; /**< loop closed */
     uint8_t dl_signal[4]; /**< detected signal on RX port */
 
+    // EEPROM
+    uint8_t *eeprom_data; /**< Complete EEPROM image */
+    uint16_t eeprom_size; /**< size of the EEPROM contents in byte */
+    uint16_t *new_eeprom_data; /**< new EEPROM data to write */
+    uint16_t new_eeprom_size; /**< size of new EEPROM data in words */
+
     // slave information interface
     uint16_t sii_alias; /**< configured station alias */
     uint32_t sii_vendor_id; /**< vendor id */
@@ -267,33 +279,18 @@ struct ec_slave
     uint16_t sii_tx_mailbox_size; /**< mailbox size (slave to master) */
     uint16_t sii_mailbox_protocols; /**< supported mailbox protocols */
     uint8_t sii_physical_layer[4]; /**< port media */
-
-    const ec_slave_type_t *type; /**< pointer to slave type object */
-
-    uint8_t registered; /**< true, if slave has been registered */
+    struct list_head sii_strings; /**< EEPROM STRING categories */
+    struct list_head sii_syncs; /**< EEPROM SYNC MANAGER categories */
+    struct list_head sii_pdos; /**< EEPROM [RT]XPDO categories */
+    char *sii_group; /**< slave group acc. to EEPROM */
+    char *sii_image; /**< slave image name acc. to EEPROM */
+    char *sii_order; /**< slave order number acc. to EEPROM */
+    char *sii_name; /**< slave name acc. to EEPROM */
 
     ec_fmmu_t fmmus[EC_MAX_FMMUS]; /**< FMMU configurations */
     uint8_t fmmu_count; /**< number of FMMUs used */
 
-    uint8_t *eeprom_data; /**< Complete EEPROM image */
-    uint16_t eeprom_size; /**< size of the EEPROM contents in byte */
-    struct list_head eeprom_strings; /**< EEPROM STRING categories */
-    struct list_head eeprom_syncs; /**< EEPROM SYNC MANAGER categories */
-    struct list_head eeprom_pdos; /**< EEPROM [RT]XPDO categories */
-    char *eeprom_group; /**< slave group acc. to EEPROM */
-    char *eeprom_image; /**< slave image name acc. to EEPROM */
-    char *eeprom_order; /**< slave order number acc. to EEPROM */
-    char *eeprom_name; /**< slave name acc. to EEPROM */
-
-    uint16_t *new_eeprom_data; /**< new EEPROM data to write */
-    size_t new_eeprom_size; /**< size of new EEPROM data in words */
-
     struct list_head sdo_dictionary; /**< SDO directory list */
-
-    ec_slave_state_t requested_state; /**< requested slave state */
-    ec_slave_state_t current_state; /**< current slave state */
-    unsigned int error_flag; /**< stop processing after an error */
-    unsigned int online; /**< non-zero, if the slave responds. */
 
     struct list_head varsize_fields; /**< size information for variable-sized
                                         data fields. */
@@ -305,32 +302,27 @@ struct ec_slave
 int ec_slave_init(ec_slave_t *, ec_master_t *, uint16_t, uint16_t);
 void ec_slave_clear(struct kobject *);
 
-// slave control
-int ec_slave_fetch(ec_slave_t *);
-int ec_slave_sii_read16(ec_slave_t *, uint16_t, uint16_t *);
-int ec_slave_sii_read32(ec_slave_t *, uint16_t, uint32_t *);
-int ec_slave_sii_write16(ec_slave_t *, uint16_t, uint16_t);
-int ec_slave_state_change(ec_slave_t *, uint8_t);
 int ec_slave_prepare_fmmu(ec_slave_t *, const ec_domain_t *,
-                          const ec_sync_t *);
+                          const ec_sii_sync_t *);
 
 // CoE
-int ec_slave_fetch_sdo_list(ec_slave_t *);
+//int ec_slave_fetch_sdo_list(ec_slave_t *);
 
-// state machine
+// SII categories
 int ec_slave_fetch_strings(ec_slave_t *, const uint8_t *);
-int ec_slave_fetch_general(ec_slave_t *, const uint8_t *);
+void ec_slave_fetch_general(ec_slave_t *, const uint8_t *);
 int ec_slave_fetch_sync(ec_slave_t *, const uint8_t *, size_t);
-int ec_slave_fetch_pdo(ec_slave_t *, const uint8_t *, size_t, ec_pdo_type_t);
+int ec_slave_fetch_pdo(ec_slave_t *, const uint8_t *, size_t,
+                       ec_sii_pdo_type_t);
 int ec_slave_locate_string(ec_slave_t *, unsigned int, char **);
 
 // misc.
-size_t ec_slave_calc_sync_size(const ec_slave_t *, const ec_sync_t *);
-uint16_t ec_slave_calc_eeprom_sync_size(const ec_slave_t *,
-                                        const ec_eeprom_sync_t *);
+uint16_t ec_slave_calc_sync_size(const ec_slave_t *,
+                                 const ec_sii_sync_t *);
 
 void ec_slave_print(const ec_slave_t *, unsigned int);
-int ec_slave_check_crc(ec_slave_t *);
+int ec_slave_is_coupler(const ec_slave_t *);
+//int ec_slave_check_crc(ec_slave_t *);
 
 /*****************************************************************************/
 

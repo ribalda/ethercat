@@ -69,23 +69,22 @@ struct ec_slave;
 typedef struct ec_slave ec_slave_t; /**< \see ec_slave */
 
 /**
-   Initialization type for field registrations.
-   This type is used as a parameter for the ec_domain_register_field_list()
+   Initialization type for PDO registrations.
+   This type is used as a parameter for the ec_domain_register_pdo_list()
    function.
 */
 
 typedef struct
 {
-    void **data_ptr; /**< address of the process data pointer */
     const char *slave_address; /**< slave address string (see
                                   ecrt_master_get_slave()) */
-    const char *vendor_name; /**< vendor name */
-    const char *product_name; /**< product name */
-    const char *field_name; /**< data field name */
-    unsigned int field_index; /**< index in data fields with same name */
-    unsigned int field_count; /**< number of data fields with same name */
+    uint32_t vendor_id; /**< vendor ID */
+    uint32_t product_code; /**< product code */
+    uint16_t pdo_index; /**< PDO index */
+    uint8_t pdo_subindex; /**< PDO subindex */
+    void **data_ptr; /**< address of the process data pointer */
 }
-ec_field_init_t;
+ec_pdo_reg_t;
 
 /******************************************************************************
  *  Master request functions
@@ -106,66 +105,47 @@ ec_domain_t *ecrt_master_create_domain(ec_master_t *master);
 int ecrt_master_activate(ec_master_t *master);
 void ecrt_master_deactivate(ec_master_t *master);
 
-int ecrt_master_fetch_sdo_lists(ec_master_t *master);
+void ecrt_master_prepare(ec_master_t *master);
 
-void ecrt_master_sync_io(ec_master_t *master);
-void ecrt_master_async_send(ec_master_t *master);
-void ecrt_master_async_receive(ec_master_t *master);
-void ecrt_master_prepare_async_io(ec_master_t *master);
+void ecrt_master_send(ec_master_t *master);
+void ecrt_master_receive(ec_master_t *master);
 
 void ecrt_master_run(ec_master_t *master);
 
-int ecrt_master_start_eoe(ec_master_t *master);
-
-void ecrt_master_debug(ec_master_t *master, int level);
-void ecrt_master_print(const ec_master_t *master, unsigned int verbosity);
-
 ec_slave_t *ecrt_master_get_slave(const ec_master_t *, const char *);
+
+int ecrt_master_state(const ec_master_t *master);
 
 /******************************************************************************
  *  Domain Methods
  *****************************************************************************/
 
-ec_slave_t *ecrt_domain_register_field(ec_domain_t *domain,
-                                       const char *address,
-                                       const char *vendor_name,
-                                       const char *product_name,
-                                       void **data_ptr, const char *field_name,
-                                       unsigned int field_index,
-                                       unsigned int field_count);
-int ecrt_domain_register_field_list(ec_domain_t *domain,
-                                    const ec_field_init_t *fields);
+ec_slave_t *ecrt_domain_register_pdo(ec_domain_t *domain,
+                                     const char *address,
+                                     uint32_t vendor_id,
+                                     uint32_t product_code,
+                                     uint16_t pdo_index,
+                                     uint8_t pdo_subindex,
+                                     void **data_ptr);
+int ecrt_domain_register_pdo_list(ec_domain_t *domain,
+                                  const ec_pdo_reg_t *pdos);
 
-void ecrt_domain_queue(ec_domain_t *domain);
 void ecrt_domain_process(ec_domain_t *domain);
-
-int ecrt_domain_state(ec_domain_t *domain);
+int ecrt_domain_state(const ec_domain_t *domain);
 
 /******************************************************************************
  *  Slave Methods
  *****************************************************************************/
 
-/* there SDO functions are deprecated! */
+int ecrt_slave_conf_sdo8(ec_slave_t *slave, uint16_t sdo_index,
+                         uint8_t sdo_subindex, uint8_t value);
+int ecrt_slave_conf_sdo16(ec_slave_t *slave, uint16_t sdo_index,
+                          uint8_t sdo_subindex, uint16_t value);
+int ecrt_slave_conf_sdo32(ec_slave_t *slave, uint16_t sdo_index,
+                          uint8_t sdo_subindex, uint32_t value);
 
-int ecrt_slave_sdo_read_exp8(ec_slave_t *slave, uint16_t sdo_index,
-                              uint8_t sdo_subindex, uint8_t *value);
-int ecrt_slave_sdo_read_exp16(ec_slave_t *slave, uint16_t sdo_index,
-                              uint8_t sdo_subindex, uint16_t *value);
-int ecrt_slave_sdo_read_exp32(ec_slave_t *slave, uint16_t sdo_index,
-                              uint8_t sdo_subindex, uint32_t *value);
-int ecrt_slave_sdo_write_exp8(ec_slave_t *slave, uint16_t sdo_index,
-                              uint8_t sdo_subindex, uint8_t value);
-int ecrt_slave_sdo_write_exp16(ec_slave_t *slave, uint16_t sdo_index,
-                               uint8_t sdo_subindex, uint16_t value);
-int ecrt_slave_sdo_write_exp32(ec_slave_t *slave, uint16_t sdo_index,
-                               uint8_t sdo_subindex, uint32_t value);
-int ecrt_slave_sdo_read(ec_slave_t *slave, uint16_t sdo_index,
-                        uint8_t sdo_subindex, uint8_t *data, size_t *size);
-
-int ecrt_slave_write_alias(ec_slave_t *slave, uint16_t alias); // deprecated!
-
-int ecrt_slave_field_size(ec_slave_t *slave, const char *field_name,
-                          unsigned int field_index, size_t size);
+int ecrt_slave_pdo_size(ec_slave_t *slave, uint16_t pdo_index,
+                        uint8_t pdo_subindex, size_t size);
 
 /******************************************************************************
  *  Bitwise read/write macros

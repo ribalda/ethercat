@@ -8,12 +8,6 @@ $Id$
 
 Important things to do:
 
-* New SDO-Configuration interface
-
-* Remove slave type information from master / New RT Interface
-
-* Always use state machines / remove simple IO code
-
 * SysFS interface
   - Add secondary slave address
   - Add SDO dictionary

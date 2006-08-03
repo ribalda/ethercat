@@ -41,6 +41,7 @@
 #ifndef __EC_STATES__
 #define __EC_STATES__
 
+#include "globals.h"
 #include "../include/ecrt.h"
 #include "datagram.h"
 #include "slave.h"
@@ -83,6 +84,14 @@ int ec_fsm_init(ec_fsm_t *, ec_master_t *);
 void ec_fsm_clear(ec_fsm_t *);
 void ec_fsm_reset(ec_fsm_t *);
 void ec_fsm_execute(ec_fsm_t *);
+
+void ec_fsm_startup(ec_fsm_t *);
+int ec_fsm_startup_running(ec_fsm_t *);
+int ec_fsm_startup_success(ec_fsm_t *);
+
+void ec_fsm_configuration(ec_fsm_t *);
+int ec_fsm_configuration_running(ec_fsm_t *);
+int ec_fsm_configuration_success(ec_fsm_t *);
 
 /*****************************************************************************/
 

@@ -59,7 +59,7 @@ typedef enum
 {
     EC_MASTER_MODE_ORPHANED,
     EC_MASTER_MODE_IDLE,
-    EC_MASTER_MODE_RUNNING
+    EC_MASTER_MODE_OPERATION
 }
 ec_master_mode_t;
 
@@ -104,10 +104,6 @@ struct ec_master
 
     struct list_head domains; /**< list of domains */
 
-    ec_datagram_t simple_datagram; /**< datagram structure for
-                                      initialization */
-    unsigned int timeout; /**< timeout in synchronous IO */
-
     int debug_level; /**< master debug level */
     ec_stats_t stats; /**< cyclic statistics */
 
@@ -145,18 +141,18 @@ void ec_master_eoe_stop(ec_master_t *);
 // IO
 void ec_master_receive(ec_master_t *, const uint8_t *, size_t);
 void ec_master_queue_datagram(ec_master_t *, ec_datagram_t *);
-int ec_master_simple_io(ec_master_t *, ec_datagram_t *);
 
 // slave management
 int ec_master_bus_scan(ec_master_t *);
 
 // misc.
-void ec_master_clear_slaves(ec_master_t *);
-void ec_sync_config(const ec_sync_t *, const ec_slave_t *, uint8_t *);
-void ec_eeprom_sync_config(const ec_eeprom_sync_t *, const ec_slave_t *,
-                           uint8_t *);
-void ec_fmmu_config(const ec_fmmu_t *, const ec_slave_t *, uint8_t *);
 void ec_master_output_stats(ec_master_t *);
+void ec_master_clear_slaves(ec_master_t *);
+
+// other methods
+void ec_sync_config(const ec_sii_sync_t *, const ec_slave_t *, uint8_t *);
+void ec_fmmu_config(const ec_fmmu_t *, const ec_slave_t *, uint8_t *);
+void ec_master_calc_addressing(ec_master_t *);
 
 /*****************************************************************************/
 

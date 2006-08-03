@@ -55,14 +55,14 @@
 
 typedef enum
 {
-    EC_CMD_NONE = 0x00, /**< Dummy */
-    EC_CMD_APRD = 0x01, /**< Auto-increment physical read */
-    EC_CMD_APWR = 0x02, /**< Auto-increment physical write */
-    EC_CMD_NPRD = 0x04, /**< Node-addressed physical read */
-    EC_CMD_NPWR = 0x05, /**< Node-addressed physical write */
-    EC_CMD_BRD  = 0x07, /**< Broadcast read */
-    EC_CMD_BWR  = 0x08, /**< Broadcast write */
-    EC_CMD_LRW  = 0x0C  /**< Logical read/write */
+    EC_DATAGRAM_NONE = 0x00, /**< Dummy */
+    EC_DATAGRAM_APRD = 0x01, /**< Auto-increment physical read */
+    EC_DATAGRAM_APWR = 0x02, /**< Auto-increment physical write */
+    EC_DATAGRAM_NPRD = 0x04, /**< Node-addressed physical read */
+    EC_DATAGRAM_NPWR = 0x05, /**< Node-addressed physical write */
+    EC_DATAGRAM_BRD  = 0x07, /**< Broadcast read */
+    EC_DATAGRAM_BWR  = 0x08, /**< Broadcast write */
+    EC_DATAGRAM_LRW  = 0x0C  /**< Logical read/write */
 }
 ec_datagram_type_t;
 
@@ -72,12 +72,12 @@ ec_datagram_type_t;
 
 typedef enum
 {
-    EC_CMD_INIT, /**< new datagram */
-    EC_CMD_QUEUED, /**< datagram queued by master */
-    EC_CMD_SENT, /**< datagram has been sent */
-    EC_CMD_RECEIVED, /**< datagram has been received */
-    EC_CMD_TIMEOUT, /**< datagram timed out */
-    EC_CMD_ERROR /**< error while sending/receiving */
+    EC_DATAGRAM_INIT, /**< new datagram */
+    EC_DATAGRAM_QUEUED, /**< datagram queued by master */
+    EC_DATAGRAM_SENT, /**< datagram has been sent */
+    EC_DATAGRAM_RECEIVED, /**< datagram has been received */
+    EC_DATAGRAM_TIMED_OUT, /**< datagram timed out */
+    EC_DATAGRAM_ERROR /**< error while sending/receiving */
 }
 ec_datagram_state_t;
 

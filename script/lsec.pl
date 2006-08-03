@@ -42,7 +42,6 @@ use Getopt::Std;
 
 my $master_index;
 my $master_dir;
-my $show_sii_naming;
 
 #------------------------------------------------------------------------------
 
@@ -63,45 +62,43 @@ sub query_master
 sub query_slaves
 {
     my $dirhandle;
-    my $slave_dir;
     my $entry;
-    my $slave_index;
-    my $file_name;
-    my $vendor_name;
     my @slaves;
     my $slave;
     my $abs;
+	my $line;
 
     unless (opendir $dirhandle, $master_dir) {
-	print "Failed to open directory \"$master_dir\".\n";
-	exit 1;
+		print "Failed to open directory \"$master_dir\".\n";
+		exit 1;
     }
 
     while ($entry = readdir $dirhandle) {
         next unless $entry =~ /^slave(\d+)$/;
-	$slave_dir = $master_dir . "/" . $entry;
 
-	$slave = {};
-	$slave->{'ring_position'} =
-	    &read_integer("$slave_dir/ring_position");
-	$slave->{'advanced_position'} =
-	    &read_string("$slave_dir/advanced_position");
-	unless ($show_sii_naming) {
-	    $slave->{'vendor_name'} =
-		&read_string("$slave_dir/vendor_name");
-	    $slave->{'product_name'} =
-		&read_string("$slave_dir/product_name");
-	    $slave->{'product_desc'} =
-		&read_string("$slave_dir/product_desc");
-	}
-	else {
-	    $slave->{'name'} =
-		&read_string("$slave_dir/name");
-	}
-	$slave->{'type'} =
-	    &read_string("$slave_dir/type");
+		$slave = {};
 
-	push @slaves, $slave;
+		open INFO, "$master_dir/$entry/info" or die
+			"ERROR: Failed to open $master_dir/$entry/info";
+
+		while ($line = <INFO>) {
+			if ($line =~ /^Name: (.*)$/) {
+				$slave->{'name'} = $1;
+			}
+			elsif ($line =~ /^Ring position: (\d+)$/) {
+				$slave->{'ring_position'} = $1;
+			}
+			elsif ($line =~ /^Advanced position: (\d+:\d+)$/) {
+				$slave->{'advanced_position'} = $1;
+			}
+			elsif ($line =~ /^State: (.+)$/) {
+				$slave->{'state'} = $1;
+			}
+		}
+
+		close INFO;
+
+		push @slaves, $slave;
     }
     closedir $dirhandle;
 
@@ -109,51 +106,11 @@ sub query_slaves
 
     print "EtherCAT bus listing for master $master_index:\n";
     for $slave (@slaves) {
-	if ($slave->{'type'} eq "coupler") {
-	    print "--------------------------------------------------------\n";
-	}
-
-	$abs = sprintf "%i", $slave->{'ring_position'};
-	printf(" %3s %8s   ", $abs, $slave->{'advanced_position'});
-	unless ($show_sii_naming) {
-	    printf("%-12s %-10s %s\n", $slave->{'vendor_name'},
-		   $slave->{'product_name'}, $slave->{'product_desc'});
-	}
-	else {
-	    printf("%s\n", $slave->{'name'});
-	}
+		$abs = sprintf "%i", $slave->{'ring_position'};
+		printf(" %3s %8s  %-6s  %s\n",
+			   $abs, $slave->{'advanced_position'},
+			   $slave->{'state'}, $slave->{'name'});
     }
-}
-
-#------------------------------------------------------------------------------
-
-sub read_string
-{
-    (my $file_name) = @_;
-    my $data;
-
-    $data = `cat $file_name 2>/dev/null`;
-    if ($?) {
-	print "ERROR: Unable to read string $file_name!\n";
-	exit 1;
-    }
-
-    chomp $data;
-    return $data;
-}
-
-#------------------------------------------------------------------------------
-
-sub read_integer
-{
-    (my $file_name) = @_;
-
-    if (`cat $file_name 2>/dev/null` !~ /^(\d+)$/) {
-	print "ERROR: Unable to read integer $file_name!\n";
-	exit 1;
-    }
-
-    return int $1;
 }
 
 #------------------------------------------------------------------------------
@@ -163,28 +120,26 @@ sub get_options
     my %opt;
     my $optret;
 
-    $optret = getopts "m:sh", \%opt;
+    $optret = getopts "m:h", \%opt;
 
     &print_usage if defined $opt{'h'} or $#ARGV > -1 or !$optret;
 
     if (defined $opt{'m'}) {
-	$master_index = $opt{'m'};
+		$master_index = $opt{'m'};
     }
     else {
-	$master_index = 0;
+		$master_index = 0;
     }
-
-    $show_sii_naming = defined $opt{'s'};
 }
 
 #------------------------------------------------------------------------------
 
 sub print_usage
 {
-    print "Usage: $0 [OPTIONS]\n";
+	my $cmd = `basename $0`;
+	chomp $cmd;
+    print "Usage: $cmd [OPTIONS]\n";
     print "        -m <IDX>    Query master <IDX>.\n";
-    print "        -s          Show EEPROM name instead of";
-    print " vendor/product/description.\n";
     print "        -h          Show this help.\n";
     exit 0;
 }

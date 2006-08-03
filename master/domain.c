@@ -46,7 +46,23 @@
 
 /*****************************************************************************/
 
-void ec_domain_clear_field_regs(ec_domain_t *);
+/**
+   Data registration type.
+*/
+
+typedef struct
+{
+    struct list_head list; /**< list item */
+    ec_slave_t *slave; /**< slave */
+    const ec_sii_sync_t *sync; /**< sync manager */
+    off_t sync_offset; /**< pdo offset */
+    void **data_ptr; /**< pointer to process data pointer(s) */
+}
+ec_data_reg_t;
+
+/*****************************************************************************/
+
+void ec_domain_clear_data_regs(ec_domain_t *);
 ssize_t ec_show_domain_attribute(struct kobject *, struct attribute *, char *);
 
 /*****************************************************************************/
@@ -91,7 +107,7 @@ int ec_domain_init(ec_domain_t *domain, /**< EtherCAT domain */
     domain->base_address = 0;
     domain->response_count = 0xFFFFFFFF;
 
-    INIT_LIST_HEAD(&domain->field_regs);
+    INIT_LIST_HEAD(&domain->data_regs);
     INIT_LIST_HEAD(&domain->datagrams);
 
     // init kobject and add it to the hierarchy
@@ -127,7 +143,7 @@ void ec_domain_clear(struct kobject *kobj /**< kobject of the domain */)
         kfree(datagram);
     }
 
-    ec_domain_clear_field_regs(domain);
+    ec_domain_clear_data_regs(domain);
 
     kfree(domain);
 }
@@ -139,34 +155,70 @@ void ec_domain_clear(struct kobject *kobj /**< kobject of the domain */)
    \return 0 in case of success, else < 0
 */
 
-int ec_domain_reg_field(ec_domain_t *domain, /**< EtherCAT domain */
-                        ec_slave_t *slave, /**< slave */
-                        const ec_sync_t *sync, /**< sync manager */
-                        uint32_t field_offset, /**< data field offset */
-                        void **data_ptr /**< pointer to the process data
-                                           pointer */
-                        )
+int ec_domain_reg_pdo_entry(ec_domain_t *domain, /**< EtherCAT domain */
+                            ec_slave_t *slave, /**< slave */
+                            const ec_sii_pdo_t *pdo,
+                            const ec_sii_pdo_entry_t *entry,
+                            /**< PDO registration entry */
+                            void **data_ptr /**< pointer to the process data
+                                               pointer */
+                            )
 {
-    ec_field_reg_t *field_reg;
+    ec_data_reg_t *data_reg;
+    const ec_sii_sync_t *sync;
+    const ec_sii_pdo_t *other_pdo;
+    const ec_sii_pdo_entry_t *other_entry;
+    unsigned int bit_offset, byte_offset, sync_found;
 
-    if (!(field_reg =
-          (ec_field_reg_t *) kmalloc(sizeof(ec_field_reg_t), GFP_KERNEL))) {
-        EC_ERR("Failed to allocate field registration.\n");
+    // Find sync manager for PDO
+    sync_found = 0;
+    list_for_each_entry(sync, &slave->sii_syncs, list) {
+        if (sync->index == pdo->sync_index) {
+            sync_found = 1;
+            break;
+        }
+    }
+
+    if (!sync_found) {
+        EC_ERR("No sync manager for PDO 0x%04X:%i.",
+               pdo->index, entry->subindex);
+        return -1;
+    }
+
+    // Calculate offset for process data pointer
+    bit_offset = 0;
+    byte_offset = 0;
+    list_for_each_entry(other_pdo, &slave->sii_pdos, list) {
+        if (other_pdo->sync_index != sync->index) continue;
+
+        list_for_each_entry(other_entry, &pdo->entries, list) {
+            if (other_entry == entry) {
+                byte_offset = bit_offset / 8;
+                break;
+            }
+            bit_offset += other_entry->bit_length;
+        }
+    }
+
+    // Allocate memory for data registration object
+    if (!(data_reg =
+          (ec_data_reg_t *) kmalloc(sizeof(ec_data_reg_t), GFP_KERNEL))) {
+        EC_ERR("Failed to allocate data registration.\n");
         return -1;
     }
 
     if (ec_slave_prepare_fmmu(slave, domain, sync)) {
         EC_ERR("FMMU configuration failed.\n");
-        kfree(field_reg);
+        kfree(data_reg);
         return -1;
     }
 
-    field_reg->slave = slave;
-    field_reg->sync = sync;
-    field_reg->field_offset = field_offset;
-    field_reg->data_ptr = data_ptr;
+    data_reg->slave = slave;
+    data_reg->sync = sync;
+    data_reg->sync_offset = byte_offset;
+    data_reg->data_ptr = data_ptr;
 
-    list_add_tail(&field_reg->list, &domain->field_regs);
+    list_add_tail(&data_reg->list, &domain->data_regs);
     return 0;
 }
 
@@ -176,13 +228,13 @@ int ec_domain_reg_field(ec_domain_t *domain, /**< EtherCAT domain */
    Clears the list of the registered data fields.
 */
 
-void ec_domain_clear_field_regs(ec_domain_t *domain /**< EtherCAT domain */)
+void ec_domain_clear_data_regs(ec_domain_t *domain /**< EtherCAT domain */)
 {
-    ec_field_reg_t *field_reg, *next;
+    ec_data_reg_t *data_reg, *next;
 
-    list_for_each_entry_safe(field_reg, next, &domain->field_regs, list) {
-        list_del(&field_reg->list);
-        kfree(field_reg);
+    list_for_each_entry_safe(data_reg, next, &domain->data_regs, list) {
+        list_del(&data_reg->list);
+        kfree(data_reg);
     }
 }
 
@@ -222,7 +274,7 @@ int ec_domain_add_datagram(ec_domain_t *domain, /**< EtherCAT domain */
    Creates a domain.
    Reserves domain memory, calculates the logical addresses of the
    corresponding FMMUs and sets the process data pointer of the registered
-   data fields.
+   process data.
    \return 0 in case of success, else < 0
 */
 
@@ -230,22 +282,22 @@ int ec_domain_alloc(ec_domain_t *domain, /**< EtherCAT domain */
                     uint32_t base_address /**< logical base address */
                     )
 {
-    ec_field_reg_t *field_reg;
+    ec_data_reg_t *data_reg;
     ec_slave_t *slave;
     ec_fmmu_t *fmmu;
-    unsigned int i, j, cmd_count;
-    uint32_t field_off, field_off_cmd;
-    uint32_t cmd_offset;
-    size_t cmd_data_size, sync_size;
+    unsigned int i, j, datagram_count;
+    uint32_t pdo_off, pdo_off_datagram;
+    uint32_t datagram_offset;
+    size_t datagram_data_size, sync_size;
     ec_datagram_t *datagram;
 
     domain->base_address = base_address;
 
     // calculate size of process data and allocate memory
     domain->data_size = 0;
-    cmd_offset = base_address;
-    cmd_data_size = 0;
-    cmd_count = 0;
+    datagram_offset = base_address;
+    datagram_data_size = 0;
+    datagram_count = 0;
     list_for_each_entry(slave, &domain->master->slaves, list) {
         for (j = 0; j < slave->fmmu_count; j++) {
             fmmu = &slave->fmmus[j];
@@ -253,47 +305,48 @@ int ec_domain_alloc(ec_domain_t *domain, /**< EtherCAT domain */
                 fmmu->logical_start_address = base_address + domain->data_size;
                 sync_size = ec_slave_calc_sync_size(slave, fmmu->sync);
                 domain->data_size += sync_size;
-                if (cmd_data_size + sync_size > EC_MAX_DATA_SIZE) {
-                    if (ec_domain_add_datagram(domain, cmd_offset,
-                                               cmd_data_size)) return -1;
-                    cmd_offset += cmd_data_size;
-                    cmd_data_size = 0;
-                    cmd_count++;
+                if (datagram_data_size + sync_size > EC_MAX_DATA_SIZE) {
+                    if (ec_domain_add_datagram(domain, datagram_offset,
+                                               datagram_data_size)) return -1;
+                    datagram_offset += datagram_data_size;
+                    datagram_data_size = 0;
+                    datagram_count++;
                 }
-                cmd_data_size += sync_size;
+                datagram_data_size += sync_size;
             }
         }
     }
 
     // allocate last datagram
-    if (cmd_data_size) {
-        if (ec_domain_add_datagram(domain, cmd_offset, cmd_data_size))
+    if (datagram_data_size) {
+        if (ec_domain_add_datagram(domain, datagram_offset,
+                                   datagram_data_size))
             return -1;
-        cmd_count++;
+        datagram_count++;
     }
 
-    if (!cmd_count) {
+    if (!datagram_count) {
         EC_WARN("Domain %i contains no data!\n", domain->index);
-        ec_domain_clear_field_regs(domain);
+        ec_domain_clear_data_regs(domain);
         return 0;
     }
 
     // set all process data pointers
-    list_for_each_entry(field_reg, &domain->field_regs, list) {
-        for (i = 0; i < field_reg->slave->fmmu_count; i++) {
-            fmmu = &field_reg->slave->fmmus[i];
-            if (fmmu->domain == domain && fmmu->sync == field_reg->sync) {
-                field_off = fmmu->logical_start_address +
-                    field_reg->field_offset;
+    list_for_each_entry(data_reg, &domain->data_regs, list) {
+        for (i = 0; i < data_reg->slave->fmmu_count; i++) {
+            fmmu = &data_reg->slave->fmmus[i];
+            if (fmmu->domain == domain && fmmu->sync == data_reg->sync) {
+                pdo_off = fmmu->logical_start_address + data_reg->sync_offset;
                 // search datagram
                 list_for_each_entry(datagram, &domain->datagrams, list) {
-                    field_off_cmd = field_off - datagram->address.logical;
-                    if (field_off >= datagram->address.logical &&
-                        field_off_cmd < datagram->mem_size) {
-                        *field_reg->data_ptr = datagram->data + field_off_cmd;
+                    pdo_off_datagram = pdo_off - datagram->address.logical;
+                    if (pdo_off >= datagram->address.logical &&
+                        pdo_off_datagram < datagram->mem_size) {
+                        *data_reg->data_ptr = datagram->data +
+                            pdo_off_datagram;
                     }
                 }
-                if (!field_reg->data_ptr) {
+                if (!data_reg->data_ptr) {
                     EC_ERR("Failed to assign data pointer!\n");
                     return -1;
                 }
@@ -303,10 +356,10 @@ int ec_domain_alloc(ec_domain_t *domain, /**< EtherCAT domain */
     }
 
     EC_INFO("Domain %i - Allocated %i bytes in %i datagram%s\n",
-            domain->index, domain->data_size, cmd_count,
-            cmd_count == 1 ? "" : "s");
+            domain->index, domain->data_size, datagram_count,
+            datagram_count == 1 ? "" : "s");
 
-    ec_domain_clear_field_regs(domain);
+    ec_domain_clear_data_regs(domain);
 
     return 0;
 }
@@ -314,20 +367,15 @@ int ec_domain_alloc(ec_domain_t *domain, /**< EtherCAT domain */
 /*****************************************************************************/
 
 /**
-   Sets the number of responding slaves and outputs it on demand.
-   This number isn't really the number of responding slaves, but the sum of
-   the working counters of all domain datagrams. Some slaves increase the
-   working counter by 2, some by 1.
+   Places all process data datagrams in the masters datagram queue.
 */
 
-void ec_domain_response_count(ec_domain_t *domain, /**< EtherCAT domain */
-                              unsigned int count /**< new WC sum */
-                              )
+void ec_domain_queue(ec_domain_t *domain /**< EtherCAT domain */)
 {
-    if (count != domain->response_count) {
-        domain->response_count = count;
-        EC_INFO("Domain %i working counter change: %i\n", domain->index,
-                count);
+    ec_datagram_t *datagram;
+
+    list_for_each_entry(datagram, &domain->datagrams, list) {
+        ec_master_queue_datagram(domain->master, datagram);
     }
 }
 
@@ -357,62 +405,45 @@ ssize_t ec_show_domain_attribute(struct kobject *kobj, /**< kobject */
  *****************************************************************************/
 
 /**
-   Registers a data field in a domain.
-   - If \a data_ptr is NULL, the slave is only checked against its type.
-   - If \a field_count is 0, it is assumed that one data field is to be
-   registered.
-   - If \a field_count is greater then 1, it is assumed that \a data_ptr
-   is an array of the respective size.
+   Registers a PDO in a domain.
+   - If \a data_ptr is NULL, the slave is only validated.
    \return pointer to the slave on success, else NULL
    \ingroup RealtimeInterface
 */
 
-ec_slave_t *ecrt_domain_register_field(ec_domain_t *domain,
-                                       /**< EtherCAT domain */
-                                       const char *address,
-                                       /**< ASCII address of the slave,
-                                          see ecrt_master_get_slave() */
-                                       const char *vendor_name,
-                                       /**< vendor name */
-                                       const char *product_name,
-                                       /**< product name */
-                                       void **data_ptr,
-                                       /**< address of the process data
-                                          pointer */
-                                       const char *field_name,
-                                       /**< data field name */
-                                       unsigned int field_index,
-                                       /**< offset of data fields with
-                                          \a field_type  */
-                                       unsigned int field_count
-                                       /**< number of data fields (with
-                                          the same type) to register */
-                                       )
+ec_slave_t *ecrt_domain_register_pdo(ec_domain_t *domain,
+                                     /**< EtherCAT domain */
+                                     const char *address,
+                                     /**< ASCII address of the slave,
+                                        see ecrt_master_get_slave() */
+                                     uint32_t vendor_id,
+                                     /**< vendor ID */
+                                     uint32_t product_code,
+                                     /**< product code */
+                                     uint16_t pdo_index,
+                                     /**< PDO index */
+                                     uint8_t pdo_subindex,
+                                     /**< PDO subindex */
+                                     void **data_ptr
+                                     /**< address of the process data
+                                        pointer */
+                                     )
 {
     ec_slave_t *slave;
-    const ec_slave_type_t *type;
     ec_master_t *master;
-    const ec_sync_t *sync;
-    const ec_field_t *field;
-    unsigned int field_counter, i, j, orig_field_index, orig_field_count;
-    uint32_t field_offset;
+    const ec_sii_pdo_t *pdo;
+    const ec_sii_pdo_entry_t *entry;
 
     master = domain->master;
 
     // translate address
     if (!(slave = ecrt_master_get_slave(master, address))) return NULL;
 
-    if (!(type = slave->type)) {
-        EC_ERR("Slave \"%s\" (position %i) has unknown type!\n", address,
-               slave->ring_position);
-        return NULL;
-    }
-
-    if (strcmp(vendor_name, type->vendor_name) ||
-        strcmp(product_name, type->product_name)) {
-        EC_ERR("Invalid slave type at position %i - Requested: \"%s %s\","
-               " found: \"%s %s\".\n", slave->ring_position, vendor_name,
-               product_name, type->vendor_name, type->product_name);
+    if (vendor_id != slave->sii_vendor_id ||
+        product_code != slave->sii_product_code) {
+        EC_ERR("Invalid slave type at position %i - Requested: 0x%08X 0x%08X,"
+               " found: 0x%08X 0x%08X\".\n", slave->ring_position, vendor_id,
+               product_code, slave->sii_vendor_id, slave->sii_product_code);
         return NULL;
     }
 
@@ -421,32 +452,22 @@ ec_slave_t *ecrt_domain_register_field(ec_domain_t *domain,
         slave->registered = 1;
     }
 
-    if (!field_count) field_count = 1;
-    orig_field_index = field_index;
-    orig_field_count = field_count;
+    list_for_each_entry(pdo, &slave->sii_pdos, list) {
+        list_for_each_entry(entry, &pdo->entries, list) {
+            if (entry->index != pdo_index
+                || entry->subindex != pdo_subindex) continue;
 
-    field_counter = 0;
-    for (i = 0; type->sync_managers[i]; i++) {
-        sync = type->sync_managers[i];
-        field_offset = 0;
-        for (j = 0; sync->fields[j]; j++) {
-            field = sync->fields[j];
-            if (!strcmp(field->name, field_name)) {
-                if (field_counter++ == field_index) {
-                    if (data_ptr)
-                        ec_domain_reg_field(domain, slave, sync, field_offset,
-                                            data_ptr++);
-                    if (!(--field_count)) return slave;
-                    field_index++;
-                }
+            if (data_ptr) {
+                ec_domain_reg_pdo_entry(domain, slave, pdo, entry, data_ptr);
             }
-            field_offset += field->size;
+
+            return slave;
         }
     }
 
-    EC_ERR("Slave %i (\"%s %s\") registration mismatch: Field \"%s\","
-           " index %i, count %i.\n", slave->ring_position, vendor_name,
-           product_name, field_name, orig_field_index, orig_field_count);
+    EC_ERR("Slave %i does not provide PDO 0x%04X:%i.\n",
+           slave->ring_position, pdo_index, pdo_subindex);
+    slave->registered = 0;
     return NULL;
 }
 
@@ -459,20 +480,21 @@ ec_slave_t *ecrt_domain_register_field(ec_domain_t *domain,
    \ingroup RealtimeInterface
 */
 
-int ecrt_domain_register_field_list(ec_domain_t *domain,
-                                    /**< EtherCAT domain */
-                                    const ec_field_init_t *fields
-                                    /**< array of data field registrations */
-                                    )
+int ecrt_domain_register_pdo_list(ec_domain_t *domain,
+                                  /**< EtherCAT domain */
+                                  const ec_pdo_reg_t *pdos
+                                  /**< array of PDO registrations */
+                                  )
 {
-    const ec_field_init_t *field;
+    const ec_pdo_reg_t *pdo;
 
-    for (field = fields; field->slave_address; field++)
-        if (!ecrt_domain_register_field(domain, field->slave_address,
-                                        field->vendor_name,
-                                        field->product_name, field->data_ptr,
-                                        field->field_name, field->field_index,
-                                        field->field_count))
+    for (pdo = pdos; pdo->slave_address; pdo++)
+        if (!ecrt_domain_register_pdo(domain, pdo->slave_address,
+                                      pdo->vendor_id,
+                                      pdo->product_code,
+                                      pdo->pdo_index,
+                                      pdo->pdo_subindex,
+                                      pdo->data_ptr))
             return -1;
 
     return 0;
@@ -481,23 +503,7 @@ int ecrt_domain_register_field_list(ec_domain_t *domain,
 /*****************************************************************************/
 
 /**
-   Places all process data datagrams in the masters datagram queue.
-   \ingroup RealtimeInterface
-*/
-
-void ecrt_domain_queue(ec_domain_t *domain /**< EtherCAT domain */)
-{
-    ec_datagram_t *datagram;
-
-    list_for_each_entry(datagram, &domain->datagrams, list) {
-        ec_master_queue_datagram(domain->master, datagram);
-    }
-}
-
-/*****************************************************************************/
-
-/**
-   Processes received process data.
+   Processes received process data and requeues the domain datagram(s).
    \ingroup RealtimeInterface
 */
 
@@ -507,14 +513,19 @@ void ecrt_domain_process(ec_domain_t *domain /**< EtherCAT domain */)
     ec_datagram_t *datagram;
 
     working_counter_sum = 0;
-
     list_for_each_entry(datagram, &domain->datagrams, list) {
-        if (datagram->state == EC_CMD_RECEIVED) {
+        if (datagram->state == EC_DATAGRAM_RECEIVED) {
             working_counter_sum += datagram->working_counter;
         }
     }
 
-    ec_domain_response_count(domain, working_counter_sum);
+    if (working_counter_sum != domain->response_count) {
+        domain->response_count = working_counter_sum;
+        EC_INFO("Domain %i working counter change: %i\n", domain->index,
+                domain->response_count);
+    }
+
+    ec_domain_queue(domain);
 }
 
 /*****************************************************************************/
@@ -525,12 +536,12 @@ void ecrt_domain_process(ec_domain_t *domain /**< EtherCAT domain */)
    \ingroup RealtimeInterface
 */
 
-int ecrt_domain_state(ec_domain_t *domain /**< EtherCAT domain */)
+int ecrt_domain_state(const ec_domain_t *domain /**< EtherCAT domain */)
 {
     ec_datagram_t *datagram;
 
     list_for_each_entry(datagram, &domain->datagrams, list) {
-        if (datagram->state != EC_CMD_RECEIVED) return -1;
+        if (datagram->state != EC_DATAGRAM_RECEIVED) return -1;
     }
 
     return 0;
@@ -540,9 +551,8 @@ int ecrt_domain_state(ec_domain_t *domain /**< EtherCAT domain */)
 
 /** \cond */
 
-EXPORT_SYMBOL(ecrt_domain_register_field);
-EXPORT_SYMBOL(ecrt_domain_register_field_list);
-EXPORT_SYMBOL(ecrt_domain_queue);
+EXPORT_SYMBOL(ecrt_domain_register_pdo);
+EXPORT_SYMBOL(ecrt_domain_register_pdo_list);
 EXPORT_SYMBOL(ecrt_domain_process);
 EXPORT_SYMBOL(ecrt_domain_state);
 

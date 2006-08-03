@@ -98,6 +98,5 @@ int ec_eoe_init(ec_eoe_t *);
 void ec_eoe_clear(ec_eoe_t *);
 void ec_eoe_run(ec_eoe_t *);
 unsigned int ec_eoe_active(const ec_eoe_t *);
-void ec_eoe_print(const ec_eoe_t *);
 
 /*****************************************************************************/

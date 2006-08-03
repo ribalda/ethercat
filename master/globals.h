@@ -51,7 +51,7 @@
 #define EC_MASTER_VERSION_MAIN  1
 
 /** master sub version (after the dot) */
-#define EC_MASTER_VERSION_SUB   0
+#define EC_MASTER_VERSION_SUB   1
 
 /** master extra version (just a string) */
 #define EC_MASTER_VERSION_EXTRA "trunk"
@@ -64,6 +64,9 @@
 
 /** clock frequency for the EoE state machines */
 #define EC_EOE_FREQUENCY 1000
+
+/** datagram timeout in microseconds */
+#define EC_IO_TIMEOUT 500
 
 /******************************************************************************
  *  EtherCAT protocol
@@ -170,9 +173,9 @@
 
 /*****************************************************************************/
 
-extern void ec_print_data(const uint8_t *, size_t);
-extern void ec_print_data_diff(const uint8_t *, const uint8_t *, size_t);
-extern void ec_print_states(uint8_t);
+void ec_print_data(const uint8_t *, size_t);
+void ec_print_data_diff(const uint8_t *, const uint8_t *, size_t);
+size_t ec_state_string(uint8_t, char *);
 
 /*****************************************************************************/
 
@@ -192,4 +195,3 @@ ec_code_msg_t;
 /*****************************************************************************/
 
 #endif
-

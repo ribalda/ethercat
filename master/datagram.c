@@ -52,7 +52,7 @@
         return -1; \
     datagram->index = 0; \
     datagram->working_counter = 0; \
-    datagram->state = EC_CMD_INIT;
+    datagram->state = EC_DATAGRAM_INIT;
 
 #define EC_FUNC_FOOTER \
     datagram->data_size = data_size; \
@@ -69,14 +69,14 @@
 
 void ec_datagram_init(ec_datagram_t *datagram /**< EtherCAT datagram */)
 {
-    datagram->type = EC_CMD_NONE;
+    datagram->type = EC_DATAGRAM_NONE;
     datagram->address.logical = 0x00000000;
     datagram->data = NULL;
     datagram->mem_size = 0;
     datagram->data_size = 0;
     datagram->index = 0x00;
     datagram->working_counter = 0x00;
-    datagram->state = EC_CMD_INIT;
+    datagram->state = EC_DATAGRAM_INIT;
     datagram->t_sent = 0;
 }
 
@@ -142,7 +142,7 @@ int ec_datagram_nprd(ec_datagram_t *datagram,
         EC_WARN("Using node address 0x0000!\n");
 
     EC_FUNC_HEADER;
-    datagram->type = EC_CMD_NPRD;
+    datagram->type = EC_DATAGRAM_NPRD;
     datagram->address.physical.slave = node_address;
     datagram->address.physical.mem = offset;
     EC_FUNC_FOOTER;
@@ -170,7 +170,7 @@ int ec_datagram_npwr(ec_datagram_t *datagram,
         EC_WARN("Using node address 0x0000!\n");
 
     EC_FUNC_HEADER;
-    datagram->type = EC_CMD_NPWR;
+    datagram->type = EC_DATAGRAM_NPWR;
     datagram->address.physical.slave = node_address;
     datagram->address.physical.mem = offset;
     EC_FUNC_FOOTER;
@@ -195,7 +195,7 @@ int ec_datagram_aprd(ec_datagram_t *datagram,
                      )
 {
     EC_FUNC_HEADER;
-    datagram->type = EC_CMD_APRD;
+    datagram->type = EC_DATAGRAM_APRD;
     datagram->address.physical.slave = (int16_t) ring_position * (-1);
     datagram->address.physical.mem = offset;
     EC_FUNC_FOOTER;
@@ -220,7 +220,7 @@ int ec_datagram_apwr(ec_datagram_t *datagram,
                      )
 {
     EC_FUNC_HEADER;
-    datagram->type = EC_CMD_APWR;
+    datagram->type = EC_DATAGRAM_APWR;
     datagram->address.physical.slave = (int16_t) ring_position * (-1);
     datagram->address.physical.mem = offset;
     EC_FUNC_FOOTER;
@@ -243,7 +243,7 @@ int ec_datagram_brd(ec_datagram_t *datagram,
                     )
 {
     EC_FUNC_HEADER;
-    datagram->type = EC_CMD_BRD;
+    datagram->type = EC_DATAGRAM_BRD;
     datagram->address.physical.slave = 0x0000;
     datagram->address.physical.mem = offset;
     EC_FUNC_FOOTER;
@@ -266,7 +266,7 @@ int ec_datagram_bwr(ec_datagram_t *datagram,
                     )
 {
     EC_FUNC_HEADER;
-    datagram->type = EC_CMD_BWR;
+    datagram->type = EC_DATAGRAM_BWR;
     datagram->address.physical.slave = 0x0000;
     datagram->address.physical.mem = offset;
     EC_FUNC_FOOTER;
@@ -289,7 +289,7 @@ int ec_datagram_lrw(ec_datagram_t *datagram,
                     )
 {
     EC_FUNC_HEADER;
-    datagram->type = EC_CMD_LRW;
+    datagram->type = EC_DATAGRAM_LRW;
     datagram->address.logical = offset;
     EC_FUNC_FOOTER;
 }

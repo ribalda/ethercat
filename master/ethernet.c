@@ -155,10 +155,8 @@ int ec_eoe_init(ec_eoe_t *eoe /**< EoE handler */)
 
 void ec_eoe_clear(ec_eoe_t *eoe /**< EoE handler */)
 {
-    if (eoe->dev) { // TODO: dev never NULL?
-        unregister_netdev(eoe->dev);
-        free_netdev(eoe->dev);
-    }
+    unregister_netdev(eoe->dev);
+    free_netdev(eoe->dev);
 
     // empty transmit queue
     ec_eoe_flush(eoe);
@@ -292,22 +290,6 @@ unsigned int ec_eoe_active(const ec_eoe_t *eoe /**< EoE handler */)
     return eoe->slave && eoe->opened;
 }
 
-/*****************************************************************************/
-
-/**
-   Prints EoE handler information.
-*/
-
-void ec_eoe_print(const ec_eoe_t *eoe /**< EoE handler */)
-{
-    EC_INFO("  EoE handler %s\n", eoe->dev->name);
-    EC_INFO("    State: %s\n", eoe->opened ? "opened" : "closed");
-    if (eoe->slave)
-        EC_INFO("    Coupled to slave %i.\n", eoe->slave->ring_position);
-    else
-        EC_INFO("    Not coupled.\n");
-}
-
 /******************************************************************************
  *  STATE PROCESSING FUNCTIONS
  *****************************************************************************/
@@ -338,7 +320,7 @@ void ec_eoe_state_rx_start(ec_eoe_t *eoe /**< EoE handler */)
 
 void ec_eoe_state_rx_check(ec_eoe_t *eoe /**< EoE handler */)
 {
-    if (eoe->datagram.state != EC_CMD_RECEIVED) {
+    if (eoe->datagram.state != EC_DATAGRAM_RECEIVED) {
         eoe->stats.rx_errors++;
         eoe->state = ec_eoe_state_tx_start;
         return;
@@ -369,7 +351,7 @@ void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
     uint8_t frame_number, fragment_offset, fragment_number;
     off_t offset;
 
-    if (eoe->datagram.state != EC_CMD_RECEIVED) {
+    if (eoe->datagram.state != EC_DATAGRAM_RECEIVED) {
         eoe->stats.rx_errors++;
         eoe->state = ec_eoe_state_tx_start;
         return;
@@ -570,7 +552,7 @@ void ec_eoe_state_tx_start(ec_eoe_t *eoe /**< EoE handler */)
 
 void ec_eoe_state_tx_sent(ec_eoe_t *eoe /**< EoE handler */)
 {
-    if (eoe->datagram.state != EC_CMD_RECEIVED) {
+    if (eoe->datagram.state != EC_DATAGRAM_RECEIVED) {
         eoe->stats.tx_errors++;
         eoe->state = ec_eoe_state_rx_start;
         return;
