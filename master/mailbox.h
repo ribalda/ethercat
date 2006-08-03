@@ -53,11 +53,6 @@ int      ec_slave_mbox_prepare_fetch(const ec_slave_t *, ec_datagram_t *);
 uint8_t *ec_slave_mbox_fetch(const ec_slave_t *, ec_datagram_t *,
                              uint8_t, size_t *);
 
-uint8_t *ec_slave_mbox_simple_io(const ec_slave_t *, ec_datagram_t *,
-                                 size_t *);
-uint8_t *ec_slave_mbox_simple_receive(const ec_slave_t *, ec_datagram_t *,
-                                      uint8_t, size_t *);
-
 /*****************************************************************************/
 
 #endif
