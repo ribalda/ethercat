@@ -46,6 +46,9 @@
 #define Beckhoff_EL4132_Output1 0x00000002, 0x10243052, 0x6411, 1
 #define Beckhoff_EL4132_Output2 0x00000002, 0x10243052, 0x6411, 2
 
+#define Beckhoff_EL5001_Status 0x00000002, 0x13893052, 0x3101, 1
+#define Beckhoff_EL5001_Value  0x00000002, 0x13893052, 0x3101, 2
+
 /*****************************************************************************/
 
 #endif
