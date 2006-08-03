@@ -114,6 +114,8 @@ struct ec_master
 
     struct timer_list eoe_timer; /**< EoE timer object */
     unsigned int eoe_running; /**< non-zero, if EoE processing is active. */
+    unsigned int eoe_checked; /**< non-zero, if EoE processing is not
+                                 necessary. */
     struct list_head eoe_handlers; /**< Ethernet-over-EtherCAT handlers */
     spinlock_t internal_lock; /**< spinlock used in idle mode */
     int (*request_cb)(void *); /**< lock request callback */

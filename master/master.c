@@ -121,6 +121,7 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     master->eoe_timer.data = (unsigned long) master;
     master->internal_lock = SPIN_LOCK_UNLOCKED;
     master->eoe_running = 0;
+    master->eoe_checked = 0;
 
     // create workqueue
     if (!(master->workqueue = create_singlethread_workqueue("EtherCAT"))) {
@@ -773,7 +774,7 @@ ssize_t ec_store_master_attribute(struct kobject *kobj, /**< slave's kobject */
 /*****************************************************************************/
 
 /**
-   Starts/Stops Ethernet-over-EtherCAT processing on demand.
+   Starts Ethernet-over-EtherCAT processing on demand.
 */
 
 void ec_master_eoe_start(ec_master_t *master /**< EtherCAT master */)
@@ -782,12 +783,17 @@ void ec_master_eoe_start(ec_master_t *master /**< EtherCAT master */)
     ec_slave_t *slave;
     unsigned int coupled, found;
 
-    if (master->eoe_running) return;
+    if (master->eoe_running || master->eoe_checked) return;
+
+    master->eoe_checked = 1;
 
     // if the locking callbacks are not set in operation mode,
     // the EoE timer my not be started.
     if (master->mode == EC_MASTER_MODE_OPERATION
-        && (!master->request_cb || !master->release_cb)) return;
+        && (!master->request_cb || !master->release_cb)) {
+        EC_INFO("No EoE processing because of missing locking callbacks.\n");
+        return;
+    }
 
     // decouple all EoE handlers
     list_for_each_entry(eoe, &master->eoe_handlers, list)
@@ -842,6 +848,8 @@ void ec_master_eoe_start(ec_master_t *master /**< EtherCAT master */)
 void ec_master_eoe_stop(ec_master_t *master /**< EtherCAT master */)
 {
     ec_eoe_t *eoe;
+
+    master->eoe_checked = 0;
 
     if (!master->eoe_running) return;
 
