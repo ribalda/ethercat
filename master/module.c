@@ -369,6 +369,7 @@ int ecdev_start(unsigned int master_index /**< master index */)
         return -1;
     }
 
+    ec_master_measure_bus_time(master);
     ec_master_idle_start(master);
     return 0;
 }
@@ -429,6 +430,7 @@ ec_master_t *ecrt_request_master(unsigned int master_index
         goto out_release;
     }
 
+    ec_master_measure_bus_time(master);
     ec_master_idle_stop(master);
     ec_master_reset(master);
     master->mode = EC_MASTER_MODE_OPERATION;

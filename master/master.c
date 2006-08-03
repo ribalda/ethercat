@@ -949,6 +949,69 @@ void ec_master_calc_addressing(ec_master_t *master /**< EtherCAT master */)
     }
 }
 
+/*****************************************************************************/
+
+/**
+   Measures the time, a frame is on the bus.
+*/
+
+void ec_master_measure_bus_time(ec_master_t *master)
+{
+    ec_datagram_t datagram;
+    cycles_t t_start, t_end, t_timeout;
+    uint32_t times[100], sum, min, max, i;
+
+    ec_datagram_init(&datagram);
+
+    if (ec_datagram_brd(&datagram, 0x130, 2)) {
+        EC_ERR("Failed to allocate datagram for bus time measuring.\n");
+        ec_datagram_clear(&datagram);
+        return;
+    }
+
+    t_timeout = (cycles_t) EC_IO_TIMEOUT * (cpu_khz / 1000);
+
+    sum = 0;
+    min = 0xFFFFFFFF;
+    max = 0;
+
+    for (i = 0; i < 100; i++) {
+        ec_master_queue_datagram(master, &datagram);
+        ecrt_master_send(master);
+        t_start = get_cycles();
+
+        while (1) { // active waiting
+            ec_device_call_isr(master->device);
+            t_end = get_cycles(); // take current time
+
+            if (datagram.state == EC_DATAGRAM_RECEIVED) {
+                break;
+            }
+            else if (datagram.state == EC_DATAGRAM_ERROR) {
+                EC_WARN("Failed to measure bus time.\n");
+                goto error;
+            }
+            else if (t_end - t_start >= t_timeout) {
+                EC_WARN("Timeout while measuring bus time.\n");
+                goto error;
+            }
+        }
+
+        times[i] = (unsigned int) (t_end - t_start) * 1000 / cpu_khz;
+        sum += times[i];
+        if (times[i] > max) max = times[i];
+        if (times[i] < min) min = times[i];
+    }
+
+    EC_INFO("Bus time is (min/avg/max) %u/%u.%u/%u us.\n",
+            min, sum / 100, sum % 100, max);
+
+  error:
+    // Dequeue and free datagram
+    list_del(&datagram.queue);
+    ec_datagram_clear(&datagram);
+}
+
 /******************************************************************************
  *  Realtime interface
  *****************************************************************************/
