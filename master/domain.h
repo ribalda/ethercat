@@ -67,6 +67,9 @@ struct ec_domain
     uint32_t base_address; /**< logical offset address of the process data */
     unsigned int response_count; /**< number of responding slaves */
     struct list_head data_regs; /**< PDO data registrations */
+    unsigned int working_counter_changes; /**< working counter changes
+                                             since last notification */
+    cycles_t t_last; /**< time of last notification */
 };
 
 /*****************************************************************************/

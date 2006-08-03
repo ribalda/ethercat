@@ -240,6 +240,7 @@ void ec_master_reset(ec_master_t *master /**< EtherCAT master */)
     master->stats.timeouts = 0;
     master->stats.delayed = 0;
     master->stats.corrupted = 0;
+    master->stats.skipped = 0;
     master->stats.unmatched = 0;
     master->stats.t_last = 0;
 
@@ -287,9 +288,9 @@ void ec_master_queue_datagram(ec_master_t *master, /**< EtherCAT master */
     // check, if the datagram is already queued
     list_for_each_entry(queued_datagram, &master->datagram_queue, queue) {
         if (queued_datagram == datagram) {
+            master->stats.skipped++;
+            ec_master_output_stats(master);
             datagram->state = EC_DATAGRAM_QUEUED;
-            if (unlikely(master->debug_level))
-                EC_WARN("datagram already queued.\n");
             return;
         }
     }
@@ -537,6 +538,10 @@ void ec_master_output_stats(ec_master_t *master /**< EtherCAT master */)
         if (master->stats.corrupted) {
             EC_WARN("%i frame(s) CORRUPTED!\n", master->stats.corrupted);
             master->stats.corrupted = 0;
+        }
+        if (master->stats.skipped) {
+            EC_WARN("%i datagram(s) SKIPPED!\n", master->stats.skipped);
+            master->stats.skipped = 0;
         }
         if (master->stats.unmatched) {
             EC_WARN("%i datagram(s) UNMATCHED!\n", master->stats.unmatched);
@@ -1234,7 +1239,7 @@ void ecrt_master_receive(ec_master_t *master /**< EtherCAT master */)
     ec_device_call_isr(master->device);
 
     t_received = get_cycles();
-    t_timeout = (cycles_t) EC_IO_TIMEOUT * (cpu_khz / 1000);
+    t_timeout = EC_IO_TIMEOUT * cpu_khz / 1000;
 
     // dequeue all received datagrams
     list_for_each_entry_safe(datagram, next, &master->datagram_queue, queue)

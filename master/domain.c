@@ -106,6 +106,8 @@ int ec_domain_init(ec_domain_t *domain, /**< EtherCAT domain */
     domain->data_size = 0;
     domain->base_address = 0;
     domain->response_count = 0xFFFFFFFF;
+    domain->t_last = 0;
+    domain->working_counter_changes = 0;
 
     INIT_LIST_HEAD(&domain->data_regs);
     INIT_LIST_HEAD(&domain->datagrams);
@@ -511,6 +513,7 @@ void ecrt_domain_process(ec_domain_t *domain /**< EtherCAT domain */)
 {
     unsigned int working_counter_sum;
     ec_datagram_t *datagram;
+    cycles_t t_now = get_cycles();
 
     working_counter_sum = 0;
     list_for_each_entry(datagram, &domain->datagrams, list) {
@@ -520,9 +523,23 @@ void ecrt_domain_process(ec_domain_t *domain /**< EtherCAT domain */)
     }
 
     if (working_counter_sum != domain->response_count) {
+        domain->working_counter_changes++;
         domain->response_count = working_counter_sum;
-        EC_INFO("Domain %i working counter change: %i\n", domain->index,
-                domain->response_count);
+    }
+
+    if (domain->working_counter_changes &&
+        (u32) (t_now - domain->t_last) / cpu_khz > 1000) {
+        domain->t_last = t_now;
+        if (domain->working_counter_changes == 1) {
+            EC_INFO("Domain %i working counter change: %i\n", domain->index,
+                    domain->response_count);
+        }
+        else {
+            EC_INFO("Domain %i: %u WC changes. Current response count: %i\n",
+                    domain->index, domain->working_counter_changes,
+                    domain->response_count);
+        }
+        domain->working_counter_changes = 0;
     }
 
     ec_domain_queue(domain);
