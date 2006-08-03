@@ -406,10 +406,10 @@ void ec_master_send_datagrams(ec_master_t *master /**< EtherCAT master */)
    \return 0 in case of success, else < 0
 */
 
-void ec_master_receive(ec_master_t *master, /**< EtherCAT master */
-                       const uint8_t *frame_data, /**< received data */
-                       size_t size /**< size of the received data */
-                       )
+void ec_master_receive_datagrams(ec_master_t *master, /**< EtherCAT master */
+                                 const uint8_t *frame_data, /**< frame data */
+                                 size_t size /**< size of the received data */
+                                 )
 {
     size_t frame_size, data_size;
     uint8_t datagram_type, datagram_index;

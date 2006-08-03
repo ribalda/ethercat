@@ -245,7 +245,9 @@ void ecdev_receive(ec_device_t *device, /**< EtherCAT device */
 
     ec_debug_send(&device->dbg, data, size);
 
-    ec_master_receive(device->master, data + ETH_HLEN, size - ETH_HLEN);
+    ec_master_receive_datagrams(device->master,
+                                data + ETH_HLEN,
+                                size - ETH_HLEN);
 }
 
 /*****************************************************************************/

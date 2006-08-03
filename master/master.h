@@ -141,7 +141,7 @@ void ec_master_eoe_start(ec_master_t *);
 void ec_master_eoe_stop(ec_master_t *);
 
 // IO
-void ec_master_receive(ec_master_t *, const uint8_t *, size_t);
+void ec_master_receive_datagrams(ec_master_t *, const uint8_t *, size_t);
 void ec_master_queue_datagram(ec_master_t *, ec_datagram_t *);
 
 // slave management
