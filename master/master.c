@@ -707,6 +707,7 @@ ssize_t ec_master_info(ec_master_t *master, /**< EtherCAT master */
                        )
 {
     off_t off = 0;
+    ec_eoe_t *eoe;
     uint32_t cur, sum, min, max, pos, i;
 
     off += sprintf(buffer + off, "\nMode: ");
@@ -752,6 +753,13 @@ ssize_t ec_master_info(ec_master_t *master, /**< EtherCAT master */
     }
     off += sprintf(buffer + off, "  EoE cycle: %u / %u.%u / %u\n",
                    min, sum / HZ, (sum * 100 / HZ) % 100, max);
+
+    if (!list_empty(&master->eoe_handlers))
+        off += sprintf(buffer + off, "\nEoE Statistics (RX/TX) [bps]:");
+    list_for_each_entry(eoe, &master->eoe_handlers, list) {
+        off += sprintf(buffer + off, "  %s: %u / %u\n",
+                       eoe->dev->name, eoe->rx_rate, eoe->tx_rate);
+    }
 
     off += sprintf(buffer + off, "\n");
 

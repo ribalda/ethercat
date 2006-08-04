@@ -90,6 +90,11 @@ struct ec_eoe
     uint8_t tx_frame_number; /**< number of the transmitted frame */
     uint8_t tx_fragment_number; /**< number of the fragment */
     size_t tx_offset; /**< number of octets sent */
+    uint32_t rx_counter; /**< octets received during last second */
+    uint32_t tx_counter; /**< octets transmitted during last second */
+    uint32_t rx_rate; /**< receive rate (bps) */
+    uint32_t tx_rate; /**< transmit rate (bps) */
+    cycles_t t_last; /**< time of last output */
 };
 
 /*****************************************************************************/
