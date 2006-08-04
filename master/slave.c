@@ -849,6 +849,7 @@ ssize_t ec_store_slave_attribute(struct kobject *kobj, /**< slave's kobject */
     ec_slave_t *slave = container_of(kobj, ec_slave_t, kobj);
 
     if (attr == &attr_state) {
+        char state[25];
         if (!strcmp(buffer, "INIT\n"))
             slave->requested_state = EC_SLAVE_STATE_INIT;
         else if (!strcmp(buffer, "PREOP\n"))
@@ -862,8 +863,9 @@ ssize_t ec_store_slave_attribute(struct kobject *kobj, /**< slave's kobject */
             return -EINVAL;
         }
 
+        ec_state_string(slave->requested_state, state);
         EC_INFO("Accepted new state %s for slave %i.\n",
-                buffer, slave->ring_position);
+                state, slave->ring_position);
         slave->error_flag = 0;
         return size;
     }
