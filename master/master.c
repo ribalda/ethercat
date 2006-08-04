@@ -755,7 +755,7 @@ ssize_t ec_master_info(ec_master_t *master, /**< EtherCAT master */
                    min, sum / HZ, (sum * 100 / HZ) % 100, max);
 
     if (!list_empty(&master->eoe_handlers))
-        off += sprintf(buffer + off, "\nEoE Statistics (RX/TX) [bps]:");
+        off += sprintf(buffer + off, "\nEoE Statistics (RX/TX) [bps]:\n");
     list_for_each_entry(eoe, &master->eoe_handlers, list) {
         off += sprintf(buffer + off, "  %s: %u / %u\n",
                        eoe->dev->name, eoe->rx_rate, eoe->tx_rate);
