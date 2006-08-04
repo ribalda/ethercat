@@ -115,10 +115,12 @@ struct ec_master
 
     struct workqueue_struct *workqueue; /**< master workqueue */
     struct work_struct idle_work; /**< free run work object */
-    uint32_t idle_cycle_time; /**< Idle cycle time */
+    uint32_t idle_cycle_times[HZ]; /**< Idle cycle times ring */
+    unsigned int idle_cycle_time_pos; /**< time ring buffer position */
 
     struct timer_list eoe_timer; /**< EoE timer object */
-    uint32_t eoe_cycle_time; /**< EoE cycle time */
+    uint32_t eoe_cycle_times[HZ]; /**< EoE cycle times ring */
+    unsigned int eoe_cycle_time_pos; /**< time ring buffer position */
     unsigned int eoe_running; /**< non-zero, if EoE processing is active. */
     unsigned int eoe_checked; /**< non-zero, if EoE processing is not
                                  necessary. */

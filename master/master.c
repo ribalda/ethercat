@@ -120,8 +120,12 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     master->internal_lock = SPIN_LOCK_UNLOCKED;
     master->eoe_running = 0;
     master->eoe_checked = 0;
-    master->idle_cycle_time = 0;
-    master->eoe_cycle_time = 0;
+    for (i = 0; i < HZ; i++) {
+        master->idle_cycle_times[i] = 0;
+        master->eoe_cycle_times[i] = 0;
+    }
+    master->idle_cycle_time_pos = 0;
+    master->eoe_cycle_time_pos = 0;
 
     // create workqueue
     if (!(master->workqueue = create_singlethread_workqueue("EtherCAT"))) {
@@ -623,7 +627,10 @@ void ec_master_idle_run(void *data /**< master pointer */)
     // release master lock
     spin_unlock_bh(&master->internal_lock);
 
-    master->idle_cycle_time = (u32) (end - start) * 1000 / cpu_khz;
+    master->idle_cycle_times[master->idle_cycle_time_pos]
+        = (u32) (end - start) * 1000 / cpu_khz;
+    master->idle_cycle_time_pos++;
+    master->idle_cycle_time_pos %= HZ;
 
     if (master->mode == EC_MASTER_MODE_IDLE)
         queue_delayed_work(master->workqueue, &master->idle_work, 1);
@@ -700,25 +707,51 @@ ssize_t ec_master_info(ec_master_t *master, /**< EtherCAT master */
                        )
 {
     off_t off = 0;
+    uint32_t cur, sum, min, max, pos, i;
 
     off += sprintf(buffer + off, "\nMode: ");
     switch (master->mode) {
         case EC_MASTER_MODE_ORPHANED:
             off += sprintf(buffer + off, "ORPHANED");
+            break;
         case EC_MASTER_MODE_IDLE:
             off += sprintf(buffer + off, "IDLE");
+            break;
         case EC_MASTER_MODE_OPERATION:
             off += sprintf(buffer + off, "OPERATION");
+            break;
     }
 
     off += sprintf(buffer + off, "\n\nNumber of slaves: %i\n",
                    master->slave_count);
 
-    off += sprintf(buffer + off, "\nTiming [us]:\n");
-    off += sprintf(buffer + off, "  Idle cycle time: %u\n",
-                   master->idle_cycle_time);
-    off += sprintf(buffer + off, "  EoE cycle time: %u\n",
-                   master->eoe_cycle_time);
+    off += sprintf(buffer + off, "\nTiming (min/avg/max) [us]:\n");
+
+    sum = 0;
+    min = 0xFFFFFFFF;
+    max = 0;
+    pos = master->idle_cycle_time_pos;
+    for (i = 0; i < HZ; i++) {
+        cur = master->idle_cycle_times[(i + pos) % HZ];
+        sum += cur;
+        if (cur < min) min = cur;
+        if (cur > max) max = cur;
+    }
+    off += sprintf(buffer + off, "  Idle cycle: %u / %u.%u / %u\n",
+                   min, sum / HZ, (sum * 100 / HZ) % 100, max);
+
+    sum = 0;
+    min = 0xFFFFFFFF;
+    max = 0;
+    pos = master->eoe_cycle_time_pos;
+    for (i = 0; i < HZ; i++) {
+        cur = master->eoe_cycle_times[(i + pos) % HZ];
+        sum += cur;
+        if (cur < min) min = cur;
+        if (cur > max) max = cur;
+    }
+    off += sprintf(buffer + off, "  EoE cycle: %u / %u.%u / %u\n",
+                   min, sum / HZ, (sum * 100 / HZ) % 100, max);
 
     off += sprintf(buffer + off, "\n");
 
@@ -954,7 +987,10 @@ void ec_master_eoe_run(unsigned long data /**< master pointer */)
         spin_unlock(&master->internal_lock);
     }
 
-    master->eoe_cycle_time = (u32) (end - start) * 1000 / cpu_khz;
+    master->eoe_cycle_times[master->eoe_cycle_time_pos]
+        = (u32) (end - start) * 1000 / cpu_khz;
+    master->eoe_cycle_time_pos++;
+    master->eoe_cycle_time_pos %= HZ;
 
  queue_timer:
     master->eoe_timer.expires += HZ / EC_EOE_FREQUENCY;
