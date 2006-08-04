@@ -97,10 +97,13 @@ struct ec_master
 
     struct kobject kobj; /**< kobject */
 
+    ec_device_t *device; /**< EtherCAT device */
+
+    ec_fsm_t fsm; /**< master state machine */
+    ec_master_mode_t mode; /**< master mode */
+
     struct list_head slaves; /**< list of slaves on the bus */
     unsigned int slave_count; /**< number of slaves on the bus */
-
-    ec_device_t *device; /**< EtherCAT device */
 
     struct list_head datagram_queue; /**< datagram queue */
     uint8_t datagram_index; /**< current datagram index */
@@ -112,14 +115,15 @@ struct ec_master
 
     struct workqueue_struct *workqueue; /**< master workqueue */
     struct work_struct idle_work; /**< free run work object */
-    ec_fsm_t fsm; /**< master state machine */
-    ec_master_mode_t mode; /**< master mode */
+    uint32_t idle_cycle_time; /**< Idle cycle time */
 
     struct timer_list eoe_timer; /**< EoE timer object */
+    uint32_t eoe_cycle_time; /**< EoE cycle time */
     unsigned int eoe_running; /**< non-zero, if EoE processing is active. */
     unsigned int eoe_checked; /**< non-zero, if EoE processing is not
                                  necessary. */
     struct list_head eoe_handlers; /**< Ethernet-over-EtherCAT handlers */
+
     spinlock_t internal_lock; /**< spinlock used in idle mode */
     int (*request_cb)(void *); /**< lock request callback */
     void (*release_cb)(void *); /**< lock release callback */

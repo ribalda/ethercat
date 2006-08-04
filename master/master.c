@@ -65,14 +65,12 @@ ssize_t ec_store_master_attribute(struct kobject *, struct attribute *,
 
 /** \cond */
 
-EC_SYSFS_READ_ATTR(slave_count);
-EC_SYSFS_READ_ATTR(mode);
+EC_SYSFS_READ_ATTR(info);
 EC_SYSFS_READ_WRITE_ATTR(eeprom_write_enable);
 EC_SYSFS_READ_WRITE_ATTR(debug_level);
 
 static struct attribute *ec_def_attrs[] = {
-    &attr_slave_count,
-    &attr_mode,
+    &attr_info,
     &attr_eeprom_write_enable,
     &attr_debug_level,
     NULL,
@@ -122,6 +120,8 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     master->internal_lock = SPIN_LOCK_UNLOCKED;
     master->eoe_running = 0;
     master->eoe_checked = 0;
+    master->idle_cycle_time = 0;
+    master->eoe_cycle_time = 0;
 
     // create workqueue
     if (!(master->workqueue = create_singlethread_workqueue("EtherCAT"))) {
@@ -606,19 +606,24 @@ void ec_master_idle_stop(ec_master_t *master /**< EtherCAT master */)
 void ec_master_idle_run(void *data /**< master pointer */)
 {
     ec_master_t *master = (ec_master_t *) data;
+    cycles_t start, end;
 
     // aquire master lock
     spin_lock_bh(&master->internal_lock);
 
+    start = get_cycles();
     ecrt_master_receive(master);
 
     // execute master state machine
     ec_fsm_execute(&master->fsm);
 
     ecrt_master_send(master);
+    end = get_cycles();
 
     // release master lock
     spin_unlock_bh(&master->internal_lock);
+
+    master->idle_cycle_time = (u32) (end - start) * 1000 / cpu_khz;
 
     if (master->mode == EC_MASTER_MODE_IDLE)
         queue_delayed_work(master->workqueue, &master->idle_work, 1);
@@ -686,6 +691,43 @@ void ec_fmmu_config(const ec_fmmu_t *fmmu, /**< FMMU */
 /*****************************************************************************/
 
 /**
+   Formats master information for SysFS read access.
+   \return number of bytes written
+*/
+
+ssize_t ec_master_info(ec_master_t *master, /**< EtherCAT master */
+                       char *buffer /**< memory to store data */
+                       )
+{
+    off_t off = 0;
+
+    off += sprintf(buffer + off, "\nMode: ");
+    switch (master->mode) {
+        case EC_MASTER_MODE_ORPHANED:
+            off += sprintf(buffer + off, "ORPHANED");
+        case EC_MASTER_MODE_IDLE:
+            off += sprintf(buffer + off, "IDLE");
+        case EC_MASTER_MODE_OPERATION:
+            off += sprintf(buffer + off, "OPERATION");
+    }
+
+    off += sprintf(buffer + off, "\n\nNumber of slaves: %i\n",
+                   master->slave_count);
+
+    off += sprintf(buffer + off, "\nTiming [us]:\n");
+    off += sprintf(buffer + off, "  Idle cycle time: %u\n",
+                   master->idle_cycle_time);
+    off += sprintf(buffer + off, "  EoE cycle time: %u\n",
+                   master->eoe_cycle_time);
+
+    off += sprintf(buffer + off, "\n");
+
+    return off;
+}
+
+/*****************************************************************************/
+
+/**
    Formats attribute data for SysFS read access.
    \return number of bytes to read
 */
@@ -697,18 +739,8 @@ ssize_t ec_show_master_attribute(struct kobject *kobj, /**< kobject */
 {
     ec_master_t *master = container_of(kobj, ec_master_t, kobj);
 
-    if (attr == &attr_slave_count) {
-        return sprintf(buffer, "%i\n", master->slave_count);
-    }
-    else if (attr == &attr_mode) {
-        switch (master->mode) {
-            case EC_MASTER_MODE_ORPHANED:
-                return sprintf(buffer, "ORPHANED\n");
-            case EC_MASTER_MODE_IDLE:
-                return sprintf(buffer, "IDLE\n");
-            case EC_MASTER_MODE_OPERATION:
-                return sprintf(buffer, "OPERATION\n");
-        }
+    if (attr == &attr_info) {
+        return ec_master_info(master, buffer);
     }
     else if (attr == &attr_debug_level) {
         return sprintf(buffer, "%i\n", master->debug_level);
@@ -884,6 +916,7 @@ void ec_master_eoe_run(unsigned long data /**< master pointer */)
     ec_master_t *master = (ec_master_t *) data;
     ec_eoe_t *eoe;
     unsigned int active = 0;
+    cycles_t start, end;
 
     list_for_each_entry(eoe, &master->eoe_handlers, list) {
         if (ec_eoe_active(eoe)) active++;
@@ -903,11 +936,15 @@ void ec_master_eoe_run(unsigned long data /**< master pointer */)
         goto queue_timer;
 
     // actual EoE stuff
+    start = get_cycles();
     ecrt_master_receive(master);
+
     list_for_each_entry(eoe, &master->eoe_handlers, list) {
         ec_eoe_run(eoe);
     }
+
     ecrt_master_send(master);
+    end = get_cycles();
 
     // release lock...
     if (master->mode == EC_MASTER_MODE_OPERATION) {
@@ -916,6 +953,8 @@ void ec_master_eoe_run(unsigned long data /**< master pointer */)
     else if (master->mode == EC_MASTER_MODE_IDLE) {
         spin_unlock(&master->internal_lock);
     }
+
+    master->eoe_cycle_time = (u32) (end - start) * 1000 / cpu_khz;
 
  queue_timer:
     master->eoe_timer.expires += HZ / EC_EOE_FREQUENCY;
