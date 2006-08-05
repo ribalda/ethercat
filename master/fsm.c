@@ -1382,11 +1382,18 @@ void ec_fsm_slaveconf_preop(ec_fsm_t *fsm /**< finite state machine */)
         return;
     }
 
-    if (!slave->base_fmmu_count) {
-        fsm->slave_state = ec_fsm_slaveconf_saveop;
-        fsm->change_new = EC_SLAVE_STATE_SAVEOP;
-        fsm->change_state = ec_fsm_change_start;
-        fsm->change_state(fsm); // execute immediately
+    if (!slave->base_fmmu_count) { // skip FMMU configuration
+        if (list_empty(&slave->sdo_confs)) { // skip SDO configuration
+            fsm->slave_state = ec_fsm_slaveconf_saveop;
+            fsm->change_new = EC_SLAVE_STATE_SAVEOP;
+            fsm->change_state = ec_fsm_change_start;
+            fsm->change_state(fsm); // execute immediately
+            return;
+        }
+        fsm->slave_state = ec_fsm_slaveconf_sdoconf;
+        fsm->sdodata = list_entry(slave->sdo_confs.next, ec_sdo_data_t, list);
+        fsm->coe_state = ec_fsm_coe_down_start;
+        fsm->coe_state(fsm); // execute immediately
         return;
     }
 
@@ -1424,7 +1431,7 @@ void ec_fsm_slaveconf_fmmu(ec_fsm_t *fsm /**< finite state machine */)
     }
 
     // No CoE configuration to be applied? Jump to SAVEOP state.
-    if (list_empty(&slave->sdo_confs)) {
+    if (list_empty(&slave->sdo_confs)) { // skip SDO configuration
         // set state to SAVEOP
         fsm->slave_state = ec_fsm_slaveconf_saveop;
         fsm->change_new = EC_SLAVE_STATE_SAVEOP;
