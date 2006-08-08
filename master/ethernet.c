@@ -303,7 +303,7 @@ void ec_eoe_run(ec_eoe_t *eoe /**< EoE handler */)
    \return 1 if the device is "up", 0 if it is "down"
 */
 
-unsigned int ec_eoe_active(const ec_eoe_t *eoe /**< EoE handler */)
+int ec_eoe_active(const ec_eoe_t *eoe /**< EoE handler */)
 {
     return eoe->slave && eoe->opened;
 }

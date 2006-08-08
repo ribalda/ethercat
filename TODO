@@ -8,6 +8,12 @@ $Id$
 
 Important things to do:
 
+* Add Kobjects in constructors.
+
+* Read AL Status Code with AL Control Response.
+
+* Coupling of EoE handlers before configuring slaves.
+
 * SysFS interface
   - Add secondary slave address
   - Add SDO dictionary

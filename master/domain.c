@@ -153,7 +153,7 @@ void ec_domain_clear(struct kobject *kobj /**< kobject of the domain */)
 /*****************************************************************************/
 
 /**
-   Registeres a data field in a domain.
+   Registeres a PDO entry.
    \return 0 in case of success, else < 0
 */
 
@@ -227,7 +227,7 @@ int ec_domain_reg_pdo_entry(ec_domain_t *domain, /**< EtherCAT domain */
 /*****************************************************************************/
 
 /**
-   Clears the list of the registered data fields.
+   Clears the list of the data registrations.
 */
 
 void ec_domain_clear_data_regs(ec_domain_t *domain /**< EtherCAT domain */)

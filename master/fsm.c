@@ -95,7 +95,7 @@ void ec_fsm_change_check_ack(ec_fsm_t *);
 void ec_fsm_coe_down_start(ec_fsm_t *);
 void ec_fsm_coe_down_request(ec_fsm_t *);
 void ec_fsm_coe_down_check(ec_fsm_t *);
-void ec_fsm_coe_down_fetch(ec_fsm_t *);
+void ec_fsm_coe_down_response(ec_fsm_t *);
 
 void ec_fsm_end(ec_fsm_t *);
 void ec_fsm_error(ec_fsm_t *);
@@ -2097,16 +2097,16 @@ void ec_fsm_coe_down_check(ec_fsm_t *fsm /**< finite state machine */)
     // Fetch response
     ec_slave_mbox_prepare_fetch(slave, datagram); // can not fail.
     ec_master_queue_datagram(fsm->master, datagram);
-    fsm->coe_state = ec_fsm_coe_down_fetch;
+    fsm->coe_state = ec_fsm_coe_down_response;
 }
 
 /*****************************************************************************/
 
 /**
-   CoE state: DOWN_FETCH.
+   CoE state: DOWN_RESPONSE.
 */
 
-void ec_fsm_coe_down_fetch(ec_fsm_t *fsm /**< finite state machine */)
+void ec_fsm_coe_down_response(ec_fsm_t *fsm /**< finite state machine */)
 {
     ec_datagram_t *datagram = &fsm->datagram;
     ec_slave_t *slave = fsm->slave;

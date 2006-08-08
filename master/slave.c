@@ -521,18 +521,17 @@ size_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
     if (slave->sii_name)
         off += sprintf(buffer + off, "%s", slave->sii_name);
 
-    off += sprintf(buffer + off, "\n\nVendor ID: 0x%08X\n",
+    off += sprintf(buffer + off, "\nVendor ID: 0x%08X\n",
                    slave->sii_vendor_id);
     off += sprintf(buffer + off, "Product code: 0x%08X\n\n",
                    slave->sii_product_code);
 
-    off += sprintf(buffer + off, "Ring position: %i\n", slave->ring_position);
-    off += sprintf(buffer + off, "Advanced position: %i:%i\n\n",
-                   slave->coupler_index, slave->coupler_subindex);
-
     off += sprintf(buffer + off, "State: ");
     off += ec_state_string(slave->current_state, buffer + off);
-    off += sprintf(buffer + off, "\n\n");
+    off += sprintf(buffer + off, "\nRing position: %i\n",
+                   slave->ring_position);
+    off += sprintf(buffer + off, "Advanced position: %i:%i\n\n",
+                   slave->coupler_index, slave->coupler_subindex);
 
     off += sprintf(buffer + off, "Data link status:\n");
     for (i = 0; i < 4; i++) {
@@ -611,7 +610,7 @@ size_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
     if (slave->sii_image)
         off += sprintf(buffer + off, "  Image: %s\n", slave->sii_image);
     if (slave->sii_order)
-        off += sprintf(buffer + off, "  Order#: %s\n", slave->sii_order);
+        off += sprintf(buffer + off, "  Order number: %s\n", slave->sii_order);
 
     if (!list_empty(&slave->sii_syncs))
         off += sprintf(buffer + off, "\nSync-Managers:\n");
@@ -629,13 +628,13 @@ size_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
 
     list_for_each_entry(pdo, &slave->sii_pdos, list) {
         off += sprintf(buffer + off,
-                       "  %s \"%s\" (0x%04X), -> Sync-Manager %i\n",
+                       "  %s \"%s\" (0x%04X), Sync-Manager %i\n",
                        pdo->type == EC_RX_PDO ? "RXPDO" : "TXPDO",
                        pdo->name ? pdo->name : "???",
                        pdo->index, pdo->sync_index);
 
         list_for_each_entry(pdo_entry, &pdo->entries, list) {
-            off += sprintf(buffer + off, "    \"%s\" 0x%04X:%X, %i Bit\n",
+            off += sprintf(buffer + off, "    \"%s\" 0x%04X:%X, %i bit\n",
                            pdo_entry->name ? pdo_entry->name : "???",
                            pdo_entry->index, pdo_entry->subindex,
                            pdo_entry->bit_length);

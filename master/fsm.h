@@ -74,7 +74,7 @@ struct ec_fsm
     cycles_t sii_start; /**< sii start */
 
     void (*change_state)(ec_fsm_t *); /**< slave state change state function */
-    uint8_t change_new; /**< input: new state */
+    ec_slave_state_t change_new; /**< input: new state */
     cycles_t change_start; /**< change start */
 
     void (*coe_state)(ec_fsm_t *); /**< CoE state function */

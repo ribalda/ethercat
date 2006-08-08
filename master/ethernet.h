@@ -78,10 +78,13 @@ struct ec_eoe
     struct net_device *dev; /**< net_device for virtual ethernet device */
     struct net_device_stats stats; /**< device statistics */
     unsigned int opened; /**< net_device is opened */
+    cycles_t t_last; /**< time of last rate output */
     struct sk_buff *rx_skb; /**< current rx socket buffer */
     off_t rx_skb_offset; /**< current write pointer in the socket buffer */
     size_t rx_skb_size; /**< size of the allocated socket buffer memory */
     uint8_t rx_expected_fragment; /**< next expected fragment number */
+    uint32_t rx_counter; /**< octets received during last second */
+    uint32_t rx_rate; /**< receive rate (bps) */
     struct list_head tx_queue; /**< queue for frames to send */
     unsigned int tx_queue_active; /**< kernel netif queue started */
     unsigned int tx_queued_frames; /**< number of frames in the queue */
@@ -90,11 +93,8 @@ struct ec_eoe
     uint8_t tx_frame_number; /**< number of the transmitted frame */
     uint8_t tx_fragment_number; /**< number of the fragment */
     size_t tx_offset; /**< number of octets sent */
-    uint32_t rx_counter; /**< octets received during last second */
     uint32_t tx_counter; /**< octets transmitted during last second */
-    uint32_t rx_rate; /**< receive rate (bps) */
     uint32_t tx_rate; /**< transmit rate (bps) */
-    cycles_t t_last; /**< time of last output */
 };
 
 /*****************************************************************************/
@@ -102,6 +102,6 @@ struct ec_eoe
 int ec_eoe_init(ec_eoe_t *);
 void ec_eoe_clear(ec_eoe_t *);
 void ec_eoe_run(ec_eoe_t *);
-unsigned int ec_eoe_active(const ec_eoe_t *);
+int ec_eoe_active(const ec_eoe_t *);
 
 /*****************************************************************************/
