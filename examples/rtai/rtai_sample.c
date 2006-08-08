@@ -54,6 +54,8 @@ MODULE_DESCRIPTION("EtherCAT RTAI sample module");
 
 // RTAI task frequency in Hz
 #define FREQUENCY 10000
+#define INHIBIT_TIME 20
+
 #define TIMERTICKS (1000000000 / FREQUENCY)
 
 /*****************************************************************************/
@@ -61,7 +63,7 @@ MODULE_DESCRIPTION("EtherCAT RTAI sample module");
 // RTAI
 RT_TASK task;
 SEM master_sem;
-cycles_t t_last_start = 0, t_critical;
+cycles_t t_last_cycle = 0, t_critical;
 
 // EtherCAT
 ec_master_t *master = NULL;
@@ -84,7 +86,7 @@ void run(long data)
 {
     while (1)
     {
-        t_last_start = get_cycles();
+        t_last_cycle = get_cycles();
         rt_sem_wait(&master_sem);
 
         ecrt_master_receive(master);
@@ -106,7 +108,7 @@ void run(long data)
 int request_lock(void *data)
 {
     // too close to the next RT cycle: deny access...
-    if (get_cycles() - t_last_start > t_critical) return -1;
+    if (get_cycles() - t_last_cycle > t_critical) return -1;
 
     // allow access
     rt_sem_wait(&master_sem);
@@ -130,12 +132,13 @@ int __init init_mod(void)
 
     rt_sem_init(&master_sem, 1);
 
-    t_critical = cpu_khz * 800 / FREQUENCY; // ticks for 80%
+    t_critical = cpu_khz * 1000 / FREQUENCY - cpu_khz * INHIBIT_TIME / 1000;
 
-    if ((master = ecrt_request_master(0)) == NULL) {
+    if (!(master = ecrt_request_master(0))) {
         printk(KERN_ERR "Requesting master 0 failed!\n");
         goto out_return;
     }
+
 
     ecrt_master_callbacks(master, request_lock, release_lock, NULL);
 
