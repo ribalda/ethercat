@@ -164,6 +164,10 @@ void ec_fsm_execute(ec_fsm_t *fsm /**< finite state machine */)
 
 /*****************************************************************************/
 
+/**
+   Initializes the master startup state machine.
+*/
+
 void ec_fsm_startup(ec_fsm_t *fsm)
 {
     fsm->master_state = ec_fsm_startup_start;
@@ -171,7 +175,12 @@ void ec_fsm_startup(ec_fsm_t *fsm)
 
 /*****************************************************************************/
 
-int ec_fsm_startup_running(ec_fsm_t *fsm)
+/**
+   Returns the running state of the master startup state machine.
+   \return non-zero if not terminated yet.
+*/
+
+int ec_fsm_startup_running(ec_fsm_t *fsm /**< Finite state machine */)
 {
     return fsm->master_state != ec_fsm_end &&
         fsm->master_state != ec_fsm_error;
@@ -179,12 +188,21 @@ int ec_fsm_startup_running(ec_fsm_t *fsm)
 
 /*****************************************************************************/
 
-int ec_fsm_startup_success(ec_fsm_t *fsm)
+/**
+   Returns, if the master startup state machine terminated with success.
+   \return non-zero if successful.
+*/
+
+int ec_fsm_startup_success(ec_fsm_t *fsm /**< Finite state machine */)
 {
     return fsm->master_state == ec_fsm_end;
 }
 
 /*****************************************************************************/
+
+/**
+   Initializes the master configuration state machine.
+*/
 
 void ec_fsm_configuration(ec_fsm_t *fsm)
 {
@@ -193,7 +211,12 @@ void ec_fsm_configuration(ec_fsm_t *fsm)
 
 /*****************************************************************************/
 
-int ec_fsm_configuration_running(ec_fsm_t *fsm)
+/**
+   Returns the running state of the master configuration state machine.
+   \return non-zero if not terminated yet.
+*/
+
+int ec_fsm_configuration_running(ec_fsm_t *fsm /**< Finite state machine */)
 {
     return fsm->master_state != ec_fsm_end &&
         fsm->master_state != ec_fsm_error;
@@ -201,7 +224,12 @@ int ec_fsm_configuration_running(ec_fsm_t *fsm)
 
 /*****************************************************************************/
 
-int ec_fsm_configuration_success(ec_fsm_t *fsm)
+/**
+   Returns, if the master confuguration state machine terminated with success.
+   \return non-zero if successful.
+*/
+
+int ec_fsm_configuration_success(ec_fsm_t *fsm /**< Finite state machine */)
 {
     return fsm->master_state == ec_fsm_end;
 }
@@ -326,6 +354,10 @@ void ec_fsm_startup_scan(ec_fsm_t *fsm /**< finite state machine */)
 /******************************************************************************
  *  master configuration state machine
  *****************************************************************************/
+
+/**
+   Master configuration state machine: START.
+*/
 
 void ec_fsm_configuration_start(ec_fsm_t *fsm /**< finite state machine */)
 {

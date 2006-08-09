@@ -201,11 +201,11 @@ ec_sdo_entry_t;
 
 typedef struct
 {
-    struct list_head list;
-    uint16_t index;
-    uint8_t subindex;
-    uint8_t *data;
-    size_t size;
+    struct list_head list; /**< list item */
+    uint16_t index; /**< SDO index */
+    uint8_t subindex; /**< SDO subindex */
+    uint8_t *data; /**< pointer to SDO data */
+    size_t size; /**< size of SDO data */
 }
 ec_sdo_data_t;
 
@@ -333,9 +333,7 @@ int ec_slave_locate_string(ec_slave_t *, unsigned int, char **);
 uint16_t ec_slave_calc_sync_size(const ec_slave_t *,
                                  const ec_sii_sync_t *);
 
-void ec_slave_print(const ec_slave_t *, unsigned int);
 int ec_slave_is_coupler(const ec_slave_t *);
-//int ec_slave_check_crc(ec_slave_t *);
 
 /*****************************************************************************/
 

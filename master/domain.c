@@ -159,7 +159,7 @@ void ec_domain_clear(struct kobject *kobj /**< kobject of the domain */)
 
 int ec_domain_reg_pdo_entry(ec_domain_t *domain, /**< EtherCAT domain */
                             ec_slave_t *slave, /**< slave */
-                            const ec_sii_pdo_t *pdo,
+                            const ec_sii_pdo_t *pdo, /**< PDO */
                             const ec_sii_pdo_entry_t *entry,
                             /**< PDO registration entry */
                             void **data_ptr /**< pointer to the process data

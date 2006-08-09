@@ -916,7 +916,7 @@ uint16_t ec_slave_calc_sync_size(const ec_slave_t *slave,
    \return non-zero if slave is a bus coupler
 */
 
-int ec_slave_is_coupler(const ec_slave_t *slave)
+int ec_slave_is_coupler(const ec_slave_t *slave /**< EtherCAT slave */)
 {
     // TODO: Better bus coupler criterion
     return slave->sii_vendor_id == 0x00000002
