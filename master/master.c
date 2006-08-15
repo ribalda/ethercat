@@ -227,8 +227,8 @@ void ec_master_reset(ec_master_t *master /**< EtherCAT master */)
     // empty datagram queue
     list_for_each_entry_safe(datagram, next_c,
                              &master->datagram_queue, queue) {
-        list_del_init(&datagram->queue);
         datagram->state = EC_DATAGRAM_ERROR;
+        list_del_init(&datagram->queue);
     }
 
     // clear domains
@@ -422,6 +422,10 @@ void ec_master_receive_datagrams(ec_master_t *master, /**< EtherCAT master */
     unsigned int cmd_follows, matched;
     const uint8_t *cur_data;
     ec_datagram_t *datagram;
+    cycles_t cycles_received, cycles_timeout;
+
+    cycles_received = get_cycles();
+    cycles_timeout = EC_IO_TIMEOUT * cpu_khz / 1000;
 
     if (unlikely(size < EC_FRAME_HEADER_SIZE)) {
         master->stats.corrupted++;
@@ -477,7 +481,7 @@ void ec_master_receive_datagrams(ec_master_t *master, /**< EtherCAT master */
             continue;
         }
 
-        // copy received data in the datagram memory
+        // copy received data into the datagram memory
         memcpy(datagram->data, cur_data, data_size);
         cur_data += data_size;
 
@@ -488,6 +492,12 @@ void ec_master_receive_datagrams(ec_master_t *master, /**< EtherCAT master */
         // dequeue the received datagram
         datagram->state = EC_DATAGRAM_RECEIVED;
         list_del_init(&datagram->queue);
+
+        // was the datagram reception delayed?
+        if (cycles_received - datagram->cycles_sent > cycles_timeout) {
+            master->stats.delayed++;
+            ec_master_output_stats(master);
+        }
     }
 }
 
@@ -1237,50 +1247,23 @@ void ecrt_master_deactivate(ec_master_t *master /**< EtherCAT master */)
 
 void ec_master_sync_io(ec_master_t *master /**< EtherCAT master */)
 {
-    ec_datagram_t *datagram, *n;
-    unsigned int datagrams_sent;
-    cycles_t cycles_start, cycles_end, cycles_timeout;
+    ec_datagram_t *datagram;
+    unsigned int datagrams_waiting;
 
     // send datagrams
     ecrt_master_send(master);
 
-    cycles_start = get_cycles(); // measure io time
-    cycles_timeout = (cycles_t) EC_IO_TIMEOUT * (cpu_khz / 1000);
-
     while (1) { // active waiting
-        ec_device_call_isr(master->device);
+        ecrt_master_receive(master); // receive and dequeue datagrams
 
-        cycles_end = get_cycles(); // take current time
-        if (cycles_end - cycles_start >= cycles_timeout) break; // timeout!
-
-        datagrams_sent = 0;
-        list_for_each_entry_safe(datagram, n, &master->datagram_queue, queue) {
-            if (datagram->state == EC_DATAGRAM_RECEIVED)
-                list_del_init(&datagram->queue);
-            else if (datagram->state == EC_DATAGRAM_SENT)
-                datagrams_sent++;
+        // count number of datagrams still waiting for response
+        datagrams_waiting = 0;
+        list_for_each_entry(datagram, &master->datagram_queue, queue) {
+            datagrams_waiting++;
         }
 
-        if (!datagrams_sent) break;
-    }
-
-    // timeout; dequeue all datagrams
-    list_for_each_entry_safe(datagram, n, &master->datagram_queue, queue) {
-        switch (datagram->state) {
-            case EC_DATAGRAM_SENT:
-            case EC_DATAGRAM_QUEUED:
-                datagram->state = EC_DATAGRAM_TIMED_OUT;
-                master->stats.timeouts++;
-                ec_master_output_stats(master);
-                break;
-            case EC_DATAGRAM_RECEIVED:
-                master->stats.delayed++;
-                ec_master_output_stats(master);
-                break;
-            default:
-                break;
-        }
-        list_del_init(&datagram->queue);
+        // if there are no more datagrams waiting, abort loop.
+        if (!datagrams_waiting) break;
     }
 }
 
@@ -1327,11 +1310,6 @@ void ecrt_master_receive(ec_master_t *master /**< EtherCAT master */)
 
     cycles_received = get_cycles();
     cycles_timeout = EC_IO_TIMEOUT * cpu_khz / 1000;
-
-    // dequeue all received datagrams
-    list_for_each_entry_safe(datagram, next, &master->datagram_queue, queue)
-        if (datagram->state == EC_DATAGRAM_RECEIVED)
-            list_del_init(&datagram->queue);
 
     // dequeue all datagrams that timed out
     list_for_each_entry_safe(datagram, next, &master->datagram_queue, queue) {
