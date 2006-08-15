@@ -56,7 +56,7 @@ echo "EtherCAT installer - Kernel: $KERNEL"
 # Update module dependencies
 
 echo "  Building module dependencies"
-depmod
+/sbin/depmod
 
 #------------------------------------------------------------------------------
 
