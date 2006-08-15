@@ -648,67 +648,6 @@ size_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
 
 /*****************************************************************************/
 
-#if 0
-
-/**
-   Outputs the values of the CRC faoult counters and resets them.
-   \return 0 in case of success, else < 0
-*/
-
-int ec_slave_check_crc(ec_slave_t *slave /**< EtherCAT slave */)
-{
-    ec_datagram_t *datagram;
-
-    datagram = &slave->master->simple_datagram;
-
-    if (ec_datagram_nprd(datagram, slave->station_address, 0x0300, 4))
-        return -1;
-    if (unlikely(ec_master_simple_io(slave->master, datagram))) {
-        EC_WARN("Reading CRC fault counters failed on slave %i!\n",
-                slave->ring_position);
-        return -1;
-    }
-
-    if (!EC_READ_U32(datagram->data)) return 0; // no CRC faults
-
-    if (EC_READ_U8(datagram->data))
-        EC_WARN("%3i RX-error%s on slave %i, channel A.\n",
-                EC_READ_U8(datagram->data),
-                EC_READ_U8(datagram->data) == 1 ? "" : "s",
-                slave->ring_position);
-    if (EC_READ_U8(datagram->data + 1))
-        EC_WARN("%3i invalid frame%s on slave %i, channel A.\n",
-                EC_READ_U8(datagram->data + 1),
-                EC_READ_U8(datagram->data + 1) == 1 ? "" : "s",
-                slave->ring_position);
-    if (EC_READ_U8(datagram->data + 2))
-        EC_WARN("%3i RX-error%s on slave %i, channel B.\n",
-                EC_READ_U8(datagram->data + 2),
-                EC_READ_U8(datagram->data + 2) == 1 ? "" : "s",
-                slave->ring_position);
-    if (EC_READ_U8(datagram->data + 3))
-        EC_WARN("%3i invalid frame%s on slave %i, channel B.\n",
-                EC_READ_U8(datagram->data + 3),
-                EC_READ_U8(datagram->data + 3) == 1 ? "" : "s",
-                slave->ring_position);
-
-    // reset CRC counters
-    if (ec_datagram_npwr(datagram, slave->station_address, 0x0300, 4))
-        return -1;
-    EC_WRITE_U32(datagram->data, 0x00000000);
-    if (unlikely(ec_master_simple_io(slave->master, datagram))) {
-        EC_WARN("Resetting CRC fault counters failed on slave %i!\n",
-                slave->ring_position);
-        return -1;
-    }
-
-    return 0;
-}
-
-#endif
-
-/*****************************************************************************/
-
 /**
    Schedules an EEPROM write operation.
    \return 0 in case of success, else < 0
