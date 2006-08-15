@@ -242,7 +242,6 @@ void ec_master_reset(ec_master_t *master /**< EtherCAT master */)
     master->debug_level = 0;
 
     master->stats.timeouts = 0;
-    master->stats.delayed = 0;
     master->stats.corrupted = 0;
     master->stats.skipped = 0;
     master->stats.unmatched = 0;
@@ -422,10 +421,6 @@ void ec_master_receive_datagrams(ec_master_t *master, /**< EtherCAT master */
     unsigned int cmd_follows, matched;
     const uint8_t *cur_data;
     ec_datagram_t *datagram;
-    cycles_t cycles_received, cycles_timeout;
-
-    cycles_received = get_cycles();
-    cycles_timeout = EC_IO_TIMEOUT * cpu_khz / 1000;
 
     if (unlikely(size < EC_FRAME_HEADER_SIZE)) {
         master->stats.corrupted++;
@@ -492,12 +487,6 @@ void ec_master_receive_datagrams(ec_master_t *master, /**< EtherCAT master */
         // dequeue the received datagram
         datagram->state = EC_DATAGRAM_RECEIVED;
         list_del_init(&datagram->queue);
-
-        // was the datagram reception delayed?
-        if (cycles_received - datagram->cycles_sent > cycles_timeout) {
-            master->stats.delayed++;
-            ec_master_output_stats(master);
-        }
     }
 }
 
@@ -545,10 +534,6 @@ void ec_master_output_stats(ec_master_t *master /**< EtherCAT master */)
         if (master->stats.timeouts) {
             EC_WARN("%i datagrams TIMED OUT!\n", master->stats.timeouts);
             master->stats.timeouts = 0;
-        }
-        if (master->stats.delayed) {
-            EC_WARN("%i frame(s) DELAYED!\n", master->stats.delayed);
-            master->stats.delayed = 0;
         }
         if (master->stats.corrupted) {
             EC_WARN("%i frame(s) CORRUPTED!\n", master->stats.corrupted);
