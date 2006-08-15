@@ -105,7 +105,7 @@ int ec_eoe_init(ec_eoe_t *eoe /**< EoE handler */)
     eoe->tx_counter = 0;
     eoe->rx_rate = 0;
     eoe->tx_rate = 0;
-    eoe->t_last = 0;
+    eoe->rate_jiffies = 0;
 
     if (!(eoe->dev =
           alloc_netdev(sizeof(ec_eoe_t *), "eoe%d", ether_setup))) {
@@ -278,21 +278,18 @@ int ec_eoe_send(ec_eoe_t *eoe /**< EoE handler */)
 
 void ec_eoe_run(ec_eoe_t *eoe /**< EoE handler */)
 {
-    cycles_t t_now;
-
     if (!eoe->opened) return;
 
     // call state function
     eoe->state(eoe);
 
     // update statistics
-    t_now = get_cycles();
-    if ((u32) (t_now - eoe->t_last) > cpu_khz * 1000) {
+    if (jiffies - eoe->rate_jiffies > HZ) {
         eoe->rx_rate = eoe->rx_counter * 8;
         eoe->tx_rate = eoe->tx_counter * 8;
         eoe->rx_counter = 0;
         eoe->tx_counter = 0;
-        eoe->t_last = t_now;
+        eoe->rate_jiffies = jiffies;
     }
 }
 

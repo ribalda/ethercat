@@ -69,7 +69,7 @@ struct ec_domain
     struct list_head data_regs; /**< PDO data registrations */
     unsigned int working_counter_changes; /**< working counter changes
                                              since last notification */
-    cycles_t t_last; /**< time of last notification */
+    unsigned long notify_jiffies; /**< time of last notification */
 };
 
 /*****************************************************************************/

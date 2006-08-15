@@ -75,7 +75,7 @@ struct ec_fsm
 
     void (*change_state)(ec_fsm_t *); /**< slave state change state function */
     ec_slave_state_t change_new; /**< input: new state */
-    cycles_t change_start; /**< change start */
+    unsigned long change_jiffies; /**< change timer */
 
     void (*coe_state)(ec_fsm_t *); /**< CoE state function */
     ec_sdo_data_t *sdodata; /**< input/output: SDO data object */

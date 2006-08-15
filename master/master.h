@@ -78,7 +78,7 @@ typedef struct
                              requeued when not yet received) */
     unsigned int unmatched; /**< unmatched datagrams (received, but not
                                queued any longer) */
-    cycles_t t_last; /**< time of last output */
+    unsigned long output_jiffies; /**< time of last output */
 }
 ec_stats_t;
 

@@ -246,7 +246,7 @@ void ec_master_reset(ec_master_t *master /**< EtherCAT master */)
     master->stats.corrupted = 0;
     master->stats.skipped = 0;
     master->stats.unmatched = 0;
-    master->stats.t_last = 0;
+    master->stats.output_jiffies = 0;
 
     master->mode = EC_MASTER_MODE_ORPHANED;
 
@@ -316,11 +316,11 @@ void ec_master_send_datagrams(ec_master_t *master /**< EtherCAT master */)
     size_t datagram_size;
     uint8_t *frame_data, *cur_data;
     void *follows_word;
-    cycles_t t_start, t_end;
+    cycles_t cycles_start, cycles_end;
     unsigned int frame_count, more_datagrams_waiting;
 
     frame_count = 0;
-    t_start = get_cycles();
+    cycles_start = get_cycles();
 
     if (unlikely(master->debug_level > 1))
         EC_DBG("ec_master_send_datagrams\n");
@@ -345,7 +345,7 @@ void ec_master_send_datagrams(ec_master_t *master /**< EtherCAT master */)
             }
 
             datagram->state = EC_DATAGRAM_SENT;
-            datagram->t_sent = t_start;
+            datagram->cycles_sent = cycles_start;
             datagram->index = master->datagram_index++;
 
             if (unlikely(master->debug_level > 1))
@@ -397,9 +397,10 @@ void ec_master_send_datagrams(ec_master_t *master /**< EtherCAT master */)
     while (more_datagrams_waiting);
 
     if (unlikely(master->debug_level > 1)) {
-        t_end = get_cycles();
+        cycles_end = get_cycles();
         EC_DBG("ec_master_send_datagrams sent %i frames in %ius.\n",
-               frame_count, (unsigned int) (t_end - t_start) * 1000 / cpu_khz);
+               frame_count,
+               (unsigned int) (cycles_end - cycles_start) * 1000 / cpu_khz);
     }
 }
 
@@ -528,9 +529,9 @@ int ec_master_bus_scan(ec_master_t *master /**< EtherCAT master */)
 
 void ec_master_output_stats(ec_master_t *master /**< EtherCAT master */)
 {
-    cycles_t t_now = get_cycles();
+    if (unlikely(jiffies - master->stats.output_jiffies >= HZ)) {
+        master->stats.output_jiffies = jiffies;
 
-    if (unlikely((u32) (t_now - master->stats.t_last) / cpu_khz > 1000)) {
         if (master->stats.timeouts) {
             EC_WARN("%i datagrams TIMED OUT!\n", master->stats.timeouts);
             master->stats.timeouts = 0;
@@ -551,7 +552,6 @@ void ec_master_output_stats(ec_master_t *master /**< EtherCAT master */)
             EC_WARN("%i datagram(s) UNMATCHED!\n", master->stats.unmatched);
             master->stats.unmatched = 0;
         }
-        master->stats.t_last = t_now;
     }
 }
 
@@ -610,25 +610,25 @@ void ec_master_idle_stop(ec_master_t *master /**< EtherCAT master */)
 void ec_master_idle_run(void *data /**< master pointer */)
 {
     ec_master_t *master = (ec_master_t *) data;
-    cycles_t start, end;
+    cycles_t cycles_start, cycles_end;
 
     // aquire master lock
     spin_lock_bh(&master->internal_lock);
 
-    start = get_cycles();
+    cycles_start = get_cycles();
     ecrt_master_receive(master);
 
     // execute master state machine
     ec_fsm_execute(&master->fsm);
 
     ecrt_master_send(master);
-    end = get_cycles();
+    cycles_end = get_cycles();
 
     // release master lock
     spin_unlock_bh(&master->internal_lock);
 
     master->idle_cycle_times[master->idle_cycle_time_pos]
-        = (u32) (end - start) * 1000 / cpu_khz;
+        = (u32) (cycles_end - cycles_start) * 1000 / cpu_khz;
     master->idle_cycle_time_pos++;
     master->idle_cycle_time_pos %= HZ;
 
@@ -958,7 +958,8 @@ void ec_master_eoe_run(unsigned long data /**< master pointer */)
     ec_master_t *master = (ec_master_t *) data;
     ec_eoe_t *eoe;
     unsigned int active = 0;
-    cycles_t start, end;
+    cycles_t cycles_start, cycles_end;
+    unsigned long restart_jiffies;
 
     list_for_each_entry(eoe, &master->eoe_handlers, list) {
         if (ec_eoe_active(eoe)) active++;
@@ -977,8 +978,8 @@ void ec_master_eoe_run(unsigned long data /**< master pointer */)
     else
         goto queue_timer;
 
-    // actual EoE stuff
-    start = get_cycles();
+    // actual EoE processing
+    cycles_start = get_cycles();
     ecrt_master_receive(master);
 
     list_for_each_entry(eoe, &master->eoe_handlers, list) {
@@ -986,7 +987,7 @@ void ec_master_eoe_run(unsigned long data /**< master pointer */)
     }
 
     ecrt_master_send(master);
-    end = get_cycles();
+    cycles_end = get_cycles();
 
     // release lock...
     if (master->mode == EC_MASTER_MODE_OPERATION) {
@@ -997,12 +998,14 @@ void ec_master_eoe_run(unsigned long data /**< master pointer */)
     }
 
     master->eoe_cycle_times[master->eoe_cycle_time_pos]
-        = (u32) (end - start) * 1000 / cpu_khz;
+        = (u32) (cycles_end - cycles_start) * 1000 / cpu_khz;
     master->eoe_cycle_time_pos++;
     master->eoe_cycle_time_pos %= HZ;
 
  queue_timer:
-    master->eoe_timer.expires += HZ / EC_EOE_FREQUENCY;
+    restart_jiffies = HZ / EC_EOE_FREQUENCY;
+    if (!restart_jiffies) restart_jiffies = 1;
+    master->eoe_timer.expires += restart_jiffies;
     add_timer(&master->eoe_timer);
 }
 
@@ -1047,7 +1050,7 @@ void ec_master_calc_addressing(ec_master_t *master /**< EtherCAT master */)
 void ec_master_measure_bus_time(ec_master_t *master)
 {
     ec_datagram_t datagram;
-    cycles_t t_start, t_end, t_timeout;
+    cycles_t cycles_start, cycles_end, cycles_timeout;
     uint32_t times[100], sum, min, max, i;
 
     ec_datagram_init(&datagram);
@@ -1058,7 +1061,7 @@ void ec_master_measure_bus_time(ec_master_t *master)
         return;
     }
 
-    t_timeout = (cycles_t) EC_IO_TIMEOUT * (cpu_khz / 1000);
+    cycles_timeout = (cycles_t) EC_IO_TIMEOUT * (cpu_khz / 1000);
 
     sum = 0;
     min = 0xFFFFFFFF;
@@ -1067,11 +1070,11 @@ void ec_master_measure_bus_time(ec_master_t *master)
     for (i = 0; i < 100; i++) {
         ec_master_queue_datagram(master, &datagram);
         ecrt_master_send(master);
-        t_start = get_cycles();
+        cycles_start = get_cycles();
 
         while (1) { // active waiting
             ec_device_call_isr(master->device);
-            t_end = get_cycles(); // take current time
+            cycles_end = get_cycles(); // take current time
 
             if (datagram.state == EC_DATAGRAM_RECEIVED) {
                 break;
@@ -1080,13 +1083,13 @@ void ec_master_measure_bus_time(ec_master_t *master)
                 EC_WARN("Failed to measure bus time.\n");
                 goto error;
             }
-            else if (t_end - t_start >= t_timeout) {
+            else if (cycles_end - cycles_start >= cycles_timeout) {
                 EC_WARN("Timeout while measuring bus time.\n");
                 goto error;
             }
         }
 
-        times[i] = (unsigned int) (t_end - t_start) * 1000 / cpu_khz;
+        times[i] = (unsigned int) (cycles_end - cycles_start) * 1000 / cpu_khz;
         sum += times[i];
         if (times[i] > max) max = times[i];
         if (times[i] < min) min = times[i];
@@ -1236,19 +1239,19 @@ void ec_master_sync_io(ec_master_t *master /**< EtherCAT master */)
 {
     ec_datagram_t *datagram, *n;
     unsigned int datagrams_sent;
-    cycles_t t_start, t_end, t_timeout;
+    cycles_t cycles_start, cycles_end, cycles_timeout;
 
     // send datagrams
     ecrt_master_send(master);
 
-    t_start = get_cycles(); // measure io time
-    t_timeout = (cycles_t) EC_IO_TIMEOUT * (cpu_khz / 1000);
+    cycles_start = get_cycles(); // measure io time
+    cycles_timeout = (cycles_t) EC_IO_TIMEOUT * (cpu_khz / 1000);
 
     while (1) { // active waiting
         ec_device_call_isr(master->device);
 
-        t_end = get_cycles(); // take current time
-        if (t_end - t_start >= t_timeout) break; // timeout!
+        cycles_end = get_cycles(); // take current time
+        if (cycles_end - cycles_start >= cycles_timeout) break; // timeout!
 
         datagrams_sent = 0;
         list_for_each_entry_safe(datagram, n, &master->datagram_queue, queue) {
@@ -1318,12 +1321,12 @@ void ecrt_master_send(ec_master_t *master /**< EtherCAT master */)
 void ecrt_master_receive(ec_master_t *master /**< EtherCAT master */)
 {
     ec_datagram_t *datagram, *next;
-    cycles_t t_received, t_timeout;
+    cycles_t cycles_received, cycles_timeout;
 
     ec_device_call_isr(master->device);
 
-    t_received = get_cycles();
-    t_timeout = EC_IO_TIMEOUT * cpu_khz / 1000;
+    cycles_received = get_cycles();
+    cycles_timeout = EC_IO_TIMEOUT * cpu_khz / 1000;
 
     // dequeue all received datagrams
     list_for_each_entry_safe(datagram, next, &master->datagram_queue, queue)
@@ -1335,7 +1338,7 @@ void ecrt_master_receive(ec_master_t *master /**< EtherCAT master */)
         switch (datagram->state) {
             case EC_DATAGRAM_SENT:
             case EC_DATAGRAM_QUEUED:
-                if (t_received - datagram->t_sent > t_timeout) {
+                if (cycles_received - datagram->cycles_sent > cycles_timeout) {
                     list_del_init(&datagram->queue);
                     datagram->state = EC_DATAGRAM_TIMED_OUT;
                     master->stats.timeouts++;
@@ -1360,7 +1363,7 @@ void ecrt_master_receive(ec_master_t *master /**< EtherCAT master */)
 void ecrt_master_prepare(ec_master_t *master /**< EtherCAT master */)
 {
     ec_domain_t *domain;
-    cycles_t t_start, t_end, t_timeout;
+    cycles_t cycles_start, cycles_end, cycles_timeout;
 
     // queue datagrams of all domains
     list_for_each_entry(domain, &master->domains, list)
@@ -1368,13 +1371,13 @@ void ecrt_master_prepare(ec_master_t *master /**< EtherCAT master */)
 
     ecrt_master_send(master);
 
-    t_start = get_cycles(); // take sending time
-    t_timeout = (cycles_t) EC_IO_TIMEOUT * (cpu_khz / 1000);
+    cycles_start = get_cycles(); // take sending time
+    cycles_timeout = (cycles_t) EC_IO_TIMEOUT * (cpu_khz / 1000);
 
     // active waiting
     while (1) {
-        t_end = get_cycles();
-        if (t_end - t_start >= t_timeout) break;
+        cycles_end = get_cycles();
+        if (cycles_end - cycles_start >= cycles_timeout) break;
     }
 }
 

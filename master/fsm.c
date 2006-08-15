@@ -1779,7 +1779,7 @@ void ec_fsm_change_start(ec_fsm_t *fsm /**< finite state machine */)
     ec_datagram_t *datagram = &fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
-    fsm->change_start = get_cycles();
+    fsm->change_jiffies = jiffies;
 
     // write new state to slave
     ec_datagram_npwr(datagram, slave->station_address, 0x0120, 2);
@@ -1807,7 +1807,7 @@ void ec_fsm_change_check(ec_fsm_t *fsm /**< finite state machine */)
     }
 
     if (datagram->working_counter != 1) {
-        if (get_cycles() - fsm->change_start >= (cycles_t) 100 * cpu_khz) {
+        if (jiffies - fsm->change_jiffies >= 3 * HZ) {
             fsm->change_state = ec_fsm_error;
             EC_ERR("Failed to set state 0x%02X on slave %i: Slave did not"
                    " respond.\n", fsm->change_new, fsm->slave->ring_position);
@@ -1821,7 +1821,7 @@ void ec_fsm_change_check(ec_fsm_t *fsm /**< finite state machine */)
         return;
     }
 
-    fsm->change_start = get_cycles();
+    fsm->change_jiffies = jiffies;
 
     // read AL status from slave
     ec_datagram_nprd(datagram, slave->station_address, 0x0130, 2);
@@ -1869,7 +1869,7 @@ void ec_fsm_change_status(ec_fsm_t *fsm /**< finite state machine */)
         return;
     }
 
-    if (get_cycles() - fsm->change_start >= (cycles_t) 10 * cpu_khz) {
+    if (jiffies - fsm->change_jiffies >= 100 * HZ / 1000) { // 100ms
         // timeout while checking
         fsm->change_state = ec_fsm_error;
         EC_ERR("Timeout while setting state 0x%02X on slave %i.\n",
@@ -1978,7 +1978,7 @@ void ec_fsm_change_ack(ec_fsm_t *fsm /**< finite state machine */)
         return;
     }
 
-    fsm->change_start = get_cycles();
+    fsm->change_jiffies = jiffies;
 
     // read new AL status
     ec_datagram_nprd(datagram, slave->station_address, 0x0130, 2);
@@ -2014,7 +2014,7 @@ void ec_fsm_change_check_ack(ec_fsm_t *fsm /**< finite state machine */)
         return;
     }
 
-    if (get_cycles() - fsm->change_start >= (cycles_t) 100 * cpu_khz) {
+    if (jiffies - fsm->change_jiffies >= 100 * HZ / 1000) { // 100ms
         // timeout while checking
         slave->current_state = EC_SLAVE_STATE_UNKNOWN;
         fsm->change_state = ec_fsm_error;
