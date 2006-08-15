@@ -63,8 +63,8 @@ uint32_t k_pos;
 uint8_t k_stat;
 
 ec_pdo_reg_t domain1_pdos[] = {
-    {"1", Beckhoff_EL4132_Output1, &r_ana_out},
-    {"8", Beckhoff_EL5001_Value, NULL},
+    {"2", Beckhoff_EL4132_Output1, &r_ana_out},
+    {"3", Beckhoff_EL5001_Value, NULL},
     {}
 };
 
@@ -148,7 +148,7 @@ int __init init_mini_module(void)
         goto out_release_master;
     }
 
-    if (!(slave = ecrt_master_get_slave(master, "8")))
+    if (!(slave = ecrt_master_get_slave(master, "3")))
         goto out_release_master;
 
     if (ecrt_slave_conf_sdo8(slave, 0x4061, 1, 0))
