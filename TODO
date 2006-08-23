@@ -10,9 +10,10 @@ Important things to do:
 
 * Add Kobjects in constructors.
 
-* Read AL Status Code with AL Control Response.
+* Read AL Status Code with AL Control Response (if possible?)
 
 * Coupling of EoE handlers before configuring slaves.
+  (avoiding duplicate configuration)
 
 * SysFS interface
   - Add secondary slave address
@@ -24,11 +25,11 @@ Important things to do:
 
 * Implement eepro100 driver
 
+* Progress bar in ecrt.
+
 -------------------------------------------------------------------------------
 
 Not-so-important things to do:
-
-* User space tool for configuration
 
 * Calculate bus topology
 
