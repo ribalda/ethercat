@@ -45,11 +45,34 @@
 
 /** \cond */
 
+#define Beckhoff_EL1004_Inputs 0x00000002, 0x03EC3052, 0x3101, 1
+
+#define Beckhoff_EL1014_Inputs 0x00000002, 0x03F63052, 0x3101, 1
+
+#define Beckhoff_EL2004_Outputs 0x00000002, 0x07D43052, 0x3001, 1
+
+#define Beckhoff_EL2032_Outputs 0x00000002, 0x07F03052, 0x3001, 1
+
+#define Beckhoff_EL3102_Status1 0x00000002, 0x0C1E3052, 0x3101, 1
+#define Beckhoff_EL3102_Input1 0x00000002, 0x0C1E3052, 0x3101, 2
+#define Beckhoff_EL3102_Status2 0x00000002, 0x0C1E3052, 0x3102, 1
+#define Beckhoff_EL3102_Input2 0x00000002, 0x0C1E3052, 0x3102, 2
+
+#define Beckhoff_EL3162_Status1 0x00000002, 0x0C5A3052, 0x3101, 1
+#define Beckhoff_EL3162_Input1 0x00000002, 0x0C5A3052, 0x3101, 2
+#define Beckhoff_EL3162_Status2 0x00000002, 0x0C5A3052, 0x3102, 1
+#define Beckhoff_EL3162_Input2 0x00000002, 0x0C5A3052, 0x3102, 2
+
+#define Beckhoff_EL4102_Output1 0x00000002, 0x10063052, 0x6411, 1
+#define Beckhoff_EL4102_Output2 0x00000002, 0x10063052, 0x6411, 2
+
 #define Beckhoff_EL4132_Output1 0x00000002, 0x10243052, 0x6411, 1
 #define Beckhoff_EL4132_Output2 0x00000002, 0x10243052, 0x6411, 2
 
 #define Beckhoff_EL5001_Status 0x00000002, 0x13893052, 0x3101, 1
 #define Beckhoff_EL5001_Value  0x00000002, 0x13893052, 0x3101, 2
+
+#define Beckhoff_EL5101_Value 0x00000002, 0x13ED3052, 0x6000, 2
 
 /** \endcond */
 
