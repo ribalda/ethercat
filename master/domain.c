@@ -193,7 +193,7 @@ int ec_domain_reg_pdo_entry(ec_domain_t *domain, /**< EtherCAT domain */
     list_for_each_entry(other_pdo, &slave->sii_pdos, list) {
         if (other_pdo->sync_index != sync->index) continue;
 
-        list_for_each_entry(other_entry, &pdo->entries, list) {
+        list_for_each_entry(other_entry, &other_pdo->entries, list) {
             if (other_entry == entry) {
                 byte_offset = bit_offset / 8;
                 break;
