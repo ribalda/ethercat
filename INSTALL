@@ -7,7 +7,10 @@ $Id$
 -------------------------------------------------------------------------------
 
 Building and installing
-==========================
+=======================
+
+The first two steps are only necessary, if the kernel sources to compile
+against are not those of the running kernel.
 
 1) Create a copy of the configuration template:
 
@@ -28,7 +31,9 @@ Building and installing
     - /etc/init.d/ethercat    (startup script)
     - /usr/sbin/rcethercat    (link to startup script)
 
-  The modules will be placed in /lib/modules/<KERNEL>/kernel/drivers/net
+  The modules will be placed in /lib/modules/<KERNEL>/ethercat
   (where <KERNEL> is the Linux kernel version configured in ethercat.conf).
+
+5) Adjust the configuration file /etc/sysconfig/ethercat to your needs.
 
 -------------------------------------------------------------------------------
