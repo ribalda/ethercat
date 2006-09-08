@@ -53,19 +53,6 @@ void __exit ec_cleanup_module(void);
 
 /*****************************************************************************/
 
-/**
-   Compile version info.
-*/
-
-#define COMPILE_INFO EC_STR(EC_MASTER_VERSION_MAIN) \
-                     "." EC_STR(EC_MASTER_VERSION_SUB) \
-                     " (" EC_MASTER_VERSION_EXTRA ")" \
-                     " - rev. " EC_STR(SVNREV) \
-                     ", compiled by " EC_STR(USER) \
-                     " at " __DATE__ " " __TIME__
-
-/*****************************************************************************/
-
 static int ec_master_count = 1; /**< parameter value, number of masters */
 static int ec_eoeif_count = 0; /**< parameter value, number of EoE interf. */
 static struct list_head ec_masters; /**< list of masters */
@@ -80,7 +67,7 @@ module_param(ec_eoeif_count, int, S_IRUGO);
 MODULE_AUTHOR("Florian Pose <fp@igh-essen.com>");
 MODULE_DESCRIPTION("EtherCAT master driver module");
 MODULE_LICENSE("GPL");
-MODULE_VERSION(COMPILE_INFO);
+MODULE_VERSION(EC_COMPILE_INFO);
 MODULE_PARM_DESC(ec_master_count, "number of EtherCAT masters to initialize");
 MODULE_PARM_DESC(ec_eoeif_count, "number of EoE interfaces per master");
 
@@ -99,7 +86,7 @@ int __init ec_init_module(void)
     unsigned int i;
     ec_master_t *master, *next;
 
-    EC_INFO("Master driver, %s\n", COMPILE_INFO);
+    EC_INFO("Master driver, %s\n", EC_COMPILE_INFO);
 
     if (ec_master_count < 1) {
         EC_ERR("Error - Invalid ec_master_count: %i\n", ec_master_count);

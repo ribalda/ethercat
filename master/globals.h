@@ -56,6 +56,15 @@
 /** master extra version (just a string) */
 #define EC_MASTER_VERSION_EXTRA "trunk"
 
+/** Compile version info. */
+
+#define EC_COMPILE_INFO EC_STR(EC_MASTER_VERSION_MAIN) \
+                        "." EC_STR(EC_MASTER_VERSION_SUB) \
+                        " (" EC_MASTER_VERSION_EXTRA ")" \
+                        " - rev. " EC_STR(SVNREV) \
+                        ", compiled by " EC_STR(USER) \
+                        " at " __DATE__ " " __TIME__
+
 /** maximum number of FMMUs per slave */
 #define EC_MAX_FMMUS 16
 
