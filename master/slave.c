@@ -530,8 +530,10 @@ size_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
     off += ec_state_string(slave->current_state, buffer + off);
     off += sprintf(buffer + off, "\nRing position: %i\n",
                    slave->ring_position);
-    off += sprintf(buffer + off, "Advanced position: %i:%i\n\n",
+    off += sprintf(buffer + off, "Advanced position: %i:%i\n",
                    slave->coupler_index, slave->coupler_subindex);
+    off += sprintf(buffer + off, "Coupler: %s\n\n",
+                   ec_slave_is_coupler(slave) ? "yes" : "no");
 
     off += sprintf(buffer + off, "Data link status:\n");
     for (i = 0; i < 4; i++) {

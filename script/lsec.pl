@@ -37,17 +37,42 @@
 #
 #------------------------------------------------------------------------------
 
+require 'sys/ioctl.ph';
+
 use strict;
 use Getopt::Std;
 
 my $master_index;
 my $master_dir;
+my $term_width;
 
 #------------------------------------------------------------------------------
 
+$term_width = &get_terminal_width;
 &get_options;
 &query_master;
 exit 0;
+
+#------------------------------------------------------------------------------
+
+sub get_terminal_width
+{
+    my $winsize;
+    die "no TIOCGWINSZ " unless defined &TIOCGWINSZ;
+    open(TTY, "+</dev/tty") or die "No tty: $!";
+    unless (ioctl(TTY, &TIOCGWINSZ, $winsize='')) {
+	die sprintf "$0: ioctl TIOCGWINSZ (%08x: $!)\n", &TIOCGWINSZ;
+    }
+    (my $row, my $col, my $xpixel, my $ypixel) = unpack('S4', $winsize);
+    return $col;
+}
+#------------------------------------------------------------------------------
+
+sub print_line
+{
+    for (my $i = 0; $i < $term_width; $i++) {print "-";}
+    print "\n";
+}
 
 #------------------------------------------------------------------------------
 
@@ -94,6 +119,9 @@ sub query_slaves
 			elsif ($line =~ /^State: (.+)$/) {
 				$slave->{'state'} = $1;
 			}
+			elsif ($line =~ /^Coupler: ([a-z]+)$/) {
+				$slave->{'coupler'} = $1;
+			}
 		}
 
 		close INFO;
@@ -106,10 +134,11 @@ sub query_slaves
 
     print "EtherCAT bus listing for master $master_index:\n";
     for $slave (@slaves) {
-		$abs = sprintf "%i", $slave->{'ring_position'};
-		printf(" %3s %8s  %-6s  %s\n",
-			   $abs, $slave->{'advanced_position'},
-			   $slave->{'state'}, $slave->{'name'});
+	print_line if $slave->{'coupler'} eq "yes";
+	$abs = sprintf "%i", $slave->{'ring_position'};
+	printf(" %3s %8s  %-6s  %s\n",
+	       $abs, $slave->{'advanced_position'},
+	       $slave->{'state'}, $slave->{'name'});
     }
 }
 
