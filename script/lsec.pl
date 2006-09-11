@@ -42,6 +42,7 @@ require 'sys/ioctl.ph';
 use strict;
 use Getopt::Std;
 
+my %opt;
 my $master_index;
 my $master_dir;
 my $term_width;
@@ -52,27 +53,6 @@ $term_width = &get_terminal_width;
 &get_options;
 &query_master;
 exit 0;
-
-#------------------------------------------------------------------------------
-
-sub get_terminal_width
-{
-    my $winsize;
-    die "no TIOCGWINSZ " unless defined &TIOCGWINSZ;
-    open(TTY, "+</dev/tty") or die "No tty: $!";
-    unless (ioctl(TTY, &TIOCGWINSZ, $winsize='')) {
-	die sprintf "$0: ioctl TIOCGWINSZ (%08x: $!)\n", &TIOCGWINSZ;
-    }
-    (my $row, my $col, my $xpixel, my $ypixel) = unpack('S4', $winsize);
-    return $col;
-}
-#------------------------------------------------------------------------------
-
-sub print_line
-{
-    for (my $i = 0; $i < $term_width; $i++) {print "-";}
-    print "\n";
-}
 
 #------------------------------------------------------------------------------
 
@@ -91,7 +71,11 @@ sub query_slaves
     my @slaves;
     my $slave;
     my $abs;
-	my $line;
+    my $line;
+    my $ring_cols;
+    my $adv_cols;
+    my $fmt;
+    my $cols;
 
     unless (opendir $dirhandle, $master_dir) {
 		print "Failed to open directory \"$master_dir\".\n";
@@ -132,12 +116,19 @@ sub query_slaves
 
     @slaves = sort { $a->{'ring_position'} <=> $b->{'ring_position'} } @slaves;
 
-    print "EtherCAT bus listing for master $master_index:\n";
+    $ring_cols = 0;
+    $adv_cols = 0;
     for $slave (@slaves) {
-	print_line if $slave->{'coupler'} eq "yes";
-	$abs = sprintf "%i", $slave->{'ring_position'};
-	printf(" %3s %8s  %-6s  %s\n",
-	       $abs, $slave->{'advanced_position'},
+	$cols = length $slave->{'ring_position'};
+	$ring_cols = $cols if ($cols > $ring_cols);
+	$cols = length $slave->{'advanced_position'};
+	$adv_cols = $cols if ($cols > $adv_cols);
+    }
+    $fmt = sprintf " %%%is  %%-%is  %%-6s  %%s\n", $ring_cols, $adv_cols;
+
+    for $slave (@slaves) {
+	&print_line if $slave->{'coupler'} eq "yes" and !defined $opt{n};
+	printf($fmt, $slave->{'ring_position'}, $slave->{'advanced_position'},
 	       $slave->{'state'}, $slave->{'name'});
     }
 }
@@ -146,18 +137,15 @@ sub query_slaves
 
 sub get_options
 {
-    my %opt;
-    my $optret;
+    my $optret = getopts "m:nh", \%opt;
 
-    $optret = getopts "m:h", \%opt;
+    &print_usage if defined $opt{h} or $#ARGV > -1 or !$optret;
 
-    &print_usage if defined $opt{'h'} or $#ARGV > -1 or !$optret;
-
-    if (defined $opt{'m'}) {
-		$master_index = $opt{'m'};
+    if (defined $opt{m}) {
+	$master_index = $opt{m};
     }
     else {
-		$master_index = 0;
+	$master_index = 0;
     }
 }
 
@@ -165,12 +153,34 @@ sub get_options
 
 sub print_usage
 {
-	my $cmd = `basename $0`;
-	chomp $cmd;
+    my $cmd = `basename $0`;
+    chomp $cmd;
     print "Usage: $cmd [OPTIONS]\n";
     print "        -m <IDX>    Query master <IDX>.\n";
+    print "        -n          Display no coupler lines.\n";
     print "        -h          Show this help.\n";
     exit 0;
+}
+
+#------------------------------------------------------------------------------
+
+sub get_terminal_width
+{
+    my $winsize;
+    die "no TIOCGWINSZ " unless defined &TIOCGWINSZ;
+    open(TTY, "+</dev/tty") or die "No tty: $!";
+    unless (ioctl(TTY, &TIOCGWINSZ, $winsize='')) {
+	die sprintf "$0: ioctl TIOCGWINSZ (%08x: $!)\n", &TIOCGWINSZ;
+    }
+    (my $row, my $col, my $xpixel, my $ypixel) = unpack('S4', $winsize);
+    return $col;
+}
+#------------------------------------------------------------------------------
+
+sub print_line
+{
+    for (my $i = 0; $i < $term_width; $i++) {print "-";}
+    print "\n";
 }
 
 #------------------------------------------------------------------------------
