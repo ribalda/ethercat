@@ -74,6 +74,7 @@ int ec_xmldev_init(ec_xmldev_t *xmldev, /**< EtherCAT XML device */
                    dev_t dev_num /**< device number */
                    )
 {
+    atomic_set(&xmldev->available, 1);
     cdev_init(&xmldev->cdev, &fops);
     xmldev->cdev.owner = THIS_MODULE;
     if (cdev_add(&xmldev->cdev,
@@ -97,11 +98,29 @@ void ec_xmldev_clear(ec_xmldev_t *xmldev /**< EtherCAT XML device */)
 
 /*****************************************************************************/
 
+int ec_xmldev_request(ec_xmldev_t *xmldev,
+                      uint32_t vendor_id,
+                      uint32_t product_code
+                      )
+{
+    return 1;
+}
+
+/******************************************************************************
+ * file_operations
+ *****************************************************************************/
+
 int ecxmldev_open(struct inode *inode, struct file *filp)
 {
     ec_xmldev_t *xmldev;
 
     xmldev = container_of(inode->i_cdev, ec_xmldev_t, cdev);
+
+    if (!atomic_dec_and_test(&xmldev->available)) {
+        atomic_inc(&xmldev->available);
+        return -EBUSY;
+    }
+
     filp->private_data = xmldev;
 
     EC_DBG("File opened.\n");
@@ -113,6 +132,8 @@ int ecxmldev_open(struct inode *inode, struct file *filp)
 
 int ecxmldev_release(struct inode *inode, struct file *filp)
 {
+    ec_xmldev_t *xmldev = container_of(inode->i_cdev, ec_xmldev_t, cdev);
+    atomic_inc(&xmldev->available);
     EC_DBG("File closed.\n");
     return 0;
 }
