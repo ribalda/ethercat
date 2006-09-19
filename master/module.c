@@ -56,6 +56,7 @@ void __exit ec_cleanup_module(void);
 static int ec_master_count = 1; /**< parameter value, number of masters */
 static int ec_eoeif_count = 0; /**< parameter value, number of EoE interf. */
 static struct list_head ec_masters; /**< list of masters */
+static dev_t device_number;
 
 /*****************************************************************************/
 
@@ -89,7 +90,12 @@ int __init ec_init_module(void)
     EC_INFO("Master driver, %s\n", EC_COMPILE_INFO);
 
     if (ec_master_count < 1) {
-        EC_ERR("Error - Invalid ec_master_count: %i\n", ec_master_count);
+        EC_ERR("Invalid ec_master_count: %i\n", ec_master_count);
+        goto out_return;
+    }
+
+    if (alloc_chrdev_region(&device_number, 0, ec_master_count, "EtherCAT")) {
+        EC_ERR("Failed to allocate device number!\n");
         goto out_return;
     }
 
@@ -104,7 +110,7 @@ int __init ec_init_module(void)
             goto out_free;
         }
 
-        if (ec_master_init(master, i, ec_eoeif_count))
+        if (ec_master_init(master, i, ec_eoeif_count, device_number))
             goto out_free;
 
         if (kobject_add(&master->kobj)) {
@@ -147,6 +153,8 @@ void __exit ec_cleanup_module(void)
         kobject_del(&master->kobj);
         kobject_put(&master->kobj); // free master
     }
+
+    unregister_chrdev_region(device_number, ec_master_count);
 
     EC_INFO("Master driver cleaned up.\n");
 }

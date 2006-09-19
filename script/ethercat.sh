@@ -49,6 +49,10 @@
 
 #------------------------------------------------------------------------------
 
+device="ecxml"
+
+#------------------------------------------------------------------------------
+
 ETHERCAT_CONFIG=/etc/sysconfig/ethercat
 
 if [ ! -r $ETHERCAT_CONFIG ]; then
@@ -75,7 +79,7 @@ build_eoe_bridge()
 
     # add bridge, if it does not already exist
     if ! /sbin/brctl show | grep -E -q "^$EOE_BRIDGE"; then
-	if ! /sbin/brctl addbr $EOE_BRIDGE; then
+        if ! /sbin/brctl addbr $EOE_BRIDGE; then
 	    /bin/false
 	    rc_status -v
 	    rc_exit
@@ -155,7 +159,8 @@ case "$1" in
 	fi
 
 	if [ -z "$EOE_INTERFACES" ]; then
-	    if [ -n "$EOE_DEVICES" ]; then # support legacy sysconfig files
+            # support legacy sysconfig files
+	    if [ -n "$EOE_DEVICES" ]; then
 		EOE_INTERFACES=$EOE_DEVICES
 	    else
 		EOE_INTERFACES=0
@@ -181,7 +186,16 @@ case "$1" in
 	    rc_exit
 	fi
 
-        # load device module
+	# remove stale device node
+	rm -f /dev/${device}0
+
+	# get dynamic major number
+	major=$(awk "\$2==\"EtherCAT\" {print \$1}" /proc/devices)
+
+	# create character device
+	mknod /dev/${device}0 c $major 0
+
+	# load device module
 	if ! modprobe ec_8139too ec_device_index=$DEVICE_INDEX; then
 	    rmmod ec_master
 	    modprobe 8139too
@@ -190,7 +204,7 @@ case "$1" in
 	    rc_exit
 	fi
 
-        # build EoE bridge
+	# build EoE bridge
 	build_eoe_bridge
 
 	rc_status -v
@@ -199,7 +213,7 @@ case "$1" in
     stop)
 	echo -n "Shutting down EtherCAT master "
 
-        # unload modules
+	# unload modules
 	for mod in ec_8139too ec_master; do
 	    if lsmod | grep "^$mod " > /dev/null; then
 		if ! rmmod $mod; then
@@ -210,9 +224,12 @@ case "$1" in
 	    fi;
 	done
 
+	# remove device node
+	rm -f /dev/${device}0
+
 	sleep 1
 
-        # reload previous modules
+	# reload previous modules
 	if ! modprobe 8139too; then
 	    echo "Warning: Failed to restore 8139too module."
 	fi
@@ -235,7 +252,7 @@ case "$1" in
 	lsmod | grep "^ec_8139too " > /dev/null
 	device_running=$?
 
-        # master module and device module loaded?
+	# master module and device module loaded?
 	test $master_running -eq 0 -a $device_running -eq 0
 
 	rc_status -v

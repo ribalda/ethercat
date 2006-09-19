@@ -43,7 +43,7 @@ ifneq ($(KERNELRELEASE),)
 obj-m := ec_master.o
 
 ec_master-objs := module.o master.o device.o slave.o datagram.o \
-		domain.o mailbox.o ethernet.o debug.o fsm.o
+		domain.o mailbox.o ethernet.o debug.o fsm.o xmldev.o
 
 REV := $(shell svnversion $(src) 2>/dev/null || echo "unknown")
 

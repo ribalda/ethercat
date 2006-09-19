@@ -98,7 +98,8 @@ static struct kobj_type ktype_ec_master = {
 
 int ec_master_init(ec_master_t *master, /**< EtherCAT master */
                    unsigned int index, /**< master index */
-                   unsigned int eoeif_count /**< number of EoE interfaces */
+                   unsigned int eoeif_count, /**< number of EoE interfaces */
+                   dev_t dev_num /**< number for XML cdev's */
                    )
 {
     ec_eoe_t *eoe, *next_eoe;
@@ -131,6 +132,12 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     if (!(master->workqueue = create_singlethread_workqueue("EtherCAT"))) {
         EC_ERR("Failed to create master workqueue.\n");
         goto out_return;
+    }
+
+    // init XML character device
+    if (ec_xmldev_init(&master->xmldev, master, dev_num)) {
+        EC_ERR("Failed to init XML character device.\n");
+        goto out_clear_wq;
     }
 
     // create EoE handlers
@@ -168,6 +175,8 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
         ec_eoe_clear(eoe);
         kfree(eoe);
     }
+    ec_xmldev_clear(&master->xmldev);
+ out_clear_wq:
     destroy_workqueue(master->workqueue);
  out_return:
     return -1;
@@ -191,6 +200,7 @@ void ec_master_clear(struct kobject *kobj /**< kobject of the master */)
     ec_master_reset(master);
     ec_fsm_clear(&master->fsm);
     destroy_workqueue(master->workqueue);
+    ec_xmldev_clear(&master->xmldev);
 
     // clear EoE objects
     list_for_each_entry_safe(eoe, next_eoe, &master->eoe_handlers, list) {
