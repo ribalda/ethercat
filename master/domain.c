@@ -515,9 +515,13 @@ void ecrt_domain_process(ec_domain_t *domain /**< EtherCAT domain */)
     ec_datagram_t *datagram;
 
     working_counter_sum = 0;
+    domain->state = 0;
     list_for_each_entry(datagram, &domain->datagrams, list) {
         if (datagram->state == EC_DATAGRAM_RECEIVED) {
             working_counter_sum += datagram->working_counter;
+        }
+        else {
+            domain->state = -1;
         }
     }
 
@@ -554,13 +558,7 @@ void ecrt_domain_process(ec_domain_t *domain /**< EtherCAT domain */)
 
 int ecrt_domain_state(const ec_domain_t *domain /**< EtherCAT domain */)
 {
-    ec_datagram_t *datagram;
-
-    list_for_each_entry(datagram, &domain->datagrams, list) {
-        if (datagram->state != EC_DATAGRAM_RECEIVED) return -1;
-    }
-
-    return 0;
+    return domain->state;
 }
 
 /*****************************************************************************/

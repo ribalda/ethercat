@@ -66,6 +66,7 @@ struct ec_domain
     struct list_head datagrams; /**< process data datagrams */
     uint32_t base_address; /**< logical offset address of the process data */
     unsigned int response_count; /**< number of responding slaves */
+    unsigned int state; /**< domain error state */
     struct list_head data_regs; /**< PDO data registrations */
     unsigned int working_counter_changes; /**< working counter changes
                                              since last notification */
