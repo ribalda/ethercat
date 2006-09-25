@@ -1,8 +1,8 @@
 #------------------------------------------------------------------------------
 #
-#  Makefile
+#  Makefile.am
 #
-#  RTAI sample module for the IgH EtherCAT master.
+#  IgH EtherCAT master
 #
 #  $Id$
 #
@@ -35,40 +35,57 @@
 #
 #------------------------------------------------------------------------------
 
-ifneq ($(KERNELRELEASE),)
+SUBDIRS = master/ devices/
+
+initdir = $(sysconfdir)/init.d
+sysdir = $(sysconfdir)/sysconfig
+
+include_HEADERS = include/ecdb.h include/ecrt.h
+noinst_SCRIPTS = script/lsec.pl script/ethercat.sh script/sysconfig
+
+MINI_FILES = \
+	examples/mini/Kbuild \
+	examples/mini/Makefile.am \
+	examples/mini/Makefile.in \
+	examples/mini/mini.c
+
+RTAI_FILES = \
+	examples/rtai/Kbuild \
+	examples/rtai/Makefile.am \
+	examples/rtai/Makefile.in \
+	examples/rtai/rtai_sample.c
+
+MSR_FILES = \
+	examples/msr/Kbuild \
+	examples/msr/libm.o_shipped \
+	examples/msr/Makefile.am \
+	examples/msr/Makefile.in \
+	examples/msr/msr_load \
+	examples/msr/msr_param.h \
+	examples/msr/msr_sample.c \
+	examples/msr/msrserv.pl \
+	examples/msr/msr_unload
+
+EXTRA_DIST = $(noinst_SCRIPTS) $(MINI_FILES) $(RTAI_FILES) $(MSR_FILES)
+
+install-data-local:
+	$(mkinstalldirs) $(bindir)
+	$(mkinstalldirs) $(initdir)
+	$(mkinstalldirs) $(sysdir)
+	$(INSTALL_SCRIPT) $(srcdir)/script/lsec.pl $(bindir)/lsec
+	$(INSTALL_SCRIPT) $(srcdir)/script/ethercat.sh $(initdir)/ethercat
+	$(INSTALL_DATA) $(srcdir)/script/sysconfig $(sysdir)/ethercat
+
+uninstall-local:
+	rm -rf $(LINUX_MODULES_DIR)/ethercat
+	rm $(bindir)/lsec
+	rm $(initdir)/ethercat
+	rm $(sysdir)/ethercat
+
+doc:
+	doxygen Doxyfile
+
+cleandoc:
+	@rm -rf documentation
 
 #------------------------------------------------------------------------------
-#  kbuild section
-#------------------------------------------------------------------------------
-
-obj-m := ec_rtai_sample.o
-
-ec_rtai_sample-objs := rtai_sample.o
-
-EXTRA_CFLAGS := -I/usr/realtime/include -mhard-float
-
-#------------------------------------------------------------------------------
-
-else
-
-#------------------------------------------------------------------------------
-#  default section
-#------------------------------------------------------------------------------
-
-ifneq ($(wildcard kernel.conf),)
-include kernel.conf
-else
-KERNEL_DIR := /lib/modules/$(shell uname -r)/build
-endif
-
-CURRENT_DIR := $(shell pwd)
-
-modules:
-	$(MAKE) -C $(KERNEL_DIR) M=$(CURRENT_DIR)
-
-clean:
-	$(MAKE) -C $(KERNEL_DIR) M=$(CURRENT_DIR) clean
-
-#------------------------------------------------------------------------------
-
-endif

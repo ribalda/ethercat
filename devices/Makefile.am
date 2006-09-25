@@ -1,10 +1,10 @@
 #------------------------------------------------------------------------------
 #
-#  Makefile
+#  Makefile.am
 #
-#  Sample module for use with IgH MSR library.
+#  IgH EtherCAT master module
 #
-#  $Id$
+#  $Id: Makefile 545 2006-09-19 13:28:40Z fp $
 #
 #  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
 #
@@ -35,58 +35,22 @@
 #
 #------------------------------------------------------------------------------
 
-MODULE := ec_msr_sample
+EXTRA_DIST = \
+	Kbuild \
+	ecdev.h \
+	8139too.c \
+	original_8139too.c
 
-#------------------------------------------------------------------------------
-#  kbuild section
-#------------------------------------------------------------------------------
+ABSSRCDIR = `cd $(srcdir) && pwd -P`
 
-ifneq ($(KERNELRELEASE),)
+all:
+	$(MAKE) -C "$(LINUX_DIR)" M="$(ABSSRCDIR)" modules
 
-obj-m := $(MODULE).o
+clean-local:
+	$(MAKE) -C "$(LINUX_DIR)" M="$(ABSSRCDIR)" clean
 
-$(MODULE)-objs := msr_sample.o \
-			rt_lib/msr-core/msr_lists.o \
-			rt_lib/msr-core/msr_main.o \
-			rt_lib/msr-core/msr_charbuf.o \
-			rt_lib/msr-core/msr_reg.o \
-			rt_lib/msr-core/msr_interpreter.o \
-			rt_lib/msr-core/msr_messages.o \
-			rt_lib/msr-core/msr_proc.o \
-			rt_lib/msr-core/msr_error_reg.o \
-			rt_lib/msr-utils/msr_utils.o \
-			rt_lib/msr-utils/msr_time.o \
-			rt_lib/msr-math/msr_base64.o \
-			rt_lib/msr-math/msr_hex_bin.o \
-			libm.o
-
-EXTRA_CFLAGS := -I$(src)/rt_lib/msr-include -I/usr/realtime/include \
-		-D_SIMULATION -mhard-float
-
-#------------------------------------------------------------------------------
-#  default section
-#------------------------------------------------------------------------------
-
-else
-
-ifneq ($(wildcard kernel.conf),)
-include kernel.conf
-else
-KERNEL := $(shell uname -r)
-endif
-
-KERNEL_DIR := /lib/modules/$(KERNEL)/build
-CURRENT_DIR := $(shell pwd)
-
-modules:
-	$(MAKE) -C $(KERNEL_DIR) M=$(CURRENT_DIR)
-
-clean:
-	$(MAKE) -C $(KERNEL_DIR) M=$(CURRENT_DIR) clean
-
-install:
-	@./install.sh $(MODULE) $(KERNEL)
-
-endif
+install-data-local:
+	$(MAKE) -C "$(LINUX_DIR)" M="$(ABSSRCDIR)" \
+		INSTALL_MOD_DIR="ethercat" modules_install
 
 #------------------------------------------------------------------------------

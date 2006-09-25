@@ -1,8 +1,8 @@
 #------------------------------------------------------------------------------
 #
-#  Makefile
+#  Kbuild
 #
-#  IgH EtherCAT master
+#  IgH EtherCAT master module
 #
 #  $Id$
 #
@@ -35,48 +35,13 @@
 #
 #------------------------------------------------------------------------------
 
-#------------------------------------------------------------------------------
-#  kbuild section
+obj-m := ec_master.o
 
-ifneq ($(KERNELRELEASE),)
+ec_master-objs := module.o master.o device.o slave.o datagram.o \
+		domain.o mailbox.o ethernet.o debug.o fsm.o xmldev.o
 
-obj-m := master/ devices/
+REV := $(shell svnversion $(src) 2>/dev/null || echo "unknown")
 
-#------------------------------------------------------------------------------
-#  default section
-
-else
-
-ifneq ($(wildcard ethercat.conf),)
-include ethercat.conf
-else
-KERNEL := $(shell uname -r)
-endif
-
-KERNEL_DIR := /lib/modules/$(KERNEL)/build
-CURRENT_DIR := $(shell pwd)
-INSTALL_MOD_DIR := ethercat
-
-modules:
-	$(MAKE) -C $(KERNEL_DIR) M=$(CURRENT_DIR) modules
-
-install: modules_install
-	@script/install.sh $(KERNEL)
-
-modules_install:
-	$(MAKE) -C $(KERNEL_DIR) M=$(CURRENT_DIR) \
-		INSTALL_MOD_DIR=$(INSTALL_MOD_DIR) modules_install
-
-clean: cleandoc
-	$(MAKE) -C $(KERNEL_DIR) M=$(CURRENT_DIR) clean
-	@rm -f Modules.symvers
-
-doc:
-	doxygen Doxyfile
-
-cleandoc:
-	@rm -rf doc
+EXTRA_CFLAGS := -DSVNREV=$(REV) -DUSER=$(USER)
 
 #------------------------------------------------------------------------------
-
-endif

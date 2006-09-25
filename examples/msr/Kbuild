@@ -1,8 +1,6 @@
 #------------------------------------------------------------------------------
 #
-#  Makefile
-#
-#  IgH EtherCAT master module
+#  Kbuild
 #
 #  $Id$
 #
@@ -35,48 +33,26 @@
 #
 #------------------------------------------------------------------------------
 
-#------------------------------------------------------------------------------
-#  kbuild section
+MODULE := ec_msr_sample
 
-ifneq ($(KERNELRELEASE),)
+obj-m := $(MODULE).o
 
-obj-m := ec_master.o
+$(MODULE)-objs := msr_sample.o \
+                        rt_lib/msr-core/msr_lists.o \
+                        rt_lib/msr-core/msr_main.o \
+                        rt_lib/msr-core/msr_charbuf.o \
+                        rt_lib/msr-core/msr_reg.o \
+                        rt_lib/msr-core/msr_interpreter.o \
+                        rt_lib/msr-core/msr_messages.o \
+                        rt_lib/msr-core/msr_proc.o \
+                        rt_lib/msr-core/msr_error_reg.o \
+                        rt_lib/msr-utils/msr_utils.o \
+                        rt_lib/msr-utils/msr_time.o \
+                        rt_lib/msr-math/msr_base64.o \
+                        rt_lib/msr-math/msr_hex_bin.o \
+                        libm.o
 
-ec_master-objs := module.o master.o device.o slave.o datagram.o \
-		domain.o mailbox.o ethernet.o debug.o fsm.o xmldev.o
-
-REV := $(shell svnversion $(src) 2>/dev/null || echo "unknown")
-
-EXTRA_CFLAGS := -DSVNREV=$(REV) -DUSER=$(USER)
-
-#------------------------------------------------------------------------------
-#  default section
-
-else
-
-ifneq ($(wildcard ../ethercat.conf),)
-include ../ethercat.conf
-else
-KERNEL := $(shell uname -r)
-endif
-
-KERNEL_DIR := /lib/modules/$(KERNEL)/build
-CURRENT_DIR := $(shell pwd)
-INSTALL_MOD_DIR := ethercat/master
-
-modules:
-	$(MAKE) -C $(KERNEL_DIR) M=$(CURRENT_DIR) modules
-
-install: modules_install
-
-modules_install:
-	$(MAKE) -C $(KERNEL_DIR) M=$(CURRENT_DIR) \
-		INSTALL_MOD_DIR=$(INSTALL_MOD_DIR) modules_install
-
-clean:
-	$(MAKE) -C $(KERNEL_DIR) M=$(CURRENT_DIR) clean
-	@rm -f Modules.symvers
+EXTRA_CFLAGS := -I$(src)/rt_lib/msr-include -I/usr/realtime/include \
+                -D_SIMULATION -mhard-float
 
 #------------------------------------------------------------------------------
-
-endif

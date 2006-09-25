@@ -1,8 +1,8 @@
 #------------------------------------------------------------------------------
 #
-#  Makefile
+#  Makefile.am
 #
-#  IgH EtherCAT master device modules
+#  IgH EtherCAT master module
 #
 #  $Id$
 #
@@ -35,47 +35,16 @@
 #
 #------------------------------------------------------------------------------
 
-#------------------------------------------------------------------------------
-#  kbuild section
+ABSSRCDIR = `cd $(srcdir) && pwd -P`
 
-ifneq ($(KERNELRELEASE),)
+all:
+	$(MAKE) -C "$(LINUX_DIR)" M="$(ABSSRCDIR)" modules
 
-obj-m := ec_8139too.o
+clean-local:
+	$(MAKE) -C "$(LINUX_DIR)" M="$(ABSSRCDIR)" clean
 
-ec_8139too-objs := 8139too.o
-
-REV := $(shell svnversion $(src) 2>/dev/null || echo "unknown")
-
-EXTRA_CFLAGS = -DEC_REV=$(REV) -DEC_USER=$(USER)
-
-#------------------------------------------------------------------------------
-#  default section
-
-else
-
-ifneq ($(wildcard ../ethercat.conf),)
-include ../ethercat.conf
-else
-KERNEL := $(shell uname -r)
-endif
-
-KERNEL_DIR := /lib/modules/$(KERNEL)/build
-CURRENT_DIR := $(shell pwd)
-INSTALL_MOD_DIR := ethercat/devices
-
-modules:
-	$(MAKE) -C $(KERNEL_DIR) M=$(CURRENT_DIR) modules
-
-install: modules_install
-
-modules_install:
-	$(MAKE) -C $(KERNEL_DIR) M=$(CURRENT_DIR) \
-		INSTALL_MOD_DIR=$(INSTALL_MOD_DIR) modules_install
-
-clean:
-	$(MAKE) -C $(KERNEL_DIR) M=$(CURRENT_DIR) clean
-	@rm -f Modules.symvers
+install-data-local:
+	$(MAKE) -C "$(LINUX_DIR)" M="$(ABSSRCDIR)" \
+		INSTALL_MOD_DIR="ethercat" modules_install
 
 #------------------------------------------------------------------------------
-
-endif

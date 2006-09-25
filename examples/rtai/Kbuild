@@ -1,8 +1,6 @@
-#!/bin/sh
-
 #------------------------------------------------------------------------------
 #
-#  Realtime module install script
+#  Kbuild
 #
 #  $Id$
 #
@@ -35,42 +33,8 @@
 #
 #------------------------------------------------------------------------------
 
-# Fetch parameters
+obj-m := ec_rtai_sample.o
 
-if [ $# -ne 2 ]; then
-    echo "Usage: $0 <MODULENAME> <KERNEL>"
-    exit 1
-fi
-
-MODULENAME=$1
-KERNEL=$2
-
-MODULESDIR=/lib/modules/$KERNEL/kernel/drivers/rt
-
-echo "Realtime installer"
-echo "  target: $MODULENAME"
-echo "  kernel: $KERNEL"
-
-# Create target directory
-
-if [ ! -d $MODULESDIR ]; then
-    echo "  creating $MODULESDIR..."
-    mkdir $MODULESDIR || exit 1
-fi
-
-# Install files
-
-echo "  installing $MODULENAME..."
-if ! cp $MODULENAME.ko $MODULESDIR/$MODULENAME.ko; then exit 1; fi
-
-# Calculate dependencies
-
-echo "  building module dependencies..."
-depmod
-
-# Finish
-
-echo "done."
-exit 0
+ec_rtai_sample-objs := rtai_sample.o
 
 #------------------------------------------------------------------------------
