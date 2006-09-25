@@ -95,6 +95,6 @@ doc:
 	doxygen Doxyfile
 
 cleandoc:
-	@rm -rf documentation
+	@rm -rf doxygen-output
 
 #------------------------------------------------------------------------------
