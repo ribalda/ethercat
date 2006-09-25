@@ -68,6 +68,9 @@ MSR_FILES = \
 
 EXTRA_DIST = $(noinst_SCRIPTS) $(MINI_FILES) $(RTAI_FILES) $(MSR_FILES)
 
+mydist:
+	$(MAKE) dist distdir=$(PACKAGE)-$(VERSION)-r`svnversion $(srcdir)`
+
 dist-hook:
 	if which svnversion >/dev/null 2>&1; then \
 		svnversion $(srcdir) 2>/dev/null >$(distdir)/svnrevision; \
@@ -80,6 +83,7 @@ install-data-local:
 	$(INSTALL_SCRIPT) $(srcdir)/script/lsec.pl $(bindir)/lsec
 	$(INSTALL_SCRIPT) $(srcdir)/script/ethercat.sh $(initdir)/ethercat
 	$(INSTALL_DATA) $(srcdir)/script/sysconfig $(sysdir)/ethercat
+	$(DEPMOD) $(LINUX_KERNEL_VERSION)
 
 uninstall-local:
 	rm -rf $(LINUX_MODULES_DIR)/ethercat

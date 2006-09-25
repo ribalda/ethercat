@@ -14,27 +14,42 @@ AC_CONFIG_FILES([Makefile master/Makefile devices/Makefile \
 # Linux sources
 #------------------------------------------------------------------------------
 
-AC_ARG_WITH([linux-dir],
+AC_ARG_WITH([linux],
     AC_HELP_STRING(
-        [--with-linux-dir=<linux-dir>],
-        [Linux source directory @<:@/lib/modules/<kernelversion>/build@:>@]),
+        [--with-linux=<version>],
+        [Linux kernel version @<:@running kernel@:>@]
+    ),
     [ ],
-    [
-	modulesdir=/lib/modules/`uname -r`
-        withval=${modulesdir}/build
-    ])
+    [version=`uname -r`]
+)
 
-AC_MSG_CHECKING([for Linux source tree])
-
-if test \! -r ${withval}/Makefile; then
+AC_MSG_CHECKING([for Linux kernel])
+modulesdir=/lib/modules/${version}
+if test \! -d ${modulesdir} || test \! -d ${modulesdir}/build; then
    echo
-   AC_MSG_ERROR([No Linux kernel tree in $withval])
+   AC_MSG_ERROR([Invalid modules directory ${modulesdir}])
+fi
+sourcedir=`cd ${modulesdir}/build && pwd -P`
+if test \! -r ${sourcedir}/Makefile; then
+   echo
+   AC_MSG_ERROR([No Linux kernel tree in $sourcedir])
 fi
 
-AC_SUBST(LINUX_DIR,[$withval])
+AC_SUBST(LINUX_KERNEL_VERSION,[$version])
+AC_SUBST(LINUX_SOURCE_DIR,[$sourcedir])
 AC_SUBST(LINUX_MODULES_DIR,[$modulesdir])
 
-AC_MSG_RESULT($LINUX_DIR)
+AC_MSG_RESULT($LINUX_KERNEL_VERSION)
+
+#------------------------------------------------------------------------------
+# Depmod
+#------------------------------------------------------------------------------
+
+AC_PATH_PROG([DEPMOD], [depmod],, [$PATH:/sbin:/usr/sbin:/usr/local/sbin])
+
+if test -z "$DEPMOD"; then
+   AC_MSG_WARN([depmod was not found!]);
+fi
 
 #------------------------------------------------------------------------------
 

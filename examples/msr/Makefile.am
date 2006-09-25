@@ -45,13 +45,13 @@ EXTRA_DIST = \
 ABSSRCDIR = `cd $(srcdir) && pwd -P`
 
 all:
-	$(MAKE) -C "$(LINUX_DIR)" M="$(ABSSRCDIR)" modules
+	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="$(ABSSRCDIR)" modules
 
 clean-local:
-	$(MAKE) -C "$(LINUX_DIR)" M="$(ABSSRCDIR)" clean
+	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="$(ABSSRCDIR)" clean
 
 install-data-local:
-	$(MAKE) -C "$(LINUX_DIR)" M="$(ABSSRCDIR)" \
+	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="$(ABSSRCDIR)" \
 		INSTALL_MOD_DIR="ethercat" modules_install
 
 #------------------------------------------------------------------------------
