@@ -3466,7 +3466,7 @@ The master module has a parameter \textit{ec\_eoeif\_count} to specify
 the number of EoE interfaces (and handlers) per master to create. This
 parameter can either be specified when manually loading the master
 module, or (when using the init script) by setting the
-\textit{\$EOE\_INTERFACES} variable in the sysconfig file (see
+\textit{EOE\_INTERFACES} variable in the sysconfig file (see
 section~\ref{sec:sysconfig}). Upon loading of the master module, the
 virtual interfaces become available:
 
@@ -4044,11 +4044,13 @@ to be a persistent configuration, that is also applied on startup.
 
 The EtherCAT master provides an ``init script'', that conforms to the
 requirements of the ``Linux Standard Base'' (LSB\index{LSB},
-\cite{lsb}). The script is installed to \textit{/etc/init.d/ethercat},
-so that the master can be easily inserted as a service. The different
-Linux distributions offer different ways to mark the service for
-starting and stopping in certain runlevels (for example, SUSE provides
-the \textit{insserv} command).
+\cite{lsb}). The script is installed to \textit{etc/init.d/ethercat}
+below the installation prefix and has to be copied to the appropriate
+location (see section~\ref{sec:make}), before the master can be
+inserted as a service. The different Linux distributions offer
+different ways to mark the service for starting and stopping in
+certain runlevels (for example, SUSE Linux provides the
+\textit{insserv} command).
 
 To provide service dependencies (i.~e. which services have to be
 started before) right inside the init script code, LSB defines a
@@ -4073,8 +4075,6 @@ sequence:
 The init script can also be used for manually starting and stopping
 the EtherCAT master. It has to be executed with one of the parameters
 \textit{start}, \textit{stop}, \textit{restart} or \textit{status}.
-Besides, a link to the script is placed at
-\textit{/usr/sbin/rcethercat} for easier access.
 
 \begin{lstlisting}
   host# `\textbf{/etc/init.d/ethercat restart}`
@@ -4087,9 +4087,9 @@ Besides, a link to the script is placed at
 \index{Sysconfig file}
 
 For persistent configuration, the init script uses a sysconfig file
-installed to \textit{/etc/sys\-config/ethercat}, that is mandatory for
-the init script. The sysconfig file contains all configuration
-variables needed to operate a master:
+installed to \textit{etc/sysconfig/ethercat} (below the installation
+prefix), that is mandatory for the init script. The sysconfig file
+contains all configuration variables needed to operate a master:
 
 \begin{description}
 \item[DEVICE\_INDEX] This variable must contain the PCI index of the
@@ -4305,43 +4305,57 @@ After downloading the \textit{tar.bz2} file, it has to be unpacked
 with the command below (or similar):
 
 \begin{lstlisting}
-  host> `\textbf{tar xjf ethercat-stable-1.1-r513-src.tar.bz2}`
-  host> `\textbf{cd ethercat-stable-1.1-r513-src}`
+  host> `\textbf{tar xjf ethercat-1.1-rXXX.tar.bz2}`
+  host> `\textbf{cd ethercat-1.1-rXXX/}`
 \end{lstlisting}
 
-For compilation, the kernel sources are needed. Basically any kernel
-sources are appropriate\footnote{If a realtime extension is to be
-  used, the kernel has to be patched before that.}, that are
-configured with networking. If the host kernel is not the running
-kernel, a copy of the configuration template has to be made:
+The tarball was created with GNU Autotools, so the build process
+follows the usual commands:
 
 \begin{lstlisting}
-  host> `\textbf{cp ethercat.conf.tmpl ethercat.conf}`
-\end{lstlisting}
-
-Now the \textit{\$KERNEL} variable inside the \textit{ethercat.conf}
-file can be adjusted to reflect the appropriate kernel version. If
-everything is correct now, the sucessive call to
-
-\begin{lstlisting}
+  host> `\textbf{./configure}`
   host> `\textbf{make}`
 \end{lstlisting}
 
-will result in no errors.
+The default installation prefix is \textit{/opt/etherlab}. It can be
+changed with the \texttt{--prefix} argument.
+
+Linux kernel sources are needed for compilation\footnote{If a realtime
+  extension shall to be used, the kernel should be patched before
+  compiling the EtherCAT master.}. To compile the EtherCAT master
+modules for a different kernel than the running kernel, the target
+kernel version can be specified with the \texttt{--with-linux}
+argument. Example:
+
+\begin{lstlisting}
+  host> `\textbf{./configure --with-linux="2.6.17-ipipe"}`
+  host> `\textbf{make}`
+\end{lstlisting}
 
 The following commands have to be entered as \textit{root}: To install
-the kernel modules, the init script, the sysconfig file and the user
-space tools, the below command has to be executed:
+the kernel modules, headers, the init script, the sysconfig file and
+the user space tools, the below command has to be executed:
 
 \begin{lstlisting}
   host# `\textbf{make install}`
 \end{lstlisting}
 
-If the sysconfig file did not exist yet, the user is notified to edit
-it, before running the master. For the contents of the file, see
-section~\ref{sec:sysconfig}. To give a short summary: The most
-important thing is to adjust the \textit{\$DEVICE\_INDEX} variable. It
-has to be set to the index of the compatible network device to use
+If the EtherCAT master shall be run as a service (recommended), the
+init script and the sysconfig file have to be copied to the
+appropriate locations. The below example is suitable for SUSE Linux.
+It may vary for other distributions.
+
+\begin{lstlisting}
+  host# `\textbf{cd /opt/etherlab}`
+  host# `\textbf{cp etc/sysconfig/ethercat /etc/sysconfig/}`
+  host# `\textbf{cp etc/init.d/ethercat /etc/init.d/}`
+  host# `\textbf{insserv ethercat}`
+\end{lstlisting}
+
+Now the sysconfig file has to be customized. For the contents of the
+file, see section~\ref{sec:sysconfig}. To give a short summary: The
+most important thing is to adjust the \textit{DEVICE\_INDEX} variable.
+It has to be set to the index of the compatible network device to use
 with EtherCAT, where the order of devices is dependent on their
 position in the PCI bus. If this is not known, the index can be
 determinded with trial and error, but it has to be considered that a
@@ -4355,7 +4369,9 @@ the below command:
 \end{lstlisting}
 
 The operation of the master can be observed by looking at the
-syslog\index{syslog} messages, which should look like the ones below:
+syslog\index{syslog} messages, which should look like the ones below.
+If EtherCAT slaves are connected to the master's EtherCAT device, the
+activity indicators should begin to flash.
 
 \begin{lstlisting}[numbers=left]
   EtherCAT: Master driver, 1.1 (stable) - rev. 513,
