@@ -19,8 +19,8 @@ AC_ARG_WITH([linux],
         [--with-linux=<version>],
         [Linux kernel version @<:@running kernel@:>@]
     ),
-    [ ],
-    [version=`uname -r`]
+    [version=[$withval]],
+    [version=[`uname -r`]]
 )
 
 AC_MSG_CHECKING([for Linux kernel])
