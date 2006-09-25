@@ -32,7 +32,7 @@ fi
 sourcedir=`cd ${modulesdir}/build && pwd -P`
 if test \! -r ${sourcedir}/Makefile; then
    echo
-   AC_MSG_ERROR([No Linux kernel tree in $sourcedir])
+   AC_MSG_ERROR([No Linux kernel sources in $sourcedir])
 fi
 
 AC_SUBST(LINUX_KERNEL_VERSION,[$version])
