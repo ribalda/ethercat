@@ -39,7 +39,11 @@ obj-m := ec_8139too.o
 
 ec_8139too-objs := 8139too.o
 
-REV := $(shell svnversion $(src) 2>/dev/null || echo "unknown")
+REV := $(shell if test -s $(src)/../svnrevision; then \
+		cat $(src)/../svnrevision; \
+	else \
+		svnversion $(src) 2>/dev/null || echo "unknown"; \
+	fi)
 
 EXTRA_CFLAGS = -DEC_REV=$(REV) -DEC_USER=$(USER)
 

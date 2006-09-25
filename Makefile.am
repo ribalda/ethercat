@@ -68,6 +68,11 @@ MSR_FILES = \
 
 EXTRA_DIST = $(noinst_SCRIPTS) $(MINI_FILES) $(RTAI_FILES) $(MSR_FILES)
 
+dist-hook:
+	if which svnversion >/dev/null 2>&1; then \
+		svnversion $(srcdir) 2>/dev/null >$(distdir)/svnrevision; \
+	fi
+
 install-data-local:
 	$(mkinstalldirs) $(bindir)
 	$(mkinstalldirs) $(initdir)
