@@ -4300,9 +4300,10 @@ examples for different realtime modules.
 \label{sec:make}
 \index{Master!Compilation}
 
-The current EtherCAT master code is available at~\cite{etherlab}.
-After downloading the \textit{tar.bz2} file, it has to be unpacked
-with the command below (or similar):
+The current EtherCAT master code is available at~\cite{etherlab} or
+can be obtained from the EtherLab\textsuperscript{\textregistered} CD.
+The \textit{tar.bz2} file has to be unpacked with the command below
+(or similar):
 
 \begin{lstlisting}
   host> `\textbf{tar xjf ethercat-1.1-rXXX.tar.bz2}`
@@ -4340,10 +4341,12 @@ the user space tools, the below command has to be executed:
   host# `\textbf{make install}`
 \end{lstlisting}
 
-If the EtherCAT master shall be run as a service (recommended), the
-init script and the sysconfig file have to be copied to the
-appropriate locations. The below example is suitable for SUSE Linux.
-It may vary for other distributions.
+If the EtherCAT master shall be run as a service
+(recommended\footnote{Even if the EtherCAT master shall not be loaded
+  on system startup, the use of the init script is recommended for
+  manual (un-)loading.}), the init script and the sysconfig file have
+to be copied to the appropriate locations. The below example is
+suitable for SUSE Linux.  It may vary for other distributions.
 
 \begin{lstlisting}
   host# `\textbf{cd /opt/etherlab}`
@@ -4352,14 +4355,33 @@ It may vary for other distributions.
   host# `\textbf{insserv ethercat}`
 \end{lstlisting}
 
-Now the sysconfig file has to be customized. For the contents of the
-file, see section~\ref{sec:sysconfig}. To give a short summary: The
-most important thing is to adjust the \textit{DEVICE\_INDEX} variable.
-It has to be set to the index of the compatible network device to use
+Now the sysconfig file \texttt{/etc/sysconfig/ethercat} (see
+section~\ref{sec:sysconfig}) has to be customized: This is mainly done
+by uncommenting and adjusting the \textit{DEVICE\_INDEX} variable. It
+has to be set to the index of the compatible network device to use
 with EtherCAT, where the order of devices is dependent on their
-position in the PCI bus. If this is not known, the index can be
-determinded with trial and error, but it has to be considered that a
-wrong value can cause a loss of network connection.
+position in the PCI bus:
+
+\begin{lstlisting}[numbers=left,basicstyle=\ttfamily\scriptsize]
+  host# `\textbf{lspci}`
+  00:00.0 Host bridge: VIA Technologies, Inc. VT8363/8365 [KT133/KM133] (rev 03)
+  00:01.0 PCI bridge: VIA Technologies, Inc. VT8363/8365 [KT133/KM133 AGP]
+  00:04.0 ISA bridge: VIA Technologies, Inc. VT82C686 [Apollo Super South] (rev 40)
+  00:04.1 IDE interface: VIA Technologies, Inc. VT82C586A/B/VT82C686/A/B/VT823x/A/C...
+  00:04.2 USB Controller: VIA Technologies, Inc. VT82xxxxx UHCI USB 1.1 Controller...
+  00:04.3 USB Controller: VIA Technologies, Inc. VT82xxxxx UHCI USB 1.1 Controller...
+  00:04.4 Bridge: VIA Technologies, Inc. VT82C686 [Apollo Super ACPI] (rev 40)
+  00:09.0 Ethernet controller: D-Link System Inc RTL8139 Ethernet (rev 10)
+  00:0a.0 Ethernet controller: Intel Corporation 82557/8/9 [Ethernet Pro 100] (rev 08)
+  00:0b.0 Ethernet controller: D-Link System Inc RTL8139 Ethernet (rev 10)
+  00:0c.0 VGA compatible controller: ATI Technologies Inc Rage XL (rev 27)
+  00:11.0 Unknown mass storage controller: Promise Technology, Inc. PDC20265...
+\end{lstlisting}
+
+In the above output of the \textit{lspci} command, two compatible
+network devices can be found in lines~\textcircled{\tiny 9} and
+\textcircled{\tiny 11}. The \textit{DEVICE\_INDEX} variable should be
+set to $0$ or $1$, respectively.
 
 After the basic configuration is done, the master can be started with
 the below command:
