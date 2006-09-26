@@ -409,11 +409,11 @@ ec_master_t *ecrt_request_master(unsigned int master_index
 
     if (!(master = ec_find_master(master_index))) goto out_return;
 
-    if (master->reserved) {
+    if (!atomic_dec_and_test(&master->available)) {
+        atomic_inc(&master->available);
         EC_ERR("Master %i is already in use!\n", master_index);
         goto out_return;
     }
-    master->reserved = 1;
 
     if (!master->device) {
         EC_ERR("Master %i has no assigned device!\n", master_index);
@@ -452,7 +452,7 @@ ec_master_t *ecrt_request_master(unsigned int master_index
  out_module_put:
     module_put(master->device->module);
  out_release:
-    master->reserved = 0;
+    atomic_inc(&master->available);
  out_return:
     EC_ERR("Failed to request master %i.\n", master_index);
     return NULL;
@@ -469,7 +469,7 @@ void ecrt_release_master(ec_master_t *master /**< EtherCAT master */)
 {
     EC_INFO("Releasing master %i...\n", master->index);
 
-    if (!master->reserved) {
+    if (atomic_read(&master->available)) {
         EC_ERR("Master %i was never requested!\n", master->index);
         return;
     }
@@ -478,7 +478,7 @@ void ecrt_release_master(ec_master_t *master /**< EtherCAT master */)
     ec_master_idle_start(master);
 
     module_put(master->device->module);
-    master->reserved = 0;
+    atomic_inc(&master->available);
 
     EC_INFO("Successfully released master %i.\n", master->index);
     return;

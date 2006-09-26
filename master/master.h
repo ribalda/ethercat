@@ -44,6 +44,7 @@
 #include <linux/list.h>
 #include <linux/sysfs.h>
 #include <linux/timer.h>
+#include <asm/atomic.h>
 
 #include "device.h"
 #include "domain.h"
@@ -92,7 +93,7 @@ ec_stats_t;
 struct ec_master
 {
     struct list_head list; /**< list item for module's master list */
-    unsigned int reserved; /**< non-zero, if the master is reserved for RT */
+    atomic_t available; /**< zero, if the master is reserved for RT */
     unsigned int index; /**< master index */
 
     struct kobject kobj; /**< kobject */
