@@ -1051,9 +1051,10 @@ void ec_master_calc_addressing(ec_master_t *master /**< EtherCAT master */)
 
 /**
    Measures the time, a frame is on the bus.
+   \return 0 in case of success, else < 0
 */
 
-void ec_master_measure_bus_time(ec_master_t *master)
+int ec_master_measure_bus_time(ec_master_t *master)
 {
     ec_datagram_t datagram;
     cycles_t cycles_start, cycles_end, cycles_timeout;
@@ -1064,7 +1065,7 @@ void ec_master_measure_bus_time(ec_master_t *master)
     if (ec_datagram_brd(&datagram, 0x130, 2)) {
         EC_ERR("Failed to allocate datagram for bus time measuring.\n");
         ec_datagram_clear(&datagram);
-        return;
+        return -1;
     }
 
     cycles_timeout = (cycles_t) EC_IO_TIMEOUT * (cpu_khz / 1000);
@@ -1103,11 +1104,13 @@ void ec_master_measure_bus_time(ec_master_t *master)
 
     EC_INFO("Bus time is (min/avg/max) %u/%u.%u/%u us.\n",
             min, sum / 100, sum % 100, max);
+    return 0;
 
   error:
     // Dequeue and free datagram
     list_del(&datagram.queue);
     ec_datagram_clear(&datagram);
+    return -1;
 }
 
 /******************************************************************************

@@ -357,7 +357,7 @@ int ec_domain_alloc(ec_domain_t *domain, /**< EtherCAT domain */
         }
     }
 
-    EC_INFO("Domain %i - Allocated %i bytes in %i datagram%s\n",
+    EC_INFO("Domain %i - Allocated %i bytes in %i datagram%s.\n",
             domain->index, domain->data_size, datagram_count,
             datagram_count == 1 ? "" : "s");
 

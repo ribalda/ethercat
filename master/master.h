@@ -161,7 +161,7 @@ int ec_master_bus_scan(ec_master_t *);
 // misc.
 void ec_master_output_stats(ec_master_t *);
 void ec_master_clear_slaves(ec_master_t *);
-void ec_master_measure_bus_time(ec_master_t *);
+int ec_master_measure_bus_time(ec_master_t *);
 
 // other methods
 void ec_sync_config(const ec_sii_sync_t *, const ec_slave_t *, uint8_t *);
