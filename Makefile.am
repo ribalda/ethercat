@@ -70,7 +70,8 @@ EXTRA_DIST = $(noinst_SCRIPTS) documentation/ethercat_doc.pdf \
 	$(MINI_FILES) $(RTAI_FILES) $(MSR_FILES)
 
 mydist:
-	$(MAKE) dist distdir=$(PACKAGE)-$(VERSION)-r`svnversion $(srcdir)`
+	@SVNREV=`svnversion $(srcdir)` && \
+		$(MAKE) dist-bzip2 distdir=$(PACKAGE)-$(VERSION)-r$${SVNREV}
 
 dist-hook:
 	if which svnversion >/dev/null 2>&1; then \
