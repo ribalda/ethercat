@@ -114,14 +114,14 @@ empty parentheses, this does not mean, that it has no parameters.
 If shell commands have to be entered, this is marked by a prompt:
 
 \begin{lstlisting}[gobble=2]
-  host>
+  `\$`
 \end{lstlisting}
 
 Further, if a shell command has to be entered as the superuser, the
 prompt ends with a mesh:
 
 \begin{lstlisting}[gobble=2]
-  host#
+  #
 \end{lstlisting}
 
 %------------------------------------------------------------------------------
@@ -734,7 +734,7 @@ driver, telling it to handle the second device as an EtherCAT device
 and connecting it to the first master:
 
 \begin{lstlisting}
-  host# `\textbf{modprobe ec\_8139too ec\_device\_index=1}`
+  # `\textbf{modprobe ec\_8139too ec\_device\_index=1}`
 \end{lstlisting}
 
 Usually, this command does not have to be entered manually, but is
@@ -1272,7 +1272,7 @@ defaults to $1$. A certain master can later be addressed by its index.
 For example, if the master module has been loaded with the command
 
 \begin{lstlisting}
-  host# `\textbf{modprobe ec\_master ec\_master\_count=2}`
+  # `\textbf{modprobe ec\_master ec\_master\_count=2}`
 \end{lstlisting}
 
 the two masters can be addressed by their indices 0 and 1 respectively
@@ -2137,13 +2137,13 @@ registered, the master can be activated:
 
 By calling the \textit{ecrt\_master\_activate()} method, all slaves
 are configured according to the prior method calls and are brought
-into \textit{OP} state. In this case, the method has a return value of
-0. Otherwise (wrong configuration or bus failure) the method returns
+into OP state. In this case, the method has a return value of 0.
+Otherwise (wrong configuration or bus failure) the method returns
 non-zero.
 
 The \textit{ecrt\_master\_deactivate()} method is the counterpart to
-the activate call: It brings all slaves back into \textit{INIT} state
-again. This method should be called prior to
+the activate call: It brings all slaves back into INIT state again.
+This method should be called prior to
 \textit{ecrt\_\-master\_\-release()}.
 
 \paragraph{Locking Callbacks}
@@ -2887,7 +2887,7 @@ diagram.
   machine. There is a datagram issued, that queries the ``AL Control
   Response'' attribute \cite[section~5.3.2]{alspec} of all slaves via
   broadcast. In this way, all slave states and the number of slaves
-  responding can be determined.  $\rightarrow$~\textit{BROADCAST}
+  responding can be determined.  $\rightarrow$~BROADCAST
 
 \item[BROADCAST] The broadcast datagram is evaluated. A change in the
   number of responding slaves is treates as a topology change. If the
@@ -2899,64 +2899,63 @@ diagram.
   normal state and it has to be checked, if all slaves are valid. Now,
   the state of every single slave has to be determined. For that, a
   (unicast) datagram is issued, that queries the first slave's ``AL
-  Control Response'' attribute. $\rightarrow$~\textit{READ STATES}
+  Control Response'' attribute. $\rightarrow$~READ STATES
 
 \item[READ STATES] If the current slave did not respond to its
   configured station address, it is marked as offline, and the next
-  slave is queried. $\rightarrow$~\textit{READ STATES}
+  slave is queried. $\rightarrow$~READ STATES
 
   If the slave responded, it is marked as online and its current state
-  is stored. The next slave is queried. $\rightarrow$~\textit{READ
-    STATES}
+  is stored. The next slave is queried. $\rightarrow$~READ STATES
 
   If all slaves have been queried, and the bus is marked for
   validation, the validation is started by checking the first slaves
-  vendor ID. $\rightarrow$~\textit{VALIDATE VENDOR}
+  vendor ID. $\rightarrow$~VALIDATE VENDOR
 
   If no validation has to be done, it is checked, if all slaves are in
   the state they are supposed to be. If not, the first of slave with
   the wrong state is reconfigured and brought in the required state.
-  $\rightarrow$~\textit{CONFIGURE SLAVES}
+  $\rightarrow$~CONFIGURE SLAVES
 
   If all slaves are in the correct state, the state machine is
-  restarted. $\rightarrow$~\textit{START}
+  restarted. $\rightarrow$~START
 
 \item[CONFIGURE SLAVES] The slave configuration state machine is
-  executed until termination. $\rightarrow$~\textit{CONFIGURE SLAVES}
+  executed until termination. $\rightarrow$~CONFIGURE SLAVES
 
   If there are still slaves in the wrong state after another check,
   the first of these slaves is configured and brought into the correct
-  state again. $\rightarrow$~\textit{CONFIGURE SLAVES}
+  state again. $\rightarrow$~CONFIGURE SLAVES
 
   If all slaves are in the correct state, the state machine is
-  restarted. $\rightarrow$~\textit{START}
+  restarted. $\rightarrow$~START
 
 \item[VALIDATE VENDOR] The SII state machine is executed until
   termination. If the slave has the wrong vendor ID, the state machine
-  is restarted. $\rightarrow$~\textit{START}
+  is restarted. $\rightarrow$~START
 
   If the slave has the correct vendor ID, its product ID is queried.
-  $\rightarrow$~\textit{VALIDATE PRODUCT}
+  $\rightarrow$~VALIDATE PRODUCT
 
 \item[VALIDATE PRODUCT] The SII state machine is executed until
   termination. If the slave has the wrong product ID, the state
-  machine is restarted. $\rightarrow$~\textit{START}
+  machine is restarted. $\rightarrow$~START
 
   If the slave has the correct product ID, the next slave's vendor ID
-  is queried. $\rightarrow$~\textit{VALIDATE VENDOR}
+  is queried. $\rightarrow$~VALIDATE VENDOR
 
   If all slaves have the correct vendor IDs and product codes, the
   configured station addresses can be safely rewritten. This is done
   for the first slave marked as offline.
-  $\rightarrow$~\textit{REWRITE ADDRESSES}
+  $\rightarrow$~REWRITE ADDRESSES
 
 \item[REWRITE ADDRESSES] If the station address was successfully
   written, it is sear\-ched for the next slave marked as offline. If
   there is one, its address is reconfigured, too.
-  $\rightarrow$~\textit{REWRITE ADDRESSES}
+  $\rightarrow$~REWRITE ADDRESSES
 
   If there are no more slaves marked as offline, the state machine is
-  restarted. $\rightarrow$~\textit{START}
+  restarted. $\rightarrow$~START
 \end{description}
 
 %------------------------------------------------------------------------------
@@ -2982,72 +2981,72 @@ Figure~\ref{fig:fsm-idle} shows its transition diagram.
 \item[START] The beginning state of the idle state machine. Similar to
   the operation state machine, a broadcast datagram is issued, to
   query all slave states and the number of slaves.
-  $\rightarrow$~\textit{BROADCAST}
+  $\rightarrow$~BROADCAST
 
 \item[BROADCAST] The number of responding slaves is evaluated. If it
   has changed since the last time, this is treated as a topology
   change and the internal list of slaves is cleared and rebuild
   completely. The slave scan state machine is started for the first
-  slave. $\rightarrow$~\textit{SCAN FOR SLAVES}
+  slave. $\rightarrow$~SCAN FOR SLAVES
 
   If no topology change happened, every single slave state is fetched.
-  $\rightarrow$~\textit{READ STATES}
+  $\rightarrow$~READ STATES
 
 \item[SCAN FOR SLAVES] The slave scan state machine is executed until
-  termination. $\rightarrow$~\textit{SCAN FOR SLAVES}
+  termination. $\rightarrow$~SCAN FOR SLAVES
 
   If there is another slave to scan, the slave scan state machine is
-  started again. $\rightarrow$~\textit{SCAN FOR SLAVES}
+  started again. $\rightarrow$~SCAN FOR SLAVES
 
   If all slave information has been fetched, slave addresses are
   calculated and EoE processing is started. Then, the state machine is
-  restarted. $\rightarrow$~\textit{START}
+  restarted. $\rightarrow$~START
 
 \item[READ STATES] If the slave did not respond to the query, it is
   marked as offline. The next slave is queried.
-  $\rightarrow$~\textit{READ STATES}
+  $\rightarrow$~READ STATES
 
   If the slave responded, it is marked as online. And the next slave
-  is queried. $\rightarrow$~\textit{READ STATES}
+  is queried. $\rightarrow$~READ STATES
 
   If all slave states have been determined, it is checked, if any
   slaves are not in the state they supposed to be. If this is true,
   the slave configuration state machine is started for the first of
-  them. $\rightarrow$~\textit{CONFIGURE SLAVES}
+  them. $\rightarrow$~CONFIGURE SLAVES
 
   If all slaves are in the correct state, it is checked, if any
   E$^2$PROM write operations are pending. If this is true, the first
   pending operation is executed by starting the SII state machine for
-  writing access. $\rightarrow$~\textit{WRITE EEPROM}
+  writing access. $\rightarrow$~WRITE EEPROM
 
   If all these conditions are false, there is nothing to do and the
-  state machine is restarted. $\rightarrow$~\textit{START}
+  state machine is restarted. $\rightarrow$~START
 
 \item[CONFIGURE SLAVES] The slave configuration state machine is
-  executed until termination. $\rightarrow$~\textit{CONFIGURE SLAVES}
+  executed until termination. $\rightarrow$~CONFIGURE SLAVES
 
   After this, it is checked, if another slave needs a state change. If
   this is true, the slave state change state machine is started for
-  this slave. $\rightarrow$~\textit{CONFIGURE SLAVES}
+  this slave. $\rightarrow$~CONFIGURE SLAVES
 
   If all slaves are in the correct state, it is determined, if any
   E$^2$PROM write operations are pending. If this is true, the first
   pending operation is executed by starting the SII state machine for
-  writing access. $\rightarrow$~\textit{WRITE EEPROM}
+  writing access. $\rightarrow$~WRITE EEPROM
 
   If all prior conditions are false, the state machine is restarted.
-  $\rightarrow$~\textit{START}
+  $\rightarrow$~START
 
 \item[WRITE EEPROM] The SII state machine is executed until
-  termination. $\rightarrow$~\textit{WRITE EEPROM}
+  termination. $\rightarrow$~WRITE EEPROM
 
   If the current word has been written successfully, and there are
   still word to write, the SII state machine is started for the next
-  word. $\rightarrow$~\textit{WRITE EEPROM}
+  word. $\rightarrow$~WRITE EEPROM
 
   If all words have been written successfully, the new E$^2$PROM
   contents are evaluated and the state machine is restarted.
-  $\rightarrow$~\textit{START}
+  $\rightarrow$~START
 
 \end{description}
 
@@ -3073,22 +3072,22 @@ all slave information.
   the station address is written to the slave, which is always the
   ring position~+~$1$. In this way, the address 0x0000 (default
   address) is not used, which makes it easy to detect unconfigured
-  slaves.  $\rightarrow$~\textit{ADDRESS}
+  slaves.  $\rightarrow$~ADDRESS
 
 \item[ADDRESS] The writing of the station address is verified. After
   that, the slave's ``AL Control Response'' attribute is queried.
-  $\rightarrow$~\textit{STATE}
+  $\rightarrow$~STATE
 
 \item[STATE] The AL state is evaluated. A warning is output, if the
   slave has still the \textit{Change} bit set. After that, the slave's
   ``DL Information'' attribute is queried.
-  $\rightarrow$~\textit{BASE}
+  $\rightarrow$~BASE
 
 \item[BASE] The queried base data are evaluated: Slave type, revision
   and build number, and even more important, the number of supported
   sync managers and FMMUs are stored. After that, the slave's data
   link layer information is read from the ``DL Status'' attribute at
-  address 0x0110. $\rightarrow$~\textit{DATALINK}
+  address 0x0110. $\rightarrow$~DATALINK
 
 \item[DATALINK] In this state, the DL information is evaluated: This
   information about the communication ports contains, if the link is
@@ -3100,33 +3099,33 @@ all slave information.
   category header, until the last category is reached (type 0xFFFF).
   This procedure is started by querying the first category header at
   word address 0x0040 via the SII state machine.
-  $\rightarrow$~\textit{EEPROM SIZE}
+  $\rightarrow$~EEPROM SIZE
 
 \item[EEPROM SIZE] The SII state machine is executed until
-  termination. $\rightarrow$~\textit{EEPROM SIZE}
+  termination. $\rightarrow$~EEPROM SIZE
 
   If the category type does not mark the end of the categories, the
   position of the next category header is determined via the length of
   the current category, and the SII state machine is started again.
-  $\rightarrow$~\textit{EEPROM SIZE}
+  $\rightarrow$~EEPROM SIZE
 
   If the size of the E$^2$PROM contents has been determined, memory is
   allocated, to read all the contents. The SII state machine is
-  started to read the first word. $\rightarrow$~\textit{EEPROM DATA}
+  started to read the first word. $\rightarrow$~EEPROM DATA
 
 \item[EEPROM DATA] The SII state machine is executed until
-  termination. $\rightarrow$~\textit{EEPROM DATA}
+  termination. $\rightarrow$~EEPROM DATA
 
   Two words have been read. If more than one word is needed, the two
   words are written in the allocated memory. Otherwise only one word
   (the last word) is copied. If more words are to read, the SII state
   machine is started again to read the next two words.
-  $\rightarrow$~\textit{EEPROM DATA}
+  $\rightarrow$~EEPROM DATA
 
   The complete E$^2$PROM contents have been read. The slave's identity
   object and mailbox information are evaluated. Moreover the category
   types STRINGS, GENERAL, SYNC and PDO are evaluated. The slave
-  scanning has been completed. $\rightarrow$~\textit{END}
+  scanning has been completed. $\rightarrow$~END
 
 \item[END] Slave scanning has been finished.
 
@@ -3152,89 +3151,88 @@ configuring a slave and bringing it to a certain state.
 
 \begin{description}
 \item[INIT] The state change state machine has been initialized to
-  bring the slave into the \textit{INIT} state. Now, the slave state
-  change state machine is executed until termination.
-  $\rightarrow$~\textit{INIT}
+  bring the slave into the INIT state. Now, the slave state change
+  state machine is executed until termination. $\rightarrow$~INIT
 
   If the slave state change failed, the configuration has to be
-  aborted. $\rightarrow$~\textit{END}
+  aborted. $\rightarrow$~END
 
-  The slave state change succeeded and the slave is now in
-  \textit{INIT} state. If this is the target state, the configuration
-  is finished. $\rightarrow$~\textit{END}
+  The slave state change succeeded and the slave is now in INIT state.
+  If this is the target state, the configuration is finished.
+  $\rightarrow$~END
 
   If the slave does not support any sync managers, the sync manager
   configuration can be skipped. The state change state machine is
-  started to bring the slave into \textit{PREOP} state.
-  $\rightarrow$~\textit{PREOP}
+  started to bring the slave into PREOP state.
+  $\rightarrow$~PREOP
 
   Sync managers are configured conforming to the sync manager category
   information provided in the slave's E$^2$PROM. The corresponding
-  datagram is issued. $\rightarrow$~\textit{SYNC}
+  datagram is issued. $\rightarrow$~SYNC
 
 \item[SYNC] If the sync manager configuration datagram is accepted,
   the sync manager configuration was successful. The slave may now
-  enter the \textit{PREOP} state, and the state change state machine
-  is started. $\rightarrow$~\textit{PREOP}
+  enter the PREOP state, and the state change state machine is
+  started. $\rightarrow$~PREOP
 
 \item[PREOP] The state change state machine is executed until
-  termination. $\rightarrow$~\textit{PREOP}
+  termination. $\rightarrow$~PREOP
 
   If the state change failed, the configuration has to be aborted.
-  $\rightarrow$~\textit{END}
+  $\rightarrow$~END
 
-  If the \textit{PREOP} state was the target state, the configuration
-  is finished. $\rightarrow$~\textit{END}
+  If the PREOP state was the target state, the configuration is
+  finished. $\rightarrow$~END
 
   If the slave supports no FMMUs, the FMMU configuration can be
   skipped. If the slave has SDOs to configure, it is begun with
-  sending the first SDO. $\rightarrow$~\textit{SDO\_CONF}
+  sending the first SDO. $\rightarrow$~SDO\_CONF
 
   If no SDO configurations are provided, the slave can now directly be
-  brought into the \textit{SAVEOP} state and the state change state
-  machine is started again. $\rightarrow$~\textit{SAVEOP}
+  brought into the SAVEOP state and the state change state machine is
+  started again. $\rightarrow$~SAVEOP
 
   Otherwise, all supported FMMUs are configured according to the PDOs
   requested via the master's realtime interface. The appropriate
-  datagram is issued. $\rightarrow$~\textit{FMMU}
+  datagram is issued. $\rightarrow$~FMMU
 
 \item[FMMU] The FMMU configuration datagram was accepted. If the slave
   has SDOs to configure, it is begun with sending the first SDO.
-  $\rightarrow$~\textit{SDO\_CONF}
+  $\rightarrow$~SDO\_CONF
 
-  Otherwise, the slave can now be brought into the \textit{SAVEOP}
-  state. The state change state machine is started.
-  $\rightarrow$~\textit{SAVEOP}
+  Otherwise, the slave can now be brought into the SAVEOP state. The
+  state change state machine is started.
+  $\rightarrow$~SAVEOP
 
 \item[SDO\_CONF] The CoE state machine is executed until termination.
-  $\rightarrow$~\textit{SDO\_CONF}
+  $\rightarrow$~SDO\_CONF
 
   If another SDO has to be configured, a new SDO download sequence is
-  begun. $\rightarrow$~\textit{SDO\_CONF}
+  begun. $\rightarrow$~SDO\_CONF
 
-  Otherwise, the slave can now be brought into the \textit{SAVEOP}
-  state. The state change state machine is started.
-  $\rightarrow$~\textit{SAVEOP}
+  Otherwise, the slave can now be brought into the SAVEOP state. The
+  state change state machine is started.
+  $\rightarrow$~SAVEOP
 
 \item[SAVEOP] The state change state machine is executed until
-  termination. $\rightarrow$~\textit{SAVEOP}
+  termination. $\rightarrow$~SAVEOP
 
   If the state change failed, the configuration has to be aborted.
-  $\rightarrow$~\textit{END}
+  $\rightarrow$~END
 
-  If the \textit{SAVEOP} state was the target state, the configuration
-  is finished. $\rightarrow$~\textit{END}
+  If the SAVEOP state was the target state, the configuration is
+  finished. $\rightarrow$~END
 
-  The slave can now directly be brought into the \textit{OP} state and
-  the state change state machine is started a last time.
-  $\rightarrow$~\textit{OP}
+  The slave can now directly be brought into the OP state and the
+  state change state machine is started a last time.
+  $\rightarrow$~OP
 
 \item[OP] The state change state machine is executed until
-  termination. $\rightarrow$~\textit{OP}
+  termination. $\rightarrow$~OP
 
   If the state change state machine terminates, the slave
   configuration is finished, regardless of its success.
-  $\rightarrow$~\textit{END}
+  $\rightarrow$~END
 
 \item[END] The termination state.
 
@@ -3261,26 +3259,26 @@ slave's state. This implements the states and transitions described in
 \begin{description}
 \item[START] The beginning state, where a datagram with the state
   change command is written to the slave's ``AL Control Request''
-  attribute. Nothing can fail. $\rightarrow$~\textit{CHECK}
+  attribute. Nothing can fail. $\rightarrow$~CHECK
 
 \item[CHECK] After the state change datagram has been sent, the ``AL
   Control Response'' attribute is queried with a second datagram.
-  $\rightarrow$~\textit{STATUS}
+  $\rightarrow$~STATUS
 
 \item[STATUS] The read memory contents are evaluated: While the
   parameter \textit{State} still contains the old slave state, the
   slave is busy with reacting on the state change command. In this
   case, the attribute has to be queried again.
-  $\rightarrow$~\textit{STATUS}
+  $\rightarrow$~STATUS
 
   In case of success, the \textit{State} parameter contains the new
   state and the \textit{Change} bit is cleared. The slave is in the
-  requested state.  $\rightarrow$~\textit{END}
+  requested state.  $\rightarrow$~END
 
   If the slave can not process the state change, the \textit{Change}
   bit is set: Now the master tries to get the reason for this by
   querying the \textit{AL Status Code} parameter.
-  $\rightarrow$~\textit{CODE}
+  $\rightarrow$~CODE
 
 \item[END] If the state machine ends in this state, the slaves's state
   change has been successful.
@@ -3290,23 +3288,23 @@ slave's state. This implements the states and transitions described in
   this parameter. Anyway, the master has to acknowledge the state
   change error by writing the current slave state to the ``AL Control
   Request'' attribute with the \textit{Acknowledge} bit set.
-  $\rightarrow$~\textit{ACK}
+  $\rightarrow$~ACK
 
 \item[ACK] After that, the ``AL Control Response'' attribute is
   queried for the state of the acknowledgement.
-  $\rightarrow$~\textit{CHECK ACK}
+  $\rightarrow$~CHECK ACK
 
 \item[CHECK ACK] If the acknowledgement has been accepted by the
   slave, the old state is kept. Still, the state change was
-  unsuccessful. $\rightarrow$~\textit{ERROR}
+  unsuccessful. $\rightarrow$~ERROR
 
   If the acknowledgement is ignored by the slave, a timeout happens.
   In any case, the overall state change was unsuccessful.
-  $\rightarrow$~\textit{ERROR}
+  $\rightarrow$~ERROR
 
   If there is still now response from the slave, but the timer did not
   run out yet, the slave's ``AL Control Response'' attribute is
-  queried again.  $\rightarrow$~\textit{CHECK ACK}
+  queried again.  $\rightarrow$~CHECK ACK
 
 \item[ERROR] If the state machine ends in this state, the slave's
   state change was unsuccessful.
@@ -3334,24 +3332,24 @@ Slave Information Interface described in \cite[section~5.4]{alspec}.
 \item[READ\_START] The beginning state for reading access, where the
   read request and the requested address are written to the SII
   attribute. Nothing can fail up to now.
-  $\rightarrow$~\textit{READ\_CHECK}
+  $\rightarrow$~READ\_CHECK
 
 \item[READ\_CHECK] When the SII read request has been sent
   successfully, a timer is started. A check/fetch datagram is issued,
   that reads out the SII attribute for state and data.
-  $\rightarrow$~\textit{READ\_FETCH}
+  $\rightarrow$~READ\_FETCH
 
 \item[READ\_FETCH] Upon reception of the check/fetch datagram, the
   \textit{Read Operation} and \textit{Busy} parameters are checked:
   \begin{itemize}
   \item If the slave is still busy with fetching E$^2$PROM data into
     the interface, the timer is checked. If it timed out, the reading
-    is aborted ($\rightarrow$~\textit{ERROR}), if not, the check/fetch
-    datagram is issued again. $\rightarrow$~\textit{READ\_FETCH}
+    is aborted ($\rightarrow$~ERROR), if not, the check/fetch datagram
+    is issued again. $\rightarrow$~READ\_FETCH
 
   \item If the slave is ready with reading data, these are copied from
     the datagram and the read cycle is completed.
-    $\rightarrow$~\textit{END}
+    $\rightarrow$~END
   \end{itemize}
 \end{description}
 
@@ -3361,22 +3359,22 @@ The write access states behave nearly the same:
 \item[WRITE\_START] The beginning state for writing access,
   respectively. A write request, the target address and the data word
   are written to the SII attribute. Nothing can fail.
-  $\rightarrow$~\textit{WRITE\_CHECK}
+  $\rightarrow$~WRITE\_CHECK
 
 \item[WRITE\_CHECK] When the SII write request has been sent
   successfully, the timer is started. A check datagram is issued, that
   reads out the SII attribute for the state of the write operation.
-  $\rightarrow$~\textit{WRITE\_CHECK2}
+  $\rightarrow$~WRITE\_CHECK2
 
 \item[WRITE\_CHECK2] Upon reception of the check datagram, the
   \textit{Write Operation} and \textit{Busy} parameters are checked:
   \begin{itemize}
   \item If the slave is still busy with writing E$^2$PROM data, the
     timer is checked. If it timed out, the operation is aborted
-    ($\rightarrow$~\textit{ERROR}), if not, the check datagram is
-    issued again. $\rightarrow$~\textit{WRITE\_CHECK2}
+    ($\rightarrow$~ERROR), if not, the check datagram is issued again.
+    $\rightarrow$~WRITE\_CHECK2
   \item If the slave is ready with writing data, the write cycle is
-    completed. $\rightarrow$~\textit{END}
+    completed. $\rightarrow$~END
   \end{itemize}
 \end{description}
 
@@ -3466,12 +3464,12 @@ The master module has a parameter \textit{ec\_eoeif\_count} to specify
 the number of EoE interfaces (and handlers) per master to create. This
 parameter can either be specified when manually loading the master
 module, or (when using the init script) by setting the
-\textit{EOE\_INTERFACES} variable in the sysconfig file (see
+\$EOE\_INTERFACES variable in the sysconfig file (see
 section~\ref{sec:sysconfig}). Upon loading of the master module, the
 virtual interfaces become available:
 
 \begin{lstlisting}
-  host# `\textbf{ifconfig -a}`
+  # `\textbf{ifconfig -a}`
   eoe0      Link encap:Ethernet  HWaddr 00:11:22:33:44:06
             BROADCAST MULTICAST  MTU:1500  Metric:1
             RX packets:0 errors:0 dropped:0 overruns:0 frame:0
@@ -3518,19 +3516,19 @@ figure~\ref{fig:fsm-eoe}.
 \begin{description}
 \item[RX\_START] The beginning state of the EoE state machine. A
   mailbox check datagram is sent, to query the slave's mailbox for new
-  frames. $\rightarrow$~\textit{RX\_CHECK}
+  frames. $\rightarrow$~RX\_CHECK
 
 \item[RX\_CHECK] The mailbox check datagram is received. If the
   slave's mailbox did not contain data, a transmit cycle is started.
-  $\rightarrow$~\textit{TX\_START}
+  $\rightarrow$~TX\_START
 
   If there are new data in the mailbox, a datagram is sent to fetch
-  the new data. $\rightarrow$~\textit{RX\_FETCH}
+  the new data. $\rightarrow$~RX\_FETCH
 
 \item[RX\_FETCH] The fetch datagram is received. If the mailbox data
   do not contain a ``EoE Fragment request'' command, the data are
   dropped and a transmit sequence is started.
-  $\rightarrow$~\textit{TX\_START}
+  $\rightarrow$~TX\_START
 
   If the received Ethernet frame fragment is the first fragment, a new
   socket buffer is allocated. In either case, the data are copied into
@@ -3538,26 +3536,26 @@ figure~\ref{fig:fsm-eoe}.
 
   If the fragment is the last fragment, the socket buffer is forwarded
   to the network stack and a transmit sequence is started.
-  $\rightarrow$~\textit{TX\_START}
+  $\rightarrow$~TX\_START
 
   Otherwise, a new receive sequence is started to fetch the next
-  fragment. $\rightarrow$~\textit{RX\_\-START}
+  fragment. $\rightarrow$~RX\_\-START
 
 \item[TX\_START] The beginning state of a transmit sequence. It is
   checked, if the transmittion queue contains a frame to send. If not,
-  a receive sequence is started. $\rightarrow$~\textit{RX\_START}
+  a receive sequence is started. $\rightarrow$~RX\_START
 
   If there is a frame to send, it is dequeued. If the queue was
   inactive before (because it was full), the queue is woken up with a
   call to \textit{netif\_wake\_queue()}. The first fragment of the
-  frame is sent. $\rightarrow$~\textit{TX\_SENT}
+  frame is sent. $\rightarrow$~TX\_SENT
 
 \item[TX\_SENT] It is checked, if the first fragment was sent
   successfully. If the current frame consists of further fragments,
-  the next one is sent. $\rightarrow$~\textit{TX\_SENT}
+  the next one is sent. $\rightarrow$~TX\_SENT
 
   If the last fragment was sent, a new receive sequence is started.
-  $\rightarrow$~\textit{RX\_START}
+  $\rightarrow$~RX\_START
 \end{description}
 
 \paragraph{EoE Processing}
@@ -3602,12 +3600,11 @@ idle mode.
 
 \paragraph{Automatic Configuration}
 
-By default, slaves are left in \textit{INIT} state during idle mode.
-If an EoE interface is set to running state (i.~e. with the
-\textit{ifconfig up} command), the requested slave state of the
-related slave is automatically set to \textit{OP}, whereupon the idle
-state machine will attempt to configure the slave and put it into
-operation.
+By default, slaves are left in INIT state during idle mode. If an EoE
+interface is set to running state (i.~e. with the \textit{ifconfig up}
+command), the requested slave state of the related slave is
+automatically set to OP, whereupon the idle state machine will attempt
+to configure the slave and put it into operation.
 
 %------------------------------------------------------------------------------
 
@@ -3629,15 +3626,15 @@ but does not apply them at once.
 
 \paragraph{SDO Download State Machine}
 
-The best time to apply SDO configurations is during the slave's
-\textit{PREOP} state, because mailbox communication is already
-possible and slave's application will start with updating input data
-in the succeeding \textit{SAVEOP} state. Therefore the SDO
-configuration has to be part of the slave configuration state machine
-(see section~\ref{sec:fsm-conf}): It is implemented via an SDO
-download state machine, that is executed just before entering the
-slave's \textit{SAVEOP} state. In this way, it is guaranteed that the
-SDO configurations are applied each time, the slave is reconfigured.
+The best time to apply SDO configurations is during the slave's PREOP
+state, because mailbox communication is already possible and slave's
+application will start with updating input data in the succeeding
+SAVEOP state. Therefore the SDO configuration has to be part of the
+slave configuration state machine (see section~\ref{sec:fsm-conf}): It
+is implemented via an SDO download state machine, that is executed
+just before entering the slave's SAVEOP state. In this way, it is
+guaranteed that the SDO configurations are applied each time, the
+slave is reconfigured.
 
 The transition diagram of the SDO Download state machine can be seen
 in figure~\ref{fig:fsm-coedown}.
@@ -3652,30 +3649,30 @@ in figure~\ref{fig:fsm-coedown}.
 \begin{description}
 \item[START] The beginning state of the CoE download state
   machine. The ``SDO Download Normal Request'' mailbox command is
-  sent. $\rightarrow$~\textit{REQUEST}
+  sent. $\rightarrow$~REQUEST
 
 \item[REQUEST] It is checked, if the CoE download request has been
   received by the slave. After that, a mailbox check command is issued
-  and a timer is started. $\rightarrow$~\textit{CHECK}
+  and a timer is started. $\rightarrow$~CHECK
 
 \item[CHECK] If no mailbox data is available, the timer is checked.
   \begin{itemize}
   \item If it timed out, the SDO download is aborted.
-    $\rightarrow$~\textit{ERROR}
+    $\rightarrow$~ERROR
   \item Otherwise, the mailbox is queried again.
-    $\rightarrow$~\textit{CHECK}
+    $\rightarrow$~CHECK
   \end{itemize}
 
   If the mailbox contains new data, the response is fetched.
-  $\rightarrow$~\textit{RESPONSE}
+  $\rightarrow$~RESPONSE
 
 \item[RESPONSE] If the mailbox response could not be fetched, the data
   is invalid, the wrong protocol was received, or a ``Abort SDO
   Transfer Request'' was received, the SDO download is aborted.
-  $\rightarrow$~\textit{ERROR}
+  $\rightarrow$~ERROR
 
   If a ``SDO Download Normal Response'' acknowledgement was received,
-  the SDO download was successful. $\rightarrow$~\textit{END}
+  the SDO download was successful. $\rightarrow$~END
 
 \item[END] The SDO download was successful.
 
@@ -3757,7 +3754,7 @@ Below is a typical listing of the masters Sysfs directory (that is a
 file system representation of the master's kobject):
 
 \begin{lstlisting}
-  host> `\textbf{ls /sys/ethercat0}`
+  `\$` `\textbf{ls /sys/ethercat0}`
   debug_level          slave000  slave003  slave006
   eeprom_write_enable  slave001  slave004  slave007
   info                 slave002  slave005  slave008
@@ -3773,7 +3770,7 @@ The following attributes exist in the master directory:
   defined. Writing is done with command like
 
   \begin{lstlisting}[gobble=4]
-    host# `\textbf{echo 1 > /sys/ethercat0/debug\_level}`
+    # `\textbf{echo 1 > /sys/ethercat0/debug\_level}`
   \end{lstlisting}
 
   and is receipted with a syslog message by the master:
@@ -3789,7 +3786,7 @@ The following attributes exist in the master directory:
   master. Example contents are below:
 
   \begin{lstlisting}[gobble=4]
-    host> `\textbf{cat /sys/ethercat0/info}`
+    `\$` `\textbf{cat /sys/ethercat0/info}`
 
     Mode: IDLE
     Slaves: 9
@@ -3815,7 +3812,7 @@ In operation mode, each created domain is represented as a directory
 the domain directory contents:
 
 \begin{lstlisting}
-  host> `\textbf{ls /sys/ethercat0/domain0}`
+  `\$` `\textbf{ls /sys/ethercat0/domain0}`
   image_size
 \end{lstlisting}
 
@@ -3831,7 +3828,7 @@ Each slave on the bus is represented in its own directory
 the EtherCAT bus. Below is a listing of a slave directory:
 
 \begin{lstlisting}
-  host> `\textbf{ls /sys/ethercat0/slave003}`
+  `\$` `\textbf{ls /sys/ethercat0/slave003}`
   eeprom  info  state
 \end{lstlisting}
 
@@ -3843,7 +3840,7 @@ the EtherCAT bus. Below is a listing of a slave directory:
   about the slave. Below is an example output:
 
   \begin{lstlisting}[gobble=4]
-    host> `\textbf{cat /sys/ethercat0/slave003/info}`
+    `\$` `\textbf{cat /sys/ethercat0/slave003/info}`
 
     Name: EL4132 2K. Ana. Ausgang +/-10V
     Vendor ID: 0x00000002
@@ -3889,9 +3886,9 @@ the EtherCAT bus. Below is a listing of a slave directory:
   It can be read or written:
 
   \begin{lstlisting}[gobble=4]
-    host# `\textbf{cat /sys/ethercat0/slave003/state}`
+    # `\textbf{cat /sys/ethercat0/slave003/state}`
     OP
-    host# `\textbf{echo SAVEOP > /sys/ethercat0/slave003/state}`
+    # `\textbf{echo SAVEOP > /sys/ethercat0/slave003/state}`
   \end{lstlisting}
 
   This command should also be receipted with a syslog message:
@@ -3934,7 +3931,7 @@ attributes. Though the data are in binary format, analyzation is
 easier with a tool like \textit{hexdump}:
 
 \begin{lstlisting}
-  host> `\textbf{cat /sys/ethercat0/slave003/eeprom | hexdump}`
+  `\$` `\textbf{cat /sys/ethercat0/slave003/eeprom | hexdump}`
   0000000 0103 0000 0000 0000 0000 0000 0000 008c
   0000010 0002 0000 3052 07f0 0000 0000 0000 0000
   0000020 0000 0000 0000 0000 0000 0000 0000 0000
@@ -3944,7 +3941,7 @@ easier with a tool like \textit{hexdump}:
 Backing up E$^2$PROM contents gets as easy as copying a file:
 
 \begin{lstlisting}
-  host> `\textbf{cp /sys/ethercat0/slave003/eeprom slave003.eep}`
+  `\$` `\textbf{cp /sys/ethercat0/slave003/eeprom slave003.eep}`
 \end{lstlisting}
 
 Writing access is only possible as \textit{root}. Moreover writing has
@@ -3956,7 +3953,7 @@ provided yet.
 E$^2$PROM writing is enabled with the command below:
 
 \begin{lstlisting}
-  host# `\textbf{echo 1 > /sys/ethercat0/eeprom\_write\_enable}`
+  # `\textbf{echo 1 > /sys/ethercat0/eeprom\_write\_enable}`
 \end{lstlisting}
 
 The success can be seen in the syslog messages again:
@@ -3971,7 +3968,7 @@ short validation of the contents, before starting the write operation.
 This validation checks the complete size and the category headers.
 
 \begin{lstlisting}
-  host# `\textbf{cat slave003.eep > /sys/ethercat0/slave003/eeprom}`
+  # `\textbf{cat slave003.eep > /sys/ethercat0/slave003/eeprom}`
 \end{lstlisting}
 
 The write operation can take a few seconds.
@@ -3992,7 +3989,7 @@ EtherCAT'') to visualize the EtherCAT bus. Running it usually results
 in an output like this:
 
 \begin{lstlisting}
-  host> `\textbf{lsec}`
+  `\$` `\textbf{lsec}`
   EtherCAT bus listing for master 0:
      0  1:0  OP      EK1100 Ethernet Kopplerklemme (2A E-Bus)
      1  1:1  INIT    EL4132 2K. Ana. Ausgang +/-10V
@@ -4017,7 +4014,7 @@ section~\ref{sec:sysfs-slave}). This is done for master $0$ by
 default, but the master index can be specified via command line:
 
 \begin{lstlisting}
-  host> `\textbf{lsec -h}`
+  `\$` `\textbf{lsec -h}`
   Usage: ec_list [OPTIONS]
           -m <IDX>    Query master <IDX>.
           -h          Show this help.
@@ -4074,10 +4071,10 @@ sequence:
 
 The init script can also be used for manually starting and stopping
 the EtherCAT master. It has to be executed with one of the parameters
-\textit{start}, \textit{stop}, \textit{restart} or \textit{status}.
+\texttt{start}, \texttt{stop}, \texttt{restart} or \texttt{status}.
 
 \begin{lstlisting}
-  host# `\textbf{/etc/init.d/ethercat restart}`
+  # `\textbf{/etc/init.d/ethercat restart}`
   Shutting down EtherCAT master                done
   Starting EtherCAT master                     done
 \end{lstlisting}
@@ -4102,23 +4099,23 @@ contains all configuration variables needed to operate a master:
   added to a network bridge according to IEEE 802.1D after master
   startup. The variable must contain the name of the bridge. To use
   this functionality, the kernel must be configured with the
-  \textit{CONFIG\_BRIDGE} option and the \textit{bridge-utils} package
-  must be installed (i.~e. the \textit{brctl} command is needed).
+  CONFIG\_BRIDGE option and the \textit{bridge-utils} package must be
+  installed (i.~e. the \textit{brctl} command is needed).
 \item[EOE\_IP\_ADDRESS] The IP address of the EoE bridge. Setting this
-  together with \textit{EOE\_IP\_NETMASK} will let the local host
-  communicate with devices on the EoE bridge.
+  together with \$EOE\_IP\_NETMASK will let the local host communicate
+  with devices on the EoE bridge.
 \item[EOE\_IP\_NETMASK] IP netmask of the EoE bridge.
 \item[EOE\_EXTRA\_INTERFACES] The list of extra interfaces to include
   in the EoE brid\-ge. Set this to interconnect the EoE bridge with
-  other local interfaces. If \textit{EOE\_\-BRIDGE} is empty or
-  undefined, setting this variable has no effect. Important: The IP
-  address of the listed interfaces will be cleared. Setting
-  \textit{EOE\_\-IP\_\-ADDRESS} and \textit{EOE\_IP\_NETMASK} will
-  re-enable them for IP traffic.
+  other local interfaces. If \$EOE\_\-BRIDGE is empty or undefined,
+  setting this variable has no effect. Important: The IP address of
+  the listed interfaces will be cleared. Setting
+  \$EOE\_\-IP\_\-ADDRESS and \$EOE\_IP\_NETMASK will re-enable them
+  for IP traffic.
 \item[EOE\_GATEWAY] The IP address of the default gateway. If this
   variable is set, the gateway will be renewed after bridge
   installation. This is necessary, if the default gateway's interface
-  is one of the \textit{EOE\_EXTRA\_INTERFACES}.
+  is one of the \$EOE\_EXTRA\_INTERFACES.
 \end{description}
 
 %------------------------------------------------------------------------------
@@ -4306,16 +4303,16 @@ The \textit{tar.bz2} file has to be unpacked with the command below
 (or similar):
 
 \begin{lstlisting}
-  host> `\textbf{tar xjf ethercat-1.1-rXXX.tar.bz2}`
-  host> `\textbf{cd ethercat-1.1-rXXX/}`
+  `\$` `\textbf{tar xjf ethercat-1.1-rXXX.tar.bz2}`
+  `\$` `\textbf{cd ethercat-1.1-rXXX/}`
 \end{lstlisting}
 
 The tarball was created with GNU Autotools, so the build process
 follows the usual commands:
 
 \begin{lstlisting}
-  host> `\textbf{./configure}`
-  host> `\textbf{make}`
+  `\$` `\textbf{./configure}`
+  `\$` `\textbf{make}`
 \end{lstlisting}
 
 The default installation prefix is \textit{/opt/etherlab}. It can be
@@ -4329,8 +4326,8 @@ kernel version can be specified with the \texttt{--with-linux}
 argument. Example:
 
 \begin{lstlisting}
-  host> `\textbf{./configure --with-linux="2.6.17-ipipe"}`
-  host> `\textbf{make}`
+  `\$` `\textbf{./configure --with-linux="2.6.17-ipipe"}`
+  `\$` `\textbf{make}`
 \end{lstlisting}
 
 The following commands have to be entered as \textit{root}: To install
@@ -4338,7 +4335,7 @@ the kernel modules, headers, the init script, the sysconfig file and
 the user space tools, the below command has to be executed:
 
 \begin{lstlisting}
-  host# `\textbf{make install}`
+  # `\textbf{make install}`
 \end{lstlisting}
 
 If the EtherCAT master shall be run as a service
@@ -4349,21 +4346,21 @@ to be copied to the appropriate locations. The below example is
 suitable for SUSE Linux.  It may vary for other distributions.
 
 \begin{lstlisting}
-  host# `\textbf{cd /opt/etherlab}`
-  host# `\textbf{cp etc/sysconfig/ethercat /etc/sysconfig/}`
-  host# `\textbf{cp etc/init.d/ethercat /etc/init.d/}`
-  host# `\textbf{insserv ethercat}`
+  # `\textbf{cd /opt/etherlab}`
+  # `\textbf{cp etc/sysconfig/ethercat /etc/sysconfig/}`
+  # `\textbf{cp etc/init.d/ethercat /etc/init.d/}`
+  # `\textbf{insserv ethercat}`
 \end{lstlisting}
 
 Now the sysconfig file \texttt{/etc/sysconfig/ethercat} (see
 section~\ref{sec:sysconfig}) has to be customized: This is mainly done
-by uncommenting and adjusting the \textit{DEVICE\_INDEX} variable. It
-has to be set to the index of the compatible network device to use
-with EtherCAT, where the order of devices is dependent on their
-position in the PCI bus:
+by uncommenting and adjusting the \$DEVICE\_INDEX variable. It has to
+be set to the index of the compatible network device to use with
+EtherCAT, where the order of devices is dependent on their position in
+the PCI bus:
 
 \begin{lstlisting}[numbers=left,basicstyle=\ttfamily\scriptsize]
-  host# `\textbf{lspci}`
+  # `\textbf{lspci}`
   00:00.0 Host bridge: VIA Technologies, Inc. VT8363/8365 [KT133/KM133] (rev 03)
   00:01.0 PCI bridge: VIA Technologies, Inc. VT8363/8365 [KT133/KM133 AGP]
   00:04.0 ISA bridge: VIA Technologies, Inc. VT82C686 [Apollo Super South] (rev 40)
@@ -4380,14 +4377,14 @@ position in the PCI bus:
 
 In the above output of the \textit{lspci} command, two compatible
 network devices can be found in lines~\textcircled{\tiny 9} and
-\textcircled{\tiny 11}. The \textit{DEVICE\_INDEX} variable should be
-set to $0$ or $1$, respectively.
+\textcircled{\tiny 11}. The \$DEVICE\_INDEX variable should be set to
+$0$ or $1$, respectively.
 
 After the basic configuration is done, the master can be started with
 the below command:
 
 \begin{lstlisting}
-  host# `\textbf{/etc/init.d/ethercat start}`
+  # `\textbf{/etc/init.d/ethercat start}`
 \end{lstlisting}
 
 The operation of the master can be observed by looking at the
@@ -4550,7 +4547,7 @@ The initialization of the minimal realtime module is done by the
 \item[\normalfont\textcircled{\tiny 16}] After the configuration of
   process data mapping, the master can be activated for cyclic
   operation. This will configure all slaves and bring them into
-  \textit{OP} state.
+  OP state.
 \item[\normalfont\textcircled{\tiny 20}] This call is needed to avoid
   a case differentiation in cyclic operation: The first operation in
   cyclic mode is a receive call. Due to the fact, that there is
@@ -4585,8 +4582,8 @@ listing~\ref{lst:miniclean}.
   object. It is assured, that no cyclic work will be done after this
   call returns.
 \item[\normalfont\textcircled{\tiny 4}] This call deactivates the
-  master, which results in all slaves being brought to their
-  \textit{INIT} state again.
+  master, which results in all slaves being brought to their INIT
+  state again.
 \item[\normalfont\textcircled{\tiny 5}] This call releases the master,
   removes any existing configuration and silently starts the idle
   mode. The value of the master pointer is invalid after this call and
