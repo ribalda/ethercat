@@ -9,31 +9,22 @@ $Id$
 Building and installing
 =======================
 
-The first two steps are only necessary, if the kernel sources to compile
-against are not those of the running kernel.
+The building and installation procedure is described in section 2.1 in the
+EtherCAT master documentation:
 
-1) Create a copy of the configuration template:
+  documentation/ethercat-doc.pdf
 
-  $ cp ethercat.conf.tmpl ethercat.conf
+-------------------------------------------------------------------------------
 
-2) Adjust the variables in the configuration file to your needs.
+For the impatient:
 
-3) Build the EtherCAT master and network device driver modules:
+The procedure mainly consists of calling
 
-  $ make
+  ./configure
+  make
+  make install
 
-4) Install the the EtherCAT master (as root):
-
-  # make install
-
-  This will create the following files and directories:
-    - /etc/sysconfig/ethercat (configuration file)
-    - /etc/init.d/ethercat    (startup script)
-    - /usr/sbin/rcethercat    (link to startup script)
-
-  The modules will be placed in /lib/modules/<KERNEL>/ethercat
-  (where <KERNEL> is the Linux kernel version configured in ethercat.conf).
-
-5) Adjust the configuration file /etc/sysconfig/ethercat to your needs.
+...and copying the init script and sysconfig files from $prefix/etc to the
+appropriate locations and customizing the sysconfig file.
 
 -------------------------------------------------------------------------------
