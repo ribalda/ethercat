@@ -68,7 +68,7 @@ module_param(ec_eoeif_count, int, S_IRUGO);
 MODULE_AUTHOR("Florian Pose <fp@igh-essen.com>");
 MODULE_DESCRIPTION("EtherCAT master driver module");
 MODULE_LICENSE("GPL");
-MODULE_VERSION(EC_COMPILE_INFO);
+MODULE_VERSION(EC_MASTER_VERSION);
 MODULE_PARM_DESC(ec_master_count, "number of EtherCAT masters to initialize");
 MODULE_PARM_DESC(ec_eoeif_count, "number of EoE interfaces per master");
 
@@ -87,7 +87,7 @@ int __init ec_init_module(void)
     unsigned int i;
     ec_master_t *master, *next;
 
-    EC_INFO("Master driver, %s\n", EC_COMPILE_INFO);
+    EC_INFO("Master driver %s\n", EC_MASTER_VERSION);
 
     if (ec_master_count < 1) {
         EC_ERR("Invalid ec_master_count: %i\n", ec_master_count);

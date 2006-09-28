@@ -46,6 +46,6 @@ REV := $(shell if test -s $(src)/../svnrevision; then \
 		svnversion $(src) 2>/dev/null || echo "unknown"; \
 	fi)
 
-EXTRA_CFLAGS := -DSVNREV=$(REV) -DUSER=$(USER)
+EXTRA_CFLAGS := -DSVNREV=$(REV)
 
 #------------------------------------------------------------------------------

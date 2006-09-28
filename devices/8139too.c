@@ -156,17 +156,17 @@
 /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
 #include "ecdev.h"
+#include "../master/globals.h"
 
 #define LIT(X) #X
 #define STR(X) LIT(X)
 
-#define COMPILE_INFO "Revision " STR(EC_REV) \
-                     ", compiled by " STR(EC_USER) \
-                     " at " __DATE__ " " __TIME__
+#define RTL8139_DRIVER_NAME DRV_NAME \
+                            " EtherCAT-capable Fast Ethernet driver " \
+                            DRV_VERSION ", master " EC_MASTER_VERSION
 
 /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 
-#define RTL8139_DRIVER_NAME   DRV_NAME " Fast Ethernet driver " DRV_VERSION
 #define PFX DRV_NAME ": "
 
 /* Default Message level */
@@ -674,7 +674,7 @@ struct rtl8139_private {
 MODULE_AUTHOR("Florian Pose <fp@igh-essen.com>");
 MODULE_DESCRIPTION("RealTek RTL-8139 EtherCAT driver");
 MODULE_LICENSE("GPL");
-MODULE_VERSION(COMPILE_INFO);
+MODULE_VERSION(EC_MASTER_VERSION);
 
 /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 
@@ -2900,7 +2900,7 @@ static int __init rtl8139_init_module (void)
 {
     /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
-    printk(KERN_INFO RTL8139_DRIVER_NAME " " COMPILE_INFO "\n");
+    printk(KERN_INFO RTL8139_DRIVER_NAME "\n");
     printk(KERN_INFO "ec_device_index is %i\n", ec_device_index);
 
     if (pci_module_init(&rtl8139_pci_driver) < 0) {
