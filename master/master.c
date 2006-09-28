@@ -109,6 +109,7 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
 
     master->index = index;
     master->device = NULL;
+    init_MUTEX(&master->device_sem);
     atomic_set(&master->available, 1);
     INIT_LIST_HEAD(&master->slaves);
     INIT_LIST_HEAD(&master->datagram_queue);

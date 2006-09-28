@@ -290,15 +290,20 @@ ec_device_t *ecdev_register(unsigned int master_index, /**< master index */
 
     if (!(master = ec_find_master(master_index))) return NULL;
 
+    if (down_interruptible(&master->device_sem)) {
+        EC_ERR("Interrupted while waiting for device!\n");
+        goto out_return;
+    }
+
     if (master->device) {
         EC_ERR("Master %i already has a device!\n", master_index);
-        goto out_return;
+        goto out_up;
     }
 
     if (!(master->device =
           (ec_device_t *) kmalloc(sizeof(ec_device_t), GFP_KERNEL))) {
         EC_ERR("Failed to allocate device!\n");
-        goto out_return;
+        goto out_up;
     }
 
     if (ec_device_init(master->device, master, net_dev, isr, module)) {
@@ -306,11 +311,14 @@ ec_device_t *ecdev_register(unsigned int master_index, /**< master index */
         goto out_free;
     }
 
+    up(&master->device_sem);
     return master->device;
 
  out_free:
     kfree(master->device);
     master->device = NULL;
+ out_up:
+    up(&master->device_sem);
  out_return:
     return NULL;
 }
@@ -334,7 +342,10 @@ void ecdev_unregister(unsigned int master_index, /**< master index */
 
     if (!(master = ec_find_master(master_index))) return;
 
+    down(&master->device_sem);
+
     if (!master->device || master->device != device) {
+        up(&master->device_sem);
         EC_WARN("Unable to unregister device!\n");
         return;
     }
@@ -342,6 +353,8 @@ void ecdev_unregister(unsigned int master_index, /**< master index */
     ec_device_clear(master->device);
     kfree(master->device);
     master->device = NULL;
+
+    up(&master->device_sem);
 }
 
 /*****************************************************************************/
@@ -415,15 +428,24 @@ ec_master_t *ecrt_request_master(unsigned int master_index
         goto out_return;
     }
 
+    if (down_interruptible(&master->device_sem)) {
+        EC_ERR("Interrupted while waiting for device!\n");
+        goto out_release;
+    }
+
     if (!master->device) {
+        up(&master->device_sem);
         EC_ERR("Master %i has no assigned device!\n", master_index);
         goto out_release;
     }
 
-    if (!try_module_get(master->device->module)) { // possible race?
-        EC_ERR("Failed to reserve device module!\n");
+    if (!try_module_get(master->device->module)) {
+        up(&master->device_sem);
+        EC_ERR("Device module is unloading!\n");
         goto out_release;
     }
+
+    up(&master->device_sem);
 
     if (!master->device->link_state) {
         EC_ERR("Link is DOWN.\n");
