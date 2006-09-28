@@ -377,7 +377,6 @@ int ecdev_start(unsigned int master_index /**< master index */)
         return -1;
     }
 
-    ec_master_measure_bus_time(master);
     ec_master_idle_start(master);
     return 0;
 }
