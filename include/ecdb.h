@@ -58,6 +58,11 @@
 #define Beckhoff_EL3102_Status2 0x00000002, 0x0C1E3052, 0x3102, 1
 #define Beckhoff_EL3102_Input2 0x00000002, 0x0C1E3052, 0x3102, 2
 
+#define Beckhoff_EL3152_Status1 0x00000002, 0x0C503052, 0x3101, 1
+#define Beckhoff_EL3152_Input1 0x00000002, 0x0C503052, 0x3101, 2
+#define Beckhoff_EL3152_Status2 0x00000002, 0x0C503052, 0x3102, 1
+#define Beckhoff_EL3152_Input2 0x00000002, 0x0C503052, 0x3102, 2
+
 #define Beckhoff_EL3162_Status1 0x00000002, 0x0C5A3052, 0x3101, 1
 #define Beckhoff_EL3162_Input1 0x00000002, 0x0C5A3052, 0x3101, 2
 #define Beckhoff_EL3162_Status2 0x00000002, 0x0C5A3052, 0x3102, 1
