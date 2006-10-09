@@ -35,13 +35,9 @@
 #
 #------------------------------------------------------------------------------
 
-SUBDIRS = master/ devices/
-
-initdir = $(sysconfdir)/init.d
-sysdir = $(sysconfdir)/sysconfig
+SUBDIRS = master/ devices/ script/
 
 include_HEADERS = include/ecdb.h include/ecrt.h
-noinst_SCRIPTS = script/lsec.pl script/ethercat.sh script/sysconfig
 
 MINI_FILES = \
 	examples/mini/Kbuild \
@@ -66,7 +62,7 @@ MSR_FILES = \
 	examples/msr/msrserv.pl \
 	examples/msr/msr_unload
 
-EXTRA_DIST = $(noinst_SCRIPTS) documentation/ethercat_doc.pdf \
+EXTRA_DIST = documentation/ethercat_doc.pdf \
 	$(MINI_FILES) $(RTAI_FILES) $(MSR_FILES)
 
 mydist:
@@ -79,19 +75,7 @@ dist-hook:
 	fi
 
 install-data-local:
-	$(mkinstalldirs) $(bindir)
-	$(mkinstalldirs) $(initdir)
-	$(mkinstalldirs) $(sysdir)
-	$(INSTALL_SCRIPT) $(srcdir)/script/lsec.pl $(bindir)/lsec
-	$(INSTALL_SCRIPT) $(srcdir)/script/ethercat.sh $(initdir)/ethercat
-	$(INSTALL_DATA) $(srcdir)/script/sysconfig $(sysdir)/ethercat
-	$(DEPMOD) $(LINUX_KERNEL_VERSION)
-
-uninstall-local:
-	rm -rf $(LINUX_MODULES_DIR)/ethercat
-	rm $(bindir)/lsec
-	rm $(initdir)/ethercat
-	rm $(sysdir)/ethercat
+	$(DEPMOD) -b "$(DESTDIR)" $(LINUX_KERNEL_VERSION)
 
 doc:
 	doxygen Doxyfile

@@ -47,6 +47,7 @@ clean-local:
 
 install-data-local:
 	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="$(ABSSRCDIR)" \
+		INSTALL_MOD_PATH="$(DESTDIR)" \
 		INSTALL_MOD_DIR="ethercat" modules_install
 
 #------------------------------------------------------------------------------
