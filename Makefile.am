@@ -35,7 +35,7 @@
 #
 #------------------------------------------------------------------------------
 
-SUBDIRS = master/ devices/ script/ include/
+SUBDIRS = master devices script include
 
 MINI_FILES = \
         examples/mini/Kbuild \
