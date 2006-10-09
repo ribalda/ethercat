@@ -3,8 +3,9 @@
 #------------------------------------------------------------------------------
 
 AC_INIT([ethercat],[1.1],[fp@igh-essen.com])
-AM_INIT_AUTOMAKE([-Wall -Werror foreign dist-bzip2])
+AC_CONFIG_AUX_DIR([autoconf])
 AC_PREFIX_DEFAULT([/opt/etherlab])
+AM_INIT_AUTOMAKE([-Wall -Werror foreign dist-bzip2])
 
 #------------------------------------------------------------------------------
 # Linux sources
@@ -54,9 +55,10 @@ AC_CONFIG_FILES([
         master/Makefile 
         devices/Makefile 
         script/Makefile
+        include/Makefile
         examples/mini/Makefile
-	examples/rtai/Makefile
-	examples/msr/Makefile
+        examples/rtai/Makefile
+        examples/msr/Makefile
 ])
 AC_OUTPUT
 

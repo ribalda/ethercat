@@ -4,7 +4,7 @@
 #
 #  IgH EtherCAT master
 #
-#  $Id: Makefile.am 565 2006-09-26 13:25:09Z fp $
+#  $Id$
 #
 #  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
 #
@@ -41,6 +41,8 @@ sysdir = $(sysconfdir)/sysconfig
 bin_SCRIPTS = lsec
 init_SCRIPTS = ethercat
 sys_DATA = sysconfig
+
+EXTRA_DIST = lsec.pl ethercat.sh sysconfig
 
 lsec: lsec.pl
 	cp $(srcdir)/lsec.pl lsec

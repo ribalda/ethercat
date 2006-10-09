@@ -41,16 +41,14 @@ EXTRA_DIST = \
 	8139too.c \
 	original_8139too.c
 
-ABSSRCDIR = `cd $(srcdir) && pwd -P`
-
 all:
-	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="$(ABSSRCDIR)" modules
+	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" modules
 
 clean-local:
-	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="$(ABSSRCDIR)" clean
+	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" clean
 
 install-data-local:
-	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="$(ABSSRCDIR)" \
+	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" \
 		INSTALL_MOD_PATH="$(DESTDIR)" \
 		INSTALL_MOD_DIR="ethercat" modules_install
 

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 set -x
-aclocal -I config
-autoheader
+mkdir -p autoconf
+aclocal -I autoconf
 automake --add-missing
 autoconf

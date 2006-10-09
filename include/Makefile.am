@@ -2,7 +2,7 @@
 #
 #  Makefile.am
 #
-#  IgH EtherCAT master module
+#  IgH EtherCAT master
 #
 #  $Id$
 #
@@ -35,15 +35,6 @@
 #
 #------------------------------------------------------------------------------
 
-all:
-	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" modules
-
-clean-local:
-	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" clean
-
-install-data-local:
-	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" \
-		INSTALL_MOD_PATH="$(DESTDIR)" \
-		INSTALL_MOD_DIR="ethercat" modules_install
+include_HEADERS = ecdb.h ecrt.h
 
 #------------------------------------------------------------------------------
