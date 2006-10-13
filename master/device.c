@@ -71,14 +71,20 @@ int ec_device_init(ec_device_t *device, /**< EtherCAT device */
     device->open = 0;
     device->link_state = 0; // down
 
+#ifdef EC_DBG_IF
     if (ec_debug_init(&device->dbg)) {
         EC_ERR("Failed to init debug device!\n");
         goto out_return;
     }
+#endif
 
     if (!(device->tx_skb = dev_alloc_skb(ETH_FRAME_LEN))) {
         EC_ERR("Error allocating device socket buffer!\n");
+#ifdef EC_DBG_IF
         goto out_debug;
+#else
+        goto out_return;
+#endif
     }
 
     device->tx_skb->dev = net_dev;
@@ -92,8 +98,10 @@ int ec_device_init(ec_device_t *device, /**< EtherCAT device */
 
     return 0;
 
+#ifdef EC_DBG_IF
  out_debug:
     ec_debug_clear(&device->dbg);
+#endif
  out_return:
     return -1;
 }
@@ -108,7 +116,9 @@ void ec_device_clear(ec_device_t *device /**< EtherCAT device */)
 {
     if (device->open) ec_device_close(device);
     if (device->tx_skb) dev_kfree_skb(device->tx_skb);
+#ifdef EC_DBG_IF
     ec_debug_clear(&device->dbg);
+#endif
 }
 
 /*****************************************************************************/
@@ -201,7 +211,9 @@ void ec_device_send(ec_device_t *device, /**< EtherCAT device */
         ec_print_data(device->tx_skb->data + ETH_HLEN, size);
     }
 
+#ifdef EC_DBG_IF
     ec_debug_send(&device->dbg, device->tx_skb->data, ETH_HLEN + size);
+#endif
 
     // start sending
     device->dev->hard_start_xmit(device->tx_skb, device->dev);
@@ -243,7 +255,9 @@ void ecdev_receive(ec_device_t *device, /**< EtherCAT device */
                            data + ETH_HLEN, size - ETH_HLEN);
     }
 
+#ifdef EC_DBG_IF
     ec_debug_send(&device->dbg, data, size);
+#endif
 
     ec_master_receive_datagrams(device->master,
                                 data + ETH_HLEN,

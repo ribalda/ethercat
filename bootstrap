@@ -3,5 +3,6 @@
 set -x
 mkdir -p autoconf
 aclocal -I autoconf
+autoheader
 automake --add-missing
 autoconf

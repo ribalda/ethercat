@@ -2,10 +2,13 @@
 # $Id$
 #------------------------------------------------------------------------------
 
+AC_PREREQ(2.59)
 AC_INIT([ethercat],[1.1],[fp@igh-essen.com])
 AC_CONFIG_AUX_DIR([autoconf])
-AC_PREFIX_DEFAULT([/opt/etherlab])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign dist-bzip2])
+AC_PREFIX_DEFAULT([/opt/etherlab])
+AC_CONFIG_HEADERS([config.h])
+AC_CONFIG_SRCDIR([config.h.in])
 
 #------------------------------------------------------------------------------
 # Linux sources
@@ -49,11 +52,32 @@ if test -z "$DEPMOD"; then
 fi
 
 #------------------------------------------------------------------------------
+# Debug interface
+#------------------------------------------------------------------------------
+
+AC_ARG_ENABLE([debug-if],
+		AS_HELP_STRING([--enable-dbg-if],
+						[Create a debug interface for each master @<:@NO@:>@]),
+		[case "${enableval}" in
+			  yes) dbg=1
+				   AC_DEFINE([EC_DBG_IF], [1], [Debug interfaces enabled])
+				   ;;
+			  no)  dbg=0
+				   ;;
+			  *)   AC_MSG_ERROR([Invalid value for --enable-dbg-if])
+				   ;;
+		esac],
+		[dbg=0]
+)
+AM_CONDITIONAL(EC_DBG_IF, test "x$dbg" = x1)
+AC_SUBST([EC_DBG_IF],${dbg})
+
+#------------------------------------------------------------------------------
 
 AC_CONFIG_FILES([
-        Makefile 
-        master/Makefile 
-        devices/Makefile 
+        Makefile
+        master/Makefile
+        devices/Makefile
         script/Makefile
         include/Makefile
         examples/mini/Makefile

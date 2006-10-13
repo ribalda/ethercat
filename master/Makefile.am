@@ -52,7 +52,8 @@ EXTRA_DIST = \
 	xmldev.c xmldev.h
 
 all:
-	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" modules
+	$(MAKE) -C "$(LINUX_SOURCE_DIR)" \
+		M="@abs_srcdir@" EC_DBG_IF="$(EC_DBG_IF)" modules
 
 clean-local:
 	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" clean

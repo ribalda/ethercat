@@ -46,7 +46,10 @@
 #include "../include/ecrt.h"
 #include "../devices/ecdev.h"
 #include "globals.h"
+
+#ifdef EC_DBG_IF
 #include "debug.h"
+#endif
 
 /*****************************************************************************/
 
@@ -65,7 +68,9 @@ struct ec_device
     ec_isr_t isr; /**< pointer to the device's interrupt service routine */
     struct module *module; /**< pointer to the device's owning module */
     uint8_t link_state; /**< device link state */
+#ifdef EC_DBG_IF
     ec_debug_t dbg; /**< debug device */
+#endif
 };
 
 /*****************************************************************************/
