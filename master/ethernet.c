@@ -362,7 +362,7 @@ void ec_eoe_state_rx_check(ec_eoe_t *eoe /**< EoE handler */)
 void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
 {
     size_t rec_size, data_size;
-    uint8_t *data, frame_type, last_fragment, time_appended, mbox_type;
+    uint8_t *data, frame_type, last_fragment, time_appended, mbox_prot;
     uint8_t frame_number, fragment_offset, fragment_number;
     off_t offset;
 #if EOE_DEBUG_LEVEL > 1
@@ -376,13 +376,13 @@ void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
     }
 
     if (!(data = ec_slave_mbox_fetch(eoe->slave, &eoe->datagram,
-                                     &mbox_type, &rec_size))) {
+                                     &mbox_prot, &rec_size))) {
         eoe->stats.rx_errors++;
         eoe->state = ec_eoe_state_tx_start;
         return;
     }
 
-    if (mbox_type != 0x02) {
+    if (mbox_prot != 0x02) { // EoE
         eoe->stats.rx_errors++;
         eoe->state = ec_eoe_state_tx_start;
         return;

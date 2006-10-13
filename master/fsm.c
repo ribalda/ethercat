@@ -2142,7 +2142,7 @@ void ec_fsm_coe_down_response(ec_fsm_t *fsm /**< finite state machine */)
 {
     ec_datagram_t *datagram = &fsm->datagram;
     ec_slave_t *slave = fsm->slave;
-    uint8_t *data, mbox_type;
+    uint8_t *data, mbox_prot;
     size_t rec_size;
     ec_sdo_data_t *sdodata = fsm->sdodata;
 
@@ -2154,18 +2154,14 @@ void ec_fsm_coe_down_response(ec_fsm_t *fsm /**< finite state machine */)
     }
 
     if (!(data = ec_slave_mbox_fetch(slave, datagram,
-				     &mbox_type, &rec_size))) {
+				     &mbox_prot, &rec_size))) {
         fsm->coe_state = ec_fsm_error;
         return;
     }
 
-    if (mbox_type != 0x03) {
-        EC_WARN("Received mailbox protocol 0x%02X as a response."
-	      " Trying again.\n", mbox_type);
-        fsm->coe_start = get_cycles();
-        ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-	ec_master_queue_datagram(fsm->master, datagram);
-	fsm->coe_state = ec_fsm_coe_down_check;
+    if (mbox_prot != 0x03) { // CoE
+        EC_WARN("Received mailbox protocol 0x%02X as response.\n", mbox_prot);
+        fsm->coe_state = ec_fsm_error;
 	return;
     }
 
