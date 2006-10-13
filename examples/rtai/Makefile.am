@@ -35,6 +35,8 @@
 #
 #------------------------------------------------------------------------------
 
+EXTRA_DIST = Kbuild rtai_sample.c
+
 all:
 	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" modules
 

@@ -80,6 +80,7 @@ AC_CONFIG_FILES([
         devices/Makefile
         script/Makefile
         include/Makefile
+        examples/Makefile
         examples/mini/Makefile
         examples/rtai/Makefile
         examples/msr/Makefile

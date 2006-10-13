@@ -2,9 +2,9 @@
 #
 #  Makefile.am
 #
-#  IgH EtherCAT master module
+#  IgH EtherCAT master
 #
-#  $Id$
+#  $Id: Makefile.am 581 2006-10-09 14:47:48Z fp $
 #
 #  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
 #
@@ -35,17 +35,6 @@
 #
 #------------------------------------------------------------------------------
 
-EXTRA_DIST = Kbuild mini.c
-
-all:
-	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" modules
-
-clean-local:
-	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" clean
-
-install-data-local:
-	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" \
-		INSTALL_MOD_PATH="$(DESTDIR)" \
-		INSTALL_MOD_DIR="ethercat" modules_install
+DIST_SUBDIRS = mini rtai msr
 
 #------------------------------------------------------------------------------

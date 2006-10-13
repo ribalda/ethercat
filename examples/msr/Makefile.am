@@ -35,6 +35,15 @@
 #
 #------------------------------------------------------------------------------
 
+EXTRA_DIST = \
+	Kbuild \
+	libm.o_shipped \
+	msr_load \
+	msr_unload \
+	msr_param.h \
+	msr_sample.c \
+	msrserv.pl
+
 all:
 	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" modules
 

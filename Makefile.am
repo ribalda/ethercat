@@ -37,31 +37,9 @@
 
 SUBDIRS = master devices script include
 
-MINI_FILES = \
-        examples/mini/Kbuild \
-        examples/mini/Makefile.am \
-        examples/mini/Makefile.in \
-        examples/mini/mini.c
+DIST_SUBDIRS = master devices script include examples
 
-RTAI_FILES = \
-        examples/rtai/Kbuild \
-        examples/rtai/Makefile.am \
-        examples/rtai/Makefile.in \
-        examples/rtai/rtai_sample.c
-
-MSR_FILES = \
-        examples/msr/Kbuild \
-        examples/msr/libm.o_shipped \
-        examples/msr/Makefile.am \
-        examples/msr/Makefile.in \
-        examples/msr/msr_load \
-        examples/msr/msr_param.h \
-        examples/msr/msr_sample.c \
-        examples/msr/msrserv.pl \
-        examples/msr/msr_unload
-
-EXTRA_DIST = documentation/ethercat_doc.pdf \
-        $(MINI_FILES) $(RTAI_FILES) $(MSR_FILES)
+EXTRA_DIST = documentation/ethercat_doc.pdf
 
 mydist:
 	@SVNREV=`svnversion $(srcdir)` && \
