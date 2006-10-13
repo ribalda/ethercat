@@ -1649,7 +1649,7 @@ void ec_fsm_sii_read_fetch(ec_fsm_t *fsm /**< finite state machine */)
     if (EC_READ_U8(datagram->data + 1) & 0x81) {
         // still busy... timeout?
         if (get_cycles() - fsm->sii_start >= (cycles_t) 10 * cpu_khz) {
-            EC_ERR("SII: Timeout.\n");
+            EC_ERR("SII: Read timeout.\n");
             fsm->sii_state = ec_fsm_error;
 #if 0
             EC_DBG("SII busy: %02X %02X %02X %02X\n",
@@ -1658,6 +1658,7 @@ void ec_fsm_sii_read_fetch(ec_fsm_t *fsm /**< finite state machine */)
                    EC_READ_U8(datagram->data + 2),
                    EC_READ_U8(datagram->data + 3));
 #endif
+            return;
         }
 
         // issue check/fetch datagram again
@@ -1752,18 +1753,22 @@ void ec_fsm_sii_write_check2(ec_fsm_t *fsm /**< finite state machine */)
         if (get_cycles() - fsm->sii_start >= (cycles_t) 10 * cpu_khz) {
             EC_ERR("SII: Write timeout.\n");
             fsm->sii_state = ec_fsm_error;
+            return;
         }
 
         // issue check/fetch datagram again
         ec_master_queue_datagram(fsm->master, datagram);
+        return;
     }
-    else if (EC_READ_U8(datagram->data + 1) & 0x40) {
+
+    if (EC_READ_U8(datagram->data + 1) & 0x40) {
         EC_ERR("SII: Write operation failed!\n");
         fsm->sii_state = ec_fsm_error;
+        return;
     }
-    else { // success
-        fsm->sii_state = ec_fsm_end;
-    }
+
+    // success
+    fsm->sii_state = ec_fsm_end;
 }
 
 /******************************************************************************
