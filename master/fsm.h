@@ -72,6 +72,7 @@ struct ec_fsm
     unsigned int sii_mode; /**< SII reading done by APRD (0) or NPRD (1) */
     uint8_t sii_value[4]; /**< raw SII value (32bit) */
     cycles_t sii_start; /**< sii start */
+    uint8_t sii_check_once_more; /**< do one more check in case of timeout */
 
     void (*change_state)(ec_fsm_t *); /**< slave state change state function */
     ec_slave_state_t change_new; /**< input: new state */

@@ -356,6 +356,7 @@ void ec_master_send_datagrams(ec_master_t *master /**< EtherCAT master */)
 
             datagram->state = EC_DATAGRAM_SENT;
             datagram->cycles_sent = cycles_start;
+            datagram->check_once_more = 1;
             datagram->index = master->datagram_index++;
 
             if (unlikely(master->debug_level > 1))
@@ -1313,7 +1314,7 @@ void ecrt_master_receive(ec_master_t *master /**< EtherCAT master */)
     ec_device_call_isr(master->device);
 
     cycles_received = get_cycles();
-    cycles_timeout = EC_IO_TIMEOUT * cpu_khz / 1000;
+    cycles_timeout = EC_IO_TIMEOUT /* us */ * cpu_khz / 1000;
 
     // dequeue all datagrams that timed out
     list_for_each_entry_safe(datagram, next, &master->datagram_queue, queue) {
@@ -1321,6 +1322,11 @@ void ecrt_master_receive(ec_master_t *master /**< EtherCAT master */)
             case EC_DATAGRAM_SENT:
             case EC_DATAGRAM_QUEUED:
                 if (cycles_received - datagram->cycles_sent > cycles_timeout) {
+                    if (datagram->state == EC_DATAGRAM_SENT
+                        && datagram->check_once_more) {
+                        datagram->check_once_more = 0;
+                        break;
+                    }
                     list_del_init(&datagram->queue);
                     datagram->state = EC_DATAGRAM_TIMED_OUT;
                     master->stats.timeouts++;

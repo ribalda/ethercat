@@ -78,6 +78,7 @@ void ec_datagram_init(ec_datagram_t *datagram /**< EtherCAT datagram */)
     datagram->working_counter = 0x00;
     datagram->state = EC_DATAGRAM_INIT;
     datagram->cycles_sent = 0;
+    datagram->check_once_more = 0;
 }
 
 /*****************************************************************************/

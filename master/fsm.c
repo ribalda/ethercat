@@ -265,7 +265,7 @@ void ec_fsm_startup_broadcast(ec_fsm_t *fsm /**< finite state machine */)
     ec_master_t *master = fsm->master;
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
-        EC_ERR("Failed tor receive broadcast datagram.\n");
+        EC_ERR("Failed to receive broadcast datagram.\n");
         fsm->master_state = ec_fsm_error;
         return;
     }
@@ -1613,6 +1613,7 @@ void ec_fsm_sii_read_check(ec_fsm_t *fsm /**< finite state machine */)
         return;
     }
 
+    fsm->sii_check_once_more = 1;
     fsm->sii_start = get_cycles();
 
     // issue check/fetch datagram
@@ -1649,16 +1650,19 @@ void ec_fsm_sii_read_fetch(ec_fsm_t *fsm /**< finite state machine */)
     if (EC_READ_U8(datagram->data + 1) & 0x81) {
         // still busy... timeout?
         if (get_cycles() - fsm->sii_start >= (cycles_t) 10 * cpu_khz) {
-            EC_ERR("SII: Read timeout.\n");
-            fsm->sii_state = ec_fsm_error;
+            if (!fsm->sii_check_once_more) {
+                EC_ERR("SII: Read timeout.\n");
+                fsm->sii_state = ec_fsm_error;
 #if 0
-            EC_DBG("SII busy: %02X %02X %02X %02X\n",
-                   EC_READ_U8(datagram->data + 0),
-                   EC_READ_U8(datagram->data + 1),
-                   EC_READ_U8(datagram->data + 2),
-                   EC_READ_U8(datagram->data + 3));
+                EC_DBG("SII busy: %02X %02X %02X %02X\n",
+                       EC_READ_U8(datagram->data + 0),
+                       EC_READ_U8(datagram->data + 1),
+                       EC_READ_U8(datagram->data + 2),
+                       EC_READ_U8(datagram->data + 3));
 #endif
-            return;
+                return;
+            }
+            fsm->sii_check_once_more = 0;
         }
 
         // issue check/fetch datagram again

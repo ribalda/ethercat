@@ -119,6 +119,7 @@ typedef struct
     uint16_t working_counter; /**< working counter */
     ec_datagram_state_t state; /**< datagram state */
     cycles_t cycles_sent; /**< time, the datagram was sent */
+    uint8_t check_once_more; /**< one more try in case of timeout */
 }
 ec_datagram_t;
 
