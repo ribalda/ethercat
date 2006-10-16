@@ -543,19 +543,23 @@ void ec_master_output_stats(ec_master_t *master /**< EtherCAT master */)
         master->stats.output_jiffies = jiffies;
 
         if (master->stats.timeouts) {
-            EC_WARN("%i datagrams TIMED OUT!\n", master->stats.timeouts);
+            EC_WARN("%i datagram%s TIMED OUT!\n", master->stats.timeouts,
+                    master->stats.timeouts == 1 ? "" : "s");
             master->stats.timeouts = 0;
         }
         if (master->stats.corrupted) {
-            EC_WARN("%i frame(s) CORRUPTED!\n", master->stats.corrupted);
+            EC_WARN("%i frame%s CORRUPTED!\n", master->stats.corrupted,
+                    master->stats.corrupted == 1 ? "" : "s");
             master->stats.corrupted = 0;
         }
         if (master->stats.skipped) {
-            EC_WARN("%i datagram(s) SKIPPED!\n", master->stats.skipped);
+            EC_WARN("%i datagram%s SKIPPED!\n", master->stats.skipped,
+                    master->stats.skipped == 1 ? "" : "s");
             master->stats.skipped = 0;
         }
         if (master->stats.unmatched) {
-            EC_WARN("%i datagram(s) UNMATCHED!\n", master->stats.unmatched);
+            EC_WARN("%i datagram%s UNMATCHED!\n", master->stats.unmatched,
+                    master->stats.unmatched == 1 ? "" : "s");
             master->stats.unmatched = 0;
         }
     }
