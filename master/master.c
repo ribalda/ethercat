@@ -311,6 +311,7 @@ void ec_master_queue_datagram(ec_master_t *master, /**< EtherCAT master */
 
     list_add_tail(&datagram->queue, &master->datagram_queue);
     datagram->state = EC_DATAGRAM_QUEUED;
+    datagram->cycles_queued = get_cycles();
 }
 
 /*****************************************************************************/
@@ -322,15 +323,18 @@ void ec_master_queue_datagram(ec_master_t *master, /**< EtherCAT master */
 
 void ec_master_send_datagrams(ec_master_t *master /**< EtherCAT master */)
 {
-    ec_datagram_t *datagram;
+    ec_datagram_t *datagram, *next;
     size_t datagram_size;
     uint8_t *frame_data, *cur_data;
     void *follows_word;
-    cycles_t cycles_start, cycles_end;
+    cycles_t cycles_start, cycles_sent, cycles_end;
+    unsigned long jiffies_sent;
     unsigned int frame_count, more_datagrams_waiting;
+    struct list_head sent_datagrams;
 
-    frame_count = 0;
     cycles_start = get_cycles();
+    frame_count = 0;
+    INIT_LIST_HEAD(&sent_datagrams);
 
     if (unlikely(master->debug_level > 1))
         EC_DBG("ec_master_send_datagrams\n");
@@ -354,9 +358,7 @@ void ec_master_send_datagrams(ec_master_t *master /**< EtherCAT master */)
                 break;
             }
 
-            datagram->state = EC_DATAGRAM_SENT;
-            datagram->cycles_sent = cycles_start;
-            datagram->check_once_more = 1;
+            list_add_tail(&datagram->sent, &sent_datagrams);
             datagram->index = master->datagram_index++;
 
             if (unlikely(master->debug_level > 1))
@@ -384,7 +386,7 @@ void ec_master_send_datagrams(ec_master_t *master /**< EtherCAT master */)
             cur_data += EC_DATAGRAM_FOOTER_SIZE;
         }
 
-        if (cur_data - frame_data == EC_FRAME_HEADER_SIZE) {
+        if (list_empty(&sent_datagrams)) {
             if (unlikely(master->debug_level > 1))
                 EC_DBG("nothing to send.\n");
             break;
@@ -403,6 +405,17 @@ void ec_master_send_datagrams(ec_master_t *master /**< EtherCAT master */)
 
         // send frame
         ec_device_send(master->device, cur_data - frame_data);
+        cycles_sent = get_cycles();
+        jiffies_sent = jiffies;
+
+        // set datagram states and sending timestamps
+        list_for_each_entry_safe(datagram, next, &sent_datagrams, sent) {
+            datagram->state = EC_DATAGRAM_SENT;
+            datagram->cycles_sent = cycles_sent;
+            datagram->jiffies_sent = jiffies_sent;
+            list_del_init(&datagram->sent); // empty list of sent datagrams
+        }
+
         frame_count++;
     }
     while (more_datagrams_waiting);
@@ -498,6 +511,8 @@ void ec_master_receive_datagrams(ec_master_t *master, /**< EtherCAT master */
 
         // dequeue the received datagram
         datagram->state = EC_DATAGRAM_RECEIVED;
+        datagram->cycles_received = master->device->cycles_isr;
+        datagram->jiffies_received = master->device->jiffies_isr;
         list_del_init(&datagram->queue);
     }
 }
@@ -1063,8 +1078,7 @@ void ec_master_calc_addressing(ec_master_t *master /**< EtherCAT master */)
 int ec_master_measure_bus_time(ec_master_t *master)
 {
     ec_datagram_t datagram;
-    cycles_t cycles_start, cycles_end, cycles_timeout;
-    uint32_t times[100], sum, min, max, i;
+    uint32_t cur, sum, min, max, i;
 
     ec_datagram_init(&datagram);
 
@@ -1074,7 +1088,7 @@ int ec_master_measure_bus_time(ec_master_t *master)
         return -1;
     }
 
-    cycles_timeout = (cycles_t) EC_IO_TIMEOUT * (cpu_khz / 1000);
+    ecrt_master_receive(master);
 
     sum = 0;
     min = 0xFFFFFFFF;
@@ -1083,11 +1097,9 @@ int ec_master_measure_bus_time(ec_master_t *master)
     for (i = 0; i < 100; i++) {
         ec_master_queue_datagram(master, &datagram);
         ecrt_master_send(master);
-        cycles_start = get_cycles();
 
-        while (1) { // active waiting
-            ec_device_call_isr(master->device);
-            cycles_end = get_cycles(); // take current time
+        while (1) {
+            ecrt_master_receive(master);
 
             if (datagram.state == EC_DATAGRAM_RECEIVED) {
                 break;
@@ -1096,25 +1108,25 @@ int ec_master_measure_bus_time(ec_master_t *master)
                 EC_WARN("Failed to measure bus time.\n");
                 goto error;
             }
-            else if (cycles_end - cycles_start >= cycles_timeout) {
+            else if (datagram.state == EC_DATAGRAM_TIMED_OUT) {
                 EC_WARN("Timeout while measuring bus time.\n");
                 goto error;
             }
         }
 
-        times[i] = (unsigned int) (cycles_end - cycles_start) * 1000 / cpu_khz;
-        sum += times[i];
-        if (times[i] > max) max = times[i];
-        if (times[i] < min) min = times[i];
+        cur = (unsigned int) (datagram.cycles_received
+                              - datagram.cycles_sent) * 1000 / cpu_khz;
+        sum += cur;
+        if (cur > max) max = cur;
+        if (cur < min) min = cur;
     }
 
-    EC_INFO("Bus time is (min/avg/max) %u/%u.%u/%u us.\n",
+    EC_INFO("Bus time is (min/avg/max) %u / %u.%u / %u us.\n",
             min, sum / 100, sum % 100, max);
+    ec_datagram_clear(&datagram);
     return 0;
 
   error:
-    // Dequeue and free datagram
-    list_del(&datagram.queue);
     ec_datagram_clear(&datagram);
     return -1;
 }
@@ -1309,24 +1321,28 @@ void ecrt_master_send(ec_master_t *master /**< EtherCAT master */)
 void ecrt_master_receive(ec_master_t *master /**< EtherCAT master */)
 {
     ec_datagram_t *datagram, *next;
-    cycles_t cycles_received, cycles_timeout;
+    cycles_t cycles_timeout;
 
+    // receive datagrams
     ec_device_call_isr(master->device);
 
-    cycles_received = get_cycles();
-    cycles_timeout = EC_IO_TIMEOUT /* us */ * cpu_khz / 1000;
+    cycles_timeout = (cycles_t) EC_IO_TIMEOUT /* us */ * (cpu_khz / 1000);
 
     // dequeue all datagrams that timed out
     list_for_each_entry_safe(datagram, next, &master->datagram_queue, queue) {
         switch (datagram->state) {
-            case EC_DATAGRAM_SENT:
             case EC_DATAGRAM_QUEUED:
-                if (cycles_received - datagram->cycles_sent > cycles_timeout) {
-                    if (datagram->state == EC_DATAGRAM_SENT
-                        && datagram->check_once_more) {
-                        datagram->check_once_more = 0;
-                        break;
-                    }
+                if (master->device->cycles_isr
+                    - datagram->cycles_queued > cycles_timeout) {
+                    list_del_init(&datagram->queue);
+                    datagram->state = EC_DATAGRAM_TIMED_OUT;
+                    master->stats.timeouts++;
+                    ec_master_output_stats(master);
+                }
+                break;
+            case EC_DATAGRAM_SENT:
+                if (master->device->cycles_isr
+                    - datagram->cycles_sent > cycles_timeout) {
                     list_del_init(&datagram->queue);
                     datagram->state = EC_DATAGRAM_TIMED_OUT;
                     master->stats.timeouts++;
@@ -1359,11 +1375,12 @@ void ecrt_master_prepare(ec_master_t *master /**< EtherCAT master */)
 
     ecrt_master_send(master);
 
-    cycles_start = get_cycles(); // take sending time
-    cycles_timeout = (cycles_t) EC_IO_TIMEOUT * (cpu_khz / 1000);
+    cycles_start = get_cycles();
+    cycles_timeout = (cycles_t) EC_IO_TIMEOUT /* us */ * (cpu_khz / 1000);
 
     // active waiting
     while (1) {
+        udelay(100);
         cycles_end = get_cycles();
         if (cycles_end - cycles_start >= cycles_timeout) break;
     }

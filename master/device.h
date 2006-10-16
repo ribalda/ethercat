@@ -66,6 +66,8 @@ struct ec_device
     uint8_t open; /**< true, if the net_device has been opened */
     struct sk_buff *tx_skb; /**< transmit socket buffer */
     ec_isr_t isr; /**< pointer to the device's interrupt service routine */
+    cycles_t cycles_isr; /**< cycles of last ISR call */
+    unsigned long jiffies_isr; /**< jiffies of last ISR call */
     struct module *module; /**< pointer to the device's owning module */
     uint8_t link_state; /**< device link state */
 #ifdef EC_DBG_IF

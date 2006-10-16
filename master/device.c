@@ -230,6 +230,8 @@ void ec_device_send(ec_device_t *device, /**< EtherCAT device */
 
 void ec_device_call_isr(ec_device_t *device /**< EtherCAT device */)
 {
+    device->cycles_isr = get_cycles();
+    device->jiffies_isr = jiffies;
     if (likely(device->isr)) device->isr(0, device->dev, NULL);
 }
 

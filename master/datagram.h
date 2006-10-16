@@ -110,6 +110,7 @@ typedef struct
 {
     struct list_head list; /**< needed by domain datagram lists */
     struct list_head queue; /**< master datagram queue item */
+    struct list_head sent; /**< master list item for sent datagrams */
     ec_datagram_type_t type; /**< datagram type (APRD, BWR, etc) */
     ec_address_t address; /**< receipient address */
     uint8_t *data; /**< datagram data */
@@ -118,8 +119,11 @@ typedef struct
     uint8_t index; /**< datagram index (set by master) */
     uint16_t working_counter; /**< working counter */
     ec_datagram_state_t state; /**< datagram state */
+    cycles_t cycles_queued; /**< time, the datagram was queued */
     cycles_t cycles_sent; /**< time, the datagram was sent */
-    uint8_t check_once_more; /**< one more try in case of timeout */
+    unsigned long jiffies_sent; /**< jiffies when datagram was sent */
+    cycles_t cycles_received; /**< time, the datagram was received */
+    unsigned long jiffies_received; /**< jiffies when datagram was received */
 }
 ec_datagram_t;
 

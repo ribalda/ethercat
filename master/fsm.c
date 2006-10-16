@@ -1613,8 +1613,8 @@ void ec_fsm_sii_read_check(ec_fsm_t *fsm /**< finite state machine */)
         return;
     }
 
+    fsm->sii_start = datagram->cycles_sent;
     fsm->sii_check_once_more = 1;
-    fsm->sii_start = get_cycles();
 
     // issue check/fetch datagram
     if (fsm->sii_mode) {
@@ -1649,7 +1649,8 @@ void ec_fsm_sii_read_fetch(ec_fsm_t *fsm /**< finite state machine */)
     // check "busy bit"
     if (EC_READ_U8(datagram->data + 1) & 0x81) {
         // still busy... timeout?
-        if (get_cycles() - fsm->sii_start >= (cycles_t) 10 * cpu_khz) {
+        if (datagram->cycles_received
+            - fsm->sii_start >= (cycles_t) 10 * cpu_khz) {
             if (!fsm->sii_check_once_more) {
                 EC_ERR("SII: Read timeout.\n");
                 fsm->sii_state = ec_fsm_error;
@@ -1727,7 +1728,8 @@ void ec_fsm_sii_write_check(ec_fsm_t *fsm /**< finite state machine */)
         return;
     }
 
-    fsm->sii_start = get_cycles();
+    fsm->sii_start = datagram->cycles_sent;
+    fsm->sii_check_once_more = 1;
 
     // issue check/fetch datagram
     ec_datagram_nprd(datagram, fsm->slave->station_address, 0x502, 2);
@@ -1754,10 +1756,14 @@ void ec_fsm_sii_write_check2(ec_fsm_t *fsm /**< finite state machine */)
 
     if (EC_READ_U8(datagram->data + 1) & 0x82) {
         // still busy... timeout?
-        if (get_cycles() - fsm->sii_start >= (cycles_t) 10 * cpu_khz) {
-            EC_ERR("SII: Write timeout.\n");
-            fsm->sii_state = ec_fsm_error;
-            return;
+        if (datagram->cycles_received
+            - fsm->sii_start >= (cycles_t) 10 * cpu_khz) {
+            if (!fsm->sii_check_once_more) {
+                EC_ERR("SII: Write timeout.\n");
+                fsm->sii_state = ec_fsm_error;
+                return;
+            }
+            fsm->sii_check_once_more = 0;
         }
 
         // issue check/fetch datagram again
@@ -1788,7 +1794,7 @@ void ec_fsm_change_start(ec_fsm_t *fsm /**< finite state machine */)
     ec_datagram_t *datagram = &fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
-    fsm->change_jiffies = jiffies;
+    fsm->change_take_time = 1;
 
     // write new state to slave
     ec_datagram_npwr(datagram, slave->station_address, 0x0120, 2);
@@ -1815,8 +1821,13 @@ void ec_fsm_change_check(ec_fsm_t *fsm /**< finite state machine */)
         return;
     }
 
+    if (fsm->change_take_time) {
+        fsm->change_take_time = 0;
+        fsm->change_jiffies = datagram->jiffies_sent;
+    }
+
     if (datagram->working_counter != 1) {
-        if (jiffies - fsm->change_jiffies >= 3 * HZ) {
+        if (datagram->jiffies_received - fsm->change_jiffies >= 3 * HZ) {
             fsm->change_state = ec_fsm_error;
             EC_ERR("Failed to set state 0x%02X on slave %i: Slave did not"
                    " respond.\n", fsm->change_new, fsm->slave->ring_position);
@@ -1830,7 +1841,7 @@ void ec_fsm_change_check(ec_fsm_t *fsm /**< finite state machine */)
         return;
     }
 
-    fsm->change_jiffies = jiffies;
+    fsm->change_take_time = 1;
 
     // read AL status from slave
     ec_datagram_nprd(datagram, slave->station_address, 0x0130, 2);
@@ -1857,6 +1868,11 @@ void ec_fsm_change_status(ec_fsm_t *fsm /**< finite state machine */)
         return;
     }
 
+    if (fsm->change_take_time) {
+        fsm->change_take_time = 0;
+        fsm->change_jiffies = datagram->jiffies_sent;
+    }
+
     slave->current_state = EC_READ_U8(datagram->data);
 
     if (slave->current_state == fsm->change_new) {
@@ -1878,7 +1894,8 @@ void ec_fsm_change_status(ec_fsm_t *fsm /**< finite state machine */)
         return;
     }
 
-    if (jiffies - fsm->change_jiffies >= 100 * HZ / 1000) { // 100ms
+    if (datagram->jiffies_received
+        - fsm->change_jiffies >= 100 * HZ / 1000) { // 100ms
         // timeout while checking
         fsm->change_state = ec_fsm_error;
         EC_ERR("Timeout while setting state 0x%02X on slave %i.\n",
@@ -1987,7 +2004,7 @@ void ec_fsm_change_ack(ec_fsm_t *fsm /**< finite state machine */)
         return;
     }
 
-    fsm->change_jiffies = jiffies;
+    fsm->change_take_time = 1;
 
     // read new AL status
     ec_datagram_nprd(datagram, slave->station_address, 0x0130, 2);
@@ -2014,6 +2031,11 @@ void ec_fsm_change_check_ack(ec_fsm_t *fsm /**< finite state machine */)
         return;
     }
 
+    if (fsm->change_take_time) {
+        fsm->change_take_time = 0;
+        fsm->change_jiffies = datagram->jiffies_sent;
+    }
+
     ack_state = EC_READ_U8(datagram->data);
 
     if (ack_state == slave->current_state) {
@@ -2023,7 +2045,8 @@ void ec_fsm_change_check_ack(ec_fsm_t *fsm /**< finite state machine */)
         return;
     }
 
-    if (jiffies - fsm->change_jiffies >= 100 * HZ / 1000) { // 100ms
+    if (datagram->jiffies_received
+        - fsm->change_jiffies >= 100 * HZ / 1000) { // 100ms
         // timeout while checking
         slave->current_state = EC_SLAVE_STATE_UNKNOWN;
         fsm->change_state = ec_fsm_error;
@@ -2097,7 +2120,7 @@ void ec_fsm_coe_down_request(ec_fsm_t *fsm /**< finite state machine */)
         return;
     }
 
-    fsm->coe_start = get_cycles();
+    fsm->coe_start = datagram->cycles_sent;
 
     ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
     ec_master_queue_datagram(fsm->master, datagram);
@@ -2123,7 +2146,8 @@ void ec_fsm_coe_down_check(ec_fsm_t *fsm /**< finite state machine */)
     }
 
     if (!ec_slave_mbox_check(datagram)) {
-        if (get_cycles() - fsm->coe_start >= (cycles_t) 100 * cpu_khz) {
+        if (datagram->cycles_received
+            - fsm->coe_start >= (cycles_t) 100 * cpu_khz) {
             fsm->coe_state = ec_fsm_error;
             EC_ERR("Timeout while checking SDO configuration on slave %i.\n",
                    slave->ring_position);
