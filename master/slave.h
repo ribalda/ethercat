@@ -302,11 +302,8 @@ struct ec_slave
     ec_fmmu_t fmmus[EC_MAX_FMMUS]; /**< FMMU configurations */
     uint8_t fmmu_count; /**< number of FMMUs used */
 
-    struct list_head sdo_dictionary; /**< SDO directory list */
+    struct list_head sdo_dictionary; /**< SDO dictionary list */
     struct list_head sdo_confs; /**< list of SDO configurations */
-
-    struct list_head varsize_fields; /**< size information for variable-sized
-                                        data fields. */
 };
 
 /*****************************************************************************/

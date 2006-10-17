@@ -156,7 +156,6 @@ int ec_slave_init(ec_slave_t *slave, /**< EtherCAT slave */
     INIT_LIST_HEAD(&slave->sii_pdos);
     INIT_LIST_HEAD(&slave->sdo_dictionary);
     INIT_LIST_HEAD(&slave->sdo_confs);
-    INIT_LIST_HEAD(&slave->varsize_fields);
 
     for (i = 0; i < 4; i++) {
         slave->dl_link[i] = 0;
@@ -184,7 +183,6 @@ void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
     ec_sdo_t *sdo, *next_sdo;
     ec_sdo_entry_t *en, *next_en;
     ec_sdo_data_t *sdodata, *next_sdodata;
-    ec_varsize_t *var, *next_var;
 
     slave = container_of(kobj, ec_slave_t, kobj);
 
@@ -238,12 +236,6 @@ void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
         list_del(&sdodata->list);
         kfree(sdodata->data);
         kfree(sdodata);
-    }
-
-    // free information about variable sized data fields
-    list_for_each_entry_safe(var, next_var, &slave->varsize_fields, list) {
-        list_del(&var->list);
-        kfree(var);
     }
 
     if (slave->eeprom_data) kfree(slave->eeprom_data);
