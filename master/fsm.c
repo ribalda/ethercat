@@ -1040,7 +1040,7 @@ void ec_fsm_slavescan_state(ec_fsm_t *fsm /**< finite state machine */)
     }
 
     slave->current_state = EC_READ_U8(datagram->data);
-    if (slave->current_state & EC_ACK) {
+    if (slave->current_state & EC_SLAVE_STATE_ACK_ERR) {
         EC_WARN("Slave %i has state error bit set (0x%02X)!\n",
                 slave->ring_position, slave->current_state);
         slave->current_state &= 0x0F;
@@ -1881,7 +1881,7 @@ void ec_fsm_change_status(ec_fsm_t *fsm /**< finite state machine */)
         return;
     }
 
-    if (slave->current_state & 0x10) {
+    if (slave->current_state & EC_SLAVE_STATE_ACK_ERR) {
         // state change error
         fsm->change_new = slave->current_state & 0x0F;
         EC_ERR("Failed to set state 0x%02X - Slave %i refused state change"
