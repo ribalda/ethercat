@@ -62,6 +62,7 @@ ec_data_reg_t;
 
 /*****************************************************************************/
 
+void ec_domain_clear(struct kobject *);
 void ec_domain_clear_data_regs(ec_domain_t *);
 ssize_t ec_show_domain_attribute(struct kobject *, struct attribute *, char *);
 

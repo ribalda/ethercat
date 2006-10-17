@@ -296,7 +296,6 @@ struct ec_slave
 
 // slave construction/destruction
 int ec_slave_init(ec_slave_t *, ec_master_t *, uint16_t, uint16_t);
-void ec_slave_clear(struct kobject *);
 
 int ec_slave_prepare_fmmu(ec_slave_t *, const ec_domain_t *,
                           const ec_sii_sync_t *);

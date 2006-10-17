@@ -143,7 +143,6 @@ struct ec_master
 
 // master creation and deletion
 int ec_master_init(ec_master_t *, unsigned int, unsigned int, dev_t);
-void ec_master_clear(struct kobject *);
 void ec_master_reset(ec_master_t *);
 
 // free run

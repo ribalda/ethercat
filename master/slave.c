@@ -52,6 +52,7 @@ extern const ec_code_msg_t al_status_messages[];
 
 /*****************************************************************************/
 
+void ec_slave_clear(struct kobject *);
 ssize_t ec_show_slave_attribute(struct kobject *, struct attribute *, char *);
 ssize_t ec_store_slave_attribute(struct kobject *, struct attribute *,
                                  const char *, size_t);

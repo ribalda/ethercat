@@ -54,6 +54,7 @@
 
 /*****************************************************************************/
 
+void ec_master_clear(struct kobject *);
 void ec_master_sync_io(ec_master_t *);
 void ec_master_idle_run(void *);
 void ec_master_eoe_run(unsigned long);
