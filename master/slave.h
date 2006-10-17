@@ -226,20 +226,6 @@ ec_fmmu_t;
 /*****************************************************************************/
 
 /**
-   Variable-sized field information.
-*/
-
-typedef struct
-{
-    struct list_head list; /**< list item */
-    const ec_sii_pdo_t *pdo; /**< PDO */
-    size_t size; /**< field size */
-}
-ec_varsize_t;
-
-/*****************************************************************************/
-
-/**
    EtherCAT slave.
 */
 
@@ -314,9 +300,6 @@ void ec_slave_clear(struct kobject *);
 
 int ec_slave_prepare_fmmu(ec_slave_t *, const ec_domain_t *,
                           const ec_sii_sync_t *);
-
-// CoE
-//int ec_slave_fetch_sdo_list(ec_slave_t *);
 
 // SII categories
 int ec_slave_fetch_strings(ec_slave_t *, const uint8_t *);
