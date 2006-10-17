@@ -68,7 +68,7 @@ typedef enum
     EC_SLAVE_STATE_OP = 0x08,
     /**< OP (mailbox communication and input/output update) */
     EC_SLAVE_STATE_ACK_ERR = 0x10
-    /**< Acknoledge/Error bit (no actual state) */
+    /**< Acknowledge/Error bit (no actual state) */
 }
 ec_slave_state_t;
 
