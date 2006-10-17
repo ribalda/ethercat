@@ -781,7 +781,7 @@ ssize_t ec_store_slave_attribute(struct kobject *kobj, /**< slave's kobject */
     ec_slave_t *slave = container_of(kobj, ec_slave_t, kobj);
 
     if (attr == &attr_state) {
-        char state[25];
+        char state[EC_STATE_STRING_SIZE];
         if (!strcmp(buffer, "INIT\n"))
             slave->requested_state = EC_SLAVE_STATE_INIT;
         else if (!strcmp(buffer, "PREOP\n"))

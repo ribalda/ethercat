@@ -475,7 +475,7 @@ void ec_fsm_master_broadcast(ec_fsm_t *fsm /**< finite state machine */)
     }
 
     if (states_change) {
-        char states[25];
+        char states[EC_STATE_STRING_SIZE];
         ec_state_string(fsm->master_slave_states, states);
         EC_INFO("Slave states: %s.\n", states);
     }
@@ -555,7 +555,7 @@ void ec_fsm_master_action_process_states(ec_fsm_t *fsm
 {
     ec_master_t *master = fsm->master;
     ec_slave_t *slave;
-    char old_state[25], new_state[25];
+    char old_state[EC_STATE_STRING_SIZE], new_state[EC_STATE_STRING_SIZE];
 
     // check if any slaves are not in the state, they're supposed to be
     list_for_each_entry(slave, &master->slaves, list) {
@@ -690,7 +690,7 @@ void ec_fsm_master_read_states(ec_fsm_t *fsm /**< finite state machine */)
     // slave responded
     new_state = EC_READ_U8(datagram->data);
     if (!slave->online) { // slave was offline before
-        char cur_state[25];
+        char cur_state[EC_STATE_STRING_SIZE];
         slave->online = 1;
         slave->error_flag = 0; // clear error flag
         slave->current_state = new_state;
@@ -698,7 +698,7 @@ void ec_fsm_master_read_states(ec_fsm_t *fsm /**< finite state machine */)
         EC_INFO("Slave %i: online (%s).\n", slave->ring_position, cur_state);
     }
     else if (new_state != slave->current_state) {
-        char old_state[25], cur_state[25];
+        char old_state[EC_STATE_STRING_SIZE], cur_state[EC_STATE_STRING_SIZE];
         ec_state_string(slave->current_state, old_state);
         ec_state_string(new_state, cur_state);
         EC_INFO("Slave %i: %s -> %s.\n",

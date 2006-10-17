@@ -77,6 +77,9 @@
 /** datagram timeout in microseconds */
 #define EC_IO_TIMEOUT 500
 
+/** minimum size of a buffer used with ec_state_string() */
+#define EC_STATE_STRING_SIZE 30
+
 /******************************************************************************
  *  EtherCAT protocol
  *****************************************************************************/

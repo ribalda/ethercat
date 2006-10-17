@@ -233,7 +233,8 @@ void ec_print_data_diff(const uint8_t *d1, /**< first data */
 */
 
 size_t ec_state_string(uint8_t states, /**< slave states */
-                       char *buffer /**< target buffer (min. 25 bytes) */
+                       char *buffer /**< target buffer
+                                       (min. EC_STATE_STRING_SIZE bytes) */
                        )
 {
     off_t off = 0;
@@ -261,6 +262,10 @@ size_t ec_state_string(uint8_t states, /**< slave states */
     if (states & EC_SLAVE_STATE_OP) {
         if (!first) off += sprintf(buffer + off, ", ");
         off += sprintf(buffer + off, "OP");
+    }
+    if (states & EC_SLAVE_STATE_ACK_ERR) {
+        if (!first) off += sprintf(buffer + off, ", ");
+        off += sprintf(buffer + off, "ERR");
     }
 
     return off;
