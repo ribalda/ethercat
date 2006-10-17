@@ -182,7 +182,6 @@ void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
     ec_sii_pdo_t *pdo, *next_pdo;
     ec_sii_pdo_entry_t *entry, *next_ent;
     ec_sdo_t *sdo, *next_sdo;
-    ec_sdo_entry_t *en, *next_en;
     ec_sdo_data_t *sdodata, *next_sdodata;
 
     slave = container_of(kobj, ec_slave_t, kobj);
@@ -222,14 +221,8 @@ void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
     // free all SDOs
     list_for_each_entry_safe(sdo, next_sdo, &slave->sdo_dictionary, list) {
         list_del(&sdo->list);
-        if (sdo->name) kfree(sdo->name);
-
-        // free all SDO entries
-        list_for_each_entry_safe(en, next_en, &sdo->entries, list) {
-            list_del(&en->list);
-            kfree(en);
-        }
-        kfree(sdo);
+        kobject_del(&sdo->kobj);
+        kobject_put(&sdo->kobj);
     }
 
     // free all SDO configurations

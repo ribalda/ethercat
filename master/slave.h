@@ -168,50 +168,6 @@ ec_sii_pdo_entry_t;
 /*****************************************************************************/
 
 /**
-   CANopen SDO.
-*/
-
-typedef struct
-{
-    struct list_head list; /**< list item */
-    uint16_t index; /**< SDO index */
-    uint8_t object_code; /**< object code */
-    char *name; /**< SDO name */
-    struct list_head entries; /**< entry list */
-}
-ec_sdo_t;
-
-/*****************************************************************************/
-
-/**
-   CANopen SDO entry.
-*/
-
-typedef struct
-{
-    struct list_head list; /**< list item */
-    uint8_t subindex; /**< entry subindex */
-    uint16_t data_type; /**< entry data type */
-    uint16_t bit_length; /**< entry length in bit */
-    char *name; /**< entry name */
-}
-ec_sdo_entry_t;
-
-/*****************************************************************************/
-
-typedef struct
-{
-    struct list_head list; /**< list item */
-    uint16_t index; /**< SDO index */
-    uint8_t subindex; /**< SDO subindex */
-    uint8_t *data; /**< pointer to SDO data */
-    size_t size; /**< size of SDO data */
-}
-ec_sdo_data_t;
-
-/*****************************************************************************/
-
-/**
    FMMU configuration.
 */
 

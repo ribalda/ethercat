@@ -45,6 +45,7 @@
 #include "../include/ecrt.h"
 #include "datagram.h"
 #include "slave.h"
+#include "canopen.h"
 
 /*****************************************************************************/
 
@@ -82,6 +83,8 @@ struct ec_fsm
     void (*coe_state)(ec_fsm_t *); /**< CoE state function */
     ec_sdo_data_t *coe_sdodata; /**< input/output: SDO data object */
     cycles_t coe_start; /**< CoE timestamp */
+    ec_sdo_t *coe_sdo; /**< current SDO */
+    uint8_t coe_subindex; /**< current subindex */
 };
 
 /*****************************************************************************/

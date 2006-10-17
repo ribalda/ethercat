@@ -73,8 +73,9 @@ void ec_fsm_slavescan_eeprom_data(ec_fsm_t *);
 void ec_fsm_slaveconf_init(ec_fsm_t *);
 void ec_fsm_slaveconf_sync(ec_fsm_t *);
 void ec_fsm_slaveconf_preop(ec_fsm_t *);
-void ec_fsm_slaveconf_fmmu(ec_fsm_t *);
+void ec_fsm_slaveconf_sdodict(ec_fsm_t *);
 void ec_fsm_slaveconf_sdoconf(ec_fsm_t *);
+void ec_fsm_slaveconf_fmmu(ec_fsm_t *);
 void ec_fsm_slaveconf_saveop(ec_fsm_t *);
 void ec_fsm_slaveconf_op(ec_fsm_t *);
 
@@ -91,6 +92,17 @@ void ec_fsm_change_status(ec_fsm_t *);
 void ec_fsm_change_code(ec_fsm_t *);
 void ec_fsm_change_ack(ec_fsm_t *);
 void ec_fsm_change_check_ack(ec_fsm_t *);
+
+void ec_fsm_coe_dict_start(ec_fsm_t *);
+void ec_fsm_coe_dict_request(ec_fsm_t *);
+void ec_fsm_coe_dict_check(ec_fsm_t *);
+void ec_fsm_coe_dict_response(ec_fsm_t *);
+void ec_fsm_coe_dict_desc_request(ec_fsm_t *);
+void ec_fsm_coe_dict_desc_check(ec_fsm_t *);
+void ec_fsm_coe_dict_desc_response(ec_fsm_t *);
+void ec_fsm_coe_dict_entry_request(ec_fsm_t *);
+void ec_fsm_coe_dict_entry_check(ec_fsm_t *);
+void ec_fsm_coe_dict_entry_response(ec_fsm_t *);
 
 void ec_fsm_coe_down_start(ec_fsm_t *);
 void ec_fsm_coe_down_request(ec_fsm_t *);
@@ -661,7 +673,7 @@ void ec_fsm_master_action_next_slave_state(ec_fsm_t *fsm
 /*****************************************************************************/
 
 /**
-   Master state: STATES.
+   Master state: READ STATES.
    Fetches the AL- and online state of a slave.
 */
 
@@ -832,7 +844,7 @@ void ec_fsm_master_validate_product(ec_fsm_t *fsm /**< finite state machine */)
 /*****************************************************************************/
 
 /**
-   Master state: ADDRESS.
+   Master state: REWRITE ADDRESS.
    Checks, if the new station address has been written to the slave.
 */
 
@@ -864,7 +876,7 @@ void ec_fsm_master_rewrite_addresses(ec_fsm_t *fsm
 /*****************************************************************************/
 
 /**
-   Master state: SCAN.
+   Master state: SCAN SLAVES.
    Executes the sub-statemachine for the scanning of a slave.
 */
 
@@ -911,7 +923,7 @@ void ec_fsm_master_scan_slaves(ec_fsm_t *fsm /**< finite state machine */)
 /*****************************************************************************/
 
 /**
-   Master state: CONF.
+   Master state: CONFIGURE SLAVES.
    Starts configuring a slave.
 */
 
@@ -930,7 +942,7 @@ void ec_fsm_master_configure_slave(ec_fsm_t *fsm
 /*****************************************************************************/
 
 /**
-   Master state: EEPROM.
+   Master state: WRITE EEPROM.
 */
 
 void ec_fsm_master_write_eeprom(ec_fsm_t *fsm /**< finite state machine */)
@@ -978,7 +990,7 @@ void ec_fsm_master_write_eeprom(ec_fsm_t *fsm /**< finite state machine */)
  *****************************************************************************/
 
 /**
-   Slave state: START_READING.
+   Slave scan state: START.
    First state of the slave state machine. Writes the station address to the
    slave, according to its ring position.
 */
@@ -997,7 +1009,7 @@ void ec_fsm_slavescan_start(ec_fsm_t *fsm /**< finite state machine */)
 /*****************************************************************************/
 
 /**
-   Slave state: ADDRESS.
+   Slave scan state: ADDRESS.
 */
 
 void ec_fsm_slavescan_address(ec_fsm_t *fsm /**< finite state machine */)
@@ -1022,7 +1034,7 @@ void ec_fsm_slavescan_address(ec_fsm_t *fsm /**< finite state machine */)
 /*****************************************************************************/
 
 /**
-   Slave state: STATE.
+   Slave scan state: STATE.
 */
 
 void ec_fsm_slavescan_state(ec_fsm_t *fsm /**< finite state machine */)
@@ -1054,7 +1066,7 @@ void ec_fsm_slavescan_state(ec_fsm_t *fsm /**< finite state machine */)
 /*****************************************************************************/
 
 /**
-   Slave state: BASE.
+   Slave scan state: BASE.
 */
 
 void ec_fsm_slavescan_base(ec_fsm_t *fsm /**< finite state machine */)
@@ -1089,7 +1101,7 @@ void ec_fsm_slavescan_base(ec_fsm_t *fsm /**< finite state machine */)
 /*****************************************************************************/
 
 /**
-   Slave state: DATALINK.
+   Slave scan state: DATALINK.
 */
 
 void ec_fsm_slavescan_datalink(ec_fsm_t *fsm /**< finite state machine */)
@@ -1127,7 +1139,7 @@ void ec_fsm_slavescan_datalink(ec_fsm_t *fsm /**< finite state machine */)
 /*****************************************************************************/
 
 /**
-   Slave state: EEPROM_SIZE.
+   Slave scan state: EEPROM SIZE.
 */
 
 void ec_fsm_slavescan_eeprom_size(ec_fsm_t *fsm /**< finite state machine */)
@@ -1187,7 +1199,7 @@ void ec_fsm_slavescan_eeprom_size(ec_fsm_t *fsm /**< finite state machine */)
 /*****************************************************************************/
 
 /**
-   Slave state: EEPROM_DATA.
+   Slave scan state: EEPROM DATA.
 */
 
 void ec_fsm_slavescan_eeprom_data(ec_fsm_t *fsm /**< finite state machine */)
@@ -1301,11 +1313,12 @@ end:
  *****************************************************************************/
 
 /**
-   Slave state: INIT.
+   Slave configuration state: INIT.
 */
 
 void ec_fsm_slaveconf_init(ec_fsm_t *fsm /**< finite state machine */)
 {
+    ec_master_t *master = fsm->master;
     ec_slave_t *slave = fsm->slave;
     ec_datagram_t *datagram = &fsm->datagram;
     const ec_sii_sync_t *sync;
@@ -1320,9 +1333,17 @@ void ec_fsm_slaveconf_init(ec_fsm_t *fsm /**< finite state machine */)
 
     if (fsm->change_state != ec_fsm_end) return;
 
+    if (master->debug_level) {
+        EC_DBG("Slave %i is now in INIT.\n", slave->ring_position);
+    }
+
     // slave is now in INIT
     if (slave->current_state == slave->requested_state) {
         fsm->slave_state = ec_fsm_end; // successful
+        if (master->debug_level) {
+            EC_DBG("Finished configuration of slave %i.\n",
+                   slave->ring_position);
+        }
         return;
     }
 
@@ -1336,6 +1357,11 @@ void ec_fsm_slaveconf_init(ec_fsm_t *fsm /**< finite state machine */)
         fsm->change_state = ec_fsm_change_start;
         fsm->change_state(fsm); // execute immediately
         return;
+    }
+
+    if (master->debug_level) {
+        EC_DBG("Configuring sync managers of slave %i.\n",
+               slave->ring_position);
     }
 
     // configure sync managers
@@ -1361,7 +1387,7 @@ void ec_fsm_slaveconf_init(ec_fsm_t *fsm /**< finite state machine */)
 /*****************************************************************************/
 
 /**
-   Slave state: SYNC.
+   Slave configuration state: SYNC.
 */
 
 void ec_fsm_slaveconf_sync(ec_fsm_t *fsm /**< finite state machine */)
@@ -1387,7 +1413,7 @@ void ec_fsm_slaveconf_sync(ec_fsm_t *fsm /**< finite state machine */)
 /*****************************************************************************/
 
 /**
-   Slave state: PREOP.
+   Slave configuration state: PREOP.
 */
 
 void ec_fsm_slaveconf_preop(ec_fsm_t *fsm /**< finite state machine */)
@@ -1408,19 +1434,91 @@ void ec_fsm_slaveconf_preop(ec_fsm_t *fsm /**< finite state machine */)
     if (fsm->change_state != ec_fsm_end) return;
 
     // slave is now in PREOP
-    if (slave->current_state == slave->requested_state) {
-        fsm->slave_state = ec_fsm_end; // successful
-        return;
+
+    if (master->debug_level) {
+        EC_DBG("Slave %i is now in PREOP.\n", slave->ring_position);
     }
 
-    if (!slave->base_fmmu_count) { // skip FMMU configuration
-        if (list_empty(&slave->sdo_confs)) { // skip SDO configuration
+    if (!(slave->sii_mailbox_protocols & EC_MBOX_COE)) {
+        // slave does not support CoE. skip dictionary fetching
+        // and SDO configuration
+
+        if (slave->current_state == slave->requested_state) {
+            fsm->slave_state = ec_fsm_end; // successful
+            if (master->debug_level) {
+                EC_DBG("Finished configuration of slave %i.\n",
+                       slave->ring_position);
+            }
+            return;
+        }
+
+        if (!slave->base_fmmu_count) {
+            // slave has no FMMUs. skip configuration and go to SAVEOP
             fsm->slave_state = ec_fsm_slaveconf_saveop;
             fsm->change_new = EC_SLAVE_STATE_SAVEOP;
             fsm->change_state = ec_fsm_change_start;
             fsm->change_state(fsm); // execute immediately
             return;
         }
+
+        // configure FMMUs
+        ec_datagram_npwr(datagram, slave->station_address,
+                         0x0600, EC_FMMU_SIZE * slave->base_fmmu_count);
+        memset(datagram->data, 0x00, EC_FMMU_SIZE * slave->base_fmmu_count);
+        for (j = 0; j < slave->fmmu_count; j++) {
+            ec_fmmu_config(&slave->fmmus[j], slave,
+                           datagram->data + EC_FMMU_SIZE * j);
+        }
+
+        ec_master_queue_datagram(master, datagram);
+        fsm->slave_state = ec_fsm_slaveconf_fmmu;
+        return;
+    }
+
+    if (!list_empty(&slave->sdo_dictionary)) {
+        // SDO dictionary already fetched
+
+        if (master->debug_level) {
+            EC_DBG("SDO dictionary already present for slave %i.\n",
+                   slave->ring_position);
+        }
+
+        if (slave->current_state == slave->requested_state) {
+            fsm->slave_state = ec_fsm_end; // successful
+            if (master->debug_level) {
+                EC_DBG("Finished configuration of slave %i.\n",
+                       slave->ring_position);
+            }
+            return;
+        }
+
+        if (list_empty(&slave->sdo_confs)) {
+            // skip SDO configuration
+
+            if (!slave->base_fmmu_count) {
+                // slave has no FMMUs. skip configuration and go to SAVEOP
+                fsm->slave_state = ec_fsm_slaveconf_saveop;
+                fsm->change_new = EC_SLAVE_STATE_SAVEOP;
+                fsm->change_state = ec_fsm_change_start;
+                fsm->change_state(fsm); // execute immediately
+                return;
+            }
+
+            // configure FMMUs
+            ec_datagram_npwr(datagram, slave->station_address,
+                             0x0600, EC_FMMU_SIZE * slave->base_fmmu_count);
+            memset(datagram->data, 0x00, EC_FMMU_SIZE * slave->base_fmmu_count);
+            for (j = 0; j < slave->fmmu_count; j++) {
+                ec_fmmu_config(&slave->fmmus[j], slave,
+                               datagram->data + EC_FMMU_SIZE * j);
+            }
+
+            ec_master_queue_datagram(master, datagram);
+            fsm->slave_state = ec_fsm_slaveconf_fmmu;
+            return;
+        }
+
+        // start SDO configuration
         fsm->slave_state = ec_fsm_slaveconf_sdoconf;
         fsm->coe_sdodata = list_entry(slave->sdo_confs.next, ec_sdo_data_t, list);
         fsm->coe_state = ec_fsm_coe_down_start;
@@ -1428,49 +1526,85 @@ void ec_fsm_slaveconf_preop(ec_fsm_t *fsm /**< finite state machine */)
         return;
     }
 
-    // configure FMMUs
-    ec_datagram_npwr(datagram, slave->station_address,
-                     0x0600, EC_FMMU_SIZE * slave->base_fmmu_count);
-    memset(datagram->data, 0x00, EC_FMMU_SIZE * slave->base_fmmu_count);
-    for (j = 0; j < slave->fmmu_count; j++) {
-        ec_fmmu_config(&slave->fmmus[j], slave,
-                       datagram->data + EC_FMMU_SIZE * j);
+    if (master->debug_level) {
+        EC_DBG("Fetching SDO dictionary of slave %i.\n",
+               slave->ring_position);
     }
 
-    ec_master_queue_datagram(master, datagram);
-    fsm->slave_state = ec_fsm_slaveconf_fmmu;
+    // start fetching SDO dictionary
+    fsm->slave_state = ec_fsm_slaveconf_sdodict;
+    fsm->coe_state = ec_fsm_coe_dict_start;
+    fsm->coe_state(fsm); // execute immediately
 }
 
 /*****************************************************************************/
 
 /**
-   Slave state: FMMU.
+   Slave configuration state: SDODICT.
 */
 
-void ec_fsm_slaveconf_fmmu(ec_fsm_t *fsm /**< finite state machine */)
+void ec_fsm_slaveconf_sdodict(ec_fsm_t *fsm /**< finite state machine */)
 {
-    ec_datagram_t *datagram = &fsm->datagram;
     ec_slave_t *slave = fsm->slave;
+    ec_datagram_t *datagram = &fsm->datagram;
+    ec_master_t *master = fsm->master;
+    unsigned int j;
 
-    if (datagram->state != EC_DATAGRAM_RECEIVED
-        || datagram->working_counter != 1) {
+    fsm->coe_state(fsm); // execute CoE state machine
+
+    if (fsm->coe_state == ec_fsm_error) {
         fsm->slave->error_flag = 1;
         fsm->slave_state = ec_fsm_error;
-        EC_ERR("Failed to set FMMUs on slave %i.\n",
-               fsm->slave->ring_position);
         return;
     }
 
-    // No CoE configuration to be applied? Jump to SAVEOP state.
-    if (list_empty(&slave->sdo_confs)) { // skip SDO configuration
-        // set state to SAVEOP
-        fsm->slave_state = ec_fsm_slaveconf_saveop;
-        fsm->change_new = EC_SLAVE_STATE_SAVEOP;
-        fsm->change_state = ec_fsm_change_start;
-        fsm->change_state(fsm); // execute immediately
+    if (fsm->coe_state != ec_fsm_end) return;
+
+    // SDO dictionary fetching finished
+
+    if (master->debug_level) {
+        EC_DBG("Finished fetching SDO dictionary of slave %i.\n",
+               slave->ring_position);
+    }
+
+    if (slave->current_state == slave->requested_state) {
+        fsm->slave_state = ec_fsm_end; // successful
+        if (master->debug_level) {
+            EC_DBG("Finished configuration of slave %i.\n",
+                   slave->ring_position);
+        }
         return;
     }
 
+    if (list_empty(&slave->sdo_confs)) {
+        // skip SDO configuration
+
+        if (!slave->base_fmmu_count) {
+            // slave has no FMMUs. skip configuration.
+
+            // set state to SAVEOP
+            fsm->slave_state = ec_fsm_slaveconf_saveop;
+            fsm->change_new = EC_SLAVE_STATE_SAVEOP;
+            fsm->change_state = ec_fsm_change_start;
+            fsm->change_state(fsm); // execute immediately
+            return;
+        }
+
+        // configure FMMUs
+        ec_datagram_npwr(datagram, slave->station_address,
+                         0x0600, EC_FMMU_SIZE * slave->base_fmmu_count);
+        memset(datagram->data, 0x00, EC_FMMU_SIZE * slave->base_fmmu_count);
+        for (j = 0; j < slave->fmmu_count; j++) {
+            ec_fmmu_config(&slave->fmmus[j], slave,
+                           datagram->data + EC_FMMU_SIZE * j);
+        }
+
+        ec_master_queue_datagram(master, datagram);
+        fsm->slave_state = ec_fsm_slaveconf_fmmu;
+        return;
+    }
+
+    // start SDO configuration
     fsm->slave_state = ec_fsm_slaveconf_sdoconf;
     fsm->coe_sdodata = list_entry(slave->sdo_confs.next, ec_sdo_data_t, list);
     fsm->coe_state = ec_fsm_coe_down_start;
@@ -1480,11 +1614,16 @@ void ec_fsm_slaveconf_fmmu(ec_fsm_t *fsm /**< finite state machine */)
 /*****************************************************************************/
 
 /**
-   Slave state: SDOCONF.
+   Slave configuration state: SDOCONF.
 */
 
 void ec_fsm_slaveconf_sdoconf(ec_fsm_t *fsm /**< finite state machine */)
 {
+    ec_slave_t *slave = fsm->slave;
+    ec_datagram_t *datagram = &fsm->datagram;
+    ec_master_t *master = fsm->master;
+    unsigned int j;
+
     fsm->coe_state(fsm); // execute CoE state machine
 
     if (fsm->coe_state == ec_fsm_error) {
@@ -1506,6 +1645,49 @@ void ec_fsm_slaveconf_sdoconf(ec_fsm_t *fsm /**< finite state machine */)
 
     // All SDOs are now configured.
 
+    if (!slave->base_fmmu_count) {
+        // slave has no FMMUs. skip configuration.
+
+        // set state to SAVEOP
+        fsm->slave_state = ec_fsm_slaveconf_saveop;
+        fsm->change_new = EC_SLAVE_STATE_SAVEOP;
+        fsm->change_state = ec_fsm_change_start;
+        fsm->change_state(fsm); // execute immediately
+        return;
+    }
+
+    // configure FMMUs
+    ec_datagram_npwr(datagram, slave->station_address,
+                     0x0600, EC_FMMU_SIZE * slave->base_fmmu_count);
+    memset(datagram->data, 0x00, EC_FMMU_SIZE * slave->base_fmmu_count);
+    for (j = 0; j < slave->fmmu_count; j++) {
+        ec_fmmu_config(&slave->fmmus[j], slave,
+                       datagram->data + EC_FMMU_SIZE * j);
+    }
+
+    ec_master_queue_datagram(master, datagram);
+    fsm->slave_state = ec_fsm_slaveconf_fmmu;
+}
+
+/*****************************************************************************/
+
+/**
+   Slave configuration state: FMMU.
+*/
+
+void ec_fsm_slaveconf_fmmu(ec_fsm_t *fsm /**< finite state machine */)
+{
+    ec_datagram_t *datagram = &fsm->datagram;
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED
+        || datagram->working_counter != 1) {
+        fsm->slave->error_flag = 1;
+        fsm->slave_state = ec_fsm_error;
+        EC_ERR("Failed to set FMMUs on slave %i.\n",
+               fsm->slave->ring_position);
+        return;
+    }
+
     // set state to SAVEOP
     fsm->slave_state = ec_fsm_slaveconf_saveop;
     fsm->change_new = EC_SLAVE_STATE_SAVEOP;
@@ -1516,11 +1698,14 @@ void ec_fsm_slaveconf_sdoconf(ec_fsm_t *fsm /**< finite state machine */)
 /*****************************************************************************/
 
 /**
-   Slave state: SAVEOP.
+   Slave configuration state: SAVEOP.
 */
 
 void ec_fsm_slaveconf_saveop(ec_fsm_t *fsm /**< finite state machine */)
 {
+    ec_master_t *master = fsm->master;
+    ec_slave_t *slave = fsm->slave;
+
     fsm->change_state(fsm); // execute state change state machine
 
     if (fsm->change_state == ec_fsm_error) {
@@ -1532,8 +1717,17 @@ void ec_fsm_slaveconf_saveop(ec_fsm_t *fsm /**< finite state machine */)
     if (fsm->change_state != ec_fsm_end) return;
 
     // slave is now in SAVEOP
+
+    if (master->debug_level) {
+        EC_DBG("Slave %i is now in PREOP.\n", slave->ring_position);
+    }
+
     if (fsm->slave->current_state == fsm->slave->requested_state) {
         fsm->slave_state = ec_fsm_end; // successful
+        if (master->debug_level) {
+            EC_DBG("Finished configuration of slave %i.\n",
+                   slave->ring_position);
+        }
         return;
     }
 
@@ -1547,15 +1741,18 @@ void ec_fsm_slaveconf_saveop(ec_fsm_t *fsm /**< finite state machine */)
 /*****************************************************************************/
 
 /**
-   Slave state: OP
+   Slave configuration state: OP
 */
 
 void ec_fsm_slaveconf_op(ec_fsm_t *fsm /**< finite state machine */)
 {
+    ec_master_t *master = fsm->master;
+    ec_slave_t *slave = fsm->slave;
+
     fsm->change_state(fsm); // execute state change state machine
 
     if (fsm->change_state == ec_fsm_error) {
-        fsm->slave->error_flag = 1;
+        slave->error_flag = 1;
         fsm->slave_state = ec_fsm_error;
         return;
     }
@@ -1563,6 +1760,12 @@ void ec_fsm_slaveconf_op(ec_fsm_t *fsm /**< finite state machine */)
     if (fsm->change_state != ec_fsm_end) return;
 
     // slave is now in OP
+
+    if (master->debug_level) {
+        EC_DBG("Slave %i is now in OP.\n", slave->ring_position);
+        EC_DBG("Finished configuration of slave %i.\n", slave->ring_position);
+    }
+
     fsm->slave_state = ec_fsm_end; // successful
 }
 
@@ -1571,7 +1774,7 @@ void ec_fsm_slaveconf_op(ec_fsm_t *fsm /**< finite state machine */)
  *****************************************************************************/
 
 /**
-   SII state: START_READING.
+   SII state: START READING.
    Starts reading the slave information interface.
 */
 
@@ -1597,7 +1800,7 @@ void ec_fsm_sii_start_reading(ec_fsm_t *fsm /**< finite state machine */)
 /*****************************************************************************/
 
 /**
-   SII state: READ_CHECK.
+   SII state: READ CHECK.
    Checks, if the SII-read-datagram has been sent and issues a fetch datagram.
 */
 
@@ -1630,7 +1833,7 @@ void ec_fsm_sii_read_check(ec_fsm_t *fsm /**< finite state machine */)
 /*****************************************************************************/
 
 /**
-   SII state: READ_FETCH.
+   SII state: READ FETCH.
    Fetches the result of an SII-read datagram.
 */
 
@@ -1692,7 +1895,7 @@ void ec_fsm_sii_read_fetch(ec_fsm_t *fsm /**< finite state machine */)
 /*****************************************************************************/
 
 /**
-   SII state: START_WRITING.
+   SII state: START WRITING.
    Starts reading the slave information interface.
 */
 
@@ -1713,7 +1916,7 @@ void ec_fsm_sii_start_writing(ec_fsm_t *fsm /**< finite state machine */)
 /*****************************************************************************/
 
 /**
-   SII state: WRITE_CHECK.
+   SII state: WRITE CHECK.
 */
 
 void ec_fsm_sii_write_check(ec_fsm_t *fsm /**< finite state machine */)
@@ -1739,7 +1942,7 @@ void ec_fsm_sii_write_check(ec_fsm_t *fsm /**< finite state machine */)
 /*****************************************************************************/
 
 /**
-   SII state: WRITE_CHECK2.
+   SII state: WRITE CHECK 2.
 */
 
 void ec_fsm_sii_write_check2(ec_fsm_t *fsm /**< finite state machine */)
@@ -2057,11 +2260,640 @@ void ec_fsm_change_check_ack(ec_fsm_t *fsm /**< finite state machine */)
 }
 
 /******************************************************************************
+ *  CoE dictionary state machine
+ *****************************************************************************/
+
+/**
+   CoE state: DICT START.
+*/
+
+void ec_fsm_coe_dict_start(ec_fsm_t *fsm /**< finite state machine */)
+{
+    ec_datagram_t *datagram = &fsm->datagram;
+    ec_slave_t *slave = fsm->slave;
+    uint8_t *data;
+
+    if (!(data = ec_slave_mbox_prepare_send(slave, datagram, 0x03, 8))) {
+        fsm->coe_state = ec_fsm_error;
+        return;
+    }
+
+    EC_WRITE_U16(data, 0x8 << 12); // SDO information
+    EC_WRITE_U8 (data + 2, 0x01); // Get OD List Request
+    EC_WRITE_U8 (data + 3, 0x00);
+    EC_WRITE_U16(data + 4, 0x0000);
+    EC_WRITE_U16(data + 6, 0x0001); // deliver all SDOs!
+
+    ec_master_queue_datagram(fsm->master, datagram);
+    fsm->coe_state = ec_fsm_coe_dict_request;
+}
+
+/*****************************************************************************/
+
+/**
+   CoE state: DICT REQUEST.
+*/
+
+void ec_fsm_coe_dict_request(ec_fsm_t *fsm /**< finite state machine */)
+{
+    ec_datagram_t *datagram = &fsm->datagram;
+    ec_slave_t *slave = fsm->slave;
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED
+        || datagram->working_counter != 1) {
+        fsm->coe_state = ec_fsm_error;
+        EC_ERR("Reception of CoE dictionary request failed.\n");
+        return;
+    }
+
+    fsm->coe_start = datagram->cycles_sent;
+
+    ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
+    ec_master_queue_datagram(fsm->master, datagram);
+    fsm->coe_state = ec_fsm_coe_dict_check;
+}
+
+/*****************************************************************************/
+
+/**
+   CoE state: DICT CHECK.
+*/
+
+void ec_fsm_coe_dict_check(ec_fsm_t *fsm /**< finite state machine */)
+{
+    ec_datagram_t *datagram = &fsm->datagram;
+    ec_slave_t *slave = fsm->slave;
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED
+        || datagram->working_counter != 1) {
+        fsm->coe_state = ec_fsm_error;
+        EC_ERR("Reception of CoE mailbox check datagram failed.\n");
+        return;
+    }
+
+    if (!ec_slave_mbox_check(datagram)) {
+        if (datagram->cycles_received
+            - fsm->coe_start >= (cycles_t) 100 * cpu_khz) {
+            fsm->coe_state = ec_fsm_error;
+            EC_ERR("Timeout while checking SDO dictionary on slave %i.\n",
+                   slave->ring_position);
+            return;
+        }
+
+        ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
+        ec_master_queue_datagram(fsm->master, datagram);
+        return;
+    }
+
+    // Fetch response
+    ec_slave_mbox_prepare_fetch(slave, datagram); // can not fail.
+    ec_master_queue_datagram(fsm->master, datagram);
+    fsm->coe_state = ec_fsm_coe_dict_response;
+}
+
+/*****************************************************************************/
+
+/**
+   CoE state: DICT RESPONSE.
+*/
+
+void ec_fsm_coe_dict_response(ec_fsm_t *fsm /**< finite state machine */)
+{
+    ec_master_t *master = fsm->master;
+    ec_datagram_t *datagram = &fsm->datagram;
+    ec_slave_t *slave = fsm->slave;
+    uint8_t *data, mbox_prot;
+    size_t rec_size;
+    unsigned int sdo_count, i;
+    uint16_t sdo_index;
+    ec_sdo_t *sdo;
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED
+        || datagram->working_counter != 1) {
+        fsm->coe_state = ec_fsm_error;
+        EC_ERR("Reception of CoE dictionary response failed.\n");
+        return;
+    }
+
+    if (!(data = ec_slave_mbox_fetch(slave, datagram,
+				     &mbox_prot, &rec_size))) {
+        fsm->coe_state = ec_fsm_error;
+        return;
+    }
+
+    if (mbox_prot != 0x03) { // CoE
+        EC_WARN("Received mailbox protocol 0x%02X as response.\n", mbox_prot);
+        fsm->coe_state = ec_fsm_error;
+	return;
+    }
+
+    if (EC_READ_U16(data) >> 12 == 0x8 && // SDO information
+        (EC_READ_U8(data + 2) & 0x7F) == 0x07) { // error response
+        EC_ERR("SDO information error response at slave %i!\n",
+               slave->ring_position);
+        ec_canopen_abort_msg(EC_READ_U32(data + 6));
+        fsm->coe_state = ec_fsm_error;
+	return;
+    }
+
+    if (EC_READ_U16(data) >> 12 != 0x8 || // SDO information
+        (EC_READ_U8 (data + 2) & 0x7F) != 0x02) { // Get OD List response
+        EC_ERR("Invalid SDO list response at slave %i!\n",
+               slave->ring_position);
+        ec_print_data(data, rec_size);
+        fsm->coe_state = ec_fsm_error;
+	return;
+    }
+
+    if (rec_size < 8) {
+        EC_ERR("Invalid data size!\n");
+        ec_print_data(data, rec_size);
+        fsm->coe_state = ec_fsm_error;
+	return;
+    }
+
+    sdo_count = (rec_size - 8) / 2;
+
+    if (master->debug_level) {
+        EC_DBG("Fetching %i SDOs.\n", sdo_count);
+    }
+
+    for (i = 0; i < sdo_count; i++) {
+        sdo_index = EC_READ_U16(data + 8 + i * 2);
+        if (!sdo_index) {
+            // sometimes index is 0... ???
+            if (master->debug_level) {
+                EC_DBG("Received SDO with index 0x0000.\n");
+            }
+            continue;
+        }
+
+        if (!(sdo = (ec_sdo_t *) kmalloc(sizeof(ec_sdo_t), GFP_ATOMIC))) {
+            EC_ERR("Failed to allocate memory for SDO!\n");
+            fsm->coe_state = ec_fsm_error;
+            return;
+        }
+
+        if (ec_sdo_init(sdo, sdo_index, slave)) {
+            EC_ERR("Failed to init SDO!\n");
+            fsm->coe_state = ec_fsm_error;
+            return;
+        }
+
+        if (kobject_add(&sdo->kobj)) {
+            EC_ERR("Failed to add kobject.\n");
+            kobject_put(&sdo->kobj); // free
+            fsm->coe_state = ec_fsm_error;
+            return;
+        }
+
+        list_add_tail(&sdo->list, &slave->sdo_dictionary);
+    }
+
+    if (EC_READ_U8(data + 2) & 0x80) { // more messages waiting. check again.
+        fsm->coe_start = datagram->cycles_sent;
+        ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
+        ec_master_queue_datagram(fsm->master, datagram);
+        fsm->coe_state = ec_fsm_coe_dict_check;
+        return;
+    }
+
+    if (list_empty(&slave->sdo_dictionary)) {
+        // no SDOs in dictionary. finished.
+        fsm->coe_state = ec_fsm_end; // success
+        return;
+    }
+
+    // fetch SDO descriptions
+    fsm->coe_sdo = list_entry(slave->sdo_dictionary.next, ec_sdo_t, list);
+
+    if (!(data = ec_slave_mbox_prepare_send(slave, datagram, 0x03, 8))) {
+        fsm->coe_state = ec_fsm_error;
+        return;
+    }
+
+    EC_WRITE_U16(data, 0x8 << 12); // SDO information
+    EC_WRITE_U8 (data + 2, 0x03); // Get object description request
+    EC_WRITE_U8 (data + 3, 0x00);
+    EC_WRITE_U16(data + 4, 0x0000);
+    EC_WRITE_U16(data + 6, fsm->coe_sdo->index); // SDO index
+
+    ec_master_queue_datagram(fsm->master, datagram);
+    fsm->coe_state = ec_fsm_coe_dict_desc_request;
+}
+
+/*****************************************************************************/
+
+/**
+   CoE state: DICT DESC REQUEST.
+*/
+
+void ec_fsm_coe_dict_desc_request(ec_fsm_t *fsm /**< finite state machine */)
+{
+    ec_datagram_t *datagram = &fsm->datagram;
+    ec_slave_t *slave = fsm->slave;
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED
+        || datagram->working_counter != 1) {
+        fsm->coe_state = ec_fsm_error;
+        EC_ERR("Reception of CoE SDO description request failed.\n");
+        return;
+    }
+
+    fsm->coe_start = datagram->cycles_sent;
+
+    ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
+    ec_master_queue_datagram(fsm->master, datagram);
+    fsm->coe_state = ec_fsm_coe_dict_desc_check;
+}
+
+/*****************************************************************************/
+
+/**
+   CoE state: DICT DESC CHECK.
+*/
+
+void ec_fsm_coe_dict_desc_check(ec_fsm_t *fsm /**< finite state machine */)
+{
+    ec_datagram_t *datagram = &fsm->datagram;
+    ec_slave_t *slave = fsm->slave;
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED
+        || datagram->working_counter != 1) {
+        fsm->coe_state = ec_fsm_error;
+        EC_ERR("Reception of CoE mailbox check datagram failed.\n");
+        return;
+    }
+
+    if (!ec_slave_mbox_check(datagram)) {
+        if (datagram->cycles_received
+            - fsm->coe_start >= (cycles_t) 100 * cpu_khz) {
+            fsm->coe_state = ec_fsm_error;
+            EC_ERR("Timeout while checking SDO description on slave %i.\n",
+                   slave->ring_position);
+            return;
+        }
+
+        ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
+        ec_master_queue_datagram(fsm->master, datagram);
+        return;
+    }
+
+    // Fetch response
+    ec_slave_mbox_prepare_fetch(slave, datagram); // can not fail.
+    ec_master_queue_datagram(fsm->master, datagram);
+    fsm->coe_state = ec_fsm_coe_dict_desc_response;
+}
+
+/*****************************************************************************/
+
+/**
+   CoE state: DICT DESC RESPONSE.
+*/
+
+void ec_fsm_coe_dict_desc_response(ec_fsm_t *fsm /**< finite state machine */)
+{
+    ec_master_t *master = fsm->master;
+    ec_datagram_t *datagram = &fsm->datagram;
+    ec_slave_t *slave = fsm->slave;
+    ec_sdo_t *sdo = fsm->coe_sdo;
+    uint8_t *data, mbox_prot;
+    size_t rec_size, name_size;
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED
+        || datagram->working_counter != 1) {
+        fsm->coe_state = ec_fsm_error;
+        EC_ERR("Reception of CoE SDO description response failed.\n");
+        return;
+    }
+
+    if (!(data = ec_slave_mbox_fetch(slave, datagram,
+				     &mbox_prot, &rec_size))) {
+        fsm->coe_state = ec_fsm_error;
+        return;
+    }
+
+    if (mbox_prot != 0x03) { // CoE
+        EC_WARN("Received mailbox protocol 0x%02X as response.\n", mbox_prot);
+        fsm->coe_state = ec_fsm_error;
+	return;
+    }
+
+    if (EC_READ_U16(data) >> 12 == 0x8 && // SDO information
+        (EC_READ_U8 (data + 2) & 0x7F) == 0x07) { // error response
+        EC_ERR("SDO information error response at slave %i while"
+               " fetching SDO 0x%04X!\n", slave->ring_position,
+               sdo->index);
+        ec_canopen_abort_msg(EC_READ_U32(data + 6));
+        fsm->coe_state = ec_fsm_error;
+	return;
+    }
+
+    if (EC_READ_U16(data) >> 12 != 0x8 || // SDO information
+        (EC_READ_U8 (data + 2) & 0x7F) != 0x04 || // Object desc. response
+        EC_READ_U16(data + 6) != sdo->index) { // SDO index
+        EC_ERR("Invalid object description response at slave %i while"
+               " fetching SDO 0x%04X!\n", slave->ring_position,
+               sdo->index);
+        ec_print_data(data, rec_size);
+        fsm->coe_state = ec_fsm_error;
+	return;
+    }
+
+    if (rec_size < 12) {
+        EC_ERR("Invalid data size!\n");
+        ec_print_data(data, rec_size);
+        fsm->coe_state = ec_fsm_error;
+	return;
+    }
+
+    sdo->subindices = EC_READ_U8(data + 10);
+    sdo->object_code = EC_READ_U8(data + 11);
+
+    name_size = rec_size - 12;
+    if (name_size) {
+        if (!(sdo->name = kmalloc(name_size + 1, GFP_ATOMIC))) {
+            EC_ERR("Failed to allocate SDO name!\n");
+            fsm->coe_state = ec_fsm_error;
+            return;
+        }
+
+        memcpy(sdo->name, data + 12, name_size);
+        sdo->name[name_size] = 0;
+    }
+
+    if (EC_READ_U8(data + 2) & 0x80) {
+        EC_ERR("Fragment follows (not implemented)!\n");
+        fsm->coe_state = ec_fsm_error;
+	return;
+    }
+
+    if (!sdo->subindices) { // no entries
+        // another SDO description to fetch?
+        if (fsm->coe_sdo->list.next != &slave->sdo_dictionary) {
+            fsm->coe_sdo = list_entry(fsm->coe_sdo->list.next, ec_sdo_t, list);
+
+            if (!(data = ec_slave_mbox_prepare_send(slave, datagram, 0x03, 8))) {
+                fsm->coe_state = ec_fsm_error;
+                return;
+            }
+
+            EC_WRITE_U16(data, 0x8 << 12); // SDO information
+            EC_WRITE_U8 (data + 2, 0x03); // Get object description request
+            EC_WRITE_U8 (data + 3, 0x00);
+            EC_WRITE_U16(data + 4, 0x0000);
+            EC_WRITE_U16(data + 6, fsm->coe_sdo->index); // SDO index
+
+            ec_master_queue_datagram(fsm->master, datagram);
+            fsm->coe_state = ec_fsm_coe_dict_desc_request;
+            return;
+        }
+
+        if (master->debug_level) {
+            EC_DBG("Finished fetching SDO descriptions.\n");
+        }
+
+        fsm->coe_state = ec_fsm_end;
+        return;
+    }
+
+    fsm->coe_subindex = 1;
+
+    if (!(data = ec_slave_mbox_prepare_send(slave, datagram, 0x03, 10))) {
+        fsm->coe_state = ec_fsm_error;
+        return;
+    }
+
+    EC_WRITE_U16(data, 0x8 << 12); // SDO information
+    EC_WRITE_U8 (data + 2, 0x05); // Get entry description request
+    EC_WRITE_U8 (data + 3, 0x00);
+    EC_WRITE_U16(data + 4, 0x0000);
+    EC_WRITE_U16(data + 6, sdo->index); // SDO index
+    EC_WRITE_U8 (data + 8, fsm->coe_subindex); // SDO subindex
+    EC_WRITE_U8 (data + 9, 0x00); // value info (no values)
+
+    ec_master_queue_datagram(fsm->master, datagram);
+    fsm->coe_state = ec_fsm_coe_dict_entry_request;
+}
+
+/*****************************************************************************/
+
+/**
+   CoE state: DICT ENTRY REQUEST.
+*/
+
+void ec_fsm_coe_dict_entry_request(ec_fsm_t *fsm /**< finite state machine */)
+{
+    ec_datagram_t *datagram = &fsm->datagram;
+    ec_slave_t *slave = fsm->slave;
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED
+        || datagram->working_counter != 1) {
+        fsm->coe_state = ec_fsm_error;
+        EC_ERR("Reception of CoE SDO entry request failed.\n");
+        return;
+    }
+
+    fsm->coe_start = datagram->cycles_sent;
+
+    ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
+    ec_master_queue_datagram(fsm->master, datagram);
+    fsm->coe_state = ec_fsm_coe_dict_entry_check;
+}
+
+/*****************************************************************************/
+
+/**
+   CoE state: DICT ENTRY CHECK.
+*/
+
+void ec_fsm_coe_dict_entry_check(ec_fsm_t *fsm /**< finite state machine */)
+{
+    ec_datagram_t *datagram = &fsm->datagram;
+    ec_slave_t *slave = fsm->slave;
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED
+        || datagram->working_counter != 1) {
+        fsm->coe_state = ec_fsm_error;
+        EC_ERR("Reception of CoE mailbox check datagram failed.\n");
+        return;
+    }
+
+    if (!ec_slave_mbox_check(datagram)) {
+        if (datagram->cycles_received
+            - fsm->coe_start >= (cycles_t) 100 * cpu_khz) {
+            fsm->coe_state = ec_fsm_error;
+            EC_ERR("Timeout while checking SDO entry on slave %i.\n",
+                   slave->ring_position);
+            return;
+        }
+
+        ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
+        ec_master_queue_datagram(fsm->master, datagram);
+        return;
+    }
+
+    // Fetch response
+    ec_slave_mbox_prepare_fetch(slave, datagram); // can not fail.
+    ec_master_queue_datagram(fsm->master, datagram);
+    fsm->coe_state = ec_fsm_coe_dict_entry_response;
+}
+
+/*****************************************************************************/
+
+/**
+   CoE state: DICT ENTRY RESPONSE.
+*/
+
+void ec_fsm_coe_dict_entry_response(ec_fsm_t *fsm /**< finite state machine */)
+{
+    ec_master_t *master = fsm->master;
+    ec_datagram_t *datagram = &fsm->datagram;
+    ec_slave_t *slave = fsm->slave;
+    ec_sdo_t *sdo = fsm->coe_sdo;
+    uint8_t *data, mbox_prot;
+    size_t rec_size, data_size;
+    ec_sdo_entry_t *entry;
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED
+        || datagram->working_counter != 1) {
+        fsm->coe_state = ec_fsm_error;
+        EC_ERR("Reception of CoE SDO description response failed.\n");
+        return;
+    }
+
+    if (!(data = ec_slave_mbox_fetch(slave, datagram,
+				     &mbox_prot, &rec_size))) {
+        fsm->coe_state = ec_fsm_error;
+        return;
+    }
+
+    if (mbox_prot != 0x03) { // CoE
+        EC_WARN("Received mailbox protocol 0x%02X as response.\n", mbox_prot);
+        fsm->coe_state = ec_fsm_error;
+	return;
+    }
+
+    if (EC_READ_U16(data) >> 12 == 0x8 && // SDO information
+        (EC_READ_U8 (data + 2) & 0x7F) == 0x07) { // error response
+        EC_ERR("SDO information error response at slave %i while"
+               " fetching SDO entry 0x%04X:%i!\n", slave->ring_position,
+               sdo->index, fsm->coe_subindex);
+        ec_canopen_abort_msg(EC_READ_U32(data + 6));
+        fsm->coe_state = ec_fsm_error;
+	return;
+    }
+
+    if (EC_READ_U16(data) >> 12 != 0x8 || // SDO information
+        (EC_READ_U8(data + 2) & 0x7F) != 0x06 || // Entry desc. response
+        EC_READ_U16(data + 6) != sdo->index || // SDO index
+        EC_READ_U8(data + 8) != fsm->coe_subindex) { // SDO subindex
+        EC_ERR("Invalid entry description response at slave %i while"
+               " fetching SDO entry 0x%04X:%i!\n", slave->ring_position,
+               sdo->index, fsm->coe_subindex);
+        ec_print_data(data, rec_size);
+        fsm->coe_state = ec_fsm_error;
+	return;
+    }
+
+    if (rec_size < 16) {
+        EC_ERR("Invalid data size!\n");
+        ec_print_data(data, rec_size);
+        fsm->coe_state = ec_fsm_error;
+	return;
+    }
+
+    data_size = rec_size - 16;
+
+    if (!(entry = (ec_sdo_entry_t *)
+          kmalloc(sizeof(ec_sdo_entry_t), GFP_ATOMIC))) {
+        EC_ERR("Failed to allocate entry!\n");
+        fsm->coe_state = ec_fsm_error;
+	return;
+    }
+
+    if (ec_sdo_entry_init(entry, fsm->coe_subindex, sdo)) {
+        EC_ERR("Failed to init entry!\n");
+        fsm->coe_state = ec_fsm_error;
+	return;
+    }
+
+    entry->data_type = EC_READ_U16(data + 10);
+    entry->bit_length = EC_READ_U16(data + 12);
+
+    if (data_size) {
+        if (!(entry->description = kmalloc(data_size + 1, GFP_ATOMIC))) {
+            EC_ERR("Failed to allocate SDO entry name!\n");
+            fsm->coe_state = ec_fsm_error;
+            return;
+        }
+        memcpy(entry->description, data + 16, data_size);
+        entry->description[data_size] = 0;
+    }
+
+    if (kobject_add(&entry->kobj)) {
+        EC_ERR("Failed to add kobject.\n");
+        kobject_put(&entry->kobj); // free
+        fsm->coe_state = ec_fsm_error;
+        return;
+    }
+
+    list_add_tail(&entry->list, &sdo->entries);
+
+    if (fsm->coe_subindex < sdo->subindices) {
+        fsm->coe_subindex++;
+
+        if (!(data = ec_slave_mbox_prepare_send(slave, datagram, 0x03, 10))) {
+            fsm->coe_state = ec_fsm_error;
+            return;
+        }
+
+        EC_WRITE_U16(data, 0x8 << 12); // SDO information
+        EC_WRITE_U8 (data + 2, 0x05); // Get entry description request
+        EC_WRITE_U8 (data + 3, 0x00);
+        EC_WRITE_U16(data + 4, 0x0000);
+        EC_WRITE_U16(data + 6, sdo->index); // SDO index
+        EC_WRITE_U8 (data + 8, fsm->coe_subindex); // SDO subindex
+        EC_WRITE_U8 (data + 9, 0x00); // value info (no values)
+
+        ec_master_queue_datagram(fsm->master, datagram);
+        fsm->coe_state = ec_fsm_coe_dict_entry_request;
+        return;
+    }
+
+    // another SDO description to fetch?
+    if (fsm->coe_sdo->list.next != &slave->sdo_dictionary) {
+        fsm->coe_sdo = list_entry(fsm->coe_sdo->list.next, ec_sdo_t, list);
+
+        if (!(data = ec_slave_mbox_prepare_send(slave, datagram, 0x03, 8))) {
+            fsm->coe_state = ec_fsm_error;
+            return;
+        }
+
+        EC_WRITE_U16(data, 0x8 << 12); // SDO information
+        EC_WRITE_U8 (data + 2, 0x03); // Get object description request
+        EC_WRITE_U8 (data + 3, 0x00);
+        EC_WRITE_U16(data + 4, 0x0000);
+        EC_WRITE_U16(data + 6, fsm->coe_sdo->index); // SDO index
+
+        ec_master_queue_datagram(fsm->master, datagram);
+        fsm->coe_state = ec_fsm_coe_dict_desc_request;
+        return;
+    }
+
+    if (master->debug_level) {
+        EC_DBG("Finished fetching SDO descriptions.\n");
+    }
+
+    fsm->coe_state = ec_fsm_end;
+}
+
+/******************************************************************************
  *  CoE state machine
  *****************************************************************************/
 
 /**
-   CoE state: DOWN_START.
+   CoE state: DOWN START.
 */
 
 void ec_fsm_coe_down_start(ec_fsm_t *fsm /**< finite state machine */)
@@ -2101,7 +2933,7 @@ void ec_fsm_coe_down_start(ec_fsm_t *fsm /**< finite state machine */)
 /*****************************************************************************/
 
 /**
-   CoE state: DOWN_REQUEST.
+   CoE state: DOWN REQUEST.
 */
 
 void ec_fsm_coe_down_request(ec_fsm_t *fsm /**< finite state machine */)
@@ -2126,7 +2958,7 @@ void ec_fsm_coe_down_request(ec_fsm_t *fsm /**< finite state machine */)
 /*****************************************************************************/
 
 /**
-   CoE state: DOWN_CHECK.
+   CoE state: DOWN CHECK.
 */
 
 void ec_fsm_coe_down_check(ec_fsm_t *fsm /**< finite state machine */)
@@ -2164,7 +2996,7 @@ void ec_fsm_coe_down_check(ec_fsm_t *fsm /**< finite state machine */)
 /*****************************************************************************/
 
 /**
-   CoE state: DOWN_RESPONSE.
+   CoE state: DOWN RESPONSE.
 */
 
 void ec_fsm_coe_down_response(ec_fsm_t *fsm /**< finite state machine */)

@@ -38,7 +38,7 @@
 obj-m := ec_master.o
 
 ec_master-objs := module.o master.o device.o slave.o datagram.o \
-		domain.o mailbox.o ethernet.o fsm.o xmldev.o
+		domain.o mailbox.o canopen.o ethernet.o fsm.o xmldev.o
 
 ifeq ($(EC_DBG_IF),1)
 	ec_master-objs += debug.o
