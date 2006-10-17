@@ -80,7 +80,7 @@ struct ec_fsm
     uint8_t change_take_time; /**< take sending timestamp */
 
     void (*coe_state)(ec_fsm_t *); /**< CoE state function */
-    ec_sdo_data_t *sdodata; /**< input/output: SDO data object */
+    ec_sdo_data_t *coe_sdodata; /**< input/output: SDO data object */
     cycles_t coe_start; /**< CoE timestamp */
 };
 

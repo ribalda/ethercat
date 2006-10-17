@@ -1423,7 +1423,7 @@ void ec_fsm_slaveconf_preop(ec_fsm_t *fsm /**< finite state machine */)
             return;
         }
         fsm->slave_state = ec_fsm_slaveconf_sdoconf;
-        fsm->sdodata = list_entry(slave->sdo_confs.next, ec_sdo_data_t, list);
+        fsm->coe_sdodata = list_entry(slave->sdo_confs.next, ec_sdo_data_t, list);
         fsm->coe_state = ec_fsm_coe_down_start;
         fsm->coe_state(fsm); // execute immediately
         return;
@@ -1473,7 +1473,7 @@ void ec_fsm_slaveconf_fmmu(ec_fsm_t *fsm /**< finite state machine */)
     }
 
     fsm->slave_state = ec_fsm_slaveconf_sdoconf;
-    fsm->sdodata = list_entry(slave->sdo_confs.next, ec_sdo_data_t, list);
+    fsm->coe_sdodata = list_entry(slave->sdo_confs.next, ec_sdo_data_t, list);
     fsm->coe_state = ec_fsm_coe_down_start;
     fsm->coe_state(fsm); // execute immediately
 }
@@ -1497,9 +1497,9 @@ void ec_fsm_slaveconf_sdoconf(ec_fsm_t *fsm /**< finite state machine */)
     if (fsm->coe_state != ec_fsm_end) return;
 
     // Another SDO to configure?
-    if (fsm->sdodata->list.next != &fsm->slave->sdo_confs) {
-        fsm->sdodata = list_entry(fsm->sdodata->list.next,
-                                  ec_sdo_data_t, list);
+    if (fsm->coe_sdodata->list.next != &fsm->slave->sdo_confs) {
+        fsm->coe_sdodata = list_entry(fsm->coe_sdodata->list.next,
+                                      ec_sdo_data_t, list);
         fsm->coe_state = ec_fsm_coe_down_start;
         fsm->coe_state(fsm); // execute immediately
         return;
@@ -2072,7 +2072,7 @@ void ec_fsm_coe_down_start(ec_fsm_t *fsm /**< finite state machine */)
 {
     ec_datagram_t *datagram = &fsm->datagram;
     ec_slave_t *slave = fsm->slave;
-    ec_sdo_data_t *sdodata = fsm->sdodata;
+    ec_sdo_data_t *sdodata = fsm->coe_sdodata;
     uint8_t *data;
 
     EC_INFO("Downloading SDO 0x%04X:%i to slave %i.\n",
@@ -2177,7 +2177,7 @@ void ec_fsm_coe_down_response(ec_fsm_t *fsm /**< finite state machine */)
     ec_slave_t *slave = fsm->slave;
     uint8_t *data, mbox_prot;
     size_t rec_size;
-    ec_sdo_data_t *sdodata = fsm->sdodata;
+    ec_sdo_data_t *sdodata = fsm->coe_sdodata;
 
     if (datagram->state != EC_DATAGRAM_RECEIVED
         || datagram->working_counter != 1) {
