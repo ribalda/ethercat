@@ -680,11 +680,11 @@ void ec_sync_config(const ec_sii_sync_t *sync, /**< sync manager */
     sync_size = ec_slave_calc_sync_size(slave, sync);
 
     if (slave->master->debug_level) {
-        EC_INFO("Slave %i, sync manager %i:\n", slave->ring_position,
-                sync->index);
-        EC_INFO("  Address: 0x%04X\n", sync->physical_start_address);
-        EC_INFO("     Size: %i\n", sync_size);
-        EC_INFO("  Control: 0x%02X\n", sync->control_register);
+        EC_DBG("Slave %i, sync manager %i:\n", slave->ring_position,
+               sync->index);
+        EC_DBG("  Address: 0x%04X\n", sync->physical_start_address);
+        EC_DBG("     Size: %i\n", sync_size);
+        EC_DBG("  Control: 0x%02X\n", sync->control_register);
     }
 
     EC_WRITE_U16(data,     sync->physical_start_address);
