@@ -1043,7 +1043,6 @@ void ec_fsm_slavescan_state(ec_fsm_t *fsm /**< finite state machine */)
     if (slave->current_state & EC_SLAVE_STATE_ACK_ERR) {
         EC_WARN("Slave %i has state error bit set (0x%02X)!\n",
                 slave->ring_position, slave->current_state);
-        slave->current_state &= 0x0F;
     }
 
     // read base data
@@ -1883,7 +1882,6 @@ void ec_fsm_change_status(ec_fsm_t *fsm /**< finite state machine */)
 
     if (slave->current_state & EC_SLAVE_STATE_ACK_ERR) {
         // state change error
-        fsm->change_new = slave->current_state & 0x0F;
         EC_ERR("Failed to set state 0x%02X - Slave %i refused state change"
                " (code 0x%02X)!\n", fsm->change_new, slave->ring_position,
                slave->current_state);
@@ -1963,20 +1961,19 @@ void ec_fsm_change_code(ec_fsm_t *fsm /**< finite state machine */)
 
     if (datagram->state != EC_DATAGRAM_RECEIVED
         || datagram->working_counter != 1) {
-        fsm->change_state = ec_fsm_error;
-        EC_ERR("Reception of AL status code datagram failed.\n");
-        return;
+        EC_WARN("Reception of AL status code datagram failed.\n");
     }
-
-    if ((code = EC_READ_U16(datagram->data))) {
-        for (al_msg = al_status_messages; al_msg->code; al_msg++) {
-            if (al_msg->code != code) continue;
-            EC_ERR("AL status message 0x%04X: \"%s\".\n",
-                   al_msg->code, al_msg->message);
-            break;
+    else {
+        if ((code = EC_READ_U16(datagram->data))) {
+            for (al_msg = al_status_messages; al_msg->code; al_msg++) {
+                if (al_msg->code != code) continue;
+                EC_ERR("AL status message 0x%04X: \"%s\".\n",
+                       al_msg->code, al_msg->message);
+                break;
+            }
+            if (!al_msg->code)
+                EC_ERR("Unknown AL status code 0x%04X.\n", code);
         }
-        if (!al_msg->code)
-            EC_ERR("Unknown AL status code 0x%04X.\n", code);
     }
 
     // acknowledge "old" slave state
@@ -2022,7 +2019,6 @@ void ec_fsm_change_check_ack(ec_fsm_t *fsm /**< finite state machine */)
 {
     ec_datagram_t *datagram = &fsm->datagram;
     ec_slave_t *slave = fsm->slave;
-    ec_slave_state_t ack_state;
 
     if (datagram->state != EC_DATAGRAM_RECEIVED
         || datagram->working_counter != 1) {
@@ -2036,11 +2032,11 @@ void ec_fsm_change_check_ack(ec_fsm_t *fsm /**< finite state machine */)
         fsm->change_jiffies = datagram->jiffies_sent;
     }
 
-    ack_state = EC_READ_U8(datagram->data);
+    slave->current_state = EC_READ_U8(datagram->data);
 
-    if (ack_state == slave->current_state) {
+    if (!(slave->current_state & EC_SLAVE_STATE_ACK_ERR)) {
         fsm->change_state = ec_fsm_error;
-        EC_INFO("Acknowleged state 0x%02X on slave %i.\n",
+        EC_INFO("Acknowledged state 0x%02X on slave %i.\n",
                 slave->current_state, slave->ring_position);
         return;
     }
@@ -2050,7 +2046,7 @@ void ec_fsm_change_check_ack(ec_fsm_t *fsm /**< finite state machine */)
         // timeout while checking
         slave->current_state = EC_SLAVE_STATE_UNKNOWN;
         fsm->change_state = ec_fsm_error;
-        EC_ERR("Timeout while acknowleging state 0x%02X on slave %i.\n",
+        EC_ERR("Timeout while acknowledging state 0x%02X on slave %i.\n",
                fsm->change_new, slave->ring_position);
         return;
     }
