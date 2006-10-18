@@ -1719,7 +1719,7 @@ void ec_fsm_slaveconf_saveop(ec_fsm_t *fsm /**< finite state machine */)
     // slave is now in SAVEOP
 
     if (master->debug_level) {
-        EC_DBG("Slave %i is now in PREOP.\n", slave->ring_position);
+        EC_DBG("Slave %i is now in SAVEOP.\n", slave->ring_position);
     }
 
     if (fsm->slave->current_state == fsm->slave->requested_state) {
