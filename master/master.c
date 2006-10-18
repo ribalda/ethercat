@@ -680,9 +680,9 @@ void ec_sync_config(const ec_sii_sync_t *sync, /**< sync manager */
     sync_size = ec_slave_calc_sync_size(slave, sync);
 
     if (slave->master->debug_level) {
-        EC_DBG("Slave %3i, SM %i: Addr 0x%04X, Size %3i, Ctrl 0x%02X\n",
+        EC_DBG("Slave %3i, SM %i: Addr 0x%04X, Size %3i, Ctrl 0x%02X, En %i\n",
                slave->ring_position, sync->index, sync->physical_start_address,
-               sync_size, sync->control_register);
+               sync_size, sync->control_register, sync->enable);
     }
 
     EC_WRITE_U16(data,     sync->physical_start_address);
