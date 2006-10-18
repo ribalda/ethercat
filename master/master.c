@@ -129,6 +129,7 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     }
     master->idle_cycle_time_pos = 0;
     master->eoe_cycle_time_pos = 0;
+    master->debug_level = 0;
 
     // create workqueue
     if (!(master->workqueue = create_singlethread_workqueue("EtherCAT"))) {
@@ -251,7 +252,6 @@ void ec_master_reset(ec_master_t *master /**< EtherCAT master */)
     }
 
     master->datagram_index = 0;
-    master->debug_level = 0;
 
     master->stats.timeouts = 0;
     master->stats.corrupted = 0;
