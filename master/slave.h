@@ -116,6 +116,9 @@ typedef struct
     uint16_t length; /**< data length in bytes */
     uint8_t control_register; /**< control register value */
     uint8_t enable; /**< enable bit */
+    uint16_t est_length; /**< Estimated length. This is no field of the SII,
+                            but it is used to calculate the length via
+                            PDO ranges */
 }
 ec_sii_sync_t;
 

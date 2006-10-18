@@ -188,7 +188,7 @@ int ec_domain_reg_pdo_entry(ec_domain_t *domain, /**< EtherCAT domain */
         return -1;
     }
 
-    // Calculate offset for process data pointer
+    // Calculate offset (in sync manager) for process data pointer
     bit_offset = 0;
     byte_offset = 0;
     list_for_each_entry(other_pdo, &slave->sii_pdos, list) {
@@ -220,6 +220,81 @@ int ec_domain_reg_pdo_entry(ec_domain_t *domain, /**< EtherCAT domain */
     data_reg->sync = sync;
     data_reg->sync_offset = byte_offset;
     data_reg->data_ptr = data_ptr;
+
+    list_add_tail(&data_reg->list, &domain->data_regs);
+    return 0;
+}
+
+/*****************************************************************************/
+
+/**
+   Registeres a PDO range.
+   \return 0 in case of success, else < 0
+*/
+
+int ec_domain_reg_pdo_range(ec_domain_t *domain, /**< EtherCAT domain */
+                            ec_slave_t *slave, /**< slave */
+                            ec_direction_t dir, /**< data direction */
+                            uint16_t offset, /**< offset */
+                            uint16_t length, /**< length */
+                            void **data_ptr /**< pointer to the process data
+                                               pointer */
+                            )
+{
+    ec_data_reg_t *data_reg;
+    ec_sii_sync_t *sync;
+    unsigned int sync_found, sync_index;
+    uint16_t sync_length;
+
+    switch (dir) {
+        case EC_DIR_OUTPUT: sync_index = 2; break;
+        case EC_DIR_INPUT:  sync_index = 3; break;
+        default:
+            EC_ERR("Invalid direction!\n");
+            return -1;
+    }
+
+    // Find sync manager
+    sync_found = 0;
+    list_for_each_entry(sync, &slave->sii_syncs, list) {
+        if (sync->index == sync_index) {
+            sync_found = 1;
+            break;
+        }
+    }
+
+    if (!sync_found) {
+        EC_ERR("No sync manager found for PDO range.\n");
+        return -1;
+    }
+
+     // Allocate memory for data registration object
+    if (!(data_reg =
+          (ec_data_reg_t *) kmalloc(sizeof(ec_data_reg_t), GFP_KERNEL))) {
+        EC_ERR("Failed to allocate data registration.\n");
+        return -1;
+    }
+
+    if (ec_slave_prepare_fmmu(slave, domain, sync)) {
+        EC_ERR("FMMU configuration failed.\n");
+        kfree(data_reg);
+        return -1;
+    }
+
+    data_reg->slave = slave;
+    data_reg->sync = sync;
+    data_reg->sync_offset = offset;
+    data_reg->data_ptr = data_ptr;
+
+    // estimate sync manager length
+    sync_length = offset + length;
+    if (sync->est_length < sync_length) {
+        sync->est_length = sync_length;
+        if (domain->master->debug_level) {
+            EC_DBG("Estimating length of sync manager %i of slave %i to %i.\n",
+                   sync->index, slave->ring_position, sync_length);
+        }
+    }
 
     list_add_tail(&data_reg->list, &domain->data_regs);
     return 0;
@@ -499,6 +574,58 @@ int ecrt_domain_register_pdo_list(ec_domain_t *domain,
 /*****************************************************************************/
 
 /**
+   Registers a PDO range in a domain.
+   - If \a data_ptr is NULL, the slave is only validated.
+   \return pointer to the slave on success, else NULL
+   \ingroup RealtimeInterface
+*/
+
+ec_slave_t *ecrt_domain_register_pdo_range(ec_domain_t *domain,
+                                           /**< EtherCAT domain */
+                                           const char *address,
+                                           /**< ASCII address of the slave,
+                                              see ecrt_master_get_slave() */
+                                           uint32_t vendor_id,
+                                           /**< vendor ID */
+                                           uint32_t product_code,
+                                           /**< product code */
+                                           ec_direction_t direction,
+                                           /**< data direction */
+                                           uint16_t offset,
+                                           /**< offset in slave's PDO range */
+                                           uint16_t length,
+                                           /**< length of this range */
+                                           void **data_ptr
+                                           /**< address of the process data
+                                              pointer */
+                                           )
+{
+    ec_slave_t *slave;
+    ec_master_t *master;
+
+    master = domain->master;
+
+    // translate address and validate slave
+    if (!(slave = ecrt_master_get_slave(master, address))) return NULL;
+    if (ec_slave_validate(slave, vendor_id, product_code)) return NULL;
+
+    if (!data_ptr) {
+        // data_ptr is NULL => mark slave as "registered" (do not warn)
+        slave->registered = 1;
+        return slave;
+    }
+
+    if (ec_domain_reg_pdo_range(domain, slave,
+                                direction, offset, length, data_ptr)) {
+        return NULL;
+    }
+
+    return slave;
+}
+
+/*****************************************************************************/
+
+/**
    Processes received process data and requeues the domain datagram(s).
    \ingroup RealtimeInterface
 */
@@ -561,6 +688,7 @@ int ecrt_domain_state(const ec_domain_t *domain /**< EtherCAT domain */)
 
 EXPORT_SYMBOL(ecrt_domain_register_pdo);
 EXPORT_SYMBOL(ecrt_domain_register_pdo_list);
+EXPORT_SYMBOL(ecrt_domain_register_pdo_range);
 EXPORT_SYMBOL(ecrt_domain_process);
 EXPORT_SYMBOL(ecrt_domain_state);
 

@@ -45,6 +45,8 @@
 
 /** \cond */
 
+#define Beckhoff_BK1120 0x00000002, 0x04602C22
+
 #define Beckhoff_EL1004_Inputs 0x00000002, 0x03EC3052, 0x3101, 1
 
 #define Beckhoff_EL1014_Inputs 0x00000002, 0x03F63052, 0x3101, 1

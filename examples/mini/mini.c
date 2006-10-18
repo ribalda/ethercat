@@ -56,23 +56,23 @@ ec_domain_t *domain1 = NULL;
 spinlock_t master_lock = SPIN_LOCK_UNLOCKED;
 
 // data fields
-void *r_ana_out;
+void *r_inputs;
+void *r_outputs;
 
-// channels
-uint32_t k_pos;
-uint8_t k_stat;
-
+#if 0
 ec_pdo_reg_t domain1_pdos[] = {
     {"2", Beckhoff_EL4132_Output1, &r_ana_out},
     {"3", Beckhoff_EL5001_Value, NULL},
     {}
 };
+#endif
 
 /*****************************************************************************/
 
 void run(unsigned long data)
 {
     static unsigned int counter = 0;
+    static unsigned int einaus = 0;
 
     spin_lock(&master_lock);
 
@@ -82,6 +82,8 @@ void run(unsigned long data)
 
     // process data
     //k_pos = EC_READ_U32(r_ssi);
+    EC_WRITE_U8(r_outputs + 2, einaus ? 0xFF : 0x00);
+
 
     // send
     ecrt_master_run(master);
@@ -94,10 +96,7 @@ void run(unsigned long data)
     }
     else {
         counter = FREQUENCY;
-        //printk(KERN_INFO "input = ");
-        //for (i = 0; i < 22; i++)
-        //    printk("%02X ", *((uint8_t *) r_kbus_in + i));
-        //printk("\n");
+        einaus = !einaus;
     }
 
     // restart timer
@@ -124,7 +123,7 @@ void release_lock(void *data)
 
 int __init init_mini_module(void)
 {
-    ec_slave_t *slave;
+    //    ec_slave_t *slave;
 
     printk(KERN_INFO "=== Starting Minimal EtherCAT environment... ===\n");
 
@@ -143,16 +142,30 @@ int __init init_mini_module(void)
     }
 
     printk(KERN_INFO "Registering PDOs...\n");
+#if 0
     if (ecrt_domain_register_pdo_list(domain1, domain1_pdos)) {
         printk(KERN_ERR "PDO registration failed!\n");
         goto out_release_master;
     }
+#endif
+    if (!ecrt_domain_register_pdo_range(domain1, "0", Beckhoff_BK1120,
+                                        EC_DIR_OUTPUT, 0, 4, &r_outputs)) {
+        printk(KERN_ERR "PDO registration failed!\n");
+        goto out_release_master;
+    }
+    if (!ecrt_domain_register_pdo_range(domain1, "0", Beckhoff_BK1120,
+                                        EC_DIR_INPUT, 0, 4, &r_inputs)) {
+        printk(KERN_ERR "PDO registration failed!\n");
+        goto out_release_master;
+    }
 
+#if 0
     if (!(slave = ecrt_master_get_slave(master, "3")))
         goto out_release_master;
 
     if (ecrt_slave_conf_sdo8(slave, 0x4061, 1, 0))
         goto out_release_master;
+#endif
 
     printk(KERN_INFO "Activating master...\n");
     if (ecrt_master_activate(master)) {

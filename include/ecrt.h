@@ -86,6 +86,12 @@ typedef struct
 }
 ec_pdo_reg_t;
 
+/**
+   Direction type for ec_domain_register_pdo_range()
+*/
+
+typedef enum {EC_DIR_INPUT, EC_DIR_OUTPUT} ec_direction_t;
+
 /******************************************************************************
  *  Master request functions
  *****************************************************************************/
@@ -127,8 +133,18 @@ ec_slave_t *ecrt_domain_register_pdo(ec_domain_t *domain,
                                      uint16_t pdo_index,
                                      uint8_t pdo_subindex,
                                      void **data_ptr);
+
 int ecrt_domain_register_pdo_list(ec_domain_t *domain,
                                   const ec_pdo_reg_t *pdos);
+
+ec_slave_t *ecrt_domain_register_pdo_range(ec_domain_t *domain,
+                                           const char *address,
+                                           uint32_t vendor_id,
+                                           uint32_t product_code,
+                                           ec_direction_t direction,
+                                           uint16_t offset,
+                                           uint16_t length,
+                                           void **data_ptr);
 
 void ecrt_domain_process(ec_domain_t *domain);
 int ecrt_domain_state(const ec_domain_t *domain);

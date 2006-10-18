@@ -327,6 +327,8 @@ int ec_slave_fetch_sync(ec_slave_t *slave, /**< EtherCAT slave */
         sync->control_register       = EC_READ_U8 (data + 4);
         sync->enable                 = EC_READ_U8 (data + 6);
 
+        sync->est_length = 0;
+
         list_add_tail(&sync->list, &slave->sii_syncs);
     }
 
@@ -825,9 +827,10 @@ uint16_t ec_slave_calc_sync_size(const ec_slave_t *slave,
 {
     ec_sii_pdo_t *pdo;
     ec_sii_pdo_entry_t *pdo_entry;
-    unsigned int bit_size;
+    unsigned int bit_size, byte_size;
 
     if (sync->length) return sync->length;
+    if (sync->est_length) return sync->est_length;
 
     bit_size = 0;
     list_for_each_entry(pdo, &slave->sii_pdos, list) {
@@ -839,9 +842,11 @@ uint16_t ec_slave_calc_sync_size(const ec_slave_t *slave,
     }
 
     if (bit_size % 8) // round up to full bytes
-        return bit_size / 8 + 1;
+        byte_size = bit_size / 8 + 1;
     else
-        return bit_size / 8;
+        byte_size = bit_size / 8;
+
+    return byte_size;
 }
 
 /*****************************************************************************/
