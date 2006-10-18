@@ -680,11 +680,9 @@ void ec_sync_config(const ec_sii_sync_t *sync, /**< sync manager */
     sync_size = ec_slave_calc_sync_size(slave, sync);
 
     if (slave->master->debug_level) {
-        EC_DBG("Slave %i, sync manager %i:\n", slave->ring_position,
-               sync->index);
-        EC_DBG("  Address: 0x%04X\n", sync->physical_start_address);
-        EC_DBG("     Size: %i\n", sync_size);
-        EC_DBG("  Control: 0x%02X\n", sync->control_register);
+        EC_DBG("Slave %3i, SM %i: Addr 0x%04X, Size %3i, Ctrl 0x%02X\n",
+               slave->ring_position, sync->index, sync->physical_start_address,
+               sync_size, sync->control_register);
     }
 
     EC_WRITE_U16(data,     sync->physical_start_address);
@@ -711,15 +709,11 @@ void ec_fmmu_config(const ec_fmmu_t *fmmu, /**< FMMU */
     sync_size = ec_slave_calc_sync_size(slave, fmmu->sync);
 
     if (slave->master->debug_level) {
-        EC_DBG("Slave %i, FMMU %i:\n",
-               slave->ring_position, fmmu->index);
-
-        EC_DBG("  Logical address: 0x%04X\n", fmmu->logical_start_address);
-        EC_DBG("             Size: %i\n", sync_size);
-        EC_DBG(" Physical address: 0x%04X\n",
-               fmmu->sync->physical_start_address);
-        EC_DBG("        Direction: %s\n",
-               ((fmmu->sync->control_register & 0x04) ? "output" : "input"));
+        EC_DBG("Slave %3i, FMMU %2i:"
+               " LogAddr 0x%08X, Size %3i, PhysAddr 0x%04X, Dir %s\n",
+               slave->ring_position, fmmu->index, fmmu->logical_start_address,
+               sync_size, fmmu->sync->physical_start_address,
+               ((fmmu->sync->control_register & 0x04) ? "out" : "in"));
     }
 
     EC_WRITE_U32(data,      fmmu->logical_start_address);
