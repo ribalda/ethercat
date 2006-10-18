@@ -439,16 +439,9 @@ ec_slave_t *ecrt_domain_register_pdo(ec_domain_t *domain,
 
     master = domain->master;
 
-    // translate address
+    // translate address and validate slave
     if (!(slave = ecrt_master_get_slave(master, address))) return NULL;
-
-    if (vendor_id != slave->sii_vendor_id ||
-        product_code != slave->sii_product_code) {
-        EC_ERR("Invalid slave type at position %i - Requested: 0x%08X 0x%08X,"
-               " found: 0x%08X 0x%08X\".\n", slave->ring_position, vendor_id,
-               product_code, slave->sii_vendor_id, slave->sii_product_code);
-        return NULL;
-    }
+    if (ec_slave_validate(slave, vendor_id, product_code)) return NULL;
 
     if (!data_ptr) {
         // data_ptr is NULL => mark slave as "registered" (do not warn)

@@ -903,6 +903,27 @@ int ec_slave_conf_sdo(ec_slave_t *slave, /**< EtherCAT slave */
     return 0;
 }
 
+/*****************************************************************************/
+
+/**
+   \return 0 in case of success, else < 0
+*/
+
+int ec_slave_validate(const ec_slave_t *slave, /**< EtherCAT slave */
+                      uint32_t vendor_id, /**< vendor ID */
+                      uint32_t product_code /**< product code */
+                      )
+{
+    if (vendor_id != slave->sii_vendor_id ||
+        product_code != slave->sii_product_code) {
+        EC_ERR("Invalid slave type at position %i - Requested: 0x%08X 0x%08X,"
+               " found: 0x%08X 0x%08X\".\n", slave->ring_position, vendor_id,
+               product_code, slave->sii_vendor_id, slave->sii_product_code);
+        return -1;
+    }
+    return 0;
+}
+
 /******************************************************************************
  *  Realtime interface
  *****************************************************************************/

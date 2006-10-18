@@ -271,6 +271,8 @@ uint16_t ec_slave_calc_sync_size(const ec_slave_t *,
 int ec_slave_is_coupler(const ec_slave_t *);
 int ec_slave_has_subbus(const ec_slave_t *);
 
+int ec_slave_validate(const ec_slave_t *, uint32_t, uint32_t);
+
 /*****************************************************************************/
 
 #endif
