@@ -173,6 +173,7 @@ ec_sii_pdo_entry_t;
 
 typedef struct
 {
+    unsigned int index; /**< FMMU index */
     const ec_domain_t *domain; /**< domain */
     const ec_sii_sync_t *sync; /**< sync manager */
     uint32_t logical_start_address; /**< logical start address */

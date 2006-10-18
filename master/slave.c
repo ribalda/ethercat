@@ -464,11 +464,14 @@ int ec_slave_prepare_fmmu(ec_slave_t *slave, /**< EtherCAT slave */
                           )
 {
     unsigned int i;
+    ec_fmmu_t *fmmu;
 
     // FMMU configuration already prepared?
-    for (i = 0; i < slave->fmmu_count; i++)
-        if (slave->fmmus[i].domain == domain && slave->fmmus[i].sync == sync)
+    for (i = 0; i < slave->fmmu_count; i++) {
+        fmmu = &slave->fmmus[i];
+        if (fmmu->domain == domain && fmmu->sync == sync)
             return 0;
+    }
 
     // reserve new FMMU...
 
@@ -477,9 +480,13 @@ int ec_slave_prepare_fmmu(ec_slave_t *slave, /**< EtherCAT slave */
         return -1;
     }
 
-    slave->fmmus[slave->fmmu_count].domain = domain;
-    slave->fmmus[slave->fmmu_count].sync = sync;
-    slave->fmmus[slave->fmmu_count].logical_start_address = 0;
+    fmmu = &slave->fmmus[slave->fmmu_count];
+
+    fmmu->index = slave->fmmu_count;
+    fmmu->domain = domain;
+    fmmu->sync = sync;
+    fmmu->logical_start_address = 0;
+
     slave->fmmu_count++;
     slave->registered = 1;
 

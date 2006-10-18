@@ -710,6 +710,18 @@ void ec_fmmu_config(const ec_fmmu_t *fmmu, /**< FMMU */
 
     sync_size = ec_slave_calc_sync_size(slave, fmmu->sync);
 
+    if (slave->master->debug_level) {
+        EC_DBG("Slave %i, FMMU %i:\n",
+               slave->ring_position, fmmu->index);
+
+        EC_DBG("  Logical address: 0x%04X\n", fmmu->logical_start_address);
+        EC_DBG("             Size: %i\n", sync_size);
+        EC_DBG(" Physical address: 0x%04X\n",
+               fmmu->sync->physical_start_address);
+        EC_DBG("        Direction: %s\n",
+               ((fmmu->sync->control_register & 0x04) ? "output" : "input"));
+    }
+
     EC_WRITE_U32(data,      fmmu->logical_start_address);
     EC_WRITE_U16(data + 4,  sync_size); // size of fmmu
     EC_WRITE_U8 (data + 6,  0x00); // logical start bit
