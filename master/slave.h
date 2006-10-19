@@ -248,8 +248,11 @@ struct ec_slave
     ec_fmmu_t fmmus[EC_MAX_FMMUS]; /**< FMMU configurations */
     uint8_t fmmu_count; /**< number of FMMUs used */
 
+    struct kobject sdo_kobj; /**< kobject for SDOs */
     struct list_head sdo_dictionary; /**< SDO dictionary list */
     struct list_head sdo_confs; /**< list of SDO configurations */
+    uint8_t sdo_dictionary_fetched; /**< dictionary has been fetched */
+    unsigned long jiffies_preop; /**< time, the slave went to PREOP */
 };
 
 /*****************************************************************************/

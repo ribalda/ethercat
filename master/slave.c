@@ -83,6 +83,8 @@ static struct kobj_type ktype_ec_slave = {
     .default_attrs = def_attrs
 };
 
+static struct kobj_type ktype_ec_slave_sdos = {};
+
 /** \endcond */
 
 /*****************************************************************************/
@@ -110,6 +112,18 @@ int ec_slave_init(ec_slave_t *slave, /**< EtherCAT slave */
     slave->kobj.parent = &master->kobj;
     if (kobject_set_name(&slave->kobj, "slave%03i", slave->ring_position)) {
         EC_ERR("Failed to set kobject name.\n");
+        kobject_put(&slave->kobj);
+        return -1;
+    }
+
+    // init SDO kobject and add it to the hierarchy
+    memset(&slave->sdo_kobj, 0x00, sizeof(struct kobject));
+    kobject_init(&slave->sdo_kobj);
+    slave->sdo_kobj.ktype = &ktype_ec_slave_sdos;
+    slave->sdo_kobj.parent = &slave->kobj;
+    if (kobject_set_name(&slave->sdo_kobj, "sdos")) {
+        EC_ERR("Failed to set kobject name.\n");
+        kobject_put(&slave->sdo_kobj);
         kobject_put(&slave->kobj);
         return -1;
     }
@@ -157,6 +171,9 @@ int ec_slave_init(ec_slave_t *slave, /**< EtherCAT slave */
     INIT_LIST_HEAD(&slave->sii_pdos);
     INIT_LIST_HEAD(&slave->sdo_dictionary);
     INIT_LIST_HEAD(&slave->sdo_confs);
+
+    slave->sdo_dictionary_fetched = 0;
+    slave->jiffies_preop = 0;
 
     for (i = 0; i < 4; i++) {
         slave->dl_link[i] = 0;
@@ -224,6 +241,10 @@ void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
         kobject_del(&sdo->kobj);
         kobject_put(&sdo->kobj);
     }
+
+    // free SDO kobject
+    if (slave->sdo_dictionary_fetched) kobject_del(&slave->sdo_kobj);
+    kobject_put(&slave->sdo_kobj);
 
     // free all SDO configurations
     list_for_each_entry_safe(sdodata, next_sdodata, &slave->sdo_confs, list) {

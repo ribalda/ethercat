@@ -111,8 +111,8 @@ int ec_sdo_init(ec_sdo_t *sdo, /**< SDO */
     memset(&sdo->kobj, 0x00, sizeof(struct kobject));
     kobject_init(&sdo->kobj);
     sdo->kobj.ktype = &ktype_ec_sdo;
-    sdo->kobj.parent = &slave->kobj;
-    if (kobject_set_name(&sdo->kobj, "sdo%4X", sdo->index)) {
+    sdo->kobj.parent = &slave->sdo_kobj;
+    if (kobject_set_name(&sdo->kobj, "%4X", sdo->index)) {
         EC_ERR("Failed to set kobj name.\n");
         return -1;
     }
@@ -195,7 +195,7 @@ int ec_sdo_entry_init(ec_sdo_entry_t *entry, /**< SDO entry */
     kobject_init(&entry->kobj);
     entry->kobj.ktype = &ktype_ec_sdo_entry;
     entry->kobj.parent = &sdo->kobj;
-    if (kobject_set_name(&entry->kobj, "entry%02X", entry->subindex)) {
+    if (kobject_set_name(&entry->kobj, "%i", entry->subindex)) {
         EC_ERR("Failed to set kobj name.\n");
         return -1;
     }
