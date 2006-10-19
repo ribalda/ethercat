@@ -218,6 +218,8 @@ void ec_master_clear(struct kobject *kobj /**< kobject of the master */)
     }
 
     EC_INFO("Master %i cleared.\n", master->index);
+
+    kfree(master);
 }
 
 /*****************************************************************************/

@@ -234,6 +234,8 @@ void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
 
     if (slave->eeprom_data) kfree(slave->eeprom_data);
     if (slave->new_eeprom_data) kfree(slave->new_eeprom_data);
+
+    kfree(slave);
 }
 
 /*****************************************************************************/
