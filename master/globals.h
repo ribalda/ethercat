@@ -77,6 +77,10 @@
 /** datagram timeout in microseconds */
 #define EC_IO_TIMEOUT 500
 
+/** Seconds to wait before fetching SDO dictionary
+    after slave entered PREOP state. */
+#define EC_WAIT_SDO_DICT 3
+
 /** minimum size of a buffer used with ec_state_string() */
 #define EC_STATE_STRING_SIZE 30
 

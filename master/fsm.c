@@ -609,7 +609,7 @@ void ec_fsm_master_action_process_states(ec_fsm_t *fsm
         if (!(slave->sii_mailbox_protocols & EC_MBOX_COE)
             || slave->sdo_dictionary_fetched
             || slave->current_state == EC_SLAVE_STATE_INIT
-            || jiffies - slave->jiffies_preop < 5 * HZ
+            || jiffies - slave->jiffies_preop < EC_WAIT_SDO_DICT * HZ
             || !slave->online
             || slave->error_flag) continue;
 
