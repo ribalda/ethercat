@@ -2506,7 +2506,6 @@ void ec_fsm_coe_dict_desc_check(ec_fsm_t *fsm /**< finite state machine */)
 
 void ec_fsm_coe_dict_desc_response(ec_fsm_t *fsm /**< finite state machine */)
 {
-    ec_master_t *master = fsm->master;
     ec_datagram_t *datagram = &fsm->datagram;
     ec_slave_t *slave = fsm->slave;
     ec_sdo_t *sdo = fsm->coe_sdo;
@@ -2582,36 +2581,9 @@ void ec_fsm_coe_dict_desc_response(ec_fsm_t *fsm /**< finite state machine */)
 	return;
     }
 
-    if (!sdo->subindices) { // no entries
-        // another SDO description to fetch?
-        if (fsm->coe_sdo->list.next != &slave->sdo_dictionary) {
-            fsm->coe_sdo = list_entry(fsm->coe_sdo->list.next, ec_sdo_t, list);
+    // start fetching entries
 
-            if (!(data = ec_slave_mbox_prepare_send(slave, datagram, 0x03, 8))) {
-                fsm->coe_state = ec_fsm_error;
-                return;
-            }
-
-            EC_WRITE_U16(data, 0x8 << 12); // SDO information
-            EC_WRITE_U8 (data + 2, 0x03); // Get object description request
-            EC_WRITE_U8 (data + 3, 0x00);
-            EC_WRITE_U16(data + 4, 0x0000);
-            EC_WRITE_U16(data + 6, fsm->coe_sdo->index); // SDO index
-
-            ec_master_queue_datagram(fsm->master, datagram);
-            fsm->coe_state = ec_fsm_coe_dict_desc_request;
-            return;
-        }
-
-        if (master->debug_level) {
-            EC_DBG("Finished fetching SDO descriptions.\n");
-        }
-
-        fsm->coe_state = ec_fsm_end;
-        return;
-    }
-
-    fsm->coe_subindex = 1;
+    fsm->coe_subindex = 0;
 
     if (!(data = ec_slave_mbox_prepare_send(slave, datagram, 0x03, 10))) {
         fsm->coe_state = ec_fsm_error;
