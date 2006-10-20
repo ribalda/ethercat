@@ -960,6 +960,33 @@ int ec_slave_validate(const ec_slave_t *slave, /**< EtherCAT slave */
     return 0;
 }
 
+/*****************************************************************************/
+
+/**
+   Counts the total number of SDOs and entries in the dictionary.
+*/
+
+void ec_slave_sdo_dict_info(const ec_slave_t *slave, /**< EtherCAT slave */
+                            unsigned int *sdo_count, /**< number of SDOs */
+                            unsigned int *entry_count /**< total number of
+                                                         entries */
+                            )
+{
+    unsigned int sdos = 0, entries = 0;
+    ec_sdo_t *sdo;
+    ec_sdo_entry_t *entry;
+
+    list_for_each_entry(sdo, &slave->sdo_dictionary, list) {
+        sdos++;
+        list_for_each_entry(entry, &sdo->entries, list) {
+            entries++;
+        }
+    }
+
+    *sdo_count = sdos;
+    *entry_count = entries;
+}
+
 /******************************************************************************
  *  Realtime interface
  *****************************************************************************/

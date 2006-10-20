@@ -281,6 +281,9 @@ int ec_slave_has_subbus(const ec_slave_t *);
 
 int ec_slave_validate(const ec_slave_t *, uint32_t, uint32_t);
 
+void ec_slave_sdo_dict_info(const ec_slave_t *,
+                            unsigned int *, unsigned int *);
+
 /*****************************************************************************/
 
 #endif

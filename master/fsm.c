@@ -614,7 +614,7 @@ void ec_fsm_master_action_process_states(ec_fsm_t *fsm
             || slave->error_flag) continue;
 
         if (master->debug_level) {
-            EC_DBG("Fetching SDO dictionary of slave %i.\n",
+            EC_DBG("Fetching SDO dictionary from slave %i.\n",
                    slave->ring_position);
         }
 
@@ -1052,8 +1052,10 @@ void ec_fsm_master_sdodict(ec_fsm_t *fsm /**< finite state machine */)
     // SDO dictionary fetching finished
 
     if (master->debug_level) {
-        EC_DBG("Finished fetching SDO dictionary of slave %i.\n",
-               slave->ring_position);
+        unsigned int sdo_count, entry_count;
+        ec_slave_sdo_dict_info(slave, &sdo_count, &entry_count);
+        EC_DBG("Fetched %i SDOs and %i entries from slave %i.\n",
+               sdo_count, entry_count, slave->ring_position);
     }
 
     // restart master state machine.
@@ -2320,7 +2322,6 @@ void ec_fsm_coe_dict_check(ec_fsm_t *fsm /**< finite state machine */)
 
 void ec_fsm_coe_dict_response(ec_fsm_t *fsm /**< finite state machine */)
 {
-    ec_master_t *master = fsm->master;
     ec_datagram_t *datagram = &fsm->datagram;
     ec_slave_t *slave = fsm->slave;
     uint8_t *data, mbox_prot;
@@ -2375,17 +2376,11 @@ void ec_fsm_coe_dict_response(ec_fsm_t *fsm /**< finite state machine */)
 
     sdo_count = (rec_size - 8) / 2;
 
-    if (master->debug_level) {
-        EC_DBG("Fetching %i SDOs.\n", sdo_count);
-    }
-
     for (i = 0; i < sdo_count; i++) {
         sdo_index = EC_READ_U16(data + 8 + i * 2);
         if (!sdo_index) {
-            // sometimes index is 0... ???
-            if (master->debug_level) {
-                EC_DBG("Received SDO with index 0x0000.\n");
-            }
+            EC_WARN("SDO dictionary of slave %i contains index 0x0000.\n",
+                    slave->ring_position);
             continue;
         }
 
@@ -2457,7 +2452,9 @@ void ec_fsm_coe_dict_desc_request(ec_fsm_t *fsm /**< finite state machine */)
     if (datagram->state != EC_DATAGRAM_RECEIVED
         || datagram->working_counter != 1) {
         fsm->coe_state = ec_fsm_error;
-        EC_ERR("Reception of CoE SDO description request failed.\n");
+        EC_ERR("Reception of CoE SDO description"
+               " request failed on slave %i.\n", slave->ring_position);
+
         return;
     }
 
@@ -2482,7 +2479,9 @@ void ec_fsm_coe_dict_desc_check(ec_fsm_t *fsm /**< finite state machine */)
     if (datagram->state != EC_DATAGRAM_RECEIVED
         || datagram->working_counter != 1) {
         fsm->coe_state = ec_fsm_error;
-        EC_ERR("Reception of CoE mailbox check datagram failed.\n");
+        EC_ERR("Reception of CoE mailbox check datagram failed on slave %i.\n",
+               slave->ring_position);
+
         return;
     }
 
@@ -2524,7 +2523,8 @@ void ec_fsm_coe_dict_desc_response(ec_fsm_t *fsm /**< finite state machine */)
     if (datagram->state != EC_DATAGRAM_RECEIVED
         || datagram->working_counter != 1) {
         fsm->coe_state = ec_fsm_error;
-        EC_ERR("Reception of CoE SDO description response failed.\n");
+        EC_ERR("Reception of CoE SDO description"
+               "response failed on slave %i.\n", slave->ring_position);
         return;
     }
 
@@ -2651,7 +2651,8 @@ void ec_fsm_coe_dict_entry_request(ec_fsm_t *fsm /**< finite state machine */)
     if (datagram->state != EC_DATAGRAM_RECEIVED
         || datagram->working_counter != 1) {
         fsm->coe_state = ec_fsm_error;
-        EC_ERR("Reception of CoE SDO entry request failed.\n");
+        EC_ERR("Reception of CoE SDO entry request failed on slave %i.\n",
+               slave->ring_position);
         return;
     }
 
@@ -2676,7 +2677,8 @@ void ec_fsm_coe_dict_entry_check(ec_fsm_t *fsm /**< finite state machine */)
     if (datagram->state != EC_DATAGRAM_RECEIVED
         || datagram->working_counter != 1) {
         fsm->coe_state = ec_fsm_error;
-        EC_ERR("Reception of CoE mailbox check datagram failed.\n");
+        EC_ERR("Reception of CoE mailbox check datagram failed on slave %i.\n",
+               slave->ring_position);
         return;
     }
 
@@ -2708,7 +2710,6 @@ void ec_fsm_coe_dict_entry_check(ec_fsm_t *fsm /**< finite state machine */)
 
 void ec_fsm_coe_dict_entry_response(ec_fsm_t *fsm /**< finite state machine */)
 {
-    ec_master_t *master = fsm->master;
     ec_datagram_t *datagram = &fsm->datagram;
     ec_slave_t *slave = fsm->slave;
     ec_sdo_t *sdo = fsm->coe_sdo;
@@ -2719,7 +2720,8 @@ void ec_fsm_coe_dict_entry_response(ec_fsm_t *fsm /**< finite state machine */)
     if (datagram->state != EC_DATAGRAM_RECEIVED
         || datagram->working_counter != 1) {
         fsm->coe_state = ec_fsm_error;
-        EC_ERR("Reception of CoE SDO description response failed.\n");
+        EC_ERR("Reception of CoE SDO description"
+               " response failed on slave %i.\n", slave->ring_position);
         return;
     }
 
@@ -2840,10 +2842,6 @@ void ec_fsm_coe_dict_entry_response(ec_fsm_t *fsm /**< finite state machine */)
         ec_master_queue_datagram(fsm->master, datagram);
         fsm->coe_state = ec_fsm_coe_dict_desc_request;
         return;
-    }
-
-    if (master->debug_level) {
-        EC_DBG("Finished fetching SDO descriptions.\n");
     }
 
     fsm->coe_state = ec_fsm_end;
