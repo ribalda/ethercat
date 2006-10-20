@@ -946,17 +946,10 @@ void ec_fsm_master_scan_slaves(ec_fsm_t *fsm /**< finite state machine */)
 
     ec_master_calc_addressing(master);
 
-    // determine initial states.
+    // set initial states of all slaves to PREOP to make mailbox
+    // communication possible
     list_for_each_entry(slave, &master->slaves, list) {
-        if (ec_slave_is_coupler(slave)) {
-            slave->requested_state = EC_SLAVE_STATE_OP;
-        }
-        else {
-            if (master->mode == EC_MASTER_MODE_OPERATION)
-                slave->requested_state = EC_SLAVE_STATE_PREOP;
-            else
-                slave->requested_state = EC_SLAVE_STATE_INIT;
-        }
+        slave->requested_state = EC_SLAVE_STATE_PREOP;
     }
 
     fsm->master_state = ec_fsm_master_start;
