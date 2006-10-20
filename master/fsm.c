@@ -1387,6 +1387,7 @@ void ec_fsm_slaveconf_init(ec_fsm_t *fsm /**< finite state machine */)
     ec_slave_t *slave = fsm->slave;
     ec_datagram_t *datagram = &fsm->datagram;
     const ec_sii_sync_t *sync;
+    ec_sii_sync_t mbox_sync;
 
     fsm->change_state(fsm); // execute state change state machine
 
@@ -1434,15 +1435,40 @@ void ec_fsm_slaveconf_init(ec_fsm_t *fsm /**< finite state machine */)
                      EC_SYNC_SIZE * slave->base_sync_count);
     memset(datagram->data, 0x00, EC_SYNC_SIZE * slave->base_sync_count);
 
-    list_for_each_entry(sync, &slave->sii_syncs, list) {
-        if (sync->index >= slave->base_sync_count) {
-            EC_ERR("Invalid sync manager configuration found!");
-            fsm->slave->error_flag = 1;
-            fsm->slave_state = ec_fsm_error;
-            return;
+    if (list_empty(&slave->sii_syncs)) {
+        if (slave->sii_rx_mailbox_offset && slave->sii_tx_mailbox_offset) {
+            if (slave->master->debug_level)
+                EC_DBG("Guessing sync manager settings for slave %i.\n",
+                       slave->ring_position);
+            mbox_sync.index = 0;
+            mbox_sync.physical_start_address = slave->sii_tx_mailbox_offset;
+            mbox_sync.length = slave->sii_tx_mailbox_size;
+            mbox_sync.control_register = 0x26;
+            mbox_sync.enable = 0x01;
+            mbox_sync.est_length = 0;
+            ec_sync_config(&mbox_sync, slave,
+                           datagram->data + EC_SYNC_SIZE * mbox_sync.index);
+            mbox_sync.index = 1;
+            mbox_sync.physical_start_address = slave->sii_rx_mailbox_offset;
+            mbox_sync.length = slave->sii_rx_mailbox_size;
+            mbox_sync.control_register = 0x22;
+            mbox_sync.enable = 0x01;
+            mbox_sync.est_length = 0;
+            ec_sync_config(&mbox_sync, slave,
+                           datagram->data + EC_SYNC_SIZE * mbox_sync.index);
         }
-        ec_sync_config(sync, slave,
-                       datagram->data + EC_SYNC_SIZE * sync->index);
+    }
+    else {
+        list_for_each_entry(sync, &slave->sii_syncs, list) {
+            if (sync->index >= slave->base_sync_count) {
+                EC_ERR("Invalid sync manager configuration found!");
+                fsm->slave->error_flag = 1;
+                fsm->slave_state = ec_fsm_error;
+                return;
+            }
+            ec_sync_config(sync, slave,
+                           datagram->data + EC_SYNC_SIZE * sync->index);
+        }
     }
 
     ec_master_queue_datagram(fsm->master, datagram);
