@@ -179,6 +179,10 @@ uint8_t *ec_slave_mbox_fetch(const ec_slave_t *slave, /**< slave */
 	uint16_t code = EC_READ_U16(datagram->data + 8);
 
         EC_ERR("Mailbox error response received.\n");
+
+        if (slave->master->debug_level)
+            ec_print_data(datagram->data + 6, data_size);
+
 	for (mbox_msg = mbox_error_messages; mbox_msg->code; mbox_msg++) {
             if (mbox_msg->code != code) continue;
             EC_ERR("Error reply code: 0x%04X: \"%s\".\n",
