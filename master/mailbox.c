@@ -165,9 +165,11 @@ uint8_t *ec_slave_mbox_fetch(const ec_slave_t *slave, /**< slave */
 {
     size_t data_size;
 
-    if ((data_size = EC_READ_U16(datagram->data)) >
-        slave->sii_tx_mailbox_size - 6) {
+    data_size = EC_READ_U16(datagram->data);
+
+    if (data_size > slave->sii_tx_mailbox_size - 6) {
         EC_ERR("Corrupt mailbox response detected!\n");
+        ec_print_data(datagram->data, slave->sii_tx_mailbox_size);
         return NULL;
     }
 
@@ -178,20 +180,20 @@ uint8_t *ec_slave_mbox_fetch(const ec_slave_t *slave, /**< slave */
         const ec_code_msg_t *mbox_msg;
 	uint16_t code = EC_READ_U16(datagram->data + 8);
 
-        EC_ERR("Mailbox error response received.\n");
-
-        if (slave->master->debug_level)
-            ec_print_data(datagram->data + 6, data_size);
+        EC_ERR("Mailbox error response received - ");
 
 	for (mbox_msg = mbox_error_messages; mbox_msg->code; mbox_msg++) {
             if (mbox_msg->code != code) continue;
-            EC_ERR("Error reply code: 0x%04X: \"%s\".\n",
+            printk("Code 0x%04X: \"%s\".\n",
                    mbox_msg->code, mbox_msg->message);
             break;
         }
 
         if (!mbox_msg->code)
-            EC_ERR("Unknown error reply code 0x%04X.\n", code);
+            printk("Unknown error reply code 0x%04X.\n", code);
+
+        if (slave->master->debug_level)
+            ec_print_data(datagram->data + 6, data_size);
 
         return NULL;
     }
