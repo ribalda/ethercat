@@ -580,7 +580,9 @@ void ec_fsm_master_action_process_states(ec_fsm_t *fsm
 
         if (!slave->configured
             && slave->current_state != EC_SLAVE_STATE_INIT) {
-            EC_INFO("Reconfiguring slave %i.\n", slave->ring_position);
+            ec_state_string(slave->current_state, old_state);
+            EC_INFO("Reconfiguring slave %i (%s).\n",
+                    slave->ring_position, old_state);
         }
 
         if (slave->current_state != slave->requested_state) {
