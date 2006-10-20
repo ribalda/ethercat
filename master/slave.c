@@ -132,6 +132,7 @@ int ec_slave_init(ec_slave_t *slave, /**< EtherCAT slave */
 
     slave->requested_state = EC_SLAVE_STATE_UNKNOWN;
     slave->current_state = EC_SLAVE_STATE_UNKNOWN;
+    slave->configured = 0;
     slave->error_flag = 0;
     slave->online = 1;
     slave->fmmu_count = 0;

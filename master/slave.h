@@ -197,6 +197,7 @@ struct ec_slave
 
     ec_slave_state_t requested_state; /**< requested slave state */
     ec_slave_state_t current_state; /**< current slave state */
+    unsigned int configured; /**< the slave is configured by this master */
     unsigned int error_flag; /**< stop processing after an error */
     unsigned int online; /**< non-zero, if the slave responds. */
     uint8_t registered; /**< true, if slave has been registered */
