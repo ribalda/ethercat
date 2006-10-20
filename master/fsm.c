@@ -929,7 +929,6 @@ void ec_fsm_master_scan_slaves(ec_fsm_t *fsm /**< finite state machine */)
     ec_master_t *master = fsm->master;
     ec_slave_t *slave = fsm->slave;
 
-
     fsm->slave_state(fsm); // execute slave state machine
 
     if (fsm->slave_state != ec_fsm_end
@@ -1042,8 +1041,8 @@ void ec_fsm_master_sdodict(ec_fsm_t *fsm /**< finite state machine */)
     fsm->coe_state(fsm); // execute CoE state machine
 
     if (fsm->coe_state == ec_fsm_error) {
-        fsm->slave->error_flag = 1;
-        fsm->slave_state = ec_fsm_error;
+        fsm->master_state = ec_fsm_master_start;
+        fsm->master_state(fsm); // execute immediately
         return;
     }
 
