@@ -1,9 +1,5 @@
 #------------------------------------------------------------------------------
 #
-#  Makefile.am
-#
-#  IgH EtherCAT master module
-#
 #  $Id: Makefile 545 2006-09-19 13:28:40Z fp $
 #
 #  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
@@ -41,7 +37,7 @@ EXTRA_DIST = \
 	8139too.c \
 	original_8139too.c
 
-all:
+all-local:
 	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" modules
 
 clean-local:

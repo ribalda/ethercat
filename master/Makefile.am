@@ -1,9 +1,5 @@
 #------------------------------------------------------------------------------
 #
-#  Makefile.am
-#
-#  IgH EtherCAT master module
-#
 #  $Id: Makefile 545 2006-09-19 13:28:40Z fp $
 #
 #  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
@@ -52,7 +48,7 @@ EXTRA_DIST = \
 	slave.c slave.h \
 	xmldev.c xmldev.h
 
-all:
+all-local:
 	$(MAKE) -C "$(LINUX_SOURCE_DIR)" \
 		M="@abs_srcdir@" EC_DBG_IF="$(EC_DBG_IF)" modules
 
