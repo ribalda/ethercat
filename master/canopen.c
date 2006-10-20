@@ -41,6 +41,7 @@
 #include <linux/module.h>
 
 #include "canopen.h"
+#include "master.h"
 
 /*****************************************************************************/
 
@@ -50,11 +51,16 @@ ssize_t ec_show_sdo_entry_attribute(struct kobject *, struct attribute *,
 void ec_sdo_clear(struct kobject *);
 void ec_sdo_entry_clear(struct kobject *);
 
+void ec_sdo_request_init_read(ec_sdo_request_t *, ec_sdo_t *,
+                              ec_sdo_entry_t *);
+void ec_sdo_request_clear(ec_sdo_request_t *);
+
 /*****************************************************************************/
 
 /** \cond */
 
 EC_SYSFS_READ_ATTR(info);
+EC_SYSFS_READ_ATTR(value);
 
 static struct attribute *sdo_def_attrs[] = {
     &attr_info,
@@ -74,6 +80,7 @@ static struct kobj_type ktype_ec_sdo = {
 
 static struct attribute *sdo_entry_def_attrs[] = {
     &attr_info,
+    &attr_value,
     NULL,
 };
 
@@ -101,6 +108,7 @@ int ec_sdo_init(ec_sdo_t *sdo, /**< SDO */
                 ec_slave_t *slave /**< parent slave */
                 )
 {
+    sdo->slave = slave;
     sdo->index = index;
     sdo->object_code = 0x00;
     sdo->name = NULL;
@@ -185,6 +193,7 @@ int ec_sdo_entry_init(ec_sdo_entry_t *entry, /**< SDO entry */
                       ec_sdo_t *sdo /**< parent SDO */
                       )
 {
+    entry->sdo = sdo;
     entry->subindex = subindex;
     entry->data_type = 0x0000;
     entry->bit_length = 0;
@@ -237,6 +246,76 @@ ssize_t ec_sdo_entry_info(ec_sdo_entry_t *entry, /**< SDO entry */
 
 /*****************************************************************************/
 
+ssize_t ec_sdo_entry_format_data(ec_sdo_entry_t *entry, /**< SDO entry */
+                                 ec_sdo_request_t *request, /**< SDO request */
+                                 char *buffer /**< target buffer */
+                                 )
+{
+    off_t off = 0;
+    unsigned int i;
+
+    if (entry->data_type == 0x0002 && entry->bit_length == 8) { // int8
+        off += sprintf(buffer + off, "%i\n", *((int8_t *) request->data));
+    }
+    else if (entry->data_type == 0x0003 && entry->bit_length == 16) { // int16
+        off += sprintf(buffer + off, "%i\n", *((int16_t *) request->data));
+    }
+    else if (entry->data_type == 0x0004 && entry->bit_length == 32) { // int32
+        off += sprintf(buffer + off, "%i\n", *((int32_t *) request->data));
+    }
+    else if (entry->data_type == 0x0005 && entry->bit_length == 8) { // uint8
+        off += sprintf(buffer + off, "%i\n", *((uint8_t *) request->data));
+    }
+    else if (entry->data_type == 0x0006 && entry->bit_length == 16) { // uint16
+        off += sprintf(buffer + off, "%i\n", *((uint16_t *) request->data));
+    }
+    else if (entry->data_type == 0x0007 && entry->bit_length == 32) { // uint32
+        off += sprintf(buffer + off, "%i\n", *((uint32_t *) request->data));
+    }
+    else if (entry->data_type == 0x0009) { // string
+        off += sprintf(buffer + off, "%s\n", request->data);
+    }
+    else {
+        for (i = 0; i < request->size; i++)
+            off += sprintf(buffer + off, "%02X (%c)\n",
+                           request->data[i], request->data[i]);
+    }
+
+    return off;
+}
+
+/*****************************************************************************/
+
+ssize_t ec_sdo_entry_read_value(ec_sdo_entry_t *entry, /**< SDO entry */
+                                char *buffer /**< target buffer */
+                                )
+{
+    ec_sdo_t *sdo = entry->sdo;
+    ec_master_t *master = sdo->slave->master;
+    off_t off = 0;
+    ec_sdo_request_t request;
+
+    ec_sdo_request_init_read(&request, sdo, entry);
+    list_add_tail(&request.queue, &master->sdo_requests);
+    if (wait_event_interruptible(master->sdo_wait_queue,
+                                 request.return_code)) {
+        // interrupted by signal
+        list_del_init(&request.queue);
+    }
+
+    if (request.return_code == 1 && request.data) {
+        off += ec_sdo_entry_format_data(entry, &request, buffer);
+    }
+    else if (request.return_code < 0) {
+        off = -EINVAL;
+    }
+
+    ec_sdo_request_clear(&request);
+    return off;
+}
+
+/*****************************************************************************/
+
 ssize_t ec_show_sdo_entry_attribute(struct kobject *kobj, /**< kobject */
                                     struct attribute *attr,
                                     char *buffer
@@ -247,84 +326,40 @@ ssize_t ec_show_sdo_entry_attribute(struct kobject *kobj, /**< kobject */
     if (attr == &attr_info) {
         return ec_sdo_entry_info(entry, buffer);
     }
+    else if (attr == &attr_value) {
+        return ec_sdo_entry_read_value(entry, buffer);
+    }
 
     return 0;
 }
 
 /*****************************************************************************/
 
-#if 0
-int ecrt_slave_sdo_read(ec_slave_t *slave, /**< EtherCAT slave */
-                        uint16_t sdo_index, /**< SDO index */
-                        uint8_t sdo_subindex, /**< SDO subindex */
-                        uint8_t *target, /**< memory for value */
-                        size_t *size /**< target memory size */
-                        )
+/**
+   SDO request constructor.
+*/
+
+void ec_sdo_request_init_read(ec_sdo_request_t *req, /**< SDO request */
+                              ec_sdo_t *sdo, /**< SDO */
+                              ec_sdo_entry_t *entry /**< SDO entry */
+                              )
 {
-    uint8_t *data;
-    size_t rec_size, data_size;
-    uint32_t complete_size;
-    ec_datagram_t datagram;
-
-    ec_datagram_init(&datagram);
-
-    if (!(data = ec_slave_mbox_prepare_send(slave, &datagram, 0x03, 6)))
-        goto err;
-
-    EC_WRITE_U16(data, 0x2 << 12); // SDO request
-    EC_WRITE_U8 (data + 2, 0x2 << 5); // initiate upload request
-    EC_WRITE_U16(data + 3, sdo_index);
-    EC_WRITE_U8 (data + 5, sdo_subindex);
-
-    if (!(data = ec_slave_mbox_simple_io(slave, &datagram, &rec_size)))
-        goto err;
-
-    if (EC_READ_U16(data) >> 12 == 0x2 && // SDO request
-        EC_READ_U8 (data + 2) >> 5 == 0x4) { // abort SDO transfer request
-        EC_ERR("SDO upload 0x%04X:%X aborted on slave %i.\n",
-               sdo_index, sdo_subindex, slave->ring_position);
-        ec_canopen_abort_msg(EC_READ_U32(data + 6));
-        goto err;
-    }
-
-    if (EC_READ_U16(data) >> 12 != 0x3 || // SDO response
-        EC_READ_U8 (data + 2) >> 5 != 0x2 || // initiate upload response
-        EC_READ_U16(data + 3) != sdo_index || // index
-        EC_READ_U8 (data + 5) != sdo_subindex) { // subindex
-        EC_ERR("SDO upload 0x%04X:%X failed:\n", sdo_index, sdo_subindex);
-        EC_ERR("Invalid SDO upload response at slave %i!\n",
-               slave->ring_position);
-        ec_print_data(data, rec_size);
-        goto err;
-    }
-
-    if (rec_size < 10) {
-        EC_ERR("Received currupted SDO upload response!\n");
-        ec_print_data(data, rec_size);
-        goto err;
-    }
-
-    if ((complete_size = EC_READ_U32(data + 6)) > *size) {
-        EC_ERR("SDO data does not fit into buffer (%i / %i)!\n",
-               complete_size, *size);
-        goto err;
-    }
-
-    data_size = rec_size - 10;
-
-    if (data_size != complete_size) {
-        EC_ERR("SDO data incomplete - Fragmenting not implemented.\n");
-        goto err;
-    }
-
-    memcpy(target, data + 10, data_size);
-
-    ec_datagram_clear(&datagram);
-    return 0;
- err:
-    ec_datagram_clear(&datagram);
-    return -1;
+    req->sdo = sdo;
+    req->entry = entry;
+    req->data = NULL;
+    req->size = 0;
+    req->return_code = 0;
 }
-#endif
+
+/*****************************************************************************/
+
+/**
+   SDO request destructor.
+*/
+
+void ec_sdo_request_clear(ec_sdo_request_t *req /**< SDO request */)
+{
+    if (req->data) kfree(req->data);
+}
 
 /*****************************************************************************/

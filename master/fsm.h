@@ -85,6 +85,8 @@ struct ec_fsm
     cycles_t coe_start; /**< CoE timestamp */
     ec_sdo_t *coe_sdo; /**< current SDO */
     uint8_t coe_subindex; /**< current subindex */
+    ec_sdo_request_t *coe_request; /**< SDO request */
+    uint8_t coe_toggle; /**< toggle bit for segment commands */
 };
 
 /*****************************************************************************/

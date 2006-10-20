@@ -401,6 +401,7 @@ void ecdev_stop(unsigned int master_index /**< master index */)
     if (!(master = ec_find_master(master_index))) return;
 
     ec_master_idle_stop(master);
+    ec_master_flush_sdo_requests(master);
 
     if (ec_device_close(master->device))
         EC_WARN("Failed to close device!\n");

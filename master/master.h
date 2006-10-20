@@ -44,6 +44,7 @@
 #include <linux/list.h>
 #include <linux/sysfs.h>
 #include <linux/timer.h>
+#include <linux/wait.h>
 #include <asm/atomic.h>
 #include <asm/semaphore.h>
 
@@ -137,6 +138,9 @@ struct ec_master
     void *cb_data; /**< data parameter of locking callbacks */
 
     uint8_t eeprom_write_enable; /**< allow write operations to EEPROMs */
+
+    struct list_head sdo_requests; /**< list of SDO read/write requests */
+    wait_queue_head_t sdo_wait_queue; /**< wait queue for SDO access */
 };
 
 /*****************************************************************************/
@@ -169,6 +173,7 @@ int ec_master_measure_bus_time(ec_master_t *);
 void ec_sync_config(const ec_sii_sync_t *, const ec_slave_t *, uint8_t *);
 void ec_fmmu_config(const ec_fmmu_t *, const ec_slave_t *, uint8_t *);
 void ec_master_calc_addressing(ec_master_t *);
+void ec_master_flush_sdo_requests(ec_master_t *);
 
 /*****************************************************************************/
 

@@ -55,6 +55,7 @@ void ec_fsm_master_configure_slave(ec_fsm_t *);
 void ec_fsm_master_scan_slaves(ec_fsm_t *);
 void ec_fsm_master_write_eeprom(ec_fsm_t *);
 void ec_fsm_master_sdodict(ec_fsm_t *);
+void ec_fsm_master_sdo_request(ec_fsm_t *);
 
 void ec_fsm_startup_start(ec_fsm_t *);
 void ec_fsm_startup_broadcast(ec_fsm_t *);
@@ -108,6 +109,14 @@ void ec_fsm_coe_down_start(ec_fsm_t *);
 void ec_fsm_coe_down_request(ec_fsm_t *);
 void ec_fsm_coe_down_check(ec_fsm_t *);
 void ec_fsm_coe_down_response(ec_fsm_t *);
+
+void ec_fsm_coe_up_start(ec_fsm_t *);
+void ec_fsm_coe_up_request(ec_fsm_t *);
+void ec_fsm_coe_up_check(ec_fsm_t *);
+void ec_fsm_coe_up_response(ec_fsm_t *);
+void ec_fsm_coe_up_seg_request(ec_fsm_t *);
+void ec_fsm_coe_up_seg_check(ec_fsm_t *);
+void ec_fsm_coe_up_seg_response(ec_fsm_t *);
 
 void ec_fsm_end(ec_fsm_t *);
 void ec_fsm_error(ec_fsm_t *);
@@ -568,6 +577,7 @@ void ec_fsm_master_action_process_states(ec_fsm_t *fsm
     ec_master_t *master = fsm->master;
     ec_slave_t *slave;
     char old_state[EC_STATE_STRING_SIZE], new_state[EC_STATE_STRING_SIZE];
+    ec_sdo_request_t *request, *next_request;
 
     // check if any slaves are not in the state, they're supposed to be
     list_for_each_entry(slave, &master->slaves, list) {
@@ -603,6 +613,31 @@ void ec_fsm_master_action_process_states(ec_fsm_t *fsm
 
     // Check, if EoE processing has to be started
     ec_master_eoe_start(master);
+
+    // check, if there are pending SDO requests
+    list_for_each_entry_safe(request, next_request,
+                             &master->sdo_requests, queue) {
+        // TODO: critical section!
+        list_del_init(&request->queue);
+
+        slave = request->sdo->slave;
+
+        if (slave->current_state == EC_SLAVE_STATE_INIT
+            || !slave->online
+            || slave->error_flag) {
+            request->return_code = -1;
+            wake_up_interruptible(&master->sdo_wait_queue);
+            continue;
+        }
+
+        // start uploading SDO
+        fsm->slave = slave;
+        fsm->master_state = ec_fsm_master_sdo_request;
+        fsm->coe_request = request;
+        fsm->coe_state = ec_fsm_coe_up_start;
+        fsm->coe_state(fsm); // execute immediately
+        return;
+    }
 
     // check, if slaves have an SDO dictionary to read out.
     list_for_each_entry(slave, &master->slaves, list) {
@@ -1049,6 +1084,39 @@ void ec_fsm_master_sdodict(ec_fsm_t *fsm /**< finite state machine */)
         EC_DBG("Fetched %i SDOs and %i entries from slave %i.\n",
                sdo_count, entry_count, slave->ring_position);
     }
+
+    // restart master state machine.
+    fsm->master_state = ec_fsm_master_start;
+    fsm->master_state(fsm); // execute immediately
+}
+
+/*****************************************************************************/
+
+/**
+   Master state: SDO REQUEST.
+*/
+
+void ec_fsm_master_sdo_request(ec_fsm_t *fsm /**< finite state machine */)
+{
+    ec_master_t *master = fsm->master;
+    ec_sdo_request_t *request = fsm->coe_request;
+
+    fsm->coe_state(fsm); // execute CoE state machine
+
+    if (fsm->coe_state == ec_fsm_error) {
+        request->return_code = -1;
+        wake_up_interruptible(&master->sdo_wait_queue);
+        fsm->master_state = ec_fsm_master_start;
+        fsm->master_state(fsm); // execute immediately
+        return;
+    }
+
+    if (fsm->coe_state != ec_fsm_end) return;
+
+    // SDO dictionary fetching finished
+
+    request->return_code = 1;
+    wake_up_interruptible(&master->sdo_wait_queue);
 
     // restart master state machine.
     fsm->master_state = ec_fsm_master_start;
@@ -2982,6 +3050,416 @@ void ec_fsm_coe_down_response(ec_fsm_t *fsm /**< finite state machine */)
         EC_ERR("Invalid SDO download response at slave %i!\n",
                slave->ring_position);
         ec_print_data(data, rec_size);
+        return;
+    }
+
+    fsm->coe_state = ec_fsm_end; // success
+}
+
+/*****************************************************************************/
+
+/**
+   CoE state: UP START.
+*/
+
+void ec_fsm_coe_up_start(ec_fsm_t *fsm /**< finite state machine */)
+{
+    ec_datagram_t *datagram = &fsm->datagram;
+    ec_slave_t *slave = fsm->slave;
+    ec_master_t *master = slave->master;
+    ec_sdo_request_t *request = fsm->coe_request;
+    ec_sdo_t *sdo = request->sdo;
+    ec_sdo_entry_t *entry = request->entry;
+    uint8_t *data;
+
+    EC_INFO("Uploading SDO 0x%04X:%i from slave %i.\n",
+            sdo->index, entry->subindex, slave->ring_position);
+
+    if (!(data = ec_slave_mbox_prepare_send(slave, datagram, 0x03, 6))) {
+        fsm->coe_state = ec_fsm_error;
+        return;
+    }
+
+    EC_WRITE_U16(data, 0x2 << 12); // SDO request
+    EC_WRITE_U8 (data + 2, 0x2 << 5); // initiate upload request
+    EC_WRITE_U16(data + 3, sdo->index);
+    EC_WRITE_U8 (data + 5, entry->subindex);
+
+    if (master->debug_level) {
+        EC_DBG("Upload request:\n");
+        ec_print_data(data, 6);
+    }
+
+    ec_master_queue_datagram(fsm->master, datagram);
+    fsm->coe_state = ec_fsm_coe_up_request;
+}
+
+/*****************************************************************************/
+
+/**
+   CoE state: UP REQUEST.
+*/
+
+void ec_fsm_coe_up_request(ec_fsm_t *fsm /**< finite state machine */)
+{
+    ec_datagram_t *datagram = &fsm->datagram;
+    ec_slave_t *slave = fsm->slave;
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED
+        || datagram->working_counter != 1) {
+        fsm->coe_state = ec_fsm_error;
+        EC_ERR("Reception of CoE upload request failed.\n");
+        return;
+    }
+
+    fsm->coe_start = datagram->cycles_sent;
+
+    ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
+    ec_master_queue_datagram(fsm->master, datagram);
+    fsm->coe_state = ec_fsm_coe_up_check;
+}
+
+/*****************************************************************************/
+
+/**
+   CoE state: UP CHECK.
+*/
+
+void ec_fsm_coe_up_check(ec_fsm_t *fsm /**< finite state machine */)
+{
+    ec_datagram_t *datagram = &fsm->datagram;
+    ec_slave_t *slave = fsm->slave;
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED
+        || datagram->working_counter != 1) {
+        fsm->coe_state = ec_fsm_error;
+        EC_ERR("Reception of CoE mailbox check datagram failed.\n");
+        return;
+    }
+
+    if (!ec_slave_mbox_check(datagram)) {
+        if (datagram->cycles_received
+            - fsm->coe_start >= (cycles_t) 100 * cpu_khz) {
+            fsm->coe_state = ec_fsm_error;
+            EC_ERR("Timeout while checking SDO upload on slave %i.\n",
+                   slave->ring_position);
+            return;
+        }
+
+        ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
+        ec_master_queue_datagram(fsm->master, datagram);
+        return;
+    }
+
+    // Fetch response
+    ec_slave_mbox_prepare_fetch(slave, datagram); // can not fail.
+    ec_master_queue_datagram(fsm->master, datagram);
+    fsm->coe_state = ec_fsm_coe_up_response;
+}
+
+/*****************************************************************************/
+
+/**
+   CoE state: UP RESPONSE.
+*/
+
+void ec_fsm_coe_up_response(ec_fsm_t *fsm /**< finite state machine */)
+{
+    ec_datagram_t *datagram = &fsm->datagram;
+    ec_slave_t *slave = fsm->slave;
+    ec_master_t *master = slave->master;
+    uint8_t *data, mbox_prot;
+    size_t rec_size, data_size;
+    ec_sdo_request_t *request = fsm->coe_request;
+    ec_sdo_t *sdo = request->sdo;
+    ec_sdo_entry_t *entry = request->entry;
+    uint32_t complete_size;
+    unsigned int expedited, size_specified;
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED
+        || datagram->working_counter != 1) {
+        fsm->coe_state = ec_fsm_error;
+        EC_ERR("Reception of CoE upload response failed.\n");
+        return;
+    }
+
+    if (!(data = ec_slave_mbox_fetch(slave, datagram,
+				     &mbox_prot, &rec_size))) {
+        fsm->coe_state = ec_fsm_error;
+        return;
+    }
+
+    if (master->debug_level) {
+        EC_DBG("Upload response:\n");
+        ec_print_data(data, rec_size);
+    }
+
+    if (mbox_prot != 0x03) { // CoE
+        EC_WARN("Received mailbox protocol 0x%02X as response.\n", mbox_prot);
+        fsm->coe_state = ec_fsm_error;
+	return;
+    }
+
+    if (rec_size < 10) {
+        EC_ERR("Received currupted SDO upload response!\n");
+        ec_print_data(data, rec_size);
+        fsm->coe_state = ec_fsm_error;
+	return;
+    }
+
+    if (EC_READ_U16(data) >> 12 == 0x2 && // SDO request
+        EC_READ_U8 (data + 2) >> 5 == 0x4) { // abort SDO transfer request
+        EC_ERR("SDO upload 0x%04X:%X aborted on slave %i.\n",
+               sdo->index, entry->subindex, slave->ring_position);
+        ec_canopen_abort_msg(EC_READ_U32(data + 6));
+        fsm->coe_state = ec_fsm_error;
+	return;
+    }
+
+    if (EC_READ_U16(data) >> 12 != 0x3 || // SDO response
+        EC_READ_U8 (data + 2) >> 5 != 0x2 || // initiate upload response
+        EC_READ_U16(data + 3) != sdo->index || // index
+        EC_READ_U8 (data + 5) != entry->subindex) { // subindex
+        EC_ERR("SDO upload 0x%04X:%X failed:\n", sdo->index, entry->subindex);
+        EC_ERR("Invalid SDO upload response at slave %i!\n",
+               slave->ring_position);
+        ec_print_data(data, rec_size);
+        fsm->coe_state = ec_fsm_error;
+	return;
+    }
+
+    data_size = rec_size - 10;
+    expedited = EC_READ_U8(data + 2) & 0x02;
+
+    if (expedited) {
+        EC_WARN("Received expedited response upon normal request!\n");
+
+        size_specified = EC_READ_U8(data + 2) & 0x01;
+        if (size_specified) {
+            complete_size = 4 - ((EC_READ_U8(data + 2) & 0x0C) >> 2);
+        }
+        else {
+            complete_size = 4;
+        }
+    }
+    else {
+        complete_size = EC_READ_U32(data + 6);
+    }
+
+    if (request->data) {
+        kfree(request->data);
+        request->data = NULL;
+    }
+    request->size = 0;
+
+    if (complete_size) {
+        if (!(request->data = (uint8_t *) kmalloc(complete_size + 1, GFP_ATOMIC))) {
+            EC_ERR("Failed to allocate %i bytes of SDO data!\n", complete_size);
+            fsm->coe_state = ec_fsm_error;
+            return;
+        }
+        request->data[complete_size] = 0x00; // just to be sure...
+    }
+
+    if (expedited) {
+        memcpy(request->data, data + 6, complete_size);
+        request->size = complete_size;
+    }
+    else {
+        memcpy(request->data, data + 10, data_size);
+        request->size = data_size;
+        fsm->coe_toggle = 0;
+
+        if (data_size < complete_size) {
+            EC_WARN("SDO data incomplete (%i / %i).\n", data_size, complete_size);
+
+            if (!(data = ec_slave_mbox_prepare_send(slave, datagram, 0x03, 3))) {
+                fsm->coe_state = ec_fsm_error;
+                return;
+            }
+
+            EC_WRITE_U16(data, 0x2 << 12); // SDO request
+            EC_WRITE_U8 (data + 2, (fsm->coe_toggle << 4 // toggle
+                                    | 0x3 << 5)); // upload segment request
+
+            if (master->debug_level) {
+                EC_DBG("Upload segment request:\n");
+                ec_print_data(data, 3);
+            }
+
+            ec_master_queue_datagram(fsm->master, datagram);
+            fsm->coe_state = ec_fsm_coe_up_seg_request;
+            return;
+        }
+    }
+
+    fsm->coe_state = ec_fsm_end; // success
+}
+
+/*****************************************************************************/
+
+/**
+   CoE state: UP REQUEST.
+*/
+
+void ec_fsm_coe_up_seg_request(ec_fsm_t *fsm /**< finite state machine */)
+{
+    ec_datagram_t *datagram = &fsm->datagram;
+    ec_slave_t *slave = fsm->slave;
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED
+        || datagram->working_counter != 1) {
+        fsm->coe_state = ec_fsm_error;
+        EC_ERR("Reception of CoE upload segment request failed.\n");
+        return;
+    }
+
+    fsm->coe_start = datagram->cycles_sent;
+
+    ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
+    ec_master_queue_datagram(fsm->master, datagram);
+    fsm->coe_state = ec_fsm_coe_up_seg_check;
+}
+
+/*****************************************************************************/
+
+/**
+   CoE state: UP CHECK.
+*/
+
+void ec_fsm_coe_up_seg_check(ec_fsm_t *fsm /**< finite state machine */)
+{
+    ec_datagram_t *datagram = &fsm->datagram;
+    ec_slave_t *slave = fsm->slave;
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED
+        || datagram->working_counter != 1) {
+        fsm->coe_state = ec_fsm_error;
+        EC_ERR("Reception of CoE mailbox check datagram failed.\n");
+        return;
+    }
+
+    if (!ec_slave_mbox_check(datagram)) {
+        if (datagram->cycles_received
+            - fsm->coe_start >= (cycles_t) 100 * cpu_khz) {
+            fsm->coe_state = ec_fsm_error;
+            EC_ERR("Timeout while checking SDO upload segment on slave %i.\n",
+                   slave->ring_position);
+            return;
+        }
+
+        ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
+        ec_master_queue_datagram(fsm->master, datagram);
+        return;
+    }
+
+    // Fetch response
+    ec_slave_mbox_prepare_fetch(slave, datagram); // can not fail.
+    ec_master_queue_datagram(fsm->master, datagram);
+    fsm->coe_state = ec_fsm_coe_up_seg_response;
+}
+
+/*****************************************************************************/
+
+/**
+   CoE state: UP RESPONSE.
+*/
+
+void ec_fsm_coe_up_seg_response(ec_fsm_t *fsm /**< finite state machine */)
+{
+    ec_datagram_t *datagram = &fsm->datagram;
+    ec_slave_t *slave = fsm->slave;
+    ec_master_t *master = slave->master;
+    uint8_t *data, mbox_prot;
+    size_t rec_size, data_size;
+    ec_sdo_request_t *request = fsm->coe_request;
+    ec_sdo_t *sdo = request->sdo;
+    ec_sdo_entry_t *entry = request->entry;
+    uint32_t seg_size;
+    unsigned int last_segment;
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED
+        || datagram->working_counter != 1) {
+        fsm->coe_state = ec_fsm_error;
+        EC_ERR("Reception of CoE upload segment response failed.\n");
+        return;
+    }
+
+    if (!(data = ec_slave_mbox_fetch(slave, datagram,
+				     &mbox_prot, &rec_size))) {
+        fsm->coe_state = ec_fsm_error;
+        return;
+    }
+
+    if (master->debug_level) {
+        EC_DBG("Upload segment response:\n");
+        ec_print_data(data, rec_size);
+    }
+
+    if (mbox_prot != 0x03) { // CoE
+        EC_WARN("Received mailbox protocol 0x%02X as response.\n", mbox_prot);
+        fsm->coe_state = ec_fsm_error;
+	return;
+    }
+
+    if (rec_size < 10) {
+        EC_ERR("Received currupted SDO upload segment response!\n");
+        ec_print_data(data, rec_size);
+        fsm->coe_state = ec_fsm_error;
+	return;
+    }
+
+    if (EC_READ_U16(data) >> 12 == 0x2 && // SDO request
+        EC_READ_U8 (data + 2) >> 5 == 0x4) { // abort SDO transfer request
+        EC_ERR("SDO upload 0x%04X:%X aborted on slave %i.\n",
+               sdo->index, entry->subindex, slave->ring_position);
+        ec_canopen_abort_msg(EC_READ_U32(data + 6));
+        fsm->coe_state = ec_fsm_error;
+	return;
+    }
+
+    if (EC_READ_U16(data) >> 12 != 0x3 || // SDO response
+        EC_READ_U8 (data + 2) >> 5 != 0x0) { // upload segment response
+        EC_ERR("SDO upload 0x%04X:%X failed:\n", sdo->index, entry->subindex);
+        EC_ERR("Invalid SDO upload segment response at slave %i!\n",
+               slave->ring_position);
+        ec_print_data(data, rec_size);
+        fsm->coe_state = ec_fsm_error;
+	return;
+    }
+
+    last_segment = EC_READ_U8(data + 2) & 0x01;
+    seg_size = (EC_READ_U8(data + 2) & 0xE) >> 1;
+    data_size = rec_size - 10;
+
+    if (data_size != seg_size) {
+        EC_WARN("SDO segment data invalid (%i / %i)"
+                " - Fragmenting not implemented.\n",
+                data_size, seg_size);
+    }
+
+    memcpy(request->data + request->size, data + 10, data_size);
+    request->size += data_size;
+
+    if (!last_segment) {
+        fsm->coe_toggle = !fsm->coe_toggle;
+
+        if (!(data = ec_slave_mbox_prepare_send(slave, datagram, 0x03, 3))) {
+            fsm->coe_state = ec_fsm_error;
+            return;
+        }
+
+        EC_WRITE_U16(data, 0x2 << 12); // SDO request
+        EC_WRITE_U8 (data + 2, (fsm->coe_toggle << 4 // toggle
+                                | 0x3 << 5)); // upload segment request
+
+        if (master->debug_level) {
+            EC_DBG("Upload segment request:\n");
+            ec_print_data(data, 3);
+        }
+
+        ec_master_queue_datagram(fsm->master, datagram);
+        fsm->coe_state = ec_fsm_coe_up_seg_request;
         return;
     }
 

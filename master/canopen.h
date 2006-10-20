@@ -57,6 +57,7 @@ typedef struct
 {
     struct kobject kobj; /**< kobject */
     struct list_head list; /**< list item */
+    ec_slave_t *slave; /**< parent slave */
     uint16_t index; /**< SDO index */
     uint8_t object_code; /**< object code */
     char *name; /**< SDO name */
@@ -75,6 +76,7 @@ typedef struct
 {
     struct kobject kobj; /**< kobject */
     struct list_head list; /**< list item */
+    ec_sdo_t *sdo; /**< parent SDO */
     uint8_t subindex; /**< entry subindex */
     uint16_t data_type; /**< entry data type */
     uint16_t bit_length; /**< entry length in bit */
@@ -97,6 +99,23 @@ typedef struct
     size_t size; /**< size of SDO data */
 }
 ec_sdo_data_t;
+
+/*****************************************************************************/
+
+/**
+   CANopen SDO request.
+*/
+
+typedef struct
+{
+    struct list_head queue; /**< list item */
+    ec_sdo_t *sdo;
+    ec_sdo_entry_t *entry;
+    uint8_t *data; /**< pointer to SDO data */
+    size_t size; /**< size of SDO data */
+    int return_code;
+}
+ec_sdo_request_t;
 
 /*****************************************************************************/
 

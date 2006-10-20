@@ -130,6 +130,8 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     master->idle_cycle_time_pos = 0;
     master->eoe_cycle_time_pos = 0;
     master->debug_level = 0;
+    INIT_LIST_HEAD(&master->sdo_requests);
+    init_waitqueue_head(&master->sdo_wait_queue);
 
     // create workqueue
     if (!(master->workqueue = create_singlethread_workqueue("EtherCAT"))) {
@@ -237,6 +239,7 @@ void ec_master_reset(ec_master_t *master /**< EtherCAT master */)
 
     ec_master_eoe_stop(master);
     ec_master_idle_stop(master);
+    ec_master_flush_sdo_requests(master);
     ec_master_clear_slaves(master);
 
     // empty datagram queue
@@ -288,6 +291,24 @@ void ec_master_clear_slaves(ec_master_t *master)
         kobject_put(&slave->kobj);
     }
     master->slave_count = 0;
+}
+
+/*****************************************************************************/
+
+/**
+   Flushes the SDO request queue.
+*/
+
+void ec_master_flush_sdo_requests(ec_master_t *master)
+{
+    ec_sdo_request_t *req, *next_req;
+
+    list_for_each_entry_safe(req, next_req, &master->sdo_requests, queue) {
+        list_del_init(&req->queue);
+        req->return_code = -1;
+    }
+
+    wake_up_interruptible(&master->sdo_wait_queue);
 }
 
 /*****************************************************************************/
