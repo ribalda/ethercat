@@ -120,22 +120,13 @@ void ec_fsm_sii_write(ec_fsm_sii_t *fsm, /**< finite state machine */
 
 /**
    Executes the SII state machine.
+   \return false, if the state machine has terminated
 */
 
-void ec_fsm_sii_exec(ec_fsm_sii_t *fsm /**< finite state machine */)
+int ec_fsm_sii_exec(ec_fsm_sii_t *fsm /**< finite state machine */)
 {
     fsm->state(fsm);
-}
 
-/*****************************************************************************/
-
-/**
-   Returns the running state of the master startup state machine.
-   \return non-zero if not terminated yet.
-*/
-
-int ec_fsm_sii_running(ec_fsm_sii_t *fsm /**< Finite state machine */)
-{
     return fsm->state != ec_fsm_sii_end && fsm->state != ec_fsm_sii_error;
 }
 

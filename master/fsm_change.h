@@ -72,8 +72,7 @@ void ec_fsm_change_clear(ec_fsm_change_t *);
 
 void ec_fsm_change(ec_fsm_change_t *, ec_slave_t *, ec_slave_state_t);
 
-void ec_fsm_change_exec(ec_fsm_change_t *);
-int ec_fsm_change_running(ec_fsm_change_t *);
+int ec_fsm_change_exec(ec_fsm_change_t *);
 int ec_fsm_change_success(ec_fsm_change_t *);
 
 /*****************************************************************************/

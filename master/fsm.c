@@ -168,11 +168,15 @@ void ec_fsm_reset(ec_fsm_t *fsm /**< finite state machine */)
 
 /**
    Executes the current state of the state machine.
+   \return false, if state machine has terminated
 */
 
-void ec_fsm_execute(ec_fsm_t *fsm /**< finite state machine */)
+int ec_fsm_exec(ec_fsm_t *fsm /**< finite state machine */)
 {
     fsm->master_state(fsm);
+
+    return fsm->master_state != ec_fsm_end &&
+        fsm->master_state != ec_fsm_error;
 }
 
 /*****************************************************************************/
@@ -184,19 +188,6 @@ void ec_fsm_execute(ec_fsm_t *fsm /**< finite state machine */)
 void ec_fsm_startup(ec_fsm_t *fsm)
 {
     fsm->master_state = ec_fsm_startup_start;
-}
-
-/*****************************************************************************/
-
-/**
-   Returns the running state of the master startup state machine.
-   \return non-zero if not terminated yet.
-*/
-
-int ec_fsm_startup_running(ec_fsm_t *fsm /**< Finite state machine */)
-{
-    return fsm->master_state != ec_fsm_end &&
-        fsm->master_state != ec_fsm_error;
 }
 
 /*****************************************************************************/
@@ -220,19 +211,6 @@ int ec_fsm_startup_success(ec_fsm_t *fsm /**< Finite state machine */)
 void ec_fsm_configuration(ec_fsm_t *fsm)
 {
     fsm->master_state = ec_fsm_configuration_start;
-}
-
-/*****************************************************************************/
-
-/**
-   Returns the running state of the master configuration state machine.
-   \return non-zero if not terminated yet.
-*/
-
-int ec_fsm_configuration_running(ec_fsm_t *fsm /**< Finite state machine */)
-{
-    return fsm->master_state != ec_fsm_end &&
-        fsm->master_state != ec_fsm_error;
 }
 
 /*****************************************************************************/
@@ -796,9 +774,7 @@ void ec_fsm_master_validate_vendor(ec_fsm_t *fsm /**< finite state machine */)
 {
     ec_slave_t *slave = fsm->slave;
 
-    ec_fsm_sii_exec(&fsm->fsm_sii); // execute SII state machine
-
-    if (ec_fsm_sii_running(&fsm->fsm_sii)) return;
+    if (ec_fsm_sii_exec(&fsm->fsm_sii)) return;
 
     if (!ec_fsm_sii_success(&fsm->fsm_sii)) {
         fsm->slave->error_flag = 1;
@@ -864,9 +840,7 @@ void ec_fsm_master_validate_product(ec_fsm_t *fsm /**< finite state machine */)
 {
     ec_slave_t *slave = fsm->slave;
 
-    ec_fsm_sii_exec(&fsm->fsm_sii); // execute SII state machine
-
-    if (ec_fsm_sii_running(&fsm->fsm_sii)) return;
+    if (ec_fsm_sii_exec(&fsm->fsm_sii)) return;
 
     if (!ec_fsm_sii_success(&fsm->fsm_sii)) {
         fsm->slave->error_flag = 1;
@@ -1001,9 +975,7 @@ void ec_fsm_master_write_eeprom(ec_fsm_t *fsm /**< finite state machine */)
 {
     ec_slave_t *slave = fsm->slave;
 
-    ec_fsm_sii_exec(&fsm->fsm_sii); // execute SII state machine
-
-    if (ec_fsm_sii_running(&fsm->fsm_sii)) return;
+    if (ec_fsm_sii_exec(&fsm->fsm_sii)) return;
 
     if (!ec_fsm_sii_success(&fsm->fsm_sii)) {
         fsm->slave->error_flag = 1;
@@ -1266,10 +1238,7 @@ void ec_fsm_slavescan_eeprom_size(ec_fsm_t *fsm /**< finite state machine */)
     ec_slave_t *slave = fsm->slave;
     uint16_t cat_type, cat_size;
 
-    // execute SII state machine
-    ec_fsm_sii_exec(&fsm->fsm_sii);
-
-    if (ec_fsm_sii_running(&fsm->fsm_sii)) return;
+    if (ec_fsm_sii_exec(&fsm->fsm_sii)) return;
 
     if (!ec_fsm_sii_success(&fsm->fsm_sii)) {
         fsm->slave->error_flag = 1;
@@ -1326,10 +1295,7 @@ void ec_fsm_slavescan_eeprom_data(ec_fsm_t *fsm /**< finite state machine */)
     ec_slave_t *slave = fsm->slave;
     uint16_t *cat_word, cat_type, cat_size;
 
-    // execute SII state machine
-    ec_fsm_sii_exec(&fsm->fsm_sii);
-
-    if (ec_fsm_sii_running(&fsm->fsm_sii)) return;
+    if (ec_fsm_sii_exec(&fsm->fsm_sii)) return;
 
     if (!ec_fsm_sii_success(&fsm->fsm_sii)) {
         fsm->slave->error_flag = 1;
@@ -1446,9 +1412,7 @@ void ec_fsm_slaveconf_init(ec_fsm_t *fsm /**< finite state machine */)
     const ec_sii_sync_t *sync;
     ec_sii_sync_t mbox_sync;
 
-    ec_fsm_change_exec(&fsm->fsm_change); // execute state change state machine
-
-    if (ec_fsm_change_running(&fsm->fsm_change)) return;
+    if (ec_fsm_change_exec(&fsm->fsm_change)) return;
 
     if (!ec_fsm_change_success(&fsm->fsm_change)) {
         slave->error_flag = 1;
@@ -1571,9 +1535,7 @@ void ec_fsm_slaveconf_preop(ec_fsm_t *fsm /**< finite state machine */)
     ec_datagram_t *datagram = &fsm->datagram;
     unsigned int j;
 
-    ec_fsm_change_exec(&fsm->fsm_change); // execute state change state machine
-
-    if (ec_fsm_change_running(&fsm->fsm_change)) return;
+    if (ec_fsm_change_exec(&fsm->fsm_change)) return;
 
     if (!ec_fsm_change_success(&fsm->fsm_change)) {
         slave->error_flag = 1;
@@ -1708,9 +1670,7 @@ void ec_fsm_slaveconf_saveop(ec_fsm_t *fsm /**< finite state machine */)
     ec_master_t *master = fsm->master;
     ec_slave_t *slave = fsm->slave;
 
-    ec_fsm_change_exec(&fsm->fsm_change); // execute state change state machine
-
-    if (ec_fsm_change_running(&fsm->fsm_change)) return;
+    if (ec_fsm_change_exec(&fsm->fsm_change)) return;
 
     if (!ec_fsm_change_success(&fsm->fsm_change)) {
         fsm->slave->error_flag = 1;
@@ -1750,9 +1710,7 @@ void ec_fsm_slaveconf_op(ec_fsm_t *fsm /**< finite state machine */)
     ec_master_t *master = fsm->master;
     ec_slave_t *slave = fsm->slave;
 
-    ec_fsm_change_exec(&fsm->fsm_change); // execute state change state machine
-
-    if (ec_fsm_change_running(&fsm->fsm_change)) return;
+    if (ec_fsm_change_exec(&fsm->fsm_change)) return;
 
     if (!ec_fsm_change_success(&fsm->fsm_change)) {
         slave->error_flag = 1;

@@ -555,11 +555,9 @@ int ec_master_bus_scan(ec_master_t *master /**< EtherCAT master */)
 
     ec_fsm_startup(fsm); // init startup state machine
 
-    do {
-        ec_fsm_execute(fsm);
+    while (ec_fsm_exec(fsm)) {
         ec_master_sync_io(master);
     }
-    while (ec_fsm_startup_running(fsm));
 
     if (!ec_fsm_startup_success(fsm)) {
         ec_master_clear_slaves(master);
@@ -669,7 +667,7 @@ void ec_master_idle_run(void *data /**< master pointer */)
     ecrt_master_receive(master);
 
     // execute master state machine
-    ec_fsm_execute(&master->fsm);
+    ec_fsm_exec(&master->fsm);
 
     ecrt_master_send(master);
     cycles_end = get_cycles();
@@ -1246,11 +1244,9 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT master */)
 
     ec_fsm_configuration(fsm); // init configuration state machine
 
-    do {
-        ec_fsm_execute(fsm);
+    while (ec_fsm_exec(fsm)) {
         ec_master_sync_io(master);
     }
-    while (ec_fsm_configuration_running(fsm));
 
     if (!ec_fsm_configuration_success(fsm)) {
         return -1;
@@ -1279,11 +1275,9 @@ void ecrt_master_deactivate(ec_master_t *master /**< EtherCAT master */)
 
     ec_fsm_configuration(fsm); // init configuration state machine
 
-    do {
-        ec_fsm_execute(fsm);
+    while (ec_fsm_exec(fsm)) {
         ec_master_sync_io(master);
     }
-    while (ec_fsm_configuration_running(fsm));
 }
 
 /*****************************************************************************/
@@ -1429,7 +1423,7 @@ void ecrt_master_run(ec_master_t *master /**< EtherCAT master */)
     ec_master_output_stats(master);
 
     // execute master state machine
-    ec_fsm_execute(&master->fsm);
+    ec_fsm_exec(&master->fsm);
 }
 
 /*****************************************************************************/

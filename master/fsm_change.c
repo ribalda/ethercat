@@ -97,22 +97,13 @@ void ec_fsm_change(ec_fsm_change_t *fsm, /**< finite state machine */
 
 /**
    Executes the current state of the state machine.
+   \return false, if the state machine has terminated
 */
 
-void ec_fsm_change_exec(ec_fsm_change_t *fsm /**< finite state machine */)
+int ec_fsm_change_exec(ec_fsm_change_t *fsm /**< finite state machine */)
 {
     fsm->state(fsm);
-}
 
-/*****************************************************************************/
-
-/**
-   Returns the running state of the state machine.
-   \return non-zero if not terminated yet.
-*/
-
-int ec_fsm_change_running(ec_fsm_change_t *fsm /**< Finite state machine */)
-{
     return fsm->state != ec_fsm_change_end
         && fsm->state != ec_fsm_change_error;
 }
