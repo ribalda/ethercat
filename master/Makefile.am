@@ -41,6 +41,7 @@ EXTRA_DIST = \
 	doxygen.c \
 	ethernet.c ethernet.h \
 	fsm_sii.c fsm_sii.h \
+	fsm_change.c fsm_change.h \
 	fsm.c fsm.h \
 	globals.h \
 	mailbox.c mailbox.h \

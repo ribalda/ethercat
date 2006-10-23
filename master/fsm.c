@@ -80,13 +80,6 @@ void ec_fsm_slaveconf_sdoconf(ec_fsm_t *);
 void ec_fsm_slaveconf_saveop(ec_fsm_t *);
 void ec_fsm_slaveconf_op(ec_fsm_t *);
 
-void ec_fsm_change_start(ec_fsm_t *);
-void ec_fsm_change_check(ec_fsm_t *);
-void ec_fsm_change_status(ec_fsm_t *);
-void ec_fsm_change_code(ec_fsm_t *);
-void ec_fsm_change_ack(ec_fsm_t *);
-void ec_fsm_change_check_ack(ec_fsm_t *);
-
 void ec_fsm_coe_dict_start(ec_fsm_t *);
 void ec_fsm_coe_dict_request(ec_fsm_t *);
 void ec_fsm_coe_dict_check(ec_fsm_t *);
@@ -139,6 +132,7 @@ int ec_fsm_init(ec_fsm_t *fsm, /**< finite state machine */
     }
 
     ec_fsm_sii_init(&fsm->fsm_sii, &fsm->datagram);
+    ec_fsm_change_init(&fsm->fsm_change, &fsm->datagram);
 
     return 0;
 }
@@ -152,6 +146,7 @@ int ec_fsm_init(ec_fsm_t *fsm, /**< finite state machine */
 void ec_fsm_clear(ec_fsm_t *fsm /**< finite state machine */)
 {
     ec_fsm_sii_clear(&fsm->fsm_sii);
+    ec_fsm_change_clear(&fsm->fsm_change);
 
     ec_datagram_clear(&fsm->datagram);
 }
@@ -389,8 +384,7 @@ void ec_fsm_configuration_start(ec_fsm_t *fsm /**< finite state machine */)
     // begin configuring slaves
     fsm->slave = list_entry(master->slaves.next, ec_slave_t, list);
     fsm->slave_state = ec_fsm_slaveconf_init;
-    fsm->change_new = EC_SLAVE_STATE_INIT;
-    fsm->change_state = ec_fsm_change_start;
+    ec_fsm_change(&fsm->fsm_change, fsm->slave, EC_SLAVE_STATE_INIT);
     fsm->master_state = ec_fsm_configuration_conf;
     fsm->master_state(fsm); // execute immediately
 }
@@ -419,8 +413,7 @@ void ec_fsm_configuration_conf(ec_fsm_t *fsm /**< finite state machine */)
     if (slave->list.next != &master->slaves) {
         fsm->slave = list_entry(fsm->slave->list.next, ec_slave_t, list);
         fsm->slave_state = ec_fsm_slaveconf_init;
-        fsm->change_new = EC_SLAVE_STATE_INIT;
-        fsm->change_state = ec_fsm_change_start;
+        ec_fsm_change(&fsm->fsm_change, fsm->slave, EC_SLAVE_STATE_INIT);
         fsm->master_state(fsm); // execute immediately
         return;
     }
@@ -601,8 +594,7 @@ void ec_fsm_master_action_process_states(ec_fsm_t *fsm
 
         fsm->slave = slave;
         fsm->slave_state = ec_fsm_slaveconf_init;
-        fsm->change_new = EC_SLAVE_STATE_INIT;
-        fsm->change_state = ec_fsm_change_start;
+        ec_fsm_change(&fsm->fsm_change, fsm->slave, EC_SLAVE_STATE_INIT);
         fsm->master_state = ec_fsm_master_configure_slave;
         fsm->master_state(fsm); // execute immediately
         return;
@@ -1454,15 +1446,15 @@ void ec_fsm_slaveconf_init(ec_fsm_t *fsm /**< finite state machine */)
     const ec_sii_sync_t *sync;
     ec_sii_sync_t mbox_sync;
 
-    fsm->change_state(fsm); // execute state change state machine
+    ec_fsm_change_exec(&fsm->fsm_change); // execute state change state machine
 
-    if (fsm->change_state == ec_fsm_error) {
+    if (ec_fsm_change_running(&fsm->fsm_change)) return;
+
+    if (!ec_fsm_change_success(&fsm->fsm_change)) {
         slave->error_flag = 1;
         fsm->slave_state = ec_fsm_error;
         return;
     }
-
-    if (fsm->change_state != ec_fsm_end) return;
 
     slave->configured = 1;
 
@@ -1486,9 +1478,8 @@ void ec_fsm_slaveconf_init(ec_fsm_t *fsm /**< finite state machine */)
 
     if (!slave->base_sync_count) { // no sync managers
         fsm->slave_state = ec_fsm_slaveconf_preop;
-        fsm->change_new = EC_SLAVE_STATE_PREOP;
-        fsm->change_state = ec_fsm_change_start;
-        fsm->change_state(fsm); // execute immediately
+        ec_fsm_change(&fsm->fsm_change, slave, EC_SLAVE_STATE_PREOP);
+        ec_fsm_change_exec(&fsm->fsm_change); // execute immediately
         return;
     }
 
@@ -1563,9 +1554,8 @@ void ec_fsm_slaveconf_sync(ec_fsm_t *fsm /**< finite state machine */)
     }
 
     fsm->slave_state = ec_fsm_slaveconf_preop;
-    fsm->change_new = EC_SLAVE_STATE_PREOP;
-    fsm->change_state = ec_fsm_change_start;
-    fsm->change_state(fsm); // execute immediately
+    ec_fsm_change(&fsm->fsm_change, slave, EC_SLAVE_STATE_PREOP);
+    ec_fsm_change_exec(&fsm->fsm_change); // execute immediately
 }
 
 /*****************************************************************************/
@@ -1581,15 +1571,15 @@ void ec_fsm_slaveconf_preop(ec_fsm_t *fsm /**< finite state machine */)
     ec_datagram_t *datagram = &fsm->datagram;
     unsigned int j;
 
-    fsm->change_state(fsm); // execute state change state machine
+    ec_fsm_change_exec(&fsm->fsm_change); // execute state change state machine
 
-    if (fsm->change_state == ec_fsm_error) {
+    if (ec_fsm_change_running(&fsm->fsm_change)) return;
+
+    if (!ec_fsm_change_success(&fsm->fsm_change)) {
         slave->error_flag = 1;
         fsm->slave_state = ec_fsm_error;
         return;
     }
-
-    if (fsm->change_state != ec_fsm_end) return;
 
     // slave is now in PREOP
     slave->jiffies_preop = fsm->datagram.jiffies_received;
@@ -1610,9 +1600,8 @@ void ec_fsm_slaveconf_preop(ec_fsm_t *fsm /**< finite state machine */)
     if (!slave->base_fmmu_count) { // skip FMMU configuration
         if (list_empty(&slave->sdo_confs)) { // skip SDO configuration
             fsm->slave_state = ec_fsm_slaveconf_saveop;
-            fsm->change_new = EC_SLAVE_STATE_SAVEOP;
-            fsm->change_state = ec_fsm_change_start;
-            fsm->change_state(fsm); // execute immediately
+            ec_fsm_change(&fsm->fsm_change, slave, EC_SLAVE_STATE_SAVEOP);
+            ec_fsm_change_exec(&fsm->fsm_change); // execute immediately
             return;
         }
 
@@ -1661,9 +1650,8 @@ void ec_fsm_slaveconf_fmmu(ec_fsm_t *fsm /**< finite state machine */)
     if (list_empty(&slave->sdo_confs)) { // skip SDO configuration
         // set state to SAVEOP
         fsm->slave_state = ec_fsm_slaveconf_saveop;
-        fsm->change_new = EC_SLAVE_STATE_SAVEOP;
-        fsm->change_state = ec_fsm_change_start;
-        fsm->change_state(fsm); // execute immediately
+        ec_fsm_change(&fsm->fsm_change, slave, EC_SLAVE_STATE_SAVEOP);
+        ec_fsm_change_exec(&fsm->fsm_change); // execute immediately
         return;
     }
 
@@ -1705,9 +1693,8 @@ void ec_fsm_slaveconf_sdoconf(ec_fsm_t *fsm /**< finite state machine */)
 
     // set state to SAVEOP
     fsm->slave_state = ec_fsm_slaveconf_saveop;
-    fsm->change_new = EC_SLAVE_STATE_SAVEOP;
-    fsm->change_state = ec_fsm_change_start;
-    fsm->change_state(fsm); // execute immediately
+    ec_fsm_change(&fsm->fsm_change, fsm->slave, EC_SLAVE_STATE_SAVEOP);
+    ec_fsm_change_exec(&fsm->fsm_change); // execute immediately
 }
 
 /*****************************************************************************/
@@ -1721,15 +1708,15 @@ void ec_fsm_slaveconf_saveop(ec_fsm_t *fsm /**< finite state machine */)
     ec_master_t *master = fsm->master;
     ec_slave_t *slave = fsm->slave;
 
-    fsm->change_state(fsm); // execute state change state machine
+    ec_fsm_change_exec(&fsm->fsm_change); // execute state change state machine
 
-    if (fsm->change_state == ec_fsm_error) {
+    if (ec_fsm_change_running(&fsm->fsm_change)) return;
+
+    if (!ec_fsm_change_success(&fsm->fsm_change)) {
         fsm->slave->error_flag = 1;
         fsm->slave_state = ec_fsm_error;
         return;
     }
-
-    if (fsm->change_state != ec_fsm_end) return;
 
     // slave is now in SAVEOP
 
@@ -1748,9 +1735,8 @@ void ec_fsm_slaveconf_saveop(ec_fsm_t *fsm /**< finite state machine */)
 
     // set state to OP
     fsm->slave_state = ec_fsm_slaveconf_op;
-    fsm->change_new = EC_SLAVE_STATE_OP;
-    fsm->change_state = ec_fsm_change_start;
-    fsm->change_state(fsm); // execute immediately
+    ec_fsm_change(&fsm->fsm_change, slave, EC_SLAVE_STATE_OP);
+    ec_fsm_change_exec(&fsm->fsm_change); // execute immediately
 }
 
 /*****************************************************************************/
@@ -1764,15 +1750,15 @@ void ec_fsm_slaveconf_op(ec_fsm_t *fsm /**< finite state machine */)
     ec_master_t *master = fsm->master;
     ec_slave_t *slave = fsm->slave;
 
-    fsm->change_state(fsm); // execute state change state machine
+    ec_fsm_change_exec(&fsm->fsm_change); // execute state change state machine
 
-    if (fsm->change_state == ec_fsm_error) {
+    if (ec_fsm_change_running(&fsm->fsm_change)) return;
+
+    if (!ec_fsm_change_success(&fsm->fsm_change)) {
         slave->error_flag = 1;
         fsm->slave_state = ec_fsm_error;
         return;
     }
-
-    if (fsm->change_state != ec_fsm_end) return;
 
     // slave is now in OP
 
@@ -1782,282 +1768,6 @@ void ec_fsm_slaveconf_op(ec_fsm_t *fsm /**< finite state machine */)
     }
 
     fsm->slave_state = ec_fsm_end; // successful
-}
-
-/******************************************************************************
- *  state change state machine
- *****************************************************************************/
-
-/**
-   Change state: START.
-*/
-
-void ec_fsm_change_start(ec_fsm_t *fsm /**< finite state machine */)
-{
-    ec_datagram_t *datagram = &fsm->datagram;
-    ec_slave_t *slave = fsm->slave;
-
-    fsm->change_take_time = 1;
-
-    // write new state to slave
-    ec_datagram_npwr(datagram, slave->station_address, 0x0120, 2);
-    EC_WRITE_U16(datagram->data, fsm->change_new);
-    ec_master_queue_datagram(fsm->master, datagram);
-    fsm->change_state = ec_fsm_change_check;
-}
-
-/*****************************************************************************/
-
-/**
-   Change state: CHECK.
-*/
-
-void ec_fsm_change_check(ec_fsm_t *fsm /**< finite state machine */)
-{
-    ec_datagram_t *datagram = &fsm->datagram;
-    ec_slave_t *slave = fsm->slave;
-
-    if (datagram->state != EC_DATAGRAM_RECEIVED) {
-        fsm->change_state = ec_fsm_error;
-        EC_ERR("Failed to send state datagram to slave %i!\n",
-               fsm->slave->ring_position);
-        return;
-    }
-
-    if (fsm->change_take_time) {
-        fsm->change_take_time = 0;
-        fsm->change_jiffies = datagram->jiffies_sent;
-    }
-
-    if (datagram->working_counter != 1) {
-        if (datagram->jiffies_received - fsm->change_jiffies >= 3 * HZ) {
-            fsm->change_state = ec_fsm_error;
-            EC_ERR("Failed to set state 0x%02X on slave %i: Slave did not"
-                   " respond.\n", fsm->change_new, fsm->slave->ring_position);
-            return;
-        }
-
-        // repeat writing new state to slave
-        ec_datagram_npwr(datagram, slave->station_address, 0x0120, 2);
-        EC_WRITE_U16(datagram->data, fsm->change_new);
-        ec_master_queue_datagram(fsm->master, datagram);
-        return;
-    }
-
-    fsm->change_take_time = 1;
-
-    // read AL status from slave
-    ec_datagram_nprd(datagram, slave->station_address, 0x0130, 2);
-    ec_master_queue_datagram(fsm->master, datagram);
-    fsm->change_state = ec_fsm_change_status;
-}
-
-/*****************************************************************************/
-
-/**
-   Change state: STATUS.
-*/
-
-void ec_fsm_change_status(ec_fsm_t *fsm /**< finite state machine */)
-{
-    ec_datagram_t *datagram = &fsm->datagram;
-    ec_slave_t *slave = fsm->slave;
-
-    if (datagram->state != EC_DATAGRAM_RECEIVED
-        || datagram->working_counter != 1) {
-        fsm->change_state = ec_fsm_error;
-        EC_ERR("Failed to check state 0x%02X on slave %i.\n",
-               fsm->change_new, slave->ring_position);
-        return;
-    }
-
-    if (fsm->change_take_time) {
-        fsm->change_take_time = 0;
-        fsm->change_jiffies = datagram->jiffies_sent;
-    }
-
-    slave->current_state = EC_READ_U8(datagram->data);
-
-    if (slave->current_state == fsm->change_new) {
-        // state has been set successfully
-        fsm->change_state = ec_fsm_end;
-        return;
-    }
-
-    if (slave->current_state & EC_SLAVE_STATE_ACK_ERR) {
-        // state change error
-        EC_ERR("Failed to set state 0x%02X - Slave %i refused state change"
-               " (code 0x%02X)!\n", fsm->change_new, slave->ring_position,
-               slave->current_state);
-        // fetch AL status error code
-        ec_datagram_nprd(datagram, slave->station_address, 0x0134, 2);
-        ec_master_queue_datagram(fsm->master, datagram);
-        fsm->change_state = ec_fsm_change_code;
-        return;
-    }
-
-    if (datagram->jiffies_received
-        - fsm->change_jiffies >= 100 * HZ / 1000) { // 100ms
-        // timeout while checking
-        fsm->change_state = ec_fsm_error;
-        EC_ERR("Timeout while setting state 0x%02X on slave %i.\n",
-               fsm->change_new, slave->ring_position);
-        return;
-    }
-
-    // still old state: check again
-    ec_datagram_nprd(datagram, slave->station_address, 0x0130, 2);
-    ec_master_queue_datagram(fsm->master, datagram);
-}
-
-/*****************************************************************************/
-
-/**
-   Application layer status messages.
-*/
-
-const ec_code_msg_t al_status_messages[] = {
-    {0x0001, "Unspecified error"},
-    {0x0011, "Invalud requested state change"},
-    {0x0012, "Unknown requested state"},
-    {0x0013, "Bootstrap not supported"},
-    {0x0014, "No valid firmware"},
-    {0x0015, "Invalid mailbox configuration"},
-    {0x0016, "Invalid mailbox configuration"},
-    {0x0017, "Invalid sync manager configuration"},
-    {0x0018, "No valid inputs available"},
-    {0x0019, "No valid outputs"},
-    {0x001A, "Synchronisation error"},
-    {0x001B, "Sync manager watchdog"},
-    {0x001C, "Invalid sync manager types"},
-    {0x001D, "Invalid output configuration"},
-    {0x001E, "Invalid input configuration"},
-    {0x001F, "Invalid watchdog configuration"},
-    {0x0020, "Slave needs cold start"},
-    {0x0021, "Slave needs INIT"},
-    {0x0022, "Slave needs PREOP"},
-    {0x0023, "Slave needs SAVEOP"},
-    {0x0030, "Invalid DC SYNCH configuration"},
-    {0x0031, "Invalid DC latch configuration"},
-    {0x0032, "PLL error"},
-    {0x0033, "Invalid DC IO error"},
-    {0x0034, "Invalid DC timeout error"},
-    {0x0042, "MBOX EOE"},
-    {0x0043, "MBOX COE"},
-    {0x0044, "MBOX FOE"},
-    {0x0045, "MBOX SOE"},
-    {0x004F, "MBOX VOE"},
-    {}
-};
-
-/*****************************************************************************/
-
-/**
-   Change state: CODE.
-*/
-
-void ec_fsm_change_code(ec_fsm_t *fsm /**< finite state machine */)
-{
-    ec_datagram_t *datagram = &fsm->datagram;
-    ec_slave_t *slave = fsm->slave;
-    uint32_t code;
-    const ec_code_msg_t *al_msg;
-
-    if (datagram->state != EC_DATAGRAM_RECEIVED
-        || datagram->working_counter != 1) {
-        EC_WARN("Reception of AL status code datagram failed.\n");
-    }
-    else {
-        if ((code = EC_READ_U16(datagram->data))) {
-            for (al_msg = al_status_messages; al_msg->code; al_msg++) {
-                if (al_msg->code != code) continue;
-                EC_ERR("AL status message 0x%04X: \"%s\".\n",
-                       al_msg->code, al_msg->message);
-                break;
-            }
-            if (!al_msg->code)
-                EC_ERR("Unknown AL status code 0x%04X.\n", code);
-        }
-    }
-
-    // acknowledge "old" slave state
-    ec_datagram_npwr(datagram, slave->station_address, 0x0120, 2);
-    EC_WRITE_U16(datagram->data, slave->current_state);
-    ec_master_queue_datagram(fsm->master, datagram);
-    fsm->change_state = ec_fsm_change_ack;
-}
-
-/*****************************************************************************/
-
-/**
-   Change state: ACK.
-*/
-
-void ec_fsm_change_ack(ec_fsm_t *fsm /**< finite state machine */)
-{
-    ec_datagram_t *datagram = &fsm->datagram;
-    ec_slave_t *slave = fsm->slave;
-
-    if (datagram->state != EC_DATAGRAM_RECEIVED
-        || datagram->working_counter != 1) {
-        fsm->change_state = ec_fsm_error;
-        EC_ERR("Reception of state ack datagram failed.\n");
-        return;
-    }
-
-    fsm->change_take_time = 1;
-
-    // read new AL status
-    ec_datagram_nprd(datagram, slave->station_address, 0x0130, 2);
-    ec_master_queue_datagram(fsm->master, datagram);
-    fsm->change_state = ec_fsm_change_check_ack;
-}
-
-/*****************************************************************************/
-
-/**
-   Change state: CHECK ACK.
-*/
-
-void ec_fsm_change_check_ack(ec_fsm_t *fsm /**< finite state machine */)
-{
-    ec_datagram_t *datagram = &fsm->datagram;
-    ec_slave_t *slave = fsm->slave;
-
-    if (datagram->state != EC_DATAGRAM_RECEIVED
-        || datagram->working_counter != 1) {
-        fsm->change_state = ec_fsm_error;
-        EC_ERR("Reception of state ack check datagram failed.\n");
-        return;
-    }
-
-    if (fsm->change_take_time) {
-        fsm->change_take_time = 0;
-        fsm->change_jiffies = datagram->jiffies_sent;
-    }
-
-    slave->current_state = EC_READ_U8(datagram->data);
-
-    if (!(slave->current_state & EC_SLAVE_STATE_ACK_ERR)) {
-        fsm->change_state = ec_fsm_error;
-        EC_INFO("Acknowledged state 0x%02X on slave %i.\n",
-                slave->current_state, slave->ring_position);
-        return;
-    }
-
-    if (datagram->jiffies_received
-        - fsm->change_jiffies >= 100 * HZ / 1000) { // 100ms
-        // timeout while checking
-        slave->current_state = EC_SLAVE_STATE_UNKNOWN;
-        fsm->change_state = ec_fsm_error;
-        EC_ERR("Timeout while acknowledging state 0x%02X on slave %i.\n",
-               fsm->change_new, slave->ring_position);
-        return;
-    }
-
-    // reread new AL status
-    ec_datagram_nprd(datagram, slave->station_address, 0x0130, 2);
-    ec_master_queue_datagram(fsm->master, datagram);
 }
 
 /******************************************************************************

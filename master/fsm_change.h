@@ -33,71 +33,48 @@
 
 /**
    \file
-   EtherCAT finite state machines.
+   EtherCAT state change FSM.
 */
 
 /*****************************************************************************/
 
-#ifndef __EC_STATES__
-#define __EC_STATES__
+#ifndef __EC_FSM_CHANGE__
+#define __EC_FSM_CHANGE__
 
 #include "globals.h"
 #include "../include/ecrt.h"
 #include "datagram.h"
 #include "slave.h"
-#include "canopen.h"
-
-#include "fsm_sii.h"
-#include "fsm_change.h"
 
 /*****************************************************************************/
 
-typedef struct ec_fsm ec_fsm_t; /**< \see ec_fsm */
+typedef struct ec_fsm_change ec_fsm_change_t; /**< \see ec_fsm_change */
 
 /**
-   Finite state machine of an EtherCAT master.
+   EtherCAT state change FSM.
 */
 
-struct ec_fsm
+struct ec_fsm_change
 {
-    ec_master_t *master; /**< master the FSM runs on */
     ec_slave_t *slave; /**< slave the FSM runs on */
-    ec_datagram_t datagram; /**< datagram used in the state machine */
+    ec_datagram_t *datagram; /**< datagram used in the state machine */
 
-    void (*master_state)(ec_fsm_t *); /**< master state function */
-    unsigned int master_slaves_responding; /**< number of responding slaves */
-    ec_slave_state_t master_slave_states; /**< states of responding slaves */
-    unsigned int master_validation; /**< non-zero, if validation to do */
-    uint16_t sii_offset; /**< current offset for SII access */
-
-    void (*slave_state)(ec_fsm_t *); /**< slave state function */
-
-    ec_fsm_sii_t fsm_sii; /**< SII state machine */
-    ec_fsm_change_t fsm_change; /**< State change state machine */
-
-    void (*coe_state)(ec_fsm_t *); /**< CoE state function */
-    ec_sdo_data_t *coe_sdodata; /**< input/output: SDO data object */
-    cycles_t coe_start; /**< CoE timestamp */
-    ec_sdo_t *coe_sdo; /**< current SDO */
-    uint8_t coe_subindex; /**< current subindex */
-    ec_sdo_request_t *coe_request; /**< SDO request */
-    uint8_t coe_toggle; /**< toggle bit for segment commands */
+    void (*state)(ec_fsm_change_t *); /**< slave state change state function */
+    ec_slave_state_t requested_state; /**< input: state */
+    unsigned long jiffies_start; /**< change timer */
+    uint8_t take_time; /**< take sending timestamp */
 };
 
 /*****************************************************************************/
 
-int ec_fsm_init(ec_fsm_t *, ec_master_t *);
-void ec_fsm_clear(ec_fsm_t *);
-void ec_fsm_reset(ec_fsm_t *);
-void ec_fsm_execute(ec_fsm_t *);
+void ec_fsm_change_init(ec_fsm_change_t *, ec_datagram_t *);
+void ec_fsm_change_clear(ec_fsm_change_t *);
 
-void ec_fsm_startup(ec_fsm_t *);
-int ec_fsm_startup_running(ec_fsm_t *);
-int ec_fsm_startup_success(ec_fsm_t *);
+void ec_fsm_change(ec_fsm_change_t *, ec_slave_t *, ec_slave_state_t);
 
-void ec_fsm_configuration(ec_fsm_t *);
-int ec_fsm_configuration_running(ec_fsm_t *);
-int ec_fsm_configuration_success(ec_fsm_t *);
+void ec_fsm_change_exec(ec_fsm_change_t *);
+int ec_fsm_change_running(ec_fsm_change_t *);
+int ec_fsm_change_success(ec_fsm_change_t *);
 
 /*****************************************************************************/
 
