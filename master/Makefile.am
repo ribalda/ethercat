@@ -40,6 +40,7 @@ EXTRA_DIST = \
 	domain.c domain.h \
 	doxygen.c \
 	ethernet.c ethernet.h \
+	fsm_sii.c fsm_sii.h \
 	fsm.c fsm.h \
 	globals.h \
 	mailbox.c mailbox.h \

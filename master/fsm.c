@@ -80,13 +80,6 @@ void ec_fsm_slaveconf_sdoconf(ec_fsm_t *);
 void ec_fsm_slaveconf_saveop(ec_fsm_t *);
 void ec_fsm_slaveconf_op(ec_fsm_t *);
 
-void ec_fsm_sii_start_reading(ec_fsm_t *);
-void ec_fsm_sii_read_check(ec_fsm_t *);
-void ec_fsm_sii_read_fetch(ec_fsm_t *);
-void ec_fsm_sii_start_writing(ec_fsm_t *);
-void ec_fsm_sii_write_check(ec_fsm_t *);
-void ec_fsm_sii_write_check2(ec_fsm_t *);
-
 void ec_fsm_change_start(ec_fsm_t *);
 void ec_fsm_change_check(ec_fsm_t *);
 void ec_fsm_change_status(ec_fsm_t *);
@@ -145,6 +138,8 @@ int ec_fsm_init(ec_fsm_t *fsm, /**< finite state machine */
         return -1;
     }
 
+    ec_fsm_sii_init(&fsm->fsm_sii, &fsm->datagram);
+
     return 0;
 }
 
@@ -156,6 +151,8 @@ int ec_fsm_init(ec_fsm_t *fsm, /**< finite state machine */
 
 void ec_fsm_clear(ec_fsm_t *fsm /**< finite state machine */)
 {
+    ec_fsm_sii_clear(&fsm->fsm_sii);
+
     ec_datagram_clear(&fsm->datagram);
 }
 
@@ -688,10 +685,8 @@ void ec_fsm_master_action_process_states(ec_fsm_t *fsm
             // found pending EEPROM write operation. execute it!
             EC_INFO("Writing EEPROM of slave %i...\n", slave->ring_position);
             fsm->sii_offset = 0x0000;
-            memcpy(fsm->sii_value, slave->new_eeprom_data, 2);
-            fsm->sii_mode = 1;
-            fsm->sii_state = ec_fsm_sii_start_writing;
-            fsm->slave = slave;
+            ec_fsm_sii_write(&fsm->fsm_sii, slave, fsm->sii_offset,
+                             slave->new_eeprom_data, EC_FSM_SII_NODE);
             fsm->master_state = ec_fsm_master_write_eeprom;
             fsm->master_state(fsm); // execute immediately
             return;
@@ -738,10 +733,8 @@ void ec_fsm_master_action_next_slave_state(ec_fsm_t *fsm
             EC_INFO("Validating bus.\n");
             fsm->slave = list_entry(master->slaves.next, ec_slave_t, list);
             fsm->master_state = ec_fsm_master_validate_vendor;
-            fsm->sii_offset = 0x0008; // vendor ID
-            fsm->sii_mode = 0;
-            fsm->sii_state = ec_fsm_sii_start_reading;
-            fsm->sii_state(fsm); // execute immediately
+            ec_fsm_sii_read(&fsm->fsm_sii, slave, 0x0008, EC_FSM_SII_POSITION);
+            ec_fsm_sii_exec(&fsm->fsm_sii); // execute immediately
             return;
         }
     }
@@ -811,9 +804,11 @@ void ec_fsm_master_validate_vendor(ec_fsm_t *fsm /**< finite state machine */)
 {
     ec_slave_t *slave = fsm->slave;
 
-    fsm->sii_state(fsm); // execute SII state machine
+    ec_fsm_sii_exec(&fsm->fsm_sii); // execute SII state machine
 
-    if (fsm->sii_state == ec_fsm_error) {
+    if (ec_fsm_sii_running(&fsm->fsm_sii)) return;
+
+    if (!ec_fsm_sii_success(&fsm->fsm_sii)) {
         fsm->slave->error_flag = 1;
         EC_ERR("Failed to validate vendor ID of slave %i.\n",
                slave->ring_position);
@@ -822,9 +817,7 @@ void ec_fsm_master_validate_vendor(ec_fsm_t *fsm /**< finite state machine */)
         return;
     }
 
-    if (fsm->sii_state != ec_fsm_end) return;
-
-    if (EC_READ_U32(fsm->sii_value) != slave->sii_vendor_id) {
+    if (EC_READ_U32(fsm->fsm_sii.value) != slave->sii_vendor_id) {
         EC_ERR("Slave %i: invalid vendor ID!\n", slave->ring_position);
         fsm->master_state = ec_fsm_master_start;
         fsm->master_state(fsm); // execute immediately
@@ -833,10 +826,8 @@ void ec_fsm_master_validate_vendor(ec_fsm_t *fsm /**< finite state machine */)
 
     // vendor ID is ok. check product code.
     fsm->master_state = ec_fsm_master_validate_product;
-    fsm->sii_offset = 0x000A; // product code
-    fsm->sii_mode = 0;
-    fsm->sii_state = ec_fsm_sii_start_reading;
-    fsm->sii_state(fsm); // execute immediately
+    ec_fsm_sii_read(&fsm->fsm_sii, slave, 0x000A, EC_FSM_SII_POSITION);
+    ec_fsm_sii_exec(&fsm->fsm_sii); // execute immediately
 }
 
 /*****************************************************************************/
@@ -881,9 +872,11 @@ void ec_fsm_master_validate_product(ec_fsm_t *fsm /**< finite state machine */)
 {
     ec_slave_t *slave = fsm->slave;
 
-    fsm->sii_state(fsm); // execute SII state machine
+    ec_fsm_sii_exec(&fsm->fsm_sii); // execute SII state machine
 
-    if (fsm->sii_state == ec_fsm_error) {
+    if (ec_fsm_sii_running(&fsm->fsm_sii)) return;
+
+    if (!ec_fsm_sii_success(&fsm->fsm_sii)) {
         fsm->slave->error_flag = 1;
         EC_ERR("Failed to validate product code of slave %i.\n",
                slave->ring_position);
@@ -892,12 +885,10 @@ void ec_fsm_master_validate_product(ec_fsm_t *fsm /**< finite state machine */)
         return;
     }
 
-    if (fsm->sii_state != ec_fsm_end) return;
-
-    if (EC_READ_U32(fsm->sii_value) != slave->sii_product_code) {
+    if (EC_READ_U32(fsm->fsm_sii.value) != slave->sii_product_code) {
         EC_ERR("Slave %i: invalid product code!\n", slave->ring_position);
         EC_ERR("expected 0x%08X, got 0x%08X.\n", slave->sii_product_code,
-               EC_READ_U32(fsm->sii_value));
+               EC_READ_U32(fsm->fsm_sii.value));
         fsm->master_state = ec_fsm_master_start;
         fsm->master_state(fsm); // execute immediately
         return;
@@ -914,10 +905,8 @@ void ec_fsm_master_validate_product(ec_fsm_t *fsm /**< finite state machine */)
     // validate next slave
     fsm->slave = list_entry(fsm->slave->list.next, ec_slave_t, list);
     fsm->master_state = ec_fsm_master_validate_vendor;
-    fsm->sii_offset = 0x0008; // vendor ID
-    fsm->sii_mode = 0;
-    fsm->sii_state = ec_fsm_sii_start_reading;
-    fsm->sii_state(fsm); // execute immediately
+    ec_fsm_sii_read(&fsm->fsm_sii, slave, 0x0008, EC_FSM_SII_POSITION);
+    ec_fsm_sii_exec(&fsm->fsm_sii); // execute immediately
 }
 
 /*****************************************************************************/
@@ -1020,9 +1009,11 @@ void ec_fsm_master_write_eeprom(ec_fsm_t *fsm /**< finite state machine */)
 {
     ec_slave_t *slave = fsm->slave;
 
-    fsm->sii_state(fsm); // execute SII state machine
+    ec_fsm_sii_exec(&fsm->fsm_sii); // execute SII state machine
 
-    if (fsm->sii_state == ec_fsm_error) {
+    if (ec_fsm_sii_running(&fsm->fsm_sii)) return;
+
+    if (!ec_fsm_sii_success(&fsm->fsm_sii)) {
         fsm->slave->error_flag = 1;
         EC_ERR("Failed to write EEPROM contents to slave %i.\n",
                slave->ring_position);
@@ -1033,13 +1024,12 @@ void ec_fsm_master_write_eeprom(ec_fsm_t *fsm /**< finite state machine */)
         return;
     }
 
-    if (fsm->sii_state != ec_fsm_end) return;
-
     fsm->sii_offset++;
     if (fsm->sii_offset < slave->new_eeprom_size) {
-        memcpy(fsm->sii_value, slave->new_eeprom_data + fsm->sii_offset, 2);
-        fsm->sii_state = ec_fsm_sii_start_writing;
-        fsm->sii_state(fsm); // execute immediately
+        ec_fsm_sii_write(&fsm->fsm_sii, slave, fsm->sii_offset,
+                         slave->new_eeprom_data + fsm->sii_offset,
+                         EC_FSM_SII_NODE);
+        ec_fsm_sii_exec(&fsm->fsm_sii); // execute immediately
         return;
     }
 
@@ -1268,8 +1258,7 @@ void ec_fsm_slavescan_datalink(ec_fsm_t *fsm /**< finite state machine */)
     // Start fetching EEPROM size
 
     fsm->sii_offset = 0x0040; // first category header
-    fsm->sii_mode = 1;
-    fsm->sii_state = ec_fsm_sii_start_reading;
+    ec_fsm_sii_read(&fsm->fsm_sii, slave, fsm->sii_offset, EC_FSM_SII_NODE);
     fsm->slave_state = ec_fsm_slavescan_eeprom_size;
     fsm->slave_state(fsm); // execute state immediately
 }
@@ -1286,9 +1275,11 @@ void ec_fsm_slavescan_eeprom_size(ec_fsm_t *fsm /**< finite state machine */)
     uint16_t cat_type, cat_size;
 
     // execute SII state machine
-    fsm->sii_state(fsm);
+    ec_fsm_sii_exec(&fsm->fsm_sii);
 
-    if (fsm->sii_state == ec_fsm_error) {
+    if (ec_fsm_sii_running(&fsm->fsm_sii)) return;
+
+    if (!ec_fsm_sii_success(&fsm->fsm_sii)) {
         fsm->slave->error_flag = 1;
         fsm->slave_state = ec_fsm_error;
         EC_ERR("Failed to read EEPROM size of slave %i.\n",
@@ -1296,15 +1287,14 @@ void ec_fsm_slavescan_eeprom_size(ec_fsm_t *fsm /**< finite state machine */)
         return;
     }
 
-    if (fsm->sii_state != ec_fsm_end) return;
-
-    cat_type = EC_READ_U16(fsm->sii_value);
-    cat_size = EC_READ_U16(fsm->sii_value + 2);
+    cat_type = EC_READ_U16(fsm->fsm_sii.value);
+    cat_size = EC_READ_U16(fsm->fsm_sii.value + 2);
 
     if (cat_type != 0xFFFF) { // not the last category
         fsm->sii_offset += cat_size + 2;
-        fsm->sii_state = ec_fsm_sii_start_reading;
-        fsm->sii_state(fsm); // execute state immediately
+        ec_fsm_sii_read(&fsm->fsm_sii, slave, fsm->sii_offset,
+                        EC_FSM_SII_NODE);
+        ec_fsm_sii_exec(&fsm->fsm_sii); // execute state immediately
         return;
     }
 
@@ -1327,11 +1317,10 @@ void ec_fsm_slavescan_eeprom_size(ec_fsm_t *fsm /**< finite state machine */)
 
     // Start fetching EEPROM contents
 
-    fsm->sii_offset = 0x0000;
-    fsm->sii_mode = 1;
-    fsm->sii_state = ec_fsm_sii_start_reading;
     fsm->slave_state = ec_fsm_slavescan_eeprom_data;
-    fsm->slave_state(fsm); // execute state immediately
+    fsm->sii_offset = 0x0000;
+    ec_fsm_sii_read(&fsm->fsm_sii, slave, fsm->sii_offset, EC_FSM_SII_NODE);
+    ec_fsm_sii_exec(&fsm->fsm_sii); // execute state immediately
 }
 
 /*****************************************************************************/
@@ -1346,9 +1335,11 @@ void ec_fsm_slavescan_eeprom_data(ec_fsm_t *fsm /**< finite state machine */)
     uint16_t *cat_word, cat_type, cat_size;
 
     // execute SII state machine
-    fsm->sii_state(fsm);
+    ec_fsm_sii_exec(&fsm->fsm_sii);
 
-    if (fsm->sii_state == ec_fsm_error) {
+    if (ec_fsm_sii_running(&fsm->fsm_sii)) return;
+
+    if (!ec_fsm_sii_success(&fsm->fsm_sii)) {
         fsm->slave->error_flag = 1;
         fsm->slave_state = ec_fsm_error;
         EC_ERR("Failed to fetch EEPROM contents of slave %i.\n",
@@ -1356,22 +1347,23 @@ void ec_fsm_slavescan_eeprom_data(ec_fsm_t *fsm /**< finite state machine */)
         return;
     }
 
-    if (fsm->sii_state != ec_fsm_end) return;
-
     // 2 words fetched
 
     if (fsm->sii_offset + 2 <= slave->eeprom_size / 2) { // 2 words fit
-        memcpy(slave->eeprom_data + fsm->sii_offset * 2, fsm->sii_value, 4);
+        memcpy(slave->eeprom_data + fsm->sii_offset * 2,
+               fsm->fsm_sii.value, 4);
     }
     else { // copy the last word
-        memcpy(slave->eeprom_data + fsm->sii_offset * 2, fsm->sii_value, 2);
+        memcpy(slave->eeprom_data + fsm->sii_offset * 2,
+               fsm->fsm_sii.value, 2);
     }
 
     if (fsm->sii_offset + 2 < slave->eeprom_size / 2) {
         // fetch the next 2 words
         fsm->sii_offset += 2;
-        fsm->sii_state = ec_fsm_sii_start_reading;
-        fsm->sii_state(fsm); // execute state immediately
+        ec_fsm_sii_read(&fsm->fsm_sii, slave, fsm->sii_offset,
+                        EC_FSM_SII_NODE);
+        ec_fsm_sii_exec(&fsm->fsm_sii); // execute state immediately
         return;
     }
 
@@ -1790,220 +1782,6 @@ void ec_fsm_slaveconf_op(ec_fsm_t *fsm /**< finite state machine */)
     }
 
     fsm->slave_state = ec_fsm_end; // successful
-}
-
-/******************************************************************************
- *  SII state machine
- *****************************************************************************/
-
-/**
-   SII state: START READING.
-   Starts reading the slave information interface.
-*/
-
-void ec_fsm_sii_start_reading(ec_fsm_t *fsm /**< finite state machine */)
-{
-    ec_datagram_t *datagram = &fsm->datagram;
-
-    // initiate read operation
-    if (fsm->sii_mode) {
-        ec_datagram_npwr(datagram, fsm->slave->station_address, 0x502, 4);
-    }
-    else {
-        ec_datagram_apwr(datagram, fsm->slave->ring_position, 0x502, 4);
-    }
-
-    EC_WRITE_U8 (datagram->data,     0x00); // read-only access
-    EC_WRITE_U8 (datagram->data + 1, 0x01); // request read operation
-    EC_WRITE_U16(datagram->data + 2, fsm->sii_offset);
-    ec_master_queue_datagram(fsm->master, datagram);
-    fsm->sii_state = ec_fsm_sii_read_check;
-}
-
-/*****************************************************************************/
-
-/**
-   SII state: READ CHECK.
-   Checks, if the SII-read-datagram has been sent and issues a fetch datagram.
-*/
-
-void ec_fsm_sii_read_check(ec_fsm_t *fsm /**< finite state machine */)
-{
-    ec_datagram_t *datagram = &fsm->datagram;
-
-    if (datagram->state != EC_DATAGRAM_RECEIVED
-        || datagram->working_counter != 1) {
-        EC_ERR("SII: Reception of read datagram failed.\n");
-        fsm->sii_state = ec_fsm_error;
-        return;
-    }
-
-    fsm->sii_start = datagram->cycles_sent;
-    fsm->sii_check_once_more = 1;
-
-    // issue check/fetch datagram
-    if (fsm->sii_mode) {
-        ec_datagram_nprd(datagram, fsm->slave->station_address, 0x502, 10);
-    }
-    else {
-        ec_datagram_aprd(datagram, fsm->slave->ring_position, 0x502, 10);
-    }
-
-    ec_master_queue_datagram(fsm->master, datagram);
-    fsm->sii_state = ec_fsm_sii_read_fetch;
-}
-
-/*****************************************************************************/
-
-/**
-   SII state: READ FETCH.
-   Fetches the result of an SII-read datagram.
-*/
-
-void ec_fsm_sii_read_fetch(ec_fsm_t *fsm /**< finite state machine */)
-{
-    ec_datagram_t *datagram = &fsm->datagram;
-
-    if (datagram->state != EC_DATAGRAM_RECEIVED
-        || datagram->working_counter != 1) {
-        EC_ERR("SII: Reception of check/fetch datagram failed.\n");
-        fsm->sii_state = ec_fsm_error;
-        return;
-    }
-
-    // check "busy bit"
-    if (EC_READ_U8(datagram->data + 1) & 0x81) {
-        // still busy... timeout?
-        if (datagram->cycles_received
-            - fsm->sii_start >= (cycles_t) 10 * cpu_khz) {
-            if (!fsm->sii_check_once_more) {
-                EC_ERR("SII: Read timeout.\n");
-                fsm->sii_state = ec_fsm_error;
-#if 0
-                EC_DBG("SII busy: %02X %02X %02X %02X\n",
-                       EC_READ_U8(datagram->data + 0),
-                       EC_READ_U8(datagram->data + 1),
-                       EC_READ_U8(datagram->data + 2),
-                       EC_READ_U8(datagram->data + 3));
-#endif
-                return;
-            }
-            fsm->sii_check_once_more = 0;
-        }
-
-        // issue check/fetch datagram again
-        if (fsm->sii_mode) {
-            ec_datagram_nprd(datagram, fsm->slave->station_address, 0x502, 10);
-        }
-        else {
-            ec_datagram_aprd(datagram, fsm->slave->ring_position, 0x502, 10);
-        }
-        ec_master_queue_datagram(fsm->master, datagram);
-        return;
-    }
-
-#if 0
-    EC_DBG("SII rec: %02X %02X %02X %02X - %02X %02X %02X %02X\n",
-           EC_READ_U8(datagram->data + 0), EC_READ_U8(datagram->data + 1),
-           EC_READ_U8(datagram->data + 2), EC_READ_U8(datagram->data + 3),
-           EC_READ_U8(datagram->data + 6), EC_READ_U8(datagram->data + 7),
-           EC_READ_U8(datagram->data + 8), EC_READ_U8(datagram->data + 9));
-#endif
-
-    // SII value received.
-    memcpy(fsm->sii_value, datagram->data + 6, 4);
-    fsm->sii_state = ec_fsm_end;
-}
-
-/*****************************************************************************/
-
-/**
-   SII state: START WRITING.
-   Starts reading the slave information interface.
-*/
-
-void ec_fsm_sii_start_writing(ec_fsm_t *fsm /**< finite state machine */)
-{
-    ec_datagram_t *datagram = &fsm->datagram;
-
-    // initiate write operation
-    ec_datagram_npwr(datagram, fsm->slave->station_address, 0x502, 8);
-    EC_WRITE_U8 (datagram->data,     0x01); // enable write access
-    EC_WRITE_U8 (datagram->data + 1, 0x02); // request write operation
-    EC_WRITE_U32(datagram->data + 2, fsm->sii_offset);
-    memcpy(datagram->data + 6, fsm->sii_value, 2);
-    ec_master_queue_datagram(fsm->master, datagram);
-    fsm->sii_state = ec_fsm_sii_write_check;
-}
-
-/*****************************************************************************/
-
-/**
-   SII state: WRITE CHECK.
-*/
-
-void ec_fsm_sii_write_check(ec_fsm_t *fsm /**< finite state machine */)
-{
-    ec_datagram_t *datagram = &fsm->datagram;
-
-    if (datagram->state != EC_DATAGRAM_RECEIVED
-        || datagram->working_counter != 1) {
-        EC_ERR("SII: Reception of write datagram failed.\n");
-        fsm->sii_state = ec_fsm_error;
-        return;
-    }
-
-    fsm->sii_start = datagram->cycles_sent;
-    fsm->sii_check_once_more = 1;
-
-    // issue check/fetch datagram
-    ec_datagram_nprd(datagram, fsm->slave->station_address, 0x502, 2);
-    ec_master_queue_datagram(fsm->master, datagram);
-    fsm->sii_state = ec_fsm_sii_write_check2;
-}
-
-/*****************************************************************************/
-
-/**
-   SII state: WRITE CHECK 2.
-*/
-
-void ec_fsm_sii_write_check2(ec_fsm_t *fsm /**< finite state machine */)
-{
-    ec_datagram_t *datagram = &fsm->datagram;
-
-    if (datagram->state != EC_DATAGRAM_RECEIVED
-        || datagram->working_counter != 1) {
-        EC_ERR("SII: Reception of write check datagram failed.\n");
-        fsm->sii_state = ec_fsm_error;
-        return;
-    }
-
-    if (EC_READ_U8(datagram->data + 1) & 0x82) {
-        // still busy... timeout?
-        if (datagram->cycles_received
-            - fsm->sii_start >= (cycles_t) 10 * cpu_khz) {
-            if (!fsm->sii_check_once_more) {
-                EC_ERR("SII: Write timeout.\n");
-                fsm->sii_state = ec_fsm_error;
-                return;
-            }
-            fsm->sii_check_once_more = 0;
-        }
-
-        // issue check/fetch datagram again
-        ec_master_queue_datagram(fsm->master, datagram);
-        return;
-    }
-
-    if (EC_READ_U8(datagram->data + 1) & 0x40) {
-        EC_ERR("SII: Write operation failed!\n");
-        fsm->sii_state = ec_fsm_error;
-        return;
-    }
-
-    // success
-    fsm->sii_state = ec_fsm_end;
 }
 
 /******************************************************************************
