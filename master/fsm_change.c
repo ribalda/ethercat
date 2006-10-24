@@ -167,10 +167,11 @@ void ec_fsm_change_check(ec_fsm_change_t *fsm /**< finite state machine */)
 
     if (datagram->working_counter != 1) {
         if (datagram->jiffies_received - fsm->jiffies_start >= 3 * HZ) {
+            char state_str[EC_STATE_STRING_SIZE];
+            ec_state_string(fsm->requested_state, state_str);
             fsm->state = ec_fsm_change_error;
-            EC_ERR("Failed to set state 0x%02X on slave %i: Slave did not"
-                   " respond.\n", fsm->requested_state,
-                   fsm->slave->ring_position);
+            EC_ERR("Failed to set state %s on slave %i: Slave did not"
+                   " respond.\n", state_str, fsm->slave->ring_position);
             return;
         }
 
@@ -223,9 +224,11 @@ void ec_fsm_change_status(ec_fsm_change_t *fsm /**< finite state machine */)
 
     if (slave->current_state & EC_SLAVE_STATE_ACK_ERR) {
         // state change error
-        EC_ERR("Failed to set state 0x%02X - Slave %i refused state change"
-               " (code 0x%02X)!\n", fsm->requested_state, slave->ring_position,
-               slave->current_state);
+        char req_state[EC_STATE_STRING_SIZE], cur_state[EC_STATE_STRING_SIZE];
+        ec_state_string(fsm->requested_state, req_state);
+        ec_state_string(slave->current_state, cur_state);
+        EC_ERR("Failed to set %s state, slave %i refused state change (%s).\n",
+               req_state, slave->ring_position, cur_state);
         // fetch AL status error code
         ec_datagram_nprd(datagram, slave->station_address, 0x0134, 2);
         ec_master_queue_datagram(fsm->slave->master, datagram);
@@ -236,9 +239,11 @@ void ec_fsm_change_status(ec_fsm_change_t *fsm /**< finite state machine */)
     if (datagram->jiffies_received
         - fsm->jiffies_start >= 100 * HZ / 1000) { // 100ms
         // timeout while checking
+        char state_str[EC_STATE_STRING_SIZE];
+        ec_state_string(fsm->requested_state, state_str);
         fsm->state = ec_fsm_change_error;
-        EC_ERR("Timeout while setting state 0x%02X on slave %i.\n",
-               fsm->requested_state, slave->ring_position);
+        EC_ERR("Timeout while setting state %s on slave %i.\n",
+               state_str, slave->ring_position);
         return;
     }
 
@@ -376,19 +381,23 @@ void ec_fsm_change_check_ack(ec_fsm_change_t *fsm /**< finite state machine */)
     slave->current_state = EC_READ_U8(datagram->data);
 
     if (!(slave->current_state & EC_SLAVE_STATE_ACK_ERR)) {
+        char state_str[EC_STATE_STRING_SIZE];
+        ec_state_string(slave->current_state, state_str);
         fsm->state = ec_fsm_change_error;
-        EC_INFO("Acknowledged state 0x%02X on slave %i.\n",
-                slave->current_state, slave->ring_position);
+        EC_INFO("Acknowledged state %s on slave %i.\n",
+                state_str, slave->ring_position);
         return;
     }
 
     if (datagram->jiffies_received
         - fsm->jiffies_start >= 100 * HZ / 1000) { // 100ms
+        char state_str[EC_STATE_STRING_SIZE];
+        ec_state_string(fsm->requested_state, state_str);
         // timeout while checking
         slave->current_state = EC_SLAVE_STATE_UNKNOWN;
         fsm->state = ec_fsm_change_error;
-        EC_ERR("Timeout while acknowledging state 0x%02X on slave %i.\n",
-               fsm->requested_state, slave->ring_position);
+        EC_ERR("Timeout while acknowledging state %s on slave %i.\n",
+               state_str, slave->ring_position);
         return;
     }
 
