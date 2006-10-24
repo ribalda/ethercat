@@ -44,7 +44,6 @@
 #include <linux/list.h>
 #include <linux/sysfs.h>
 #include <linux/timer.h>
-#include <linux/wait.h>
 #include <asm/atomic.h>
 #include <asm/semaphore.h>
 
@@ -139,8 +138,12 @@ struct ec_master
 
     uint8_t eeprom_write_enable; /**< allow write operations to EEPROMs */
 
-    struct list_head sdo_requests; /**< list of SDO read/write requests */
-    wait_queue_head_t sdo_wait_queue; /**< wait queue for SDO access */
+    ec_sdo_request_t *sdo_request; /**< pointer to the current SDO request */
+    unsigned int sdo_seq_user; /**< sequence number for user space */
+    unsigned int sdo_seq_master; /**< sequence number for master */
+    struct semaphore sdo_sem; /**< SDO semaphore */
+    struct timer_list sdo_timer; /**< timer for polling sdo processing */
+    struct completion sdo_complete; /**< SDO request completion object */
 };
 
 /*****************************************************************************/

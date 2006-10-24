@@ -295,18 +295,31 @@ ssize_t ec_sdo_entry_read_value(ec_sdo_entry_t *entry, /**< SDO entry */
     off_t off = 0;
     ec_sdo_request_t request;
 
-    ec_sdo_request_init_read(&request, sdo, entry);
-    list_add_tail(&request.queue, &master->sdo_requests);
-    if (wait_event_interruptible(master->sdo_wait_queue,
-                                 request.return_code)) {
+    if (down_interruptible(&master->sdo_sem)) {
         // interrupted by signal
-        list_del_init(&request.queue);
+        return -ERESTARTSYS;
     }
+
+    ec_sdo_request_init_read(&request, sdo, entry);
+
+    // this is necessary, because the completion object
+    // is completed by the ec_master_flush_sdo_requests() function.
+    INIT_COMPLETION(master->sdo_complete);
+
+    master->sdo_request = &request;
+    master->sdo_seq_user++;
+    master->sdo_timer.expires = jiffies + 10;
+    add_timer(&master->sdo_timer);
+
+    wait_for_completion(&master->sdo_complete);
+
+    master->sdo_request = NULL;
+    up(&master->sdo_sem);
 
     if (request.return_code == 1 && request.data) {
         off += ec_sdo_entry_format_data(entry, &request, buffer);
     }
-    else if (request.return_code < 0) {
+    else {
         off = -EINVAL;
     }
 
