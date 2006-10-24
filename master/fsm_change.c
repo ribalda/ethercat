@@ -236,8 +236,7 @@ void ec_fsm_change_status(ec_fsm_change_t *fsm /**< finite state machine */)
         return;
     }
 
-    if (datagram->jiffies_received
-        - fsm->jiffies_start >= 100 * HZ / 1000) { // 100ms
+    if (datagram->jiffies_received - fsm->jiffies_start >= HZ) { // 1s
         // timeout while checking
         char state_str[EC_STATE_STRING_SIZE];
         ec_state_string(fsm->requested_state, state_str);
