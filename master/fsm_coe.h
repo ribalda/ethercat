@@ -33,13 +33,13 @@
 
 /**
    \file
-   EtherCAT finite state machines.
+   EtherCAT CoE state machines.
 */
 
 /*****************************************************************************/
 
-#ifndef __EC_STATES__
-#define __EC_STATES__
+#ifndef __EC_FSM_COE__
+#define __EC_FSM_COE__
 
 #include "globals.h"
 #include "../include/ecrt.h"
@@ -47,51 +47,39 @@
 #include "slave.h"
 #include "canopen.h"
 
-#include "fsm_sii.h"
-#include "fsm_change.h"
-#include "fsm_coe.h"
-
 /*****************************************************************************/
 
-typedef struct ec_fsm ec_fsm_t; /**< \see ec_fsm */
+typedef struct ec_fsm_coe ec_fsm_coe_t; /**< \see ec_fsm_coe */
 
 /**
    Finite state machine of an EtherCAT master.
 */
 
-struct ec_fsm
+struct ec_fsm_coe
 {
-    ec_master_t *master; /**< master the FSM runs on */
     ec_slave_t *slave; /**< slave the FSM runs on */
-    ec_datagram_t datagram; /**< datagram used in the state machine */
+    ec_datagram_t *datagram; /**< datagram used in the state machine */
 
-    void (*master_state)(ec_fsm_t *); /**< master state function */
-    unsigned int master_slaves_responding; /**< number of responding slaves */
-    ec_slave_state_t master_slave_states; /**< states of responding slaves */
-    unsigned int master_validation; /**< non-zero, if validation to do */
-    uint16_t sii_offset; /**< current offset for SII access */
-    ec_sdo_request_t *sdo_request;
-
-    void (*slave_state)(ec_fsm_t *); /**< slave state function */
-    ec_sdo_data_t *sdodata; /**< SDO configuration data */
-
-    ec_fsm_sii_t fsm_sii; /**< SII state machine */
-    ec_fsm_change_t fsm_change; /**< State change state machine */
-    ec_fsm_coe_t fsm_coe; /**< CoE state machine */
+    void (*state)(ec_fsm_coe_t *); /**< CoE state function */
+    ec_sdo_data_t *sdodata; /**< input/output: SDO data object */
+    cycles_t cycles_start; /**< CoE timestamp */
+    ec_sdo_t *sdo; /**< current SDO */
+    uint8_t subindex; /**< current subindex */
+    ec_sdo_request_t *request; /**< SDO request */
+    uint8_t toggle; /**< toggle bit for segment commands */
 };
 
 /*****************************************************************************/
 
-int ec_fsm_init(ec_fsm_t *, ec_master_t *);
-void ec_fsm_clear(ec_fsm_t *);
-void ec_fsm_reset(ec_fsm_t *);
-int ec_fsm_exec(ec_fsm_t *);
+void ec_fsm_coe_init(ec_fsm_coe_t *, ec_datagram_t *);
+void ec_fsm_coe_clear(ec_fsm_coe_t *);
 
-void ec_fsm_startup(ec_fsm_t *);
-int ec_fsm_startup_success(ec_fsm_t *);
+void ec_fsm_coe_dictionary(ec_fsm_coe_t *, ec_slave_t *);
+void ec_fsm_coe_download(ec_fsm_coe_t *, ec_slave_t *, ec_sdo_data_t *);
+void ec_fsm_coe_upload(ec_fsm_coe_t *, ec_slave_t *, ec_sdo_request_t *);
 
-void ec_fsm_configuration(ec_fsm_t *);
-int ec_fsm_configuration_success(ec_fsm_t *);
+int ec_fsm_coe_exec(ec_fsm_coe_t *);
+int ec_fsm_coe_success(ec_fsm_coe_t *);
 
 /*****************************************************************************/
 

@@ -42,6 +42,7 @@ EXTRA_DIST = \
 	ethernet.c ethernet.h \
 	fsm_sii.c fsm_sii.h \
 	fsm_change.c fsm_change.h \
+	fsm_coe.c fsm_coe.h \
 	fsm.c fsm.h \
 	globals.h \
 	mailbox.c mailbox.h \
