@@ -37,9 +37,6 @@ DIST_SUBDIRS = master devices script include examples
 
 EXTRA_DIST = documentation/ethercat_doc.pdf
 
-install-data-local:
-	$(DEPMOD) -b "$(DESTDIR)" $(LINUX_KERNEL_VERSION)
-
 mydist:
 	@SVNREV=`svnversion $(srcdir)` && \
 	  $(MAKE) dist-bzip2 distdir=$(PACKAGE)-$(VERSION)-trunk-r$${SVNREV}

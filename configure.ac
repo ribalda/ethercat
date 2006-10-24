@@ -14,32 +14,34 @@ AC_CONFIG_SRCDIR([config.h.in])
 # Linux sources
 #------------------------------------------------------------------------------
 
-AC_ARG_WITH([linux],
+AC_ARG_WITH([linux-dir],
     AC_HELP_STRING(
-        [--with-linux=<version>],
-        [Linux kernel version @<:@running kernel@:>@]
+        [--with-linux-dir=<DIR>],
+        [Linux kernel sources @<:@running kernel@:>@]
     ),
-    [version=[$withval]],
-    [version=[`uname -r`]]
+    [
+        sourcedir=[$withval]
+    ],
+    [
+        version=[`uname -r`]
+        modulesdir=/lib/modules/${version}
+        if test \! -d ${modulesdir} || test \! -d ${modulesdir}/build; then
+           echo
+           AC_MSG_ERROR([Invalid modules directory ${modulesdir}])
+        fi
+        sourcedir=`cd ${modulesdir}/build && pwd -P`
+    ]
 )
 
-AC_MSG_CHECKING([for Linux kernel])
-modulesdir=/lib/modules/${version}
-if test \! -d ${modulesdir} || test \! -d ${modulesdir}/build; then
+AC_MSG_CHECKING([for Linux kernel sources])
+
+if test \! -r ${sourcedir}/.config; then
    echo
-   AC_MSG_ERROR([Invalid modules directory ${modulesdir}])
-fi
-sourcedir=`cd ${modulesdir}/build && pwd -P`
-if test \! -r ${sourcedir}/Makefile; then
-   echo
-   AC_MSG_ERROR([No Linux kernel sources in $sourcedir])
+   AC_MSG_ERROR([No configured Linux kernel sources in $sourcedir])
 fi
 
-AC_SUBST(LINUX_KERNEL_VERSION,[$version])
 AC_SUBST(LINUX_SOURCE_DIR,[$sourcedir])
-AC_SUBST(LINUX_MODULES_DIR,[$modulesdir])
-
-AC_MSG_RESULT($LINUX_KERNEL_VERSION)
+AC_MSG_RESULT($LINUX_SOURCE_DIR)
 
 #------------------------------------------------------------------------------
 # Depmod
@@ -56,19 +58,22 @@ fi
 #------------------------------------------------------------------------------
 
 AC_ARG_ENABLE([debug-if],
-		AS_HELP_STRING([--enable-dbg-if],
-						[Create a debug interface for each master @<:@NO@:>@]),
-		[case "${enableval}" in
-			  yes) dbg=1
-				   AC_DEFINE([EC_DBG_IF], [1], [Debug interfaces enabled])
-				   ;;
-			  no)  dbg=0
-				   ;;
-			  *)   AC_MSG_ERROR([Invalid value for --enable-dbg-if])
-				   ;;
-		esac],
-		[dbg=0]
+    AS_HELP_STRING([--enable-dbg-if],
+                   [Create a debug interface for each master @<:@NO@:>@]),
+    [
+        case "${enableval}" in
+            yes) dbg=1
+                AC_DEFINE([EC_DBG_IF], [1], [Debug interfaces enabled])
+                ;;
+            no) dbg=0
+                ;;
+            *) AC_MSG_ERROR([Invalid value for --enable-dbg-if])
+                ;;
+        esac
+    ],
+    [dbg=0]
 )
+
 AM_CONDITIONAL(EC_DBG_IF, test "x$dbg" = x1)
 AC_SUBST([EC_DBG_IF],${dbg})
 
