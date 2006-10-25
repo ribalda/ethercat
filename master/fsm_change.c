@@ -388,12 +388,10 @@ void ec_fsm_change_check_ack(ec_fsm_change_t *fsm /**< finite state machine */)
         return;
     }
 
-    if (datagram->jiffies_received
-        - fsm->jiffies_start >= 100 * HZ / 1000) { // 100ms
-        char state_str[EC_STATE_STRING_SIZE];
-        ec_state_string(fsm->requested_state, state_str);
+    if (datagram->jiffies_received - fsm->jiffies_start >= HZ) { // 1s
         // timeout while checking
-        slave->current_state = EC_SLAVE_STATE_UNKNOWN;
+        char state_str[EC_STATE_STRING_SIZE];
+        ec_state_string(slave->current_state, state_str);
         fsm->state = ec_fsm_change_error;
         EC_ERR("Timeout while acknowledging state %s on slave %i.\n",
                state_str, slave->ring_position);
