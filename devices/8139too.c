@@ -155,11 +155,8 @@
 
 /* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
+#include "../globals.h"
 #include "ecdev.h"
-#include "../master/globals.h"
-
-#define LIT(X) #X
-#define STR(X) LIT(X)
 
 #define RTL8139_DRIVER_NAME DRV_NAME \
                             " EtherCAT-capable Fast Ethernet driver " \

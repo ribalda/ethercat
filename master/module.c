@@ -58,6 +58,8 @@ static int ec_eoeif_count = 0; /**< parameter value, number of EoE interf. */
 static struct list_head ec_masters; /**< list of masters */
 static dev_t device_number;
 
+char *ec_master_version_str = EC_MASTER_VERSION;
+
 /*****************************************************************************/
 
 /** \cond */

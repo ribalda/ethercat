@@ -765,7 +765,7 @@ ssize_t ec_master_info(ec_master_t *master, /**< EtherCAT master */
     ec_eoe_t *eoe;
     uint32_t cur, sum, min, max, pos, i;
 
-    off += sprintf(buffer + off, "\nVersion: " EC_MASTER_VERSION);
+    off += sprintf(buffer + off, "\nVersion: %s", ec_master_version_str);
     off += sprintf(buffer + off, "\nMode: ");
     switch (master->mode) {
         case EC_MASTER_MODE_ORPHANED:
