@@ -557,65 +557,66 @@ void ec_fsm_master_action_process_states(ec_fsm_t *fsm
     // Check, if EoE processing has to be started
     ec_master_eoe_start(master);
 
-    // Check for a pending SDO request
-    if (master->sdo_seq_master != master->sdo_seq_user) {
-        if (master->debug_level)
-            EC_DBG("Processing SDO request...\n");
-        slave = master->sdo_request->sdo->slave;
-        if (slave->current_state == EC_SLAVE_STATE_INIT
-            || !slave->online
-            || slave->error_flag) {
-            EC_ERR("Failed to process SDO request, slave %i not ready.\n",
-                   slave->ring_position);
-            master->sdo_request->return_code = -1;
-            master->sdo_seq_master++;
+    if (master->mode == EC_MASTER_MODE_IDLE) {
+
+        // Check for a pending SDO request
+        if (master->sdo_seq_master != master->sdo_seq_user) {
+            if (master->debug_level)
+                EC_DBG("Processing SDO request...\n");
+            slave = master->sdo_request->sdo->slave;
+            if (slave->current_state == EC_SLAVE_STATE_INIT
+                || !slave->online
+                || slave->error_flag) {
+                EC_ERR("Failed to process SDO request, slave %i not ready.\n",
+                       slave->ring_position);
+                master->sdo_request->return_code = -1;
+                master->sdo_seq_master++;
+            }
+            else {
+                // start uploading SDO
+                fsm->slave = slave;
+                fsm->master_state = ec_fsm_master_sdo_request;
+                fsm->sdo_request = master->sdo_request;
+                ec_fsm_coe_upload(&fsm->fsm_coe, slave, fsm->sdo_request);
+                ec_fsm_coe_exec(&fsm->fsm_coe); // execute immediately
+                return;
+            }
         }
-        else {
-            // start uploading SDO
+
+        // check, if slaves have an SDO dictionary to read out.
+        list_for_each_entry(slave, &master->slaves, list) {
+            if (!(slave->sii_mailbox_protocols & EC_MBOX_COE)
+                || slave->sdo_dictionary_fetched
+                || slave->current_state == EC_SLAVE_STATE_INIT
+                || jiffies - slave->jiffies_preop < EC_WAIT_SDO_DICT * HZ
+                || !slave->online
+                || slave->error_flag) continue;
+
+            if (master->debug_level) {
+                EC_DBG("Fetching SDO dictionary from slave %i.\n",
+                       slave->ring_position);
+            }
+
+            if (kobject_add(&slave->sdo_kobj)) {
+                EC_ERR("Failed to add SDO kobj of slave %i.\n",
+                       slave->ring_position);
+                slave->error_flag = 1;
+                fsm->master_state = ec_fsm_master_start;
+                fsm->master_state(fsm); // execute immediately
+                return;
+            }
+
+            slave->sdo_dictionary_fetched = 1;
+
+            // start fetching SDO dictionary
             fsm->slave = slave;
-            fsm->master_state = ec_fsm_master_sdo_request;
-            fsm->sdo_request = master->sdo_request;
-            ec_fsm_coe_upload(&fsm->fsm_coe, slave, fsm->sdo_request);
+            fsm->master_state = ec_fsm_master_sdodict;
+            ec_fsm_coe_dictionary(&fsm->fsm_coe, slave);
             ec_fsm_coe_exec(&fsm->fsm_coe); // execute immediately
             return;
         }
-    }
 
-    // check, if slaves have an SDO dictionary to read out.
-    list_for_each_entry(slave, &master->slaves, list) {
-        if (!(slave->sii_mailbox_protocols & EC_MBOX_COE)
-            || slave->sdo_dictionary_fetched
-            || slave->current_state == EC_SLAVE_STATE_INIT
-            || jiffies - slave->jiffies_preop < EC_WAIT_SDO_DICT * HZ
-            || !slave->online
-            || slave->error_flag) continue;
-
-        if (master->debug_level) {
-            EC_DBG("Fetching SDO dictionary from slave %i.\n",
-                   slave->ring_position);
-        }
-
-        if (kobject_add(&slave->sdo_kobj)) {
-            EC_ERR("Failed to add SDO kobj of slave %i.\n",
-                   slave->ring_position);
-            slave->error_flag = 1;
-            fsm->master_state = ec_fsm_master_start;
-            fsm->master_state(fsm); // execute immediately
-            return;
-        }
-
-        slave->sdo_dictionary_fetched = 1;
-
-        // start fetching SDO dictionary
-        fsm->slave = slave;
-        fsm->master_state = ec_fsm_master_sdodict;
-        ec_fsm_coe_dictionary(&fsm->fsm_coe, slave);
-        ec_fsm_coe_exec(&fsm->fsm_coe); // execute immediately
-        return;
-    }
-
-    if (master->mode == EC_MASTER_MODE_IDLE) {
-        // nothing to configure. check for pending EEPROM write operations.
+        // check for pending EEPROM write operations.
         list_for_each_entry(slave, &master->slaves, list) {
             if (!slave->new_eeprom_data) continue;
 
