@@ -56,13 +56,8 @@ void ec_fsm_master_scan_slaves(ec_fsm_t *);
 void ec_fsm_master_write_eeprom(ec_fsm_t *);
 void ec_fsm_master_sdodict(ec_fsm_t *);
 void ec_fsm_master_sdo_request(ec_fsm_t *);
-
-void ec_fsm_startup_start(ec_fsm_t *);
-void ec_fsm_startup_broadcast(ec_fsm_t *);
-void ec_fsm_startup_scan(ec_fsm_t *);
-
-void ec_fsm_configuration_start(ec_fsm_t *);
-void ec_fsm_configuration_conf(ec_fsm_t *);
+void ec_fsm_master_end(ec_fsm_t *);
+void ec_fsm_master_error(ec_fsm_t *);
 
 void ec_fsm_slavescan_start(ec_fsm_t *);
 void ec_fsm_slavescan_address(ec_fsm_t *);
@@ -80,8 +75,8 @@ void ec_fsm_slaveconf_sdoconf(ec_fsm_t *);
 void ec_fsm_slaveconf_saveop(ec_fsm_t *);
 void ec_fsm_slaveconf_op(ec_fsm_t *);
 
-void ec_fsm_end(ec_fsm_t *);
-void ec_fsm_error(ec_fsm_t *);
+void ec_fsm_slave_end(ec_fsm_t *);
+void ec_fsm_slave_error(ec_fsm_t *);
 
 /*****************************************************************************/
 
@@ -132,19 +127,6 @@ void ec_fsm_clear(ec_fsm_t *fsm /**< finite state machine */)
 /*****************************************************************************/
 
 /**
-   Resets the state machine.
-*/
-
-void ec_fsm_reset(ec_fsm_t *fsm /**< finite state machine */)
-{
-    fsm->master_state = ec_fsm_master_start;
-    fsm->master_slaves_responding = 0;
-    fsm->master_slave_states = EC_SLAVE_STATE_UNKNOWN;
-}
-
-/*****************************************************************************/
-
-/**
    Executes the current state of the state machine.
    \return false, if state machine has terminated
 */
@@ -153,232 +135,23 @@ int ec_fsm_exec(ec_fsm_t *fsm /**< finite state machine */)
 {
     fsm->master_state(fsm);
 
-    return fsm->master_state != ec_fsm_end &&
-        fsm->master_state != ec_fsm_error;
+    return fsm->master_state != ec_fsm_master_end
+        && fsm->master_state != ec_fsm_master_error;
 }
 
 /*****************************************************************************/
 
 /**
-   Initializes the master startup state machine.
+   \return true, if the master state machine terminated gracefully
 */
 
-void ec_fsm_startup(ec_fsm_t *fsm)
+int ec_fsm_success(ec_fsm_t *fsm /**< finite state machine */)
 {
-    fsm->master_state = ec_fsm_startup_start;
-}
-
-/*****************************************************************************/
-
-/**
-   Returns, if the master startup state machine terminated with success.
-   \return non-zero if successful.
-*/
-
-int ec_fsm_startup_success(ec_fsm_t *fsm /**< Finite state machine */)
-{
-    return fsm->master_state == ec_fsm_end;
-}
-
-/*****************************************************************************/
-
-/**
-   Initializes the master configuration state machine.
-*/
-
-void ec_fsm_configuration(ec_fsm_t *fsm)
-{
-    fsm->master_state = ec_fsm_configuration_start;
-}
-
-/*****************************************************************************/
-
-/**
-   Returns, if the master confuguration state machine terminated with success.
-   \return non-zero if successful.
-*/
-
-int ec_fsm_configuration_success(ec_fsm_t *fsm /**< Finite state machine */)
-{
-    return fsm->master_state == ec_fsm_end;
+    return fsm->master_state == ec_fsm_master_end;
 }
 
 /******************************************************************************
- *  master startup state machine
- *****************************************************************************/
-
-/**
-   Master state: START.
-   Starts with getting slave count and slave states.
-*/
-
-void ec_fsm_startup_start(ec_fsm_t *fsm)
-{
-    ec_datagram_brd(&fsm->datagram, 0x0130, 2);
-    ec_master_queue_datagram(fsm->master, &fsm->datagram);
-    fsm->master_state = ec_fsm_startup_broadcast;
-}
-
-/*****************************************************************************/
-
-/**
-   Master state: BROADCAST.
-   Processes the broadcast read slave count and slaves states.
-*/
-
-void ec_fsm_startup_broadcast(ec_fsm_t *fsm /**< finite state machine */)
-{
-    ec_datagram_t *datagram = &fsm->datagram;
-    unsigned int i;
-    ec_slave_t *slave;
-    ec_master_t *master = fsm->master;
-
-    if (datagram->state != EC_DATAGRAM_RECEIVED) {
-        EC_ERR("Failed to receive broadcast datagram.\n");
-        fsm->master_state = ec_fsm_error;
-        return;
-    }
-
-    EC_INFO("Scanning bus.\n");
-
-    ec_master_clear_slaves(master);
-
-    master->slave_count = datagram->working_counter;
-
-    if (!master->slave_count) {
-        // no slaves present -> finish state machine.
-        fsm->master_state = ec_fsm_end;
-        return;
-    }
-
-    // init slaves
-    for (i = 0; i < master->slave_count; i++) {
-        if (!(slave = (ec_slave_t *) kmalloc(sizeof(ec_slave_t),
-                                             GFP_KERNEL))) {
-            EC_ERR("Failed to allocate slave %i!\n", i);
-            fsm->master_state = ec_fsm_error;
-            return;
-        }
-
-        if (ec_slave_init(slave, master, i, i + 1)) {
-            fsm->master_state = ec_fsm_error;
-            return;
-        }
-
-        if (kobject_add(&slave->kobj)) {
-            EC_ERR("Failed to add kobject.\n");
-            kobject_put(&slave->kobj); // free
-            fsm->master_state = ec_fsm_error;
-            return;
-        }
-
-        list_add_tail(&slave->list, &master->slaves);
-    }
-
-    // begin scanning of slaves
-    fsm->slave = list_entry(master->slaves.next, ec_slave_t, list);
-    fsm->slave_state = ec_fsm_slavescan_start;
-    fsm->master_state = ec_fsm_startup_scan;
-    fsm->master_state(fsm); // execute immediately
-    return;
-}
-
-/*****************************************************************************/
-
-/**
-   Master state: SCAN.
-   Executes the sub-statemachine for the scanning of a slave.
-*/
-
-void ec_fsm_startup_scan(ec_fsm_t *fsm /**< finite state machine */)
-{
-    ec_master_t *master = fsm->master;
-    ec_slave_t *slave = fsm->slave;
-
-    fsm->slave_state(fsm); // execute slave state machine
-
-    if (fsm->slave_state == ec_fsm_error) {
-        EC_ERR("Slave scanning failed.\n");
-        fsm->master_state = ec_fsm_error;
-        return;
-    }
-
-    if (fsm->slave_state != ec_fsm_end) return;
-
-    // another slave to scan?
-    if (slave->list.next != &master->slaves) {
-        fsm->slave = list_entry(fsm->slave->list.next, ec_slave_t, list);
-        fsm->slave_state = ec_fsm_slavescan_start;
-        fsm->slave_state(fsm); // execute immediately
-        return;
-    }
-
-    EC_INFO("Bus scanning completed.\n");
-
-    ec_master_calc_addressing(master);
-
-    fsm->master_state = ec_fsm_end;
-}
-
-/******************************************************************************
- *  master configuration state machine
- *****************************************************************************/
-
-/**
-   Master configuration state machine: START.
-*/
-
-void ec_fsm_configuration_start(ec_fsm_t *fsm /**< finite state machine */)
-{
-    ec_master_t *master = fsm->master;
-
-    if (list_empty(&master->slaves)) {
-        fsm->master_state = ec_fsm_end;
-        return;
-    }
-
-    // begin configuring slaves
-    fsm->slave = list_entry(master->slaves.next, ec_slave_t, list);
-    fsm->slave_state = ec_fsm_slaveconf_init;
-    ec_fsm_change(&fsm->fsm_change, fsm->slave, EC_SLAVE_STATE_INIT);
-    fsm->master_state = ec_fsm_configuration_conf;
-    fsm->master_state(fsm); // execute immediately
-}
-
-/*****************************************************************************/
-
-/**
-   Master state: CONF.
-*/
-
-void ec_fsm_configuration_conf(ec_fsm_t *fsm /**< finite state machine */)
-{
-    ec_master_t *master = fsm->master;
-    ec_slave_t *slave = fsm->slave;
-
-    fsm->slave_state(fsm); // execute slave's state machine
-
-    if (fsm->slave_state == ec_fsm_error) {
-        fsm->master_state = ec_fsm_error;
-        return;
-    }
-
-    if (fsm->slave_state != ec_fsm_end) return;
-
-    // another slave to configure?
-    if (slave->list.next != &master->slaves) {
-        fsm->slave = list_entry(fsm->slave->list.next, ec_slave_t, list);
-        fsm->slave_state = ec_fsm_slaveconf_init;
-        ec_fsm_change(&fsm->fsm_change, fsm->slave, EC_SLAVE_STATE_INIT);
-        fsm->master_state(fsm); // execute immediately
-        return;
-    }
-
-    fsm->master_state = ec_fsm_end;
-}
-
-/******************************************************************************
- *  operation / idle state machine
+ *  operation/idle state machine
  *****************************************************************************/
 
 /**
@@ -414,8 +187,10 @@ void ec_fsm_master_broadcast(ec_fsm_t *fsm /**< finite state machine */)
                 slave->online = 0;
             }
         }
-        fsm->master_state = ec_fsm_master_start;
-        fsm->master_state(fsm); // execute immediately
+        else {
+            EC_ERR("Failed to receive broadcast datagram.\n");
+        }
+        fsm->master_state = ec_fsm_master_error;
         return;
     }
 
@@ -449,7 +224,6 @@ void ec_fsm_master_broadcast(ec_fsm_t *fsm /**< finite state machine */)
 
     // topology change in idle mode: clear all slaves and scan the bus
     if (topology_change && master->mode == EC_MASTER_MODE_IDLE) {
-        EC_INFO("Scanning bus.\n");
 
         ec_master_eoe_stop(master);
         ec_master_clear_slaves(master);
@@ -458,8 +232,7 @@ void ec_fsm_master_broadcast(ec_fsm_t *fsm /**< finite state machine */)
 
         if (!master->slave_count) {
             // no slaves present -> finish state machine.
-            fsm->master_state = ec_fsm_master_start;
-            fsm->master_state(fsm); // execute immediately
+            fsm->master_state = ec_fsm_master_end;
             return;
         }
 
@@ -469,16 +242,14 @@ void ec_fsm_master_broadcast(ec_fsm_t *fsm /**< finite state machine */)
                                                  GFP_ATOMIC))) {
                 EC_ERR("Failed to allocate slave %i!\n", i);
                 ec_master_clear_slaves(master);
-                fsm->master_state = ec_fsm_master_start;
-                fsm->master_state(fsm); // execute immediately
+                fsm->master_state = ec_fsm_master_error;
                 return;
             }
 
             if (ec_slave_init(slave, master, i, i + 1)) {
                 // freeing of "slave" already done
                 ec_master_clear_slaves(master);
-                fsm->master_state = ec_fsm_master_start;
-                fsm->master_state(fsm); // execute immediately
+                fsm->master_state = ec_fsm_master_error;
                 return;
             }
 
@@ -486,13 +257,14 @@ void ec_fsm_master_broadcast(ec_fsm_t *fsm /**< finite state machine */)
                 EC_ERR("Failed to add kobject.\n");
                 kobject_put(&slave->kobj); // free
                 ec_master_clear_slaves(master);
-                fsm->master_state = ec_fsm_master_start;
-                fsm->master_state(fsm); // execute immediately
+                fsm->master_state = ec_fsm_master_error;
                 return;
             }
 
             list_add_tail(&slave->list, &master->slaves);
         }
+
+        EC_INFO("Scanning bus.\n");
 
         // begin scanning of slaves
         fsm->slave = list_entry(master->slaves.next, ec_slave_t, list);
@@ -533,17 +305,18 @@ void ec_fsm_master_action_process_states(ec_fsm_t *fsm
                 && (slave->configured
                     || slave->current_state == EC_SLAVE_STATE_INIT))) continue;
 
-        ec_state_string(slave->current_state, old_state);
-        ec_state_string(slave->requested_state, new_state);
-
-        if (!slave->configured
-            && slave->current_state != EC_SLAVE_STATE_INIT) {
-            EC_INFO("Reconfiguring slave %i (%s -> %s).\n",
-                    slave->ring_position, old_state, new_state);
-        }
-        else if (slave->current_state != slave->requested_state) {
-            EC_INFO("Changing state of slave %i (%s -> %s).\n",
-                    slave->ring_position, old_state, new_state);
+        if (master->debug_level) {
+            ec_state_string(slave->current_state, old_state);
+            if (!slave->configured
+                && slave->current_state != EC_SLAVE_STATE_INIT) {
+                EC_INFO("Reconfiguring slave %i (%s).\n",
+                        slave->ring_position, old_state);
+            }
+            else if (slave->current_state != slave->requested_state) {
+                ec_state_string(slave->requested_state, new_state);
+                EC_INFO("Changing state of slave %i (%s -> %s).\n",
+                        slave->ring_position, old_state, new_state);
+            }
         }
 
         fsm->slave = slave;
@@ -601,8 +374,7 @@ void ec_fsm_master_action_process_states(ec_fsm_t *fsm
                 EC_ERR("Failed to add SDO kobj of slave %i.\n",
                        slave->ring_position);
                 slave->error_flag = 1;
-                fsm->master_state = ec_fsm_master_start;
-                fsm->master_state(fsm); // execute immediately
+                fsm->master_state = ec_fsm_master_error;
                 return;
             }
 
@@ -639,9 +411,7 @@ void ec_fsm_master_action_process_states(ec_fsm_t *fsm
         }
     }
 
-    // nothing to do. restart master state machine.
-    fsm->master_state = ec_fsm_master_start;
-    fsm->master_state(fsm); // execute immediately
+    fsm->master_state = ec_fsm_master_end;
 }
 
 /*****************************************************************************/
@@ -702,8 +472,9 @@ void ec_fsm_master_read_states(ec_fsm_t *fsm /**< finite state machine */)
     uint8_t new_state;
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
-        fsm->master_state = ec_fsm_master_start;
-        fsm->master_state(fsm); // execute immediately
+        EC_ERR("Failed to receive AL state datagram for slave %i!\n",
+               slave->ring_position);
+        fsm->master_state = ec_fsm_master_error;
         return;
     }
 
@@ -756,15 +527,13 @@ void ec_fsm_master_validate_vendor(ec_fsm_t *fsm /**< finite state machine */)
         fsm->slave->error_flag = 1;
         EC_ERR("Failed to validate vendor ID of slave %i.\n",
                slave->ring_position);
-        fsm->master_state = ec_fsm_master_start;
-        fsm->master_state(fsm); // execute immediately
+        fsm->master_state = ec_fsm_master_error;
         return;
     }
 
     if (EC_READ_U32(fsm->fsm_sii.value) != slave->sii_vendor_id) {
-        EC_ERR("Slave %i: invalid vendor ID!\n", slave->ring_position);
-        fsm->master_state = ec_fsm_master_start;
-        fsm->master_state(fsm); // execute immediately
+        EC_ERR("Slave %i has an invalid vendor ID!\n", slave->ring_position);
+        fsm->master_state = ec_fsm_master_error;
         return;
     }
 
@@ -796,7 +565,8 @@ void ec_fsm_master_action_addresses(ec_fsm_t *fsm /**< finite state machine */)
         fsm->slave = list_entry(fsm->slave->list.next, ec_slave_t, list);
     }
 
-    EC_INFO("Reinitializing slave %i.\n", fsm->slave->ring_position);
+    if (fsm->master->debug_level)
+        EC_DBG("Reinitializing slave %i.\n", fsm->slave->ring_position);
 
     // write station address
     ec_datagram_apwr(datagram, fsm->slave->ring_position, 0x0010, 2);
@@ -822,8 +592,7 @@ void ec_fsm_master_validate_product(ec_fsm_t *fsm /**< finite state machine */)
         fsm->slave->error_flag = 1;
         EC_ERR("Failed to validate product code of slave %i.\n",
                slave->ring_position);
-        fsm->master_state = ec_fsm_master_start;
-        fsm->master_state(fsm); // execute immediately
+        fsm->master_state = ec_fsm_master_error;
         return;
     }
 
@@ -831,8 +600,7 @@ void ec_fsm_master_validate_product(ec_fsm_t *fsm /**< finite state machine */)
         EC_ERR("Slave %i: invalid product code!\n", slave->ring_position);
         EC_ERR("expected 0x%08X, got 0x%08X.\n", slave->sii_product_code,
                EC_READ_U32(fsm->fsm_sii.value));
-        fsm->master_state = ec_fsm_master_start;
-        fsm->master_state(fsm); // execute immediately
+        fsm->master_state = ec_fsm_master_error;
         return;
     }
 
@@ -897,8 +665,8 @@ void ec_fsm_master_scan_slaves(ec_fsm_t *fsm /**< finite state machine */)
 
     fsm->slave_state(fsm); // execute slave state machine
 
-    if (fsm->slave_state != ec_fsm_end
-        && fsm->slave_state != ec_fsm_error) return;
+    if (fsm->slave_state != ec_fsm_slave_end
+        && fsm->slave_state != ec_fsm_slave_error) return;
 
     // another slave to fetch?
     if (slave->list.next != &master->slaves) {
@@ -915,11 +683,10 @@ void ec_fsm_master_scan_slaves(ec_fsm_t *fsm /**< finite state machine */)
     // set initial states of all slaves to PREOP to make mailbox
     // communication possible
     list_for_each_entry(slave, &master->slaves, list) {
-        slave->requested_state = EC_SLAVE_STATE_PREOP;
+        ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
     }
 
-    fsm->master_state = ec_fsm_master_start;
-    fsm->master_state(fsm); // execute immediately
+    fsm->master_state = ec_fsm_master_end;
 }
 
 /*****************************************************************************/
@@ -935,8 +702,8 @@ void ec_fsm_master_configure_slave(ec_fsm_t *fsm
 {
     fsm->slave_state(fsm); // execute slave's state machine
 
-    if (fsm->slave_state != ec_fsm_end
-        && fsm->slave_state != ec_fsm_error) return;
+    if (fsm->slave_state != ec_fsm_slave_end
+        && fsm->slave_state != ec_fsm_slave_error) return;
 
     ec_fsm_master_action_process_states(fsm);
 }
@@ -959,8 +726,7 @@ void ec_fsm_master_write_eeprom(ec_fsm_t *fsm /**< finite state machine */)
                slave->ring_position);
         kfree(slave->new_eeprom_data);
         slave->new_eeprom_data = NULL;
-        fsm->master_state = ec_fsm_master_start;
-        fsm->master_state(fsm); // execute immediately
+        fsm->master_state = ec_fsm_master_error;
         return;
     }
 
@@ -999,8 +765,7 @@ void ec_fsm_master_sdodict(ec_fsm_t *fsm /**< finite state machine */)
     if (ec_fsm_coe_exec(&fsm->fsm_coe)) return;
 
     if (!ec_fsm_coe_success(&fsm->fsm_coe)) {
-        fsm->master_state = ec_fsm_master_start;
-        fsm->master_state(fsm); // execute immediately
+        fsm->master_state = ec_fsm_master_error;
         return;
     }
 
@@ -1034,8 +799,7 @@ void ec_fsm_master_sdo_request(ec_fsm_t *fsm /**< finite state machine */)
     if (!ec_fsm_coe_success(&fsm->fsm_coe)) {
         request->return_code = -1;
         master->sdo_seq_master++;
-        fsm->master_state = ec_fsm_master_start;
-        fsm->master_state(fsm); // execute immediately
+        fsm->master_state = ec_fsm_master_error;
         return;
     }
 
@@ -1047,6 +811,28 @@ void ec_fsm_master_sdo_request(ec_fsm_t *fsm /**< finite state machine */)
     // restart master state machine.
     fsm->master_state = ec_fsm_master_start;
     fsm->master_state(fsm); // execute immediately
+}
+
+/*****************************************************************************/
+
+/**
+   State: ERROR.
+*/
+
+void ec_fsm_master_error(ec_fsm_t *fsm /**< finite state machine */)
+{
+    fsm->master_state = ec_fsm_master_start;
+}
+
+/*****************************************************************************/
+
+/**
+   State: END.
+*/
+
+void ec_fsm_master_end(ec_fsm_t *fsm /**< finite state machine */)
+{
+    fsm->master_state = ec_fsm_master_start;
 }
 
 /******************************************************************************
@@ -1083,7 +869,7 @@ void ec_fsm_slavescan_address(ec_fsm_t *fsm /**< finite state machine */)
     if (datagram->state != EC_DATAGRAM_RECEIVED
         || datagram->working_counter != 1) {
         fsm->slave->error_flag = 1;
-        fsm->slave_state = ec_fsm_error;
+        fsm->slave_state = ec_fsm_slave_error;
         EC_ERR("Failed to write station address of slave %i.\n",
                fsm->slave->ring_position);
         return;
@@ -1109,7 +895,7 @@ void ec_fsm_slavescan_state(ec_fsm_t *fsm /**< finite state machine */)
     if (datagram->state != EC_DATAGRAM_RECEIVED
         || datagram->working_counter != 1) {
         fsm->slave->error_flag = 1;
-        fsm->slave_state = ec_fsm_error;
+        fsm->slave_state = ec_fsm_slave_error;
         EC_ERR("Failed to read AL state of slave %i.\n",
                fsm->slave->ring_position);
         return;
@@ -1141,7 +927,7 @@ void ec_fsm_slavescan_base(ec_fsm_t *fsm /**< finite state machine */)
     if (datagram->state != EC_DATAGRAM_RECEIVED
         || datagram->working_counter != 1) {
         fsm->slave->error_flag = 1;
-        fsm->slave_state = ec_fsm_error;
+        fsm->slave_state = ec_fsm_slave_error;
         EC_ERR("Failed to read base data of slave %i.\n",
                slave->ring_position);
         return;
@@ -1178,7 +964,7 @@ void ec_fsm_slavescan_datalink(ec_fsm_t *fsm /**< finite state machine */)
     if (datagram->state != EC_DATAGRAM_RECEIVED
         || datagram->working_counter != 1) {
         fsm->slave->error_flag = 1;
-        fsm->slave_state = ec_fsm_error;
+        fsm->slave_state = ec_fsm_slave_error;
         EC_ERR("Failed to read DL status of slave %i.\n",
                slave->ring_position);
         return;
@@ -1214,7 +1000,7 @@ void ec_fsm_slavescan_eeprom_size(ec_fsm_t *fsm /**< finite state machine */)
 
     if (!ec_fsm_sii_success(&fsm->fsm_sii)) {
         fsm->slave->error_flag = 1;
-        fsm->slave_state = ec_fsm_error;
+        fsm->slave_state = ec_fsm_slave_error;
         EC_ERR("Failed to read EEPROM size of slave %i.\n",
                slave->ring_position);
         return;
@@ -1242,7 +1028,7 @@ void ec_fsm_slavescan_eeprom_size(ec_fsm_t *fsm /**< finite state machine */)
     if (!(slave->eeprom_data =
           (uint8_t *) kmalloc(slave->eeprom_size, GFP_ATOMIC))) {
         fsm->slave->error_flag = 1;
-        fsm->slave_state = ec_fsm_error;
+        fsm->slave_state = ec_fsm_slave_error;
         EC_ERR("Failed to allocate EEPROM data on slave %i.\n",
                slave->ring_position);
         return;
@@ -1271,7 +1057,7 @@ void ec_fsm_slavescan_eeprom_data(ec_fsm_t *fsm /**< finite state machine */)
 
     if (!ec_fsm_sii_success(&fsm->fsm_sii)) {
         fsm->slave->error_flag = 1;
-        fsm->slave_state = ec_fsm_error;
+        fsm->slave_state = ec_fsm_slave_error;
         EC_ERR("Failed to fetch EEPROM contents of slave %i.\n",
                slave->ring_position);
         return;
@@ -1359,13 +1145,13 @@ void ec_fsm_slavescan_eeprom_data(ec_fsm_t *fsm /**< finite state machine */)
         cat_word += cat_size + 2;
     }
 
-    fsm->slave_state = ec_fsm_end;
+    fsm->slave_state = ec_fsm_slave_end;
     return;
 
 end:
     EC_ERR("Failed to analyze category data.\n");
     fsm->slave->error_flag = 1;
-    fsm->slave_state = ec_fsm_error;
+    fsm->slave_state = ec_fsm_slave_error;
 }
 
 /******************************************************************************
@@ -1388,7 +1174,7 @@ void ec_fsm_slaveconf_init(ec_fsm_t *fsm /**< finite state machine */)
 
     if (!ec_fsm_change_success(&fsm->fsm_change)) {
         slave->error_flag = 1;
-        fsm->slave_state = ec_fsm_error;
+        fsm->slave_state = ec_fsm_slave_error;
         return;
     }
 
@@ -1400,7 +1186,7 @@ void ec_fsm_slaveconf_init(ec_fsm_t *fsm /**< finite state machine */)
 
     // slave is now in INIT
     if (slave->current_state == slave->requested_state) {
-        fsm->slave_state = ec_fsm_end; // successful
+        fsm->slave_state = ec_fsm_slave_end; // successful
         if (master->debug_level) {
             EC_DBG("Finished configuration of slave %i.\n",
                    slave->ring_position);
@@ -1457,7 +1243,7 @@ void ec_fsm_slaveconf_init(ec_fsm_t *fsm /**< finite state machine */)
             if (sync->index >= slave->base_sync_count) {
                 EC_ERR("Invalid sync manager configuration found!");
                 fsm->slave->error_flag = 1;
-                fsm->slave_state = ec_fsm_error;
+                fsm->slave_state = ec_fsm_slave_error;
                 return;
             }
             ec_sync_config(sync, slave,
@@ -1483,7 +1269,7 @@ void ec_fsm_slaveconf_sync(ec_fsm_t *fsm /**< finite state machine */)
     if (datagram->state != EC_DATAGRAM_RECEIVED
         || datagram->working_counter != 1) {
         slave->error_flag = 1;
-        fsm->slave_state = ec_fsm_error;
+        fsm->slave_state = ec_fsm_slave_error;
         EC_ERR("Failed to set sync managers on slave %i.\n",
                slave->ring_position);
         return;
@@ -1511,7 +1297,7 @@ void ec_fsm_slaveconf_preop(ec_fsm_t *fsm /**< finite state machine */)
 
     if (!ec_fsm_change_success(&fsm->fsm_change)) {
         slave->error_flag = 1;
-        fsm->slave_state = ec_fsm_error;
+        fsm->slave_state = ec_fsm_slave_error;
         return;
     }
 
@@ -1523,7 +1309,7 @@ void ec_fsm_slaveconf_preop(ec_fsm_t *fsm /**< finite state machine */)
     }
 
     if (slave->current_state == slave->requested_state) {
-        fsm->slave_state = ec_fsm_end; // successful
+        fsm->slave_state = ec_fsm_slave_end; // successful
         if (master->debug_level) {
             EC_DBG("Finished configuration of slave %i.\n",
                    slave->ring_position);
@@ -1574,7 +1360,7 @@ void ec_fsm_slaveconf_fmmu(ec_fsm_t *fsm /**< finite state machine */)
     if (datagram->state != EC_DATAGRAM_RECEIVED
         || datagram->working_counter != 1) {
         fsm->slave->error_flag = 1;
-        fsm->slave_state = ec_fsm_error;
+        fsm->slave_state = ec_fsm_slave_error;
         EC_ERR("Failed to set FMMUs on slave %i.\n",
                fsm->slave->ring_position);
         return;
@@ -1608,7 +1394,7 @@ void ec_fsm_slaveconf_sdoconf(ec_fsm_t *fsm /**< finite state machine */)
 
     if (!ec_fsm_coe_success(&fsm->fsm_coe)) {
         fsm->slave->error_flag = 1;
-        fsm->slave_state = ec_fsm_error;
+        fsm->slave_state = ec_fsm_slave_error;
         return;
     }
 
@@ -1644,7 +1430,7 @@ void ec_fsm_slaveconf_saveop(ec_fsm_t *fsm /**< finite state machine */)
 
     if (!ec_fsm_change_success(&fsm->fsm_change)) {
         fsm->slave->error_flag = 1;
-        fsm->slave_state = ec_fsm_error;
+        fsm->slave_state = ec_fsm_slave_error;
         return;
     }
 
@@ -1655,7 +1441,7 @@ void ec_fsm_slaveconf_saveop(ec_fsm_t *fsm /**< finite state machine */)
     }
 
     if (fsm->slave->current_state == fsm->slave->requested_state) {
-        fsm->slave_state = ec_fsm_end; // successful
+        fsm->slave_state = ec_fsm_slave_end; // successful
         if (master->debug_level) {
             EC_DBG("Finished configuration of slave %i.\n",
                    slave->ring_position);
@@ -1684,7 +1470,7 @@ void ec_fsm_slaveconf_op(ec_fsm_t *fsm /**< finite state machine */)
 
     if (!ec_fsm_change_success(&fsm->fsm_change)) {
         slave->error_flag = 1;
-        fsm->slave_state = ec_fsm_error;
+        fsm->slave_state = ec_fsm_slave_error;
         return;
     }
 
@@ -1695,7 +1481,7 @@ void ec_fsm_slaveconf_op(ec_fsm_t *fsm /**< finite state machine */)
         EC_DBG("Finished configuration of slave %i.\n", slave->ring_position);
     }
 
-    fsm->slave_state = ec_fsm_end; // successful
+    fsm->slave_state = ec_fsm_slave_end; // successful
 }
 
 /******************************************************************************
@@ -1706,7 +1492,7 @@ void ec_fsm_slaveconf_op(ec_fsm_t *fsm /**< finite state machine */)
    State: ERROR.
 */
 
-void ec_fsm_error(ec_fsm_t *fsm /**< finite state machine */)
+void ec_fsm_slave_error(ec_fsm_t *fsm /**< finite state machine */)
 {
 }
 
@@ -1716,7 +1502,7 @@ void ec_fsm_error(ec_fsm_t *fsm /**< finite state machine */)
    State: END.
 */
 
-void ec_fsm_end(ec_fsm_t *fsm /**< finite state machine */)
+void ec_fsm_slave_end(ec_fsm_t *fsm /**< finite state machine */)
 {
 }
 

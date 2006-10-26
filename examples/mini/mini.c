@@ -56,13 +56,16 @@ ec_domain_t *domain1 = NULL;
 spinlock_t master_lock = SPIN_LOCK_UNLOCKED;
 
 // data fields
+#if 0
 void *r_inputs;
 void *r_outputs;
+#endif
 
-#if 0
+void *r_ana_in;
+
+#if 1
 ec_pdo_reg_t domain1_pdos[] = {
-    {"2", Beckhoff_EL4132_Output1, &r_ana_out},
-    {"3", Beckhoff_EL5001_Value, NULL},
+    {"2", Beckhoff_EL3102_Input1, &r_ana_in},
     {}
 };
 #endif
@@ -82,8 +85,7 @@ void run(unsigned long data)
 
     // process data
     //k_pos = EC_READ_U32(r_ssi);
-    EC_WRITE_U8(r_outputs + 2, einaus ? 0xFF : 0x00);
-
+    //EC_WRITE_U8(r_outputs + 2, einaus ? 0xFF : 0x00);
 
     // send
     ecrt_master_run(master);
@@ -142,12 +144,14 @@ int __init init_mini_module(void)
     }
 
     printk(KERN_INFO "Registering PDOs...\n");
-#if 0
+#if 1
     if (ecrt_domain_register_pdo_list(domain1, domain1_pdos)) {
         printk(KERN_ERR "PDO registration failed!\n");
         goto out_release_master;
     }
 #endif
+
+#if 0
     if (!ecrt_domain_register_pdo_range(domain1, "0", Beckhoff_BK1120,
                                         EC_DIR_OUTPUT, 0, 4, &r_outputs)) {
         printk(KERN_ERR "PDO registration failed!\n");
@@ -158,6 +162,7 @@ int __init init_mini_module(void)
         printk(KERN_ERR "PDO registration failed!\n");
         goto out_release_master;
     }
+#endif
 
 #if 0
     if (!(slave = ecrt_master_get_slave(master, "3")))

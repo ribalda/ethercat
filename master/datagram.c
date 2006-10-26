@@ -69,6 +69,7 @@
 
 void ec_datagram_init(ec_datagram_t *datagram /**< EtherCAT datagram */)
 {
+    INIT_LIST_HEAD(&datagram->queue); // mark as unqueued
     datagram->type = EC_DATAGRAM_NONE;
     datagram->address.logical = 0x00000000;
     datagram->data = NULL;

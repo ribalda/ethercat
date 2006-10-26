@@ -384,7 +384,8 @@ int ecdev_start(unsigned int master_index /**< master index */)
         return -1;
     }
 
-    ec_master_idle_start(master);
+    ec_master_enter_idle_mode(master);
+
     return 0;
 }
 
@@ -402,8 +403,7 @@ void ecdev_stop(unsigned int master_index /**< master index */)
     ec_master_t *master;
     if (!(master = ec_find_master(master_index))) return;
 
-    ec_master_idle_stop(master);
-    ec_master_flush_sdo_requests(master);
+    ec_master_leave_idle_mode(master);
 
     if (ec_device_close(master->device))
         EC_WARN("Failed to close device!\n");
@@ -459,31 +459,19 @@ ec_master_t *ecrt_request_master(unsigned int master_index
         goto out_module_put;
     }
 
-    ec_master_reset(master); // also stops idle mode
-    master->mode = EC_MASTER_MODE_OPERATION;
-
-    if (ec_master_measure_bus_time(master)) {
-        EC_ERR("Bus time measuring failed!\n");
-        goto out_reset;
-    }
-
-    if (ec_master_bus_scan(master)) {
-        EC_ERR("Bus scan failed!\n");
-        goto out_reset;
+    if (ec_master_enter_operation_mode(master)) {
+        EC_ERR("Failed to enter OPERATION mode!\n");
+        goto out_module_put;
     }
 
     EC_INFO("Successfully requested master %i.\n", master_index);
     return master;
 
- out_reset:
-    ec_master_reset(master);
-    ec_master_idle_start(master);
  out_module_put:
     module_put(master->device->module);
  out_release:
     atomic_inc(&master->available);
  out_return:
-    EC_ERR("Failed to request master %i.\n", master_index);
     return NULL;
 }
 
@@ -496,20 +484,12 @@ ec_master_t *ecrt_request_master(unsigned int master_index
 
 void ecrt_release_master(ec_master_t *master /**< EtherCAT master */)
 {
-    EC_INFO("Releasing master %i...\n", master->index);
-
-    if (atomic_read(&master->available)) {
-        EC_ERR("Master %i was never requested!\n", master->index);
-        return;
-    }
-
-    ec_master_reset(master);
-    ec_master_idle_start(master);
+    ec_master_leave_operation_mode(master);
 
     module_put(master->device->module);
     atomic_inc(&master->available);
 
-    EC_INFO("Successfully released master %i.\n", master->index);
+    EC_INFO("Released master %i.\n", master->index);
     return;
 }
 

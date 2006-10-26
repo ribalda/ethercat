@@ -360,7 +360,7 @@ void ec_fsm_coe_dict_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     }
 
     if (mbox_prot != 0x03) { // CoE
-        EC_WARN("Received mailbox protocol 0x%02X as response.\n", mbox_prot);
+        EC_ERR("Received mailbox protocol 0x%02X as response.\n", mbox_prot);
         fsm->state = ec_fsm_coe_error;
 	return;
     }
@@ -549,7 +549,7 @@ void ec_fsm_coe_dict_desc_response(ec_fsm_coe_t *fsm
     }
 
     if (mbox_prot != 0x03) { // CoE
-        EC_WARN("Received mailbox protocol 0x%02X as response.\n", mbox_prot);
+        EC_ERR("Received mailbox protocol 0x%02X as response.\n", mbox_prot);
         fsm->state = ec_fsm_coe_error;
 	return;
     }
@@ -722,7 +722,7 @@ void ec_fsm_coe_dict_entry_response(ec_fsm_coe_t *fsm
     }
 
     if (mbox_prot != 0x03) { // CoE
-        EC_WARN("Received mailbox protocol 0x%02X as response.\n", mbox_prot);
+        EC_ERR("Received mailbox protocol 0x%02X as response.\n", mbox_prot);
         fsm->state = ec_fsm_coe_error;
 	return;
     }
@@ -970,7 +970,7 @@ void ec_fsm_coe_down_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     }
 
     if (mbox_prot != 0x03) { // CoE
-        EC_WARN("Received mailbox protocol 0x%02X as response.\n", mbox_prot);
+        EC_ERR("Received mailbox protocol 0x%02X as response.\n", mbox_prot);
         fsm->state = ec_fsm_coe_error;
 	return;
     }
@@ -1210,8 +1210,10 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     request->size = 0;
 
     if (complete_size) {
-        if (!(request->data = (uint8_t *) kmalloc(complete_size + 1, GFP_ATOMIC))) {
-            EC_ERR("Failed to allocate %i bytes of SDO data!\n", complete_size);
+        if (!(request->data = (uint8_t *)
+              kmalloc(complete_size + 1, GFP_ATOMIC))) {
+            EC_ERR("Failed to allocate %i bytes of SDO data!\n",
+                   complete_size);
             fsm->state = ec_fsm_coe_error;
             return;
         }
@@ -1228,9 +1230,11 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
         fsm->toggle = 0;
 
         if (data_size < complete_size) {
-            EC_WARN("SDO data incomplete (%i / %i).\n", data_size, complete_size);
+            EC_WARN("SDO data incomplete (%i / %i).\n",
+                    data_size, complete_size);
 
-            if (!(data = ec_slave_mbox_prepare_send(slave, datagram, 0x03, 3))) {
+            if (!(data = ec_slave_mbox_prepare_send(slave, datagram,
+                                                    0x03, 3))) {
                 fsm->state = ec_fsm_coe_error;
                 return;
             }
@@ -1354,7 +1358,7 @@ void ec_fsm_coe_up_seg_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     }
 
     if (mbox_prot != 0x03) { // CoE
-        EC_WARN("Received mailbox protocol 0x%02X as response.\n", mbox_prot);
+        EC_ERR("Received mailbox protocol 0x%02X as response.\n", mbox_prot);
         fsm->state = ec_fsm_coe_error;
 	return;
     }

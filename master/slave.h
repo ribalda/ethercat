@@ -197,10 +197,9 @@ struct ec_slave
 
     ec_slave_state_t requested_state; /**< requested slave state */
     ec_slave_state_t current_state; /**< current slave state */
-    unsigned int configured; /**< the slave is configured by this master */
+    unsigned int configured; /**< the slave was configured by this master */
     unsigned int error_flag; /**< stop processing after an error */
     unsigned int online; /**< non-zero, if the slave responds. */
-    uint8_t registered; /**< true, if slave has been registered */
 
     // addresses
     uint16_t ring_position; /**< ring position */
@@ -261,8 +260,12 @@ struct ec_slave
 // slave construction/destruction
 int ec_slave_init(ec_slave_t *, ec_master_t *, uint16_t, uint16_t);
 
+void ec_slave_reset(ec_slave_t *);
+
 int ec_slave_prepare_fmmu(ec_slave_t *, const ec_domain_t *,
                           const ec_sii_sync_t *);
+
+void ec_slave_request_state(ec_slave_t *, ec_slave_state_t);
 
 // SII categories
 int ec_slave_fetch_strings(ec_slave_t *, const uint8_t *);

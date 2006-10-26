@@ -136,7 +136,6 @@ int ec_slave_init(ec_slave_t *slave, /**< EtherCAT slave */
     slave->error_flag = 0;
     slave->online = 1;
     slave->fmmu_count = 0;
-    slave->registered = 0;
 
     slave->coupler_index = 0;
     slave->coupler_subindex = 0xFFFF;
@@ -243,7 +242,7 @@ void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
         kobject_put(&sdo->kobj);
     }
 
-    // free SDO kobject
+    // free SDO kobject FIXME
     if (slave->sdo_dictionary_fetched) kobject_del(&slave->sdo_kobj);
     kobject_put(&slave->sdo_kobj);
 
@@ -258,6 +257,30 @@ void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
     if (slave->new_eeprom_data) kfree(slave->new_eeprom_data);
 
     kfree(slave);
+}
+
+/*****************************************************************************/
+
+/**
+   Reset slave from operation mode.
+*/
+
+void ec_slave_reset(ec_slave_t *slave /**< EtherCAT slave */)
+{
+    slave->fmmu_count = 0;
+}
+
+/*****************************************************************************/
+
+/**
+ */
+
+void ec_slave_request_state(ec_slave_t *slave, /**< ETherCAT slave */
+                            ec_slave_state_t state /**< new state */
+                            )
+{
+    slave->requested_state = state;
+    slave->error_flag = 0;
 }
 
 /*****************************************************************************/
@@ -514,7 +537,6 @@ int ec_slave_prepare_fmmu(ec_slave_t *slave, /**< EtherCAT slave */
     fmmu->logical_start_address = 0;
 
     slave->fmmu_count++;
-    slave->registered = 1;
 
     return 0;
 }
@@ -810,13 +832,13 @@ ssize_t ec_store_slave_attribute(struct kobject *kobj, /**< slave's kobject */
     if (attr == &attr_state) {
         char state[EC_STATE_STRING_SIZE];
         if (!strcmp(buffer, "INIT\n"))
-            slave->requested_state = EC_SLAVE_STATE_INIT;
+            ec_slave_request_state(slave, EC_SLAVE_STATE_INIT);
         else if (!strcmp(buffer, "PREOP\n"))
-            slave->requested_state = EC_SLAVE_STATE_PREOP;
+            ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
         else if (!strcmp(buffer, "SAVEOP\n"))
-            slave->requested_state = EC_SLAVE_STATE_SAVEOP;
+            ec_slave_request_state(slave, EC_SLAVE_STATE_SAVEOP);
         else if (!strcmp(buffer, "OP\n"))
-            slave->requested_state = EC_SLAVE_STATE_OP;
+            ec_slave_request_state(slave, EC_SLAVE_STATE_OP);
         else {
             EC_ERR("Invalid slave state \"%s\"!\n", buffer);
             return -EINVAL;
@@ -825,7 +847,6 @@ ssize_t ec_store_slave_attribute(struct kobject *kobj, /**< slave's kobject */
         ec_state_string(slave->requested_state, state);
         EC_INFO("Accepted new state %s for slave %i.\n",
                 state, slave->ring_position);
-        slave->error_flag = 0;
         return size;
     }
     else if (attr == &attr_eeprom) {
