@@ -214,7 +214,6 @@ void __exit cleanup_mod(void)
 
     rt_task_delete(&task);
     stop_rt_timer();
-    ecrt_master_deactivate(master);
     ecrt_release_master(master);
     rt_sem_delete(&master_sem);
     msr_rtlib_cleanup();

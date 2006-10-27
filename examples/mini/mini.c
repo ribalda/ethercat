@@ -201,12 +201,9 @@ void __exit cleanup_mini_module(void)
 {
     printk(KERN_INFO "=== Stopping Minimal EtherCAT environment... ===\n");
 
-    if (master) {
-        del_timer_sync(&timer);
-        printk(KERN_INFO "Deactivating master...\n");
-        ecrt_master_deactivate(master);
-        ecrt_release_master(master);
-    }
+    del_timer_sync(&timer);
+    printk(KERN_INFO "Releasing master...\n");
+    ecrt_release_master(master);
 
     printk(KERN_INFO "=== Minimal EtherCAT environment stopped. ===\n");
 }

@@ -417,6 +417,25 @@ void ec_master_leave_operation_mode(ec_master_t *master
                                     /**< EtherCAT master */)
 {
     ec_slave_t *slave;
+    ec_fsm_t *fsm = &master->fsm;
+    ec_datagram_t *datagram = &master->fsm.datagram;
+
+    // wait for FSM datagram
+    if (datagram->state == EC_DATAGRAM_SENT) {
+        while (get_cycles() - datagram->cycles_sent
+               < (cycles_t) EC_IO_TIMEOUT /* us */ * (cpu_khz / 1000)) {}
+        ecrt_master_receive(master);
+    }
+
+    // set states for all slaves
+    list_for_each_entry(slave, &master->slaves, list) {
+        ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
+    }
+
+    // execute master FSM to deactivate slaves
+    while (ec_fsm_exec(fsm)) {
+        ec_master_sync_io(master);
+    }
 
     ec_master_destroy_domains(master);
 
@@ -1325,31 +1344,14 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT master */)
 
 /**
    Resets all slaves to INIT state.
+   This method is deprecated and will disappear in the next version
+   of the realtime interface. The functionality is moved to
+   ecrt_master_release().
    \ingroup RealtimeInterface
 */
 
 void ecrt_master_deactivate(ec_master_t *master /**< EtherCAT master */)
 {
-    ec_fsm_t *fsm = &master->fsm;
-    ec_slave_t *slave;
-    ec_datagram_t *datagram = &master->fsm.datagram;
-
-    // wait for FSM datagram
-    if (datagram->state == EC_DATAGRAM_SENT) {
-        while (get_cycles() - datagram->cycles_sent
-               < (cycles_t) EC_IO_TIMEOUT /* us */ * (cpu_khz / 1000)) {}
-        ecrt_master_receive(master);
-    }
-
-    // set states for all slaves
-    list_for_each_entry(slave, &master->slaves, list) {
-        ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
-    }
-
-    // execute master FSM to deactivate slaves
-    while (ec_fsm_exec(fsm)) {
-        ec_master_sync_io(master);
-    }
 }
 
 /*****************************************************************************/
