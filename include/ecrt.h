@@ -161,7 +161,7 @@ int ecrt_slave_conf_sdo32(ec_slave_t *slave, uint16_t sdo_index,
                           uint8_t sdo_subindex, uint32_t value);
 
 int ecrt_slave_pdo_size(ec_slave_t *slave, uint16_t pdo_index,
-                        uint8_t pdo_subindex, size_t size);
+                        uint8_t pdo_subindex, size_t size); // deprecated
 
 /******************************************************************************
  *  Bitwise read/write macros

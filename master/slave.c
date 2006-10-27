@@ -496,7 +496,9 @@ int ec_slave_locate_string(ec_slave_t *slave, /**< EtherCAT slave */
         return 0;
     }
 
-    EC_WARN("String %i not found in slave %i.\n", index, slave->ring_position);
+    if (slave->master->debug_level)
+        EC_WARN("String %i not found in slave %i.\n",
+                index, slave->ring_position);
 
     err_string = "(string not found)";
 

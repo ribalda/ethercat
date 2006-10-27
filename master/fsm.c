@@ -492,7 +492,7 @@ void ec_fsm_master_read_states(ec_fsm_t *fsm /**< finite state machine */)
     if (datagram->working_counter != 1) {
         if (slave->online) {
             slave->online = 0;
-            if (master->debug_level)
+            if (slave->master->debug_level)
                 EC_DBG("Slave %i: offline.\n", slave->ring_position);
         }
         ec_fsm_master_action_next_slave_state(fsm);
@@ -505,7 +505,7 @@ void ec_fsm_master_read_states(ec_fsm_t *fsm /**< finite state machine */)
         slave->online = 1;
         slave->error_flag = 0; // clear error flag
         slave->current_state = new_state;
-        if (master->debug_level) {
+        if (slave->master->debug_level) {
             char cur_state[EC_STATE_STRING_SIZE];
             ec_state_string(slave->current_state, cur_state);
             EC_DBG("Slave %i: online (%s).\n",
@@ -513,7 +513,7 @@ void ec_fsm_master_read_states(ec_fsm_t *fsm /**< finite state machine */)
         }
     }
     else if (new_state != slave->current_state) {
-        if (master->debug_level) {
+        if (slave->master->debug_level) {
             char old_state[EC_STATE_STRING_SIZE],
                 cur_state[EC_STATE_STRING_SIZE];
             ec_state_string(slave->current_state, old_state);
@@ -1188,8 +1188,9 @@ void ec_fsm_slavescan_eeprom_data(ec_fsm_t *fsm /**< finite state machine */)
                     goto end;
                 break;
             default:
-                EC_WARN("Unknown category type 0x%04X in slave %i.\n",
-                        cat_type, slave->ring_position);
+                if (fsm->master->debug_level)
+                    EC_WARN("Unknown category type 0x%04X in slave %i.\n",
+                            cat_type, slave->ring_position);
         }
 
         cat_word += cat_size + 2;

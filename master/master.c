@@ -1031,8 +1031,10 @@ void ec_master_eoe_start(ec_master_t *master /**< EtherCAT master */)
         }
 
         if (!found) {
-            EC_WARN("No EoE handler for slave %i!\n", slave->ring_position);
-            ec_slave_request_state(slave, EC_SLAVE_STATE_INIT);
+            if (master->debug_level)
+                EC_WARN("No EoE handler for slave %i!\n",
+                        slave->ring_position);
+            ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
         }
     }
 

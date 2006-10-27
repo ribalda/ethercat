@@ -395,8 +395,9 @@ void ec_fsm_coe_dict_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     for (i = 0; i < sdo_count; i++) {
         sdo_index = EC_READ_U16(data + 8 + i * 2);
         if (!sdo_index) {
-            EC_WARN("SDO dictionary of slave %i contains index 0x0000.\n",
-                    slave->ring_position);
+            if (slave->master->debug_level)
+                EC_WARN("SDO dictionary of slave %i contains index 0x0000.\n",
+                        slave->ring_position);
             continue;
         }
 
@@ -1191,7 +1192,8 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     expedited = EC_READ_U8(data + 2) & 0x02;
 
     if (expedited) {
-        EC_WARN("Received expedited response upon normal request!\n");
+        if (master->debug_level)
+            EC_WARN("Received expedited response upon normal request!\n");
 
         size_specified = EC_READ_U8(data + 2) & 0x01;
         if (size_specified) {
