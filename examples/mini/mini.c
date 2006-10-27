@@ -125,7 +125,7 @@ void release_lock(void *data)
 
 int __init init_mini_module(void)
 {
-#if 0
+#if 1
     ec_slave_t *slave;
 #endif
 
@@ -166,8 +166,8 @@ int __init init_mini_module(void)
     }
 #endif
 
-#if 0
-    if (!(slave = ecrt_master_get_slave(master, "3")))
+#if 1
+    if (!(slave = ecrt_master_get_slave(master, "2")))
         goto out_release_master;
 
     if (ecrt_slave_conf_sdo8(slave, 0x4061, 1, 0))
