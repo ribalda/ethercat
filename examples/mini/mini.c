@@ -42,6 +42,8 @@
 
 #define FREQUENCY 100
 
+//#define KBUS
+
 /*****************************************************************************/
 
 struct timer_list timer;
@@ -52,7 +54,7 @@ ec_domain_t *domain1 = NULL;
 spinlock_t master_lock = SPIN_LOCK_UNLOCKED;
 
 // data fields
-#if 1
+#ifdef KBUS
 void *r_inputs;
 void *r_outputs;
 #endif
@@ -81,7 +83,9 @@ void run(unsigned long data)
 
     // process data
     //k_pos = EC_READ_U32(r_ssi);
+#ifdef KBUS
     EC_WRITE_U8(r_outputs + 2, einaus ? 0xFF : 0x00);
+#endif
 
     // send
     ecrt_master_run(master);
@@ -149,7 +153,7 @@ int __init init_mini_module(void)
     }
 #endif
 
-#if 1
+#ifdef KBUS
     if (!ecrt_domain_register_pdo_range(domain1, "0", Beckhoff_BK1120,
                                         EC_DIR_OUTPUT, 0, 4, &r_outputs)) {
         printk(KERN_ERR "PDO registration failed!\n");
