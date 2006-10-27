@@ -156,7 +156,7 @@ int ec_dbgdev_open(struct net_device *dev /**< debug net_device */)
 {
     ec_debug_t *dbg = *((ec_debug_t **) netdev_priv(dev));
     dbg->opened = 1;
-    EC_INFO("debug interface %s opened.\n", dev->name);
+    EC_INFO("Debug interface %s opened.\n", dev->name);
     return 0;
 }
 
@@ -170,7 +170,7 @@ int ec_dbgdev_stop(struct net_device *dev /**< debug net_device */)
 {
     ec_debug_t *dbg = *((ec_debug_t **) netdev_priv(dev));
     dbg->opened = 0;
-    EC_INFO("debug interface %s stopped.\n", dev->name);
+    EC_INFO("Debug interface %s stopped.\n", dev->name);
     return 0;
 }
 
