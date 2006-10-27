@@ -627,7 +627,7 @@ int ec_eoedev_open(struct net_device *dev /**< EoE net_device */)
     eoe->tx_queue_active = 1;
     EC_INFO("%s opened.\n", dev->name);
     if (!eoe->slave)
-        EC_WARN("device %s is not coupled to any EoE slave!\n", dev->name);
+        EC_WARN("Device %s is not coupled to any EoE slave!\n", dev->name);
     else {
         ec_slave_request_state(eoe->slave, EC_SLAVE_STATE_OP);
     }
@@ -649,7 +649,7 @@ int ec_eoedev_stop(struct net_device *dev /**< EoE net_device */)
     ec_eoe_flush(eoe);
     EC_INFO("%s stopped.\n", dev->name);
     if (!eoe->slave)
-        EC_WARN("device %s is not coupled to any EoE slave!\n", dev->name);
+        EC_WARN("Device %s is not coupled to any EoE slave!\n", dev->name);
     else {
         ec_slave_request_state(eoe->slave, EC_SLAVE_STATE_PREOP);
     }
