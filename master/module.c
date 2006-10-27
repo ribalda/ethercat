@@ -152,8 +152,7 @@ void __exit ec_cleanup_module(void)
 
     list_for_each_entry_safe(master, next, &ec_masters, list) {
         list_del(&master->list);
-        kobject_del(&master->kobj);
-        kobject_put(&master->kobj); // free master
+        ec_master_destroy(master);
     }
 
     unregister_chrdev_region(device_number, ec_master_count);

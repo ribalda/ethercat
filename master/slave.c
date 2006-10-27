@@ -189,6 +189,34 @@ int ec_slave_init(ec_slave_t *slave, /**< EtherCAT slave */
 
 /**
    Slave destructor.
+   Clears and frees a slave object.
+*/
+
+void ec_slave_destroy(ec_slave_t *slave /**< EtherCAT slave */)
+{
+    ec_sdo_t *sdo, *next_sdo;
+
+    // free all SDOs
+    list_for_each_entry_safe(sdo, next_sdo, &slave->sdo_dictionary, list) {
+        list_del(&sdo->list);
+        ec_sdo_destroy(sdo);
+    }
+
+    // free SDO kobject
+    if (slave->sdo_dictionary_fetched) kobject_del(&slave->sdo_kobj);
+    kobject_put(&slave->sdo_kobj);
+
+    // destroy self
+    kobject_del(&slave->kobj);
+    kobject_put(&slave->kobj);
+}
+
+/*****************************************************************************/
+
+/**
+   Clear and free slave.
+   This method is called by the kobject,
+   once there are no more references to it.
 */
 
 void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
@@ -198,7 +226,6 @@ void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
     ec_sii_sync_t *sync, *next_sync;
     ec_sii_pdo_t *pdo, *next_pdo;
     ec_sii_pdo_entry_t *entry, *next_ent;
-    ec_sdo_t *sdo, *next_sdo;
     ec_sdo_data_t *sdodata, *next_sdodata;
 
     slave = container_of(kobj, ec_slave_t, kobj);
@@ -234,17 +261,6 @@ void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
     if (slave->sii_image) kfree(slave->sii_image);
     if (slave->sii_order) kfree(slave->sii_order);
     if (slave->sii_name) kfree(slave->sii_name);
-
-    // free all SDOs
-    list_for_each_entry_safe(sdo, next_sdo, &slave->sdo_dictionary, list) {
-        list_del(&sdo->list);
-        kobject_del(&sdo->kobj);
-        kobject_put(&sdo->kobj);
-    }
-
-    // free SDO kobject FIXME
-    if (slave->sdo_dictionary_fetched) kobject_del(&slave->sdo_kobj);
-    kobject_put(&slave->sdo_kobj);
 
     // free all SDO configurations
     list_for_each_entry_safe(sdodata, next_sdodata, &slave->sdo_confs, list) {

@@ -120,7 +120,10 @@ ec_sdo_request_t;
 /*****************************************************************************/
 
 int ec_sdo_init(ec_sdo_t *, uint16_t, ec_slave_t *);
+void ec_sdo_destroy(ec_sdo_t *);
+
 int ec_sdo_entry_init(ec_sdo_entry_t *, uint8_t, ec_sdo_t *);
+void ec_sdo_entry_destroy(ec_sdo_entry_t *);
 
 /*****************************************************************************/
 

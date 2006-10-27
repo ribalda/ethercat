@@ -132,19 +132,35 @@ int ec_sdo_init(ec_sdo_t *sdo, /**< SDO */
 
 /**
    SDO destructor.
+   Clears and frees an SDO object.
 */
 
-void ec_sdo_clear(struct kobject *kobj /**< SDO's kobject */)
+void ec_sdo_destroy(ec_sdo_t *sdo /**< SDO */)
 {
-    ec_sdo_t *sdo = container_of(kobj, ec_sdo_t, kobj);
     ec_sdo_entry_t *entry, *next;
 
     // free all entries
     list_for_each_entry_safe(entry, next, &sdo->entries, list) {
         list_del(&entry->list);
-        kobject_del(&entry->kobj);
-        kobject_put(&entry->kobj);
+        ec_sdo_entry_destroy(entry);
     }
+
+    // destroy self
+    kobject_del(&sdo->kobj);
+    kobject_put(&sdo->kobj);
+}
+
+/*****************************************************************************/
+
+/**
+   Clear and free SDO.
+   This method is called by the kobject,
+   once there are no more references to it.
+*/
+
+void ec_sdo_clear(struct kobject *kobj /**< SDO's kobject */)
+{
+    ec_sdo_t *sdo = container_of(kobj, ec_sdo_t, kobj);
 
     if (sdo->name) kfree(sdo->name);
 
@@ -215,7 +231,23 @@ int ec_sdo_entry_init(ec_sdo_entry_t *entry, /**< SDO entry */
 /*****************************************************************************/
 
 /**
-   SDO destructor.
+   SDO entry destructor.
+   Clears and frees an SDO entry object.
+*/
+
+void ec_sdo_entry_destroy(ec_sdo_entry_t *entry /**< SDO entry */)
+{
+    // destroy self
+    kobject_del(&entry->kobj);
+    kobject_put(&entry->kobj);
+}
+
+/*****************************************************************************/
+
+/**
+   Clear and free SDO entry.
+   This method is called by the kobject,
+   once there are no more references to it.
 */
 
 void ec_sdo_entry_clear(struct kobject *kobj /**< SDO entry's kobject */)

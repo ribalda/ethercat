@@ -130,6 +130,30 @@ int ec_domain_init(ec_domain_t *domain, /**< EtherCAT domain */
 
 /**
    Domain destructor.
+   Clears and frees a domain object.
+*/
+
+void ec_domain_destroy(ec_domain_t *domain /**< EtherCAT domain */)
+{
+    ec_datagram_t *datagram;
+
+    // dequeue datagrams
+    list_for_each_entry(datagram, &domain->datagrams, list) {
+        if (!list_empty(&datagram->queue)) // datagram queued?
+            list_del_init(&datagram->queue);
+    }
+
+    // destroy self
+    kobject_del(&domain->kobj);
+    kobject_put(&domain->kobj);
+}
+
+/*****************************************************************************/
+
+/**
+   Clear and free domain.
+   This method is called by the kobject,
+   once there are no more references to it.
 */
 
 void ec_domain_clear(struct kobject *kobj /**< kobject of the domain */)
@@ -458,22 +482,6 @@ void ec_domain_queue_datagrams(ec_domain_t *domain /**< EtherCAT domain */)
 
     list_for_each_entry(datagram, &domain->datagrams, list) {
         ec_master_queue_datagram(domain->master, datagram);
-    }
-}
-
-/*****************************************************************************/
-
-/**
-   Dequeues all datagrams from the masters datagram queue.
-*/
-
-void ec_domain_dequeue_datagrams(ec_domain_t *domain /**< EtherCAT domain */)
-{
-    ec_datagram_t *datagram;
-
-    list_for_each_entry(datagram, &domain->datagrams, list) {
-        if (!list_empty(&datagram->queue)) // datagram queued?
-            list_del_init(&datagram->queue);
     }
 }
 

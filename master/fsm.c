@@ -226,7 +226,7 @@ void ec_fsm_master_broadcast(ec_fsm_t *fsm /**< finite state machine */)
     if (topology_change && master->mode == EC_MASTER_MODE_IDLE) {
 
         ec_master_eoe_stop(master);
-        ec_master_clear_slaves(master);
+        ec_master_destroy_slaves(master);
 
         master->slave_count = datagram->working_counter;
 
@@ -241,14 +241,14 @@ void ec_fsm_master_broadcast(ec_fsm_t *fsm /**< finite state machine */)
             if (!(slave = (ec_slave_t *) kmalloc(sizeof(ec_slave_t),
                                                  GFP_ATOMIC))) {
                 EC_ERR("Failed to allocate slave %i!\n", i);
-                ec_master_clear_slaves(master);
+                ec_master_destroy_slaves(master);
                 fsm->master_state = ec_fsm_master_error;
                 return;
             }
 
             if (ec_slave_init(slave, master, i, i + 1)) {
                 // freeing of "slave" already done
-                ec_master_clear_slaves(master);
+                ec_master_destroy_slaves(master);
                 fsm->master_state = ec_fsm_master_error;
                 return;
             }
@@ -256,7 +256,7 @@ void ec_fsm_master_broadcast(ec_fsm_t *fsm /**< finite state machine */)
             if (kobject_add(&slave->kobj)) {
                 EC_ERR("Failed to add kobject.\n");
                 kobject_put(&slave->kobj); // free
-                ec_master_clear_slaves(master);
+                ec_master_destroy_slaves(master);
                 fsm->master_state = ec_fsm_master_error;
                 return;
             }

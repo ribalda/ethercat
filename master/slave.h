@@ -259,6 +259,7 @@ struct ec_slave
 
 // slave construction/destruction
 int ec_slave_init(ec_slave_t *, ec_master_t *, uint16_t, uint16_t);
+void ec_slave_destroy(ec_slave_t *);
 
 void ec_slave_reset(ec_slave_t *);
 

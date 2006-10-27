@@ -148,8 +148,9 @@ struct ec_master
 
 /*****************************************************************************/
 
-// master creation
+// master creation/deletion
 int ec_master_init(ec_master_t *, unsigned int, unsigned int, dev_t);
+void ec_master_destroy(ec_master_t *);
 
 // mode transitions
 int ec_master_enter_idle_mode(ec_master_t *);
@@ -167,7 +168,7 @@ void ec_master_queue_datagram(ec_master_t *, ec_datagram_t *);
 
 // misc.
 void ec_master_output_stats(ec_master_t *);
-void ec_master_clear_slaves(ec_master_t *);
+void ec_master_destroy_slaves(ec_master_t *);
 void ec_master_calc_addressing(ec_master_t *);
 
 // helper functions

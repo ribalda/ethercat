@@ -55,6 +55,7 @@
 /*****************************************************************************/
 
 void ec_master_clear(struct kobject *);
+void ec_master_destroy_domains(ec_master_t *);
 void ec_master_sync_io(ec_master_t *);
 void ec_master_idle_run(void *);
 void ec_master_eoe_run(unsigned long);
@@ -222,8 +223,25 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
 
 /**
    Master destructor.
-   Removes all pending datagrams, clears the slave list, clears all domains
-   and frees the device.
+   Clears the kobj-hierarchy bottom up and frees the master.
+*/
+
+void ec_master_destroy(ec_master_t *master /**< EtherCAT master */)
+{
+    ec_master_destroy_slaves(master);
+    ec_master_destroy_domains(master);
+
+    // destroy self
+    kobject_del(&master->kobj);
+    kobject_put(&master->kobj); // free master
+}
+
+/*****************************************************************************/
+
+/**
+   Clear and free master.
+   This method is called by the kobject,
+   once there are no more references to it.
 */
 
 void ec_master_clear(struct kobject *kobj /**< kobject of the master */)
@@ -231,8 +249,6 @@ void ec_master_clear(struct kobject *kobj /**< kobject of the master */)
     ec_master_t *master = container_of(kobj, ec_master_t, kobj);
     ec_eoe_t *eoe, *next_eoe;
     ec_datagram_t *datagram, *next_c;
-
-    ec_master_clear_slaves(master);
 
     // empty datagram queue
     list_for_each_entry_safe(datagram, next_c,
@@ -252,7 +268,7 @@ void ec_master_clear(struct kobject *kobj /**< kobject of the master */)
         kfree(eoe);
     }
 
-    EC_INFO("Master %i cleared.\n", master->index);
+    EC_INFO("Master %i freed.\n", master->index);
 
     kfree(master);
 }
@@ -260,20 +276,35 @@ void ec_master_clear(struct kobject *kobj /**< kobject of the master */)
 /*****************************************************************************/
 
 /**
-   Clears all slaves.
+   Destroy all slaves.
 */
 
-void ec_master_clear_slaves(ec_master_t *master)
+void ec_master_destroy_slaves(ec_master_t *master)
 {
     ec_slave_t *slave, *next_slave;
 
     list_for_each_entry_safe(slave, next_slave, &master->slaves, list) {
         list_del(&slave->list);
-        kobject_del(&slave->kobj);
-        kobject_put(&slave->kobj);
+        ec_slave_destroy(slave);
     }
 
     master->slave_count = 0;
+}
+
+/*****************************************************************************/
+
+/**
+   Destroy all domains.
+*/
+
+void ec_master_destroy_domains(ec_master_t *master)
+{
+    ec_domain_t *domain, *next_d;
+
+    list_for_each_entry_safe(domain, next_d, &master->domains, list) {
+        list_del(&domain->list);
+        ec_domain_destroy(domain);
+    }
 }
 
 /*****************************************************************************/
@@ -386,15 +417,8 @@ void ec_master_leave_operation_mode(ec_master_t *master
                                     /**< EtherCAT master */)
 {
     ec_slave_t *slave;
-    ec_domain_t *domain, *next_d;
 
-    // clear domains
-    list_for_each_entry_safe(domain, next_d, &master->domains, list) {
-        ec_domain_dequeue_datagrams(domain);
-        list_del(&domain->list);
-        kobject_del(&domain->kobj);
-        kobject_put(&domain->kobj);
-    }
+    ec_master_destroy_domains(master);
 
     master->request_cb = NULL;
     master->release_cb = NULL;
