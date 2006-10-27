@@ -1,7 +1,5 @@
 #------------------------------------------------------------------------------
 #
-#  Kbuild
-#
 #  $Id$
 #
 #  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
@@ -36,5 +34,7 @@
 obj-m := ec_rtai_sample.o
 
 ec_rtai_sample-objs := rtai_sample.o
+
+EXTRA_CFLAGS := -I/usr/realtime/include
 
 #------------------------------------------------------------------------------
