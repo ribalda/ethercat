@@ -48,6 +48,18 @@
 
 /*****************************************************************************/
 
+/**
+   Mode of the change state machine.
+*/
+
+typedef enum {
+    EC_FSM_CHANGE_MODE_FULL, /**< full state change */
+    EC_FSM_CHANGE_MODE_ACK_ONLY /**< only state acknowledgement */
+}
+ec_fsm_change_mode_t;
+
+/*****************************************************************************/
+
 typedef struct ec_fsm_change ec_fsm_change_t; /**< \see ec_fsm_change */
 
 /**
@@ -60,7 +72,9 @@ struct ec_fsm_change
     ec_datagram_t *datagram; /**< datagram used in the state machine */
 
     void (*state)(ec_fsm_change_t *); /**< slave state change state function */
+    ec_fsm_change_mode_t mode; /**< full state change, or ack only. */
     ec_slave_state_t requested_state; /**< input: state */
+    ec_slave_state_t old_state; /**< prior slave state */
     unsigned long jiffies_start; /**< change timer */
     uint8_t take_time; /**< take sending timestamp */
 };
@@ -70,7 +84,8 @@ struct ec_fsm_change
 void ec_fsm_change_init(ec_fsm_change_t *, ec_datagram_t *);
 void ec_fsm_change_clear(ec_fsm_change_t *);
 
-void ec_fsm_change(ec_fsm_change_t *, ec_slave_t *, ec_slave_state_t);
+void ec_fsm_change_start(ec_fsm_change_t *, ec_slave_t *, ec_slave_state_t);
+void ec_fsm_change_ack(ec_fsm_change_t *, ec_slave_t *);
 
 int ec_fsm_change_exec(ec_fsm_change_t *);
 int ec_fsm_change_success(ec_fsm_change_t *);

@@ -44,14 +44,15 @@
 
 /*****************************************************************************/
 
-void ec_fsm_change_start(ec_fsm_change_t *);
-void ec_fsm_change_check(ec_fsm_change_t *);
-void ec_fsm_change_status(ec_fsm_change_t *);
-void ec_fsm_change_code(ec_fsm_change_t *);
-void ec_fsm_change_ack(ec_fsm_change_t *);
-void ec_fsm_change_check_ack(ec_fsm_change_t *);
-void ec_fsm_change_end(ec_fsm_change_t *);
-void ec_fsm_change_error(ec_fsm_change_t *);
+void ec_fsm_change_state_start(ec_fsm_change_t *);
+void ec_fsm_change_state_check(ec_fsm_change_t *);
+void ec_fsm_change_state_status(ec_fsm_change_t *);
+void ec_fsm_change_state_code(ec_fsm_change_t *);
+void ec_fsm_change_state_start_ack(ec_fsm_change_t *);
+void ec_fsm_change_state_ack(ec_fsm_change_t *);
+void ec_fsm_change_state_check_ack(ec_fsm_change_t *);
+void ec_fsm_change_state_end(ec_fsm_change_t *);
+void ec_fsm_change_state_error(ec_fsm_change_t *);
 
 /*****************************************************************************/
 
@@ -80,17 +81,34 @@ void ec_fsm_change_clear(ec_fsm_change_t *fsm /**< finite state machine */)
 /*****************************************************************************/
 
 /**
-   Resets the state machine.
+   Starts the change state machine.
 */
 
-void ec_fsm_change(ec_fsm_change_t *fsm, /**< finite state machine */
-                   ec_slave_t *slave, /**< EtherCAT slave */
-                   ec_slave_state_t state /**< requested state */
-                   )
+void ec_fsm_change_start(ec_fsm_change_t *fsm, /**< finite state machine */
+                         ec_slave_t *slave, /**< EtherCAT slave */
+                         ec_slave_state_t state /**< requested state */
+                         )
 {
+    fsm->mode = EC_FSM_CHANGE_MODE_FULL;
     fsm->slave = slave;
     fsm->requested_state = state;
-    fsm->state = ec_fsm_change_start;
+    fsm->state = ec_fsm_change_state_start;
+}
+
+/*****************************************************************************/
+
+/**
+   Starts the change state machine to only acknowlegde a slave's state.
+*/
+
+void ec_fsm_change_ack(ec_fsm_change_t *fsm, /**< finite state machine */
+                       ec_slave_t *slave /**< EtherCAT slave */
+                       )
+{
+    fsm->mode = EC_FSM_CHANGE_MODE_ACK_ONLY;
+    fsm->slave = slave;
+    fsm->requested_state = EC_SLAVE_STATE_UNKNOWN;
+    fsm->state = ec_fsm_change_state_start_ack;
 }
 
 /*****************************************************************************/
@@ -104,8 +122,8 @@ int ec_fsm_change_exec(ec_fsm_change_t *fsm /**< finite state machine */)
 {
     fsm->state(fsm);
 
-    return fsm->state != ec_fsm_change_end
-        && fsm->state != ec_fsm_change_error;
+    return fsm->state != ec_fsm_change_state_end
+        && fsm->state != ec_fsm_change_state_error;
 }
 
 /*****************************************************************************/
@@ -117,7 +135,7 @@ int ec_fsm_change_exec(ec_fsm_change_t *fsm /**< finite state machine */)
 
 int ec_fsm_change_success(ec_fsm_change_t *fsm /**< Finite state machine */)
 {
-    return fsm->state == ec_fsm_change_end;
+    return fsm->state == ec_fsm_change_state_end;
 }
 
 /******************************************************************************
@@ -128,18 +146,20 @@ int ec_fsm_change_success(ec_fsm_change_t *fsm /**< Finite state machine */)
    Change state: START.
 */
 
-void ec_fsm_change_start(ec_fsm_change_t *fsm /**< finite state machine */)
+void ec_fsm_change_state_start(ec_fsm_change_t *fsm
+                               /**< finite state machine */)
 {
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
     fsm->take_time = 1;
+    fsm->old_state = fsm->slave->current_state;
 
     // write new state to slave
     ec_datagram_npwr(datagram, slave->station_address, 0x0120, 2);
     EC_WRITE_U16(datagram->data, fsm->requested_state);
     ec_master_queue_datagram(fsm->slave->master, datagram);
-    fsm->state = ec_fsm_change_check;
+    fsm->state = ec_fsm_change_state_check;
 }
 
 /*****************************************************************************/
@@ -148,13 +168,14 @@ void ec_fsm_change_start(ec_fsm_change_t *fsm /**< finite state machine */)
    Change state: CHECK.
 */
 
-void ec_fsm_change_check(ec_fsm_change_t *fsm /**< finite state machine */)
+void ec_fsm_change_state_check(ec_fsm_change_t *fsm
+                               /**< finite state machine */)
 {
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
-        fsm->state = ec_fsm_change_error;
+        fsm->state = ec_fsm_change_state_error;
         EC_ERR("Failed to send state datagram to slave %i!\n",
                fsm->slave->ring_position);
         return;
@@ -169,7 +190,7 @@ void ec_fsm_change_check(ec_fsm_change_t *fsm /**< finite state machine */)
         if (datagram->jiffies_received - fsm->jiffies_start >= 3 * HZ) {
             char state_str[EC_STATE_STRING_SIZE];
             ec_state_string(fsm->requested_state, state_str);
-            fsm->state = ec_fsm_change_error;
+            fsm->state = ec_fsm_change_state_error;
             EC_ERR("Failed to set state %s on slave %i: Slave did not"
                    " respond.\n", state_str, fsm->slave->ring_position);
             return;
@@ -187,7 +208,7 @@ void ec_fsm_change_check(ec_fsm_change_t *fsm /**< finite state machine */)
     // read AL status from slave
     ec_datagram_nprd(datagram, slave->station_address, 0x0130, 2);
     ec_master_queue_datagram(fsm->slave->master, datagram);
-    fsm->state = ec_fsm_change_status;
+    fsm->state = ec_fsm_change_state_status;
 }
 
 /*****************************************************************************/
@@ -196,14 +217,15 @@ void ec_fsm_change_check(ec_fsm_change_t *fsm /**< finite state machine */)
    Change state: STATUS.
 */
 
-void ec_fsm_change_status(ec_fsm_change_t *fsm /**< finite state machine */)
+void ec_fsm_change_state_status(ec_fsm_change_t *fsm
+                                /**< finite state machine */)
 {
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
     if (datagram->state != EC_DATAGRAM_RECEIVED
         || datagram->working_counter != 1) {
-        fsm->state = ec_fsm_change_error;
+        fsm->state = ec_fsm_change_state_error;
         EC_ERR("Failed to check state 0x%02X on slave %i.\n",
                fsm->requested_state, slave->ring_position);
         return;
@@ -218,35 +240,49 @@ void ec_fsm_change_status(ec_fsm_change_t *fsm /**< finite state machine */)
 
     if (slave->current_state == fsm->requested_state) {
         // state has been set successfully
-        fsm->state = ec_fsm_change_end;
+        fsm->state = ec_fsm_change_state_end;
         return;
     }
 
-    if (slave->current_state & EC_SLAVE_STATE_ACK_ERR) {
-        // state change error
+    if (slave->current_state != fsm->old_state) { // state changed
         char req_state[EC_STATE_STRING_SIZE], cur_state[EC_STATE_STRING_SIZE];
+
+        slave->error_flag = 1;
         ec_state_string(fsm->requested_state, req_state);
         ec_state_string(slave->current_state, cur_state);
-        EC_ERR("Failed to set %s state, slave %i refused state change (%s).\n",
-               req_state, slave->ring_position, cur_state);
-        // fetch AL status error code
-        ec_datagram_nprd(datagram, slave->station_address, 0x0134, 2);
-        ec_master_queue_datagram(fsm->slave->master, datagram);
-        fsm->state = ec_fsm_change_code;
+
+        if (slave->current_state & EC_SLAVE_STATE_ACK_ERR) {
+            // state change error
+            EC_ERR("Failed to set %s state,"
+                   " slave %i refused state change (%s).\n",
+                   req_state, slave->ring_position, cur_state);
+            // fetch AL status error code
+            ec_datagram_nprd(datagram, slave->station_address, 0x0134, 2);
+            ec_master_queue_datagram(fsm->slave->master, datagram);
+            fsm->state = ec_fsm_change_state_code;
+            return;
+        }
+
+        // state change to unrequested state
+        EC_ERR("Slave %i changed to unrequested state %s!\n",
+               slave->ring_position, cur_state);
+        fsm->state = ec_fsm_change_state_error;
         return;
     }
+
+    // still old state
 
     if (datagram->jiffies_received - fsm->jiffies_start >= HZ) { // 1s
         // timeout while checking
         char state_str[EC_STATE_STRING_SIZE];
         ec_state_string(fsm->requested_state, state_str);
-        fsm->state = ec_fsm_change_error;
+        fsm->state = ec_fsm_change_state_error;
         EC_ERR("Timeout while setting state %s on slave %i.\n",
                state_str, slave->ring_position);
         return;
     }
 
-    // still old state: check again
+    // check again
     ec_datagram_nprd(datagram, slave->station_address, 0x0130, 2);
     ec_master_queue_datagram(fsm->slave->master, datagram);
 }
@@ -297,10 +333,10 @@ const ec_code_msg_t al_status_messages[] = {
    Change state: CODE.
 */
 
-void ec_fsm_change_code(ec_fsm_change_t *fsm /**< finite state machine */)
+void ec_fsm_change_state_code(ec_fsm_change_t *fsm
+                              /**< finite state machine */)
 {
     ec_datagram_t *datagram = fsm->datagram;
-    ec_slave_t *slave = fsm->slave;
     uint32_t code;
     const ec_code_msg_t *al_msg;
 
@@ -322,10 +358,25 @@ void ec_fsm_change_code(ec_fsm_change_t *fsm /**< finite state machine */)
     }
 
     // acknowledge "old" slave state
+    ec_fsm_change_state_start_ack(fsm); // execute immediately
+}
+
+/*****************************************************************************/
+
+/**
+   Change state: START ACK.
+*/
+
+void ec_fsm_change_state_start_ack(ec_fsm_change_t *fsm
+                                   /**< finite state machine */)
+{
+    ec_slave_t *slave = fsm->slave;
+    ec_datagram_t *datagram = fsm->datagram;
+
     ec_datagram_npwr(datagram, slave->station_address, 0x0120, 2);
     EC_WRITE_U16(datagram->data, slave->current_state);
     ec_master_queue_datagram(fsm->slave->master, datagram);
-    fsm->state = ec_fsm_change_ack;
+    fsm->state = ec_fsm_change_state_ack;
 }
 
 /*****************************************************************************/
@@ -334,14 +385,14 @@ void ec_fsm_change_code(ec_fsm_change_t *fsm /**< finite state machine */)
    Change state: ACK.
 */
 
-void ec_fsm_change_ack(ec_fsm_change_t *fsm /**< finite state machine */)
+void ec_fsm_change_state_ack(ec_fsm_change_t *fsm /**< finite state machine */)
 {
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
     if (datagram->state != EC_DATAGRAM_RECEIVED
         || datagram->working_counter != 1) {
-        fsm->state = ec_fsm_change_error;
+        fsm->state = ec_fsm_change_state_error;
         EC_ERR("Reception of state ack datagram failed.\n");
         return;
     }
@@ -351,7 +402,7 @@ void ec_fsm_change_ack(ec_fsm_change_t *fsm /**< finite state machine */)
     // read new AL status
     ec_datagram_nprd(datagram, slave->station_address, 0x0130, 2);
     ec_master_queue_datagram(fsm->slave->master, datagram);
-    fsm->state = ec_fsm_change_check_ack;
+    fsm->state = ec_fsm_change_state_check_ack;
 }
 
 /*****************************************************************************/
@@ -360,14 +411,15 @@ void ec_fsm_change_ack(ec_fsm_change_t *fsm /**< finite state machine */)
    Change state: CHECK ACK.
 */
 
-void ec_fsm_change_check_ack(ec_fsm_change_t *fsm /**< finite state machine */)
+void ec_fsm_change_state_check_ack(ec_fsm_change_t *fsm
+                                   /**< finite state machine */)
 {
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
     if (datagram->state != EC_DATAGRAM_RECEIVED
         || datagram->working_counter != 1) {
-        fsm->state = ec_fsm_change_error;
+        fsm->state = ec_fsm_change_state_error;
         EC_ERR("Reception of state ack check datagram failed.\n");
         return;
     }
@@ -382,7 +434,12 @@ void ec_fsm_change_check_ack(ec_fsm_change_t *fsm /**< finite state machine */)
     if (!(slave->current_state & EC_SLAVE_STATE_ACK_ERR)) {
         char state_str[EC_STATE_STRING_SIZE];
         ec_state_string(slave->current_state, state_str);
-        fsm->state = ec_fsm_change_error;
+        if (fsm->mode == EC_FSM_CHANGE_MODE_FULL) {
+            fsm->state = ec_fsm_change_state_error;
+        }
+        else { // EC_FSM_CHANGE_MODE_ACK_ONLY
+            fsm->state = ec_fsm_change_state_end;
+        }
         EC_INFO("Acknowledged state %s on slave %i.\n",
                 state_str, slave->ring_position);
         return;
@@ -392,7 +449,7 @@ void ec_fsm_change_check_ack(ec_fsm_change_t *fsm /**< finite state machine */)
         // timeout while checking
         char state_str[EC_STATE_STRING_SIZE];
         ec_state_string(slave->current_state, state_str);
-        fsm->state = ec_fsm_change_error;
+        fsm->state = ec_fsm_change_state_error;
         EC_ERR("Timeout while acknowledging state %s on slave %i.\n",
                state_str, slave->ring_position);
         return;
@@ -409,7 +466,8 @@ void ec_fsm_change_check_ack(ec_fsm_change_t *fsm /**< finite state machine */)
    State: ERROR.
 */
 
-void ec_fsm_change_error(ec_fsm_change_t *fsm /**< finite state machine */)
+void ec_fsm_change_state_error(ec_fsm_change_t *fsm
+                               /**< finite state machine */)
 {
 }
 
@@ -419,7 +477,8 @@ void ec_fsm_change_error(ec_fsm_change_t *fsm /**< finite state machine */)
    State: END.
 */
 
-void ec_fsm_change_end(ec_fsm_change_t *fsm /**< finite state machine */)
+void ec_fsm_change_state_end(ec_fsm_change_t *fsm
+                             /**< finite state machine */)
 {
 }
 

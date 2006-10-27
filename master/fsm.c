@@ -48,6 +48,7 @@
 void ec_fsm_master_start(ec_fsm_t *);
 void ec_fsm_master_broadcast(ec_fsm_t *);
 void ec_fsm_master_read_states(ec_fsm_t *);
+void ec_fsm_master_acknowledge(ec_fsm_t *);
 void ec_fsm_master_validate_vendor(ec_fsm_t *);
 void ec_fsm_master_validate_product(ec_fsm_t *);
 void ec_fsm_master_rewrite_addresses(ec_fsm_t *);
@@ -321,7 +322,7 @@ void ec_fsm_master_action_process_states(ec_fsm_t *fsm
 
         fsm->slave = slave;
         fsm->slave_state = ec_fsm_slaveconf_init;
-        ec_fsm_change(&fsm->fsm_change, fsm->slave, EC_SLAVE_STATE_INIT);
+        ec_fsm_change_start(&fsm->fsm_change, fsm->slave, EC_SLAVE_STATE_INIT);
         fsm->master_state = ec_fsm_master_configure_slave;
         fsm->master_state(fsm); // execute immediately
         return;
@@ -505,6 +506,37 @@ void ec_fsm_master_read_states(ec_fsm_t *fsm /**< finite state machine */)
         EC_INFO("Slave %i: %s -> %s.\n",
                 slave->ring_position, old_state, cur_state);
         slave->current_state = new_state;
+    }
+
+    // check, if new slave state has to be acknowledged
+    if (slave->current_state & EC_SLAVE_STATE_ACK_ERR && !slave->error_flag) {
+        ec_fsm_change_ack(&fsm->fsm_change, slave);
+        ec_fsm_change_exec(&fsm->fsm_change);
+        fsm->master_state = ec_fsm_master_acknowledge;
+        return;
+    }
+
+    ec_fsm_master_action_next_slave_state(fsm);
+}
+
+/*****************************************************************************/
+
+/**
+   Master state: ACKNOWLEDGE
+*/
+
+void ec_fsm_master_acknowledge(ec_fsm_t *fsm /**< finite state machine */)
+{
+    ec_slave_t *slave = fsm->slave;
+
+    if (ec_fsm_change_exec(&fsm->fsm_change)) return;
+
+    if (!ec_fsm_change_success(&fsm->fsm_change)) {
+        fsm->slave->error_flag = 1;
+        EC_ERR("Failed to acknowledge state change on slave %i.\n",
+               slave->ring_position);
+        fsm->master_state = ec_fsm_master_error;
+        return;
     }
 
     ec_fsm_master_action_next_slave_state(fsm);
@@ -903,8 +935,10 @@ void ec_fsm_slavescan_state(ec_fsm_t *fsm /**< finite state machine */)
 
     slave->current_state = EC_READ_U8(datagram->data);
     if (slave->current_state & EC_SLAVE_STATE_ACK_ERR) {
-        EC_WARN("Slave %i has state error bit set (0x%02X)!\n",
-                slave->ring_position, slave->current_state);
+        char state_str[EC_STATE_STRING_SIZE];
+        ec_state_string(slave->current_state, state_str);
+        EC_WARN("Slave %i has state error bit set (%s)!\n",
+                slave->ring_position, state_str);
     }
 
     // read base data
@@ -1200,7 +1234,7 @@ void ec_fsm_slaveconf_init(ec_fsm_t *fsm /**< finite state machine */)
 
     if (!slave->base_sync_count) { // no sync managers
         fsm->slave_state = ec_fsm_slaveconf_preop;
-        ec_fsm_change(&fsm->fsm_change, slave, EC_SLAVE_STATE_PREOP);
+        ec_fsm_change_start(&fsm->fsm_change, slave, EC_SLAVE_STATE_PREOP);
         ec_fsm_change_exec(&fsm->fsm_change); // execute immediately
         return;
     }
@@ -1276,7 +1310,7 @@ void ec_fsm_slaveconf_sync(ec_fsm_t *fsm /**< finite state machine */)
     }
 
     fsm->slave_state = ec_fsm_slaveconf_preop;
-    ec_fsm_change(&fsm->fsm_change, slave, EC_SLAVE_STATE_PREOP);
+    ec_fsm_change_start(&fsm->fsm_change, slave, EC_SLAVE_STATE_PREOP);
     ec_fsm_change_exec(&fsm->fsm_change); // execute immediately
 }
 
@@ -1320,7 +1354,8 @@ void ec_fsm_slaveconf_preop(ec_fsm_t *fsm /**< finite state machine */)
     if (!slave->base_fmmu_count) { // skip FMMU configuration
         if (list_empty(&slave->sdo_confs)) { // skip SDO configuration
             fsm->slave_state = ec_fsm_slaveconf_saveop;
-            ec_fsm_change(&fsm->fsm_change, slave, EC_SLAVE_STATE_SAVEOP);
+            ec_fsm_change_start(&fsm->fsm_change, slave,
+                                EC_SLAVE_STATE_SAVEOP);
             ec_fsm_change_exec(&fsm->fsm_change); // execute immediately
             return;
         }
@@ -1370,7 +1405,7 @@ void ec_fsm_slaveconf_fmmu(ec_fsm_t *fsm /**< finite state machine */)
     if (list_empty(&slave->sdo_confs)) { // skip SDO configuration
         // set state to SAVEOP
         fsm->slave_state = ec_fsm_slaveconf_saveop;
-        ec_fsm_change(&fsm->fsm_change, slave, EC_SLAVE_STATE_SAVEOP);
+        ec_fsm_change_start(&fsm->fsm_change, slave, EC_SLAVE_STATE_SAVEOP);
         ec_fsm_change_exec(&fsm->fsm_change); // execute immediately
         return;
     }
@@ -1411,7 +1446,7 @@ void ec_fsm_slaveconf_sdoconf(ec_fsm_t *fsm /**< finite state machine */)
 
     // set state to SAVEOP
     fsm->slave_state = ec_fsm_slaveconf_saveop;
-    ec_fsm_change(&fsm->fsm_change, fsm->slave, EC_SLAVE_STATE_SAVEOP);
+    ec_fsm_change_start(&fsm->fsm_change, fsm->slave, EC_SLAVE_STATE_SAVEOP);
     ec_fsm_change_exec(&fsm->fsm_change); // execute immediately
 }
 
@@ -1451,7 +1486,7 @@ void ec_fsm_slaveconf_saveop(ec_fsm_t *fsm /**< finite state machine */)
 
     // set state to OP
     fsm->slave_state = ec_fsm_slaveconf_op;
-    ec_fsm_change(&fsm->fsm_change, slave, EC_SLAVE_STATE_OP);
+    ec_fsm_change_start(&fsm->fsm_change, slave, EC_SLAVE_STATE_OP);
     ec_fsm_change_exec(&fsm->fsm_change); // execute immediately
 }
 

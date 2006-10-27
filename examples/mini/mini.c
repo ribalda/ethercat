@@ -52,7 +52,7 @@ ec_domain_t *domain1 = NULL;
 spinlock_t master_lock = SPIN_LOCK_UNLOCKED;
 
 // data fields
-#if 0
+#if 1
 void *r_inputs;
 void *r_outputs;
 #endif
@@ -81,7 +81,7 @@ void run(unsigned long data)
 
     // process data
     //k_pos = EC_READ_U32(r_ssi);
-    //EC_WRITE_U8(r_outputs + 2, einaus ? 0xFF : 0x00);
+    EC_WRITE_U8(r_outputs + 2, einaus ? 0xFF : 0x00);
 
     // send
     ecrt_master_run(master);
@@ -121,7 +121,9 @@ void release_lock(void *data)
 
 int __init init_mini_module(void)
 {
-    //    ec_slave_t *slave;
+#if 0
+    ec_slave_t *slave;
+#endif
 
     printk(KERN_INFO "=== Starting Minimal EtherCAT environment... ===\n");
 
@@ -147,7 +149,7 @@ int __init init_mini_module(void)
     }
 #endif
 
-#if 0
+#if 1
     if (!ecrt_domain_register_pdo_range(domain1, "0", Beckhoff_BK1120,
                                         EC_DIR_OUTPUT, 0, 4, &r_outputs)) {
         printk(KERN_ERR "PDO registration failed!\n");
