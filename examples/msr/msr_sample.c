@@ -1,7 +1,5 @@
 /******************************************************************************
  *
- *  Sample module for use with IgH MSR library.
- *
  *  $Id$
  *
  *  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH

@@ -1,9 +1,5 @@
 /******************************************************************************
  *
- *  m i n i . c
- *
- *  Minimal module for EtherCAT.
- *
  *  $Id$
  *
  *  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
