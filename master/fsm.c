@@ -68,6 +68,7 @@ void ec_fsm_slavescan_datalink(ec_fsm_t *);
 void ec_fsm_slavescan_eeprom_size(ec_fsm_t *);
 void ec_fsm_slavescan_eeprom_data(ec_fsm_t *);
 
+void ec_fsm_slaveconf_start(ec_fsm_t *);
 void ec_fsm_slaveconf_init(ec_fsm_t *);
 void ec_fsm_slaveconf_sync(ec_fsm_t *);
 void ec_fsm_slaveconf_preop(ec_fsm_t *);
@@ -136,6 +137,17 @@ int ec_fsm_exec(ec_fsm_t *fsm /**< finite state machine */)
 {
     fsm->master_state(fsm);
 
+    return ec_fsm_running(fsm);
+}
+
+/*****************************************************************************/
+
+/**
+   \return false, if state machine has terminated
+*/
+
+int ec_fsm_running(ec_fsm_t *fsm /**< finite state machine */)
+{
     return fsm->master_state != ec_fsm_master_end
         && fsm->master_state != ec_fsm_master_error;
 }
@@ -303,28 +315,25 @@ void ec_fsm_master_action_process_states(ec_fsm_t *fsm
             || !slave->online
             || slave->requested_state == EC_SLAVE_STATE_UNKNOWN
             || (slave->current_state == slave->requested_state
-                && (slave->configured
-                    || slave->current_state == EC_SLAVE_STATE_INIT))) continue;
+                && slave->configured)) continue;
 
         if (master->debug_level) {
             ec_state_string(slave->current_state, old_state);
-            if (!slave->configured
-                && slave->current_state != EC_SLAVE_STATE_INIT) {
-                EC_INFO("Reconfiguring slave %i (%s).\n",
-                        slave->ring_position, old_state);
-            }
-            else if (slave->current_state != slave->requested_state) {
+            if (slave->current_state != slave->requested_state) {
                 ec_state_string(slave->requested_state, new_state);
-                EC_INFO("Changing state of slave %i (%s -> %s).\n",
-                        slave->ring_position, old_state, new_state);
+                EC_DBG("Changing state of slave %i (%s -> %s).\n",
+                       slave->ring_position, old_state, new_state);
+            }
+            else if (!slave->configured) {
+                EC_DBG("Reconfiguring slave %i (%s).\n",
+                       slave->ring_position, old_state);
             }
         }
 
-        fsm->slave = slave;
-        fsm->slave_state = ec_fsm_slaveconf_init;
-        ec_fsm_change_start(&fsm->fsm_change, fsm->slave, EC_SLAVE_STATE_INIT);
         fsm->master_state = ec_fsm_master_configure_slave;
-        fsm->master_state(fsm); // execute immediately
+        fsm->slave = slave;
+        fsm->slave_state = ec_fsm_slaveconf_start;
+        fsm->slave_state(fsm); // execute immediately
         return;
     }
 
@@ -1191,6 +1200,23 @@ end:
 /******************************************************************************
  *  slave configuration state machine
  *****************************************************************************/
+
+/**
+   Slave configuration state: START.
+*/
+
+void ec_fsm_slaveconf_start(ec_fsm_t *fsm /**< finite state machine */)
+{
+    if (fsm->master->debug_level) {
+        EC_DBG("Configuring slave %i...\n", fsm->slave->ring_position);
+    }
+
+    ec_fsm_change_start(&fsm->fsm_change, fsm->slave, EC_SLAVE_STATE_INIT);
+    ec_fsm_change_exec(&fsm->fsm_change);
+    fsm->slave_state = ec_fsm_slaveconf_init;
+}
+
+/*****************************************************************************/
 
 /**
    Slave configuration state: INIT.

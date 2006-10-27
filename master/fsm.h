@@ -86,7 +86,13 @@ int ec_fsm_init(ec_fsm_t *, ec_master_t *);
 void ec_fsm_clear(ec_fsm_t *);
 
 int ec_fsm_exec(ec_fsm_t *);
+int ec_fsm_running(ec_fsm_t *);
 int ec_fsm_success(ec_fsm_t *);
+
+// FIXME
+void ec_fsm_slaveconf_start(ec_fsm_t *);
+void ec_fsm_slave_end(ec_fsm_t *);
+void ec_fsm_slave_error(ec_fsm_t *);
 
 /*****************************************************************************/
 

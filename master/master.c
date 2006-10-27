@@ -373,14 +373,11 @@ int ec_master_enter_operation_mode(ec_master_t *master /**< EtherCAT master */)
         ecrt_master_receive(master);
     }
 
-    // finish running FSM
-    while (ec_fsm_exec(&master->fsm)) {
-        ec_master_sync_io(master);
-    }
-
-    if (!ec_fsm_success(&master->fsm)) {
-        EC_ERR("Master state machine failure!\n");
-        goto out_idle;
+    // finish running master FSM
+    if (ec_fsm_running(&master->fsm)) {
+        while (ec_fsm_exec(&master->fsm)) {
+            ec_master_sync_io(master);
+        }
     }
 
     if (master->debug_level) {
@@ -427,14 +424,26 @@ void ec_master_leave_operation_mode(ec_master_t *master
         ecrt_master_receive(master);
     }
 
+    // finish running master FSM
+    if (ec_fsm_running(fsm)) {
+        while (ec_fsm_exec(fsm)) {
+            ec_master_sync_io(master);
+        }
+    }
+
     // set states for all slaves
     list_for_each_entry(slave, &master->slaves, list) {
         ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
-    }
 
-    // execute master FSM to deactivate slaves
-    while (ec_fsm_exec(fsm)) {
-        ec_master_sync_io(master);
+        fsm->slave = slave;
+        fsm->slave_state = ec_fsm_slaveconf_start;
+
+        do {
+            fsm->slave_state(fsm);
+            ec_master_sync_io(master);
+        }
+        while (fsm->slave_state != ec_fsm_slave_end
+               && fsm->slave_state != ec_fsm_slave_error);
     }
 
     ec_master_destroy_domains(master);
@@ -1319,19 +1328,19 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT master */)
         domain_offset += domain->data_size;
     }
 
-    // execute master FSM until termination
-    while (ec_fsm_exec(fsm)) {
-        ec_master_sync_io(master);
-    }
-
-    if (!ec_fsm_success(fsm)) {
-        EC_ERR("Error in master state machine.\n");
-        return -1;
-    }
-
-    // check, if all slaves have been configured
+    // configure all slaves
     list_for_each_entry(slave, &master->slaves, list) {
-        if (slave->error_flag || !slave->online) {
+        fsm->slave = slave;
+        fsm->slave_state = ec_fsm_slaveconf_start;
+
+        do {
+            fsm->slave_state(fsm);
+            ec_master_sync_io(master);
+        }
+        while (fsm->slave_state != ec_fsm_slave_end
+               && fsm->slave_state != ec_fsm_slave_error);
+
+        if (fsm->slave_state == ec_fsm_slave_error) {
             EC_ERR("Failed to configure slave %i!\n", slave->ring_position);
             return -1;
         }
