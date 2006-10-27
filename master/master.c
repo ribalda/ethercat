@@ -1245,8 +1245,8 @@ int ec_master_measure_bus_time(ec_master_t *master)
         if (cur < min) min = cur;
     }
 
-    EC_INFO("Bus time is (min/avg/max) %u / %u.%u / %u us.\n",
-            min, sum / 100, sum % 100, max);
+    EC_DBG("Bus time is (min/avg/max) %u / %u.%u / %u us.\n",
+           min, sum / 100, sum % 100, max);
     ec_datagram_clear(&datagram);
     return 0;
 

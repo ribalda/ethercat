@@ -852,8 +852,9 @@ void ec_fsm_coe_down_start(ec_fsm_coe_t *fsm /**< finite state machine */)
     ec_sdo_data_t *sdodata = fsm->sdodata;
     uint8_t *data;
 
-    EC_INFO("Downloading SDO 0x%04X:%i to slave %i.\n",
-            sdodata->index, sdodata->subindex, slave->ring_position);
+    if (fsm->slave->master->debug_level)
+        EC_DBG("Downloading SDO 0x%04X:%i to slave %i.\n",
+               sdodata->index, sdodata->subindex, slave->ring_position);
 
     if (slave->sii_rx_mailbox_size < 6 + 10 + sdodata->size) {
         EC_ERR("SDO fragmenting not supported yet!\n");
@@ -1029,8 +1030,9 @@ void ec_fsm_coe_up_start(ec_fsm_coe_t *fsm /**< finite state machine */)
     ec_sdo_entry_t *entry = request->entry;
     uint8_t *data;
 
-    EC_INFO("Uploading SDO 0x%04X:%i from slave %i.\n",
-            sdo->index, entry->subindex, slave->ring_position);
+    if (master->debug_level)
+        EC_DBG("Uploading SDO 0x%04X:%i from slave %i.\n",
+               sdo->index, entry->subindex, slave->ring_position);
 
     if (!(data = ec_slave_mbox_prepare_send(slave, datagram, 0x03, 6))) {
         fsm->state = ec_fsm_coe_error;

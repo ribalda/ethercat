@@ -492,7 +492,8 @@ void ec_fsm_master_read_states(ec_fsm_t *fsm /**< finite state machine */)
     if (datagram->working_counter != 1) {
         if (slave->online) {
             slave->online = 0;
-            EC_INFO("Slave %i: offline.\n", slave->ring_position);
+            if (master->debug_level)
+                EC_DBG("Slave %i: offline.\n", slave->ring_position);
         }
         ec_fsm_master_action_next_slave_state(fsm);
         return;
@@ -501,19 +502,25 @@ void ec_fsm_master_read_states(ec_fsm_t *fsm /**< finite state machine */)
     // slave responded
     new_state = EC_READ_U8(datagram->data);
     if (!slave->online) { // slave was offline before
-        char cur_state[EC_STATE_STRING_SIZE];
         slave->online = 1;
         slave->error_flag = 0; // clear error flag
         slave->current_state = new_state;
-        ec_state_string(slave->current_state, cur_state);
-        EC_INFO("Slave %i: online (%s).\n", slave->ring_position, cur_state);
+        if (master->debug_level) {
+            char cur_state[EC_STATE_STRING_SIZE];
+            ec_state_string(slave->current_state, cur_state);
+            EC_DBG("Slave %i: online (%s).\n",
+                   slave->ring_position, cur_state);
+        }
     }
     else if (new_state != slave->current_state) {
-        char old_state[EC_STATE_STRING_SIZE], cur_state[EC_STATE_STRING_SIZE];
-        ec_state_string(slave->current_state, old_state);
-        ec_state_string(new_state, cur_state);
-        EC_INFO("Slave %i: %s -> %s.\n",
-                slave->ring_position, old_state, cur_state);
+        if (master->debug_level) {
+            char old_state[EC_STATE_STRING_SIZE],
+                cur_state[EC_STATE_STRING_SIZE];
+            ec_state_string(slave->current_state, old_state);
+            ec_state_string(new_state, cur_state);
+            EC_DBG("Slave %i: %s -> %s.\n",
+                   slave->ring_position, old_state, cur_state);
+        }
         slave->current_state = new_state;
     }
 
