@@ -44,11 +44,12 @@
 #include <msr_main.h>
 #include <msr_reg.h>
 #include <msr_time.h>
-#include "msr_param.h"
 
 // EtherCAT
 #include "../../include/ecrt.h"
 #include "../../include/ecdb.h"
+
+#define MSR_ABTASTFREQUENZ 1000
 
 #define HZREDUCTION (MSR_ABTASTFREQUENZ / HZ)
 #define TIMERTICKS (1000000000 / MSR_ABTASTFREQUENZ)
