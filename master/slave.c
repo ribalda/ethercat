@@ -283,7 +283,17 @@ void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
 
 void ec_slave_reset(ec_slave_t *slave /**< EtherCAT slave */)
 {
+    ec_sdo_data_t *sdodata, *next_sdodata;
+
+    // remove FMMU configurations
     slave->fmmu_count = 0;
+
+    // free all SDO configurations
+    list_for_each_entry_safe(sdodata, next_sdodata, &slave->sdo_confs, list) {
+        list_del(&sdodata->list);
+        kfree(sdodata->data);
+        kfree(sdodata);
+    }
 }
 
 /*****************************************************************************/
