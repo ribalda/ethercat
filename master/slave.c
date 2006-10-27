@@ -574,6 +574,8 @@ size_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
     ec_sii_pdo_t *pdo;
     ec_sii_pdo_entry_t *pdo_entry;
     int first, i;
+    ec_sdo_data_t *sdodata;
+    char str[20];
 
     off += sprintf(buffer + off, "\nName: ");
 
@@ -703,6 +705,20 @@ size_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
                            pdo_entry->index, pdo_entry->subindex,
                            pdo_entry->bit_length);
         }
+    }
+
+    if (!list_empty(&slave->sdo_confs))
+        off += sprintf(buffer + off, "\nSDO configurations:\n");
+
+    list_for_each_entry(sdodata, &slave->sdo_confs, list) {
+        switch (sdodata->size) {
+            case 1: sprintf(str, "%i", EC_READ_U8(sdodata->data)); break;
+            case 2: sprintf(str, "%i", EC_READ_U16(sdodata->data)); break;
+            case 4: sprintf(str, "%i", EC_READ_U32(sdodata->data)); break;
+            default: sprintf(str, "(invalid size)"); break;
+        }
+        off += sprintf(buffer + off, "  0x%04X:%-3i -> %s\n",
+                       sdodata->index, sdodata->subindex, str);
     }
 
     off += sprintf(buffer + off, "\n");
