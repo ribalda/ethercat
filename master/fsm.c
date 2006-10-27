@@ -68,17 +68,23 @@ void ec_fsm_slavescan_datalink(ec_fsm_t *);
 void ec_fsm_slavescan_eeprom_size(ec_fsm_t *);
 void ec_fsm_slavescan_eeprom_data(ec_fsm_t *);
 
-void ec_fsm_slaveconf_start(ec_fsm_t *);
-void ec_fsm_slaveconf_init(ec_fsm_t *);
-void ec_fsm_slaveconf_sync(ec_fsm_t *);
-void ec_fsm_slaveconf_preop(ec_fsm_t *);
-void ec_fsm_slaveconf_fmmu(ec_fsm_t *);
-void ec_fsm_slaveconf_sdoconf(ec_fsm_t *);
-void ec_fsm_slaveconf_saveop(ec_fsm_t *);
-void ec_fsm_slaveconf_op(ec_fsm_t *);
+void ec_fsm_slaveconf_state_start(ec_fsm_t *);
+void ec_fsm_slaveconf_state_init(ec_fsm_t *);
+void ec_fsm_slaveconf_state_clear_fmmus(ec_fsm_t *);
+void ec_fsm_slaveconf_state_sync(ec_fsm_t *);
+void ec_fsm_slaveconf_state_preop(ec_fsm_t *);
+void ec_fsm_slaveconf_state_fmmu(ec_fsm_t *);
+void ec_fsm_slaveconf_state_sdoconf(ec_fsm_t *);
+void ec_fsm_slaveconf_state_saveop(ec_fsm_t *);
+void ec_fsm_slaveconf_state_op(ec_fsm_t *);
 
-void ec_fsm_slave_end(ec_fsm_t *);
-void ec_fsm_slave_error(ec_fsm_t *);
+void ec_fsm_slaveconf_enter_sync(ec_fsm_t *);
+void ec_fsm_slaveconf_enter_preop(ec_fsm_t *);
+void ec_fsm_slaveconf_enter_sdoconf(ec_fsm_t *);
+void ec_fsm_slaveconf_enter_saveop(ec_fsm_t *);
+
+void ec_fsm_slave_state_end(ec_fsm_t *);
+void ec_fsm_slave_state_error(ec_fsm_t *);
 
 /*****************************************************************************/
 
@@ -332,7 +338,7 @@ void ec_fsm_master_action_process_states(ec_fsm_t *fsm
 
         fsm->master_state = ec_fsm_master_configure_slave;
         fsm->slave = slave;
-        fsm->slave_state = ec_fsm_slaveconf_start;
+        fsm->slave_state = ec_fsm_slaveconf_state_start;
         fsm->slave_state(fsm); // execute immediately
         return;
     }
@@ -713,8 +719,8 @@ void ec_fsm_master_scan_slaves(ec_fsm_t *fsm /**< finite state machine */)
 
     fsm->slave_state(fsm); // execute slave state machine
 
-    if (fsm->slave_state != ec_fsm_slave_end
-        && fsm->slave_state != ec_fsm_slave_error) return;
+    if (fsm->slave_state != ec_fsm_slave_state_end
+        && fsm->slave_state != ec_fsm_slave_state_error) return;
 
     // another slave to fetch?
     if (slave->list.next != &master->slaves) {
@@ -750,8 +756,8 @@ void ec_fsm_master_configure_slave(ec_fsm_t *fsm
 {
     fsm->slave_state(fsm); // execute slave's state machine
 
-    if (fsm->slave_state != ec_fsm_slave_end
-        && fsm->slave_state != ec_fsm_slave_error) return;
+    if (fsm->slave_state != ec_fsm_slave_state_end
+        && fsm->slave_state != ec_fsm_slave_state_error) return;
 
     ec_fsm_master_action_process_states(fsm);
 }
@@ -917,7 +923,7 @@ void ec_fsm_slavescan_address(ec_fsm_t *fsm /**< finite state machine */)
     if (datagram->state != EC_DATAGRAM_RECEIVED
         || datagram->working_counter != 1) {
         fsm->slave->error_flag = 1;
-        fsm->slave_state = ec_fsm_slave_error;
+        fsm->slave_state = ec_fsm_slave_state_error;
         EC_ERR("Failed to write station address of slave %i.\n",
                fsm->slave->ring_position);
         return;
@@ -943,7 +949,7 @@ void ec_fsm_slavescan_state(ec_fsm_t *fsm /**< finite state machine */)
     if (datagram->state != EC_DATAGRAM_RECEIVED
         || datagram->working_counter != 1) {
         fsm->slave->error_flag = 1;
-        fsm->slave_state = ec_fsm_slave_error;
+        fsm->slave_state = ec_fsm_slave_state_error;
         EC_ERR("Failed to read AL state of slave %i.\n",
                fsm->slave->ring_position);
         return;
@@ -977,7 +983,7 @@ void ec_fsm_slavescan_base(ec_fsm_t *fsm /**< finite state machine */)
     if (datagram->state != EC_DATAGRAM_RECEIVED
         || datagram->working_counter != 1) {
         fsm->slave->error_flag = 1;
-        fsm->slave_state = ec_fsm_slave_error;
+        fsm->slave_state = ec_fsm_slave_state_error;
         EC_ERR("Failed to read base data of slave %i.\n",
                slave->ring_position);
         return;
@@ -1014,7 +1020,7 @@ void ec_fsm_slavescan_datalink(ec_fsm_t *fsm /**< finite state machine */)
     if (datagram->state != EC_DATAGRAM_RECEIVED
         || datagram->working_counter != 1) {
         fsm->slave->error_flag = 1;
-        fsm->slave_state = ec_fsm_slave_error;
+        fsm->slave_state = ec_fsm_slave_state_error;
         EC_ERR("Failed to read DL status of slave %i.\n",
                slave->ring_position);
         return;
@@ -1050,7 +1056,7 @@ void ec_fsm_slavescan_eeprom_size(ec_fsm_t *fsm /**< finite state machine */)
 
     if (!ec_fsm_sii_success(&fsm->fsm_sii)) {
         fsm->slave->error_flag = 1;
-        fsm->slave_state = ec_fsm_slave_error;
+        fsm->slave_state = ec_fsm_slave_state_error;
         EC_ERR("Failed to read EEPROM size of slave %i.\n",
                slave->ring_position);
         return;
@@ -1078,7 +1084,7 @@ void ec_fsm_slavescan_eeprom_size(ec_fsm_t *fsm /**< finite state machine */)
     if (!(slave->eeprom_data =
           (uint8_t *) kmalloc(slave->eeprom_size, GFP_ATOMIC))) {
         fsm->slave->error_flag = 1;
-        fsm->slave_state = ec_fsm_slave_error;
+        fsm->slave_state = ec_fsm_slave_state_error;
         EC_ERR("Failed to allocate EEPROM data on slave %i.\n",
                slave->ring_position);
         return;
@@ -1107,7 +1113,7 @@ void ec_fsm_slavescan_eeprom_data(ec_fsm_t *fsm /**< finite state machine */)
 
     if (!ec_fsm_sii_success(&fsm->fsm_sii)) {
         fsm->slave->error_flag = 1;
-        fsm->slave_state = ec_fsm_slave_error;
+        fsm->slave_state = ec_fsm_slave_state_error;
         EC_ERR("Failed to fetch EEPROM contents of slave %i.\n",
                slave->ring_position);
         return;
@@ -1196,13 +1202,13 @@ void ec_fsm_slavescan_eeprom_data(ec_fsm_t *fsm /**< finite state machine */)
         cat_word += cat_size + 2;
     }
 
-    fsm->slave_state = ec_fsm_slave_end;
+    fsm->slave_state = ec_fsm_slave_state_end;
     return;
 
 end:
     EC_ERR("Failed to analyze category data.\n");
     fsm->slave->error_flag = 1;
-    fsm->slave_state = ec_fsm_slave_error;
+    fsm->slave_state = ec_fsm_slave_state_error;
 }
 
 /******************************************************************************
@@ -1213,7 +1219,7 @@ end:
    Slave configuration state: START.
 */
 
-void ec_fsm_slaveconf_start(ec_fsm_t *fsm /**< finite state machine */)
+void ec_fsm_slaveconf_state_start(ec_fsm_t *fsm /**< finite state machine */)
 {
     if (fsm->master->debug_level) {
         EC_DBG("Configuring slave %i...\n", fsm->slave->ring_position);
@@ -1221,7 +1227,7 @@ void ec_fsm_slaveconf_start(ec_fsm_t *fsm /**< finite state machine */)
 
     ec_fsm_change_start(&fsm->fsm_change, fsm->slave, EC_SLAVE_STATE_INIT);
     ec_fsm_change_exec(&fsm->fsm_change);
-    fsm->slave_state = ec_fsm_slaveconf_init;
+    fsm->slave_state = ec_fsm_slaveconf_state_init;
 }
 
 /*****************************************************************************/
@@ -1230,19 +1236,17 @@ void ec_fsm_slaveconf_start(ec_fsm_t *fsm /**< finite state machine */)
    Slave configuration state: INIT.
 */
 
-void ec_fsm_slaveconf_init(ec_fsm_t *fsm /**< finite state machine */)
+void ec_fsm_slaveconf_state_init(ec_fsm_t *fsm /**< finite state machine */)
 {
     ec_master_t *master = fsm->master;
     ec_slave_t *slave = fsm->slave;
     ec_datagram_t *datagram = &fsm->datagram;
-    const ec_sii_sync_t *sync;
-    ec_sii_sync_t mbox_sync;
 
     if (ec_fsm_change_exec(&fsm->fsm_change)) return;
 
     if (!ec_fsm_change_success(&fsm->fsm_change)) {
         slave->error_flag = 1;
-        fsm->slave_state = ec_fsm_slave_error;
+        fsm->slave_state = ec_fsm_slave_state_error;
         return;
     }
 
@@ -1252,9 +1256,66 @@ void ec_fsm_slaveconf_init(ec_fsm_t *fsm /**< finite state machine */)
         EC_DBG("Slave %i is now in INIT.\n", slave->ring_position);
     }
 
+    // check and reset CRC fault counters
+    //ec_slave_check_crc(slave);
+    // TODO: Implement state machine for CRC checking.
+
+    if (!slave->base_fmmu_count) { // skip FMMU configuration
+        ec_fsm_slaveconf_enter_sync(fsm);
+        return;
+    }
+
+    if (master->debug_level)
+        EC_DBG("Clearing FMMU configurations of slave %i...\n",
+               slave->ring_position);
+
+    // clear FMMU configurations
+    ec_datagram_npwr(datagram, slave->station_address,
+                     0x0600, EC_FMMU_SIZE * slave->base_fmmu_count);
+    memset(datagram->data, 0x00, EC_FMMU_SIZE * slave->base_fmmu_count);
+    ec_master_queue_datagram(master, datagram);
+    fsm->slave_state = ec_fsm_slaveconf_state_clear_fmmus;
+}
+
+/*****************************************************************************/
+
+/**
+   Slave configuration state: CLEAR FMMU.
+*/
+
+void ec_fsm_slaveconf_state_clear_fmmus(ec_fsm_t *fsm
+                                        /**< finite state machine */)
+{
+    ec_datagram_t *datagram = &fsm->datagram;
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED
+        || datagram->working_counter != 1) {
+        fsm->slave->error_flag = 1;
+        fsm->slave_state = ec_fsm_slave_state_error;
+        EC_ERR("Failed to clear FMMUs on slave %i.\n",
+               fsm->slave->ring_position);
+        return;
+    }
+
+    ec_fsm_slaveconf_enter_sync(fsm);
+}
+
+/*****************************************************************************/
+
+/**
+*/
+
+void ec_fsm_slaveconf_enter_sync(ec_fsm_t *fsm /**< finite state machine */)
+{
+    ec_master_t *master = fsm->master;
+    ec_slave_t *slave = fsm->slave;
+    ec_datagram_t *datagram = &fsm->datagram;
+    const ec_sii_sync_t *sync;
+    ec_sii_sync_t mbox_sync;
+
     // slave is now in INIT
     if (slave->current_state == slave->requested_state) {
-        fsm->slave_state = ec_fsm_slave_end; // successful
+        fsm->slave_state = ec_fsm_slave_state_end; // successful
         if (master->debug_level) {
             EC_DBG("Finished configuration of slave %i.\n",
                    slave->ring_position);
@@ -1262,14 +1323,8 @@ void ec_fsm_slaveconf_init(ec_fsm_t *fsm /**< finite state machine */)
         return;
     }
 
-    // check and reset CRC fault counters
-    //ec_slave_check_crc(slave);
-    // TODO: Implement state machine for CRC checking.
-
     if (!slave->base_sync_count) { // no sync managers
-        fsm->slave_state = ec_fsm_slaveconf_preop;
-        ec_fsm_change_start(&fsm->fsm_change, slave, EC_SLAVE_STATE_PREOP);
-        ec_fsm_change_exec(&fsm->fsm_change); // execute immediately
+        ec_fsm_slaveconf_enter_preop(fsm);
         return;
     }
 
@@ -1311,7 +1366,7 @@ void ec_fsm_slaveconf_init(ec_fsm_t *fsm /**< finite state machine */)
             if (sync->index >= slave->base_sync_count) {
                 EC_ERR("Invalid sync manager configuration found!");
                 fsm->slave->error_flag = 1;
-                fsm->slave_state = ec_fsm_slave_error;
+                fsm->slave_state = ec_fsm_slave_state_error;
                 return;
             }
             ec_sync_config(sync, slave,
@@ -1320,7 +1375,7 @@ void ec_fsm_slaveconf_init(ec_fsm_t *fsm /**< finite state machine */)
     }
 
     ec_master_queue_datagram(fsm->master, datagram);
-    fsm->slave_state = ec_fsm_slaveconf_sync;
+    fsm->slave_state = ec_fsm_slaveconf_state_sync;
 }
 
 /*****************************************************************************/
@@ -1329,7 +1384,7 @@ void ec_fsm_slaveconf_init(ec_fsm_t *fsm /**< finite state machine */)
    Slave configuration state: SYNC.
 */
 
-void ec_fsm_slaveconf_sync(ec_fsm_t *fsm /**< finite state machine */)
+void ec_fsm_slaveconf_state_sync(ec_fsm_t *fsm /**< finite state machine */)
 {
     ec_datagram_t *datagram = &fsm->datagram;
     ec_slave_t *slave = fsm->slave;
@@ -1337,14 +1392,24 @@ void ec_fsm_slaveconf_sync(ec_fsm_t *fsm /**< finite state machine */)
     if (datagram->state != EC_DATAGRAM_RECEIVED
         || datagram->working_counter != 1) {
         slave->error_flag = 1;
-        fsm->slave_state = ec_fsm_slave_error;
+        fsm->slave_state = ec_fsm_slave_state_error;
         EC_ERR("Failed to set sync managers on slave %i.\n",
                slave->ring_position);
         return;
     }
 
-    fsm->slave_state = ec_fsm_slaveconf_preop;
-    ec_fsm_change_start(&fsm->fsm_change, slave, EC_SLAVE_STATE_PREOP);
+    ec_fsm_slaveconf_enter_preop(fsm);
+}
+
+/*****************************************************************************/
+
+/**
+ */
+
+void ec_fsm_slaveconf_enter_preop(ec_fsm_t *fsm /**< finite state machine */)
+{
+    fsm->slave_state = ec_fsm_slaveconf_state_preop;
+    ec_fsm_change_start(&fsm->fsm_change, fsm->slave, EC_SLAVE_STATE_PREOP);
     ec_fsm_change_exec(&fsm->fsm_change); // execute immediately
 }
 
@@ -1354,7 +1419,7 @@ void ec_fsm_slaveconf_sync(ec_fsm_t *fsm /**< finite state machine */)
    Slave configuration state: PREOP.
 */
 
-void ec_fsm_slaveconf_preop(ec_fsm_t *fsm /**< finite state machine */)
+void ec_fsm_slaveconf_state_preop(ec_fsm_t *fsm /**< finite state machine */)
 {
     ec_slave_t *slave = fsm->slave;
     ec_master_t *master = fsm->master;
@@ -1365,7 +1430,7 @@ void ec_fsm_slaveconf_preop(ec_fsm_t *fsm /**< finite state machine */)
 
     if (!ec_fsm_change_success(&fsm->fsm_change)) {
         slave->error_flag = 1;
-        fsm->slave_state = ec_fsm_slave_error;
+        fsm->slave_state = ec_fsm_slave_state_error;
         return;
     }
 
@@ -1377,7 +1442,7 @@ void ec_fsm_slaveconf_preop(ec_fsm_t *fsm /**< finite state machine */)
     }
 
     if (slave->current_state == slave->requested_state) {
-        fsm->slave_state = ec_fsm_slave_end; // successful
+        fsm->slave_state = ec_fsm_slave_state_end; // successful
         if (master->debug_level) {
             EC_DBG("Finished configuration of slave %i.\n",
                    slave->ring_position);
@@ -1387,18 +1452,11 @@ void ec_fsm_slaveconf_preop(ec_fsm_t *fsm /**< finite state machine */)
 
     if (!slave->base_fmmu_count) { // skip FMMU configuration
         if (list_empty(&slave->sdo_confs)) { // skip SDO configuration
-            fsm->slave_state = ec_fsm_slaveconf_saveop;
-            ec_fsm_change_start(&fsm->fsm_change, slave,
-                                EC_SLAVE_STATE_SAVEOP);
-            ec_fsm_change_exec(&fsm->fsm_change); // execute immediately
+            ec_fsm_slaveconf_enter_saveop(fsm);
             return;
         }
 
-        // start SDO configuration
-        fsm->slave_state = ec_fsm_slaveconf_sdoconf;
-        fsm->sdodata = list_entry(slave->sdo_confs.next, ec_sdo_data_t, list);
-        ec_fsm_coe_download(&fsm->fsm_coe, slave, fsm->sdodata);
-        ec_fsm_coe_exec(&fsm->fsm_coe); // execute immediately
+        ec_fsm_slaveconf_enter_sdoconf(fsm);
         return;
     }
 
@@ -1412,7 +1470,7 @@ void ec_fsm_slaveconf_preop(ec_fsm_t *fsm /**< finite state machine */)
     }
 
     ec_master_queue_datagram(master, datagram);
-    fsm->slave_state = ec_fsm_slaveconf_fmmu;
+    fsm->slave_state = ec_fsm_slaveconf_state_fmmu;
 }
 
 /*****************************************************************************/
@@ -1421,7 +1479,7 @@ void ec_fsm_slaveconf_preop(ec_fsm_t *fsm /**< finite state machine */)
    Slave configuration state: FMMU.
 */
 
-void ec_fsm_slaveconf_fmmu(ec_fsm_t *fsm /**< finite state machine */)
+void ec_fsm_slaveconf_state_fmmu(ec_fsm_t *fsm /**< finite state machine */)
 {
     ec_datagram_t *datagram = &fsm->datagram;
     ec_slave_t *slave = fsm->slave;
@@ -1429,7 +1487,7 @@ void ec_fsm_slaveconf_fmmu(ec_fsm_t *fsm /**< finite state machine */)
     if (datagram->state != EC_DATAGRAM_RECEIVED
         || datagram->working_counter != 1) {
         fsm->slave->error_flag = 1;
-        fsm->slave_state = ec_fsm_slave_error;
+        fsm->slave_state = ec_fsm_slave_state_error;
         EC_ERR("Failed to set FMMUs on slave %i.\n",
                fsm->slave->ring_position);
         return;
@@ -1437,17 +1495,24 @@ void ec_fsm_slaveconf_fmmu(ec_fsm_t *fsm /**< finite state machine */)
 
     // No CoE configuration to be applied? Jump to SAVEOP state.
     if (list_empty(&slave->sdo_confs)) { // skip SDO configuration
-        // set state to SAVEOP
-        fsm->slave_state = ec_fsm_slaveconf_saveop;
-        ec_fsm_change_start(&fsm->fsm_change, slave, EC_SLAVE_STATE_SAVEOP);
-        ec_fsm_change_exec(&fsm->fsm_change); // execute immediately
+        ec_fsm_slaveconf_enter_saveop(fsm);
         return;
     }
 
+    ec_fsm_slaveconf_enter_sdoconf(fsm);
+}
+
+/*****************************************************************************/
+
+/**
+ */
+
+void ec_fsm_slaveconf_enter_sdoconf(ec_fsm_t *fsm /**< finite state machine */)
+{
     // start SDO configuration
-    fsm->slave_state = ec_fsm_slaveconf_sdoconf;
-    fsm->sdodata = list_entry(slave->sdo_confs.next, ec_sdo_data_t, list);
-    ec_fsm_coe_download(&fsm->fsm_coe, slave, fsm->sdodata);
+    fsm->slave_state = ec_fsm_slaveconf_state_sdoconf;
+    fsm->sdodata = list_entry(fsm->slave->sdo_confs.next, ec_sdo_data_t, list);
+    ec_fsm_coe_download(&fsm->fsm_coe, fsm->slave, fsm->sdodata);
     ec_fsm_coe_exec(&fsm->fsm_coe); // execute immediately
 }
 
@@ -1457,13 +1522,13 @@ void ec_fsm_slaveconf_fmmu(ec_fsm_t *fsm /**< finite state machine */)
    Slave configuration state: SDOCONF.
 */
 
-void ec_fsm_slaveconf_sdoconf(ec_fsm_t *fsm /**< finite state machine */)
+void ec_fsm_slaveconf_state_sdoconf(ec_fsm_t *fsm /**< finite state machine */)
 {
     if (ec_fsm_coe_exec(&fsm->fsm_coe)) return;
 
     if (!ec_fsm_coe_success(&fsm->fsm_coe)) {
         fsm->slave->error_flag = 1;
-        fsm->slave_state = ec_fsm_slave_error;
+        fsm->slave_state = ec_fsm_slave_state_error;
         return;
     }
 
@@ -1479,7 +1544,17 @@ void ec_fsm_slaveconf_sdoconf(ec_fsm_t *fsm /**< finite state machine */)
     // All SDOs are now configured.
 
     // set state to SAVEOP
-    fsm->slave_state = ec_fsm_slaveconf_saveop;
+    ec_fsm_slaveconf_enter_saveop(fsm);
+}
+
+/*****************************************************************************/
+
+/**
+ */
+
+void ec_fsm_slaveconf_enter_saveop(ec_fsm_t *fsm /**< finite state machine */)
+{
+    fsm->slave_state = ec_fsm_slaveconf_state_saveop;
     ec_fsm_change_start(&fsm->fsm_change, fsm->slave, EC_SLAVE_STATE_SAVEOP);
     ec_fsm_change_exec(&fsm->fsm_change); // execute immediately
 }
@@ -1490,7 +1565,7 @@ void ec_fsm_slaveconf_sdoconf(ec_fsm_t *fsm /**< finite state machine */)
    Slave configuration state: SAVEOP.
 */
 
-void ec_fsm_slaveconf_saveop(ec_fsm_t *fsm /**< finite state machine */)
+void ec_fsm_slaveconf_state_saveop(ec_fsm_t *fsm /**< finite state machine */)
 {
     ec_master_t *master = fsm->master;
     ec_slave_t *slave = fsm->slave;
@@ -1499,7 +1574,7 @@ void ec_fsm_slaveconf_saveop(ec_fsm_t *fsm /**< finite state machine */)
 
     if (!ec_fsm_change_success(&fsm->fsm_change)) {
         fsm->slave->error_flag = 1;
-        fsm->slave_state = ec_fsm_slave_error;
+        fsm->slave_state = ec_fsm_slave_state_error;
         return;
     }
 
@@ -1510,7 +1585,7 @@ void ec_fsm_slaveconf_saveop(ec_fsm_t *fsm /**< finite state machine */)
     }
 
     if (fsm->slave->current_state == fsm->slave->requested_state) {
-        fsm->slave_state = ec_fsm_slave_end; // successful
+        fsm->slave_state = ec_fsm_slave_state_end; // successful
         if (master->debug_level) {
             EC_DBG("Finished configuration of slave %i.\n",
                    slave->ring_position);
@@ -1519,7 +1594,7 @@ void ec_fsm_slaveconf_saveop(ec_fsm_t *fsm /**< finite state machine */)
     }
 
     // set state to OP
-    fsm->slave_state = ec_fsm_slaveconf_op;
+    fsm->slave_state = ec_fsm_slaveconf_state_op;
     ec_fsm_change_start(&fsm->fsm_change, slave, EC_SLAVE_STATE_OP);
     ec_fsm_change_exec(&fsm->fsm_change); // execute immediately
 }
@@ -1530,7 +1605,7 @@ void ec_fsm_slaveconf_saveop(ec_fsm_t *fsm /**< finite state machine */)
    Slave configuration state: OP
 */
 
-void ec_fsm_slaveconf_op(ec_fsm_t *fsm /**< finite state machine */)
+void ec_fsm_slaveconf_state_op(ec_fsm_t *fsm /**< finite state machine */)
 {
     ec_master_t *master = fsm->master;
     ec_slave_t *slave = fsm->slave;
@@ -1539,7 +1614,7 @@ void ec_fsm_slaveconf_op(ec_fsm_t *fsm /**< finite state machine */)
 
     if (!ec_fsm_change_success(&fsm->fsm_change)) {
         slave->error_flag = 1;
-        fsm->slave_state = ec_fsm_slave_error;
+        fsm->slave_state = ec_fsm_slave_state_error;
         return;
     }
 
@@ -1550,7 +1625,7 @@ void ec_fsm_slaveconf_op(ec_fsm_t *fsm /**< finite state machine */)
         EC_DBG("Finished configuration of slave %i.\n", slave->ring_position);
     }
 
-    fsm->slave_state = ec_fsm_slave_end; // successful
+    fsm->slave_state = ec_fsm_slave_state_end; // successful
 }
 
 /******************************************************************************
@@ -1561,7 +1636,7 @@ void ec_fsm_slaveconf_op(ec_fsm_t *fsm /**< finite state machine */)
    State: ERROR.
 */
 
-void ec_fsm_slave_error(ec_fsm_t *fsm /**< finite state machine */)
+void ec_fsm_slave_state_error(ec_fsm_t *fsm /**< finite state machine */)
 {
 }
 
@@ -1571,7 +1646,7 @@ void ec_fsm_slave_error(ec_fsm_t *fsm /**< finite state machine */)
    State: END.
 */
 
-void ec_fsm_slave_end(ec_fsm_t *fsm /**< finite state machine */)
+void ec_fsm_slave_state_end(ec_fsm_t *fsm /**< finite state machine */)
 {
 }
 

@@ -436,14 +436,14 @@ void ec_master_leave_operation_mode(ec_master_t *master
         ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
 
         fsm->slave = slave;
-        fsm->slave_state = ec_fsm_slaveconf_start;
+        fsm->slave_state = ec_fsm_slaveconf_state_start;
 
         do {
             fsm->slave_state(fsm);
             ec_master_sync_io(master);
         }
-        while (fsm->slave_state != ec_fsm_slave_end
-               && fsm->slave_state != ec_fsm_slave_error);
+        while (fsm->slave_state != ec_fsm_slave_state_end
+               && fsm->slave_state != ec_fsm_slave_state_error);
     }
 
     ec_master_destroy_domains(master);
@@ -1333,16 +1333,16 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT master */)
     // configure all slaves
     list_for_each_entry(slave, &master->slaves, list) {
         fsm->slave = slave;
-        fsm->slave_state = ec_fsm_slaveconf_start;
+        fsm->slave_state = ec_fsm_slaveconf_state_start;
 
         do {
             fsm->slave_state(fsm);
             ec_master_sync_io(master);
         }
-        while (fsm->slave_state != ec_fsm_slave_end
-               && fsm->slave_state != ec_fsm_slave_error);
+        while (fsm->slave_state != ec_fsm_slave_state_end
+               && fsm->slave_state != ec_fsm_slave_state_error);
 
-        if (fsm->slave_state == ec_fsm_slave_error) {
+        if (fsm->slave_state == ec_fsm_slave_state_error) {
             EC_ERR("Failed to configure slave %i!\n", slave->ring_position);
             return -1;
         }
