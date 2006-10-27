@@ -265,8 +265,8 @@ size_t ec_state_string(uint8_t states, /**< slave states */
         off += sprintf(buffer + off, "OP");
     }
     if (states & EC_SLAVE_STATE_ACK_ERR) {
-        if (!first) off += sprintf(buffer + off, ", ");
-        off += sprintf(buffer + off, "ERR");
+        if (!first) off += sprintf(buffer + off, " + ");
+        off += sprintf(buffer + off, "ERROR");
     }
 
     return off;

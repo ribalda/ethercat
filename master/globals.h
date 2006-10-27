@@ -66,7 +66,7 @@
 #define EC_WAIT_SDO_DICT 3
 
 /** minimum size of a buffer used with ec_state_string() */
-#define EC_STATE_STRING_SIZE 30
+#define EC_STATE_STRING_SIZE 32
 
 /******************************************************************************
  *  EtherCAT protocol
