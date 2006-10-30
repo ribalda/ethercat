@@ -433,6 +433,7 @@ void ec_master_leave_operation_mode(ec_master_t *master
 
     // set states for all slaves
     list_for_each_entry(slave, &master->slaves, list) {
+        ec_slave_reset(slave);
         ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
 
         fsm->slave = slave;
@@ -451,10 +452,6 @@ void ec_master_leave_operation_mode(ec_master_t *master
     master->request_cb = NULL;
     master->release_cb = NULL;
     master->cb_data = NULL;
-
-    list_for_each_entry(slave, &master->slaves, list) {
-        ec_slave_reset(slave);
-    }
 
     master->mode = EC_MASTER_MODE_IDLE;
     queue_delayed_work(master->workqueue, &master->idle_work, 1);

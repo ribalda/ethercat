@@ -284,6 +284,7 @@ void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
 void ec_slave_reset(ec_slave_t *slave /**< EtherCAT slave */)
 {
     ec_sdo_data_t *sdodata, *next_sdodata;
+    ec_sii_sync_t *sync;
 
     // remove FMMU configurations
     slave->fmmu_count = 0;
@@ -293,6 +294,11 @@ void ec_slave_reset(ec_slave_t *slave /**< EtherCAT slave */)
         list_del(&sdodata->list);
         kfree(sdodata->data);
         kfree(sdodata);
+    }
+
+    // remove estimated sync manager sizes
+    list_for_each_entry(sync, &slave->sii_syncs, list) {
+        sync->est_length = 0;
     }
 }
 
