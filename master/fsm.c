@@ -418,6 +418,7 @@ void ec_fsm_master_action_process_states(ec_fsm_t *fsm
 
             // found pending EEPROM write operation. execute it!
             EC_INFO("Writing EEPROM of slave %i...\n", slave->ring_position);
+            fsm->slave = slave;
             fsm->sii_offset = 0x0000;
             ec_fsm_sii_write(&fsm->fsm_sii, slave, fsm->sii_offset,
                              slave->new_eeprom_data, EC_FSM_SII_NODE);
