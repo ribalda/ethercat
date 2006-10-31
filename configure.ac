@@ -56,7 +56,7 @@ AC_MSG_RESULT($LINUX_SOURCE_DIR)
 # Debug interface
 #------------------------------------------------------------------------------
 
-AC_ARG_ENABLE([debug-if],
+AC_ARG_ENABLE([dbg-if],
     AS_HELP_STRING([--enable-dbg-if],
                    [Create a debug interface for each master @<:@NO@:>@]),
     [
