@@ -225,9 +225,11 @@ void ec_fsm_change_state_status(ec_fsm_change_t *fsm
 
     if (datagram->state != EC_DATAGRAM_RECEIVED
         || datagram->working_counter != 1) {
+        char req_state[EC_STATE_STRING_SIZE];
+        ec_state_string(fsm->requested_state, req_state);
         fsm->state = ec_fsm_change_state_error;
-        EC_ERR("Failed to check state 0x%02X on slave %i.\n",
-               fsm->requested_state, slave->ring_position);
+        EC_ERR("Failed to check state %s on slave %i.\n",
+               req_state, slave->ring_position);
         return;
     }
 
@@ -247,26 +249,29 @@ void ec_fsm_change_state_status(ec_fsm_change_t *fsm
     if (slave->current_state != fsm->old_state) { // state changed
         char req_state[EC_STATE_STRING_SIZE], cur_state[EC_STATE_STRING_SIZE];
 
-        slave->error_flag = 1;
-        ec_state_string(fsm->requested_state, req_state);
         ec_state_string(slave->current_state, cur_state);
 
-        if (slave->current_state & EC_SLAVE_STATE_ACK_ERR) {
-            // state change error
-            EC_ERR("Failed to set %s state,"
-                   " slave %i refused state change (%s).\n",
-                   req_state, slave->ring_position, cur_state);
-            // fetch AL status error code
-            ec_datagram_nprd(datagram, slave->station_address, 0x0134, 2);
-            ec_master_queue_datagram(fsm->slave->master, datagram);
-            fsm->state = ec_fsm_change_state_code;
-            return;
+        if ((slave->current_state & 0x0F) != (fsm->old_state & 0x0F)) {
+            // Slave spontaneously changed its state just before the new state
+            // was written. Accept current state as old state and wait for
+            // state change
+            fsm->old_state = slave->current_state;
+            EC_WARN("Slave %i changed to %s in the meantime.\n",
+                    slave->ring_position, cur_state);
+            goto again;
         }
 
-        // state change to unrequested state
-        EC_ERR("Slave %i changed to unrequested state %s!\n",
-               slave->ring_position, cur_state);
-        fsm->state = ec_fsm_change_state_error;
+        // state change error
+
+        slave->error_flag = 1;
+        ec_state_string(fsm->requested_state, req_state);
+
+        EC_ERR("Failed to set %s state, slave %i refused state change (%s).\n",
+               req_state, slave->ring_position, cur_state);
+        // fetch AL status error code
+        ec_datagram_nprd(datagram, slave->station_address, 0x0134, 2);
+        ec_master_queue_datagram(fsm->slave->master, datagram);
+        fsm->state = ec_fsm_change_state_code;
         return;
     }
 
@@ -282,7 +287,8 @@ void ec_fsm_change_state_status(ec_fsm_change_t *fsm
         return;
     }
 
-    // check again
+ again:
+    // no timeout yet. check again
     ec_datagram_nprd(datagram, slave->station_address, 0x0130, 2);
     ec_master_queue_datagram(fsm->slave->master, datagram);
 }
