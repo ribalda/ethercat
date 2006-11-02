@@ -34,8 +34,10 @@
 EXTRA_DIST = \
 	Kbuild \
 	ecdev.h \
-	8139too.c \
-	original_8139too.c
+	8139too-2.6.13-ethercat.c \
+	8139too-2.6.13-orig.c \
+	8139too-2.6.17-ethercat.c \
+	8139too-2.6.17-orig.c
 
 all-local:
 	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" modules
