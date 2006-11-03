@@ -354,8 +354,7 @@ void ec_fsm_master_action_process_states(ec_fsm_t *fsm
                 EC_DBG("Processing SDO request...\n");
             slave = master->sdo_request->sdo->slave;
             if (slave->current_state == EC_SLAVE_STATE_INIT
-                || !slave->online
-                || slave->error_flag) {
+                || !slave->online) {
                 EC_ERR("Failed to process SDO request, slave %i not ready.\n",
                        slave->ring_position);
                 master->sdo_request->return_code = -1;
