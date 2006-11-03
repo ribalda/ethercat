@@ -1035,7 +1035,7 @@ void ec_fsm_coe_up_start(ec_fsm_coe_t *fsm /**< finite state machine */)
         EC_DBG("Uploading SDO 0x%04X:%i from slave %i.\n",
                sdo->index, entry->subindex, slave->ring_position);
 
-    if (!(data = ec_slave_mbox_prepare_send(slave, datagram, 0x03, 6))) {
+    if (!(data = ec_slave_mbox_prepare_send(slave, datagram, 0x03, 10))) {
         fsm->state = ec_fsm_coe_error;
         return;
     }
@@ -1044,10 +1044,11 @@ void ec_fsm_coe_up_start(ec_fsm_coe_t *fsm /**< finite state machine */)
     EC_WRITE_U8 (data + 2, 0x2 << 5); // initiate upload request
     EC_WRITE_U16(data + 3, sdo->index);
     EC_WRITE_U8 (data + 5, entry->subindex);
+    memset(data + 6, 0x00, 4);
 
     if (master->debug_level) {
         EC_DBG("Upload request:\n");
-        ec_print_data(data, 6);
+        ec_print_data(data, 10);
     }
 
     ec_master_queue_datagram(fsm->slave->master, datagram);
@@ -1177,7 +1178,7 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     }
 
     if (EC_READ_U16(data) >> 12 != 0x3 || // SDO response
-        EC_READ_U8 (data + 2) >> 5 != 0x2 || // initiate upload response
+        EC_READ_U8 (data + 2) >> 5 != 0x2 || // upload response
         EC_READ_U16(data + 3) != sdo->index || // index
         EC_READ_U8 (data + 5) != entry->subindex) { // subindex
         EC_ERR("SDO upload 0x%04X:%X failed:\n", sdo->index, entry->subindex);
@@ -1192,9 +1193,6 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     expedited = EC_READ_U8(data + 2) & 0x02;
 
     if (expedited) {
-        if (master->debug_level)
-            EC_WARN("Received expedited response upon normal request!\n");
-
         size_specified = EC_READ_U8(data + 2) & 0x01;
         if (size_specified) {
             complete_size = 4 - ((EC_READ_U8(data + 2) & 0x0C) >> 2);
