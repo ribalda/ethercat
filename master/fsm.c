@@ -73,6 +73,7 @@ void ec_fsm_slaveconf_state_init(ec_fsm_t *);
 void ec_fsm_slaveconf_state_clear_fmmus(ec_fsm_t *);
 void ec_fsm_slaveconf_state_sync(ec_fsm_t *);
 void ec_fsm_slaveconf_state_preop(ec_fsm_t *);
+void ec_fsm_slaveconf_state_sync2(ec_fsm_t *);
 void ec_fsm_slaveconf_state_fmmu(ec_fsm_t *);
 void ec_fsm_slaveconf_state_sdoconf(ec_fsm_t *);
 void ec_fsm_slaveconf_state_saveop(ec_fsm_t *);
@@ -80,6 +81,8 @@ void ec_fsm_slaveconf_state_op(ec_fsm_t *);
 
 void ec_fsm_slaveconf_enter_sync(ec_fsm_t *);
 void ec_fsm_slaveconf_enter_preop(ec_fsm_t *);
+void ec_fsm_slaveconf_enter_sync2(ec_fsm_t *);
+void ec_fsm_slaveconf_enter_fmmu(ec_fsm_t *);
 void ec_fsm_slaveconf_enter_sdoconf(ec_fsm_t *);
 void ec_fsm_slaveconf_enter_saveop(ec_fsm_t *);
 
@@ -1361,14 +1364,10 @@ void ec_fsm_slaveconf_enter_sync(ec_fsm_t *fsm /**< finite state machine */)
                            datagram->data + EC_SYNC_SIZE * mbox_sync.index);
         }
     }
-    else {
+    else if (slave->sii_mailbox_protocols) { // mailboxes present
         list_for_each_entry(sync, &slave->sii_syncs, list) {
-            if (sync->index >= slave->base_sync_count) {
-                EC_ERR("Invalid sync manager configuration found!");
-                fsm->slave->error_flag = 1;
-                fsm->slave_state = ec_fsm_slave_state_error;
-                return;
-            }
+            // only configure mailbox sync-managers
+            if (sync->index != 0 && sync->index != 1) continue;
             ec_sync_config(sync, slave,
                            datagram->data + EC_SYNC_SIZE * sync->index);
         }
@@ -1423,8 +1422,6 @@ void ec_fsm_slaveconf_state_preop(ec_fsm_t *fsm /**< finite state machine */)
 {
     ec_slave_t *slave = fsm->slave;
     ec_master_t *master = fsm->master;
-    ec_datagram_t *datagram = &fsm->datagram;
-    unsigned int j;
 
     if (ec_fsm_change_exec(&fsm->fsm_change)) return;
 
@@ -1450,12 +1447,75 @@ void ec_fsm_slaveconf_state_preop(ec_fsm_t *fsm /**< finite state machine */)
         return;
     }
 
-    if (!slave->base_fmmu_count) { // skip FMMU configuration
-        if (list_empty(&slave->sdo_confs)) { // skip SDO configuration
-            ec_fsm_slaveconf_enter_saveop(fsm);
-            return;
-        }
+    ec_fsm_slaveconf_enter_sync2(fsm);
+}
 
+/*****************************************************************************/
+
+/**
+*/
+
+void ec_fsm_slaveconf_enter_sync2(ec_fsm_t *fsm /**< finite state machine */)
+{
+    ec_slave_t *slave = fsm->slave;
+    ec_datagram_t *datagram = &fsm->datagram;
+    ec_sii_sync_t *sync;
+
+    if (list_empty(&slave->sii_syncs)) {
+        ec_fsm_slaveconf_enter_fmmu(fsm);
+        return;
+    }
+
+    // configure sync managers for process data
+    ec_datagram_npwr(datagram, slave->station_address, 0x0800,
+                     EC_SYNC_SIZE * slave->base_sync_count);
+    memset(datagram->data, 0x00, EC_SYNC_SIZE * slave->base_sync_count);
+
+    list_for_each_entry(sync, &slave->sii_syncs, list) {
+        ec_sync_config(sync, slave,
+                       datagram->data + EC_SYNC_SIZE * sync->index);
+    }
+
+    ec_master_queue_datagram(fsm->master, datagram);
+    fsm->slave_state = ec_fsm_slaveconf_state_sync2;
+}
+
+/*****************************************************************************/
+
+/**
+   Slave configuration state: SYNC2.
+*/
+
+void ec_fsm_slaveconf_state_sync2(ec_fsm_t *fsm /**< finite state machine */)
+{
+    ec_datagram_t *datagram = &fsm->datagram;
+    ec_slave_t *slave = fsm->slave;
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED
+        || datagram->working_counter != 1) {
+        slave->error_flag = 1;
+        fsm->slave_state = ec_fsm_slave_state_error;
+        EC_ERR("Failed to set process data sync managers on slave %i.\n",
+               slave->ring_position);
+        return;
+    }
+
+    ec_fsm_slaveconf_enter_fmmu(fsm);
+}
+
+/*****************************************************************************/
+
+/**
+*/
+
+void ec_fsm_slaveconf_enter_fmmu(ec_fsm_t *fsm /**< finite state machine */)
+{
+    ec_slave_t *slave = fsm->slave;
+    ec_master_t *master = slave->master;
+    ec_datagram_t *datagram = &fsm->datagram;
+    unsigned int j;
+
+    if (!slave->base_fmmu_count) { // skip FMMU configuration
         ec_fsm_slaveconf_enter_sdoconf(fsm);
         return;
     }
@@ -1509,6 +1569,13 @@ void ec_fsm_slaveconf_state_fmmu(ec_fsm_t *fsm /**< finite state machine */)
 
 void ec_fsm_slaveconf_enter_sdoconf(ec_fsm_t *fsm /**< finite state machine */)
 {
+    ec_slave_t *slave = fsm->slave;
+
+    if (list_empty(&slave->sdo_confs)) { // skip SDO configuration
+        ec_fsm_slaveconf_enter_saveop(fsm);
+        return;
+    }
+
     // start SDO configuration
     fsm->slave_state = ec_fsm_slaveconf_state_sdoconf;
     fsm->sdodata = list_entry(fsm->slave->sdo_confs.next, ec_sdo_data_t, list);
