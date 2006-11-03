@@ -1976,11 +1976,12 @@ static void rtl8139_tx_interrupt (struct net_device *dev,
 	}
 #endif /* RTL8139_NDEBUG */
 
-	if (dev != rtl_ec_net_dev) {
-		/* only wake the queue if we did work, and the queue is stopped */
-		if (tp->dirty_tx != dirty_tx) {
-			tp->dirty_tx = dirty_tx;
-			mb();
+	/* only wake the queue if we did work, and the queue is stopped */
+	if (tp->dirty_tx != dirty_tx) {
+		tp->dirty_tx = dirty_tx;
+		mb();
+
+		if (dev != rtl_ec_net_dev) {
 			netif_wake_queue (dev);
 		}
 	}
