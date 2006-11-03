@@ -36,7 +36,7 @@ AC_ARG_WITH([linux-dir],
         modulesdir=/lib/modules/${version}
         if test \! -d ${modulesdir} || test \! -d ${modulesdir}/build; then
            echo
-           AC_MSG_ERROR([Invalid modules directory ${modulesdir}])
+           AC_MSG_ERROR([Failed to find Linux sources. Use --with-linux-dir!])
         fi
         sourcedir=`cd ${modulesdir}/build && pwd -P`
     ]
@@ -45,12 +45,31 @@ AC_ARG_WITH([linux-dir],
 AC_MSG_CHECKING([for Linux kernel sources])
 
 if test \! -r ${sourcedir}/.config; then
-   echo
-   AC_MSG_ERROR([No configured Linux kernel sources in $sourcedir])
+    echo
+    AC_MSG_ERROR([No configured Linux kernel sources in $sourcedir])
 fi
 
+# Try to get kernel release string
+if test -r ${sourcedir}/.kernelrelease; then
+    kernelrelease=`cat $sourcedir/.kernelrelease`
+elif test -r ${sourcedir}/include/linux/version.h; then
+    hdr=$sourcedir/include/linux/version.h
+    kernelrelease=`grep UTS_RELEASE $hdr | cut -d " " -f 3- | tr -d \"`
+fi
+
+if test -z "$kernelrelease"; then
+    echo
+    AC_MSG_ERROR([Failed to extract Linux kernel version!])
+fi
+
+# Extract three numbers from kernel release string
+linuxversion=`echo $kernelrelease | grep -oE [[0-9]]+\.[[0-9]]+\.[[0-9]]+`
+
 AC_SUBST(LINUX_SOURCE_DIR,[$sourcedir])
-AC_MSG_RESULT($LINUX_SOURCE_DIR)
+AC_SUBST(LINUX_KERNEL_RELEASE,[$kernelrelease])
+AC_SUBST(LINUX_KERNEL_VERSION,[$linuxversion])
+AC_SUBST(LINUX_MOD_PATH,[/lib/modules/$kernelrelease/ethercat])
+AC_MSG_RESULT([$LINUX_SOURCE_DIR (Kernel $LINUX_KERNEL_RELEASE)])
 
 #------------------------------------------------------------------------------
 # Debug interface

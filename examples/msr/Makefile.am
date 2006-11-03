@@ -44,9 +44,9 @@ all:
 clean-local:
 	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" clean
 
-install-data-local:
-	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" \
-		INSTALL_MOD_PATH="$(DESTDIR)" \
-		INSTALL_MOD_DIR="ethercat" modules_install
+install-data-local: modules_install
+
+modules_install:
+	cp $(srcdir)/ec_msr_sample.ko $(DESTDIR)$(LINUX_MOD_PATH)
 
 #------------------------------------------------------------------------------

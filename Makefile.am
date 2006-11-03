@@ -43,6 +43,10 @@ EXTRA_DIST = \
 	globals.h \
 	LICENSE
 
+modules_install:
+	$(MAKE) -C master modules_install
+	$(MAKE) -C devices modules_install
+
 mydist:
 	@SVNREV=`svnversion $(srcdir)` && \
 	  $(MAKE) dist-bzip2 \
