@@ -1,0 +1,2525 @@
+2006-11-03 15:35  fp
+
+	* master/fsm.c: Fix: Configuration of process data sync managers
+	  now in PREOP.
+
+2006-11-03 14:18  fp
+
+	* Makefile.am, configure.ac, devices/Makefile.am,
+	  examples/mini/Makefile.am, examples/msr/Makefile.am,
+	  examples/rtai/Makefile.am, master/Makefile.am: Improved
+	  installation, added quick modules_install target.
+
+2006-11-03 12:18  fp
+
+	* master/fsm_coe.c: Fixed CoE Upload Request, now 10 bytes of
+	  Mailbox Service Data.
+
+2006-11-03 12:17  fp
+
+	* master/fsm.c: Allow CoE requests, even if slave has error flag
+	  set.
+
+2006-11-03 10:00  fp
+
+	* devices/8139too-2.6.13-ethercat.c,
+	  devices/8139too-2.6.17-ethercat.c: Fixed memory barrier bug in
+	  8139too drivers.
+
+2006-11-02 19:08  fp
+
+	* devices/8139too-2.6.13-ethercat.c, devices/8139too-2.6.13-orig.c,
+	  devices/8139too-2.6.17-ethercat.c, devices/8139too-2.6.17-orig.c,
+	  devices/8139too.c, devices/Kbuild, devices/Makefile.am,
+	  devices/original_8139too.c: Added device module for kernel
+	  2.6.17. Still slow?
+
+2006-11-02 14:20  fp
+
+	* examples/mini/mini.c: Mini example with KBUS again.
+
+2006-10-31 15:32  fp
+
+	* configure.ac, master/debug.c: Fixed debug interfaces.
+
+2006-10-31 14:25  fp
+
+	* master/fsm.c: Fixed EEPROM writing.
+
+2006-10-31 11:12  fp
+
+	* master/fsm_change.c: Fixed state change FSM again.
+
+2006-10-31 10:16  fp
+
+	* configure.ac: Removed checking for depmod in configure.
+
+2006-10-30 15:39  fp
+
+	* master/master.c, master/slave.c: Remove estimated sync manager
+	  sizes when leaving operation mode.
+
+2006-10-27 15:07  fp
+
+	* examples/msr/Makefile.am: Fixed dist files for MSR example.
+
+2006-10-27 15:04  fp
+
+	* master/slave.c: BUGFIX: Remove SDO configurations when leaving
+	  OPERATION mode.
+
+2006-10-27 15:01  fp
+
+	* master/slave.c: SDO configurations in Sysfs.
+
+2006-10-27 15:01  fp
+
+	* examples/mini/mini.c: minimal example with SDO configs.
+
+2006-10-27 14:41  fp
+
+	* master/fsm.c, master/fsm.h, master/master.c: New state in
+	  slaveconf FSM: Clear FMMU configurations after INIT.
+
+2006-10-27 13:59  fp
+
+	* include/ecrt.h, master/fsm.c, master/fsm_coe.c, master/master.c,
+	  master/slave.c: Print certain warnings only at debug_level.
+
+2006-10-27 13:58  fp
+
+	* master/ethernet.c: Minor output changes in ethernet.c
+
+2006-10-27 13:31  fp
+
+	* master/fsm.c, master/fsm_coe.c, master/master.c: Print certain
+	  logs only at debug_level.
+
+2006-10-27 13:20  fp
+
+	* master/slave.c: Added slave flags to Sysfs.
+
+2006-10-27 12:45  fp
+
+	* examples/mini/mini.c: Minor changes to minimal example.
+
+2006-10-27 12:45  fp
+
+	* master/fsm.c, master/fsm.h, master/master.c: Explicit use of
+	  slave configuration FSM in ecrt_master_activate() and
+	  ecrt_master_release().
+
+2006-10-27 12:43  fp
+
+	* master/debug.c: Minor output changes in master/debug.c.
+
+2006-10-27 11:15  fp
+
+	* examples/mini/mini.c, master/fsm.c, master/fsm_change.c,
+	  master/fsm_change.h: State acknowledgement in master state
+	  machine.
+
+2006-10-27 10:41  fp
+
+	* master/globals.h, master/module.c: Changed output of
+	  ec_state_string() for error flag to "+ ERROR".
+
+2006-10-27 09:57  fp
+
+	* examples/mini/mini.c, examples/msr/msr_sample.c: Minor changes in
+	  example headers.
+
+2006-10-27 09:46  fp
+
+	* examples/msr/Makefile.am, examples/msr/init.sh,
+	  examples/msr/msr_load, examples/msr/msr_param.h,
+	  examples/msr/msr_sample.c, examples/msr/msr_unload: MSR example:
+	  Replaced msr_load and msr_unload with init script, removed
+	  msr_param.h
+
+2006-10-27 09:33  fp
+
+	* examples/rtai/Kbuild: Added missing RTAI include path to RTAI
+	  example.
+
+2006-10-27 09:29  fp
+
+	* examples/mini/mini.c, examples/msr/msr_sample.c,
+	  examples/rtai/rtai_sample.c, include/ecrt.h, master/master.c:
+	  Moved functionality of ecrt_master_deactivate() (now deprecated)
+	  to ecrt_master_release().
+
+2006-10-27 09:19  fp
+
+	* master/canopen.c, master/canopen.h, master/domain.c,
+	  master/domain.h, master/fsm.c, master/master.c, master/master.h,
+	  master/module.c, master/slave.c, master/slave.h: FIX: Introduced
+	  destroy() functions for kobject-derived classes and thus fixed
+	  memory leak.
+
+2006-10-26 16:45  fp
+
+	* Makefile.am: Added missing files to dist.
+
+2006-10-26 16:29  fp
+
+	* examples/mini/mini.c, master/datagram.c, master/domain.c,
+	  master/domain.h, master/ethernet.c, master/fsm.c, master/fsm.h,
+	  master/fsm_coe.c, master/master.c, master/master.h,
+	  master/module.c, master/slave.c, master/slave.h: Persistent slave
+	  lists.
+
+2006-10-25 16:53  fp
+
+	* devices/Kbuild, master/Kbuild: Minor changes in Kbuild files.
+
+2006-10-25 16:49  fp
+
+	* Makefile.am, configure.ac, devices/8139too.c, devices/Kbuild,
+	  globals.h, master/Kbuild, master/globals.h, master/master.c,
+	  master/module.c: Compiler flag -DSVNREV only for module.c to
+	  avoid unnecessary recompiling.
+
+2006-10-25 13:32  fp
+
+	* master/fsm_change.c: Fixes in state change FSM.
+
+2006-10-25 07:41  fp
+
+	* master/fsm.c: SDO dictionary and SDO access only in IDLE mode,
+	  because of kmalloc()s.
+
+2006-10-24 15:14  fp
+
+	* master/canopen.c, master/fsm.c, master/master.c, master/master.h:
+	  SDO uploading via Sysfs without master FSM calling wake_up().
+
+2006-10-24 12:06  fp
+
+	* Makefile.am, configure.ac: Altered configure --with-linux
+	  parameter to --with-linux-dir; removed depmod call.
+
+2006-10-24 10:37  fp
+
+	* master/fsm_change.c: Increased state change checking timeout to
+	  1s.
+
+2006-10-24 08:41  fp
+
+	* master/fsm_change.c: Output state names instead of codes in
+	  change FSM.
+
+2006-10-24 08:09  fp
+
+	* master/fsm.c: Minot output changes in fsm.c
+
+2006-10-24 08:00  fp
+
+	* master/Kbuild, master/Makefile.am, master/fsm.c, master/fsm.h,
+	  master/fsm_coe.c, master/fsm_coe.h: Layed out CoE state machine.
+
+2006-10-23 14:00  fp
+
+	* master/fsm.c, master/fsm.h, master/fsm_change.c,
+	  master/fsm_change.h, master/fsm_sii.c, master/fsm_sii.h,
+	  master/master.c: Removed state machine running() methods.
+
+2006-10-23 13:45  fp
+
+	* master/Kbuild, master/Makefile.am, master/fsm.c, master/fsm.h,
+	  master/fsm_change.c, master/fsm_change.h: Layed out state change
+	  state machine.
+
+2006-10-23 12:59  fp
+
+	* master/Kbuild, master/Makefile.am, master/fsm.c, master/fsm.h,
+	  master/fsm_sii.c, master/fsm_sii.h: Layed out SII state machine.
+
+2006-10-20 15:35  fp
+
+	* Makefile.am, devices/Makefile.am, master/Makefile.am: Minor
+	  Makefile changes.
+
+2006-10-20 13:15  fp
+
+	* master/mailbox.c: Improved output at mailbox error.
+
+2006-10-20 13:05  fp
+
+	* master/canopen.c, master/canopen.h, master/fsm.c, master/fsm.h,
+	  master/master.c, master/master.h, master/module.c: Implemented
+	  SDO reading via Sysfs.
+
+2006-10-20 13:03  fp
+
+	* master/fsm.c: Always begin with subindex 0 while fetching SDO
+	  dictionary.
+
+2006-10-20 12:57  fp
+
+	* master/fsm.c: Set initial state of all slaves to PREOP.
+
+2006-10-20 12:54  fp
+
+	* master/fsm.c, master/globals.h: Added EC_WAIT_SDO_DICT define.
+
+2006-10-20 12:50  fp
+
+	* master/fsm.c: Fixed bug in master state machine.
+
+2006-10-20 12:45  fp
+
+	* master/fsm.c: Better debugging output for SDO dictionaries.
+
+2006-10-20 12:41  fp
+
+	* master/mailbox.c: Display debug data on mailbox error.
+
+2006-10-20 12:33  fp
+
+	* master/fsm.c, master/slave.c, master/slave.h: Better debugging
+	  output for SDO dictionaries.
+
+2006-10-20 12:19  fp
+
+	* master/fsm.c: Minor output changes in fsm.c
+
+2006-10-20 10:48  fp
+
+	* master/fsm.c, master/slave.c, master/slave.h: Reconfiguration of
+	  slaves, though they are in the correct state at startup.
+
+2006-10-20 10:05  fp
+
+	* master/fsm.c: Guess sync manager settings if mailbox information
+	  available.
+
+2006-10-19 14:23  fp
+
+	* master/canopen.c, master/fsm.c, master/slave.c, master/slave.h:
+	  Moved SDO dictionary fetching to master FSMs; added SDO parent
+	  kobj.
+
+2006-10-19 14:05  fp
+
+	* master/master.c, master/slave.c: Fixed memory leak in master and
+	  slave destructors.
+
+2006-10-18 13:19  fp
+
+	* Makefile.am: Added branch info to distdir.
+
+2006-10-18 13:11  fp
+
+	* examples/mini/mini.c, include/ecdb.h, include/ecrt.h,
+	  master/domain.c, master/slave.c, master/slave.h:
+	  ecrt_domain_register_pdo_range() implemented.
+
+2006-10-18 13:10  fp
+
+	* master/master.c: Do net reset debug level on master reset.
+
+2006-10-18 12:34  fp
+
+	* master/master.c: Added enable bit to sync manager debugging.
+
+2006-10-18 12:04  fp
+
+	* master/master.c: Improved SM and FMMU debugging output.
+
+2006-10-18 11:50  fp
+
+	* master/master.c, master/slave.c, master/slave.h: Added FMMU
+	  debugging.
+
+2006-10-18 10:30  fp
+
+	* master/fsm.c: Fixed typo.
+
+2006-10-18 08:59  fp
+
+	* master/domain.c, master/slave.c, master/slave.h: Added
+	  ec_slave_validate()
+
+2006-10-17 14:50  fp
+
+	* master/Kbuild, master/Makefile.am, master/canopen.c,
+	  master/canopen.h, master/fsm.c, master/fsm.h, master/slave.c,
+	  master/slave.h: Implemented fetching of SDO dictionary.
+
+2006-10-17 14:37  fp
+
+	* master/master.c: Minor output changes in master.c
+
+2006-10-17 14:36  fp
+
+	* master/fsm.c: BUGFIX: Fixed faulty state acknowledge behavior.
+
+2006-10-17 14:24  fp
+
+	* master/slave.h: Fixed typo.
+
+2006-10-17 14:22  fp
+
+	* master/fsm.c, master/fsm.h: Renamed fsm->sdodata to
+	  fsm->coe_sdodata
+
+2006-10-17 14:19  fp
+
+	* master/domain.c, master/domain.h, master/master.c,
+	  master/master.h, master/slave.c, master/slave.h: Removed clear
+	  functions from headers of kobject-classes.
+
+2006-10-17 14:15  fp
+
+	* master/fsm.c, master/globals.h, master/module.c, master/slave.c:
+	  Added EC_SLAVE_STATE_ACK_ERR to ec_state_string(); added
+	  EC_STATE_STRING_SIZE
+
+2006-10-17 14:10  fp
+
+	* master/fsm.c, master/slave.h: Renamed EC_ACK to
+	  EC_SLAVE_STATE_ACK_ERR
+
+2006-10-17 07:30  fp
+
+	* master/slave.h: Removed varsized_fields II
+
+2006-10-17 07:27  fp
+
+	* master/slave.c: Corrected subbus product code.
+
+2006-10-17 07:25  fp
+
+	* master/slave.c, master/slave.h: Removed varsized_fields
+
+2006-10-16 14:38  fp
+
+	* master/datagram.c, master/datagram.h, master/device.c,
+	  master/device.h, master/fsm.c, master/fsm.h, master/master.c:
+	  Fixed serveral races while starting up under high CPU load.
+
+2006-10-16 09:07  fp
+
+	* master/datagram.c, master/datagram.h, master/fsm.c, master/fsm.h,
+	  master/master.c: Serveral changes to avoid timeouts under high
+	  CPU load.
+
+2006-10-16 08:03  fp
+
+	* master/master.c: Minor output changes.
+
+2006-10-13 20:44  fp
+
+	* master/fsm.c: BUGFIX: Added returns after timeout in SII state
+	  machine.
+
+2006-10-13 09:45  fp
+
+	* master/slave.c, master/slave.h: Added ec_slave_has_subbus()
+
+2006-10-13 09:39  fp
+
+	* Makefile.am, configure.ac, examples, examples/Makefile.am,
+	  examples/mini/Makefile.am, examples/msr/Makefile.am,
+	  examples/rtai/Makefile.am: Distribution makefile for examples.
+
+2006-10-13 09:38  fp
+
+	* ., bootstrap, configure.ac, master/Kbuild, master/Makefile.am,
+	  master/device.c, master/device.h, master/globals.h: Debug
+	  interfaces not compiled by default.
+
+2006-10-13 09:05  fp
+
+	* master/ethernet.c, master/fsm.c: Removed additional loop in
+	  coe_down FSM; renamed mbox_type to mbox_prot.
+
+2006-10-12 13:49  fp
+
+	* master/ethernet.c, master/fsm.c, master/mailbox.c,
+	  master/mailbox.h: Fixed mailbox bug, added mailbox error codes.
+
+2006-10-11 12:35  fp
+
+	* include/ecdb.h: Added EL5101 PDOs to ecdb.h
+
+2006-10-09 14:47  fp
+
+	* Makefile.am: Minor changes on Makefile.am
+
+2006-10-09 14:43  fp
+
+	* ., Makefile.am, bootstrap, configure.ac, devices/Makefile.am,
+	  examples/mini/Makefile.am, examples/msr/Makefile.am,
+	  examples/rtai/Makefile.am, include, include/Makefile.am,
+	  master/Makefile.am, script, script/Makefile.am: Improved
+	  autotools files.
+
+2006-10-09 13:14  ha
+
+	* script/Makefile.am: Added file script/Makefile.am
+
+2006-10-09 12:59  ha
+
+	* Makefile.am, bootstrap, configure.ac, devices/Makefile.am,
+	  examples/mini/Makefile.am, examples/msr/Makefile.am,
+	  examples/rtai/Makefile.am, master/Makefile.am: Added file
+	  ./bootstrap; Added $(DESTDIR) to */Makefile.am make alternate
+	  root installs possible
+
+2006-10-05 09:38  ab
+
+	* include/ecdb.h: EL3152 hinzugefügt
+
+2006-09-28 13:24  fp
+
+	* master/module.c: No bus time measuring on device registration.
+
+2006-09-28 13:22  fp
+
+	* devices/8139too.c, devices/Kbuild, master/Kbuild,
+	  master/globals.h, master/master.c, master/module.c: Altered
+	  master version string.
+
+2006-09-28 12:58  fp
+
+	* master/master.c, master/master.h, master/module.c: Fixed race on
+	  duplicate device registering or device unregistering while
+	  requesting master.
+
+2006-09-28 08:29  fp
+
+	* INSTALL: Updated INSTALL file.
+
+2006-09-27 15:19  fp
+
+	* documentation/ethercat_doc.tex: Updated documentation.
+
+2006-09-26 16:34  fp
+
+	* master/master.c, master/master.h, master/module.c: Replaced
+	  master's reserved flag by atomic_t available.
+
+2006-09-26 16:16  fp
+
+	* master/domain.c, master/master.c, master/master.h,
+	  master/module.c: Changes in ecrt_request_master(); minor output
+	  changes.
+
+2006-09-26 15:25  fp
+
+	* documentation/ethercat_doc.tex: Documentation: EtherLab-CD;
+	  obtaining the DEVICE_INDEX.
+
+2006-09-26 13:25  fp
+
+	* Makefile.am: Minor changes in Makefile.am
+
+2006-09-25 17:20  fp
+
+	* documentation/ethercat_doc.tex: Updated documentation concerning
+	  autotools/installation.
+
+2006-09-25 16:05  fp
+
+	* configure.ac: Minor changes.
+
+2006-09-25 16:04  fp
+
+	* Makefile.am: Added documentation to distribution.
+
+2006-09-25 16:02  fp
+
+	* documentation/Makefile, documentation/ethercat_doc.tex,
+	  documentation/svn.sty: Improved documentation makefile, removed
+	  svn.sty, fixed LaTeX penalties.
+
+2006-09-25 15:55  fp
+
+	* Doxyfile, Makefile.am, doc, documentation: Renamed documentation
+	  -> doxygen-output, doc -> documentation.
+
+2006-09-25 15:53  fp
+
+	* doc, doc: Moved doc into trunk
+
+2006-09-25 14:39  fp
+
+	* configure.ac: Fixed --with-linux switch.
+
+2006-09-25 14:13  fp
+
+	* Makefile.am, configure.ac, devices/Makefile.am,
+	  examples/mini/Makefile.am, examples/msr/Makefile.am,
+	  examples/rtai/Makefile.am, master/Makefile.am: Autotools
+	  "--with-linux" switch; "mydist" target
+
+2006-09-25 12:11  fp
+
+	* Makefile.am, devices/Kbuild, master/Kbuild: Added SVN revision to
+	  distribution.
+
+2006-09-25 11:12  fp
+
+	* ., configure.ac: Corrected autotools.
+
+2006-09-25 10:24  fp
+
+	* ., Makefile, Makefile.am, devices, devices/Kbuild,
+	  devices/Makefile, devices/Makefile.am, ethercat.conf.tmpl,
+	  examples/mini, examples/mini/Kbuild, examples/mini/Makefile,
+	  examples/mini/Makefile.am, examples/mini/kernel.conf.tmpl,
+	  examples/msr, examples/msr/Kbuild, examples/msr/Makefile,
+	  examples/msr/Makefile.am, examples/msr/install.sh,
+	  examples/msr/kernel.conf.tmpl, examples/rtai,
+	  examples/rtai/Kbuild, examples/rtai/Makefile,
+	  examples/rtai/Makefile.am, examples/rtai/kernel.conf.tmpl,
+	  master, master/Kbuild, master/Makefile, master/Makefile.am:
+	  EtherCAT master with Autotools.
+
+2006-09-23 10:56  fp
+
+	* master/domain.c, master/domain.h: Bugfix: ecrt_domain_state()
+	  always returned -1.
+
+2006-09-19 14:08  fp
+
+	* master/xmldev.c, master/xmldev.h: Allow only one open() on XML
+	  device.
+
+2006-09-19 13:28  fp
+
+	* master/Makefile, master/master.c, master/master.h,
+	  master/module.c, master/xmldev.c, master/xmldev.h,
+	  script/ethercat.sh: Introduced per-master character devices for
+	  XML descriptions.
+
+2006-09-19 13:09  fp
+
+	* script/ethercat.sh: Changed identation in init script.
+
+2006-09-18 14:22  fp
+
+	* xmldaemon, xmldaemon/Makefile, xmldaemon/main.cpp,
+	  xmldaemon/pdo.cpp, xmldaemon/pdo.hpp, xmldaemon/pdo_entry.cpp,
+	  xmldaemon/pdo_entry.hpp, xmldaemon/slave_device.cpp,
+	  xmldaemon/slave_device.hpp, xmldaemon/sync_manager.cpp,
+	  xmldaemon/sync_manager.hpp: Added XML daemon.
+
+2006-09-11 09:22  fp
+
+	* script/lsec.pl: lsec: advanced number formatting; no-lines
+	  option.
+
+2006-09-11 08:52  fp
+
+	* master/slave.c, script/lsec.pl: Coupler information in slave info
+	  file, lines in lsec.
+
+2006-09-08 12:51  fp
+
+	* master/globals.h, master/master.c, master/module.c:
+	  Compile/Version info in sysconfig master info file.
+
+2006-09-04 08:29  fp
+
+	* INSTALL: Improved INSTALL file.
+
+2006-09-01 12:55  fp
+
+	* Doxyfile: Updated master version in Doxyfile.
+
+2006-08-31 16:29  fp
+
+	* master/domain.c: Fixed bug in data pointer calculation.
+
+2006-08-29 16:17  fp
+
+	* include/ecdb.h: Added PDO defines to ecdb.h
+
+2006-08-23 07:36  fp
+
+	* TODO: Updated TODO list.
+
+2006-08-17 18:42  fp
+
+	* script/install.sh: Fixed bug in install script.
+
+2006-08-15 09:36  fp
+
+	* master/slave.c: Removed unused code.
+
+2006-08-15 09:22  fp
+
+	* examples/mini/mini.c: Updated mini example.
+
+2006-08-15 09:22  fp
+
+	* master/master.c, master/master.h: Removed delayed datagram
+	  statistics.
+
+2006-08-15 09:21  fp
+
+	* script/install.sh: Bugfix in install script.
+
+2006-08-15 08:48  fp
+
+	* master/datagram.h, master/master.c: Improved datagram reception
+	  in sync_io and frame dequeuing.
+
+2006-08-15 08:09  fp
+
+	* master/datagram.c, master/datagram.h, master/domain.c,
+	  master/domain.h, master/ethernet.c, master/ethernet.h,
+	  master/fsm.c, master/fsm.h, master/master.c, master/master.h:
+	  Replaced longer cycle timestamps with jiffies.
+
+2006-08-09 15:00  fp
+
+	* include/ecdb.h, master/domain.c, master/fsm.c, master/slave.c,
+	  master/slave.h: Added missing code documentation.
+
+2006-08-08 13:07  fp
+
+	* examples/rtai/rtai_sample.c: RTAI example with INHIBIT time.
+
+2006-08-08 13:06  fp
+
+	* master/master.c: Added EoE rate in KB/s to master info.
+
+2006-08-08 13:06  fp
+
+	* master/ethernet.c: Fixed EoE debugging.
+
+2006-08-08 12:07  fp
+
+	* TODO, master/domain.c, master/ethernet.c, master/ethernet.h,
+	  master/fsm.c, master/fsm.h, master/master.c, master/slave.c:
+	  Minor changes.
+
+2006-08-05 07:11  fp
+
+	* master/fsm.c: New transition in slave conf state machine: Skip
+	  fmmu and SDO configuration.
+
+2006-08-04 15:37  fp
+
+	* master/master.c: Minor output fix.
+
+2006-08-04 15:31  fp
+
+	* master/ethernet.c, master/ethernet.h, master/master.c: EoE rate
+	  statistics.
+
+2006-08-04 13:49  fp
+
+	* master/master.c, master/master.h: Better EoE and Idle timing
+	  measurement.
+
+2006-08-04 09:53  fp
+
+	* master/master.c, master/master.h: Master information, timing.
+
+2006-08-04 09:35  fp
+
+	* master/slave.c: Minor fix: Output of SysFS accepting new slave
+	  state.
+
+2006-08-03 20:11  fp
+
+	* master/domain.c, master/domain.h, master/master.c,
+	  master/master.h: New statistic outputs to avoid blasting the
+	  logs.
+
+2006-08-03 19:47  fp
+
+	* master/device.c, master/master.c, master/master.h: Renamed
+	  ec_master_receive() to ec_master_receive_datagrams().
+
+2006-08-03 19:17  fp
+
+	* master/master.c, master/master.h, master/module.c: Measure bus
+	  time.
+
+2006-08-03 16:48  fp
+
+	* examples/mini/mini.c, master/fsm.c, master/fsm.h, master/slave.c,
+	  master/slave.h: SDO configuration interface, SDO download state
+	  machine.
+
+2006-08-03 16:47  fp
+
+	* master/mailbox.h: Removed deprecated mailbox function headers.
+
+2006-08-03 16:46  fp
+
+	* include/ecdb.h: Added Beckhoff EL5001 to slave DB.
+
+2006-08-03 16:14  fp
+
+	* master/master.c, master/master.h: Fixed bug with
+	  ec_master_eoe_start() does new coupling all the time.
+
+2006-08-03 12:51  fp
+
+	* TODO, examples/mini/mini.c, examples/msr/msr_sample.c,
+	  examples/rtai/rtai_sample.c, include/ecdb.h, include/ecrt.h,
+	  master/Makefile, master/canopen.c, master/datagram.c,
+	  master/datagram.h, master/domain.c, master/domain.h,
+	  master/ethernet.c, master/ethernet.h, master/fsm.c, master/fsm.h,
+	  master/globals.h, master/mailbox.c, master/master.c,
+	  master/master.h, master/module.c, master/slave.c, master/slave.h,
+	  master/types.c, master/types.h, script/ethercat.sh,
+	  script/lsec.pl: VERSION 1.1: New realtime interface, only state
+	  machines.
+
+2006-08-02 23:16  fp
+
+	* script/ethercat.sh: Indentication in init script.
+
+2006-08-02 16:18  fp
+
+	* script/ethercat.sh: Fixed bug in start script.
+
+2006-08-01 18:37  fp
+
+	* master/ethernet.c: Improved EoE state machine.
+
+2006-08-01 15:19  fp
+
+	* master/master.c, master/module.c, script/ethercat.sh,
+	  script/sysconfig: Renamed master parameter ec_eoe_devices to
+	  ec_eoeif_count.
+
+2006-08-01 14:15  fp
+
+	* master/slave.c: Fixed bug with bit-sized PDOs leading to wrong
+	  Sync-Manager sizes.
+
+2006-07-31 18:52  fp
+
+	* master/ethernet.c: Minor changes.
+
+2006-07-28 07:36  fp
+
+	* master/master.c: Renamed ec_master_idle() to
+	  ec_master_idle_run().
+
+2006-07-25 10:19  fp
+
+	* script/install.sh: Remove old ec_list before creating link.
+
+2006-07-25 10:08  fp
+
+	* script/ec_list.pl, script/install.sh, script/lsec.pl: renamed
+	  ec_list script to lsec.
+
+2006-07-25 10:05  fp
+
+	* master/domain.c, master/slave.c, script/ec_list.pl: Renamed Sysfs
+	  attributes.
+
+2006-07-25 10:04  fp
+
+	* master/ethernet.c: Minor changes.
+
+2006-07-25 10:03  fp
+
+	* master/master.c: Reading of eeprom_write_enable.
+
+2006-07-20 11:59  fp
+
+	* master/fsm.c: Minor changes.
+
+2006-07-20 08:39  fp
+
+	* master/fsm.c: Renamed ACK2 state to CHECK ACK.
+
+2006-07-19 16:36  fp
+
+	* master/fsm.c: Better slave scan sub state machine.
+
+2006-07-19 16:18  fp
+
+	* master/fsm.c: Better slaveconf sub state machine.
+
+2006-07-19 15:28  fp
+
+	* master/fsm.c: Separated slave scan sub state machine and slave
+	  configuration sub state machine.
+
+2006-07-19 13:18  fp
+
+	* FEATURES, README: Removed Freerun out of FEATURES and README.
+
+2006-07-19 13:15  fp
+
+	* master/fsm.c, master/master.c, master/master.h, master/module.c,
+	  master/slave.c: Renamed FREERUN mode to IDLE mode.
+
+2006-07-19 13:08  fp
+
+	* master/master.c, master/master.h, master/module.c: Renamed IDLE
+	  mode to ORPHANED mode.
+
+2006-07-19 12:57  fp
+
+	* master/fsm.c: Better master state machines.
+
+2006-07-18 16:48  fp
+
+	* master/master.c: SysFS entry for debug level.
+
+2006-07-18 16:46  fp
+
+	* master/slave.c: Ack timeout 100ns in simple IO.
+
+2006-07-18 16:42  fp
+
+	* master/fsm.c: Ack timeout in FSM.
+
+2006-07-18 16:40  fp
+
+	* master/fsm.c: Prefer EEPROM sync manager information also in FSM.
+
+2006-07-18 16:09  fp
+
+	* script/ethercat.sh: Sleep times in startup script.
+
+2006-07-17 13:01  fp
+
+	* master/fsm.c, master/master.c, master/master.h, master/slave.c,
+	  master/slave.h: Prefer EEPROM sync manager information for
+	  config.
+
+2006-07-17 12:58  fp
+
+	* master/fsm.c: Added missing AL status code messages.
+
+2006-07-06 08:39  fp
+
+	* master/slave.c: Avoided crashes on kernel 2.4 acc. to patch by M.
+	  Schwerin.
+
+2006-07-06 08:38  fp
+
+	* master/mailbox.c, master/master.c: Removed warnings acc. to patch
+	  by M. Schwerin.
+
+2006-07-06 08:31  fp
+
+	* master/datagram.h, master/debug.c, master/domain.c,
+	  master/ethernet.c: Applied include patch by M. Schwerin.
+
+2006-07-06 08:23  fp
+
+	* master/Makefile, master/canopen.c, master/command.c,
+	  master/command.h, master/datagram.c, master/datagram.h,
+	  master/domain.c, master/domain.h, master/ethernet.c,
+	  master/ethernet.h, master/fsm.c, master/fsm.h, master/globals.h,
+	  master/mailbox.c, master/mailbox.h, master/master.c,
+	  master/master.h, master/slave.c, master/slave.h: Renamed command
+	  structure to datagram.
+
+2006-06-27 20:24  fp
+
+	* master/fsm.c, master/slave.c: Minor changes in fsm.c and slave.c
+
+2006-06-27 20:08  fp
+
+	* master/ethernet.c, master/fsm.c, master/master.c, master/slave.c,
+	  master/slave.h: Slave: state_error -> error_flag, error_flag only
+	  in slave state machine.
+
+2006-06-27 19:46  fp
+
+	* master/fsm.c, master/slave.c, master/types.c, master/types.h:
+	  Introducing infrastructural slaves that do not contain process
+	  data.
+
+2006-06-27 19:34  fp
+
+	* script/ethercat.sh: Enhancements and bugfixes on bridging script.
+
+2006-06-27 19:33  fp
+
+	* include/ecrt.h: Minor changes to ecrt.h.
+
+2006-06-27 19:31  fp
+
+	* Makefile, devices/Makefile, master/Makefile: Removing
+	  "Modules.symvers" on make clean.
+
+2006-06-26 16:05  fp
+
+	* devices/ecdev.h, include/ecrt.h, master/canopen.c,
+	  master/ethernet.c, master/ethernet.h, master/fsm.c, master/fsm.h,
+	  master/master.h, master/module.c, master/types.h: Added missing
+	  documentation.
+
+2006-06-26 15:33  fp
+
+	* script/ethercat.sh, script/sysconfig: EoE bridge default gateway.
+
+2006-06-26 14:53  fp
+
+	* examples/mini, examples/mini/Makefile,
+	  examples/mini/kernel.conf.tmpl, examples/msr,
+	  examples/msr/kernel.conf.tmpl, examples/rtai,
+	  examples/rtai/Makefile, examples/rtai/kernel.conf.tmpl:
+	  Consistent example makefiles.
+
+2006-06-26 14:36  fp
+
+	* script/ethercat.sh, script/sysconfig: Configuring EoE bridge at
+	  startup.
+
+2006-06-26 14:35  fp
+
+	* ., devices, master: Ignoring Modules.symvers
+
+2006-06-26 14:20  fp
+
+	* Makefile, devices/Makefile, ethercat.conf.tmpl, master/Makefile:
+	  Better modules_install targets.
+
+2006-06-26 11:28  fp
+
+	* examples/mini/mini.c, master/types.c: types.c: BK1120 outputs and
+	  EL1004.
+
+2006-06-21 10:09  fp
+
+	* master/canopen.c, master/ethernet.c, master/ethernet.h,
+	  master/mailbox.c, master/mailbox.h, master/slave.c,
+	  master/slave.h: Removed mbox_command out of slave.
+
+2006-06-21 10:08  fp
+
+	* master/master.c: Removed debugging output.
+
+2006-06-21 09:11  fp
+
+	* TODO: Modified TODO.
+
+2006-06-21 09:09  fp
+
+	* include/ecrt.h, master/mailbox.c: Minor changes.
+
+2006-06-20 14:40  fp
+
+	* examples/mini/mini.c, include/ecrt.h, master/domain.c,
+	  master/fsm.c, master/master.c, master/master.h, master/slave.c,
+	  master/slave.h, master/types.c: Variable-sized data fields,
+	  BK1120.
+
+2006-06-14 10:23  fp
+
+	* master/master.c: Bugfix: Freerun mode not stopped cleanly on
+	  device unloading.
+
+2006-06-12 15:14  fp
+
+	* devices/8139too.c: Minor changes in 8139too driver.
+
+2006-06-12 14:37  fp
+
+	* Makefile, devices/8139too.c, devices/Makefile, master/Makefile,
+	  script/install.sh: Applied patches by Maximilian Schwerin.
+
+2006-06-06 11:59  fp
+
+	* TODO: Updated things to do.
+
+2006-06-06 09:54  fp
+
+	* FEATURES, README: Added FEATURES file.
+
+2006-06-02 14:25  fp
+
+	* master/fsm.c, master/fsm.h, master/slave.c, master/slave.h:
+	  EEPROM writing via SysFS.
+
+2006-06-02 12:01  fp
+
+	* master/master.c, master/master.h: EEPROM write enable SysFS
+	  entry.
+
+2006-06-02 09:02  fp
+
+	* devices/Makefile, examples/mini/Makefile, examples/msr/Makefile,
+	  examples/rtai/Makefile, master/Makefile: Consistent Makefiles.
+
+2006-06-02 08:38  fp
+
+	* master/fsm.c, master/fsm.h, master/slave.c, master/slave.h: Read
+	  complete eeprom data from slave and map it into SysFS.
+
+2006-05-29 12:17  fp
+
+	* examples/mini, examples/mini/Makefile,
+	  examples/mini/ethercat.conf.tmpl, examples/mini/kernel.conf.tmpl,
+	  examples/rtai/Makefile, examples/rtai/kernel.conf.tmpl: MERGE
+	  branches/srable-1.0 -r426:427 -> trunk (config files)
+
+2006-05-29 07:48  fp
+
+	* master/slave.c, master/slave.h, script/ec_list.pl: Changed EEPROM
+	  string/property names and changed sii_desc property to sii_name.
+
+2006-05-29 07:45  fp
+
+	* TODO: Updated TODO list.
+
+2006-05-26 14:35  fp
+
+	* master/fsm.c: Corrected output at slave count change.
+
+2006-05-26 14:28  fp
+
+	* master/ethernet.c, master/master.c: Better state-dependent
+	  behaviour for EoE-capable slaves.
+
+2006-05-26 14:26  fp
+
+	* master/fsm.c, master/fsm.h, master/slave.c, master/slave.h:
+	  Correct behaviour of master state machine in RT mode.
+
+2006-05-22 09:16  fp
+
+	* examples/rtai/rtai_sample.c, master/fsm.c, master/globals.h,
+	  master/master.c: Added some documentation.
+
+2006-05-22 08:38  fp
+
+	* devices/8139too.c, devices/Makefile, devices/ecdev.h,
+	  devices/original_8139too.c, examples/mini/Makefile,
+	  examples/mini/ethercat.conf.tmpl, examples/mini/mini.c,
+	  examples/msr/Makefile, examples/msr/install.sh,
+	  examples/msr/kernel.conf.tmpl, examples/msr/msr_load,
+	  examples/msr/msr_param.h, examples/msr/msr_sample.c,
+	  examples/msr/msr_unload, examples/msr/msrserv.pl,
+	  examples/rtai/Makefile, examples/rtai/kernel.conf.tmpl,
+	  examples/rtai/rtai_sample.c, include/ecrt.h, master/Makefile,
+	  master/canopen.c, master/command.c, master/command.h,
+	  master/device.c, master/device.h, master/domain.c,
+	  master/domain.h, master/doxygen.c, master/ethernet.c,
+	  master/ethernet.h, master/globals.h, master/mailbox.c,
+	  master/mailbox.h, master/master.c, master/master.h,
+	  master/module.c, master/slave.c, master/slave.h, master/types.c,
+	  master/types.h, script/ec_list.pl, script/ethercat.sh,
+	  script/install.sh, script/sysconfig: Aligned property values on
+	  all files.
+
+2006-05-22 07:50  fp
+
+	* script/ec_list.pl: ec_list shows SII device description on
+	  demand.
+
+2006-05-22 07:34  fp
+
+	* master/globals.h, master/slave.c: SysFS write access for slave
+	  state.
+
+2006-05-19 14:05  fp
+
+	* master/fsm.c: Read current AL status of slaves while scanning
+	  bus.
+
+2006-05-19 13:58  fp
+
+	* master/fsm.c: Link down treated as topology change in state
+	  machine.
+
+2006-05-19 13:39  fp
+
+	* master/master.c: Fixed bug with coupling multiple EoE handlers.
+
+2006-05-19 13:38  fp
+
+	* master/master.c: Changed free-run frequency to HZ.
+
+2006-05-19 13:23  fp
+
+	* master/ethernet.c, master/ethernet.h, master/fsm.c, master/fsm.h,
+	  master/globals.h, master/master.c, master/master.h,
+	  master/module.c, master/slave.c, master/slave.h,
+	  script/ethercat.sh, script/sysconfig: EoE in Free-Run mode;
+	  Finished slave configuration state machine.
+
+2006-05-19 09:56  fp
+
+	* Makefile, ethercat.conf.tmpl, ethercat.sh, install.sh, script,
+	  script/ethercat.sh, script/install.sh, script/sysconfig, tools:
+	  Created scripts directory and improved install and init scripts.
+
+2006-05-18 17:49  fp
+
+	* master/module.c: Minor changes in module.c
+
+2006-05-18 12:47  fp
+
+	* ethercat.sh: Minor changes in init script 2.
+
+2006-05-18 12:45  fp
+
+	* ethercat.sh: Minor changes in init script.
+
+2006-05-18 12:35  fp
+
+	* Makefile, README, devices/8139too.c, devices/Makefile,
+	  devices/ecdev.h, ethercat.sh, examples/mini/Makefile,
+	  examples/mini/mini.c, examples/msr/Makefile,
+	  examples/msr/install.sh, examples/msr/msr_param.h,
+	  examples/msr/msr_sample.c, examples/msr/msrserv.pl,
+	  examples/rtai/Makefile, examples/rtai/rtai_sample.c,
+	  include/ecrt.h, install.sh, master/Makefile, master/canopen.c,
+	  master/command.c, master/command.h, master/debug.c,
+	  master/debug.h, master/device.c, master/device.h,
+	  master/domain.c, master/domain.h, master/doxygen.c,
+	  master/ethernet.c, master/ethernet.h, master/fsm.c, master/fsm.h,
+	  master/globals.h, master/mailbox.c, master/mailbox.h,
+	  master/master.c, master/master.h, master/module.c,
+	  master/slave.c, master/slave.h, master/types.c, master/types.h,
+	  tools/ec_list.pl: Changed license headers and added EtherCAT
+	  license notice.
+
+2006-05-17 12:15  fp
+
+	* ethercat.sh: Added dependencies to RC script.
+
+2006-05-17 11:16  fp
+
+	* ethercat.sh: Added status function to RC script.
+
+2006-05-17 10:52  fp
+
+	* ethercat.sh: Better RC script.
+
+2006-05-17 09:28  fp
+
+	* Makefile, install.sh: Set permissions in install script.
+
+2006-05-17 09:22  fp
+
+	* master/master.h: Minor changes in master.h
+
+2006-05-16 14:23  fp
+
+	* examples/msr/msr_sample.c: SSI sensor changes in MSR example
+
+2006-05-16 13:03  fp
+
+	* master/master.c, master/master.h: Removed EoE workqueue option.
+
+2006-05-16 11:57  fp
+
+	* master/Makefile, master/command.h, master/fsm.c, master/fsm.h,
+	  master/master.c, master/master.h, master/slave.c, master/slave.h:
+	  Added finite state machine (FSM) processing.
+
+2006-05-15 12:57  fp
+
+	* master/command.c: Removed unnecessary includes.
+
+2006-05-12 14:48  fp
+
+	* master/master.c, master/master.h: Started freerun state machine
+	  development.
+
+2006-05-12 12:40  fp
+
+	* master/ethernet.c, master/ethernet.h, master/master.c: No master
+	  locking, if no EoE devices are "up".
+
+2006-05-12 12:38  fp
+
+	* examples/msr/msr_sample.c: Corrected MSR example.
+
+2006-05-12 10:13  fp
+
+	* examples/rtai/rtai_sample.c: Smaller fixes on RTAI example.
+
+2006-05-12 10:12  fp
+
+	* examples/msr, examples/msr/Makefile,
+	  examples/msr/kernel.conf.tmpl, examples/msr/msr_load,
+	  examples/msr/msr_rt.c, examples/msr/msr_sample.c,
+	  examples/msr/msr_unload, examples/msr/rt.conf.tmpl: MSR example
+	  finished.
+
+2006-05-11 13:29  fp
+
+	* devices/8139too.c, master/Makefile, master/debug.c,
+	  master/debug.h, master/device.c, master/device.h: Added debug
+	  interface for network monitors.
+
+2006-05-11 09:24  fp
+
+	* examples/rtai/Makefile, examples/rtai/rtai_sample.c: RTAI sample
+	  with optimized jitter.
+
+2006-05-11 09:23  fp
+
+	* master/master.h: EoE processing with kernel timer again.
+
+2006-05-10 13:56  fp
+
+	* master/globals.h, master/master.c: Added EC_EOE_FREQUENCY
+
+2006-05-10 11:51  fp
+
+	* examples/rtai/rtai_sample.c: EoE works with RTAI.
+
+2006-05-10 11:51  fp
+
+	* examples/mini/mini.c, master/master.c, master/master.h: EoE with
+	  workqueue; bugfix in ec_master_init()
+
+2006-05-10 11:33  fp
+
+	* examples/rtai/Makefile, examples/rtai/rtai_sample.c: Applied RTAI
+	  interface to RTAI example.
+
+2006-05-10 07:58  fp
+
+	* examples/msr, examples/msr/msr_rt.c, examples/rt: Renamed rt
+	  example to msr.
+
+2006-05-10 07:57  fp
+
+	* examples/mini/mini.c, examples/rt/msr_rt.c,
+	  examples/rtai/rtai_sample.c: Applied new path information to
+	  example modules.
+
+2006-05-10 07:53  fp
+
+	* examples/rtai, examples/rtai/Makefile,
+	  examples/rtai/ethercat.conf.tmpl, examples/rtai/kernel.conf.tmpl,
+	  examples/rtai/mini.c, examples/rtai/rtai_sample.c: Changed RTAI
+	  sample naming.
+
+2006-05-10 07:44  fp
+
+	* examples/rtai: Added rtai example.
+
+2006-05-10 07:41  fp
+
+	* examples, examples/mini, examples/rt, mini, rt: Added examples
+	  directory.
+
+2006-05-09 10:13  fp
+
+	* master/ethernet.c: EoE documentation updates.
+
+2006-05-09 09:45  fp
+
+	* master/ethernet.c, master/ethernet.h: EoE: State machine with
+	  function pointers, documentation.
+
+2006-05-08 16:46  fp
+
+	* master/ethernet.c, master/ethernet.h: EoE - TX fragmenting works.
+	  TCP traffic possible.
+
+2006-05-05 14:45  fp
+
+	* master/ethernet.c: EoE: Corrected faulty MAC address.
+
+2006-05-05 13:07  fp
+
+	* master/ethernet.c: EoE: TCP traffic possible; TX fragmenting to
+	  do.
+
+2006-05-05 07:20  fp
+
+	* master/ethernet.c, master/ethernet.h, master/globals.h,
+	  master/master.c, master/master.h: EoE frame queuing, receiving of
+	  fragmented frames; no TCP possible yet.
+
+2006-05-03 08:01  fp
+
+	* master/ethernet.c: removed unnecessary private structure in eoe
+	  net_device.
+
+2006-05-03 07:47  fp
+
+	* master/ethernet.c, master/ethernet.h, master/globals.h: moved
+	  stats into eoe struct; persistent rx-skb; tx queue.
+
+2006-05-03 07:19  fp
+
+	* master/device.c, master/globals.h, master/master.c: Using kernel
+	  Ethernet constants.
+
+2006-04-26 16:43  fp
+
+	* master/ethernet.c, master/ethernet.h: EoE frame receiving;
+	  regarding open/stop commands.
+
+2006-04-26 12:12  fp
+
+	* devices/8139too.c: removed MODULE_DEVICE_TABLE in ec_8139too
+	  driver (no automatic loading).
+
+2006-04-26 10:15  fp
+
+	* master/command.c, master/command.h, master/ethernet.c,
+	  master/master.c, master/master.h, mini/mini.c: command timeout,
+	  EoE processing with kernel timer.
+
+2006-04-25 13:45  fp
+
+	* devices/8139too.c: corrected ec_8139too driver name.
+
+2006-04-25 13:43  fp
+
+	* include/ecrt.h, master/master.c, master/master.h, mini/mini.c,
+	  rt/msr_rt.c: Prepared EoE processing with workqueue.
+
+2006-04-25 12:15  fp
+
+	* master/doxygen.c: documentation update.
+
+2006-04-25 12:04  fp
+
+	* include/ecrt.h, master/master.c, master/master.h: Locking
+	  callback interface.
+
+2006-04-25 11:39  fp
+
+	* master/ethernet.c, master/ethernet.h, master/master.c: EoE
+	  net_device implementation.
+
+2006-04-25 11:37  fp
+
+	* mini/mini.c: new topology in mini.c
+
+2006-04-24 12:30  fp
+
+	* master/module.c: Restart free run mode after requesting failed.
+
+2006-04-24 10:28  fp
+
+	* Doxyfile, include/ecrt.h: Documentation update + Doxygen generate
+	  LaTeX reference manual.
+
+2006-04-24 10:10  fp
+
+	* ., Doxyfile, devices/8139too.c, devices/ecdev.h, documentation,
+	  include/ecrt.h, master/canopen.c, master/command.c,
+	  master/command.h, master/device.c, master/device.h,
+	  master/domain.c, master/domain.h, master/doxygen.c,
+	  master/ethernet.c, master/ethernet.h, master/globals.h,
+	  master/mailbox.c, master/mailbox.h, master/master.c,
+	  master/master.h, master/module.c, master/slave.c, master/slave.h,
+	  master/types.c, master/types.h: Doxygen added interface modules
+	  and file documentation.
+
+2006-04-21 13:05  fp
+
+	* INSTALL, README: Separate INSTALL file.
+
+2006-04-21 12:35  fp
+
+	* ., Doxyfile, LICENSE, Makefile, README, devices/8139too.c,
+	  devices/Makefile, devices/ecdev.h, documentation, ethercat.sh,
+	  include/ecrt.h, install.sh, master/Makefile, master/canopen.c,
+	  master/command.c, master/command.h, master/device.c,
+	  master/device.h, master/domain.c, master/domain.h,
+	  master/doxygen.c, master/ethernet.c, master/ethernet.h,
+	  master/globals.h, master/mailbox.c, master/mailbox.h,
+	  master/master.c, master/master.h, master/module.c,
+	  master/slave.c, master/slave.h, master/types.c, master/types.h,
+	  mini/Makefile, mini/mini.c, rt/Makefile, rt/install.sh,
+	  rt/msr_param.h, rt/msr_rt.c, rt/msrserv.pl, tools/ec_list.pl:
+	  GPLv2 License and enhanced Doxygen output.
+
+2006-04-20 14:34  fp
+
+	* devices/Makefile, master/Makefile, master/globals.h,
+	  master/module.c: Introduced version number define.
+
+2006-04-20 13:31  fp
+
+	* Makefile, devices/8139too.c, devices/ecdev.h, include/ecrt.h,
+	  master/canopen.c, master/command.c, master/command.h,
+	  master/device.c, master/device.h, master/domain.c,
+	  master/domain.h, master/ethernet.c, master/ethernet.h,
+	  master/globals.h, master/mailbox.c, master/mailbox.h,
+	  master/master.c, master/master.h, master/module.c,
+	  master/slave.c, master/slave.h, master/types.c, master/types.h,
+	  mini/Makefile, mini/mini.c, rt/Makefile, rt/msrserv.pl:
+	  Translated all comments and documentation to english language.
+
+2006-04-20 13:19  fp
+
+	* TODO, fragen.txt, todo.txt: Moved fragen.txt outside the source
+	  tree, renamed todo.txt to TODO
+
+2006-04-18 13:41  fp
+
+	* README: README: Requirements and realtime.
+
+2006-04-12 12:04  fp
+
+	* devices/8139too.c, devices/Makefile: Fixed devices Makefile.
+
+2006-04-12 10:40  fp
+
+	* devices/8139too.c, devices/Makefile, devices/ecdev.h,
+	  master/Makefile, master/device.c, master/master.c,
+	  master/master.h, master/module.c, rt/msr_rt.c: Prepared Free-Run
+	  mode
+
+2006-04-11 14:39  fp
+
+	* master/slave.c, master/slave.h: Now fetching port physical layer
+	  from EEPROM
+
+2006-04-11 14:38  fp
+
+	* todo.txt: Updated todo.txt
+
+2006-04-11 14:12  fp
+
+	* master/master.c, master/slave.c, master/slave.h, rt/msr_rt.c,
+	  tools/ec_list.pl: Better calc. of coupler address; coupler
+	  address in SysFS; better output of ec_list
+
+2006-04-11 13:03  fp
+
+	* todo.txt: Updated todo.txt
+
+2006-04-11 12:54  fp
+
+	* install.sh, tools, tools/ec_list.pl: ec_list tool for listing the
+	  bus in user space
+
+2006-04-11 12:51  fp
+
+	* master/slave.c: Slave (special) type in SysFS
+
+2006-04-11 10:17  fp
+
+	* master/domain.c, master/globals.h, master/master.c,
+	  master/module.c, master/slave.c: Macro for SysFS attribute
+	  definition
+
+2006-04-11 10:05  fp
+
+	* master/slave.c, master/slave.h: More slave fields in SysFS; DL
+	  link status for 4 ports
+
+2006-04-11 09:12  fp
+
+	* master/domain.c, master/master.c, master/master.h,
+	  master/slave.c, master/slave.h: Slaves stored in list, slaves in
+	  SysFS
+
+2006-04-11 09:08  fp
+
+	* rt, rt/Makefile, rt/ethercat.conf.tmpl, rt/install.sh,
+	  rt/msr_load, rt/msr_module.c, rt/msr_rt.c, rt/msr_unload,
+	  rt/rt.conf.tmpl: Install script for realtime software
+
+2006-04-11 08:26  fp
+
+	* ., Doxyfile, Makefile, devices, devices/Makefile, master,
+	  master/Doxyfile, master/Makefile: Advanced build system
+
+2006-04-10 15:00  fp
+
+	* master/domain.c, master/domain.h, master/master.c,
+	  master/master.h: Sourced SysFS attribute show method prototypes
+	  out of headers.
+
+2006-04-10 14:25  fp
+
+	* master/domain.c, master/domain.h, master/master.c,
+	  master/master.h, master/module.c: MERGE branches/sysfs -> trunk
+	  (whole SysFS implementation)
+
+2006-04-10 11:18  fp
+
+	* todo.txt: Updated todo.txt
+
+2006-04-10 10:53  fp
+
+	* master/master.c, todo.txt: Sending of multiple frames
+
+2006-04-10 10:50  fp
+
+	* master/canopen.c, master/slave.c, master/slave.h: Altered CoE
+	  "Get object description response" fields
+
+2006-04-10 07:29  fp
+
+	* ethercat.sh: Restart action in RC script
+
+2006-04-07 14:35  fp
+
+	* master/master.c: Fixed bug concerning spuriously shown
+	  EoE-Errors.
+
+2006-04-07 14:23  fp
+
+	* Makefile, README, ec_reload.sh, ec_unload.sh: Removed ec-Scripts.
+
+2006-04-07 14:19  fp
+
+	* README, install.sh: Added README file and altered outputs of
+	  install.sh
+
+2006-04-07 14:16  fp
+
+	* rt/msr_module.c: Testing with SSI sensor
+
+2006-04-07 10:38  fp
+
+	* Makefile, ethercat.conf.tmpl, ethercat.sh, install.sh: Better
+	  installer and startup scripts.
+
+2006-04-07 08:29  fp
+
+	* install.sh: Better installer script
+
+2006-04-07 08:22  fp
+
+	* Makefile, ethercat.conf.tmpl, install.sh: Added install script
+
+2006-04-06 09:32  fp
+
+	* master/domain.c, master/master.c: Better outputs concerning
+	  responding slaves.
+
+2006-04-06 09:16  fp
+
+	* include/ecrt.h: Fixed syntax error in EC_READ_BIT macro.
+
+2006-04-05 14:02  fp
+
+	* master/canopen.c, master/globals.h, master/master.c,
+	  master/slave.c: AL status code reading after failed state
+	  transition.
+
+2006-04-05 13:57  fp
+
+	* master/slave.c: Fixed state acknowledgement.
+
+2006-04-05 13:38  fp
+
+	* fragen.txt: Fragen aktualisiert.
+
+2006-04-05 11:46  fp
+
+	* master/canopen.c, master/master.c, master/module.c,
+	  master/slave.c: Bugfix: Discovered memory leak.
+
+2006-04-05 11:44  fp
+
+	* master/domain.c, master/slave.c, master/slave.h: Renamed
+	  slave_set_fmmu() to slave_prepare_fmmu().
+
+2006-04-05 09:53  fp
+
+	* master/canopen.c: Fixed invalid format string.
+
+2006-04-05 09:52  fp
+
+	* rt/msr_module.c: Adjusted rt module.
+
+2006-04-05 09:50  fp
+
+	* master/canopen.c, master/slave.c: Bugfix: Crash after failing to
+	  fetch SDO dictionary.
+
+2006-04-05 09:04  fp
+
+	* mini/mini.c, rt/msr_module.c: Plugfest: rt und mini angepasst.
+
+2006-04-05 08:58  fp
+
+	* master/master.c, master/slave.c: Plugfest: Configure mailbox for
+	  unknown slaves.
+
+2006-04-05 08:47  fp
+
+	* master/mailbox.c, master/mailbox.h: Plugfest:
+	  Schönheitskorrekturen an Mailbox.
+
+2006-04-05 08:45  fp
+
+	* master/types.c: Plugfest: Neue Slave-Typen.
+
+2006-04-05 08:23  fp
+
+	* master/device.c, master/globals.h, master/module.c: Plugfest:
+	  Globale Debug-Funktionen für Frame-Daten.
+
+2006-04-05 07:55  fp
+
+	* master/master.c, master/master.h, master/module.c: Plugfest:
+	  master_open()/close() ausgelagert.
+
+2006-04-05 07:47  fp
+
+	* include/ecrt.h, master/domain.c: Plugfest: domain_process mit
+	  const-Zeiger.
+
+2006-04-03 19:19  fp
+
+	* Makefile: Keywords 2
+
+2006-04-03 19:16  fp
+
+	* Makefile, todo.txt: Neue Keywords
+
+2006-04-03 19:13  fp
+
+	* master/slave.c, mini/Makefile, mini/mini.c: Ausgaben verbessert,
+	  Mini-Modul angepasst.
+
+2006-04-03 15:47  fp
+
+	* master/ethernet.c: Versuche mit EoE.
+
+2006-04-03 14:12  fp
+
+	* master/Makefile, master/canopen.c, master/ethernet.c,
+	  master/ethernet.h, master/mailbox.c, master/mailbox.h,
+	  master/master.c, master/master.h, master/slave.c, master/slave.h,
+	  master/types.c, master/types.h: Mailbox-Interface ausgelagert,
+	  erster EOE-Ansatz.
+
+2006-04-03 10:03  fp
+
+	* include/ecrt.h, master/canopen.c, master/command.c,
+	  master/command.h, master/domain.c, master/domain.h,
+	  master/master.c, master/master.h, master/slave.c, master/slave.h,
+	  rt/msr_module.c, todo.txt: Dynamischer Kommandospeicher,
+	  Domain-Kommandos als Liste.
+
+2006-04-02 09:26  fp
+
+	* todo.txt: TO-DO-Liste geaendert.
+
+2006-03-31 09:27  fp
+
+	* master/slave.c, master/slave.h, rt/msr_module.c: Link Status
+	  ausgelesen.
+
+2006-03-29 15:45  fp
+
+	* fragen.txt, include/ecrt.h, master/globals.h, todo.txt: TO-DO und
+	  Fragen aktualisiert, kleine Schönheitskorrekturen.
+
+2006-03-29 15:23  fp
+
+	* include/ecrt.h, master/master.c, master/slave.c, master/slave.h,
+	  mini/mini.c, rt/msr_module.c: Verbosity level in
+	  ecrt_master_print().
+
+2006-03-29 15:10  fp
+
+	* master/canopen.c, master/slave.c, master/slave.h,
+	  rt/msr_module.c: Laden der SDO-Subindizes.
+
+2006-03-29 10:30  fp
+
+	* include/ecrt.h, master/canopen.c, master/domain.c,
+	  master/master.c, master/master.h, master/slave.c, mini/mini.c,
+	  rt/msr_module.c, todo.txt: SDO-Schnittstelle verbessert.
+
+2006-03-28 17:40  fp
+
+	* include/ecrt.h, master/canopen.c, rt/msr_module.c: SDO-Zugriff
+	  aufgeteilt in Expedited und Normal. Noch nicht fertig...
+
+2006-03-28 15:45  fp
+
+	* master/master.c, master/slave.c, master/slave.h, rt/msr_module.c:
+	  Dynamische Mailbox-Kommunikation, auch mit unbekannten Slaves.
+
+2006-03-28 13:42  fp
+
+	* include/ecrt.h, master/canopen.c, master/master.c,
+	  master/slave.c, master/slave.h, mini/mini.c, rt/msr_module.c:
+	  Laden der SDO Dictionaries funktioniert.
+
+2006-03-28 12:38  fp
+
+	* master/canopen.c, rt/msr_module.c: Bugfix: Größerer Puffer für
+	  CoE-Daten beim SDO upload.
+
+2006-03-27 15:52  fp
+
+	* master/canopen.c, master/master.c, master/slave.c,
+	  master/slave.h, rt/msr_module.c: Unterstützte Prot. auslesen,
+	  Mailbox in Slave ausgelagert, Bugfix in Anzeige des Watch-Frames
+	  und erste SDO-List-Abfrage.
+
+2006-03-27 12:04  fp
+
+	* master/slave.c, todo.txt: CRC-Counter nach ESC-Datasheet
+	  implementiert.
+
+2006-03-27 10:47  fp
+
+	* fragen.txt: Neue Fragen
+
+2006-03-27 09:53  fp
+
+	* master/master.c, master/master.h, mini/mini.c, todo.txt:
+	  Watch-Kommando
+
+2006-03-24 08:56  fp
+
+	* master/master.c: Bugfix: Absturz bei unbekannter Klemme.
+
+2006-03-24 08:39  fp
+
+	* todo.txt: TO-DO-Liste aktualisiert.
+
+2006-03-24 08:35  fp
+
+	* master/module.c, master/slave.c: Code aufgeräumt und kleines
+	  Speicherleck entdeckt.
+
+2006-03-22 11:42  fp
+
+	* master/slave.c, master/slave.h: Restliche EEPROM-Daten
+	  ausgelesen.
+
+2006-03-21 20:25  fp
+
+	* include/ecrt.h: Schönheitskorrekturen.
+
+2006-03-21 18:28  fp
+
+	* master/slave.c: Nachmals verfälschte Umlaute korrigiert.
+
+2006-03-21 15:45  fp
+
+	* master/slave.c, master/slave.h: Weitere EEPROM-Daten.
+
+2006-03-21 15:10  fp
+
+	* master/slave.c: "kaputte" Umlaute korrigiert.
+
+2006-03-21 15:00  fp
+
+	* master/slave.c, master/slave.h: Bugfix: Absturz behoben,
+	  EEPROM-Infos.
+
+2006-03-21 14:35  fp
+
+	* master/master.c: 64bit-Division vermieden.
+
+2006-03-21 14:23  fp
+
+	* master/master.c, master/slave.c: Verschiedene Timeouts
+	  verlängert.
+
+2006-03-21 13:57  fp
+
+	* master/slave.c, master/slave.h: Kategorie-Daten aus EEPROM lesen.
+
+2006-03-21 10:25  fp
+
+	* mini/mini.c: Neue Mini-Konfiguration.
+
+2006-03-20 15:40  fp
+
+	* master/master.c, mini/mini.c: Slave-Alias korrigiert.
+
+2006-03-20 15:29  fp
+
+	* todo.txt: TO-DO-Liste aktualisiert.
+
+2006-03-20 15:28  fp
+
+	* include/ecrt.h, master/master.c, master/slave.c, master/slave.h,
+	  mini/mini.c: Slave alias implementiert.
+
+2006-03-20 13:36  fp
+
+	* master/canopen.c, master/master.c, master/slave.c: Do-Schleifen
+	  ersetzt.
+
+2006-03-20 12:54  fp
+
+	* master/domain.c, mini/mini.c, rt/msr_module.c: Feldregistrierung:
+	  NULL als data_ptr möglich, field_count 0 = 1.
+
+2006-03-20 11:02  fp
+
+	* master/canopen.c, master/master.c, master/module.c, mini/mini.c:
+	  Bugfix: SDO download. SDO abort codes ausgeben.
+
+2006-03-20 08:36  fp
+
+	* include/ecrt.h: Integer-Typen in ecrt.h.
+
+2006-03-20 08:24  fp
+
+	* master/master.c, mini/mini.c: Bugfix: EXPORT_SYMBOL für
+	  ec_master_prepare_async_io() vergessen.
+
+2006-03-19 15:21  fp
+
+	* master/domain.c: Bugfix: Registrieren von mehreren Feldern
+	  gleichzeitig geht jetzt.
+
+2006-03-19 14:58  fp
+
+	* master/types.c: Bugfix: EL3162 - "Product Name" war falsch.
+
+2006-03-17 16:25  fp
+
+	* include/ecrt.h, master/master.c, master/master.h, mini/mini.c,
+	  rt/msr_module.c: ecrt_master_prepare_async_io() hinzugefügt.
+
+2006-03-17 15:18  fp
+
+	* include/ecrt.h, master/domain.c: Domänen-Status
+	  (ecrt_domain_state) hinzugefügt.
+
+2006-03-17 14:21  fp
+
+	* devices/8139too.c, devices/ecdev.h, include/EtherCAT_dev.h,
+	  include/EtherCAT_rt.h, include/EtherCAT_si.h, include/ecrt.h,
+	  master/canopen.c, master/command.c, master/device.c,
+	  master/device.h, master/domain.c, master/domain.h,
+	  master/master.c, master/module.c, master/slave.c, master/types.c,
+	  master/types.h, mini/mini.c, rt/msr_module.c: MERGE
+	  branches/async -> trunk (alle Unterschiede übernommen)
+
+2006-03-15 20:19  fp
+
+	* Makefile, ethercat.conf.tmpl, mini/Makefile,
+	  mini/ethercat.conf.tmpl, rt/Makefile, rt/ethercat.conf.tmpl:
+	  Konfigurations-Template.
+
+2006-03-15 20:17  fp
+
+	* fragen.txt, todo.txt: TODO- und Fragenliste aktualisiert.
+
+2006-03-08 13:23  fp
+
+	* master/canopen.c, master/device.c, master/domain.c,
+	  master/domain.h, master/master.c, master/module.c,
+	  master/slave.c, master/slave.h, master/types.h: MERGE
+	  branches/async -r243:244 -> trunk (intypes).
+
+2006-03-06 16:25  fp
+
+	* ec_reload.sh, ec_unload.sh: Script zum Entladen hinzugefügt.
+
+2006-03-06 16:18  fp
+
+	* ec_reload.sh: Reload-Script hinzugefügt.
+
+2006-03-06 15:12  fp
+
+	* devices/8139too.c, include/EtherCAT_dev.h, include/EtherCAT_rt.h,
+	  master/Makefile, master/canopen.c, master/command.c,
+	  master/command.h, master/device.c, master/device.h,
+	  master/domain.c, master/domain.h, master/frame.c, master/frame.h,
+	  master/globals.h, master/master.c, master/master.h,
+	  master/module.c, master/slave.c, master/slave.h, mini/mini.c,
+	  rt/Makefile, rt/msr_module.c: MERGE branches/async 222:233 ->
+	  trunk (Kommando-Warteschlangen).
+
+2006-03-02 13:08  fp
+
+	* devices/8139too.c, master/device.c, master/domain.c:
+	  Link-Down-Verhalten verbessert.
+
+2006-03-02 11:19  fp
+
+	* devices/8139too.c, include/EtherCAT_dev.h, master/device.c,
+	  master/device.h, master/domain.c, master/frame.c: Link-State im
+	  Device.
+
+2006-02-28 13:07  fp
+
+	* master/domain.h, master/globals.h, master/master.c,
+	  master/master.h, todo.txt: Domains als Liste verwaltet.
+
+2006-02-28 11:36  fp
+
+	* master/domain.c, master/master.c, master/master.h: Zyklische
+	  Ausgaben um "Verzögerte" Rahmen erweitert.
+
+2006-02-28 11:35  fp
+
+	* fragen.txt: Frage hinzugefügt.
+
+2006-02-28 11:14  fp
+
+	* master/master.h: Code-Dokumentation verbessert.
+
+2006-02-28 11:10  fp
+
+	* master/canopen.c, master/device.c, master/domain.c,
+	  master/frame.c, master/master.c, master/module.c, master/slave.c,
+	  master/types.h, rt/msr_module.c: Code-Dokumentation angepasst.
+
+2006-02-28 09:25  fp
+
+	* master/canopen.c, master/domain.c, master/frame.c,
+	  master/frame.h, master/globals.h, master/master.c: Rahmen jetzt
+	  zustandslos.
+
+2006-02-28 09:09  fp
+
+	* master/canopen.c, master/frame.c, master/master.c,
+	  master/slave.c: Wiederholtes Senden, wenn keine Antwort.
+
+2006-02-26 12:26  fp
+
+	* master/module.c, rt/msr_module.c: Bessere Ausgaben beim Starten
+	  und beenden.
+
+2006-02-25 14:25  fp
+
+	* TODO, todo.txt: TODO-Liste aktualisiert.
+
+2006-02-25 14:25  fp
+
+	* fragen.txt: Liste mit offenen Fragen an Beckhoff.
+
+2006-02-24 17:29  fp
+
+	* master/module.c: Master wird nach nicht erfolgreichem Request
+	  resettet.
+
+2006-02-24 16:10  fp
+
+	* Makefile, master/canopen.c, master/device.c, master/domain.c,
+	  master/frame.c, master/globals.h, master/master.c,
+	  master/module.c, master/slave.c: printk durch Makros ersetzt.
+
+2006-02-24 14:09  fp
+
+	* mini/mini.c, rt/msr_module.c: Beispiel-Echtzeitcode angepasst.
+
+2006-02-24 13:54  fp
+
+	* master/master.c, master/types.c, master/types.h, rt/msr_module.c:
+	  Buskoppler werden jetzt gesondert behandelt.
+
+2006-02-24 13:34  fp
+
+	* master/master.c, rt/msr_module.c: Nicht registrierte Slaves in
+	  PREOP schalten.
+
+2006-02-24 13:14  fp
+
+	* include/EtherCAT_rt.h, master/canopen.c, master/canopen.h,
+	  rt/msr_module.c: CANopen SDO read implementiert.
+
+2006-02-24 13:14  fp
+
+	* devices/8139too.c, master/module.c: Compile-Warnings mit ADEOS
+	  behoben.
+
+2006-02-24 13:09  fp
+
+	* include/EtherCAT_dev.h, master/device.c, master/device.h,
+	  master/frame.c, master/frame.h, master/module.c: Frame-Debugging
+	  ins Device ausgelagert und verbessert.
+
+2006-02-24 10:19  fp
+
+	* include/EtherCAT_rt.h, include/EtherCAT_si.h, master/canopen.c,
+	  master/frame.c, master/frame.h, master/master.c, master/slave.c:
+	  EC_READ/WRITE-Makros verwenden Makros aud asm/byteorder.h und
+	  werden konsequent verwendet.
+
+2006-02-23 14:51  fp
+
+	* master/domain.c, master/types.c: EL31XX-Typ korrigiert.
+
+2006-02-23 13:54  fp
+
+	* master/types.c, master/types.h: Feature-Flag der Klemmentypen
+	  nicht mehr benötigt.
+
+2006-02-23 13:38  fp
+
+	* include/EtherCAT_si.h, master/master.c, master/master.h,
+	  master/slave.c, master/slave.h: Neues Slave-Interface,
+	  CRC-Prüfung und mehrfaches Scannen nun ungefährlich.
+
+2006-02-23 09:58  fp
+
+	* Makefile, TODO, devices/8139too.c, include/EtherCAT_dev.h,
+	  include/EtherCAT_rt.h, master/Makefile, master/canopen.c,
+	  master/canopen.h, master/command.c, master/command.h,
+	  master/device.c, master/device.h, master/domain.c,
+	  master/domain.h, master/frame.c, master/frame.h,
+	  master/globals.h, master/master.c, master/master.h,
+	  master/module.c, master/slave.c, master/slave.h, master/types.c,
+	  master/types.h, mini/mini.c, rt, rt/Makefile, rt/msr_jitter.c,
+	  rt/msr_jitter.h, rt/msr_module.c: Dynamische FMMU-Konfiguration,
+	  zwei Kopieroperationen eingespart, Einrückungen angepasst.
+
+2006-02-22 17:36  fp
+
+	* master/types.c: Klemme Beckhoff EL2032 hinzugefügt.
+
+2006-02-20 08:36  fp
+
+	* Makefile, include/EtherCAT_si.h: Slave interface und Makefile
+	  geändert.
+
+2006-02-20 08:30  fp
+
+	* devices/8139too.c, master/device.c: Bug: NULL pointer dereference
+	  in master/device.c behoben.
+
+2006-02-14 14:53  fp
+
+	* master/Doxyfile: Keywords für Doxyfile.
+
+2006-02-14 14:50  fp
+
+	* TODO, include/EtherCAT_rt.h, master/Doxyfile, master/Makefile,
+	  master/command.h, master/master.c, master/master.h, mini/mini.c,
+	  rt/msr_module.c: Neue ASCII-Adressierung und Code-Dokumantation.
+
+2006-02-14 14:40  fp
+
+	* include/EtherCAT_si.h, master/types.c:
+	  EL5101-Inkrementalgeberklemme hinzugefügt.
+
+2006-02-13 14:11  fp
+
+	* include/EtherCAT_si.h, master/canopen.c, master/master.c,
+	  master/types.c: SSI-Klemmen-Interface und kleinere Änderungen.
+
+2006-02-03 16:38  fp
+
+	* mini/mini.c: Fehler in mini korrigiert.
+
+2006-02-03 16:23  fp
+
+	* include/EtherCAT_rt.h, master/Makefile, master/canopen.c,
+	  master/canopen.h, master/master.c, master/master.h,
+	  master/module.c, mini/mini.c: CANopen over EtherCAT.
+
+2006-02-03 10:46  fp
+
+	* master/master.c, master/types.c: Unbekannte Klemmen erlaubt,
+	  EL5001 integriert.
+
+2006-01-26 15:52  fp
+
+	* mini/mini.c, rt/msr_module.c: Kleinere Korrekturen an rt und
+	  mini.
+
+2006-01-26 13:41  fp
+
+	* include/EtherCAT_rt.h, master/master.c, master/types.h,
+	  mini/mini.c, rt/msr_module.c: register_slave_list() und Bugfix in
+	  deactivate_slaves()
+
+2006-01-26 11:06  fp
+
+	* mini/mini.c: Neue Schnittstellen in Mini übertragen.
+
+2006-01-26 10:48  fp
+
+	* Makefile, include/EtherCAT_si.h, libec, rt/Makefile,
+	  rt/libec.o_shipped, rt/msr_module.c: EtherCAT-Slave-Interface als
+	  Makros implementiert.
+
+2006-01-26 09:12  fp
+
+	* Doxyfile, Makefile, master, master/Doxyfile, master/Makefile,
+	  master/domain.c, master/master.c, master/module.c:
+	  Code-Dokumentation mit Doxygen aufgearbeitet.
+
+2006-01-20 17:50  fp
+
+	* Makefile, libec, libec/Makefile, libec/libec.c, libec/libec.h,
+	  mini/mini.c, rt/Makefile, rt/libec.o_shipped, rt/msr_module.c:
+	  LibEC
+
+2006-01-20 16:04  fp
+
+	* include/EtherCAT_rt.h, master/domain.c, master/domain.h,
+	  master/master.c, master/master.h, master/module.c, rt/Makefile,
+	  rt/msr_module.c: Bugfix im Master, ec_master_reset() und
+	  laufendes Beispiel in rt.
+
+2006-01-20 13:32  fp
+
+	* devices/8139too.c, include/EtherCAT_dev.h, include/EtherCAT_rt.h,
+	  master/master.c, master/master.h, master/module.c,
+	  master/slave.c, master/slave.h, master/types.c, master/types.h,
+	  mini/mini.c, rt/msr_module.c: Mit neuer Schnittstelle wieder
+	  lauffähig.
+
+2006-01-17 18:28  fp
+
+	* Makefile, devices, devices/8139too.c, devices/Makefile,
+	  devices/original_8139too.c, drivers, include,
+	  include/EtherCAT_dev.h, include/EtherCAT_rt.h, master,
+	  master/Makefile, master/command.c, master/command.h,
+	  master/device.c, master/device.h, master/domain.c,
+	  master/domain.h, master/globals.h, master/master.c,
+	  master/master.h, master/module.c, master/slave.c, master/slave.h,
+	  master/types.c, master/types.h, mini, mini/Makefile,
+	  mini/ec_mini.c, mini/mini.c, rt, rt/msr_module.c:
+	  Vereinheitlichte Schnittstellen, Include-Verzeichnis und Module
+	  getrennt.
+
+2006-01-13 15:47  fp
+
+	* drivers/EtherCAT.h: Neu: EtherCAT.h
+
+2006-01-13 15:39  fp
+
+	* drivers/ec_domain.c, drivers/ec_domain.h, drivers/ec_master.c,
+	  drivers/ec_master.h, drivers/ec_module.c, drivers/ec_module.h,
+	  drivers/ec_slave.c, drivers/ec_slave.h: Neues Interface.
+
+2006-01-13 13:44  fp
+
+	* drivers/8139too.c, rt/msr_module.c, rt/msr_param.h: 8139too:
+	  Immer alle Frames empfangen.
+
+2006-01-06 16:36  fp
+
+	* Makefile, drivers, drivers/Makefile, mini, mini/Makefile, rt,
+	  rt/Makefile: Makefiles verbessert.
+
+2006-01-06 16:19  fp
+
+	* drivers/8139too.c: Dirty-TX-Meldung aus 8139too-ecat.c entfernt.
+
+2006-01-06 16:01  fp
+
+	* drivers/ec_domain.c, drivers/ec_domain.h, drivers/ec_master.c,
+	  drivers/ec_master.h, rt/msr_module.c: Sinnvolle Meldung
+	  verlorener Frames, Zustand antwortender Slaves.
+
+2006-01-06 13:20  fp
+
+	* drivers/ec_master.c, drivers/ec_master.h, mini/ec_mini.c,
+	  rt/msr_module.c: Prozessdatentimeout, Buszeit und weniger
+	  Klemmen.
+
+2006-01-06 10:17  fp
+
+	* Makefile, mini/Makefile, rt/Makefile: Makefiles nochmals
+	  verbessert.
+
+2006-01-06 09:49  fp
+
+	* Makefile, drivers/Makefile, rt, rt/msr_module.c, rt/rt_lib:
+	  Verbesserte Makefiles (MODPOST-Warnungen entfernt).
+
+2006-01-05 14:13  fp
+
+	* TODO: TODO-Liste ergänzt.
+
+2006-01-05 14:11  fp
+
+	* drivers/ec_master.c, rt/msr_jitter.c, rt/msr_jitter.h,
+	  rt/msr_module.c, rt/msr_param.h: Schönheitskorrekturen.
+
+2006-01-05 13:39  fp
+
+	* drivers/Makefile, drivers/ec_device.c, drivers/ec_domain.c,
+	  drivers/ec_domain.h, drivers/ec_globals.h, drivers/ec_master.c,
+	  drivers/ec_master.h, drivers/ec_module.c, drivers/ec_slave.c,
+	  drivers/ec_slave.h, drivers/ec_types.h, mini/ec_mini.c,
+	  rt/msr_jitter.c, rt/msr_module.c, rt/msr_param.h: Domains, Warten
+	  beim Senden, 10kHz.
+
+2005-12-23 08:23  fp
+
+	* TODO, drivers/Makefile, drivers/ec_command.h,
+	  drivers/ec_device.h, drivers/ec_globals.h, drivers/ec_types.h:
+	  Schoenheitskorrekturen.
+
+2005-12-23 08:20  fp
+
+	* rt/msr_module.c, rt/msr_param.h: 20kHz, Wilhelm
+
+2005-12-19 08:13  fp
+
+	* drivers/8139too.c, drivers/ec_command.c, drivers/ec_command.h,
+	  drivers/ec_device.c, drivers/ec_device.h, drivers/ec_globals.h,
+	  drivers/ec_master.c, drivers/ec_master.h, drivers/ec_module.c,
+	  drivers/ec_module.h, drivers/ec_slave.c, drivers/ec_slave.h,
+	  drivers/ec_types.c, drivers/ec_types.h,
+	  drivers/original_8139too.c: likely/unlikely, Fehlermeldungen in
+	  zyklischem Code begrenzt und Kommentare geÃ€ndert.
+
+2005-12-16 16:21  fp
+
+	* rt/msr_module.c, user: user-Implementation aus aktueller
+	  Entwicklung entfernt.
+
+2005-12-16 15:41  fp
+
+	* branches/kernel2.6, .: Pfad korrigiert 4.
+
+2005-12-16 15:25  fp
+
+	* branches/kernel2.6/mini/ec_mini.c,
+	  branches/kernel2.6/rt/msr_module.c: EtherCAT_release() im
+	  Fehlerfall beim Laden von Modulen mini und rt.
+
+2005-12-16 15:23  fp
+
+	* branches/kernel2.6/drivers/ec_master.c,
+	  branches/kernel2.6/drivers/ec_types.c,
+	  branches/kernel2.6/drivers/ec_types.h: Klemme Beckhoff EL4132
+	  hinzugefügt.
+
+2005-12-16 14:16  fp
+
+	* branches/kernel2.6, branches/kernel2.6/drivers/8139too.c,
+	  branches/kernel2.6/drivers/Makefile,
+	  branches/kernel2.6/drivers/ec_module.c: Compile-Informationen
+	  hinzugefügt.
+
+2005-12-16 12:04  fp
+
+	* branches/kernel2.6/drivers/8139too.c,
+	  branches/kernel2.6/drivers/ec_device.c,
+	  branches/kernel2.6/drivers/ec_device.h,
+	  branches/kernel2.6/drivers/ec_master.c,
+	  branches/kernel2.6/drivers/ec_master.h,
+	  branches/kernel2.6/drivers/ec_module.c,
+	  branches/kernel2.6/drivers/ec_module.h,
+	  branches/kernel2.6/mini/ec_mini.c,
+	  branches/kernel2.6/rt/msr_module.c: Master-Reservierung und
+	  Use-Count für NIC-Treiber.
+
+2005-12-16 09:44  fp
+
+	* branches/kernel2.6/rt, branches/kernel2.6/rt/TAGS,
+	  branches/kernel2.6/rt/aip_com.c, branches/kernel2.6/rt/aip_com.h,
+	  branches/kernel2.6/rt/aip_comP.h,
+	  branches/kernel2.6/rt/cif-rtai-io.h,
+	  branches/kernel2.6/rt/msr_io.c, branches/kernel2.6/rt/msr_io.h,
+	  branches/kernel2.6/rt/tmp: rt-Verzeichnis aufgeräumt.
+
+2005-12-16 09:23  hm
+
+	* branches/kernel2.6/rt/libm.o_shipped:
+
+2005-12-16 09:17  hm
+
+	* branches/kernel2.6/rt/msr_jitter.h: jitter.h aufgenommen
+
+2005-12-16 09:04  hm
+
+	* branches/kernel2.6/drivers/ec_master.c: tries left auf 20
+	  geaendert
+
+2005-12-16 08:15  hm
+
+	* branches/kernel2.6/mini/ec_mini.c,
+	  branches/kernel2.6/rt/Makefile,
+	  branches/kernel2.6/rt/msr_jitter.c,
+	  branches/kernel2.6/rt/msr_load,
+	  branches/kernel2.6/rt/msr_module.c,
+	  branches/kernel2.6/rt/msr_param.h,
+	  branches/kernel2.6/rt/msrserv.pl, branches/kernel2.6/rt/rt_lib:
+	  IPIPE,floatpoint,rtlib
+
+2005-12-02 15:35  fp
+
+	* branches/kernel2.6/drivers/8139too.c,
+	  branches/kernel2.6/drivers/Makefile,
+	  branches/kernel2.6/drivers/ec_device.c,
+	  branches/kernel2.6/drivers/ec_master.c,
+	  branches/kernel2.6/drivers/ec_master.h,
+	  branches/kernel2.6/drivers/ec_module.c,
+	  branches/kernel2.6/drivers/ec_module.h,
+	  branches/kernel2.6/mini/ec_mini.c: EtherCAT-Master in eigenes
+	  Modul ausgelagert.
+
+2005-12-02 12:59  fp
+
+	* branches/kernel2.6/Makefile,
+	  branches/kernel2.6/drivers/ec_command.c,
+	  branches/kernel2.6/drivers/ec_dbg.h,
+	  branches/kernel2.6/drivers/ec_device.c,
+	  branches/kernel2.6/drivers/ec_master.c,
+	  branches/kernel2.6/drivers/ec_slave.c,
+	  branches/kernel2.6/mini/ec_mini.c, branches/kernel2.6/rs232dbg:
+	  Serial-Debugger entfernt.
+
+2005-12-02 11:37  fp
+
+	* branches/kernel2.6/drivers/8139too.c,
+	  branches/kernel2.6/drivers/ec_command.h,
+	  branches/kernel2.6/drivers/ec_device.c,
+	  branches/kernel2.6/drivers/ec_device.h: IF's im
+	  rtl8139too-Treiber vereinfacht und kein Polling mehr.
+
+2005-12-02 09:03  fp
+
+	* branches/kernel2.6/drivers/8139too.c,
+	  branches/kernel2.6/drivers/ec_device.c,
+	  branches/kernel2.6/drivers/ec_master.c,
+	  branches/kernel2.6/drivers/ec_slave.c,
+	  branches/kernel2.6/drivers/ec_types.c,
+	  branches/kernel2.6/drivers/ec_types.h,
+	  branches/kernel2.6/mini/Makefile,
+	  branches/kernel2.6/mini/ec_mini.c: Wilhelms Änderungen
+	  übernommen.
+
+2005-11-25 16:43  fp
+
+	* branches/kernel2.6/drivers/8139too.c,
+	  branches/kernel2.6/drivers/ec_device.c,
+	  branches/kernel2.6/drivers/ec_master.c,
+	  branches/kernel2.6/drivers/ec_slave.c,
+	  branches/kernel2.6/drivers/ec_types.c,
+	  branches/kernel2.6/drivers/ec_types.h,
+	  branches/kernel2.6/mini/ec_mini.c: EXPORT_SYMBOLS im
+	  EtherCAT-Treiber.
+
+2005-11-25 14:52  fp
+
+	* branches/kernel2.6/Makefile, branches/kernel2.6/drivers,
+	  branches/kernel2.6/drivers/8139too.c,
+	  branches/kernel2.6/drivers/Makefile,
+	  branches/kernel2.6/drivers/drv_8139too.c,
+	  branches/kernel2.6/drivers/ec_device.c,
+	  branches/kernel2.6/drivers/original_8139too.c,
+	  branches/kernel2.6/mini, branches/kernel2.6/mini/Makefile,
+	  branches/kernel2.6/mini/ec_mini.c: Portierung der Module in
+	  drivers/ und mini/ nach Kernel 2.6.
+
+2005-11-25 10:16  fp
+
+	* branches/kernel2.6: Branch für 2.6er Kernel erstellt.
+
+2005-11-18 11:48  fp
+
+	* drivers/ec_master.c: Dokumentation angeglichen.
+
+2005-11-18 11:46  fp
+
+	* drivers/ec_command.c, drivers/ec_device.c, drivers/ec_device.h,
+	  drivers/ec_globals.h, drivers/ec_master.c, drivers/ec_master.h:
+	  Warten beim Empfangen der Prozessdaten, Bugfix und kleinere
+	  Verbesserungen.
+
+2005-11-18 10:30  fp
+
+	* drivers/drv_8139too.c: Überflüssige Debug-Messages im
+	  Treiber-Code entfernt.
+
+2005-11-18 09:51  fp
+
+	* drivers/ec_command.c, drivers/ec_command.h, drivers/ec_device.c,
+	  drivers/ec_master.c, drivers/ec_master.h, drivers/ec_types.c:
+	  Code zum Senden/Empfangen mehrerer Kommandos in einem Frame
+	  vorerst ganz entfernt.
+
+2005-11-18 09:35  fp
+
+	* ., Makefile, drivers/Makefile, mini/Makefile, rs232dbg/Makefile,
+	  rt/Makefile: Änderungen in den Makefiles.
+
+2005-11-11 13:52  fp
+
+	* drivers/ec_master.c: Addresse der Revisionsnummer im SII
+	  korrigiert.
+
+2005-11-11 13:51  fp
+
+	* drivers/ec_command.c, drivers/ec_command.h, drivers/ec_master.c,
+	  drivers/ec_master.h: Kommandoring und Co. entfernt.
+
+2005-11-11 13:46  fp
+
+	* Doxyfile, drivers/Makefile, drivers/ec_command.c,
+	  drivers/ec_command.h, drivers/ec_device.h, drivers/ec_master.c,
+	  drivers/ec_master.h, mini/ec_mini.c: Simple Send/Receive
+	  Funktionen.
+
+2005-11-11 11:20  fp
+
+	* Makefile: "make kerneldirs" erstellt die Default-Datei
+	  kerneldirs.mk zum Editieren.
+
+2005-11-11 11:07  fp
+
+	* drivers/ec_device.c, drivers/ec_master.c, drivers/ec_master.h:
+	  EtherCAT_send_receive_command() zum Senden eines einzelnen
+	  Kommandos hinzugefügt.
+
+2005-11-11 10:55  fp
+
+	* drivers/Makefile, mini/Makefile, rs232dbg/Makefile, rt/Makefile:
+	  depend-Sektion in den Makefiles korrigiert.
+
+2005-11-11 10:15  fp
+
+	* ., drivers/Makefile, mini/Makefile, rs232dbg/Makefile,
+	  rt/Makefile, user/Makefile: Verbesserte Makefiles
+	  (Kernel-Verzeichnisse nicht mehr im SVN).
+
+2005-11-04 17:51  fp
+
+	* drivers/ec_master.c: Spaces am Zeilenende entfernt.
+
+2005-11-04 17:16  fp
+
+	* drivers/ec_device.c: Doppeltes Senden ist kein Fehler mehr.
+
+2005-11-04 17:05  hm
+
+	* drivers/Makefile, drivers/ec_device.c, drivers/ec_master.c,
+	  rt/msr_io.c: ISR-Aufruf in read_process_data
+
+2005-11-04 16:47  fp
+
+	* drivers/Makefile, drivers/drv_8139too.c, drivers/ec_dbg.h,
+	  drivers/ec_device.c, drivers/ec_device.h, drivers/ec_master.c,
+	  drivers/ec_slave.c, drivers/ec_slave.h, mini/Makefile,
+	  mini/ec_mini.c, rs232dbg/Makefile, rs232dbg/aip_com.c: Alle
+	  Änderungen aus den Branches no_rtai und no_int nach Trunk
+	  portiert.
+
+2005-11-04 09:38  fp
+
+	* drivers/drv_8139too.c: Weitere Kommentare in drv_8139too.c
+	  portiert.
+
+2005-11-04 09:10  fp
+
+	* drivers/drv_8139too.c: Änderungen der Kommentare und Einrückungen
+	  von drv_8139.c aus no_rtai 108:110 portiert.
+
+2005-10-28 15:12  fp
+
+	* drivers/ec_command.c, drivers/ec_command.h, drivers/ec_dbg.h,
+	  drivers/ec_device.c, drivers/ec_master.c, drivers/ec_master.h,
+	  drivers/ec_slave.c: Änderungen an no_rtai r110:110 in drivers
+	  gemergt.
+
+2005-10-21 11:44  fp
+
+	* drivers/drv_8139too.c: Kommentare im 8139-Treiber geändert.
+
+2005-10-21 11:21  fp
+
+	* Doxyfile, Makefile, TODO, branches, drivers, mini, rs232dbg, rt,
+	  tags, ., Doxyfile, Makefile, TODO, drivers, mini, rs232dbg, rt,
+	  user, user: trunk, tags und branches
+

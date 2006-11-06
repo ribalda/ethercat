@@ -1,0 +1,32 @@
+-------------------------------------------------------------------------------
+
+$Id$
+
+-------------------------------------------------------------------------------
+
+* State change FSM: Clearing of sync managers before PREOP.
+* Added modules_install make target.
+* Device modules for kernel 2.6.17.
+* SDO configurations available in Sysfs.
+* FMMU configurations cleared when going to INIT.
+* Slave-specific logs only at debug level 1 (for large busses).
+* Slave flags (error, online) available in Sysfs.
+* Acknowledging of spontaneous state changes in master FSMs.
+* ecrt_master_deactivate() deprecated.
+* Persistent slave lists. Slave structures are only regenerated on topology
+  change in IDLE mode.
+* SDO reading via Sysfs.
+* Added ecrt_domain_register_pdo_range()
+* Fetching of SDO dictionary.
+* Better timing behaviour when starting up under high CPU load.
+* Applied Autotools.
+* Improved output of lsec.
+* SDO download state machine.
+
+-------------------------------------------------------------------------------
+
+Changes in version 1.1:
+
+* Improved realtime interface.
+
+-------------------------------------------------------------------------------
