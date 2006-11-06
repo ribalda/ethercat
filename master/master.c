@@ -344,7 +344,7 @@ void ec_master_leave_idle_mode(ec_master_t *master /**< EtherCAT master */)
     ec_master_eoe_stop(master);
 
     master->mode = EC_MASTER_MODE_ORPHANED;
-    if (!cancel_delayed_work(&master->idle_work)) {
+    while (!cancel_delayed_work(&master->idle_work)) {
         flush_workqueue(master->workqueue);
     }
 
@@ -362,7 +362,7 @@ int ec_master_enter_operation_mode(ec_master_t *master /**< EtherCAT master */)
     ec_datagram_t *datagram = &master->fsm.datagram;
 
     master->mode = EC_MASTER_MODE_OPERATION;
-    if (!cancel_delayed_work(&master->idle_work)) {
+    while (!cancel_delayed_work(&master->idle_work)) {
         flush_workqueue(master->workqueue);
     }
 
