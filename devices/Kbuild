@@ -31,11 +31,13 @@
 #
 #------------------------------------------------------------------------------
 
-EC_MOD_KERNEL := $(VERSION).$(PATCHLEVEL).$(SUBLEVEL)
+include $(src)/../config.kbuild
+
+EC_8139TOO_OBJ = 8139too-$(EC_8139TOO_KERNEL)-ethercat.o
 
 obj-m := ec_8139too.o
 
-ec_8139too-objs := 8139too-$(EC_MOD_KERNEL)-ethercat.o
+ec_8139too-objs := $(EC_8139TOO_OBJ)
 
 REV := $(shell if test -s $(src)/../svnrevision; then \
 		cat $(src)/../svnrevision; \
@@ -43,6 +45,6 @@ REV := $(shell if test -s $(src)/../svnrevision; then \
 		svnversion $(src)/.. 2>/dev/null || echo "unknown"; \
 	fi)
 
-CFLAGS_8139too-$(EC_MOD_KERNEL)-ethercat.o = -DSVNREV=$(REV)
+CFLAGS_$(EC_8139TOO_OBJ) = -DSVNREV=$(REV)
 
 #------------------------------------------------------------------------------

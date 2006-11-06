@@ -51,16 +51,13 @@ EXTRA_DIST = \
 	slave.c slave.h \
 	xmldev.c xmldev.h
 
-all-local:
-	$(MAKE) -C "$(LINUX_SOURCE_DIR)" \
-		M="@abs_srcdir@" EC_DBG_IF="$(EC_DBG_IF)" modules
-
-clean-local:
-	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" clean
-
-install-data-local: modules_install
+modules:
+	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_top_srcdir@" modules
 
 modules_install:
 	cp $(srcdir)/ec_master.ko $(DESTDIR)$(LINUX_MOD_PATH)
+
+clean-local:
+	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" clean
 
 #------------------------------------------------------------------------------

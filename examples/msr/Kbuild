@@ -1,7 +1,5 @@
 #------------------------------------------------------------------------------
 #
-#  Kbuild
-#
 #  $Id$
 #
 #  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
@@ -33,6 +31,8 @@
 #
 #------------------------------------------------------------------------------
 
+include $(src)/../../config.kbuild
+
 MODULE := ec_msr_sample
 
 obj-m := $(MODULE).o
@@ -52,7 +52,7 @@ $(MODULE)-objs := msr_sample.o \
                         rt_lib/msr-math/msr_hex_bin.o \
                         libm.o
 
-EXTRA_CFLAGS := -I$(src)/rt_lib/msr-include -I/usr/realtime/include \
+EXTRA_CFLAGS := -I$(EC_MSR_DIR)/include -I$(EC_RTAI_DIR)/include \
                 -D_SIMULATION -mhard-float
 
 #------------------------------------------------------------------------------

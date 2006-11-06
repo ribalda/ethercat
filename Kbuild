@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 #
-#  $Id: Makefile 545 2006-09-19 13:28:40Z fp $
+#  $Id$
 #
 #  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
 #
@@ -31,21 +31,6 @@
 #
 #------------------------------------------------------------------------------
 
-EXTRA_DIST = \
-	Kbuild \
-	ecdev.h \
-	8139too-2.6.13-ethercat.c \
-	8139too-2.6.13-orig.c \
-	8139too-2.6.17-ethercat.c \
-	8139too-2.6.17-orig.c
-
-modules:
-	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_top_srcdir@" modules
-
-modules_install:
-	cp $(srcdir)/ec_8139too.ko $(DESTDIR)$(LINUX_MOD_PATH)
-
-clean-local:
-	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" clean
+obj-m := master/ devices/
 
 #------------------------------------------------------------------------------

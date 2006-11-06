@@ -72,6 +72,96 @@ AC_SUBST(LINUX_MOD_PATH,[/lib/modules/$kernelrelease/ethercat])
 AC_MSG_RESULT([$LINUX_SOURCE_DIR (Kernel $LINUX_KERNEL_RELEASE)])
 
 #------------------------------------------------------------------------------
+# 8139too Kernel
+#------------------------------------------------------------------------------
+
+AC_ARG_WITH([8139too-kernel],
+    AC_HELP_STRING(
+        [--with-8139too-kernel=<X.Y.Z>],
+        [8139too kernel (only if differing)]
+    ),
+    [
+        kernel8139too=[$withval]
+    ],
+    [
+        kernel8139too=$linuxversion
+    ]
+)
+
+AC_MSG_CHECKING([for kernel for 8139too driver])
+
+kernels=`ls -1 devices/ | grep -oE "^8139too-.*-" | cut -d "-" -f 2 | uniq`
+found=0
+for k in $kernels; do
+    if test "$kernel8139too" = "$k"; then
+        found=1
+    fi
+done
+if test $found -ne 1; then
+    AC_MSG_ERROR([kernel $kernel8139too not available for 8139too driver!])
+fi
+
+AC_MSG_RESULT([$kernel8139too])
+
+#------------------------------------------------------------------------------
+# RTAI path (optional)
+#------------------------------------------------------------------------------
+
+AC_ARG_WITH([rtai-dir],
+    AC_HELP_STRING(
+        [--with-rtai-dir=<DIR>],
+        [RTAI path (only for RTAI examples)]
+    ),
+    [
+        rtaidir=[$withval]
+    ],
+    [
+        rtaidir=""
+    ]
+)
+
+AC_MSG_CHECKING([for RTAI path])
+
+if test -z "${rtaidir}"; then
+    AC_MSG_RESULT([not specified.])
+else
+    if test \! -r ${rtaidir}/include/rtai.h; then
+        AC_MSG_ERROR([no RTAI installation found in ${rtaidir}!])
+    fi
+    AC_MSG_RESULT([$rtaidir])
+    AC_SUBST(RTAI_DIR,[$rtaidir])
+fi
+
+#------------------------------------------------------------------------------
+# MSR path (optional)
+#------------------------------------------------------------------------------
+
+AC_ARG_WITH([msr-dir],
+    AC_HELP_STRING(
+        [--with-msr-dir=<DIR>],
+        [MSR path (only for MSR example)]
+    ),
+    [
+        msrdir=[$withval]
+    ],
+    [
+        msrdir=""
+    ]
+)
+
+AC_MSG_CHECKING([for MSR path])
+
+if test -z "${msrdir}"; then
+    AC_MSG_RESULT([not specified.])
+else
+    if test \! -r ${msrdir}/include/msr.h; then
+        AC_MSG_ERROR([no MSR installation found in ${msrdir}!])
+    fi
+    AC_MSG_RESULT([$msrdir])
+    AC_SUBST(MSR_DIR,[$msrdir])
+fi
+
+#------------------------------------------------------------------------------
 # Debug interface
 #------------------------------------------------------------------------------
 
@@ -94,6 +184,20 @@ AC_ARG_ENABLE([dbg-if],
 
 AM_CONDITIONAL(EC_DBG_IF, test "x$dbg" = x1)
 AC_SUBST([EC_DBG_IF],${dbg})
+
+#------------------------------------------------------------------------------
+
+# Create config.kbuild
+
+echo configure: creating config.kbuild...
+
+cat > config.kbuild <<EOF
+# config.kbuild - created by configure
+EC_DBG_IF := ${dbg}
+EC_8139TOO_KERNEL := ${kernel8139too}
+EC_RTAI_DIR := "${rtaidir}"
+EC_MSR_DIR := "${msrdir}"
+EOF
 
 #------------------------------------------------------------------------------
 

@@ -43,6 +43,9 @@ EXTRA_DIST = \
 	globals.h \
 	LICENSE
 
+modules:
+	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" modules
+
 modules_install:
 	$(MAKE) -C master modules_install
 	$(MAKE) -C devices modules_install
@@ -66,6 +69,7 @@ mrproper: clean
 		config.h.in \
 		config.log \
 		config.status \
+		config.kbuild \
 		configure.in \
 		configure \
 		Makefile \
