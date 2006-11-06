@@ -53,6 +53,7 @@ extern const ec_code_msg_t al_status_messages[];
 /*****************************************************************************/
 
 void ec_slave_clear(struct kobject *);
+void ec_slave_sdos_clear(struct kobject *);
 ssize_t ec_show_slave_attribute(struct kobject *, struct attribute *, char *);
 ssize_t ec_store_slave_attribute(struct kobject *, struct attribute *,
                                  const char *, size_t);
@@ -83,7 +84,9 @@ static struct kobj_type ktype_ec_slave = {
     .default_attrs = def_attrs
 };
 
-static struct kobj_type ktype_ec_slave_sdos = {};
+static struct kobj_type ktype_ec_slave_sdos = {
+    .release = ec_slave_sdos_clear
+};
 
 /** \endcond */
 
@@ -273,6 +276,15 @@ void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
     if (slave->new_eeprom_data) kfree(slave->new_eeprom_data);
 
     kfree(slave);
+}
+
+/*****************************************************************************/
+
+/**
+*/
+
+void ec_slave_sdos_clear(struct kobject *kobj /**< kobject for SDOs */)
+{
 }
 
 /*****************************************************************************/
