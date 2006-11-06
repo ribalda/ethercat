@@ -57,6 +57,21 @@ dist-hook:
 		svnversion $(srcdir) 2>/dev/null >$(distdir)/svnrevision; \
 	fi
 
+mrproper: clean
+	rm -rf \
+		aclocal.m4 \
+		autoconf \
+		autom4te.cache \
+		config.h \
+		config.h.in \
+		config.log \
+		config.status \
+		configure.in \
+		configure \
+		Makefile \
+		Makefile.in \
+		stamp-h1
+
 doc:
 	doxygen Doxyfile
 
