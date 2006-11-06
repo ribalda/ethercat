@@ -50,6 +50,10 @@ modules_install:
 	$(MAKE) -C master modules_install
 	$(MAKE) -C devices modules_install
 
+clean-local:
+	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" clean
+	@rm -f Modules.symvers
+
 mydist:
 	@SVNREV=`svnversion $(srcdir)` && \
 	  $(MAKE) dist-bzip2 \
@@ -60,7 +64,7 @@ dist-hook:
 		svnversion $(srcdir) 2>/dev/null >$(distdir)/svnrevision; \
 	fi
 
-mrproper: clean
+mrproper: clean cleandoc
 	rm -rf \
 		aclocal.m4 \
 		autoconf \
