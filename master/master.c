@@ -248,10 +248,10 @@ void ec_master_clear(struct kobject *kobj /**< kobject of the master */)
 {
     ec_master_t *master = container_of(kobj, ec_master_t, kobj);
     ec_eoe_t *eoe, *next_eoe;
-    ec_datagram_t *datagram, *next_c;
+    ec_datagram_t *datagram, *next_datagram;
 
-    // empty datagram queue
-    list_for_each_entry_safe(datagram, next_c,
+    // dequeue all datagrams
+    list_for_each_entry_safe(datagram, next_datagram,
                              &master->datagram_queue, queue) {
         datagram->state = EC_DATAGRAM_ERROR;
         list_del_init(&datagram->queue);
