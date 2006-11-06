@@ -122,6 +122,12 @@ int ec_sdo_init(ec_sdo_t *sdo, /**< SDO */
     sdo->kobj.parent = &slave->sdo_kobj;
     if (kobject_set_name(&sdo->kobj, "%4X", sdo->index)) {
         EC_ERR("Failed to set kobj name.\n");
+        kobject_put(&sdo->kobj);
+        return -1;
+    }
+    if (kobject_add(&sdo->kobj)) {
+        EC_ERR("Failed to add SDO kobject.\n");
+        kobject_put(&sdo->kobj);
         return -1;
     }
 
@@ -222,6 +228,12 @@ int ec_sdo_entry_init(ec_sdo_entry_t *entry, /**< SDO entry */
     entry->kobj.parent = &sdo->kobj;
     if (kobject_set_name(&entry->kobj, "%i", entry->subindex)) {
         EC_ERR("Failed to set kobj name.\n");
+        kobject_put(&entry->kobj);
+        return -1;
+    }
+    if (kobject_add(&entry->kobj)) {
+        EC_ERR("Failed to add entry kobject.\n");
+        kobject_put(&entry->kobj);
         return -1;
     }
 

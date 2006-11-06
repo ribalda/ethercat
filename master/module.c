@@ -115,12 +115,6 @@ int __init ec_init_module(void)
         if (ec_master_init(master, i, ec_eoeif_count, device_number))
             goto out_free;
 
-        if (kobject_add(&master->kobj)) {
-            EC_ERR("Failed to add kobj.\n");
-            kobject_put(&master->kobj); // free master
-            goto out_free;
-        }
-
         list_add_tail(&master->list, &ec_masters);
     }
 

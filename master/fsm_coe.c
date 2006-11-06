@@ -413,13 +413,6 @@ void ec_fsm_coe_dict_response(ec_fsm_coe_t *fsm /**< finite state machine */)
             return;
         }
 
-        if (kobject_add(&sdo->kobj)) {
-            EC_ERR("Failed to add kobject.\n");
-            kobject_put(&sdo->kobj); // free
-            fsm->state = ec_fsm_coe_error;
-            return;
-        }
-
         list_add_tail(&sdo->list, &slave->sdo_dictionary);
     }
 
@@ -776,20 +769,15 @@ void ec_fsm_coe_dict_entry_response(ec_fsm_coe_t *fsm
     entry->bit_length = EC_READ_U16(data + 12);
 
     if (data_size) {
-        if (!(entry->description = kmalloc(data_size + 1, GFP_ATOMIC))) {
+        uint8_t *desc;
+        if (!(desc = kmalloc(data_size + 1, GFP_ATOMIC))) {
             EC_ERR("Failed to allocate SDO entry name!\n");
             fsm->state = ec_fsm_coe_error;
             return;
         }
-        memcpy(entry->description, data + 16, data_size);
-        entry->description[data_size] = 0;
-    }
-
-    if (kobject_add(&entry->kobj)) {
-        EC_ERR("Failed to add kobject.\n");
-        kobject_put(&entry->kobj); // free
-        fsm->state = ec_fsm_coe_error;
-        return;
+        memcpy(desc, data + 16, data_size);
+        desc[data_size] = 0;
+        entry->description = desc;
     }
 
     list_add_tail(&entry->list, &sdo->entries);

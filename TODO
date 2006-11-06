@@ -8,33 +8,19 @@ $Id$
 
 Important things to do:
 
-* Add Kobjects in constructors.
-
 * Read AL Status Code with AL Control Response (if possible?)
-
 * Coupling of EoE handlers before configuring slaves.
   (avoiding duplicate configuration)
-
-* SysFS interface
-  - Add secondary slave address
-  - Add SDO dictionary
-
 * Implement all EtherCAT commands
-
 * Determine number of frames the NIC can handle
-
-* Implement eepro100 driver
-
-* Progress bar in ecrt.
+* Implement e100 driver
 
 -------------------------------------------------------------------------------
 
 Not-so-important things to do:
 
 * Calculate bus topology
-
 * File access over EtherCAT (FoE)
-
 * Allow VLAN tagging
 
 -------------------------------------------------------------------------------

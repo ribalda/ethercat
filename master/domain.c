@@ -120,6 +120,12 @@ int ec_domain_init(ec_domain_t *domain, /**< EtherCAT domain */
     domain->kobj.parent = &master->kobj;
     if (kobject_set_name(&domain->kobj, "domain%i", index)) {
         EC_ERR("Failed to set kobj name.\n");
+        kobject_put(&domain->kobj);
+        return -1;
+    }
+    if (kobject_add(&domain->kobj)) {
+        EC_ERR("Failed to add domain kobject.\n");
+        kobject_put(&domain->kobj);
         return -1;
     }
 

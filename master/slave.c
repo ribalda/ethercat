@@ -108,29 +108,6 @@ int ec_slave_init(ec_slave_t *slave, /**< EtherCAT slave */
     slave->ring_position = ring_position;
     slave->station_address = station_address;
 
-    // init kobject and add it to the hierarchy
-    memset(&slave->kobj, 0x00, sizeof(struct kobject));
-    kobject_init(&slave->kobj);
-    slave->kobj.ktype = &ktype_ec_slave;
-    slave->kobj.parent = &master->kobj;
-    if (kobject_set_name(&slave->kobj, "slave%03i", slave->ring_position)) {
-        EC_ERR("Failed to set kobject name.\n");
-        kobject_put(&slave->kobj);
-        return -1;
-    }
-
-    // init SDO kobject and add it to the hierarchy
-    memset(&slave->sdo_kobj, 0x00, sizeof(struct kobject));
-    kobject_init(&slave->sdo_kobj);
-    slave->sdo_kobj.ktype = &ktype_ec_slave_sdos;
-    slave->sdo_kobj.parent = &slave->kobj;
-    if (kobject_set_name(&slave->sdo_kobj, "sdos")) {
-        EC_ERR("Failed to set kobject name.\n");
-        kobject_put(&slave->sdo_kobj);
-        kobject_put(&slave->kobj);
-        return -1;
-    }
-
     slave->master = master;
 
     slave->requested_state = EC_SLAVE_STATE_UNKNOWN;
@@ -185,7 +162,42 @@ int ec_slave_init(ec_slave_t *slave, /**< EtherCAT slave */
         slave->sii_physical_layer[i] = 0xFF;
     }
 
+    // init kobject and add it to the hierarchy
+    memset(&slave->kobj, 0x00, sizeof(struct kobject));
+    kobject_init(&slave->kobj);
+    slave->kobj.ktype = &ktype_ec_slave;
+    slave->kobj.parent = &master->kobj;
+    if (kobject_set_name(&slave->kobj, "slave%03i", slave->ring_position)) {
+        EC_ERR("Failed to set kobject name.\n");
+        goto out_slave_put;
+    }
+    if (kobject_add(&slave->kobj)) {
+        EC_ERR("Failed to add slave's kobject.\n");
+        goto out_slave_put;
+    }
+
+    // init SDO kobject and add it to the hierarchy
+    memset(&slave->sdo_kobj, 0x00, sizeof(struct kobject));
+    kobject_init(&slave->sdo_kobj);
+    slave->sdo_kobj.ktype = &ktype_ec_slave_sdos;
+    slave->sdo_kobj.parent = &slave->kobj;
+    if (kobject_set_name(&slave->sdo_kobj, "sdos")) {
+        EC_ERR("Failed to set kobject name.\n");
+        goto out_sdo_put;
+    }
+    if (kobject_add(&slave->sdo_kobj)) {
+        EC_ERR("Failed to add SDOs kobject.\n");
+        goto out_sdo_put;
+    }
+
     return 0;
+
+ out_sdo_put:
+    kobject_put(&slave->sdo_kobj);
+    kobject_del(&slave->kobj);
+ out_slave_put:
+    kobject_put(&slave->kobj);
+    return -1;
 }
 
 /*****************************************************************************/
@@ -206,7 +218,7 @@ void ec_slave_destroy(ec_slave_t *slave /**< EtherCAT slave */)
     }
 
     // free SDO kobject
-    if (slave->sdo_dictionary_fetched) kobject_del(&slave->sdo_kobj);
+    kobject_del(&slave->sdo_kobj);
     kobject_put(&slave->sdo_kobj);
 
     // destroy self

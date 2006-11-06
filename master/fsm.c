@@ -275,14 +275,6 @@ void ec_fsm_master_broadcast(ec_fsm_t *fsm /**< finite state machine */)
                 return;
             }
 
-            if (kobject_add(&slave->kobj)) {
-                EC_ERR("Failed to add kobject.\n");
-                kobject_put(&slave->kobj); // free
-                ec_master_destroy_slaves(master);
-                fsm->master_state = ec_fsm_master_error;
-                return;
-            }
-
             list_add_tail(&slave->list, &master->slaves);
         }
 
@@ -386,14 +378,6 @@ void ec_fsm_master_action_process_states(ec_fsm_t *fsm
             if (master->debug_level) {
                 EC_DBG("Fetching SDO dictionary from slave %i.\n",
                        slave->ring_position);
-            }
-
-            if (kobject_add(&slave->sdo_kobj)) {
-                EC_ERR("Failed to add SDO kobj of slave %i.\n",
-                       slave->ring_position);
-                slave->error_flag = 1;
-                fsm->master_state = ec_fsm_master_error;
-                return;
             }
 
             slave->sdo_dictionary_fetched = 1;

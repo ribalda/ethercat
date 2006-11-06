@@ -203,6 +203,11 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
         kobject_put(&master->kobj);
         return -1;
     }
+    if (kobject_add(&master->kobj)) {
+        EC_ERR("Failed to add master kobj.\n");
+        kobject_put(&master->kobj);
+        return -1;
+    }
 
     return 0;
 
@@ -1271,7 +1276,7 @@ ec_domain_t *ecrt_master_create_domain(ec_master_t *master /**< master */)
 
     if (!(domain = (ec_domain_t *) kmalloc(sizeof(ec_domain_t), GFP_KERNEL))) {
         EC_ERR("Error allocating domain memory!\n");
-        goto out_return;
+        return NULL;
     }
 
     if (list_empty(&master->domains)) index = 0;
@@ -1282,21 +1287,12 @@ ec_domain_t *ecrt_master_create_domain(ec_master_t *master /**< master */)
 
     if (ec_domain_init(domain, master, index)) {
         EC_ERR("Failed to init domain.\n");
-        goto out_return;
-    }
-
-    if (kobject_add(&domain->kobj)) {
-        EC_ERR("Failed to add domain kobject.\n");
-        goto out_put;
+        return NULL;
     }
 
     list_add_tail(&domain->list, &master->domains);
-    return domain;
 
- out_put:
-    kobject_put(&domain->kobj);
- out_return:
-    return NULL;
+    return domain;
 }
 
 /*****************************************************************************/
