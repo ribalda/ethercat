@@ -3,7 +3,7 @@
 #------------------------------------------------------------------------------
 
 AC_PREREQ(2.59)
-AC_INIT([ethercat],[1.1],[fp@igh-essen.com])
+AC_INIT([ethercat],[1.1.1],[fp@igh-essen.com])
 AC_CONFIG_AUX_DIR([autoconf])
 AM_INIT_AUTOMAKE([-Wall -Werror dist-bzip2])
 AC_PREFIX_DEFAULT([/opt/etherlab])
