@@ -1,3 +1,60 @@
+2006-11-07 13:39  fp
+
+	* configure.ac: VERSION 1.1.1
+
+2006-11-07 13:38  fp
+
+	* ., include/ecrt.h, master/fsm.h, master/xmldev.c: Updated source
+	  code documentation.
+
+2006-11-07 13:30  fp
+
+	* Makefile.am: Fixed dist files.
+
+2006-11-07 12:10  fp
+
+	* Doxyfile, INSTALL, documentation/ethercat_doc.tex: Updated
+	  documentation.
+
+2006-11-06 16:33  fp
+
+	* Makefile.am: Improved clean targets.
+
+2006-11-06 16:27  fp
+
+	* ., Kbuild, Makefile.am, configure.ac, devices/Kbuild,
+	  devices/Makefile.am, examples/mini/Kbuild, examples/msr/Kbuild,
+	  examples/rtai/Kbuild, examples/rtai/Makefile.am, master/Kbuild,
+	  master/Makefile.am: Improved autotools, added config.kbuild,
+	  --with-msr-dir, --with-rtai-dir, --with-8139too-kernel.
+
+2006-11-06 14:22  fp
+
+	* TODO, master/canopen.c, master/domain.c, master/fsm.c,
+	  master/fsm_coe.c, master/master.c, master/module.c,
+	  master/slave.c: kobject_add() in constructors.
+
+2006-11-06 14:21  fp
+
+	* master/master.c: Minor change in master.c.
+
+2006-11-06 14:19  fp
+
+	* master/slave.c: Added clear function for SDO kobject.
+
+2006-11-06 14:15  fp
+
+	* master/master.c: Fixed workqueue cancelling.
+
+2006-11-06 09:51  fp
+
+	* Makefile.am: Added mrproper make target.
+
+2006-11-06 09:43  fp
+
+	* AUTHORS, COPYING, ChangeLog, LICENSE, NEWS, bootstrap,
+	  configure.ac: Removed --foreign switch for autotools.
+
 2006-11-03 15:35  fp
 
 	* master/fsm.c: Fix: Configuration of process data sync managers
