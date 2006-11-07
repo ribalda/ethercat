@@ -90,9 +90,12 @@ int ec_fsm_running(ec_fsm_t *);
 int ec_fsm_success(ec_fsm_t *);
 
 // TODO: layout slave state machines
+
+/** \cond */
 void ec_fsm_slaveconf_state_start(ec_fsm_t *);
 void ec_fsm_slave_state_end(ec_fsm_t *);
 void ec_fsm_slave_state_error(ec_fsm_t *);
+/** \endcond */
 
 /*****************************************************************************/
 

@@ -120,7 +120,9 @@ void ecrt_master_run(ec_master_t *master);
 
 ec_slave_t *ecrt_master_get_slave(const ec_master_t *, const char *);
 
+/** \cond */
 int ecrt_master_state(const ec_master_t *master);
+/** \endcond */
 
 /******************************************************************************
  *  Domain Methods

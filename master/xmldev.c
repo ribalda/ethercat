@@ -54,6 +54,8 @@ ssize_t ecxmldev_write(struct file *, const char __user *, size_t, loff_t *);
 
 /*****************************************************************************/
 
+/** \cond */
+
 static struct file_operations fops = {
     .owner   = THIS_MODULE,
     .open    = ecxmldev_open,
@@ -61,6 +63,8 @@ static struct file_operations fops = {
     .read    = ecxmldev_read,
     .write   = ecxmldev_write
 };
+
+/** \endcond */
 
 /*****************************************************************************/
 
