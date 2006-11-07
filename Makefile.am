@@ -36,12 +36,11 @@ SUBDIRS = master devices script include
 DIST_SUBDIRS = master devices script include examples
 
 EXTRA_DIST = \
-	bootstrap \
 	documentation/ethercat_doc.pdf \
 	Doxyfile \
 	FEATURES \
 	globals.h \
-	LICENSE
+	Kbuild
 
 modules:
 	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" modules
