@@ -41,6 +41,8 @@
 \SVN $Date$
 \SVN $Revision$
 
+\newcommand{\masterversion}{1.1.1}
+
 \makeindex
 \makeglossary
 
@@ -56,7 +58,7 @@
     \rule{\textwidth}{1.5mm}
 
     {\Huge\bf IgH \includegraphics[height=2.4ex]{images/ethercat}
-      Master 1.1\\[1ex]
+      Master \masterversion\\[1ex]
       Documentation}
 
     \vspace{1ex}
@@ -1290,7 +1292,7 @@ certain functions of the master interfaces.
 
 The master module gives information about it's state and events via
 the syslog interface. The module loading command above should result
-in the following syslog messages:
+in the syslog messages below (or similar):
 
 \begin{lstlisting}
   EtherCAT: Master driver, 1.1 (stable) - rev. 513,
@@ -4299,20 +4301,20 @@ examples for different realtime modules.
 
 The current EtherCAT master code is available at~\cite{etherlab} or
 can be obtained from the EtherLab\textsuperscript{\textregistered} CD.
-The \textit{tar.bz2} file has to be unpacked with the command below
+The \textit{tar.bz2} file has to be unpacked with the commands below
 (or similar):
 
 \begin{lstlisting}
-  `\$` `\textbf{tar xjf ethercat-1.1-rXXX.tar.bz2}`
-  `\$` `\textbf{cd ethercat-1.1-rXXX/}`
+  `\$` `\textbf{tar xjf ethercat-\masterversion.tar.bz2}`
+  `\$` `\textbf{cd ethercat-\masterversion/}`
 \end{lstlisting}
 
 The tarball was created with GNU Autotools, so the build process
-follows the usual commands:
+follows the below commands:
 
 \begin{lstlisting}
   `\$` `\textbf{./configure}`
-  `\$` `\textbf{make}`
+  `\$` `\textbf{make modules}`
 \end{lstlisting}
 
 The default installation prefix is \textit{/opt/etherlab}. It can be
@@ -4327,16 +4329,29 @@ argument. Example:
 
 \begin{lstlisting}
   `\$` `\textbf{./configure --with-linux="2.6.17-ipipe"}`
-  `\$` `\textbf{make}`
+  `\$` `\textbf{make modules}`
 \end{lstlisting}
 
-The following commands have to be entered as \textit{root}: To install
-the kernel modules, headers, the init script, the sysconfig file and
-the user space tools, the below command has to be executed:
+The below commands have to be entered as \textit{root}: The first one
+will install the kernel modules to the kernel's modules directory. The
+second one will install EtherCAT headers, the init script, the
+sysconfig file and the user space tools to the prefix path.
 
 \begin{lstlisting}
+  # `\textbf{make modules\_install}`
   # `\textbf{make install}`
 \end{lstlisting}
+
+If the target kernel's modules directory is not under
+\textit{/lib/modules}, a different destination directory can be
+specified with the \textit{DESTDIR} make variable. For example:
+
+\begin{lstlisting}
+  # `\textbf{make DESTDIR=/vol/nfs/root modules\_install}`
+\end{lstlisting}
+
+This command will install the compiled kernel modules to
+\textit{/vol/nfs/root/lib/modules}, prepended by the kernel release.
 
 If the EtherCAT master shall be run as a service
 (recommended\footnote{Even if the EtherCAT master shall not be loaded

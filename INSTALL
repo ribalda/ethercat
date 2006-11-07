@@ -12,7 +12,7 @@ Building and installing
 The building and installation procedure is described in section 2.1 in the
 EtherCAT master documentation:
 
-  documentation/ethercat-doc.pdf
+documentation/ethercat-doc.pdf
 
 -------------------------------------------------------------------------------
 
@@ -20,11 +20,15 @@ For the impatient:
 
 The procedure mainly consists of calling
 
-  ./configure
-  make
-  make install
+$ ./configure
+$ make modules
 
-...and copying the init script and sysconfig files from $prefix/etc to the
+(and as root)
+
+# make modules_install
+# make install
+
+...and copying the init script and sysconfig file from $prefix/etc to the
 appropriate locations and customizing the sysconfig file.
 
 -------------------------------------------------------------------------------
