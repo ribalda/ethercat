@@ -71,6 +71,9 @@ int ec_device_init(ec_device_t *device, /**< EtherCAT device */
     device->open = 0;
     device->link_state = 0; // down
 
+    device->tx_count = 0;
+    device->rx_count = 0;
+
 #ifdef EC_DBG_IF
     if (ec_debug_init(&device->dbg)) {
         EC_ERR("Failed to init debug device!\n");
@@ -146,6 +149,8 @@ int ec_device_open(ec_device_t *device /**< EtherCAT device */)
     for (i = 0; i < 4; i++) ec_device_call_isr(device);
 
     device->link_state = 0;
+    device->tx_count = 0;
+    device->rx_count = 0;
 
     if (device->dev->open(device->dev) == 0) device->open = 1;
 
@@ -217,6 +222,7 @@ void ec_device_send(ec_device_t *device, /**< EtherCAT device */
 
     // start sending
     device->dev->hard_start_xmit(device->tx_skb, device->dev);
+    device->tx_count++;
 }
 
 /*****************************************************************************/
@@ -251,6 +257,8 @@ void ecdev_receive(ec_device_t *device, /**< EtherCAT device */
                    size_t size /**< number of bytes received */
                    )
 {
+    device->rx_count++;
+
     if (unlikely(device->master->debug_level > 1)) {
         EC_DBG("Received frame:\n");
         ec_print_data_diff(device->tx_skb->data + ETH_HLEN,

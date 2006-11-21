@@ -865,6 +865,13 @@ ssize_t ec_master_info(ec_master_t *master, /**< EtherCAT master */
 
     off += sprintf(buffer + off, "\nSlaves: %i\n",
                    master->slave_count);
+    off += sprintf(buffer + off, "\nDevice:\n");
+    off += sprintf(buffer + off, "  Frames sent:     %u\n",
+		   master->device->tx_count);
+    off += sprintf(buffer + off, "  Frames received: %u\n",
+		   master->device->rx_count);
+    off += sprintf(buffer + off, "  Frames lost:     %u\n",
+		   master->device->tx_count - master->device->rx_count - 1);
 
     off += sprintf(buffer + off, "\nTiming (min/avg/max) [us]:\n");
 

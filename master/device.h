@@ -70,6 +70,8 @@ struct ec_device
     unsigned long jiffies_isr; /**< jiffies of last ISR call */
     struct module *module; /**< pointer to the device's owning module */
     uint8_t link_state; /**< device link state */
+    unsigned int tx_count; /**< number of frames sent */
+    unsigned int rx_count; /**< number of frames received */
 #ifdef EC_DBG_IF
     ec_debug_t dbg; /**< debug device */
 #endif
