@@ -75,6 +75,7 @@ ec_master_mode_t;
 typedef struct
 {
     unsigned int timeouts; /**< datagram timeouts */
+    unsigned int starved; /**< starved datagrams (not even sent) */
     unsigned int corrupted; /**< corrupted frames */
     unsigned int skipped; /**< skipped datagrams (the ones that were
                              requeued when not yet received) */

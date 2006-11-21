@@ -129,6 +129,7 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     master->debug_level = 0;
 
     master->stats.timeouts = 0;
+    master->stats.starved = 0;
     master->stats.corrupted = 0;
     master->stats.skipped = 0;
     master->stats.unmatched = 0;
@@ -709,6 +710,11 @@ void ec_master_output_stats(ec_master_t *master /**< EtherCAT master */)
             EC_WARN("%i datagram%s TIMED OUT!\n", master->stats.timeouts,
                     master->stats.timeouts == 1 ? "" : "s");
             master->stats.timeouts = 0;
+        }
+        if (master->stats.starved) {
+            EC_WARN("%i datagram%s STARVED!\n", master->stats.starved,
+                    master->stats.starved == 1 ? "" : "s");
+            master->stats.starved = 0;
         }
         if (master->stats.corrupted) {
             EC_WARN("%i frame%s CORRUPTED!\n", master->stats.corrupted,
@@ -1438,7 +1444,7 @@ void ecrt_master_receive(ec_master_t *master /**< EtherCAT master */)
                     - datagram->cycles_queued > cycles_timeout) {
                     list_del_init(&datagram->queue);
                     datagram->state = EC_DATAGRAM_TIMED_OUT;
-                    master->stats.timeouts++;
+                    master->stats.starved++;
                     ec_master_output_stats(master);
                 }
                 break;
