@@ -109,7 +109,6 @@ void ecrt_master_callbacks(ec_master_t *master, int (*request_cb)(void *),
 ec_domain_t *ecrt_master_create_domain(ec_master_t *master);
 
 int ecrt_master_activate(ec_master_t *master);
-void ecrt_master_deactivate(ec_master_t *master); // deprecated!
 
 void ecrt_master_prepare(ec_master_t *master);
 
@@ -149,6 +148,7 @@ ec_slave_t *ecrt_domain_register_pdo_range(ec_domain_t *domain,
                                            void **data_ptr);
 
 void ecrt_domain_process(ec_domain_t *domain);
+void ecrt_domain_queue(ec_domain_t *domain);
 int ecrt_domain_state(const ec_domain_t *domain);
 
 /******************************************************************************
@@ -161,9 +161,6 @@ int ecrt_slave_conf_sdo16(ec_slave_t *slave, uint16_t sdo_index,
                           uint8_t sdo_subindex, uint16_t value);
 int ecrt_slave_conf_sdo32(ec_slave_t *slave, uint16_t sdo_index,
                           uint8_t sdo_subindex, uint32_t value);
-
-int ecrt_slave_pdo_size(ec_slave_t *slave, uint16_t pdo_index,
-                        uint8_t pdo_subindex, size_t size); // deprecated
 
 /******************************************************************************
  *  Bitwise read/write macros

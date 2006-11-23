@@ -479,21 +479,6 @@ int ec_domain_alloc(ec_domain_t *domain, /**< EtherCAT domain */
 /*****************************************************************************/
 
 /**
-   Places all process data datagrams in the masters datagram queue.
-*/
-
-void ec_domain_queue_datagrams(ec_domain_t *domain /**< EtherCAT domain */)
-{
-    ec_datagram_t *datagram;
-
-    list_for_each_entry(datagram, &domain->datagrams, list) {
-        ec_master_queue_datagram(domain->master, datagram);
-    }
-}
-
-/*****************************************************************************/
-
-/**
    Formats attribute data for SysFS reading.
    \return number of bytes to read
 */
@@ -691,8 +676,22 @@ void ecrt_domain_process(ec_domain_t *domain /**< EtherCAT domain */)
         }
         domain->working_counter_changes = 0;
     }
+}
 
-    ec_domain_queue_datagrams(domain);
+/*****************************************************************************/
+
+/**
+   Places all process data datagrams in the masters datagram queue.
+   \ingroup RealtimeInterface
+*/
+
+void ecrt_domain_queue(ec_domain_t *domain /**< EtherCAT domain */)
+{
+    ec_datagram_t *datagram;
+
+    list_for_each_entry(datagram, &domain->datagrams, list) {
+        ec_master_queue_datagram(domain->master, datagram);
+    }
 }
 
 /*****************************************************************************/
@@ -716,6 +715,7 @@ EXPORT_SYMBOL(ecrt_domain_register_pdo);
 EXPORT_SYMBOL(ecrt_domain_register_pdo_list);
 EXPORT_SYMBOL(ecrt_domain_register_pdo_range);
 EXPORT_SYMBOL(ecrt_domain_process);
+EXPORT_SYMBOL(ecrt_domain_queue);
 EXPORT_SYMBOL(ecrt_domain_state);
 
 /** \endcond */
