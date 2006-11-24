@@ -842,6 +842,7 @@ ssize_t ec_master_info(ec_master_t *master, /**< EtherCAT master */
     off_t off = 0;
     ec_eoe_t *eoe;
     uint32_t cur, sum, min, max, pos, i;
+    unsigned int frames_lost;
 
     off += sprintf(buffer + off, "\nVersion: %s", ec_master_version_str);
     off += sprintf(buffer + off, "\nMode: ");
@@ -864,8 +865,9 @@ ssize_t ec_master_info(ec_master_t *master, /**< EtherCAT master */
 		   master->device->tx_count);
     off += sprintf(buffer + off, "  Frames received: %u\n",
 		   master->device->rx_count);
-    off += sprintf(buffer + off, "  Frames lost:     %u\n",
-		   master->device->tx_count - master->device->rx_count - 1);
+    frames_lost = master->device->tx_count - master->device->rx_count;
+    if (frames_lost) frames_lost--;
+    off += sprintf(buffer + off, "  Frames lost:     %u\n", frames_lost);
 
     off += sprintf(buffer + off, "\nTiming (min/avg/max) [us]:\n");
 
