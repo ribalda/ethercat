@@ -129,7 +129,6 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     master->debug_level = 0;
 
     master->stats.timeouts = 0;
-    master->stats.starved = 0;
     master->stats.corrupted = 0;
     master->stats.skipped = 0;
     master->stats.unmatched = 0;
@@ -711,11 +710,6 @@ void ec_master_output_stats(ec_master_t *master /**< EtherCAT master */)
                     master->stats.timeouts == 1 ? "" : "s");
             master->stats.timeouts = 0;
         }
-        if (master->stats.starved) {
-            EC_WARN("%i datagram%s STARVED!\n", master->stats.starved,
-                    master->stats.starved == 1 ? "" : "s");
-            master->stats.starved = 0;
-        }
         if (master->stats.corrupted) {
             EC_WARN("%i frame%s CORRUPTED!\n", master->stats.corrupted,
                     master->stats.corrupted == 1 ? "" : "s");
@@ -1272,6 +1266,36 @@ int ec_master_measure_bus_time(ec_master_t *master)
     return -1;
 }
 
+/*****************************************************************************/
+
+/**
+   Prepares synchronous IO.
+   Queues all domain datagrams and sends them. Then waits a certain time, so
+   that ecrt_master_receive() can be called securely.
+*/
+
+void ec_master_prepare(ec_master_t *master /**< EtherCAT master */)
+{
+    ec_domain_t *domain;
+    cycles_t cycles_start, cycles_end, cycles_timeout;
+
+    // queue datagrams of all domains
+    list_for_each_entry(domain, &master->domains, list)
+        ecrt_domain_queue(domain);
+
+    ecrt_master_send(master);
+
+    cycles_start = get_cycles();
+    cycles_timeout = (cycles_t) EC_IO_TIMEOUT /* us */ * (cpu_khz / 1000);
+
+    // active waiting
+    while (1) {
+        udelay(100);
+        cycles_end = get_cycles();
+        if (cycles_end - cycles_start >= cycles_timeout) break;
+    }
+}
+
 /******************************************************************************
  *  Realtime interface
  *****************************************************************************/
@@ -1354,21 +1378,9 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT master */)
         }
     }
 
+    ec_master_prepare(master); // prepare asynchronous IO
+
     return 0;
-}
-
-/*****************************************************************************/
-
-/**
-   Resets all slaves to INIT state.
-   This method is deprecated and will disappear in the next version
-   of the realtime interface. The functionality is moved to
-   ecrt_master_release().
-   \ingroup RealtimeInterface
-*/
-
-void ecrt_master_deactivate(ec_master_t *master /**< EtherCAT master */)
-{
 }
 
 /*****************************************************************************/
@@ -1445,59 +1457,15 @@ void ecrt_master_receive(ec_master_t *master /**< EtherCAT master */)
 
     // dequeue all datagrams that timed out
     list_for_each_entry_safe(datagram, next, &master->datagram_queue, queue) {
-        switch (datagram->state) {
-            case EC_DATAGRAM_QUEUED:
-                if (master->device->cycles_isr
-                    - datagram->cycles_queued > cycles_timeout) {
-                    list_del_init(&datagram->queue);
-                    datagram->state = EC_DATAGRAM_TIMED_OUT;
-                    master->stats.starved++;
-                    ec_master_output_stats(master);
-                }
-                break;
-            case EC_DATAGRAM_SENT:
-                if (master->device->cycles_isr
-                    - datagram->cycles_sent > cycles_timeout) {
-                    list_del_init(&datagram->queue);
-                    datagram->state = EC_DATAGRAM_TIMED_OUT;
-                    master->stats.timeouts++;
-                    ec_master_output_stats(master);
-                }
-                break;
-            default:
-                break;
+        if (datagram->state != EC_DATAGRAM_SENT) continue;
+
+        if (master->device->cycles_isr - datagram->cycles_sent
+            > cycles_timeout) {
+            list_del_init(&datagram->queue);
+            datagram->state = EC_DATAGRAM_TIMED_OUT;
+            master->stats.timeouts++;
+            ec_master_output_stats(master);
         }
-    }
-}
-
-/*****************************************************************************/
-
-/**
-   Prepares synchronous IO.
-   Queues all domain datagrams and sends them. Then waits a certain time, so
-   that ecrt_master_receive() can be called securely.
-   \ingroup RealtimeInterface
-*/
-
-void ecrt_master_prepare(ec_master_t *master /**< EtherCAT master */)
-{
-    ec_domain_t *domain;
-    cycles_t cycles_start, cycles_end, cycles_timeout;
-
-    // queue datagrams of all domains
-    list_for_each_entry(domain, &master->domains, list)
-        ec_domain_queue_datagrams(domain);
-
-    ecrt_master_send(master);
-
-    cycles_start = get_cycles();
-    cycles_timeout = (cycles_t) EC_IO_TIMEOUT /* us */ * (cpu_khz / 1000);
-
-    // active waiting
-    while (1) {
-        udelay(100);
-        cycles_end = get_cycles();
-        if (cycles_end - cycles_start >= cycles_timeout) break;
     }
 }
 
@@ -1651,8 +1619,6 @@ void ecrt_master_callbacks(ec_master_t *master, /**< EtherCAT master */
 
 EXPORT_SYMBOL(ecrt_master_create_domain);
 EXPORT_SYMBOL(ecrt_master_activate);
-EXPORT_SYMBOL(ecrt_master_deactivate);
-EXPORT_SYMBOL(ecrt_master_prepare);
 EXPORT_SYMBOL(ecrt_master_send);
 EXPORT_SYMBOL(ecrt_master_receive);
 EXPORT_SYMBOL(ecrt_master_run);

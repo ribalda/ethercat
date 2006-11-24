@@ -311,9 +311,19 @@ ec_device_t *ecdev_register(unsigned int master_index, /**< master index */
         goto out_free;
     }
 
+    if (ec_device_open(master->device)) {
+        EC_ERR("Failed to open device!\n");
+        goto out_clear;
+    }
+
     up(&master->device_sem);
+
+    ec_master_enter_idle_mode(master);
+
     return master->device;
 
+ out_clear:
+    ec_device_clear(master->device);
  out_free:
     kfree(master->device);
     master->device = NULL;
@@ -342,6 +352,11 @@ void ecdev_unregister(unsigned int master_index, /**< master index */
 
     if (!(master = ec_find_master(master_index))) return;
 
+    ec_master_leave_idle_mode(master);
+
+    if (ec_device_close(master->device))
+        EC_WARN("Failed to close device!\n");
+
     down(&master->device_sem);
 
     if (!master->device || master->device != device) {
@@ -355,51 +370,6 @@ void ecdev_unregister(unsigned int master_index, /**< master index */
     master->device = NULL;
 
     up(&master->device_sem);
-}
-
-/*****************************************************************************/
-
-/**
-   Starts the master associated with the device.
-   This function has to be called by the network device driver to tell the
-   master that the device is ready to send and receive data. The master
-   will enter the idle mode then.
-   \ingroup DeviceInterface
-*/
-
-int ecdev_start(unsigned int master_index /**< master index */)
-{
-    ec_master_t *master;
-    if (!(master = ec_find_master(master_index))) return -1;
-
-    if (ec_device_open(master->device)) {
-        EC_ERR("Failed to open device!\n");
-        return -1;
-    }
-
-    ec_master_enter_idle_mode(master);
-
-    return 0;
-}
-
-/*****************************************************************************/
-
-/**
-   Stops the master associated with the device.
-   Tells the master to stop using the device for frame IO. Has to be called
-   before unregistering the device.
-   \ingroup DeviceInterface
-*/
-
-void ecdev_stop(unsigned int master_index /**< master index */)
-{
-    ec_master_t *master;
-    if (!(master = ec_find_master(master_index))) return;
-
-    ec_master_leave_idle_mode(master);
-
-    if (ec_device_close(master->device))
-        EC_WARN("Failed to close device!\n");
 }
 
 /******************************************************************************
@@ -495,8 +465,6 @@ module_exit(ec_cleanup_module);
 
 EXPORT_SYMBOL(ecdev_register);
 EXPORT_SYMBOL(ecdev_unregister);
-EXPORT_SYMBOL(ecdev_start);
-EXPORT_SYMBOL(ecdev_stop);
 EXPORT_SYMBOL(ecrt_request_master);
 EXPORT_SYMBOL(ecrt_release_master);
 

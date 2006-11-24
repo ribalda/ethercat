@@ -79,7 +79,6 @@ int ec_domain_init(ec_domain_t *, ec_master_t *, unsigned int);
 void ec_domain_destroy(ec_domain_t *);
 
 int ec_domain_alloc(ec_domain_t *, uint32_t);
-void ec_domain_queue_datagrams(ec_domain_t *);
 
 /*****************************************************************************/
 

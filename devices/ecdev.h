@@ -71,9 +71,6 @@ ec_device_t *ecdev_register(unsigned int master_index,
                             struct module *module);
 void ecdev_unregister(unsigned int master_index, ec_device_t *device);
 
-int ecdev_start(unsigned int master_index);
-void ecdev_stop(unsigned int master_index);
-
 /*****************************************************************************/
 // Device methods
 

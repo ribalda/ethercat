@@ -2905,20 +2905,12 @@ static int __init rtl8139_init_module (void)
 			printk(KERN_ERR "Failed to register EtherCAT device!\n");
 			goto out_pci;
 		}
-
-		printk(KERN_INFO "Starting EtherCAT device...\n");
-		if (ecdev_start(ec_device_master_index)) {
-			printk(KERN_ERR "Failed to start EtherCAT device!\n");
-			goto out_unregister;
-		}
 	} else {
 		printk(KERN_WARNING "No EtherCAT device registered!\n");
 	}
 
 	return 0;
 
-    out_unregister:
-	ecdev_unregister(ec_device_master_index, rtl_ec_dev);
     out_pci:
 	pci_unregister_driver(&rtl8139_pci_driver);
     out_return:
@@ -2935,8 +2927,6 @@ static void __exit rtl8139_cleanup_module (void)
 	printk(KERN_INFO "Cleaning up RTL8139-EtherCAT module...\n");
 
 	if (rtl_ec_net_dev) {
-		printk(KERN_INFO "Stopping device...\n");
-		ecdev_stop(ec_device_master_index);
 		printk(KERN_INFO "Unregistering device...\n");
 		ecdev_unregister(ec_device_master_index, rtl_ec_dev);
 		rtl_ec_dev = NULL;

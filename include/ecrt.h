@@ -110,8 +110,6 @@ ec_domain_t *ecrt_master_create_domain(ec_master_t *master);
 
 int ecrt_master_activate(ec_master_t *master);
 
-void ecrt_master_prepare(ec_master_t *master);
-
 void ecrt_master_send(ec_master_t *master);
 void ecrt_master_receive(ec_master_t *master);
 

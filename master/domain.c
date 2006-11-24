@@ -503,7 +503,6 @@ ssize_t ec_show_domain_attribute(struct kobject *kobj, /**< kobject */
 
 /**
    Registers a PDO in a domain.
-   - If \a data_ptr is NULL, the slave is only validated.
    \return pointer to the slave on success, else NULL
    \ingroup RealtimeInterface
 */
@@ -537,8 +536,6 @@ ec_slave_t *ecrt_domain_register_pdo(ec_domain_t *domain,
     if (!(slave = ecrt_master_get_slave(master, address))) return NULL;
     if (ec_slave_validate(slave, vendor_id, product_code)) return NULL;
 
-    if (!data_ptr) return slave;
-
     list_for_each_entry(pdo, &slave->sii_pdos, list) {
         list_for_each_entry(entry, &pdo->entries, list) {
             if (entry->index != pdo_index
@@ -561,7 +558,7 @@ ec_slave_t *ecrt_domain_register_pdo(ec_domain_t *domain,
 
 /**
    Registeres a bunch of data fields.
-   Caution! The list has to be terminated with a NULL structure ({})!
+   \attention The list has to be terminated with a NULL structure ({})!
    \return 0 in case of success, else < 0
    \ingroup RealtimeInterface
 */
@@ -590,7 +587,6 @@ int ecrt_domain_register_pdo_list(ec_domain_t *domain,
 
 /**
    Registers a PDO range in a domain.
-   - If \a data_ptr is NULL, the slave is only validated.
    \return pointer to the slave on success, else NULL
    \ingroup RealtimeInterface
 */
@@ -623,8 +619,6 @@ ec_slave_t *ecrt_domain_register_pdo_range(ec_domain_t *domain,
     // translate address and validate slave
     if (!(slave = ecrt_master_get_slave(master, address))) return NULL;
     if (ec_slave_validate(slave, vendor_id, product_code)) return NULL;
-
-    if (!data_ptr) return slave;
 
     if (ec_domain_reg_pdo_range(domain, slave,
                                 direction, offset, length, data_ptr)) {
