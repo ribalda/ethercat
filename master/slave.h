@@ -244,6 +244,7 @@ struct ec_slave
     char *sii_image; /**< slave image name acc. to EEPROM */
     char *sii_order; /**< slave order number acc. to EEPROM */
     char *sii_name; /**< slave name acc. to EEPROM */
+    int16_t sii_current_on_ebus; /**< power consumption */
 
     ec_fmmu_t fmmus[EC_MAX_FMMUS]; /**< FMMU configurations */
     uint8_t fmmu_count; /**< number of FMMUs used */

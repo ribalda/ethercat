@@ -106,6 +106,9 @@ sub query_slaves
 			elsif ($line =~ /^Coupler: ([a-z]+)$/) {
 				$slave->{'coupler'} = $1;
 			}
+			elsif ($line =~ /^Current consumption: (-?\d+) mA$/) {
+				$slave->{'current'} = $1;
+			}
 		}
 
 		close INFO;
@@ -124,12 +127,32 @@ sub query_slaves
 	$cols = length $slave->{'advanced_position'};
 	$adv_cols = $cols if ($cols > $adv_cols);
     }
-    $fmt = sprintf " %%%is  %%-%is  %%-6s  %%s\n", $ring_cols, $adv_cols;
 
-    for $slave (@slaves) {
-	&print_line if $slave->{'coupler'} eq "yes" and !defined $opt{n};
-	printf($fmt, $slave->{'ring_position'}, $slave->{'advanced_position'},
-	       $slave->{'state'}, $slave->{'name'});
+    if (defined $opt{'c'}) { # display power consumtion
+	$fmt = sprintf " %%%is  %%-%is  %%6i  %%6i  %%s\n",
+	    $ring_cols, $adv_cols;
+
+	my $current_sum = 0;
+	for $slave (@slaves) {
+	    if ($slave->{'coupler'} eq "yes") {
+		&print_line if !defined $opt{n};
+		$current_sum = 0; # reset current sum
+	    }
+	    $current_sum -= $slave->{'current'};
+	    printf($fmt, $slave->{'ring_position'},
+		   $slave->{'advanced_position'}, $slave->{'current'},
+		   $current_sum, $slave->{'name'});
+	}
+    }
+    else {
+	$fmt = sprintf " %%%is  %%-%is  %%-6s  %%s\n", $ring_cols, $adv_cols;
+
+	for $slave (@slaves) {
+	    &print_line if $slave->{'coupler'} eq "yes" and !defined $opt{n};
+	    printf($fmt, $slave->{'ring_position'},
+		   $slave->{'advanced_position'}, $slave->{'state'},
+		   $slave->{'name'});
+	}
     }
 }
 
@@ -137,7 +160,7 @@ sub query_slaves
 
 sub get_options
 {
-    my $optret = getopts "m:nh", \%opt;
+    my $optret = getopts "m:cnh", \%opt;
 
     &print_usage if defined $opt{h} or $#ARGV > -1 or !$optret;
 
@@ -157,6 +180,8 @@ sub print_usage
     chomp $cmd;
     print "Usage: $cmd [OPTIONS]\n";
     print "        -m <IDX>    Query master <IDX>.\n";
+    print "        -c          Display current [mA] ";
+    print "(3: consumption, 4: remaining).\n";
     print "        -n          Display no coupler lines.\n";
     print "        -h          Show this help.\n";
     exit 0;

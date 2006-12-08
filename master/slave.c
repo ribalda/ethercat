@@ -145,6 +145,7 @@ int ec_slave_init(ec_slave_t *slave, /**< EtherCAT slave */
     slave->sii_image = NULL;
     slave->sii_order = NULL;
     slave->sii_name = NULL;
+    slave->sii_current_on_ebus = 0;
 
     INIT_LIST_HEAD(&slave->sii_strings);
     INIT_LIST_HEAD(&slave->sii_syncs);
@@ -398,6 +399,8 @@ void ec_slave_fetch_general(ec_slave_t *slave, /**< EtherCAT slave */
     for (i = 0; i < 4; i++)
         slave->sii_physical_layer[i] =
             (data[4] & (0x03 << (i * 2))) >> (i * 2);
+
+    slave->sii_current_on_ebus = EC_READ_S16(data + 0x0C);
 }
 
 /*****************************************************************************/
@@ -636,8 +639,10 @@ size_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
                    slave->ring_position);
     off += sprintf(buffer + off, "Advanced position: %i:%i\n",
                    slave->coupler_index, slave->coupler_subindex);
-    off += sprintf(buffer + off, "Coupler: %s\n\n",
+    off += sprintf(buffer + off, "Coupler: %s\n",
                    ec_slave_is_coupler(slave) ? "yes" : "no");
+    off += sprintf(buffer + off, "Current consumption: %i mA\n\n",
+                   slave->sii_current_on_ebus);
 
     off += sprintf(buffer + off, "Data link status:\n");
     for (i = 0; i < 4; i++) {
