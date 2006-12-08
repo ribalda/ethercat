@@ -13,8 +13,8 @@ Changes in version 1.2.0:
   ecrt_master_release().
 * Removed ecrt_master_prepare(). Its functionality was moved into
   ecrt_master_activate().
-* Removed ecdev_start() and ecdev_stop(). Their functionality was moved into
-  ecdev_register() and ecdev_unregister, respectively.
+* Renamed ecdev_start() and ecdev_stop() to ecdev_open() and ecdev_close().
+  These two functions now take a pointer to ec_device_t as their arguments.
 * The data_ptr parameter of ecrt_domain_register_pdo(),
   ecrt_domain_register_pdo_list() and ecrt_domain_register_pdo_range() may
   not be NULL any more.

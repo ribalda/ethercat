@@ -311,19 +311,9 @@ ec_device_t *ecdev_register(unsigned int master_index, /**< master index */
         goto out_free;
     }
 
-    if (ec_device_open(master->device)) {
-        EC_ERR("Failed to open device!\n");
-        goto out_clear;
-    }
-
     up(&master->device_sem);
-
-    ec_master_enter_idle_mode(master);
-
     return master->device;
 
- out_clear:
-    ec_device_clear(master->device);
  out_free:
     kfree(master->device);
     master->device = NULL;
@@ -352,11 +342,6 @@ void ecdev_unregister(unsigned int master_index, /**< master index */
 
     if (!(master = ec_find_master(master_index))) return;
 
-    ec_master_leave_idle_mode(master);
-
-    if (ec_device_close(master->device))
-        EC_WARN("Failed to close device!\n");
-
     down(&master->device_sem);
 
     if (!master->device || master->device != device) {
@@ -370,6 +355,41 @@ void ecdev_unregister(unsigned int master_index, /**< master index */
     master->device = NULL;
 
     up(&master->device_sem);
+}
+
+/*****************************************************************************/
+
+/**
+   Opens the network device and makes the master enter IDLE mode.
+   \return 0 on success, else < 0
+   \ingroup DeviceInterface
+*/
+
+int ecdev_open(ec_device_t *device /**< EtherCAT device */)
+{
+    if (ec_device_open(device)) {
+        EC_ERR("Failed to open device!\n");
+        return -1;
+    }
+
+    ec_master_enter_idle_mode(device->master);
+    return 0;
+}
+
+/*****************************************************************************/
+
+/**
+   Makes the master leave IDLE mode and closes the network device.
+   \return 0 on success, else < 0
+   \ingroup DeviceInterface
+*/
+
+void ecdev_close(ec_device_t *device /**< EtherCAT device */)
+{
+    ec_master_leave_idle_mode(device->master);
+
+    if (ec_device_close(device))
+        EC_WARN("Failed to close device!\n");
 }
 
 /******************************************************************************
@@ -465,6 +485,8 @@ module_exit(ec_cleanup_module);
 
 EXPORT_SYMBOL(ecdev_register);
 EXPORT_SYMBOL(ecdev_unregister);
+EXPORT_SYMBOL(ecdev_open);
+EXPORT_SYMBOL(ecdev_close);
 EXPORT_SYMBOL(ecrt_request_master);
 EXPORT_SYMBOL(ecrt_release_master);
 
