@@ -75,7 +75,7 @@ void ecdev_unregister(unsigned int master_index, ec_device_t *device);
 // Device methods
 
 int ecdev_open(ec_device_t *device);
-int ecdev_close(ec_device_t *device);
+void ecdev_close(ec_device_t *device);
 void ecdev_receive(ec_device_t *device, const void *data, size_t size);
 void ecdev_link_state(ec_device_t *device, uint8_t newstate);
 
