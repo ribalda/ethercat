@@ -1508,7 +1508,8 @@ ec_slave_t *ecrt_master_get_slave(const ec_master_t *master, /**< Master */
                                   )
 {
     unsigned long first, second;
-    char *remainder, *remainder2, original;
+    char *remainder, *remainder2;
+    const char *original;
     unsigned int alias_requested, alias_found;
     ec_slave_t *alias_slave = NULL, *slave;
 
