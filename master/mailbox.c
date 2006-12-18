@@ -89,6 +89,7 @@ uint8_t *ec_slave_mbox_prepare_send(const ec_slave_t *slave, /**< slave */
 
 /**
    Prepares a datagram for checking the mailbox state.
+   \todo: Determine sync manager used for receive mailbox
    \return 0 in case of success, else < 0
 */
 
@@ -96,7 +97,6 @@ int ec_slave_mbox_prepare_check(const ec_slave_t *slave, /**< slave */
                                 ec_datagram_t *datagram /**< datagram */
                                 )
 {
-    // FIXME: second sync manager?
     if (ec_datagram_nprd(datagram, slave->station_address, 0x808, 8))
         return -1;
 
@@ -168,7 +168,8 @@ uint8_t *ec_slave_mbox_fetch(const ec_slave_t *slave, /**< slave */
     data_size = EC_READ_U16(datagram->data);
 
     if (data_size > slave->sii_tx_mailbox_size - 6) {
-        EC_ERR("Corrupt mailbox response detected!\n");
+        EC_ERR("Corrupt mailbox response received from slave %i!\n",
+               slave->ring_position);
         ec_print_data(datagram->data, slave->sii_tx_mailbox_size);
         return NULL;
     }
@@ -180,7 +181,8 @@ uint8_t *ec_slave_mbox_fetch(const ec_slave_t *slave, /**< slave */
         const ec_code_msg_t *mbox_msg;
 	uint16_t code = EC_READ_U16(datagram->data + 8);
 
-        EC_ERR("Mailbox error response received - ");
+        EC_ERR("Mailbox error response received from slave %i - ",
+               slave->ring_position);
 
 	for (mbox_msg = mbox_error_messages; mbox_msg->code; mbox_msg++) {
             if (mbox_msg->code != code) continue;
