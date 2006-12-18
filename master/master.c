@@ -424,8 +424,9 @@ void ec_master_leave_operation_mode(ec_master_t *master
 
     // wait for FSM datagram
     if (datagram->state == EC_DATAGRAM_SENT) {
+        // active waiting
         while (get_cycles() - datagram->cycles_sent
-               < (cycles_t) EC_IO_TIMEOUT /* us */ * (cpu_khz / 1000)) {}
+               < (cycles_t) EC_IO_TIMEOUT /* us */ * (cpu_khz / 1000));
         ecrt_master_receive(master);
     }
 
@@ -1507,9 +1508,11 @@ ec_slave_t *ecrt_master_get_slave(const ec_master_t *master, /**< Master */
                                   )
 {
     unsigned long first, second;
-    char *remainder, *remainder2;
+    char *remainder, *remainder2, original;
     unsigned int alias_requested, alias_found;
     ec_slave_t *alias_slave = NULL, *slave;
+
+    original = address;
 
     if (!address || address[0] == 0) return NULL;
 
@@ -1521,7 +1524,7 @@ ec_slave_t *ecrt_master_get_slave(const ec_master_t *master, /**< Master */
 
     first = simple_strtoul(address, &remainder, 0);
     if (remainder == address) {
-        EC_ERR("Slave address \"%s\" - First number empty!\n", address);
+        EC_ERR("Slave address \"%s\" - First number empty!\n", original);
         return NULL;
     }
 
@@ -1534,7 +1537,7 @@ ec_slave_t *ecrt_master_get_slave(const ec_master_t *master, /**< Master */
             }
         }
         if (!alias_found) {
-            EC_ERR("Slave address \"%s\" - Alias not found!\n", address);
+            EC_ERR("Slave address \"%s\" - Alias not found!\n", original);
             return NULL;
         }
     }
@@ -1548,7 +1551,7 @@ ec_slave_t *ecrt_master_get_slave(const ec_master_t *master, /**< Master */
                 if (slave->ring_position == first) return slave;
             }
             EC_ERR("Slave address \"%s\" - Absolute position invalid!\n",
-                   address);
+                   original);
         }
     }
     else if (remainder[0] == ':') { // field position
@@ -1556,19 +1559,19 @@ ec_slave_t *ecrt_master_get_slave(const ec_master_t *master, /**< Master */
         second = simple_strtoul(remainder, &remainder2, 0);
 
         if (remainder2 == remainder) {
-            EC_ERR("Slave address \"%s\" - Second number empty!\n", address);
+            EC_ERR("Slave address \"%s\" - Second number empty!\n", original);
             return NULL;
         }
 
         if (remainder2[0]) {
-            EC_ERR("Slave address \"%s\" - Invalid trailer!\n", address);
+            EC_ERR("Slave address \"%s\" - Invalid trailer!\n", original);
             return NULL;
         }
 
         if (alias_requested) {
             if (!ec_slave_is_coupler(alias_slave)) {
                 EC_ERR("Slave address \"%s\": Alias slave must be bus coupler"
-                       " in colon mode.\n", address);
+                       " in colon mode.\n", original);
                 return NULL;
             }
             list_for_each_entry(slave, &master->slaves, list) {
@@ -1577,7 +1580,7 @@ ec_slave_t *ecrt_master_get_slave(const ec_master_t *master, /**< Master */
                     return slave;
             }
             EC_ERR("Slave address \"%s\" - Bus coupler %i has no %lu. slave"
-                   " following!\n", address, alias_slave->ring_position,
+                   " following!\n", original, alias_slave->ring_position,
                    second);
             return NULL;
         }
@@ -1589,7 +1592,7 @@ ec_slave_t *ecrt_master_get_slave(const ec_master_t *master, /**< Master */
         }
     }
     else
-        EC_ERR("Slave address \"%s\" - Invalid format!\n", address);
+        EC_ERR("Slave address \"%s\" - Invalid format!\n", original);
 
     return NULL;
 }
