@@ -532,7 +532,7 @@ void ec_fsm_coe_dict_desc_response(ec_fsm_coe_t *fsm
         || datagram->working_counter != 1) {
         fsm->state = ec_fsm_coe_error;
         EC_ERR("Reception of CoE SDO description"
-               "response failed on slave %i.\n", slave->ring_position);
+               " response failed on slave %i.\n", slave->ring_position);
         return;
     }
 
