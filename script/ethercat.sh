@@ -51,6 +51,10 @@
 
 device="ecxml"
 
+IFCONFIG=ifconfig
+BRCTL=brctl
+ROUTE=route
+
 #------------------------------------------------------------------------------
 
 ETHERCAT_CONFIG=/etc/sysconfig/ethercat
@@ -75,11 +79,11 @@ build_eoe_bridge()
 {
     if [ -z "$EOE_BRIDGE" ]; then return; fi
 
-    EOEIF=`/sbin/ifconfig -a | grep -o -E "^eoe[0-9]+ "`
+    EOEIF=`$IFCONFIG -a | grep -o -E "^eoe[0-9]+ "`
 
     # add bridge, if it does not already exist
-    if ! /sbin/brctl show | grep -E -q "^$EOE_BRIDGE"; then
-        if ! /sbin/brctl addbr $EOE_BRIDGE; then
+    if ! $BRCTL show | grep -E -q "^$EOE_BRIDGE"; then
+        if ! $BRCTL addbr $EOE_BRIDGE; then
 	    /bin/false
 	    rc_status -v
 	    rc_exit
@@ -88,18 +92,18 @@ build_eoe_bridge()
 
     # check if specified interfaces are bridged
     for interf in $EOEIF $EOE_EXTRA_INTERFACES; do
-	# interface is already part of the bridge
-	if /sbin/brctl show $EOE_BRIDGE | grep -E -q $interf
+	# interface is already part of the bridge (FIXME->show $EOE_BRIDGE)
+	if $BRCTL show | grep -E -q $interf
 	    then continue
 	fi
 	# clear IP address and open interface
-	if ! /sbin/ifconfig $interf 0.0.0.0 up; then
+	if ! $IFCONFIG $interf 0.0.0.0 up; then
 	    /bin/false
 	    rc_status -v
 	    rc_exit
 	fi
 	# add interface to the bridge
-	if ! /sbin/brctl addif $EOE_BRIDGE $interf; then
+	if ! $BRCTL addif $EOE_BRIDGE $interf; then
 	    /bin/false
 	    rc_status -v
 	    rc_exit
@@ -108,7 +112,7 @@ build_eoe_bridge()
 
     # configure IP on bridge
     if [ -n "$EOE_IP_ADDRESS" -a -n "$EOE_IP_NETMASK" ]; then
-	if ! /sbin/ifconfig $EOE_BRIDGE $EOE_IP_ADDRESS \
+	if ! $IFCONFIG $EOE_BRIDGE $EOE_IP_ADDRESS \
 	    netmask $EOE_IP_NETMASK; then
 	    /bin/false
 	    rc_status -v
@@ -117,7 +121,7 @@ build_eoe_bridge()
     fi
 
     # open bridge
-    if ! /sbin/ifconfig $EOE_BRIDGE up; then
+    if ! $IFCONFIG $EOE_BRIDGE up; then
 	/bin/false
 	rc_status -v
 	rc_exit
@@ -125,15 +129,15 @@ build_eoe_bridge()
 
     # install new default gateway
     if [ -n "$EOE_GATEWAY" ]; then
-	while /sbin/route -n | grep -E -q "^0.0.0.0"; do
-	    if ! /sbin/route del default; then
+	while $ROUTE -n | grep -E -q "^0.0.0.0"; do
+	    if ! $ROUTE del default; then
 		echo "Failed to remove route!" 1>&2
 		/bin/false
 		rc_status -v
 		rc_exit
 	    fi
 	done
-	if ! /sbin/route add default gw $EOE_GATEWAY; then
+	if ! $ROUTE add default gw $EOE_GATEWAY; then
 	    /bin/false
 	    rc_status -v
 	    rc_exit
