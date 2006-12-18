@@ -59,6 +59,7 @@ struct ec_fsm_coe
 {
     ec_slave_t *slave; /**< slave the FSM runs on */
     ec_datagram_t *datagram; /**< datagram used in the state machine */
+    unsigned int retries; /**< retries upon datagram timeout */
 
     void (*state)(ec_fsm_coe_t *); /**< CoE state function */
     ec_sdo_data_t *sdodata; /**< input/output: SDO data object */

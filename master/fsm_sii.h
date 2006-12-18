@@ -67,6 +67,7 @@ struct ec_fsm_sii
 {
     ec_slave_t *slave; /**< slave the FSM runs on */
     ec_datagram_t *datagram; /**< datagram used in the state machine */
+    unsigned int retries; /**< retries upon datagram timeout */
 
     void (*state)(ec_fsm_sii_t *); /**< SII state function */
     uint16_t offset; /**< input: offset in SII */

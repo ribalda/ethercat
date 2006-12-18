@@ -64,6 +64,7 @@ struct ec_fsm
     ec_master_t *master; /**< master the FSM runs on */
     ec_slave_t *slave; /**< slave the FSM runs on */
     ec_datagram_t datagram; /**< datagram used in the state machine */
+    unsigned int retries; /**< retries on datagram timeout. */
 
     void (*master_state)(ec_fsm_t *); /**< master state function */
     unsigned int master_slaves_responding; /**< number of responding slaves */

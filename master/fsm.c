@@ -139,13 +139,20 @@ void ec_fsm_clear(ec_fsm_t *fsm /**< finite state machine */)
 
 /**
    Executes the current state of the state machine.
+   If the state machine's datagram is not sent or received yet, the execution
+   of the state machine is delayed to the next cycle.
    \return false, if state machine has terminated
 */
 
 int ec_fsm_exec(ec_fsm_t *fsm /**< finite state machine */)
 {
-    fsm->master_state(fsm);
+    if (fsm->datagram.state == EC_DATAGRAM_SENT
+        || fsm->datagram.state == EC_DATAGRAM_QUEUED) {
+        // datagram was not sent or received yet.
+        return ec_fsm_running(fsm);
+    }
 
+    fsm->master_state(fsm);
     return ec_fsm_running(fsm);
 }
 
@@ -202,15 +209,17 @@ void ec_fsm_master_broadcast(ec_fsm_t *fsm /**< finite state machine */)
     ec_slave_t *slave;
     ec_master_t *master = fsm->master;
 
-    if (datagram->state != EC_DATAGRAM_RECEIVED) {
-        if (!master->device->link_state) {
-            fsm->master_slaves_responding = 0;
-            list_for_each_entry(slave, &master->slaves, list) {
-                slave->online = 0;
-            }
-        }
-        else {
-            EC_ERR("Failed to receive broadcast datagram.\n");
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT) {
+        // always retry
+        ec_master_queue_datagram(fsm->master, &fsm->datagram);
+        return;
+    }
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED) { // EC_DATAGRAM_ERROR
+        // link is down
+        fsm->master_slaves_responding = 0;
+        list_for_each_entry(slave, &master->slaves, list) {
+            slave->online = 0;
         }
         fsm->master_state = ec_fsm_master_error;
         return;
@@ -292,6 +301,7 @@ void ec_fsm_master_broadcast(ec_fsm_t *fsm /**< finite state machine */)
     fsm->slave = list_entry(master->slaves.next, ec_slave_t, list);
     ec_datagram_nprd(&fsm->datagram, fsm->slave->station_address, 0x0130, 2);
     ec_master_queue_datagram(master, &fsm->datagram);
+    fsm->retries = EC_FSM_RETRIES;
     fsm->master_state = ec_fsm_master_read_states;
 }
 
@@ -436,6 +446,7 @@ void ec_fsm_master_action_next_slave_state(ec_fsm_t *fsm
         ec_datagram_nprd(&fsm->datagram, fsm->slave->station_address,
                          0x0130, 2);
         ec_master_queue_datagram(master, &fsm->datagram);
+        fsm->retries = EC_FSM_RETRIES;
         fsm->master_state = ec_fsm_master_read_states;
         return;
     }
@@ -473,6 +484,11 @@ void ec_fsm_master_read_states(ec_fsm_t *fsm /**< finite state machine */)
     ec_slave_t *slave = fsm->slave;
     ec_datagram_t *datagram = &fsm->datagram;
     uint8_t new_state;
+
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        ec_master_queue_datagram(fsm->master, &fsm->datagram);
+        return;
+    }
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         EC_ERR("Failed to receive AL state datagram for slave %i!\n",
@@ -613,6 +629,7 @@ void ec_fsm_master_action_addresses(ec_fsm_t *fsm /**< finite state machine */)
     ec_datagram_apwr(datagram, fsm->slave->ring_position, 0x0010, 2);
     EC_WRITE_U16(datagram->data, fsm->slave->station_address);
     ec_master_queue_datagram(fsm->master, datagram);
+    fsm->retries = EC_FSM_RETRIES;
     fsm->master_state = ec_fsm_master_rewrite_addresses;
 }
 
@@ -674,10 +691,23 @@ void ec_fsm_master_rewrite_addresses(ec_fsm_t *fsm
     ec_slave_t *slave = fsm->slave;
     ec_datagram_t *datagram = &fsm->datagram;
 
-    if (datagram->state != EC_DATAGRAM_RECEIVED
-        || datagram->working_counter != 1) {
-        EC_ERR("Failed to write station address on slave %i.\n",
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        ec_master_queue_datagram(fsm->master, &fsm->datagram);
+        return;
+    }
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED) {
+        EC_ERR("Failed to receive address datagram for slave %i.\n",
                slave->ring_position);
+        fsm->master_state = ec_fsm_master_error;
+        return;
+    }
+
+    if (datagram->working_counter != 1) {
+        EC_ERR("Failed to write station address - slave %i did not respond.\n",
+               slave->ring_position);
+        fsm->master_state = ec_fsm_master_error;
+        return;
     }
 
     if (fsm->slave->list.next == &fsm->master->slaves) { // last slave?
@@ -894,6 +924,7 @@ void ec_fsm_slavescan_start(ec_fsm_t *fsm /**< finite state machine */)
     ec_datagram_apwr(datagram, fsm->slave->ring_position, 0x0010, 2);
     EC_WRITE_U16(datagram->data, fsm->slave->station_address);
     ec_master_queue_datagram(fsm->master, datagram);
+    fsm->retries = EC_FSM_RETRIES;
     fsm->slave_state = ec_fsm_slavescan_address;
 }
 
@@ -907,11 +938,22 @@ void ec_fsm_slavescan_address(ec_fsm_t *fsm /**< finite state machine */)
 {
     ec_datagram_t *datagram = &fsm->datagram;
 
-    if (datagram->state != EC_DATAGRAM_RECEIVED
-        || datagram->working_counter != 1) {
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        ec_master_queue_datagram(fsm->master, &fsm->datagram);
+        return;
+    }
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED) {
+        fsm->slave_state = ec_fsm_slave_state_error;
+        EC_ERR("Failed to receive station address datagram for slave %i.\n",
+               fsm->slave->ring_position);
+        return;
+    }
+
+    if (datagram->working_counter != 1) {
         fsm->slave->error_flag = 1;
         fsm->slave_state = ec_fsm_slave_state_error;
-        EC_ERR("Failed to write station address of slave %i.\n",
+        EC_ERR("Failed to write station address - slave %i did not respond.\n",
                fsm->slave->ring_position);
         return;
     }
@@ -919,6 +961,7 @@ void ec_fsm_slavescan_address(ec_fsm_t *fsm /**< finite state machine */)
     // Read AL state
     ec_datagram_nprd(datagram, fsm->slave->station_address, 0x0130, 2);
     ec_master_queue_datagram(fsm->master, datagram);
+    fsm->retries = EC_FSM_RETRIES;
     fsm->slave_state = ec_fsm_slavescan_state;
 }
 
@@ -933,11 +976,22 @@ void ec_fsm_slavescan_state(ec_fsm_t *fsm /**< finite state machine */)
     ec_datagram_t *datagram = &fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
-    if (datagram->state != EC_DATAGRAM_RECEIVED
-        || datagram->working_counter != 1) {
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        ec_master_queue_datagram(fsm->master, datagram);
+        return;
+    }
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED) {
+        fsm->slave_state = ec_fsm_slave_state_error;
+        EC_ERR("Failed to receive AL state datagram from slave %i.\n",
+               fsm->slave->ring_position);
+        return;
+    }
+
+    if (datagram->working_counter != 1) {
         fsm->slave->error_flag = 1;
         fsm->slave_state = ec_fsm_slave_state_error;
-        EC_ERR("Failed to read AL state of slave %i.\n",
+        EC_ERR("Failed to read AL state - slave %i did not respond.\n",
                fsm->slave->ring_position);
         return;
     }
@@ -953,6 +1007,7 @@ void ec_fsm_slavescan_state(ec_fsm_t *fsm /**< finite state machine */)
     // read base data
     ec_datagram_nprd(datagram, fsm->slave->station_address, 0x0000, 6);
     ec_master_queue_datagram(fsm->master, datagram);
+    fsm->retries = EC_FSM_RETRIES;
     fsm->slave_state = ec_fsm_slavescan_base;
 }
 
@@ -967,11 +1022,22 @@ void ec_fsm_slavescan_base(ec_fsm_t *fsm /**< finite state machine */)
     ec_datagram_t *datagram = &fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
-    if (datagram->state != EC_DATAGRAM_RECEIVED
-        || datagram->working_counter != 1) {
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        ec_master_queue_datagram(fsm->master, datagram);
+        return;
+    }
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED) {
+        fsm->slave_state = ec_fsm_slave_state_error;
+        EC_ERR("Failed to receive base data datagram for slave %i.\n",
+               slave->ring_position);
+        return;
+    }
+
+    if (datagram->working_counter != 1) {
         fsm->slave->error_flag = 1;
         fsm->slave_state = ec_fsm_slave_state_error;
-        EC_ERR("Failed to read base data of slave %i.\n",
+        EC_ERR("Failed to read base data - slave %i did not respond.\n",
                slave->ring_position);
         return;
     }
@@ -988,6 +1054,7 @@ void ec_fsm_slavescan_base(ec_fsm_t *fsm /**< finite state machine */)
     // read data link status
     ec_datagram_nprd(datagram, slave->station_address, 0x0110, 2);
     ec_master_queue_datagram(slave->master, datagram);
+    fsm->retries = EC_FSM_RETRIES;
     fsm->slave_state = ec_fsm_slavescan_datalink;
 }
 
@@ -1004,11 +1071,22 @@ void ec_fsm_slavescan_datalink(ec_fsm_t *fsm /**< finite state machine */)
     uint16_t dl_status;
     unsigned int i;
 
-    if (datagram->state != EC_DATAGRAM_RECEIVED
-        || datagram->working_counter != 1) {
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        ec_master_queue_datagram(fsm->master, datagram);
+        return;
+    }
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED) {
+        fsm->slave_state = ec_fsm_slave_state_error;
+        EC_ERR("Failed to receive DL status datagram from slave %i.\n",
+               slave->ring_position);
+        return;
+    }
+
+    if (datagram->working_counter != 1) {
         fsm->slave->error_flag = 1;
         fsm->slave_state = ec_fsm_slave_state_error;
-        EC_ERR("Failed to read DL status of slave %i.\n",
+        EC_ERR("Failed to read DL status - slave %i did not respond.\n",
                slave->ring_position);
         return;
     }
@@ -1261,6 +1339,7 @@ void ec_fsm_slaveconf_state_init(ec_fsm_t *fsm /**< finite state machine */)
                      0x0600, EC_FMMU_SIZE * slave->base_fmmu_count);
     memset(datagram->data, 0x00, EC_FMMU_SIZE * slave->base_fmmu_count);
     ec_master_queue_datagram(master, datagram);
+    fsm->retries = EC_FSM_RETRIES;
     fsm->slave_state = ec_fsm_slaveconf_state_clear_fmmus;
 }
 
@@ -1275,11 +1354,22 @@ void ec_fsm_slaveconf_state_clear_fmmus(ec_fsm_t *fsm
 {
     ec_datagram_t *datagram = &fsm->datagram;
 
-    if (datagram->state != EC_DATAGRAM_RECEIVED
-        || datagram->working_counter != 1) {
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        ec_master_queue_datagram(fsm->master, datagram);
+        return;
+    }
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED) {
+        fsm->slave_state = ec_fsm_slave_state_error;
+        EC_ERR("Failed receive FMMU clearing datagram for slave %i.\n",
+               fsm->slave->ring_position);
+        return;
+    }
+
+    if (datagram->working_counter != 1) {
         fsm->slave->error_flag = 1;
         fsm->slave_state = ec_fsm_slave_state_error;
-        EC_ERR("Failed to clear FMMUs on slave %i.\n",
+        EC_ERR("Failed to clear FMMUs - slave %i did not respond.\n",
                fsm->slave->ring_position);
         return;
     }
@@ -1358,6 +1448,7 @@ void ec_fsm_slaveconf_enter_sync(ec_fsm_t *fsm /**< finite state machine */)
     }
 
     ec_master_queue_datagram(fsm->master, datagram);
+    fsm->retries = EC_FSM_RETRIES;
     fsm->slave_state = ec_fsm_slaveconf_state_sync;
 }
 
@@ -1372,11 +1463,22 @@ void ec_fsm_slaveconf_state_sync(ec_fsm_t *fsm /**< finite state machine */)
     ec_datagram_t *datagram = &fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
-    if (datagram->state != EC_DATAGRAM_RECEIVED
-        || datagram->working_counter != 1) {
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        ec_master_queue_datagram(fsm->master, datagram);
+        return;
+    }
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED) {
+        fsm->slave_state = ec_fsm_slave_state_error;
+        EC_ERR("Failed to receive sync manager configuration datagram for"
+               " slave %i.\n", slave->ring_position);
+        return;
+    }
+
+    if (datagram->working_counter != 1) {
         slave->error_flag = 1;
         fsm->slave_state = ec_fsm_slave_state_error;
-        EC_ERR("Failed to set sync managers on slave %i.\n",
+        EC_ERR("Failed to set sync managers - slave %i did not respond.\n",
                slave->ring_position);
         return;
     }
@@ -1461,6 +1563,7 @@ void ec_fsm_slaveconf_enter_sync2(ec_fsm_t *fsm /**< finite state machine */)
     }
 
     ec_master_queue_datagram(fsm->master, datagram);
+    fsm->retries = EC_FSM_RETRIES;
     fsm->slave_state = ec_fsm_slaveconf_state_sync2;
 }
 
@@ -1475,12 +1578,24 @@ void ec_fsm_slaveconf_state_sync2(ec_fsm_t *fsm /**< finite state machine */)
     ec_datagram_t *datagram = &fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
-    if (datagram->state != EC_DATAGRAM_RECEIVED
-        || datagram->working_counter != 1) {
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        ec_master_queue_datagram(fsm->master, datagram);
+        return;
+    }
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED) {
+        fsm->slave_state = ec_fsm_slave_state_error;
+        EC_ERR("Failed to receive process data sync manager configuration"
+               " datagram for slave %i.\n",
+               slave->ring_position);
+        return;
+    }
+
+    if (datagram->working_counter != 1) {
         slave->error_flag = 1;
         fsm->slave_state = ec_fsm_slave_state_error;
-        EC_ERR("Failed to set process data sync managers on slave %i.\n",
-               slave->ring_position);
+        EC_ERR("Failed to set process data sync managers - slave %i did not"
+               " respond.\n", slave->ring_position);
         return;
     }
 
@@ -1514,6 +1629,7 @@ void ec_fsm_slaveconf_enter_fmmu(ec_fsm_t *fsm /**< finite state machine */)
     }
 
     ec_master_queue_datagram(master, datagram);
+    fsm->retries = EC_FSM_RETRIES;
     fsm->slave_state = ec_fsm_slaveconf_state_fmmu;
 }
 
@@ -1528,11 +1644,22 @@ void ec_fsm_slaveconf_state_fmmu(ec_fsm_t *fsm /**< finite state machine */)
     ec_datagram_t *datagram = &fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
-    if (datagram->state != EC_DATAGRAM_RECEIVED
-        || datagram->working_counter != 1) {
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        ec_master_queue_datagram(fsm->master, datagram);
+        return;
+    }
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED) {
+        fsm->slave_state = ec_fsm_slave_state_error;
+        EC_ERR("Failed to receive FMMUs datagram for slave %i.\n",
+               fsm->slave->ring_position);
+        return;
+    }
+
+    if (datagram->working_counter != 1) {
         fsm->slave->error_flag = 1;
         fsm->slave_state = ec_fsm_slave_state_error;
-        EC_ERR("Failed to set FMMUs on slave %i.\n",
+        EC_ERR("Failed to set FMMUs - slave %i did not respond.\n",
                fsm->slave->ring_position);
         return;
     }

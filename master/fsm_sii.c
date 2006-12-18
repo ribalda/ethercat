@@ -169,6 +169,7 @@ void ec_fsm_sii_start_reading(ec_fsm_sii_t *fsm /**< finite state machine */)
     EC_WRITE_U8 (datagram->data + 1, 0x01); // request read operation
     EC_WRITE_U16(datagram->data + 2, fsm->offset);
     ec_master_queue_datagram(fsm->slave->master, datagram);
+    fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_sii_read_check;
 }
 
@@ -183,10 +184,22 @@ void ec_fsm_sii_read_check(ec_fsm_sii_t *fsm /**< finite state machine */)
 {
     ec_datagram_t *datagram = fsm->datagram;
 
-    if (datagram->state != EC_DATAGRAM_RECEIVED
-        || datagram->working_counter != 1) {
-        EC_ERR("SII: Reception of read datagram failed.\n");
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        ec_master_queue_datagram(fsm->slave->master, datagram);
+        return;
+    }
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_sii_error;
+        EC_ERR("Failed to receive SII read datagram from slave %i.\n",
+               fsm->slave->ring_position);
+        return;
+    }
+
+    if (datagram->working_counter != 1) {
+        fsm->state = ec_fsm_sii_error;
+        EC_ERR("Reception of SII read datagram failed - slave %i did not"
+               " respond.\n", fsm->slave->ring_position);
         return;
     }
 
@@ -203,6 +216,7 @@ void ec_fsm_sii_read_check(ec_fsm_sii_t *fsm /**< finite state machine */)
             break;
     }
     ec_master_queue_datagram(fsm->slave->master, datagram);
+    fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_sii_read_fetch;
 }
 
@@ -217,10 +231,22 @@ void ec_fsm_sii_read_fetch(ec_fsm_sii_t *fsm /**< finite state machine */)
 {
     ec_datagram_t *datagram = fsm->datagram;
 
-    if (datagram->state != EC_DATAGRAM_RECEIVED
-        || datagram->working_counter != 1) {
-        EC_ERR("SII: Reception of check/fetch datagram failed.\n");
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        ec_master_queue_datagram(fsm->slave->master, datagram);
+        return;
+    }
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_sii_error;
+        EC_ERR("Failed to receive SII check/fetch datagram from slave %i.\n",
+               fsm->slave->ring_position);
+        return;
+    }
+
+    if (datagram->working_counter != 1) {
+        fsm->state = ec_fsm_sii_error;
+        EC_ERR("Reception of SII check/fetch datagram failed - slave %i did"
+               " not respond\n", fsm->slave->ring_position);
         return;
     }
 
@@ -254,6 +280,7 @@ void ec_fsm_sii_read_fetch(ec_fsm_sii_t *fsm /**< finite state machine */)
                 break;
         }
         ec_master_queue_datagram(fsm->slave->master, datagram);
+        fsm->retries = EC_FSM_RETRIES;
         return;
     }
 
@@ -288,6 +315,7 @@ void ec_fsm_sii_start_writing(ec_fsm_sii_t *fsm /**< finite state machine */)
     EC_WRITE_U32(datagram->data + 2, fsm->offset);
     memcpy(datagram->data + 6, fsm->value, 2);
     ec_master_queue_datagram(fsm->slave->master, datagram);
+    fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_sii_write_check;
 }
 
@@ -301,10 +329,22 @@ void ec_fsm_sii_write_check(ec_fsm_sii_t *fsm /**< finite state machine */)
 {
     ec_datagram_t *datagram = fsm->datagram;
 
-    if (datagram->state != EC_DATAGRAM_RECEIVED
-        || datagram->working_counter != 1) {
-        EC_ERR("SII: Reception of write datagram failed.\n");
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        ec_master_queue_datagram(fsm->slave->master, datagram);
+        return;
+    }
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_sii_error;
+        EC_ERR("Failed to receive SII write datagram for slave %i.\n",
+               fsm->slave->ring_position);
+        return;
+    }
+
+    if (datagram->working_counter != 1) {
+        fsm->state = ec_fsm_sii_error;
+        EC_ERR("Reception of SII write datagram failed - slave %i did not"
+               " respond.\n", fsm->slave->ring_position);
         return;
     }
 
@@ -314,6 +354,7 @@ void ec_fsm_sii_write_check(ec_fsm_sii_t *fsm /**< finite state machine */)
     // issue check/fetch datagram
     ec_datagram_nprd(datagram, fsm->slave->station_address, 0x502, 2);
     ec_master_queue_datagram(fsm->slave->master, datagram);
+    fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_sii_write_check2;
 }
 
@@ -327,10 +368,22 @@ void ec_fsm_sii_write_check2(ec_fsm_sii_t *fsm /**< finite state machine */)
 {
     ec_datagram_t *datagram = fsm->datagram;
 
-    if (datagram->state != EC_DATAGRAM_RECEIVED
-        || datagram->working_counter != 1) {
-        EC_ERR("SII: Reception of write check datagram failed.\n");
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        ec_master_queue_datagram(fsm->slave->master, datagram);
+        return;
+    }
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_sii_error;
+        EC_ERR("Failed to receive SII write check datagram from slave %i.\n",
+               fsm->slave->ring_position);
+        return;
+    }
+
+    if (datagram->working_counter != 1) {
+        fsm->state = ec_fsm_sii_error;
+        EC_ERR("Reception of SII write check datagram failed - slave %i did"
+               " not respond.\n", fsm->slave->ring_position);
         return;
     }
 
@@ -348,6 +401,7 @@ void ec_fsm_sii_write_check2(ec_fsm_sii_t *fsm /**< finite state machine */)
 
         // issue check/fetch datagram again
         ec_master_queue_datagram(fsm->slave->master, datagram);
+        fsm->retries = EC_FSM_RETRIES;
         return;
     }
 

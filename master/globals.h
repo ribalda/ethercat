@@ -61,6 +61,9 @@
 /** datagram timeout in microseconds */
 #define EC_IO_TIMEOUT 500
 
+/** number of state machine retries on datagram timeout */
+#define EC_FSM_RETRIES 3
+
 /** Seconds to wait before fetching SDO dictionary
     after slave entered PREOP state. */
 #define EC_WAIT_SDO_DICT 3
