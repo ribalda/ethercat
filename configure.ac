@@ -53,7 +53,10 @@ fi
 if test -r ${sourcedir}/.kernelrelease; then
     kernelrelease=`cat $sourcedir/.kernelrelease`
 elif test -r ${sourcedir}/include/linux/version.h; then
-    hdr=$sourcedir/include/linux/version.h
+    hdr=$sourcedir/include/linux/utsrelease.h
+    if ! test -r $hdr; then
+        hdr=$sourcedir/include/linux/version.h
+    fi
     kernelrelease=`grep UTS_RELEASE $hdr | cut -d " " -f 3- | tr -d \"`
 fi
 
