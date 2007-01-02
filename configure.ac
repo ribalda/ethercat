@@ -52,11 +52,13 @@ fi
 # Try to get kernel release string
 if test -r ${sourcedir}/.kernelrelease; then
     kernelrelease=`cat $sourcedir/.kernelrelease`
+elif test -r ${sourcedir}/include/config/kernel.release; then
+    kernelrelease=`cat $sourcedir/include/config/kernel.release`
+elif test -r ${sourcedir}/include/linux/utsrelease.h; then
+    hdr=${sourcedir}/include/linux/utsrelease.h
+    kernelrelease=`grep UTS_RELEASE $hdr | cut -d " " -f 3- | tr -d \"`
 elif test -r ${sourcedir}/include/linux/version.h; then
-    hdr=$sourcedir/include/linux/utsrelease.h
-    if ! test -r $hdr; then
-        hdr=$sourcedir/include/linux/version.h
-    fi
+    hdr=${sourcedir}/include/linux/version.h
     kernelrelease=`grep UTS_RELEASE $hdr | cut -d " " -f 3- | tr -d \"`
 fi
 
