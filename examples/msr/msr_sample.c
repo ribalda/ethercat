@@ -88,6 +88,7 @@ void msr_controller_run(void)
     EC_WRITE_S16(r_ana_out, k_ana_out / 10.0 * 0x7FFF);
 
     // Send
+    ecrt_domain_queue(domain1);
     ecrt_master_run(master);
     ecrt_master_send(master);
 
@@ -175,8 +176,6 @@ int __init init_mod(void)
         goto out_release_master;
     }
 
-    ecrt_master_prepare(master);
-
     printk("Starting cyclic sample thread...\n");
     ticks = start_rt_timer(nano2count(TIMERTICKS));
     if (rt_task_init(&task, msr_run, 0, 2000, 0, 1, NULL)) {
@@ -195,7 +194,6 @@ int __init init_mod(void)
     rt_task_delete(&task);
  out_stop_timer:
     stop_rt_timer();
-    ecrt_master_deactivate(master);
  out_release_master:
     ecrt_release_master(master);
  out_msr_cleanup:

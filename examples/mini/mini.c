@@ -88,6 +88,7 @@ void run(unsigned long data)
 #endif
 
     // send
+    ecrt_domain_queue(domain1);
     ecrt_master_run(master);
     ecrt_master_send(master);
 
@@ -131,7 +132,7 @@ int __init init_mini_module(void)
 
     printk(KERN_INFO "=== Starting Minimal EtherCAT environment... ===\n");
 
-    if ((master = ecrt_request_master(0)) == NULL) {
+    if (!(master = ecrt_request_master(0))) {
         printk(KERN_ERR "Requesting master 0 failed!\n");
         goto out_return;
     }
@@ -139,8 +140,7 @@ int __init init_mini_module(void)
     ecrt_master_callbacks(master, request_lock, release_lock, NULL);
 
     printk(KERN_INFO "Registering domain...\n");
-    if (!(domain1 = ecrt_master_create_domain(master)))
-    {
+    if (!(domain1 = ecrt_master_create_domain(master))) {
         printk(KERN_ERR "Domain creation failed!\n");
         goto out_release_master;
     }
@@ -180,8 +180,6 @@ int __init init_mini_module(void)
         goto out_release_master;
     }
 
-    ecrt_master_prepare(master);
-
     printk("Starting cyclic sample thread.\n");
     init_timer(&timer);
     timer.function = run;
@@ -220,4 +218,3 @@ module_init(init_mini_module);
 module_exit(cleanup_mini_module);
 
 /*****************************************************************************/
-

@@ -95,6 +95,7 @@ void run(long data)
         // process data
         //k_pos = EC_READ_U32(r_ssi_input);
 
+        ecrt_domain_queue(domain1);
         ecrt_master_run(master);
         ecrt_master_send(master);
 
@@ -139,7 +140,6 @@ int __init init_mod(void)
         goto out_return;
     }
 
-
     ecrt_master_callbacks(master, request_lock, release_lock, NULL);
 
     printk(KERN_INFO "Registering domain...\n");
@@ -159,8 +159,6 @@ int __init init_mod(void)
         printk(KERN_ERR "Failed to activate master!\n");
         goto out_release_master;
     }
-
-    ecrt_master_prepare(master);
 
     printk("Starting cyclic sample thread...\n");
     requested_ticks = nano2count(TIMERTICKS);
@@ -186,7 +184,6 @@ int __init init_mod(void)
     rt_task_delete(&task);
  out_stop_timer:
     stop_rt_timer();
-    ecrt_master_deactivate(master);
  out_release_master:
     ecrt_release_master(master);
  out_return:
