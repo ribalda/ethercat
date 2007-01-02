@@ -1,3 +1,88 @@
+2007-01-02 12:47  fp
+
+	* configure.ac: Configuring for kernels 2.6.18 and 2.6.19, thanks
+	  to Ralf Roesch.
+
+2007-01-01 14:58  fp
+
+	* configure.ac: Made it possible to configure under kernel 2.6.18.
+
+2006-12-18 18:10  fp
+
+	* master/fsm.c, master/fsm.h, master/fsm_change.c,
+	  master/fsm_change.h, master/fsm_coe.c, master/fsm_coe.h,
+	  master/fsm_sii.c, master/fsm_sii.h, master/globals.h: State
+	  machines re-send datagrams on timeout.
+
+2006-12-18 17:53  fp
+
+	* master/mailbox.c: Improved error messages in mailbox.c
+
+2006-12-18 11:54  fp
+
+	* script/ethercat.sh: Removed absolute paths for networking
+	  commands; brctl show without additional parameter.
+
+2006-12-18 11:51  fp
+
+	* master/master.c: Fixed warnings in master.c.
+
+2006-12-18 11:48  fp
+
+	* master/fsm_coe.c: Fixed typo in CoE FSM.
+
+2006-12-18 11:00  fp
+
+	* master/master.c: Corrected error messages in get_slave().
+
+2006-12-08 11:52  fp
+
+	* master/slave.c, master/slave.h, script/lsec.pl: Current
+	  consumption in sysfs; "lsec -c" shows current consumption and
+	  remaining current.
+
+2006-12-08 11:49  fp
+
+	* devices/ecdev.h: Fixed return type of ecdev_close().
+
+2006-12-08 11:39  fp
+
+	* NEWS, devices/8139too-2.6.13-ethercat.c,
+	  devices/8139too-2.6.17-ethercat.c, devices/ecdev.h,
+	  master/module.c: Re-introduced ecdev_open() and ecdev_close(), to
+	  avoid a race condition regarding the link state.
+
+2006-11-24 11:09  fp
+
+	* master/master.c: Fixed lost frames display bug when no frames
+	  were sent.
+
+2006-11-24 11:02  fp
+
+	* AUTHORS, NEWS, bootstrap, devices/8139too-2.6.13-ethercat.c,
+	  devices/8139too-2.6.17-ethercat.c, devices/ecdev.h,
+	  include/ecrt.h, master/domain.c, master/domain.h,
+	  master/master.c, master/master.h, master/module.c: Interface
+	  changes for version 1.2, see NEWS file.
+
+2006-11-23 20:19  fp
+
+	* configure.ac, include/ecrt.h, master/domain.c: Version 1.2.0-rc1,
+	  re-introduced ecrt_domain_queue().
+
+2006-11-21 15:46  fp
+
+	* master/device.c, master/device.h, master/master.c: Added frame
+	  counter.
+
+2006-11-21 15:13  fp
+
+	* master/master.c, master/master.h: Introduced "starved" datagrams.
+
+2006-11-07 13:49  fp
+
+	* ChangeLog: Updated ChangeLog
+
 2006-11-07 13:39  fp
 
 	* configure.ac: VERSION 1.1.1
