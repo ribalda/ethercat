@@ -94,7 +94,7 @@ void run(unsigned long data)
 #ifdef KBUS
     EC_WRITE_U8(r_outputs + 2, blink ? 0xFF : 0x00);
 #endif
-    
+
     // send
     spin_lock(&master_lock);
     ecrt_domain_queue(domain1);
