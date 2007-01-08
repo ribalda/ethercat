@@ -330,10 +330,37 @@ void ec_master_flush_sdo_requests(ec_master_t *master)
 /*****************************************************************************/
 
 /**
+   Internal locking callback.
+*/
+
+int ec_master_request_cb(void *master /**< callback data */)
+{
+    spin_lock(&((ec_master_t *) master)->internal_lock);
+    return 0;
+}
+
+/*****************************************************************************/
+
+/**
+   Internal unlocking callback.
+*/
+
+void ec_master_release_cb(void *master /**< callback data */)
+{
+    spin_unlock(&((ec_master_t *) master)->internal_lock);
+}
+
+/*****************************************************************************/
+
+/**
 */
 
 int ec_master_enter_idle_mode(ec_master_t *master /**< EtherCAT master */)
 {
+    master->request_cb = ec_master_request_cb;
+    master->release_cb = ec_master_release_cb;
+    master->cb_data = master;
+	
     master->mode = EC_MASTER_MODE_IDLE;
     queue_delayed_work(master->workqueue, &master->idle_work, 1);
     return 0;
@@ -455,9 +482,9 @@ void ec_master_leave_operation_mode(ec_master_t *master
 
     ec_master_destroy_domains(master);
 
-    master->request_cb = NULL;
-    master->release_cb = NULL;
-    master->cb_data = NULL;
+    master->request_cb = ec_master_request_cb;
+    master->release_cb = ec_master_release_cb;
+    master->cb_data = master;
 
     master->mode = EC_MASTER_MODE_IDLE;
     queue_delayed_work(master->workqueue, &master->idle_work, 1);
@@ -739,20 +766,21 @@ void ec_master_idle_run(void *data /**< master pointer */)
     ec_master_t *master = (ec_master_t *) data;
     cycles_t cycles_start, cycles_end;
 
-    // aquire master lock
-    spin_lock_bh(&master->internal_lock);
-
     cycles_start = get_cycles();
+
+    // receive
+    spin_lock_bh(&master->internal_lock);
     ecrt_master_receive(master);
+    spin_unlock_bh(&master->internal_lock);
 
     // execute master state machine
     ec_fsm_exec(&master->fsm);
 
+    // send
+    spin_lock_bh(&master->internal_lock);
     ecrt_master_send(master);
-    cycles_end = get_cycles();
-
-    // release master lock
     spin_unlock_bh(&master->internal_lock);
+    cycles_end = get_cycles();
 
     master->idle_cycle_times[master->idle_cycle_time_pos]
         = (u32) (cycles_end - cycles_start) * 1000 / cpu_khz;
@@ -1111,36 +1139,22 @@ void ec_master_eoe_run(unsigned long data /**< master pointer */)
     }
     if (!active) goto queue_timer;
 
-    // aquire master lock...
-    if (master->mode == EC_MASTER_MODE_OPERATION) {
-        // request_cb must return 0, if the lock has been aquired!
-        if (master->request_cb(master->cb_data))
-            goto queue_timer;
-    }
-    else if (master->mode == EC_MASTER_MODE_IDLE) {
-        spin_lock(&master->internal_lock);
-    }
-    else
-        goto queue_timer;
-
-    // actual EoE processing
+    // receive datagrams
+    if (master->request_cb(master->cb_data)) goto queue_timer;
     cycles_start = get_cycles();
     ecrt_master_receive(master);
+    master->release_cb(master->cb_data);
 
+    // actual EoE processing
     list_for_each_entry(eoe, &master->eoe_handlers, list) {
         ec_eoe_run(eoe);
     }
 
+    // send datagrams
+    if (master->request_cb(master->cb_data)) goto queue_timer;
     ecrt_master_send(master);
     cycles_end = get_cycles();
-
-    // release lock...
-    if (master->mode == EC_MASTER_MODE_OPERATION) {
-        master->release_cb(master->cb_data);
-    }
-    else if (master->mode == EC_MASTER_MODE_IDLE) {
-        spin_unlock(&master->internal_lock);
-    }
+    master->release_cb(master->cb_data);
 
     master->eoe_cycle_times[master->eoe_cycle_time_pos]
         = (u32) (cycles_end - cycles_start) * 1000 / cpu_khz;
