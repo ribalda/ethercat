@@ -46,12 +46,6 @@
 
 /*****************************************************************************/
 
-MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Florian Pose <fp@igh-essen.com>");
-MODULE_DESCRIPTION("EtherCAT RTAI sample module");
-
-/*****************************************************************************/
-
 // RTAI task frequency in Hz
 #define FREQUENCY 10000
 #define INHIBIT_TIME 20
@@ -84,22 +78,23 @@ ec_pdo_reg_t domain1_pdos[] = {
 
 void run(long data)
 {
-    while (1)
-    {
+    while (1) {
         t_last_cycle = get_cycles();
-        rt_sem_wait(&master_sem);
 
+        rt_sem_wait(&master_sem);
         ecrt_master_receive(master);
         ecrt_domain_process(domain1);
+        rt_sem_signal(&master_sem);
 
         // process data
         //k_pos = EC_READ_U32(r_ssi_input);
 
+        rt_sem_wait(&master_sem);
         ecrt_domain_queue(domain1);
         ecrt_master_run(master);
         ecrt_master_send(master);
-
         rt_sem_signal(&master_sem);
+
         rt_task_wait_period();
     }
 }
@@ -108,7 +103,7 @@ void run(long data)
 
 int request_lock(void *data)
 {
-    // too close to the next RT cycle: deny access...
+    // too close to the next real time cycle: deny access...
     if (get_cycles() - t_last_cycle > t_critical) return -1;
 
     // allow access
@@ -142,7 +137,7 @@ int __init init_mod(void)
 
     ecrt_master_callbacks(master, request_lock, release_lock, NULL);
 
-    printk(KERN_INFO "Registering domain...\n");
+    printk(KERN_INFO "Creating domain...\n");
     if (!(domain1 = ecrt_master_create_domain(master))) {
         printk(KERN_ERR "Domain creation failed!\n");
         goto out_release_master;
@@ -207,8 +202,11 @@ void __exit cleanup_mod(void)
 
 /*****************************************************************************/
 
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Florian Pose <fp@igh-essen.com>");
+MODULE_DESCRIPTION("EtherCAT RTAI sample module");
+
 module_init(init_mod);
 module_exit(cleanup_mod);
 
 /*****************************************************************************/
-

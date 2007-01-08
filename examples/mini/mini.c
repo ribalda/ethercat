@@ -32,7 +32,6 @@
  *****************************************************************************/
 
 #include <linux/module.h>
-#include <linux/delay.h>
 #include <linux/timer.h>
 #include <linux/spinlock.h>
 #include <linux/interrupt.h>
@@ -73,34 +72,35 @@ ec_pdo_reg_t domain1_pdos[] = {
 void run(unsigned long data)
 {
     static unsigned int counter = 0;
-    static unsigned int einaus = 0;
-
-    spin_lock(&master_lock);
+    static unsigned int blink = 0;
 
     // receive
+    spin_lock(&master_lock);
     ecrt_master_receive(master);
     ecrt_domain_process(domain1);
+    spin_unlock(&master_lock);
 
     // process data
-    //k_pos = EC_READ_U32(r_ssi);
-#ifdef KBUS
-    EC_WRITE_U8(r_outputs + 2, einaus ? 0xFF : 0x00);
-#endif
-
-    // send
-    ecrt_domain_queue(domain1);
-    ecrt_master_run(master);
-    ecrt_master_send(master);
-
-    spin_unlock(&master_lock);
+    // k_pos = EC_READ_U32(r_ssi);
 
     if (counter) {
         counter--;
     }
     else {
         counter = FREQUENCY;
-        einaus = !einaus;
+        blink = !blink;
     }
+
+#ifdef KBUS
+    EC_WRITE_U8(r_outputs + 2, blink ? 0xFF : 0x00);
+#endif
+    
+    // send
+    spin_lock(&master_lock);
+    ecrt_domain_queue(domain1);
+    ecrt_master_run(master);
+    ecrt_master_send(master);
+    spin_unlock(&master_lock);
 
     // restart timer
     timer.expires += HZ / FREQUENCY;
@@ -211,8 +211,8 @@ void __exit cleanup_mini_module(void)
 /*****************************************************************************/
 
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR ("Florian Pose <fp@igh-essen.com>");
-MODULE_DESCRIPTION ("EtherCAT minimal test environment");
+MODULE_AUTHOR("Florian Pose <fp@igh-essen.com>");
+MODULE_DESCRIPTION("EtherCAT minimal test environment");
 
 module_init(init_mini_module);
 module_exit(cleanup_mini_module);
