@@ -41,7 +41,7 @@
 
 #define FREQUENCY 100
 
-#define KBUS
+//#define KBUS
 
 /*****************************************************************************/
 
@@ -58,11 +58,11 @@ void *r_inputs;
 void *r_outputs;
 #endif
 
-void *r_ana_in;
+void *r_dig_out;
 
 #if 1
 ec_pdo_reg_t domain1_pdos[] = {
-    {"2", Beckhoff_EL3102_Input1, &r_ana_in},
+    {"2", Beckhoff_EL2004_Outputs, &r_dig_out},
     {}
 };
 #endif
@@ -82,6 +82,7 @@ void run(unsigned long data)
 
     // process data
     // k_pos = EC_READ_U32(r_ssi);
+    EC_WRITE_U8(r_dig_out, blink ? 0x0F : 0x00);
 
     if (counter) {
         counter--;
@@ -98,7 +99,11 @@ void run(unsigned long data)
     // send
     spin_lock(&master_lock);
     ecrt_domain_queue(domain1);
+    spin_unlock(&master_lock);
+
     ecrt_master_run(master);
+
+    spin_lock(&master_lock);
     ecrt_master_send(master);
     spin_unlock(&master_lock);
 
@@ -111,7 +116,7 @@ void run(unsigned long data)
 
 int request_lock(void *data)
 {
-    spin_lock_bh(&master_lock);
+    spin_lock(&master_lock);
     return 0; // access allowed
 }
 
@@ -119,14 +124,14 @@ int request_lock(void *data)
 
 void release_lock(void *data)
 {
-    spin_unlock_bh(&master_lock);
+    spin_unlock(&master_lock);
 }
 
 /*****************************************************************************/
 
 int __init init_mini_module(void)
 {
-#if 1
+#if 0
     ec_slave_t *slave;
 #endif
 
@@ -166,7 +171,7 @@ int __init init_mini_module(void)
     }
 #endif
 
-#if 1
+#if 0
     if (!(slave = ecrt_master_get_slave(master, "2")))
         goto out_release_master;
 

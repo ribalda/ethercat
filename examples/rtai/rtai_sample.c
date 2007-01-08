@@ -47,7 +47,7 @@
 /*****************************************************************************/
 
 // RTAI task frequency in Hz
-#define FREQUENCY 10000
+#define FREQUENCY 4000
 #define INHIBIT_TIME 20
 
 #define TIMERTICKS (1000000000 / FREQUENCY)
@@ -64,13 +64,10 @@ ec_master_t *master = NULL;
 ec_domain_t *domain1 = NULL;
 
 // data fields
-void *r_ana_out;
-
-// channels
-uint32_t k_pos;
+void *r_dig_out;
 
 ec_pdo_reg_t domain1_pdos[] = {
-    {"2", Beckhoff_EL4132_Output1, &r_ana_out},
+    {"2", Beckhoff_EL2004_Outputs, &r_dig_out},
     {}
 };
 
@@ -78,6 +75,9 @@ ec_pdo_reg_t domain1_pdos[] = {
 
 void run(long data)
 {
+    static unsigned int blink = 0;
+    static unsigned int counter = 0;
+
     while (1) {
         t_last_cycle = get_cycles();
 
@@ -87,13 +87,21 @@ void run(long data)
         rt_sem_signal(&master_sem);
 
         // process data
-        //k_pos = EC_READ_U32(r_ssi_input);
+        EC_WRITE_U8(r_dig_out, blink ? 0x0F : 0x00);
 
         rt_sem_wait(&master_sem);
         ecrt_domain_queue(domain1);
         ecrt_master_run(master);
         ecrt_master_send(master);
         rt_sem_signal(&master_sem);
+		
+        if (counter) {
+            counter--;
+        }
+        else {
+            counter = FREQUENCY;
+            blink = !blink;
+        }
 
         rt_task_wait_period();
     }
