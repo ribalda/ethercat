@@ -72,12 +72,12 @@ ec_datagram_type_t;
 
 typedef enum
 {
-    EC_DATAGRAM_INIT, /**< new datagram */
-    EC_DATAGRAM_QUEUED, /**< datagram queued by master */
-    EC_DATAGRAM_SENT, /**< datagram has been sent and still in the queue */
-    EC_DATAGRAM_RECEIVED, /**< datagram has been received and dequeued */
-    EC_DATAGRAM_TIMED_OUT, /**< datagram timed out and was dequeued */
-    EC_DATAGRAM_ERROR /**< error while sending/receiving, datagram dequeued */
+    EC_DATAGRAM_INIT,      /**< new datagram */
+    EC_DATAGRAM_QUEUED,    /**< datagram queued for sending */
+    EC_DATAGRAM_SENT,      /**< datagram has been sent (still in the queue) */
+    EC_DATAGRAM_RECEIVED,  /**< datagram has been received (dequeued) */
+    EC_DATAGRAM_TIMED_OUT, /**< datagram timed out (dequeued) */
+    EC_DATAGRAM_ERROR      /**< error while sending/receiving (dequeued) */
 }
 ec_datagram_state_t;
 
@@ -119,11 +119,10 @@ typedef struct
     uint8_t index; /**< datagram index (set by master) */
     uint16_t working_counter; /**< working counter */
     ec_datagram_state_t state; /**< datagram state */
-    cycles_t cycles_queued; /**< time, the datagram was queued */
     cycles_t cycles_sent; /**< time, the datagram was sent */
-    unsigned long jiffies_sent; /**< jiffies when datagram was sent */
-    cycles_t cycles_received; /**< time, the datagram was received */
-    unsigned long jiffies_received; /**< jiffies when datagram was received */
+    unsigned long jiffies_sent; /**< jiffies, when the datagram was sent */
+    cycles_t cycles_received; /**< time, when the datagram was received */
+    unsigned long jiffies_received; /**< jiffies, when the datagram was rec. */
 }
 ec_datagram_t;
 

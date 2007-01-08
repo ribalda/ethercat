@@ -487,7 +487,6 @@ void ec_master_queue_datagram(ec_master_t *master, /**< EtherCAT master */
 
     list_add_tail(&datagram->queue, &master->datagram_queue);
     datagram->state = EC_DATAGRAM_QUEUED;
-    datagram->cycles_queued = get_cycles();
 }
 
 /*****************************************************************************/
