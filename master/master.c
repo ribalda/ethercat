@@ -399,7 +399,7 @@ int ec_master_enter_operation_mode(ec_master_t *master /**< EtherCAT master */)
     }
 
     // wait for FSM datagram
-    if (datagram->state == EC_DATAGRAM_SENT) {;
+    if (datagram->state == EC_DATAGRAM_SENT) {
         while (get_cycles() - datagram->cycles_sent
                < (cycles_t) EC_IO_TIMEOUT /* us */ * (cpu_khz / 1000)) {}
         ecrt_master_receive(master);
