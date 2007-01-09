@@ -394,7 +394,7 @@ int ec_master_enter_operation_mode(ec_master_t *master /**< EtherCAT master */)
     ec_datagram_t *datagram = &master->fsm.datagram;
 
     ec_master_eoe_stop(master); // stop EoE timer
-    master->eoe_checked = 0; // prevent from starting again by FSM
+    master->eoe_checked = 1; // prevent from starting again by FSM
 
     master->mode = EC_MASTER_MODE_OPERATION;
     while (!cancel_delayed_work(&master->idle_work)) {
@@ -432,7 +432,7 @@ int ec_master_enter_operation_mode(ec_master_t *master /**< EtherCAT master */)
         }
     }
 
-    master->eoe_checked = 1; // allow starting EoE again
+    master->eoe_checked = 0; // allow starting EoE again
 
     return 0;
 
@@ -455,7 +455,7 @@ void ec_master_leave_operation_mode(ec_master_t *master
     ec_datagram_t *datagram = &master->fsm.datagram;
 
     ec_master_eoe_stop(master); // stop EoE timer
-    master->eoe_checked = 0; // prevent from starting again by FSM
+    master->eoe_checked = 1; // prevent from starting again by FSM
 
     // wait for FSM datagram
     if (datagram->state == EC_DATAGRAM_SENT) {
