@@ -193,7 +193,6 @@ void ec_fsm_master_start(ec_fsm_t *fsm)
     ec_datagram_brd(&fsm->datagram, 0x0130, 2);
     ec_master_queue_datagram(fsm->master, &fsm->datagram);
     fsm->master_state = ec_fsm_master_broadcast;
-    EC_DBG("master_start)\n");
 }
 
 /*****************************************************************************/
@@ -320,8 +319,6 @@ void ec_fsm_master_action_process_states(ec_fsm_t *fsm
     ec_master_t *master = fsm->master;
     ec_slave_t *slave;
     char old_state[EC_STATE_STRING_SIZE], new_state[EC_STATE_STRING_SIZE];
-    
-    EC_DBG("process_states()\n");
 
     // check if any slaves are not in the state, they're supposed to be
     list_for_each_entry(slave, &master->slaves, list) {
