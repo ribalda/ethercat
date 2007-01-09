@@ -393,6 +393,9 @@ int ec_master_enter_operation_mode(ec_master_t *master /**< EtherCAT master */)
     ec_slave_t *slave;
     ec_datagram_t *datagram = &master->fsm.datagram;
 
+    ec_master_eoe_stop(master); // stop EoE timer
+    master->eoe_checked = 0; // prevent from starting again by FSM
+
     master->mode = EC_MASTER_MODE_OPERATION;
     while (!cancel_delayed_work(&master->idle_work)) {
         flush_workqueue(master->workqueue);
@@ -429,6 +432,8 @@ int ec_master_enter_operation_mode(ec_master_t *master /**< EtherCAT master */)
         }
     }
 
+    master->eoe_checked = 1; // allow starting EoE again
+
     return 0;
 
  out_idle:
@@ -448,6 +453,9 @@ void ec_master_leave_operation_mode(ec_master_t *master
     ec_slave_t *slave;
     ec_fsm_t *fsm = &master->fsm;
     ec_datagram_t *datagram = &master->fsm.datagram;
+
+    ec_master_eoe_stop(master); // stop EoE timer
+    master->eoe_checked = 0; // prevent from starting again by FSM
 
     // wait for FSM datagram
     if (datagram->state == EC_DATAGRAM_SENT) {
@@ -485,6 +493,8 @@ void ec_master_leave_operation_mode(ec_master_t *master
     master->request_cb = ec_master_request_cb;
     master->release_cb = ec_master_release_cb;
     master->cb_data = master;
+
+    master->eoe_checked = 0; // allow EoE again
 
     master->mode = EC_MASTER_MODE_IDLE;
     queue_delayed_work(master->workqueue, &master->idle_work, 1);
@@ -766,6 +776,8 @@ void ec_master_idle_run(void *data /**< master pointer */)
     ec_master_t *master = (ec_master_t *) data;
     cycles_t cycles_start, cycles_end;
 
+    if (master->mode != EC_MASTER_MODE_IDLE) return;
+    
     cycles_start = get_cycles();
 
     // receive
@@ -1036,14 +1048,6 @@ void ec_master_eoe_start(ec_master_t *master /**< EtherCAT master */)
     if (master->eoe_running || master->eoe_checked) return;
 
     master->eoe_checked = 1;
-
-    // if the locking callbacks are not set in operation mode,
-    // the EoE timer my not be started.
-    if (master->mode == EC_MASTER_MODE_OPERATION
-        && (!master->request_cb || !master->release_cb)) {
-        EC_INFO("No EoE processing because of missing locking callbacks.\n");
-        return;
-    }
 
     // decouple all EoE handlers
     list_for_each_entry(eoe, &master->eoe_handlers, list)
