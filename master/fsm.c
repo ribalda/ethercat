@@ -325,20 +325,13 @@ void ec_fsm_master_action_process_states(ec_fsm_t *fsm
         if (slave->error_flag
             || !slave->online
             || slave->requested_state == EC_SLAVE_STATE_UNKNOWN
-            || (slave->current_state == slave->requested_state
-                && slave->configured)) continue;
+            || slave->current_state == slave->requested_state) continue;
 
         if (master->debug_level) {
             ec_state_string(slave->current_state, old_state);
-            if (slave->current_state != slave->requested_state) {
-                ec_state_string(slave->requested_state, new_state);
-                EC_DBG("Changing state of slave %i (%s -> %s).\n",
-                       slave->ring_position, old_state, new_state);
-            }
-            else if (!slave->configured) {
-                EC_DBG("Reconfiguring slave %i (%s).\n",
-                       slave->ring_position, old_state);
-            }
+            ec_state_string(slave->requested_state, new_state);
+            EC_DBG("Changing state of slave %i (%s -> %s).\n",
+                   slave->ring_position, old_state, new_state);
         }
 
         fsm->master_state = ec_fsm_master_configure_slave;
@@ -1314,8 +1307,6 @@ void ec_fsm_slaveconf_state_init(ec_fsm_t *fsm /**< finite state machine */)
         fsm->slave_state = ec_fsm_slave_state_error;
         return;
     }
-
-    slave->configured = 1;
 
     if (master->debug_level) {
         EC_DBG("Slave %i is now in INIT.\n", slave->ring_position);
