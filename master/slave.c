@@ -632,7 +632,9 @@ size_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
 
     off += sprintf(buffer + off, "State: ");
     off += ec_state_string(slave->current_state, buffer + off);
-    off += sprintf(buffer + off, "\nFlags: %s, %s\n",
+    off += sprintf(buffer + off, " (");
+    off += ec_state_string(slave->requested_state, buffer + off);
+    off += sprintf(buffer + off, ")\nFlags: %s, %s\n",
                    slave->online ? "online" : "OFFLINE",
                    slave->error_flag ? "ERROR" : "ok");
     off += sprintf(buffer + off, "Ring position: %i\n",

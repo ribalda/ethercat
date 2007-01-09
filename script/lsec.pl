@@ -100,7 +100,7 @@ sub query_slaves
 			elsif ($line =~ /^Advanced position: (\d+:\d+)$/) {
 				$slave->{'advanced_position'} = $1;
 			}
-			elsif ($line =~ /^State: (.+)$/) {
+			elsif ($line =~ /^State: (.+) /) {
 				$slave->{'state'} = $1;
 			}
 			elsif ($line =~ /^Coupler: ([a-z]+)$/) {
