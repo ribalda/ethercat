@@ -57,7 +57,7 @@
 void ec_master_clear(struct kobject *);
 void ec_master_destroy_domains(ec_master_t *);
 void ec_master_sync_io(ec_master_t *);
-void ec_master_idle_run(void *);
+static int ec_master_thread(void *);
 void ec_master_eoe_run(unsigned long);
 void ec_master_check_sdo(unsigned long);
 int ec_master_measure_bus_time(ec_master_t *);
@@ -134,8 +134,6 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     master->stats.unmatched = 0;
     master->stats.output_jiffies = 0;
 
-    INIT_WORK(&master->idle_work, ec_master_idle_run, (void *) master);
-
     for (i = 0; i < HZ; i++) {
         master->idle_cycle_times[i] = 0;
         master->eoe_cycle_times[i] = 0;
@@ -166,16 +164,10 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     master->sdo_timer.data = (unsigned long) master;
     init_completion(&master->sdo_complete);
 
-    // create workqueue
-    if (!(master->workqueue = create_singlethread_workqueue("EtherCAT"))) {
-        EC_ERR("Failed to create master workqueue.\n");
-        goto out_return;
-    }
-
     // init XML character device
     if (ec_xmldev_init(&master->xmldev, master, dev_num)) {
         EC_ERR("Failed to init XML character device.\n");
-        goto out_clear_wq;
+        goto out_return;
     }
 
     // create EoE handlers
@@ -218,8 +210,6 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
         kfree(eoe);
     }
     ec_xmldev_clear(&master->xmldev);
- out_clear_wq:
-    destroy_workqueue(master->workqueue);
  out_return:
     return -1;
 }
@@ -263,7 +253,6 @@ void ec_master_clear(struct kobject *kobj /**< kobject of the master */)
     }
 
     ec_fsm_clear(&master->fsm);
-    destroy_workqueue(master->workqueue);
     ec_xmldev_clear(&master->xmldev);
 
     // clear EoE objects
@@ -353,6 +342,38 @@ void ec_master_release_cb(void *master /**< callback data */)
 /*****************************************************************************/
 
 /**
+ * Starts the master thread.
+*/
+
+int ec_master_thread_start(ec_master_t *master /**< EtherCAT master */)
+{
+    init_completion(&master->thread_exit);
+    
+    if (!(master->thread_id =
+                kernel_thread(ec_master_thread, master, CLONE_KERNEL)))
+        return -1;
+    
+    return 0;
+}
+
+/*****************************************************************************/
+
+/**
+ * Stops the master thread.
+*/
+
+void ec_master_thread_stop(ec_master_t *master /**< EtherCAT master */)
+{
+    if (master->thread_id) {
+        kill_proc(master->thread_id, SIGTERM, 1);
+        wait_for_completion(&master->thread_exit);
+        EC_DBG("Master thread exited.\n");
+    }    
+}
+
+/*****************************************************************************/
+
+/**
 */
 
 int ec_master_enter_idle_mode(ec_master_t *master /**< EtherCAT master */)
@@ -362,7 +383,11 @@ int ec_master_enter_idle_mode(ec_master_t *master /**< EtherCAT master */)
     master->cb_data = master;
 	
     master->mode = EC_MASTER_MODE_IDLE;
-    queue_delayed_work(master->workqueue, &master->idle_work, 1);
+    if (ec_master_thread_start(master)) {
+        master->mode = EC_MASTER_MODE_ORPHANED;
+        return -1;
+    }
+
     return 0;
 }
 
@@ -373,13 +398,10 @@ int ec_master_enter_idle_mode(ec_master_t *master /**< EtherCAT master */)
 
 void ec_master_leave_idle_mode(ec_master_t *master /**< EtherCAT master */)
 {
-    ec_master_eoe_stop(master);
-
     master->mode = EC_MASTER_MODE_ORPHANED;
-    while (!cancel_delayed_work(&master->idle_work)) {
-        flush_workqueue(master->workqueue);
-    }
-
+    
+    ec_master_eoe_stop(master);
+    ec_master_thread_stop(master);
     ec_master_flush_sdo_requests(master);
 }
 
@@ -395,11 +417,9 @@ int ec_master_enter_operation_mode(ec_master_t *master /**< EtherCAT master */)
 
     ec_master_eoe_stop(master); // stop EoE timer
     master->eoe_checked = 1; // prevent from starting again by FSM
+    ec_master_thread_stop(master);
 
     master->mode = EC_MASTER_MODE_OPERATION;
-    while (!cancel_delayed_work(&master->idle_work)) {
-        flush_workqueue(master->workqueue);
-    }
 
     // wait for FSM datagram
     if (datagram->state == EC_DATAGRAM_SENT) {
@@ -438,7 +458,9 @@ int ec_master_enter_operation_mode(ec_master_t *master /**< EtherCAT master */)
 
  out_idle:
     master->mode = EC_MASTER_MODE_IDLE;
-    queue_delayed_work(master->workqueue, &master->idle_work, 1);
+    if (ec_master_thread_start(master)) {
+        EC_WARN("Failed to start master thread again!\n");
+    }
     return -1;
 }
 
@@ -497,7 +519,9 @@ void ec_master_leave_operation_mode(ec_master_t *master
     master->eoe_checked = 0; // allow EoE again
 
     master->mode = EC_MASTER_MODE_IDLE;
-    queue_delayed_work(master->workqueue, &master->idle_work, 1);
+    if (ec_master_thread_start(master)) {
+        EC_WARN("Failed to start master thread!\n");
+    }
 }
 
 /*****************************************************************************/
@@ -768,39 +792,46 @@ void ec_master_output_stats(ec_master_t *master /**< EtherCAT master */)
 /*****************************************************************************/
 
 /**
-   Idle mode function.
+   Master kernel thread function.
 */
 
-void ec_master_idle_run(void *data /**< master pointer */)
+static int ec_master_thread(void *data)
 {
     ec_master_t *master = (ec_master_t *) data;
     cycles_t cycles_start, cycles_end;
 
-    if (master->mode != EC_MASTER_MODE_IDLE) return;
+    daemonize("EtherCAT2");
+    allow_signal(SIGTERM);
+
+    while (!signal_pending(current) && master->mode == EC_MASTER_MODE_IDLE) {
+        cycles_start = get_cycles();
+
+        // receive
+        spin_lock_bh(&master->internal_lock);
+        ecrt_master_receive(master);
+        spin_unlock_bh(&master->internal_lock);
+
+        // execute master state machine
+        ec_fsm_exec(&master->fsm);
+
+        // send
+        spin_lock_bh(&master->internal_lock);
+        ecrt_master_send(master);
+        spin_unlock_bh(&master->internal_lock);
+        
+        cycles_end = get_cycles();
+        master->idle_cycle_times[master->idle_cycle_time_pos]
+            = (u32) (cycles_end - cycles_start) * 1000 / cpu_khz;
+        master->idle_cycle_time_pos++;
+        master->idle_cycle_time_pos %= HZ;
+
+        set_current_state(TASK_INTERRUPTIBLE);
+        schedule_timeout(1);
+    }
     
-    cycles_start = get_cycles();
-
-    // receive
-    spin_lock_bh(&master->internal_lock);
-    ecrt_master_receive(master);
-    spin_unlock_bh(&master->internal_lock);
-
-    // execute master state machine
-    ec_fsm_exec(&master->fsm);
-
-    // send
-    spin_lock_bh(&master->internal_lock);
-    ecrt_master_send(master);
-    spin_unlock_bh(&master->internal_lock);
-    cycles_end = get_cycles();
-
-    master->idle_cycle_times[master->idle_cycle_time_pos]
-        = (u32) (cycles_end - cycles_start) * 1000 / cpu_khz;
-    master->idle_cycle_time_pos++;
-    master->idle_cycle_time_pos %= HZ;
-
-    if (master->mode == EC_MASTER_MODE_IDLE)
-        queue_delayed_work(master->workqueue, &master->idle_work, 1);
+    EC_INFO("Master thread exiting.\n");
+    master->thread_id = 0;
+    complete_and_exit(&master->thread_exit, 0);
 }
 
 /*****************************************************************************/

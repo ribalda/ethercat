@@ -118,8 +118,8 @@ struct ec_master
     int debug_level; /**< master debug level */
     ec_stats_t stats; /**< cyclic statistics */
 
-    struct workqueue_struct *workqueue; /**< master workqueue */
-    struct work_struct idle_work; /**< free run work object */
+    int thread_id; /**< master thread PID */
+    struct completion thread_exit; /**< thread completion object */
     uint32_t idle_cycle_times[HZ]; /**< Idle cycle times ring */
     unsigned int idle_cycle_time_pos; /**< time ring buffer position */
 

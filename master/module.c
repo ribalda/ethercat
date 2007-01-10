@@ -372,7 +372,11 @@ int ecdev_open(ec_device_t *device /**< EtherCAT device */)
         return -1;
     }
 
-    ec_master_enter_idle_mode(device->master);
+    if (ec_master_enter_idle_mode(device->master)) {
+        EC_ERR("Failed to enter idle mode!\n");
+        return -1;
+    }
+
     return 0;
 }
 
