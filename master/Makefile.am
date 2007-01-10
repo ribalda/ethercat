@@ -43,7 +43,8 @@ EXTRA_DIST = \
 	fsm_sii.c fsm_sii.h \
 	fsm_change.c fsm_change.h \
 	fsm_coe.c fsm_coe.h \
-	fsm.c fsm.h \
+	fsm_slave.c fsm_slave.h \
+	fsm_master.c fsm_master.h \
 	globals.h \
 	mailbox.c mailbox.h \
 	master.c master.h \

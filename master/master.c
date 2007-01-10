@@ -183,8 +183,15 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
         list_add_tail(&eoe->list, &master->eoe_handlers);
     }
 
+    // init state machine datagram
+    ec_datagram_init(&master->fsm_datagram);
+    if (ec_datagram_prealloc(&master->fsm_datagram, EC_MAX_DATA_SIZE)) {
+        EC_ERR("Failed to allocate FSM datagram.\n");
+        goto out_clear_eoe;
+    }
+
     // create state machine object
-    if (ec_fsm_init(&master->fsm, master)) goto out_clear_eoe;
+    ec_fsm_master_init(&master->fsm, master, &master->fsm_datagram);
 
     // init kobject and add it to the hierarchy
     memset(&master->kobj, 0x00, sizeof(struct kobject));
@@ -203,14 +210,14 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
 
     return 0;
 
- out_clear_eoe:
+out_clear_eoe:
     list_for_each_entry_safe(eoe, next_eoe, &master->eoe_handlers, list) {
         list_del(&eoe->list);
         ec_eoe_clear(eoe);
         kfree(eoe);
     }
     ec_xmldev_clear(&master->xmldev);
- out_return:
+out_return:
     return -1;
 }
 
@@ -252,7 +259,8 @@ void ec_master_clear(struct kobject *kobj /**< kobject of the master */)
         list_del_init(&datagram->queue);
     }
 
-    ec_fsm_clear(&master->fsm);
+    ec_fsm_master_clear(&master->fsm);
+    ec_datagram_clear(&master->fsm_datagram);
     ec_xmldev_clear(&master->xmldev);
 
     // clear EoE objects
@@ -416,7 +424,6 @@ void ec_master_leave_idle_mode(ec_master_t *master /**< EtherCAT master */)
 int ec_master_enter_operation_mode(ec_master_t *master /**< EtherCAT master */)
 {
     ec_slave_t *slave;
-    ec_datagram_t *datagram = &master->fsm.datagram;
 
     ec_master_eoe_stop(master); // stop EoE timer
     master->eoe_checked = 1; // prevent from starting again by FSM
@@ -425,15 +432,15 @@ int ec_master_enter_operation_mode(ec_master_t *master /**< EtherCAT master */)
     master->mode = EC_MASTER_MODE_OPERATION;
 
     // wait for FSM datagram
-    if (datagram->state == EC_DATAGRAM_SENT) {
-        while (get_cycles() - datagram->cycles_sent
+    if (master->fsm_datagram.state == EC_DATAGRAM_SENT) {
+        while (get_cycles() - master->fsm_datagram.cycles_sent
                < (cycles_t) EC_IO_TIMEOUT /* us */ * (cpu_khz / 1000)) {}
         ecrt_master_receive(master);
     }
 
     // finish running master FSM
-    if (ec_fsm_running(&master->fsm)) {
-        while (ec_fsm_exec(&master->fsm)) {
+    if (ec_fsm_master_running(&master->fsm)) {
+        while (ec_fsm_master_exec(&master->fsm)) {
             ec_master_sync_io(master);
         }
     }
@@ -477,42 +484,41 @@ void ec_master_leave_operation_mode(ec_master_t *master
                                     /**< EtherCAT master */)
 {
     ec_slave_t *slave;
-    ec_fsm_t *fsm = &master->fsm;
-    ec_datagram_t *datagram = &master->fsm.datagram;
+    ec_fsm_master_t *fsm = &master->fsm;
+    ec_fsm_slave_t fsm_slave;
 
     ec_master_eoe_stop(master); // stop EoE timer
     master->eoe_checked = 1; // prevent from starting again by FSM
 
     // wait for FSM datagram
-    if (datagram->state == EC_DATAGRAM_SENT) {
+    if (master->fsm_datagram.state == EC_DATAGRAM_SENT) {
         // active waiting
-        while (get_cycles() - datagram->cycles_sent
+        while (get_cycles() - master->fsm_datagram.cycles_sent
                < (cycles_t) EC_IO_TIMEOUT /* us */ * (cpu_khz / 1000));
         ecrt_master_receive(master);
     }
 
     // finish running master FSM
-    if (ec_fsm_running(fsm)) {
-        while (ec_fsm_exec(fsm)) {
+    if (ec_fsm_master_running(fsm)) {
+        while (ec_fsm_master_exec(fsm)) {
             ec_master_sync_io(master);
         }
     }
 
+    ec_fsm_slave_init(&fsm_slave, &master->fsm_datagram);
+    
     // set states for all slaves
     list_for_each_entry(slave, &master->slaves, list) {
         ec_slave_reset(slave);
         ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
 
-        fsm->slave = slave;
-        fsm->slave_state = ec_fsm_slaveconf_state_start;
-
-        do {
-            fsm->slave_state(fsm);
+        ec_fsm_slave_start_conf(&fsm_slave, slave);
+        while (ec_fsm_slave_exec(&fsm_slave)) {
             ec_master_sync_io(master);
         }
-        while (fsm->slave_state != ec_fsm_slave_state_end
-               && fsm->slave_state != ec_fsm_slave_state_error);
     }
+
+    ec_fsm_slave_clear(&fsm_slave);
 
     ec_master_destroy_domains(master);
 
@@ -816,7 +822,7 @@ static int ec_master_thread(void *data)
         spin_unlock_bh(&master->internal_lock);
 
         // execute master state machine
-        ec_fsm_exec(&master->fsm);
+        ec_fsm_master_exec(&master->fsm);
 
         // send
         spin_lock_bh(&master->internal_lock);
@@ -1402,7 +1408,7 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT master */)
 {
     uint32_t domain_offset;
     ec_domain_t *domain;
-    ec_fsm_t *fsm = &master->fsm;
+    ec_fsm_slave_t fsm_slave;
     ec_slave_t *slave;
 
     // allocate all domains
@@ -1415,24 +1421,23 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT master */)
         domain_offset += domain->data_size;
     }
 
+    ec_fsm_slave_init(&fsm_slave, &master->fsm_datagram);
+
     // configure all slaves
     list_for_each_entry(slave, &master->slaves, list) {
-        fsm->slave = slave;
-        fsm->slave_state = ec_fsm_slaveconf_state_start;
-
-        do {
-            fsm->slave_state(fsm);
+        ec_fsm_slave_start_conf(&fsm_slave, slave);
+        while (ec_fsm_slave_exec(&fsm_slave)) { 
             ec_master_sync_io(master);
         }
-        while (fsm->slave_state != ec_fsm_slave_state_end
-               && fsm->slave_state != ec_fsm_slave_state_error);
 
-        if (fsm->slave_state == ec_fsm_slave_state_error) {
+        if (!ec_fsm_slave_success(&fsm_slave)) {
+            ec_fsm_slave_clear(&fsm_slave);
             EC_ERR("Failed to configure slave %i!\n", slave->ring_position);
             return -1;
         }
     }
 
+    ec_fsm_slave_clear(&fsm_slave);
     ec_master_prepare(master); // prepare asynchronous IO
 
     return 0;
@@ -1537,7 +1542,7 @@ void ecrt_master_run(ec_master_t *master /**< EtherCAT master */)
     ec_master_output_stats(master);
 
     // execute master state machine in a loop
-    ec_fsm_exec(&master->fsm);
+    ec_fsm_master_exec(&master->fsm);
 }
 
 /*****************************************************************************/

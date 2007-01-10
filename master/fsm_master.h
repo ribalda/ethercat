@@ -38,8 +38,8 @@
 
 /*****************************************************************************/
 
-#ifndef __EC_STATES__
-#define __EC_STATES__
+#ifndef __EC_FSM_MASTER__
+#define __EC_FSM_MASTER__
 
 #include "globals.h"
 #include "../include/ecrt.h"
@@ -47,35 +47,31 @@
 #include "slave.h"
 #include "canopen.h"
 
-#include "fsm_sii.h"
-#include "fsm_change.h"
-#include "fsm_coe.h"
+#include "fsm_slave.h"
 
 /*****************************************************************************/
 
-typedef struct ec_fsm ec_fsm_t; /**< \see ec_fsm */
+typedef struct ec_fsm_master ec_fsm_master_t; /**< \see ec_fsm_master */
 
 /**
    Finite state machine of an EtherCAT master.
 */
 
-struct ec_fsm
+struct ec_fsm_master
 {
     ec_master_t *master; /**< master the FSM runs on */
-    ec_slave_t *slave; /**< slave the FSM runs on */
-    ec_datagram_t datagram; /**< datagram used in the state machine */
+    ec_datagram_t *datagram; /**< datagram used in the state machine */
     unsigned int retries; /**< retries on datagram timeout. */
 
-    void (*master_state)(ec_fsm_t *); /**< master state function */
-    unsigned int master_slaves_responding; /**< number of responding slaves */
-    ec_slave_state_t master_slave_states; /**< states of responding slaves */
-    unsigned int master_validation; /**< non-zero, if validation to do */
-    uint16_t sii_offset; /**< current offset for SII access */
-    ec_sdo_request_t *sdo_request;
+    void (*state)(ec_fsm_master_t *); /**< master state function */
+    unsigned int slaves_responding; /**< number of responding slaves */
+    ec_slave_state_t slave_states; /**< states of responding slaves */
+    unsigned int validate; /**< non-zero, if validation to do */
+    ec_slave_t *slave; /**< current slave */
+    ec_sdo_request_t *sdo_request; /**< SDO request to process */
+    uint16_t sii_offset; 
 
-    void (*slave_state)(ec_fsm_t *); /**< slave state function */
-    ec_sdo_data_t *sdodata; /**< SDO configuration data */
-
+    ec_fsm_slave_t fsm_slave; /**< slave state machine */
     ec_fsm_sii_t fsm_sii; /**< SII state machine */
     ec_fsm_change_t fsm_change; /**< State change state machine */
     ec_fsm_coe_t fsm_coe; /**< CoE state machine */
@@ -83,20 +79,12 @@ struct ec_fsm
 
 /*****************************************************************************/
 
-int ec_fsm_init(ec_fsm_t *, ec_master_t *);
-void ec_fsm_clear(ec_fsm_t *);
+void ec_fsm_master_init(ec_fsm_master_t *, ec_master_t *, ec_datagram_t *);
+void ec_fsm_master_clear(ec_fsm_master_t *);
 
-int ec_fsm_exec(ec_fsm_t *);
-int ec_fsm_running(ec_fsm_t *);
-int ec_fsm_success(ec_fsm_t *);
-
-// TODO: layout slave state machines
-
-/** \cond */
-void ec_fsm_slaveconf_state_start(ec_fsm_t *);
-void ec_fsm_slave_state_end(ec_fsm_t *);
-void ec_fsm_slave_state_error(ec_fsm_t *);
-/** \endcond */
+int ec_fsm_master_exec(ec_fsm_master_t *);
+int ec_fsm_master_running(ec_fsm_master_t *);
+int ec_fsm_master_success(ec_fsm_master_t *);
 
 /*****************************************************************************/
 
