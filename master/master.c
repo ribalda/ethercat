@@ -810,7 +810,7 @@ static int ec_master_thread(void *data)
     ec_master_t *master = (ec_master_t *) data;
     cycles_t cycles_start, cycles_end;
 
-    daemonize("EtherCAT2");
+    daemonize("EtherCAT");
     allow_signal(SIGTERM);
 
     while (!signal_pending(current) && master->mode == EC_MASTER_MODE_IDLE) {
