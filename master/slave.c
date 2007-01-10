@@ -1220,13 +1220,13 @@ int ecrt_slave_pdo_size(ec_slave_t *slave, /**< EtherCAT slave */
 
 /*****************************************************************************/
 
-/**< \cond */
+/** \cond */
 
 EXPORT_SYMBOL(ecrt_slave_conf_sdo8);
 EXPORT_SYMBOL(ecrt_slave_conf_sdo16);
 EXPORT_SYMBOL(ecrt_slave_conf_sdo32);
 EXPORT_SYMBOL(ecrt_slave_pdo_size);
 
-/**< \endcond */
+/** \endcond */
 
 /*****************************************************************************/
