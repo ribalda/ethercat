@@ -374,6 +374,7 @@ void ec_master_thread_stop(ec_master_t *master /**< EtherCAT master */)
 /*****************************************************************************/
 
 /**
+ * Transition function from ORPHANED to IDLE mode.
 */
 
 int ec_master_enter_idle_mode(ec_master_t *master /**< EtherCAT master */)
@@ -394,6 +395,7 @@ int ec_master_enter_idle_mode(ec_master_t *master /**< EtherCAT master */)
 /*****************************************************************************/
 
 /**
+ * Transition function from IDLE to ORPHANED mode.
 */
 
 void ec_master_leave_idle_mode(ec_master_t *master /**< EtherCAT master */)
@@ -408,6 +410,7 @@ void ec_master_leave_idle_mode(ec_master_t *master /**< EtherCAT master */)
 /*****************************************************************************/
 
 /**
+ * Transition function from IDLE to OPERATION mode.
 */
 
 int ec_master_enter_operation_mode(ec_master_t *master /**< EtherCAT master */)
@@ -467,6 +470,7 @@ int ec_master_enter_operation_mode(ec_master_t *master /**< EtherCAT master */)
 /*****************************************************************************/
 
 /**
+ * Transition function from OPERATION to IDLE mode.
 */
 
 void ec_master_leave_operation_mode(ec_master_t *master

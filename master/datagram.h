@@ -89,12 +89,15 @@ ec_datagram_state_t;
 
 typedef union
 {
+    /**
+     * Physical address.
+     */
     struct
     {
         uint16_t slave; /**< configured or autoincrement address */
         uint16_t mem; /**< physical memory address */
     }
-    physical; /**< physical address */
+    physical;
 
     uint32_t logical; /**< logical address */
 }
