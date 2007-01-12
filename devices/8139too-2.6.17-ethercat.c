@@ -711,6 +711,9 @@ static int rtl8139_poll(struct net_device *dev, int *budget);
 #ifdef CONFIG_NET_POLL_CONTROLLER
 static void rtl8139_poll_controller(struct net_device *dev);
 #endif
+/* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+void ec_poll(struct net_device *);
+/* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 irqreturn_t rtl8139_interrupt (int irq, void *dev_instance,
                                struct pt_regs *regs);
 static int rtl8139_close (struct net_device *dev);
@@ -2344,6 +2347,15 @@ static int rtl8139_poll(struct net_device *dev, int *budget)
 	return !done;
 }
 
+/* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+void ec_poll(struct net_device *dev)
+{
+    rtl8139_interrupt(0, dev, NULL);
+}
+
+/* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
+
 /* The interrupt handler does all of the Rx thread work and cleans up
    after the Tx thread. */
 irqreturn_t rtl8139_interrupt (int irq, void *dev_instance,
@@ -2901,7 +2913,7 @@ static int __init rtl8139_init_module (void)
 	if (rtl_ec_net_dev) {
 		printk(KERN_INFO "Registering EtherCAT device...\n");
 		if (!(rtl_ec_dev = ecdev_register(ec_device_master_index,
-			rtl_ec_net_dev, rtl8139_interrupt, THIS_MODULE))) {
+			rtl_ec_net_dev, ec_poll, THIS_MODULE))) {
 			printk(KERN_ERR "Failed to register EtherCAT device!\n");
 			goto out_pci;
 		}

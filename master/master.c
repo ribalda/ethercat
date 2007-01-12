@@ -757,8 +757,8 @@ void ec_master_receive_datagrams(ec_master_t *master, /**< EtherCAT master */
 
         // dequeue the received datagram
         datagram->state = EC_DATAGRAM_RECEIVED;
-        datagram->cycles_received = master->device->cycles_isr;
-        datagram->jiffies_received = master->device->jiffies_isr;
+        datagram->cycles_received = master->device->cycles_poll;
+        datagram->jiffies_received = master->device->jiffies_poll;
         list_del_init(&datagram->queue);
     }
 }
@@ -1490,7 +1490,7 @@ void ecrt_master_send(ec_master_t *master /**< EtherCAT master */)
         }
 
         // query link state
-        ec_device_call_isr(master->device);
+        ec_device_poll(master->device);
         return;
     }
 
@@ -1511,7 +1511,7 @@ void ecrt_master_receive(ec_master_t *master /**< EtherCAT master */)
     cycles_t cycles_timeout;
 
     // receive datagrams
-    ec_device_call_isr(master->device);
+    ec_device_poll(master->device);
 
     cycles_timeout = (cycles_t) EC_IO_TIMEOUT /* us */ * (cpu_khz / 1000);
 
@@ -1519,7 +1519,7 @@ void ecrt_master_receive(ec_master_t *master /**< EtherCAT master */)
     list_for_each_entry_safe(datagram, next, &master->datagram_queue, queue) {
         if (datagram->state != EC_DATAGRAM_SENT) continue;
 
-        if (master->device->cycles_isr - datagram->cycles_sent
+        if (master->device->cycles_poll - datagram->cycles_sent
             > cycles_timeout) {
             list_del_init(&datagram->queue);
             datagram->state = EC_DATAGRAM_TIMED_OUT;

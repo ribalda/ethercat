@@ -58,16 +58,16 @@ struct ec_device;
 typedef struct ec_device ec_device_t; /**< \see ec_device */
 
 /**
-   Interrupt-Service-Routine Type
+   Device poll function type.
 */
 
-typedef irqreturn_t (*ec_isr_t)(int, void *, struct pt_regs *);
+typedef void (*ec_pollfunc_t)(struct net_device *);
 
 /*****************************************************************************/
 // Registration functions
 
 ec_device_t *ecdev_register(unsigned int master_index,
-                            struct net_device *net_dev, ec_isr_t isr,
+                            struct net_device *net_dev, ec_pollfunc_t poll,
                             struct module *module);
 void ecdev_unregister(unsigned int master_index, ec_device_t *device);
 

@@ -282,7 +282,7 @@ size_t ec_state_string(uint8_t states, /**< slave states */
 ec_device_t *ecdev_register(unsigned int master_index, /**< master index */
                             struct net_device *net_dev, /**< net_device of
                                                            the device */
-                            ec_isr_t isr, /**< interrupt service routine */
+                            ec_pollfunc_t poll, /**< device poll function */
                             struct module *module /**< pointer to the module */
                             )
 {
@@ -306,7 +306,7 @@ ec_device_t *ecdev_register(unsigned int master_index, /**< master index */
         goto out_up;
     }
 
-    if (ec_device_init(master->device, master, net_dev, isr, module)) {
+    if (ec_device_init(master->device, master, net_dev, poll, module)) {
         EC_ERR("Failed to init device!\n");
         goto out_free;
     }

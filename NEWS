@@ -6,7 +6,7 @@ $Id$
 
 Changes in version 1.2.0:
 
-* Interface changes:
+* Realtime interface changes:
   - Re-introduced ecrt_domain_queue() to allow datagram queuing apart
     from datagram processing. The queuing of a domain's datagrams is not
     done in ecrt_domain_process() any more!
@@ -20,6 +20,10 @@ Changes in version 1.2.0:
     ecrt_domain_register_pdo_list() and ecrt_domain_register_pdo_range() may
     not be NULL any more.
   - Removed ecrt_slave_pdo_size(). This function was deprecated long before.
+* Device interface changes:
+  - ec_isr_t was replaced by ec_pollfunc_t, the device driver has to supply
+    a poll function to call its ISR. This was introduced because some network
+    drivers' interrupt functions have different arguments.
 * State machines now try to re-send datagrams on datagram timeout.
 * New option -c of the lsec script, displays slave current consumptions and
   remaining current.

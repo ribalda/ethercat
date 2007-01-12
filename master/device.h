@@ -65,9 +65,9 @@ struct ec_device
     struct net_device *dev; /**< pointer to the assigned net_device */
     uint8_t open; /**< true, if the net_device has been opened */
     struct sk_buff *tx_skb; /**< transmit socket buffer */
-    ec_isr_t isr; /**< pointer to the device's interrupt service routine */
-    cycles_t cycles_isr; /**< cycles of last ISR call */
-    unsigned long jiffies_isr; /**< jiffies of last ISR call */
+    ec_pollfunc_t poll; /**< pointer to the device's poll function */
+    cycles_t cycles_poll; /**< cycles of last poll */
+    unsigned long jiffies_poll; /**< jiffies of last poll */
     struct module *module; /**< pointer to the device's owning module */
     uint8_t link_state; /**< device link state */
     unsigned int tx_count; /**< number of frames sent */
@@ -80,13 +80,13 @@ struct ec_device
 /*****************************************************************************/
 
 int ec_device_init(ec_device_t *, ec_master_t *, struct net_device *,
-                   ec_isr_t, struct module *);
+                   ec_pollfunc_t, struct module *);
 void ec_device_clear(ec_device_t *);
 
 int ec_device_open(ec_device_t *);
 int ec_device_close(ec_device_t *);
 
-void ec_device_call_isr(ec_device_t *);
+void ec_device_poll(ec_device_t *);
 uint8_t *ec_device_tx_data(ec_device_t *);
 void ec_device_send(ec_device_t *, size_t);
 
