@@ -471,13 +471,19 @@ ec_master_t *ecrt_request_master(unsigned int master_index
 
 void ecrt_release_master(ec_master_t *master /**< EtherCAT master */)
 {
+    EC_INFO("Releasing master %i...\n", master->index);
+
+    if (master->mode != EC_MASTER_MODE_OPERATION) {
+        EC_WARN("Master %i was was not requested!\n", master->index);
+        return;
+    }
+
     ec_master_leave_operation_mode(master);
 
     module_put(master->device->module);
     atomic_inc(&master->available);
 
     EC_INFO("Released master %i.\n", master->index);
-    return;
 }
 
 /*****************************************************************************/
