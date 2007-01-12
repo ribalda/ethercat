@@ -38,6 +38,8 @@ EXTRA_DIST = \
 	8139too-2.6.13-orig.c \
 	8139too-2.6.17-ethercat.c \
 	8139too-2.6.17-orig.c
+	8139too-2.6.18-ethercat.c \
+	8139too-2.6.18-orig.c
 
 modules:
 	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_top_srcdir@" modules
