@@ -256,7 +256,7 @@ void ec_fsm_master_state_broadcast(ec_fsm_master_t *fsm /**< master state machin
 
         // begin scanning of slaves
         fsm->slave = list_entry(master->slaves.next, ec_slave_t, list);
-        ec_fsm_slave_start_scan(&fsm->fsm_slave, slave);
+        ec_fsm_slave_start_scan(&fsm->fsm_slave, fsm->slave);
         ec_fsm_slave_exec(&fsm->fsm_slave); // execute immediately
         fsm->state = ec_fsm_master_state_scan_slaves;
         return;
