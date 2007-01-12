@@ -693,6 +693,8 @@ MODULE_PARM_DESC(ec_device_index,
 MODULE_PARM_DESC(ec_device_master_index,
                  "Index of the EtherCAT master to register the device.");
 
+void ec_poll(struct net_device *);
+
 /* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 
 static int read_eeprom (void __iomem *ioaddr, int location, int addr_len);
@@ -709,11 +711,8 @@ static int rtl8139_poll(struct net_device *dev, int *budget);
 #ifdef CONFIG_NET_POLL_CONTROLLER
 static void rtl8139_poll_controller(struct net_device *dev);
 #endif
-/* EtherCAT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
-void ec_poll(struct net_device *);
-/* EtherCAT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
-irqreturn_t rtl8139_interrupt (int irq, void *dev_instance,
-                               struct pt_regs *regs);
+static irqreturn_t rtl8139_interrupt (int irq, void *dev_instance,
+			       struct pt_regs *regs);
 static int rtl8139_close (struct net_device *dev);
 static int netdev_ioctl (struct net_device *dev, struct ifreq *rq, int cmd);
 static struct net_device_stats *rtl8139_get_stats (struct net_device *dev);
