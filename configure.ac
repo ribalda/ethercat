@@ -50,10 +50,10 @@ if test \! -r ${sourcedir}/.config; then
 fi
 
 # Try to get kernel release string
-if test -r ${sourcedir}/.kernelrelease; then
-    kernelrelease=`cat $sourcedir/.kernelrelease`
-elif test -r ${sourcedir}/include/config/kernel.release; then
+if test -r ${sourcedir}/include/config/kernel.release; then
     kernelrelease=`cat $sourcedir/include/config/kernel.release`
+elif test -r ${sourcedir}/.kernelrelease; then
+    kernelrelease=`cat $sourcedir/.kernelrelease`
 elif test -r ${sourcedir}/include/linux/utsrelease.h; then
     hdr=${sourcedir}/include/linux/utsrelease.h
     kernelrelease=`grep UTS_RELEASE $hdr | cut -d " " -f 3- | tr -d \"`
@@ -68,7 +68,7 @@ if test -z "$kernelrelease"; then
 fi
 
 # Extract three numbers from kernel release string
-linuxversion=`echo $kernelrelease | grep -oE [[0-9]]+\.[[0-9]]+\.[[0-9]]+`
+linuxversion=`echo $kernelrelease | grep -oE "^[[0-9]]+\.[[0-9]]+\.[[0-9]]+"`
 
 AC_SUBST(LINUX_SOURCE_DIR,[$sourcedir])
 AC_SUBST(LINUX_KERNEL_RELEASE,[$kernelrelease])
