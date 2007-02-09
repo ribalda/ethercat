@@ -8,19 +8,17 @@ $Id$
 
 Important things to do:
 
-* Read AL Status Code with AL Control Response (if possible?)
-* Coupling of EoE handlers before configuring slaves.
-  (avoiding duplicate configuration)
-* Implement all EtherCAT commands
-* Determine number of frames the NIC can handle
 * Implement e100 driver
+* Implement distributed clocks
+* Read dynamic PDOs from SDO dictionary.
 
 -------------------------------------------------------------------------------
 
 Not-so-important things to do:
 
-* Calculate bus topology
 * File access over EtherCAT (FoE)
 * Allow VLAN tagging
+* Implement all EtherCAT commands
+* Determine number of frames the NIC can handle
 
 -------------------------------------------------------------------------------
