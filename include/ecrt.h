@@ -59,6 +59,14 @@
 
 /*****************************************************************************/
 
+#define ECRT_VER_MAJOR 1U
+#define ECRT_VER_MINOR 2U
+
+#define ECRT_VERSION(a,b) (((a) << 8) + (b))
+#define ECRT_VERSION_MAGIC ECRT_VERSION(ECRT_VER_MAJOR, ECRT_VER_MINOR)
+
+/*****************************************************************************/
+
 struct ec_master;
 typedef struct ec_master ec_master_t; /**< \see ec_master */
 
@@ -98,6 +106,8 @@ typedef enum {EC_DIR_INPUT, EC_DIR_OUTPUT} ec_direction_t;
 
 ec_master_t *ecrt_request_master(unsigned int master_index);
 void ecrt_release_master(ec_master_t *master);
+
+unsigned int ecrt_version_magic(void);
 
 /******************************************************************************
  *  Master methods

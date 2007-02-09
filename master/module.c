@@ -401,6 +401,19 @@ void ecdev_close(ec_device_t *device /**< EtherCAT device */)
  *****************************************************************************/
 
 /**
+ * Returns the version magic of the realtime interface.
+ * \return ECRT version magic.
+ * \ingroup RealtimeInterface
+ */
+
+unsigned int ecrt_version_magic(void)
+{
+    return ECRT_VERSION_MAGIC;
+}
+
+/*****************************************************************************/
+
+/**
    Reserves an EtherCAT master for realtime operation.
    \return pointer to reserved master, or NULL on error
    \ingroup RealtimeInterface
