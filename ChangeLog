@@ -1,3 +1,165 @@
+2007-02-09 10:23  fp
+
+	* NEWS, include/ecrt.h, master/module.c: Introduced ECRT version
+	  magic.
+
+2007-02-09 10:04  fp
+
+	* master/master.c: Minor changes in master thread messages.
+
+2007-02-09 09:52  fp
+
+	* master/device.c: Fixed invalid module pointer in device
+	  structure.
+
+2007-02-06 15:13  fp
+
+	* master/fsm_master.c: Fixed bug that caused the last slave not to
+	  be scanned.
+
+2007-01-15 09:49  fp
+
+	* configure.ac: Fixed bad configure behavior with complex kernel
+	  version strings.
+
+2007-01-12 15:18  fp
+
+	* devices/Makefile.am, master/Makefile.am: Fixed modules_install
+	  target: create dir before copying.
+
+2007-01-12 15:01  fp
+
+	* devices/8139too-2.6.13-ethercat.c,
+	  devices/8139too-2.6.17-ethercat.c,
+	  devices/8139too-2.6.18-ethercat.c,
+	  devices/8139too-2.6.19-ethercat.c: Made network driver ISRs
+	  static again.
+
+2007-01-12 14:49  fp
+
+	* devices/8139too-2.6.19-ethercat.c, devices/8139too-2.6.19-orig.c,
+	  devices/Makefile.am: Added 8139too driver for kernel 2.6.19.
+
+2007-01-12 14:28  fp
+
+	* NEWS, devices/8139too-2.6.13-ethercat.c,
+	  devices/8139too-2.6.17-ethercat.c,
+	  devices/8139too-2.6.18-ethercat.c, devices/ecdev.h,
+	  master/device.c, master/device.h, master/master.c,
+	  master/module.c: Replaced ec_isr_t by ec_pollfunc_t; added poll
+	  function s in network drivers.
+
+2007-01-12 12:50  fp
+
+	* ., devices/8139too-2.6.18-ethercat.c,
+	  devices/8139too-2.6.18-orig.c, devices/Makefile.am: Added 8139too
+	  driver for 2.6.18.
+
+2007-01-12 12:10  fp
+
+	* master/module.c: Warn on duplicate master releasing.
+
+2007-01-12 12:09  fp
+
+	* master/fsm_master.c: Fixed bug in master state machine that came
+	  up in r745.
+
+2007-01-10 16:34  fp
+
+	* master/master.c: Minor fix on master.c (name of master thread).
+
+2007-01-10 16:32  fp
+
+	* master/Kbuild, master/Makefile.am, master/fsm.c, master/fsm.h,
+	  master/fsm_master.c, master/fsm_master.h, master/fsm_slave.c,
+	  master/fsm_slave.h, master/master.c, master/master.h: Layed out
+	  slave state machines in own files fsm_slave.[ch]; renamed
+	  fsm.[ch] to fsm_master.[ch]
+
+2007-01-10 10:58  fp
+
+	* master/datagram.h, master/master.c: Added some documentation.
+
+2007-01-10 10:51  fp
+
+	* master/slave.c: Minor changes to slave.c
+
+2007-01-10 10:45  fp
+
+	* master/master.c, master/master.h, master/module.c: Master
+	  workqueue replaced with kernel thread.
+
+2007-01-09 14:51  fp
+
+	* master/master.c: Fixed blocking of EoE processing while entering
+	  or leaving operational mode.
+
+2007-01-09 14:36  fp
+
+	* master/fsm.c, master/slave.c, master/slave.h: Re-added
+	  slave.configured flag as slave.self_configured.
+
+2007-01-09 14:19  fp
+
+	* master/fsm.c: Removed debug messages again.
+
+2007-01-09 14:12  fp
+
+	* master/fsm.c: Temporarily added some debug information.
+
+2007-01-09 13:57  fp
+
+	* master/fsm.c, master/slave.c, master/slave.h: Removed
+	  slave.configured flag.
+
+2007-01-09 13:42  fp
+
+	* master/slave.c, script/lsec.pl: Display requested state in slave
+	  info.
+
+2007-01-09 12:56  fp
+
+	* master/master.c: Fixed race: Stop EoE processing when entering or
+	  leaving operation mode.
+
+2007-01-08 15:15  fp
+
+	* master/master.c: Minor fix in master.c
+
+2007-01-08 15:02  fp
+
+	* examples/mini/mini.c, examples/rtai/rtai_sample.c: Adjusted
+	  examples to EtherLab starter kit hardware.
+
+2007-01-08 15:01  fp
+
+	* master/master.c: Internal locking callbacks, improved locking.
+
+2007-01-08 14:24  fp
+
+	* master/datagram.c: Datagram preallocation with ATOMIC flag,
+	  because it is calles in timer context.
+
+2007-01-08 08:36  fp
+
+	* examples/mini/mini.c: Minor changes in minimal example.
+
+2007-01-08 08:32  fp
+
+	* examples/mini/mini.c, examples/msr/msr_sample.c,
+	  examples/rtai/rtai_sample.c: Shorter critical sections in
+	  examples.
+
+2007-01-08 08:23  fp
+
+	* master/datagram.c, master/datagram.h, master/master.c: Removed
+	  datagram.cycles_queued, needed for "starved" datagrams
+	  (deprecated).
+
+2007-01-02 13:27  fp
+
+	* ChangeLog: Updated ChangeLog.
+
 2007-01-02 13:25  fp
 
 	* examples/mini/mini.c, examples/msr/msr_sample.c,
