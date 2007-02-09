@@ -66,6 +66,7 @@ int ec_device_init(ec_device_t *device, /**< EtherCAT device */
     device->master = master;
     device->dev = net_dev;
     device->poll = poll;
+    device->module = module;
 
     device->open = 0;
     device->link_state = 0; // down
