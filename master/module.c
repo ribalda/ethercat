@@ -512,6 +512,7 @@ EXPORT_SYMBOL(ecdev_open);
 EXPORT_SYMBOL(ecdev_close);
 EXPORT_SYMBOL(ecrt_request_master);
 EXPORT_SYMBOL(ecrt_release_master);
+EXPORT_SYMBOL(ecrt_version_magic);
 
 /** \endcond */
 
