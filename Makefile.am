@@ -54,6 +54,7 @@ clean-local:
 	@rm -f Modules.symvers
 
 mydist:
+	svn2cl $(srcdir)
 	@SVNREV=`svnversion $(srcdir)` && \
 	  $(MAKE) dist-bzip2 \
 	  distdir=$(PACKAGE)-$(VERSION)-$(BRANCH)-r$${SVNREV}
