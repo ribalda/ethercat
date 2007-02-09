@@ -357,6 +357,7 @@ int ec_master_thread_start(ec_master_t *master /**< EtherCAT master */)
 {
     init_completion(&master->thread_exit);
     
+    EC_INFO("Starting master thread.\n");
     if (!(master->thread_id =
                 kernel_thread(ec_master_thread, master, CLONE_KERNEL)))
         return -1;
@@ -375,7 +376,7 @@ void ec_master_thread_stop(ec_master_t *master /**< EtherCAT master */)
     if (master->thread_id) {
         kill_proc(master->thread_id, SIGTERM, 1);
         wait_for_completion(&master->thread_exit);
-        EC_DBG("Master thread exited.\n");
+        EC_INFO("Master thread exited.\n");
     }    
 }
 
@@ -839,7 +840,6 @@ static int ec_master_thread(void *data)
         schedule_timeout(1);
     }
     
-    EC_INFO("Master thread exiting.\n");
     master->thread_id = 0;
     complete_and_exit(&master->thread_exit, 0);
 }
