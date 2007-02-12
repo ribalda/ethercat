@@ -1452,22 +1452,25 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT master */)
 void ec_master_sync_io(ec_master_t *master /**< EtherCAT master */)
 {
     ec_datagram_t *datagram;
-    unsigned int datagrams_waiting;
+    unsigned int datagrams_sent;
 
-    // send datagrams
+    // send all datagrams
     ecrt_master_send(master);
 
     while (1) { // active waiting
         ecrt_master_receive(master); // receive and dequeue datagrams
 
         // count number of datagrams still waiting for response
-        datagrams_waiting = 0;
+        datagrams_sent = 0;
         list_for_each_entry(datagram, &master->datagram_queue, queue) {
-            datagrams_waiting++;
+            // there may be another process that queued commands
+            // in the meantime.
+            if (datagram->state == EC_DATAGRAM_QUEUED) continue;
+            datagrams_sent++;
         }
 
-        // if there are no more datagrams waiting, abort loop.
-        if (!datagrams_waiting) break;
+        // abort loop if there are no more datagrams marked as sent.
+        if (!datagrams_sent) break;
     }
 }
 
