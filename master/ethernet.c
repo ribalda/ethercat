@@ -161,7 +161,7 @@ int ec_eoe_init(ec_eoe_t *eoe /**< EoE handler */)
 
 void ec_eoe_clear(ec_eoe_t *eoe /**< EoE handler */)
 {
-    unregister_netdev(eoe->dev);
+    unregister_netdev(eoe->dev); // possibly calls close callback
     free_netdev(eoe->dev);
 
     // empty transmit queue
@@ -648,11 +648,8 @@ int ec_eoedev_stop(struct net_device *dev /**< EoE net_device */)
     eoe->opened = 0;
     ec_eoe_flush(eoe);
     EC_INFO("%s stopped.\n", dev->name);
-    if (!eoe->slave)
-        EC_WARN("Device %s is not coupled to any EoE slave!\n", dev->name);
-    else {
+    if (eoe->slave)
         ec_slave_request_state(eoe->slave, EC_SLAVE_STATE_PREOP);
-    }
     return 0;
 }
 
