@@ -513,6 +513,15 @@ void ec_master_leave_operation_mode(ec_master_t *master
         ec_slave_reset(slave);
         ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
 
+        // don't try to set PREOP for slaves that don't respond,
+        // because of 3 second timeout.
+        if (!slave->online) {
+            if (master->debug_level)
+                EC_DBG("Skipping to configure offline slave %i.\n",
+                        slave->ring_position);
+            continue;
+        }
+
         ec_fsm_slave_start_conf(&fsm_slave, slave);
         while (ec_fsm_slave_exec(&fsm_slave)) {
             ec_master_sync_io(master);

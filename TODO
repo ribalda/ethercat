@@ -7,7 +7,6 @@ $Id$
 -------------------------------------------------------------------------------
 
 * Release 1.2:
-  - Find bug causing slow unloading after topology change.
   - Introduce topology_change_pending.
   - Update feature lists.
 
