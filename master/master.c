@@ -1458,6 +1458,7 @@ void ec_master_sync_io(ec_master_t *master /**< EtherCAT master */)
     ecrt_master_send(master);
 
     while (1) { // active waiting
+        schedule(); // schedule other processes while waiting.
         ecrt_master_receive(master); // receive and dequeue datagrams
 
         // count number of datagrams still waiting for response
