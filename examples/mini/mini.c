@@ -62,7 +62,7 @@ void *r_dig_out;
 
 #if 1
 ec_pdo_reg_t domain1_pdos[] = {
-    {"2", Beckhoff_EL2004_Outputs, &r_dig_out},
+    {"4", Beckhoff_EL2004_Outputs, &r_dig_out},
     {}
 };
 #endif
