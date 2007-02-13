@@ -10,9 +10,7 @@ Building and installing
 =======================
 
 The building and installation procedure is described in section 2.1 in the
-EtherCAT master documentation:
-
-documentation/ethercat-doc.pdf
+EtherCAT master documentation available from http://etherlab.org/ethercat.
 
 -------------------------------------------------------------------------------
 
@@ -25,8 +23,8 @@ $ make modules
 
 (and as root)
 
-# make modules_install
 # make install
+# make modules_install
 
 ...and copying the init script and sysconfig file from $prefix/etc to the
 appropriate locations and customizing the sysconfig file.
