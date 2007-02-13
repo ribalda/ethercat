@@ -6,6 +6,8 @@ $Id$
 
 Changes in version 1.2.0:
 
+* Serveral fixes of bugs and stability issues. Master should now run fine
+  with kernels 2.6.17 to 2.6.19.
 * Realtime interface changes:
   - Re-introduced ecrt_domain_queue() to allow datagram queuing apart
     from datagram processing. The queuing of a domain's datagrams is not
