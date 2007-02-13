@@ -28,7 +28,6 @@ $Id$
 
 * Smaller changes:
   - Simplify FSMs with <state>_enter() functions.
-  - Rename "sysconfig" file to "sysconfig/ethercat".
   - Dynamic creation of EoE handlers.
   - Output intermediate results during lsec.
   - State change FSM: Follow spontaneous state changes.

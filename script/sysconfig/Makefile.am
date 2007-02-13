@@ -1,8 +1,4 @@
-#!/bin/sh
-
 #------------------------------------------------------------------------------
-#
-#  EtherCAT install script
 #
 #  $Id$
 #
@@ -35,67 +31,10 @@
 #
 #------------------------------------------------------------------------------
 
-# Fetch parameters
+sysdir = $(sysconfdir)/sysconfig
 
-if [ $# -ne 1 ]; then
-    echo "This script is called by \"make\". Run \"make install\" instead."
-    exit 1
-fi
+sys_DATA = ethercat
 
-KERNEL=$1
-
-if [ ! -d /lib/modules/$KERNEL ]; then
-    echo "Kernel \"$KERNEL\" does not exist in /lib/modules!"
-    exit 1
-fi
-
-echo "EtherCAT installer - Kernel: $KERNEL"
-
-#------------------------------------------------------------------------------
-
-# Update module dependencies
-
-echo "  Building module dependencies"
-/sbin/depmod
-
-#------------------------------------------------------------------------------
-
-# Create configuration file
-
-CONFIGFILE=/etc/sysconfig/ethercat
-
-if [ -s $CONFIGFILE ]; then
-    echo "  Note: Using existing configuration file."
-else
-    echo "  Creating $CONFIGFILE"
-    cp script/sysconfig $CONFIGFILE || exit 1
-    echo "  Note: Please edit DEVICE_INDEX in $CONFIGFILE!"
-fi
-
-#------------------------------------------------------------------------------
-
-# Install rc script
-
-echo "  Installing startup script"
-cp script/ethercat.sh /etc/init.d/ethercat || exit 1
-chmod +x /etc/init.d/ethercat || exit 1
-if [ ! -L /usr/sbin/rcethercat ]; then
-    ln -s /etc/init.d/ethercat /usr/sbin/rcethercat || exit 1
-fi
-
-#------------------------------------------------------------------------------
-
-# Install tools
-
-echo "  Installing tools"
-cp script/lsec.pl /usr/local/bin/lsec || exit 1
-chmod +x /usr/local/bin/lsec || exit 1
-
-#------------------------------------------------------------------------------
-
-# Finish
-
-echo "Done"
-exit 0
+EXTRA_DIST = ethercat
 
 #------------------------------------------------------------------------------

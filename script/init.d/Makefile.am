@@ -1,9 +1,5 @@
 #------------------------------------------------------------------------------
 #
-#  Makefile.am
-#
-#  IgH EtherCAT master
-#
 #  $Id$
 #
 #  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
@@ -35,10 +31,10 @@
 #
 #------------------------------------------------------------------------------
 
-SUBDIRS = init.d sysconfig
+initdir = $(sysconfdir)/init.d
 
-bin_SCRIPTS = lsec
+init_SCRIPTS = ethercat
 
-EXTRA_DIST = lsec
+EXTRA_DIST = ethercat
 
 #------------------------------------------------------------------------------

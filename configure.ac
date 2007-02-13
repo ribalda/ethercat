@@ -211,6 +211,8 @@ AC_CONFIG_FILES([
         master/Makefile
         devices/Makefile
         script/Makefile
+        script/init.d/Makefile
+        script/sysconfig/Makefile
         include/Makefile
         examples/Makefile
         examples/mini/Makefile
