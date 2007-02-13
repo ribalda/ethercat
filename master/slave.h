@@ -278,8 +278,10 @@ int ec_slave_fetch_pdo(ec_slave_t *, const uint8_t *, size_t,
 int ec_slave_locate_string(ec_slave_t *, unsigned int, char **);
 
 // misc.
-uint16_t ec_slave_calc_sync_size(const ec_slave_t *,
-                                 const ec_sii_sync_t *);
+void ec_slave_sync_config(const ec_slave_t *, const ec_sii_sync_t *,
+        uint8_t *);
+void ec_slave_fmmu_config(const ec_slave_t *, const ec_fmmu_t *, uint8_t *);
+uint16_t ec_slave_calc_sync_size(const ec_slave_t *, const ec_sii_sync_t *);
 
 int ec_slave_is_coupler(const ec_slave_t *);
 int ec_slave_has_subbus(const ec_slave_t *);

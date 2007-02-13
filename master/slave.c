@@ -981,6 +981,71 @@ uint16_t ec_slave_calc_sync_size(const ec_slave_t *slave,
 /*****************************************************************************/
 
 /**
+   Initializes a sync manager configuration page with EEPROM data.
+   The referenced memory (\a data) must be at least EC_SYNC_SIZE bytes.
+*/
+
+void ec_slave_sync_config(const ec_slave_t *slave, /**< EtherCAT slave */
+        const ec_sii_sync_t *sync, /**< sync manager */
+        uint8_t *data /**> configuration memory */
+        )
+{
+    size_t sync_size;
+
+    sync_size = ec_slave_calc_sync_size(slave, sync);
+
+    if (slave->master->debug_level) {
+        EC_DBG("Slave %3i, SM %i: Addr 0x%04X, Size %3i, Ctrl 0x%02X, En %i\n",
+               slave->ring_position, sync->index, sync->physical_start_address,
+               sync_size, sync->control_register, sync->enable);
+    }
+
+    EC_WRITE_U16(data,     sync->physical_start_address);
+    EC_WRITE_U16(data + 2, sync_size);
+    EC_WRITE_U8 (data + 4, sync->control_register);
+    EC_WRITE_U8 (data + 5, 0x00); // status byte (read only)
+    EC_WRITE_U16(data + 6, sync->enable ? 0x0001 : 0x0000); // enable
+}
+
+/*****************************************************************************/
+
+/**
+   Initializes an FMMU configuration page.
+   The referenced memory (\a data) must be at least EC_FMMU_SIZE bytes.
+*/
+
+void ec_slave_fmmu_config(const ec_slave_t *slave, /**< EtherCAT slave */
+        const ec_fmmu_t *fmmu, /**< FMMU */
+        uint8_t *data /**> configuration memory */
+        )
+{
+    size_t sync_size;
+
+    sync_size = ec_slave_calc_sync_size(slave, fmmu->sync);
+
+    if (slave->master->debug_level) {
+        EC_DBG("Slave %3i, FMMU %2i:"
+               " LogAddr 0x%08X, Size %3i, PhysAddr 0x%04X, Dir %s\n",
+               slave->ring_position, fmmu->index, fmmu->logical_start_address,
+               sync_size, fmmu->sync->physical_start_address,
+               ((fmmu->sync->control_register & 0x04) ? "out" : "in"));
+    }
+
+    EC_WRITE_U32(data,      fmmu->logical_start_address);
+    EC_WRITE_U16(data + 4,  sync_size); // size of fmmu
+    EC_WRITE_U8 (data + 6,  0x00); // logical start bit
+    EC_WRITE_U8 (data + 7,  0x07); // logical end bit
+    EC_WRITE_U16(data + 8,  fmmu->sync->physical_start_address);
+    EC_WRITE_U8 (data + 10, 0x00); // physical start bit
+    EC_WRITE_U8 (data + 11, ((fmmu->sync->control_register & 0x04)
+                             ? 0x02 : 0x01));
+    EC_WRITE_U16(data + 12, 0x0001); // enable
+    EC_WRITE_U16(data + 14, 0x0000); // reserved
+}
+
+/*****************************************************************************/
+
+/**
    \return non-zero if slave is a bus coupler
 */
 

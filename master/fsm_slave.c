@@ -696,24 +696,24 @@ void ec_fsm_slave_conf_enter_sync(ec_fsm_slave_t *fsm /**< slave state machine *
             mbox_sync.control_register = 0x26;
             mbox_sync.enable = 0x01;
             mbox_sync.est_length = 0;
-            ec_sync_config(&mbox_sync, slave,
-                           datagram->data + EC_SYNC_SIZE * mbox_sync.index);
+            ec_slave_sync_config(slave, &mbox_sync,
+                    datagram->data + EC_SYNC_SIZE * mbox_sync.index);
             mbox_sync.index = 1;
             mbox_sync.physical_start_address = slave->sii_rx_mailbox_offset;
             mbox_sync.length = slave->sii_rx_mailbox_size;
             mbox_sync.control_register = 0x22;
             mbox_sync.enable = 0x01;
             mbox_sync.est_length = 0;
-            ec_sync_config(&mbox_sync, slave,
-                           datagram->data + EC_SYNC_SIZE * mbox_sync.index);
+            ec_slave_sync_config(slave, &mbox_sync,
+                    datagram->data + EC_SYNC_SIZE * mbox_sync.index);
         }
     }
     else if (slave->sii_mailbox_protocols) { // mailboxes present
         list_for_each_entry(sync, &slave->sii_syncs, list) {
             // only configure mailbox sync-managers
             if (sync->index != 0 && sync->index != 1) continue;
-            ec_sync_config(sync, slave,
-                           datagram->data + EC_SYNC_SIZE * sync->index);
+            ec_slave_sync_config(slave, sync,
+                    datagram->data + EC_SYNC_SIZE * sync->index);
         }
     }
 
@@ -828,8 +828,8 @@ void ec_fsm_slave_conf_enter_sync2(ec_fsm_slave_t *fsm /**< slave state machine 
     memset(datagram->data, 0x00, EC_SYNC_SIZE * slave->base_sync_count);
 
     list_for_each_entry(sync, &slave->sii_syncs, list) {
-        ec_sync_config(sync, slave,
-                       datagram->data + EC_SYNC_SIZE * sync->index);
+        ec_slave_sync_config(slave, sync,
+                datagram->data + EC_SYNC_SIZE * sync->index);
     }
 
     ec_master_queue_datagram(fsm->slave->master, datagram);
@@ -894,8 +894,8 @@ void ec_fsm_slave_conf_enter_fmmu(ec_fsm_slave_t *fsm /**< slave state machine *
                      0x0600, EC_FMMU_SIZE * slave->base_fmmu_count);
     memset(datagram->data, 0x00, EC_FMMU_SIZE * slave->base_fmmu_count);
     for (j = 0; j < slave->fmmu_count; j++) {
-        ec_fmmu_config(&slave->fmmus[j], slave,
-                       datagram->data + EC_FMMU_SIZE * j);
+        ec_slave_fmmu_config(slave, &slave->fmmus[j],
+                datagram->data + EC_FMMU_SIZE * j);
     }
 
     ec_master_queue_datagram(master, datagram);

@@ -172,10 +172,6 @@ void ec_master_output_stats(ec_master_t *);
 void ec_master_destroy_slaves(ec_master_t *);
 void ec_master_calc_addressing(ec_master_t *);
 
-// helper functions
-void ec_sync_config(const ec_sii_sync_t *, const ec_slave_t *, uint8_t *);
-void ec_fmmu_config(const ec_fmmu_t *, const ec_slave_t *, uint8_t *);
-
 /*****************************************************************************/
 
 #endif
