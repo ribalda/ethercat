@@ -21,10 +21,10 @@ General Features:
 
 * Supports any realtime extension through independent architecture.
   - RTAI, IPIPE, ADEOS, etc.
-  - Runs well even without realtime extensions.
+  - Runs well even without realtime extension.
 
-* Common kernel interface, for realtime modules using EtherCAT functionality.
-  - Synchronous and asynchronous sending and receiving of frames.
+* Common kernel interface for realtime modules using EtherCAT functionality.
+  - Synchronous transmission and reception of EtherCAT frames.
   - Avoidance of unnecessary copy operations for process data.
 
 * Separating slave groups through domains.
@@ -38,29 +38,30 @@ General Features:
     operation.
   - Controlling of slave states during realtime operation.
 
-* Special Idle mode, when master is not in use.
+* Special IDLE mode, when master is not in use.
   - Automatic scanning of slaves upon topology changes.
   - Bus visualisation and EoE processing without realtime process connected.
 
-* Implements the CANopen-over-EtherCAT (CoE) protocol.
+* Implementation of the CANopen-over-EtherCAT (CoE) protocol.
   - Configuration of CoE-capable slaves via SDO interface.
   - SDO dictionary listing.
 
-* Implements the Ethernet-over-EtherCAT (EoE) protocol.
+* Implementation of the Ethernet-over-EtherCAT (EoE) protocol.
   - Creates virtual network devices that are automatically coupled to
     EoE-capable	slaves.
   - Thus natively supports either a switched or a routed EoE network
-    architecture.
+    architecture with standard GNU/Linux tools.
 
-* User space interface via the System Filesystem (SysFS).
-  - User space tool for bus visualisation.
-  - Slave E²PROM image reading and writing.
+* User space interface via the system filesystem (Sysfs).
+  - Detailed information about master and slaves in a tree structure.
+  - User space tool 'lsec' for quick bus visualisation.
+  - Slave EEPROM image reading and writing.
 
-* Seamless integration in your favourite Linux distibution.
+* Seamless integration in your favourite GNU/Linux distibution.
   - Master and network device configuration via sysconfig files.
-  - UnitedLinux compatible init script for master control.
+  - "Linux standard base"-compatible init script for master control.
 
 * Virtual read-only network interface for debugging purposes and for
-  "sniffing" the EtherCAT traffic (through Ethereal, or others).
+  monitoring the EtherCAT traffic (through Wireshark, or others).
 
 -------------------------------------------------------------------------------

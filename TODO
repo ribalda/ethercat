@@ -6,9 +6,6 @@ $Id$
 
 -------------------------------------------------------------------------------
 
-* Release 1.2:
-  - Update feature lists.
-
 * Release 1.3:
   - Remove ecrt_master_run(). Make master FSM run in process context instead.
   - Implement new addressing scheme (without "X:Y").
