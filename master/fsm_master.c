@@ -75,6 +75,7 @@ void ec_fsm_master_init(ec_fsm_master_t *fsm, /**< master state machine */
     fsm->datagram = datagram;
     fsm->state = ec_fsm_master_state_start;
     fsm->slaves_responding = 0;
+    fsm->topology_change_pending = 0;
     fsm->slave_states = EC_SLAVE_STATE_UNKNOWN;
     fsm->validate = 0;
 
@@ -170,7 +171,7 @@ void ec_fsm_master_state_start(ec_fsm_master_t *fsm)
 void ec_fsm_master_state_broadcast(ec_fsm_master_t *fsm /**< master state machine */)
 {
     ec_datagram_t *datagram = fsm->datagram;
-    unsigned int topology_change, states_change, i;
+    unsigned int i;
     ec_slave_t *slave;
     ec_master_t *master = fsm->master;
 
@@ -190,14 +191,11 @@ void ec_fsm_master_state_broadcast(ec_fsm_master_t *fsm /**< master state machin
         return;
     }
 
-    topology_change = (datagram->working_counter !=
-                       fsm->slaves_responding);
-    states_change = (EC_READ_U8(datagram->data) != fsm->slave_states);
+    // bus topology change?
+    if (datagram->working_counter != fsm->slaves_responding) {
+        fsm->topology_change_pending = 1;
+        fsm->slaves_responding = datagram->working_counter;
 
-    fsm->slave_states = EC_READ_U8(datagram->data);
-    fsm->slaves_responding = datagram->working_counter;
-
-    if (topology_change) {
         EC_INFO("%i slave%s responding.\n",
                 fsm->slaves_responding,
                 fsm->slaves_responding == 1 ? "" : "s");
@@ -212,14 +210,18 @@ void ec_fsm_master_state_broadcast(ec_fsm_master_t *fsm /**< master state machin
         }
     }
 
-    if (states_change) {
+    // slave states changed?
+    if (EC_READ_U8(datagram->data) != fsm->slave_states) {
         char states[EC_STATE_STRING_SIZE];
+        fsm->slave_states = EC_READ_U8(datagram->data);
         ec_state_string(fsm->slave_states, states);
         EC_INFO("Slave states: %s.\n", states);
     }
 
     // topology change in idle mode: clear all slaves and scan the bus
-    if (topology_change && master->mode == EC_MASTER_MODE_IDLE) {
+    if (fsm->topology_change_pending &&
+            master->mode == EC_MASTER_MODE_IDLE) {
+        fsm->topology_change_pending = 0;
 
         ec_master_eoe_stop(master);
         ec_master_destroy_slaves(master);

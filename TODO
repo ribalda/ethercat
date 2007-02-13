@@ -7,7 +7,6 @@ $Id$
 -------------------------------------------------------------------------------
 
 * Release 1.2:
-  - Introduce topology_change_pending.
   - Update feature lists.
 
 * Release 1.3:

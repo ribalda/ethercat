@@ -65,6 +65,7 @@ struct ec_fsm_master
 
     void (*state)(ec_fsm_master_t *); /**< master state function */
     unsigned int slaves_responding; /**< number of responding slaves */
+    unsigned int topology_change_pending; /**< bus topology changed */
     ec_slave_state_t slave_states; /**< states of responding slaves */
     unsigned int validate; /**< non-zero, if validation to do */
     ec_slave_t *slave; /**< current slave */
