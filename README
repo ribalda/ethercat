@@ -19,12 +19,11 @@ Contents:
 This is an Open-Source EtherCAT master implementation for Linux 2.6.
 
 See the FEATURES file for a list of features. For more information, see
-
-http://etherlab.org
+http://etherlab.org/ethercat.
 
 or contact
 
-Florian Pose <fp@igh-essen.com>
+Dipl.-Ing. (FH) Florian Pose <fp@igh-essen.com>
 Ingenieurgemeinschaft IgH
 Heinz-Baecker-Str. 34
 D-45356 Essen
