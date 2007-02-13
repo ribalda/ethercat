@@ -36,7 +36,6 @@ SUBDIRS = master devices script include
 DIST_SUBDIRS = master devices script include examples
 
 EXTRA_DIST = \
-	documentation/ethercat_doc.pdf \
 	Doxyfile \
 	FEATURES \
 	globals.h \
