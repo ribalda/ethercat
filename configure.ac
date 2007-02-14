@@ -109,6 +109,38 @@ fi
 AC_MSG_RESULT([$kernel8139too])
 
 #------------------------------------------------------------------------------
+# e100 Kernel
+#------------------------------------------------------------------------------
+
+AC_ARG_WITH([e100-kernel],
+    AC_HELP_STRING(
+        [--with-e100-kernel=<X.Y.Z>],
+        [e100 kernel (only if differing)]
+    ),
+    [
+        kernele100=[$withval]
+    ],
+    [
+        kernele100=$linuxversion
+    ]
+)
+
+AC_MSG_CHECKING([for kernel for e100 driver])
+
+kernels=`ls -1 devices/ | grep -oE "^e100-.*-" | cut -d "-" -f 2 | uniq`
+found=0
+for k in $kernels; do
+    if test "$kernele100" = "$k"; then
+        found=1
+    fi
+done
+if test $found -ne 1; then
+    AC_MSG_ERROR([kernel $kernele100 not available for e100 driver!])
+fi
+
+AC_MSG_RESULT([$kernele100])
+
+#------------------------------------------------------------------------------
 # RTAI path (optional)
 #------------------------------------------------------------------------------
 
@@ -200,6 +232,7 @@ cat > config.kbuild <<EOF
 # config.kbuild - created by configure
 EC_DBG_IF := ${dbg}
 EC_8139TOO_KERNEL := ${kernel8139too}
+EC_E100_KERNEL := ${kernele100}
 EC_RTAI_DIR := "${rtaidir}"
 EC_MSR_DIR := "${msrdir}"
 EOF

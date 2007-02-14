@@ -34,10 +34,12 @@
 include $(src)/../config.kbuild
 
 EC_8139TOO_OBJ = 8139too-$(EC_8139TOO_KERNEL)-ethercat.o
+EC_E100_OBJ = e100-$(EC_E100_KERNEL)-ethercat.o
 
-obj-m := ec_8139too.o
+obj-m := ec_8139too.o ec_e100.o
 
 ec_8139too-objs := $(EC_8139TOO_OBJ)
+ec_e100-objs := $(EC_E100_OBJ)
 
 REV := $(shell if test -s $(src)/../svnrevision; then \
 		cat $(src)/../svnrevision; \
@@ -46,5 +48,6 @@ REV := $(shell if test -s $(src)/../svnrevision; then \
 	fi)
 
 CFLAGS_$(EC_8139TOO_OBJ) = -DSVNREV=$(REV)
+CFLAGS_$(EC_E100_OBJ) = -DSVNREV=$(REV)
 
 #------------------------------------------------------------------------------

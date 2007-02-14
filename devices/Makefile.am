@@ -41,7 +41,9 @@ EXTRA_DIST = \
 	8139too-2.6.18-ethercat.c \
 	8139too-2.6.18-orig.c \
 	8139too-2.6.19-ethercat.c \
-	8139too-2.6.19-orig.c
+	8139too-2.6.19-orig.c \
+	e100-2.6.18-ethercat.c \
+	e100-2.6.18-orig.c
 
 modules:
 	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_top_srcdir@" modules
@@ -49,6 +51,7 @@ modules:
 modules_install:
 	mkdir -p $(DESTDIR)$(LINUX_MOD_PATH)
 	cp $(srcdir)/ec_8139too.ko $(DESTDIR)$(LINUX_MOD_PATH)
+	cp $(srcdir)/ec_e100.ko $(DESTDIR)$(LINUX_MOD_PATH)
 
 clean-local:
 	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" clean
