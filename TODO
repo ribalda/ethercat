@@ -12,6 +12,7 @@ $Id$
     mode.
   - New sysfs structure with slaves, configurations and links.
   - Remove addressing scheme "X:Y".
+  - Interface/buffers for asynchronous domain IO.
   - Tool to set aliases.
   - Remove ugly ec_slave_is_coupler() and ec_slave_has_subbus().
   - Add statistics object.
