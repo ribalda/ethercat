@@ -77,7 +77,9 @@ mrproper: clean cleandoc
 		configure \
 		Makefile \
 		Makefile.in \
-		stamp-h1
+		stamp-h1 \
+		ChangeLog \
+		*~
 
 doc:
 	doxygen Doxyfile
