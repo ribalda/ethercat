@@ -109,6 +109,26 @@ fi
 AC_MSG_RESULT([$kernel8139too])
 
 #------------------------------------------------------------------------------
+# Disable e100
+#------------------------------------------------------------------------------
+
+AC_ARG_ENABLE([e100],
+    AS_HELP_STRING([--enable-e100],
+                   [Enable e100 driver]),
+    [
+        case "${enableval}" in
+            yes) enablee100=1
+                ;;
+            no) enablee100=0
+                ;;
+            *) AC_MSG_ERROR([Invalid value for --enable-e100])
+                ;;
+        esac
+    ],
+    [enablee100=0]
+)
+
+#------------------------------------------------------------------------------
 # e100 Kernel
 #------------------------------------------------------------------------------
 
@@ -125,20 +145,22 @@ AC_ARG_WITH([e100-kernel],
     ]
 )
 
-AC_MSG_CHECKING([for kernel for e100 driver])
+if test ${enablee100} -eq 1; then
+    AC_MSG_CHECKING([for kernel for e100 driver])
 
-kernels=`ls -1 devices/ | grep -oE "^e100-.*-" | cut -d "-" -f 2 | uniq`
-found=0
-for k in $kernels; do
-    if test "$kernele100" = "$k"; then
-        found=1
+    kernels=`ls -1 devices/ | grep -oE "^e100-.*-" | cut -d "-" -f 2 | uniq`
+    found=0
+    for k in $kernels; do
+        if test "$kernele100" = "$k"; then
+            found=1
+        fi
+    done
+    if test $found -ne 1; then
+        AC_MSG_ERROR([kernel $kernele100 not available for e100 driver!])
     fi
-done
-if test $found -ne 1; then
-    AC_MSG_ERROR([kernel $kernele100 not available for e100 driver!])
-fi
 
-AC_MSG_RESULT([$kernele100])
+    AC_MSG_RESULT([$kernele100])
+fi
 
 #------------------------------------------------------------------------------
 # RTAI path (optional)
@@ -232,6 +254,7 @@ cat > config.kbuild <<EOF
 # config.kbuild - created by configure
 EC_DBG_IF := ${dbg}
 EC_8139TOO_KERNEL := ${kernel8139too}
+ENABLE_E100 := ${enablee100}
 EC_E100_KERNEL := ${kernele100}
 EC_RTAI_DIR := "${rtaidir}"
 EC_MSR_DIR := "${msrdir}"
