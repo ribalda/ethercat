@@ -45,6 +45,7 @@
 #include "globals.h"
 #include "master.h"
 #include "device.h"
+#include "xmldev.h"
 
 /*****************************************************************************/
 
@@ -56,7 +57,8 @@ void __exit ec_cleanup_module(void);
 static int ec_master_count = 1; /**< parameter value, number of masters */
 static int ec_eoeif_count = 0; /**< parameter value, number of EoE interf. */
 static struct list_head ec_masters; /**< list of masters */
-static dev_t device_number;
+static dev_t device_number; /**< XML character device number */
+ec_xmldev_t xmldev; /**< XML character device */
 
 char *ec_master_version_str = EC_MASTER_VERSION;
 
@@ -112,7 +114,7 @@ int __init ec_init_module(void)
             goto out_free;
         }
 
-        if (ec_master_init(master, i, ec_eoeif_count, device_number))
+        if (ec_master_init(master, i, ec_eoeif_count))
             goto out_free;
 
         list_add_tail(&master->list, &ec_masters);

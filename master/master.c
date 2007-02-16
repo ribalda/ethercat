@@ -102,8 +102,7 @@ static struct kobj_type ktype_ec_master = {
 
 int ec_master_init(ec_master_t *master, /**< EtherCAT master */
                    unsigned int index, /**< master index */
-                   unsigned int eoeif_count, /**< number of EoE interfaces */
-                   dev_t dev_num /**< number for XML cdev's */
+                   unsigned int eoeif_count /**< number of EoE interfaces */
                    )
 {
     ec_eoe_t *eoe, *next_eoe;
@@ -164,12 +163,6 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     master->sdo_timer.data = (unsigned long) master;
     init_completion(&master->sdo_complete);
 
-    // init XML character device
-    if (ec_xmldev_init(&master->xmldev, master, dev_num)) {
-        EC_ERR("Failed to init XML character device.\n");
-        goto out_return;
-    }
-
     // create EoE handlers
     for (i = 0; i < eoeif_count; i++) {
         if (!(eoe = (ec_eoe_t *) kmalloc(sizeof(ec_eoe_t), GFP_KERNEL))) {
@@ -216,8 +209,6 @@ out_clear_eoe:
         ec_eoe_clear(eoe);
         kfree(eoe);
     }
-    ec_xmldev_clear(&master->xmldev);
-out_return:
     return -1;
 }
 
@@ -261,7 +252,6 @@ void ec_master_clear(struct kobject *kobj /**< kobject of the master */)
 
     ec_fsm_master_clear(&master->fsm);
     ec_datagram_clear(&master->fsm_datagram);
-    ec_xmldev_clear(&master->xmldev);
 
     // clear EoE objects
     list_for_each_entry_safe(eoe, next_eoe, &master->eoe_handlers, list) {

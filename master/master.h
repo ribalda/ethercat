@@ -49,7 +49,6 @@
 
 #include "device.h"
 #include "domain.h"
-#include "xmldev.h"
 #include "fsm_master.h"
 
 /*****************************************************************************/
@@ -102,8 +101,6 @@ struct ec_master
     ec_device_t *device; /**< EtherCAT device */
     struct semaphore device_sem; /**< device semaphore */
 
-    ec_xmldev_t xmldev; /**< XML character device */
-
     ec_fsm_master_t fsm; /**< master state machine */
     ec_datagram_t fsm_datagram; /**< datagram used for state machines */
     ec_master_mode_t mode; /**< master mode */
@@ -150,7 +147,7 @@ struct ec_master
 /*****************************************************************************/
 
 // master creation/deletion
-int ec_master_init(ec_master_t *, unsigned int, unsigned int, dev_t);
+int ec_master_init(ec_master_t *, unsigned int, unsigned int);
 void ec_master_destroy(ec_master_t *);
 
 // mode transitions
