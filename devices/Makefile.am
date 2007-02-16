@@ -51,7 +51,9 @@ modules:
 modules_install:
 	mkdir -p $(DESTDIR)$(LINUX_MOD_PATH)
 	cp $(srcdir)/ec_8139too.ko $(DESTDIR)$(LINUX_MOD_PATH)
+if ENABLE_E100
 	cp $(srcdir)/ec_e100.ko $(DESTDIR)$(LINUX_MOD_PATH)
+endif
 
 clean-local:
 	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" clean
