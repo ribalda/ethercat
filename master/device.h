@@ -53,6 +53,21 @@
 
 /*****************************************************************************/
 
+typedef enum {
+    ec_device_id_empty,
+    ec_device_id_mac
+}
+ec_device_id_type_t;
+
+typedef struct {
+    struct list_head list;
+    ec_device_id_type_t type;
+    unsigned char octets[ETH_ALEN];
+}
+ec_device_id_t;
+
+/*****************************************************************************/
+
 /**
    EtherCAT device.
    An EtherCAT device is a network interface card, that is owned by an

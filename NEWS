@@ -4,6 +4,24 @@ $Id$
 
 -------------------------------------------------------------------------------
 
+Changes in version 1.3.0:
+
+* Added Intel e100 ethernet driver.
+* Removed "ec_eoeif_count" master module parameter.
+* Introduced "device IDs" to tell a master to wait for certain ethernet
+  devices.
+* Added "main" and "backup" parameters to master module. To hand over
+  device ID lists.
+* Changed format of sysconfig file and accordingly adjusted functionality
+  of the init script to handle device IDs.
+* Device interface changes:
+  - Replaced ecdev_register() and ecdev_unregister() with ecdev_offer() and
+    ecdev_withdraw(), respectively. The device modules now offer all their
+    devices to the master, which decides, which ones to register.
+* Removed EtherCAT line comments from 8139too drivers.
+
+-------------------------------------------------------------------------------
+
 Changes in version 1.2.0:
 
 * Serveral fixes of bugs and stability issues. Master should now run fine

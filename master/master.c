@@ -102,18 +102,20 @@ static struct kobj_type ktype_ec_master = {
 
 int ec_master_init(ec_master_t *master, /**< EtherCAT master */
                    unsigned int index, /**< master index */
+                   const ec_device_id_t *main_id, /**< ID of main device */
+                   const ec_device_id_t *backup_id, /**< ID of main device */
                    unsigned int eoeif_count /**< number of EoE interfaces */
                    )
 {
     ec_eoe_t *eoe, *next_eoe;
     unsigned int i;
 
-    EC_INFO("Initializing master %i.\n", index);
-
     atomic_set(&master->available, 1);
     master->index = index;
 
     master->device = NULL;
+    master->main_device_id = main_id;
+    master->backup_device_id = backup_id;
     init_MUTEX(&master->device_sem);
 
     master->mode = EC_MASTER_MODE_ORPHANED;

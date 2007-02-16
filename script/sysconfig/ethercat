@@ -1,58 +1,32 @@
 #------------------------------------------------------------------------------
 #
-#  EtherCAT sysconfig file
+#  EtherCAT master sysconfig file
 #
 #  $Id$
 #
 #------------------------------------------------------------------------------
 
 #
-#  PCI index of the (RTL8139-)EtherCAT device
-#  Setting this is mandatory for the EtherCAT init script!
+# Master device and backup-device settings.
 #
-#DEVICE_INDEX=99
-
+# The MASTERX_DEVICE variable specifies the ethernet device for master 'X',
+# while the MASTERX_BACKUP variable specifies the backup ethernet device for
+# redundancy purposes.
 #
-#  Number of Ethernet-over-EtherCAT interfaces every master shall create
-#  on startup. Default is 0.
+# There are three formats for specifying ethernet devices:
+# 1) MAC address (example: "00:00:08:44:55:66"). Specify the MAC address of
+#    the ethernet card to use.
+# 2) PCI bus address (example: "01:1c.0"). Specify the PCU bis address of the
+#    ethernet card to use.
+# 3) Driver and device index (example: "8139too:0"). Currently there are two
+#    drivers available: "8139too" and "e100". The device index is the index
+#    into driver-supported PCI cards.
 #
-#EOE_INTERFACES=0
-
+# The MASTERX_DEVICE variables also determine, how many masters will be
+# created: A non-empty variable MASTER0_DEVICE will create one master, adding
+# a non-empty variable MASTER1_DEVICE will create a second master, and so on.
 #
-#  Bridge all EoE interfaces after master startup
-#  This variable shall contain the name of the EoE bridge to set up.
-#  If the variable is empty or undefined, no EoE bridge will be built.
-#
-#EOE_BRIDGE=eoebr0
-
-#
-#  IP address of the EoE bridge
-#  Set both EOE_IP_ADDRESS and EOE_IP_NETMASK to let the local host communicate
-#  with devices on the EoE bridge.
-#
-#EOE_IP_ADDRESS=192.168.X.X
-
-#
-#  IP netmask of the EoE bridge
-#  See EOE_IP_ADDRESS.
-#
-#EOE_IP_NETMASK=255.255.255.0
-
-#
-#  Renew default gateway after bridge installation.
-#  Set this to the new default gateway, if the default route shall
-#  be renewed after the bridge has been installed.
-#
-#EOE_GATEWAY=192.168.X.X
-
-#
-#  List of extra interfaces to include in the EoE bridge.
-#  Set this to interconnect the EoE bridge with other local interfaces.
-#  If EOE_BRIDGE is empty or undefined, setting this variable has no effect.
-#  Important: The IP address of these interfaces will be cleared. Set
-#  EOE_IP_ADDRESS and EOE_IP_NETMASK accordingly to enable IP traffic to
-#  extra interfaces.
-#
-#EOE_EXTRA_INTERFACES=eth0
+MASTER0_DEVICE=
+MASTER0_BACKUP=
 
 #------------------------------------------------------------------------------

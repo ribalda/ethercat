@@ -64,12 +64,12 @@ typedef struct ec_device ec_device_t; /**< \see ec_device */
 typedef void (*ec_pollfunc_t)(struct net_device *);
 
 /*****************************************************************************/
-// Registration functions
+// Offering/withdrawal functions
 
-ec_device_t *ecdev_register(unsigned int master_index,
-                            struct net_device *net_dev, ec_pollfunc_t poll,
-                            struct module *module);
-void ecdev_unregister(unsigned int master_index, ec_device_t *device);
+int ecdev_offer(struct net_device *net_dev, ec_device_t **,
+        const char *driver_name, unsigned int board_index,
+        ec_pollfunc_t poll, struct module *module);
+void ecdev_withdraw(ec_device_t *device);
 
 /*****************************************************************************/
 // Device methods

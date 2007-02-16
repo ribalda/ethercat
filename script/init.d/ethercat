@@ -49,100 +49,39 @@
 
 #------------------------------------------------------------------------------
 
-device="ecxml"
-
-IFCONFIG=ifconfig
-BRCTL=brctl
-ROUTE=route
+XMLDEVICE='ecxml'
 
 #------------------------------------------------------------------------------
 
 ETHERCAT_CONFIG=/etc/sysconfig/ethercat
 
-if [ ! -r $ETHERCAT_CONFIG ]; then
-    echo "$ETHERCAT_CONFIG not existing";
-    if [ "$1" = "stop" ]; then
+if [ ! -r ${ETHERCAT_CONFIG} ]; then
+    echo "${ETHERCAT_CONFIG} not existing";
+    if [ "${1}" = "stop" ]; then
 	exit 0
     else
 	exit 6
     fi
 fi
 
-. $ETHERCAT_CONFIG
+. ${ETHERCAT_CONFIG}
 
 #------------------------------------------------------------------------------
 
-#
-#  Function for setting up the EoE bridge
-#
-build_eoe_bridge()
+function make_device_id()
 {
-    if [ -z "$EOE_BRIDGE" ]; then return; fi
-
-    EOEIF=`$IFCONFIG -a | grep -o -E "^eoe[0-9]+ "`
-
-    # add bridge, if it does not already exist
-    if ! $BRCTL show | grep -E -q "^$EOE_BRIDGE"; then
-        if ! $BRCTL addbr $EOE_BRIDGE; then
-	    /bin/false
-	    rc_status -v
-	    rc_exit
-	fi
-    fi
-
-    # check if specified interfaces are bridged
-    for interf in $EOEIF $EOE_EXTRA_INTERFACES; do
-	# interface is already part of the bridge (FIXME->show $EOE_BRIDGE)
-	if $BRCTL show | grep -E -q $interf
-	    then continue
-	fi
-	# clear IP address and open interface
-	if ! $IFCONFIG $interf 0.0.0.0 up; then
-	    /bin/false
-	    rc_status -v
-	    rc_exit
-	fi
-	# add interface to the bridge
-	if ! $BRCTL addif $EOE_BRIDGE $interf; then
-	    /bin/false
-	    rc_status -v
-	    rc_exit
-	fi
-    done
-
-    # configure IP on bridge
-    if [ -n "$EOE_IP_ADDRESS" -a -n "$EOE_IP_NETMASK" ]; then
-	if ! $IFCONFIG $EOE_BRIDGE $EOE_IP_ADDRESS \
-	    netmask $EOE_IP_NETMASK; then
-	    /bin/false
-	    rc_status -v
-	    rc_exit
-	fi
-    fi
-
-    # open bridge
-    if ! $IFCONFIG $EOE_BRIDGE up; then
-	/bin/false
-	rc_status -v
-	rc_exit
-    fi
-
-    # install new default gateway
-    if [ -n "$EOE_GATEWAY" ]; then
-	while $ROUTE -n | grep -E -q "^0.0.0.0"; do
-	    if ! $ROUTE del default; then
-		echo "Failed to remove route!" 1>&2
-		/bin/false
-		rc_status -v
-		rc_exit
-	    fi
-	done
-	if ! $ROUTE add default gw $EOE_GATEWAY; then
-	    /bin/false
-	    rc_status -v
-	    rc_exit
-	fi
-    fi
+    if [ -z "${1}" ]; then
+        DEVICE_ID=";"
+    elif echo ${1} | grep -qE '^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$'; then
+        DEVICE_ID="M${1};"
+    elif echo ${1} | grep -qE '^[^:]+:[0-9]+$'; then
+        DEVICE_ID="D${1};"
+    else
+        echo Invalid device ID syntax in ${ETHERCAT_CONFIG}
+        /bin/false
+        rc_status -v
+        rc_exit
+    fi 
 }
 
 #------------------------------------------------------------------------------
@@ -150,127 +89,119 @@ build_eoe_bridge()
 . /etc/rc.status
 rc_reset
 
-case "$1" in
+case "${1}" in
 
-    start)
-	echo -n "Starting EtherCAT master "
+start)
+    echo -n "Starting EtherCAT master "
 
-	if [ -z "$DEVICE_INDEX" ]; then
-	    echo "ERROR: DEVICE_INDEX not set!"
-	    /bin/false
-	    rc_status -v
-	    rc_exit
-	fi
+    # construct DEVICES and BACKUPS from configuration variables
+    DEVICES=""
+    BACKUPS=""
+    MASTER_INDEX=0
+    while true; do
+        DEVICE=$(eval echo "\${MASTER${MASTER_INDEX}_DEVICE}")
+        BACKUP=$(eval echo "\${MASTER${MASTER_INDEX}_BACKUP}")
+        if [ -z "${DEVICE}" ]; then break; fi
 
-	if [ -z "$EOE_INTERFACES" ]; then
-            # support legacy sysconfig files
-	    if [ -n "$EOE_DEVICES" ]; then
-		EOE_INTERFACES=$EOE_DEVICES
-	    else
-		EOE_INTERFACES=0
-	    fi
-	fi
+        make_device_id ${DEVICE}
+        DEVICES=${DEVICES}${DEVICE_ID}
+        make_device_id ${BACKUP}
+        BACKUPS=${BACKUPS}${DEVICE_ID}
 
-        # unload conflicting modules at first
-	for mod in 8139too; do
-	    if lsmod | grep "^$mod " > /dev/null; then
-		if ! rmmod $mod; then
-		    /bin/false
-		    rc_status -v
-		    rc_exit
-		fi
-	    fi
-	done
+        MASTER_INDEX=$(expr ${MASTER_INDEX} + 1)
+    done
 
-        # load master module
-	if ! modprobe ec_master ec_eoeif_count=$EOE_INTERFACES; then
-	    modprobe 8139too
-	    /bin/false
-	    rc_status -v
-	    rc_exit
-	fi
+    # unload conflicting modules at first
+    for MODULE in 8139too; do
+        if lsmod | grep "^${MODULE} " > /dev/null; then
+            if ! rmmod ${MODULE}; then
+                /bin/false
+                rc_status -v
+                rc_exit
+            fi
+        fi
+    done
 
-	# remove stale device node
-	rm -f /dev/${device}0
+    # load master module
+    if ! modprobe ec_master main=${DEVICES} backup=${BACKUPS}; then
+        modprobe 8139too
+        /bin/false
+        rc_status -v
+        rc_exit
+    fi
 
-	# get dynamic major number
-	major=$(awk "\$2==\"EtherCAT\" {print \$1}" /proc/devices)
+    # remove stale device node
+    rm -f /dev/${XMLDEVICE}0
 
-	# create character device
-	mknod /dev/${device}0 c $major 0
+    # get dynamic major number
+    MAJOR=$(awk "\$2==\"EtherCAT\" {print \$1}" /proc/devices)
 
-	# load device module
-	if ! modprobe ec_8139too ec_device_index=$DEVICE_INDEX; then
-	    rmmod ec_master
-	    modprobe 8139too
-	    /bin/false
-	    rc_status -v
-	    rc_exit
-	fi
+    # create character device
+    mknod /dev/${XMLDEVICE}0 c ${MAJOR} 0
 
-	# build EoE bridge
-	build_eoe_bridge
+    # load device module
+    if ! modprobe ec_8139too; then
+        rmmod ec_master
+        modprobe 8139too
+        /bin/false
+        rc_status -v
+        rc_exit
+    fi
 
-	rc_status -v
-	;;
+    rc_status -v
+    ;;
 
-    stop)
-	echo -n "Shutting down EtherCAT master "
+stop)
+    echo -n "Shutting down EtherCAT master "
 
-	# unload modules
-	for mod in ec_8139too ec_master; do
-	    if lsmod | grep "^$mod " > /dev/null; then
-		if ! rmmod $mod; then
-		    /bin/false
-		    rc_status -v
-		    rc_exit
-		fi;
-	    fi;
-	done
+    # unload modules
+    for mod in ec_8139too ec_master; do
+        if lsmod | grep "^$mod " > /dev/null; then
+            if ! rmmod $mod; then
+                /bin/false
+                rc_status -v
+                rc_exit
+            fi;
+        fi;
+    done
 
-	# remove device node
-	rm -f /dev/${device}0
+    # remove device node
+    rm -f /dev/${XMLDEVICE}0
 
-	sleep 1
+    sleep 1
 
-	# reload previous modules
-	if ! modprobe 8139too; then
-	    echo "Warning: Failed to restore 8139too module."
-	fi
+    # reload previous modules
+    if ! modprobe 8139too; then
+        echo "Warning: Failed to restore 8139too module."
+    fi
 
-	rc_status -v
-	;;
+    rc_status -v
+    ;;
 
-    restart)
-	$0 stop || exit 1
-	sleep 1
-	$0 start
-	rc_status
-	;;
+restart)
+    $0 stop || exit 1
+    sleep 1
+    $0 start
+    rc_status
+    ;;
 
-    status)
-	echo -n "Checking for EtherCAT "
+status)
+    echo -n "Checking for EtherCAT "
 
-	lsmod | grep "^ec_master " > /dev/null
-	master_running=$?
-	lsmod | grep "^ec_8139too " > /dev/null
-	device_running=$?
+    lsmod | grep "^ec_master " > /dev/null
+    master_running=$?
+    lsmod | grep "^ec_8139too " > /dev/null
+    device_running=$?
 
-	# master module and device module loaded?
-	test $master_running -eq 0 -a $device_running -eq 0
+    # master module and device module loaded?
+    test $master_running -eq 0 -a $device_running -eq 0
 
-	rc_status -v
-	;;
+    rc_status -v
+    ;;
 
-    bridge)
-	echo -n "Building EoE bridge "
-	build_eoe_bridge
-	rc_status -v
-	;;
-
-    *)
-	echo "USAGE: $0 {start|stop|restart|status|bridge}"
-	;;
+*)
+    echo "USAGE: $0 {start|stop|restart|status}"
+    ;;
 
 esac
 
