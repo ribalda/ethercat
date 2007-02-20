@@ -54,24 +54,10 @@
 */
 
 int ec_device_init(ec_device_t *device, /**< EtherCAT device */
-                   ec_master_t *master, /**< master owning the device */
-                   struct net_device *net_dev, /**< net_device structure */
-                   ec_pollfunc_t poll, /**< pointer to device's poll function */
-                   struct module *module /**< the device's module */
-                   )
+        ec_master_t *master /**< master owning the device */
+        )
 {
-    struct ethhdr *eth;
-
     device->master = master;
-    device->dev = net_dev;
-    device->poll = poll;
-    device->module = module;
-
-    device->open = 0;
-    device->link_state = 0; // down
-
-    device->tx_count = 0;
-    device->rx_count = 0;
 
 #ifdef EC_DBG_IF
     if (ec_debug_init(&device->dbg)) {
@@ -89,15 +75,13 @@ int ec_device_init(ec_device_t *device, /**< EtherCAT device */
 #endif
     }
 
-    device->tx_skb->dev = net_dev;
-
     // add Ethernet-II-header
     skb_reserve(device->tx_skb, ETH_HLEN);
-    eth = (struct ethhdr *) skb_push(device->tx_skb, ETH_HLEN);
-    eth->h_proto = htons(0x88A4);
-    memcpy(eth->h_source, net_dev->dev_addr, net_dev->addr_len);
-    memset(eth->h_dest, 0xFF, net_dev->addr_len);
+    device->eth = (struct ethhdr *) skb_push(device->tx_skb, ETH_HLEN);
+    device->eth->h_proto = htons(0x88A4);
+    memset(device->eth->h_dest, 0xFF, ETH_ALEN);
 
+    ec_device_detach(device); // resets remaining fields
     return 0;
 
 #ifdef EC_DBG_IF
@@ -117,10 +101,50 @@ int ec_device_init(ec_device_t *device, /**< EtherCAT device */
 void ec_device_clear(ec_device_t *device /**< EtherCAT device */)
 {
     if (device->open) ec_device_close(device);
-    if (device->tx_skb) dev_kfree_skb(device->tx_skb);
+    dev_kfree_skb(device->tx_skb);
 #ifdef EC_DBG_IF
     ec_debug_clear(&device->dbg);
 #endif
+}
+
+/*****************************************************************************/
+
+/**
+   Associate with net_device.
+*/
+
+void ec_device_attach(ec_device_t *device, /**< EtherCAT device */
+        struct net_device *net_dev, /**< net_device structure */
+        ec_pollfunc_t poll, /**< pointer to device's poll function */
+        struct module *module /**< the device's module */
+        )
+{
+    ec_device_detach(device); // resets fields
+
+    device->dev = net_dev;
+    device->poll = poll;
+    device->module = module;
+
+    device->tx_skb->dev = net_dev;
+    memcpy(device->eth->h_source, net_dev->dev_addr, ETH_ALEN);
+}
+
+/*****************************************************************************/
+
+/**
+   Disconnect from net_device.
+*/
+
+void ec_device_detach(ec_device_t *device /**< EtherCAT device */)
+{
+    device->dev = NULL;
+    device->poll = NULL;
+    device->module = NULL;
+    device->open = 0;
+    device->link_state = 0; // down
+    device->tx_count = 0;
+    device->rx_count = 0;
+    device->tx_skb->dev = NULL;
 }
 
 /*****************************************************************************/

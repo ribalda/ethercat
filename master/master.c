@@ -114,9 +114,7 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     atomic_set(&master->available, 1);
     master->index = index;
 
-    master->device = NULL;
     master->main_device_id = main_id;
-    master->backup_device = NULL;
     master->backup_device_id = backup_id;
     init_MUTEX(&master->device_sem);
 
@@ -167,6 +165,13 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     master->sdo_timer.data = (unsigned long) master;
     init_completion(&master->sdo_complete);
 
+    // init devices
+    if (ec_device_init(&master->main_device, master))
+        goto out_return;
+
+    if (ec_device_init(&master->backup_device, master))
+        goto out_clear_main;
+
     // create EoE handlers
     for (i = 0; i < eoeif_count; i++) {
         if (!(eoe = (ec_eoe_t *) kmalloc(sizeof(ec_eoe_t), GFP_KERNEL))) {
@@ -216,6 +221,10 @@ out_clear_eoe:
         ec_eoe_clear(eoe);
         kfree(eoe);
     }
+    ec_device_clear(&master->backup_device);
+out_clear_main:
+    ec_device_clear(&master->main_device);
+out_return:
     return -1;
 }
 
@@ -266,6 +275,9 @@ void ec_master_clear(struct kobject *kobj /**< kobject of the master */)
         ec_eoe_clear(eoe);
         kfree(eoe);
     }
+
+    ec_device_clear(&master->backup_device);
+    ec_device_clear(&master->main_device);
 
     EC_INFO("Master %i freed.\n", master->index);
 
@@ -594,7 +606,7 @@ void ec_master_send_datagrams(ec_master_t *master /**< EtherCAT master */)
 
     do {
         // fetch pointer to transmit socket buffer
-        frame_data = ec_device_tx_data(master->device);
+        frame_data = ec_device_tx_data(&master->main_device);
         cur_data = frame_data + EC_FRAME_HEADER_SIZE;
         follows_word = NULL;
         more_datagrams_waiting = 0;
@@ -657,7 +669,7 @@ void ec_master_send_datagrams(ec_master_t *master /**< EtherCAT master */)
             EC_DBG("frame size: %i\n", cur_data - frame_data);
 
         // send frame
-        ec_device_send(master->device, cur_data - frame_data);
+        ec_device_send(&master->main_device, cur_data - frame_data);
         cycles_sent = get_cycles();
         jiffies_sent = jiffies;
 
@@ -764,8 +776,8 @@ void ec_master_receive_datagrams(ec_master_t *master, /**< EtherCAT master */
 
         // dequeue the received datagram
         datagram->state = EC_DATAGRAM_RECEIVED;
-        datagram->cycles_received = master->device->cycles_poll;
-        datagram->jiffies_received = master->device->jiffies_poll;
+        datagram->cycles_received = master->main_device.cycles_poll;
+        datagram->jiffies_received = master->main_device.jiffies_poll;
         list_del_init(&datagram->queue);
     }
 }
@@ -862,7 +874,7 @@ ssize_t ec_master_device_info(const ec_device_t *device,
     
     off += ec_device_id_print(dev_id, buffer + off);
     
-    if (device) {
+    if (device->dev) {
         off += sprintf(buffer + off, " (connected).\n");      
         off += sprintf(buffer + off, "    Frames sent:     %u\n",
                 device->tx_count);
@@ -921,10 +933,10 @@ ssize_t ec_master_info(ec_master_t *master, /**< EtherCAT master */
     }
     
     off += sprintf(buffer + off, "  Main: ");
-    off += ec_master_device_info(master->device,
+    off += ec_master_device_info(&master->main_device,
             master->main_device_id, buffer + off);
     off += sprintf(buffer + off, "  Backup: ");
-    off += ec_master_device_info(master->backup_device,
+    off += ec_master_device_info(&master->backup_device,
             master->backup_device_id, buffer + off);
 
     up(&master->device_sem);
@@ -1465,7 +1477,7 @@ void ecrt_master_send(ec_master_t *master /**< EtherCAT master */)
 {
     ec_datagram_t *datagram, *n;
 
-    if (unlikely(!master->device->link_state)) {
+    if (unlikely(!master->main_device.link_state)) {
         // link is down, no datagram can be sent
         list_for_each_entry_safe(datagram, n, &master->datagram_queue, queue) {
             datagram->state = EC_DATAGRAM_ERROR;
@@ -1473,7 +1485,7 @@ void ecrt_master_send(ec_master_t *master /**< EtherCAT master */)
         }
 
         // query link state
-        ec_device_poll(master->device);
+        ec_device_poll(&master->main_device);
         return;
     }
 
@@ -1494,7 +1506,7 @@ void ecrt_master_receive(ec_master_t *master /**< EtherCAT master */)
     cycles_t cycles_timeout;
 
     // receive datagrams
-    ec_device_poll(master->device);
+    ec_device_poll(&master->main_device);
 
     cycles_timeout = (cycles_t) EC_IO_TIMEOUT /* us */ * (cpu_khz / 1000);
 
@@ -1502,7 +1514,7 @@ void ecrt_master_receive(ec_master_t *master /**< EtherCAT master */)
     list_for_each_entry_safe(datagram, next, &master->datagram_queue, queue) {
         if (datagram->state != EC_DATAGRAM_SENT) continue;
 
-        if (master->device->cycles_poll - datagram->cycles_sent
+        if (master->main_device.cycles_poll - datagram->cycles_sent
             > cycles_timeout) {
             list_del_init(&datagram->queue);
             datagram->state = EC_DATAGRAM_TIMED_OUT;

@@ -63,13 +63,14 @@ struct ec_device
 {
     ec_master_t *master; /**< EtherCAT master */
     struct net_device *dev; /**< pointer to the assigned net_device */
-    uint8_t open; /**< true, if the net_device has been opened */
-    struct sk_buff *tx_skb; /**< transmit socket buffer */
     ec_pollfunc_t poll; /**< pointer to the device's poll function */
+    struct module *module; /**< pointer to the device's owning module */
+    uint8_t open; /**< true, if the net_device has been opened */
+    uint8_t link_state; /**< device link state */
+    struct sk_buff *tx_skb; /**< transmit socket buffer */
+    struct ethhdr *eth; /**< pointer to ethernet header in socket buffer */
     cycles_t cycles_poll; /**< cycles of last poll */
     unsigned long jiffies_poll; /**< jiffies of last poll */
-    struct module *module; /**< pointer to the device's owning module */
-    uint8_t link_state; /**< device link state */
     unsigned int tx_count; /**< number of frames sent */
     unsigned int rx_count; /**< number of frames received */
 #ifdef EC_DBG_IF
@@ -79,9 +80,12 @@ struct ec_device
 
 /*****************************************************************************/
 
-int ec_device_init(ec_device_t *, ec_master_t *, struct net_device *,
-                   ec_pollfunc_t, struct module *);
+int ec_device_init(ec_device_t *, ec_master_t *);
 void ec_device_clear(ec_device_t *);
+
+void ec_device_attach(ec_device_t *, struct net_device *, ec_pollfunc_t,
+        struct module *);
+void ec_device_detach(ec_device_t *);
 
 int ec_device_open(ec_device_t *);
 int ec_device_close(ec_device_t *);

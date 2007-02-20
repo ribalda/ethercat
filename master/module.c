@@ -342,54 +342,35 @@ int ecdev_offer(struct net_device *net_dev, /**< net_device to offer */
     char str[50]; // FIXME
 
     list_for_each_entry(master, &masters, list) {
-        if (down_interruptible(&master->device_sem)) {
-            EC_ERR("Interrupted while waiting for device semaphore!\n");
-            goto out_return;
-        }
-
         if (ec_device_id_check(master->main_device_id, net_dev,
                     driver_name, device_index)) {
-
             ec_device_id_print(master->main_device_id, str);
             EC_INFO("Accepting device %s for master %u.\n",
                     str, master->index);
 
-            if (master->device) {
-                EC_ERR("Master %u already has a device.\n", master->index);
-                goto out_up;
+            if (down_interruptible(&master->device_sem)) {
+                EC_ERR("Interrupted while waiting for device semaphore!\n");
+                return -1;
+            }
+
+            if (master->main_device.dev) {
+                EC_ERR("Master %u already has a device attached.\n",
+                        master->index);
+                up(&master->device_sem);
+                return -1;
             }
             
-            if (!(master->device = (ec_device_t *)
-                        kmalloc(sizeof(ec_device_t), GFP_KERNEL))) {
-                EC_ERR("Failed to allocate device!\n");
-                goto out_up;
-            }
-
-            if (ec_device_init(master->device, master,
-                        net_dev, poll, module)) {
-                EC_ERR("Failed to init device!\n");
-                goto out_free;
-            }
-
+            ec_device_attach(&master->main_device, net_dev, poll, module);
             up(&master->device_sem);
+            
             sprintf(net_dev->name, "ec%u", master->index);
-            *ecdev = master->device; // offer accepted
+            *ecdev = &master->main_device; // offer accepted
             return 0; // no error
         }
-
-        up(&master->device_sem);
     }
 
     *ecdev = NULL; // offer declined
     return 0; // no error
-
- out_free:
-    kfree(master->device);
-    master->device = NULL;
- out_up:
-    up(&master->device_sem);
- out_return:
-    return 1;
 }
 
 /*****************************************************************************/
@@ -413,11 +394,8 @@ void ecdev_withdraw(ec_device_t *device /**< EtherCAT device */)
     EC_INFO("Master %u releasing main device %s.\n", master->index, str);
     
     down(&master->device_sem);
-    master->device = NULL;
+    ec_device_detach(device);
     up(&master->device_sem);
-    
-    ec_device_clear(device);
-    kfree(device);
 }
 
 /*****************************************************************************/
@@ -503,13 +481,13 @@ ec_master_t *ecrt_request_master(unsigned int master_index
         goto out_release;
     }
 
-    if (!master->device) {
+    if (master->mode != EC_MASTER_MODE_IDLE) {
         up(&master->device_sem);
-        EC_ERR("Master %i has no assigned device!\n", master_index);
+        EC_ERR("Master %i still waiting for devices!\n", master_index);
         goto out_release;
     }
 
-    if (!try_module_get(master->device->module)) {
+    if (!try_module_get(master->main_device.module)) {
         up(&master->device_sem);
         EC_ERR("Device module is unloading!\n");
         goto out_release;
@@ -517,7 +495,7 @@ ec_master_t *ecrt_request_master(unsigned int master_index
 
     up(&master->device_sem);
 
-    if (!master->device->link_state) {
+    if (!master->main_device.link_state) {
         EC_ERR("Link is DOWN.\n");
         goto out_module_put;
     }
@@ -531,7 +509,7 @@ ec_master_t *ecrt_request_master(unsigned int master_index
     return master;
 
  out_module_put:
-    module_put(master->device->module);
+    module_put(master->main_device.module);
  out_release:
     atomic_inc(&master->available);
  out_return:
@@ -556,7 +534,7 @@ void ecrt_release_master(ec_master_t *master /**< EtherCAT master */)
 
     ec_master_leave_operation_mode(master);
 
-    module_put(master->device->module);
+    module_put(master->main_device.module);
     atomic_inc(&master->available);
 
     EC_INFO("Released master %i.\n", master->index);

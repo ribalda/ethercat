@@ -317,7 +317,7 @@ int ec_eoe_active(const ec_eoe_t *eoe /**< EoE handler */)
 
 void ec_eoe_state_rx_start(ec_eoe_t *eoe /**< EoE handler */)
 {
-    if (!eoe->slave->online || !eoe->slave->master->device->link_state)
+    if (!eoe->slave->online || !eoe->slave->master->main_device.link_state)
         return;
 
     ec_slave_mbox_prepare_check(eoe->slave, &eoe->datagram);
@@ -518,7 +518,7 @@ void ec_eoe_state_tx_start(ec_eoe_t *eoe /**< EoE handler */)
     unsigned int wakeup = 0;
 #endif
 
-    if (!eoe->slave->online || !eoe->slave->master->device->link_state)
+    if (!eoe->slave->online || !eoe->slave->master->main_device.link_state)
         return;
 
     spin_lock_bh(&eoe->tx_queue_lock);
