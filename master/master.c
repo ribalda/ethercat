@@ -101,11 +101,12 @@ static struct kobj_type ktype_ec_master = {
 */
 
 int ec_master_init(ec_master_t *master, /**< EtherCAT master */
-                   unsigned int index, /**< master index */
-                   const ec_device_id_t *main_id, /**< ID of main device */
-                   const ec_device_id_t *backup_id, /**< ID of main device */
-                   unsigned int eoeif_count /**< number of EoE interfaces */
-                   )
+        struct kobject *module_kobj, /**< kobject of the master module */
+        unsigned int index, /**< master index */
+        const ec_device_id_t *main_id, /**< ID of main device */
+        const ec_device_id_t *backup_id, /**< ID of main device */
+        unsigned int eoeif_count /**< number of EoE interfaces */
+        )
 {
     ec_eoe_t *eoe, *next_eoe;
     unsigned int i;
@@ -192,13 +193,16 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     memset(&master->kobj, 0x00, sizeof(struct kobject));
     kobject_init(&master->kobj);
     master->kobj.ktype = &ktype_ec_master;
-    if (kobject_set_name(&master->kobj, "ethercat%i", index)) {
-        EC_ERR("Failed to set kobj name.\n");
+    master->kobj.parent = module_kobj;
+    
+    if (kobject_set_name(&master->kobj, "master%i", index)) {
+        EC_ERR("Failed to set master kobject name.\n");
         kobject_put(&master->kobj);
         return -1;
     }
+    
     if (kobject_add(&master->kobj)) {
-        EC_ERR("Failed to add master kobj.\n");
+        EC_ERR("Failed to add master kobject.\n");
         kobject_put(&master->kobj);
         return -1;
     }

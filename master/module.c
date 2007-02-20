@@ -52,7 +52,36 @@
 int __init ec_init_module(void);
 void __exit ec_cleanup_module(void);
 
+ssize_t ec_show_attribute(struct kobject *, struct attribute *, char *);
+
 /*****************************************************************************/
+
+/** \cond */
+
+EC_SYSFS_READ_ATTR(info);
+
+static struct attribute *ec_def_attrs[] = {
+    &attr_info,
+    NULL,
+};
+
+static struct sysfs_ops ec_sysfs_ops = {
+    .show = &ec_show_attribute,
+    .store = NULL 
+};
+
+static struct kobj_type ktype_ec_module = {
+    .release = NULL, // this is ok, because the module can not be unloaded
+                     // if the reference count is greater zero.
+    .sysfs_ops = &ec_sysfs_ops,
+    .default_attrs = ec_def_attrs
+};
+
+/** \endcond */
+
+/*****************************************************************************/
+
+struct kobject ec_kobj; /**< kobject for master module */
 
 static char *main; /**< main devices parameter */
 static char *backup; /**< backup devices parameter */
@@ -97,9 +126,24 @@ int __init ec_init_module(void)
 
     EC_INFO("Master driver %s\n", EC_MASTER_VERSION);
 
+    // init kobject and add it to the hierarchy
+    memset(&ec_kobj, 0x00, sizeof(struct kobject));
+    kobject_init(&ec_kobj);
+    ec_kobj.ktype = &ktype_ec_module;
+    
+    if (kobject_set_name(&ec_kobj, "ethercat")) {
+        EC_ERR("Failed to set module kobject name.\n");
+        goto out_put;
+    }
+    
+    if (kobject_add(&ec_kobj)) {
+        EC_ERR("Failed to add module kobject.\n");
+        goto out_put;
+    }
+    
     if (alloc_chrdev_region(&device_number, 0, 1, "EtherCAT")) {
         EC_ERR("Failed to obtain device number!\n");
-        goto out_return;
+        goto out_del;
     }
 
     if (ec_device_id_process_params(main, backup, &main_ids, &backup_ids))
@@ -121,7 +165,7 @@ int __init ec_init_module(void)
                 goto out_free_masters;
             }
 
-            if (ec_master_init(master, master_index,
+            if (ec_master_init(master, &ec_kobj, master_index,
                         main_dev_id, backup_dev_id, 0))
                 goto out_free_masters;
 
@@ -153,7 +197,10 @@ out_free_masters:
     ec_device_id_clear_list(&backup_ids);
 out_cdev:
     unregister_chrdev_region(device_number, 1);
-out_return:
+out_del:
+    kobject_del(&ec_kobj);
+out_put:
+    kobject_put(&ec_kobj);
     return -1;
 }
 
@@ -178,9 +225,47 @@ void __exit ec_cleanup_module(void)
     ec_device_id_clear_list(&main_ids);
     ec_device_id_clear_list(&backup_ids);
     unregister_chrdev_region(device_number, 1);
+    kobject_del(&ec_kobj);
+    kobject_put(&ec_kobj);
 
     EC_INFO("Master module cleaned up.\n");
 }
+
+/*****************************************************************************/
+
+/**
+   Formats module information for SysFS read access.
+   \return number of bytes written
+*/
+
+ssize_t ec_info(char *buffer /**< memory to store data */)
+{
+    off_t off = 0;
+
+    off += sprintf(buffer + off, "\nVersion: %s", ec_master_version_str);
+    off += sprintf(buffer + off, "\n");
+
+    return off;
+}
+
+/*****************************************************************************/
+
+/**
+   Formats attribute data for SysFS read access.
+   \return number of bytes to read
+*/
+
+ssize_t ec_show_attribute(struct kobject *kobj, /**< kobject */
+        struct attribute *attr, /**< attribute */
+        char *buffer /**< memory to store data */
+        )
+{
+    if (attr == &attr_info)
+        return ec_info(buffer);
+
+    return 0;
+}
+
 
 /*****************************************************************************/
 

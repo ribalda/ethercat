@@ -150,7 +150,7 @@ struct ec_master
 /*****************************************************************************/
 
 // master creation/deletion
-int ec_master_init(ec_master_t *, unsigned int,
+int ec_master_init(ec_master_t *, struct kobject *, unsigned int,
         const ec_device_id_t *, const ec_device_id_t *, unsigned int);
 void ec_master_destroy(ec_master_t *);
 

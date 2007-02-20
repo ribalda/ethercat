@@ -44,28 +44,20 @@ use Getopt::Std;
 
 my %opt;
 my $master_index;
-my $master_dir;
 my $term_width;
 
 #------------------------------------------------------------------------------
 
 $term_width = &get_terminal_width;
 &get_options;
-&query_master;
+&query;
 exit 0;
 
 #------------------------------------------------------------------------------
 
-sub query_master
+sub query
 {
-    $master_dir = "/sys/ethercat" . $master_index;
-    &query_slaves;
-}
-
-#------------------------------------------------------------------------------
-
-sub query_slaves
-{
+    my $master_dir;
     my $dirhandle;
     my $entry;
     my @slaves;
@@ -76,6 +68,8 @@ sub query_slaves
     my $adv_cols;
     my $fmt;
     my $cols;
+
+    $master_dir = "/sys/ethercat/master" . $master_index;
 
     unless (opendir $dirhandle, $master_dir) {
 		print "Failed to open directory \"$master_dir\".\n";
