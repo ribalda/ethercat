@@ -42,7 +42,6 @@
 #include <linux/skbuff.h>
 #include <linux/if_ether.h>
 #include <linux/netdevice.h>
-#include <linux/delay.h>
 
 #include "device.h"
 #include "master.h"
