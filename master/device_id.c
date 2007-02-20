@@ -197,3 +197,26 @@ int ec_device_id_check(const ec_device_id_t *dev_id,
 }
                 
 /*****************************************************************************/
+
+ssize_t ec_device_id_print(const ec_device_id_t *dev_id, char *buffer)
+{
+    off_t off = 0;
+    unsigned int i;
+    
+    switch (dev_id->type) {
+        case ec_device_id_empty:
+            off += sprintf(buffer + off, "none");
+            break;
+        case ec_device_id_mac:
+            off += sprintf(buffer + off, "MAC ");
+            for (i = 0; i < ETH_ALEN; i++) {
+                off += sprintf(buffer + off, "%02X", dev_id->octets[i]);
+                if (i < ETH_ALEN - 1) off += sprintf(buffer + off, ":");
+            }
+            break;
+    }
+
+    return off;
+}
+                
+/*****************************************************************************/

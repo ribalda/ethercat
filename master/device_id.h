@@ -67,6 +67,7 @@ int ec_device_id_process_params(const char *, const char *,
 void ec_device_id_clear_list(struct list_head *);
 int ec_device_id_check(const ec_device_id_t *, const struct net_device *,
         const char *, unsigned int);
+ssize_t ec_device_id_print(const ec_device_id_t *, char *);
 
 /*****************************************************************************/
 
