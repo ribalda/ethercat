@@ -101,6 +101,7 @@ struct ec_master
 
     ec_device_t *device; /**< EtherCAT device */
     const ec_device_id_t *main_device_id; /**< ID of main device */
+    ec_device_t *backup_device; /**< EtherCAT backup device */
     const ec_device_id_t *backup_device_id; /**< ID of backup device */
     struct semaphore device_sem; /**< device semaphore */
 

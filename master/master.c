@@ -116,6 +116,7 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
 
     master->device = NULL;
     master->main_device_id = main_id;
+    master->backup_device = NULL;
     master->backup_device_id = backup_id;
     init_MUTEX(&master->device_sem);
 
@@ -849,6 +850,38 @@ static int ec_master_thread(void *data)
     complete_and_exit(&master->thread_exit, 0);
 }
 
+
+/*****************************************************************************/
+
+ssize_t ec_master_device_info(const ec_device_t *device,
+        const ec_device_id_t *dev_id,
+        char *buffer)
+{
+    unsigned int frames_lost;
+    off_t off = 0;
+    
+    off += ec_device_id_print(dev_id, buffer + off);
+    
+    if (device) {
+        off += sprintf(buffer + off, " (connected).\n");      
+        off += sprintf(buffer + off, "    Frames sent:     %u\n",
+                device->tx_count);
+        off += sprintf(buffer + off, "    Frames received: %u\n",
+                device->rx_count);
+        frames_lost = device->tx_count - device->rx_count;
+        if (frames_lost) frames_lost--;
+        off += sprintf(buffer + off, "    Frames lost:     %u\n", frames_lost);
+    }
+    else if (dev_id->type != ec_device_id_empty) {
+        off += sprintf(buffer + off, " (WAITING).\n");      
+    }
+    else {
+        off += sprintf(buffer + off, ".\n");
+    }
+    
+    return off;
+}
+
 /*****************************************************************************/
 
 /**
@@ -863,9 +896,7 @@ ssize_t ec_master_info(ec_master_t *master, /**< EtherCAT master */
     off_t off = 0;
     ec_eoe_t *eoe;
     uint32_t cur, sum, min, max, pos, i;
-    unsigned int frames_lost;
 
-    off += sprintf(buffer + off, "\nVersion: %s", ec_master_version_str);
     off += sprintf(buffer + off, "\nMode: ");
     switch (master->mode) {
         case EC_MASTER_MODE_ORPHANED:
@@ -881,14 +912,22 @@ ssize_t ec_master_info(ec_master_t *master, /**< EtherCAT master */
 
     off += sprintf(buffer + off, "\nSlaves: %i\n",
                    master->slave_count);
-    off += sprintf(buffer + off, "\nDevice:\n");
-    off += sprintf(buffer + off, "  Frames sent:     %u\n",
-		   master->device->tx_count);
-    off += sprintf(buffer + off, "  Frames received: %u\n",
-		   master->device->rx_count);
-    frames_lost = master->device->tx_count - master->device->rx_count;
-    if (frames_lost) frames_lost--;
-    off += sprintf(buffer + off, "  Frames lost:     %u\n", frames_lost);
+
+    off += sprintf(buffer + off, "\nDevices:\n");
+    
+    if (down_interruptible(&master->device_sem)) {
+        EC_ERR("Interrupted while waiting for device!\n");
+        return -EINVAL;
+    }
+    
+    off += sprintf(buffer + off, "  Main: ");
+    off += ec_master_device_info(master->device,
+            master->main_device_id, buffer + off);
+    off += sprintf(buffer + off, "  Backup: ");
+    off += ec_master_device_info(master->backup_device,
+            master->backup_device_id, buffer + off);
+
+    up(&master->device_sem);
 
     off += sprintf(buffer + off, "\nTiming (min/avg/max) [us]:\n");
 

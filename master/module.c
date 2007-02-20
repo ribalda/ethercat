@@ -52,33 +52,6 @@
 int __init ec_init_module(void);
 void __exit ec_cleanup_module(void);
 
-ssize_t ec_show_attribute(struct kobject *, struct attribute *, char *);
-
-/*****************************************************************************/
-
-/** \cond */
-
-EC_SYSFS_READ_ATTR(info);
-
-static struct attribute *ec_def_attrs[] = {
-    &attr_info,
-    NULL,
-};
-
-static struct sysfs_ops ec_sysfs_ops = {
-    .show = &ec_show_attribute,
-    .store = NULL 
-};
-
-static struct kobj_type ktype_ec_module = {
-    .release = NULL, // this is ok, because the module can not be unloaded
-                     // if the reference count is greater zero.
-    .sysfs_ops = &ec_sysfs_ops,
-    .default_attrs = ec_def_attrs
-};
-
-/** \endcond */
-
 /*****************************************************************************/
 
 struct kobject ec_kobj; /**< kobject for master module */
@@ -128,8 +101,7 @@ int __init ec_init_module(void)
 
     // init kobject and add it to the hierarchy
     memset(&ec_kobj, 0x00, sizeof(struct kobject));
-    kobject_init(&ec_kobj);
-    ec_kobj.ktype = &ktype_ec_module;
+    kobject_init(&ec_kobj); // no ktype
     
     if (kobject_set_name(&ec_kobj, "ethercat")) {
         EC_ERR("Failed to set module kobject name.\n");
@@ -230,42 +202,6 @@ void __exit ec_cleanup_module(void)
 
     EC_INFO("Master module cleaned up.\n");
 }
-
-/*****************************************************************************/
-
-/**
-   Formats module information for SysFS read access.
-   \return number of bytes written
-*/
-
-ssize_t ec_info(char *buffer /**< memory to store data */)
-{
-    off_t off = 0;
-
-    off += sprintf(buffer + off, "\nVersion: %s", ec_master_version_str);
-    off += sprintf(buffer + off, "\n");
-
-    return off;
-}
-
-/*****************************************************************************/
-
-/**
-   Formats attribute data for SysFS read access.
-   \return number of bytes to read
-*/
-
-ssize_t ec_show_attribute(struct kobject *kobj, /**< kobject */
-        struct attribute *attr, /**< attribute */
-        char *buffer /**< memory to store data */
-        )
-{
-    if (attr == &attr_info)
-        return ec_info(buffer);
-
-    return 0;
-}
-
 
 /*****************************************************************************/
 
@@ -403,7 +339,7 @@ int ecdev_offer(struct net_device *net_dev, /**< net_device to offer */
         )
 {
     ec_master_t *master;
-    unsigned int i;
+    char str[50]; // FIXME
 
     list_for_each_entry(master, &masters, list) {
         if (down_interruptible(&master->device_sem)) {
@@ -414,15 +350,12 @@ int ecdev_offer(struct net_device *net_dev, /**< net_device to offer */
         if (ec_device_id_check(master->main_device_id, net_dev,
                     driver_name, device_index)) {
 
-            EC_INFO("Accepting device %s:%u (", driver_name, device_index);
-            for (i = 0; i < ETH_ALEN; i++) {
-                printk("%02X", net_dev->dev_addr[i]);
-                if (i < ETH_ALEN - 1) printk(":");
-            }
-            printk(") for master %u.\n", master->index);
+            ec_device_id_print(master->main_device_id, str);
+            EC_INFO("Accepting device %s for master %u.\n",
+                    str, master->index);
 
             if (master->device) {
-                EC_ERR("Master already has a device.\n");
+                EC_ERR("Master %u already has a device.\n", master->index);
                 goto out_up;
             }
             
@@ -473,22 +406,18 @@ int ecdev_offer(struct net_device *net_dev, /**< net_device to offer */
 void ecdev_withdraw(ec_device_t *device /**< EtherCAT device */)
 {
     ec_master_t *master = device->master;
-    unsigned int i;
+    char str[50]; // FIXME
 
+    ec_device_id_print(master->main_device_id, str);
+    
+    EC_INFO("Master %u releasing main device %s.\n", master->index, str);
+    
     down(&master->device_sem);
-    
-    EC_INFO("Master %u releasing device ", master->index);
-    for (i = 0; i < ETH_ALEN; i++) {
-        printk("%02X", device->dev->dev_addr[i]);
-        if (i < ETH_ALEN - 1) printk(":");
-    }
-    printk(".\n");
-    
-    ec_device_clear(master->device);
-    kfree(master->device);
     master->device = NULL;
-    
     up(&master->device_sem);
+    
+    ec_device_clear(device);
+    kfree(device);
 }
 
 /*****************************************************************************/
