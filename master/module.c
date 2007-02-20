@@ -57,8 +57,8 @@ void __exit ec_cleanup_module(void);
 static char *main; /**< main devices parameter */
 static char *backup; /**< backup devices parameter */
 
-static LIST_HEAD(main_device_ids); /**< list of main device IDs */
-static LIST_HEAD(backup_device_ids); /**< list of main device IDs */
+static LIST_HEAD(main_ids); /**< list of main device IDs */
+static LIST_HEAD(backup_ids); /**< list of main device IDs */
 static LIST_HEAD(masters); /**< list of masters */
 static dev_t device_number; /**< XML character device number */
 ec_xmldev_t xmldev; /**< XML character device */
@@ -83,157 +83,6 @@ MODULE_PARM_DESC(backup, "backup device IDs");
 
 /*****************************************************************************/
 
-void clear_device_ids(struct list_head *device_ids)
-{
-    ec_device_id_t *dev_id, *next_dev_id;
-    
-    list_for_each_entry_safe(dev_id, next_dev_id, device_ids, list) {
-        list_del(&dev_id->list);
-        kfree(dev_id);
-    }
-}
-
-/*****************************************************************************/
-
-static int parse_device_id_mac(ec_device_id_t *dev_id,
-        const char *src, const char **remainder)
-{
-    unsigned int i, value;
-    char *rem;
-
-    for (i = 0; i < ETH_ALEN; i++) {
-        value = simple_strtoul(src, &rem, 16);
-        if (rem != src + 2
-                || value > 0xFF
-                || (i < ETH_ALEN - 1 && *rem != ':')) {
-            return -1;
-        }
-        dev_id->octets[i] = value;
-        if (i < ETH_ALEN - 1)
-            src = rem + 1;
-    }
-
-    dev_id->type = ec_device_id_mac;
-    *remainder = rem;
-    return 0;
-}
-
-/*****************************************************************************/
-
-static int parse_device_ids(struct list_head *device_ids, const char *src)
-{
-    const char *rem;
-    ec_device_id_t *dev_id;
-    unsigned int index = 0;
-
-    while (*src) {
-        // allocate new device ID
-        if (!(dev_id = kmalloc(sizeof(ec_device_id_t), GFP_KERNEL))) {
-            EC_ERR("Out of memory!\n");
-            goto out_free;
-        }
-        
-        if (*src == ';') { // empty device ID
-            dev_id->type = ec_device_id_empty;
-        }
-        else if (*src == 'M') {
-            src++;
-            if (parse_device_id_mac(dev_id, src, &rem)) {
-                EC_ERR("Device ID %u: Invalid MAC syntax!\n", index);
-                kfree(dev_id);
-                goto out_free;
-            }
-            src = rem;
-        }
-        else {
-            EC_ERR("Device ID %u: Unknown format \'%c\'!\n", index, *src);
-            kfree(dev_id);
-            goto out_free;
-        }
-        
-        list_add_tail(&dev_id->list, device_ids); 
-        if (*src) {
-            if (*src != ';') {
-                EC_ERR("Invalid delimiter '%c' after device ID %i!\n",
-                        *src, index);
-                goto out_free;
-            }
-            src++; // skip delimiter
-        }
-        index++;
-    }
-
-    return 0;
-
-out_free:
-    clear_device_ids(device_ids);
-    return -1;
-}
-
-/*****************************************************************************/
-
-static int create_device_ids(void)
-{
-    ec_device_id_t *id;
-    unsigned int main_count = 0, backup_count = 0;
-    
-    if (parse_device_ids(&main_device_ids, main))
-        return -1;
-
-    if (parse_device_ids(&backup_device_ids, main))
-        return -1;
-
-    // count main device IDs and check for empty ones
-    list_for_each_entry(id, &main_device_ids, list) {
-        if (id->type == ec_device_id_empty) {
-            EC_ERR("Main device IDs may not be empty!\n");
-            return -1;
-        }
-        main_count++;
-    }
-
-    // count backup device IDs
-    list_for_each_entry(id, &backup_device_ids, list) {
-        backup_count++;
-    }
-
-    // fill up backup device IDs
-    while (backup_count < main_count) {
-        if (!(id = kmalloc(sizeof(ec_device_id_t), GFP_KERNEL))) {
-            EC_ERR("Out of memory!\n");
-            return -1;
-        }
-        
-        id->type = ec_device_id_empty;
-        list_add_tail(&id->list, &backup_device_ids);
-        backup_count++;
-    }
-
-    return 0;
-}
-
-/*****************************************************************************/
-
-static int device_id_check(const ec_device_id_t *dev_id,
-        const struct net_device *dev, const char *driver_name,
-        unsigned int device_index)
-{
-    unsigned int i;
-    
-    switch (dev_id->type) {
-        case ec_device_id_mac:
-            for (i = 0; i < ETH_ALEN; i++)
-                if (dev->dev_addr[i] != dev_id->octets[i])
-                    return 0;
-            return 1;
-        default:
-            return 0;
-    }
-}
-                
-
-/*****************************************************************************/
-
 /**
    Module initialization.
    Initializes \a ec_master_count masters.
@@ -253,14 +102,16 @@ int __init ec_init_module(void)
         goto out_return;
     }
 
-    if (create_device_ids())
-        goto out_free_ids;
+    if (ec_device_id_process_params(main, backup, &main_ids, &backup_ids))
+        goto out_cdev;
     
-    if (!list_empty(&main_device_ids)) {
+    // create as many masters as main device IDs present
+    if (!list_empty(&main_ids)) {
+        // main_ids and backup_ids are of equal size at this point
         main_dev_id =
-            list_entry(main_device_ids.next, ec_device_id_t, list);
+            list_entry(main_ids.next, ec_device_id_t, list);
         backup_dev_id =
-            list_entry(backup_device_ids.next, ec_device_id_t, list);
+            list_entry(backup_ids.next, ec_device_id_t, list);
         
         while (1) {
             if (!(master = (ec_master_t *)
@@ -278,7 +129,7 @@ int __init ec_init_module(void)
             master_index++;
 
             // last device IDs?
-            if (main_dev_id->list.next == &main_device_ids)
+            if (main_dev_id->list.next == &main_ids)
                 break;
             
             // next device IDs
@@ -296,12 +147,11 @@ int __init ec_init_module(void)
 out_free_masters:
     list_for_each_entry_safe(master, next, &masters, list) {
         list_del(&master->list);
-        kobject_del(&master->kobj);
-        kobject_put(&master->kobj);
+        ec_master_destroy(master);
     }
-out_free_ids:
-    clear_device_ids(&main_device_ids);
-    clear_device_ids(&backup_device_ids);
+    ec_device_id_clear_list(&main_ids);
+    ec_device_id_clear_list(&backup_ids);
+out_cdev:
     unregister_chrdev_region(device_number, 1);
 out_return:
     return -1;
@@ -318,16 +168,18 @@ void __exit ec_cleanup_module(void)
 {
     ec_master_t *master, *next;
 
-    EC_INFO("Cleaning up master driver...\n");
+    EC_INFO("Cleaning up master module...\n");
 
     list_for_each_entry_safe(master, next, &masters, list) {
         list_del(&master->list);
         ec_master_destroy(master);
     }
 
+    ec_device_id_clear_list(&main_ids);
+    ec_device_id_clear_list(&backup_ids);
     unregister_chrdev_region(device_number, 1);
 
-    EC_INFO("Master driver cleaned up.\n");
+    EC_INFO("Master module cleaned up.\n");
 }
 
 /*****************************************************************************/
@@ -474,7 +326,7 @@ int ecdev_offer(struct net_device *net_dev, /**< net_device to offer */
             goto out_return;
         }
 
-        if (device_id_check(master->main_device_id, net_dev,
+        if (ec_device_id_check(master->main_device_id, net_dev,
                     driver_name, device_index)) {
 
             EC_INFO("Accepting device %s:%u (", driver_name, device_index);

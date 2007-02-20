@@ -37,6 +37,7 @@ EXTRA_DIST = \
 	datagram.c datagram.h \
 	debug.c	debug.h \
 	device.c device.h \
+	device_id.c device_id.h \
 	domain.c domain.h \
 	doxygen.c \
 	ethernet.c ethernet.h \

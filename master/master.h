@@ -48,6 +48,7 @@
 #include <asm/semaphore.h>
 
 #include "device.h"
+#include "device_id.h"
 #include "domain.h"
 #include "fsm_master.h"
 
