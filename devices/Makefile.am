@@ -54,7 +54,9 @@ modules:
 
 modules_install:
 	mkdir -p $(DESTDIR)$(LINUX_MOD_PATH)
+if ENABLE_8139TOO
 	cp $(srcdir)/ec_8139too.ko $(DESTDIR)$(LINUX_MOD_PATH)
+endif
 if ENABLE_E100
 	cp $(srcdir)/ec_e100.ko $(DESTDIR)$(LINUX_MOD_PATH)
 endif
