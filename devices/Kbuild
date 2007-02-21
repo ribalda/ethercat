@@ -38,7 +38,7 @@ EC_E100_OBJ = e100-$(EC_E100_KERNEL)-ethercat.o
 
 obj-m := ec_8139too.o
 ifeq ($(ENABLE_E100),1)
-    obj_m += ec_e100.o
+	obj-m += ec_e100.o
 endif
 
 ec_8139too-objs := $(EC_8139TOO_OBJ)
