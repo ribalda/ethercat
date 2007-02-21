@@ -56,7 +56,7 @@ endif
 ifeq ($(EC_ENABLE_FORCEDETH),1)
 	EC_FORCEDETH_OBJ := forcedeth-$(EC_FORCEDETH_KERNEL)-ethercat.o
 	obj-m += ec_forcedeth.o
-	ec_forcedeth-objs := $(EC_FORCEDETH_OBJ)-ethercat.o
+	ec_forcedeth-objs := $(EC_FORCEDETH_OBJ)
 	CFLAGS_$(EC_FORCEDETH_OBJ) = -DSVNREV=$(REV)
 endif
 
