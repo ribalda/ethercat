@@ -45,7 +45,9 @@ EXTRA_DIST = \
 	e100-2.6.18-ethercat.c \
 	e100-2.6.18-orig.c \
 	forcedeth-2.6.17-ethercat.c \
-	forcedeth-2.6.17-orig.c
+	forcedeth-2.6.17-orig.c \
+	forcedeth-2.6.19-ethercat.c \
+	forcedeth-2.6.19-orig.c
 
 modules:
 	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_top_srcdir@" modules
