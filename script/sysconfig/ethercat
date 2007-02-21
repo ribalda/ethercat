@@ -14,7 +14,7 @@
 # redundancy purposes.
 #
 # There are three formats for specifying ethernet devices:
-# 1) MAC address (example: "00:00:08:44:55:66"). Specify the MAC address of
+# 1) MAC address (example: "00:00:08:44:ab:66"). Specify the MAC address of
 #    the ethernet card to use.
 # 2) PCI bus address (example: "01:1c.0"). Specify the PCU bis address of the
 #    ethernet card to use.
@@ -28,5 +28,17 @@
 #
 MASTER0_DEVICE=
 MASTER0_BACKUP=
+
+#
+# Ethernet driver modules to replace with EtherCAT-capable ones.
+#
+# The init script will try to unload the ethernet driver modules in the list
+# and replace them with the EtherCAT-capable ones, respectively. If a certain
+# (EtherCAT-capable) driver is not found, a warning will appear.
+#
+# Remove all unused driver modules to prevent unnecesessary module
+# replacement.
+# 
+DEVICE_MODULES="8139too e100 forcedeth"
 
 #------------------------------------------------------------------------------

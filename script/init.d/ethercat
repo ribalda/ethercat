@@ -56,7 +56,7 @@ XMLDEVICE='ecxml'
 ETHERCAT_CONFIG=/etc/sysconfig/ethercat
 
 if [ ! -r ${ETHERCAT_CONFIG} ]; then
-    echo "${ETHERCAT_CONFIG} not existing";
+    echo ${ETHERCAT_CONFIG} not existing;
     if [ "${1}" = "stop" ]; then
 	exit 0
     else
@@ -111,17 +111,6 @@ start)
         MASTER_INDEX=$(expr ${MASTER_INDEX} + 1)
     done
 
-    # unload conflicting modules at first
-    for MODULE in 8139too; do
-        if lsmod | grep "^${MODULE} " > /dev/null; then
-            if ! rmmod ${MODULE}; then
-                /bin/false
-                rc_status -v
-                rc_exit
-            fi
-        fi
-    done
-
     # load master module
     if ! modprobe ec_master main=${DEVICES} backup=${BACKUPS}; then
         modprobe 8139too
@@ -139,14 +128,26 @@ start)
     # create character device
     mknod /dev/${XMLDEVICE}0 c ${MAJOR} 0
 
-    # load device module
-    if ! modprobe ec_8139too; then
-        rmmod ec_master
-        modprobe 8139too
-        /bin/false
-        rc_status -v
-        rc_exit
-    fi
+    # check for modules to replace
+    for MODULE in ${DEVICE_MODULES}; do
+        ECMODULE=ec_${MODULE}
+        if ! modinfo ${ECMODULE} > /dev/null; then
+            continue
+        fi
+        if lsmod | grep "^${MODULE} " > /dev/null; then
+            if ! rmmod ${MODULE}; then
+                /bin/false
+                rc_status -v
+                rc_exit
+            fi
+        fi
+        if ! modprobe ${ECMODULE}; then
+            modprobe ${MODULE} # try to restore module
+            /bin/false
+            rc_status -v
+            rc_exit
+        fi
+    done
 
     rc_status -v
     ;;
@@ -154,14 +155,16 @@ start)
 stop)
     echo -n "Shutting down EtherCAT master "
 
-    # unload modules
-    for mod in ec_8139too ec_master; do
-        if lsmod | grep "^$mod " > /dev/null; then
-            if ! rmmod $mod; then
-                /bin/false
-                rc_status -v
-                rc_exit
-            fi;
+    # unload EtherCAT device modules
+    for MODULE in ${DEVICE_MODULES} master; do
+        ECMODULE=ec_${MODULE}
+        if ! lsmod | grep -q "^${ECMODULE} "; then
+            continue
+        fi
+        if ! rmmod ${ECMODULE}; then
+            /bin/false
+            rc_status -v
+            rc_exit
         fi;
     done
 
@@ -171,9 +174,11 @@ stop)
     sleep 1
 
     # reload previous modules
-    if ! modprobe 8139too; then
-        echo "Warning: Failed to restore 8139too module."
-    fi
+    for MODULE in ${DEVICE_MODULES}; do
+        if ! modprobe ${MODULE}; then
+            echo Warning: Failed to restore ${MODULE}.
+        fi
+    done
 
     rc_status -v
     ;;
@@ -188,13 +193,14 @@ restart)
 status)
     echo -n "Checking for EtherCAT "
 
-    lsmod | grep "^ec_master " > /dev/null
-    master_running=$?
-    lsmod | grep "^ec_8139too " > /dev/null
-    device_running=$?
+    lsmod | grep -q "^ec_master "
+    MASTERS_RUNNING=$?
 
-    # master module and device module loaded?
-    test $master_running -eq 0 -a $device_running -eq 0
+    ! grep -q "(WAITING)" /sys/ethercat/master*/info
+    MASTERS_IDLE=$?
+
+    # master module loaded and masters not waiting for devices?
+    test ${MASTERS_RUNNING} -eq 0 -a ${MASTERS_IDLE} -eq 0
 
     rc_status -v
     ;;
