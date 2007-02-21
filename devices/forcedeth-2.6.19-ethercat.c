@@ -1483,6 +1483,7 @@ static int nv_start_xmit(struct sk_buff *skb, struct net_device *dev)
             spin_unlock_irq(&np->lock);
             netif_stop_queue(dev);
             return NETDEV_TX_BUSY;
+        }
 	}
 
 	/* setup the header buffer */
@@ -1824,6 +1825,7 @@ static int nv_rx_process(struct net_device *dev, int limit)
 		pci_unmap_single(np->pci_dev, np->rx_dma[i],
 				np->rx_skbuff[i]->end-np->rx_skbuff[i]->data,
 				PCI_DMA_FROMDEVICE);
+
 		{
 			int j;
 			dprintk(KERN_DEBUG "Dumping packet (flags 0x%x).",flags);
@@ -2891,7 +2893,7 @@ static void nv_free_irq(struct net_device *dev)
 
 void ec_poll(struct net_device *dev)
 {
-    nv_nic_irq((int) 0, dev, (struct pt_regs *) NULL);
+    nv_nic_irq(0, dev);
 }
 
 static void nv_do_nic_poll(unsigned long data)
