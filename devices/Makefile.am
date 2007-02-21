@@ -43,7 +43,9 @@ EXTRA_DIST = \
 	8139too-2.6.19-ethercat.c \
 	8139too-2.6.19-orig.c \
 	e100-2.6.18-ethercat.c \
-	e100-2.6.18-orig.c
+	e100-2.6.18-orig.c \
+	forcedeth-2.6.17-ethercat.c \
+	forcedeth-2.6.17-orig.c
 
 modules:
 	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_top_srcdir@" modules
@@ -53,6 +55,9 @@ modules_install:
 	cp $(srcdir)/ec_8139too.ko $(DESTDIR)$(LINUX_MOD_PATH)
 if ENABLE_E100
 	cp $(srcdir)/ec_e100.ko $(DESTDIR)$(LINUX_MOD_PATH)
+endif
+if ENABLE_FORCEDETH
+	cp $(srcdir)/ec_forcedeth.ko $(DESTDIR)$(LINUX_MOD_PATH)
 endif
 
 clean-local:
