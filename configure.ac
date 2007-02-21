@@ -77,8 +77,26 @@ AC_SUBST(LINUX_MOD_PATH,[/lib/modules/$kernelrelease/ethercat])
 AC_MSG_RESULT([$LINUX_SOURCE_DIR (Kernel $LINUX_KERNEL_RELEASE)])
 
 #------------------------------------------------------------------------------
-# 8139too Kernel
+# 8139too driver
 #------------------------------------------------------------------------------
+
+AC_ARG_ENABLE([8139too],
+    AS_HELP_STRING([--enable-8139too],
+                   [Enable 8139too driver]),
+    [
+        case "${enableval}" in
+            yes) enable8139too=1
+                ;;
+            no) enable8139too=0
+                ;;
+            *) AC_MSG_ERROR([Invalid value for --enable-8139too])
+                ;;
+        esac
+    ],
+    [enable8139too=1]
+)
+
+AM_CONDITIONAL(ENABLE_8139TOO, test "x$enable8139too" = "x1")
 
 AC_ARG_WITH([8139too-kernel],
     AC_HELP_STRING(
@@ -93,23 +111,25 @@ AC_ARG_WITH([8139too-kernel],
     ]
 )
 
-AC_MSG_CHECKING([for kernel for 8139too driver])
+if test "x${enable8139too}" = "x1"; then
+    AC_MSG_CHECKING([for kernel for 8139too driver])
 
-kernels=`ls -1 devices/ | grep -oE "^8139too-.*-" | cut -d "-" -f 2 | uniq`
-found=0
-for k in $kernels; do
-    if test "$kernel8139too" = "$k"; then
-        found=1
+    kernels=`ls -1 devices/ | grep -oE "^8139too-.*-" | cut -d "-" -f 2 | uniq`
+    found=0
+    for k in $kernels; do
+        if test "$kernel8139too" = "$k"; then
+            found=1
+        fi
+    done
+    if test $found -ne 1; then
+        AC_MSG_ERROR([kernel $kernel8139too not available for 8139too driver!])
     fi
-done
-if test $found -ne 1; then
-    AC_MSG_ERROR([kernel $kernel8139too not available for 8139too driver!])
+
+    AC_MSG_RESULT([$kernel8139too])
 fi
 
-AC_MSG_RESULT([$kernel8139too])
-
 #------------------------------------------------------------------------------
-# Disable e100
+# e100 driver
 #------------------------------------------------------------------------------
 
 AC_ARG_ENABLE([e100],
@@ -125,14 +145,10 @@ AC_ARG_ENABLE([e100],
                 ;;
         esac
     ],
-    [enablee100=0]
+    [enablee100=0] # disabled by default
 )
 
-AM_CONDITIONAL(ENABLE_E100, test "x$enablee100" = x1)
-
-#------------------------------------------------------------------------------
-# e100 Kernel
-#------------------------------------------------------------------------------
+AM_CONDITIONAL(ENABLE_E100, test "x$enablee100" = "x1")
 
 AC_ARG_WITH([e100-kernel],
     AC_HELP_STRING(
@@ -147,7 +163,7 @@ AC_ARG_WITH([e100-kernel],
     ]
 )
 
-if test ${enablee100} -eq 1; then
+if test "x${enablee100}" = "x1"; then
     AC_MSG_CHECKING([for kernel for e100 driver])
 
     kernels=`ls -1 devices/ | grep -oE "^e100-.*-" | cut -d "-" -f 2 | uniq`
@@ -165,7 +181,7 @@ if test ${enablee100} -eq 1; then
 fi
 
 #------------------------------------------------------------------------------
-# forcedeth
+# forcedeth driver
 #------------------------------------------------------------------------------
 
 AC_ARG_ENABLE([forcedeth],
@@ -181,10 +197,10 @@ AC_ARG_ENABLE([forcedeth],
                 ;;
         esac
     ],
-    [enableforcedeth=0]
+    [enableforcedeth=0] # disabled by default!
 )
 
-AM_CONDITIONAL(ENABLE_FORCEDETH, test "x$enableforcedeth" = x1)
+AM_CONDITIONAL(ENABLE_FORCEDETH, test "x$enableforcedeth" = "x1")
 
 AC_ARG_WITH([forcedeth-kernel],
     AC_HELP_STRING(
@@ -199,7 +215,7 @@ AC_ARG_WITH([forcedeth-kernel],
     ]
 )
 
-if test ${enableforcedeth} -eq 1; then
+if test "x${enableforcedeth}" = "x1"; then
     AC_MSG_CHECKING([for kernel for forcedeth driver])
 
     kernels=`ls -1 devices/ | grep -oE "^forcedeth-.*-" | cut -d "-" -f 2 | uniq`
@@ -295,7 +311,7 @@ AC_ARG_ENABLE([dbg-if],
     [dbg=0]
 )
 
-AM_CONDITIONAL(EC_DBG_IF, test "x$dbg" = x1)
+AM_CONDITIONAL(EC_DBG_IF, test "x$dbg" = "x1")
 AC_SUBST([EC_DBG_IF],${dbg})
 
 #------------------------------------------------------------------------------
@@ -307,10 +323,11 @@ echo configure: creating config.kbuild...
 cat > config.kbuild <<EOF
 # config.kbuild - created by configure
 EC_DBG_IF := ${dbg}
+EC_ENABLE_8139TOO := ${enablee100}
 EC_8139TOO_KERNEL := ${kernel8139too}
-ENABLE_E100 := ${enablee100}
+EC_ENABLE_E100 := ${enablee100}
 EC_E100_KERNEL := ${kernele100}
-ENABLE_FORCEDETH := ${enableforcedeth}
+EC_ENABLE_FORCEDETH := ${enableforcedeth}
 EC_FORCEDETH_KERNEL := ${kernelforcedeth}
 EC_RTAI_DIR := "${rtaidir}"
 EC_MSR_DIR := "${msrdir}"
