@@ -423,6 +423,7 @@ void ec_master_leave_idle_mode(ec_master_t *master /**< EtherCAT master */)
     ec_master_eoe_stop(master);
     ec_master_thread_stop(master);
     ec_master_flush_sdo_requests(master);
+    ec_master_destroy_slaves(master);
 }
 
 /*****************************************************************************/
