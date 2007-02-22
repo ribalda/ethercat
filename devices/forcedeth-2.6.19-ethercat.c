@@ -4273,12 +4273,12 @@ static int nv_close(struct net_device *dev)
 	nv_txrx_reset(dev);
 
 	/* disable interrupts on the nic or we will lock up */
-	base = get_hwbase(dev);
-	if (!np->ecdev) nv_disable_hw_interrupts(dev, np->irqmask);
-	pci_push(base);
-	dprintk(KERN_INFO "%s: Irqmask is zero again\n", dev->name);
-
 	if (!np->ecdev) {
+		base = get_hwbase(dev);
+		nv_disable_hw_interrupts(dev, np->irqmask);
+		pci_push(base);
+		dprintk(KERN_INFO "%s: Irqmask is zero again\n", dev->name);
+
 		spin_unlock_irq(&np->lock);
 
 		nv_free_irq(dev);
