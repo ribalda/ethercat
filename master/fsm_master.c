@@ -458,8 +458,8 @@ void ec_fsm_master_state_read_states(ec_fsm_master_t *fsm /**< master state mach
     }
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
-        EC_ERR("Failed to receive AL state datagram for slave %i!\n",
-               slave->ring_position);
+        EC_ERR("Failed to receive AL state datagram for slave %i"
+                " (datagram state %i)\n", slave->ring_position, datagram->state);
         fsm->state = ec_fsm_master_state_error;
         return;
     }
@@ -664,8 +664,9 @@ void ec_fsm_master_state_rewrite_addresses(ec_fsm_master_t *fsm
     }
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
-        EC_ERR("Failed to receive address datagram for slave %i.\n",
-               slave->ring_position);
+        EC_ERR("Failed to receive address datagram for slave %i"
+                " (datagram state %i).\n",
+                slave->ring_position, datagram->state);
         fsm->state = ec_fsm_master_state_error;
         return;
     }
