@@ -2385,7 +2385,8 @@ static void nv_linkchange(struct net_device *dev)
 	struct fe_priv *np = netdev_priv(dev);
 
     if (np->ecdev) {
-        nv_update_linkspeed(dev);
+        int link = nv_update_linkspeed(dev);
+        ecdev_link_state(np->ecdev, link);
         return;
     }
 
@@ -2441,19 +2442,19 @@ static irqreturn_t nv_nic_irq(int foo, void *data)
 		if (!(events & np->irqmask))
 			break;
 
-		spin_lock(&np->lock);
+		if (!np->ecdev) spin_lock(&np->lock);
 		nv_tx_done(dev);
-		spin_unlock(&np->lock);
+		if (!np->ecdev) spin_unlock(&np->lock);
 
 		if (events & NVREG_IRQ_LINK) {
-			spin_lock(&np->lock);
+			if (!np->ecdev) spin_lock(&np->lock);
 			nv_link_irq(dev);
-			spin_unlock(&np->lock);
+			if (!np->ecdev) spin_unlock(&np->lock);
 		}
 		if (np->need_linktimer && time_after(jiffies, np->link_timeout)) {
-			spin_lock(&np->lock);
+			if (!np->ecdev) spin_lock(&np->lock);
 			nv_linkchange(dev);
-			spin_unlock(&np->lock);
+			if (!np->ecdev) spin_unlock(&np->lock);
 			np->link_timeout = jiffies + LINK_TIMEOUT;
 		}
 		if (events & (NVREG_IRQ_TX_ERR)) {
@@ -2466,21 +2467,26 @@ static irqreturn_t nv_nic_irq(int foo, void *data)
 		}
 #ifdef CONFIG_FORCEDETH_NAPI
 		if (events & NVREG_IRQ_RX_ALL) {
-			netif_rx_schedule(dev);
+			if (np->ecdev) {
+				nv_rx_process(dev, dev->weight);
+			}
+			else {
+				netif_rx_schedule(dev);
 
-			/* Disable furthur receive irq's */
-			spin_lock(&np->lock);
-			np->irqmask &= ~NVREG_IRQ_RX_ALL;
+				/* Disable furthur receive irq's */
+				spin_lock(&np->lock);
+				np->irqmask &= ~NVREG_IRQ_RX_ALL;
 
-			if (np->msi_flags & NV_MSI_X_ENABLED)
-				writel(NVREG_IRQ_RX_ALL, base + NvRegIrqMask);
-			else
-				writel(np->irqmask, base + NvRegIrqMask);
-			spin_unlock(&np->lock);
+				if (np->msi_flags & NV_MSI_X_ENABLED)
+					writel(NVREG_IRQ_RX_ALL, base + NvRegIrqMask);
+				else
+					writel(np->irqmask, base + NvRegIrqMask);
+				spin_unlock(&np->lock);
+			}
 		}
 #else
 		nv_rx_process(dev, dev->weight);
-		if (nv_alloc_rx(dev)) {
+		if (nv_alloc_rx(dev) && !np->ecdev) {
 			spin_lock(&np->lock);
 			if (!np->in_shutdown)
 				mod_timer(&np->oom_kick, jiffies + OOM_REFILL);
@@ -2488,20 +2494,22 @@ static irqreturn_t nv_nic_irq(int foo, void *data)
 		}
 #endif
 		if (i > max_interrupt_work) {
-			spin_lock(&np->lock);
-			/* disable interrupts on the nic */
-			if (!(np->msi_flags & NV_MSI_X_ENABLED))
-				writel(0, base + NvRegIrqMask);
-			else
-				writel(np->irqmask, base + NvRegIrqMask);
-			pci_push(base);
+			if (!np->ecdev) {
+				spin_lock(&np->lock);
+				/* disable interrupts on the nic */
+				if (!(np->msi_flags & NV_MSI_X_ENABLED))
+					writel(0, base + NvRegIrqMask);
+				else
+					writel(np->irqmask, base + NvRegIrqMask);
+				pci_push(base);
 
-			if (!np->in_shutdown) {
-				np->nic_poll_irq = np->irqmask;
-				mod_timer(&np->nic_poll, jiffies + POLL_WAIT);
+				if (!np->in_shutdown) {
+					np->nic_poll_irq = np->irqmask;
+					mod_timer(&np->nic_poll, jiffies + POLL_WAIT);
+				}
+				spin_unlock(&np->lock);
 			}
 			printk(KERN_DEBUG "%s: too many iterations (%d) in nv_nic_irq.\n", dev->name, i);
-			spin_unlock(&np->lock);
 			break;
 		}
 
@@ -2518,7 +2526,7 @@ static irqreturn_t nv_nic_irq_tx(int foo, void *data)
 	u8 __iomem *base = get_hwbase(dev);
 	u32 events;
 	int i;
-	unsigned long flags;
+	unsigned long flags = 0;
 
 	dprintk(KERN_DEBUG "%s: nv_nic_irq_tx\n", dev->name);
 
@@ -2530,26 +2538,28 @@ static irqreturn_t nv_nic_irq_tx(int foo, void *data)
 		if (!(events & np->irqmask))
 			break;
 
-		spin_lock_irqsave(&np->lock, flags);
+		if (!np->ecdev) spin_lock_irqsave(&np->lock, flags);
 		nv_tx_done(dev);
-		spin_unlock_irqrestore(&np->lock, flags);
+		if (!np->ecdev) spin_unlock_irqrestore(&np->lock, flags);
 
 		if (events & (NVREG_IRQ_TX_ERR)) {
 			dprintk(KERN_DEBUG "%s: received irq with events 0x%x. Probably TX fail.\n",
 						dev->name, events);
 		}
 		if (i > max_interrupt_work) {
-			spin_lock_irqsave(&np->lock, flags);
-			/* disable interrupts on the nic */
-			writel(NVREG_IRQ_TX_ALL, base + NvRegIrqMask);
-			pci_push(base);
+			if (!np->ecdev) { 
+				spin_lock_irqsave(&np->lock, flags);
+				/* disable interrupts on the nic */
+				writel(NVREG_IRQ_TX_ALL, base + NvRegIrqMask);
+				pci_push(base);
 
-			if (!np->in_shutdown) {
-				np->nic_poll_irq |= NVREG_IRQ_TX_ALL;
-				mod_timer(&np->nic_poll, jiffies + POLL_WAIT);
+				if (!np->in_shutdown) {
+					np->nic_poll_irq |= NVREG_IRQ_TX_ALL;
+					mod_timer(&np->nic_poll, jiffies + POLL_WAIT);
+				}
+				spin_unlock_irqrestore(&np->lock, flags);
 			}
 			printk(KERN_DEBUG "%s: too many iterations (%d) in nv_nic_irq_tx.\n", dev->name, i);
-			spin_unlock_irqrestore(&np->lock, flags);
 			break;
 		}
 
@@ -2601,13 +2611,14 @@ static int nv_napi_poll(struct net_device *dev, int *budget)
 static irqreturn_t nv_nic_irq_rx(int foo, void *data)
 {
 	struct net_device *dev = (struct net_device *) data;
+	struct fe_priv *np = netdev_priv(dev);
 	u8 __iomem *base = get_hwbase(dev);
 	u32 events;
 
 	events = readl(base + NvRegMSIXIrqStatus) & NVREG_IRQ_RX_ALL;
 	writel(NVREG_IRQ_RX_ALL, base + NvRegMSIXIrqStatus);
 
-	if (events) {
+	if (events && !np->ecdev) {
 		netif_rx_schedule(dev);
 		/* disable receive interrupts on the nic */
 		writel(NVREG_IRQ_RX_ALL, base + NvRegIrqMask);
@@ -2636,7 +2647,7 @@ static irqreturn_t nv_nic_irq_rx(int foo, void *data)
 			break;
 
 		nv_rx_process(dev, dev->weight);
-		if (nv_alloc_rx(dev)) {
+		if (nv_alloc_rx(dev) && !np->ecdev) {
 			spin_lock_irqsave(&np->lock, flags);
 			if (!np->in_shutdown)
 				mod_timer(&np->oom_kick, jiffies + OOM_REFILL);
@@ -2644,17 +2655,19 @@ static irqreturn_t nv_nic_irq_rx(int foo, void *data)
 		}
 
 		if (i > max_interrupt_work) {
-			spin_lock_irqsave(&np->lock, flags);
-			/* disable interrupts on the nic */
-			writel(NVREG_IRQ_RX_ALL, base + NvRegIrqMask);
-			pci_push(base);
+			if (!np->ecdev) {
+				spin_lock_irqsave(&np->lock, flags);
+				/* disable interrupts on the nic */
+				writel(NVREG_IRQ_RX_ALL, base + NvRegIrqMask);
+				pci_push(base);
 
-			if (!np->in_shutdown) {
-				np->nic_poll_irq |= NVREG_IRQ_RX_ALL;
-				mod_timer(&np->nic_poll, jiffies + POLL_WAIT);
+				if (!np->in_shutdown) {
+					np->nic_poll_irq |= NVREG_IRQ_RX_ALL;
+					mod_timer(&np->nic_poll, jiffies + POLL_WAIT);
+				}
+				spin_unlock_irqrestore(&np->lock, flags);
 			}
 			printk(KERN_DEBUG "%s: too many iterations (%d) in nv_nic_irq_rx.\n", dev->name, i);
-			spin_unlock_irqrestore(&np->lock, flags);
 			break;
 		}
 	}
@@ -2671,7 +2684,7 @@ static irqreturn_t nv_nic_irq_other(int foo, void *data)
 	u8 __iomem *base = get_hwbase(dev);
 	u32 events;
 	int i;
-	unsigned long flags;
+	unsigned long flags = 0;
 
 	dprintk(KERN_DEBUG "%s: nv_nic_irq_other\n", dev->name);
 
@@ -2684,14 +2697,14 @@ static irqreturn_t nv_nic_irq_other(int foo, void *data)
 			break;
 
 		if (events & NVREG_IRQ_LINK) {
-			spin_lock_irqsave(&np->lock, flags);
+			if (!np->ecdev) spin_lock_irqsave(&np->lock, flags);
 			nv_link_irq(dev);
-			spin_unlock_irqrestore(&np->lock, flags);
+			if (!np->ecdev) spin_unlock_irqrestore(&np->lock, flags);
 		}
 		if (np->need_linktimer && time_after(jiffies, np->link_timeout)) {
-			spin_lock_irqsave(&np->lock, flags);
+			if (!np->ecdev) spin_lock_irqsave(&np->lock, flags);
 			nv_linkchange(dev);
-			spin_unlock_irqrestore(&np->lock, flags);
+			if (!np->ecdev) spin_unlock_irqrestore(&np->lock, flags);
 			np->link_timeout = jiffies + LINK_TIMEOUT;
 		}
 		if (events & (NVREG_IRQ_UNKNOWN)) {
@@ -2699,17 +2712,19 @@ static irqreturn_t nv_nic_irq_other(int foo, void *data)
 						dev->name, events);
 		}
 		if (i > max_interrupt_work) {
-			spin_lock_irqsave(&np->lock, flags);
-			/* disable interrupts on the nic */
-			writel(NVREG_IRQ_OTHER, base + NvRegIrqMask);
-			pci_push(base);
+			if (!np->ecdev) { 
+				spin_lock_irqsave(&np->lock, flags);
+				/* disable interrupts on the nic */
+				writel(NVREG_IRQ_OTHER, base + NvRegIrqMask);
+				pci_push(base);
 
-			if (!np->in_shutdown) {
-				np->nic_poll_irq |= NVREG_IRQ_OTHER;
-				mod_timer(&np->nic_poll, jiffies + POLL_WAIT);
+				if (!np->in_shutdown) {
+					np->nic_poll_irq |= NVREG_IRQ_OTHER;
+					mod_timer(&np->nic_poll, jiffies + POLL_WAIT);
+				}
+				spin_unlock_irqrestore(&np->lock, flags);
 			}
 			printk(KERN_DEBUG "%s: too many iterations (%d) in nv_nic_irq_other.\n", dev->name, i);
-			spin_unlock_irqrestore(&np->lock, flags);
 			break;
 		}
 
@@ -2893,7 +2908,21 @@ static void nv_free_irq(struct net_device *dev)
 
 void ec_poll(struct net_device *dev)
 {
-    nv_nic_irq(0, dev);
+	struct fe_priv *np = netdev_priv(dev);
+
+	if (!using_multi_irqs(dev)) {
+		nv_nic_irq(0, dev);
+	} else {
+		if (np->nic_poll_irq & NVREG_IRQ_RX_ALL) {
+			nv_nic_irq_rx(0, dev);
+		}
+		if (np->nic_poll_irq & NVREG_IRQ_TX_ALL) {
+			nv_nic_irq_tx(0, dev);
+		}
+		if (np->nic_poll_irq & NVREG_IRQ_OTHER) {
+			nv_nic_irq_other(0, dev);
+		}
+	}
 }
 
 static void nv_do_nic_poll(unsigned long data)
@@ -4158,14 +4187,17 @@ static int nv_open(struct net_device *dev)
 	writel(NVREG_IRQSTAT_MASK, base + NvRegIrqStatus);
 	pci_push(base);
 
-	if (nv_request_irq(dev, 0)) {
-		goto out_drain;
+	if (!np->ecdev) {
+		if (nv_request_irq(dev, 0)) {
+			goto out_drain;
+		}
+
+		/* ask for interrupts */
+		nv_enable_hw_interrupts(dev, np->irqmask);
+
+		spin_lock_irq(&np->lock);
 	}
 
-	/* ask for interrupts */
-	nv_enable_hw_interrupts(dev, np->irqmask);
-
-	spin_lock_irq(&np->lock);
 	writel(NVREG_MCASTADDRA_FORCE, base + NvRegMulticastAddrA);
 	writel(0, base + NvRegMulticastAddrB);
 	writel(0, base + NvRegMulticastMaskA);
@@ -4186,23 +4218,29 @@ static int nv_open(struct net_device *dev)
 	ret = nv_update_linkspeed(dev);
 	nv_start_rx(dev);
 	nv_start_tx(dev);
-	netif_start_queue(dev);
-	netif_poll_enable(dev);
 
-	if (ret) {
-		netif_carrier_on(dev);
-	} else {
-		printk("%s: no link during initialization.\n", dev->name);
-		netif_carrier_off(dev);
+	if (np->ecdev) {
+		ecdev_link_state(np->ecdev, ret);
 	}
-	if (oom)
-		mod_timer(&np->oom_kick, jiffies + OOM_REFILL);
+	else {
+		netif_start_queue(dev);
+		netif_poll_enable(dev);
 
-	/* start statistics timer */
-	if (np->driver_data & DEV_HAS_STATISTICS)
-		mod_timer(&np->stats_poll, jiffies + STATS_INTERVAL);
+		if (ret) {
+			netif_carrier_on(dev);
+		} else {
+			printk("%s: no link during initialization.\n", dev->name);
+			netif_carrier_off(dev);
+		}
+		if (oom)
+			mod_timer(&np->oom_kick, jiffies + OOM_REFILL);
 
-	spin_unlock_irq(&np->lock);
+		/* start statistics timer */
+		if (np->driver_data & DEV_HAS_STATISTICS)
+			mod_timer(&np->stats_poll, jiffies + STATS_INTERVAL);
+
+		spin_unlock_irq(&np->lock);
+	}
 
 	return 0;
 out_drain:
@@ -4215,31 +4253,36 @@ static int nv_close(struct net_device *dev)
 	struct fe_priv *np = netdev_priv(dev);
 	u8 __iomem *base;
 
-	spin_lock_irq(&np->lock);
-	np->in_shutdown = 1;
-	spin_unlock_irq(&np->lock);
-	netif_poll_disable(dev);
-	synchronize_irq(dev->irq);
+	if (!np->ecdev) {
+		spin_lock_irq(&np->lock);
+		np->in_shutdown = 1;
+		spin_unlock_irq(&np->lock);
+		netif_poll_disable(dev);
+		synchronize_irq(dev->irq);
 
-	del_timer_sync(&np->oom_kick);
-	del_timer_sync(&np->nic_poll);
-	del_timer_sync(&np->stats_poll);
+		del_timer_sync(&np->oom_kick);
+		del_timer_sync(&np->nic_poll);
+		del_timer_sync(&np->stats_poll);
 
-	netif_stop_queue(dev);
-	spin_lock_irq(&np->lock);
+		netif_stop_queue(dev);
+		spin_lock_irq(&np->lock);
+	}
+
 	nv_stop_tx(dev);
 	nv_stop_rx(dev);
 	nv_txrx_reset(dev);
 
 	/* disable interrupts on the nic or we will lock up */
 	base = get_hwbase(dev);
-	nv_disable_hw_interrupts(dev, np->irqmask);
+	if (!np->ecdev) nv_disable_hw_interrupts(dev, np->irqmask);
 	pci_push(base);
 	dprintk(KERN_INFO "%s: Irqmask is zero again\n", dev->name);
 
-	spin_unlock_irq(&np->lock);
+	if (!np->ecdev) {
+		spin_unlock_irq(&np->lock);
 
-	nv_free_irq(dev);
+		nv_free_irq(dev);
+	}
 
 	drain_ring(dev);
 
@@ -4585,13 +4628,19 @@ static int __devinit nv_probe(struct pci_dev *pci_dev, const struct pci_device_i
 	np->autoneg = 1;
 
 	// offer device to EtherCAT master module
-	if (ecdev_offer(dev, &np->ecdev, "forcedeth", board_idx,
-				ec_poll, THIS_MODULE)) {
+	if (ecdev_offer(dev, &np->ecdev, "forcedeth", board_idx, ec_poll,
+				THIS_MODULE)) {
 		printk(KERN_ERR "forcedeth: Failed to offer device.\n");
 		goto out_error;
 	}
 
-	if (!np->ecdev) {
+	if (np->ecdev) {
+		if (ecdev_open(np->ecdev)) {
+			ecdev_withdraw(np->ecdev);
+			goto out_error;
+		}
+	}
+	else {
 		err = register_netdev(dev);
 		if (err) {
 			printk(KERN_INFO "forcedeth: unable to register netdev: %d\n", err);
@@ -4755,7 +4804,9 @@ static struct pci_driver driver = {
 
 static int __init init_nic(void)
 {
-	printk(KERN_INFO "forcedeth.c: Reverse Engineered nForce ethernet driver. Version %s.\n", FORCEDETH_VERSION);
+	printk(KERN_INFO "forcedeth: EtherCAT-capable nForce ethernet driver."
+			" Version %s, master %s.\n",
+            FORCEDETH_VERSION, EC_MASTER_VERSION);
 	return pci_register_driver(&driver);
 }
 
@@ -4777,8 +4828,8 @@ MODULE_PARM_DESC(msix, "MSIX interrupts are enabled by setting to 1 and disabled
 module_param(dma_64bit, int, 0);
 MODULE_PARM_DESC(dma_64bit, "High DMA is enabled by setting to 1 and disabled by setting to 0.");
 
-MODULE_AUTHOR("Manfred Spraul <manfred@colorfullife.com>");
-MODULE_DESCRIPTION("Reverse Engineered nForce ethernet driver");
+MODULE_AUTHOR("Dipl.-Ing. (FH) Florian Pose <fp@igh-essen.com>");
+MODULE_DESCRIPTION("EtherCAT-capable nForce ethernet driver");
 MODULE_LICENSE("GPL");
 
 //MODULE_DEVICE_TABLE(pci, pci_tbl); // prevent auto-loading
