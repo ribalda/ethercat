@@ -156,8 +156,6 @@ void ec_device_detach(ec_device_t *device /**< EtherCAT device */)
 
 int ec_device_open(ec_device_t *device /**< EtherCAT device */)
 {
-    unsigned int i;
-
     if (!device->dev) {
         EC_ERR("No net_device to open!\n");
         return -1;
@@ -167,9 +165,6 @@ int ec_device_open(ec_device_t *device /**< EtherCAT device */)
         EC_WARN("Device already opened!\n");
         return 0;
     }
-
-    // device could have received frames before
-    for (i = 0; i < 4; i++) ec_device_poll(device);
 
     device->link_state = 0;
     device->tx_count = 0;
