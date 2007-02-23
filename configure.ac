@@ -323,7 +323,7 @@ echo configure: creating config.kbuild...
 cat > config.kbuild <<EOF
 # config.kbuild - created by configure
 EC_DBG_IF := ${dbg}
-EC_ENABLE_8139TOO := ${enablee100}
+EC_ENABLE_8139TOO := ${enable8139too}
 EC_8139TOO_KERNEL := ${kernel8139too}
 EC_ENABLE_E100 := ${enablee100}
 EC_E100_KERNEL := ${kernele100}
