@@ -1215,82 +1215,11 @@ int ecrt_slave_conf_sdo32(ec_slave_t *slave, /**< EtherCAT slave */
 
 /*****************************************************************************/
 
-/**
-   \return 0 in case of success, else < 0
-   \ingroup RealtimeInterface
-*/
-
-int ecrt_slave_pdo_size(ec_slave_t *slave, /**< EtherCAT slave */
-                        uint16_t pdo_index, /**< PDO index */
-                        uint8_t pdo_subindex, /**< PDO subindex */
-                        size_t size /**< new PDO size */
-                        )
-{
-    EC_WARN("ecrt_slave_pdo_size() currently not available.\n");
-    return -1;
-
-#if 0
-    unsigned int i, j, field_counter;
-    const ec_sii_sync_t *sync;
-    const ec_pdo_t *pdo;
-    ec_varsize_t *var;
-
-    if (!slave->type) {
-        EC_ERR("Slave %i has no type information!\n", slave->ring_position);
-        return -1;
-    }
-
-    field_counter = 0;
-    for (i = 0; (sync = slave->type->sync_managers[i]); i++) {
-        for (j = 0; (field = sync->fields[j]); j++) {
-            if (!strcmp(field->name, field_name)) {
-                if (field_counter++ == field_index) {
-                    // is the size of this field variable?
-                    if (field->size) {
-                        EC_ERR("Field \"%s\"[%i] of slave %i has no variable"
-                               " size!\n", field->name, field_index,
-                               slave->ring_position);
-                        return -1;
-                    }
-                    // does a size specification already exist?
-                    list_for_each_entry(var, &slave->varsize_fields, list) {
-                        if (var->field == field) {
-                            EC_WARN("Resizing field \"%s\"[%i] of slave %i.\n",
-                                    field->name, field_index,
-                                    slave->ring_position);
-                            var->size = size;
-                            return 0;
-                        }
-                    }
-                    // create a new size specification...
-                    if (!(var = kmalloc(sizeof(ec_varsize_t), GFP_KERNEL))) {
-                        EC_ERR("Failed to allocate memory for varsize_t!\n");
-                        return -1;
-                    }
-                    var->field = field;
-                    var->size = size;
-                    list_add_tail(&var->list, &slave->varsize_fields);
-                    return 0;
-                }
-            }
-        }
-    }
-
-    EC_ERR("Slave %i (\"%s %s\") has no field \"%s\"[%i]!\n",
-           slave->ring_position, slave->type->vendor_name,
-           slave->type->product_name, field_name, field_index);
-    return -1;
-#endif
-}
-
-/*****************************************************************************/
-
 /** \cond */
 
 EXPORT_SYMBOL(ecrt_slave_conf_sdo8);
 EXPORT_SYMBOL(ecrt_slave_conf_sdo16);
 EXPORT_SYMBOL(ecrt_slave_conf_sdo32);
-EXPORT_SYMBOL(ecrt_slave_pdo_size);
 
 /** \endcond */
 
