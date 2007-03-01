@@ -791,20 +791,20 @@ ssize_t ec_slave_write_eeprom(ec_slave_t *slave, /**< EtherCAT slave */
 
     if (slave->master->mode != EC_MASTER_MODE_IDLE) {
         EC_ERR("Writing EEPROMs only allowed in idle mode!\n");
-        return -1;
+        return -EACCES;
     }
 
     if (slave->new_eeprom_data) {
         EC_ERR("Slave %i already has a pending EEPROM write operation!\n",
                slave->ring_position);
-        return -1;
+        return -EBUSY;
     }
 
     // coarse check of the data
 
     if (size % 2) {
         EC_ERR("EEPROM size is odd! Dropping.\n");
-        return -1;
+        return -EINVAL;
     }
 
     data_words = (const uint16_t *) data;
@@ -812,7 +812,7 @@ ssize_t ec_slave_write_eeprom(ec_slave_t *slave, /**< EtherCAT slave */
 
     if (word_size < 0x0041) {
         EC_ERR("EEPROM data too short! Dropping.\n");
-        return -1;
+        return -EINVAL;
     }
 
     next_header = data_words + 0x0040;
@@ -822,7 +822,7 @@ ssize_t ec_slave_write_eeprom(ec_slave_t *slave, /**< EtherCAT slave */
         cat_size = EC_READ_U16(next_header + 1);
         if ((next_header + cat_size + 2) - data_words >= word_size) {
             EC_ERR("EEPROM data seems to be corrupted! Dropping.\n");
-            return -1;
+            return -EINVAL;
         }
         next_header += cat_size + 2;
         cat_type = EC_READ_U16(next_header);
@@ -832,7 +832,7 @@ ssize_t ec_slave_write_eeprom(ec_slave_t *slave, /**< EtherCAT slave */
 
     if (!(new_data = (uint16_t *) kmalloc(word_size * 2, GFP_KERNEL))) {
         EC_ERR("Unable to allocate memory for new EEPROM data!\n");
-        return -1;
+        return -ENOMEM;
     }
     memcpy(new_data, data, size);
 
@@ -841,7 +841,7 @@ ssize_t ec_slave_write_eeprom(ec_slave_t *slave, /**< EtherCAT slave */
 
     EC_INFO("EEPROM writing scheduled for slave %i, %i words.\n",
             slave->ring_position, word_size);
-    return 0;
+    return size;
 }
 
 /*****************************************************************************/
@@ -928,8 +928,7 @@ ssize_t ec_store_slave_attribute(struct kobject *kobj, /**< slave's kobject */
         return size;
     }
     else if (attr == &attr_eeprom) {
-        if (!ec_slave_write_eeprom(slave, buffer, size))
-            return size;
+        return ec_slave_write_eeprom(slave, buffer, size);
     }
 
     return -EINVAL;
