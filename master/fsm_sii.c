@@ -105,7 +105,7 @@ void ec_fsm_sii_read(ec_fsm_sii_t *fsm, /**< finite state machine */
 void ec_fsm_sii_write(ec_fsm_sii_t *fsm, /**< finite state machine */
                       ec_slave_t *slave, /**< slave to read from */
                       uint16_t offset, /**< offset to read from */
-                      uint16_t *value, /**< pointer to 2 bytes of data */
+                      const uint16_t *value, /**< pointer to 2 bytes of data */
                       ec_fsm_sii_addressing_t mode /**< addressing scheme */
                       )
 {
