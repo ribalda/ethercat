@@ -51,6 +51,37 @@
 
 /*****************************************************************************/
 
+/**
+ * EEPROM request state.
+ */
+
+typedef enum
+{
+    EC_EEPROM_REQ_QUEUED,
+    EC_EEPROM_REQ_COMPLETED,
+    EC_EEPROM_REQ_ERROR
+}
+ec_eeprom_request_state_t;
+
+/*****************************************************************************/
+
+/**
+ * EEPROM write request.
+ */
+
+typedef struct
+{
+    struct list_head list;
+    ec_slave_t *slave;
+    off_t offset;
+    size_t size;
+    const uint16_t *words;
+    ec_eeprom_request_state_t state;
+}
+ec_eeprom_write_request_t;
+
+/*****************************************************************************/
+
 typedef struct ec_fsm_master ec_fsm_master_t; /**< \see ec_fsm_master */
 
 /**
@@ -69,8 +100,9 @@ struct ec_fsm_master
     ec_slave_state_t slave_states; /**< states of responding slaves */
     unsigned int validate; /**< non-zero, if validation to do */
     ec_slave_t *slave; /**< current slave */
+    ec_eeprom_write_request_t *eeprom_request; /**< EEPROM write request */
+    off_t eeprom_index; /**< index to EEPROM write request data */
     ec_sdo_request_t *sdo_request; /**< SDO request to process */
-    uint16_t sii_offset; 
 
     ec_fsm_slave_t fsm_slave; /**< slave state machine */
     ec_fsm_sii_t fsm_sii; /**< SII state machine */

@@ -152,6 +152,10 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     master->release_cb = NULL;
     master->cb_data = NULL;
 
+    INIT_LIST_HEAD(&master->eeprom_requests);
+    init_MUTEX(&master->eeprom_sem);
+    init_waitqueue_head(&master->eeprom_queue);
+
     master->sdo_request = NULL;
     master->sdo_seq_user = 0;
     master->sdo_seq_master = 0;
@@ -254,6 +258,9 @@ void ec_master_clear(struct kobject *kobj /**< kobject of the master */)
     ec_master_t *master = container_of(kobj, ec_master_t, kobj);
     ec_eoe_t *eoe, *next_eoe;
     ec_datagram_t *datagram, *next_datagram;
+
+    // list of EEPROM requests is empty,
+    // otherwise master could not be cleared.
 
     // dequeue all datagrams
     list_for_each_entry_safe(datagram, next_datagram,

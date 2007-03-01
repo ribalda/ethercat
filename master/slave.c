@@ -128,8 +128,6 @@ int ec_slave_init(ec_slave_t *slave, /**< EtherCAT slave */
 
     slave->eeprom_data = NULL;
     slave->eeprom_size = 0;
-    slave->new_eeprom_data = NULL;
-    slave->new_eeprom_size = 0;
 
     slave->sii_alias = 0;
     slave->sii_vendor_id = 0;
@@ -286,7 +284,6 @@ void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
     }
 
     if (slave->eeprom_data) kfree(slave->eeprom_data);
-    if (slave->new_eeprom_data) kfree(slave->new_eeprom_data);
 
     kfree(slave);
 }
@@ -785,63 +782,71 @@ ssize_t ec_slave_write_eeprom(ec_slave_t *slave, /**< EtherCAT slave */
                               size_t size /**< size of data in bytes */
                               )
 {
-    uint16_t word_size, cat_type, cat_size;
-    const uint16_t *data_words, *next_header;
-    uint16_t *new_data;
+    ec_eeprom_write_request_t request;
+    const uint16_t *cat_header;
+    uint16_t cat_type, cat_size;
+    ec_master_t *master = slave->master;
 
-    if (slave->master->mode != EC_MASTER_MODE_IDLE) {
+    if (slave->master->mode != EC_MASTER_MODE_IDLE) { // FIXME
         EC_ERR("Writing EEPROMs only allowed in idle mode!\n");
-        return -EACCES;
-    }
-
-    if (slave->new_eeprom_data) {
-        EC_ERR("Slave %i already has a pending EEPROM write operation!\n",
-               slave->ring_position);
         return -EBUSY;
     }
 
-    // coarse check of the data
-
     if (size % 2) {
-        EC_ERR("EEPROM size is odd! Dropping.\n");
+        EC_ERR("EEPROM data size is odd! Dropping.\n");
         return -EINVAL;
     }
 
-    data_words = (const uint16_t *) data;
-    word_size = size / 2;
+    // init EEPROM write request
+    INIT_LIST_HEAD(&request.list);
+    request.slave = slave;
+    request.words = (const uint16_t *) data;
+    request.offset = 0;
+    request.size = size / 2;
+    request.state = EC_EEPROM_REQ_QUEUED;
 
-    if (word_size < 0x0041) {
+    if (request.size < 0x0041) {
         EC_ERR("EEPROM data too short! Dropping.\n");
         return -EINVAL;
     }
 
-    next_header = data_words + 0x0040;
-    cat_type = EC_READ_U16(next_header);
-    while (cat_type != 0xFFFF) {
-        cat_type = EC_READ_U16(next_header);
-        cat_size = EC_READ_U16(next_header + 1);
-        if ((next_header + cat_size + 2) - data_words >= word_size) {
-            EC_ERR("EEPROM data seems to be corrupted! Dropping.\n");
+    cat_header = request.words + 0x0040; // first category header
+    cat_type = EC_READ_U16(cat_header);
+    while (cat_type != 0xFFFF) { // cycle through categories
+        if (cat_header + 1 > request.words + request.size) {
+            EC_ERR("EEPROM data corrupted! Dropping.\n");
             return -EINVAL;
         }
-        next_header += cat_size + 2;
-        cat_type = EC_READ_U16(next_header);
+        cat_size = EC_READ_U16(cat_header + 1);
+        if (cat_header + cat_size + 2 > request.words + request.size) {
+            EC_ERR("EEPROM data corrupted! Dropping.\n");
+            return -EINVAL;
+        }
+        cat_header += cat_size + 2;
+        cat_type = EC_READ_U16(cat_header);
     }
 
-    // data ok!
+    // data ok: schedule EEPROM write request.
+    down(&master->eeprom_sem);
+    list_add_tail(&request.list, &master->eeprom_requests);
+    up(&master->eeprom_sem);
 
-    if (!(new_data = (uint16_t *) kmalloc(word_size * 2, GFP_KERNEL))) {
-        EC_ERR("Unable to allocate memory for new EEPROM data!\n");
-        return -ENOMEM;
+    // wait for processing through FSM
+    while (wait_event_interruptible(master->eeprom_queue,
+                request.state != EC_EEPROM_REQ_QUEUED)) {
+        // interrupted by signal
+        down(&master->eeprom_sem);
+        if (!list_empty(&request.list)) {
+            // still queued: safely dequeue
+            list_del(&request.list);
+            up(&master->eeprom_sem);
+            return -EINTR;
+        }
+        // request processing: interrupt not possible.
+        up(&master->eeprom_sem);
     }
-    memcpy(new_data, data, size);
 
-    slave->new_eeprom_size = word_size;
-    slave->new_eeprom_data = new_data;
-
-    EC_INFO("EEPROM writing scheduled for slave %i, %i words.\n",
-            slave->ring_position, word_size);
-    return size;
+    return request.state == EC_EEPROM_REQ_COMPLETED ? size : -EIO;
 }
 
 /*****************************************************************************/

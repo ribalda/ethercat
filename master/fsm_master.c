@@ -275,6 +275,51 @@ void ec_fsm_master_state_broadcast(ec_fsm_master_t *fsm /**< master state machin
 /*****************************************************************************/
 
 /**
+ * Check for pending EEPROM write requests and process one.
+ * \return non-zero, if an EEPROM write request is processed.
+ */
+
+int ec_fsm_master_action_process_eeprom(
+        ec_fsm_master_t *fsm /**< master state machine */
+        )
+{
+    ec_master_t *master = fsm->master;
+    ec_eeprom_write_request_t *request;
+    ec_slave_t *slave;
+
+    down(&master->eeprom_sem);
+    list_for_each_entry(request, &master->eeprom_requests, list) {
+        list_del_init(&request->list); // dequeue
+        up(&master->eeprom_sem);
+
+        slave = request->slave;
+        if (!slave->online || slave->error_flag) {
+            EC_ERR("Discarding EEPROM data, slave %i not ready.\n",
+                    slave->ring_position);
+            request->state = EC_EEPROM_REQ_ERROR;
+            wake_up_interruptible(&master->eeprom_queue);
+            down(&master->eeprom_sem);
+            continue;
+        }
+
+        // found pending EEPROM write operation. execute it!
+        EC_INFO("Writing EEPROM of slave %i...\n", slave->ring_position);
+        fsm->eeprom_request = request;
+        fsm->eeprom_index = 0;
+        ec_fsm_sii_write(&fsm->fsm_sii, request->slave, request->offset,
+                request->words, EC_FSM_SII_NODE);
+        fsm->state = ec_fsm_master_state_write_eeprom;
+        fsm->state(fsm); // execute immediately
+        return 1;
+    }
+
+    up(&master->eeprom_sem);
+    return 0;
+}
+
+/*****************************************************************************/
+
+/**
    Master action: PROC_STATES.
    Processes the slave states.
 */
@@ -368,27 +413,8 @@ void ec_fsm_master_action_process_states(ec_fsm_master_t *fsm
         }
 
         // check for pending EEPROM write operations.
-        list_for_each_entry(slave, &master->slaves, list) {
-            if (!slave->new_eeprom_data) continue;
-
-            if (!slave->online || slave->error_flag) {
-                kfree(slave->new_eeprom_data);
-                slave->new_eeprom_data = NULL;
-                EC_ERR("Discarding EEPROM data, slave %i not ready.\n",
-                       slave->ring_position);
-                continue;
-            }
-
-            // found pending EEPROM write operation. execute it!
-            EC_INFO("Writing EEPROM of slave %i...\n", slave->ring_position);
-            fsm->slave = slave;
-            fsm->sii_offset = 0x0000;
-            ec_fsm_sii_write(&fsm->fsm_sii, slave, fsm->sii_offset,
-                             slave->new_eeprom_data, EC_FSM_SII_NODE);
-            fsm->state = ec_fsm_master_state_write_eeprom;
-            fsm->state(fsm); // execute immediately
-            return;
-        }
+        if (ec_fsm_master_action_process_eeprom(fsm))
+            return; // EEPROM write request found
     }
 
     fsm->state = ec_fsm_master_state_end;
@@ -751,35 +777,42 @@ void ec_fsm_master_state_configure_slave(ec_fsm_master_t *fsm
 
 void ec_fsm_master_state_write_eeprom(ec_fsm_master_t *fsm /**< master state machine */)
 {
-    ec_slave_t *slave = fsm->slave;
+    ec_master_t *master = fsm->master;
+    ec_eeprom_write_request_t *request = fsm->eeprom_request;
+    ec_slave_t *slave = request->slave;
 
     if (ec_fsm_sii_exec(&fsm->fsm_sii)) return;
 
     if (!ec_fsm_sii_success(&fsm->fsm_sii)) {
-        fsm->slave->error_flag = 1;
+        slave->error_flag = 1;
         EC_ERR("Failed to write EEPROM contents to slave %i.\n",
                slave->ring_position);
-        kfree(slave->new_eeprom_data);
-        slave->new_eeprom_data = NULL;
+        request->state = EC_EEPROM_REQ_ERROR;
+        wake_up_interruptible(&master->eeprom_queue);
         fsm->state = ec_fsm_master_state_error;
         return;
     }
 
-    fsm->sii_offset++;
-    if (fsm->sii_offset < slave->new_eeprom_size) {
-        ec_fsm_sii_write(&fsm->fsm_sii, slave, fsm->sii_offset,
-                         slave->new_eeprom_data + fsm->sii_offset,
-                         EC_FSM_SII_NODE);
+    fsm->eeprom_index++;
+    if (fsm->eeprom_index < request->size) {
+        ec_fsm_sii_write(&fsm->fsm_sii, slave,
+                request->offset + fsm->eeprom_index,
+                request->words + fsm->eeprom_index,
+                EC_FSM_SII_NODE);
         ec_fsm_sii_exec(&fsm->fsm_sii); // execute immediately
         return;
     }
 
     // finished writing EEPROM
     EC_INFO("Finished writing EEPROM of slave %i.\n", slave->ring_position);
-    kfree(slave->new_eeprom_data);
-    slave->new_eeprom_data = NULL;
+    request->state = EC_EEPROM_REQ_COMPLETED;
+    wake_up_interruptible(&master->eeprom_queue);
 
     // TODO: Evaluate new EEPROM contents!
+
+    // check for another EEPROM write request
+    if (ec_fsm_master_action_process_eeprom(fsm))
+        return; // processing another request
 
     // restart master state machine.
     fsm->state = ec_fsm_master_state_start;

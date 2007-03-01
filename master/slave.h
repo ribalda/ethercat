@@ -221,9 +221,7 @@ struct ec_slave
 
     // EEPROM
     uint8_t *eeprom_data; /**< Complete EEPROM image */
-    uint16_t eeprom_size; /**< size of the EEPROM contents in byte */
-    uint16_t *new_eeprom_data; /**< new EEPROM data to write */
-    uint16_t new_eeprom_size; /**< size of new EEPROM data in words */
+    size_t eeprom_size; /**< size of the EEPROM contents in bytes */
 
     // slave information interface
     uint16_t sii_alias; /**< configured station alias */

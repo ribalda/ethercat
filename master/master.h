@@ -44,6 +44,7 @@
 #include <linux/list.h>
 #include <linux/sysfs.h>
 #include <linux/timer.h>
+#include <linux/wait.h>
 #include <asm/atomic.h>
 #include <asm/semaphore.h>
 
@@ -137,6 +138,12 @@ struct ec_master
     int (*request_cb)(void *); /**< lock request callback */
     void (*release_cb)(void *); /**< lock release callback */
     void *cb_data; /**< data parameter of locking callbacks */
+
+    struct list_head eeprom_requests; /**< EEPROM write requests */
+    struct semaphore eeprom_sem; /**< semaphore protecting the list of
+                                   EEPROM write requests */
+    wait_queue_head_t eeprom_queue; /**< wait queue for EEPROM
+                                      write requests from user space */
 
     ec_sdo_request_t *sdo_request; /**< pointer to the current SDO request */
     unsigned int sdo_seq_user; /**< sequence number for user space */
