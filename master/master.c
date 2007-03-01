@@ -70,12 +70,10 @@ ssize_t ec_store_master_attribute(struct kobject *, struct attribute *,
 /** \cond */
 
 EC_SYSFS_READ_ATTR(info);
-EC_SYSFS_READ_WRITE_ATTR(eeprom_write_enable);
 EC_SYSFS_READ_WRITE_ATTR(debug_level);
 
 static struct attribute *ec_def_attrs[] = {
     &attr_info,
-    &attr_eeprom_write_enable,
     &attr_debug_level,
     NULL,
 };
@@ -153,8 +151,6 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     master->request_cb = NULL;
     master->release_cb = NULL;
     master->cb_data = NULL;
-
-    master->eeprom_write_enable = 0;
 
     master->sdo_request = NULL;
     master->sdo_seq_user = 0;
@@ -1003,9 +999,6 @@ ssize_t ec_show_master_attribute(struct kobject *kobj, /**< kobject */
     else if (attr == &attr_debug_level) {
         return sprintf(buffer, "%i\n", master->debug_level);
     }
-    else if (attr == &attr_eeprom_write_enable) {
-        return sprintf(buffer, "%i\n", master->eeprom_write_enable);
-    }
 
     return 0;
 }
@@ -1025,26 +1018,7 @@ ssize_t ec_store_master_attribute(struct kobject *kobj, /**< slave's kobject */
 {
     ec_master_t *master = container_of(kobj, ec_master_t, kobj);
 
-    if (attr == &attr_eeprom_write_enable) {
-        if (!strcmp(buffer, "1\n")) {
-            master->eeprom_write_enable = 1;
-            EC_INFO("Slave EEPROM writing enabled.\n");
-            return size;
-        }
-        else if (!strcmp(buffer, "0\n")) {
-            master->eeprom_write_enable = 0;
-            EC_INFO("Slave EEPROM writing disabled.\n");
-            return size;
-        }
-
-        EC_ERR("Invalid value for eeprom_write_enable!\n");
-
-        if (master->eeprom_write_enable) {
-            master->eeprom_write_enable = 0;
-            EC_INFO("Slave EEPROM writing disabled.\n");
-        }
-    }
-    else if (attr == &attr_debug_level) {
+    if (attr == &attr_debug_level) {
         if (!strcmp(buffer, "0\n")) {
             master->debug_level = 0;
         }

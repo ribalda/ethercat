@@ -138,8 +138,6 @@ struct ec_master
     void (*release_cb)(void *); /**< lock release callback */
     void *cb_data; /**< data parameter of locking callbacks */
 
-    uint8_t eeprom_write_enable; /**< allow write operations to EEPROMs */
-
     ec_sdo_request_t *sdo_request; /**< pointer to the current SDO request */
     unsigned int sdo_seq_user; /**< sequence number for user space */
     unsigned int sdo_seq_master; /**< sequence number for master */

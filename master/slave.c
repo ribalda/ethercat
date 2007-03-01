@@ -789,12 +789,6 @@ ssize_t ec_slave_write_eeprom(ec_slave_t *slave, /**< EtherCAT slave */
     const uint16_t *data_words, *next_header;
     uint16_t *new_data;
 
-    if (!slave->master->eeprom_write_enable) {
-        EC_ERR("Writing EEPROMs not allowed! Enable via"
-               " eeprom_write_enable SysFS entry.\n");
-        return -1;
-    }
-
     if (slave->master->mode != EC_MASTER_MODE_IDLE) {
         EC_ERR("Writing EEPROMs only allowed in idle mode!\n");
         return -1;
