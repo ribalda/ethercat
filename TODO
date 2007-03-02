@@ -8,12 +8,9 @@ $Id$
 
 * Release 1.3:
   - Remove ecrt_master_run(). Make master FSM run in process context instead.
-  - Separate slave objects from configurations. Make bus dynamic in OPERATION
-    mode.
-  - New sysfs structure with slaves, configurations and links.
   - Remove addressing scheme "X:Y".
+  - Allow only MAC address as device ID.
   - Interface/buffers for asynchronous domain IO.
-  - Tool to set aliases.
   - Remove ugly ec_slave_is_coupler() and ec_slave_has_subbus().
   - Add statistics object.
   - SDO dictionary and -access in operation mode.
@@ -21,11 +18,12 @@ $Id$
   - Speed up IDLE-FSM through fast mode with schedule().
 
 * Future features:
-  - e100 driver.
   - Distributed clocks.
   - Read dynamic PDO mapping from SDO dictionary (see can-cia.org: cia301ds4).
   - Redundancy with 2 network adapters.
   - Interface for alternative PDO mapping.
+  - Read out CRC counters.
+  - Optimize alignment of process data.
 
 * Smaller changes:
   - Simplify FSMs with <state>_enter() functions.
