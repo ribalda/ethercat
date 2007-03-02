@@ -284,11 +284,11 @@ int ec_fsm_master_action_process_eeprom(
         )
 {
     ec_master_t *master = fsm->master;
-    ec_eeprom_write_request_t *request;
+    ec_eeprom_write_request_t *request, *next;
     ec_slave_t *slave;
 
     down(&master->eeprom_sem);
-    list_for_each_entry(request, &master->eeprom_requests, list) {
+    list_for_each_entry_safe(request, next, &master->eeprom_requests, list) {
         list_del_init(&request->list); // dequeue
         up(&master->eeprom_sem);
 
