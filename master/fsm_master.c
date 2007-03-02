@@ -284,11 +284,19 @@ int ec_fsm_master_action_process_eeprom(
         )
 {
     ec_master_t *master = fsm->master;
-    ec_eeprom_write_request_t *request, *next;
+    ec_eeprom_write_request_t *request;
     ec_slave_t *slave;
 
-    down(&master->eeprom_sem);
-    list_for_each_entry_safe(request, next, &master->eeprom_requests, list) {
+    // search the first request to be processed
+    while (1) {
+        down(&master->eeprom_sem);
+        if (list_empty(&master->eeprom_requests)) {
+            up(&master->eeprom_sem);
+            break;
+        }
+        // get first request
+        request = list_entry(master->eeprom_requests.next,
+                ec_eeprom_write_request_t, list);
         list_del_init(&request->list); // dequeue
         up(&master->eeprom_sem);
 
@@ -298,7 +306,6 @@ int ec_fsm_master_action_process_eeprom(
                     slave->ring_position);
             request->state = EC_EEPROM_REQ_ERROR;
             wake_up_interruptible(&master->eeprom_queue);
-            down(&master->eeprom_sem);
             continue;
         }
 
@@ -313,7 +320,6 @@ int ec_fsm_master_action_process_eeprom(
         return 1;
     }
 
-    up(&master->eeprom_sem);
     return 0;
 }
 
