@@ -832,19 +832,20 @@ ssize_t ec_slave_write_eeprom(ec_slave_t *slave, /**< EtherCAT slave */
     up(&master->eeprom_sem);
 
     // wait for processing through FSM
-    while (wait_event_interruptible(master->eeprom_queue,
+    if (wait_event_interruptible(master->eeprom_queue,
                 request.state != EC_EEPROM_REQ_QUEUED)) {
         // interrupted by signal
         down(&master->eeprom_sem);
-        if (!list_empty(&request.list)) {
-            // still queued: safely dequeue
+        if (request.state == EC_EEPROM_REQ_QUEUED) {
             list_del(&request.list);
             up(&master->eeprom_sem);
-            return -EINTR;
+            return -EPERM;
         }
         // request processing: interrupt not possible.
         up(&master->eeprom_sem);
     }
+
+    wait_event(master->eeprom_queue, request.state != EC_EEPROM_REQ_BUSY);
 
     return request.state == EC_EEPROM_REQ_COMPLETED ? size : -EIO;
 }
