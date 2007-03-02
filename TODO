@@ -16,6 +16,7 @@ $Id$
   - SDO dictionary and -access in operation mode.
   - SDO write access in sysfs.
   - Speed up IDLE-FSM through fast mode with schedule().
+  - Evaluate EEPROM contents after writing.
 
 * Future features:
   - Distributed clocks.

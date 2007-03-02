@@ -311,7 +311,9 @@ int ec_fsm_master_action_process_eeprom(
         }
 
         // found pending EEPROM write operation. execute it!
-        EC_INFO("Writing EEPROM of slave %i...\n", slave->ring_position);
+        if (master->debug_level)
+            EC_DBG("Writing EEPROM data to slave %i...\n",
+                    slave->ring_position);
         fsm->eeprom_request = request;
         fsm->eeprom_index = 0;
         ec_fsm_sii_write(&fsm->fsm_sii, request->slave, request->offset,
@@ -782,7 +784,8 @@ void ec_fsm_master_state_configure_slave(ec_fsm_master_t *fsm
    Master state: WRITE EEPROM.
 */
 
-void ec_fsm_master_state_write_eeprom(ec_fsm_master_t *fsm /**< master state machine */)
+void ec_fsm_master_state_write_eeprom(
+        ec_fsm_master_t *fsm /**< master state machine */)
 {
     ec_master_t *master = fsm->master;
     ec_eeprom_write_request_t *request = fsm->eeprom_request;
@@ -792,8 +795,8 @@ void ec_fsm_master_state_write_eeprom(ec_fsm_master_t *fsm /**< master state mac
 
     if (!ec_fsm_sii_success(&fsm->fsm_sii)) {
         slave->error_flag = 1;
-        EC_ERR("Failed to write EEPROM contents to slave %i.\n",
-               slave->ring_position);
+        EC_ERR("Failed to write EEPROM data to slave %i.\n",
+                slave->ring_position);
         request->state = EC_EEPROM_REQ_ERROR;
         wake_up(&master->eeprom_queue);
         fsm->state = ec_fsm_master_state_error;
@@ -811,7 +814,9 @@ void ec_fsm_master_state_write_eeprom(ec_fsm_master_t *fsm /**< master state mac
     }
 
     // finished writing EEPROM
-    EC_INFO("Finished writing EEPROM of slave %i.\n", slave->ring_position);
+    if (master->debug_level)
+        EC_DBG("Finished writing EEPROM data to slave %i.\n",
+                slave->ring_position);
     request->state = EC_EEPROM_REQ_COMPLETED;
     wake_up(&master->eeprom_queue);
 

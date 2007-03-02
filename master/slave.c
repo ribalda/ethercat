@@ -65,11 +65,13 @@ ssize_t ec_store_slave_attribute(struct kobject *, struct attribute *,
 EC_SYSFS_READ_ATTR(info);
 EC_SYSFS_READ_WRITE_ATTR(state);
 EC_SYSFS_READ_WRITE_ATTR(eeprom);
+EC_SYSFS_READ_WRITE_ATTR(alias);
 
 static struct attribute *def_attrs[] = {
     &attr_info,
     &attr_state,
     &attr_eeprom,
+    &attr_alias,
     NULL,
 };
 
@@ -773,19 +775,57 @@ size_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
 /*****************************************************************************/
 
 /**
-   Schedules an EEPROM write operation.
-   \return 0 in case of success, else < 0
-*/
+ * Schedules an EEPROM write request.
+ * \return 0 case of success, otherwise error code.
+ */
+
+int ec_slave_schedule_eeprom_writing(ec_eeprom_write_request_t *request)
+{
+    ec_master_t *master = request->slave->master;
+
+    request->state = EC_EEPROM_REQ_QUEUED;
+
+    // schedule EEPROM write request.
+    down(&master->eeprom_sem);
+    list_add_tail(&request->list, &master->eeprom_requests);
+    up(&master->eeprom_sem);
+
+    // wait for processing through FSM
+    if (wait_event_interruptible(master->eeprom_queue,
+                request->state != EC_EEPROM_REQ_QUEUED)) {
+        // interrupted by signal
+        down(&master->eeprom_sem);
+        if (request->state == EC_EEPROM_REQ_QUEUED) {
+            list_del(&request->list);
+            up(&master->eeprom_sem);
+            return -EINTR;
+        }
+        // request already processing: interrupt not possible.
+        up(&master->eeprom_sem);
+    }
+
+    // wait until master FSM has finished processing
+    wait_event(master->eeprom_queue, request->state != EC_EEPROM_REQ_BUSY);
+
+    return request->state == EC_EEPROM_REQ_COMPLETED ? 0 : -EIO;
+}
+
+/*****************************************************************************/
+
+/**
+ * Writes complete EEPROM contents to a slave.
+ * \return data size written in case of success, otherwise error code.
+ */
 
 ssize_t ec_slave_write_eeprom(ec_slave_t *slave, /**< EtherCAT slave */
-                              const uint8_t *data, /**< new EEPROM data */
-                              size_t size /**< size of data in bytes */
-                              )
+        const uint8_t *data, /**< new EEPROM data */
+        size_t size /**< size of data in bytes */
+        )
 {
     ec_eeprom_write_request_t request;
     const uint16_t *cat_header;
     uint16_t cat_type, cat_size;
-    ec_master_t *master = slave->master;
+    int ret;
 
     if (slave->master->mode != EC_MASTER_MODE_IDLE) { // FIXME
         EC_ERR("Writing EEPROMs only allowed in idle mode!\n");
@@ -803,7 +843,6 @@ ssize_t ec_slave_write_eeprom(ec_slave_t *slave, /**< EtherCAT slave */
     request.words = (const uint16_t *) data;
     request.offset = 0;
     request.size = size / 2;
-    request.state = EC_EEPROM_REQ_QUEUED;
 
     if (request.size < 0x0041) {
         EC_ERR("EEPROM data too short! Dropping.\n");
@@ -826,30 +865,59 @@ ssize_t ec_slave_write_eeprom(ec_slave_t *slave, /**< EtherCAT slave */
         cat_type = EC_READ_U16(cat_header);
     }
 
-    // data ok: schedule EEPROM write request.
-    down(&master->eeprom_sem);
-    list_add_tail(&request.list, &master->eeprom_requests);
-    up(&master->eeprom_sem);
+    // EEPROM data ok. schedule writing.
+    if ((ret = ec_slave_schedule_eeprom_writing(&request)))
+        return ret; // error code
 
-    // wait for processing through FSM
-    if (wait_event_interruptible(master->eeprom_queue,
-                request.state != EC_EEPROM_REQ_QUEUED)) {
-        // interrupted by signal
-        down(&master->eeprom_sem);
-        if (request.state == EC_EEPROM_REQ_QUEUED) {
-            list_del(&request.list);
-            up(&master->eeprom_sem);
-            return -EINTR;
-        }
-        // request already processing: interrupt not possible.
-        up(&master->eeprom_sem);
+    return size; // success
+}
+
+/*****************************************************************************/
+
+/**
+ * Writes the Secondary slave address (alias) to the slave's EEPROM.
+ * \return data size written in case of success, otherwise error code.
+ */
+
+ssize_t ec_slave_write_alias(ec_slave_t *slave, /**< EtherCAT slave */
+        const uint8_t *data, /**< alias string */
+        size_t size /**< size of data in bytes */
+        )
+{
+    ec_eeprom_write_request_t request;
+    char *remainder;
+    uint16_t alias, word;
+    int ret;
+
+    if (slave->master->mode != EC_MASTER_MODE_IDLE) { // FIXME
+        EC_ERR("Writing EEPROMs only allowed in idle mode!\n");
+        return -EBUSY;
     }
 
-    // wait until master FSM has finished processing
-    wait_event(master->eeprom_queue, request.state != EC_EEPROM_REQ_BUSY);
+    alias = simple_strtoul(data, &remainder, 0);
+    if (remainder == (char *) data || (*remainder && *remainder != '\n')) {
+        EC_ERR("Invalid alias value! Dropping.\n");
+        return -EINVAL;
+    }
+    
+    // correct endianess
+    EC_WRITE_U16(&word, alias);
 
-    return request.state == EC_EEPROM_REQ_COMPLETED ? size : -EIO;
+    // init EEPROM write request
+    INIT_LIST_HEAD(&request.list);
+    request.slave = slave;
+    request.words = &word;
+    request.offset = 0x0004;
+    request.size = 1;
+
+    if ((ret = ec_slave_schedule_eeprom_writing(&request)))
+        return ret; // error code
+
+    slave->sii_alias = alias; // FIXME: do this in state machine
+
+    return size; // success
 }
+
 
 /*****************************************************************************/
 
@@ -895,6 +963,9 @@ ssize_t ec_show_slave_attribute(struct kobject *kobj, /**< slave's kobject */
             }
         }
     }
+    else if (attr == &attr_alias) {
+        return sprintf(buffer, "%u\n", slave->sii_alias);
+    }
 
     return 0;
 }
@@ -937,8 +1008,11 @@ ssize_t ec_store_slave_attribute(struct kobject *kobj, /**< slave's kobject */
     else if (attr == &attr_eeprom) {
         return ec_slave_write_eeprom(slave, buffer, size);
     }
+    else if (attr == &attr_alias) {
+        return ec_slave_write_alias(slave, buffer, size);
+    }
 
-    return -EINVAL;
+    return -EIO;
 }
 
 /*****************************************************************************/
