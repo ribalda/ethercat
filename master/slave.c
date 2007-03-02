@@ -839,12 +839,13 @@ ssize_t ec_slave_write_eeprom(ec_slave_t *slave, /**< EtherCAT slave */
         if (request.state == EC_EEPROM_REQ_QUEUED) {
             list_del(&request.list);
             up(&master->eeprom_sem);
-            return -EPERM;
+            return -EINTR;
         }
-        // request processing: interrupt not possible.
+        // request already processing: interrupt not possible.
         up(&master->eeprom_sem);
     }
 
+    // wait until master FSM has finished processing
     wait_event(master->eeprom_queue, request.state != EC_EEPROM_REQ_BUSY);
 
     return request.state == EC_EEPROM_REQ_COMPLETED ? size : -EIO;
