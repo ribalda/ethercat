@@ -25,6 +25,7 @@ $Id$
   - Interface for alternative PDO mapping.
   - Read out CRC counters.
   - Optimize alignment of process data.
+  - Calculate expected working counter for domains.
 
 * Smaller changes:
   - Simplify FSMs with <state>_enter() functions.
