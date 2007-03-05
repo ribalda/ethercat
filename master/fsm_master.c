@@ -185,7 +185,7 @@ void ec_fsm_master_state_broadcast(ec_fsm_master_t *fsm /**< master state machin
         // link is down
         fsm->slaves_responding = 0;
         list_for_each_entry(slave, &master->slaves, list) {
-            slave->online = 0;
+            ec_slave_set_online_state(slave, EC_SLAVE_OFFLINE);
         }
         fsm->state = ec_fsm_master_state_error;
         return;
@@ -302,7 +302,7 @@ int ec_fsm_master_action_process_eeprom(
         up(&master->eeprom_sem);
 
         slave = request->slave;
-        if (!slave->online || slave->error_flag) {
+        if (slave->online_state == EC_SLAVE_OFFLINE || slave->error_flag) {
             EC_ERR("Discarding EEPROM data, slave %i not ready.\n",
                     slave->ring_position);
             request->state = EC_EEPROM_REQ_ERROR;
@@ -344,7 +344,7 @@ void ec_fsm_master_action_process_states(ec_fsm_master_t *fsm
     // check if any slaves are not in the state, they're supposed to be
     list_for_each_entry(slave, &master->slaves, list) {
         if (slave->error_flag
-            || !slave->online
+            || slave->online_state == EC_SLAVE_OFFLINE
             || slave->requested_state == EC_SLAVE_STATE_UNKNOWN
             || (slave->current_state == slave->requested_state
                 && slave->self_configured)) continue;
@@ -380,7 +380,7 @@ void ec_fsm_master_action_process_states(ec_fsm_master_t *fsm
                 EC_DBG("Processing SDO request...\n");
             slave = master->sdo_request->sdo->slave;
             if (slave->current_state == EC_SLAVE_STATE_INIT
-                || !slave->online) {
+                || slave->online_state == EC_SLAVE_OFFLINE) {
                 EC_ERR("Failed to process SDO request, slave %i not ready.\n",
                        slave->ring_position);
                 master->sdo_request->return_code = -1;
@@ -403,7 +403,7 @@ void ec_fsm_master_action_process_states(ec_fsm_master_t *fsm
                 || slave->sdo_dictionary_fetched
                 || slave->current_state == EC_SLAVE_STATE_INIT
                 || jiffies - slave->jiffies_preop < EC_WAIT_SDO_DICT * HZ
-                || !slave->online
+                || slave->online_state == EC_SLAVE_OFFLINE
                 || slave->error_flag) continue;
 
             if (master->debug_level) {
@@ -459,7 +459,7 @@ void ec_fsm_master_action_next_slave_state(ec_fsm_master_t *fsm
     if (fsm->validate) {
         fsm->validate = 0;
         list_for_each_entry(slave, &master->slaves, list) {
-            if (slave->online) continue;
+            if (slave->online_state == EC_SLAVE_ONLINE) continue;
 
             // At least one slave is offline. validate!
             EC_INFO("Validating bus.\n");
@@ -485,7 +485,6 @@ void ec_fsm_master_state_read_states(ec_fsm_master_t *fsm /**< master state mach
 {
     ec_slave_t *slave = fsm->slave;
     ec_datagram_t *datagram = fsm->datagram;
-    uint8_t new_state;
 
     if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
         ec_master_queue_datagram(fsm->master, fsm->datagram);
@@ -501,39 +500,14 @@ void ec_fsm_master_state_read_states(ec_fsm_master_t *fsm /**< master state mach
 
     // did the slave not respond to its station address?
     if (datagram->working_counter != 1) {
-        if (slave->online) {
-            slave->online = 0;
-            if (slave->master->debug_level)
-                EC_DBG("Slave %i: offline.\n", slave->ring_position);
-        }
+        ec_slave_set_online_state(slave, EC_SLAVE_OFFLINE);
         ec_fsm_master_action_next_slave_state(fsm);
         return;
     }
 
     // slave responded
-    new_state = EC_READ_U8(datagram->data);
-    if (!slave->online) { // slave was offline before
-        slave->online = 1;
-        slave->error_flag = 0; // clear error flag
-        slave->current_state = new_state;
-        if (slave->master->debug_level) {
-            char cur_state[EC_STATE_STRING_SIZE];
-            ec_state_string(slave->current_state, cur_state);
-            EC_DBG("Slave %i: online (%s).\n",
-                   slave->ring_position, cur_state);
-        }
-    }
-    else if (new_state != slave->current_state) {
-        if (slave->master->debug_level) {
-            char old_state[EC_STATE_STRING_SIZE],
-                cur_state[EC_STATE_STRING_SIZE];
-            ec_state_string(slave->current_state, old_state);
-            ec_state_string(new_state, cur_state);
-            EC_DBG("Slave %i: %s -> %s.\n",
-                   slave->ring_position, old_state, cur_state);
-        }
-        slave->current_state = new_state;
-    }
+    ec_slave_set_state(slave, EC_READ_U8(datagram->data)); // set app state first
+    ec_slave_set_online_state(slave, EC_SLAVE_ONLINE);
 
     // check, if new slave state has to be acknowledged
     if (slave->current_state & EC_SLAVE_STATE_ACK_ERR && !slave->error_flag) {
@@ -614,7 +588,7 @@ void ec_fsm_master_action_addresses(ec_fsm_master_t *fsm /**< master state machi
 {
     ec_datagram_t *datagram = fsm->datagram;
 
-    while (fsm->slave->online) {
+    while (fsm->slave->online_state == EC_SLAVE_ONLINE) {
         if (fsm->slave->list.next == &fsm->master->slaves) { // last slave?
             fsm->state = ec_fsm_master_state_start;
             fsm->state(fsm); // execute immediately

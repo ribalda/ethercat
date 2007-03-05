@@ -72,6 +72,12 @@ typedef enum
 }
 ec_slave_state_t;
 
+typedef enum {
+    EC_SLAVE_OFFLINE,
+    EC_SLAVE_ONLINE
+}
+ec_slave_online_state_t;
+
 /*****************************************************************************/
 
 /**
@@ -195,11 +201,11 @@ struct ec_slave
     struct kobject kobj; /**< kobject */
     ec_master_t *master; /**< master owning the slave */
 
-    ec_slave_state_t requested_state; /**< requested slave state */
-    ec_slave_state_t current_state; /**< current slave state */
+    ec_slave_state_t requested_state; /**< requested application state */
+    ec_slave_state_t current_state; /**< current application state */
     unsigned int self_configured; /**< slave was configured by this master */
     unsigned int error_flag; /**< stop processing after an error */
-    unsigned int online; /**< non-zero, if the slave responds. */
+    unsigned int online_state; /**< online state */
 
     // addresses
     uint16_t ring_position; /**< ring position */
@@ -266,6 +272,8 @@ int ec_slave_prepare_fmmu(ec_slave_t *, const ec_domain_t *,
                           const ec_sii_sync_t *);
 
 void ec_slave_request_state(ec_slave_t *, ec_slave_state_t);
+void ec_slave_set_state(ec_slave_t *, ec_slave_state_t);
+void ec_slave_set_online_state(ec_slave_t *, ec_slave_online_state_t);
 
 // SII categories
 int ec_slave_fetch_strings(ec_slave_t *, const uint8_t *);

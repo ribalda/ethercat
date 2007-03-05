@@ -528,7 +528,7 @@ void ec_master_leave_operation_mode(ec_master_t *master
 
         // don't try to set PREOP for slaves that don't respond,
         // because of 3 second timeout.
-        if (!slave->online) {
+        if (slave->online_state == EC_SLAVE_OFFLINE) {
             if (master->debug_level)
                 EC_DBG("Skipping to configure offline slave %i.\n",
                         slave->ring_position);

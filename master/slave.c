@@ -116,7 +116,7 @@ int ec_slave_init(ec_slave_t *slave, /**< EtherCAT slave */
     slave->current_state = EC_SLAVE_STATE_UNKNOWN;
     slave->self_configured = 0;
     slave->error_flag = 0;
-    slave->online = 1;
+    slave->online_state = EC_SLAVE_ONLINE;
     slave->fmmu_count = 0;
 
     slave->coupler_index = 0;
@@ -324,6 +324,58 @@ void ec_slave_reset(ec_slave_t *slave /**< EtherCAT slave */)
     list_for_each_entry(sync, &slave->sii_syncs, list) {
         sync->est_length = 0;
     }
+}
+
+/*****************************************************************************/
+
+/**
+ * Sets the application state of a slave.
+ */
+
+void ec_slave_set_state(ec_slave_t *slave, /**< EtherCAT slave */
+        ec_slave_state_t new_state /**< new application state */
+        )
+{
+    if (new_state != slave->current_state) {
+        if (slave->master->debug_level) {
+            char old_state[EC_STATE_STRING_SIZE],
+                cur_state[EC_STATE_STRING_SIZE];
+            ec_state_string(slave->current_state, old_state);
+            ec_state_string(new_state, cur_state);
+            EC_DBG("Slave %i: %s -> %s.\n",
+                   slave->ring_position, old_state, cur_state);
+        }
+        slave->current_state = new_state;
+    }
+}
+
+/*****************************************************************************/
+
+/**
+ * Sets the online state of a slave.
+ */
+
+void ec_slave_set_online_state(ec_slave_t *slave, /**< EtherCAT slave */
+        ec_slave_online_state_t new_state /**< new online state */
+        )
+{
+    if (new_state == EC_SLAVE_OFFLINE &&
+            slave->online_state == EC_SLAVE_ONLINE) {
+        if (slave->master->debug_level)
+            EC_DBG("Slave %i: offline.\n", slave->ring_position);
+    }
+    else if (new_state == EC_SLAVE_ONLINE &&
+            slave->online_state == EC_SLAVE_OFFLINE) {
+        slave->error_flag = 0; // clear error flag
+        if (slave->master->debug_level) {
+            char cur_state[EC_STATE_STRING_SIZE];
+            ec_state_string(slave->current_state, cur_state);
+            EC_DBG("Slave %i: online (%s).\n",
+                   slave->ring_position, cur_state);
+        }
+    }
+
+    slave->online_state = new_state;
 }
 
 /*****************************************************************************/
@@ -636,8 +688,8 @@ size_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
     off += sprintf(buffer + off, " (");
     off += ec_state_string(slave->requested_state, buffer + off);
     off += sprintf(buffer + off, ")\nFlags: %s, %s\n",
-                   slave->online ? "online" : "OFFLINE",
-                   slave->error_flag ? "ERROR" : "ok");
+            slave->online_state == EC_SLAVE_ONLINE ? "online" : "OFFLINE",
+            slave->error_flag ? "ERROR" : "ok");
     off += sprintf(buffer + off, "Ring position: %i\n",
                    slave->ring_position);
     off += sprintf(buffer + off, "Advanced position: %i:%i\n",
