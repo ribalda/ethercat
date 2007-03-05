@@ -77,8 +77,31 @@ struct ec_slave;
 typedef struct ec_slave ec_slave_t; /**< \see ec_slave */
 
 /**
+ * Bus status.
+ */
+
+typedef enum {
+    EC_BUS_FAILURE,    // some slaves offline
+    EC_BUS_OK,         // all slaves online
+    EC_BUS_REDUNDANCY  // bus interrupted, but redundancy active
+}
+ec_bus_status_t;
+
+/**
+ * Master status.
+ * This is used for the output parameter of ecrt_master_get_status().
+ */
+
+typedef struct {
+    ec_bus_status_t bus_status;
+    unsigned int bus_tainted;
+    unsigned int slaves_responding;
+}
+ec_master_status_t;
+
+/**
    Initialization type for PDO registrations.
-   This type is used as a parameter for the ec_domain_register_pdo_list()
+   This type is used as a parameter for the ecrt_domain_register_pdo_list()
    function.
 */
 
@@ -95,7 +118,7 @@ typedef struct
 ec_pdo_reg_t;
 
 /**
-   Direction type for ec_domain_register_pdo_range()
+   Direction type for ecrt_domain_register_pdo_range()
 */
 
 typedef enum {EC_DIR_INPUT, EC_DIR_OUTPUT} ec_direction_t;
@@ -127,9 +150,7 @@ void ecrt_master_run(ec_master_t *master);
 
 ec_slave_t *ecrt_master_get_slave(const ec_master_t *, const char *);
 
-/** \cond */
-int ecrt_master_state(const ec_master_t *master);
-/** \endcond */
+void ecrt_master_get_status(const ec_master_t *master, ec_master_status_t *);
 
 /******************************************************************************
  *  Domain Methods

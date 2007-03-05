@@ -477,6 +477,7 @@ int ec_master_enter_operation_mode(ec_master_t *master /**< EtherCAT master */)
     }
 
     master->eoe_checked = 0; // allow starting EoE again
+    master->pdo_slaves_offline = 0; // assume all PDO slaves online
 
     return 0;
 
@@ -1655,6 +1656,22 @@ void ecrt_master_callbacks(ec_master_t *master, /**< EtherCAT master */
 
 /*****************************************************************************/
 
+/**
+ * Reads the current master status.
+ */
+
+void ecrt_master_get_status(const ec_master_t *master, /**< EtherCAT master */
+        ec_master_status_t *status /**< target status object */
+        )
+{
+    status->bus_status =
+        master->pdo_slaves_offline ? EC_BUS_FAILURE : EC_BUS_OK;
+    status->bus_tainted = master->fsm.tainted; 
+    status->slaves_responding = master->fsm.slaves_responding;
+}
+
+/*****************************************************************************/
+
 /** \cond */
 
 EXPORT_SYMBOL(ecrt_master_create_domain);
@@ -1664,6 +1681,7 @@ EXPORT_SYMBOL(ecrt_master_receive);
 EXPORT_SYMBOL(ecrt_master_run);
 EXPORT_SYMBOL(ecrt_master_callbacks);
 EXPORT_SYMBOL(ecrt_master_get_slave);
+EXPORT_SYMBOL(ecrt_master_get_status);
 
 /** \endcond */
 

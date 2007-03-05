@@ -118,6 +118,7 @@ int ec_slave_init(ec_slave_t *slave, /**< EtherCAT slave */
     slave->error_flag = 0;
     slave->online_state = EC_SLAVE_ONLINE;
     slave->fmmu_count = 0;
+    slave->pdos_registered = 0;
 
     slave->coupler_index = 0;
     slave->coupler_subindex = 0xFFFF;
@@ -312,6 +313,7 @@ void ec_slave_reset(ec_slave_t *slave /**< EtherCAT slave */)
 
     // remove FMMU configurations
     slave->fmmu_count = 0;
+    slave->pdos_registered = 0;
 
     // free all SDO configurations
     list_for_each_entry_safe(sdodata, next_sdodata, &slave->sdo_confs, list) {
@@ -361,12 +363,16 @@ void ec_slave_set_online_state(ec_slave_t *slave, /**< EtherCAT slave */
 {
     if (new_state == EC_SLAVE_OFFLINE &&
             slave->online_state == EC_SLAVE_ONLINE) {
+        if (slave->pdos_registered)
+            slave->master->pdo_slaves_offline++;
         if (slave->master->debug_level)
             EC_DBG("Slave %i: offline.\n", slave->ring_position);
     }
     else if (new_state == EC_SLAVE_ONLINE &&
             slave->online_state == EC_SLAVE_OFFLINE) {
         slave->error_flag = 0; // clear error flag
+        if (slave->pdos_registered)
+            slave->master->pdo_slaves_offline--;
         if (slave->master->debug_level) {
             char cur_state[EC_STATE_STRING_SIZE];
             ec_state_string(slave->current_state, cur_state);
@@ -649,6 +655,7 @@ int ec_slave_prepare_fmmu(ec_slave_t *slave, /**< EtherCAT slave */
     fmmu->logical_start_address = 0;
 
     slave->fmmu_count++;
+    slave->pdos_registered = 1;
     
     ec_slave_request_state(slave, EC_SLAVE_STATE_OP);
 

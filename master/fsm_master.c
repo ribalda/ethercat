@@ -78,6 +78,7 @@ void ec_fsm_master_init(ec_fsm_master_t *fsm, /**< master state machine */
     fsm->topology_change_pending = 0;
     fsm->slave_states = EC_SLAVE_STATE_UNKNOWN;
     fsm->validate = 0;
+    fsm->tainted = 0;
 
     // init sub-state-machines
     ec_fsm_slave_init(&fsm->fsm_slave, fsm->datagram);
@@ -206,6 +207,7 @@ void ec_fsm_master_state_broadcast(ec_fsm_master_t *fsm /**< master state machin
             }
             else {
                 EC_WARN("Invalid slave count. Bus in tainted state.\n");
+                fsm->tainted = 1;
             }
         }
     }
@@ -640,6 +642,7 @@ void ec_fsm_master_state_validate_product(ec_fsm_master_t *fsm /**< master state
 
     // have all states been validated?
     if (slave->list.next == &fsm->master->slaves) {
+        fsm->tainted = 0;
         fsm->slave = list_entry(fsm->master->slaves.next, ec_slave_t, list);
         // start writing addresses to offline slaves
         ec_fsm_master_action_addresses(fsm);
