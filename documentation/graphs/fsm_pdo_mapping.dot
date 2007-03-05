@@ -1,0 +1,18 @@
+digraph pdomapping {
+    size="7,9"
+    center=1
+	ratio=fill
+
+    enter_map_pdo [shape=point,label=""]
+
+    start -> enter_map_pdo
+    enter_map_pdo -> pdo_count
+    enter_map_pdo -> map_pdo
+    enter_map_pdo -> end
+    map_pdo -> map_pdo
+    map_pdo -> error
+    map_pdo -> pdo_count
+    pdo_count -> pdo_count
+    pdo_count -> error
+    pdo_count -> enter_map_pdo
+}
