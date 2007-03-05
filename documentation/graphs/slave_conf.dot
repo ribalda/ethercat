@@ -1,0 +1,54 @@
+digraph slaveconf {
+    size="7,9"
+    center=1
+	ratio=fill
+
+    enter_sync [shape=point,label=""]
+    enter_fmmu [shape=point,label=""]
+    enter_sdoconf [shape=point,label=""]
+    enter_mapconf [shape=point,label=""]
+
+    start -> init
+    init -> init
+    init -> enter_sync
+    init -> clear_fmmus [label="has FMMUs"]
+    clear_fmmus -> clear_fmmus
+    clear_fmmus -> error
+    clear_fmmus -> enter_sync
+    enter_sync -> end [label="INIT req."]
+    enter_sync -> preop
+    enter_sync -> sync [label="SMs to configure"]
+    sync -> sync
+    sync -> error
+    sync -> preop
+    preop -> preop
+    preop -> error
+    preop -> end [label="PREOP req."]
+    preop -> enter_fmmu
+    preop -> sync2 [label="more SMs"]
+    sync2 -> sync2
+    sync2 -> error
+    sync2 -> enter_fmmu
+    enter_fmmu -> enter_sdoconf
+    enter_fmmu -> fmmu [label="FMMUs to configure"]
+    fmmu -> fmmu
+    fmmu -> error
+    fmmu -> enter_sdoconf
+    enter_sdoconf -> enter_mapconf
+    enter_sdoconf -> sdoconf [label="SDOs to configure"]
+    sdoconf -> sdoconf
+    sdoconf -> error
+    sdoconf -> enter_mapconf
+    enter_mapconf -> mapconf [label="alternative PDO mapping"]
+    enter_mapconf -> saveop
+    mapconf -> mapconf
+    mapconf -> error
+    mapconf -> saveop
+    saveop -> saveop
+    saveop -> error
+    saveop -> end [label="SAVEOP req."]
+    saveop -> op
+    op -> op
+    op -> error
+    op -> end
+}
