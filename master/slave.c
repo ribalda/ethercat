@@ -597,6 +597,8 @@ int ec_slave_prepare_fmmu(ec_slave_t *slave, /**< EtherCAT slave */
     fmmu->logical_start_address = 0;
 
     slave->fmmu_count++;
+    
+    ec_slave_request_state(slave, EC_SLAVE_STATE_OP);
 
     return 0;
 }

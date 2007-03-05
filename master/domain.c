@@ -251,8 +251,6 @@ int ec_domain_reg_pdo_entry(ec_domain_t *domain, /**< EtherCAT domain */
 
     list_add_tail(&data_reg->list, &domain->data_regs);
 
-    ec_slave_request_state(slave, EC_SLAVE_STATE_OP);
-
     return 0;
 }
 
@@ -328,8 +326,6 @@ int ec_domain_reg_pdo_range(ec_domain_t *domain, /**< EtherCAT domain */
     }
 
     list_add_tail(&data_reg->list, &domain->data_regs);
-
-    ec_slave_request_state(slave, EC_SLAVE_STATE_OP);
 
     return 0;
 }
