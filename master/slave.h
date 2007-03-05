@@ -291,7 +291,6 @@ void ec_slave_fmmu_config(const ec_slave_t *, const ec_fmmu_t *, uint8_t *);
 uint16_t ec_slave_calc_sync_size(const ec_slave_t *, const ec_sii_sync_t *);
 
 int ec_slave_is_coupler(const ec_slave_t *);
-int ec_slave_has_subbus(const ec_slave_t *);
 
 int ec_slave_validate(const ec_slave_t *, uint32_t, uint32_t);
 

@@ -10,7 +10,7 @@ $Id$
   - Remove ecrt_master_run(). Make master FSM run in process context instead.
   - Remove addressing scheme "X:Y".
   - Allow only MAC address as device ID.
-  - Remove ugly ec_slave_is_coupler() and ec_slave_has_subbus().
+  - Remove ugly ec_slave_is_coupler().
 
 * Future features:
   - SDO dictionary and -access in operation mode.

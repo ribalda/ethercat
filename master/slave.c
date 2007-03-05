@@ -1194,18 +1194,6 @@ int ec_slave_is_coupler(const ec_slave_t *slave /**< EtherCAT slave */)
 /*****************************************************************************/
 
 /**
-   \return non-zero if slave is a bus coupler
-*/
-
-int ec_slave_has_subbus(const ec_slave_t *slave /**< EtherCAT slave */)
-{
-    return slave->sii_vendor_id == 0x00000002
-        && slave->sii_product_code == 0x04602c22;
-}
-
-/*****************************************************************************/
-
-/**
    \return 0 in case of success, else < 0
 */
 
