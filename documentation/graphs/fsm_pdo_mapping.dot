@@ -1,18 +1,19 @@
+
+/* $Id$ */
+
 digraph pdomapping {
     size="7,9"
     center=1
 	ratio=fill
 
-    enter_map_pdo [shape=point,label=""]
+    next [shape=point,label=""]
 
-    start -> enter_map_pdo
-    enter_map_pdo -> pdo_count
-    enter_map_pdo -> map_pdo
-    enter_map_pdo -> end
-    map_pdo -> map_pdo
-    map_pdo -> error
-    map_pdo -> pdo_count
-    pdo_count -> pdo_count
-    pdo_count -> error
-    pdo_count -> enter_map_pdo
+    start -> next [label="first SM"]
+    next -> end [label="no more SMs"]
+    next -> zero_count [label="next SM"]
+    zero_count -> next [label="no PDOs"]
+    zero_count -> add_pdo [label="map first PDO", weight=5]
+    add_pdo -> add_pdo [label="map next PDO"]
+    add_pdo -> set_count [label="no more PDOs", weight=5]
+    set_count -> next
 }
