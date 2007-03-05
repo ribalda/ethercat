@@ -203,9 +203,9 @@ struct ec_slave
 
     ec_slave_state_t requested_state; /**< requested application state */
     ec_slave_state_t current_state; /**< current application state */
+    ec_slave_online_state_t online_state; /**< online state */
     unsigned int self_configured; /**< slave was configured by this master */
     unsigned int error_flag; /**< stop processing after an error */
-    unsigned int online_state; /**< online state */
 
     // addresses
     uint16_t ring_position; /**< ring position */
