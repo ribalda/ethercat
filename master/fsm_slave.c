@@ -920,7 +920,7 @@ void ec_fsm_slave_conf_state_fmmu(ec_fsm_slave_t *fsm /**< slave state machine *
     ec_slave_t *slave = fsm->slave;
 
     if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
-        ec_master_queue_datagram(fsm->slave->master, datagram);
+        ec_master_queue_datagram(slave->master, datagram);
         return;
     }
 
@@ -928,21 +928,15 @@ void ec_fsm_slave_conf_state_fmmu(ec_fsm_slave_t *fsm /**< slave state machine *
         fsm->state = ec_fsm_slave_state_error;
         EC_ERR("Failed to receive FMMUs datagram for slave %i"
                 " (datagram state %i).\n",
-               fsm->slave->ring_position, datagram->state);
+               slave->ring_position, datagram->state);
         return;
     }
 
     if (datagram->working_counter != 1) {
-        fsm->slave->error_flag = 1;
+        slave->error_flag = 1;
         fsm->state = ec_fsm_slave_state_error;
         EC_ERR("Failed to set FMMUs - slave %i did not respond.\n",
-               fsm->slave->ring_position);
-        return;
-    }
-
-    // No CoE configuration to be applied? Jump to SAVEOP state.
-    if (list_empty(&slave->sdo_confs)) { // skip SDO configuration
-        ec_fsm_slave_conf_enter_saveop(fsm);
+               slave->ring_position);
         return;
     }
 
@@ -958,6 +952,7 @@ void ec_fsm_slave_conf_enter_sdoconf(ec_fsm_slave_t *fsm /**< slave state machin
 {
     ec_slave_t *slave = fsm->slave;
 
+    // No CoE configuration to be applied? Jump to SAVEOP state.
     if (list_empty(&slave->sdo_confs)) { // skip SDO configuration
         ec_fsm_slave_conf_enter_saveop(fsm);
         return;
