@@ -8,47 +8,48 @@ digraph slaveconf {
     enter_sdoconf [shape=point,label=""]
     enter_mapconf [shape=point,label=""]
 
-    start -> init
+    start -> init [weight=10]
     init -> init
+    init -> error
     init -> enter_sync
-    init -> clear_fmmus [label="has FMMUs"]
+    init -> clear_fmmus [label="has FMMUs", weight=10]
     clear_fmmus -> clear_fmmus
     clear_fmmus -> error
-    clear_fmmus -> enter_sync
+    clear_fmmus -> enter_sync [weight=10]
     enter_sync -> end [label="INIT req."]
     enter_sync -> preop
-    enter_sync -> sync [label="SMs to configure"]
+    enter_sync -> sync [label="SMs to configure", weight=10]
     sync -> sync
     sync -> error
-    sync -> preop
+    sync -> preop [weight=10]
     preop -> preop
     preop -> error
     preop -> end [label="PREOP req."]
     preop -> enter_fmmu
-    preop -> sync2 [label="more SMs"]
+    preop -> sync2 [label="more SMs", weight=10]
     sync2 -> sync2
     sync2 -> error
-    sync2 -> enter_fmmu
+    sync2 -> enter_fmmu [weight=10]
     enter_fmmu -> enter_sdoconf
-    enter_fmmu -> fmmu [label="FMMUs to configure"]
+    enter_fmmu -> fmmu [label="FMMUs to configure", weight=10]
     fmmu -> fmmu
     fmmu -> error
-    fmmu -> enter_sdoconf
+    fmmu -> enter_sdoconf [weight=10]
     enter_sdoconf -> enter_mapconf
-    enter_sdoconf -> sdoconf [label="SDOs to configure"]
+    enter_sdoconf -> sdoconf [label="SDOs to configure", weight=10]
     sdoconf -> sdoconf
     sdoconf -> error
-    sdoconf -> enter_mapconf
-    enter_mapconf -> mapconf [label="alternative PDO mapping"]
+    sdoconf -> enter_mapconf [weight=10]
+    enter_mapconf -> mapconf [label="alternative PDO mapping", weight=10]
     enter_mapconf -> saveop
     mapconf -> mapconf
     mapconf -> error
-    mapconf -> saveop
+    mapconf -> saveop [weight=10]
     saveop -> saveop
     saveop -> error
     saveop -> end [label="SAVEOP req."]
-    saveop -> op
+    saveop -> op [weight=10]
     op -> op
     op -> error
-    op -> end
+    op -> end [weight=10]
 }
