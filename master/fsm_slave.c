@@ -56,17 +56,17 @@ void ec_fsm_slave_scan_state_eeprom_data(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_state_start(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_state_init(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_state_clear_fmmus(ec_fsm_slave_t *);
-void ec_fsm_slave_conf_state_sync(ec_fsm_slave_t *);
+void ec_fsm_slave_conf_state_mbox_sync(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_state_preop(ec_fsm_slave_t *);
-void ec_fsm_slave_conf_state_sync2(ec_fsm_slave_t *);
+void ec_fsm_slave_conf_state_pdo_sync(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_state_fmmu(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_state_sdoconf(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_state_saveop(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_state_op(ec_fsm_slave_t *);
 
-void ec_fsm_slave_conf_enter_sync(ec_fsm_slave_t *);
+void ec_fsm_slave_conf_enter_mbox_sync(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_enter_preop(ec_fsm_slave_t *);
-void ec_fsm_slave_conf_enter_sync2(ec_fsm_slave_t *);
+void ec_fsm_slave_conf_enter_pdo_sync(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_enter_fmmu(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_enter_sdoconf(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_enter_saveop(ec_fsm_slave_t *);
@@ -603,7 +603,7 @@ void ec_fsm_slave_conf_state_init(ec_fsm_slave_t *fsm /**< slave state machine *
     // TODO: Implement state machine for CRC checking.
 
     if (!slave->base_fmmu_count) { // skip FMMU configuration
-        ec_fsm_slave_conf_enter_sync(fsm);
+        ec_fsm_slave_conf_enter_mbox_sync(fsm);
         return;
     }
 
@@ -651,7 +651,7 @@ void ec_fsm_slave_conf_state_clear_fmmus(ec_fsm_slave_t *fsm
         return;
     }
 
-    ec_fsm_slave_conf_enter_sync(fsm);
+    ec_fsm_slave_conf_enter_mbox_sync(fsm);
 }
 
 /*****************************************************************************/
@@ -659,7 +659,7 @@ void ec_fsm_slave_conf_state_clear_fmmus(ec_fsm_slave_t *fsm
 /**
 */
 
-void ec_fsm_slave_conf_enter_sync(ec_fsm_slave_t *fsm /**< slave state machine */)
+void ec_fsm_slave_conf_enter_mbox_sync(ec_fsm_slave_t *fsm /**< slave state machine */)
 {
     ec_master_t *master = fsm->slave->master;
     ec_slave_t *slave = fsm->slave;
@@ -699,7 +699,7 @@ void ec_fsm_slave_conf_enter_sync(ec_fsm_slave_t *fsm /**< slave state machine *
 
     ec_master_queue_datagram(fsm->slave->master, datagram);
     fsm->retries = EC_FSM_RETRIES;
-    fsm->state = ec_fsm_slave_conf_state_sync;
+    fsm->state = ec_fsm_slave_conf_state_mbox_sync;
 }
 
 /*****************************************************************************/
@@ -708,7 +708,7 @@ void ec_fsm_slave_conf_enter_sync(ec_fsm_slave_t *fsm /**< slave state machine *
    Slave configuration state: SYNC.
 */
 
-void ec_fsm_slave_conf_state_sync(ec_fsm_slave_t *fsm /**< slave state machine */)
+void ec_fsm_slave_conf_state_mbox_sync(ec_fsm_slave_t *fsm /**< slave state machine */)
 {
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
@@ -784,7 +784,7 @@ void ec_fsm_slave_conf_state_preop(ec_fsm_slave_t *fsm /**< slave state machine 
         return;
     }
 
-    ec_fsm_slave_conf_enter_sync2(fsm);
+    ec_fsm_slave_conf_enter_pdo_sync(fsm);
 }
 
 /*****************************************************************************/
@@ -792,7 +792,7 @@ void ec_fsm_slave_conf_state_preop(ec_fsm_slave_t *fsm /**< slave state machine 
 /**
 */
 
-void ec_fsm_slave_conf_enter_sync2(ec_fsm_slave_t *fsm /**< slave state machine */)
+void ec_fsm_slave_conf_enter_pdo_sync(ec_fsm_slave_t *fsm /**< slave state machine */)
 {
     ec_slave_t *slave = fsm->slave;
     ec_datagram_t *datagram = fsm->datagram;
@@ -815,7 +815,7 @@ void ec_fsm_slave_conf_enter_sync2(ec_fsm_slave_t *fsm /**< slave state machine 
 
     ec_master_queue_datagram(fsm->slave->master, datagram);
     fsm->retries = EC_FSM_RETRIES;
-    fsm->state = ec_fsm_slave_conf_state_sync2;
+    fsm->state = ec_fsm_slave_conf_state_pdo_sync;
 }
 
 /*****************************************************************************/
@@ -824,7 +824,7 @@ void ec_fsm_slave_conf_enter_sync2(ec_fsm_slave_t *fsm /**< slave state machine 
    Slave configuration state: SYNC2.
 */
 
-void ec_fsm_slave_conf_state_sync2(ec_fsm_slave_t *fsm /**< slave state machine */)
+void ec_fsm_slave_conf_state_pdo_sync(ec_fsm_slave_t *fsm /**< slave state machine */)
 {
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
