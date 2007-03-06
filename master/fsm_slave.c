@@ -508,27 +508,31 @@ void ec_fsm_slave_scan_state_eeprom_data(ec_fsm_slave_t *fsm /**< slave state ma
 
         switch (cat_type) {
             case 0x000A:
-                if (ec_slave_fetch_strings(slave, (uint8_t *) (cat_word + 2)))
+                if (ec_slave_fetch_sii_strings(
+                            slave, (uint8_t *) (cat_word + 2)))
                     goto end;
                 break;
             case 0x001E:
-                ec_slave_fetch_general(slave, (uint8_t *) (cat_word + 2));
+                ec_slave_fetch_sii_general(
+                        slave, (uint8_t *) (cat_word + 2));
                 break;
             case 0x0028:
                 break;
             case 0x0029:
-                if (ec_slave_fetch_sync(slave, (uint8_t *) (cat_word + 2),
-                                        cat_size))
+                if (ec_slave_fetch_sii_syncs(
+                            slave, (uint8_t *) (cat_word + 2), cat_size))
                     goto end;
                 break;
             case 0x0032:
-                if (ec_slave_fetch_pdo(slave, (uint8_t *) (cat_word + 2),
-                                       cat_size, EC_TX_PDO))
+                if (ec_slave_fetch_sii_pdos(
+                            slave, (uint8_t *) (cat_word + 2),
+                            cat_size, EC_TX_PDO))
                     goto end;
                 break;
             case 0x0033:
-                if (ec_slave_fetch_pdo(slave, (uint8_t *) (cat_word + 2),
-                                       cat_size, EC_RX_PDO))
+                if (ec_slave_fetch_sii_pdos(
+                            slave, (uint8_t *) (cat_word + 2),
+                            cat_size, EC_RX_PDO))
                     goto end;
                 break;
             default:

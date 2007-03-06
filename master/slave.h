@@ -276,14 +276,14 @@ void ec_slave_set_state(ec_slave_t *, ec_slave_state_t);
 void ec_slave_set_online_state(ec_slave_t *, ec_slave_online_state_t);
 
 // SII categories
-int ec_slave_fetch_strings(ec_slave_t *, const uint8_t *);
-void ec_slave_fetch_general(ec_slave_t *, const uint8_t *);
-int ec_slave_fetch_sync(ec_slave_t *, const uint8_t *, size_t);
-int ec_slave_fetch_pdo(ec_slave_t *, const uint8_t *, size_t,
-                       ec_sii_pdo_type_t);
-int ec_slave_locate_string(ec_slave_t *, unsigned int, char **);
+int ec_slave_fetch_sii_strings(ec_slave_t *, const uint8_t *);
+void ec_slave_fetch_sii_general(ec_slave_t *, const uint8_t *);
+int ec_slave_fetch_sii_syncs(ec_slave_t *, const uint8_t *, size_t);
+int ec_slave_fetch_sii_pdos(ec_slave_t *, const uint8_t *, size_t,
+        ec_sii_pdo_type_t);
 
 // misc.
+int ec_slave_locate_sii_string(ec_slave_t *, unsigned int, char **);
 ec_sii_sync_t *ec_slave_get_pdo_sync(ec_slave_t *, ec_direction_t); 
 void ec_slave_sync_config(const ec_slave_t *, const ec_sii_sync_t *,
         uint8_t *);

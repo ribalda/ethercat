@@ -400,9 +400,10 @@ void ec_slave_request_state(ec_slave_t *slave, /**< ETherCAT slave */
    \return 0 in case of success, else < 0
 */
 
-int ec_slave_fetch_strings(ec_slave_t *slave, /**< EtherCAT slave */
-                           const uint8_t *data /**< category data */
-                           )
+int ec_slave_fetch_sii_strings(
+        ec_slave_t *slave, /**< EtherCAT slave */
+        const uint8_t *data /**< category data */
+        )
 {
     unsigned int string_count, i;
     size_t size;
@@ -438,16 +439,17 @@ int ec_slave_fetch_strings(ec_slave_t *slave, /**< EtherCAT slave */
    \return 0 in case of success, else < 0
 */
 
-void ec_slave_fetch_general(ec_slave_t *slave, /**< EtherCAT slave */
-                            const uint8_t *data /**< category data */
-                            )
+void ec_slave_fetch_sii_general(
+        ec_slave_t *slave, /**< EtherCAT slave */
+        const uint8_t *data /**< category data */
+        )
 {
     unsigned int i;
 
-    ec_slave_locate_string(slave, data[0], &slave->sii_group);
-    ec_slave_locate_string(slave, data[1], &slave->sii_image);
-    ec_slave_locate_string(slave, data[2], &slave->sii_order);
-    ec_slave_locate_string(slave, data[3], &slave->sii_name);
+    ec_slave_locate_sii_string(slave, data[0], &slave->sii_group);
+    ec_slave_locate_sii_string(slave, data[1], &slave->sii_image);
+    ec_slave_locate_sii_string(slave, data[2], &slave->sii_order);
+    ec_slave_locate_sii_string(slave, data[3], &slave->sii_name);
 
     for (i = 0; i < 4; i++)
         slave->sii_physical_layer[i] =
@@ -463,10 +465,11 @@ void ec_slave_fetch_general(ec_slave_t *slave, /**< EtherCAT slave */
    \return 0 in case of success, else < 0
 */
 
-int ec_slave_fetch_sync(ec_slave_t *slave, /**< EtherCAT slave */
-                        const uint8_t *data, /**< category data */
-                        size_t word_count /**< number of words */
-                        )
+int ec_slave_fetch_sii_syncs(
+        ec_slave_t *slave, /**< EtherCAT slave */
+        const uint8_t *data, /**< category data */
+        size_t word_count /**< number of words */
+        )
 {
     unsigned int i;
     ec_sii_sync_t *sync;
@@ -502,11 +505,12 @@ int ec_slave_fetch_sync(ec_slave_t *slave, /**< EtherCAT slave */
    \return 0 in case of success, else < 0
 */
 
-int ec_slave_fetch_pdo(ec_slave_t *slave, /**< EtherCAT slave */
-                       const uint8_t *data, /**< category data */
-                       size_t word_count, /**< number of words */
-                       ec_sii_pdo_type_t pdo_type /**< PDO type */
-                       )
+int ec_slave_fetch_sii_pdos(
+        ec_slave_t *slave, /**< EtherCAT slave */
+        const uint8_t *data, /**< category data */
+        size_t word_count, /**< number of words */
+        ec_sii_pdo_type_t pdo_type /**< PDO type */
+        )
 {
     ec_sii_pdo_t *pdo;
     ec_sii_pdo_entry_t *entry;
@@ -526,7 +530,7 @@ int ec_slave_fetch_pdo(ec_slave_t *slave, /**< EtherCAT slave */
         entry_count = EC_READ_U8(data + 2);
         pdo->sync_index = EC_READ_U8(data + 3);
         pdo->name = NULL;
-        ec_slave_locate_string(slave, EC_READ_U8(data + 5), &pdo->name);
+        ec_slave_locate_sii_string(slave, EC_READ_U8(data + 5), &pdo->name);
 
         list_add_tail(&pdo->list, &slave->sii_pdos);
 
@@ -543,7 +547,8 @@ int ec_slave_fetch_pdo(ec_slave_t *slave, /**< EtherCAT slave */
             entry->index = EC_READ_U16(data);
             entry->subindex = EC_READ_U8(data + 2);
             entry->name = NULL;
-            ec_slave_locate_string(slave, EC_READ_U8(data + 3), &entry->name);
+            ec_slave_locate_sii_string(
+                    slave, EC_READ_U8(data + 3), &entry->name);
             entry->bit_length = EC_READ_U8(data + 5);
 
             list_add_tail(&entry->list, &pdo->entries);
@@ -564,10 +569,11 @@ int ec_slave_fetch_pdo(ec_slave_t *slave, /**< EtherCAT slave */
    \todo documentation
 */
 
-int ec_slave_locate_string(ec_slave_t *slave, /**< EtherCAT slave */
-                           unsigned int index, /**< string index */
-                           char **ptr /**< Address of the string pointer */
-                           )
+int ec_slave_locate_sii_string(
+        ec_slave_t *slave, /**< EtherCAT slave */
+        unsigned int index, /**< string index */
+        char **ptr /**< Address of the string pointer */
+        )
 {
     ec_sii_string_t *string;
     char *err_string;
