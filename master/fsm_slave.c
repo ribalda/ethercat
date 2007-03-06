@@ -319,7 +319,6 @@ void ec_fsm_slave_scan_state_base(ec_fsm_slave_t *fsm /**< slave state machine *
     slave->base_revision   = EC_READ_U8 (datagram->data + 1);
     slave->base_build      = EC_READ_U16(datagram->data + 2);
     slave->base_fmmu_count = EC_READ_U8 (datagram->data + 4);
-    slave->base_sync_count = EC_READ_U8 (datagram->data + 5);
 
     if (slave->base_fmmu_count > EC_MAX_FMMUS)
         slave->base_fmmu_count = EC_MAX_FMMUS;
@@ -661,8 +660,7 @@ void ec_fsm_slave_conf_enter_sync(ec_fsm_slave_t *fsm /**< slave state machine *
     ec_master_t *master = fsm->slave->master;
     ec_slave_t *slave = fsm->slave;
     ec_datagram_t *datagram = fsm->datagram;
-    const ec_sii_sync_t *sync;
-    ec_sii_sync_t mbox_sync;
+    unsigned int i;
 
     // slave is now in INIT
     if (slave->current_state == slave->requested_state) {
@@ -674,51 +672,25 @@ void ec_fsm_slave_conf_enter_sync(ec_fsm_slave_t *fsm /**< slave state machine *
         return;
     }
 
-    if (!slave->base_sync_count) { // no sync managers
+    if (!slave->sii_mailbox_protocols || slave->sii_sync_count < 2) {
+        // no mailbox sync managers to be configured
         ec_fsm_slave_conf_enter_preop(fsm);
         return;
     }
 
     if (master->debug_level) {
-        EC_DBG("Configuring sync managers of slave %i.\n",
+        EC_DBG("Configuring mailbox sync managers of slave %i.\n",
                slave->ring_position);
     }
 
     // configure sync managers
     ec_datagram_npwr(datagram, slave->station_address, 0x0800,
-                     EC_SYNC_SIZE * slave->base_sync_count);
-    memset(datagram->data, 0x00, EC_SYNC_SIZE * slave->base_sync_count);
+                     EC_SYNC_SIZE * slave->sii_sync_count);
+    memset(datagram->data, 0x00, EC_SYNC_SIZE * slave->sii_sync_count);
 
-    if (list_empty(&slave->sii_syncs)) {
-        if (slave->sii_rx_mailbox_offset && slave->sii_tx_mailbox_offset) {
-            if (slave->master->debug_level)
-                EC_DBG("Guessing sync manager settings for slave %i.\n",
-                       slave->ring_position);
-            mbox_sync.index = 0;
-            mbox_sync.physical_start_address = slave->sii_tx_mailbox_offset;
-            mbox_sync.length = slave->sii_tx_mailbox_size;
-            mbox_sync.control_register = 0x26;
-            mbox_sync.enable = 0x01;
-            mbox_sync.est_length = 0;
-            ec_slave_sync_config(slave, &mbox_sync,
-                    datagram->data + EC_SYNC_SIZE * mbox_sync.index);
-            mbox_sync.index = 1;
-            mbox_sync.physical_start_address = slave->sii_rx_mailbox_offset;
-            mbox_sync.length = slave->sii_rx_mailbox_size;
-            mbox_sync.control_register = 0x22;
-            mbox_sync.enable = 0x01;
-            mbox_sync.est_length = 0;
-            ec_slave_sync_config(slave, &mbox_sync,
-                    datagram->data + EC_SYNC_SIZE * mbox_sync.index);
-        }
-    }
-    else if (slave->sii_mailbox_protocols) { // mailboxes present
-        list_for_each_entry(sync, &slave->sii_syncs, list) {
-            // only configure mailbox sync-managers
-            if (sync->index != 0 && sync->index != 1) continue;
-            ec_slave_sync_config(slave, sync,
-                    datagram->data + EC_SYNC_SIZE * sync->index);
-        }
+    for (i = 0; i < 2; i++) {
+        ec_slave_sync_config(slave, &slave->sii_syncs[i],
+                datagram->data + EC_SYNC_SIZE * i);
     }
 
     ec_master_queue_datagram(fsm->slave->master, datagram);
@@ -820,21 +792,21 @@ void ec_fsm_slave_conf_enter_sync2(ec_fsm_slave_t *fsm /**< slave state machine 
 {
     ec_slave_t *slave = fsm->slave;
     ec_datagram_t *datagram = fsm->datagram;
-    ec_sii_sync_t *sync;
+    unsigned int i;
 
-    if (list_empty(&slave->sii_syncs)) {
+    if (!slave->sii_sync_count) {
         ec_fsm_slave_conf_enter_fmmu(fsm);
         return;
     }
 
     // configure sync managers for process data
     ec_datagram_npwr(datagram, slave->station_address, 0x0800,
-                     EC_SYNC_SIZE * slave->base_sync_count);
-    memset(datagram->data, 0x00, EC_SYNC_SIZE * slave->base_sync_count);
+                     EC_SYNC_SIZE * slave->sii_sync_count);
+    memset(datagram->data, 0x00, EC_SYNC_SIZE * slave->sii_sync_count);
 
-    list_for_each_entry(sync, &slave->sii_syncs, list) {
-        ec_slave_sync_config(slave, sync,
-                datagram->data + EC_SYNC_SIZE * sync->index);
+    for (i = 0; i < slave->sii_sync_count; i++) {
+        ec_slave_sync_config(slave, &slave->sii_syncs[i],
+                datagram->data + EC_SYNC_SIZE * i);
     }
 
     ec_master_queue_datagram(fsm->slave->master, datagram);

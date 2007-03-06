@@ -199,22 +199,16 @@ int ec_domain_reg_pdo_entry(ec_domain_t *domain, /**< EtherCAT domain */
     const ec_sii_sync_t *sync;
     const ec_sii_pdo_t *other_pdo;
     const ec_sii_pdo_entry_t *other_entry;
-    unsigned int bit_offset, byte_offset, sync_found;
+    unsigned int bit_offset, byte_offset;
 
     // Find sync manager for PDO
-    sync_found = 0;
-    list_for_each_entry(sync, &slave->sii_syncs, list) {
-        if (sync->index == pdo->sync_index) {
-            sync_found = 1;
-            break;
-        }
-    }
-
-    if (!sync_found) {
+    if (pdo->sync_index >= slave->sii_sync_count) {
         EC_ERR("No sync manager for PDO 0x%04X:%i.",
                pdo->index, entry->subindex);
         return -1;
     }
+
+    sync = &slave->sii_syncs[pdo->sync_index];
 
     // Calculate offset (in sync manager) for process data pointer
     bit_offset = 0;
@@ -272,10 +266,10 @@ int ec_domain_reg_pdo_range(ec_domain_t *domain, /**< EtherCAT domain */
 {
     ec_data_reg_t *data_reg;
     ec_sii_sync_t *sync;
-    unsigned int sync_found, sync_index;
+    unsigned int sync_index;
     uint16_t sync_length;
 
-    switch (dir) {
+    switch (dir) { // FIXME
         case EC_DIR_OUTPUT: sync_index = 2; break;
         case EC_DIR_INPUT:  sync_index = 3; break;
         default:
@@ -283,21 +277,13 @@ int ec_domain_reg_pdo_range(ec_domain_t *domain, /**< EtherCAT domain */
             return -1;
     }
 
-    // Find sync manager
-    sync_found = 0;
-    list_for_each_entry(sync, &slave->sii_syncs, list) {
-        if (sync->index == sync_index) {
-            sync_found = 1;
-            break;
-        }
-    }
-
-    if (!sync_found) {
+    if (sync_index >= slave->sii_sync_count) {
         EC_ERR("No sync manager found for PDO range.\n");
         return -1;
     }
+    sync = &slave->sii_syncs[sync_index];
 
-     // Allocate memory for data registration object
+    // Allocate memory for data registration object
     if (!(data_reg =
           (ec_data_reg_t *) kmalloc(sizeof(ec_data_reg_t), GFP_KERNEL))) {
         EC_ERR("Failed to allocate data registration.\n");

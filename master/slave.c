@@ -127,7 +127,6 @@ int ec_slave_init(ec_slave_t *slave, /**< EtherCAT slave */
     slave->base_revision = 0;
     slave->base_build = 0;
     slave->base_fmmu_count = 0;
-    slave->base_sync_count = 0;
 
     slave->eeprom_data = NULL;
     slave->eeprom_size = 0;
@@ -149,7 +148,8 @@ int ec_slave_init(ec_slave_t *slave, /**< EtherCAT slave */
     slave->sii_current_on_ebus = 0;
 
     INIT_LIST_HEAD(&slave->sii_strings);
-    INIT_LIST_HEAD(&slave->sii_syncs);
+    slave->sii_syncs = NULL;
+    slave->sii_sync_count = 0;
     INIT_LIST_HEAD(&slave->sii_pdos);
     INIT_LIST_HEAD(&slave->sdo_dictionary);
     INIT_LIST_HEAD(&slave->sdo_confs);
@@ -240,7 +240,6 @@ void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
 {
     ec_slave_t *slave;
     ec_sii_string_t *string, *next_str;
-    ec_sii_sync_t *sync, *next_sync;
     ec_sii_pdo_t *pdo, *next_pdo;
     ec_sii_pdo_entry_t *entry, *next_ent;
     ec_sdo_data_t *sdodata, *next_sdodata;
@@ -254,10 +253,7 @@ void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
     }
 
     // free all sync managers
-    list_for_each_entry_safe(sync, next_sync, &slave->sii_syncs, list) {
-        list_del(&sync->list);
-        kfree(sync);
-    }
+    if (slave->sii_syncs) kfree(slave->sii_syncs);
 
     // free all PDOs
     list_for_each_entry_safe(pdo, next_pdo, &slave->sii_pdos, list) {
@@ -309,7 +305,7 @@ void ec_slave_sdos_clear(struct kobject *kobj /**< kobject for SDOs */)
 void ec_slave_reset(ec_slave_t *slave /**< EtherCAT slave */)
 {
     ec_sdo_data_t *sdodata, *next_sdodata;
-    ec_sii_sync_t *sync;
+    unsigned int i;
 
     // remove FMMU configurations
     slave->fmmu_count = 0;
@@ -323,8 +319,8 @@ void ec_slave_reset(ec_slave_t *slave /**< EtherCAT slave */)
     }
 
     // remove estimated sync manager sizes
-    list_for_each_entry(sync, &slave->sii_syncs, list) {
-        sync->est_length = 0;
+    for (i = 0; i < slave->sii_sync_count; i++) {
+        slave->sii_syncs[i].est_length = 0;
     }
 }
 
@@ -472,27 +468,28 @@ int ec_slave_fetch_sync(ec_slave_t *slave, /**< EtherCAT slave */
                         size_t word_count /**< number of words */
                         )
 {
-    unsigned int sync_count, i;
+    unsigned int i;
     ec_sii_sync_t *sync;
 
-    sync_count = word_count / 4; // sync manager struct is 4 words long
+    // sync manager struct is 4 words long
+    slave->sii_sync_count = word_count / 4;
 
-    for (i = 0; i < sync_count; i++, data += 8) {
-        if (!(sync = (ec_sii_sync_t *)
-              kmalloc(sizeof(ec_sii_sync_t), GFP_ATOMIC))) {
-            EC_ERR("Failed to allocate Sync-Manager memory.\n");
-            return -1;
-        }
+    if (!(slave->sii_syncs = kmalloc(sizeof(ec_sii_sync_t) *
+                    slave->sii_sync_count, GFP_ATOMIC))) {
+        EC_ERR("Failed to allocate Sync-Manager memory.\n");
+        return -1;
+    }
+    
+    for (i = 0; i < slave->sii_sync_count; i++, data += 8) {
+        sync = &slave->sii_syncs[i];
 
-        sync->index = i;
+        sync->index = i; 
         sync->physical_start_address = EC_READ_U16(data);
         sync->length                 = EC_READ_U16(data + 2);
         sync->control_register       = EC_READ_U8 (data + 4);
         sync->enable                 = EC_READ_U8 (data + 6);
-
+        
         sync->est_length = 0;
-
-        list_add_tail(&sync->list, &slave->sii_syncs);
     }
 
     return 0;
@@ -785,15 +782,16 @@ size_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
     if (slave->sii_order)
         off += sprintf(buffer + off, "  Order number: %s\n", slave->sii_order);
 
-    if (!list_empty(&slave->sii_syncs))
+    if (slave->sii_sync_count)
         off += sprintf(buffer + off, "\nSync-Managers:\n");
 
-    list_for_each_entry(sync, &slave->sii_syncs, list) {
+    for (i = 0; i < slave->sii_sync_count; i++) {
+        sync = &slave->sii_syncs[i];
         off += sprintf(buffer + off, "  %i: 0x%04X, length %i,"
-                       " control 0x%02X, %s\n",
-                       sync->index, sync->physical_start_address,
-                       sync->length, sync->control_register,
-                       sync->enable ? "enable" : "disable");
+                " control 0x%02X, %s\n",
+                sync->index, sync->physical_start_address,
+                sync->length, sync->control_register,
+                sync->enable ? "enable" : "disable");
     }
 
     if (!list_empty(&slave->sii_pdos))

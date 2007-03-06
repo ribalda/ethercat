@@ -116,7 +116,6 @@ ec_sii_string_t;
 
 typedef struct
 {
-    struct list_head list; /**< list item */
     unsigned int index; /**< sync manager index */
     uint16_t physical_start_address; /**< physical start address */
     uint16_t length; /**< data length in bytes */
@@ -219,7 +218,6 @@ struct ec_slave
     uint8_t base_revision; /**< revision */
     uint16_t base_build; /**< build number */
     uint16_t base_fmmu_count; /**< number of supported FMMUs */
-    uint16_t base_sync_count; /**< number of supported sync managers */
 
     // data link status
     uint8_t dl_link[4]; /**< link detected */
@@ -243,7 +241,8 @@ struct ec_slave
     uint16_t sii_mailbox_protocols; /**< supported mailbox protocols */
     uint8_t sii_physical_layer[4]; /**< port media */
     struct list_head sii_strings; /**< EEPROM STRING categories */
-    struct list_head sii_syncs; /**< EEPROM SYNC MANAGER categories */
+    ec_sii_sync_t *sii_syncs; /**< EEPROM SYNC MANAGER categories */
+    unsigned int sii_sync_count; /**< number of sync managers in EEPROM */
     struct list_head sii_pdos; /**< EEPROM [RT]XPDO categories */
     char *sii_group; /**< slave group acc. to EEPROM */
     char *sii_image; /**< slave image name acc. to EEPROM */
