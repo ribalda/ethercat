@@ -284,6 +284,7 @@ int ec_slave_fetch_pdo(ec_slave_t *, const uint8_t *, size_t,
 int ec_slave_locate_string(ec_slave_t *, unsigned int, char **);
 
 // misc.
+ec_sii_sync_t *ec_slave_get_pdo_sync(ec_slave_t *, ec_direction_t); 
 void ec_slave_sync_config(const ec_slave_t *, const ec_sii_sync_t *,
         uint8_t *);
 void ec_slave_fmmu_config(const ec_slave_t *, const ec_fmmu_t *, uint8_t *);

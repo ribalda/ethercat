@@ -266,22 +266,12 @@ int ec_domain_reg_pdo_range(ec_domain_t *domain, /**< EtherCAT domain */
 {
     ec_data_reg_t *data_reg;
     ec_sii_sync_t *sync;
-    unsigned int sync_index;
     uint16_t sync_length;
 
-    switch (dir) { // FIXME
-        case EC_DIR_OUTPUT: sync_index = 2; break;
-        case EC_DIR_INPUT:  sync_index = 3; break;
-        default:
-            EC_ERR("Invalid direction!\n");
-            return -1;
-    }
-
-    if (sync_index >= slave->sii_sync_count) {
+    if (!(sync = ec_slave_get_pdo_sync(slave, dir))) {
         EC_ERR("No sync manager found for PDO range.\n");
         return -1;
     }
-    sync = &slave->sii_syncs[sync_index];
 
     // Allocate memory for data registration object
     if (!(data_reg =

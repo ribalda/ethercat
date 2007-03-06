@@ -1114,6 +1114,36 @@ uint16_t ec_slave_calc_sync_size(const ec_slave_t *slave,
 /*****************************************************************************/
 
 /**
+ */
+
+ec_sii_sync_t *ec_slave_get_pdo_sync(
+        ec_slave_t *slave, /**< EtherCAT slave */
+        ec_direction_t dir /**< input or output */
+        )
+{
+    unsigned int sync_index;
+
+    switch (dir) {
+        case EC_DIR_OUTPUT: sync_index = 0; break;
+        case EC_DIR_INPUT:  sync_index = 1; break;
+        default:
+            EC_ERR("Invalid direction!\n");
+            return NULL;
+    }
+
+    if (slave->sii_mailbox_protocols) sync_index += 2;
+
+    if (sync_index >= slave->sii_sync_count) {
+        EC_ERR("No appropriate sync manager found.\n");
+        return NULL;
+    }
+
+    return &slave->sii_syncs[sync_index];
+}
+
+/*****************************************************************************/
+
+/**
    Initializes a sync manager configuration page with EEPROM data.
    The referenced memory (\a data) must be at least EC_SYNC_SIZE bytes.
 */
