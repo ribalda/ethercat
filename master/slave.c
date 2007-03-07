@@ -241,8 +241,8 @@ void ec_slave_destroy(ec_slave_t *slave /**< EtherCAT slave */)
 void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
 {
     ec_slave_t *slave;
-    ec_sii_pdo_t *pdo, *next_pdo;
-    ec_sii_pdo_entry_t *entry, *next_ent;
+    ec_pdo_t *pdo, *next_pdo;
+    ec_pdo_entry_t *entry, *next_ent;
     ec_sdo_data_t *sdodata, *next_sdodata;
     unsigned int i;
 
@@ -519,16 +519,15 @@ int ec_slave_fetch_sii_pdos(
         ec_slave_t *slave, /**< EtherCAT slave */
         const uint8_t *data, /**< category data */
         size_t word_count, /**< number of words */
-        ec_sii_pdo_type_t pdo_type /**< PDO type */
+        ec_pdo_type_t pdo_type /**< PDO type */
         )
 {
-    ec_sii_pdo_t *pdo;
-    ec_sii_pdo_entry_t *entry;
+    ec_pdo_t *pdo;
+    ec_pdo_entry_t *entry;
     unsigned int entry_count, i;
 
     while (word_count >= 4) {
-        if (!(pdo = (ec_sii_pdo_t *)
-              kmalloc(sizeof(ec_sii_pdo_t), GFP_ATOMIC))) {
+        if (!(pdo = kmalloc(sizeof(ec_pdo_t), GFP_KERNEL))) {
             EC_ERR("Failed to allocate PDO memory.\n");
             return -1;
         }
@@ -547,8 +546,7 @@ int ec_slave_fetch_sii_pdos(
         data += 8;
 
         for (i = 0; i < entry_count; i++) {
-            if (!(entry = (ec_sii_pdo_entry_t *)
-                  kmalloc(sizeof(ec_sii_pdo_entry_t), GFP_ATOMIC))) {
+            if (!(entry = kmalloc(sizeof(ec_pdo_entry_t), GFP_KERNEL))) {
                 EC_ERR("Failed to allocate PDO entry memory.\n");
                 return -1;
             }
@@ -657,8 +655,8 @@ size_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
 {
     off_t off = 0;
     ec_sii_sync_t *sync;
-    ec_sii_pdo_t *pdo;
-    ec_sii_pdo_entry_t *pdo_entry;
+    ec_pdo_t *pdo;
+    ec_pdo_entry_t *pdo_entry;
     int first, i;
     ec_sdo_data_t *sdodata;
     char str[20];
@@ -1073,8 +1071,8 @@ uint16_t ec_slave_calc_sync_size(const ec_slave_t *slave,
                                  /**< sync manager */
                                  )
 {
-    ec_sii_pdo_t *pdo;
-    ec_sii_pdo_entry_t *pdo_entry;
+    ec_pdo_t *pdo;
+    ec_pdo_entry_t *pdo_entry;
     unsigned int bit_size, byte_size;
 
     if (sync->length) return sync->length;

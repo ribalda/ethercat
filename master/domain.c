@@ -188,8 +188,8 @@ void ec_domain_clear(struct kobject *kobj /**< kobject of the domain */)
 
 int ec_domain_reg_pdo_entry(ec_domain_t *domain, /**< EtherCAT domain */
                             ec_slave_t *slave, /**< slave */
-                            const ec_sii_pdo_t *pdo, /**< PDO */
-                            const ec_sii_pdo_entry_t *entry,
+                            const ec_pdo_t *pdo, /**< PDO */
+                            const ec_pdo_entry_t *entry,
                             /**< PDO registration entry */
                             void **data_ptr /**< pointer to the process data
                                                pointer */
@@ -197,8 +197,8 @@ int ec_domain_reg_pdo_entry(ec_domain_t *domain, /**< EtherCAT domain */
 {
     ec_data_reg_t *data_reg;
     const ec_sii_sync_t *sync;
-    const ec_sii_pdo_t *other_pdo;
-    const ec_sii_pdo_entry_t *other_entry;
+    const ec_pdo_t *other_pdo;
+    const ec_pdo_entry_t *other_entry;
     unsigned int bit_offset, byte_offset;
 
     // Find sync manager for PDO
@@ -499,8 +499,8 @@ ec_slave_t *ecrt_domain_register_pdo(ec_domain_t *domain,
 {
     ec_slave_t *slave;
     ec_master_t *master;
-    const ec_sii_pdo_t *pdo;
-    const ec_sii_pdo_entry_t *entry;
+    const ec_pdo_t *pdo;
+    const ec_pdo_entry_t *entry;
 
     master = domain->master;
 

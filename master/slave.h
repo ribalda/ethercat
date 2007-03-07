@@ -124,29 +124,29 @@ typedef enum
     EC_RX_PDO, /**< Reveive PDO */
     EC_TX_PDO /**< Transmit PDO */
 }
-ec_sii_pdo_type_t;
+ec_pdo_type_t;
 
 /*****************************************************************************/
 
 /**
-   PDO description (EEPROM).
+   PDO description.
 */
 
 typedef struct
 {
     struct list_head list; /**< list item */
-    ec_sii_pdo_type_t type; /**< PDO type */
+    ec_pdo_type_t type; /**< PDO type */
     uint16_t index; /**< PDO index */
     uint8_t sync_index; /**< assigned sync manager */
     char *name; /**< PDO name */
     struct list_head entries; /**< entry list */
 }
-ec_sii_pdo_t;
+ec_pdo_t;
 
 /*****************************************************************************/
 
 /**
-   PDO entry description (EEPROM).
+   PDO entry description.
 */
 
 typedef struct
@@ -157,7 +157,7 @@ typedef struct
     char *name; /**< entry name */
     uint8_t bit_length; /**< entry length in bit */
 }
-ec_sii_pdo_entry_t;
+ec_pdo_entry_t;
 
 /*****************************************************************************/
 
@@ -267,7 +267,7 @@ int ec_slave_fetch_sii_strings(ec_slave_t *, const uint8_t *);
 void ec_slave_fetch_sii_general(ec_slave_t *, const uint8_t *);
 int ec_slave_fetch_sii_syncs(ec_slave_t *, const uint8_t *, size_t);
 int ec_slave_fetch_sii_pdos(ec_slave_t *, const uint8_t *, size_t,
-        ec_sii_pdo_type_t);
+        ec_pdo_type_t);
 
 // misc.
 ec_sii_sync_t *ec_slave_get_pdo_sync(ec_slave_t *, ec_direction_t); 
