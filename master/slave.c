@@ -57,6 +57,7 @@ void ec_slave_sdos_clear(struct kobject *);
 ssize_t ec_show_slave_attribute(struct kobject *, struct attribute *, char *);
 ssize_t ec_store_slave_attribute(struct kobject *, struct attribute *,
                                  const char *, size_t);
+char *ec_slave_sii_string(ec_slave_t *, unsigned int);
 
 /*****************************************************************************/
 
@@ -147,7 +148,8 @@ int ec_slave_init(ec_slave_t *slave, /**< EtherCAT slave */
     slave->sii_name = NULL;
     slave->sii_current_on_ebus = 0;
 
-    INIT_LIST_HEAD(&slave->sii_strings);
+    slave->sii_strings = NULL;
+    slave->sii_string_count = 0;
     slave->sii_syncs = NULL;
     slave->sii_sync_count = 0;
     INIT_LIST_HEAD(&slave->sii_pdos);
@@ -239,17 +241,18 @@ void ec_slave_destroy(ec_slave_t *slave /**< EtherCAT slave */)
 void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
 {
     ec_slave_t *slave;
-    ec_sii_string_t *string, *next_str;
     ec_sii_pdo_t *pdo, *next_pdo;
     ec_sii_pdo_entry_t *entry, *next_ent;
     ec_sdo_data_t *sdodata, *next_sdodata;
+    unsigned int i;
 
     slave = container_of(kobj, ec_slave_t, kobj);
 
-    // free all string objects
-    list_for_each_entry_safe(string, next_str, &slave->sii_strings, list) {
-        list_del(&string->list);
-        kfree(string);
+    // free all strings
+    if (slave->sii_strings) {
+        for (i = 0; i < slave->sii_string_count; i++)
+            kfree(slave->sii_strings[i]);
+        kfree(slave->sii_strings);
     }
 
     // free all sync managers
@@ -258,22 +261,15 @@ void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
     // free all PDOs
     list_for_each_entry_safe(pdo, next_pdo, &slave->sii_pdos, list) {
         list_del(&pdo->list);
-        if (pdo->name) kfree(pdo->name);
 
         // free all PDO entries
         list_for_each_entry_safe(entry, next_ent, &pdo->entries, list) {
             list_del(&entry->list);
-            if (entry->name) kfree(entry->name);
             kfree(entry);
         }
 
         kfree(pdo);
     }
-
-    if (slave->sii_group) kfree(slave->sii_group);
-    if (slave->sii_image) kfree(slave->sii_image);
-    if (slave->sii_order) kfree(slave->sii_order);
-    if (slave->sii_name) kfree(slave->sii_name);
 
     // free all SDO configurations
     list_for_each_entry_safe(sdodata, next_sdodata, &slave->sdo_confs, list) {
@@ -405,31 +401,45 @@ int ec_slave_fetch_sii_strings(
         const uint8_t *data /**< category data */
         )
 {
-    unsigned int string_count, i;
+    int i;
     size_t size;
     off_t offset;
-    ec_sii_string_t *string;
 
-    string_count = data[0];
+    slave->sii_string_count = data[0];
+
+    if (!slave->sii_string_count)
+        return 0;
+
+    if (!(slave->sii_strings =
+                kmalloc(sizeof(char *) * slave->sii_string_count,
+                    GFP_KERNEL))) {
+        EC_ERR("Failed to allocate string array memory.\n");
+        goto out_zero;
+    }
+
     offset = 1;
-    for (i = 0; i < string_count; i++) {
+    for (i = 0; i < slave->sii_string_count; i++) {
         size = data[offset];
         // allocate memory for string structure and data at a single blow
-        if (!(string = (ec_sii_string_t *)
-              kmalloc(sizeof(ec_sii_string_t) + size + 1, GFP_ATOMIC))) {
+        if (!(slave->sii_strings[i] =
+                    kmalloc(sizeof(char) * size + 1, GFP_KERNEL))) {
             EC_ERR("Failed to allocate string memory.\n");
-            return -1;
+            goto out_free;
         }
-        string->size = size;
-        // string memory appended to string structure
-        string->data = (char *) string + sizeof(ec_sii_string_t);
-        memcpy(string->data, data + offset + 1, size);
-        string->data[size] = 0x00;
-        list_add_tail(&string->list, &slave->sii_strings);
+        memcpy(slave->sii_strings[i], data + offset + 1, size);
+        slave->sii_strings[i][size] = 0x00; // append binary zero
         offset += 1 + size;
     }
 
     return 0;
+
+out_free:
+    for (i--; i >= 0; i--) kfree(slave->sii_strings[i]);
+    kfree(slave->sii_strings);
+    slave->sii_strings = NULL;
+out_zero:
+    slave->sii_string_count = 0;
+    return -1;
 }
 
 /*****************************************************************************/
@@ -446,10 +456,10 @@ void ec_slave_fetch_sii_general(
 {
     unsigned int i;
 
-    ec_slave_locate_sii_string(slave, data[0], &slave->sii_group);
-    ec_slave_locate_sii_string(slave, data[1], &slave->sii_image);
-    ec_slave_locate_sii_string(slave, data[2], &slave->sii_order);
-    ec_slave_locate_sii_string(slave, data[3], &slave->sii_name);
+    slave->sii_group = ec_slave_sii_string(slave, data[0]);
+    slave->sii_image = ec_slave_sii_string(slave, data[1]);
+    slave->sii_order = ec_slave_sii_string(slave, data[2]);
+    slave->sii_name = ec_slave_sii_string(slave, data[3]);
 
     for (i = 0; i < 4; i++)
         slave->sii_physical_layer[i] =
@@ -529,8 +539,7 @@ int ec_slave_fetch_sii_pdos(
         pdo->index = EC_READ_U16(data);
         entry_count = EC_READ_U8(data + 2);
         pdo->sync_index = EC_READ_U8(data + 3);
-        pdo->name = NULL;
-        ec_slave_locate_sii_string(slave, EC_READ_U8(data + 5), &pdo->name);
+        pdo->name = ec_slave_sii_string(slave, EC_READ_U8(data + 5));
 
         list_add_tail(&pdo->list, &slave->sii_pdos);
 
@@ -546,9 +555,7 @@ int ec_slave_fetch_sii_pdos(
 
             entry->index = EC_READ_U16(data);
             entry->subindex = EC_READ_U8(data + 2);
-            entry->name = NULL;
-            ec_slave_locate_sii_string(
-                    slave, EC_READ_U8(data + 3), &entry->name);
+            entry->name = ec_slave_sii_string(slave, EC_READ_U8(data + 3));
             entry->bit_length = EC_READ_U8(data + 5);
 
             list_add_tail(&entry->list, &pdo->entries);
@@ -569,49 +576,22 @@ int ec_slave_fetch_sii_pdos(
    \todo documentation
 */
 
-int ec_slave_locate_sii_string(
+char *ec_slave_sii_string(
         ec_slave_t *slave, /**< EtherCAT slave */
-        unsigned int index, /**< string index */
-        char **ptr /**< Address of the string pointer */
+        unsigned int index /**< string index */
         )
 {
-    ec_sii_string_t *string;
-    char *err_string;
+    if (!index--) 
+        return NULL;
 
-    // Erst alten Speicher freigeben
-    if (*ptr) {
-        kfree(*ptr);
-        *ptr = NULL;
+    if (index >= slave->sii_string_count) {
+        if (slave->master->debug_level)
+            EC_WARN("String %i not found in slave %i.\n",
+                    index, slave->ring_position);
+        return NULL;
     }
 
-    // Index 0 bedeutet "nicht belegt"
-    if (!index) return 0;
-
-    // EEPROM-String mit Index finden und kopieren
-    list_for_each_entry(string, &slave->sii_strings, list) {
-        if (--index) continue;
-
-        if (!(*ptr = (char *) kmalloc(string->size + 1, GFP_ATOMIC))) {
-            EC_ERR("Unable to allocate string memory.\n");
-            return -1;
-        }
-        memcpy(*ptr, string->data, string->size + 1);
-        return 0;
-    }
-
-    if (slave->master->debug_level)
-        EC_WARN("String %i not found in slave %i.\n",
-                index, slave->ring_position);
-
-    err_string = "(string not found)";
-
-    if (!(*ptr = (char *) kmalloc(strlen(err_string) + 1, GFP_ATOMIC))) {
-        EC_WARN("Unable to allocate string memory.\n");
-        return -1;
-    }
-
-    memcpy(*ptr, err_string, strlen(err_string) + 1);
-    return 0;
+    return slave->sii_strings[index];
 }
 
 /*****************************************************************************/

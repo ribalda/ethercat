@@ -97,20 +97,6 @@ enum
 /*****************************************************************************/
 
 /**
-   String object (EEPROM).
-*/
-
-typedef struct
-{
-    struct list_head list; /**< list item */
-    size_t size; /**< size in bytes */
-    char *data; /**< string data */
-}
-ec_sii_string_t;
-
-/*****************************************************************************/
-
-/**
    Sync manager configuration (EEPROM).
 */
 
@@ -240,7 +226,8 @@ struct ec_slave
     uint16_t sii_tx_mailbox_size; /**< mailbox size (slave to master) */
     uint16_t sii_mailbox_protocols; /**< supported mailbox protocols */
     uint8_t sii_physical_layer[4]; /**< port media */
-    struct list_head sii_strings; /**< EEPROM STRING categories */
+    char **sii_strings; /**< strings in EEPROM categories */
+    unsigned int sii_string_count; /**< number of EEPROM strings */
     ec_sii_sync_t *sii_syncs; /**< EEPROM SYNC MANAGER categories */
     unsigned int sii_sync_count; /**< number of sync managers in EEPROM */
     struct list_head sii_pdos; /**< EEPROM [RT]XPDO categories */
@@ -283,7 +270,6 @@ int ec_slave_fetch_sii_pdos(ec_slave_t *, const uint8_t *, size_t,
         ec_sii_pdo_type_t);
 
 // misc.
-int ec_slave_locate_sii_string(ec_slave_t *, unsigned int, char **);
 ec_sii_sync_t *ec_slave_get_pdo_sync(ec_slave_t *, ec_direction_t); 
 void ec_slave_sync_config(const ec_slave_t *, const ec_sii_sync_t *,
         uint8_t *);
