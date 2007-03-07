@@ -242,7 +242,6 @@ void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
 {
     ec_slave_t *slave;
     ec_pdo_t *pdo, *next_pdo;
-    ec_pdo_entry_t *entry, *next_ent;
     ec_sdo_data_t *sdodata, *next_sdodata;
     unsigned int i;
 
@@ -261,13 +260,7 @@ void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
     // free all PDOs
     list_for_each_entry_safe(pdo, next_pdo, &slave->sii_pdos, list) {
         list_del(&pdo->list);
-
-        // free all PDO entries
-        list_for_each_entry_safe(entry, next_ent, &pdo->entries, list) {
-            list_del(&entry->list);
-            kfree(entry);
-        }
-
+        ec_pdo_clear(pdo);
         kfree(pdo);
     }
 
@@ -532,14 +525,12 @@ int ec_slave_fetch_sii_pdos(
             return -1;
         }
 
-        INIT_LIST_HEAD(&pdo->entries);
+        ec_pdo_init(pdo);
         pdo->type = pdo_type;
-
         pdo->index = EC_READ_U16(data);
         entry_count = EC_READ_U8(data + 2);
         pdo->sync_index = EC_READ_U8(data + 3);
         pdo->name = ec_slave_sii_string(slave, EC_READ_U8(data + 5));
-
         list_add_tail(&pdo->list, &slave->sii_pdos);
 
         word_count -= 4;
@@ -555,7 +546,6 @@ int ec_slave_fetch_sii_pdos(
             entry->subindex = EC_READ_U8(data + 2);
             entry->name = ec_slave_sii_string(slave, EC_READ_U8(data + 3));
             entry->bit_length = EC_READ_U8(data + 5);
-
             list_add_tail(&entry->list, &pdo->entries);
 
             word_count -= 4;
@@ -1071,8 +1061,8 @@ uint16_t ec_slave_calc_sync_size(const ec_slave_t *slave,
                                  /**< sync manager */
                                  )
 {
-    ec_pdo_t *pdo;
-    ec_pdo_entry_t *pdo_entry;
+    const ec_pdo_t *pdo;
+    const ec_pdo_entry_t *pdo_entry;
     unsigned int bit_size, byte_size;
 
     if (sync->length) return sync->length;

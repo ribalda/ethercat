@@ -48,6 +48,7 @@
 
 #include "globals.h"
 #include "datagram.h"
+#include "pdo.h"
 
 /*****************************************************************************/
 
@@ -118,52 +119,6 @@ typedef struct
                             PDO ranges */
 }
 ec_sync_t;
-
-/*****************************************************************************/
-
-/**
-   PDO type.
-*/
-
-typedef enum
-{
-    EC_RX_PDO, /**< Reveive PDO */
-    EC_TX_PDO /**< Transmit PDO */
-}
-ec_pdo_type_t;
-
-/*****************************************************************************/
-
-/**
-   PDO description.
-*/
-
-typedef struct
-{
-    struct list_head list; /**< list item */
-    ec_pdo_type_t type; /**< PDO type */
-    uint16_t index; /**< PDO index */
-    uint8_t sync_index; /**< assigned sync manager */
-    char *name; /**< PDO name */
-    struct list_head entries; /**< entry list */
-}
-ec_pdo_t;
-
-/*****************************************************************************/
-
-/**
-   PDO entry description.
-*/
-
-typedef struct
-{
-    struct list_head list; /**< list item */
-    uint16_t index; /**< PDO index */
-    uint8_t subindex; /**< entry subindex */
-    char *name; /**< entry name */
-    uint8_t bit_length; /**< entry length in bit */
-}
-ec_pdo_entry_t;
 
 /*****************************************************************************/
 
