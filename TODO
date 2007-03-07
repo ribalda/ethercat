@@ -29,6 +29,7 @@ $Id$
   - Calculate expected working counter for domains.
 
 * Smaller issues:
+  - Reset topology_change_pending on successful validation.
   - Simplify FSMs with <state>_enter() functions.
   - Dynamic creation of EoE handlers.
   - Output intermediate results during lsec.
