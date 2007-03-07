@@ -657,9 +657,11 @@ void ec_fsm_slave_conf_state_clear_fmmus(ec_fsm_slave_t *fsm
 /*****************************************************************************/
 
 /**
-*/
+ */
 
-void ec_fsm_slave_conf_enter_mbox_sync(ec_fsm_slave_t *fsm /**< slave state machine */)
+void ec_fsm_slave_conf_enter_mbox_sync(
+        ec_fsm_slave_t *fsm /**< slave state machine */
+        )
 {
     ec_master_t *master = fsm->slave->master;
     ec_slave_t *slave = fsm->slave;
@@ -693,7 +695,7 @@ void ec_fsm_slave_conf_enter_mbox_sync(ec_fsm_slave_t *fsm /**< slave state mach
     memset(datagram->data, 0x00, EC_SYNC_SIZE * slave->sii_sync_count);
 
     for (i = 0; i < 2; i++) {
-        ec_slave_sync_config(slave, &slave->sii_syncs[i],
+        ec_sync_config(&slave->sii_syncs[i],
                 datagram->data + EC_SYNC_SIZE * i);
     }
 
@@ -790,9 +792,11 @@ void ec_fsm_slave_conf_state_preop(ec_fsm_slave_t *fsm /**< slave state machine 
 /*****************************************************************************/
 
 /**
-*/
+ */
 
-void ec_fsm_slave_conf_enter_pdo_sync(ec_fsm_slave_t *fsm /**< slave state machine */)
+void ec_fsm_slave_conf_enter_pdo_sync(
+        ec_fsm_slave_t *fsm /**< slave state machine */
+        )
 {
     ec_slave_t *slave = fsm->slave;
     ec_datagram_t *datagram = fsm->datagram;
@@ -809,7 +813,7 @@ void ec_fsm_slave_conf_enter_pdo_sync(ec_fsm_slave_t *fsm /**< slave state machi
     memset(datagram->data, 0x00, EC_SYNC_SIZE * slave->sii_sync_count);
 
     for (i = 0; i < slave->sii_sync_count; i++) {
-        ec_slave_sync_config(slave, &slave->sii_syncs[i],
+        ec_sync_config(&slave->sii_syncs[i],
                 datagram->data + EC_SYNC_SIZE * i);
     }
 

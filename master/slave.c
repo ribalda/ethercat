@@ -255,7 +255,13 @@ void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
     }
 
     // free all sync managers
-    if (slave->sii_syncs) kfree(slave->sii_syncs);
+    if (slave->sii_syncs) {
+        for (i = 0; i < slave->sii_sync_count; i++) {
+            ec_sync_clear(&slave->sii_syncs[i]);
+            kfree(&slave->sii_syncs[i]);
+        }
+        kfree(slave->sii_syncs);
+    }
 
     // free all PDOs
     list_for_each_entry_safe(pdo, next_pdo, &slave->sii_pdos, list) {
@@ -480,22 +486,22 @@ int ec_slave_fetch_sii_syncs(
     // sync manager struct is 4 words long
     slave->sii_sync_count = word_count / 4;
 
-    if (!(slave->sii_syncs = kmalloc(sizeof(ec_sync_t) *
-                    slave->sii_sync_count, GFP_ATOMIC))) {
-        EC_ERR("Failed to allocate Sync-Manager memory.\n");
+    if (!(slave->sii_syncs =
+                kmalloc(sizeof(ec_sync_t) * slave->sii_sync_count,
+                    GFP_KERNEL))) {
+        EC_ERR("Failed to allocate memory for sync managers.\n");
+        slave->sii_sync_count = 0;
         return -1;
     }
     
     for (i = 0; i < slave->sii_sync_count; i++, data += 8) {
         sync = &slave->sii_syncs[i];
 
-        sync->index = i; 
+        ec_sync_init(sync, slave, i);
         sync->physical_start_address = EC_READ_U16(data);
-        sync->length                 = EC_READ_U16(data + 2);
-        sync->control_register       = EC_READ_U8 (data + 4);
-        sync->enable                 = EC_READ_U8 (data + 6);
-        
-        sync->est_length = 0;
+        sync->length = EC_READ_U16(data + 2);
+        sync->control_register = EC_READ_U8 (data + 4);
+        sync->enable = EC_READ_U8 (data + 6);
     }
 
     return 0;
@@ -761,7 +767,7 @@ size_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
 
     for (i = 0; i < slave->sii_sync_count; i++) {
         sync = &slave->sii_syncs[i];
-        off += sprintf(buffer + off, "  %i: 0x%04X, length %i,"
+        off += sprintf(buffer + off, "  %u) 0x%04X, length %i,"
                 " control 0x%02X, %s\n",
                 sync->index, sync->physical_start_address,
                 sync->length, sync->control_register,
@@ -1051,15 +1057,14 @@ ssize_t ec_store_slave_attribute(struct kobject *kobj, /**< slave's kobject */
 /*****************************************************************************/
 
 /**
-   Calculates the size of a sync manager by evaluating PDO sizes.
-   \return sync manager size
-*/
+ * Calculates the size of a sync manager by evaluating PDO sizes.
+ * \return sync manager size
+ */
 
-uint16_t ec_slave_calc_sync_size(const ec_slave_t *slave,
-                                 /**< EtherCAT slave */
-                                 const ec_sync_t *sync
-                                 /**< sync manager */
-                                 )
+uint16_t ec_slave_calc_sync_size(
+        const ec_slave_t *slave, /**< EtherCAT slave */
+        const ec_sync_t *sync /**< sync manager */
+        )
 {
     const ec_pdo_t *pdo;
     const ec_pdo_entry_t *pdo_entry;

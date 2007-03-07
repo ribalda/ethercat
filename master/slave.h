@@ -49,6 +49,7 @@
 #include "globals.h"
 #include "datagram.h"
 #include "pdo.h"
+#include "sync.h"
 
 /*****************************************************************************/
 
@@ -99,26 +100,6 @@ enum
     EC_MBOX_SOE = 0x10, /**< Servo-Profile-over-EtherCAT */
     EC_MBOX_VOE = 0x20  /**< Vendor specific */
 };
-
-/*****************************************************************************/
-
-/**
-   Sync manager.
-*/
-
-typedef struct
-{
-    unsigned int index; /**< sync manager index */
-    uint16_t physical_start_address; /**< physical start address */
-    uint16_t length; /**< data length in bytes */
-    uint8_t control_register; /**< control register value */
-    uint8_t enable; /**< enable bit */
-
-    uint16_t est_length; /**< Estimated length. This is no field of the SII,
-                            but it is used to calculate the length via
-                            PDO ranges */
-}
-ec_sync_t;
 
 /*****************************************************************************/
 
@@ -232,7 +213,6 @@ int ec_slave_fetch_sii_pdos(ec_slave_t *, const uint8_t *, size_t,
 
 // misc.
 ec_sync_t *ec_slave_get_pdo_sync(ec_slave_t *, ec_direction_t); 
-void ec_slave_sync_config(const ec_slave_t *, const ec_sync_t *, uint8_t *);
 void ec_slave_fmmu_config(const ec_slave_t *, const ec_fmmu_t *, uint8_t *);
 uint16_t ec_slave_calc_sync_size(const ec_slave_t *, const ec_sync_t *);
 

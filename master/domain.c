@@ -207,7 +207,6 @@ int ec_domain_reg_pdo_entry(ec_domain_t *domain, /**< EtherCAT domain */
                pdo->index, entry->subindex);
         return -1;
     }
-
     sync = &slave->sii_syncs[pdo->sync_index];
 
     // Calculate offset (in sync manager) for process data pointer

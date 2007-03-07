@@ -39,6 +39,7 @@ EXTRA_DIST = \
 	device.c device.h \
 	device_id.c device_id.h \
 	pdo.c pdo.h \
+	sync.c sync.h \
 	domain.c domain.h \
 	doxygen.c \
 	ethernet.c ethernet.h \
