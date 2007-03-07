@@ -258,7 +258,6 @@ void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
     if (slave->sii_syncs) {
         for (i = 0; i < slave->sii_sync_count; i++) {
             ec_sync_clear(&slave->sii_syncs[i]);
-            kfree(&slave->sii_syncs[i]);
         }
         kfree(slave->sii_syncs);
     }
