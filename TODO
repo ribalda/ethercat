@@ -11,6 +11,8 @@ $Id$
   - Remove addressing scheme "X:Y".
   - Allow only MAC address as device ID.
   - Remove ugly ec_slave_is_coupler().
+  - Replace Vendor ID and product code arguments ofec_domain_register_pdo()
+    by slave pointer.
 
 * Future features:
   - SDO dictionary and -access in operation mode.
