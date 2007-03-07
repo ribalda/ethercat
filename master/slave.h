@@ -50,6 +50,7 @@
 #include "datagram.h"
 #include "pdo.h"
 #include "sync.h"
+#include "fmmu.h"
 
 /*****************************************************************************/
 
@@ -105,21 +106,6 @@ enum
     EC_MBOX_SOE = 0x10, /**< Servo-Profile-over-EtherCAT */
     EC_MBOX_VOE = 0x20  /**< Vendor specific */
 };
-
-/*****************************************************************************/
-
-/**
-   FMMU configuration.
-*/
-
-typedef struct
-{
-    unsigned int index; /**< FMMU index */
-    const ec_domain_t *domain; /**< domain */
-    const ec_sync_t *sync; /**< sync manager */
-    uint32_t logical_start_address; /**< logical start address */
-}
-ec_fmmu_t;
 
 /*****************************************************************************/
 
@@ -218,7 +204,6 @@ int ec_slave_fetch_sii_pdos(ec_slave_t *, const uint8_t *, size_t,
 
 // misc.
 ec_sync_t *ec_slave_get_pdo_sync(ec_slave_t *, ec_direction_t); 
-void ec_slave_fmmu_config(const ec_slave_t *, const ec_fmmu_t *, uint8_t *);
 uint16_t ec_slave_calc_sync_size(const ec_slave_t *, const ec_sync_t *);
 
 int ec_slave_is_coupler(const ec_slave_t *);

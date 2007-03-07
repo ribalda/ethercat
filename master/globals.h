@@ -78,9 +78,6 @@
 /** size of an EtherCAT datagram footer */
 #define EC_DATAGRAM_FOOTER_SIZE 2
 
-/** size of an FMMU configuration page */
-#define EC_FMMU_SIZE 16
-
 /** resulting maximum data size of a single datagram in a frame */
 #define EC_MAX_DATA_SIZE (ETH_DATA_LEN - EC_FRAME_HEADER_SIZE \
                           - EC_DATAGRAM_HEADER_SIZE - EC_DATAGRAM_FOOTER_SIZE)

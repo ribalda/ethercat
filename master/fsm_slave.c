@@ -879,8 +879,7 @@ void ec_fsm_slave_conf_enter_fmmu(ec_fsm_slave_t *fsm /**< slave state machine *
                      0x0600, EC_FMMU_SIZE * slave->base_fmmu_count);
     memset(datagram->data, 0x00, EC_FMMU_SIZE * slave->base_fmmu_count);
     for (j = 0; j < slave->fmmu_count; j++) {
-        ec_slave_fmmu_config(slave, &slave->fmmus[j],
-                datagram->data + EC_FMMU_SIZE * j);
+        ec_fmmu_config(&slave->fmmus[j], datagram->data + EC_FMMU_SIZE * j);
     }
 
     ec_master_queue_datagram(master, datagram);

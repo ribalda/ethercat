@@ -35,9 +35,9 @@ include $(src)/../config.kbuild
 
 obj-m := ec_master.o
 
-ec_master-objs := module.o master.o device.o device_id.o pdo.o sync.o slave.o \
-    datagram.o domain.o mailbox.o canopen.o ethernet.o fsm_sii.o fsm_change.o \
-    fsm_coe.o fsm_slave.o fsm_master.o xmldev.o
+ec_master-objs := module.o master.o device.o device_id.o pdo.o sync.o fmmu.o \
+    slave.o datagram.o domain.o mailbox.o canopen.o ethernet.o fsm_sii.o \
+    fsm_change.o fsm_coe.o fsm_slave.o fsm_master.o xmldev.o
 
 ifeq ($(EC_DBG_IF),1)
 	ec_master-objs += debug.o
