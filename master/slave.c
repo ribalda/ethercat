@@ -482,12 +482,12 @@ int ec_slave_fetch_sii_syncs(
         )
 {
     unsigned int i;
-    ec_sii_sync_t *sync;
+    ec_sync_t *sync;
 
     // sync manager struct is 4 words long
     slave->sii_sync_count = word_count / 4;
 
-    if (!(slave->sii_syncs = kmalloc(sizeof(ec_sii_sync_t) *
+    if (!(slave->sii_syncs = kmalloc(sizeof(ec_sync_t) *
                     slave->sii_sync_count, GFP_ATOMIC))) {
         EC_ERR("Failed to allocate Sync-Manager memory.\n");
         return -1;
@@ -608,7 +608,7 @@ char *ec_slave_sii_string(
 
 int ec_slave_prepare_fmmu(ec_slave_t *slave, /**< EtherCAT slave */
                           const ec_domain_t *domain, /**< domain */
-                          const ec_sii_sync_t *sync  /**< sync manager */
+                          const ec_sync_t *sync  /**< sync manager */
                           )
 {
     unsigned int i;
@@ -654,7 +654,7 @@ size_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
                      )
 {
     off_t off = 0;
-    ec_sii_sync_t *sync;
+    ec_sync_t *sync;
     ec_pdo_t *pdo;
     ec_pdo_entry_t *pdo_entry;
     int first, i;
@@ -1067,7 +1067,7 @@ ssize_t ec_store_slave_attribute(struct kobject *kobj, /**< slave's kobject */
 
 uint16_t ec_slave_calc_sync_size(const ec_slave_t *slave,
                                  /**< EtherCAT slave */
-                                 const ec_sii_sync_t *sync
+                                 const ec_sync_t *sync
                                  /**< sync manager */
                                  )
 {
@@ -1100,7 +1100,7 @@ uint16_t ec_slave_calc_sync_size(const ec_slave_t *slave,
 /**
  */
 
-ec_sii_sync_t *ec_slave_get_pdo_sync(
+ec_sync_t *ec_slave_get_pdo_sync(
         ec_slave_t *slave, /**< EtherCAT slave */
         ec_direction_t dir /**< input or output */
         )
@@ -1133,7 +1133,7 @@ ec_sii_sync_t *ec_slave_get_pdo_sync(
 */
 
 void ec_slave_sync_config(const ec_slave_t *slave, /**< EtherCAT slave */
-        const ec_sii_sync_t *sync, /**< sync manager */
+        const ec_sync_t *sync, /**< sync manager */
         uint8_t *data /**> configuration memory */
         )
 {

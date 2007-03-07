@@ -54,7 +54,7 @@ typedef struct
 {
     struct list_head list; /**< list item */
     ec_slave_t *slave; /**< slave */
-    const ec_sii_sync_t *sync; /**< sync manager */
+    const ec_sync_t *sync; /**< sync manager */
     off_t sync_offset; /**< pdo offset */
     void **data_ptr; /**< pointer to process data pointer(s) */
 }
@@ -196,7 +196,7 @@ int ec_domain_reg_pdo_entry(ec_domain_t *domain, /**< EtherCAT domain */
                             )
 {
     ec_data_reg_t *data_reg;
-    const ec_sii_sync_t *sync;
+    const ec_sync_t *sync;
     const ec_pdo_t *other_pdo;
     const ec_pdo_entry_t *other_entry;
     unsigned int bit_offset, byte_offset;
@@ -265,7 +265,7 @@ int ec_domain_reg_pdo_range(ec_domain_t *domain, /**< EtherCAT domain */
                             )
 {
     ec_data_reg_t *data_reg;
-    ec_sii_sync_t *sync;
+    ec_sync_t *sync;
     uint16_t sync_length;
 
     if (!(sync = ec_slave_get_pdo_sync(slave, dir))) {

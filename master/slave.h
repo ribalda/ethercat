@@ -72,6 +72,11 @@ typedef enum
 }
 ec_slave_state_t;
 
+/*****************************************************************************/
+
+/**
+ */
+
 typedef enum {
     EC_SLAVE_OFFLINE,
     EC_SLAVE_ONLINE
@@ -97,7 +102,7 @@ enum
 /*****************************************************************************/
 
 /**
-   Sync manager configuration (EEPROM).
+   Sync manager.
 */
 
 typedef struct
@@ -107,11 +112,12 @@ typedef struct
     uint16_t length; /**< data length in bytes */
     uint8_t control_register; /**< control register value */
     uint8_t enable; /**< enable bit */
+
     uint16_t est_length; /**< Estimated length. This is no field of the SII,
                             but it is used to calculate the length via
                             PDO ranges */
 }
-ec_sii_sync_t;
+ec_sync_t;
 
 /*****************************************************************************/
 
@@ -169,7 +175,7 @@ typedef struct
 {
     unsigned int index; /**< FMMU index */
     const ec_domain_t *domain; /**< domain */
-    const ec_sii_sync_t *sync; /**< sync manager */
+    const ec_sync_t *sync; /**< sync manager */
     uint32_t logical_start_address; /**< logical start address */
 }
 ec_fmmu_t;
@@ -228,7 +234,7 @@ struct ec_slave
     uint8_t sii_physical_layer[4]; /**< port media */
     char **sii_strings; /**< strings in EEPROM categories */
     unsigned int sii_string_count; /**< number of EEPROM strings */
-    ec_sii_sync_t *sii_syncs; /**< EEPROM SYNC MANAGER categories */
+    ec_sync_t *sii_syncs; /**< EEPROM SYNC MANAGER categories */
     unsigned int sii_sync_count; /**< number of sync managers in EEPROM */
     struct list_head sii_pdos; /**< EEPROM [RT]XPDO categories */
     char *sii_group; /**< slave group acc. to EEPROM */
@@ -256,7 +262,7 @@ void ec_slave_destroy(ec_slave_t *);
 void ec_slave_reset(ec_slave_t *);
 
 int ec_slave_prepare_fmmu(ec_slave_t *, const ec_domain_t *,
-                          const ec_sii_sync_t *);
+        const ec_sync_t *);
 
 void ec_slave_request_state(ec_slave_t *, ec_slave_state_t);
 void ec_slave_set_state(ec_slave_t *, ec_slave_state_t);
@@ -270,11 +276,10 @@ int ec_slave_fetch_sii_pdos(ec_slave_t *, const uint8_t *, size_t,
         ec_pdo_type_t);
 
 // misc.
-ec_sii_sync_t *ec_slave_get_pdo_sync(ec_slave_t *, ec_direction_t); 
-void ec_slave_sync_config(const ec_slave_t *, const ec_sii_sync_t *,
-        uint8_t *);
+ec_sync_t *ec_slave_get_pdo_sync(ec_slave_t *, ec_direction_t); 
+void ec_slave_sync_config(const ec_slave_t *, const ec_sync_t *, uint8_t *);
 void ec_slave_fmmu_config(const ec_slave_t *, const ec_fmmu_t *, uint8_t *);
-uint16_t ec_slave_calc_sync_size(const ec_slave_t *, const ec_sii_sync_t *);
+uint16_t ec_slave_calc_sync_size(const ec_slave_t *, const ec_sync_t *);
 
 int ec_slave_is_coupler(const ec_slave_t *);
 
