@@ -49,12 +49,6 @@
  *  EtherCAT master
  *****************************************************************************/
 
-/** maximum number of FMMUs per slave */
-#define EC_MAX_FMMUS 16
-
-/** size of the EoE tx queue */
-#define EC_EOE_TX_QUEUE_SIZE 100
-
 /** clock frequency for the EoE state machines */
 #define EC_EOE_FREQUENCY 1000
 
@@ -83,9 +77,6 @@
 
 /** size of an EtherCAT datagram footer */
 #define EC_DATAGRAM_FOOTER_SIZE 2
-
-/** size of a sync manager configuration page */
-#define EC_SYNC_SIZE 8
 
 /** size of an FMMU configuration page */
 #define EC_FMMU_SIZE 16
