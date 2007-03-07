@@ -111,8 +111,8 @@ typedef struct
                                   ecrt_master_get_slave()) */
     uint32_t vendor_id; /**< vendor ID */
     uint32_t product_code; /**< product code */
-    uint16_t pdo_index; /**< PDO index */
-    uint8_t pdo_subindex; /**< PDO subindex */
+    uint16_t pdo_entry_index; /**< PDO entry index */
+    uint8_t pdo_entry_subindex; /**< PDO entry subindex */
     void **data_ptr; /**< address of the process data pointer */
 }
 ec_pdo_reg_t;
@@ -121,7 +121,11 @@ ec_pdo_reg_t;
    Direction type for ecrt_domain_register_pdo_range()
 */
 
-typedef enum {EC_DIR_INPUT, EC_DIR_OUTPUT} ec_direction_t;
+typedef enum {
+    EC_DIR_OUTPUT,
+    EC_DIR_INPUT
+}
+ec_direction_t;
 
 /******************************************************************************
  *  Master request functions
@@ -190,6 +194,10 @@ int ecrt_slave_conf_sdo16(ec_slave_t *slave, uint16_t sdo_index,
                           uint8_t sdo_subindex, uint16_t value);
 int ecrt_slave_conf_sdo32(ec_slave_t *slave, uint16_t sdo_index,
                           uint8_t sdo_subindex, uint32_t value);
+
+void ecrt_slave_pdo_mapping_clear(ec_slave_t *, ec_direction_t);
+int ecrt_slave_pdo_mapping_add(ec_slave_t *, ec_direction_t, uint16_t);
+int ecrt_slave_pdo_mapping(ec_slave_t *, ec_direction_t, unsigned int, ...);
 
 /******************************************************************************
  *  Bitwise read/write macros

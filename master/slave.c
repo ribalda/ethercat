@@ -262,7 +262,7 @@ void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
         kfree(slave->sii_syncs);
     }
 
-    // free all PDOs
+    // free all SII PDOs
     list_for_each_entry_safe(pdo, next_pdo, &slave->sii_pdos, list) {
         list_del(&pdo->list);
         ec_pdo_clear(pdo);
@@ -301,7 +301,6 @@ void ec_slave_reset(ec_slave_t *slave /**< EtherCAT slave */)
     ec_sdo_data_t *sdodata, *next_sdodata;
     unsigned int i;
 
-    // remove FMMU configurations
     slave->fmmu_count = 0;
     slave->pdos_registered = 0;
 
@@ -379,7 +378,7 @@ void ec_slave_set_online_state(ec_slave_t *slave, /**< EtherCAT slave */
 /**
  */
 
-void ec_slave_request_state(ec_slave_t *slave, /**< ETherCAT slave */
+void ec_slave_request_state(ec_slave_t *slave, /**< EtherCAT slave */
                             ec_slave_state_t state /**< new state */
                             )
 {
@@ -555,6 +554,31 @@ int ec_slave_fetch_sii_pdos(
 
             word_count -= 4;
             data += 8;
+        }
+
+        // if sync manager index is positive, the PDO is mapped by default
+        if (pdo->sync_index >= 0) {
+            ec_pdo_t *mapped_pdo;
+
+            if (pdo->sync_index >= slave->sii_sync_count) {
+                EC_ERR("Invalid SM index %i for PDO 0x%04X in slave %u.",
+                        pdo->sync_index, pdo->index, slave->ring_position);
+                return -1;
+            }
+
+            if (!(mapped_pdo = kmalloc(sizeof(ec_pdo_t), GFP_KERNEL))) {
+                EC_ERR("Failed to allocate PDO memory.\n");
+                return -1;
+            }
+
+            if (ec_pdo_copy(mapped_pdo, pdo)) {
+                EC_ERR("Failed to copy PDO.\n");
+                kfree(mapped_pdo);
+                return -1;
+            }
+
+            list_add_tail(&mapped_pdo->list,
+                    &slave->sii_syncs[pdo->sync_index].pdos);
         }
     }
 
@@ -762,31 +786,51 @@ size_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
         off += sprintf(buffer + off, "  Order number: %s\n", slave->sii_order);
 
     if (slave->sii_sync_count)
-        off += sprintf(buffer + off, "\nSync-Managers:\n");
+        off += sprintf(buffer + off, "\nSync managers / PDO mapping:\n");
 
     for (i = 0; i < slave->sii_sync_count; i++) {
         sync = &slave->sii_syncs[i];
-        off += sprintf(buffer + off, "  %u) 0x%04X, length %i,"
-                " control 0x%02X, %s\n",
+        off += sprintf(buffer + off,
+                "  SM%u: addr 0x%04X, size %i, control 0x%02X, %s\n",
                 sync->index, sync->physical_start_address,
-                sync->length, sync->control_register,
+                ec_sync_size(sync), sync->control_register,
                 sync->enable ? "enable" : "disable");
+
+        if (list_empty(&sync->pdos))
+            off += sprintf(buffer + off, "    No PDOs mapped.\n");
+
+        list_for_each_entry(pdo, &sync->pdos, list) {
+            off += sprintf(buffer + off, "    %s 0x%04X \"%s\"\n",
+                    pdo->type == EC_RX_PDO ? "RXPDO" : "TXPDO",
+                    pdo->index, pdo->name ? pdo->name : "???");
+
+            list_for_each_entry(pdo_entry, &pdo->entries, list) {
+                off += sprintf(buffer + off,
+                        "      0x%04X:%X \"%s\", %i bit\n",
+                        pdo_entry->index, pdo_entry->subindex,
+                        pdo_entry->name ? pdo_entry->name : "???",
+                        pdo_entry->bit_length);
+            }
+        }
     }
 
     if (!list_empty(&slave->sii_pdos))
-        off += sprintf(buffer + off, "\nPDOs:\n");
+        off += sprintf(buffer + off, "\nAvailable PDOs:\n");
 
     list_for_each_entry(pdo, &slave->sii_pdos, list) {
-        off += sprintf(buffer + off,
-                       "  %s \"%s\" (0x%04X), Sync-Manager %i\n",
+        off += sprintf(buffer + off, "  %s 0x%04X \"%s\"",
                        pdo->type == EC_RX_PDO ? "RXPDO" : "TXPDO",
-                       pdo->name ? pdo->name : "???",
-                       pdo->index, pdo->sync_index);
+                       pdo->index, pdo->name ? pdo->name : "???");
+        if (pdo->sync_index >= 0)
+            off += sprintf(buffer + off, ", default mapping: SM%u.\n",
+                    pdo->sync_index);
+        else
+            off += sprintf(buffer + off, ", no default mapping.\n");
 
         list_for_each_entry(pdo_entry, &pdo->entries, list) {
-            off += sprintf(buffer + off, "    \"%s\" 0x%04X:%X, %i bit\n",
-                           pdo_entry->name ? pdo_entry->name : "???",
+            off += sprintf(buffer + off, "    0x%04X:%X \"%s\", %i bit\n",
                            pdo_entry->index, pdo_entry->subindex,
+                           pdo_entry->name ? pdo_entry->name : "???",
                            pdo_entry->bit_length);
         }
     }
@@ -1056,42 +1100,6 @@ ssize_t ec_store_slave_attribute(struct kobject *kobj, /**< slave's kobject */
 /*****************************************************************************/
 
 /**
- * Calculates the size of a sync manager by evaluating PDO sizes.
- * \return sync manager size
- */
-
-uint16_t ec_slave_calc_sync_size(
-        const ec_slave_t *slave, /**< EtherCAT slave */
-        const ec_sync_t *sync /**< sync manager */
-        )
-{
-    const ec_pdo_t *pdo;
-    const ec_pdo_entry_t *pdo_entry;
-    unsigned int bit_size, byte_size;
-
-    if (sync->length) return sync->length;
-    if (sync->est_length) return sync->est_length;
-
-    bit_size = 0;
-    list_for_each_entry(pdo, &slave->sii_pdos, list) {
-        if (pdo->sync_index != sync->index) continue;
-
-        list_for_each_entry(pdo_entry, &pdo->entries, list) {
-            bit_size += pdo_entry->bit_length;
-        }
-    }
-
-    if (bit_size % 8) // round up to full bytes
-        byte_size = bit_size / 8 + 1;
-    else
-        byte_size = bit_size / 8;
-
-    return byte_size;
-}
-
-/*****************************************************************************/
-
-/**
  */
 
 ec_sync_t *ec_slave_get_pdo_sync(
@@ -1101,14 +1109,12 @@ ec_sync_t *ec_slave_get_pdo_sync(
 {
     unsigned int sync_index;
 
-    switch (dir) {
-        case EC_DIR_OUTPUT: sync_index = 0; break;
-        case EC_DIR_INPUT:  sync_index = 1; break;
-        default:
-            EC_ERR("Invalid direction!\n");
-            return NULL;
+    if (dir != EC_DIR_INPUT && dir != EC_DIR_OUTPUT) {
+        EC_ERR("Invalid direction!\n");
+        return NULL;
     }
 
+    sync_index = (unsigned int) dir;
     if (slave->sii_mailbox_protocols) sync_index += 2;
 
     if (sync_index >= slave->sii_sync_count) {
@@ -1279,11 +1285,104 @@ int ecrt_slave_conf_sdo32(ec_slave_t *slave, /**< EtherCAT slave */
 
 /*****************************************************************************/
 
+void ecrt_slave_pdo_mapping_clear(
+        ec_slave_t *slave, /**< EtherCAT slave */
+        ec_direction_t dir /**< output/input */
+        )
+{
+    ec_sync_t *sync;
+
+    if (!(slave->sii_mailbox_protocols & EC_MBOX_COE)) {
+        EC_ERR("Slave %i does not support CoE!\n", slave->ring_position);
+        return;
+    }
+
+    if (!(sync = ec_slave_get_pdo_sync(slave, dir)))
+        return;
+
+    ec_sync_clear_pdos(sync);
+}
+
+/*****************************************************************************/
+
+int ecrt_slave_pdo_mapping_add(
+        ec_slave_t *slave, /**< EtherCAT slave */
+        ec_direction_t dir, /**< input/output */
+        uint16_t pdo_index /**< Index of PDO mapping list */)
+{
+    ec_pdo_t *pdo;
+    ec_sync_t *sync;
+    unsigned int not_found = 1;
+
+    if (!(slave->sii_mailbox_protocols & EC_MBOX_COE)) {
+        EC_ERR("Slave %i does not support CoE!\n", slave->ring_position);
+        return -1;
+    }
+
+    // does the slave provide the PDO list?
+    list_for_each_entry(pdo, &slave->sii_pdos, list) {
+        if (pdo->index == pdo_index) {
+            not_found = 0;
+            break;
+        }
+    }
+
+    if (not_found) {
+        EC_ERR("Slave %i does not provide PDO %04X!\n",
+                slave->ring_position, pdo_index);
+        return -1;
+    }
+
+    // check direction
+    if ((pdo->type == EC_TX_PDO && dir == EC_DIR_OUTPUT) ||
+            (pdo->type == EC_RX_PDO && dir == EC_DIR_INPUT)) {
+        EC_ERR("Invalid direction for PDO 0x%04X.\n", pdo_index);
+        return -1;
+    }
+
+
+    if (!(sync = ec_slave_get_pdo_sync(slave, dir)))
+        return -1;
+
+    return ec_sync_add_pdo(sync, pdo);
+}
+
+/*****************************************************************************/
+
+int ecrt_slave_pdo_mapping(ec_slave_t *slave, /**< EtherCAT slave */
+        ec_direction_t dir, /**< input/output */
+        unsigned int num_args, /**< Number of following arguments */
+        ... /**< PDO indices to map */
+        )
+{
+    va_list ap;
+
+    ecrt_slave_pdo_mapping_clear(slave, dir);
+
+    va_start(ap, num_args);
+
+    for (; num_args; num_args--) {
+        if (ecrt_slave_pdo_mapping_add(
+                    slave, dir, (uint16_t) va_arg(ap, int))) {
+            return -1;
+        }
+    }
+
+    va_end(ap);
+    return 0;
+}
+
+
+/*****************************************************************************/
+
 /** \cond */
 
 EXPORT_SYMBOL(ecrt_slave_conf_sdo8);
 EXPORT_SYMBOL(ecrt_slave_conf_sdo16);
 EXPORT_SYMBOL(ecrt_slave_conf_sdo32);
+EXPORT_SYMBOL(ecrt_slave_pdo_mapping_clear);
+EXPORT_SYMBOL(ecrt_slave_pdo_mapping_add);
+EXPORT_SYMBOL(ecrt_slave_pdo_mapping);
 
 /** \endcond */
 

@@ -33,55 +33,50 @@
 
 /**
    \file
-   EtherCAT sync manager.
+   EtherCAT PDO mapping state machine structures.
 */
 
 /*****************************************************************************/
 
-#ifndef _EC_SYNC_H_
-#define _EC_SYNC_H_
+#ifndef __EC_FSM_MAPPING__
+#define __EC_FSM_MAPPING__
 
-#include <linux/list.h>
-
-#include "../include/ecrt.h"
 #include "globals.h"
+#include "../include/ecrt.h"
+#include "datagram.h"
+#include "fsm_coe.h"
 
 /*****************************************************************************/
 
-/** size of a sync manager configuration page */
-#define EC_SYNC_SIZE 8
-
-/*****************************************************************************/
+typedef struct ec_fsm_mapping ec_fsm_mapping_t; /**< \see ec_fsm_slave */
 
 /**
- * Sync manager.
+ * Finite state machine of an EtherCAT slave.
  */
 
-typedef struct
+struct ec_fsm_mapping
 {
-    ec_slave_t *slave; /**< slave, the sync manager belongs to */
-    unsigned int index; /**< sync manager index */
-    uint16_t physical_start_address; /**< physical start address */
-    uint16_t length; /**< data length in bytes */
-    uint8_t control_register; /**< control register value */
-    uint8_t enable; /**< enable bit */
+    void (*state)(ec_fsm_mapping_t *); /**< state function */
+    ec_fsm_coe_t *fsm_coe; /**< CoE state machine to use */
 
-    uint16_t est_length; /**< used to calculate the length via PDO ranges */
-    struct list_head pdos; /**< list of mapped PDOs */
-    unsigned int alt_mapping; /**< alternative mapping configured */
-}
-ec_sync_t;
+    ec_slave_t *slave; /**< slave the FSM runs on */
+
+    ec_direction_t dir; /**< current PDO direction */
+    ec_sync_t *sync; /**< current sync manager */
+    ec_pdo_t *pdo; /**< current PDO */
+    ec_sdo_data_t sdodata; /**< SDO configuration data */
+    uint16_t sdo_value; /**< SDO value */
+    unsigned int pdo_count;
+};
 
 /*****************************************************************************/
 
-void ec_sync_init(ec_sync_t *, ec_slave_t *, unsigned int);
-void ec_sync_clear(ec_sync_t *);
+void ec_fsm_mapping_init(ec_fsm_mapping_t *, ec_fsm_coe_t *);
+void ec_fsm_mapping_clear(ec_fsm_mapping_t *);
 
-uint16_t ec_sync_size(const ec_sync_t *);
-void ec_sync_config(const ec_sync_t *, uint8_t *);
-
-int ec_sync_add_pdo(ec_sync_t *, const ec_pdo_t *);
-void ec_sync_clear_pdos(ec_sync_t *);
+void ec_fsm_mapping_start(ec_fsm_mapping_t *, ec_slave_t *);
+int ec_fsm_mapping_exec(ec_fsm_mapping_t *);
+int ec_fsm_mapping_success(const ec_fsm_mapping_t *);
 
 /*****************************************************************************/
 

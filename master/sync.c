@@ -41,6 +41,7 @@
 #include "globals.h"
 #include "slave.h"
 #include "master.h"
+#include "pdo.h"
 #include "sync.h"
 
 /*****************************************************************************/
@@ -51,7 +52,7 @@
 
 void ec_sync_init(
         ec_sync_t *sync, /**< EtherCAT sync manager */
-        const ec_slave_t *slave, /**< EtherCAT slave */
+        ec_slave_t *slave, /**< EtherCAT slave */
         unsigned int index /**< sync manager index */
         )
 {
@@ -59,6 +60,8 @@ void ec_sync_init(
     sync->index = index;    
 
     sync->est_length = 0;
+    INIT_LIST_HEAD(&sync->pdos);
+    sync->alt_mapping = 0;
 }
 
 /*****************************************************************************/
@@ -71,6 +74,40 @@ void ec_sync_clear(
         ec_sync_t *sync /**< EtherCAT sync manager */
         )
 {
+    ec_sync_clear_pdos(sync);
+}
+
+/*****************************************************************************/
+
+/**
+ * Calculates the size of a sync manager by evaluating PDO sizes.
+ * \return sync manager size
+ */
+
+uint16_t ec_sync_size(
+        const ec_sync_t *sync /**< sync manager */
+        )
+{
+    const ec_pdo_t *pdo;
+    const ec_pdo_entry_t *pdo_entry;
+    unsigned int bit_size, byte_size;
+
+    if (sync->length) return sync->length;
+    if (sync->est_length) return sync->est_length;
+
+    bit_size = 0;
+    list_for_each_entry(pdo, &sync->pdos, list) {
+        list_for_each_entry(pdo_entry, &pdo->entries, list) {
+            bit_size += pdo_entry->bit_length;
+        }
+    }
+
+    if (bit_size % 8) // round up to full bytes
+        byte_size = bit_size / 8 + 1;
+    else
+        byte_size = bit_size / 8;
+
+    return byte_size;
 }
 
 /*****************************************************************************/
@@ -85,9 +122,7 @@ void ec_sync_config(
         uint8_t *data /**> configuration memory */
         )
 {
-    size_t sync_size;
-
-    sync_size = ec_slave_calc_sync_size(sync->slave, sync);
+    size_t sync_size = ec_sync_size(sync);
 
     if (sync->slave->master->debug_level) {
         EC_DBG("SM%i: Addr 0x%04X, Size %3i, Ctrl 0x%02X, En %i\n",
@@ -100,6 +135,66 @@ void ec_sync_config(
     EC_WRITE_U8 (data + 4, sync->control_register);
     EC_WRITE_U8 (data + 5, 0x00); // status byte (read only)
     EC_WRITE_U16(data + 6, sync->enable ? 0x0001 : 0x0000); // enable
+}
+
+/*****************************************************************************/
+
+/**
+ */
+
+int ec_sync_add_pdo(
+        ec_sync_t *sync, /**< EtherCAT sync manager */
+        const ec_pdo_t *pdo /**< PDO to map */
+        )
+{
+    ec_pdo_t *mapped_pdo;
+
+    // PDO already mapped?
+    list_for_each_entry(mapped_pdo, &sync->pdos, list) {
+        if (mapped_pdo->index != pdo->index) continue;
+        EC_ERR("PDO 0x%04X is already mapped!\n", pdo->index);
+        return -1;
+    }
+    
+    if (!(mapped_pdo = kmalloc(sizeof(ec_pdo_t), GFP_KERNEL))) {
+        EC_ERR("Failed to allocate memory for PDO mapping.\n");
+        return -1;
+    }
+
+    ec_pdo_init(mapped_pdo);
+    if (ec_pdo_copy(mapped_pdo, pdo)) {
+        ec_pdo_clear(mapped_pdo);
+        kfree(mapped_pdo);
+        return -1;
+    }
+
+    // set appropriate sync manager index
+    mapped_pdo->sync_index = sync->index;
+
+    list_add_tail(&mapped_pdo->list, &sync->pdos);
+    sync->alt_mapping = 1;
+    return 0;
+}
+
+/*****************************************************************************/
+
+/**
+ */
+
+void ec_sync_clear_pdos(
+        ec_sync_t *sync /**< EtherCAT sync manager */
+        )
+{
+    ec_pdo_t *pdo, *next;
+
+    // free all mapped PDOs
+    list_for_each_entry_safe(pdo, next, &sync->pdos, list) {
+        list_del(&pdo->list);
+        ec_pdo_clear(pdo);
+        kfree(pdo);
+    }
+
+    sync->alt_mapping = 1;
 }
 
 /*****************************************************************************/

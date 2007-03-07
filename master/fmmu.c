@@ -71,9 +71,7 @@ void ec_fmmu_config(
         uint8_t *data /**> configuration memory */
         )
 {
-    size_t sync_size;
-
-    sync_size = ec_slave_calc_sync_size(fmmu->slave, fmmu->sync);
+    size_t sync_size = ec_sync_size(fmmu->sync);
 
     if (fmmu->slave->master->debug_level) {
         EC_DBG("FMMU%u: LogAddr 0x%08X, Size %3i, PhysAddr 0x%04X, Dir %s\n",

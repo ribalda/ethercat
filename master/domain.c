@@ -182,39 +182,26 @@ void ec_domain_clear(struct kobject *kobj /**< kobject of the domain */)
 /*****************************************************************************/
 
 /**
-   Registeres a PDO entry.
-   \return 0 in case of success, else < 0
-*/
+ * Registers a PDO entry.
+ * \return 0 in case of success, else < 0
+ */
 
-int ec_domain_reg_pdo_entry(ec_domain_t *domain, /**< EtherCAT domain */
-                            ec_slave_t *slave, /**< slave */
-                            const ec_pdo_t *pdo, /**< PDO */
-                            const ec_pdo_entry_t *entry,
-                            /**< PDO registration entry */
-                            void **data_ptr /**< pointer to the process data
-                                               pointer */
-                            )
+int ec_domain_reg_pdo_entry(
+        ec_domain_t *domain, /**< EtherCAT domain */
+        ec_sync_t *sync, /**< sync manager */
+        const ec_pdo_entry_t *entry, /**< PDO entry to register */
+        void **data_ptr /**< pointer to the process data pointer */
+        )
 {
     ec_data_reg_t *data_reg;
-    const ec_sync_t *sync;
     const ec_pdo_t *other_pdo;
     const ec_pdo_entry_t *other_entry;
     unsigned int bit_offset, byte_offset;
 
-    // Find sync manager for PDO
-    if (pdo->sync_index >= slave->sii_sync_count) {
-        EC_ERR("No sync manager for PDO 0x%04X:%i.",
-               pdo->index, entry->subindex);
-        return -1;
-    }
-    sync = &slave->sii_syncs[pdo->sync_index];
-
     // Calculate offset (in sync manager) for process data pointer
     bit_offset = 0;
     byte_offset = 0;
-    list_for_each_entry(other_pdo, &slave->sii_pdos, list) {
-        if (other_pdo->sync_index != sync->index) continue;
-
+    list_for_each_entry(other_pdo, &sync->pdos, list) {
         list_for_each_entry(other_entry, &other_pdo->entries, list) {
             if (other_entry == entry) {
                 byte_offset = bit_offset / 8;
@@ -231,17 +218,16 @@ int ec_domain_reg_pdo_entry(ec_domain_t *domain, /**< EtherCAT domain */
         return -1;
     }
 
-    if (ec_slave_prepare_fmmu(slave, domain, sync)) {
+    if (ec_slave_prepare_fmmu(sync->slave, domain, sync)) {
         EC_ERR("FMMU configuration failed.\n");
         kfree(data_reg);
         return -1;
     }
 
-    data_reg->slave = slave;
+    data_reg->slave = sync->slave;
     data_reg->sync = sync;
     data_reg->sync_offset = byte_offset;
     data_reg->data_ptr = data_ptr;
-
     list_add_tail(&data_reg->list, &domain->data_regs);
 
     return 0;
@@ -386,7 +372,7 @@ int ec_domain_alloc(ec_domain_t *domain, /**< EtherCAT domain */
             fmmu = &slave->fmmus[j];
             if (fmmu->domain == domain) {
                 fmmu->logical_start_address = base_address + domain->data_size;
-                sync_size = ec_slave_calc_sync_size(slave, fmmu->sync);
+                sync_size = ec_sync_size(fmmu->sync);
                 domain->data_size += sync_size;
                 if (datagram_data_size + sync_size > EC_MAX_DATA_SIZE) {
                     if (ec_domain_add_datagram(domain, datagram_offset,
@@ -473,33 +459,28 @@ ssize_t ec_show_domain_attribute(struct kobject *kobj, /**< kobject */
  *****************************************************************************/
 
 /**
-   Registers a PDO in a domain.
-   \return pointer to the slave on success, else NULL
-   \ingroup RealtimeInterface
-*/
+ * Registers a PDO for a domain.
+ * \return pointer to the slave on success, else NULL
+ * \ingroup RealtimeInterface
+ */
 
-ec_slave_t *ecrt_domain_register_pdo(ec_domain_t *domain,
-                                     /**< EtherCAT domain */
-                                     const char *address,
-                                     /**< ASCII address of the slave,
-                                        see ecrt_master_get_slave() */
-                                     uint32_t vendor_id,
-                                     /**< vendor ID */
-                                     uint32_t product_code,
-                                     /**< product code */
-                                     uint16_t pdo_index,
-                                     /**< PDO index */
-                                     uint8_t pdo_subindex,
-                                     /**< PDO subindex */
-                                     void **data_ptr
-                                     /**< address of the process data
-                                        pointer */
-                                     )
+ec_slave_t *ecrt_domain_register_pdo(
+        ec_domain_t *domain, /**< EtherCAT domain */
+        const char *address, /**< ASCII address of the slave,
+                               see ecrt_master_get_slave() */
+        uint32_t vendor_id, /**< vendor ID */
+        uint32_t product_code, /**< product code */
+        uint16_t entry_index, /**< PDO entry index */
+        uint8_t entry_subindex, /**< PDO entry subindex */
+        void **data_ptr /**< address of the process data pointer */
+        )
 {
     ec_slave_t *slave;
     ec_master_t *master;
+    ec_sync_t *sync;
     const ec_pdo_t *pdo;
     const ec_pdo_entry_t *entry;
+    unsigned int i;
 
     master = domain->master;
 
@@ -507,48 +488,48 @@ ec_slave_t *ecrt_domain_register_pdo(ec_domain_t *domain,
     if (!(slave = ecrt_master_get_slave(master, address))) return NULL;
     if (ec_slave_validate(slave, vendor_id, product_code)) return NULL;
 
-    list_for_each_entry(pdo, &slave->sii_pdos, list) {
-        list_for_each_entry(entry, &pdo->entries, list) {
-            if (entry->index != pdo_index
-                || entry->subindex != pdo_subindex) continue;
+    for (i = 0; i < slave->sii_sync_count; i++) {
+        sync = &slave->sii_syncs[i];
+        list_for_each_entry(pdo, &sync->pdos, list) {
+            list_for_each_entry(entry, &pdo->entries, list) {
+                if (entry->index != entry_index ||
+                        entry->subindex != entry_subindex) continue;
 
-            if (ec_domain_reg_pdo_entry(domain, slave, pdo, entry, data_ptr)) {
-                return NULL;
+                if (ec_domain_reg_pdo_entry(domain, sync, entry, data_ptr)) {
+                    return NULL;
+                }
+
+                return slave;
             }
-
-            return slave;
         }
     }
 
-    EC_ERR("Slave %i does not provide PDO 0x%04X:%i.\n",
-           slave->ring_position, pdo_index, pdo_subindex);
+    EC_ERR("PDO entry 0x%04X:%u is not mapped in slave %u.\n",
+           entry_index, entry_subindex, slave->ring_position);
     return NULL;
 }
 
 /*****************************************************************************/
 
 /**
-   Registeres a bunch of data fields.
-   \attention The list has to be terminated with a NULL structure ({})!
-   \return 0 in case of success, else < 0
-   \ingroup RealtimeInterface
-*/
+ * Registers a bunch of data fields.
+ * \attention The list has to be terminated with a NULL structure ({})!
+ * \return 0 in case of success, else < 0
+ * \ingroup RealtimeInterface
+ */
 
-int ecrt_domain_register_pdo_list(ec_domain_t *domain,
-                                  /**< EtherCAT domain */
-                                  const ec_pdo_reg_t *pdos
-                                  /**< array of PDO registrations */
-                                  )
+int ecrt_domain_register_pdo_list(
+        ec_domain_t *domain, /**< EtherCAT domain */
+        const ec_pdo_reg_t *pdos /**< array of PDO registrations */
+        )
 {
     const ec_pdo_reg_t *pdo;
 
     for (pdo = pdos; pdo->slave_address; pdo++)
         if (!ecrt_domain_register_pdo(domain, pdo->slave_address,
-                                      pdo->vendor_id,
-                                      pdo->product_code,
-                                      pdo->pdo_index,
-                                      pdo->pdo_subindex,
-                                      pdo->data_ptr))
+                    pdo->vendor_id, pdo->product_code,
+                    pdo->pdo_entry_index, pdo->pdo_entry_subindex,
+                    pdo->data_ptr))
             return -1;
 
     return 0;

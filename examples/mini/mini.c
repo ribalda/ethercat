@@ -62,10 +62,16 @@ static void *r_outputs;
 #endif
 
 static void *r_dig_out;
+static void *r_ana_out;
+static void *r_count;
+static void *r_freq;
 
 #if 1
 ec_pdo_reg_t domain1_pdos[] = {
-    {"4", Beckhoff_EL2004_Outputs, &r_dig_out},
+    {"2", Beckhoff_EL2004_Outputs,   &r_dig_out},
+    {"3", Beckhoff_EL4132_Output1,   &r_ana_out},
+    {"4", Beckhoff_EL5101_Value,     &r_count},
+    {"4", Beckhoff_EL5101_Frequency, &r_freq},
     {}
 };
 #endif
@@ -154,7 +160,7 @@ void release_lock(void *data)
 
 int __init init_mini_module(void)
 {
-#if 0
+#if 1
     ec_slave_t *slave;
 #endif
 
@@ -172,6 +178,15 @@ int __init init_mini_module(void)
         printk(KERN_ERR PFX "Domain creation failed!\n");
         goto out_release_master;
     }
+
+#if 1
+    printk(KERN_INFO PFX "Configuring alternative PDO mapping...\n");
+    if (!(slave = ecrt_master_get_slave(master, "4")))
+        goto out_release_master;
+
+    if (ecrt_slave_pdo_mapping(slave, EC_DIR_INPUT, 2, 0x1A00, 0x1A02))
+        goto out_release_master;
+#endif
 
     printk(KERN_INFO PFX "Registering PDOs...\n");
 #if 1
@@ -195,11 +210,14 @@ int __init init_mini_module(void)
 #endif
 
 #if 0
-    if (!(slave = ecrt_master_get_slave(master, "2")))
+    if (!(slave = ecrt_master_get_slave(master, "4")))
         goto out_release_master;
 
     if (ecrt_slave_conf_sdo8(slave, 0x4061, 1, 0))
         goto out_release_master;
+#endif
+
+#if 1
 #endif
 
     printk(KERN_INFO PFX "Activating master...\n");

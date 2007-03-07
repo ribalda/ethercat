@@ -42,6 +42,7 @@
 #include "master.h"
 #include "mailbox.h"
 #include "fsm_slave.h"
+#include "fsm_mapping.h"
 
 /*****************************************************************************/
 
@@ -61,6 +62,7 @@ void ec_fsm_slave_conf_state_preop(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_state_pdo_sync(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_state_fmmu(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_state_sdoconf(ec_fsm_slave_t *);
+void ec_fsm_slave_conf_state_mapconf(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_state_saveop(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_state_op(ec_fsm_slave_t *);
 
@@ -69,6 +71,7 @@ void ec_fsm_slave_conf_enter_preop(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_enter_pdo_sync(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_enter_fmmu(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_enter_sdoconf(ec_fsm_slave_t *);
+void ec_fsm_slave_conf_enter_mapconf(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_enter_saveop(ec_fsm_slave_t *);
 
 void ec_fsm_slave_state_end(ec_fsm_slave_t *);
@@ -90,6 +93,7 @@ void ec_fsm_slave_init(ec_fsm_slave_t *fsm, /**< slave state machine */
     ec_fsm_sii_init(&fsm->fsm_sii, fsm->datagram);
     ec_fsm_change_init(&fsm->fsm_change, fsm->datagram);
     ec_fsm_coe_init(&fsm->fsm_coe, fsm->datagram);
+    ec_fsm_mapping_init(&fsm->fsm_map, &fsm->fsm_coe);
 }
 
 /*****************************************************************************/
@@ -104,6 +108,7 @@ void ec_fsm_slave_clear(ec_fsm_slave_t *fsm /**< slave state machine */)
     ec_fsm_sii_clear(&fsm->fsm_sii);
     ec_fsm_change_clear(&fsm->fsm_change);
     ec_fsm_coe_clear(&fsm->fsm_coe);
+    ec_fsm_mapping_clear(&fsm->fsm_map);
 }
 
 /*****************************************************************************/
@@ -786,6 +791,107 @@ void ec_fsm_slave_conf_state_preop(ec_fsm_slave_t *fsm /**< slave state machine 
         return;
     }
 
+    ec_fsm_slave_conf_enter_sdoconf(fsm);
+}
+
+/*****************************************************************************/
+
+/**
+ */
+
+void ec_fsm_slave_conf_enter_sdoconf(ec_fsm_slave_t *fsm /**< slave state machine */)
+{
+    ec_slave_t *slave = fsm->slave;
+
+    // No CoE configuration to be applied?
+    if (list_empty(&slave->sdo_confs)) { // skip SDO configuration
+        ec_fsm_slave_conf_enter_mapconf(fsm);
+        return;
+    }
+
+    // start SDO configuration
+    fsm->state = ec_fsm_slave_conf_state_sdoconf;
+    fsm->sdodata = list_entry(fsm->slave->sdo_confs.next, ec_sdo_data_t, list);
+    ec_fsm_coe_download(&fsm->fsm_coe, fsm->slave, fsm->sdodata);
+    ec_fsm_coe_exec(&fsm->fsm_coe); // execute immediately
+}
+
+/*****************************************************************************/
+
+/**
+   Slave configuration state: SDOCONF.
+*/
+
+void ec_fsm_slave_conf_state_sdoconf(
+        ec_fsm_slave_t *fsm /**< slave state machine */
+        )
+{
+    if (ec_fsm_coe_exec(&fsm->fsm_coe)) return;
+
+    if (!ec_fsm_coe_success(&fsm->fsm_coe)) {
+        EC_ERR("SDO configuration failed for slave %u.\n",
+                fsm->slave->ring_position);
+        fsm->slave->error_flag = 1;
+        fsm->state = ec_fsm_slave_state_error;
+        return;
+    }
+
+    // Another SDO to configure?
+    if (fsm->sdodata->list.next != &fsm->slave->sdo_confs) {
+        fsm->sdodata = list_entry(fsm->sdodata->list.next,
+                                  ec_sdo_data_t, list);
+        ec_fsm_coe_download(&fsm->fsm_coe, fsm->slave, fsm->sdodata);
+        ec_fsm_coe_exec(&fsm->fsm_coe); // execute immediately
+        return;
+    }
+
+    // All SDOs are now configured.
+    ec_fsm_slave_conf_enter_mapconf(fsm);
+}
+
+/*****************************************************************************/
+
+/**
+ */
+
+void ec_fsm_slave_conf_enter_mapconf(
+        ec_fsm_slave_t *fsm /**< slave state machine */
+        )
+{
+    ec_slave_t *slave = fsm->slave;
+
+    if (!(slave->sii_mailbox_protocols & EC_MBOX_COE)) {
+        // Slave does not support CoE: no configuration of PDO mapping.
+        ec_fsm_slave_conf_enter_pdo_sync(fsm);
+        return;
+    }
+
+    // start configuring PDO mapping
+    fsm->state = ec_fsm_slave_conf_state_mapconf;
+    ec_fsm_mapping_start(&fsm->fsm_map, fsm->slave);
+    ec_fsm_mapping_exec(&fsm->fsm_map); // execute immediately
+}
+
+/*****************************************************************************/
+
+/**
+   Slave configuration state: MAPCONF.
+*/
+
+void ec_fsm_slave_conf_state_mapconf(
+        ec_fsm_slave_t *fsm /**< slave state machine */
+        )
+{
+    if (ec_fsm_mapping_exec(&fsm->fsm_map)) return;
+
+    if (!ec_fsm_mapping_success(&fsm->fsm_map)) {
+        EC_ERR("PDO mapping configuration failed for slave %u.\n",
+                fsm->slave->ring_position);
+        fsm->slave->error_flag = 1;
+        fsm->state = ec_fsm_slave_state_error;
+        return;
+    }
+
     ec_fsm_slave_conf_enter_pdo_sync(fsm);
 }
 
@@ -825,8 +931,7 @@ void ec_fsm_slave_conf_enter_pdo_sync(
 /*****************************************************************************/
 
 /**
-   Slave configuration state: SYNC2.
-*/
+ */
 
 void ec_fsm_slave_conf_state_pdo_sync(ec_fsm_slave_t *fsm /**< slave state machine */)
 {
@@ -870,7 +975,7 @@ void ec_fsm_slave_conf_enter_fmmu(ec_fsm_slave_t *fsm /**< slave state machine *
     unsigned int j;
 
     if (!slave->base_fmmu_count) { // skip FMMU configuration
-        ec_fsm_slave_conf_enter_sdoconf(fsm);
+        ec_fsm_slave_conf_enter_saveop(fsm);
         return;
     }
 
@@ -919,59 +1024,6 @@ void ec_fsm_slave_conf_state_fmmu(ec_fsm_slave_t *fsm /**< slave state machine *
         return;
     }
 
-    ec_fsm_slave_conf_enter_sdoconf(fsm);
-}
-
-/*****************************************************************************/
-
-/**
- */
-
-void ec_fsm_slave_conf_enter_sdoconf(ec_fsm_slave_t *fsm /**< slave state machine */)
-{
-    ec_slave_t *slave = fsm->slave;
-
-    // No CoE configuration to be applied? Jump to SAVEOP state.
-    if (list_empty(&slave->sdo_confs)) { // skip SDO configuration
-        ec_fsm_slave_conf_enter_saveop(fsm);
-        return;
-    }
-
-    // start SDO configuration
-    fsm->state = ec_fsm_slave_conf_state_sdoconf;
-    fsm->sdodata = list_entry(fsm->slave->sdo_confs.next, ec_sdo_data_t, list);
-    ec_fsm_coe_download(&fsm->fsm_coe, fsm->slave, fsm->sdodata);
-    ec_fsm_coe_exec(&fsm->fsm_coe); // execute immediately
-}
-
-/*****************************************************************************/
-
-/**
-   Slave configuration state: SDOCONF.
-*/
-
-void ec_fsm_slave_conf_state_sdoconf(ec_fsm_slave_t *fsm /**< slave state machine */)
-{
-    if (ec_fsm_coe_exec(&fsm->fsm_coe)) return;
-
-    if (!ec_fsm_coe_success(&fsm->fsm_coe)) {
-        fsm->slave->error_flag = 1;
-        fsm->state = ec_fsm_slave_state_error;
-        return;
-    }
-
-    // Another SDO to configure?
-    if (fsm->sdodata->list.next != &fsm->slave->sdo_confs) {
-        fsm->sdodata = list_entry(fsm->sdodata->list.next,
-                                  ec_sdo_data_t, list);
-        ec_fsm_coe_download(&fsm->fsm_coe, fsm->slave, fsm->sdodata);
-        ec_fsm_coe_exec(&fsm->fsm_coe); // execute immediately
-        return;
-    }
-
-    // All SDOs are now configured.
-
-    // set state to SAVEOP
     ec_fsm_slave_conf_enter_saveop(fsm);
 }
 
