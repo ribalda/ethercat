@@ -11,7 +11,7 @@ $Id$
   - Remove addressing scheme "X:Y".
   - Allow only MAC address as device ID.
   - Remove ugly ec_slave_is_coupler().
-  - Replace Vendor ID and product code arguments ofec_domain_register_pdo()
+  - Replace Vendor ID and product code arguments of ec_domain_register_pdo()
     by slave pointer.
 
 * Future features:
@@ -28,6 +28,7 @@ $Id$
   - Calculate expected working counter for domains.
 
 * Smaller issues:
+  - Clear sync managers in INIT.
   - Reset topology_change_pending on successful validation.
   - Simplify FSMs with <state>_enter() functions.
   - Dynamic creation of EoE handlers.
