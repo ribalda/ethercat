@@ -6,8 +6,8 @@ $Id$
 
 Changes in version 1.3.0:
 
-* Added Intel PRO/100 ethernet driver (e100).
-* Added ethernet driver for NVIDIA nForce chipsets (forcedeth).
+* Added testing version of Intel PRO/100 ethernet driver (e100).
+* Added testing version of NVIDIA nForce ethernet driver (forcedeth).
 * Removed "ec_eoeif_count" master module parameter.
 * Introduced "Device IDs" to tell a master to wait for connection of certain
   ethernet devices.

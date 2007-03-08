@@ -12,27 +12,27 @@ $Id$
   - Remove ugly ec_slave_is_coupler().
   - Replace Vendor ID and product code arguments of ec_domain_register_pdo()
     by slave pointer.
+  - Reset topology_change_pending on successful validation.
+  - Dynamic creation of EoE handlers.
 
 * Future features:
-  - SDO dictionary and -access in operation mode.
-  - SDO write access in sysfs.
-  - Speed up IDLE state machine through fast mode with schedule().
-  - Evaluate EEPROM contents after writing.
   - Interface/buffers for asynchronous domain IO.
   - Distributed clocks.
   - Read dynamic PDO mapping from SDO dictionary (see can-cia.org: cia301ds4).
   - Redundancy with 2 network adapters.
-  - Read out CRC counters.
-  - Optimize alignment of process data.
-  - Calculate expected working counter for domains.
 
 * Smaller issues:
   - Clear sync managers in INIT.
-  - Reset topology_change_pending on successful validation.
   - Simplify FSMs with <state>_enter() functions.
-  - Dynamic creation of EoE handlers.
   - Output intermediate results during lsec.
   - State change FSM: Follow spontaneous state changes.
+  - Read out CRC counters.
+  - Calculate expected working counter for domains.
+  - Optimize alignment of process data.
+  - Evaluate EEPROM contents after writing.
+  - SDO dictionary and -access in operation mode.
+  - SDO write access in sysfs.
+  - Speed up IDLE state machine through fast mode with schedule().
 
 * Less important issues:
   - Implement all EtherCAT datagram types.
