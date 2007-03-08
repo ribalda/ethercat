@@ -68,16 +68,14 @@ fi
 
 #------------------------------------------------------------------------------
 
-function make_device_id()
+function parse_mac_address()
 {
     if [ -z "${1}" ]; then
-        DEVICE_ID=";"
+        MAC=""
     elif echo ${1} | grep -qE '^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$'; then
-        DEVICE_ID="M${1};"
-    elif echo ${1} | grep -qE '^[^:]+:[0-9]+$'; then
-        DEVICE_ID="D${1};"
+        MAC=${1}
     else
-        echo Invalid device ID syntax in ${ETHERCAT_CONFIG}
+        echo Invalid MAC address \"${1}\" in ${ETHERCAT_CONFIG}
         /bin/false
         rc_status -v
         rc_exit
@@ -103,10 +101,16 @@ start)
         BACKUP=$(eval echo "\${MASTER${MASTER_INDEX}_BACKUP}")
         if [ -z "${DEVICE}" ]; then break; fi
 
-        make_device_id ${DEVICE}
-        DEVICES=${DEVICES}${DEVICE_ID}
-        make_device_id ${BACKUP}
-        BACKUPS=${BACKUPS}${DEVICE_ID}
+        if [ ${MASTER_INDEX} -gt 0 ]; then
+            DEVICES=${DEVICES},
+            BACKUPS=${BACKUPS},
+        fi
+
+        parse_mac_address ${DEVICE}
+        DEVICES=${DEVICES}${MAC}
+        
+        parse_mac_address ${BACKUP}
+        BACKUPS=${BACKUPS}${MAC}
 
         MASTER_INDEX=$(expr ${MASTER_INDEX} + 1)
     done

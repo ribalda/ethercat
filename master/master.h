@@ -49,7 +49,6 @@
 #include <asm/semaphore.h>
 
 #include "device.h"
-#include "device_id.h"
 #include "domain.h"
 #include "fsm_master.h"
 
@@ -94,16 +93,15 @@ ec_stats_t;
 
 struct ec_master
 {
-    struct list_head list; /**< list item for module's master list */
     atomic_t available; /**< zero, if the master is reserved for RT */
     unsigned int index; /**< master index */
 
     struct kobject kobj; /**< kobject */
 
     ec_device_t main_device; /**< EtherCAT device */
-    const ec_device_id_t *main_device_id; /**< ID of main device */
+    const uint8_t *main_mac; /**< MAC address of main device */
     ec_device_t backup_device; /**< EtherCAT backup device */
-    const ec_device_id_t *backup_device_id; /**< ID of backup device */
+    const uint8_t *backup_mac; /**< MAC address of backup device */
     struct semaphore device_sem; /**< device semaphore */
 
     ec_fsm_master_t fsm; /**< master state machine */
@@ -164,8 +162,8 @@ struct ec_master
 
 // master creation/deletion
 int ec_master_init(ec_master_t *, struct kobject *, unsigned int,
-        const ec_device_id_t *, const ec_device_id_t *, unsigned int);
-void ec_master_destroy(ec_master_t *);
+        const uint8_t *, const uint8_t *);
+void ec_master_clear(ec_master_t *);
 
 // mode transitions
 int ec_master_enter_idle_mode(ec_master_t *);

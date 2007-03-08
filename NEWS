@@ -9,12 +9,11 @@ Changes in version 1.3.0:
 * Added testing version of Intel PRO/100 ethernet driver (e100).
 * Added testing version of NVIDIA nForce ethernet driver (forcedeth).
 * Removed "ec_eoeif_count" master module parameter.
-* Introduced "Device IDs" to tell a master to wait for connection of certain
-  ethernet devices.
-* Added "main" and "backup" parameters to master module to hand over
-  device ID lists.
+* Added "main" and "backup" parameters to master module to hand over the
+  MAC addresses of the devices to wait for. This made the ec_device_index
+  parameter of the ethercat drivers obsolete.
 * Changed format of sysconfig file and accordingly adjusted functionality
-  of the init script to handle device ID lists.
+  of the init script to handle MAC address lists.
 * Realtime interface changes:
   - ecrt_master_run() became obsolete, because the master state machine is now
     run in process context.

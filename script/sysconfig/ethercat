@@ -9,20 +9,14 @@
 #
 # Master device and backup-device settings.
 #
-# The MASTERX_DEVICE variable specifies the ethernet device for master 'X',
-# while the MASTERX_BACKUP variable specifies the backup ethernet device for
+# The MASTER<X>_DEVICE variable specifies the ethernet device for master 'X',
+# while the MASTER<X>_BACKUP variable specifies the backup ethernet device for
 # redundancy purposes.
 #
-# There are three formats for specifying ethernet devices:
-# 1) MAC address (example: "00:00:08:44:ab:66"). Specify the MAC address of
-#    the ethernet card to use.
-# 2) PCI bus address (example: "01:1c.0"). Specify the PCU bis address of the
-#    ethernet card to use.
-# 3) Driver and device index (example: "8139too:0"). Currently there are two
-#    drivers available: "8139too" and "e100". The device index is the index
-#    into driver-supported PCI cards.
+# Specify the MAC address (hexadecimal with colons) of the Ethernet device to
+# use. Example: 00:00:08:44:ab:66
 #
-# The MASTERX_DEVICE variables also determine, how many masters will be
+# The MASTER<X>_DEVICE variables also determine, how many masters will be
 # created: A non-empty variable MASTER0_DEVICE will create one master, adding
 # a non-empty variable MASTER1_DEVICE will create a second master, and so on.
 #

@@ -37,7 +37,6 @@ EXTRA_DIST = \
 	datagram.c datagram.h \
 	debug.c	debug.h \
 	device.c device.h \
-	device_id.c device_id.h \
 	pdo.c pdo.h \
 	sync.c sync.h \
 	fmmu.c fmmu.h \

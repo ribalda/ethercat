@@ -66,9 +66,8 @@ typedef void (*ec_pollfunc_t)(struct net_device *);
 /*****************************************************************************/
 // Offering/withdrawal functions
 
-int ecdev_offer(struct net_device *net_dev, ec_device_t **,
-        const char *driver_name, unsigned int board_index,
-        ec_pollfunc_t poll, struct module *module);
+int ecdev_offer(struct net_device *net_dev, ec_pollfunc_t poll,
+        struct module *module, ec_device_t **);
 void ecdev_withdraw(ec_device_t *device);
 
 /*****************************************************************************/

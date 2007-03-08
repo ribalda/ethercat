@@ -54,7 +54,6 @@
 
 /*****************************************************************************/
 
-void ec_master_clear(struct kobject *);
 void ec_master_destroy_domains(ec_master_t *);
 void ec_master_sync_io(ec_master_t *);
 static int ec_master_idle_thread(ec_master_t *);
@@ -85,7 +84,7 @@ static struct sysfs_ops ec_sysfs_ops = {
 };
 
 static struct kobj_type ktype_ec_master = {
-    .release = ec_master_clear,
+    .release = NULL,
     .sysfs_ops = &ec_sysfs_ops,
     .default_attrs = ec_def_attrs
 };
@@ -102,9 +101,8 @@ static struct kobj_type ktype_ec_master = {
 int ec_master_init(ec_master_t *master, /**< EtherCAT master */
         struct kobject *module_kobj, /**< kobject of the master module */
         unsigned int index, /**< master index */
-        const ec_device_id_t *main_id, /**< ID of main device */
-        const ec_device_id_t *backup_id, /**< ID of main device */
-        unsigned int eoeif_count /**< number of EoE interfaces */
+        const uint8_t *main_mac, /**< MAC address of main device */
+        const uint8_t *backup_mac /**< MAC address of backup device */
         )
 {
     ec_eoe_t *eoe, *next_eoe;
@@ -113,8 +111,8 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     atomic_set(&master->available, 1);
     master->index = index;
 
-    master->main_device_id = main_id;
-    master->backup_device_id = backup_id;
+    master->main_mac = main_mac;
+    master->backup_mac = backup_mac;
     init_MUTEX(&master->device_sem);
 
     master->mode = EC_MASTER_MODE_ORPHANED;
@@ -175,19 +173,6 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     if (ec_device_init(&master->backup_device, master))
         goto out_clear_main;
 
-    // create EoE handlers
-    for (i = 0; i < eoeif_count; i++) {
-        if (!(eoe = (ec_eoe_t *) kmalloc(sizeof(ec_eoe_t), GFP_KERNEL))) {
-            EC_ERR("Failed to allocate EoE-Object.\n");
-            goto out_clear_eoe;
-        }
-        if (ec_eoe_init(eoe)) {
-            kfree(eoe);
-            goto out_clear_eoe;
-        }
-        list_add_tail(&eoe->list, &master->eoe_handlers);
-    }
-
     // init state machine datagram
     ec_datagram_init(&master->fsm_datagram);
     if (ec_datagram_prealloc(&master->fsm_datagram, EC_MAX_DATA_SIZE)) {
@@ -234,33 +219,20 @@ out_return:
 /*****************************************************************************/
 
 /**
-   Master destructor.
-   Clears the kobj-hierarchy bottom up and frees the master.
-*/
-
-void ec_master_destroy(ec_master_t *master /**< EtherCAT master */)
-{
-    ec_master_destroy_slaves(master);
-    ec_master_destroy_domains(master);
-
-    // destroy self
-    kobject_del(&master->kobj);
-    kobject_put(&master->kobj); // free master
-}
-
-/*****************************************************************************/
-
-/**
    Clear and free master.
    This method is called by the kobject,
    once there are no more references to it.
 */
 
-void ec_master_clear(struct kobject *kobj /**< kobject of the master */)
+void ec_master_clear(
+        ec_master_t *master /**< EtherCAT master */
+        )
 {
-    ec_master_t *master = container_of(kobj, ec_master_t, kobj);
     ec_eoe_t *eoe, *next_eoe;
     ec_datagram_t *datagram, *next_datagram;
+
+    ec_master_destroy_slaves(master);
+    ec_master_destroy_domains(master);
 
     // list of EEPROM requests is empty,
     // otherwise master could not be cleared.
@@ -285,9 +257,11 @@ void ec_master_clear(struct kobject *kobj /**< kobject of the master */)
     ec_device_clear(&master->backup_device);
     ec_device_clear(&master->main_device);
 
-    EC_INFO("Master %i freed.\n", master->index);
+    // destroy self
+    kobject_del(&master->kobj);
+    kobject_put(&master->kobj);
 
-    kfree(master);
+    EC_INFO("Master %u freed.\n", master->index);
 }
 
 /*****************************************************************************/
@@ -945,30 +919,34 @@ schedule:
 
 /*****************************************************************************/
 
-ssize_t ec_master_device_info(const ec_device_t *device,
-        const ec_device_id_t *dev_id,
-        char *buffer)
+ssize_t ec_master_device_info(
+        const ec_device_t *device,
+        const uint8_t *mac,
+        char *buffer
+        )
 {
     unsigned int frames_lost;
     off_t off = 0;
     
-    off += ec_device_id_print(dev_id, buffer + off);
-    
-    if (device->dev) {
-        off += sprintf(buffer + off, " (connected).\n");      
-        off += sprintf(buffer + off, "    Frames sent:     %u\n",
-                device->tx_count);
-        off += sprintf(buffer + off, "    Frames received: %u\n",
-                device->rx_count);
-        frames_lost = device->tx_count - device->rx_count;
-        if (frames_lost) frames_lost--;
-        off += sprintf(buffer + off, "    Frames lost:     %u\n", frames_lost);
-    }
-    else if (dev_id->type != ec_device_id_empty) {
-        off += sprintf(buffer + off, " (WAITING).\n");      
+    if (ec_mac_is_zero(mac)) {
+        off += sprintf(buffer + off, "none.\n");
     }
     else {
-        off += sprintf(buffer + off, ".\n");
+        off += ec_mac_print(mac, buffer + off);
+    
+        if (device->dev) {
+            off += sprintf(buffer + off, " (connected).\n");      
+            off += sprintf(buffer + off, "    Frames sent:     %u\n",
+                    device->tx_count);
+            off += sprintf(buffer + off, "    Frames received: %u\n",
+                    device->rx_count);
+            frames_lost = device->tx_count - device->rx_count;
+            if (frames_lost) frames_lost--;
+            off += sprintf(buffer + off, "    Frames lost:     %u\n", frames_lost);
+        }
+        else {
+            off += sprintf(buffer + off, " (WAITING).\n");      
+        }
     }
     
     return off;
@@ -1014,10 +992,10 @@ ssize_t ec_master_info(ec_master_t *master, /**< EtherCAT master */
     
     off += sprintf(buffer + off, "  Main: ");
     off += ec_master_device_info(&master->main_device,
-            master->main_device_id, buffer + off);
+            master->main_mac, buffer + off);
     off += sprintf(buffer + off, "  Backup: ");
     off += ec_master_device_info(&master->backup_device,
-            master->backup_device_id, buffer + off);
+            master->backup_mac, buffer + off);
 
     up(&master->device_sem);
 

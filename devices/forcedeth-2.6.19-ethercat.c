@@ -4628,8 +4628,7 @@ static int __devinit nv_probe(struct pci_dev *pci_dev, const struct pci_device_i
 	np->autoneg = 1;
 
 	// offer device to EtherCAT master module
-	if (ecdev_offer(dev, &np->ecdev, "forcedeth", board_idx, ec_poll,
-				THIS_MODULE)) {
+	if (ecdev_offer(dev, ec_poll, THIS_MODULE, &np->ecdev)) {
 		printk(KERN_ERR "forcedeth: Failed to offer device.\n");
 		goto out_error;
 	}
