@@ -59,8 +59,8 @@
 
 /*****************************************************************************/
 
-#define ECRT_VER_MAJOR 1U
-#define ECRT_VER_MINOR 2U
+#define ECRT_VER_MAJOR 1
+#define ECRT_VER_MINOR 3
 
 #define ECRT_VERSION(a,b) (((a) << 8) + (b))
 #define ECRT_VERSION_MAGIC ECRT_VERSION(ECRT_VER_MAJOR, ECRT_VER_MINOR)
@@ -149,8 +149,6 @@ int ecrt_master_activate(ec_master_t *master);
 
 void ecrt_master_send(ec_master_t *master);
 void ecrt_master_receive(ec_master_t *master);
-
-void ecrt_master_run(ec_master_t *master);
 
 ec_slave_t *ecrt_master_get_slave(const ec_master_t *, const char *);
 

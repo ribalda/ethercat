@@ -7,7 +7,6 @@ $Id$
 -------------------------------------------------------------------------------
 
 * Release 1.3:
-  - Remove ecrt_master_run(). Make master FSM run in process context instead.
   - Remove addressing scheme "X:Y".
   - Allow only MAC address as device ID.
   - Remove ugly ec_slave_is_coupler().

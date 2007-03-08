@@ -109,6 +109,10 @@ struct ec_master
     ec_fsm_master_t fsm; /**< master state machine */
     ec_datagram_t fsm_datagram; /**< datagram used for state machines */
     ec_master_mode_t mode; /**< master mode */
+    unsigned int injection_seq_fsm; /**< datagram injection sequence number
+                                      for the FSM side */
+    unsigned int injection_seq_rt; /**< datagram injection sequence number
+                                     for the realtime side */
 
     struct list_head slaves; /**< list of slaves on the bus */
     unsigned int slave_count; /**< number of slaves on the bus */

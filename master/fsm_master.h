@@ -120,7 +120,6 @@ void ec_fsm_master_clear(ec_fsm_master_t *);
 
 int ec_fsm_master_exec(ec_fsm_master_t *);
 int ec_fsm_master_running(ec_fsm_master_t *);
-int ec_fsm_master_success(ec_fsm_master_t *);
 
 /*****************************************************************************/
 

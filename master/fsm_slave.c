@@ -198,7 +198,6 @@ void ec_fsm_slave_scan_state_start(ec_fsm_slave_t *fsm /**< slave state machine 
     // write station address
     ec_datagram_apwr(fsm->datagram, fsm->slave->ring_position, 0x0010, 2);
     EC_WRITE_U16(fsm->datagram->data, fsm->slave->station_address);
-    ec_master_queue_datagram(fsm->slave->master, fsm->datagram);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_slave_scan_state_address;
 }
@@ -213,10 +212,8 @@ void ec_fsm_slave_scan_state_address(ec_fsm_slave_t *fsm /**< slave state machin
 {
     ec_datagram_t *datagram = fsm->datagram;
 
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
-        ec_master_queue_datagram(fsm->slave->master, fsm->datagram);
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
         return;
-    }
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_state_error;
@@ -236,7 +233,6 @@ void ec_fsm_slave_scan_state_address(ec_fsm_slave_t *fsm /**< slave state machin
 
     // Read AL state
     ec_datagram_nprd(datagram, fsm->slave->station_address, 0x0130, 2);
-    ec_master_queue_datagram(fsm->slave->master, datagram);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_slave_scan_state_state;
 }
@@ -252,10 +248,8 @@ void ec_fsm_slave_scan_state_state(ec_fsm_slave_t *fsm /**< slave state machine 
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
-        ec_master_queue_datagram(fsm->slave->master, datagram);
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
         return;
-    }
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_state_error;
@@ -283,7 +277,6 @@ void ec_fsm_slave_scan_state_state(ec_fsm_slave_t *fsm /**< slave state machine 
 
     // read base data
     ec_datagram_nprd(datagram, fsm->slave->station_address, 0x0000, 6);
-    ec_master_queue_datagram(fsm->slave->master, datagram);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_slave_scan_state_base;
 }
@@ -299,10 +292,8 @@ void ec_fsm_slave_scan_state_base(ec_fsm_slave_t *fsm /**< slave state machine *
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
-        ec_master_queue_datagram(fsm->slave->master, datagram);
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
         return;
-    }
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_state_error;
@@ -330,7 +321,6 @@ void ec_fsm_slave_scan_state_base(ec_fsm_slave_t *fsm /**< slave state machine *
 
     // read data link status
     ec_datagram_nprd(datagram, slave->station_address, 0x0110, 2);
-    ec_master_queue_datagram(slave->master, datagram);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_slave_scan_state_datalink;
 }
@@ -348,10 +338,8 @@ void ec_fsm_slave_scan_state_datalink(ec_fsm_slave_t *fsm /**< slave state machi
     uint16_t dl_status;
     unsigned int i;
 
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
-        ec_master_queue_datagram(fsm->slave->master, datagram);
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
         return;
-    }
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_state_error;
@@ -620,7 +608,6 @@ void ec_fsm_slave_conf_state_init(ec_fsm_slave_t *fsm /**< slave state machine *
     ec_datagram_npwr(datagram, slave->station_address,
                      0x0600, EC_FMMU_SIZE * slave->base_fmmu_count);
     memset(datagram->data, 0x00, EC_FMMU_SIZE * slave->base_fmmu_count);
-    ec_master_queue_datagram(master, datagram);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_slave_conf_state_clear_fmmus;
 }
@@ -636,10 +623,8 @@ void ec_fsm_slave_conf_state_clear_fmmus(ec_fsm_slave_t *fsm
 {
     ec_datagram_t *datagram = fsm->datagram;
 
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
-        ec_master_queue_datagram(fsm->slave->master, datagram);
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
         return;
-    }
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_state_error;
@@ -704,7 +689,6 @@ void ec_fsm_slave_conf_enter_mbox_sync(
                 datagram->data + EC_SYNC_SIZE * i);
     }
 
-    ec_master_queue_datagram(fsm->slave->master, datagram);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_slave_conf_state_mbox_sync;
 }
@@ -720,10 +704,8 @@ void ec_fsm_slave_conf_state_mbox_sync(ec_fsm_slave_t *fsm /**< slave state mach
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
-        ec_master_queue_datagram(fsm->slave->master, datagram);
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
         return;
-    }
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_state_error;
@@ -923,7 +905,6 @@ void ec_fsm_slave_conf_enter_pdo_sync(
                 datagram->data + EC_SYNC_SIZE * i);
     }
 
-    ec_master_queue_datagram(fsm->slave->master, datagram);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_slave_conf_state_pdo_sync;
 }
@@ -938,10 +919,8 @@ void ec_fsm_slave_conf_state_pdo_sync(ec_fsm_slave_t *fsm /**< slave state machi
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
-        ec_master_queue_datagram(fsm->slave->master, datagram);
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
         return;
-    }
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_state_error;
@@ -970,7 +949,6 @@ void ec_fsm_slave_conf_state_pdo_sync(ec_fsm_slave_t *fsm /**< slave state machi
 void ec_fsm_slave_conf_enter_fmmu(ec_fsm_slave_t *fsm /**< slave state machine */)
 {
     ec_slave_t *slave = fsm->slave;
-    ec_master_t *master = slave->master;
     ec_datagram_t *datagram = fsm->datagram;
     unsigned int j;
 
@@ -987,7 +965,6 @@ void ec_fsm_slave_conf_enter_fmmu(ec_fsm_slave_t *fsm /**< slave state machine *
         ec_fmmu_config(&slave->fmmus[j], datagram->data + EC_FMMU_SIZE * j);
     }
 
-    ec_master_queue_datagram(master, datagram);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_slave_conf_state_fmmu;
 }
@@ -1003,10 +980,8 @@ void ec_fsm_slave_conf_state_fmmu(ec_fsm_slave_t *fsm /**< slave state machine *
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
-        ec_master_queue_datagram(slave->master, datagram);
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
         return;
-    }
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_state_error;

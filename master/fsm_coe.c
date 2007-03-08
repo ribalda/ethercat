@@ -260,7 +260,6 @@ void ec_fsm_coe_dict_start(ec_fsm_coe_t *fsm /**< finite state machine */)
     EC_WRITE_U16(data + 4, 0x0000);
     EC_WRITE_U16(data + 6, 0x0001); // deliver all SDOs!
 
-    ec_master_queue_datagram(fsm->slave->master, datagram);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_coe_dict_request;
 }
@@ -277,11 +276,8 @@ void ec_fsm_coe_dict_request(ec_fsm_coe_t *fsm /**< finite state machine */)
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
-        // FIXME: request again?
-        ec_master_queue_datagram(fsm->slave->master, datagram);
-        return;
-    }
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+        return; // FIXME: request again?
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_coe_error;
@@ -301,7 +297,6 @@ void ec_fsm_coe_dict_request(ec_fsm_coe_t *fsm /**< finite state machine */)
     fsm->cycles_start = datagram->cycles_sent;
 
     ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-    ec_master_queue_datagram(fsm->slave->master, datagram);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_coe_dict_check;
 }
@@ -317,10 +312,8 @@ void ec_fsm_coe_dict_check(ec_fsm_coe_t *fsm /**< finite state machine */)
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
-        ec_master_queue_datagram(fsm->slave->master, datagram);
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
         return;
-    }
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_coe_error;
@@ -348,14 +341,12 @@ void ec_fsm_coe_dict_check(ec_fsm_coe_t *fsm /**< finite state machine */)
         }
 
         ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-        ec_master_queue_datagram(fsm->slave->master, datagram);
         fsm->retries = EC_FSM_RETRIES;
         return;
     }
 
     // Fetch response
     ec_slave_mbox_prepare_fetch(slave, datagram); // can not fail.
-    ec_master_queue_datagram(fsm->slave->master, datagram);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_coe_dict_response;
 }
@@ -377,11 +368,8 @@ void ec_fsm_coe_dict_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     uint16_t sdo_index;
     ec_sdo_t *sdo;
 
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
-        // FIXME: request again?
-        ec_master_queue_datagram(fsm->slave->master, datagram);
-        return;
-    }
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+        return; // FIXME: request again?
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_coe_error;
@@ -464,7 +452,6 @@ void ec_fsm_coe_dict_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     if (EC_READ_U8(data + 2) & 0x80) { // more messages waiting. check again.
         fsm->cycles_start = datagram->cycles_sent;
         ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-        ec_master_queue_datagram(fsm->slave->master, datagram);
         fsm->retries = EC_FSM_RETRIES;
         fsm->state = ec_fsm_coe_dict_check;
         return;
@@ -490,7 +477,6 @@ void ec_fsm_coe_dict_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     EC_WRITE_U16(data + 4, 0x0000);
     EC_WRITE_U16(data + 6, fsm->sdo->index); // SDO index
 
-    ec_master_queue_datagram(fsm->slave->master, datagram);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_coe_dict_desc_request;
 }
@@ -507,11 +493,8 @@ void ec_fsm_coe_dict_desc_request(ec_fsm_coe_t *fsm /**< finite state machine */
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
-        // FIXME: check for response first?
-        ec_master_queue_datagram(fsm->slave->master, datagram);
-        return;
-    }
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+        return; // FIXME: check for response first?
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_coe_error;
@@ -531,7 +514,6 @@ void ec_fsm_coe_dict_desc_request(ec_fsm_coe_t *fsm /**< finite state machine */
     fsm->cycles_start = datagram->cycles_sent;
 
     ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-    ec_master_queue_datagram(fsm->slave->master, datagram);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_coe_dict_desc_check;
 }
@@ -547,10 +529,8 @@ void ec_fsm_coe_dict_desc_check(ec_fsm_coe_t *fsm /**< finite state machine */)
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
-        ec_master_queue_datagram(fsm->slave->master, datagram);
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
         return;
-    }
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_coe_error;
@@ -577,14 +557,12 @@ void ec_fsm_coe_dict_desc_check(ec_fsm_coe_t *fsm /**< finite state machine */)
         }
 
         ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-        ec_master_queue_datagram(fsm->slave->master, datagram);
         fsm->retries = EC_FSM_RETRIES;
         return;
     }
 
     // Fetch response
     ec_slave_mbox_prepare_fetch(slave, datagram); // can not fail.
-    ec_master_queue_datagram(fsm->slave->master, datagram);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_coe_dict_desc_response;
 }
@@ -605,11 +583,8 @@ void ec_fsm_coe_dict_desc_response(ec_fsm_coe_t *fsm
     uint8_t *data, mbox_prot;
     size_t rec_size, name_size;
 
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
-        // FIXME: request again?
-        ec_master_queue_datagram(fsm->slave->master, datagram);
-        return;
-    }
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+        return; // FIXME: request again?
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_coe_error;
@@ -704,7 +679,6 @@ void ec_fsm_coe_dict_desc_response(ec_fsm_coe_t *fsm
     EC_WRITE_U8 (data + 8, fsm->subindex); // SDO subindex
     EC_WRITE_U8 (data + 9, 0x00); // value info (no values)
 
-    ec_master_queue_datagram(fsm->slave->master, datagram);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_coe_dict_entry_request;
 }
@@ -722,11 +696,8 @@ void ec_fsm_coe_dict_entry_request(ec_fsm_coe_t *fsm
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
-        // FIXME: check for response first?
-        ec_master_queue_datagram(fsm->slave->master, datagram);
-        return;
-    }
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+        return; // FIXME: check for response first?
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_coe_error;
@@ -746,7 +717,6 @@ void ec_fsm_coe_dict_entry_request(ec_fsm_coe_t *fsm
     fsm->cycles_start = datagram->cycles_sent;
 
     ec_slave_mbox_prepare_check(slave, datagram); // can not fail
-    ec_master_queue_datagram(fsm->slave->master, datagram);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_coe_dict_entry_check;
 }
@@ -763,10 +733,8 @@ void ec_fsm_coe_dict_entry_check(ec_fsm_coe_t *fsm
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
-        ec_master_queue_datagram(fsm->slave->master, datagram);
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
         return;
-    }
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_coe_error;
@@ -793,14 +761,12 @@ void ec_fsm_coe_dict_entry_check(ec_fsm_coe_t *fsm
         }
 
         ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-        ec_master_queue_datagram(fsm->slave->master, datagram);
         fsm->retries = EC_FSM_RETRIES;
         return;
     }
 
     // Fetch response
     ec_slave_mbox_prepare_fetch(slave, datagram); // can not fail.
-    ec_master_queue_datagram(fsm->slave->master, datagram);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_coe_dict_entry_response;
 }
@@ -822,11 +788,8 @@ void ec_fsm_coe_dict_entry_response(ec_fsm_coe_t *fsm
     size_t rec_size, data_size;
     ec_sdo_entry_t *entry;
 
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
-        // FIXME: request again?
-        ec_master_queue_datagram(fsm->slave->master, datagram);
-        return;
-    }
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+        return; // FIXME: request again?
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_coe_error;
@@ -932,7 +895,6 @@ void ec_fsm_coe_dict_entry_response(ec_fsm_coe_t *fsm
         EC_WRITE_U8 (data + 8, fsm->subindex); // SDO subindex
         EC_WRITE_U8 (data + 9, 0x00); // value info (no values)
 
-        ec_master_queue_datagram(fsm->slave->master, datagram);
         fsm->retries = EC_FSM_RETRIES;
         fsm->state = ec_fsm_coe_dict_entry_request;
         return;
@@ -953,7 +915,6 @@ void ec_fsm_coe_dict_entry_response(ec_fsm_coe_t *fsm
         EC_WRITE_U16(data + 4, 0x0000);
         EC_WRITE_U16(data + 6, fsm->sdo->index); // SDO index
 
-        ec_master_queue_datagram(fsm->slave->master, datagram);
         fsm->retries = EC_FSM_RETRIES;
         fsm->state = ec_fsm_coe_dict_desc_request;
         return;
@@ -1001,7 +962,6 @@ void ec_fsm_coe_down_start(ec_fsm_coe_t *fsm /**< finite state machine */)
     EC_WRITE_U32(data + 6, sdodata->size);
     memcpy(data + 10, sdodata->data, sdodata->size);
 
-    ec_master_queue_datagram(fsm->slave->master, datagram);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_coe_down_request;
 }
@@ -1018,11 +978,8 @@ void ec_fsm_coe_down_request(ec_fsm_coe_t *fsm /**< finite state machine */)
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
-        // FIXME: check for response first?
-        ec_master_queue_datagram(fsm->slave->master, datagram);
-        return;
-    }
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+        return; // FIXME: check for response first?
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_coe_error;
@@ -1042,7 +999,6 @@ void ec_fsm_coe_down_request(ec_fsm_coe_t *fsm /**< finite state machine */)
     fsm->cycles_start = datagram->cycles_sent;
 
     ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-    ec_master_queue_datagram(fsm->slave->master, datagram);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_coe_down_check;
 }
@@ -1058,10 +1014,8 @@ void ec_fsm_coe_down_check(ec_fsm_coe_t *fsm /**< finite state machine */)
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
-        ec_master_queue_datagram(fsm->slave->master, datagram);
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
         return;
-    }
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_coe_error;
@@ -1088,14 +1042,12 @@ void ec_fsm_coe_down_check(ec_fsm_coe_t *fsm /**< finite state machine */)
         }
 
         ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-        ec_master_queue_datagram(fsm->slave->master, datagram);
         fsm->retries = EC_FSM_RETRIES;
         return;
     }
 
     // Fetch response
     ec_slave_mbox_prepare_fetch(slave, datagram); // can not fail.
-    ec_master_queue_datagram(fsm->slave->master, datagram);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_coe_down_response;
 }
@@ -1115,11 +1067,8 @@ void ec_fsm_coe_down_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     size_t rec_size;
     ec_sdo_data_t *sdodata = fsm->sdodata;
 
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
-        // FIXME: request again?
-        ec_master_queue_datagram(fsm->slave->master, datagram);
-        return;
-    }
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+        return; // FIXME: request again?
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_coe_error;
@@ -1222,7 +1171,6 @@ void ec_fsm_coe_up_start(ec_fsm_coe_t *fsm /**< finite state machine */)
         ec_print_data(data, 10);
     }
 
-    ec_master_queue_datagram(fsm->slave->master, datagram);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_coe_up_request;
 }
@@ -1239,11 +1187,8 @@ void ec_fsm_coe_up_request(ec_fsm_coe_t *fsm /**< finite state machine */)
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
-        // FIXME: check for response first?
-        ec_master_queue_datagram(fsm->slave->master, datagram);
-        return;
-    }
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+        return; // FIXME: check for response first?
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_coe_error;
@@ -1263,7 +1208,6 @@ void ec_fsm_coe_up_request(ec_fsm_coe_t *fsm /**< finite state machine */)
     fsm->cycles_start = datagram->cycles_sent;
 
     ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-    ec_master_queue_datagram(fsm->slave->master, datagram);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_coe_up_check;
 }
@@ -1279,10 +1223,8 @@ void ec_fsm_coe_up_check(ec_fsm_coe_t *fsm /**< finite state machine */)
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
-        ec_master_queue_datagram(fsm->slave->master, datagram);
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
         return;
-    }
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_coe_error;
@@ -1309,14 +1251,12 @@ void ec_fsm_coe_up_check(ec_fsm_coe_t *fsm /**< finite state machine */)
         }
 
         ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-        ec_master_queue_datagram(fsm->slave->master, datagram);
         fsm->retries = EC_FSM_RETRIES;
         return;
     }
 
     // Fetch response
     ec_slave_mbox_prepare_fetch(slave, datagram); // can not fail.
-    ec_master_queue_datagram(fsm->slave->master, datagram);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_coe_up_response;
 }
@@ -1341,11 +1281,8 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     uint32_t complete_size;
     unsigned int expedited, size_specified;
 
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
-        // FIXME: request again?
-        ec_master_queue_datagram(fsm->slave->master, datagram);
-        return;
-    }
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+        return; // FIXME: request again?
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_coe_error;
@@ -1468,7 +1405,6 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
                 ec_print_data(data, 3);
             }
 
-            ec_master_queue_datagram(fsm->slave->master, datagram);
             fsm->retries = EC_FSM_RETRIES;
             fsm->state = ec_fsm_coe_up_seg_request;
             return;
@@ -1490,11 +1426,8 @@ void ec_fsm_coe_up_seg_request(ec_fsm_coe_t *fsm /**< finite state machine */)
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
-        // FIXME: check for response first?
-        ec_master_queue_datagram(fsm->slave->master, datagram);
-        return;
-    }
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+        return; // FIXME: check for response first?
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_coe_error;
@@ -1514,7 +1447,6 @@ void ec_fsm_coe_up_seg_request(ec_fsm_coe_t *fsm /**< finite state machine */)
     fsm->cycles_start = datagram->cycles_sent;
 
     ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-    ec_master_queue_datagram(fsm->slave->master, datagram);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_coe_up_seg_check;
 }
@@ -1530,10 +1462,8 @@ void ec_fsm_coe_up_seg_check(ec_fsm_coe_t *fsm /**< finite state machine */)
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
-        ec_master_queue_datagram(fsm->slave->master, datagram);
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
         return;
-    }
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_coe_error;
@@ -1560,14 +1490,12 @@ void ec_fsm_coe_up_seg_check(ec_fsm_coe_t *fsm /**< finite state machine */)
         }
 
         ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-        ec_master_queue_datagram(fsm->slave->master, datagram);
         fsm->retries = EC_FSM_RETRIES;
         return;
     }
 
     // Fetch response
     ec_slave_mbox_prepare_fetch(slave, datagram); // can not fail.
-    ec_master_queue_datagram(fsm->slave->master, datagram);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_coe_up_seg_response;
 }
@@ -1592,11 +1520,8 @@ void ec_fsm_coe_up_seg_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     uint32_t seg_size;
     unsigned int last_segment;
 
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
-        // FIXME: request again?
-        ec_master_queue_datagram(fsm->slave->master, datagram);
-        return;
-    }
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+        return; // FIXME: request again?
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_coe_error;
@@ -1686,7 +1611,6 @@ void ec_fsm_coe_up_seg_response(ec_fsm_coe_t *fsm /**< finite state machine */)
             ec_print_data(data, 3);
         }
 
-        ec_master_queue_datagram(fsm->slave->master, datagram);
         fsm->retries = EC_FSM_RETRIES;
         fsm->state = ec_fsm_coe_up_seg_request;
         return;

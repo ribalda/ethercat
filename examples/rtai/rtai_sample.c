@@ -91,7 +91,6 @@ void run(long data)
 
         rt_sem_wait(&master_sem);
         ecrt_domain_queue(domain1);
-        ecrt_master_run(master);
         ecrt_master_send(master);
         rt_sem_signal(&master_sem);
 		

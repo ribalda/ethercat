@@ -130,8 +130,6 @@ void run(unsigned long data)
     ecrt_domain_queue(domain1);
     spin_unlock(&master_lock);
 
-    ecrt_master_run(master);
-
     spin_lock(&master_lock);
     ecrt_master_send(master);
     spin_unlock(&master_lock);

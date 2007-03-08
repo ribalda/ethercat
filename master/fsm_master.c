@@ -135,19 +135,8 @@ int ec_fsm_master_running(ec_fsm_master_t *fsm /**< master state machine */)
         && fsm->state != ec_fsm_master_state_error;
 }
 
-/*****************************************************************************/
-
-/**
-   \return true, if the master state machine terminated gracefully
-*/
-
-int ec_fsm_master_success(ec_fsm_master_t *fsm /**< master state machine */)
-{
-    return fsm->state == ec_fsm_master_state_end;
-}
-
 /******************************************************************************
- *  operation/idle state machine
+ *  master state machine
  *****************************************************************************/
 
 /**
@@ -158,7 +147,6 @@ int ec_fsm_master_success(ec_fsm_master_t *fsm /**< master state machine */)
 void ec_fsm_master_state_start(ec_fsm_master_t *fsm)
 {
     ec_datagram_brd(fsm->datagram, 0x0130, 2);
-    ec_master_queue_datagram(fsm->master, fsm->datagram);
     fsm->state = ec_fsm_master_state_broadcast;
 }
 
@@ -176,11 +164,8 @@ void ec_fsm_master_state_broadcast(ec_fsm_master_t *fsm /**< master state machin
     ec_slave_t *slave;
     ec_master_t *master = fsm->master;
 
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT) {
-        // always retry
-        ec_master_queue_datagram(fsm->master, fsm->datagram);
-        return;
-    }
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT)
+        return; // always retry
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) { // EC_DATAGRAM_ERROR
         // link is down
@@ -260,16 +245,15 @@ void ec_fsm_master_state_broadcast(ec_fsm_master_t *fsm /**< master state machin
 
         // begin scanning of slaves
         fsm->slave = list_entry(master->slaves.next, ec_slave_t, list);
+        fsm->state = ec_fsm_master_state_scan_slaves;
         ec_fsm_slave_start_scan(&fsm->fsm_slave, fsm->slave);
         ec_fsm_slave_exec(&fsm->fsm_slave); // execute immediately
-        fsm->state = ec_fsm_master_state_scan_slaves;
         return;
     }
 
     // fetch state from each slave
     fsm->slave = list_entry(master->slaves.next, ec_slave_t, list);
     ec_datagram_nprd(fsm->datagram, fsm->slave->station_address, 0x0130, 2);
-    ec_master_queue_datagram(master, fsm->datagram);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_master_state_read_states;
 }
@@ -365,9 +349,9 @@ void ec_fsm_master_action_process_states(ec_fsm_master_t *fsm
         }
 
         fsm->slave = slave;
+        fsm->state = ec_fsm_master_state_configure_slave;
         ec_fsm_slave_start_conf(&fsm->fsm_slave, slave);
         ec_fsm_slave_exec(&fsm->fsm_slave); // execute immediately
-        fsm->state = ec_fsm_master_state_configure_slave;
         return;
     }
 
@@ -391,8 +375,8 @@ void ec_fsm_master_action_process_states(ec_fsm_master_t *fsm
             else {
                 // start uploading SDO
                 fsm->slave = slave;
-                fsm->state = ec_fsm_master_state_sdo_request;
                 fsm->sdo_request = master->sdo_request;
+                fsm->state = ec_fsm_master_state_sdo_request;
                 ec_fsm_coe_upload(&fsm->fsm_coe, slave, fsm->sdo_request);
                 ec_fsm_coe_exec(&fsm->fsm_coe); // execute immediately
                 return;
@@ -446,10 +430,9 @@ void ec_fsm_master_action_next_slave_state(ec_fsm_master_t *fsm
     // is there another slave to query?
     if (slave->list.next != &master->slaves) {
         // process next slave
-        fsm->slave = list_entry(fsm->slave->list.next, ec_slave_t, list);
+        fsm->slave = list_entry(slave->list.next, ec_slave_t, list);
         ec_datagram_nprd(fsm->datagram, fsm->slave->station_address,
                          0x0130, 2);
-        ec_master_queue_datagram(master, fsm->datagram);
         fsm->retries = EC_FSM_RETRIES;
         fsm->state = ec_fsm_master_state_read_states;
         return;
@@ -488,10 +471,8 @@ void ec_fsm_master_state_read_states(ec_fsm_master_t *fsm /**< master state mach
     ec_slave_t *slave = fsm->slave;
     ec_datagram_t *datagram = fsm->datagram;
 
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
-        ec_master_queue_datagram(fsm->master, fsm->datagram);
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
         return;
-    }
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         EC_ERR("Failed to receive AL state datagram for slave %i"
@@ -513,9 +494,9 @@ void ec_fsm_master_state_read_states(ec_fsm_master_t *fsm /**< master state mach
 
     // check, if new slave state has to be acknowledged
     if (slave->current_state & EC_SLAVE_STATE_ACK_ERR && !slave->error_flag) {
+        fsm->state = ec_fsm_master_state_acknowledge;
         ec_fsm_change_ack(&fsm->fsm_change, slave);
         ec_fsm_change_exec(&fsm->fsm_change);
-        fsm->state = ec_fsm_master_state_acknowledge;
         return;
     }
 
@@ -592,8 +573,7 @@ void ec_fsm_master_action_addresses(ec_fsm_master_t *fsm /**< master state machi
 
     while (fsm->slave->online_state == EC_SLAVE_ONLINE) {
         if (fsm->slave->list.next == &fsm->master->slaves) { // last slave?
-            fsm->state = ec_fsm_master_state_start;
-            fsm->state(fsm); // execute immediately
+            fsm->state = ec_fsm_master_state_end;
             return;
         }
         // check next slave
@@ -606,7 +586,6 @@ void ec_fsm_master_action_addresses(ec_fsm_master_t *fsm /**< master state machi
     // write station address
     ec_datagram_apwr(datagram, fsm->slave->ring_position, 0x0010, 2);
     EC_WRITE_U16(datagram->data, fsm->slave->station_address);
-    ec_master_queue_datagram(fsm->master, datagram);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_master_state_rewrite_addresses;
 }
@@ -670,10 +649,8 @@ void ec_fsm_master_state_rewrite_addresses(ec_fsm_master_t *fsm
     ec_slave_t *slave = fsm->slave;
     ec_datagram_t *datagram = fsm->datagram;
 
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
-        ec_master_queue_datagram(fsm->master, fsm->datagram);
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
         return;
-    }
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         EC_ERR("Failed to receive address datagram for slave %i"
@@ -691,8 +668,7 @@ void ec_fsm_master_state_rewrite_addresses(ec_fsm_master_t *fsm
     }
 
     if (fsm->slave->list.next == &fsm->master->slaves) { // last slave?
-        fsm->state = ec_fsm_master_state_start;
-        fsm->state(fsm); // execute immediately
+        fsm->state = ec_fsm_master_state_end;
         return;
     }
 
@@ -712,14 +688,14 @@ void ec_fsm_master_state_rewrite_addresses(ec_fsm_master_t *fsm
 void ec_fsm_master_state_scan_slaves(ec_fsm_master_t *fsm /**< master state machine */)
 {
     ec_master_t *master = fsm->master;
-    ec_slave_t *slave;
+    ec_slave_t *slave = fsm->slave;
 
     if (ec_fsm_slave_exec(&fsm->fsm_slave)) // execute slave state machine
         return;
 
     // another slave to fetch?
-    if (fsm->slave->list.next != &master->slaves) {
-        fsm->slave = list_entry(fsm->slave->list.next, ec_slave_t, list);
+    if (slave->list.next != &master->slaves) {
+        fsm->slave = list_entry(slave->list.next, ec_slave_t, list);
         ec_fsm_slave_start_scan(&fsm->fsm_slave, fsm->slave);
         ec_fsm_slave_exec(&fsm->fsm_slave); // execute immediately
         return;
@@ -803,9 +779,7 @@ void ec_fsm_master_state_write_eeprom(
     if (ec_fsm_master_action_process_eeprom(fsm))
         return; // processing another request
 
-    // restart master state machine.
-    fsm->state = ec_fsm_master_state_start;
-    fsm->state(fsm); // execute immediately
+    fsm->state = ec_fsm_master_state_end;
 }
 
 /*****************************************************************************/
@@ -835,9 +809,7 @@ void ec_fsm_master_state_sdodict(ec_fsm_master_t *fsm /**< master state machine 
                sdo_count, entry_count, slave->ring_position);
     }
 
-    // restart master state machine.
-    fsm->state = ec_fsm_master_state_start;
-    fsm->state(fsm); // execute immediately
+    fsm->state = ec_fsm_master_state_end;
 }
 
 /*****************************************************************************/
@@ -865,9 +837,7 @@ void ec_fsm_master_state_sdo_request(ec_fsm_master_t *fsm /**< master state mach
     request->return_code = 1;
     master->sdo_seq_master++;
 
-    // restart master state machine.
-    fsm->state = ec_fsm_master_state_start;
-    fsm->state(fsm); // execute immediately
+    fsm->state = ec_fsm_master_state_end;
 }
 
 /*****************************************************************************/
