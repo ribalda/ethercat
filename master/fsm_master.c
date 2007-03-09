@@ -209,6 +209,7 @@ void ec_fsm_master_state_broadcast(ec_fsm_master_t *fsm /**< master state machin
     if (fsm->topology_change_pending &&
             master->mode == EC_MASTER_MODE_IDLE) {
         fsm->topology_change_pending = 0;
+        fsm->tainted = 0;
 
         ec_master_eoe_stop(master);
         ec_master_destroy_slaves(master);
@@ -621,6 +622,7 @@ void ec_fsm_master_state_validate_product(ec_fsm_master_t *fsm /**< master state
 
     // have all states been validated?
     if (slave->list.next == &fsm->master->slaves) {
+        fsm->topology_change_pending = 0;
         fsm->tainted = 0;
         fsm->slave = list_entry(fsm->master->slaves.next, ec_slave_t, list);
         // start writing addresses to offline slaves
