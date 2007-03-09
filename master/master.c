@@ -1384,6 +1384,117 @@ void ec_master_prepare(ec_master_t *master /**< EtherCAT master */)
     }
 }
 
+/*****************************************************************************/
+
+/**
+ * Translates an ASCII coded bus-address to a slave pointer.
+ * These are the valid addressing schemes:
+ * - \a "X" = the X. slave on the bus (ring position),
+ * - \a "X:Y" = the Y. slave after the X. branch (bus coupler),
+ * - \a "#X" = the slave with alias X,
+ * - \a "#X:Y" = the Y. slave after the branch (bus coupler) with alias X.
+ * X and Y are zero-based indices and may be provided in hexadecimal or octal
+ * notation (with respective prefix).
+ * \return pointer to the slave on success, else NULL
+ */
+
+ec_slave_t *ec_master_parse_slave_address(
+        const ec_master_t *master, /**< EtherCAT master */
+        const char *address /**< address string */
+        )
+{
+    unsigned long first, second;
+    char *remainder, *remainder2;
+    const char *original;
+    unsigned int alias_requested, alias_found;
+    ec_slave_t *alias_slave = NULL, *slave;
+
+    original = address;
+
+    if (!address || address[0] == 0) return NULL;
+
+    alias_requested = 0;
+    if (address[0] == '#') {
+        alias_requested = 1;
+        address++;
+    }
+
+    first = simple_strtoul(address, &remainder, 0);
+    if (remainder == address) {
+        EC_ERR("Slave address \"%s\" - First number empty!\n", original);
+        return NULL;
+    }
+
+    if (alias_requested) {
+        alias_found = 0;
+        list_for_each_entry(alias_slave, &master->slaves, list) {
+            if (alias_slave->sii_alias == first) {
+                alias_found = 1;
+                break;
+            }
+        }
+        if (!alias_found) {
+            EC_ERR("Slave address \"%s\" - Alias not found!\n", original);
+            return NULL;
+        }
+    }
+
+    if (!remainder[0]) { // absolute position
+        if (alias_requested) {
+            return alias_slave;
+        }
+        else {
+            list_for_each_entry(slave, &master->slaves, list) {
+                if (slave->ring_position == first) return slave;
+            }
+            EC_ERR("Slave address \"%s\" - Absolute position invalid!\n",
+                   original);
+        }
+    }
+    else if (remainder[0] == ':') { // field position
+        remainder++;
+        second = simple_strtoul(remainder, &remainder2, 0);
+
+        if (remainder2 == remainder) {
+            EC_ERR("Slave address \"%s\" - Second number empty!\n", original);
+            return NULL;
+        }
+
+        if (remainder2[0]) {
+            EC_ERR("Slave address \"%s\" - Invalid trailer!\n", original);
+            return NULL;
+        }
+
+        if (alias_requested) {
+            if (!ec_slave_is_coupler(alias_slave)) {
+                EC_ERR("Slave address \"%s\": Alias slave must be bus coupler"
+                       " in colon mode.\n", original);
+                return NULL;
+            }
+            list_for_each_entry(slave, &master->slaves, list) {
+                if (slave->coupler_index == alias_slave->coupler_index
+                    && slave->coupler_subindex == second)
+                    return slave;
+            }
+            EC_ERR("Slave address \"%s\" - Bus coupler %i has no %lu. slave"
+                   " following!\n", original, alias_slave->ring_position,
+                   second);
+            return NULL;
+        }
+        else {
+            list_for_each_entry(slave, &master->slaves, list) {
+                if (slave->coupler_index == first
+                    && slave->coupler_subindex == second) return slave;
+            }
+        }
+    }
+    else
+        EC_ERR("Slave address \"%s\" - Invalid format!\n", original);
+
+    return NULL;
+}
+
+
 /******************************************************************************
  *  Realtime interface
  *****************************************************************************/
@@ -1578,111 +1689,27 @@ void ecrt_master_receive(ec_master_t *master /**< EtherCAT master */)
 /*****************************************************************************/
 
 /**
-   Translates an ASCII coded bus-address to a slave pointer.
-   These are the valid addressing schemes:
-   - \a "X" = the X. slave on the bus,
-   - \a "X:Y" = the Y. slave after the X. branch (bus coupler),
-   - \a "#X" = the slave with alias X,
-   - \a "#X:Y" = the Y. slave after the branch (bus coupler) with alias X.
-   X and Y are zero-based indices and may be provided in hexadecimal or octal
-   notation (with respective prefix).
-   \return pointer to the slave on success, else NULL
-   \ingroup RealtimeInterface
-*/
+ * Obtains a slave pointer by its bus address.
+ * A valid slave pointer is only returned, if vendor ID and product code are
+ * matching.
+ * \return pointer to the slave on success, else NULL
+ * \ingroup RealtimeInterface
+ */
 
-ec_slave_t *ecrt_master_get_slave(const ec_master_t *master, /**< Master */
-                                  const char *address /**< address string */
-                                  )
+ec_slave_t *ecrt_master_get_slave(
+        const ec_master_t *master, /**< EtherCAT master */
+        const char *address, /**< address string
+                               \see ec_master_parse_slave_address() */
+        uint32_t vendor_id, /**< vendor ID */
+        uint32_t product_code /**< product code */
+        )
 {
-    unsigned long first, second;
-    char *remainder, *remainder2;
-    const char *original;
-    unsigned int alias_requested, alias_found;
-    ec_slave_t *alias_slave = NULL, *slave;
+    ec_slave_t *slave = ec_master_parse_slave_address(master, address);
 
-    original = address;
-
-    if (!address || address[0] == 0) return NULL;
-
-    alias_requested = 0;
-    if (address[0] == '#') {
-        alias_requested = 1;
-        address++;
-    }
-
-    first = simple_strtoul(address, &remainder, 0);
-    if (remainder == address) {
-        EC_ERR("Slave address \"%s\" - First number empty!\n", original);
+    if (!slave)
         return NULL;
-    }
 
-    if (alias_requested) {
-        alias_found = 0;
-        list_for_each_entry(alias_slave, &master->slaves, list) {
-            if (alias_slave->sii_alias == first) {
-                alias_found = 1;
-                break;
-            }
-        }
-        if (!alias_found) {
-            EC_ERR("Slave address \"%s\" - Alias not found!\n", original);
-            return NULL;
-        }
-    }
-
-    if (!remainder[0]) { // absolute position
-        if (alias_requested) {
-            return alias_slave;
-        }
-        else {
-            list_for_each_entry(slave, &master->slaves, list) {
-                if (slave->ring_position == first) return slave;
-            }
-            EC_ERR("Slave address \"%s\" - Absolute position invalid!\n",
-                   original);
-        }
-    }
-    else if (remainder[0] == ':') { // field position
-        remainder++;
-        second = simple_strtoul(remainder, &remainder2, 0);
-
-        if (remainder2 == remainder) {
-            EC_ERR("Slave address \"%s\" - Second number empty!\n", original);
-            return NULL;
-        }
-
-        if (remainder2[0]) {
-            EC_ERR("Slave address \"%s\" - Invalid trailer!\n", original);
-            return NULL;
-        }
-
-        if (alias_requested) {
-            if (!ec_slave_is_coupler(alias_slave)) {
-                EC_ERR("Slave address \"%s\": Alias slave must be bus coupler"
-                       " in colon mode.\n", original);
-                return NULL;
-            }
-            list_for_each_entry(slave, &master->slaves, list) {
-                if (slave->coupler_index == alias_slave->coupler_index
-                    && slave->coupler_subindex == second)
-                    return slave;
-            }
-            EC_ERR("Slave address \"%s\" - Bus coupler %i has no %lu. slave"
-                   " following!\n", original, alias_slave->ring_position,
-                   second);
-            return NULL;
-        }
-        else {
-            list_for_each_entry(slave, &master->slaves, list) {
-                if (slave->coupler_index == first
-                    && slave->coupler_subindex == second) return slave;
-            }
-        }
-    }
-    else
-        EC_ERR("Slave address \"%s\" - Invalid format!\n", original);
-
-    return NULL;
+    return ec_slave_validate(slave, vendor_id, product_code) ? NULL : slave;
 }
 
 /*****************************************************************************/
