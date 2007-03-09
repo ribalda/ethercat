@@ -121,9 +121,6 @@ int ec_slave_init(ec_slave_t *slave, /**< EtherCAT slave */
     slave->fmmu_count = 0;
     slave->pdos_registered = 0;
 
-    slave->coupler_index = 0;
-    slave->coupler_subindex = 0xFFFF;
-
     slave->base_type = 0;
     slave->base_revision = 0;
     slave->base_build = 0;
@@ -699,10 +696,6 @@ size_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
             slave->error_flag ? "ERROR" : "ok");
     off += sprintf(buffer + off, "Ring position: %i\n",
                    slave->ring_position);
-    off += sprintf(buffer + off, "Advanced position: %i:%i\n",
-                   slave->coupler_index, slave->coupler_subindex);
-    off += sprintf(buffer + off, "Coupler: %s\n",
-                   ec_slave_is_coupler(slave) ? "yes" : "no");
     off += sprintf(buffer + off, "Current consumption: %i mA\n\n",
                    slave->sii_current_on_ebus);
 
@@ -1128,19 +1121,6 @@ ec_sync_t *ec_slave_get_pdo_sync(
 /*****************************************************************************/
 
 /**
-   \return non-zero if slave is a bus coupler
-*/
-
-int ec_slave_is_coupler(const ec_slave_t *slave /**< EtherCAT slave */)
-{
-    // TODO: Better bus coupler criterion
-    return slave->sii_vendor_id == 0x00000002
-        && slave->sii_product_code == 0x044C2C52;
-}
-
-/*****************************************************************************/
-
-/**
    \return 0 in case of success, else < 0
 */
 
@@ -1192,9 +1172,10 @@ int ec_slave_validate(const ec_slave_t *slave, /**< EtherCAT slave */
 {
     if (vendor_id != slave->sii_vendor_id ||
         product_code != slave->sii_product_code) {
-        EC_ERR("Invalid slave type at position %i - Requested: 0x%08X 0x%08X,"
-               " found: 0x%08X 0x%08X\".\n", slave->ring_position, vendor_id,
-               product_code, slave->sii_vendor_id, slave->sii_product_code);
+        EC_ERR("Invalid slave type at position %i:\n", slave->ring_position);
+        EC_ERR("  Requested: 0x%08X 0x%08X\n", vendor_id, product_code);
+        EC_ERR("      Found: 0x%08X 0x%08X\n",
+                slave->sii_vendor_id, slave->sii_product_code);
         return -1;
     }
     return 0;

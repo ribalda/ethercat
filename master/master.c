@@ -460,12 +460,7 @@ int ec_master_enter_operation_mode(ec_master_t *master /**< EtherCAT master */)
 
     // set initial slave states
     list_for_each_entry(slave, &master->slaves, list) {
-        if (ec_slave_is_coupler(slave)) {
-            ec_slave_request_state(slave, EC_SLAVE_STATE_OP);
-        }
-        else {
-            ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
-        }
+        ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
     }
 
     master->eoe_checked = 0; // allow starting EoE again
@@ -1262,38 +1257,6 @@ void ec_master_check_sdo(unsigned long data /**< master pointer */)
 /*****************************************************************************/
 
 /**
-   Calculates Advanced Position Adresses.
-*/
-
-void ec_master_calc_addressing(ec_master_t *master /**< EtherCAT master */)
-{
-    uint16_t coupler_index, coupler_subindex;
-    uint16_t reverse_coupler_index, current_coupler_index;
-    ec_slave_t *slave;
-
-    coupler_index = 0;
-    reverse_coupler_index = 0xFFFF;
-    current_coupler_index = 0x0000;
-    coupler_subindex = 0;
-
-    list_for_each_entry(slave, &master->slaves, list) {
-        if (ec_slave_is_coupler(slave)) {
-            if (slave->sii_alias)
-                current_coupler_index = reverse_coupler_index--;
-            else
-                current_coupler_index = coupler_index++;
-            coupler_subindex = 0;
-        }
-
-        slave->coupler_index = current_coupler_index;
-        slave->coupler_subindex = coupler_subindex;
-        coupler_subindex++;
-    }
-}
-
-/*****************************************************************************/
-
-/**
    Measures the time, a frame is on the bus.
    \return 0 in case of success, else < 0
 */
@@ -1406,94 +1369,71 @@ ec_slave_t *ec_master_parse_slave_address(
     unsigned long first, second;
     char *remainder, *remainder2;
     const char *original;
-    unsigned int alias_requested, alias_found;
+    unsigned int alias_requested = 0, alias_not_found = 1;
     ec_slave_t *alias_slave = NULL, *slave;
 
     original = address;
 
-    if (!address || address[0] == 0) return NULL;
+    if (!address[0])
+        goto out_invalid;
 
-    alias_requested = 0;
     if (address[0] == '#') {
         alias_requested = 1;
         address++;
     }
 
     first = simple_strtoul(address, &remainder, 0);
-    if (remainder == address) {
-        EC_ERR("Slave address \"%s\" - First number empty!\n", original);
-        return NULL;
-    }
+    if (remainder == address)
+        goto out_invalid;
 
     if (alias_requested) {
-        alias_found = 0;
         list_for_each_entry(alias_slave, &master->slaves, list) {
             if (alias_slave->sii_alias == first) {
-                alias_found = 1;
+                alias_not_found = 0;
                 break;
             }
         }
-        if (!alias_found) {
-            EC_ERR("Slave address \"%s\" - Alias not found!\n", original);
-            return NULL;
+        if (alias_not_found) {
+            EC_ERR("Alias not found!\n");
+            goto out_invalid;
         }
     }
 
-    if (!remainder[0]) { // absolute position
-        if (alias_requested) {
+    if (!remainder[0]) {
+        if (alias_requested) { // alias addressing
             return alias_slave;
         }
-        else {
+        else { // position addressing
             list_for_each_entry(slave, &master->slaves, list) {
                 if (slave->ring_position == first) return slave;
             }
-            EC_ERR("Slave address \"%s\" - Absolute position invalid!\n",
-                   original);
+            EC_ERR("Slave index out of range!\n");
+            goto out_invalid;
         }
     }
-    else if (remainder[0] == ':') { // field position
+    else if (alias_requested && remainder[0] == ':') { // field addressing
+        struct list_head *list;
         remainder++;
         second = simple_strtoul(remainder, &remainder2, 0);
 
-        if (remainder2 == remainder) {
-            EC_ERR("Slave address \"%s\" - Second number empty!\n", original);
-            return NULL;
-        }
+        if (remainder2 == remainder || remainder2[0])
+            goto out_invalid;
 
-        if (remainder2[0]) {
-            EC_ERR("Slave address \"%s\" - Invalid trailer!\n", original);
-            return NULL;
-        }
-
-        if (alias_requested) {
-            if (!ec_slave_is_coupler(alias_slave)) {
-                EC_ERR("Slave address \"%s\": Alias slave must be bus coupler"
-                       " in colon mode.\n", original);
-                return NULL;
-            }
-            list_for_each_entry(slave, &master->slaves, list) {
-                if (slave->coupler_index == alias_slave->coupler_index
-                    && slave->coupler_subindex == second)
-                    return slave;
-            }
-            EC_ERR("Slave address \"%s\" - Bus coupler %i has no %lu. slave"
-                   " following!\n", original, alias_slave->ring_position,
-                   second);
-            return NULL;
-        }
-        else {
-            list_for_each_entry(slave, &master->slaves, list) {
-                if (slave->coupler_index == first
-                    && slave->coupler_subindex == second) return slave;
+        list = &alias_slave->list;
+        while (second--) {
+            list = list->next;
+            if (list == &master->slaves) { // last slave exceeded
+                EC_ERR("Slave index out of range!\n");
+                goto out_invalid;
             }
         }
+        return list_entry(list, ec_slave_t, list);
     }
-    else
-        EC_ERR("Slave address \"%s\" - Invalid format!\n", original);
 
+out_invalid:
+    EC_ERR("Invalid slave address string \"%s\"!\n", original);
     return NULL;
 }
-
 
 /******************************************************************************
  *  Realtime interface

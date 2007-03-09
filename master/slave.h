@@ -129,8 +129,6 @@ struct ec_slave
     // addresses
     uint16_t ring_position; /**< ring position */
     uint16_t station_address; /**< configured station address */
-    uint16_t coupler_index; /**< index of the last bus coupler */
-    uint16_t coupler_subindex; /**< index of this slave after last coupler */
 
     // base data
     uint8_t base_type; /**< slave type */
@@ -204,7 +202,6 @@ int ec_slave_fetch_sii_pdos(ec_slave_t *, const uint8_t *, size_t,
 
 // misc.
 ec_sync_t *ec_slave_get_pdo_sync(ec_slave_t *, ec_direction_t); 
-int ec_slave_is_coupler(const ec_slave_t *);
 int ec_slave_validate(const ec_slave_t *, uint32_t, uint32_t);
 void ec_slave_sdo_dict_info(const ec_slave_t *,
         unsigned int *, unsigned int *);

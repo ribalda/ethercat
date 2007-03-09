@@ -182,7 +182,6 @@ void ec_master_queue_datagram(ec_master_t *, ec_datagram_t *);
 // misc.
 void ec_master_output_stats(ec_master_t *);
 void ec_master_destroy_slaves(ec_master_t *);
-void ec_master_calc_addressing(ec_master_t *);
 
 /*****************************************************************************/
 

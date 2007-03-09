@@ -67,11 +67,11 @@ static void *r_count;
 static void *r_freq;
 
 #if 1
-ec_pdo_reg_t domain1_pdo_regs[] = {
-    {"2", Beckhoff_EL2004_Outputs,   &r_dig_out},
-    {"3", Beckhoff_EL4132_Output1,   &r_ana_out},
-    {"4", Beckhoff_EL5101_Value,     &r_count},
-    {"4", Beckhoff_EL5101_Frequency, &r_freq},
+const static ec_pdo_reg_t domain1_pdo_regs[] = {
+    {"2",      Beckhoff_EL2004_Outputs,   &r_dig_out},
+    {"3",      Beckhoff_EL4132_Output1,   &r_ana_out},
+    {"#888:1", Beckhoff_EL5101_Value,     &r_count},
+    {"4",      Beckhoff_EL5101_Frequency, &r_freq},
     {}
 };
 #endif
@@ -105,7 +105,7 @@ void run(unsigned long data)
         spin_unlock(&master_lock);
 
         if (master_status.bus_status != old_status.bus_status) {
-            printk(KERN_INFO PFX "bus status changed to %u.\n",
+            printk(KERN_INFO PFX "bus status changed to %i.\n",
                     master_status.bus_status);
         }
         if (master_status.bus_tainted != old_status.bus_tainted) {

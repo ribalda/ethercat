@@ -47,27 +47,36 @@
 /*****************************************************************************/
 
 // RTAI task frequency in Hz
-#define FREQUENCY 4000
+#define FREQUENCY 2000
 #define INHIBIT_TIME 20
 
 #define TIMERTICKS (1000000000 / FREQUENCY)
 
+#define PFX "ec_rtai_sample: "
+
 /*****************************************************************************/
 
 // RTAI
-RT_TASK task;
-SEM master_sem;
-cycles_t t_last_cycle = 0, t_critical;
+static RT_TASK task;
+static SEM master_sem;
+static cycles_t t_last_cycle = 0, t_critical;
 
 // EtherCAT
-ec_master_t *master = NULL;
-ec_domain_t *domain1 = NULL;
+static ec_master_t *master = NULL;
+static ec_domain_t *domain1 = NULL;
+static ec_master_status_t master_status, old_status = {};
 
 // data fields
-void *r_dig_out;
+static void *r_dig_out;
+static void *r_ana_out;
+static void *r_count;
+//static void *r_freq;
 
-ec_pdo_reg_t domain1_pdos[] = {
-    {"2", Beckhoff_EL2004_Outputs, &r_dig_out},
+const static ec_pdo_reg_t domain1_pdo_regs[] = {
+    {"2",      Beckhoff_EL2004_Outputs,   &r_dig_out},
+    {"3",      Beckhoff_EL4132_Output1,   &r_ana_out},
+    {"#888:1", Beckhoff_EL5101_Value,     &r_count},
+    //{"4",      Beckhoff_EL5101_Frequency, &r_freq},
     {}
 };
 
@@ -100,6 +109,26 @@ void run(long data)
         else {
             counter = FREQUENCY;
             blink = !blink;
+
+            rt_sem_wait(&master_sem);
+            ecrt_master_get_status(master, &master_status);
+            rt_sem_signal(&master_sem);
+
+            if (master_status.bus_status != old_status.bus_status) {
+                printk(KERN_INFO PFX "bus status changed to %i.\n",
+                        master_status.bus_status);
+            }
+            if (master_status.bus_tainted != old_status.bus_tainted) {
+                printk(KERN_INFO PFX "tainted flag changed to %u.\n",
+                        master_status.bus_tainted);
+            }
+            if (master_status.slaves_responding !=
+                    old_status.slaves_responding) {
+                printk(KERN_INFO PFX "slaves_responding changed to %u.\n",
+                        master_status.slaves_responding);
+            }
+
+            old_status = master_status;
         }
 
         rt_task_wait_period();
@@ -131,55 +160,55 @@ int __init init_mod(void)
 {
     RTIME tick_period, requested_ticks, now;
 
-    printk(KERN_INFO "=== Starting EtherCAT RTAI sample module... ===\n");
+    printk(KERN_INFO PFX "Starting...\n");
 
     rt_sem_init(&master_sem, 1);
 
     t_critical = cpu_khz * 1000 / FREQUENCY - cpu_khz * INHIBIT_TIME / 1000;
 
     if (!(master = ecrt_request_master(0))) {
-        printk(KERN_ERR "Requesting master 0 failed!\n");
+        printk(KERN_ERR PFX "Requesting master 0 failed!\n");
         goto out_return;
     }
 
     ecrt_master_callbacks(master, request_lock, release_lock, NULL);
 
-    printk(KERN_INFO "Creating domain...\n");
+    printk(KERN_INFO PFX "Creating domain...\n");
     if (!(domain1 = ecrt_master_create_domain(master))) {
-        printk(KERN_ERR "Domain creation failed!\n");
+        printk(KERN_ERR PFX "Domain creation failed!\n");
         goto out_release_master;
     }
 
-    printk(KERN_INFO "Registering PDOs...\n");
-    if (ecrt_domain_register_pdo_list(domain1, domain1_pdos)) {
-        printk(KERN_ERR "PDO registration failed!\n");
+    printk(KERN_INFO PFX "Registering PDOs...\n");
+    if (ecrt_domain_register_pdo_list(domain1, domain1_pdo_regs)) {
+        printk(KERN_ERR PFX "PDO registration failed!\n");
         goto out_release_master;
     }
 
-    printk(KERN_INFO "Activating master...\n");
+    printk(KERN_INFO PFX "Activating master...\n");
     if (ecrt_master_activate(master)) {
-        printk(KERN_ERR "Failed to activate master!\n");
+        printk(KERN_ERR PFX "Failed to activate master!\n");
         goto out_release_master;
     }
 
-    printk("Starting cyclic sample thread...\n");
+    printk(KERN_INFO PFX "Starting cyclic sample thread...\n");
     requested_ticks = nano2count(TIMERTICKS);
     tick_period = start_rt_timer(requested_ticks);
-    printk(KERN_INFO "RT timer started with %i/%i ticks.\n",
+    printk(KERN_INFO PFX "RT timer started with %i/%i ticks.\n",
            (int) tick_period, (int) requested_ticks);
 
     if (rt_task_init(&task, run, 0, 2000, 0, 1, NULL)) {
-        printk(KERN_ERR "Failed to init RTAI task!\n");
+        printk(KERN_ERR PFX "Failed to init RTAI task!\n");
         goto out_stop_timer;
     }
 
     now = rt_get_time();
     if (rt_task_make_periodic(&task, now + tick_period, tick_period)) {
-        printk(KERN_ERR "Failed to run RTAI task!\n");
+        printk(KERN_ERR PFX "Failed to run RTAI task!\n");
         goto out_stop_task;
     }
 
-    printk(KERN_INFO "=== EtherCAT RTAI sample module started. ===\n");
+    printk(KERN_INFO PFX "Initialized.\n");
     return 0;
 
  out_stop_task:
@@ -197,14 +226,14 @@ int __init init_mod(void)
 
 void __exit cleanup_mod(void)
 {
-    printk(KERN_INFO "=== Stopping EtherCAT RTAI sample module... ===\n");
+    printk(KERN_INFO PFX "Unloading...\n");
 
     rt_task_delete(&task);
     stop_rt_timer();
     ecrt_release_master(master);
     rt_sem_delete(&master_sem);
 
-    printk(KERN_INFO "=== EtherCAT RTAI sample module stopped. ===\n");
+    printk(KERN_INFO PFX "Stopped.\n");
 }
 
 /*****************************************************************************/

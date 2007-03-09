@@ -705,12 +705,11 @@ void ec_fsm_master_state_scan_slaves(ec_fsm_master_t *fsm /**< master state mach
 
     EC_INFO("Bus scanning completed.\n");
 
-    ec_master_calc_addressing(master);
-
     // set initial states of all slaves to PREOP to make mailbox
     // communication possible
     list_for_each_entry(slave, &master->slaves, list) {
-        ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
+        if (slave->requested_state == EC_SLAVE_STATE_UNKNOWN)
+            ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
     }
 
     fsm->state = ec_fsm_master_state_end;
