@@ -177,4 +177,19 @@ ec_code_msg_t;
 
 /*****************************************************************************/
 
+/**
+ * Master request state.
+ */
+
+typedef enum
+{
+    EC_REQ_QUEUED,
+    EC_REQ_BUSY,
+    EC_REQ_COMPLETED,
+    EC_REQ_ERROR
+}
+ec_request_state_t;
+
+/*****************************************************************************/
+
 #endif

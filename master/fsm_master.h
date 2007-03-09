@@ -52,21 +52,6 @@
 /*****************************************************************************/
 
 /**
- * EEPROM request state.
- */
-
-typedef enum
-{
-    EC_EEPROM_REQ_QUEUED,
-    EC_EEPROM_REQ_BUSY,
-    EC_EEPROM_REQ_COMPLETED,
-    EC_EEPROM_REQ_ERROR
-}
-ec_eeprom_request_state_t;
-
-/*****************************************************************************/
-
-/**
  * EEPROM write request.
  */
 
@@ -77,7 +62,7 @@ typedef struct
     off_t offset;
     size_t size;
     const uint16_t *words;
-    ec_eeprom_request_state_t state;
+    ec_request_state_t state;
 }
 ec_eeprom_write_request_t;
 

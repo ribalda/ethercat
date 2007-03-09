@@ -285,14 +285,14 @@ int ec_fsm_master_action_process_eeprom(
         request = list_entry(master->eeprom_requests.next,
                 ec_eeprom_write_request_t, list);
         list_del_init(&request->list); // dequeue
-        request->state = EC_EEPROM_REQ_BUSY;
+        request->state = EC_REQ_BUSY;
         up(&master->eeprom_sem);
 
         slave = request->slave;
         if (slave->online_state == EC_SLAVE_OFFLINE || slave->error_flag) {
             EC_ERR("Discarding EEPROM data, slave %i not ready.\n",
                     slave->ring_position);
-            request->state = EC_EEPROM_REQ_ERROR;
+            request->state = EC_REQ_ERROR;
             wake_up(&master->eeprom_queue);
             continue;
         }
@@ -751,7 +751,7 @@ void ec_fsm_master_state_write_eeprom(
         slave->error_flag = 1;
         EC_ERR("Failed to write EEPROM data to slave %i.\n",
                 slave->ring_position);
-        request->state = EC_EEPROM_REQ_ERROR;
+        request->state = EC_REQ_ERROR;
         wake_up(&master->eeprom_queue);
         fsm->state = ec_fsm_master_state_error;
         return;
@@ -771,7 +771,7 @@ void ec_fsm_master_state_write_eeprom(
     if (master->debug_level)
         EC_DBG("Finished writing EEPROM data to slave %i.\n",
                 slave->ring_position);
-    request->state = EC_EEPROM_REQ_COMPLETED;
+    request->state = EC_REQ_COMPLETED;
     wake_up(&master->eeprom_queue);
 
     // TODO: Evaluate new EEPROM contents!
