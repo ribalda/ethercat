@@ -27,6 +27,8 @@ $Id$
   - SDO dictionary and -access in operation mode.
   - SDO write access in sysfs.
   - Speed up IDLE state machine through fast mode with schedule().
+  - Configure slave ports to automatically open on link detection.
+  - Calculate cycle time of operation state machine.
 
 * Less important issues:
   - Implement all EtherCAT datagram types.
