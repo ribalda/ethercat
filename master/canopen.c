@@ -320,6 +320,9 @@ ssize_t ec_sdo_entry_format_data(ec_sdo_entry_t *entry, /**< SDO entry */
         off += sprintf(buffer + off, "%s\n", request->data);
     }
     else {
+        off += sprintf(buffer + off,
+                "Unknown data type %04X, bit size %u. Data:\n",
+                entry->data_type, entry->bit_length);
         for (i = 0; i < request->size; i++)
             off += sprintf(buffer + off, "%02X (%c)\n",
                            request->data[i], request->data[i]);
@@ -339,33 +342,34 @@ ssize_t ec_sdo_entry_read_value(ec_sdo_entry_t *entry, /**< SDO entry */
     off_t off = 0;
     ec_sdo_request_t request;
 
-    if (down_interruptible(&master->sdo_sem)) {
-        // interrupted by signal
-        return -ERESTARTSYS;
-    }
-
     ec_sdo_request_init_read(&request, sdo, entry);
 
-    // this is necessary, because the completion object
-    // is completed by the ec_master_flush_sdo_requests() function.
-    INIT_COMPLETION(master->sdo_complete);
-
-    master->sdo_request = &request;
-    master->sdo_seq_user++;
-    master->sdo_timer.expires = jiffies + 10;
-    add_timer(&master->sdo_timer);
-
-    wait_for_completion(&master->sdo_complete);
-
-    master->sdo_request = NULL;
+    // schedule request.
+    down(&master->sdo_sem);
+    list_add_tail(&request.list, &master->sdo_requests);
     up(&master->sdo_sem);
 
-    if (request.return_code == 1 && request.data) {
-        off += ec_sdo_entry_format_data(entry, &request, buffer);
+    // wait for processing through FSM
+    if (wait_event_interruptible(master->sdo_queue,
+                request.state != EC_REQ_QUEUED)) {
+        // interrupted by signal
+        down(&master->sdo_sem);
+        if (request.state == EC_REQ_QUEUED) {
+            list_del(&request.list);
+            up(&master->sdo_sem);
+            return -EINTR;
+        }
+        // request already processing: interrupt not possible.
+        up(&master->sdo_sem);
     }
-    else {
-        off = -EINVAL;
-    }
+
+    // wait until master FSM has finished processing
+    wait_event(master->sdo_queue, request.state != EC_REQ_BUSY);
+
+    if (request.state != EC_REQ_COMPLETED)
+        return -EIO;
+
+    off += ec_sdo_entry_format_data(entry, &request, buffer);
 
     ec_sdo_request_clear(&request);
     return off;
@@ -405,7 +409,7 @@ void ec_sdo_request_init_read(ec_sdo_request_t *req, /**< SDO request */
     req->entry = entry;
     req->data = NULL;
     req->size = 0;
-    req->return_code = 0;
+    req->state = EC_REQ_QUEUED;
 }
 
 /*****************************************************************************/

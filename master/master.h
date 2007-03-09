@@ -150,12 +150,11 @@ struct ec_master
     wait_queue_head_t eeprom_queue; /**< wait queue for EEPROM
                                       write requests from user space */
 
-    ec_sdo_request_t *sdo_request; /**< pointer to the current SDO request */
-    unsigned int sdo_seq_user; /**< sequence number for user space */
-    unsigned int sdo_seq_master; /**< sequence number for master */
-    struct semaphore sdo_sem; /**< SDO semaphore */
-    struct timer_list sdo_timer; /**< timer for polling sdo processing */
-    struct completion sdo_complete; /**< SDO request completion object */
+    struct list_head sdo_requests; /**< SDO access requests */
+    struct semaphore sdo_sem; /**< semaphore protecting the list of
+                                   SDO access requests */
+    wait_queue_head_t sdo_queue; /**< wait queue for SDO access requests
+                                   from user space */
 };
 
 /*****************************************************************************/

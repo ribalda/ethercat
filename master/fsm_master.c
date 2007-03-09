@@ -316,6 +316,63 @@ int ec_fsm_master_action_process_eeprom(
 /*****************************************************************************/
 
 /**
+ * Check for pending SDO requests and process one.
+ * \return non-zero, if an SDO request is processed.
+ */
+
+int ec_fsm_master_action_process_sdo(
+        ec_fsm_master_t *fsm /**< master state machine */
+        )
+{
+    ec_master_t *master = fsm->master;
+    ec_sdo_request_t *request;
+    ec_slave_t *slave;
+
+    // search the first request to be processed
+    while (1) {
+        down(&master->sdo_sem);
+        if (list_empty(&master->sdo_requests)) {
+            up(&master->sdo_sem);
+            break;
+        }
+        // get first request
+        request =
+            list_entry(master->sdo_requests.next, ec_sdo_request_t, list);
+        list_del_init(&request->list); // dequeue
+        request->state = EC_REQ_BUSY;
+        up(&master->sdo_sem);
+
+        slave = request->sdo->slave;
+        if (slave->current_state == EC_SLAVE_STATE_INIT ||
+                slave->online_state == EC_SLAVE_OFFLINE ||
+                slave->error_flag) {
+            EC_ERR("Discarding SDO request, slave %i not ready.\n",
+                    slave->ring_position);
+            request->state = EC_REQ_ERROR;
+            wake_up(&master->sdo_queue);
+            continue;
+        }
+
+        // found pending SDO request. execute it!
+        if (master->debug_level)
+            EC_DBG("Processing SDO request for slave %i...\n",
+                    slave->ring_position);
+
+        // start uploading SDO
+        fsm->slave = slave;
+        fsm->sdo_request = request;
+        fsm->state = ec_fsm_master_state_sdo_request;
+        ec_fsm_coe_upload(&fsm->fsm_coe, slave, fsm->sdo_request);
+        ec_fsm_coe_exec(&fsm->fsm_coe); // execute immediately
+        return 1;
+    }
+
+    return 0;
+}
+
+/*****************************************************************************/
+
+/**
    Master action: PROC_STATES.
    Processes the slave states.
 */
@@ -359,30 +416,11 @@ void ec_fsm_master_action_process_states(ec_fsm_master_t *fsm
     // Check, if EoE processing has to be started
     ec_master_eoe_start(master);
 
-    if (master->mode == EC_MASTER_MODE_IDLE) {
+    // Check for a pending SDO request
+    if (ec_fsm_master_action_process_sdo(fsm))
+        return;
 
-        // Check for a pending SDO request
-        if (master->sdo_seq_master != master->sdo_seq_user) {
-            if (master->debug_level)
-                EC_DBG("Processing SDO request...\n");
-            slave = master->sdo_request->sdo->slave;
-            if (slave->current_state == EC_SLAVE_STATE_INIT
-                || slave->online_state == EC_SLAVE_OFFLINE) {
-                EC_ERR("Failed to process SDO request, slave %i not ready.\n",
-                       slave->ring_position);
-                master->sdo_request->return_code = -1;
-                master->sdo_seq_master++;
-            }
-            else {
-                // start uploading SDO
-                fsm->slave = slave;
-                fsm->sdo_request = master->sdo_request;
-                fsm->state = ec_fsm_master_state_sdo_request;
-                ec_fsm_coe_upload(&fsm->fsm_coe, slave, fsm->sdo_request);
-                ec_fsm_coe_exec(&fsm->fsm_coe); // execute immediately
-                return;
-            }
-        }
+    if (master->mode == EC_MASTER_MODE_IDLE) {
 
         // check, if slaves have an SDO dictionary to read out.
         list_for_each_entry(slave, &master->slaves, list) {
@@ -827,16 +865,25 @@ void ec_fsm_master_state_sdo_request(ec_fsm_master_t *fsm /**< master state mach
     if (ec_fsm_coe_exec(&fsm->fsm_coe)) return;
 
     if (!ec_fsm_coe_success(&fsm->fsm_coe)) {
-        request->return_code = -1;
-        master->sdo_seq_master++;
+        EC_DBG("Failed to process SDO request for slave %i.\n",
+                fsm->slave->ring_position);
+        request->state = EC_REQ_ERROR;
+        wake_up(&master->sdo_queue);
         fsm->state = ec_fsm_master_state_error;
         return;
     }
 
-    // SDO dictionary fetching finished
+    // SDO request finished 
+    request->state = EC_REQ_COMPLETED;
+    wake_up(&master->sdo_queue);
 
-    request->return_code = 1;
-    master->sdo_seq_master++;
+    if (master->debug_level)
+        EC_DBG("Finished SDO request for slave %i.\n",
+                fsm->slave->ring_position);
+
+    // check for another SDO request
+    if (ec_fsm_master_action_process_sdo(fsm))
+        return; // processing another request
 
     fsm->state = ec_fsm_master_state_end;
 }

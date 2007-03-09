@@ -35,6 +35,7 @@ Changes in version 1.3.0:
 * All EEPROM write operations from user space are now blocking until
   writing has finished and return appropriate error codes.
 * Implemented setting of secondary slave address (alias) via sysfs.
+* Implemented SDO reading in operation mode via sysfs.
 * Removed annoying eeprom_write_enable file. EEPROM writing always enabled.
 * Removed EtherCAT line comments from 8139too drivers.
 

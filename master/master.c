@@ -157,14 +157,9 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     init_MUTEX(&master->eeprom_sem);
     init_waitqueue_head(&master->eeprom_queue);
 
-    master->sdo_request = NULL;
-    master->sdo_seq_user = 0;
-    master->sdo_seq_master = 0;
+    INIT_LIST_HEAD(&master->sdo_requests);
     init_MUTEX(&master->sdo_sem);
-    init_timer(&master->sdo_timer);
-    master->sdo_timer.function = ec_master_check_sdo;
-    master->sdo_timer.data = (unsigned long) master;
-    init_completion(&master->sdo_complete);
+    init_waitqueue_head(&master->sdo_queue);
 
     // init devices
     if (ec_device_init(&master->main_device, master))
@@ -301,21 +296,6 @@ void ec_master_destroy_domains(ec_master_t *master)
 /*****************************************************************************/
 
 /**
-   Flushes the SDO request queue.
-*/
-
-void ec_master_flush_sdo_requests(ec_master_t *master)
-{
-    del_timer_sync(&master->sdo_timer);
-    complete(&master->sdo_complete);
-    master->sdo_request = NULL;
-    master->sdo_seq_user = 0;
-    master->sdo_seq_master = 0;
-}
-
-/*****************************************************************************/
-
-/**
    Internal locking callback.
 */
 
@@ -416,7 +396,6 @@ void ec_master_leave_idle_mode(ec_master_t *master /**< EtherCAT master */)
     
     ec_master_eoe_stop(master);
     ec_master_thread_stop(master);
-    ec_master_flush_sdo_requests(master);
     ec_master_destroy_slaves(master);
 }
 
@@ -1233,25 +1212,6 @@ void ec_master_eoe_run(unsigned long data /**< master pointer */)
     if (!restart_jiffies) restart_jiffies = 1;
     master->eoe_timer.expires += restart_jiffies;
     add_timer(&master->eoe_timer);
-}
-
-/*****************************************************************************/
-
-/**
-*/
-
-void ec_master_check_sdo(unsigned long data /**< master pointer */)
-{
-    ec_master_t *master = (ec_master_t *) data;
-
-    if (master->sdo_seq_master != master->sdo_seq_user) {
-        master->sdo_timer.expires = jiffies + 10;
-        add_timer(&master->sdo_timer);
-        return;
-    }
-
-    // master has processed the request
-    complete(&master->sdo_complete);
 }
 
 /*****************************************************************************/

@@ -108,12 +108,12 @@ ec_sdo_data_t;
 
 typedef struct
 {
-    struct list_head queue; /**< list item */
+    struct list_head list; /**< list item */
     ec_sdo_t *sdo;
     ec_sdo_entry_t *entry;
     uint8_t *data; /**< pointer to SDO data */
     size_t size; /**< size of SDO data */
-    int return_code;
+    ec_request_state_t state;
 }
 ec_sdo_request_t;
 
