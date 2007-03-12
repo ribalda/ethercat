@@ -107,6 +107,8 @@ int __init ec_init_module(void)
 
     EC_INFO("Master driver %s\n", EC_MASTER_VERSION);
 
+    init_MUTEX(&master_sem);
+
     // init kobject and add it to the hierarchy
     memset(&kobj, 0x00, sizeof(struct kobject));
     kobject_init(&kobj); // no ktype
