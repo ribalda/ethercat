@@ -238,8 +238,10 @@ int __init init_mini_module(void)
     return 0;
 
  out_release_master:
+    printk(KERN_ERR PFX "Releasing master...\n");
     ecrt_release_master(master);
  out_return:
+    printk(KERN_ERR PFX "Failed to load. Aborting.\n");
     return -1;
 }
 
@@ -253,7 +255,7 @@ void __exit cleanup_mini_module(void)
     printk(KERN_INFO PFX "Releasing master...\n");
     ecrt_release_master(master);
 
-    printk(KERN_INFO PFX "Stopped.\n");
+    printk(KERN_INFO PFX "Unloading.\n");
 }
 
 /*****************************************************************************/
