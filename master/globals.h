@@ -183,10 +183,10 @@ ec_code_msg_t;
 
 typedef enum
 {
-    EC_REQ_QUEUED,
-    EC_REQ_BUSY,
-    EC_REQ_COMPLETED,
-    EC_REQ_ERROR
+    EC_REQUEST_QUEUED,
+    EC_REQUEST_IN_PROGRESS,
+    EC_REQUEST_COMPLETE,
+    EC_REQUEST_FAILURE
 }
 ec_request_state_t;
 

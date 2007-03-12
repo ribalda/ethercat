@@ -858,7 +858,7 @@ int ec_slave_schedule_eeprom_writing(ec_eeprom_write_request_t *request)
 {
     ec_master_t *master = request->slave->master;
 
-    request->state = EC_REQ_QUEUED;
+    request->state = EC_REQUEST_QUEUED;
 
     // schedule EEPROM write request.
     down(&master->eeprom_sem);
@@ -867,10 +867,10 @@ int ec_slave_schedule_eeprom_writing(ec_eeprom_write_request_t *request)
 
     // wait for processing through FSM
     if (wait_event_interruptible(master->eeprom_queue,
-                request->state != EC_REQ_QUEUED)) {
+                request->state != EC_REQUEST_QUEUED)) {
         // interrupted by signal
         down(&master->eeprom_sem);
-        if (request->state == EC_REQ_QUEUED) {
+        if (request->state == EC_REQUEST_QUEUED) {
             list_del(&request->list);
             up(&master->eeprom_sem);
             return -EINTR;
@@ -880,9 +880,10 @@ int ec_slave_schedule_eeprom_writing(ec_eeprom_write_request_t *request)
     }
 
     // wait until master FSM has finished processing
-    wait_event(master->eeprom_queue, request->state != EC_REQ_BUSY);
+    wait_event(master->eeprom_queue,
+            request->state != EC_REQUEST_IN_PROGRESS);
 
-    return request->state == EC_REQ_COMPLETED ? 0 : -EIO;
+    return request->state == EC_REQUEST_COMPLETE ? 0 : -EIO;
 }
 
 /*****************************************************************************/

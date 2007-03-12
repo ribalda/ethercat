@@ -285,14 +285,14 @@ int ec_fsm_master_action_process_eeprom(
         request = list_entry(master->eeprom_requests.next,
                 ec_eeprom_write_request_t, list);
         list_del_init(&request->list); // dequeue
-        request->state = EC_REQ_BUSY;
+        request->state = EC_REQUEST_IN_PROGRESS;
         up(&master->eeprom_sem);
 
         slave = request->slave;
         if (slave->online_state == EC_SLAVE_OFFLINE || slave->error_flag) {
             EC_ERR("Discarding EEPROM data, slave %i not ready.\n",
                     slave->ring_position);
-            request->state = EC_REQ_ERROR;
+            request->state = EC_REQUEST_FAILURE;
             wake_up(&master->eeprom_queue);
             continue;
         }
@@ -339,7 +339,7 @@ int ec_fsm_master_action_process_sdo(
         request =
             list_entry(master->sdo_requests.next, ec_sdo_request_t, list);
         list_del_init(&request->list); // dequeue
-        request->state = EC_REQ_BUSY;
+        request->state = EC_REQUEST_IN_PROGRESS;
         up(&master->sdo_sem);
 
         slave = request->sdo->slave;
@@ -348,7 +348,7 @@ int ec_fsm_master_action_process_sdo(
                 slave->error_flag) {
             EC_ERR("Discarding SDO request, slave %i not ready.\n",
                     slave->ring_position);
-            request->state = EC_REQ_ERROR;
+            request->state = EC_REQUEST_FAILURE;
             wake_up(&master->sdo_queue);
             continue;
         }
@@ -789,7 +789,7 @@ void ec_fsm_master_state_write_eeprom(
         slave->error_flag = 1;
         EC_ERR("Failed to write EEPROM data to slave %i.\n",
                 slave->ring_position);
-        request->state = EC_REQ_ERROR;
+        request->state = EC_REQUEST_FAILURE;
         wake_up(&master->eeprom_queue);
         fsm->state = ec_fsm_master_state_error;
         return;
@@ -809,7 +809,7 @@ void ec_fsm_master_state_write_eeprom(
     if (master->debug_level)
         EC_DBG("Finished writing EEPROM data to slave %i.\n",
                 slave->ring_position);
-    request->state = EC_REQ_COMPLETED;
+    request->state = EC_REQUEST_COMPLETE;
     wake_up(&master->eeprom_queue);
 
     // TODO: Evaluate new EEPROM contents!
@@ -867,14 +867,14 @@ void ec_fsm_master_state_sdo_request(ec_fsm_master_t *fsm /**< master state mach
     if (!ec_fsm_coe_success(&fsm->fsm_coe)) {
         EC_DBG("Failed to process SDO request for slave %i.\n",
                 fsm->slave->ring_position);
-        request->state = EC_REQ_ERROR;
+        request->state = EC_REQUEST_FAILURE;
         wake_up(&master->sdo_queue);
         fsm->state = ec_fsm_master_state_error;
         return;
     }
 
     // SDO request finished 
-    request->state = EC_REQ_COMPLETED;
+    request->state = EC_REQUEST_COMPLETE;
     wake_up(&master->sdo_queue);
 
     if (master->debug_level)
