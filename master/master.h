@@ -45,7 +45,6 @@
 #include <linux/sysfs.h>
 #include <linux/timer.h>
 #include <linux/wait.h>
-#include <asm/atomic.h>
 #include <asm/semaphore.h>
 
 #include "device.h"
@@ -93,10 +92,9 @@ ec_stats_t;
 
 struct ec_master
 {
-    atomic_t available; /**< zero, if the master is reserved for RT */
-    unsigned int index; /**< master index */
-
     struct kobject kobj; /**< kobject */
+    unsigned int index; /**< master index */
+    unsigned int reserved; /**< non-zero, if the master is reserved for RT */
 
     ec_device_t main_device; /**< EtherCAT device */
     const uint8_t *main_mac; /**< MAC address of main device */

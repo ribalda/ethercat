@@ -66,6 +66,7 @@ static char *main[MAX_MASTERS]; /**< main devices parameter */
 static char *backup[MAX_MASTERS]; /**< backup devices parameter */
 
 static ec_master_t *masters; /**< master array */
+static struct semaphore master_sem; /**< master semaphore */
 static unsigned int master_count; /**< number of masters */
 static unsigned int backup_count; /**< number of backup devices */
 
@@ -524,7 +525,7 @@ ec_master_t *ecrt_request_master(unsigned int master_index
 {
     ec_master_t *master;
 
-    EC_INFO("Requesting master %i...\n", master_index);
+    EC_INFO("Requesting master %u...\n", master_index);
 
     if (master_index >= master_count) {
         EC_ERR("Invalid master index %u.\n", master_index);
@@ -532,11 +533,14 @@ ec_master_t *ecrt_request_master(unsigned int master_index
     }
     master = &masters[master_index];
 
-    if (!atomic_dec_and_test(&master->available)) {
-        atomic_inc(&master->available);
-        EC_ERR("Master %i is already in use!\n", master_index);
+    down(&master_sem);
+    if (master->reserved) {
+        up(&master_sem);
+        EC_ERR("Master %u is already in use!\n", master_index);
         goto out_return;
     }
+    master->reserved = 1;
+    up(&master_sem);
 
     if (down_interruptible(&master->device_sem)) {
         EC_ERR("Interrupted while waiting for device!\n");
@@ -545,7 +549,7 @@ ec_master_t *ecrt_request_master(unsigned int master_index
 
     if (master->mode != EC_MASTER_MODE_IDLE) {
         up(&master->device_sem);
-        EC_ERR("Master %i still waiting for devices!\n", master_index);
+        EC_ERR("Master %u still waiting for devices!\n", master_index);
         goto out_release;
     }
 
@@ -567,13 +571,13 @@ ec_master_t *ecrt_request_master(unsigned int master_index
         goto out_module_put;
     }
 
-    EC_INFO("Successfully requested master %i.\n", master_index);
+    EC_INFO("Successfully requested master %u.\n", master_index);
     return master;
 
  out_module_put:
     module_put(master->main_device.module);
  out_release:
-    atomic_inc(&master->available);
+    master->reserved = 0;
  out_return:
     return NULL;
 }
@@ -587,19 +591,19 @@ ec_master_t *ecrt_request_master(unsigned int master_index
 
 void ecrt_release_master(ec_master_t *master /**< EtherCAT master */)
 {
-    EC_INFO("Releasing master %i...\n", master->index);
+    EC_INFO("Releasing master %u...\n", master->index);
 
     if (master->mode != EC_MASTER_MODE_OPERATION) {
-        EC_WARN("Master %i was was not requested!\n", master->index);
+        EC_WARN("Master %u was was not requested!\n", master->index);
         return;
     }
 
     ec_master_leave_operation_mode(master);
 
     module_put(master->main_device.module);
-    atomic_inc(&master->available);
+    master->reserved = 0;
 
-    EC_INFO("Released master %i.\n", master->index);
+    EC_INFO("Released master %u.\n", master->index);
 }
 
 /*****************************************************************************/

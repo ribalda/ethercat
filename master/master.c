@@ -108,8 +108,8 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     ec_eoe_t *eoe, *next_eoe;
     unsigned int i;
 
-    atomic_set(&master->available, 1);
     master->index = index;
+    master->reserved = 0;
 
     master->main_mac = main_mac;
     master->backup_mac = backup_mac;
