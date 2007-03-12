@@ -81,6 +81,7 @@ struct ec_fsm_master
     unsigned int retries; /**< retries on datagram timeout. */
 
     void (*state)(ec_fsm_master_t *); /**< master state function */
+    int idle; /**< state machine is in idle phase */
     unsigned int slaves_responding; /**< number of responding slaves */
     unsigned int topology_change_pending; /**< bus topology changed */
     ec_slave_state_t slave_states; /**< states of responding slaves */
@@ -104,7 +105,8 @@ void ec_fsm_master_init(ec_fsm_master_t *, ec_master_t *, ec_datagram_t *);
 void ec_fsm_master_clear(ec_fsm_master_t *);
 
 int ec_fsm_master_exec(ec_fsm_master_t *);
-int ec_fsm_master_running(ec_fsm_master_t *);
+int ec_fsm_master_running(const ec_fsm_master_t *);
+int ec_fsm_master_idle(const ec_fsm_master_t *);
 
 /*****************************************************************************/
 

@@ -74,6 +74,7 @@ void ec_fsm_master_init(ec_fsm_master_t *fsm, /**< master state machine */
     fsm->master = master;
     fsm->datagram = datagram;
     fsm->state = ec_fsm_master_state_start;
+    fsm->idle = 0;
     fsm->slaves_responding = 0;
     fsm->topology_change_pending = 0;
     fsm->slave_states = EC_SLAVE_STATE_UNKNOWN;
@@ -126,13 +127,28 @@ int ec_fsm_master_exec(ec_fsm_master_t *fsm /**< master state machine */)
 /*****************************************************************************/
 
 /**
-   \return false, if state machine has terminated
-*/
+ * \return false, if state machine has terminated
+ */
 
-int ec_fsm_master_running(ec_fsm_master_t *fsm /**< master state machine */)
+int ec_fsm_master_running(
+        const ec_fsm_master_t *fsm /**< master state machine */
+        )
 {
     return fsm->state != ec_fsm_master_state_end
         && fsm->state != ec_fsm_master_state_error;
+}
+
+/*****************************************************************************/
+
+/**
+ * \return true, if the state machine is in an idle phase
+ */
+
+int ec_fsm_master_idle(
+        const ec_fsm_master_t *fsm /**< master state machine */
+        )
+{
+    return fsm->idle;
 }
 
 /******************************************************************************
@@ -146,6 +162,7 @@ int ec_fsm_master_running(ec_fsm_master_t *fsm /**< master state machine */)
 
 void ec_fsm_master_state_start(ec_fsm_master_t *fsm)
 {
+    fsm->idle = 1;
     ec_datagram_brd(fsm->datagram, 0x0130, 2);
     fsm->state = ec_fsm_master_state_broadcast;
 }
@@ -167,8 +184,7 @@ void ec_fsm_master_state_broadcast(ec_fsm_master_t *fsm /**< master state machin
     if (datagram->state == EC_DATAGRAM_TIMED_OUT)
         return; // always retry
 
-    if (datagram->state != EC_DATAGRAM_RECEIVED) { // EC_DATAGRAM_ERROR
-        // link is down
+    if (datagram->state != EC_DATAGRAM_RECEIVED) { // link is down
         fsm->slaves_responding = 0;
         list_for_each_entry(slave, &master->slaves, list) {
             ec_slave_set_online_state(slave, EC_SLAVE_OFFLINE);
@@ -210,6 +226,7 @@ void ec_fsm_master_state_broadcast(ec_fsm_master_t *fsm /**< master state machin
             master->mode == EC_MASTER_MODE_IDLE) {
         fsm->topology_change_pending = 0;
         fsm->tainted = 0;
+        fsm->idle = 0;
 
         ec_master_eoe_stop(master);
         ec_master_destroy_slaves(master);
@@ -359,6 +376,7 @@ int ec_fsm_master_action_process_sdo(
                     slave->ring_position);
 
         // start uploading SDO
+        fsm->idle = 0;
         fsm->slave = slave;
         fsm->sdo_request = request;
         fsm->state = ec_fsm_master_state_sdo_request;
@@ -406,6 +424,7 @@ void ec_fsm_master_action_process_states(ec_fsm_master_t *fsm
             }
         }
 
+        fsm->idle = 0;
         fsm->slave = slave;
         fsm->state = ec_fsm_master_state_configure_slave;
         ec_fsm_slave_start_conf(&fsm->fsm_slave, slave);
@@ -439,6 +458,7 @@ void ec_fsm_master_action_process_states(ec_fsm_master_t *fsm
             slave->sdo_dictionary_fetched = 1;
 
             // start fetching SDO dictionary
+            fsm->idle = 0;
             fsm->slave = slave;
             fsm->state = ec_fsm_master_state_sdodict;
             ec_fsm_coe_dictionary(&fsm->fsm_coe, slave);
@@ -469,6 +489,7 @@ void ec_fsm_master_action_next_slave_state(ec_fsm_master_t *fsm
     // is there another slave to query?
     if (slave->list.next != &master->slaves) {
         // process next slave
+        fsm->idle = 1;
         fsm->slave = list_entry(slave->list.next, ec_slave_t, list);
         ec_datagram_nprd(fsm->datagram, fsm->slave->station_address,
                          0x0130, 2);
@@ -487,6 +508,7 @@ void ec_fsm_master_action_next_slave_state(ec_fsm_master_t *fsm
 
             // At least one slave is offline. validate!
             EC_INFO("Validating bus.\n");
+            fsm->idle = 0;
             fsm->slave = list_entry(master->slaves.next, ec_slave_t, list);
             fsm->state = ec_fsm_master_state_validate_vendor;
             ec_fsm_sii_read(&fsm->fsm_sii, slave, 0x0008, EC_FSM_SII_POSITION);
@@ -533,6 +555,7 @@ void ec_fsm_master_state_read_states(ec_fsm_master_t *fsm /**< master state mach
 
     // check, if new slave state has to be acknowledged
     if (slave->current_state & EC_SLAVE_STATE_ACK_ERR && !slave->error_flag) {
+        fsm->idle = 0;
         fsm->state = ec_fsm_master_state_acknowledge;
         ec_fsm_change_ack(&fsm->fsm_change, slave);
         ec_fsm_change_exec(&fsm->fsm_change);

@@ -836,8 +836,13 @@ static int ec_master_idle_thread(ec_master_t *master)
         master->idle_cycle_time_pos++;
         master->idle_cycle_time_pos %= HZ;
 
-        set_current_state(TASK_INTERRUPTIBLE);
-        schedule_timeout(1);
+        if (ec_fsm_master_idle(&master->fsm)) {
+            set_current_state(TASK_INTERRUPTIBLE);
+            schedule_timeout(1);
+        }
+        else {
+            schedule();
+        }
     }
     
     master->thread_id = 0;
@@ -883,8 +888,13 @@ static int ec_master_operation_thread(ec_master_t *master)
         master->idle_cycle_time_pos %= HZ;
 
 schedule:
-        set_current_state(TASK_INTERRUPTIBLE);
-        schedule_timeout(1);
+        if (ec_fsm_master_idle(&master->fsm)) {
+            set_current_state(TASK_INTERRUPTIBLE);
+            schedule_timeout(1);
+        }
+        else {
+            schedule();
+        }
     }
     
     master->thread_id = 0;
