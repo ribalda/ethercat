@@ -821,6 +821,9 @@ static int ec_master_idle_thread(ec_master_t *master)
             spin_unlock_bh(&master->internal_lock);
         }
 
+        if (master->fsm_datagram.state == EC_DATAGRAM_SENT)
+            goto schedule;
+
         // execute master state machine
         if (ec_fsm_master_exec(&master->fsm)) {
             // queue and send
@@ -836,6 +839,7 @@ static int ec_master_idle_thread(ec_master_t *master)
         master->idle_cycle_time_pos++;
         master->idle_cycle_time_pos %= HZ;
 
+schedule:
         if (ec_fsm_master_idle(&master->fsm)) {
             set_current_state(TASK_INTERRUPTIBLE);
             schedule_timeout(1);
