@@ -216,9 +216,11 @@ int __init init_mod(void)
  out_stop_timer:
     stop_rt_timer();
  out_release_master:
+    printk(KERN_ERR PFX "Releasing master...\n");
     ecrt_release_master(master);
  out_return:
     rt_sem_delete(&master_sem);
+    printk(KERN_ERR PFX "Failed to load. Aborting.\n");
     return -1;
 }
 
@@ -226,14 +228,14 @@ int __init init_mod(void)
 
 void __exit cleanup_mod(void)
 {
-    printk(KERN_INFO PFX "Unloading...\n");
+    printk(KERN_INFO PFX "Stopping...\n");
 
     rt_task_delete(&task);
     stop_rt_timer();
     ecrt_release_master(master);
     rt_sem_delete(&master_sem);
 
-    printk(KERN_INFO PFX "Stopped.\n");
+    printk(KERN_INFO PFX "Unloading.\n");
 }
 
 /*****************************************************************************/
