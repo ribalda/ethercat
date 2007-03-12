@@ -227,6 +227,7 @@ void ec_fsm_master_state_broadcast(ec_fsm_master_t *fsm /**< master state machin
         fsm->topology_change_pending = 0;
         fsm->tainted = 0;
         fsm->idle = 0;
+        fsm->scan_jiffies = jiffies;
 
         ec_master_eoe_stop(master);
         ec_master_destroy_slaves(master);
@@ -744,11 +745,13 @@ void ec_fsm_master_state_rewrite_addresses(ec_fsm_master_t *fsm
 /*****************************************************************************/
 
 /**
-   Master state: SCAN SLAVES.
-   Executes the sub-statemachine for the scanning of a slave.
-*/
+ * Master state: SCAN SLAVES.
+ * Executes the sub-statemachine for the scanning of a slave.
+ */
 
-void ec_fsm_master_state_scan_slaves(ec_fsm_master_t *fsm /**< master state machine */)
+void ec_fsm_master_state_scan_slaves(
+        ec_fsm_master_t *fsm /**< master state machine */
+        )
 {
     ec_master_t *master = fsm->master;
     ec_slave_t *slave = fsm->slave;
@@ -764,7 +767,8 @@ void ec_fsm_master_state_scan_slaves(ec_fsm_master_t *fsm /**< master state mach
         return;
     }
 
-    EC_INFO("Bus scanning completed.\n");
+    EC_INFO("Bus scanning completed in %u ms.\n",
+            (u32) (jiffies - fsm->scan_jiffies) * 1000 / HZ);
 
     // set initial states of all slaves to PREOP to make mailbox
     // communication possible

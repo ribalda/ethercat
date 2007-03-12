@@ -82,6 +82,7 @@ struct ec_fsm_master
 
     void (*state)(ec_fsm_master_t *); /**< master state function */
     int idle; /**< state machine is in idle phase */
+    unsigned long scan_jiffies; /**< beginning of slave scanning */
     unsigned int slaves_responding; /**< number of responding slaves */
     unsigned int topology_change_pending; /**< bus topology changed */
     ec_slave_state_t slave_states; /**< states of responding slaves */
