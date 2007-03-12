@@ -959,18 +959,13 @@ ssize_t ec_master_info(ec_master_t *master, /**< EtherCAT master */
 
     off += sprintf(buffer + off, "\nDevices:\n");
     
-    if (down_interruptible(&master->device_sem)) {
-        EC_ERR("Interrupted while waiting for device!\n");
-        return -EINVAL;
-    }
-    
+    down(&master->device_sem);
     off += sprintf(buffer + off, "  Main: ");
     off += ec_master_device_info(&master->main_device,
             master->main_mac, buffer + off);
     off += sprintf(buffer + off, "  Backup: ");
     off += ec_master_device_info(&master->backup_device,
             master->backup_mac, buffer + off);
-
     up(&master->device_sem);
 
     off += sprintf(buffer + off, "\nTiming (min/avg/max) [us]:\n");

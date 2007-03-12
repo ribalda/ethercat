@@ -403,11 +403,7 @@ int ecdev_offer(struct net_device *net_dev, /**< net_device to offer */
             EC_INFO("Accepting device %s for master %u.\n",
                     str, master->index);
 
-            if (down_interruptible(&master->device_sem)) {
-                EC_ERR("Interrupted while waiting for device semaphore!\n");
-                return -1;
-            }
-
+            down(&master->device_sem);
             if (master->main_device.dev) {
                 EC_ERR("Master %u already has a device attached.\n",
                         master->index);
@@ -542,11 +538,8 @@ ec_master_t *ecrt_request_master(unsigned int master_index
     master->reserved = 1;
     up(&master_sem);
 
-    if (down_interruptible(&master->device_sem)) {
-        EC_ERR("Interrupted while waiting for device!\n");
-        goto out_release;
-    }
-
+    down(&master->device_sem);
+    
     if (master->mode != EC_MASTER_MODE_IDLE) {
         up(&master->device_sem);
         EC_ERR("Master %u still waiting for devices!\n", master_index);
