@@ -221,53 +221,68 @@ void ec_fsm_master_state_broadcast(ec_fsm_master_t *fsm /**< master state machin
         EC_INFO("Slave states: %s.\n", states);
     }
 
-    // topology change in idle mode: clear all slaves and scan the bus
-    if (fsm->topology_change_pending &&
-            master->mode == EC_MASTER_MODE_IDLE) {
-        fsm->topology_change_pending = 0;
-        fsm->tainted = 0;
-        fsm->idle = 0;
-        fsm->scan_jiffies = jiffies;
+    if (fsm->topology_change_pending) {
+        down(&master->scan_sem);
+        if (!master->allow_scan) {
+            up(&master->scan_sem);
+        }
+        else {
+            master->scan_state = EC_REQUEST_IN_PROGRESS;
+            up(&master->scan_sem);
+            
+            // topology change when scan is allowed:
+            // clear all slaves and scan the bus
+            fsm->topology_change_pending = 0;
+            fsm->tainted = 0;
+            fsm->idle = 0;
+            fsm->scan_jiffies = jiffies;
 
-        ec_master_eoe_stop(master);
-        ec_master_destroy_slaves(master);
+            ec_master_eoe_stop(master);
+            ec_master_destroy_slaves(master);
 
-        master->slave_count = datagram->working_counter;
+            master->slave_count = datagram->working_counter;
 
-        if (!master->slave_count) {
-            // no slaves present -> finish state machine.
-            fsm->state = ec_fsm_master_state_end;
+            if (!master->slave_count) {
+                // no slaves present -> finish state machine.
+                master->scan_state = EC_REQUEST_COMPLETE;
+                wake_up_interruptible(&master->scan_queue);
+                fsm->state = ec_fsm_master_state_end;
+                return;
+            }
+
+            // init slaves
+            for (i = 0; i < master->slave_count; i++) {
+                if (!(slave = (ec_slave_t *) kmalloc(sizeof(ec_slave_t),
+                                GFP_ATOMIC))) {
+                    EC_ERR("Failed to allocate slave %i!\n", i);
+                    ec_master_destroy_slaves(master);
+                    master->scan_state = EC_REQUEST_FAILURE;
+                    wake_up_interruptible(&master->scan_queue);
+                    fsm->state = ec_fsm_master_state_error;
+                    return;
+                }
+
+                if (ec_slave_init(slave, master, i, i + 1)) {
+                    // freeing of "slave" already done
+                    ec_master_destroy_slaves(master);
+                    master->scan_state = EC_REQUEST_FAILURE;
+                    wake_up_interruptible(&master->scan_queue);
+                    fsm->state = ec_fsm_master_state_error;
+                    return;
+                }
+
+                list_add_tail(&slave->list, &master->slaves);
+            }
+
+            EC_INFO("Scanning bus.\n");
+
+            // begin scanning of slaves
+            fsm->slave = list_entry(master->slaves.next, ec_slave_t, list);
+            fsm->state = ec_fsm_master_state_scan_slaves;
+            ec_fsm_slave_start_scan(&fsm->fsm_slave, fsm->slave);
+            ec_fsm_slave_exec(&fsm->fsm_slave); // execute immediately
             return;
         }
-
-        // init slaves
-        for (i = 0; i < master->slave_count; i++) {
-            if (!(slave = (ec_slave_t *) kmalloc(sizeof(ec_slave_t),
-                                                 GFP_ATOMIC))) {
-                EC_ERR("Failed to allocate slave %i!\n", i);
-                ec_master_destroy_slaves(master);
-                fsm->state = ec_fsm_master_state_error;
-                return;
-            }
-
-            if (ec_slave_init(slave, master, i, i + 1)) {
-                // freeing of "slave" already done
-                ec_master_destroy_slaves(master);
-                fsm->state = ec_fsm_master_state_error;
-                return;
-            }
-
-            list_add_tail(&slave->list, &master->slaves);
-        }
-
-        EC_INFO("Scanning bus.\n");
-
-        // begin scanning of slaves
-        fsm->slave = list_entry(master->slaves.next, ec_slave_t, list);
-        fsm->state = ec_fsm_master_state_scan_slaves;
-        ec_fsm_slave_start_scan(&fsm->fsm_slave, fsm->slave);
-        ec_fsm_slave_exec(&fsm->fsm_slave); // execute immediately
-        return;
     }
 
     // fetch state from each slave
@@ -392,6 +407,57 @@ int ec_fsm_master_action_process_sdo(
 /*****************************************************************************/
 
 /**
+ */
+
+int ec_fsm_master_action_configure(
+        ec_fsm_master_t *fsm /**< master state machine */
+        )
+{
+    ec_slave_t *slave;
+    ec_master_t *master = fsm->master;
+    char old_state[EC_STATE_STRING_SIZE], new_state[EC_STATE_STRING_SIZE];
+
+    // check if any slaves are not in the state, they're supposed to be
+    // FIXME do not check all slaves in every cycle...
+    list_for_each_entry(slave, &master->slaves, list) {
+        if (slave->error_flag
+                || slave->online_state == EC_SLAVE_OFFLINE
+                || slave->requested_state == EC_SLAVE_STATE_UNKNOWN
+                || (slave->current_state == slave->requested_state
+                    && slave->self_configured)) continue;
+
+        if (master->debug_level) {
+            ec_state_string(slave->current_state, old_state);
+            if (slave->current_state != slave->requested_state) {
+                ec_state_string(slave->requested_state, new_state);
+                EC_DBG("Changing state of slave %i (%s -> %s).\n",
+                        slave->ring_position, old_state, new_state);
+            }
+            else if (!slave->self_configured) {
+                EC_DBG("Reconfiguring slave %i (%s).\n",
+                        slave->ring_position, old_state);
+            }
+        }
+
+        fsm->idle = 0;
+        fsm->slave = slave;
+        fsm->state = ec_fsm_master_state_configure_slave;
+        ec_fsm_slave_start_conf(&fsm->fsm_slave, slave);
+        ec_fsm_slave_exec(&fsm->fsm_slave); // execute immediately
+        return 1;
+    }
+
+    if (fsm->config_error)
+        master->config_state = EC_REQUEST_FAILURE;
+    else
+        master->config_state = EC_REQUEST_COMPLETE;
+    wake_up_interruptible(&master->config_queue);
+    return 0;
+}
+
+/*****************************************************************************/
+
+/**
    Master action: PROC_STATES.
    Processes the slave states.
 */
@@ -402,35 +468,19 @@ void ec_fsm_master_action_process_states(ec_fsm_master_t *fsm
 {
     ec_master_t *master = fsm->master;
     ec_slave_t *slave;
-    char old_state[EC_STATE_STRING_SIZE], new_state[EC_STATE_STRING_SIZE];
 
-    // check if any slaves are not in the state, they're supposed to be
-    list_for_each_entry(slave, &master->slaves, list) {
-        if (slave->error_flag
-            || slave->online_state == EC_SLAVE_OFFLINE
-            || slave->requested_state == EC_SLAVE_STATE_UNKNOWN
-            || (slave->current_state == slave->requested_state
-                && slave->self_configured)) continue;
-
-        if (master->debug_level) {
-            ec_state_string(slave->current_state, old_state);
-            if (slave->current_state != slave->requested_state) {
-                ec_state_string(slave->requested_state, new_state);
-                EC_DBG("Changing state of slave %i (%s -> %s).\n",
-                       slave->ring_position, old_state, new_state);
-            }
-            else if (!slave->self_configured) {
-                EC_DBG("Reconfiguring slave %i (%s).\n",
-                       slave->ring_position, old_state);
-            }
-        }
-
-        fsm->idle = 0;
-        fsm->slave = slave;
-        fsm->state = ec_fsm_master_state_configure_slave;
-        ec_fsm_slave_start_conf(&fsm->fsm_slave, slave);
-        ec_fsm_slave_exec(&fsm->fsm_slave); // execute immediately
-        return;
+    down(&master->config_sem);
+    if (!master->allow_config) {
+        up(&master->config_sem);
+    }
+    else {
+        master->config_state = EC_REQUEST_IN_PROGRESS;
+        fsm->config_error = 0;
+        up(&master->config_sem);
+        
+        // check for pending slave configurations
+        if (ec_fsm_master_action_configure(fsm))
+            return;
     }
 
     // Check, if EoE processing has to be started
@@ -769,13 +819,8 @@ void ec_fsm_master_state_scan_slaves(
 
     EC_INFO("Bus scanning completed in %u ms.\n",
             (u32) (jiffies - fsm->scan_jiffies) * 1000 / HZ);
-
-    // set initial states of all slaves to PREOP to make mailbox
-    // communication possible
-    list_for_each_entry(slave, &master->slaves, list) {
-        if (slave->requested_state == EC_SLAVE_STATE_UNKNOWN)
-            ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
-    }
+    master->scan_state = EC_REQUEST_COMPLETE;
+    wake_up_interruptible(&master->scan_queue);
 
     fsm->state = ec_fsm_master_state_end;
 }
@@ -794,7 +839,14 @@ void ec_fsm_master_state_configure_slave(ec_fsm_master_t *fsm
     if (ec_fsm_slave_exec(&fsm->fsm_slave)) // execute slave's state machine
         return;
 
-    ec_fsm_master_action_process_states(fsm);
+    if (!ec_fsm_slave_success(&fsm->fsm_slave))
+        fsm->config_error = 1;
+
+    // configure next slave, if necessary
+    if (ec_fsm_master_action_configure(fsm))
+        return;
+
+    fsm->state = ec_fsm_master_state_end;
 }
 
 /*****************************************************************************/

@@ -113,7 +113,7 @@ int ec_slave_init(ec_slave_t *slave, /**< EtherCAT slave */
 
     slave->master = master;
 
-    slave->requested_state = EC_SLAVE_STATE_UNKNOWN;
+    slave->requested_state = EC_SLAVE_STATE_PREOP;
     slave->current_state = EC_SLAVE_STATE_UNKNOWN;
     slave->self_configured = 0;
     slave->error_flag = 0;

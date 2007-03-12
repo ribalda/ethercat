@@ -37,6 +37,9 @@ Changes in version 1.3.0:
 * Implemented setting of secondary slave address (alias) via sysfs.
 * Implemented SDO reading in operation mode via sysfs.
 * Removed annoying eeprom_write_enable file. EEPROM writing always enabled.
+* Slave configuration is now done exclusively from the master thread. Removed
+  ec_master_sync_io(). Userspace threads are now waiting for events in the
+  state machine.
 * Master state machine scheduled with timeout if idle, otherwise is executed
   as fast as possible (with schedule()).
 * Removed EtherCAT line comments from 8139too drivers.

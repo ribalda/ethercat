@@ -89,6 +89,7 @@ struct ec_fsm_master
     unsigned int validate; /**< non-zero, if validation to do */
     unsigned int tainted; /**< non-zero, if the current bus topology does
                             not meet the initial conditions */
+    unsigned int config_error; /**< error during slave configuration */
     ec_slave_t *slave; /**< current slave */
     ec_eeprom_write_request_t *eeprom_request; /**< EEPROM write request */
     off_t eeprom_index; /**< index to EEPROM write request data */

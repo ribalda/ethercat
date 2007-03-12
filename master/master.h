@@ -112,6 +112,20 @@ struct ec_master
 
     struct list_head slaves; /**< list of slaves on the bus */
     unsigned int slave_count; /**< number of slaves on the bus */
+    
+    ec_request_state_t scan_state; /**< current scanning state */
+    unsigned int allow_scan; /**< non-zero, if slave scanning is allowed */
+    struct semaphore scan_sem; /**< semaphore protecting the scan_state
+                                 variable and the allow_scan flag */
+    wait_queue_head_t scan_queue; /**< queue for processes that wait for
+                                    slave scanning */
+
+    ec_request_state_t config_state; /**< state of slave configuration */
+    unsigned int allow_config; /**< non-zero, if slave scanning is allowed */
+    struct semaphore config_sem; /**< semaphore protecting the config_state
+                                   variable and the allow_config flag */
+    wait_queue_head_t config_queue; /**< queue for processes that wait for
+                                      slave configuration */
 
     struct list_head datagram_queue; /**< datagram queue */
     uint8_t datagram_index; /**< current datagram index */

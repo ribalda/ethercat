@@ -28,6 +28,10 @@ $Id$
   - SDO write access in sysfs.
   - Configure slave ports to automatically open on link detection.
   - Calculate cycle time of operation state machine.
+  - Locking for serveral slave variables for sysfs access.
+  - Interrupt master state machines state scan for other jobs.
+  - Master state machine, slave configuration: Do not check every slave on
+    a cycle.
 
 * Less important issues:
   - Implement all EtherCAT datagram types.
