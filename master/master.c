@@ -105,7 +105,6 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
         const uint8_t *backup_mac /**< MAC address of backup device */
         )
 {
-    ec_eoe_t *eoe, *next_eoe;
     unsigned int i;
 
     master->index = index;
@@ -182,7 +181,7 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     ec_datagram_init(&master->fsm_datagram);
     if (ec_datagram_prealloc(&master->fsm_datagram, EC_MAX_DATA_SIZE)) {
         EC_ERR("Failed to allocate FSM datagram.\n");
-        goto out_clear_eoe;
+        goto out_clear_backup;
     }
 
     // create state machine object
@@ -197,23 +196,20 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     if (kobject_set_name(&master->kobj, "master%i", index)) {
         EC_ERR("Failed to set master kobject name.\n");
         kobject_put(&master->kobj);
-        return -1;
+        goto out_clear_fsm;
     }
     
     if (kobject_add(&master->kobj)) {
         EC_ERR("Failed to add master kobject.\n");
         kobject_put(&master->kobj);
-        return -1;
+        goto out_clear_fsm;
     }
 
     return 0;
 
-out_clear_eoe:
-    list_for_each_entry_safe(eoe, next_eoe, &master->eoe_handlers, list) {
-        list_del(&eoe->list);
-        ec_eoe_clear(eoe);
-        kfree(eoe);
-    }
+out_clear_fsm:
+    ec_fsm_master_clear(&master->fsm);
+out_clear_backup:
     ec_device_clear(&master->backup_device);
 out_clear_main:
     ec_device_clear(&master->main_device);
