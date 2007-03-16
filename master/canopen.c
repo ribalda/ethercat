@@ -298,36 +298,66 @@ ssize_t ec_sdo_entry_format_data(ec_sdo_entry_t *entry, /**< SDO entry */
     off_t off = 0;
     unsigned int i;
 
-    if (entry->data_type == 0x0002 && entry->bit_length == 8) { // int8
-        off += sprintf(buffer + off, "%i\n", *((int8_t *) request->data));
+    if (entry->data_type == 0x0002) { // int8
+        int8_t value;
+        if (entry->bit_length != 8)
+            goto not_fit;
+        value = EC_READ_S8(request->data);
+        off += sprintf(buffer + off, "%i (0x%02X)\n", value, value);
     }
-    else if (entry->data_type == 0x0003 && entry->bit_length == 16) { // int16
-        off += sprintf(buffer + off, "%i\n", *((int16_t *) request->data));
+    else if (entry->data_type == 0x0003) { // int16
+        int16_t value;
+        if (entry->bit_length != 16)
+            goto not_fit;
+        value = EC_READ_S16(request->data);
+        off += sprintf(buffer + off, "%i (0x%04X)\n", value, value);
     }
-    else if (entry->data_type == 0x0004 && entry->bit_length == 32) { // int32
-        off += sprintf(buffer + off, "%i\n", *((int32_t *) request->data));
+    else if (entry->data_type == 0x0004) { // int32
+        int32_t value;
+        if (entry->bit_length != 32)
+            goto not_fit;
+        value = EC_READ_S16(request->data);
+        off += sprintf(buffer + off, "%i (0x%08X)\n", value, value);
     }
-    else if (entry->data_type == 0x0005 && entry->bit_length == 8) { // uint8
-        off += sprintf(buffer + off, "%i\n", *((uint8_t *) request->data));
+    else if (entry->data_type == 0x0005) { // uint8
+        uint8_t value;
+        if (entry->bit_length != 8)
+            goto not_fit;
+        value = EC_READ_U8(request->data);
+        off += sprintf(buffer + off, "%u (0x%02X)\n", value, value);
     }
-    else if (entry->data_type == 0x0006 && entry->bit_length == 16) { // uint16
-        off += sprintf(buffer + off, "%i\n", *((uint16_t *) request->data));
+    else if (entry->data_type == 0x0006) { // uint16
+        uint16_t value;
+        if (entry->bit_length != 16)
+            goto not_fit;
+        value = EC_READ_U16(request->data); 
+        off += sprintf(buffer + off, "%u (0x%04X)\n", value, value);
     }
-    else if (entry->data_type == 0x0007 && entry->bit_length == 32) { // uint32
-        off += sprintf(buffer + off, "%i\n", *((uint32_t *) request->data));
+    else if (entry->data_type == 0x0007) { // uint32
+        uint32_t value;
+        if (entry->bit_length != 32)
+            goto not_fit;
+        value = EC_READ_U32(request->data);
+        off += sprintf(buffer + off, "%i (0x%08X)\n", value, value);
     }
     else if (entry->data_type == 0x0009) { // string
         off += sprintf(buffer + off, "%s\n", request->data);
     }
     else {
-        off += sprintf(buffer + off,
-                "Unknown data type %04X, bit size %u. Data:\n",
-                entry->data_type, entry->bit_length);
-        for (i = 0; i < request->size; i++)
-            off += sprintf(buffer + off, "%02X (%c)\n",
-                           request->data[i], request->data[i]);
+        off += sprintf(buffer + off, "Unknown data type %04X. Data:\n",
+                entry->data_type);
+        goto raw_data;
     }
+    return off;
 
+not_fit:
+    off += sprintf(buffer + off,
+            "Invalid bit length %u for data type 0x%04X. Data:\n",
+            entry->bit_length, entry->data_type);
+raw_data:
+    for (i = 0; i < request->size; i++)
+        off += sprintf(buffer + off, "%02X (%c)\n",
+                request->data[i], request->data[i]);
     return off;
 }
 
