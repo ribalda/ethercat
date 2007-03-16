@@ -24,7 +24,6 @@ $Id$
   - Calculate expected working counter for domains.
   - Optimize alignment of process data.
   - Evaluate EEPROM contents after writing.
-  - SDO dictionary fetching in operation mode.
   - SDO write access in sysfs.
   - Configure slave ports to automatically open on link detection.
   - Calculate cycle time of operation state machine.
