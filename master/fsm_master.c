@@ -41,6 +41,7 @@
 #include "globals.h"
 #include "master.h"
 #include "mailbox.h"
+#include "ethernet.h"
 #include "fsm_master.h"
 
 /*****************************************************************************/
@@ -238,6 +239,7 @@ void ec_fsm_master_state_broadcast(ec_fsm_master_t *fsm /**< master state machin
             fsm->scan_jiffies = jiffies;
 
             ec_master_eoe_stop(master);
+            ec_master_clear_eoe_handlers(master);
             ec_master_destroy_slaves(master);
 
             master->slave_count = datagram->working_counter;
@@ -482,9 +484,6 @@ void ec_fsm_master_action_process_states(ec_fsm_master_t *fsm
         if (ec_fsm_master_action_configure(fsm))
             return;
     }
-
-    // Check, if EoE processing has to be started
-    ec_master_eoe_start(master);
 
     // Check for a pending SDO request
     if (ec_fsm_master_action_process_sdo(fsm))
@@ -809,6 +808,23 @@ void ec_fsm_master_state_scan_slaves(
     if (ec_fsm_slave_exec(&fsm->fsm_slave)) // execute slave state machine
         return;
 
+    if (slave->sii_mailbox_protocols & EC_MBOX_EOE) {
+        // create EoE handler for this slave
+        ec_eoe_t *eoe;
+        if (!(eoe = kmalloc(sizeof(ec_eoe_t), GFP_KERNEL))) {
+            EC_ERR("Failed to allocate EoE handler memory for slave %u!\n",
+                    slave->ring_position);
+        }
+        else if (ec_eoe_init(eoe, slave)) {
+            EC_ERR("Failed to init EoE handler for slave %u!\n",
+                    slave->ring_position);
+            kfree(eoe);
+        }
+        else {
+            list_add_tail(&eoe->list, &master->eoe_handlers);
+        }
+    }
+
     // another slave to fetch?
     if (slave->list.next != &master->slaves) {
         fsm->slave = list_entry(slave->list.next, ec_slave_t, list);
@@ -819,6 +835,10 @@ void ec_fsm_master_state_scan_slaves(
 
     EC_INFO("Bus scanning completed in %u ms.\n",
             (u32) (jiffies - fsm->scan_jiffies) * 1000 / HZ);
+
+    // check if EoE processing has to be started
+    ec_master_eoe_start(master);
+
     master->scan_state = EC_REQUEST_COMPLETE;
     wake_up_interruptible(&master->scan_queue);
 

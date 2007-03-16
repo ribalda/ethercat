@@ -144,17 +144,18 @@ struct ec_master
     unsigned int idle_cycle_time_pos; /**< time ring buffer position */
 
     struct timer_list eoe_timer; /**< EoE timer object */
+    unsigned int eoe_running; /**< non-zero, if EoE processing is active. */
+    struct list_head eoe_handlers; /**< Ethernet-over-EtherCAT handlers */
     uint32_t eoe_cycle_times[HZ]; /**< EoE cycle times ring */
     unsigned int eoe_cycle_time_pos; /**< time ring buffer position */
-    unsigned int eoe_running; /**< non-zero, if EoE processing is active. */
-    unsigned int eoe_checked; /**< non-zero, if EoE processing is not
-                                 necessary. */
-    struct list_head eoe_handlers; /**< Ethernet-over-EtherCAT handlers */
 
     spinlock_t internal_lock; /**< spinlock used in idle mode */
     int (*request_cb)(void *); /**< lock request callback */
     void (*release_cb)(void *); /**< lock release callback */
     void *cb_data; /**< data parameter of locking callbacks */
+    int (*ext_request_cb)(void *); /**< external lock request callback */
+    void (*ext_release_cb)(void *); /**< externam lock release callback */
+    void *ext_cb_data; /**< data parameter of external locking callbacks */
 
     struct list_head eeprom_requests; /**< EEPROM write requests */
     struct semaphore eeprom_sem; /**< semaphore protecting the list of
@@ -192,6 +193,7 @@ void ec_master_queue_datagram(ec_master_t *, ec_datagram_t *);
 
 // misc.
 void ec_master_output_stats(ec_master_t *);
+void ec_master_clear_eoe_handlers(ec_master_t *);
 void ec_master_destroy_slaves(ec_master_t *);
 
 /*****************************************************************************/

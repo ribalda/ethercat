@@ -6,9 +6,6 @@ $Id$
 
 -------------------------------------------------------------------------------
 
-* Release 1.3:
-  - Dynamic creation of EoE handlers.
-
 * Future features:
   - Interface/buffers for asynchronous domain IO.
   - Distributed clocks.
@@ -31,6 +28,7 @@ $Id$
   - Interrupt master state machines state scan for other jobs.
   - Master state machine, slave configuration: Do not check every slave on
     a cycle.
+  - Fix problem when lock ist not required for EoE sending.
 
 * Less important issues:
   - Implement all EtherCAT datagram types.

@@ -154,7 +154,6 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     master->eoe_timer.function = ec_master_eoe_run;
     master->eoe_timer.data = (unsigned long) master;
     master->eoe_running = 0;
-    master->eoe_checked = 0;
     INIT_LIST_HEAD(&master->eoe_handlers);
 
     master->internal_lock = SPIN_LOCK_UNLOCKED;
@@ -229,40 +228,36 @@ void ec_master_clear(
         ec_master_t *master /**< EtherCAT master */
         )
 {
-    ec_eoe_t *eoe, *next_eoe;
-    ec_datagram_t *datagram, *next_datagram;
-
+    ec_master_clear_eoe_handlers(master);
     ec_master_destroy_slaves(master);
     ec_master_destroy_domains(master);
-
-    // list of EEPROM requests is empty,
-    // otherwise master could not be cleared.
-
-    // dequeue all datagrams
-    list_for_each_entry_safe(datagram, next_datagram,
-                             &master->datagram_queue, queue) {
-        datagram->state = EC_DATAGRAM_ERROR;
-        list_del_init(&datagram->queue);
-    }
-
     ec_fsm_master_clear(&master->fsm);
     ec_datagram_clear(&master->fsm_datagram);
-
-    // clear EoE objects
-    list_for_each_entry_safe(eoe, next_eoe, &master->eoe_handlers, list) {
-        list_del(&eoe->list);
-        ec_eoe_clear(eoe);
-        kfree(eoe);
-    }
-
     ec_device_clear(&master->backup_device);
     ec_device_clear(&master->main_device);
 
     // destroy self
     kobject_del(&master->kobj);
     kobject_put(&master->kobj);
+}
 
-    EC_INFO("Master %u freed.\n", master->index);
+/*****************************************************************************/
+
+/**
+ * Clear and free all EoE handlers.
+ */
+
+void ec_master_clear_eoe_handlers(
+        ec_master_t *master /**< EtherCAT master */
+        )
+{
+    ec_eoe_t *eoe, *next;
+
+    list_for_each_entry_safe(eoe, next, &master->eoe_handlers, list) {
+        list_del(&eoe->list);
+        ec_eoe_clear(eoe);
+        kfree(eoe);
+    }
 }
 
 /*****************************************************************************/
@@ -413,6 +408,7 @@ void ec_master_leave_idle_mode(ec_master_t *master /**< EtherCAT master */)
 int ec_master_enter_operation_mode(ec_master_t *master /**< EtherCAT master */)
 {
     ec_slave_t *slave;
+    ec_eoe_t *eoe;
 
     down(&master->config_sem);
     master->allow_config = 0; // temporarily disable slave configuration
@@ -446,12 +442,20 @@ int ec_master_enter_operation_mode(ec_master_t *master /**< EtherCAT master */)
     list_for_each_entry(slave, &master->slaves, list) {
         ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
     }
+    // ... but set EoE slaves to OP
+    list_for_each_entry(eoe, &master->eoe_handlers, list) {
+        if (ec_eoe_is_open(eoe))
+            ec_slave_request_state(eoe->slave, EC_SLAVE_STATE_OP);
+    }
 
     if (master->debug_level)
         EC_DBG("Switching to operation mode.\n");
 
     master->mode = EC_MASTER_MODE_OPERATION;
     master->pdo_slaves_offline = 0; // assume all PDO slaves online
+    master->ext_request_cb = NULL;
+    master->ext_release_cb = NULL;
+    master->ext_cb_data = NULL;
     return 0;
     
 out_allow:
@@ -470,6 +474,7 @@ void ec_master_leave_operation_mode(ec_master_t *master
                                     /**< EtherCAT master */)
 {
     ec_slave_t *slave;
+    ec_eoe_t *eoe;
 
     master->mode = EC_MASTER_MODE_IDLE;
 
@@ -485,15 +490,20 @@ void ec_master_leave_operation_mode(ec_master_t *master
         ec_slave_reset(slave);
         ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
     }
+    // ... but leave EoE slaves in OP
+    list_for_each_entry(eoe, &master->eoe_handlers, list) {
+        if (ec_eoe_is_open(eoe))
+            ec_slave_request_state(eoe->slave, EC_SLAVE_STATE_OP);
+    }
 
     ec_master_destroy_domains(master);
     
+    if (ec_master_thread_start(master, ec_master_idle_thread))
+        EC_WARN("Failed to restart master thread!\n");
+    ec_master_eoe_start(master);
+
     master->allow_scan = 1;
     master->allow_config = 1;
-
-    if (ec_master_thread_start(master, ec_master_idle_thread)) {
-        EC_WARN("Failed to restart master thread!\n");
-    }
 }
 
 /*****************************************************************************/
@@ -1059,48 +1069,16 @@ ssize_t ec_store_master_attribute(struct kobject *kobj, /**< slave's kobject */
 
 void ec_master_eoe_start(ec_master_t *master /**< EtherCAT master */)
 {
-    ec_eoe_t *eoe;
-    ec_slave_t *slave;
-    unsigned int coupled, found;
-
-    if (master->eoe_running || master->eoe_checked) return;
-
-    master->eoe_checked = 1;
-
-    // decouple all EoE handlers
-    list_for_each_entry(eoe, &master->eoe_handlers, list)
-        eoe->slave = NULL;
-
-    // couple a free EoE handler to every EoE-capable slave
-    coupled = 0;
-    list_for_each_entry(slave, &master->slaves, list) {
-        if (!(slave->sii_mailbox_protocols & EC_MBOX_EOE)) continue;
-
-        found = 0;
-        list_for_each_entry(eoe, &master->eoe_handlers, list) {
-            if (eoe->slave) continue;
-            eoe->slave = slave;
-            found = 1;
-            coupled++;
-            EC_INFO("Coupling device %s to slave %i.\n",
-                    eoe->dev->name, slave->ring_position);
-            if (eoe->opened)
-                ec_slave_request_state(slave, EC_SLAVE_STATE_OP);
-            else
-                ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
-            break;
-        }
-
-        if (!found) {
-            if (master->debug_level)
-                EC_WARN("No EoE handler for slave %i!\n",
-                        slave->ring_position);
-            ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
-        }
+    if (master->eoe_running) {
+        EC_WARN("EoE already running!\n");
+        return;
     }
 
-    if (!coupled) {
-        EC_INFO("No EoE handlers coupled.\n");
+    if (list_empty(&master->eoe_handlers))
+        return;
+
+    if (!master->request_cb || !master->release_cb) {
+        EC_WARN("No EoE processing because of missing locking callbacks!\n");
         return;
     }
 
@@ -1110,7 +1088,6 @@ void ec_master_eoe_start(ec_master_t *master /**< EtherCAT master */)
     // start EoE processing
     master->eoe_timer.expires = jiffies + 10;
     add_timer(&master->eoe_timer);
-    return;
 }
 
 /*****************************************************************************/
@@ -1121,24 +1098,11 @@ void ec_master_eoe_start(ec_master_t *master /**< EtherCAT master */)
 
 void ec_master_eoe_stop(ec_master_t *master /**< EtherCAT master */)
 {
-    ec_eoe_t *eoe;
-
-    master->eoe_checked = 0;
-
     if (!master->eoe_running) return;
 
     EC_INFO("Stopping EoE processing.\n");
 
     del_timer_sync(&master->eoe_timer);
-
-    // decouple all EoE handlers
-    list_for_each_entry(eoe, &master->eoe_handlers, list) {
-        if (eoe->slave) {
-            ec_slave_request_state(eoe->slave, EC_SLAVE_STATE_PREOP);
-            eoe->slave = NULL;
-        }
-    }
-
     master->eoe_running = 0;
 }
 
@@ -1152,14 +1116,18 @@ void ec_master_eoe_run(unsigned long data /**< master pointer */)
 {
     ec_master_t *master = (ec_master_t *) data;
     ec_eoe_t *eoe;
-    unsigned int active = 0;
+    unsigned int none_open = 1;
     cycles_t cycles_start, cycles_end;
     unsigned long restart_jiffies;
 
     list_for_each_entry(eoe, &master->eoe_handlers, list) {
-        if (ec_eoe_active(eoe)) active++;
+        if (ec_eoe_is_open(eoe)) {
+            none_open = 0;
+            break;
+        }
     }
-    if (!active) goto queue_timer;
+    if (none_open)
+        goto queue_timer;
 
     // receive datagrams
     if (master->request_cb(master->cb_data)) goto queue_timer;
@@ -1288,12 +1256,11 @@ void ec_master_prepare(ec_master_t *master /**< EtherCAT master */)
 /**
  * Translates an ASCII coded bus-address to a slave pointer.
  * These are the valid addressing schemes:
- * - \a "X" = the X. slave on the bus (ring position),
- * - \a "X:Y" = the Y. slave after the X. branch (bus coupler),
+ * - \a "X" = the Xth slave on the bus (ring position),
  * - \a "#X" = the slave with alias X,
- * - \a "#X:Y" = the Y. slave after the branch (bus coupler) with alias X.
+ * - \a "#X:Y" = the Yth slave after the slave with alias X.
  * X and Y are zero-based indices and may be provided in hexadecimal or octal
- * notation (with respective prefix).
+ * notation (with appropriate prefix).
  * \return pointer to the slave on success, else NULL
  */
 
@@ -1462,12 +1429,15 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT master */)
 
     master->injection_seq_fsm = 0;
     master->injection_seq_rt = 0;
+    master->request_cb = master->ext_request_cb;
+    master->release_cb = master->ext_release_cb;
+    master->cb_data = master->ext_cb_data;
     
     if (ec_master_thread_start(master, ec_master_operation_thread)) {
         EC_ERR("Failed to start master thread!\n");
         return -1;
     }
-
+    ec_master_eoe_start(master);
     return 0;
 }
 
@@ -1577,9 +1547,9 @@ void ecrt_master_callbacks(ec_master_t *master, /**< EtherCAT master */
                            void *cb_data /**< data parameter */
                            )
 {
-    master->request_cb = request_cb;
-    master->release_cb = release_cb;
-    master->cb_data = cb_data;
+    master->ext_request_cb = request_cb;
+    master->ext_release_cb = release_cb;
+    master->ext_cb_data = cb_data;
 }
 
 /*****************************************************************************/

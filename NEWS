@@ -8,33 +8,34 @@ Changes in version 1.3.0:
 
 * Added testing version of Intel PRO/100 ethernet driver (e100).
 * Added testing version of NVIDIA nForce ethernet driver (forcedeth).
-* Removed "ec_eoeif_count" master module parameter.
+* Removed "ec_eoeif_count" master module parameter. EoE handlers are created
+  dynamically instead.
 * Added "main" and "backup" parameters to master module to hand over the
   MAC addresses of the devices to wait for. This made the ec_device_index
-  parameter of the ethercat drivers obsolete.
+  parameter of the ethernet drivers obsolete.
 * Changed format of sysconfig file and accordingly adjusted functionality
-  of the init script to handle MAC address lists.
+  of the init script to handle the above MAC address lists.
 * Realtime interface changes:
   - ecrt_master_run() became obsolete, because the master state machine is now
     run in process context.
   - Parameter changes in PDO registration functions ecrt_domain_register_pdo()
     and ecrt_register_pdo_range(): Replaced slave_address, vendor ID and
-    product code arguments with a slave pointer, which has to be optained with
+    product code arguments with a slave pointer, which has to be obtained with
     a prior call to ecrt_master_get_slave().
   - ecrt_master_get_slave() got additional parameters to check for vendor ID
     and product code.
   - Removed addressing scheme "X:Y" for ecrt_master_get_slave().
-  - Added ecrt_master_get_status() to get information about the bus.
-  - Added functions to set up an alternative PDO mapping, i. e.
+  - Added ecrt_master_get_status() to get status information about the bus.
+  - Added functions to set up an alternative PDO mapping for a slave, i. e.
     ec_slave_pdo_mapping_clear(), ec_slave_pdo_mapping_add() and
     ec_slave_pdo_mapping().
 * Device interface changes:
   - Replaced ecdev_register() and ecdev_unregister() with ecdev_offer() and
     ecdev_withdraw(), respectively. The device modules now offer all their
-    devices to the master, which decides, which ones to register.
+    devices to the master. The master then decides, which ones to register.
 * All EEPROM write operations from user space are now blocking until
-  writing has finished and return appropriate error codes.
-* Implemented setting of secondary slave address (alias) via sysfs.
+  writing has finished. Appropriate error codes are returned.
+* Implemented setting of the "Secondary slave address" (alias) via sysfs.
 * Implemented SDO reading in operation mode via sysfs.
 * Removed annoying eeprom_write_enable file. EEPROM writing always enabled.
 * Slave configuration is now done exclusively from the master thread. Removed

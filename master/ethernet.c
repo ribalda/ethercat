@@ -83,16 +83,21 @@ struct net_device_stats *ec_eoedev_stats(struct net_device *);
 /*****************************************************************************/
 
 /**
-   EoE constructor.
-   Initializes the EoE handler, creates a net_device and registeres it.
-*/
+ * EoE constructor.
+ * Initializes the EoE handler, creates a net_device and registers it.
+ */
 
-int ec_eoe_init(ec_eoe_t *eoe /**< EoE handler */)
+int ec_eoe_init(
+        ec_eoe_t *eoe, /**< EoE handler */
+        ec_slave_t *slave /**< EtherCAT slave */
+        )
 {
     ec_eoe_t **priv;
     int result, i;
+    char name[20];
 
-    eoe->slave = NULL;
+    eoe->slave = slave;
+
     ec_datagram_init(&eoe->datagram);
     eoe->state = ec_eoe_state_rx_start;
     eoe->opened = 0;
@@ -112,8 +117,9 @@ int ec_eoe_init(ec_eoe_t *eoe /**< EoE handler */)
     eoe->tx_rate = 0;
     eoe->rate_jiffies = 0;
 
-    if (!(eoe->dev =
-          alloc_netdev(sizeof(ec_eoe_t *), "eoe%d", ether_setup))) {
+    sprintf(name, "eoe%u-%u", slave->master->index, slave->ring_position);
+
+    if (!(eoe->dev = alloc_netdev(sizeof(ec_eoe_t *), name, ether_setup))) {
         EC_ERR("Unable to allocate net_device for EoE handler!\n");
         goto out_return;
     }
@@ -147,7 +153,6 @@ int ec_eoe_init(ec_eoe_t *eoe /**< EoE handler */)
 
     // make the last address octet unique
     eoe->dev->dev_addr[ETH_ALEN - 1] = (uint8_t) eoe->dev->ifindex;
-
     return 0;
 
  out_free:
@@ -305,9 +310,9 @@ void ec_eoe_run(ec_eoe_t *eoe /**< EoE handler */)
    \return 1 if the device is "up", 0 if it is "down"
 */
 
-int ec_eoe_active(const ec_eoe_t *eoe /**< EoE handler */)
+int ec_eoe_is_open(const ec_eoe_t *eoe /**< EoE handler */)
 {
-    return eoe->slave && eoe->opened;
+    return eoe->opened;
 }
 
 /******************************************************************************
