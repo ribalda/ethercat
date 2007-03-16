@@ -28,7 +28,7 @@ $Id$
   - Interrupt master state machines state scan for other jobs.
   - Master state machine, slave configuration: Do not check every slave on
     a cycle.
-  - Fix problem when lock ist not required for EoE sending.
+  - Do only execute one EoE handler per EoE cycle.
 
 * Less important issues:
   - Implement all EtherCAT datagram types.

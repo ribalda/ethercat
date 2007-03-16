@@ -1129,11 +1129,11 @@ void ec_master_eoe_run(unsigned long data /**< master pointer */)
     if (none_open)
         goto queue_timer;
 
-    // receive datagrams
     if (master->request_cb(master->cb_data)) goto queue_timer;
+
+    // receive datagrams
     cycles_start = get_cycles();
     ecrt_master_receive(master);
-    master->release_cb(master->cb_data);
 
     // actual EoE processing
     list_for_each_entry(eoe, &master->eoe_handlers, list) {
@@ -1141,9 +1141,9 @@ void ec_master_eoe_run(unsigned long data /**< master pointer */)
     }
 
     // send datagrams
-    if (master->request_cb(master->cb_data)) goto queue_timer;
     ecrt_master_send(master);
     cycles_end = get_cycles();
+
     master->release_cb(master->cb_data);
 
     master->eoe_cycle_times[master->eoe_cycle_time_pos]
