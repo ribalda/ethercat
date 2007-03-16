@@ -161,20 +161,23 @@ void ec_fsm_mapping_next_sync(
         ec_fsm_mapping_t *fsm /**< mapping state machine */
         )
 {
-    do {
+    while (1) {
         if (fsm->dir > EC_DIR_INPUT) {
-            // no more sync managers to configure mappings for
+            // no more directions to configure mappings for
             fsm->state = ec_fsm_mapping_state_end;
             return;
         }
 
         if (!(fsm->sync = ec_slave_get_pdo_sync(fsm->slave, fsm->dir))) {
-            fsm->state = ec_fsm_mapping_state_error;
-            return;
+            // no sync manager found for this direction
+            fsm->dir++;
+            continue;
         }
+
         fsm->dir++;
+        if (fsm->sync->alt_mapping)
+            break;
     }
-    while (!fsm->sync->alt_mapping);
 
     if (fsm->slave->master->debug_level) {
         EC_DBG("Configuring PDO mapping for SM%u of slave %i.\n",

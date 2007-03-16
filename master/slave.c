@@ -1111,10 +1111,8 @@ ec_sync_t *ec_slave_get_pdo_sync(
     sync_index = (unsigned int) dir;
     if (slave->sii_mailbox_protocols) sync_index += 2;
 
-    if (sync_index >= slave->sii_sync_count) {
-        EC_ERR("No appropriate sync manager found.\n");
+    if (sync_index >= slave->sii_sync_count)
         return NULL;
-    }
 
     return &slave->sii_syncs[sync_index];
 }
@@ -1297,7 +1295,7 @@ int ecrt_slave_pdo_mapping_add(
     unsigned int not_found = 1;
 
     if (!(slave->sii_mailbox_protocols & EC_MBOX_COE)) {
-        EC_ERR("Slave %i does not support CoE!\n", slave->ring_position);
+        EC_ERR("Slave %u does not support CoE!\n", slave->ring_position);
         return -1;
     }
 
@@ -1310,7 +1308,7 @@ int ecrt_slave_pdo_mapping_add(
     }
 
     if (not_found) {
-        EC_ERR("Slave %i does not provide PDO %04X!\n",
+        EC_ERR("Slave %u does not provide PDO 0x%04X!\n",
                 slave->ring_position, pdo_index);
         return -1;
     }
@@ -1323,8 +1321,11 @@ int ecrt_slave_pdo_mapping_add(
     }
 
 
-    if (!(sync = ec_slave_get_pdo_sync(slave, dir)))
+    if (!(sync = ec_slave_get_pdo_sync(slave, dir))) {
+        EC_ERR("Failed to obtain sync manager for PDO mapping of slave %u!\n",
+                slave->ring_position);
         return -1;
+    }
 
     return ec_sync_add_pdo(sync, pdo);
 }
