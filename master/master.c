@@ -453,6 +453,7 @@ int ec_master_enter_operation_mode(ec_master_t *master /**< EtherCAT master */)
 
     master->mode = EC_MASTER_MODE_OPERATION;
     master->pdo_slaves_offline = 0; // assume all PDO slaves online
+    master->frames_timed_out = 0;
     master->ext_request_cb = NULL;
     master->ext_release_cb = NULL;
     master->ext_cb_data = NULL;
@@ -1485,6 +1486,7 @@ void ecrt_master_receive(ec_master_t *master /**< EtherCAT master */)
 {
     ec_datagram_t *datagram, *next;
     cycles_t cycles_timeout;
+    unsigned int frames_timed_out = 0;
 
     // receive datagrams
     ec_device_poll(&master->main_device);
@@ -1497,12 +1499,15 @@ void ecrt_master_receive(ec_master_t *master /**< EtherCAT master */)
 
         if (master->main_device.cycles_poll - datagram->cycles_sent
             > cycles_timeout) {
+            frames_timed_out = 1;
             list_del_init(&datagram->queue);
             datagram->state = EC_DATAGRAM_TIMED_OUT;
             master->stats.timeouts++;
             ec_master_output_stats(master);
         }
     }
+
+    master->frames_timed_out = frames_timed_out;
 }
 
 /*****************************************************************************/
@@ -1563,7 +1568,8 @@ void ecrt_master_get_status(const ec_master_t *master, /**< EtherCAT master */
         )
 {
     status->bus_status =
-        master->pdo_slaves_offline ? EC_BUS_FAILURE : EC_BUS_OK;
+        (master->pdo_slaves_offline || master->frames_timed_out)
+        ? EC_BUS_FAILURE : EC_BUS_OK;
     status->bus_tainted = master->fsm.tainted; 
     status->slaves_responding = master->fsm.slaves_responding;
 }

@@ -137,6 +137,8 @@ struct ec_master
     unsigned int pdo_slaves_offline; /** number of slaves, for which PDOs
                                        were registered and that are offline
                                        (used for bus status) */
+    unsigned int frames_timed_out; /**< there were frame timeouts in the last
+                                     call to ecrt_master_receive() */
 
     int thread_id; /**< master thread PID */
     struct completion thread_exit; /**< thread completion object */
