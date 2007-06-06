@@ -43,6 +43,7 @@ Changes in version 1.3.0:
   state machine.
 * Master state machine scheduled with timeout if idle, otherwise is executed
   as fast as possible (with schedule()).
+* Added dummy module for simulation purpuses.
 * Removed EtherCAT line comments from 8139too drivers.
 
 -------------------------------------------------------------------------------

@@ -347,6 +347,7 @@ AC_CONFIG_FILES([
         examples/mini/Makefile
         examples/rtai/Makefile
         examples/msr/Makefile
+        dummy/Makefile
 ])
 AC_OUTPUT
 

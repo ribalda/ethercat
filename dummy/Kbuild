@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 #
-#  $Id$
+#  $Id: Kbuild 844 2007-03-08 18:15:25Z fp $
 #
 #  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
 #
@@ -31,6 +31,18 @@
 #
 #------------------------------------------------------------------------------
 
-obj-m := master/ devices/ dummy/
+include $(src)/../config.kbuild
+
+obj-m := ec_dummy.o
+
+ec_dummy-objs := module.o master.o slave.o domain.o
+
+REV := $(shell if test -s $(src)/../svnrevision; then \
+		cat $(src)/../svnrevision; \
+	else \
+		svnversion $(src) 2>/dev/null || echo "unknown"; \
+	fi)
+
+CFLAGS_dummy.o := -DSVNREV=$(REV)
 
 #------------------------------------------------------------------------------

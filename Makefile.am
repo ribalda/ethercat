@@ -31,9 +31,9 @@
 #
 #------------------------------------------------------------------------------
 
-SUBDIRS = master devices script include
+SUBDIRS = master devices script include dummy
 
-DIST_SUBDIRS = master devices script include examples
+DIST_SUBDIRS = master devices script include examples dummy
 
 EXTRA_DIST = \
 	Doxyfile \
@@ -47,6 +47,7 @@ modules:
 modules_install:
 	$(MAKE) -C master modules_install
 	$(MAKE) -C devices modules_install
+	$(MAKE) -C dummy modules_install
 
 clean-local:
 	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" clean

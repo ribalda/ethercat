@@ -31,6 +31,21 @@
 #
 #------------------------------------------------------------------------------
 
-obj-m := master/ devices/ dummy/
+EXTRA_DIST = \
+	Kbuild \
+	module.c \
+    master.c \
+    slave.c \
+    domain.c
+
+modules:
+	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_top_srcdir@" modules
+
+modules_install:
+	mkdir -p $(DESTDIR)$(LINUX_MOD_PATH)
+	cp $(srcdir)/ec_dummy.ko $(DESTDIR)$(LINUX_MOD_PATH)
+
+clean-local:
+	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" clean
 
 #------------------------------------------------------------------------------
