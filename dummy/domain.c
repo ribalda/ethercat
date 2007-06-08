@@ -42,9 +42,7 @@
 #include "../master/domain.h"
 #include "../master/master.h"
 
-/*****************************************************************************/
-
-uint8_t dummy_data[PAGE_SIZE];
+uint8_t *get_dummy_data(void);
 
 /*****************************************************************************/
 
@@ -58,7 +56,7 @@ int ecrt_domain_register_pdo(
         void **data_ptr /**< address of the process data pointer */
         )
 {
-	*data_ptr = dummy_data;
+	*data_ptr = get_dummy_data();
 	return 0;
 }
 
@@ -79,7 +77,7 @@ int ecrt_domain_register_pdo_list(
     const ec_pdo_reg_t *reg;
     
     for (reg = pdo_regs; reg->slave_address; reg++) {
-		*(reg->data_ptr) = dummy_data;
+		*(reg->data_ptr) = get_dummy_data();
     }
 
     return 0;
@@ -102,7 +100,7 @@ int ecrt_domain_register_pdo_range(
         void **data_ptr /**< address of the process data pointer */
         )
 {
-	*data_ptr = dummy_data;
+	*data_ptr = get_dummy_data();
     return 0;
 }
 

@@ -65,6 +65,23 @@ MODULE_VERSION(EC_MASTER_VERSION);
 
 /*****************************************************************************/
 
+#define DUMMY_SIZE (PAGE_SIZE * 8)
+
+uint8_t dummy_data[DUMMY_SIZE];
+off_t dummy_off = 0;
+
+uint8_t *get_dummy_data(void)
+{
+    off_t cur = dummy_off;
+
+    dummy_off += 64;
+    dummy_off %= DUMMY_SIZE;
+
+    return dummy_data + cur;
+}
+
+/*****************************************************************************/
+
 /**
  * Module initialization.
  * Initializes \a ec_master_count masters.
@@ -74,6 +91,9 @@ MODULE_VERSION(EC_MASTER_VERSION);
 int __init ec_init_module(void)
 {
     EC_INFO("Master DUMMY driver %s\n", EC_MASTER_VERSION);
+
+    memset(dummy_data, 0x00, DUMMY_SIZE);
+
     return 0;
 }
 

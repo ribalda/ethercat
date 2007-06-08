@@ -49,7 +49,8 @@
 
 ec_domain_t *ecrt_master_create_domain(ec_master_t *master)
 {
-    return (ec_domain_t *) 1;
+    static unsigned int domain = 1;
+    return (ec_domain_t *) domain++;
 }
 
 /*****************************************************************************/
@@ -80,7 +81,8 @@ ec_slave_t *ecrt_master_get_slave(
         uint32_t p
         )
 {
-    return (ec_slave_t *) 1;
+    static unsigned int slave = 1;
+    return (ec_slave_t *) slave++;
 }
 
 /*****************************************************************************/
