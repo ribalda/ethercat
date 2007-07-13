@@ -233,6 +233,58 @@ if test "x${enableforcedeth}" = "x1"; then
 fi
 
 #------------------------------------------------------------------------------
+# e1000 driver
+#------------------------------------------------------------------------------
+
+AC_ARG_ENABLE([e1000],
+    AS_HELP_STRING([--enable-e1000],
+                   [Enable e1000 driver]),
+    [
+        case "${enableval}" in
+            yes) enablee1000=1
+                ;;
+            no) enablee1000=0
+                ;;
+            *) AC_MSG_ERROR([Invalid value for --enable-e1000])
+                ;;
+        esac
+    ],
+    [enablee1000=0] # disabled by default
+)
+
+AM_CONDITIONAL(ENABLE_E1000, test "x$enablee1000" = "x1")
+
+AC_ARG_WITH([e1000-kernel],
+    AC_HELP_STRING(
+        [--with-e1000-kernel=<X.Y.Z>],
+        [e1000 kernel (only if differing)]
+    ),
+    [
+        kernele1000=[$withval]
+    ],
+    [
+        kernele1000=$linuxversion
+    ]
+)
+
+if test "x${enablee1000}" = "x1"; then
+    AC_MSG_CHECKING([for kernel for e1000 driver])
+
+    kernels=`ls -1 devices/e1000/ | grep -oE "^e1000_main-.*" | cut -d "-" -f 2 | uniq`
+    found=0
+    for k in $kernels; do
+        if test "$kernele1000" = "$k"; then
+            found=1
+        fi
+    done
+    if test $found -ne 1; then
+        AC_MSG_ERROR([kernel $kernele1000 not available for e1000 driver!])
+    fi
+
+    AC_MSG_RESULT([$kernele1000])
+fi
+
+#------------------------------------------------------------------------------
 # RTAI path (optional)
 #------------------------------------------------------------------------------
 
@@ -329,6 +381,8 @@ EC_ENABLE_E100 := ${enablee100}
 EC_E100_KERNEL := ${kernele100}
 EC_ENABLE_FORCEDETH := ${enableforcedeth}
 EC_FORCEDETH_KERNEL := ${kernelforcedeth}
+EC_ENABLE_E1000 := ${enablee1000}
+EC_E1000_KERNEL := ${kernele1000}
 EC_RTAI_DIR := "${rtaidir}"
 EC_MSR_DIR := "${msrdir}"
 EOF
@@ -339,6 +393,7 @@ AC_CONFIG_FILES([
         Makefile
         master/Makefile
         devices/Makefile
+        devices/e1000/Makefile
         script/Makefile
         script/init.d/Makefile
         script/sysconfig/Makefile

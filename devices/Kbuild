@@ -60,4 +60,8 @@ ifeq ($(EC_ENABLE_FORCEDETH),1)
 	CFLAGS_$(EC_FORCEDETH_OBJ) = -DSVNREV=$(REV)
 endif
 
+ifeq ($(EC_ENABLE_E1000),1)
+    obj-m += e1000/
+endif
+
 #------------------------------------------------------------------------------

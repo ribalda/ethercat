@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 #
-#  $Id: Makefile 545 2006-09-19 13:28:40Z fp $
+#  $Id$
 #
 #  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
 #
@@ -31,44 +31,28 @@
 #
 #------------------------------------------------------------------------------
 
-SUBDIRS = e1000
-
-DIST_SUBDIRS = e1000
-
 EXTRA_DIST = \
 	Kbuild \
-	ecdev.h \
-	8139too-2.6.13-ethercat.c \
-	8139too-2.6.13-orig.c \
-	8139too-2.6.17-ethercat.c \
-	8139too-2.6.17-orig.c \
-	8139too-2.6.18-ethercat.c \
-	8139too-2.6.18-orig.c \
-	8139too-2.6.19-ethercat.c \
-	8139too-2.6.19-orig.c \
-	e100-2.6.18-ethercat.c \
-	e100-2.6.18-orig.c \
-	forcedeth-2.6.17-ethercat.c \
-	forcedeth-2.6.17-orig.c \
-	forcedeth-2.6.19-ethercat.c \
-	forcedeth-2.6.19-orig.c
+	e1000_ethtool-2.6.18-ethercat.c \
+	e1000_ethtool-2.6.18-orig.c \
+	e1000.h \
+	e1000_hw-2.6.18-ethercat.c \
+	e1000_hw-2.6.18-orig.c \
+	e1000_hw.h \
+	e1000_main-2.6.18-ethercat.c \
+	e1000_main-2.6.18-orig.c \
+	e1000_osdep.h \
+	e1000_param-2.6.18-ethercat.c \
+	e1000_param-2.6.18-orig.c \
+	LICENSE
 
 modules:
 	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_top_srcdir@" modules
 
 modules_install:
 	mkdir -p $(DESTDIR)$(LINUX_MOD_PATH)
-if ENABLE_8139TOO
-	cp $(srcdir)/ec_8139too.ko $(DESTDIR)$(LINUX_MOD_PATH)
-endif
-if ENABLE_E100
-	cp $(srcdir)/ec_e100.ko $(DESTDIR)$(LINUX_MOD_PATH)
-endif
-if ENABLE_FORCEDETH
-	cp $(srcdir)/ec_forcedeth.ko $(DESTDIR)$(LINUX_MOD_PATH)
-endif
 if ENABLE_E1000
-	$(MAKE) -C e1000 modules_install
+	cp $(srcdir)/ec_e1000.ko $(DESTDIR)$(LINUX_MOD_PATH)
 endif
 
 clean-local:
