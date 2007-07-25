@@ -146,7 +146,8 @@ e1000_get_settings(struct net_device *netdev, struct ethtool_cmd *ecmd)
 			ecmd->transceiver = XCVR_EXTERNAL;
 	}
 
-	if (netif_carrier_ok(adapter->netdev)) {
+	if ((adapter->ecdev && ecdev_get_link(adapter->ecdev))
+            || (!adapter->ecdev && netif_carrier_ok(adapter->netdev))) {
 
 		e1000_get_speed_and_duplex(hw, &adapter->link_speed,
 		                                   &adapter->link_duplex);
@@ -204,7 +205,7 @@ e1000_set_settings(struct net_device *netdev, struct ethtool_cmd *ecmd)
 
 	/* reset the link */
 
-	if (netif_running(adapter->netdev))
+	if (adapter->ecdev || netif_running(adapter->netdev))
 		e1000_reinit_locked(adapter);
 	else
 		e1000_reset(adapter);
@@ -253,7 +254,7 @@ e1000_set_pauseparam(struct net_device *netdev,
 	hw->original_fc = hw->fc;
 
 	if (adapter->fc_autoneg == AUTONEG_ENABLE) {
-		if (netif_running(adapter->netdev))
+		if (adapter->ecdev || netif_running(adapter->netdev))
 			e1000_reinit_locked(adapter);
 		else
 			e1000_reset(adapter);
@@ -277,7 +278,7 @@ e1000_set_rx_csum(struct net_device *netdev, uint32_t data)
 	struct e1000_adapter *adapter = netdev_priv(netdev);
 	adapter->rx_csum = data;
 
-	if (netif_running(netdev))
+	if (adapter->ecdev || netif_running(netdev))
 		e1000_reinit_locked(adapter);
 	else
 		e1000_reset(adapter);
@@ -622,6 +623,9 @@ e1000_set_ringparam(struct net_device *netdev,
 	struct e1000_tx_ring *txdr, *tx_old, *tx_new;
 	struct e1000_rx_ring *rxdr, *rx_old, *rx_new;
 	int i, err, tx_ring_size, rx_ring_size;
+
+    if (adapter->ecdev)
+        return -EBUSY;
 
 	if ((ring->rx_mini_pending) || (ring->rx_jumbo_pending))
 		return -EINVAL;
@@ -1595,7 +1599,7 @@ e1000_diag_test(struct net_device *netdev,
 		   struct ethtool_test *eth_test, uint64_t *data)
 {
 	struct e1000_adapter *adapter = netdev_priv(netdev);
-	boolean_t if_running = netif_running(netdev);
+	boolean_t if_running = adapter->ecdev || netif_running(netdev);
 
 	set_bit(__E1000_DRIVER_TESTING, &adapter->flags);
 	if (eth_test->flags == ETH_TEST_FL_OFFLINE) {
@@ -1838,7 +1842,7 @@ static int
 e1000_nway_reset(struct net_device *netdev)
 {
 	struct e1000_adapter *adapter = netdev_priv(netdev);
-	if (netif_running(netdev))
+	if (adapter->ecdev || netif_running(netdev))
 		e1000_reinit_locked(adapter);
 	return 0;
 }
