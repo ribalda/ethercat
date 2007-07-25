@@ -76,8 +76,8 @@ void ecdev_withdraw(ec_device_t *device);
 int ecdev_open(ec_device_t *device);
 void ecdev_close(ec_device_t *device);
 void ecdev_receive(ec_device_t *device, const void *data, size_t size);
-void ecdev_link_state(ec_device_t *device, uint8_t newstate);
-uint8_t ecdev_link_up(ec_device_t *device);
+void ecdev_set_link(ec_device_t *device, uint8_t state);
+uint8_t ecdev_get_link(ec_device_t *device);
 
 /*****************************************************************************/
 

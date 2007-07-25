@@ -301,9 +301,9 @@ void ecdev_receive(ec_device_t *device, /**< EtherCAT device */
    \ingroup DeviceInterface
 */
 
-void ecdev_link_state(ec_device_t *device, /**< EtherCAT device */
-                      uint8_t state /**< new link state */
-                      )
+void ecdev_set_link(ec_device_t *device, /**< EtherCAT device */
+        uint8_t state /**< new link state */
+        )
 {
     if (unlikely(!device)) {
         EC_WARN("ecdev_link_state: no device!\n");
@@ -318,10 +318,28 @@ void ecdev_link_state(ec_device_t *device, /**< EtherCAT device */
 
 /*****************************************************************************/
 
+/**
+   Reads the link state.
+   \ingroup DeviceInterface
+*/
+
+uint8_t ecdev_get_link(ec_device_t *device /**< EtherCAT device */)
+{
+    if (unlikely(!device)) {
+        EC_WARN("ecdev_link_state: no device!\n");
+        return 0;
+    }
+
+    return device->link_state;
+}
+
+/*****************************************************************************/
+
 /** \cond */
 
 EXPORT_SYMBOL(ecdev_receive);
-EXPORT_SYMBOL(ecdev_link_state);
+EXPORT_SYMBOL(ecdev_get_link);
+EXPORT_SYMBOL(ecdev_set_link);
 
 /** \endcond */
 

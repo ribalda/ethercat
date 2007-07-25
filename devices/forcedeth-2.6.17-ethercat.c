@@ -2053,7 +2053,7 @@ static void nv_linkchange(struct net_device *dev)
 
     if (np->ecdev) {
         int link = nv_update_linkspeed(dev);
-        ecdev_link_state(np->ecdev, link);
+        ecdev_set_link(np->ecdev, link);
         return;
     }
 
@@ -2985,7 +2985,7 @@ static int nv_open(struct net_device *dev)
 	nv_start_tx(dev);
 
 	if (np->ecdev) {
-		ecdev_link_state(np->ecdev, ret);
+		ecdev_set_link(np->ecdev, ret);
 	}
 	else {
 		netif_start_queue(dev);

@@ -1634,7 +1634,7 @@ static void e100_watchdog(unsigned long data)
 	/* mii library handles link maintenance tasks */
 
     if (nic->ethercat) {
-		ecdev_link_state(nic->ecdev, mii_link_ok(&nic->mii) ? 1 : 0);
+		ecdev_set_link(nic->ecdev, mii_link_ok(&nic->mii) ? 1 : 0);
         goto finish;
     }
 
