@@ -31,7 +31,7 @@
  * Shared functions for accessing and configuring the MAC
  */
 
-#include "e1000_hw.h"
+#include "e1000_hw-2.6.18-ethercat.h"
 
 static int32_t e1000_set_phy_type(struct e1000_hw *hw);
 static void e1000_phy_init_script(struct e1000_hw *hw);

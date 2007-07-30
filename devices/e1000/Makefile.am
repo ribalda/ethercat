@@ -35,13 +35,16 @@ EXTRA_DIST = \
 	Kbuild \
 	e1000_ethtool-2.6.18-ethercat.c \
 	e1000_ethtool-2.6.18-orig.c \
-	e1000.h \
+	e1000_2.6.18-ethercat.h \
+	e1000_2.6.18-orig.h \
 	e1000_hw-2.6.18-ethercat.c \
 	e1000_hw-2.6.18-orig.c \
-	e1000_hw.h \
+	e1000_hw-2.6.18-ethercat.h \
+	e1000_hw-2.6.18-orig.h \
 	e1000_main-2.6.18-ethercat.c \
 	e1000_main-2.6.18-orig.c \
-	e1000_osdep.h \
+	e1000_osdep-2.6.18-ethercat.h \
+	e1000_osdep-2.6.18-orig.h \
 	e1000_param-2.6.18-ethercat.c \
 	e1000_param-2.6.18-orig.c \
 	LICENSE

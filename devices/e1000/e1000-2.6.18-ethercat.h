@@ -83,7 +83,7 @@
 
 struct e1000_adapter;
 
-#include "e1000_hw.h"
+#include "e1000_hw-2.6.18-ethercat.h"
 
 #ifdef DBG
 #define E1000_DBG(args...) printk(KERN_DEBUG "e1000: " args)
