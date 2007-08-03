@@ -57,7 +57,7 @@ EXTRA_DIST = \
 	xmldev.c xmldev.h
 
 modules:
-	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_top_srcdir@" modules
+	$(MAKE) -C "@abs_top_srcdir@" modules
 
 modules_install:
 	mkdir -p $(DESTDIR)$(LINUX_MOD_PATH)
