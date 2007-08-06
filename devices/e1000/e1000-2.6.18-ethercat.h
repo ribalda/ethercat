@@ -347,6 +347,7 @@ struct e1000_adapter {
 	unsigned long flags;
 
 	ec_device_t *ecdev;
+	unsigned long ec_watchdog_jiffies;
 };
 
 enum e1000_state_t {
