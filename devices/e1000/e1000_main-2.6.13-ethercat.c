@@ -1868,7 +1868,7 @@ e1000_watchdog_task(struct e1000_adapter *adapter)
 	e1000_update_adaptive(&adapter->hw);
 
 	if (!adapter->ecdev && !netif_carrier_ok(netdev)) {
-		if (E1000_DESC_UNUSED(txdr) + 1 < txdr->count) {
+		if(E1000_DESC_UNUSED(txdr) + 1 < txdr->count) {
 			/* We've lost link, so the controller stops DMA,
 			 * but we've got queued Tx work that's never going
 			 * to get done, so reset controller to flush Tx.
