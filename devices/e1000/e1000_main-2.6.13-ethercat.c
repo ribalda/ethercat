@@ -245,6 +245,8 @@ module_exit(e1000_exit_module);
 static inline void
 e1000_irq_disable(struct e1000_adapter *adapter)
 {
+    if (adapter->ecdev)
+        return;
 	atomic_inc(&adapter->irq_sem);
 	E1000_WRITE_REG(&adapter->hw, IMC, ~0);
 	E1000_WRITE_FLUSH(&adapter->hw);
@@ -259,7 +261,9 @@ e1000_irq_disable(struct e1000_adapter *adapter)
 static inline void
 e1000_irq_enable(struct e1000_adapter *adapter)
 {
-	if(!adapter->ecdev && likely(atomic_dec_and_test(&adapter->irq_sem))) {
+    if (adapter->ecdev)
+        return;
+	if(likely(atomic_dec_and_test(&adapter->irq_sem))) {
 		E1000_WRITE_REG(&adapter->hw, IMS, IMS_ENABLE_MASK);
 		E1000_WRITE_FLUSH(&adapter->hw);
 	}
@@ -322,20 +326,22 @@ e1000_up(struct e1000_adapter *adapter)
 		}
 	}
 #endif
-	if((err = request_irq(adapter->pdev->irq, &e1000_intr,
-		              SA_SHIRQ | SA_SAMPLE_RANDOM,
-		              netdev->name, netdev))) {
-		DPRINTK(PROBE, ERR,
-		    "Unable to allocate interrupt Error: %d\n", err);
-		return err;
-	}
+    if (!adapter->ecdev) {
+        if((err = request_irq(adapter->pdev->irq, &e1000_intr,
+                        SA_SHIRQ | SA_SAMPLE_RANDOM,
+                        netdev->name, netdev))) {
+            DPRINTK(PROBE, ERR,
+                    "Unable to allocate interrupt Error: %d\n", err);
+            return err;
+        }
 
-	mod_timer(&adapter->watchdog_timer, jiffies);
+        mod_timer(&adapter->watchdog_timer, jiffies);
 
 #ifdef CONFIG_E1000_NAPI
-	if (!adapter->ecdev) netif_poll_enable(netdev);
+        netif_poll_enable(netdev);
 #endif
-	e1000_irq_enable(adapter);
+        e1000_irq_enable(adapter);
+    }
 
 	return 0;
 }
@@ -345,20 +351,24 @@ e1000_down(struct e1000_adapter *adapter)
 {
 	struct net_device *netdev = adapter->netdev;
 
-	e1000_irq_disable(adapter);
-	free_irq(adapter->pdev->irq, netdev);
+    if (!adapter->ecdev) {
+        e1000_irq_disable(adapter);
+        free_irq(adapter->pdev->irq, netdev);
+    }
 #ifdef CONFIG_PCI_MSI
 	if(adapter->hw.mac_type > e1000_82547_rev_2 &&
 	   adapter->have_msi == TRUE)
 		pci_disable_msi(adapter->pdev);
 #endif
-	del_timer_sync(&adapter->tx_fifo_stall_timer);
-	del_timer_sync(&adapter->watchdog_timer);
-	del_timer_sync(&adapter->phy_info_timer);
+    if (!adapter->ecdev) {
+        del_timer_sync(&adapter->tx_fifo_stall_timer);
+        del_timer_sync(&adapter->watchdog_timer);
+        del_timer_sync(&adapter->phy_info_timer);
 
 #ifdef CONFIG_E1000_NAPI
-	if (!adapter->ecdev) netif_poll_disable(netdev);
+        netif_poll_disable(netdev);
 #endif
+    }
 	adapter->link_speed = 0;
 	adapter->link_duplex = 0;
 	if (!adapter->ecdev) {
@@ -1422,6 +1432,9 @@ static inline void
 e1000_unmap_and_free_tx_resource(struct e1000_adapter *adapter,
 			struct e1000_buffer *buffer_info)
 {
+	if (adapter->ecdev)
+		return;
+
 	if(buffer_info->dma) {
 		pci_unmap_page(adapter->pdev,
 				buffer_info->dma,
@@ -1653,12 +1666,13 @@ e1000_set_multi(struct net_device *netdev)
 	struct e1000_adapter *adapter = netdev_priv(netdev);
 	struct e1000_hw *hw = &adapter->hw;
 	struct dev_mc_list *mc_ptr;
-	unsigned long flags;
+	unsigned long flags = 0;
 	uint32_t rctl;
 	uint32_t hash_value;
 	int i;
 
-	spin_lock_irqsave(&adapter->tx_lock, flags);
+    if (!adapter->ecdev)
+        spin_lock_irqsave(&adapter->tx_lock, flags);
 
 	/* Check for Promiscuous and All Multicast modes */
 
@@ -1711,7 +1725,8 @@ e1000_set_multi(struct net_device *netdev)
 	if(hw->mac_type == e1000_82542_rev2_0)
 		e1000_leave_82542_rst(adapter);
 
-	spin_unlock_irqrestore(&adapter->tx_lock, flags);
+    if (!adapter->ecdev)
+        spin_unlock_irqrestore(&adapter->tx_lock, flags);
 }
 
 /* Need to wait a few seconds after link up to get diagnostic information from
@@ -1816,8 +1831,8 @@ e1000_watchdog_task(struct e1000_adapter *adapter)
 			} else {
 				netif_carrier_on(netdev);
 				netif_wake_queue(netdev);
+                mod_timer(&adapter->phy_info_timer, jiffies + 2 * HZ);
 			}
-			mod_timer(&adapter->phy_info_timer, jiffies + 2 * HZ);
 			adapter->smartspeed = 0;
 		}
 	} else {
@@ -1831,8 +1846,8 @@ e1000_watchdog_task(struct e1000_adapter *adapter)
 			} else {
 				netif_carrier_off(netdev);
 				netif_stop_queue(netdev);
+                mod_timer(&adapter->phy_info_timer, jiffies + 2 * HZ);
 			}
-			mod_timer(&adapter->phy_info_timer, jiffies + 2 * HZ);
 		}
 
 		e1000_smartspeed(adapter);
@@ -1852,8 +1867,7 @@ e1000_watchdog_task(struct e1000_adapter *adapter)
 
 	e1000_update_adaptive(&adapter->hw);
 
-	if ((adapter->ecdev && !ecdev_get_link(adapter->ecdev))
-			|| (!adapter->ecdev && !netif_carrier_ok(netdev))) {
+	if (!adapter->ecdev && !netif_carrier_ok(netdev)) {
 		if (E1000_DESC_UNUSED(txdr) + 1 < txdr->count) {
 			/* We've lost link, so the controller stops DMA,
 			 * but we've got queued Tx work that's never going
@@ -1880,10 +1894,11 @@ e1000_watchdog_task(struct e1000_adapter *adapter)
 	E1000_WRITE_REG(&adapter->hw, ICS, E1000_ICS_RXDMT0);
 
 	/* Force detection of hung controller every watchdog period */
-	adapter->detect_tx_hung = TRUE;
+	if (!adapter->ecdev) adapter->detect_tx_hung = TRUE;
 
 	/* Reset the timer */
-	mod_timer(&adapter->watchdog_timer, jiffies + 2 * HZ);
+	if (!adapter->ecdev)
+        mod_timer(&adapter->watchdog_timer, jiffies + 2 * HZ);
 }
 
 #define E1000_TX_FLAGS_CSUM		0x00000001
@@ -2298,14 +2313,16 @@ e1000_xmit_frame(struct sk_buff *skb, struct net_device *netdev)
 	if(adapter->pcix_82544)
 		count += nr_frags;
 
- 	local_irq_save(flags); 
- 	if (!spin_trylock(&adapter->tx_lock)) { 
- 		/* Collision - tell upper layer to requeue */ 
- 		local_irq_restore(flags); 
- 		return NETDEV_TX_LOCKED; 
- 	} 
-	if(adapter->hw.tx_pkt_filtering && (adapter->hw.mac_type == e1000_82573) )
-		e1000_transfer_dhcp_info(adapter, skb);
+	if (!adapter->ecdev) {
+		local_irq_save(flags); 
+		if (!spin_trylock(&adapter->tx_lock)) { 
+			/* Collision - tell upper layer to requeue */ 
+			local_irq_restore(flags); 
+			return NETDEV_TX_LOCKED; 
+		} 
+		if(adapter->hw.tx_pkt_filtering && (adapter->hw.mac_type == e1000_82573) )
+			e1000_transfer_dhcp_info(adapter, skb);
+	}
 
 
 	/* need: count + 2 desc gap to keep tail from touching
@@ -2320,11 +2337,11 @@ e1000_xmit_frame(struct sk_buff *skb, struct net_device *netdev)
 
 	if(unlikely(adapter->hw.mac_type == e1000_82547)) {
 		if(unlikely(e1000_82547_fifo_workaround(adapter, skb))) {
-			if (!adapter->ecdev)
+			if (!adapter->ecdev) {
 				netif_stop_queue(netdev);
-			mod_timer(&adapter->tx_fifo_stall_timer, jiffies);
-			if (!adapter->ecdev)
+                mod_timer(&adapter->tx_fifo_stall_timer, jiffies);
 				spin_unlock_irqrestore(&adapter->tx_lock, flags);
+            }
 			return NETDEV_TX_BUSY;
 		}
 	}
@@ -2624,9 +2641,16 @@ e1000_update_stats(struct e1000_adapter *adapter)
 		spin_unlock_irqrestore(&adapter->stats_lock, flags);
 }
 
-void ec_poll(struct net_device *dev)
+void ec_poll(struct net_device *netdev)
 {
-    e1000_intr(0, dev, NULL);
+    struct e1000_adapter *adapter = netdev_priv(netdev);
+
+    if (jiffies - adapter->ec_watchdog_jiffies >= 2 * HZ) {
+        e1000_watchdog_task(adapter);
+        adapter->ec_watchdog_jiffies = jiffies;
+    }
+
+    e1000_intr(0, netdev, NULL);
 }
 
 /**
@@ -2652,11 +2676,12 @@ e1000_intr(int irq, void *data, struct pt_regs *regs)
 
 	if(unlikely(icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC))) {
 		hw->get_link_status = 1;
-		mod_timer(&adapter->watchdog_timer, jiffies);
+		if (!adapter->ecdev)
+            mod_timer(&adapter->watchdog_timer, jiffies);
 	}
 
 #ifdef CONFIG_E1000_NAPI
-	if(likely(netif_rx_schedule_prep(netdev))) {
+	if(!adapter->ecdev && likely(netif_rx_schedule_prep(netdev))) {
 
 		/* Disable interrupts and register for poll. The flush 
 		  of the posted write is intentionally left out.
@@ -2664,8 +2689,7 @@ e1000_intr(int irq, void *data, struct pt_regs *regs)
 
 		atomic_inc(&adapter->irq_sem);
 		E1000_WRITE_REG(hw, IMC, ~0);
-        if (!adapter->ecdev)
-            __netif_rx_schedule(netdev);
+		__netif_rx_schedule(netdev);
 	}
 #else
 	/* Writing IMC and IMS is needed for 82547.
@@ -2678,7 +2702,8 @@ e1000_intr(int irq, void *data, struct pt_regs *regs)
 	   in dead lock. Writing IMC forces 82547 into
 	   de-assertion state.
 	*/
-	if(hw->mac_type == e1000_82547 || hw->mac_type == e1000_82547_rev_2){
+	if(!adapter->ecdev &&
+			(hw->mac_type == e1000_82547 || hw->mac_type == e1000_82547_rev_2)){
 		atomic_inc(&adapter->irq_sem);
 		E1000_WRITE_REG(hw, IMC, ~0);
 	}
@@ -2801,7 +2826,7 @@ e1000_clean_tx_irq(struct e1000_adapter *adapter)
 		spin_unlock(&adapter->tx_lock);
 	}
 
-	if(adapter->detect_tx_hung) {
+	if(!adapter->ecdev && adapter->detect_tx_hung) {
 
 		/* Detect a transmit hang in hardware, this serializes the
 		 * check with the clearing of time_stamp and movement of i */
@@ -2835,7 +2860,7 @@ e1000_clean_tx_irq(struct e1000_adapter *adapter)
 				eop,
 				jiffies,
 				eop_desc->upper.fields.status);
-			if (!adapter->ecdev) netif_stop_queue(netdev);
+			netif_stop_queue(netdev);
 		}
 	}
 #ifdef NETIF_F_TSO
@@ -2980,6 +3005,16 @@ e1000_clean_rx_irq(struct e1000_adapter *adapter)
 				  rx_desc->csum, skb);
 		if (adapter->ecdev) {
 			ecdev_receive(adapter->ecdev, skb->data, length);
+			skb_trim(skb, 0);
+
+			if(unlikely((i & ~(E1000_RX_BUFFER_WRITE - 1)) == i)) {
+				/* Force memory writes to complete before letting h/w
+				 * know there are new descriptors to fetch.  (Only
+				 * applicable for weak-ordered memory model archs,
+				 * such as IA-64). */
+				wmb();
+				E1000_WRITE_REG(&adapter->hw, RDT, i);
+			}
 		} else {
 			skb->protocol = eth_type_trans(skb, netdev);
 #ifdef CONFIG_E1000_NAPI
@@ -3006,13 +3041,17 @@ e1000_clean_rx_irq(struct e1000_adapter *adapter)
 
 next_desc:
 		rx_desc->status = 0;
-		buffer_info->skb = NULL;
+		if (!adapter->ecdev) buffer_info->skb = NULL;
 		if(unlikely(++i == rx_ring->count)) i = 0;
 
 		rx_desc = E1000_RX_DESC(*rx_ring, i);
 	}
 	rx_ring->next_to_clean = i;
-	adapter->alloc_rx_buf(adapter);
+	if (adapter->ecdev) {
+		rx_ring->next_to_use = i;
+	} else {
+		adapter->alloc_rx_buf(adapter);
+	}
 
 	return cleaned;
 }
@@ -3113,6 +3152,20 @@ e1000_clean_rx_irq_ps(struct e1000_adapter *adapter)
 #endif
 		if (adapter->ecdev) {
 			ecdev_receive(adapter->ecdev, skb->data, length);
+			skb_trim(skb, 0);
+
+			if(unlikely((i & ~(E1000_RX_BUFFER_WRITE - 1)) == i)) {
+				/* Force memory writes to complete before letting h/w
+				 * know there are new descriptors to fetch.  (Only
+				 * applicable for weak-ordered memory model archs,
+				 * such as IA-64). */
+				wmb();
+				/* Hardware increments by 16 bytes, but packet split
+				 * descriptors are 32 bytes...so we increment tail
+				 * twice as much.
+				 */
+				E1000_WRITE_REG(&adapter->hw, RDT, i<<1);
+			}
 		} else {
 			skb->protocol = eth_type_trans(skb, netdev);
 #ifdef CONFIG_E1000_NAPI
@@ -3144,7 +3197,11 @@ next_desc:
 		staterr = le32_to_cpu(rx_desc->wb.middle.status_error);
 	}
 	rx_ring->next_to_clean = i;
-	adapter->alloc_rx_buf(adapter);
+	if (adapter->ecdev) { 
+		rx_ring->next_to_use = i;
+	} else {
+		adapter->alloc_rx_buf(adapter);
+	}
 
 	return cleaned;
 }
@@ -3440,7 +3497,7 @@ e1000_mii_ioctl(struct net_device *netdev, struct ifreq *ifr, int cmd)
 		data->phy_id = adapter->hw.phy_addr;
 		break;
 	case SIOCGMIIREG:
-		if(!capable(CAP_NET_ADMIN))
+		if(adapter->ecdev || !capable(CAP_NET_ADMIN))
 			return -EPERM;
 		spin_lock_irqsave(&adapter->stats_lock, flags);
 		if(e1000_read_phy_reg(&adapter->hw, data->reg_num & 0x1F,
@@ -3451,7 +3508,7 @@ e1000_mii_ioctl(struct net_device *netdev, struct ifreq *ifr, int cmd)
 		spin_unlock_irqrestore(&adapter->stats_lock, flags);
 		break;
 	case SIOCSMIIREG:
-		if(!capable(CAP_NET_ADMIN))
+		if(adapter->ecdev || !capable(CAP_NET_ADMIN))
 			return -EPERM;
 		if(data->reg_num & ~(0x1F))
 			return -EFAULT;

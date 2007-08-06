@@ -290,5 +290,6 @@ struct e1000_adapter {
 #endif
 
 	ec_device_t *ecdev;
+    unsigned long ec_watchdog_jiffies;
 };
 #endif /* _E1000_H_ */
