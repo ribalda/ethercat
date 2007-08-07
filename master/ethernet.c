@@ -117,7 +117,7 @@ int ec_eoe_init(
     eoe->tx_rate = 0;
     eoe->rate_jiffies = 0;
 
-    sprintf(name, "eoe%u-%u", slave->master->index, slave->ring_position);
+    sprintf(name, "eoe%us%u", slave->master->index, slave->ring_position);
 
     if (!(eoe->dev = alloc_netdev(sizeof(ec_eoe_t *), name, ether_setup))) {
         EC_ERR("Unable to allocate net_device for EoE handler!\n");
