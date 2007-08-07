@@ -718,6 +718,14 @@ void ec_master_receive_datagrams(ec_master_t *master, /**< EtherCAT master */
         if (!matched) {
             master->stats.unmatched++;
             ec_master_output_stats(master);
+
+            if (unlikely(master->debug_level > 0)) {
+                EC_DBG("UNMATCHED datagram:\n");
+                ec_print_data(cur_data - EC_DATAGRAM_HEADER_SIZE,
+                        EC_DATAGRAM_HEADER_SIZE + data_size
+                        + EC_DATAGRAM_FOOTER_SIZE);
+            }
+
             cur_data += data_size + EC_DATAGRAM_FOOTER_SIZE;
             continue;
         }
@@ -1504,6 +1512,13 @@ void ecrt_master_receive(ec_master_t *master /**< EtherCAT master */)
             datagram->state = EC_DATAGRAM_TIMED_OUT;
             master->stats.timeouts++;
             ec_master_output_stats(master);
+
+            if (unlikely(master->debug_level > 0)) {
+                EC_DBG("TIMED OUT datagram index %02X waited %u us.\n",
+                        datagram->index,
+                        (unsigned int) (master->main_device.cycles_poll
+                            - datagram->cycles_sent) * 1000 / cpu_khz);
+            }
         }
     }
 
