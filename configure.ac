@@ -346,25 +346,48 @@ fi
 # Debug interface
 #------------------------------------------------------------------------------
 
-AC_ARG_ENABLE([dbg-if],
-    AS_HELP_STRING([--enable-dbg-if],
+AC_ARG_ENABLE([debug-if],
+    AS_HELP_STRING([--enable-debug-if],
                    [Create a debug interface for each master @<:@NO@:>@]),
     [
         case "${enableval}" in
             yes) dbg=1
-                AC_DEFINE([EC_DBG_IF], [1], [Debug interfaces enabled])
                 ;;
             no) dbg=0
                 ;;
-            *) AC_MSG_ERROR([Invalid value for --enable-dbg-if])
+            *) AC_MSG_ERROR([Invalid value for --enable-debug-if])
                 ;;
         esac
     ],
     [dbg=0]
 )
 
-AM_CONDITIONAL(EC_DBG_IF, test "x$dbg" = "x1")
-AC_SUBST([EC_DBG_IF],${dbg})
+if test "x${dbg}" = "x1"; then
+    AC_DEFINE([EC_DEBUG_IF], [1], [Debug interfaces enabled])
+fi
+AM_CONDITIONAL(ENABLE_DEBUG_IF, test "x$dbg" = "x1")
+
+#------------------------------------------------------------------------------
+# Dummy master module
+#------------------------------------------------------------------------------
+
+AC_ARG_ENABLE([dummy],
+    AS_HELP_STRING([--enable-dummy],
+                   [Build the dummy master module @<:@NO@:>@]),
+    [
+        case "${enableval}" in
+            yes) dummy=1
+                ;;
+            no) dummy=0
+                ;;
+            *) AC_MSG_ERROR([Invalid value for --enable-dummy])
+                ;;
+        esac
+    ],
+    [dummy=0]
+)
+
+AM_CONDITIONAL(ENABLE_DUMMY, test "x$dummy" = "x1")
 
 #------------------------------------------------------------------------------
 
@@ -374,7 +397,7 @@ echo configure: creating config.kbuild...
 
 cat > config.kbuild <<EOF
 # config.kbuild - created by configure
-EC_DBG_IF := ${dbg}
+EC_DEBUG_IF := ${dbg}
 EC_ENABLE_8139TOO := ${enable8139too}
 EC_8139TOO_KERNEL := ${kernel8139too}
 EC_ENABLE_E100 := ${enablee100}
@@ -385,6 +408,7 @@ EC_ENABLE_E1000 := ${enablee1000}
 EC_E1000_KERNEL := ${kernele1000}
 EC_RTAI_DIR := "${rtaidir}"
 EC_MSR_DIR := "${msrdir}"
+EC_DUMMY := ${dummy}
 EOF
 
 #------------------------------------------------------------------------------

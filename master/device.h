@@ -47,7 +47,7 @@
 #include "../devices/ecdev.h"
 #include "globals.h"
 
-#ifdef EC_DBG_IF
+#ifdef EC_DEBUG_IF
 #include "debug.h"
 #endif
 
@@ -73,7 +73,7 @@ struct ec_device
     unsigned long jiffies_poll; /**< jiffies of last poll */
     unsigned int tx_count; /**< number of frames sent */
     unsigned int rx_count; /**< number of frames received */
-#ifdef EC_DBG_IF
+#ifdef EC_DEBUG_IF
     ec_debug_t dbg; /**< debug device */
 #endif
 };

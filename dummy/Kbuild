@@ -33,16 +33,16 @@
 
 include $(src)/../config.kbuild
 
-obj-m := ec_dummy.o
-
-ec_dummy-objs := module.o master.o slave.o domain.o
-
 REV := $(shell if test -s $(src)/../svnrevision; then \
 		cat $(src)/../svnrevision; \
 	else \
 		svnversion $(src) 2>/dev/null || echo "unknown"; \
 	fi)
 
-CFLAGS_dummy.o := -DSVNREV=$(REV)
+ifeq ($(EC_DUMMY),1)
+    obj-m := ec_dummy.o
+	ec_dummy-objs := module.o master.o slave.o domain.o
+	CFLAGS_dummy.o := -DSVNREV=$(REV)
+endif
 
 #------------------------------------------------------------------------------
