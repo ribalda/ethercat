@@ -57,10 +57,22 @@ int ec_device_init(ec_device_t *device, /**< EtherCAT device */
         ec_master_t *master /**< master owning the device */
         )
 {
+#ifdef EC_DEBUG_IF
+    char ifname[10];
+    char mb = 'x';
+#endif
+
     device->master = master;
 
 #ifdef EC_DEBUG_IF
-    if (ec_debug_init(&device->dbg)) {
+    if (device == &master->main_device)
+        mb = 'm';
+    else if (device == &master->backup_device)
+        mb = 'b';
+
+    sprintf(ifname, "ecdbg%c%u", mb, master->index);
+
+    if (ec_debug_init(&device->dbg, ifname)) {
         EC_ERR("Failed to init debug device!\n");
         goto out_return;
     }

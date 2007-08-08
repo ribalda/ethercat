@@ -59,7 +59,10 @@ struct net_device_stats *ec_dbgdev_stats(struct net_device *);
    Initializes the debug object, creates a net_device and registeres it.
 */
 
-int ec_debug_init(ec_debug_t *dbg /**< debug object */)
+int ec_debug_init(
+        ec_debug_t *dbg, /**< debug object */
+        const char *name /**< interface name */
+        )
 {
     int result;
 
@@ -67,7 +70,7 @@ int ec_debug_init(ec_debug_t *dbg /**< debug object */)
     memset(&dbg->stats, 0, sizeof(struct net_device_stats));
 
     if (!(dbg->dev =
-          alloc_netdev(sizeof(ec_debug_t *), "ec%d", ether_setup))) {
+          alloc_netdev(sizeof(ec_debug_t *), name, ether_setup))) {
         EC_ERR("Unable to allocate net_device for debug object!\n");
         goto out_return;
     }

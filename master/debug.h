@@ -56,7 +56,7 @@ ec_debug_t;
 
 /*****************************************************************************/
 
-int ec_debug_init(ec_debug_t *);
+int ec_debug_init(ec_debug_t *, const char *);
 void ec_debug_clear(ec_debug_t *);
 void ec_debug_send(ec_debug_t *, const uint8_t *, size_t);
 
