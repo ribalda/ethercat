@@ -397,18 +397,18 @@ echo configure: creating config.kbuild...
 
 cat > config.kbuild <<EOF
 # config.kbuild - created by configure
-EC_DEBUG_IF := ${dbg}
-EC_ENABLE_8139TOO := ${enable8139too}
-EC_8139TOO_KERNEL := ${kernel8139too}
-EC_ENABLE_E100 := ${enablee100}
-EC_E100_KERNEL := ${kernele100}
-EC_ENABLE_FORCEDETH := ${enableforcedeth}
-EC_FORCEDETH_KERNEL := ${kernelforcedeth}
-EC_ENABLE_E1000 := ${enablee1000}
-EC_E1000_KERNEL := ${kernele1000}
-EC_RTAI_DIR := "${rtaidir}"
-EC_MSR_DIR := "${msrdir}"
-EC_DUMMY := ${dummy}
+ENABLE_8139TOO := ${enable8139too}
+KERNEL_8139TOO := ${kernel8139too}
+ENABLE_E100 := ${enablee100}
+KERNEL_E100 := ${kernele100}
+ENABLE_FORCEDETH := ${enableforcedeth}
+KERNEL_FORCEDETH := ${kernelforcedeth}
+ENABLE_E1000 := ${enablee1000}
+ENABLE_E1000 := ${kernele1000}
+RTAI_DIR := "${rtaidir}"
+MSR_DIR := "${msrdir}"
+ENABLE_DEBUG_IF := ${dbg}
+ENABLE_DUMMY := ${dummy}
 EOF
 
 #------------------------------------------------------------------------------

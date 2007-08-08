@@ -39,7 +39,7 @@ REV := $(shell if test -s $(src)/../svnrevision; then \
 		svnversion $(src) 2>/dev/null || echo "unknown"; \
 	fi)
 
-ifeq ($(EC_DUMMY),1)
+ifeq ($(ENABLE_DUMMY),1)
     obj-m := ec_dummy.o
 	ec_dummy-objs := module.o master.o slave.o domain.o
 	CFLAGS_dummy.o := -DSVNREV=$(REV)

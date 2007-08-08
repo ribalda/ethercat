@@ -52,7 +52,7 @@ $(MODULE)-objs := msr_sample.o \
                         rt_lib/msr-math/msr_hex_bin.o \
                         libm.o
 
-EXTRA_CFLAGS := -I$(EC_MSR_DIR)/include -I$(EC_RTAI_DIR)/include \
+EXTRA_CFLAGS := -I$(MSR_DIR)/include -I$(RTAI_DIR)/include \
                 -D_SIMULATION -mhard-float
 
 #------------------------------------------------------------------------------

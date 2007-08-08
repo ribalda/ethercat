@@ -37,6 +37,6 @@ obj-m := ec_rtai_sample.o
 
 ec_rtai_sample-objs := rtai_sample.o
 
-EXTRA_CFLAGS := -I$(EC_RTAI_DIR)/include
+EXTRA_CFLAGS := -I$(RTAI_DIR)/include
 
 #------------------------------------------------------------------------------
