@@ -47,6 +47,8 @@
 #include "../devices/ecdev.h"
 #include "globals.h"
 
+#define EC_TX_RING_SIZE 2
+
 #ifdef EC_DEBUG_IF
 #include "debug.h"
 #endif
@@ -84,8 +86,8 @@ struct ec_device
     struct module *module; /**< pointer to the device's owning module */
     uint8_t open; /**< true, if the net_device has been opened */
     uint8_t link_state; /**< device link state */
-    struct sk_buff *tx_skb; /**< transmit socket buffer */
-    struct ethhdr *eth; /**< pointer to ethernet header in socket buffer */
+    struct sk_buff *tx_skb[EC_TX_RING_SIZE]; /**< transmit skb ring */
+    unsigned int tx_ring_index;
     cycles_t cycles_poll; /**< cycles of last poll */
 #ifdef EC_DEBUG_RING
     struct timeval timeval_poll;

@@ -69,6 +69,8 @@ int ec_device_init(ec_device_t *device, /**< EtherCAT device */
         ec_master_t *master /**< master owning the device */
         )
 {
+    unsigned int i;
+    struct ethhdr *eth;
 #ifdef EC_DEBUG_IF
     char ifname[10];
     char mb = 'x';
@@ -79,6 +81,7 @@ int ec_device_init(ec_device_t *device, /**< EtherCAT device */
 #endif
 
     device->master = master;
+    device->tx_ring_index = 0;
 
 #ifdef EC_DEBUG_IF
     if (device == &master->main_device)
@@ -94,29 +97,33 @@ int ec_device_init(ec_device_t *device, /**< EtherCAT device */
     }
 #endif
 
-    if (!(device->tx_skb = dev_alloc_skb(ETH_FRAME_LEN))) {
-        EC_ERR("Error allocating device socket buffer!\n");
-#ifdef EC_DEBUG_IF
-        goto out_debug;
-#else
-        goto out_return;
-#endif
-    }
+    for (i = 0; i < EC_TX_RING_SIZE; i++)
+        device->tx_skb[i] = NULL;
 
-    // add Ethernet-II-header
-    skb_reserve(device->tx_skb, ETH_HLEN);
-    device->eth = (struct ethhdr *) skb_push(device->tx_skb, ETH_HLEN);
-    device->eth->h_proto = htons(0x88A4);
-    memset(device->eth->h_dest, 0xFF, ETH_ALEN);
+    for (i = 0; i < EC_TX_RING_SIZE; i++) {
+        if (!(device->tx_skb[i] = dev_alloc_skb(ETH_FRAME_LEN))) {
+            EC_ERR("Error allocating device socket buffer!\n");
+            goto out_tx_ring;
+        }
+
+        // add Ethernet-II-header
+        skb_reserve(device->tx_skb[i], ETH_HLEN);
+        eth = (struct ethhdr *) skb_push(device->tx_skb[i], ETH_HLEN);
+        eth->h_proto = htons(0x88A4);
+        memset(eth->h_dest, 0xFF, ETH_ALEN);
+    }
 
     ec_device_detach(device); // resets remaining fields
     return 0;
 
+out_tx_ring:
+    for (i = 0; i < EC_TX_RING_SIZE; i++)
+        if (device->tx_skb[i])
+            dev_kfree_skb(device->tx_skb[i]);
 #ifdef EC_DEBUG_IF
- out_debug:
     ec_debug_clear(&device->dbg);
+out_return:
 #endif
- out_return:
     return -1;
 }
 
@@ -128,8 +135,11 @@ int ec_device_init(ec_device_t *device, /**< EtherCAT device */
 
 void ec_device_clear(ec_device_t *device /**< EtherCAT device */)
 {
+    unsigned int i;
+
     if (device->open) ec_device_close(device);
-    dev_kfree_skb(device->tx_skb);
+    for (i = 0; i < EC_TX_RING_SIZE; i++)
+        dev_kfree_skb(device->tx_skb[i]);
 #ifdef EC_DEBUG_IF
     ec_debug_clear(&device->dbg);
 #endif
@@ -147,14 +157,20 @@ void ec_device_attach(ec_device_t *device, /**< EtherCAT device */
         struct module *module /**< the device's module */
         )
 {
+    unsigned int i;
+    struct ethhdr *eth;
+
     ec_device_detach(device); // resets fields
 
     device->dev = net_dev;
     device->poll = poll;
     device->module = module;
 
-    device->tx_skb->dev = net_dev;
-    memcpy(device->eth->h_source, net_dev->dev_addr, ETH_ALEN);
+    for (i = 0; i < EC_TX_RING_SIZE; i++) {
+        device->tx_skb[i]->dev = net_dev;
+        eth = (struct ethhdr *) (device->tx_skb[i]->data + ETH_HLEN);
+        memcpy(eth->h_source, net_dev->dev_addr, ETH_ALEN);
+    }
 }
 
 /*****************************************************************************/
@@ -165,6 +181,8 @@ void ec_device_attach(ec_device_t *device, /**< EtherCAT device */
 
 void ec_device_detach(ec_device_t *device /**< EtherCAT device */)
 {
+    unsigned int i;
+
     device->dev = NULL;
     device->poll = NULL;
     device->module = NULL;
@@ -172,7 +190,8 @@ void ec_device_detach(ec_device_t *device /**< EtherCAT device */)
     device->link_state = 0; // down
     device->tx_count = 0;
     device->rx_count = 0;
-    device->tx_skb->dev = NULL;
+    for (i = 0; i < EC_TX_RING_SIZE; i++)
+        device->tx_skb[i]->dev = NULL;
 }
 
 /*****************************************************************************/
@@ -236,7 +255,12 @@ int ec_device_close(ec_device_t *device /**< EtherCAT device */)
 
 uint8_t *ec_device_tx_data(ec_device_t *device /**< EtherCAT device */)
 {
-    return device->tx_skb->data + ETH_HLEN;
+    /* cycle through socket buffers, because otherwise there is a race
+     * condition, if multiple frames are sent and the DMA is not scheduled in
+     * between. */
+    device->tx_ring_index++;
+    device->tx_ring_index %= EC_TX_RING_SIZE;
+    return device->tx_skb[device->tx_ring_index]->data + ETH_HLEN;
 }
 
 /*****************************************************************************/
@@ -251,27 +275,29 @@ void ec_device_send(ec_device_t *device, /**< EtherCAT device */
                     size_t size /**< number of bytes to send */
                     )
 {
+    struct sk_buff *skb = device->tx_skb[device->tx_ring_index];
+
     if (unlikely(!device->link_state)) // Link down
         return;
 
     // set the right length for the data
-    device->tx_skb->len = ETH_HLEN + size;
+    skb->len = ETH_HLEN + size;
 
     if (unlikely(device->master->debug_level > 1)) {
         EC_DBG("sending frame:\n");
-        ec_print_data(device->tx_skb->data + ETH_HLEN, size);
+        ec_print_data(skb->data + ETH_HLEN, size);
     }
 
 #ifdef EC_DEBUG_IF
-    ec_debug_send(&device->dbg, device->tx_skb->data, ETH_HLEN + size);
+    ec_debug_send(&device->dbg, skb->data, ETH_HLEN + size);
 #endif
 #ifdef EC_DEBUG_RING
     ec_device_debug_ring_append(
-            device, TX, device->tx_skb->data + ETH_HLEN, size);
+            device, TX, skb->data + ETH_HLEN, size);
 #endif
 
     // start sending
-    device->dev->hard_start_xmit(device->tx_skb, device->dev);
+    device->dev->hard_start_xmit(skb, device->dev);
     device->tx_count++;
 }
 
@@ -389,7 +415,7 @@ void ecdev_receive(ec_device_t *device, /**< EtherCAT device */
 
     if (unlikely(device->master->debug_level > 1)) {
         EC_DBG("Received frame:\n");
-        ec_print_data_diff(device->tx_skb->data + ETH_HLEN, ec_data, ec_size);
+        ec_print_data(ec_data, ec_size);
     }
 
 #ifdef EC_DEBUG_IF
