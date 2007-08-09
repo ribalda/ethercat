@@ -1181,7 +1181,7 @@ int ec_master_measure_bus_time(ec_master_t *master)
 
     ec_datagram_init(&datagram);
 
-    if (ec_datagram_brd(&datagram, 0x130, 2)) {
+    if (ec_datagram_brd(&datagram, 0x0130, 2)) {
         EC_ERR("Failed to allocate datagram for bus time measuring.\n");
         ec_datagram_clear(&datagram);
         return -1;
