@@ -705,9 +705,9 @@ void ec_master_receive_datagrams(ec_master_t *master, /**< EtherCAT master */
         // search for matching datagram in the queue
         matched = 0;
         list_for_each_entry(datagram, &master->datagram_queue, queue) {
-            if (datagram->state == EC_DATAGRAM_SENT
+            if (datagram->index == datagram_index
+                && datagram->state == EC_DATAGRAM_SENT
                 && datagram->type == datagram_type
-                && datagram->index == datagram_index
                 && datagram->data_size == data_size) {
                 matched = 1;
                 break;
