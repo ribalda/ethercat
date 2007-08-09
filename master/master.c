@@ -724,6 +724,9 @@ void ec_master_receive_datagrams(ec_master_t *master, /**< EtherCAT master */
                 ec_print_data(cur_data - EC_DATAGRAM_HEADER_SIZE,
                         EC_DATAGRAM_HEADER_SIZE + data_size
                         + EC_DATAGRAM_FOOTER_SIZE);
+#ifdef EC_DEBUG_RING
+                ec_device_debug_ring_print(&master->main_device);
+#endif
             }
 
             cur_data += data_size + EC_DATAGRAM_FOOTER_SIZE;

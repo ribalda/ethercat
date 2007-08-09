@@ -46,6 +46,18 @@
 #include "device.h"
 #include "master.h"
 
+#ifdef EC_DEBUG_RING
+#define timersub(a, b, result) \
+    do { \
+        (result)->tv_sec = (a)->tv_sec - (b)->tv_sec; \
+        (result)->tv_usec = (a)->tv_usec - (b)->tv_usec; \
+        if ((result)->tv_usec < 0) { \
+            --(result)->tv_sec; \
+            (result)->tv_usec += 1000000; \
+        } \
+    } while (0)
+#endif
+
 /*****************************************************************************/
 
 /**
@@ -60,6 +72,10 @@ int ec_device_init(ec_device_t *device, /**< EtherCAT device */
 #ifdef EC_DEBUG_IF
     char ifname[10];
     char mb = 'x';
+#endif
+#ifdef EC_DEBUG_RING
+    device->debug_frame_index = 0;
+    device->debug_frame_count = 0;
 #endif
 
     device->master = master;
@@ -249,11 +265,88 @@ void ec_device_send(ec_device_t *device, /**< EtherCAT device */
 #ifdef EC_DEBUG_IF
     ec_debug_send(&device->dbg, device->tx_skb->data, ETH_HLEN + size);
 #endif
+#ifdef EC_DEBUG_RING
+    ec_device_debug_ring_append(
+            device, TX, device->tx_skb->data + ETH_HLEN, size);
+#endif
 
     // start sending
     device->dev->hard_start_xmit(device->tx_skb, device->dev);
     device->tx_count++;
 }
+
+/*****************************************************************************/
+
+#ifdef EC_DEBUG_RING
+/**
+ * Appends frame data to the debug ring.
+ */
+
+void ec_device_debug_ring_append(
+        ec_device_t *device, /**< EtherCAT device */
+        ec_debug_frame_dir_t dir, /**< direction */
+        const void *data, /**< frame data */
+        size_t size /**< data size */
+        )
+{
+    ec_debug_frame_t *df = &device->debug_frames[device->debug_frame_index];
+
+    df->dir = dir;
+    if (dir == TX)
+        do_gettimeofday(&df->t);
+    else
+        df->t = device->timeval_poll;
+    memcpy(df->data, data, size);
+    df->data_size = size;
+
+    device->debug_frame_index++;
+    device->debug_frame_index %= EC_DEBUG_RING_SIZE;
+    if (unlikely(device->debug_frame_count < EC_DEBUG_RING_SIZE))
+        device->debug_frame_count++;
+}
+
+/*****************************************************************************/
+
+/**
+ * Outputs the debug ring.
+ */
+
+void ec_device_debug_ring_print(
+        const ec_device_t *device /**< EtherCAT device */
+        )
+{
+    int i;
+    unsigned int ring_index;
+    const ec_debug_frame_t *df;
+    struct timeval t0, diff;
+
+    // calculate index of the newest frame in the ring to get its time
+    ring_index = (device->debug_frame_index + EC_DEBUG_RING_SIZE - 1)
+        % EC_DEBUG_RING_SIZE;
+    t0 = device->debug_frames[ring_index].t;
+
+    EC_DBG("Debug ring %i:\n", ring_index);
+
+    // calculate index of the oldest frame in the ring
+    ring_index = (device->debug_frame_index + EC_DEBUG_RING_SIZE
+            - device->debug_frame_count) % EC_DEBUG_RING_SIZE;
+
+    for (i = 0; i < device->debug_frame_count; i++) {
+        df = &device->debug_frames[ring_index];
+        timersub(&t0, &df->t, &diff);
+
+        EC_DBG("Frame %i, dt=%u.%06u s, %s:\n",
+                i + 1 - device->debug_frame_count,
+                (unsigned int) diff.tv_sec,
+                (unsigned int) diff.tv_usec,
+                (df->dir == TX) ? "TX" : "RX");
+        ec_print_data(df->data, df->data_size);
+
+        ring_index++;
+        ring_index %= EC_DEBUG_RING_SIZE;
+    }
+}
+#endif
 
 /*****************************************************************************/
 
@@ -268,6 +361,9 @@ void ec_device_poll(ec_device_t *device /**< EtherCAT device */)
 {
     device->cycles_poll = get_cycles();
     device->jiffies_poll = jiffies;
+#ifdef EC_DEBUG_RING
+    do_gettimeofday(&device->timeval_poll);
+#endif
     device->poll(device->dev);
 }
 
@@ -287,21 +383,23 @@ void ecdev_receive(ec_device_t *device, /**< EtherCAT device */
                    size_t size /**< number of bytes received */
                    )
 {
+    const void *ec_data = data + ETH_HLEN;
+    size_t ec_size = size - ETH_HLEN;
     device->rx_count++;
 
     if (unlikely(device->master->debug_level > 1)) {
         EC_DBG("Received frame:\n");
-        ec_print_data_diff(device->tx_skb->data + ETH_HLEN,
-                           data + ETH_HLEN, size - ETH_HLEN);
+        ec_print_data_diff(device->tx_skb->data + ETH_HLEN, ec_data, ec_size);
     }
 
 #ifdef EC_DEBUG_IF
     ec_debug_send(&device->dbg, data, size);
 #endif
+#ifdef EC_DEBUG_RING
+    ec_device_debug_ring_append(device, RX, ec_data, ec_size);
+#endif
 
-    ec_master_receive_datagrams(device->master,
-                                data + ETH_HLEN,
-                                size - ETH_HLEN);
+    ec_master_receive_datagrams(device->master, ec_data, ec_size);
 }
 
 /*****************************************************************************/

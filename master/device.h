@@ -51,6 +51,23 @@
 #include "debug.h"
 #endif
 
+#ifdef EC_DEBUG_RING
+#define EC_DEBUG_RING_SIZE 10
+
+typedef enum {
+    TX, RX
+} ec_debug_frame_dir_t;
+
+typedef struct {
+    ec_debug_frame_dir_t dir;
+    struct timeval t;
+    unsigned int addr;
+    uint8_t data[EC_MAX_DATA_SIZE];
+    unsigned int data_size;
+} ec_debug_frame_t;
+
+#endif
+
 /*****************************************************************************/
 
 /**
@@ -70,11 +87,19 @@ struct ec_device
     struct sk_buff *tx_skb; /**< transmit socket buffer */
     struct ethhdr *eth; /**< pointer to ethernet header in socket buffer */
     cycles_t cycles_poll; /**< cycles of last poll */
+#ifdef EC_DEBUG_RING
+    struct timeval timeval_poll;
+#endif
     unsigned long jiffies_poll; /**< jiffies of last poll */
     unsigned int tx_count; /**< number of frames sent */
     unsigned int rx_count; /**< number of frames received */
 #ifdef EC_DEBUG_IF
     ec_debug_t dbg; /**< debug device */
+#endif
+#ifdef EC_DEBUG_RING
+    ec_debug_frame_t debug_frames[EC_DEBUG_RING_SIZE];
+    unsigned int debug_frame_index;
+    unsigned int debug_frame_count;
 #endif
 };
 
@@ -93,6 +118,12 @@ int ec_device_close(ec_device_t *);
 void ec_device_poll(ec_device_t *);
 uint8_t *ec_device_tx_data(ec_device_t *);
 void ec_device_send(ec_device_t *, size_t);
+
+#ifdef EC_DEBUG_RING
+void ec_device_debug_ring_append(ec_device_t *, ec_debug_frame_dir_t,
+        const void *, size_t);
+void ec_device_debug_ring_print(const ec_device_t *);
+#endif
 
 /*****************************************************************************/
 

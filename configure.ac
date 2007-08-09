@@ -368,6 +368,30 @@ fi
 AM_CONDITIONAL(ENABLE_DEBUG_IF, test "x$dbg" = "x1")
 
 #------------------------------------------------------------------------------
+# Debug ring
+#------------------------------------------------------------------------------
+
+AC_ARG_ENABLE([debug-ring],
+    AS_HELP_STRING([--enable-debug-ring],
+                   [Create a debug ring to record frames @<:@NO@:>@]),
+    [
+        case "${enableval}" in
+            yes) debugring=1
+                ;;
+            no) debugring=0
+                ;;
+            *) AC_MSG_ERROR([Invalid value for --enable-debug-ring])
+                ;;
+        esac
+    ],
+    [debugring=0]
+)
+
+if test "x${debugring}" = "x1"; then
+    AC_DEFINE([EC_DEBUG_RING], [1], [Debug ring enabled])
+fi
+
+#------------------------------------------------------------------------------
 # Dummy master module
 #------------------------------------------------------------------------------
 
