@@ -798,21 +798,21 @@ static int ec_master_idle_thread(ec_master_t *master)
     while (!signal_pending(current)) {
         cycles_start = get_cycles();
 
-        if (ec_fsm_master_running(&master->fsm)) {
+        if (ec_fsm_master_running(&master->fsm)) { // datagram on the way
             // receive
             spin_lock_bh(&master->internal_lock);
             ecrt_master_receive(master);
             spin_unlock_bh(&master->internal_lock);
+
+            if (master->fsm_datagram.state == EC_DATAGRAM_SENT)
+                goto schedule;
         }
 
-        if (master->fsm_datagram.state == EC_DATAGRAM_SENT)
-            goto schedule;
-
         // execute master state machine
-        if (ec_fsm_master_exec(&master->fsm)) {
+        if (ec_fsm_master_exec(&master->fsm)) { // datagram ready for sending
             // queue and send
-            ec_master_queue_datagram(master, &master->fsm_datagram);
             spin_lock_bh(&master->internal_lock);
+            ec_master_queue_datagram(master, &master->fsm_datagram);
             ecrt_master_send(master);
             spin_unlock_bh(&master->internal_lock);
         }
@@ -1514,8 +1514,8 @@ void ecrt_master_receive(ec_master_t *master /**< EtherCAT master */)
             ec_master_output_stats(master);
 
             if (unlikely(master->debug_level > 0)) {
-                EC_DBG("TIMED OUT datagram index %02X waited %u us.\n",
-                        datagram->index,
+                EC_DBG("TIMED OUT datagram %08x, index %02X waited %u us.\n",
+                        (unsigned int) datagram, datagram->index,
                         (unsigned int) (master->main_device.cycles_poll
                             - datagram->cycles_sent) * 1000 / cpu_khz);
             }
