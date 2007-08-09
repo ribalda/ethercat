@@ -117,6 +117,8 @@ int ec_eoe_init(
     eoe->tx_rate = 0;
     eoe->rate_jiffies = 0;
 
+    /* device name eoe<MASTER>s<SLAVE>, because system tools don't like
+     * hyphens etc. in interface names. */
     sprintf(name, "eoe%us%u", slave->master->index, slave->ring_position);
 
     if (!(eoe->dev = alloc_netdev(sizeof(ec_eoe_t *), name, ether_setup))) {
@@ -393,7 +395,7 @@ void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
         return;
     }
 
-    if (mbox_prot != 0x02) { // EoE
+    if (mbox_prot != 0x02) { // EoE FIXME mailbox handler necessary
         eoe->stats.rx_errors++;
         eoe->state = ec_eoe_state_tx_start;
         return;
@@ -638,11 +640,7 @@ int ec_eoedev_open(struct net_device *dev /**< EoE net_device */)
     netif_start_queue(dev);
     eoe->tx_queue_active = 1;
     EC_INFO("%s opened.\n", dev->name);
-    if (!eoe->slave)
-        EC_WARN("Device %s is not coupled to any EoE slave!\n", dev->name);
-    else {
-        ec_slave_request_state(eoe->slave, EC_SLAVE_STATE_OP);
-    }
+    ec_slave_request_state(eoe->slave, EC_SLAVE_STATE_OP);
     return 0;
 }
 
@@ -660,8 +658,7 @@ int ec_eoedev_stop(struct net_device *dev /**< EoE net_device */)
     eoe->opened = 0;
     ec_eoe_flush(eoe);
     EC_INFO("%s stopped.\n", dev->name);
-    if (eoe->slave)
-        ec_slave_request_state(eoe->slave, EC_SLAVE_STATE_PREOP);
+    ec_slave_request_state(eoe->slave, EC_SLAVE_STATE_PREOP);
     return 0;
 }
 
