@@ -7,16 +7,18 @@ $Id$
 -------------------------------------------------------------------------------
 
 * Issues for release 1.3.0:
-  - Fix EoE code.
   - Take broadcast MAC address to register the first ethernet device.
   - Limit EEPROM reading.
   - Implement ecrt_get_slave() with integer argument as ring position.
+  - Handle missing rc_status in init script.
 
 * Future features:
   - Interface/buffers for asynchronous domain IO.
   - Distributed clocks.
-  - Read dynamic PDO mapping from SDO dictionary (see can-cia.org: cia301ds4).
+  - Dynamic PDO mapping from SDO dictionary (see can-cia.org: cia301ds4).
   - Redundancy with 2 network adapters.
+  - Mailbox handler
+  - Support slaves, that don't support the LRW datagram, only LRD/LWR.
 
 * Smaller issues:
   - Clear sync managers in INIT.
