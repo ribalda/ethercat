@@ -14,14 +14,19 @@
 # redundancy purposes.
 #
 # Specify the MAC address (hexadecimal with colons) of the Ethernet device to
-# use. Example: 00:00:08:44:ab:66
+# use. Example: "00:00:08:44:ab:66"
 #
 # The MASTER<X>_DEVICE variables also determine, how many masters will be
 # created: A non-empty variable MASTER0_DEVICE will create one master, adding
 # a non-empty variable MASTER1_DEVICE will create a second master, and so on.
 #
-MASTER0_DEVICE=
-MASTER0_BACKUP=
+# Note: The backup devices are not implemented, yet.
+#
+MASTER0_DEVICE=""
+MASTER0_BACKUP=""
+
+#MASTER1_DEVICE=""
+#MASTER1_BACKUP=""
 
 #
 # Ethernet driver modules to replace with EtherCAT-capable ones.
@@ -30,9 +35,12 @@ MASTER0_BACKUP=
 # and replace them with the EtherCAT-capable ones, respectively. If a certain
 # (EtherCAT-capable) driver is not found, a warning will appear.
 #
-# Remove all unused driver modules to prevent unnecesessary module
-# replacement.
+# Possible values are "8139too", "e100", "e1000", and "forcedeth".
+# Separate multiple drivers with spaces.
+#
+# Note: The e100, e1000 and forcedeth drivers are not built by default. Enable
+# them with the --enable-<driver> configure switches.
 # 
-DEVICE_MODULES="8139too e100 forcedeth"
+DEVICE_MODULES=""
 
 #------------------------------------------------------------------------------
