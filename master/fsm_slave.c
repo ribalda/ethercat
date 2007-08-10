@@ -366,7 +366,7 @@ void ec_fsm_slave_scan_state_datalink(ec_fsm_slave_t *fsm /**< slave state machi
 
     // Start fetching EEPROM size
 
-    fsm->sii_offset = 0x0040; // first category header
+    fsm->sii_offset = EC_FIRST_EEPROM_CATEGORY_OFFSET; // first category header
     ec_fsm_sii_read(&fsm->fsm_sii, slave, fsm->sii_offset, EC_FSM_SII_NODE);
     fsm->state = ec_fsm_slave_scan_state_eeprom_size;
     fsm->state(fsm); // execute state immediately
@@ -398,6 +398,13 @@ void ec_fsm_slave_scan_state_eeprom_size(ec_fsm_slave_t *fsm /**< slave state ma
 
     if (cat_type != 0xFFFF) { // not the last category
         fsm->sii_offset += cat_size + 2;
+        if (fsm->sii_offset >= EC_MAX_EEPROM_SIZE) {
+            EC_WARN("EEPROM size of slave %i exceeds"
+                    " %i words (0xffff limiter missing?).\n",
+                    slave->ring_position, EC_MAX_EEPROM_SIZE);
+            slave->eeprom_size = EC_FIRST_EEPROM_CATEGORY_OFFSET * 2;
+            goto alloc_eeprom;
+        }
         ec_fsm_sii_read(&fsm->fsm_sii, slave, fsm->sii_offset,
                         EC_FSM_SII_NODE);
         ec_fsm_sii_exec(&fsm->fsm_sii); // execute state immediately
@@ -406,6 +413,7 @@ void ec_fsm_slave_scan_state_eeprom_size(ec_fsm_slave_t *fsm /**< slave state ma
 
     slave->eeprom_size = (fsm->sii_offset + 1) * 2;
 
+alloc_eeprom:
     if (slave->eeprom_data) {
         EC_INFO("Freeing old EEPROM data on slave %i...\n",
                 slave->ring_position);
@@ -494,7 +502,7 @@ void ec_fsm_slave_scan_state_eeprom_data(ec_fsm_slave_t *fsm /**< slave state ma
         EC_READ_U16(slave->eeprom_data + 2 * 0x001C);
 
     // evaluate category data
-    cat_word = (uint16_t *) slave->eeprom_data + 0x0040;
+    cat_word = (uint16_t *) slave->eeprom_data + EC_FIRST_EEPROM_CATEGORY_OFFSET;
     while (EC_READ_U16(cat_word) != 0xFFFF) {
         cat_type = EC_READ_U16(cat_word) & 0x7FFF;
         cat_size = EC_READ_U16(cat_word + 1);

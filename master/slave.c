@@ -925,7 +925,7 @@ ssize_t ec_slave_write_eeprom(ec_slave_t *slave, /**< EtherCAT slave */
         return -EINVAL;
     }
 
-    cat_header = request.words + 0x0040; // first category header
+    cat_header = request.words + EC_FIRST_EEPROM_CATEGORY_OFFSET;
     cat_type = EC_READ_U16(cat_header);
     while (cat_type != 0xFFFF) { // cycle through categories
         if (cat_header + 1 > request.words + request.size) {

@@ -46,6 +46,7 @@ Changes in version 1.3.0:
 * Master state machine scheduled with timeout if idle, otherwise is executed
   as fast as possible (with schedule()).
 * Added dummy module for simulation purpuses.
+* Limited infinite EEPROM reading, if 0xffff limiter word is missing.
 * Removed EtherCAT line comments from 8139too drivers.
 
 -------------------------------------------------------------------------------
