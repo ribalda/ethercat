@@ -50,6 +50,9 @@
 #------------------------------------------------------------------------------
 
 XMLDEVICE='ecxml'
+MODPROBE=/sbin/modprobe
+RMMOD=/sbin/rmmod
+MODINFO=/sbin/modinfo
 
 #------------------------------------------------------------------------------
 
@@ -68,6 +71,47 @@ fi
 
 #------------------------------------------------------------------------------
 
+function exit_success()
+{
+    if [ -r /etc/rc.status ]; then
+        rc_reset
+        rc_status -v
+        rc_exit
+    else
+        echo " done"
+        exit 0
+    fi
+}
+
+#------------------------------------------------------------------------------
+
+function exit_running()
+{
+    if [ -r /etc/rc.status ]; then
+        rc_reset
+        rc_status -v
+        rc_exit
+    else
+        echo " running"
+        exit 0
+    fi
+}
+
+#------------------------------------------------------------------------------
+
+function exit_fail()
+{
+    if [ -r /etc/rc.status ]; then
+        rc_failed
+        rc_exit
+    else
+        echo " failed"
+        exit 1
+    fi
+}
+
+#------------------------------------------------------------------------------
+
 function parse_mac_address()
 {
     if [ -z "${1}" ]; then
@@ -76,16 +120,16 @@ function parse_mac_address()
         MAC=${1}
     else
         echo Invalid MAC address \"${1}\" in ${ETHERCAT_CONFIG}
-        /bin/false
-        rc_status -v
-        rc_exit
+        exit_fail
     fi 
 }
 
 #------------------------------------------------------------------------------
 
-. /etc/rc.status
-rc_reset
+if [ -r /etc/rc.status ]; then
+    . /etc/rc.status
+    rc_reset
+fi
 
 case "${1}" in
 
@@ -116,11 +160,8 @@ start)
     done
 
     # load master module
-    if ! modprobe ec_master main=${DEVICES} backup=${BACKUPS}; then
-        modprobe 8139too
-        /bin/false
-        rc_status -v
-        rc_exit
+    if ! ${MODPROBE} ec_master main=${DEVICES} backup=${BACKUPS}; then
+        exit_fail
     fi
 
     # remove stale device node
@@ -135,25 +176,21 @@ start)
     # check for modules to replace
     for MODULE in ${DEVICE_MODULES}; do
         ECMODULE=ec_${MODULE}
-        if ! modinfo ${ECMODULE} > /dev/null; then
-            continue
+        if ! ${MODINFO} ${ECMODULE} > /dev/null; then
+            continue # ec_* module not found
         fi
         if lsmod | grep "^${MODULE} " > /dev/null; then
-            if ! rmmod ${MODULE}; then
-                /bin/false
-                rc_status -v
-                rc_exit
+            if ! ${RMMOD} ${MODULE}; then
+                exit_fail
             fi
         fi
-        if ! modprobe ${ECMODULE}; then
-            modprobe ${MODULE} # try to restore module
-            /bin/false
-            rc_status -v
-            rc_exit
+        if ! ${MODPROBE} ${ECMODULE}; then
+            ${MODPROBE} ${MODULE} # try to restore module
+            exit_fail
         fi
     done
 
-    rc_status -v
+    exit_success
     ;;
 
 stop)
@@ -163,12 +200,10 @@ stop)
     for MODULE in ${DEVICE_MODULES} master; do
         ECMODULE=ec_${MODULE}
         if ! lsmod | grep -q "^${ECMODULE} "; then
-            continue
+            continue # ec_* module not loaded
         fi
-        if ! rmmod ${ECMODULE}; then
-            /bin/false
-            rc_status -v
-            rc_exit
+        if ! ${RMMOD} ${ECMODULE}; then
+            exit_fail
         fi;
     done
 
@@ -179,19 +214,18 @@ stop)
 
     # reload previous modules
     for MODULE in ${DEVICE_MODULES}; do
-        if ! modprobe ${MODULE}; then
+        if ! ${MODPROBE} ${MODULE}; then
             echo Warning: Failed to restore ${MODULE}.
         fi
     done
 
-    rc_status -v
+    exit_success
     ;;
 
 restart)
     $0 stop || exit 1
     sleep 1
     $0 start
-    rc_status
     ;;
 
 status)
@@ -204,9 +238,11 @@ status)
     MASTERS_IDLE=$?
 
     # master module loaded and masters not waiting for devices?
-    test ${MASTERS_RUNNING} -eq 0 -a ${MASTERS_IDLE} -eq 0
-
-    rc_status -v
+    if [ ${MASTERS_RUNNING} -eq 0 -a ${MASTERS_IDLE} -eq 0 ]; then
+        exit_running
+    else
+        exit_fail
+    fi
     ;;
 
 *)
@@ -215,6 +251,10 @@ status)
 
 esac
 
-rc_exit
+if [ -r /etc/rc.status ]; then
+    rc_exit
+else
+    exit 1
+fi
 
 #------------------------------------------------------------------------------

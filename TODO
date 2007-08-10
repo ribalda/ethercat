@@ -8,7 +8,6 @@ $Id$
 
 * Issues for release 1.3.0:
   - Take broadcast MAC address to register the first ethernet device.
-  - Handle missing rc_status in init script.
 
 * Future features:
   - Interface/buffers for asynchronous domain IO.
