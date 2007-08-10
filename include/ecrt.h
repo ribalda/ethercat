@@ -147,6 +147,8 @@ ec_domain_t *ecrt_master_create_domain(ec_master_t *master);
 
 ec_slave_t *ecrt_master_get_slave(const ec_master_t *, const char *,
         uint32_t vendor_id, uint32_t product_code);
+ec_slave_t *ecrt_master_get_slave_by_pos(const ec_master_t *, uint16_t,
+        uint32_t vendor_id, uint32_t product_code);
 
 int ecrt_master_activate(ec_master_t *master);
 

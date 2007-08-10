@@ -26,6 +26,8 @@ Changes in version 1.3.0:
   - ecrt_master_get_slave() got additional parameters to check for vendor ID
     and product code.
   - Removed addressing scheme "X:Y" for ecrt_master_get_slave().
+  - Added ecrt_master_get_slave_by_pos() to avoid the string handling of
+    ecrt_master_get_slave().
   - Added ecrt_master_get_status() to get status information about the bus.
   - Added functions to set up an alternative PDO mapping for a slave, i. e.
     ec_slave_pdo_mapping_clear(), ec_slave_pdo_mapping_add() and

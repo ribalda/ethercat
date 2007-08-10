@@ -8,7 +8,6 @@ $Id$
 
 * Issues for release 1.3.0:
   - Take broadcast MAC address to register the first ethernet device.
-  - Implement ecrt_get_slave() with integer argument as ring position.
   - Handle missing rc_status in init script.
 
 * Future features:

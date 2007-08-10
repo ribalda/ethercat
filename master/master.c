@@ -1557,6 +1557,41 @@ ec_slave_t *ecrt_master_get_slave(
 /*****************************************************************************/
 
 /**
+ * Obtains a slave pointer by its ring position.
+ * A valid slave pointer is only returned, if vendor ID and product code are
+ * matching.
+ * \return pointer to the slave on success, else NULL
+ * \ingroup RealtimeInterface
+ */
+
+ec_slave_t *ecrt_master_get_slave_by_pos(
+        const ec_master_t *master, /**< EtherCAT master */
+        uint16_t ring_position, /**< ring position */
+        uint32_t vendor_id, /**< vendor ID */
+        uint32_t product_code /**< product code */
+        )
+{
+    ec_slave_t *slave;
+    unsigned int found = 0;
+
+    list_for_each_entry(slave, &master->slaves, list) {
+        if (slave->ring_position == ring_position) {
+            found = 1;
+            break;
+        }
+    }
+
+    if (!found) {
+        EC_ERR("Slave index out of range!\n");
+        return NULL;
+    }
+
+    return ec_slave_validate(slave, vendor_id, product_code) ? NULL : slave;
+}
+
+/*****************************************************************************/
+
+/**
    Sets the locking callbacks.
    The request_cb function must return zero, to allow another instance
    (the EoE process for example) to access the master. Non-zero means,
@@ -1602,6 +1637,7 @@ EXPORT_SYMBOL(ecrt_master_send);
 EXPORT_SYMBOL(ecrt_master_receive);
 EXPORT_SYMBOL(ecrt_master_callbacks);
 EXPORT_SYMBOL(ecrt_master_get_slave);
+EXPORT_SYMBOL(ecrt_master_get_slave_by_pos);
 EXPORT_SYMBOL(ecrt_master_get_status);
 
 /** \endcond */
