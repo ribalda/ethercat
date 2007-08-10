@@ -3837,7 +3837,11 @@ void ec_poll(struct net_device *netdev)
         adapter->ec_watchdog_jiffies = jiffies;
     }
 
+#ifdef CONFIG_PCI_MSI
+	e1000_intr_msi(0, netdev);
+#else
     e1000_intr(0, netdev);
+#endif
 }
 
 #ifdef CONFIG_PCI_MSI
@@ -3853,77 +3857,91 @@ irqreturn_t e1000_intr_msi(int irq, void *data)
 	struct net_device *netdev = data;
 	struct e1000_adapter *adapter = netdev_priv(netdev);
 	struct e1000_hw *hw = &adapter->hw;
-#ifndef CONFIG_E1000_NAPI
 	int i;
+#ifdef CONFIG_E1000_NAPI
+	int ec_work_done = 0;
 #endif
 
-	/* this code avoids the read of ICR but has to get 1000 interrupts
-	 * at every link change event before it will notice the change */
-	if (++adapter->detect_link >= 1000) {
-		uint32_t icr = E1000_READ_REG(hw, ICR);
+	if (adapter->ecdev) {
+		for (i = 0; i < E1000_MAX_INTR; i++)
 #ifdef CONFIG_E1000_NAPI
-		/* read ICR disables interrupts using IAM, so keep up with our
-		 * enable/disable accounting */
-		atomic_inc(&adapter->irq_sem);
+			if (unlikely(!adapter->clean_rx(adapter, adapter->rx_ring,
+                            &ec_work_done, 100) &
+						!e1000_clean_tx_irq(adapter, adapter->tx_ring)))
+#else
+			if (unlikely(!adapter->clean_rx(adapter, adapter->rx_ring) &
+						!e1000_clean_tx_irq(adapter, adapter->tx_ring)))
 #endif
-		adapter->detect_link = 0;
-		if ((icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC)) &&
-		    (icr & E1000_ICR_INT_ASSERTED)) {
-			hw->get_link_status = 1;
-			/* 80003ES2LAN workaround--
-			* For packet buffer work-around on link down event;
-			* disable receives here in the ISR and
-			* reset adapter in watchdog
-			*/
-			if (netif_carrier_ok(netdev) &&
-			    (adapter->hw.mac_type == e1000_80003es2lan)) {
-				/* disable receives */
-				uint32_t rctl = E1000_READ_REG(hw, RCTL);
-				E1000_WRITE_REG(hw, RCTL, rctl & ~E1000_RCTL_EN);
-			}
-			/* guard against interrupt when we're going down */
-			if (!test_bit(__E1000_DOWN, &adapter->flags))
-				mod_timer(&adapter->watchdog_timer,
-				          jiffies + 1);
-		}
+				break;
 	} else {
-		E1000_WRITE_REG(hw, ICR, (0xffffffff & ~(E1000_ICR_RXSEQ |
-		                                         E1000_ICR_LSC)));
-		/* bummer we have to flush here, but things break otherwise as
-		 * some event appears to be lost or delayed and throughput
-		 * drops.  In almost all tests this flush is un-necessary */
-		E1000_WRITE_FLUSH(hw);
+		/* this code avoids the read of ICR but has to get 1000 interrupts
+		 * at every link change event before it will notice the change */
+		if (++adapter->detect_link >= 1000) {
+			uint32_t icr = E1000_READ_REG(hw, ICR);
 #ifdef CONFIG_E1000_NAPI
-		/* Interrupt Auto-Mask (IAM)...upon writing ICR, interrupts are
-		 * masked.  No need for the IMC write, but it does mean we
-		 * should account for it ASAP. */
-		atomic_inc(&adapter->irq_sem);
+			/* read ICR disables interrupts using IAM, so keep up with our
+			 * enable/disable accounting */
+			atomic_inc(&adapter->irq_sem);
+#endif
+			adapter->detect_link = 0;
+			if ((icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC)) &&
+					(icr & E1000_ICR_INT_ASSERTED)) {
+				hw->get_link_status = 1;
+				/* 80003ES2LAN workaround--
+				 * For packet buffer work-around on link down event;
+				 * disable receives here in the ISR and
+				 * reset adapter in watchdog
+				 */
+				if (netif_carrier_ok(netdev) &&
+						(adapter->hw.mac_type == e1000_80003es2lan)) {
+					/* disable receives */
+					uint32_t rctl = E1000_READ_REG(hw, RCTL);
+					E1000_WRITE_REG(hw, RCTL, rctl & ~E1000_RCTL_EN);
+				}
+				/* guard against interrupt when we're going down */
+				if (!test_bit(__E1000_DOWN, &adapter->flags))
+					mod_timer(&adapter->watchdog_timer,
+							jiffies + 1);
+			}
+		} else {
+			E1000_WRITE_REG(hw, ICR, (0xffffffff & ~(E1000_ICR_RXSEQ |
+							E1000_ICR_LSC)));
+			/* bummer we have to flush here, but things break otherwise as
+			 * some event appears to be lost or delayed and throughput
+			 * drops.  In almost all tests this flush is un-necessary */
+			E1000_WRITE_FLUSH(hw);
+#ifdef CONFIG_E1000_NAPI
+			/* Interrupt Auto-Mask (IAM)...upon writing ICR, interrupts are
+			 * masked.  No need for the IMC write, but it does mean we
+			 * should account for it ASAP. */
+			atomic_inc(&adapter->irq_sem);
+#endif
+		}
+
+#ifdef CONFIG_E1000_NAPI
+		if (likely(netif_rx_schedule_prep(netdev))) {
+			adapter->total_tx_bytes = 0;
+			adapter->total_tx_packets = 0;
+			adapter->total_rx_bytes = 0;
+			adapter->total_rx_packets = 0;
+			__netif_rx_schedule(netdev);
+		} else
+			e1000_irq_enable(adapter);
+#else
+		adapter->total_tx_bytes = 0;
+		adapter->total_rx_bytes = 0;
+		adapter->total_tx_packets = 0;
+		adapter->total_rx_packets = 0;
+
+		for (i = 0; i < E1000_MAX_INTR; i++)
+			if (unlikely(!adapter->clean_rx(adapter, adapter->rx_ring) &
+						!e1000_clean_tx_irq(adapter, adapter->tx_ring)))
+				break;
+
+		if (likely(adapter->itr_setting & 3))
+			e1000_set_itr(adapter);
 #endif
 	}
-
-#ifdef CONFIG_E1000_NAPI
-	if (likely(netif_rx_schedule_prep(netdev))) {
-		adapter->total_tx_bytes = 0;
-		adapter->total_tx_packets = 0;
-		adapter->total_rx_bytes = 0;
-		adapter->total_rx_packets = 0;
-		__netif_rx_schedule(netdev);
-	} else
-		e1000_irq_enable(adapter);
-#else
-	adapter->total_tx_bytes = 0;
-	adapter->total_rx_bytes = 0;
-	adapter->total_tx_packets = 0;
-	adapter->total_rx_packets = 0;
-
-	for (i = 0; i < E1000_MAX_INTR; i++)
-		if (unlikely(!adapter->clean_rx(adapter, adapter->rx_ring) &
-		   !e1000_clean_tx_irq(adapter, adapter->tx_ring)))
-			break;
-
-	if (likely(adapter->itr_setting & 3))
-		e1000_set_itr(adapter);
-#endif
 
 	return IRQ_HANDLED;
 }
@@ -3942,8 +3960,9 @@ e1000_intr(int irq, void *data)
 	struct e1000_adapter *adapter = netdev_priv(netdev);
 	struct e1000_hw *hw = &adapter->hw;
 	uint32_t rctl, icr = E1000_READ_REG(hw, ICR);
-#ifndef CONFIG_E1000_NAPI
 	int i;
+#ifdef CONFIG_E1000_NAPI
+	int ec_work_done = 0;
 #endif
 	if (unlikely(!icr))
 		return IRQ_NONE;  /* Not our interrupt */
@@ -3981,8 +4000,19 @@ e1000_intr(int irq, void *data)
 			mod_timer(&adapter->watchdog_timer, jiffies + 1);
 	}
 
+	if (adapter->ecdev) {
+		for (i = 0; i < E1000_MAX_INTR; i++)
 #ifdef CONFIG_E1000_NAPI
-	if (!adapter->ecdev) {
+			if (unlikely(!adapter->clean_rx(adapter, adapter->rx_ring,
+                            &ec_work_done, 100) &
+						!e1000_clean_tx_irq(adapter, adapter->tx_ring)))
+#else
+			if (unlikely(!adapter->clean_rx(adapter, adapter->rx_ring) &
+						!e1000_clean_tx_irq(adapter, adapter->tx_ring)))
+#endif
+				break;
+	} else {
+#ifdef CONFIG_E1000_NAPI
 		if (unlikely(hw->mac_type < e1000_82571)) {
 			/* disable interrupts, without the synchronize_irq bit */
 			atomic_inc(&adapter->irq_sem);
@@ -3999,43 +4029,40 @@ e1000_intr(int irq, void *data)
 			/* this really should not happen! if it does it is basically a
 			 * bug, but not a hard error, so enable ints and continue */
 			e1000_irq_enable(adapter);
-	}
 #else
-	/* Writing IMC and IMS is needed for 82547.
-	 * Due to Hub Link bus being occupied, an interrupt
-	 * de-assertion message is not able to be sent.
-	 * When an interrupt assertion message is generated later,
-	 * two messages are re-ordered and sent out.
-	 * That causes APIC to think 82547 is in de-assertion
-	 * state, while 82547 is in assertion state, resulting
-	 * in dead lock. Writing IMC forces 82547 into
-	 * de-assertion state.
-	 */
-	if (!adapter->ecdev &&
-			(hw->mac_type == e1000_82547 || hw->mac_type == e1000_82547_rev_2)) {
-		atomic_inc(&adapter->irq_sem);
-		E1000_WRITE_REG(hw, IMC, ~0);
-	}
+		/* Writing IMC and IMS is needed for 82547.
+		 * Due to Hub Link bus being occupied, an interrupt
+		 * de-assertion message is not able to be sent.
+		 * When an interrupt assertion message is generated later,
+		 * two messages are re-ordered and sent out.
+		 * That causes APIC to think 82547 is in de-assertion
+		 * state, while 82547 is in assertion state, resulting
+		 * in dead lock. Writing IMC forces 82547 into
+		 * de-assertion state.
+		 */
+		if (hw->mac_type == e1000_82547 || hw->mac_type == e1000_82547_rev_2) {
+			atomic_inc(&adapter->irq_sem);
+			E1000_WRITE_REG(hw, IMC, ~0);
+		}
 
-	adapter->total_tx_bytes = 0;
-	adapter->total_rx_bytes = 0;
-	adapter->total_tx_packets = 0;
-	adapter->total_rx_packets = 0;
+		adapter->total_tx_bytes = 0;
+		adapter->total_rx_bytes = 0;
+		adapter->total_tx_packets = 0;
+		adapter->total_rx_packets = 0;
 
-	for (i = 0; i < E1000_MAX_INTR; i++)
-		if (unlikely(!adapter->clean_rx(adapter, adapter->rx_ring) &
-		   !e1000_clean_tx_irq(adapter, adapter->tx_ring)))
-			break;
+		for (i = 0; i < E1000_MAX_INTR; i++)
+			if (unlikely(!adapter->clean_rx(adapter, adapter->rx_ring) &
+						!e1000_clean_tx_irq(adapter, adapter->tx_ring)))
+				break;
 
-    if (!adapter->ecdev) {
 		if (likely(adapter->itr_setting & 3))
 			e1000_set_itr(adapter);
 
 		if (hw->mac_type == e1000_82547 || hw->mac_type == e1000_82547_rev_2)
 			e1000_irq_enable(adapter);
-	}
 
 #endif
+	}
 	return IRQ_HANDLED;
 }
 
