@@ -13,7 +13,8 @@ Changes in version 1.3.0:
   dynamically instead.
 * Added "main" and "backup" parameters to master module to hand over the
   MAC addresses of the devices to wait for. This made the ec_device_index
-  parameter of the ethernet drivers obsolete.
+  parameter of the ethernet drivers obsolete. The broadcast MAC address means,
+  that the master accepts the first device offered by any ethernet driver.
 * Changed format of sysconfig file and accordingly adjusted functionality
   of the init script to handle the above MAC address lists.
 * Realtime interface changes:

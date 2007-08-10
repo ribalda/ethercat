@@ -248,6 +248,19 @@ int ec_mac_is_zero(const uint8_t *mac)
 
 /*****************************************************************************/
 
+int ec_mac_is_broadcast(const uint8_t *mac)
+{
+    unsigned int i;
+    
+    for (i = 0; i < ETH_ALEN; i++)
+        if (mac[i] != 0xff)
+            return 0;
+
+    return 1;
+}
+
+/*****************************************************************************/
+
 static int ec_mac_parse(uint8_t *mac, const char *src, int allow_empty)
 {
     unsigned int i, value;
@@ -400,19 +413,19 @@ int ecdev_offer(struct net_device *net_dev, /**< net_device to offer */
 
     for (i = 0; i < master_count; i++) {
         master = &masters[i];
-        if (ec_mac_equal(master->main_mac, net_dev->dev_addr)) {
-            ec_mac_print(master->main_mac, str);
+
+        down(&master->device_sem);
+        if (master->main_device.dev) { // master already has a device
+            up(&master->device_sem);
+            continue;
+        }
+            
+        if (ec_mac_equal(master->main_mac, net_dev->dev_addr)
+                || ec_mac_is_broadcast(master->main_mac)) {
+            ec_mac_print(net_dev->dev_addr, str);
             EC_INFO("Accepting device %s for master %u.\n",
                     str, master->index);
 
-            down(&master->device_sem);
-            if (master->main_device.dev) {
-                EC_ERR("Master %u already has a device attached.\n",
-                        master->index);
-                up(&master->device_sem);
-                return -1;
-            }
-            
             ec_device_attach(&master->main_device, net_dev, poll, module);
             up(&master->device_sem);
             
@@ -420,9 +433,13 @@ int ecdev_offer(struct net_device *net_dev, /**< net_device to offer */
             *ecdev = &master->main_device; // offer accepted
             return 0; // no error
         }
-        else if (master->debug_level) {
-            ec_mac_print(master->main_mac, str);
-            EC_DBG("Master %u declined device %s.\n", master->index, str);
+        else {
+            up(&master->device_sem);
+
+            if (master->debug_level) {
+                ec_mac_print(net_dev->dev_addr, str);
+                EC_DBG("Master %u declined device %s.\n", master->index, str);
+            }
         }
     }
 
@@ -446,8 +463,7 @@ void ecdev_withdraw(ec_device_t *device /**< EtherCAT device */)
     ec_master_t *master = device->master;
     char str[20];
 
-    ec_mac_print(master->main_mac, str);
-    
+    ec_mac_print(device->dev->dev_addr, str);
     EC_INFO("Master %u releasing main device %s.\n", master->index, str);
     
     down(&master->device_sem);

@@ -16,6 +16,9 @@
 # Specify the MAC address (hexadecimal with colons) of the Ethernet device to
 # use. Example: "00:00:08:44:ab:66"
 #
+# The broadcast address "ff:ff:ff:ff:ff:ff" has a special meaning: It tells
+# the master to accept the first device offered by any ethernet driver.
+#
 # The MASTER<X>_DEVICE variables also determine, how many masters will be
 # created: A non-empty variable MASTER0_DEVICE will create one master, adding
 # a non-empty variable MASTER1_DEVICE will create a second master, and so on.
