@@ -103,9 +103,24 @@ function exit_fail()
 {
     if [ -r /etc/rc.status ]; then
         rc_failed
+        rc_status -v
         rc_exit
     else
         echo " failed"
+        exit 1
+    fi
+}
+
+#------------------------------------------------------------------------------
+
+function exit_dead()
+{
+    if [ -r /etc/rc.status ]; then
+        rc_failed
+        rc_status -v
+        rc_exit
+    else
+        echo " dead"
         exit 1
     fi
 }
@@ -241,7 +256,7 @@ status)
     if [ ${MASTERS_RUNNING} -eq 0 -a ${MASTERS_IDLE} -eq 0 ]; then
         exit_running
     else
-        exit_fail
+        exit_dead
     fi
     ;;
 
