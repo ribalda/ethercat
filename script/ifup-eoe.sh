@@ -1,8 +1,6 @@
+#!/bin/bash
+
 #------------------------------------------------------------------------------
-#
-#  Makefile.am
-#
-#  IgH EtherCAT master
 #
 #  $Id$
 #
@@ -35,10 +33,32 @@
 #
 #------------------------------------------------------------------------------
 
-SUBDIRS = init.d sysconfig
+# this ifup.d script adds special network interfaces to a network bridge
 
-bin_SCRIPTS = lsec
+CFGNAME=${1}
+IFNAME=${2}
 
-EXTRA_DIST = lsec ifup-eoe.sh
+# customize here
+BRNAME="eoebr0"
+INTERFACES=""
+BRCTL="/sbin/brctl"
+LOGGER="logger -t ifup-eoe"
+
+# if the current interface in the list of interfaces to bridge?
+if ! echo ${INTERFACES} | grep -qw ${IFNAME}; then
+    exit 0;
+fi
+
+# does the EoE bridge already exist?
+if ! ${BRCTL} show | grep -q "^${BRNAME}"; then
+	${LOGGER} Creating ${BRNAME}
+	${BRCTL} addbr ${BRNAME} # create it
+fi
+
+${LOGGER} Adding ${IFNAME} to ${BRNAME}
+ip link set ${IFNAME} down
+ip addr flush dev ${IFNAME}
+${BRCTL} addif ${BRNAME} ${IFNAME}
+ip link set ${IFNAME} up
 
 #------------------------------------------------------------------------------
