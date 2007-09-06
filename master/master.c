@@ -592,7 +592,7 @@ void ec_master_send_datagrams(ec_master_t *master /**< EtherCAT master */)
             // EtherCAT datagram header
             EC_WRITE_U8 (cur_data,     datagram->type);
             EC_WRITE_U8 (cur_data + 1, datagram->index);
-            EC_WRITE_U32(cur_data + 2, datagram->address.logical);
+            memcpy(cur_data + 2, datagram->address, EC_ADDR_LEN);
             EC_WRITE_U16(cur_data + 6, datagram->data_size & 0x7FF);
             EC_WRITE_U16(cur_data + 8, 0x0000);
             follows_word = cur_data + 6;

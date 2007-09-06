@@ -298,7 +298,7 @@ int ec_domain_alloc(ec_domain_t *domain, /**< EtherCAT domain */
     ec_fmmu_t *fmmu;
     unsigned int i, j, datagram_count;
     uint32_t pdo_off, pdo_off_datagram;
-    uint32_t datagram_offset;
+    uint32_t datagram_offset, log_addr;
     size_t datagram_data_size, sync_size;
     ec_datagram_t *datagram;
 
@@ -350,8 +350,9 @@ int ec_domain_alloc(ec_domain_t *domain, /**< EtherCAT domain */
                 pdo_off = fmmu->logical_start_address + data_reg->sync_offset;
                 // search datagram
                 list_for_each_entry(datagram, &domain->datagrams, list) {
-                    pdo_off_datagram = pdo_off - datagram->address.logical;
-                    if (pdo_off >= datagram->address.logical &&
+                    log_addr = EC_READ_U32(datagram->address);
+                    pdo_off_datagram = pdo_off - log_addr;
+                    if (pdo_off >= log_addr &&
                         pdo_off_datagram < datagram->mem_size) {
                         *data_reg->data_ptr = datagram->data +
                             pdo_off_datagram;

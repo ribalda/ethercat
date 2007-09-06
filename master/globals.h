@@ -81,6 +81,9 @@
 /** size of an EtherCAT datagram footer */
 #define EC_DATAGRAM_FOOTER_SIZE 2
 
+/** size of the EtherCAT address field */
+#define EC_ADDR_LEN 4
+
 /** resulting maximum data size of a single datagram in a frame */
 #define EC_MAX_DATA_SIZE (ETH_DATA_LEN - EC_FRAME_HEADER_SIZE \
                           - EC_DATAGRAM_HEADER_SIZE - EC_DATAGRAM_FOOTER_SIZE)

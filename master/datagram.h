@@ -84,28 +84,6 @@ ec_datagram_state_t;
 /*****************************************************************************/
 
 /**
-   EtherCAT address.
-*/
-
-typedef union
-{
-    /**
-     * Physical address.
-     */
-    struct
-    {
-        uint16_t slave; /**< configured or autoincrement address */
-        uint16_t mem; /**< physical memory address */
-    }
-    physical;
-
-    uint32_t logical; /**< logical address */
-}
-ec_address_t;
-
-/*****************************************************************************/
-
-/**
    EtherCAT datagram.
 */
 
@@ -115,7 +93,7 @@ typedef struct
     struct list_head queue; /**< master datagram queue item */
     struct list_head sent; /**< master list item for sent datagrams */
     ec_datagram_type_t type; /**< datagram type (APRD, BWR, etc) */
-    ec_address_t address; /**< recipient address */
+    uint8_t address[EC_ADDR_LEN]; /**< recipient address */
     uint8_t *data; /**< datagram data */
     size_t mem_size; /**< datagram \a data memory size */
     size_t data_size; /**< size of the data in \a data */
