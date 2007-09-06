@@ -325,7 +325,7 @@ int ecrt_slave_pdo_mapping(ec_slave_t *, ec_direction_t, unsigned int, ...);
 #define EC_WRITE_U32(DATA, VAL) \
     do { \
         *((uint32_t *) (DATA)) = (uint32_t) (VAL); \
-        cpu_to_le16s(DATA); \
+        cpu_to_le32s(DATA); \
     } while (0)
 
 /**
