@@ -49,8 +49,10 @@
 
 #define Beckhoff_EL1004 0x00000002, 0x03EC3052
 #define Beckhoff_EL1004_PDO_Inputs 0x3101, 1
-#define Beckhoff_EL1004v2_PDO_Inputs 0x6000, 1
 #define Beckhoff_EL1004_Inputs Beckhoff_EL1004, Beckhoff_EL1004_PDO_Inputs
+
+#define Beckhoff_EL1004v2_PDO_Inputs 0x6000, 1
+#define Beckhoff_EL1004v2_Inputs Beckhoff_EL1004, Beckhoff_EL1004v2_PDO_Inputs
 
 #define Beckhoff_EL1014 0x00000002, 0x03F63052
 #define Beckhoff_EL1014_PDO_Inputs 0x3101, 1
