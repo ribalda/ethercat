@@ -34,6 +34,10 @@
 /**
    \file
    EtherCAT Slave Database.
+
+   \warn Please do not create any dependencies to this file! It may be changed
+   between releases. Provide a copy, if you want to use it in foreign
+   projects.
 */
 
 /*****************************************************************************/
@@ -57,6 +61,9 @@
 #define Beckhoff_EL1014 0x00000002, 0x03F63052
 #define Beckhoff_EL1014_PDO_Inputs 0x3101, 1
 #define Beckhoff_EL1014_Inputs Beckhoff_EL1014, Beckhoff_EL1014_PDO_Inputs 
+
+#define Beckhoff_EL1014v2_PDO_Inputs 0x6000, 1
+#define Beckhoff_EL1014v2_Inputs Beckhoff_EL1014, Beckhoff_EL1014v2_PDO_Inputs
 
 #define Beckhoff_EL2004 0x00000002, 0x07D43052
 #define Beckhoff_EL2004_PDO_Outputs 0x3001, 1
