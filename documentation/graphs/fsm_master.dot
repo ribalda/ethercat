@@ -1,0 +1,79 @@
+digraph master {
+    size="7,9"
+    center=1
+	ratio=fill
+
+    action_process_eeprom [shape=point,label=""]
+    action_process_sdo [shape=point,label=""]
+    action_configure [shape=point,label=""]
+    action_next_slave_state [shape=point,label=""]
+    action_process_states [shape=point,label=""]
+    action_addresses [shape=point,label=""]
+
+    start -> broadcast [weight=10]
+
+    //broadcast -> error
+    broadcast -> end
+    broadcast -> clear_addresses
+    broadcast -> read_states [weight=10]
+
+    action_process_eeprom -> write_eeprom
+
+    action_process_sdo -> sdo_request
+
+    action_configure -> configure_slave
+
+    action_next_slave_state -> read_states
+    action_next_slave_state -> validate_vendor
+    action_next_slave_state -> action_process_states
+
+    action_process_states -> action_configure
+    action_process_states -> action_process_sdo
+    action_process_states -> action_process_eeprom
+    action_process_states -> sdodict
+    action_process_states -> end
+
+    //read_states -> error
+    read_states -> action_next_slave_state
+    read_states -> acknowledge
+
+    //acknowledge -> error
+    acknowledge -> action_next_slave_state
+
+    //validate_vendor -> error
+    validate_vendor -> validate_product
+
+    action_addresses -> end
+    action_addresses -> rewrite_addresses
+
+    //validate_product -> error
+    validate_product -> validate_vendor
+    validate_product -> action_addresses
+
+    //rewrite_addresses -> error
+    rewrite_addresses -> end
+    rewrite_addresses -> action_addresses
+
+    //clear_addresses -> error
+    clear_addresses -> scan_slaves
+
+    scan_slaves -> scan_slaves
+    scan_slaves -> end
+
+    configure_slave -> action_configure
+    configure_slave -> end
+
+    //write_eeprom -> error
+    write_eeprom -> end
+
+    //sdodict -> error
+    sdodict -> end
+
+    //sdo_request -> error
+    sdo_request -> action_process_sdo
+    sdo_request -> end
+
+    //error -> start
+
+    //end -> start
+}

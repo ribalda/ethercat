@@ -4,7 +4,7 @@
 #
 #-----------------------------------------------------------------------------
 
-GRAPHS := fsm_slave_conf.ps fsm_pdo_mapping.ps
+GRAPHS := fsm_slave_conf.ps fsm_pdo_mapping.ps fsm_master.ps
 
 all: $(GRAPHS)
 
