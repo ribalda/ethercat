@@ -117,12 +117,16 @@ int ec_eoe_init(
     eoe->tx_rate = 0;
     eoe->rate_jiffies = 0;
 
-    /* device name eoe<MASTER>s<SLAVE>, because system tools don't like
-     * hyphens etc. in interface names. */
-    sprintf(name, "eoe%us%u", slave->master->index, slave->ring_position);
+    /* device name eoe<MASTER>[as]<SLAVE>, because networking scripts don't
+     * like hyphens etc. in interface names. */
+    if (slave->sii_alias) {
+        sprintf(name, "eoe%ua%u", slave->master->index, slave->sii_alias);
+    } else {
+        sprintf(name, "eoe%us%u", slave->master->index, slave->ring_position);
+    }
 
     if (!(eoe->dev = alloc_netdev(sizeof(ec_eoe_t *), name, ether_setup))) {
-        EC_ERR("Unable to allocate net_device for EoE handler!\n");
+        EC_ERR("Unable to allocate net_device %s for EoE handler!\n", name);
         goto out_return;
     }
 
