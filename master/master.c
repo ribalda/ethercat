@@ -959,6 +959,10 @@ ssize_t ec_master_info(ec_master_t *master, /**< EtherCAT master */
 
     off += sprintf(buffer + off, "\nSlaves: %i\n",
                    master->slave_count);
+    off += sprintf(buffer + off, "Status: %s\n",
+                   master->fsm.tainted ? "TAINTED" : "sane");
+    off += sprintf(buffer + off, "PDO slaves: %s\n",
+                   master->pdo_slaves_offline ? "INCOMPLETE" : "online");
 
     off += sprintf(buffer + off, "\nDevices:\n");
     
