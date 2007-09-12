@@ -49,6 +49,11 @@
 
 /*****************************************************************************/
 
+/** size of the datagram description string */
+#define EC_DATAGRAM_NAME_SIZE 20
+
+/*****************************************************************************/
+
 /**
    EtherCAT datagram type.
 */
@@ -103,7 +108,10 @@ typedef struct
     cycles_t cycles_sent; /**< time, the datagram was sent */
     unsigned long jiffies_sent; /**< jiffies, when the datagram was sent */
     cycles_t cycles_received; /**< time, when the datagram was received */
-    unsigned long jiffies_received; /**< jiffies, when the datagram was rec. */
+    unsigned long jiffies_received; /**< jiffies the datagram was received */
+    unsigned int skip_count; /**< number of requeues when not yet received */
+    unsigned long stats_output_jiffies; /**< last statistics output */
+    char name[EC_DATAGRAM_NAME_SIZE]; /**< description of the datagram */
 }
 ec_datagram_t;
 
@@ -122,6 +130,7 @@ int ec_datagram_bwr(ec_datagram_t *, uint16_t, size_t);
 int ec_datagram_lrw(ec_datagram_t *, uint32_t, size_t);
 
 void ec_datagram_print_wc_error(const ec_datagram_t *);
+void ec_datagram_output_stats(ec_datagram_t *datagram);
 
 /*****************************************************************************/
 

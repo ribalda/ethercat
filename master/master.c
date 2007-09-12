@@ -143,7 +143,6 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
 
     master->stats.timeouts = 0;
     master->stats.corrupted = 0;
-    master->stats.skipped = 0;
     master->stats.unmatched = 0;
     master->stats.output_jiffies = 0;
 
@@ -186,6 +185,7 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
 
     // init state machine datagram
     ec_datagram_init(&master->fsm_datagram);
+    snprintf(master->fsm_datagram.name, EC_DATAGRAM_NAME_SIZE, "master-fsm");
     if (ec_datagram_prealloc(&master->fsm_datagram, EC_MAX_DATA_SIZE)) {
         EC_ERR("Failed to allocate FSM datagram.\n");
         goto out_clear_backup;
@@ -548,10 +548,9 @@ void ec_master_queue_datagram(ec_master_t *master, /**< EtherCAT master */
     // check, if the datagram is already queued
     list_for_each_entry(queued_datagram, &master->datagram_queue, queue) {
         if (queued_datagram == datagram) {
-            master->stats.skipped++;
+            datagram->skip_count++;
             if (master->debug_level)
                 EC_DBG("skipping datagram %x.\n", (unsigned int) datagram);
-            ec_master_output_stats(master);
             datagram->state = EC_DATAGRAM_QUEUED;
             return;
         }
@@ -798,11 +797,6 @@ void ec_master_output_stats(ec_master_t *master /**< EtherCAT master */)
                     master->stats.corrupted == 1 ? "" : "s");
             master->stats.corrupted = 0;
         }
-        if (master->stats.skipped) {
-            EC_WARN("%i datagram%s SKIPPED!\n", master->stats.skipped,
-                    master->stats.skipped == 1 ? "" : "s");
-            master->stats.skipped = 0;
-        }
         if (master->stats.unmatched) {
             EC_WARN("%i datagram%s UNMATCHED!\n", master->stats.unmatched,
                     master->stats.unmatched == 1 ? "" : "s");
@@ -826,6 +820,7 @@ static int ec_master_idle_thread(ec_master_t *master)
 
     while (!signal_pending(current)) {
         cycles_start = get_cycles();
+        ec_datagram_output_stats(&master->fsm_datagram);
 
         if (ec_fsm_master_running(&master->fsm)) { // datagram on the way
             // receive
@@ -882,6 +877,7 @@ static int ec_master_operation_thread(ec_master_t *master)
     allow_signal(SIGTERM);
 
     while (!signal_pending(current)) {
+        ec_datagram_output_stats(&master->fsm_datagram);
         if (master->injection_seq_rt != master->injection_seq_fsm ||
                 master->fsm_datagram.state == EC_DATAGRAM_SENT ||
                 master->fsm_datagram.state == EC_DATAGRAM_QUEUED)

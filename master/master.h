@@ -75,8 +75,6 @@ typedef struct
 {
     unsigned int timeouts; /**< datagram timeouts */
     unsigned int corrupted; /**< corrupted frames */
-    unsigned int skipped; /**< skipped datagrams (the ones that were
-                             requeued when not yet received) */
     unsigned int unmatched; /**< unmatched datagrams (received, but not
                                queued any longer) */
     unsigned long output_jiffies; /**< time of last output */

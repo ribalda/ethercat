@@ -82,6 +82,9 @@ void ec_datagram_init(ec_datagram_t *datagram /**< EtherCAT datagram */)
     datagram->jiffies_sent = 0;
     datagram->cycles_received = 0;
     datagram->jiffies_received = 0;
+    datagram->skip_count = 0;
+    datagram->stats_output_jiffies = 0;
+    datagram->name[0] = 0x00;
 }
 
 /*****************************************************************************/
@@ -316,6 +319,29 @@ void ec_datagram_print_wc_error(
     else
         printk("Success.");
     printk("\n");
+}
+
+/*****************************************************************************/
+
+/**
+ * Outputs datagram statistics at most every second.
+ */
+
+void ec_datagram_output_stats(
+        ec_datagram_t *datagram
+        )
+{
+    if (jiffies - datagram->stats_output_jiffies < HZ) {
+        datagram->stats_output_jiffies = jiffies;
+    
+        if (unlikely(datagram->skip_count)) {
+            EC_WARN("Datagram %x (%s) was SKIPPED %u time%s.\n",
+                    (unsigned int) datagram, datagram->name,
+                    datagram->skip_count,
+                    datagram->skip_count == 1 ? "" : "s");
+            datagram->skip_count = 0;
+        }
+    }
 }
 
 /*****************************************************************************/

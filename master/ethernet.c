@@ -94,7 +94,7 @@ int ec_eoe_init(
 {
     ec_eoe_t **priv;
     int result, i;
-    char name[20];
+    char name[EC_DATAGRAM_NAME_SIZE];
 
     eoe->slave = slave;
 
@@ -120,10 +120,14 @@ int ec_eoe_init(
     /* device name eoe<MASTER>[as]<SLAVE>, because networking scripts don't
      * like hyphens etc. in interface names. */
     if (slave->sii_alias) {
-        sprintf(name, "eoe%ua%u", slave->master->index, slave->sii_alias);
+        snprintf(name, EC_DATAGRAM_NAME_SIZE,
+                "eoe%ua%u", slave->master->index, slave->sii_alias);
     } else {
-        sprintf(name, "eoe%us%u", slave->master->index, slave->ring_position);
+        snprintf(name, EC_DATAGRAM_NAME_SIZE,
+                "eoe%us%u", slave->master->index, slave->ring_position);
     }
+
+    snprintf(eoe->datagram.name, EC_DATAGRAM_NAME_SIZE, name);
 
     if (!(eoe->dev = alloc_netdev(sizeof(ec_eoe_t *), name, ether_setup))) {
         EC_ERR("Unable to allocate net_device %s for EoE handler!\n", name);
@@ -307,6 +311,7 @@ void ec_eoe_run(ec_eoe_t *eoe /**< EoE handler */)
         eoe->tx_counter = 0;
         eoe->rate_jiffies = jiffies;
     }
+    ec_datagram_output_stats(&eoe->datagram);
 }
 
 /*****************************************************************************/

@@ -269,6 +269,8 @@ int ec_domain_add_datagram(ec_domain_t *domain, /**< EtherCAT domain */
     }
 
     ec_datagram_init(datagram);
+    snprintf(datagram->name, EC_DATAGRAM_NAME_SIZE,
+            "domain%u-%u", domain->index, offset);
 
     if (ec_datagram_lrw(datagram, offset, data_size)) {
         kfree(datagram);
@@ -547,6 +549,7 @@ void ecrt_domain_process(ec_domain_t *domain /**< EtherCAT domain */)
     working_counter_sum = 0;
     domain->state = 0;
     list_for_each_entry(datagram, &domain->datagrams, list) {
+        ec_datagram_output_stats(datagram);
         if (datagram->state == EC_DATAGRAM_RECEIVED) {
             working_counter_sum += datagram->working_counter;
         }
