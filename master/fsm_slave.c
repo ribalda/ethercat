@@ -226,8 +226,9 @@ void ec_fsm_slave_scan_state_address(ec_fsm_slave_t *fsm /**< slave state machin
     if (datagram->working_counter != 1) {
         fsm->slave->error_flag = 1;
         fsm->state = ec_fsm_slave_state_error;
-        EC_ERR("Failed to write station address - slave %i did not respond.\n",
+        EC_ERR("Failed to write station address on slave %i: ",
                fsm->slave->ring_position);
+        ec_datagram_print_wc_error(datagram);
         return;
     }
 
@@ -243,7 +244,9 @@ void ec_fsm_slave_scan_state_address(ec_fsm_slave_t *fsm /**< slave state machin
    Slave scan state: STATE.
 */
 
-void ec_fsm_slave_scan_state_state(ec_fsm_slave_t *fsm /**< slave state machine */)
+void ec_fsm_slave_scan_state_state(
+        ec_fsm_slave_t *fsm /**< slave state machine */
+        )
 {
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
@@ -262,8 +265,9 @@ void ec_fsm_slave_scan_state_state(ec_fsm_slave_t *fsm /**< slave state machine 
     if (datagram->working_counter != 1) {
         fsm->slave->error_flag = 1;
         fsm->state = ec_fsm_slave_state_error;
-        EC_ERR("Failed to read AL state - slave %i did not respond.\n",
+        EC_ERR("Failed to read AL state of slave %i: ",
                fsm->slave->ring_position);
+        ec_datagram_print_wc_error(datagram);
         return;
     }
 
@@ -306,8 +310,9 @@ void ec_fsm_slave_scan_state_base(ec_fsm_slave_t *fsm /**< slave state machine *
     if (datagram->working_counter != 1) {
         fsm->slave->error_flag = 1;
         fsm->state = ec_fsm_slave_state_error;
-        EC_ERR("Failed to read base data - slave %i did not respond.\n",
+        EC_ERR("Failed to read base data from slave %i: ",
                slave->ring_position);
+        ec_datagram_print_wc_error(datagram);
         return;
     }
 
@@ -352,8 +357,9 @@ void ec_fsm_slave_scan_state_datalink(ec_fsm_slave_t *fsm /**< slave state machi
     if (datagram->working_counter != 1) {
         fsm->slave->error_flag = 1;
         fsm->state = ec_fsm_slave_state_error;
-        EC_ERR("Failed to read DL status - slave %i did not respond.\n",
+        EC_ERR("Failed to read DL status from slave %i: ",
                slave->ring_position);
+        ec_datagram_print_wc_error(datagram);
         return;
     }
 
@@ -644,8 +650,9 @@ void ec_fsm_slave_conf_state_clear_fmmus(ec_fsm_slave_t *fsm
     if (datagram->working_counter != 1) {
         fsm->slave->error_flag = 1;
         fsm->state = ec_fsm_slave_state_error;
-        EC_ERR("Failed to clear FMMUs - slave %i did not respond.\n",
+        EC_ERR("Failed to clear FMMUs of slave %i: ",
                fsm->slave->ring_position);
+        ec_datagram_print_wc_error(datagram);
         return;
     }
 
@@ -726,8 +733,9 @@ void ec_fsm_slave_conf_state_mbox_sync(ec_fsm_slave_t *fsm /**< slave state mach
     if (datagram->working_counter != 1) {
         slave->error_flag = 1;
         fsm->state = ec_fsm_slave_state_error;
-        EC_ERR("Failed to set sync managers - slave %i did not respond.\n",
+        EC_ERR("Failed to set sync managers of slave %i: ",
                slave->ring_position);
+        ec_datagram_print_wc_error(datagram);
         return;
     }
 
@@ -941,8 +949,9 @@ void ec_fsm_slave_conf_state_pdo_sync(ec_fsm_slave_t *fsm /**< slave state machi
     if (datagram->working_counter != 1) {
         slave->error_flag = 1;
         fsm->state = ec_fsm_slave_state_error;
-        EC_ERR("Failed to set process data sync managers - slave %i did not"
-               " respond.\n", slave->ring_position);
+        EC_ERR("Failed to set process data sync managers of slave %i: ",
+                slave->ring_position);
+        ec_datagram_print_wc_error(datagram);
         return;
     }
 
@@ -1002,8 +1011,9 @@ void ec_fsm_slave_conf_state_fmmu(ec_fsm_slave_t *fsm /**< slave state machine *
     if (datagram->working_counter != 1) {
         slave->error_flag = 1;
         fsm->state = ec_fsm_slave_state_error;
-        EC_ERR("Failed to set FMMUs - slave %i did not respond.\n",
+        EC_ERR("Failed to set FMMUs of slave %i: ",
                slave->ring_position);
+        ec_datagram_print_wc_error(datagram);
         return;
     }
 

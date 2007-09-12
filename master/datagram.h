@@ -121,6 +121,8 @@ int ec_datagram_brd(ec_datagram_t *, uint16_t, size_t);
 int ec_datagram_bwr(ec_datagram_t *, uint16_t, size_t);
 int ec_datagram_lrw(ec_datagram_t *, uint32_t, size_t);
 
+void ec_datagram_print_wc_error(const ec_datagram_t *);
+
 /*****************************************************************************/
 
 #endif

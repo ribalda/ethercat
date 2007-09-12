@@ -190,13 +190,14 @@ void ec_fsm_change_state_check(ec_fsm_change_t *fsm
         fsm->jiffies_start = datagram->jiffies_sent;
     }
 
-    if (datagram->working_counter != 1) {
+    if (datagram->working_counter == 0) {
         if (datagram->jiffies_received - fsm->jiffies_start >= 3 * HZ) {
             char state_str[EC_STATE_STRING_SIZE];
             ec_state_string(fsm->requested_state, state_str);
             fsm->state = ec_fsm_change_state_error;
-            EC_ERR("Failed to set state %s on slave %i: Slave did not"
-                   " respond.\n", state_str, fsm->slave->ring_position);
+            EC_ERR("Failed to set state %s on slave %i: ",
+                    state_str, fsm->slave->ring_position);
+            ec_datagram_print_wc_error(datagram);
             return;
         }
 
@@ -204,6 +205,16 @@ void ec_fsm_change_state_check(ec_fsm_change_t *fsm
         ec_datagram_npwr(datagram, slave->station_address, 0x0120, 2);
         EC_WRITE_U16(datagram->data, fsm->requested_state);
         fsm->retries = EC_FSM_RETRIES;
+        return;
+    }
+
+    if (unlikely(datagram->working_counter > 1)) {
+        char state_str[EC_STATE_STRING_SIZE];
+        ec_state_string(fsm->requested_state, state_str);
+        fsm->state = ec_fsm_change_state_error;
+        EC_ERR("Failed to set state %s on slave %i: ",
+                state_str, fsm->slave->ring_position);
+        ec_datagram_print_wc_error(datagram);
         return;
     }
 
@@ -242,8 +253,9 @@ void ec_fsm_change_state_status(ec_fsm_change_t *fsm
         char req_state[EC_STATE_STRING_SIZE];
         ec_state_string(fsm->requested_state, req_state);
         fsm->state = ec_fsm_change_state_error;
-        EC_ERR("Failed to check state %s on slave %i.\n",
+        EC_ERR("Failed to check state %s on slave %i: ",
                req_state, slave->ring_position);
+        ec_datagram_print_wc_error(datagram);
         return;
     }
 
@@ -372,7 +384,8 @@ void ec_fsm_change_state_code(ec_fsm_change_t *fsm
     }
 
     if (datagram->working_counter != 1) {
-        EC_WARN("Reception of AL status code datagram failed.\n");
+        EC_WARN("Reception of AL status code datagram failed: ");
+        ec_datagram_print_wc_error(datagram);
     }
     else {
         if ((code = EC_READ_U16(datagram->data))) {
@@ -433,8 +446,9 @@ void ec_fsm_change_state_ack(ec_fsm_change_t *fsm /**< finite state machine */)
 
     if (datagram->working_counter != 1) {
         fsm->state = ec_fsm_change_state_error;
-        EC_ERR("Reception of state ack datagram failed - slave %i did not"
-               " respond.\n", slave->ring_position);
+        EC_ERR("Reception of state ack datagram failed on slave %i: ",
+                slave->ring_position);
+        ec_datagram_print_wc_error(datagram);
         return;
     }
 
@@ -471,8 +485,9 @@ void ec_fsm_change_state_check_ack(ec_fsm_change_t *fsm
 
     if (datagram->working_counter != 1) {
         fsm->state = ec_fsm_change_state_error;
-        EC_ERR("Reception of state ack check datagram failed - slave %i did"
-               " not respond.\n", slave->ring_position);
+        EC_ERR("Reception of state ack check datagram failed on slave %i: ",
+                slave->ring_position);
+        ec_datagram_print_wc_error(datagram);
         return;
     }
 

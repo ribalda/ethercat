@@ -587,17 +587,20 @@ void ec_fsm_master_state_read_states(ec_fsm_master_t *fsm /**< master state mach
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         EC_ERR("Failed to receive AL state datagram for slave %i"
-                " (datagram state %i)\n", slave->ring_position, datagram->state);
+                " (datagram state %i)\n",
+                slave->ring_position, datagram->state);
         fsm->state = ec_fsm_master_state_error;
         return;
     }
 
     // did the slave not respond to its station address?
-    if (datagram->working_counter != 1) {
+    if (datagram->working_counter == 0) {
         ec_slave_set_online_state(slave, EC_SLAVE_OFFLINE);
         ec_fsm_master_action_next_slave_state(fsm);
         return;
     }
+
+    // FIXME what to to on multiple response?
 
     // slave responded
     ec_slave_set_state(slave, EC_READ_U8(datagram->data)); // set app state first
@@ -774,8 +777,9 @@ void ec_fsm_master_state_rewrite_addresses(ec_fsm_master_t *fsm
     }
 
     if (datagram->working_counter != 1) {
-        EC_ERR("Failed to write station address - slave %i did not respond.\n",
+        EC_ERR("Failed to write station address of slave %i: ",
                slave->ring_position);
+        ec_datagram_print_wc_error(datagram);
         fsm->state = ec_fsm_master_state_error;
         return;
     }

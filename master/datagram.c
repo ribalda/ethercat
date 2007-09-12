@@ -299,3 +299,23 @@ int ec_datagram_lrw(ec_datagram_t *datagram,
 }
 
 /*****************************************************************************/
+
+/**
+ * Evaluates the working counter of a single-cast datagram.
+ * Outputs an error message.
+ */
+
+void ec_datagram_print_wc_error(
+        const ec_datagram_t *datagram
+        )
+{
+    if (datagram->working_counter == 0)
+        printk("No response.");
+    else if (datagram->working_counter > 1)
+        printk("%u slaves responded!", datagram->working_counter);
+    else
+        printk("Success.");
+    printk("\n");
+}
+
+/*****************************************************************************/

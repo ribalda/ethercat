@@ -196,8 +196,9 @@ void ec_fsm_sii_read_check(ec_fsm_sii_t *fsm /**< finite state machine */)
 
     if (datagram->working_counter != 1) {
         fsm->state = ec_fsm_sii_error;
-        EC_ERR("Reception of SII read datagram failed - slave %i did not"
-               " respond.\n", fsm->slave->ring_position);
+        EC_ERR("Reception of SII read datagram failed on slave %i: ",
+                fsm->slave->ring_position);
+        ec_datagram_print_wc_error(datagram);
         return;
     }
 
@@ -242,8 +243,9 @@ void ec_fsm_sii_read_fetch(ec_fsm_sii_t *fsm /**< finite state machine */)
 
     if (datagram->working_counter != 1) {
         fsm->state = ec_fsm_sii_error;
-        EC_ERR("Reception of SII check/fetch datagram failed - slave %i did"
-               " not respond\n", fsm->slave->ring_position);
+        EC_ERR("Reception of SII check/fetch datagram failed on slave %i: ",
+                fsm->slave->ring_position);
+        ec_datagram_print_wc_error(datagram);
         return;
     }
 
@@ -338,8 +340,9 @@ void ec_fsm_sii_write_check(ec_fsm_sii_t *fsm /**< finite state machine */)
 
     if (datagram->working_counter != 1) {
         fsm->state = ec_fsm_sii_error;
-        EC_ERR("Reception of SII write datagram failed - slave %i did not"
-               " respond.\n", fsm->slave->ring_position);
+        EC_ERR("Reception of SII write datagram failed on slave %i: ",
+                fsm->slave->ring_position);
+        ec_datagram_print_wc_error(datagram);
         return;
     }
 
@@ -375,8 +378,9 @@ void ec_fsm_sii_write_check2(ec_fsm_sii_t *fsm /**< finite state machine */)
 
     if (datagram->working_counter != 1) {
         fsm->state = ec_fsm_sii_error;
-        EC_ERR("Reception of SII write check datagram failed - slave %i did"
-               " not respond.\n", fsm->slave->ring_position);
+        EC_ERR("Reception of SII write check datagram failed on slave %i: ",
+                fsm->slave->ring_position);
+        ec_datagram_print_wc_error(datagram);
         return;
     }
 
