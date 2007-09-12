@@ -39,7 +39,8 @@ EXTRA_DIST = \
 	Doxyfile \
 	FEATURES \
 	globals.h \
-	Kbuild
+	Kbuild \
+	README.EoE
 
 modules:
 	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" modules
