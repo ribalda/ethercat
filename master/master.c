@@ -64,7 +64,6 @@ static int ec_master_operation_thread(ec_master_t *);
 void ec_master_eoe_run(unsigned long);
 #endif
 void ec_master_check_sdo(unsigned long);
-int ec_master_measure_bus_time(ec_master_t *);
 ssize_t ec_show_master_attribute(struct kobject *, struct attribute *, char *);
 ssize_t ec_store_master_attribute(struct kobject *, struct attribute *,
                                   const char *, size_t);
@@ -1202,69 +1201,6 @@ void ec_master_eoe_run(unsigned long data /**< master pointer */)
     add_timer(&master->eoe_timer);
 }
 #endif
-
-/*****************************************************************************/
-
-/**
-   Measures the time, a frame is on the bus.
-   \return 0 in case of success, else < 0
-*/
-
-int ec_master_measure_bus_time(ec_master_t *master)
-{
-    ec_datagram_t datagram;
-    uint32_t cur, sum, min, max, i;
-
-    ec_datagram_init(&datagram);
-
-    if (ec_datagram_brd(&datagram, 0x0130, 2)) {
-        EC_ERR("Failed to allocate datagram for bus time measuring.\n");
-        ec_datagram_clear(&datagram);
-        return -1;
-    }
-
-    ecrt_master_receive(master);
-
-    sum = 0;
-    min = 0xFFFFFFFF;
-    max = 0;
-
-    for (i = 0; i < 100; i++) {
-        ec_master_queue_datagram(master, &datagram);
-        ecrt_master_send(master);
-
-        while (1) {
-            ecrt_master_receive(master);
-
-            if (datagram.state == EC_DATAGRAM_RECEIVED) {
-                break;
-            }
-            else if (datagram.state == EC_DATAGRAM_ERROR) {
-                EC_WARN("Failed to measure bus time.\n");
-                goto error;
-            }
-            else if (datagram.state == EC_DATAGRAM_TIMED_OUT) {
-                EC_WARN("Timeout while measuring bus time.\n");
-                goto error;
-            }
-        }
-
-        cur = (unsigned int) (datagram.cycles_received
-                              - datagram.cycles_sent) * 1000 / cpu_khz;
-        sum += cur;
-        if (cur > max) max = cur;
-        if (cur < min) min = cur;
-    }
-
-    EC_DBG("Bus time is (min/avg/max) %u / %u.%u / %u us.\n",
-           min, sum / 100, sum % 100, max);
-    ec_datagram_clear(&datagram);
-    return 0;
-
-  error:
-    ec_datagram_clear(&datagram);
-    return -1;
-}
 
 /*****************************************************************************/
 
