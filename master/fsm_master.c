@@ -56,6 +56,7 @@ void ec_fsm_master_state_validate_vendor(ec_fsm_master_t *);
 void ec_fsm_master_state_validate_product(ec_fsm_master_t *);
 void ec_fsm_master_state_rewrite_addresses(ec_fsm_master_t *);
 void ec_fsm_master_state_configure_slave(ec_fsm_master_t *);
+void ec_fsm_master_state_clear_addresses(ec_fsm_master_t *);
 void ec_fsm_master_state_scan_slaves(ec_fsm_master_t *);
 void ec_fsm_master_state_write_eeprom(ec_fsm_master_t *);
 void ec_fsm_master_state_sdodict(ec_fsm_master_t *);
@@ -280,13 +281,13 @@ void ec_fsm_master_state_broadcast(ec_fsm_master_t *fsm /**< master state machin
                 list_add_tail(&slave->list, &master->slaves);
             }
 
-            EC_INFO("Scanning bus.\n");
+            if (master->debug_level)
+                EC_DBG("Clearing station addresses...\n");
 
-            // begin scanning of slaves
-            fsm->slave = list_entry(master->slaves.next, ec_slave_t, list);
-            fsm->state = ec_fsm_master_state_scan_slaves;
-            ec_fsm_slave_start_scan(&fsm->fsm_slave, fsm->slave);
-            ec_fsm_slave_exec(&fsm->fsm_slave); // execute immediately
+            ec_datagram_bwr(datagram, 0x0010, 2);
+            EC_WRITE_U16(datagram->data, 0x0000);
+            fsm->retries = EC_FSM_RETRIES;
+            fsm->state = ec_fsm_master_state_clear_addresses;
             return;
         }
     }
@@ -797,6 +798,43 @@ void ec_fsm_master_state_rewrite_addresses(ec_fsm_master_t *fsm
     fsm->slave = list_entry(fsm->slave->list.next, ec_slave_t, list);
     // Write new station address to slave
     ec_fsm_master_action_addresses(fsm);
+}
+
+/*****************************************************************************/
+
+/**
+ * Master state: CLEAR ADDRESSES.
+ */
+
+void ec_fsm_master_state_clear_addresses(
+        ec_fsm_master_t *fsm /**< master state machine */
+        )
+{
+    ec_master_t *master = fsm->master;
+    ec_datagram_t *datagram = fsm->datagram;
+
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+        return;
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED) {
+        EC_ERR("Failed to receive address clearing datagram (state %i).\n",
+                datagram->state);
+        fsm->state = ec_fsm_master_state_error;
+        return;
+    }
+
+    if (datagram->working_counter != master->slave_count) {
+        EC_WARN("Failed to clear all station addresses: Cleared %u of %u",
+                datagram->working_counter, master->slave_count);
+    }
+
+    EC_INFO("Scanning bus.\n");
+
+    // begin scanning of slaves
+    fsm->slave = list_entry(master->slaves.next, ec_slave_t, list);
+    fsm->state = ec_fsm_master_state_scan_slaves;
+    ec_fsm_slave_start_scan(&fsm->fsm_slave, fsm->slave);
+    ec_fsm_slave_exec(&fsm->fsm_slave); // execute immediately
 }
 
 /*****************************************************************************/
