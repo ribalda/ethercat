@@ -846,8 +846,8 @@ void ec_fsm_master_state_scan_slaves(
     EC_INFO("Bus scanning completed in %u ms.\n",
             (u32) (jiffies - fsm->scan_jiffies) * 1000 / HZ);
 
-    // check if EoE processing has to be started
 #ifdef EC_EOE
+    // check if EoE processing has to be started
     ec_master_eoe_start(master);
 #endif
 
