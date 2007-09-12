@@ -1162,7 +1162,6 @@ void ec_master_eoe_run(unsigned long data /**< master pointer */)
     cycles_t cycles_start, cycles_end;
     unsigned long restart_jiffies;
 
-
     list_for_each_entry(eoe, &master->eoe_handlers, list) {
         if (ec_eoe_is_open(eoe)) {
             none_open = 0;
@@ -1172,11 +1171,11 @@ void ec_master_eoe_run(unsigned long data /**< master pointer */)
     if (none_open)
         goto queue_timer;
 
-    if (master->request_cb(master->cb_data)) goto queue_timer;
-
     // receive datagrams
+    if (master->request_cb(master->cb_data)) goto queue_timer;
     cycles_start = get_cycles();
     ecrt_master_receive(master);
+    master->release_cb(master->cb_data);
 
     // actual EoE processing
     list_for_each_entry(eoe, &master->eoe_handlers, list) {
@@ -1184,10 +1183,15 @@ void ec_master_eoe_run(unsigned long data /**< master pointer */)
     }
 
     // send datagrams
+    if (master->request_cb(master->cb_data)) {
+        goto queue_timer;
+    }
+    list_for_each_entry(eoe, &master->eoe_handlers, list) {
+        ec_eoe_queue(eoe);
+    }
     ecrt_master_send(master);
-    cycles_end = get_cycles();
-
     master->release_cb(master->cb_data);
+    cycles_end = get_cycles();
 
     master->eoe_cycle_times[master->eoe_cycle_time_pos]
         = (u32) (cycles_end - cycles_start) * 1000 / cpu_khz;
@@ -1197,7 +1201,7 @@ void ec_master_eoe_run(unsigned long data /**< master pointer */)
  queue_timer:
     restart_jiffies = HZ / EC_EOE_FREQUENCY;
     if (!restart_jiffies) restart_jiffies = 1;
-    master->eoe_timer.expires += restart_jiffies;
+    master->eoe_timer.expires = jiffies + restart_jiffies;
     add_timer(&master->eoe_timer);
 }
 #endif

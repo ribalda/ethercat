@@ -99,6 +99,7 @@ int ec_eoe_init(
     eoe->slave = slave;
 
     ec_datagram_init(&eoe->datagram);
+    eoe->queue_datagram = 0;
     eoe->state = ec_eoe_state_rx_start;
     eoe->opened = 0;
     eoe->rx_skb = NULL;
@@ -283,7 +284,7 @@ int ec_eoe_send(ec_eoe_t *eoe /**< EoE handler */)
                             (eoe->tx_frame_number & 0x0F) << 12));
 
     memcpy(data + 4, eoe->tx_frame->skb->data + eoe->tx_offset, current_size);
-    ec_master_queue_datagram(eoe->slave->master, &eoe->datagram);
+    eoe->queue_datagram = 1;
 
     eoe->tx_offset += current_size;
     eoe->tx_fragment_number++;
@@ -300,6 +301,10 @@ void ec_eoe_run(ec_eoe_t *eoe /**< EoE handler */)
 {
     if (!eoe->opened) return;
 
+    // if the datagram was not sent, or is not yet received, skip this cycle
+    if (eoe->queue_datagram || eoe->datagram.state == EC_DATAGRAM_SENT)
+        return;
+
     // call state function
     eoe->state(eoe);
 
@@ -311,7 +316,22 @@ void ec_eoe_run(ec_eoe_t *eoe /**< EoE handler */)
         eoe->tx_counter = 0;
         eoe->rate_jiffies = jiffies;
     }
+
     ec_datagram_output_stats(&eoe->datagram);
+}
+
+/*****************************************************************************/
+
+/**
+ * Queues the datagram, if necessary.
+ */
+
+void ec_eoe_queue(ec_eoe_t *eoe /**< EoE handler */)
+{
+   if (eoe->queue_datagram) {
+       ec_master_queue_datagram(eoe->slave->master, &eoe->datagram);
+       eoe->queue_datagram = 0;
+   }
 }
 
 /*****************************************************************************/
@@ -343,7 +363,7 @@ void ec_eoe_state_rx_start(ec_eoe_t *eoe /**< EoE handler */)
         return;
 
     ec_slave_mbox_prepare_check(eoe->slave, &eoe->datagram);
-    ec_master_queue_datagram(eoe->slave->master, &eoe->datagram);
+    eoe->queue_datagram = 1;
     eoe->state = ec_eoe_state_rx_check;
 }
 
@@ -369,7 +389,7 @@ void ec_eoe_state_rx_check(ec_eoe_t *eoe /**< EoE handler */)
     }
 
     ec_slave_mbox_prepare_fetch(eoe->slave, &eoe->datagram);
-    ec_master_queue_datagram(eoe->slave->master, &eoe->datagram);
+    eoe->queue_datagram = 1;
     eoe->state = ec_eoe_state_rx_fetch;
 }
 
