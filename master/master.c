@@ -50,7 +50,9 @@
 #include "slave.h"
 #include "device.h"
 #include "datagram.h"
+#ifdef EC_EOE
 #include "ethernet.h"
+#endif
 
 /*****************************************************************************/
 
@@ -58,7 +60,9 @@ void ec_master_destroy_domains(ec_master_t *);
 void ec_master_sync_io(ec_master_t *);
 static int ec_master_idle_thread(ec_master_t *);
 static int ec_master_operation_thread(ec_master_t *);
+#ifdef EC_EOE
 void ec_master_eoe_run(unsigned long);
+#endif
 void ec_master_check_sdo(unsigned long);
 int ec_master_measure_bus_time(ec_master_t *);
 ssize_t ec_show_master_attribute(struct kobject *, struct attribute *, char *);
@@ -145,9 +149,12 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
 
     for (i = 0; i < HZ; i++) {
         master->idle_cycle_times[i] = 0;
+#ifdef EC_EOE
         master->eoe_cycle_times[i] = 0;
+#endif
     }
     master->idle_cycle_time_pos = 0;
+#ifdef EC_EOE
     master->eoe_cycle_time_pos = 0;
 
     init_timer(&master->eoe_timer);
@@ -155,6 +162,7 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     master->eoe_timer.data = (unsigned long) master;
     master->eoe_running = 0;
     INIT_LIST_HEAD(&master->eoe_handlers);
+#endif
 
     master->internal_lock = SPIN_LOCK_UNLOCKED;
     master->request_cb = NULL;
@@ -228,7 +236,9 @@ void ec_master_clear(
         ec_master_t *master /**< EtherCAT master */
         )
 {
+#ifdef EC_EOE
     ec_master_clear_eoe_handlers(master);
+#endif
     ec_master_destroy_slaves(master);
     ec_master_destroy_domains(master);
     ec_fsm_master_clear(&master->fsm);
@@ -243,6 +253,7 @@ void ec_master_clear(
 
 /*****************************************************************************/
 
+#ifdef EC_EOE
 /**
  * Clear and free all EoE handlers.
  */
@@ -259,6 +270,7 @@ void ec_master_clear_eoe_handlers(
         kfree(eoe);
     }
 }
+#endif
 
 /*****************************************************************************/
 
@@ -394,7 +406,9 @@ void ec_master_leave_idle_mode(ec_master_t *master /**< EtherCAT master */)
 {
     master->mode = EC_MASTER_MODE_ORPHANED;
     
+#ifdef EC_EOE
     ec_master_eoe_stop(master);
+#endif
     ec_master_thread_stop(master);
     ec_master_destroy_slaves(master);
 }
@@ -408,7 +422,9 @@ void ec_master_leave_idle_mode(ec_master_t *master /**< EtherCAT master */)
 int ec_master_enter_operation_mode(ec_master_t *master /**< EtherCAT master */)
 {
     ec_slave_t *slave;
+#ifdef EC_EOE
     ec_eoe_t *eoe;
+#endif
 
     down(&master->config_sem);
     master->allow_config = 0; // temporarily disable slave configuration
@@ -442,11 +458,13 @@ int ec_master_enter_operation_mode(ec_master_t *master /**< EtherCAT master */)
     list_for_each_entry(slave, &master->slaves, list) {
         ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
     }
+#ifdef EC_EOE
     // ... but set EoE slaves to OP
     list_for_each_entry(eoe, &master->eoe_handlers, list) {
         if (ec_eoe_is_open(eoe))
             ec_slave_request_state(eoe->slave, EC_SLAVE_STATE_OP);
     }
+#endif
 
     if (master->debug_level)
         EC_DBG("Switching to operation mode.\n");
@@ -475,11 +493,15 @@ void ec_master_leave_operation_mode(ec_master_t *master
                                     /**< EtherCAT master */)
 {
     ec_slave_t *slave;
+#ifdef EC_EOE
     ec_eoe_t *eoe;
+#endif
 
     master->mode = EC_MASTER_MODE_IDLE;
 
+#ifdef EC_EOE
     ec_master_eoe_stop(master);
+#endif
     ec_master_thread_stop(master);
     
     master->request_cb = ec_master_request_cb;
@@ -491,17 +513,21 @@ void ec_master_leave_operation_mode(ec_master_t *master
         ec_slave_reset(slave);
         ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
     }
+#ifdef EC_EOE
     // ... but leave EoE slaves in OP
     list_for_each_entry(eoe, &master->eoe_handlers, list) {
         if (ec_eoe_is_open(eoe))
             ec_slave_request_state(eoe->slave, EC_SLAVE_STATE_OP);
     }
+#endif
 
     ec_master_destroy_domains(master);
     
     if (ec_master_thread_start(master, ec_master_idle_thread))
         EC_WARN("Failed to restart master thread!\n");
+#ifdef EC_EOE
     ec_master_eoe_start(master);
+#endif
 
     master->allow_scan = 1;
     master->allow_config = 1;
@@ -941,7 +967,9 @@ ssize_t ec_master_info(ec_master_t *master, /**< EtherCAT master */
                        )
 {
     off_t off = 0;
+#ifdef EC_EOE
     ec_eoe_t *eoe;
+#endif
     uint32_t cur, sum, min, max, pos, i;
 
     off += sprintf(buffer + off, "\nMode: ");
@@ -990,6 +1018,7 @@ ssize_t ec_master_info(ec_master_t *master, /**< EtherCAT master */
     off += sprintf(buffer + off, "  Idle cycle: %u / %u.%u / %u\n",
                    min, sum / HZ, (sum * 100 / HZ) % 100, max);
 
+#ifdef EC_EOE
     sum = 0;
     min = 0xFFFFFFFF;
     max = 0;
@@ -1010,6 +1039,7 @@ ssize_t ec_master_info(ec_master_t *master, /**< EtherCAT master */
                        eoe->dev->name, eoe->rx_rate, eoe->tx_rate,
                        ((eoe->rx_rate + eoe->tx_rate) / 8 + 512) / 1024);
     }
+#endif
 
     off += sprintf(buffer + off, "\n");
 
@@ -1079,6 +1109,7 @@ ssize_t ec_store_master_attribute(struct kobject *kobj, /**< slave's kobject */
 
 /*****************************************************************************/
 
+#ifdef EC_EOE
 /**
    Starts Ethernet-over-EtherCAT processing on demand.
 */
@@ -1136,6 +1167,7 @@ void ec_master_eoe_run(unsigned long data /**< master pointer */)
     cycles_t cycles_start, cycles_end;
     unsigned long restart_jiffies;
 
+
     list_for_each_entry(eoe, &master->eoe_handlers, list) {
         if (ec_eoe_is_open(eoe)) {
             none_open = 0;
@@ -1173,6 +1205,7 @@ void ec_master_eoe_run(unsigned long data /**< master pointer */)
     master->eoe_timer.expires += restart_jiffies;
     add_timer(&master->eoe_timer);
 }
+#endif
 
 /*****************************************************************************/
 
@@ -1435,7 +1468,9 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT master */)
     }
     
     // restart EoE process and master thread with new locking
+#ifdef EC_EOE
     ec_master_eoe_stop(master);
+#endif
     ec_master_thread_stop(master);
 
     ec_master_prepare(master); // prepare asynchronous IO
@@ -1453,7 +1488,9 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT master */)
         EC_ERR("Failed to start master thread!\n");
         return -1;
     }
+#ifdef EC_EOE
     ec_master_eoe_start(master);
+#endif
     return 0;
 }
 

@@ -414,6 +414,31 @@ AC_ARG_ENABLE([dummy],
 AM_CONDITIONAL(ENABLE_DUMMY, test "x$dummy" = "x1")
 
 #------------------------------------------------------------------------------
+# Ethernet-over-EtherCAT support
+#------------------------------------------------------------------------------
+
+AC_ARG_ENABLE([eoe],
+    AS_HELP_STRING([--enable-eoe],
+                   [Enable EoE support (default: yes)]),
+    [
+        case "${enableval}" in
+            yes) eoe=1
+                ;;
+            no) eoe=0
+                ;;
+            *) AC_MSG_ERROR([Invalid value for --enable-eoe])
+                ;;
+        esac
+    ],
+    [eoe=1]
+)
+
+if test "x${eoe}" = "x1"; then
+    AC_DEFINE([EC_EOE], [1], [EoE support enabled])
+fi
+AM_CONDITIONAL(ENABLE_EOE, test "x$eoe" = "x1")
+
+#------------------------------------------------------------------------------
 
 # Create config.kbuild
 
@@ -433,6 +458,7 @@ RTAI_DIR := "${rtaidir}"
 MSR_DIR := "${msrdir}"
 ENABLE_DEBUG_IF := ${dbg}
 ENABLE_DUMMY := ${dummy}
+ENABLE_EOE := ${eoe}
 EOF
 
 #------------------------------------------------------------------------------

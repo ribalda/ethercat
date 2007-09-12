@@ -41,7 +41,9 @@
 #include "globals.h"
 #include "master.h"
 #include "mailbox.h"
+#ifdef EC_EOE
 #include "ethernet.h"
+#endif
 #include "fsm_master.h"
 
 /*****************************************************************************/
@@ -238,8 +240,10 @@ void ec_fsm_master_state_broadcast(ec_fsm_master_t *fsm /**< master state machin
             fsm->idle = 0;
             fsm->scan_jiffies = jiffies;
 
+#ifdef EC_EOE
             ec_master_eoe_stop(master);
             ec_master_clear_eoe_handlers(master);
+#endif
             ec_master_destroy_slaves(master);
 
             master->slave_count = datagram->working_counter;
@@ -812,6 +816,7 @@ void ec_fsm_master_state_scan_slaves(
     if (ec_fsm_slave_exec(&fsm->fsm_slave)) // execute slave state machine
         return;
 
+#ifdef EC_EOE
     if (slave->sii_mailbox_protocols & EC_MBOX_EOE) {
         // create EoE handler for this slave
         ec_eoe_t *eoe;
@@ -828,6 +833,7 @@ void ec_fsm_master_state_scan_slaves(
             list_add_tail(&eoe->list, &master->eoe_handlers);
         }
     }
+#endif
 
     // another slave to fetch?
     if (slave->list.next != &master->slaves) {
@@ -841,7 +847,9 @@ void ec_fsm_master_state_scan_slaves(
             (u32) (jiffies - fsm->scan_jiffies) * 1000 / HZ);
 
     // check if EoE processing has to be started
+#ifdef EC_EOE
     ec_master_eoe_start(master);
+#endif
 
     master->scan_state = EC_REQUEST_COMPLETE;
     wake_up_interruptible(&master->scan_queue);
