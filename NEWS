@@ -6,6 +6,15 @@ $Id$
 
 Changes in version 1.3.1:
 
+* Improved EoE handling: Avoided skipping of datagrams and release lock
+  while processing.
+* Added some statistics to the datagram structure.
+* Master state machine clears all station addresses with a broadcast datagram
+  before setting them.
+* Added --enable-eoe conditional.
+* Minor extensions of the master info file.
+* Improved handling of unexpected working counters.
+* Create network interfaces for EoE devices with alias as eoeXaY.
 * Fixed problems on big-endian systems.
 * Added documentation on how to set up an EoE network.
 
