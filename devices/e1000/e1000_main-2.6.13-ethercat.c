@@ -164,8 +164,8 @@ static void e1000_vlan_rx_add_vid(struct net_device *netdev, uint16_t vid);
 static void e1000_vlan_rx_kill_vid(struct net_device *netdev, uint16_t vid);
 static void e1000_restore_vlan(struct e1000_adapter *adapter);
 
-static int e1000_suspend(struct pci_dev *pdev, uint32_t state);
 #ifdef CONFIG_PM
+static int e1000_suspend(struct pci_dev *pdev, uint32_t state);
 static int e1000_resume(struct pci_dev *pdev);
 #endif
 
@@ -3760,6 +3760,7 @@ e1000_set_spd_dplx(struct e1000_adapter *adapter, uint16_t spddplx)
 	return 0;
 }
 
+#ifdef CONFIG_PM
 static int
 e1000_suspend(struct pci_dev *pdev, uint32_t state)
 {
@@ -3853,7 +3854,6 @@ e1000_suspend(struct pci_dev *pdev, uint32_t state)
 	return 0;
 }
 
-#ifdef CONFIG_PM
 static int
 e1000_resume(struct pci_dev *pdev)
 {
