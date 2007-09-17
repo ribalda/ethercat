@@ -288,17 +288,17 @@ void ec_device_send(ec_device_t *device, /**< EtherCAT device */
         ec_print_data(skb->data + ETH_HLEN, size);
     }
 
+    // start sending
+    if (device->dev->hard_start_xmit(skb, device->dev) == NETDEV_TX_OK) {
+		device->tx_count++;
 #ifdef EC_DEBUG_IF
-    ec_debug_send(&device->dbg, skb->data, ETH_HLEN + size);
+		ec_debug_send(&device->dbg, skb->data, ETH_HLEN + size);
 #endif
 #ifdef EC_DEBUG_RING
-    ec_device_debug_ring_append(
-            device, TX, skb->data + ETH_HLEN, size);
+		ec_device_debug_ring_append(
+				device, TX, skb->data + ETH_HLEN, size);
 #endif
-
-    // start sending
-    device->dev->hard_start_xmit(skb, device->dev);
-    device->tx_count++;
+	}
 }
 
 /*****************************************************************************/
