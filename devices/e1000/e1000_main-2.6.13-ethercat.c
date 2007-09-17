@@ -2667,8 +2667,9 @@ e1000_intr(int irq, void *data, struct pt_regs *regs)
 	struct e1000_adapter *adapter = netdev_priv(netdev);
 	struct e1000_hw *hw = &adapter->hw;
 	uint32_t icr = E1000_READ_REG(hw, ICR);
-#ifndef CONFIG_E1000_NAPI
 	unsigned int i;
+#ifdef CONFIG_E1000_NAPI
+	int work_done = 0;
 #endif
 
 	if(unlikely(!icr))
@@ -2681,15 +2682,22 @@ e1000_intr(int irq, void *data, struct pt_regs *regs)
 	}
 
 #ifdef CONFIG_E1000_NAPI
-	if(!adapter->ecdev && likely(netif_rx_schedule_prep(netdev))) {
+	if (adapter->ecdev) {
+		for(i = 0; i < E1000_MAX_INTR; i++)
+			if(unlikely(!adapter->clean_rx(adapter, &work_done, 100) &
+						!e1000_clean_tx_irq(adapter)))
+				break;
+	} else {
+		if(likely(netif_rx_schedule_prep(netdev))) {
 
-		/* Disable interrupts and register for poll. The flush 
-		  of the posted write is intentionally left out.
-		*/
+			/* Disable interrupts and register for poll. The flush 
+			   of the posted write is intentionally left out.
+			 */
 
-		atomic_inc(&adapter->irq_sem);
-		E1000_WRITE_REG(hw, IMC, ~0);
-		__netif_rx_schedule(netdev);
+			atomic_inc(&adapter->irq_sem);
+			E1000_WRITE_REG(hw, IMC, ~0);
+			__netif_rx_schedule(netdev);
+		}
 	}
 #else
 	/* Writing IMC and IMS is needed for 82547.
