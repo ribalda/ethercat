@@ -49,6 +49,8 @@
 
 /** \cond */
 
+#define Beckhoff_EK1100 0x00000002, 0x044C2C52
+
 #define Beckhoff_BK1120 0x00000002, 0x04602C22
 
 #define Beckhoff_EL1004 0x00000002, 0x03EC3052
