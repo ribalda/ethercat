@@ -329,8 +329,8 @@ int ec_fsm_master_action_process_eeprom(
         up(&master->eeprom_sem);
 
         slave = request->slave;
-        if (slave->online_state == EC_SLAVE_OFFLINE || slave->error_flag) {
-            EC_ERR("Discarding EEPROM data, slave %i not ready.\n",
+        if (slave->online_state == EC_SLAVE_OFFLINE) {
+            EC_ERR("Discarding EEPROM data, slave %i offline.\n",
                     slave->ring_position);
             request->state = EC_REQUEST_FAILURE;
             wake_up(&master->eeprom_queue);
