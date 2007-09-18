@@ -807,7 +807,8 @@ size_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
         }
     }
 
-    if (!list_empty(&slave->sii_pdos))
+    // type-cast to avoid warnings on some compilers
+    if (!list_empty((struct list_head *) &slave->sii_pdos))
         off += sprintf(buffer + off, "\nAvailable PDOs:\n");
 
     list_for_each_entry(pdo, &slave->sii_pdos, list) {
@@ -828,7 +829,8 @@ size_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
         }
     }
 
-    if (!list_empty(&slave->sdo_confs))
+    // type-cast to avoid warnings on some compilers
+    if (!list_empty((struct list_head *) &slave->sdo_confs))
         off += sprintf(buffer + off, "\nSDO configurations:\n");
 
     list_for_each_entry(sdodata, &slave->sdo_confs, list) {
