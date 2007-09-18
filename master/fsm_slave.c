@@ -685,6 +685,9 @@ void ec_fsm_slave_conf_enter_mbox_sync(
 
     if (!slave->sii_mailbox_protocols || slave->sii_sync_count < 2) {
         // no mailbox sync managers to be configured
+        if (master->debug_level)
+            EC_DBG("Slave %i does not support mailbox communication.\n",
+                    slave->ring_position);
         ec_fsm_slave_conf_enter_preop(fsm);
         return;
     }
