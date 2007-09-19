@@ -891,6 +891,46 @@ int ec_slave_schedule_eeprom_writing(ec_eeprom_write_request_t *request)
 /*****************************************************************************/
 
 /**
+ * Calculates the EEPROM checksum field.
+ *
+ * The checksum is generated with the polynom x^8+x^2+x+1 (0x07) and an
+ * initial value of 0xff (see IEC 61158-6-12 ch. 5.4).
+ *
+ * The below code was originally generated with PYCRC
+ * http://www.tty1.net/pycrc
+ *
+ * ./pycrc.py --width=8 --poly=0x07 --reflect-in=0 --xor-in=0xff
+ *   --reflect-out=0 --xor-out=0 --generate c --algorithm=bit-by-bit
+ *
+ * \return CRC8
+ */
+
+uint8_t ec_slave_eeprom_crc(const uint8_t *data, size_t length)
+{
+    unsigned int i;
+    uint8_t bit, byte, crc = 0x48;
+
+    while (length--) {
+        byte = *data++;
+        for (i = 0; i < 8; i++) {
+            bit = crc & 0x80;
+            crc = (crc << 1) | ((byte >> (7 - i)) & 0x01);
+            if (bit) crc ^= 0x07;
+        }
+    }
+
+    for (i = 0; i < 8; i++) {
+        bit = crc & 0x80;
+        crc <<= 1;
+        if (bit) crc ^= 0x07;
+    }
+
+    return crc;
+}
+
+/*****************************************************************************/
+
+/**
  * Writes complete EEPROM contents to a slave.
  * \return data size written in case of success, otherwise error code.
  */
@@ -904,6 +944,7 @@ ssize_t ec_slave_write_eeprom(ec_slave_t *slave, /**< EtherCAT slave */
     const uint16_t *cat_header;
     uint16_t cat_type, cat_size;
     int ret;
+    uint8_t crc;
 
     if (slave->master->mode != EC_MASTER_MODE_IDLE) { // FIXME
         EC_ERR("Writing EEPROMs only allowed in idle mode!\n");
@@ -925,6 +966,12 @@ ssize_t ec_slave_write_eeprom(ec_slave_t *slave, /**< EtherCAT slave */
     if (request.size < 0x0041) {
         EC_ERR("EEPROM data too short! Dropping.\n");
         return -EINVAL;
+    }
+
+    // calculate checksum
+    crc = ec_slave_eeprom_crc(data, 14); // CRC over words 0 to 6
+    if (crc != data[14]) {
+        EC_WARN("EEPROM CRC incorrect. Must be 0x%02x.\n", crc);
     }
 
     cat_header = request.words + EC_FIRST_EEPROM_CATEGORY_OFFSET;
@@ -964,11 +1011,12 @@ ssize_t ec_slave_write_alias(ec_slave_t *slave, /**< EtherCAT slave */
 {
     ec_eeprom_write_request_t request;
     char *remainder;
-    uint16_t alias, word;
+    uint16_t alias, words[8];
     int ret;
+    uint8_t crc;
 
     if (slave->master->mode != EC_MASTER_MODE_IDLE) { // FIXME
-        EC_ERR("Writing EEPROMs only allowed in idle mode!\n");
+        EC_ERR("Writing to EEPROM is only allowed in idle mode!\n");
         return -EBUSY;
     }
 
@@ -977,16 +1025,29 @@ ssize_t ec_slave_write_alias(ec_slave_t *slave, /**< EtherCAT slave */
         EC_ERR("Invalid alias value! Dropping.\n");
         return -EINVAL;
     }
+
+    if (!slave->eeprom_data || slave->eeprom_size < 16) {
+        EC_ERR("Failed to read EEPROM contents from slave %u.\n",
+                slave->ring_position);
+        return -EINVAL;
+    }
+
+    // copy first 7 words of recent EEPROM contents
+    memcpy(words, slave->eeprom_data, 14);
     
-    // correct endianess
-    EC_WRITE_U16(&word, alias);
+    // write new alias address
+    EC_WRITE_U16(words + 4, alias);
+
+    // calculate new checksum over words 0 to 6
+    crc = ec_slave_eeprom_crc((const uint8_t *) words, 14);
+    EC_WRITE_U16(words + 7, crc);
 
     // init EEPROM write request
     INIT_LIST_HEAD(&request.list);
     request.slave = slave;
-    request.words = &word;
-    request.offset = 0x0004;
-    request.size = 1;
+    request.words = words;
+    request.offset = 0x0000;
+    request.size = 8;
 
     if ((ret = ec_slave_schedule_eeprom_writing(&request)))
         return ret; // error code

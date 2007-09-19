@@ -6,6 +6,7 @@ $Id$
 
 Changes in version 1.3.2:
 
+* Calculate checksum when writing EEPROM or alias address.
 * Removed config.kbuild and replaced Kbuild files by Kbuild.in files.
 
 -------------------------------------------------------------------------------
