@@ -32,7 +32,7 @@
 #------------------------------------------------------------------------------
 
 EXTRA_DIST = \
-	Kbuild \
+	Kbuild.in \
 	e1000_ethtool-2.6.13-ethercat.c \
 	e1000_ethtool-2.6.13-orig.c \
 	e1000-2.6.13-ethercat.h \

@@ -36,7 +36,7 @@ SUBDIRS = e1000
 DIST_SUBDIRS = e1000
 
 EXTRA_DIST = \
-	Kbuild \
+	Kbuild.in \
 	ecdev.h \
 	8139too-2.6.13-ethercat.c \
 	8139too-2.6.13-orig.c \

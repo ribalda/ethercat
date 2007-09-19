@@ -32,7 +32,7 @@
 #------------------------------------------------------------------------------
 
 EXTRA_DIST = \
-	Kbuild \
+	Kbuild.in \
 	canopen.c canopen.h \
 	datagram.c datagram.h \
 	debug.c	debug.h \

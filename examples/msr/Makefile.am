@@ -32,7 +32,7 @@
 #------------------------------------------------------------------------------
 
 EXTRA_DIST = \
-	Kbuild \
+	Kbuild.in \
 	libm.o_shipped \
 	msr_sample.c \
 	msrserv.pl \

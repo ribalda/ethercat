@@ -35,7 +35,9 @@
 #
 #------------------------------------------------------------------------------
 
-EXTRA_DIST = Kbuild mini.c
+EXTRA_DIST = \
+	Kbuild.in \
+	mini.c
 
 all:
 	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" modules

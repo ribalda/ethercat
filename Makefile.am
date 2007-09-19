@@ -39,7 +39,7 @@ EXTRA_DIST = \
 	Doxyfile \
 	FEATURES \
 	globals.h \
-	Kbuild \
+	Kbuild.in \
 	README.EoE
 
 modules:
@@ -74,13 +74,13 @@ mrproper: clean cleandoc
 		config.h.in \
 		config.log \
 		config.status \
-		config.kbuild \
 		configure.in \
 		configure \
 		Makefile \
 		Makefile.in \
 		stamp-h1 \
 		ChangeLog \
+        Kbuild \
 		*~
 
 doc:

@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 #
-#  $Id$
+#  $Id: Kbuild 844 2007-03-08 18:15:25Z fp $
 #
 #  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
 #
@@ -31,12 +31,16 @@
 #
 #------------------------------------------------------------------------------
 
-include $(src)/../../config.kbuild
+REV := $(shell if test -s $(src)/../svnrevision; then \
+		cat $(src)/../svnrevision; \
+	else \
+		svnversion $(src) 2>/dev/null || echo "unknown"; \
+	fi)
 
-obj-m := ec_rtai_sample.o
-
-ec_rtai_sample-objs := rtai_sample.o
-
-EXTRA_CFLAGS := -I$(RTAI_DIR)/include
+ifeq (@ENABLE_DUMMY@,1)
+    obj-m := ec_dummy.o
+	ec_dummy-objs := module.o master.o slave.o domain.o
+	CFLAGS_dummy.o := -DSVNREV=$(REV)
+endif
 
 #------------------------------------------------------------------------------

@@ -32,7 +32,6 @@
 #------------------------------------------------------------------------------
 
 TOPDIR := $(src)/../..
-include $(TOPDIR)/config.kbuild
 
 REV := $(shell if test -s $(TOPDIR)/svnrevision; then \
 		cat $(TOPDIR)/svnrevision; \
@@ -40,14 +39,14 @@ REV := $(shell if test -s $(TOPDIR)/svnrevision; then \
 		svnversion $(TOPDIR) 2>/dev/null || echo "unknown"; \
 	fi)
 
-ifeq ($(ENABLE_E1000),1)
-	EC_E1000_OBJ := e1000_main-$(KERNEL_E1000)-ethercat.o \
-        e1000_hw-$(KERNEL_E1000)-ethercat.o \
-        e1000_ethtool-$(KERNEL_E1000)-ethercat.o \
-        e1000_param-$(KERNEL_E1000)-ethercat.o
+ifeq (@ENABLE_E1000@,1)
+	EC_E1000_OBJ := e1000_main-@KERNEL_E1000@-ethercat.o \
+        e1000_hw-@KERNEL_E1000@-ethercat.o \
+        e1000_ethtool-@KERNEL_E1000@-ethercat.o \
+        e1000_param-@KERNEL_E1000@-ethercat.o
 	obj-m += ec_e1000.o
 	ec_e1000-objs := $(EC_E1000_OBJ)
-	CFLAGS_e1000_main-$(KERNEL_E1000)-ethercat.o = -DSVNREV=$(REV)
+	CFLAGS_e1000_main-@KERNEL_E1000@-ethercat.o = -DSVNREV=$(REV)
 endif
 
 #------------------------------------------------------------------------------

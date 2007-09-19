@@ -97,6 +97,7 @@ AC_ARG_ENABLE([8139too],
 )
 
 AM_CONDITIONAL(ENABLE_8139TOO, test "x$enable8139too" = "x1")
+AC_SUBST(ENABLE_8139TOO,[$enable8139too])
 
 AC_ARG_WITH([8139too-kernel],
     AC_HELP_STRING(
@@ -128,6 +129,8 @@ if test "x${enable8139too}" = "x1"; then
     AC_MSG_RESULT([$kernel8139too])
 fi
 
+AC_SUBST(KERNEL_8139TOO,[$kernel8139too])
+
 #------------------------------------------------------------------------------
 # e100 driver
 #------------------------------------------------------------------------------
@@ -149,6 +152,7 @@ AC_ARG_ENABLE([e100],
 )
 
 AM_CONDITIONAL(ENABLE_E100, test "x$enablee100" = "x1")
+AC_SUBST(ENABLE_E100,[$enablee100])
 
 AC_ARG_WITH([e100-kernel],
     AC_HELP_STRING(
@@ -180,6 +184,8 @@ if test "x${enablee100}" = "x1"; then
     AC_MSG_RESULT([$kernele100])
 fi
 
+AC_SUBST(KERNEL_E100,[$kernele100])
+
 #------------------------------------------------------------------------------
 # forcedeth driver
 #------------------------------------------------------------------------------
@@ -201,6 +207,7 @@ AC_ARG_ENABLE([forcedeth],
 )
 
 AM_CONDITIONAL(ENABLE_FORCEDETH, test "x$enableforcedeth" = "x1")
+AC_SUBST(ENABLE_FORCEDETH,[$enableforcedeth])
 
 AC_ARG_WITH([forcedeth-kernel],
     AC_HELP_STRING(
@@ -232,6 +239,8 @@ if test "x${enableforcedeth}" = "x1"; then
     AC_MSG_RESULT([$kernelforcedeth])
 fi
 
+AC_SUBST(KERNEL_FORCEDETH,[$kernelforcedeth])
+
 #------------------------------------------------------------------------------
 # e1000 driver
 #------------------------------------------------------------------------------
@@ -253,6 +262,7 @@ AC_ARG_ENABLE([e1000],
 )
 
 AM_CONDITIONAL(ENABLE_E1000, test "x$enablee1000" = "x1")
+AC_SUBST(ENABLE_E1000,[$enablee1000])
 
 AC_ARG_WITH([e1000-kernel],
     AC_HELP_STRING(
@@ -284,6 +294,8 @@ if test "x${enablee1000}" = "x1"; then
     AC_MSG_RESULT([$kernele1000])
 fi
 
+AC_SUBST(KERNEL_E1000,[$kernele1000])
+
 #------------------------------------------------------------------------------
 # RTAI path (optional)
 #------------------------------------------------------------------------------
@@ -310,8 +322,9 @@ else
         AC_MSG_ERROR([no RTAI installation found in ${rtaidir}!])
     fi
     AC_MSG_RESULT([$rtaidir])
-    AC_SUBST(RTAI_DIR,[$rtaidir])
 fi
+
+AC_SUBST(RTAI_DIR,[$rtaidir])
 
 #------------------------------------------------------------------------------
 # MSR path (optional)
@@ -339,8 +352,9 @@ else
         AC_MSG_ERROR([no MSR installation found in ${msrdir}!])
     fi
     AC_MSG_RESULT([$msrdir])
-    AC_SUBST(MSR_DIR,[$msrdir])
 fi
+
+AC_SUBST(MSR_DIR,[$msrdir])
 
 #------------------------------------------------------------------------------
 # Debug interface
@@ -366,6 +380,7 @@ if test "x${dbg}" = "x1"; then
     AC_DEFINE([EC_DEBUG_IF], [1], [Debug interfaces enabled])
 fi
 AM_CONDITIONAL(ENABLE_DEBUG_IF, test "x$dbg" = "x1")
+AC_SUBST(ENABLE_DEBUG_IF,[$dbg])
 
 #------------------------------------------------------------------------------
 # Debug ring
@@ -412,6 +427,7 @@ AC_ARG_ENABLE([dummy],
 )
 
 AM_CONDITIONAL(ENABLE_DUMMY, test "x$dummy" = "x1")
+AC_SUBST(ENABLE_DUMMY,[$dummy])
 
 #------------------------------------------------------------------------------
 # Ethernet-over-EtherCAT support
@@ -437,45 +453,31 @@ if test "x${eoe}" = "x1"; then
     AC_DEFINE([EC_EOE], [1], [EoE support enabled])
 fi
 AM_CONDITIONAL(ENABLE_EOE, test "x$eoe" = "x1")
-
-#------------------------------------------------------------------------------
-
-# Create config.kbuild
-
-echo configure: creating config.kbuild...
-
-cat > config.kbuild <<EOF
-# config.kbuild - created by configure
-ENABLE_8139TOO := ${enable8139too}
-KERNEL_8139TOO := ${kernel8139too}
-ENABLE_E100 := ${enablee100}
-KERNEL_E100 := ${kernele100}
-ENABLE_FORCEDETH := ${enableforcedeth}
-KERNEL_FORCEDETH := ${kernelforcedeth}
-ENABLE_E1000 := ${enablee1000}
-KERNEL_E1000 := ${kernele1000}
-RTAI_DIR := "${rtaidir}"
-MSR_DIR := "${msrdir}"
-ENABLE_DEBUG_IF := ${dbg}
-ENABLE_DUMMY := ${dummy}
-ENABLE_EOE := ${eoe}
-EOF
+AC_SUBST(ENABLE_EOE,[$eoe])
 
 #------------------------------------------------------------------------------
 
 AC_CONFIG_FILES([
+        Kbuild
         Makefile
+        master/Kbuild
         master/Makefile
+        devices/Kbuild
         devices/Makefile
         devices/e1000/Makefile
+        devices/e1000/Kbuild
         script/Makefile
         script/init.d/Makefile
         script/sysconfig/Makefile
         include/Makefile
         examples/Makefile
+        examples/mini/Kbuild
         examples/mini/Makefile
+        examples/rtai/Kbuild
         examples/rtai/Makefile
+        examples/msr/Kbuild
         examples/msr/Makefile
+        dummy/Kbuild
         dummy/Makefile
 ])
 AC_OUTPUT
