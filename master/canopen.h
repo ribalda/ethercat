@@ -53,7 +53,7 @@
    CANopen SDO.
 */
 
-typedef struct
+struct ec_sdo
 {
     struct kobject kobj; /**< kobject */
     struct list_head list; /**< list item */
@@ -63,8 +63,7 @@ typedef struct
     char *name; /**< SDO name */
     uint8_t subindices; /**< subindices */
     struct list_head entries; /**< entry list */
-}
-ec_sdo_t;
+};
 
 /*****************************************************************************/
 
@@ -120,6 +119,7 @@ ec_sdo_request_t;
 
 int ec_sdo_init(ec_sdo_t *, uint16_t, ec_slave_t *);
 void ec_sdo_destroy(ec_sdo_t *);
+ec_sdo_entry_t *ec_sdo_get_entry(ec_sdo_t *, uint8_t);
 
 int ec_sdo_entry_init(ec_sdo_entry_t *, uint8_t, ec_sdo_t *);
 void ec_sdo_entry_destroy(ec_sdo_entry_t *);

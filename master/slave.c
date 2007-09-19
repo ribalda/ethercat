@@ -1270,6 +1270,28 @@ void ec_slave_sdo_dict_info(const ec_slave_t *slave, /**< EtherCAT slave */
     *entry_count = entries;
 }
 
+/*****************************************************************************/
+
+/**
+ * Get an SDO from the dictionary.
+ * \returns The desired SDO, of NULL.
+ */
+
+ec_sdo_t *ec_slave_get_sdo(
+        ec_slave_t *slave /**< EtherCAT slave */,
+        uint16_t index /**< SDO index */
+        )
+{
+    ec_sdo_t *sdo;
+
+    list_for_each_entry(sdo, &slave->sdo_dictionary, list) {
+        if (sdo->index != index) continue;
+        return sdo;
+    }
+
+    return NULL;
+}
+
 /******************************************************************************
  *  Realtime interface
  *****************************************************************************/

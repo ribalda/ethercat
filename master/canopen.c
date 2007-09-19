@@ -171,6 +171,23 @@ void ec_sdo_clear(struct kobject *kobj /**< SDO's kobject */)
 
 /*****************************************************************************/
 
+ec_sdo_entry_t *ec_sdo_get_entry(
+        ec_sdo_t *sdo,
+        uint8_t subindex
+        )
+{
+    ec_sdo_entry_t *entry;
+
+    list_for_each_entry(entry, &sdo->entries, list) {
+        if (entry->subindex != subindex) continue;
+        return entry;
+    }
+
+    return NULL;
+}
+
+/*****************************************************************************/
+
 ssize_t ec_sdo_info(ec_sdo_t *sdo, /**< SDO */
                     char *buffer /**< target buffer */
                     )
