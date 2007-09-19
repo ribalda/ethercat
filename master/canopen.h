@@ -109,7 +109,6 @@ ec_sdo_data_t;
 typedef struct
 {
     struct list_head list; /**< list item */
-    ec_sdo_t *sdo;
     ec_sdo_entry_t *entry;
     uint8_t *data; /**< pointer to SDO data */
     size_t size; /**< size of SDO data */
@@ -124,6 +123,9 @@ void ec_sdo_destroy(ec_sdo_t *);
 
 int ec_sdo_entry_init(ec_sdo_entry_t *, uint8_t, ec_sdo_t *);
 void ec_sdo_entry_destroy(ec_sdo_entry_t *);
+
+void ec_sdo_request_init_read(ec_sdo_request_t *, ec_sdo_entry_t *);
+void ec_sdo_request_clear(ec_sdo_request_t *);
 
 /*****************************************************************************/
 

@@ -51,10 +51,6 @@ ssize_t ec_show_sdo_entry_attribute(struct kobject *, struct attribute *,
 void ec_sdo_clear(struct kobject *);
 void ec_sdo_entry_clear(struct kobject *);
 
-void ec_sdo_request_init_read(ec_sdo_request_t *, ec_sdo_t *,
-                              ec_sdo_entry_t *);
-void ec_sdo_request_clear(ec_sdo_request_t *);
-
 /*****************************************************************************/
 
 /** \cond */
@@ -367,12 +363,11 @@ ssize_t ec_sdo_entry_read_value(ec_sdo_entry_t *entry, /**< SDO entry */
                                 char *buffer /**< target buffer */
                                 )
 {
-    ec_sdo_t *sdo = entry->sdo;
-    ec_master_t *master = sdo->slave->master;
+    ec_master_t *master = entry->sdo->slave->master;
     off_t off = 0;
     ec_sdo_request_t request;
 
-    ec_sdo_request_init_read(&request, sdo, entry);
+    ec_sdo_request_init_read(&request, entry);
 
     // schedule request.
     down(&master->sdo_sem);
@@ -431,11 +426,9 @@ ssize_t ec_show_sdo_entry_attribute(struct kobject *kobj, /**< kobject */
 */
 
 void ec_sdo_request_init_read(ec_sdo_request_t *req, /**< SDO request */
-                              ec_sdo_t *sdo, /**< SDO */
                               ec_sdo_entry_t *entry /**< SDO entry */
                               )
 {
-    req->sdo = sdo;
     req->entry = entry;
     req->data = NULL;
     req->size = 0;

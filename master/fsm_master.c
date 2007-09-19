@@ -382,7 +382,7 @@ int ec_fsm_master_action_process_sdo(
         request->state = EC_REQUEST_IN_PROGRESS;
         up(&master->sdo_sem);
 
-        slave = request->sdo->slave;
+        slave = request->entry->sdo->slave;
         if (slave->current_state == EC_SLAVE_STATE_INIT ||
                 slave->online_state == EC_SLAVE_OFFLINE ||
                 slave->error_flag) {
