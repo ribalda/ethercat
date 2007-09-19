@@ -9,7 +9,6 @@ $Id$
 * Future features:
   - Interface/buffers for asynchronous domain IO.
   - Distributed clocks.
-  - Dynamic PDO mapping from SDO dictionary (see can-cia.org: cia301ds4).
   - Redundancy with 2 network adapters.
   - Mailbox handler
   - Support slaves, that don't support the LRW datagram, only LRD/LWR.

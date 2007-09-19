@@ -154,6 +154,7 @@ int ec_slave_init(ec_slave_t *slave, /**< EtherCAT slave */
     INIT_LIST_HEAD(&slave->sdo_confs);
 
     slave->sdo_dictionary_fetched = 0;
+    slave->pdo_mapping_fetched = 0;
     slave->jiffies_preop = 0;
 
     for (i = 0; i < 4; i++) {

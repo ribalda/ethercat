@@ -175,6 +175,7 @@ struct ec_slave
     struct list_head sdo_dictionary; /**< SDO dictionary list */
     struct list_head sdo_confs; /**< list of SDO configurations */
     uint8_t sdo_dictionary_fetched; /**< dictionary has been fetched */
+    uint8_t pdo_mapping_fetched; /**< PDO mapping has been fetched */
     unsigned long jiffies_preop; /**< time, the slave went to PREOP */
 };
 

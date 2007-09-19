@@ -48,6 +48,7 @@
 #include "canopen.h"
 
 #include "fsm_slave.h"
+#include "fsm_coe_map.h"
 
 /*****************************************************************************/
 
@@ -99,6 +100,7 @@ struct ec_fsm_master
     ec_fsm_sii_t fsm_sii; /**< SII state machine */
     ec_fsm_change_t fsm_change; /**< State change state machine */
     ec_fsm_coe_t fsm_coe; /**< CoE state machine */
+    ec_fsm_coe_map_t fsm_coe_map; /**< CoE mapping state machine */
 };
 
 /*****************************************************************************/

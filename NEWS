@@ -6,6 +6,7 @@ $Id$
 
 Changes in version 1.3.2:
 
+* Read dynamic PDO mapping from SDO dictionary.
 * Improved handling for spontaneous AL state changes.
 * Master takes mailbox sync manager configurations from EEPROM words
   0x0018-0x001b, if no sync manager configurations are provided.

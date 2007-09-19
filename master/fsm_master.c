@@ -60,6 +60,7 @@ void ec_fsm_master_state_clear_addresses(ec_fsm_master_t *);
 void ec_fsm_master_state_scan_slaves(ec_fsm_master_t *);
 void ec_fsm_master_state_write_eeprom(ec_fsm_master_t *);
 void ec_fsm_master_state_sdodict(ec_fsm_master_t *);
+void ec_fsm_master_state_pdomap(ec_fsm_master_t *);
 void ec_fsm_master_state_sdo_request(ec_fsm_master_t *);
 void ec_fsm_master_state_end(ec_fsm_master_t *);
 void ec_fsm_master_state_error(ec_fsm_master_t *);
@@ -90,6 +91,7 @@ void ec_fsm_master_init(ec_fsm_master_t *fsm, /**< master state machine */
     ec_fsm_sii_init(&fsm->fsm_sii, fsm->datagram);
     ec_fsm_change_init(&fsm->fsm_change, fsm->datagram);
     ec_fsm_coe_init(&fsm->fsm_coe, fsm->datagram);
+    ec_fsm_coe_map_init(&fsm->fsm_coe_map, &fsm->fsm_coe);
 }
 
 /*****************************************************************************/
@@ -105,6 +107,7 @@ void ec_fsm_master_clear(ec_fsm_master_t *fsm /**< master state machine */)
     ec_fsm_sii_clear(&fsm->fsm_sii);
     ec_fsm_change_clear(&fsm->fsm_change);
     ec_fsm_coe_clear(&fsm->fsm_coe);
+    ec_fsm_coe_map_clear(&fsm->fsm_coe_map);
 }
 
 /*****************************************************************************/
@@ -518,6 +521,29 @@ void ec_fsm_master_action_process_states(ec_fsm_master_t *fsm
             fsm->state = ec_fsm_master_state_sdodict;
             ec_fsm_coe_dictionary(&fsm->fsm_coe, slave);
             ec_fsm_coe_exec(&fsm->fsm_coe); // execute immediately
+            return;
+        }
+
+        // check, if slaves have their PDO mapping to be read.
+        list_for_each_entry(slave, &master->slaves, list) {
+            if (!(slave->sii_mailbox_protocols & EC_MBOX_COE)
+                || slave->pdo_mapping_fetched
+                || !slave->sdo_dictionary_fetched
+                || slave->current_state == EC_SLAVE_STATE_INIT
+                || slave->online_state == EC_SLAVE_OFFLINE) continue;
+
+            if (master->debug_level) {
+                EC_DBG("Fetching PDO mapping from slave %i via CoE.\n",
+                       slave->ring_position);
+            }
+
+            slave->pdo_mapping_fetched = 1;
+
+            // start fetching PDO mapping
+            fsm->idle = 0;
+            fsm->state = ec_fsm_master_state_pdomap;
+            ec_fsm_coe_map_start(&fsm->fsm_coe_map, slave);
+            ec_fsm_coe_map_exec(&fsm->fsm_coe_map); // execute immediately
             return;
         }
 
@@ -997,6 +1023,26 @@ void ec_fsm_master_state_sdodict(ec_fsm_master_t *fsm /**< master state machine 
                sdo_count, entry_count, slave->ring_position);
     }
 
+    fsm->state = ec_fsm_master_state_end;
+}
+
+/*****************************************************************************/
+
+/**
+ */
+
+void ec_fsm_master_state_pdomap(
+        ec_fsm_master_t *fsm /**< master state machine */
+        )
+{
+    if (ec_fsm_coe_map_exec(&fsm->fsm_coe_map)) return;
+
+    if (!ec_fsm_coe_map_success(&fsm->fsm_coe_map)) {
+        fsm->state = ec_fsm_master_state_error;
+        return;
+    }
+
+    // fetching of PDO mapping finished
     fsm->state = ec_fsm_master_state_end;
 }
 
