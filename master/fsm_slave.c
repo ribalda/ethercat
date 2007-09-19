@@ -595,7 +595,8 @@ void ec_fsm_slave_conf_state_init(ec_fsm_slave_t *fsm /**< slave state machine *
     if (ec_fsm_change_exec(&fsm->fsm_change)) return;
 
     if (!ec_fsm_change_success(&fsm->fsm_change)) {
-        slave->error_flag = 1;
+        if (!fsm->fsm_change.spontaneous_change)
+            slave->error_flag = 1;
         fsm->state = ec_fsm_slave_state_error;
         return;
     }
@@ -799,7 +800,8 @@ void ec_fsm_slave_conf_state_preop(ec_fsm_slave_t *fsm /**< slave state machine 
     if (ec_fsm_change_exec(&fsm->fsm_change)) return;
 
     if (!ec_fsm_change_success(&fsm->fsm_change)) {
-        slave->error_flag = 1;
+        if (!fsm->fsm_change.spontaneous_change)
+            slave->error_flag = 1;
         fsm->state = ec_fsm_slave_state_error;
         return;
     }
@@ -1077,7 +1079,8 @@ void ec_fsm_slave_conf_state_saveop(ec_fsm_slave_t *fsm /**< slave state machine
     if (ec_fsm_change_exec(&fsm->fsm_change)) return;
 
     if (!ec_fsm_change_success(&fsm->fsm_change)) {
-        fsm->slave->error_flag = 1;
+        if (!fsm->fsm_change.spontaneous_change)
+            fsm->slave->error_flag = 1;
         fsm->state = ec_fsm_slave_state_error;
         return;
     }
@@ -1117,7 +1120,8 @@ void ec_fsm_slave_conf_state_op(ec_fsm_slave_t *fsm /**< slave state machine */)
     if (ec_fsm_change_exec(&fsm->fsm_change)) return;
 
     if (!ec_fsm_change_success(&fsm->fsm_change)) {
-        slave->error_flag = 1;
+        if (!fsm->fsm_change.spontaneous_change)
+            slave->error_flag = 1;
         fsm->state = ec_fsm_slave_state_error;
         return;
     }

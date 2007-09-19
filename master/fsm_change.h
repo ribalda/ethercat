@@ -78,6 +78,7 @@ struct ec_fsm_change
     ec_slave_state_t old_state; /**< prior slave state */
     unsigned long jiffies_start; /**< change timer */
     uint8_t take_time; /**< take sending timestamp */
+    uint8_t spontaneous_change; /**< spontaneous state change detected */
 };
 
 /*****************************************************************************/

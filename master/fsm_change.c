@@ -66,6 +66,7 @@ void ec_fsm_change_init(ec_fsm_change_t *fsm, /**< finite state machine */
 {
     fsm->state = NULL;
     fsm->datagram = datagram;
+    fsm->spontaneous_change = 0;
 }
 
 /*****************************************************************************/
@@ -223,6 +224,7 @@ void ec_fsm_change_state_check(ec_fsm_change_t *fsm
     // read AL status from slave
     ec_datagram_nprd(datagram, slave->station_address, 0x0130, 2);
     fsm->retries = EC_FSM_RETRIES;
+    fsm->spontaneous_change = 0;
     fsm->state = ec_fsm_change_state_status;
 }
 
@@ -281,10 +283,11 @@ void ec_fsm_change_state_status(ec_fsm_change_t *fsm
             // Slave spontaneously changed its state just before the new state
             // was written. Accept current state as old state and wait for
             // state change
+            fsm->spontaneous_change = 1;
             fsm->old_state = slave->current_state;
             EC_WARN("Slave %i changed to %s in the meantime.\n",
                     slave->ring_position, cur_state);
-            goto again;
+            goto check_again;
         }
 
         // state change error
@@ -309,11 +312,11 @@ void ec_fsm_change_state_status(ec_fsm_change_t *fsm
         ec_state_string(fsm->requested_state, state_str);
         fsm->state = ec_fsm_change_state_error;
         EC_ERR("Timeout while setting state %s on slave %i.\n",
-               state_str, slave->ring_position);
+                state_str, slave->ring_position);
         return;
     }
 
- again:
+ check_again:
     // no timeout yet. check again
     ec_datagram_nprd(datagram, slave->station_address, 0x0130, 2);
     fsm->retries = EC_FSM_RETRIES;
