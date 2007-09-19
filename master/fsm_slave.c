@@ -684,8 +684,8 @@ void ec_fsm_slave_conf_enter_mbox_sync(
         return;
     }
 
-    if (!slave->sii_mailbox_protocols || slave->sii_sync_count < 2) {
-        // no mailbox sync managers to be configured
+    if (!slave->sii_mailbox_protocols) {
+        // no mailbox protocols supported
         if (master->debug_level)
             EC_DBG("Slave %i does not support mailbox communication.\n",
                     slave->ring_position);
@@ -698,14 +698,41 @@ void ec_fsm_slave_conf_enter_mbox_sync(
                slave->ring_position);
     }
 
-    // configure sync managers
-    ec_datagram_npwr(datagram, slave->station_address, 0x0800,
-                     EC_SYNC_SIZE * slave->sii_sync_count);
-    memset(datagram->data, 0x00, EC_SYNC_SIZE * slave->sii_sync_count);
+    if (slave->sii_sync_count >= 2) {
+        // configure sync managers
+        ec_datagram_npwr(datagram, slave->station_address, 0x0800,
+                EC_SYNC_SIZE * slave->sii_sync_count);
+        memset(datagram->data, 0x00, EC_SYNC_SIZE * slave->sii_sync_count);
 
-    for (i = 0; i < 2; i++) {
-        ec_sync_config(&slave->sii_syncs[i],
-                datagram->data + EC_SYNC_SIZE * i);
+        for (i = 0; i < 2; i++) {
+            ec_sync_config(&slave->sii_syncs[i],
+                    datagram->data + EC_SYNC_SIZE * i);
+        }
+    } else { // no mailbox sync manager configurations provided
+        ec_sync_t sync;
+
+        if (master->debug_level)
+            EC_DBG("Slave %i does not provide"
+                    " mailbox sync manager configurations.\n",
+                    slave->ring_position);
+
+        ec_datagram_npwr(datagram, slave->station_address, 0x0800,
+                EC_SYNC_SIZE * 2);
+        memset(datagram->data, 0x00, EC_SYNC_SIZE * 2);
+
+        ec_sync_init(&sync, slave, 0);
+        sync.physical_start_address = slave->sii_rx_mailbox_offset;
+        sync.length = slave->sii_rx_mailbox_size;
+        sync.control_register = 0x26;
+        sync.enable = 1;
+        ec_sync_config(&sync, datagram->data + EC_SYNC_SIZE * sync.index);
+
+        ec_sync_init(&sync, slave, 1);
+        sync.physical_start_address = slave->sii_tx_mailbox_offset;
+        sync.length = slave->sii_tx_mailbox_size;
+        sync.control_register = 0x22;
+        sync.enable = 1;
+        ec_sync_config(&sync, datagram->data + EC_SYNC_SIZE * sync.index);
     }
 
     fsm->retries = EC_FSM_RETRIES;
