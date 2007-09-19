@@ -427,8 +427,9 @@ alloc_eeprom:
     }
 
     if (!(slave->eeprom_data =
-          (uint8_t *) kmalloc(slave->eeprom_size, GFP_ATOMIC))) {
-        fsm->slave->error_flag = 1;
+                (uint8_t *) kmalloc(slave->eeprom_size, GFP_ATOMIC))) {
+        slave->eeprom_size = 0;
+        slave->error_flag = 1;
         fsm->state = ec_fsm_slave_state_error;
         EC_ERR("Failed to allocate EEPROM data on slave %i.\n",
                slave->ring_position);
