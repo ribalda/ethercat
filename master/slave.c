@@ -1404,7 +1404,7 @@ int ecrt_slave_pdo_mapping_add(
         return -1;
     }
 
-    // does the slave provide the PDO list?
+    // does the slave provide the PDO?
     list_for_each_entry(pdo, &slave->sii_pdos, list) {
         if (pdo->index == pdo_index) {
             not_found = 0;
