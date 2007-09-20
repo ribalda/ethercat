@@ -66,6 +66,8 @@ struct ec_fsm_coe_map
     uint8_t sync_subindices;
     uint16_t sync_subindex;
 
+    struct list_head pdos;
+    ec_pdo_t *pdo;
     ec_sdo_t *pdo_sdo;
     uint8_t pdo_subindices;
     uint16_t pdo_subindex;

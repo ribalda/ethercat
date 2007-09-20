@@ -59,6 +59,8 @@ void ec_fsm_coe_map_action_next_sync(ec_fsm_coe_map_t *);
 void ec_fsm_coe_map_action_next_pdo(ec_fsm_coe_map_t *);
 void ec_fsm_coe_map_action_next_pdo_entry(ec_fsm_coe_map_t *);
 
+void ec_fsm_coe_map_clear_pdos(ec_fsm_coe_map_t *);
+
 /*****************************************************************************/
 
 /**
@@ -72,6 +74,7 @@ void ec_fsm_coe_map_init(
 {
     fsm->state = NULL;
     fsm->fsm_coe = fsm_coe;
+    INIT_LIST_HEAD(&fsm->pdos);
 }
 
 /*****************************************************************************/
@@ -82,6 +85,26 @@ void ec_fsm_coe_map_init(
 
 void ec_fsm_coe_map_clear(ec_fsm_coe_map_t *fsm /**< finite state machine */)
 {
+    ec_fsm_coe_map_clear_pdos(fsm);
+}
+
+/*****************************************************************************/
+
+/**
+ */
+
+void ec_fsm_coe_map_clear_pdos(
+        ec_fsm_coe_map_t *fsm /**< finite state machine */
+        )
+{
+    ec_pdo_t *pdo, *next;
+
+    // free all PDOs
+    list_for_each_entry_safe(pdo, next, &fsm->pdos, list) {
+        list_del(&pdo->list);
+        ec_pdo_clear(pdo);
+        kfree(pdo);
+    }
 }
 
 /*****************************************************************************/
@@ -152,13 +175,15 @@ void ec_fsm_coe_map_action_next_sync(
     ec_slave_t *slave = fsm->slave;
     ec_sdo_entry_t *entry;
 
-    for (; fsm->sync_index < 4; fsm->sync_index++) {
+    for (; fsm->sync_index < slave->sii_sync_count; fsm->sync_index++) {
         if (!(fsm->sync_sdo = ec_slave_get_sdo(slave, 0x1C10 + fsm->sync_index)))
             continue;
 
         if (slave->master->debug_level)
             EC_DBG("Reading PDO mapping of sync manager %u of slave %u.\n",
                     fsm->sync_index, slave->ring_position);
+
+        ec_fsm_coe_map_clear_pdos(fsm);
 
         if (!(entry = ec_sdo_get_entry(fsm->sync_sdo, 0))) {
             EC_ERR("SDO 0x%04X has no subindex 0 on slave %u.\n",
@@ -235,9 +260,21 @@ void ec_fsm_coe_map_action_next_pdo(
         return;
     }
 
-    // next sync manager
-    fsm->sync_index++;
-    ec_fsm_coe_map_action_next_sync(fsm);
+    {
+        ec_sync_t *sync = fsm->slave->sii_syncs + fsm->sync_index;
+        ec_pdo_t *pdo;
+
+        // exchange sync manager PDO mapping
+        ec_sync_clear_pdos(sync);
+        list_for_each_entry(pdo, &fsm->pdos, list) {
+            ec_sync_add_pdo(sync, pdo);
+        }
+        ec_fsm_coe_map_clear_pdos(fsm);
+
+        // next sync manager
+        fsm->sync_index++;
+        ec_fsm_coe_map_action_next_sync(fsm);
+    }
 }
 
 /*****************************************************************************/
@@ -259,26 +296,58 @@ void ec_fsm_coe_map_state_pdo(
     }
 
     {
-        uint16_t pdo_index = EC_READ_U16(fsm->request.data);
         ec_sdo_entry_t *entry;
 
-        if (fsm->slave->master->debug_level)
-            EC_DBG("  PDO 0x%04X.\n", pdo_index);
-
-        if (!(fsm->pdo_sdo = ec_slave_get_sdo(fsm->slave, pdo_index))) {
-            EC_ERR("Slave %u has no SDO 0x%04X.\n",
-                    fsm->slave->ring_position, pdo_index);
+        if (!(fsm->pdo = (ec_pdo_t *)
+                    kmalloc(sizeof(ec_pdo_t), GFP_KERNEL))) {
+            EC_ERR("Failed to allocate PDO.\n");
             fsm->state = ec_fsm_coe_map_state_error;
             return;
+        }
+
+        ec_pdo_init(fsm->pdo);
+        fsm->pdo->index = EC_READ_U16(fsm->request.data);
+        fsm->pdo->type =
+            ec_sync_get_pdo_type(fsm->slave->sii_syncs + fsm->sync_index);
+
+        if (fsm->slave->master->debug_level)
+            EC_DBG("  PDO 0x%04X.\n", fsm->pdo->index);
+
+        if (!(fsm->pdo_sdo = ec_slave_get_sdo(fsm->slave, fsm->pdo->index))) {
+            EC_ERR("Slave %u has no SDO 0x%04X.\n",
+                    fsm->slave->ring_position, fsm->pdo->index);
+            ec_pdo_clear(fsm->pdo);
+            kfree(fsm->pdo);
+            fsm->state = ec_fsm_coe_map_state_error;
+            return;
+        }
+
+        if (fsm->pdo_sdo->name && strlen(fsm->pdo_sdo->name)) {
+            if (!(fsm->pdo->name = (char *)
+                        kmalloc(strlen(fsm->pdo_sdo->name) + 1, GFP_KERNEL))) {
+                EC_ERR("Failed to allocate PDO name.\n");
+                ec_pdo_clear(fsm->pdo);
+                kfree(fsm->pdo);
+                fsm->state = ec_fsm_coe_map_state_error;
+                return;
+            }
+            memcpy(fsm->pdo->name, fsm->pdo_sdo->name,
+                    strlen(fsm->pdo_sdo->name) + 1);
+        } else {
+            fsm->pdo->name = NULL;
         }
 
         if (!(entry = ec_sdo_get_entry(fsm->pdo_sdo, 0))) {
             EC_ERR("SDO 0x%04X has no subindex 0 on slave %u.\n",
                     fsm->pdo_sdo->index,
                     fsm->slave->ring_position);
+            ec_pdo_clear(fsm->pdo);
+            kfree(fsm->pdo);
             fsm->state = ec_fsm_coe_map_state_error;
             return;
         }
+
+        list_add_tail(&fsm->pdo->list, &fsm->pdos);
 
         ec_sdo_request_init_read(&fsm->request, entry);
         fsm->state = ec_fsm_coe_map_state_pdo_entry_count;
@@ -369,24 +438,60 @@ void ec_fsm_coe_map_state_pdo_entry(
 
     {
         uint32_t pdo_entry_info;
-        uint16_t pdo_entry_index;
         ec_sdo_t *sdo;
+        ec_sdo_entry_t *entry;
+        ec_pdo_entry_t *pdo_entry;
 
         pdo_entry_info = EC_READ_U32(fsm->request.data);
-        pdo_entry_index = pdo_entry_info >> 16;
 
-        if (!(sdo = ec_slave_get_sdo(fsm->slave, pdo_entry_index))) {
-            EC_ERR("Slave %u has no SDO 0x%04X.\n",
-                    fsm->slave->ring_position, pdo_entry_index);
+        if (!(pdo_entry = (ec_pdo_entry_t *)
+                    kmalloc(sizeof(ec_pdo_entry_t), GFP_KERNEL))) {
+            EC_ERR("Failed to allocate PDO entry.\n");
             fsm->state = ec_fsm_coe_map_state_error;
             return;
         }
 
-        if (fsm->slave->master->debug_level) {
-            size_t bitsize = pdo_entry_info & 0xFFFF;
-            EC_DBG("    PDO entry 0x%04X \"%s\" (%u bit).\n",
-                    pdo_entry_index, sdo->name, bitsize);
+        pdo_entry->index = pdo_entry_info >> 16;
+        pdo_entry->subindex = (pdo_entry_info >> 8) & 0xFF;
+        pdo_entry->bit_length = pdo_entry_info & 0xFF;
+
+        if (!(sdo = ec_slave_get_sdo(fsm->slave, pdo_entry->index))) {
+            EC_ERR("Slave %u has no SDO 0x%04X.\n",
+                    fsm->slave->ring_position, pdo_entry->index);
+            kfree(pdo_entry);
+            fsm->state = ec_fsm_coe_map_state_error;
+            return;
         }
+
+        if (!(entry = ec_sdo_get_entry(sdo, pdo_entry->subindex))) {
+            EC_ERR("Slave %u has no SDO entry 0x%04X:%u.\n",
+                    fsm->slave->ring_position, pdo_entry->index,
+                    pdo_entry->subindex);
+            kfree(pdo_entry);
+            fsm->state = ec_fsm_coe_map_state_error;
+            return;
+        }
+
+        if (entry->description && strlen(entry->description)) {
+            if (!(pdo_entry->name = (char *)
+                        kmalloc(strlen(entry->description) + 1, GFP_KERNEL))) {
+                EC_ERR("Failed to allocate PDO entry name.\n");
+                kfree(pdo_entry);
+                fsm->state = ec_fsm_coe_map_state_error;
+                return;
+            }
+            memcpy(pdo_entry->name, entry->description, strlen(entry->description) + 1);
+        } else {
+            pdo_entry->name = NULL;
+        }
+
+        if (fsm->slave->master->debug_level) {
+            EC_DBG("    PDO entry 0x%04X \"%s\" (%u bit).\n",
+                    pdo_entry->index, pdo_entry->name ? pdo_entry->name : "???",
+                    pdo_entry->bit_length);
+        }
+
+        list_add_tail(&pdo_entry->list, &fsm->pdo->entries);
 
         // next PDO entry
         fsm->pdo_subindex++;
