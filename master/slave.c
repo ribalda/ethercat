@@ -1385,6 +1385,7 @@ void ecrt_slave_pdo_mapping_clear(
         return;
 
     ec_sync_clear_pdos(sync);
+    sync->alt_mapping = 1;
 }
 
 /*****************************************************************************/

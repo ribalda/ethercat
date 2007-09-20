@@ -193,8 +193,6 @@ void ec_sync_clear_pdos(
         ec_pdo_clear(pdo);
         kfree(pdo);
     }
-
-    sync->alt_mapping = 1;
 }
 
 /*****************************************************************************/
