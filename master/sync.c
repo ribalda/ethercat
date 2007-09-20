@@ -172,7 +172,6 @@ int ec_sync_add_pdo(
     mapped_pdo->sync_index = sync->index;
 
     list_add_tail(&mapped_pdo->list, &sync->pdos);
-    sync->alt_mapping = 1;
     return 0;
 }
 

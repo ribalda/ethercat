@@ -1432,7 +1432,11 @@ int ecrt_slave_pdo_mapping_add(
         return -1;
     }
 
-    return ec_sync_add_pdo(sync, pdo);
+    if (ec_sync_add_pdo(sync, pdo))
+        return -1;
+
+    sync->alt_mapping = 1;
+    return 0;
 }
 
 /*****************************************************************************/
