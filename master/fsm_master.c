@@ -982,8 +982,8 @@ void ec_fsm_master_state_write_eeprom(
 
     // finished writing EEPROM
     if (master->debug_level)
-        EC_DBG("Finished writing EEPROM data to slave %i.\n",
-                slave->ring_position);
+        EC_DBG("Finished writing %u words of EEPROM data to slave %u.\n",
+                request->size, slave->ring_position);
     request->state = EC_REQUEST_COMPLETE;
     wake_up(&master->eeprom_queue);
 
