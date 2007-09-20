@@ -813,7 +813,7 @@ size_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
 
         list_for_each_entry(pdo, &sync->pdos, list) {
             off += sprintf(buffer + off, "    %s 0x%04X \"%s\"\n",
-                    pdo->type == EC_RX_PDO ? "RXPDO" : "TXPDO",
+                    pdo->type == EC_RX_PDO ? "RxPdo" : "TxPdo",
                     pdo->index, pdo->name ? pdo->name : "???");
 
             list_for_each_entry(pdo_entry, &pdo->entries, list) {
@@ -832,7 +832,7 @@ size_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
 
     list_for_each_entry(pdo, &slave->sii_pdos, list) {
         off += sprintf(buffer + off, "  %s 0x%04X \"%s\"",
-                       pdo->type == EC_RX_PDO ? "RXPDO" : "TXPDO",
+                       pdo->type == EC_RX_PDO ? "RxPdo" : "TxPdo",
                        pdo->index, pdo->name ? pdo->name : "???");
         if (pdo->sync_index >= 0)
             off += sprintf(buffer + off, ", default mapping: SM%u.\n",
