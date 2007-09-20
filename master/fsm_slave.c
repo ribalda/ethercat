@@ -431,7 +431,7 @@ alloc_eeprom:
         slave->eeprom_size = 0;
         slave->error_flag = 1;
         fsm->state = ec_fsm_slave_state_error;
-        EC_ERR("Failed to allocate EEPROM data on slave %i.\n",
+        EC_ERR("Failed to allocate EEPROM data for slave %u.\n",
                slave->ring_position);
         return;
     }
@@ -453,7 +453,7 @@ alloc_eeprom:
 void ec_fsm_slave_scan_state_eeprom_data(ec_fsm_slave_t *fsm /**< slave state machine */)
 {
     ec_slave_t *slave = fsm->slave;
-    uint16_t *cat_word, cat_type, cat_size;
+    uint16_t *cat_word, cat_type, cat_size, eeprom_word_size = slave->eeprom_size / 2;
 
     if (ec_fsm_sii_exec(&fsm->fsm_sii)) return;
 
@@ -467,7 +467,7 @@ void ec_fsm_slave_scan_state_eeprom_data(ec_fsm_slave_t *fsm /**< slave state ma
 
     // 2 words fetched
 
-    if (fsm->sii_offset + 2 <= slave->eeprom_size / 2) { // 2 words fit
+    if (fsm->sii_offset + 2 <= eeprom_word_size) { // 2 words fit
         memcpy(slave->eeprom_data + fsm->sii_offset * 2,
                fsm->fsm_sii.value, 4);
     }
@@ -476,7 +476,7 @@ void ec_fsm_slave_scan_state_eeprom_data(ec_fsm_slave_t *fsm /**< slave state ma
                fsm->fsm_sii.value, 2);
     }
 
-    if (fsm->sii_offset + 2 < slave->eeprom_size / 2) {
+    if (fsm->sii_offset + 2 < eeprom_word_size) {
         // fetch the next 2 words
         fsm->sii_offset += 2;
         ec_fsm_sii_read(&fsm->fsm_sii, slave, fsm->sii_offset,
@@ -508,39 +508,62 @@ void ec_fsm_slave_scan_state_eeprom_data(ec_fsm_slave_t *fsm /**< slave state ma
     slave->sii_mailbox_protocols =
         EC_READ_U16(slave->eeprom_data + 2 * 0x001C);
 
+    if (eeprom_word_size < EC_FIRST_EEPROM_CATEGORY_OFFSET + 1) {
+        EC_ERR("Unexpected end of EEPROM data in slave %u.\n",
+                slave->ring_position);
+        goto end;
+    }
+
     // evaluate category data
-    cat_word = (uint16_t *) slave->eeprom_data + EC_FIRST_EEPROM_CATEGORY_OFFSET;
+    cat_word =
+        (uint16_t *) slave->eeprom_data + EC_FIRST_EEPROM_CATEGORY_OFFSET;
     while (EC_READ_U16(cat_word) != 0xFFFF) {
+
+        // type and size words must fit
+        if (cat_word + 2 - (uint16_t *) slave->eeprom_data
+                > eeprom_word_size) {
+            EC_ERR("Unexpected end of EEPROM data in slave %u.\n",
+                    slave->ring_position);
+            goto end;
+        }
+
         cat_type = EC_READ_U16(cat_word) & 0x7FFF;
         cat_size = EC_READ_U16(cat_word + 1);
+        cat_word += 2;
+
+        if (cat_word + cat_size - (uint16_t *) slave->eeprom_data
+                > eeprom_word_size) {
+            EC_WARN("Unexpected end of EEPROM data in slave %u.\n",
+                    slave->ring_position);
+            goto end;
+        }
 
         switch (cat_type) {
             case 0x000A:
-                if (ec_slave_fetch_sii_strings(
-                            slave, (uint8_t *) (cat_word + 2)))
+                if (ec_slave_fetch_sii_strings(slave, (uint8_t *) cat_word,
+                            cat_size * 2))
                     goto end;
                 break;
             case 0x001E:
-                ec_slave_fetch_sii_general(
-                        slave, (uint8_t *) (cat_word + 2));
+                if (ec_slave_fetch_sii_general(slave, (uint8_t *) cat_word,
+                            cat_size * 2))
+                    goto end;
                 break;
             case 0x0028:
                 break;
             case 0x0029:
-                if (ec_slave_fetch_sii_syncs(
-                            slave, (uint8_t *) (cat_word + 2), cat_size))
+                if (ec_slave_fetch_sii_syncs(slave, (uint8_t *) cat_word,
+                            cat_size * 2))
                     goto end;
                 break;
             case 0x0032:
-                if (ec_slave_fetch_sii_pdos(
-                            slave, (uint8_t *) (cat_word + 2),
-                            cat_size, EC_TX_PDO))
+                if (ec_slave_fetch_sii_pdos( slave, (uint8_t *) cat_word,
+                            cat_size * 2, EC_TX_PDO))
                     goto end;
                 break;
             case 0x0033:
-                if (ec_slave_fetch_sii_pdos(
-                            slave, (uint8_t *) (cat_word + 2),
-                            cat_size, EC_RX_PDO))
+                if (ec_slave_fetch_sii_pdos( slave, (uint8_t *) cat_word,
+                            cat_size * 2, EC_RX_PDO))
                     goto end;
                 break;
             default:
@@ -549,7 +572,12 @@ void ec_fsm_slave_scan_state_eeprom_data(ec_fsm_slave_t *fsm /**< slave state ma
                             cat_type, slave->ring_position);
         }
 
-        cat_word += cat_size + 2;
+        cat_word += cat_size;
+        if (cat_word - (uint16_t *) slave->eeprom_data >= eeprom_word_size) {
+            EC_WARN("Unexpected end of EEPROM data in slave %u.\n",
+                    slave->ring_position);
+            goto end;
+        }
     }
 
     fsm->state = ec_fsm_slave_state_end;

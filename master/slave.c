@@ -388,12 +388,14 @@ void ec_slave_request_state(ec_slave_t *slave, /**< EtherCAT slave */
 
 /**
    Fetches data from a STRING category.
+   \todo range checking
    \return 0 in case of success, else < 0
 */
 
 int ec_slave_fetch_sii_strings(
         ec_slave_t *slave, /**< EtherCAT slave */
-        const uint8_t *data /**< category data */
+        const uint8_t *data, /**< category data */
+        size_t data_size /**< number of bytes */
         )
 {
     int i;
@@ -444,12 +446,19 @@ out_zero:
    \return 0 in case of success, else < 0
 */
 
-void ec_slave_fetch_sii_general(
+int ec_slave_fetch_sii_general(
         ec_slave_t *slave, /**< EtherCAT slave */
-        const uint8_t *data /**< category data */
+        const uint8_t *data, /**< category data */
+        size_t data_size /**< size in bytes */
         )
 {
     unsigned int i;
+
+    if (data_size != 32) {
+        EC_ERR("Wrong size of general category (%u/32) in slave %u.\n",
+                data_size, slave->ring_position);
+        return -1;
+    }
 
     slave->sii_group = ec_slave_sii_string(slave, data[0]);
     slave->sii_image = ec_slave_sii_string(slave, data[1]);
@@ -461,6 +470,8 @@ void ec_slave_fetch_sii_general(
             (data[4] & (0x03 << (i * 2))) >> (i * 2);
 
     slave->sii_current_on_ebus = EC_READ_S16(data + 0x0C);
+
+    return 0;
 }
 
 /*****************************************************************************/
@@ -473,19 +484,26 @@ void ec_slave_fetch_sii_general(
 int ec_slave_fetch_sii_syncs(
         ec_slave_t *slave, /**< EtherCAT slave */
         const uint8_t *data, /**< category data */
-        size_t word_count /**< number of words */
+        size_t data_size /**< number of bytes */
         )
 {
     unsigned int i;
     ec_sync_t *sync;
+    size_t memsize;
 
-    // sync manager struct is 4 words long
-    slave->sii_sync_count = word_count / 4;
+    // one sync manager struct is 4 words long
+    if (data_size % 8) {
+        EC_ERR("Invalid SII sync manager size %u in slave %u.\n",
+                data_size, slave->ring_position);
+        return -1;
+    }
 
-    if (!(slave->sii_syncs =
-                kmalloc(sizeof(ec_sync_t) * slave->sii_sync_count,
-                    GFP_KERNEL))) {
-        EC_ERR("Failed to allocate memory for sync managers.\n");
+    slave->sii_sync_count = data_size / 8;
+
+    memsize = sizeof(ec_sync_t) * slave->sii_sync_count;
+    if (!(slave->sii_syncs = kmalloc(memsize, GFP_KERNEL))) {
+        EC_ERR("Failed to allocate %u bytes for sync managers.\n",
+                memsize);
         slave->sii_sync_count = 0;
         return -1;
     }
@@ -513,7 +531,7 @@ int ec_slave_fetch_sii_syncs(
 int ec_slave_fetch_sii_pdos(
         ec_slave_t *slave, /**< EtherCAT slave */
         const uint8_t *data, /**< category data */
-        size_t word_count, /**< number of words */
+        size_t data_size, /**< number of bytes */
         ec_pdo_type_t pdo_type /**< PDO type */
         )
 {
@@ -521,7 +539,7 @@ int ec_slave_fetch_sii_pdos(
     ec_pdo_entry_t *entry;
     unsigned int entry_count, i;
 
-    while (word_count >= 4) {
+    while (data_size >= 8) {
         if (!(pdo = kmalloc(sizeof(ec_pdo_t), GFP_KERNEL))) {
             EC_ERR("Failed to allocate PDO memory.\n");
             return -1;
@@ -535,7 +553,7 @@ int ec_slave_fetch_sii_pdos(
         pdo->name = ec_slave_sii_string(slave, EC_READ_U8(data + 5));
         list_add_tail(&pdo->list, &slave->sii_pdos);
 
-        word_count -= 4;
+        data_size -= 8;
         data += 8;
 
         for (i = 0; i < entry_count; i++) {
@@ -550,7 +568,7 @@ int ec_slave_fetch_sii_pdos(
             entry->bit_length = EC_READ_U8(data + 5);
             list_add_tail(&entry->list, &pdo->entries);
 
-            word_count -= 4;
+            data_size -= 8;
             data += 8;
         }
 
