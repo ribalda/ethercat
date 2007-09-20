@@ -83,6 +83,8 @@ void ec_sync_config(const ec_sync_t *, uint8_t *);
 int ec_sync_add_pdo(ec_sync_t *, const ec_pdo_t *);
 void ec_sync_clear_pdos(ec_sync_t *);
 
+ec_pdo_type_t ec_sync_get_pdo_type(const ec_sync_t *);
+
 /*****************************************************************************/
 
 #endif

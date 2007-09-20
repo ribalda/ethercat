@@ -195,3 +195,26 @@ void ec_sync_clear_pdos(
 }
 
 /*****************************************************************************/
+
+/**
+ */
+
+ec_pdo_type_t ec_sync_get_pdo_type(
+        const ec_sync_t *sync /**< EtherCAT sync manager */
+        )
+{
+    int index = sync->index;
+
+    if (sync->slave && sync->slave->sii_mailbox_protocols) {
+        index -= 2;
+    }
+
+    if (index < 0 || index > 1) {
+        EC_WARN("ec_sync_get_pdo_type(): invalid sync manager index.\n");
+        return EC_RX_PDO;
+    }
+
+    return (ec_pdo_type_t) index;
+}
+
+/*****************************************************************************/
