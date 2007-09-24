@@ -6,9 +6,8 @@ $Id$
 
 Changes in version 1.3.2:
 
-* Implemented SII writing workaround for some slaves, that don't respond
-  correctly.
-* Read dynamic PDO mapping from SDO dictionary.
+* New feature: Read dynamic PDO mapping from SDO dictionary.
+* Implemented SII writing workaround for some broken slaves.
 * Improved handling for spontaneous AL state changes.
 * Master takes mailbox sync manager configurations from EEPROM words
   0x0018-0x001b, if no sync manager configurations are provided.
