@@ -105,7 +105,7 @@ void ec_fsm_sii_read(ec_fsm_sii_t *fsm, /**< finite state machine */
 void ec_fsm_sii_write(ec_fsm_sii_t *fsm, /**< finite state machine */
                       ec_slave_t *slave, /**< slave to read from */
                       uint16_t offset, /**< offset to read from */
-                      const uint16_t *value, /**< pointer to 2 bytes of data */
+                      const uint8_t *value, /**< pointer to 2 bytes of data */
                       ec_fsm_sii_addressing_t mode /**< addressing scheme */
                       )
 {
@@ -127,7 +127,8 @@ int ec_fsm_sii_exec(ec_fsm_sii_t *fsm /**< finite state machine */)
 {
     fsm->state(fsm);
 
-    return fsm->state != ec_fsm_sii_state_end && fsm->state != ec_fsm_sii_state_error;
+    return fsm->state != ec_fsm_sii_state_end
+		&& fsm->state != ec_fsm_sii_state_error;
 }
 
 /*****************************************************************************/
@@ -143,7 +144,7 @@ int ec_fsm_sii_success(ec_fsm_sii_t *fsm /**< Finite state machine */)
 }
 
 /******************************************************************************
- *  SII state machine
+ * state functions
  *****************************************************************************/
 
 /**
@@ -151,7 +152,9 @@ int ec_fsm_sii_success(ec_fsm_sii_t *fsm /**< Finite state machine */)
    Starts reading the slave information interface.
 */
 
-void ec_fsm_sii_state_start_reading(ec_fsm_sii_t *fsm /**< finite state machine */)
+void ec_fsm_sii_state_start_reading(
+		ec_fsm_sii_t *fsm /**< finite state machine */
+		)
 {
     ec_datagram_t *datagram = fsm->datagram;
 
@@ -179,7 +182,9 @@ void ec_fsm_sii_state_start_reading(ec_fsm_sii_t *fsm /**< finite state machine 
    Checks, if the SII-read-datagram has been sent and issues a fetch datagram.
 */
 
-void ec_fsm_sii_state_read_check(ec_fsm_sii_t *fsm /**< finite state machine */)
+void ec_fsm_sii_state_read_check(
+		ec_fsm_sii_t *fsm /**< finite state machine */
+		)
 {
     ec_datagram_t *datagram = fsm->datagram;
 
@@ -226,7 +231,9 @@ void ec_fsm_sii_state_read_check(ec_fsm_sii_t *fsm /**< finite state machine */)
    Fetches the result of an SII-read datagram.
 */
 
-void ec_fsm_sii_state_read_fetch(ec_fsm_sii_t *fsm /**< finite state machine */)
+void ec_fsm_sii_state_read_fetch(
+		ec_fsm_sii_t *fsm /**< finite state machine */
+		)
 {
     ec_datagram_t *datagram = fsm->datagram;
 
@@ -302,7 +309,9 @@ void ec_fsm_sii_state_read_fetch(ec_fsm_sii_t *fsm /**< finite state machine */)
    Starts reading the slave information interface.
 */
 
-void ec_fsm_sii_state_start_writing(ec_fsm_sii_t *fsm /**< finite state machine */)
+void ec_fsm_sii_state_start_writing(
+		ec_fsm_sii_t *fsm /**< finite state machine */
+		)
 {
     ec_datagram_t *datagram = fsm->datagram;
 
@@ -323,7 +332,9 @@ void ec_fsm_sii_state_start_writing(ec_fsm_sii_t *fsm /**< finite state machine 
    SII state: WRITE CHECK.
 */
 
-void ec_fsm_sii_state_write_check(ec_fsm_sii_t *fsm /**< finite state machine */)
+void ec_fsm_sii_state_write_check(
+		ec_fsm_sii_t *fsm /**< finite state machine */
+		)
 {
     ec_datagram_t *datagram = fsm->datagram;
 
@@ -361,7 +372,9 @@ void ec_fsm_sii_state_write_check(ec_fsm_sii_t *fsm /**< finite state machine */
    SII state: WRITE CHECK 2.
 */
 
-void ec_fsm_sii_state_write_check2(ec_fsm_sii_t *fsm /**< finite state machine */)
+void ec_fsm_sii_state_write_check2(
+		ec_fsm_sii_t *fsm /**< finite state machine */
+		)
 {
     ec_datagram_t *datagram = fsm->datagram;
 
@@ -417,7 +430,9 @@ void ec_fsm_sii_state_write_check2(ec_fsm_sii_t *fsm /**< finite state machine *
    State: ERROR.
 */
 
-void ec_fsm_sii_state_error(ec_fsm_sii_t *fsm /**< finite state machine */)
+void ec_fsm_sii_state_error(
+		ec_fsm_sii_t *fsm /**< finite state machine */
+		)
 {
 }
 
@@ -427,7 +442,9 @@ void ec_fsm_sii_state_error(ec_fsm_sii_t *fsm /**< finite state machine */)
    State: END.
 */
 
-void ec_fsm_sii_state_end(ec_fsm_sii_t *fsm /**< finite state machine */)
+void ec_fsm_sii_state_end(
+		ec_fsm_sii_t *fsm /**< finite state machine */
+		)
 {
 }
 

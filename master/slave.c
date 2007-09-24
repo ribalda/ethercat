@@ -978,11 +978,11 @@ ssize_t ec_slave_write_eeprom(ec_slave_t *slave, /**< EtherCAT slave */
     // init EEPROM write request
     INIT_LIST_HEAD(&request.list);
     request.slave = slave;
-    request.words = (const uint16_t *) data;
-    request.offset = 0;
-    request.size = size / 2;
+    request.data = data;
+    request.word_offset = 0;
+    request.word_size = size / 2;
 
-    if (request.size < 0x0041) {
+    if (request.word_size < 0x0041) {
         EC_ERR("EEPROM data too short! Dropping.\n");
         return -EINVAL;
     }
@@ -993,15 +993,18 @@ ssize_t ec_slave_write_eeprom(ec_slave_t *slave, /**< EtherCAT slave */
         EC_WARN("EEPROM CRC incorrect. Must be 0x%02x.\n", crc);
     }
 
-    cat_header = request.words + EC_FIRST_EEPROM_CATEGORY_OFFSET;
+    cat_header = (const uint16_t *) request.data
+		+ EC_FIRST_EEPROM_CATEGORY_OFFSET;
     cat_type = EC_READ_U16(cat_header);
     while (cat_type != 0xFFFF) { // cycle through categories
-        if (cat_header + 1 > request.words + request.size) {
+        if (cat_header + 1 >
+				(const uint16_t *) request.data + request.word_size) {
             EC_ERR("EEPROM data corrupted! Dropping.\n");
             return -EINVAL;
         }
         cat_size = EC_READ_U16(cat_header + 1);
-        if (cat_header + cat_size + 2 > request.words + request.size) {
+        if (cat_header + cat_size + 2 >
+				(const uint16_t *) request.data + request.word_size) {
             EC_ERR("EEPROM data corrupted! Dropping.\n");
             return -EINVAL;
         }
@@ -1030,9 +1033,9 @@ ssize_t ec_slave_write_alias(ec_slave_t *slave, /**< EtherCAT slave */
 {
     ec_eeprom_write_request_t request;
     char *remainder;
-    uint16_t alias, words[8];
+    uint16_t alias;
     int ret;
-    uint8_t crc;
+    uint8_t eeprom_data[16], crc;
 
     if (slave->master->mode != EC_MASTER_MODE_IDLE) { // FIXME
         EC_ERR("Writing to EEPROM is only allowed in idle mode!\n");
@@ -1052,21 +1055,21 @@ ssize_t ec_slave_write_alias(ec_slave_t *slave, /**< EtherCAT slave */
     }
 
     // copy first 7 words of recent EEPROM contents
-    memcpy(words, slave->eeprom_data, 14);
+    memcpy(eeprom_data, slave->eeprom_data, 14);
     
-    // write new alias address
-    EC_WRITE_U16(words + 4, alias);
+    // write new alias address in word 4
+    EC_WRITE_U16(eeprom_data + 8, alias);
 
     // calculate new checksum over words 0 to 6
-    crc = ec_slave_eeprom_crc((const uint8_t *) words, 14);
-    EC_WRITE_U16(words + 7, crc);
+    crc = ec_slave_eeprom_crc(eeprom_data, 14);
+    EC_WRITE_U16(eeprom_data + 14, crc);
 
     // init EEPROM write request
     INIT_LIST_HEAD(&request.list);
     request.slave = slave;
-    request.words = words;
-    request.offset = 0x0000;
-    request.size = 8;
+    request.data = eeprom_data;
+    request.word_offset = 0x0000;
+    request.word_size = 8;
 
     if ((ret = ec_slave_schedule_eeprom_writing(&request)))
         return ret; // error code

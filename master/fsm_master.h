@@ -60,9 +60,9 @@ typedef struct
 {
     struct list_head list;
     ec_slave_t *slave;
-    off_t offset;
-    size_t size;
-    const uint16_t *words;
+    off_t word_offset;
+    size_t word_size;
+    const uint8_t *data;
     ec_request_state_t state;
 }
 ec_eeprom_write_request_t;

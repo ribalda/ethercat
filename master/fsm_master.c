@@ -346,8 +346,8 @@ int ec_fsm_master_action_process_eeprom(
                     slave->ring_position);
         fsm->eeprom_request = request;
         fsm->eeprom_index = 0;
-        ec_fsm_sii_write(&fsm->fsm_sii, request->slave, request->offset,
-                request->words, EC_FSM_SII_NODE);
+        ec_fsm_sii_write(&fsm->fsm_sii, request->slave, request->word_offset,
+                request->data, EC_FSM_SII_NODE);
         fsm->state = ec_fsm_master_state_write_eeprom;
         fsm->state(fsm); // execute immediately
         return 1;
@@ -971,10 +971,10 @@ void ec_fsm_master_state_write_eeprom(
     }
 
     fsm->eeprom_index++;
-    if (fsm->eeprom_index < request->size) {
+    if (fsm->eeprom_index < request->word_size) {
         ec_fsm_sii_write(&fsm->fsm_sii, slave,
-                request->offset + fsm->eeprom_index,
-                request->words + fsm->eeprom_index,
+                request->word_offset + fsm->eeprom_index,
+                request->data + fsm->eeprom_index * 2,
                 EC_FSM_SII_NODE);
         ec_fsm_sii_exec(&fsm->fsm_sii); // execute immediately
         return;
@@ -983,7 +983,7 @@ void ec_fsm_master_state_write_eeprom(
     // finished writing EEPROM
     if (master->debug_level)
         EC_DBG("Finished writing %u words of EEPROM data to slave %u.\n",
-                request->size, slave->ring_position);
+                request->word_size, slave->ring_position);
     request->state = EC_REQUEST_COMPLETE;
     wake_up(&master->eeprom_queue);
 
