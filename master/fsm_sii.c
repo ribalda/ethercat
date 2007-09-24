@@ -43,6 +43,11 @@
 #include "master.h"
 #include "fsm_sii.h"
 
+#define EEPROM_TIMEOUT 10 // read/write timeout [ms]
+#define EEPROM_INHIBIT  5 // time before evaluating answer at writing [ms]
+
+//#define SII_DEBUG
+
 /*****************************************************************************/
 
 void ec_fsm_sii_state_start_reading(ec_fsm_sii_t *);
@@ -86,13 +91,13 @@ void ec_fsm_sii_clear(ec_fsm_sii_t *fsm /**< finite state machine */)
 
 void ec_fsm_sii_read(ec_fsm_sii_t *fsm, /**< finite state machine */
                      ec_slave_t *slave, /**< slave to read from */
-                     uint16_t offset, /**< offset to read from */
+                     uint16_t word_offset, /**< offset to read from */
                      ec_fsm_sii_addressing_t mode /**< addressing scheme */
                      )
 {
     fsm->state = ec_fsm_sii_state_start_reading;
     fsm->slave = slave;
-    fsm->offset = offset;
+    fsm->word_offset = word_offset;
     fsm->mode = mode;
 }
 
@@ -104,14 +109,14 @@ void ec_fsm_sii_read(ec_fsm_sii_t *fsm, /**< finite state machine */
 
 void ec_fsm_sii_write(ec_fsm_sii_t *fsm, /**< finite state machine */
                       ec_slave_t *slave, /**< slave to read from */
-                      uint16_t offset, /**< offset to read from */
+                      uint16_t word_offset, /**< offset to read from */
                       const uint8_t *value, /**< pointer to 2 bytes of data */
                       ec_fsm_sii_addressing_t mode /**< addressing scheme */
                       )
 {
     fsm->state = ec_fsm_sii_state_start_writing;
     fsm->slave = slave;
-    fsm->offset = offset;
+    fsm->word_offset = word_offset;
     fsm->mode = mode;
     memcpy(fsm->value, value, 2);
 }
@@ -168,9 +173,15 @@ void ec_fsm_sii_state_start_reading(
             break;
     }
 
-    EC_WRITE_U8 (datagram->data,     0x00); // read-only access
+    EC_WRITE_U8 (datagram->data,     0x80); // two address octets
     EC_WRITE_U8 (datagram->data + 1, 0x01); // request read operation
-    EC_WRITE_U16(datagram->data + 2, fsm->offset);
+    EC_WRITE_U16(datagram->data + 2, fsm->word_offset);
+
+#ifdef SII_DEBUG
+	EC_DBG("reading SII data:\n");
+	ec_print_data(datagram->data, 4);
+#endif
+
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_sii_state_read_check;
 }
@@ -256,46 +267,36 @@ void ec_fsm_sii_state_read_fetch(
         return;
     }
 
-    // check "busy bit"
-    if (EC_READ_U8(datagram->data + 1) & 0x81) {
-        // still busy... timeout?
-        if (datagram->cycles_received
-            - fsm->cycles_start >= (cycles_t) 10 * cpu_khz) {
-            if (!fsm->check_once_more) {
-                EC_ERR("SII: Read timeout.\n");
-                fsm->state = ec_fsm_sii_state_error;
-#if 0
-                EC_DBG("SII busy: %02X %02X %02X %02X\n",
-                       EC_READ_U8(datagram->data + 0),
-                       EC_READ_U8(datagram->data + 1),
-                       EC_READ_U8(datagram->data + 2),
-                       EC_READ_U8(datagram->data + 3));
+#ifdef SII_DEBUG
+	EC_DBG("checking SII read state:\n");
+	ec_print_data(datagram->data, 10);
 #endif
-                return;
-            }
-            fsm->check_once_more = 0;
-        }
 
-        // issue check/fetch datagram again
-        switch (fsm->mode) {
-            case EC_FSM_SII_POSITION:
-                ec_datagram_aprd(datagram, fsm->slave->ring_position, 0x502, 10);
-                break;
-            case EC_FSM_SII_NODE:
-                ec_datagram_nprd(datagram, fsm->slave->station_address, 0x502, 10);
-                break;
-        }
-        fsm->retries = EC_FSM_RETRIES;
+    if (EC_READ_U8(datagram->data + 1) & 0x20) {
+        EC_ERR("SII: Error on last SII command!\n");
+        fsm->state = ec_fsm_sii_state_error;
         return;
     }
 
-#if 0
-    EC_DBG("SII rec: %02X %02X %02X %02X - %02X %02X %02X %02X\n",
-           EC_READ_U8(datagram->data + 0), EC_READ_U8(datagram->data + 1),
-           EC_READ_U8(datagram->data + 2), EC_READ_U8(datagram->data + 3),
-           EC_READ_U8(datagram->data + 6), EC_READ_U8(datagram->data + 7),
-           EC_READ_U8(datagram->data + 8), EC_READ_U8(datagram->data + 9));
-#endif
+    // check "busy bit"
+    if (EC_READ_U8(datagram->data + 1) & 0x81) { // busy bit or
+												 // read operation busy
+        // still busy... timeout?
+        if (datagram->cycles_received
+            - fsm->cycles_start >= (cycles_t) EEPROM_TIMEOUT * cpu_khz) {
+            if (fsm->check_once_more) {
+				fsm->check_once_more = 0;
+			} else {
+                EC_ERR("SII: Read timeout.\n");
+                fsm->state = ec_fsm_sii_state_error;
+                return;
+            }
+        }
+
+        // issue check/fetch datagram again
+        fsm->retries = EC_FSM_RETRIES;
+        return;
+    }
 
     // SII value received.
     memcpy(fsm->value, datagram->data + 6, 4);
@@ -306,7 +307,7 @@ void ec_fsm_sii_state_read_fetch(
 
 /**
    SII state: START WRITING.
-   Starts reading the slave information interface.
+   Starts writing a word through the slave information interface.
 */
 
 void ec_fsm_sii_state_start_writing(
@@ -317,10 +318,17 @@ void ec_fsm_sii_state_start_writing(
 
     // initiate write operation
     ec_datagram_npwr(datagram, fsm->slave->station_address, 0x502, 8);
-    EC_WRITE_U8 (datagram->data,     0x01); // enable write access
+    EC_WRITE_U8 (datagram->data,     0x81); // two address octets
+											// + enable write access
     EC_WRITE_U8 (datagram->data + 1, 0x02); // request write operation
-    EC_WRITE_U32(datagram->data + 2, fsm->offset);
+    EC_WRITE_U16(datagram->data + 2, fsm->word_offset);
+	memset(datagram->data + 4, 0x00, 2);
     memcpy(datagram->data + 6, fsm->value, 2);
+
+#ifdef SII_DEBUG
+	EC_DBG("writing SII data:\n");
+	ec_print_data(datagram->data, 8);
+#endif
 
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_sii_state_write_check;
@@ -360,7 +368,7 @@ void ec_fsm_sii_state_write_check(
     fsm->cycles_start = datagram->cycles_sent;
     fsm->check_once_more = 1;
 
-    // issue check/fetch datagram
+    // issue check datagram
     ec_datagram_nprd(datagram, fsm->slave->station_address, 0x502, 2);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_sii_state_write_check2;
@@ -397,19 +405,44 @@ void ec_fsm_sii_state_write_check2(
         return;
     }
 
-    if (EC_READ_U8(datagram->data + 1) & 0x82) {
+#ifdef SII_DEBUG
+	EC_DBG("checking SII write state:\n");
+	ec_print_data(datagram->data, 2);
+#endif
+
+    if (EC_READ_U8(datagram->data + 1) & 0x20) {
+        EC_ERR("SII: Error on last SII command!\n");
+        fsm->state = ec_fsm_sii_state_error;
+        return;
+    }
+
+	/* FIXME: some slaves never answer with the busy flag set...
+	 * wait a few ms for the write operation to complete. */
+	if (datagram->cycles_received - fsm->cycles_start
+			< (cycles_t) EEPROM_INHIBIT * cpu_khz) {
+#ifdef SII_DEBUG
+		EC_DBG("too early.\n");
+#endif
+        // issue check datagram again
+        fsm->retries = EC_FSM_RETRIES;
+        return;
+	}
+
+    if (EC_READ_U8(datagram->data + 1) & 0x82) { // busy bit or
+												 // write operation busy bit
         // still busy... timeout?
         if (datagram->cycles_received
-            - fsm->cycles_start >= (cycles_t) 10 * cpu_khz) {
-            if (!fsm->check_once_more) {
+            - fsm->cycles_start >= (cycles_t) EEPROM_TIMEOUT * cpu_khz) {
+            if (fsm->check_once_more) {
+				fsm->check_once_more = 0;
+			} else {
                 EC_ERR("SII: Write timeout.\n");
                 fsm->state = ec_fsm_sii_state_error;
                 return;
             }
-            fsm->check_once_more = 0;
         }
 
-        // issue check/fetch datagram again
+        // issue check datagram again
         fsm->retries = EC_FSM_RETRIES;
         return;
     }

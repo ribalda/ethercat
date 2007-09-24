@@ -7,15 +7,16 @@ $Id$
 -------------------------------------------------------------------------------
 
 * Future features:
-  - Interface/buffers for asynchronous domain IO.
   - Distributed clocks.
   - Redundancy with 2 network adapters.
   - Mailbox handler
   - Support slaves, that don't support the LRW datagram, only LRD/LWR.
   - PDO reading in IDLE mode.
   - Replace Sysfs interface with cdev and user space program.
+  - Interface/buffers for asynchronous domain IO.
 
 * Smaller issues:
+  - Datagram debugging flag.
   - Clear sync managers in INIT.
   - Simplify FSMs with <state>_enter() functions.
   - Output intermediate results during lsec.
@@ -30,12 +31,12 @@ $Id$
   - Interrupt master state machines state scan for other jobs.
   - Master state machine, slave configuration: Do not check every slave on
     a cycle.
-  - Do only execute one EoE handler per EoE cycle.
+  - Only execute one EoE handler per EoE cycle.
 
 * Less important issues:
   - Implement all EtherCAT datagram types.
   - File access over EtherCAT (FoE).
   - Allow VLAN tagging.
-  - Determine number of frames the NIC can handle.
+  - Determine number of frames, the NIC can handle.
 
 -------------------------------------------------------------------------------

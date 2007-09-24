@@ -70,7 +70,7 @@ struct ec_fsm_sii
     unsigned int retries; /**< retries upon datagram timeout */
 
     void (*state)(ec_fsm_sii_t *); /**< SII state function */
-    uint16_t offset; /**< input: offset in SII */
+    uint16_t word_offset; /**< input: word offset in SII */
     ec_fsm_sii_addressing_t mode; /**< reading via APRD or NPRD */
     uint8_t value[4]; /**< raw SII value (32bit) */
     cycles_t cycles_start; /**< start timestamp */
