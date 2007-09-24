@@ -83,6 +83,7 @@ ec_slave_state_t;
 /*****************************************************************************/
 
 /**
+ * EtherCAT slave online state.
  */
 
 typedef enum {

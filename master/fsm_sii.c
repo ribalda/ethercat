@@ -43,8 +43,15 @@
 #include "master.h"
 #include "fsm_sii.h"
 
-#define EEPROM_TIMEOUT 10 // read/write timeout [ms]
-#define EEPROM_INHIBIT  5 // time before evaluating answer at writing [ms]
+/**
+ * Read/Write timeout. [ms]
+ */
+#define EEPROM_TIMEOUT 10
+
+/**
+ * Time before evaluating answer at writing. [ms]
+ */
+#define EEPROM_INHIBIT  5
 
 //#define SII_DEBUG
 

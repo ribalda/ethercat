@@ -48,6 +48,9 @@
 
 /*****************************************************************************/
 
+/**
+ * SII access addressing mode.
+ */
 typedef enum
 {
     EC_FSM_SII_POSITION,

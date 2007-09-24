@@ -132,7 +132,7 @@ struct ec_master
 
     int debug_level; /**< master debug level */
     ec_stats_t stats; /**< cyclic statistics */
-    unsigned int pdo_slaves_offline; /** number of slaves, for which PDOs
+    unsigned int pdo_slaves_offline; /**< number of slaves, for which PDOs
                                        were registered and that are offline
                                        (used for bus status) */
     unsigned int frames_timed_out; /**< there were frame timeouts in the last

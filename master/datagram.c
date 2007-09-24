@@ -309,7 +309,7 @@ int ec_datagram_lrw(ec_datagram_t *datagram,
  */
 
 void ec_datagram_print_wc_error(
-        const ec_datagram_t *datagram
+        const ec_datagram_t *datagram /**< EtherCAT datagram */
         )
 {
     if (datagram->working_counter == 0)

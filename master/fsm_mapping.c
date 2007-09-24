@@ -138,10 +138,11 @@ int ec_fsm_mapping_success(
 }
 
 /******************************************************************************
- * PDO mapping state machine
+ * state functions
  *****************************************************************************/
 
 /**
+ * Start mapping configuration.
  */
 
 void ec_fsm_mapping_state_start(
@@ -155,6 +156,7 @@ void ec_fsm_mapping_state_start(
 /*****************************************************************************/
 
 /**
+ * Process mapping of next sync manager.
  */
 
 void ec_fsm_mapping_next_sync(
@@ -200,6 +202,7 @@ void ec_fsm_mapping_next_sync(
 /*****************************************************************************/
 
 /**
+ * Process mapping of next PDO.
  */
 
 ec_pdo_t *ec_fsm_mapping_next_pdo(
@@ -223,6 +226,7 @@ ec_pdo_t *ec_fsm_mapping_next_pdo(
 /*****************************************************************************/
 
 /**
+ * Set the number of mapped PDOs to zero.
  */
 
 void ec_fsm_mapping_state_zero_count(
@@ -268,6 +272,7 @@ void ec_fsm_mapping_state_zero_count(
 /*****************************************************************************/
 
 /**
+ * Add a PDO to the sync managers mapping.
  */
 
 void ec_fsm_mapping_state_add_pdo(
@@ -318,6 +323,7 @@ void ec_fsm_mapping_state_add_pdo(
 /*****************************************************************************/
 
 /**
+ * Set the number of mapped PDOs.
  */
 
 void ec_fsm_mapping_state_pdo_count(

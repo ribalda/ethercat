@@ -63,10 +63,14 @@ ec_xmldev_t;
 
 /*****************************************************************************/
 
+/** \cond */
+
 int ec_xmldev_init(ec_xmldev_t *, ec_master_t *, dev_t);
 void ec_xmldev_clear(ec_xmldev_t *);
 
 int ec_xmldev_request(ec_xmldev_t *, uint32_t, uint32_t);
+
+/** \endcond */
 
 /*****************************************************************************/
 

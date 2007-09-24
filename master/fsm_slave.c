@@ -697,6 +697,7 @@ void ec_fsm_slave_conf_state_clear_fmmus(ec_fsm_slave_t *fsm
 /*****************************************************************************/
 
 /**
+ * Check for mailbox sync managers to be configured.
  */
 
 void ec_fsm_slave_conf_enter_mbox_sync(
@@ -810,6 +811,7 @@ void ec_fsm_slave_conf_state_mbox_sync(ec_fsm_slave_t *fsm /**< slave state mach
 /*****************************************************************************/
 
 /**
+ * Request PREOP state.
  */
 
 void ec_fsm_slave_conf_enter_preop(ec_fsm_slave_t *fsm /**< slave state machine */)
@@ -861,6 +863,7 @@ void ec_fsm_slave_conf_state_preop(ec_fsm_slave_t *fsm /**< slave state machine 
 /*****************************************************************************/
 
 /**
+ * Check for SDO configurations to be applied.
  */
 
 void ec_fsm_slave_conf_enter_sdoconf(ec_fsm_slave_t *fsm /**< slave state machine */)
@@ -916,6 +919,7 @@ void ec_fsm_slave_conf_state_sdoconf(
 /*****************************************************************************/
 
 /**
+ * Check for alternative PDO mappings to be applied.
  */
 
 void ec_fsm_slave_conf_enter_mapconf(
@@ -962,6 +966,7 @@ void ec_fsm_slave_conf_state_mapconf(
 /*****************************************************************************/
 
 /**
+ * Check for PDO sync managers to be configured.
  */
 
 void ec_fsm_slave_conf_enter_pdo_sync(
@@ -994,6 +999,7 @@ void ec_fsm_slave_conf_enter_pdo_sync(
 /*****************************************************************************/
 
 /**
+ * Configure PDO sync managers.
  */
 
 void ec_fsm_slave_conf_state_pdo_sync(ec_fsm_slave_t *fsm /**< slave state machine */)
@@ -1027,7 +1033,8 @@ void ec_fsm_slave_conf_state_pdo_sync(ec_fsm_slave_t *fsm /**< slave state machi
 /*****************************************************************************/
 
 /**
-*/
+ * Check for FMMUs to be configured.
+ */
 
 void ec_fsm_slave_conf_enter_fmmu(ec_fsm_slave_t *fsm /**< slave state machine */)
 {
@@ -1089,6 +1096,7 @@ void ec_fsm_slave_conf_state_fmmu(ec_fsm_slave_t *fsm /**< slave state machine *
 /*****************************************************************************/
 
 /**
+ * Request SAVEOP state.
  */
 
 void ec_fsm_slave_conf_enter_saveop(ec_fsm_slave_t *fsm /**< slave state machine */)

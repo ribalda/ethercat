@@ -57,13 +57,11 @@
 /*****************************************************************************/
 
 void ec_master_destroy_domains(ec_master_t *);
-void ec_master_sync_io(ec_master_t *);
 static int ec_master_idle_thread(ec_master_t *);
 static int ec_master_operation_thread(ec_master_t *);
 #ifdef EC_EOE
 void ec_master_eoe_run(unsigned long);
 #endif
-void ec_master_check_sdo(unsigned long);
 ssize_t ec_show_master_attribute(struct kobject *, struct attribute *, char *);
 ssize_t ec_store_master_attribute(struct kobject *, struct attribute *,
                                   const char *, size_t);
@@ -917,10 +915,15 @@ schedule:
 
 /*****************************************************************************/
 
+/**
+ * Prints the device information to a buffer.
+ * \return number of bytes written.
+ */
+
 ssize_t ec_master_device_info(
-        const ec_device_t *device,
-        const uint8_t *mac,
-        char *buffer
+        const ec_device_t *device, /**< EtherCAT device */
+        const uint8_t *mac, /**< MAC address */
+        char *buffer /**< target buffer */
         )
 {
     unsigned int frames_lost;

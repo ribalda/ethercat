@@ -59,10 +59,24 @@
 
 /*****************************************************************************/
 
+/**
+ * EtherCAT real-time interface major version number.
+ */
 #define ECRT_VER_MAJOR 1
+
+/**
+ * EtherCAT real-time interface minor version number.
+ */
 #define ECRT_VER_MINOR 3
 
+/**
+ * EtherCAT real-time interface version word generator.
+ */
 #define ECRT_VERSION(a,b) (((a) << 8) + (b))
+
+/**
+ * EtherCAT real-time interface version word.
+ */
 #define ECRT_VERSION_MAGIC ECRT_VERSION(ECRT_VER_MAJOR, ECRT_VER_MINOR)
 
 /*****************************************************************************/

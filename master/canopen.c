@@ -171,9 +171,14 @@ void ec_sdo_clear(struct kobject *kobj /**< SDO's kobject */)
 
 /*****************************************************************************/
 
+/**
+ * Get and SDO entry from an SDO via its subindex.
+ * \return pointer to SDO entry, or NULL.
+ */
+
 ec_sdo_entry_t *ec_sdo_get_entry(
-        ec_sdo_t *sdo,
-        uint8_t subindex
+        ec_sdo_t *sdo, /**< SDO */
+        uint8_t subindex /**< entry subindex */
         )
 {
     ec_sdo_entry_t *entry;
@@ -187,6 +192,11 @@ ec_sdo_entry_t *ec_sdo_get_entry(
 }
 
 /*****************************************************************************/
+
+/**
+ * Print SDO information to a buffer.
+ * /return size of bytes written to buffer.
+ */ 
 
 ssize_t ec_sdo_info(ec_sdo_t *sdo, /**< SDO */
                     char *buffer /**< target buffer */
@@ -202,6 +212,11 @@ ssize_t ec_sdo_info(ec_sdo_t *sdo, /**< SDO */
 }
 
 /*****************************************************************************/
+
+/**
+ * Show an SDO as Sysfs attribute.
+ * /return size of bytes written to buffer.
+ */ 
 
 ssize_t ec_show_sdo_attribute(struct kobject *kobj, /**< kobject */
                               struct attribute *attr,
@@ -285,6 +300,11 @@ void ec_sdo_entry_clear(struct kobject *kobj /**< SDO entry's kobject */)
 }
 
 /*****************************************************************************/
+ 
+/**
+ * Print SDO entry information to a buffer.
+ * \return number of bytes written.
+ */
 
 ssize_t ec_sdo_entry_info(ec_sdo_entry_t *entry, /**< SDO entry */
                           char *buffer /**< target buffer */
@@ -302,6 +322,11 @@ ssize_t ec_sdo_entry_info(ec_sdo_entry_t *entry, /**< SDO entry */
 }
 
 /*****************************************************************************/
+
+/**
+ * Format entry data based on the CANopen data type and print it to a buffer.
+ * \return number of bytes written.
+ */
 
 ssize_t ec_sdo_entry_format_data(ec_sdo_entry_t *entry, /**< SDO entry */
                                  ec_sdo_request_t *request, /**< SDO request */
@@ -376,6 +401,13 @@ raw_data:
 
 /*****************************************************************************/
 
+/**
+ * Start SDO entry reading.
+ * This function blocks, until reading is finished, and is interruptible as
+ * long as the master state machine has not begun with reading.
+ * \return number of bytes written to buffer, or error code.
+ */
+
 ssize_t ec_sdo_entry_read_value(ec_sdo_entry_t *entry, /**< SDO entry */
                                 char *buffer /**< target buffer */
                                 )
@@ -418,6 +450,11 @@ ssize_t ec_sdo_entry_read_value(ec_sdo_entry_t *entry, /**< SDO entry */
 }
 
 /*****************************************************************************/
+
+/**
+ * Show an SDO entry as Sysfs attribute.
+ * /return size of bytes written to buffer.
+ */ 
 
 ssize_t ec_show_sdo_entry_attribute(struct kobject *kobj, /**< kobject */
                                     struct attribute *attr,

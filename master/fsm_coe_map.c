@@ -69,7 +69,7 @@ void ec_fsm_coe_map_clear_pdos(ec_fsm_coe_map_t *);
 
 void ec_fsm_coe_map_init(
         ec_fsm_coe_map_t *fsm, /**< finite state machine */
-        ec_fsm_coe_t *fsm_coe /*< CoE state machine to use */
+        ec_fsm_coe_t *fsm_coe /**< CoE state machine to use */
         )
 {
     fsm->state = NULL;
@@ -91,6 +91,7 @@ void ec_fsm_coe_map_clear(ec_fsm_coe_map_t *fsm /**< finite state machine */)
 /*****************************************************************************/
 
 /**
+ * Clear FSM PDOs.
  */
 
 void ec_fsm_coe_map_clear_pdos(
@@ -154,6 +155,7 @@ int ec_fsm_coe_map_success(ec_fsm_coe_map_t *fsm /**< Finite state machine */)
  *****************************************************************************/
 
 /**
+ * Start reading mapping.
  */
 
 void ec_fsm_coe_map_state_start(
@@ -168,6 +170,7 @@ void ec_fsm_coe_map_state_start(
 /*****************************************************************************/
 
 /**
+ * Read mapping of next sync manager.
  */
 
 void ec_fsm_coe_map_action_next_sync(
@@ -208,6 +211,7 @@ void ec_fsm_coe_map_action_next_sync(
 /*****************************************************************************/
 
 /**
+ * Count mapped PDOs.
  */
 
 void ec_fsm_coe_map_state_pdo_count(
@@ -236,6 +240,7 @@ void ec_fsm_coe_map_state_pdo_count(
 /*****************************************************************************/
 
 /**
+ * Read next PDO.
  */
 
 void ec_fsm_coe_map_action_next_pdo(
@@ -282,6 +287,7 @@ void ec_fsm_coe_map_action_next_pdo(
 /*****************************************************************************/
 
 /**
+ * Fetch PDO information.
  */
 
 void ec_fsm_coe_map_state_pdo(
@@ -362,6 +368,7 @@ void ec_fsm_coe_map_state_pdo(
 /*****************************************************************************/
 
 /**
+ * Read number of PDO entries.
  */
 
 void ec_fsm_coe_map_state_pdo_entry_count(
@@ -390,6 +397,7 @@ void ec_fsm_coe_map_state_pdo_entry_count(
 /*****************************************************************************/
 
 /**
+ * Read next PDO entry.
  */
 
 void ec_fsm_coe_map_action_next_pdo_entry(
@@ -423,6 +431,7 @@ void ec_fsm_coe_map_action_next_pdo_entry(
 /*****************************************************************************/
 
 /**
+ * Read PDO entry information.
  */
 
 void ec_fsm_coe_map_state_pdo_entry(

@@ -59,18 +59,18 @@ struct ec_fsm_coe_map
     ec_fsm_coe_t *fsm_coe; /**< CoE state machine to use */
 
     ec_slave_t *slave; /**< EtherCAT slave */
-    ec_sdo_request_t request;
+    ec_sdo_request_t request; /**< SDO request */
 
-    unsigned int sync_index;
-    ec_sdo_t *sync_sdo;
-    uint8_t sync_subindices;
-    uint16_t sync_subindex;
+    unsigned int sync_index; /**< index of the current sync manager */
+    ec_sdo_t *sync_sdo; /**< pointer to the sync managers mapping SDO */
+    uint8_t sync_subindices; /**< number of mapped PDOs */
+    uint16_t sync_subindex; /**< current subindex in mapping SDO */
 
-    struct list_head pdos;
-    ec_pdo_t *pdo;
-    ec_sdo_t *pdo_sdo;
-    uint8_t pdo_subindices;
-    uint16_t pdo_subindex;
+    struct list_head pdos; /**< list of mapped PDOs */
+    ec_pdo_t *pdo; /**< current PDO */
+    ec_sdo_t *pdo_sdo; /**< current PDO SDO */
+    uint8_t pdo_subindices; /**< number of PDO entries */
+    uint16_t pdo_subindex; /**< current subindex in PDO SDO */
 };
 
 /*****************************************************************************/

@@ -58,12 +58,12 @@
 
 typedef struct
 {
-    struct list_head list;
-    ec_slave_t *slave;
-    off_t word_offset;
-    size_t word_size;
-    const uint8_t *data;
-    ec_request_state_t state;
+    struct list_head list; /**< list head */
+    ec_slave_t *slave; /**< EtherCAT slave */
+    off_t word_offset; /**< SII address in words */
+    size_t word_size; /**< data size in words */
+    const uint8_t *data; /**< pointer to the data */
+    ec_request_state_t state; /**< state of the request */
 }
 ec_eeprom_write_request_t;
 

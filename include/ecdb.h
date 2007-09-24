@@ -35,8 +35,8 @@
    \file
    EtherCAT Slave Database.
 
-   \warn Please do not create any dependencies to this file! It may be changed
-   between releases. Provide a copy, if you want to use it in foreign
+   \attention Please do not create any dependencies to this file! It may be
+   changed between releases. Provide a copy, if you want to use it in foreign
    projects.
 */
 

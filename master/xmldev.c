@@ -45,6 +45,8 @@
 
 /*****************************************************************************/
 
+/** \cond */
+
 static char *test_str = "hello world!\n";
 
 int ecxmldev_open(struct inode *, struct file *);
@@ -168,5 +170,7 @@ ssize_t ecxmldev_write(struct file *filp,
 {
     return -EFAULT;
 }
+
+/** \endcond */
 
 /*****************************************************************************/

@@ -140,6 +140,8 @@ void ec_sync_config(
 /*****************************************************************************/
 
 /**
+ * Adds a PDO to the list of known mapped PDOs.
+ * \return 0 on success, else < 0
  */
 
 int ec_sync_add_pdo(
@@ -178,6 +180,7 @@ int ec_sync_add_pdo(
 /*****************************************************************************/
 
 /**
+ * Clears the list of known mapped PDOs.
  */
 
 void ec_sync_clear_pdos(
@@ -197,6 +200,7 @@ void ec_sync_clear_pdos(
 /*****************************************************************************/
 
 /**
+ * \return Type of PDOs covered by the given sync manager.
  */
 
 ec_pdo_type_t ec_sync_get_pdo_type(

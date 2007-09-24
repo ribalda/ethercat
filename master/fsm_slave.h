@@ -66,7 +66,7 @@ struct ec_fsm_slave
 
     void (*state)(ec_fsm_slave_t *); /**< state function */
     ec_sdo_data_t *sdodata; /**< SDO configuration data */
-    uint16_t sii_offset; 
+    uint16_t sii_offset; /**< SII offset in words */
 
     ec_fsm_sii_t fsm_sii; /**< SII state machine */
     ec_fsm_change_t fsm_change; /**< State change state machine */

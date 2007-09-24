@@ -75,7 +75,7 @@ static uint8_t macs[MAX_MASTERS][2][ETH_ALEN]; /**< MAC addresses */
 static dev_t device_number; /**< XML character device number */
 ec_xmldev_t xmldev; /**< XML character device */
 
-char *ec_master_version_str = EC_MASTER_VERSION;
+char *ec_master_version_str = EC_MASTER_VERSION; /**< master version string */
 
 /*****************************************************************************/
 
@@ -207,6 +207,10 @@ void __exit ec_cleanup_module(void)
  * MAC address functions
  ****************************************************************************/
 
+/**
+ * \return true, if two MAC addresses are equal.
+ */
+
 int ec_mac_equal(const uint8_t *mac1, const uint8_t *mac2)
 {
     unsigned int i;
@@ -220,7 +224,15 @@ int ec_mac_equal(const uint8_t *mac1, const uint8_t *mac2)
                 
 /*****************************************************************************/
 
-ssize_t ec_mac_print(const uint8_t *mac, char *buffer)
+/**
+ * Print a MAC address to a buffer.
+ * \return number of bytes written.
+ */
+
+ssize_t ec_mac_print(
+        const uint8_t *mac, /**< MAC address */
+        char *buffer /**< target buffer */
+        )
 {
     off_t off = 0;
     unsigned int i;
@@ -235,6 +247,10 @@ ssize_t ec_mac_print(const uint8_t *mac, char *buffer)
 
 /*****************************************************************************/
 
+/**
+ * \return true, if the MAC address is all-zero.
+ */
+
 int ec_mac_is_zero(const uint8_t *mac)
 {
     unsigned int i;
@@ -248,6 +264,10 @@ int ec_mac_is_zero(const uint8_t *mac)
 
 /*****************************************************************************/
 
+/**
+ * \return true, if the given MAC address is the broadcast address.
+ */
+
 int ec_mac_is_broadcast(const uint8_t *mac)
 {
     unsigned int i;
@@ -260,6 +280,13 @@ int ec_mac_is_broadcast(const uint8_t *mac)
 }
 
 /*****************************************************************************/
+
+/**
+ * Parse a MAC address from a string.
+ * The MAC address must follow the regexp
+ * "([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}".
+   \return 0 on success, else < 0
+ */
 
 static int ec_mac_parse(uint8_t *mac, const char *src, int allow_empty)
 {

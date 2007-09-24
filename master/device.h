@@ -47,6 +47,12 @@
 #include "../devices/ecdev.h"
 #include "globals.h"
 
+/**
+ * Size of the transmit ring.
+ * This memory ring is used to transmit frames. It is necessary to use
+ * different memory regions, because otherwise the network device DMA could
+ * send the same data twice, if it is called twice.
+ */
 #define EC_TX_RING_SIZE 2
 
 #ifdef EC_DEBUG_IF
@@ -87,7 +93,7 @@ struct ec_device
     uint8_t open; /**< true, if the net_device has been opened */
     uint8_t link_state; /**< device link state */
     struct sk_buff *tx_skb[EC_TX_RING_SIZE]; /**< transmit skb ring */
-    unsigned int tx_ring_index;
+    unsigned int tx_ring_index; /**< last ring entry used to transmit */
     cycles_t cycles_poll; /**< cycles of last poll */
 #ifdef EC_DEBUG_RING
     struct timeval timeval_poll;

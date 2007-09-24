@@ -282,7 +282,8 @@ void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
 /*****************************************************************************/
 
 /**
-*/
+ * SDO kobject clear method.
+ */
 
 void ec_slave_sdos_clear(struct kobject *kobj /**< kobject for SDOs */)
 {
@@ -374,6 +375,7 @@ void ec_slave_set_online_state(ec_slave_t *slave, /**< EtherCAT slave */
 /*****************************************************************************/
 
 /**
+ * Request a slave state and resets the error flag.
  */
 
 void ec_slave_request_state(ec_slave_t *slave, /**< EtherCAT slave */
@@ -875,7 +877,9 @@ size_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
  * \return 0 case of success, otherwise error code.
  */
 
-int ec_slave_schedule_eeprom_writing(ec_eeprom_write_request_t *request)
+int ec_slave_schedule_eeprom_writing(
+        ec_eeprom_write_request_t *request /**< EEPROM write request */
+        )
 {
     ec_master_t *master = request->slave->master;
 
@@ -924,7 +928,10 @@ int ec_slave_schedule_eeprom_writing(ec_eeprom_write_request_t *request)
  * \return CRC8
  */
 
-uint8_t ec_slave_eeprom_crc(const uint8_t *data, size_t length)
+uint8_t ec_slave_eeprom_crc(
+        const uint8_t *data, /**< pointer to data */
+        size_t length /**< number of bytes in \a data */
+        )
 {
     unsigned int i;
     uint8_t bit, byte, crc = 0x48;
@@ -1179,6 +1186,8 @@ ssize_t ec_store_slave_attribute(struct kobject *kobj, /**< slave's kobject */
 /*****************************************************************************/
 
 /**
+ * Get the sync manager for either Rx- or Tx-PDOs.
+ * \return pointer to sync manager, or NULL.
  */
 
 ec_sync_t *ec_slave_get_pdo_sync(
@@ -1372,6 +1381,10 @@ int ecrt_slave_conf_sdo32(ec_slave_t *slave, /**< EtherCAT slave */
 
 /*****************************************************************************/
 
+/**
+ * Clear slave's PDO mapping.
+ */
+
 void ecrt_slave_pdo_mapping_clear(
         ec_slave_t *slave, /**< EtherCAT slave */
         ec_direction_t dir /**< output/input */
@@ -1393,10 +1406,14 @@ void ecrt_slave_pdo_mapping_clear(
 
 /*****************************************************************************/
 
+/**
+ * Add a PDO to the list of known mapped PDOs.
+ */
+
 int ecrt_slave_pdo_mapping_add(
         ec_slave_t *slave, /**< EtherCAT slave */
         ec_direction_t dir, /**< input/output */
-        uint16_t pdo_index /**< Index of PDO mapping list */)
+        uint16_t pdo_index /**< Index of mapped PDO */)
 {
     ec_pdo_t *pdo;
     ec_sync_t *sync;
@@ -1443,6 +1460,11 @@ int ecrt_slave_pdo_mapping_add(
 }
 
 /*****************************************************************************/
+
+/**
+ * Convenience function for ecrt_slave_pdo_mapping_clear() and
+ * ecrt_slave_pdo_mapping_add().
+ */
 
 int ecrt_slave_pdo_mapping(ec_slave_t *slave, /**< EtherCAT slave */
         ec_direction_t dir, /**< input/output */

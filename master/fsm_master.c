@@ -417,6 +417,7 @@ int ec_fsm_master_action_process_sdo(
 /*****************************************************************************/
 
 /**
+ * Check for slaves that are not configured and configure them.
  */
 
 int ec_fsm_master_action_configure(
@@ -1029,6 +1030,7 @@ void ec_fsm_master_state_sdodict(ec_fsm_master_t *fsm /**< master state machine 
 /*****************************************************************************/
 
 /**
+ * Scan the PDO mapping of a slave.
  */
 
 void ec_fsm_master_state_pdomap(
