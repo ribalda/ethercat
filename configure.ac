@@ -458,6 +458,7 @@ AC_SUBST(ENABLE_EOE,[$eoe])
 #------------------------------------------------------------------------------
 
 AC_CONFIG_FILES([
+        Doxyfile
         Kbuild
         Makefile
         master/Kbuild
