@@ -150,13 +150,15 @@ int ec_fsm_coe_map_success(ec_fsm_coe_map_t *fsm /**< Finite state machine */)
 }
 
 /******************************************************************************
- *  CoE dictionary state machine
+ *  state functions
  *****************************************************************************/
 
 /**
  */
 
-void ec_fsm_coe_map_state_start(ec_fsm_coe_map_t *fsm /**< finite state machine */)
+void ec_fsm_coe_map_state_start(
+        ec_fsm_coe_map_t *fsm /**< finite state machine */
+        )
 {
     // read mapping of first sync manager
     fsm->sync_index = 0;
