@@ -168,7 +168,7 @@ void ec_device_attach(ec_device_t *device, /**< EtherCAT device */
 
     for (i = 0; i < EC_TX_RING_SIZE; i++) {
         device->tx_skb[i]->dev = net_dev;
-        eth = (struct ethhdr *) (device->tx_skb[i]->data + ETH_HLEN);
+        eth = (struct ethhdr *) (device->tx_skb[i]->data);
         memcpy(eth->h_source, net_dev->dev_addr, ETH_ALEN);
     }
 }
