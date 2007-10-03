@@ -46,6 +46,7 @@ EXTRA_DIST = \
 	fsm_sii.c fsm_sii.h \
 	fsm_change.c fsm_change.h \
 	fsm_coe.c fsm_coe.h \
+	fsm_coe_map.c fsm_coe_map.h \
 	fsm_mapping.c fsm_mapping.h \
 	fsm_slave.c fsm_slave.h \
 	fsm_master.c fsm_master.h \
