@@ -62,6 +62,7 @@ void ec_sync_init(
     sync->est_length = 0;
     INIT_LIST_HEAD(&sync->pdos);
     sync->alt_mapping = 0;
+    sync->mapping_source = EC_SYNC_MAPPING_NONE;
 }
 
 /*****************************************************************************/

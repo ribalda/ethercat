@@ -576,6 +576,7 @@ int ec_slave_fetch_sii_pdos(
 
         // if sync manager index is positive, the PDO is mapped by default
         if (pdo->sync_index >= 0) {
+            ec_sync_t *sync;
             ec_pdo_t *mapped_pdo;
 
             if (pdo->sync_index >= slave->sii_sync_count) {
@@ -583,6 +584,7 @@ int ec_slave_fetch_sii_pdos(
                         pdo->sync_index, pdo->index, slave->ring_position);
                 return -1;
             }
+            sync = &slave->sii_syncs[pdo->sync_index];
 
             if (!(mapped_pdo = kmalloc(sizeof(ec_pdo_t), GFP_KERNEL))) {
                 EC_ERR("Failed to allocate PDO memory.\n");
@@ -595,8 +597,8 @@ int ec_slave_fetch_sii_pdos(
                 return -1;
             }
 
-            list_add_tail(&mapped_pdo->list,
-                    &slave->sii_syncs[pdo->sync_index].pdos);
+            list_add_tail(&mapped_pdo->list, &sync->pdos);
+            sync->mapping_source = EC_SYNC_MAPPING_SII;
         }
     }
 
@@ -810,8 +812,12 @@ size_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
                 ec_sync_size(sync), sync->control_register,
                 sync->enable ? "enable" : "disable");
 
-        if (list_empty(&sync->pdos))
+        if (list_empty(&sync->pdos)) {
             off += sprintf(buffer + off, "    No PDOs mapped.\n");
+        } else if (sync->mapping_source != EC_SYNC_MAPPING_NONE) {
+            off += sprintf(buffer + off, "    PDO mapping information from %s.\n",
+                    sync->mapping_source == EC_SYNC_MAPPING_SII ? "SII" : "CoE");
+        }
 
         list_for_each_entry(pdo, &sync->pdos, list) {
             off += sprintf(buffer + off, "    %s 0x%04X \"%s\"\n",
@@ -830,7 +836,7 @@ size_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
 
     // type-cast to avoid warnings on some compilers
     if (!list_empty((struct list_head *) &slave->sii_pdos))
-        off += sprintf(buffer + off, "\nAvailable PDOs:\n");
+        off += sprintf(buffer + off, "\nAvailable PDOs from SII:\n");
 
     list_for_each_entry(pdo, &slave->sii_pdos, list) {
         off += sprintf(buffer + off, "  %s 0x%04X \"%s\"",

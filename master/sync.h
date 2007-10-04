@@ -54,6 +54,19 @@
 /*****************************************************************************/
 
 /**
+ * EtherCAT sync manager PDO mapping information source.
+ */
+
+typedef enum {
+    EC_SYNC_MAPPING_NONE, /**< No PDO mapping information */
+    EC_SYNC_MAPPING_SII, /**< PDO mapping information from SII */
+    EC_SYNC_MAPPING_COE /**< PDO mapping information from CoE dictionary */
+}
+ec_sync_mapping_source_t;
+
+/*****************************************************************************/
+
+/**
  * Sync manager.
  */
 
@@ -69,6 +82,7 @@ typedef struct
     uint16_t est_length; /**< used to calculate the length via PDO ranges */
     struct list_head pdos; /**< list of mapped PDOs */
     unsigned int alt_mapping; /**< alternative mapping configured */
+    ec_sync_mapping_source_t mapping_source; /**< pdo mapping source */
 }
 ec_sync_t;
 

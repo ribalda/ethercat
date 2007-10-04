@@ -276,6 +276,7 @@ void ec_fsm_coe_map_action_next_pdo(
         list_for_each_entry(pdo, &fsm->pdos, list) {
             ec_sync_add_pdo(sync, pdo);
         }
+        sync->mapping_source = EC_SYNC_MAPPING_COE;
         ec_fsm_coe_map_clear_pdos(fsm);
 
         // next sync manager
