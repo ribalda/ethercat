@@ -63,7 +63,6 @@ sub query
     my $slave_info_file;
     my @slaves;
     my $slave;
-    my $abs;
     my $line;
     my $ring_col_width;
     my $alias_col_width;
@@ -71,6 +70,7 @@ sub query
     my $width;
     my $last_alias;
     my $alias_index;
+    my $category;
 
     $master_dir = "/sys/ethercat/master" . $master_index;
 
@@ -87,21 +87,35 @@ sub query
         open INFO, $slave_info_file or die
             "ERROR: Failed to open $slave_info_file.";
 
+        $category = "";
         while ($line = <INFO>) {
-            if ($line =~ /^Name: (.*)$/) {
-                $slave->{'name'} = $1;
+            # remember category
+            if ($line =~ /^([^\s][^:]*):$/) {
+                $category = $1;
+            } elsif ($line =~ /^\s*$/) {
+                $category = "";
             }
-            elsif ($line =~ /^Ring position: (\d+)$/) {
-                $slave->{'ring_position'} = $1;
-            }
-            elsif ($line =~ /Configured station alias: .* \((\d+)\)$/) {
-                $slave->{'alias'} = $1;
-            }
-            elsif ($line =~ /^State: (.+) /) {
-                $slave->{'state'} = $1;
-            }
-            elsif ($line =~ /^Current consumption: (-?\d+) mA$/) {
-                $slave->{'current'} = $1;
+
+            if ($category eq "") {
+                if ($line =~ /^Ring position: (\d+)$/) {
+                    $slave->{'ring_position'} = $1;
+                } elsif ($line =~ /^State: (.+) /) {
+                    $slave->{'state'} = $1;
+                } elsif ($line =~ /^Configured station alias: .* \((\d+)\)$/) {
+                    $slave->{'alias'} = $1;
+                } elsif ($line =~ /^Current consumption: (-?\d+) mA$/) {
+                    $slave->{'current'} = $1;
+                }
+            } elsif ($category eq "Identity") {
+                if ($line =~ /Vendor ID: .* \((\d+)\)$/) {
+                    $slave->{'vendor'} = $1;
+                } elsif ($line =~ /Product code: .* \((\d+)\)$/) {
+                    $slave->{'product'} = $1;
+                }
+            } elsif ($category eq "General") {
+                if ($line =~ /Name: (.*)$/) {
+                    $slave->{'name'} = $1;
+                }
             }
         }
 
@@ -129,6 +143,14 @@ sub query
         $width = length $slave->{'ring_position'};
         $ring_col_width = $width if ($width > $ring_col_width);
         $alias_index++;
+    }
+
+    # replace empty name with vendor id and product code
+    for $slave (@slaves) {
+        unless (defined $slave->{'name'}) {
+            $slave->{'name'} = sprintf("0x%08X:0x%08X", $slave->{'vendor'},
+                    $slave->{'product'});
+        }
     }
 
     if (defined $opt{'c'}) { # display power consumtion
@@ -182,7 +204,7 @@ sub print_usage
     print "        -m <IDX>    Query master <IDX>.\n";
     print "        -c          Display current [mA] ";
     print "(3: consumption, 4: remaining).\n";
-    print "        -n          Display no coupler lines.\n";
+    print "        -n          Do not display lines before aliased slaves.\n";
     print "        -h          Show this help.\n";
     exit 0;
 }
