@@ -713,7 +713,8 @@ size_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
 
     off += sprintf(buffer + off, "Data link status:\n");
     for (i = 0; i < 4; i++) {
-        off += sprintf(buffer + off, "  Port %i (", i);
+        off += sprintf(buffer + off, "  Port %u: Phy %u (",
+                i, slave->sii_physical_layer[i]);
         switch (slave->sii_physical_layer[i]) {
             case 0x00:
                 off += sprintf(buffer + off, "EBUS");
@@ -725,10 +726,9 @@ size_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
                 off += sprintf(buffer + off, "100BASE-FX");
                 break;
             default:
-                off += sprintf(buffer + off, "unknown (%i)",
-                               slave->sii_physical_layer[i]);
+                off += sprintf(buffer + off, "unknown");
         }
-        off += sprintf(buffer + off, ") Link %s, Loop %s, %s\n",
+        off += sprintf(buffer + off, "), Link %s, Loop %s, %s\n",
                        slave->dl_link[i] ? "up" : "down",
                        slave->dl_loop[i] ? "closed" : "open",
                        slave->dl_signal[i] ? "Signal detected" : "No signal");
