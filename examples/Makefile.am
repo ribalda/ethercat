@@ -1,10 +1,6 @@
 #------------------------------------------------------------------------------
 #
-#  Makefile.am
-#
-#  IgH EtherCAT master
-#
-#  $Id: Makefile.am 581 2006-10-09 14:47:48Z fp $
+#  $Id$
 #
 #  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
 #

@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- *  $Id: fsm_coe.h 702 2006-12-18 18:10:52Z fp $
+ *  $Id$
  *
  *  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
  *
