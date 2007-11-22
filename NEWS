@@ -4,6 +4,12 @@ $Id$
 
 -------------------------------------------------------------------------------
 
+Changes in version XXX:
+
+* Allow gaps in PDO mapping read from CoE.
+
+-------------------------------------------------------------------------------
+
 Changes in version 1.3.2:
 
 * New feature: Read dynamic PDO mapping from SDO dictionary.

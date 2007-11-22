@@ -467,6 +467,30 @@ void ec_fsm_coe_map_state_pdo_entry(
         pdo_entry->subindex = (pdo_entry_info >> 8) & 0xFF;
         pdo_entry->bit_length = pdo_entry_info & 0xFF;
 
+        if (!pdo_entry->index && !pdo_entry->subindex) {
+            char gapname[] = "Gap";
+
+            // we have a gap in the PDO, next PDO entry
+            if (fsm->slave->master->debug_level) {
+                EC_DBG("    PDO entry gap: %u bit.\n",
+                        pdo_entry->bit_length);
+            }
+
+            if (!(pdo_entry->name = (char *)
+                        kmalloc(strlen(gapname) + 1, GFP_KERNEL))) {
+                EC_ERR("Failed to allocate GAP entry name.\n");
+                kfree(pdo_entry);
+                fsm->state = ec_fsm_coe_map_state_error;
+                return;
+            }
+
+            memcpy(pdo_entry->name, gapname, strlen(gapname) + 1);
+            list_add_tail(&pdo_entry->list, &fsm->pdo->entries);
+            fsm->pdo_subindex++;
+            ec_fsm_coe_map_action_next_pdo_entry(fsm);
+            return;
+        }
+
         if (!(sdo = ec_slave_get_sdo(fsm->slave, pdo_entry->index))) {
             EC_ERR("Slave %u has no SDO 0x%04X.\n",
                     fsm->slave->ring_position, pdo_entry->index);
