@@ -366,7 +366,7 @@ void ec_fsm_coe_dict_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     uint8_t *data, mbox_prot;
     size_t rec_size;
     unsigned int sdo_count, i;
-    uint16_t sdo_index;
+    uint16_t sdo_index, fragments_left;
     ec_sdo_t *sdo;
 
     if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
@@ -397,7 +397,7 @@ void ec_fsm_coe_dict_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     if (mbox_prot != 0x03) { // CoE
         EC_ERR("Received mailbox protocol 0x%02X as response.\n", mbox_prot);
         fsm->state = ec_fsm_coe_error;
-	return;
+        return;
     }
 
     if (EC_READ_U16(data) >> 12 == 0x8 && // SDO information
@@ -406,7 +406,7 @@ void ec_fsm_coe_dict_response(ec_fsm_coe_t *fsm /**< finite state machine */)
                slave->ring_position);
         ec_canopen_abort_msg(EC_READ_U32(data + 6));
         fsm->state = ec_fsm_coe_error;
-	return;
+        return;
     }
 
     if (EC_READ_U16(data) >> 12 != 0x8 || // SDO information
@@ -415,14 +415,14 @@ void ec_fsm_coe_dict_response(ec_fsm_coe_t *fsm /**< finite state machine */)
                slave->ring_position);
         ec_print_data(data, rec_size);
         fsm->state = ec_fsm_coe_error;
-	return;
+        return;
     }
 
     if (rec_size < 8) {
         EC_ERR("Invalid data size!\n");
         ec_print_data(data, rec_size);
         fsm->state = ec_fsm_coe_error;
-	return;
+        return;
     }
 
     sdo_count = (rec_size - 8) / 2;
@@ -451,7 +451,12 @@ void ec_fsm_coe_dict_response(ec_fsm_coe_t *fsm /**< finite state machine */)
         list_add_tail(&sdo->list, &slave->sdo_dictionary);
     }
 
-    if (EC_READ_U8(data + 2) & 0x80) { // more messages waiting. check again.
+    fragments_left = EC_READ_U16(data + 4);
+    if (slave->master->debug_level && fragments_left) {
+        EC_DBG("SDO list fragments left: %u\n", fragments_left);
+    }
+
+    if (EC_READ_U8(data + 2) & 0x80 || fragments_left) { // more messages waiting. check again.
         fsm->cycles_start = datagram->cycles_sent;
         ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
         fsm->retries = EC_FSM_RETRIES;
@@ -1325,51 +1330,26 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     if (mbox_prot != 0x03) { // CoE
         EC_WARN("Received mailbox protocol 0x%02X as response.\n", mbox_prot);
         fsm->state = ec_fsm_coe_error;
-	return;
+        return;
     }
 
-    if (rec_size < 10) {
-        EC_ERR("Received currupted SDO upload response!\n");
+    if (rec_size < 3) {
+        EC_ERR("Received currupted SDO upload response (%u bytes)!\n", rec_size);
         ec_print_data(data, rec_size);
         fsm->state = ec_fsm_coe_error;
-	return;
+        return;
     }
 
     if (EC_READ_U16(data) >> 12 == 0x2 && // SDO request
         EC_READ_U8 (data + 2) >> 5 == 0x4) { // abort SDO transfer request
         EC_ERR("SDO upload 0x%04X:%X aborted on slave %i.\n",
                entry->sdo->index, entry->subindex, slave->ring_position);
-        ec_canopen_abort_msg(EC_READ_U32(data + 6));
+        if (rec_size >= 10)
+            ec_canopen_abort_msg(EC_READ_U32(data + 6));
+        else
+            EC_ERR("No abort message.\n");
         fsm->state = ec_fsm_coe_error;
-	return;
-    }
-
-    if (EC_READ_U16(data) >> 12 != 0x3 || // SDO response
-        EC_READ_U8 (data + 2) >> 5 != 0x2 || // upload response
-        EC_READ_U16(data + 3) != entry->sdo->index || // index
-        EC_READ_U8 (data + 5) != entry->subindex) { // subindex
-        EC_ERR("SDO upload 0x%04X:%X failed:\n", entry->sdo->index, entry->subindex);
-        EC_ERR("Invalid SDO upload response at slave %i!\n",
-               slave->ring_position);
-        ec_print_data(data, rec_size);
-        fsm->state = ec_fsm_coe_error;
-	return;
-    }
-
-    data_size = rec_size - 10;
-    expedited = EC_READ_U8(data + 2) & 0x02;
-
-    if (expedited) {
-        size_specified = EC_READ_U8(data + 2) & 0x01;
-        if (size_specified) {
-            complete_size = 4 - ((EC_READ_U8(data + 2) & 0x0C) >> 2);
-        }
-        else {
-            complete_size = 4;
-        }
-    }
-    else {
-        complete_size = EC_READ_U32(data + 6);
+        return;
     }
 
     if (request->data) {
@@ -1378,24 +1358,99 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     }
     request->size = 0;
 
-    if (complete_size) {
+    // normal or expedited?
+    expedited = EC_READ_U8(data + 2) & 0x02;
+
+    if (expedited) {
+        if (rec_size < 7) {
+            EC_ERR("Received currupted SDO expedited upload"
+                    " response (only %u bytes)!\n", rec_size);
+            ec_print_data(data, rec_size);
+            fsm->state = ec_fsm_coe_error;
+            return;
+        }
+
+        if (EC_READ_U16(data) >> 12 != 0x3 || // SDO response
+                EC_READ_U8 (data + 2) >> 5 != 0x2 || // upload response
+                EC_READ_U16(data + 3) != entry->sdo->index || // index
+                EC_READ_U8 (data + 5) != entry->subindex) { // subindex
+            EC_ERR("SDO upload 0x%04X:%X failed:\n", entry->sdo->index, entry->subindex);
+            EC_ERR("Invalid SDO upload response at slave %i!\n",
+                    slave->ring_position);
+            ec_print_data(data, rec_size);
+            fsm->state = ec_fsm_coe_error;
+            return;
+        }
+
+        size_specified = EC_READ_U8(data + 2) & 0x01;
+        if (size_specified) {
+            complete_size = 4 - ((EC_READ_U8(data + 2) & 0x0C) >> 2);
+        } else {
+            complete_size = 4;
+        }
+
+        if (rec_size < 6 + complete_size) {
+            EC_ERR("Received currupted SDO expedited upload"
+                    " response (only %u bytes)!\n", rec_size);
+            ec_print_data(data, rec_size);
+            fsm->state = ec_fsm_coe_error;
+            return;
+        }
+
         if (!(request->data = (uint8_t *)
-              kmalloc(complete_size + 1, GFP_ATOMIC))) {
+                    kmalloc(complete_size + 1, GFP_ATOMIC))) {
             EC_ERR("Failed to allocate %i bytes of SDO data!\n",
-                   complete_size);
+                    complete_size);
             fsm->state = ec_fsm_coe_error;
             return;
         }
         request->data[complete_size] = 0x00; // just to be sure...
-    }
 
-    if (expedited) {
         memcpy(request->data, data + 6, complete_size);
         request->size = complete_size;
-    }
-    else {
+
+    } else { // normal
+        if (rec_size < 10) {
+            EC_ERR("Received currupted SDO normal upload"
+                    " response (only %u bytes)!\n", rec_size);
+            ec_print_data(data, rec_size);
+            fsm->state = ec_fsm_coe_error;
+            return;
+        }
+
+        if (EC_READ_U16(data) >> 12 != 0x3 || // SDO response
+                EC_READ_U8 (data + 2) >> 5 != 0x2 || // upload response
+                EC_READ_U16(data + 3) != entry->sdo->index || // index
+                EC_READ_U8 (data + 5) != entry->subindex) { // subindex
+            EC_ERR("SDO upload 0x%04X:%X failed:\n", entry->sdo->index, entry->subindex);
+            EC_ERR("Invalid SDO upload response at slave %i!\n",
+                    slave->ring_position);
+            ec_print_data(data, rec_size);
+            fsm->state = ec_fsm_coe_error;
+            return;
+        }
+
+        data_size = rec_size - 10;
+        complete_size = EC_READ_U32(data + 6);
+
+        if (!complete_size) {
+            EC_ERR("No complete size supplied!\n");
+            ec_print_data(data, rec_size);
+            fsm->state = ec_fsm_coe_error;
+            return;
+        }
+
+        if (!(request->data = (uint8_t *)
+                    kmalloc(complete_size + 1, GFP_ATOMIC))) {
+            EC_ERR("Failed to allocate %i bytes of SDO data!\n",
+                    complete_size);
+            fsm->state = ec_fsm_coe_error;
+            return;
+        }
+        request->data[complete_size] = 0x00; // just to be sure...
+
         memcpy(request->data, data + 10, data_size);
-        request->size = data_size;
+        request->size = complete_size;
         fsm->toggle = 0;
 
         if (data_size < complete_size) {
