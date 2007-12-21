@@ -255,19 +255,19 @@ int ec_eoe_send(ec_eoe_t *eoe /**< EoE handler */)
     }
 
 #if EOE_DEBUG_LEVEL > 0
-    EC_DBG("EoE TX sending %sfragment %i with %i octets (%i)."
-           " %i frames queued.\n", last_fragment ? "last " : "",
-           eoe->tx_fragment_number, current_size, complete_offset,
+    EC_INFO("EoE %s TX sending fragment %i%s with %i octets (%i)."
+           " %i frames queued.\n", eoe->dev->name, eoe->tx_fragment_number,
+           last_fragment ? "" : "+", current_size, complete_offset,
            eoe->tx_queued_frames);
 #endif
 
 #if EOE_DEBUG_LEVEL > 1
-    EC_DBG("");
+    EC_INFO("");
     for (i = 0; i < current_size; i++) {
         printk("%02X ", eoe->tx_frame->skb->data[eoe->tx_offset + i]);
         if ((i + 1) % 16 == 0) {
             printk("\n");
-            EC_DBG("");
+            EC_INFO("");
         }
     }
     printk("\n");
@@ -434,7 +434,7 @@ void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
 
     if (frame_type != 0x00) {
 #if EOE_DEBUG_LEVEL > 0
-        EC_DBG("other frame received.\n");
+        EC_INFO("EoE %s: Other frame received.\n", eoe->dev->name);
 #endif
         eoe->stats.rx_dropped++;
         eoe->state = ec_eoe_state_tx_start;
@@ -450,21 +450,20 @@ void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
     frame_number = (EC_READ_U16(data + 2) >> 12) & 0x000F;
 
 #if EOE_DEBUG_LEVEL > 0
-    EC_DBG("EoE RX fragment %i, offset %i, frame %i%s%s,"
-           " %i octets\n", fragment_number, fragment_offset,
-           frame_number,
-           last_fragment ? ", last fragment" : "",
+    EC_INFO("EoE %s RX fragment %i%s, offset %i, frame %i%s,"
+           " %i octets\n", eoe->dev->name, fragment_number,
+           last_fragment ? "" : "+", fragment_offset, frame_number, 
            time_appended ? ", + timestamp" : "",
            time_appended ? rec_size - 8 : rec_size - 4);
 #endif
 
 #if EOE_DEBUG_LEVEL > 1
-    EC_DBG("");
+    EC_INFO("");
     for (i = 0; i < rec_size - 4; i++) {
         printk("%02X ", data[i + 4]);
         if ((i + 1) % 16 == 0) {
             printk("\n");
-            EC_DBG("");
+            EC_INFO("");
         }
     }
     printk("\n");
@@ -521,8 +520,8 @@ void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
         eoe->rx_counter += eoe->rx_skb->len;
 
 #if EOE_DEBUG_LEVEL > 0
-        EC_DBG("EoE RX frame completed with %u octets.\n",
-               eoe->rx_skb->len);
+        EC_INFO("EoE %s RX frame completed with %u octets.\n",
+               eoe->dev->name, eoe->rx_skb->len);
 #endif
 
         // pass socket buffer to network stack
@@ -539,8 +538,8 @@ void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
     else {
         eoe->rx_expected_fragment++;
 #if EOE_DEBUG_LEVEL > 0
-        EC_DBG("EoE RX expecting fragment %i\n",
-               eoe->rx_expected_fragment);
+        EC_INFO("EoE %s RX expecting fragment %i\n",
+               eoe->dev->name, eoe->rx_expected_fragment);
 #endif
         eoe->state = ec_eoe_state_rx_start;
     }
@@ -604,7 +603,7 @@ void ec_eoe_state_tx_start(ec_eoe_t *eoe /**< EoE handler */)
     }
 
 #if EOE_DEBUG_LEVEL > 0
-    if (wakeup) EC_DBG("waking up TX queue...\n");
+    if (wakeup) EC_INFO("EoE %s waking up TX queue...\n", eoe->dev->name);
 #endif
 
     eoe->state = ec_eoe_state_tx_sent;
@@ -732,8 +731,8 @@ int ec_eoedev_tx(struct sk_buff *skb, /**< transmit socket buffer */
     spin_unlock_bh(&eoe->tx_queue_lock);
 
 #if EOE_DEBUG_LEVEL > 0
-    EC_DBG("EoE TX queued frame with %i octets (%i frames queued).\n",
-           skb->len, eoe->tx_queued_frames);
+    EC_INFO("EoE %s TX queued frame with %i octets (%i frames queued).\n",
+           eoe->dev->name, skb->len, eoe->tx_queued_frames);
     if (!eoe->tx_queue_active)
         EC_WARN("EoE TX queue is now full.\n");
 #endif
