@@ -66,7 +66,7 @@
 #define EC_STATE_STRING_SIZE 32
 
 /** maximum EEPROM size in words, to avoid infinite reading. */
-#define EC_MAX_EEPROM_SIZE 512
+#define EC_MAX_EEPROM_SIZE 1024
 
 /******************************************************************************
  *  EtherCAT protocol
