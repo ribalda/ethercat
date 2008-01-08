@@ -688,152 +688,159 @@ int ec_slave_prepare_fmmu(
    Outputs all information about a certain slave.
 */
 
-size_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
-                     char *buffer /**< Output buffer */
-                     )
+ssize_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
+        char *buffer /**< Output buffer */
+        )
 {
-    off_t off = 0;
     ec_sync_t *sync;
     ec_pdo_t *pdo;
     ec_pdo_entry_t *pdo_entry;
     int first, i;
     ec_sdo_data_t *sdodata;
     char str[20];
+    char *large_buffer, *buf;
+    unsigned int size;
 
-    off += sprintf(buffer + off, "Ring position: %i\n",
+    if (!(large_buffer = (char *) kmalloc(PAGE_SIZE * 2, GFP_KERNEL))) {
+        return -ENOMEM;
+    }
+
+    buf = large_buffer;
+
+    buf += sprintf(buf, "Ring position: %i\n",
                    slave->ring_position);
-    off += sprintf(buffer + off, "State: ");
-    off += ec_state_string(slave->current_state, buffer + off);
-    off += sprintf(buffer + off, " (");
-    off += ec_state_string(slave->requested_state, buffer + off);
-    off += sprintf(buffer + off, ")\n");
-    off += sprintf(buffer + off, "Flags: %s, %s\n\n",
+    buf += sprintf(buf, "State: ");
+    buf += ec_state_string(slave->current_state, buf);
+    buf += sprintf(buf, " (");
+    buf += ec_state_string(slave->requested_state, buf);
+    buf += sprintf(buf, ")\n");
+    buf += sprintf(buf, "Flags: %s, %s\n\n",
             slave->online_state == EC_SLAVE_ONLINE ? "online" : "OFFLINE",
             slave->error_flag ? "ERROR" : "ok");
 
-    off += sprintf(buffer + off, "Data link status:\n");
+    buf += sprintf(buf, "Data link status:\n");
     for (i = 0; i < 4; i++) {
-        off += sprintf(buffer + off, "  Port %u: Phy %u (",
+        buf += sprintf(buf, "  Port %u: Phy %u (",
                 i, slave->sii_physical_layer[i]);
         switch (slave->sii_physical_layer[i]) {
             case 0x00:
-                off += sprintf(buffer + off, "EBUS");
+                buf += sprintf(buf, "EBUS");
                 break;
             case 0x01:
-                off += sprintf(buffer + off, "100BASE-TX");
+                buf += sprintf(buf, "100BASE-TX");
                 break;
             case 0x02:
-                off += sprintf(buffer + off, "100BASE-FX");
+                buf += sprintf(buf, "100BASE-FX");
                 break;
             default:
-                off += sprintf(buffer + off, "unknown");
+                buf += sprintf(buf, "unknown");
         }
-        off += sprintf(buffer + off, "), Link %s, Loop %s, %s\n",
+        buf += sprintf(buf, "), Link %s, Loop %s, %s\n",
                        slave->dl_link[i] ? "up" : "down",
                        slave->dl_loop[i] ? "closed" : "open",
                        slave->dl_signal[i] ? "Signal detected" : "No signal");
     }
-    off += sprintf(buffer + off, "\n");
+    buf += sprintf(buf, "\n");
 
     if (slave->sii_alias)
-        off += sprintf(buffer + off, "Configured station alias:"
+        buf += sprintf(buf, "Configured station alias:"
                        " 0x%04X (%i)\n\n", slave->sii_alias, slave->sii_alias);
 
-    off += sprintf(buffer + off, "Identity:\n");
-    off += sprintf(buffer + off, "  Vendor ID: 0x%08X (%u)\n",
+    buf += sprintf(buf, "Identity:\n");
+    buf += sprintf(buf, "  Vendor ID: 0x%08X (%u)\n",
                    slave->sii_vendor_id, slave->sii_vendor_id);
-    off += sprintf(buffer + off, "  Product code: 0x%08X (%u)\n",
+    buf += sprintf(buf, "  Product code: 0x%08X (%u)\n",
                    slave->sii_product_code, slave->sii_product_code);
-    off += sprintf(buffer + off, "  Revision number: 0x%08X (%u)\n",
+    buf += sprintf(buf, "  Revision number: 0x%08X (%u)\n",
                    slave->sii_revision_number, slave->sii_revision_number);
-    off += sprintf(buffer + off, "  Serial number: 0x%08X (%u)\n\n",
+    buf += sprintf(buf, "  Serial number: 0x%08X (%u)\n\n",
                    slave->sii_serial_number, slave->sii_serial_number);
 
     if (slave->sii_mailbox_protocols) {
-        off += sprintf(buffer + off, "Mailboxes:\n");
-        off += sprintf(buffer + off, "  RX: 0x%04X/%u, TX: 0x%04X/%u\n",
+        buf += sprintf(buf, "Mailboxes:\n");
+        buf += sprintf(buf, "  RX: 0x%04X/%u, TX: 0x%04X/%u\n",
                 slave->sii_rx_mailbox_offset, slave->sii_rx_mailbox_size,
                 slave->sii_tx_mailbox_offset, slave->sii_tx_mailbox_size);
-        off += sprintf(buffer + off, "  Supported protocols: ");
+        buf += sprintf(buf, "  Supported protocols: ");
 
         first = 1;
         if (slave->sii_mailbox_protocols & EC_MBOX_AOE) {
-            off += sprintf(buffer + off, "AoE");
+            buf += sprintf(buf, "AoE");
             first = 0;
         }
         if (slave->sii_mailbox_protocols & EC_MBOX_EOE) {
-            if (!first) off += sprintf(buffer + off, ", ");
-            off += sprintf(buffer + off, "EoE");
+            if (!first) buf += sprintf(buf, ", ");
+            buf += sprintf(buf, "EoE");
             first = 0;
         }
         if (slave->sii_mailbox_protocols & EC_MBOX_COE) {
-            if (!first) off += sprintf(buffer + off, ", ");
-            off += sprintf(buffer + off, "CoE");
+            if (!first) buf += sprintf(buf, ", ");
+            buf += sprintf(buf, "CoE");
             first = 0;
         }
         if (slave->sii_mailbox_protocols & EC_MBOX_FOE) {
-            if (!first) off += sprintf(buffer + off, ", ");
-            off += sprintf(buffer + off, "FoE");
+            if (!first) buf += sprintf(buf, ", ");
+            buf += sprintf(buf, "FoE");
             first = 0;
         }
         if (slave->sii_mailbox_protocols & EC_MBOX_SOE) {
-            if (!first) off += sprintf(buffer + off, ", ");
-            off += sprintf(buffer + off, "SoE");
+            if (!first) buf += sprintf(buf, ", ");
+            buf += sprintf(buf, "SoE");
             first = 0;
         }
         if (slave->sii_mailbox_protocols & EC_MBOX_VOE) {
-            if (!first) off += sprintf(buffer + off, ", ");
-            off += sprintf(buffer + off, "VoE");
+            if (!first) buf += sprintf(buf, ", ");
+            buf += sprintf(buf, "VoE");
         }
-        off += sprintf(buffer + off, "\n\n");
+        buf += sprintf(buf, "\n\n");
     }
 
-    off += sprintf(buffer + off, "Current consumption: %i mA\n\n",
+    buf += sprintf(buf, "Current consumption: %i mA\n\n",
             slave->sii_current_on_ebus);
 
     if (slave->sii_group || slave->sii_image || slave->sii_order
             || slave->sii_name) {
-        off += sprintf(buffer + off, "General:\n");
+        buf += sprintf(buf, "General:\n");
 
         if (slave->sii_group)
-            off += sprintf(buffer + off, "  Group: %s\n", slave->sii_group);
+            buf += sprintf(buf, "  Group: %s\n", slave->sii_group);
         if (slave->sii_image)
-            off += sprintf(buffer + off, "  Image: %s\n", slave->sii_image);
+            buf += sprintf(buf, "  Image: %s\n", slave->sii_image);
         if (slave->sii_order)
-            off += sprintf(buffer + off, "  Order number: %s\n",
+            buf += sprintf(buf, "  Order number: %s\n",
                     slave->sii_order);
         if (slave->sii_name)
-            off += sprintf(buffer + off, "  Name: %s\n", slave->sii_name);
-        off += sprintf(buffer + off, "\n");
+            buf += sprintf(buf, "  Name: %s\n", slave->sii_name);
+        buf += sprintf(buf, "\n");
     }
 
     if (slave->sii_sync_count) {
-        off += sprintf(buffer + off, "Sync managers / PDO mapping:\n");
+        buf += sprintf(buf, "Sync managers / PDO mapping:\n");
 
         for (i = 0; i < slave->sii_sync_count; i++) {
             sync = &slave->sii_syncs[i];
-            off += sprintf(buffer + off,
+            buf += sprintf(buf,
                     "  SM%u: addr 0x%04X, size %i, control 0x%02X, %s\n",
                     sync->index, sync->physical_start_address,
                     ec_sync_size(sync), sync->control_register,
                     sync->enable ? "enable" : "disable");
 
             if (list_empty(&sync->pdos)) {
-                off += sprintf(buffer + off, "    No PDOs mapped.\n");
+                buf += sprintf(buf, "    No PDOs mapped.\n");
             } else if (sync->mapping_source != EC_SYNC_MAPPING_NONE) {
-                off += sprintf(buffer + off,
+                buf += sprintf(buf,
                         "    PDO mapping information from %s.\n",
                         sync->mapping_source == EC_SYNC_MAPPING_SII
                         ? "SII" : "CoE");
             }
 
             list_for_each_entry(pdo, &sync->pdos, list) {
-                off += sprintf(buffer + off, "    %s 0x%04X \"%s\"\n",
+                buf += sprintf(buf, "    %s 0x%04X \"%s\"\n",
                         pdo->type == EC_RX_PDO ? "RxPdo" : "TxPdo",
                         pdo->index, pdo->name ? pdo->name : "???");
 
                 list_for_each_entry(pdo_entry, &pdo->entries, list) {
-                    off += sprintf(buffer + off,
+                    buf += sprintf(buf,
                             "      0x%04X:%X \"%s\", %i bit\n",
                             pdo_entry->index, pdo_entry->subindex,
                             pdo_entry->name ? pdo_entry->name : "???",
@@ -841,36 +848,36 @@ size_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
                 }
             }
         }
-        off += sprintf(buffer + off, "\n");
+        buf += sprintf(buf, "\n");
     }
 
     // type-cast to avoid warnings on some compilers
     if (!list_empty((struct list_head *) &slave->sii_pdos)) {
-        off += sprintf(buffer + off, "Available PDOs from SII:\n");
+        buf += sprintf(buf, "Available PDOs from SII:\n");
 
         list_for_each_entry(pdo, &slave->sii_pdos, list) {
-            off += sprintf(buffer + off, "  %s 0x%04X \"%s\"",
+            buf += sprintf(buf, "  %s 0x%04X \"%s\"",
                     pdo->type == EC_RX_PDO ? "RxPdo" : "TxPdo",
                     pdo->index, pdo->name ? pdo->name : "???");
             if (pdo->sync_index >= 0)
-                off += sprintf(buffer + off, ", default mapping: SM%u.\n",
+                buf += sprintf(buf, ", default mapping: SM%u.\n",
                         pdo->sync_index);
             else
-                off += sprintf(buffer + off, ", no default mapping.\n");
+                buf += sprintf(buf, ", no default mapping.\n");
 
             list_for_each_entry(pdo_entry, &pdo->entries, list) {
-                off += sprintf(buffer + off, "    0x%04X:%X \"%s\", %i bit\n",
+                buf += sprintf(buf, "    0x%04X:%X \"%s\", %i bit\n",
                         pdo_entry->index, pdo_entry->subindex,
                         pdo_entry->name ? pdo_entry->name : "???",
                         pdo_entry->bit_length);
             }
         }
-        off += sprintf(buffer + off, "\n");
+        buf += sprintf(buf, "\n");
     }
 
     // type-cast to avoid warnings on some compilers
     if (!list_empty((struct list_head *) &slave->sdo_confs)) {
-        off += sprintf(buffer + off, "SDO configurations:\n");
+        buf += sprintf(buf, "SDO configurations:\n");
 
         list_for_each_entry(sdodata, &slave->sdo_confs, list) {
             switch (sdodata->size) {
@@ -879,13 +886,23 @@ size_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
                 case 4: sprintf(str, "%i", EC_READ_U32(sdodata->data)); break;
                 default: sprintf(str, "(invalid size)"); break;
             }
-            off += sprintf(buffer + off, "  0x%04X:%-3i -> %s\n",
+            buf += sprintf(buf, "  0x%04X:%-3i -> %s\n",
                     sdodata->index, sdodata->subindex, str);
         }
-        off += sprintf(buffer + off, "\n");
+        buf += sprintf(buf, "\n");
     }
 
-    return off;
+    size = buf - large_buffer;
+    if (size >= PAGE_SIZE) {
+        const char trunc[] = "\n---TRUNCATED---\n";
+        unsigned int len = strlen(trunc);
+        memcpy(large_buffer + PAGE_SIZE - len, trunc, len);
+    }
+
+    size = min(size, (unsigned int) PAGE_SIZE);
+    memcpy(buffer, large_buffer, size);
+    kfree(large_buffer);
+    return size;
 }
 
 /*****************************************************************************/
