@@ -408,6 +408,7 @@ void ec_fsm_slave_scan_state_eeprom_size(ec_fsm_slave_t *fsm /**< slave state ma
             EC_WARN("EEPROM size of slave %i exceeds"
                     " %u words (0xffff limiter missing?).\n",
                     slave->ring_position, EC_MAX_EEPROM_SIZE);
+            // cut off category data...
             slave->eeprom_size = EC_FIRST_EEPROM_CATEGORY_OFFSET * 2;
             goto alloc_eeprom;
         }
@@ -508,6 +509,12 @@ void ec_fsm_slave_scan_state_eeprom_data(ec_fsm_slave_t *fsm /**< slave state ma
         EC_READ_U16(slave->eeprom_data + 2 * 0x001B);
     slave->sii_mailbox_protocols =
         EC_READ_U16(slave->eeprom_data + 2 * 0x001C);
+
+    if (eeprom_word_size == EC_FIRST_EEPROM_CATEGORY_OFFSET) {
+        // eeprom does not contain category data
+        fsm->state = ec_fsm_slave_state_end;
+        return;
+    }
 
     if (eeprom_word_size < EC_FIRST_EEPROM_CATEGORY_OFFSET + 1) {
         EC_ERR("Unexpected end of EEPROM data in slave %u:"
