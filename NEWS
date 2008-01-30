@@ -7,6 +7,7 @@ $Id$
 Changes in version XXX:
 
 * Allow gaps in PDO mapping read from CoE.
+* Added 8139too driver for kernel 2.6.22, thanks to Erwin Burgstaller.
 
 -------------------------------------------------------------------------------
 

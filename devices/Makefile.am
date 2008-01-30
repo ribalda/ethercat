@@ -46,6 +46,8 @@ EXTRA_DIST = \
 	8139too-2.6.18-orig.c \
 	8139too-2.6.19-ethercat.c \
 	8139too-2.6.19-orig.c \
+	8139too-2.6.22-ethercat.c \
+	8139too-2.6.22-orig.c \
 	e100-2.6.18-ethercat.c \
 	e100-2.6.18-orig.c \
 	forcedeth-2.6.17-ethercat.c \
