@@ -14,6 +14,10 @@ $Id$
   - PDO reading in IDLE mode.
   - Replace Sysfs interface with cdev and user space program.
   - Interface/buffers for asynchronous domain IO.
+  - Remove ecdb.h and let lsec output pdo information 'cut-and-pasteable' for
+    applications.
+  - SDO access via realtime interface.
+  - Scanning shall include reading the PDO mapping via CoE.
 
 * Smaller issues:
   - Datagram debugging flag.
