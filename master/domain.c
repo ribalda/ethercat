@@ -118,7 +118,7 @@ int ec_domain_init(ec_domain_t *domain, /**< EtherCAT domain */
     kobject_init(&domain->kobj);
     domain->kobj.ktype = &ktype_ec_domain;
     domain->kobj.parent = &master->kobj;
-    if (kobject_set_name(&domain->kobj, "domain%i", index)) {
+    if (kobject_set_name(&domain->kobj, "domain%u", index)) {
         EC_ERR("Failed to set kobj name.\n");
         kobject_put(&domain->kobj);
         return -1;
@@ -228,7 +228,6 @@ out:
     data_reg->sync_offset = byte_offset;
     data_reg->data_ptr = data_ptr;
     list_add_tail(&data_reg->list, &domain->data_regs);
-
     return 0;
 }
 
@@ -337,43 +336,41 @@ int ec_domain_alloc(ec_domain_t *domain, /**< EtherCAT domain */
         datagram_count++;
     }
 
-    if (!datagram_count) {
-        EC_WARN("Domain %i contains no data!\n", domain->index);
-        ec_domain_clear_data_regs(domain);
-        return 0;
-    }
-
-    // set all process data pointers
-    list_for_each_entry(data_reg, &domain->data_regs, list) {
-        for (i = 0; i < data_reg->slave->fmmu_count; i++) {
-            fmmu = &data_reg->slave->fmmus[i];
-            if (fmmu->domain == domain && fmmu->sync == data_reg->sync) {
-                pdo_off = fmmu->logical_start_address + data_reg->sync_offset;
-                // search datagram
-                list_for_each_entry(datagram, &domain->datagrams, list) {
-                    log_addr = EC_READ_U32(datagram->address);
-                    pdo_off_datagram = pdo_off - log_addr;
-                    if (pdo_off >= log_addr &&
-                        pdo_off_datagram < datagram->mem_size) {
-                        *data_reg->data_ptr = datagram->data +
-                            pdo_off_datagram;
+    if (datagram_count) {
+        // set all process data pointers
+        list_for_each_entry(data_reg, &domain->data_regs, list) {
+            for (i = 0; i < data_reg->slave->fmmu_count; i++) {
+                fmmu = &data_reg->slave->fmmus[i];
+                if (fmmu->domain == domain && fmmu->sync == data_reg->sync) {
+                    pdo_off =
+                        fmmu->logical_start_address + data_reg->sync_offset;
+                    // search datagram
+                    list_for_each_entry(datagram, &domain->datagrams, list) {
+                        log_addr = EC_READ_U32(datagram->address);
+                        pdo_off_datagram = pdo_off - log_addr;
+                        if (pdo_off >= log_addr &&
+                                pdo_off_datagram < datagram->mem_size) {
+                            *data_reg->data_ptr = datagram->data +
+                                pdo_off_datagram;
+                        }
                     }
+                    if (!data_reg->data_ptr) {
+                        EC_ERR("Failed to assign data pointer!\n");
+                        return -1;
+                    }
+                    break;
                 }
-                if (!data_reg->data_ptr) {
-                    EC_ERR("Failed to assign data pointer!\n");
-                    return -1;
-                }
-                break;
             }
         }
+
+        EC_INFO("Domain %u - Allocated %u bytes in %u datagram%s.\n",
+                domain->index, domain->data_size, datagram_count,
+                datagram_count == 1 ? "" : "s");
+    } else { // !datagram_count
+        EC_WARN("Domain %u contains no data!\n", domain->index);
     }
 
-    EC_INFO("Domain %i - Allocated %i bytes in %i datagram%s.\n",
-            domain->index, domain->data_size, datagram_count,
-            datagram_count == 1 ? "" : "s");
-
     ec_domain_clear_data_regs(domain);
-
     return 0;
 }
 
@@ -392,7 +389,7 @@ ssize_t ec_show_domain_attribute(struct kobject *kobj, /**< kobject */
     ec_domain_t *domain = container_of(kobj, ec_domain_t, kobj);
 
     if (attr == &attr_image_size) {
-        return sprintf(buffer, "%i\n", domain->data_size);
+        return sprintf(buffer, "%u\n", domain->data_size);
     }
 
     return 0;
@@ -428,12 +425,10 @@ int ecrt_domain_register_pdo(
             list_for_each_entry(entry, &pdo->entries, list) {
                 if (entry->index != pdo_entry_index ||
                         entry->subindex != pdo_entry_subindex) continue;
-
                 // PDO entry found
                 if (ec_domain_reg_pdo_entry(domain, sync, entry, data_ptr)) {
                     return -1;
                 }
-
                 return 0;
             }
         }
@@ -524,7 +519,7 @@ int ecrt_domain_register_pdo_range(
     if (sync->est_length < sync_length) {
         sync->est_length = sync_length;
         if (domain->master->debug_level) {
-            EC_DBG("Estimating length of sync manager %i of slave %i to %i.\n",
+            EC_DBG("Estimating length of sync manager %u of slave %u to %u.\n",
                    sync->index, slave->ring_position, sync_length);
         }
     }
@@ -566,11 +561,11 @@ void ecrt_domain_process(ec_domain_t *domain /**< EtherCAT domain */)
         jiffies - domain->notify_jiffies > HZ) {
         domain->notify_jiffies = jiffies;
         if (domain->working_counter_changes == 1) {
-            EC_INFO("Domain %i working counter change: %i\n", domain->index,
+            EC_INFO("Domain %u working counter change: %u\n", domain->index,
                     domain->response_count);
         }
         else {
-            EC_INFO("Domain %i: %u WC changes. Current response count: %i\n",
+            EC_INFO("Domain %u: %u WC changes. Current response count: %u\n",
                     domain->index, domain->working_counter_changes,
                     domain->response_count);
         }
