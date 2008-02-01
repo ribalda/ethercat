@@ -4,10 +4,12 @@ $Id$
 
 -------------------------------------------------------------------------------
 
-Changes in version XXX:
+Changes in version 1.4.0:
 
-* Allow gaps in PDO mapping read from CoE.
 * Added 8139too driver for kernel 2.6.22, thanks to Erwin Burgstaller.
+* Allow gaps in PDO mapping read from CoE.
+* Fixed bug in CoE code.
+* Improved handling of large EEPROM contents.
 
 -------------------------------------------------------------------------------
 
