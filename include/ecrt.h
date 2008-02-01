@@ -90,6 +90,7 @@ typedef struct ec_slave ec_slave_t; /**< \see ec_slave */
 /*****************************************************************************/
 
 /** Bus status.
+ * This is used in ec_master_status_t.
  */
 typedef enum {
     EC_BUS_FAILURE = -1, /**< At least one slave with process data exchange
