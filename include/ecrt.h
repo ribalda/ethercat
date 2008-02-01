@@ -107,7 +107,7 @@ ec_bus_status_t;
 typedef struct {
     ec_bus_status_t bus_status; /**< \see ec_bus_status_t */
     unsigned int bus_tainted; /**< non-zero, if the bus topology is invalid */
-    unsigned int slaves_responding; /**< number of responging slaves */
+    unsigned int slaves_responding; /**< number of responding slaves */
 }
 ec_master_status_t;
 
@@ -156,24 +156,24 @@ void ecrt_master_callbacks(ec_master_t *master, int (*request_cb)(void *),
 
 ec_domain_t *ecrt_master_create_domain(ec_master_t *master);
 
-ec_slave_t *ecrt_master_get_slave(const ec_master_t *, const char *,
-        uint32_t vendor_id, uint32_t product_code);
-ec_slave_t *ecrt_master_get_slave_by_pos(const ec_master_t *, uint16_t,
-        uint32_t vendor_id, uint32_t product_code);
+ec_slave_t *ecrt_master_get_slave(const ec_master_t *master,
+        const char *address, uint32_t vendor_id, uint32_t product_code);
+ec_slave_t *ecrt_master_get_slave_by_pos(const ec_master_t *master,
+        uint16_t position, uint32_t vendor_id, uint32_t product_code);
 
 int ecrt_master_activate(ec_master_t *master);
 
 void ecrt_master_send(ec_master_t *master);
 void ecrt_master_receive(ec_master_t *master);
 
-void ecrt_master_get_status(const ec_master_t *master, ec_master_status_t *);
+void ecrt_master_get_status(const ec_master_t *master, ec_master_status_t *s);
 
 /******************************************************************************
  * Domain methods
  *****************************************************************************/
 
 int ecrt_domain_register_pdo(ec_domain_t *domain, ec_slave_t *slave,
-        uint16_t pdo_index, uint8_t pdo_subindex, void **data_ptr);
+        uint16_t pdo_entry_index, uint8_t pdo_entry_subindex, void **data_ptr);
 
 int ecrt_domain_register_pdo_range(ec_domain_t *domain, ec_slave_t *slave,
         ec_direction_t direction, uint16_t offset, uint16_t length,
