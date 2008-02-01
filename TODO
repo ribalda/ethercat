@@ -13,6 +13,7 @@ Version 1.4.0:
     - SDO access.
     - Replace process data pointers with offset.
     - External memory for domains.
+    - Separate slave configuration from slave structure.
 * Mailbox handler
 * Read PDO mapping via CoE during bus scan.
 * SDO write access in sysfs.
