@@ -200,16 +200,15 @@ int ec_domain_reg_pdo_entry(
 
     // Calculate offset (in sync manager) for process data pointer
     bit_offset = 0;
-    byte_offset = 0;
     list_for_each_entry(other_pdo, &sync->pdos, list) {
         list_for_each_entry(other_entry, &other_pdo->entries, list) {
-            if (other_entry == entry) {
-                byte_offset = bit_offset / 8;
-                break;
-            }
+            if (other_entry == entry)
+                goto out;
             bit_offset += other_entry->bit_length;
         }
     }
+out:
+    byte_offset = bit_offset / 8;
 
     // Allocate memory for data registration object
     if (!(data_reg =
