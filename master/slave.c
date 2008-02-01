@@ -332,7 +332,7 @@ void ec_slave_set_state(ec_slave_t *slave, /**< EtherCAT slave */
                 cur_state[EC_STATE_STRING_SIZE];
             ec_state_string(slave->current_state, old_state);
             ec_state_string(new_state, cur_state);
-            EC_DBG("Slave %i: %s -> %s.\n",
+            EC_DBG("Slave %u: %s -> %s.\n",
                    slave->ring_position, old_state, cur_state);
         }
         slave->current_state = new_state;
@@ -354,7 +354,7 @@ void ec_slave_set_online_state(ec_slave_t *slave, /**< EtherCAT slave */
         if (slave->pdos_registered)
             slave->master->pdo_slaves_offline++;
         if (slave->master->debug_level)
-            EC_DBG("Slave %i: offline.\n", slave->ring_position);
+            EC_DBG("Slave %u: offline.\n", slave->ring_position);
     }
     else if (new_state == EC_SLAVE_ONLINE &&
             slave->online_state == EC_SLAVE_OFFLINE) {
@@ -364,7 +364,7 @@ void ec_slave_set_online_state(ec_slave_t *slave, /**< EtherCAT slave */
         if (slave->master->debug_level) {
             char cur_state[EC_STATE_STRING_SIZE];
             ec_state_string(slave->current_state, cur_state);
-            EC_DBG("Slave %i: online (%s).\n",
+            EC_DBG("Slave %u: online (%s).\n",
                    slave->ring_position, cur_state);
         }
     }
@@ -608,9 +608,8 @@ int ec_slave_fetch_sii_pdos(
 /*****************************************************************************/
 
 /**
-   Searches the string list for an index and allocates a new string.
+   Searches the string list for an index.
    \return 0 in case of success, else < 0
-   \todo documentation
 */
 
 char *ec_slave_sii_string(
@@ -623,7 +622,7 @@ char *ec_slave_sii_string(
 
     if (index >= slave->sii_string_count) {
         if (slave->master->debug_level)
-            EC_WARN("String %i not found in slave %i.\n",
+            EC_WARN("String %u not found in slave %u.\n",
                     index, slave->ring_position);
         return NULL;
     }
@@ -664,7 +663,7 @@ int ec_slave_prepare_fmmu(
     // reserve new FMMU...
 
     if (slave->fmmu_count >= slave->base_fmmu_count) {
-        EC_ERR("Slave %i FMMU limit reached!\n", slave->ring_position);
+        EC_ERR("Slave %u FMMU limit reached!\n", slave->ring_position);
         return -1;
     }
 
@@ -707,7 +706,7 @@ ssize_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
 
     buf = large_buffer;
 
-    buf += sprintf(buf, "Ring position: %i\n",
+    buf += sprintf(buf, "Ring position: %u\n",
                    slave->ring_position);
     buf += sprintf(buf, "State: ");
     buf += ec_state_string(slave->current_state, buf);
@@ -744,7 +743,7 @@ ssize_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
 
     if (slave->sii_alias)
         buf += sprintf(buf, "Configured station alias:"
-                       " 0x%04X (%i)\n\n", slave->sii_alias, slave->sii_alias);
+                       " 0x%04X (%u)\n\n", slave->sii_alias, slave->sii_alias);
 
     buf += sprintf(buf, "Identity:\n");
     buf += sprintf(buf, "  Vendor ID: 0x%08X (%u)\n",
@@ -820,7 +819,7 @@ ssize_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
         for (i = 0; i < slave->sii_sync_count; i++) {
             sync = &slave->sii_syncs[i];
             buf += sprintf(buf,
-                    "  SM%u: addr 0x%04X, size %i, control 0x%02X, %s\n",
+                    "  SM%u: addr 0x%04X, size %u, control 0x%02X, %s\n",
                     sync->index, sync->physical_start_address,
                     ec_sync_size(sync), sync->control_register,
                     sync->enable ? "enable" : "disable");
@@ -841,7 +840,7 @@ ssize_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
 
                 list_for_each_entry(pdo_entry, &pdo->entries, list) {
                     buf += sprintf(buf,
-                            "      0x%04X:%X \"%s\", %i bit\n",
+                            "      0x%04X:%X \"%s\", %u bit\n",
                             pdo_entry->index, pdo_entry->subindex,
                             pdo_entry->name ? pdo_entry->name : "???",
                             pdo_entry->bit_length);
@@ -866,7 +865,7 @@ ssize_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
                 buf += sprintf(buf, ", no default mapping.\n");
 
             list_for_each_entry(pdo_entry, &pdo->entries, list) {
-                buf += sprintf(buf, "    0x%04X:%X \"%s\", %i bit\n",
+                buf += sprintf(buf, "    0x%04X:%X \"%s\", %u bit\n",
                         pdo_entry->index, pdo_entry->subindex,
                         pdo_entry->name ? pdo_entry->name : "???",
                         pdo_entry->bit_length);
@@ -881,9 +880,9 @@ ssize_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
 
         list_for_each_entry(sdodata, &slave->sdo_confs, list) {
             switch (sdodata->size) {
-                case 1: sprintf(str, "%i", EC_READ_U8(sdodata->data)); break;
-                case 2: sprintf(str, "%i", EC_READ_U16(sdodata->data)); break;
-                case 4: sprintf(str, "%i", EC_READ_U32(sdodata->data)); break;
+                case 1: sprintf(str, "%u", EC_READ_U8(sdodata->data)); break;
+                case 2: sprintf(str, "%u", EC_READ_U16(sdodata->data)); break;
+                case 4: sprintf(str, "%u", EC_READ_U32(sdodata->data)); break;
                 default: sprintf(str, "(invalid size)"); break;
             }
             buf += sprintf(buf, "  0x%04X:%-3i -> %s\n",
@@ -1156,7 +1155,7 @@ ssize_t ec_show_slave_attribute(struct kobject *kobj, /**< slave's kobject */
     else if (attr == &attr_eeprom) {
         if (slave->eeprom_data) {
             if (slave->eeprom_size > PAGE_SIZE) {
-                EC_ERR("EEPROM contents of slave %i exceed 1 page (%i/%i).\n",
+                EC_ERR("EEPROM contents of slave %u exceed 1 page (%u/%u).\n",
                        slave->ring_position, slave->eeprom_size,
                        (int) PAGE_SIZE);
             }
@@ -1204,7 +1203,7 @@ ssize_t ec_store_slave_attribute(struct kobject *kobj, /**< slave's kobject */
         }
 
         ec_state_string(slave->requested_state, state);
-        EC_INFO("Accepted new state %s for slave %i.\n",
+        EC_INFO("Accepted new state %s for slave %u.\n",
                 state, slave->ring_position);
         return size;
     }
@@ -1262,7 +1261,7 @@ int ec_slave_conf_sdo(ec_slave_t *slave, /**< EtherCAT slave */
     ec_sdo_data_t *sdodata;
 
     if (!(slave->sii_mailbox_protocols & EC_MBOX_COE)) {
-        EC_ERR("Slave %i does not support CoE!\n", slave->ring_position);
+        EC_ERR("Slave %u does not support CoE!\n", slave->ring_position);
         return -1;
     }
 
@@ -1300,7 +1299,7 @@ int ec_slave_validate(const ec_slave_t *slave, /**< EtherCAT slave */
 {
     if (vendor_id != slave->sii_vendor_id ||
         product_code != slave->sii_product_code) {
-        EC_ERR("Invalid slave type at position %i:\n", slave->ring_position);
+        EC_ERR("Invalid slave type at position %u:\n", slave->ring_position);
         EC_ERR("  Requested: 0x%08X 0x%08X\n", vendor_id, product_code);
         EC_ERR("      Found: 0x%08X 0x%08X\n",
                 slave->sii_vendor_id, slave->sii_product_code);
@@ -1428,7 +1427,7 @@ void ecrt_slave_pdo_mapping_clear(
     ec_sync_t *sync;
 
     if (!(slave->sii_mailbox_protocols & EC_MBOX_COE)) {
-        EC_ERR("Slave %i does not support CoE!\n", slave->ring_position);
+        EC_ERR("Slave %u does not support CoE!\n", slave->ring_position);
         return;
     }
 
@@ -1459,7 +1458,7 @@ int ecrt_slave_pdo_mapping_add(
         return -1;
     }
 
-    // does the slave provide the PDO?
+    // does the slave provide the PDO? FIXME
     list_for_each_entry(pdo, &slave->sii_pdos, list) {
         if (pdo->index == pdo_index) {
             not_found = 0;
