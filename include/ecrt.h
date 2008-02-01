@@ -31,17 +31,14 @@
  *
  *****************************************************************************/
 
-/**
-   \file
-   EtherCAT realtime interface.
-*/
+/** \file EtherCAT realtime interface.
 
-/**
-   \defgroup RealtimeInterface EtherCAT realtime interface
-   EtherCAT interface for realtime modules.
-   This interface is designed for realtime modules that want to use EtherCAT.
-   There are functions to request a master, to map process data, to communicate
-   with slaves via CoE and to configure and activate the bus.
+  \defgroup RealtimeInterface EtherCAT realtime interface
+
+  EtherCAT interface for realtime modules. This interface is designed for
+  realtime modules that want to use EtherCAT. There are functions to request a
+  master, to map process data, to communicate with slaves via CoE and to
+  configure and activate the bus.
 */
 
 /*****************************************************************************/
@@ -57,29 +54,29 @@
 #include <stdint.h>
 #endif
 
-/*****************************************************************************/
+/******************************************************************************
+ * Global definitions
+ *****************************************************************************/
 
-/**
- * EtherCAT real-time interface major version number.
+/** EtherCAT real-time interface major version number.
  */
 #define ECRT_VER_MAJOR 1
 
-/**
- * EtherCAT real-time interface minor version number.
+/** EtherCAT real-time interface minor version number.
  */
-#define ECRT_VER_MINOR 3
+#define ECRT_VER_MINOR 4
 
-/**
- * EtherCAT real-time interface version word generator.
+/** EtherCAT real-time interface version word generator.
  */
-#define ECRT_VERSION(a,b) (((a) << 8) + (b))
+#define ECRT_VERSION(a, b) (((a) << 8) + (b))
 
-/**
- * EtherCAT real-time interface version word.
+/** EtherCAT real-time interface version word.
  */
 #define ECRT_VERSION_MAGIC ECRT_VERSION(ECRT_VER_MAJOR, ECRT_VER_MINOR)
 
-/*****************************************************************************/
+/******************************************************************************
+ * Data types 
+ *****************************************************************************/
 
 struct ec_master;
 typedef struct ec_master ec_master_t; /**< \see ec_master */
@@ -90,10 +87,10 @@ typedef struct ec_domain ec_domain_t; /**< \see ec_domain */
 struct ec_slave;
 typedef struct ec_slave ec_slave_t; /**< \see ec_slave */
 
-/**
- * Bus status.
- */
+/*****************************************************************************/
 
+/** Bus status.
+ */
 typedef enum {
     EC_BUS_FAILURE = -1, /**< At least one slave with process data exchange
                            is offline. */
@@ -102,11 +99,11 @@ typedef enum {
 }
 ec_bus_status_t;
 
-/**
- * Master status.
+/*****************************************************************************/
+
+/** Master status.
  * This is used for the output parameter of ecrt_master_get_status().
  */
-
 typedef struct {
     ec_bus_status_t bus_status; /**< \see ec_bus_status_t */
     unsigned int bus_tainted; /**< non-zero, if the bus topology is invalid */
@@ -114,12 +111,12 @@ typedef struct {
 }
 ec_master_status_t;
 
-/**
- * List entry for domain PDO registrations.
+/*****************************************************************************/
+
+/** List entry for domain PDO registrations.
  * This type is used as a parameter for the ecrt_domain_register_pdo_list()
  * convenience function.
  */
-
 typedef struct {
     const char *slave_address; /**< slave address string
                                  \see ec_master_parse_slave_address() */
@@ -131,10 +128,10 @@ typedef struct {
 }
 ec_pdo_reg_t;
 
-/**
- * Direction type for PDO mapping and range registration functions.
- */
+/*****************************************************************************/
 
+/** Direction type for PDO mapping and range registration functions.
+ */
 typedef enum {
     EC_DIR_OUTPUT, /**< values written by master */
     EC_DIR_INPUT   /**< values read by master */
@@ -142,7 +139,7 @@ typedef enum {
 ec_direction_t;
 
 /******************************************************************************
- *  Global functions
+ * Global functions
  *****************************************************************************/
 
 ec_master_t *ecrt_request_master(unsigned int master_index);
@@ -151,7 +148,7 @@ void ecrt_release_master(ec_master_t *master);
 unsigned int ecrt_version_magic(void);
 
 /******************************************************************************
- *  Master methods
+ * Master methods
  *****************************************************************************/
 
 void ecrt_master_callbacks(ec_master_t *master, int (*request_cb)(void *),
@@ -172,7 +169,7 @@ void ecrt_master_receive(ec_master_t *master);
 void ecrt_master_get_status(const ec_master_t *master, ec_master_status_t *);
 
 /******************************************************************************
- *  Domain Methods
+ * Domain methods
  *****************************************************************************/
 
 int ecrt_domain_register_pdo(ec_domain_t *domain, ec_slave_t *slave,
@@ -191,7 +188,7 @@ void ecrt_domain_queue(ec_domain_t *domain);
 int ecrt_domain_state(const ec_domain_t *domain);
 
 /******************************************************************************
- *  Slave Methods
+ * Slave methods
  *****************************************************************************/
 
 int ecrt_slave_conf_sdo8(ec_slave_t *slave, uint16_t sdo_index,
@@ -206,24 +203,20 @@ int ecrt_slave_pdo_mapping_add(ec_slave_t *, ec_direction_t, uint16_t);
 int ecrt_slave_pdo_mapping(ec_slave_t *, ec_direction_t, unsigned int, ...);
 
 /******************************************************************************
- *  Bitwise read/write macros
+ * Bitwise read/write macros
  *****************************************************************************/
 
-/**
- * Read a certain bit of an EtherCAT data byte.
+/** Read a certain bit of an EtherCAT data byte.
  * \param DATA EtherCAT data pointer
  * \param POS bit position
  */
-
 #define EC_READ_BIT(DATA, POS) ((*((uint8_t *) (DATA)) >> (POS)) & 0x01)
 
-/**
- * Write a certain bit of an EtherCAT data byte.
+/** Write a certain bit of an EtherCAT data byte.
  * \param DATA EtherCAT data pointer
  * \param POS bit position
  * \param VAL new bit value
  */
-
 #define EC_WRITE_BIT(DATA, POS, VAL) \
     do { \
         if (VAL) *((uint8_t *) (DATA)) |=  (1 << (POS)); \
@@ -231,123 +224,99 @@ int ecrt_slave_pdo_mapping(ec_slave_t *, ec_direction_t, unsigned int, ...);
     } while (0)
 
 /******************************************************************************
- *  Read macros
+ * Read macros
  *****************************************************************************/
 
-/**
- * Read an 8-bit unsigned value from EtherCAT data.
+/** Read an 8-bit unsigned value from EtherCAT data.
  * \return EtherCAT data value
  */
-
 #define EC_READ_U8(DATA) \
     ((uint8_t) *((uint8_t *) (DATA)))
 
-/**
- * Read an 8-bit signed value from EtherCAT data.
+/** Read an 8-bit signed value from EtherCAT data.
  * \param DATA EtherCAT data pointer
  * \return EtherCAT data value
  */
-
 #define EC_READ_S8(DATA) \
      ((int8_t) *((uint8_t *) (DATA)))
 
-/**
- * Read a 16-bit unsigned value from EtherCAT data.
+/** Read a 16-bit unsigned value from EtherCAT data.
  * \param DATA EtherCAT data pointer
  * \return EtherCAT data value
  */
-
 #define EC_READ_U16(DATA) \
      ((uint16_t) le16_to_cpup((void *) (DATA)))
 
-/**
- * Read a 16-bit signed value from EtherCAT data.
+/** Read a 16-bit signed value from EtherCAT data.
  * \param DATA EtherCAT data pointer
  * \return EtherCAT data value
  */
-
 #define EC_READ_S16(DATA) \
      ((int16_t) le16_to_cpup((void *) (DATA)))
 
-/**
- * Read a 32-bit unsigned value from EtherCAT data.
+/** Read a 32-bit unsigned value from EtherCAT data.
  * \param DATA EtherCAT data pointer
  * \return EtherCAT data value
  */
-
 #define EC_READ_U32(DATA) \
      ((uint32_t) le32_to_cpup((void *) (DATA)))
 
-/**
- * Read a 32-bit signed value from EtherCAT data.
+/** Read a 32-bit signed value from EtherCAT data.
  * \param DATA EtherCAT data pointer
  * \return EtherCAT data value
  */
-
 #define EC_READ_S32(DATA) \
      ((int32_t) le32_to_cpup((void *) (DATA)))
 
 /******************************************************************************
- *  Write macros
+ * Write macros
  *****************************************************************************/
 
-/**
- * Write an 8-bit unsigned value to EtherCAT data.
+/** Write an 8-bit unsigned value to EtherCAT data.
  * \param DATA EtherCAT data pointer
  * \param VAL new value
  */
-
 #define EC_WRITE_U8(DATA, VAL) \
     do { \
         *((uint8_t *)(DATA)) = ((uint8_t) (VAL)); \
     } while (0)
 
-/**
- * Write an 8-bit signed value to EtherCAT data.
+/** Write an 8-bit signed value to EtherCAT data.
  * \param DATA EtherCAT data pointer
  * \param VAL new value
  */
-
 #define EC_WRITE_S8(DATA, VAL) EC_WRITE_U8(DATA, VAL)
 
-/**
- * Write a 16-bit unsigned value to EtherCAT data.
+/** Write a 16-bit unsigned value to EtherCAT data.
  * \param DATA EtherCAT data pointer
  * \param VAL new value
  */
-
 #define EC_WRITE_U16(DATA, VAL) \
     do { \
         *((uint16_t *) (DATA)) = (uint16_t) (VAL); \
         cpu_to_le16s(DATA); \
     } while (0)
 
-/**
- * Write a 16-bit signed value to EtherCAT data.
+/** Write a 16-bit signed value to EtherCAT data.
  * \param DATA EtherCAT data pointer
  * \param VAL new value
  */
-
 #define EC_WRITE_S16(DATA, VAL) EC_WRITE_U16(DATA, VAL)
 
-/**
- * Write a 32-bit unsigned value to EtherCAT data.
+/** Write a 32-bit unsigned value to EtherCAT data.
  * \param DATA EtherCAT data pointer
  * \param VAL new value
  */
-
 #define EC_WRITE_U32(DATA, VAL) \
     do { \
         *((uint32_t *) (DATA)) = (uint32_t) (VAL); \
         cpu_to_le32s(DATA); \
     } while (0)
 
-/**
- * Write a 32-bit signed value to EtherCAT data.
+/** Write a 32-bit signed value to EtherCAT data.
  * \param DATA EtherCAT data pointer
  * \param VAL new value
  */
-
 #define EC_WRITE_S32(DATA, VAL) EC_WRITE_U32(DATA, VAL)
 
 /*****************************************************************************/
