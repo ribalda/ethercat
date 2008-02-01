@@ -36,7 +36,7 @@
 /*****************************************************************************/
 
 /**
-   \mainpage The IgH EtherCAT master
+   \mainpage
 
    \section sec_general General information
 

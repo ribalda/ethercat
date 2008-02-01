@@ -31,19 +31,18 @@
  *
  *****************************************************************************/
 
-/**
-   \file
-   EtherCAT interface for EtherCAT device drivers.
-*/
-
-/**
-   \defgroup DeviceInterface EtherCAT device interface
-   Master interface for EtherCAT-capable network device drivers.
-   Through the EtherCAT device interface, EtherCAT-capable network device
-   drivers are able to connect their device(s) to the master, pass received
-   frames and notify the master about status changes. The master on his part,
-   can send his frames through connected devices.
-*/
+/** \file
+ *
+ * EtherCAT interface for EtherCAT device drivers.
+ *
+ * \defgroup DeviceInterface EtherCAT Device Interface
+ *
+ * Master interface for EtherCAT-capable network device drivers. Through the
+ * EtherCAT device interface, EtherCAT-capable network device drivers are able
+ * to connect their device(s) to the master, pass received frames and notify
+ * the master about status changes. The master on his part, can send his
+ * frames through connected devices.
+ */
 
 /*****************************************************************************/
 

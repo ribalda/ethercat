@@ -31,15 +31,17 @@
  *
  *****************************************************************************/
 
-/** \file EtherCAT realtime interface.
-
-  \defgroup RealtimeInterface EtherCAT realtime interface
-
-  EtherCAT interface for realtime modules. This interface is designed for
-  realtime modules that want to use EtherCAT. There are functions to request a
-  master, to map process data, to communicate with slaves via CoE and to
-  configure and activate the bus.
-*/
+/** \file
+ *
+ * EtherCAT Real-Time Interface.
+ *
+ * \defgroup RealtimeInterface EtherCAT Real-Time Interface
+ *
+ * EtherCAT interface for realtime modules. This interface is designed for
+ * realtime modules that want to use EtherCAT. There are functions to request
+ * a master, to map process data, to communicate with slaves via CoE and to
+ * configure and activate the bus.
+ */
 
 /*****************************************************************************/
 

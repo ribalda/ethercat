@@ -89,7 +89,7 @@ uint8_t *ec_slave_mbox_prepare_send(const ec_slave_t *slave, /**< slave */
 
 /**
    Prepares a datagram for checking the mailbox state.
-   \todo: Determine sync manager used for receive mailbox
+   \todo Determine sync manager used for receive mailbox
    \return 0 in case of success, else < 0
 */
 
