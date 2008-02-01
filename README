@@ -16,10 +16,10 @@ Contents:
 1) General Information
 ======================
 
-This is an Open-Source EtherCAT master implementation for Linux 2.6.
+This is an open-source EtherCAT master implementation for Linux 2.6.
 
 See the FEATURES file for a list of features. For more information, see
-http://etherlab.org/ethercat.
+http://etherlab.org/en/ethercat.
 
 or contact
 
@@ -41,9 +41,9 @@ master.
 
 2) Hardware requirements
 
-The EtherCAT master needs a RTL8139 (or compatible) network interface card to
-run. Drivers for other widespread devices (i. e. Intel PRO/100) will be
-implemented soon.
+The EtherCAT master needs a RTL8139 (or compatible), Intel PRO/1000 or nVidia
+nForce network interface card to run. Drivers for other widespread devices (f.
+e. Intel PRO/100) will be implemented soon.
 
 -------------------------------------------------------------------------------
 
@@ -59,8 +59,8 @@ See the INSTALL file.
 
 Realtime patches for the Linux kernel are supported, but not required. The
 realtime processing has to be done by the calling module (see API
-documentation). The EtherCAT master code itself is completely passive (except
-for the idle mode).
+documentation). The EtherCAT master code itself is passive (except for the idle
+mode and EoE).
 
 To avoid frame timeouts, deactivating DMA access for hard drives is
 recommented (hdparm -d0 <DEV>).

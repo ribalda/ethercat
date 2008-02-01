@@ -9,14 +9,12 @@ $Id$
 Building and installing
 =======================
 
-The building and installation procedure is described in section 2.1 in the
-EtherCAT master documentation available from http://etherlab.org/ethercat.
+The build and installation procedure is described in section 2.1 in the
+documentation available from http://etherlab.org/en/ethercat.
 
 -------------------------------------------------------------------------------
 
-For the impatient:
-
-The procedure mainly consists of calling
+For the impatient: The procedure mainly consists of calling
 
 $ ./configure
 $ make modules
@@ -26,7 +24,7 @@ $ make modules
 # make install
 # make modules_install
 
-...and copying the init script and sysconfig file from $prefix/etc to the
+...and copying the init script and sysconfig file from $PREFIX/etc to the
 appropriate locations and customizing the sysconfig file.
 
 -------------------------------------------------------------------------------

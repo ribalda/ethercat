@@ -6,9 +6,10 @@ This file shall give additional information on how to set up a network
 environment with Ethernet-over-EtherCAT devices.
 
 A virtual network interface will appear for every EoE-capable slave. The
-interface naming scheme is eoeXsY, where X is the master index and Y is the
-slave's ring position. Please provide a network configuration file for any of
-these interfaces. On SUSE systems, these can look like the following:
+interface naming scheme is either eoeXsY, where X is the master index and Y is
+the slave's ring position, or (if the slave has an alias set) eoeXaZ, where Z
+is the (decimal) alias address. Please provide a network configuration file for
+any of these interfaces. On SUSE systems, these can look like the following:
 
 /etc/sysconfig/network/ifcfg-eoe0s14:
 IPADDRESS=10.0.0.14/8
