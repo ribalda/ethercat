@@ -22,7 +22,6 @@ Version 1.4.0:
 * Remove ecdb.h and let lsec output PDO information 'cut-and-pastable' for
   applications.
 * Update documentation.
-* Create table of supported network devices and add link inside README.
 
 Future issues:
 

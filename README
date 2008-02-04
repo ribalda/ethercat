@@ -41,9 +41,8 @@ master.
 
 2) Hardware requirements
 
-The EtherCAT master needs a RTL8139 (or compatible), Intel PRO/1000 or nVidia
-nForce network interface card to run. Drivers for other widespread devices (f.
-e. Intel PRO/100) will be implemented soon.
+A table of supported hardware can be found at
+http://etherlab.org/en/ethercat/hardware.php.
 
 -------------------------------------------------------------------------------
 
