@@ -195,6 +195,9 @@ e1000_set_settings(struct net_device *netdev, struct ethtool_cmd *ecmd)
 	struct e1000_adapter *adapter = netdev_priv(netdev);
 	struct e1000_hw *hw = &adapter->hw;
 
+	if (adapter->ecdev)
+		return -EBUSY;
+
 	/* When SoL/IDER sessions are active, autoneg/speed/duplex
 	 * cannot be changed */
 	if (e1000_check_phy_reset_block(hw)) {
@@ -263,6 +266,9 @@ e1000_set_pauseparam(struct net_device *netdev,
 	struct e1000_hw *hw = &adapter->hw;
 	int retval = 0;
 
+	if (adapter->ecdev)
+		return -EBUSY;
+
 	adapter->fc_autoneg = pause->autoneg;
 
 	while (test_and_set_bit(__E1000_RESETTING, &adapter->flags))
@@ -304,6 +310,10 @@ static int
 e1000_set_rx_csum(struct net_device *netdev, uint32_t data)
 {
 	struct e1000_adapter *adapter = netdev_priv(netdev);
+
+	if (adapter->ecdev)
+		return -EBUSY;
+
 	adapter->rx_csum = data;
 
 	if (netif_running(netdev))
@@ -655,6 +665,9 @@ e1000_set_ringparam(struct net_device *netdev,
 	struct e1000_tx_ring *txdr, *tx_old;
 	struct e1000_rx_ring *rxdr, *rx_old;
 	int i, err;
+
+    if (adapter->ecdev)
+        return -EBUSY;
 
 	if ((ring->rx_mini_pending) || (ring->rx_jumbo_pending))
 		return -EINVAL;
@@ -1624,7 +1637,12 @@ e1000_diag_test(struct net_device *netdev,
 		   struct ethtool_test *eth_test, uint64_t *data)
 {
 	struct e1000_adapter *adapter = netdev_priv(netdev);
-	boolean_t if_running = netif_running(netdev);
+	boolean_t if_running;
+
+	if (adapter->ecdev)
+		return;
+	
+	if_running = netif_running(netdev);
 
 	set_bit(__E1000_TESTING, &adapter->flags);
 	if (eth_test->flags == ETH_TEST_FL_OFFLINE) {
@@ -1891,6 +1909,10 @@ static int
 e1000_nway_reset(struct net_device *netdev)
 {
 	struct e1000_adapter *adapter = netdev_priv(netdev);
+
+	if (adapter->ecdev)
+		return -EBUSY;
+
 	if (netif_running(netdev))
 		e1000_reinit_locked(adapter);
 	return 0;

@@ -69,6 +69,7 @@
 #include <linux/mii.h>
 #include <linux/ethtool.h>
 #include <linux/if_vlan.h>
+#include "../ecdev.h"
 
 #define BAR_0		0
 #define BAR_1		1
@@ -82,14 +83,14 @@ struct e1000_adapter;
 #include "e1000_hw-2.6.22-ethercat.h"
 
 #ifdef DBG
-#define E1000_DBG(args...) printk(KERN_DEBUG "e1000: " args)
+#define E1000_DBG(args...) printk(KERN_DEBUG "ec_e1000: " args)
 #else
 #define E1000_DBG(args...)
 #endif
 
-#define E1000_ERR(args...) printk(KERN_ERR "e1000: " args)
+#define E1000_ERR(args...) printk(KERN_ERR "ec_e1000: " args)
 
-#define PFX "e1000: "
+#define PFX "ec_e1000: "
 #define DPRINTK(nlevel, klevel, fmt, args...) \
 	(void)((NETIF_MSG_##nlevel & adapter->msg_enable) && \
 	printk(KERN_##klevel PFX "%s: %s: " fmt, adapter->netdev->name, \
@@ -342,6 +343,9 @@ struct e1000_adapter {
 	boolean_t quad_port_a;
 	unsigned long flags;
 	uint32_t eeprom_wol;
+
+	ec_device_t *ecdev;
+    unsigned long ec_watchdog_jiffies;
 };
 
 enum e1000_state_t {
