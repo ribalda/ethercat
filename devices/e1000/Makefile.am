@@ -75,6 +75,20 @@ EXTRA_DIST = \
 	e1000_osdep-2.6.20-orig.h \
 	e1000_param-2.6.20-ethercat.c \
 	e1000_param-2.6.20-orig.c \
+	e1000_ethtool-2.6.22-ethercat.c \
+	e1000_ethtool-2.6.22-orig.c \
+	e1000-2.6.22-ethercat.h \
+	e1000-2.6.22-orig.h \
+	e1000_hw-2.6.22-ethercat.c \
+	e1000_hw-2.6.22-orig.c \
+	e1000_hw-2.6.22-ethercat.h \
+	e1000_hw-2.6.22-orig.h \
+	e1000_main-2.6.22-ethercat.c \
+	e1000_main-2.6.22-orig.c \
+	e1000_osdep-2.6.22-ethercat.h \
+	e1000_osdep-2.6.22-orig.h \
+	e1000_param-2.6.22-ethercat.c \
+	e1000_param-2.6.22-orig.c \
 	LICENSE
 
 modules:
