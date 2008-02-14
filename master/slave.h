@@ -33,7 +33,7 @@
 
 /**
    \file
-   EtherCAT stave structure.
+   EtherCAT slave structure.
 */
 
 /*****************************************************************************/
