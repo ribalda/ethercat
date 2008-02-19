@@ -38,23 +38,27 @@
 
 /*****************************************************************************/
 
-#ifndef __EC_FSM_MAPPING__
-#define __EC_FSM_MAPPING__
+#ifndef __EC_FSM_PDO_MAPPING__
+#define __EC_FSM_PDO_MAPPING__
+
+#include "../include/ecrt.h"
 
 #include "globals.h"
-#include "../include/ecrt.h"
 #include "datagram.h"
 #include "fsm_coe.h"
 
 /*****************************************************************************/
 
-typedef struct ec_fsm_mapping ec_fsm_mapping_t; /**< \see ec_fsm_mapping */
+/**
+ * \see ec_fsm_pdo_mapping
+ */
+typedef struct ec_fsm_pdo_mapping ec_fsm_pdo_mapping_t;
 
 /** Pdo mapping state machine.
  */
-struct ec_fsm_mapping
+struct ec_fsm_pdo_mapping
 {
-    void (*state)(ec_fsm_mapping_t *); /**< State function. */
+    void (*state)(ec_fsm_pdo_mapping_t *); /**< State function. */
     ec_fsm_coe_t *fsm_coe; /**< CoE state machine to use. */
     ec_slave_t *slave; /**< Slave the FSM runs on. */
 
@@ -69,12 +73,12 @@ struct ec_fsm_mapping
 
 /*****************************************************************************/
 
-void ec_fsm_mapping_init(ec_fsm_mapping_t *, ec_fsm_coe_t *);
-void ec_fsm_mapping_clear(ec_fsm_mapping_t *);
+void ec_fsm_pdo_mapping_init(ec_fsm_pdo_mapping_t *, ec_fsm_coe_t *);
+void ec_fsm_pdo_mapping_clear(ec_fsm_pdo_mapping_t *);
 
-void ec_fsm_mapping_start(ec_fsm_mapping_t *, ec_slave_t *);
-int ec_fsm_mapping_exec(ec_fsm_mapping_t *);
-int ec_fsm_mapping_success(const ec_fsm_mapping_t *);
+void ec_fsm_pdo_mapping_start(ec_fsm_pdo_mapping_t *, ec_slave_t *);
+int ec_fsm_pdo_mapping_exec(ec_fsm_pdo_mapping_t *);
+int ec_fsm_pdo_mapping_success(const ec_fsm_pdo_mapping_t *);
 
 /*****************************************************************************/
 

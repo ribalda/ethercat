@@ -92,8 +92,8 @@ void ec_fsm_slave_init(ec_fsm_slave_t *fsm, /**< slave state machine */
     ec_fsm_sii_init(&fsm->fsm_sii, fsm->datagram);
     ec_fsm_change_init(&fsm->fsm_change, fsm->datagram);
     ec_fsm_coe_init(&fsm->fsm_coe, fsm->datagram);
-    ec_fsm_mapping_init(&fsm->fsm_map, &fsm->fsm_coe);
-    ec_fsm_pdo_config_init(&fsm->fsm_pdo, &fsm->fsm_coe);
+    ec_fsm_pdo_mapping_init(&fsm->fsm_pdo_map, &fsm->fsm_coe);
+    ec_fsm_pdo_config_init(&fsm->fsm_pdo_conf, &fsm->fsm_coe);
 }
 
 /*****************************************************************************/
@@ -106,8 +106,8 @@ void ec_fsm_slave_clear(ec_fsm_slave_t *fsm /**< slave state machine */)
     ec_fsm_sii_clear(&fsm->fsm_sii);
     ec_fsm_change_clear(&fsm->fsm_change);
     ec_fsm_coe_clear(&fsm->fsm_coe);
-    ec_fsm_mapping_clear(&fsm->fsm_map);
-    ec_fsm_pdo_config_clear(&fsm->fsm_pdo);
+    ec_fsm_pdo_mapping_clear(&fsm->fsm_pdo_map);
+    ec_fsm_pdo_config_clear(&fsm->fsm_pdo_conf);
 }
 
 /*****************************************************************************/
@@ -941,8 +941,8 @@ void ec_fsm_slave_conf_enter_mapping(
 {
     // start configuring PDO mapping
     fsm->state = ec_fsm_slave_conf_state_mapping;
-    ec_fsm_mapping_start(&fsm->fsm_map, fsm->slave);
-    ec_fsm_mapping_exec(&fsm->fsm_map); // execute immediately
+    ec_fsm_pdo_mapping_start(&fsm->fsm_pdo_map, fsm->slave);
+    ec_fsm_pdo_mapping_exec(&fsm->fsm_pdo_map); // execute immediately
 }
 
 /*****************************************************************************/
@@ -955,9 +955,9 @@ void ec_fsm_slave_conf_state_mapping(
         ec_fsm_slave_t *fsm /**< slave state machine */
         )
 {
-    if (ec_fsm_mapping_exec(&fsm->fsm_map)) return;
+    if (ec_fsm_pdo_mapping_exec(&fsm->fsm_pdo_map)) return;
 
-    if (!ec_fsm_mapping_success(&fsm->fsm_map)) {
+    if (!ec_fsm_pdo_mapping_success(&fsm->fsm_pdo_map)) {
         EC_ERR("PDO mapping configuration failed for slave %u.\n",
                 fsm->slave->ring_position);
         fsm->slave->error_flag = 1;
@@ -967,8 +967,8 @@ void ec_fsm_slave_conf_state_mapping(
 
     // Start Pdo configuration
     fsm->state = ec_fsm_slave_conf_state_pdo_conf;
-    ec_fsm_pdo_config_start(&fsm->fsm_pdo, fsm->slave);
-    ec_fsm_pdo_config_exec(&fsm->fsm_pdo); // execute immediately
+    ec_fsm_pdo_config_start(&fsm->fsm_pdo_conf, fsm->slave);
+    ec_fsm_pdo_config_exec(&fsm->fsm_pdo_conf); // execute immediately
 }
 
 /*****************************************************************************/
@@ -981,9 +981,9 @@ void ec_fsm_slave_conf_state_pdo_conf(
         ec_fsm_slave_t *fsm /**< slave state machine */
         )
 {
-    if (ec_fsm_pdo_config_exec(&fsm->fsm_pdo)) return;
+    if (ec_fsm_pdo_config_exec(&fsm->fsm_pdo_conf)) return;
 
-    if (!ec_fsm_pdo_config_success(&fsm->fsm_pdo)) {
+    if (!ec_fsm_pdo_config_success(&fsm->fsm_pdo_conf)) {
         EC_ERR("Pdo configuration failed for slave %u.\n",
                 fsm->slave->ring_position);
         fsm->slave->error_flag = 1;

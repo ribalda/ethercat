@@ -48,7 +48,7 @@
 #include "fsm_sii.h"
 #include "fsm_change.h"
 #include "fsm_coe.h"
-#include "fsm_mapping.h"
+#include "fsm_pdo_mapping.h"
 #include "fsm_pdo_config.h"
 
 /*****************************************************************************/
@@ -70,8 +70,8 @@ struct ec_fsm_slave
     ec_fsm_sii_t fsm_sii; /**< SII state machine. */
     ec_fsm_change_t fsm_change; /**< State change state machine. */
     ec_fsm_coe_t fsm_coe; /**< CoE state machine. */
-    ec_fsm_mapping_t fsm_map; /**< PDO mapping state machine. */
-    ec_fsm_pdo_config_t fsm_pdo; /**< PDO configuration state machine. */
+    ec_fsm_pdo_mapping_t fsm_pdo_map; /**< Pdo mapping state machine. */
+    ec_fsm_pdo_config_t fsm_pdo_conf; /**< Pdo configuration state machine. */
 };
 
 /*****************************************************************************/

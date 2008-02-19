@@ -42,25 +42,25 @@
 #include "mailbox.h"
 #include "slave_config.h"
 
-#include "fsm_mapping.h"
+#include "fsm_pdo_mapping.h"
 
 /*****************************************************************************/
 
-void ec_fsm_mapping_state_start(ec_fsm_mapping_t *);
-void ec_fsm_mapping_state_zero_count(ec_fsm_mapping_t *);
-void ec_fsm_mapping_state_add_pdo(ec_fsm_mapping_t *);
-void ec_fsm_mapping_state_pdo_count(ec_fsm_mapping_t *);
-void ec_fsm_mapping_state_end(ec_fsm_mapping_t *);
-void ec_fsm_mapping_state_error(ec_fsm_mapping_t *);
+void ec_fsm_pdo_mapping_state_start(ec_fsm_pdo_mapping_t *);
+void ec_fsm_pdo_mapping_state_zero_count(ec_fsm_pdo_mapping_t *);
+void ec_fsm_pdo_mapping_state_add_pdo(ec_fsm_pdo_mapping_t *);
+void ec_fsm_pdo_mapping_state_pdo_count(ec_fsm_pdo_mapping_t *);
+void ec_fsm_pdo_mapping_state_end(ec_fsm_pdo_mapping_t *);
+void ec_fsm_pdo_mapping_state_error(ec_fsm_pdo_mapping_t *);
 
-void ec_fsm_mapping_next_sync(ec_fsm_mapping_t *);
+void ec_fsm_pdo_mapping_next_sync(ec_fsm_pdo_mapping_t *);
 
 /*****************************************************************************/
 
 /** Constructor.
  */
-void ec_fsm_mapping_init(
-        ec_fsm_mapping_t *fsm, /**< mapping state machine */
+void ec_fsm_pdo_mapping_init(
+        ec_fsm_pdo_mapping_t *fsm, /**< mapping state machine */
         ec_fsm_coe_t *fsm_coe /**< CoE state machine to use */
         )
 {
@@ -72,8 +72,8 @@ void ec_fsm_mapping_init(
 
 /** Destructor.
  */
-void ec_fsm_mapping_clear(
-        ec_fsm_mapping_t *fsm /**< mapping state machine */
+void ec_fsm_pdo_mapping_clear(
+        ec_fsm_pdo_mapping_t *fsm /**< mapping state machine */
         )
 {
 }
@@ -82,13 +82,13 @@ void ec_fsm_mapping_clear(
 
 /** Start PDO mapping configuration state machine.
  */
-void ec_fsm_mapping_start(
-        ec_fsm_mapping_t *fsm, /**< mapping state machine */
+void ec_fsm_pdo_mapping_start(
+        ec_fsm_pdo_mapping_t *fsm, /**< mapping state machine */
         ec_slave_t *slave /**< slave to configure */
         )
 {
     fsm->slave = slave;
-    fsm->state = ec_fsm_mapping_state_start;
+    fsm->state = ec_fsm_pdo_mapping_state_start;
 }
 
 /*****************************************************************************/
@@ -97,12 +97,12 @@ void ec_fsm_mapping_start(
  *
  * \return false, if state machine has terminated
  */
-int ec_fsm_mapping_running(
-        const ec_fsm_mapping_t *fsm /**< mapping state machine */
+int ec_fsm_pdo_mapping_running(
+        const ec_fsm_pdo_mapping_t *fsm /**< mapping state machine */
         )
 {
-    return fsm->state != ec_fsm_mapping_state_end
-        && fsm->state != ec_fsm_mapping_state_error;
+    return fsm->state != ec_fsm_pdo_mapping_state_end
+        && fsm->state != ec_fsm_pdo_mapping_state_error;
 }
 
 /*****************************************************************************/
@@ -114,12 +114,12 @@ int ec_fsm_mapping_running(
  *
  * \return false, if state machine has terminated
  */
-int ec_fsm_mapping_exec(
-        ec_fsm_mapping_t *fsm /**< mapping state machine */
+int ec_fsm_pdo_mapping_exec(
+        ec_fsm_pdo_mapping_t *fsm /**< mapping state machine */
         )
 {
     fsm->state(fsm);
-    return ec_fsm_mapping_running(fsm);
+    return ec_fsm_pdo_mapping_running(fsm);
 }
 
 /*****************************************************************************/
@@ -128,11 +128,11 @@ int ec_fsm_mapping_exec(
  *
  * \return true, if the state machine terminated gracefully
  */
-int ec_fsm_mapping_success(
-        const ec_fsm_mapping_t *fsm /**< mapping state machine */
+int ec_fsm_pdo_mapping_success(
+        const ec_fsm_pdo_mapping_t *fsm /**< mapping state machine */
         )
 {
-    return fsm->state == ec_fsm_mapping_state_end;
+    return fsm->state == ec_fsm_pdo_mapping_state_end;
 }
 
 /******************************************************************************
@@ -141,25 +141,25 @@ int ec_fsm_mapping_success(
 
 /** Start mapping configuration.
  */
-void ec_fsm_mapping_state_start(
-        ec_fsm_mapping_t *fsm /**< mapping state machine */
+void ec_fsm_pdo_mapping_state_start(
+        ec_fsm_pdo_mapping_t *fsm /**< mapping state machine */
         )
 {
     if (!fsm->slave->config) {
-        fsm->state = ec_fsm_mapping_state_end;
+        fsm->state = ec_fsm_pdo_mapping_state_end;
         return;
     }
 
     fsm->sync = NULL;
-    ec_fsm_mapping_next_sync(fsm);
+    ec_fsm_pdo_mapping_next_sync(fsm);
 }
 
 /*****************************************************************************/
 
 /** Process mapping of next sync manager.
  */
-void ec_fsm_mapping_next_sync(
-        ec_fsm_mapping_t *fsm /**< mapping state machine */
+void ec_fsm_pdo_mapping_next_sync(
+        ec_fsm_pdo_mapping_t *fsm /**< mapping state machine */
         )
 {
     ec_direction_t dir;
@@ -190,7 +190,7 @@ void ec_fsm_mapping_next_sync(
         if (fsm->slave->master->debug_level)
             EC_DBG("Pdo mapping finished for slave %u.\n",
                     fsm->slave->ring_position);
-        fsm->state = ec_fsm_mapping_state_end;
+        fsm->state = ec_fsm_pdo_mapping_state_end;
         return;
     }
 
@@ -207,7 +207,7 @@ void ec_fsm_mapping_next_sync(
     if (fsm->slave->master->debug_level)
         EC_DBG("Setting PDO count to zero for SM%u.\n", fsm->sync->index);
 
-    fsm->state = ec_fsm_mapping_state_zero_count;
+    fsm->state = ec_fsm_pdo_mapping_state_zero_count;
     ec_fsm_coe_download(fsm->fsm_coe, fsm->slave, &fsm->sdodata);
     ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
 }
@@ -216,8 +216,8 @@ void ec_fsm_mapping_next_sync(
 
 /** Process mapping of next PDO.
  */
-ec_pdo_t *ec_fsm_mapping_next_pdo(
-        const ec_fsm_mapping_t *fsm, /**< mapping state machine */
+ec_pdo_t *ec_fsm_pdo_mapping_next_pdo(
+        const ec_fsm_pdo_mapping_t *fsm, /**< mapping state machine */
         const struct list_head *list /**< current PDO list item */
         )
 {
@@ -231,8 +231,8 @@ ec_pdo_t *ec_fsm_mapping_next_pdo(
 
 /** Add a Pdo to the mapping.
  */
-void ec_fsm_mapping_add_pdo(
-        ec_fsm_mapping_t *fsm /**< mapping state machine */
+void ec_fsm_pdo_mapping_add_pdo(
+        ec_fsm_pdo_mapping_t *fsm /**< mapping state machine */
         )
 {
     fsm->sdodata.subindex = fsm->pdo_count;
@@ -243,7 +243,7 @@ void ec_fsm_mapping_add_pdo(
         EC_DBG("Mapping PDO 0x%04X at position %u.\n",
                 fsm->pdo->index, fsm->sdodata.subindex);
     
-    fsm->state = ec_fsm_mapping_state_add_pdo;
+    fsm->state = ec_fsm_pdo_mapping_state_add_pdo;
     ec_fsm_coe_download(fsm->fsm_coe, fsm->slave, &fsm->sdodata);
     ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
 }
@@ -252,8 +252,8 @@ void ec_fsm_mapping_add_pdo(
 
 /** Set the number of mapped PDOs to zero.
  */
-void ec_fsm_mapping_state_zero_count(
-        ec_fsm_mapping_t *fsm /**< mapping state machine */
+void ec_fsm_pdo_mapping_state_zero_count(
+        ec_fsm_pdo_mapping_t *fsm /**< mapping state machine */
         )
 {
     if (ec_fsm_coe_exec(fsm->fsm_coe)) return;
@@ -261,32 +261,32 @@ void ec_fsm_mapping_state_zero_count(
     if (!ec_fsm_coe_success(fsm->fsm_coe)) {
         EC_ERR("Failed to clear PDO mapping for slave %u.\n",
                 fsm->slave->ring_position);
-        fsm->state = ec_fsm_mapping_state_error;
+        fsm->state = ec_fsm_pdo_mapping_state_error;
         return;
     }
 
     // map all PDOs belonging to the current sync manager
     
     // find first PDO
-    if (!(fsm->pdo = ec_fsm_mapping_next_pdo(fsm, &fsm->mapping->pdos))) {
+    if (!(fsm->pdo = ec_fsm_pdo_mapping_next_pdo(fsm, &fsm->mapping->pdos))) {
         if (fsm->slave->master->debug_level)
             EC_DBG("No PDOs to map for SM%u of slave %u.\n",
                     fsm->sync->index, fsm->slave->ring_position);
-        ec_fsm_mapping_next_sync(fsm);
+        ec_fsm_pdo_mapping_next_sync(fsm);
         return;
     }
 
     // add first PDO to mapping
     fsm->pdo_count = 1;
-    ec_fsm_mapping_add_pdo(fsm);
+    ec_fsm_pdo_mapping_add_pdo(fsm);
 }
 
 /*****************************************************************************/
 
 /** Add a PDO to the sync managers mapping.
  */
-void ec_fsm_mapping_state_add_pdo(
-        ec_fsm_mapping_t *fsm /**< mapping state machine */
+void ec_fsm_pdo_mapping_state_add_pdo(
+        ec_fsm_pdo_mapping_t *fsm /**< mapping state machine */
         )
 {
     if (ec_fsm_coe_exec(fsm->fsm_coe)) return;
@@ -294,12 +294,12 @@ void ec_fsm_mapping_state_add_pdo(
     if (!ec_fsm_coe_success(fsm->fsm_coe)) {
         EC_ERR("Failed to map PDO 0x%04X for SM%u of slave %u.\n",
                 fsm->pdo->index, fsm->sync->index, fsm->slave->ring_position);
-        fsm->state = ec_fsm_mapping_state_error;
+        fsm->state = ec_fsm_pdo_mapping_state_error;
         return;
     }
 
     // find next PDO
-    if (!(fsm->pdo = ec_fsm_mapping_next_pdo(fsm, &fsm->pdo->list))) {
+    if (!(fsm->pdo = ec_fsm_pdo_mapping_next_pdo(fsm, &fsm->pdo->list))) {
         // no more PDOs to map. write PDO count
         fsm->sdodata.subindex = 0;
         EC_WRITE_U8(&fsm->sdo_value, fsm->pdo_count);
@@ -309,7 +309,7 @@ void ec_fsm_mapping_state_add_pdo(
             EC_DBG("Setting number of mapped PDOs to %u.\n",
                     fsm->pdo_count);
         
-        fsm->state = ec_fsm_mapping_state_pdo_count;
+        fsm->state = ec_fsm_pdo_mapping_state_pdo_count;
         ec_fsm_coe_download(fsm->fsm_coe, fsm->slave, &fsm->sdodata);
         ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
         return;
@@ -317,15 +317,15 @@ void ec_fsm_mapping_state_add_pdo(
 
     // add next PDO to mapping
     fsm->pdo_count++;
-    ec_fsm_mapping_add_pdo(fsm);
+    ec_fsm_pdo_mapping_add_pdo(fsm);
 }
 
 /*****************************************************************************/
 
 /** Set the number of mapped PDOs.
  */
-void ec_fsm_mapping_state_pdo_count(
-        ec_fsm_mapping_t *fsm /**< mapping state machine */
+void ec_fsm_pdo_mapping_state_pdo_count(
+        ec_fsm_pdo_mapping_t *fsm /**< mapping state machine */
         )
 {
     if (ec_fsm_coe_exec(fsm->fsm_coe)) return;
@@ -333,7 +333,7 @@ void ec_fsm_mapping_state_pdo_count(
     if (!ec_fsm_coe_success(fsm->fsm_coe)) {
         EC_ERR("Failed to set number of mapped PDOs for slave %u.\n",
                 fsm->slave->ring_position);
-        fsm->state = ec_fsm_mapping_state_error;
+        fsm->state = ec_fsm_pdo_mapping_state_error;
         return;
     }
 
@@ -342,7 +342,7 @@ void ec_fsm_mapping_state_pdo_count(
                 fsm->sync->index, fsm->slave->ring_position);
 
     // mapping configuration for this sync manager complete.
-    ec_fsm_mapping_next_sync(fsm);
+    ec_fsm_pdo_mapping_next_sync(fsm);
 }
 
 /******************************************************************************
@@ -351,8 +351,8 @@ void ec_fsm_mapping_state_pdo_count(
 
 /** State: ERROR.
  */
-void ec_fsm_mapping_state_error(
-        ec_fsm_mapping_t *fsm /**< mapping state machine */
+void ec_fsm_pdo_mapping_state_error(
+        ec_fsm_pdo_mapping_t *fsm /**< mapping state machine */
         )
 {
 }
@@ -361,8 +361,8 @@ void ec_fsm_mapping_state_error(
 
 /** State: END.
  */
-void ec_fsm_mapping_state_end(
-        ec_fsm_mapping_t *fsm /**< mapping state machine */
+void ec_fsm_pdo_mapping_state_end(
+        ec_fsm_pdo_mapping_t *fsm /**< mapping state machine */
         )
 {
 }
