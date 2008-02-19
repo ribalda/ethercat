@@ -49,29 +49,29 @@
 #include "fsm_change.h"
 #include "fsm_coe.h"
 #include "fsm_mapping.h"
+#include "fsm_pdo_config.h"
 
 /*****************************************************************************/
 
 typedef struct ec_fsm_slave ec_fsm_slave_t; /**< \see ec_fsm_slave */
 
-/**
-   Finite state machine of an EtherCAT slave.
-*/
-
+/** Finite state machine of an EtherCAT slave.
+ */
 struct ec_fsm_slave
 {
-    ec_slave_t *slave; /**< slave the FSM runs on */
-    ec_datagram_t *datagram; /**< datagram used in the state machine */
-    unsigned int retries; /**< retries on datagram timeout. */
+    ec_slave_t *slave; /**< Slave the FSM runs on. */
+    ec_datagram_t *datagram; /**< Datagram used in the state machine. */
+    unsigned int retries; /**< Retries on datagram timeout. */
 
-    void (*state)(ec_fsm_slave_t *); /**< state function */
-    ec_sdo_data_t *sdodata; /**< SDO configuration data */
-    uint16_t sii_offset; /**< SII offset in words */
+    void (*state)(ec_fsm_slave_t *); /**< State function. */
+    ec_sdo_data_t *sdodata; /**< SDO configuration data. */
+    uint16_t sii_offset; /**< SII offset in words. */
 
-    ec_fsm_sii_t fsm_sii; /**< SII state machine */
-    ec_fsm_change_t fsm_change; /**< State change state machine */
-    ec_fsm_coe_t fsm_coe; /**< CoE state machine */
-    ec_fsm_mapping_t fsm_map; /**< PDO mapping state machine */
+    ec_fsm_sii_t fsm_sii; /**< SII state machine. */
+    ec_fsm_change_t fsm_change; /**< State change state machine. */
+    ec_fsm_coe_t fsm_coe; /**< CoE state machine. */
+    ec_fsm_mapping_t fsm_map; /**< PDO mapping state machine. */
+    ec_fsm_pdo_config_t fsm_pdo; /**< PDO configuration state machine. */
 };
 
 /*****************************************************************************/

@@ -9,7 +9,6 @@ $Id$
 Version 1.4.0:
 
 * Realtime interface changes:
-    - PDO configuration.
     - SDO access.
     - External memory for domains.
 * Mailbox handler

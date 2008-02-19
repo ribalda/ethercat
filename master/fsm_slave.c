@@ -41,7 +41,6 @@
 #include "globals.h"
 #include "master.h"
 #include "mailbox.h"
-#include "fsm_mapping.h"
 #include "slave_config.h"
 #include "fsm_slave.h"
 
@@ -62,6 +61,7 @@ void ec_fsm_slave_conf_state_mbox_sync(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_state_preop(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_state_sdo_conf(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_state_mapping(ec_fsm_slave_t *);
+void ec_fsm_slave_conf_state_pdo_conf(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_state_pdo_sync(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_state_fmmu(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_state_saveop(ec_fsm_slave_t *);
@@ -69,10 +69,10 @@ void ec_fsm_slave_conf_state_op(ec_fsm_slave_t *);
 
 void ec_fsm_slave_conf_enter_mbox_sync(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_enter_preop(ec_fsm_slave_t *);
-void ec_fsm_slave_conf_enter_pdo_sync(ec_fsm_slave_t *);
-void ec_fsm_slave_conf_enter_fmmu(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_enter_sdo_conf(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_enter_mapping(ec_fsm_slave_t *);
+void ec_fsm_slave_conf_enter_pdo_sync(ec_fsm_slave_t *);
+void ec_fsm_slave_conf_enter_fmmu(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_enter_saveop(ec_fsm_slave_t *);
 
 void ec_fsm_slave_state_end(ec_fsm_slave_t *);
@@ -80,10 +80,8 @@ void ec_fsm_slave_state_error(ec_fsm_slave_t *);
 
 /*****************************************************************************/
 
-/**
-   Constructor.
-*/
-
+/** Constructor.
+ */
 void ec_fsm_slave_init(ec_fsm_slave_t *fsm, /**< slave state machine */
         ec_datagram_t *datagram /**< datagram structure to use */
         )
@@ -95,14 +93,13 @@ void ec_fsm_slave_init(ec_fsm_slave_t *fsm, /**< slave state machine */
     ec_fsm_change_init(&fsm->fsm_change, fsm->datagram);
     ec_fsm_coe_init(&fsm->fsm_coe, fsm->datagram);
     ec_fsm_mapping_init(&fsm->fsm_map, &fsm->fsm_coe);
+    ec_fsm_pdo_config_init(&fsm->fsm_pdo, &fsm->fsm_coe);
 }
 
 /*****************************************************************************/
 
-/**
-   Destructor.
-*/
-
+/** Destructor.
+ */
 void ec_fsm_slave_clear(ec_fsm_slave_t *fsm /**< slave state machine */)
 {
     // clear sub state machines
@@ -110,6 +107,7 @@ void ec_fsm_slave_clear(ec_fsm_slave_t *fsm /**< slave state machine */)
     ec_fsm_change_clear(&fsm->fsm_change);
     ec_fsm_coe_clear(&fsm->fsm_coe);
     ec_fsm_mapping_clear(&fsm->fsm_map);
+    ec_fsm_pdo_config_clear(&fsm->fsm_pdo);
 }
 
 /*****************************************************************************/
@@ -884,7 +882,7 @@ void ec_fsm_slave_conf_enter_sdo_conf(ec_fsm_slave_t *fsm /**< slave state machi
         return;
     }
 
-    // No CoE configuration to be applied? FIXME
+    // No CoE configuration to be applied?
     if (list_empty(&slave->config->sdo_configs)) { // skip SDO configuration
         ec_fsm_slave_conf_enter_mapping(fsm);
         return;
@@ -941,14 +939,6 @@ void ec_fsm_slave_conf_enter_mapping(
         ec_fsm_slave_t *fsm /**< slave state machine */
         )
 {
-    ec_slave_t *slave = fsm->slave;
-
-    if (!(slave->sii_mailbox_protocols & EC_MBOX_COE)) {
-        // Slave does not support CoE: no configuration of PDO mapping.
-        ec_fsm_slave_conf_enter_pdo_sync(fsm);
-        return;
-    }
-
     // start configuring PDO mapping
     fsm->state = ec_fsm_slave_conf_state_mapping;
     ec_fsm_mapping_start(&fsm->fsm_map, fsm->slave);
@@ -969,6 +959,32 @@ void ec_fsm_slave_conf_state_mapping(
 
     if (!ec_fsm_mapping_success(&fsm->fsm_map)) {
         EC_ERR("PDO mapping configuration failed for slave %u.\n",
+                fsm->slave->ring_position);
+        fsm->slave->error_flag = 1;
+        fsm->state = ec_fsm_slave_state_error;
+        return;
+    }
+
+    // Start Pdo configuration
+    fsm->state = ec_fsm_slave_conf_state_pdo_conf;
+    ec_fsm_pdo_config_start(&fsm->fsm_pdo, fsm->slave);
+    ec_fsm_pdo_config_exec(&fsm->fsm_pdo); // execute immediately
+}
+
+/*****************************************************************************/
+
+/**
+   Slave configuration state: PDO_CONF.
+*/
+
+void ec_fsm_slave_conf_state_pdo_conf(
+        ec_fsm_slave_t *fsm /**< slave state machine */
+        )
+{
+    if (ec_fsm_pdo_config_exec(&fsm->fsm_pdo)) return;
+
+    if (!ec_fsm_pdo_config_success(&fsm->fsm_pdo)) {
+        EC_ERR("Pdo configuration failed for slave %u.\n",
                 fsm->slave->ring_position);
         fsm->slave->error_flag = 1;
         fsm->state = ec_fsm_slave_state_error;

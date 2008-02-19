@@ -170,6 +170,42 @@ int ec_pdo_copy_entries(ec_pdo_t *pdo, const ec_pdo_t *other)
 
 /*****************************************************************************/
 
+/** Compares the entries of two Pdos.
+ *
+ * \retval 1 The entries of the given Pdos are equal.
+ * \retval 0 The entries of the given Pdos differ.
+ */
+int ec_pdo_equal_entries(
+        const ec_pdo_t *pdo1, /**< First Pdo. */
+        const ec_pdo_t *pdo2 /**< Second Pdo. */
+        )
+{
+    const struct list_head *head1, *head2, *item1, *item2;
+    const ec_pdo_entry_t *entry1, *entry2;
+
+    head1 = item1 = &pdo1->entries;
+    head2 = item2 = &pdo2->entries;
+
+    while (1) {
+        item1 = item1->next;
+        item2 = item2->next;
+
+        if ((item1 == head1) ^ (item2 == head2)) // unequal lengths
+            return 0;
+        if (item1 == head1 && item2 == head2) // both finished
+            break;
+
+        entry1 = list_entry(item1, ec_pdo_entry_t, list);
+        entry2 = list_entry(item2, ec_pdo_entry_t, list);
+        if (!ec_pdo_entry_equal(entry1, entry2))
+            return 0;
+    }
+
+    return 1;
+}
+
+/*****************************************************************************/
+
 /** Pdo entry constructor.
  */
 void ec_pdo_entry_init(
@@ -234,6 +270,23 @@ int ec_pdo_entry_set_name(
     }
 
     return 0;
+}
+
+/*****************************************************************************/
+
+/** Compares two Pdo entries.
+ *
+ * \retval 1 The entries are equal.
+ * \retval 0 The entries differ.
+ */
+int ec_pdo_entry_equal(
+        const ec_pdo_entry_t *entry1, /**< First Pdo entry. */
+        const ec_pdo_entry_t *entry2 /**< Second Pdo entry. */
+        )
+{
+    return entry1->index == entry2->index
+        && entry1->subindex == entry2->subindex
+        && entry1->bit_length == entry2->bit_length;
 }
 
 /*****************************************************************************/

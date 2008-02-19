@@ -34,11 +34,13 @@ digraph slaveconf {
     sdo_conf -> sdo_conf
     sdo_conf -> error
     sdo_conf -> enter_mapping [weight=10]
-    enter_mapping -> mapping [label="CoE supported", weight=10]
-    enter_mapping -> enter_pdo_sync
+    enter_mapping -> mapping [weight=10]
     mapping -> mapping
     mapping -> error
-    mapping -> enter_pdo_sync [weight=10]
+    mapping -> pdo_conf [weight=10]
+    pdo_conf -> pdo_conf
+    pdo_conf -> error
+    pdo_conf -> enter_pdo_sync [weight=10]
     enter_pdo_sync -> pdo_sync [label="PDO SMs", weight=10]
     enter_pdo_sync -> enter_fmmu
     pdo_sync -> pdo_sync

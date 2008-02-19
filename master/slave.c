@@ -1189,7 +1189,7 @@ void ec_slave_sdo_dict_info(const ec_slave_t *slave, /**< EtherCAT slave */
 
 /**
  * Get an SDO from the dictionary.
- * \returns The desired SDO, of NULL.
+ * \returns The desired SDO, or NULL.
  */
 
 ec_sdo_t *ec_slave_get_sdo(
@@ -1202,6 +1202,32 @@ ec_sdo_t *ec_slave_get_sdo(
     list_for_each_entry(sdo, &slave->sdo_dictionary, list) {
         if (sdo->index != index) continue;
         return sdo;
+    }
+
+    return NULL;
+}
+
+/*****************************************************************************/
+
+/** Finds a mapped Pdo.
+ * \returns The desired Pdo object, or NULL.
+ */
+const ec_pdo_t *ec_slave_find_pdo(
+        const ec_slave_t *slave, /**< Slave. */
+        uint16_t index /**< Pdo index to find. */
+        )
+{
+    unsigned int i;
+    const ec_sync_t *sync;
+    const ec_pdo_t *pdo;
+
+    for (i = 0; i < slave->sii_sync_count; i++) {
+        sync = &slave->sii_syncs[i];
+
+        if (!(pdo = ec_pdo_mapping_find_pdo(&sync->mapping, index)))
+            continue;
+
+        return pdo;
     }
 
     return NULL;

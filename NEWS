@@ -40,6 +40,7 @@ Changes in version 1.4.0:
     - Removed ecrt_domain_register_pdo_range(), because it's functionality can
       be reached by specifying an explicit Pdo mapping and registering those
       Pdo entries.
+* Pdo configuration is now supported.
 * Added 8139too driver for kernel 2.6.22, thanks to Erwin Burgstaller.
 * Added e1000 driver for kernel 2.6.22.
 * Allow gaps in PDO mapping read from CoE.

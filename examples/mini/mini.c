@@ -82,7 +82,7 @@ const ec_pdo_info_t mapping[] = {
 
 #ifdef PDOS
 static uint8_t off_ana_in;
-static uint8_t off_ana_out;
+//static uint8_t off_ana_out;
 
 const static ec_pdo_entry_reg_t domain1_regs[] = {
     {0, 1, Beckhoff_EL3162, 0x3101, 2, &off_ana_in},
