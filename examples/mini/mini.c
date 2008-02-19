@@ -64,9 +64,19 @@ static void *r_outputs;
 #endif
 
 #ifdef MAPPING
+const ec_pdo_entry_info_t el3162_channel1[] = {
+    {0x3101, 1,  8}, // status
+    {0x3101, 2, 16}  // value
+};
+
+const ec_pdo_entry_info_t el3162_channel2[] = {
+    {0x3102, 1,  8}, // status
+    {0x3102, 2, 16}  // value
+};
+
 const ec_pdo_info_t mapping[] = {
-    {EC_DIR_INPUT, 0x1A00}, // channel 1
-    {EC_DIR_INPUT, 0x1A01} // channel 2
+    {EC_DIR_INPUT, 0x1A00, 2, el3162_channel1},
+    {EC_DIR_INPUT, 0x1A01, 2, el3162_channel2},
 };
 #endif
 

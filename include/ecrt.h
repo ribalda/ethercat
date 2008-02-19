@@ -221,7 +221,9 @@ typedef struct {
     unsigned int n_entries; /**< Number of Pdo entries for the Pdo
                               configuration. Zero means, that the default Pdo
                               configuration shall be used. */
-    const ec_pdo_entry_info_t entries[]; /**< Pdo configuration list. */
+    const ec_pdo_entry_info_t *entries; /**< Pdo configuration array. This
+                                          array must contain at least \a
+                                          n_entries values. */
 } ec_pdo_info_t;
 
 /*****************************************************************************/

@@ -185,7 +185,7 @@ int ec_pdo_mapping_add_pdo_info(
     if (config->master->debug_level)
         EC_INFO("Adding Pdo 0x%04X to mapping.\n", pdo->index);
 
-    if (pdo_info->n_entries) { // Pdo configuration provided
+    if (pdo_info->n_entries && pdo_info->entries) { // configuration provided
         if (config->master->debug_level)
             EC_INFO("  Pdo configuration provided.\n");
 
