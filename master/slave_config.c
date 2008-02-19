@@ -420,7 +420,7 @@ int ec_slave_config_attach(
 		relative_position++;
 	}
 
-	EC_ERR("Failed to find slave for configuration %u:%u.\n",
+	EC_WARN("Failed to find slave for configuration %u:%u.\n",
 			sc->alias, sc->position);
 	return -1;
 
