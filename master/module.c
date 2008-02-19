@@ -577,11 +577,6 @@ ec_master_t *ecrt_request_master(unsigned int master_index)
 
     up(&master->device_sem);
 
-    if (!master->main_device.link_state) {
-        EC_ERR("Link is DOWN.\n");
-        goto out_module_put;
-    }
-
     if (ec_master_enter_operation_mode(master)) {
         EC_ERR("Failed to enter OPERATION mode!\n");
         goto out_module_put;

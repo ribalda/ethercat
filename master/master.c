@@ -126,7 +126,7 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     
     INIT_LIST_HEAD(&master->configs);
 
-    master->scan_state = EC_REQUEST_IN_PROGRESS;
+    master->scan_state = EC_REQUEST_COMPLETE;
     master->allow_scan = 1;
     init_MUTEX(&master->scan_sem);
     init_waitqueue_head(&master->scan_queue);
@@ -454,15 +454,20 @@ int ec_master_enter_operation_mode(ec_master_t *master /**< EtherCAT master */)
     if (master->debug_level)
         EC_DBG("Waiting for pending slave configuration returned.\n");
 
+    if (master->debug_level)
+        EC_DBG("Disable scanning, current scan state: %u\n",
+                master->scan_state);
     down(&master->scan_sem);
     master->allow_scan = 0; // 'lock' the slave list
     up(&master->scan_sem);
 
-    // wait for slave scan to complete
-    if (wait_event_interruptible(master->scan_queue,
-                master->scan_state != EC_REQUEST_IN_PROGRESS)) {
-        EC_INFO("Waiting for slave scan interrupted by signal.\n");
-        goto out_allow;
+    if (master->scan_state == EC_REQUEST_IN_PROGRESS) {
+        // wait for slave scan to complete
+        if (wait_event_interruptible(master->scan_queue,
+                    master->scan_state != EC_REQUEST_IN_PROGRESS)) {
+            EC_INFO("Waiting for slave scan interrupted by signal.\n");
+            goto out_allow;
+        }
     }
 
     if (master->debug_level)
@@ -1347,19 +1352,21 @@ int ecrt_master_activate(ec_master_t *master)
     // request slave configuration
     down(&master->config_sem);
     master->allow_config = 1; // request the current configuration
-    master->config_state = EC_REQUEST_IN_PROGRESS;
     up(&master->config_sem);
 
-    // wait for configuration to complete
-    if (wait_event_interruptible(master->config_queue,
-                master->config_state != EC_REQUEST_IN_PROGRESS)) {
-        EC_INFO("Waiting for configuration interrupted by signal.\n");
-        return -1;
-    }
+    if (master->main_device.link_state) {
+        // wait for configuration to complete
+        master->config_state = EC_REQUEST_IN_PROGRESS;
+        if (wait_event_interruptible(master->config_queue,
+                    master->config_state != EC_REQUEST_IN_PROGRESS)) {
+            EC_INFO("Waiting for configuration interrupted by signal.\n");
+            return -1;
+        }
 
-    if (master->config_state != EC_REQUEST_COMPLETE) {
-        EC_ERR("Failed to configure slaves.\n");
-        return -1;
+        if (master->config_state != EC_REQUEST_COMPLETE) {
+            EC_ERR("Failed to configure slaves.\n");
+            return -1;
+        }
     }
     
     // restart EoE process and master thread with new locking

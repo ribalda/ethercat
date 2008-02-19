@@ -845,6 +845,8 @@ void ec_fsm_master_state_clear_addresses(
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         EC_ERR("Failed to receive address clearing datagram (state %i).\n",
                 datagram->state);
+        master->scan_state = EC_REQUEST_FAILURE;
+        wake_up_interruptible(&master->scan_queue);
         fsm->state = ec_fsm_master_state_error;
         return;
     }

@@ -86,7 +86,7 @@ static uint8_t off_ana_out;
 
 const static ec_pdo_entry_reg_t domain1_regs[] = {
     {0, 1, Beckhoff_EL3162, 0x3101, 2, &off_ana_in},
-    {0, 2, Beckhoff_EL4102, 0x3001, 1, &off_ana_out},
+    //{0, 2, Beckhoff_EL4102, 0x3001, 1, &off_ana_out},
     {}
 };
 #endif
