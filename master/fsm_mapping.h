@@ -48,12 +48,10 @@
 
 /*****************************************************************************/
 
-typedef struct ec_fsm_mapping ec_fsm_mapping_t; /**< \see ec_fsm_slave */
+typedef struct ec_fsm_mapping ec_fsm_mapping_t; /**< \see ec_fsm_mapping */
 
-/**
- * Finite state machine of an EtherCAT slave.
+/** Pdo mapping state machine.
  */
-
 struct ec_fsm_mapping
 {
     void (*state)(ec_fsm_mapping_t *); /**< state function */
