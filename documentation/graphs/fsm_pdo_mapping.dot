@@ -8,12 +8,12 @@ digraph pdomapping {
 
     next [shape=point,label=""]
 
-    start -> next [label="first SM"]
-    next -> end [label="no more SMs"]
-    next -> zero_count [label="next SM"]
-    zero_count -> next [label="no PDOs"]
-    zero_count -> add_pdo [label="map first PDO", weight=5]
-    add_pdo -> add_pdo [label="map next PDO"]
-    add_pdo -> set_count [label="no more PDOs", weight=5]
+    start -> next [label="First SM"]
+    next -> end [label="No more SMs"]
+    next -> zero_count [label="Next SM"]
+    zero_count -> next [label="No Pdos"]
+    zero_count -> add_pdo [label="Map first Pdo", weight=5]
+    add_pdo -> add_pdo [label="Map next Pdo"]
+    add_pdo -> set_count [label="No more Pdos", weight=5]
     set_count -> next
 }
