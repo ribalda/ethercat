@@ -389,18 +389,16 @@ void ec_fsm_change_state_code(ec_fsm_change_t *fsm
     if (datagram->working_counter != 1) {
         EC_WARN("Reception of AL status code datagram failed: ");
         ec_datagram_print_wc_error(datagram);
-    }
-    else {
-        if ((code = EC_READ_U16(datagram->data))) {
-            for (al_msg = al_status_messages; al_msg->code; al_msg++) {
-                if (al_msg->code != code) continue;
-                EC_ERR("AL status message 0x%04X: \"%s\".\n",
-                       al_msg->code, al_msg->message);
-                break;
-            }
-            if (!al_msg->code)
-                EC_ERR("Unknown AL status code 0x%04X.\n", code);
+    } else {
+        code = EC_READ_U16(datagram->data);
+        for (al_msg = al_status_messages; al_msg->code; al_msg++) {
+            if (al_msg->code != code) continue;
+            EC_ERR("AL status message 0x%04X: \"%s\".\n",
+                    al_msg->code, al_msg->message);
+            break;
         }
+        if (!al_msg->code)
+            EC_ERR("Unknown AL status code 0x%04X.\n", code);
     }
 
     // acknowledge "old" slave state
