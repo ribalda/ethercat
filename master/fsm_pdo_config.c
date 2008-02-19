@@ -181,10 +181,9 @@ void ec_fsm_pdo_config_next_pdo(
         }
     }
 
-    if (fsm->slave->master->debug_level) {
-        EC_DBG("No more Pdos to configure for slave %u.\n",
+    if (fsm->slave->master->debug_level)
+        EC_DBG("Pdo configuration finished for slave %u.\n",
                 fsm->slave->ring_position);
-    }
     fsm->state = ec_fsm_pdo_config_state_end;
     return;
 
