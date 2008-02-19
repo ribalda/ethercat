@@ -7,6 +7,7 @@
 GRAPHS := \
 	fsm_slave_conf.ps \
 	fsm_pdo_mapping.ps \
+	fsm_pdo_config.ps \
 	fsm_master.ps \
 	fsm_coe_map.ps
 
