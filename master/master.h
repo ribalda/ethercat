@@ -53,12 +53,9 @@
 
 /*****************************************************************************/
 
-/**
-   EtherCAT master mode.
-*/
-
-typedef enum
-{
+/** EtherCAT master mode.
+ */
+typedef enum {
     EC_MASTER_MODE_ORPHANED,
     EC_MASTER_MODE_IDLE,
     EC_MASTER_MODE_OPERATION
@@ -67,12 +64,9 @@ ec_master_mode_t;
 
 /*****************************************************************************/
 
-/**
-   Cyclic statistics.
-*/
-
-typedef struct
-{
+/** Cyclic statistics.
+ */
+typedef struct {
     unsigned int timeouts; /**< datagram timeouts */
     unsigned int corrupted; /**< corrupted frames */
     unsigned int unmatched; /**< unmatched datagrams (received, but not
@@ -83,11 +77,10 @@ ec_stats_t;
 
 /*****************************************************************************/
 
-/**
-   EtherCAT master.
-   Manages slaves, domains and IO.
-*/
-
+/** EtherCAT master.
+ *
+ * Manages slaves, domains and IO.
+ */
 struct ec_master
 {
     struct kobject kobj; /**< kobject */
@@ -110,6 +103,9 @@ struct ec_master
 
     struct list_head slaves; /**< list of slaves on the bus */
     unsigned int slave_count; /**< number of slaves on the bus */
+
+    struct list_head configs; /**< Bus configuration list. */
+    unsigned int configs_attached; /**< Slave configurations were attached. */
     
     ec_request_state_t scan_state; /**< current scanning state */
     unsigned int allow_scan; /**< non-zero, if slave scanning is allowed */
@@ -196,6 +192,7 @@ void ec_master_receive_datagrams(ec_master_t *, const uint8_t *, size_t);
 void ec_master_queue_datagram(ec_master_t *, ec_datagram_t *);
 
 // misc.
+int ec_master_attach_slave_configs(ec_master_t *);
 void ec_master_output_stats(ec_master_t *);
 #ifdef EC_EOE
 void ec_master_clear_eoe_handlers(ec_master_t *);

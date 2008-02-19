@@ -63,6 +63,7 @@ struct ec_fsm_mapping
 
     ec_direction_t dir; /**< current PDO direction */
     ec_sync_t *sync; /**< current sync manager */
+    const ec_pdo_mapping_t *mapping; /**< Mapping to assign. */
     ec_pdo_t *pdo; /**< current PDO */
     ec_sdo_data_t sdodata; /**< SDO configuration data */
     uint16_t sdo_value; /**< SDO value */

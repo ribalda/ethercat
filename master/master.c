@@ -46,16 +46,18 @@
 
 #include "../include/ecrt.h"
 #include "globals.h"
-#include "master.h"
 #include "slave.h"
+#include "slave_config.h"
 #include "device.h"
 #include "datagram.h"
 #ifdef EC_EOE
 #include "ethernet.h"
 #endif
+#include "master.h"
 
 /*****************************************************************************/
 
+void ec_master_destroy_slave_configs(ec_master_t *);
 void ec_master_destroy_domains(ec_master_t *);
 static int ec_master_idle_thread(ec_master_t *);
 static int ec_master_operation_thread(ec_master_t *);
@@ -122,6 +124,8 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     INIT_LIST_HEAD(&master->slaves);
     master->slave_count = 0;
     
+    INIT_LIST_HEAD(&master->configs);
+
     master->scan_state = EC_REQUEST_IN_PROGRESS;
     master->allow_scan = 1;
     init_MUTEX(&master->scan_sem);
@@ -136,12 +140,14 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     master->datagram_index = 0;
 
     INIT_LIST_HEAD(&master->domains);
-    master->debug_level = 0;
 
+    master->debug_level = 0;
     master->stats.timeouts = 0;
     master->stats.corrupted = 0;
     master->stats.unmatched = 0;
     master->stats.output_jiffies = 0;
+    master->pdo_slaves_offline = 0; // assume all PDO slaves online
+    master->frames_timed_out = 0;
 
     for (i = 0; i < HZ; i++) {
         master->idle_cycle_times[i] = 0;
@@ -236,6 +242,7 @@ void ec_master_clear(
 #ifdef EC_EOE
     ec_master_clear_eoe_handlers(master);
 #endif
+    ec_master_destroy_slave_configs(master);
     ec_master_destroy_slaves(master);
     ec_master_destroy_domains(master);
     ec_fsm_master_clear(&master->fsm);
@@ -251,10 +258,8 @@ void ec_master_clear(
 /*****************************************************************************/
 
 #ifdef EC_EOE
-/**
- * Clear and free all EoE handlers.
+/** Clear and free all EoE handlers.
  */
-
 void ec_master_clear_eoe_handlers(
         ec_master_t *master /**< EtherCAT master */
         )
@@ -271,15 +276,27 @@ void ec_master_clear_eoe_handlers(
 
 /*****************************************************************************/
 
-/**
-   Destroy all slaves.
-*/
+/** Destroy all slave configurations.
+ */
+void ec_master_destroy_slave_configs(ec_master_t *master)
+{
+    ec_slave_config_t *sc, *next;
 
+    list_for_each_entry_safe(sc, next, &master->configs, list) {
+        list_del(&sc->list);
+        ec_slave_config_destroy(sc);
+    }
+}
+
+/*****************************************************************************/
+
+/** Destroy all slaves.
+ */
 void ec_master_destroy_slaves(ec_master_t *master)
 {
-    ec_slave_t *slave, *next_slave;
+    ec_slave_t *slave, *next;
 
-    list_for_each_entry_safe(slave, next_slave, &master->slaves, list) {
+    list_for_each_entry_safe(slave, next, &master->slaves, list) {
         list_del(&slave->list);
         ec_slave_destroy(slave);
     }
@@ -295,9 +312,9 @@ void ec_master_destroy_slaves(ec_master_t *master)
 
 void ec_master_destroy_domains(ec_master_t *master)
 {
-    ec_domain_t *domain, *next_d;
+    ec_domain_t *domain, *next;
 
-    list_for_each_entry_safe(domain, next_d, &master->domains, list) {
+    list_for_each_entry_safe(domain, next, &master->domains, list) {
         list_del(&domain->list);
         ec_domain_destroy(domain);
     }
@@ -467,8 +484,6 @@ int ec_master_enter_operation_mode(ec_master_t *master /**< EtherCAT master */)
         EC_DBG("Switching to operation mode.\n");
 
     master->mode = EC_MASTER_MODE_OPERATION;
-    master->pdo_slaves_offline = 0; // assume all PDO slaves online
-    master->frames_timed_out = 0;
     master->ext_request_cb = NULL;
     master->ext_release_cb = NULL;
     master->ext_cb_data = NULL;
@@ -505,9 +520,11 @@ void ec_master_leave_operation_mode(ec_master_t *master
     master->release_cb = ec_master_release_cb;
     master->cb_data = master;
     
+    ec_master_destroy_slave_configs(master);
+    ec_master_destroy_domains(master);
+
     // set states for all slaves
     list_for_each_entry(slave, &master->slaves, list) {
-        ec_slave_reset(slave);
         ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
     }
 #ifdef EC_EOE
@@ -518,8 +535,6 @@ void ec_master_leave_operation_mode(ec_master_t *master
     }
 #endif
 
-    ec_master_destroy_domains(master);
-    
     if (ec_master_thread_start(master, ec_master_idle_thread))
         EC_WARN("Failed to restart master thread!\n");
 #ifdef EC_EOE
@@ -1241,100 +1256,50 @@ void ec_master_prepare(ec_master_t *master /**< EtherCAT master */)
 
 /*****************************************************************************/
 
-/**
- * Translates an ASCII coded bus-address to a slave pointer.
- * These are the valid addressing schemes:
- * - \a "X" = the Xth slave on the bus (ring position),
- * - \a "#X" = the slave with alias X,
- * - \a "#X:Y" = the Yth slave after the slave with alias X.
- * X and Y are zero-based indices and may be provided in hexadecimal or octal
- * notation (with appropriate prefix).
- * \return pointer to the slave on success, else NULL
+/** Detaches the slave configurations from the slaves.
  */
-
-ec_slave_t *ec_master_parse_slave_address(
-        const ec_master_t *master, /**< EtherCAT master */
-        const char *address /**< address string */
+void ec_master_detach_slave_configs(
+        ec_master_t *master /**< EtherCAT master. */
         )
 {
-    unsigned long first, second;
-    char *remainder, *remainder2;
-    const char *original;
-    unsigned int alias_requested = 0, alias_not_found = 1;
-    ec_slave_t *alias_slave = NULL, *slave;
+    ec_slave_config_t *sc;
 
-    original = address;
+    if (!master->configs_attached)
+        return;
 
-    if (!address[0])
-        goto out_invalid;
-
-    if (address[0] == '#') {
-        alias_requested = 1;
-        address++;
+    list_for_each_entry(sc, &master->configs, list) {
+        ec_slave_config_detach(sc); 
     }
 
-    first = simple_strtoul(address, &remainder, 0);
-    if (remainder == address)
-        goto out_invalid;
+    master->configs_attached = 0;
+}
 
-    if (alias_requested) {
-        list_for_each_entry(alias_slave, &master->slaves, list) {
-            if (alias_slave->sii_alias == first) {
-                alias_not_found = 0;
-                break;
-            }
-        }
-        if (alias_not_found) {
-            EC_ERR("Alias not found!\n");
-            goto out_invalid;
-        }
+/*****************************************************************************/
+
+/** Attaches the slave configurations to the slaves.
+ */
+int ec_master_attach_slave_configs(
+        ec_master_t *master /**< EtherCAT master. */
+        )
+{
+    ec_slave_config_t *sc;
+    unsigned int errors = 0;
+
+    if (master->configs_attached)
+        return 0;
+
+    list_for_each_entry(sc, &master->configs, list) {
+        if (ec_slave_config_attach(sc))
+            errors = 1;
     }
 
-    if (!remainder[0]) {
-        if (alias_requested) { // alias addressing
-            return alias_slave;
-        }
-        else { // position addressing
-            list_for_each_entry(slave, &master->slaves, list) {
-                if (slave->ring_position == first) return slave;
-            }
-            EC_ERR("Slave index out of range!\n");
-            goto out_invalid;
-        }
-    }
-    else if (alias_requested && remainder[0] == ':') { // field addressing
-        struct list_head *list;
-        remainder++;
-        second = simple_strtoul(remainder, &remainder2, 0);
-
-        if (remainder2 == remainder || remainder2[0])
-            goto out_invalid;
-
-        list = &alias_slave->list;
-        while (second--) {
-            list = list->next;
-            if (list == &master->slaves) { // last slave exceeded
-                EC_ERR("Slave index out of range!\n");
-                goto out_invalid;
-            }
-        }
-        return list_entry(list, ec_slave_t, list);
-    }
-
-out_invalid:
-    EC_ERR("Invalid slave address string \"%s\"!\n", original);
-    return NULL;
+    master->configs_attached = !errors;
+    return errors ? -1 : 0;
 }
 
 /******************************************************************************
  *  Realtime interface
  *****************************************************************************/
-
-/**
-   Creates a domain.
-   \return pointer to new domain on success, else NULL
-   \ingroup RealtimeInterface
-*/
 
 ec_domain_t *ecrt_master_create_domain(ec_master_t *master /**< master */)
 {
@@ -1364,25 +1329,16 @@ ec_domain_t *ecrt_master_create_domain(ec_master_t *master /**< master */)
 
 /*****************************************************************************/
 
-/**
-   Configures all slaves and leads them to the OP state.
-   Does the complete configuration and activation for all slaves. Sets sync
-   managers and FMMUs, and does the appropriate transitions, until the slave
-   is operational.
-   \return 0 in case of success, else < 0
-   \ingroup RealtimeInterface
-*/
-
-int ecrt_master_activate(ec_master_t *master /**< EtherCAT master */)
+int ecrt_master_activate(ec_master_t *master)
 {
     uint32_t domain_offset;
     ec_domain_t *domain;
 
-    // allocate all domains
+    // finish all domains
     domain_offset = 0;
     list_for_each_entry(domain, &master->domains, list) {
-        if (ec_domain_alloc(domain, domain_offset)) {
-            EC_ERR("Failed to allocate domain %X!\n", (u32) domain);
+        if (ec_domain_finish(domain, domain_offset)) {
+            EC_ERR("Failed to finish domain %X!\n", (u32) domain);
             return -1;
         }
         domain_offset += domain->data_size;
@@ -1435,12 +1391,7 @@ int ecrt_master_activate(ec_master_t *master /**< EtherCAT master */)
 
 /*****************************************************************************/
 
-/**
-   Asynchronous sending of datagrams.
-   \ingroup RealtimeInterface
-*/
-
-void ecrt_master_send(ec_master_t *master /**< EtherCAT master */)
+void ecrt_master_send(ec_master_t *master)
 {
     ec_datagram_t *datagram, *n;
 
@@ -1468,12 +1419,7 @@ void ecrt_master_send(ec_master_t *master /**< EtherCAT master */)
 
 /*****************************************************************************/
 
-/**
-   Asynchronous receiving of datagrams.
-   \ingroup RealtimeInterface
-*/
-
-void ecrt_master_receive(ec_master_t *master /**< EtherCAT master */)
+void ecrt_master_receive(ec_master_t *master)
 {
     ec_datagram_t *datagram, *next;
     cycles_t cycles_timeout;
@@ -1510,80 +1456,65 @@ void ecrt_master_receive(ec_master_t *master /**< EtherCAT master */)
 
 /*****************************************************************************/
 
-/**
- * Obtains a slave pointer by its bus address.
- * A valid slave pointer is only returned, if vendor ID and product code are
- * matching.
- * \return pointer to the slave on success, else NULL
- * \ingroup RealtimeInterface
- */
-
-ec_slave_t *ecrt_master_get_slave(
-        const ec_master_t *master, /**< EtherCAT master */
-        const char *address, /**< address string
-                               \see ec_master_parse_slave_address() */
-        uint32_t vendor_id, /**< vendor ID */
-        uint32_t product_code /**< product code */
-        )
+ec_slave_config_t *ecrt_master_slave_config(ec_master_t *master,
+        uint16_t alias, uint16_t position, uint32_t vendor_id,
+        uint32_t product_code)
 {
-    ec_slave_t *slave = ec_master_parse_slave_address(master, address);
-
-    if (!slave)
-        return NULL;
-
-    return ec_slave_validate(slave, vendor_id, product_code) ? NULL : slave;
-}
-
-/*****************************************************************************/
-
-/**
- * Obtains a slave pointer by its ring position.
- * A valid slave pointer is only returned, if vendor ID and product code are
- * matching.
- * \return pointer to the slave on success, else NULL
- * \ingroup RealtimeInterface
- */
-
-ec_slave_t *ecrt_master_get_slave_by_pos(
-        const ec_master_t *master, /**< EtherCAT master */
-        uint16_t ring_position, /**< ring position */
-        uint32_t vendor_id, /**< vendor ID */
-        uint32_t product_code /**< product code */
-        )
-{
-    ec_slave_t *slave;
+    ec_slave_config_t *sc;
     unsigned int found = 0;
 
-    list_for_each_entry(slave, &master->slaves, list) {
-        if (slave->ring_position == ring_position) {
+    list_for_each_entry(sc, &master->configs, list) {
+        if (sc->alias == alias && sc->position == position) {
             found = 1;
             break;
         }
     }
 
-    if (!found) {
-        EC_ERR("Slave index out of range!\n");
-        return NULL;
+    if (found) {
+        if (master->debug_level) {
+            EC_INFO("Using existing slave configuration for %u:%u\n",
+                    alias, position);
+        }
+        if (sc->vendor_id != vendor_id || sc->product_code != product_code) {
+            EC_ERR("Slave type mismatch. Slave was configured as"
+                    " 0x%08X/0x%08X before. Now configuring with"
+                    " 0x%08X/0x%08X.\n", sc->vendor_id, sc->product_code,
+                    vendor_id, product_code);
+            return NULL;
+        }
+    } else {
+        if (master->debug_level) {
+            EC_INFO("Creating slave configuration for %u:%u,"
+                    " 0x%08X/0x%08X.\n", alias, position, vendor_id,
+                    product_code);
+        }
+
+        if (!(sc = (ec_slave_config_t *) kmalloc(sizeof(ec_slave_config_t),
+                        GFP_KERNEL))) {
+            EC_ERR("Failed to allocate memory for slave configuration.\n");
+            return NULL;
+        }
+
+        if (ec_slave_config_init(sc, master, alias, position, vendor_id,
+                    product_code)) {
+            EC_ERR("Failed to init slave configuration.\n");
+            return NULL;
+        }
+
+        // try to find the addressed slave
+        ec_slave_config_attach(sc);
+        ec_slave_config_load_default_mapping(sc);
+
+        list_add_tail(&sc->list, &master->configs);
     }
 
-    return ec_slave_validate(slave, vendor_id, product_code) ? NULL : slave;
+    return sc;
 }
 
 /*****************************************************************************/
 
-/**
-   Sets the locking callbacks.
-   The request_cb function must return zero, to allow another instance
-   (the EoE process for example) to access the master. Non-zero means,
-   that access is forbidden at this time.
-   \ingroup RealtimeInterface
-*/
-
-void ecrt_master_callbacks(ec_master_t *master, /**< EtherCAT master */
-                           int (*request_cb)(void *), /**< request lock CB */
-                           void (*release_cb)(void *), /**< release lock CB */
-                           void *cb_data /**< data parameter */
-                           )
+void ecrt_master_callbacks(ec_master_t *master, int (*request_cb)(void *),
+        void (*release_cb)(void *), void *cb_data)
 {
     master->ext_request_cb = request_cb;
     master->ext_release_cb = release_cb;
@@ -1592,19 +1523,13 @@ void ecrt_master_callbacks(ec_master_t *master, /**< EtherCAT master */
 
 /*****************************************************************************/
 
-/**
- * Reads the current master status.
- */
-
-void ecrt_master_get_status(const ec_master_t *master, /**< EtherCAT master */
-        ec_master_status_t *status /**< target status object */
-        )
+void ecrt_master_state(const ec_master_t *master, ec_master_state_t *state)
 {
-    status->bus_status =
+    state->bus_state =
         (master->pdo_slaves_offline || master->frames_timed_out)
         ? EC_BUS_FAILURE : EC_BUS_OK;
-    status->bus_tainted = master->fsm.tainted; 
-    status->slaves_responding = master->fsm.slaves_responding;
+    state->bus_tainted = master->fsm.tainted; 
+    state->slaves_responding = master->fsm.slaves_responding;
 }
 
 /*****************************************************************************/
@@ -1616,9 +1541,8 @@ EXPORT_SYMBOL(ecrt_master_activate);
 EXPORT_SYMBOL(ecrt_master_send);
 EXPORT_SYMBOL(ecrt_master_receive);
 EXPORT_SYMBOL(ecrt_master_callbacks);
-EXPORT_SYMBOL(ecrt_master_get_slave);
-EXPORT_SYMBOL(ecrt_master_get_slave_by_pos);
-EXPORT_SYMBOL(ecrt_master_get_status);
+EXPORT_SYMBOL(ecrt_master_slave_config);
+EXPORT_SYMBOL(ecrt_master_state);
 
 /** \endcond */
 

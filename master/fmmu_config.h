@@ -31,15 +31,14 @@
  *
  *****************************************************************************/
 
-/**
-   \file
-   EtherCAT FMMU structure.
-*/
+/** \file
+ * EtherCAT FMMU configuration structure.
+ */
 
 /*****************************************************************************/
 
-#ifndef _EC_FMMU_H_
-#define _EC_FMMU_H_
+#ifndef _EC_FMMU_CONFIG_H_
+#define _EC_FMMU_CONFIG_H_
 
 #include "../include/ecrt.h"
 
@@ -47,30 +46,26 @@
 
 /*****************************************************************************/
 
-/** size of an FMMU configuration page */
-#define EC_FMMU_SIZE 16
-
-/*****************************************************************************/
-
-/**
- * FMMU configuration.
+/** FMMU configuration.
  */
-
 typedef struct
 {
-    const ec_slave_t *slave; /**< EtherCAT slave, the FMMU belongs to */
-    unsigned int index; /**< FMMU index */
-    const ec_domain_t *domain; /**< domain */
-    const ec_sync_t *sync; /**< sync manager */
-    uint32_t logical_start_address; /**< logical start address */
+    const ec_slave_config_t *sc; /**< EtherCAT slave config. */
+    const ec_domain_t *domain; /**< Domain. */
+    ec_direction_t dir; /**< PDO direction. */
+
+    uint32_t logical_start_address; /**< Logical start address. */
+    unsigned int data_size; /**< Covered PDO size. */
 }
-ec_fmmu_t;
+ec_fmmu_config_t;
 
 /*****************************************************************************/
 
-void ec_fmmu_init(ec_fmmu_t *, ec_slave_t *, unsigned int);
+void ec_fmmu_config_init(ec_fmmu_config_t *, ec_slave_config_t *,
+        ec_domain_t *, ec_direction_t);
 
-void ec_fmmu_config(const ec_fmmu_t *, uint8_t *);
+void ec_fmmu_config_page(const ec_fmmu_config_t *, const ec_sync_t *,
+        uint8_t *);
 
 /*****************************************************************************/
 

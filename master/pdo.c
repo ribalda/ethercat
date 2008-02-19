@@ -44,66 +44,196 @@
 
 /*****************************************************************************/
 
-/**
- * PDO constructor.
- */
+void ec_pdo_clear_entries(ec_pdo_t *);
 
-void ec_pdo_init(ec_pdo_t *pdo /**< EtherCAT PDO */)
+/*****************************************************************************/
+
+/** PDO constructor.
+ */
+void ec_pdo_init(
+        ec_pdo_t *pdo /**< EtherCAT PDO */
+        )
 {
+    pdo->sync_index = -1; // not assigned 
     pdo->name = NULL;
     INIT_LIST_HEAD(&pdo->entries);
 }
 
 /*****************************************************************************/
 
-/**
- * PDO destructor.
+/** Pdo copy constructor.
  */
+int ec_pdo_init_copy(ec_pdo_t *pdo, const ec_pdo_t *other_pdo)
+{
+    pdo->dir = other_pdo->dir;
+    pdo->index = other_pdo->index;
+    pdo->sync_index = other_pdo->sync_index;
+    pdo->name = NULL;
+    INIT_LIST_HEAD(&pdo->entries);
 
+    if (ec_pdo_set_name(pdo, other_pdo->name))
+        goto out_return;
+
+    if (ec_pdo_copy_entries(pdo, other_pdo))
+        goto out_clear;
+
+    return 0;
+
+out_clear:
+    ec_pdo_clear(pdo);
+out_return:
+    return -1;
+}
+
+/*****************************************************************************/
+
+/** PDO destructor.
+ */
 void ec_pdo_clear(ec_pdo_t *pdo /**< EtherCAT PDO */)
+{
+    if (pdo->name)
+        kfree(pdo->name);
+
+    ec_pdo_clear_entries(pdo);
+}
+
+/*****************************************************************************/
+
+/** Clear Pdo entry list.
+ */
+void ec_pdo_clear_entries(ec_pdo_t *pdo /**< EtherCAT PDO */)
 {
     ec_pdo_entry_t *entry, *next;
 
     // free all PDO entries
     list_for_each_entry_safe(entry, next, &pdo->entries, list) {
         list_del(&entry->list);
+        ec_pdo_entry_clear(entry);
         kfree(entry);
     }
 }
 
 /*****************************************************************************/
 
-/**
- * Makes a deep copy of a PDO.
+/** Set Pdo name.
  */
-
-int ec_pdo_copy(ec_pdo_t *pdo, const ec_pdo_t *other_pdo)
+int ec_pdo_set_name(
+        ec_pdo_t *pdo, /**< Pdo. */
+        const char *name /**< New name. */
+        )
 {
-    ec_pdo_entry_t *entry, *other_entry, *next;
+    unsigned int len;
 
-    // make flat copy
-    *pdo = *other_pdo;
+    if (pdo->name)
+        kfree(pdo->name);
 
-    INIT_LIST_HEAD(&pdo->entries);
-    list_for_each_entry(other_entry, &other_pdo->entries, list) {
+    if (name && (len = strlen(name))) {
+        if (!(pdo->name = (char *) kmalloc(len + 1, GFP_KERNEL))) {
+            EC_ERR("Failed to allocate PDO name.\n");
+            return -1;
+        }
+        memcpy(pdo->name, name, len + 1);
+    } else {
+        pdo->name = NULL;
+    }
+
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Copy Pdo entries from another Pdo.
+ */
+int ec_pdo_copy_entries(ec_pdo_t *pdo, const ec_pdo_t *other)
+{
+    ec_pdo_entry_t *entry, *other_entry;
+
+    ec_pdo_clear_entries(pdo);
+
+    list_for_each_entry(other_entry, &other->entries, list) {
         if (!(entry = (ec_pdo_entry_t *)
                     kmalloc(sizeof(ec_pdo_entry_t), GFP_KERNEL))) {
             EC_ERR("Failed to allocate memory for PDO entry copy.\n");
-            goto out_free;
+            return -1;
         }
 
-        *entry = *other_entry; // flat copy is sufficient
+        if (ec_pdo_entry_init_copy(entry, other_entry)) {
+            kfree(entry);
+            return -1;
+        }
+
         list_add_tail(&entry->list, &pdo->entries);
     }
 
     return 0;
+}
 
-out_free:
-    list_for_each_entry_safe(entry, next, &pdo->entries, list) {
-        list_del(&entry->list);
-        kfree(entry);
+/*****************************************************************************/
+
+/** Pdo entry constructor.
+ */
+void ec_pdo_entry_init(
+        ec_pdo_entry_t *entry /**< Pdo entry. */
+        )
+{
+    entry->name = NULL;
+}
+
+/*****************************************************************************/
+
+/** Pdo entry copy constructor.
+ */
+int ec_pdo_entry_init_copy(
+        ec_pdo_entry_t *entry, /**< Pdo entry. */
+        const ec_pdo_entry_t *other /**< Pdo entry to copy from. */
+        )
+{
+    entry->index = other->index;
+    entry->subindex = other->subindex;
+    entry->name = NULL;
+    entry->bit_length = other->bit_length;
+
+    if (ec_pdo_entry_set_name(entry, other->name))
+        return -1;
+
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Pdo entry destructor.
+ */
+void ec_pdo_entry_clear(ec_pdo_entry_t *entry /**< Pdo entry. */)
+{
+    if (entry->name)
+        kfree(entry->name);
+}
+
+/*****************************************************************************/
+
+/** Set Pdo entry name.
+ */
+int ec_pdo_entry_set_name(
+        ec_pdo_entry_t *entry, /**< Pdo entry. */
+        const char *name /**< New name. */
+        )
+{
+    unsigned int len;
+
+    if (entry->name)
+        kfree(entry->name);
+
+    if (name && (len = strlen(name))) {
+        if (!(entry->name = (char *) kmalloc(len + 1, GFP_KERNEL))) {
+            EC_ERR("Failed to allocate PDO entry name.\n");
+            return -1;
+        }
+        memcpy(entry->name, name, len + 1);
+    } else {
+        entry->name = NULL;
     }
-    return -1;
+
+    return 0;
 }
 
 /*****************************************************************************/

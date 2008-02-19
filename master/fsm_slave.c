@@ -41,8 +41,9 @@
 #include "globals.h"
 #include "master.h"
 #include "mailbox.h"
-#include "fsm_slave.h"
 #include "fsm_mapping.h"
+#include "slave_config.h"
+#include "fsm_slave.h"
 
 /*****************************************************************************/
 
@@ -569,12 +570,12 @@ void ec_fsm_slave_scan_state_eeprom_data(ec_fsm_slave_t *fsm /**< slave state ma
                 break;
             case 0x0032:
                 if (ec_slave_fetch_sii_pdos( slave, (uint8_t *) cat_word,
-                            cat_size * 2, EC_TX_PDO))
+                            cat_size * 2, EC_DIR_INPUT)) // TxPdo
                     goto end;
                 break;
             case 0x0033:
                 if (ec_slave_fetch_sii_pdos( slave, (uint8_t *) cat_word,
-                            cat_size * 2, EC_RX_PDO))
+                            cat_size * 2, EC_DIR_OUTPUT)) // RxPdo
                     goto end;
                 break;
             default:
@@ -662,8 +663,8 @@ void ec_fsm_slave_conf_state_init(ec_fsm_slave_t *fsm /**< slave state machine *
 
     // clear FMMU configurations
     ec_datagram_npwr(datagram, slave->station_address,
-                     0x0600, EC_FMMU_SIZE * slave->base_fmmu_count);
-    memset(datagram->data, 0x00, EC_FMMU_SIZE * slave->base_fmmu_count);
+            0x0600, EC_FMMU_PAGE_SIZE * slave->base_fmmu_count);
+    memset(datagram->data, 0x00, EC_FMMU_PAGE_SIZE * slave->base_fmmu_count);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_slave_conf_state_clear_fmmus;
 }
@@ -729,7 +730,7 @@ void ec_fsm_slave_conf_enter_mbox_sync(
     if (!slave->sii_mailbox_protocols) {
         // no mailbox protocols supported
         if (master->debug_level)
-            EC_DBG("Slave %i does not support mailbox communication.\n",
+            EC_DBG("Slave %u does not support mailbox communication.\n",
                     slave->ring_position);
         ec_fsm_slave_conf_enter_preop(fsm);
         return;
@@ -740,41 +741,41 @@ void ec_fsm_slave_conf_enter_mbox_sync(
                slave->ring_position);
     }
 
-    if (slave->sii_sync_count >= 2) {
-        // configure sync managers
+    if (slave->sii_sync_count >= 2) { // mailbox configuration provided
         ec_datagram_npwr(datagram, slave->station_address, 0x0800,
-                EC_SYNC_SIZE * slave->sii_sync_count);
-        memset(datagram->data, 0x00, EC_SYNC_SIZE * slave->sii_sync_count);
+                EC_SYNC_PAGE_SIZE * slave->sii_sync_count);
+        memset(datagram->data, 0x00,
+                EC_SYNC_PAGE_SIZE * slave->sii_sync_count);
 
         for (i = 0; i < 2; i++) {
-            ec_sync_config(&slave->sii_syncs[i],
-                    datagram->data + EC_SYNC_SIZE * i);
+            ec_sync_config(&slave->sii_syncs[i], slave->sii_syncs[i].length,
+                    datagram->data + EC_SYNC_PAGE_SIZE * i);
         }
     } else { // no mailbox sync manager configurations provided
         ec_sync_t sync;
 
         if (master->debug_level)
-            EC_DBG("Slave %i does not provide"
+            EC_DBG("Slave %u does not provide"
                     " mailbox sync manager configurations.\n",
                     slave->ring_position);
 
         ec_datagram_npwr(datagram, slave->station_address, 0x0800,
-                EC_SYNC_SIZE * 2);
-        memset(datagram->data, 0x00, EC_SYNC_SIZE * 2);
+                EC_SYNC_PAGE_SIZE * 2);
+        memset(datagram->data, 0x00, EC_SYNC_PAGE_SIZE * 2);
 
         ec_sync_init(&sync, slave, 0);
         sync.physical_start_address = slave->sii_rx_mailbox_offset;
-        sync.length = slave->sii_rx_mailbox_size;
         sync.control_register = 0x26;
         sync.enable = 1;
-        ec_sync_config(&sync, datagram->data + EC_SYNC_SIZE * sync.index);
+        ec_sync_config(&sync, slave->sii_rx_mailbox_size,
+                datagram->data + EC_SYNC_PAGE_SIZE * sync.index);
 
         ec_sync_init(&sync, slave, 1);
         sync.physical_start_address = slave->sii_tx_mailbox_offset;
-        sync.length = slave->sii_tx_mailbox_size;
         sync.control_register = 0x22;
         sync.enable = 1;
-        ec_sync_config(&sync, datagram->data + EC_SYNC_SIZE * sync.index);
+        ec_sync_config(&sync, slave->sii_tx_mailbox_size,
+                datagram->data + EC_SYNC_PAGE_SIZE * sync.index);
     }
 
     fsm->retries = EC_FSM_RETRIES;
@@ -877,15 +878,22 @@ void ec_fsm_slave_conf_enter_sdoconf(ec_fsm_slave_t *fsm /**< slave state machin
 {
     ec_slave_t *slave = fsm->slave;
 
-    // No CoE configuration to be applied?
-    if (list_empty(&slave->sdo_confs)) { // skip SDO configuration
+    if (!slave->config) {
+        EC_DBG("Slave %u is not configured.\n", slave->ring_position);
+        ec_fsm_slave_conf_enter_saveop(fsm);
+        return;
+    }
+
+    // No CoE configuration to be applied? FIXME
+    if (list_empty(&slave->config->sdo_configs)) { // skip SDO configuration
         ec_fsm_slave_conf_enter_mapconf(fsm);
         return;
     }
 
     // start SDO configuration
     fsm->state = ec_fsm_slave_conf_state_sdoconf;
-    fsm->sdodata = list_entry(fsm->slave->sdo_confs.next, ec_sdo_data_t, list);
+    fsm->sdodata =
+        list_entry(fsm->slave->config->sdo_configs.next, ec_sdo_data_t, list);
     ec_fsm_coe_download(&fsm->fsm_coe, fsm->slave, fsm->sdodata);
     ec_fsm_coe_exec(&fsm->fsm_coe); // execute immediately
 }
@@ -911,9 +919,9 @@ void ec_fsm_slave_conf_state_sdoconf(
     }
 
     // Another SDO to configure?
-    if (fsm->sdodata->list.next != &fsm->slave->sdo_confs) {
-        fsm->sdodata = list_entry(fsm->sdodata->list.next,
-                                  ec_sdo_data_t, list);
+    if (fsm->sdodata->list.next != &fsm->slave->config->sdo_configs) {
+        fsm->sdodata =
+            list_entry(fsm->sdodata->list.next, ec_sdo_data_t, list);
         ec_fsm_coe_download(&fsm->fsm_coe, fsm->slave, fsm->sdodata);
         ec_fsm_coe_exec(&fsm->fsm_coe); // execute immediately
         return;
@@ -982,21 +990,34 @@ void ec_fsm_slave_conf_enter_pdo_sync(
 {
     ec_slave_t *slave = fsm->slave;
     ec_datagram_t *datagram = fsm->datagram;
-    unsigned int i;
+    unsigned int i, offset, num_syncs;
+    const ec_sync_t *sync;
+    ec_direction_t dir;
+    uint16_t size;
 
     if (!slave->sii_sync_count) {
         ec_fsm_slave_conf_enter_fmmu(fsm);
         return;
     }
 
-    // configure sync managers for process data
-    ec_datagram_npwr(datagram, slave->station_address, 0x0800,
-                     EC_SYNC_SIZE * slave->sii_sync_count);
-    memset(datagram->data, 0x00, EC_SYNC_SIZE * slave->sii_sync_count);
+    if (slave->sii_mailbox_protocols) {
+        offset = 2; // slave has mailboxes
+    } else {
+        offset = 0;
+    }
+    num_syncs = slave->sii_sync_count - offset;
 
-    for (i = 0; i < slave->sii_sync_count; i++) {
-        ec_sync_config(&slave->sii_syncs[i],
-                datagram->data + EC_SYNC_SIZE * i);
+    // configure sync managers for process data
+    ec_datagram_npwr(datagram, slave->station_address,
+            0x0800 + EC_SYNC_PAGE_SIZE * offset,
+            EC_SYNC_PAGE_SIZE * num_syncs);
+    memset(datagram->data, 0x00, EC_SYNC_PAGE_SIZE * num_syncs);
+
+    for (i = 0; i < num_syncs; i++) {
+        sync = &slave->sii_syncs[i + offset];
+        dir = ec_sync_direction(sync);
+        size = ec_pdo_mapping_total_size(&slave->config->mapping[dir]);
+        ec_sync_config(sync, size, datagram->data + EC_SYNC_PAGE_SIZE * i);
     }
 
     fsm->retries = EC_FSM_RETRIES;
@@ -1047,7 +1068,9 @@ void ec_fsm_slave_conf_enter_fmmu(ec_fsm_slave_t *fsm /**< slave state machine *
 {
     ec_slave_t *slave = fsm->slave;
     ec_datagram_t *datagram = fsm->datagram;
-    unsigned int j;
+    unsigned int i;
+    const ec_fmmu_config_t *fmmu;
+    const ec_sync_t *sync;
 
     if (!slave->base_fmmu_count) { // skip FMMU configuration
         ec_fsm_slave_conf_enter_saveop(fsm);
@@ -1056,10 +1079,18 @@ void ec_fsm_slave_conf_enter_fmmu(ec_fsm_slave_t *fsm /**< slave state machine *
 
     // configure FMMUs
     ec_datagram_npwr(datagram, slave->station_address,
-                     0x0600, EC_FMMU_SIZE * slave->base_fmmu_count);
-    memset(datagram->data, 0x00, EC_FMMU_SIZE * slave->base_fmmu_count);
-    for (j = 0; j < slave->fmmu_count; j++) {
-        ec_fmmu_config(&slave->fmmus[j], datagram->data + EC_FMMU_SIZE * j);
+                     0x0600, EC_FMMU_PAGE_SIZE * slave->base_fmmu_count);
+    memset(datagram->data, 0x00, EC_FMMU_PAGE_SIZE * slave->base_fmmu_count);
+    for (i = 0; i < slave->config->used_fmmus; i++) {
+        fmmu = &slave->config->fmmu_configs[i];
+        if (!(sync = ec_slave_get_pdo_sync(slave, fmmu->dir))) {
+            fsm->state = ec_fsm_slave_state_error;
+            EC_ERR("Failed to determine PDO sync manager for FMMU on slave"
+                    " %u!\n", slave->ring_position);
+            return;
+        }
+        ec_fmmu_config_page(fmmu, sync,
+                datagram->data + EC_FMMU_PAGE_SIZE * i);
     }
 
     fsm->retries = EC_FSM_RETRIES;

@@ -31,63 +31,68 @@
  *
  *****************************************************************************/
 
-/**
-   \file
-   EtherCAT FMMU methods.
-*/
+/** \file
+ * EtherCAT FMMU configuration methods.
+ */
 
 /*****************************************************************************/
 
 #include "globals.h"
-#include "slave.h"
+#include "slave_config.h"
 #include "master.h"
-#include "fmmu.h"
+
+#include "fmmu_config.h"
 
 /*****************************************************************************/
 
-/**
- * FMMU Constructor.
+/** FMMU configuration constructor.
+ *
+ * Inits an FMMU configuration, sets the logical start address and adds the
+ * process data size for the mapped PDOs of the given direction to the domain
+ * data size.
  */
-
-void ec_fmmu_init(
-        ec_fmmu_t *fmmu, /**< EtherCAT FMMU */
-        ec_slave_t *slave, /**< EtherCAT slave */
-        unsigned int index /**< FMMU index */
+void ec_fmmu_config_init(
+        ec_fmmu_config_t *fmmu, /**< EtherCAT FMMU configuration. */
+        ec_slave_config_t *sc, /**< EtherCAT slave configuration. */
+        ec_domain_t *domain, /**< EtherCAT domain. */
+        ec_direction_t dir /**< PDO direction. */
         )
 {
-    fmmu->slave = slave;
-    fmmu->index = index;
+    fmmu->sc = sc;
+    fmmu->domain = domain;
+    fmmu->dir = dir;
+
+    fmmu->logical_start_address = domain->data_size;
+    fmmu->data_size = ec_pdo_mapping_total_size(&sc->mapping[dir]);
+    domain->data_size += fmmu->data_size;
 }
 
 /*****************************************************************************/
 
-/**
- * Initializes an FMMU configuration page.
- * The referenced memory (\a data) must be at least EC_FMMU_SIZE bytes.
+/** Initializes an FMMU configuration page.
+ *
+ * The referenced memory (\a data) must be at least EC_FMMU_PAGE_SIZE bytes.
  */
-
-void ec_fmmu_config(
-        const ec_fmmu_t *fmmu, /**< EtherCAT FMMU */
-        uint8_t *data /**> configuration memory */
+void ec_fmmu_config_page(
+        const ec_fmmu_config_t *fmmu, /**< EtherCAT FMMU configuration. */
+        const ec_sync_t *sync, /**< Sync manager. */
+        uint8_t *data /**> Configuration page memory. */
         )
 {
-    size_t sync_size = ec_sync_size(fmmu->sync);
-
-    if (fmmu->slave->master->debug_level) {
-        EC_DBG("FMMU%u: LogAddr 0x%08X, Size %3i, PhysAddr 0x%04X, Dir %s\n",
-               fmmu->index, fmmu->logical_start_address,
-               sync_size, fmmu->sync->physical_start_address,
-               ((fmmu->sync->control_register & 0x04) ? "out" : "in"));
+    if (fmmu->sc->master->debug_level) {
+        EC_DBG("FMMU: LogAddr 0x%08X, Size %3i, PhysAddr 0x%04X, Dir %s\n",
+               fmmu->logical_start_address, fmmu->data_size,
+               sync->physical_start_address,
+               (sync->control_register & 0x04) ? "out" : "in");
     }
 
     EC_WRITE_U32(data,      fmmu->logical_start_address);
-    EC_WRITE_U16(data + 4,  sync_size); // size of fmmu
+    EC_WRITE_U16(data + 4,  fmmu->data_size); // size of fmmu
     EC_WRITE_U8 (data + 6,  0x00); // logical start bit
     EC_WRITE_U8 (data + 7,  0x07); // logical end bit
-    EC_WRITE_U16(data + 8,  fmmu->sync->physical_start_address);
+    EC_WRITE_U16(data + 8,  sync->physical_start_address);
     EC_WRITE_U8 (data + 10, 0x00); // physical start bit
-    EC_WRITE_U8 (data + 11, ((fmmu->sync->control_register & 0x04)
-                             ? 0x02 : 0x01));
+    EC_WRITE_U8 (data + 11, (sync->control_register & 0x04) ? 0x02 : 0x01);
     EC_WRITE_U16(data + 12, 0x0001); // enable
     EC_WRITE_U16(data + 14, 0x0000); // reserved
 }

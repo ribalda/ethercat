@@ -11,9 +11,7 @@ Version 1.4.0:
 * Realtime interface changes:
     - PDO configuration.
     - SDO access.
-    - Replace process data pointers with offset.
     - External memory for domains.
-    - Separate slave configuration from slave structure.
 * Mailbox handler
 * Read PDO mapping via CoE during bus scan.
 * SDO write access in sysfs.
@@ -22,6 +20,11 @@ Version 1.4.0:
 * Remove ecdb.h and let lsec output PDO information 'cut-and-pastable' for
   applications.
 * Update documentation.
+* READMEs for examples.
+* Calculate expected working counter for domains.
+* Distributed clocks.
+* Support slaves, that don't support the LRW datagram, only LRD/LWR.
+* Implement all EtherCAT datagram types.
 
 Future issues:
 
@@ -30,10 +33,7 @@ Future issues:
               to replace lsec.
     - Step 2: Move kernel threads to user space daemon with a TCP interface
               replacing the cdev.
-* Distributed clocks.
 * Redundancy with 2 network adapters.
-* Support slaves, that don't support the LRW datagram, only LRD/LWR.
-* PDO reading in IDLE mode.
 * Interface/buffers for asynchronous domain IO.
 
 Smaller issues:
@@ -42,12 +42,9 @@ Smaller issues:
 * Clear sync managers in INIT.
 * Simplify FSMs with <state>_enter() functions.
 * Read out CRC counters.
-* Calculate expected working counter for domains.
 * Optimize alignment of process data.
 * Evaluate EEPROM contents after writing.
 * Configure slave ports to automatically open on link detection.
-* Calculate cycle time of operation state machine.
-* Locking for serveral slave variables for sysfs access.
 * Interrupt master state machines state scan for other jobs.
 * Master state machine, slave configuration: Do not check every slave on
   a cycle.
@@ -55,7 +52,6 @@ Smaller issues:
 
 Less important issues:
 
-* Implement all EtherCAT datagram types.
 * File access over EtherCAT (FoE).
 * Allow VLAN tagging.
 * Determine number of frames, the NIC can handle.

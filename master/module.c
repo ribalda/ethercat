@@ -31,10 +31,9 @@
  *
  *****************************************************************************/
 
-/**
-   \file
-   EtherCAT master driver module.
-*/
+/** \file
+ * EtherCAT master driver module.
+ */
 
 /*****************************************************************************/
 
@@ -49,7 +48,7 @@
 
 /*****************************************************************************/
 
-#define MAX_MASTERS 5 /**< maximum number of masters */
+#define MAX_MASTERS 5 /**< Maximum number of masters. */
 
 /*****************************************************************************/
 
@@ -541,28 +540,7 @@ void ecdev_close(ec_device_t *device /**< EtherCAT device */)
  *  Realtime interface
  *****************************************************************************/
 
-/**
- * Returns the version magic of the realtime interface.
- * \return ECRT version magic.
- * \ingroup RealtimeInterface
- */
-
-unsigned int ecrt_version_magic(void)
-{
-    return ECRT_VERSION_MAGIC;
-}
-
-/*****************************************************************************/
-
-/**
-   Reserves an EtherCAT master for realtime operation.
-   \return pointer to reserved master, or NULL on error
-   \ingroup RealtimeInterface
-*/
-
-ec_master_t *ecrt_request_master(unsigned int master_index
-                                 /**< master index */
-                                 )
+ec_master_t *ecrt_request_master(unsigned int master_index)
 {
     ec_master_t *master;
 
@@ -622,12 +600,7 @@ ec_master_t *ecrt_request_master(unsigned int master_index
 
 /*****************************************************************************/
 
-/**
-   Releases a reserved EtherCAT master.
-   \ingroup RealtimeInterface
-*/
-
-void ecrt_release_master(ec_master_t *master /**< EtherCAT master */)
+void ecrt_release_master(ec_master_t *master)
 {
     EC_INFO("Releasing master %u...\n", master->index);
 
@@ -642,6 +615,13 @@ void ecrt_release_master(ec_master_t *master /**< EtherCAT master */)
     master->reserved = 0;
 
     EC_INFO("Released master %u.\n", master->index);
+}
+
+/*****************************************************************************/
+
+unsigned int ecrt_version_magic(void)
+{
+    return ECRT_VERSION_MAGIC;
 }
 
 /*****************************************************************************/

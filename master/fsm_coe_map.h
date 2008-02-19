@@ -51,8 +51,8 @@
 typedef struct ec_fsm_coe_map ec_fsm_coe_map_t; /**< \see ec_fsm_coe_map */
 
 /**
+ * \todo doc
  */
-
 struct ec_fsm_coe_map
 {
     void (*state)(ec_fsm_coe_map_t *); /**< CoE mapping state function */
@@ -66,7 +66,7 @@ struct ec_fsm_coe_map
     uint8_t sync_subindices; /**< number of mapped PDOs */
     uint16_t sync_subindex; /**< current subindex in mapping SDO */
 
-    struct list_head pdos; /**< list of mapped PDOs */
+    ec_pdo_mapping_t mapping; /**< Mapping to apply. */
     ec_pdo_t *pdo; /**< current PDO */
     ec_sdo_t *pdo_sdo; /**< current PDO SDO */
     uint8_t pdo_subindices; /**< number of PDO entries */

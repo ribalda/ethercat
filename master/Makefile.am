@@ -39,7 +39,7 @@ EXTRA_DIST = \
 	device.c device.h \
 	pdo.c pdo.h \
 	sync.c sync.h \
-	fmmu.c fmmu.h \
+	fmmu_config.c fmmu_config.h \
 	domain.c domain.h \
 	doxygen.c \
 	ethernet.c ethernet.h \
@@ -55,6 +55,8 @@ EXTRA_DIST = \
 	master.c master.h \
 	module.c \
 	slave.c slave.h \
+	slave_config.c slave_config.h \
+	pdo_mapping.c pdo_mapping.h \
 	xmldev.c xmldev.h
 
 modules:

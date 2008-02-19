@@ -50,21 +50,12 @@
 #include "datagram.h"
 #include "pdo.h"
 #include "sync.h"
-#include "fmmu.h"
 
 /*****************************************************************************/
 
-/** maximum number of FMMUs per slave */
-#define EC_MAX_FMMUS 16
-
-/*****************************************************************************/
-
-/**
- * State of an EtherCAT slave.
+/** State of an EtherCAT slave.
  */
-
-typedef enum
-{
+typedef enum {
     EC_SLAVE_STATE_UNKNOWN = 0x00,
     /**< unknown state */
     EC_SLAVE_STATE_INIT = 0x01,
@@ -77,29 +68,22 @@ typedef enum
     /**< OP (mailbox communication and input/output update) */
     EC_SLAVE_STATE_ACK_ERR = 0x10
     /**< Acknowledge/Error bit (no actual state) */
-}
-ec_slave_state_t;
+} ec_slave_state_t;
 
 /*****************************************************************************/
 
-/**
- * EtherCAT slave online state.
+/** EtherCAT slave online state.
  */
-
 typedef enum {
     EC_SLAVE_OFFLINE,
     EC_SLAVE_ONLINE
-}
-ec_slave_online_state_t;
+} ec_slave_online_state_t;
 
 /*****************************************************************************/
 
-/**
- * Supported mailbox protocols.
+/** Supported mailbox protocols.
  */
-
-enum
-{
+enum {
     EC_MBOX_AOE = 0x01, /**< ADS-over-EtherCAT */
     EC_MBOX_EOE = 0x02, /**< Ethernet-over-EtherCAT */
     EC_MBOX_COE = 0x04, /**< CANopen-over-EtherCAT */
@@ -110,26 +94,25 @@ enum
 
 /*****************************************************************************/
 
-/**
- * EtherCAT slave.
+/** EtherCAT slave.
  */
-
 struct ec_slave
 {
     struct list_head list; /**< list item */
     struct kobject kobj; /**< kobject */
     ec_master_t *master; /**< master owning the slave */
 
-    ec_slave_state_t requested_state; /**< requested application state */
-    ec_slave_state_t current_state; /**< current application state */
-    ec_slave_online_state_t online_state; /**< online state */
-    unsigned int self_configured; /**< slave was configured by this master */
-    unsigned int error_flag; /**< stop processing after an error */
-    unsigned int pdos_registered; /**< non-zero, if PDOs were registered */
-
     // addresses
     uint16_t ring_position; /**< ring position */
     uint16_t station_address; /**< configured station address */
+
+    // configuration
+    ec_slave_config_t *config; /**< Current configuration. */
+    ec_slave_state_t requested_state; /**< Requested application state. */
+    ec_slave_state_t current_state; /**< Current application state. */
+    ec_slave_online_state_t online_state; /**< online state */
+    unsigned int self_configured; /**< Slave was configured by this master. */
+    unsigned int error_flag; /**< Stop processing after an error. */
 
     // base data
     uint8_t base_type; /**< slave type */
@@ -169,12 +152,8 @@ struct ec_slave
     char *sii_name; /**< slave name acc. to EEPROM */
     int16_t sii_current_on_ebus; /**< power consumption */
 
-    ec_fmmu_t fmmus[EC_MAX_FMMUS]; /**< FMMU configurations */
-    uint8_t fmmu_count; /**< number of FMMUs used */
-
     struct kobject sdo_kobj; /**< kobject for SDOs */
     struct list_head sdo_dictionary; /**< SDO dictionary list */
-    struct list_head sdo_confs; /**< list of SDO configurations */
     uint8_t sdo_dictionary_fetched; /**< dictionary has been fetched */
     unsigned long jiffies_preop; /**< time, the slave went to PREOP */
 
@@ -187,11 +166,6 @@ struct ec_slave
 int ec_slave_init(ec_slave_t *, ec_master_t *, uint16_t, uint16_t);
 void ec_slave_destroy(ec_slave_t *);
 
-void ec_slave_reset(ec_slave_t *);
-
-int ec_slave_prepare_fmmu(ec_slave_t *, const ec_domain_t *,
-        const ec_sync_t *);
-
 void ec_slave_request_state(ec_slave_t *, ec_slave_state_t);
 void ec_slave_set_state(ec_slave_t *, ec_slave_state_t);
 void ec_slave_set_online_state(ec_slave_t *, ec_slave_online_state_t);
@@ -201,7 +175,7 @@ int ec_slave_fetch_sii_strings(ec_slave_t *, const uint8_t *, size_t);
 int ec_slave_fetch_sii_general(ec_slave_t *, const uint8_t *, size_t);
 int ec_slave_fetch_sii_syncs(ec_slave_t *, const uint8_t *, size_t);
 int ec_slave_fetch_sii_pdos(ec_slave_t *, const uint8_t *, size_t,
-        ec_pdo_type_t);
+        ec_direction_t);
 
 // misc.
 ec_sync_t *ec_slave_get_pdo_sync(ec_slave_t *, ec_direction_t); 

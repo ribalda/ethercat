@@ -205,7 +205,7 @@ void ec_fsm_master_state_broadcast(ec_fsm_master_t *fsm /**< master state machin
         fsm->topology_change_pending = 1;
         fsm->slaves_responding = datagram->working_counter;
 
-        EC_INFO("%i slave%s responding.\n",
+        EC_INFO("%u slave%s responding.\n",
                 fsm->slaves_responding,
                 fsm->slaves_responding == 1 ? "" : "s");
 
@@ -483,12 +483,11 @@ void ec_fsm_master_action_process_states(ec_fsm_master_t *fsm
     down(&master->config_sem);
     if (!master->allow_config) {
         up(&master->config_sem);
-    }
-    else {
+    } else {
         master->config_state = EC_REQUEST_IN_PROGRESS;
         fsm->config_error = 0;
         up(&master->config_sem);
-        
+
         // check for pending slave configurations
         if (ec_fsm_master_action_configure(fsm))
             return;
@@ -910,6 +909,9 @@ void ec_fsm_master_state_scan_slaves(
 
     EC_INFO("Bus scanning completed in %u ms.\n",
             (u32) (jiffies - fsm->scan_jiffies) * 1000 / HZ);
+
+    // Attach slave configurations
+    ec_master_attach_slave_configs(master);
 
 #ifdef EC_EOE
     // check if EoE processing has to be started

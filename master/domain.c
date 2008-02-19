@@ -41,29 +41,14 @@
 #include <linux/module.h>
 
 #include "globals.h"
-#include "domain.h"
 #include "master.h"
+#include "slave_config.h"
 
-/*****************************************************************************/
-
-/**
-   Data registration type.
-*/
-
-typedef struct
-{
-    struct list_head list; /**< list item */
-    ec_slave_t *slave; /**< slave */
-    const ec_sync_t *sync; /**< sync manager */
-    off_t sync_offset; /**< pdo offset */
-    void **data_ptr; /**< pointer to process data pointer(s) */
-}
-ec_data_reg_t;
+#include "domain.h"
 
 /*****************************************************************************/
 
 void ec_domain_clear(struct kobject *);
-void ec_domain_clear_data_regs(ec_domain_t *);
 ssize_t ec_show_domain_attribute(struct kobject *, struct attribute *, char *);
 
 /*****************************************************************************/
@@ -92,25 +77,24 @@ static struct kobj_type ktype_ec_domain = {
 
 /*****************************************************************************/
 
-/**
-   Domain constructor.
-   \return 0 in case of success, else < 0
-*/
-
-int ec_domain_init(ec_domain_t *domain, /**< EtherCAT domain */
-                   ec_master_t *master, /**< owning master */
-                   unsigned int index /**< domain index */
-                   )
+/** Domain constructor.
+ *
+ * \return 0 in case of success, else < 0
+ */
+int ec_domain_init(
+        ec_domain_t *domain, /**< EtherCAT domain. */
+        ec_master_t *master, /**< Parent master. */
+        unsigned int index /**< Index. */
+        )
 {
     domain->master = master;
     domain->index = index;
     domain->data_size = 0;
     domain->base_address = 0;
-    domain->response_count = 0xFFFFFFFF;
+    domain->working_counter = 0xFFFFFFFF;
     domain->notify_jiffies = 0;
     domain->working_counter_changes = 0;
 
-    INIT_LIST_HEAD(&domain->data_regs);
     INIT_LIST_HEAD(&domain->datagrams);
 
     // init kobject and add it to the hierarchy
@@ -164,8 +148,8 @@ void ec_domain_destroy(ec_domain_t *domain /**< EtherCAT domain */)
 
 void ec_domain_clear(struct kobject *kobj /**< kobject of the domain */)
 {
-    ec_datagram_t *datagram, *next;
     ec_domain_t *domain;
+    ec_datagram_t *datagram, *next;
 
     domain = container_of(kobj, ec_domain_t, kobj);
 
@@ -174,90 +158,20 @@ void ec_domain_clear(struct kobject *kobj /**< kobject of the domain */)
         kfree(datagram);
     }
 
-    ec_domain_clear_data_regs(domain);
-
     kfree(domain);
 }
 
 /*****************************************************************************/
 
-/**
- * Registers a PDO entry.
+/** Allocates a domain datagram and appends it to the list.
+ *
  * \return 0 in case of success, else < 0
  */
-
-int ec_domain_reg_pdo_entry(
-        ec_domain_t *domain, /**< EtherCAT domain */
-        ec_sync_t *sync, /**< sync manager */
-        const ec_pdo_entry_t *entry, /**< PDO entry to register */
-        void **data_ptr /**< pointer to the process data pointer */
+int ec_domain_add_datagram(
+        ec_domain_t *domain, /**< EtherCAT domain. */
+        uint32_t offset, /**< Logical offset. */
+        size_t data_size /**< Size of the data. */
         )
-{
-    ec_data_reg_t *data_reg;
-    const ec_pdo_t *other_pdo;
-    const ec_pdo_entry_t *other_entry;
-    unsigned int bit_offset, byte_offset;
-
-    // Calculate offset (in sync manager) for process data pointer
-    bit_offset = 0;
-    list_for_each_entry(other_pdo, &sync->pdos, list) {
-        list_for_each_entry(other_entry, &other_pdo->entries, list) {
-            if (other_entry == entry)
-                goto out;
-            bit_offset += other_entry->bit_length;
-        }
-    }
-out:
-    byte_offset = bit_offset / 8;
-
-    // Allocate memory for data registration object
-    if (!(data_reg =
-          (ec_data_reg_t *) kmalloc(sizeof(ec_data_reg_t), GFP_KERNEL))) {
-        EC_ERR("Failed to allocate data registration.\n");
-        return -1;
-    }
-
-    if (ec_slave_prepare_fmmu(sync->slave, domain, sync)) {
-        EC_ERR("FMMU configuration failed.\n");
-        kfree(data_reg);
-        return -1;
-    }
-
-    data_reg->slave = sync->slave;
-    data_reg->sync = sync;
-    data_reg->sync_offset = byte_offset;
-    data_reg->data_ptr = data_ptr;
-    list_add_tail(&data_reg->list, &domain->data_regs);
-    return 0;
-}
-
-/*****************************************************************************/
-
-/**
-   Clears the list of the data registrations.
-*/
-
-void ec_domain_clear_data_regs(ec_domain_t *domain /**< EtherCAT domain */)
-{
-    ec_data_reg_t *data_reg, *next;
-
-    list_for_each_entry_safe(data_reg, next, &domain->data_regs, list) {
-        list_del(&data_reg->list);
-        kfree(data_reg);
-    }
-}
-
-/*****************************************************************************/
-
-/**
-   Allocates a process data datagram and appends it to the list.
-   \return 0 in case of success, else < 0
-*/
-
-int ec_domain_add_datagram(ec_domain_t *domain, /**< EtherCAT domain */
-                           uint32_t offset, /**< logical offset */
-                           size_t data_size /**< size of the datagram data */
-                           )
 {
     ec_datagram_t *datagram;
 
@@ -281,50 +195,47 @@ int ec_domain_add_datagram(ec_domain_t *domain, /**< EtherCAT domain */
 
 /*****************************************************************************/
 
-/**
-   Creates a domain.
-   Reserves domain memory, calculates the logical addresses of the
-   corresponding FMMUs and sets the process data pointer of the registered
-   process data.
-   \return 0 in case of success, else < 0
-*/
-
-int ec_domain_alloc(ec_domain_t *domain, /**< EtherCAT domain */
-                    uint32_t base_address /**< logical base address */
-                    )
+/** Finishes a domain.
+ *
+ * This allocates the necessary datagrams and writes the correct logical
+ * addresses to every configured FMMU.
+ *
+ * \retval 0 in case of success
+ * \retval <0 on failure.
+ */
+int ec_domain_finish(
+        ec_domain_t *domain, /**< EtherCAT domain. */
+        uint32_t base_address /**< Logical base address. */
+        )
 {
-    ec_data_reg_t *data_reg;
-    ec_slave_t *slave;
-    ec_fmmu_t *fmmu;
-    unsigned int i, j, datagram_count;
-    uint32_t pdo_off, pdo_off_datagram;
-    uint32_t datagram_offset, log_addr;
-    size_t datagram_data_size, sync_size;
-    ec_datagram_t *datagram;
+    uint32_t datagram_offset;
+    size_t datagram_data_size;
+    unsigned int datagram_count, i;
+    ec_slave_config_t *sc;
+    ec_fmmu_config_t *fmmu;
 
     domain->base_address = base_address;
 
-    // calculate size of process data and allocate memory
-    domain->data_size = 0;
+    // Cycle through all domain FMMUS, add the logical base address and assign
+    // as many PDO entries as possible to the datagrams.
     datagram_offset = base_address;
     datagram_data_size = 0;
     datagram_count = 0;
-    list_for_each_entry(slave, &domain->master->slaves, list) {
-        for (j = 0; j < slave->fmmu_count; j++) {
-            fmmu = &slave->fmmus[j];
-            if (fmmu->domain == domain) {
-                fmmu->logical_start_address = base_address + domain->data_size;
-                sync_size = ec_sync_size(fmmu->sync);
-                domain->data_size += sync_size;
-                if (datagram_data_size + sync_size > EC_MAX_DATA_SIZE) {
-                    if (ec_domain_add_datagram(domain, datagram_offset,
-                                               datagram_data_size)) return -1;
-                    datagram_offset += datagram_data_size;
-                    datagram_data_size = 0;
-                    datagram_count++;
-                }
-                datagram_data_size += sync_size;
+    list_for_each_entry(sc, &domain->master->configs, list) {
+        for (i = 0; i < sc->used_fmmus; i++) {
+            fmmu = &sc->fmmu_configs[i];
+            if (fmmu->domain != domain)
+                continue;
+
+            fmmu->logical_start_address += base_address;
+            if (datagram_data_size + fmmu->data_size > EC_MAX_DATA_SIZE) {
+                if (ec_domain_add_datagram(domain, datagram_offset,
+                            datagram_data_size)) return -1;
+                datagram_offset += datagram_data_size;
+                datagram_data_size = 0;
+                datagram_count++;
             }
+            datagram_data_size += fmmu->data_size;
         }
     }
 
@@ -336,41 +247,9 @@ int ec_domain_alloc(ec_domain_t *domain, /**< EtherCAT domain */
         datagram_count++;
     }
 
-    if (datagram_count) {
-        // set all process data pointers
-        list_for_each_entry(data_reg, &domain->data_regs, list) {
-            for (i = 0; i < data_reg->slave->fmmu_count; i++) {
-                fmmu = &data_reg->slave->fmmus[i];
-                if (fmmu->domain == domain && fmmu->sync == data_reg->sync) {
-                    pdo_off =
-                        fmmu->logical_start_address + data_reg->sync_offset;
-                    // search datagram
-                    list_for_each_entry(datagram, &domain->datagrams, list) {
-                        log_addr = EC_READ_U32(datagram->address);
-                        pdo_off_datagram = pdo_off - log_addr;
-                        if (pdo_off >= log_addr &&
-                                pdo_off_datagram < datagram->mem_size) {
-                            *data_reg->data_ptr = datagram->data +
-                                pdo_off_datagram;
-                        }
-                    }
-                    if (!data_reg->data_ptr) {
-                        EC_ERR("Failed to assign data pointer!\n");
-                        return -1;
-                    }
-                    break;
-                }
-            }
-        }
-
-        EC_INFO("Domain %u - Allocated %u bytes in %u datagram%s.\n",
-                domain->index, domain->data_size, datagram_count,
-                datagram_count == 1 ? "" : "s");
-    } else { // !datagram_count
-        EC_WARN("Domain %u contains no data!\n", domain->index);
-    }
-
-    ec_domain_clear_data_regs(domain);
+    EC_INFO("Domain %u with logical offset %u contains %u bytes in %u"
+            " datagram%s.\n", domain->index, domain->base_address,
+            domain->data_size, datagram_count, datagram_count == 1 ? "" : "s");
     return 0;
 }
 
@@ -399,72 +278,31 @@ ssize_t ec_show_domain_attribute(struct kobject *kobj, /**< kobject */
  *  Realtime interface
  *****************************************************************************/
 
-/**
- * Registers a PDO for a domain.
- * \return 0 on success, else non-zero
- * \ingroup RealtimeInterface
- */
-
-int ecrt_domain_register_pdo(
-        ec_domain_t *domain, /**< EtherCAT domain */
-        ec_slave_t *slave, /**< EtherCAT slave */
-        uint16_t pdo_entry_index, /**< PDO entry index */
-        uint8_t pdo_entry_subindex, /**< PDO entry subindex */
-        void **data_ptr /**< address of the process data pointer */
-        )
+int ecrt_domain_reg_pdo_entry(ec_domain_t *domain, ec_slave_config_t *sc,
+        uint16_t index, uint8_t subindex)
 {
-    ec_sync_t *sync;
-    const ec_pdo_t *pdo;
-    const ec_pdo_entry_t *entry;
-    unsigned int i;
-
-    // search for PDO entry
-    for (i = 0; i < slave->sii_sync_count; i++) {
-        sync = &slave->sii_syncs[i];
-        list_for_each_entry(pdo, &sync->pdos, list) {
-            list_for_each_entry(entry, &pdo->entries, list) {
-                if (entry->index != pdo_entry_index ||
-                        entry->subindex != pdo_entry_subindex) continue;
-                // PDO entry found
-                if (ec_domain_reg_pdo_entry(domain, sync, entry, data_ptr)) {
-                    return -1;
-                }
-                return 0;
-            }
-        }
-    }
-
-    EC_ERR("PDO entry 0x%04X:%u is not mapped in slave %u.\n",
-           pdo_entry_index, pdo_entry_subindex, slave->ring_position);
-    return -1;
+    return ec_slave_config_reg_pdo_entry(sc, domain, index, subindex);
 }
 
 /*****************************************************************************/
 
-/**
- * Registers a bunch of data fields.
- * \attention The list has to be terminated with a NULL structure ({})!
- * \return 0 in case of success, else < 0
- * \ingroup RealtimeInterface
- */
-
-int ecrt_domain_register_pdo_list(
-        ec_domain_t *domain, /**< EtherCAT domain */
-        const ec_pdo_reg_t *pdo_regs /**< array of PDO registrations */
-        )
+int ecrt_domain_reg_pdo_entry_list(ec_domain_t *domain,
+        const ec_pdo_entry_reg_t *regs)
 {
-    const ec_pdo_reg_t *reg;
-    ec_slave_t *slave;
+    const ec_pdo_entry_reg_t *reg;
+    ec_slave_config_t *sc;
+    int ret;
     
-    for (reg = pdo_regs; reg->slave_address; reg++) {
-        if (!(slave = ecrt_master_get_slave(domain->master,
-                        reg->slave_address, reg->vendor_id,
-                        reg->product_code)))
+    for (reg = regs; reg->index; reg++) {
+        if (!(sc = ecrt_master_slave_config(domain->master, reg->alias,
+                        reg->position, reg->vendor_id, reg->product_code)))
             return -1;
 
-        if (ecrt_domain_register_pdo(domain, slave, reg->pdo_entry_index,
-                    reg->pdo_entry_subindex, reg->data_ptr))
+        if ((ret = ecrt_domain_reg_pdo_entry(domain, sc, reg->index,
+                        reg->subindex)) < 0)
             return -1;
+
+        *reg->offset = ret;
     }
 
     return 0;
@@ -472,70 +310,7 @@ int ecrt_domain_register_pdo_list(
 
 /*****************************************************************************/
 
-/**
- * Registers a PDO range in a domain.
- * \return 0 on success, else non-zero
- * \ingroup RealtimeInterface
- */
-
-int ecrt_domain_register_pdo_range(
-        ec_domain_t *domain, /**< EtherCAT domain */
-        ec_slave_t *slave, /**< EtherCAT slave */
-        ec_direction_t dir, /**< data direction */
-        uint16_t offset, /**< offset in slave's PDO range */
-        uint16_t length, /**< length of this range */
-        void **data_ptr /**< address of the process data pointer */
-        )
-{
-    ec_data_reg_t *data_reg;
-    ec_sync_t *sync;
-    uint16_t sync_length;
-
-    if (!(sync = ec_slave_get_pdo_sync(slave, dir))) {
-        EC_ERR("No sync manager found for PDO range.\n");
-        return -1;
-    }
-
-    // Allocate memory for data registration object
-    if (!(data_reg =
-          (ec_data_reg_t *) kmalloc(sizeof(ec_data_reg_t), GFP_KERNEL))) {
-        EC_ERR("Failed to allocate data registration.\n");
-        return -1;
-    }
-
-    if (ec_slave_prepare_fmmu(slave, domain, sync)) {
-        EC_ERR("FMMU configuration failed.\n");
-        kfree(data_reg);
-        return -1;
-    }
-
-    data_reg->slave = slave;
-    data_reg->sync = sync;
-    data_reg->sync_offset = offset;
-    data_reg->data_ptr = data_ptr;
-
-    // estimate sync manager length
-    sync_length = offset + length;
-    if (sync->est_length < sync_length) {
-        sync->est_length = sync_length;
-        if (domain->master->debug_level) {
-            EC_DBG("Estimating length of sync manager %u of slave %u to %u.\n",
-                   sync->index, slave->ring_position, sync_length);
-        }
-    }
-
-    list_add_tail(&data_reg->list, &domain->data_regs);
-    return 0;
-}
-
-/*****************************************************************************/
-
-/**
-   Processes received process data and requeues the domain datagram(s).
-   \ingroup RealtimeInterface
-*/
-
-void ecrt_domain_process(ec_domain_t *domain /**< EtherCAT domain */)
+void ecrt_domain_process(ec_domain_t *domain)
 {
     unsigned int working_counter_sum;
     ec_datagram_t *datagram;
@@ -552,9 +327,9 @@ void ecrt_domain_process(ec_domain_t *domain /**< EtherCAT domain */)
         }
     }
 
-    if (working_counter_sum != domain->response_count) {
+    if (working_counter_sum != domain->working_counter) {
         domain->working_counter_changes++;
-        domain->response_count = working_counter_sum;
+        domain->working_counter = working_counter_sum;
     }
 
     if (domain->working_counter_changes &&
@@ -562,12 +337,12 @@ void ecrt_domain_process(ec_domain_t *domain /**< EtherCAT domain */)
         domain->notify_jiffies = jiffies;
         if (domain->working_counter_changes == 1) {
             EC_INFO("Domain %u working counter change: %u\n", domain->index,
-                    domain->response_count);
+                    domain->working_counter);
         }
         else {
-            EC_INFO("Domain %u: %u WC changes. Current response count: %u\n",
+            EC_INFO("Domain %u: %u working counter changes. Currently %u\n",
                     domain->index, domain->working_counter_changes,
-                    domain->response_count);
+                    domain->working_counter);
         }
         domain->working_counter_changes = 0;
     }
@@ -575,12 +350,7 @@ void ecrt_domain_process(ec_domain_t *domain /**< EtherCAT domain */)
 
 /*****************************************************************************/
 
-/**
-   Places all process data datagrams in the masters datagram queue.
-   \ingroup RealtimeInterface
-*/
-
-void ecrt_domain_queue(ec_domain_t *domain /**< EtherCAT domain */)
+void ecrt_domain_queue(ec_domain_t *domain)
 {
     ec_datagram_t *datagram;
 
@@ -591,24 +361,20 @@ void ecrt_domain_queue(ec_domain_t *domain /**< EtherCAT domain */)
 
 /*****************************************************************************/
 
-/**
-   Returns the state of a domain.
-   \return 0 if all datagrams were received, else -1.
-   \ingroup RealtimeInterface
-*/
-
-int ecrt_domain_state(const ec_domain_t *domain /**< EtherCAT domain */)
+void ecrt_domain_state(const ec_domain_t *domain, ec_domain_state_t *state)
 {
-    return domain->state;
+    state->working_counter = domain->working_counter;
+    state->wc_state = EC_WC_ZERO; // FIXME
 }
 
 /*****************************************************************************/
 
 /** \cond */
 
-EXPORT_SYMBOL(ecrt_domain_register_pdo);
-EXPORT_SYMBOL(ecrt_domain_register_pdo_list);
-EXPORT_SYMBOL(ecrt_domain_register_pdo_range);
+EXPORT_SYMBOL(ecrt_domain_reg_pdo_entry);
+EXPORT_SYMBOL(ecrt_domain_reg_pdo_entry_list);
+//EXPORT_SYMBOL(ecrt_domain_size);
+//EXPORT_SYMBOL(ecrt_domain_memory);
 EXPORT_SYMBOL(ecrt_domain_process);
 EXPORT_SYMBOL(ecrt_domain_queue);
 EXPORT_SYMBOL(ecrt_domain_state);

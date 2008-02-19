@@ -31,10 +31,9 @@
  *
  *****************************************************************************/
 
-/**
-   \file
-   EtherCAT sync manager methods.
-*/
+/** \file
+ * EtherCAT sync manager methods.
+ */
 
 /*****************************************************************************/
 
@@ -46,93 +45,52 @@
 
 /*****************************************************************************/
 
-/**
- * Constructor.
+/** Constructor.
  */
-
 void ec_sync_init(
-        ec_sync_t *sync, /**< EtherCAT sync manager */
-        ec_slave_t *slave, /**< EtherCAT slave */
-        unsigned int index /**< sync manager index */
+        ec_sync_t *sync, /**< EtherCAT sync manager. */
+        ec_slave_t *slave, /**< EtherCAT slave. */
+        unsigned int index /**< Sync manager index. */
         )
 {
     sync->slave = slave;
     sync->index = index;    
 
-    sync->est_length = 0;
-    INIT_LIST_HEAD(&sync->pdos);
-    sync->alt_mapping = 0;
+    ec_pdo_mapping_init(&sync->mapping);
     sync->mapping_source = EC_SYNC_MAPPING_NONE;
 }
 
 /*****************************************************************************/
 
-/**
- * Destructor.
+/** Destructor.
  */
-
 void ec_sync_clear(
-        ec_sync_t *sync /**< EtherCAT sync manager */
+        ec_sync_t *sync /**< EtherCAT sync manager. */
         )
 {
-    ec_sync_clear_pdos(sync);
+    ec_pdo_mapping_clear(&sync->mapping);
 }
 
 /*****************************************************************************/
 
-/**
- * Calculates the size of a sync manager by evaluating PDO sizes.
- * \return sync manager size
+/** Initializes a sync manager configuration page with EEPROM data.
+ *
+ * The referenced memory (\a data) must be at least \a EC_SYNC_SIZE bytes.
  */
-
-uint16_t ec_sync_size(
-        const ec_sync_t *sync /**< sync manager */
-        )
-{
-    const ec_pdo_t *pdo;
-    const ec_pdo_entry_t *pdo_entry;
-    unsigned int bit_size, byte_size;
-
-    if (sync->length) return sync->length;
-    if (sync->est_length) return sync->est_length;
-
-    bit_size = 0;
-    list_for_each_entry(pdo, &sync->pdos, list) {
-        list_for_each_entry(pdo_entry, &pdo->entries, list) {
-            bit_size += pdo_entry->bit_length;
-        }
-    }
-
-    if (bit_size % 8) // round up to full bytes
-        byte_size = bit_size / 8 + 1;
-    else
-        byte_size = bit_size / 8;
-
-    return byte_size;
-}
-
-/*****************************************************************************/
-
-/**
-   Initializes a sync manager configuration page with EEPROM data.
-   The referenced memory (\a data) must be at least EC_SYNC_SIZE bytes.
-*/
-
 void ec_sync_config(
-        const ec_sync_t *sync, /**< sync manager */
-        uint8_t *data /**> configuration memory */
+        const ec_sync_t *sync, /**< Sync manager. */
+        uint16_t data_size, /**< Data size. */
+        uint8_t *data /**> Configuration memory. */
         )
 {
-    size_t sync_size = ec_sync_size(sync);
-
     if (sync->slave->master->debug_level) {
         EC_DBG("SM%i: Addr 0x%04X, Size %3i, Ctrl 0x%02X, En %i\n",
                sync->index, sync->physical_start_address,
-               sync_size, sync->control_register, sync->enable);
+               data_size, sync->control_register, sync->enable);
     }
 
     EC_WRITE_U16(data,     sync->physical_start_address);
-    EC_WRITE_U16(data + 2, sync_size);
+    EC_WRITE_U16(data + 2, data_size);
     EC_WRITE_U8 (data + 4, sync->control_register);
     EC_WRITE_U8 (data + 5, 0x00); // status byte (read only)
     EC_WRITE_U16(data + 6, sync->enable ? 0x0001 : 0x0000); // enable
@@ -140,72 +98,26 @@ void ec_sync_config(
 
 /*****************************************************************************/
 
-/**
- * Adds a PDO to the list of known mapped PDOs.
+/** Adds a PDO to the list of known mapped PDOs.
+ *
  * \return 0 on success, else < 0
  */
-
 int ec_sync_add_pdo(
-        ec_sync_t *sync, /**< EtherCAT sync manager */
-        const ec_pdo_t *pdo /**< PDO to map */
+        ec_sync_t *sync, /**< EtherCAT sync manager. */
+        const ec_pdo_t *pdo /**< PDO to map. */
         )
 {
-    ec_pdo_t *mapped_pdo;
-
-    // PDO already mapped?
-    list_for_each_entry(mapped_pdo, &sync->pdos, list) {
-        if (mapped_pdo->index != pdo->index) continue;
-        EC_ERR("PDO 0x%04X is already mapped!\n", pdo->index);
-        return -1;
-    }
-    
-    if (!(mapped_pdo = kmalloc(sizeof(ec_pdo_t), GFP_KERNEL))) {
-        EC_ERR("Failed to allocate memory for PDO mapping.\n");
-        return -1;
-    }
-
-    ec_pdo_init(mapped_pdo);
-    if (ec_pdo_copy(mapped_pdo, pdo)) {
-        ec_pdo_clear(mapped_pdo);
-        kfree(mapped_pdo);
-        return -1;
-    }
-
-    // set appropriate sync manager index
-    mapped_pdo->sync_index = sync->index;
-
-    list_add_tail(&mapped_pdo->list, &sync->pdos);
-    return 0;
+    return ec_pdo_mapping_add_pdo(&sync->mapping, pdo);
 }
 
 /*****************************************************************************/
 
-/**
- * Clears the list of known mapped PDOs.
+/** Get direction covered by sync manager.
+ *
+ * \return Direction covered by the given sync manager.
  */
-
-void ec_sync_clear_pdos(
-        ec_sync_t *sync /**< EtherCAT sync manager */
-        )
-{
-    ec_pdo_t *pdo, *next;
-
-    // free all mapped PDOs
-    list_for_each_entry_safe(pdo, next, &sync->pdos, list) {
-        list_del(&pdo->list);
-        ec_pdo_clear(pdo);
-        kfree(pdo);
-    }
-}
-
-/*****************************************************************************/
-
-/**
- * \return Type of PDOs covered by the given sync manager.
- */
-
-ec_pdo_type_t ec_sync_get_pdo_type(
-        const ec_sync_t *sync /**< EtherCAT sync manager */
+ec_direction_t ec_sync_direction(
+        const ec_sync_t *sync /**< EtherCAT sync manager. */
         )
 {
     int index = sync->index;
@@ -215,11 +127,11 @@ ec_pdo_type_t ec_sync_get_pdo_type(
     }
 
     if (index < 0 || index > 1) {
-        EC_WARN("ec_sync_get_pdo_type(): invalid sync manager index.\n");
-        return EC_RX_PDO;
+        EC_WARN("ec_sync_get_direction(): invalid sync manager index.\n");
+        return EC_DIR_OUTPUT;
     }
 
-    return (ec_pdo_type_t) index;
+    return (ec_direction_t) index;
 }
 
 /*****************************************************************************/

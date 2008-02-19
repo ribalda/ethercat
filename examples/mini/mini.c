@@ -44,6 +44,8 @@
 #define FREQUENCY 100
 
 //#define KBUS
+#define PDOS
+#define MAPPING
 
 /*****************************************************************************/
 
@@ -53,7 +55,7 @@ static struct timer_list timer;
 static ec_master_t *master = NULL;
 static ec_domain_t *domain1 = NULL;
 spinlock_t master_lock = SPIN_LOCK_UNLOCKED;
-static ec_master_status_t master_status, old_status = {};
+static ec_master_state_t master_state, old_state = {};
 
 // data fields
 #ifdef KBUS
@@ -61,17 +63,20 @@ static void *r_inputs;
 static void *r_outputs;
 #endif
 
-static void *r_dig_out;
-static void *r_ana_out;
-static void *r_count;
-static void *r_freq;
+#ifdef MAPPING
+const ec_pdo_info_t mapping[] = {
+    {EC_DIR_INPUT, 0x1A00}, // channel 1
+    {EC_DIR_INPUT, 0x1A01} // channel 2
+};
+#endif
 
-#if 1
-const static ec_pdo_reg_t domain1_pdo_regs[] = {
-    {"2",      Beckhoff_EL2004_Outputs,   &r_dig_out},
-    {"3",      Beckhoff_EL4132_Output1,   &r_ana_out},
-    {"#888:1", Beckhoff_EL5101_Value,     &r_count},
-    {"4",      Beckhoff_EL5101_Frequency, &r_freq},
+#ifdef PDOS
+static uint8_t off_ana_in;
+static uint8_t off_ana_out;
+
+const static ec_pdo_entry_reg_t domain1_regs[] = {
+    {0, 1, Beckhoff_EL3162, 0x3101, 2, &off_ana_in},
+    {0, 2, Beckhoff_EL4102, 0x3001, 1, &off_ana_out},
     {}
 };
 #endif
@@ -91,7 +96,7 @@ void run(unsigned long data)
 
     // process data
     // k_pos = EC_READ_U32(r_ssi);
-    EC_WRITE_U8(r_dig_out, blink ? 0x0F : 0x00);
+    //EC_WRITE_U8(r_dig_out, blink ? 0x0F : 0x00);
 
     if (counter) {
         counter--;
@@ -101,24 +106,24 @@ void run(unsigned long data)
         blink = !blink;
 
         spin_lock(&master_lock);
-        ecrt_master_get_status(master, &master_status);
+        ecrt_master_state(master, &master_state);
         spin_unlock(&master_lock);
 
-        if (master_status.bus_status != old_status.bus_status) {
-            printk(KERN_INFO PFX "bus status changed to %i.\n",
-                    master_status.bus_status);
+        if (master_state.bus_state != old_state.bus_state) {
+            printk(KERN_INFO PFX "bus state changed to %i.\n",
+                    master_state.bus_state);
         }
-        if (master_status.bus_tainted != old_status.bus_tainted) {
+        if (master_state.bus_tainted != old_state.bus_tainted) {
             printk(KERN_INFO PFX "tainted flag changed to %u.\n",
-                    master_status.bus_tainted);
+                    master_state.bus_tainted);
         }
-        if (master_status.slaves_responding !=
-                old_status.slaves_responding) {
+        if (master_state.slaves_responding !=
+                old_state.slaves_responding) {
             printk(KERN_INFO PFX "slaves_responding changed to %u.\n",
-                    master_status.slaves_responding);
+                    master_state.slaves_responding);
         }
        
-        old_status = master_status;
+        old_state = master_state;
     }
 
 #ifdef KBUS
@@ -158,10 +163,10 @@ void release_lock(void *data)
 
 int __init init_mini_module(void)
 {
-#if 1
-    ec_slave_t *slave;
+#ifdef MAPPING
+    ec_slave_config_t *sc;
 #endif
-
+    
     printk(KERN_INFO PFX "Starting...\n");
 
     if (!(master = ecrt_request_master(0))) {
@@ -177,49 +182,25 @@ int __init init_mini_module(void)
         goto out_release_master;
     }
 
-#if 1
-    printk(KERN_INFO PFX "Configuring alternative PDO mapping...\n");
-    if (!(slave = ecrt_master_get_slave(master, "4", Beckhoff_EL5101)))
+#ifdef MAPPING
+    printk(KERN_INFO PFX "Configuring Pdo mapping...\n");
+    if (!(sc = ecrt_master_slave_config(master, 0, 1, Beckhoff_EL3162))) {
+        printk(KERN_ERR PFX "Failed to get slave configuration.\n");
         goto out_release_master;
+    }
 
-    if (ecrt_slave_pdo_mapping(slave, EC_DIR_INPUT, 2, 0x1A00, 0x1A02))
-        goto out_release_master;
-#endif
-
-    printk(KERN_INFO PFX "Registering PDOs...\n");
-#if 1
-    if (ecrt_domain_register_pdo_list(domain1, domain1_pdo_regs)) {
-        printk(KERN_ERR PFX "PDO registration failed!\n");
+    if (ecrt_slave_config_mapping(sc, 2, mapping)) {
+        printk(KERN_ERR PFX "Failed to configure Pdo mapping.\n");
         goto out_release_master;
     }
 #endif
 
-#ifdef KBUS
-    if (!(slave = ecrt_master_get_slave(master, "0", Beckhoff_BK1120)))
-        goto out_release_master;
-    
-    if (!ecrt_domain_register_pdo_range(
-                domain1, slave, EC_DIR_OUTPUT, 0, 4, &r_outputs)) {
-        printk(KERN_ERR PFX "PDO registration failed!\n");
+    printk(KERN_INFO PFX "Registering PDO entries...\n");
+#ifdef PDOS
+    if (ecrt_domain_reg_pdo_entry_list(domain1, domain1_regs)) {
+        printk(KERN_ERR PFX "PDO entry registration failed!\n");
         goto out_release_master;
     }
-    
-    if (!ecrt_domain_register_pdo_range(
-                domain1, slave, EC_DIR_INPUT, 0, 4, &r_inputs)) {
-        printk(KERN_ERR PFX "PDO registration failed!\n");
-        goto out_release_master;
-    }
-#endif
-
-#if 0
-    if (!(slave = ecrt_master_get_slave(master, "4", Beckhoff_EL5001)))
-        goto out_release_master;
-
-    if (ecrt_slave_conf_sdo8(slave, 0x4061, 1, 0))
-        goto out_release_master;
-#endif
-
-#if 1
 #endif
 
     printk(KERN_INFO PFX "Activating master...\n");

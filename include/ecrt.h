@@ -41,6 +41,44 @@
  * realtime modules that want to use EtherCAT. There are functions to request
  * a master, to map process data, to communicate with slaves via CoE and to
  * configure and activate the bus.
+ *
+ * Changes in Version 1.4:
+ *
+ * - Replaced ec_slave_t with ec_slave_config_t, separating the slave objects
+ *   from the requested bus configuration. Therefore, renamed
+ *   ecrt_master_get_slave() to ecrt_master_slave_config().
+ * - Replaced slave address string with alias and position values. See
+ *   ecrt_master_slave_config().
+ * - Removed ecrt_master_get_slave_by_pos(), because it is no longer
+ *   necessary (alias/position, slave configurations).
+ * - Added ec_slave_config_state_t for the new method
+ *   ecrt_slave_config_state().
+ * - Process data memory for a domain can now be allocated externally. This
+ *   offers the possibility to use a shared-memory-region. Therefore,
+ *   added the domain methods ecrt_domain_size() and ecrt_domain_memory().
+ * - Replaced the process data pointers in the Pdo entry registration
+ *   functions with a process data offset, that is now returned by
+ *   ecrt_domain_reg_pdo_entry(). This was necessary for the external
+ *   domain memory. An additional advantage is, that the returned offset value
+ *   is directly usable.
+ * - Replaced ecrt_slave_pdo_mapping/add/clear() with
+ *   ecrt_slave_config_mapping() that is now able to specify Pdo mapping and
+ *   Pdo configuration. Pdo entries mapped in this way can now immediately be
+ *   registered. The Pdo mapping and the configuration are described with the
+ *   new data types ec_pdo_info_t and ec_pdo_entry_info_t.
+ * - Renamed ec_bus_status_t, ec_master_status_t to ec_bus_state_t and
+ *   ec_master_state_t, respectively. Renamed ecrt_master_get_status() to
+ *   ecrt_master_state(), for consistency reasons.
+ * - Added ec_domain_state_t and ec_wc_state_t for a new output parameter
+ *   of ecrt_domain_state().
+ * - Former "Pdo registration" meant Pdo entry registration in fact, therefore
+ *   renamed ec_pdo_reg_t to ec_pdo_entry_reg_t and ecrt_domain_register_pdo()
+ *   to ecrt_domain_reg_pdo_entry().
+ * - Removed ecrt_domain_register_pdo_range(), because it's functionality can
+ *   be reached by specifying an explicit Pdo mapping and registering those
+ *   Pdo entries.
+ *
+ * @{
  */
 
 /*****************************************************************************/
@@ -83,127 +121,422 @@
 struct ec_master;
 typedef struct ec_master ec_master_t; /**< \see ec_master */
 
+struct ec_slave_config;
+typedef struct ec_slave_config ec_slave_config_t; /**< \see ec_slave_config */
+
 struct ec_domain;
 typedef struct ec_domain ec_domain_t; /**< \see ec_domain */
 
-struct ec_slave;
-typedef struct ec_slave ec_slave_t; /**< \see ec_slave */
-
 /*****************************************************************************/
 
-/** Bus status.
- * This is used in ec_master_status_t.
+/** Bus state.
+ *
+ * This is used in ec_master_state_t.
  */
 typedef enum {
-    EC_BUS_FAILURE = -1, /**< At least one slave with process data exchange
-                           is offline. */
-    EC_BUS_OK            /**< All slaves with process data exchange are
-                           online. */
-}
-ec_bus_status_t;
+    EC_BUS_FAILURE = -1, /**< At least one configured slave is offline. */
+    EC_BUS_OK            /**< All configured slaves are online. */
+} ec_bus_state_t;
 
 /*****************************************************************************/
 
-/** Master status.
- * This is used for the output parameter of ecrt_master_get_status().
+/** Master state.
+ *
+ * This is used for the output parameter of ecrt_master_state().
  */
 typedef struct {
-    ec_bus_status_t bus_status; /**< \see ec_bus_status_t */
-    unsigned int bus_tainted; /**< non-zero, if the bus topology is invalid */
-    unsigned int slaves_responding; /**< number of responding slaves */
-}
-ec_master_status_t;
+    ec_bus_state_t bus_state; /**< \see ec_bus_state_t */
+    unsigned int bus_tainted; /**< Non-zero, if the bus topology differs from
+                                the requested configuration. */
+    unsigned int slaves_responding; /**< Number of slaves in the bus. */
+} ec_master_state_t;
 
 /*****************************************************************************/
 
-/** List entry for domain PDO registrations.
- * This type is used as a parameter for the ecrt_domain_register_pdo_list()
- * convenience function.
+/** Slave configuration state.
+ *
+ * \see ecrt_slave_config_state().
  */
-typedef struct {
-    const char *slave_address; /**< slave address string
-                                 \see ec_master_parse_slave_address() */
-    uint32_t vendor_id; /**< vendor ID */
-    uint32_t product_code; /**< product code */
-    uint16_t pdo_entry_index; /**< PDO entry index */
-    uint8_t pdo_entry_subindex; /**< PDO entry subindex */
-    void **data_ptr; /**< address of the process data pointer */
-}
-ec_pdo_reg_t;
+typedef struct  {
+    unsigned int online : 1; /**< The slave is online. */
+    unsigned int configured : 1; /**< The slave was configured according to
+                                   the specified configuration. */
+} ec_slave_config_state_t;
 
 /*****************************************************************************/
 
-/** Direction type for PDO mapping and range registration functions.
+/** Domain working counter interpretation.
+ *
+ * This is used in ec_domain_state_t.
  */
 typedef enum {
-    EC_DIR_OUTPUT, /**< values written by master */
-    EC_DIR_INPUT   /**< values read by master */
-}
-ec_direction_t;
+    EC_WC_ZERO = 0,   /**< No Pdos were exchanged. */
+    EC_WC_INCOMPLETE, /**< Some of the registered Pdos were exchanged. */
+    EC_WC_COMPLETE    /**< All registered Pdos were exchanged. */
+} ec_wc_state_t;
+
+/*****************************************************************************/
+
+/** Domain state.
+ *
+ * This is used for the output parameter of ecrt_domain_state().
+ */
+typedef struct {
+    unsigned int working_counter; /**< Value of the last working counter. */
+    ec_wc_state_t wc_state; /**< Working counter interpretation. */
+} ec_domain_state_t;
+
+/*****************************************************************************/
+
+/** Direction type for Pdo mapping functions.
+ */
+typedef enum {
+    EC_DIR_OUTPUT, /**< Values written by the master. */
+    EC_DIR_INPUT   /**< Values read by the master. */
+} ec_direction_t;
+
+/*****************************************************************************/
+
+/** Pdo entry mapping.
+ *
+ * \see ecrt_slave_config_mapping().
+ */
+typedef struct {
+    uint16_t index; /**< Index of the Pdo entry to add to the Pdo
+                            configuration. */
+    uint8_t subindex; /**< Subindex of the Pdo entry to add to the
+                              Pdo configuration. */
+    uint8_t bit_length; /**< Size of the Pdo entry in bit. */
+} ec_pdo_entry_info_t;
+
+/*****************************************************************************/
+
+/** Pdo information.
+ *
+ * \see ecrt_slave_config_mapping().
+ */
+typedef struct {
+    ec_direction_t dir; /**< Pdo direction (input/output). */
+    uint16_t index; /**< Index of the Pdo to map. */
+    unsigned int n_entries; /**< Number of Pdo entries for the Pdo
+                              configuration. Zero means, that the default Pdo
+                              configuration shall be used. */
+    const ec_pdo_entry_info_t entries[]; /**< Pdo configuration list. */
+} ec_pdo_info_t;
+
+/*****************************************************************************/
+
+/** List record type for Pdo entry mass-registration.
+ *
+ * This type is used for the array parameter of the
+ * ecrt_domain_reg_pdo_entry_list() convenience function.
+ */
+typedef struct {
+    uint16_t alias; /**< Slave alias address. */
+    uint16_t position; /**< Slave position. */
+    uint32_t vendor_id; /**< Slave vendor ID. */
+    uint32_t product_code; /**< Slave product code. */
+    uint16_t index; /**< Pdo entry index. */
+    uint8_t subindex; /**< Pdo entry subindex. */
+    uint8_t *offset; /**< Pointer to a variable to store the Pdo's
+                       offset in the process data. */
+} ec_pdo_entry_reg_t;
 
 /******************************************************************************
  * Global functions
  *****************************************************************************/
 
-ec_master_t *ecrt_request_master(unsigned int master_index);
-void ecrt_release_master(ec_master_t *master);
-
+/** Returns the version magic of the realtime interface.
+ *
+ * \return Value of ECRT_VERSION_MAGIC() at EtherCAT master compile time.
+ */
 unsigned int ecrt_version_magic(void);
+
+/** Requests an EtherCAT master for realtime operation.
+ * 
+ * \return pointer to reserved master, or NULL on error
+ */
+ec_master_t *ecrt_request_master(
+        unsigned int master_index /**< Index of the master to request. */
+        );
+
+/** Releases a requested EtherCAT master.
+ */
+void ecrt_release_master(
+        ec_master_t *master /**< EtherCAT master */
+        );
 
 /******************************************************************************
  * Master methods
  *****************************************************************************/
 
-void ecrt_master_callbacks(ec_master_t *master, int (*request_cb)(void *),
-                           void (*release_cb)(void *), void *cb_data);
+/** Sets the locking callbacks.
+ *
+ * The request_cb function must return zero, to allow another instance
+ * (the EoE process for example) to access the master. Non-zero means,
+ * that access is forbidden at this time.
+ */
+void ecrt_master_callbacks(
+        ec_master_t *master, /**< EtherCAT master */
+        int (*request_cb)(void *), /**< Lock request function. */
+        void (*release_cb)(void *), /**< Lock release function. */
+        void *cb_data /**< Arbitrary user data. */
+        );
 
-ec_domain_t *ecrt_master_create_domain(ec_master_t *master);
+/** Creates a new domain.
+ *
+ * \return Pointer to the new domain on success, else NULL.
+ */
+ec_domain_t *ecrt_master_create_domain(
+        ec_master_t *master /**< EtherCAT master. */
+        );
 
-ec_slave_t *ecrt_master_get_slave(const ec_master_t *master,
-        const char *address, uint32_t vendor_id, uint32_t product_code);
-ec_slave_t *ecrt_master_get_slave_by_pos(const ec_master_t *master,
-        uint16_t position, uint32_t vendor_id, uint32_t product_code);
+/** Obtains a slave configuration.
+ *
+ * Creates a slave configuration object for the given \a alias and \a position
+ * tuple and returns it. If a configuration with the same \a alias and \a
+ * position already exists, it will be re-used. In the latter case, the given
+ * vendor ID and product code are compared to the stored ones. On mismatch, an
+ * error message is raised and the function returns \a NULL.
+ *
+ * Slaves are addressed with the \a alias and \a position parameters.
+ * - If \a alias is zero, \a position is interpreted as the desired slave's
+ *   ring position.
+ * - If \a alias is non-zero, it matches a slave with the given alias. In this
+ *   case, \a position is interpreted as ring offset, starting from the
+ *   aliased slave, so a position of zero means the aliased slave itself and a
+ *   positive value matches the n-th slave behind the aliased one.
+ *
+ * If the slave with the given address is found during the bus configuration,
+ * its vendor ID and product code are matched against the given value. On
+ * mismatch, the slave is not configured and an error message is raised.
+ *
+ * If different slave configurations are pointing to the same slave during bus
+ * configuration, a warning is raised and only the first configuration is
+ * applied.
+ *
+ * \retval >0 Pointer to the slave configuration structure.
+ * \retval NULL in the error case.
+ */
+ec_slave_config_t *ecrt_master_slave_config(
+        ec_master_t *master, /**< EtherCAT master */
+        uint16_t alias, /**< Slave alias. */
+        uint16_t position, /**< Slave position. */
+        uint32_t vendor_id, /**< Expected vendor ID. */
+        uint32_t product_code /**< Expected product code. */
+        );
 
-int ecrt_master_activate(ec_master_t *master);
+/** Applies the bus configuration and switches to realtime mode.
+ *
+ * Does the complete configuration and activation for all slaves. Sets sync
+ * managers and FMMUs, and does the appropriate transitions, until the slave
+ * is operational.
+ *
+ * \return 0 in case of success, else < 0
+ */
+int ecrt_master_activate(
+        ec_master_t *master /**< EtherCAT master. */
+        );
 
-void ecrt_master_send(ec_master_t *master);
-void ecrt_master_receive(ec_master_t *master);
+/** Sends all datagrams in the queue.
+ *
+ * \todo doc
+ */
+void ecrt_master_send(
+        ec_master_t *master /**< EtherCAT master. */
+        );
 
-void ecrt_master_get_status(const ec_master_t *master, ec_master_status_t *s);
+/** Fetches received frames from the hardware and processes the datagrams.
+ */
+void ecrt_master_receive(
+        ec_master_t *master /**< EtherCAT master. */
+        );
+
+/** Reads the current master state.
+ *
+ * Stores the master state information in the given \a state structure.
+ */
+void ecrt_master_state(
+        const ec_master_t *master, /**< EtherCAT master. */
+        ec_master_state_t *state /**< Structure to store the information. */
+        );
+
+/******************************************************************************
+ * Slave configuration methods
+ *****************************************************************************/
+
+/** Specify the Pdo mapping and (optionally) the Pdo configuration.
+ *
+ * The following example shows, how to specify a complete Pdo mapping
+ * including the Pdo configuration. With this information, the master is able
+ * to reserve the complete process data, even if the slave is not present
+ * at configuration time:
+ *
+ * \code
+ * const ec_pdo_info_t complete_mapping[] = {
+ *     {EC_DIR_INPUT, 0x1600, 2, { // channel 1
+ *         {0x7000, 0, 16}, // value
+ *         {0x7000, 1, 8},  // status
+ *     }},
+ *     {EC_DIR_INPUT, 0x1601, 2, { // channel 2 
+ *         {0x7001, 0, 16}, // value
+ *         {0x7001, 1, 8},  // status
+ *     }}
+ * };
+ * 
+ * if (ecrt_slave_config_mapping(slave_config_ana_in, 2, complete_mapping)) {
+ *     // error
+ * }
+ * \endcode
+ *
+ * The next example shows, how to configure only the Pdo mapping. The entries
+ * for each mapped Pdo are taken from the default Pdo configuration. Please
+ * note, that Pdo entry registration will fail, if no Pdo configuration is
+ * specified and the slave is offline.
+ *
+ * \code
+ * const ec_pdo_info_t pdo_mapping[] = {
+ *     {EC_DIR_INPUT, 0x1600}, // Channel 1
+ *     {EC_DIR_INPUT, 0x1601}  // Channel 2
+ * };
+ * 
+ * if (ecrt_slave_config_mapping(slave_config_ana_in, 2, pdo_mapping)) {
+ *     // error
+ * }
+ * \endcode
+ *
+ * \return zero on success, else non-zero
+ */
+int ecrt_slave_config_mapping(
+        ec_slave_config_t *sc, /**< Slave configuration. */
+        unsigned int n_entries, /**< Number of Pdos in \a pdos to map. */
+        const ec_pdo_info_t pdos[] /**< List with Pdo mapping. */
+        );
+
+/** Add a configuration value for an 8-bit SDO.
+ *
+ * \todo doc
+ * \return 0 in case of success, else < 0
+ */
+int ecrt_slave_config_sdo8(
+        ec_slave_config_t *sc, /**< Slave configuration */
+        uint16_t sdo_index, /**< Index of the SDO to configure. */
+        uint8_t sdo_subindex, /**< Subindex of the SDO to configure. */
+        uint8_t value /**< Value to set. */
+        );
+
+/** Add a configuration value for a 16-bit SDO.
+ *
+ * \todo doc
+ * \return 0 in case of success, else < 0
+ */
+int ecrt_slave_config_sdo16(
+        ec_slave_config_t *sc, /**< Slave configuration */
+        uint16_t sdo_index, /**< Index of the SDO to configure. */
+        uint8_t sdo_subindex, /**< Subindex of the SDO to configure. */
+        uint16_t value /**< Value to set. */
+        );
+
+/** Add a configuration value for a 32-bit SDO.
+ *
+ * \todo doc
+ * \return 0 in case of success, else < 0
+ */
+int ecrt_slave_config_sdo32(
+        ec_slave_config_t *sc, /**< Slave configuration */
+        uint16_t sdo_index, /**< Index of the SDO to configure. */
+        uint8_t sdo_subindex, /**< Subindex of the SDO to configure. */
+        uint32_t value /**< Value to set. */
+        );
+
+/** Outputs the state of the slave configuration.
+ *
+ * Stores the state information in the given \a state structure.
+ */
+void ecrt_slave_config_state(
+        const ec_slave_config_t *sc, /**< Slave configuration */
+        ec_slave_config_state_t *state /**< State object to write to. */
+        );
 
 /******************************************************************************
  * Domain methods
  *****************************************************************************/
 
-int ecrt_domain_register_pdo(ec_domain_t *domain, ec_slave_t *slave,
-        uint16_t pdo_entry_index, uint8_t pdo_entry_subindex, void **data_ptr);
+/** Registers a single Pdo entry for a domain.
+ *
+ * \return On success, the function returns the offset in the domain's process
+ *         data, which can be zero or greater. On failure, it returns a value
+ *         less than zero.
+ */
 
-int ecrt_domain_register_pdo_range(ec_domain_t *domain, ec_slave_t *slave,
-        ec_direction_t direction, uint16_t offset, uint16_t length,
-        void **data_ptr);
+int ecrt_domain_reg_pdo_entry(
+        ec_domain_t *domain, /**< Domain. */
+        ec_slave_config_t *sc, /**< Slave configuration. */
+        uint16_t entry_index, /**< Index of the Pdo entry to register. */
+        uint8_t entry_subindex /**< Subindex of the Pdo entry to register. */
+        );
 
-int ecrt_domain_register_pdo_list(ec_domain_t *domain,
-        const ec_pdo_reg_t *pdos);
+/** Registers a bunch of Pdo entries for a domain.
+ *
+ * \todo doc
+ * \attention The registration array has to be terminated with an empty
+ *            structure, or one with the \a index field set to zero!
+ * \return 0 on success, else non-zero.
+ */
+int ecrt_domain_reg_pdo_entry_list(
+        ec_domain_t *domain, /**< Domain. */
+        const ec_pdo_entry_reg_t *pdo_entry_regs /**< Array of Pdo
+                                                   registrations. */
+        );
 
-void ecrt_domain_process(ec_domain_t *domain);
-void ecrt_domain_queue(ec_domain_t *domain);
+/** Returns the current size of the domain's process data.
+ *
+ * \return Size of the process data image.
+ */
+size_t ecrt_domain_size(
+        ec_domain_t *domain /**< Domain. */
+        );
 
-int ecrt_domain_state(const ec_domain_t *domain);
+/** Provide memory to store the domain's process data.
+ *
+ * Call this after all Pdo entries have been registered. Since interface
+ * version 1.4, you'll have to provide an external memory for the domain
+ * process data.
+ *
+ * The size of the allocated memory must be at least the return value of
+ * ecrt_domain_size(), after all Pdo entries have been registered.
+ */
+void ecrt_domain_memory(
+        ec_domain_t *domain, /**< Domain. */
+        uint8_t *memory /**< Address of the memory to store the process
+                          data in. */
+        );
 
-/******************************************************************************
- * Slave methods
- *****************************************************************************/
+/** Processes received datagrams.
+ *
+ * \todo doc
+ */
+void ecrt_domain_process(
+        ec_domain_t *domain /**< Domain. */
+        );
 
-int ecrt_slave_conf_sdo8(ec_slave_t *slave, uint16_t sdo_index,
-                         uint8_t sdo_subindex, uint8_t value);
-int ecrt_slave_conf_sdo16(ec_slave_t *slave, uint16_t sdo_index,
-                          uint8_t sdo_subindex, uint16_t value);
-int ecrt_slave_conf_sdo32(ec_slave_t *slave, uint16_t sdo_index,
-                          uint8_t sdo_subindex, uint32_t value);
+/** (Re-)queues all domain datagrams in the master's datagram queue.
+ *
+ * \todo doc
+ */
+void ecrt_domain_queue(
+        ec_domain_t *domain /**< Domain. */
+        );
 
-void ecrt_slave_pdo_mapping_clear(ec_slave_t *, ec_direction_t);
-int ecrt_slave_pdo_mapping_add(ec_slave_t *, ec_direction_t, uint16_t);
-int ecrt_slave_pdo_mapping(ec_slave_t *, ec_direction_t, unsigned int, ...);
+/** Reads the state of a domain.
+ *
+ * Stores the domain state in the giveb \a state structure.
+ */
+void ecrt_domain_state(
+        const ec_domain_t *domain, /**< Domain. */
+        ec_domain_state_t *state /**< Pointer to a state object to store the
+                                   information. */
+        );
 
 /******************************************************************************
  * Bitwise read/write macros
@@ -323,5 +656,7 @@ int ecrt_slave_pdo_mapping(ec_slave_t *, ec_direction_t, unsigned int, ...);
 #define EC_WRITE_S32(DATA, VAL) EC_WRITE_U32(DATA, VAL)
 
 /*****************************************************************************/
+
+/** @} */
 
 #endif

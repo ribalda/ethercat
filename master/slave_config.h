@@ -33,57 +33,63 @@
 
 /**
    \file
-   EtherCAT Process data object structure.
+   EtherCAT slave configuration structure.
 */
 
 /*****************************************************************************/
 
-#ifndef _EC_PDO_H_
-#define _EC_PDO_H_
+#ifndef _EC_SLAVE_CONFIG_H_
+#define _EC_SLAVE_CONFIG_H_
 
 #include <linux/list.h>
+#include <linux/kobject.h>
 
 #include "../include/ecrt.h"
 
 #include "globals.h"
+#include "slave.h"
+#include "fmmu_config.h"
+#include "pdo_mapping.h"
 
 /*****************************************************************************/
 
-/** PDO description.
+/** EtherCAT slave configuration.
  */
-typedef struct {
+struct ec_slave_config {
     struct list_head list; /**< List item. */
-    ec_direction_t dir; /**< PDO direction. */
-    uint16_t index; /**< PDO index. */
-    int8_t sync_index; /**< Assigned sync manager. */
-    char *name; /**< PDO name. */
-    struct list_head entries; /**< List of PDO entries. */
-} ec_pdo_t;
+    struct kobject kobj; /**< kobject. */
+    ec_master_t *master; /**< Master owning the slave configuration. */
+
+    uint16_t alias; /**< Slave alias. */
+    uint16_t position; /**< Index after alias. If alias is zero, this is the
+                         ring position. */
+    uint32_t vendor_id; /**< Slave vendor ID. */
+    uint32_t product_code; /**< Slave product code. */
+
+    ec_slave_t *slave; /**< Slave pointer. This is \a NULL, if the slave is
+                         offline. */
+
+    ec_pdo_mapping_t mapping[2]; /**< Output and input PDO mapping. */
+
+    struct list_head sdo_configs; /**< SDO configurations. */
+
+    ec_fmmu_config_t fmmu_configs[EC_MAX_FMMUS]; /**< FMMU configurations. */
+    uint8_t used_fmmus; /**< Number of FMMUs used. */
+};
 
 /*****************************************************************************/
 
-/** PDO entry description.
- */
-typedef struct {
-    struct list_head list; /**< list item */
-    uint16_t index; /**< PDO entry index */
-    uint8_t subindex; /**< PDO entry subindex */
-    char *name; /**< entry name */
-    uint8_t bit_length; /**< entry length in bit */
-} ec_pdo_entry_t;
+int ec_slave_config_init(ec_slave_config_t *, ec_master_t *, uint16_t,
+        uint16_t, uint32_t, uint32_t);
+void ec_slave_config_destroy(ec_slave_config_t *);
 
-/*****************************************************************************/
+int ec_slave_config_reg_pdo_entry(ec_slave_config_t *, ec_domain_t *,
+        uint16_t, uint8_t);
 
-void ec_pdo_init(ec_pdo_t *);
-int ec_pdo_init_copy(ec_pdo_t *, const ec_pdo_t *);
-void ec_pdo_clear(ec_pdo_t *);
-int ec_pdo_set_name(ec_pdo_t *, const char *);
-int ec_pdo_copy_entries(ec_pdo_t *, const ec_pdo_t *);
+int ec_slave_config_attach(ec_slave_config_t *);
+void ec_slave_config_detach(ec_slave_config_t *);
 
-void ec_pdo_entry_init(ec_pdo_entry_t *);
-int ec_pdo_entry_init_copy(ec_pdo_entry_t *, const ec_pdo_entry_t *);
-void ec_pdo_entry_clear(ec_pdo_entry_t *);
-int ec_pdo_entry_set_name(ec_pdo_entry_t *, const char *);
+void ec_slave_config_load_default_mapping(ec_slave_config_t *);
 
 /*****************************************************************************/
 

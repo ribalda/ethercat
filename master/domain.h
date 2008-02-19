@@ -58,19 +58,18 @@
 
 struct ec_domain
 {
-    struct kobject kobj; /**< kobject */
-    struct list_head list; /**< list item */
-    unsigned int index; /**< domain index (just a number) */
-    ec_master_t *master; /**< EtherCAT master owning the domain */
-    size_t data_size; /**< size of the process data */
-    struct list_head datagrams; /**< process data datagrams */
-    uint32_t base_address; /**< logical offset address of the process data */
-    unsigned int response_count; /**< number of responding slaves */
-    unsigned int state; /**< domain error state */
-    struct list_head data_regs; /**< PDO data registrations */
-    unsigned int working_counter_changes; /**< working counter changes
-                                             since last notification */
-    unsigned long notify_jiffies; /**< time of last notification */
+    struct kobject kobj; /**< kobject. */
+    struct list_head list; /**< List item. */
+    unsigned int index; /**< Index (just a number). */
+    ec_master_t *master; /**< EtherCAT master owning the domain. */
+    size_t data_size; /**< Size of the process data. */
+    struct list_head datagrams; /**< Datagrams for process data exchange. */
+    uint32_t base_address; /**< Logical offset address of the process data. */
+    unsigned int working_counter; /**< Last working counter value. */
+    unsigned int state; /**< Error state. */
+    unsigned int working_counter_changes; /**< Working counter changes
+                                             since last notification. */
+    unsigned long notify_jiffies; /**< Time of last notification. */
 };
 
 /*****************************************************************************/
@@ -78,7 +77,7 @@ struct ec_domain
 int ec_domain_init(ec_domain_t *, ec_master_t *, unsigned int);
 void ec_domain_destroy(ec_domain_t *);
 
-int ec_domain_alloc(ec_domain_t *, uint32_t);
+int ec_domain_finish(ec_domain_t *, uint32_t);
 
 /*****************************************************************************/
 

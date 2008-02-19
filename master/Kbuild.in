@@ -33,9 +33,10 @@
 
 obj-m := ec_master.o
 
-ec_master-objs := module.o master.o device.o pdo.o sync.o fmmu.o slave.o \
-    datagram.o domain.o mailbox.o canopen.o fsm_sii.o fsm_change.o \
-    fsm_coe.o fsm_coe_map.o fsm_mapping.o fsm_slave.o fsm_master.o xmldev.o
+ec_master-objs := module.o master.o device.o pdo.o sync.o fmmu_config.o \
+    slave.o slave_config.o pdo_mapping.o datagram.o domain.o mailbox.o \
+    canopen.o fsm_sii.o fsm_change.o fsm_coe.o fsm_coe_map.o fsm_mapping.o \
+    fsm_slave.o fsm_master.o xmldev.o
 
 ifeq (@ENABLE_EOE@,1)
 	ec_master-objs += ethernet.o

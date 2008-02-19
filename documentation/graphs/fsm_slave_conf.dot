@@ -8,6 +8,7 @@ digraph slaveconf {
     enter_sdoconf [shape=point,label=""]
     enter_mapconf [shape=point,label=""]
     enter_pdo_sync [shape=point,label=""]
+    enter_saveop [shape=point,label=""]
 
     start -> init [weight=10]
     init -> init
@@ -18,8 +19,8 @@ digraph slaveconf {
     clear_fmmus -> error
     clear_fmmus -> enter_mbox_sync [weight=10]
     enter_mbox_sync -> end [label="INIT req."]
-    enter_mbox_sync -> preop
-    enter_mbox_sync -> mbox_sync [label="mailbox SMs", weight=10]
+    enter_mbox_sync -> preop [label="No mailboxes"]
+    enter_mbox_sync -> mbox_sync [label="Has mailboxes", weight=10]
     mbox_sync -> mbox_sync
     mbox_sync -> error
     mbox_sync -> preop [weight=10]
@@ -27,8 +28,9 @@ digraph slaveconf {
     preop -> error
     preop -> end [label="PREOP req."]
     preop -> enter_sdoconf [weight=10]
-    enter_sdoconf -> enter_mapconf
-    enter_sdoconf -> sdoconf [label="SDOs to configure", weight=10]
+    enter_sdoconf -> enter_saveop [label="No configuration"]
+    enter_sdoconf -> enter_mapconf [label="No SDO configs"]
+    enter_sdoconf -> sdoconf [label="SDO configs", weight=10]
     sdoconf -> sdoconf
     sdoconf -> error
     sdoconf -> enter_mapconf [weight=10]
@@ -42,11 +44,12 @@ digraph slaveconf {
     pdo_sync -> pdo_sync
     pdo_sync -> error
     pdo_sync -> enter_fmmu [weight=10]
-    enter_fmmu -> saveop
+    enter_fmmu -> enter_saveop
     enter_fmmu -> fmmu [label="FMMUs to configure", weight=10]
     fmmu -> fmmu
     fmmu -> error
-    fmmu -> saveop [weight=10]
+    fmmu -> enter_saveop [weight=10]
+    enter_saveop -> saveop
     saveop -> saveop
     saveop -> error
     saveop -> end [label="SAVEOP req."]

@@ -33,13 +33,13 @@
 
 /**
    \file
-   EtherCAT Process data object structure.
+   EtherCAT Pdo mapping structure.
 */
 
 /*****************************************************************************/
 
-#ifndef _EC_PDO_H_
-#define _EC_PDO_H_
+#ifndef _EC_PDO_MAPPING_H_
+#define _EC_PDO_MAPPING_H_
 
 #include <linux/list.h>
 
@@ -49,41 +49,28 @@
 
 /*****************************************************************************/
 
-/** PDO description.
+/** EtherCAT PDO mapping.
  */
 typedef struct {
-    struct list_head list; /**< List item. */
-    ec_direction_t dir; /**< PDO direction. */
-    uint16_t index; /**< PDO index. */
-    int8_t sync_index; /**< Assigned sync manager. */
-    char *name; /**< PDO name. */
-    struct list_head entries; /**< List of PDO entries. */
-} ec_pdo_t;
+    struct list_head pdos; /**< List of Pdos. */
+    unsigned int default_mapping; /**< This is the default mapping. */
+} ec_pdo_mapping_t;
 
 /*****************************************************************************/
 
-/** PDO entry description.
- */
-typedef struct {
-    struct list_head list; /**< list item */
-    uint16_t index; /**< PDO entry index */
-    uint8_t subindex; /**< PDO entry subindex */
-    char *name; /**< entry name */
-    uint8_t bit_length; /**< entry length in bit */
-} ec_pdo_entry_t;
+void ec_pdo_mapping_init(ec_pdo_mapping_t *);
+void ec_pdo_mapping_clear(ec_pdo_mapping_t *);
 
-/*****************************************************************************/
+void ec_pdo_mapping_clear_pdos(ec_pdo_mapping_t *);
 
-void ec_pdo_init(ec_pdo_t *);
-int ec_pdo_init_copy(ec_pdo_t *, const ec_pdo_t *);
-void ec_pdo_clear(ec_pdo_t *);
-int ec_pdo_set_name(ec_pdo_t *, const char *);
-int ec_pdo_copy_entries(ec_pdo_t *, const ec_pdo_t *);
+int ec_pdo_mapping_add_pdo(ec_pdo_mapping_t *, const ec_pdo_t *);
+int ec_pdo_mapping_add_pdo_info(ec_pdo_mapping_t *, const ec_pdo_info_t *,
+        const ec_slave_config_t *);
 
-void ec_pdo_entry_init(ec_pdo_entry_t *);
-int ec_pdo_entry_init_copy(ec_pdo_entry_t *, const ec_pdo_entry_t *);
-void ec_pdo_entry_clear(ec_pdo_entry_t *);
-int ec_pdo_entry_set_name(ec_pdo_entry_t *, const char *);
+int ec_pdo_mapping_copy(ec_pdo_mapping_t *, const ec_pdo_mapping_t *);
+
+uint16_t ec_pdo_mapping_total_size(const ec_pdo_mapping_t *);
+int ec_pdo_mapping_equal(const ec_pdo_mapping_t *, const ec_pdo_mapping_t *);
 
 /*****************************************************************************/
 

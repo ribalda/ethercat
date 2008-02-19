@@ -44,7 +44,7 @@
 #include "globals.h"
 #include "../include/ecrt.h"
 #include "datagram.h"
-#include "slave.h"
+//#include "slave.h"
 #include "canopen.h"
 
 #include "fsm_slave.h"
