@@ -60,10 +60,10 @@ void ec_fsm_slave_conf_state_init(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_state_clear_fmmus(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_state_mbox_sync(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_state_preop(ec_fsm_slave_t *);
+void ec_fsm_slave_conf_state_sdo_conf(ec_fsm_slave_t *);
+void ec_fsm_slave_conf_state_mapping(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_state_pdo_sync(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_state_fmmu(ec_fsm_slave_t *);
-void ec_fsm_slave_conf_state_sdoconf(ec_fsm_slave_t *);
-void ec_fsm_slave_conf_state_mapconf(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_state_saveop(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_state_op(ec_fsm_slave_t *);
 
@@ -71,8 +71,8 @@ void ec_fsm_slave_conf_enter_mbox_sync(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_enter_preop(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_enter_pdo_sync(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_enter_fmmu(ec_fsm_slave_t *);
-void ec_fsm_slave_conf_enter_sdoconf(ec_fsm_slave_t *);
-void ec_fsm_slave_conf_enter_mapconf(ec_fsm_slave_t *);
+void ec_fsm_slave_conf_enter_sdo_conf(ec_fsm_slave_t *);
+void ec_fsm_slave_conf_enter_mapping(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_enter_saveop(ec_fsm_slave_t *);
 
 void ec_fsm_slave_state_end(ec_fsm_slave_t *);
@@ -865,7 +865,7 @@ void ec_fsm_slave_conf_state_preop(ec_fsm_slave_t *fsm /**< slave state machine 
         return;
     }
 
-    ec_fsm_slave_conf_enter_sdoconf(fsm);
+    ec_fsm_slave_conf_enter_sdo_conf(fsm);
 }
 
 /*****************************************************************************/
@@ -874,7 +874,7 @@ void ec_fsm_slave_conf_state_preop(ec_fsm_slave_t *fsm /**< slave state machine 
  * Check for SDO configurations to be applied.
  */
 
-void ec_fsm_slave_conf_enter_sdoconf(ec_fsm_slave_t *fsm /**< slave state machine */)
+void ec_fsm_slave_conf_enter_sdo_conf(ec_fsm_slave_t *fsm /**< slave state machine */)
 {
     ec_slave_t *slave = fsm->slave;
 
@@ -886,12 +886,12 @@ void ec_fsm_slave_conf_enter_sdoconf(ec_fsm_slave_t *fsm /**< slave state machin
 
     // No CoE configuration to be applied? FIXME
     if (list_empty(&slave->config->sdo_configs)) { // skip SDO configuration
-        ec_fsm_slave_conf_enter_mapconf(fsm);
+        ec_fsm_slave_conf_enter_mapping(fsm);
         return;
     }
 
     // start SDO configuration
-    fsm->state = ec_fsm_slave_conf_state_sdoconf;
+    fsm->state = ec_fsm_slave_conf_state_sdo_conf;
     fsm->sdodata =
         list_entry(fsm->slave->config->sdo_configs.next, ec_sdo_data_t, list);
     ec_fsm_coe_download(&fsm->fsm_coe, fsm->slave, fsm->sdodata);
@@ -901,10 +901,10 @@ void ec_fsm_slave_conf_enter_sdoconf(ec_fsm_slave_t *fsm /**< slave state machin
 /*****************************************************************************/
 
 /**
-   Slave configuration state: SDOCONF.
+   Slave configuration state: SDO_CONF.
 */
 
-void ec_fsm_slave_conf_state_sdoconf(
+void ec_fsm_slave_conf_state_sdo_conf(
         ec_fsm_slave_t *fsm /**< slave state machine */
         )
 {
@@ -928,16 +928,16 @@ void ec_fsm_slave_conf_state_sdoconf(
     }
 
     // All SDOs are now configured.
-    ec_fsm_slave_conf_enter_mapconf(fsm);
+    ec_fsm_slave_conf_enter_mapping(fsm);
 }
 
 /*****************************************************************************/
 
 /**
- * Check for alternative PDO mappings to be applied.
+ * Check for PDO mappings to be applied.
  */
 
-void ec_fsm_slave_conf_enter_mapconf(
+void ec_fsm_slave_conf_enter_mapping(
         ec_fsm_slave_t *fsm /**< slave state machine */
         )
 {
@@ -950,7 +950,7 @@ void ec_fsm_slave_conf_enter_mapconf(
     }
 
     // start configuring PDO mapping
-    fsm->state = ec_fsm_slave_conf_state_mapconf;
+    fsm->state = ec_fsm_slave_conf_state_mapping;
     ec_fsm_mapping_start(&fsm->fsm_map, fsm->slave);
     ec_fsm_mapping_exec(&fsm->fsm_map); // execute immediately
 }
@@ -958,10 +958,10 @@ void ec_fsm_slave_conf_enter_mapconf(
 /*****************************************************************************/
 
 /**
-   Slave configuration state: MAPCONF.
+   Slave configuration state: MAPPING.
 */
 
-void ec_fsm_slave_conf_state_mapconf(
+void ec_fsm_slave_conf_state_mapping(
         ec_fsm_slave_t *fsm /**< slave state machine */
         )
 {

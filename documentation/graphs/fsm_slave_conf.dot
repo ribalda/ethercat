@@ -5,8 +5,8 @@ digraph slaveconf {
 
     enter_mbox_sync [shape=point,label=""]
     enter_fmmu [shape=point,label=""]
-    enter_sdoconf [shape=point,label=""]
-    enter_mapconf [shape=point,label=""]
+    enter_sdo_conf [shape=point,label=""]
+    enter_mapping [shape=point,label=""]
     enter_pdo_sync [shape=point,label=""]
     enter_saveop [shape=point,label=""]
 
@@ -14,7 +14,7 @@ digraph slaveconf {
     init -> init
     init -> error
     init -> enter_mbox_sync
-    init -> clear_fmmus [label="has FMMUs", weight=10]
+    init -> clear_fmmus [label="Has FMMUs", weight=10]
     clear_fmmus -> clear_fmmus
     clear_fmmus -> error
     clear_fmmus -> enter_mbox_sync [weight=10]
@@ -27,18 +27,18 @@ digraph slaveconf {
     preop -> preop
     preop -> error
     preop -> end [label="PREOP req."]
-    preop -> enter_sdoconf [weight=10]
-    enter_sdoconf -> enter_saveop [label="No configuration"]
-    enter_sdoconf -> enter_mapconf [label="No SDO configs"]
-    enter_sdoconf -> sdoconf [label="SDO configs", weight=10]
-    sdoconf -> sdoconf
-    sdoconf -> error
-    sdoconf -> enter_mapconf [weight=10]
-    enter_mapconf -> mapconf [label="CoE supported", weight=10]
-    enter_mapconf -> enter_pdo_sync
-    mapconf -> mapconf
-    mapconf -> error
-    mapconf -> enter_pdo_sync [weight=10]
+    preop -> enter_sdo_conf [weight=10]
+    enter_sdo_conf -> enter_saveop [label="No configuration"]
+    enter_sdo_conf -> enter_mapping [label="No SDO configs"]
+    enter_sdo_conf -> sdo_conf [label="SDO configs", weight=10]
+    sdo_conf -> sdo_conf
+    sdo_conf -> error
+    sdo_conf -> enter_mapping [weight=10]
+    enter_mapping -> mapping [label="CoE supported", weight=10]
+    enter_mapping -> enter_pdo_sync
+    mapping -> mapping
+    mapping -> error
+    mapping -> enter_pdo_sync [weight=10]
     enter_pdo_sync -> pdo_sync [label="PDO SMs", weight=10]
     enter_pdo_sync -> enter_fmmu
     pdo_sync -> pdo_sync
