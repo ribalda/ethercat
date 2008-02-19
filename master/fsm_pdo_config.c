@@ -167,27 +167,28 @@ void ec_fsm_pdo_config_next_pdo(
         map = &fsm->slave->config->mapping[dir];
 
         list_for_each_entry(pdo, &map->pdos, list) {
-            if (fsm->pdo) {
-                if (pdo == fsm->pdo)
-                    fsm->pdo = NULL;
+            if (fsm->pdo) { // there was a Pdo configured in the last run
+                if (pdo == fsm->pdo) // this is the last Pdo
+                    fsm->pdo = NULL; // take the next one
             } else {
                 if ((mapped_pdo = ec_slave_find_pdo(fsm->slave, pdo->index)))
                     if (ec_pdo_equal_entries(pdo, mapped_pdo))
                         continue; // Pdo configured correctly
 
                 fsm->pdo = pdo;
-                goto configure;
+                break;
             }
         }
     }
 
-    if (fsm->slave->master->debug_level)
-        EC_DBG("Pdo configuration finished for slave %u.\n",
-                fsm->slave->ring_position);
-    fsm->state = ec_fsm_pdo_config_state_end;
-    return;
+    if (!fsm->pdo) {
+        if (fsm->slave->master->debug_level)
+            EC_DBG("Pdo configuration finished for slave %u.\n",
+                    fsm->slave->ring_position);
+        fsm->state = ec_fsm_pdo_config_state_end;
+        return;
+    }
 
-configure:
     if (fsm->slave->master->debug_level) {
         EC_DBG("Changing configuration of Pdo 0x%04X of slave %u.\n",
                 fsm->pdo->index, fsm->slave->ring_position);

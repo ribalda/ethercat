@@ -31,10 +31,9 @@
  *
  *****************************************************************************/
 
-/**
-   \file
-   EtherCAT PDO configuration state machine structures.
-*/
+/** \file
+ * EtherCAT PDO configuration state machine structures.
+ */
 
 /*****************************************************************************/
 

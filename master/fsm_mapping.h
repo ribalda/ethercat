@@ -54,18 +54,17 @@ typedef struct ec_fsm_mapping ec_fsm_mapping_t; /**< \see ec_fsm_mapping */
  */
 struct ec_fsm_mapping
 {
-    void (*state)(ec_fsm_mapping_t *); /**< state function */
-    ec_fsm_coe_t *fsm_coe; /**< CoE state machine to use */
+    void (*state)(ec_fsm_mapping_t *); /**< State function. */
+    ec_fsm_coe_t *fsm_coe; /**< CoE state machine to use. */
+    ec_slave_t *slave; /**< Slave the FSM runs on. */
 
-    ec_slave_t *slave; /**< slave the FSM runs on */
+    const ec_sync_t *sync; /**< Current sync manager. */
+    const ec_pdo_mapping_t *mapping; /**< Target Pdo mapping. */
+    const ec_pdo_t *pdo; /**< Current Pdo. */
 
-    ec_direction_t dir; /**< current PDO direction */
-    ec_sync_t *sync; /**< current sync manager */
-    const ec_pdo_mapping_t *mapping; /**< Mapping to assign. */
-    ec_pdo_t *pdo; /**< current PDO */
-    ec_sdo_data_t sdodata; /**< SDO configuration data */
-    uint16_t sdo_value; /**< SDO value */
-    unsigned int pdo_count; /**< number of mapped PDOs */
+    ec_sdo_data_t sdodata; /**< SDO configuration data. */
+    uint16_t sdo_value; /**< SDO value. */
+    unsigned int pdo_count; /**< Number of mapped Pdos. */
 };
 
 /*****************************************************************************/

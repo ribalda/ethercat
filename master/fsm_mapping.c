@@ -150,7 +150,7 @@ void ec_fsm_mapping_state_start(
         return;
     }
 
-    fsm->dir = EC_DIR_OUTPUT;
+    fsm->sync = NULL;
     ec_fsm_mapping_next_sync(fsm);
 }
 
@@ -162,29 +162,36 @@ void ec_fsm_mapping_next_sync(
         ec_fsm_mapping_t *fsm /**< mapping state machine */
         )
 {
-    while (1) {
-        if (fsm->dir > EC_DIR_INPUT) {
-            // no more directions to configure mappings for
-            fsm->state = ec_fsm_mapping_state_end;
-            return;
-        }
+    ec_direction_t dir;
+    const ec_sync_t *sync;
+    const ec_pdo_mapping_t *map;
 
-        if (!(fsm->sync = ec_slave_get_pdo_sync(fsm->slave, fsm->dir))) {
-            EC_WARN("next_sync(): No sync manager!\n");
-            fsm->dir++;
+    for (dir = EC_DIR_OUTPUT; dir <= EC_DIR_INPUT; dir++) {
+        if (!(sync = ec_slave_get_pdo_sync(fsm->slave, dir))) {
+            EC_WARN("No sync manager for direction %u!\n", dir);
             continue;
         }
 
-        fsm->mapping = &fsm->slave->config->mapping[fsm->dir];
-
-        if (ec_pdo_mapping_equal(&fsm->sync->mapping, fsm->mapping)) {
-            // the mapping for this direction does not have to be altered
-            fsm->dir++;
-            continue;
+        if (fsm->sync) { // there is a last SM
+            if (sync == fsm->sync) // this is the last SM
+                fsm->sync = NULL; // take the next one
         } else {
-            fsm->dir++;
+            map = &fsm->slave->config->mapping[dir];
+            if (ec_pdo_mapping_equal(&sync->mapping, map))
+                continue;
+
+            fsm->sync = sync;
+            fsm->mapping = map;
             break;
         }
+    }
+
+    if (!sync) {
+        if (fsm->slave->master->debug_level)
+            EC_DBG("Pdo mapping finished for slave %u.\n",
+                    fsm->slave->ring_position);
+        fsm->state = ec_fsm_mapping_state_end;
+        return;
     }
 
     if (fsm->slave->master->debug_level) {
@@ -222,6 +229,27 @@ ec_pdo_t *ec_fsm_mapping_next_pdo(
 
 /*****************************************************************************/
 
+/** Add a Pdo to the mapping.
+ */
+void ec_fsm_mapping_add_pdo(
+        ec_fsm_mapping_t *fsm /**< mapping state machine */
+        )
+{
+    fsm->sdodata.subindex = fsm->pdo_count;
+    EC_WRITE_U16(&fsm->sdo_value, fsm->pdo->index);
+    fsm->sdodata.size = 2;
+
+    if (fsm->slave->master->debug_level)
+        EC_DBG("Mapping PDO 0x%04X at position %u.\n",
+                fsm->pdo->index, fsm->sdodata.subindex);
+    
+    fsm->state = ec_fsm_mapping_state_add_pdo;
+    ec_fsm_coe_download(fsm->fsm_coe, fsm->slave, &fsm->sdodata);
+    ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
+}
+
+/*****************************************************************************/
+
 /** Set the number of mapped PDOs to zero.
  */
 void ec_fsm_mapping_state_zero_count(
@@ -250,17 +278,7 @@ void ec_fsm_mapping_state_zero_count(
 
     // add first PDO to mapping
     fsm->pdo_count = 1;
-    fsm->sdodata.subindex = fsm->pdo_count;
-    EC_WRITE_U16(&fsm->sdo_value, fsm->pdo->index);
-    fsm->sdodata.size = 2;
-
-    if (fsm->slave->master->debug_level)
-        EC_DBG("Mapping PDO 0x%04X at position %u.\n",
-                fsm->pdo->index, fsm->sdodata.subindex);
-    
-    fsm->state = ec_fsm_mapping_state_add_pdo;
-    ec_fsm_coe_download(fsm->fsm_coe, fsm->slave, &fsm->sdodata);
-    ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
+    ec_fsm_mapping_add_pdo(fsm);
 }
 
 /*****************************************************************************/
@@ -299,16 +317,7 @@ void ec_fsm_mapping_state_add_pdo(
 
     // add next PDO to mapping
     fsm->pdo_count++;
-    fsm->sdodata.subindex = fsm->pdo_count;
-    EC_WRITE_U16(&fsm->sdo_value, fsm->pdo->index);
-    fsm->sdodata.size = 2;
-
-    if (fsm->slave->master->debug_level)
-        EC_DBG("Mapping PDO 0x%04X at position %u.\n",
-                fsm->pdo->index, fsm->sdodata.subindex);
-
-    ec_fsm_coe_download(fsm->fsm_coe, fsm->slave, &fsm->sdodata);
-    ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
+    ec_fsm_mapping_add_pdo(fsm);
 }
 
 /*****************************************************************************/
