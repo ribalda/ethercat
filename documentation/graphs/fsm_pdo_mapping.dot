@@ -6,14 +6,14 @@ digraph pdomapping {
     center=1
 	ratio=fill
 
-    next [shape=point,label=""]
+    next_sync [shape=point,label=""]
 
-    start -> next [label="First SM"]
-    next -> end [label="No more SMs"]
-    next -> zero_count [label="Next SM"]
-    zero_count -> next [label="No Pdos"]
+    start -> next_sync [label="First SM"]
+    next_sync -> end [label="No more SMs"]
+    next_sync -> zero_count [label="Next SM"]
+    zero_count -> next_sync [label="No Pdos"]
     zero_count -> add_pdo [label="Map first Pdo", weight=5]
     add_pdo -> add_pdo [label="Map next Pdo"]
-    add_pdo -> set_count [label="No more Pdos", weight=5]
-    set_count -> next
+    add_pdo -> pdo_count [label="No more Pdos", weight=5]
+    pdo_count -> next_sync
 }
