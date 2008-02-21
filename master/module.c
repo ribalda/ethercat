@@ -59,22 +59,22 @@ static int ec_mac_parse(uint8_t *, const char *, int);
 
 /*****************************************************************************/
 
-struct kobject kobj; /**< kobject for master module */
+struct kobject kobj; /**< kobject for master module. */
 
-static char *main[MAX_MASTERS]; /**< main devices parameter */
-static char *backup[MAX_MASTERS]; /**< backup devices parameter */
+static char *main_devices[MAX_MASTERS]; /**< Main devices parameter. */
+static char *backup_devices[MAX_MASTERS]; /**< Backup devices parameter. */
 
-static ec_master_t *masters; /**< master array */
-static struct semaphore master_sem; /**< master semaphore */
-static unsigned int master_count; /**< number of masters */
-static unsigned int backup_count; /**< number of backup devices */
+static ec_master_t *masters; /**< Array of masters. */
+static struct semaphore master_sem; /**< Master semaphore. */
+static unsigned int master_count; /**< Number of masters. */
+static unsigned int backup_count; /**< Number of backup devices. */
 
-static uint8_t macs[MAX_MASTERS][2][ETH_ALEN]; /**< MAC addresses */
+static uint8_t macs[MAX_MASTERS][2][ETH_ALEN]; /**< MAC addresses. */
 
-static dev_t device_number; /**< XML character device number */
-ec_xmldev_t xmldev; /**< XML character device */
+static dev_t device_number; /**< XML character device number. */
+ec_xmldev_t xmldev; /**< XML character device. */
 
-char *ec_master_version_str = EC_MASTER_VERSION; /**< master version string */
+char *ec_master_version_str = EC_MASTER_VERSION; /**< Version string. */
 
 /*****************************************************************************/
 
@@ -85,21 +85,20 @@ MODULE_DESCRIPTION("EtherCAT master driver module");
 MODULE_LICENSE("GPL");
 MODULE_VERSION(EC_MASTER_VERSION);
 
-module_param_array(main, charp, &master_count, S_IRUGO);
-MODULE_PARM_DESC(main, "MAC addresses of main devices");
-module_param_array(backup, charp, &backup_count, S_IRUGO);
-MODULE_PARM_DESC(backup, "MAC addresses of backup devices");
+module_param_array(main_devices, charp, &master_count, S_IRUGO);
+MODULE_PARM_DESC(main_devices, "MAC addresses of main devices");
+module_param_array(backup_devices, charp, &backup_count, S_IRUGO);
+MODULE_PARM_DESC(backup_devices, "MAC addresses of backup devices");
 
 /** \endcond */
 
 /*****************************************************************************/
 
-/**
- * Module initialization.
+/** Module initialization.
+ *
  * Initializes \a ec_master_count masters.
  * \return 0 on success, else < 0
  */
-
 int __init ec_init_module(void)
 {
     int i, ret = 0;
@@ -135,12 +134,12 @@ int __init ec_init_module(void)
 
     // process MAC parameters
     for (i = 0; i < master_count; i++) {
-        if (ec_mac_parse(macs[i][0], main[i], 0)) {
+        if (ec_mac_parse(macs[i][0], main_devices[i], 0)) {
             ret = -EINVAL;
             goto out_cdev;
         }
         
-        if (i < backup_count && ec_mac_parse(macs[i][1], backup[i], 1)) {
+        if (i < backup_count && ec_mac_parse(macs[i][1], backup_devices[i], 1)) {
             ret = -EINVAL;
             goto out_cdev;
         }
@@ -180,11 +179,10 @@ out_put:
 
 /*****************************************************************************/
 
-/**
-   Module cleanup.
-   Clears all master instances.
-*/
-
+/** Module cleanup.
+ *
+ * Clears all master instances.
+ */
 void __exit ec_cleanup_module(void)
 {
     unsigned int i;
@@ -209,7 +207,6 @@ void __exit ec_cleanup_module(void)
 /**
  * \return true, if two MAC addresses are equal.
  */
-
 int ec_mac_equal(const uint8_t *mac1, const uint8_t *mac2)
 {
     unsigned int i;
@@ -223,11 +220,10 @@ int ec_mac_equal(const uint8_t *mac1, const uint8_t *mac2)
                 
 /*****************************************************************************/
 
-/**
- * Print a MAC address to a buffer.
+/** Print a MAC address to a buffer.
+ *
  * \return number of bytes written.
  */
-
 ssize_t ec_mac_print(
         const uint8_t *mac, /**< MAC address */
         char *buffer /**< target buffer */
@@ -249,7 +245,6 @@ ssize_t ec_mac_print(
 /**
  * \return true, if the MAC address is all-zero.
  */
-
 int ec_mac_is_zero(const uint8_t *mac)
 {
     unsigned int i;
@@ -266,7 +261,6 @@ int ec_mac_is_zero(const uint8_t *mac)
 /**
  * \return true, if the given MAC address is the broadcast address.
  */
-
 int ec_mac_is_broadcast(const uint8_t *mac)
 {
     unsigned int i;
@@ -280,13 +274,13 @@ int ec_mac_is_broadcast(const uint8_t *mac)
 
 /*****************************************************************************/
 
-/**
- * Parse a MAC address from a string.
+/** Parse a MAC address from a string.
+ *
  * The MAC address must follow the regexp
  * "([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}".
-   \return 0 on success, else < 0
+ *
+ * \return 0 on success, else < 0
  */
-
 static int ec_mac_parse(uint8_t *mac, const char *src, int allow_empty)
 {
     unsigned int i, value;
@@ -321,10 +315,8 @@ static int ec_mac_parse(uint8_t *mac, const char *src, int allow_empty)
 
 /*****************************************************************************/
 
-/**
-   Outputs frame contents for debugging purposes.
-*/
-
+/** Outputs frame contents for debugging purposes.
+ */
 void ec_print_data(const uint8_t *data, /**< pointer to data */
                    size_t size /**< number of bytes to output */
                    )
@@ -344,10 +336,8 @@ void ec_print_data(const uint8_t *data, /**< pointer to data */
 
 /*****************************************************************************/
 
-/**
-   Outputs frame contents and differences for debugging purposes.
-*/
-
+/** Outputs frame contents and differences for debugging purposes.
+ */
 void ec_print_data_diff(const uint8_t *d1, /**< first data */
                         const uint8_t *d2, /**< second data */
                         size_t size /** number of bytes to output */
@@ -369,10 +359,8 @@ void ec_print_data_diff(const uint8_t *d1, /**< first data */
 
 /*****************************************************************************/
 
-/**
-   Prints slave states in clear text.
-*/
-
+/** Prints slave states in clear text.
+ */
 size_t ec_state_string(uint8_t states, /**< slave states */
                        char *buffer /**< target buffer
                                        (min. EC_STATE_STRING_SIZE bytes) */
@@ -416,17 +404,17 @@ size_t ec_state_string(uint8_t states, /**< slave states */
  *  Device interface
  *****************************************************************************/
 
-/**
-   Offers an EtherCAT device to a certain master.
-   The master decides, if it wants to use the device for EtherCAT operation,
-   or not. It is important, that the offered net_device is not used by
-   the kernel IP stack. If the master, accepted the offer, the address of
-   the newly created EtherCAT device is written to the ecdev pointer, else
-   the pointer is written to zero.
-   \return 0 on success, else < 0
-   \ingroup DeviceInterface
-*/
-
+/** Offers an EtherCAT device to a certain master.
+ *
+ * The master decides, if it wants to use the device for EtherCAT operation,
+ * or not. It is important, that the offered net_device is not used by the
+ * kernel IP stack. If the master, accepted the offer, the address of the
+ * newly created EtherCAT device is written to the ecdev pointer, else the
+ * pointer is written to zero.
+ *
+ * \return 0 on success, else < 0
+ * \ingroup DeviceInterface
+ */
 int ecdev_offer(struct net_device *net_dev, /**< net_device to offer */
         ec_pollfunc_t poll, /**< device poll function */
         struct module *module, /**< pointer to the module */
@@ -475,15 +463,16 @@ int ecdev_offer(struct net_device *net_dev, /**< net_device to offer */
 
 /*****************************************************************************/
 
-/**
-   Withdraws an EtherCAT device from the master.
-   The device is disconnected from the master and all device ressources
-   are freed.
-   \attention Before calling this function, the ecdev_stop() function has
-   to be called, to be sure that the master does not use the device any more.
-   \ingroup DeviceInterface
-*/
-
+/** Withdraws an EtherCAT device from the master.
+ *
+ * The device is disconnected from the master and all device ressources
+ * are freed.
+ *
+ * \attention Before calling this function, the ecdev_stop() function has
+ *            to be called, to be sure that the master does not use the device
+ *            any more.
+ * \ingroup DeviceInterface
+ */
 void ecdev_withdraw(ec_device_t *device /**< EtherCAT device */)
 {
     ec_master_t *master = device->master;
@@ -499,12 +488,11 @@ void ecdev_withdraw(ec_device_t *device /**< EtherCAT device */)
 
 /*****************************************************************************/
 
-/**
-   Opens the network device and makes the master enter IDLE mode.
-   \return 0 on success, else < 0
-   \ingroup DeviceInterface
-*/
-
+/** Opens the network device and makes the master enter IDLE mode.
+ *
+ * \return 0 on success, else < 0
+ * \ingroup DeviceInterface
+ */
 int ecdev_open(ec_device_t *device /**< EtherCAT device */)
 {
     if (ec_device_open(device)) {
@@ -522,12 +510,11 @@ int ecdev_open(ec_device_t *device /**< EtherCAT device */)
 
 /*****************************************************************************/
 
-/**
-   Makes the master leave IDLE mode and closes the network device.
-   \return 0 on success, else < 0
-   \ingroup DeviceInterface
-*/
-
+/** Makes the master leave IDLE mode and closes the network device.
+ *
+ * \return 0 on success, else < 0
+ * \ingroup DeviceInterface
+ */
 void ecdev_close(ec_device_t *device /**< EtherCAT device */)
 {
     ec_master_leave_idle_mode(device->master);
