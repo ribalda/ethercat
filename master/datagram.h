@@ -54,66 +54,58 @@
 
 /*****************************************************************************/
 
-/**
-   EtherCAT datagram type.
-*/
-
-typedef enum
-{
-    EC_DATAGRAM_NONE = 0x00, /**< Dummy */
-    EC_DATAGRAM_APRD = 0x01, /**< Auto-increment physical read */
-    EC_DATAGRAM_APWR = 0x02, /**< Auto-increment physical write */
-    EC_DATAGRAM_NPRD = 0x04, /**< Node-addressed physical read */
-    EC_DATAGRAM_NPWR = 0x05, /**< Node-addressed physical write */
-    EC_DATAGRAM_BRD  = 0x07, /**< Broadcast read */
-    EC_DATAGRAM_BWR  = 0x08, /**< Broadcast write */
-    EC_DATAGRAM_LRW  = 0x0C  /**< Logical read/write */
-}
-ec_datagram_type_t;
-
-/**
-   EtherCAT datagram state.
-*/
-
-typedef enum
-{
-    EC_DATAGRAM_INIT,      /**< new datagram */
-    EC_DATAGRAM_QUEUED,    /**< datagram queued for sending */
-    EC_DATAGRAM_SENT,      /**< datagram has been sent (still in the queue) */
-    EC_DATAGRAM_RECEIVED,  /**< datagram has been received (dequeued) */
-    EC_DATAGRAM_TIMED_OUT, /**< datagram timed out (dequeued) */
-    EC_DATAGRAM_ERROR      /**< error while sending/receiving (dequeued) */
-}
-ec_datagram_state_t;
+/** EtherCAT datagram type.
+ */
+typedef enum {
+    EC_DATAGRAM_NONE = 0x00, /**< Dummy. */
+    EC_DATAGRAM_APRD = 0x01, /**< Auto-increment physical read. */
+    EC_DATAGRAM_APWR = 0x02, /**< Auto-increment physical write. */
+    EC_DATAGRAM_NPRD = 0x04, /**< Node-addressed physical read. */
+    EC_DATAGRAM_NPWR = 0x05, /**< Node-addressed physical write. */
+    EC_DATAGRAM_BRD  = 0x07, /**< Broadcast read. */
+    EC_DATAGRAM_BWR  = 0x08, /**< Broadcast write. */
+    EC_DATAGRAM_LRW  = 0x0C  /**< Logical read/write. */
+} ec_datagram_type_t;
 
 /*****************************************************************************/
 
-/**
-   EtherCAT datagram.
-*/
+/** EtherCAT datagram state.
+ */
+typedef enum {
+    EC_DATAGRAM_INIT,      /**< Initial state of a new datagram. */
+    EC_DATAGRAM_QUEUED,    /**< Queued for sending. */
+    EC_DATAGRAM_SENT,      /**< Sent (still in the queue). */
+    EC_DATAGRAM_RECEIVED,  /**< Received (dequeued). */
+    EC_DATAGRAM_TIMED_OUT, /**< Timed out (dequeued). */
+    EC_DATAGRAM_ERROR      /**< Error while sending/receiving (dequeued). */
+} ec_datagram_state_t;
 
-typedef struct
-{
-    struct list_head list; /**< needed by domain datagram lists */
-    struct list_head queue; /**< master datagram queue item */
-    struct list_head sent; /**< master list item for sent datagrams */
-    ec_datagram_type_t type; /**< datagram type (APRD, BWR, etc) */
-    uint8_t address[EC_ADDR_LEN]; /**< recipient address */
-    uint8_t *data; /**< datagram data */
-    size_t mem_size; /**< datagram \a data memory size */
-    size_t data_size; /**< size of the data in \a data */
-    uint8_t index; /**< datagram index (set by master) */
-    uint16_t working_counter; /**< working counter */
-    ec_datagram_state_t state; /**< datagram state */
-    cycles_t cycles_sent; /**< time, the datagram was sent */
-    unsigned long jiffies_sent; /**< jiffies, when the datagram was sent */
-    cycles_t cycles_received; /**< time, when the datagram was received */
-    unsigned long jiffies_received; /**< jiffies the datagram was received */
-    unsigned int skip_count; /**< number of requeues when not yet received */
-    unsigned long stats_output_jiffies; /**< last statistics output */
-    char name[EC_DATAGRAM_NAME_SIZE]; /**< description of the datagram */
-}
-ec_datagram_t;
+/*****************************************************************************/
+
+/** EtherCAT datagram.
+ */
+typedef struct {
+    struct list_head list; /**< Needed by domain datagram lists. */
+    struct list_head queue; /**< Master datagram queue item. */
+    struct list_head sent; /**< Master list item for sent datagrams. */
+    ec_datagram_type_t type; /**< Datagram type (APRD, BWR, etc.). */
+    uint8_t address[EC_ADDR_LEN]; /**< Recipient address. */
+    uint8_t *data; /**< Datagram payload. */
+    ec_origin_t data_origin; /**< Origin of the \a data memory. */
+    size_t mem_size; /**< Datagram \a data memory size. */
+    size_t data_size; /**< Size of the data in \a data. */
+    uint8_t index; /**< Index (set by master). */
+    uint16_t working_counter; /**< Working counter. */
+    ec_datagram_state_t state; /**< State. */
+    cycles_t cycles_sent; /**< Time, when the datagram was sent. */
+    unsigned long jiffies_sent; /**< Jiffies, when the datagram was sent. */
+    cycles_t cycles_received; /**< Time, when the datagram was received. */
+    unsigned long jiffies_received; /**< Jiffies, when the datagram was
+                                      received. */
+    unsigned int skip_count; /**< Number of requeues when not yet received. */
+    unsigned long stats_output_jiffies; /**< Last statistics output. */
+    char name[EC_DATAGRAM_NAME_SIZE]; /**< Description of the datagram. */
+} ec_datagram_t;
 
 /*****************************************************************************/
 
@@ -127,7 +119,7 @@ int ec_datagram_aprd(ec_datagram_t *, uint16_t, uint16_t, size_t);
 int ec_datagram_apwr(ec_datagram_t *, uint16_t, uint16_t, size_t);
 int ec_datagram_brd(ec_datagram_t *, uint16_t, size_t);
 int ec_datagram_bwr(ec_datagram_t *, uint16_t, size_t);
-int ec_datagram_lrw(ec_datagram_t *, uint32_t, size_t);
+int ec_datagram_lrw(ec_datagram_t *, uint32_t, size_t, uint8_t *);
 
 void ec_datagram_print_wc_error(const ec_datagram_t *);
 void ec_datagram_output_stats(ec_datagram_t *datagram);

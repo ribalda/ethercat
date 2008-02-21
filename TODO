@@ -10,7 +10,6 @@ Version 1.4.0:
 
 * Realtime interface changes:
     - SDO access.
-    - External memory for domains.
 * Mailbox handler
 * Read PDO mapping via CoE during bus scan.
 * SDO write access in sysfs.

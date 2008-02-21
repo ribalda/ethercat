@@ -55,13 +55,14 @@
  *   ecrt_slave_config_state().
  * - Process data memory for a domain can now be allocated externally. This
  *   offers the possibility to use a shared-memory-region. Therefore,
- *   added the domain methods ecrt_domain_size() and ecrt_domain_memory().
+ *   added the domain methods ecrt_domain_size() and
+ *   ecrt_domain_external_memory().
  * - Replaced the process data pointers in the Pdo entry registration
  *   functions with a process data offset, that is now returned by
  *   ecrt_slave_config_reg_pdo_entry(). This was necessary for the external
  *   domain memory. An additional advantage is, that the returned offset value
- *   is directly usable. The domain's process data offset can be retrieved
- *   with ecrt_domain_data().
+ *   is directly usable. If the domain's process data is allocated internally,
+ *   the start address can be retrieved with ecrt_domain_data().
  * - Replaced ecrt_slave_pdo_mapping/add/clear() with
  *   ecrt_slave_config_mapping() that is now able to specify Pdo mapping and
  *   Pdo configuration. Pdo entries mapped in this way can now immediately be
@@ -241,7 +242,7 @@ typedef struct {
     uint32_t product_code; /**< Slave product code. */
     uint16_t index; /**< Pdo entry index. */
     uint8_t subindex; /**< Pdo entry subindex. */
-    uint8_t *offset; /**< Pointer to a variable to store the Pdo's
+    unsigned int *offset; /**< Pointer to a variable to store the Pdo's
                        offset in the process data. */
 } ec_pdo_entry_reg_t;
 
@@ -503,19 +504,30 @@ size_t ecrt_domain_size(
         ec_domain_t *domain /**< Domain. */
         );
 
-/** Provide memory to store the domain's process data.
+/** Provide external memory to store the domain's process data.
  *
- * Call this after all Pdo entries have been registered. Since interface
- * version 1.4, you'll have to provide an external memory for the domain
- * process data.
+ * Call this after all Pdo entries have been registered and before activating
+ * the master.
  *
- * The size of the allocated memory must be at least the return value of
- * ecrt_domain_size(), after all Pdo entries have been registered.
+ * The size of the allocated memory must be at least ecrt_domain_size(), after
+ * all Pdo entries have been registered.
  */
-void ecrt_domain_memory(
+void ecrt_domain_external_memory(
         ec_domain_t *domain, /**< Domain. */
         uint8_t *memory /**< Address of the memory to store the process
                           data in. */
+        );
+
+/** Returns the domain's process data.
+ *
+ * If external memory was provided with ecrt_domain_external_memory(), the
+ * returned pointer will contain the address of that memory. Otherwise it will
+ * point to the internally allocated memory.
+ *
+ * \return Pointer to the process data memory.
+ */
+uint8_t *ecrt_domain_data(
+        ec_domain_t *domain /**< Domain. */
         );
 
 /** Processes received datagrams.

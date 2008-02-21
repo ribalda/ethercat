@@ -63,20 +63,19 @@
 
 /*****************************************************************************/
 
-/**
-   Datagram constructor.
-*/
-
+/** Constructor.
+ */
 void ec_datagram_init(ec_datagram_t *datagram /**< EtherCAT datagram */)
 {
     INIT_LIST_HEAD(&datagram->queue); // mark as unqueued
     datagram->type = EC_DATAGRAM_NONE;
     memset(datagram->address, 0x00, EC_ADDR_LEN);
     datagram->data = NULL;
+    datagram->data_origin = EC_ORIG_INTERNAL;
     datagram->mem_size = 0;
     datagram->data_size = 0;
     datagram->index = 0x00;
-    datagram->working_counter = 0x00;
+    datagram->working_counter = 0x0000;
     datagram->state = EC_DATAGRAM_INIT;
     datagram->cycles_sent = 0;
     datagram->jiffies_sent = 0;
@@ -84,33 +83,37 @@ void ec_datagram_init(ec_datagram_t *datagram /**< EtherCAT datagram */)
     datagram->jiffies_received = 0;
     datagram->skip_count = 0;
     datagram->stats_output_jiffies = 0;
-    datagram->name[0] = 0x00;
+    memset(datagram->name, 0x00, EC_DATAGRAM_NAME_SIZE);
 }
 
 /*****************************************************************************/
 
-/**
-   Datagram destructor.
-*/
-
+/** Destructor.
+ */
 void ec_datagram_clear(ec_datagram_t *datagram /**< EtherCAT datagram */)
 {
-    if (datagram->data) kfree(datagram->data);
+    if (datagram->data_origin == EC_ORIG_INTERNAL && datagram->data)
+        kfree(datagram->data);
 }
 
 /*****************************************************************************/
 
-/**
-   Allocates datagram data memory.
-   If the allocated memory is already larger than requested, nothing ist done.
-   \return 0 in case of success, else < 0
-*/
-
+/** Allocates internal payload memory.
+ *
+ * If the allocated memory is already larger than requested, nothing ist done.
+ *
+ * \attention If external payload memory has been provided, no range checking
+ *            is done!
+ *
+ * \return 0 in case of success, else < 0
+ */
 int ec_datagram_prealloc(ec_datagram_t *datagram, /**< EtherCAT datagram */
-                         size_t size /**< New size in bytes */
-                         )
+        size_t size /**< New size in bytes */
+        )
 {
-    if (size <= datagram->mem_size) return 0;
+    if (datagram->data_origin == EC_ORIG_EXTERNAL
+            || size <= datagram->mem_size)
+        return 0;
 
     if (datagram->data) {
         kfree(datagram->data);
@@ -129,12 +132,12 @@ int ec_datagram_prealloc(ec_datagram_t *datagram, /**< EtherCAT datagram */
 
 /*****************************************************************************/
 
-/**
-   Initializes an EtherCAT NPRD datagram.
-   Node-adressed physical read.
-   \return 0 in case of success, else < 0
-*/
-
+/** Initializes an EtherCAT NPRD datagram.
+ *
+ * Node-adressed physical read.
+ *
+ * \return 0 in case of success, else < 0
+ */
 int ec_datagram_nprd(ec_datagram_t *datagram,
                      /**< EtherCAT datagram */
                      uint16_t node_address,
@@ -157,12 +160,12 @@ int ec_datagram_nprd(ec_datagram_t *datagram,
 
 /*****************************************************************************/
 
-/**
-   Initializes an EtherCAT NPWR datagram.
-   Node-adressed physical write.
-   \return 0 in case of success, else < 0
-*/
-
+/** Initializes an EtherCAT NPWR datagram.
+ *
+ * Node-adressed physical write.
+ *
+ * \return 0 in case of success, else < 0
+ */
 int ec_datagram_npwr(ec_datagram_t *datagram,
                      /**< EtherCAT datagram */
                      uint16_t node_address,
@@ -185,12 +188,12 @@ int ec_datagram_npwr(ec_datagram_t *datagram,
 
 /*****************************************************************************/
 
-/**
-   Initializes an EtherCAT APRD datagram.
-   Autoincrement physical read.
-   \return 0 in case of success, else < 0
-*/
-
+/** Initializes an EtherCAT APRD datagram.
+ *
+ * Autoincrement physical read.
+ *
+ * \return 0 in case of success, else < 0
+ */
 int ec_datagram_aprd(ec_datagram_t *datagram,
                      /**< EtherCAT datagram */
                      uint16_t ring_position,
@@ -210,12 +213,12 @@ int ec_datagram_aprd(ec_datagram_t *datagram,
 
 /*****************************************************************************/
 
-/**
-   Initializes an EtherCAT APWR datagram.
-   Autoincrement physical write.
-   \return 0 in case of success, else < 0
-*/
-
+/** Initializes an EtherCAT APWR datagram.
+ *
+ * Autoincrement physical write.
+ *
+ * \return 0 in case of success, else < 0
+ */
 int ec_datagram_apwr(ec_datagram_t *datagram,
                      /**< EtherCAT datagram */
                      uint16_t ring_position,
@@ -235,12 +238,12 @@ int ec_datagram_apwr(ec_datagram_t *datagram,
 
 /*****************************************************************************/
 
-/**
-   Initializes an EtherCAT BRD datagram.
-   Broadcast read.
-   \return 0 in case of success, else < 0
-*/
-
+/** Initializes an EtherCAT BRD datagram.
+ *
+ * Broadcast read.
+ *
+ * \return 0 in case of success, else < 0
+ */
 int ec_datagram_brd(ec_datagram_t *datagram,
                     /**< EtherCAT datagram */
                     uint16_t offset,
@@ -258,12 +261,12 @@ int ec_datagram_brd(ec_datagram_t *datagram,
 
 /*****************************************************************************/
 
-/**
-   Initializes an EtherCAT BWR datagram.
-   Broadcast write.
-   \return 0 in case of success, else < 0
-*/
-
+/** Initializes an EtherCAT BWR datagram.
+ *
+ * Broadcast write.
+ *
+ * \return 0 in case of success, else < 0
+ */
 int ec_datagram_bwr(ec_datagram_t *datagram,
                     /**< EtherCAT datagram */
                     uint16_t offset,
@@ -281,20 +284,24 @@ int ec_datagram_bwr(ec_datagram_t *datagram,
 
 /*****************************************************************************/
 
-/**
-   Initializes an EtherCAT LRW datagram.
-   Logical read write.
-   \return 0 in case of success, else < 0
-*/
-
-int ec_datagram_lrw(ec_datagram_t *datagram,
-                    /**< EtherCAT datagram */
-                    uint32_t offset,
-                    /**< logical address */
-                    size_t data_size
-                    /**< number of bytes to read/write */
-                    )
+/** Initializes an EtherCAT LRW datagram.
+ *
+ * Logical read write.
+ *
+ * \attention It is assumed, that the external memory is at least \a data_size
+ *            bytes large.
+ *
+ * \return 0 in case of success, else < 0
+ */
+int ec_datagram_lrw(
+        ec_datagram_t *datagram, /**< EtherCAT datagram */
+        uint32_t offset, /**< Logical address. */
+        size_t data_size, /**< Number of bytes to read/write. */
+        uint8_t *external_memory /**< Pointer to the memory to use. */
+        )
 {
+    datagram->data = external_memory;
+    datagram->data_origin = EC_ORIG_EXTERNAL;
     EC_FUNC_HEADER;
     datagram->type = EC_DATAGRAM_LRW;
     EC_WRITE_U32(datagram->address, offset);
@@ -303,11 +310,10 @@ int ec_datagram_lrw(ec_datagram_t *datagram,
 
 /*****************************************************************************/
 
-/**
- * Evaluates the working counter of a single-cast datagram.
+/** Evaluates the working counter of a single-cast datagram.
+ *
  * Outputs an error message.
  */
-
 void ec_datagram_print_wc_error(
         const ec_datagram_t *datagram /**< EtherCAT datagram */
         )
@@ -323,10 +329,8 @@ void ec_datagram_print_wc_error(
 
 /*****************************************************************************/
 
-/**
- * Outputs datagram statistics at most every second.
+/** Outputs datagram statistics at most every second.
  */
-
 void ec_datagram_output_stats(
         ec_datagram_t *datagram
         )

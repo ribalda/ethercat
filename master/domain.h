@@ -60,11 +60,14 @@ struct ec_domain
 {
     struct kobject kobj; /**< kobject. */
     struct list_head list; /**< List item. */
-    unsigned int index; /**< Index (just a number). */
     ec_master_t *master; /**< EtherCAT master owning the domain. */
+    unsigned int index; /**< Index (just a number). */
     size_t data_size; /**< Size of the process data. */
+    uint8_t *data; /**< Memory for the process data. */
+    ec_origin_t data_origin; /**< Origin of the \a data memory. */
     struct list_head datagrams; /**< Datagrams for process data exchange. */
-    uint32_t base_address; /**< Logical offset address of the process data. */
+    uint32_t logical_base_address; /**< Logical offset address of the
+                                     process data. */
     unsigned int working_counter; /**< Last working counter value. */
     unsigned int state; /**< Error state. */
     unsigned int working_counter_changes; /**< Working counter changes

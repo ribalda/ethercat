@@ -49,6 +49,7 @@
 /*****************************************************************************/
 
 void ec_domain_clear(struct kobject *);
+void ec_domain_clear_data(ec_domain_t *);
 ssize_t ec_show_domain_attribute(struct kobject *, struct attribute *, char *);
 
 /*****************************************************************************/
@@ -90,7 +91,9 @@ int ec_domain_init(
     domain->master = master;
     domain->index = index;
     domain->data_size = 0;
-    domain->base_address = 0;
+    domain->data = NULL;
+    domain->data_origin = EC_ORIG_INTERNAL;
+    domain->logical_base_address = 0L;
     domain->working_counter = 0xFFFFFFFF;
     domain->notify_jiffies = 0;
     domain->working_counter_changes = 0;
@@ -158,7 +161,23 @@ void ec_domain_clear(struct kobject *kobj /**< kobject of the domain */)
         kfree(datagram);
     }
 
+    ec_domain_clear_data(domain);
+
     kfree(domain);
+}
+
+/*****************************************************************************/
+
+/** Frees internally allocated memory.
+ */
+void ec_domain_clear_data(
+        ec_domain_t *domain /**< EtherCAT domain. */
+        )
+{
+    if (domain->data_origin == EC_ORIG_INTERNAL && domain->data)
+        kfree(domain->data);
+    domain->data = NULL;
+    domain->data_origin = EC_ORIG_INTERNAL;
 }
 
 /*****************************************************************************/
@@ -169,8 +188,9 @@ void ec_domain_clear(struct kobject *kobj /**< kobject of the domain */)
  */
 int ec_domain_add_datagram(
         ec_domain_t *domain, /**< EtherCAT domain. */
-        uint32_t offset, /**< Logical offset. */
-        size_t data_size /**< Size of the data. */
+        uint32_t logical_offset, /**< Logical offset. */
+        size_t data_size, /**< Size of the data. */
+        uint8_t *data /**< Process data. */
         )
 {
     ec_datagram_t *datagram;
@@ -182,9 +202,9 @@ int ec_domain_add_datagram(
 
     ec_datagram_init(datagram);
     snprintf(datagram->name, EC_DATAGRAM_NAME_SIZE,
-            "domain%u-%u", domain->index, offset);
+            "domain%u-%u", domain->index, logical_offset);
 
-    if (ec_datagram_lrw(datagram, offset, data_size)) {
+    if (ec_datagram_lrw(datagram, logical_offset, data_size, data)) {
         kfree(datagram);
         return -1;
     }
@@ -200,6 +220,8 @@ int ec_domain_add_datagram(
  * This allocates the necessary datagrams and writes the correct logical
  * addresses to every configured FMMU.
  *
+ * \todo Check for FMMUs that do not fit into any datagram.
+ *
  * \retval 0 in case of success
  * \retval <0 on failure.
  */
@@ -209,17 +231,26 @@ int ec_domain_finish(
         )
 {
     uint32_t datagram_offset;
-    size_t datagram_data_size;
+    size_t datagram_size;
     unsigned int datagram_count, i;
     ec_slave_config_t *sc;
     ec_fmmu_config_t *fmmu;
 
-    domain->base_address = base_address;
+    domain->logical_base_address = base_address;
 
-    // Cycle through all domain FMMUS, add the logical base address and assign
-    // as many PDO entries as possible to the datagrams.
-    datagram_offset = base_address;
-    datagram_data_size = 0;
+    if (domain->data_size && domain->data_origin == EC_ORIG_INTERNAL) {
+        if (!(domain->data =
+                    (uint8_t *) kmalloc(domain->data_size, GFP_KERNEL))) {
+            EC_ERR("Failed to allocate %u bytes internal memory for"
+                    " domain %u!\n", domain->data_size, domain->index);
+            return -1;
+        }
+    }
+
+    // Cycle through all domain FMMUS, correct the logical base addresses and
+    // set up the datagrams to carry the process data.
+    datagram_offset = 0;
+    datagram_size = 0;
     datagram_count = 0;
     list_for_each_entry(sc, &domain->master->configs, list) {
         for (i = 0; i < sc->used_fmmus; i++) {
@@ -227,28 +258,36 @@ int ec_domain_finish(
             if (fmmu->domain != domain)
                 continue;
 
+            // Correct logical FMMU address
             fmmu->logical_start_address += base_address;
-            if (datagram_data_size + fmmu->data_size > EC_MAX_DATA_SIZE) {
-                if (ec_domain_add_datagram(domain, datagram_offset,
-                            datagram_data_size)) return -1;
-                datagram_offset += datagram_data_size;
-                datagram_data_size = 0;
+
+            // If the current FMMU's data do not fit in the current datagram,
+            // allocate a new one.
+            if (datagram_size + fmmu->data_size > EC_MAX_DATA_SIZE) {
+                if (ec_domain_add_datagram(domain,
+                            domain->logical_base_address + datagram_offset,
+                            datagram_size, domain->data + datagram_offset))
+                    return -1;
+                datagram_offset += datagram_size;
+                datagram_size = 0;
                 datagram_count++;
             }
-            datagram_data_size += fmmu->data_size;
+
+            datagram_size += fmmu->data_size;
         }
     }
 
-    // allocate last datagram
-    if (datagram_data_size) {
-        if (ec_domain_add_datagram(domain, datagram_offset,
-                                   datagram_data_size))
+    // allocate last datagram, if data are left
+    if (datagram_size) {
+        if (ec_domain_add_datagram(domain,
+                    domain->logical_base_address + datagram_offset,
+                    datagram_size, domain->data + datagram_offset))
             return -1;
         datagram_count++;
     }
 
     EC_INFO("Domain %u with logical offset %u contains %u bytes in %u"
-            " datagram%s.\n", domain->index, domain->base_address,
+            " datagram%s.\n", domain->index, domain->logical_base_address,
             domain->data_size, datagram_count, datagram_count == 1 ? "" : "s");
     return 0;
 }
@@ -298,6 +337,30 @@ int ecrt_domain_reg_pdo_entry_list(ec_domain_t *domain,
     }
 
     return 0;
+}
+
+/*****************************************************************************/
+
+size_t ecrt_domain_size(ec_domain_t *domain)
+{
+    return domain->data_size;
+}
+
+/*****************************************************************************/
+
+void ecrt_domain_external_memory(ec_domain_t *domain, uint8_t *mem)
+{
+    ec_domain_clear_data(domain);
+
+    domain->data = mem;
+    domain->data_origin = EC_ORIG_EXTERNAL;
+}
+
+/*****************************************************************************/
+
+uint8_t *ecrt_domain_data(ec_domain_t *domain)
+{
+    return domain->data;
 }
 
 /*****************************************************************************/
@@ -364,8 +427,9 @@ void ecrt_domain_state(const ec_domain_t *domain, ec_domain_state_t *state)
 /** \cond */
 
 EXPORT_SYMBOL(ecrt_domain_reg_pdo_entry_list);
-//EXPORT_SYMBOL(ecrt_domain_size);
-//EXPORT_SYMBOL(ecrt_domain_memory);
+EXPORT_SYMBOL(ecrt_domain_size);
+EXPORT_SYMBOL(ecrt_domain_external_memory);
+EXPORT_SYMBOL(ecrt_domain_data);
 EXPORT_SYMBOL(ecrt_domain_process);
 EXPORT_SYMBOL(ecrt_domain_queue);
 EXPORT_SYMBOL(ecrt_domain_state);

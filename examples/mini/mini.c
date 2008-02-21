@@ -46,6 +46,7 @@
 //#define KBUS
 #define PDOS
 #define MAPPING
+#define EXTERNAL_MEMORY
 
 /*****************************************************************************/
 
@@ -74,19 +75,34 @@ const ec_pdo_entry_info_t el3162_channel2[] = {
     {0x3102, 2, 16}  // value
 };
 
-const ec_pdo_info_t mapping[] = {
+const ec_pdo_info_t el3162_mapping[] = {
     {EC_DIR_INPUT, 0x1A00, 2, el3162_channel1},
     {EC_DIR_INPUT, 0x1A01, 2, el3162_channel2},
+};
+
+const ec_pdo_entry_info_t el2004_channels[] = {
+    {0x3001, 1, 1}, // Value 1
+    {0x3001, 2, 1}, // Value 2
+    {0x3001, 3, 1}, // Value 3
+    {0x3001, 4, 1}  // Value 4
+};
+
+const ec_pdo_info_t el2004_mapping[] = {
+    {EC_DIR_OUTPUT, 0x1600, 1, &el2004_channels[0]},
+    {EC_DIR_OUTPUT, 0x1601, 1, &el2004_channels[1]},
+    {EC_DIR_OUTPUT, 0x1602, 1, &el2004_channels[2]},
+    {EC_DIR_OUTPUT, 0x1603, 1, &el2004_channels[3]},
 };
 #endif
 
 #ifdef PDOS
-static uint8_t off_ana_in;
-//static uint8_t off_ana_out;
+static uint8_t *pd; /**< Process data. */
+static unsigned int off_ana_in;
+static unsigned int off_dig_out;
 
 const static ec_pdo_entry_reg_t domain1_regs[] = {
     {0, 1, Beckhoff_EL3162, 0x3101, 2, &off_ana_in},
-    //{0, 2, Beckhoff_EL4102, 0x3001, 1, &off_ana_out},
+    {0, 3, Beckhoff_EL2004, 0x3001, 1, &off_dig_out},
     {}
 };
 #endif
@@ -105,8 +121,7 @@ void run(unsigned long data)
     spin_unlock(&master_lock);
 
     // process data
-    // k_pos = EC_READ_U32(r_ssi);
-    //EC_WRITE_U8(r_dig_out, blink ? 0x0F : 0x00);
+    EC_WRITE_U8(pd + off_dig_out, blink ? 0x0F : 0x00);
 
     if (counter) {
         counter--;
@@ -176,6 +191,9 @@ int __init init_mini_module(void)
 #ifdef MAPPING
     ec_slave_config_t *sc;
 #endif
+#ifdef EXTERNAL_MEMORY
+    unsigned int size;
+#endif
     
     printk(KERN_INFO PFX "Starting...\n");
 
@@ -199,7 +217,17 @@ int __init init_mini_module(void)
         goto out_release_master;
     }
 
-    if (ecrt_slave_config_mapping(sc, 2, mapping)) {
+    if (ecrt_slave_config_mapping(sc, 2, el3162_mapping)) {
+        printk(KERN_ERR PFX "Failed to configure Pdo mapping.\n");
+        goto out_release_master;
+    }
+
+    if (!(sc = ecrt_master_slave_config(master, 0, 3, Beckhoff_EL2004))) {
+        printk(KERN_ERR PFX "Failed to get slave configuration.\n");
+        goto out_release_master;
+    }
+
+    if (ecrt_slave_config_mapping(sc, 4, el2004_mapping)) {
         printk(KERN_ERR PFX "Failed to configure Pdo mapping.\n");
         goto out_release_master;
     }
@@ -213,11 +241,31 @@ int __init init_mini_module(void)
     }
 #endif
 
+#ifdef EXTERNAL_MEMORY
+    if ((size = ecrt_domain_size(domain1))) {
+        if (!(pd = (uint8_t *) kmalloc(size, GFP_KERNEL))) {
+            printk(KERN_ERR PFX "Failed to allocate %u bytes of process data"
+                    " memory!\n", size);
+            goto out_release_master;
+        }
+        ecrt_domain_external_memory(domain1, pd);
+    }
+#endif
+
     printk(KERN_INFO PFX "Activating master...\n");
     if (ecrt_master_activate(master)) {
         printk(KERN_ERR PFX "Failed to activate master!\n");
+#ifdef EXTERNAL_MEMORY
+        goto out_free_process_data;
+#else
         goto out_release_master;
+#endif
     }
+
+#ifndef EXTERNAL_MEMORY
+    // Get internal process data for domain
+    pd = ecrt_domain_data(domain1);
+#endif
 
     printk(KERN_INFO PFX "Starting cyclic sample thread.\n");
     init_timer(&timer);
@@ -228,10 +276,14 @@ int __init init_mini_module(void)
     printk(KERN_INFO PFX "Started.\n");
     return 0;
 
- out_release_master:
+#ifdef EXTERNAL_MEMORY
+out_free_process_data:
+    kfree(pd);
+#endif
+out_release_master:
     printk(KERN_ERR PFX "Releasing master...\n");
     ecrt_release_master(master);
- out_return:
+out_return:
     printk(KERN_ERR PFX "Failed to load. Aborting.\n");
     return -1;
 }
@@ -243,6 +295,11 @@ void __exit cleanup_mini_module(void)
     printk(KERN_INFO PFX "Stopping...\n");
 
     del_timer_sync(&timer);
+
+#ifdef EXTERNAL_MEMORY
+    kfree(pd);
+#endif
+
     printk(KERN_INFO PFX "Releasing master...\n");
     ecrt_release_master(master);
 

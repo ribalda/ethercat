@@ -179,7 +179,7 @@ int ec_mac_is_zero(const uint8_t *);
 
 /*****************************************************************************/
 
-/** Code - Message pair.
+/** Code/Message pair.
  *
  * Some EtherCAT datagrams support reading a status code to display a certain
  * message. This type allows to map a code to a message string.
@@ -187,8 +187,7 @@ int ec_mac_is_zero(const uint8_t *);
 typedef struct {
     uint32_t code; /**< Code. */
     const char *message; /**< Message belonging to \a code. */
-}
-ec_code_msg_t;
+} ec_code_msg_t;
 
 /*****************************************************************************/
 
@@ -201,6 +200,15 @@ typedef enum {
     EC_REQUEST_FAILURE
 }
 ec_request_state_t;
+
+/*****************************************************************************/
+
+/** Origin type.
+ */
+typedef enum {
+    EC_ORIG_INTERNAL, /**< Internal. */
+    EC_ORIG_EXTERNAL /**< External. */
+} ec_origin_t;
 
 /*****************************************************************************/
 
