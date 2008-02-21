@@ -278,14 +278,6 @@ ssize_t ec_show_domain_attribute(struct kobject *kobj, /**< kobject */
  *  Realtime interface
  *****************************************************************************/
 
-int ecrt_domain_reg_pdo_entry(ec_domain_t *domain, ec_slave_config_t *sc,
-        uint16_t index, uint8_t subindex)
-{
-    return ec_slave_config_reg_pdo_entry(sc, domain, index, subindex);
-}
-
-/*****************************************************************************/
-
 int ecrt_domain_reg_pdo_entry_list(ec_domain_t *domain,
         const ec_pdo_entry_reg_t *regs)
 {
@@ -298,8 +290,8 @@ int ecrt_domain_reg_pdo_entry_list(ec_domain_t *domain,
                         reg->position, reg->vendor_id, reg->product_code)))
             return -1;
 
-        if ((ret = ecrt_domain_reg_pdo_entry(domain, sc, reg->index,
-                        reg->subindex)) < 0)
+        if ((ret = ecrt_slave_config_reg_pdo_entry(sc, reg->index,
+                        reg->subindex, domain)) < 0)
             return -1;
 
         *reg->offset = ret;
@@ -371,7 +363,6 @@ void ecrt_domain_state(const ec_domain_t *domain, ec_domain_state_t *state)
 
 /** \cond */
 
-EXPORT_SYMBOL(ecrt_domain_reg_pdo_entry);
 EXPORT_SYMBOL(ecrt_domain_reg_pdo_entry_list);
 //EXPORT_SYMBOL(ecrt_domain_size);
 //EXPORT_SYMBOL(ecrt_domain_memory);

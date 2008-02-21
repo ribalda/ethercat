@@ -50,7 +50,7 @@
  * - Replaced slave address string with alias and position values. See
  *   ecrt_master_slave_config().
  * - Removed ecrt_master_get_slave_by_pos(), because it is no longer
- *   necessary (alias/position, slave configurations).
+ *   necessary due to alias/position addressing.
  * - Added ec_slave_config_state_t for the new method
  *   ecrt_slave_config_state().
  * - Process data memory for a domain can now be allocated externally. This
@@ -58,9 +58,10 @@
  *   added the domain methods ecrt_domain_size() and ecrt_domain_memory().
  * - Replaced the process data pointers in the Pdo entry registration
  *   functions with a process data offset, that is now returned by
- *   ecrt_domain_reg_pdo_entry(). This was necessary for the external
+ *   ecrt_slave_config_reg_pdo_entry(). This was necessary for the external
  *   domain memory. An additional advantage is, that the returned offset value
- *   is directly usable.
+ *   is directly usable. The domain's process data offset can be retrieved
+ *   with ecrt_domain_data().
  * - Replaced ecrt_slave_pdo_mapping/add/clear() with
  *   ecrt_slave_config_mapping() that is now able to specify Pdo mapping and
  *   Pdo configuration. Pdo entries mapped in this way can now immediately be
@@ -73,7 +74,7 @@
  *   of ecrt_domain_state().
  * - Former "Pdo registration" meant Pdo entry registration in fact, therefore
  *   renamed ec_pdo_reg_t to ec_pdo_entry_reg_t and ecrt_domain_register_pdo()
- *   to ecrt_domain_reg_pdo_entry().
+ *   to ecrt_slave_config_reg_pdo_entry().
  * - Removed ecrt_domain_register_pdo_range(), because it's functionality can
  *   be reached by specifying an explicit Pdo mapping and registering those
  *   Pdo entries.
@@ -415,6 +416,23 @@ int ecrt_slave_config_mapping(
         const ec_pdo_info_t pdos[] /**< List with Pdo mapping. */
         );
 
+/** Registers a Pdo entry of the given slave configuration at a domain.
+ *
+ * Searches the mapping and the Pdo configurations for the given Pdo entry. If
+ * found, the curresponding sync manager/FMMU is added to the domain and the
+ * offset of the Pdo entry's data in the domain process data is returned.
+ *
+ * \retval >=0 Offset of the Pdo entry's process data.
+ * \retval -1  Pdo entry not found.
+ * \retval -2  Failed to register Pdo entry.
+ */
+int ecrt_slave_config_reg_pdo_entry(
+        ec_slave_config_t *sc, /**< Slave configuration. */
+        uint16_t entry_index, /**< Index of the Pdo entry to register. */
+        uint8_t entry_subindex, /**< Subindex of the Pdo entry to register. */
+        ec_domain_t *domain /**< Domain. */
+        );
+
 /** Add a configuration value for an 8-bit SDO.
  *
  * \todo doc
@@ -463,20 +481,6 @@ void ecrt_slave_config_state(
 /******************************************************************************
  * Domain methods
  *****************************************************************************/
-
-/** Registers a single Pdo entry for a domain.
- *
- * \return On success, the function returns the offset in the domain's process
- *         data, which can be zero or greater. On failure, it returns a value
- *         less than zero.
- */
-
-int ecrt_domain_reg_pdo_entry(
-        ec_domain_t *domain, /**< Domain. */
-        ec_slave_config_t *sc, /**< Slave configuration. */
-        uint16_t entry_index, /**< Index of the Pdo entry to register. */
-        uint8_t entry_subindex /**< Subindex of the Pdo entry to register. */
-        );
 
 /** Registers a bunch of Pdo entries for a domain.
  *

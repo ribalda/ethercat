@@ -221,57 +221,6 @@ int ec_slave_config_prepare_fmmu(
 
 /*****************************************************************************/
 
-/** Registers a Pdo entry.
- *
- * Searches the mapping and the Pdo configurations for the given Pdo entry. If
- * found, the curresponding sync manager/FMMU is added to the domain and the
- * offset of the Pdo entry's data in the domain process data is returned.
- *
- * \retval >=0 Offset of the Pdo entry's process data.
- * \retval -1  Pdo entry not found.
- * \retval -2  Failed to register Pdo entry.
- */
-int ec_slave_config_reg_pdo_entry(
-        ec_slave_config_t *sc, /**< Slave configuration. */
-        ec_domain_t *domain, /**< Domain. */
-        uint16_t index, /**< Index of Pdo entry to register. */
-        uint8_t subindex /**< Subindex of Pdo entry to register. */
-        )
-{
-    ec_direction_t dir;
-    ec_pdo_mapping_t *map;
-    unsigned int bit_offset, byte_offset;
-    ec_pdo_t *pdo;
-    ec_pdo_entry_t *entry;
-    int ret;
-
-    for (dir = EC_DIR_OUTPUT; dir <= EC_DIR_INPUT; dir++) {
-        map = &sc->mapping[dir];
-        bit_offset = 0;
-        list_for_each_entry(pdo, &map->pdos, list) {
-            list_for_each_entry(entry, &pdo->entries, list) {
-                if (entry->index != index || entry->subindex != subindex) {
-                    bit_offset += entry->bit_length;
-                } else {
-                    goto found;
-                }
-            }
-        }
-    }
-
-    EC_ERR("PDO entry 0x%04X:%u is not mapped in slave config %u:%u.\n",
-           index, subindex, sc->alias, sc->position);
-    return -1;
-
-found:
-    byte_offset = bit_offset / 8;
-    if ((ret = ec_slave_config_prepare_fmmu(sc, domain, dir)) < 0)
-        return -2;
-    return ret + byte_offset;
-}
-
-/*****************************************************************************/
-
 /** Outputs all information about a certain slave configuration.
 */
 ssize_t ec_slave_config_info(
@@ -504,6 +453,47 @@ int ecrt_slave_config_mapping(ec_slave_config_t *sc, unsigned int n_entries,
 
 /*****************************************************************************/
 
+int ecrt_slave_config_reg_pdo_entry(
+        ec_slave_config_t *sc, /**< Slave configuration. */
+        uint16_t index, /**< Index of Pdo entry to register. */
+        uint8_t subindex, /**< Subindex of Pdo entry to register. */
+        ec_domain_t *domain /**< Domain. */
+        )
+{
+    ec_direction_t dir;
+    ec_pdo_mapping_t *map;
+    unsigned int bit_offset, byte_offset;
+    ec_pdo_t *pdo;
+    ec_pdo_entry_t *entry;
+    int ret;
+
+    for (dir = EC_DIR_OUTPUT; dir <= EC_DIR_INPUT; dir++) {
+        map = &sc->mapping[dir];
+        bit_offset = 0;
+        list_for_each_entry(pdo, &map->pdos, list) {
+            list_for_each_entry(entry, &pdo->entries, list) {
+                if (entry->index != index || entry->subindex != subindex) {
+                    bit_offset += entry->bit_length;
+                } else {
+                    goto found;
+                }
+            }
+        }
+    }
+
+    EC_ERR("PDO entry 0x%04X:%u is not mapped in slave config %u:%u.\n",
+           index, subindex, sc->alias, sc->position);
+    return -1;
+
+found:
+    byte_offset = bit_offset / 8;
+    if ((ret = ec_slave_config_prepare_fmmu(sc, domain, dir)) < 0)
+        return -2;
+    return ret + byte_offset;
+}
+
+/*****************************************************************************/
+
 int ecrt_slave_config_sdo8(ec_slave_config_t *slave, uint16_t index,
         uint8_t subindex, uint8_t value)
 {
@@ -537,6 +527,7 @@ int ecrt_slave_config_sdo32(ec_slave_config_t *slave, uint16_t index,
 /** \cond */
 
 EXPORT_SYMBOL(ecrt_slave_config_mapping);
+EXPORT_SYMBOL(ecrt_slave_config_reg_pdo_entry);
 EXPORT_SYMBOL(ecrt_slave_config_sdo8);
 EXPORT_SYMBOL(ecrt_slave_config_sdo16);
 EXPORT_SYMBOL(ecrt_slave_config_sdo32);
