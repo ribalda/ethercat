@@ -648,7 +648,7 @@ void ecrt_domain_state(
 #define EC_WRITE_U16(DATA, VAL) \
     do { \
         *((uint16_t *) (DATA)) = (uint16_t) (VAL); \
-        cpu_to_le16s(DATA); \
+        cpu_to_le16s((uint16_t *) (DATA)); \
     } while (0)
 
 /** Write a 16-bit signed value to EtherCAT data.
@@ -664,7 +664,7 @@ void ecrt_domain_state(
 #define EC_WRITE_U32(DATA, VAL) \
     do { \
         *((uint32_t *) (DATA)) = (uint32_t) (VAL); \
-        cpu_to_le32s(DATA); \
+        cpu_to_le32s((uint32_t *) (DATA)); \
     } while (0)
 
 /** Write a 32-bit signed value to EtherCAT data.
