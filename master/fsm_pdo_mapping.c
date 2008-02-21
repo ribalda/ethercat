@@ -186,7 +186,7 @@ void ec_fsm_pdo_mapping_next_sync(
         }
     }
 
-    if (!sync) {
+    if (!fsm->sync) {
         if (fsm->slave->master->debug_level)
             EC_DBG("Pdo mapping finished for slave %u.\n",
                     fsm->slave->ring_position);
