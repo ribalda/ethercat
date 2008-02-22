@@ -179,7 +179,7 @@ void ec_fsm_pdo_mapping_next_dir(
             continue;
 
         if (fsm->slave->master->debug_level) {
-            EC_DBG("Configuring Pdo mapping for SM%u of slave %u.\n",
+            EC_DBG("Changing Pdo mapping for SM%u of slave %u.\n",
                     fsm->sync->index, fsm->slave->ring_position);
         }
 
