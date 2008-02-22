@@ -64,7 +64,7 @@ void ec_fsm_slave_conf_state_mapping(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_state_pdo_conf(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_state_pdo_sync(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_state_fmmu(ec_fsm_slave_t *);
-void ec_fsm_slave_conf_state_saveop(ec_fsm_slave_t *);
+void ec_fsm_slave_conf_state_safeop(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_state_op(ec_fsm_slave_t *);
 
 void ec_fsm_slave_conf_enter_mbox_sync(ec_fsm_slave_t *);
@@ -73,7 +73,7 @@ void ec_fsm_slave_conf_enter_sdo_conf(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_enter_mapping(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_enter_pdo_sync(ec_fsm_slave_t *);
 void ec_fsm_slave_conf_enter_fmmu(ec_fsm_slave_t *);
-void ec_fsm_slave_conf_enter_saveop(ec_fsm_slave_t *);
+void ec_fsm_slave_conf_enter_safeop(ec_fsm_slave_t *);
 
 void ec_fsm_slave_state_end(ec_fsm_slave_t *);
 void ec_fsm_slave_state_error(ec_fsm_slave_t *);
@@ -878,7 +878,7 @@ void ec_fsm_slave_conf_enter_sdo_conf(ec_fsm_slave_t *fsm /**< slave state machi
 
     if (!slave->config) {
         EC_DBG("Slave %u is not configured.\n", slave->ring_position);
-        ec_fsm_slave_conf_enter_saveop(fsm);
+        ec_fsm_slave_conf_enter_safeop(fsm);
         return;
     }
 
@@ -1089,7 +1089,7 @@ void ec_fsm_slave_conf_enter_fmmu(ec_fsm_slave_t *fsm /**< slave state machine *
     const ec_sync_t *sync;
 
     if (!slave->base_fmmu_count) { // skip FMMU configuration
-        ec_fsm_slave_conf_enter_saveop(fsm);
+        ec_fsm_slave_conf_enter_safeop(fsm);
         return;
     }
 
@@ -1144,29 +1144,29 @@ void ec_fsm_slave_conf_state_fmmu(ec_fsm_slave_t *fsm /**< slave state machine *
         return;
     }
 
-    ec_fsm_slave_conf_enter_saveop(fsm);
+    ec_fsm_slave_conf_enter_safeop(fsm);
 }
 
 /*****************************************************************************/
 
 /**
- * Request SAVEOP state.
+ * Request SAFEOP state.
  */
 
-void ec_fsm_slave_conf_enter_saveop(ec_fsm_slave_t *fsm /**< slave state machine */)
+void ec_fsm_slave_conf_enter_safeop(ec_fsm_slave_t *fsm /**< slave state machine */)
 {
-    fsm->state = ec_fsm_slave_conf_state_saveop;
-    ec_fsm_change_start(&fsm->fsm_change, fsm->slave, EC_SLAVE_STATE_SAVEOP);
+    fsm->state = ec_fsm_slave_conf_state_safeop;
+    ec_fsm_change_start(&fsm->fsm_change, fsm->slave, EC_SLAVE_STATE_SAFEOP);
     ec_fsm_change_exec(&fsm->fsm_change); // execute immediately
 }
 
 /*****************************************************************************/
 
 /**
-   Slave configuration state: SAVEOP.
+   Slave configuration state: SAFEOP.
 */
 
-void ec_fsm_slave_conf_state_saveop(ec_fsm_slave_t *fsm /**< slave state machine */)
+void ec_fsm_slave_conf_state_safeop(ec_fsm_slave_t *fsm /**< slave state machine */)
 {
     ec_master_t *master = fsm->slave->master;
     ec_slave_t *slave = fsm->slave;
@@ -1180,10 +1180,10 @@ void ec_fsm_slave_conf_state_saveop(ec_fsm_slave_t *fsm /**< slave state machine
         return;
     }
 
-    // slave is now in SAVEOP
+    // slave is now in SAFEOP
 
     if (master->debug_level) {
-        EC_DBG("Slave %i is now in SAVEOP.\n", slave->ring_position);
+        EC_DBG("Slave %i is now in SAFEOP.\n", slave->ring_position);
     }
 
     if (fsm->slave->current_state == fsm->slave->requested_state) {

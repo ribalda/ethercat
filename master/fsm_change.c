@@ -348,7 +348,7 @@ const ec_code_msg_t al_status_messages[] = {
     {0x0020, "Slave needs cold start"},
     {0x0021, "Slave needs INIT"},
     {0x0022, "Slave needs PREOP"},
-    {0x0023, "Slave needs SAVEOP"},
+    {0x0023, "Slave needs SAFEOP"},
     {0x0030, "Invalid DC SYNCH configuration"},
     {0x0031, "Invalid DC latch configuration"},
     {0x0032, "PLL error"},

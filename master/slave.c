@@ -1035,8 +1035,8 @@ ssize_t ec_show_slave_attribute(struct kobject *kobj, /**< slave's kobject */
                 return sprintf(buffer, "INIT\n");
             case EC_SLAVE_STATE_PREOP:
                 return sprintf(buffer, "PREOP\n");
-            case EC_SLAVE_STATE_SAVEOP:
-                return sprintf(buffer, "SAVEOP\n");
+            case EC_SLAVE_STATE_SAFEOP:
+                return sprintf(buffer, "SAFEOP\n");
             case EC_SLAVE_STATE_OP:
                 return sprintf(buffer, "OP\n");
             default:
@@ -1084,8 +1084,8 @@ ssize_t ec_store_slave_attribute(struct kobject *kobj, /**< slave's kobject */
             ec_slave_request_state(slave, EC_SLAVE_STATE_INIT);
         else if (!strcmp(buffer, "PREOP\n"))
             ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
-        else if (!strcmp(buffer, "SAVEOP\n"))
-            ec_slave_request_state(slave, EC_SLAVE_STATE_SAVEOP);
+        else if (!strcmp(buffer, "SAFEOP\n"))
+            ec_slave_request_state(slave, EC_SLAVE_STATE_SAFEOP);
         else if (!strcmp(buffer, "OP\n"))
             ec_slave_request_state(slave, EC_SLAVE_STATE_OP);
         else {

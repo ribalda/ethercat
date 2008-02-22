@@ -383,9 +383,9 @@ size_t ec_state_string(uint8_t states, /**< slave states */
         off += sprintf(buffer + off, "PREOP");
         first = 0;
     }
-    if (states & EC_SLAVE_STATE_SAVEOP) {
+    if (states & EC_SLAVE_STATE_SAFEOP) {
         if (!first) off += sprintf(buffer + off, ", ");
-        off += sprintf(buffer + off, "SAVEOP");
+        off += sprintf(buffer + off, "SAFEOP");
         first = 0;
     }
     if (states & EC_SLAVE_STATE_OP) {

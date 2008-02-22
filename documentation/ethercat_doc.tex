@@ -2827,7 +2827,7 @@ usually done like in the listing below, which is taken out of the
 slave configuration state machine code:
 
 \begin{lstlisting}[language=C,numbers=left]
-  void ec_fsm_slaveconf_saveop(ec_fsm_t *fsm)
+  void ec_fsm_slaveconf_safeop(ec_fsm_t *fsm)
   {
           fsm->change_state(fsm); // execute state change
                                   // sub state machine
@@ -3191,8 +3191,8 @@ configuring a slave and bringing it to a certain state.
   sending the first SDO. $\rightarrow$~SDO\_CONF
 
   If no SDO configurations are provided, the slave can now directly be
-  brought into the SAVEOP state and the state change state machine is
-  started again. $\rightarrow$~SAVEOP
+  brought into the SAFEOP state and the state change state machine is
+  started again. $\rightarrow$~SAFEOP
 
   Otherwise, all supported FMMUs are configured according to the PDOs
   requested via the master's realtime interface. The appropriate
@@ -3202,9 +3202,9 @@ configuring a slave and bringing it to a certain state.
   has SDOs to configure, it is begun with sending the first SDO.
   $\rightarrow$~SDO\_CONF
 
-  Otherwise, the slave can now be brought into the SAVEOP state. The
+  Otherwise, the slave can now be brought into the SAFEOP state. The
   state change state machine is started.
-  $\rightarrow$~SAVEOP
+  $\rightarrow$~SAFEOP
 
 \item[SDO\_CONF] The CoE state machine is executed until termination.
   $\rightarrow$~SDO\_CONF
@@ -3212,17 +3212,17 @@ configuring a slave and bringing it to a certain state.
   If another SDO has to be configured, a new SDO download sequence is
   begun. $\rightarrow$~SDO\_CONF
 
-  Otherwise, the slave can now be brought into the SAVEOP state. The
+  Otherwise, the slave can now be brought into the SAFEOP state. The
   state change state machine is started.
-  $\rightarrow$~SAVEOP
+  $\rightarrow$~SAFEOP
 
-\item[SAVEOP] The state change state machine is executed until
-  termination. $\rightarrow$~SAVEOP
+\item[SAFEOP] The state change state machine is executed until
+  termination. $\rightarrow$~SAFEOP
 
   If the state change failed, the configuration has to be aborted.
   $\rightarrow$~END
 
-  If the SAVEOP state was the target state, the configuration is
+  If the SAFEOP state was the target state, the configuration is
   finished. $\rightarrow$~END
 
   The slave can now directly be brought into the OP state and the
@@ -3631,10 +3631,10 @@ but does not apply them at once.
 The best time to apply SDO configurations is during the slave's PREOP
 state, because mailbox communication is already possible and slave's
 application will start with updating input data in the succeeding
-SAVEOP state. Therefore the SDO configuration has to be part of the
+SAFEOP state. Therefore the SDO configuration has to be part of the
 slave configuration state machine (see section~\ref{sec:fsm-conf}): It
 is implemented via an SDO download state machine, that is executed
-just before entering the slave's SAVEOP state. In this way, it is
+just before entering the slave's SAFEOP state. In this way, it is
 guaranteed that the SDO configurations are applied each time, the
 slave is reconfigured.
 
@@ -3890,15 +3890,15 @@ the EtherCAT bus. Below is a listing of a slave directory:
   \begin{lstlisting}[gobble=4]
     # `\textbf{cat /sys/ethercat0/slave003/state}`
     OP
-    # `\textbf{echo SAVEOP > /sys/ethercat0/slave003/state}`
+    # `\textbf{echo SAFEOP > /sys/ethercat0/slave003/state}`
   \end{lstlisting}
 
   This command should also be receipted with a syslog message:
 
   \begin{lstlisting}[gobble=4]
-    EtherCAT: Accepted new state SAVEOP for slave 3.
-    EtherCAT: Changing state of slave 3 from OP to SAVEOP.
-    EtherCAT: Slave states: INIT, SAVEOP, OP.
+    EtherCAT: Accepted new state SAFEOP for slave 3.
+    EtherCAT: Changing state of slave 3 from OP to SAFEOP.
+    EtherCAT: Slave states: INIT, SAFEOP, OP.
   \end{lstlisting}
 
   After the new requested state was accepted from user space, the
@@ -3996,7 +3996,7 @@ in an output like this:
      0  1:0  OP      EK1100 Ethernet Kopplerklemme (2A E-Bus)
      1  1:1  INIT    EL4132 2K. Ana. Ausgang +/-10V
      2  1:2  INIT    EL4132 2K. Ana. Ausgang +/-10V
-     3  1:3  SAVEOP  EL4132 2K. Ana. Ausgang +/-10V
+     3  1:3  SAFEOP  EL4132 2K. Ana. Ausgang +/-10V
      4  1:4  INIT    EL5101 Incremental Encoder Interface
      5  1:5  INIT    EL1014 4K. Dig. Eingang 24V, 10s
      6  1:6  OP      EL6601 1 Port Switch (Ethernet, CoE)

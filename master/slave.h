@@ -62,8 +62,8 @@ typedef enum {
     /**< INIT state (no mailbox communication, no IO) */
     EC_SLAVE_STATE_PREOP = 0x02,
     /**< PREOP state (mailbox communication, no IO) */
-    EC_SLAVE_STATE_SAVEOP = 0x04,
-    /**< SAVEOP (mailbox communication and input update) */
+    EC_SLAVE_STATE_SAFEOP = 0x04,
+    /**< SAFEOP (mailbox communication and input update) */
     EC_SLAVE_STATE_OP = 0x08,
     /**< OP (mailbox communication and input/output update) */
     EC_SLAVE_STATE_ACK_ERR = 0x10
