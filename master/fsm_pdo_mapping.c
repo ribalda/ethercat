@@ -162,6 +162,8 @@ void ec_fsm_pdo_mapping_next_dir(
         ec_fsm_pdo_mapping_t *fsm /**< mapping state machine */
         )
 {
+    fsm->dir++;
+
     for (; fsm->dir <= EC_DIR_INPUT; fsm->dir++) {
         fsm->mapping = &fsm->slave->config->mapping[fsm->dir];
         
