@@ -53,7 +53,7 @@ void ec_fsm_pdo_mapping_state_pdo_count(ec_fsm_pdo_mapping_t *);
 void ec_fsm_pdo_mapping_state_end(ec_fsm_pdo_mapping_t *);
 void ec_fsm_pdo_mapping_state_error(ec_fsm_pdo_mapping_t *);
 
-void ec_fsm_pdo_mapping_next_sync(ec_fsm_pdo_mapping_t *);
+void ec_fsm_pdo_mapping_next_dir(ec_fsm_pdo_mapping_t *);
 
 /*****************************************************************************/
 
@@ -150,66 +150,57 @@ void ec_fsm_pdo_mapping_state_start(
         return;
     }
 
-    fsm->sync = NULL;
-    ec_fsm_pdo_mapping_next_sync(fsm);
+    fsm->dir = (ec_direction_t) -1; // next is EC_DIR_OUTPUT
+    ec_fsm_pdo_mapping_next_dir(fsm);
 }
 
 /*****************************************************************************/
 
-/** Process mapping of next sync manager.
+/** Process mapping of next direction.
  */
-void ec_fsm_pdo_mapping_next_sync(
+void ec_fsm_pdo_mapping_next_dir(
         ec_fsm_pdo_mapping_t *fsm /**< mapping state machine */
         )
 {
-    ec_direction_t dir;
-    const ec_sync_t *sync;
-    const ec_pdo_mapping_t *map;
-
-    for (dir = EC_DIR_OUTPUT; dir <= EC_DIR_INPUT; dir++) {
-        if (!(sync = ec_slave_get_pdo_sync(fsm->slave, dir))) {
-            EC_WARN("No sync manager for direction %u!\n", dir);
+    for (; fsm->dir <= EC_DIR_INPUT; fsm->dir++) {
+        fsm->mapping = &fsm->slave->config->mapping[fsm->dir];
+        
+        if (!(fsm->sync = ec_slave_get_pdo_sync(fsm->slave, fsm->dir))) {
+            if (!list_empty(&fsm->mapping->pdos)) {
+                EC_ERR("No sync manager for direction %u!\n", fsm->dir);
+                fsm->state = ec_fsm_pdo_mapping_state_end;
+                return;
+            }
             continue;
         }
 
-        if (fsm->sync) { // there is a last SM
-            if (sync == fsm->sync) // this is the last SM
-                fsm->sync = NULL; // take the next one
-        } else {
-            map = &fsm->slave->config->mapping[dir];
-            if (ec_pdo_mapping_equal(&sync->mapping, map))
-                continue;
+        // check if mapping has to be altered
+        if (ec_pdo_mapping_equal(&fsm->sync->mapping, fsm->mapping))
+            continue;
 
-            fsm->sync = sync;
-            fsm->mapping = map;
-            break;
+        if (fsm->slave->master->debug_level) {
+            EC_DBG("Configuring Pdo mapping for SM%u of slave %u.\n",
+                    fsm->sync->index, fsm->slave->ring_position);
         }
-    }
 
-    if (!fsm->sync) {
+        // set mapped Pdo count to zero
+        fsm->sdodata.index = 0x1C10 + fsm->sync->index;
+        fsm->sdodata.subindex = 0; // mapped Pdo count
+        EC_WRITE_U8(&fsm->sdo_value, 0); // zero Pdos mapped
+        fsm->sdodata.size = 1;
         if (fsm->slave->master->debug_level)
-            EC_DBG("Pdo mapping finished for slave %u.\n",
-                    fsm->slave->ring_position);
-        fsm->state = ec_fsm_pdo_mapping_state_end;
+            EC_DBG("Setting Pdo count to zero for SM%u.\n", fsm->sync->index);
+
+        fsm->state = ec_fsm_pdo_mapping_state_zero_count;
+        ec_fsm_coe_download(fsm->fsm_coe, fsm->slave, &fsm->sdodata);
+        ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
         return;
     }
 
-    if (fsm->slave->master->debug_level) {
-        EC_DBG("Configuring Pdo mapping for SM%u of slave %u.\n",
-                fsm->sync->index, fsm->slave->ring_position);
-    }
-
-    // set mapped Pdo count to zero
-    fsm->sdodata.index = 0x1C10 + fsm->sync->index;
-    fsm->sdodata.subindex = 0; // mapped Pdo count
-    EC_WRITE_U8(&fsm->sdo_value, 0); // zero Pdos mapped
-    fsm->sdodata.size = 1;
     if (fsm->slave->master->debug_level)
-        EC_DBG("Setting Pdo count to zero for SM%u.\n", fsm->sync->index);
-
-    fsm->state = ec_fsm_pdo_mapping_state_zero_count;
-    ec_fsm_coe_download(fsm->fsm_coe, fsm->slave, &fsm->sdodata);
-    ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
+        EC_DBG("Pdo mapping finished for slave %u.\n",
+                fsm->slave->ring_position);
+    fsm->state = ec_fsm_pdo_mapping_state_end;
 }
 
 /*****************************************************************************/
@@ -272,7 +263,7 @@ void ec_fsm_pdo_mapping_state_zero_count(
         if (fsm->slave->master->debug_level)
             EC_DBG("No Pdos to map for SM%u of slave %u.\n",
                     fsm->sync->index, fsm->slave->ring_position);
-        ec_fsm_pdo_mapping_next_sync(fsm);
+        ec_fsm_pdo_mapping_next_dir(fsm);
         return;
     }
 
@@ -341,8 +332,8 @@ void ec_fsm_pdo_mapping_state_pdo_count(
         EC_DBG("Successfully set Pdo mapping for SM%u of slave %u.\n",
                 fsm->sync->index, fsm->slave->ring_position);
 
-    // mapping configuration for this sync manager complete.
-    ec_fsm_pdo_mapping_next_sync(fsm);
+    // mapping configuration for this direction finished
+    ec_fsm_pdo_mapping_next_dir(fsm);
 }
 
 /******************************************************************************

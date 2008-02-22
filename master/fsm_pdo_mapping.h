@@ -62,6 +62,7 @@ struct ec_fsm_pdo_mapping
     ec_fsm_coe_t *fsm_coe; /**< CoE state machine to use. */
     ec_slave_t *slave; /**< Slave the FSM runs on. */
 
+    ec_direction_t dir; /**< Current direction. */
     const ec_sync_t *sync; /**< Current sync manager. */
     const ec_pdo_mapping_t *mapping; /**< Target Pdo mapping. */
     const ec_pdo_t *pdo; /**< Current Pdo. */
