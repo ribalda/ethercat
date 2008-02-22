@@ -59,12 +59,12 @@ void ec_fmmu_config_init(
         )
 {
     fmmu->sc = sc;
-    fmmu->domain = domain;
     fmmu->dir = dir;
 
     fmmu->logical_start_address = domain->data_size;
     fmmu->data_size = ec_pdo_mapping_total_size(&sc->mapping[dir]);
-    domain->data_size += fmmu->data_size;
+
+    ec_domain_add_fmmu_config(domain, fmmu);
 }
 
 /*****************************************************************************/

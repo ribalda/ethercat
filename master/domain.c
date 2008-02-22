@@ -54,6 +54,14 @@ ssize_t ec_show_domain_attribute(struct kobject *, struct attribute *, char *);
 
 /*****************************************************************************/
 
+/** Working counter increment values for logical read/write operations.
+ *
+ * \attention This is indexed by ec_direction_t.
+ */
+static const unsigned int working_counter_increment[] = {2, 1};
+
+/*****************************************************************************/
+
 /** \cond */
 
 EC_SYSFS_READ_ATTR(image_size);
@@ -91,12 +99,14 @@ int ec_domain_init(
     domain->master = master;
     domain->index = index;
     domain->data_size = 0;
+    domain->expected_working_counter = 0;
     domain->data = NULL;
     domain->data_origin = EC_ORIG_INTERNAL;
     domain->logical_base_address = 0L;
     domain->working_counter = 0xFFFFFFFF;
-    domain->notify_jiffies = 0;
+    domain->state = 0;
     domain->working_counter_changes = 0;
+    domain->notify_jiffies = 0;
 
     INIT_LIST_HEAD(&domain->datagrams);
 
@@ -121,11 +131,10 @@ int ec_domain_init(
 
 /*****************************************************************************/
 
-/**
-   Domain destructor.
-   Clears and frees a domain object.
-*/
-
+/** Domain destructor.
+ *
+ * Clears and frees a domain object.
+ */
 void ec_domain_destroy(ec_domain_t *domain /**< EtherCAT domain */)
 {
     ec_datagram_t *datagram;
@@ -143,12 +152,11 @@ void ec_domain_destroy(ec_domain_t *domain /**< EtherCAT domain */)
 
 /*****************************************************************************/
 
-/**
-   Clear and free domain.
-   This method is called by the kobject,
-   once there are no more references to it.
-*/
-
+/** Clear and free domain.
+ *
+ * This method is called by the kobject, once there are no more references
+ * to it.
+ */
 void ec_domain_clear(struct kobject *kobj /**< kobject of the domain */)
 {
     ec_domain_t *domain;
@@ -178,6 +186,21 @@ void ec_domain_clear_data(
         kfree(domain->data);
     domain->data = NULL;
     domain->data_origin = EC_ORIG_INTERNAL;
+}
+
+/*****************************************************************************/
+
+/** Adds an FMMU configuration to the domain.
+ */
+void ec_domain_add_fmmu_config(
+        ec_domain_t *domain, /**< EtherCAT domain. */
+        ec_fmmu_config_t *fmmu /**< FMMU configuration. */
+        )
+{
+    fmmu->domain = domain;
+
+    domain->data_size += fmmu->data_size;
+    domain->expected_working_counter += working_counter_increment[fmmu->dir];
 }
 
 /*****************************************************************************/
@@ -449,7 +472,16 @@ void ecrt_domain_queue(ec_domain_t *domain)
 void ecrt_domain_state(const ec_domain_t *domain, ec_domain_state_t *state)
 {
     state->working_counter = domain->working_counter;
-    state->wc_state = EC_WC_ZERO; // FIXME
+
+    if (domain->working_counter) {
+        if (domain->working_counter == domain->expected_working_counter) {
+            state->wc_state = EC_WC_COMPLETE;
+        } else {
+            state->wc_state = EC_WC_INCOMPLETE;
+        }
+    } else {
+        state->wc_state = EC_WC_ZERO;
+    }
 }
 
 /*****************************************************************************/

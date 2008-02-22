@@ -47,6 +47,7 @@
 #include "globals.h"
 #include "datagram.h"
 #include "master.h"
+#include "fmmu_config.h"
 
 /*****************************************************************************/
 
@@ -63,6 +64,7 @@ struct ec_domain
     ec_master_t *master; /**< EtherCAT master owning the domain. */
     unsigned int index; /**< Index (just a number). */
     size_t data_size; /**< Size of the process data. */
+    unsigned int expected_working_counter; /**< Expected working counter. */
     uint8_t *data; /**< Memory for the process data. */
     ec_origin_t data_origin; /**< Origin of the \a data memory. */
     struct list_head datagrams; /**< Datagrams for process data exchange. */
@@ -80,6 +82,7 @@ struct ec_domain
 int ec_domain_init(ec_domain_t *, ec_master_t *, unsigned int);
 void ec_domain_destroy(ec_domain_t *);
 
+void ec_domain_add_fmmu_config(ec_domain_t *, ec_fmmu_config_t *);
 int ec_domain_finish(ec_domain_t *, uint32_t);
 
 /*****************************************************************************/

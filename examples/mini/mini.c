@@ -43,9 +43,7 @@
 
 #define FREQUENCY 100
 
-//#define KBUS
-#define PDOS
-#define MAPPING
+#define CONFIGURE_MAPPING
 #define EXTERNAL_MEMORY
 
 /*****************************************************************************/
@@ -54,17 +52,13 @@ static struct timer_list timer;
 
 // EtherCAT
 static ec_master_t *master = NULL;
-static ec_domain_t *domain1 = NULL;
+static ec_master_state_t master_state = {};
 spinlock_t master_lock = SPIN_LOCK_UNLOCKED;
-static ec_master_state_t master_state, old_state = {};
 
-// data fields
-#ifdef KBUS
-static void *r_inputs;
-static void *r_outputs;
-#endif
+static ec_domain_t *domain1 = NULL;
+static ec_domain_state_t domain1_state = {};
 
-#ifdef MAPPING
+#ifdef CONFIGURE_MAPPING
 const ec_pdo_entry_info_t el3162_channel1[] = {
     {0x3101, 1,  8}, // status
     {0x3101, 2, 16}  // value
@@ -95,7 +89,6 @@ const ec_pdo_info_t el2004_mapping[] = {
 };
 #endif
 
-#ifdef PDOS
 static uint8_t *pd; /**< Process data. */
 static unsigned int off_ana_in;
 static unsigned int off_dig_out;
@@ -105,7 +98,49 @@ const static ec_pdo_entry_reg_t domain1_regs[] = {
     {0, 3, Beckhoff_EL2004, 0x3001, 1, &off_dig_out},
     {}
 };
-#endif
+
+/*****************************************************************************/
+
+void check_domain1_state(void)
+{
+    ec_domain_state_t ds;
+
+    ecrt_domain_state(domain1, &ds);
+    if (ds.working_counter != domain1_state.working_counter)
+        printk(KERN_INFO PFX "domain1 working_counter changed to %u.\n",
+                ds.working_counter);
+
+    if (ds.wc_state != domain1_state.wc_state)
+        printk(KERN_INFO PFX "domain1 wc_state changed to %u.\n",
+                ds.wc_state);
+
+    domain1_state = ds;
+}
+
+/*****************************************************************************/
+
+void check_master_state(void)
+{
+    ec_master_state_t ms;
+
+    spin_lock(&master_lock);
+    ecrt_master_state(master, &ms);
+    spin_unlock(&master_lock);
+
+    if (ms.bus_state != master_state.bus_state) {
+        printk(KERN_INFO PFX "bus state changed to %i.\n", ms.bus_state);
+    }
+    if (ms.bus_tainted != master_state.bus_tainted) {
+        printk(KERN_INFO PFX "tainted flag changed to %u.\n",
+                ms.bus_tainted);
+    }
+    if (ms.slaves_responding != master_state.slaves_responding) {
+        printk(KERN_INFO PFX "slaves_responding changed to %u.\n",
+                ms.slaves_responding);
+    }
+
+    master_state = ms;
+}
 
 /*****************************************************************************/
 
@@ -114,53 +149,33 @@ void run(unsigned long data)
     static unsigned int counter = 0;
     static unsigned int blink = 0;
 
-    // receive
+    // receive process data
     spin_lock(&master_lock);
     ecrt_master_receive(master);
     ecrt_domain_process(domain1);
     spin_unlock(&master_lock);
 
-    // process data
-    EC_WRITE_U8(pd + off_dig_out, blink ? 0x0F : 0x00);
+    // check process data state (optional)
+    check_domain1_state();
 
     if (counter) {
         counter--;
-    }
-    else {
+    } else { // do this at FREQUENCY
         counter = FREQUENCY;
+
+        // calculate new process data
         blink = !blink;
 
-        spin_lock(&master_lock);
-        ecrt_master_state(master, &master_state);
-        spin_unlock(&master_lock);
-
-        if (master_state.bus_state != old_state.bus_state) {
-            printk(KERN_INFO PFX "bus state changed to %i.\n",
-                    master_state.bus_state);
-        }
-        if (master_state.bus_tainted != old_state.bus_tainted) {
-            printk(KERN_INFO PFX "tainted flag changed to %u.\n",
-                    master_state.bus_tainted);
-        }
-        if (master_state.slaves_responding !=
-                old_state.slaves_responding) {
-            printk(KERN_INFO PFX "slaves_responding changed to %u.\n",
-                    master_state.slaves_responding);
-        }
-       
-        old_state = master_state;
+        // check for master state (optional)
+        check_master_state();
     }
 
-#ifdef KBUS
-    EC_WRITE_U8(r_outputs + 2, blink ? 0xFF : 0x00);
-#endif
+    // write process data
+    EC_WRITE_U8(pd + off_dig_out, blink ? 0x0F : 0x00);
 
-    // send
+    // send process data
     spin_lock(&master_lock);
     ecrt_domain_queue(domain1);
-    spin_unlock(&master_lock);
-
-    spin_lock(&master_lock);
     ecrt_master_send(master);
     spin_unlock(&master_lock);
 
@@ -188,7 +203,7 @@ void release_lock(void *data)
 
 int __init init_mini_module(void)
 {
-#ifdef MAPPING
+#ifdef CONFIGURE_MAPPING
     ec_slave_config_t *sc;
 #endif
 #ifdef EXTERNAL_MEMORY
@@ -210,7 +225,7 @@ int __init init_mini_module(void)
         goto out_release_master;
     }
 
-#ifdef MAPPING
+#ifdef CONFIGURE_MAPPING
     printk(KERN_INFO PFX "Configuring Pdo mapping...\n");
     if (!(sc = ecrt_master_slave_config(master, 0, 1, Beckhoff_EL3162))) {
         printk(KERN_ERR PFX "Failed to get slave configuration.\n");
@@ -234,12 +249,10 @@ int __init init_mini_module(void)
 #endif
 
     printk(KERN_INFO PFX "Registering Pdo entries...\n");
-#ifdef PDOS
     if (ecrt_domain_reg_pdo_entry_list(domain1, domain1_regs)) {
         printk(KERN_ERR PFX "Pdo entry registration failed!\n");
         goto out_release_master;
     }
-#endif
 
 #ifdef EXTERNAL_MEMORY
     if ((size = ecrt_domain_size(domain1))) {
