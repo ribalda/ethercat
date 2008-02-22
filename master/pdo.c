@@ -48,10 +48,10 @@ void ec_pdo_clear_entries(ec_pdo_t *);
 
 /*****************************************************************************/
 
-/** PDO constructor.
+/** Pdo constructor.
  */
 void ec_pdo_init(
-        ec_pdo_t *pdo /**< EtherCAT PDO */
+        ec_pdo_t *pdo /**< EtherCAT Pdo */
         )
 {
     pdo->sync_index = -1; // not assigned 
@@ -87,9 +87,9 @@ out_return:
 
 /*****************************************************************************/
 
-/** PDO destructor.
+/** Pdo destructor.
  */
-void ec_pdo_clear(ec_pdo_t *pdo /**< EtherCAT PDO */)
+void ec_pdo_clear(ec_pdo_t *pdo /**< EtherCAT Pdo */)
 {
     if (pdo->name)
         kfree(pdo->name);
@@ -101,11 +101,11 @@ void ec_pdo_clear(ec_pdo_t *pdo /**< EtherCAT PDO */)
 
 /** Clear Pdo entry list.
  */
-void ec_pdo_clear_entries(ec_pdo_t *pdo /**< EtherCAT PDO */)
+void ec_pdo_clear_entries(ec_pdo_t *pdo /**< EtherCAT Pdo */)
 {
     ec_pdo_entry_t *entry, *next;
 
-    // free all PDO entries
+    // free all Pdo entries
     list_for_each_entry_safe(entry, next, &pdo->entries, list) {
         list_del(&entry->list);
         ec_pdo_entry_clear(entry);
@@ -129,7 +129,7 @@ int ec_pdo_set_name(
 
     if (name && (len = strlen(name))) {
         if (!(pdo->name = (char *) kmalloc(len + 1, GFP_KERNEL))) {
-            EC_ERR("Failed to allocate PDO name.\n");
+            EC_ERR("Failed to allocate Pdo name.\n");
             return -1;
         }
         memcpy(pdo->name, name, len + 1);
@@ -153,7 +153,7 @@ int ec_pdo_copy_entries(ec_pdo_t *pdo, const ec_pdo_t *other)
     list_for_each_entry(other_entry, &other->entries, list) {
         if (!(entry = (ec_pdo_entry_t *)
                     kmalloc(sizeof(ec_pdo_entry_t), GFP_KERNEL))) {
-            EC_ERR("Failed to allocate memory for PDO entry copy.\n");
+            EC_ERR("Failed to allocate memory for Pdo entry copy.\n");
             return -1;
         }
 
@@ -261,7 +261,7 @@ int ec_pdo_entry_set_name(
 
     if (name && (len = strlen(name))) {
         if (!(entry->name = (char *) kmalloc(len + 1, GFP_KERNEL))) {
-            EC_ERR("Failed to allocate PDO entry name.\n");
+            EC_ERR("Failed to allocate Pdo entry name.\n");
             return -1;
         }
         memcpy(entry->name, name, len + 1);

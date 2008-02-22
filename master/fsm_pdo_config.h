@@ -32,7 +32,7 @@
  *****************************************************************************/
 
 /** \file
- * EtherCAT PDO configuration state machine structures.
+ * EtherCAT Pdo configuration state machine structures.
  */
 
 /*****************************************************************************/
@@ -60,11 +60,11 @@ struct ec_fsm_pdo_config
     ec_fsm_coe_t *fsm_coe; /**< CoE state machine to use */
     ec_slave_t *slave; /**< Slave the FSM runs on. */
 
-    const ec_pdo_t *pdo; /**< Current PDO to configure. */
+    const ec_pdo_t *pdo; /**< Current Pdo to configure. */
     const ec_pdo_entry_t *entry; /**< Current entry. */
 
-    ec_sdo_data_t sdodata; /**< SDO configuration data. */
-    uint16_t sdo_value; /**< SDO value. */
+    ec_sdo_data_t sdodata; /**< Sdo configuration data. */
+    uint16_t sdo_value; /**< Sdo value. */
     unsigned int entry_count; /**< Number of configured entries. */
 };
 

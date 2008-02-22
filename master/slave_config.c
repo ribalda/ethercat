@@ -167,7 +167,7 @@ void ec_slave_config_clear(struct kobject *kobj /**< kobject of the config. */)
     for (dir = EC_DIR_OUTPUT; dir <= EC_DIR_INPUT; dir++)
         ec_pdo_mapping_clear(&sc->mapping[dir]);
 
-    // free all SDO configurations
+    // free all Sdo configurations
     list_for_each_entry_safe(sdodata, next_sdodata, &sc->sdo_configs, list) {
         list_del(&sdodata->list);
         kfree(sdodata->data);
@@ -195,7 +195,7 @@ void ec_slave_config_clear(struct kobject *kobj /**< kobject of the config. */)
 int ec_slave_config_prepare_fmmu(
         ec_slave_config_t *sc, /**< Slave configuration. */
         ec_domain_t *domain, /**< Domain. */
-        ec_direction_t dir /**< PDO direction. */
+        ec_direction_t dir /**< Pdo direction. */
         )
 {
     unsigned int i;
@@ -263,7 +263,7 @@ ssize_t ec_slave_config_info(
     
     // type-cast to avoid warnings on some compilers
     if (!list_empty((struct list_head *) &sc->sdo_configs)) {
-        buf += sprintf(buf, "\nSDO configurations:\n");
+        buf += sprintf(buf, "\nSdo configurations:\n");
 
         list_for_each_entry(sdodata, &sc->sdo_configs, list) {
             switch (sdodata->size) {
@@ -304,7 +304,7 @@ ssize_t ec_show_slave_config_attribute(
 
 /*****************************************************************************/
 
-/** Adds an SDO configuration.
+/** Adds an Sdo configuration.
  */
 int ec_slave_config_sdo(ec_slave_config_t *sc, uint16_t index,
         uint8_t subindex, const uint8_t *data, size_t size)
@@ -319,12 +319,12 @@ int ec_slave_config_sdo(ec_slave_config_t *sc, uint16_t index,
 
     if (!(sdodata = (ec_sdo_data_t *)
           kmalloc(sizeof(ec_sdo_data_t), GFP_KERNEL))) {
-        EC_ERR("Failed to allocate memory for SDO configuration object!\n");
+        EC_ERR("Failed to allocate memory for Sdo configuration object!\n");
         return -1;
     }
 
     if (!(sdodata->data = (uint8_t *) kmalloc(size, GFP_KERNEL))) {
-        EC_ERR("Failed to allocate memory for SDO configuration data!\n");
+        EC_ERR("Failed to allocate memory for Sdo configuration data!\n");
         kfree(sdodata);
         return -1;
     }
@@ -481,7 +481,7 @@ int ecrt_slave_config_reg_pdo_entry(
         }
     }
 
-    EC_ERR("PDO entry 0x%04X:%u is not mapped in slave config %u:%u.\n",
+    EC_ERR("Pdo entry 0x%04X:%u is not mapped in slave config %u:%u.\n",
            index, subindex, sc->alias, sc->position);
     return -1;
 

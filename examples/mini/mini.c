@@ -233,10 +233,10 @@ int __init init_mini_module(void)
     }
 #endif
 
-    printk(KERN_INFO PFX "Registering PDO entries...\n");
+    printk(KERN_INFO PFX "Registering Pdo entries...\n");
 #ifdef PDOS
     if (ecrt_domain_reg_pdo_entry_list(domain1, domain1_regs)) {
-        printk(KERN_ERR PFX "PDO entry registration failed!\n");
+        printk(KERN_ERR PFX "Pdo entry registration failed!\n");
         goto out_release_master;
     }
 #endif

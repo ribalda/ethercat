@@ -869,7 +869,7 @@ void ec_fsm_slave_conf_state_preop(ec_fsm_slave_t *fsm /**< slave state machine 
 /*****************************************************************************/
 
 /**
- * Check for SDO configurations to be applied.
+ * Check for Sdo configurations to be applied.
  */
 
 void ec_fsm_slave_conf_enter_sdo_conf(ec_fsm_slave_t *fsm /**< slave state machine */)
@@ -883,12 +883,12 @@ void ec_fsm_slave_conf_enter_sdo_conf(ec_fsm_slave_t *fsm /**< slave state machi
     }
 
     // No CoE configuration to be applied?
-    if (list_empty(&slave->config->sdo_configs)) { // skip SDO configuration
+    if (list_empty(&slave->config->sdo_configs)) { // skip Sdo configuration
         ec_fsm_slave_conf_enter_mapping(fsm);
         return;
     }
 
-    // start SDO configuration
+    // start Sdo configuration
     fsm->state = ec_fsm_slave_conf_state_sdo_conf;
     fsm->sdodata =
         list_entry(fsm->slave->config->sdo_configs.next, ec_sdo_data_t, list);
@@ -909,14 +909,14 @@ void ec_fsm_slave_conf_state_sdo_conf(
     if (ec_fsm_coe_exec(&fsm->fsm_coe)) return;
 
     if (!ec_fsm_coe_success(&fsm->fsm_coe)) {
-        EC_ERR("SDO configuration failed for slave %u.\n",
+        EC_ERR("Sdo configuration failed for slave %u.\n",
                 fsm->slave->ring_position);
         fsm->slave->error_flag = 1;
         fsm->state = ec_fsm_slave_state_error;
         return;
     }
 
-    // Another SDO to configure?
+    // Another Sdo to configure?
     if (fsm->sdodata->list.next != &fsm->slave->config->sdo_configs) {
         fsm->sdodata =
             list_entry(fsm->sdodata->list.next, ec_sdo_data_t, list);
@@ -925,21 +925,21 @@ void ec_fsm_slave_conf_state_sdo_conf(
         return;
     }
 
-    // All SDOs are now configured.
+    // All Sdos are now configured.
     ec_fsm_slave_conf_enter_mapping(fsm);
 }
 
 /*****************************************************************************/
 
 /**
- * Check for PDO mappings to be applied.
+ * Check for Pdo mappings to be applied.
  */
 
 void ec_fsm_slave_conf_enter_mapping(
         ec_fsm_slave_t *fsm /**< slave state machine */
         )
 {
-    // start configuring PDO mapping
+    // start configuring Pdo mapping
     fsm->state = ec_fsm_slave_conf_state_mapping;
     ec_fsm_pdo_mapping_start(&fsm->fsm_pdo_map, fsm->slave);
     ec_fsm_pdo_mapping_exec(&fsm->fsm_pdo_map); // execute immediately
@@ -958,7 +958,7 @@ void ec_fsm_slave_conf_state_mapping(
     if (ec_fsm_pdo_mapping_exec(&fsm->fsm_pdo_map)) return;
 
     if (!ec_fsm_pdo_mapping_success(&fsm->fsm_pdo_map)) {
-        EC_ERR("PDO mapping configuration failed for slave %u.\n",
+        EC_ERR("Pdo mapping configuration failed for slave %u.\n",
                 fsm->slave->ring_position);
         fsm->slave->error_flag = 1;
         fsm->state = ec_fsm_slave_state_error;
@@ -997,7 +997,7 @@ void ec_fsm_slave_conf_state_pdo_conf(
 /*****************************************************************************/
 
 /**
- * Check for PDO sync managers to be configured.
+ * Check for Pdo sync managers to be configured.
  */
 
 void ec_fsm_slave_conf_enter_pdo_sync(
@@ -1043,7 +1043,7 @@ void ec_fsm_slave_conf_enter_pdo_sync(
 /*****************************************************************************/
 
 /**
- * Configure PDO sync managers.
+ * Configure Pdo sync managers.
  */
 
 void ec_fsm_slave_conf_state_pdo_sync(ec_fsm_slave_t *fsm /**< slave state machine */)
@@ -1101,7 +1101,7 @@ void ec_fsm_slave_conf_enter_fmmu(ec_fsm_slave_t *fsm /**< slave state machine *
         fmmu = &slave->config->fmmu_configs[i];
         if (!(sync = ec_slave_get_pdo_sync(slave, fmmu->dir))) {
             fsm->state = ec_fsm_slave_state_error;
-            EC_ERR("Failed to determine PDO sync manager for FMMU on slave"
+            EC_ERR("Failed to determine Pdo sync manager for FMMU on slave"
                     " %u!\n", slave->ring_position);
             return;
         }

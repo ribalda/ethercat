@@ -62,11 +62,11 @@ struct ec_fsm_coe
     unsigned int retries; /**< retries upon datagram timeout */
 
     void (*state)(ec_fsm_coe_t *); /**< CoE state function */
-    ec_sdo_data_t *sdodata; /**< input/output: SDO data object */
+    ec_sdo_data_t *sdodata; /**< input/output: Sdo data object */
     cycles_t cycles_start; /**< CoE timestamp */
-    ec_sdo_t *sdo; /**< current SDO */
+    ec_sdo_t *sdo; /**< current Sdo */
     uint8_t subindex; /**< current subindex */
-    ec_sdo_request_t *request; /**< SDO request */
+    ec_sdo_request_t *request; /**< Sdo request */
     uint8_t toggle; /**< toggle bit for segment commands */
 };
 

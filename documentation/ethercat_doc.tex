@@ -197,7 +197,7 @@ implemented EtherCAT master.
   \end{itemize}
 \item Implementation of the CANopen-over-EtherCAT (CoE) protocol.
   \begin{itemize}
-  \item Configuration of CoE-capable slaves via SDO interface.
+  \item Configuration of CoE-capable slaves via Sdo interface.
   \end{itemize}
 \item Implementation of the Ethernet-over-EtherCAT (EoE) protocol.
   \begin{itemize}
@@ -323,10 +323,10 @@ appropriate.
 \index{Process data}
 
 The slaves offer their inputs and outputs by presenting the master
-so-called ``Process Data Objects'' (PDOs\index{PDO}). The available
-PDOs can be determined by reading out the slave's TXPDO and RXPDO
-E$^2$PROM categories. The realtime module can register the PDOs for
-data exchange during cyclic operation. The sum of all registered PDOs
+so-called ``Process Data Objects'' (Pdos\index{Pdo}). The available
+Pdos can be determined by reading out the slave's TXPDO and RXPDO
+E$^2$PROM categories. The realtime module can register the Pdos for
+data exchange during cyclic operation. The sum of all registered Pdos
 defines the ``process data image'', which is exchanged via the
 ``Logical ReadWrite'' datagrams introduced
 in~\cite[section~5.4.2.4]{dlspec}.
@@ -335,7 +335,7 @@ in~\cite[section~5.4.2.4]{dlspec}.
 \index{Domain}
 
 The process data image can be easily managed by creating co-called
-``domains'', which group PDOs and allocate the datagrams needed to
+``domains'', which group Pdos and allocate the datagrams needed to
 exchange them. Domains are mandatory for process data exchange, so
 there has to be at least one. They were introduced for the following
 reasons:
@@ -349,11 +349,11 @@ reasons:
   this limit, multiple frames have to be sent, and the image has to be
   partitioned for the use of multiple datagrams. A domain manages this
   automatically.
-\item Not every PDO has to be exchanged with the same frequency: The
-  values of PDOs can vary slowly over time (for example temperature
+\item Not every Pdo has to be exchanged with the same frequency: The
+  values of Pdos can vary slowly over time (for example temperature
   values), so exchanging them with a high frequency would just waste
   bus bandwidth. For this reason, multiple domains can be created, to
-  group different PDOs and so allow separate exchange.
+  group different Pdos and so allow separate exchange.
 \end{itemize}
 
 There is no upper limit for the number of domains, but each domain
@@ -363,22 +363,22 @@ domains is also limited by the slaves' capabilities.
 \paragraph{FMMU Configuration}
 \index{FMMU!Configuration}
 
-A realtime module can register PDOs for process data exchange. Every
-PDO is part of a memory area in the slave's physical memory, that is
+A realtime module can register Pdos for process data exchange. Every
+Pdo is part of a memory area in the slave's physical memory, that is
 protected by a sync manager \cite[section~6.7]{dlspec} for
 synchronized access. In order to make a sync manager react on a
 datagram accessing its memory, it is necessary to access the last byte
 covered by the sync manager. Otherwise the sync manager will not react
 on the datagram and no data will be exchanged. That is why the whole
 synchronized memory area has to be included into the process data
-image: For example, if a certain PDO of a slave is registered for
+image: For example, if a certain Pdo of a slave is registered for
 exchange with a certain domain, one FMMU will be configured to map the
-complete sync-manager-protected memory, the PDO resides in. If a
-second PDO of the same slave is registered for process data exchange
-within the same domain, and this PDO resides in the same
-sync-manager-protected memory as the first PDO, the FMMU configuration
+complete sync-manager-protected memory, the Pdo resides in. If a
+second Pdo of the same slave is registered for process data exchange
+within the same domain, and this Pdo resides in the same
+sync-manager-protected memory as the first Pdo, the FMMU configuration
 is not touched, because the appropriate memory is already part of the
-domain's process data image.  If the second PDO belongs to another
+domain's process data image.  If the second Pdo belongs to another
 sync-manager-protected area, this complete area is also included into
 the domains process data image. See figure~\ref{fig:fmmus} for an
 overview, how FMMU's are configured to map physical memory to logical
@@ -394,7 +394,7 @@ process data images.
 \paragraph{Process Data Pointers}
 
 The figure also demonstrates the way, the realtime module can access the
-exchanged process data: At PDO registration, the realtime module has
+exchanged process data: At Pdo registration, the realtime module has
 to provide the address of a process data pointer. Upon calculation of
 the domain image and allocation of process data memory, this pointer
 is redirected to the appropriate location inside the domain's process
@@ -454,7 +454,7 @@ Operation mode is entered when a realtime module requests the master.
 The idle mode is stopped and the bus is scanned by getting the number
 of slaves and executing the ``Slave scan state machine'' (see
 section~\ref{sec:fsm-scan}) for each slave. The master is now ready to
-create domains and accept PDO registrations and slave configurations.
+create domains and accept Pdo registrations and slave configurations.
 After that, cyclic communication can be done by the realtime module.
 
 \paragraph{Master Phases}
@@ -463,7 +463,7 @@ Every realtime module should use the master in three phases:
 
 \begin{enumerate}
 \item \textit{Startup} - The master is requested and the bus is
-  validated. Domains are created and PDOs are registered. Slave
+  validated. Domains are created and Pdos are registered. Slave
   configurations are applied.
 \item \textit{Operation} - Cyclic code is run, process data is
   exchanged and the master state machine is executed.
@@ -1508,8 +1508,8 @@ below.
 \item[sii\_*] These attributes contain values from the ``Slave
   Information Interface'' \cite[section~6.4]{dlspec}, mostly identity
   and mailbox information, but also the list of sync manager
-  configurations and PDOs.
-\item[registered] This flag is set, if one or more PDOs of the slave
+  configurations and Pdos.
+\item[registered] This flag is set, if one or more Pdos of the slave
   have been registered for process data exchange. Otherwise a warning
   is output, because the slave is unused.
 \item[fmmus] Is an array of FMMU configurations, that have to be
@@ -1530,7 +1530,7 @@ below.
 \item[online] This flag contains the online state of the slave (i.~e.
   if it currently responds to the masters commands). Changes of the
   online state are always reported.
-\item[varsize\_fields] is only suitable for slaves that provide PDOs
+\item[varsize\_fields] is only suitable for slaves that provide Pdos
   of variable size (like slaves that manage a sub-fieldbus) and
   contains information about what size this fields actually should
   have.
@@ -1549,7 +1549,7 @@ below.
   category and allocates string memory.
 \item[ec\_slave\_calc\_sync\_size()] calculates the size of sync
   manager contents, because they can be variable due to variable-sized
-  PDOs.
+  Pdos.
 \item[ec\_slave\_info()] This method prints all slave information into
   a buffer for Sysfs reading.
 \item[ec\_slave\_mbox\_*()] These functions prepare datagrams for
@@ -1567,12 +1567,12 @@ below.
 \paragraph{Slave Methods (Realtime Interface)}
 
 \begin{description}
-\item[ecrt\_slave\_conf\_sdo*()] These methods accept SDO
+\item[ecrt\_slave\_conf\_sdo*()] These methods accept Sdo
   configurations, that are applied on slave activation (i.~e.
   everytime the slave is configured). The methods differ only in the
-  data size of the SDO (8, 16 or 32 bit).
+  data size of the Sdo (8, 16 or 32 bit).
 \item[ecrt\_slave\_pdo\_size()] This method specifies the size of a
-  variable-sized PDO.
+  variable-sized Pdo.
 \end{description}
 
 %------------------------------------------------------------------------------
@@ -1749,7 +1749,7 @@ Figure~\ref{fig:uml-datagram} shows its UML class diagram.
 \label{sec:class-domain}
 \index{Domain!Class}
 
-The domain class encapsules PDO registration and management of the
+The domain class encapsules Pdo registration and management of the
 process data image and its exchange. The UML class diagram can be seen
 in figure~\ref{fig:uml-domain}.
 
@@ -1778,8 +1778,8 @@ in figure~\ref{fig:uml-domain}.
   which the domain's process data are mapped.
 \item[response\_count] The sum of the datagrams' working counters at
   the last process data exchange. Changes are always reported.
-\item[data\_regs] The (linked) list of PDO registrations. The realtime
-  module requests the exchange of certain PDOs and supplies the
+\item[data\_regs] The (linked) list of Pdo registrations. The realtime
+  module requests the exchange of certain Pdos and supplies the
   address of process data pointers, that will later point to the
   respective locations in the process data image. These ``data
   registrations'' are saved in the \textit{data\_regs} list.
@@ -1804,10 +1804,10 @@ in figure~\ref{fig:uml-domain}.
 \paragraph{Private Domain Methods}
 
 \begin{description}
-\item[ec\_domain\_reg\_pdo\_entry()] This method is used to do a PDO
-  registration. It finds the appropriate sync manager covering the PDO
+\item[ec\_domain\_reg\_pdo\_entry()] This method is used to do a Pdo
+  registration. It finds the appropriate sync manager covering the Pdo
   data, calculates its offset in the sync-manager-protected memory and
-  prepares the FMMU configurations for the related slave. Then the PDO
+  prepares the FMMU configurations for the related slave. Then the Pdo
   registration is appended to the list.
 \item[ec\_domain\_clear\_data\_regs()] Clearing all process data
   registrations is needed in serveral places and therefore has been
@@ -1877,8 +1877,8 @@ figure~\ref{fig:uml-fsm}.
   changing slave states.
 \item[coe\_state] This function pointer stores the current state of
   the CoE state machines.
-\item[sdodata] This is an SDO data object that stores information
-  about the current SDO to write.
+\item[sdodata] This is an Sdo data object that stores information
+  about the current Sdo to write.
 \item[coe\_start] A timestamp attribute to detect timeouts during CoE
   configuration.
 \end{description}
@@ -2246,9 +2246,9 @@ interface:
 \subsubsection{Domain Methods}
 \label{sec:ecrt-domain}
 
-\paragraph{PDO Registration}
+\paragraph{Pdo Registration}
 
-To access data of a slave's PDO in cyclic operation, it is necessary
+To access data of a slave's Pdo in cyclic operation, it is necessary
 to make it part of a process data domain:
 
 \begin{lstlisting}[language=C]
@@ -2263,12 +2263,12 @@ to make it part of a process data domain:
 \end{lstlisting}
 
 The \textit{ecrt\_domain\_register\_pdo()} method registers a certain
-PDO as part of the domain and takes the address of the process data
+Pdo as part of the domain and takes the address of the process data
 pointer. This pointer will be set on master activation and then can be
 parameter to the \textit{EC\_READ\_*} and \textit{EC\_WRITE\_*} macros
 described below.
 
-A perhaps easier way to register multiple PDOs at the same time is to
+A perhaps easier way to register multiple Pdos at the same time is to
 fill an array of \textit{ec\_pdo\_reg\_t} and hand it to the
 \textit{ecrt\_domain\_register\_pdo\_list()} method. Attention: This
 array has to be terminated by an empty structure (\textit{\{\}})!
@@ -2299,9 +2299,9 @@ be exchanged, and zero otherwise.
 \subsubsection{Slave Methods}
 \label{sec:ecrt-slave}
 
-\paragraph{SDO Configuration}
+\paragraph{Sdo Configuration}
 
-To configure slave SDOs, the function interface below can be used:
+To configure slave Sdos, the function interface below can be used:
 
 \begin{lstlisting}[language=C]
   int ecrt_slave_conf_sdo8(ec_slave_t *slave,
@@ -2319,15 +2319,15 @@ To configure slave SDOs, the function interface below can be used:
 \end{lstlisting}
 
 The \textit{ecrt\_slave\_conf\_sdo*()} methods prepare the
-configuration of a certain SDO. The index and subindex of the SDO, and
+configuration of a certain Sdo. The index and subindex of the Sdo, and
 the value have to be specified. The configuration is done each time,
-the slave is reconfigured. The methods only differ in the SDO's data
+the slave is reconfigured. The methods only differ in the Sdo's data
 type. If the configuration could be prepared, zero is returned. If an
 error occured, non-zero is returned.
 
-\paragraph{Variable-sized PDOs}
+\paragraph{Variable-sized Pdos}
 
-For specifying the size of variable-sized PDOs, the following method
+For specifying the size of variable-sized Pdos, the following method
 can be used:
 
 \begin{lstlisting}[language=C]
@@ -2336,7 +2336,7 @@ can be used:
                           size_t size);
 \end{lstlisting}
 
-The \textit{ecrt\_slave\_pdo\_size()} method takes the name of the PDO
+The \textit{ecrt\_slave\_pdo\_size()} method takes the name of the Pdo
 and the size. It returns zero on success, otherwise non-zero.
 
 \subsubsection{Process Data Access}
@@ -2370,7 +2370,7 @@ There are macros for bitwise access (\textit{EC\_READ\_BIT()},
 (\textit{EC\_READ\_*()}, \textit{EC\_WRITE\_*()}). The bytewise macros
 carry the data type in their name. Example: \textit{EC\_WRITE\_S16()}
 writes a 16 bit signed value to EtherCAT data. The \textit{DATA}
-parameter is supposed to be a process data pointer, as provided at PDO
+parameter is supposed to be a process data pointer, as provided at Pdo
 registration.
 
 The macros use the kernel's endianess conversion macros, that are
@@ -2399,7 +2399,7 @@ macros.
 \label{sec:addr}
 \index{Slave!Addressing}
 
-The master offers the serveral slave addressing schemes (for PDO
+The master offers the serveral slave addressing schemes (for Pdo
 registration or configuration) via the realtime interface. For this
 reason, slave addresses are ASCII\nomenclature{ASCII}{American
   Standard Code for Information Interchange}-coded and passed as a
@@ -3187,19 +3187,19 @@ configuring a slave and bringing it to a certain state.
   finished. $\rightarrow$~END
 
   If the slave supports no FMMUs, the FMMU configuration can be
-  skipped. If the slave has SDOs to configure, it is begun with
-  sending the first SDO. $\rightarrow$~SDO\_CONF
+  skipped. If the slave has Sdos to configure, it is begun with
+  sending the first Sdo. $\rightarrow$~SDO\_CONF
 
-  If no SDO configurations are provided, the slave can now directly be
+  If no Sdo configurations are provided, the slave can now directly be
   brought into the SAFEOP state and the state change state machine is
   started again. $\rightarrow$~SAFEOP
 
-  Otherwise, all supported FMMUs are configured according to the PDOs
+  Otherwise, all supported FMMUs are configured according to the Pdos
   requested via the master's realtime interface. The appropriate
   datagram is issued. $\rightarrow$~FMMU
 
 \item[FMMU] The FMMU configuration datagram was accepted. If the slave
-  has SDOs to configure, it is begun with sending the first SDO.
+  has Sdos to configure, it is begun with sending the first Sdo.
   $\rightarrow$~SDO\_CONF
 
   Otherwise, the slave can now be brought into the SAFEOP state. The
@@ -3209,7 +3209,7 @@ configuring a slave and bringing it to a certain state.
 \item[SDO\_CONF] The CoE state machine is executed until termination.
   $\rightarrow$~SDO\_CONF
 
-  If another SDO has to be configured, a new SDO download sequence is
+  If another Sdo has to be configured, a new Sdo download sequence is
   begun. $\rightarrow$~SDO\_CONF
 
   Otherwise, the slave can now be brought into the SAFEOP state. The
@@ -3616,29 +3616,29 @@ to configure the slave and put it into operation.
 
 The CANopen-over-EtherCAT protocol \cite[section~5.6]{alspec} is used
 to configure slaves on application level. Each CoE-capable slave
-provides a list of SDOs for this reason.
+provides a list of Sdos for this reason.
 
-\paragraph{SDO Configuration}
+\paragraph{Sdo Configuration}
 
-The SDO configurations have to be provided by the realtime module.
+The Sdo configurations have to be provided by the realtime module.
 This is done via the \textit{ecrt\_slave\_conf\_sdo*()} methods (see
 section~\ref{sec:ecrt-slave}), that are part of the realtime
-interface. The slave stores the SDO configurations in a linked list,
+interface. The slave stores the Sdo configurations in a linked list,
 but does not apply them at once.
 
-\paragraph{SDO Download State Machine}
+\paragraph{Sdo Download State Machine}
 
-The best time to apply SDO configurations is during the slave's PREOP
+The best time to apply Sdo configurations is during the slave's PREOP
 state, because mailbox communication is already possible and slave's
 application will start with updating input data in the succeeding
-SAFEOP state. Therefore the SDO configuration has to be part of the
+SAFEOP state. Therefore the Sdo configuration has to be part of the
 slave configuration state machine (see section~\ref{sec:fsm-conf}): It
-is implemented via an SDO download state machine, that is executed
+is implemented via an Sdo download state machine, that is executed
 just before entering the slave's SAFEOP state. In this way, it is
-guaranteed that the SDO configurations are applied each time, the
+guaranteed that the Sdo configurations are applied each time, the
 slave is reconfigured.
 
-The transition diagram of the SDO Download state machine can be seen
+The transition diagram of the Sdo Download state machine can be seen
 in figure~\ref{fig:fsm-coedown}.
 
 \begin{figure}[htbp]
@@ -3650,7 +3650,7 @@ in figure~\ref{fig:fsm-coedown}.
 
 \begin{description}
 \item[START] The beginning state of the CoE download state
-  machine. The ``SDO Download Normal Request'' mailbox command is
+  machine. The ``Sdo Download Normal Request'' mailbox command is
   sent. $\rightarrow$~REQUEST
 
 \item[REQUEST] It is checked, if the CoE download request has been
@@ -3659,7 +3659,7 @@ in figure~\ref{fig:fsm-coedown}.
 
 \item[CHECK] If no mailbox data is available, the timer is checked.
   \begin{itemize}
-  \item If it timed out, the SDO download is aborted.
+  \item If it timed out, the Sdo download is aborted.
     $\rightarrow$~ERROR
   \item Otherwise, the mailbox is queried again.
     $\rightarrow$~CHECK
@@ -3669,16 +3669,16 @@ in figure~\ref{fig:fsm-coedown}.
   $\rightarrow$~RESPONSE
 
 \item[RESPONSE] If the mailbox response could not be fetched, the data
-  is invalid, the wrong protocol was received, or a ``Abort SDO
-  Transfer Request'' was received, the SDO download is aborted.
+  is invalid, the wrong protocol was received, or a ``Abort Sdo
+  Transfer Request'' was received, the Sdo download is aborted.
   $\rightarrow$~ERROR
 
-  If a ``SDO Download Normal Response'' acknowledgement was received,
-  the SDO download was successful. $\rightarrow$~END
+  If a ``Sdo Download Normal Response'' acknowledgement was received,
+  the Sdo download was successful. $\rightarrow$~END
 
-\item[END] The SDO download was successful.
+\item[END] The Sdo download was successful.
 
-\item[ERROR] The SDO download was aborted due to an error.
+\item[ERROR] The Sdo download was aborted due to an error.
 
 \end{description}
 
@@ -3873,7 +3873,7 @@ the EtherCAT bus. Below is a listing of a slave directory:
       2: 0x1000, length 0, control 0x24, enable
       3: 0x1100, length 0, control 0x20, enable
 
-    PDOs:
+    Pdos:
       RXPDO "Channel 1" (0x1600), Sync-Manager 2
         "Output" 0x6411:1, 16 bit
       RXPDO "Channel 2" (0x1601), Sync-Manager 2
@@ -4492,12 +4492,12 @@ in listing~\ref{lst:minivar}.
   call to \textit{ec\_\-master\_\-activate()}, that will create the
   domain memory and configure the mapped process data image.
 \item[\normalfont\textcircled{\tiny 8} -- \textcircled{\tiny 12}] The
-  configuration of the mapping of certain PDOs in a domain can easily
+  configuration of the mapping of certain Pdos in a domain can easily
   be done with the help of an initialization array of the
   \textit{ec\_pdo\_reg\_t} type, defined as part of the realtime
   interface. Each record must contain the ASCII bus-address of the
   slave (see section~\ref{sec:addr}), the slave's vendor ID and
-  product code, and the index and subindex of the PDO to map (these
+  product code, and the index and subindex of the Pdo to map (these
   four fields can be specified in junction, by using one of the
   defines out of the \textit{include/ecdb.h} header). The last field
   has to be the address of the process data pointer, so it can later
@@ -4556,7 +4556,7 @@ The initialization of the minimal realtime module is done by the
   \textit{ecrt\_\-master\_\-create\_domain()} function also returns a
   pointer to the created domain, or \textit{NULL} in error case.
 \item[\normalfont\textcircled{\tiny 11}] The registration of domain
-  PDOs with an initialization array results in a single function call.
+  Pdos with an initialization array results in a single function call.
   Alternatively the data fields could be registered with individual
   calls of \textit{ecrt\_domain\_register\_pdo()}.
 \item[\normalfont\textcircled{\tiny 16}] After the configuration of

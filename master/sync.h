@@ -49,13 +49,13 @@
 
 /*****************************************************************************/
 
-/** EtherCAT sync manager PDO mapping information source.
+/** EtherCAT sync manager Pdo mapping information source.
  */
 typedef enum {
-    EC_SYNC_MAPPING_NONE, /**< No PDO mapping information. */
-    EC_SYNC_MAPPING_SII, /**< PDO mapping information from SII. */
-    EC_SYNC_MAPPING_COE, /**< PDO mapping information from CoE dictionary. */
-    EC_SYNC_MAPPING_CUSTOM, /**< PDO mapping configured externally. */
+    EC_SYNC_MAPPING_NONE, /**< No Pdo mapping information. */
+    EC_SYNC_MAPPING_SII, /**< Pdo mapping information from SII. */
+    EC_SYNC_MAPPING_COE, /**< Pdo mapping information from CoE dictionary. */
+    EC_SYNC_MAPPING_CUSTOM, /**< Pdo mapping configured externally. */
 } ec_sync_mapping_source_t;
 
 /*****************************************************************************/

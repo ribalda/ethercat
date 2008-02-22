@@ -178,7 +178,7 @@ int ec_slave_init(ec_slave_t *slave, /**< EtherCAT slave */
         goto out_slave_put;
     }
 
-    // init SDO kobject and add it to the hierarchy
+    // init Sdo kobject and add it to the hierarchy
     memset(&slave->sdo_kobj, 0x00, sizeof(struct kobject));
     kobject_init(&slave->sdo_kobj);
     slave->sdo_kobj.ktype = &ktype_ec_slave_sdos;
@@ -188,7 +188,7 @@ int ec_slave_init(ec_slave_t *slave, /**< EtherCAT slave */
         goto out_sdo_put;
     }
     if (kobject_add(&slave->sdo_kobj)) {
-        EC_ERR("Failed to add SDOs kobject.\n");
+        EC_ERR("Failed to add Sdos kobject.\n");
         goto out_sdo_put;
     }
 
@@ -216,13 +216,13 @@ void ec_slave_destroy(ec_slave_t *slave /**< EtherCAT slave */)
     if (slave->config)
         ec_slave_config_detach(slave->config);
 
-    // free all SDOs
+    // free all Sdos
     list_for_each_entry_safe(sdo, next_sdo, &slave->sdo_dictionary, list) {
         list_del(&sdo->list);
         ec_sdo_destroy(sdo);
     }
 
-    // free SDO kobject
+    // free Sdo kobject
     kobject_del(&slave->sdo_kobj);
     kobject_put(&slave->sdo_kobj);
 
@@ -262,7 +262,7 @@ void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
         kfree(slave->sii_syncs);
     }
 
-    // free all SII PDOs
+    // free all SII Pdos
     list_for_each_entry_safe(pdo, next_pdo, &slave->sii_pdos, list) {
         list_del(&pdo->list);
         ec_pdo_clear(pdo);
@@ -277,10 +277,10 @@ void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
 /*****************************************************************************/
 
 /**
- * SDO kobject clear method.
+ * Sdo kobject clear method.
  */
 
-void ec_slave_sdos_clear(struct kobject *kobj /**< kobject for SDOs */)
+void ec_slave_sdos_clear(struct kobject *kobj /**< kobject for Sdos */)
 {
 }
 
@@ -490,7 +490,7 @@ int ec_slave_fetch_sii_syncs(
 /*****************************************************************************/
 
 /**
-   Fetches data from a [RT]XPDO category.
+   Fetches data from a [RT]XPdo category.
    \return 0 in case of success, else < 0
 */
 
@@ -498,7 +498,7 @@ int ec_slave_fetch_sii_pdos(
         ec_slave_t *slave, /**< EtherCAT slave */
         const uint8_t *data, /**< category data */
         size_t data_size, /**< number of bytes */
-        ec_direction_t dir /**< PDO direction. */
+        ec_direction_t dir /**< Pdo direction. */
         )
 {
     ec_pdo_t *pdo;
@@ -507,7 +507,7 @@ int ec_slave_fetch_sii_pdos(
 
     while (data_size >= 8) {
         if (!(pdo = kmalloc(sizeof(ec_pdo_t), GFP_KERNEL))) {
-            EC_ERR("Failed to allocate PDO memory.\n");
+            EC_ERR("Failed to allocate Pdo memory.\n");
             return -1;
         }
 
@@ -529,7 +529,7 @@ int ec_slave_fetch_sii_pdos(
 
         for (i = 0; i < entry_count; i++) {
             if (!(entry = kmalloc(sizeof(ec_pdo_entry_t), GFP_KERNEL))) {
-                EC_ERR("Failed to allocate PDO entry memory.\n");
+                EC_ERR("Failed to allocate Pdo entry memory.\n");
                 return -1;
             }
 
@@ -549,12 +549,12 @@ int ec_slave_fetch_sii_pdos(
             data += 8;
         }
 
-        // if sync manager index is positive, the PDO is mapped by default
+        // if sync manager index is positive, the Pdo is mapped by default
         if (pdo->sync_index >= 0) {
             ec_sync_t *sync;
 
             if (pdo->sync_index >= slave->sii_sync_count) {
-                EC_ERR("Invalid SM index %i for PDO 0x%04X in slave %u.",
+                EC_ERR("Invalid SM index %i for Pdo 0x%04X in slave %u.",
                         pdo->sync_index, pdo->index, slave->ring_position);
                 return -1;
             }
@@ -722,7 +722,7 @@ ssize_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
     }
 
     if (slave->sii_sync_count) {
-        buf += sprintf(buf, "Sync managers / PDO mapping:\n");
+        buf += sprintf(buf, "Sync managers / Pdo mapping:\n");
 
         for (i = 0; i < slave->sii_sync_count; i++) {
             sync = &slave->sii_syncs[i];
@@ -733,10 +733,10 @@ ssize_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
                     sync->enable ? "enable" : "disable");
 
             if (list_empty(&sync->mapping.pdos)) {
-                buf += sprintf(buf, "    No PDOs mapped.\n");
+                buf += sprintf(buf, "    No Pdos mapped.\n");
             } else if (sync->mapping_source != EC_SYNC_MAPPING_NONE) {
                 buf += sprintf(buf,
-                        "    PDO mapping information from %s.\n",
+                        "    Pdo mapping information from %s.\n",
                         sync->mapping_source == EC_SYNC_MAPPING_SII
                         ? "SII" : "CoE");
             }
@@ -760,7 +760,7 @@ ssize_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
 
     // type-cast to avoid warnings on some compilers
     if (!list_empty((struct list_head *) &slave->sii_pdos)) {
-        buf += sprintf(buf, "Available PDOs from SII:\n");
+        buf += sprintf(buf, "Available Pdos from SII:\n");
 
         list_for_each_entry(pdo, &slave->sii_pdos, list) {
             buf += sprintf(buf, "  %s 0x%04X \"%s\"",
@@ -1111,7 +1111,7 @@ ssize_t ec_store_slave_attribute(struct kobject *kobj, /**< slave's kobject */
 /*****************************************************************************/
 
 /**
- * Get the sync manager for either Rx- or Tx-PDOs.
+ * Get the sync manager for either Rx- or Tx-Pdos.
  * \return pointer to sync manager, or NULL.
  */
 
@@ -1161,11 +1161,11 @@ int ec_slave_validate(const ec_slave_t *slave, /**< EtherCAT slave */
 /*****************************************************************************/
 
 /**
-   Counts the total number of SDOs and entries in the dictionary.
+   Counts the total number of Sdos and entries in the dictionary.
 */
 
 void ec_slave_sdo_dict_info(const ec_slave_t *slave, /**< EtherCAT slave */
-                            unsigned int *sdo_count, /**< number of SDOs */
+                            unsigned int *sdo_count, /**< number of Sdos */
                             unsigned int *entry_count /**< total number of
                                                          entries */
                             )
@@ -1188,13 +1188,13 @@ void ec_slave_sdo_dict_info(const ec_slave_t *slave, /**< EtherCAT slave */
 /*****************************************************************************/
 
 /**
- * Get an SDO from the dictionary.
- * \returns The desired SDO, or NULL.
+ * Get an Sdo from the dictionary.
+ * \returns The desired Sdo, or NULL.
  */
 
 ec_sdo_t *ec_slave_get_sdo(
         ec_slave_t *slave /**< EtherCAT slave */,
-        uint16_t index /**< SDO index */
+        uint16_t index /**< Sdo index */
         )
 {
     ec_sdo_t *sdo;

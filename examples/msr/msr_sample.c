@@ -164,9 +164,9 @@ int __init init_mod(void)
         goto out_release_master;
     }
 
-    printk(KERN_INFO "Registering PDOs...\n");
+    printk(KERN_INFO "Registering Pdos...\n");
     if (ecrt_domain_register_pdo_list(domain1, domain1_pdos)) {
-        printk(KERN_ERR "Failed to register PDOs.\n");
+        printk(KERN_ERR "Failed to register Pdos.\n");
         goto out_release_master;
     }
 

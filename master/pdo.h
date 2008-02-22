@@ -49,25 +49,25 @@
 
 /*****************************************************************************/
 
-/** PDO description.
+/** Pdo description.
  */
 typedef struct {
     struct list_head list; /**< List item. */
-    ec_direction_t dir; /**< PDO direction. */
-    uint16_t index; /**< PDO index. */
+    ec_direction_t dir; /**< Pdo direction. */
+    uint16_t index; /**< Pdo index. */
     int8_t sync_index; /**< Assigned sync manager. */
-    char *name; /**< PDO name. */
-    struct list_head entries; /**< List of PDO entries. */
+    char *name; /**< Pdo name. */
+    struct list_head entries; /**< List of Pdo entries. */
 } ec_pdo_t;
 
 /*****************************************************************************/
 
-/** PDO entry description.
+/** Pdo entry description.
  */
 typedef struct {
     struct list_head list; /**< list item */
-    uint16_t index; /**< PDO entry index */
-    uint8_t subindex; /**< PDO entry subindex */
+    uint16_t index; /**< Pdo entry index */
+    uint8_t subindex; /**< Pdo entry subindex */
     char *name; /**< entry name */
     uint8_t bit_length; /**< entry length in bit */
 } ec_pdo_entry_t;

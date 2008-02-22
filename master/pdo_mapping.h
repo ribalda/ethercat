@@ -49,7 +49,7 @@
 
 /*****************************************************************************/
 
-/** EtherCAT PDO mapping.
+/** EtherCAT Pdo mapping.
  */
 typedef struct {
     struct list_head pdos; /**< List of Pdos. */

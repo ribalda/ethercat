@@ -128,7 +128,7 @@ struct ec_master
 
     int debug_level; /**< master debug level */
     ec_stats_t stats; /**< cyclic statistics */
-    unsigned int pdo_slaves_offline; /**< number of slaves, for which PDOs
+    unsigned int pdo_slaves_offline; /**< number of slaves, for which Pdos
                                        were registered and that are offline
                                        (used for bus status) */
     unsigned int frames_timed_out; /**< there were frame timeouts in the last
@@ -161,10 +161,10 @@ struct ec_master
     wait_queue_head_t eeprom_queue; /**< wait queue for EEPROM
                                       write requests from user space */
 
-    struct list_head sdo_requests; /**< SDO access requests */
+    struct list_head sdo_requests; /**< Sdo access requests */
     struct semaphore sdo_sem; /**< semaphore protecting the list of
-                                   SDO access requests */
-    wait_queue_head_t sdo_queue; /**< wait queue for SDO access requests
+                                   Sdo access requests */
+    wait_queue_head_t sdo_queue; /**< wait queue for Sdo access requests
                                    from user space */
 };
 

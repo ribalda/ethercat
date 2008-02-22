@@ -85,7 +85,7 @@ void ec_pdo_mapping_clear_pdos(ec_pdo_mapping_t *pm /**< Pdo mapping. */)
 
 /*****************************************************************************/
 
-/** Calculates the total size of the mapped PDO entries.
+/** Calculates the total size of the mapped Pdo entries.
  *
  * \retval Data size in byte.
  */
@@ -121,20 +121,20 @@ uint16_t ec_pdo_mapping_total_size(
  */
 int ec_pdo_mapping_add_pdo(
         ec_pdo_mapping_t *pm, /**< Pdo mapping. */
-        const ec_pdo_t *pdo /**< PDO to add. */
+        const ec_pdo_t *pdo /**< Pdo to add. */
         )
 {
     ec_pdo_t *mapped_pdo;
 
-    // PDO already mapped?
+    // Pdo already mapped?
     list_for_each_entry(mapped_pdo, &pm->pdos, list) {
         if (mapped_pdo->index != pdo->index) continue;
-        EC_ERR("PDO 0x%04X is already mapped!\n", pdo->index);
+        EC_ERR("Pdo 0x%04X is already mapped!\n", pdo->index);
         return -1;
     }
     
     if (!(mapped_pdo = kmalloc(sizeof(ec_pdo_t), GFP_KERNEL))) {
-        EC_ERR("Failed to allocate memory for PDO mapping.\n");
+        EC_ERR("Failed to allocate memory for Pdo mapping.\n");
         return -1;
     }
 
@@ -193,7 +193,7 @@ int ec_pdo_mapping_add_pdo_info(
             entry_info = &pdo_info->entries[i];
 
             if (!(entry = kmalloc(sizeof(ec_pdo_entry_t), GFP_KERNEL))) {
-                EC_ERR("Failed to allocate memory for PDO entry.\n");
+                EC_ERR("Failed to allocate memory for Pdo entry.\n");
                 goto out_free;
             }
 
@@ -260,14 +260,14 @@ out_return:
  */
 int ec_pdo_mapping_copy(
         ec_pdo_mapping_t *pm, /**< Pdo mapping. */
-        const ec_pdo_mapping_t *other /**< PDO mapping to copy from. */
+        const ec_pdo_mapping_t *other /**< Pdo mapping to copy from. */
         )
 {
     ec_pdo_t *other_pdo;
 
     ec_pdo_mapping_clear_pdos(pm);
 
-    // PDO already mapped?
+    // Pdo already mapped?
     list_for_each_entry(other_pdo, &other->pdos, list) {
         if (ec_pdo_mapping_add_pdo(pm, other_pdo))
             return -1;

@@ -96,11 +96,11 @@ static struct kobj_type ktype_ec_sdo_entry = {
 /*****************************************************************************/
 
 /**
-   SDO constructor.
+   Sdo constructor.
 */
 
-int ec_sdo_init(ec_sdo_t *sdo, /**< SDO */
-                uint16_t index, /**< SDO index */
+int ec_sdo_init(ec_sdo_t *sdo, /**< Sdo */
+                uint16_t index, /**< Sdo index */
                 ec_slave_t *slave /**< parent slave */
                 )
 {
@@ -122,7 +122,7 @@ int ec_sdo_init(ec_sdo_t *sdo, /**< SDO */
         return -1;
     }
     if (kobject_add(&sdo->kobj)) {
-        EC_ERR("Failed to add SDO kobject.\n");
+        EC_ERR("Failed to add Sdo kobject.\n");
         kobject_put(&sdo->kobj);
         return -1;
     }
@@ -133,11 +133,11 @@ int ec_sdo_init(ec_sdo_t *sdo, /**< SDO */
 /*****************************************************************************/
 
 /**
-   SDO destructor.
-   Clears and frees an SDO object.
+   Sdo destructor.
+   Clears and frees an Sdo object.
 */
 
-void ec_sdo_destroy(ec_sdo_t *sdo /**< SDO */)
+void ec_sdo_destroy(ec_sdo_t *sdo /**< Sdo */)
 {
     ec_sdo_entry_t *entry, *next;
 
@@ -155,12 +155,12 @@ void ec_sdo_destroy(ec_sdo_t *sdo /**< SDO */)
 /*****************************************************************************/
 
 /**
-   Clear and free SDO.
+   Clear and free Sdo.
    This method is called by the kobject,
    once there are no more references to it.
 */
 
-void ec_sdo_clear(struct kobject *kobj /**< SDO's kobject */)
+void ec_sdo_clear(struct kobject *kobj /**< Sdo's kobject */)
 {
     ec_sdo_t *sdo = container_of(kobj, ec_sdo_t, kobj);
 
@@ -172,12 +172,12 @@ void ec_sdo_clear(struct kobject *kobj /**< SDO's kobject */)
 /*****************************************************************************/
 
 /**
- * Get and SDO entry from an SDO via its subindex.
- * \return pointer to SDO entry, or NULL.
+ * Get and Sdo entry from an Sdo via its subindex.
+ * \return pointer to Sdo entry, or NULL.
  */
 
 ec_sdo_entry_t *ec_sdo_get_entry(
-        ec_sdo_t *sdo, /**< SDO */
+        ec_sdo_t *sdo, /**< Sdo */
         uint8_t subindex /**< entry subindex */
         )
 {
@@ -194,11 +194,11 @@ ec_sdo_entry_t *ec_sdo_get_entry(
 /*****************************************************************************/
 
 /**
- * Print SDO information to a buffer.
+ * Print Sdo information to a buffer.
  * /return size of bytes written to buffer.
  */ 
 
-ssize_t ec_sdo_info(ec_sdo_t *sdo, /**< SDO */
+ssize_t ec_sdo_info(ec_sdo_t *sdo, /**< Sdo */
                     char *buffer /**< target buffer */
                     )
 {
@@ -214,7 +214,7 @@ ssize_t ec_sdo_info(ec_sdo_t *sdo, /**< SDO */
 /*****************************************************************************/
 
 /**
- * Show an SDO as Sysfs attribute.
+ * Show an Sdo as Sysfs attribute.
  * /return size of bytes written to buffer.
  */ 
 
@@ -235,12 +235,12 @@ ssize_t ec_show_sdo_attribute(struct kobject *kobj, /**< kobject */
 /*****************************************************************************/
 
 /**
-   SDO entry constructor.
+   Sdo entry constructor.
 */
 
-int ec_sdo_entry_init(ec_sdo_entry_t *entry, /**< SDO entry */
-                      uint8_t subindex, /**< SDO entry subindex */
-                      ec_sdo_t *sdo /**< parent SDO */
+int ec_sdo_entry_init(ec_sdo_entry_t *entry, /**< Sdo entry */
+                      uint8_t subindex, /**< Sdo entry subindex */
+                      ec_sdo_t *sdo /**< parent Sdo */
                       )
 {
     entry->sdo = sdo;
@@ -271,11 +271,11 @@ int ec_sdo_entry_init(ec_sdo_entry_t *entry, /**< SDO entry */
 /*****************************************************************************/
 
 /**
-   SDO entry destructor.
-   Clears and frees an SDO entry object.
+   Sdo entry destructor.
+   Clears and frees an Sdo entry object.
 */
 
-void ec_sdo_entry_destroy(ec_sdo_entry_t *entry /**< SDO entry */)
+void ec_sdo_entry_destroy(ec_sdo_entry_t *entry /**< Sdo entry */)
 {
     // destroy self
     kobject_del(&entry->kobj);
@@ -285,12 +285,12 @@ void ec_sdo_entry_destroy(ec_sdo_entry_t *entry /**< SDO entry */)
 /*****************************************************************************/
 
 /**
-   Clear and free SDO entry.
+   Clear and free Sdo entry.
    This method is called by the kobject,
    once there are no more references to it.
 */
 
-void ec_sdo_entry_clear(struct kobject *kobj /**< SDO entry's kobject */)
+void ec_sdo_entry_clear(struct kobject *kobj /**< Sdo entry's kobject */)
 {
     ec_sdo_entry_t *entry = container_of(kobj, ec_sdo_entry_t, kobj);
 
@@ -302,11 +302,11 @@ void ec_sdo_entry_clear(struct kobject *kobj /**< SDO entry's kobject */)
 /*****************************************************************************/
  
 /**
- * Print SDO entry information to a buffer.
+ * Print Sdo entry information to a buffer.
  * \return number of bytes written.
  */
 
-ssize_t ec_sdo_entry_info(ec_sdo_entry_t *entry, /**< SDO entry */
+ssize_t ec_sdo_entry_info(ec_sdo_entry_t *entry, /**< Sdo entry */
                           char *buffer /**< target buffer */
                           )
 {
@@ -328,8 +328,8 @@ ssize_t ec_sdo_entry_info(ec_sdo_entry_t *entry, /**< SDO entry */
  * \return number of bytes written.
  */
 
-ssize_t ec_sdo_entry_format_data(ec_sdo_entry_t *entry, /**< SDO entry */
-                                 ec_sdo_request_t *request, /**< SDO request */
+ssize_t ec_sdo_entry_format_data(ec_sdo_entry_t *entry, /**< Sdo entry */
+                                 ec_sdo_request_t *request, /**< Sdo request */
                                  char *buffer /**< target buffer */
                                  )
 {
@@ -402,13 +402,13 @@ raw_data:
 /*****************************************************************************/
 
 /**
- * Start SDO entry reading.
+ * Start Sdo entry reading.
  * This function blocks, until reading is finished, and is interruptible as
  * long as the master state machine has not begun with reading.
  * \return number of bytes written to buffer, or error code.
  */
 
-ssize_t ec_sdo_entry_read_value(ec_sdo_entry_t *entry, /**< SDO entry */
+ssize_t ec_sdo_entry_read_value(ec_sdo_entry_t *entry, /**< Sdo entry */
                                 char *buffer /**< target buffer */
                                 )
 {
@@ -452,7 +452,7 @@ ssize_t ec_sdo_entry_read_value(ec_sdo_entry_t *entry, /**< SDO entry */
 /*****************************************************************************/
 
 /**
- * Show an SDO entry as Sysfs attribute.
+ * Show an Sdo entry as Sysfs attribute.
  * /return size of bytes written to buffer.
  */ 
 
@@ -476,11 +476,11 @@ ssize_t ec_show_sdo_entry_attribute(struct kobject *kobj, /**< kobject */
 /*****************************************************************************/
 
 /**
-   SDO request constructor.
+   Sdo request constructor.
 */
 
-void ec_sdo_request_init_read(ec_sdo_request_t *req, /**< SDO request */
-                              ec_sdo_entry_t *entry /**< SDO entry */
+void ec_sdo_request_init_read(ec_sdo_request_t *req, /**< Sdo request */
+                              ec_sdo_entry_t *entry /**< Sdo entry */
                               )
 {
     req->entry = entry;
@@ -492,10 +492,10 @@ void ec_sdo_request_init_read(ec_sdo_request_t *req, /**< SDO request */
 /*****************************************************************************/
 
 /**
-   SDO request destructor.
+   Sdo request destructor.
 */
 
-void ec_sdo_request_clear(ec_sdo_request_t *req /**< SDO request */)
+void ec_sdo_request_clear(ec_sdo_request_t *req /**< Sdo request */)
 {
     if (req->data) kfree(req->data);
 }

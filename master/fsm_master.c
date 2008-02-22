@@ -359,8 +359,8 @@ int ec_fsm_master_action_process_eeprom(
 /*****************************************************************************/
 
 /**
- * Check for pending SDO requests and process one.
- * \return non-zero, if an SDO request is processed.
+ * Check for pending Sdo requests and process one.
+ * \return non-zero, if an Sdo request is processed.
  */
 
 int ec_fsm_master_action_process_sdo(
@@ -389,19 +389,19 @@ int ec_fsm_master_action_process_sdo(
         if (slave->current_state == EC_SLAVE_STATE_INIT ||
                 slave->online_state == EC_SLAVE_OFFLINE ||
                 slave->error_flag) {
-            EC_ERR("Discarding SDO request, slave %i not ready.\n",
+            EC_ERR("Discarding Sdo request, slave %i not ready.\n",
                     slave->ring_position);
             request->state = EC_REQUEST_FAILURE;
             wake_up(&master->sdo_queue);
             continue;
         }
 
-        // found pending SDO request. execute it!
+        // found pending Sdo request. execute it!
         if (master->debug_level)
-            EC_DBG("Processing SDO request for slave %i...\n",
+            EC_DBG("Processing Sdo request for slave %i...\n",
                     slave->ring_position);
 
-        // start uploading SDO
+        // start uploading Sdo
         fsm->idle = 0;
         fsm->slave = slave;
         fsm->sdo_request = request;
@@ -493,13 +493,13 @@ void ec_fsm_master_action_process_states(ec_fsm_master_t *fsm
             return;
     }
 
-    // Check for a pending SDO request
+    // Check for a pending Sdo request
     if (ec_fsm_master_action_process_sdo(fsm))
         return;
 
     if (master->mode == EC_MASTER_MODE_IDLE) {
 
-        // check, if slaves have an SDO dictionary to read out.
+        // check, if slaves have an Sdo dictionary to read out.
         list_for_each_entry(slave, &master->slaves, list) {
             if (!(slave->sii_mailbox_protocols & EC_MBOX_COE)
                 || slave->sdo_dictionary_fetched
@@ -509,13 +509,13 @@ void ec_fsm_master_action_process_states(ec_fsm_master_t *fsm
                 || slave->error_flag) continue;
 
             if (master->debug_level) {
-                EC_DBG("Fetching SDO dictionary from slave %i.\n",
+                EC_DBG("Fetching Sdo dictionary from slave %i.\n",
                        slave->ring_position);
             }
 
             slave->sdo_dictionary_fetched = 1;
 
-            // start fetching SDO dictionary
+            // start fetching Sdo dictionary
             fsm->idle = 0;
             fsm->slave = slave;
             fsm->state = ec_fsm_master_state_sdodict;
@@ -524,7 +524,7 @@ void ec_fsm_master_action_process_states(ec_fsm_master_t *fsm
             return;
         }
 
-        // check, if slaves have their PDO mapping to be read.
+        // check, if slaves have their Pdo mapping to be read.
         list_for_each_entry(slave, &master->slaves, list) {
             if (!(slave->sii_mailbox_protocols & EC_MBOX_COE)
                 || slave->pdo_mapping_fetched
@@ -533,13 +533,13 @@ void ec_fsm_master_action_process_states(ec_fsm_master_t *fsm
                 || slave->online_state == EC_SLAVE_OFFLINE) continue;
 
             if (master->debug_level) {
-                EC_DBG("Fetching PDO mapping from slave %i via CoE.\n",
+                EC_DBG("Fetching Pdo mapping from slave %i via CoE.\n",
                        slave->ring_position);
             }
 
             slave->pdo_mapping_fetched = 1;
 
-            // start fetching PDO mapping
+            // start fetching Pdo mapping
             fsm->idle = 0;
             fsm->state = ec_fsm_master_state_pdomap;
             ec_fsm_coe_map_start(&fsm->fsm_coe_map, slave);
@@ -1004,7 +1004,7 @@ void ec_fsm_master_state_write_eeprom(
 /*****************************************************************************/
 
 /**
-   Master state: SDODICT.
+   Master state: SdoDICT.
 */
 
 void ec_fsm_master_state_sdodict(ec_fsm_master_t *fsm /**< master state machine */)
@@ -1019,12 +1019,12 @@ void ec_fsm_master_state_sdodict(ec_fsm_master_t *fsm /**< master state machine 
         return;
     }
 
-    // SDO dictionary fetching finished
+    // Sdo dictionary fetching finished
 
     if (master->debug_level) {
         unsigned int sdo_count, entry_count;
         ec_slave_sdo_dict_info(slave, &sdo_count, &entry_count);
-        EC_DBG("Fetched %i SDOs and %i entries from slave %i.\n",
+        EC_DBG("Fetched %i Sdos and %i entries from slave %i.\n",
                sdo_count, entry_count, slave->ring_position);
     }
 
@@ -1034,7 +1034,7 @@ void ec_fsm_master_state_sdodict(ec_fsm_master_t *fsm /**< master state machine 
 /*****************************************************************************/
 
 /**
- * Scan the PDO mapping of a slave.
+ * Scan the Pdo mapping of a slave.
  */
 
 void ec_fsm_master_state_pdomap(
@@ -1048,14 +1048,14 @@ void ec_fsm_master_state_pdomap(
         return;
     }
 
-    // fetching of PDO mapping finished
+    // fetching of Pdo mapping finished
     fsm->state = ec_fsm_master_state_end;
 }
 
 /*****************************************************************************/
 
 /**
-   Master state: SDO REQUEST.
+   Master state: Sdo REQUEST.
 */
 
 void ec_fsm_master_state_sdo_request(ec_fsm_master_t *fsm /**< master state machine */)
@@ -1066,7 +1066,7 @@ void ec_fsm_master_state_sdo_request(ec_fsm_master_t *fsm /**< master state mach
     if (ec_fsm_coe_exec(&fsm->fsm_coe)) return;
 
     if (!ec_fsm_coe_success(&fsm->fsm_coe)) {
-        EC_DBG("Failed to process SDO request for slave %i.\n",
+        EC_DBG("Failed to process Sdo request for slave %i.\n",
                 fsm->slave->ring_position);
         request->state = EC_REQUEST_FAILURE;
         wake_up(&master->sdo_queue);
@@ -1074,15 +1074,15 @@ void ec_fsm_master_state_sdo_request(ec_fsm_master_t *fsm /**< master state mach
         return;
     }
 
-    // SDO request finished 
+    // Sdo request finished 
     request->state = EC_REQUEST_COMPLETE;
     wake_up(&master->sdo_queue);
 
     if (master->debug_level)
-        EC_DBG("Finished SDO request for slave %i.\n",
+        EC_DBG("Finished Sdo request for slave %i.\n",
                 fsm->slave->ring_position);
 
-    // check for another SDO request
+    // check for another Sdo request
     if (ec_fsm_master_action_process_sdo(fsm))
         return; // processing another request
 

@@ -89,7 +89,7 @@ void ec_fsm_coe_map_clear(ec_fsm_coe_map_t *fsm /**< finite state machine */)
 /*****************************************************************************/
 
 /**
-   Starts to upload an SDO from a slave.
+   Starts to upload an Sdo from a slave.
 */
 
 void ec_fsm_coe_map_start(
@@ -163,13 +163,13 @@ void ec_fsm_coe_map_action_next_sync(
             continue;
 
         if (slave->master->debug_level)
-            EC_DBG("Reading PDO mapping of sync manager %u of slave %u.\n",
+            EC_DBG("Reading Pdo mapping of sync manager %u of slave %u.\n",
                     fsm->sync_index, slave->ring_position);
 
         ec_pdo_mapping_clear_pdos(&fsm->mapping);
 
         if (!(entry = ec_sdo_get_entry(fsm->sync_sdo, 0))) {
-            EC_ERR("SDO 0x%04X has no subindex 0 on slave %u.\n",
+            EC_ERR("Sdo 0x%04X has no subindex 0 on slave %u.\n",
                     fsm->sync_sdo->index,
                     fsm->slave->ring_position);
             fsm->state = ec_fsm_coe_map_state_error;
@@ -189,7 +189,7 @@ void ec_fsm_coe_map_action_next_sync(
 /*****************************************************************************/
 
 /**
- * Count mapped PDOs.
+ * Count mapped Pdos.
  */
 
 void ec_fsm_coe_map_state_pdo_count(
@@ -199,7 +199,7 @@ void ec_fsm_coe_map_state_pdo_count(
     if (ec_fsm_coe_exec(fsm->fsm_coe)) return;
 
     if (!ec_fsm_coe_success(fsm->fsm_coe)) {
-        EC_ERR("Failed to read number of mapped PDOs from slave %u.\n",
+        EC_ERR("Failed to read number of mapped Pdos from slave %u.\n",
                 fsm->slave->ring_position);
         fsm->state = ec_fsm_coe_map_state_error;
         return;
@@ -208,9 +208,9 @@ void ec_fsm_coe_map_state_pdo_count(
     fsm->sync_subindices = EC_READ_U8(fsm->request.data);
 
     if (fsm->slave->master->debug_level)
-        EC_DBG("  %u PDOs mapped.\n", fsm->sync_subindices);
+        EC_DBG("  %u Pdos mapped.\n", fsm->sync_subindices);
 
-    // read first PDO
+    // read first Pdo
     fsm->sync_subindex = 1;
     ec_fsm_coe_map_action_next_pdo(fsm);
 }
@@ -218,7 +218,7 @@ void ec_fsm_coe_map_state_pdo_count(
 /*****************************************************************************/
 
 /**
- * Read next PDO.
+ * Read next Pdo.
  */
 
 void ec_fsm_coe_map_action_next_pdo(
@@ -230,7 +230,7 @@ void ec_fsm_coe_map_action_next_pdo(
     if (fsm->sync_subindex <= fsm->sync_subindices) {
         if (!(entry = ec_sdo_get_entry(fsm->sync_sdo,
                         fsm->sync_subindex))) {
-            EC_ERR("SDO 0x%04X has no subindex %u on slave %u.\n",
+            EC_ERR("Sdo 0x%04X has no subindex %u on slave %u.\n",
                     fsm->sync_sdo->index,
                     fsm->sync_subindex,
                     fsm->slave->ring_position);
@@ -265,7 +265,7 @@ void ec_fsm_coe_map_action_next_pdo(
 /*****************************************************************************/
 
 /**
- * Fetch PDO information.
+ * Fetch Pdo information.
  */
 
 void ec_fsm_coe_map_state_pdo(
@@ -275,7 +275,7 @@ void ec_fsm_coe_map_state_pdo(
     if (ec_fsm_coe_exec(fsm->fsm_coe)) return;
 
     if (!ec_fsm_coe_success(fsm->fsm_coe)) {
-        EC_ERR("Failed to read mapped PDO index from slave %u.\n",
+        EC_ERR("Failed to read mapped Pdo index from slave %u.\n",
                 fsm->slave->ring_position);
         fsm->state = ec_fsm_coe_map_state_error;
         return;
@@ -286,7 +286,7 @@ void ec_fsm_coe_map_state_pdo(
 
         if (!(fsm->pdo = (ec_pdo_t *)
                     kmalloc(sizeof(ec_pdo_t), GFP_KERNEL))) {
-            EC_ERR("Failed to allocate PDO.\n");
+            EC_ERR("Failed to allocate Pdo.\n");
             fsm->state = ec_fsm_coe_map_state_error;
             return;
         }
@@ -297,10 +297,10 @@ void ec_fsm_coe_map_state_pdo(
             ec_sync_direction(fsm->slave->sii_syncs + fsm->sync_index);
 
         if (fsm->slave->master->debug_level)
-            EC_DBG("  PDO 0x%04X.\n", fsm->pdo->index);
+            EC_DBG("  Pdo 0x%04X.\n", fsm->pdo->index);
 
         if (!(fsm->pdo_sdo = ec_slave_get_sdo(fsm->slave, fsm->pdo->index))) {
-            EC_ERR("Slave %u has no SDO 0x%04X.\n",
+            EC_ERR("Slave %u has no Sdo 0x%04X.\n",
                     fsm->slave->ring_position, fsm->pdo->index);
             ec_pdo_clear(fsm->pdo);
             kfree(fsm->pdo);
@@ -316,7 +316,7 @@ void ec_fsm_coe_map_state_pdo(
         }
 
         if (!(entry = ec_sdo_get_entry(fsm->pdo_sdo, 0))) {
-            EC_ERR("SDO 0x%04X has no subindex 0 on slave %u.\n",
+            EC_ERR("Sdo 0x%04X has no subindex 0 on slave %u.\n",
                     fsm->pdo_sdo->index,
                     fsm->slave->ring_position);
             ec_pdo_clear(fsm->pdo);
@@ -338,7 +338,7 @@ void ec_fsm_coe_map_state_pdo(
 /*****************************************************************************/
 
 /**
- * Read number of PDO entries.
+ * Read number of Pdo entries.
  */
 
 void ec_fsm_coe_map_state_pdo_entry_count(
@@ -348,7 +348,7 @@ void ec_fsm_coe_map_state_pdo_entry_count(
     if (ec_fsm_coe_exec(fsm->fsm_coe)) return;
 
     if (!ec_fsm_coe_success(fsm->fsm_coe)) {
-        EC_ERR("Failed to read number of mapped PDO entries from slave %u.\n",
+        EC_ERR("Failed to read number of mapped Pdo entries from slave %u.\n",
                 fsm->slave->ring_position);
         fsm->state = ec_fsm_coe_map_state_error;
         return;
@@ -357,9 +357,9 @@ void ec_fsm_coe_map_state_pdo_entry_count(
     fsm->pdo_subindices = EC_READ_U8(fsm->request.data);
 
     if (fsm->slave->master->debug_level)
-        EC_DBG("    %u PDO entries mapped.\n", fsm->pdo_subindices);
+        EC_DBG("    %u Pdo entries mapped.\n", fsm->pdo_subindices);
 
-    // read first PDO entry
+    // read first Pdo entry
     fsm->pdo_subindex = 1;
     ec_fsm_coe_map_action_next_pdo_entry(fsm);
 }
@@ -367,7 +367,7 @@ void ec_fsm_coe_map_state_pdo_entry_count(
 /*****************************************************************************/
 
 /**
- * Read next PDO entry.
+ * Read next Pdo entry.
  */
 
 void ec_fsm_coe_map_action_next_pdo_entry(
@@ -379,7 +379,7 @@ void ec_fsm_coe_map_action_next_pdo_entry(
     if (fsm->pdo_subindex <= fsm->pdo_subindices) {
         if (!(entry = ec_sdo_get_entry(fsm->pdo_sdo,
                         fsm->pdo_subindex))) {
-            EC_ERR("SDO 0x%04X has no subindex %u on slave %u.\n",
+            EC_ERR("Sdo 0x%04X has no subindex %u on slave %u.\n",
                     fsm->pdo_sdo->index, fsm->pdo_subindex,
                     fsm->slave->ring_position);
             fsm->state = ec_fsm_coe_map_state_error;
@@ -393,7 +393,7 @@ void ec_fsm_coe_map_action_next_pdo_entry(
         return;
     }
 
-    // next PDO
+    // next Pdo
     fsm->sync_subindex++;
     ec_fsm_coe_map_action_next_pdo(fsm);
 }
@@ -401,7 +401,7 @@ void ec_fsm_coe_map_action_next_pdo_entry(
 /*****************************************************************************/
 
 /**
- * Read PDO entry information.
+ * Read Pdo entry information.
  */
 
 void ec_fsm_coe_map_state_pdo_entry(
@@ -411,7 +411,7 @@ void ec_fsm_coe_map_state_pdo_entry(
     if (ec_fsm_coe_exec(fsm->fsm_coe)) return;
 
     if (!ec_fsm_coe_success(fsm->fsm_coe)) {
-        EC_ERR("Failed to read index of mapped PDO entry from slave %u.\n",
+        EC_ERR("Failed to read index of mapped Pdo entry from slave %u.\n",
                 fsm->slave->ring_position);
         fsm->state = ec_fsm_coe_map_state_error;
         return;
@@ -427,7 +427,7 @@ void ec_fsm_coe_map_state_pdo_entry(
 
         if (!(pdo_entry = (ec_pdo_entry_t *)
                     kmalloc(sizeof(ec_pdo_entry_t), GFP_KERNEL))) {
-            EC_ERR("Failed to allocate PDO entry.\n");
+            EC_ERR("Failed to allocate Pdo entry.\n");
             fsm->state = ec_fsm_coe_map_state_error;
             return;
         }
@@ -438,9 +438,9 @@ void ec_fsm_coe_map_state_pdo_entry(
         pdo_entry->bit_length = pdo_entry_info & 0xFF;
 
         if (!pdo_entry->index && !pdo_entry->subindex) {
-            // we have a gap in the PDO, next PDO entry
+            // we have a gap in the Pdo, next Pdo entry
             if (fsm->slave->master->debug_level) {
-                EC_DBG("    PDO entry gap: %u bit.\n",
+                EC_DBG("    Pdo entry gap: %u bit.\n",
                         pdo_entry->bit_length);
             }
 
@@ -458,7 +458,7 @@ void ec_fsm_coe_map_state_pdo_entry(
         }
 
         if (!(sdo = ec_slave_get_sdo(fsm->slave, pdo_entry->index))) {
-            EC_ERR("Slave %u has no SDO 0x%04X.\n",
+            EC_ERR("Slave %u has no Sdo 0x%04X.\n",
                     fsm->slave->ring_position, pdo_entry->index);
             ec_pdo_entry_clear(pdo_entry);
             kfree(pdo_entry);
@@ -467,7 +467,7 @@ void ec_fsm_coe_map_state_pdo_entry(
         }
 
         if (!(entry = ec_sdo_get_entry(sdo, pdo_entry->subindex))) {
-            EC_ERR("Slave %u has no SDO entry 0x%04X:%u.\n",
+            EC_ERR("Slave %u has no Sdo entry 0x%04X:%u.\n",
                     fsm->slave->ring_position, pdo_entry->index,
                     pdo_entry->subindex);
             ec_pdo_entry_clear(pdo_entry);
@@ -484,14 +484,14 @@ void ec_fsm_coe_map_state_pdo_entry(
         }
 
         if (fsm->slave->master->debug_level) {
-            EC_DBG("    PDO entry 0x%04X \"%s\" (%u bit).\n", pdo_entry->index,
+            EC_DBG("    Pdo entry 0x%04X \"%s\" (%u bit).\n", pdo_entry->index,
                     pdo_entry->name ? pdo_entry->name : "???",
                     pdo_entry->bit_length);
         }
 
         list_add_tail(&pdo_entry->list, &fsm->pdo->entries);
 
-        // next PDO entry
+        // next Pdo entry
         fsm->pdo_subindex++;
         ec_fsm_coe_map_action_next_pdo_entry(fsm);
     }

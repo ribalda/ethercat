@@ -69,9 +69,9 @@ struct ec_slave_config {
     ec_slave_t *slave; /**< Slave pointer. This is \a NULL, if the slave is
                          offline. */
 
-    ec_pdo_mapping_t mapping[2]; /**< Output and input PDO mapping. */
+    ec_pdo_mapping_t mapping[2]; /**< Output and input Pdo mapping. */
 
-    struct list_head sdo_configs; /**< SDO configurations. */
+    struct list_head sdo_configs; /**< Sdo configurations. */
 
     ec_fmmu_config_t fmmu_configs[EC_MAX_FMMUS]; /**< FMMU configurations. */
     uint8_t used_fmmus; /**< Number of FMMUs used. */

@@ -50,7 +50,7 @@
 /*****************************************************************************/
 
 /**
-   CANopen SDO.
+   CANopen Sdo.
 */
 
 struct ec_sdo
@@ -58,9 +58,9 @@ struct ec_sdo
     struct kobject kobj; /**< kobject */
     struct list_head list; /**< list item */
     ec_slave_t *slave; /**< parent slave */
-    uint16_t index; /**< SDO index */
+    uint16_t index; /**< Sdo index */
     uint8_t object_code; /**< object code */
-    char *name; /**< SDO name */
+    char *name; /**< Sdo name */
     uint8_t subindices; /**< subindices */
     struct list_head entries; /**< entry list */
 };
@@ -68,14 +68,14 @@ struct ec_sdo
 /*****************************************************************************/
 
 /**
-   CANopen SDO entry.
+   CANopen Sdo entry.
 */
 
 typedef struct
 {
     struct kobject kobj; /**< kobject */
     struct list_head list; /**< list item */
-    ec_sdo_t *sdo; /**< parent SDO */
+    ec_sdo_t *sdo; /**< parent Sdo */
     uint8_t subindex; /**< entry subindex */
     uint16_t data_type; /**< entry data type */
     uint16_t bit_length; /**< entry length in bit */
@@ -86,32 +86,32 @@ ec_sdo_entry_t;
 /*****************************************************************************/
 
 /**
-   CANopen SDO configuration data.
+   CANopen Sdo configuration data.
 */
 
 typedef struct
 {
     struct list_head list; /**< list item */
-    uint16_t index; /**< SDO index */
-    uint8_t subindex; /**< SDO subindex */
-    uint8_t *data; /**< pointer to SDO data */
-    size_t size; /**< size of SDO data */
+    uint16_t index; /**< Sdo index */
+    uint8_t subindex; /**< Sdo subindex */
+    uint8_t *data; /**< pointer to Sdo data */
+    size_t size; /**< size of Sdo data */
 }
 ec_sdo_data_t;
 
 /*****************************************************************************/
 
 /**
-   CANopen SDO request.
+   CANopen Sdo request.
 */
 
 typedef struct
 {
     struct list_head list; /**< list item */
-    ec_sdo_entry_t *entry; /**< SDO entry */
-    uint8_t *data; /**< pointer to SDO data */
-    size_t size; /**< size of SDO data */
-    ec_request_state_t state; /**< SDO request state */
+    ec_sdo_entry_t *entry; /**< Sdo entry */
+    uint8_t *data; /**< pointer to Sdo data */
+    size_t size; /**< size of Sdo data */
+    ec_request_state_t state; /**< Sdo request state */
 }
 ec_sdo_request_t;
 

@@ -179,9 +179,9 @@ int __init init_mod(void)
         goto out_release_master;
     }
 
-    printk(KERN_INFO PFX "Registering PDOs...\n");
+    printk(KERN_INFO PFX "Registering Pdos...\n");
     if (ecrt_domain_register_pdo_list(domain1, domain1_pdo_regs)) {
-        printk(KERN_ERR PFX "PDO registration failed!\n");
+        printk(KERN_ERR PFX "Pdo registration failed!\n");
         goto out_release_master;
     }
 

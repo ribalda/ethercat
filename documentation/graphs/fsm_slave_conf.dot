@@ -32,8 +32,8 @@ digraph slaveconf {
     preop -> end [label="PREOP req."]
     preop -> enter_sdo_conf [weight=10]
     enter_sdo_conf -> enter_safeop [label="No configuration"]
-    enter_sdo_conf -> enter_mapping [label="No SDO configs"]
-    enter_sdo_conf -> sdo_conf [label="SDO configs", weight=10]
+    enter_sdo_conf -> enter_mapping [label="No Sdo configs"]
+    enter_sdo_conf -> sdo_conf [label="Sdo configs", weight=10]
     sdo_conf -> sdo_conf
     sdo_conf -> error
     sdo_conf -> enter_mapping [weight=10]
@@ -44,7 +44,7 @@ digraph slaveconf {
     pdo_conf -> pdo_conf
     pdo_conf -> error
     pdo_conf -> enter_pdo_sync [weight=10]
-    enter_pdo_sync -> pdo_sync [label="PDO SMs", weight=10]
+    enter_pdo_sync -> pdo_sync [label="Pdo SMs", weight=10]
     enter_pdo_sync -> enter_fmmu
     pdo_sync -> pdo_sync
     pdo_sync -> error

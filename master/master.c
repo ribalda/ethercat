@@ -146,7 +146,7 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     master->stats.corrupted = 0;
     master->stats.unmatched = 0;
     master->stats.output_jiffies = 0;
-    master->pdo_slaves_offline = 0; // assume all PDO slaves online
+    master->pdo_slaves_offline = 0; // assume all Pdo slaves online
     master->frames_timed_out = 0;
 
     for (i = 0; i < HZ; i++) {
@@ -1007,7 +1007,7 @@ ssize_t ec_master_info(ec_master_t *master, /**< EtherCAT master */
                    master->slave_count);
     off += sprintf(buffer + off, "Status: %s\n",
                    master->fsm.tainted ? "TAINTED" : "sane");
-    off += sprintf(buffer + off, "PDO slaves: %s\n",
+    off += sprintf(buffer + off, "Pdo slaves: %s\n",
                    master->pdo_slaves_offline ? "INCOMPLETE" : "online");
 
     off += sprintf(buffer + off, "\nDevices:\n");

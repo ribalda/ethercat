@@ -194,7 +194,7 @@ void ec_fsm_pdo_config_next_pdo(
                 fsm->pdo->index, fsm->slave->ring_position);
     }
 
-    // set mapped PDO count to zero
+    // set mapped Pdo count to zero
     fsm->sdodata.index = fsm->pdo->index;
     fsm->sdodata.subindex = 0; // number of configured entries
     EC_WRITE_U8(&fsm->sdo_value, 0);

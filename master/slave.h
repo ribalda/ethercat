@@ -152,12 +152,12 @@ struct ec_slave
     char *sii_name; /**< slave name acc. to EEPROM */
     int16_t sii_current_on_ebus; /**< power consumption */
 
-    struct kobject sdo_kobj; /**< kobject for SDOs */
-    struct list_head sdo_dictionary; /**< SDO dictionary list */
+    struct kobject sdo_kobj; /**< kobject for Sdos */
+    struct list_head sdo_dictionary; /**< Sdo dictionary list */
     uint8_t sdo_dictionary_fetched; /**< dictionary has been fetched */
     unsigned long jiffies_preop; /**< time, the slave went to PREOP */
 
-    uint8_t pdo_mapping_fetched; /**< PDO mapping has been fetched */
+    uint8_t pdo_mapping_fetched; /**< Pdo mapping has been fetched */
 };
 
 /*****************************************************************************/

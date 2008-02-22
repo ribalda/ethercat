@@ -64,7 +64,7 @@ struct ec_fsm_slave
     unsigned int retries; /**< Retries on datagram timeout. */
 
     void (*state)(ec_fsm_slave_t *); /**< State function. */
-    ec_sdo_data_t *sdodata; /**< SDO configuration data. */
+    ec_sdo_data_t *sdodata; /**< Sdo configuration data. */
     uint16_t sii_offset; /**< SII offset in words. */
 
     ec_fsm_sii_t fsm_sii; /**< SII state machine. */

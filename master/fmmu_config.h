@@ -52,10 +52,10 @@ typedef struct
 {
     const ec_slave_config_t *sc; /**< EtherCAT slave config. */
     const ec_domain_t *domain; /**< Domain. */
-    ec_direction_t dir; /**< PDO direction. */
+    ec_direction_t dir; /**< Pdo direction. */
 
     uint32_t logical_start_address; /**< Logical start address. */
-    unsigned int data_size; /**< Covered PDO size. */
+    unsigned int data_size; /**< Covered Pdo size. */
 }
 ec_fmmu_config_t;
 

@@ -23,7 +23,6 @@ Version 1.4.0:
 * Distributed clocks.
 * Support slaves, that don't support the LRW datagram, only LRD/LWR.
 * Implement all EtherCAT datagram types.
-* Rename all occurrences of PDO to Pdo.
 
 Future issues:
 
