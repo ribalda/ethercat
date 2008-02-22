@@ -51,12 +51,9 @@
 
 typedef struct ec_fsm_coe ec_fsm_coe_t; /**< \see ec_fsm_coe */
 
-/**
-   Finite state machine of an EtherCAT master.
-*/
-
-struct ec_fsm_coe
-{
+/** Finite state machines for the CANopen-over-EtherCAT protocol.
+ */
+struct ec_fsm_coe {
     ec_slave_t *slave; /**< slave the FSM runs on */
     ec_datagram_t *datagram; /**< datagram used in the state machine */
     unsigned int retries; /**< retries upon datagram timeout */
