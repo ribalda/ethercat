@@ -8,18 +8,19 @@ $Id$
 
 Version 1.4.0:
 
+* Read PDO mapping via CoE during bus scan.
 * Realtime interface changes:
     - SDO access.
 * Mailbox handler
-* Read PDO mapping via CoE during bus scan.
-* SDO write access in sysfs.
+* READMEs for examples.
 * Remove get_cycles() calls and references to cpu_khz to increase
   portability.
 * Remove ecdb.h and let lsec output PDO information 'cut-and-pastable' for
   applications.
+* SDO write access in sysfs.
 * Update documentation.
-* READMEs for examples.
 * Distributed clocks.
+* Safety-over-EtherCAT
 
 Future issues:
 
@@ -33,7 +34,6 @@ Future issues:
 
 Smaller issues:
 
-* Datagram debugging flag.
 * Clear sync managers in INIT.
 * Simplify FSMs with <state>_enter() functions.
 * Read out CRC counters.
