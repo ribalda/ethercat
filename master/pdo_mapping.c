@@ -303,7 +303,7 @@ int ec_pdo_mapping_equal(
 
         if ((l1 == h1) ^ (l2 == h2)) // unequal lengths
             return 0;
-        if (l1 == h1 && l2 == h2) // both finished
+        if (l1 == h1) // both finished
             break;
 
         p1 = list_entry(l1, ec_pdo_t, list);

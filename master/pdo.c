@@ -192,7 +192,7 @@ int ec_pdo_equal_entries(
 
         if ((item1 == head1) ^ (item2 == head2)) // unequal lengths
             return 0;
-        if (item1 == head1 && item2 == head2) // both finished
+        if (item1 == head1) // both finished
             break;
 
         entry1 = list_entry(item1, ec_pdo_entry_t, list);
