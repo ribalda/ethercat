@@ -1102,6 +1102,7 @@ void ec_fsm_slave_conf_enter_fmmu(ec_fsm_slave_t *fsm /**< slave state machine *
     for (i = 0; i < slave->config->used_fmmus; i++) {
         fmmu = &slave->config->fmmu_configs[i];
         if (!(sync = ec_slave_get_pdo_sync(slave, fmmu->dir))) {
+            slave->error_flag = 1;
             fsm->state = ec_fsm_slave_state_error;
             EC_ERR("Failed to determine Pdo sync manager for FMMU on slave"
                     " %u!\n", slave->ring_position);
