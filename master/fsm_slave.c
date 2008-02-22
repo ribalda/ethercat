@@ -320,8 +320,12 @@ void ec_fsm_slave_scan_state_base(ec_fsm_slave_t *fsm /**< slave state machine *
     slave->base_build      = EC_READ_U16(datagram->data + 2);
     slave->base_fmmu_count = EC_READ_U8 (datagram->data + 4);
 
-    if (slave->base_fmmu_count > EC_MAX_FMMUS)
+    if (slave->base_fmmu_count > EC_MAX_FMMUS) {
+        EC_WARN("Slave %u has more FMMUs (%u) than the master can"
+                " handle (%u).\n", slave->ring_position,
+                slave->base_fmmu_count, EC_MAX_FMMUS);
         slave->base_fmmu_count = EC_MAX_FMMUS;
+    }
 
     // read data link status
     ec_datagram_fprd(datagram, slave->station_address, 0x0110, 2);
@@ -1089,6 +1093,15 @@ void ec_fsm_slave_conf_enter_fmmu(ec_fsm_slave_t *fsm /**< slave state machine *
     unsigned int i;
     const ec_fmmu_config_t *fmmu;
     const ec_sync_t *sync;
+
+    if (slave->base_fmmu_count < slave->config->used_fmmus) {
+        slave->error_flag = 1;
+        fsm->state = ec_fsm_slave_state_error;
+        EC_ERR("Slave %u has less FMMUs (%u) than requested (%u).\n",
+                slave->ring_position, slave->base_fmmu_count,
+                slave->config->used_fmmus);
+        return;
+    }
 
     if (!slave->base_fmmu_count) { // skip FMMU configuration
         ec_fsm_slave_conf_enter_safeop(fsm);
