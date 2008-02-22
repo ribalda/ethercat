@@ -46,4 +46,12 @@ MASTER0_BACKUP=""
 # 
 DEVICE_MODULES=""
 
+#
+# Flags for loading kernel modules.
+#
+# This can usually be left empty. Adjust this variable, if you have problems
+# with module loading.
+# 
+#MODPROBE_FLAGS="-b"
+
 #------------------------------------------------------------------------------

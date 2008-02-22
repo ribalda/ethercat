@@ -46,6 +46,9 @@ Changes in version 1.4.0:
 * Allow gaps in PDO mapping read from CoE.
 * Fixed bug in CoE code.
 * Improved handling of large EEPROM contents.
+* Renamed ec_master module parameters main and backup to main_devices and
+  backup_devices to avoid warnings of some compilers.
+* Added MODPROBE_FLAGS variable in start script and sysconfig file.
 
 -------------------------------------------------------------------------------
 
