@@ -43,6 +43,8 @@ Changes in version 1.4.0:
 * Pdo configuration is now supported.
 * Added 8139too driver for kernel 2.6.22, thanks to Erwin Burgstaller.
 * Added e1000 driver for kernel 2.6.22.
+* Added support for slaves that do not support the LRW datagram type. Separate
+  domains have to be used for inputs and output.
 * Allow gaps in PDO mapping read from CoE.
 * Fixed bug in CoE code.
 * Improved handling of large EEPROM contents.

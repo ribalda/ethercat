@@ -21,7 +21,6 @@ Version 1.4.0:
 * READMEs for examples.
 * Calculate expected working counter for domains.
 * Distributed clocks.
-* Support slaves, that don't support the LRW datagram, only LRD/LWR.
 
 Future issues:
 

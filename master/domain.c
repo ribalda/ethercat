@@ -190,7 +190,8 @@ int ec_domain_add_datagram(
         ec_domain_t *domain, /**< EtherCAT domain. */
         uint32_t logical_offset, /**< Logical offset. */
         size_t data_size, /**< Size of the data. */
-        uint8_t *data /**< Process data. */
+        uint8_t *data, /**< Process data. */
+        const unsigned int used[] /**< Used by inputs/outputs. */
         )
 {
     ec_datagram_t *datagram;
@@ -204,9 +205,21 @@ int ec_domain_add_datagram(
     snprintf(datagram->name, EC_DATAGRAM_NAME_SIZE,
             "domain%u-%u", domain->index, logical_offset);
 
-    if (ec_datagram_lrw(datagram, logical_offset, data_size, data)) {
-        kfree(datagram);
-        return -1;
+    if (used[EC_DIR_OUTPUT] && used[EC_DIR_INPUT]) { // inputs and outputs
+        if (ec_datagram_lrw(datagram, logical_offset, data_size, data)) {
+            kfree(datagram);
+            return -1;
+        }
+    } else if (used[EC_DIR_OUTPUT]) { // outputs only
+        if (ec_datagram_lwr(datagram, logical_offset, data_size, data)) {
+            kfree(datagram);
+            return -1;
+        }
+    } else { // inputs only (or nothing)
+        if (ec_datagram_lrd(datagram, logical_offset, data_size, data)) {
+            kfree(datagram);
+            return -1;
+        }
     }
 
     list_add_tail(&datagram->list, &domain->datagrams);
@@ -233,8 +246,10 @@ int ec_domain_finish(
     uint32_t datagram_offset;
     size_t datagram_size;
     unsigned int datagram_count, i;
+    unsigned int datagram_used[2];
     ec_slave_config_t *sc;
     ec_fmmu_config_t *fmmu;
+    const ec_datagram_t *datagram;
 
     domain->logical_base_address = base_address;
 
@@ -252,6 +267,9 @@ int ec_domain_finish(
     datagram_offset = 0;
     datagram_size = 0;
     datagram_count = 0;
+    datagram_used[EC_DIR_OUTPUT] = 0;
+    datagram_used[EC_DIR_INPUT] = 0;
+
     list_for_each_entry(sc, &domain->master->configs, list) {
         for (i = 0; i < sc->used_fmmus; i++) {
             fmmu = &sc->fmmu_configs[i];
@@ -261,16 +279,22 @@ int ec_domain_finish(
             // Correct logical FMMU address
             fmmu->logical_start_address += base_address;
 
+            // Increment Input/Output counter
+            datagram_used[fmmu->dir]++;
+
             // If the current FMMU's data do not fit in the current datagram,
             // allocate a new one.
             if (datagram_size + fmmu->data_size > EC_MAX_DATA_SIZE) {
                 if (ec_domain_add_datagram(domain,
                             domain->logical_base_address + datagram_offset,
-                            datagram_size, domain->data + datagram_offset))
+                            datagram_size, domain->data + datagram_offset,
+                            datagram_used))
                     return -1;
                 datagram_offset += datagram_size;
                 datagram_size = 0;
                 datagram_count++;
+                datagram_used[EC_DIR_OUTPUT] = 0;
+                datagram_used[EC_DIR_INPUT] = 0;
             }
 
             datagram_size += fmmu->data_size;
@@ -281,14 +305,20 @@ int ec_domain_finish(
     if (datagram_size) {
         if (ec_domain_add_datagram(domain,
                     domain->logical_base_address + datagram_offset,
-                    datagram_size, domain->data + datagram_offset))
+                    datagram_size, domain->data + datagram_offset,
+                    datagram_used))
             return -1;
         datagram_count++;
     }
 
-    EC_INFO("Domain %u with logical offset %u contains %u bytes in %u"
-            " datagram%s.\n", domain->index, domain->logical_base_address,
-            domain->data_size, datagram_count, datagram_count == 1 ? "" : "s");
+    EC_INFO("Domain %u with logical offset %u contains %u bytes.\n",
+            domain->index, domain->logical_base_address, domain->data_size);
+    list_for_each_entry(datagram, &domain->datagrams, list) {
+        EC_INFO("  Datagram %s, logical offset %u, size %u, type %s.\n",
+                datagram->name, EC_READ_U32(datagram->address),
+                datagram->data_size, ec_datagram_type_string(datagram));
+    }
+    
     return 0;
 }
 
