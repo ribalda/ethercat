@@ -63,6 +63,30 @@
 
 /*****************************************************************************/
 
+/** Array of datagram type strings used in ec_datagram_type_string().
+ *
+ * \attention This is indexed by ec_datagram_type_t.
+ */
+static const char *type_strings[] = {
+    "?",
+    "APRD",
+    "APWR",
+    "APRW",
+    "FPRD",
+    "FPWR",
+    "FPRW",
+    "BRD",
+    "BWR",
+    "BRW",
+    "LRD",
+    "LWR",
+    "LRW",
+    "ARMW",
+    "FRMW"
+};
+    
+/*****************************************************************************/
+
 /** Constructor.
  */
 void ec_datagram_init(ec_datagram_t *datagram /**< EtherCAT datagram. */)
@@ -470,6 +494,17 @@ void ec_datagram_output_stats(
             datagram->skip_count = 0;
         }
     }
+}
+
+/*****************************************************************************/
+
+/** Returns a string describing the datagram type.
+ */
+const char *ec_datagram_type_string(
+        const ec_datagram_t *datagram /**< EtherCAT datagram. */
+        )
+{
+    return type_strings[datagram->type];
 }
 
 /*****************************************************************************/
