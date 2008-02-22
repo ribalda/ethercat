@@ -39,16 +39,16 @@
 #include "../../include/ecrt.h" // EtherCAT realtime interface
 #include "../../include/ecdb.h" // EtherCAT slave database
 
-#define PFX "ec_mini: "
+/*****************************************************************************/
 
+// module parameters
 #define FREQUENCY 100
-
 #define CONFIGURE_MAPPING
 #define EXTERNAL_MEMORY
 
-/*****************************************************************************/
+#define PFX "ec_mini: "
 
-static struct timer_list timer;
+/*****************************************************************************/
 
 // EtherCAT
 static ec_master_t *master = NULL;
@@ -57,6 +57,27 @@ spinlock_t master_lock = SPIN_LOCK_UNLOCKED;
 
 static ec_domain_t *domain1 = NULL;
 static ec_domain_state_t domain1_state = {};
+
+static struct timer_list timer;
+static unsigned int counter = 0;
+
+/*****************************************************************************/
+
+// process data
+static uint8_t *domain1_pd; // process data memory
+
+static unsigned int off_ana_in; // offsets for Pdo entries
+static unsigned int off_dig_out;
+
+static unsigned int blink = 0;
+
+const static ec_pdo_entry_reg_t domain1_regs[] = {
+    {0, 1, Beckhoff_EL3162, 0x3101, 2, &off_ana_in},
+    {0, 3, Beckhoff_EL2004, 0x3001, 1, &off_dig_out},
+    {}
+};
+
+/*****************************************************************************/
 
 #ifdef CONFIGURE_MAPPING
 const ec_pdo_entry_info_t el3162_channel1[] = {
@@ -88,16 +109,6 @@ const ec_pdo_info_t el2004_mapping[] = {
     {EC_DIR_OUTPUT, 0x1603, 1, &el2004_channels[3]},
 };
 #endif
-
-static uint8_t *pd; /**< Process data. */
-static unsigned int off_ana_in;
-static unsigned int off_dig_out;
-
-const static ec_pdo_entry_reg_t domain1_regs[] = {
-    {0, 1, Beckhoff_EL3162, 0x3101, 2, &off_ana_in},
-    {0, 3, Beckhoff_EL2004, 0x3001, 1, &off_dig_out},
-    {}
-};
 
 /*****************************************************************************/
 
@@ -144,11 +155,8 @@ void check_master_state(void)
 
 /*****************************************************************************/
 
-void run(unsigned long data)
+void cyclic_task(unsigned long data)
 {
-    static unsigned int counter = 0;
-    static unsigned int blink = 0;
-
     // receive process data
     spin_lock(&master_lock);
     ecrt_master_receive(master);
@@ -171,7 +179,7 @@ void run(unsigned long data)
     }
 
     // write process data
-    EC_WRITE_U8(pd + off_dig_out, blink ? 0x0F : 0x00);
+    EC_WRITE_U8(domain1_pd + off_dig_out, blink ? 0x0F : 0x00);
 
     // send process data
     spin_lock(&master_lock);
@@ -256,12 +264,12 @@ int __init init_mini_module(void)
 
 #ifdef EXTERNAL_MEMORY
     if ((size = ecrt_domain_size(domain1))) {
-        if (!(pd = (uint8_t *) kmalloc(size, GFP_KERNEL))) {
+        if (!(domain1_pd = (uint8_t *) kmalloc(size, GFP_KERNEL))) {
             printk(KERN_ERR PFX "Failed to allocate %u bytes of process data"
                     " memory!\n", size);
             goto out_release_master;
         }
-        ecrt_domain_external_memory(domain1, pd);
+        ecrt_domain_external_memory(domain1, domain1_pd);
     }
 #endif
 
@@ -277,12 +285,12 @@ int __init init_mini_module(void)
 
 #ifndef EXTERNAL_MEMORY
     // Get internal process data for domain
-    pd = ecrt_domain_data(domain1);
+    domain1_pd = ecrt_domain_data(domain1);
 #endif
 
     printk(KERN_INFO PFX "Starting cyclic sample thread.\n");
     init_timer(&timer);
-    timer.function = run;
+    timer.function = cyclic_task;
     timer.expires = jiffies + 10;
     add_timer(&timer);
 
@@ -291,7 +299,7 @@ int __init init_mini_module(void)
 
 #ifdef EXTERNAL_MEMORY
 out_free_process_data:
-    kfree(pd);
+    kfree(domain1_pd);
 #endif
 out_release_master:
     printk(KERN_ERR PFX "Releasing master...\n");
@@ -310,7 +318,7 @@ void __exit cleanup_mini_module(void)
     del_timer_sync(&timer);
 
 #ifdef EXTERNAL_MEMORY
-    kfree(pd);
+    kfree(domain1_pd);
 #endif
 
     printk(KERN_INFO PFX "Releasing master...\n");
