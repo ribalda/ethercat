@@ -232,7 +232,7 @@ void ec_fsm_slave_scan_state_address(ec_fsm_slave_t *fsm /**< slave state machin
     }
 
     // Read AL state
-    ec_datagram_nprd(datagram, fsm->slave->station_address, 0x0130, 2);
+    ec_datagram_fprd(datagram, fsm->slave->station_address, 0x0130, 2);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_slave_scan_state_state;
 }
@@ -279,7 +279,7 @@ void ec_fsm_slave_scan_state_state(
     }
 
     // read base data
-    ec_datagram_nprd(datagram, fsm->slave->station_address, 0x0000, 6);
+    ec_datagram_fprd(datagram, fsm->slave->station_address, 0x0000, 6);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_slave_scan_state_base;
 }
@@ -324,7 +324,7 @@ void ec_fsm_slave_scan_state_base(ec_fsm_slave_t *fsm /**< slave state machine *
         slave->base_fmmu_count = EC_MAX_FMMUS;
 
     // read data link status
-    ec_datagram_nprd(datagram, slave->station_address, 0x0110, 2);
+    ec_datagram_fprd(datagram, slave->station_address, 0x0110, 2);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_slave_scan_state_datalink;
 }
@@ -372,7 +372,8 @@ void ec_fsm_slave_scan_state_datalink(ec_fsm_slave_t *fsm /**< slave state machi
     // Start fetching EEPROM size
 
     fsm->sii_offset = EC_FIRST_EEPROM_CATEGORY_OFFSET; // first category header
-    ec_fsm_sii_read(&fsm->fsm_sii, slave, fsm->sii_offset, EC_FSM_SII_NODE);
+    ec_fsm_sii_read(&fsm->fsm_sii, slave, fsm->sii_offset,
+            EC_FSM_SII_USE_CONFIGURED_ADDRESS);
     fsm->state = ec_fsm_slave_scan_state_eeprom_size;
     fsm->state(fsm); // execute state immediately
 }
@@ -413,7 +414,7 @@ void ec_fsm_slave_scan_state_eeprom_size(ec_fsm_slave_t *fsm /**< slave state ma
         }
         fsm->sii_offset = next_offset;
         ec_fsm_sii_read(&fsm->fsm_sii, slave, fsm->sii_offset,
-                        EC_FSM_SII_NODE);
+                        EC_FSM_SII_USE_CONFIGURED_ADDRESS);
         ec_fsm_sii_exec(&fsm->fsm_sii); // execute state immediately
         return;
     }
@@ -441,7 +442,8 @@ alloc_eeprom:
 
     fsm->state = ec_fsm_slave_scan_state_eeprom_data;
     fsm->sii_offset = 0x0000;
-    ec_fsm_sii_read(&fsm->fsm_sii, slave, fsm->sii_offset, EC_FSM_SII_NODE);
+    ec_fsm_sii_read(&fsm->fsm_sii, slave, fsm->sii_offset,
+            EC_FSM_SII_USE_CONFIGURED_ADDRESS);
     ec_fsm_sii_exec(&fsm->fsm_sii); // execute state immediately
 }
 
@@ -481,7 +483,7 @@ void ec_fsm_slave_scan_state_eeprom_data(ec_fsm_slave_t *fsm /**< slave state ma
         // fetch the next 2 words
         fsm->sii_offset += 2;
         ec_fsm_sii_read(&fsm->fsm_sii, slave, fsm->sii_offset,
-                        EC_FSM_SII_NODE);
+                        EC_FSM_SII_USE_CONFIGURED_ADDRESS);
         ec_fsm_sii_exec(&fsm->fsm_sii); // execute state immediately
         return;
     }
@@ -660,7 +662,7 @@ void ec_fsm_slave_conf_state_init(ec_fsm_slave_t *fsm /**< slave state machine *
                slave->ring_position);
 
     // clear FMMU configurations
-    ec_datagram_npwr(datagram, slave->station_address,
+    ec_datagram_fpwr(datagram, slave->station_address,
             0x0600, EC_FMMU_PAGE_SIZE * slave->base_fmmu_count);
     memset(datagram->data, 0x00, EC_FMMU_PAGE_SIZE * slave->base_fmmu_count);
     fsm->retries = EC_FSM_RETRIES;
@@ -740,7 +742,7 @@ void ec_fsm_slave_conf_enter_mbox_sync(
     }
 
     if (slave->sii_sync_count >= 2) { // mailbox configuration provided
-        ec_datagram_npwr(datagram, slave->station_address, 0x0800,
+        ec_datagram_fpwr(datagram, slave->station_address, 0x0800,
                 EC_SYNC_PAGE_SIZE * slave->sii_sync_count);
         memset(datagram->data, 0x00,
                 EC_SYNC_PAGE_SIZE * slave->sii_sync_count);
@@ -757,7 +759,7 @@ void ec_fsm_slave_conf_enter_mbox_sync(
                     " mailbox sync manager configurations.\n",
                     slave->ring_position);
 
-        ec_datagram_npwr(datagram, slave->station_address, 0x0800,
+        ec_datagram_fpwr(datagram, slave->station_address, 0x0800,
                 EC_SYNC_PAGE_SIZE * 2);
         memset(datagram->data, 0x00, EC_SYNC_PAGE_SIZE * 2);
 
@@ -1024,7 +1026,7 @@ void ec_fsm_slave_conf_enter_pdo_sync(
     num_syncs = slave->sii_sync_count - offset;
 
     // configure sync managers for process data
-    ec_datagram_npwr(datagram, slave->station_address,
+    ec_datagram_fpwr(datagram, slave->station_address,
             0x0800 + EC_SYNC_PAGE_SIZE * offset,
             EC_SYNC_PAGE_SIZE * num_syncs);
     memset(datagram->data, 0x00, EC_SYNC_PAGE_SIZE * num_syncs);
@@ -1094,7 +1096,7 @@ void ec_fsm_slave_conf_enter_fmmu(ec_fsm_slave_t *fsm /**< slave state machine *
     }
 
     // configure FMMUs
-    ec_datagram_npwr(datagram, slave->station_address,
+    ec_datagram_fpwr(datagram, slave->station_address,
                      0x0600, EC_FMMU_PAGE_SIZE * slave->base_fmmu_count);
     memset(datagram->data, 0x00, EC_FMMU_PAGE_SIZE * slave->base_fmmu_count);
     for (i = 0; i < slave->config->used_fmmus; i++) {

@@ -49,6 +49,7 @@ Changes in version 1.4.0:
 * Renamed ec_master module parameters main and backup to main_devices and
   backup_devices to avoid warnings of some compilers.
 * Added MODPROBE_FLAGS variable in start script and sysconfig file.
+* Implemented missing datagram types.
 
 -------------------------------------------------------------------------------
 

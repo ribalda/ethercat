@@ -48,15 +48,12 @@
 
 /*****************************************************************************/
 
-/**
- * SII access addressing mode.
+/** SII access addressing mode.
  */
-typedef enum
-{
-    EC_FSM_SII_POSITION,
-    EC_FSM_SII_NODE
-}
-ec_fsm_sii_addressing_t;
+typedef enum {
+    EC_FSM_SII_USE_INCREMENT_ADDRESS, /**< Use auto-increment addressing. */
+    EC_FSM_SII_USE_CONFIGURED_ADDRESS /**< Use configured addresses. */
+} ec_fsm_sii_addressing_t;
 
 /*****************************************************************************/
 

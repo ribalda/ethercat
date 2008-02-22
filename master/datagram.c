@@ -65,7 +65,7 @@
 
 /** Constructor.
  */
-void ec_datagram_init(ec_datagram_t *datagram /**< EtherCAT datagram */)
+void ec_datagram_init(ec_datagram_t *datagram /**< EtherCAT datagram. */)
 {
     INIT_LIST_HEAD(&datagram->queue); // mark as unqueued
     datagram->type = EC_DATAGRAM_NONE;
@@ -90,7 +90,7 @@ void ec_datagram_init(ec_datagram_t *datagram /**< EtherCAT datagram */)
 
 /** Destructor.
  */
-void ec_datagram_clear(ec_datagram_t *datagram /**< EtherCAT datagram */)
+void ec_datagram_clear(ec_datagram_t *datagram /**< EtherCAT datagram. */)
 {
     if (datagram->data_origin == EC_ORIG_INTERNAL && datagram->data)
         kfree(datagram->data);
@@ -107,8 +107,9 @@ void ec_datagram_clear(ec_datagram_t *datagram /**< EtherCAT datagram */)
  *
  * \return 0 in case of success, else < 0
  */
-int ec_datagram_prealloc(ec_datagram_t *datagram, /**< EtherCAT datagram */
-        size_t size /**< New size in bytes */
+int ec_datagram_prealloc(
+        ec_datagram_t *datagram, /**< EtherCAT datagram. */
+        size_t size /**< New payload size in bytes. */
         )
 {
     if (datagram->data_origin == EC_ORIG_EXTERNAL
@@ -132,82 +133,21 @@ int ec_datagram_prealloc(ec_datagram_t *datagram, /**< EtherCAT datagram */
 
 /*****************************************************************************/
 
-/** Initializes an EtherCAT NPRD datagram.
- *
- * Node-adressed physical read.
- *
- * \return 0 in case of success, else < 0
- */
-int ec_datagram_nprd(ec_datagram_t *datagram,
-                     /**< EtherCAT datagram */
-                     uint16_t node_address,
-                     /**< configured station address */
-                     uint16_t offset,
-                     /**< physical memory address */
-                     size_t data_size
-                     /**< number of bytes to read */
-                     )
-{
-    if (unlikely(node_address == 0x0000))
-        EC_WARN("Using node address 0x0000!\n");
-
-    EC_FUNC_HEADER;
-    datagram->type = EC_DATAGRAM_NPRD;
-    EC_WRITE_U16(datagram->address, node_address);
-    EC_WRITE_U16(datagram->address + 2, offset);
-    EC_FUNC_FOOTER;
-}
-
-/*****************************************************************************/
-
-/** Initializes an EtherCAT NPWR datagram.
- *
- * Node-adressed physical write.
- *
- * \return 0 in case of success, else < 0
- */
-int ec_datagram_npwr(ec_datagram_t *datagram,
-                     /**< EtherCAT datagram */
-                     uint16_t node_address,
-                     /**< configured station address */
-                     uint16_t offset,
-                     /**< physical memory address */
-                     size_t data_size
-                     /**< number of bytes to write */
-                     )
-{
-    if (unlikely(node_address == 0x0000))
-        EC_WARN("Using node address 0x0000!\n");
-
-    EC_FUNC_HEADER;
-    datagram->type = EC_DATAGRAM_NPWR;
-    EC_WRITE_U16(datagram->address, node_address);
-    EC_WRITE_U16(datagram->address + 2, offset);
-    EC_FUNC_FOOTER;
-}
-
-/*****************************************************************************/
-
 /** Initializes an EtherCAT APRD datagram.
  *
- * Autoincrement physical read.
- *
  * \return 0 in case of success, else < 0
  */
-int ec_datagram_aprd(ec_datagram_t *datagram,
-                     /**< EtherCAT datagram */
-                     uint16_t ring_position,
-                     /**< auto-increment position */
-                     uint16_t offset,
-                     /**< physical memory address */
-                     size_t data_size
-                     /**< number of bytes to read */
-                     )
+int ec_datagram_aprd(
+        ec_datagram_t *datagram, /**< EtherCAT datagram. */
+        uint16_t ring_position, /**< Auto-increment address. */
+        uint16_t mem_address, /**< Physical memory address. */
+        size_t data_size /**< Number of bytes to read. */
+        )
 {
     EC_FUNC_HEADER;
     datagram->type = EC_DATAGRAM_APRD;
     EC_WRITE_S16(datagram->address, (int16_t) ring_position * (-1));
-    EC_WRITE_U16(datagram->address + 2, offset);
+    EC_WRITE_U16(datagram->address + 2, mem_address);
     EC_FUNC_FOOTER;
 }
 
@@ -215,24 +155,151 @@ int ec_datagram_aprd(ec_datagram_t *datagram,
 
 /** Initializes an EtherCAT APWR datagram.
  *
- * Autoincrement physical write.
- *
  * \return 0 in case of success, else < 0
  */
-int ec_datagram_apwr(ec_datagram_t *datagram,
-                     /**< EtherCAT datagram */
-                     uint16_t ring_position,
-                     /**< auto-increment position */
-                     uint16_t offset,
-                     /**< physical memory address */
-                     size_t data_size
-                     /**< number of bytes to write */
-                     )
+int ec_datagram_apwr(
+        ec_datagram_t *datagram, /**< EtherCAT datagram. */
+        uint16_t ring_position, /**< Auto-increment address. */
+        uint16_t mem_address, /**< Physical memory address. */
+        size_t data_size /**< Number of bytes to write. */
+        )
 {
     EC_FUNC_HEADER;
     datagram->type = EC_DATAGRAM_APWR;
     EC_WRITE_S16(datagram->address, (int16_t) ring_position * (-1));
-    EC_WRITE_U16(datagram->address + 2, offset);
+    EC_WRITE_U16(datagram->address + 2, mem_address);
+    EC_FUNC_FOOTER;
+}
+
+/*****************************************************************************/
+
+/** Initializes an EtherCAT APRW datagram.
+ *
+ * \return 0 in case of success, else < 0
+ */
+int ec_datagram_aprw(
+        ec_datagram_t *datagram, /**< EtherCAT datagram. */
+        uint16_t ring_position, /**< Auto-increment address. */
+        uint16_t mem_address, /**< Physical memory address. */
+        size_t data_size /**< Number of bytes to write. */
+        )
+{
+    EC_FUNC_HEADER;
+    datagram->type = EC_DATAGRAM_APRW;
+    EC_WRITE_S16(datagram->address, (int16_t) ring_position * (-1));
+    EC_WRITE_U16(datagram->address + 2, mem_address);
+    EC_FUNC_FOOTER;
+}
+
+/*****************************************************************************/
+
+/** Initializes an EtherCAT ARMW datagram.
+ *
+ * \return 0 in case of success, else < 0
+ */
+int ec_datagram_armw(
+        ec_datagram_t *datagram, /**< EtherCAT datagram. */
+        uint16_t ring_position, /**< Auto-increment address. */
+        uint16_t mem_address, /**< Physical memory address. */
+        size_t data_size /**< Number of bytes to read. */
+        )
+{
+    EC_FUNC_HEADER;
+    datagram->type = EC_DATAGRAM_ARMW;
+    EC_WRITE_S16(datagram->address, (int16_t) ring_position * (-1));
+    EC_WRITE_U16(datagram->address + 2, mem_address);
+    EC_FUNC_FOOTER;
+}
+
+/*****************************************************************************/
+
+/** Initializes an EtherCAT FPRD datagram.
+ *
+ * \return 0 in case of success, else < 0
+ */
+int ec_datagram_fprd(
+        ec_datagram_t *datagram, /**< EtherCAT datagram. */
+        uint16_t configured_address, /**< Configured station address. */
+        uint16_t mem_address, /**< Physical memory address. */
+        size_t data_size /**< Number of bytes to read. */
+        )
+{
+    if (unlikely(configured_address == 0x0000))
+        EC_WARN("Using configured station address 0x0000!\n");
+
+    EC_FUNC_HEADER;
+    datagram->type = EC_DATAGRAM_FPRD;
+    EC_WRITE_U16(datagram->address, configured_address);
+    EC_WRITE_U16(datagram->address + 2, mem_address);
+    EC_FUNC_FOOTER;
+}
+
+/*****************************************************************************/
+
+/** Initializes an EtherCAT FPWR datagram.
+ *
+ * \return 0 in case of success, else < 0
+ */
+int ec_datagram_fpwr(
+        ec_datagram_t *datagram, /**< EtherCAT datagram. */
+        uint16_t configured_address, /**< Configured station address. */
+        uint16_t mem_address, /**< Physical memory address. */
+        size_t data_size /**< Number of bytes to write. */
+        )
+{
+    if (unlikely(configured_address == 0x0000))
+        EC_WARN("Using configured station address 0x0000!\n");
+
+    EC_FUNC_HEADER;
+    datagram->type = EC_DATAGRAM_FPWR;
+    EC_WRITE_U16(datagram->address, configured_address);
+    EC_WRITE_U16(datagram->address + 2, mem_address);
+    EC_FUNC_FOOTER;
+}
+
+/*****************************************************************************/
+
+/** Initializes an EtherCAT FPRW datagram.
+ *
+ * \return 0 in case of success, else < 0
+ */
+int ec_datagram_fprw(
+        ec_datagram_t *datagram, /**< EtherCAT datagram. */
+        uint16_t configured_address, /**< Configured station address. */
+        uint16_t mem_address, /**< Physical memory address. */
+        size_t data_size /**< Number of bytes to write. */
+        )
+{
+    if (unlikely(configured_address == 0x0000))
+        EC_WARN("Using configured station address 0x0000!\n");
+
+    EC_FUNC_HEADER;
+    datagram->type = EC_DATAGRAM_FPRW;
+    EC_WRITE_U16(datagram->address, configured_address);
+    EC_WRITE_U16(datagram->address + 2, mem_address);
+    EC_FUNC_FOOTER;
+}
+
+/*****************************************************************************/
+
+/** Initializes an EtherCAT FRMW datagram.
+ *
+ * \return 0 in case of success, else < 0
+ */
+int ec_datagram_frmw(
+        ec_datagram_t *datagram, /**< EtherCAT datagram. */
+        uint16_t configured_address, /**< Configured station address. */
+        uint16_t mem_address, /**< Physical memory address. */
+        size_t data_size /**< Number of bytes to write. */
+        )
+{
+    if (unlikely(configured_address == 0x0000))
+        EC_WARN("Using configured station address 0x0000!\n");
+
+    EC_FUNC_HEADER;
+    datagram->type = EC_DATAGRAM_FRMW;
+    EC_WRITE_U16(datagram->address, configured_address);
+    EC_WRITE_U16(datagram->address + 2, mem_address);
     EC_FUNC_FOOTER;
 }
 
@@ -240,22 +307,18 @@ int ec_datagram_apwr(ec_datagram_t *datagram,
 
 /** Initializes an EtherCAT BRD datagram.
  *
- * Broadcast read.
- *
  * \return 0 in case of success, else < 0
  */
-int ec_datagram_brd(ec_datagram_t *datagram,
-                    /**< EtherCAT datagram */
-                    uint16_t offset,
-                    /**< physical memory address */
-                    size_t data_size
-                    /**< number of bytes to read */
-                    )
+int ec_datagram_brd(
+        ec_datagram_t *datagram, /**< EtherCAT datagram. */
+        uint16_t mem_address, /**< Physical memory address. */
+        size_t data_size /**< Number of bytes to read. */
+        )
 {
     EC_FUNC_HEADER;
     datagram->type = EC_DATAGRAM_BRD;
     EC_WRITE_U16(datagram->address, 0x0000);
-    EC_WRITE_U16(datagram->address + 2, offset);
+    EC_WRITE_U16(datagram->address + 2, mem_address);
     EC_FUNC_FOOTER;
 }
 
@@ -263,22 +326,85 @@ int ec_datagram_brd(ec_datagram_t *datagram,
 
 /** Initializes an EtherCAT BWR datagram.
  *
- * Broadcast write.
- *
  * \return 0 in case of success, else < 0
  */
-int ec_datagram_bwr(ec_datagram_t *datagram,
-                    /**< EtherCAT datagram */
-                    uint16_t offset,
-                    /**< physical memory address */
-                    size_t data_size
-                    /**< number of bytes to write */
-                    )
+int ec_datagram_bwr(
+        ec_datagram_t *datagram, /**< EtherCAT datagram. */
+        uint16_t mem_address, /**< Physical memory address. */
+        size_t data_size /**< Number of bytes to write. */
+        )
 {
     EC_FUNC_HEADER;
     datagram->type = EC_DATAGRAM_BWR;
     EC_WRITE_U16(datagram->address, 0x0000);
-    EC_WRITE_U16(datagram->address + 2, offset);
+    EC_WRITE_U16(datagram->address + 2, mem_address);
+    EC_FUNC_FOOTER;
+}
+
+/*****************************************************************************/
+
+/** Initializes an EtherCAT BRW datagram.
+ *
+ * \return 0 in case of success, else < 0
+ */
+int ec_datagram_brw(
+        ec_datagram_t *datagram, /**< EtherCAT datagram. */
+        uint16_t mem_address, /**< Physical memory address. */
+        size_t data_size /**< Number of bytes to write. */
+        )
+{
+    EC_FUNC_HEADER;
+    datagram->type = EC_DATAGRAM_BRW;
+    EC_WRITE_U16(datagram->address, 0x0000);
+    EC_WRITE_U16(datagram->address + 2, mem_address);
+    EC_FUNC_FOOTER;
+}
+
+/*****************************************************************************/
+
+/** Initializes an EtherCAT LRD datagram.
+ *
+ * \attention It is assumed, that the external memory is at least \a data_size
+ *            bytes large.
+ *
+ * \return 0 in case of success, else < 0
+ */
+int ec_datagram_lrd(
+        ec_datagram_t *datagram, /**< EtherCAT datagram. */
+        uint32_t offset, /**< Logical address. */
+        size_t data_size, /**< Number of bytes to read/write. */
+        uint8_t *external_memory /**< Pointer to the memory to use. */
+        )
+{
+    datagram->data = external_memory;
+    datagram->data_origin = EC_ORIG_EXTERNAL;
+    EC_FUNC_HEADER;
+    datagram->type = EC_DATAGRAM_LRD;
+    EC_WRITE_U32(datagram->address, offset);
+    EC_FUNC_FOOTER;
+}
+
+/*****************************************************************************/
+
+/** Initializes an EtherCAT LWR datagram.
+ *
+ * \attention It is assumed, that the external memory is at least \a data_size
+ *            bytes large.
+ *
+ * \return 0 in case of success, else < 0
+ */
+int ec_datagram_lwr(
+        ec_datagram_t *datagram, /**< EtherCAT datagram. */
+        uint32_t offset, /**< Logical address. */
+        size_t data_size, /**< Number of bytes to read/write. */
+        uint8_t *external_memory /**< Pointer to the memory to use. */
+        )
+{
+    datagram->data = external_memory;
+    datagram->data_origin = EC_ORIG_EXTERNAL;
+    EC_FUNC_HEADER;
+    datagram->type = EC_DATAGRAM_LWR;
+    EC_WRITE_U32(datagram->address, offset);
     EC_FUNC_FOOTER;
 }
 
@@ -286,15 +412,13 @@ int ec_datagram_bwr(ec_datagram_t *datagram,
 
 /** Initializes an EtherCAT LRW datagram.
  *
- * Logical read write.
- *
  * \attention It is assumed, that the external memory is at least \a data_size
  *            bytes large.
  *
  * \return 0 in case of success, else < 0
  */
 int ec_datagram_lrw(
-        ec_datagram_t *datagram, /**< EtherCAT datagram */
+        ec_datagram_t *datagram, /**< EtherCAT datagram. */
         uint32_t offset, /**< Logical address. */
         size_t data_size, /**< Number of bytes to read/write. */
         uint8_t *external_memory /**< Pointer to the memory to use. */

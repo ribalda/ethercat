@@ -49,7 +49,7 @@
 
 /*****************************************************************************/
 
-/** size of the datagram description string */
+/** Size of the datagram description string. */
 #define EC_DATAGRAM_NAME_SIZE 20
 
 /*****************************************************************************/
@@ -58,13 +58,22 @@
  */
 typedef enum {
     EC_DATAGRAM_NONE = 0x00, /**< Dummy. */
-    EC_DATAGRAM_APRD = 0x01, /**< Auto-increment physical read. */
-    EC_DATAGRAM_APWR = 0x02, /**< Auto-increment physical write. */
-    EC_DATAGRAM_NPRD = 0x04, /**< Node-addressed physical read. */
-    EC_DATAGRAM_NPWR = 0x05, /**< Node-addressed physical write. */
-    EC_DATAGRAM_BRD  = 0x07, /**< Broadcast read. */
-    EC_DATAGRAM_BWR  = 0x08, /**< Broadcast write. */
-    EC_DATAGRAM_LRW  = 0x0C  /**< Logical read/write. */
+    EC_DATAGRAM_APRD = 0x01, /**< Auto Increment Physical Read. */
+    EC_DATAGRAM_APWR = 0x02, /**< Auto Increment Physical Write. */
+    EC_DATAGRAM_APRW = 0x03, /**< Auto Increment Physical ReadWrite. */
+    EC_DATAGRAM_FPRD = 0x04, /**< Configured Address Physical Read. */
+    EC_DATAGRAM_FPWR = 0x05, /**< Configured Address Physical Write. */
+    EC_DATAGRAM_FPRW = 0x06, /**< Configured Address Physical ReadWrite. */
+    EC_DATAGRAM_BRD  = 0x07, /**< Broadcast Read. */
+    EC_DATAGRAM_BWR  = 0x08, /**< Broadcast Write. */
+    EC_DATAGRAM_BRW  = 0x09, /**< Broadcast ReadWrite. */
+    EC_DATAGRAM_LRD  = 0x0A, /**< Logical Read. */
+    EC_DATAGRAM_LWR  = 0x0B, /**< Logical Write. */
+    EC_DATAGRAM_LRW  = 0x0C, /**< Logical ReadWrite. */
+    EC_DATAGRAM_ARMW = 0x0D, /**< Auto Increment Physical Read Multiple
+                               Write.  */
+    EC_DATAGRAM_FRMW = 0x0E, /**< Configured Address Physical Read Multiple
+                               Write. */
 } ec_datagram_type_t;
 
 /*****************************************************************************/
@@ -113,12 +122,19 @@ void ec_datagram_init(ec_datagram_t *);
 void ec_datagram_clear(ec_datagram_t *);
 int ec_datagram_prealloc(ec_datagram_t *, size_t);
 
-int ec_datagram_nprd(ec_datagram_t *, uint16_t, uint16_t, size_t);
-int ec_datagram_npwr(ec_datagram_t *, uint16_t, uint16_t, size_t);
 int ec_datagram_aprd(ec_datagram_t *, uint16_t, uint16_t, size_t);
 int ec_datagram_apwr(ec_datagram_t *, uint16_t, uint16_t, size_t);
+int ec_datagram_aprw(ec_datagram_t *, uint16_t, uint16_t, size_t);
+int ec_datagram_armw(ec_datagram_t *, uint16_t, uint16_t, size_t);
+int ec_datagram_fprd(ec_datagram_t *, uint16_t, uint16_t, size_t);
+int ec_datagram_fpwr(ec_datagram_t *, uint16_t, uint16_t, size_t);
+int ec_datagram_fprw(ec_datagram_t *, uint16_t, uint16_t, size_t);
+int ec_datagram_frmw(ec_datagram_t *, uint16_t, uint16_t, size_t);
 int ec_datagram_brd(ec_datagram_t *, uint16_t, size_t);
 int ec_datagram_bwr(ec_datagram_t *, uint16_t, size_t);
+int ec_datagram_brw(ec_datagram_t *, uint16_t, size_t);
+int ec_datagram_lrd(ec_datagram_t *, uint32_t, size_t, uint8_t *);
+int ec_datagram_lwr(ec_datagram_t *, uint32_t, size_t, uint8_t *);
 int ec_datagram_lrw(ec_datagram_t *, uint32_t, size_t, uint8_t *);
 
 void ec_datagram_print_wc_error(const ec_datagram_t *);

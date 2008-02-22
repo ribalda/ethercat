@@ -297,7 +297,7 @@ void ec_fsm_master_state_broadcast(ec_fsm_master_t *fsm /**< master state machin
 
     // fetch state from each slave
     fsm->slave = list_entry(master->slaves.next, ec_slave_t, list);
-    ec_datagram_nprd(fsm->datagram, fsm->slave->station_address, 0x0130, 2);
+    ec_datagram_fprd(fsm->datagram, fsm->slave->station_address, 0x0130, 2);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_master_state_read_states;
 }
@@ -347,7 +347,7 @@ int ec_fsm_master_action_process_eeprom(
         fsm->eeprom_request = request;
         fsm->eeprom_index = 0;
         ec_fsm_sii_write(&fsm->fsm_sii, request->slave, request->word_offset,
-                request->data, EC_FSM_SII_NODE);
+                request->data, EC_FSM_SII_USE_CONFIGURED_ADDRESS);
         fsm->state = ec_fsm_master_state_write_eeprom;
         fsm->state(fsm); // execute immediately
         return 1;
@@ -572,7 +572,7 @@ void ec_fsm_master_action_next_slave_state(ec_fsm_master_t *fsm
         // process next slave
         fsm->idle = 1;
         fsm->slave = list_entry(slave->list.next, ec_slave_t, list);
-        ec_datagram_nprd(fsm->datagram, fsm->slave->station_address,
+        ec_datagram_fprd(fsm->datagram, fsm->slave->station_address,
                          0x0130, 2);
         fsm->retries = EC_FSM_RETRIES;
         fsm->state = ec_fsm_master_state_read_states;
@@ -592,7 +592,8 @@ void ec_fsm_master_action_next_slave_state(ec_fsm_master_t *fsm
             fsm->idle = 0;
             fsm->slave = list_entry(master->slaves.next, ec_slave_t, list);
             fsm->state = ec_fsm_master_state_validate_vendor;
-            ec_fsm_sii_read(&fsm->fsm_sii, slave, 0x0008, EC_FSM_SII_POSITION);
+            ec_fsm_sii_read(&fsm->fsm_sii, slave, 0x0008,
+                    EC_FSM_SII_USE_INCREMENT_ADDRESS);
             ec_fsm_sii_exec(&fsm->fsm_sii); // execute immediately
             return;
         }
@@ -701,7 +702,8 @@ void ec_fsm_master_state_validate_vendor(ec_fsm_master_t *fsm /**< master state 
 
     // vendor ID is ok. check product code.
     fsm->state = ec_fsm_master_state_validate_product;
-    ec_fsm_sii_read(&fsm->fsm_sii, slave, 0x000A, EC_FSM_SII_POSITION);
+    ec_fsm_sii_read(&fsm->fsm_sii, slave, 0x000A,
+            EC_FSM_SII_USE_INCREMENT_ADDRESS);
     ec_fsm_sii_exec(&fsm->fsm_sii); // execute immediately
 }
 
@@ -778,7 +780,8 @@ void ec_fsm_master_state_validate_product(ec_fsm_master_t *fsm /**< master state
     // validate next slave
     fsm->slave = list_entry(fsm->slave->list.next, ec_slave_t, list);
     fsm->state = ec_fsm_master_state_validate_vendor;
-    ec_fsm_sii_read(&fsm->fsm_sii, slave, 0x0008, EC_FSM_SII_POSITION);
+    ec_fsm_sii_read(&fsm->fsm_sii, slave, 0x0008,
+            EC_FSM_SII_USE_INCREMENT_ADDRESS);
     ec_fsm_sii_exec(&fsm->fsm_sii); // execute immediately
 }
 
@@ -980,7 +983,7 @@ void ec_fsm_master_state_write_eeprom(
         ec_fsm_sii_write(&fsm->fsm_sii, slave,
                 request->word_offset + fsm->eeprom_index,
                 request->data + fsm->eeprom_index * 2,
-                EC_FSM_SII_NODE);
+                EC_FSM_SII_USE_CONFIGURED_ADDRESS);
         ec_fsm_sii_exec(&fsm->fsm_sii); // execute immediately
         return;
     }

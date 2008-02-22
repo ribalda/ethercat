@@ -157,7 +157,7 @@ void ec_fsm_change_state_start(ec_fsm_change_t *fsm
     fsm->old_state = fsm->slave->current_state;
 
     // write new state to slave
-    ec_datagram_npwr(datagram, slave->station_address, 0x0120, 2);
+    ec_datagram_fpwr(datagram, slave->station_address, 0x0120, 2);
     EC_WRITE_U16(datagram->data, fsm->requested_state);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_change_state_check;
@@ -203,7 +203,7 @@ void ec_fsm_change_state_check(ec_fsm_change_t *fsm
         }
 
         // repeat writing new state to slave
-        ec_datagram_npwr(datagram, slave->station_address, 0x0120, 2);
+        ec_datagram_fpwr(datagram, slave->station_address, 0x0120, 2);
         EC_WRITE_U16(datagram->data, fsm->requested_state);
         fsm->retries = EC_FSM_RETRIES;
         return;
@@ -222,7 +222,7 @@ void ec_fsm_change_state_check(ec_fsm_change_t *fsm
     fsm->take_time = 1;
 
     // read AL status from slave
-    ec_datagram_nprd(datagram, slave->station_address, 0x0130, 2);
+    ec_datagram_fprd(datagram, slave->station_address, 0x0130, 2);
     fsm->retries = EC_FSM_RETRIES;
     fsm->spontaneous_change = 0;
     fsm->state = ec_fsm_change_state_status;
@@ -298,7 +298,7 @@ void ec_fsm_change_state_status(ec_fsm_change_t *fsm
         EC_ERR("Failed to set %s state, slave %i refused state change (%s).\n",
                req_state, slave->ring_position, cur_state);
         // fetch AL status error code
-        ec_datagram_nprd(datagram, slave->station_address, 0x0134, 2);
+        ec_datagram_fprd(datagram, slave->station_address, 0x0134, 2);
         fsm->retries = EC_FSM_RETRIES;
         fsm->state = ec_fsm_change_state_code;
         return;
@@ -318,7 +318,7 @@ void ec_fsm_change_state_status(ec_fsm_change_t *fsm
 
  check_again:
     // no timeout yet. check again
-    ec_datagram_nprd(datagram, slave->station_address, 0x0130, 2);
+    ec_datagram_fprd(datagram, slave->station_address, 0x0130, 2);
     fsm->retries = EC_FSM_RETRIES;
 }
 
@@ -417,7 +417,7 @@ void ec_fsm_change_state_start_ack(ec_fsm_change_t *fsm
     ec_slave_t *slave = fsm->slave;
     ec_datagram_t *datagram = fsm->datagram;
 
-    ec_datagram_npwr(datagram, slave->station_address, 0x0120, 2);
+    ec_datagram_fpwr(datagram, slave->station_address, 0x0120, 2);
     EC_WRITE_U16(datagram->data, slave->current_state);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_change_state_ack;
@@ -456,7 +456,7 @@ void ec_fsm_change_state_ack(ec_fsm_change_t *fsm /**< finite state machine */)
     fsm->take_time = 1;
 
     // read new AL status
-    ec_datagram_nprd(datagram, slave->station_address, 0x0130, 2);
+    ec_datagram_fprd(datagram, slave->station_address, 0x0130, 2);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_change_state_check_ack;
 }
@@ -524,7 +524,7 @@ void ec_fsm_change_state_check_ack(ec_fsm_change_t *fsm
     }
 
     // reread new AL status
-    ec_datagram_nprd(datagram, slave->station_address, 0x0130, 2);
+    ec_datagram_fprd(datagram, slave->station_address, 0x0130, 2);
     fsm->retries = EC_FSM_RETRIES;
 }
 

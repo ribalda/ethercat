@@ -72,7 +72,7 @@ uint8_t *ec_slave_mbox_prepare_send(const ec_slave_t *slave, /**< slave */
         return NULL;
     }
 
-    if (ec_datagram_npwr(datagram, slave->station_address,
+    if (ec_datagram_fpwr(datagram, slave->station_address,
                          slave->sii_rx_mailbox_offset,
                          slave->sii_rx_mailbox_size))
         return NULL;
@@ -97,7 +97,7 @@ int ec_slave_mbox_prepare_check(const ec_slave_t *slave, /**< slave */
                                 ec_datagram_t *datagram /**< datagram */
                                 )
 {
-    if (ec_datagram_nprd(datagram, slave->station_address, 0x808, 8))
+    if (ec_datagram_fprd(datagram, slave->station_address, 0x808, 8))
         return -1;
 
     return 0;
@@ -126,7 +126,7 @@ int ec_slave_mbox_prepare_fetch(const ec_slave_t *slave, /**< slave */
                                 ec_datagram_t *datagram /**< datagram */
                                 )
 {
-    if (ec_datagram_nprd(datagram, slave->station_address,
+    if (ec_datagram_fprd(datagram, slave->station_address,
                          slave->sii_tx_mailbox_offset,
                          slave->sii_tx_mailbox_size)) return -1;
     return 0;

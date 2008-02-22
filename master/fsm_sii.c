@@ -172,11 +172,11 @@ void ec_fsm_sii_state_start_reading(
 
     // initiate read operation
     switch (fsm->mode) {
-        case EC_FSM_SII_POSITION:
+        case EC_FSM_SII_USE_INCREMENT_ADDRESS:
             ec_datagram_apwr(datagram, fsm->slave->ring_position, 0x502, 4);
             break;
-        case EC_FSM_SII_NODE:
-            ec_datagram_npwr(datagram, fsm->slave->station_address, 0x502, 4);
+        case EC_FSM_SII_USE_CONFIGURED_ADDRESS:
+            ec_datagram_fpwr(datagram, fsm->slave->station_address, 0x502, 4);
             break;
     }
 
@@ -230,11 +230,11 @@ void ec_fsm_sii_state_read_check(
 
     // issue check/fetch datagram
     switch (fsm->mode) {
-        case EC_FSM_SII_POSITION:
+        case EC_FSM_SII_USE_INCREMENT_ADDRESS:
             ec_datagram_aprd(datagram, fsm->slave->ring_position, 0x502, 10);
             break;
-        case EC_FSM_SII_NODE:
-            ec_datagram_nprd(datagram, fsm->slave->station_address, 0x502, 10);
+        case EC_FSM_SII_USE_CONFIGURED_ADDRESS:
+            ec_datagram_fprd(datagram, fsm->slave->station_address, 0x502, 10);
             break;
     }
 
@@ -324,7 +324,7 @@ void ec_fsm_sii_state_start_writing(
     ec_datagram_t *datagram = fsm->datagram;
 
     // initiate write operation
-    ec_datagram_npwr(datagram, fsm->slave->station_address, 0x502, 8);
+    ec_datagram_fpwr(datagram, fsm->slave->station_address, 0x502, 8);
     EC_WRITE_U8 (datagram->data,     0x81); // two address octets
 											// + enable write access
     EC_WRITE_U8 (datagram->data + 1, 0x02); // request write operation
@@ -376,7 +376,7 @@ void ec_fsm_sii_state_write_check(
     fsm->check_once_more = 1;
 
     // issue check datagram
-    ec_datagram_nprd(datagram, fsm->slave->station_address, 0x502, 2);
+    ec_datagram_fprd(datagram, fsm->slave->station_address, 0x502, 2);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_sii_state_write_check2;
 }
