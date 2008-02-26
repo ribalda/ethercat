@@ -416,7 +416,8 @@ ssize_t ec_sdo_entry_read_value(ec_sdo_entry_t *entry, /**< Sdo entry */
     off_t off = 0;
     ec_sdo_request_t request;
 
-    ec_sdo_request_init_read(&request, entry);
+    ec_sdo_request_init_read(&request, entry->sdo->slave,
+            entry->sdo->index, entry->subindex);
 
     // schedule request.
     down(&master->sdo_sem);
@@ -479,11 +480,16 @@ ssize_t ec_show_sdo_entry_attribute(struct kobject *kobj, /**< kobject */
    Sdo request constructor.
 */
 
-void ec_sdo_request_init_read(ec_sdo_request_t *req, /**< Sdo request */
-                              ec_sdo_entry_t *entry /**< Sdo entry */
-                              )
+void ec_sdo_request_init_read(
+        ec_sdo_request_t *req, /**< Sdo request */
+        ec_slave_t *slave, /**< Slave owning the Sdo. */
+        uint16_t index, /**< Sdo index. */
+        uint8_t subindex /**< Sdo subindex. */
+        )
 {
-    req->entry = entry;
+    req->slave = slave;
+    req->index = index;
+    req->subindex = subindex;
     req->data = NULL;
     req->size = 0;
     req->state = EC_REQUEST_QUEUED;

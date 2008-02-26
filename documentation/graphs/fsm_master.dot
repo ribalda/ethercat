@@ -26,15 +26,15 @@ digraph master {
 
     action_configure -> configure_slave
 
+    action_process_states -> action_configure
+    action_process_states -> action_process_sdo
+    action_process_states -> sdodict
+    action_process_states -> action_process_eeprom
+    action_process_states -> end
+
     action_next_slave_state -> read_states
     action_next_slave_state -> validate_vendor
     action_next_slave_state -> action_process_states
-
-    action_process_states -> action_configure
-    action_process_states -> action_process_sdo
-    action_process_states -> action_process_eeprom
-    action_process_states -> sdodict
-    action_process_states -> end
 
     //read_states -> error
     read_states -> action_next_slave_state
@@ -50,8 +50,8 @@ digraph master {
     action_addresses -> rewrite_addresses
 
     //validate_product -> error
-    validate_product -> validate_vendor
     validate_product -> action_addresses
+    validate_product -> validate_vendor
 
     //rewrite_addresses -> error
     rewrite_addresses -> end
@@ -67,6 +67,7 @@ digraph master {
     configure_slave -> end
 
     //write_eeprom -> error
+    write_eeprom -> action_process_eeprom
     write_eeprom -> end
 
     //sdodict -> error

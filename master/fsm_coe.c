@@ -1175,12 +1175,11 @@ void ec_fsm_coe_up_start(ec_fsm_coe_t *fsm /**< finite state machine */)
     ec_slave_t *slave = fsm->slave;
     ec_master_t *master = slave->master;
     ec_sdo_request_t *request = fsm->request;
-    ec_sdo_entry_t *entry = request->entry;
     uint8_t *data;
 
     if (master->debug_level)
         EC_DBG("Uploading Sdo 0x%04X:%i from slave %i.\n",
-               entry->sdo->index, entry->subindex, slave->ring_position);
+               request->index, request->subindex, slave->ring_position);
 
     if (!(slave->sii_mailbox_protocols & EC_MBOX_COE)) {
         EC_ERR("Slave %u does not support CoE!\n", slave->ring_position);
@@ -1195,8 +1194,8 @@ void ec_fsm_coe_up_start(ec_fsm_coe_t *fsm /**< finite state machine */)
 
     EC_WRITE_U16(data, 0x2 << 12); // Sdo request
     EC_WRITE_U8 (data + 2, 0x2 << 5); // initiate upload request
-    EC_WRITE_U16(data + 3, entry->sdo->index);
-    EC_WRITE_U8 (data + 5, entry->subindex);
+    EC_WRITE_U16(data + 3, request->index);
+    EC_WRITE_U8 (data + 5, request->subindex);
     memset(data + 6, 0x00, 4);
 
     if (master->debug_level) {
@@ -1311,7 +1310,6 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     uint8_t *data, mbox_prot;
     size_t rec_size, data_size;
     ec_sdo_request_t *request = fsm->request;
-    ec_sdo_entry_t *entry = request->entry;
     uint32_t complete_size;
     unsigned int expedited, size_specified;
 
@@ -1361,7 +1359,7 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     if (EC_READ_U16(data) >> 12 == 0x2 && // Sdo request
         EC_READ_U8 (data + 2) >> 5 == 0x4) { // abort Sdo transfer request
         EC_ERR("Sdo upload 0x%04X:%X aborted on slave %i.\n",
-               entry->sdo->index, entry->subindex, slave->ring_position);
+               request->index, request->subindex, slave->ring_position);
         if (rec_size >= 10)
             ec_canopen_abort_msg(EC_READ_U32(data + 6));
         else
@@ -1390,9 +1388,10 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
 
         if (EC_READ_U16(data) >> 12 != 0x3 || // Sdo response
                 EC_READ_U8 (data + 2) >> 5 != 0x2 || // upload response
-                EC_READ_U16(data + 3) != entry->sdo->index || // index
-                EC_READ_U8 (data + 5) != entry->subindex) { // subindex
-            EC_ERR("Sdo upload 0x%04X:%X failed:\n", entry->sdo->index, entry->subindex);
+                EC_READ_U16(data + 3) != request->index || // index
+                EC_READ_U8 (data + 5) != request->subindex) { // subindex
+            EC_ERR("Sdo upload 0x%04X:%X failed:\n",
+                    request->index, request->subindex);
             EC_ERR("Invalid Sdo upload response at slave %i!\n",
                     slave->ring_position);
             ec_print_data(data, rec_size);
@@ -1438,9 +1437,10 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
 
         if (EC_READ_U16(data) >> 12 != 0x3 || // Sdo response
                 EC_READ_U8 (data + 2) >> 5 != 0x2 || // upload response
-                EC_READ_U16(data + 3) != entry->sdo->index || // index
-                EC_READ_U8 (data + 5) != entry->subindex) { // subindex
-            EC_ERR("Sdo upload 0x%04X:%X failed:\n", entry->sdo->index, entry->subindex);
+                EC_READ_U16(data + 3) != request->index || // index
+                EC_READ_U8 (data + 5) != request->subindex) { // subindex
+            EC_ERR("Sdo upload 0x%04X:%X failed:\n",
+                    request->index, request->subindex);
             EC_ERR("Invalid Sdo upload response at slave %i!\n",
                     slave->ring_position);
             ec_print_data(data, rec_size);
@@ -1602,7 +1602,6 @@ void ec_fsm_coe_up_seg_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     uint8_t *data, mbox_prot;
     size_t rec_size, data_size;
     ec_sdo_request_t *request = fsm->request;
-    ec_sdo_entry_t *entry = request->entry;
     uint32_t seg_size;
     unsigned int last_segment;
 
@@ -1652,7 +1651,7 @@ void ec_fsm_coe_up_seg_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     if (EC_READ_U16(data) >> 12 == 0x2 && // Sdo request
         EC_READ_U8 (data + 2) >> 5 == 0x4) { // abort Sdo transfer request
         EC_ERR("Sdo upload 0x%04X:%X aborted on slave %i.\n",
-               entry->sdo->index, entry->subindex, slave->ring_position);
+               request->index, request->subindex, slave->ring_position);
         ec_canopen_abort_msg(EC_READ_U32(data + 6));
         fsm->state = ec_fsm_coe_error;
 	return;
@@ -1660,7 +1659,7 @@ void ec_fsm_coe_up_seg_response(ec_fsm_coe_t *fsm /**< finite state machine */)
 
     if (EC_READ_U16(data) >> 12 != 0x3 || // Sdo response
         EC_READ_U8 (data + 2) >> 5 != 0x0) { // upload segment response
-        EC_ERR("Sdo upload 0x%04X:%X failed:\n", entry->sdo->index, entry->subindex);
+        EC_ERR("Sdo upload 0x%04X:%X failed:\n", request->index, request->subindex);
         EC_ERR("Invalid Sdo upload segment response at slave %i!\n",
                slave->ring_position);
         ec_print_data(data, rec_size);

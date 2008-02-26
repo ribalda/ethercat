@@ -54,19 +54,31 @@ void ec_fsm_slave_scan_state_base(ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_state_datalink(ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_state_eeprom_size(ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_state_eeprom_data(ec_fsm_slave_scan_t *);
+void ec_fsm_slave_scan_state_preop(ec_fsm_slave_scan_t *);
+void ec_fsm_slave_scan_state_pdos(ec_fsm_slave_scan_t *);
 
 void ec_fsm_slave_scan_state_end(ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_state_error(ec_fsm_slave_scan_t *);
+
+void ec_fsm_slave_scan_enter_preop(ec_fsm_slave_scan_t *);
+void ec_fsm_slave_scan_enter_pdos(ec_fsm_slave_scan_t *);
 
 /*****************************************************************************/
 
 /** Constructor.
  */
-void ec_fsm_slave_scan_init(ec_fsm_slave_scan_t *fsm, /**< slave state machine */
-        ec_datagram_t *datagram /**< datagram structure to use */
+void ec_fsm_slave_scan_init(
+        ec_fsm_slave_scan_t *fsm, /**< Slave scanning state machine. */
+        ec_datagram_t *datagram, /**< Datagram to use. */
+        ec_fsm_slave_config_t *fsm_slave_config, /**< Slave configuration
+                                                  state machine to use. */
+        ec_fsm_coe_map_t *fsm_coe_map /**< Pdo mapping state machine to use.
+                                       */
         )
 {
     fsm->datagram = datagram;
+    fsm->fsm_slave_config = fsm_slave_config;
+    fsm->fsm_coe_map = fsm_coe_map;
 
     // init sub state machines
     ec_fsm_sii_init(&fsm->fsm_sii, fsm->datagram);
@@ -556,13 +568,93 @@ void ec_fsm_slave_scan_state_eeprom_data(ec_fsm_slave_scan_t *fsm /**< slave sta
         }
     }
 
-    fsm->state = ec_fsm_slave_scan_state_end;
+    if (slave->sii_mailbox_protocols & EC_MBOX_COE) {
+        ec_fsm_slave_scan_enter_preop(fsm);
+    } else {
+        fsm->state = ec_fsm_slave_scan_state_end;
+    }
     return;
 
 end:
     EC_ERR("Failed to analyze category data.\n");
     fsm->slave->error_flag = 1;
     fsm->state = ec_fsm_slave_scan_state_error;
+}
+
+/*****************************************************************************/
+
+void ec_fsm_slave_scan_enter_preop(
+        ec_fsm_slave_scan_t *fsm /**< slave state machine */
+        )
+{
+    ec_slave_t *slave = fsm->slave;
+
+    if ((slave->current_state & EC_SLAVE_STATE_MASK) < EC_SLAVE_STATE_PREOP) {
+        if (slave->master->debug_level)
+            EC_DBG("Slave %u is not in the state to do mailbox com, setting"
+                    " to PREOP.\n", slave->ring_position);
+        fsm->state = ec_fsm_slave_scan_state_preop;
+        ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
+        ec_fsm_slave_config_start(fsm->fsm_slave_config, slave);
+        ec_fsm_slave_config_exec(fsm->fsm_slave_config);
+    } else {
+        ec_fsm_slave_scan_enter_pdos(fsm);
+    }
+}
+
+/*****************************************************************************/
+
+/** Slave scan state: PREOP.
+ */
+void ec_fsm_slave_scan_state_preop(
+        ec_fsm_slave_scan_t *fsm /**< slave state machine */
+        )
+{
+    if (ec_fsm_slave_config_exec(fsm->fsm_slave_config))
+        return;
+
+    if (!ec_fsm_slave_config_success(fsm->fsm_slave_config)) {
+        fsm->state = ec_fsm_slave_scan_state_error;
+        return;
+    }
+
+    ec_fsm_slave_scan_enter_pdos(fsm);
+}
+
+/*****************************************************************************/
+
+void ec_fsm_slave_scan_enter_pdos(
+        ec_fsm_slave_scan_t *fsm /**< slave state machine */
+        )
+{
+    ec_slave_t *slave = fsm->slave;
+
+    if (slave->master->debug_level)
+        EC_DBG("Scanning Pdo mapping/configuration of slave %u.\n",
+                slave->ring_position);
+    fsm->state = ec_fsm_slave_scan_state_pdos;
+    ec_fsm_coe_map_start(fsm->fsm_coe_map, slave);
+    ec_fsm_coe_map_exec(fsm->fsm_coe_map); // execute immediately
+}
+
+/*****************************************************************************/
+
+/** Slave scan state: PDOS.
+ */
+void ec_fsm_slave_scan_state_pdos(
+        ec_fsm_slave_scan_t *fsm /**< slave state machine */
+        )
+{
+    if (ec_fsm_coe_map_exec(fsm->fsm_coe_map))
+        return;
+
+    if (!ec_fsm_coe_map_success(fsm->fsm_coe_map)) {
+        fsm->state = ec_fsm_slave_scan_state_error;
+        return;
+    }
+
+    // fetching of Pdo mapping finished
+    fsm->state = ec_fsm_slave_scan_state_end;
 }
 
 /******************************************************************************

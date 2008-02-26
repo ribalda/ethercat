@@ -55,7 +55,7 @@ void ec_fsm_coe_map_state_pdo_entry(ec_fsm_coe_map_t *);
 void ec_fsm_coe_map_state_end(ec_fsm_coe_map_t *);
 void ec_fsm_coe_map_state_error(ec_fsm_coe_map_t *);
 
-void ec_fsm_coe_map_action_next_sync(ec_fsm_coe_map_t *);
+void ec_fsm_coe_map_action_next_dir(ec_fsm_coe_map_t *);
 void ec_fsm_coe_map_action_next_pdo(ec_fsm_coe_map_t *);
 void ec_fsm_coe_map_action_next_pdo_entry(ec_fsm_coe_map_t *);
 
@@ -140,48 +140,55 @@ void ec_fsm_coe_map_state_start(
         ec_fsm_coe_map_t *fsm /**< finite state machine */
         )
 {
-    // read mapping of first sync manager
-    fsm->sync_index = 0;
-    ec_fsm_coe_map_action_next_sync(fsm);
+    // read mapping for first direction
+    fsm->dir = (ec_direction_t) -1; // next is EC_DIR_OUTPUT
+    ec_fsm_coe_map_action_next_dir(fsm);
 }
 
 /*****************************************************************************/
 
 /**
- * Read mapping of next sync manager.
+ * Read mapping of next direction manager.
  */
 
-void ec_fsm_coe_map_action_next_sync(
+void ec_fsm_coe_map_action_next_dir(
         ec_fsm_coe_map_t *fsm /**< finite state machine */
         )
 {
     ec_slave_t *slave = fsm->slave;
-    ec_sdo_entry_t *entry;
 
-    for (; fsm->sync_index < slave->sii_sync_count; fsm->sync_index++) {
-        if (!(fsm->sync_sdo = ec_slave_get_sdo(slave, 0x1C10 + fsm->sync_index)))
+    fsm->dir++;
+
+    if (slave->master->debug_level)
+        EC_DBG("Processing dir %u of slave %u.\n",
+                fsm->dir, slave->ring_position);
+
+    for (; fsm->dir <= EC_DIR_INPUT; fsm->dir++) {
+
+        if (!(fsm->sync = ec_slave_get_pdo_sync(slave, fsm->dir))) {
+            if (slave->master->debug_level)
+                EC_DBG("No sync manager for direction %u!\n", fsm->dir);
             continue;
+        }
+
+        fsm->sync_sdo_index = 0x1C10 + fsm->sync->index;
 
         if (slave->master->debug_level)
             EC_DBG("Reading Pdo mapping of sync manager %u of slave %u.\n",
-                    fsm->sync_index, slave->ring_position);
+                    fsm->sync->index, slave->ring_position);
 
         ec_pdo_mapping_clear_pdos(&fsm->mapping);
 
-        if (!(entry = ec_sdo_get_entry(fsm->sync_sdo, 0))) {
-            EC_ERR("Sdo 0x%04X has no subindex 0 on slave %u.\n",
-                    fsm->sync_sdo->index,
-                    fsm->slave->ring_position);
-            fsm->state = ec_fsm_coe_map_state_error;
-            return;
-        }
-
-        ec_sdo_request_init_read(&fsm->request, entry);
+        ec_sdo_request_init_read(&fsm->request, slave, fsm->sync_sdo_index, 0);
         fsm->state = ec_fsm_coe_map_state_pdo_count;
         ec_fsm_coe_upload(fsm->fsm_coe, fsm->slave, &fsm->request);
         ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
         return;
     }
+
+    if (slave->master->debug_level)
+        EC_DBG("Reading of Pdo mapping finished for slave %u.\n",
+                slave->ring_position);
 
     fsm->state = ec_fsm_coe_map_state_end;
 }
@@ -225,41 +232,27 @@ void ec_fsm_coe_map_action_next_pdo(
         ec_fsm_coe_map_t *fsm /**< finite state machine */
         )
 {
-    ec_sdo_entry_t *entry;
-
     if (fsm->sync_subindex <= fsm->sync_subindices) {
-        if (!(entry = ec_sdo_get_entry(fsm->sync_sdo,
-                        fsm->sync_subindex))) {
-            EC_ERR("Sdo 0x%04X has no subindex %u on slave %u.\n",
-                    fsm->sync_sdo->index,
-                    fsm->sync_subindex,
-                    fsm->slave->ring_position);
-            fsm->state = ec_fsm_coe_map_state_error;
-            return;
-        }
-
-        ec_sdo_request_init_read(&fsm->request, entry);
+        ec_sdo_request_init_read(&fsm->request, fsm->slave,
+                fsm->sync_sdo_index, fsm->sync_subindex);
         fsm->state = ec_fsm_coe_map_state_pdo;
         ec_fsm_coe_upload(fsm->fsm_coe, fsm->slave, &fsm->request);
         ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
         return;
     }
 
-    {
-        ec_sync_t *sync = fsm->slave->sii_syncs + fsm->sync_index;
-
-        if (ec_pdo_mapping_copy(&sync->mapping, &fsm->mapping)) {
-            fsm->state = ec_fsm_coe_map_state_error;
-            return;
-        }
-        
-        sync->mapping_source = EC_SYNC_MAPPING_COE;
-        ec_pdo_mapping_clear_pdos(&fsm->mapping);
-
-        // next sync manager
-        fsm->sync_index++;
-        ec_fsm_coe_map_action_next_sync(fsm);
+    // finished reading Pdo mapping/configuration
+    
+    if (ec_pdo_mapping_copy(&fsm->sync->mapping, &fsm->mapping)) {
+        fsm->state = ec_fsm_coe_map_state_error;
+        return;
     }
+
+    fsm->sync->mapping_source = EC_SYNC_MAPPING_COE;
+    ec_pdo_mapping_clear_pdos(&fsm->mapping);
+
+    // next direction
+    ec_fsm_coe_map_action_next_dir(fsm);
 }
 
 /*****************************************************************************/
@@ -281,58 +274,26 @@ void ec_fsm_coe_map_state_pdo(
         return;
     }
 
-    {
-        ec_sdo_entry_t *entry;
-
-        if (!(fsm->pdo = (ec_pdo_t *)
-                    kmalloc(sizeof(ec_pdo_t), GFP_KERNEL))) {
-            EC_ERR("Failed to allocate Pdo.\n");
-            fsm->state = ec_fsm_coe_map_state_error;
-            return;
-        }
-
-        ec_pdo_init(fsm->pdo);
-        fsm->pdo->index = EC_READ_U16(fsm->request.data);
-        fsm->pdo->dir =
-            ec_sync_direction(fsm->slave->sii_syncs + fsm->sync_index);
-
-        if (fsm->slave->master->debug_level)
-            EC_DBG("  Pdo 0x%04X.\n", fsm->pdo->index);
-
-        if (!(fsm->pdo_sdo = ec_slave_get_sdo(fsm->slave, fsm->pdo->index))) {
-            EC_ERR("Slave %u has no Sdo 0x%04X.\n",
-                    fsm->slave->ring_position, fsm->pdo->index);
-            ec_pdo_clear(fsm->pdo);
-            kfree(fsm->pdo);
-            fsm->state = ec_fsm_coe_map_state_error;
-            return;
-        }
-
-        if (ec_pdo_set_name(fsm->pdo, fsm->pdo_sdo->name)) {
-            ec_pdo_clear(fsm->pdo);
-            kfree(fsm->pdo);
-            fsm->state = ec_fsm_coe_map_state_error;
-            return;
-        }
-
-        if (!(entry = ec_sdo_get_entry(fsm->pdo_sdo, 0))) {
-            EC_ERR("Sdo 0x%04X has no subindex 0 on slave %u.\n",
-                    fsm->pdo_sdo->index,
-                    fsm->slave->ring_position);
-            ec_pdo_clear(fsm->pdo);
-            kfree(fsm->pdo);
-            fsm->state = ec_fsm_coe_map_state_error;
-            return;
-        }
-
-        list_add_tail(&fsm->pdo->list, &fsm->mapping.pdos);
-
-        ec_sdo_request_init_read(&fsm->request, entry);
-        fsm->state = ec_fsm_coe_map_state_pdo_entry_count;
-        ec_fsm_coe_upload(fsm->fsm_coe, fsm->slave, &fsm->request);
-        ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
+    if (!(fsm->pdo = (ec_pdo_t *)
+                kmalloc(sizeof(ec_pdo_t), GFP_KERNEL))) {
+        EC_ERR("Failed to allocate Pdo.\n");
+        fsm->state = ec_fsm_coe_map_state_error;
         return;
     }
+
+    ec_pdo_init(fsm->pdo);
+    fsm->pdo->index = EC_READ_U16(fsm->request.data);
+    fsm->pdo->dir = ec_sync_direction(fsm->sync);
+
+    if (fsm->slave->master->debug_level)
+        EC_DBG("  Pdo 0x%04X.\n", fsm->pdo->index);
+
+    list_add_tail(&fsm->pdo->list, &fsm->mapping.pdos);
+
+    ec_sdo_request_init_read(&fsm->request, fsm->slave, fsm->pdo->index, 0);
+    fsm->state = ec_fsm_coe_map_state_pdo_entry_count;
+    ec_fsm_coe_upload(fsm->fsm_coe, fsm->slave, &fsm->request);
+    ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
 }
 
 /*****************************************************************************/
@@ -374,19 +335,9 @@ void ec_fsm_coe_map_action_next_pdo_entry(
         ec_fsm_coe_map_t *fsm /**< finite state machine */
         )
 {
-    ec_sdo_entry_t *entry;
-
     if (fsm->pdo_subindex <= fsm->pdo_subindices) {
-        if (!(entry = ec_sdo_get_entry(fsm->pdo_sdo,
-                        fsm->pdo_subindex))) {
-            EC_ERR("Sdo 0x%04X has no subindex %u on slave %u.\n",
-                    fsm->pdo_sdo->index, fsm->pdo_subindex,
-                    fsm->slave->ring_position);
-            fsm->state = ec_fsm_coe_map_state_error;
-            return;
-        }
-
-        ec_sdo_request_init_read(&fsm->request, entry);
+        ec_sdo_request_init_read(&fsm->request, fsm->slave,
+                fsm->pdo->index, fsm->pdo_subindex);
         fsm->state = ec_fsm_coe_map_state_pdo_entry;
         ec_fsm_coe_upload(fsm->fsm_coe, fsm->slave, &fsm->request);
         ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
@@ -419,8 +370,6 @@ void ec_fsm_coe_map_state_pdo_entry(
 
     {
         uint32_t pdo_entry_info;
-        ec_sdo_t *sdo;
-        ec_sdo_entry_t *entry;
         ec_pdo_entry_t *pdo_entry;
 
         pdo_entry_info = EC_READ_U32(fsm->request.data);
@@ -438,49 +387,12 @@ void ec_fsm_coe_map_state_pdo_entry(
         pdo_entry->bit_length = pdo_entry_info & 0xFF;
 
         if (!pdo_entry->index && !pdo_entry->subindex) {
-            // we have a gap in the Pdo, next Pdo entry
-            if (fsm->slave->master->debug_level) {
-                EC_DBG("    Pdo entry gap: %u bit.\n",
-                        pdo_entry->bit_length);
-            }
-
             if (ec_pdo_entry_set_name(pdo_entry, "Gap")) {
                 ec_pdo_entry_clear(pdo_entry);
                 kfree(pdo_entry);
                 fsm->state = ec_fsm_coe_map_state_error;
                 return;
             }
-
-            list_add_tail(&pdo_entry->list, &fsm->pdo->entries);
-            fsm->pdo_subindex++;
-            ec_fsm_coe_map_action_next_pdo_entry(fsm);
-            return;
-        }
-
-        if (!(sdo = ec_slave_get_sdo(fsm->slave, pdo_entry->index))) {
-            EC_ERR("Slave %u has no Sdo 0x%04X.\n",
-                    fsm->slave->ring_position, pdo_entry->index);
-            ec_pdo_entry_clear(pdo_entry);
-            kfree(pdo_entry);
-            fsm->state = ec_fsm_coe_map_state_error;
-            return;
-        }
-
-        if (!(entry = ec_sdo_get_entry(sdo, pdo_entry->subindex))) {
-            EC_ERR("Slave %u has no Sdo entry 0x%04X:%u.\n",
-                    fsm->slave->ring_position, pdo_entry->index,
-                    pdo_entry->subindex);
-            ec_pdo_entry_clear(pdo_entry);
-            kfree(pdo_entry);
-            fsm->state = ec_fsm_coe_map_state_error;
-            return;
-        }
-
-        if (ec_pdo_entry_set_name(pdo_entry, entry->description)) {
-            ec_pdo_entry_clear(pdo_entry);
-            kfree(pdo_entry);
-            fsm->state = ec_fsm_coe_map_state_error;
-            return;
         }
 
         if (fsm->slave->master->debug_level) {
@@ -489,9 +401,8 @@ void ec_fsm_coe_map_state_pdo_entry(
                     pdo_entry->bit_length);
         }
 
-        list_add_tail(&pdo_entry->list, &fsm->pdo->entries);
-
         // next Pdo entry
+        list_add_tail(&pdo_entry->list, &fsm->pdo->entries);
         fsm->pdo_subindex++;
         ec_fsm_coe_map_action_next_pdo_entry(fsm);
     }

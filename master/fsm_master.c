@@ -60,7 +60,6 @@ void ec_fsm_master_state_clear_addresses(ec_fsm_master_t *);
 void ec_fsm_master_state_scan_slaves(ec_fsm_master_t *);
 void ec_fsm_master_state_write_eeprom(ec_fsm_master_t *);
 void ec_fsm_master_state_sdodict(ec_fsm_master_t *);
-void ec_fsm_master_state_pdomap(ec_fsm_master_t *);
 void ec_fsm_master_state_sdo_request(ec_fsm_master_t *);
 void ec_fsm_master_state_end(ec_fsm_master_t *);
 void ec_fsm_master_state_error(ec_fsm_master_t *);
@@ -88,7 +87,8 @@ void ec_fsm_master_init(ec_fsm_master_t *fsm, /**< master state machine */
 
     // init sub-state-machines
     ec_fsm_slave_config_init(&fsm->fsm_slave_config, fsm->datagram);
-    ec_fsm_slave_scan_init(&fsm->fsm_slave_scan, fsm->datagram);
+    ec_fsm_slave_scan_init(&fsm->fsm_slave_scan, fsm->datagram,
+            &fsm->fsm_slave_config, &fsm->fsm_coe_map);
     ec_fsm_sii_init(&fsm->fsm_sii, fsm->datagram);
     ec_fsm_change_init(&fsm->fsm_change, fsm->datagram);
     ec_fsm_coe_init(&fsm->fsm_coe, fsm->datagram);
@@ -387,7 +387,7 @@ int ec_fsm_master_action_process_sdo(
         request->state = EC_REQUEST_IN_PROGRESS;
         up(&master->sdo_sem);
 
-        slave = request->entry->sdo->slave;
+        slave = request->slave;
         if (slave->current_state == EC_SLAVE_STATE_INIT ||
                 slave->online_state == EC_SLAVE_OFFLINE ||
                 slave->error_flag) {
@@ -523,29 +523,6 @@ void ec_fsm_master_action_process_states(ec_fsm_master_t *fsm
             fsm->state = ec_fsm_master_state_sdodict;
             ec_fsm_coe_dictionary(&fsm->fsm_coe, slave);
             ec_fsm_coe_exec(&fsm->fsm_coe); // execute immediately
-            return;
-        }
-
-        // check, if slaves have their Pdo mapping to be read.
-        list_for_each_entry(slave, &master->slaves, list) {
-            if (!(slave->sii_mailbox_protocols & EC_MBOX_COE)
-                || slave->pdo_mapping_fetched
-                || !slave->sdo_dictionary_fetched
-                || slave->current_state == EC_SLAVE_STATE_INIT
-                || slave->online_state == EC_SLAVE_OFFLINE) continue;
-
-            if (master->debug_level) {
-                EC_DBG("Fetching Pdo mapping from slave %i via CoE.\n",
-                       slave->ring_position);
-            }
-
-            slave->pdo_mapping_fetched = 1;
-
-            // start fetching Pdo mapping
-            fsm->idle = 0;
-            fsm->state = ec_fsm_master_state_pdomap;
-            ec_fsm_coe_map_start(&fsm->fsm_coe_map, slave);
-            ec_fsm_coe_map_exec(&fsm->fsm_coe_map); // execute immediately
             return;
         }
 
@@ -1039,28 +1016,7 @@ void ec_fsm_master_state_sdodict(ec_fsm_master_t *fsm /**< master state machine 
 /*****************************************************************************/
 
 /**
- * Scan the Pdo mapping of a slave.
- */
-
-void ec_fsm_master_state_pdomap(
-        ec_fsm_master_t *fsm /**< master state machine */
-        )
-{
-    if (ec_fsm_coe_map_exec(&fsm->fsm_coe_map)) return;
-
-    if (!ec_fsm_coe_map_success(&fsm->fsm_coe_map)) {
-        fsm->state = ec_fsm_master_state_error;
-        return;
-    }
-
-    // fetching of Pdo mapping finished
-    fsm->state = ec_fsm_master_state_end;
-}
-
-/*****************************************************************************/
-
-/**
-   Master state: Sdo REQUEST.
+   Master state: SDO REQUEST.
 */
 
 void ec_fsm_master_state_sdo_request(ec_fsm_master_t *fsm /**< master state machine */)

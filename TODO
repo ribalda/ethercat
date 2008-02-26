@@ -8,7 +8,6 @@ $Id$
 
 Version 1.4.0:
 
-* Read PDO mapping via CoE during bus scan.
 * Realtime interface changes:
     - SDO access.
 * Mailbox handler
@@ -18,9 +17,8 @@ Version 1.4.0:
 * Remove ecdb.h and let lsec output PDO information 'cut-and-pastable' for
   applications.
 * SDO write access in sysfs.
-* Update documentation.
 * Distributed clocks.
-* Safety-over-EtherCAT
+* Update documentation.
 
 Future issues:
 
@@ -29,6 +27,8 @@ Future issues:
               to replace lsec.
     - Step 2: Move kernel threads to user space daemon with a TCP interface
               replacing the cdev.
+* Mailbox gateway.
+* Slave-to-slave communication.
 * Redundancy with 2 network adapters.
 * Interface/buffers for asynchronous domain IO.
 

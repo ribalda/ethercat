@@ -53,6 +53,15 @@
 
 /*****************************************************************************/
 
+/** Slave state mask.
+ *
+ * Apply this mask to a slave state byte to get the slave state without
+ * the error flag.
+ */
+#define EC_SLAVE_STATE_MASK 0x0F
+
+/*****************************************************************************/
+
 /** State of an EtherCAT slave.
  */
 typedef enum {
@@ -156,8 +165,6 @@ struct ec_slave
     struct list_head sdo_dictionary; /**< Sdo dictionary list */
     uint8_t sdo_dictionary_fetched; /**< dictionary has been fetched */
     unsigned long jiffies_preop; /**< time, the slave went to PREOP */
-
-    uint8_t pdo_mapping_fetched; /**< Pdo mapping has been fetched */
 };
 
 /*****************************************************************************/

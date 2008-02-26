@@ -49,12 +49,9 @@
 
 /*****************************************************************************/
 
-/**
-   CANopen Sdo.
-*/
-
-struct ec_sdo
-{
+/** CANopen Sdo.
+ */
+struct ec_sdo {
     struct kobject kobj; /**< kobject */
     struct list_head list; /**< list item */
     ec_slave_t *slave; /**< parent slave */
@@ -67,12 +64,9 @@ struct ec_sdo
 
 /*****************************************************************************/
 
-/**
-   CANopen Sdo entry.
-*/
-
-typedef struct
-{
+/** CANopen Sdo entry.
+ */
+typedef struct {
     struct kobject kobj; /**< kobject */
     struct list_head list; /**< list item */
     ec_sdo_t *sdo; /**< parent Sdo */
@@ -80,17 +74,13 @@ typedef struct
     uint16_t data_type; /**< entry data type */
     uint16_t bit_length; /**< entry length in bit */
     char *description; /**< entry description */
-}
-ec_sdo_entry_t;
+} ec_sdo_entry_t;
 
 /*****************************************************************************/
 
-/**
-   CANopen Sdo configuration data.
-*/
-
-typedef struct
-{
+/** CANopen Sdo configuration data.
+ */
+typedef struct {
     struct list_head list; /**< list item */
     uint16_t index; /**< Sdo index */
     uint8_t subindex; /**< Sdo subindex */
@@ -105,15 +95,15 @@ ec_sdo_data_t;
    CANopen Sdo request.
 */
 
-typedef struct
-{
+typedef struct {
     struct list_head list; /**< list item */
-    ec_sdo_entry_t *entry; /**< Sdo entry */
+    ec_slave_t *slave; /**< Slave owning the Sdo. */
+    uint16_t index; /**< Sdo index. */
+    uint8_t subindex; /**< Sdo subindex. */
     uint8_t *data; /**< pointer to Sdo data */
     size_t size; /**< size of Sdo data */
     ec_request_state_t state; /**< Sdo request state */
-}
-ec_sdo_request_t;
+} ec_sdo_request_t;
 
 /*****************************************************************************/
 
@@ -124,7 +114,8 @@ ec_sdo_entry_t *ec_sdo_get_entry(ec_sdo_t *, uint8_t);
 int ec_sdo_entry_init(ec_sdo_entry_t *, uint8_t, ec_sdo_t *);
 void ec_sdo_entry_destroy(ec_sdo_entry_t *);
 
-void ec_sdo_request_init_read(ec_sdo_request_t *, ec_sdo_entry_t *);
+void ec_sdo_request_init_read(ec_sdo_request_t *, ec_slave_t *, uint16_t,
+        uint8_t);
 void ec_sdo_request_clear(ec_sdo_request_t *);
 
 /*****************************************************************************/

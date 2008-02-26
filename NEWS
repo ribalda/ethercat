@@ -41,7 +41,10 @@ Changes in version 1.4.0:
       be reached by specifying an explicit Pdo mapping and registering those
       Pdo entries.
 * Pdo configuration is now supported.
+* Current Pdo mapping/configuration is now read during bus scan, without
+  using the Sdo dictionary.
 * Added 8139too driver for kernel 2.6.22, thanks to Erwin Burgstaller.
+* Added 8139too driver for kernel 2.6.23, thanks to Richard Hacker.
 * Added e1000 driver for kernel 2.6.22.
 * Added support for slaves that do not support the LRW datagram type. Separate
   domains have to be used for inputs and output.
