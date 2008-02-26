@@ -33,7 +33,7 @@
 
 /**
    \file
-   EtherCAT finite state machines.
+   EtherCAT master state machine.
 */
 
 /*****************************************************************************/
@@ -41,42 +41,35 @@
 #ifndef __EC_FSM_MASTER__
 #define __EC_FSM_MASTER__
 
-#include "globals.h"
 #include "../include/ecrt.h"
-#include "datagram.h"
-//#include "slave.h"
-#include "canopen.h"
 
-#include "fsm_slave.h"
+#include "globals.h"
+#include "datagram.h"
+#include "canopen.h"
+#include "fsm_slave_config.h"
+#include "fsm_slave_scan.h"
 #include "fsm_coe_map.h"
 
 /*****************************************************************************/
 
-/**
- * EEPROM write request.
+/** EEPROM write request.
  */
-
-typedef struct
-{
+typedef struct {
     struct list_head list; /**< list head */
     ec_slave_t *slave; /**< EtherCAT slave */
     off_t word_offset; /**< SII address in words */
     size_t word_size; /**< data size in words */
     const uint8_t *data; /**< pointer to the data */
     ec_request_state_t state; /**< state of the request */
-}
-ec_eeprom_write_request_t;
+} ec_eeprom_write_request_t;
 
 /*****************************************************************************/
 
 typedef struct ec_fsm_master ec_fsm_master_t; /**< \see ec_fsm_master */
 
-/**
-   Finite state machine of an EtherCAT master.
-*/
-
-struct ec_fsm_master
-{
+/** Finite state machine of an EtherCAT master.
+ */
+struct ec_fsm_master {
     ec_master_t *master; /**< master the FSM runs on */
     ec_datagram_t *datagram; /**< datagram used in the state machine */
     unsigned int retries; /**< retries on datagram timeout. */
@@ -96,7 +89,8 @@ struct ec_fsm_master
     off_t eeprom_index; /**< index to EEPROM write request data */
     ec_sdo_request_t *sdo_request; /**< Sdo request to process */
 
-    ec_fsm_slave_t fsm_slave; /**< slave state machine */
+    ec_fsm_slave_config_t fsm_slave_config; /**< slave state machine */
+    ec_fsm_slave_scan_t fsm_slave_scan; /**< slave state machine */
     ec_fsm_sii_t fsm_sii; /**< SII state machine */
     ec_fsm_change_t fsm_change; /**< State change state machine */
     ec_fsm_coe_t fsm_coe; /**< CoE state machine */

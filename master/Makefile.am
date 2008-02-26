@@ -49,7 +49,8 @@ EXTRA_DIST = \
 	fsm_coe_map.c fsm_coe_map.h \
 	fsm_pdo_mapping.c fsm_pdo_mapping.h \
 	fsm_pdo_config.c fsm_pdo_config.h \
-	fsm_slave.c fsm_slave.h \
+	fsm_slave_scan.c fsm_slave_scan.h \
+	fsm_slave_config.c fsm_slave_config.h \
 	fsm_master.c fsm_master.h \
 	globals.h \
 	mailbox.c mailbox.h \

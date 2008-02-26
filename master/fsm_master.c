@@ -87,7 +87,8 @@ void ec_fsm_master_init(ec_fsm_master_t *fsm, /**< master state machine */
     fsm->tainted = 0;
 
     // init sub-state-machines
-    ec_fsm_slave_init(&fsm->fsm_slave, fsm->datagram);
+    ec_fsm_slave_config_init(&fsm->fsm_slave_config, fsm->datagram);
+    ec_fsm_slave_scan_init(&fsm->fsm_slave_scan, fsm->datagram);
     ec_fsm_sii_init(&fsm->fsm_sii, fsm->datagram);
     ec_fsm_change_init(&fsm->fsm_change, fsm->datagram);
     ec_fsm_coe_init(&fsm->fsm_coe, fsm->datagram);
@@ -103,7 +104,8 @@ void ec_fsm_master_init(ec_fsm_master_t *fsm, /**< master state machine */
 void ec_fsm_master_clear(ec_fsm_master_t *fsm /**< master state machine */)
 {
     // clear sub-state machines
-    ec_fsm_slave_clear(&fsm->fsm_slave);
+    ec_fsm_slave_config_clear(&fsm->fsm_slave_config);
+    ec_fsm_slave_scan_clear(&fsm->fsm_slave_scan);
     ec_fsm_sii_clear(&fsm->fsm_sii);
     ec_fsm_change_clear(&fsm->fsm_change);
     ec_fsm_coe_clear(&fsm->fsm_coe);
@@ -453,8 +455,8 @@ int ec_fsm_master_action_configure(
         fsm->idle = 0;
         fsm->slave = slave;
         fsm->state = ec_fsm_master_state_configure_slave;
-        ec_fsm_slave_start_conf(&fsm->fsm_slave, slave);
-        ec_fsm_slave_exec(&fsm->fsm_slave); // execute immediately
+        ec_fsm_slave_config_start(&fsm->fsm_slave_config, slave);
+        ec_fsm_slave_config_exec(&fsm->fsm_slave_config); // execute immediately
         return 1;
     }
 
@@ -864,8 +866,8 @@ void ec_fsm_master_state_clear_addresses(
     // begin scanning of slaves
     fsm->slave = list_entry(master->slaves.next, ec_slave_t, list);
     fsm->state = ec_fsm_master_state_scan_slaves;
-    ec_fsm_slave_start_scan(&fsm->fsm_slave, fsm->slave);
-    ec_fsm_slave_exec(&fsm->fsm_slave); // execute immediately
+    ec_fsm_slave_scan_start(&fsm->fsm_slave_scan, fsm->slave);
+    ec_fsm_slave_scan_exec(&fsm->fsm_slave_scan); // execute immediately
 }
 
 /*****************************************************************************/
@@ -882,7 +884,7 @@ void ec_fsm_master_state_scan_slaves(
     ec_master_t *master = fsm->master;
     ec_slave_t *slave = fsm->slave;
 
-    if (ec_fsm_slave_exec(&fsm->fsm_slave)) // execute slave state machine
+    if (ec_fsm_slave_scan_exec(&fsm->fsm_slave_scan)) // execute slave state machine
         return;
 
 #ifdef EC_EOE
@@ -907,8 +909,8 @@ void ec_fsm_master_state_scan_slaves(
     // another slave to fetch?
     if (slave->list.next != &master->slaves) {
         fsm->slave = list_entry(slave->list.next, ec_slave_t, list);
-        ec_fsm_slave_start_scan(&fsm->fsm_slave, fsm->slave);
-        ec_fsm_slave_exec(&fsm->fsm_slave); // execute immediately
+        ec_fsm_slave_scan_start(&fsm->fsm_slave_scan, fsm->slave);
+        ec_fsm_slave_scan_exec(&fsm->fsm_slave_scan); // execute immediately
         return;
     }
 
@@ -940,10 +942,10 @@ void ec_fsm_master_state_configure_slave(ec_fsm_master_t *fsm
                                    /**< master state machine */
                                    )
 {
-    if (ec_fsm_slave_exec(&fsm->fsm_slave)) // execute slave's state machine
+    if (ec_fsm_slave_config_exec(&fsm->fsm_slave_config)) // execute slave's state machine
         return;
 
-    if (!ec_fsm_slave_success(&fsm->fsm_slave))
+    if (!ec_fsm_slave_config_success(&fsm->fsm_slave_config))
         fsm->config_error = 1;
 
     // configure next slave, if necessary

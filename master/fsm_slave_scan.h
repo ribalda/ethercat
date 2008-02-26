@@ -33,16 +33,17 @@
 
 /**
    \file
-   EtherCAT finite state machines.
+   EtherCAT slave scanning state machine.
 */
 
 /*****************************************************************************/
 
-#ifndef __EC_FSM_SLAVE__
-#define __EC_FSM_SLAVE__
+#ifndef __EC_FSM_SLAVE_SCAN__
+#define __EC_FSM_SLAVE_SCAN__
+
+#include "../include/ecrt.h"
 
 #include "globals.h"
-#include "../include/ecrt.h"
 #include "datagram.h"
 #include "slave.h"
 #include "fsm_sii.h"
@@ -53,37 +54,32 @@
 
 /*****************************************************************************/
 
-typedef struct ec_fsm_slave ec_fsm_slave_t; /**< \see ec_fsm_slave */
+/** \see ec_fsm_slave_scan */
+typedef struct ec_fsm_slave_scan ec_fsm_slave_scan_t;
 
-/** Finite state machine of an EtherCAT slave.
+/** Finite state machine for scanning an EtherCAT slave.
  */
-struct ec_fsm_slave
+struct ec_fsm_slave_scan
 {
     ec_slave_t *slave; /**< Slave the FSM runs on. */
     ec_datagram_t *datagram; /**< Datagram used in the state machine. */
     unsigned int retries; /**< Retries on datagram timeout. */
 
-    void (*state)(ec_fsm_slave_t *); /**< State function. */
-    ec_sdo_data_t *sdodata; /**< Sdo configuration data. */
+    void (*state)(ec_fsm_slave_scan_t *); /**< State function. */
     uint16_t sii_offset; /**< SII offset in words. */
 
     ec_fsm_sii_t fsm_sii; /**< SII state machine. */
-    ec_fsm_change_t fsm_change; /**< State change state machine. */
-    ec_fsm_coe_t fsm_coe; /**< CoE state machine. */
-    ec_fsm_pdo_mapping_t fsm_pdo_map; /**< Pdo mapping state machine. */
-    ec_fsm_pdo_config_t fsm_pdo_conf; /**< Pdo configuration state machine. */
 };
 
 /*****************************************************************************/
 
-void ec_fsm_slave_init(ec_fsm_slave_t *, ec_datagram_t *);
-void ec_fsm_slave_clear(ec_fsm_slave_t *);
+void ec_fsm_slave_scan_init(ec_fsm_slave_scan_t *, ec_datagram_t *);
+void ec_fsm_slave_scan_clear(ec_fsm_slave_scan_t *);
 
-void ec_fsm_slave_start_scan(ec_fsm_slave_t *, ec_slave_t *);
-void ec_fsm_slave_start_conf(ec_fsm_slave_t *, ec_slave_t *);
+void ec_fsm_slave_scan_start(ec_fsm_slave_scan_t *, ec_slave_t *);
 
-int ec_fsm_slave_exec(ec_fsm_slave_t *);
-int ec_fsm_slave_success(const ec_fsm_slave_t *);
+int ec_fsm_slave_scan_exec(ec_fsm_slave_scan_t *);
+int ec_fsm_slave_scan_success(const ec_fsm_slave_scan_t *);
 
 /*****************************************************************************/
 
