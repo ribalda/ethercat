@@ -5,18 +5,29 @@
 #-----------------------------------------------------------------------------
 
 GRAPHS := \
-	fsm_slave_conf.ps \
-	fsm_pdo_mapping.ps \
-	fsm_pdo_config.ps \
-	fsm_master.ps \
-	fsm_coe_map.ps
+	fsm_slave_conf \
+	fsm_slave_scan \
+	fsm_pdo_mapping \
+	fsm_pdo_config \
+	fsm_master \
+	fsm_coe_map
 
-all: $(GRAPHS)
+#-----------------------------------------------------------------------------
+
+PS = $(addsuffix .ps,$(GRAPHS))
+PDF = $(addsuffix .pdf,$(GRAPHS))
+
+#-----------------------------------------------------------------------------
+
+all: $(PDF)
 
 %.ps: %.dot
 	dot -Tps -o $@ $<
 
+%.pdf: %.ps
+	ps2pdf $<
+
 clean:
-	@rm -f *.ps
+	@rm -f *.ps *.pdf
 
 #-----------------------------------------------------------------------------

@@ -1,0 +1,28 @@
+
+/* $Id$ */
+
+digraph slavescan {
+    size="7,9"
+    center=1
+	ratio=fill
+
+    start -> address [weight=10]
+
+    address -> error
+    address -> state [weight=10]
+
+    state -> error
+    state -> base [weight=10]
+
+    base -> error
+    base -> datalink [weight=10]
+
+    datalink -> error
+    datalink -> eeprom_size [weight=10]
+
+    eeprom_size -> error
+    eeprom_size -> eeprom_data [weight=10]
+
+    eeprom_data -> error
+    eeprom_data -> end [weight=10]
+}
