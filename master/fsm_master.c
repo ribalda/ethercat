@@ -503,7 +503,7 @@ void ec_fsm_master_action_process_states(ec_fsm_master_t *fsm
 
         // check, if slaves have an Sdo dictionary to read out.
         list_for_each_entry(slave, &master->slaves, list) {
-            if (!(slave->sii_mailbox_protocols & EC_MBOX_COE)
+            if (!(slave->sii.mailbox_protocols & EC_MBOX_COE)
                 || slave->sdo_dictionary_fetched
                 || slave->current_state == EC_SLAVE_STATE_INIT
                 || jiffies - slave->jiffies_preop < EC_WAIT_SDO_DICT * HZ
@@ -673,7 +673,7 @@ void ec_fsm_master_state_validate_vendor(ec_fsm_master_t *fsm /**< master state 
         return;
     }
 
-    if (EC_READ_U32(fsm->fsm_sii.value) != slave->sii_vendor_id) {
+    if (EC_READ_U32(fsm->fsm_sii.value) != slave->sii.vendor_id) {
         EC_ERR("Slave %i has an invalid vendor ID!\n", slave->ring_position);
         fsm->state = ec_fsm_master_state_error;
         return;
@@ -738,9 +738,9 @@ void ec_fsm_master_state_validate_product(ec_fsm_master_t *fsm /**< master state
         return;
     }
 
-    if (EC_READ_U32(fsm->fsm_sii.value) != slave->sii_product_code) {
+    if (EC_READ_U32(fsm->fsm_sii.value) != slave->sii.product_code) {
         EC_ERR("Slave %i: invalid product code!\n", slave->ring_position);
-        EC_ERR("expected 0x%08X, got 0x%08X.\n", slave->sii_product_code,
+        EC_ERR("expected 0x%08X, got 0x%08X.\n", slave->sii.product_code,
                EC_READ_U32(fsm->fsm_sii.value));
         fsm->state = ec_fsm_master_state_error;
         return;
@@ -865,7 +865,7 @@ void ec_fsm_master_state_scan_slaves(
         return;
 
 #ifdef EC_EOE
-    if (slave->sii_mailbox_protocols & EC_MBOX_EOE) {
+    if (slave->sii.mailbox_protocols & EC_MBOX_EOE) {
         // create EoE handler for this slave
         ec_eoe_t *eoe;
         if (!(eoe = kmalloc(sizeof(ec_eoe_t), GFP_KERNEL))) {

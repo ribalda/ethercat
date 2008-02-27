@@ -103,6 +103,43 @@ enum {
 
 /*****************************************************************************/
 
+/** Slave information interface data.
+ */
+typedef struct {
+    // Non-category data 
+    uint16_t alias; /**< Configured station alias. */
+    uint32_t vendor_id; /**< Vendor ID. */
+    uint32_t product_code; /**< Vendor-specific product code. */
+    uint32_t revision_number; /**< Revision number. */
+    uint32_t serial_number; /**< Serial number. */
+    uint16_t rx_mailbox_offset; /**< Mailbox address (master to slave). */
+    uint16_t rx_mailbox_size; /**< Mailbox size (master to slave). */
+    uint16_t tx_mailbox_offset; /**< Mailbox address (slave to master). */
+    uint16_t tx_mailbox_size; /**< Mailbox size (slave to master). */
+    uint16_t mailbox_protocols; /**< Supported mailbox protocols. */
+
+    // Strings
+    char **strings; /**< Strings in EEPROM categories. */
+    unsigned int string_count; /**< number of EEPROM strings */
+
+    // General
+    uint8_t physical_layer[4]; /**< port media */
+    char *group; /**< slave group acc. to EEPROM */
+    char *image; /**< slave image name acc. to EEPROM */
+    char *order; /**< slave order number acc. to EEPROM */
+    char *name; /**< slave name acc. to EEPROM */
+    int16_t current_on_ebus; /**< power consumption */
+
+    // SyncM
+    ec_sync_t *syncs; /**< EEPROM SYNC MANAGER categories */
+    unsigned int sync_count; /**< number of sync managers in EEPROM */
+
+    // [RT]XPDO
+    struct list_head pdos; /**< EEPROM [RT]XPDO categories */
+} ec_sii_t;
+
+/*****************************************************************************/
+
 /** EtherCAT slave.
  */
 struct ec_slave
@@ -139,27 +176,7 @@ struct ec_slave
     size_t eeprom_size; /**< size of the EEPROM contents in bytes */
 
     // slave information interface
-    uint16_t sii_alias; /**< configured station alias */
-    uint32_t sii_vendor_id; /**< vendor id */
-    uint32_t sii_product_code; /**< vendor's product code */
-    uint32_t sii_revision_number; /**< revision number */
-    uint32_t sii_serial_number; /**< serial number */
-    uint16_t sii_rx_mailbox_offset; /**< mailbox address (master to slave) */
-    uint16_t sii_rx_mailbox_size; /**< mailbox size (master to slave) */
-    uint16_t sii_tx_mailbox_offset; /**< mailbox address (slave to master) */
-    uint16_t sii_tx_mailbox_size; /**< mailbox size (slave to master) */
-    uint16_t sii_mailbox_protocols; /**< supported mailbox protocols */
-    uint8_t sii_physical_layer[4]; /**< port media */
-    char **sii_strings; /**< strings in EEPROM categories */
-    unsigned int sii_string_count; /**< number of EEPROM strings */
-    ec_sync_t *sii_syncs; /**< EEPROM SYNC MANAGER categories */
-    unsigned int sii_sync_count; /**< number of sync managers in EEPROM */
-    struct list_head sii_pdos; /**< EEPROM [RT]XPDO categories */
-    char *sii_group; /**< slave group acc. to EEPROM */
-    char *sii_image; /**< slave image name acc. to EEPROM */
-    char *sii_order; /**< slave order number acc. to EEPROM */
-    char *sii_name; /**< slave name acc. to EEPROM */
-    int16_t sii_current_on_ebus; /**< power consumption */
+    ec_sii_t sii; /**< SII data. */
 
     struct kobject sdo_kobj; /**< kobject for Sdos */
     struct list_head sdo_dictionary; /**< Sdo dictionary list */

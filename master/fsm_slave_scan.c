@@ -465,25 +465,25 @@ void ec_fsm_slave_scan_state_eeprom_data(ec_fsm_slave_scan_t *fsm /**< slave sta
 
     // Evaluate EEPROM contents
 
-    slave->sii_alias =
+    slave->sii.alias =
         EC_READ_U16(slave->eeprom_data + 2 * 0x0004);
-    slave->sii_vendor_id =
+    slave->sii.vendor_id =
         EC_READ_U32(slave->eeprom_data + 2 * 0x0008);
-    slave->sii_product_code =
+    slave->sii.product_code =
         EC_READ_U32(slave->eeprom_data + 2 * 0x000A);
-    slave->sii_revision_number =
+    slave->sii.revision_number =
         EC_READ_U32(slave->eeprom_data + 2 * 0x000C);
-    slave->sii_serial_number =
+    slave->sii.serial_number =
         EC_READ_U32(slave->eeprom_data + 2 * 0x000E);
-    slave->sii_rx_mailbox_offset =
+    slave->sii.rx_mailbox_offset =
         EC_READ_U16(slave->eeprom_data + 2 * 0x0018);
-    slave->sii_rx_mailbox_size =
+    slave->sii.rx_mailbox_size =
         EC_READ_U16(slave->eeprom_data + 2 * 0x0019);
-    slave->sii_tx_mailbox_offset =
+    slave->sii.tx_mailbox_offset =
         EC_READ_U16(slave->eeprom_data + 2 * 0x001A);
-    slave->sii_tx_mailbox_size =
+    slave->sii.tx_mailbox_size =
         EC_READ_U16(slave->eeprom_data + 2 * 0x001B);
-    slave->sii_mailbox_protocols =
+    slave->sii.mailbox_protocols =
         EC_READ_U16(slave->eeprom_data + 2 * 0x001C);
 
     if (eeprom_word_size == EC_FIRST_EEPROM_CATEGORY_OFFSET) {
@@ -568,7 +568,7 @@ void ec_fsm_slave_scan_state_eeprom_data(ec_fsm_slave_scan_t *fsm /**< slave sta
         }
     }
 
-    if (slave->sii_mailbox_protocols & EC_MBOX_COE) {
+    if (slave->sii.mailbox_protocols & EC_MBOX_COE) {
         ec_fsm_slave_scan_enter_preop(fsm);
     } else {
         fsm->state = ec_fsm_slave_scan_state_end;

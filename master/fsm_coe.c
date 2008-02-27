@@ -249,7 +249,7 @@ void ec_fsm_coe_dict_start(ec_fsm_coe_t *fsm /**< finite state machine */)
     ec_slave_t *slave = fsm->slave;
     uint8_t *data;
 
-    if (!(slave->sii_mailbox_protocols & EC_MBOX_COE)) {
+    if (!(slave->sii.mailbox_protocols & EC_MBOX_COE)) {
         EC_ERR("Slave %u does not support CoE!\n", slave->ring_position);
         fsm->state = ec_fsm_coe_error;
         return;
@@ -961,13 +961,13 @@ void ec_fsm_coe_down_start(ec_fsm_coe_t *fsm /**< finite state machine */)
         EC_DBG("Downloading Sdo 0x%04X:%i to slave %i.\n",
                sdodata->index, sdodata->subindex, slave->ring_position);
 
-    if (!(slave->sii_mailbox_protocols & EC_MBOX_COE)) {
+    if (!(slave->sii.mailbox_protocols & EC_MBOX_COE)) {
         EC_ERR("Slave %u does not support CoE!\n", slave->ring_position);
         fsm->state = ec_fsm_coe_error;
         return;
     }
 
-    if (slave->sii_rx_mailbox_size < 6 + 10 + sdodata->size) {
+    if (slave->sii.rx_mailbox_size < 6 + 10 + sdodata->size) {
         EC_ERR("Sdo fragmenting not supported yet!\n");
         fsm->state = ec_fsm_coe_error;
         return;
@@ -1181,7 +1181,7 @@ void ec_fsm_coe_up_start(ec_fsm_coe_t *fsm /**< finite state machine */)
         EC_DBG("Uploading Sdo 0x%04X:%i from slave %i.\n",
                request->index, request->subindex, slave->ring_position);
 
-    if (!(slave->sii_mailbox_protocols & EC_MBOX_COE)) {
+    if (!(slave->sii.mailbox_protocols & EC_MBOX_COE)) {
         EC_ERR("Slave %u does not support CoE!\n", slave->ring_position);
         fsm->state = ec_fsm_coe_error;
         return;

@@ -122,7 +122,7 @@ ec_direction_t ec_sync_direction(
 {
     int index = sync->index;
 
-    if (sync->slave && sync->slave->sii_mailbox_protocols) {
+    if (sync->slave && sync->slave->sii.mailbox_protocols) {
         index -= 2;
     }
 

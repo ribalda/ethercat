@@ -283,7 +283,7 @@ void ec_fsm_slave_config_enter_mbox_sync(
         return;
     }
 
-    if (!slave->sii_mailbox_protocols) {
+    if (!slave->sii.mailbox_protocols) {
         // no mailbox protocols supported
         if (master->debug_level)
             EC_DBG("Slave %u does not support mailbox communication.\n",
@@ -297,14 +297,14 @@ void ec_fsm_slave_config_enter_mbox_sync(
                slave->ring_position);
     }
 
-    if (slave->sii_sync_count >= 2) { // mailbox configuration provided
+    if (slave->sii.sync_count >= 2) { // mailbox configuration provided
         ec_datagram_fpwr(datagram, slave->station_address, 0x0800,
-                EC_SYNC_PAGE_SIZE * slave->sii_sync_count);
+                EC_SYNC_PAGE_SIZE * slave->sii.sync_count);
         memset(datagram->data, 0x00,
-                EC_SYNC_PAGE_SIZE * slave->sii_sync_count);
+                EC_SYNC_PAGE_SIZE * slave->sii.sync_count);
 
         for (i = 0; i < 2; i++) {
-            ec_sync_config(&slave->sii_syncs[i], slave->sii_syncs[i].length,
+            ec_sync_config(&slave->sii.syncs[i], slave->sii.syncs[i].length,
                     datagram->data + EC_SYNC_PAGE_SIZE * i);
         }
     } else { // no mailbox sync manager configurations provided
@@ -320,17 +320,17 @@ void ec_fsm_slave_config_enter_mbox_sync(
         memset(datagram->data, 0x00, EC_SYNC_PAGE_SIZE * 2);
 
         ec_sync_init(&sync, slave, 0);
-        sync.physical_start_address = slave->sii_rx_mailbox_offset;
+        sync.physical_start_address = slave->sii.rx_mailbox_offset;
         sync.control_register = 0x26;
         sync.enable = 1;
-        ec_sync_config(&sync, slave->sii_rx_mailbox_size,
+        ec_sync_config(&sync, slave->sii.rx_mailbox_size,
                 datagram->data + EC_SYNC_PAGE_SIZE * sync.index);
 
         ec_sync_init(&sync, slave, 1);
-        sync.physical_start_address = slave->sii_tx_mailbox_offset;
+        sync.physical_start_address = slave->sii.tx_mailbox_offset;
         sync.control_register = 0x22;
         sync.enable = 1;
-        ec_sync_config(&sync, slave->sii_tx_mailbox_size,
+        ec_sync_config(&sync, slave->sii.tx_mailbox_size,
                 datagram->data + EC_SYNC_PAGE_SIZE * sync.index);
     }
 
@@ -569,17 +569,17 @@ void ec_fsm_slave_config_enter_pdo_sync(
     ec_direction_t dir;
     uint16_t size;
 
-    if (!slave->sii_sync_count) {
+    if (!slave->sii.sync_count) {
         ec_fsm_slave_config_enter_fmmu(fsm);
         return;
     }
 
-    if (slave->sii_mailbox_protocols) {
+    if (slave->sii.mailbox_protocols) {
         offset = 2; // slave has mailboxes
     } else {
         offset = 0;
     }
-    num_syncs = slave->sii_sync_count - offset;
+    num_syncs = slave->sii.sync_count - offset;
 
     // configure sync managers for process data
     ec_datagram_fpwr(datagram, slave->station_address,
@@ -588,7 +588,7 @@ void ec_fsm_slave_config_enter_pdo_sync(
     memset(datagram->data, 0x00, EC_SYNC_PAGE_SIZE * num_syncs);
 
     for (i = 0; i < num_syncs; i++) {
-        sync = &slave->sii_syncs[i + offset];
+        sync = &slave->sii.syncs[i + offset];
         dir = ec_sync_direction(sync);
         size = ec_pdo_mapping_total_size(&slave->config->mapping[dir]);
         ec_sync_config(sync, size, datagram->data + EC_SYNC_PAGE_SIZE * i);

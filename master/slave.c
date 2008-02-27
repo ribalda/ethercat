@@ -130,27 +130,27 @@ int ec_slave_init(ec_slave_t *slave, /**< EtherCAT slave */
     slave->eeprom_data = NULL;
     slave->eeprom_size = 0;
 
-    slave->sii_alias = 0;
-    slave->sii_vendor_id = 0;
-    slave->sii_product_code = 0;
-    slave->sii_revision_number = 0;
-    slave->sii_serial_number = 0;
-    slave->sii_rx_mailbox_offset = 0;
-    slave->sii_rx_mailbox_size = 0;
-    slave->sii_tx_mailbox_offset = 0;
-    slave->sii_tx_mailbox_size = 0;
-    slave->sii_mailbox_protocols = 0;
-    slave->sii_group = NULL;
-    slave->sii_image = NULL;
-    slave->sii_order = NULL;
-    slave->sii_name = NULL;
-    slave->sii_current_on_ebus = 0;
+    slave->sii.alias = 0;
+    slave->sii.vendor_id = 0;
+    slave->sii.product_code = 0;
+    slave->sii.revision_number = 0;
+    slave->sii.serial_number = 0;
+    slave->sii.rx_mailbox_offset = 0;
+    slave->sii.rx_mailbox_size = 0;
+    slave->sii.tx_mailbox_offset = 0;
+    slave->sii.tx_mailbox_size = 0;
+    slave->sii.mailbox_protocols = 0;
+    slave->sii.group = NULL;
+    slave->sii.image = NULL;
+    slave->sii.order = NULL;
+    slave->sii.name = NULL;
+    slave->sii.current_on_ebus = 0;
 
-    slave->sii_strings = NULL;
-    slave->sii_string_count = 0;
-    slave->sii_syncs = NULL;
-    slave->sii_sync_count = 0;
-    INIT_LIST_HEAD(&slave->sii_pdos);
+    slave->sii.strings = NULL;
+    slave->sii.string_count = 0;
+    slave->sii.syncs = NULL;
+    slave->sii.sync_count = 0;
+    INIT_LIST_HEAD(&slave->sii.pdos);
     INIT_LIST_HEAD(&slave->sdo_dictionary);
 
     slave->sdo_dictionary_fetched = 0;
@@ -160,7 +160,7 @@ int ec_slave_init(ec_slave_t *slave, /**< EtherCAT slave */
         slave->dl_link[i] = 0;
         slave->dl_loop[i] = 0;
         slave->dl_signal[i] = 0;
-        slave->sii_physical_layer[i] = 0xFF;
+        slave->sii.physical_layer[i] = 0xFF;
     }
 
     // init kobject and add it to the hierarchy
@@ -247,22 +247,22 @@ void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
     slave = container_of(kobj, ec_slave_t, kobj);
 
     // free all strings
-    if (slave->sii_strings) {
-        for (i = 0; i < slave->sii_string_count; i++)
-            kfree(slave->sii_strings[i]);
-        kfree(slave->sii_strings);
+    if (slave->sii.strings) {
+        for (i = 0; i < slave->sii.string_count; i++)
+            kfree(slave->sii.strings[i]);
+        kfree(slave->sii.strings);
     }
 
     // free all sync managers
-    if (slave->sii_syncs) {
-        for (i = 0; i < slave->sii_sync_count; i++) {
-            ec_sync_clear(&slave->sii_syncs[i]);
+    if (slave->sii.syncs) {
+        for (i = 0; i < slave->sii.sync_count; i++) {
+            ec_sync_clear(&slave->sii.syncs[i]);
         }
-        kfree(slave->sii_syncs);
+        kfree(slave->sii.syncs);
     }
 
     // free all SII Pdos
-    list_for_each_entry_safe(pdo, next_pdo, &slave->sii_pdos, list) {
+    list_for_each_entry_safe(pdo, next_pdo, &slave->sii.pdos, list) {
         list_del(&pdo->list);
         ec_pdo_clear(pdo);
         kfree(pdo);
@@ -367,40 +367,40 @@ int ec_slave_fetch_sii_strings(
     size_t size;
     off_t offset;
 
-    slave->sii_string_count = data[0];
+    slave->sii.string_count = data[0];
 
-    if (!slave->sii_string_count)
+    if (!slave->sii.string_count)
         return 0;
 
-    if (!(slave->sii_strings =
-                kmalloc(sizeof(char *) * slave->sii_string_count,
+    if (!(slave->sii.strings =
+                kmalloc(sizeof(char *) * slave->sii.string_count,
                     GFP_KERNEL))) {
         EC_ERR("Failed to allocate string array memory.\n");
         goto out_zero;
     }
 
     offset = 1;
-    for (i = 0; i < slave->sii_string_count; i++) {
+    for (i = 0; i < slave->sii.string_count; i++) {
         size = data[offset];
         // allocate memory for string structure and data at a single blow
-        if (!(slave->sii_strings[i] =
+        if (!(slave->sii.strings[i] =
                     kmalloc(sizeof(char) * size + 1, GFP_KERNEL))) {
             EC_ERR("Failed to allocate string memory.\n");
             goto out_free;
         }
-        memcpy(slave->sii_strings[i], data + offset + 1, size);
-        slave->sii_strings[i][size] = 0x00; // append binary zero
+        memcpy(slave->sii.strings[i], data + offset + 1, size);
+        slave->sii.strings[i][size] = 0x00; // append binary zero
         offset += 1 + size;
     }
 
     return 0;
 
 out_free:
-    for (i--; i >= 0; i--) kfree(slave->sii_strings[i]);
-    kfree(slave->sii_strings);
-    slave->sii_strings = NULL;
+    for (i--; i >= 0; i--) kfree(slave->sii.strings[i]);
+    kfree(slave->sii.strings);
+    slave->sii.strings = NULL;
 out_zero:
-    slave->sii_string_count = 0;
+    slave->sii.string_count = 0;
     return -1;
 }
 
@@ -425,16 +425,16 @@ int ec_slave_fetch_sii_general(
         return -1;
     }
 
-    slave->sii_group = ec_slave_sii_string(slave, data[0]);
-    slave->sii_image = ec_slave_sii_string(slave, data[1]);
-    slave->sii_order = ec_slave_sii_string(slave, data[2]);
-    slave->sii_name = ec_slave_sii_string(slave, data[3]);
+    slave->sii.group = ec_slave_sii_string(slave, data[0]);
+    slave->sii.image = ec_slave_sii_string(slave, data[1]);
+    slave->sii.order = ec_slave_sii_string(slave, data[2]);
+    slave->sii.name = ec_slave_sii_string(slave, data[3]);
 
     for (i = 0; i < 4; i++)
-        slave->sii_physical_layer[i] =
+        slave->sii.physical_layer[i] =
             (data[4] & (0x03 << (i * 2))) >> (i * 2);
 
-    slave->sii_current_on_ebus = EC_READ_S16(data + 0x0C);
+    slave->sii.current_on_ebus = EC_READ_S16(data + 0x0C);
 
     return 0;
 }
@@ -463,18 +463,18 @@ int ec_slave_fetch_sii_syncs(
         return -1;
     }
 
-    slave->sii_sync_count = data_size / 8;
+    slave->sii.sync_count = data_size / 8;
 
-    memsize = sizeof(ec_sync_t) * slave->sii_sync_count;
-    if (!(slave->sii_syncs = kmalloc(memsize, GFP_KERNEL))) {
+    memsize = sizeof(ec_sync_t) * slave->sii.sync_count;
+    if (!(slave->sii.syncs = kmalloc(memsize, GFP_KERNEL))) {
         EC_ERR("Failed to allocate %u bytes for sync managers.\n",
                 memsize);
-        slave->sii_sync_count = 0;
+        slave->sii.sync_count = 0;
         return -1;
     }
     
-    for (i = 0; i < slave->sii_sync_count; i++, data += 8) {
-        sync = &slave->sii_syncs[i];
+    for (i = 0; i < slave->sii.sync_count; i++, data += 8) {
+        sync = &slave->sii.syncs[i];
 
         ec_sync_init(sync, slave, i);
         sync->physical_start_address = EC_READ_U16(data);
@@ -521,7 +521,7 @@ int ec_slave_fetch_sii_pdos(
             kfree(pdo);
             return -1;
         }
-        list_add_tail(&pdo->list, &slave->sii_pdos);
+        list_add_tail(&pdo->list, &slave->sii.pdos);
 
         data_size -= 8;
         data += 8;
@@ -552,12 +552,12 @@ int ec_slave_fetch_sii_pdos(
         if (pdo->sync_index >= 0) {
             ec_sync_t *sync;
 
-            if (pdo->sync_index >= slave->sii_sync_count) {
+            if (pdo->sync_index >= slave->sii.sync_count) {
                 EC_ERR("Invalid SM index %i for Pdo 0x%04X in slave %u.",
                         pdo->sync_index, pdo->index, slave->ring_position);
                 return -1;
             }
-            sync = &slave->sii_syncs[pdo->sync_index];
+            sync = &slave->sii.syncs[pdo->sync_index];
 
             if (ec_pdo_mapping_add_pdo(&sync->mapping, pdo))
                 return -1;
@@ -584,14 +584,14 @@ char *ec_slave_sii_string(
     if (!index--) 
         return NULL;
 
-    if (index >= slave->sii_string_count) {
+    if (index >= slave->sii.string_count) {
         if (slave->master->debug_level)
             EC_WARN("String %u not found in slave %u.\n",
                     index, slave->ring_position);
         return NULL;
     }
 
-    return slave->sii_strings[index];
+    return slave->sii.strings[index];
 }
 
 /*****************************************************************************/
@@ -627,8 +627,8 @@ ssize_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
     buf += sprintf(buf, "Data link status:\n");
     for (i = 0; i < 4; i++) {
         buf += sprintf(buf, "  Port %u: Phy %u (",
-                i, slave->sii_physical_layer[i]);
-        switch (slave->sii_physical_layer[i]) {
+                i, slave->sii.physical_layer[i]);
+        switch (slave->sii.physical_layer[i]) {
             case 0x00:
                 buf += sprintf(buf, "EBUS");
                 break;
@@ -648,53 +648,53 @@ ssize_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
     }
     buf += sprintf(buf, "\n");
 
-    if (slave->sii_alias)
+    if (slave->sii.alias)
         buf += sprintf(buf, "Configured station alias:"
-                       " 0x%04X (%u)\n\n", slave->sii_alias, slave->sii_alias);
+                       " 0x%04X (%u)\n\n", slave->sii.alias, slave->sii.alias);
 
     buf += sprintf(buf, "Identity:\n");
     buf += sprintf(buf, "  Vendor ID: 0x%08X (%u)\n",
-                   slave->sii_vendor_id, slave->sii_vendor_id);
+                   slave->sii.vendor_id, slave->sii.vendor_id);
     buf += sprintf(buf, "  Product code: 0x%08X (%u)\n",
-                   slave->sii_product_code, slave->sii_product_code);
+                   slave->sii.product_code, slave->sii.product_code);
     buf += sprintf(buf, "  Revision number: 0x%08X (%u)\n",
-                   slave->sii_revision_number, slave->sii_revision_number);
+                   slave->sii.revision_number, slave->sii.revision_number);
     buf += sprintf(buf, "  Serial number: 0x%08X (%u)\n\n",
-                   slave->sii_serial_number, slave->sii_serial_number);
+                   slave->sii.serial_number, slave->sii.serial_number);
 
-    if (slave->sii_mailbox_protocols) {
+    if (slave->sii.mailbox_protocols) {
         buf += sprintf(buf, "Mailboxes:\n");
         buf += sprintf(buf, "  RX: 0x%04X/%u, TX: 0x%04X/%u\n",
-                slave->sii_rx_mailbox_offset, slave->sii_rx_mailbox_size,
-                slave->sii_tx_mailbox_offset, slave->sii_tx_mailbox_size);
+                slave->sii.rx_mailbox_offset, slave->sii.rx_mailbox_size,
+                slave->sii.tx_mailbox_offset, slave->sii.tx_mailbox_size);
         buf += sprintf(buf, "  Supported protocols: ");
 
         first = 1;
-        if (slave->sii_mailbox_protocols & EC_MBOX_AOE) {
+        if (slave->sii.mailbox_protocols & EC_MBOX_AOE) {
             buf += sprintf(buf, "AoE");
             first = 0;
         }
-        if (slave->sii_mailbox_protocols & EC_MBOX_EOE) {
+        if (slave->sii.mailbox_protocols & EC_MBOX_EOE) {
             if (!first) buf += sprintf(buf, ", ");
             buf += sprintf(buf, "EoE");
             first = 0;
         }
-        if (slave->sii_mailbox_protocols & EC_MBOX_COE) {
+        if (slave->sii.mailbox_protocols & EC_MBOX_COE) {
             if (!first) buf += sprintf(buf, ", ");
             buf += sprintf(buf, "CoE");
             first = 0;
         }
-        if (slave->sii_mailbox_protocols & EC_MBOX_FOE) {
+        if (slave->sii.mailbox_protocols & EC_MBOX_FOE) {
             if (!first) buf += sprintf(buf, ", ");
             buf += sprintf(buf, "FoE");
             first = 0;
         }
-        if (slave->sii_mailbox_protocols & EC_MBOX_SOE) {
+        if (slave->sii.mailbox_protocols & EC_MBOX_SOE) {
             if (!first) buf += sprintf(buf, ", ");
             buf += sprintf(buf, "SoE");
             first = 0;
         }
-        if (slave->sii_mailbox_protocols & EC_MBOX_VOE) {
+        if (slave->sii.mailbox_protocols & EC_MBOX_VOE) {
             if (!first) buf += sprintf(buf, ", ");
             buf += sprintf(buf, "VoE");
         }
@@ -702,29 +702,29 @@ ssize_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
     }
 
     buf += sprintf(buf, "Current consumption: %i mA\n\n",
-            slave->sii_current_on_ebus);
+            slave->sii.current_on_ebus);
 
-    if (slave->sii_group || slave->sii_image || slave->sii_order
-            || slave->sii_name) {
+    if (slave->sii.group || slave->sii.image || slave->sii.order
+            || slave->sii.name) {
         buf += sprintf(buf, "General:\n");
 
-        if (slave->sii_group)
-            buf += sprintf(buf, "  Group: %s\n", slave->sii_group);
-        if (slave->sii_image)
-            buf += sprintf(buf, "  Image: %s\n", slave->sii_image);
-        if (slave->sii_order)
+        if (slave->sii.group)
+            buf += sprintf(buf, "  Group: %s\n", slave->sii.group);
+        if (slave->sii.image)
+            buf += sprintf(buf, "  Image: %s\n", slave->sii.image);
+        if (slave->sii.order)
             buf += sprintf(buf, "  Order number: %s\n",
-                    slave->sii_order);
-        if (slave->sii_name)
-            buf += sprintf(buf, "  Name: %s\n", slave->sii_name);
+                    slave->sii.order);
+        if (slave->sii.name)
+            buf += sprintf(buf, "  Name: %s\n", slave->sii.name);
         buf += sprintf(buf, "\n");
     }
 
-    if (slave->sii_sync_count) {
+    if (slave->sii.sync_count) {
         buf += sprintf(buf, "Sync managers / Pdo mapping:\n");
 
-        for (i = 0; i < slave->sii_sync_count; i++) {
-            sync = &slave->sii_syncs[i];
+        for (i = 0; i < slave->sii.sync_count; i++) {
+            sync = &slave->sii.syncs[i];
             buf += sprintf(buf,
                     "  SM%u: addr 0x%04X, size %u, control 0x%02X, %s\n",
                     sync->index, sync->physical_start_address,
@@ -758,10 +758,10 @@ ssize_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
     }
 
     // type-cast to avoid warnings on some compilers
-    if (!list_empty((struct list_head *) &slave->sii_pdos)) {
+    if (!list_empty((struct list_head *) &slave->sii.pdos)) {
         buf += sprintf(buf, "Available Pdos from SII:\n");
 
-        list_for_each_entry(pdo, &slave->sii_pdos, list) {
+        list_for_each_entry(pdo, &slave->sii.pdos, list) {
             buf += sprintf(buf, "  %s 0x%04X \"%s\"",
                     pdo->dir == EC_DIR_OUTPUT ? "RxPdo" : "TxPdo",
                     pdo->index, pdo->name ? pdo->name : "???");
@@ -1005,7 +1005,7 @@ ssize_t ec_slave_write_alias(ec_slave_t *slave, /**< EtherCAT slave */
     if ((ret = ec_slave_schedule_eeprom_writing(&request)))
         return ret; // error code
 
-    slave->sii_alias = alias; // FIXME: do this in state machine
+    slave->sii.alias = alias; // FIXME: do this in state machine
 
     return size; // success
 }
@@ -1056,7 +1056,7 @@ ssize_t ec_show_slave_attribute(struct kobject *kobj, /**< slave's kobject */
         }
     }
     else if (attr == &attr_alias) {
-        return sprintf(buffer, "%u\n", slave->sii_alias);
+        return sprintf(buffer, "%u\n", slave->sii.alias);
     }
 
     return 0;
@@ -1127,12 +1127,12 @@ ec_sync_t *ec_slave_get_pdo_sync(
     }
 
     sync_index = (unsigned int) dir;
-    if (slave->sii_mailbox_protocols) sync_index += 2;
+    if (slave->sii.mailbox_protocols) sync_index += 2;
 
-    if (sync_index >= slave->sii_sync_count)
+    if (sync_index >= slave->sii.sync_count)
         return NULL;
 
-    return &slave->sii_syncs[sync_index];
+    return &slave->sii.syncs[sync_index];
 }
 
 /*****************************************************************************/
@@ -1146,12 +1146,12 @@ int ec_slave_validate(const ec_slave_t *slave, /**< EtherCAT slave */
                       uint32_t product_code /**< product code */
                       )
 {
-    if (vendor_id != slave->sii_vendor_id ||
-        product_code != slave->sii_product_code) {
+    if (vendor_id != slave->sii.vendor_id ||
+        product_code != slave->sii.product_code) {
         EC_ERR("Invalid slave type at position %u:\n", slave->ring_position);
         EC_ERR("  Requested: 0x%08X 0x%08X\n", vendor_id, product_code);
         EC_ERR("      Found: 0x%08X 0x%08X\n",
-                slave->sii_vendor_id, slave->sii_product_code);
+                slave->sii.vendor_id, slave->sii.product_code);
         return -1;
     }
     return 0;
@@ -1220,8 +1220,8 @@ const ec_pdo_t *ec_slave_find_pdo(
     const ec_sync_t *sync;
     const ec_pdo_t *pdo;
 
-    for (i = 0; i < slave->sii_sync_count; i++) {
-        sync = &slave->sii_syncs[i];
+    for (i = 0; i < slave->sii.sync_count; i++) {
+        sync = &slave->sii.syncs[i];
 
         if (!(pdo = ec_pdo_mapping_find_pdo(&sync->mapping, index)))
             continue;

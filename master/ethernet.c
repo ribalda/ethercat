@@ -120,9 +120,9 @@ int ec_eoe_init(
 
     /* device name eoe<MASTER>[as]<SLAVE>, because networking scripts don't
      * like hyphens etc. in interface names. */
-    if (slave->sii_alias) {
+    if (slave->sii.alias) {
         snprintf(name, EC_DATAGRAM_NAME_SIZE,
-                "eoe%ua%u", slave->master->index, slave->sii_alias);
+                "eoe%ua%u", slave->master->index, slave->sii.alias);
     } else {
         snprintf(name, EC_DATAGRAM_NAME_SIZE,
                 "eoe%us%u", slave->master->index, slave->ring_position);
@@ -153,7 +153,7 @@ int ec_eoe_init(
     // so the MTU is left on the Ethernet standard value and fragmenting
     // is done "manually".
 #if 0
-    eoe->dev->mtu = slave->sii_rx_mailbox_size - ETH_HLEN - 10;
+    eoe->dev->mtu = slave->sii.rx_mailbox_size - ETH_HLEN - 10;
 #endif
 
     // connect the net_device to the kernel
@@ -237,12 +237,12 @@ int ec_eoe_send(ec_eoe_t *eoe /**< EoE handler */)
 
     remaining_size = eoe->tx_frame->skb->len - eoe->tx_offset;
 
-    if (remaining_size <= eoe->slave->sii_tx_mailbox_size - 10) {
+    if (remaining_size <= eoe->slave->sii.tx_mailbox_size - 10) {
         current_size = remaining_size;
         last_fragment = 1;
     }
     else {
-        current_size = ((eoe->slave->sii_tx_mailbox_size - 10) / 32) * 32;
+        current_size = ((eoe->slave->sii.tx_mailbox_size - 10) / 32) * 32;
         last_fragment = 0;
     }
 
@@ -704,7 +704,7 @@ int ec_eoedev_tx(struct sk_buff *skb, /**< transmit socket buffer */
     ec_eoe_frame_t *frame;
 
 #if 0
-    if (skb->len > eoe->slave->sii_tx_mailbox_size - 10) {
+    if (skb->len > eoe->slave->sii.tx_mailbox_size - 10) {
         EC_WARN("EoE TX frame (%i octets) exceeds MTU. dropping.\n", skb->len);
         dev_kfree_skb(skb);
         eoe->stats.tx_dropped++;

@@ -312,7 +312,7 @@ int ec_slave_config_sdo(ec_slave_config_t *sc, uint16_t index,
     ec_slave_t *slave = sc->slave;
     ec_sdo_data_t *sdodata;
 
-    if (slave && !(slave->sii_mailbox_protocols & EC_MBOX_COE)) {
+    if (slave && !(slave->sii.mailbox_protocols & EC_MBOX_COE)) {
         EC_ERR("Slave %u does not support CoE!\n", slave->ring_position);
         return -1;
     }
@@ -359,7 +359,7 @@ int ec_slave_config_attach(
 
 	list_for_each_entry(slave, &sc->master->slaves, list) {
 		if (!alias_found) {
-			if (sc->alias && slave->sii_alias != sc->alias)
+			if (sc->alias && slave->sii.alias != sc->alias)
 				continue;
 			alias_found = 1;
 			relative_position = 0;
@@ -380,12 +380,12 @@ found:
 				sc->position, slave->ring_position);
 		return -2;
 	}
-	if (slave->sii_vendor_id != sc->vendor_id
-			|| slave->sii_product_code != sc->product_code) {
+	if (slave->sii.vendor_id != sc->vendor_id
+			|| slave->sii.product_code != sc->product_code) {
 		EC_ERR("Slave %u has an invalid type (0x%08X/0x%08X) for"
 				" configuration %u:%u (0x%08X/0x%08X).\n",
-				slave->ring_position, slave->sii_vendor_id,
-				slave->sii_product_code, sc->alias, sc->position,
+				slave->ring_position, slave->sii.vendor_id,
+				slave->sii.product_code, sc->alias, sc->position,
 				sc->vendor_id, sc->product_code);
 		return -3;
 	}
