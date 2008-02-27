@@ -13,17 +13,19 @@ Changes in version 1.4.0:
     - Replaced slave address string with alias and position values. See
       ecrt_master_slave_config().
     - Removed ecrt_master_get_slave_by_pos(), because it is no longer
-      necessary (alias/position, slave configurations).
+      necessary due to alias/position addressing.
     - Added ec_slave_config_state_t for the new method
       ecrt_slave_config_state().
     - Process data memory for a domain can now be allocated externally. This
       offers the possibility to use a shared-memory-region. Therefore,
-      added the domain methods ecrt_domain_size() and ecrt_domain_memory().
+      added the domain methods ecrt_domain_size() and
+      ecrt_domain_external_memory().
     - Replaced the process data pointers in the Pdo entry registration
       functions with a process data offset, that is now returned by
-      ecrt_domain_reg_pdo_entry(). This was necessary for the external
+      ecrt_slave_config_reg_pdo_entry(). This was necessary for the external
       domain memory. An additional advantage is, that the returned offset value
-      is directly usable.
+      is directly usable. If the domain's process data is allocated internally,
+      the start address can be retrieved with ecrt_domain_data().
     - Replaced ecrt_slave_pdo_mapping/add/clear() with
       ecrt_slave_config_mapping() that is now able to specify Pdo mapping and
       Pdo configuration. Pdo entries mapped in this way can now immediately be
@@ -33,16 +35,17 @@ Changes in version 1.4.0:
       ec_master_state_t, respectively. Renamed ecrt_master_get_status() to
       ecrt_master_state(), for consistency reasons.
     - Added ec_domain_state_t and ec_wc_state_t for a new output parameter
-      of ecrt_domain_state().
+      of ecrt_domain_state(). The domain state object does now contain
+      information, if the process data was exchanged completely.
     - Former "Pdo registration" meant Pdo entry registration in fact, therefore
       renamed ec_pdo_reg_t to ec_pdo_entry_reg_t and ecrt_domain_register_pdo()
-      to ecrt_domain_reg_pdo_entry().
+      to ecrt_slave_config_reg_pdo_entry().
     - Removed ecrt_domain_register_pdo_range(), because it's functionality can
       be reached by specifying an explicit Pdo mapping and registering those
       Pdo entries.
 * Pdo configuration is now supported.
-* Current Pdo mapping/configuration is now read during bus scan, without
-  using the Sdo dictionary.
+* Current Pdo mapping/configuration is now read via CoE during bus scan, using
+  direct Sdo access, independent of the dictionary.
 * Added 8139too driver for kernel 2.6.22, thanks to Erwin Burgstaller.
 * Added 8139too driver for kernel 2.6.23, thanks to Richard Hacker.
 * Added e1000 driver for kernel 2.6.22.

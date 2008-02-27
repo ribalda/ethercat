@@ -72,7 +72,8 @@
  *   ec_master_state_t, respectively. Renamed ecrt_master_get_status() to
  *   ecrt_master_state(), for consistency reasons.
  * - Added ec_domain_state_t and ec_wc_state_t for a new output parameter
- *   of ecrt_domain_state().
+ *   of ecrt_domain_state(). The domain state object does now contain
+ *   information, if the process data was exchanged completely.
  * - Former "Pdo registration" meant Pdo entry registration in fact, therefore
  *   renamed ec_pdo_reg_t to ec_pdo_entry_reg_t and ecrt_domain_register_pdo()
  *   to ecrt_slave_config_reg_pdo_entry().
