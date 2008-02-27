@@ -19,6 +19,9 @@ Version 1.4.0:
 * SDO write access in sysfs.
 * Distributed clocks.
 * Update documentation.
+* Do not configure in ecrt_master_activate(), but later in the state machine.
+* Remove master_state_t.
+* Scanning of Sdo dictionary / writing EEPROM in OPERATION state.
 
 Future issues:
 
@@ -34,6 +37,7 @@ Future issues:
 
 Smaller issues:
 
+* Unite fsm_pdo_mapping, fsm_pdo_config and fsm_coe_map.
 * Clear sync managers in INIT.
 * Simplify FSMs with <state>_enter() functions.
 * Read out CRC counters.
