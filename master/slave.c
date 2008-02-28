@@ -1253,7 +1253,7 @@ const ec_pdo_t *ec_slave_find_pdo(
     for (i = 0; i < slave->sii.sync_count; i++) {
         sync = &slave->sii.syncs[i];
 
-        if (!(pdo = ec_pdo_mapping_find_pdo(&sync->mapping, index)))
+        if (!(pdo = ec_pdo_mapping_find_pdo_const(&sync->mapping, index)))
             continue;
 
         return pdo;

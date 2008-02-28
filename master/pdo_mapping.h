@@ -73,7 +73,8 @@ int ec_pdo_mapping_copy(ec_pdo_mapping_t *, const ec_pdo_mapping_t *);
 uint16_t ec_pdo_mapping_total_size(const ec_pdo_mapping_t *);
 int ec_pdo_mapping_equal(const ec_pdo_mapping_t *, const ec_pdo_mapping_t *);
 
-const ec_pdo_t *ec_pdo_mapping_find_pdo(const ec_pdo_mapping_t *, uint16_t);
+const ec_pdo_t *ec_pdo_mapping_find_pdo_const(const ec_pdo_mapping_t *,
+        uint16_t);
 
 /*****************************************************************************/
 

@@ -318,14 +318,14 @@ int ec_pdo_mapping_equal(
 
 /*****************************************************************************/
 
-/** Finds a Pdo with the given index.
+/** Finds a Pdo with the given index and returns a const pointer.
  */
-const ec_pdo_t *ec_pdo_mapping_find_pdo(
+const ec_pdo_t *ec_pdo_mapping_find_pdo_const(
         const ec_pdo_mapping_t *pm, /**< Pdo mapping. */
         uint16_t index /**< Pdo index. */
         )
 {
-    ec_pdo_t *pdo;
+    const ec_pdo_t *pdo;
 
     list_for_each_entry(pdo, &pm->pdos, list) {
         if (pdo->index != index)
