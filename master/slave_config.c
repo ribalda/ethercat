@@ -447,6 +447,10 @@ void ec_slave_config_load_default_pdo_config(
     const ec_sync_t *sync;
     const ec_pdo_t *default_pdo;
 
+    if (sc->master->debug_level)
+        EC_DBG("Loading default configuration for Pdo 0x%04X in"
+                " config %u:%u.\n", pdo->index, sc->alias, sc->position);
+
     pdo->default_config = 1;
 
     if (!sc->slave) {
@@ -497,9 +501,16 @@ int ecrt_slave_config_pdo(ec_slave_config_t *sc, ec_direction_t dir,
     ec_pdo_t *pdo;
     
     if (pm->default_mapping) {
+        if (sc->master->debug_level)
+            EC_DBG("Clearing default mapping for dir %u, config %u:%u.\n",
+                    dir, sc->alias, sc->position);
         pm->default_mapping = 0;
         ec_pdo_mapping_clear_pdos(pm);
     }
+
+    if (sc->master->debug_level)
+        EC_DBG("Adding Pdo 0x%04X to mapping for dir %u, config %u:%u.\n",
+                index, dir, sc->alias, sc->position);
 
     if (!(pdo = ec_pdo_mapping_add_pdo(pm, index, dir)))
         return -1;
@@ -517,11 +528,25 @@ int ecrt_slave_config_pdo_entry(ec_slave_config_t *sc, uint16_t pdo_index,
     ec_direction_t dir;
     ec_pdo_t *pdo;
     
+    if (sc->master->debug_level)
+        EC_DBG("Adding Pdo entry 0x%04X:%u (%u bit) to configuration of Pdo"
+                " 0x%04X, config %u:%u.\n", entry_index, entry_subindex,
+                entry_bit_length, pdo_index, sc->alias, sc->position);
+
     for (dir = EC_DIR_OUTPUT; dir <= EC_DIR_INPUT; dir++)
         if ((pdo = ec_pdo_mapping_find_pdo(&sc->mapping[dir], pdo_index)))
             break;
 
+    if (!pdo) {
+        EC_ERR("Pdo 0x%04X was not found in the mapping of config %u:%u.\n",
+                pdo_index, sc->alias, sc->position);
+        return -1;
+    }
+
     if (pdo->default_config) {
+        if (sc->master->debug_level)
+            EC_DBG("Clearing default configuration of Pdo 0x%04X,"
+                    " config %u:%u.\n", pdo->index, sc->alias, sc->position);
         pdo->default_config = 0;
         ec_pdo_clear_entries(pdo);
     }
@@ -546,12 +571,15 @@ int ecrt_slave_config_mapping(ec_slave_config_t *sc, unsigned int n_entries,
         pm = &sc->mapping[pi->dir];
 
         if (pm->default_mapping) {
+            if (sc->master->debug_level)
+                EC_DBG("Clearing default mapping for dir %u, config %u:%u.\n",
+                        pi->dir, sc->alias, sc->position);
             pm->default_mapping = 0;
             ec_pdo_mapping_clear_pdos(pm);
         }
 
         if (sc->master->debug_level)
-            EC_INFO("Adding Pdo 0x%04X to mapping.\n", pi->index);
+            EC_DBG("Adding Pdo 0x%04X to mapping.\n", pi->index);
 
         if (!(pdo = ec_pdo_mapping_add_pdo(pm, pi->dir, pi->index)))
             return -1;
@@ -567,8 +595,6 @@ int ecrt_slave_config_mapping(ec_slave_config_t *sc, unsigned int n_entries,
                     return -1;
             }
         } else { // use default Pdo configuration
-            if (sc->master->debug_level)
-                EC_DBG("  Using default Pdo configuration.\n");
             ec_slave_config_load_default_pdo_config(sc, pdo);
         }
     }
