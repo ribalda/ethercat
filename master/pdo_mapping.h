@@ -64,7 +64,7 @@ void ec_pdo_mapping_clear(ec_pdo_mapping_t *);
 
 void ec_pdo_mapping_clear_pdos(ec_pdo_mapping_t *);
 
-int ec_pdo_mapping_add_pdo(ec_pdo_mapping_t *, const ec_pdo_t *);
+int ec_pdo_mapping_add_pdo_copy(ec_pdo_mapping_t *, const ec_pdo_t *);
 int ec_pdo_mapping_add_pdo_info(ec_pdo_mapping_t *, const ec_pdo_info_t *,
         const ec_slave_config_t *);
 

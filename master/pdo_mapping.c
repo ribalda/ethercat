@@ -119,7 +119,7 @@ uint16_t ec_pdo_mapping_total_size(
  *
  * \return 0 on success, else < 0
  */
-int ec_pdo_mapping_add_pdo(
+int ec_pdo_mapping_add_pdo_copy(
         ec_pdo_mapping_t *pm, /**< Pdo mapping. */
         const ec_pdo_t *pdo /**< Pdo to add. */
         )
@@ -269,7 +269,7 @@ int ec_pdo_mapping_copy(
 
     // Pdo already mapped?
     list_for_each_entry(other_pdo, &other->pdos, list) {
-        if (ec_pdo_mapping_add_pdo(pm, other_pdo))
+        if (ec_pdo_mapping_add_pdo_copy(pm, other_pdo))
             return -1;
     }
     

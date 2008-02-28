@@ -568,7 +568,7 @@ int ec_slave_fetch_sii_pdos(
             }
             sync = &slave->sii.syncs[pdo->sync_index];
 
-            if (ec_pdo_mapping_add_pdo(&sync->mapping, pdo))
+            if (ec_pdo_mapping_add_pdo_copy(&sync->mapping, pdo))
                 return -1;
 
             sync->mapping_source = EC_SYNC_MAPPING_SII;

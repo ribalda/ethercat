@@ -107,7 +107,7 @@ int ec_sync_add_pdo(
         const ec_pdo_t *pdo /**< Pdo to map. */
         )
 {
-    return ec_pdo_mapping_add_pdo(&sync->mapping, pdo);
+    return ec_pdo_mapping_add_pdo_copy(&sync->mapping, pdo);
 }
 
 /*****************************************************************************/
