@@ -22,6 +22,7 @@ Version 1.4.0:
 * Do not configure in ecrt_master_activate(), but later in the state machine.
 * Remove master_state_t.
 * Scanning of Sdo dictionary / writing EEPROM in OPERATION state.
+* Adapt remaining examples.
 
 Future issues:
 
