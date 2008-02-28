@@ -150,6 +150,7 @@ int ec_slave_init(ec_slave_t *slave, /**< EtherCAT slave */
     slave->sii.order = NULL;
     slave->sii.name = NULL;
     memset(&slave->sii.coe_details, 0x00, sizeof(ec_sii_coe_details_t));
+    memset(&slave->sii.general_flags, 0x00, sizeof(ec_sii_general_flags_t));
     slave->sii.current_on_ebus = 0;
 
     slave->sii.syncs = NULL;
@@ -441,6 +442,7 @@ int ec_slave_fetch_sii_general(
             (data[4] & (0x03 << (i * 2))) >> (i * 2);
 
     memcpy(&slave->sii.coe_details, data + 5, 1);
+    memcpy(&slave->sii.general_flags, data + 0x000b, 1);
     slave->sii.current_on_ebus = EC_READ_S16(data + 0x0C);
     slave->sii.has_general = 1;
     return 0;
@@ -739,6 +741,11 @@ ssize_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
                     ? "yes" : "no");
         }
 
+        buf += sprintf(buf, "  Flags:\n");
+        buf += sprintf(buf, "    Enable SafeOp: %s\n",
+                slave->sii.general_flags.enable_safeop ? "yes" : "no");
+        buf += sprintf(buf, "    Enable notLRW: %s\n",
+                slave->sii.general_flags.enable_not_lrw ? "yes" : "no");
         buf += sprintf(buf, "  Current consumption: %i mA\n\n",
                 slave->sii.current_on_ebus);
     }

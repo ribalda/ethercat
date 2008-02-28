@@ -103,16 +103,25 @@ enum {
 
 /*****************************************************************************/
 
-/** Slave information interface CAnopen-over-EtherCAT details flags.
+/** Slave information interface CANopen-over-EtherCAT details flags.
  */
 typedef struct {
     uint8_t enable_sdo : 1; /**< Enable Sdo access. */
     uint8_t enable_sdo_info : 1; /**< SDO information service available. */
     uint8_t enable_pdo_assign : 1; /**< Pdo mapping configurable. */
     uint8_t enable_pdo_configuration : 1; /**< Pdo configuration possible. */
-    uint8_t enable_upload_at_startup : 1; /**< ? */
+    uint8_t enable_upload_at_startup : 1; /**< ?. */
     uint8_t enable_sdo_complete_access : 1; /**< Complete access possible. */
 } ec_sii_coe_details_t;
+
+/*****************************************************************************/
+
+/** Slave information interface general flags.
+ */
+typedef struct {
+    uint8_t enable_safeop : 1; /**< ?. */
+    uint8_t enable_not_lrw : 1; /**< Slave does not support LRW. */
+} ec_sii_general_flags_t;
 
 /*****************************************************************************/
 
@@ -143,6 +152,7 @@ typedef struct {
     char *name; /**< slave name acc. to EEPROM */
     uint8_t physical_layer[4]; /**< port media */
     ec_sii_coe_details_t coe_details; /**< CoE detail flags. */
+    ec_sii_general_flags_t general_flags; /**< General flags. */
     int16_t current_on_ebus; /**< power consumption */
 
     // SyncM
