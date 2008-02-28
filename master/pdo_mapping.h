@@ -64,8 +64,8 @@ void ec_pdo_mapping_clear(ec_pdo_mapping_t *);
 
 void ec_pdo_mapping_clear_pdos(ec_pdo_mapping_t *);
 
-ec_pdo_t *ec_pdo_mapping_add_pdo(ec_pdo_mapping_t *, uint16_t,
-        ec_direction_t);
+ec_pdo_t *ec_pdo_mapping_add_pdo(ec_pdo_mapping_t *, ec_direction_t,
+        uint16_t);
 int ec_pdo_mapping_add_pdo_copy(ec_pdo_mapping_t *, const ec_pdo_t *);
 
 int ec_pdo_mapping_copy(ec_pdo_mapping_t *, const ec_pdo_mapping_t *);

@@ -453,8 +453,8 @@ int ecrt_slave_config_pdo_entry(
  */
 int ecrt_slave_config_mapping(
         ec_slave_config_t *sc, /**< Slave configuration. */
-        unsigned int n_entries, /**< Number of Pdos in \a pdos to map. */
-        const ec_pdo_info_t pdos[] /**< List with Pdo mapping. */
+        unsigned int n_infos, /**< Number of Pdo infos in \a pdo_infos. */
+        const ec_pdo_info_t pdo_infos[] /**< List with Pdo mapping. */
         );
 
 /** Registers a Pdo entry for process data exchange in a domain.

@@ -122,8 +122,8 @@ uint16_t ec_pdo_mapping_total_size(
  */
 ec_pdo_t *ec_pdo_mapping_add_pdo(
         ec_pdo_mapping_t *pm, /**< Pdo mapping. */
-        uint16_t index, /**< Pdo index. */
-        ec_direction_t dir /**< Direction. */
+        ec_direction_t dir, /**< Direction. */
+        uint16_t index /**< Pdo index. */
         )
 {
     ec_pdo_t *pdo;

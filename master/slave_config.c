@@ -512,7 +512,7 @@ int ecrt_slave_config_pdo(ec_slave_config_t *sc, ec_direction_t dir,
         EC_DBG("Adding Pdo 0x%04X to mapping for dir %u, config %u:%u.\n",
                 index, dir, sc->alias, sc->position);
 
-    if (!(pdo = ec_pdo_mapping_add_pdo(pm, index, dir)))
+    if (!(pdo = ec_pdo_mapping_add_pdo(pm, dir, index)))
         return -1;
 
     ec_slave_config_load_default_pdo_config(sc, pdo);
@@ -557,16 +557,16 @@ int ecrt_slave_config_pdo_entry(ec_slave_config_t *sc, uint16_t pdo_index,
 
 /*****************************************************************************/
 
-int ecrt_slave_config_mapping(ec_slave_config_t *sc, unsigned int n_entries,
+int ecrt_slave_config_mapping(ec_slave_config_t *sc, unsigned int n_infos,
         const ec_pdo_info_t pdo_infos[])
 {
-    unsigned int i;
+    unsigned int i, j;
     const ec_pdo_info_t *pi;
     ec_pdo_mapping_t *pm;
     ec_pdo_t *pdo;
     const ec_pdo_entry_info_t *ei;
 
-    for (i = 0; i < n_entries; i++) {
+    for (i = 0; i < n_infos; i++) {
         pi = &pdo_infos[i];
         pm = &sc->mapping[pi->dir];
 
@@ -579,7 +579,8 @@ int ecrt_slave_config_mapping(ec_slave_config_t *sc, unsigned int n_entries,
         }
 
         if (sc->master->debug_level)
-            EC_DBG("Adding Pdo 0x%04X to mapping.\n", pi->index);
+            EC_DBG("Adding Pdo 0x%04X to mapping for dir %u, config %u:%u.\n",
+                    pi->index, pi->dir, sc->alias, sc->position);
 
         if (!(pdo = ec_pdo_mapping_add_pdo(pm, pi->dir, pi->index)))
             return -1;
@@ -588,8 +589,8 @@ int ecrt_slave_config_mapping(ec_slave_config_t *sc, unsigned int n_entries,
             if (sc->master->debug_level)
                 EC_DBG("  Pdo configuration information provided.\n");
 
-            for (i = 0; i < pi->n_entries; i++) {
-                ei = &pi->entries[i];
+            for (j = 0; j < pi->n_entries; j++) {
+                ei = &pi->entries[j];
                 if (!ec_pdo_add_entry(pdo, ei->index, ei->subindex,
                             ei->bit_length))
                     return -1;
