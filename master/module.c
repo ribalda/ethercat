@@ -207,7 +207,10 @@ void __exit ec_cleanup_module(void)
 /**
  * \return true, if two MAC addresses are equal.
  */
-int ec_mac_equal(const uint8_t *mac1, const uint8_t *mac2)
+int ec_mac_equal(
+        const uint8_t *mac1, /**< First MAC address. */
+        const uint8_t *mac2 /**< Second MAC address. */
+        )
 {
     unsigned int i;
     
@@ -245,7 +248,9 @@ ssize_t ec_mac_print(
 /**
  * \return true, if the MAC address is all-zero.
  */
-int ec_mac_is_zero(const uint8_t *mac)
+int ec_mac_is_zero(
+        const uint8_t *mac /**< MAC address. */
+        )
 {
     unsigned int i;
     
@@ -261,7 +266,9 @@ int ec_mac_is_zero(const uint8_t *mac)
 /**
  * \return true, if the given MAC address is the broadcast address.
  */
-int ec_mac_is_broadcast(const uint8_t *mac)
+int ec_mac_is_broadcast(
+        const uint8_t *mac /**< MAC address. */
+        )
 {
     unsigned int i;
     
