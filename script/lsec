@@ -83,6 +83,7 @@ sub query
         next unless $entry =~ /^slave(\d+)$/;
 
         $slave = {};
+        $slave->{'current'} = 0;
         $slave_info_file = "$master_dir/$entry/info"; 
         open INFO, $slave_info_file or die
             "ERROR: Failed to open $slave_info_file.";
@@ -103,8 +104,6 @@ sub query
                     $slave->{'state'} = $1;
                 } elsif ($line =~ /^Configured station alias: .* \((\d+)\)$/) {
                     $slave->{'alias'} = $1;
-                } elsif ($line =~ /^Current consumption: (-?\d+) mA$/) {
-                    $slave->{'current'} = $1;
                 }
             } elsif ($category eq "Identity") {
                 if ($line =~ /Vendor ID: .* \((\d+)\)$/) {
@@ -115,6 +114,8 @@ sub query
             } elsif ($category eq "General") {
                 if ($line =~ /Name: (.*)$/) {
                     $slave->{'name'} = $1;
+                } elsif ($line =~ /Current consumption: (-?\d+) mA$/) {
+                    $slave->{'current'} = $1;
                 }
             }
         }

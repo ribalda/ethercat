@@ -140,17 +140,23 @@ int ec_slave_init(ec_slave_t *slave, /**< EtherCAT slave */
     slave->sii.tx_mailbox_offset = 0;
     slave->sii.tx_mailbox_size = 0;
     slave->sii.mailbox_protocols = 0;
+
+    slave->sii.strings = NULL;
+    slave->sii.string_count = 0;
+
+    slave->sii.has_general = 0;
     slave->sii.group = NULL;
     slave->sii.image = NULL;
     slave->sii.order = NULL;
     slave->sii.name = NULL;
+    memset(&slave->sii.coe_details, 0x00, sizeof(ec_sii_coe_details_t));
     slave->sii.current_on_ebus = 0;
 
-    slave->sii.strings = NULL;
-    slave->sii.string_count = 0;
     slave->sii.syncs = NULL;
     slave->sii.sync_count = 0;
+
     INIT_LIST_HEAD(&slave->sii.pdos);
+
     INIT_LIST_HEAD(&slave->sdo_dictionary);
 
     slave->sdo_dictionary_fetched = 0;
@@ -434,8 +440,9 @@ int ec_slave_fetch_sii_general(
         slave->sii.physical_layer[i] =
             (data[4] & (0x03 << (i * 2))) >> (i * 2);
 
+    memcpy(&slave->sii.coe_details, data + 5, 1);
     slave->sii.current_on_ebus = EC_READ_S16(data + 0x0C);
-
+    slave->sii.has_general = 1;
     return 0;
 }
 
@@ -701,11 +708,7 @@ ssize_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
         buf += sprintf(buf, "\n\n");
     }
 
-    buf += sprintf(buf, "Current consumption: %i mA\n\n",
-            slave->sii.current_on_ebus);
-
-    if (slave->sii.group || slave->sii.image || slave->sii.order
-            || slave->sii.name) {
+    if (slave->sii.has_general) {
         buf += sprintf(buf, "General:\n");
 
         if (slave->sii.group)
@@ -717,7 +720,27 @@ ssize_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
                     slave->sii.order);
         if (slave->sii.name)
             buf += sprintf(buf, "  Name: %s\n", slave->sii.name);
-        buf += sprintf(buf, "\n");
+        if (slave->sii.mailbox_protocols & EC_MBOX_COE) {
+            buf += sprintf(buf, "  CoE details:\n");
+            buf += sprintf(buf, "    Enable Sdo: %s\n",
+                    slave->sii.coe_details.enable_sdo ? "yes" : "no");
+            buf += sprintf(buf, "    Enable Sdo Info: %s\n",
+                    slave->sii.coe_details.enable_sdo_info ? "yes" : "no");
+            buf += sprintf(buf, "    Enable Pdo Assign: %s\n",
+                    slave->sii.coe_details.enable_pdo_assign ? "yes" : "no");
+            buf += sprintf(buf, "    Enable Pdo Configuration: %s\n",
+                    slave->sii.coe_details.enable_pdo_configuration ?
+                    "yes" : "no");
+            buf += sprintf(buf, "    Enable Upload at startup: %s\n",
+                    slave->sii.coe_details.enable_upload_at_startup ?
+                    "yes" : "no");
+            buf += sprintf(buf, "    Enable Sdo complete access: %s\n",
+                    slave->sii.coe_details.enable_sdo_complete_access
+                    ? "yes" : "no");
+        }
+
+        buf += sprintf(buf, "  Current consumption: %i mA\n\n",
+                slave->sii.current_on_ebus);
     }
 
     if (slave->sii.sync_count) {

@@ -103,6 +103,19 @@ enum {
 
 /*****************************************************************************/
 
+/** Slave information interface CAnopen-over-EtherCAT details flags.
+ */
+typedef struct {
+    uint8_t enable_sdo : 1; /**< Enable Sdo access. */
+    uint8_t enable_sdo_info : 1; /**< SDO information service available. */
+    uint8_t enable_pdo_assign : 1; /**< Pdo mapping configurable. */
+    uint8_t enable_pdo_configuration : 1; /**< Pdo configuration possible. */
+    uint8_t enable_upload_at_startup : 1; /**< ? */
+    uint8_t enable_sdo_complete_access : 1; /**< Complete access possible. */
+} ec_sii_coe_details_t;
+
+/*****************************************************************************/
+
 /** Slave information interface data.
  */
 typedef struct {
@@ -123,11 +136,13 @@ typedef struct {
     unsigned int string_count; /**< number of EEPROM strings */
 
     // General
-    uint8_t physical_layer[4]; /**< port media */
+    unsigned int has_general; /**< General category present. */
     char *group; /**< slave group acc. to EEPROM */
     char *image; /**< slave image name acc. to EEPROM */
     char *order; /**< slave order number acc. to EEPROM */
     char *name; /**< slave name acc. to EEPROM */
+    uint8_t physical_layer[4]; /**< port media */
+    ec_sii_coe_details_t coe_details; /**< CoE detail flags. */
     int16_t current_on_ebus; /**< power consumption */
 
     // SyncM

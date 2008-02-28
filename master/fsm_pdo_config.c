@@ -189,6 +189,16 @@ void ec_fsm_pdo_config_next_pdo(
         return;
     }
 
+    // Pdo configuration has to be changed. Does the slave support this?
+    if (fsm->slave->sii.mailbox_protocols & EC_MBOX_COE
+            || (fsm->slave->sii.has_general
+                && !fsm->slave->sii.coe_details.enable_pdo_configuration)) {
+        EC_ERR("Slave %u does not support changing the Pdo configuration!\n",
+                fsm->slave->ring_position);
+        fsm->state = ec_fsm_pdo_config_state_error;
+        return;
+    }
+
     if (fsm->slave->master->debug_level) {
         EC_DBG("Changing configuration of Pdo 0x%04X of slave %u.\n",
                 fsm->pdo->index, fsm->slave->ring_position);

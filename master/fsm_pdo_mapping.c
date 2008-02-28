@@ -180,6 +180,16 @@ void ec_fsm_pdo_mapping_next_dir(
         if (ec_pdo_mapping_equal(&fsm->sync->mapping, fsm->mapping))
             continue;
 
+        // Pdo mapping has to be changed. Does the slave support this?
+        if (!fsm->slave->sii.mailbox_protocols & EC_MBOX_COE
+                || (fsm->slave->sii.has_general
+                    && !fsm->slave->sii.coe_details.enable_pdo_assign)) {
+            EC_ERR("Slave %u does not support changing the Pdo mapping!\n",
+                    fsm->slave->ring_position);
+            fsm->state = ec_fsm_pdo_mapping_state_error;
+            return;
+        }
+
         if (fsm->slave->master->debug_level) {
             EC_DBG("Changing Pdo mapping for SM%u of slave %u.\n",
                     fsm->sync->index, fsm->slave->ring_position);
