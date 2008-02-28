@@ -583,6 +583,8 @@ end:
 
 /*****************************************************************************/
 
+/** Enter slave scan state PREOP.
+ */
 void ec_fsm_slave_scan_enter_preop(
         ec_fsm_slave_scan_t *fsm /**< slave state machine */
         )
@@ -623,6 +625,8 @@ void ec_fsm_slave_scan_state_preop(
 
 /*****************************************************************************/
 
+/** Enter slave scan state PDOS.
+ */
 void ec_fsm_slave_scan_enter_pdos(
         ec_fsm_slave_scan_t *fsm /**< slave state machine */
         )
