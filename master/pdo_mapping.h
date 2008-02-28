@@ -64,15 +64,16 @@ void ec_pdo_mapping_clear(ec_pdo_mapping_t *);
 
 void ec_pdo_mapping_clear_pdos(ec_pdo_mapping_t *);
 
+ec_pdo_t *ec_pdo_mapping_add_pdo(ec_pdo_mapping_t *, uint16_t,
+        ec_direction_t);
 int ec_pdo_mapping_add_pdo_copy(ec_pdo_mapping_t *, const ec_pdo_t *);
-int ec_pdo_mapping_add_pdo_info(ec_pdo_mapping_t *, const ec_pdo_info_t *,
-        const ec_slave_config_t *);
 
 int ec_pdo_mapping_copy(ec_pdo_mapping_t *, const ec_pdo_mapping_t *);
 
 uint16_t ec_pdo_mapping_total_size(const ec_pdo_mapping_t *);
 int ec_pdo_mapping_equal(const ec_pdo_mapping_t *, const ec_pdo_mapping_t *);
 
+ec_pdo_t *ec_pdo_mapping_find_pdo(const ec_pdo_mapping_t *, uint16_t);
 const ec_pdo_t *ec_pdo_mapping_find_pdo_const(const ec_pdo_mapping_t *,
         uint16_t);
 

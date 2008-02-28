@@ -431,6 +431,58 @@ void ec_slave_config_load_default_mapping(ec_slave_config_t *sc)
         if (!(sync = ec_slave_get_pdo_sync(sc->slave, dir)))
             continue;
         ec_pdo_mapping_copy(map, &sync->mapping);
+        map->default_mapping = 1;
+    }
+}
+
+/*****************************************************************************/
+
+/** Loads the default configuration for a Pdo from the slave object.
+ */
+void ec_slave_config_load_default_pdo_config(
+        const ec_slave_config_t *sc,
+        ec_pdo_t *pdo
+        )
+{
+    const ec_sync_t *sync;
+    const ec_pdo_t *default_pdo;
+
+    pdo->default_config = 1;
+
+    if (!sc->slave) {
+        EC_WARN("Failed to load default Pdo configuration for %u:%u:"
+                " Slave not found.\n", sc->alias, sc->position);
+        return;
+    }
+
+    if (!(sync = ec_slave_get_pdo_sync(sc->slave, pdo->dir))) {
+        EC_WARN("Slave %u does not provide a default Pdo"
+                " configuration!\n", sc->slave->ring_position);
+        return;
+    }
+
+    list_for_each_entry(default_pdo, &sync->mapping.pdos, list) {
+        if (default_pdo->index != pdo->index)
+            continue;
+
+        if (sc->master->debug_level)
+            EC_DBG("  Found Pdo name \"%s\".\n",
+                    default_pdo->name);
+
+        // try to take Pdo name from mapped one
+        ec_pdo_set_name(pdo, default_pdo->name);
+
+        // copy entries (= default Pdo configuration)
+        if (ec_pdo_copy_entries(pdo, default_pdo))
+            return;
+
+        if (sc->master->debug_level) {
+            const ec_pdo_entry_t *entry;
+            list_for_each_entry(entry, &pdo->entries, list) {
+                EC_DBG("    Entry 0x%04X:%u.\n",
+                        entry->index, entry->subindex);
+            }
+        }
     }
 }
 
@@ -438,15 +490,88 @@ void ec_slave_config_load_default_mapping(ec_slave_config_t *sc)
  *  Realtime interface
  *****************************************************************************/
 
+int ecrt_slave_config_pdo(ec_slave_config_t *sc, ec_direction_t dir,
+        uint16_t index)
+{
+    ec_pdo_mapping_t *pm = &sc->mapping[dir];
+    ec_pdo_t *pdo;
+    
+    if (pm->default_mapping) {
+        pm->default_mapping = 0;
+        ec_pdo_mapping_clear_pdos(pm);
+    }
+
+    if (!(pdo = ec_pdo_mapping_add_pdo(pm, index, dir)))
+        return -1;
+
+    ec_slave_config_load_default_pdo_config(sc, pdo);
+    return 0;
+}
+
+/*****************************************************************************/
+
+int ecrt_slave_config_pdo_entry(ec_slave_config_t *sc, uint16_t pdo_index,
+        uint16_t entry_index, uint8_t entry_subindex,
+        uint8_t entry_bit_length)
+{
+    ec_direction_t dir;
+    ec_pdo_t *pdo;
+    
+    for (dir = EC_DIR_OUTPUT; dir <= EC_DIR_INPUT; dir++)
+        if ((pdo = ec_pdo_mapping_find_pdo(&sc->mapping[dir], pdo_index)))
+            break;
+
+    if (pdo->default_config) {
+        pdo->default_config = 0;
+        ec_pdo_clear_entries(pdo);
+    }
+
+    return ec_pdo_add_entry(pdo, entry_index, entry_subindex,
+            entry_bit_length) ? 0 : -1;
+}
+
+/*****************************************************************************/
+
 int ecrt_slave_config_mapping(ec_slave_config_t *sc, unsigned int n_entries,
         const ec_pdo_info_t pdo_infos[])
 {
     unsigned int i;
+    const ec_pdo_info_t *pi;
+    ec_pdo_mapping_t *pm;
+    ec_pdo_t *pdo;
+    const ec_pdo_entry_info_t *ei;
 
-    for (i = 0; i < n_entries; i++)
-        if (ec_pdo_mapping_add_pdo_info(&sc->mapping[pdo_infos[i].dir],
-                    &pdo_infos[i], sc))
+    for (i = 0; i < n_entries; i++) {
+        pi = &pdo_infos[i];
+        pm = &sc->mapping[pi->dir];
+
+        if (pm->default_mapping) {
+            pm->default_mapping = 0;
+            ec_pdo_mapping_clear_pdos(pm);
+        }
+
+        if (sc->master->debug_level)
+            EC_INFO("Adding Pdo 0x%04X to mapping.\n", pi->index);
+
+        if (!(pdo = ec_pdo_mapping_add_pdo(pm, pi->dir, pi->index)))
             return -1;
+
+        if (pi->n_entries && pi->entries) { // configuration provided
+            if (sc->master->debug_level)
+                EC_DBG("  Pdo configuration information provided.\n");
+
+            for (i = 0; i < pi->n_entries; i++) {
+                ei = &pi->entries[i];
+                if (!ec_pdo_add_entry(pdo, ei->index, ei->subindex,
+                            ei->bit_length))
+                    return -1;
+            }
+        } else { // use default Pdo configuration
+            if (sc->master->debug_level)
+                EC_DBG("  Using default Pdo configuration.\n");
+            ec_slave_config_load_default_pdo_config(sc, pdo);
+        }
+    }
 
     return 0;
 }
@@ -526,6 +651,8 @@ int ecrt_slave_config_sdo32(ec_slave_config_t *slave, uint16_t index,
 
 /** \cond */
 
+EXPORT_SYMBOL(ecrt_slave_config_pdo);
+EXPORT_SYMBOL(ecrt_slave_config_pdo_entry);
 EXPORT_SYMBOL(ecrt_slave_config_mapping);
 EXPORT_SYMBOL(ecrt_slave_config_reg_pdo_entry);
 EXPORT_SYMBOL(ecrt_slave_config_sdo8);

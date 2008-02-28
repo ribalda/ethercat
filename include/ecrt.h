@@ -54,7 +54,7 @@
  * - Added ec_slave_config_state_t for the new method
  *   ecrt_slave_config_state().
  * - Process data memory for a domain can now be allocated externally. This
- *   offers the possibility to use a shared-memory-region. Therefore,
+ *   offers the possibility to use a shared-memory region. Therefore,
  *   added the domain methods ecrt_domain_size() and
  *   ecrt_domain_external_memory().
  * - Replaced the process data pointers in the Pdo entry registration
@@ -64,10 +64,11 @@
  *   is directly usable. If the domain's process data is allocated internally,
  *   the start address can be retrieved with ecrt_domain_data().
  * - Replaced ecrt_slave_pdo_mapping/add/clear() with
- *   ecrt_slave_config_mapping() that is now able to specify Pdo mapping and
- *   Pdo configuration. Pdo entries mapped in this way can now immediately be
- *   registered. The Pdo mapping and the configuration are described with the
- *   new data types ec_pdo_info_t and ec_pdo_entry_info_t.
+ *   ecrt_slave_config_pdo() to add a Pdo to the mapping and
+ *   ecrt_slave_config_pdo_entry() to add a Pdo entry to a Pdo configuration.
+ *   ecrt_slave_config_mapping() is a convenience function for
+ *   both, that uses the new data types ec_pdo_info_t and ec_pdo_entry_info_t.
+ *   Mapped Pdo entries can now immediately be registered.
  * - Renamed ec_bus_status_t, ec_master_status_t to ec_bus_state_t and
  *   ec_master_state_t, respectively. Renamed ecrt_master_get_status() to
  *   ecrt_master_state(), for consistency reasons.
@@ -370,7 +371,43 @@ void ecrt_master_state(
  * Slave configuration methods
  *****************************************************************************/
 
+/** Add a Pdo to the slave's Pdo mapping for the given direction.
+ *
+ * The first call of this function for a given \a dir will clear the default
+ * mapping.
+ *
+ * \see ecrt_slave_config_mapping()
+ * \return zero on success, else non-zero
+ */
+int ecrt_slave_config_pdo(
+        ec_slave_config_t *sc, /**< Slave configuration. */
+        ec_direction_t dir, /**< Pdo direction (input/output). */
+        uint16_t index /**< Index of the Pdo to map. */
+        );
+
+/** Add a Pdo entry to the given Pdo's configuration.
+ *
+ * The first call of this function for a given \a pdo_index will clear the
+ * default Pdo configuration.
+ *
+ * \see ecrt_slave_config_mapping()
+ * \return zero on success, else non-zero
+ */
+int ecrt_slave_config_pdo_entry(
+        ec_slave_config_t *sc, /**< Slave configuration. */
+        uint16_t pdo_index, /**< Index of the Pdo to configure. */
+        uint16_t entry_index, /**< Index of the Pdo entry to add to the Pdo's
+                                configuration. */
+        uint8_t entry_subindex, /**< Subindex of the Pdo entry to add to the
+                                  Pdo's configuration. */
+        uint8_t entry_bit_length /**< Size of the Pdo entry in bit. */
+        );
+
 /** Specify the Pdo mapping and (optionally) the Pdo configuration.
+ *
+ * This function is a convenience function for the ecrt_slave_config_pdo()
+ * and ecrt_slave_config_pdo_entry() functions, that are better suitable
+ * for automatic code generation.
  *
  * The following example shows, how to specify a complete Pdo mapping
  * including the Pdo configuration. With this information, the master is able
@@ -378,26 +415,29 @@ void ecrt_master_state(
  * at configuration time:
  *
  * \code
- * const ec_pdo_info_t complete_mapping[] = {
- *     {EC_DIR_INPUT, 0x1600, 2, { // channel 1
- *         {0x7000, 0, 16}, // value
- *         {0x7000, 1, 8},  // status
- *     }},
- *     {EC_DIR_INPUT, 0x1601, 2, { // channel 2 
- *         {0x7001, 0, 16}, // value
- *         {0x7001, 1, 8},  // status
- *     }}
+ * const ec_pdo_entry_info_t el3162_channel1[] = {
+ *     {0x3101, 1,  8}, // status
+ *     {0x3101, 2, 16}  // value
  * };
  * 
- * if (ecrt_slave_config_mapping(slave_config_ana_in, 2, complete_mapping)) {
- *     // error
- * }
+ * const ec_pdo_entry_info_t el3162_channel2[] = {
+ *     {0x3102, 1,  8}, // status
+ *     {0x3102, 2, 16}  // value
+ * };
+ * 
+ * const ec_pdo_info_t el3162_mapping[] = {
+ *     {EC_DIR_INPUT, 0x1A00, 2, el3162_channel1},
+ *     {EC_DIR_INPUT, 0x1A01, 2, el3162_channel2},
+ * };
+ * 
+ * if (ecrt_slave_config_mapping(sc, 2, el3162_mapping))
+ *     return -1; // error
  * \endcode
  *
  * The next example shows, how to configure only the Pdo mapping. The entries
  * for each mapped Pdo are taken from the default Pdo configuration. Please
- * note, that Pdo entry registration will fail, if no Pdo configuration is
- * specified and the slave is offline.
+ * note, that Pdo entry registration will fail, if the Pdo configuration is
+ * left empty and the slave is offline.
  *
  * \code
  * const ec_pdo_info_t pdo_mapping[] = {
@@ -405,9 +445,8 @@ void ecrt_master_state(
  *     {EC_DIR_INPUT, 0x1601}  // Channel 2
  * };
  * 
- * if (ecrt_slave_config_mapping(slave_config_ana_in, 2, pdo_mapping)) {
- *     // error
- * }
+ * if (ecrt_slave_config_mapping(slave_config_ana_in, 2, pdo_mapping))
+ *     return -1; // error
  * \endcode
  *
  * \return zero on success, else non-zero
@@ -418,15 +457,18 @@ int ecrt_slave_config_mapping(
         const ec_pdo_info_t pdos[] /**< List with Pdo mapping. */
         );
 
-/** Registers a Pdo entry of the given slave configuration at a domain.
+/** Registers a Pdo entry for process data exchange in a domain.
  *
- * Searches the mapping and the Pdo configurations for the given Pdo entry. If
- * found, the curresponding sync manager/FMMU is added to the domain and the
- * offset of the Pdo entry's data in the domain process data is returned.
+ * Searches the current mapping and Pdo configurations for the given Pdo
+ * entry. An error is raised, if the given entry is not mapped. Otherwise, the
+ * corresponding sync manager and FMMU configurations are provided for slave
+ * configuration and the respective sync manager's Pdos are appended to the
+ * given domain, if not already done. The offset of the requested Pdo entry's
+ * data inside the domain's process data is returned.
  *
- * \retval >=0 Offset of the Pdo entry's process data.
- * \retval -1  Pdo entry not found.
- * \retval -2  Failed to register Pdo entry.
+ * \retval >=0 Success: Offset of the Pdo entry's process data.
+ * \retval -1  Error: Pdo entry not found.
+ * \retval -2  Error: Failed to register Pdo entry.
  */
 int ecrt_slave_config_reg_pdo_entry(
         ec_slave_config_t *sc, /**< Slave configuration. */

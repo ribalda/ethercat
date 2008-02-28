@@ -58,6 +58,8 @@ typedef struct {
     int8_t sync_index; /**< Assigned sync manager. */
     char *name; /**< Pdo name. */
     struct list_head entries; /**< List of Pdo entries. */
+    unsigned int default_config; /**< The entries contain the default Pdo
+                                   configuration. */
 } ec_pdo_t;
 
 /*****************************************************************************/
@@ -77,7 +79,9 @@ typedef struct {
 void ec_pdo_init(ec_pdo_t *);
 int ec_pdo_init_copy(ec_pdo_t *, const ec_pdo_t *);
 void ec_pdo_clear(ec_pdo_t *);
+void ec_pdo_clear_entries(ec_pdo_t *);
 int ec_pdo_set_name(ec_pdo_t *, const char *);
+ec_pdo_entry_t *ec_pdo_add_entry(ec_pdo_t *, uint16_t, uint8_t, uint8_t);
 int ec_pdo_copy_entries(ec_pdo_t *, const ec_pdo_t *);
 int ec_pdo_equal_entries(const ec_pdo_t *, const ec_pdo_t *);
 

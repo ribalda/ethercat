@@ -83,13 +83,12 @@ int ec_slave_config_init(ec_slave_config_t *, ec_master_t *, uint16_t,
         uint16_t, uint32_t, uint32_t);
 void ec_slave_config_destroy(ec_slave_config_t *);
 
-int ec_slave_config_reg_pdo_entry(ec_slave_config_t *, ec_domain_t *,
-        uint16_t, uint8_t);
-
 int ec_slave_config_attach(ec_slave_config_t *);
 void ec_slave_config_detach(ec_slave_config_t *);
 
 void ec_slave_config_load_default_mapping(ec_slave_config_t *);
+void ec_slave_config_load_default_pdo_config(const ec_slave_config_t *,
+        ec_pdo_t *);
 
 /*****************************************************************************/
 

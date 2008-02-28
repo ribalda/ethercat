@@ -115,7 +115,34 @@ uint16_t ec_pdo_mapping_total_size(
 
 /*****************************************************************************/
 
-/** Adds a Pdo to the mapping.
+/** Add a new Pdo to the mapping.
+ *
+ * \retval >0 Pointer to new Pdo.
+ * \retval NULL No memory.
+ */
+ec_pdo_t *ec_pdo_mapping_add_pdo(
+        ec_pdo_mapping_t *pm, /**< Pdo mapping. */
+        uint16_t index, /**< Pdo index. */
+        ec_direction_t dir /**< Direction. */
+        )
+{
+    ec_pdo_t *pdo;
+
+    if (!(pdo = (ec_pdo_t *) kmalloc(sizeof(ec_pdo_t), GFP_KERNEL))) {
+        EC_ERR("Failed to allocate memory for Pdo.\n");
+        return NULL;
+    }
+
+    ec_pdo_init(pdo);
+    pdo->dir = dir;
+    pdo->index = index;
+    list_add_tail(&pdo->list, &pm->pdos);
+    return pdo;
+}
+
+/*****************************************************************************/
+
+/** Add the copy of an existing Pdo to the mapping.
  *
  * \return 0 on success, else < 0
  */
@@ -134,7 +161,7 @@ int ec_pdo_mapping_add_pdo_copy(
     }
     
     if (!(mapped_pdo = kmalloc(sizeof(ec_pdo_t), GFP_KERNEL))) {
-        EC_ERR("Failed to allocate memory for Pdo mapping.\n");
+        EC_ERR("Failed to allocate Pdo memory.\n");
         return -1;
     }
 
@@ -145,111 +172,6 @@ int ec_pdo_mapping_add_pdo_copy(
 
     list_add_tail(&mapped_pdo->list, &pm->pdos);
     return 0;
-}
-
-/*****************************************************************************/
-
-/** Add a Pdo to the mapping.
- *
- * The first call of this method will clear the default mapping.
- *
- * \retval 0 Success.
- * \retval -1 Error.
- */
-int ec_pdo_mapping_add_pdo_info(
-        ec_pdo_mapping_t *pm, /**< Pdo mapping. */
-        const ec_pdo_info_t *pdo_info, /**< Pdo information. */
-        const ec_slave_config_t *config /**< Slave configuration, to load
-                                          default entries. */
-        )
-{
-    unsigned int i;
-    ec_pdo_t *pdo;
-    ec_pdo_entry_t *entry;
-    const ec_pdo_entry_info_t *entry_info;
-
-    if (pm->default_mapping) {
-        pm->default_mapping = 0;
-        ec_pdo_mapping_clear_pdos(pm);
-    }
-
-    if (!(pdo = (ec_pdo_t *) kmalloc(sizeof(ec_pdo_t), GFP_KERNEL))) {
-        EC_ERR("Failed to allocate memory for Pdo.\n");
-        goto out_return;
-    }
-
-    ec_pdo_init(pdo);
-    pdo->dir = pdo_info->dir;
-    pdo->index = pdo_info->index;
-
-    if (config->master->debug_level)
-        EC_INFO("Adding Pdo 0x%04X to mapping.\n", pdo->index);
-
-    if (pdo_info->n_entries && pdo_info->entries) { // configuration provided
-        if (config->master->debug_level)
-            EC_INFO("  Pdo configuration provided.\n");
-
-        for (i = 0; i < pdo_info->n_entries; i++) {
-            entry_info = &pdo_info->entries[i];
-
-            if (!(entry = kmalloc(sizeof(ec_pdo_entry_t), GFP_KERNEL))) {
-                EC_ERR("Failed to allocate memory for Pdo entry.\n");
-                goto out_free;
-            }
-
-            ec_pdo_entry_init(entry);
-            entry->index = entry_info->index;
-            entry->subindex = entry_info->subindex;
-            entry->bit_length = entry_info->bit_length;
-            list_add_tail(&entry->list, &pdo->entries);
-        }
-    } else { // use default Pdo configuration
-        if (config->master->debug_level)
-            EC_INFO("  Using default Pdo configuration.\n");
-
-        if (config->slave) {
-            ec_sync_t *sync;
-            ec_pdo_t *default_pdo;
-
-            if ((sync = ec_slave_get_pdo_sync(config->slave, pdo->dir))) {
-                list_for_each_entry(default_pdo, &sync->mapping.pdos, list) {
-                    if (default_pdo->index != pdo->index)
-                        continue;
-                    if (config->master->debug_level)
-                        EC_INFO("  Found Pdo name \"%s\".\n",
-                                default_pdo->name);
-                    // try to take Pdo name from mapped one
-                    if (ec_pdo_set_name(pdo, default_pdo->name))
-                        goto out_free;
-                    // copy entries (= default Pdo configuration)
-                    if (ec_pdo_copy_entries(pdo, default_pdo))
-                        goto out_free;
-                    if (config->master->debug_level) {
-                        const ec_pdo_entry_t *entry;
-                        list_for_each_entry(entry, &pdo->entries, list) {
-                            EC_INFO("    Entry 0x%04X:%u.\n",
-                                    entry->index, entry->subindex);
-                        }
-                    }
-                }
-            } else {
-                EC_WARN("Slave %u does not provide a default Pdo"
-                        " configuration!\n", config->slave->ring_position);
-            }
-        } else {
-            EC_WARN("Failed to load default Pdo configuration for %u:%u:"
-                    " Slave not found.\n", config->alias, config->position);
-        }
-    }
-
-    list_add_tail(&pdo->list, &pm->pdos);
-    return 0;
-
-out_free:
-    ec_pdo_clear(pdo);
-    kfree(pdo);
-out_return:
-    return -1;
 }
 
 /*****************************************************************************/
@@ -314,6 +236,26 @@ int ec_pdo_mapping_equal(
     }
 
     return 1;
+}
+
+/*****************************************************************************/
+
+/** Finds a Pdo with the given index.
+ */
+ec_pdo_t *ec_pdo_mapping_find_pdo(
+        const ec_pdo_mapping_t *pm, /**< Pdo mapping. */
+        uint16_t index /**< Pdo index. */
+        )
+{
+    ec_pdo_t *pdo;
+
+    list_for_each_entry(pdo, &pm->pdos, list) {
+        if (pdo->index != index)
+            continue;
+        return pdo;
+    }
+
+    return NULL;
 }
 
 /*****************************************************************************/

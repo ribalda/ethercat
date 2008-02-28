@@ -44,10 +44,6 @@
 
 /*****************************************************************************/
 
-void ec_pdo_clear_entries(ec_pdo_t *);
-
-/*****************************************************************************/
-
 /** Pdo constructor.
  */
 void ec_pdo_init(
@@ -57,6 +53,7 @@ void ec_pdo_init(
     pdo->sync_index = -1; // not assigned 
     pdo->name = NULL;
     INIT_LIST_HEAD(&pdo->entries);
+    pdo->default_config = 0;
 }
 
 /*****************************************************************************/
@@ -70,6 +67,7 @@ int ec_pdo_init_copy(ec_pdo_t *pdo, const ec_pdo_t *other_pdo)
     pdo->sync_index = other_pdo->sync_index;
     pdo->name = NULL;
     INIT_LIST_HEAD(&pdo->entries);
+    pdo->default_config = other_pdo->default_config;
 
     if (ec_pdo_set_name(pdo, other_pdo->name))
         goto out_return;
@@ -89,7 +87,7 @@ out_return:
 
 /** Pdo destructor.
  */
-void ec_pdo_clear(ec_pdo_t *pdo /**< EtherCAT Pdo */)
+void ec_pdo_clear(ec_pdo_t *pdo /**< EtherCAT Pdo. */)
 {
     if (pdo->name)
         kfree(pdo->name);
@@ -101,7 +99,7 @@ void ec_pdo_clear(ec_pdo_t *pdo /**< EtherCAT Pdo */)
 
 /** Clear Pdo entry list.
  */
-void ec_pdo_clear_entries(ec_pdo_t *pdo /**< EtherCAT Pdo */)
+void ec_pdo_clear_entries(ec_pdo_t *pdo /**< EtherCAT Pdo. */)
 {
     ec_pdo_entry_t *entry, *next;
 
@@ -138,6 +136,32 @@ int ec_pdo_set_name(
     }
 
     return 0;
+}
+
+/*****************************************************************************/
+
+/** Add a new Pdo entry to the configuration.
+ */
+ec_pdo_entry_t *ec_pdo_add_entry(
+        ec_pdo_t *pdo,
+        uint16_t index,
+        uint8_t subindex,
+        uint8_t bit_length
+        )
+{
+    ec_pdo_entry_t *entry;
+
+    if (!(entry = kmalloc(sizeof(ec_pdo_entry_t), GFP_KERNEL))) {
+        EC_ERR("Failed to allocate memory for Pdo entry.\n");
+        return NULL;
+    }
+
+    ec_pdo_entry_init(entry);
+    entry->index = index;
+    entry->subindex = subindex;
+    entry->bit_length = bit_length;
+    list_add_tail(&entry->list, &pdo->entries);
+    return entry;
 }
 
 /*****************************************************************************/
