@@ -179,7 +179,7 @@ void cyclic_task(unsigned long data)
     }
 
     // write process data
-    EC_WRITE_U8(domain1_pd + off_dig_out, blink ? 0x0F : 0x00);
+    EC_WRITE_U8(domain1_pd + off_dig_out, blink ? 0x06 : 0x09);
 
     // send process data
     spin_lock(&master_lock);
