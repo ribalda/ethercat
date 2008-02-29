@@ -26,6 +26,7 @@ Version 1.4.0:
 * Separate Pdo and Pdo entry classes.
 * Attach Pdo names.
 * Replace ec_sdo_data_t with ec_sdo_request_t.
+* Make all define underscores the same.
 
 Future issues:
 
