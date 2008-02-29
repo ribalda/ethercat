@@ -175,7 +175,7 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     init_MUTEX(&master->eeprom_sem);
     init_waitqueue_head(&master->eeprom_queue);
 
-    INIT_LIST_HEAD(&master->sdo_requests);
+    INIT_LIST_HEAD(&master->slave_sdo_requests);
     init_MUTEX(&master->sdo_sem);
     init_waitqueue_head(&master->sdo_queue);
 

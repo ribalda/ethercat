@@ -48,12 +48,10 @@
  */
 void ec_sdo_request_init(
         ec_sdo_request_t *req, /**< Sdo request. */
-        ec_slave_t *slave, /**< Slave owning the Sdo. */
         uint16_t index, /**< Sdo index. */
         uint8_t subindex /**< Sdo subindex. */
         )
 {
-    req->slave = slave;
     req->index = index;
     req->subindex = subindex;
     req->data = NULL;

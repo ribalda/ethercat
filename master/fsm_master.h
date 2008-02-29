@@ -65,6 +65,16 @@ typedef struct {
 
 /*****************************************************************************/
 
+/** Slave/Sdo request record for master's Sdo request list.
+ */
+typedef struct {
+    struct list_head list; /**< List element. */
+    ec_slave_t *slave; /**< Slave. */
+    ec_sdo_request_t req; /**< Sdo request. */
+} ec_master_sdo_request_t;
+
+/*****************************************************************************/
+
 typedef struct ec_fsm_master ec_fsm_master_t; /**< \see ec_fsm_master */
 
 /** Finite state machine of an EtherCAT master.
@@ -87,7 +97,7 @@ struct ec_fsm_master {
     ec_slave_t *slave; /**< current slave */
     ec_eeprom_write_request_t *eeprom_request; /**< EEPROM write request */
     off_t eeprom_index; /**< index to EEPROM write request data */
-    ec_sdo_request_t *sdo_request; /**< Sdo request to process */
+    ec_master_sdo_request_t *sdo_request; /**< Sdo request to process. */
 
     ec_fsm_slave_config_t fsm_slave_config; /**< slave state machine */
     ec_fsm_slave_scan_t fsm_slave_scan; /**< slave state machine */

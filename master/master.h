@@ -59,8 +59,7 @@ typedef enum {
     EC_MASTER_MODE_ORPHANED,
     EC_MASTER_MODE_IDLE,
     EC_MASTER_MODE_OPERATION
-}
-ec_master_mode_t;
+} ec_master_mode_t;
 
 /*****************************************************************************/
 
@@ -72,8 +71,7 @@ typedef struct {
     unsigned int unmatched; /**< unmatched datagrams (received, but not
                                queued any longer) */
     unsigned long output_jiffies; /**< time of last output */
-}
-ec_stats_t;
+} ec_stats_t;
 
 /*****************************************************************************/
 
@@ -81,8 +79,7 @@ ec_stats_t;
  *
  * Manages slaves, domains and IO.
  */
-struct ec_master
-{
+struct ec_master {
     struct kobject kobj; /**< kobject */
     unsigned int index; /**< master index */
     unsigned int reserved; /**< non-zero, if the master is reserved for RT */
@@ -161,7 +158,7 @@ struct ec_master
     wait_queue_head_t eeprom_queue; /**< wait queue for EEPROM
                                       write requests from user space */
 
-    struct list_head sdo_requests; /**< Sdo access requests */
+    struct list_head slave_sdo_requests; /**< Sdo access requests. */
     struct semaphore sdo_sem; /**< semaphore protecting the list of
                                    Sdo access requests */
     wait_queue_head_t sdo_queue; /**< wait queue for Sdo access requests

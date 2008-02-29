@@ -51,7 +51,6 @@
  */
 typedef struct {
     struct list_head list; /**< List item. */
-    ec_slave_t *slave; /**< Slave. */
     uint16_t index; /**< Sdo index. */
     uint8_t subindex; /**< Sdo subindex. */
     uint8_t *data; /**< Pointer to Sdo data. */
@@ -61,7 +60,7 @@ typedef struct {
 
 /*****************************************************************************/
 
-void ec_sdo_request_init(ec_sdo_request_t *, ec_slave_t *, uint16_t, uint8_t);
+void ec_sdo_request_init(ec_sdo_request_t *, uint16_t, uint8_t);
 void ec_sdo_request_clear(ec_sdo_request_t *);
 
 /*****************************************************************************/

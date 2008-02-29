@@ -264,23 +264,23 @@ ssize_t ec_sdo_entry_read_value(
 {
     ec_master_t *master = entry->sdo->slave->master;
     off_t off = 0;
-    ec_sdo_request_t request;
+    ec_master_sdo_request_t request;
 
-    ec_sdo_request_init(&request, entry->sdo->slave,
-            entry->sdo->index, entry->subindex);
+    request.slave = entry->sdo->slave;
+    ec_sdo_request_init(&request.req, entry->sdo->index, entry->subindex);
 
     // schedule request.
     down(&master->sdo_sem);
-    list_add_tail(&request.list, &master->sdo_requests);
+    list_add_tail(&request.list, &master->slave_sdo_requests);
     up(&master->sdo_sem);
 
     // wait for processing through FSM
     if (wait_event_interruptible(master->sdo_queue,
-                request.state != EC_REQUEST_QUEUED)) {
+                request.req.state != EC_REQUEST_QUEUED)) {
         // interrupted by signal
         down(&master->sdo_sem);
-        if (request.state == EC_REQUEST_QUEUED) {
-            list_del(&request.list);
+        if (request.req.state == EC_REQUEST_QUEUED) {
+            list_del(&request.req.list);
             up(&master->sdo_sem);
             return -EINTR;
         }
@@ -289,14 +289,14 @@ ssize_t ec_sdo_entry_read_value(
     }
 
     // wait until master FSM has finished processing
-    wait_event(master->sdo_queue, request.state != EC_REQUEST_IN_PROGRESS);
+    wait_event(master->sdo_queue, request.req.state != EC_REQUEST_IN_PROGRESS);
 
-    if (request.state != EC_REQUEST_COMPLETE)
+    if (request.req.state != EC_REQUEST_COMPLETE)
         return -EIO;
 
-    off += ec_sdo_entry_format_data(entry, &request, buffer);
+    off += ec_sdo_entry_format_data(entry, &request.req, buffer);
 
-    ec_sdo_request_clear(&request);
+    ec_sdo_request_clear(&request.req);
     return off;
 }
 
