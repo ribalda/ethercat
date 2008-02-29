@@ -23,6 +23,9 @@ Version 1.4.0:
 * Remove master_state_t.
 * Scanning of Sdo dictionary / writing EEPROM in OPERATION state.
 * Adapt remaining examples.
+* Separate Pdo and Pdo entry classes.
+* Attach Pdo names.
+* Replace ec_sdo_data_t with ec_sdo_request_t.
 
 Future issues:
 
