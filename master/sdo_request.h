@@ -33,89 +33,35 @@
 
 /**
    \file
-   EtherCAT CANopen structures.
+   EtherCAT CANopen Sdo request structure.
 */
 
 /*****************************************************************************/
 
-#ifndef _EC_CANOPEN_H_
-#define _EC_CANOPEN_H_
+#ifndef __EC_SDO_REQUEST_H__
+#define __EC_SDO_REQUEST_H__
 
 #include <linux/list.h>
-#include <linux/kobject.h>
 
 #include "globals.h"
-#include "slave.h"
 
 /*****************************************************************************/
 
-/** CANopen Sdo.
- */
-struct ec_sdo {
-    struct kobject kobj; /**< kobject */
-    struct list_head list; /**< list item */
-    ec_slave_t *slave; /**< parent slave */
-    uint16_t index; /**< Sdo index */
-    uint8_t object_code; /**< object code */
-    char *name; /**< Sdo name */
-    uint8_t subindices; /**< subindices */
-    struct list_head entries; /**< entry list */
-};
-
-/*****************************************************************************/
-
-/** CANopen Sdo entry.
+/** CANopen Sdo request.
  */
 typedef struct {
-    struct kobject kobj; /**< kobject */
-    struct list_head list; /**< list item */
-    ec_sdo_t *sdo; /**< parent Sdo */
-    uint8_t subindex; /**< entry subindex */
-    uint16_t data_type; /**< entry data type */
-    uint16_t bit_length; /**< entry length in bit */
-    char *description; /**< entry description */
-} ec_sdo_entry_t;
-
-/*****************************************************************************/
-
-/** CANopen Sdo configuration data.
- */
-typedef struct {
-    struct list_head list; /**< list item */
-    uint16_t index; /**< Sdo index */
-    uint8_t subindex; /**< Sdo subindex */
-    uint8_t *data; /**< pointer to Sdo data */
-    size_t size; /**< size of Sdo data */
-}
-ec_sdo_data_t;
-
-/*****************************************************************************/
-
-/**
-   CANopen Sdo request.
-*/
-
-typedef struct {
-    struct list_head list; /**< list item */
-    ec_slave_t *slave; /**< Slave owning the Sdo. */
+    struct list_head list; /**< List item. */
+    ec_slave_t *slave; /**< Slave. */
     uint16_t index; /**< Sdo index. */
     uint8_t subindex; /**< Sdo subindex. */
-    uint8_t *data; /**< pointer to Sdo data */
-    size_t size; /**< size of Sdo data */
-    ec_request_state_t state; /**< Sdo request state */
+    uint8_t *data; /**< Pointer to Sdo data. */
+    size_t size; /**< Size of Sdo data. */
+    ec_request_state_t state; /**< Sdo request state. */
 } ec_sdo_request_t;
 
 /*****************************************************************************/
 
-int ec_sdo_init(ec_sdo_t *, uint16_t, ec_slave_t *);
-void ec_sdo_destroy(ec_sdo_t *);
-ec_sdo_entry_t *ec_sdo_get_entry(ec_sdo_t *, uint8_t);
-
-int ec_sdo_entry_init(ec_sdo_entry_t *, uint8_t, ec_sdo_t *);
-void ec_sdo_entry_destroy(ec_sdo_entry_t *);
-
-void ec_sdo_request_init_read(ec_sdo_request_t *, ec_slave_t *, uint16_t,
-        uint8_t);
+void ec_sdo_request_init(ec_sdo_request_t *, ec_slave_t *, uint16_t, uint8_t);
 void ec_sdo_request_clear(ec_sdo_request_t *);
 
 /*****************************************************************************/

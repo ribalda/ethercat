@@ -33,32 +33,34 @@
 
 EXTRA_DIST = \
 	Kbuild.in \
-	canopen.c canopen.h \
 	datagram.c datagram.h \
 	debug.c	debug.h \
 	device.c device.h \
-	pdo.c pdo.h \
-	sync.c sync.h \
-	fmmu_config.c fmmu_config.h \
 	domain.c domain.h \
 	doxygen.c \
 	ethernet.c ethernet.h \
-	fsm_sii.c fsm_sii.h \
+	fmmu_config.c fmmu_config.h \
 	fsm_change.c fsm_change.h \
 	fsm_coe.c fsm_coe.h \
 	fsm_coe_map.c fsm_coe_map.h \
-	fsm_pdo_mapping.c fsm_pdo_mapping.h \
-	fsm_pdo_config.c fsm_pdo_config.h \
-	fsm_slave_scan.c fsm_slave_scan.h \
-	fsm_slave_config.c fsm_slave_config.h \
 	fsm_master.c fsm_master.h \
+	fsm_pdo_config.c fsm_pdo_config.h \
+	fsm_pdo_mapping.c fsm_pdo_mapping.h \
+	fsm_sii.c fsm_sii.h \
+	fsm_slave_config.c fsm_slave_config.h \
+	fsm_slave_scan.c fsm_slave_scan.h \
 	globals.h \
 	mailbox.c mailbox.h \
 	master.c master.h \
 	module.c \
+	pdo.c pdo.h \
+	pdo_mapping.c pdo_mapping.h \
+	sdo.c sdo.h \
+	sdo_entry.c sdo_entry.h \
+	sdo_request.c sdo_request.h \
 	slave.c slave.h \
 	slave_config.c slave_config.h \
-	pdo_mapping.c pdo_mapping.h \
+	sync.c sync.h \
 	xmldev.c xmldev.h
 
 modules:

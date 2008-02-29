@@ -198,8 +198,7 @@ typedef enum {
     EC_REQUEST_IN_PROGRESS,
     EC_REQUEST_COMPLETE,
     EC_REQUEST_FAILURE
-}
-ec_request_state_t;
+} ec_request_state_t;
 
 /*****************************************************************************/
 
@@ -213,7 +212,6 @@ typedef enum {
 /*****************************************************************************/
 
 typedef struct ec_slave ec_slave_t; /**< \see ec_slave. */
-typedef struct ec_sdo ec_sdo_t; /**< \see ec_sdo */
 
 /*****************************************************************************/
 

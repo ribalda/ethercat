@@ -33,52 +33,42 @@
 
 /**
    \file
-   EtherCAT CoE state machines.
+   EtherCAT CANopen Sdo entry structure.
 */
 
 /*****************************************************************************/
 
-#ifndef __EC_FSM_COE__
-#define __EC_FSM_COE__
+#ifndef __EC_SDO_ENTRY_H__
+#define __EC_SDO_ENTRY_H__
+
+#include <linux/list.h>
+#include <linux/kobject.h>
 
 #include "globals.h"
-#include "../include/ecrt.h"
-#include "datagram.h"
-#include "slave.h"
-#include "sdo.h"
-#include "sdo_request.h"
 
 /*****************************************************************************/
 
-typedef struct ec_fsm_coe ec_fsm_coe_t; /**< \see ec_fsm_coe */
+struct ec_sdo;
+typedef struct ec_sdo ec_sdo_t;
 
-/** Finite state machines for the CANopen-over-EtherCAT protocol.
+/*****************************************************************************/
+
+/** CANopen Sdo entry.
  */
-struct ec_fsm_coe {
-    ec_slave_t *slave; /**< slave the FSM runs on */
-    ec_datagram_t *datagram; /**< datagram used in the state machine */
-    unsigned int retries; /**< retries upon datagram timeout */
-
-    void (*state)(ec_fsm_coe_t *); /**< CoE state function */
-    ec_sdo_data_t *sdodata; /**< input/output: Sdo data object */
-    cycles_t cycles_start; /**< CoE timestamp */
-    ec_sdo_t *sdo; /**< current Sdo */
-    uint8_t subindex; /**< current subindex */
-    ec_sdo_request_t *request; /**< Sdo request */
-    uint8_t toggle; /**< toggle bit for segment commands */
-};
+typedef struct {
+    struct kobject kobj; /**< kobject */
+    struct list_head list; /**< List item. */
+    ec_sdo_t *sdo; /**< Parent Sdo. */
+    uint8_t subindex; /**< Subindex. */
+    uint16_t data_type; /**< Data type. */
+    uint16_t bit_length; /**< Data size in bit. */
+    char *description; /**< Description. */
+} ec_sdo_entry_t;
 
 /*****************************************************************************/
 
-void ec_fsm_coe_init(ec_fsm_coe_t *, ec_datagram_t *);
-void ec_fsm_coe_clear(ec_fsm_coe_t *);
-
-void ec_fsm_coe_dictionary(ec_fsm_coe_t *, ec_slave_t *);
-void ec_fsm_coe_download(ec_fsm_coe_t *, ec_slave_t *, ec_sdo_data_t *);
-void ec_fsm_coe_upload(ec_fsm_coe_t *, ec_slave_t *, ec_sdo_request_t *);
-
-int ec_fsm_coe_exec(ec_fsm_coe_t *);
-int ec_fsm_coe_success(ec_fsm_coe_t *);
+int ec_sdo_entry_init(ec_sdo_entry_t *, uint8_t, ec_sdo_t *);
+void ec_sdo_entry_destroy(ec_sdo_entry_t *);
 
 /*****************************************************************************/
 

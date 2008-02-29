@@ -33,53 +33,44 @@
 
 /**
    \file
-   EtherCAT CoE state machines.
+   Canopen-over-EtherCAT Sdo request functions.
 */
 
 /*****************************************************************************/
 
-#ifndef __EC_FSM_COE__
-#define __EC_FSM_COE__
+#include <linux/module.h>
 
-#include "globals.h"
-#include "../include/ecrt.h"
-#include "datagram.h"
-#include "slave.h"
-#include "sdo.h"
 #include "sdo_request.h"
 
 /*****************************************************************************/
 
-typedef struct ec_fsm_coe ec_fsm_coe_t; /**< \see ec_fsm_coe */
-
-/** Finite state machines for the CANopen-over-EtherCAT protocol.
+/** Sdo request constructor.
  */
-struct ec_fsm_coe {
-    ec_slave_t *slave; /**< slave the FSM runs on */
-    ec_datagram_t *datagram; /**< datagram used in the state machine */
-    unsigned int retries; /**< retries upon datagram timeout */
-
-    void (*state)(ec_fsm_coe_t *); /**< CoE state function */
-    ec_sdo_data_t *sdodata; /**< input/output: Sdo data object */
-    cycles_t cycles_start; /**< CoE timestamp */
-    ec_sdo_t *sdo; /**< current Sdo */
-    uint8_t subindex; /**< current subindex */
-    ec_sdo_request_t *request; /**< Sdo request */
-    uint8_t toggle; /**< toggle bit for segment commands */
-};
-
-/*****************************************************************************/
-
-void ec_fsm_coe_init(ec_fsm_coe_t *, ec_datagram_t *);
-void ec_fsm_coe_clear(ec_fsm_coe_t *);
-
-void ec_fsm_coe_dictionary(ec_fsm_coe_t *, ec_slave_t *);
-void ec_fsm_coe_download(ec_fsm_coe_t *, ec_slave_t *, ec_sdo_data_t *);
-void ec_fsm_coe_upload(ec_fsm_coe_t *, ec_slave_t *, ec_sdo_request_t *);
-
-int ec_fsm_coe_exec(ec_fsm_coe_t *);
-int ec_fsm_coe_success(ec_fsm_coe_t *);
+void ec_sdo_request_init(
+        ec_sdo_request_t *req, /**< Sdo request. */
+        ec_slave_t *slave, /**< Slave owning the Sdo. */
+        uint16_t index, /**< Sdo index. */
+        uint8_t subindex /**< Sdo subindex. */
+        )
+{
+    req->slave = slave;
+    req->index = index;
+    req->subindex = subindex;
+    req->data = NULL;
+    req->size = 0;
+    req->state = EC_REQUEST_QUEUED;
+}
 
 /*****************************************************************************/
 
-#endif
+/** Sdo request destructor.
+ */
+void ec_sdo_request_clear(
+        ec_sdo_request_t *req /**< Sdo request. */
+        )
+{
+    if (req->data)
+        kfree(req->data);
+}
+
+/*****************************************************************************/

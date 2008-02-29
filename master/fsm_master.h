@@ -45,7 +45,7 @@
 
 #include "globals.h"
 #include "datagram.h"
-#include "canopen.h"
+#include "sdo_request.h"
 #include "fsm_slave_config.h"
 #include "fsm_slave_scan.h"
 #include "fsm_coe_map.h"
