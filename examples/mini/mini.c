@@ -80,29 +80,29 @@ const static ec_pdo_entry_reg_t domain1_regs[] = {
 /*****************************************************************************/
 
 #ifdef CONFIGURE_MAPPING
-const ec_pdo_entry_info_t el3162_channel1[] = {
+static ec_pdo_entry_info_t el3162_channel1[] = {
     {0x3101, 1,  8}, // status
     {0x3101, 2, 16}  // value
 };
 
-const ec_pdo_entry_info_t el3162_channel2[] = {
+static ec_pdo_entry_info_t el3162_channel2[] = {
     {0x3102, 1,  8}, // status
     {0x3102, 2, 16}  // value
 };
 
-const ec_pdo_info_t el3162_mapping[] = {
+static ec_pdo_info_t el3162_mapping[] = {
     {EC_DIR_INPUT, 0x1A00, 2, el3162_channel1},
     {EC_DIR_INPUT, 0x1A01, 2, el3162_channel2},
 };
 
-const ec_pdo_entry_info_t el2004_channels[] = {
+static ec_pdo_entry_info_t el2004_channels[] = {
     {0x3001, 1, 1}, // Value 1
     {0x3001, 2, 1}, // Value 2
     {0x3001, 3, 1}, // Value 3
     {0x3001, 4, 1}  // Value 4
 };
 
-const ec_pdo_info_t el2004_mapping[] = {
+static ec_pdo_info_t el2004_mapping[] = {
     {EC_DIR_OUTPUT, 0x1600, 1, &el2004_channels[0]},
     {EC_DIR_OUTPUT, 0x1601, 1, &el2004_channels[1]},
     {EC_DIR_OUTPUT, 0x1602, 1, &el2004_channels[2]},
