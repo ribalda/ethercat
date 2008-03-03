@@ -298,11 +298,15 @@ void ec_fsm_master_state_broadcast(ec_fsm_master_t *fsm /**< master state machin
         }
     }
 
-    // fetch state from each slave
-    fsm->slave = list_entry(master->slaves.next, ec_slave_t, list);
-    ec_datagram_fprd(fsm->datagram, fsm->slave->station_address, 0x0130, 2);
-    fsm->retries = EC_FSM_RETRIES;
-    fsm->state = ec_fsm_master_state_read_states;
+    if (list_empty(&master->slaves)) {
+        fsm->state = ec_fsm_master_state_end;
+    } else {
+        // fetch state from each slave
+        fsm->slave = list_entry(master->slaves.next, ec_slave_t, list);
+        ec_datagram_fprd(fsm->datagram, fsm->slave->station_address, 0x0130, 2);
+        fsm->retries = EC_FSM_RETRIES;
+        fsm->state = ec_fsm_master_state_read_states;
+    }
 }
 
 /*****************************************************************************/
