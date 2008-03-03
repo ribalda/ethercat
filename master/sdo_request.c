@@ -44,19 +44,19 @@
 
 /*****************************************************************************/
 
+void ec_sdo_request_clear_data(ec_sdo_request_t *);
+
+/*****************************************************************************/
+
 /** Sdo request constructor.
  */
 void ec_sdo_request_init(
-        ec_sdo_request_t *req, /**< Sdo request. */
-        uint16_t index, /**< Sdo index. */
-        uint8_t subindex /**< Sdo subindex. */
+        ec_sdo_request_t *req /**< Sdo request. */
         )
 {
-    req->index = index;
-    req->subindex = subindex;
     req->data = NULL;
     req->size = 0;
-    req->state = EC_REQUEST_QUEUED;
+    req->state = EC_REQUEST_COMPLETE;
 }
 
 /*****************************************************************************/
@@ -67,8 +67,40 @@ void ec_sdo_request_clear(
         ec_sdo_request_t *req /**< Sdo request. */
         )
 {
-    if (req->data)
+    ec_sdo_request_clear_data(req);
+}
+
+/*****************************************************************************/
+
+/** Sdo request destructor.
+ */
+void ec_sdo_request_clear_data(
+        ec_sdo_request_t *req /**< Sdo request. */
+        )
+{
+    if (req->data) {
         kfree(req->data);
+        req->data = NULL;
+    }
+
+    req->size = 0;
+}
+
+/*****************************************************************************/
+
+/** Start an Sdo read operation (download).
+ */
+void ec_sdo_request_read(
+        ec_sdo_request_t *req, /**< Sdo request. */
+        uint16_t index, /**< Sdo index. */
+        uint8_t subindex /**< Sdo subindex. */
+        )
+{
+    req->index = index;
+    req->subindex = subindex;
+    req->state = EC_REQUEST_QUEUED;
+
+    ec_sdo_request_clear_data(req);
 }
 
 /*****************************************************************************/

@@ -60,8 +60,10 @@ typedef struct {
 
 /*****************************************************************************/
 
-void ec_sdo_request_init(ec_sdo_request_t *, uint16_t, uint8_t);
+void ec_sdo_request_init(ec_sdo_request_t *);
 void ec_sdo_request_clear(ec_sdo_request_t *);
+
+void ec_sdo_request_read(ec_sdo_request_t *, uint16_t, uint8_t);
 
 /*****************************************************************************/
 

@@ -70,8 +70,9 @@ void ec_fsm_coe_map_init(
         ec_fsm_coe_t *fsm_coe /**< CoE state machine to use */
         )
 {
-    fsm->state = NULL;
     fsm->fsm_coe = fsm_coe;
+    fsm->state = NULL;
+    ec_sdo_request_init(&fsm->request);
     ec_pdo_mapping_init(&fsm->mapping);
 }
 
@@ -83,6 +84,7 @@ void ec_fsm_coe_map_init(
 
 void ec_fsm_coe_map_clear(ec_fsm_coe_map_t *fsm /**< finite state machine */)
 {
+    ec_sdo_request_clear(&fsm->request);
     ec_pdo_mapping_clear(&fsm->mapping);
 }
 
@@ -179,7 +181,7 @@ void ec_fsm_coe_map_action_next_dir(
 
         ec_pdo_mapping_clear_pdos(&fsm->mapping);
 
-        ec_sdo_request_init(&fsm->request, fsm->sync_sdo_index, 0);
+        ec_sdo_request_read(&fsm->request, fsm->sync_sdo_index, 0);
         fsm->state = ec_fsm_coe_map_state_pdo_count;
         ec_fsm_coe_upload(fsm->fsm_coe, fsm->slave, &fsm->request);
         ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
@@ -233,7 +235,7 @@ void ec_fsm_coe_map_action_next_pdo(
         )
 {
     if (fsm->sync_subindex <= fsm->sync_subindices) {
-        ec_sdo_request_init(&fsm->request, fsm->sync_sdo_index,
+        ec_sdo_request_read(&fsm->request, fsm->sync_sdo_index,
                 fsm->sync_subindex);
         fsm->state = ec_fsm_coe_map_state_pdo;
         ec_fsm_coe_upload(fsm->fsm_coe, fsm->slave, &fsm->request);
@@ -290,7 +292,7 @@ void ec_fsm_coe_map_state_pdo(
 
     list_add_tail(&fsm->pdo->list, &fsm->mapping.pdos);
 
-    ec_sdo_request_init(&fsm->request, fsm->pdo->index, 0);
+    ec_sdo_request_read(&fsm->request, fsm->pdo->index, 0);
     fsm->state = ec_fsm_coe_map_state_pdo_entry_count;
     ec_fsm_coe_upload(fsm->fsm_coe, fsm->slave, &fsm->request);
     ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
@@ -336,7 +338,7 @@ void ec_fsm_coe_map_action_next_pdo_entry(
         )
 {
     if (fsm->pdo_subindex <= fsm->pdo_subindices) {
-        ec_sdo_request_init(&fsm->request, fsm->pdo->index, fsm->pdo_subindex);
+        ec_sdo_request_read(&fsm->request, fsm->pdo->index, fsm->pdo_subindex);
         fsm->state = ec_fsm_coe_map_state_pdo_entry;
         ec_fsm_coe_upload(fsm->fsm_coe, fsm->slave, &fsm->request);
         ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately

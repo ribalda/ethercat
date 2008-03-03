@@ -267,7 +267,8 @@ ssize_t ec_sdo_entry_read_value(
     ec_master_sdo_request_t request;
 
     request.slave = entry->sdo->slave;
-    ec_sdo_request_init(&request.req, entry->sdo->index, entry->subindex);
+    ec_sdo_request_init(&request.req);
+    ec_sdo_request_read(&request.req, entry->sdo->index, entry->subindex);
 
     // schedule request.
     down(&master->sdo_sem);
