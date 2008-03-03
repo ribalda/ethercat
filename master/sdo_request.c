@@ -55,7 +55,8 @@ void ec_sdo_request_init(
         )
 {
     req->data = NULL;
-    req->size = 0;
+    req->mem_size = 0;
+    req->data_size = 0;
     req->state = EC_REQUEST_COMPLETE;
 }
 
@@ -83,14 +84,15 @@ void ec_sdo_request_clear_data(
         req->data = NULL;
     }
 
-    req->size = 0;
+    req->mem_size = 0;
+    req->data_size = 0;
 }
 
 /*****************************************************************************/
 
-/** Start an Sdo read operation (download).
+/** Set the Sdo address.
  */
-void ec_sdo_request_read(
+void ec_sdo_request_address(
         ec_sdo_request_t *req, /**< Sdo request. */
         uint16_t index, /**< Sdo index. */
         uint8_t subindex /**< Sdo subindex. */
@@ -98,9 +100,74 @@ void ec_sdo_request_read(
 {
     req->index = index;
     req->subindex = subindex;
-    req->state = EC_REQUEST_QUEUED;
+}
+
+/*****************************************************************************/
+
+/** Pre-allocates the data memory.
+ *
+ * If the \a mem_size is already bigger than \a size, nothing is done.
+ */
+int ec_sdo_request_alloc(
+        ec_sdo_request_t *req, /**< Sdo request. */
+        size_t size /**< Data size to allocate. */
+        )
+{
+    if (size <= req->mem_size)
+        return 0;
 
     ec_sdo_request_clear_data(req);
+
+    if (!(req->data = (uint8_t *) kmalloc(size, GFP_KERNEL))) {
+        EC_ERR("Failed to allocate %u bytes of Sdo memory.\n", size);
+        return -1;
+    }
+
+    req->mem_size = size;
+    req->data_size = 0;
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Copies Sdo data from an external source.
+ *
+ * If the \a mem_size is to small, new memory is allocated.
+ */
+int ec_sdo_request_copy_data(
+        ec_sdo_request_t *req, /**< Sdo request. */
+        const uint8_t *source, /**< Source data. */
+        size_t size /**< Number of bytes in \a source. */
+        )
+{
+    if (ec_sdo_request_alloc(req, size))
+        return -1;
+
+    memcpy(req->data, source, size);
+    req->data_size = size;
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Start an Sdo read operation (Sdo upload).
+ */
+void ec_sdo_request_read(
+        ec_sdo_request_t *req /**< Sdo request. */
+        )
+{
+    req->state = EC_REQUEST_QUEUED;
+}
+
+/*****************************************************************************/
+
+/** Start an Sdo write operation (Sdo download).
+ */
+void ec_sdo_request_write(
+        ec_sdo_request_t *req /**< Sdo request. */
+        )
+{
+    req->state = EC_REQUEST_QUEUED;
 }
 
 /*****************************************************************************/

@@ -159,7 +159,7 @@ void ec_slave_config_clear(struct kobject *kobj /**< kobject of the config. */)
 {
     ec_slave_config_t *sc;
     ec_direction_t dir;
-    ec_sdo_data_t *sdodata, *next_sdodata;
+    ec_sdo_request_t *req, *next_req;
 
     sc = container_of(kobj, ec_slave_config_t, kobj);
 
@@ -168,13 +168,11 @@ void ec_slave_config_clear(struct kobject *kobj /**< kobject of the config. */)
         ec_pdo_mapping_clear(&sc->mapping[dir]);
 
     // free all Sdo configurations
-    list_for_each_entry_safe(sdodata, next_sdodata, &sc->sdo_configs, list) {
-        list_del(&sdodata->list);
-        kfree(sdodata->data);
-        kfree(sdodata);
+    list_for_each_entry_safe(req, next_req, &sc->sdo_configs, list) {
+        list_del(&req->list);
+        ec_sdo_request_clear(req);
+        kfree(req);
     }
-
-    /** \todo */
 
     kfree(sc);
 }
@@ -234,7 +232,7 @@ ssize_t ec_slave_config_info(
     const ec_pdo_t *pdo;
     const ec_pdo_entry_t *entry;
     char str[20];
-    ec_sdo_data_t *sdodata;
+    const ec_sdo_request_t *req;
 
     buf += sprintf(buf, "Alias: 0x%04X (%u)\n", sc->alias, sc->alias);
     buf += sprintf(buf, "Position: %u\n", sc->position);
@@ -265,15 +263,15 @@ ssize_t ec_slave_config_info(
     if (!list_empty((struct list_head *) &sc->sdo_configs)) {
         buf += sprintf(buf, "\nSdo configurations:\n");
 
-        list_for_each_entry(sdodata, &sc->sdo_configs, list) {
-            switch (sdodata->size) {
-                case 1: sprintf(str, "%u", EC_READ_U8(sdodata->data)); break;
-                case 2: sprintf(str, "%u", EC_READ_U16(sdodata->data)); break;
-                case 4: sprintf(str, "%u", EC_READ_U32(sdodata->data)); break;
+        list_for_each_entry(req, &sc->sdo_configs, list) {
+            switch (req->data_size) {
+                case 1: sprintf(str, "%u", EC_READ_U8(req->data)); break;
+                case 2: sprintf(str, "%u", EC_READ_U16(req->data)); break;
+                case 4: sprintf(str, "%u", EC_READ_U32(req->data)); break;
                 default: sprintf(str, "(invalid size)"); break;
             }
             buf += sprintf(buf, "  0x%04X:%-3i -> %s\n",
-                    sdodata->index, sdodata->subindex, str);
+                    req->index, req->subindex, str);
         }
         buf += sprintf(buf, "\n");
     }
@@ -310,31 +308,29 @@ int ec_slave_config_sdo(ec_slave_config_t *sc, uint16_t index,
         uint8_t subindex, const uint8_t *data, size_t size)
 {
     ec_slave_t *slave = sc->slave;
-    ec_sdo_data_t *sdodata;
+    ec_sdo_request_t *req;
 
     if (slave && !(slave->sii.mailbox_protocols & EC_MBOX_COE)) {
         EC_ERR("Slave %u does not support CoE!\n", slave->ring_position);
         return -1;
     }
 
-    if (!(sdodata = (ec_sdo_data_t *)
-          kmalloc(sizeof(ec_sdo_data_t), GFP_KERNEL))) {
-        EC_ERR("Failed to allocate memory for Sdo configuration object!\n");
+    if (!(req = (ec_sdo_request_t *)
+          kmalloc(sizeof(ec_sdo_request_t), GFP_KERNEL))) {
+        EC_ERR("Failed to allocate memory for Sdo configuration!\n");
         return -1;
     }
 
-    if (!(sdodata->data = (uint8_t *) kmalloc(size, GFP_KERNEL))) {
-        EC_ERR("Failed to allocate memory for Sdo configuration data!\n");
-        kfree(sdodata);
+    ec_sdo_request_init(req);
+    ec_sdo_request_address(req, index, subindex);
+
+    if (ec_sdo_request_copy_data(req, data, size)) {
+        ec_sdo_request_clear(req);
+        kfree(req);
         return -1;
     }
-
-    sdodata->index = index;
-    sdodata->subindex = subindex;
-    memcpy(sdodata->data, data, size);
-    sdodata->size = size;
-
-    list_add_tail(&sdodata->list, &sc->sdo_configs);
+        
+    list_add_tail(&req->list, &sc->sdo_configs);
     return 0;
 }
 

@@ -65,7 +65,7 @@ void ec_fsm_pdo_config_init(
         )
 {
     fsm->fsm_coe = fsm_coe;
-    fsm->sdodata.data = (uint8_t *) &fsm->sdo_value;
+    ec_sdo_request_init(&fsm->request);
 }
 
 /*****************************************************************************/
@@ -76,6 +76,7 @@ void ec_fsm_pdo_config_clear(
         ec_fsm_pdo_config_t *fsm /**< pdo_config state machine */
         )
 {
+    ec_sdo_request_clear(&fsm->request);
 }
 
 /*****************************************************************************/
@@ -204,17 +205,22 @@ void ec_fsm_pdo_config_next_pdo(
                 fsm->pdo->index, fsm->slave->ring_position);
     }
 
+    if (ec_sdo_request_alloc(&fsm->request, 4)) {
+        fsm->state = ec_fsm_pdo_config_state_error;
+        return;
+    }
+
     // set mapped Pdo count to zero
-    fsm->sdodata.index = fsm->pdo->index;
-    fsm->sdodata.subindex = 0; // number of configured entries
-    EC_WRITE_U8(&fsm->sdo_value, 0);
-    fsm->sdodata.size = 1;
+    EC_WRITE_U8(&fsm->request.data, 0);
+    fsm->request.data_size = 1;
+    ec_sdo_request_address(&fsm->request, fsm->pdo->index, 0);
+    ec_sdo_request_write(&fsm->request);
     if (fsm->slave->master->debug_level)
         EC_DBG("Setting entry count to zero for Pdo 0x%04X.\n",
                 fsm->pdo->index);
 
     fsm->state = ec_fsm_pdo_config_state_zero_count;
-    ec_fsm_coe_download(fsm->fsm_coe, fsm->slave, &fsm->sdodata);
+    ec_fsm_coe_download(fsm->fsm_coe, fsm->slave, &fsm->request);
     ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
 }
 
@@ -243,18 +249,18 @@ void ec_fsm_pdo_config_add_entry(
 {
     uint32_t value;
 
-    fsm->sdodata.subindex = fsm->entry_count;
     value = fsm->entry->index << 16
         | fsm->entry->subindex << 8 | fsm->entry->bit_length;
-    EC_WRITE_U32(&fsm->sdo_value, value);
-    fsm->sdodata.size = 4;
-
+    EC_WRITE_U32(&fsm->request.data, value);
+    fsm->request.data_size = 4;
+    ec_sdo_request_address(&fsm->request, fsm->pdo->index, fsm->entry_count);
+    ec_sdo_request_write(&fsm->request);
     if (fsm->slave->master->debug_level)
         EC_DBG("Configuring Pdo entry %08X at position %u.\n",
                 value, fsm->entry_count);
     
     fsm->state = ec_fsm_pdo_config_state_add_entry;
-    ec_fsm_coe_download(fsm->fsm_coe, fsm->slave, &fsm->sdodata);
+    ec_fsm_coe_download(fsm->fsm_coe, fsm->slave, &fsm->request);
     ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
 }
 
@@ -311,16 +317,16 @@ void ec_fsm_pdo_config_state_add_entry(
     // find next entry
     if (!(fsm->entry = ec_fsm_pdo_config_next_entry(fsm, &fsm->entry->list))) {
         // No more entries to add. Write entry count.
-        fsm->sdodata.subindex = 0;
-        EC_WRITE_U8(&fsm->sdo_value, fsm->entry_count);
-        fsm->sdodata.size = 1;
-
+        EC_WRITE_U8(&fsm->request.data, fsm->entry_count);
+        fsm->request.data_size = 1;
+        ec_sdo_request_address(&fsm->request, fsm->pdo->index, 0);
+        ec_sdo_request_write(&fsm->request);
         if (fsm->slave->master->debug_level)
             EC_DBG("Setting number of Pdo entries to %u.\n",
                     fsm->entry_count);
         
         fsm->state = ec_fsm_pdo_config_state_entry_count;
-        ec_fsm_coe_download(fsm->fsm_coe, fsm->slave, &fsm->sdodata);
+        ec_fsm_coe_download(fsm->fsm_coe, fsm->slave, &fsm->request);
         ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
         return;
     }

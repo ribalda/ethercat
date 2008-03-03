@@ -60,7 +60,6 @@ struct ec_fsm_coe {
     unsigned int retries; /**< retries upon datagram timeout */
 
     void (*state)(ec_fsm_coe_t *); /**< CoE state function */
-    ec_sdo_data_t *sdodata; /**< input/output: Sdo data object */
     cycles_t cycles_start; /**< CoE timestamp */
     ec_sdo_t *sdo; /**< current Sdo */
     uint8_t subindex; /**< current subindex */
@@ -74,7 +73,7 @@ void ec_fsm_coe_init(ec_fsm_coe_t *, ec_datagram_t *);
 void ec_fsm_coe_clear(ec_fsm_coe_t *);
 
 void ec_fsm_coe_dictionary(ec_fsm_coe_t *, ec_slave_t *);
-void ec_fsm_coe_download(ec_fsm_coe_t *, ec_slave_t *, ec_sdo_data_t *);
+void ec_fsm_coe_download(ec_fsm_coe_t *, ec_slave_t *, ec_sdo_request_t *);
 void ec_fsm_coe_upload(ec_fsm_coe_t *, ec_slave_t *, ec_sdo_request_t *);
 
 int ec_fsm_coe_exec(ec_fsm_coe_t *);

@@ -65,7 +65,7 @@ struct ec_fsm_slave_config
     unsigned int retries; /**< Retries on datagram timeout. */
 
     void (*state)(ec_fsm_slave_config_t *); /**< State function. */
-    ec_sdo_data_t *sdodata; /**< Sdo configuration data. */
+    ec_sdo_request_t *request; /**< Sdo request for Sdo configuration. */
     ec_fsm_change_t fsm_change; /**< State change state machine. */
     ec_fsm_coe_t fsm_coe; /**< CoE state machine. */
     ec_fsm_pdo_mapping_t fsm_pdo_map; /**< Pdo mapping state machine. */

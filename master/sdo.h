@@ -64,20 +64,6 @@ struct ec_sdo {
 
 /*****************************************************************************/
 
-/** CANopen Sdo configuration data.
- * \todo remove
- */
-typedef struct {
-    struct list_head list; /**< list item */
-    uint16_t index; /**< Sdo index */
-    uint8_t subindex; /**< Sdo subindex */
-    uint8_t *data; /**< pointer to Sdo data */
-    size_t size; /**< size of Sdo data */
-}
-ec_sdo_data_t;
-
-/*****************************************************************************/
-
 int ec_sdo_init(ec_sdo_t *, uint16_t, ec_slave_t *);
 void ec_sdo_destroy(ec_sdo_t *);
 

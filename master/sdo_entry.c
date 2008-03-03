@@ -242,7 +242,7 @@ not_fit:
             "Invalid bit length %u for data type 0x%04X. Data:\n",
             entry->bit_length, entry->data_type);
 raw_data:
-    for (i = 0; i < request->size; i++)
+    for (i = 0; i < request->data_size; i++)
         off += sprintf(buffer + off, "%02X (%c)\n",
                 request->data[i], request->data[i]);
     return off;
@@ -268,7 +268,8 @@ ssize_t ec_sdo_entry_read_value(
 
     request.slave = entry->sdo->slave;
     ec_sdo_request_init(&request.req);
-    ec_sdo_request_read(&request.req, entry->sdo->index, entry->subindex);
+    ec_sdo_request_address(&request.req, entry->sdo->index, entry->subindex);
+    ec_sdo_request_read(&request.req);
 
     // schedule request.
     down(&master->sdo_sem);

@@ -183,13 +183,14 @@ void ec_fsm_coe_dictionary(ec_fsm_coe_t *fsm, /**< finite state machine */
    Starts to download an Sdo to a slave.
 */
 
-void ec_fsm_coe_download(ec_fsm_coe_t *fsm, /**< finite state machine */
-                         ec_slave_t *slave, /**< EtherCAT slave */
-                         ec_sdo_data_t *sdodata /**< Sdo data object */
-                         )
+void ec_fsm_coe_download(
+        ec_fsm_coe_t *fsm, /**< State machine. */
+        ec_slave_t *slave, /**< EtherCAT slave. */
+        ec_sdo_request_t *request /**< Sdo request. */
+        )
 {
     fsm->slave = slave;
-    fsm->sdodata = sdodata;
+    fsm->request = request;
     fsm->state = ec_fsm_coe_down_start;
 }
 
@@ -954,12 +955,12 @@ void ec_fsm_coe_down_start(ec_fsm_coe_t *fsm /**< finite state machine */)
 {
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
-    ec_sdo_data_t *sdodata = fsm->sdodata;
+    ec_sdo_request_t *request = fsm->request;
     uint8_t *data;
 
     if (fsm->slave->master->debug_level)
         EC_DBG("Downloading Sdo 0x%04X:%i to slave %i.\n",
-               sdodata->index, sdodata->subindex, slave->ring_position);
+               request->index, request->subindex, slave->ring_position);
 
     if (!(slave->sii.mailbox_protocols & EC_MBOX_COE)) {
         EC_ERR("Slave %u does not support CoE!\n", slave->ring_position);
@@ -967,14 +968,14 @@ void ec_fsm_coe_down_start(ec_fsm_coe_t *fsm /**< finite state machine */)
         return;
     }
 
-    if (slave->sii.rx_mailbox_size < 6 + 10 + sdodata->size) {
+    if (slave->sii.rx_mailbox_size < 6 + 10 + request->data_size) {
         EC_ERR("Sdo fragmenting not supported yet!\n");
         fsm->state = ec_fsm_coe_error;
         return;
     }
 
     if (!(data = ec_slave_mbox_prepare_send(slave, datagram, 0x03,
-                                            sdodata->size + 10))) {
+                                            request->data_size + 10))) {
         fsm->state = ec_fsm_coe_error;
         return;
     }
@@ -982,10 +983,10 @@ void ec_fsm_coe_down_start(ec_fsm_coe_t *fsm /**< finite state machine */)
     EC_WRITE_U16(data, 0x2 << 12); // Sdo request
     EC_WRITE_U8 (data + 2, (0x1 // size specified
                             | 0x1 << 5)); // Download request
-    EC_WRITE_U16(data + 3, sdodata->index);
-    EC_WRITE_U8 (data + 5, sdodata->subindex);
-    EC_WRITE_U32(data + 6, sdodata->size);
-    memcpy(data + 10, sdodata->data, sdodata->size);
+    EC_WRITE_U16(data + 3, request->index);
+    EC_WRITE_U8 (data + 5, request->subindex);
+    EC_WRITE_U32(data + 6, request->data_size);
+    memcpy(data + 10, request->data, request->data_size);
 
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_coe_down_request;
@@ -1092,7 +1093,7 @@ void ec_fsm_coe_down_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     ec_slave_t *slave = fsm->slave;
     uint8_t *data, mbox_prot;
     size_t rec_size;
-    ec_sdo_data_t *sdodata = fsm->sdodata;
+    ec_sdo_request_t *request = fsm->request;
 
     if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
         return; // FIXME: request again?
@@ -1136,7 +1137,7 @@ void ec_fsm_coe_down_response(ec_fsm_coe_t *fsm /**< finite state machine */)
         EC_READ_U8 (data + 2) >> 5 == 0x4) { // abort Sdo transfer request
         fsm->state = ec_fsm_coe_error;
         EC_ERR("Sdo download 0x%04X:%X (%i bytes) aborted on slave %i.\n",
-               sdodata->index, sdodata->subindex, sdodata->size,
+               request->index, request->subindex, request->data_size,
                slave->ring_position);
         if (rec_size < 10) {
             EC_ERR("Incomplete Abort command:\n");
@@ -1149,11 +1150,11 @@ void ec_fsm_coe_down_response(ec_fsm_coe_t *fsm /**< finite state machine */)
 
     if (EC_READ_U16(data) >> 12 != 0x3 || // Sdo response
         EC_READ_U8 (data + 2) >> 5 != 0x3 || // Download response
-        EC_READ_U16(data + 3) != sdodata->index || // index
-        EC_READ_U8 (data + 5) != sdodata->subindex) { // subindex
+        EC_READ_U16(data + 3) != request->index || // index
+        EC_READ_U8 (data + 5) != request->subindex) { // subindex
         fsm->state = ec_fsm_coe_error;
         EC_ERR("Sdo download 0x%04X:%X (%i bytes) failed:\n",
-               sdodata->index, sdodata->subindex, sdodata->size);
+               request->index, request->subindex, request->data_size);
         EC_ERR("Invalid Sdo download response at slave %i!\n",
                slave->ring_position);
         ec_print_data(data, rec_size);
@@ -1368,12 +1369,6 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
         return;
     }
 
-    if (request->data) {
-        kfree(request->data);
-        request->data = NULL;
-    }
-    request->size = 0;
-
     // normal or expedited?
     expedited = EC_READ_U8(data + 2) & 0x02;
 
@@ -1414,18 +1409,10 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
             return;
         }
 
-        if (!(request->data = (uint8_t *)
-                    kmalloc(complete_size + 1, GFP_ATOMIC))) {
-            EC_ERR("Failed to allocate %i bytes of Sdo data!\n",
-                    complete_size);
+        if (ec_sdo_request_copy_data(request, data + 6, complete_size)) {
             fsm->state = ec_fsm_coe_error;
             return;
         }
-        request->data[complete_size] = 0x00; // just to be sure...
-
-        memcpy(request->data, data + 6, complete_size);
-        request->size = complete_size;
-
     } else { // normal
         if (rec_size < 10) {
             EC_ERR("Received currupted Sdo normal upload"
@@ -1458,17 +1445,16 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
             return;
         }
 
-        if (!(request->data = (uint8_t *)
-                    kmalloc(complete_size + 1, GFP_ATOMIC))) {
-            EC_ERR("Failed to allocate %i bytes of Sdo data!\n",
-                    complete_size);
+        if (ec_sdo_request_alloc(request, complete_size)) {
             fsm->state = ec_fsm_coe_error;
             return;
         }
-        request->data[complete_size] = 0x00; // just to be sure...
 
-        memcpy(request->data, data + 10, data_size);
-        request->size = complete_size;
+        if (ec_sdo_request_copy_data(request, data + 10, data_size)) {
+            fsm->state = ec_fsm_coe_error;
+            return;
+        }
+
         fsm->toggle = 0;
 
         if (data_size < complete_size) {
@@ -1592,6 +1578,7 @@ void ec_fsm_coe_up_seg_check(ec_fsm_coe_t *fsm /**< finite state machine */)
 /**
    CoE state: UP RESPONSE.
    \todo Timeout behavior
+   \todo Check for \a data_size exceeding \a complete_size.
 */
 
 void ec_fsm_coe_up_seg_response(ec_fsm_coe_t *fsm /**< finite state machine */)
@@ -1677,8 +1664,8 @@ void ec_fsm_coe_up_seg_response(ec_fsm_coe_t *fsm /**< finite state machine */)
                 data_size, seg_size);
     }
 
-    memcpy(request->data + request->size, data + 10, data_size);
-    request->size += data_size;
+    memcpy(request->data + request->data_size, data + 10, data_size);
+    request->data_size += data_size;
 
     if (!last_segment) {
         fsm->toggle = !fsm->toggle;

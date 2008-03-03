@@ -63,8 +63,7 @@ struct ec_fsm_pdo_config
     const ec_pdo_t *pdo; /**< Current Pdo to configure. */
     const ec_pdo_entry_t *entry; /**< Current entry. */
 
-    ec_sdo_data_t sdodata; /**< Sdo configuration data. */
-    uint16_t sdo_value; /**< Sdo value. */
+    ec_sdo_request_t request; /**< Sdo request. */
     unsigned int entry_count; /**< Number of configured entries. */
 };
 

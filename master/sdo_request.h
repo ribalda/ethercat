@@ -54,7 +54,8 @@ typedef struct {
     uint16_t index; /**< Sdo index. */
     uint8_t subindex; /**< Sdo subindex. */
     uint8_t *data; /**< Pointer to Sdo data. */
-    size_t size; /**< Size of Sdo data. */
+    size_t mem_size; /**< Size of Sdo data memory. */
+    size_t data_size; /**< Size of Sdo data. */
     ec_request_state_t state; /**< Sdo request state. */
 } ec_sdo_request_t;
 
@@ -63,7 +64,12 @@ typedef struct {
 void ec_sdo_request_init(ec_sdo_request_t *);
 void ec_sdo_request_clear(ec_sdo_request_t *);
 
-void ec_sdo_request_read(ec_sdo_request_t *, uint16_t, uint8_t);
+void ec_sdo_request_address(ec_sdo_request_t *, uint16_t, uint8_t);
+int ec_sdo_request_alloc(ec_sdo_request_t *, size_t);
+int ec_sdo_request_copy_data(ec_sdo_request_t *, const uint8_t *, size_t);
+
+void ec_sdo_request_read(ec_sdo_request_t *);
+void ec_sdo_request_write(ec_sdo_request_t *);
 
 /*****************************************************************************/
 

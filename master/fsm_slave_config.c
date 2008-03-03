@@ -448,9 +448,10 @@ void ec_fsm_slave_config_enter_sdo_conf(ec_fsm_slave_config_t *fsm /**< slave st
 
     // start Sdo configuration
     fsm->state = ec_fsm_slave_config_state_sdo_conf;
-    fsm->sdodata =
-        list_entry(fsm->slave->config->sdo_configs.next, ec_sdo_data_t, list);
-    ec_fsm_coe_download(&fsm->fsm_coe, fsm->slave, fsm->sdodata);
+    fsm->request = list_entry(fsm->slave->config->sdo_configs.next,
+            ec_sdo_request_t, list);
+    ec_sdo_request_write(fsm->request);
+    ec_fsm_coe_download(&fsm->fsm_coe, fsm->slave, fsm->request);
     ec_fsm_coe_exec(&fsm->fsm_coe); // execute immediately
 }
 
@@ -475,10 +476,11 @@ void ec_fsm_slave_config_state_sdo_conf(
     }
 
     // Another Sdo to configure?
-    if (fsm->sdodata->list.next != &fsm->slave->config->sdo_configs) {
-        fsm->sdodata =
-            list_entry(fsm->sdodata->list.next, ec_sdo_data_t, list);
-        ec_fsm_coe_download(&fsm->fsm_coe, fsm->slave, fsm->sdodata);
+    if (fsm->request->list.next != &fsm->slave->config->sdo_configs) {
+        fsm->request = list_entry(fsm->request->list.next, ec_sdo_request_t,
+                list);
+        ec_sdo_request_write(fsm->request);
+        ec_fsm_coe_download(&fsm->fsm_coe, fsm->slave, fsm->request);
         ec_fsm_coe_exec(&fsm->fsm_coe); // execute immediately
         return;
     }

@@ -65,7 +65,7 @@ void ec_fsm_pdo_mapping_init(
         )
 {
     fsm->fsm_coe = fsm_coe;
-    fsm->sdodata.data = (uint8_t *) &fsm->sdo_value;
+    ec_sdo_request_init(&fsm->request);
 }
 
 /*****************************************************************************/
@@ -76,6 +76,7 @@ void ec_fsm_pdo_mapping_clear(
         ec_fsm_pdo_mapping_t *fsm /**< mapping state machine */
         )
 {
+    ec_sdo_request_clear(&fsm->request);
 }
 
 /*****************************************************************************/
@@ -195,16 +196,21 @@ void ec_fsm_pdo_mapping_next_dir(
                     fsm->sync->index, fsm->slave->ring_position);
         }
 
+        if (ec_sdo_request_alloc(&fsm->request, 2)) {
+            fsm->state = ec_fsm_pdo_mapping_state_error;
+            return;
+        }
+
         // set mapped Pdo count to zero
-        fsm->sdodata.index = 0x1C10 + fsm->sync->index;
-        fsm->sdodata.subindex = 0; // mapped Pdo count
-        EC_WRITE_U8(&fsm->sdo_value, 0); // zero Pdos mapped
-        fsm->sdodata.size = 1;
+        EC_WRITE_U8(&fsm->request.data, 0); // zero Pdos mapped
+        fsm->request.data_size = 1;
+        ec_sdo_request_address(&fsm->request, 0x1C10 + fsm->sync->index, 0);
+        ec_sdo_request_write(&fsm->request);
         if (fsm->slave->master->debug_level)
             EC_DBG("Setting Pdo count to zero for SM%u.\n", fsm->sync->index);
 
         fsm->state = ec_fsm_pdo_mapping_state_zero_count;
-        ec_fsm_coe_download(fsm->fsm_coe, fsm->slave, &fsm->sdodata);
+        ec_fsm_coe_download(fsm->fsm_coe, fsm->slave, &fsm->request);
         ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
         return;
     }
@@ -238,16 +244,17 @@ void ec_fsm_pdo_mapping_add_pdo(
         ec_fsm_pdo_mapping_t *fsm /**< mapping state machine */
         )
 {
-    fsm->sdodata.subindex = fsm->pdo_count;
-    EC_WRITE_U16(&fsm->sdo_value, fsm->pdo->index);
-    fsm->sdodata.size = 2;
-
+    EC_WRITE_U16(&fsm->request.data, fsm->pdo->index);
+    fsm->request.data_size = 2;
+    ec_sdo_request_address(&fsm->request,
+            0x1C10 + fsm->sync->index, fsm->pdo_count);
+    ec_sdo_request_write(&fsm->request);
     if (fsm->slave->master->debug_level)
         EC_DBG("Mapping Pdo 0x%04X at position %u.\n",
-                fsm->pdo->index, fsm->sdodata.subindex);
+                fsm->pdo->index, fsm->pdo_count);
     
     fsm->state = ec_fsm_pdo_mapping_state_add_pdo;
-    ec_fsm_coe_download(fsm->fsm_coe, fsm->slave, &fsm->sdodata);
+    ec_fsm_coe_download(fsm->fsm_coe, fsm->slave, &fsm->request);
     ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
 }
 
@@ -304,16 +311,16 @@ void ec_fsm_pdo_mapping_state_add_pdo(
     // find next Pdo
     if (!(fsm->pdo = ec_fsm_pdo_mapping_next_pdo(fsm, &fsm->pdo->list))) {
         // no more Pdos to map. write Pdo count
-        fsm->sdodata.subindex = 0;
-        EC_WRITE_U8(&fsm->sdo_value, fsm->pdo_count);
-        fsm->sdodata.size = 1;
-
+        EC_WRITE_U8(&fsm->request.data, fsm->pdo_count);
+        fsm->request.data_size = 1;
+        ec_sdo_request_address(&fsm->request, 0x1C10 + fsm->sync->index, 0);
+        ec_sdo_request_write(&fsm->request);
         if (fsm->slave->master->debug_level)
             EC_DBG("Setting number of mapped Pdos to %u.\n",
                     fsm->pdo_count);
         
         fsm->state = ec_fsm_pdo_mapping_state_pdo_count;
-        ec_fsm_coe_download(fsm->fsm_coe, fsm->slave, &fsm->sdodata);
+        ec_fsm_coe_download(fsm->fsm_coe, fsm->slave, &fsm->request);
         ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
         return;
     }

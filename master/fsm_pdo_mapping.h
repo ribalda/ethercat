@@ -67,8 +67,7 @@ struct ec_fsm_pdo_mapping
     const ec_pdo_mapping_t *mapping; /**< Target Pdo mapping. */
     const ec_pdo_t *pdo; /**< Current Pdo. */
 
-    ec_sdo_data_t sdodata; /**< Sdo configuration data. */
-    uint16_t sdo_value; /**< Sdo value. */
+    ec_sdo_request_t request; /**< Sdo request. */
     unsigned int pdo_count; /**< Number of mapped Pdos. */
 };
 
