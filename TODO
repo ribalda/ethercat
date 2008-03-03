@@ -26,6 +26,10 @@ Version 1.4.0:
 * Separate Pdo and Pdo entry classes.
 * Attach Pdo names.
 * Make all define underscores the same.
+* Remove bus validation; make bus scanning possible at any time.
+* Re-design slave configuration FSM, avoid unnecessary process data
+  interruptions.
+* Wait for bus scanning, even when link is not up at ecrt_request_master().
 
 Future issues:
 
