@@ -1043,7 +1043,6 @@ ssize_t ec_slave_write_alias(ec_slave_t *slave, /**< EtherCAT slave */
     return size; // success
 }
 
-
 /*****************************************************************************/
 
 /**
