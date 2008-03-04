@@ -205,7 +205,7 @@ void ec_fsm_pdo_mapping_next_dir(
         EC_WRITE_U8(&fsm->request.data, 0); // zero Pdos mapped
         fsm->request.data_size = 1;
         ec_sdo_request_address(&fsm->request, 0x1C10 + fsm->sync->index, 0);
-        ec_sdo_request_write(&fsm->request);
+        ecrt_sdo_request_write(&fsm->request);
         if (fsm->slave->master->debug_level)
             EC_DBG("Setting Pdo count to zero for SM%u.\n", fsm->sync->index);
 
@@ -248,7 +248,7 @@ void ec_fsm_pdo_mapping_add_pdo(
     fsm->request.data_size = 2;
     ec_sdo_request_address(&fsm->request,
             0x1C10 + fsm->sync->index, fsm->pdo_count);
-    ec_sdo_request_write(&fsm->request);
+    ecrt_sdo_request_write(&fsm->request);
     if (fsm->slave->master->debug_level)
         EC_DBG("Mapping Pdo 0x%04X at position %u.\n",
                 fsm->pdo->index, fsm->pdo_count);
@@ -314,7 +314,7 @@ void ec_fsm_pdo_mapping_state_add_pdo(
         EC_WRITE_U8(&fsm->request.data, fsm->pdo_count);
         fsm->request.data_size = 1;
         ec_sdo_request_address(&fsm->request, 0x1C10 + fsm->sync->index, 0);
-        ec_sdo_request_write(&fsm->request);
+        ecrt_sdo_request_write(&fsm->request);
         if (fsm->slave->master->debug_level)
             EC_DBG("Setting number of mapped Pdos to %u.\n",
                     fsm->pdo_count);

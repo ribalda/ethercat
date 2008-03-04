@@ -191,17 +191,6 @@ typedef struct {
 
 /*****************************************************************************/
 
-/** Master request state.
- */
-typedef enum {
-    EC_REQUEST_QUEUED,
-    EC_REQUEST_IN_PROGRESS,
-    EC_REQUEST_COMPLETE,
-    EC_REQUEST_FAILURE
-} ec_request_state_t;
-
-/*****************************************************************************/
-
 /** Origin type.
  */
 typedef enum {

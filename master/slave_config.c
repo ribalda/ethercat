@@ -105,6 +105,7 @@ int ec_slave_config_init(ec_slave_config_t *sc, /**< Slave configuration. */
         ec_pdo_mapping_init(&sc->mapping[dir]);
 
     INIT_LIST_HEAD(&sc->sdo_configs);
+    INIT_LIST_HEAD(&sc->sdo_requests);
 
     sc->used_fmmus = 0;
 
@@ -169,6 +170,13 @@ void ec_slave_config_clear(struct kobject *kobj /**< kobject of the config. */)
 
     // free all Sdo configurations
     list_for_each_entry_safe(req, next_req, &sc->sdo_configs, list) {
+        list_del(&req->list);
+        ec_sdo_request_clear(req);
+        kfree(req);
+    }
+
+    // free all Sdo requests
+    list_for_each_entry_safe(req, next_req, &sc->sdo_requests, list) {
         list_del(&req->list);
         ec_sdo_request_clear(req);
         kfree(req);
@@ -272,6 +280,16 @@ ssize_t ec_slave_config_info(
             }
             buf += sprintf(buf, "  0x%04X:%-3i -> %s\n",
                     req->index, req->subindex, str);
+        }
+        buf += sprintf(buf, "\n");
+    }
+
+    // type-cast to avoid warnings on some compilers
+    if (!list_empty((struct list_head *) &sc->sdo_requests)) {
+        buf += sprintf(buf, "\nSdo requests:\n");
+
+        list_for_each_entry(req, &sc->sdo_requests, list) {
+            buf += sprintf(buf, "  0x%04X:%u\n", req->index, req->subindex);
         }
         buf += sprintf(buf, "\n");
     }
@@ -672,6 +690,32 @@ int ecrt_slave_config_sdo32(ec_slave_config_t *slave, uint16_t index,
 
 /*****************************************************************************/
 
+ec_sdo_request_t *ecrt_slave_config_create_sdo_request(ec_slave_config_t *sc,
+        uint16_t index, uint8_t subindex, size_t size)
+{
+    ec_sdo_request_t *req;
+
+    if (!(req = (ec_sdo_request_t *)
+                kmalloc(sizeof(ec_sdo_request_t), GFP_KERNEL))) {
+        EC_ERR("Failed to allocate Sdo request memory!\n");
+        return NULL;
+    }
+
+    ec_sdo_request_init(req);
+    ec_sdo_request_address(req, index, subindex);
+
+    if (ec_sdo_request_alloc(req, size)) {
+        ec_sdo_request_clear(req);
+        kfree(req);
+        return NULL;
+    }
+    
+    list_add_tail(&req->list, &sc->sdo_requests);
+    return req; 
+}
+
+/*****************************************************************************/
+
 /** \cond */
 
 EXPORT_SYMBOL(ecrt_slave_config_pdo);
@@ -681,6 +725,7 @@ EXPORT_SYMBOL(ecrt_slave_config_reg_pdo_entry);
 EXPORT_SYMBOL(ecrt_slave_config_sdo8);
 EXPORT_SYMBOL(ecrt_slave_config_sdo16);
 EXPORT_SYMBOL(ecrt_slave_config_sdo32);
+EXPORT_SYMBOL(ecrt_slave_config_create_sdo_request);
 
 /** \endcond */
 

@@ -131,6 +131,9 @@ typedef struct ec_slave_config ec_slave_config_t; /**< \see ec_slave_config */
 struct ec_domain;
 typedef struct ec_domain ec_domain_t; /**< \see ec_domain */
 
+struct ec_sdo_request;
+typedef struct ec_sdo_request ec_sdo_request_t; /**< \see ec_sdo_request. */
+
 /*****************************************************************************/
 
 /** Bus state.
@@ -247,6 +250,28 @@ typedef struct {
     unsigned int *offset; /**< Pointer to a variable to store the Pdo's
                        offset in the process data. */
 } ec_pdo_entry_reg_t;
+
+/*****************************************************************************/
+
+/** Generic request state.
+ */
+typedef enum {
+    EC_REQUEST_QUEUED,
+    EC_REQUEST_IN_PROGRESS,
+    EC_REQUEST_COMPLETE,
+    EC_REQUEST_FAILURE
+} ec_request_state_t;
+
+/*****************************************************************************/
+
+/** Sdo request error.
+ *
+ * This is used as return type of ecrt_sdo_request_error().
+ */
+typedef enum {
+    EC_SDO_REQUEST_SUCCESS, /**< There is no error. */
+    EC_SDO_REQUEST_TIMEOUT, /**< The request timed out. */
+} ec_sdo_request_error_t;
 
 /******************************************************************************
  * Global functions
@@ -513,6 +538,18 @@ int ecrt_slave_config_sdo32(
         uint32_t value /**< Value to set. */
         );
 
+/** Create an Sdo request to exchange Sdos during realtime operation.
+ *
+ * The created Sdo request object is freed automatically when the master is
+ * released.
+ */
+ec_sdo_request_t *ecrt_slave_config_create_sdo_request(
+        ec_slave_config_t *sc, /**< Slave configuration. */
+        uint16_t index, /**< Sdo index. */
+        uint8_t subindex, /**< Sdo subindex. */
+        size_t size /**< Data size to reserve. */
+        );
+
 /** Outputs the state of the slave configuration.
  *
  * Stores the state information in the given \a state structure.
@@ -597,6 +634,62 @@ void ecrt_domain_state(
         const ec_domain_t *domain, /**< Domain. */
         ec_domain_state_t *state /**< Pointer to a state object to store the
                                    information. */
+        );
+
+/*****************************************************************************
+ * Sdo request methods.
+ ****************************************************************************/
+
+/** Set the timeout for an Sdo request.
+ *
+ * If the request cannot be processed in the specified time, if will be marked
+ * as failed.
+ */
+void ecrt_sdo_request_timeout(
+        ec_sdo_request_t *req, /**< Sdo request. */
+        uint32_t timeout /**< Timeout in milliseconds. */
+        );
+
+/** Access to the Sdo request's data.
+ *
+ * \attention The return value is invalid during (ecrt_sdo_request_state() !=
+ * EC_REQUEST_COMPLETE) a read operation, because the internal Sdo data
+ * memory could be re-allocated.
+ *
+ * \return Pointer to the internal Sdo data memory.
+ */
+uint8_t *ecrt_sdo_request_data(
+        ec_sdo_request_t *req /**< Sdo request. */
+        );
+
+/** Get the current state of the Sdo request.
+ *
+ * \return Request state.
+ */
+ec_request_state_t ecrt_sdo_request_state(
+    const ec_sdo_request_t *req /**< Sdo request. */
+    );
+
+/** Get the error code of the Sdo request.
+ */
+ec_sdo_request_error_t ecrt_sdo_request_error(
+    const ec_sdo_request_t *req /**< Sdo request. */
+    );
+
+/** Schedule an Sdo write operation.
+ */
+void ecrt_sdo_request_write(
+        ec_sdo_request_t *req /**< Sdo request. */
+        );
+
+/** Schedule an Sdo read operation .
+ *
+ * \attention After calling this function, the return value of
+ * ecrt_sdo_request_data() will be invalid until ecrt_sdo_request_state()
+ * is EC_REQUEST_COMPLETE.
+ */
+void ecrt_sdo_request_read(
+        ec_sdo_request_t *req /**< Sdo request. */
         );
 
 /******************************************************************************

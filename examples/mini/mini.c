@@ -41,10 +41,13 @@
 
 /*****************************************************************************/
 
-// module parameters
+// Module parameters
 #define FREQUENCY 100
+
+// Optional features
 #define CONFIGURE_MAPPING
 #define EXTERNAL_MEMORY
+#define SDO_ACCESS
 
 #define PFX "ec_mini: "
 
@@ -112,6 +115,13 @@ static ec_pdo_info_t el2004_mapping[] = {
 
 /*****************************************************************************/
 
+#ifdef SDO_ACCESS
+static ec_sdo_request_t *sdo;
+static int not_first_time = 0;
+#endif
+
+/*****************************************************************************/
+
 void check_domain1_state(void)
 {
     ec_domain_state_t ds;
@@ -155,6 +165,32 @@ void check_master_state(void)
 
 /*****************************************************************************/
 
+#ifdef SDO_ACCESS
+void read_sdo(void)
+{
+    switch (ecrt_sdo_request_state(sdo)) {
+        case EC_REQUEST_COMPLETE:
+            if (not_first_time) {
+                printk(KERN_INFO PFX "Sdo value: 0x%04X\n",
+                        EC_READ_U16(ecrt_sdo_request_data(sdo)));
+            } else {
+                not_first_time = 1;
+            }
+            ecrt_sdo_request_read(sdo);
+            break;
+        case EC_REQUEST_FAILURE:
+            printk(KERN_INFO PFX "Failed to read Sdo!\n");
+            ecrt_sdo_request_read(sdo);
+            break;
+        default:
+            printk(KERN_INFO PFX "Still busy...\n");
+            break;
+    }
+}
+#endif
+
+/*****************************************************************************/
+
 void cyclic_task(unsigned long data)
 {
     // receive process data
@@ -168,7 +204,7 @@ void cyclic_task(unsigned long data)
 
     if (counter) {
         counter--;
-    } else { // do this at FREQUENCY
+    } else { // do this at 1 Hz
         counter = FREQUENCY;
 
         // calculate new process data
@@ -176,6 +212,11 @@ void cyclic_task(unsigned long data)
 
         // check for master state (optional)
         check_master_state();
+        
+#ifdef SDO_ACCESS
+        // read process data Sdo
+        read_sdo();
+#endif
     }
 
     // write process data
@@ -252,6 +293,19 @@ int __init init_mini_module(void)
 
     if (ecrt_slave_config_mapping(sc, 4, el2004_mapping)) {
         printk(KERN_ERR PFX "Failed to configure Pdo mapping.\n");
+        goto out_release_master;
+    }
+#endif
+
+#ifdef SDO_ACCESS
+    printk(KERN_INFO PFX "Creating Sdo requests...\n");
+    if (!(sc = ecrt_master_slave_config(master, 0, 1, Beckhoff_EL3162))) {
+        printk(KERN_ERR PFX "Failed to get slave configuration.\n");
+        goto out_release_master;
+    }
+
+    if (!(sdo = ecrt_slave_config_create_sdo_request(sc, 0x3102, 2, 2))) {
+        printk(KERN_ERR PFX "Failed to create Sdo request.\n");
         goto out_release_master;
     }
 #endif

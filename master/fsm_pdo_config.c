@@ -214,7 +214,7 @@ void ec_fsm_pdo_config_next_pdo(
     EC_WRITE_U8(&fsm->request.data, 0);
     fsm->request.data_size = 1;
     ec_sdo_request_address(&fsm->request, fsm->pdo->index, 0);
-    ec_sdo_request_write(&fsm->request);
+    ecrt_sdo_request_write(&fsm->request);
     if (fsm->slave->master->debug_level)
         EC_DBG("Setting entry count to zero for Pdo 0x%04X.\n",
                 fsm->pdo->index);
@@ -254,7 +254,7 @@ void ec_fsm_pdo_config_add_entry(
     EC_WRITE_U32(&fsm->request.data, value);
     fsm->request.data_size = 4;
     ec_sdo_request_address(&fsm->request, fsm->pdo->index, fsm->entry_count);
-    ec_sdo_request_write(&fsm->request);
+    ecrt_sdo_request_write(&fsm->request);
     if (fsm->slave->master->debug_level)
         EC_DBG("Configuring Pdo entry %08X at position %u.\n",
                 value, fsm->entry_count);
@@ -320,7 +320,7 @@ void ec_fsm_pdo_config_state_add_entry(
         EC_WRITE_U8(&fsm->request.data, fsm->entry_count);
         fsm->request.data_size = 1;
         ec_sdo_request_address(&fsm->request, fsm->pdo->index, 0);
-        ec_sdo_request_write(&fsm->request);
+        ecrt_sdo_request_write(&fsm->request);
         if (fsm->slave->master->debug_level)
             EC_DBG("Setting number of Pdo entries to %u.\n",
                     fsm->entry_count);

@@ -41,6 +41,7 @@
 #include "globals.h"
 #include "master.h"
 #include "mailbox.h"
+#include "slave_config.h"
 #ifdef EC_EOE
 #include "ethernet.h"
 #endif
@@ -376,9 +377,39 @@ int ec_fsm_master_action_process_sdo(
 {
     ec_master_t *master = fsm->master;
     ec_master_sdo_request_t *request;
+    ec_sdo_request_t *req;
     ec_slave_t *slave;
 
-    // search the first request to be processed
+    // search for internal requests to be processed
+    list_for_each_entry(slave, &master->slaves, list) {
+        if (!slave->config)
+            continue;
+        list_for_each_entry(req, &slave->config->sdo_requests, list) {
+            if (req->state == EC_REQUEST_QUEUED) {
+                req->state = EC_REQUEST_IN_PROGRESS;
+
+                if (slave->current_state == EC_SLAVE_STATE_INIT ||
+                        slave->error_flag) {
+                    req->state = EC_REQUEST_FAILURE;
+                    continue;
+                }
+
+                if (master->debug_level)
+                    EC_DBG("Processing Sdo request for slave %u...\n",
+                            slave->ring_position);
+
+                fsm->idle = 0;
+                fsm->sdo_request = req;
+                fsm->slave = slave;
+                fsm->state = ec_fsm_master_state_sdo_request;
+                ec_fsm_coe_upload(&fsm->fsm_coe, slave, req);
+                ec_fsm_coe_exec(&fsm->fsm_coe); // execute immediately
+                return 1;
+            }
+        }
+    }
+    
+    // search the first external request to be processed
     while (1) {
         down(&master->sdo_sem);
         if (list_empty(&master->slave_sdo_requests)) {
@@ -410,7 +441,8 @@ int ec_fsm_master_action_process_sdo(
 
         // Start uploading Sdo
         fsm->idle = 0;
-        fsm->sdo_request = request;
+        fsm->sdo_request = &request->req;
+        fsm->slave = slave;
         fsm->state = ec_fsm_master_state_sdo_request;
         ec_fsm_coe_upload(&fsm->fsm_coe, slave, &request->req);
         ec_fsm_coe_exec(&fsm->fsm_coe); // execute immediately
@@ -499,7 +531,7 @@ void ec_fsm_master_action_process_states(ec_fsm_master_t *fsm
             return;
     }
 
-    // Check for a pending Sdo request
+    // Check for pending Sdo requests
     if (ec_fsm_master_action_process_sdo(fsm))
         return;
 
@@ -1026,25 +1058,25 @@ void ec_fsm_master_state_sdodict(ec_fsm_master_t *fsm /**< master state machine 
 void ec_fsm_master_state_sdo_request(ec_fsm_master_t *fsm /**< master state machine */)
 {
     ec_master_t *master = fsm->master;
-    ec_master_sdo_request_t *request = fsm->sdo_request;
+    ec_sdo_request_t *request = fsm->sdo_request;
 
     if (ec_fsm_coe_exec(&fsm->fsm_coe)) return;
 
     if (!ec_fsm_coe_success(&fsm->fsm_coe)) {
-        EC_DBG("Failed to process Sdo request for slave %i.\n",
+        EC_DBG("Failed to process Sdo request for slave %u.\n",
                 fsm->slave->ring_position);
-        request->req.state = EC_REQUEST_FAILURE;
+        request->state = EC_REQUEST_FAILURE;
         wake_up(&master->sdo_queue);
         fsm->state = ec_fsm_master_state_error;
         return;
     }
 
     // Sdo request finished 
-    request->req.state = EC_REQUEST_COMPLETE;
+    request->state = EC_REQUEST_COMPLETE;
     wake_up(&master->sdo_queue);
 
     if (master->debug_level)
-        EC_DBG("Finished Sdo request for slave %i.\n",
+        EC_DBG("Finished Sdo request for slave %u.\n",
                 fsm->slave->ring_position);
 
     // check for another Sdo request

@@ -71,7 +71,8 @@ struct ec_slave_config {
 
     ec_pdo_mapping_t mapping[2]; /**< Output and input Pdo mapping. */
 
-    struct list_head sdo_configs; /**< Sdo configurations. */
+    struct list_head sdo_configs; /**< List of Sdo configurations. */
+    struct list_head sdo_requests; /**< List of Sdo requests. */
 
     ec_fmmu_config_t fmmu_configs[EC_MAX_FMMUS]; /**< FMMU configurations. */
     uint8_t used_fmmus; /**< Number of FMMUs used. */

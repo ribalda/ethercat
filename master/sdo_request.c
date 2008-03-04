@@ -148,26 +148,54 @@ int ec_sdo_request_copy_data(
     return 0;
 }
 
+/*****************************************************************************
+ * Realtime interface.
+ ****************************************************************************/
+
+void ecrt_sdo_request_timeout(ec_sdo_request_t *req, uint32_t timeout)
+{
+}
+
 /*****************************************************************************/
 
-/** Start an Sdo read operation (Sdo upload).
- */
-void ec_sdo_request_read(
-        ec_sdo_request_t *req /**< Sdo request. */
-        )
+uint8_t *ecrt_sdo_request_data(ec_sdo_request_t *req)
+{
+    return req->data;
+}
+
+/*****************************************************************************/
+
+ec_request_state_t ecrt_sdo_request_state(const ec_sdo_request_t *req)
+{
+    return req->state;
+}
+
+/*****************************************************************************/
+
+ec_sdo_request_error_t ecrt_sdo_request_error(const ec_sdo_request_t *req)
+{
+    return EC_SDO_REQUEST_SUCCESS; // FIXME
+}
+
+/*****************************************************************************/
+
+void ecrt_sdo_request_read(ec_sdo_request_t *req)
 {
     req->state = EC_REQUEST_QUEUED;
 }
 
 /*****************************************************************************/
 
-/** Start an Sdo write operation (Sdo download).
- */
-void ec_sdo_request_write(
-        ec_sdo_request_t *req /**< Sdo request. */
-        )
+void ecrt_sdo_request_write(ec_sdo_request_t *req)
 {
     req->state = EC_REQUEST_QUEUED;
 }
 
 /*****************************************************************************/
+
+EXPORT_SYMBOL(ecrt_sdo_request_timeout);
+EXPORT_SYMBOL(ecrt_sdo_request_data);
+EXPORT_SYMBOL(ecrt_sdo_request_state);
+EXPORT_SYMBOL(ecrt_sdo_request_error);
+EXPORT_SYMBOL(ecrt_sdo_request_read);
+EXPORT_SYMBOL(ecrt_sdo_request_write);

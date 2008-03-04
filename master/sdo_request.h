@@ -43,13 +43,15 @@
 
 #include <linux/list.h>
 
+#include "../include/ecrt.h"
+
 #include "globals.h"
 
 /*****************************************************************************/
 
 /** CANopen Sdo request.
  */
-typedef struct {
+struct ec_sdo_request {
     struct list_head list; /**< List item. */
     uint16_t index; /**< Sdo index. */
     uint8_t subindex; /**< Sdo subindex. */
@@ -57,7 +59,7 @@ typedef struct {
     size_t mem_size; /**< Size of Sdo data memory. */
     size_t data_size; /**< Size of Sdo data. */
     ec_request_state_t state; /**< Sdo request state. */
-} ec_sdo_request_t;
+};
 
 /*****************************************************************************/
 
@@ -67,9 +69,6 @@ void ec_sdo_request_clear(ec_sdo_request_t *);
 void ec_sdo_request_address(ec_sdo_request_t *, uint16_t, uint8_t);
 int ec_sdo_request_alloc(ec_sdo_request_t *, size_t);
 int ec_sdo_request_copy_data(ec_sdo_request_t *, const uint8_t *, size_t);
-
-void ec_sdo_request_read(ec_sdo_request_t *);
-void ec_sdo_request_write(ec_sdo_request_t *);
 
 /*****************************************************************************/
 

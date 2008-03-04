@@ -97,7 +97,7 @@ struct ec_fsm_master {
     ec_slave_t *slave; /**< current slave */
     ec_eeprom_write_request_t *eeprom_request; /**< EEPROM write request */
     off_t eeprom_index; /**< index to EEPROM write request data */
-    ec_master_sdo_request_t *sdo_request; /**< Sdo request to process. */
+    ec_sdo_request_t *sdo_request; /**< Sdo request to process. */
 
     ec_fsm_slave_config_t fsm_slave_config; /**< slave state machine */
     ec_fsm_slave_scan_t fsm_slave_scan; /**< slave state machine */
