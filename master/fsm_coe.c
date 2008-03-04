@@ -1108,14 +1108,14 @@ void ec_fsm_coe_down_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     }
 
     if (mbox_prot != 0x03) { // CoE
-        EC_ERR("Received mailbox protocol 0x%02X as response.\n", mbox_prot);
         fsm->state = ec_fsm_coe_error;
-	return;
+        EC_ERR("Received mailbox protocol 0x%02X as response.\n", mbox_prot);
+        return;
     }
 
     if (rec_size < 6) {
         fsm->state = ec_fsm_coe_error;
-        EC_ERR("Received data is too small (%i bytes):\n", rec_size);
+        EC_ERR("Received data is too small (%u bytes):\n", rec_size);
         ec_print_data(data, rec_size);
         return;
     }
@@ -1332,15 +1332,15 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     }
 
     if (mbox_prot != 0x03) { // CoE
-        EC_WARN("Received mailbox protocol 0x%02X as response.\n", mbox_prot);
         fsm->state = ec_fsm_coe_error;
+        EC_WARN("Received mailbox protocol 0x%02X as response.\n", mbox_prot);
         return;
     }
 
     if (rec_size < 3) {
+        fsm->state = ec_fsm_coe_error;
         EC_ERR("Received currupted Sdo upload response (%u bytes)!\n", rec_size);
         ec_print_data(data, rec_size);
-        fsm->state = ec_fsm_coe_error;
         return;
     }
 
@@ -1361,10 +1361,10 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
 
     if (expedited) {
         if (rec_size < 7) {
+            fsm->state = ec_fsm_coe_error;
             EC_ERR("Received currupted Sdo expedited upload"
                     " response (only %u bytes)!\n", rec_size);
             ec_print_data(data, rec_size);
-            fsm->state = ec_fsm_coe_error;
             return;
         }
 
@@ -1372,12 +1372,12 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
                 EC_READ_U8 (data + 2) >> 5 != 0x2 || // upload response
                 EC_READ_U16(data + 3) != request->index || // index
                 EC_READ_U8 (data + 5) != request->subindex) { // subindex
+            fsm->state = ec_fsm_coe_error;
             EC_ERR("Sdo upload 0x%04X:%X failed:\n",
                     request->index, request->subindex);
             EC_ERR("Invalid Sdo upload response at slave %i!\n",
                     slave->ring_position);
             ec_print_data(data, rec_size);
-            fsm->state = ec_fsm_coe_error;
             return;
         }
 
@@ -1389,10 +1389,10 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
         }
 
         if (rec_size < 6 + complete_size) {
+            fsm->state = ec_fsm_coe_error;
             EC_ERR("Received currupted Sdo expedited upload"
                     " response (only %u bytes)!\n", rec_size);
             ec_print_data(data, rec_size);
-            fsm->state = ec_fsm_coe_error;
             return;
         }
 
@@ -1402,10 +1402,10 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
         }
     } else { // normal
         if (rec_size < 10) {
+            fsm->state = ec_fsm_coe_error;
             EC_ERR("Received currupted Sdo normal upload"
                     " response (only %u bytes)!\n", rec_size);
             ec_print_data(data, rec_size);
-            fsm->state = ec_fsm_coe_error;
             return;
         }
 
@@ -1413,12 +1413,12 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
                 EC_READ_U8 (data + 2) >> 5 != 0x2 || // upload response
                 EC_READ_U16(data + 3) != request->index || // index
                 EC_READ_U8 (data + 5) != request->subindex) { // subindex
+            fsm->state = ec_fsm_coe_error;
             EC_ERR("Sdo upload 0x%04X:%X failed:\n",
                     request->index, request->subindex);
             EC_ERR("Invalid Sdo upload response at slave %i!\n",
                     slave->ring_position);
             ec_print_data(data, rec_size);
-            fsm->state = ec_fsm_coe_error;
             return;
         }
 
@@ -1426,9 +1426,9 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
         complete_size = EC_READ_U32(data + 6);
 
         if (!complete_size) {
+            fsm->state = ec_fsm_coe_error;
             EC_ERR("No complete size supplied!\n");
             ec_print_data(data, rec_size);
-            fsm->state = ec_fsm_coe_error;
             return;
         }
 
