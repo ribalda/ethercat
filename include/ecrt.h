@@ -33,9 +33,9 @@
 
 /** \file
  *
- * EtherCAT Real-Time Interface.
+ * EtherCAT Realtime Interface.
  *
- * \defgroup RealtimeInterface EtherCAT Real-Time Interface
+ * \defgroup RealtimeInterface EtherCAT Realtime Interface
  *
  * EtherCAT interface for realtime modules. This interface is designed for
  * realtime modules that want to use EtherCAT. There are functions to request
@@ -81,6 +81,8 @@
  * - Removed ecrt_domain_register_pdo_range(), because it's functionality can
  *   be reached by specifying an explicit Pdo mapping and registering those
  *   Pdo entries.
+ * - Added an Sdo access interface, working with Sdo requests. These can be
+ *   scheduled for reading and writing during realtime operation.
  *
  * @{
  */
@@ -102,19 +104,19 @@
  * Global definitions
  *****************************************************************************/
 
-/** EtherCAT real-time interface major version number.
+/** EtherCAT realtime interface major version number.
  */
 #define ECRT_VER_MAJOR 1
 
-/** EtherCAT real-time interface minor version number.
+/** EtherCAT realtime interface minor version number.
  */
 #define ECRT_VER_MINOR 4
 
-/** EtherCAT real-time interface version word generator.
+/** EtherCAT realtime interface version word generator.
  */
 #define ECRT_VERSION(a, b) (((a) << 8) + (b))
 
-/** EtherCAT real-time interface version word.
+/** EtherCAT realtime interface version word.
  */
 #define ECRT_VERSION_MAGIC ECRT_VERSION(ECRT_VER_MAJOR, ECRT_VER_MINOR)
 
@@ -635,6 +637,8 @@ void ecrt_domain_state(
  *
  * If the request cannot be processed in the specified time, if will be marked
  * as failed.
+ *
+ * \todo The timeout functionality is not yet implemented.
  */
 void ecrt_sdo_request_timeout(
         ec_sdo_request_t *req, /**< Sdo request. */
@@ -643,8 +647,9 @@ void ecrt_sdo_request_timeout(
 
 /** Access to the Sdo request's data.
  *
- * \attention The return value is invalid during a read operation, because the
- * internal Sdo data memory could be re-allocated.
+ * \attention The return value can be invalid during a read operation, because
+ * the internal Sdo data memory could be re-allocated if the read Sdo data do
+ * not fit inside.
  *
  * \return Pointer to the internal Sdo data memory.
  */
@@ -661,16 +666,22 @@ ec_sdo_request_state_t ecrt_sdo_request_state(
     );
 
 /** Schedule an Sdo write operation.
+ *
+ * \attention This method may not be called while ecrt_sdo_request_state()
+ * returns EC_SDO_REQUEST_BUSY.
  */
 void ecrt_sdo_request_write(
         ec_sdo_request_t *req /**< Sdo request. */
         );
 
-/** Schedule an Sdo read operation .
+/** Schedule an Sdo read operation.
+ *
+ * \attention This method may not be called while ecrt_sdo_request_state()
+ * returns EC_SDO_REQUEST_BUSY.
  *
  * \attention After calling this function, the return value of
- * ecrt_sdo_request_data() will be invalid while ecrt_sdo_request_state()
- * returns EC_SDO_REQUEST_BUSY.
+ * ecrt_sdo_request_data() must be considered as invalid while
+ * ecrt_sdo_request_state() returns EC_SDO_REQUEST_BUSY.
  */
 void ecrt_sdo_request_read(
         ec_sdo_request_t *req /**< Sdo request. */

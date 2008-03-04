@@ -44,6 +44,8 @@ Changes in version 1.4.0:
     - Removed ecrt_domain_register_pdo_range(), because it's functionality can
       be reached by specifying an explicit Pdo mapping and registering those
       Pdo entries.
+    - Added an Sdo access interface, working with Sdo requests. These can be
+      scheduled for reading and writing during realtime operation.
 * Pdo configuration is now supported.
 * Current Pdo mapping/configuration is now read via CoE during bus scan, using
   direct Sdo access, independent of the dictionary.
