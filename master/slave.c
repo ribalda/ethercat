@@ -932,7 +932,8 @@ ssize_t ec_slave_write_eeprom(ec_slave_t *slave, /**< EtherCAT slave */
     }
 
     if (size % 2) {
-        EC_ERR("EEPROM data size is odd! Dropping.\n");
+        EC_ERR("EEPROM data size is odd (%u bytes)! SII data must be"
+                " word-aligned. Dropping.\n", size);
         return -EINVAL;
     }
 
@@ -944,7 +945,9 @@ ssize_t ec_slave_write_eeprom(ec_slave_t *slave, /**< EtherCAT slave */
     request.word_size = size / 2;
 
     if (request.word_size < 0x0041) {
-        EC_ERR("EEPROM data too short! Dropping.\n");
+        EC_ERR("EEPROM data too short (%u words)! Mimimum is"
+                " 40 fixed words + 1 delimiter. Dropping.\n",
+                request.word_size);
         return -EINVAL;
     }
 
