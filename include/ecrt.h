@@ -253,25 +253,16 @@ typedef struct {
 
 /*****************************************************************************/
 
-/** Generic request state.
- */
-typedef enum {
-    EC_REQUEST_QUEUED,
-    EC_REQUEST_IN_PROGRESS,
-    EC_REQUEST_COMPLETE,
-    EC_REQUEST_FAILURE
-} ec_request_state_t;
-
-/*****************************************************************************/
-
-/** Sdo request error.
+/** Sdo request state.
  *
- * This is used as return type of ecrt_sdo_request_error().
+ * This is used as return type of ecrt_sdo_request_state().
  */
 typedef enum {
-    EC_SDO_REQUEST_SUCCESS, /**< There is no error. */
-    EC_SDO_REQUEST_TIMEOUT, /**< The request timed out. */
-} ec_sdo_request_error_t;
+    EC_SDO_REQUEST_UNUSED, /**< Not requested. */
+    EC_SDO_REQUEST_BUSY, /**< Request is being processed. */
+    EC_SDO_REQUEST_SUCCESS, /**< Request was processed successfully. */
+    EC_SDO_REQUEST_ERROR, /**< Request processing failed. */
+} ec_sdo_request_state_t;
 
 /******************************************************************************
  * Global functions
@@ -652,9 +643,8 @@ void ecrt_sdo_request_timeout(
 
 /** Access to the Sdo request's data.
  *
- * \attention The return value is invalid during (ecrt_sdo_request_state() !=
- * EC_REQUEST_COMPLETE) a read operation, because the internal Sdo data
- * memory could be re-allocated.
+ * \attention The return value is invalid during a read operation, because the
+ * internal Sdo data memory could be re-allocated.
  *
  * \return Pointer to the internal Sdo data memory.
  */
@@ -666,13 +656,7 @@ uint8_t *ecrt_sdo_request_data(
  *
  * \return Request state.
  */
-ec_request_state_t ecrt_sdo_request_state(
-    const ec_sdo_request_t *req /**< Sdo request. */
-    );
-
-/** Get the error code of the Sdo request.
- */
-ec_sdo_request_error_t ecrt_sdo_request_error(
+ec_sdo_request_state_t ecrt_sdo_request_state(
     const ec_sdo_request_t *req /**< Sdo request. */
     );
 
@@ -685,8 +669,8 @@ void ecrt_sdo_request_write(
 /** Schedule an Sdo read operation .
  *
  * \attention After calling this function, the return value of
- * ecrt_sdo_request_data() will be invalid until ecrt_sdo_request_state()
- * is EC_REQUEST_COMPLETE.
+ * ecrt_sdo_request_data() will be invalid while ecrt_sdo_request_state()
+ * returns EC_SDO_REQUEST_BUSY.
  */
 void ecrt_sdo_request_read(
         ec_sdo_request_t *req /**< Sdo request. */

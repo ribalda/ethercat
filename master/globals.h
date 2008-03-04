@@ -191,6 +191,21 @@ typedef struct {
 
 /*****************************************************************************/
 
+/** Generic request state.
+ *
+ * \attention If ever changing this, please be sure to adjust the \a
+ * state_table in master/sdo_request.c.
+ */
+typedef enum {
+    EC_REQUEST_INIT,
+    EC_REQUEST_QUEUED,
+    EC_REQUEST_BUSY,
+    EC_REQUEST_SUCCESS,
+    EC_REQUEST_FAILURE
+} ec_request_state_t;
+
+/*****************************************************************************/
+
 /** Origin type.
  */
 typedef enum {

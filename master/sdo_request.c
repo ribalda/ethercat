@@ -48,6 +48,18 @@ void ec_sdo_request_clear_data(ec_sdo_request_t *);
 
 /*****************************************************************************/
 
+/** State type translation table.
+ */
+const ec_sdo_request_state_t state_table[] = {
+    EC_SDO_REQUEST_UNUSED,  // EC_REQUEST_INIT,
+    EC_SDO_REQUEST_BUSY,    // EC_REQUEST_QUEUED,
+    EC_SDO_REQUEST_BUSY,    // EC_REQUEST_BUSY,
+    EC_SDO_REQUEST_SUCCESS, // EC_REQUEST_SUCCESS,
+    EC_SDO_REQUEST_ERROR    // EC_REQUEST_FAILURE
+};
+
+/*****************************************************************************/
+
 /** Sdo request constructor.
  */
 void ec_sdo_request_init(
@@ -58,7 +70,7 @@ void ec_sdo_request_init(
     req->mem_size = 0;
     req->data_size = 0;
     req->dir = EC_DIR_OUTPUT;
-    req->state = EC_REQUEST_COMPLETE;
+    req->state = EC_REQUEST_INIT;
 }
 
 /*****************************************************************************/
@@ -166,16 +178,9 @@ uint8_t *ecrt_sdo_request_data(ec_sdo_request_t *req)
 
 /*****************************************************************************/
 
-ec_request_state_t ecrt_sdo_request_state(const ec_sdo_request_t *req)
+ec_sdo_request_state_t ecrt_sdo_request_state(const ec_sdo_request_t *req)
 {
-    return req->state;
-}
-
-/*****************************************************************************/
-
-ec_sdo_request_error_t ecrt_sdo_request_error(const ec_sdo_request_t *req)
-{
-    return EC_SDO_REQUEST_SUCCESS; // FIXME
+   return state_table[req->state];
 }
 
 /*****************************************************************************/
@@ -199,7 +204,6 @@ void ecrt_sdo_request_write(ec_sdo_request_t *req)
 EXPORT_SYMBOL(ecrt_sdo_request_timeout);
 EXPORT_SYMBOL(ecrt_sdo_request_data);
 EXPORT_SYMBOL(ecrt_sdo_request_state);
-EXPORT_SYMBOL(ecrt_sdo_request_error);
 EXPORT_SYMBOL(ecrt_sdo_request_read);
 EXPORT_SYMBOL(ecrt_sdo_request_write);
 

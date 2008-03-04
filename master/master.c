@@ -126,12 +126,12 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     
     INIT_LIST_HEAD(&master->configs);
 
-    master->scan_state = EC_REQUEST_COMPLETE;
+    master->scan_state = EC_REQUEST_SUCCESS;
     master->allow_scan = 1;
     init_MUTEX(&master->scan_sem);
     init_waitqueue_head(&master->scan_queue);
 
-    master->config_state = EC_REQUEST_COMPLETE;
+    master->config_state = EC_REQUEST_SUCCESS;
     master->allow_config = 1;
     init_MUTEX(&master->config_sem);
     init_waitqueue_head(&master->config_queue);
@@ -446,7 +446,7 @@ int ec_master_enter_operation_mode(ec_master_t *master /**< EtherCAT master */)
 
     // wait for slave configuration to complete
     if (wait_event_interruptible(master->config_queue,
-                master->config_state != EC_REQUEST_IN_PROGRESS)) {
+                master->config_state != EC_REQUEST_BUSY)) {
         EC_INFO("Finishing slave configuration interrupted by signal.\n");
         goto out_allow;
     }
@@ -461,10 +461,10 @@ int ec_master_enter_operation_mode(ec_master_t *master /**< EtherCAT master */)
     master->allow_scan = 0; // 'lock' the slave list
     up(&master->scan_sem);
 
-    if (master->scan_state == EC_REQUEST_IN_PROGRESS) {
+    if (master->scan_state == EC_REQUEST_BUSY) {
         // wait for slave scan to complete
         if (wait_event_interruptible(master->scan_queue,
-                    master->scan_state != EC_REQUEST_IN_PROGRESS)) {
+                    master->scan_state != EC_REQUEST_BUSY)) {
             EC_INFO("Waiting for slave scan interrupted by signal.\n");
             goto out_allow;
         }
@@ -1356,14 +1356,14 @@ int ecrt_master_activate(ec_master_t *master)
 
     if (master->main_device.link_state) {
         // wait for configuration to complete
-        master->config_state = EC_REQUEST_IN_PROGRESS;
+        master->config_state = EC_REQUEST_BUSY;
         if (wait_event_interruptible(master->config_queue,
-                    master->config_state != EC_REQUEST_IN_PROGRESS)) {
+                    master->config_state != EC_REQUEST_BUSY)) {
             EC_INFO("Waiting for configuration interrupted by signal.\n");
             return -1;
         }
 
-        if (master->config_state != EC_REQUEST_COMPLETE) {
+        if (master->config_state != EC_REQUEST_SUCCESS) {
             EC_ERR("Failed to configure slaves.\n");
             return -1;
         }

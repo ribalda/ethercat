@@ -117,7 +117,6 @@ static ec_pdo_info_t el2004_mapping[] = {
 
 #ifdef SDO_ACCESS
 static ec_sdo_request_t *sdo;
-static int not_first_time = 0;
 #endif
 
 /*****************************************************************************/
@@ -169,21 +168,20 @@ void check_master_state(void)
 void read_sdo(void)
 {
     switch (ecrt_sdo_request_state(sdo)) {
-        case EC_REQUEST_COMPLETE:
-            if (not_first_time) {
-                printk(KERN_INFO PFX "Sdo value: 0x%04X\n",
-                        EC_READ_U16(ecrt_sdo_request_data(sdo)));
-            } else {
-                not_first_time = 1;
-            }
+        case EC_SDO_REQUEST_UNUSED: // request was not used yet
             ecrt_sdo_request_read(sdo);
             break;
-        case EC_REQUEST_FAILURE:
+        case EC_SDO_REQUEST_BUSY:
+            printk(KERN_INFO PFX "Still busy...\n");
+            break;
+        case EC_SDO_REQUEST_SUCCESS:
+            printk(KERN_INFO PFX "Sdo value: 0x%04X\n",
+                    EC_READ_U16(ecrt_sdo_request_data(sdo)));
+            ecrt_sdo_request_read(sdo);
+            break;
+        case EC_SDO_REQUEST_ERROR:
             printk(KERN_INFO PFX "Failed to read Sdo!\n");
             ecrt_sdo_request_read(sdo);
-            break;
-        default:
-            printk(KERN_INFO PFX "Still busy...\n");
             break;
     }
 }

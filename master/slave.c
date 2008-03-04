@@ -860,9 +860,9 @@ int ec_slave_schedule_eeprom_writing(
 
     // wait until master FSM has finished processing
     wait_event(master->eeprom_queue,
-            request->state != EC_REQUEST_IN_PROGRESS);
+            request->state != EC_REQUEST_BUSY);
 
-    return request->state == EC_REQUEST_COMPLETE ? 0 : -EIO;
+    return request->state == EC_REQUEST_SUCCESS ? 0 : -EIO;
 }
 
 /*****************************************************************************/

@@ -291,9 +291,9 @@ ssize_t ec_sdo_entry_read_value(
     }
 
     // wait until master FSM has finished processing
-    wait_event(master->sdo_queue, request.req.state != EC_REQUEST_IN_PROGRESS);
+    wait_event(master->sdo_queue, request.req.state != EC_REQUEST_BUSY);
 
-    if (request.req.state != EC_REQUEST_COMPLETE)
+    if (request.req.state != EC_REQUEST_SUCCESS)
         return -EIO;
 
     off += ec_sdo_entry_format_data(entry, &request.req, buffer);

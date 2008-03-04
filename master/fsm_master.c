@@ -238,7 +238,7 @@ void ec_fsm_master_state_broadcast(ec_fsm_master_t *fsm /**< master state machin
             up(&master->scan_sem);
         }
         else {
-            master->scan_state = EC_REQUEST_IN_PROGRESS;
+            master->scan_state = EC_REQUEST_BUSY;
             up(&master->scan_sem);
             
             // topology change when scan is allowed:
@@ -258,7 +258,7 @@ void ec_fsm_master_state_broadcast(ec_fsm_master_t *fsm /**< master state machin
 
             if (!master->slave_count) {
                 // no slaves present -> finish state machine.
-                master->scan_state = EC_REQUEST_COMPLETE;
+                master->scan_state = EC_REQUEST_SUCCESS;
                 wake_up_interruptible(&master->scan_queue);
                 fsm->state = ec_fsm_master_state_end;
                 return;
@@ -336,7 +336,7 @@ int ec_fsm_master_action_process_eeprom(
         request = list_entry(master->eeprom_requests.next,
                 ec_eeprom_write_request_t, list);
         list_del_init(&request->list); // dequeue
-        request->state = EC_REQUEST_IN_PROGRESS;
+        request->state = EC_REQUEST_BUSY;
         up(&master->eeprom_sem);
 
         slave = request->slave;
@@ -386,7 +386,7 @@ int ec_fsm_master_action_process_sdo(
             continue;
         list_for_each_entry(req, &slave->config->sdo_requests, list) {
             if (req->state == EC_REQUEST_QUEUED) {
-                req->state = EC_REQUEST_IN_PROGRESS;
+                req->state = EC_REQUEST_BUSY;
 
                 if (slave->current_state == EC_SLAVE_STATE_INIT ||
                         slave->error_flag) {
@@ -420,7 +420,7 @@ int ec_fsm_master_action_process_sdo(
         request = list_entry(master->slave_sdo_requests.next,
                 ec_master_sdo_request_t, list);
         list_del_init(&request->list); // dequeue
-        request->req.state = EC_REQUEST_IN_PROGRESS;
+        request->req.state = EC_REQUEST_BUSY;
         up(&master->sdo_sem);
 
         slave = request->slave;
@@ -499,7 +499,7 @@ int ec_fsm_master_action_configure(
     if (fsm->config_error)
         master->config_state = EC_REQUEST_FAILURE;
     else
-        master->config_state = EC_REQUEST_COMPLETE;
+        master->config_state = EC_REQUEST_SUCCESS;
     wake_up_interruptible(&master->config_queue);
     return 0;
 }
@@ -522,7 +522,7 @@ void ec_fsm_master_action_process_states(ec_fsm_master_t *fsm
     if (!master->allow_config) {
         up(&master->config_sem);
     } else {
-        master->config_state = EC_REQUEST_IN_PROGRESS;
+        master->config_state = EC_REQUEST_BUSY;
         fsm->config_error = 0;
         up(&master->config_sem);
 
@@ -938,7 +938,7 @@ void ec_fsm_master_state_scan_slaves(
     ec_master_eoe_start(master);
 #endif
 
-    master->scan_state = EC_REQUEST_COMPLETE;
+    master->scan_state = EC_REQUEST_SUCCESS;
     wake_up_interruptible(&master->scan_queue);
 
     fsm->state = ec_fsm_master_state_end;
@@ -1007,7 +1007,7 @@ void ec_fsm_master_state_write_eeprom(
     if (master->debug_level)
         EC_DBG("Finished writing %u words of EEPROM data to slave %u.\n",
                 request->word_size, slave->ring_position);
-    request->state = EC_REQUEST_COMPLETE;
+    request->state = EC_REQUEST_SUCCESS;
     wake_up(&master->eeprom_queue);
 
     // TODO: Evaluate new EEPROM contents!
@@ -1072,7 +1072,7 @@ void ec_fsm_master_state_sdo_request(ec_fsm_master_t *fsm /**< master state mach
     }
 
     // Sdo request finished 
-    request->state = EC_REQUEST_COMPLETE;
+    request->state = EC_REQUEST_SUCCESS;
     wake_up(&master->sdo_queue);
 
     if (master->debug_level)
