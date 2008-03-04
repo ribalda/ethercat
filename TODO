@@ -30,6 +30,7 @@ Version 1.4.0:
 * Re-design slave configuration FSM, avoid unnecessary process data
   interruptions.
 * Wait for bus scanning, even when link is not up at ecrt_request_master().
+* Implement ecrt_slave_config_state().
 
 Future issues:
 
