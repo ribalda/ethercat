@@ -31,10 +31,9 @@
  *
  *****************************************************************************/
 
-/**
-   \file
-   Canopen-over-EtherCAT Sdo request functions.
-*/
+/** \file
+ * Canopen-over-EtherCAT Sdo request functions.
+ */
 
 /*****************************************************************************/
 
@@ -50,7 +49,7 @@ void ec_sdo_request_clear_data(ec_sdo_request_t *);
 
 /** State type translation table.
  */
-const ec_sdo_request_state_t state_table[] = {
+static const ec_sdo_request_state_t state_translation_table[] = {
     EC_SDO_REQUEST_UNUSED,  // EC_REQUEST_INIT,
     EC_SDO_REQUEST_BUSY,    // EC_REQUEST_QUEUED,
     EC_SDO_REQUEST_BUSY,    // EC_REQUEST_BUSY,
@@ -180,7 +179,7 @@ uint8_t *ecrt_sdo_request_data(ec_sdo_request_t *req)
 
 ec_sdo_request_state_t ecrt_sdo_request_state(const ec_sdo_request_t *req)
 {
-   return state_table[req->state];
+   return state_translation_table[req->state];
 }
 
 /*****************************************************************************/
