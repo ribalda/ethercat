@@ -58,6 +58,9 @@ struct ec_sdo_request {
     uint8_t *data; /**< Pointer to Sdo data. */
     size_t mem_size; /**< Size of Sdo data memory. */
     size_t data_size; /**< Size of Sdo data. */
+    ec_direction_t dir; /**< Direction. EC_DIR_OUTPUT means downloading to
+                          the slave, EC_DIR_INPUT means uploading from the
+                          slave. */
     ec_request_state_t state; /**< Sdo request state. */
 };
 

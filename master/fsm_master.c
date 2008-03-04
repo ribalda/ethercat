@@ -402,7 +402,7 @@ int ec_fsm_master_action_process_sdo(
                 fsm->sdo_request = req;
                 fsm->slave = slave;
                 fsm->state = ec_fsm_master_state_sdo_request;
-                ec_fsm_coe_upload(&fsm->fsm_coe, slave, req);
+                ec_fsm_coe_transfer(&fsm->fsm_coe, slave, req);
                 ec_fsm_coe_exec(&fsm->fsm_coe); // execute immediately
                 return 1;
             }
@@ -444,7 +444,7 @@ int ec_fsm_master_action_process_sdo(
         fsm->sdo_request = &request->req;
         fsm->slave = slave;
         fsm->state = ec_fsm_master_state_sdo_request;
-        ec_fsm_coe_upload(&fsm->fsm_coe, slave, &request->req);
+        ec_fsm_coe_transfer(&fsm->fsm_coe, slave, &request->req);
         ec_fsm_coe_exec(&fsm->fsm_coe); // execute immediately
         return 1;
     }

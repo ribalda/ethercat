@@ -73,8 +73,7 @@ void ec_fsm_coe_init(ec_fsm_coe_t *, ec_datagram_t *);
 void ec_fsm_coe_clear(ec_fsm_coe_t *);
 
 void ec_fsm_coe_dictionary(ec_fsm_coe_t *, ec_slave_t *);
-void ec_fsm_coe_download(ec_fsm_coe_t *, ec_slave_t *, ec_sdo_request_t *);
-void ec_fsm_coe_upload(ec_fsm_coe_t *, ec_slave_t *, ec_sdo_request_t *);
+void ec_fsm_coe_transfer(ec_fsm_coe_t *, ec_slave_t *, ec_sdo_request_t *);
 
 int ec_fsm_coe_exec(ec_fsm_coe_t *);
 int ec_fsm_coe_success(ec_fsm_coe_t *);

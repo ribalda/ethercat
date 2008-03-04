@@ -220,7 +220,7 @@ void ec_fsm_pdo_config_next_pdo(
                 fsm->pdo->index);
 
     fsm->state = ec_fsm_pdo_config_state_zero_count;
-    ec_fsm_coe_download(fsm->fsm_coe, fsm->slave, &fsm->request);
+    ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, &fsm->request);
     ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
 }
 
@@ -260,7 +260,7 @@ void ec_fsm_pdo_config_add_entry(
                 value, fsm->entry_count);
     
     fsm->state = ec_fsm_pdo_config_state_add_entry;
-    ec_fsm_coe_download(fsm->fsm_coe, fsm->slave, &fsm->request);
+    ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, &fsm->request);
     ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
 }
 
@@ -326,7 +326,7 @@ void ec_fsm_pdo_config_state_add_entry(
                     fsm->entry_count);
         
         fsm->state = ec_fsm_pdo_config_state_entry_count;
-        ec_fsm_coe_download(fsm->fsm_coe, fsm->slave, &fsm->request);
+        ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, &fsm->request);
         ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
         return;
     }

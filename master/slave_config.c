@@ -709,6 +709,10 @@ ec_sdo_request_t *ecrt_slave_config_create_sdo_request(ec_slave_config_t *sc,
         kfree(req);
         return NULL;
     }
+
+    // prepare data for optional writing
+    memset(req->data, 0x00, size);
+    req->data_size = size;
     
     list_add_tail(&req->list, &sc->sdo_requests);
     return req; 

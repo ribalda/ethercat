@@ -184,7 +184,7 @@ void ec_fsm_coe_map_action_next_dir(
         ec_sdo_request_address(&fsm->request, fsm->sync_sdo_index, 0);
         ecrt_sdo_request_read(&fsm->request);
         fsm->state = ec_fsm_coe_map_state_pdo_count;
-        ec_fsm_coe_upload(fsm->fsm_coe, fsm->slave, &fsm->request);
+        ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, &fsm->request);
         ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
         return;
     }
@@ -240,7 +240,7 @@ void ec_fsm_coe_map_action_next_pdo(
                 fsm->sync_subindex);
         ecrt_sdo_request_read(&fsm->request);
         fsm->state = ec_fsm_coe_map_state_pdo;
-        ec_fsm_coe_upload(fsm->fsm_coe, fsm->slave, &fsm->request);
+        ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, &fsm->request);
         ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
         return;
     }
@@ -297,7 +297,7 @@ void ec_fsm_coe_map_state_pdo(
     ec_sdo_request_address(&fsm->request, fsm->pdo->index, 0);
     ecrt_sdo_request_read(&fsm->request);
     fsm->state = ec_fsm_coe_map_state_pdo_entry_count;
-    ec_fsm_coe_upload(fsm->fsm_coe, fsm->slave, &fsm->request);
+    ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, &fsm->request);
     ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
 }
 
@@ -344,7 +344,7 @@ void ec_fsm_coe_map_action_next_pdo_entry(
         ec_sdo_request_address(&fsm->request, fsm->pdo->index, fsm->pdo_subindex);
         ecrt_sdo_request_read(&fsm->request);
         fsm->state = ec_fsm_coe_map_state_pdo_entry;
-        ec_fsm_coe_upload(fsm->fsm_coe, fsm->slave, &fsm->request);
+        ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, &fsm->request);
         ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
         return;
     }

@@ -57,6 +57,7 @@ void ec_sdo_request_init(
     req->data = NULL;
     req->mem_size = 0;
     req->data_size = 0;
+    req->dir = EC_DIR_OUTPUT;
     req->state = EC_REQUEST_COMPLETE;
 }
 
@@ -181,6 +182,7 @@ ec_sdo_request_error_t ecrt_sdo_request_error(const ec_sdo_request_t *req)
 
 void ecrt_sdo_request_read(ec_sdo_request_t *req)
 {
+    req->dir = EC_DIR_INPUT;
     req->state = EC_REQUEST_QUEUED;
 }
 
@@ -188,6 +190,7 @@ void ecrt_sdo_request_read(ec_sdo_request_t *req)
 
 void ecrt_sdo_request_write(ec_sdo_request_t *req)
 {
+    req->dir = EC_DIR_OUTPUT;
     req->state = EC_REQUEST_QUEUED;
 }
 
@@ -199,3 +202,5 @@ EXPORT_SYMBOL(ecrt_sdo_request_state);
 EXPORT_SYMBOL(ecrt_sdo_request_error);
 EXPORT_SYMBOL(ecrt_sdo_request_read);
 EXPORT_SYMBOL(ecrt_sdo_request_write);
+
+/*****************************************************************************/

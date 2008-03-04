@@ -180,10 +180,10 @@ void ec_fsm_coe_dictionary(ec_fsm_coe_t *fsm, /**< finite state machine */
 /*****************************************************************************/
 
 /**
-   Starts to download an Sdo to a slave.
+   Starts to transfer an Sdo to/from a slave.
 */
 
-void ec_fsm_coe_download(
+void ec_fsm_coe_transfer(
         ec_fsm_coe_t *fsm, /**< State machine. */
         ec_slave_t *slave, /**< EtherCAT slave. */
         ec_sdo_request_t *request /**< Sdo request. */
@@ -191,23 +191,10 @@ void ec_fsm_coe_download(
 {
     fsm->slave = slave;
     fsm->request = request;
-    fsm->state = ec_fsm_coe_down_start;
-}
-
-/*****************************************************************************/
-
-/**
-   Starts to upload an Sdo from a slave.
-*/
-
-void ec_fsm_coe_upload(ec_fsm_coe_t *fsm, /**< finite state machine */
-                       ec_slave_t *slave, /**< EtherCAT slave */
-                       ec_sdo_request_t *request /**< Sdo request */
-                       )
-{
-    fsm->slave = slave;
-    fsm->request = request;
-    fsm->state = ec_fsm_coe_up_start;
+    if (request->dir == EC_DIR_OUTPUT)
+        fsm->state = ec_fsm_coe_down_start;
+    else
+        fsm->state = ec_fsm_coe_up_start;
 }
 
 /*****************************************************************************/

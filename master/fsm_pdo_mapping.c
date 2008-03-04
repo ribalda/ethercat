@@ -210,7 +210,7 @@ void ec_fsm_pdo_mapping_next_dir(
             EC_DBG("Setting Pdo count to zero for SM%u.\n", fsm->sync->index);
 
         fsm->state = ec_fsm_pdo_mapping_state_zero_count;
-        ec_fsm_coe_download(fsm->fsm_coe, fsm->slave, &fsm->request);
+        ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, &fsm->request);
         ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
         return;
     }
@@ -254,7 +254,7 @@ void ec_fsm_pdo_mapping_add_pdo(
                 fsm->pdo->index, fsm->pdo_count);
     
     fsm->state = ec_fsm_pdo_mapping_state_add_pdo;
-    ec_fsm_coe_download(fsm->fsm_coe, fsm->slave, &fsm->request);
+    ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, &fsm->request);
     ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
 }
 
@@ -320,7 +320,7 @@ void ec_fsm_pdo_mapping_state_add_pdo(
                     fsm->pdo_count);
         
         fsm->state = ec_fsm_pdo_mapping_state_pdo_count;
-        ec_fsm_coe_download(fsm->fsm_coe, fsm->slave, &fsm->request);
+        ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, &fsm->request);
         ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
         return;
     }

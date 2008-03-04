@@ -451,7 +451,7 @@ void ec_fsm_slave_config_enter_sdo_conf(ec_fsm_slave_config_t *fsm /**< slave st
     fsm->request = list_entry(fsm->slave->config->sdo_configs.next,
             ec_sdo_request_t, list);
     ecrt_sdo_request_write(fsm->request);
-    ec_fsm_coe_download(&fsm->fsm_coe, fsm->slave, fsm->request);
+    ec_fsm_coe_transfer(&fsm->fsm_coe, fsm->slave, fsm->request);
     ec_fsm_coe_exec(&fsm->fsm_coe); // execute immediately
 }
 
@@ -480,7 +480,7 @@ void ec_fsm_slave_config_state_sdo_conf(
         fsm->request = list_entry(fsm->request->list.next, ec_sdo_request_t,
                 list);
         ecrt_sdo_request_write(fsm->request);
-        ec_fsm_coe_download(&fsm->fsm_coe, fsm->slave, fsm->request);
+        ec_fsm_coe_transfer(&fsm->fsm_coe, fsm->slave, fsm->request);
         ec_fsm_coe_exec(&fsm->fsm_coe); // execute immediately
         return;
     }
