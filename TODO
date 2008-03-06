@@ -9,7 +9,8 @@ $Id$
 Version 1.4.0:
 
 * Slave config allow flag and completion object.
-* Mailbox handler
+* Mailbox state machine using toggle bits.
+* Mailbox protocol handlers.
 * READMEs for examples.
 * Remove get_cycles() calls and references to cpu_khz to increase
   portability.
@@ -45,6 +46,7 @@ Future issues:
 
 Smaller issues:
 
+* Evaluate SII Size field (0x003E) to determine maximum SII memory size.
 * Unite fsm_pdo_mapping, fsm_pdo_config and fsm_coe_map.
 * Clear sync managers in INIT.
 * Simplify FSMs with <state>_enter() functions.
