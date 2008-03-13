@@ -177,6 +177,13 @@ uint8_t *ecrt_sdo_request_data(ec_sdo_request_t *req)
 
 /*****************************************************************************/
 
+size_t ecrt_sdo_request_data_size(const ec_sdo_request_t *req)
+{
+    return req->data_size;
+}
+
+/*****************************************************************************/
+
 ec_sdo_request_state_t ecrt_sdo_request_state(const ec_sdo_request_t *req)
 {
    return state_translation_table[req->state];
@@ -204,6 +211,7 @@ void ecrt_sdo_request_write(ec_sdo_request_t *req)
 
 EXPORT_SYMBOL(ecrt_sdo_request_timeout);
 EXPORT_SYMBOL(ecrt_sdo_request_data);
+EXPORT_SYMBOL(ecrt_sdo_request_data_size);
 EXPORT_SYMBOL(ecrt_sdo_request_state);
 EXPORT_SYMBOL(ecrt_sdo_request_read);
 EXPORT_SYMBOL(ecrt_sdo_request_write);

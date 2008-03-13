@@ -672,6 +672,18 @@ uint8_t *ecrt_sdo_request_data(
         ec_sdo_request_t *req /**< Sdo request. */
         );
 
+/** Returns the current Sdo data size.
+ *
+ * When the Sdo request is created, the data size is set to the size of the
+ * reserved memory. After a read operation the size is set to the size of the
+ * read data. The size is not modified in any other situation.
+ *
+ * \return Sdo data size in bytes.
+ */
+size_t ecrt_sdo_request_data_size(
+        const ec_sdo_request_t *req /**< Sdo request. */
+        );
+
 /** Get the current state of the Sdo request.
  *
  * \return Request state.
