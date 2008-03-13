@@ -169,7 +169,7 @@ void read_sdo(void)
 {
     switch (ecrt_sdo_request_state(sdo)) {
         case EC_SDO_REQUEST_UNUSED: // request was not used yet
-            ecrt_sdo_request_read(sdo);
+            ecrt_sdo_request_read(sdo); // trigger first read
             break;
         case EC_SDO_REQUEST_BUSY:
             printk(KERN_INFO PFX "Still busy...\n");
@@ -177,11 +177,11 @@ void read_sdo(void)
         case EC_SDO_REQUEST_SUCCESS:
             printk(KERN_INFO PFX "Sdo value: 0x%04X\n",
                     EC_READ_U16(ecrt_sdo_request_data(sdo)));
-            ecrt_sdo_request_read(sdo);
+            ecrt_sdo_request_read(sdo); // trigger next read
             break;
         case EC_SDO_REQUEST_ERROR:
             printk(KERN_INFO PFX "Failed to read Sdo!\n");
-            ecrt_sdo_request_read(sdo);
+            ecrt_sdo_request_read(sdo); // retry reading
             break;
     }
 }
