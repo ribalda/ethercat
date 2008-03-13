@@ -647,6 +647,21 @@ void ecrt_sdo_request_timeout(
 
 /** Access to the Sdo request's data.
  *
+ * This function returns a pointer to the request's internal Sdo data memory.
+ *
+ * - After a read operation was successful, integer data can be evaluated using
+ *   the EC_READ_*() macros as usual. Example:
+ *   \code
+ *   uint16_t value = EC_READ_U16(ecrt_sdo_request_data(sdo)));
+ *   \endcode
+ * - If a write operation shall be triggered, the data have to be written to
+ *   the internal memory. Use the EC_WRITE_*() macros, if you are writing
+ *   integer data. Be sure, that the data fit into the memory. The memory size
+ *   is a parameter of ecrt_slave_config_create_sdo_request().
+ *   \code
+ *   EC_WRITE_U16(ecrt_sdo_request_data(sdo), 0xFFFF);
+ *   \endcode
+ *
  * \attention The return value can be invalid during a read operation, because
  * the internal Sdo data memory could be re-allocated if the read Sdo data do
  * not fit inside.
