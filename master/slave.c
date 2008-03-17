@@ -645,9 +645,9 @@ ssize_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
         char *buffer /**< Output buffer */
         )
 {
-    ec_sync_t *sync;
-    ec_pdo_t *pdo;
-    ec_pdo_entry_t *pdo_entry;
+    const ec_sync_t *sync;
+    const ec_pdo_t *pdo;
+    const ec_pdo_entry_t *pdo_entry;
     int first, i;
     char *large_buffer, *buf;
     unsigned int size;
