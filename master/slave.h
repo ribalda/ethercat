@@ -216,6 +216,8 @@ struct ec_slave
 int ec_slave_init(ec_slave_t *, ec_master_t *, uint16_t, uint16_t);
 void ec_slave_destroy(ec_slave_t *);
 
+void ec_slave_clear_sync_managers(ec_slave_t *);
+
 void ec_slave_request_state(ec_slave_t *, ec_slave_state_t);
 void ec_slave_set_state(ec_slave_t *, ec_slave_state_t);
 void ec_slave_set_online_state(ec_slave_t *, ec_slave_online_state_t);

@@ -261,12 +261,7 @@ void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
     }
 
     // free all sync managers
-    if (slave->sii.syncs) {
-        for (i = 0; i < slave->sii.sync_count; i++) {
-            ec_sync_clear(&slave->sii.syncs[i]);
-        }
-        kfree(slave->sii.syncs);
-    }
+    ec_slave_clear_sync_managers(slave);
 
     // free all SII Pdos
     list_for_each_entry_safe(pdo, next_pdo, &slave->sii.pdos, list) {
@@ -288,6 +283,23 @@ void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
 
 void ec_slave_sdos_clear(struct kobject *kobj /**< kobject for Sdos */)
 {
+}
+
+/*****************************************************************************/
+
+/** Clear the sync manager array. 
+ */
+void ec_slave_clear_sync_managers(ec_slave_t *slave /**< EtherCAT slave. */)
+{
+    unsigned int i;
+
+    if (slave->sii.syncs) {
+        for (i = 0; i < slave->sii.sync_count; i++) {
+            ec_sync_clear(&slave->sii.syncs[i]);
+        }
+        kfree(slave->sii.syncs);
+        slave->sii.syncs = NULL;
+    }
 }
 
 /*****************************************************************************/
@@ -450,47 +462,69 @@ int ec_slave_fetch_sii_general(
 
 /*****************************************************************************/
 
-/**
-   Fetches data from a SYNC MANAGER category.
-   \return 0 in case of success, else < 0
-*/
-
+/** Fetches data from a SYNC MANAGER category.
+ *
+ * Appends the sync managers described in the category to the existing ones.
+ *
+ * \return 0 in case of success, else < 0
+ */
 int ec_slave_fetch_sii_syncs(
-        ec_slave_t *slave, /**< EtherCAT slave */
-        const uint8_t *data, /**< category data */
-        size_t data_size /**< number of bytes */
+        ec_slave_t *slave, /**< EtherCAT slave. */
+        const uint8_t *data, /**< Category data. */
+        size_t data_size /**< Number of bytes. */
         )
 {
-    unsigned int i;
+    unsigned int i, count, total_count;
     ec_sync_t *sync;
     size_t memsize;
+    ec_sync_t *syncs;
+    uint8_t index;
 
     // one sync manager struct is 4 words long
     if (data_size % 8) {
-        EC_ERR("Invalid SII sync manager size %u in slave %u.\n",
+        EC_ERR("Invalid SII sync manager category size %u in slave %u.\n",
                 data_size, slave->ring_position);
         return -1;
     }
 
-    slave->sii.sync_count = data_size / 8;
+    count = data_size / 8;
 
-    memsize = sizeof(ec_sync_t) * slave->sii.sync_count;
-    if (!(slave->sii.syncs = kmalloc(memsize, GFP_KERNEL))) {
-        EC_ERR("Failed to allocate %u bytes for sync managers.\n",
-                memsize);
-        slave->sii.sync_count = 0;
-        return -1;
-    }
+    if (slave->master->debug_level)
+        EC_DBG("Found Sync manager category with %u sync managers.\n", count);
     
-    for (i = 0; i < slave->sii.sync_count; i++, data += 8) {
-        sync = &slave->sii.syncs[i];
+    if (count) {
+        total_count = count + slave->sii.sync_count;
+        memsize = sizeof(ec_sync_t) * total_count;
+        if (!(syncs = kmalloc(memsize, GFP_KERNEL))) {
+            EC_ERR("Failed to allocate %u bytes for sync managers.\n",
+                    memsize);
+            return -1;
+        }
 
-        ec_sync_init(sync, slave, i);
-        sync->physical_start_address = EC_READ_U16(data);
-        sync->length = EC_READ_U16(data + 2);
-        sync->control_register = EC_READ_U8 (data + 4);
-        sync->enable = EC_READ_U8 (data + 6);
+        // copy existing sync managers
+        memcpy(syncs, slave->sii.syncs,
+                slave->sii.sync_count * sizeof(ec_sync_t));
+
+        // initialize new sync managers
+        for (i = 0; i < count; i++, data += 8) {
+            index = i + slave->sii.sync_count;
+            sync = &syncs[index];
+
+            ec_sync_init(sync, slave, index);
+            sync->physical_start_address = EC_READ_U16(data);
+            sync->length = EC_READ_U16(data + 2);
+            sync->control_register = EC_READ_U8(data + 4);
+            sync->enable = EC_READ_U8(data + 6);
+        }
+
+        if (slave->sii.syncs)
+            kfree(slave->sii.syncs);
+        slave->sii.syncs = syncs;
+        slave->sii.sync_count = total_count;
     }
+
+    if (slave->master->debug_level)
+        EC_DBG("Total sync managers: %u.\n", slave->sii.sync_count);
 
     return 0;
 }

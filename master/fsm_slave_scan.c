@@ -464,6 +464,8 @@ void ec_fsm_slave_scan_state_eeprom_data(ec_fsm_slave_scan_t *fsm /**< slave sta
     }
 
     // Evaluate EEPROM contents
+    
+    ec_slave_clear_sync_managers(slave);
 
     slave->sii.alias =
         EC_READ_U16(slave->eeprom_data + 2 * 0x0004);
