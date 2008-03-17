@@ -64,6 +64,8 @@ Changes in version 1.4.0:
 * Added MODPROBE_FLAGS variable in start script and sysconfig file.
 * Implemented missing datagram types.
 * Allow multiple sync manager categories in SII.
+* Changed all occurrences of 'EEPROM' to 'SII', renamed the eeprom sysfs file
+  to sii, in particular.
 
 -------------------------------------------------------------------------------
 

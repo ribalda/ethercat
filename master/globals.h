@@ -64,8 +64,8 @@
 /** Minimum size of a buffer used with ec_state_string(). */
 #define EC_STATE_STRING_SIZE 32
 
-/** Maximum EEPROM size in words, to avoid infinite reading. */
-#define EC_MAX_EEPROM_SIZE 1024
+/** Maximum SII size in words, to avoid infinite reading. */
+#define EC_MAX_SII_SIZE 1024
 
 /******************************************************************************
  * EtherCAT protocol
@@ -87,8 +87,8 @@
 #define EC_MAX_DATA_SIZE (ETH_DATA_LEN - EC_FRAME_HEADER_SIZE \
                           - EC_DATAGRAM_HEADER_SIZE - EC_DATAGRAM_FOOTER_SIZE)
 
-/** Word offset of first EEPROM category. */
-#define EC_FIRST_EEPROM_CATEGORY_OFFSET 0x40
+/** Word offset of first SII category. */
+#define EC_FIRST_SII_CATEGORY_OFFSET 0x40
 
 /** Size of a sync manager configuration page. */
 #define EC_SYNC_PAGE_SIZE 8

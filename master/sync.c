@@ -73,7 +73,7 @@ void ec_sync_clear(
 
 /*****************************************************************************/
 
-/** Initializes a sync manager configuration page with EEPROM data.
+/** Initializes a sync manager configuration page with SII data.
  *
  * The referenced memory (\a data) must be at least \a EC_SYNC_SIZE bytes.
  */

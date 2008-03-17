@@ -142,26 +142,26 @@ typedef struct {
     uint16_t mailbox_protocols; /**< Supported mailbox protocols. */
 
     // Strings
-    char **strings; /**< Strings in EEPROM categories. */
-    unsigned int string_count; /**< number of EEPROM strings */
+    char **strings; /**< Strings in SII categories. */
+    unsigned int string_count; /**< number of SII strings */
 
     // General
     unsigned int has_general; /**< General category present. */
-    char *group; /**< slave group acc. to EEPROM */
-    char *image; /**< slave image name acc. to EEPROM */
-    char *order; /**< slave order number acc. to EEPROM */
-    char *name; /**< slave name acc. to EEPROM */
+    char *group; /**< slave group acc. to SII */
+    char *image; /**< slave image name acc. to SII */
+    char *order; /**< slave order number acc. to SII */
+    char *name; /**< slave name acc. to SII */
     uint8_t physical_layer[4]; /**< port media */
     ec_sii_coe_details_t coe_details; /**< CoE detail flags. */
     ec_sii_general_flags_t general_flags; /**< General flags. */
     int16_t current_on_ebus; /**< power consumption */
 
     // SyncM
-    ec_sync_t *syncs; /**< EEPROM SYNC MANAGER categories */
-    unsigned int sync_count; /**< number of sync managers in EEPROM */
+    ec_sync_t *syncs; /**< SII SYNC MANAGER categories */
+    unsigned int sync_count; /**< number of sync managers in SII */
 
     // [RT]XPDO
-    struct list_head pdos; /**< EEPROM [RT]XPDO categories */
+    struct list_head pdos; /**< SII [RT]XPDO categories */
 } ec_sii_t;
 
 /*****************************************************************************/
@@ -197,9 +197,9 @@ struct ec_slave
     uint8_t dl_loop[4]; /**< loop closed */
     uint8_t dl_signal[4]; /**< detected signal on RX port */
 
-    // EEPROM
-    uint8_t *eeprom_data; /**< Complete EEPROM image */
-    size_t eeprom_size; /**< size of the EEPROM contents in bytes */
+    // SII
+    uint8_t *sii_data; /**< Complete SII image */
+    size_t sii_size; /**< size of the SII contents in bytes */
 
     // slave information interface
     ec_sii_t sii; /**< SII data. */

@@ -46,12 +46,12 @@
 /**
  * Read/Write timeout. [ms]
  */
-#define EEPROM_TIMEOUT 10
+#define SII_TIMEOUT 10
 
 /**
  * Time before evaluating answer at writing. [ms]
  */
-#define EEPROM_INHIBIT  5
+#define SII_INHIBIT  5
 
 //#define SII_DEBUG
 
@@ -290,7 +290,7 @@ void ec_fsm_sii_state_read_fetch(
 												 // read operation busy
         // still busy... timeout?
         if (datagram->cycles_received
-            - fsm->cycles_start >= (cycles_t) EEPROM_TIMEOUT * cpu_khz) {
+            - fsm->cycles_start >= (cycles_t) SII_TIMEOUT * cpu_khz) {
             if (fsm->check_once_more) {
 				fsm->check_once_more = 0;
 			} else {
@@ -426,7 +426,7 @@ void ec_fsm_sii_state_write_check2(
 	/* FIXME: some slaves never answer with the busy flag set...
 	 * wait a few ms for the write operation to complete. */
 	if (datagram->cycles_received - fsm->cycles_start
-			< (cycles_t) EEPROM_INHIBIT * cpu_khz) {
+			< (cycles_t) SII_INHIBIT * cpu_khz) {
 #ifdef SII_DEBUG
 		EC_DBG("too early.\n");
 #endif
@@ -439,7 +439,7 @@ void ec_fsm_sii_state_write_check2(
 												 // write operation busy bit
         // still busy... timeout?
         if (datagram->cycles_received
-            - fsm->cycles_start >= (cycles_t) EEPROM_TIMEOUT * cpu_khz) {
+            - fsm->cycles_start >= (cycles_t) SII_TIMEOUT * cpu_khz) {
             if (fsm->check_once_more) {
 				fsm->check_once_more = 0;
 			} else {

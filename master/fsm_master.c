@@ -60,7 +60,7 @@ void ec_fsm_master_state_rewrite_addresses(ec_fsm_master_t *);
 void ec_fsm_master_state_configure_slave(ec_fsm_master_t *);
 void ec_fsm_master_state_clear_addresses(ec_fsm_master_t *);
 void ec_fsm_master_state_scan_slaves(ec_fsm_master_t *);
-void ec_fsm_master_state_write_eeprom(ec_fsm_master_t *);
+void ec_fsm_master_state_write_sii(ec_fsm_master_t *);
 void ec_fsm_master_state_sdodict(ec_fsm_master_t *);
 void ec_fsm_master_state_sdo_request(ec_fsm_master_t *);
 void ec_fsm_master_state_end(ec_fsm_master_t *);
@@ -313,50 +313,50 @@ void ec_fsm_master_state_broadcast(ec_fsm_master_t *fsm /**< master state machin
 /*****************************************************************************/
 
 /**
- * Check for pending EEPROM write requests and process one.
- * \return non-zero, if an EEPROM write request is processed.
+ * Check for pending SII write requests and process one.
+ * \return non-zero, if an SII write request is processed.
  */
 
-int ec_fsm_master_action_process_eeprom(
+int ec_fsm_master_action_process_sii(
         ec_fsm_master_t *fsm /**< master state machine */
         )
 {
     ec_master_t *master = fsm->master;
-    ec_eeprom_write_request_t *request;
+    ec_sii_write_request_t *request;
     ec_slave_t *slave;
 
     // search the first request to be processed
     while (1) {
-        down(&master->eeprom_sem);
-        if (list_empty(&master->eeprom_requests)) {
-            up(&master->eeprom_sem);
+        down(&master->sii_sem);
+        if (list_empty(&master->sii_requests)) {
+            up(&master->sii_sem);
             break;
         }
         // get first request
-        request = list_entry(master->eeprom_requests.next,
-                ec_eeprom_write_request_t, list);
+        request = list_entry(master->sii_requests.next,
+                ec_sii_write_request_t, list);
         list_del_init(&request->list); // dequeue
         request->state = EC_REQUEST_BUSY;
-        up(&master->eeprom_sem);
+        up(&master->sii_sem);
 
         slave = request->slave;
         if (slave->online_state == EC_SLAVE_OFFLINE) {
-            EC_ERR("Discarding EEPROM data, slave %i offline.\n",
+            EC_ERR("Discarding SII data, slave %i offline.\n",
                     slave->ring_position);
             request->state = EC_REQUEST_FAILURE;
-            wake_up(&master->eeprom_queue);
+            wake_up(&master->sii_queue);
             continue;
         }
 
-        // found pending EEPROM write operation. execute it!
+        // found pending SII write operation. execute it!
         if (master->debug_level)
-            EC_DBG("Writing EEPROM data to slave %i...\n",
+            EC_DBG("Writing SII data to slave %i...\n",
                     slave->ring_position);
-        fsm->eeprom_request = request;
-        fsm->eeprom_index = 0;
+        fsm->sii_request = request;
+        fsm->sii_index = 0;
         ec_fsm_sii_write(&fsm->fsm_sii, request->slave, request->word_offset,
                 request->data, EC_FSM_SII_USE_CONFIGURED_ADDRESS);
-        fsm->state = ec_fsm_master_state_write_eeprom;
+        fsm->state = ec_fsm_master_state_write_sii;
         fsm->state(fsm); // execute immediately
         return 1;
     }
@@ -562,9 +562,9 @@ void ec_fsm_master_action_process_states(ec_fsm_master_t *fsm
             return;
         }
 
-        // check for pending EEPROM write operations.
-        if (ec_fsm_master_action_process_eeprom(fsm))
-            return; // EEPROM write request found
+        // check for pending SII write operations.
+        if (ec_fsm_master_action_process_sii(fsm))
+            return; // SII write request found
     }
 
     fsm->state = ec_fsm_master_state_end;
@@ -971,49 +971,49 @@ void ec_fsm_master_state_configure_slave(ec_fsm_master_t *fsm
 /*****************************************************************************/
 
 /**
-   Master state: WRITE EEPROM.
+   Master state: WRITE SII.
 */
 
-void ec_fsm_master_state_write_eeprom(
+void ec_fsm_master_state_write_sii(
         ec_fsm_master_t *fsm /**< master state machine */)
 {
     ec_master_t *master = fsm->master;
-    ec_eeprom_write_request_t *request = fsm->eeprom_request;
+    ec_sii_write_request_t *request = fsm->sii_request;
     ec_slave_t *slave = request->slave;
 
     if (ec_fsm_sii_exec(&fsm->fsm_sii)) return;
 
     if (!ec_fsm_sii_success(&fsm->fsm_sii)) {
         slave->error_flag = 1;
-        EC_ERR("Failed to write EEPROM data to slave %i.\n",
+        EC_ERR("Failed to write SII data to slave %i.\n",
                 slave->ring_position);
         request->state = EC_REQUEST_FAILURE;
-        wake_up(&master->eeprom_queue);
+        wake_up(&master->sii_queue);
         fsm->state = ec_fsm_master_state_error;
         return;
     }
 
-    fsm->eeprom_index++;
-    if (fsm->eeprom_index < request->word_size) {
+    fsm->sii_index++;
+    if (fsm->sii_index < request->word_size) {
         ec_fsm_sii_write(&fsm->fsm_sii, slave,
-                request->word_offset + fsm->eeprom_index,
-                request->data + fsm->eeprom_index * 2,
+                request->word_offset + fsm->sii_index,
+                request->data + fsm->sii_index * 2,
                 EC_FSM_SII_USE_CONFIGURED_ADDRESS);
         ec_fsm_sii_exec(&fsm->fsm_sii); // execute immediately
         return;
     }
 
-    // finished writing EEPROM
+    // finished writing SII
     if (master->debug_level)
-        EC_DBG("Finished writing %u words of EEPROM data to slave %u.\n",
+        EC_DBG("Finished writing %u words of SII data to slave %u.\n",
                 request->word_size, slave->ring_position);
     request->state = EC_REQUEST_SUCCESS;
-    wake_up(&master->eeprom_queue);
+    wake_up(&master->sii_queue);
 
-    // TODO: Evaluate new EEPROM contents!
+    // TODO: Evaluate new SII contents!
 
-    // check for another EEPROM write request
-    if (ec_fsm_master_action_process_eeprom(fsm))
+    // check for another SII write request
+    if (ec_fsm_master_action_process_sii(fsm))
         return; // processing another request
 
     fsm->state = ec_fsm_master_state_end;

@@ -152,10 +152,10 @@ struct ec_master {
     void (*ext_release_cb)(void *); /**< externam lock release callback */
     void *ext_cb_data; /**< data parameter of external locking callbacks */
 
-    struct list_head eeprom_requests; /**< EEPROM write requests */
-    struct semaphore eeprom_sem; /**< semaphore protecting the list of
-                                   EEPROM write requests */
-    wait_queue_head_t eeprom_queue; /**< wait queue for EEPROM
+    struct list_head sii_requests; /**< SII write requests */
+    struct semaphore sii_sem; /**< semaphore protecting the list of
+                                   SII write requests */
+    wait_queue_head_t sii_queue; /**< wait queue for SII
                                       write requests from user space */
 
     struct list_head slave_sdo_requests; /**< Sdo access requests. */

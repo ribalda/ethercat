@@ -171,9 +171,9 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     master->release_cb = NULL;
     master->cb_data = NULL;
 
-    INIT_LIST_HEAD(&master->eeprom_requests);
-    init_MUTEX(&master->eeprom_sem);
-    init_waitqueue_head(&master->eeprom_queue);
+    INIT_LIST_HEAD(&master->sii_requests);
+    init_MUTEX(&master->sii_sem);
+    init_waitqueue_head(&master->sii_queue);
 
     INIT_LIST_HEAD(&master->slave_sdo_requests);
     init_MUTEX(&master->sdo_sem);

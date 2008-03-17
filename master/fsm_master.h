@@ -52,7 +52,7 @@
 
 /*****************************************************************************/
 
-/** EEPROM write request.
+/** SII write request.
  */
 typedef struct {
     struct list_head list; /**< list head */
@@ -61,7 +61,7 @@ typedef struct {
     size_t word_size; /**< data size in words */
     const uint8_t *data; /**< pointer to the data */
     ec_request_state_t state; /**< state of the request */
-} ec_eeprom_write_request_t;
+} ec_sii_write_request_t;
 
 /*****************************************************************************/
 
@@ -95,8 +95,8 @@ struct ec_fsm_master {
                             not meet the initial conditions */
     unsigned int config_error; /**< error during slave configuration */
     ec_slave_t *slave; /**< current slave */
-    ec_eeprom_write_request_t *eeprom_request; /**< EEPROM write request */
-    off_t eeprom_index; /**< index to EEPROM write request data */
+    ec_sii_write_request_t *sii_request; /**< SII write request */
+    off_t sii_index; /**< index to SII write request data */
     ec_sdo_request_t *sdo_request; /**< Sdo request to process. */
 
     ec_fsm_slave_config_t fsm_slave_config; /**< slave state machine */

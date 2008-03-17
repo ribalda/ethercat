@@ -67,13 +67,13 @@ char *ec_slave_sii_string(ec_slave_t *, unsigned int);
 
 EC_SYSFS_READ_ATTR(info);
 EC_SYSFS_READ_WRITE_ATTR(state);
-EC_SYSFS_READ_WRITE_ATTR(eeprom);
+EC_SYSFS_READ_WRITE_ATTR(sii);
 EC_SYSFS_READ_WRITE_ATTR(alias);
 
 static struct attribute *def_attrs[] = {
     &attr_info,
     &attr_state,
-    &attr_eeprom,
+    &attr_sii,
     &attr_alias,
     NULL,
 };
@@ -127,8 +127,8 @@ int ec_slave_init(ec_slave_t *slave, /**< EtherCAT slave */
     slave->base_build = 0;
     slave->base_fmmu_count = 0;
 
-    slave->eeprom_data = NULL;
-    slave->eeprom_size = 0;
+    slave->sii_data = NULL;
+    slave->sii_size = 0;
 
     slave->sii.alias = 0;
     slave->sii.vendor_id = 0;
@@ -270,7 +270,8 @@ void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
         kfree(pdo);
     }
 
-    if (slave->eeprom_data) kfree(slave->eeprom_data);
+    if (slave->sii_data)
+        kfree(slave->sii_data);
 
     kfree(slave);
 }
@@ -861,39 +862,39 @@ ssize_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
 /*****************************************************************************/
 
 /**
- * Schedules an EEPROM write request.
+ * Schedules an SII write request.
  * \return 0 case of success, otherwise error code.
  */
 
-int ec_slave_schedule_eeprom_writing(
-        ec_eeprom_write_request_t *request /**< EEPROM write request */
+int ec_slave_schedule_sii_writing(
+        ec_sii_write_request_t *request /**< SII write request */
         )
 {
     ec_master_t *master = request->slave->master;
 
     request->state = EC_REQUEST_QUEUED;
 
-    // schedule EEPROM write request.
-    down(&master->eeprom_sem);
-    list_add_tail(&request->list, &master->eeprom_requests);
-    up(&master->eeprom_sem);
+    // schedule SII write request.
+    down(&master->sii_sem);
+    list_add_tail(&request->list, &master->sii_requests);
+    up(&master->sii_sem);
 
     // wait for processing through FSM
-    if (wait_event_interruptible(master->eeprom_queue,
+    if (wait_event_interruptible(master->sii_queue,
                 request->state != EC_REQUEST_QUEUED)) {
         // interrupted by signal
-        down(&master->eeprom_sem);
+        down(&master->sii_sem);
         if (request->state == EC_REQUEST_QUEUED) {
             list_del(&request->list);
-            up(&master->eeprom_sem);
+            up(&master->sii_sem);
             return -EINTR;
         }
         // request already processing: interrupt not possible.
-        up(&master->eeprom_sem);
+        up(&master->sii_sem);
     }
 
     // wait until master FSM has finished processing
-    wait_event(master->eeprom_queue,
+    wait_event(master->sii_queue,
             request->state != EC_REQUEST_BUSY);
 
     return request->state == EC_REQUEST_SUCCESS ? 0 : -EIO;
@@ -902,7 +903,7 @@ int ec_slave_schedule_eeprom_writing(
 /*****************************************************************************/
 
 /**
- * Calculates the EEPROM checksum field.
+ * Calculates the SII checksum field.
  *
  * The checksum is generated with the polynom x^8+x^2+x+1 (0x07) and an
  * initial value of 0xff (see IEC 61158-6-12 ch. 5.4).
@@ -916,7 +917,7 @@ int ec_slave_schedule_eeprom_writing(
  * \return CRC8
  */
 
-uint8_t ec_slave_eeprom_crc(
+uint8_t ec_slave_sii_crc(
         const uint8_t *data, /**< pointer to data */
         size_t length /**< number of bytes in \a data */
         )
@@ -945,33 +946,33 @@ uint8_t ec_slave_eeprom_crc(
 /*****************************************************************************/
 
 /**
- * Writes complete EEPROM contents to a slave.
+ * Writes complete SII contents to a slave.
  * \return data size written in case of success, otherwise error code.
  */
 
-ssize_t ec_slave_write_eeprom(ec_slave_t *slave, /**< EtherCAT slave */
-        const uint8_t *data, /**< new EEPROM data */
+ssize_t ec_slave_write_sii(ec_slave_t *slave, /**< EtherCAT slave */
+        const uint8_t *data, /**< new SII data */
         size_t size /**< size of data in bytes */
         )
 {
-    ec_eeprom_write_request_t request;
+    ec_sii_write_request_t request;
     const uint16_t *cat_header;
     uint16_t cat_type, cat_size;
     int ret;
     uint8_t crc;
 
     if (slave->master->mode != EC_MASTER_MODE_IDLE) { // FIXME
-        EC_ERR("Writing EEPROMs only allowed in idle mode!\n");
+        EC_ERR("Writing SIIs only allowed in idle mode!\n");
         return -EBUSY;
     }
 
     if (size % 2) {
-        EC_ERR("EEPROM data size is odd (%u bytes)! SII data must be"
+        EC_ERR("SII data size is odd (%u bytes)! SII data must be"
                 " word-aligned. Dropping.\n", size);
         return -EINVAL;
     }
 
-    // init EEPROM write request
+    // init SII write request
     INIT_LIST_HEAD(&request.list);
     request.slave = slave;
     request.data = data;
@@ -979,39 +980,39 @@ ssize_t ec_slave_write_eeprom(ec_slave_t *slave, /**< EtherCAT slave */
     request.word_size = size / 2;
 
     if (request.word_size < 0x0041) {
-        EC_ERR("EEPROM data too short (%u words)! Mimimum is"
+        EC_ERR("SII data too short (%u words)! Mimimum is"
                 " 40 fixed words + 1 delimiter. Dropping.\n",
                 request.word_size);
         return -EINVAL;
     }
 
     // calculate checksum
-    crc = ec_slave_eeprom_crc(data, 14); // CRC over words 0 to 6
+    crc = ec_slave_sii_crc(data, 14); // CRC over words 0 to 6
     if (crc != data[14]) {
-        EC_WARN("EEPROM CRC incorrect. Must be 0x%02x.\n", crc);
+        EC_WARN("SII CRC incorrect. Must be 0x%02x.\n", crc);
     }
 
     cat_header = (const uint16_t *) request.data
-		+ EC_FIRST_EEPROM_CATEGORY_OFFSET;
+		+ EC_FIRST_SII_CATEGORY_OFFSET;
     cat_type = EC_READ_U16(cat_header);
     while (cat_type != 0xFFFF) { // cycle through categories
         if (cat_header + 1 >
 				(const uint16_t *) request.data + request.word_size) {
-            EC_ERR("EEPROM data corrupted! Dropping.\n");
+            EC_ERR("SII data corrupted! Dropping.\n");
             return -EINVAL;
         }
         cat_size = EC_READ_U16(cat_header + 1);
         if (cat_header + cat_size + 2 >
 				(const uint16_t *) request.data + request.word_size) {
-            EC_ERR("EEPROM data corrupted! Dropping.\n");
+            EC_ERR("SII data corrupted! Dropping.\n");
             return -EINVAL;
         }
         cat_header += cat_size + 2;
         cat_type = EC_READ_U16(cat_header);
     }
 
-    // EEPROM data ok. schedule writing.
-    if ((ret = ec_slave_schedule_eeprom_writing(&request)))
+    // SII data ok. schedule writing.
+    if ((ret = ec_slave_schedule_sii_writing(&request)))
         return ret; // error code
 
     return size; // success
@@ -1020,7 +1021,7 @@ ssize_t ec_slave_write_eeprom(ec_slave_t *slave, /**< EtherCAT slave */
 /*****************************************************************************/
 
 /**
- * Writes the Secondary slave address (alias) to the slave's EEPROM.
+ * Writes the Secondary slave address (alias) to the slave's SII.
  * \return data size written in case of success, otherwise error code.
  */
 
@@ -1029,14 +1030,14 @@ ssize_t ec_slave_write_alias(ec_slave_t *slave, /**< EtherCAT slave */
         size_t size /**< size of data in bytes */
         )
 {
-    ec_eeprom_write_request_t request;
+    ec_sii_write_request_t request;
     char *remainder;
     uint16_t alias;
     int ret;
-    uint8_t eeprom_data[16], crc;
+    uint8_t sii_data[16], crc;
 
     if (slave->master->mode != EC_MASTER_MODE_IDLE) { // FIXME
-        EC_ERR("Writing to EEPROM is only allowed in idle mode!\n");
+        EC_ERR("Writing to SII is only allowed in idle mode!\n");
         return -EBUSY;
     }
 
@@ -1046,30 +1047,30 @@ ssize_t ec_slave_write_alias(ec_slave_t *slave, /**< EtherCAT slave */
         return -EINVAL;
     }
 
-    if (!slave->eeprom_data || slave->eeprom_size < 16) {
-        EC_ERR("Failed to read EEPROM contents from slave %u.\n",
+    if (!slave->sii_data || slave->sii_size < 16) {
+        EC_ERR("Failed to read SII contents from slave %u.\n",
                 slave->ring_position);
         return -EINVAL;
     }
 
-    // copy first 7 words of recent EEPROM contents
-    memcpy(eeprom_data, slave->eeprom_data, 14);
+    // copy first 7 words of recent SII contents
+    memcpy(sii_data, slave->sii_data, 14);
     
     // write new alias address in word 4
-    EC_WRITE_U16(eeprom_data + 8, alias);
+    EC_WRITE_U16(sii_data + 8, alias);
 
     // calculate new checksum over words 0 to 6
-    crc = ec_slave_eeprom_crc(eeprom_data, 14);
-    EC_WRITE_U16(eeprom_data + 14, crc);
+    crc = ec_slave_sii_crc(sii_data, 14);
+    EC_WRITE_U16(sii_data + 14, crc);
 
-    // init EEPROM write request
+    // init SII write request
     INIT_LIST_HEAD(&request.list);
     request.slave = slave;
-    request.data = eeprom_data;
+    request.data = sii_data;
     request.word_offset = 0x0000;
     request.word_size = 8;
 
-    if ((ret = ec_slave_schedule_eeprom_writing(&request)))
+    if ((ret = ec_slave_schedule_sii_writing(&request)))
         return ret; // error code
 
     slave->sii.alias = alias; // FIXME: do this in state machine
@@ -1108,16 +1109,16 @@ ssize_t ec_show_slave_attribute(struct kobject *kobj, /**< slave's kobject */
                 return sprintf(buffer, "UNKNOWN\n");
         }
     }
-    else if (attr == &attr_eeprom) {
-        if (slave->eeprom_data) {
-            if (slave->eeprom_size > PAGE_SIZE) {
-                EC_ERR("EEPROM contents of slave %u exceed 1 page (%u/%u).\n",
-                       slave->ring_position, slave->eeprom_size,
+    else if (attr == &attr_sii) {
+        if (slave->sii_data) {
+            if (slave->sii_size > PAGE_SIZE) {
+                EC_ERR("SII contents of slave %u exceed 1 page (%u/%u).\n",
+                       slave->ring_position, slave->sii_size,
                        (int) PAGE_SIZE);
             }
             else {
-                memcpy(buffer, slave->eeprom_data, slave->eeprom_size);
-                return slave->eeprom_size;
+                memcpy(buffer, slave->sii_data, slave->sii_size);
+                return slave->sii_size;
             }
         }
     }
@@ -1163,8 +1164,8 @@ ssize_t ec_store_slave_attribute(struct kobject *kobj, /**< slave's kobject */
                 state, slave->ring_position);
         return size;
     }
-    else if (attr == &attr_eeprom) {
-        return ec_slave_write_eeprom(slave, buffer, size);
+    else if (attr == &attr_sii) {
+        return ec_slave_write_sii(slave, buffer, size);
     }
     else if (attr == &attr_alias) {
         return ec_slave_write_alias(slave, buffer, size);

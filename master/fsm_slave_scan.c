@@ -52,8 +52,8 @@ void ec_fsm_slave_scan_state_address(ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_state_state(ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_state_base(ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_state_datalink(ec_fsm_slave_scan_t *);
-void ec_fsm_slave_scan_state_eeprom_size(ec_fsm_slave_scan_t *);
-void ec_fsm_slave_scan_state_eeprom_data(ec_fsm_slave_scan_t *);
+void ec_fsm_slave_scan_state_sii_size(ec_fsm_slave_scan_t *);
+void ec_fsm_slave_scan_state_sii_data(ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_state_preop(ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_state_pdos(ec_fsm_slave_scan_t *);
 
@@ -344,22 +344,22 @@ void ec_fsm_slave_scan_state_datalink(ec_fsm_slave_scan_t *fsm /**< slave state 
         slave->dl_signal[i] = dl_status & (1 << (9 + i * 2)) ? 1 : 0;
     }
 
-    // Start fetching EEPROM size
+    // Start fetching SII size
 
-    fsm->sii_offset = EC_FIRST_EEPROM_CATEGORY_OFFSET; // first category header
+    fsm->sii_offset = EC_FIRST_SII_CATEGORY_OFFSET; // first category header
     ec_fsm_sii_read(&fsm->fsm_sii, slave, fsm->sii_offset,
             EC_FSM_SII_USE_CONFIGURED_ADDRESS);
-    fsm->state = ec_fsm_slave_scan_state_eeprom_size;
+    fsm->state = ec_fsm_slave_scan_state_sii_size;
     fsm->state(fsm); // execute state immediately
 }
 
 /*****************************************************************************/
 
 /**
-   Slave scan state: EEPROM SIZE.
+   Slave scan state: SII SIZE.
 */
 
-void ec_fsm_slave_scan_state_eeprom_size(ec_fsm_slave_scan_t *fsm /**< slave state machine */)
+void ec_fsm_slave_scan_state_sii_size(ec_fsm_slave_scan_t *fsm /**< slave state machine */)
 {
     ec_slave_t *slave = fsm->slave;
     uint16_t cat_type, cat_size;
@@ -369,7 +369,7 @@ void ec_fsm_slave_scan_state_eeprom_size(ec_fsm_slave_scan_t *fsm /**< slave sta
     if (!ec_fsm_sii_success(&fsm->fsm_sii)) {
         fsm->slave->error_flag = 1;
         fsm->state = ec_fsm_slave_scan_state_error;
-        EC_ERR("Failed to read EEPROM size of slave %i.\n",
+        EC_ERR("Failed to read SII size of slave %i.\n",
                slave->ring_position);
         return;
     }
@@ -379,13 +379,13 @@ void ec_fsm_slave_scan_state_eeprom_size(ec_fsm_slave_scan_t *fsm /**< slave sta
 
     if (cat_type != 0xFFFF) { // not the last category
         off_t next_offset = 2UL + fsm->sii_offset + cat_size;
-        if (next_offset >= EC_MAX_EEPROM_SIZE) {
-            EC_WARN("EEPROM size of slave %i exceeds"
+        if (next_offset >= EC_MAX_SII_SIZE) {
+            EC_WARN("SII size of slave %i exceeds"
                     " %u words (0xffff limiter missing?).\n",
-                    slave->ring_position, EC_MAX_EEPROM_SIZE);
+                    slave->ring_position, EC_MAX_SII_SIZE);
             // cut off category data...
-            slave->eeprom_size = EC_FIRST_EEPROM_CATEGORY_OFFSET * 2;
-            goto alloc_eeprom;
+            slave->sii_size = EC_FIRST_SII_CATEGORY_OFFSET * 2;
+            goto alloc_sii;
         }
         fsm->sii_offset = next_offset;
         ec_fsm_sii_read(&fsm->fsm_sii, slave, fsm->sii_offset,
@@ -394,28 +394,28 @@ void ec_fsm_slave_scan_state_eeprom_size(ec_fsm_slave_scan_t *fsm /**< slave sta
         return;
     }
 
-    slave->eeprom_size = (fsm->sii_offset + 1) * 2;
+    slave->sii_size = (fsm->sii_offset + 1) * 2;
 
-alloc_eeprom:
-    if (slave->eeprom_data) {
-        EC_WARN("Freeing old EEPROM data on slave %i...\n",
+alloc_sii:
+    if (slave->sii_data) {
+        EC_WARN("Freeing old SII data on slave %i...\n",
                 slave->ring_position);
-        kfree(slave->eeprom_data);
+        kfree(slave->sii_data);
     }
 
-    if (!(slave->eeprom_data =
-                (uint8_t *) kmalloc(slave->eeprom_size, GFP_ATOMIC))) {
-        EC_ERR("Failed to allocate %u bytes of EEPROM data for slave %u.\n",
-               slave->eeprom_size, slave->ring_position);
-        slave->eeprom_size = 0;
+    if (!(slave->sii_data =
+                (uint8_t *) kmalloc(slave->sii_size, GFP_ATOMIC))) {
+        EC_ERR("Failed to allocate %u bytes of SII data for slave %u.\n",
+               slave->sii_size, slave->ring_position);
+        slave->sii_size = 0;
         slave->error_flag = 1;
         fsm->state = ec_fsm_slave_scan_state_error;
         return;
     }
 
-    // Start fetching EEPROM contents
+    // Start fetching SII contents
 
-    fsm->state = ec_fsm_slave_scan_state_eeprom_data;
+    fsm->state = ec_fsm_slave_scan_state_sii_data;
     fsm->sii_offset = 0x0000;
     ec_fsm_sii_read(&fsm->fsm_sii, slave, fsm->sii_offset,
             EC_FSM_SII_USE_CONFIGURED_ADDRESS);
@@ -425,36 +425,36 @@ alloc_eeprom:
 /*****************************************************************************/
 
 /**
-   Slave scan state: EEPROM DATA.
+   Slave scan state: SII DATA.
 */
 
-void ec_fsm_slave_scan_state_eeprom_data(ec_fsm_slave_scan_t *fsm /**< slave state machine */)
+void ec_fsm_slave_scan_state_sii_data(ec_fsm_slave_scan_t *fsm /**< slave state machine */)
 {
     ec_slave_t *slave = fsm->slave;
-    uint16_t *cat_word, cat_type, cat_size, eeprom_word_size = slave->eeprom_size / 2;
+    uint16_t *cat_word, cat_type, cat_size, sii_word_size = slave->sii_size / 2;
 
     if (ec_fsm_sii_exec(&fsm->fsm_sii)) return;
 
     if (!ec_fsm_sii_success(&fsm->fsm_sii)) {
         fsm->slave->error_flag = 1;
         fsm->state = ec_fsm_slave_scan_state_error;
-        EC_ERR("Failed to fetch EEPROM contents of slave %i.\n",
+        EC_ERR("Failed to fetch SII contents of slave %i.\n",
                slave->ring_position);
         return;
     }
 
     // 2 words fetched
 
-    if (fsm->sii_offset + 2 <= eeprom_word_size) { // 2 words fit
-        memcpy(slave->eeprom_data + fsm->sii_offset * 2,
+    if (fsm->sii_offset + 2 <= sii_word_size) { // 2 words fit
+        memcpy(slave->sii_data + fsm->sii_offset * 2,
                fsm->fsm_sii.value, 4);
     }
     else { // copy the last word
-        memcpy(slave->eeprom_data + fsm->sii_offset * 2,
+        memcpy(slave->sii_data + fsm->sii_offset * 2,
                fsm->fsm_sii.value, 2);
     }
 
-    if (fsm->sii_offset + 2 < eeprom_word_size) {
+    if (fsm->sii_offset + 2 < sii_word_size) {
         // fetch the next 2 words
         fsm->sii_offset += 2;
         ec_fsm_sii_read(&fsm->fsm_sii, slave, fsm->sii_offset,
@@ -463,39 +463,39 @@ void ec_fsm_slave_scan_state_eeprom_data(ec_fsm_slave_scan_t *fsm /**< slave sta
         return;
     }
 
-    // Evaluate EEPROM contents
+    // Evaluate SII contents
     
     ec_slave_clear_sync_managers(slave);
 
     slave->sii.alias =
-        EC_READ_U16(slave->eeprom_data + 2 * 0x0004);
+        EC_READ_U16(slave->sii_data + 2 * 0x0004);
     slave->sii.vendor_id =
-        EC_READ_U32(slave->eeprom_data + 2 * 0x0008);
+        EC_READ_U32(slave->sii_data + 2 * 0x0008);
     slave->sii.product_code =
-        EC_READ_U32(slave->eeprom_data + 2 * 0x000A);
+        EC_READ_U32(slave->sii_data + 2 * 0x000A);
     slave->sii.revision_number =
-        EC_READ_U32(slave->eeprom_data + 2 * 0x000C);
+        EC_READ_U32(slave->sii_data + 2 * 0x000C);
     slave->sii.serial_number =
-        EC_READ_U32(slave->eeprom_data + 2 * 0x000E);
+        EC_READ_U32(slave->sii_data + 2 * 0x000E);
     slave->sii.rx_mailbox_offset =
-        EC_READ_U16(slave->eeprom_data + 2 * 0x0018);
+        EC_READ_U16(slave->sii_data + 2 * 0x0018);
     slave->sii.rx_mailbox_size =
-        EC_READ_U16(slave->eeprom_data + 2 * 0x0019);
+        EC_READ_U16(slave->sii_data + 2 * 0x0019);
     slave->sii.tx_mailbox_offset =
-        EC_READ_U16(slave->eeprom_data + 2 * 0x001A);
+        EC_READ_U16(slave->sii_data + 2 * 0x001A);
     slave->sii.tx_mailbox_size =
-        EC_READ_U16(slave->eeprom_data + 2 * 0x001B);
+        EC_READ_U16(slave->sii_data + 2 * 0x001B);
     slave->sii.mailbox_protocols =
-        EC_READ_U16(slave->eeprom_data + 2 * 0x001C);
+        EC_READ_U16(slave->sii_data + 2 * 0x001C);
 
-    if (eeprom_word_size == EC_FIRST_EEPROM_CATEGORY_OFFSET) {
-        // eeprom does not contain category data
+    if (sii_word_size == EC_FIRST_SII_CATEGORY_OFFSET) {
+        // sii does not contain category data
         fsm->state = ec_fsm_slave_scan_state_end;
         return;
     }
 
-    if (eeprom_word_size < EC_FIRST_EEPROM_CATEGORY_OFFSET + 1) {
-        EC_ERR("Unexpected end of EEPROM data in slave %u:"
+    if (sii_word_size < EC_FIRST_SII_CATEGORY_OFFSET + 1) {
+        EC_ERR("Unexpected end of SII data in slave %u:"
                 " First category header missing.\n",
                 slave->ring_position);
         goto end;
@@ -503,13 +503,13 @@ void ec_fsm_slave_scan_state_eeprom_data(ec_fsm_slave_scan_t *fsm /**< slave sta
 
     // evaluate category data
     cat_word =
-        (uint16_t *) slave->eeprom_data + EC_FIRST_EEPROM_CATEGORY_OFFSET;
+        (uint16_t *) slave->sii_data + EC_FIRST_SII_CATEGORY_OFFSET;
     while (EC_READ_U16(cat_word) != 0xFFFF) {
 
         // type and size words must fit
-        if (cat_word + 2 - (uint16_t *) slave->eeprom_data
-                > eeprom_word_size) {
-            EC_ERR("Unexpected end of EEPROM data in slave %u:"
+        if (cat_word + 2 - (uint16_t *) slave->sii_data
+                > sii_word_size) {
+            EC_ERR("Unexpected end of SII data in slave %u:"
                     " Category header incomplete.\n",
                     slave->ring_position);
             goto end;
@@ -519,9 +519,9 @@ void ec_fsm_slave_scan_state_eeprom_data(ec_fsm_slave_scan_t *fsm /**< slave sta
         cat_size = EC_READ_U16(cat_word + 1);
         cat_word += 2;
 
-        if (cat_word + cat_size - (uint16_t *) slave->eeprom_data
-                > eeprom_word_size) {
-            EC_WARN("Unexpected end of EEPROM data in slave %u:"
+        if (cat_word + cat_size - (uint16_t *) slave->sii_data
+                > sii_word_size) {
+            EC_WARN("Unexpected end of SII data in slave %u:"
                     " Category data incomplete.\n",
                     slave->ring_position);
             goto end;
@@ -562,8 +562,8 @@ void ec_fsm_slave_scan_state_eeprom_data(ec_fsm_slave_scan_t *fsm /**< slave sta
         }
 
         cat_word += cat_size;
-        if (cat_word - (uint16_t *) slave->eeprom_data >= eeprom_word_size) {
-            EC_WARN("Unexpected end of EEPROM data in slave %u:"
+        if (cat_word - (uint16_t *) slave->sii_data >= sii_word_size) {
+            EC_WARN("Unexpected end of SII data in slave %u:"
                     " Next category header missing.\n",
                     slave->ring_position);
             goto end;
