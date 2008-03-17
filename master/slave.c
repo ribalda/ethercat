@@ -502,9 +502,8 @@ int ec_slave_fetch_sii_syncs(
             return -1;
         }
 
-        // copy existing sync managers
-        memcpy(syncs, slave->sii.syncs,
-                slave->sii.sync_count * sizeof(ec_sync_t));
+        for (i = 0; i < slave->sii.sync_count; i++)
+            ec_sync_init_copy(syncs + i, slave->sii.syncs + i);
 
         // initialize new sync managers
         for (i = 0; i < count; i++, data += 8) {

@@ -62,6 +62,28 @@ void ec_sync_init(
 
 /*****************************************************************************/
 
+/** Copy constructor.
+ */
+void ec_sync_init_copy(
+        ec_sync_t *sync, /**< EtherCAT sync manager. */
+        const ec_sync_t *other /**< Sync manager to copy from. */
+        )
+{
+   sync->slave = other->slave;
+   sync->index = other->index;
+   sync->physical_start_address = other->physical_start_address;
+   sync->length = other->length;
+   sync->control_register = other->control_register;
+   sync->enable = other->enable;
+   
+   ec_pdo_mapping_init(&sync->mapping);
+   ec_pdo_mapping_copy(&sync->mapping, &other->mapping);
+
+   sync->mapping_source = other->mapping_source;
+}
+
+/*****************************************************************************/
+
 /** Destructor.
  */
 void ec_sync_clear(

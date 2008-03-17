@@ -76,6 +76,7 @@ typedef struct {
 /*****************************************************************************/
 
 void ec_sync_init(ec_sync_t *, ec_slave_t *, unsigned int);
+void ec_sync_init_copy(ec_sync_t *, const ec_sync_t *);
 void ec_sync_clear(ec_sync_t *);
 
 void ec_sync_config(const ec_sync_t *, uint16_t, uint8_t *);
