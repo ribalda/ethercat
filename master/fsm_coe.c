@@ -945,9 +945,11 @@ void ec_fsm_coe_down_start(ec_fsm_coe_t *fsm /**< finite state machine */)
     ec_sdo_request_t *request = fsm->request;
     uint8_t *data;
 
-    if (fsm->slave->master->debug_level)
-        EC_DBG("Downloading Sdo 0x%04X:%i to slave %i.\n",
+    if (fsm->slave->master->debug_level) {
+        EC_DBG("Downloading Sdo 0x%04X:%u to slave %u.\n",
                request->index, request->subindex, slave->ring_position);
+        ec_print_data(request->data, request->data_size);
+    }
 
     if (!(slave->sii.mailbox_protocols & EC_MBOX_COE)) {
         EC_ERR("Slave %u does not support CoE!\n", slave->ring_position);
@@ -1166,7 +1168,7 @@ void ec_fsm_coe_up_start(ec_fsm_coe_t *fsm /**< finite state machine */)
     uint8_t *data;
 
     if (master->debug_level)
-        EC_DBG("Uploading Sdo 0x%04X:%i from slave %i.\n",
+        EC_DBG("Uploading Sdo 0x%04X:%u from slave %u.\n",
                request->index, request->subindex, slave->ring_position);
 
     if (!(slave->sii.mailbox_protocols & EC_MBOX_COE)) {
@@ -1469,6 +1471,11 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
         }
     }
 
+    if (master->debug_level) {
+        EC_DBG("Uploaded data:\n");
+        ec_print_data(request->data, request->data_size);
+    }
+
     fsm->state = ec_fsm_coe_end; // success
 }
 
@@ -1674,6 +1681,11 @@ void ec_fsm_coe_up_seg_response(ec_fsm_coe_t *fsm /**< finite state machine */)
         fsm->retries = EC_FSM_RETRIES;
         fsm->state = ec_fsm_coe_up_seg_request;
         return;
+    }
+
+    if (master->debug_level) {
+        EC_DBG("Uploaded data:\n");
+        ec_print_data(request->data, request->data_size);
     }
 
     fsm->state = ec_fsm_coe_end; // success
