@@ -211,7 +211,7 @@ void ec_fsm_pdo_config_next_pdo(
     }
 
     // set mapped Pdo count to zero
-    EC_WRITE_U8(&fsm->request.data, 0);
+    EC_WRITE_U8(fsm->request.data, 0);
     fsm->request.data_size = 1;
     ec_sdo_request_address(&fsm->request, fsm->pdo->index, 0);
     ecrt_sdo_request_write(&fsm->request);
@@ -251,7 +251,7 @@ void ec_fsm_pdo_config_add_entry(
 
     value = fsm->entry->index << 16
         | fsm->entry->subindex << 8 | fsm->entry->bit_length;
-    EC_WRITE_U32(&fsm->request.data, value);
+    EC_WRITE_U32(fsm->request.data, value);
     fsm->request.data_size = 4;
     ec_sdo_request_address(&fsm->request, fsm->pdo->index, fsm->entry_count);
     ecrt_sdo_request_write(&fsm->request);
@@ -317,7 +317,7 @@ void ec_fsm_pdo_config_state_add_entry(
     // find next entry
     if (!(fsm->entry = ec_fsm_pdo_config_next_entry(fsm, &fsm->entry->list))) {
         // No more entries to add. Write entry count.
-        EC_WRITE_U8(&fsm->request.data, fsm->entry_count);
+        EC_WRITE_U8(fsm->request.data, fsm->entry_count);
         fsm->request.data_size = 1;
         ec_sdo_request_address(&fsm->request, fsm->pdo->index, 0);
         ecrt_sdo_request_write(&fsm->request);

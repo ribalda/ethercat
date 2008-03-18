@@ -202,7 +202,7 @@ void ec_fsm_pdo_mapping_next_dir(
         }
 
         // set mapped Pdo count to zero
-        EC_WRITE_U8(&fsm->request.data, 0); // zero Pdos mapped
+        EC_WRITE_U8(fsm->request.data, 0); // zero Pdos mapped
         fsm->request.data_size = 1;
         ec_sdo_request_address(&fsm->request, 0x1C10 + fsm->sync->index, 0);
         ecrt_sdo_request_write(&fsm->request);
@@ -244,7 +244,7 @@ void ec_fsm_pdo_mapping_add_pdo(
         ec_fsm_pdo_mapping_t *fsm /**< mapping state machine */
         )
 {
-    EC_WRITE_U16(&fsm->request.data, fsm->pdo->index);
+    EC_WRITE_U16(fsm->request.data, fsm->pdo->index);
     fsm->request.data_size = 2;
     ec_sdo_request_address(&fsm->request,
             0x1C10 + fsm->sync->index, fsm->pdo_count);
@@ -311,7 +311,7 @@ void ec_fsm_pdo_mapping_state_add_pdo(
     // find next Pdo
     if (!(fsm->pdo = ec_fsm_pdo_mapping_next_pdo(fsm, &fsm->pdo->list))) {
         // no more Pdos to map. write Pdo count
-        EC_WRITE_U8(&fsm->request.data, fsm->pdo_count);
+        EC_WRITE_U8(fsm->request.data, fsm->pdo_count);
         fsm->request.data_size = 1;
         ec_sdo_request_address(&fsm->request, 0x1C10 + fsm->sync->index, 0);
         ecrt_sdo_request_write(&fsm->request);
