@@ -438,6 +438,7 @@ int ec_slave_fetch_sii_general(
         )
 {
     unsigned int i;
+    uint8_t flags;
 
     if (data_size != 32) {
         EC_ERR("Wrong size of general category (%u/32) in slave %u.\n",
@@ -454,8 +455,20 @@ int ec_slave_fetch_sii_general(
         slave->sii.physical_layer[i] =
             (data[4] & (0x03 << (i * 2))) >> (i * 2);
 
-    memcpy(&slave->sii.coe_details, data + 5, 1);
-    memcpy(&slave->sii.general_flags, data + 0x000b, 1);
+    // read CoE details
+    flags = EC_READ_U8(data + 5);
+    slave->sii.coe_details.enable_sdo =                 (flags >> 0) & 0x01;
+    slave->sii.coe_details.enable_sdo_info =            (flags >> 1) & 0x01;
+    slave->sii.coe_details.enable_pdo_assign =          (flags >> 2) & 0x01;
+    slave->sii.coe_details.enable_pdo_configuration =   (flags >> 3) & 0x01;
+    slave->sii.coe_details.enable_upload_at_startup =   (flags >> 4) & 0x01;
+    slave->sii.coe_details.enable_sdo_complete_access = (flags >> 5) & 0x01;
+
+    // read general flags
+    flags = EC_READ_U8(data + 0x000B);
+    slave->sii.general_flags.enable_safeop =  (flags >> 0) & 0x01;
+    slave->sii.general_flags.enable_not_lrw = (flags >> 1) & 0x01;
+
     slave->sii.current_on_ebus = EC_READ_S16(data + 0x0C);
     slave->sii.has_general = 1;
     return 0;
