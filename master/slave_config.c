@@ -582,6 +582,10 @@ int ecrt_slave_config_mapping(ec_slave_config_t *sc, unsigned int n_infos,
 
     for (i = 0; i < n_infos; i++) {
         pi = &pdo_infos[i];
+
+        if (pi->dir == EC_MAP_END)
+            break;
+
         pm = &sc->mapping[pi->dir];
 
         if (pm->default_mapping) {

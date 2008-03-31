@@ -120,6 +120,14 @@
  */
 #define ECRT_VERSION_MAGIC ECRT_VERSION(ECRT_VER_MAJOR, ECRT_VER_MINOR)
 
+/*****************************************************************************/
+
+/** End of mapping.
+ *
+ * This is used in ecrt_slave_config_mapping().
+ */
+#define EC_MAP_END ~0U
+
 /******************************************************************************
  * Data types 
  *****************************************************************************/
@@ -466,6 +474,12 @@ int ecrt_slave_config_pdo_entry(
  * if (ecrt_slave_config_mapping(slave_config_ana_in, 2, pdo_mapping))
  *     return -1; // error
  * \endcode
+ *
+ * Processing of \a pdo_infos will stop, if
+ * - the number of processed items reaches \a n_infos, or
+ * - the \a dir member of an ec_pdo_info_t item is EC_MAP_END. In this case,
+ *   \a n_infos should set to a number greater than the number of list items;
+ *   using EC_MAP_END is recommended.
  *
  * \return zero on success, else non-zero
  */

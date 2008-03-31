@@ -96,6 +96,7 @@ static ec_pdo_entry_info_t el3162_channel2[] = {
 static ec_pdo_info_t el3162_mapping[] = {
     {EC_DIR_INPUT, 0x1A00, 2, el3162_channel1},
     {EC_DIR_INPUT, 0x1A01, 2, el3162_channel2},
+    {EC_MAP_END}
 };
 
 static ec_pdo_entry_info_t el2004_channels[] = {
@@ -279,7 +280,7 @@ int __init init_mini_module(void)
         goto out_release_master;
     }
 
-    if (ecrt_slave_config_mapping(sc, 2, el3162_mapping)) {
+    if (ecrt_slave_config_mapping(sc, EC_MAP_END, el3162_mapping)) {
         printk(KERN_ERR PFX "Failed to configure Pdo mapping.\n");
         goto out_release_master;
     }
