@@ -407,29 +407,6 @@ if test "x${debugring}" = "x1"; then
 fi
 
 #------------------------------------------------------------------------------
-# Dummy master module
-#------------------------------------------------------------------------------
-
-AC_ARG_ENABLE([dummy],
-    AS_HELP_STRING([--enable-dummy],
-                   [Build the dummy master module @<:@NO@:>@]),
-    [
-        case "${enableval}" in
-            yes) dummy=1
-                ;;
-            no) dummy=0
-                ;;
-            *) AC_MSG_ERROR([Invalid value for --enable-dummy])
-                ;;
-        esac
-    ],
-    [dummy=0]
-)
-
-AM_CONDITIONAL(ENABLE_DUMMY, test "x$dummy" = "x1")
-AC_SUBST(ENABLE_DUMMY,[$dummy])
-
-#------------------------------------------------------------------------------
 # Ethernet-over-EtherCAT support
 #------------------------------------------------------------------------------
 
@@ -461,25 +438,23 @@ AC_CONFIG_FILES([
         Doxyfile
         Kbuild
         Makefile
-        master/Kbuild
-        master/Makefile
         devices/Kbuild
         devices/Makefile
-        devices/e1000/Makefile
         devices/e1000/Kbuild
-        script/Makefile
-        script/init.d/Makefile
-        script/sysconfig/Makefile
-        include/Makefile
+        devices/e1000/Makefile
         examples/Makefile
         examples/mini/Kbuild
         examples/mini/Makefile
-        examples/rtai/Kbuild
-        examples/rtai/Makefile
         examples/msr/Kbuild
         examples/msr/Makefile
-        dummy/Kbuild
-        dummy/Makefile
+        examples/rtai/Kbuild
+        examples/rtai/Makefile
+        include/Makefile
+        master/Kbuild
+        master/Makefile
+        script/Makefile
+        script/init.d/Makefile
+        script/sysconfig/Makefile
 ])
 AC_OUTPUT
 
