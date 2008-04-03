@@ -38,8 +38,8 @@
 
 /*****************************************************************************/
 
-#ifndef _EC_DATAGRAM_H_
-#define _EC_DATAGRAM_H_
+#ifndef __EC_DATAGRAM_H__
+#define __EC_DATAGRAM_H__
 
 #include <linux/list.h>
 #include <linux/time.h>

@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- *  $Id$
+ *  $Id: fsm_pdo_config.h 1069 2008-03-03 16:22:39Z fp $
  *
  *  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
  *
@@ -37,8 +37,8 @@
 
 /*****************************************************************************/
 
-#ifndef __EC_FSM_PDO_MAPPING__
-#define __EC_FSM_PDO_MAPPING__
+#ifndef __EC_FSM_PDO_MAPPING_H__
+#define __EC_FSM_PDO_MAPPING_H__
 
 #include "globals.h"
 #include "../include/ecrt.h"

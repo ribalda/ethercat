@@ -38,8 +38,8 @@
 
 /*****************************************************************************/
 
-#ifndef __EC_FSM_COE_MAP__
-#define __EC_FSM_COE_MAP__
+#ifndef __EC_FSM_COE_MAP_H__
+#define __EC_FSM_COE_MAP_H__
 
 #include "globals.h"
 #include "datagram.h"

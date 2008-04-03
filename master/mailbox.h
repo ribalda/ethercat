@@ -38,8 +38,8 @@
 
 /*****************************************************************************/
 
-#ifndef _EC_MAILBOX_H_
-#define _EC_MAILBOX_H_
+#ifndef __EC_MAILBOX_H__
+#define __EC_MAILBOX_H__
 
 #include "slave.h"
 

@@ -38,8 +38,8 @@
 
 /*****************************************************************************/
 
-#ifndef _EC_PDO_H_
-#define _EC_PDO_H_
+#ifndef __EC_PDO_H__
+#define __EC_PDO_H__
 
 #include <linux/list.h>
 

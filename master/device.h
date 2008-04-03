@@ -38,8 +38,8 @@
 
 /*****************************************************************************/
 
-#ifndef _EC_DEVICE_H_
-#define _EC_DEVICE_H_
+#ifndef __EC_DEVICE_H__
+#define __EC_DEVICE_H__
 
 #include <linux/interrupt.h>
 

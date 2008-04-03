@@ -38,8 +38,8 @@
 
 /*****************************************************************************/
 
-#ifndef _EC_DOMAIN_H_
-#define _EC_DOMAIN_H_
+#ifndef __EC_DOMAIN_H__
+#define __EC_DOMAIN_H__
 
 #include <linux/list.h>
 #include <linux/kobject.h>

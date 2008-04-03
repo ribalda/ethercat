@@ -38,8 +38,8 @@
 
 /*****************************************************************************/
 
-#ifndef _EC_XMLDEV_H_
-#define _EC_XMLDEV_H_
+#ifndef __EC_XMLDEV_H__
+#define __EC_XMLDEV_H__
 
 #include <linux/fs.h>
 #include <linux/cdev.h>

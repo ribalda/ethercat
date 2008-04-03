@@ -38,8 +38,8 @@
 
 /*****************************************************************************/
 
-#ifndef _EC_SLAVE_CONFIG_H_
-#define _EC_SLAVE_CONFIG_H_
+#ifndef __EC_SLAVE_CONFIG_H__
+#define __EC_SLAVE_CONFIG_H__
 
 #include <linux/list.h>
 #include <linux/kobject.h>

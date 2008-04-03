@@ -38,8 +38,8 @@
 
 /*****************************************************************************/
 
-#ifndef _EC_MASTER_H_
-#define _EC_MASTER_H_
+#ifndef __EC_MASTER_H__
+#define __EC_MASTER_H__
 
 #include <linux/list.h>
 #include <linux/sysfs.h>

@@ -37,8 +37,8 @@
 
 /*****************************************************************************/
 
-#ifndef _EC_FMMU_CONFIG_H_
-#define _EC_FMMU_CONFIG_H_
+#ifndef __EC_FMMU_CONFIG_H__
+#define __EC_FMMU_CONFIG_H__
 
 #include "../include/ecrt.h"
 

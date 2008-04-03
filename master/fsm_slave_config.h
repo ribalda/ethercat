@@ -38,8 +38,8 @@
 
 /*****************************************************************************/
 
-#ifndef __EC_FSM_SLAVE_CONFIG__
-#define __EC_FSM_SLAVE_CONFIG__
+#ifndef __EC_FSM_SLAVE_CONFIG_H__
+#define __EC_FSM_SLAVE_CONFIG_H__
 
 #include "../include/ecrt.h"
 

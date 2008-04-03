@@ -38,8 +38,8 @@
 
 /*****************************************************************************/
 
-#ifndef __EC_FSM_COE__
-#define __EC_FSM_COE__
+#ifndef __EC_FSM_COE_H__
+#define __EC_FSM_COE_H__
 
 #include "globals.h"
 #include "../include/ecrt.h"

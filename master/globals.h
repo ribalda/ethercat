@@ -37,8 +37,8 @@
 
 /*****************************************************************************/
 
-#ifndef _EC_MASTER_GLOBALS_
-#define _EC_MASTER_GLOBALS_
+#ifndef __EC_MASTER_GLOBALS_H__
+#define __EC_MASTER_GLOBALS_H__
 
 #include <linux/types.h>
 

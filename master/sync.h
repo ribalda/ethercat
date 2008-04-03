@@ -37,8 +37,8 @@
 
 /*****************************************************************************/
 
-#ifndef _EC_SYNC_H_
-#define _EC_SYNC_H_
+#ifndef __EC_SYNC_H__
+#define __EC_SYNC_H__
 
 #include <linux/list.h>
 

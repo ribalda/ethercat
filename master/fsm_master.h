@@ -38,8 +38,8 @@
 
 /*****************************************************************************/
 
-#ifndef __EC_FSM_MASTER__
-#define __EC_FSM_MASTER__
+#ifndef __EC_FSM_MASTER_H__
+#define __EC_FSM_MASTER_H__
 
 #include "../include/ecrt.h"
 

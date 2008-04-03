@@ -38,8 +38,8 @@
 
 /*****************************************************************************/
 
-#ifndef _EC_FSM_PDO_ASSIGN_H_
-#define _EC_FSM_PDO_ASSIGN_H_
+#ifndef __EC_FSM_PDO_ASSIGN_H__
+#define __EC_FSM_PDO_ASSIGN_H__
 
 #include "../include/ecrt.h"
 

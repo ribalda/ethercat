@@ -46,8 +46,8 @@
 
 /*****************************************************************************/
 
-#ifndef _ETHERCAT_DEVICE_H_
-#define _ETHERCAT_DEVICE_H_
+#ifndef __ECDEV_H__
+#define __ECDEV_H__
 
 #include <linux/netdevice.h>
 

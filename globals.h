@@ -38,8 +38,8 @@
 
 /*****************************************************************************/
 
-#ifndef _EC_GLOBALS_
-#define _EC_GLOBALS_
+#ifndef __EC_GLOBALS_H__
+#define __EC_GLOBALS_H__
 
 #include "config.h"
 
