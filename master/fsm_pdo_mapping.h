@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- *  $Id: fsm_pdo_config.h 1069 2008-03-03 16:22:39Z fp $
+ *  $Id$
  *
  *  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
  *
