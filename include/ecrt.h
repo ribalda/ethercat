@@ -37,10 +37,10 @@
  *
  * \defgroup RealtimeInterface EtherCAT Realtime Interface
  *
- * EtherCAT interface for realtime modules. This interface is designed for
- * realtime modules that want to use EtherCAT. There are functions to request
- * a master, to map process data, to communicate with slaves via CoE and to
- * configure and activate the bus.
+ * EtherCAT interface for realtime applications. This interface is designed
+ * for realtime modules that want to use EtherCAT. There are functions to
+ * request a master, to map process data, to communicate with slaves via CoE
+ * and to configure and activate the bus.
  *
  * Changes in Version 1.4:
  *
@@ -64,11 +64,12 @@
  *   is directly usable. If the domain's process data is allocated internally,
  *   the start address can be retrieved with ecrt_domain_data().
  * - Replaced ecrt_slave_pdo_mapping/add/clear() with
- *   ecrt_slave_config_pdo() to add a Pdo to the mapping and
- *   ecrt_slave_config_pdo_entry() to add a Pdo entry to a Pdo configuration.
- *   ecrt_slave_config_mapping() is a convenience function for
- *   both, that uses the new data types ec_pdo_info_t and ec_pdo_entry_info_t.
- *   Mapped Pdo entries can now immediately be registered.
+ *   ecrt_slave_config_pdo_assign_add() to add a Pdo to a sync manager's Pdo
+ *   assignment and ecrt_slave_config_pdo_mapping_add() to add a Pdo entry to a
+ *   Pdo's mapping. ecrt_slave_config_pdos() is a convenience function
+ *   for both, that uses the new data types ec_pdo_info_t and
+ *   ec_pdo_entry_info_t. Pdo entries, that are mapped with these functions
+ *   can now immediately be registered, even if the bus is offline.
  * - Renamed ec_bus_status_t, ec_master_status_t to ec_bus_state_t and
  *   ec_master_state_t, respectively. Renamed ecrt_master_get_status() to
  *   ecrt_master_state(), for consistency reasons.
@@ -122,11 +123,11 @@
 
 /*****************************************************************************/
 
-/** End of mapping.
+/** End of the Pdo list.
  *
- * This is used in ecrt_slave_config_mapping().
+ * This is used in ecrt_slave_config_pdos().
  */
-#define EC_MAP_END ~0U
+#define EC_END ~0U
 
 /******************************************************************************
  * Data types 
@@ -149,6 +150,9 @@ typedef struct ec_sdo_request ec_sdo_request_t; /**< \see ec_sdo_request. */
 /** Bus state.
  *
  * This is used in ec_master_state_t.
+ *
+ * \deprecated
+ * \todo remove
  */
 typedef enum {
     EC_BUS_FAILURE = -1, /**< At least one configured slave is offline. */
@@ -214,9 +218,10 @@ typedef enum {
 
 /*****************************************************************************/
 
-/** Pdo entry mapping.
+/** Pdo entry information.
  *
- * \see ecrt_slave_config_mapping().
+ * This can be used to map multiple Pdo entries into a given Pdo using
+ * ecrt_slave_config_pdos().
  */
 typedef struct {
     uint16_t index; /**< Index of the Pdo entry to add to the Pdo
@@ -230,17 +235,17 @@ typedef struct {
 
 /** Pdo information.
  *
- * \see ecrt_slave_config_mapping().
+ * This can be use to assign multiple Pdos to a sync manager using
+ * ecrt_slave_config_pdos().
  */
 typedef struct {
     ec_direction_t dir; /**< Pdo direction (input/output). */
     uint16_t index; /**< Index of the Pdo to map. */
-    unsigned int n_entries; /**< Number of Pdo entries for the Pdo
-                              configuration. Zero means, that the default Pdo
-                              configuration shall be used. */
-    ec_pdo_entry_info_t *entries; /**< Pdo configuration array. This
-                                    array must contain at least \a
-                                    n_entries values. */
+    unsigned int n_entries; /**< Number of Pdo entries in \a entries to map.
+                              Zero means, that the default mapping shall be
+                              used. */
+    ec_pdo_entry_info_t *entries; /**< Array of Pdo entries to map. This must
+                                    contain at least \a n_entries values. */
 } ec_pdo_info_t;
 
 /*****************************************************************************/
@@ -358,27 +363,38 @@ ec_slave_config_t *ecrt_master_slave_config(
         uint32_t product_code /**< Expected product code. */
         );
 
-/** Applies the bus configuration and switches to realtime mode.
+/** Finishes the configuration phase and prepares for realtime mode.
  *
- * Does the complete configuration and activation for all slaves. Sets sync
- * managers and FMMUs, and does the appropriate transitions, until the slave
- * is operational.
+ * This function has to be called after all Pdo entries are registered. It
+ * tells the master that the configuration phase is finished and the realtime
+ * operation will begin. The function allocates internal memory for the
+ * domains and calculates the logical FMMU addresses for domain members. It
+ * tells the master state machine that the bus configuration is now to be
+ * applied.
+ *
+ * \attention After this function has been called, the realtime application is
+ * in charge of cyclically calling ecrt_master_send() and
+ * ecrt_master_receive() to ensure bus communication. Before calling this
+ * function, the master thread is responsible for that, so these functions may
+ * not be called!
  *
  * \return 0 in case of success, else < 0
  */
-int ecrt_master_activate(
-        ec_master_t *master /**< EtherCAT master. */
-        );
+int ecrt_master_activate( ec_master_t *master /**< EtherCAT master. */);
 
 /** Sends all datagrams in the queue.
  *
- * \todo doc
+ * This has to be called cyclically by the realtime application after
+ * ecrt_master_activate() has returned.
  */
 void ecrt_master_send(
         ec_master_t *master /**< EtherCAT master. */
         );
 
 /** Fetches received frames from the hardware and processes the datagrams.
+ *
+ * This has to be called cyclically by the realtime application after
+ * ecrt_master_activate() has returned.
  */
 void ecrt_master_receive(
         ec_master_t *master /**< EtherCAT master. */
@@ -397,48 +413,64 @@ void ecrt_master_state(
  * Slave configuration methods
  *****************************************************************************/
 
-/** Add a Pdo to the slave's Pdo mapping for the given direction.
+/** Add a Pdo to a sync manager's Pdo assignment.
  *
- * The first call of this function for a given \a dir will clear the default
- * mapping.
- *
- * \see ecrt_slave_config_mapping()
+ * \see ecrt_slave_config_pdos()
  * \return zero on success, else non-zero
  */
-int ecrt_slave_config_pdo(
+int ecrt_slave_config_pdo_assign_add(
         ec_slave_config_t *sc, /**< Slave configuration. */
-        ec_direction_t dir, /**< Pdo direction (input/output). */
-        uint16_t index /**< Index of the Pdo to map. */
+        ec_direction_t dir, /**< Sync manager direction (input/output). */
+        uint16_t index /**< Index of the Pdo to assign. */
         );
 
-/** Add a Pdo entry to the given Pdo's configuration.
+/** Clear a sync manager's Pdo assignment.
  *
- * The first call of this function for a given \a pdo_index will clear the
- * default Pdo configuration.
+ * This can be called before assigning Pdos via
+ * ecrt_slave_config_pdo_assign_add(), to clear the default assignment.
+ */
+void ecrt_slave_config_pdo_assign_clear(
+        ec_slave_config_t *sc, /**< Slave configuration. */
+        ec_direction_t dir /**< Sync manager direction (input/output). */
+        );
+
+/** Add a Pdo entry to the given Pdo's mapping.
  *
- * \see ecrt_slave_config_mapping()
+ * \see ecrt_slave_config_pdos()
  * \return zero on success, else non-zero
  */
-int ecrt_slave_config_pdo_entry(
+int ecrt_slave_config_pdo_mapping_add(
         ec_slave_config_t *sc, /**< Slave configuration. */
-        uint16_t pdo_index, /**< Index of the Pdo to configure. */
+        uint16_t pdo_index, /**< Index of the Pdo. */
         uint16_t entry_index, /**< Index of the Pdo entry to add to the Pdo's
-                                configuration. */
+                                mapping. */
         uint8_t entry_subindex, /**< Subindex of the Pdo entry to add to the
-                                  Pdo's configuration. */
+                                  Pdo's mapping. */
         uint8_t entry_bit_length /**< Size of the Pdo entry in bit. */
         );
 
-/** Specify the Pdo mapping and (optionally) the Pdo configuration.
+/** Clear the mapping of a given Pdo.
  *
- * This function is a convenience function for the ecrt_slave_config_pdo()
- * and ecrt_slave_config_pdo_entry() functions, that are better suitable
- * for automatic code generation.
+ * This can be called before mapping Pdo entries via
+ * ecrt_slave_config_pdo_mapping_add(), to clear the default mapping.
+ */
+void ecrt_slave_config_pdo_mapping_clear(
+        ec_slave_config_t *sc, /**< Slave configuration. */
+        uint16_t pdo_index /**< Index of the Pdo. */
+        );
+
+/** Specify the Pdo assignment and (optionally) the Pdo mappings.
  *
- * The following example shows, how to specify a complete Pdo mapping
- * including the Pdo configuration. With this information, the master is able
- * to reserve the complete process data, even if the slave is not present
- * at configuration time:
+ * This function is a convenience wrapper for the functions
+ * ecrt_slave_config_pdo_assign_clear(), ecrt_slave_config_pdo_assign_add(),
+ * ecrt_slave_config_pdo_mapping_clear() and
+ * ecrt_slave_config_pdo_mapping_add(), that are better suitable for automatic
+ * code generation.
+ *
+ * The following example shows, how to specify a complete Pdo assignment
+ * including the Pdo mappings. With this information, the master is able to
+ * reserve the complete process data, even if the slave is not present at
+ * configuration time:
  *
  * \code
  * const ec_pdo_entry_info_t el3162_channel1[] = {
@@ -451,52 +483,52 @@ int ecrt_slave_config_pdo_entry(
  *     {0x3102, 2, 16}  // value
  * };
  * 
- * const ec_pdo_info_t el3162_mapping[] = {
+ * const ec_pdo_info_t el3162_pdos[] = {
  *     {EC_DIR_INPUT, 0x1A00, 2, el3162_channel1},
  *     {EC_DIR_INPUT, 0x1A01, 2, el3162_channel2},
  * };
  * 
- * if (ecrt_slave_config_mapping(sc, 2, el3162_mapping))
+ * if (ecrt_slave_config_pdos(sc, 2, el3162_pdos))
  *     return -1; // error
  * \endcode
- *
- * The next example shows, how to configure only the Pdo mapping. The entries
- * for each mapped Pdo are taken from the default Pdo configuration. Please
- * note, that Pdo entry registration will fail, if the Pdo configuration is
- * left empty and the slave is offline.
+ * 
+ * The next example shows, how to configure only the Pdo assignment. The
+ * entries for each assigned Pdo are taken from the Pdo's default mapping.
+ * Please note, that Pdo entry registration will fail, if the Pdo
+ * configuration is left empty and the slave is offline.
  *
  * \code
- * const ec_pdo_info_t pdo_mapping[] = {
+ * const ec_pdo_info_t pdos[] = {
  *     {EC_DIR_INPUT, 0x1600}, // Channel 1
  *     {EC_DIR_INPUT, 0x1601}  // Channel 2
  * };
  * 
- * if (ecrt_slave_config_mapping(slave_config_ana_in, 2, pdo_mapping))
+ * if (ecrt_slave_config_pdos(slave_config_ana_in, 2, pdos))
  *     return -1; // error
  * \endcode
  *
  * Processing of \a pdo_infos will stop, if
  * - the number of processed items reaches \a n_infos, or
- * - the \a dir member of an ec_pdo_info_t item is EC_MAP_END. In this case,
+ * - the \a dir member of an ec_pdo_info_t item is EC_END. In this case,
  *   \a n_infos should set to a number greater than the number of list items;
- *   using EC_MAP_END is recommended.
+ *   using EC_END is recommended.
  *
  * \return zero on success, else non-zero
  */
-int ecrt_slave_config_mapping(
+int ecrt_slave_config_pdos(
         ec_slave_config_t *sc, /**< Slave configuration. */
         unsigned int n_infos, /**< Number of Pdo infos in \a pdo_infos. */
-        const ec_pdo_info_t pdo_infos[] /**< List with Pdo mapping. */
+        const ec_pdo_info_t pdo_infos[] /**< List with Pdos. */
         );
 
 /** Registers a Pdo entry for process data exchange in a domain.
  *
- * Searches the current mapping and Pdo configurations for the given Pdo
+ * Searches the current Pdo assignment and Pdo mappings for the given Pdo
  * entry. An error is raised, if the given entry is not mapped. Otherwise, the
  * corresponding sync manager and FMMU configurations are provided for slave
- * configuration and the respective sync manager's Pdos are appended to the
- * given domain, if not already done. The offset of the requested Pdo entry's
- * data inside the domain's process data is returned.
+ * configuration and the respective sync manager's assigned Pdos are appended
+ * to the given domain, if not already done. The offset of the requested Pdo
+ * entry's data inside the domain's process data is returned.
  *
  * \retval >=0 Success: Offset of the Pdo entry's process data.
  * \retval -1  Error: Pdo entry not found.

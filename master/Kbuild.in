@@ -42,7 +42,7 @@ ec_master-objs := \
     fsm_coe.o \
     fsm_coe_map.o \
     fsm_master.o \
-    fsm_pdo_config.o \
+    fsm_pdo_assign.o \
     fsm_pdo_mapping.o \
     fsm_sii.o \
     fsm_slave_config.o \
@@ -51,7 +51,7 @@ ec_master-objs := \
     master.o \
     module.o \
     pdo.o \
-    pdo_mapping.o \
+    pdo_list.o \
     sdo.o \
     sdo_entry.o \
     sdo_request.o \

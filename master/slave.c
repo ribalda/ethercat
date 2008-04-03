@@ -615,10 +615,10 @@ int ec_slave_fetch_sii_pdos(
             }
             sync = &slave->sii.syncs[pdo->sync_index];
 
-            if (ec_pdo_mapping_add_pdo_copy(&sync->mapping, pdo))
+            if (ec_pdo_list_add_pdo_copy(&sync->pdos, pdo))
                 return -1;
 
-            sync->mapping_source = EC_SYNC_MAPPING_SII;
+            sync->assign_source = EC_ASSIGN_SII;
         }
     }
 
@@ -798,7 +798,7 @@ ssize_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
     }
 
     if (slave->sii.sync_count) {
-        buf += sprintf(buf, "Sync managers / Pdo mapping:\n");
+        buf += sprintf(buf, "Sync managers / assigned Pdos:\n");
 
         for (i = 0; i < slave->sii.sync_count; i++) {
             sync = &slave->sii.syncs[i];
@@ -808,16 +808,28 @@ ssize_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
                     sync->length, sync->control_register,
                     sync->enable ? "enable" : "disable");
 
-            if (list_empty(&sync->mapping.pdos)) {
-                buf += sprintf(buf, "    No Pdos mapped.\n");
-            } else if (sync->mapping_source != EC_SYNC_MAPPING_NONE) {
-                buf += sprintf(buf,
-                        "    Pdo mapping information from %s.\n",
-                        sync->mapping_source == EC_SYNC_MAPPING_SII
-                        ? "SII" : "CoE");
+            if (list_empty(&sync->pdos.list)) {
+                buf += sprintf(buf, "    No Pdos assigned.\n");
+            } else if (sync->assign_source != EC_ASSIGN_NONE) {
+                buf += sprintf(buf, "    Pdo assignment from ");
+                switch (sync->assign_source) {
+                    case EC_ASSIGN_SII:
+                        buf += sprintf(buf, "SII");
+                        break;
+                    case EC_ASSIGN_COE:
+                        buf += sprintf(buf, "CoE");
+                        break;
+                    case EC_ASSIGN_CUSTOM:
+                        buf += sprintf(buf, "application");
+                        break;
+                    default:
+                        buf += sprintf(buf, "?");
+                        break;
+                }
+                buf += sprintf(buf, ".\n");
             }
 
-            list_for_each_entry(pdo, &sync->mapping.pdos, list) {
+            list_for_each_entry(pdo, &sync->pdos.list, list) {
                 buf += sprintf(buf, "    %s 0x%04X \"%s\"\n",
                         pdo->dir == EC_DIR_OUTPUT ? "RxPdo" : "TxPdo",
                         pdo->index, pdo->name ? pdo->name : "???");
@@ -843,10 +855,10 @@ ssize_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
                     pdo->dir == EC_DIR_OUTPUT ? "RxPdo" : "TxPdo",
                     pdo->index, pdo->name ? pdo->name : "???");
             if (pdo->sync_index >= 0)
-                buf += sprintf(buf, ", default mapping: SM%u.\n",
+                buf += sprintf(buf, ", default assignment: SM%u.\n",
                         pdo->sync_index);
             else
-                buf += sprintf(buf, ", no default mapping.\n");
+                buf += sprintf(buf, ", no default assignment.\n");
 
             list_for_each_entry(pdo_entry, &pdo->entries, list) {
                 buf += sprintf(buf, "    0x%04X:%X \"%s\", %u bit\n",
@@ -1302,7 +1314,7 @@ const ec_pdo_t *ec_slave_find_pdo(
     for (i = 0; i < slave->sii.sync_count; i++) {
         sync = &slave->sii.syncs[i];
 
-        if (!(pdo = ec_pdo_mapping_find_pdo_const(&sync->mapping, index)))
+        if (!(pdo = ec_pdo_list_find_pdo_const(&sync->pdos, index)))
             continue;
 
         return pdo;

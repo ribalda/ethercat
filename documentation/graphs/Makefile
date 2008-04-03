@@ -5,12 +5,12 @@
 #-----------------------------------------------------------------------------
 
 GRAPHS := \
-	fsm_slave_conf \
-	fsm_slave_scan \
-	fsm_pdo_mapping \
-	fsm_pdo_config \
+	fsm_coe_map \
 	fsm_master \
-	fsm_coe_map
+	fsm_pdo_assign \
+	fsm_pdo_mapping \
+	fsm_slave_conf \
+	fsm_slave_scan
 
 #-----------------------------------------------------------------------------
 

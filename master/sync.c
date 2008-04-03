@@ -56,8 +56,8 @@ void ec_sync_init(
     sync->slave = slave;
     sync->index = index;    
 
-    ec_pdo_mapping_init(&sync->mapping);
-    sync->mapping_source = EC_SYNC_MAPPING_NONE;
+    ec_pdo_list_init(&sync->pdos);
+    sync->assign_source = EC_ASSIGN_NONE;
 }
 
 /*****************************************************************************/
@@ -76,10 +76,10 @@ void ec_sync_init_copy(
    sync->control_register = other->control_register;
    sync->enable = other->enable;
    
-   ec_pdo_mapping_init(&sync->mapping);
-   ec_pdo_mapping_copy(&sync->mapping, &other->mapping);
+   ec_pdo_list_init(&sync->pdos);
+   ec_pdo_list_copy(&sync->pdos, &other->pdos);
 
-   sync->mapping_source = other->mapping_source;
+   sync->assign_source = other->assign_source;
 }
 
 /*****************************************************************************/
@@ -90,7 +90,7 @@ void ec_sync_clear(
         ec_sync_t *sync /**< EtherCAT sync manager. */
         )
 {
-    ec_pdo_mapping_clear(&sync->mapping);
+    ec_pdo_list_clear(&sync->pdos);
 }
 
 /*****************************************************************************/
@@ -129,7 +129,7 @@ int ec_sync_add_pdo(
         const ec_pdo_t *pdo /**< Pdo to map. */
         )
 {
-    return ec_pdo_mapping_add_pdo_copy(&sync->mapping, pdo);
+    return ec_pdo_list_add_pdo_copy(&sync->pdos, pdo);
 }
 
 /*****************************************************************************/

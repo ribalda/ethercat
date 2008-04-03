@@ -44,7 +44,7 @@ EXTRA_DIST = \
 	fsm_coe.c fsm_coe.h \
 	fsm_coe_map.c fsm_coe_map.h \
 	fsm_master.c fsm_master.h \
-	fsm_pdo_config.c fsm_pdo_config.h \
+	fsm_pdo_assign.c fsm_pdo_assign.h \
 	fsm_pdo_mapping.c fsm_pdo_mapping.h \
 	fsm_sii.c fsm_sii.h \
 	fsm_slave_config.c fsm_slave_config.h \
@@ -54,7 +54,7 @@ EXTRA_DIST = \
 	master.c master.h \
 	module.c \
 	pdo.c pdo.h \
-	pdo_mapping.c pdo_mapping.h \
+	pdo_list.c pdo_list.h \
 	sdo.c sdo.h \
 	sdo_entry.c sdo_entry.h \
 	sdo_request.c sdo_request.h \

@@ -49,7 +49,7 @@
 #include "globals.h"
 #include "slave.h"
 #include "fmmu_config.h"
-#include "pdo_mapping.h"
+#include "pdo_list.h"
 
 /*****************************************************************************/
 
@@ -69,7 +69,7 @@ struct ec_slave_config {
     ec_slave_t *slave; /**< Slave pointer. This is \a NULL, if the slave is
                          offline. */
 
-    ec_pdo_mapping_t mapping[2]; /**< Output and input Pdo mapping. */
+    ec_pdo_list_t pdos[2]; /**< Output and input Pdo assignment / mapping. */
 
     struct list_head sdo_configs; /**< List of Sdo configurations. */
     struct list_head sdo_requests; /**< List of Sdo requests. */
@@ -87,8 +87,8 @@ void ec_slave_config_destroy(ec_slave_config_t *);
 int ec_slave_config_attach(ec_slave_config_t *);
 void ec_slave_config_detach(ec_slave_config_t *);
 
-void ec_slave_config_load_default_mapping(ec_slave_config_t *);
-void ec_slave_config_load_default_pdo_config(const ec_slave_config_t *,
+void ec_slave_config_load_default_assignment(ec_slave_config_t *);
+void ec_slave_config_load_default_mapping(const ec_slave_config_t *,
         ec_pdo_t *);
 
 /*****************************************************************************/

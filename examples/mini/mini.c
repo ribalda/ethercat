@@ -45,7 +45,7 @@
 #define FREQUENCY 100
 
 // Optional features
-#define CONFIGURE_MAPPING
+#define CONFIGURE_PDOS
 #define EXTERNAL_MEMORY
 #define SDO_ACCESS
 
@@ -82,7 +82,7 @@ const static ec_pdo_entry_reg_t domain1_regs[] = {
 
 /*****************************************************************************/
 
-#ifdef CONFIGURE_MAPPING
+#ifdef CONFIGURE_PDOS
 static ec_pdo_entry_info_t el3162_channel1[] = {
     {0x3101, 1,  8}, // status
     {0x3101, 2, 16}  // value
@@ -93,10 +93,10 @@ static ec_pdo_entry_info_t el3162_channel2[] = {
     {0x3102, 2, 16}  // value
 };
 
-static ec_pdo_info_t el3162_mapping[] = {
+static ec_pdo_info_t el3162_pdos[] = {
     {EC_DIR_INPUT, 0x1A00, 2, el3162_channel1},
     {EC_DIR_INPUT, 0x1A01, 2, el3162_channel2},
-    {EC_MAP_END}
+    {EC_END}
 };
 
 static ec_pdo_entry_info_t el2004_channels[] = {
@@ -106,7 +106,7 @@ static ec_pdo_entry_info_t el2004_channels[] = {
     {0x3001, 4, 1}  // Value 4
 };
 
-static ec_pdo_info_t el2004_mapping[] = {
+static ec_pdo_info_t el2004_pdos[] = {
     {EC_DIR_OUTPUT, 0x1600, 1, &el2004_channels[0]},
     {EC_DIR_OUTPUT, 0x1601, 1, &el2004_channels[1]},
     {EC_DIR_OUTPUT, 0x1602, 1, &el2004_channels[2]},
@@ -251,7 +251,7 @@ void release_lock(void *data)
 
 int __init init_mini_module(void)
 {
-#ifdef CONFIGURE_MAPPING
+#ifdef CONFIGURE_PDOS
     ec_slave_config_t *sc;
 #endif
 #ifdef EXTERNAL_MEMORY
@@ -273,15 +273,15 @@ int __init init_mini_module(void)
         goto out_release_master;
     }
 
-#ifdef CONFIGURE_MAPPING
-    printk(KERN_INFO PFX "Configuring Pdo mapping...\n");
+#ifdef CONFIGURE_PDOS
+    printk(KERN_INFO PFX "Configuring Pdos...\n");
     if (!(sc = ecrt_master_slave_config(master, 0, 1, Beckhoff_EL3162))) {
         printk(KERN_ERR PFX "Failed to get slave configuration.\n");
         goto out_release_master;
     }
 
-    if (ecrt_slave_config_mapping(sc, EC_MAP_END, el3162_mapping)) {
-        printk(KERN_ERR PFX "Failed to configure Pdo mapping.\n");
+    if (ecrt_slave_config_pdos(sc, EC_END, el3162_pdos)) {
+        printk(KERN_ERR PFX "Failed to configure Pdos.\n");
         goto out_release_master;
     }
 
@@ -290,8 +290,8 @@ int __init init_mini_module(void)
         goto out_release_master;
     }
 
-    if (ecrt_slave_config_mapping(sc, 4, el2004_mapping)) {
-        printk(KERN_ERR PFX "Failed to configure Pdo mapping.\n");
+    if (ecrt_slave_config_pdos(sc, 4, el2004_pdos)) {
+        printk(KERN_ERR PFX "Failed to configure Pdos.\n");
         goto out_release_master;
     }
 #endif

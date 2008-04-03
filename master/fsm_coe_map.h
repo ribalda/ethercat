@@ -67,11 +67,11 @@ struct ec_fsm_coe_map
     uint8_t sync_subindices; /**< number of mapped Pdos */
     uint16_t sync_subindex; /**< current subindex in mapping Sdo */
 
-    ec_pdo_mapping_t mapping; /**< Mapping to apply. */
-    ec_pdo_t *pdo; /**< current Pdo */
-    ec_sdo_t *pdo_sdo; /**< current Pdo Sdo */
-    uint8_t pdo_subindices; /**< number of Pdo entries */
-    uint16_t pdo_subindex; /**< current subindex in Pdo Sdo */
+    ec_pdo_list_t pdos; /**< List of read in Pdos. */
+    ec_pdo_t *pdo; /**< Current Pdo. */
+    ec_sdo_t *pdo_sdo; /**< Current Pdo Sdo. */
+    uint8_t pdo_subindices; /**< Number of Pdo entries. */
+    uint16_t pdo_subindex; /**< Current subindex in Pdo Sdo. */
 };
 
 /*****************************************************************************/

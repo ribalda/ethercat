@@ -1,19 +1,19 @@
 
 /* $Id$ */
 
-digraph pdomapping {
+digraph pdoconfig {
     size="7,9"
     center=1
 	ratio=fill
 
-    next_sync [shape=point,label=""]
+    next_pdo [shape=point,label=""]
 
-    start -> next_sync [label="First SM"]
-    next_sync -> end [label="No more SMs"]
-    next_sync -> zero_count [label="Next SM"]
-    zero_count -> next_sync [label="No Pdos"]
-    zero_count -> add_pdo [label="Map first Pdo", weight=5]
-    add_pdo -> add_pdo [label="Map next Pdo"]
-    add_pdo -> pdo_count [label="No more Pdos", weight=5]
-    pdo_count -> next_sync
+    start -> next_pdo [label="First Pdo"]
+    next_pdo -> end [label="No more Pdos"]
+    next_pdo -> zero_count [label="Next Pdo"]
+    zero_count -> next_pdo [label="No Entries"]
+    zero_count -> add_entry [label="Add first entry", weight=5]
+    add_entry -> add_entry [label="Add next entry"]
+    add_entry -> entry_count [label="No more Entries", weight=5]
+    entry_count -> next_pdo
 }

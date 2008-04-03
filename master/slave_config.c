@@ -102,7 +102,7 @@ int ec_slave_config_init(ec_slave_config_t *sc, /**< Slave configuration. */
     sc->slave = NULL;
 
     for (dir = EC_DIR_OUTPUT; dir <= EC_DIR_INPUT; dir++)
-        ec_pdo_mapping_init(&sc->mapping[dir]);
+        ec_pdo_list_init(&sc->pdos[dir]);
 
     INIT_LIST_HEAD(&sc->sdo_configs);
     INIT_LIST_HEAD(&sc->sdo_requests);
@@ -166,7 +166,7 @@ void ec_slave_config_clear(struct kobject *kobj /**< kobject of the config. */)
 
     // Free Pdo mappings
     for (dir = EC_DIR_OUTPUT; dir <= EC_DIR_INPUT; dir++)
-        ec_pdo_mapping_clear(&sc->mapping[dir]);
+        ec_pdo_list_clear(&sc->pdos[dir]);
 
     // free all Sdo configurations
     list_for_each_entry_safe(req, next_req, &sc->sdo_configs, list) {
@@ -236,7 +236,7 @@ ssize_t ec_slave_config_info(
 {
     char *buf = buffer;
     ec_direction_t dir;
-    const ec_pdo_mapping_t *map;
+    const ec_pdo_list_t *pdos;
     const ec_pdo_t *pdo;
     const ec_pdo_entry_t *entry;
     char str[20];
@@ -246,13 +246,13 @@ ssize_t ec_slave_config_info(
     buf += sprintf(buf, "Position: %u\n", sc->position);
 
     for (dir = EC_DIR_OUTPUT; dir <= EC_DIR_INPUT; dir++) {
-        map = &sc->mapping[dir];
+        pdos = &sc->pdos[dir];
         
-        if (!list_empty(&map->pdos)) {
-            buf += sprintf(buf, "%s mapping:\n",
+        if (!list_empty(&pdos->list)) {
+            buf += sprintf(buf, "%s Pdo assignment / mapping:\n",
                     dir == EC_DIR_OUTPUT ? "Output" : "Input");
 
-            list_for_each_entry(pdo, &map->pdos, list) {
+            list_for_each_entry(pdo, &pdos->list, list) {
                 buf += sprintf(buf, "  %s 0x%04X \"%s\"\n",
                         pdo->dir == EC_DIR_OUTPUT ? "RxPdo" : "TxPdo",
                         pdo->index, pdo->name ? pdo->name : "???");
@@ -429,31 +429,29 @@ void ec_slave_config_detach(
 
 /*****************************************************************************/
 
-/** Loads the default mapping from the slave object.
+/** Loads the default Pdo assignment from the slave object.
  */
-void ec_slave_config_load_default_mapping(ec_slave_config_t *sc)
+void ec_slave_config_load_default_assignment(ec_slave_config_t *sc)
 {
     ec_direction_t dir;
-    ec_pdo_mapping_t *map;
+    ec_pdo_list_t *pdos;
     ec_sync_t *sync;
 
     if (!sc->slave)
         return;
     
     for (dir = EC_DIR_OUTPUT; dir <= EC_DIR_INPUT; dir++) {
-        map = &sc->mapping[dir];
-        if (!(sync = ec_slave_get_pdo_sync(sc->slave, dir)))
-            continue;
-        ec_pdo_mapping_copy(map, &sync->mapping);
-        map->default_mapping = 1;
+        pdos = &sc->pdos[dir];
+        if ((sync = ec_slave_get_pdo_sync(sc->slave, dir)))
+            ec_pdo_list_copy(pdos, &sync->pdos);
     }
 }
 
 /*****************************************************************************/
 
-/** Loads the default configuration for a Pdo from the slave object.
+/** Loads the default mapping for a Pdo from the slave object.
  */
-void ec_slave_config_load_default_pdo_config(
+void ec_slave_config_load_default_mapping(
         const ec_slave_config_t *sc,
         ec_pdo_t *pdo
         )
@@ -479,7 +477,7 @@ void ec_slave_config_load_default_pdo_config(
         return;
     }
 
-    list_for_each_entry(default_pdo, &sync->mapping.pdos, list) {
+    list_for_each_entry(default_pdo, &sync->pdos.list, list) {
         if (default_pdo->index != pdo->index)
             continue;
 
@@ -508,61 +506,57 @@ void ec_slave_config_load_default_pdo_config(
  *  Realtime interface
  *****************************************************************************/
 
-int ecrt_slave_config_pdo(ec_slave_config_t *sc, ec_direction_t dir,
-        uint16_t index)
+int ecrt_slave_config_pdo_assign_add(ec_slave_config_t *sc,
+        ec_direction_t dir, uint16_t index)
 {
-    ec_pdo_mapping_t *pm = &sc->mapping[dir];
+    ec_pdo_list_t *pl = &sc->pdos[dir];
     ec_pdo_t *pdo;
     
-    if (pm->default_mapping) {
-        if (sc->master->debug_level)
-            EC_DBG("Clearing default mapping for dir %u, config %u:%u.\n",
-                    dir, sc->alias, sc->position);
-        pm->default_mapping = 0;
-        ec_pdo_mapping_clear_pdos(pm);
-    }
-
     if (sc->master->debug_level)
-        EC_DBG("Adding Pdo 0x%04X to mapping for dir %u, config %u:%u.\n",
+        EC_DBG("Adding Pdo 0x%04X to assignment for dir %u, config %u:%u.\n",
                 index, dir, sc->alias, sc->position);
 
-    if (!(pdo = ec_pdo_mapping_add_pdo(pm, dir, index)))
+    if (!(pdo = ec_pdo_list_add_pdo(pl, dir, index)))
         return -1;
 
-    ec_slave_config_load_default_pdo_config(sc, pdo);
+    ec_slave_config_load_default_mapping(sc, pdo);
     return 0;
 }
 
 /*****************************************************************************/
 
-int ecrt_slave_config_pdo_entry(ec_slave_config_t *sc, uint16_t pdo_index,
-        uint16_t entry_index, uint8_t entry_subindex,
+void ecrt_slave_config_pdo_assign_clear(ec_slave_config_t *sc,
+        ec_direction_t dir)
+{
+    if (sc->master->debug_level)
+        EC_DBG("Clearing Pdo assignment for dir %u, config %u:%u.\n",
+                dir, sc->alias, sc->position);
+
+    ec_pdo_list_clear_pdos(&sc->pdos[dir]);
+}
+
+/*****************************************************************************/
+
+int ecrt_slave_config_pdo_mapping_add(ec_slave_config_t *sc,
+        uint16_t pdo_index, uint16_t entry_index, uint8_t entry_subindex,
         uint8_t entry_bit_length)
 {
     ec_direction_t dir;
     ec_pdo_t *pdo;
     
     if (sc->master->debug_level)
-        EC_DBG("Adding Pdo entry 0x%04X:%u (%u bit) to configuration of Pdo"
+        EC_DBG("Adding Pdo entry 0x%04X:%u (%u bit) to mapping of Pdo"
                 " 0x%04X, config %u:%u.\n", entry_index, entry_subindex,
                 entry_bit_length, pdo_index, sc->alias, sc->position);
 
     for (dir = EC_DIR_OUTPUT; dir <= EC_DIR_INPUT; dir++)
-        if ((pdo = ec_pdo_mapping_find_pdo(&sc->mapping[dir], pdo_index)))
+        if ((pdo = ec_pdo_list_find_pdo(&sc->pdos[dir], pdo_index)))
             break;
 
     if (!pdo) {
-        EC_ERR("Pdo 0x%04X was not found in the mapping of config %u:%u.\n",
+        EC_ERR("Pdo 0x%04X is not assigned in config %u:%u.\n",
                 pdo_index, sc->alias, sc->position);
         return -1;
-    }
-
-    if (pdo->default_config) {
-        if (sc->master->debug_level)
-            EC_DBG("Clearing default configuration of Pdo 0x%04X,"
-                    " config %u:%u.\n", pdo->index, sc->alias, sc->position);
-        pdo->default_config = 0;
-        ec_pdo_clear_entries(pdo);
     }
 
     return ec_pdo_add_entry(pdo, entry_index, entry_subindex,
@@ -571,50 +565,69 @@ int ecrt_slave_config_pdo_entry(ec_slave_config_t *sc, uint16_t pdo_index,
 
 /*****************************************************************************/
 
-int ecrt_slave_config_mapping(ec_slave_config_t *sc, unsigned int n_infos,
+void ecrt_slave_config_pdo_mapping_clear(ec_slave_config_t *sc,
+        uint16_t pdo_index)
+{
+    ec_direction_t dir;
+    ec_pdo_t *pdo;
+    
+    if (sc->master->debug_level)
+        EC_DBG("Clearing mapping of Pdo 0x%04X, config %u:%u.\n",
+                pdo_index, sc->alias, sc->position);
+
+    for (dir = EC_DIR_OUTPUT; dir <= EC_DIR_INPUT; dir++)
+        if ((pdo = ec_pdo_list_find_pdo(&sc->pdos[dir], pdo_index)))
+            break;
+
+    if (!pdo) {
+        EC_WARN("Pdo 0x%04X is not assigned in config %u:%u.\n",
+                pdo_index, sc->alias, sc->position);
+        return;
+    }
+
+    ec_pdo_clear_entries(pdo);
+}
+
+/*****************************************************************************/
+
+int ecrt_slave_config_pdos(ec_slave_config_t *sc, unsigned int n_infos,
         const ec_pdo_info_t pdo_infos[])
 {
     unsigned int i, j;
     const ec_pdo_info_t *pi;
-    ec_pdo_mapping_t *pm;
-    ec_pdo_t *pdo;
+    ec_pdo_list_t *pl;
+    unsigned int cleared[] = {0, 0};
     const ec_pdo_entry_info_t *ei;
 
     for (i = 0; i < n_infos; i++) {
         pi = &pdo_infos[i];
 
-        if (pi->dir == EC_MAP_END)
+        if (pi->dir == EC_END)
             break;
 
-        pm = &sc->mapping[pi->dir];
+        pl = &sc->pdos[pi->dir];
 
-        if (pm->default_mapping) {
-            if (sc->master->debug_level)
-                EC_DBG("Clearing default mapping for dir %u, config %u:%u.\n",
-                        pi->dir, sc->alias, sc->position);
-            pm->default_mapping = 0;
-            ec_pdo_mapping_clear_pdos(pm);
+        if (!cleared[pi->dir]) {
+            ecrt_slave_config_pdo_assign_clear(sc, pi->dir);
+            cleared[pi->dir] = 1;
         }
 
-        if (sc->master->debug_level)
-            EC_DBG("Adding Pdo 0x%04X to mapping for dir %u, config %u:%u.\n",
-                    pi->index, pi->dir, sc->alias, sc->position);
-
-        if (!(pdo = ec_pdo_mapping_add_pdo(pm, pi->dir, pi->index)))
+        if (ecrt_slave_config_pdo_assign_add(sc, pi->dir, pi->index))
             return -1;
 
-        if (pi->n_entries && pi->entries) { // configuration provided
+        if (pi->n_entries && pi->entries) { // mapping provided
             if (sc->master->debug_level)
-                EC_DBG("  Pdo configuration information provided.\n");
+                EC_DBG("  Pdo mapping information provided.\n");
+
+            ecrt_slave_config_pdo_mapping_clear(sc, pi->index);
 
             for (j = 0; j < pi->n_entries; j++) {
                 ei = &pi->entries[j];
-                if (!ec_pdo_add_entry(pdo, ei->index, ei->subindex,
-                            ei->bit_length))
+
+                if (ecrt_slave_config_pdo_mapping_add(sc, pi->index,
+                        ei->index, ei->subindex, ei->bit_length))
                     return -1;
             }
-        } else { // use default Pdo configuration
-            ec_slave_config_load_default_pdo_config(sc, pdo);
         }
     }
 
@@ -631,16 +644,16 @@ int ecrt_slave_config_reg_pdo_entry(
         )
 {
     ec_direction_t dir;
-    ec_pdo_mapping_t *map;
+    ec_pdo_list_t *pdos;
     unsigned int bit_offset, byte_offset;
     ec_pdo_t *pdo;
     ec_pdo_entry_t *entry;
     int ret;
 
     for (dir = EC_DIR_OUTPUT; dir <= EC_DIR_INPUT; dir++) {
-        map = &sc->mapping[dir];
+        pdos = &sc->pdos[dir];
         bit_offset = 0;
-        list_for_each_entry(pdo, &map->pdos, list) {
+        list_for_each_entry(pdo, &pdos->list, list) {
             list_for_each_entry(entry, &pdo->entries, list) {
                 if (entry->index != index || entry->subindex != subindex) {
                     bit_offset += entry->bit_length;
@@ -726,9 +739,11 @@ ec_sdo_request_t *ecrt_slave_config_create_sdo_request(ec_slave_config_t *sc,
 
 /** \cond */
 
-EXPORT_SYMBOL(ecrt_slave_config_pdo);
-EXPORT_SYMBOL(ecrt_slave_config_pdo_entry);
-EXPORT_SYMBOL(ecrt_slave_config_mapping);
+EXPORT_SYMBOL(ecrt_slave_config_pdo_assign_add);
+EXPORT_SYMBOL(ecrt_slave_config_pdo_assign_clear);
+EXPORT_SYMBOL(ecrt_slave_config_pdo_mapping_add);
+EXPORT_SYMBOL(ecrt_slave_config_pdo_mapping_clear);
+EXPORT_SYMBOL(ecrt_slave_config_pdos);
 EXPORT_SYMBOL(ecrt_slave_config_reg_pdo_entry);
 EXPORT_SYMBOL(ecrt_slave_config_sdo8);
 EXPORT_SYMBOL(ecrt_slave_config_sdo16);

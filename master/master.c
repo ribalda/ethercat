@@ -1510,7 +1510,7 @@ ec_slave_config_t *ecrt_master_slave_config(ec_master_t *master,
 
         // try to find the addressed slave
         ec_slave_config_attach(sc);
-        ec_slave_config_load_default_mapping(sc);
+        ec_slave_config_load_default_assignment(sc);
 
         list_add_tail(&sc->list, &master->configs);
     }

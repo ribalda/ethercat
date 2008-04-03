@@ -45,18 +45,18 @@
 #include "../include/ecrt.h"
 
 #include "globals.h"
-#include "pdo_mapping.h"
+#include "pdo_list.h"
 
 /*****************************************************************************/
 
-/** EtherCAT sync manager Pdo mapping information source.
+/** EtherCAT Pdo assignment source.
  */
 typedef enum {
-    EC_SYNC_MAPPING_NONE, /**< No Pdo mapping information. */
-    EC_SYNC_MAPPING_SII, /**< Pdo mapping information from SII. */
-    EC_SYNC_MAPPING_COE, /**< Pdo mapping information from CoE dictionary. */
-    EC_SYNC_MAPPING_CUSTOM, /**< Pdo mapping configured externally. */
-} ec_sync_mapping_source_t;
+    EC_ASSIGN_NONE, /**< No Pdos assigned. */
+    EC_ASSIGN_SII, /**< Pdo assignment read from SII. */
+    EC_ASSIGN_COE, /**< Pdo assignment read via CoE. */
+    EC_ASSIGN_CUSTOM, /**< Pdos assignment set by application. */
+} ec_assign_source_t;
 
 /*****************************************************************************/
 
@@ -69,8 +69,8 @@ typedef struct {
     uint16_t length; /**< Data length in bytes. */
     uint8_t control_register; /**< Control register value. */
     uint8_t enable; /**< Enable bit. */
-    ec_pdo_mapping_t mapping; /**< Current Pdo mapping. */
-    ec_sync_mapping_source_t mapping_source; /**< Pdo mapping source. */
+    ec_pdo_list_t pdos; /**< Current Pdo assignment. */
+    ec_assign_source_t assign_source; /**< Pdo assignment source. */
 } ec_sync_t;
 
 /*****************************************************************************/

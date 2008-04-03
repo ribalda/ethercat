@@ -31,50 +31,50 @@
  *
  *****************************************************************************/
 
-/** \file
- * EtherCAT Pdo configuration state machine structures.
- */
+/**
+   \file
+   EtherCAT Pdo list structure.
+*/
 
 /*****************************************************************************/
 
-#ifndef __EC_FSM_PDO_CONFIG__
-#define __EC_FSM_PDO_CONFIG__
+#ifndef _EC_PDO_LIST_H_
+#define _EC_PDO_LIST_H_
+
+#include <linux/list.h>
+
+#include "../include/ecrt.h"
 
 #include "globals.h"
-#include "../include/ecrt.h"
-#include "datagram.h"
-#include "fsm_coe.h"
+#include "pdo.h"
 
 /*****************************************************************************/
 
-/**
- * \see ec_fsm_pdo_config
+/** EtherCAT Pdo list.
  */
-typedef struct ec_fsm_pdo_config ec_fsm_pdo_config_t;
-
-/** Pdo configuration state machine.
- */
-struct ec_fsm_pdo_config
-{
-    void (*state)(ec_fsm_pdo_config_t *); /**< state function */
-    ec_fsm_coe_t *fsm_coe; /**< CoE state machine to use */
-    ec_slave_t *slave; /**< Slave the FSM runs on. */
-
-    const ec_pdo_t *pdo; /**< Current Pdo to configure. */
-    const ec_pdo_entry_t *entry; /**< Current entry. */
-
-    ec_sdo_request_t request; /**< Sdo request. */
-    unsigned int entry_count; /**< Number of configured entries. */
-};
+typedef struct {
+    struct list_head list; /**< List of Pdos. */
+} ec_pdo_list_t;
 
 /*****************************************************************************/
 
-void ec_fsm_pdo_config_init(ec_fsm_pdo_config_t *, ec_fsm_coe_t *);
-void ec_fsm_pdo_config_clear(ec_fsm_pdo_config_t *);
+void ec_pdo_list_init(ec_pdo_list_t *);
+void ec_pdo_list_clear(ec_pdo_list_t *);
 
-void ec_fsm_pdo_config_start(ec_fsm_pdo_config_t *, ec_slave_t *);
-int ec_fsm_pdo_config_exec(ec_fsm_pdo_config_t *);
-int ec_fsm_pdo_config_success(const ec_fsm_pdo_config_t *);
+void ec_pdo_list_clear_pdos(ec_pdo_list_t *);
+
+ec_pdo_t *ec_pdo_list_add_pdo(ec_pdo_list_t *, ec_direction_t,
+        uint16_t);
+int ec_pdo_list_add_pdo_copy(ec_pdo_list_t *, const ec_pdo_t *);
+
+int ec_pdo_list_copy(ec_pdo_list_t *, const ec_pdo_list_t *);
+
+uint16_t ec_pdo_list_total_size(const ec_pdo_list_t *);
+int ec_pdo_list_equal(const ec_pdo_list_t *, const ec_pdo_list_t *);
+
+ec_pdo_t *ec_pdo_list_find_pdo(const ec_pdo_list_t *, uint16_t);
+const ec_pdo_t *ec_pdo_list_find_pdo_const(const ec_pdo_list_t *,
+        uint16_t);
 
 /*****************************************************************************/
 

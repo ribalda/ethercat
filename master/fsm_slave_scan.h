@@ -50,8 +50,6 @@
 #include "fsm_change.h"
 #include "fsm_coe.h"
 #include "fsm_coe_map.h"
-#include "fsm_pdo_mapping.h"
-#include "fsm_pdo_config.h"
 
 /*****************************************************************************/
 

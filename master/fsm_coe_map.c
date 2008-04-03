@@ -33,7 +33,7 @@
 
 /**
    \file
-   EtherCAT CoE mapping state machines.
+   EtherCAT Pdo information state machines.
 */
 
 /*****************************************************************************/
@@ -73,7 +73,7 @@ void ec_fsm_coe_map_init(
     fsm->fsm_coe = fsm_coe;
     fsm->state = NULL;
     ec_sdo_request_init(&fsm->request);
-    ec_pdo_mapping_init(&fsm->mapping);
+    ec_pdo_list_init(&fsm->pdos);
 }
 
 /*****************************************************************************/
@@ -85,7 +85,7 @@ void ec_fsm_coe_map_init(
 void ec_fsm_coe_map_clear(ec_fsm_coe_map_t *fsm /**< finite state machine */)
 {
     ec_sdo_request_clear(&fsm->request);
-    ec_pdo_mapping_clear(&fsm->mapping);
+    ec_pdo_list_clear(&fsm->pdos);
 }
 
 /*****************************************************************************/
@@ -135,14 +135,14 @@ int ec_fsm_coe_map_success(ec_fsm_coe_map_t *fsm /**< Finite state machine */)
  *****************************************************************************/
 
 /**
- * Start reading mapping.
+ * Start reading Pdo assignment.
  */
 
 void ec_fsm_coe_map_state_start(
         ec_fsm_coe_map_t *fsm /**< finite state machine */
         )
 {
-    // read mapping for first direction
+    // read Pdo assignment for first direction
     fsm->dir = (ec_direction_t) -1; // next is EC_DIR_OUTPUT
     ec_fsm_coe_map_action_next_dir(fsm);
 }
@@ -150,7 +150,7 @@ void ec_fsm_coe_map_state_start(
 /*****************************************************************************/
 
 /**
- * Read mapping of next direction manager.
+ * Read Pdo assignment of next direction manager.
  */
 
 void ec_fsm_coe_map_action_next_dir(
@@ -176,10 +176,10 @@ void ec_fsm_coe_map_action_next_dir(
         fsm->sync_sdo_index = 0x1C10 + fsm->sync->index;
 
         if (slave->master->debug_level)
-            EC_DBG("Reading Pdo mapping of sync manager %u of slave %u.\n",
+            EC_DBG("Reading Pdo assignment of sync manager %u of slave %u.\n",
                     fsm->sync->index, slave->ring_position);
 
-        ec_pdo_mapping_clear_pdos(&fsm->mapping);
+        ec_pdo_list_clear_pdos(&fsm->pdos);
 
         ec_sdo_request_address(&fsm->request, fsm->sync_sdo_index, 0);
         ecrt_sdo_request_read(&fsm->request);
@@ -190,7 +190,7 @@ void ec_fsm_coe_map_action_next_dir(
     }
 
     if (slave->master->debug_level)
-        EC_DBG("Reading of Pdo mapping finished for slave %u.\n",
+        EC_DBG("Reading of Pdo assignment finished for slave %u.\n",
                 slave->ring_position);
 
     fsm->state = ec_fsm_coe_map_state_end;
@@ -199,7 +199,7 @@ void ec_fsm_coe_map_action_next_dir(
 /*****************************************************************************/
 
 /**
- * Count mapped Pdos.
+ * Count assigned Pdos.
  */
 
 void ec_fsm_coe_map_state_pdo_count(
@@ -218,7 +218,7 @@ void ec_fsm_coe_map_state_pdo_count(
     fsm->sync_subindices = EC_READ_U8(fsm->request.data);
 
     if (fsm->slave->master->debug_level)
-        EC_DBG("  %u Pdos mapped.\n", fsm->sync_subindices);
+        EC_DBG("  %u Pdos assigned.\n", fsm->sync_subindices);
 
     // read first Pdo
     fsm->sync_subindex = 1;
@@ -245,15 +245,15 @@ void ec_fsm_coe_map_action_next_pdo(
         return;
     }
 
-    // finished reading Pdo mapping/configuration
+    // finished reading Pdo assignment/mapping
     
-    if (ec_pdo_mapping_copy(&fsm->sync->mapping, &fsm->mapping)) {
+    if (ec_pdo_list_copy(&fsm->sync->pdos, &fsm->pdos)) {
         fsm->state = ec_fsm_coe_map_state_error;
         return;
     }
 
-    fsm->sync->mapping_source = EC_SYNC_MAPPING_COE;
-    ec_pdo_mapping_clear_pdos(&fsm->mapping);
+    fsm->sync->assign_source = EC_ASSIGN_COE;
+    ec_pdo_list_clear_pdos(&fsm->pdos);
 
     // next direction
     ec_fsm_coe_map_action_next_dir(fsm);
@@ -272,7 +272,7 @@ void ec_fsm_coe_map_state_pdo(
     if (ec_fsm_coe_exec(fsm->fsm_coe)) return;
 
     if (!ec_fsm_coe_success(fsm->fsm_coe)) {
-        EC_ERR("Failed to read mapped Pdo index from slave %u.\n",
+        EC_ERR("Failed to read assigned Pdo index from slave %u.\n",
                 fsm->slave->ring_position);
         fsm->state = ec_fsm_coe_map_state_error;
         return;
@@ -292,7 +292,7 @@ void ec_fsm_coe_map_state_pdo(
     if (fsm->slave->master->debug_level)
         EC_DBG("  Pdo 0x%04X.\n", fsm->pdo->index);
 
-    list_add_tail(&fsm->pdo->list, &fsm->mapping.pdos);
+    list_add_tail(&fsm->pdo->list, &fsm->pdos.list);
 
     ec_sdo_request_address(&fsm->request, fsm->pdo->index, 0);
     ecrt_sdo_request_read(&fsm->request);
@@ -304,7 +304,7 @@ void ec_fsm_coe_map_state_pdo(
 /*****************************************************************************/
 
 /**
- * Read number of Pdo entries.
+ * Read number of mapped Pdo entries.
  */
 
 void ec_fsm_coe_map_state_pdo_entry_count(
@@ -367,7 +367,7 @@ void ec_fsm_coe_map_state_pdo_entry(
     if (ec_fsm_coe_exec(fsm->fsm_coe)) return;
 
     if (!ec_fsm_coe_success(fsm->fsm_coe)) {
-        EC_ERR("Failed to read index of mapped Pdo entry from slave %u.\n",
+        EC_ERR("Failed to read mapped Pdo entry from slave %u.\n",
                 fsm->slave->ring_position);
         fsm->state = ec_fsm_coe_map_state_error;
         return;

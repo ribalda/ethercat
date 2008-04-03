@@ -33,49 +33,52 @@
 
 /**
    \file
-   EtherCAT Pdo mapping structure.
+   EtherCAT Pdo assignment state machine structures.
 */
 
 /*****************************************************************************/
 
-#ifndef _EC_PDO_MAPPING_H_
-#define _EC_PDO_MAPPING_H_
-
-#include <linux/list.h>
+#ifndef _EC_FSM_PDO_ASSIGN_H_
+#define _EC_FSM_PDO_ASSIGN_H_
 
 #include "../include/ecrt.h"
 
 #include "globals.h"
-#include "pdo.h"
+#include "datagram.h"
+#include "fsm_coe.h"
 
 /*****************************************************************************/
 
-/** EtherCAT Pdo mapping.
+/**
+ * \see ec_fsm_pdo_assign
  */
-typedef struct {
-    struct list_head pdos; /**< List of Pdos. */
-    unsigned int default_mapping; /**< This is the default mapping. */
-} ec_pdo_mapping_t;
+typedef struct ec_fsm_pdo_assign ec_fsm_pdo_assign_t;
+
+/** Pdo assignment state machine.
+ */
+struct ec_fsm_pdo_assign
+{
+    void (*state)(ec_fsm_pdo_assign_t *); /**< State function. */
+    ec_fsm_coe_t *fsm_coe; /**< CoE state machine to use. */
+    ec_slave_t *slave; /**< Slave the FSM runs on. */
+
+    ec_direction_t dir; /**< Current direction. */
+    const ec_sync_t *sync; /**< Current sync manager. */
+    const ec_pdo_list_t *pdos; /**< Target Pdo assignment. */
+    const ec_pdo_t *pdo; /**< Current Pdo. */
+
+    ec_sdo_request_t request; /**< Sdo request. */
+    unsigned int pdo_count; /**< Number of assigned Pdos. */
+};
 
 /*****************************************************************************/
 
-void ec_pdo_mapping_init(ec_pdo_mapping_t *);
-void ec_pdo_mapping_clear(ec_pdo_mapping_t *);
+void ec_fsm_pdo_assign_init(ec_fsm_pdo_assign_t *, ec_fsm_coe_t *);
+void ec_fsm_pdo_assign_clear(ec_fsm_pdo_assign_t *);
 
-void ec_pdo_mapping_clear_pdos(ec_pdo_mapping_t *);
-
-ec_pdo_t *ec_pdo_mapping_add_pdo(ec_pdo_mapping_t *, ec_direction_t,
-        uint16_t);
-int ec_pdo_mapping_add_pdo_copy(ec_pdo_mapping_t *, const ec_pdo_t *);
-
-int ec_pdo_mapping_copy(ec_pdo_mapping_t *, const ec_pdo_mapping_t *);
-
-uint16_t ec_pdo_mapping_total_size(const ec_pdo_mapping_t *);
-int ec_pdo_mapping_equal(const ec_pdo_mapping_t *, const ec_pdo_mapping_t *);
-
-ec_pdo_t *ec_pdo_mapping_find_pdo(const ec_pdo_mapping_t *, uint16_t);
-const ec_pdo_t *ec_pdo_mapping_find_pdo_const(const ec_pdo_mapping_t *,
-        uint16_t);
+void ec_fsm_pdo_assign_start(ec_fsm_pdo_assign_t *, ec_slave_t *);
+int ec_fsm_pdo_assign_exec(ec_fsm_pdo_assign_t *);
+int ec_fsm_pdo_assign_success(const ec_fsm_pdo_assign_t *);
 
 /*****************************************************************************/
 

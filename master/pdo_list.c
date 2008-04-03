@@ -33,7 +33,7 @@
 
 /**
    \file
-   EtherCAT Pdo mapping methods.
+   EtherCAT Pdo list methods.
 */
 
 /*****************************************************************************/
@@ -45,38 +45,37 @@
 #include "slave_config.h"
 #include "master.h"
 
-#include "pdo_mapping.h"
+#include "pdo_list.h"
 
 /*****************************************************************************/
 
-/** Pdo mapping constructor.
+/** Pdo list constructor.
  */
-void ec_pdo_mapping_init(
-        ec_pdo_mapping_t *pm /**< Pdo mapping. */
+void ec_pdo_list_init(
+        ec_pdo_list_t *pl /**< Pdo list. */
         )
 {
-    INIT_LIST_HEAD(&pm->pdos);
-    pm->default_mapping = 1;
+    INIT_LIST_HEAD(&pl->list);
 }
 
 /*****************************************************************************/
 
-/** Pdo mapping destructor.
+/** Pdo list destructor.
  */
-void ec_pdo_mapping_clear(ec_pdo_mapping_t *pm /**< Pdo mapping. */)
+void ec_pdo_list_clear(ec_pdo_list_t *pl /**< Pdo list. */)
 {
-    ec_pdo_mapping_clear_pdos(pm);
+    ec_pdo_list_clear_pdos(pl);
 }
 
 /*****************************************************************************/
 
 /** Clears the list of mapped Pdos.
  */
-void ec_pdo_mapping_clear_pdos(ec_pdo_mapping_t *pm /**< Pdo mapping. */)
+void ec_pdo_list_clear_pdos(ec_pdo_list_t *pl /**< Pdo list. */)
 {
     ec_pdo_t *pdo, *next;
 
-    list_for_each_entry_safe(pdo, next, &pm->pdos, list) {
+    list_for_each_entry_safe(pdo, next, &pl->list, list) {
         list_del_init(&pdo->list);
         ec_pdo_clear(pdo);
         kfree(pdo);
@@ -89,8 +88,8 @@ void ec_pdo_mapping_clear_pdos(ec_pdo_mapping_t *pm /**< Pdo mapping. */)
  *
  * \retval Data size in byte.
  */
-uint16_t ec_pdo_mapping_total_size(
-        const ec_pdo_mapping_t *pm /**< Pdo mapping. */
+uint16_t ec_pdo_list_total_size(
+        const ec_pdo_list_t *pl /**< Pdo list. */
         )
 {
     unsigned int bit_size;
@@ -99,7 +98,7 @@ uint16_t ec_pdo_mapping_total_size(
     uint16_t byte_size;
 
     bit_size = 0;
-    list_for_each_entry(pdo, &pm->pdos, list) {
+    list_for_each_entry(pdo, &pl->list, list) {
         list_for_each_entry(pdo_entry, &pdo->entries, list) {
             bit_size += pdo_entry->bit_length;
         }
@@ -115,13 +114,13 @@ uint16_t ec_pdo_mapping_total_size(
 
 /*****************************************************************************/
 
-/** Add a new Pdo to the mapping.
+/** Add a new Pdo to the list.
  *
  * \retval >0 Pointer to new Pdo.
  * \retval NULL No memory.
  */
-ec_pdo_t *ec_pdo_mapping_add_pdo(
-        ec_pdo_mapping_t *pm, /**< Pdo mapping. */
+ec_pdo_t *ec_pdo_list_add_pdo(
+        ec_pdo_list_t *pl, /**< Pdo list. */
         ec_direction_t dir, /**< Direction. */
         uint16_t index /**< Pdo index. */
         )
@@ -136,25 +135,25 @@ ec_pdo_t *ec_pdo_mapping_add_pdo(
     ec_pdo_init(pdo);
     pdo->dir = dir;
     pdo->index = index;
-    list_add_tail(&pdo->list, &pm->pdos);
+    list_add_tail(&pdo->list, &pl->list);
     return pdo;
 }
 
 /*****************************************************************************/
 
-/** Add the copy of an existing Pdo to the mapping.
+/** Add the copy of an existing Pdo to the list.
  *
  * \return 0 on success, else < 0
  */
-int ec_pdo_mapping_add_pdo_copy(
-        ec_pdo_mapping_t *pm, /**< Pdo mapping. */
+int ec_pdo_list_add_pdo_copy(
+        ec_pdo_list_t *pl, /**< Pdo list. */
         const ec_pdo_t *pdo /**< Pdo to add. */
         )
 {
     ec_pdo_t *mapped_pdo;
 
     // Pdo already mapped?
-    list_for_each_entry(mapped_pdo, &pm->pdos, list) {
+    list_for_each_entry(mapped_pdo, &pl->list, list) {
         if (mapped_pdo->index != pdo->index) continue;
         EC_ERR("Pdo 0x%04X is already mapped!\n", pdo->index);
         return -1;
@@ -170,28 +169,28 @@ int ec_pdo_mapping_add_pdo_copy(
         return -1;
     }
 
-    list_add_tail(&mapped_pdo->list, &pm->pdos);
+    list_add_tail(&mapped_pdo->list, &pl->list);
     return 0;
 }
 
 /*****************************************************************************/
 
-/** Makes a deep copy of another Pdo mapping.
+/** Makes a deep copy of another Pdo list.
  *
  * \return 0 on success, else < 0
  */
-int ec_pdo_mapping_copy(
-        ec_pdo_mapping_t *pm, /**< Pdo mapping. */
-        const ec_pdo_mapping_t *other /**< Pdo mapping to copy from. */
+int ec_pdo_list_copy(
+        ec_pdo_list_t *pl, /**< Pdo list. */
+        const ec_pdo_list_t *other /**< Pdo list to copy from. */
         )
 {
     ec_pdo_t *other_pdo;
 
-    ec_pdo_mapping_clear_pdos(pm);
+    ec_pdo_list_clear_pdos(pl);
 
     // Pdo already mapped?
-    list_for_each_entry(other_pdo, &other->pdos, list) {
-        if (ec_pdo_mapping_add_pdo_copy(pm, other_pdo))
+    list_for_each_entry(other_pdo, &other->list, list) {
+        if (ec_pdo_list_add_pdo_copy(pl, other_pdo))
             return -1;
     }
     
@@ -200,24 +199,24 @@ int ec_pdo_mapping_copy(
 
 /*****************************************************************************/
 
-/** Compares two Pdo mappings.
+/** Compares two Pdo lists.
  *
- * Only the mapping is compared, not the Pdo entries (i. e. the Pdo
+ * Only the list is compared, not the Pdo entries (i. e. the Pdo
  * configuration).
  *
- * \retval 1 The given Pdo mappings are equal.
- * \retval 0 The given Pdo mappings differ.
+ * \retval 1 The given Pdo lists are equal.
+ * \retval 0 The given Pdo lists differ.
  */
-int ec_pdo_mapping_equal(
-        const ec_pdo_mapping_t *pm1, /**< First mapping. */
-        const ec_pdo_mapping_t *pm2 /**< Second mapping. */
+int ec_pdo_list_equal(
+        const ec_pdo_list_t *pl1, /**< First list. */
+        const ec_pdo_list_t *pl2 /**< Second list. */
         )
 {
     const struct list_head *h1, *h2, *l1, *l2;
     const ec_pdo_t *p1, *p2;
 
-    h1 = l1 = &pm1->pdos;
-    h2 = l2 = &pm2->pdos;
+    h1 = l1 = &pl1->list;
+    h2 = l2 = &pl2->list;
 
     while (1) {
         l1 = l1->next;
@@ -242,14 +241,14 @@ int ec_pdo_mapping_equal(
 
 /** Finds a Pdo with the given index.
  */
-ec_pdo_t *ec_pdo_mapping_find_pdo(
-        const ec_pdo_mapping_t *pm, /**< Pdo mapping. */
+ec_pdo_t *ec_pdo_list_find_pdo(
+        const ec_pdo_list_t *pl, /**< Pdo list. */
         uint16_t index /**< Pdo index. */
         )
 {
     ec_pdo_t *pdo;
 
-    list_for_each_entry(pdo, &pm->pdos, list) {
+    list_for_each_entry(pdo, &pl->list, list) {
         if (pdo->index != index)
             continue;
         return pdo;
@@ -262,14 +261,14 @@ ec_pdo_t *ec_pdo_mapping_find_pdo(
 
 /** Finds a Pdo with the given index and returns a const pointer.
  */
-const ec_pdo_t *ec_pdo_mapping_find_pdo_const(
-        const ec_pdo_mapping_t *pm, /**< Pdo mapping. */
+const ec_pdo_t *ec_pdo_list_find_pdo_const(
+        const ec_pdo_list_t *pl, /**< Pdo list. */
         uint16_t index /**< Pdo index. */
         )
 {
     const ec_pdo_t *pdo;
 
-    list_for_each_entry(pdo, &pm->pdos, list) {
+    list_for_each_entry(pdo, &pl->list, list) {
         if (pdo->index != index)
             continue;
         return pdo;

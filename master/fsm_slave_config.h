@@ -48,8 +48,8 @@
 #include "datagram.h"
 #include "fsm_change.h"
 #include "fsm_coe.h"
+#include "fsm_pdo_assign.h"
 #include "fsm_pdo_mapping.h"
-#include "fsm_pdo_config.h"
 
 /*****************************************************************************/
 
@@ -68,8 +68,8 @@ struct ec_fsm_slave_config
     ec_sdo_request_t *request; /**< Sdo request for Sdo configuration. */
     ec_fsm_change_t fsm_change; /**< State change state machine. */
     ec_fsm_coe_t fsm_coe; /**< CoE state machine. */
-    ec_fsm_pdo_mapping_t fsm_pdo_map; /**< Pdo mapping state machine. */
-    ec_fsm_pdo_config_t fsm_pdo_conf; /**< Pdo configuration state machine. */
+    ec_fsm_pdo_assign_t fsm_pdo_assign; /**< Pdo assignment state machine. */
+    ec_fsm_pdo_mapping_t fsm_pdo_mapping; /**< Pdo mapping state machine. */
 };
 
 /*****************************************************************************/

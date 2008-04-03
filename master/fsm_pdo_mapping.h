@@ -31,19 +31,17 @@
  *
  *****************************************************************************/
 
-/**
-   \file
-   EtherCAT Pdo mapping state machine structures.
-*/
+/** \file
+ * EtherCAT Pdo configuration state machine structures.
+ */
 
 /*****************************************************************************/
 
 #ifndef __EC_FSM_PDO_MAPPING__
 #define __EC_FSM_PDO_MAPPING__
 
-#include "../include/ecrt.h"
-
 #include "globals.h"
+#include "../include/ecrt.h"
 #include "datagram.h"
 #include "fsm_coe.h"
 
@@ -54,21 +52,19 @@
  */
 typedef struct ec_fsm_pdo_mapping ec_fsm_pdo_mapping_t;
 
-/** Pdo mapping state machine.
+/** Pdo configuration state machine.
  */
 struct ec_fsm_pdo_mapping
 {
-    void (*state)(ec_fsm_pdo_mapping_t *); /**< State function. */
-    ec_fsm_coe_t *fsm_coe; /**< CoE state machine to use. */
+    void (*state)(ec_fsm_pdo_mapping_t *); /**< state function */
+    ec_fsm_coe_t *fsm_coe; /**< CoE state machine to use */
     ec_slave_t *slave; /**< Slave the FSM runs on. */
 
-    ec_direction_t dir; /**< Current direction. */
-    const ec_sync_t *sync; /**< Current sync manager. */
-    const ec_pdo_mapping_t *mapping; /**< Target Pdo mapping. */
-    const ec_pdo_t *pdo; /**< Current Pdo. */
+    const ec_pdo_t *pdo; /**< Current Pdo to configure. */
+    const ec_pdo_entry_t *entry; /**< Current entry. */
 
     ec_sdo_request_t request; /**< Sdo request. */
-    unsigned int pdo_count; /**< Number of mapped Pdos. */
+    unsigned int entry_count; /**< Number of configured entries. */
 };
 
 /*****************************************************************************/

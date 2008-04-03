@@ -52,8 +52,8 @@ void ec_fsm_slave_config_state_clear_fmmus(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_mbox_sync(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_preop(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_sdo_conf(ec_fsm_slave_config_t *);
-void ec_fsm_slave_config_state_mapping(ec_fsm_slave_config_t *);
-void ec_fsm_slave_config_state_pdo_conf(ec_fsm_slave_config_t *);
+void ec_fsm_slave_config_state_pdo_assign(ec_fsm_slave_config_t *);
+void ec_fsm_slave_config_state_pdo_mapping(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_pdo_sync(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_fmmu(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_safeop(ec_fsm_slave_config_t *);
@@ -62,7 +62,7 @@ void ec_fsm_slave_config_state_op(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_mbox_sync(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_preop(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_sdo_conf(ec_fsm_slave_config_t *);
-void ec_fsm_slave_config_enter_mapping(ec_fsm_slave_config_t *);
+void ec_fsm_slave_config_enter_pdo_assign(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_pdo_sync(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_fmmu(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_safeop(ec_fsm_slave_config_t *);
@@ -83,8 +83,8 @@ void ec_fsm_slave_config_init(ec_fsm_slave_config_t *fsm, /**< slave state machi
     // init sub state machines
     ec_fsm_change_init(&fsm->fsm_change, fsm->datagram);
     ec_fsm_coe_init(&fsm->fsm_coe, fsm->datagram);
-    ec_fsm_pdo_mapping_init(&fsm->fsm_pdo_map, &fsm->fsm_coe);
-    ec_fsm_pdo_config_init(&fsm->fsm_pdo_conf, &fsm->fsm_coe);
+    ec_fsm_pdo_assign_init(&fsm->fsm_pdo_assign, &fsm->fsm_coe);
+    ec_fsm_pdo_mapping_init(&fsm->fsm_pdo_mapping, &fsm->fsm_coe);
 }
 
 /*****************************************************************************/
@@ -96,8 +96,8 @@ void ec_fsm_slave_config_clear(ec_fsm_slave_config_t *fsm /**< slave state machi
     // clear sub state machines
     ec_fsm_change_clear(&fsm->fsm_change);
     ec_fsm_coe_clear(&fsm->fsm_coe);
-    ec_fsm_pdo_mapping_clear(&fsm->fsm_pdo_map);
-    ec_fsm_pdo_config_clear(&fsm->fsm_pdo_conf);
+    ec_fsm_pdo_assign_clear(&fsm->fsm_pdo_assign);
+    ec_fsm_pdo_mapping_clear(&fsm->fsm_pdo_mapping);
 }
 
 /*****************************************************************************/
@@ -442,7 +442,7 @@ void ec_fsm_slave_config_enter_sdo_conf(ec_fsm_slave_config_t *fsm /**< slave st
 
     // No CoE configuration to be applied?
     if (list_empty(&slave->config->sdo_configs)) { // skip Sdo configuration
-        ec_fsm_slave_config_enter_mapping(fsm);
+        ec_fsm_slave_config_enter_pdo_assign(fsm);
         return;
     }
 
@@ -486,65 +486,65 @@ void ec_fsm_slave_config_state_sdo_conf(
     }
 
     // All Sdos are now configured.
-    ec_fsm_slave_config_enter_mapping(fsm);
+    ec_fsm_slave_config_enter_pdo_assign(fsm);
 }
 
 /*****************************************************************************/
 
 /**
- * Check for Pdo mappings to be applied.
+ * Check for alternate Pdo assignments to be applied.
  */
 
-void ec_fsm_slave_config_enter_mapping(
+void ec_fsm_slave_config_enter_pdo_assign(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-    // start configuring Pdo mapping
-    fsm->state = ec_fsm_slave_config_state_mapping;
-    ec_fsm_pdo_mapping_start(&fsm->fsm_pdo_map, fsm->slave);
-    ec_fsm_pdo_mapping_exec(&fsm->fsm_pdo_map); // execute immediately
+    // start applying alternate Pdo assignments
+    fsm->state = ec_fsm_slave_config_state_pdo_assign;
+    ec_fsm_pdo_assign_start(&fsm->fsm_pdo_assign, fsm->slave);
+    ec_fsm_pdo_assign_exec(&fsm->fsm_pdo_assign); // execute immediately
 }
 
 /*****************************************************************************/
 
 /**
-   Slave configuration state: MAPPING.
+   Slave configuration state: PDO_ASSIGN.
 */
 
-void ec_fsm_slave_config_state_mapping(
+void ec_fsm_slave_config_state_pdo_assign(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-    if (ec_fsm_pdo_mapping_exec(&fsm->fsm_pdo_map)) return;
+    if (ec_fsm_pdo_assign_exec(&fsm->fsm_pdo_assign)) return;
 
-    if (!ec_fsm_pdo_mapping_success(&fsm->fsm_pdo_map)) {
-        EC_ERR("Pdo mapping configuration failed for slave %u.\n",
+    if (!ec_fsm_pdo_assign_success(&fsm->fsm_pdo_assign)) {
+        EC_ERR("Pdo assignment failed for slave %u.\n",
                 fsm->slave->ring_position);
         fsm->slave->error_flag = 1;
         fsm->state = ec_fsm_slave_config_state_error;
         return;
     }
 
-    // Start Pdo configuration
-    fsm->state = ec_fsm_slave_config_state_pdo_conf;
-    ec_fsm_pdo_config_start(&fsm->fsm_pdo_conf, fsm->slave);
-    ec_fsm_pdo_config_exec(&fsm->fsm_pdo_conf); // execute immediately
+    // Start configuring Pdo mapping
+    fsm->state = ec_fsm_slave_config_state_pdo_mapping;
+    ec_fsm_pdo_mapping_start(&fsm->fsm_pdo_mapping, fsm->slave);
+    ec_fsm_pdo_mapping_exec(&fsm->fsm_pdo_mapping); // execute immediately
 }
 
 /*****************************************************************************/
 
 /**
-   Slave configuration state: PDO_CONF.
+   Slave configuration state: PDO_MAPPING.
 */
 
-void ec_fsm_slave_config_state_pdo_conf(
+void ec_fsm_slave_config_state_pdo_mapping(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-    if (ec_fsm_pdo_config_exec(&fsm->fsm_pdo_conf)) return;
+    if (ec_fsm_pdo_mapping_exec(&fsm->fsm_pdo_mapping)) return;
 
-    if (!ec_fsm_pdo_config_success(&fsm->fsm_pdo_conf)) {
-        EC_ERR("Pdo configuration failed for slave %u.\n",
+    if (!ec_fsm_pdo_mapping_success(&fsm->fsm_pdo_mapping)) {
+        EC_ERR("Configuration of Pdo mapping failed for slave %u.\n",
                 fsm->slave->ring_position);
         fsm->slave->error_flag = 1;
         fsm->state = ec_fsm_slave_config_state_error;
@@ -592,7 +592,7 @@ void ec_fsm_slave_config_enter_pdo_sync(
     for (i = 0; i < num_syncs; i++) {
         sync = &slave->sii.syncs[i + offset];
         dir = ec_sync_direction(sync);
-        size = ec_pdo_mapping_total_size(&slave->config->mapping[dir]);
+        size = ec_pdo_list_total_size(&slave->config->pdos[dir]);
         ec_sync_config(sync, size, datagram->data + EC_SYNC_PAGE_SIZE * i);
     }
 

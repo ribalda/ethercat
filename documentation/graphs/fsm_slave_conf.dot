@@ -9,7 +9,7 @@ digraph slaveconf {
     enter_mbox_sync [shape=point,label=""]
     enter_fmmu [shape=point,label=""]
     enter_sdo_conf [shape=point,label=""]
-    enter_mapping [shape=point,label=""]
+    enter_pdo_assign [shape=point,label=""]
     enter_pdo_sync [shape=point,label=""]
     enter_safeop [shape=point,label=""]
 
@@ -32,18 +32,18 @@ digraph slaveconf {
     preop -> end [label="PREOP req."]
     preop -> enter_sdo_conf [weight=10]
     enter_sdo_conf -> enter_safeop [label="No configuration"]
-    enter_sdo_conf -> enter_mapping [label="No Sdo configs"]
+    enter_sdo_conf -> enter_pdo_assign [label="No Sdo configs"]
     enter_sdo_conf -> sdo_conf [label="Sdo configs", weight=10]
     sdo_conf -> sdo_conf
     sdo_conf -> error
-    sdo_conf -> enter_mapping [weight=10]
-    enter_mapping -> mapping [weight=10]
-    mapping -> mapping
-    mapping -> error
-    mapping -> pdo_conf [weight=10]
-    pdo_conf -> pdo_conf
-    pdo_conf -> error
-    pdo_conf -> enter_pdo_sync [weight=10]
+    sdo_conf -> enter_pdo_assign [weight=10]
+    enter_pdo_assign -> pdo_assign [weight=10]
+    pdo_assign -> pdo_assign
+    pdo_assign -> error
+    pdo_assign -> pdo_mapping [weight=10]
+    pdo_mapping -> pdo_mapping
+    pdo_mapping -> error
+    pdo_mapping -> enter_pdo_sync [weight=10]
     enter_pdo_sync -> pdo_sync [label="Pdo SMs", weight=10]
     enter_pdo_sync -> enter_fmmu
     pdo_sync -> pdo_sync
