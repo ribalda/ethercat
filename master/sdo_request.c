@@ -38,6 +38,7 @@
 /*****************************************************************************/
 
 #include <linux/module.h>
+#include <linux/jiffies.h>
 
 #include "sdo_request.h"
 
