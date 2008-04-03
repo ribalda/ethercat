@@ -69,6 +69,7 @@ void ec_sdo_request_init(
     req->mem_size = 0;
     req->data_size = 0;
     req->dir = EC_DIR_OUTPUT;
+    req->timeout = 0; // no timeout
     req->state = EC_REQUEST_INIT;
 }
 
@@ -160,12 +161,25 @@ int ec_sdo_request_copy_data(
     return 0;
 }
 
+/*****************************************************************************/
+
+/** Checks, if the timeout was exceeded.
+ *
+ * \return non-zero if the timeout was exceeded, else zero.
+ */
+int ec_sdo_request_timed_out(const ec_sdo_request_t *req /**< Sdo request. */)
+{
+    return req->timeout
+        && jiffies - req->start_jiffies > HZ * req->timeout / 1000;
+}
+
 /*****************************************************************************
  * Realtime interface.
  ****************************************************************************/
 
 void ecrt_sdo_request_timeout(ec_sdo_request_t *req, uint32_t timeout)
 {
+    req->timeout = timeout;
 }
 
 /*****************************************************************************/
@@ -195,6 +209,7 @@ void ecrt_sdo_request_read(ec_sdo_request_t *req)
 {
     req->dir = EC_DIR_INPUT;
     req->state = EC_REQUEST_QUEUED;
+    req->start_jiffies = jiffies;
 }
 
 /*****************************************************************************/
@@ -203,6 +218,7 @@ void ecrt_sdo_request_write(ec_sdo_request_t *req)
 {
     req->dir = EC_DIR_OUTPUT;
     req->state = EC_REQUEST_QUEUED;
+    req->start_jiffies = jiffies;
 }
 
 /*****************************************************************************/

@@ -386,7 +386,14 @@ int ec_fsm_master_action_process_sdo(
             continue;
         list_for_each_entry(req, &slave->config->sdo_requests, list) {
             if (req->state == EC_REQUEST_QUEUED) {
-                req->state = EC_REQUEST_BUSY;
+
+                if (ec_sdo_request_timed_out(req)) {
+                    req->state = EC_REQUEST_FAILURE;
+                    if (master->debug_level)
+                        EC_DBG("Sdo request for slave %u timed out...\n",
+                                slave->ring_position);
+                    continue;
+                }
 
                 if (slave->current_state == EC_SLAVE_STATE_INIT ||
                         slave->error_flag) {
@@ -394,6 +401,7 @@ int ec_fsm_master_action_process_sdo(
                     continue;
                 }
 
+                req->state = EC_REQUEST_BUSY;
                 if (master->debug_level)
                     EC_DBG("Processing Sdo request for slave %u...\n",
                             slave->ring_position);

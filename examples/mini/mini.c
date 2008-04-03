@@ -170,6 +170,7 @@ void read_sdo(void)
 {
     switch (ecrt_sdo_request_state(sdo)) {
         case EC_SDO_REQUEST_UNUSED: // request was not used yet
+            ecrt_sdo_request_timeout(sdo, 500); // ms
             ecrt_sdo_request_read(sdo); // trigger first read
             break;
         case EC_SDO_REQUEST_BUSY:

@@ -683,12 +683,11 @@ void ecrt_domain_state(
  *
  * If the request cannot be processed in the specified time, if will be marked
  * as failed.
- *
- * \todo The timeout functionality is not yet implemented.
  */
 void ecrt_sdo_request_timeout(
         ec_sdo_request_t *req, /**< Sdo request. */
-        uint32_t timeout /**< Timeout in milliseconds. */
+        uint32_t timeout /**< Timeout in milliseconds. Zero means no
+                           timeout. */
         );
 
 /** Access to the Sdo request's data.

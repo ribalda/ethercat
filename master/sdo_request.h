@@ -58,10 +58,12 @@ struct ec_sdo_request {
     uint8_t *data; /**< Pointer to Sdo data. */
     size_t mem_size; /**< Size of Sdo data memory. */
     size_t data_size; /**< Size of Sdo data. */
+    uint32_t timeout; /**< Timeout in ms. */
     ec_direction_t dir; /**< Direction. EC_DIR_OUTPUT means downloading to
                           the slave, EC_DIR_INPUT means uploading from the
                           slave. */
     ec_request_state_t state; /**< Sdo request state. */
+    unsigned long start_jiffies; /**< Jiffies, when the request was issued. */
 };
 
 /*****************************************************************************/
@@ -72,6 +74,7 @@ void ec_sdo_request_clear(ec_sdo_request_t *);
 void ec_sdo_request_address(ec_sdo_request_t *, uint16_t, uint8_t);
 int ec_sdo_request_alloc(ec_sdo_request_t *, size_t);
 int ec_sdo_request_copy_data(ec_sdo_request_t *, const uint8_t *, size_t);
+int ec_sdo_request_timed_out(const ec_sdo_request_t *);
 
 /*****************************************************************************/
 
