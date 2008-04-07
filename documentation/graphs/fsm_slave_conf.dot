@@ -53,17 +53,17 @@ digraph slaveconf {
     pdo_sync [fontname="Helvetica"]
     //pdo_sync -> pdo_sync
     //pdo_sync -> error
-    pdo_sync -> pdo_assign [weight=10]
-
-    pdo_assign [fontname="Helvetica"]
-    //pdo_assign -> pdo_assign
-    //pdo_assign -> error
-    pdo_assign -> pdo_mapping [weight=10]
+    pdo_sync -> pdo_mapping [weight=10]
 
     pdo_mapping [fontname="Helvetica"]
     //pdo_mapping -> pdo_mapping
     //pdo_mapping -> error
-    pdo_mapping -> enter_fmmu [weight=10]
+    pdo_mapping -> pdo_assign [weight=10]
+
+    pdo_assign [fontname="Helvetica"]
+    //pdo_assign -> pdo_assign
+    //pdo_assign -> error
+    pdo_assign -> enter_fmmu [weight=10]
 
     enter_fmmu [shape=point,label=""]
     enter_fmmu -> enter_safeop [fontname="Helvetica",label="No FMMUs\nto configure"]

@@ -63,7 +63,6 @@ void ec_fsm_slave_config_enter_mbox_sync(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_preop(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_sdo_conf(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_pdo_sync(ec_fsm_slave_config_t *);
-void ec_fsm_slave_config_enter_pdo_assign(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_fmmu(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_safeop(ec_fsm_slave_config_t *);
 
@@ -568,45 +567,6 @@ void ec_fsm_slave_config_state_pdo_sync(ec_fsm_slave_config_t *fsm /**< slave st
         return;
     }
 
-    ec_fsm_slave_config_enter_pdo_assign(fsm);
-}
-
-/*****************************************************************************/
-
-/**
- * Check for alternate Pdo assignments to be applied.
- */
-
-void ec_fsm_slave_config_enter_pdo_assign(
-        ec_fsm_slave_config_t *fsm /**< slave state machine */
-        )
-{
-    // start applying alternate Pdo assignments
-    fsm->state = ec_fsm_slave_config_state_pdo_assign;
-    ec_fsm_pdo_assign_start(&fsm->fsm_pdo_assign, fsm->slave);
-    ec_fsm_pdo_assign_exec(&fsm->fsm_pdo_assign); // execute immediately
-}
-
-/*****************************************************************************/
-
-/**
-   Slave configuration state: PDO_ASSIGN.
-*/
-
-void ec_fsm_slave_config_state_pdo_assign(
-        ec_fsm_slave_config_t *fsm /**< slave state machine */
-        )
-{
-    if (ec_fsm_pdo_assign_exec(&fsm->fsm_pdo_assign)) return;
-
-    if (!ec_fsm_pdo_assign_success(&fsm->fsm_pdo_assign)) {
-        EC_ERR("Pdo assignment failed for slave %u.\n",
-                fsm->slave->ring_position);
-        fsm->slave->error_flag = 1;
-        fsm->state = ec_fsm_slave_config_state_error;
-        return;
-    }
-
     // Start configuring Pdo mapping
     fsm->state = ec_fsm_slave_config_state_pdo_mapping;
     ec_fsm_pdo_mapping_start(&fsm->fsm_pdo_mapping, fsm->slave);
@@ -627,6 +587,32 @@ void ec_fsm_slave_config_state_pdo_mapping(
 
     if (!ec_fsm_pdo_mapping_success(&fsm->fsm_pdo_mapping)) {
         EC_ERR("Configuration of Pdo mapping failed for slave %u.\n",
+                fsm->slave->ring_position);
+        fsm->slave->error_flag = 1;
+        fsm->state = ec_fsm_slave_config_state_error;
+        return;
+    }
+
+    // start applying alternate Pdo assignments
+    fsm->state = ec_fsm_slave_config_state_pdo_assign;
+    ec_fsm_pdo_assign_start(&fsm->fsm_pdo_assign, fsm->slave);
+    ec_fsm_pdo_assign_exec(&fsm->fsm_pdo_assign); // execute immediately
+}
+
+/*****************************************************************************/
+
+/**
+   Slave configuration state: PDO_ASSIGN.
+*/
+
+void ec_fsm_slave_config_state_pdo_assign(
+        ec_fsm_slave_config_t *fsm /**< slave state machine */
+        )
+{
+    if (ec_fsm_pdo_assign_exec(&fsm->fsm_pdo_assign)) return;
+
+    if (!ec_fsm_pdo_assign_success(&fsm->fsm_pdo_assign)) {
+        EC_ERR("Pdo assignment failed for slave %u.\n",
                 fsm->slave->ring_position);
         fsm->slave->error_flag = 1;
         fsm->state = ec_fsm_slave_config_state_error;
