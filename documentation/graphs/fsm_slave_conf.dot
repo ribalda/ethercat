@@ -4,62 +4,92 @@
 digraph slaveconf {
     size="7,9"
     center=1
-	ratio=fill
+    ratio=fill
+
+    start [fontname="Helvetica"]
+    start -> init [weight=10]
+
+    init [fontname="Helvetica"]
+    //init -> init
+    //init -> error
+    init -> enter_mbox_sync [fontname="Helvetica",label ="No FMMUs"]
+    init -> clear_fmmus [weight=10]
+
+    clear_fmmus [fontname="Helvetica"]
+    //clear_fmmus -> clear_fmmus
+    //clear_fmmus -> error
+    clear_fmmus -> enter_mbox_sync [weight=10]
 
     enter_mbox_sync [shape=point,label=""]
-    enter_fmmu [shape=point,label=""]
-    enter_sdo_conf [shape=point,label=""]
-    enter_pdo_assign [shape=point,label=""]
-    enter_pdo_sync [shape=point,label=""]
-    enter_safeop [shape=point,label=""]
+    enter_mbox_sync -> end [fontname="Helvetica",label="INIT\nrequested"]
+    enter_mbox_sync -> preop [fontname="Helvetica",label="No mailboxes"]
+    enter_mbox_sync -> mbox_sync [weight=10]
 
-    start -> init [weight=10]
-    init -> init
-    init -> error
-    init -> enter_mbox_sync
-    init -> clear_fmmus [label="Has FMMUs", weight=10]
-    clear_fmmus -> clear_fmmus
-    clear_fmmus -> error
-    clear_fmmus -> enter_mbox_sync [weight=10]
-    enter_mbox_sync -> end [label="INIT req."]
-    enter_mbox_sync -> preop [label="No mailboxes"]
-    enter_mbox_sync -> mbox_sync [label="Has mailboxes", weight=10]
-    mbox_sync -> mbox_sync
-    mbox_sync -> error
+    mbox_sync [fontname="Helvetica"]
+    //mbox_sync -> mbox_sync
+    //mbox_sync -> error
     mbox_sync -> preop [weight=10]
-    preop -> preop
-    preop -> error
-    preop -> end [label="PREOP req."]
+
+    preop [fontname="Helvetica"]
+    //preop -> preop
+    //preop -> error
+    preop -> end [fontname="Helvetica",label="PREOP\nrequested"]
     preop -> enter_sdo_conf [weight=10]
-    enter_sdo_conf -> enter_safeop [label="No configuration"]
-    enter_sdo_conf -> enter_pdo_assign [label="No Sdo configs"]
-    enter_sdo_conf -> sdo_conf [label="Sdo configs", weight=10]
-    sdo_conf -> sdo_conf
-    sdo_conf -> error
+
+    enter_sdo_conf [shape=point,label=""]
+    enter_sdo_conf -> enter_safeop [fontname="Helvetica",label="No slave\nconfig attached"]
+    enter_sdo_conf -> enter_pdo_assign [fontname="Helvetica",label="No Sdo\nconfigurations"]
+    enter_sdo_conf -> sdo_conf [weight=10]
+
+    sdo_conf [fontname="Helvetica"]
+    //sdo_conf -> sdo_conf
+    //sdo_conf -> error
     sdo_conf -> enter_pdo_assign [weight=10]
+
+    enter_pdo_assign [shape=point,label=""]
     enter_pdo_assign -> pdo_assign [weight=10]
-    pdo_assign -> pdo_assign
-    pdo_assign -> error
+
+    pdo_assign [fontname="Helvetica"]
+    //pdo_assign -> pdo_assign
+    //pdo_assign -> error
     pdo_assign -> pdo_mapping [weight=10]
-    pdo_mapping -> pdo_mapping
-    pdo_mapping -> error
+
+    pdo_mapping [fontname="Helvetica"]
+    //pdo_mapping -> pdo_mapping
+    //pdo_mapping -> error
     pdo_mapping -> enter_pdo_sync [weight=10]
-    enter_pdo_sync -> pdo_sync [label="Pdo SMs", weight=10]
-    enter_pdo_sync -> enter_fmmu
-    pdo_sync -> pdo_sync
-    pdo_sync -> error
+
+    enter_pdo_sync [shape=point,label=""]
+    enter_pdo_sync -> pdo_sync [weight=10]
+    enter_pdo_sync -> enter_fmmu [fontname="Helvetica",label="No Pdos"]
+
+    pdo_sync [fontname="Helvetica"]
+    //pdo_sync -> pdo_sync
+    //pdo_sync -> error
     pdo_sync -> enter_fmmu [weight=10]
-    enter_fmmu -> enter_safeop
-    enter_fmmu -> fmmu [label="FMMUs to configure", weight=10]
-    fmmu -> fmmu
-    fmmu -> error
+
+    enter_fmmu [shape=point,label=""]
+    enter_fmmu -> enter_safeop [fontname="Helvetica",label="No FMMUs\nto configure"]
+    enter_fmmu -> fmmu [weight=10]
+
+    fmmu [fontname="Helvetica"]
+    //fmmu -> fmmu
+    //fmmu -> error
     fmmu -> enter_safeop [weight=10]
-    enter_safeop -> safeop
-    safeop -> safeop
-    safeop -> error
-    safeop -> end [label="SAFEOP req."]
+
+    enter_safeop [shape=point,label=""]
+    enter_safeop -> safeop [weight=10]
+
+    safeop [fontname="Helvetica"]
+    //safeop -> safeop
+    //safeop -> error
+    safeop -> end [fontname="Helvetica",label="SAFEOP\nrequested"]
     safeop -> op [weight=10]
-    op -> op
-    op -> error
+
+    op [fontname="Helvetica"]
+    //op -> op
+    //op -> error
     op -> end [weight=10]
+
+    end [fontname="Helvetica"]
 }
