@@ -649,9 +649,12 @@ uint8_t *ecrt_domain_data(
         ec_domain_t *domain /**< Domain. */
         );
 
-/** Processes received datagrams.
+/** Determines the states of the domain's datagrams.
  *
- * \todo doc
+ * Evaluates the working counters of the received datagrams and outputs
+ * statistics, if necessary. This must be called after ecrt_master_receive()
+ * is expected to receive the domain datagrams in order to make
+ * ecrt_domain_state() return the result of the last process data exchange.
  */
 void ecrt_domain_process(
         ec_domain_t *domain /**< Domain. */
@@ -659,7 +662,8 @@ void ecrt_domain_process(
 
 /** (Re-)queues all domain datagrams in the master's datagram queue.
  *
- * \todo doc
+ * Call this function to mark the domain's datagrams for exchanging at the
+ * next call of ecrt_master_send().
  */
 void ecrt_domain_queue(
         ec_domain_t *domain /**< Domain. */
@@ -667,7 +671,7 @@ void ecrt_domain_queue(
 
 /** Reads the state of a domain.
  *
- * Stores the domain state in the giveb \a state structure.
+ * Stores the domain state in the given \a state structure.
  */
 void ecrt_domain_state(
         const ec_domain_t *domain, /**< Domain. */
