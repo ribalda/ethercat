@@ -34,20 +34,26 @@ digraph slaveconf {
     //preop -> preop
     //preop -> error
     preop -> end [fontname="Helvetica",label="PREOP\nrequested"]
+    preop -> enter_safeop [fontname="Helvetica",label="No slave\nconfig attached"]
     preop -> enter_sdo_conf [weight=10]
 
     enter_sdo_conf [shape=point,label=""]
-    enter_sdo_conf -> enter_safeop [fontname="Helvetica",label="No slave\nconfig attached"]
-    enter_sdo_conf -> enter_pdo_assign [fontname="Helvetica",label="No Sdo\nconfigurations"]
+    enter_sdo_conf -> enter_pdo_sync [fontname="Helvetica",label="No Sdo\nconfigurations"]
     enter_sdo_conf -> sdo_conf [weight=10]
 
     sdo_conf [fontname="Helvetica"]
     //sdo_conf -> sdo_conf
     //sdo_conf -> error
-    sdo_conf -> enter_pdo_assign [weight=10]
+    sdo_conf -> enter_pdo_sync [weight=10]
 
-    enter_pdo_assign [shape=point,label=""]
-    enter_pdo_assign -> pdo_assign [weight=10]
+    enter_pdo_sync [shape=point,label=""]
+    enter_pdo_sync -> enter_safeop [fontname="Helvetica",label="No Pdos"]
+    enter_pdo_sync -> pdo_sync [weight=10]
+
+    pdo_sync [fontname="Helvetica"]
+    //pdo_sync -> pdo_sync
+    //pdo_sync -> error
+    pdo_sync -> pdo_assign [weight=10]
 
     pdo_assign [fontname="Helvetica"]
     //pdo_assign -> pdo_assign
@@ -57,16 +63,7 @@ digraph slaveconf {
     pdo_mapping [fontname="Helvetica"]
     //pdo_mapping -> pdo_mapping
     //pdo_mapping -> error
-    pdo_mapping -> enter_pdo_sync [weight=10]
-
-    enter_pdo_sync [shape=point,label=""]
-    enter_pdo_sync -> pdo_sync [weight=10]
-    enter_pdo_sync -> enter_fmmu [fontname="Helvetica",label="No Pdos"]
-
-    pdo_sync [fontname="Helvetica"]
-    //pdo_sync -> pdo_sync
-    //pdo_sync -> error
-    pdo_sync -> enter_fmmu [weight=10]
+    pdo_mapping -> enter_fmmu [weight=10]
 
     enter_fmmu [shape=point,label=""]
     enter_fmmu -> enter_safeop [fontname="Helvetica",label="No FMMUs\nto configure"]
