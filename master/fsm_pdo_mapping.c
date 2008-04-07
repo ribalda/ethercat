@@ -149,6 +149,7 @@ void ec_fsm_pdo_mapping_state_start(
     }
 
     fsm->pdo = NULL;
+    fsm->num_configured_pdos = 0;
     ec_fsm_pdo_mapping_next_pdo(fsm);
 }
 
@@ -169,7 +170,7 @@ void ec_fsm_pdo_mapping_next_pdo(
 
         list_for_each_entry(pdo, &pdos->list, list) {
             if (fsm->pdo) { // there was a Pdo mapping changed in the last run
-                if (pdo == fsm->pdo) // this is the last Pdo
+                if (pdo == fsm->pdo) // this is the previously configured Pdo
                     fsm->pdo = NULL; // take the next one
             } else {
                 if ((assigned_pdo = ec_slave_find_pdo(fsm->slave, pdo->index)))
@@ -177,15 +178,16 @@ void ec_fsm_pdo_mapping_next_pdo(
                         continue; // Pdo entries mapped correctly
 
                 fsm->pdo = pdo;
+                fsm->num_configured_pdos++;
                 break;
             }
         }
     }
 
     if (!fsm->pdo) {
-        if (fsm->slave->master->debug_level)
-            EC_DBG("Pdo mapping finished for slave %u.\n",
-                    fsm->slave->ring_position);
+        if (fsm->slave->master->debug_level && !fsm->num_configured_pdos)
+            EC_DBG("Pdo mappings of slave %u are already configured"
+                    " correctly.\n", fsm->slave->ring_position);
         fsm->state = ec_fsm_pdo_mapping_state_end;
         return;
     }

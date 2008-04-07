@@ -152,6 +152,7 @@ void ec_fsm_pdo_assign_state_start(
     }
 
     fsm->dir = (ec_direction_t) -1; // next is EC_DIR_OUTPUT
+    fsm->num_configured_dirs = 0;
     ec_fsm_pdo_assign_next_dir(fsm);
 }
 
@@ -191,6 +192,8 @@ void ec_fsm_pdo_assign_next_dir(
             return;
         }
 
+        fsm->num_configured_dirs++;
+
         if (fsm->slave->master->debug_level) {
             EC_DBG("Changing Pdo assignment for SM%u of slave %u.\n",
                     fsm->sync->index, fsm->slave->ring_position);
@@ -215,9 +218,9 @@ void ec_fsm_pdo_assign_next_dir(
         return;
     }
 
-    if (fsm->slave->master->debug_level)
-        EC_DBG("Pdo assignment finished for slave %u.\n",
-                fsm->slave->ring_position);
+    if (fsm->slave->master->debug_level && !fsm->num_configured_dirs)
+        EC_DBG("Pdo assignments of slave %u are already configured"
+                " correctly.\n", fsm->slave->ring_position);
     fsm->state = ec_fsm_pdo_assign_state_end;
 }
 
@@ -348,8 +351,8 @@ void ec_fsm_pdo_assign_state_pdo_count(
     }
 
     if (fsm->slave->master->debug_level)
-        EC_DBG("Successfully set Pdo assignment for SM%u of slave %u.\n",
-                fsm->sync->index, fsm->slave->ring_position);
+        EC_DBG("Successfully configured Pdo assignment for SM%u of"
+                " slave %u.\n", fsm->sync->index, fsm->slave->ring_position);
 
     // assignment for this direction finished
     ec_fsm_pdo_assign_next_dir(fsm);

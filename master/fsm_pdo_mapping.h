@@ -61,6 +61,7 @@ struct ec_fsm_pdo_mapping
     ec_slave_t *slave; /**< Slave the FSM runs on. */
 
     const ec_pdo_t *pdo; /**< Current Pdo to configure. */
+    unsigned int num_configured_pdos; /**< Number of configured Pdos. */
     const ec_pdo_entry_t *entry; /**< Current entry. */
 
     ec_sdo_request_t request; /**< Sdo request. */

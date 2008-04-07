@@ -63,8 +63,9 @@ struct ec_fsm_pdo_assign
     ec_slave_t *slave; /**< Slave the FSM runs on. */
 
     ec_direction_t dir; /**< Current direction. */
-    const ec_sync_t *sync; /**< Current sync manager. */
     const ec_pdo_list_t *pdos; /**< Target Pdo assignment. */
+    const ec_sync_t *sync; /**< Current sync manager. */
+    unsigned int num_configured_dirs; /**< Number of configured directions. */
     const ec_pdo_t *pdo; /**< Current Pdo. */
 
     ec_sdo_request_t request; /**< Sdo request. */
