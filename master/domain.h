@@ -71,7 +71,6 @@ struct ec_domain
     uint32_t logical_base_address; /**< Logical offset address of the
                                      process data. */
     unsigned int working_counter; /**< Last working counter value. */
-    unsigned int state; /**< Error state. */
     unsigned int working_counter_changes; /**< Working counter changes
                                              since last notification. */
     unsigned long notify_jiffies; /**< Time of last notification. */

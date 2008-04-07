@@ -104,7 +104,6 @@ int ec_domain_init(
     domain->data_origin = EC_ORIG_INTERNAL;
     domain->logical_base_address = 0L;
     domain->working_counter = 0xFFFFFFFF;
-    domain->state = 0;
     domain->working_counter_changes = 0;
     domain->notify_jiffies = 0;
 
@@ -424,14 +423,10 @@ void ecrt_domain_process(ec_domain_t *domain)
     ec_datagram_t *datagram;
 
     working_counter_sum = 0;
-    domain->state = 0;
     list_for_each_entry(datagram, &domain->datagrams, list) {
         ec_datagram_output_stats(datagram);
         if (datagram->state == EC_DATAGRAM_RECEIVED) {
             working_counter_sum += datagram->working_counter;
-        }
-        else {
-            domain->state = -1;
         }
     }
 
