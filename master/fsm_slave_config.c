@@ -568,9 +568,9 @@ void ec_fsm_slave_config_state_pdo_sync(ec_fsm_slave_config_t *fsm /**< slave st
     }
 
     // Start configuring Pdo mapping
-    fsm->state = ec_fsm_slave_config_state_pdo_mapping;
     ec_fsm_pdo_mapping_start(&fsm->fsm_pdo_mapping, fsm->slave);
-    ec_fsm_pdo_mapping_exec(&fsm->fsm_pdo_mapping); // execute immediately
+    fsm->state = ec_fsm_slave_config_state_pdo_mapping;
+    fsm->state(fsm); // execute immediately
 }
 
 /*****************************************************************************/
@@ -594,9 +594,9 @@ void ec_fsm_slave_config_state_pdo_mapping(
     }
 
     // start applying alternate Pdo assignments
-    fsm->state = ec_fsm_slave_config_state_pdo_assign;
     ec_fsm_pdo_assign_start(&fsm->fsm_pdo_assign, fsm->slave);
-    ec_fsm_pdo_assign_exec(&fsm->fsm_pdo_assign); // execute immediately
+    fsm->state = ec_fsm_slave_config_state_pdo_assign;
+    fsm->state(fsm); // execute immediately
 }
 
 /*****************************************************************************/
