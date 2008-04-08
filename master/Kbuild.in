@@ -29,6 +29,8 @@
 #  standard) as the (only) precondition to have the right to use EtherCAT
 #  Technology, IP and trade marks.
 #
+#  vi: syntax=make
+#
 #------------------------------------------------------------------------------
 
 obj-m := ec_master.o

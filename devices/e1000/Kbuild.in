@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 #
-#  $Id: Kbuild 790 2007-02-21 12:41:25Z fp $
+#  $Id$
 #
 #  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
 #
@@ -28,6 +28,8 @@
 #  EtherCAT specification (which are released themselves as an open
 #  standard) as the (only) precondition to have the right to use EtherCAT
 #  Technology, IP and trade marks.
+#
+#  vim: syntax=make
 #
 #------------------------------------------------------------------------------
 

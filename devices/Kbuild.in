@@ -29,6 +29,8 @@
 #  standard) as the (only) precondition to have the right to use EtherCAT
 #  Technology, IP and trade marks.
 #
+#  vim: syntax=make
+#
 #------------------------------------------------------------------------------
 
 REV := $(shell if test -s $(src)/../svnrevision; then \
