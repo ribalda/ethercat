@@ -84,6 +84,7 @@
  *   Pdo entries.
  * - Added an Sdo access interface, working with Sdo requests. These can be
  *   scheduled for reading and writing during realtime operation.
+ * - Exported ecrt_slave_config_sdo(), the generic Sdo configuration function.
  *
  * @{
  */
@@ -541,9 +542,32 @@ int ecrt_slave_config_reg_pdo_entry(
         ec_domain_t *domain /**< Domain. */
         );
 
+/** Add an Sdo configuration.
+ *
+ * An Sdo configuration is stored in the slave configuration object and is
+ * downloaded to the slave whenever the slave is being configured by the
+ * master. This usually happens once on master activation, but can be repeated
+ * subsequently, for example after the slave's power supply failed.
+ *
+ * This is the generic function for adding an Sdo configuration. Please note
+ * that the this function does not do any endianess correction. If
+ * datatype-specific functions are needed (that automatically correct the
+ * endianess), have a look at ecrt_slave_config_sdo8(),
+ * ecrt_slave_config_sdo16() and ecrt_slave_config_sdo32().
+ *
+ * \return 0 in case of success, else < 0
+ */
+int ecrt_slave_config_sdo(
+        ec_slave_config_t *sc, /**< Slave configuration. */
+        uint16_t index, /**< Index of the Sdo to configure. */
+        uint8_t subindex, /**< Subindex of the Sdo to configure. */
+        const uint8_t *data, /**< Pointer to the data. */
+        size_t size /**< Size of the \a data. */
+        );
+
 /** Add a configuration value for an 8-bit SDO.
  *
- * \todo doc
+ * \see ecrt_slave_config_sdo().
  * \return 0 in case of success, else < 0
  */
 int ecrt_slave_config_sdo8(
@@ -555,7 +579,7 @@ int ecrt_slave_config_sdo8(
 
 /** Add a configuration value for a 16-bit SDO.
  *
- * \todo doc
+ * \see ecrt_slave_config_sdo().
  * \return 0 in case of success, else < 0
  */
 int ecrt_slave_config_sdo16(
@@ -567,7 +591,7 @@ int ecrt_slave_config_sdo16(
 
 /** Add a configuration value for a 32-bit SDO.
  *
- * \todo doc
+ * \see ecrt_slave_config_sdo().
  * \return 0 in case of success, else < 0
  */
 int ecrt_slave_config_sdo32(

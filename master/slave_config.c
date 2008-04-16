@@ -320,40 +320,6 @@ ssize_t ec_show_slave_config_attribute(
 
 /*****************************************************************************/
 
-/** Adds an Sdo configuration.
- */
-int ec_slave_config_sdo(ec_slave_config_t *sc, uint16_t index,
-        uint8_t subindex, const uint8_t *data, size_t size)
-{
-    ec_slave_t *slave = sc->slave;
-    ec_sdo_request_t *req;
-
-    if (slave && !(slave->sii.mailbox_protocols & EC_MBOX_COE)) {
-        EC_ERR("Slave %u does not support CoE!\n", slave->ring_position);
-        return -1;
-    }
-
-    if (!(req = (ec_sdo_request_t *)
-          kmalloc(sizeof(ec_sdo_request_t), GFP_KERNEL))) {
-        EC_ERR("Failed to allocate memory for Sdo configuration!\n");
-        return -1;
-    }
-
-    ec_sdo_request_init(req);
-    ec_sdo_request_address(req, index, subindex);
-
-    if (ec_sdo_request_copy_data(req, data, size)) {
-        ec_sdo_request_clear(req);
-        kfree(req);
-        return -1;
-    }
-        
-    list_add_tail(&req->list, &sc->sdo_configs);
-    return 0;
-}
-
-/*****************************************************************************/
-
 /** Attaches the configuration to the addressed slave object.
  *
  * \retval 0 Success.
@@ -677,32 +643,64 @@ found:
 
 /*****************************************************************************/
 
-int ecrt_slave_config_sdo8(ec_slave_config_t *slave, uint16_t index,
+int ecrt_slave_config_sdo(ec_slave_config_t *sc, uint16_t index,
+        uint8_t subindex, const uint8_t *data, size_t size)
+{
+    ec_slave_t *slave = sc->slave;
+    ec_sdo_request_t *req;
+
+    if (slave && !(slave->sii.mailbox_protocols & EC_MBOX_COE)) {
+        EC_ERR("Slave %u does not support CoE!\n", slave->ring_position);
+        return -1;
+    }
+
+    if (!(req = (ec_sdo_request_t *)
+          kmalloc(sizeof(ec_sdo_request_t), GFP_KERNEL))) {
+        EC_ERR("Failed to allocate memory for Sdo configuration!\n");
+        return -1;
+    }
+
+    ec_sdo_request_init(req);
+    ec_sdo_request_address(req, index, subindex);
+
+    if (ec_sdo_request_copy_data(req, data, size)) {
+        ec_sdo_request_clear(req);
+        kfree(req);
+        return -1;
+    }
+        
+    list_add_tail(&req->list, &sc->sdo_configs);
+    return 0;
+}
+
+/*****************************************************************************/
+
+int ecrt_slave_config_sdo8(ec_slave_config_t *sc, uint16_t index,
         uint8_t subindex, uint8_t value)
 {
     uint8_t data[1];
     EC_WRITE_U8(data, value);
-    return ec_slave_config_sdo(slave, index, subindex, data, 1);
+    return ecrt_slave_config_sdo(sc, index, subindex, data, 1);
 }
 
 /*****************************************************************************/
 
-int ecrt_slave_config_sdo16(ec_slave_config_t *slave, uint16_t index,
+int ecrt_slave_config_sdo16(ec_slave_config_t *sc, uint16_t index,
         uint8_t subindex, uint16_t value)
 {
     uint8_t data[2];
     EC_WRITE_U16(data, value);
-    return ec_slave_config_sdo(slave, index, subindex, data, 2);
+    return ecrt_slave_config_sdo(sc, index, subindex, data, 2);
 }
 
 /*****************************************************************************/
 
-int ecrt_slave_config_sdo32(ec_slave_config_t *slave, uint16_t index,
+int ecrt_slave_config_sdo32(ec_slave_config_t *sc, uint16_t index,
         uint8_t subindex, uint32_t value)
 {
     uint8_t data[4];
     EC_WRITE_U32(data, value);
-    return ec_slave_config_sdo(slave, index, subindex, data, 4);
+    return ecrt_slave_config_sdo(sc, index, subindex, data, 4);
 }
 
 /*****************************************************************************/
@@ -745,6 +743,7 @@ EXPORT_SYMBOL(ecrt_slave_config_pdo_mapping_add);
 EXPORT_SYMBOL(ecrt_slave_config_pdo_mapping_clear);
 EXPORT_SYMBOL(ecrt_slave_config_pdos);
 EXPORT_SYMBOL(ecrt_slave_config_reg_pdo_entry);
+EXPORT_SYMBOL(ecrt_slave_config_sdo);
 EXPORT_SYMBOL(ecrt_slave_config_sdo8);
 EXPORT_SYMBOL(ecrt_slave_config_sdo16);
 EXPORT_SYMBOL(ecrt_slave_config_sdo32);

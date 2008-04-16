@@ -46,6 +46,8 @@ Changes in version 1.4.0:
       Pdo entries.
     - Added an Sdo access interface, working with Sdo requests. These can be
       scheduled for reading and writing during realtime operation.
+    - Exported ecrt_slave_config_sdo(), the generic Sdo configuration
+      function.
 * Pdo configuration is now supported.
 * Current Pdo mapping/configuration is now read via CoE during bus scan, using
   direct Sdo access, independent of the dictionary.
