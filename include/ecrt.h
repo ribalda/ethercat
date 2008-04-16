@@ -792,12 +792,14 @@ void ecrt_sdo_request_read(
  *****************************************************************************/
 
 /** Read a certain bit of an EtherCAT data byte.
+ *
  * \param DATA EtherCAT data pointer
  * \param POS bit position
  */
 #define EC_READ_BIT(DATA, POS) ((*((uint8_t *) (DATA)) >> (POS)) & 0x01)
 
 /** Write a certain bit of an EtherCAT data byte.
+ *
  * \param DATA EtherCAT data pointer
  * \param POS bit position
  * \param VAL new bit value
@@ -813,12 +815,14 @@ void ecrt_sdo_request_read(
  *****************************************************************************/
 
 /** Read an 8-bit unsigned value from EtherCAT data.
+ *
  * \return EtherCAT data value
  */
 #define EC_READ_U8(DATA) \
     ((uint8_t) *((uint8_t *) (DATA)))
 
 /** Read an 8-bit signed value from EtherCAT data.
+ *
  * \param DATA EtherCAT data pointer
  * \return EtherCAT data value
  */
@@ -826,6 +830,7 @@ void ecrt_sdo_request_read(
      ((int8_t) *((uint8_t *) (DATA)))
 
 /** Read a 16-bit unsigned value from EtherCAT data.
+ *
  * \param DATA EtherCAT data pointer
  * \return EtherCAT data value
  */
@@ -833,6 +838,7 @@ void ecrt_sdo_request_read(
      ((uint16_t) le16_to_cpup((void *) (DATA)))
 
 /** Read a 16-bit signed value from EtherCAT data.
+ *
  * \param DATA EtherCAT data pointer
  * \return EtherCAT data value
  */
@@ -840,6 +846,7 @@ void ecrt_sdo_request_read(
      ((int16_t) le16_to_cpup((void *) (DATA)))
 
 /** Read a 32-bit unsigned value from EtherCAT data.
+ *
  * \param DATA EtherCAT data pointer
  * \return EtherCAT data value
  */
@@ -847,6 +854,7 @@ void ecrt_sdo_request_read(
      ((uint32_t) le32_to_cpup((void *) (DATA)))
 
 /** Read a 32-bit signed value from EtherCAT data.
+ *
  * \param DATA EtherCAT data pointer
  * \return EtherCAT data value
  */
@@ -858,6 +866,7 @@ void ecrt_sdo_request_read(
  *****************************************************************************/
 
 /** Write an 8-bit unsigned value to EtherCAT data.
+ *
  * \param DATA EtherCAT data pointer
  * \param VAL new value
  */
@@ -867,38 +876,41 @@ void ecrt_sdo_request_read(
     } while (0)
 
 /** Write an 8-bit signed value to EtherCAT data.
+ *
  * \param DATA EtherCAT data pointer
  * \param VAL new value
  */
 #define EC_WRITE_S8(DATA, VAL) EC_WRITE_U8(DATA, VAL)
 
 /** Write a 16-bit unsigned value to EtherCAT data.
+ *
  * \param DATA EtherCAT data pointer
  * \param VAL new value
  */
 #define EC_WRITE_U16(DATA, VAL) \
     do { \
-        *((uint16_t *) (DATA)) = (uint16_t) (VAL); \
-        cpu_to_le16s((uint16_t *) (DATA)); \
+        *((uint16_t *) (DATA)) = cpu_to_le16((uint16_t) (VAL)); \
     } while (0)
 
 /** Write a 16-bit signed value to EtherCAT data.
+ *
  * \param DATA EtherCAT data pointer
  * \param VAL new value
  */
 #define EC_WRITE_S16(DATA, VAL) EC_WRITE_U16(DATA, VAL)
 
 /** Write a 32-bit unsigned value to EtherCAT data.
+ *
  * \param DATA EtherCAT data pointer
  * \param VAL new value
  */
 #define EC_WRITE_U32(DATA, VAL) \
     do { \
-        *((uint32_t *) (DATA)) = (uint32_t) (VAL); \
-        cpu_to_le32s((uint32_t *) (DATA)); \
+        *((uint32_t *) (DATA)) = cpu_to_le32((uint32_t) (VAL)); \
     } while (0)
 
 /** Write a 32-bit signed value to EtherCAT data.
+ *
  * \param DATA EtherCAT data pointer
  * \param VAL new value
  */
