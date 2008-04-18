@@ -48,8 +48,8 @@ Changes in version 1.4.0:
       scheduled for reading and writing during realtime operation.
     - Exported ecrt_slave_config_sdo(), the generic Sdo configuration
       function.
-* Pdo configuration is now supported.
-* Current Pdo mapping/configuration is now read via CoE during bus scan, using
+* Mapping of Pdo entries is now supported.
+* Current Pdo assignment/mapping is now read via CoE during bus scan, using
   direct Sdo access, independent of the dictionary.
 * Added 8139too driver for kernel 2.6.22, thanks to Erwin Burgstaller.
 * Added 8139too driver for kernel 2.6.23, thanks to Richard Hacker.
@@ -58,6 +58,7 @@ Changes in version 1.4.0:
   domains have to be used for inputs and output.
 * Allow gaps in PDO mapping read from CoE.
 * Fixed bug in CoE code.
+* Ansynchronous handling of CoE Emergency requests.
 * Improved handling of large EEPROM contents.
 * Renamed ec_master module parameters main and backup to main_devices and
   backup_devices to avoid warnings of some compilers.
