@@ -223,6 +223,34 @@ int ec_fsm_coe_success(ec_fsm_coe_t *fsm /**< Finite state machine */)
     return fsm->state == ec_fsm_coe_end;
 }
 
+/*****************************************************************************/
+
+/**
+ */
+int ec_fsm_coe_check_emergency(
+        ec_fsm_coe_t *fsm, /**< Finite state machine */
+        const uint8_t *data, /**< CoE mailbox data. */
+        size_t size /**< CoE mailbox data size. */
+        )
+{
+    if (size < 2 || ((EC_READ_U16(data) >> 12) & 0x0F) != 0x01)
+        return 0;
+
+    if (size < 10) {
+        EC_WARN("Received incomplete CoE Emergency request from slave %u:\n",
+                fsm->slave->ring_position);
+        ec_print_data(data, size);
+        return 1;
+    }
+    
+    EC_INFO("CoE Emergency Request received from slave %u:\n",
+            fsm->slave->ring_position);
+    EC_INFO("Error code 0x%04X, Error register 0x%02X, data:\n",
+            EC_READ_U16(data + 2), EC_READ_U8(data + 4));
+    ec_print_data(data + 5, 5);
+    return 1;
+}
+
 /******************************************************************************
  *  CoE dictionary state machine
  *****************************************************************************/
@@ -276,14 +304,14 @@ void ec_fsm_coe_dict_request(ec_fsm_coe_t *fsm /**< finite state machine */)
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_coe_error;
         EC_ERR("Failed to receive CoE dictionary request datagram for"
-               " slave %i (datagram state %i).\n",
+               " slave %u (datagram state %i).\n",
                slave->ring_position, datagram->state);
         return;
     }
 
     if (datagram->working_counter != 1) {
         fsm->state = ec_fsm_coe_error;
-        EC_ERR("Reception of CoE dictionary request failed on slave %i: ",
+        EC_ERR("Reception of CoE dictionary request failed on slave %u: ",
                 slave->ring_position);
         ec_datagram_print_wc_error(datagram);
         return;
@@ -312,7 +340,7 @@ void ec_fsm_coe_dict_check(ec_fsm_coe_t *fsm /**< finite state machine */)
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_coe_error;
-        EC_ERR("Failed to receive CoE mailbox check datagram for slave %i"
+        EC_ERR("Failed to receive CoE mailbox check datagram for slave %u"
                 " (datagram state %i).\n",
                slave->ring_position, datagram->state);
         return;
@@ -320,7 +348,7 @@ void ec_fsm_coe_dict_check(ec_fsm_coe_t *fsm /**< finite state machine */)
 
     if (datagram->working_counter != 1) {
         fsm->state = ec_fsm_coe_error;
-        EC_ERR("Reception of CoE mailbox check datagram failed on slave %i: ",
+        EC_ERR("Reception of CoE mailbox check datagram failed on slave %u: ",
                slave->ring_position);
         ec_datagram_print_wc_error(datagram);
         return;
@@ -330,7 +358,7 @@ void ec_fsm_coe_dict_check(ec_fsm_coe_t *fsm /**< finite state machine */)
         if (datagram->cycles_received
             - fsm->cycles_start >= (cycles_t) 100 * cpu_khz) {
             fsm->state = ec_fsm_coe_error;
-            EC_ERR("Timeout while checking Sdo dictionary on slave %i.\n",
+            EC_ERR("Timeout while checking Sdo dictionary on slave %u.\n",
                    slave->ring_position);
             return;
         }
@@ -369,14 +397,14 @@ void ec_fsm_coe_dict_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_coe_error;
         EC_ERR("Failed to receive CoE dictionary response datagram for"
-               " slave %i (datagram state %i).\n",
+               " slave %u (datagram state %i).\n",
                slave->ring_position, datagram->state);
         return;
     }
 
     if (datagram->working_counter != 1) {
         fsm->state = ec_fsm_coe_error;
-        EC_ERR("Reception of CoE dictionary response failed on slave %i: ",
+        EC_ERR("Reception of CoE dictionary response failed on slave %u: ",
                 slave->ring_position);
         ec_datagram_print_wc_error(datagram);
         return;
@@ -394,9 +422,17 @@ void ec_fsm_coe_dict_response(ec_fsm_coe_t *fsm /**< finite state machine */)
         return;
     }
 
+    if (ec_fsm_coe_check_emergency(fsm, data, rec_size)) {
+        // check for CoE response again
+        ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
+        fsm->retries = EC_FSM_RETRIES;
+        fsm->state = ec_fsm_coe_dict_check;
+        return;
+    }
+
     if (EC_READ_U16(data) >> 12 == 0x8 && // Sdo information
         (EC_READ_U8(data + 2) & 0x7F) == 0x07) { // error response
-        EC_ERR("Sdo information error response at slave %i!\n",
+        EC_ERR("Sdo information error response at slave %u!\n",
                slave->ring_position);
         ec_canopen_abort_msg(EC_READ_U32(data + 6));
         fsm->state = ec_fsm_coe_error;
@@ -405,7 +441,7 @@ void ec_fsm_coe_dict_response(ec_fsm_coe_t *fsm /**< finite state machine */)
 
     if (EC_READ_U16(data) >> 12 != 0x8 || // Sdo information
         (EC_READ_U8 (data + 2) & 0x7F) != 0x02) { // Get OD List response
-        EC_ERR("Invalid Sdo list response at slave %i!\n",
+        EC_ERR("Invalid Sdo list response at slave %u!\n",
                slave->ring_position);
         ec_print_data(data, rec_size);
         fsm->state = ec_fsm_coe_error;
@@ -425,7 +461,7 @@ void ec_fsm_coe_dict_response(ec_fsm_coe_t *fsm /**< finite state machine */)
         sdo_index = EC_READ_U16(data + 8 + i * 2);
         if (!sdo_index) {
             if (slave->master->debug_level)
-                EC_WARN("Sdo dictionary of slave %i contains index 0x0000.\n",
+                EC_WARN("Sdo dictionary of slave %u contains index 0x0000.\n",
                         slave->ring_position);
             continue;
         }
@@ -500,7 +536,7 @@ void ec_fsm_coe_dict_desc_request(ec_fsm_coe_t *fsm /**< finite state machine */
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_coe_error;
         EC_ERR("Failed to receive CoE Sdo description request datagram for"
-               " slave %i (datagram state %i).\n",
+               " slave %u (datagram state %i).\n",
                slave->ring_position, datagram->state);
         return;
     }
@@ -508,7 +544,7 @@ void ec_fsm_coe_dict_desc_request(ec_fsm_coe_t *fsm /**< finite state machine */
     if (datagram->working_counter != 1) {
         fsm->state = ec_fsm_coe_error;
         EC_ERR("Reception of CoE Sdo description"
-                " request failed on slave %i: ", slave->ring_position);
+                " request failed on slave %u: ", slave->ring_position);
         ec_datagram_print_wc_error(datagram);
         return;
     }
@@ -536,7 +572,7 @@ void ec_fsm_coe_dict_desc_check(ec_fsm_coe_t *fsm /**< finite state machine */)
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_coe_error;
-        EC_ERR("Failed to receive CoE mailbox check datagram from slave %i"
+        EC_ERR("Failed to receive CoE mailbox check datagram from slave %u"
                 " (datagram state %i).\n",
                 slave->ring_position, datagram->state);
         return;
@@ -545,7 +581,7 @@ void ec_fsm_coe_dict_desc_check(ec_fsm_coe_t *fsm /**< finite state machine */)
     if (datagram->working_counter != 1) {
         fsm->state = ec_fsm_coe_error;
         EC_ERR("Reception of CoE mailbox check"
-                " datagram failed on slave %i: ", slave->ring_position);
+                " datagram failed on slave %u: ", slave->ring_position);
         ec_datagram_print_wc_error(datagram);
         return;
     }
@@ -554,7 +590,7 @@ void ec_fsm_coe_dict_desc_check(ec_fsm_coe_t *fsm /**< finite state machine */)
         if (datagram->cycles_received
             - fsm->cycles_start >= (cycles_t) 100 * cpu_khz) {
             fsm->state = ec_fsm_coe_error;
-            EC_ERR("Timeout while checking Sdo description on slave %i.\n",
+            EC_ERR("Timeout while checking Sdo description on slave %u.\n",
                    slave->ring_position);
             return;
         }
@@ -592,7 +628,7 @@ void ec_fsm_coe_dict_desc_response(ec_fsm_coe_t *fsm
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_coe_error;
         EC_ERR("Failed to receive CoE Sdo description response datagram from"
-               " slave %i (datagram state %i).\n",
+               " slave %u (datagram state %i).\n",
                slave->ring_position, datagram->state);
         return;
     }
@@ -600,7 +636,7 @@ void ec_fsm_coe_dict_desc_response(ec_fsm_coe_t *fsm
     if (datagram->working_counter != 1) {
         fsm->state = ec_fsm_coe_error;
         EC_ERR("Reception of CoE Sdo description"
-                " response failed on slave %i: ", slave->ring_position);
+                " response failed on slave %u: ", slave->ring_position);
         ec_datagram_print_wc_error(datagram);
         return;
     }
@@ -614,35 +650,43 @@ void ec_fsm_coe_dict_desc_response(ec_fsm_coe_t *fsm
     if (mbox_prot != 0x03) { // CoE
         EC_ERR("Received mailbox protocol 0x%02X as response.\n", mbox_prot);
         fsm->state = ec_fsm_coe_error;
-	return;
+        return;
+    }
+
+    if (ec_fsm_coe_check_emergency(fsm, data, rec_size)) {
+        // check for CoE response again
+        ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
+        fsm->retries = EC_FSM_RETRIES;
+        fsm->state = ec_fsm_coe_dict_desc_check;
+        return;
     }
 
     if (EC_READ_U16(data) >> 12 == 0x8 && // Sdo information
         (EC_READ_U8 (data + 2) & 0x7F) == 0x07) { // error response
-        EC_ERR("Sdo information error response at slave %i while"
+        EC_ERR("Sdo information error response at slave %u while"
                " fetching Sdo 0x%04X!\n", slave->ring_position,
                sdo->index);
         ec_canopen_abort_msg(EC_READ_U32(data + 6));
         fsm->state = ec_fsm_coe_error;
-	return;
+        return;
     }
 
     if (EC_READ_U16(data) >> 12 != 0x8 || // Sdo information
         (EC_READ_U8 (data + 2) & 0x7F) != 0x04 || // Object desc. response
         EC_READ_U16(data + 6) != sdo->index) { // Sdo index
-        EC_ERR("Invalid object description response at slave %i while"
+        EC_ERR("Invalid object description response at slave %u while"
                " fetching Sdo 0x%04X!\n", slave->ring_position,
                sdo->index);
         ec_print_data(data, rec_size);
         fsm->state = ec_fsm_coe_error;
-	return;
+        return;
     }
 
     if (rec_size < 12) {
         EC_ERR("Invalid data size!\n");
         ec_print_data(data, rec_size);
         fsm->state = ec_fsm_coe_error;
-	return;
+        return;
     }
 
     sdo->subindices = EC_READ_U8(data + 10);
@@ -663,7 +707,7 @@ void ec_fsm_coe_dict_desc_response(ec_fsm_coe_t *fsm
     if (EC_READ_U8(data + 2) & 0x80) {
         EC_ERR("Fragment follows (not implemented)!\n");
         fsm->state = ec_fsm_coe_error;
-	return;
+        return;
     }
 
     // start fetching entries
@@ -706,14 +750,14 @@ void ec_fsm_coe_dict_entry_request(ec_fsm_coe_t *fsm
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_coe_error;
         EC_ERR("Failed to receive CoE Sdo entry request datagram for"
-               " slave %i (datagram state %i).\n",
+               " slave %u (datagram state %i).\n",
                slave->ring_position, datagram->state);
         return;
     }
 
     if (datagram->working_counter != 1) {
         fsm->state = ec_fsm_coe_error;
-        EC_ERR("Reception of CoE Sdo entry request failed on slave %i: ",
+        EC_ERR("Reception of CoE Sdo entry request failed on slave %u: ",
                 slave->ring_position);
         ec_datagram_print_wc_error(datagram);
         return;
@@ -743,7 +787,7 @@ void ec_fsm_coe_dict_entry_check(ec_fsm_coe_t *fsm
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_coe_error;
-        EC_ERR("Failed to receive CoE mailbox check datagram from slave %i"
+        EC_ERR("Failed to receive CoE mailbox check datagram from slave %u"
                 " (datagram state %i).\n",
                slave->ring_position, datagram->state);
         return;
@@ -752,7 +796,7 @@ void ec_fsm_coe_dict_entry_check(ec_fsm_coe_t *fsm
     if (datagram->working_counter != 1) {
         fsm->state = ec_fsm_coe_error;
         EC_ERR("Reception of CoE mailbox check"
-                " datagram failed on slave %i: ", slave->ring_position);
+                " datagram failed on slave %u: ", slave->ring_position);
         ec_datagram_print_wc_error(datagram);
         return;
     }
@@ -761,7 +805,7 @@ void ec_fsm_coe_dict_entry_check(ec_fsm_coe_t *fsm
         if (datagram->cycles_received
             - fsm->cycles_start >= (cycles_t) 100 * cpu_khz) {
             fsm->state = ec_fsm_coe_error;
-            EC_ERR("Timeout while checking Sdo entry on slave %i.\n",
+            EC_ERR("Timeout while checking Sdo entry on slave %u.\n",
                    slave->ring_position);
             return;
         }
@@ -800,7 +844,7 @@ void ec_fsm_coe_dict_entry_response(ec_fsm_coe_t *fsm
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_coe_error;
         EC_ERR("Failed to receive CoE Sdo description response datagram from"
-               " slave %i (datagram state %i).\n",
+               " slave %u (datagram state %i).\n",
                slave->ring_position, datagram->state);
         return;
     }
@@ -808,7 +852,7 @@ void ec_fsm_coe_dict_entry_response(ec_fsm_coe_t *fsm
     if (datagram->working_counter != 1) {
         fsm->state = ec_fsm_coe_error;
         EC_ERR("Reception of CoE Sdo description"
-                " response failed on slave %i: ", slave->ring_position);
+                " response failed on slave %u: ", slave->ring_position);
         ec_datagram_print_wc_error(datagram);
         return;
     }
@@ -822,36 +866,44 @@ void ec_fsm_coe_dict_entry_response(ec_fsm_coe_t *fsm
     if (mbox_prot != 0x03) { // CoE
         EC_ERR("Received mailbox protocol 0x%02X as response.\n", mbox_prot);
         fsm->state = ec_fsm_coe_error;
-	return;
+        return;
+    }
+
+    if (ec_fsm_coe_check_emergency(fsm, data, rec_size)) {
+        // check for CoE response again
+        ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
+        fsm->retries = EC_FSM_RETRIES;
+        fsm->state = ec_fsm_coe_dict_entry_check;
+        return;
     }
 
     if (EC_READ_U16(data) >> 12 == 0x8 && // Sdo information
         (EC_READ_U8 (data + 2) & 0x7F) == 0x07) { // error response
-        EC_ERR("Sdo information error response at slave %i while"
+        EC_ERR("Sdo information error response at slave %u while"
                " fetching Sdo entry 0x%04X:%i!\n", slave->ring_position,
                sdo->index, fsm->subindex);
         ec_canopen_abort_msg(EC_READ_U32(data + 6));
         fsm->state = ec_fsm_coe_error;
-	return;
+        return;
     }
 
     if (EC_READ_U16(data) >> 12 != 0x8 || // Sdo information
         (EC_READ_U8(data + 2) & 0x7F) != 0x06 || // Entry desc. response
         EC_READ_U16(data + 6) != sdo->index || // Sdo index
         EC_READ_U8(data + 8) != fsm->subindex) { // Sdo subindex
-        EC_ERR("Invalid entry description response at slave %i while"
-               " fetching Sdo entry 0x%04X:%i!\n", slave->ring_position,
+        EC_ERR("Invalid entry description response at slave %u while"
+               " fetching Sdo entry 0x%04X:%u!\n", slave->ring_position,
                sdo->index, fsm->subindex);
         ec_print_data(data, rec_size);
         fsm->state = ec_fsm_coe_error;
-	return;
+        return;
     }
 
     if (rec_size < 16) {
         EC_ERR("Invalid data size!\n");
         ec_print_data(data, rec_size);
         fsm->state = ec_fsm_coe_error;
-	return;
+        return;
     }
 
     data_size = rec_size - 16;
@@ -860,13 +912,13 @@ void ec_fsm_coe_dict_entry_response(ec_fsm_coe_t *fsm
           kmalloc(sizeof(ec_sdo_entry_t), GFP_ATOMIC))) {
         EC_ERR("Failed to allocate entry!\n");
         fsm->state = ec_fsm_coe_error;
-	return;
+        return;
     }
 
     if (ec_sdo_entry_init(entry, fsm->subindex, sdo)) {
         EC_ERR("Failed to init entry!\n");
         fsm->state = ec_fsm_coe_error;
-	return;
+        return;
     }
 
     entry->data_type = EC_READ_U16(data + 10);
@@ -999,14 +1051,14 @@ void ec_fsm_coe_down_request(ec_fsm_coe_t *fsm /**< finite state machine */)
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_coe_error;
         EC_ERR("Failed to receive CoE download request datagram for"
-               " slave %i (datagram state %i).\n",
+               " slave %u (datagram state %i).\n",
                slave->ring_position, datagram->state);
         return;
     }
 
     if (datagram->working_counter != 1) {
         fsm->state = ec_fsm_coe_error;
-        EC_ERR("Reception of CoE download request failed on slave %i: ",
+        EC_ERR("Reception of CoE download request failed on slave %u: ",
                 slave->ring_position);
         ec_datagram_print_wc_error(datagram);
         return;
@@ -1035,7 +1087,7 @@ void ec_fsm_coe_down_check(ec_fsm_coe_t *fsm /**< finite state machine */)
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_coe_error;
-        EC_ERR("Failed to receive CoE mailbox check datagram for slave %i"
+        EC_ERR("Failed to receive CoE mailbox check datagram for slave %u"
                 " (datagram state %i).\n",
                slave->ring_position, datagram->state);
         return;
@@ -1044,7 +1096,7 @@ void ec_fsm_coe_down_check(ec_fsm_coe_t *fsm /**< finite state machine */)
     if (datagram->working_counter != 1) {
         fsm->state = ec_fsm_coe_error;
         EC_ERR("Reception of CoE mailbox check"
-                " datagram failed on slave %i: ", slave->ring_position);
+                " datagram failed on slave %u: ", slave->ring_position);
         ec_datagram_print_wc_error(datagram);
         return;
     }
@@ -1053,7 +1105,7 @@ void ec_fsm_coe_down_check(ec_fsm_coe_t *fsm /**< finite state machine */)
         if (datagram->cycles_received
             - fsm->cycles_start >= (cycles_t) 100 * cpu_khz) {
             fsm->state = ec_fsm_coe_error;
-            EC_ERR("Timeout while checking Sdo configuration on slave %i.\n",
+            EC_ERR("Timeout while checking Sdo configuration on slave %u.\n",
                    slave->ring_position);
             return;
         }
@@ -1090,14 +1142,14 @@ void ec_fsm_coe_down_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_coe_error;
         EC_ERR("Failed to receive CoE download response datagram from"
-               " slave %i (datagram state %i).\n",
+               " slave %u (datagram state %i).\n",
                slave->ring_position, datagram->state);
         return;
     }
 
     if (datagram->working_counter != 1) {
         fsm->state = ec_fsm_coe_error;
-        EC_ERR("Reception of CoE download response failed on slave %i: ",
+        EC_ERR("Reception of CoE download response failed on slave %u: ",
                 slave->ring_position);
         ec_datagram_print_wc_error(datagram);
         return;
@@ -1115,6 +1167,14 @@ void ec_fsm_coe_down_response(ec_fsm_coe_t *fsm /**< finite state machine */)
         return;
     }
 
+    if (ec_fsm_coe_check_emergency(fsm, data, rec_size)) {
+        // check for CoE response again
+        ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
+        fsm->retries = EC_FSM_RETRIES;
+        fsm->state = ec_fsm_coe_down_check;
+        return;
+    }
+
     if (rec_size < 6) {
         fsm->state = ec_fsm_coe_error;
         EC_ERR("Received data is too small (%u bytes):\n", rec_size);
@@ -1125,7 +1185,7 @@ void ec_fsm_coe_down_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     if (EC_READ_U16(data) >> 12 == 0x2 && // Sdo request
         EC_READ_U8 (data + 2) >> 5 == 0x4) { // abort Sdo transfer request
         fsm->state = ec_fsm_coe_error;
-        EC_ERR("Sdo download 0x%04X:%X (%i bytes) aborted on slave %i.\n",
+        EC_ERR("Sdo download 0x%04X:%X (%u bytes) aborted on slave %u.\n",
                request->index, request->subindex, request->data_size,
                slave->ring_position);
         if (rec_size < 10) {
@@ -1142,9 +1202,9 @@ void ec_fsm_coe_down_response(ec_fsm_coe_t *fsm /**< finite state machine */)
         EC_READ_U16(data + 3) != request->index || // index
         EC_READ_U8 (data + 5) != request->subindex) { // subindex
         fsm->state = ec_fsm_coe_error;
-        EC_ERR("Sdo download 0x%04X:%X (%i bytes) failed:\n",
+        EC_ERR("Sdo download 0x%04X:%X (%u bytes) failed:\n",
                request->index, request->subindex, request->data_size);
-        EC_ERR("Invalid Sdo download response at slave %i!\n",
+        EC_ERR("Invalid Sdo download response at slave %u!\n",
                slave->ring_position);
         ec_print_data(data, rec_size);
         return;
@@ -1214,7 +1274,7 @@ void ec_fsm_coe_up_request(ec_fsm_coe_t *fsm /**< finite state machine */)
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_coe_error;
-        EC_ERR("Failed to receive CoE upload request for slave %i"
+        EC_ERR("Failed to receive CoE upload request for slave %u"
                 " (datagram state %i).\n",
                slave->ring_position, datagram->state);
         return;
@@ -1222,7 +1282,7 @@ void ec_fsm_coe_up_request(ec_fsm_coe_t *fsm /**< finite state machine */)
 
     if (datagram->working_counter != 1) {
         fsm->state = ec_fsm_coe_error;
-        EC_ERR("Reception of CoE upload request failed on slave %i: ",
+        EC_ERR("Reception of CoE upload request failed on slave %u: ",
                 slave->ring_position);
         ec_datagram_print_wc_error(datagram);
         return;
@@ -1251,7 +1311,7 @@ void ec_fsm_coe_up_check(ec_fsm_coe_t *fsm /**< finite state machine */)
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_coe_error;
-        EC_ERR("Failed to receive CoE mailbox check datagram from slave %i"
+        EC_ERR("Failed to receive CoE mailbox check datagram from slave %u"
                 " (datagram state %i).\n",
                slave->ring_position, datagram->state);
         return;
@@ -1260,7 +1320,7 @@ void ec_fsm_coe_up_check(ec_fsm_coe_t *fsm /**< finite state machine */)
     if (datagram->working_counter != 1) {
         fsm->state = ec_fsm_coe_error;
         EC_ERR("Reception of CoE mailbox check"
-                " datagram failed on slave %i: ", slave->ring_position);
+                " datagram failed on slave %u: ", slave->ring_position);
         ec_datagram_print_wc_error(datagram);
         return;
     }
@@ -1269,7 +1329,7 @@ void ec_fsm_coe_up_check(ec_fsm_coe_t *fsm /**< finite state machine */)
         if (datagram->cycles_received
             - fsm->cycles_start >= (cycles_t) 100 * cpu_khz) {
             fsm->state = ec_fsm_coe_error;
-            EC_ERR("Timeout while checking Sdo upload on slave %i.\n",
+            EC_ERR("Timeout while checking Sdo upload on slave %u.\n",
                    slave->ring_position);
             return;
         }
@@ -1309,14 +1369,14 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_coe_error;
         EC_ERR("Failed to receive CoE upload response datagram for"
-               " slave %i (datagram state %i).\n",
+               " slave %u (datagram state %i).\n",
                slave->ring_position, datagram->state);
         return;
     }
 
     if (datagram->working_counter != 1) {
         fsm->state = ec_fsm_coe_error;
-        EC_ERR("Reception of CoE upload response failed on slave %i: ",
+        EC_ERR("Reception of CoE upload response failed on slave %u: ",
                 slave->ring_position);
         ec_datagram_print_wc_error(datagram);
         return;
@@ -1339,6 +1399,14 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
         return;
     }
 
+    if (ec_fsm_coe_check_emergency(fsm, data, rec_size)) {
+        // check for CoE response again
+        ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
+        fsm->retries = EC_FSM_RETRIES;
+        fsm->state = ec_fsm_coe_up_check;
+        return;
+    }
+
     if (rec_size < 3) {
         fsm->state = ec_fsm_coe_error;
         EC_ERR("Received currupted Sdo upload response (%u bytes)!\n", rec_size);
@@ -1348,7 +1416,7 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
 
     if (EC_READ_U16(data) >> 12 == 0x2 && // Sdo request
         EC_READ_U8 (data + 2) >> 5 == 0x4) { // abort Sdo transfer request
-        EC_ERR("Sdo upload 0x%04X:%X aborted on slave %i.\n",
+        EC_ERR("Sdo upload 0x%04X:%X aborted on slave %u.\n",
                request->index, request->subindex, slave->ring_position);
         if (rec_size >= 10)
             ec_canopen_abort_msg(EC_READ_U32(data + 6));
@@ -1377,7 +1445,7 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
             fsm->state = ec_fsm_coe_error;
             EC_ERR("Sdo upload 0x%04X:%X failed:\n",
                     request->index, request->subindex);
-            EC_ERR("Invalid Sdo upload response at slave %i!\n",
+            EC_ERR("Invalid Sdo upload expedited response at slave %u!\n",
                     slave->ring_position);
             ec_print_data(data, rec_size);
             return;
@@ -1418,7 +1486,7 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
             fsm->state = ec_fsm_coe_error;
             EC_ERR("Sdo upload 0x%04X:%X failed:\n",
                     request->index, request->subindex);
-            EC_ERR("Invalid Sdo upload response at slave %i!\n",
+            EC_ERR("Invalid Sdo normal upload response at slave %u!\n",
                     slave->ring_position);
             ec_print_data(data, rec_size);
             return;
@@ -1497,7 +1565,7 @@ void ec_fsm_coe_up_seg_request(ec_fsm_coe_t *fsm /**< finite state machine */)
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_coe_error;
         EC_ERR("Failed to receive CoE upload segment request datagram for"
-               " slave %i (datagram state %i).\n",
+               " slave %u (datagram state %i).\n",
                slave->ring_position, datagram->state);
         return;
     }
@@ -1505,7 +1573,7 @@ void ec_fsm_coe_up_seg_request(ec_fsm_coe_t *fsm /**< finite state machine */)
     if (datagram->working_counter != 1) {
         fsm->state = ec_fsm_coe_error;
         EC_ERR("Reception of CoE upload segment"
-                " request failed on slave %i: ", slave->ring_position);
+                " request failed on slave %u: ", slave->ring_position);
         ec_datagram_print_wc_error(datagram);
         return;
     }
@@ -1533,7 +1601,7 @@ void ec_fsm_coe_up_seg_check(ec_fsm_coe_t *fsm /**< finite state machine */)
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_coe_error;
-        EC_ERR("Failed to receive CoE mailbox check datagram for slave %i"
+        EC_ERR("Failed to receive CoE mailbox check datagram for slave %u"
                 " (datagram state %i).\n",
                slave->ring_position, datagram->state);
         return;
@@ -1542,7 +1610,7 @@ void ec_fsm_coe_up_seg_check(ec_fsm_coe_t *fsm /**< finite state machine */)
     if (datagram->working_counter != 1) {
         fsm->state = ec_fsm_coe_error;
         EC_ERR("Reception of CoE mailbox check"
-                " datagram failed on slave %i: ", slave->ring_position);
+                " datagram failed on slave %u: ", slave->ring_position);
         ec_datagram_print_wc_error(datagram);
         return;
     }
@@ -1551,7 +1619,7 @@ void ec_fsm_coe_up_seg_check(ec_fsm_coe_t *fsm /**< finite state machine */)
         if (datagram->cycles_received
             - fsm->cycles_start >= (cycles_t) 100 * cpu_khz) {
             fsm->state = ec_fsm_coe_error;
-            EC_ERR("Timeout while checking Sdo upload segment on slave %i.\n",
+            EC_ERR("Timeout while checking Sdo upload segment on slave %u.\n",
                    slave->ring_position);
             return;
         }
@@ -1592,7 +1660,7 @@ void ec_fsm_coe_up_seg_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_coe_error;
         EC_ERR("Failed to receive CoE upload segment response datagram for"
-               " slave %i (datagram state %i).\n",
+               " slave %u (datagram state %i).\n",
                slave->ring_position, datagram->state);
         return;
     }
@@ -1600,7 +1668,7 @@ void ec_fsm_coe_up_seg_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     if (datagram->working_counter != 1) {
         fsm->state = ec_fsm_coe_error;
         EC_ERR("Reception of CoE upload segment"
-                " response failed on slave %i: ", slave->ring_position);
+                " response failed on slave %u: ", slave->ring_position);
         ec_datagram_print_wc_error(datagram);
         return;
     }
@@ -1619,33 +1687,41 @@ void ec_fsm_coe_up_seg_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     if (mbox_prot != 0x03) { // CoE
         EC_ERR("Received mailbox protocol 0x%02X as response.\n", mbox_prot);
         fsm->state = ec_fsm_coe_error;
-	return;
+        return;
+    }
+
+    if (ec_fsm_coe_check_emergency(fsm, data, rec_size)) {
+        // check for CoE response again
+        ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
+        fsm->retries = EC_FSM_RETRIES;
+        fsm->state = ec_fsm_coe_up_seg_check;
+        return;
     }
 
     if (rec_size < 10) {
         EC_ERR("Received currupted Sdo upload segment response!\n");
         ec_print_data(data, rec_size);
         fsm->state = ec_fsm_coe_error;
-	return;
+        return;
     }
 
     if (EC_READ_U16(data) >> 12 == 0x2 && // Sdo request
         EC_READ_U8 (data + 2) >> 5 == 0x4) { // abort Sdo transfer request
-        EC_ERR("Sdo upload 0x%04X:%X aborted on slave %i.\n",
+        EC_ERR("Sdo upload 0x%04X:%X aborted on slave %u.\n",
                request->index, request->subindex, slave->ring_position);
         ec_canopen_abort_msg(EC_READ_U32(data + 6));
         fsm->state = ec_fsm_coe_error;
-	return;
+        return;
     }
 
     if (EC_READ_U16(data) >> 12 != 0x3 || // Sdo response
         EC_READ_U8 (data + 2) >> 5 != 0x0) { // upload segment response
         EC_ERR("Sdo upload 0x%04X:%X failed:\n", request->index, request->subindex);
-        EC_ERR("Invalid Sdo upload segment response at slave %i!\n",
+        EC_ERR("Invalid Sdo upload segment response at slave %u!\n",
                slave->ring_position);
         ec_print_data(data, rec_size);
         fsm->state = ec_fsm_coe_error;
-	return;
+        return;
     }
 
     last_segment = EC_READ_U8(data + 2) & 0x01;
