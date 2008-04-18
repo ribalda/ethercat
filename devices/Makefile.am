@@ -36,8 +36,6 @@ SUBDIRS = e1000
 DIST_SUBDIRS = e1000
 
 EXTRA_DIST = \
-	Kbuild.in \
-	ecdev.h \
 	8139too-2.6.13-ethercat.c \
 	8139too-2.6.13-orig.c \
 	8139too-2.6.17-ethercat.c \
@@ -50,12 +48,18 @@ EXTRA_DIST = \
 	8139too-2.6.22-orig.c \
 	8139too-2.6.23-ethercat.c \
 	8139too-2.6.23-orig.c \
+	Kbuild.in \
 	e100-2.6.18-ethercat.c \
 	e100-2.6.18-orig.c \
+	ecdev.h \
 	forcedeth-2.6.17-ethercat.c \
 	forcedeth-2.6.17-orig.c \
 	forcedeth-2.6.19-ethercat.c \
-	forcedeth-2.6.19-orig.c
+	forcedeth-2.6.19-orig.c \
+    r8169-2.6.22-ethercat.c \
+    r8169-2.6.22-orig.c \
+    r8169-2.6.23-ethercat.c \
+    r8169-2.6.23-orig.c
 
 modules:
 	$(MAKE) -C "@abs_top_srcdir@" modules
@@ -68,11 +72,14 @@ endif
 if ENABLE_E100
 	cp $(srcdir)/ec_e100.ko $(DESTDIR)$(LINUX_MOD_PATH)
 endif
+if ENABLE_E1000
+	$(MAKE) -C e1000 modules_install
+endif
 if ENABLE_FORCEDETH
 	cp $(srcdir)/ec_forcedeth.ko $(DESTDIR)$(LINUX_MOD_PATH)
 endif
-if ENABLE_E1000
-	$(MAKE) -C e1000 modules_install
+if ENABLE_R8169
+	cp $(srcdir)/ec_r8169.ko $(DESTDIR)$(LINUX_MOD_PATH)
 endif
 
 clean-local:
