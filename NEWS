@@ -55,6 +55,7 @@ Changes in version 1.4.0:
     - Added 8139too driver for kernel 2.6.22, thanks to Erwin Burgstaller.
     - Added 8139too driver for kernel 2.6.23, thanks to Richard Hacker.
     - Added e1000 driver for kernel 2.6.22.
+    - Added e1000 driver for kernel 2.6.24, thanks to Matthias Luescher.
     - Added alpha support for the Reaktek r8169 chipset, thanks to Scott
       Hassan.
 * Added support for slaves that do not support the LRW datagram type. Separate

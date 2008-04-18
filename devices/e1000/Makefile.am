@@ -33,63 +33,77 @@
 
 EXTRA_DIST = \
 	Kbuild.in \
-	e1000_ethtool-2.6.13-ethercat.c \
-	e1000_ethtool-2.6.13-orig.c \
+	LICENSE \
 	e1000-2.6.13-ethercat.h \
 	e1000-2.6.13-orig.h \
-	e1000_hw-2.6.13-ethercat.c \
-	e1000_hw-2.6.13-orig.c \
-	e1000_hw-2.6.13-ethercat.h \
-	e1000_hw-2.6.13-orig.h \
-	e1000_main-2.6.13-ethercat.c \
-	e1000_main-2.6.13-orig.c \
-	e1000_osdep-2.6.13-ethercat.h \
-	e1000_osdep-2.6.13-orig.h \
-	e1000_param-2.6.13-ethercat.c \
-	e1000_param-2.6.13-orig.c \
-	e1000_ethtool-2.6.18-ethercat.c \
-	e1000_ethtool-2.6.18-orig.c \
 	e1000-2.6.18-ethercat.h \
 	e1000-2.6.18-orig.h \
-	e1000_hw-2.6.18-ethercat.c \
-	e1000_hw-2.6.18-orig.c \
-	e1000_hw-2.6.18-ethercat.h \
-	e1000_hw-2.6.18-orig.h \
-	e1000_main-2.6.18-ethercat.c \
-	e1000_main-2.6.18-orig.c \
-	e1000_osdep-2.6.18-ethercat.h \
-	e1000_osdep-2.6.18-orig.h \
-	e1000_param-2.6.18-ethercat.c \
-	e1000_param-2.6.18-orig.c \
-	e1000_ethtool-2.6.20-ethercat.c \
-	e1000_ethtool-2.6.20-orig.c \
 	e1000-2.6.20-ethercat.h \
 	e1000-2.6.20-orig.h \
-	e1000_hw-2.6.20-ethercat.c \
-	e1000_hw-2.6.20-orig.c \
-	e1000_hw-2.6.20-ethercat.h \
-	e1000_hw-2.6.20-orig.h \
-	e1000_main-2.6.20-ethercat.c \
-	e1000_main-2.6.20-orig.c \
-	e1000_osdep-2.6.20-ethercat.h \
-	e1000_osdep-2.6.20-orig.h \
-	e1000_param-2.6.20-ethercat.c \
-	e1000_param-2.6.20-orig.c \
-	e1000_ethtool-2.6.22-ethercat.c \
-	e1000_ethtool-2.6.22-orig.c \
 	e1000-2.6.22-ethercat.h \
 	e1000-2.6.22-orig.h \
+	e1000-2.6.24-ethercat.h \
+	e1000-2.6.24-orig.h \
+	e1000_ethtool-2.6.13-ethercat.c \
+	e1000_ethtool-2.6.13-orig.c \
+	e1000_ethtool-2.6.18-ethercat.c \
+	e1000_ethtool-2.6.18-orig.c \
+	e1000_ethtool-2.6.20-ethercat.c \
+	e1000_ethtool-2.6.20-orig.c \
+	e1000_ethtool-2.6.22-ethercat.c \
+	e1000_ethtool-2.6.22-orig.c \
+	e1000_ethtool-2.6.24-ethercat.c \
+	e1000_ethtool-2.6.24-orig.c \
+	e1000_hw-2.6.13-ethercat.c \
+	e1000_hw-2.6.13-ethercat.h \
+	e1000_hw-2.6.13-orig.c \
+	e1000_hw-2.6.13-orig.h \
+	e1000_hw-2.6.18-ethercat.c \
+	e1000_hw-2.6.18-ethercat.h \
+	e1000_hw-2.6.18-orig.c \
+	e1000_hw-2.6.18-orig.h \
+	e1000_hw-2.6.20-ethercat.c \
+	e1000_hw-2.6.20-ethercat.h \
+	e1000_hw-2.6.20-orig.c \
+	e1000_hw-2.6.20-orig.h \
 	e1000_hw-2.6.22-ethercat.c \
-	e1000_hw-2.6.22-orig.c \
 	e1000_hw-2.6.22-ethercat.h \
+	e1000_hw-2.6.22-orig.c \
 	e1000_hw-2.6.22-orig.h \
+	e1000_hw-2.6.24-ethercat.c \
+	e1000_hw-2.6.24-ethercat.h \
+	e1000_hw-2.6.24-orig.c \
+	e1000_hw-2.6.24-orig.h \
+	e1000_main-2.6.13-ethercat.c \
+	e1000_main-2.6.13-orig.c \
+	e1000_main-2.6.18-ethercat.c \
+	e1000_main-2.6.18-orig.c \
+	e1000_main-2.6.20-ethercat.c \
+	e1000_main-2.6.20-orig.c \
 	e1000_main-2.6.22-ethercat.c \
 	e1000_main-2.6.22-orig.c \
+	e1000_main-2.6.24-ethercat.c \
+	e1000_main-2.6.24-orig.c \
+	e1000_osdep-2.6.13-ethercat.h \
+	e1000_osdep-2.6.13-orig.h \
+	e1000_osdep-2.6.18-ethercat.h \
+	e1000_osdep-2.6.18-orig.h \
+	e1000_osdep-2.6.20-ethercat.h \
+	e1000_osdep-2.6.20-orig.h \
 	e1000_osdep-2.6.22-ethercat.h \
 	e1000_osdep-2.6.22-orig.h \
+	e1000_osdep-2.6.24-ethercat.h \
+	e1000_osdep-2.6.24-orig.h \
+	e1000_param-2.6.13-ethercat.c \
+	e1000_param-2.6.13-orig.c \
+	e1000_param-2.6.18-ethercat.c \
+	e1000_param-2.6.18-orig.c \
+	e1000_param-2.6.20-ethercat.c \
+	e1000_param-2.6.20-orig.c \
 	e1000_param-2.6.22-ethercat.c \
 	e1000_param-2.6.22-orig.c \
-	LICENSE
+	e1000_param-2.6.24-ethercat.c \
+	e1000_param-2.6.24-orig.c
 
 modules:
 	$(MAKE) -C "@abs_top_srcdir@" modules
