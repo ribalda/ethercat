@@ -8,7 +8,13 @@ $Id$
 
 Version 1.4.0:
 
-* Slave config allow flag and completion object.
+* Remove bus validation; make bus scanning possible at any time.
+* Remove self_configured flag to avoid unnecessary process data
+  interruptions.
+* Replace Sysfs interface with cdev and a user space program
+  to replace lsec; move a few sysfs attributes to proc.
+* Make scanning and configuration run parallel (each).
+* Improve slave config allow flag and completion object.
 * Mailbox state machine using toggle bits.
 * Mailbox protocol handlers.
 * READMEs for examples.
@@ -17,28 +23,23 @@ Version 1.4.0:
 * Remove ecdb.h and let lsec output PDO information 'cut-and-pastable' for
   applications.
 * SDO write access in sysfs.
-* Distributed clocks.
 * Update documentation.
 * Do not configure in ecrt_master_activate(), but later in the state machine.
-* Remove master_state_t.
+* Supply new ec_master_state_t.
 * Scanning of Sdo dictionary / writing EEPROM in OPERATION state.
 * Adapt remaining examples.
 * Separate Pdo and Pdo entry classes.
 * Attach Pdo names.
-* Make all define underscores the same.
-* Remove bus validation; make bus scanning possible at any time.
-* Re-design slave configuration FSM, avoid unnecessary process data
-  interruptions.
 * Wait for bus scanning, even when link is not up at ecrt_request_master().
 * Implement ecrt_slave_config_state().
+* Add something like lsec -n to show numeric vendor IDs.
 
 Future issues:
 
-* Move slave handlers and state machines, etc. into a user space daemon.
-    - Step 1: Replace Sysfs interface with cdev and a user space program
-              to replace lsec.
-    - Step 2: Move kernel threads to user space daemon with a TCP interface
-              replacing the cdev.
+* Distributed clocks.
+* Move slave handlers and state machines, etc. into a user space daemon (move
+  kernel threads to user space daemon with a TCP interface replacing the
+  cdev).
 * Mailbox gateway.
 * Slave-to-slave communication.
 * Redundancy with 2 network adapters.
