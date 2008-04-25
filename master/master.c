@@ -1227,36 +1227,6 @@ void ec_master_eoe_run(unsigned long data /**< master pointer */)
 
 /*****************************************************************************/
 
-/**
-   Prepares synchronous IO.
-   Queues all domain datagrams and sends them. Then waits a certain time, so
-   that ecrt_master_receive() can be called securely.
-*/
-
-void ec_master_prepare(ec_master_t *master /**< EtherCAT master */)
-{
-    ec_domain_t *domain;
-    cycles_t cycles_start, cycles_end, cycles_timeout;
-
-    // queue datagrams of all domains
-    list_for_each_entry(domain, &master->domains, list)
-        ecrt_domain_queue(domain);
-
-    ecrt_master_send(master);
-
-    cycles_start = get_cycles();
-    cycles_timeout = (cycles_t) EC_IO_TIMEOUT /* us */ * (cpu_khz / 1000);
-
-    // active waiting
-    while (1) {
-        udelay(100);
-        cycles_end = get_cycles();
-        if (cycles_end - cycles_start >= cycles_timeout) break;
-    }
-}
-
-/*****************************************************************************/
-
 /** Detaches the slave configurations from the slaves.
  */
 void ec_master_detach_slave_configs(
@@ -1353,8 +1323,6 @@ int ecrt_master_activate(ec_master_t *master)
     ec_master_eoe_stop(master);
 #endif
     ec_master_thread_stop(master);
-
-    ec_master_prepare(master); // prepare asynchronous IO
 
     if (master->debug_level)
         EC_DBG("FSM datagram is %x.\n", (unsigned int) &master->fsm_datagram);

@@ -40,7 +40,6 @@ Version 1.4.0:
 * Separate CoE debugging.
 * Make ecrt_master_slave_config() return no error when slave is not present
   or invalid.
-* Remove ec_master_prepare().
 
 Future issues:
 
