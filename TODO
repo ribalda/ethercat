@@ -32,7 +32,6 @@ Version 1.4.0:
 * Implement ecrt_slave_config_state().
 * Add something like lsec -n to show numeric vendor IDs.
 * Remove the end state of the master state machine.
-* Rename the sdodict state to sdo_dictionary.
 * Check the position of the acknowledge state.
 * Remove the xmldev files.
 * Separate CoE debugging.

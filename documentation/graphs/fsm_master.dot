@@ -27,7 +27,7 @@ digraph master {
 
     action_process_states -> action_configure
     action_process_states -> action_process_sdo
-    action_process_states -> sdodict
+    action_process_states -> sdo_dictionary
     action_process_states -> action_process_sii
     action_process_states -> end
 
@@ -54,8 +54,8 @@ digraph master {
     write_sii -> action_process_sii
     write_sii -> end
 
-    //sdodict -> error
-    sdodict -> end
+    //sdo_dictionary -> error
+    sdo_dictionary -> end
 
     //sdo_request -> error
     sdo_request -> action_process_sdo

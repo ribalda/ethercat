@@ -58,7 +58,7 @@ void ec_fsm_master_state_configure_slave(ec_fsm_master_t *);
 void ec_fsm_master_state_clear_addresses(ec_fsm_master_t *);
 void ec_fsm_master_state_scan_slaves(ec_fsm_master_t *);
 void ec_fsm_master_state_write_sii(ec_fsm_master_t *);
-void ec_fsm_master_state_sdodict(ec_fsm_master_t *);
+void ec_fsm_master_state_sdo_dictionary(ec_fsm_master_t *);
 void ec_fsm_master_state_sdo_request(ec_fsm_master_t *);
 void ec_fsm_master_state_end(ec_fsm_master_t *);
 void ec_fsm_master_state_error(ec_fsm_master_t *);
@@ -533,7 +533,7 @@ void ec_fsm_master_action_process_states(ec_fsm_master_t *fsm
                 || slave->error_flag) continue;
 
             if (master->debug_level) {
-                EC_DBG("Fetching Sdo dictionary from slave %i.\n",
+                EC_DBG("Fetching Sdo dictionary from slave %u.\n",
                        slave->ring_position);
             }
 
@@ -542,7 +542,7 @@ void ec_fsm_master_action_process_states(ec_fsm_master_t *fsm
             // start fetching Sdo dictionary
             fsm->idle = 0;
             fsm->slave = slave;
-            fsm->state = ec_fsm_master_state_sdodict;
+            fsm->state = ec_fsm_master_state_sdo_dictionary;
             ec_fsm_coe_dictionary(&fsm->fsm_coe, slave);
             ec_fsm_coe_exec(&fsm->fsm_coe); // execute immediately
             return;
@@ -835,7 +835,9 @@ void ec_fsm_master_state_write_sii(
    Master state: SdoDICT.
 */
 
-void ec_fsm_master_state_sdodict(ec_fsm_master_t *fsm /**< master state machine */)
+void ec_fsm_master_state_sdo_dictionary(
+        ec_fsm_master_t *fsm /**< master state machine */
+        )
 {
     ec_slave_t *slave = fsm->slave;
     ec_master_t *master = fsm->master;
