@@ -37,7 +37,6 @@
 #include <linux/interrupt.h>
 
 #include "../../include/ecrt.h" // EtherCAT realtime interface
-#include "../../include/ecdb.h" // EtherCAT slave database
 
 /*****************************************************************************/
 
@@ -73,6 +72,9 @@ static unsigned int off_ana_in; // offsets for Pdo entries
 static unsigned int off_dig_out;
 
 static unsigned int blink = 0;
+
+#define Beckhoff_EL2004 0x00000002, 0x07D43052
+#define Beckhoff_EL3162 0x00000002, 0x0C5A3052
 
 const static ec_pdo_entry_reg_t domain1_regs[] = {
     {0, 1, Beckhoff_EL3162, 0x3101, 2, &off_ana_in},
@@ -148,13 +150,6 @@ void check_master_state(void)
     ecrt_master_state(master, &ms);
     spin_unlock(&master_lock);
 
-    if (ms.bus_state != master_state.bus_state) {
-        printk(KERN_INFO PFX "bus state changed to %i.\n", ms.bus_state);
-    }
-    if (ms.bus_tainted != master_state.bus_tainted) {
-        printk(KERN_INFO PFX "tainted flag changed to %u.\n",
-                ms.bus_tainted);
-    }
     if (ms.slaves_responding != master_state.slaves_responding) {
         printk(KERN_INFO PFX "slaves_responding changed to %u.\n",
                 ms.slaves_responding);
