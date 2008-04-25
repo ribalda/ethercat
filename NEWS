@@ -50,6 +50,8 @@ Changes in version 1.4.0:
       function.
     - Removed the bus_state and bus_tainted flags from ec_master_state_t.
 * Removed include/ecdb.h.
+* Sdo dictionaries will now also be fetched in operation mode.
+* SII write requests will now also be processed in operation mode.
 * Mapping of Pdo entries is now supported.
 * Current Pdo assignment/mapping is now read via CoE during bus scan, using
   direct Sdo access, independent of the dictionary.

@@ -444,36 +444,33 @@ void ec_fsm_master_action_idle(
     if (ec_fsm_master_action_process_sdo(fsm))
         return;
 
-    if (master->mode == EC_MASTER_MODE_IDLE) {
-
-        // check, if slaves have an Sdo dictionary to read out.
-        list_for_each_entry(slave, &master->slaves, list) {
-            if (!(slave->sii.mailbox_protocols & EC_MBOX_COE)
+    // check, if slaves have an Sdo dictionary to read out.
+    list_for_each_entry(slave, &master->slaves, list) {
+        if (!(slave->sii.mailbox_protocols & EC_MBOX_COE)
                 || slave->sdo_dictionary_fetched
                 || slave->current_state == EC_SLAVE_STATE_INIT
                 || jiffies - slave->jiffies_preop < EC_WAIT_SDO_DICT * HZ
                 || slave->error_flag) continue;
 
-            if (master->debug_level) {
-                EC_DBG("Fetching Sdo dictionary from slave %u.\n",
-                       slave->ring_position);
-            }
-
-            slave->sdo_dictionary_fetched = 1;
-
-            // start fetching Sdo dictionary
-            fsm->idle = 0;
-            fsm->slave = slave;
-            fsm->state = ec_fsm_master_state_sdo_dictionary;
-            ec_fsm_coe_dictionary(&fsm->fsm_coe, slave);
-            ec_fsm_coe_exec(&fsm->fsm_coe); // execute immediately
-            return;
+        if (master->debug_level) {
+            EC_DBG("Fetching Sdo dictionary from slave %u.\n",
+                    slave->ring_position);
         }
 
-        // check for pending SII write operations.
-        if (ec_fsm_master_action_process_sii(fsm))
-            return; // SII write request found
+        slave->sdo_dictionary_fetched = 1;
+
+        // start fetching Sdo dictionary
+        fsm->idle = 0;
+        fsm->slave = slave;
+        fsm->state = ec_fsm_master_state_sdo_dictionary;
+        ec_fsm_coe_dictionary(&fsm->fsm_coe, slave);
+        ec_fsm_coe_exec(&fsm->fsm_coe); // execute immediately
+        return;
     }
+
+    // check for pending SII write operations.
+    if (ec_fsm_master_action_process_sii(fsm))
+        return; // SII write request found
 
     fsm->state = ec_fsm_master_state_end;
 }
@@ -842,7 +839,7 @@ void ec_fsm_master_state_sdo_dictionary(
     if (master->debug_level) {
         unsigned int sdo_count, entry_count;
         ec_slave_sdo_dict_info(slave, &sdo_count, &entry_count);
-        EC_DBG("Fetched %i Sdos and %i entries from slave %i.\n",
+        EC_DBG("Fetched %u Sdos and %u entries from slave %u.\n",
                sdo_count, entry_count, slave->ring_position);
     }
 

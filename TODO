@@ -16,7 +16,6 @@ Version 1.4.0:
 * Mailbox protocol handlers.
 * Remove get_cycles() calls and references to cpu_khz to increase
   portability.
-* Scanning of Sdo dictionary / writing EEPROM in OPERATION state.
 * Remove the end state of the master state machine.
 * SDO write access in sysfs.
 * Update documentation.
