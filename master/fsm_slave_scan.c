@@ -636,7 +636,7 @@ void ec_fsm_slave_scan_enter_pdos(
     ec_slave_t *slave = fsm->slave;
 
     if (slave->master->debug_level)
-        EC_DBG("Scanning Pdo mapping/configuration of slave %u.\n",
+        EC_DBG("Scanning Pdo assignment and mapping of slave %u.\n",
                 slave->ring_position);
     fsm->state = ec_fsm_slave_scan_state_pdos;
     ec_fsm_coe_map_start(fsm->fsm_coe_map, slave);
@@ -659,7 +659,7 @@ void ec_fsm_slave_scan_state_pdos(
         return;
     }
 
-    // fetching of Pdo mapping finished
+    // fetching of Pdo assignment/mapping finished
     fsm->state = ec_fsm_slave_scan_state_end;
 }
 

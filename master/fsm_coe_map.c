@@ -209,7 +209,7 @@ void ec_fsm_coe_map_state_pdo_count(
     if (ec_fsm_coe_exec(fsm->fsm_coe)) return;
 
     if (!ec_fsm_coe_success(fsm->fsm_coe)) {
-        EC_ERR("Failed to read number of mapped Pdos from slave %u.\n",
+        EC_ERR("Failed to read number of assigned Pdos from slave %u.\n",
                 fsm->slave->ring_position);
         fsm->state = ec_fsm_coe_map_state_error;
         return;
