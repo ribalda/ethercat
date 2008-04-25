@@ -1315,9 +1315,6 @@ int ecrt_master_activate(ec_master_t *master)
         domain_offset += domain->data_size;
     }
 
-    master->allow_config = 1; // request the current configuration
-    master->allow_scan = 1; // allow re-scanning on topology change
-
     // restart EoE process and master thread with new locking
 #ifdef EC_EOE
     ec_master_eoe_stop(master);
@@ -1337,10 +1334,12 @@ int ecrt_master_activate(ec_master_t *master)
         EC_ERR("Failed to start master thread!\n");
         return -1;
     }
-
 #ifdef EC_EOE
     ec_master_eoe_start(master);
 #endif
+
+    master->allow_config = 1; // request the current configuration
+    master->allow_scan = 1; // allow re-scanning on topology change
     return 0;
 }
 
