@@ -82,15 +82,6 @@ typedef enum {
 
 /*****************************************************************************/
 
-/** EtherCAT slave online state.
- */
-typedef enum {
-    EC_SLAVE_OFFLINE,
-    EC_SLAVE_ONLINE
-} ec_slave_online_state_t;
-
-/*****************************************************************************/
-
 /** Supported mailbox protocols.
  */
 enum {
@@ -182,7 +173,6 @@ struct ec_slave
     ec_slave_config_t *config; /**< Current configuration. */
     ec_slave_state_t requested_state; /**< Requested application state. */
     ec_slave_state_t current_state; /**< Current application state. */
-    ec_slave_online_state_t online_state; /**< online state */
     unsigned int self_configured; /**< Slave was configured by this master. */
     unsigned int error_flag; /**< Stop processing after an error. */
 
@@ -220,7 +210,6 @@ void ec_slave_clear_sync_managers(ec_slave_t *);
 
 void ec_slave_request_state(ec_slave_t *, ec_slave_state_t);
 void ec_slave_set_state(ec_slave_t *, ec_slave_state_t);
-void ec_slave_set_online_state(ec_slave_t *, ec_slave_online_state_t);
 
 // SII categories
 int ec_slave_fetch_sii_strings(ec_slave_t *, const uint8_t *, size_t);

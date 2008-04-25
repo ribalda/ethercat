@@ -190,23 +190,16 @@ void ec_fsm_master_state_broadcast(ec_fsm_master_t *fsm /**< master state machin
     if (datagram->state == EC_DATAGRAM_TIMED_OUT)
         return; // always retry
 
-    if (datagram->state != EC_DATAGRAM_RECEIVED) { // link is down
-        fsm->slaves_responding = 0;
-        list_for_each_entry(slave, &master->slaves, list) {
-            ec_slave_set_online_state(slave, EC_SLAVE_OFFLINE);
-        }
-        fsm->state = ec_fsm_master_state_error;
-        return;
-    }
-
     // bus topology change?
     if (datagram->working_counter != fsm->slaves_responding) {
         fsm->topology_change_pending = 1;
         fsm->slaves_responding = datagram->working_counter;
+        EC_INFO("%u slave(s) responding.\n", fsm->slaves_responding);
+    }
 
-        EC_INFO("%u slave%s responding.\n",
-                fsm->slaves_responding,
-                fsm->slaves_responding == 1 ? "" : "s");
+    if (datagram->state != EC_DATAGRAM_RECEIVED) { // link is down
+        fsm->state = ec_fsm_master_state_error;
+        return;
     }
 
     // slave states changed?
@@ -304,7 +297,6 @@ int ec_fsm_master_action_process_sii(
 {
     ec_master_t *master = fsm->master;
     ec_sii_write_request_t *request;
-    ec_slave_t *slave;
 
     // search the first request to be processed
     while (1) {
@@ -320,19 +312,10 @@ int ec_fsm_master_action_process_sii(
         request->state = EC_REQUEST_BUSY;
         up(&master->sii_sem);
 
-        slave = request->slave;
-        if (slave->online_state == EC_SLAVE_OFFLINE) {
-            EC_ERR("Discarding SII data, slave %i offline.\n",
-                    slave->ring_position);
-            request->state = EC_REQUEST_FAILURE;
-            wake_up(&master->sii_queue);
-            continue;
-        }
-
         // found pending SII write operation. execute it!
         if (master->debug_level)
-            EC_DBG("Writing SII data to slave %i...\n",
-                    slave->ring_position);
+            EC_DBG("Writing SII data to slave %u...\n",
+                    request->slave->ring_position);
         fsm->sii_request = request;
         fsm->sii_index = 0;
         ec_fsm_sii_write(&fsm->fsm_sii, request->slave, request->word_offset,
@@ -414,7 +397,6 @@ int ec_fsm_master_action_process_sdo(
 
         slave = request->slave;
         if (slave->current_state == EC_SLAVE_STATE_INIT ||
-                slave->online_state == EC_SLAVE_OFFLINE ||
                 slave->error_flag) {
             EC_ERR("Discarding Sdo request, slave %u not ready.\n",
                     slave->ring_position);
@@ -425,7 +407,7 @@ int ec_fsm_master_action_process_sdo(
 
         // Found pending Sdo request. Execute it!
         if (master->debug_level)
-            EC_DBG("Processing Sdo request for slave %i...\n",
+            EC_DBG("Processing Sdo request for slave %u...\n",
                     slave->ring_position);
 
         // Start uploading Sdo
@@ -459,7 +441,6 @@ int ec_fsm_master_action_configure(
     // FIXME do not check all slaves in every cycle...
     list_for_each_entry(slave, &master->slaves, list) {
         if (slave->error_flag
-                || slave->online_state == EC_SLAVE_OFFLINE
                 || slave->requested_state == EC_SLAVE_STATE_UNKNOWN
                 || (slave->current_state == slave->requested_state
                     && slave->self_configured)) continue;
@@ -529,7 +510,6 @@ void ec_fsm_master_action_process_states(ec_fsm_master_t *fsm
                 || slave->sdo_dictionary_fetched
                 || slave->current_state == EC_SLAVE_STATE_INIT
                 || jiffies - slave->jiffies_preop < EC_WAIT_SDO_DICT * HZ
-                || slave->online_state == EC_SLAVE_OFFLINE
                 || slave->error_flag) continue;
 
             if (master->debug_level) {
@@ -608,17 +588,20 @@ void ec_fsm_master_state_read_states(ec_fsm_master_t *fsm /**< master state mach
     }
 
     // did the slave not respond to its station address?
-    if (datagram->working_counter == 0) {
-        ec_slave_set_online_state(slave, EC_SLAVE_OFFLINE);
-        ec_fsm_master_action_next_slave_state(fsm);
+    if (datagram->working_counter != 1) {
+        if (!slave->error_flag) {
+            slave->error_flag = 1;
+            if (fsm->master->debug_level)
+                EC_DBG("Slave %u did not respond to state query.\n",
+                        fsm->slave->ring_position);
+        }
+        fsm->topology_change_pending = 1;
+        fsm->state = ec_fsm_master_state_error;
         return;
     }
 
-    // FIXME what to to on multiple response?
-
-    // slave responded
+    // a single slave responded
     ec_slave_set_state(slave, EC_READ_U8(datagram->data)); // set app state first
-    ec_slave_set_online_state(slave, EC_SLAVE_ONLINE);
 
     // check, if new slave state has to be acknowledged
     if (slave->current_state & EC_SLAVE_STATE_ACK_ERR && !slave->error_flag) {

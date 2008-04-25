@@ -118,7 +118,6 @@ int ec_slave_init(ec_slave_t *slave, /**< EtherCAT slave */
     slave->config = NULL;
     slave->requested_state = EC_SLAVE_STATE_PREOP;
     slave->current_state = EC_SLAVE_STATE_UNKNOWN;
-    slave->online_state = EC_SLAVE_ONLINE;
     slave->self_configured = 0;
     slave->error_flag = 0;
 
@@ -324,35 +323,6 @@ void ec_slave_set_state(ec_slave_t *slave, /**< EtherCAT slave */
         }
         slave->current_state = new_state;
     }
-}
-
-/*****************************************************************************/
-
-/**
- * Sets the online state of a slave.
- */
-
-void ec_slave_set_online_state(ec_slave_t *slave, /**< EtherCAT slave */
-        ec_slave_online_state_t new_state /**< new online state */
-        )
-{
-    if (new_state == EC_SLAVE_OFFLINE &&
-            slave->online_state == EC_SLAVE_ONLINE) {
-        if (slave->master->debug_level)
-            EC_DBG("Slave %u: offline.\n", slave->ring_position);
-    }
-    else if (new_state == EC_SLAVE_ONLINE &&
-            slave->online_state == EC_SLAVE_OFFLINE) {
-        slave->error_flag = 0; // clear error flag
-        if (slave->master->debug_level) {
-            char cur_state[EC_STATE_STRING_SIZE];
-            ec_state_string(slave->current_state, cur_state);
-            EC_DBG("Slave %u: online (%s).\n",
-                   slave->ring_position, cur_state);
-        }
-    }
-
-    slave->online_state = new_state;
 }
 
 /*****************************************************************************/
