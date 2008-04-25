@@ -8,29 +8,29 @@ $Id$
 
 Version 1.4.0:
 
+* Remove the end state of the master state machine.
+* Remove the xmldev files.
+* Supply new ec_master_state_t.
+* Implement ecrt_slave_config_state().
+* Make ecrt_master_slave_config() return no error when slave is not present
+  or invalid.
+* Remove get_cycles() calls and references to cpu_khz to increase
+  portability.
 * Replace Sysfs interface with cdev and a user space program
   to replace lsec; move a few sysfs attributes to proc.
 * Implement realtime interface via cdev.
 * Make scanning and configuration run parallel (each).
 * Mailbox state machine using toggle bits.
 * Mailbox protocol handlers.
-* Remove get_cycles() calls and references to cpu_khz to increase
-  portability.
-* Remove the end state of the master state machine.
 * SDO write access in sysfs.
 * Update documentation.
-* Supply new ec_master_state_t.
 * Adapt remaining examples.
 * READMEs for examples.
 * Separate Pdo and Pdo entry classes.
 * Attach Pdo names.
 * Wait for bus scanning, even when link is not up at ecrt_request_master().
-* Implement ecrt_slave_config_state().
 * Add something like lsec -n to show numeric vendor IDs.
-* Remove the xmldev files.
 * Separate CoE debugging.
-* Make ecrt_master_slave_config() return no error when slave is not present
-  or invalid.
 * Evaluate EEPROM contents after writing.
 
 Future issues:
