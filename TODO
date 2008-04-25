@@ -35,7 +35,6 @@ Version 1.4.0:
 * Rename the sdodict state to sdo_dictionary.
 * Check the position of the acknowledge state.
 * Remove the xmldev files.
-* Remove some debugging (add_sync_manager, clearing station addresses).
 * Separate CoE debugging.
 * Make ecrt_master_slave_config() return no error when slave is not present
   or invalid.

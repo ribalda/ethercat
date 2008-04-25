@@ -271,9 +271,7 @@ void ec_fsm_master_state_broadcast(ec_fsm_master_t *fsm /**< master state machin
                 list_add_tail(&slave->list, &master->slaves);
             }
 
-            if (master->debug_level)
-                EC_DBG("Clearing station addresses...\n");
-
+            // broadcast clear all station addresses
             ec_datagram_bwr(datagram, 0x0010, 2);
             EC_WRITE_U16(datagram->data, 0x0000);
             fsm->retries = EC_FSM_RETRIES;

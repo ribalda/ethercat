@@ -503,9 +503,6 @@ int ec_slave_fetch_sii_syncs(
 
     count = data_size / 8;
 
-    if (slave->master->debug_level)
-        EC_DBG("Found Sync manager category with %u sync managers.\n", count);
-    
     if (count) {
         total_count = count + slave->sii.sync_count;
         memsize = sizeof(ec_sync_t) * total_count;
@@ -535,9 +532,6 @@ int ec_slave_fetch_sii_syncs(
         slave->sii.syncs = syncs;
         slave->sii.sync_count = total_count;
     }
-
-    if (slave->master->debug_level)
-        EC_DBG("Total sync managers: %u.\n", slave->sii.sync_count);
 
     return 0;
 }
