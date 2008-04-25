@@ -31,10 +31,9 @@
  *
  *****************************************************************************/
 
-/**
-   \file
-   EtherCAT finite state machines.
-*/
+/** \file
+ * EtherCAT master state machine.
+ */
 
 /*****************************************************************************/
 
@@ -52,11 +51,11 @@
 
 void ec_fsm_master_state_start(ec_fsm_master_t *);
 void ec_fsm_master_state_broadcast(ec_fsm_master_t *);
-void ec_fsm_master_state_read_states(ec_fsm_master_t *);
+void ec_fsm_master_state_read_state(ec_fsm_master_t *);
 void ec_fsm_master_state_acknowledge(ec_fsm_master_t *);
 void ec_fsm_master_state_configure_slave(ec_fsm_master_t *);
 void ec_fsm_master_state_clear_addresses(ec_fsm_master_t *);
-void ec_fsm_master_state_scan_slaves(ec_fsm_master_t *);
+void ec_fsm_master_state_scan_slave(ec_fsm_master_t *);
 void ec_fsm_master_state_write_sii(ec_fsm_master_t *);
 void ec_fsm_master_state_sdo_dictionary(ec_fsm_master_t *);
 void ec_fsm_master_state_sdo_request(ec_fsm_master_t *);
@@ -65,13 +64,12 @@ void ec_fsm_master_state_error(ec_fsm_master_t *);
 
 /*****************************************************************************/
 
-/**
-   Constructor.
-*/
-
-void ec_fsm_master_init(ec_fsm_master_t *fsm, /**< master state machine */
-        ec_master_t *master, /**< EtherCAT master */
-        ec_datagram_t *datagram /**< datagram object to use */
+/** Constructor.
+ */
+void ec_fsm_master_init(
+        ec_fsm_master_t *fsm, /**< Master state machine. */
+        ec_master_t *master, /**< EtherCAT master. */
+        ec_datagram_t *datagram /**< Datagram object to use. */
         )
 {
     fsm->master = master;
@@ -94,11 +92,11 @@ void ec_fsm_master_init(ec_fsm_master_t *fsm, /**< master state machine */
 
 /*****************************************************************************/
 
-/**
-   Destructor.
-*/
-
-void ec_fsm_master_clear(ec_fsm_master_t *fsm /**< master state machine */)
+/** Destructor.
+ */
+void ec_fsm_master_clear(
+        ec_fsm_master_t *fsm /**< Master state machine. */
+        )
 {
     // clear sub-state machines
     ec_fsm_slave_config_clear(&fsm->fsm_slave_config);
@@ -111,14 +109,16 @@ void ec_fsm_master_clear(ec_fsm_master_t *fsm /**< master state machine */)
 
 /*****************************************************************************/
 
-/**
-   Executes the current state of the state machine.
-   If the state machine's datagram is not sent or received yet, the execution
-   of the state machine is delayed to the next cycle.
-   \return false, if state machine has terminated
-*/
-
-int ec_fsm_master_exec(ec_fsm_master_t *fsm /**< master state machine */)
+/** Executes the current state of the state machine.
+ *
+ * If the state machine's datagram is not sent or received yet, the execution
+ * of the state machine is delayed to the next cycle.
+ *
+ * \return false, if state machine has terminated
+ */
+int ec_fsm_master_exec(
+        ec_fsm_master_t *fsm /**< Master state machine. */
+        )
 {
     if (fsm->datagram->state == EC_DATAGRAM_SENT
         || fsm->datagram->state == EC_DATAGRAM_QUEUED) {
@@ -135,9 +135,8 @@ int ec_fsm_master_exec(ec_fsm_master_t *fsm /**< master state machine */)
 /**
  * \return false, if state machine has terminated
  */
-
 int ec_fsm_master_running(
-        const ec_fsm_master_t *fsm /**< master state machine */
+        const ec_fsm_master_t *fsm /**< Master state machine. */
         )
 {
     return fsm->state != ec_fsm_master_state_end
@@ -149,24 +148,24 @@ int ec_fsm_master_running(
 /**
  * \return true, if the state machine is in an idle phase
  */
-
 int ec_fsm_master_idle(
-        const ec_fsm_master_t *fsm /**< master state machine */
+        const ec_fsm_master_t *fsm /**< Master state machine. */
         )
 {
     return fsm->idle;
 }
 
 /******************************************************************************
- *  master state machine
+ * Master state machine
  *****************************************************************************/
 
-/**
-   Master state: START.
-   Starts with getting slave count and slave states.
-*/
-
-void ec_fsm_master_state_start(ec_fsm_master_t *fsm)
+/** Master state: START.
+ *
+ * Starts with getting slave count and slave states.
+ */
+void ec_fsm_master_state_start(
+        ec_fsm_master_t *fsm /**< Master state machine. */
+        )
 {
     fsm->idle = 1;
     ec_datagram_brd(fsm->datagram, 0x0130, 2);
@@ -175,12 +174,13 @@ void ec_fsm_master_state_start(ec_fsm_master_t *fsm)
 
 /*****************************************************************************/
 
-/**
-   Master state: BROADCAST.
-   Processes the broadcast read slave count and slaves states.
-*/
-
-void ec_fsm_master_state_broadcast(ec_fsm_master_t *fsm /**< master state machine */)
+/** Master state: BROADCAST.
+ *
+ * Processes the broadcast read slave count and slaves states.
+ */
+void ec_fsm_master_state_broadcast(
+        ec_fsm_master_t *fsm /**< Master state machine. */
+        )
 {
     ec_datagram_t *datagram = fsm->datagram;
     unsigned int i;
@@ -276,23 +276,23 @@ void ec_fsm_master_state_broadcast(ec_fsm_master_t *fsm /**< master state machin
     if (list_empty(&master->slaves)) {
         fsm->state = ec_fsm_master_state_end;
     } else {
-        // fetch state from each slave
+        // fetch state from first slave
         fsm->slave = list_entry(master->slaves.next, ec_slave_t, list);
-        ec_datagram_fprd(fsm->datagram, fsm->slave->station_address, 0x0130, 2);
+        ec_datagram_fprd(fsm->datagram, fsm->slave->station_address,
+                0x0130, 2);
         fsm->retries = EC_FSM_RETRIES;
-        fsm->state = ec_fsm_master_state_read_states;
+        fsm->state = ec_fsm_master_state_read_state;
     }
 }
 
 /*****************************************************************************/
 
-/**
- * Check for pending SII write requests and process one.
+/** Check for pending SII write requests and process one.
+ * 
  * \return non-zero, if an SII write request is processed.
  */
-
 int ec_fsm_master_action_process_sii(
-        ec_fsm_master_t *fsm /**< master state machine */
+        ec_fsm_master_t *fsm /**< Master state machine. */
         )
 {
     ec_master_t *master = fsm->master;
@@ -330,13 +330,12 @@ int ec_fsm_master_action_process_sii(
 
 /*****************************************************************************/
 
-/**
- * Check for pending Sdo requests and process one.
+/** Check for pending Sdo requests and process one.
+ * 
  * \return non-zero, if an Sdo request is processed.
  */
-
 int ec_fsm_master_action_process_sdo(
-        ec_fsm_master_t *fsm /**< master state machine */
+        ec_fsm_master_t *fsm /**< Master state machine. */
         )
 {
     ec_master_t *master = fsm->master;
@@ -425,78 +424,16 @@ int ec_fsm_master_action_process_sdo(
 
 /*****************************************************************************/
 
-/**
- * Check for slaves that are not configured and configure them.
+/** Master action: IDLE.
+ *
+ * Does secondary work.
  */
-
-int ec_fsm_master_action_configure(
-        ec_fsm_master_t *fsm /**< master state machine */
+void ec_fsm_master_action_idle(
+        ec_fsm_master_t *fsm /**< Master state machine. */
         )
 {
-    ec_slave_t *slave;
-    ec_master_t *master = fsm->master;
-    char old_state[EC_STATE_STRING_SIZE], new_state[EC_STATE_STRING_SIZE];
-
-    // check if any slaves are not in the state, they're supposed to be
-    // FIXME do not check all slaves in every cycle...
-    list_for_each_entry(slave, &master->slaves, list) {
-        if (slave->error_flag
-                || slave->requested_state == EC_SLAVE_STATE_UNKNOWN
-                || (slave->current_state == slave->requested_state
-                    && slave->self_configured)) continue;
-
-        if (master->debug_level) {
-            ec_state_string(slave->current_state, old_state);
-            if (slave->current_state != slave->requested_state) {
-                ec_state_string(slave->requested_state, new_state);
-                EC_DBG("Changing state of slave %i (%s -> %s).\n",
-                        slave->ring_position, old_state, new_state);
-            }
-            else if (!slave->self_configured) {
-                EC_DBG("Reconfiguring slave %i (%s).\n",
-                        slave->ring_position, old_state);
-            }
-        }
-
-        fsm->idle = 0;
-        fsm->slave = slave;
-        fsm->state = ec_fsm_master_state_configure_slave;
-        ec_fsm_slave_config_start(&fsm->fsm_slave_config, slave);
-        ec_fsm_slave_config_exec(&fsm->fsm_slave_config); // execute immediately
-        return 1;
-    }
-
-    master->config_busy = 0;
-    wake_up_interruptible(&master->config_queue);
-    return 0;
-}
-
-/*****************************************************************************/
-
-/**
-   Master action: PROC_STATES.
-   Processes the slave states.
-*/
-
-void ec_fsm_master_action_process_states(ec_fsm_master_t *fsm
-                                         /**< master state machine */
-                                         )
-{
     ec_master_t *master = fsm->master;
     ec_slave_t *slave;
-
-    // Start slave configuration, if it is allowed.
-    down(&master->config_sem);
-    if (!master->allow_config) {
-        up(&master->config_sem);
-    } else {
-        master->config_busy = 1;
-        up(&master->config_sem);
-
-        // check for pending slave configurations
-        if (ec_fsm_master_action_configure(fsm))
-            return;
-    }
 
     // Check for pending Sdo requests
     if (ec_fsm_master_action_process_sdo(fsm))
@@ -538,40 +475,118 @@ void ec_fsm_master_action_process_states(ec_fsm_master_t *fsm
 
 /*****************************************************************************/
 
-/**
-   Master action: Get state of next slave.
-*/
-
-void ec_fsm_master_action_next_slave_state(ec_fsm_master_t *fsm
-                                           /**< master state machine */)
+/** Master action: Get state of next slave.
+ */
+void ec_fsm_master_action_next_slave_state(
+        ec_fsm_master_t *fsm /**< Master state machine. */
+        )
 {
     ec_master_t *master = fsm->master;
     ec_slave_t *slave = fsm->slave;
 
     // is there another slave to query?
     if (slave->list.next != &master->slaves) {
-        // process next slave
+        // fetch state from next slave
         fsm->idle = 1;
         fsm->slave = list_entry(slave->list.next, ec_slave_t, list);
         ec_datagram_fprd(fsm->datagram, fsm->slave->station_address,
                          0x0130, 2);
         fsm->retries = EC_FSM_RETRIES;
-        fsm->state = ec_fsm_master_state_read_states;
+        fsm->state = ec_fsm_master_state_read_state;
         return;
     }
 
-    // all slave states read
-    ec_fsm_master_action_process_states(fsm);
+    // all slaves processed
+    ec_fsm_master_action_idle(fsm);
 }
 
 /*****************************************************************************/
 
-/**
-   Master state: READ STATES.
-   Fetches the AL- and online state of a slave.
-*/
+/** Master action: Configure.
+ */
+void ec_fsm_master_action_configure(
+        ec_fsm_master_t *fsm /**< Master state machine. */
+        )
+{
+    ec_master_t *master = fsm->master;
+    ec_slave_t *slave = fsm->slave;
 
-void ec_fsm_master_state_read_states(ec_fsm_master_t *fsm /**< master state machine */)
+    // Does the slave have to be configured?
+    if (!slave->error_flag
+            && (slave->current_state != slave->requested_state
+                || !slave->self_configured)) {
+        // Start slave configuration, if it is allowed.
+        down(&master->config_sem);
+        if (!master->allow_config) {
+            up(&master->config_sem);
+        } else {
+            master->config_busy = 1;
+            up(&master->config_sem);
+
+            if (master->debug_level) {
+                char old_state[EC_STATE_STRING_SIZE];
+                ec_state_string(slave->current_state, old_state);
+                if (slave->current_state != slave->requested_state) {
+                    char new_state[EC_STATE_STRING_SIZE];
+                    ec_state_string(slave->requested_state, new_state);
+                    EC_DBG("Changing state of slave %u (%s -> %s).\n",
+                            slave->ring_position, old_state, new_state);
+                } else if (!slave->self_configured) {
+                    EC_DBG("Reconfiguring slave %u (%s).\n",
+                            slave->ring_position, old_state);
+                }
+            }
+
+            fsm->idle = 0;
+            fsm->state = ec_fsm_master_state_configure_slave;
+            ec_fsm_slave_config_start(&fsm->fsm_slave_config, slave);
+            fsm->state(fsm); // execute immediately
+            return;
+        }
+    }
+
+    // slave has error flag set; process next one
+    ec_fsm_master_action_next_slave_state(fsm);
+}
+
+/*****************************************************************************/
+
+/** Master action: Acknowledge.
+ */
+void ec_fsm_master_action_acknowledge(
+        ec_fsm_master_t *fsm /**< Master state machine. */
+        )
+{
+    ec_slave_t *slave = fsm->slave;
+
+    if (!slave->error_flag) {
+        // Check, if new slave state has to be acknowledged
+        if (slave->current_state & EC_SLAVE_STATE_ACK_ERR) {
+            fsm->idle = 0;
+            fsm->state = ec_fsm_master_state_acknowledge;
+            ec_fsm_change_ack(&fsm->fsm_change, slave);
+            fsm->state(fsm); // execute immediately
+            return;
+        }
+
+        // No acknowlegde necessary; check for configuration
+        ec_fsm_master_action_configure(fsm);
+        return;
+    }
+
+    // slave has error flag set; process next one
+    ec_fsm_master_action_next_slave_state(fsm);
+}
+
+/*****************************************************************************/
+
+/** Master state: READ STATE.
+ *
+ * Fetches the AL state of a slave.
+ */
+void ec_fsm_master_state_read_state(
+        ec_fsm_master_t *fsm /**< Master state machine. */
+        )
 {
     ec_slave_t *slave = fsm->slave;
     ec_datagram_t *datagram = fsm->datagram;
@@ -580,7 +595,7 @@ void ec_fsm_master_state_read_states(ec_fsm_master_t *fsm /**< master state mach
         return;
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
-        EC_ERR("Failed to receive AL state datagram for slave %i"
+        EC_ERR("Failed to receive AL state datagram for slave %u"
                 " (datagram state %i)\n",
                 slave->ring_position, datagram->state);
         fsm->state = ec_fsm_master_state_error;
@@ -600,52 +615,39 @@ void ec_fsm_master_state_read_states(ec_fsm_master_t *fsm /**< master state mach
         return;
     }
 
-    // a single slave responded
-    ec_slave_set_state(slave, EC_READ_U8(datagram->data)); // set app state first
-
-    // check, if new slave state has to be acknowledged
-    if (slave->current_state & EC_SLAVE_STATE_ACK_ERR && !slave->error_flag) {
-        fsm->idle = 0;
-        fsm->state = ec_fsm_master_state_acknowledge;
-        ec_fsm_change_ack(&fsm->fsm_change, slave);
-        ec_fsm_change_exec(&fsm->fsm_change);
-        return;
-    }
-
-    ec_fsm_master_action_next_slave_state(fsm);
+    // A single slave responded
+    ec_slave_set_state(slave, EC_READ_U8(datagram->data));
+    ec_fsm_master_action_acknowledge(fsm);
 }
 
 /*****************************************************************************/
 
-/**
-   Master state: ACKNOWLEDGE
-*/
-
-void ec_fsm_master_state_acknowledge(ec_fsm_master_t *fsm /**< master state machine */)
+/** Master state: ACKNOWLEDGE.
+ */
+void ec_fsm_master_state_acknowledge(
+        ec_fsm_master_t *fsm /**< Master state machine. */
+        )
 {
     ec_slave_t *slave = fsm->slave;
 
-    if (ec_fsm_change_exec(&fsm->fsm_change)) return;
+    if (ec_fsm_change_exec(&fsm->fsm_change))
+        return;
 
     if (!ec_fsm_change_success(&fsm->fsm_change)) {
         fsm->slave->error_flag = 1;
-        EC_ERR("Failed to acknowledge state change on slave %i.\n",
+        EC_ERR("Failed to acknowledge state change on slave %u.\n",
                slave->ring_position);
-        fsm->state = ec_fsm_master_state_error;
-        return;
     }
 
-    ec_fsm_master_action_next_slave_state(fsm);
+    ec_fsm_master_action_configure(fsm);
 }
 
 /*****************************************************************************/
 
-/**
- * Master state: CLEAR ADDRESSES.
+/** Master state: CLEAR ADDRESSES.
  */
-
 void ec_fsm_master_state_clear_addresses(
-        ec_fsm_master_t *fsm /**< master state machine */
+        ec_fsm_master_t *fsm /**< Master state machine. */
         )
 {
     ec_master_t *master = fsm->master;
@@ -672,26 +674,25 @@ void ec_fsm_master_state_clear_addresses(
 
     // begin scanning of slaves
     fsm->slave = list_entry(master->slaves.next, ec_slave_t, list);
-    fsm->state = ec_fsm_master_state_scan_slaves;
+    fsm->state = ec_fsm_master_state_scan_slave;
     ec_fsm_slave_scan_start(&fsm->fsm_slave_scan, fsm->slave);
     ec_fsm_slave_scan_exec(&fsm->fsm_slave_scan); // execute immediately
 }
 
 /*****************************************************************************/
 
-/**
- * Master state: SCAN SLAVES.
+/** Master state: SCAN SLAVE.
+ *
  * Executes the sub-statemachine for the scanning of a slave.
  */
-
-void ec_fsm_master_state_scan_slaves(
-        ec_fsm_master_t *fsm /**< master state machine */
+void ec_fsm_master_state_scan_slave(
+        ec_fsm_master_t *fsm /**< Master state machine. */
         )
 {
     ec_master_t *master = fsm->master;
     ec_slave_t *slave = fsm->slave;
 
-    if (ec_fsm_slave_scan_exec(&fsm->fsm_slave_scan)) // execute slave state machine
+    if (ec_fsm_slave_scan_exec(&fsm->fsm_slave_scan))
         return;
 
 #ifdef EC_EOE
@@ -738,37 +739,38 @@ void ec_fsm_master_state_scan_slaves(
 
 /*****************************************************************************/
 
-/**
-   Master state: CONFIGURE SLAVES.
-   Starts configuring a slave.
-*/
-
-void ec_fsm_master_state_configure_slave(ec_fsm_master_t *fsm
-                                   /**< master state machine */
-                                   )
+/** Master state: CONFIGURE SLAVE.
+ *
+ * Starts configuring a slave.
+ */
+void ec_fsm_master_state_configure_slave(
+        ec_fsm_master_t *fsm /**< Master state machine. */
+        )
 {
-    if (ec_fsm_slave_config_exec(&fsm->fsm_slave_config)) // execute slave's state machine
+    ec_master_t *master = fsm->master;
+
+    if (ec_fsm_slave_config_exec(&fsm->fsm_slave_config))
         return;
+
+    // configuration finished
+    master->config_busy = 0;
+    wake_up_interruptible(&master->config_queue);
 
     if (!ec_fsm_slave_config_success(&fsm->fsm_slave_config)) {
         // TODO: mark slave_config as failed.
     }
 
-    // configure next slave, if necessary
-    if (ec_fsm_master_action_configure(fsm))
-        return;
-
-    fsm->state = ec_fsm_master_state_end;
+    fsm->idle = 1;
+    ec_fsm_master_action_next_slave_state(fsm);
 }
 
 /*****************************************************************************/
 
-/**
-   Master state: WRITE SII.
-*/
-
+/** Master state: WRITE SII.
+ */
 void ec_fsm_master_state_write_sii(
-        ec_fsm_master_t *fsm /**< master state machine */)
+        ec_fsm_master_t *fsm /**< Master state machine. */
+        )
 {
     ec_master_t *master = fsm->master;
     ec_sii_write_request_t *request = fsm->sii_request;
@@ -814,12 +816,10 @@ void ec_fsm_master_state_write_sii(
 
 /*****************************************************************************/
 
-/**
-   Master state: SdoDICT.
-*/
-
+/** Master state: SDO DICTIONARY.
+ */
 void ec_fsm_master_state_sdo_dictionary(
-        ec_fsm_master_t *fsm /**< master state machine */
+        ec_fsm_master_t *fsm /**< Master state machine. */
         )
 {
     ec_slave_t *slave = fsm->slave;
@@ -846,11 +846,11 @@ void ec_fsm_master_state_sdo_dictionary(
 
 /*****************************************************************************/
 
-/**
-   Master state: SDO REQUEST.
-*/
-
-void ec_fsm_master_state_sdo_request(ec_fsm_master_t *fsm /**< master state machine */)
+/** Master state: SDO REQUEST.
+ */
+void ec_fsm_master_state_sdo_request(
+        ec_fsm_master_t *fsm /**< Master state machine. */
+        )
 {
     ec_master_t *master = fsm->master;
     ec_sdo_request_t *request = fsm->sdo_request;
@@ -883,12 +883,10 @@ void ec_fsm_master_state_sdo_request(ec_fsm_master_t *fsm /**< master state mach
 
 /*****************************************************************************/
 
-/**
-   State: ERROR.
-*/
-
+/** State: ERROR.
+ */
 void ec_fsm_master_state_error(
-        ec_fsm_master_t *fsm /**< master state machine */
+        ec_fsm_master_t *fsm /**< Master state machine. */
         )
 {
     fsm->state = ec_fsm_master_state_start;
@@ -896,14 +894,13 @@ void ec_fsm_master_state_error(
 
 /*****************************************************************************/
 
-/**
-   State: END.
-*/
-
-void ec_fsm_master_state_end(ec_fsm_master_t *fsm /**< master state machine */)
+/** State: END.
+ */
+void ec_fsm_master_state_end(
+        ec_fsm_master_t *fsm /**< Master state machine. */
+        )
 {
     fsm->state = ec_fsm_master_state_start;
 }
 
 /*****************************************************************************/
-

@@ -6,62 +6,64 @@ digraph master {
     center=1
 	ratio=fill
 
-    action_process_sii [shape=point,label=""]
-    action_process_sdo [shape=point,label=""]
-    action_configure [shape=point,label=""]
-    action_next_slave_state [shape=point,label=""]
-    action_process_states [shape=point,label=""]
-
+    start [fontname="Helvetica"]
     start -> broadcast [weight=10]
 
-    //broadcast -> error
+    broadcast [fontname="Helvetica"]
     broadcast -> end
     broadcast -> clear_addresses
-    broadcast -> read_states [weight=10]
+    broadcast -> read_state [weight=10]
 
+    action_process_sii [shape=point,label=""]
     action_process_sii -> write_sii
 
+    action_process_sdo [shape=point,label=""]
     action_process_sdo -> sdo_request
 
-    action_configure -> configure_slave
+    action_idle [shape=point,label=""]
+    action_idle -> action_process_sdo
+    action_idle -> sdo_dictionary
+    action_idle -> action_process_sii
+    action_idle -> end
 
-    action_process_states -> action_configure
-    action_process_states -> action_process_sdo
-    action_process_states -> sdo_dictionary
-    action_process_states -> action_process_sii
-    action_process_states -> end
+    action_next_slave_state [shape=point,label=""]
+    action_next_slave_state -> read_state
+    action_next_slave_state -> action_idle [weight=10]
+    
+    action_configure [shape=point,label=""]
+    action_configure -> configure_slave [weight=10]
+    action_configure -> action_next_slave_state
 
-    action_next_slave_state -> read_states
-    action_next_slave_state -> action_process_states
+    action_acknowledge [shape=point,label=""]
+    action_acknowledge -> acknowledge [weight=10]
+    action_acknowledge -> action_configure
+    action_acknowledge -> action_next_slave_state
 
-    //read_states -> error
-    read_states -> action_next_slave_state
-    read_states -> acknowledge
+    read_state [fontname="Helvetica"]
+    read_state -> action_acknowledge [weight=10]
 
-    //acknowledge -> error
-    acknowledge -> action_next_slave_state
+    acknowledge [fontname="Helvetica"]
+    acknowledge -> action_configure [weight=10]
 
-    //clear_addresses -> error
-    clear_addresses -> scan_slaves
+    clear_addresses [fontname="Helvetica"]
+    clear_addresses -> scan_slave [weight=10]
 
-    scan_slaves -> scan_slaves
-    scan_slaves -> end
+    scan_slave [fontname="Helvetica"]
+    scan_slave -> end
 
-    configure_slave -> action_configure
-    configure_slave -> end
+    configure_slave [fontname="Helvetica"]
+    configure_slave -> action_next_slave_state [weight=10]
 
-    //write_sii -> error
+    write_sii [fontname="Helvetica"]
     write_sii -> action_process_sii
     write_sii -> end
 
-    //sdo_dictionary -> error
+    sdo_dictionary [fontname="Helvetica"]
     sdo_dictionary -> end
 
-    //sdo_request -> error
+    sdo_request [fontname="Helvetica"]
     sdo_request -> action_process_sdo
     sdo_request -> end
 
-    //error -> start
-
-    //end -> start
+    end [fontname="Helvetica"]
 }

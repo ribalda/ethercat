@@ -20,10 +20,11 @@ Version 1.4.0:
   portability.
 * Remove ecdb.h and let lsec output PDO information 'cut-and-pastable' for
   applications.
+* Scanning of Sdo dictionary / writing EEPROM in OPERATION state.
+* Remove the end state of the master state machine.
 * SDO write access in sysfs.
 * Update documentation.
 * Supply new ec_master_state_t.
-* Scanning of Sdo dictionary / writing EEPROM in OPERATION state.
 * Adapt remaining examples.
 * READMEs for examples.
 * Separate Pdo and Pdo entry classes.
@@ -31,12 +32,11 @@ Version 1.4.0:
 * Wait for bus scanning, even when link is not up at ecrt_request_master().
 * Implement ecrt_slave_config_state().
 * Add something like lsec -n to show numeric vendor IDs.
-* Remove the end state of the master state machine.
-* Check the position of the acknowledge state.
 * Remove the xmldev files.
 * Separate CoE debugging.
 * Make ecrt_master_slave_config() return no error when slave is not present
   or invalid.
+* Evaluate EEPROM contents after writing.
 
 Future issues:
 
@@ -45,7 +45,6 @@ Future issues:
   kernel threads to user space daemon with a TCP interface replacing the
   cdev).
 * Mailbox gateway.
-* Slave-to-slave communication.
 * Redundancy with 2 network adapters.
 * Interface/buffers for asynchronous domain IO.
 
@@ -54,14 +53,9 @@ Smaller issues:
 * Evaluate SII Size field (0x003E) to determine maximum SII memory size.
 * Unite fsm_pdo_mapping, fsm_pdo_config and fsm_coe_map.
 * Clear sync managers in INIT.
-* Simplify FSMs with <state>_enter() functions.
 * Read out CRC counters.
 * Optimize alignment of process data.
-* Evaluate EEPROM contents after writing.
 * Configure slave ports to automatically open on link detection.
-* Interrupt master state machines state scan for other jobs.
-* Master state machine, slave configuration: Do not check every slave on
-  a cycle.
 * Only execute one EoE handler per EoE cycle.
 
 Less important issues:
