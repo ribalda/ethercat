@@ -85,6 +85,7 @@
  * - Added an Sdo access interface, working with Sdo requests. These can be
  *   scheduled for reading and writing during realtime operation.
  * - Exported ecrt_slave_config_sdo(), the generic Sdo configuration function.
+ * - Removed the bus_state and bus_tainted flags from ec_master_state_t.
  *
  * @{
  */
@@ -148,28 +149,11 @@ typedef struct ec_sdo_request ec_sdo_request_t; /**< \see ec_sdo_request. */
 
 /*****************************************************************************/
 
-/** Bus state.
- *
- * This is used in ec_master_state_t.
- *
- * \deprecated
- * \todo remove
- */
-typedef enum {
-    EC_BUS_FAILURE = -1, /**< At least one configured slave is offline. */
-    EC_BUS_OK            /**< All configured slaves are online. */
-} ec_bus_state_t;
-
-/*****************************************************************************/
-
 /** Master state.
  *
  * This is used for the output parameter of ecrt_master_state().
  */
 typedef struct {
-    ec_bus_state_t bus_state; /**< \see ec_bus_state_t */
-    unsigned int bus_tainted; /**< Non-zero, if the bus topology differs from
-                                the requested configuration. */
     unsigned int slaves_responding; /**< Number of slaves in the bus. */
 } ec_master_state_t;
 

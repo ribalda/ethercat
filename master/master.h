@@ -104,14 +104,14 @@ struct ec_master {
     struct list_head configs; /**< Bus configuration list. */
     unsigned int configs_attached; /**< Slave configurations were attached. */
     
-    ec_request_state_t scan_state; /**< current scanning state */
+    unsigned int scan_busy; /**< Current scan state. */
     unsigned int allow_scan; /**< non-zero, if slave scanning is allowed */
     struct semaphore scan_sem; /**< semaphore protecting the scan_state
                                  variable and the allow_scan flag */
     wait_queue_head_t scan_queue; /**< queue for processes that wait for
                                     slave scanning */
 
-    ec_request_state_t config_state; /**< state of slave configuration */
+    unsigned int config_busy; /**< State of slave configuration. */
     unsigned int allow_config; /**< non-zero, if slave scanning is allowed */
     struct semaphore config_sem; /**< semaphore protecting the config_state
                                    variable and the allow_config flag */
@@ -125,9 +125,6 @@ struct ec_master {
 
     int debug_level; /**< master debug level */
     ec_stats_t stats; /**< cyclic statistics */
-    unsigned int pdo_slaves_offline; /**< number of slaves, for which Pdos
-                                       were registered and that are offline
-                                       (used for bus status) */
     unsigned int frames_timed_out; /**< there were frame timeouts in the last
                                      call to ecrt_master_receive() */
 

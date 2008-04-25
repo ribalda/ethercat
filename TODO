@@ -8,31 +8,39 @@ $Id$
 
 Version 1.4.0:
 
-* Remove bus validation; make bus scanning possible at any time.
 * Remove self_configured flag to avoid unnecessary process data
   interruptions.
 * Replace Sysfs interface with cdev and a user space program
   to replace lsec; move a few sysfs attributes to proc.
+* Implement realtime interface via cdev.
 * Make scanning and configuration run parallel (each).
-* Improve slave config allow flag and completion object.
 * Mailbox state machine using toggle bits.
 * Mailbox protocol handlers.
-* READMEs for examples.
 * Remove get_cycles() calls and references to cpu_khz to increase
   portability.
 * Remove ecdb.h and let lsec output PDO information 'cut-and-pastable' for
   applications.
 * SDO write access in sysfs.
 * Update documentation.
-* Do not configure in ecrt_master_activate(), but later in the state machine.
 * Supply new ec_master_state_t.
 * Scanning of Sdo dictionary / writing EEPROM in OPERATION state.
 * Adapt remaining examples.
+* READMEs for examples.
 * Separate Pdo and Pdo entry classes.
 * Attach Pdo names.
 * Wait for bus scanning, even when link is not up at ecrt_request_master().
 * Implement ecrt_slave_config_state().
 * Add something like lsec -n to show numeric vendor IDs.
+* Remove the end state of the master state machine.
+* Rename the sdodict state to sdo_dictionary.
+* Check the position of the acknowledge state.
+* Remove the xmldev files.
+* Remove some debugging (add_sync_manager, clearing station addresses).
+* Rename "Scanning pdo mapping/configuration".
+* Separate CoE debugging.
+* Make ecrt_master_slave_config() return no error when slave is not present
+  or invalid.
+* Remove ec_master_prepare().
 
 Future issues:
 

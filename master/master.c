@@ -126,12 +126,12 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     
     INIT_LIST_HEAD(&master->configs);
 
-    master->scan_state = EC_REQUEST_SUCCESS;
+    master->scan_busy = 0;
     master->allow_scan = 1;
     init_MUTEX(&master->scan_sem);
     init_waitqueue_head(&master->scan_queue);
 
-    master->config_state = EC_REQUEST_SUCCESS;
+    master->config_busy = 0;
     master->allow_config = 1;
     init_MUTEX(&master->config_sem);
     init_waitqueue_head(&master->config_queue);
@@ -146,7 +146,6 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     master->stats.corrupted = 0;
     master->stats.unmatched = 0;
     master->stats.output_jiffies = 0;
-    master->pdo_slaves_offline = 0; // assume all Pdo slaves online
     master->frames_timed_out = 0;
 
     for (i = 0; i < HZ; i++) {
@@ -442,36 +441,38 @@ int ec_master_enter_operation_mode(ec_master_t *master /**< EtherCAT master */)
 
     down(&master->config_sem);
     master->allow_config = 0; // temporarily disable slave configuration
-    up(&master->config_sem);
+    if (master->config_busy) {
+        up(&master->config_sem);
 
-    // wait for slave configuration to complete
-    if (wait_event_interruptible(master->config_queue,
-                master->config_state != EC_REQUEST_BUSY)) {
-        EC_INFO("Finishing slave configuration interrupted by signal.\n");
-        goto out_allow;
+        // wait for slave configuration to complete
+        if (wait_event_interruptible(master->config_queue,
+                    !master->config_busy)) {
+            EC_INFO("Finishing slave configuration interrupted by signal.\n");
+            goto out_allow;
+        }
+
+        if (master->debug_level)
+            EC_DBG("Waiting for pending slave configuration returned.\n");
+    } else {
+        up(&master->config_sem);
     }
 
-    if (master->debug_level)
-        EC_DBG("Waiting for pending slave configuration returned.\n");
-
-    if (master->debug_level)
-        EC_DBG("Disable scanning, current scan state: %u\n",
-                master->scan_state);
     down(&master->scan_sem);
     master->allow_scan = 0; // 'lock' the slave list
-    up(&master->scan_sem);
+    if (!master->scan_busy) {
+        up(&master->scan_sem);
+    } else {
+        up(&master->scan_sem);
 
-    if (master->scan_state == EC_REQUEST_BUSY) {
         // wait for slave scan to complete
-        if (wait_event_interruptible(master->scan_queue,
-                    master->scan_state != EC_REQUEST_BUSY)) {
+        if (wait_event_interruptible(master->scan_queue, !master->scan_busy)) {
             EC_INFO("Waiting for slave scan interrupted by signal.\n");
             goto out_allow;
         }
+        
+        if (master->debug_level)
+            EC_DBG("Waiting for pending slave scan returned.\n");
     }
-
-    if (master->debug_level)
-        EC_DBG("Waiting for pending slave scan returned.\n");
 
     // set states for all slaves
     list_for_each_entry(slave, &master->slaves, list) {
@@ -1005,11 +1006,6 @@ ssize_t ec_master_info(ec_master_t *master, /**< EtherCAT master */
 
     off += sprintf(buffer + off, "\nSlaves: %i\n",
                    master->slave_count);
-    off += sprintf(buffer + off, "Status: %s\n",
-                   master->fsm.tainted ? "TAINTED" : "sane");
-    off += sprintf(buffer + off, "Pdo slaves: %s\n",
-                   master->pdo_slaves_offline ? "INCOMPLETE" : "online");
-
     off += sprintf(buffer + off, "\nDevices:\n");
     
     down(&master->device_sem);
@@ -1349,26 +1345,9 @@ int ecrt_master_activate(ec_master_t *master)
         domain_offset += domain->data_size;
     }
 
-    // request slave configuration
-    down(&master->config_sem);
     master->allow_config = 1; // request the current configuration
-    up(&master->config_sem);
+    master->allow_scan = 1; // allow re-scanning on topology change
 
-    if (master->main_device.link_state) {
-        // wait for configuration to complete
-        master->config_state = EC_REQUEST_BUSY;
-        if (wait_event_interruptible(master->config_queue,
-                    master->config_state != EC_REQUEST_BUSY)) {
-            EC_INFO("Waiting for configuration interrupted by signal.\n");
-            return -1;
-        }
-
-        if (master->config_state != EC_REQUEST_SUCCESS) {
-            EC_ERR("Failed to configure slaves.\n");
-            return -1;
-        }
-    }
-    
     // restart EoE process and master thread with new locking
 #ifdef EC_EOE
     ec_master_eoe_stop(master);
@@ -1390,6 +1369,7 @@ int ecrt_master_activate(ec_master_t *master)
         EC_ERR("Failed to start master thread!\n");
         return -1;
     }
+
 #ifdef EC_EOE
     ec_master_eoe_start(master);
 #endif
@@ -1532,10 +1512,6 @@ void ecrt_master_callbacks(ec_master_t *master, int (*request_cb)(void *),
 
 void ecrt_master_state(const ec_master_t *master, ec_master_state_t *state)
 {
-    state->bus_state =
-        (master->pdo_slaves_offline || master->frames_timed_out)
-        ? EC_BUS_FAILURE : EC_BUS_OK;
-    state->bus_tainted = master->fsm.tainted; 
     state->slaves_responding = master->fsm.slaves_responding;
 }
 

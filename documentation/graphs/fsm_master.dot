@@ -11,7 +11,6 @@ digraph master {
     action_configure [shape=point,label=""]
     action_next_slave_state [shape=point,label=""]
     action_process_states [shape=point,label=""]
-    action_addresses [shape=point,label=""]
 
     start -> broadcast [weight=10]
 
@@ -33,7 +32,6 @@ digraph master {
     action_process_states -> end
 
     action_next_slave_state -> read_states
-    action_next_slave_state -> validate_vendor
     action_next_slave_state -> action_process_states
 
     //read_states -> error
@@ -42,20 +40,6 @@ digraph master {
 
     //acknowledge -> error
     acknowledge -> action_next_slave_state
-
-    //validate_vendor -> error
-    validate_vendor -> validate_product
-
-    action_addresses -> end
-    action_addresses -> rewrite_addresses
-
-    //validate_product -> error
-    validate_product -> action_addresses
-    validate_product -> validate_vendor
-
-    //rewrite_addresses -> error
-    rewrite_addresses -> end
-    rewrite_addresses -> action_addresses
 
     //clear_addresses -> error
     clear_addresses -> scan_slaves

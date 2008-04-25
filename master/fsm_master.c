@@ -54,9 +54,6 @@ void ec_fsm_master_state_start(ec_fsm_master_t *);
 void ec_fsm_master_state_broadcast(ec_fsm_master_t *);
 void ec_fsm_master_state_read_states(ec_fsm_master_t *);
 void ec_fsm_master_state_acknowledge(ec_fsm_master_t *);
-void ec_fsm_master_state_validate_vendor(ec_fsm_master_t *);
-void ec_fsm_master_state_validate_product(ec_fsm_master_t *);
-void ec_fsm_master_state_rewrite_addresses(ec_fsm_master_t *);
 void ec_fsm_master_state_configure_slave(ec_fsm_master_t *);
 void ec_fsm_master_state_clear_addresses(ec_fsm_master_t *);
 void ec_fsm_master_state_scan_slaves(ec_fsm_master_t *);
@@ -84,8 +81,6 @@ void ec_fsm_master_init(ec_fsm_master_t *fsm, /**< master state machine */
     fsm->slaves_responding = 0;
     fsm->topology_change_pending = 0;
     fsm->slave_states = EC_SLAVE_STATE_UNKNOWN;
-    fsm->validate = 0;
-    fsm->tainted = 0;
 
     // init sub-state-machines
     ec_fsm_slave_config_init(&fsm->fsm_slave_config, fsm->datagram);
@@ -212,16 +207,6 @@ void ec_fsm_master_state_broadcast(ec_fsm_master_t *fsm /**< master state machin
         EC_INFO("%u slave%s responding.\n",
                 fsm->slaves_responding,
                 fsm->slaves_responding == 1 ? "" : "s");
-
-        if (master->mode == EC_MASTER_MODE_OPERATION) {
-            if (fsm->slaves_responding == master->slave_count) {
-                fsm->validate = 1; // start validation later
-            }
-            else {
-                EC_WARN("Invalid slave count. Bus in tainted state.\n");
-                fsm->tainted = 1;
-            }
-        }
     }
 
     // slave states changed?
@@ -236,15 +221,13 @@ void ec_fsm_master_state_broadcast(ec_fsm_master_t *fsm /**< master state machin
         down(&master->scan_sem);
         if (!master->allow_scan) {
             up(&master->scan_sem);
-        }
-        else {
-            master->scan_state = EC_REQUEST_BUSY;
+        } else {
+            master->scan_busy = 1;
             up(&master->scan_sem);
             
             // topology change when scan is allowed:
             // clear all slaves and scan the bus
             fsm->topology_change_pending = 0;
-            fsm->tainted = 0;
             fsm->idle = 0;
             fsm->scan_jiffies = jiffies;
 
@@ -258,7 +241,7 @@ void ec_fsm_master_state_broadcast(ec_fsm_master_t *fsm /**< master state machin
 
             if (!master->slave_count) {
                 // no slaves present -> finish state machine.
-                master->scan_state = EC_REQUEST_SUCCESS;
+                master->scan_busy = 0;
                 wake_up_interruptible(&master->scan_queue);
                 fsm->state = ec_fsm_master_state_end;
                 return;
@@ -270,7 +253,7 @@ void ec_fsm_master_state_broadcast(ec_fsm_master_t *fsm /**< master state machin
                                 GFP_ATOMIC))) {
                     EC_ERR("Failed to allocate slave %i!\n", i);
                     ec_master_destroy_slaves(master);
-                    master->scan_state = EC_REQUEST_FAILURE;
+                    master->scan_busy = 0;
                     wake_up_interruptible(&master->scan_queue);
                     fsm->state = ec_fsm_master_state_error;
                     return;
@@ -279,7 +262,7 @@ void ec_fsm_master_state_broadcast(ec_fsm_master_t *fsm /**< master state machin
                 if (ec_slave_init(slave, master, i, i + 1)) {
                     // freeing of "slave" already done
                     ec_master_destroy_slaves(master);
-                    master->scan_state = EC_REQUEST_FAILURE;
+                    master->scan_busy = 0;
                     wake_up_interruptible(&master->scan_queue);
                     fsm->state = ec_fsm_master_state_error;
                     return;
@@ -504,10 +487,7 @@ int ec_fsm_master_action_configure(
         return 1;
     }
 
-    if (fsm->config_error)
-        master->config_state = EC_REQUEST_FAILURE;
-    else
-        master->config_state = EC_REQUEST_SUCCESS;
+    master->config_busy = 0;
     wake_up_interruptible(&master->config_queue);
     return 0;
 }
@@ -526,12 +506,12 @@ void ec_fsm_master_action_process_states(ec_fsm_master_t *fsm
     ec_master_t *master = fsm->master;
     ec_slave_t *slave;
 
+    // Start slave configuration, if it is allowed.
     down(&master->config_sem);
     if (!master->allow_config) {
         up(&master->config_sem);
     } else {
-        master->config_state = EC_REQUEST_BUSY;
-        fsm->config_error = 0;
+        master->config_busy = 1;
         up(&master->config_sem);
 
         // check for pending slave configurations
@@ -603,25 +583,6 @@ void ec_fsm_master_action_next_slave_state(ec_fsm_master_t *fsm
     }
 
     // all slave states read
-
-    // check, if a bus validation has to be done
-    if (fsm->validate) {
-        fsm->validate = 0;
-        list_for_each_entry(slave, &master->slaves, list) {
-            if (slave->online_state == EC_SLAVE_ONLINE) continue;
-
-            // At least one slave is offline. validate!
-            EC_INFO("Validating bus.\n");
-            fsm->idle = 0;
-            fsm->slave = list_entry(master->slaves.next, ec_slave_t, list);
-            fsm->state = ec_fsm_master_state_validate_vendor;
-            ec_fsm_sii_read(&fsm->fsm_sii, slave, 0x0008,
-                    EC_FSM_SII_USE_INCREMENT_ADDRESS);
-            ec_fsm_sii_exec(&fsm->fsm_sii); // execute immediately
-            return;
-        }
-    }
-
     ec_fsm_master_action_process_states(fsm);
 }
 
@@ -699,162 +660,6 @@ void ec_fsm_master_state_acknowledge(ec_fsm_master_t *fsm /**< master state mach
 /*****************************************************************************/
 
 /**
-   Master state: VALIDATE_VENDOR.
-   Validates the vendor ID of a slave.
-*/
-
-void ec_fsm_master_state_validate_vendor(ec_fsm_master_t *fsm /**< master state machine */)
-{
-    ec_slave_t *slave = fsm->slave;
-
-    if (ec_fsm_sii_exec(&fsm->fsm_sii)) return;
-
-    if (!ec_fsm_sii_success(&fsm->fsm_sii)) {
-        fsm->slave->error_flag = 1;
-        EC_ERR("Failed to validate vendor ID of slave %i.\n",
-               slave->ring_position);
-        fsm->state = ec_fsm_master_state_error;
-        return;
-    }
-
-    if (EC_READ_U32(fsm->fsm_sii.value) != slave->sii.vendor_id) {
-        EC_ERR("Slave %i has an invalid vendor ID!\n", slave->ring_position);
-        fsm->state = ec_fsm_master_state_error;
-        return;
-    }
-
-    // vendor ID is ok. check product code.
-    fsm->state = ec_fsm_master_state_validate_product;
-    ec_fsm_sii_read(&fsm->fsm_sii, slave, 0x000A,
-            EC_FSM_SII_USE_INCREMENT_ADDRESS);
-    ec_fsm_sii_exec(&fsm->fsm_sii); // execute immediately
-}
-
-/*****************************************************************************/
-
-/**
-   Master action: ADDRESS.
-   Looks for slave, that have lost their configuration and writes
-   their station address, so that they can be reconfigured later.
-*/
-
-void ec_fsm_master_action_addresses(ec_fsm_master_t *fsm /**< master state machine */)
-{
-    ec_datagram_t *datagram = fsm->datagram;
-
-    while (fsm->slave->online_state == EC_SLAVE_ONLINE) {
-        if (fsm->slave->list.next == &fsm->master->slaves) { // last slave?
-            fsm->state = ec_fsm_master_state_end;
-            return;
-        }
-        // check next slave
-        fsm->slave = list_entry(fsm->slave->list.next, ec_slave_t, list);
-    }
-
-    if (fsm->master->debug_level)
-        EC_DBG("Reinitializing slave %i.\n", fsm->slave->ring_position);
-
-    // write station address
-    ec_datagram_apwr(datagram, fsm->slave->ring_position, 0x0010, 2);
-    EC_WRITE_U16(datagram->data, fsm->slave->station_address);
-    fsm->retries = EC_FSM_RETRIES;
-    fsm->state = ec_fsm_master_state_rewrite_addresses;
-}
-
-/*****************************************************************************/
-
-/**
-   Master state: VALIDATE_PRODUCT.
-   Validates the product ID of a slave.
-*/
-
-void ec_fsm_master_state_validate_product(ec_fsm_master_t *fsm /**< master state machine */)
-{
-    ec_slave_t *slave = fsm->slave;
-
-    if (ec_fsm_sii_exec(&fsm->fsm_sii)) return;
-
-    if (!ec_fsm_sii_success(&fsm->fsm_sii)) {
-        fsm->slave->error_flag = 1;
-        EC_ERR("Failed to validate product code of slave %i.\n",
-               slave->ring_position);
-        fsm->state = ec_fsm_master_state_error;
-        return;
-    }
-
-    if (EC_READ_U32(fsm->fsm_sii.value) != slave->sii.product_code) {
-        EC_ERR("Slave %i: invalid product code!\n", slave->ring_position);
-        EC_ERR("expected 0x%08X, got 0x%08X.\n", slave->sii.product_code,
-               EC_READ_U32(fsm->fsm_sii.value));
-        fsm->state = ec_fsm_master_state_error;
-        return;
-    }
-
-    // have all states been validated?
-    if (slave->list.next == &fsm->master->slaves) {
-        fsm->topology_change_pending = 0;
-        fsm->tainted = 0;
-        fsm->slave = list_entry(fsm->master->slaves.next, ec_slave_t, list);
-        // start writing addresses to offline slaves
-        ec_fsm_master_action_addresses(fsm);
-        return;
-    }
-
-    // validate next slave
-    fsm->slave = list_entry(fsm->slave->list.next, ec_slave_t, list);
-    fsm->state = ec_fsm_master_state_validate_vendor;
-    ec_fsm_sii_read(&fsm->fsm_sii, slave, 0x0008,
-            EC_FSM_SII_USE_INCREMENT_ADDRESS);
-    ec_fsm_sii_exec(&fsm->fsm_sii); // execute immediately
-}
-
-/*****************************************************************************/
-
-/**
-   Master state: REWRITE ADDRESS.
-   Checks, if the new station address has been written to the slave.
-*/
-
-void ec_fsm_master_state_rewrite_addresses(ec_fsm_master_t *fsm
-                                     /**< master state machine */
-                                     )
-{
-    ec_slave_t *slave = fsm->slave;
-    ec_datagram_t *datagram = fsm->datagram;
-
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
-        return;
-
-    if (datagram->state != EC_DATAGRAM_RECEIVED) {
-        EC_ERR("Failed to receive address datagram for slave %i"
-                " (datagram state %i).\n",
-                slave->ring_position, datagram->state);
-        fsm->state = ec_fsm_master_state_error;
-        return;
-    }
-
-    if (datagram->working_counter != 1) {
-        EC_ERR("Failed to write station address of slave %i: ",
-               slave->ring_position);
-        ec_datagram_print_wc_error(datagram);
-        fsm->state = ec_fsm_master_state_error;
-        return;
-    }
-
-    if (fsm->slave->list.next == &fsm->master->slaves) { // last slave?
-        fsm->state = ec_fsm_master_state_end;
-        return;
-    }
-
-    // check next slave
-    fsm->slave = list_entry(fsm->slave->list.next, ec_slave_t, list);
-    // Write new station address to slave
-    ec_fsm_master_action_addresses(fsm);
-}
-
-/*****************************************************************************/
-
-/**
  * Master state: CLEAR ADDRESSES.
  */
 
@@ -871,7 +676,7 @@ void ec_fsm_master_state_clear_addresses(
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         EC_ERR("Failed to receive address clearing datagram (state %i).\n",
                 datagram->state);
-        master->scan_state = EC_REQUEST_FAILURE;
+        master->scan_busy = 0;
         wake_up_interruptible(&master->scan_queue);
         fsm->state = ec_fsm_master_state_error;
         return;
@@ -915,13 +720,11 @@ void ec_fsm_master_state_scan_slaves(
         if (!(eoe = kmalloc(sizeof(ec_eoe_t), GFP_KERNEL))) {
             EC_ERR("Failed to allocate EoE handler memory for slave %u!\n",
                     slave->ring_position);
-        }
-        else if (ec_eoe_init(eoe, slave)) {
+        } else if (ec_eoe_init(eoe, slave)) {
             EC_ERR("Failed to init EoE handler for slave %u!\n",
                     slave->ring_position);
             kfree(eoe);
-        }
-        else {
+        } else {
             list_add_tail(&eoe->list, &master->eoe_handlers);
         }
     }
@@ -938,6 +741,9 @@ void ec_fsm_master_state_scan_slaves(
     EC_INFO("Bus scanning completed in %u ms.\n",
             (u32) (jiffies - fsm->scan_jiffies) * 1000 / HZ);
 
+    master->scan_busy = 0;
+    wake_up_interruptible(&master->scan_queue);
+
     // Attach slave configurations
     ec_master_attach_slave_configs(master);
 
@@ -945,9 +751,6 @@ void ec_fsm_master_state_scan_slaves(
     // check if EoE processing has to be started
     ec_master_eoe_start(master);
 #endif
-
-    master->scan_state = EC_REQUEST_SUCCESS;
-    wake_up_interruptible(&master->scan_queue);
 
     fsm->state = ec_fsm_master_state_end;
 }
@@ -966,8 +769,9 @@ void ec_fsm_master_state_configure_slave(ec_fsm_master_t *fsm
     if (ec_fsm_slave_config_exec(&fsm->fsm_slave_config)) // execute slave's state machine
         return;
 
-    if (!ec_fsm_slave_config_success(&fsm->fsm_slave_config))
-        fsm->config_error = 1;
+    if (!ec_fsm_slave_config_success(&fsm->fsm_slave_config)) {
+        // TODO: mark slave_config as failed.
+    }
 
     // configure next slave, if necessary
     if (ec_fsm_master_action_configure(fsm))

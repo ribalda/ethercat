@@ -90,10 +90,6 @@ struct ec_fsm_master {
     unsigned int slaves_responding; /**< number of responding slaves */
     unsigned int topology_change_pending; /**< bus topology changed */
     ec_slave_state_t slave_states; /**< states of responding slaves */
-    unsigned int validate; /**< non-zero, if validation to do */
-    unsigned int tainted; /**< non-zero, if the current bus topology does
-                            not meet the initial conditions */
-    unsigned int config_error; /**< error during slave configuration */
     ec_slave_t *slave; /**< current slave */
     ec_sii_write_request_t *sii_request; /**< SII write request */
     off_t sii_index; /**< index to SII write request data */

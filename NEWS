@@ -48,6 +48,7 @@ Changes in version 1.4.0:
       scheduled for reading and writing during realtime operation.
     - Exported ecrt_slave_config_sdo(), the generic Sdo configuration
       function.
+    - Removed the bus_state and bus_tainted flags from ec_master_state_t.
 * Mapping of Pdo entries is now supported.
 * Current Pdo assignment/mapping is now read via CoE during bus scan, using
   direct Sdo access, independent of the dictionary.
@@ -58,6 +59,12 @@ Changes in version 1.4.0:
     - Added e1000 driver for kernel 2.6.24, thanks to Matthias Luescher.
     - Added alpha support for the Reaktek r8169 chipset, thanks to Scott
       Hassan.
+* Removed the "bus validation" routines. Slave scanning is now done any time
+  the bus topology changes, even during realtime operation. Because of this,
+  the bus_tainted flag was deprecated and removed.
+* Slave configuration is not done during ecrt_master_activate() any more, but
+  later during realtime operation. The state of the configuration can be
+  queried via the ecrt_domain_state() and ecrt_slave_config_state() functions.
 * Added support for slaves that do not support the LRW datagram type. Separate
   domains have to be used for inputs and output.
 * Allow gaps in PDO mapping read from CoE.
