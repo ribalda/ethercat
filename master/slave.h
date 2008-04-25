@@ -173,8 +173,8 @@ struct ec_slave
     ec_slave_config_t *config; /**< Current configuration. */
     ec_slave_state_t requested_state; /**< Requested application state. */
     ec_slave_state_t current_state; /**< Current application state. */
-    unsigned int self_configured; /**< Slave was configured by this master. */
     unsigned int error_flag; /**< Stop processing after an error. */
+    unsigned int force_config; /**< Force (re-)configuration. */
 
     // base data
     uint8_t base_type; /**< slave type */

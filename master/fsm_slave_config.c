@@ -197,8 +197,6 @@ void ec_fsm_slave_config_state_init(ec_fsm_slave_config_t *fsm /**< slave state 
         return;
     }
 
-    slave->self_configured = 1;
-
     if (master->debug_level) {
         EC_DBG("Slave %i is now in INIT.\n", slave->ring_position);
     }

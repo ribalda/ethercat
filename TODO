@@ -8,8 +8,6 @@ $Id$
 
 Version 1.4.0:
 
-* Remove self_configured flag to avoid unnecessary process data
-  interruptions.
 * Replace Sysfs interface with cdev and a user space program
   to replace lsec; move a few sysfs attributes to proc.
 * Implement realtime interface via cdev.

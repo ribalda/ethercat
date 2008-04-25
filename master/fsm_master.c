@@ -261,6 +261,11 @@ void ec_fsm_master_state_broadcast(
                     return;
                 }
 
+                // do not force reconfiguration in operation mode to avoid
+                // unnecesssary process data interruptions
+                if (master->mode != EC_MASTER_MODE_OPERATION)
+                    slave->force_config = 1;
+
                 list_add_tail(&slave->list, &master->slaves);
             }
 
@@ -514,7 +519,7 @@ void ec_fsm_master_action_configure(
     // Does the slave have to be configured?
     if (!slave->error_flag
             && (slave->current_state != slave->requested_state
-                || !slave->self_configured)) {
+                || slave->force_config)) {
         // Start slave configuration, if it is allowed.
         down(&master->config_sem);
         if (!master->allow_config) {
@@ -524,18 +529,18 @@ void ec_fsm_master_action_configure(
             up(&master->config_sem);
 
             if (master->debug_level) {
-                char old_state[EC_STATE_STRING_SIZE];
+                char old_state[EC_STATE_STRING_SIZE],
+                     new_state[EC_STATE_STRING_SIZE];
                 ec_state_string(slave->current_state, old_state);
-                if (slave->current_state != slave->requested_state) {
-                    char new_state[EC_STATE_STRING_SIZE];
-                    ec_state_string(slave->requested_state, new_state);
-                    EC_DBG("Changing state of slave %u (%s -> %s).\n",
-                            slave->ring_position, old_state, new_state);
-                } else if (!slave->self_configured) {
-                    EC_DBG("Reconfiguring slave %u (%s).\n",
-                            slave->ring_position, old_state);
-                }
+                ec_state_string(slave->requested_state, new_state);
+                EC_DBG("Changing state of slave %u from %s to %s%s.\n",
+                        slave->ring_position, old_state, new_state,
+                        slave->force_config ? " (forced)" : "");
             }
+
+            // configuration will be done immediately; therefore reset the
+            // force flag
+            slave->force_config = 0;
 
             fsm->idle = 0;
             fsm->state = ec_fsm_master_state_configure_slave;
