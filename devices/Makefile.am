@@ -55,11 +55,7 @@ EXTRA_DIST = \
 	forcedeth-2.6.17-ethercat.c \
 	forcedeth-2.6.17-orig.c \
 	forcedeth-2.6.19-ethercat.c \
-	forcedeth-2.6.19-orig.c \
-    r8169-2.6.22-ethercat.c \
-    r8169-2.6.22-orig.c \
-    r8169-2.6.23-ethercat.c \
-    r8169-2.6.23-orig.c
+	forcedeth-2.6.19-orig.c
 
 modules:
 	$(MAKE) -C "@abs_top_srcdir@" modules
