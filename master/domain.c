@@ -196,10 +196,18 @@ void ec_domain_add_fmmu_config(
         ec_fmmu_config_t *fmmu /**< FMMU configuration. */
         )
 {
+    unsigned int wc_increment;
     fmmu->domain = domain;
 
     domain->data_size += fmmu->data_size;
-    domain->expected_working_counter += working_counter_increment[fmmu->dir];
+    wc_increment = working_counter_increment[fmmu->dir];
+    domain->expected_working_counter += wc_increment;
+
+    if (domain->master->debug_level)
+        EC_DBG("Domain %u: Added %u bytes (now %u) with dir %u -> WC %u"
+                " (now %u).\n", domain->index, fmmu->data_size,
+                domain->data_size, fmmu->dir, wc_increment,
+                domain->expected_working_counter);
 }
 
 /*****************************************************************************/
@@ -439,13 +447,14 @@ void ecrt_domain_process(ec_domain_t *domain)
         jiffies - domain->notify_jiffies > HZ) {
         domain->notify_jiffies = jiffies;
         if (domain->working_counter_changes == 1) {
-            EC_INFO("Domain %u working counter change: %u\n", domain->index,
-                    domain->working_counter);
+            EC_INFO("Domain %u: Working counter changed to %u/%u.\n",
+                    domain->index, domain->working_counter,
+                    domain->expected_working_counter);
         }
         else {
-            EC_INFO("Domain %u: %u working counter changes. Currently %u\n",
+            EC_INFO("Domain %u: %u working counter changes. Currently %u/%u.\n",
                     domain->index, domain->working_counter_changes,
-                    domain->working_counter);
+                    domain->working_counter, domain->expected_working_counter);
         }
         domain->working_counter_changes = 0;
     }

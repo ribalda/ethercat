@@ -1164,14 +1164,14 @@ ssize_t ec_store_slave_attribute(struct kobject *kobj, /**< slave's kobject */
 
 /*****************************************************************************/
 
-/**
- * Get the sync manager for either Rx- or Tx-Pdos.
+/** Get the sync manager for either Rx- or Tx-Pdos.
+ *
+ * \todo This seems not to be correct in every case...
  * \return pointer to sync manager, or NULL.
  */
-
 ec_sync_t *ec_slave_get_pdo_sync(
-        ec_slave_t *slave, /**< EtherCAT slave */
-        ec_direction_t dir /**< input or output */
+        ec_slave_t *slave, /**< EtherCAT slave. */
+        ec_direction_t dir /**< Input or output. */
         )
 {
     unsigned int sync_index;
@@ -1181,11 +1181,18 @@ ec_sync_t *ec_slave_get_pdo_sync(
         return NULL;
     }
 
-    sync_index = (unsigned int) dir;
-    if (slave->sii.mailbox_protocols) sync_index += 2;
+    if (slave->sii.sync_count != 1) {
+        sync_index = (unsigned int) dir;
+        if (slave->sii.mailbox_protocols) sync_index += 2;
 
-    if (sync_index >= slave->sii.sync_count)
-        return NULL;
+        if (sync_index >= slave->sii.sync_count)
+            return NULL;
+    } else { // sync_count == 1
+        // A single sync manager may be used for inputs OR outputs!
+        if (ec_sync_direction(&slave->sii.syncs[0]) != dir)
+            return NULL;
+        sync_index = 0;
+    }
 
     return &slave->sii.syncs[sync_index];
 }

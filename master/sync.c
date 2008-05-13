@@ -144,13 +144,22 @@ ec_direction_t ec_sync_direction(
 {
     int index = sync->index;
 
-    if (sync->slave && sync->slave->sii.mailbox_protocols) {
-        index -= 2;
-    }
+    if (sync->slave->sii.sync_count != 1) {
+        if (sync->slave && sync->slave->sii.mailbox_protocols) {
+            index -= 2;
+        }
 
-    if (index < 0 || index > 1) {
-        EC_WARN("ec_sync_get_direction(): invalid sync manager index.\n");
-        return EC_DIR_OUTPUT;
+        if (index < 0 || index > 1) {
+            EC_WARN("ec_sync_get_direction(): invalid sync manager index.\n");
+            return EC_DIR_OUTPUT;
+        }
+    } else { // sync_count == 1
+        if (!list_empty(&sync->pdos.list)) {
+            const ec_pdo_t *pdo =
+                list_entry(sync->pdos.list.next, ec_pdo_t, list);
+            return pdo->dir;
+        }
+        
     }
 
     return (ec_direction_t) index;
