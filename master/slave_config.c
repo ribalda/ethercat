@@ -193,10 +193,11 @@ void ec_slave_config_clear(struct kobject *kobj /**< kobject of the config. */)
  * is written to the slave during the configuration. The FMMU configuration
  * is done in a way, that the complete data range of the corresponding sync
  * manager is covered. Seperate FMMUs are configured for each domain. If the
- * FMMU configuration is already prepared, the function returns with success.
+ * FMMU configuration is already prepared, the function does nothing and
+ * returns with success.
  *
- * \retval >=0 Logical offset address.
- * \retval -1  FMMU limit reached.
+ * \retval >=0 Success, logical offset byte address.
+ * \retval -1  Error, FMMU limit reached.
  */
 int ec_slave_config_prepare_fmmu(
         ec_slave_config_t *sc, /**< Slave configuration. */
@@ -609,9 +610,33 @@ int ecrt_slave_config_reg_pdo_entry(
         ec_domain_t *domain /**< Domain. */
         )
 {
+    int ret = ecrt_slave_config_reg_pdo_entry_bitwise(
+            sc, index, subindex, domain);
+
+    if (ret < 0)
+        return ret;
+
+    if (ret % 8) {
+        EC_ERR("Bytewise Pdo entry registration requested, but the result is "
+                "not byte-aligned.\n");
+        return -3;
+    }
+
+    return ret / 8;
+}
+
+/*****************************************************************************/
+
+int ecrt_slave_config_reg_pdo_entry_bitwise(
+        ec_slave_config_t *sc, /**< Slave configuration. */
+        uint16_t index, /**< Index of Pdo entry to register. */
+        uint8_t subindex, /**< Subindex of Pdo entry to register. */
+        ec_domain_t *domain /**< Domain. */
+        )
+{
     ec_direction_t dir;
     ec_pdo_list_t *pdos;
-    unsigned int bit_offset, byte_offset;
+    unsigned int bit_offset;
     ec_pdo_t *pdo;
     ec_pdo_entry_t *entry;
     int ret;
@@ -635,10 +660,9 @@ int ecrt_slave_config_reg_pdo_entry(
     return -1;
 
 found:
-    byte_offset = bit_offset / 8;
     if ((ret = ec_slave_config_prepare_fmmu(sc, domain, dir)) < 0)
         return -2;
-    return ret + byte_offset;
+    return ret * 8 + bit_offset;
 }
 
 /*****************************************************************************/
