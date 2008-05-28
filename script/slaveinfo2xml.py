@@ -172,7 +172,7 @@ class Device:
 
         typeElement = doc.createElement('Type')
         typeElement.setAttribute('ProductCode', '#x%08x' % self.product)
-        typeElement.setAttribute('RevisionNumber', '#x%08x' % self.revision)
+        typeElement.setAttribute('RevisionNo', '#x%08x' % self.revision)
         deviceElement.appendChild(typeElement)
 
         for p in self.pdos:
