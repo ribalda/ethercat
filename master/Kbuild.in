@@ -59,8 +59,7 @@ ec_master-objs := \
     sdo_request.o \
     slave.o \
     slave_config.o \
-    sync.o \
-    xmldev.o
+    sync.o
 
 ifeq (@ENABLE_EOE@,1)
 	ec_master-objs += ethernet.o

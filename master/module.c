@@ -44,7 +44,6 @@
 #include "globals.h"
 #include "master.h"
 #include "device.h"
-#include "xmldev.h"
 
 /*****************************************************************************/
 
@@ -70,9 +69,6 @@ static unsigned int master_count; /**< Number of masters. */
 static unsigned int backup_count; /**< Number of backup devices. */
 
 static uint8_t macs[MAX_MASTERS][2][ETH_ALEN]; /**< MAC addresses. */
-
-static dev_t device_number; /**< XML character device number. */
-ec_xmldev_t xmldev; /**< XML character device. */
 
 char *ec_master_version_str = EC_MASTER_VERSION; /**< Version string. */
 
@@ -123,12 +119,6 @@ int __init ec_init_module(void)
         goto out_put;
     }
     
-    if (alloc_chrdev_region(&device_number, 0, 1, "EtherCAT")) {
-        EC_ERR("Failed to obtain device number!\n");
-        ret = -EBUSY;
-        goto out_del;
-    }
-
     // zero MAC addresses
     memset(macs, 0x00, sizeof(uint8_t) * MAX_MASTERS * 2 * ETH_ALEN);
 
@@ -136,12 +126,12 @@ int __init ec_init_module(void)
     for (i = 0; i < master_count; i++) {
         if (ec_mac_parse(macs[i][0], main_devices[i], 0)) {
             ret = -EINVAL;
-            goto out_cdev;
+            goto out_del;
         }
         
         if (i < backup_count && ec_mac_parse(macs[i][1], backup_devices[i], 1)) {
             ret = -EINVAL;
-            goto out_cdev;
+            goto out_del;
         }
     }
     
@@ -150,7 +140,7 @@ int __init ec_init_module(void)
                         GFP_KERNEL))) {
             EC_ERR("Failed to allocate memory for EtherCAT masters.\n");
             ret = -ENOMEM;
-            goto out_cdev;
+            goto out_del;
         }
     }
     
@@ -168,8 +158,6 @@ int __init ec_init_module(void)
 out_free_masters:
     for (i--; i >= 0; i--) ec_master_clear(&masters[i]);
     kfree(masters);
-out_cdev:
-    unregister_chrdev_region(device_number, 1);
 out_del:
     kobject_del(&kobj);
 out_put:
@@ -193,7 +181,6 @@ void __exit ec_cleanup_module(void)
     if (master_count)
         kfree(masters);
     
-    unregister_chrdev_region(device_number, 1);
     kobject_del(&kobj);
     kobject_put(&kobj);
 
