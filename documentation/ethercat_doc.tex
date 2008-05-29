@@ -33,6 +33,25 @@
   belowskip=2mm,gobble=2,escapechar=`}
 \renewcommand\lstlistlistingname{List of Listings}
 
+% Workaround for lstlistoflistings bug
+\makeatletter% --> De-TeX-FAQ
+\renewcommand*{\lstlistoflistings}{%
+  \begingroup
+    \if@twocolumn
+      \@restonecoltrue\onecolumn
+    \else
+      \@restonecolfalse
+    \fi
+    \lol@heading
+    \setlength{\parskip}{\z@}%
+    \setlength{\parindent}{\z@}%
+    \setlength{\parfillskip}{\z@ \@plus 1fil}%
+    \@starttoc{lol}%
+    \if@restonecol\twocolumn\fi
+  \endgroup
+}
+\makeatother% --> \makeatletter
+
 \renewcommand\nomname{Glossary}
 
 \newcommand{\IgH}{\raisebox{-0.7667ex}
@@ -44,7 +63,7 @@
 \newcommand{\masterversion}{1.1.1}
 
 \makeindex
-\makeglossary
+\makenomenclature
 
 %------------------------------------------------------------------------------
 
@@ -5073,7 +5092,7 @@ concurrent master access. Below are exerpts of an example coding:
   DIAPM. URL: http://www.rtai.org, 2006.
 \end{thebibliography}
 
-\printglossary
+\printnomenclature
 \addcontentsline{toc}{chapter}{\nomname}
 \markleft{\nomname}
 
