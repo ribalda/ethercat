@@ -8,30 +8,32 @@ $Id$
 
 Version 1.4.0:
 
-* Remove the end state of the master state machine.
 * Remove the xmldev files.
+* Replace Sysfs interface with cdev and a user space program
+  to replace lsec; move a few sysfs attributes to proc.
+* Remove the end state of the master state machine.
 * Supply new ec_master_state_t.
 * Implement ecrt_slave_config_state().
 * Make ecrt_master_slave_config() return no error when slave is not present
   or invalid.
 * Remove get_cycles() calls and references to cpu_khz to increase
   portability.
-* Replace Sysfs interface with cdev and a user space program
-  to replace lsec; move a few sysfs attributes to proc.
-* Implement realtime interface via cdev.
-* Make scanning and configuration run parallel (each).
-* Mailbox state machine using toggle bits.
-* Mailbox protocol handlers.
-* SDO write access in sysfs.
-* Update documentation.
 * Adapt remaining examples.
 * READMEs for examples.
-* Separate Pdo and Pdo entry classes.
-* Attach Pdo names.
+* Update documentation.
+
+* SDO write access.
 * Wait for bus scanning, even when link is not up at ecrt_request_master().
+* Attach Pdo names.
+* Separate Pdo and Pdo entry classes.
+* Mailbox protocol handlers.
+* Mailbox state machine using toggle bits.
+* Make scanning and configuration run parallel (each).
+* Implement realtime interface via cdev.
 * Add something like lsec -n to show numeric vendor IDs.
 * Separate CoE debugging.
 * Evaluate EEPROM contents after writing.
+* Optimize alignment of process data.
 
 Future issues:
 
@@ -49,7 +51,6 @@ Smaller issues:
 * Unite fsm_pdo_mapping, fsm_pdo_config and fsm_coe_map.
 * Clear sync managers in INIT.
 * Read out CRC counters.
-* Optimize alignment of process data.
 * Configure slave ports to automatically open on link detection.
 * Only execute one EoE handler per EoE cycle.
 
