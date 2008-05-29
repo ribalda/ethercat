@@ -60,8 +60,7 @@ EXTRA_DIST = \
 	sdo_request.c sdo_request.h \
 	slave.c slave.h \
 	slave_config.c slave_config.h \
-	sync.c sync.h \
-	xmldev.c xmldev.h
+	sync.c sync.h
 
 modules:
 	$(MAKE) -C "@abs_top_srcdir@" modules

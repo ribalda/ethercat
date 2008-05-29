@@ -49,7 +49,6 @@
 
 #------------------------------------------------------------------------------
 
-XMLDEVICE='ecxml'
 MODPROBE=/sbin/modprobe
 RMMOD=/sbin/rmmod
 MODINFO=/sbin/modinfo
@@ -180,15 +179,6 @@ start)
         exit_fail
     fi
 
-    # remove stale device node
-    rm -f /dev/${XMLDEVICE}0
-
-    # get dynamic major number
-    MAJOR=$(awk "\$2==\"EtherCAT\" {print \$1}" /proc/devices)
-
-    # create character device
-    mknod /dev/${XMLDEVICE}0 c ${MAJOR} 0
-
     # check for modules to replace
     for MODULE in ${DEVICE_MODULES}; do
         ECMODULE=ec_${MODULE}
@@ -222,9 +212,6 @@ stop)
             exit_fail
         fi;
     done
-
-    # remove device node
-    rm -f /dev/${XMLDEVICE}0
 
     sleep 1
 
