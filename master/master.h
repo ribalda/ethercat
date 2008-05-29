@@ -50,6 +50,7 @@
 #include "device.h"
 #include "domain.h"
 #include "fsm_master.h"
+#include "cdev.h"
 
 /*****************************************************************************/
 
@@ -83,6 +84,8 @@ struct ec_master {
     struct kobject kobj; /**< kobject */
     unsigned int index; /**< master index */
     unsigned int reserved; /**< non-zero, if the master is reserved for RT */
+
+    ec_cdev_t cdev; /**< Master character device. */
 
     ec_device_t main_device; /**< EtherCAT device */
     const uint8_t *main_mac; /**< MAC address of main device */
@@ -166,7 +169,7 @@ struct ec_master {
 
 // master creation/deletion
 int ec_master_init(ec_master_t *, struct kobject *, unsigned int,
-        const uint8_t *, const uint8_t *);
+        const uint8_t *, const uint8_t *, dev_t);
 void ec_master_clear(ec_master_t *);
 
 // mode transitions

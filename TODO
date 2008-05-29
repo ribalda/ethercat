@@ -8,8 +8,7 @@ $Id$
 
 Version 1.4.0:
 
-* Replace Sysfs interface with cdev and a user space program
-  to replace lsec; move a few sysfs attributes to proc.
+* Replace all Sysfs files via the new ethercat tool.
 * Remove the end state of the master state machine.
 * Supply new ec_master_state_t.
 * Implement ecrt_slave_config_state().

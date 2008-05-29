@@ -31,47 +31,12 @@
 #
 #------------------------------------------------------------------------------
 
-EXTRA_DIST = \
-	Kbuild.in \
-	cdev.c cdev.h \
-	datagram.c datagram.h \
-	debug.c	debug.h \
-	device.c device.h \
-	domain.c domain.h \
-	doxygen.c \
-	ethernet.c ethernet.h \
-	fmmu_config.c fmmu_config.h \
-	fsm_change.c fsm_change.h \
-	fsm_coe.c fsm_coe.h \
-	fsm_coe_map.c fsm_coe_map.h \
-	fsm_master.c fsm_master.h \
-	fsm_pdo_assign.c fsm_pdo_assign.h \
-	fsm_pdo_mapping.c fsm_pdo_mapping.h \
-	fsm_sii.c fsm_sii.h \
-	fsm_slave_config.c fsm_slave_config.h \
-	fsm_slave_scan.c fsm_slave_scan.h \
-	globals.h \
-	ioctl.h \
-	mailbox.c mailbox.h \
-	master.c master.h \
-	module.c \
-	pdo.c pdo.h \
-	pdo_list.c pdo_list.h \
-	sdo.c sdo.h \
-	sdo_entry.c sdo_entry.h \
-	sdo_request.c sdo_request.h \
-	slave.c slave.h \
-	slave_config.c slave_config.h \
-	sync.c sync.h
+bin_PROGRAMS = ethercat
 
-modules:
-	$(MAKE) -C "@abs_top_srcdir@" modules
+ethercat_SOURCES = \
+    Master.cpp Master.h \
+    main.cpp
 
-modules_install:
-	mkdir -p $(DESTDIR)$(LINUX_MOD_PATH)
-	cp $(srcdir)/ec_master.ko $(DESTDIR)$(LINUX_MOD_PATH)
-
-clean-local:
-	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" clean
+ethercat_CFLAGS = -I../master
 
 #------------------------------------------------------------------------------

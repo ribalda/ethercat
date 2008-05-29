@@ -31,9 +31,20 @@
 #
 #------------------------------------------------------------------------------
 
-SUBDIRS = master devices script include
+SUBDIRS = \
+    devices \
+    include \
+    master \
+    script \
+    tools
 
-DIST_SUBDIRS = master devices script include examples
+DIST_SUBDIRS = \
+    devices \
+    examples \
+    include \
+    master \
+    script \
+    tools
 
 EXTRA_DIST = \
 	Doxyfile \

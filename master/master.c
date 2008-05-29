@@ -105,7 +105,8 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
         struct kobject *module_kobj, /**< kobject of the master module */
         unsigned int index, /**< master index */
         const uint8_t *main_mac, /**< MAC address of main device */
-        const uint8_t *backup_mac /**< MAC address of backup device */
+        const uint8_t *backup_mac, /**< MAC address of backup device */
+        dev_t device_number /**< Character device number. */
         )
 {
     unsigned int i;
@@ -178,9 +179,13 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     init_MUTEX(&master->sdo_sem);
     init_waitqueue_head(&master->sdo_queue);
 
+    // init character device
+    if (ec_cdev_init(&master->cdev, master, device_number))
+        goto out_return;
+
     // init devices
     if (ec_device_init(&master->main_device, master))
-        goto out_return;
+        goto out_cdev;
 
     if (ec_device_init(&master->backup_device, master))
         goto out_clear_main;
@@ -222,6 +227,8 @@ out_clear_backup:
     ec_device_clear(&master->backup_device);
 out_clear_main:
     ec_device_clear(&master->main_device);
+out_cdev:
+    ec_cdev_clear(&master->cdev);
 out_return:
     return -1;
 }
@@ -248,6 +255,7 @@ void ec_master_clear(
     ec_datagram_clear(&master->fsm_datagram);
     ec_device_clear(&master->backup_device);
     ec_device_clear(&master->main_device);
+    ec_cdev_clear(&master->cdev);
 
     // destroy self
     kobject_del(&master->kobj);

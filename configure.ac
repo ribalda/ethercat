@@ -19,6 +19,8 @@ branch=trunk
 AC_DEFINE_UNQUOTED(BRANCH, ["$branch"], [Subversion branch])
 AC_SUBST(BRANCH, [$branch])
 
+AC_PROG_CXX
+
 #------------------------------------------------------------------------------
 # Linux sources
 #------------------------------------------------------------------------------
@@ -510,6 +512,7 @@ AC_CONFIG_FILES([
         script/Makefile
         script/init.d/Makefile
         script/sysconfig/Makefile
+        tools/Makefile
 ])
 AC_OUTPUT
 

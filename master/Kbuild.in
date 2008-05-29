@@ -36,6 +36,7 @@
 obj-m := ec_master.o
 
 ec_master-objs := \
+	cdev.o \
     datagram.o \
     device.o \
     domain.o \

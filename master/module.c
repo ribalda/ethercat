@@ -40,6 +40,7 @@
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/init.h>
+#include <linux/fs.h>
 
 #include "globals.h"
 #include "master.h"
@@ -68,6 +69,8 @@ static struct semaphore master_sem; /**< Master semaphore. */
 static unsigned int master_count; /**< Number of masters. */
 static unsigned int backup_count; /**< Number of backup devices. */
 
+static dev_t device_number; /**< Device number for cdevs. */
+
 static uint8_t macs[MAX_MASTERS][2][ETH_ALEN]; /**< MAC addresses. */
 
 char *ec_master_version_str = EC_MASTER_VERSION; /**< Version string. */
@@ -92,7 +95,7 @@ MODULE_PARM_DESC(backup_devices, "MAC addresses of backup devices");
 
 /** Module initialization.
  *
- * Initializes \a ec_master_count masters.
+ * Initializes \a master_count masters.
  * \return 0 on success, else < 0
  */
 int __init ec_init_module(void)
@@ -119,6 +122,12 @@ int __init ec_init_module(void)
         goto out_put;
     }
     
+    if (alloc_chrdev_region(&device_number, 0, master_count, "EtherCAT")) {
+        EC_ERR("Failed to obtain device number(s)!\n");
+        ret = -EBUSY;
+        goto out_del;
+    }
+
     // zero MAC addresses
     memset(macs, 0x00, sizeof(uint8_t) * MAX_MASTERS * 2 * ETH_ALEN);
 
@@ -126,12 +135,12 @@ int __init ec_init_module(void)
     for (i = 0; i < master_count; i++) {
         if (ec_mac_parse(macs[i][0], main_devices[i], 0)) {
             ret = -EINVAL;
-            goto out_del;
+            goto out_cdev;
         }
         
         if (i < backup_count && ec_mac_parse(macs[i][1], backup_devices[i], 1)) {
             ret = -EINVAL;
-            goto out_del;
+            goto out_cdev;
         }
     }
     
@@ -140,12 +149,13 @@ int __init ec_init_module(void)
                         GFP_KERNEL))) {
             EC_ERR("Failed to allocate memory for EtherCAT masters.\n");
             ret = -ENOMEM;
-            goto out_del;
+            goto out_cdev;
         }
     }
     
     for (i = 0; i < master_count; i++) {
-        if (ec_master_init(&masters[i], &kobj, i, macs[i][0], macs[i][1])) {
+        if (ec_master_init(&masters[i], &kobj, i, macs[i][0], macs[i][1],
+                device_number)) {
             ret = -EIO;
             goto out_free_masters;
         }
@@ -158,6 +168,8 @@ int __init ec_init_module(void)
 out_free_masters:
     for (i--; i >= 0; i--) ec_master_clear(&masters[i]);
     kfree(masters);
+out_cdev:
+    unregister_chrdev_region(device_number, master_count);
 out_del:
     kobject_del(&kobj);
 out_put:
@@ -180,6 +192,8 @@ void __exit ec_cleanup_module(void)
     }
     if (master_count)
         kfree(masters);
+
+    unregister_chrdev_region(device_number, master_count);
     
     kobject_del(&kobj);
     kobject_put(&kobj);
