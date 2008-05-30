@@ -1200,28 +1200,6 @@ ec_sync_t *ec_slave_get_pdo_sync(
 /*****************************************************************************/
 
 /**
-   \return 0 in case of success, else < 0
-*/
-
-int ec_slave_validate(const ec_slave_t *slave, /**< EtherCAT slave */
-                      uint32_t vendor_id, /**< vendor ID */
-                      uint32_t product_code /**< product code */
-                      )
-{
-    if (vendor_id != slave->sii.vendor_id ||
-        product_code != slave->sii.product_code) {
-        EC_ERR("Invalid slave type at position %u:\n", slave->ring_position);
-        EC_ERR("  Requested: 0x%08X 0x%08X\n", vendor_id, product_code);
-        EC_ERR("      Found: 0x%08X 0x%08X\n",
-                slave->sii.vendor_id, slave->sii.product_code);
-        return -1;
-    }
-    return 0;
-}
-
-/*****************************************************************************/
-
-/**
    Counts the total number of Sdos and entries in the dictionary.
 */
 
