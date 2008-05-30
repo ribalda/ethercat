@@ -101,7 +101,7 @@ int ec_sdo_entry_init(
     kobject_init(&entry->kobj);
     entry->kobj.ktype = &ktype_ec_sdo_entry;
     entry->kobj.parent = &sdo->kobj;
-    if (kobject_set_name(&entry->kobj, "%i", entry->subindex)) {
+    if (kobject_set_name(&entry->kobj, "%02X", entry->subindex)) {
         EC_ERR("Failed to set kobj name.\n");
         kobject_put(&entry->kobj);
         return -1;

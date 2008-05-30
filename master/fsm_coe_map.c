@@ -401,9 +401,10 @@ void ec_fsm_coe_map_state_pdo_entry(
         }
 
         if (fsm->slave->master->debug_level) {
-            EC_DBG("    Pdo entry 0x%04X \"%s\" (%u bit).\n", pdo_entry->index,
-                    pdo_entry->name ? pdo_entry->name : "???",
-                    pdo_entry->bit_length);
+            EC_DBG("    Pdo entry 0x%04X:%02X, %u bit,  \"%s\".\n",
+                    pdo_entry->index, pdo_entry->subindex,
+                    pdo_entry->bit_length,
+                    pdo_entry->name ? pdo_entry->name : "???");
         }
 
         // next Pdo entry

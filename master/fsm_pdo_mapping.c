@@ -309,7 +309,7 @@ void ec_fsm_pdo_mapping_state_add_entry(
     if (ec_fsm_coe_exec(fsm->fsm_coe)) return;
 
     if (!ec_fsm_coe_success(fsm->fsm_coe)) {
-        EC_ERR("Failed to add entry 0x%04X:%u for slave %u.\n",
+        EC_ERR("Failed to add entry 0x%04X:%02X for slave %u.\n",
                 fsm->entry->index, fsm->entry->subindex,
                 fsm->slave->ring_position);
         fsm->state = ec_fsm_pdo_mapping_state_error;

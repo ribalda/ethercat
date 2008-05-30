@@ -800,10 +800,10 @@ ssize_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
 
                 list_for_each_entry(pdo_entry, &pdo->entries, list) {
                     buf += sprintf(buf,
-                            "      0x%04X:%X \"%s\", %u bit\n",
+                            "      0x%04X:%02X, %u bit, \"%s\"\n",
                             pdo_entry->index, pdo_entry->subindex,
-                            pdo_entry->name ? pdo_entry->name : "???",
-                            pdo_entry->bit_length);
+                            pdo_entry->bit_length,
+                            pdo_entry->name ? pdo_entry->name : "???");
                 }
             }
         }
@@ -825,10 +825,10 @@ ssize_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
                 buf += sprintf(buf, ", no default assignment.\n");
 
             list_for_each_entry(pdo_entry, &pdo->entries, list) {
-                buf += sprintf(buf, "    0x%04X:%X \"%s\", %u bit\n",
+                buf += sprintf(buf, "    0x%04X:%02X, %u bit, \"%s\"\n",
                         pdo_entry->index, pdo_entry->subindex,
-                        pdo_entry->name ? pdo_entry->name : "???",
-                        pdo_entry->bit_length);
+                        pdo_entry->bit_length,
+                        pdo_entry->name ? pdo_entry->name : "???");
             }
         }
         buf += sprintf(buf, "\n");

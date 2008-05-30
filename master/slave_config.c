@@ -259,7 +259,7 @@ ssize_t ec_slave_config_info(
                         pdo->index, pdo->name ? pdo->name : "???");
 
                 list_for_each_entry(entry, &pdo->entries, list) {
-                    buf += sprintf(buf, "    0x%04X:%X \"%s\", %u bit\n",
+                    buf += sprintf(buf, "    0x%04X:%02X \"%s\", %u bit\n",
                             entry->index, entry->subindex,
                             entry->name ? entry->name : "???",
                             entry->bit_length);
@@ -279,7 +279,7 @@ ssize_t ec_slave_config_info(
                 case 4: sprintf(str, "%u", EC_READ_U32(req->data)); break;
                 default: sprintf(str, "(invalid size)"); break;
             }
-            buf += sprintf(buf, "  0x%04X:%-3i -> %s\n",
+            buf += sprintf(buf, "  0x%04X:%02X -> %s\n",
                     req->index, req->subindex, str);
         }
         buf += sprintf(buf, "\n");
@@ -290,7 +290,7 @@ ssize_t ec_slave_config_info(
         buf += sprintf(buf, "\nSdo requests:\n");
 
         list_for_each_entry(req, &sc->sdo_requests, list) {
-            buf += sprintf(buf, "  0x%04X:%u\n", req->index, req->subindex);
+            buf += sprintf(buf, "  0x%04X:%02X\n", req->index, req->subindex);
         }
         buf += sprintf(buf, "\n");
     }
@@ -462,7 +462,7 @@ void ec_slave_config_load_default_mapping(
         if (sc->master->debug_level) {
             const ec_pdo_entry_t *entry;
             list_for_each_entry(entry, &pdo->entries, list) {
-                EC_DBG("    Entry 0x%04X:%u.\n",
+                EC_DBG("    Entry 0x%04X:%02X.\n",
                         entry->index, entry->subindex);
             }
         }
@@ -512,7 +512,7 @@ int ecrt_slave_config_pdo_mapping_add(ec_slave_config_t *sc,
     ec_pdo_t *pdo;
     
     if (sc->master->debug_level)
-        EC_DBG("Adding Pdo entry 0x%04X:%u (%u bit) to mapping of Pdo"
+        EC_DBG("Adding Pdo entry 0x%04X:%02X (%u bit) to mapping of Pdo"
                 " 0x%04X, config %u:%u.\n", entry_index, entry_subindex,
                 entry_bit_length, pdo_index, sc->alias, sc->position);
 
@@ -632,7 +632,7 @@ int ecrt_slave_config_reg_pdo_entry(
         }
     }
 
-    EC_ERR("Pdo entry 0x%04X:%u is not mapped in slave config %u:%u.\n",
+    EC_ERR("Pdo entry 0x%04X:%02X is not mapped in slave config %u:%u.\n",
            index, subindex, sc->alias, sc->position);
     return -1;
 
@@ -645,7 +645,7 @@ found:
     if (bit_position) {
         *bit_position = bit_pos;
     } else if (bit_pos) {
-        EC_ERR("Pdo entry 0x%04X:%X does not byte-align in config %u:%u.\n",
+        EC_ERR("Pdo entry 0x%04X:%02X does not byte-align in config %u:%u.\n",
                 index, subindex, sc->alias, sc->position);
         return -3;
     }
