@@ -57,13 +57,12 @@
  *   offers the possibility to use a shared-memory region. Therefore,
  *   added the domain methods ecrt_domain_size() and
  *   ecrt_domain_external_memory().
- * - PDO registration functions do not return a process data pointer any
- *   more. Instead an offset is returned by the funtion. In addition, an 
- *   optional bit position can be requested.
- *   This was necessary for the external domain memory. An additional 
- *   advantage is, that the returned offset is immediately valid. 
- *   If the domain's process data is allocated internally, the start 
- *   address can be retrieved with ecrt_domain_data().
+ * - Pdo entry registration functions do not return a process data pointer,
+ *   but an offset in the domain's process data. In addition, an optional bit
+ *   position can be requested. This was necessary for the external domain
+ *   memory. An additional advantage is, that the returned offset is
+ *   immediately valid. If the domain's process data is allocated internally,
+ *   the start address can be retrieved with ecrt_domain_data().
  * - Replaced ecrt_slave_pdo_mapping/add/clear() with
  *   ecrt_slave_config_pdo_assign_add() to add a Pdo to a sync manager's Pdo
  *   assignment and ecrt_slave_config_pdo_mapping_add() to add a Pdo entry to a
@@ -81,8 +80,8 @@
  *   renamed ec_pdo_reg_t to ec_pdo_entry_reg_t and ecrt_domain_register_pdo()
  *   to ecrt_slave_config_reg_pdo_entry().
  * - Removed ecrt_domain_register_pdo_range(), because it's functionality can
- *   be reached by specifying an explicit Pdo mapping and registering those
- *   Pdo entries.
+ *   be reached by specifying an explicit Pdo assignment/mapping and
+ *   registering the mapped Pdo entries.
  * - Added an Sdo access interface, working with Sdo requests. These can be
  *   scheduled for reading and writing during realtime operation.
  * - Exported ecrt_slave_config_sdo(), the generic Sdo configuration function.
@@ -126,7 +125,7 @@
 
 /*****************************************************************************/
 
-/** End of the Pdo list.
+/** End of the Pdo entry list.
  *
  * This is used in ecrt_slave_config_pdos().
  */
@@ -177,9 +176,10 @@ typedef struct  {
  * This is used in ec_domain_state_t.
  */
 typedef enum {
-    EC_WC_ZERO = 0,   /**< No Pdos were exchanged. */
-    EC_WC_INCOMPLETE, /**< Some of the registered Pdos were exchanged. */
-    EC_WC_COMPLETE    /**< All registered Pdos were exchanged. */
+    EC_WC_ZERO = 0,   /**< No registered process data were exchanged. */
+    EC_WC_INCOMPLETE, /**< Some of the registered process data were
+                        exchanged. */
+    EC_WC_COMPLETE    /**< All registered process data were exchanged. */
 } ec_wc_state_t;
 
 /*****************************************************************************/
@@ -195,7 +195,7 @@ typedef struct {
 
 /*****************************************************************************/
 
-/** Direction type for Pdo mapping functions.
+/** Direction type for Pdo assignment functions.
  */
 typedef enum {
     EC_DIR_OUTPUT, /**< Values written by the master. */
@@ -211,9 +211,8 @@ typedef enum {
  */
 typedef struct {
     uint16_t index; /**< Index of the Pdo entry to add to the Pdo
-                            configuration. */
-    uint8_t subindex; /**< Subindex of the Pdo entry to add to the
-                              Pdo configuration. */
+                            mapping. */
+    uint8_t subindex; /**< Subindex of the Pdo entry. */
     uint8_t bit_length; /**< Size of the Pdo entry in bit. */
 } ec_pdo_entry_info_t;
 
@@ -226,10 +225,11 @@ typedef struct {
  */
 typedef struct {
     ec_direction_t dir; /**< Pdo direction (input/output). */
-    uint16_t index; /**< Index of the Pdo to map. */
+    uint16_t index; /**< Index of the Pdo to assign. */
     unsigned int n_entries; /**< Number of Pdo entries in \a entries to map.
                               Zero means, that the default mapping shall be
-                              used. */
+                              used (this can only be done if the slave is
+                              present at bus configuration time). */
     ec_pdo_entry_info_t *entries; /**< Array of Pdo entries to map. This must
                                     contain at least \a n_entries values. */
 } ec_pdo_info_t;
@@ -248,14 +248,12 @@ typedef struct {
     uint32_t product_code; /**< Slave product code. */
     uint16_t index; /**< Pdo entry index. */
     uint8_t subindex; /**< Pdo entry subindex. */
-    unsigned int *offset; /**< Pointer to a variable to store the Pdo's
-                       offset in the process data. This can either be byte-
-                       or bitwise, depending on whether
-                       ecrt_domain_reg_pdo_entry_list() */
-    unsigned int *bitposition; /** Pointer to variable to store a bit 
-                                 position within the address. Can be NULL,
-                                in which case an error is raised if the 
-                                PDO does not byte-align. */
+    unsigned int *offset; /**< Pointer to a variable to store the Pdo entry's
+                       (byte-)offset in the process data. */
+    unsigned int *bit_position; /** Pointer to a variable to store a bit 
+                                 position (0-7) within the \a offset. Can be
+                                 NULL, in which case an error is raised if the
+                                 Pdo entry does not byte-align. */
 } ec_pdo_entry_reg_t;
 
 /*****************************************************************************/
@@ -357,12 +355,11 @@ ec_slave_config_t *ecrt_master_slave_config(
 
 /** Finishes the configuration phase and prepares for realtime mode.
  *
- * This function has to be called after all Pdo entries are registered. It
- * tells the master that the configuration phase is finished and the realtime
- * operation will begin. The function allocates internal memory for the
- * domains and calculates the logical FMMU addresses for domain members. It
- * tells the master state machine that the bus configuration is now to be
- * applied.
+ * This function tells the master that the configuration phase is finished and
+ * the realtime operation will begin. The function allocates internal memory
+ * for the domains and calculates the logical FMMU addresses for domain
+ * members. It tells the master state machine that the bus configuration is
+ * now to be applied.
  *
  * \attention After this function has been called, the realtime application is
  * in charge of cyclically calling ecrt_master_send() and
@@ -515,15 +512,15 @@ int ecrt_slave_config_pdos(
 
 /** Registers a Pdo entry for process data exchange in a domain.
  *
- * Searches the current Pdo assignment and Pdo mappings for the given Pdo
- * entry. An error is raised, if the given entry is not mapped. Otherwise, the
- * corresponding sync manager and FMMU configurations are provided for slave
- * configuration and the respective sync manager's assigned Pdos are appended
- * to the given domain, if not already done. The offset of the requested Pdo
- * entry's data inside the domain's process data is returned. Optionally, the
- * Pdo entry bit position can be retrieved if a non-null pointer is passed
- * to the \a bitposition parameter. If this is null, an error is raised if
- * the Pdo entry does not byte align.
+ * Searches the assigned Pdos for the given Pdo entry. An error is raised, if
+ * the given entry is not mapped. Otherwise, the corresponding sync manager
+ * and FMMU configurations are provided for slave configuration and the
+ * respective sync manager's assigned Pdos are appended to the given domain,
+ * if not already done. The offset of the requested Pdo entry's data inside
+ * the domain's process data is returned. Optionally, the Pdo entry bit
+ * position (0-7) can be retrieved via the \a bit_position output parameter.
+ * This pointer may be \a NULL, in this case an error is raised if the Pdo
+ * entry does not byte-align.
  *
  * \retval >=0 Success: Offset of the Pdo entry's process data.
  * \retval -1  Error: Pdo entry not found.
@@ -535,7 +532,7 @@ int ecrt_slave_config_reg_pdo_entry(
         uint16_t entry_index, /**< Index of the Pdo entry to register. */
         uint8_t entry_subindex, /**< Subindex of the Pdo entry to register. */
         ec_domain_t *domain, /**< Domain. */
-        unsigned int *bitposition /**< Optional address if bit addressing 
+        unsigned int *bit_position /**< Optional address if bit addressing 
                                  is desired */
         );
 

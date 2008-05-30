@@ -390,7 +390,7 @@ int ecrt_domain_reg_pdo_entry_list(ec_domain_t *domain,
             return -1;
 
         if ((ret = ecrt_slave_config_reg_pdo_entry(sc, reg->index,
-                        reg->subindex, domain, reg->bitposition)) < 0)
+                        reg->subindex, domain, reg->bit_position)) < 0)
             return -1;
 
         *reg->offset = ret;

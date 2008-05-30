@@ -608,12 +608,12 @@ int ecrt_slave_config_reg_pdo_entry(
         uint16_t index,
         uint8_t subindex,
         ec_domain_t *domain,
-        unsigned int *bitpos
+        unsigned int *bit_position
         )
 {
     ec_direction_t dir;
     ec_pdo_list_t *pdos;
-    unsigned int bit_offset;
+    unsigned int bit_offset, bit_pos;
     ec_pdo_t *pdo;
     ec_pdo_entry_t *entry;
     int sync_offset;
@@ -641,11 +641,12 @@ found:
     if (sync_offset < 0)
         return -2;
 
-    if (bitpos) {
-        *bitpos = bit_offset % 8;
-    } else if (bit_offset % 8) {
-        EC_ERR("Bytewise Pdo entry registration requested, but the result is "
-                "not byte-aligned.\n");
+    bit_pos = bit_offset % 8;
+    if (bit_position) {
+        *bit_position = bit_pos;
+    } else if (bit_pos) {
+        EC_ERR("Pdo entry 0x%04X:%X does not byte-align in config %u:%u.\n",
+                index, subindex, sc->alias, sc->position);
         return -3;
     }
 
