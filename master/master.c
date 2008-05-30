@@ -1276,6 +1276,35 @@ int ec_master_attach_slave_configs(
     return errors ? -1 : 0;
 }
 
+/*****************************************************************************/
+
+/** Finds a slave in the bus, given the alias and position.
+ */
+ec_slave_t *ec_master_find_slave(
+        ec_master_t *master, /**< EtherCAT master. */
+        uint16_t alias, /**< Slave alias. */
+        uint16_t position /**< Slave position. */
+        )
+{
+    ec_slave_t *slave;
+    unsigned int alias_found = 0, relative_position = 0;
+
+	list_for_each_entry(slave, &master->slaves, list) {
+        if (!alias_found) {
+			if (alias && slave->sii.alias != alias)
+				continue;
+			alias_found = 1;
+			relative_position = 0;
+		}
+		if (relative_position == position) {
+            return slave;
+        }
+		relative_position++;
+	}
+
+    return NULL;
+}
+
 /******************************************************************************
  *  Realtime interface
  *****************************************************************************/

@@ -333,28 +333,17 @@ int ec_slave_config_attach(
         )
 {
 	ec_slave_t *slave;
-	unsigned int alias_found = 0, relative_position = 0;
 
 	if (sc->slave)
 		return 0; // already attached
 
-	list_for_each_entry(slave, &sc->master->slaves, list) {
-		if (!alias_found) {
-			if (sc->alias && slave->sii.alias != sc->alias)
-				continue;
-			alias_found = 1;
-			relative_position = 0;
-		}
-		if (relative_position == sc->position)
-			goto found;
-		relative_position++;
-	}
+    if (!(slave = ec_master_find_slave(
+                    sc->master, sc->alias, sc->position))) {
+        EC_WARN("Failed to find slave for configuration %u:%u.\n",
+                sc->alias, sc->position);
+        return -1;
+    }
 
-	EC_WARN("Failed to find slave for configuration %u:%u.\n",
-			sc->alias, sc->position);
-	return -1;
-
-found:
 	if (slave->config) {
 		EC_ERR("Failed to attach slave configuration %u:%u. Slave %u"
 				" already has a configuration!\n", sc->alias,

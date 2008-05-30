@@ -190,6 +190,7 @@ void ec_master_queue_datagram(ec_master_t *, ec_datagram_t *);
 
 // misc.
 int ec_master_attach_slave_configs(ec_master_t *);
+ec_slave_t *ec_master_find_slave(ec_master_t *, uint16_t, uint16_t);
 void ec_master_output_stats(ec_master_t *);
 #ifdef EC_EOE
 void ec_master_clear_eoe_handlers(ec_master_t *);
