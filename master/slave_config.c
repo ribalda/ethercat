@@ -364,6 +364,10 @@ int ec_slave_config_attach(
 	slave->config = sc;
 	sc->slave = slave;
 
+    if (sc->master->debug_level)
+        EC_DBG("Attached slave %u to config %u:%u.\n",
+                slave->ring_position, sc->alias, sc->position);
+
     ec_slave_request_state(slave, EC_SLAVE_STATE_OP);
 
 	return 0;
