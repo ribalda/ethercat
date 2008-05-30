@@ -57,14 +57,13 @@
  *   offers the possibility to use a shared-memory region. Therefore,
  *   added the domain methods ecrt_domain_size() and
  *   ecrt_domain_external_memory().
- * - Replaced the process data pointers in the Pdo entry registration
- *   functions with a process data offset, that is now returned either byte-
- *   or bitwise by ecrt_slave_config_reg_pdo_entry() or
- *   ecrt_slave_config_reg_pdo_entry_bitwise(), respectively. This was
- *   necessary for the external domain memory. An additional advantage is,
- *   that the returned offset is immediately valid. If the domain's
- *   process data is allocated internally, the start address can be retrieved
- *   with ecrt_domain_data().
+ * - PDO registration functions do not return a process data pointer any
+ *   more. Instead an offset is returned by the funtion. In addition, an 
+ *   optional bit position can be requested.
+ *   This was necessary for the external domain memory. An additional 
+ *   advantage is, that the returned offset is immediately valid. 
+ *   If the domain's process data is allocated internally, the start 
+ *   address can be retrieved with ecrt_domain_data().
  * - Replaced ecrt_slave_pdo_mapping/add/clear() with
  *   ecrt_slave_config_pdo_assign_add() to add a Pdo to a sync manager's Pdo
  *   assignment and ecrt_slave_config_pdo_mapping_add() to add a Pdo entry to a
@@ -240,8 +239,7 @@ typedef struct {
 /** List record type for Pdo entry mass-registration.
  *
  * This type is used for the array parameter of the
- * ecrt_domain_reg_pdo_entry_list() and
- * ecrt_domain_reg_pdo_entry_list_bitwise() convenience functions.
+ * ecrt_domain_reg_pdo_entry_list()
  */
 typedef struct {
     uint16_t alias; /**< Slave alias address. */
@@ -253,8 +251,11 @@ typedef struct {
     unsigned int *offset; /**< Pointer to a variable to store the Pdo's
                        offset in the process data. This can either be byte-
                        or bitwise, depending on whether
-                       ecrt_domain_reg_pdo_entry_list() or
-                       ecrt_domain_reg_pdo_entry_list_bitwise() was called. */
+                       ecrt_domain_reg_pdo_entry_list() */
+    unsigned int *bitposition; /** Pointer to variable to store a bit 
+                                 position within the address. Can be NULL,
+                                in which case an error is raised if the 
+                                PDO does not byte-align. */
 } ec_pdo_entry_reg_t;
 
 /*****************************************************************************/
@@ -519,7 +520,10 @@ int ecrt_slave_config_pdos(
  * corresponding sync manager and FMMU configurations are provided for slave
  * configuration and the respective sync manager's assigned Pdos are appended
  * to the given domain, if not already done. The offset of the requested Pdo
- * entry's data inside the domain's process data is returned.
+ * entry's data inside the domain's process data is returned. Optionally, the
+ * Pdo entry bit position can be retrieved if a non-null pointer is passed
+ * to the \a bitposition parameter. If this is null, an error is raised if
+ * the Pdo entry does not byte align.
  *
  * \retval >=0 Success: Offset of the Pdo entry's process data.
  * \retval -1  Error: Pdo entry not found.
@@ -530,24 +534,9 @@ int ecrt_slave_config_reg_pdo_entry(
         ec_slave_config_t *sc, /**< Slave configuration. */
         uint16_t entry_index, /**< Index of the Pdo entry to register. */
         uint8_t entry_subindex, /**< Subindex of the Pdo entry to register. */
-        ec_domain_t *domain /**< Domain. */
-        );
-
-/** Registers a Pdo entry for process data exchange in a domain.
- *
- * Bitwise registration function.
- *
- * \see ecrt_slave_config_reg_pdo_entry().
- *
- * \retval >=0 Success: Bit offset of the Pdo entry's process data.
- * \retval -1  Error: Pdo entry not found.
- * \retval -2  Error: Failed to register Pdo entry.
- */
-int ecrt_slave_config_reg_pdo_entry_bitwise(
-        ec_slave_config_t *sc, /**< Slave configuration. */
-        uint16_t entry_index, /**< Index of the Pdo entry to register. */
-        uint8_t entry_subindex, /**< Subindex of the Pdo entry to register. */
-        ec_domain_t *domain /**< Domain. */
+        ec_domain_t *domain, /**< Domain. */
+        unsigned int *bitposition /**< Optional address if bit addressing 
+                                 is desired */
         );
 
 /** Add an Sdo configuration.
@@ -642,22 +631,6 @@ void ecrt_slave_config_state(
  * \return 0 on success, else non-zero.
  */
 int ecrt_domain_reg_pdo_entry_list(
-        ec_domain_t *domain, /**< Domain. */
-        const ec_pdo_entry_reg_t *pdo_entry_regs /**< Array of Pdo
-                                                   registrations. */
-        );
-
-/** Registers a bunch of Pdo entries for a domain.
- *
- * Bitwise registration.
- *
- * \see ecrt_domain_reg_pdo_entry_list()
- *
- * \attention The registration array has to be terminated with an empty
- *            structure, or one with the \a index field set to zero!
- * \return 0 on success, else non-zero.
- */
-int ecrt_domain_reg_pdo_entry_list_bitwise(
         ec_domain_t *domain, /**< Domain. */
         const ec_pdo_entry_reg_t *pdo_entry_regs /**< Array of Pdo
                                                    registrations. */

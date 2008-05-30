@@ -604,34 +604,11 @@ int ecrt_slave_config_pdos(ec_slave_config_t *sc, unsigned int n_infos,
 /*****************************************************************************/
 
 int ecrt_slave_config_reg_pdo_entry(
-        ec_slave_config_t *sc, /**< Slave configuration. */
-        uint16_t index, /**< Index of Pdo entry to register. */
-        uint8_t subindex, /**< Subindex of Pdo entry to register. */
-        ec_domain_t *domain /**< Domain. */
-        )
-{
-    int ret = ecrt_slave_config_reg_pdo_entry_bitwise(
-            sc, index, subindex, domain);
-
-    if (ret < 0)
-        return ret;
-
-    if (ret % 8) {
-        EC_ERR("Bytewise Pdo entry registration requested, but the result is "
-                "not byte-aligned.\n");
-        return -3;
-    }
-
-    return ret / 8;
-}
-
-/*****************************************************************************/
-
-int ecrt_slave_config_reg_pdo_entry_bitwise(
-        ec_slave_config_t *sc, /**< Slave configuration. */
-        uint16_t index, /**< Index of Pdo entry to register. */
-        uint8_t subindex, /**< Subindex of Pdo entry to register. */
-        ec_domain_t *domain /**< Domain. */
+        ec_slave_config_t *sc,
+        uint16_t index,
+        uint8_t subindex,
+        ec_domain_t *domain,
+        unsigned int *bitpos
         )
 {
     ec_direction_t dir;
@@ -639,7 +616,7 @@ int ecrt_slave_config_reg_pdo_entry_bitwise(
     unsigned int bit_offset;
     ec_pdo_t *pdo;
     ec_pdo_entry_t *entry;
-    int ret;
+    int sync_offset;
 
     for (dir = EC_DIR_OUTPUT; dir <= EC_DIR_INPUT; dir++) {
         pdos = &sc->pdos[dir];
@@ -660,10 +637,20 @@ int ecrt_slave_config_reg_pdo_entry_bitwise(
     return -1;
 
 found:
-    if ((ret = ec_slave_config_prepare_fmmu(sc, domain, dir)) < 0)
+    sync_offset = ec_slave_config_prepare_fmmu(sc, domain, dir);
+    if (sync_offset < 0)
         return -2;
-    return ret * 8 + bit_offset;
-}
+
+    if (bitpos) {
+        *bitpos = bit_offset % 8;
+    } else if (bit_offset % 8) {
+        EC_ERR("Bytewise Pdo entry registration requested, but the result is "
+                "not byte-aligned.\n");
+        return -3;
+    }
+
+    return sync_offset + bit_offset / 8;
+
 
 /*****************************************************************************/
 

@@ -390,31 +390,7 @@ int ecrt_domain_reg_pdo_entry_list(ec_domain_t *domain,
             return -1;
 
         if ((ret = ecrt_slave_config_reg_pdo_entry(sc, reg->index,
-                        reg->subindex, domain)) < 0)
-            return -1;
-
-        *reg->offset = ret;
-    }
-
-    return 0;
-}
-
-/*****************************************************************************/
-
-int ecrt_domain_reg_pdo_entry_list_bitwise(ec_domain_t *domain,
-        const ec_pdo_entry_reg_t *regs)
-{
-    const ec_pdo_entry_reg_t *reg;
-    ec_slave_config_t *sc;
-    int ret;
-    
-    for (reg = regs; reg->index; reg++) {
-        if (!(sc = ecrt_master_slave_config(domain->master, reg->alias,
-                        reg->position, reg->vendor_id, reg->product_code)))
-            return -1;
-
-        if ((ret = ecrt_slave_config_reg_pdo_entry_bitwise(sc, reg->index,
-                        reg->subindex, domain)) < 0)
+                        reg->subindex, domain, reg->bitposition)) < 0)
             return -1;
 
         *reg->offset = ret;
