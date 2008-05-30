@@ -229,6 +229,7 @@ void ec_fsm_master_state_broadcast(
             ec_master_clear_eoe_handlers(master);
 #endif
             ec_master_destroy_slaves(master);
+            master->configs_attached = 0;
 
             master->slave_count = datagram->working_counter;
 
