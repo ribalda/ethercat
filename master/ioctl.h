@@ -62,6 +62,8 @@ typedef struct {
     // outputs
     uint32_t vendor_id;
     uint32_t product_code;
+    uint32_t revision_number;
+    uint32_t serial_number;
     uint16_t alias;
     uint8_t state;
     uint8_t sync_count;

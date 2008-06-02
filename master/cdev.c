@@ -165,6 +165,8 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
                 data.vendor_id = slave->sii.vendor_id;
                 data.product_code = slave->sii.product_code;
+                data.revision_number = slave->sii.revision_number;
+                data.serial_number = slave->sii.serial_number;
                 data.alias = slave->sii.alias;
                 data.state = slave->current_state;
 

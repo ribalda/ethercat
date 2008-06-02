@@ -31,6 +31,7 @@ void printUsage()
 		<< "Commands:" << endl
         << "  list (ls, slaves)  List all slaves (former 'lsec')." << endl
         << "  pdos               List Pdo mapping of given slaves." << endl
+        << "  xml                Generate slave information xml." << endl
 		<< "Global options:" << endl
         << "  --master  -m <master>  Index of the master to use. Default: "
 		<< DEFAULT_MASTER	<< endl
@@ -121,9 +122,10 @@ int main(int argc, char **argv)
 
         if (command == "list" || command == "ls" || command == "slaves") {
             master.listSlaves();
-
         } else if (command == "pdos") {
             master.listPdos(slavePosition);
+        } else if (command == "xml") {
+            master.generateXml(slavePosition);
         } else {
             cerr << "Unknown command " << command << "!" << endl;
             printUsage();

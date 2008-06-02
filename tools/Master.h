@@ -42,9 +42,11 @@ class Master
 
         void listSlaves();
         void listPdos(int);
+        void generateXml(int);
 
     protected:
         void listSlavePdos(uint16_t, bool = false);
+        void generateSlaveXml(uint16_t);
         unsigned int slaveCount();
         void slaveSyncs(uint16_t);
         void getSlave(ec_ioctl_slave_t *, uint16_t);

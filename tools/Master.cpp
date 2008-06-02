@@ -112,6 +112,21 @@ void Master::listPdos(int slavePosition)
 
 /****************************************************************************/
 
+void Master::generateXml(int slavePosition)
+{
+    if (slavePosition == -1) {
+        unsigned int numSlaves = slaveCount(), i;
+
+        for (i = 0; i < numSlaves; i++) {
+            generateSlaveXml(i);
+        }
+    } else {
+        generateSlaveXml(slavePosition);
+    }
+}
+
+/****************************************************************************/
+
 void Master::listSlavePdos(uint16_t slavePosition, bool printSlave)
 {
     ec_ioctl_slave_t slave;
@@ -158,6 +173,104 @@ void Master::listSlavePdos(uint16_t slavePosition, bool printSlave)
             }
         }
     }
+}
+
+/****************************************************************************/
+
+void Master::generateSlaveXml(uint16_t slavePosition)
+{
+    ec_ioctl_slave_t slave;
+    ec_ioctl_sync_t sync;
+    ec_ioctl_pdo_t pdo;
+    ec_ioctl_pdo_entry_t entry;
+    unsigned int i, j, k;
+    
+    getSlave(&slave, slavePosition);
+
+    cout
+        << "<?xml version=\"1.0\" ?>" << endl
+        << "  <EtherCATInfo>" << endl
+        << "    <!-- Slave " << slave.position << " -->" << endl
+        << "    <Vendor>" << endl
+        << "      <Id>" << slave.vendor_id << "</Id>" << endl
+        << "    </Vendor>" << endl
+        << "    <Descriptions>" << endl
+        << "      <Devices>" << endl
+        << "        <Device>" << endl
+        << "          <Type ProductCode=\"#x"
+        << hex << setfill('0') << setw(8) << slave.product_code
+        << "\" RevisionNo=\"#x"
+        << hex << setfill('0') << setw(8) << slave.revision_number
+        << "\"/>" << endl;
+
+    for (i = 0; i < slave.sync_count; i++) {
+        getSync(&sync, slavePosition, i);
+
+        for (j = 0; j < sync.pdo_count; j++) {
+            getPdo(&pdo, slavePosition, i, j);
+
+            cout
+                << "          <" << (pdo.dir ? "T" : "R") << "xPdo>" << endl
+                << "            <Index>#x"
+                << hex << setfill('0') << setw(4) << pdo.index
+                << "</Index>" << endl
+                << "            <Name>" << pdo.name << "</Name>" << endl;
+
+            for (k = 0; k < pdo.entry_count; k++) {
+                getPdoEntry(&entry, slavePosition, i, j, k);
+
+                cout
+                    << "            <Entry>" << endl
+                    << "              <Index>#x"
+                    << hex << setfill('0') << setw(4) << entry.index
+                    << "</Index>" << endl;
+                if (entry.index)
+                    cout
+                        << "              <SubIndex>"
+                        << dec << (unsigned int) entry.subindex
+                        << "</SubIndex>" << endl;
+                
+                cout
+                    << "              <BitLen>"
+                    << (unsigned int) entry.bit_length
+                    << "</BitLen>" << endl;
+
+                if (entry.index) {
+                    cout
+                        << "              <Name>" << entry.name
+                        << "</Name>" << endl
+                        << "              <DataType>";
+
+                    if (entry.bit_length == 1) {
+                        cout << "BOOL";
+                    } else if (!(entry.bit_length % 8)) {
+                        if (entry.bit_length <= 64)
+                            cout << "UINT" << (unsigned int) entry.bit_length;
+                        else
+                            cout << "STRING("
+                                << (unsigned int) (entry.bit_length / 8)
+                                << ")";
+                    } else {
+                        cerr << "Invalid bit length "
+                            << (unsigned int) entry.bit_length << endl;
+                    }
+
+                        cout << "</DataType>" << endl;
+                }
+
+                cout << "            </Entry>" << endl;
+            }
+
+            cout
+                << "          </" << (pdo.dir ? "T" : "R") << "xPdo>" << endl;
+        }
+    }
+
+    cout
+        << "        </Device>" << endl
+        << "     </Devices>" << endl
+        << "  </Descriptions>" << endl
+        << "</EtherCATInfo>" << endl;
 }
 
 /****************************************************************************/
