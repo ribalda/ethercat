@@ -19,7 +19,7 @@ using namespace std;
 #define DEFAULT_SLAVESPEC ""
 
 static unsigned int masterIndex = DEFAULT_MASTER;
-static string slaveSpec = DEFAULT_SLAVESPEC;
+static int slavePosition = -1;
 static string command = DEFAULT_COMMAND;
 
 /*****************************************************************************/
@@ -30,10 +30,11 @@ void printUsage()
         << "Usage: ethercat <COMMAND> [OPTIONS]" << endl
 		<< "Commands:" << endl
         << "  list (ls, slaves)  List all slaves (former 'lsec')." << endl
+        << "  pdos               List Pdo mapping of given slaves." << endl
 		<< "Global options:" << endl
         << "  --master  -m <master>  Index of the master to use. Default: "
 		<< DEFAULT_MASTER	<< endl
-        << "  --slave   -s <slave>   Slave specification. Default: All "
+        << "  --slave   -s <slave>   Numerical ring position. Default: All "
         "slaves." << endl
         << "  --help    -h           Show this help." << endl;
 }
@@ -68,7 +69,14 @@ void getOptions(int argc, char **argv)
                 break;
 
             case 's':
-				slaveSpec = optarg;
+                number = strtoul(optarg, &remainder, 0);
+                if (remainder == optarg || *remainder
+                        || number < 0 || number > 0xFFFF) {
+                    cerr << "Invalid slave position " << optarg << "!" << endl;
+                    printUsage();
+                    exit(1);
+                }
+				slavePosition = number;
                 break;
 
             case 'h':
@@ -101,13 +109,21 @@ int main(int argc, char **argv)
     
 	getOptions(argc, argv);
 
-    master.open(masterIndex);
+    try {
+        master.open(masterIndex);
 
-    if (command == "list" || command == "ls" || command == "slaves") {
-        master.listSlaves();
-    } else {
-        cerr << "Unknown command " << command << "!" << endl;
-        printUsage();
+        if (command == "list" || command == "ls" || command == "slaves") {
+            master.listSlaves();
+
+        } else if (command == "pdos") {
+            master.listPdos(slavePosition);
+        } else {
+            cerr << "Unknown command " << command << "!" << endl;
+            printUsage();
+            exit(1);
+        }
+    } catch (MasterException &e) {
+        cerr << e.what() << endl;
         exit(1);
     }
 

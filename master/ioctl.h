@@ -44,22 +44,80 @@
 /*****************************************************************************/
 
 enum {
-    EC_IOCTL_SLAVE_COUNT = 0,
-    EC_IOCTL_SLAVE_INFO,
+    EC_IOCTL_SLAVE_COUNT,
+    EC_IOCTL_SLAVE,
+    EC_IOCTL_SYNC,
+    EC_IOCTL_PDO,
+    EC_IOCTL_PDO_ENTRY,
 };
 
 /*****************************************************************************/
 
-#define EC_IOCTL_SLAVE_INFO_DESC_SIZE 243
+#define EC_IOCTL_SLAVE_NAME_SIZE 114
 
-struct ec_ioctl_slave_info {
+typedef struct {
+    // input
+    uint16_t position;
+
+    // outputs
     uint32_t vendor_id;
     uint32_t product_code;
     uint16_t alias;
-    uint16_t ring_position;
     uint8_t state;
-    char description[EC_IOCTL_SLAVE_INFO_DESC_SIZE];
-};
+    uint8_t sync_count;
+    char name[EC_IOCTL_SLAVE_NAME_SIZE];
+} ec_ioctl_slave_t;
+
+/*****************************************************************************/
+
+typedef struct {
+    // inputs
+    uint16_t slave_position;
+    unsigned int sync_index;
+
+    // outputs
+    uint16_t physical_start_address;
+    uint16_t default_size;
+    uint8_t control_register;
+    uint8_t enable;
+    uint8_t assign_source;
+    uint8_t pdo_count;
+} ec_ioctl_sync_t;
+
+/*****************************************************************************/
+
+#define EC_IOCTL_PDO_NAME_SIZE 114
+
+typedef struct {
+    // inputs
+    uint16_t slave_position;
+    unsigned int sync_index;
+    unsigned int pdo_pos;
+
+    // outputs
+    uint8_t dir;
+    uint16_t index;
+    uint8_t entry_count;
+    char name[EC_IOCTL_PDO_NAME_SIZE];
+} ec_ioctl_pdo_t;
+
+/*****************************************************************************/
+
+#define EC_IOCTL_PDO_ENTRY_NAME_SIZE 110
+
+typedef struct {
+    // inputs
+    uint16_t slave_position;
+    unsigned int sync_index;
+    unsigned int pdo_pos;
+    unsigned int entry_pos;
+
+    // outputs
+    uint16_t index;
+    uint8_t subindex;
+    uint8_t bit_length;
+    char name[EC_IOCTL_PDO_NAME_SIZE];
+} ec_ioctl_pdo_entry_t;
 
 /*****************************************************************************/
 

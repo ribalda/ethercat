@@ -10,6 +10,8 @@
 #include <stdexcept>
 using namespace std;
 
+#include "../master/ioctl.h"
+
 /****************************************************************************/
 
 class MasterException:
@@ -38,11 +40,19 @@ class Master
         void open(unsigned int);
         void close();
 
-        unsigned int slaveCount();
         void listSlaves();
+        void listPdos(int);
 
     protected:
-        string slaveState(uint8_t) const;
+        unsigned int slaveCount();
+        void slaveSyncs(uint16_t);
+        void getSlave(ec_ioctl_slave_t *, uint16_t);
+        void getSync(ec_ioctl_sync_t *, uint16_t, uint8_t);
+        void getPdo(ec_ioctl_pdo_t *, uint16_t, uint8_t, uint8_t);
+        void getPdoEntry(ec_ioctl_pdo_entry_t *, uint16_t, uint8_t, uint8_t,
+                uint8_t);
+
+        static string slaveState(uint8_t);
         
     private:
         unsigned int index;
