@@ -56,6 +56,7 @@ EXTRA_DIST = \
 	master.c master.h \
 	module.c \
 	pdo.c pdo.h \
+	pdo_entry.c pdo_entry.h \
 	pdo_list.c pdo_list.h \
 	sdo.c sdo.h \
 	sdo_entry.c sdo_entry.h \

@@ -23,7 +23,6 @@ Version 1.4.0:
 * SDO write access.
 * Wait for bus scanning, even when link is not up at ecrt_request_master().
 * Attach Pdo names.
-* Separate Pdo and Pdo entry classes.
 * Mailbox protocol handlers.
 * Mailbox state machine using toggle bits.
 * Make scanning and configuration run parallel (each).

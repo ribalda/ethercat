@@ -54,6 +54,7 @@ ec_master-objs := \
     master.o \
     module.o \
     pdo.o \
+    pdo_entry.o \
     pdo_list.o \
     sdo.o \
     sdo_entry.o \
