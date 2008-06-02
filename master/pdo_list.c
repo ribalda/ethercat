@@ -279,6 +279,28 @@ const ec_pdo_t *ec_pdo_list_find_pdo_const(
 
 /*****************************************************************************/
 
+/** Finds a Pdo via its position in the list.
+ *
+ * Const version.
+ */
+const ec_pdo_t *ec_pdo_list_find_pdo_by_pos_const(
+        const ec_pdo_list_t *pl, /**< Pdo list. */
+        unsigned int pos /**< Position in the list. */
+        )
+{
+    const ec_pdo_t *pdo;
+
+    list_for_each_entry(pdo, &pl->list, list) {
+        if (pos--)
+            continue;
+        return pdo;
+    }
+
+    return NULL;
+}
+
+/*****************************************************************************/
+
 /**
  */
 unsigned int ec_pdo_list_count(

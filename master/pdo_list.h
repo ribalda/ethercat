@@ -75,6 +75,8 @@ int ec_pdo_list_equal(const ec_pdo_list_t *, const ec_pdo_list_t *);
 ec_pdo_t *ec_pdo_list_find_pdo(const ec_pdo_list_t *, uint16_t);
 const ec_pdo_t *ec_pdo_list_find_pdo_const(const ec_pdo_list_t *,
         uint16_t);
+const ec_pdo_t *ec_pdo_list_find_pdo_by_pos_const(
+        const ec_pdo_list_t *, unsigned int);
 unsigned int ec_pdo_list_count(const ec_pdo_list_t *);
 
 /*****************************************************************************/
