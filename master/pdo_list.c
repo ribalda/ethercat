@@ -278,3 +278,21 @@ const ec_pdo_t *ec_pdo_list_find_pdo_const(
 }
 
 /*****************************************************************************/
+
+/**
+ */
+unsigned int ec_pdo_list_count(
+        const ec_pdo_list_t *pl /**< Pdo list. */
+        )
+{
+    const ec_pdo_t *pdo;
+    unsigned int num = 0;
+
+    list_for_each_entry(pdo, &pl->list, list) {
+        num++;
+    }
+
+    return num;
+}
+
+/*****************************************************************************/
