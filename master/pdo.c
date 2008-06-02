@@ -229,3 +229,43 @@ int ec_pdo_equal_entries(
 }
 
 /*****************************************************************************/
+
+/**
+ */
+unsigned int ec_pdo_entry_count(
+        const ec_pdo_t *pdo /**< Pdo. */
+        )
+{
+    const ec_pdo_entry_t *entry;
+    unsigned int num = 0;
+
+    list_for_each_entry(entry, &pdo->entries, list) {
+        num++;
+    }
+
+    return num;
+}
+
+/*****************************************************************************/
+
+/** Finds a Pdo entry via its position in the list.
+ *
+ * Const version.
+ */
+const ec_pdo_entry_t *ec_pdo_find_entry_by_pos_const(
+        const ec_pdo_t *pdo, /**< Pdo. */
+        unsigned int pos /**< Position in the list. */
+        )
+{
+    const ec_pdo_entry_t *entry;
+
+    list_for_each_entry(entry, &pdo->entries, list) {
+        if (pos--)
+            continue;
+        return entry;
+    }
+
+    return NULL;
+}
+
+/*****************************************************************************/

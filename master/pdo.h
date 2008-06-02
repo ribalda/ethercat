@@ -73,6 +73,9 @@ int ec_pdo_set_name(ec_pdo_t *, const char *);
 ec_pdo_entry_t *ec_pdo_add_entry(ec_pdo_t *, uint16_t, uint8_t, uint8_t);
 int ec_pdo_copy_entries(ec_pdo_t *, const ec_pdo_t *);
 int ec_pdo_equal_entries(const ec_pdo_t *, const ec_pdo_t *);
+unsigned int ec_pdo_entry_count(const ec_pdo_t *);
+const ec_pdo_entry_t *ec_pdo_find_entry_by_pos_const(
+        const ec_pdo_t *, unsigned int);
 
 /*****************************************************************************/
 
