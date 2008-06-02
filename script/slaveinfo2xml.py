@@ -112,7 +112,7 @@ class Device:
         reRevision = re.compile('Revision number:.*\((\d+)\)')
         rePdo = re.compile('([RT])xPdo\s+0x([0-9A-F]+)')
         rePdoEntry = \
-            re.compile('0x([0-9A-F]+):([0-9A-F]+) +"([^"]*)", (\d+) bit')
+            re.compile('0x([0-9A-F]+):([0-9A-F]+),\s+(\d+) bit,\s+"([^"]*)"')
         pdo = None
         f = open(fileName, 'r')
         while True:
@@ -139,8 +139,8 @@ class Device:
             match = rePdoEntry.search(line)
             if match:
                 pdoEntry = PdoEntry(int(match.group(1), 16), \
-                    int(match.group(2), 16), match.group(3), \
-                    int(match.group(4)))
+                    int(match.group(2), 16), match.group(4), \
+                    int(match.group(3)))
                 pdo.appendEntry(pdoEntry)
 
         f.close()
