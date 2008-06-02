@@ -44,6 +44,7 @@ class Master
         void listPdos(int);
 
     protected:
+        void listSlavePdos(uint16_t, bool = false);
         unsigned int slaveCount();
         void slaveSyncs(uint16_t);
         void getSlave(ec_ioctl_slave_t *, uint16_t);

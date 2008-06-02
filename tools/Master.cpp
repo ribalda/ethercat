@@ -99,6 +99,21 @@ void Master::listSlaves()
 
 void Master::listPdos(int slavePosition)
 {
+    if (slavePosition == -1) {
+        unsigned int numSlaves = slaveCount(), i;
+
+        for (i = 0; i < numSlaves; i++) {
+            listSlavePdos(i, true);
+        }
+    } else {
+        listSlavePdos(slavePosition, false);
+    }
+}
+
+/****************************************************************************/
+
+void Master::listSlavePdos(uint16_t slavePosition, bool printSlave)
+{
     ec_ioctl_slave_t slave;
     ec_ioctl_sync_t sync;
     ec_ioctl_pdo_t pdo;
@@ -106,6 +121,9 @@ void Master::listPdos(int slavePosition)
     unsigned int i, j, k;
     
     getSlave(&slave, slavePosition);
+
+    if (printSlave)
+        cout << "=== Slave " << slavePosition << " ===" << endl;
 
     for (i = 0; i < slave.sync_count; i++) {
         getSync(&sync, slavePosition, i);

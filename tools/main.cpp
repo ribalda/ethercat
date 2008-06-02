@@ -16,10 +16,10 @@ using namespace std;
 
 #define DEFAULT_MASTER 0
 #define DEFAULT_COMMAND "slaves"
-#define DEFAULT_SLAVESPEC ""
+#define DEFAULT_SLAVEPOSITION -1
 
 static unsigned int masterIndex = DEFAULT_MASTER;
-static int slavePosition = -1;
+static int slavePosition = DEFAULT_SLAVEPOSITION;
 static string command = DEFAULT_COMMAND;
 
 /*****************************************************************************/
@@ -34,8 +34,10 @@ void printUsage()
 		<< "Global options:" << endl
         << "  --master  -m <master>  Index of the master to use. Default: "
 		<< DEFAULT_MASTER	<< endl
-        << "  --slave   -s <slave>   Numerical ring position. Default: All "
-        "slaves." << endl
+        << "  --slave   -s <slave>   Positive numerical ring position,"
+        << endl
+        << "                         or 'all' for all slaves. Default: 'all'."
+        << endl
         << "  --help    -h           Show this help." << endl;
 }
 
@@ -69,14 +71,19 @@ void getOptions(int argc, char **argv)
                 break;
 
             case 's':
-                number = strtoul(optarg, &remainder, 0);
-                if (remainder == optarg || *remainder
-                        || number < 0 || number > 0xFFFF) {
-                    cerr << "Invalid slave position " << optarg << "!" << endl;
-                    printUsage();
-                    exit(1);
+                if (!strcmp(optarg, "all")) {
+                    slavePosition = -1;
+                } else {
+                    number = strtoul(optarg, &remainder, 0);
+                    if (remainder == optarg || *remainder
+                            || number < 0 || number > 0xFFFF) {
+                        cerr << "Invalid slave position "
+                            << optarg << "!" << endl;
+                        printUsage();
+                        exit(1);
+                    }
+                    slavePosition = number;
                 }
-				slavePosition = number;
                 break;
 
             case 'h':
