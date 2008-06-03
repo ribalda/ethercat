@@ -186,6 +186,11 @@ start)
 
     # get dynamic major number
     MAJOR=$(awk "\$2==\"EtherCAT\" {print \$1}" /proc/devices)
+    if [ -z "${MAJOR}" ]; then
+        echo "Failed to get device major number!"
+        ${RMMOD} ec_master
+        exit_fail
+    fi
 
     # create character devices
     for i in ${MASTER_INDICES}; do
