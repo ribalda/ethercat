@@ -185,6 +185,15 @@ ssize_t ec_sdo_entry_format_data(
     off_t off = 0;
     unsigned int i;
 
+    if (request->data_size != entry->bit_length) {
+        EC_ERR("Dictionary size of Sdo entry 0x%04X:%02X (%u bit) does not "
+                "match size of uploaded data (%u byte)!\n", entry->sdo->index,
+                entry->subindex, entry->bit_length, request->data_size);
+        EC_DBG("Uploaded data:\n");
+        ec_print_data(request->data, request->data_size);
+        return -EIO;
+    }
+        
     if (entry->data_type == 0x0002) { // int8
         int8_t value;
         if (entry->bit_length != 8)
