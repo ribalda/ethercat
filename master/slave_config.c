@@ -611,6 +611,12 @@ int ecrt_slave_config_reg_pdo_entry(
     ec_pdo_entry_t *entry;
     int sync_offset;
 
+    if (sc->master->debug_level)
+        EC_DBG("ecrt_slave_config_reg_pdo_entry(sc = 0x%x, index = 0x%04X, "
+                "subindex = 0x%02X, domain = 0x%x, bit_position = 0x%x)\n",
+                (unsigned int) sc, index, subindex, (unsigned int) domain,
+                (unsigned int) bit_position);
+
     for (dir = EC_DIR_OUTPUT; dir <= EC_DIR_INPUT; dir++) {
         pdos = &sc->pdos[dir];
         bit_offset = 0;
