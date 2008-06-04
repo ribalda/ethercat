@@ -54,14 +54,14 @@ EXTRA_DIST = \
 	README.EoE
 
 modules:
-	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" O="@abs_builddir@" modules
+	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" modules
 
 modules_install:
 	$(MAKE) -C master modules_install
 	$(MAKE) -C devices modules_install
 
 clean-local:
-	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" O="@abs_builddir@" clean
+	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" clean
 	@rm -f Modules.symvers
 
 mydist:
