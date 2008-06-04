@@ -40,15 +40,19 @@ class Master
         void open(unsigned int);
         void close();
 
+        void showDomains(int);
         void listSlaves();
         void listPdos(int);
         void generateXml(int);
 
     protected:
+        void showDomain(unsigned int);
         void listSlavePdos(uint16_t, bool = false);
         void generateSlaveXml(uint16_t);
+        unsigned int domainCount();
         unsigned int slaveCount();
         void slaveSyncs(uint16_t);
+        void getDomain(ec_ioctl_domain_t *, unsigned int);
         void getSlave(ec_ioctl_slave_t *, uint16_t);
         void getSync(ec_ioctl_sync_t *, uint16_t, uint8_t);
         void getPdo(ec_ioctl_pdo_t *, uint16_t, uint8_t, uint8_t);

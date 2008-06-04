@@ -62,6 +62,21 @@ void Master::close()
 
 /****************************************************************************/
 
+void Master::showDomains(int domainIndex)
+{
+    if (domainIndex == -1) {
+        unsigned int numDomains = domainCount(), i;
+
+        for (i = 0; i < numDomains; i++) {
+            showDomain(i);
+        }
+    } else {
+        showDomain(domainIndex);
+    }
+}
+
+/****************************************************************************/
+
 void Master::listSlaves()
 {
     unsigned int numSlaves = slaveCount(), i;
@@ -123,6 +138,29 @@ void Master::generateXml(int slavePosition)
     } else {
         generateSlaveXml(slavePosition);
     }
+}
+
+/****************************************************************************/
+
+void Master::showDomain(unsigned int domainIndex)
+{
+    ec_ioctl_domain_t data;
+    
+    getDomain(&data, domainIndex);
+
+	unsigned int data_size;
+	uint32_t logical_base_address;
+	uint16_t working_counter;
+	uint16_t expected_working_counter;
+
+	cout << "Domain" << domainIndex << ":"
+		<< " LogBaseAddr 0x"
+		<< hex << setfill('0') << setw(8) << data.logical_base_address
+		<< ", Size " << dec << data.data_size
+		<< ", WorkingCounter "
+		<< dec << data.working_counter
+		<< " of " << data.expected_working_counter
+		<< endl;
 }
 
 /****************************************************************************/
@@ -275,17 +313,49 @@ void Master::generateSlaveXml(uint16_t slavePosition)
 
 /****************************************************************************/
 
+unsigned int Master::domainCount()
+{
+    int ret;
+
+    if ((ret = ioctl(fd, EC_IOCTL_DOMAIN_COUNT, 0)) < 0) {
+        stringstream err;
+        err << "Failed to get number of domains: " << strerror(errno);
+        throw MasterException(err.str());
+    }
+
+    return ret;
+}
+
+/****************************************************************************/
+
 unsigned int Master::slaveCount()
 {
     int ret;
 
     if ((ret = ioctl(fd, EC_IOCTL_SLAVE_COUNT, 0)) < 0) {
         stringstream err;
-        err << "Failed to get slave: " << strerror(errno);
+        err << "Failed to get number of slaves: " << strerror(errno);
         throw MasterException(err.str());
     }
 
     return ret;
+}
+
+/****************************************************************************/
+
+void Master::getDomain(ec_ioctl_domain_t *data, unsigned int index)
+{
+    data->index = index;
+
+    if (ioctl(fd, EC_IOCTL_DOMAIN, data)) {
+        stringstream err;
+        err << "Failed to get domain: ";
+        if (errno == EINVAL)
+            err << "Domain " << index << " does not exist!";
+        else
+            err << strerror(errno);
+        throw MasterException(err.str());
+    }
 }
 
 /****************************************************************************/

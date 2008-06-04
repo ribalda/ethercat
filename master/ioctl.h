@@ -49,6 +49,8 @@ enum {
     EC_IOCTL_SYNC,
     EC_IOCTL_PDO,
     EC_IOCTL_PDO_ENTRY,
+	EC_IOCTL_DOMAIN_COUNT,
+	EC_IOCTL_DOMAIN
 };
 
 /*****************************************************************************/
@@ -120,6 +122,19 @@ typedef struct {
     uint8_t bit_length;
     char name[EC_IOCTL_PDO_NAME_SIZE];
 } ec_ioctl_pdo_entry_t;
+
+/*****************************************************************************/
+
+typedef struct {
+    // inputs
+	unsigned int index;
+
+    // outputs
+	unsigned int data_size;
+	uint32_t logical_base_address;
+	uint16_t working_counter;
+	uint16_t expected_working_counter;
+} ec_ioctl_domain_t;
 
 /*****************************************************************************/
 

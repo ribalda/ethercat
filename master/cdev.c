@@ -347,6 +347,38 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                 break;
             }
 
+        case EC_IOCTL_DOMAIN_COUNT:
+            retval = ec_master_domain_count(master);
+            break;
+
+        case EC_IOCTL_DOMAIN:
+            {
+                ec_ioctl_domain_t data;
+                const ec_domain_t *domain;
+
+                if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+                    retval = -EFAULT;
+                    break;
+                }
+                
+                if (!(domain = ec_master_find_domain(master, data.index))) {
+                    EC_ERR("Domain %u does not exist!\n", data.index);
+                    retval = -EINVAL;
+                    break;
+                }
+
+                data.data_size = domain->data_size;
+                data.logical_base_address = domain->logical_base_address;
+                data.working_counter = domain->working_counter;
+                data.expected_working_counter = domain->expected_working_counter;
+
+                if (copy_to_user((void __user *) arg, &data, sizeof(data))) {
+                    retval = -EFAULT;
+                    break;
+                }
+                break;
+            }
+
         default:
             retval = -ENOIOCTLCMD;
     }
