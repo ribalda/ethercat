@@ -38,15 +38,15 @@ void printUsage()
         << "  xml                Generate slave information xml." << endl
 		<< "Global options:" << endl
         << "  --master  -m <master>  Index of the master to use. Default: "
-		<< DEFAULT_MASTER	<< endl
+		<< DEFAULT_MASTER << endl
         << "  --slave   -s <index>   Positive numerical ring position,"
         << endl
-        << "                         or 'all' for all slaves. Default: 'all'."
+        << "                         or 'all' for all slaves (default)."
         << endl
         << "  --domain  -d <index>   Positive numerical index,"
         << endl
-        << "                         or 'all' for all domains. Default: "
-		<< "'all'." << endl
+        << "                         or 'all' for all domains (default)."
+        << endl
         << "  --help    -h           Show this help." << endl;
 }
 
