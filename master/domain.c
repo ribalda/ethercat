@@ -99,11 +99,11 @@ int ec_domain_init(
     domain->master = master;
     domain->index = index;
     domain->data_size = 0;
-    domain->expected_working_counter = 0;
+    domain->expected_working_counter = 0x0000;
     domain->data = NULL;
     domain->data_origin = EC_ORIG_INTERNAL;
     domain->logical_base_address = 0L;
-    domain->working_counter = 0xFFFFFFFF;
+    domain->working_counter = 0xFFFF;
     domain->working_counter_changes = 0;
     domain->notify_jiffies = 0;
 

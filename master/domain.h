@@ -64,13 +64,13 @@ struct ec_domain
     ec_master_t *master; /**< EtherCAT master owning the domain. */
     unsigned int index; /**< Index (just a number). */
     size_t data_size; /**< Size of the process data. */
-    unsigned int expected_working_counter; /**< Expected working counter. */
+    uint16_t expected_working_counter; /**< Expected working counter. */
     uint8_t *data; /**< Memory for the process data. */
     ec_origin_t data_origin; /**< Origin of the \a data memory. */
     struct list_head datagrams; /**< Datagrams for process data exchange. */
     uint32_t logical_base_address; /**< Logical offset address of the
                                      process data. */
-    unsigned int working_counter; /**< Last working counter value. */
+    uint16_t working_counter; /**< Last working counter value. */
     unsigned int working_counter_changes; /**< Working counter changes
                                              since last notification. */
     unsigned long notify_jiffies; /**< Time of last notification. */
