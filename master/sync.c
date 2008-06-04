@@ -105,17 +105,20 @@ void ec_sync_config(
         uint8_t *data /**> Configuration memory. */
         )
 {
+    // enable only if SII enable is set and size is > 0.
+    uint16_t enable = sync->enable && data_size;
+
     if (sync->slave->master->debug_level) {
-        EC_DBG("SM%i: Addr 0x%04X, Size %3i, Ctrl 0x%02X, En %i\n",
+        EC_DBG("SM%u: Addr 0x%04X, Size %3u, Ctrl 0x%02X, En %u\n",
                sync->index, sync->physical_start_address,
-               data_size, sync->control_register, sync->enable);
+               data_size, sync->control_register, enable);
     }
 
     EC_WRITE_U16(data,     sync->physical_start_address);
     EC_WRITE_U16(data + 2, data_size);
     EC_WRITE_U8 (data + 4, sync->control_register);
     EC_WRITE_U8 (data + 5, 0x00); // status byte (read only)
-    EC_WRITE_U16(data + 6, sync->enable ? 0x0001 : 0x0000); // enable
+    EC_WRITE_U16(data + 6, enable);
 }
 
 /*****************************************************************************/
