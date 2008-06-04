@@ -51,6 +51,7 @@ enum {
     EC_IOCTL_PDO_ENTRY,
 	EC_IOCTL_DOMAIN_COUNT,
 	EC_IOCTL_DOMAIN,
+	EC_IOCTL_DOMAIN_FMMU,
 	EC_IOCTL_DATA
 };
 
@@ -135,7 +136,23 @@ typedef struct {
 	uint32_t logical_base_address;
 	uint16_t working_counter;
 	uint16_t expected_working_counter;
+    unsigned int fmmu_count;
 } ec_ioctl_domain_t;
+
+/*****************************************************************************/
+
+typedef struct {
+    // inputs
+	unsigned int domain_index;
+	unsigned int fmmu_index;
+
+    // outputs
+    uint16_t slave_config_alias;
+    uint16_t slave_config_position;
+    uint8_t fmmu_dir;
+	uint32_t logical_address;
+    unsigned int data_size;
+} ec_ioctl_domain_fmmu_t;
 
 /*****************************************************************************/
 

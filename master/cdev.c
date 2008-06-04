@@ -42,6 +42,7 @@
 
 #include "cdev.h"
 #include "master.h"
+#include "slave_config.h"
 #include "ioctl.h"
 
 /*****************************************************************************/
@@ -371,6 +372,44 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                 data.logical_base_address = domain->logical_base_address;
                 data.working_counter = domain->working_counter;
                 data.expected_working_counter = domain->expected_working_counter;
+                data.fmmu_count = ec_domain_fmmu_count(domain);
+
+                if (copy_to_user((void __user *) arg, &data, sizeof(data))) {
+                    retval = -EFAULT;
+                    break;
+                }
+                break;
+            }
+
+        case EC_IOCTL_DOMAIN_FMMU:
+            {
+                ec_ioctl_domain_fmmu_t data;
+                const ec_domain_t *domain;
+                const ec_fmmu_config_t *fmmu;
+
+                if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+                    retval = -EFAULT;
+                    break;
+                }
+                
+                if (!(domain = ec_master_find_domain(master, data.domain_index))) {
+                    EC_ERR("Domain %u does not exist!\n", data.domain_index);
+                    retval = -EINVAL;
+                    break;
+                }
+
+                if (!(fmmu = ec_domain_find_fmmu(domain, data.fmmu_index))) {
+                    EC_ERR("Domain %u has less than %u fmmu configurations.\n",
+                            data.domain_index, data.fmmu_index + 1);
+                    retval = -EINVAL;
+                    break;
+                }
+
+                data.slave_config_alias = fmmu->sc->alias;
+                data.slave_config_position = fmmu->sc->position;
+                data.fmmu_dir = fmmu->dir;
+                data.logical_address = fmmu->logical_start_address;
+                data.data_size = fmmu->data_size;
 
                 if (copy_to_user((void __user *) arg, &data, sizeof(data))) {
                     retval = -EFAULT;

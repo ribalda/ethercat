@@ -108,6 +108,7 @@ int ec_domain_init(
     domain->notify_jiffies = 0;
 
     INIT_LIST_HEAD(&domain->datagrams);
+    INIT_LIST_HEAD(&domain->fmmu_configs);
 
     // init kobject and add it to the hierarchy
     memset(&domain->kobj, 0x00, sizeof(struct kobject));
@@ -202,6 +203,8 @@ void ec_domain_add_fmmu_config(
     domain->data_size += fmmu->data_size;
     wc_increment = working_counter_increment[fmmu->dir];
     domain->expected_working_counter += wc_increment;
+    
+    list_add_tail(&fmmu->list, &domain->fmmu_configs);
 
     if (domain->master->debug_level)
         EC_DBG("Domain %u: Added %u bytes (now %u) with dir %u -> WC %u"
@@ -371,6 +374,38 @@ ssize_t ec_show_domain_attribute(struct kobject *kobj, /**< kobject */
     }
 
     return 0;
+}
+
+/*****************************************************************************/
+
+unsigned int ec_domain_fmmu_count(const ec_domain_t *domain)
+{
+    const ec_fmmu_config_t *fmmu;
+    unsigned int num = 0;
+
+    list_for_each_entry(fmmu, &domain->fmmu_configs, list) {
+        num++;
+    }
+
+    return num;
+}
+
+/*****************************************************************************/
+
+const ec_fmmu_config_t *ec_domain_find_fmmu(
+        const ec_domain_t *domain,
+        unsigned int index
+        )
+{
+    const ec_fmmu_config_t *fmmu;
+
+    list_for_each_entry(fmmu, &domain->fmmu_configs, list) {
+        if (index--)
+            continue;
+        return fmmu;
+    }
+
+    return NULL;
 }
 
 /******************************************************************************

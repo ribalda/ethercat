@@ -58,6 +58,7 @@ void ec_fmmu_config_init(
         ec_direction_t dir /**< Pdo direction. */
         )
 {
+    INIT_LIST_HEAD(&fmmu->list);
     fmmu->sc = sc;
     fmmu->dir = dir;
 
@@ -80,7 +81,7 @@ void ec_fmmu_config_page(
         )
 {
     if (fmmu->sc->master->debug_level) {
-        EC_DBG("FMMU: LogAddr 0x%08X, Size %3i, PhysAddr 0x%04X, Dir %s\n",
+        EC_DBG("FMMU: LogAddr 0x%08X, Size %3u, PhysAddr 0x%04X, Dir %s\n",
                fmmu->logical_start_address, fmmu->data_size,
                sync->physical_start_address,
                (sync->control_register & 0x04) ? "out" : "in");

@@ -55,6 +55,9 @@ class Master
         unsigned int slaveCount();
         void slaveSyncs(uint16_t);
         void getDomain(ec_ioctl_domain_t *, unsigned int);
+        void getFmmu(ec_ioctl_domain_fmmu_t *, unsigned int, unsigned int);
+        void getData(ec_ioctl_data_t *, unsigned int, unsigned int,
+                unsigned char *);
         void getSlave(ec_ioctl_slave_t *, uint16_t);
         void getSync(ec_ioctl_sync_t *, uint16_t, uint8_t);
         void getPdo(ec_ioctl_pdo_t *, uint16_t, uint8_t, uint8_t);

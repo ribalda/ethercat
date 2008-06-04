@@ -74,6 +74,7 @@ struct ec_domain
     unsigned int working_counter_changes; /**< Working counter changes
                                              since last notification. */
     unsigned long notify_jiffies; /**< Time of last notification. */
+    struct list_head fmmu_configs; /**< FMMU configurations contained. */
 };
 
 /*****************************************************************************/
@@ -83,6 +84,9 @@ void ec_domain_destroy(ec_domain_t *);
 
 void ec_domain_add_fmmu_config(ec_domain_t *, ec_fmmu_config_t *);
 int ec_domain_finish(ec_domain_t *, uint32_t);
+
+unsigned int ec_domain_fmmu_count(const ec_domain_t *);
+const ec_fmmu_config_t *ec_domain_find_fmmu(const ec_domain_t *, unsigned int);
 
 /*****************************************************************************/
 

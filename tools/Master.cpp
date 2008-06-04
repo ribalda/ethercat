@@ -166,17 +166,16 @@ void Master::outputDomainData(unsigned int domainIndex)
     
     getDomain(&domain, domainIndex);
 
+    if (!domain.data_size)
+        return;
+
     processData = new unsigned char[domain.data_size];
 
-    data.domain_index = domainIndex;
-    data.data_size = domain.data_size;
-    data.target = processData;
-
-    if (ioctl(fd, EC_IOCTL_DATA, &data) < 0) {
-        stringstream err;
-        err << "Failed to get domain data: " << strerror(errno);
+    try {
+        getData(&data, domainIndex, domain.data_size, processData);
+    } catch (MasterException &e) {
         delete [] processData;
-        throw MasterException(err.str());
+        throw e;
     }
 
     for (i = 0; i < data.data_size; i++)
@@ -190,18 +189,64 @@ void Master::outputDomainData(unsigned int domainIndex)
 
 void Master::showDomain(unsigned int domainIndex)
 {
-    ec_ioctl_domain_t data;
+    ec_ioctl_domain_t domain;
+    unsigned char *processData;
+    ec_ioctl_data_t data;
+    unsigned int i, j;
+    ec_ioctl_domain_fmmu_t fmmu;
+    unsigned int dataOffset;
     
-    getDomain(&data, domainIndex);
+    getDomain(&domain, domainIndex);
 
 	cout << "Domain" << domainIndex << ":"
 		<< " LogBaseAddr 0x"
-		<< hex << setfill('0') << setw(8) << data.logical_base_address
-		<< ", Size " << dec << data.data_size
+		<< hex << setfill('0') << setw(8) << domain.logical_base_address
+		<< ", Size " << dec << setfill(' ') << setw(3) << domain.data_size
 		<< ", WorkingCounter "
-		<< dec << data.working_counter
-		<< " of " << data.expected_working_counter
-		<< endl;
+		<< dec << setw(3) << domain.working_counter
+		<< " of " << setw(3) << domain.expected_working_counter << endl;
+
+    if (!domain.data_size)
+        return;
+
+    processData = new unsigned char[domain.data_size];
+
+    try {
+        getData(&data, domainIndex, domain.data_size, processData);
+    } catch (MasterException &e) {
+        delete [] processData;
+        throw e;
+    }
+
+    for (i = 0; i < domain.fmmu_count; i++) {
+        getFmmu(&fmmu, domainIndex, i);
+
+        cout << "  " << (fmmu.fmmu_dir ? "Inputs" : "Outputs")
+            << " from slave config " << fmmu.slave_config_alias
+            << ":" << fmmu.slave_config_position
+            << ", LogAddr 0x" 
+            << hex << setfill('0') << setw(8) << fmmu.logical_address
+            << ", Size "
+            << dec << setfill(' ') << setw(3) << fmmu.data_size
+            << endl;
+
+        dataOffset = fmmu.logical_address - domain.logical_base_address;
+        if (dataOffset + fmmu.data_size > domain.data_size) {
+            stringstream err;
+            err << "Fmmu information corrupted!";
+            delete [] processData;
+            throw MasterException(err.str());
+        }
+
+        cout << "    " << hex << setfill('0');
+        for (j = 0; j < fmmu.data_size; j++) {
+            cout << setw(2)
+                << (unsigned int) *(processData + dataOffset + j) << " ";
+        }
+        cout << endl;
+    }
+
+    delete [] processData;
 }
 
 /****************************************************************************/
@@ -401,6 +446,22 @@ void Master::getDomain(ec_ioctl_domain_t *data, unsigned int index)
 
 /****************************************************************************/
 
+void Master::getData(ec_ioctl_data_t *data, unsigned int domainIndex,
+        unsigned int dataSize, unsigned char *mem)
+{
+    data->domain_index = domainIndex;
+    data->data_size = dataSize;
+    data->target = mem;
+
+    if (ioctl(fd, EC_IOCTL_DATA, data) < 0) {
+        stringstream err;
+        err << "Failed to get domain data: " << strerror(errno);
+        throw MasterException(err.str());
+    }
+}
+
+/****************************************************************************/
+
 void Master::getSlave(ec_ioctl_slave_t *slave, uint16_t slaveIndex)
 {
     slave->position = slaveIndex;
@@ -410,6 +471,30 @@ void Master::getSlave(ec_ioctl_slave_t *slave, uint16_t slaveIndex)
         err << "Failed to get slave: ";
         if (errno == EINVAL)
             err << "Slave " << slaveIndex << " does not exist!";
+        else
+            err << strerror(errno);
+        throw MasterException(err.str());
+    }
+}
+
+/****************************************************************************/
+
+void Master::getFmmu(
+        ec_ioctl_domain_fmmu_t *fmmu,
+        unsigned int domainIndex,
+        unsigned int fmmuIndex
+        )
+{
+    fmmu->domain_index = domainIndex;
+    fmmu->fmmu_index = fmmuIndex;
+
+    if (ioctl(fd, EC_IOCTL_DOMAIN_FMMU, fmmu)) {
+        stringstream err;
+        err << "Failed to get domain FMMU: ";
+        if (errno == EINVAL)
+            err << "Either domain " << domainIndex << " does not exist, "
+                << "or it contains less than " << (unsigned int) fmmuIndex + 1
+                << " FMMus!";
         else
             err << strerror(errno);
         throw MasterException(err.str());
@@ -432,7 +517,7 @@ void Master::getSync(
         err << "Failed to get sync manager: ";
         if (errno == EINVAL)
             err << "Either slave " << slaveIndex << " does not exist, "
-                << "or contains less than " << (unsigned int) syncIndex + 1
+                << "or it contains less than " << (unsigned int) syncIndex + 1
                 << " sync managers!";
         else
             err << strerror(errno);
@@ -458,7 +543,7 @@ void Master::getPdo(
         err << "Failed to get Pdo: ";
         if (errno == EINVAL)
             err << "Either slave " << slaveIndex << " does not exist, "
-                << "or contains less than " << (unsigned int) syncIndex + 1
+                << "or it contains less than " << (unsigned int) syncIndex + 1
                 << " sync managers, or sync manager "
                 << (unsigned int) syncIndex << " contains less than "
                 << pdoPos + 1 << " Pdos!" << endl;
@@ -488,7 +573,7 @@ void Master::getPdoEntry(
         err << "Failed to get Pdo entry: ";
         if (errno == EINVAL)
             err << "Either slave " << slaveIndex << " does not exist, "
-                << "or contains less than " << (unsigned int) syncIndex + 1
+                << "or it contains less than " << (unsigned int) syncIndex + 1
                 << " sync managers, or sync manager "
                 << (unsigned int) syncIndex << " contains less than "
                 << pdoPos + 1 << " Pdos, or the Pdo at position " << pdoPos

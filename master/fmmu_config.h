@@ -50,6 +50,7 @@
 /** FMMU configuration.
  */
 typedef struct {
+    struct list_head list; /**< List node used by domain. */
     const ec_slave_config_t *sc; /**< EtherCAT slave config. */
     const ec_domain_t *domain; /**< Domain. */
     ec_direction_t dir; /**< Pdo direction. */
