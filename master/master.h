@@ -197,6 +197,9 @@ void ec_master_clear_eoe_handlers(ec_master_t *);
 #endif
 void ec_master_destroy_slaves(ec_master_t *);
 
+unsigned int ec_master_domain_count(const ec_master_t *);
+ec_domain_t *ec_master_find_domain(ec_master_t *, unsigned int);
+
 /*****************************************************************************/
 
 #endif

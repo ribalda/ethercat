@@ -1305,6 +1305,40 @@ ec_slave_t *ec_master_find_slave(
     return NULL;
 }
 
+/*****************************************************************************/
+
+unsigned int ec_master_domain_count(
+		const ec_master_t *master /**< EtherCAT master. */
+		)
+{
+	const ec_domain_t *domain;
+	unsigned int count = 0;
+
+	list_for_each_entry(domain, &master->domains, list) {
+		count++;
+	}
+
+	return count;
+}
+
+/*****************************************************************************/
+
+ec_domain_t *ec_master_find_domain(
+		ec_master_t *master, /**< EtherCAT master. */
+		unsigned int index /**< Domain index. */
+		)
+{
+	ec_domain_t *domain;
+
+	list_for_each_entry(domain, &master->domains, list) {
+		if (index--)
+			continue;
+		return domain;
+	}
+
+	return NULL;
+}
+
 /******************************************************************************
  *  Realtime interface
  *****************************************************************************/
