@@ -117,7 +117,7 @@ AC_ARG_WITH([8139too-kernel],
 if test "x${enable8139too}" = "x1"; then
     AC_MSG_CHECKING([for kernel for 8139too driver])
 
-    kernels=`ls -1 devices/ | grep -oE "^8139too-.*-" | cut -d "-" -f 2 | uniq`
+    kernels=`ls -1 ${srcdir}/devices/ | grep -oE "^8139too-.*-" | cut -d "-" -f 2 | uniq`
     found=0
     for k in $kernels; do
         if test "$kernel8139too" = "$k"; then
@@ -172,7 +172,7 @@ AC_ARG_WITH([e100-kernel],
 if test "x${enablee100}" = "x1"; then
     AC_MSG_CHECKING([for kernel for e100 driver])
 
-    kernels=`ls -1 devices/ | grep -oE "^e100-.*-" | cut -d "-" -f 2 | uniq`
+    kernels=`ls -1 ${srcdir}/devices/ | grep -oE "^e100-.*-" | cut -d "-" -f 2 | uniq`
     found=0
     for k in $kernels; do
         if test "$kernele100" = "$k"; then
@@ -227,7 +227,7 @@ AC_ARG_WITH([forcedeth-kernel],
 if test "x${enableforcedeth}" = "x1"; then
     AC_MSG_CHECKING([for kernel for forcedeth driver])
 
-    kernels=`ls -1 devices/ | grep -oE "^forcedeth-.*-" | cut -d "-" -f 2 | uniq`
+    kernels=`ls -1 ${srcdir}/devices/ | grep -oE "^forcedeth-.*-" | cut -d "-" -f 2 | uniq`
     found=0
     for k in $kernels; do
         if test "$kernelforcedeth" = "$k"; then
@@ -282,7 +282,7 @@ AC_ARG_WITH([e1000-kernel],
 if test "x${enablee1000}" = "x1"; then
     AC_MSG_CHECKING([for kernel for e1000 driver])
 
-    kernels=`ls -1 devices/e1000/ | grep -oE "^e1000_main-.*" | cut -d "-" -f 2 | uniq`
+    kernels=`ls -1 ${srcdir}/devices/e1000/ | grep -oE "^e1000_main-.*" | cut -d "-" -f 2 | uniq`
     found=0
     for k in $kernels; do
         if test "$kernele1000" = "$k"; then
@@ -337,7 +337,7 @@ AC_ARG_WITH([r8169-kernel],
 if test "x${enabler8169}" = "x1"; then
     AC_MSG_CHECKING([for kernel for r8169 driver])
 
-    kernels=`ls -1 devices/ | grep -oE "^r8169-.*-" | cut -d "-" -f 2 | uniq`
+    kernels=`ls -1 ${srcdir}/devices/ | grep -oE "^r8169-.*-" | cut -d "-" -f 2 | uniq`
     found=0
     for k in $kernels; do
         if test "$kernelr8169" = "$k"; then
