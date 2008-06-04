@@ -379,6 +379,37 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                 break;
             }
 
+        case EC_IOCTL_DATA:
+            {
+                ec_ioctl_data_t data;
+                const ec_domain_t *domain;
+
+                if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+                    retval = -EFAULT;
+                    break;
+                }
+                
+                if (!(domain = ec_master_find_domain(master, data.domain_index))) {
+                    EC_ERR("Domain %u does not exist!\n", data.domain_index);
+                    retval = -EINVAL;
+                    break;
+                }
+
+                if (domain->data_size != data.data_size) {
+                    EC_ERR("Data size mismatch %u/%u!\n",
+                            data.data_size, domain->data_size);
+                    retval = -EFAULT;
+                    break;
+                }
+
+                if (copy_to_user((void __user *) data.target, domain->data,
+                            domain->data_size)) {
+                    retval = -EFAULT;
+                    break;
+                }
+                break;
+            }
+
         default:
             retval = -ENOIOCTLCMD;
     }

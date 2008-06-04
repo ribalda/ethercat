@@ -31,6 +31,7 @@ void printUsage()
     cerr
         << "Usage: ethercat <COMMAND> [OPTIONS]" << endl
 		<< "Commands:" << endl
+        << "  data               Output binary domain process data." << endl
         << "  domain             Show domain information." << endl
         << "  list (ls, slaves)  List all slaves (former 'lsec')." << endl
         << "  pdos               List Pdo mapping of given slaves." << endl
@@ -143,7 +144,9 @@ int main(int argc, char **argv)
     try {
         master.open(masterIndex);
 
-        if (command == "domain") {
+        if (command == "data") {
+            master.outputData(domainIndex);
+        } else if (command == "domain") {
             master.showDomains(domainIndex);
 		} else if (command == "list" || command == "ls" || command == "slaves") {
             master.listSlaves();

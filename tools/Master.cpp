@@ -62,6 +62,21 @@ void Master::close()
 
 /****************************************************************************/
 
+void Master::outputData(int domainIndex)
+{
+    if (domainIndex == -1) {
+        unsigned int numDomains = domainCount(), i;
+
+        for (i = 0; i < numDomains; i++) {
+            outputDomainData(i);
+        }
+    } else {
+        outputDomainData(domainIndex);
+    }
+}
+
+/****************************************************************************/
+
 void Master::showDomains(int domainIndex)
 {
     if (domainIndex == -1) {
@@ -142,16 +157,42 @@ void Master::generateXml(int slavePosition)
 
 /****************************************************************************/
 
+void Master::outputDomainData(unsigned int domainIndex)
+{
+    ec_ioctl_domain_t domain;
+    ec_ioctl_data_t data;
+    unsigned char *processData;
+    unsigned int i;
+    
+    getDomain(&domain, domainIndex);
+
+    processData = new unsigned char[domain.data_size];
+
+    data.domain_index = domainIndex;
+    data.data_size = domain.data_size;
+    data.target = processData;
+
+    if (ioctl(fd, EC_IOCTL_DATA, &data) < 0) {
+        stringstream err;
+        err << "Failed to get domain data: " << strerror(errno);
+        delete [] processData;
+        throw MasterException(err.str());
+    }
+
+    for (i = 0; i < data.data_size; i++)
+        cout << processData[i];
+    cout.flush();
+
+    delete [] processData;
+}
+
+/****************************************************************************/
+
 void Master::showDomain(unsigned int domainIndex)
 {
     ec_ioctl_domain_t data;
     
     getDomain(&data, domainIndex);
-
-	unsigned int data_size;
-	uint32_t logical_base_address;
-	uint16_t working_counter;
-	uint16_t expected_working_counter;
 
 	cout << "Domain" << domainIndex << ":"
 		<< " LogBaseAddr 0x"

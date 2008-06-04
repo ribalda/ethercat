@@ -40,12 +40,14 @@ class Master
         void open(unsigned int);
         void close();
 
+        void outputData(int);
         void showDomains(int);
         void listSlaves();
         void listPdos(int);
         void generateXml(int);
 
     protected:
+        void outputDomainData(unsigned int);
         void showDomain(unsigned int);
         void listSlavePdos(uint16_t, bool = false);
         void generateSlaveXml(uint16_t);

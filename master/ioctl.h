@@ -50,7 +50,8 @@ enum {
     EC_IOCTL_PDO,
     EC_IOCTL_PDO_ENTRY,
 	EC_IOCTL_DOMAIN_COUNT,
-	EC_IOCTL_DOMAIN
+	EC_IOCTL_DOMAIN,
+	EC_IOCTL_DATA
 };
 
 /*****************************************************************************/
@@ -135,6 +136,15 @@ typedef struct {
 	uint16_t working_counter;
 	uint16_t expected_working_counter;
 } ec_ioctl_domain_t;
+
+/*****************************************************************************/
+
+typedef struct {
+    // inputs
+	unsigned int domain_index;
+    unsigned int data_size;
+    unsigned char *target;
+} ec_ioctl_data_t;
 
 /*****************************************************************************/
 
