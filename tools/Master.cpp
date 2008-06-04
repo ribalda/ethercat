@@ -203,8 +203,8 @@ void Master::showDomain(unsigned int domainIndex)
 		<< hex << setfill('0') << setw(8) << domain.logical_base_address
 		<< ", Size " << dec << setfill(' ') << setw(3) << domain.data_size
 		<< ", WorkingCounter "
-		<< dec << setw(3) << domain.working_counter
-		<< " of " << setw(3) << domain.expected_working_counter << endl;
+		<< dec << domain.working_counter << "/"
+        << domain.expected_working_counter << endl;
 
     if (!domain.data_size)
         return;
@@ -221,14 +221,13 @@ void Master::showDomain(unsigned int domainIndex)
     for (i = 0; i < domain.fmmu_count; i++) {
         getFmmu(&fmmu, domainIndex, i);
 
-        cout << "  " << (fmmu.fmmu_dir ? "Inputs" : "Outputs")
-            << " from slave config " << fmmu.slave_config_alias
-            << ":" << fmmu.slave_config_position
+        cout << "  SlaveConfig "
+            << fmmu.slave_config_alias << ":" << fmmu.slave_config_position
+            << ", Dir "
+            << setfill(' ') << setw(3) << (fmmu.fmmu_dir ? "In" : "Out")
             << ", LogAddr 0x" 
             << hex << setfill('0') << setw(8) << fmmu.logical_address
-            << ", Size "
-            << dec << setfill(' ') << setw(3) << fmmu.data_size
-            << endl;
+            << ", Size " << dec << fmmu.data_size << endl;
 
         dataOffset = fmmu.logical_address - domain.logical_base_address;
         if (dataOffset + fmmu.data_size > domain.data_size) {
