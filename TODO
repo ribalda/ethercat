@@ -19,19 +19,9 @@ Version 1.4.0:
 * Adapt remaining examples.
 * READMEs for examples.
 * Update documentation.
-* Check for data sizes when reading mapping.
-
-* SDO write access.
-* Wait for bus scanning, even when link is not up at ecrt_request_master().
-* Attach Pdo names.
-* Mailbox protocol handlers.
-* Mailbox state machine using toggle bits.
+* Check for sizes of uploaded Sdos when reading mapping from CoE.
+* Attach Pdo names from SII or Coe dictioary to Pdos read via CoE.
 * Make scanning and configuration run parallel (each).
-* Implement realtime interface via cdev.
-* Add something like lsec -n to show numeric vendor IDs.
-* Separate CoE debugging.
-* Evaluate EEPROM contents after writing.
-* Optimize alignment of process data.
 
 Future issues:
 
@@ -39,7 +29,16 @@ Future issues:
 * Move slave handlers and state machines, etc. into a user space daemon (move
   kernel threads to user space daemon with a TCP interface replacing the
   cdev).
+* Implement user space realtime interface via cdev.
+* SDO write access from user space.
+* Mailbox protocol handlers.
+* Mailbox state machine using toggle bits.
 * Mailbox gateway.
+* Add add -n (numeric) switch to ethercat command.
+* Separate CoE debugging.
+* Evaluate EEPROM contents after writing.
+* Optimize alignment of process data.
+* Wait for bus scanning, even when link is not up at ecrt_request_master()?
 * Redundancy with 2 network adapters.
 * Interface/buffers for asynchronous domain IO.
 
