@@ -69,7 +69,7 @@ static struct semaphore master_sem; /**< Master semaphore. */
 static unsigned int master_count; /**< Number of masters. */
 static unsigned int backup_count; /**< Number of backup devices. */
 
-static dev_t device_number; /**< Device number for cdevs. */
+dev_t device_number; /**< Device number for master cdevs. */
 
 static uint8_t macs[MAX_MASTERS][2][ETH_ALEN]; /**< MAC addresses. */
 
