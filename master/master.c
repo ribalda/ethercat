@@ -64,27 +64,13 @@ static int ec_master_operation_thread(ec_master_t *);
 #ifdef EC_EOE
 void ec_master_eoe_run(unsigned long);
 #endif
-ssize_t ec_show_master_attribute(struct kobject *, struct attribute *, char *);
 
 /*****************************************************************************/
 
 /** \cond */
 
-EC_SYSFS_READ_ATTR(info);
-
-static struct attribute *ec_def_attrs[] = {
-    &attr_info,
-    NULL,
-};
-
-static struct sysfs_ops ec_sysfs_ops = {
-    .show = &ec_show_master_attribute,
-};
-
 static struct kobj_type ktype_ec_master = {
     .release = NULL,
-    .sysfs_ops = &ec_sysfs_ops,
-    .default_attrs = ec_def_attrs
 };
 
 /** \endcond */
@@ -935,153 +921,6 @@ schedule:
     if (master->debug_level)
         EC_DBG("Master OP thread exiting...\n");
     complete_and_exit(&master->thread_exit, 0);
-}
-
-/*****************************************************************************/
-
-/**
- * Prints the device information to a buffer.
- * \return number of bytes written.
- */
-
-ssize_t ec_master_device_info(
-        const ec_device_t *device, /**< EtherCAT device */
-        const uint8_t *mac, /**< MAC address */
-        char *buffer /**< target buffer */
-        )
-{
-    unsigned int frames_lost;
-    off_t off = 0;
-    
-    if (ec_mac_is_zero(mac)) {
-        off += sprintf(buffer + off, "none.\n");
-    }
-    else {
-        off += ec_mac_print(mac, buffer + off);
-    
-        if (device->dev) {
-            off += sprintf(buffer + off, " (connected).\n");      
-            off += sprintf(buffer + off, "    Frames sent:     %u\n",
-                    device->tx_count);
-            off += sprintf(buffer + off, "    Frames received: %u\n",
-                    device->rx_count);
-            frames_lost = device->tx_count - device->rx_count;
-            if (frames_lost) frames_lost--;
-            off += sprintf(buffer + off, "    Frames lost:     %u\n", frames_lost);
-        }
-        else {
-            off += sprintf(buffer + off, " (WAITING).\n");      
-        }
-    }
-    
-    return off;
-}
-
-/*****************************************************************************/
-
-/**
-   Formats master information for SysFS read access.
-   \return number of bytes written
-*/
-
-ssize_t ec_master_info(ec_master_t *master, /**< EtherCAT master */
-                       char *buffer /**< memory to store data */
-                       )
-{
-    off_t off = 0;
-#ifdef EC_EOE
-    ec_eoe_t *eoe;
-#endif
-    uint32_t cur, sum, min, max, pos, i;
-
-    off += sprintf(buffer + off, "\nMode: ");
-    switch (master->mode) {
-        case EC_MASTER_MODE_ORPHANED:
-            off += sprintf(buffer + off, "ORPHANED");
-            break;
-        case EC_MASTER_MODE_IDLE:
-            off += sprintf(buffer + off, "IDLE");
-            break;
-        case EC_MASTER_MODE_OPERATION:
-            off += sprintf(buffer + off, "OPERATION");
-            break;
-    }
-
-    off += sprintf(buffer + off, "\nSlaves: %i\n",
-                   master->slave_count);
-    off += sprintf(buffer + off, "\nDevices:\n");
-    
-    down(&master->device_sem);
-    off += sprintf(buffer + off, "  Main: ");
-    off += ec_master_device_info(&master->main_device,
-            master->main_mac, buffer + off);
-    off += sprintf(buffer + off, "  Backup: ");
-    off += ec_master_device_info(&master->backup_device,
-            master->backup_mac, buffer + off);
-    up(&master->device_sem);
-
-    off += sprintf(buffer + off, "\nTiming (min/avg/max) [us]:\n");
-
-    sum = 0;
-    min = 0xFFFFFFFF;
-    max = 0;
-    pos = master->idle_cycle_time_pos;
-    for (i = 0; i < HZ; i++) {
-        cur = master->idle_cycle_times[(i + pos) % HZ];
-        sum += cur;
-        if (cur < min) min = cur;
-        if (cur > max) max = cur;
-    }
-    off += sprintf(buffer + off, "  Idle cycle: %u / %u.%u / %u\n",
-                   min, sum / HZ, (sum * 100 / HZ) % 100, max);
-
-#ifdef EC_EOE
-    sum = 0;
-    min = 0xFFFFFFFF;
-    max = 0;
-    pos = master->eoe_cycle_time_pos;
-    for (i = 0; i < HZ; i++) {
-        cur = master->eoe_cycle_times[(i + pos) % HZ];
-        sum += cur;
-        if (cur < min) min = cur;
-        if (cur > max) max = cur;
-    }
-    off += sprintf(buffer + off, "  EoE cycle: %u / %u.%u / %u\n",
-                   min, sum / HZ, (sum * 100 / HZ) % 100, max);
-
-    if (!list_empty(&master->eoe_handlers))
-        off += sprintf(buffer + off, "\nEoE statistics (RX/TX) [bps]:\n");
-    list_for_each_entry(eoe, &master->eoe_handlers, list) {
-        off += sprintf(buffer + off, "  %s: %u / %u (%u KB/s)\n",
-                       eoe->dev->name, eoe->rx_rate, eoe->tx_rate,
-                       ((eoe->rx_rate + eoe->tx_rate) / 8 + 512) / 1024);
-    }
-#endif
-
-    off += sprintf(buffer + off, "\n");
-
-    return off;
-}
-
-/*****************************************************************************/
-
-/**
-   Formats attribute data for SysFS read access.
-   \return number of bytes to read
-*/
-
-ssize_t ec_show_master_attribute(struct kobject *kobj, /**< kobject */
-                                 struct attribute *attr, /**< attribute */
-                                 char *buffer /**< memory to store data */
-                                 )
-{
-    ec_master_t *master = container_of(kobj, ec_master_t, kobj);
-
-    if (attr == &attr_info) {
-        return ec_master_info(master, buffer);
-    }
-
-    return 0;
 }
 
 /*****************************************************************************/
