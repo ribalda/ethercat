@@ -8,6 +8,7 @@
 
 #include <iostream>
 #include <string>
+#include <vector>
 using namespace std;
 
 #include "Master.h"
@@ -23,6 +24,7 @@ static unsigned int masterIndex = DEFAULT_MASTER;
 static int slavePosition = DEFAULT_SLAVEPOSITION;
 static int domainIndex = DEFAULT_DOMAININDEX;
 static string command = DEFAULT_COMMAND;
+vector<string> commandArgs;
 
 /*****************************************************************************/
 
@@ -32,6 +34,7 @@ void printUsage()
         << "Usage: ethercat <COMMAND> [OPTIONS]" << endl
 		<< "Commands:" << endl
         << "  data               Output binary domain process data." << endl
+        << "  debug              Set the master debug level." << endl
         << "  domain             Show domain information." << endl
         << "  list (ls, slaves)  List all slaves (former 'lsec')." << endl
         << "  pdos               List Pdo mapping of given slaves." << endl
@@ -131,6 +134,8 @@ void getOptions(int argc, char **argv)
 	}
 
     command = argv[optind];
+    while (++optind < argc)
+        commandArgs.push_back(string(argv[optind]));
 }
 
 /****************************************************************************/
@@ -146,6 +151,8 @@ int main(int argc, char **argv)
 
         if (command == "data") {
             master.outputData(domainIndex);
+        } else if (command == "debug") {
+            master.setDebug(commandArgs);
         } else if (command == "domain") {
             master.showDomains(domainIndex);
 		} else if (command == "list" || command == "ls" || command == "slaves") {

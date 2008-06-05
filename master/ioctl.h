@@ -52,7 +52,8 @@ enum {
 	EC_IOCTL_DOMAIN_COUNT,
 	EC_IOCTL_DOMAIN,
 	EC_IOCTL_DOMAIN_FMMU,
-	EC_IOCTL_DATA
+	EC_IOCTL_DATA,
+    EC_IOCTL_DEBUG_LEVEL,
 };
 
 /*****************************************************************************/

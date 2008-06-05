@@ -65,25 +65,20 @@ static int ec_master_operation_thread(ec_master_t *);
 void ec_master_eoe_run(unsigned long);
 #endif
 ssize_t ec_show_master_attribute(struct kobject *, struct attribute *, char *);
-ssize_t ec_store_master_attribute(struct kobject *, struct attribute *,
-                                  const char *, size_t);
 
 /*****************************************************************************/
 
 /** \cond */
 
 EC_SYSFS_READ_ATTR(info);
-EC_SYSFS_READ_WRITE_ATTR(debug_level);
 
 static struct attribute *ec_def_attrs[] = {
     &attr_info,
-    &attr_debug_level,
     NULL,
 };
 
 static struct sysfs_ops ec_sysfs_ops = {
     .show = &ec_show_master_attribute,
-    .store = ec_store_master_attribute
 };
 
 static struct kobj_type ktype_ec_master = {
@@ -1085,48 +1080,8 @@ ssize_t ec_show_master_attribute(struct kobject *kobj, /**< kobject */
     if (attr == &attr_info) {
         return ec_master_info(master, buffer);
     }
-    else if (attr == &attr_debug_level) {
-        return sprintf(buffer, "%i\n", master->debug_level);
-    }
 
     return 0;
-}
-
-/*****************************************************************************/
-
-/**
-   Formats attribute data for SysFS write access.
-   \return number of bytes processed, or negative error code
-*/
-
-ssize_t ec_store_master_attribute(struct kobject *kobj, /**< slave's kobject */
-                                  struct attribute *attr, /**< attribute */
-                                  const char *buffer, /**< memory with data */
-                                  size_t size /**< size of data to store */
-                                  )
-{
-    ec_master_t *master = container_of(kobj, ec_master_t, kobj);
-
-    if (attr == &attr_debug_level) {
-        if (!strcmp(buffer, "0\n")) {
-            master->debug_level = 0;
-        }
-        else if (!strcmp(buffer, "1\n")) {
-            master->debug_level = 1;
-        }
-        else if (!strcmp(buffer, "2\n")) {
-            master->debug_level = 2;
-        }
-        else {
-            EC_ERR("Invalid debug level value!\n");
-            return -EINVAL;
-        }
-
-        EC_INFO("Master debug level set to %i.\n", master->debug_level);
-        return size;
-    }
-
-    return -EINVAL;
 }
 
 /*****************************************************************************/
@@ -1337,6 +1292,26 @@ ec_domain_t *ec_master_find_domain(
 	}
 
 	return NULL;
+}
+
+/*****************************************************************************/
+
+int ec_master_debug_level(
+        ec_master_t *master,
+        int level
+        )
+{
+    if (level < 0 || level > 2) {
+        EC_ERR("Invalid debug level %i!\n", level);
+        return -1;
+    }
+
+    if (level != master->debug_level) {
+        master->debug_level = level;
+        EC_INFO("Master debug level set to %i.\n", master->debug_level);
+    }
+
+    return 0;
 }
 
 /******************************************************************************

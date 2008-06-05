@@ -8,6 +8,8 @@
 #define __EC_MASTER_H__
 
 #include <stdexcept>
+#include <string>
+#include <vector>
 using namespace std;
 
 #include "../master/ioctl.h"
@@ -41,6 +43,7 @@ class Master
         void close();
 
         void outputData(int);
+        void setDebug(const vector<string> &);
         void showDomains(int);
         void listSlaves();
         void listPdos(int);

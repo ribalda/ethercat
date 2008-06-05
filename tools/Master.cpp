@@ -77,6 +77,35 @@ void Master::outputData(int domainIndex)
 
 /****************************************************************************/
 
+void Master::setDebug(const vector<string> &commandArgs)
+{
+    stringstream str;
+    int debugLevel;
+    
+    if (commandArgs.size() != 1) {
+        stringstream err;
+        err << "'debug' takes exactly one argument!";
+        throw MasterException(err.str());
+    }
+
+    str << commandArgs[0];
+    str >> debugLevel;
+
+    if (str.fail()) {
+        stringstream err;
+        err << "Invalid debug level '" << commandArgs[0] << "'!";
+        throw MasterException(err.str());
+    }
+
+    if (ioctl(fd, EC_IOCTL_DEBUG_LEVEL, debugLevel) < 0) {
+        stringstream err;
+        err << "Failed to set debug level: " << strerror(errno);
+        throw MasterException(err.str());
+    }
+}
+
+/****************************************************************************/
+
 void Master::showDomains(int domainIndex)
 {
     if (domainIndex == -1) {

@@ -126,7 +126,7 @@ struct ec_master {
 
     struct list_head domains; /**< list of domains */
 
-    int debug_level; /**< master debug level */
+    int debug_level; /**< Master debug level. */
     ec_stats_t stats; /**< cyclic statistics */
     unsigned int frames_timed_out; /**< there were frame timeouts in the last
                                      call to ecrt_master_receive() */
@@ -199,6 +199,8 @@ void ec_master_destroy_slaves(ec_master_t *);
 
 unsigned int ec_master_domain_count(const ec_master_t *);
 ec_domain_t *ec_master_find_domain(ec_master_t *, unsigned int);
+
+int ec_master_debug_level(ec_master_t *, int);
 
 /*****************************************************************************/
 

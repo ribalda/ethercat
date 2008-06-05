@@ -449,6 +449,12 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                 break;
             }
 
+        case EC_IOCTL_DEBUG_LEVEL:
+            if (ec_master_debug_level(master, (unsigned int) arg)) {
+                retval = -EINVAL;
+            }
+            break;
+
         default:
             retval = -ENOIOCTLCMD;
     }
