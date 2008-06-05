@@ -143,7 +143,30 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
     // FIXME lock
     
     switch (cmd) {
-        case EC_IOCTL_SLAVE_COUNT:
+        case EC_IOCTL_MASTER:
+            {
+                ec_ioctl_master_t data;
+
+                data.slave_count = master->slave_count;
+                data.mode = (uint8_t) master->mode;
+                
+                memcpy(data.devices[0].address, master->main_mac, ETH_ALEN); 
+                data.devices[0].attached = master->main_device.dev ? 1 : 0;
+                data.devices[0].tx_count = master->main_device.tx_count;
+                data.devices[0].rx_count = master->main_device.rx_count;
+                memcpy(data.devices[1].address, master->backup_mac, ETH_ALEN); 
+                data.devices[1].attached = master->backup_device.dev ? 1 : 0;
+                data.devices[1].tx_count = master->backup_device.tx_count;
+                data.devices[1].rx_count = master->backup_device.rx_count;
+
+                if (copy_to_user((void __user *) arg, &data, sizeof(data))) {
+                    retval = -EFAULT;
+                    break;
+                }
+
+                break;
+            }
+
             retval = master->slave_count;
             break;
 
@@ -449,7 +472,7 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                 break;
             }
 
-        case EC_IOCTL_DEBUG_LEVEL:
+        case EC_IOCTL_SET_DEBUG:
             if (ec_master_debug_level(master, (unsigned int) arg)) {
                 retval = -EINVAL;
             }

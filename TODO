@@ -9,6 +9,15 @@ $Id$
 Version 1.4.0:
 
 * Replace all Sysfs files via the new ethercat tool.
+    - Sdo info
+    - Sdo entry info
+    - Sdo entry value read
+    - Sdo entry value write
+    - Slave alias write
+    - Slave SII write
+    - Slave state write
+    - Slave info
+    - Config info
 * Remove the end state of the master state machine.
 * Supply new ec_master_state_t.
 * Implement ecrt_slave_config_state().

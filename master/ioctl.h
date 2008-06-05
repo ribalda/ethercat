@@ -44,7 +44,7 @@
 /*****************************************************************************/
 
 enum {
-    EC_IOCTL_SLAVE_COUNT,
+    EC_IOCTL_MASTER,
     EC_IOCTL_SLAVE,
     EC_IOCTL_SYNC,
     EC_IOCTL_PDO,
@@ -53,8 +53,21 @@ enum {
 	EC_IOCTL_DOMAIN,
 	EC_IOCTL_DOMAIN_FMMU,
 	EC_IOCTL_DATA,
-    EC_IOCTL_DEBUG_LEVEL,
+    EC_IOCTL_SET_DEBUG,
 };
+
+/*****************************************************************************/
+
+typedef struct {
+    unsigned int slave_count;
+    uint8_t mode;
+    struct {
+        uint8_t address[6];
+        uint8_t attached;
+        unsigned int tx_count;
+        unsigned int rx_count;
+    } devices[2];
+} ec_ioctl_master_t;
 
 /*****************************************************************************/
 

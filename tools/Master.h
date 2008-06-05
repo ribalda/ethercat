@@ -46,6 +46,7 @@ class Master
         void setDebug(const vector<string> &);
         void showDomains(int);
         void listSlaves();
+        void showMaster();
         void listPdos(int);
         void generateXml(int);
 
@@ -56,6 +57,7 @@ class Master
         void generateSlaveXml(uint16_t);
         unsigned int domainCount();
         unsigned int slaveCount();
+        void getMaster(ec_ioctl_master_t *);
         void slaveSyncs(uint16_t);
         void getDomain(ec_ioctl_domain_t *, unsigned int);
         void getFmmu(ec_ioctl_domain_fmmu_t *, unsigned int, unsigned int);

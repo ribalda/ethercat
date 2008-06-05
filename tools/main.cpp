@@ -37,6 +37,7 @@ void printUsage()
         << "  debug              Set the master debug level." << endl
         << "  domain             Show domain information." << endl
         << "  list (ls, slaves)  List all slaves (former 'lsec')." << endl
+        << "  master             Show master information." << endl
         << "  pdos               List Pdo mapping of given slaves." << endl
         << "  xml                Generate slave information xml." << endl
 		<< "Global options:" << endl
@@ -157,6 +158,8 @@ int main(int argc, char **argv)
             master.showDomains(domainIndex);
 		} else if (command == "list" || command == "ls" || command == "slaves") {
             master.listSlaves();
+		} else if (command == "master") {
+            master.showMaster();
         } else if (command == "pdos") {
             master.listPdos(slavePosition);
         } else if (command == "xml") {
