@@ -48,6 +48,7 @@ class Master
         void listSlaves();
         void showMaster();
         void listPdos(int);
+        void requestStates(int, const vector<string> &);
         void generateXml(int);
 
     protected:
@@ -68,6 +69,7 @@ class Master
         void getPdo(ec_ioctl_pdo_t *, uint16_t, uint8_t, uint8_t);
         void getPdoEntry(ec_ioctl_pdo_entry_t *, uint16_t, uint8_t, uint8_t,
                 uint8_t);
+        void requestState(uint16_t, uint8_t);
 
         static string slaveState(uint8_t);
         

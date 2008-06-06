@@ -66,13 +66,11 @@ char *ec_slave_sii_string(ec_slave_t *, unsigned int);
 /** \cond */
 
 EC_SYSFS_READ_ATTR(info);
-EC_SYSFS_READ_WRITE_ATTR(state);
 EC_SYSFS_READ_WRITE_ATTR(sii);
 EC_SYSFS_READ_WRITE_ATTR(alias);
 
 static struct attribute *def_attrs[] = {
     &attr_info,
-    &attr_state,
     &attr_sii,
     &attr_alias,
     NULL,
@@ -1082,22 +1080,7 @@ ssize_t ec_show_slave_attribute(struct kobject *kobj, /**< slave's kobject */
 
     if (attr == &attr_info) {
         return ec_slave_info(slave, buffer);
-    }
-    else if (attr == &attr_state) {
-        switch (slave->current_state) {
-            case EC_SLAVE_STATE_INIT:
-                return sprintf(buffer, "INIT\n");
-            case EC_SLAVE_STATE_PREOP:
-                return sprintf(buffer, "PREOP\n");
-            case EC_SLAVE_STATE_SAFEOP:
-                return sprintf(buffer, "SAFEOP\n");
-            case EC_SLAVE_STATE_OP:
-                return sprintf(buffer, "OP\n");
-            default:
-                return sprintf(buffer, "UNKNOWN\n");
-        }
-    }
-    else if (attr == &attr_sii) {
+    } else if (attr == &attr_sii) {
         if (slave->sii_data) {
             if (slave->sii_size > PAGE_SIZE) {
                 EC_ERR("SII contents of slave %u exceed 1 page (%u/%u).\n",
@@ -1109,8 +1092,7 @@ ssize_t ec_show_slave_attribute(struct kobject *kobj, /**< slave's kobject */
                 return slave->sii_size;
             }
         }
-    }
-    else if (attr == &attr_alias) {
+    } else if (attr == &attr_alias) {
         return sprintf(buffer, "%u\n", slave->sii.alias);
     }
 
@@ -1132,30 +1114,9 @@ ssize_t ec_store_slave_attribute(struct kobject *kobj, /**< slave's kobject */
 {
     ec_slave_t *slave = container_of(kobj, ec_slave_t, kobj);
 
-    if (attr == &attr_state) {
-        char state[EC_STATE_STRING_SIZE];
-        if (!strcmp(buffer, "INIT\n"))
-            ec_slave_request_state(slave, EC_SLAVE_STATE_INIT);
-        else if (!strcmp(buffer, "PREOP\n"))
-            ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
-        else if (!strcmp(buffer, "SAFEOP\n"))
-            ec_slave_request_state(slave, EC_SLAVE_STATE_SAFEOP);
-        else if (!strcmp(buffer, "OP\n"))
-            ec_slave_request_state(slave, EC_SLAVE_STATE_OP);
-        else {
-            EC_ERR("Invalid slave state \"%s\"!\n", buffer);
-            return -EINVAL;
-        }
-
-        ec_state_string(slave->requested_state, state);
-        EC_INFO("Accepted new state %s for slave %u.\n",
-                state, slave->ring_position);
-        return size;
-    }
-    else if (attr == &attr_sii) {
+    if (attr == &attr_sii) {
         return ec_slave_write_sii(slave, buffer, size);
-    }
-    else if (attr == &attr_alias) {
+    } else if (attr == &attr_alias) {
         return ec_slave_write_alias(slave, buffer, size);
     }
 

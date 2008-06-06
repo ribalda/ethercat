@@ -13,6 +13,7 @@
 #include <iostream>
 #include <iomanip>
 #include <sstream>
+#include <cctype> // toupper()
 using namespace std;
 
 #include "Master.h"
@@ -218,6 +219,49 @@ void Master::listPdos(int slavePosition)
         }
     } else {
         listSlavePdos(slavePosition, false);
+    }
+}
+
+/****************************************************************************/
+
+void Master::requestStates(
+        int slavePosition,
+        const vector<string> &commandArgs
+        )
+{
+    string stateStr;
+    uint8_t state;
+    
+    if (commandArgs.size() != 1) {
+        stringstream err;
+        err << "'state' takes exactly one argument!";
+        throw MasterException(err.str());
+    }
+
+    stateStr = commandArgs[0];
+    transform(stateStr.begin(), stateStr.end(),
+            stateStr.begin(), (int (*) (int)) std::toupper);
+
+    if (stateStr == "INIT") {
+        state = 0x01;
+    } else if (stateStr == "PREOP") {
+        state = 0x02;
+    } else if (stateStr == "SAFEOP") {
+        state = 0x04;
+    } else if (stateStr == "OP") {
+        state = 0x08;
+    } else {
+        stringstream err;
+        err << "Invalid state '" << commandArgs[0] << "'!";
+        throw MasterException(err.str());
+    }
+
+    if (slavePosition == -1) {
+        unsigned int i, numSlaves = slaveCount();
+        for (i = 0; i < numSlaves; i++)
+            requestState(i, state);
+    } else {
+        requestState(slavePosition, state);
     }
 }
 
@@ -665,6 +709,29 @@ void Master::getPdoEntry(
                 << pdoPos + 1 << " Pdos, or the Pdo at position " << pdoPos
                 << " contains less than " << (unsigned int) entryPos + 1
                 << " entries!" << endl;
+        else
+            err << strerror(errno);
+        throw MasterException(err.str());
+    }
+}
+
+/****************************************************************************/
+
+void Master::requestState(
+        uint16_t slavePosition,
+        uint8_t state
+        )
+{
+    ec_ioctl_slave_state_t data;
+
+    data.slave_position = slavePosition;
+    data.requested_state = state;
+    
+    if (ioctl(fd, EC_IOCTL_SLAVE_STATE, &data)) {
+        stringstream err;
+        err << "Failed to request slave state: ";
+        if (errno == EINVAL)
+            err << "Slave " << slavePosition << " does not exist!";
         else
             err << strerror(errno);
         throw MasterException(err.str());

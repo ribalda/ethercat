@@ -478,6 +478,27 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             }
             break;
 
+        case EC_IOCTL_SLAVE_STATE:
+            {
+                ec_ioctl_slave_state_t data;
+                ec_slave_t *slave;
+
+                if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+                    retval = -EFAULT;
+                    break;
+                }
+                
+                if (!(slave = ec_master_find_slave(
+                                master, 0, data.slave_position))) {
+                    EC_ERR("Slave %u does not exist!\n", data.slave_position);
+                    retval = -EINVAL;
+                    break;
+                }
+
+                ec_slave_request_state(slave, data.requested_state);
+                break;
+            }
+
         default:
             retval = -ENOIOCTLCMD;
     }

@@ -39,6 +39,7 @@ void printUsage()
         << "  list (ls, slaves)  List all slaves (former 'lsec')." << endl
         << "  master             Show master information." << endl
         << "  pdos               List Pdo mapping of given slaves." << endl
+        << "  state              Request slave state(s)." << endl
         << "  xml                Generate slave information xml." << endl
 		<< "Global options:" << endl
         << "  --master  -m <master>  Index of the master to use. Default: "
@@ -162,6 +163,8 @@ int main(int argc, char **argv)
             master.showMaster();
         } else if (command == "pdos") {
             master.listPdos(slavePosition);
+        } else if (command == "state") {
+            master.requestStates(slavePosition, commandArgs);
         } else if (command == "xml") {
             master.generateXml(slavePosition);
         } else {

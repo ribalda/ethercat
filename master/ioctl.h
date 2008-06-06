@@ -54,6 +54,7 @@ enum {
 	EC_IOCTL_DOMAIN_FMMU,
 	EC_IOCTL_DATA,
     EC_IOCTL_SET_DEBUG,
+    EC_IOCTL_SLAVE_STATE,
 };
 
 /*****************************************************************************/
@@ -176,6 +177,14 @@ typedef struct {
     unsigned int data_size;
     unsigned char *target;
 } ec_ioctl_data_t;
+
+/*****************************************************************************/
+
+typedef struct {
+    // inputs
+	uint16_t slave_position;
+    uint8_t requested_state;
+} ec_ioctl_slave_state_t;
 
 /*****************************************************************************/
 
