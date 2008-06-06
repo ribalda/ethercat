@@ -393,8 +393,8 @@ void Master::sdoUpload(
     if (dataType->byteSize && data.data_size != dataType->byteSize) {
         stringstream err;
         err << "Data type mismatch. Expected " << dataType->name
-            << " with " << dataType->byteSize << " byte(s), but got "
-            << data.data_size << " byte(s).";
+            << " with " << dataType->byteSize << " byte, but got "
+            << data.data_size << " byte.";
         throw MasterException(err.str());
     }
 
@@ -656,6 +656,7 @@ void Master::listSlaveSdos(
     ec_ioctl_sdo_t sdo;
     ec_ioctl_sdo_entry_t entry;
     unsigned int i, j, k;
+    const CoEDataType *d;
     
     getSlave(&slave, slavePosition);
 
@@ -665,7 +666,7 @@ void Master::listSlaveSdos(
     for (i = 0; i < slave.sdo_count; i++) {
         getSdo(&sdo, slavePosition, i);
 
-        cout << "Sdo 0x"
+        cout << "Sdo "
             << hex << setfill('0') << setw(4) << sdo.sdo_index
             << ", \"" << sdo.name << "\"" << endl;
 
@@ -675,11 +676,17 @@ void Master::listSlaveSdos(
         for (j = 0; j <= sdo.max_subindex; j++) {
             getSdoEntry(&entry, slavePosition, -i, j);
 
-            cout << "  Entry 0x"
-                << hex << setfill('0') << setw(2)
+            cout << "  " << hex << setfill('0') << setw(2)
                 << (unsigned int) entry.sdo_entry_subindex
-                << ", type 0x" << setw(4) << entry.data_type
-                << ", " << dec << entry.bit_length << " bit, \""
+                << ", ";
+
+            if ((d = findDataType(entry.data_type))) {
+                cout << d->name;
+            } else {
+                cout << "type " << setw(4) << entry.data_type;
+            }
+
+            cout << ", " << dec << entry.bit_length << " bit, \""
                 << entry.description << "\"" << endl;
         }
     }
