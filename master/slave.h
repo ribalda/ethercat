@@ -223,6 +223,8 @@ ec_sync_t *ec_slave_get_pdo_sync(ec_slave_t *, ec_direction_t);
 void ec_slave_sdo_dict_info(const ec_slave_t *,
         unsigned int *, unsigned int *);
 ec_sdo_t *ec_slave_get_sdo(ec_slave_t *, uint16_t);
+const ec_sdo_t *ec_slave_get_sdo_by_pos_const(const ec_slave_t *, uint16_t);
+uint16_t ec_slave_sdo_count(const ec_slave_t *);
 const ec_pdo_t *ec_slave_find_pdo(const ec_slave_t *, uint16_t);
 
 /*****************************************************************************/

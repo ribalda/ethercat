@@ -1193,7 +1193,7 @@ void ec_slave_sdo_dict_info(const ec_slave_t *slave, /**< EtherCAT slave */
  */
 
 ec_sdo_t *ec_slave_get_sdo(
-        ec_slave_t *slave /**< EtherCAT slave */,
+        ec_slave_t *slave, /**< EtherCAT slave */
         uint16_t index /**< Sdo index */
         )
 {
@@ -1205,6 +1205,48 @@ ec_sdo_t *ec_slave_get_sdo(
     }
 
     return NULL;
+}
+
+/*****************************************************************************/
+
+/** Get an Sdo from the dictionary, given its position in the list.
+ * \returns The desired Sdo, or NULL.
+ */
+
+const ec_sdo_t *ec_slave_get_sdo_by_pos_const(
+        const ec_slave_t *slave, /**< EtherCAT slave. */
+        uint16_t sdo_position /**< Sdo list position. */
+        )
+{
+    const ec_sdo_t *sdo;
+
+    list_for_each_entry(sdo, &slave->sdo_dictionary, list) {
+        if (sdo_position--)
+            continue;
+        return sdo;
+    }
+
+    return NULL;
+}
+
+/*****************************************************************************/
+
+/** Get the number of Sdos in the dictionary.
+ * \returns Sdo count.
+ */
+
+uint16_t ec_slave_sdo_count(
+        const ec_slave_t *slave /**< EtherCAT slave. */
+        )
+{
+    const ec_sdo_t *sdo;
+    uint16_t count = 0;
+
+    list_for_each_entry(sdo, &slave->sdo_dictionary, list) {
+        count++;
+    }
+
+    return count;
 }
 
 /*****************************************************************************/
