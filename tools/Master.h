@@ -48,6 +48,7 @@ class Master
         void listSlaves();
         void showMaster();
         void listPdos(int);
+        void listSdos(int);
         void requestStates(int, const vector<string> &);
         void generateXml(int);
 
@@ -55,6 +56,7 @@ class Master
         void outputDomainData(unsigned int);
         void showDomain(unsigned int);
         void listSlavePdos(uint16_t, bool = false);
+        void listSlaveSdos(uint16_t, bool = false);
         void generateSlaveXml(uint16_t);
         unsigned int domainCount();
         unsigned int slaveCount();
@@ -69,6 +71,8 @@ class Master
         void getPdo(ec_ioctl_pdo_t *, uint16_t, uint8_t, uint8_t);
         void getPdoEntry(ec_ioctl_pdo_entry_t *, uint16_t, uint8_t, uint8_t,
                 uint8_t);
+        void getSdo(ec_ioctl_sdo_t *, uint16_t, uint16_t);
+        void getSdoEntry(ec_ioctl_sdo_entry_t *, uint16_t, uint16_t, uint8_t);
         void requestState(uint16_t, uint8_t);
 
         static string slaveState(uint8_t);

@@ -10,8 +10,6 @@ Version 1.4.0:
 
 * Slaves as array.
 * Replace all Sysfs files via the new ethercat tool.
-    - Sdo info
-    - Sdo entry info
     - Sdo entry value read
     - Sdo entry value write
     - Slave alias write

@@ -195,6 +195,7 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                 data.state = slave->current_state;
 
                 data.sync_count = slave->sii.sync_count;
+                data.sdo_count = ec_slave_sdo_count(slave);
 
                 if (slave->sii.name) {
                     strncpy(data.name, slave->sii.name,
@@ -496,6 +497,104 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                 }
 
                 ec_slave_request_state(slave, data.requested_state);
+                break;
+            }
+
+        case EC_IOCTL_SDO:
+            {
+                ec_ioctl_sdo_t data;
+                const ec_slave_t *slave;
+                const ec_sdo_t *sdo;
+
+                if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+                    retval = -EFAULT;
+                    break;
+                }
+                
+                if (!(slave = ec_master_find_slave(
+                                master, 0, data.slave_position))) {
+                    EC_ERR("Slave %u does not exist!\n", data.slave_position);
+                    retval = -EINVAL;
+                    break;
+                }
+
+                if (!(sdo = ec_slave_get_sdo_by_pos_const(
+                                slave, data.sdo_position))) {
+                    EC_ERR("Sdo %u does not exist in slave %u!\n",
+                            data.sdo_position, data.slave_position);
+                    retval = -EINVAL;
+                    break;
+                }
+
+                data.sdo_index = sdo->index;
+                data.max_subindex = sdo->max_subindex;
+
+                if (sdo->name) {
+                    strncpy(data.name, sdo->name, EC_IOCTL_SDO_NAME_SIZE);
+                    data.name[EC_IOCTL_SDO_NAME_SIZE - 1] = 0;
+                } else {
+                    data.name[0] = 0;
+                }
+
+                if (copy_to_user((void __user *) arg, &data, sizeof(data))) {
+                    retval = -EFAULT;
+                    break;
+                }
+                break;
+            }
+
+        case EC_IOCTL_SDO_ENTRY:
+            {
+                ec_ioctl_sdo_entry_t data;
+                const ec_slave_t *slave;
+                const ec_sdo_t *sdo;
+                const ec_sdo_entry_t *entry;
+
+                if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+                    retval = -EFAULT;
+                    break;
+                }
+                
+                if (!(slave = ec_master_find_slave(
+                                master, 0, data.slave_position))) {
+                    EC_ERR("Slave %u does not exist!\n", data.slave_position);
+                    retval = -EINVAL;
+                    break;
+                }
+
+                if (!(sdo = ec_slave_get_sdo_by_pos_const(
+                                slave, data.sdo_position))) {
+                    EC_ERR("Sdo %u does not exist in slave %u!\n",
+                            data.sdo_position, data.slave_position);
+                    retval = -EINVAL;
+                    break;
+                }
+
+                if (!(entry = ec_sdo_get_entry_const(
+                                sdo, data.sdo_entry_subindex))) {
+                    EC_ERR("Sdo entry %u does not exist in Sdo %u "
+                            "in slave %u!\n", data.sdo_entry_subindex,
+                            data.sdo_position, data.slave_position);
+                    retval = -EINVAL;
+                    break;
+                }
+
+                data.data_type = entry->data_type;
+                data.bit_length = entry->bit_length;
+
+                if (entry->description) {
+                    strncpy(data.description, entry->description,
+                            EC_IOCTL_SDO_ENTRY_DESCRIPTION_SIZE);
+                    data.description[EC_IOCTL_SDO_ENTRY_DESCRIPTION_SIZE - 1]
+                        = 0;
+                } else {
+                    data.description[0] = 0;
+                }
+
+                if (copy_to_user((void __user *) arg, &data, sizeof(data))) {
+                    retval = -EFAULT;
+                    break;
+                }
                 break;
             }
 

@@ -55,6 +55,8 @@ enum {
 	EC_IOCTL_DATA,
     EC_IOCTL_SET_DEBUG,
     EC_IOCTL_SLAVE_STATE,
+    EC_IOCTL_SDO,
+    EC_IOCTL_SDO_ENTRY,
 };
 
 /*****************************************************************************/
@@ -72,7 +74,7 @@ typedef struct {
 
 /*****************************************************************************/
 
-#define EC_IOCTL_SLAVE_NAME_SIZE 114
+#define EC_IOCTL_SLAVE_NAME_SIZE 104
 
 typedef struct {
     // input
@@ -86,6 +88,7 @@ typedef struct {
     uint16_t alias;
     uint8_t state;
     uint8_t sync_count;
+    uint16_t sdo_count;
     char name[EC_IOCTL_SLAVE_NAME_SIZE];
 } ec_ioctl_slave_t;
 
@@ -185,6 +188,37 @@ typedef struct {
 	uint16_t slave_position;
     uint8_t requested_state;
 } ec_ioctl_slave_state_t;
+
+/*****************************************************************************/
+
+#define EC_IOCTL_SDO_NAME_SIZE 121
+
+typedef struct {
+    // inputs
+    uint16_t slave_position;
+    uint16_t sdo_position;
+
+    // outputs
+    uint16_t sdo_index;
+    uint8_t max_subindex;
+    char name[EC_IOCTL_SDO_NAME_SIZE];
+} ec_ioctl_sdo_t;
+
+/*****************************************************************************/
+
+#define EC_IOCTL_SDO_ENTRY_DESCRIPTION_SIZE 120
+
+typedef struct {
+    // inputs
+    uint16_t slave_position;
+    uint16_t sdo_position;
+    uint8_t sdo_entry_subindex;
+
+    // outputs
+    uint16_t data_type;
+    uint16_t bit_length;
+    char description[EC_IOCTL_SDO_ENTRY_DESCRIPTION_SIZE];
+} ec_ioctl_sdo_entry_t;
 
 /*****************************************************************************/
 

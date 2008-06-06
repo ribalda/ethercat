@@ -224,6 +224,21 @@ void Master::listPdos(int slavePosition)
 
 /****************************************************************************/
 
+void Master::listSdos(int slavePosition)
+{
+    if (slavePosition == -1) {
+        unsigned int numSlaves = slaveCount(), i;
+
+        for (i = 0; i < numSlaves; i++) {
+            listSlaveSdos(i, true);
+        }
+    } else {
+        listSlaveSdos(slavePosition, false);
+    }
+}
+
+/****************************************************************************/
+
 void Master::requestStates(
         int slavePosition,
         const vector<string> &commandArgs
@@ -375,7 +390,7 @@ void Master::showDomain(unsigned int domainIndex)
 
 /****************************************************************************/
 
-void Master::listSlavePdos(uint16_t slavePosition, bool printSlave)
+void Master::listSlavePdos(uint16_t slavePosition, bool withHeader)
 {
     ec_ioctl_slave_t slave;
     ec_ioctl_sync_t sync;
@@ -385,7 +400,7 @@ void Master::listSlavePdos(uint16_t slavePosition, bool printSlave)
     
     getSlave(&slave, slavePosition);
 
-    if (printSlave)
+    if (withHeader)
         cout << "=== Slave " << slavePosition << " ===" << endl;
 
     for (i = 0; i < slave.sync_count; i++) {
@@ -419,6 +434,40 @@ void Master::listSlavePdos(uint16_t slavePosition, bool printSlave)
                     << ", " << dec << (unsigned int) entry.bit_length
                     << " bit, \"" << entry.name << "\"" << endl;
             }
+        }
+    }
+}
+
+/****************************************************************************/
+
+void Master::listSlaveSdos(uint16_t slavePosition, bool withHeader)
+{
+    ec_ioctl_slave_t slave;
+    ec_ioctl_sdo_t sdo;
+    ec_ioctl_sdo_entry_t entry;
+    unsigned int i, j, k;
+    
+    getSlave(&slave, slavePosition);
+
+    if (withHeader)
+        cout << "=== Slave " << slavePosition << " ===" << endl;
+
+    for (i = 0; i < slave.sdo_count; i++) {
+        getSdo(&sdo, slavePosition, i);
+
+        cout << "Sdo 0x"
+            << hex << setfill('0') << setw(4) << sdo.sdo_index
+            << ", \"" << sdo.name << "\"" << endl;
+
+        for (j = 0; j <= sdo.max_subindex; j++) {
+            getSdoEntry(&entry, slavePosition, i, j);
+
+            cout << "  Entry 0x"
+                << hex << setfill('0') << setw(2)
+                << (unsigned int) entry.sdo_entry_subindex
+                << ", type 0x" << setw(4) << entry.data_type
+                << ", " << dec << entry.bit_length << " bit, \""
+                << entry.description << "\"" << endl;
         }
     }
 }
@@ -708,6 +757,58 @@ void Master::getPdoEntry(
                 << (unsigned int) syncIndex << " contains less than "
                 << pdoPos + 1 << " Pdos, or the Pdo at position " << pdoPos
                 << " contains less than " << (unsigned int) entryPos + 1
+                << " entries!" << endl;
+        else
+            err << strerror(errno);
+        throw MasterException(err.str());
+    }
+}
+
+/****************************************************************************/
+
+void Master::getSdo(
+        ec_ioctl_sdo_t *sdo,
+        uint16_t slaveIndex,
+        uint16_t sdoPosition
+        )
+{
+    sdo->slave_position = slaveIndex;
+    sdo->sdo_position = sdoPosition;
+
+    if (ioctl(fd, EC_IOCTL_SDO, sdo)) {
+        stringstream err;
+        err << "Failed to get Sdo: ";
+        if (errno == EINVAL)
+            err << "Either slave " << slaveIndex << " does not exist, "
+                << "or it contains less than " << sdoPosition + 1 << " Sdos!"
+                << endl;
+        else
+            err << strerror(errno);
+        throw MasterException(err.str());
+    }
+}
+
+/****************************************************************************/
+
+void Master::getSdoEntry(
+        ec_ioctl_sdo_entry_t *entry,
+        uint16_t slaveIndex,
+        uint16_t sdoPosition,
+        uint8_t entrySubindex
+        )
+{
+    entry->slave_position = slaveIndex;
+    entry->sdo_position = sdoPosition;
+    entry->sdo_entry_subindex = entrySubindex;
+
+    if (ioctl(fd, EC_IOCTL_SDO_ENTRY, entry)) {
+        stringstream err;
+        err << "Failed to get Sdo entry: ";
+        if (errno == EINVAL)
+            err << "Either slave " << slaveIndex << " does not exist, "
+                << "or it contains less than " << sdoPosition + 1
+                << " Sdos, or the Sdo at position " << sdoPosition
+                << " contains less than " << (unsigned int) entrySubindex + 1
                 << " entries!" << endl;
         else
             err << strerror(errno);
