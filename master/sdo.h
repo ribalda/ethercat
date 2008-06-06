@@ -52,14 +52,14 @@
 /** CANopen Sdo.
  */
 struct ec_sdo {
-    struct kobject kobj; /**< kobject */
-    struct list_head list; /**< list item */
-    ec_slave_t *slave; /**< parent slave */
-    uint16_t index; /**< Sdo index */
-    uint8_t object_code; /**< object code */
-    char *name; /**< Sdo name */
-    uint8_t subindices; /**< subindices */
-    struct list_head entries; /**< entry list */
+    struct kobject kobj; /**< kobject. */
+    struct list_head list; /**< List item. */
+    ec_slave_t *slave; /**< Parent slave. */
+    uint16_t index; /**< Sdo index. */
+    uint8_t object_code; /**< Object code. */
+    char *name; /**< Sdo name. */
+    uint8_t max_subindex; /**< Maximum subindex. */
+    struct list_head entries; /**< List of entries. */
 };
 
 /*****************************************************************************/

@@ -89,7 +89,7 @@ int ec_sdo_init(
     sdo->index = index;
     sdo->object_code = 0x00;
     sdo->name = NULL;
-    sdo->subindices = 0;
+    sdo->max_subindex = 0;
     INIT_LIST_HEAD(&sdo->entries);
 
     // Init kobject and add it to the hierarchy
@@ -189,7 +189,7 @@ ssize_t ec_sdo_info(
 
     off += sprintf(buffer + off, "Index: 0x%04X\n", sdo->index);
     off += sprintf(buffer + off, "Name: %s\n", sdo->name ? sdo->name : "");
-    off += sprintf(buffer + off, "Subindices: %i\n", sdo->subindices);
+    off += sprintf(buffer + off, "Max subindex: %u\n", sdo->max_subindex);
 
     return off;
 }

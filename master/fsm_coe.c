@@ -689,7 +689,7 @@ void ec_fsm_coe_dict_desc_response(ec_fsm_coe_t *fsm
         return;
     }
 
-    sdo->subindices = EC_READ_U8(data + 10);
+    sdo->max_subindex = EC_READ_U8(data + 10);
     sdo->object_code = EC_READ_U8(data + 11);
 
     name_size = rec_size - 12;
@@ -938,7 +938,7 @@ void ec_fsm_coe_dict_entry_response(ec_fsm_coe_t *fsm
 
     list_add_tail(&entry->list, &sdo->entries);
 
-    if (fsm->subindex < sdo->subindices) {
+    if (fsm->subindex < sdo->max_subindex) {
         fsm->subindex++;
 
         if (!(data = ec_slave_mbox_prepare_send(slave, datagram, 0x03, 10))) {
