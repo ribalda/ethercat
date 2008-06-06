@@ -57,6 +57,7 @@ enum {
     EC_IOCTL_SLAVE_STATE,
     EC_IOCTL_SDO,
     EC_IOCTL_SDO_ENTRY,
+    EC_IOCTL_SDO_UPLOAD,
 };
 
 /*****************************************************************************/
@@ -211,7 +212,7 @@ typedef struct {
 typedef struct {
     // inputs
     uint16_t slave_position;
-    uint16_t sdo_position;
+    int sdo_spec; // positive: index, negative: list position
     uint8_t sdo_entry_subindex;
 
     // outputs
@@ -219,6 +220,20 @@ typedef struct {
     uint16_t bit_length;
     char description[EC_IOCTL_SDO_ENTRY_DESCRIPTION_SIZE];
 } ec_ioctl_sdo_entry_t;
+
+/*****************************************************************************/
+
+typedef struct {
+    // inputs
+    uint16_t slave_position;
+    uint16_t sdo_index;
+    uint8_t sdo_entry_subindex;
+    unsigned int target_size;
+    uint8_t *target;
+
+    // outputs
+    unsigned int data_size;
+} ec_ioctl_sdo_upload_t;
 
 /*****************************************************************************/
 

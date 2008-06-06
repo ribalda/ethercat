@@ -49,6 +49,7 @@ class Master
         void showMaster();
         void listPdos(int, bool = false);
         void listSdos(int, bool = false);
+        void sdoUpload(int, const string &, const vector<string> &);
         void requestStates(int, const vector<string> &);
         void generateXml(int);
 
@@ -72,12 +73,15 @@ class Master
         void getPdoEntry(ec_ioctl_pdo_entry_t *, uint16_t, uint8_t, uint8_t,
                 uint8_t);
         void getSdo(ec_ioctl_sdo_t *, uint16_t, uint16_t);
-        void getSdoEntry(ec_ioctl_sdo_entry_t *, uint16_t, uint16_t, uint8_t);
+        void getSdoEntry(ec_ioctl_sdo_entry_t *, uint16_t, int, uint8_t);
         void requestState(uint16_t, uint8_t);
 
         static string slaveState(uint8_t);
+        static void printRawData(const uint8_t *, unsigned int);
         
     private:
+        enum {DefaultTargetSize = 1024};
+
         unsigned int index;
         int fd;
 };

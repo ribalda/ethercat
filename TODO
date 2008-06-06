@@ -9,8 +9,8 @@ $Id$
 Version 1.4.0:
 
 * Slaves as array.
+* ioctl() rights.
 * Replace all Sysfs files via the new ethercat tool.
-    - Sdo entry value read
     - Sdo entry value write
     - Slave alias write
     - Slave SII write

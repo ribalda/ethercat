@@ -18,6 +18,72 @@ using namespace std;
 
 #include "Master.h"
 
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+
+#define le16tocpu(x) x
+#define le32tocpu(x) x
+
+#elif __BYTE_ORDER == __BIG_ENDIAN
+
+#define le16tocpu(x) \
+        ((uint16_t)( \
+        (((uint16_t)(x) & 0x00ffU) << 8) | \
+        (((uint16_t)(x) & 0xff00U) >> 8) ))
+#define le32tocpu(x) \
+        ((uint32_t)( \
+        (((uint32_t)(x) & 0x000000ffUL) << 24) | \
+        (((uint32_t)(x) & 0x0000ff00UL) <<  8) | \
+        (((uint32_t)(x) & 0x00ff0000UL) >>  8) | \
+        (((uint32_t)(x) & 0xff000000UL) >> 24) ))
+
+#endif
+
+/****************************************************************************/
+
+struct CoEDataType {
+    const char *name;
+    uint16_t coeCode;
+    unsigned int byteSize;
+};
+
+static const CoEDataType dataTypes[] = {
+    {"int8",   0x0002, 1},
+    {"int16",  0x0003, 2},
+    {"int32",  0x0004, 4},
+    {"uint8",  0x0005, 1},
+    {"uint16", 0x0006, 2},
+    {"uint32", 0x0007, 4},
+    {"string", 0x0009, 0},
+    {"raw",    0xffff, 0},
+    {}
+};
+
+/****************************************************************************/
+
+const CoEDataType *findDataType(const string &str)
+{
+    const CoEDataType *d;
+    
+    for (d = dataTypes; d->name; d++)
+        if (str == d->name)
+            return d;
+
+    return NULL;
+}
+
+/****************************************************************************/
+
+const CoEDataType *findDataType(uint16_t code)
+{
+    const CoEDataType *d;
+    
+    for (d = dataTypes; d->name; d++)
+        if (code == d->coeCode)
+            return d;
+
+    return NULL;
+}
+
 /****************************************************************************/
 
 Master::Master()
@@ -235,6 +301,139 @@ void Master::listSdos(int slavePosition, bool quiet)
     } else {
         listSlaveSdos(slavePosition, quiet, false);
     }
+}
+
+/****************************************************************************/
+
+void Master::sdoUpload(
+        int slavePosition,
+        const string &dataTypeStr,
+        const vector<string> &commandArgs
+        )
+{
+    stringstream strIndex, strSubIndex;
+    int number, sval;
+    ec_ioctl_sdo_upload_t data;
+    unsigned int i, uval;
+    const CoEDataType *dataType = NULL;
+
+    if (slavePosition < 0) {
+        stringstream err;
+        err << "'sdo_upload' requires a slave! Please specify --slave.";
+        throw MasterException(err.str());
+    }
+    data.slave_position = slavePosition;
+
+    if (commandArgs.size() != 2) {
+        stringstream err;
+        err << "'sdo_upload' takes two arguments!";
+        throw MasterException(err.str());
+    }
+
+    strIndex << commandArgs[0];
+    strIndex >> hex >> number;
+    if (strIndex.fail() || number < 0x0000 || number > 0xffff) {
+        stringstream err;
+        err << "Invalid Sdo index '" << commandArgs[0] << "'!";
+        throw MasterException(err.str());
+    }
+    data.sdo_index = number;
+
+    strSubIndex << commandArgs[1];
+    strSubIndex >> hex >> number;
+    if (strSubIndex.fail() || number < 0x00 || number > 0xff) {
+        stringstream err;
+        err << "Invalid Sdo subindex '" << commandArgs[1] << "'!";
+        throw MasterException(err.str());
+    }
+    data.sdo_entry_subindex = number;
+
+    if (dataTypeStr != "") { // data type specified
+        if (!(dataType = findDataType(dataTypeStr))) {
+            stringstream err;
+            err << "Invalid data type '" << dataTypeStr << "'!";
+            throw MasterException(err.str());
+        }
+    } else { // no data type specified: fetch from dictionary
+        ec_ioctl_sdo_entry_t entry;
+        unsigned int entryByteSize;
+        try {
+            getSdoEntry(&entry, slavePosition,
+                    data.sdo_index, data.sdo_entry_subindex);
+        } catch (MasterException &e) {
+            stringstream err;
+            err << "Failed to determine Sdo entry data type. "
+                << "Please specify --type.";
+            throw MasterException(err.str());
+        }
+        if (!(dataType = findDataType(entry.data_type))) {
+            stringstream err;
+            err << "Pdo entry has unknown data type 0x"
+                << hex << setfill('0') << setw(4) << entry.data_type << "!"
+                << " Please specify --type.";
+            throw MasterException(err.str());
+        }
+    }
+
+    if (dataType->byteSize) {
+        data.target_size = dataType->byteSize;
+    } else {
+        data.target_size = DefaultTargetSize;
+    }
+
+    data.target = new uint8_t[data.target_size + 1];
+
+    if (ioctl(fd, EC_IOCTL_SDO_UPLOAD, &data) < 0) {
+        stringstream err;
+        err << "Failed to upload Sdo: " << strerror(errno);
+        delete [] data.target;
+        throw MasterException(err.str());
+    }
+
+    if (dataType->byteSize && data.data_size != dataType->byteSize) {
+        stringstream err;
+        err << "Data type mismatch. Expected " << dataType->name
+            << " with " << dataType->byteSize << " byte(s), but got "
+            << data.data_size << " byte(s).";
+        throw MasterException(err.str());
+    }
+
+    cout << setfill('0');
+    switch (dataType->coeCode) {
+        case 0x0002: // int8
+            sval = *(int8_t *) data.target;
+            cout << sval << " 0x" << hex << setw(2) << sval << endl;
+            break;
+        case 0x0003: // int16
+            sval = le16tocpu(*(int16_t *) data.target);
+            cout << sval << " 0x" << hex << setw(4) << sval << endl;
+            break;
+        case 0x0004: // int32
+            sval = le32tocpu(*(int32_t *) data.target);
+            cout << sval << " 0x" << hex << setw(8) << sval << endl;
+            break;
+        case 0x0005: // uint8
+            uval = (unsigned int) *(uint8_t *) data.target;
+            cout << uval << " 0x" << hex << setw(2) << uval << endl;
+            break;
+        case 0x0006: // uint16
+            uval = le16tocpu(*(uint16_t *) data.target);
+            cout << uval << " 0x" << hex << setw(4) << uval << endl;
+            break;
+        case 0x0007: // uint32
+            uval = le32tocpu(*(uint32_t *) data.target);
+            cout << uval << " 0x" << hex << setw(8) << uval << endl;
+            break;
+        case 0x0009: // string
+            cout << string((const char *) data.target, data.data_size)
+                << endl;
+            break;
+        default:
+            printRawData(data.target, data.data_size);
+            break;
+    }
+
+    delete [] data.target;
 }
 
 /****************************************************************************/
@@ -474,7 +673,7 @@ void Master::listSlaveSdos(
             continue;
 
         for (j = 0; j <= sdo.max_subindex; j++) {
-            getSdoEntry(&entry, slavePosition, i, j);
+            getSdoEntry(&entry, slavePosition, -i, j);
 
             cout << "  Entry 0x"
                 << hex << setfill('0') << setw(2)
@@ -807,25 +1006,18 @@ void Master::getSdo(
 void Master::getSdoEntry(
         ec_ioctl_sdo_entry_t *entry,
         uint16_t slaveIndex,
-        uint16_t sdoPosition,
+        int sdoSpec,
         uint8_t entrySubindex
         )
 {
     entry->slave_position = slaveIndex;
-    entry->sdo_position = sdoPosition;
+    entry->sdo_spec = sdoSpec;
     entry->sdo_entry_subindex = entrySubindex;
 
     if (ioctl(fd, EC_IOCTL_SDO_ENTRY, entry)) {
         stringstream err;
         err << "Failed to get Sdo entry: ";
-        if (errno == EINVAL)
-            err << "Either slave " << slaveIndex << " does not exist, "
-                << "or it contains less than " << sdoPosition + 1
-                << " Sdos, or the Sdo at position " << sdoPosition
-                << " contains less than " << (unsigned int) entrySubindex + 1
-                << " entries!" << endl;
-        else
-            err << strerror(errno);
+        err << strerror(errno);
         throw MasterException(err.str());
     }
 }
@@ -864,6 +1056,21 @@ string Master::slaveState(uint8_t state)
         case 8: return "OP";
         default: return "???";
     }
+}
+
+/****************************************************************************/
+
+void Master::printRawData(
+        const uint8_t *data,
+        unsigned int size)
+{
+    cout << hex << setfill('0');
+    while (size--) {
+        cout << "0x" << setw(2) << (unsigned int) *data++;
+        if (size)
+            cout << " ";
+    }
+    cout << endl;
 }
 
 /****************************************************************************/

@@ -16,16 +16,14 @@ using namespace std;
 /*****************************************************************************/
 
 #define DEFAULT_MASTER 0
-#define DEFAULT_COMMAND "slaves"
-#define DEFAULT_SLAVEPOSITION -1
-#define DEFAULT_DOMAININDEX -1
 
 static unsigned int masterIndex = DEFAULT_MASTER;
-static int slavePosition = DEFAULT_SLAVEPOSITION;
-static int domainIndex = DEFAULT_DOMAININDEX;
-static string command = DEFAULT_COMMAND;
+static int slavePosition = -1;
+static int domainIndex = -1;
+static string command;
 vector<string> commandArgs;
 static bool quiet = false;
+string dataTypeStr;
 
 /*****************************************************************************/
 
@@ -41,6 +39,7 @@ void printUsage()
         << "  master             Show master information." << endl
         << "  pdos               List Pdo mapping." << endl
         << "  sdos               List Sdo dictionaries." << endl
+        << "  sdo_upload (su)    Read Sdo entries." << endl
         << "  state              Request slave states." << endl
         << "  xml                Generate slave information xmls." << endl
 		<< "Global options:" << endl
@@ -54,6 +53,7 @@ void printUsage()
         << endl
         << "                         or 'all' for all domains (default)."
         << endl
+        << "  --type    -t <type>    Forced Sdo data type." << endl
         << "  --quiet   -q           Show less output." << endl
         << "  --help    -h           Show this help." << endl;
 }
@@ -70,13 +70,14 @@ void getOptions(int argc, char **argv)
         {"master", required_argument, NULL, 'm'},
         {"slave",  required_argument, NULL, 's'},
         {"domain", required_argument, NULL, 'd'},
+        {"type",   required_argument, NULL, 't'},
         {"quiet",  no_argument,       NULL, 'q'},
         {"help",   no_argument,       NULL, 'h'},
         {}
     };
 
     do {
-        c = getopt_long(argc, argv, "m:s:d:qh", longOptions, &optionIndex);
+        c = getopt_long(argc, argv, "m:s:d:t:qh", longOptions, &optionIndex);
 
         switch (c) {
             case 'm':
@@ -118,6 +119,10 @@ void getOptions(int argc, char **argv)
                     }
                     domainIndex = number;
                 }
+                break;
+
+            case 't':
+                dataTypeStr = optarg;
                 break;
 
             case 'q':
@@ -173,6 +178,8 @@ int main(int argc, char **argv)
             master.listPdos(slavePosition, quiet);
         } else if (command == "sdos") {
             master.listSdos(slavePosition, quiet);
+        } else if (command == "sdo_upload" || command == "su") {
+            master.sdoUpload(slavePosition, dataTypeStr, commandArgs);
         } else if (command == "state") {
             master.requestStates(slavePosition, commandArgs);
         } else if (command == "xml") {

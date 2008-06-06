@@ -137,7 +137,7 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
     long retval = 0;
 
     if (master->debug_level)
-        EC_DBG("ioctl(filp = %x, cmd = %u, arg = %u)\n",
+        EC_DBG("ioctl(filp = %x, cmd = %u, arg = %x)\n",
                 (u32) filp, (u32) cmd, (u32) arg);
 
     // FIXME lock
@@ -562,19 +562,29 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                     break;
                 }
 
-                if (!(sdo = ec_slave_get_sdo_by_pos_const(
-                                slave, data.sdo_position))) {
-                    EC_ERR("Sdo %u does not exist in slave %u!\n",
-                            data.sdo_position, data.slave_position);
-                    retval = -EINVAL;
-                    break;
+                if (data.sdo_spec <= 0) {
+                    if (!(sdo = ec_slave_get_sdo_by_pos_const(
+                                    slave, -data.sdo_spec))) {
+                        EC_ERR("Sdo %u does not exist in slave %u!\n",
+                                -data.sdo_spec, data.slave_position);
+                        retval = -EINVAL;
+                        break;
+                    }
+                } else {
+                    if (!(sdo = ec_slave_get_sdo_const(
+                                    slave, data.sdo_spec))) {
+                        EC_ERR("Sdo 0x%04X does not exist in slave %u!\n",
+                                data.sdo_spec, data.slave_position);
+                        retval = -EINVAL;
+                        break;
+                    }
                 }
 
                 if (!(entry = ec_sdo_get_entry_const(
                                 sdo, data.sdo_entry_subindex))) {
-                    EC_ERR("Sdo entry %u does not exist in Sdo %u "
-                            "in slave %u!\n", data.sdo_entry_subindex,
-                            data.sdo_position, data.slave_position);
+                    EC_ERR("Sdo entry 0x%04X:%02X does not exist "
+                            "in slave %u!\n", sdo->index,
+                            data.sdo_entry_subindex, data.slave_position);
                     retval = -EINVAL;
                     break;
                 }
@@ -595,6 +605,77 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                     retval = -EFAULT;
                     break;
                 }
+                break;
+            }
+
+        case EC_IOCTL_SDO_UPLOAD:
+            {
+                ec_ioctl_sdo_upload_t data;
+                ec_master_sdo_request_t request;
+
+                if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+                    retval = -EFAULT;
+                    break;
+                }
+                
+                if (!(request.slave = ec_master_find_slave(
+                                master, 0, data.slave_position))) {
+                    EC_ERR("Slave %u does not exist!\n", data.slave_position);
+                    retval = -EINVAL;
+                    break;
+                }
+
+                ec_sdo_request_init(&request.req);
+                ec_sdo_request_address(&request.req,
+                        data.sdo_index, data.sdo_entry_subindex);
+                ecrt_sdo_request_read(&request.req);
+
+                // schedule request.
+                down(&master->sdo_sem);
+                list_add_tail(&request.list, &master->slave_sdo_requests);
+                up(&master->sdo_sem);
+
+                // wait for processing through FSM
+                if (wait_event_interruptible(master->sdo_queue,
+                            request.req.state != EC_REQUEST_QUEUED)) {
+                    // interrupted by signal
+                    down(&master->sdo_sem);
+                    if (request.req.state == EC_REQUEST_QUEUED) {
+                        list_del(&request.req.list);
+                        up(&master->sdo_sem);
+                        retval = -EINTR;
+                        break;
+                    }
+                    // request already processing: interrupt not possible.
+                    up(&master->sdo_sem);
+                }
+
+                // wait until master FSM has finished processing
+                wait_event(master->sdo_queue, request.req.state != EC_REQUEST_BUSY);
+
+                if (request.req.state != EC_REQUEST_SUCCESS) {
+                    retval = -EIO;
+                    break;
+                }
+
+                if (request.req.data_size > data.target_size) {
+                    EC_ERR("Buffer too small.\n");
+                    retval = -EOVERFLOW;
+                    break;
+                }
+                data.data_size = request.req.data_size;
+
+                if (copy_to_user((void __user *) data.target,
+                            request.req.data, data.data_size)) {
+                    retval = -EFAULT;
+                    break;
+                }
+                if (__copy_to_user((void __user *) arg, &data, sizeof(data))) {
+                    retval = -EFAULT;
+                    break;
+                }
+
+                ec_sdo_request_clear(&request.req);
                 break;
             }
 
