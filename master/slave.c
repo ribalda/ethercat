@@ -1200,7 +1200,34 @@ ec_sdo_t *ec_slave_get_sdo(
     ec_sdo_t *sdo;
 
     list_for_each_entry(sdo, &slave->sdo_dictionary, list) {
-        if (sdo->index != index) continue;
+        if (sdo->index != index)
+            continue;
+        return sdo;
+    }
+
+    return NULL;
+}
+
+/*****************************************************************************/
+
+/**
+ * Get an Sdo from the dictionary.
+ *
+ * const version.
+ *
+ * \returns The desired Sdo, or NULL.
+ */
+
+const ec_sdo_t *ec_slave_get_sdo_const(
+        const ec_slave_t *slave, /**< EtherCAT slave */
+        uint16_t index /**< Sdo index */
+        )
+{
+    const ec_sdo_t *sdo;
+
+    list_for_each_entry(sdo, &slave->sdo_dictionary, list) {
+        if (sdo->index != index)
+            continue;
         return sdo;
     }
 
