@@ -68,6 +68,7 @@ int ec_sdo_init(ec_sdo_t *, uint16_t, ec_slave_t *);
 void ec_sdo_destroy(ec_sdo_t *);
 
 ec_sdo_entry_t *ec_sdo_get_entry(ec_sdo_t *, uint8_t);
+const ec_sdo_entry_t *ec_sdo_get_entry_const(const ec_sdo_t *, uint8_t);
 
 /*****************************************************************************/
 

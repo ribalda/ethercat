@@ -154,7 +154,7 @@ void ec_sdo_clear(
 
 /*****************************************************************************/
 
-/** Get and Sdo entry from an Sdo via its subindex.
+/** Get an Sdo entry from an Sdo via its subindex.
  * 
  * \retval >0 Pointer to the requested Sdo entry.
  * \retval NULL Sdo entry not found.
@@ -167,7 +167,33 @@ ec_sdo_entry_t *ec_sdo_get_entry(
     ec_sdo_entry_t *entry;
 
     list_for_each_entry(entry, &sdo->entries, list) {
-        if (entry->subindex != subindex) continue;
+        if (entry->subindex != subindex)
+            continue;
+        return entry;
+    }
+
+    return NULL;
+}
+
+/*****************************************************************************/
+
+/** Get an Sdo entry from an Sdo via its subindex.
+ *
+ * const version.
+ * 
+ * \retval >0 Pointer to the requested Sdo entry.
+ * \retval NULL Sdo entry not found.
+ */
+const ec_sdo_entry_t *ec_sdo_get_entry_const(
+        const ec_sdo_t *sdo, /**< Sdo. */
+        uint8_t subindex /**< Entry subindex. */
+        )
+{
+    const ec_sdo_entry_t *entry;
+
+    list_for_each_entry(entry, &sdo->entries, list) {
+        if (entry->subindex != subindex)
+            continue;
         return entry;
     }
 
