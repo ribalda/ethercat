@@ -401,9 +401,8 @@ int ec_fsm_master_action_process_sdo(
         up(&master->sdo_sem);
 
         slave = request->slave;
-        if (slave->current_state == EC_SLAVE_STATE_INIT ||
-                slave->error_flag) {
-            EC_ERR("Discarding Sdo request, slave %u not ready.\n",
+        if (slave->current_state == EC_SLAVE_STATE_INIT) {
+            EC_ERR("Discarding Sdo request, slave %u is in INIT.\n",
                     slave->ring_position);
             request->req.state = EC_REQUEST_FAILURE;
             wake_up(&master->sdo_queue);
