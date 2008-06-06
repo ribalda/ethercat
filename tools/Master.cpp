@@ -209,31 +209,31 @@ void Master::showMaster()
 
 /****************************************************************************/
 
-void Master::listPdos(int slavePosition)
+void Master::listPdos(int slavePosition, bool quiet)
 {
     if (slavePosition == -1) {
         unsigned int numSlaves = slaveCount(), i;
 
         for (i = 0; i < numSlaves; i++) {
-            listSlavePdos(i, true);
+            listSlavePdos(i, quiet, true);
         }
     } else {
-        listSlavePdos(slavePosition, false);
+        listSlavePdos(slavePosition, quiet, false);
     }
 }
 
 /****************************************************************************/
 
-void Master::listSdos(int slavePosition)
+void Master::listSdos(int slavePosition, bool quiet)
 {
     if (slavePosition == -1) {
         unsigned int numSlaves = slaveCount(), i;
 
         for (i = 0; i < numSlaves; i++) {
-            listSlaveSdos(i, true);
+            listSlaveSdos(i, quiet, true);
         }
     } else {
-        listSlaveSdos(slavePosition, false);
+        listSlaveSdos(slavePosition, quiet, false);
     }
 }
 
@@ -390,7 +390,11 @@ void Master::showDomain(unsigned int domainIndex)
 
 /****************************************************************************/
 
-void Master::listSlavePdos(uint16_t slavePosition, bool withHeader)
+void Master::listSlavePdos(
+        uint16_t slavePosition,
+        bool quiet,
+        bool withHeader
+        )
 {
     ec_ioctl_slave_t slave;
     ec_ioctl_sync_t sync;
@@ -424,6 +428,9 @@ void Master::listSlavePdos(uint16_t slavePosition, bool withHeader)
                 << hex << setfill('0') << setw(4) << pdo.index
                 << " \"" << pdo.name << "\"" << endl;
 
+            if (quiet)
+                continue;
+
             for (k = 0; k < pdo.entry_count; k++) {
                 getPdoEntry(&entry, slavePosition, i, j, k);
 
@@ -440,7 +447,11 @@ void Master::listSlavePdos(uint16_t slavePosition, bool withHeader)
 
 /****************************************************************************/
 
-void Master::listSlaveSdos(uint16_t slavePosition, bool withHeader)
+void Master::listSlaveSdos(
+        uint16_t slavePosition,
+        bool quiet,
+        bool withHeader
+        )
 {
     ec_ioctl_slave_t slave;
     ec_ioctl_sdo_t sdo;
@@ -458,6 +469,9 @@ void Master::listSlaveSdos(uint16_t slavePosition, bool withHeader)
         cout << "Sdo 0x"
             << hex << setfill('0') << setw(4) << sdo.sdo_index
             << ", \"" << sdo.name << "\"" << endl;
+
+        if (quiet)
+            continue;
 
         for (j = 0; j <= sdo.max_subindex; j++) {
             getSdoEntry(&entry, slavePosition, i, j);

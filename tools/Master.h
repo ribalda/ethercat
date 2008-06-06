@@ -47,16 +47,16 @@ class Master
         void showDomains(int);
         void listSlaves();
         void showMaster();
-        void listPdos(int);
-        void listSdos(int);
+        void listPdos(int, bool = false);
+        void listSdos(int, bool = false);
         void requestStates(int, const vector<string> &);
         void generateXml(int);
 
     protected:
         void outputDomainData(unsigned int);
         void showDomain(unsigned int);
-        void listSlavePdos(uint16_t, bool = false);
-        void listSlaveSdos(uint16_t, bool = false);
+        void listSlavePdos(uint16_t, bool = false, bool = false);
+        void listSlaveSdos(uint16_t, bool = false, bool = false);
         void generateSlaveXml(uint16_t);
         unsigned int domainCount();
         unsigned int slaveCount();

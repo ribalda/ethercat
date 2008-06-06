@@ -25,6 +25,7 @@ static int slavePosition = DEFAULT_SLAVEPOSITION;
 static int domainIndex = DEFAULT_DOMAININDEX;
 static string command = DEFAULT_COMMAND;
 vector<string> commandArgs;
+static bool quiet = false;
 
 /*****************************************************************************/
 
@@ -53,6 +54,7 @@ void printUsage()
         << endl
         << "                         or 'all' for all domains (default)."
         << endl
+        << "  --quiet   -q           Show less output." << endl
         << "  --help    -h           Show this help." << endl;
 }
 
@@ -68,12 +70,13 @@ void getOptions(int argc, char **argv)
         {"master", required_argument, NULL, 'm'},
         {"slave",  required_argument, NULL, 's'},
         {"domain", required_argument, NULL, 'd'},
+        {"quiet",  no_argument,       NULL, 'q'},
         {"help",   no_argument,       NULL, 'h'},
         {}
     };
 
     do {
-        c = getopt_long(argc, argv, "m:s:d:h", longOptions, &optionIndex);
+        c = getopt_long(argc, argv, "m:s:d:qh", longOptions, &optionIndex);
 
         switch (c) {
             case 'm':
@@ -115,6 +118,10 @@ void getOptions(int argc, char **argv)
                     }
                     domainIndex = number;
                 }
+                break;
+
+            case 'q':
+                quiet = true;
                 break;
 
             case 'h':
@@ -163,9 +170,9 @@ int main(int argc, char **argv)
 		} else if (command == "master") {
             master.showMaster();
         } else if (command == "pdos") {
-            master.listPdos(slavePosition);
+            master.listPdos(slavePosition, quiet);
         } else if (command == "sdos") {
-            master.listSdos(slavePosition);
+            master.listSdos(slavePosition, quiet);
         } else if (command == "state") {
             master.requestStates(slavePosition, commandArgs);
         } else if (command == "xml") {
