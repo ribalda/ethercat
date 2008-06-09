@@ -188,8 +188,8 @@ struct ec_slave
     uint8_t dl_signal[4]; /**< detected signal on RX port */
 
     // SII
-    uint8_t *sii_data; /**< Complete SII image */
-    size_t sii_size; /**< size of the SII contents in bytes */
+    uint16_t *sii_words; /**< Complete SII image. */
+    size_t sii_nwords; /**< Size of the SII contents in words. */
 
     // slave information interface
     ec_sii_t sii; /**< SII data. */

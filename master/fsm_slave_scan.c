@@ -384,7 +384,7 @@ void ec_fsm_slave_scan_state_sii_size(ec_fsm_slave_scan_t *fsm /**< slave state 
                     " %u words (0xffff limiter missing?).\n",
                     slave->ring_position, EC_MAX_SII_SIZE);
             // cut off category data...
-            slave->sii_size = EC_FIRST_SII_CATEGORY_OFFSET * 2;
+            slave->sii_nwords = EC_FIRST_SII_CATEGORY_OFFSET;
             goto alloc_sii;
         }
         fsm->sii_offset = next_offset;
@@ -394,20 +394,20 @@ void ec_fsm_slave_scan_state_sii_size(ec_fsm_slave_scan_t *fsm /**< slave state 
         return;
     }
 
-    slave->sii_size = (fsm->sii_offset + 1) * 2;
+    slave->sii_nwords = fsm->sii_offset + 1;
 
 alloc_sii:
-    if (slave->sii_data) {
+    if (slave->sii_words) {
         EC_WARN("Freeing old SII data on slave %i...\n",
                 slave->ring_position);
-        kfree(slave->sii_data);
+        kfree(slave->sii_words);
     }
 
-    if (!(slave->sii_data =
-                (uint8_t *) kmalloc(slave->sii_size, GFP_ATOMIC))) {
-        EC_ERR("Failed to allocate %u bytes of SII data for slave %u.\n",
-               slave->sii_size, slave->ring_position);
-        slave->sii_size = 0;
+    if (!(slave->sii_words =
+                (uint16_t *) kmalloc(slave->sii_nwords * 2, GFP_ATOMIC))) {
+        EC_ERR("Failed to allocate %u words of SII data for slave %u.\n",
+               slave->sii_nwords, slave->ring_position);
+        slave->sii_nwords = 0;
         slave->error_flag = 1;
         fsm->state = ec_fsm_slave_scan_state_error;
         return;
@@ -431,7 +431,7 @@ alloc_sii:
 void ec_fsm_slave_scan_state_sii_data(ec_fsm_slave_scan_t *fsm /**< slave state machine */)
 {
     ec_slave_t *slave = fsm->slave;
-    uint16_t *cat_word, cat_type, cat_size, sii_word_size = slave->sii_size / 2;
+    uint16_t *cat_word, cat_type, cat_size;
 
     if (ec_fsm_sii_exec(&fsm->fsm_sii)) return;
 
@@ -445,16 +445,13 @@ void ec_fsm_slave_scan_state_sii_data(ec_fsm_slave_scan_t *fsm /**< slave state 
 
     // 2 words fetched
 
-    if (fsm->sii_offset + 2 <= sii_word_size) { // 2 words fit
-        memcpy(slave->sii_data + fsm->sii_offset * 2,
-               fsm->fsm_sii.value, 4);
-    }
-    else { // copy the last word
-        memcpy(slave->sii_data + fsm->sii_offset * 2,
-               fsm->fsm_sii.value, 2);
+    if (fsm->sii_offset + 2 <= slave->sii_nwords) { // 2 words fit
+        memcpy(slave->sii_words + fsm->sii_offset, fsm->fsm_sii.value, 4);
+    } else { // copy the last word
+        memcpy(slave->sii_words + fsm->sii_offset, fsm->fsm_sii.value, 2);
     }
 
-    if (fsm->sii_offset + 2 < sii_word_size) {
+    if (fsm->sii_offset + 2 < slave->sii_nwords) {
         // fetch the next 2 words
         fsm->sii_offset += 2;
         ec_fsm_sii_read(&fsm->fsm_sii, slave, fsm->sii_offset,
@@ -468,33 +465,33 @@ void ec_fsm_slave_scan_state_sii_data(ec_fsm_slave_scan_t *fsm /**< slave state 
     ec_slave_clear_sync_managers(slave);
 
     slave->sii.alias =
-        EC_READ_U16(slave->sii_data + 2 * 0x0004);
+        EC_READ_U16(slave->sii_words + 0x0004);
     slave->sii.vendor_id =
-        EC_READ_U32(slave->sii_data + 2 * 0x0008);
+        EC_READ_U32(slave->sii_words + 0x0008);
     slave->sii.product_code =
-        EC_READ_U32(slave->sii_data + 2 * 0x000A);
+        EC_READ_U32(slave->sii_words + 0x000A);
     slave->sii.revision_number =
-        EC_READ_U32(slave->sii_data + 2 * 0x000C);
+        EC_READ_U32(slave->sii_words + 0x000C);
     slave->sii.serial_number =
-        EC_READ_U32(slave->sii_data + 2 * 0x000E);
+        EC_READ_U32(slave->sii_words + 0x000E);
     slave->sii.rx_mailbox_offset =
-        EC_READ_U16(slave->sii_data + 2 * 0x0018);
+        EC_READ_U16(slave->sii_words + 0x0018);
     slave->sii.rx_mailbox_size =
-        EC_READ_U16(slave->sii_data + 2 * 0x0019);
+        EC_READ_U16(slave->sii_words + 0x0019);
     slave->sii.tx_mailbox_offset =
-        EC_READ_U16(slave->sii_data + 2 * 0x001A);
+        EC_READ_U16(slave->sii_words + 0x001A);
     slave->sii.tx_mailbox_size =
-        EC_READ_U16(slave->sii_data + 2 * 0x001B);
+        EC_READ_U16(slave->sii_words + 0x001B);
     slave->sii.mailbox_protocols =
-        EC_READ_U16(slave->sii_data + 2 * 0x001C);
+        EC_READ_U16(slave->sii_words + 0x001C);
 
-    if (sii_word_size == EC_FIRST_SII_CATEGORY_OFFSET) {
+    if (slave->sii_nwords == EC_FIRST_SII_CATEGORY_OFFSET) {
         // sii does not contain category data
         fsm->state = ec_fsm_slave_scan_state_end;
         return;
     }
 
-    if (sii_word_size < EC_FIRST_SII_CATEGORY_OFFSET + 1) {
+    if (slave->sii_nwords < EC_FIRST_SII_CATEGORY_OFFSET + 1) {
         EC_ERR("Unexpected end of SII data in slave %u:"
                 " First category header missing.\n",
                 slave->ring_position);
@@ -502,13 +499,11 @@ void ec_fsm_slave_scan_state_sii_data(ec_fsm_slave_scan_t *fsm /**< slave state 
     }
 
     // evaluate category data
-    cat_word =
-        (uint16_t *) slave->sii_data + EC_FIRST_SII_CATEGORY_OFFSET;
+    cat_word = slave->sii_words + EC_FIRST_SII_CATEGORY_OFFSET;
     while (EC_READ_U16(cat_word) != 0xFFFF) {
 
         // type and size words must fit
-        if (cat_word + 2 - (uint16_t *) slave->sii_data
-                > sii_word_size) {
+        if (cat_word + 2 - slave->sii_words > slave->sii_nwords) {
             EC_ERR("Unexpected end of SII data in slave %u:"
                     " Category header incomplete.\n",
                     slave->ring_position);
@@ -519,8 +514,7 @@ void ec_fsm_slave_scan_state_sii_data(ec_fsm_slave_scan_t *fsm /**< slave state 
         cat_size = EC_READ_U16(cat_word + 1);
         cat_word += 2;
 
-        if (cat_word + cat_size - (uint16_t *) slave->sii_data
-                > sii_word_size) {
+        if (cat_word + cat_size - slave->sii_words > slave->sii_nwords) {
             EC_WARN("Unexpected end of SII data in slave %u:"
                     " Category data incomplete.\n",
                     slave->ring_position);
@@ -562,7 +556,7 @@ void ec_fsm_slave_scan_state_sii_data(ec_fsm_slave_scan_t *fsm /**< slave state 
         }
 
         cat_word += cat_size;
-        if (cat_word - (uint16_t *) slave->sii_data >= sii_word_size) {
+        if (cat_word - slave->sii_words >= slave->sii_nwords) {
             EC_WARN("Unexpected end of SII data in slave %u:"
                     " Next category header missing.\n",
                     slave->ring_position);

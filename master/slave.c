@@ -124,8 +124,8 @@ int ec_slave_init(ec_slave_t *slave, /**< EtherCAT slave */
     slave->base_build = 0;
     slave->base_fmmu_count = 0;
 
-    slave->sii_data = NULL;
-    slave->sii_size = 0;
+    slave->sii_words = NULL;
+    slave->sii_nwords = 0;
 
     slave->sii.alias = 0;
     slave->sii.vendor_id = 0;
@@ -267,8 +267,8 @@ void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
         kfree(pdo);
     }
 
-    if (slave->sii_data)
-        kfree(slave->sii_data);
+    if (slave->sii_words)
+        kfree(slave->sii_words);
 
     kfree(slave);
 }
@@ -1033,14 +1033,14 @@ ssize_t ec_slave_write_alias(ec_slave_t *slave, /**< EtherCAT slave */
         return -EINVAL;
     }
 
-    if (!slave->sii_data || slave->sii_size < 16) {
+    if (!slave->sii_words || slave->sii_nwords < 8) {
         EC_ERR("Failed to read SII contents from slave %u.\n",
                 slave->ring_position);
         return -EINVAL;
     }
 
     // copy first 7 words of recent SII contents
-    memcpy(sii_data, slave->sii_data, 14);
+    memcpy(sii_data, (uint8_t *) slave->sii_words, 14);
     
     // write new alias address in word 4
     EC_WRITE_U16(sii_data + 8, alias);
@@ -1077,19 +1077,21 @@ ssize_t ec_show_slave_attribute(struct kobject *kobj, /**< slave's kobject */
                                 )
 {
     ec_slave_t *slave = container_of(kobj, ec_slave_t, kobj);
+    unsigned int sii_size;
 
     if (attr == &attr_info) {
         return ec_slave_info(slave, buffer);
     } else if (attr == &attr_sii) {
-        if (slave->sii_data) {
-            if (slave->sii_size > PAGE_SIZE) {
+        if (slave->sii_words) {
+            sii_size = slave->sii_nwords * 2;
+            if (sii_size > PAGE_SIZE) {
                 EC_ERR("SII contents of slave %u exceed 1 page (%u/%u).\n",
-                       slave->ring_position, slave->sii_size,
+                       slave->ring_position, sii_size,
                        (int) PAGE_SIZE);
             }
             else {
-                memcpy(buffer, slave->sii_data, slave->sii_size);
-                return slave->sii_size;
+                memcpy(buffer, (uint8_t *) slave->sii_words, sii_size);
+                return sii_size;
             }
         }
     } else if (attr == &attr_alias) {
