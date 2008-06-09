@@ -85,7 +85,7 @@ void ec_fsm_sii_clear(ec_fsm_sii_t *);
 void ec_fsm_sii_read(ec_fsm_sii_t *, ec_slave_t *,
                      uint16_t, ec_fsm_sii_addressing_t);
 void ec_fsm_sii_write(ec_fsm_sii_t *, ec_slave_t *, uint16_t,
-        const uint8_t *, ec_fsm_sii_addressing_t);
+        const uint16_t *, ec_fsm_sii_addressing_t);
 
 int ec_fsm_sii_exec(ec_fsm_sii_t *);
 int ec_fsm_sii_success(ec_fsm_sii_t *);

@@ -55,12 +55,12 @@
 /** SII write request.
  */
 typedef struct {
-    struct list_head list; /**< list head */
-    ec_slave_t *slave; /**< EtherCAT slave */
-    off_t word_offset; /**< SII address in words */
-    size_t word_size; /**< data size in words */
-    const uint8_t *data; /**< pointer to the data */
-    ec_request_state_t state; /**< state of the request */
+    struct list_head list; /**< List head. */
+    ec_slave_t *slave; /**< EtherCAT slave. */
+    uint16_t offset; /**< SII word offset. */
+    size_t nwords; /**< Number of words. */
+    const uint16_t *words; /**< Pointer to the data words. */
+    ec_request_state_t state; /**< State of the request. */
 } ec_sii_write_request_t;
 
 /*****************************************************************************/

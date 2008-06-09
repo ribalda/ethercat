@@ -961,14 +961,14 @@ ssize_t ec_slave_write_sii(ec_slave_t *slave, /**< EtherCAT slave */
     // init SII write request
     INIT_LIST_HEAD(&request.list);
     request.slave = slave;
-    request.data = data;
-    request.word_offset = 0;
-    request.word_size = size / 2;
+    request.words = (const uint16_t *) data;
+    request.offset = 0;
+    request.nwords = size / 2;
 
-    if (request.word_size < 0x0041) {
+    if (request.nwords < 0x0041) {
         EC_ERR("SII data too short (%u words)! Mimimum is"
                 " 40 fixed words + 1 delimiter. Dropping.\n",
-                request.word_size);
+                request.nwords);
         return -EINVAL;
     }
 
@@ -978,18 +978,15 @@ ssize_t ec_slave_write_sii(ec_slave_t *slave, /**< EtherCAT slave */
         EC_WARN("SII CRC incorrect. Must be 0x%02x.\n", crc);
     }
 
-    cat_header = (const uint16_t *) request.data
-		+ EC_FIRST_SII_CATEGORY_OFFSET;
+    cat_header = request.words + EC_FIRST_SII_CATEGORY_OFFSET;
     cat_type = EC_READ_U16(cat_header);
     while (cat_type != 0xFFFF) { // cycle through categories
-        if (cat_header + 1 >
-				(const uint16_t *) request.data + request.word_size) {
+        if (cat_header + 1 > request.words + request.nwords) {
             EC_ERR("SII data corrupted! Dropping.\n");
             return -EINVAL;
         }
         cat_size = EC_READ_U16(cat_header + 1);
-        if (cat_header + cat_size + 2 >
-				(const uint16_t *) request.data + request.word_size) {
+        if (cat_header + cat_size + 2 > request.words + request.nwords) {
             EC_ERR("SII data corrupted! Dropping.\n");
             return -EINVAL;
         }
@@ -1052,9 +1049,9 @@ ssize_t ec_slave_write_alias(ec_slave_t *slave, /**< EtherCAT slave */
     // init SII write request
     INIT_LIST_HEAD(&request.list);
     request.slave = slave;
-    request.data = sii_data;
-    request.word_offset = 0x0000;
-    request.word_size = 8;
+    request.words = (const uint16_t *) sii_data;
+    request.offset = 0x0000;
+    request.nwords = 8;
 
     if ((ret = ec_slave_schedule_sii_writing(&request)))
         return ret; // error code

@@ -324,8 +324,8 @@ int ec_fsm_master_action_process_sii(
                     request->slave->ring_position);
         fsm->sii_request = request;
         fsm->sii_index = 0;
-        ec_fsm_sii_write(&fsm->fsm_sii, request->slave, request->word_offset,
-                request->data, EC_FSM_SII_USE_CONFIGURED_ADDRESS);
+        ec_fsm_sii_write(&fsm->fsm_sii, request->slave, request->offset,
+                request->words, EC_FSM_SII_USE_CONFIGURED_ADDRESS);
         fsm->state = ec_fsm_master_state_write_sii;
         fsm->state(fsm); // execute immediately
         return 1;
@@ -791,10 +791,10 @@ void ec_fsm_master_state_write_sii(
     }
 
     fsm->sii_index++;
-    if (fsm->sii_index < request->word_size) {
+    if (fsm->sii_index < request->nwords) {
         ec_fsm_sii_write(&fsm->fsm_sii, slave,
-                request->word_offset + fsm->sii_index,
-                request->data + fsm->sii_index * 2,
+                request->offset + fsm->sii_index,
+                request->words + fsm->sii_index,
                 EC_FSM_SII_USE_CONFIGURED_ADDRESS);
         ec_fsm_sii_exec(&fsm->fsm_sii); // execute immediately
         return;
@@ -803,7 +803,7 @@ void ec_fsm_master_state_write_sii(
     // finished writing SII
     if (master->debug_level)
         EC_DBG("Finished writing %u words of SII data to slave %u.\n",
-                request->word_size, slave->ring_position);
+                request->nwords, slave->ring_position);
     request->state = EC_REQUEST_SUCCESS;
     wake_up(&master->sii_queue);
 
