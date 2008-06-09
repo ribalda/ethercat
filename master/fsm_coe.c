@@ -1029,6 +1029,11 @@ void ec_fsm_coe_down_start(ec_fsm_coe_t *fsm /**< finite state machine */)
     EC_WRITE_U32(data + 6, request->data_size);
     memcpy(data + 10, request->data, request->data_size);
 
+    if (slave->master->debug_level) {
+        EC_DBG("Download request:\n");
+        ec_print_data(data, 10 + request->data_size);
+    }
+
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_coe_down_request;
 }
@@ -1173,6 +1178,11 @@ void ec_fsm_coe_down_response(ec_fsm_coe_t *fsm /**< finite state machine */)
         fsm->retries = EC_FSM_RETRIES;
         fsm->state = ec_fsm_coe_down_check;
         return;
+    }
+
+    if (slave->master->debug_level) {
+        EC_DBG("Download response:\n");
+        ec_print_data(data, rec_size);
     }
 
     if (rec_size < 6) {
