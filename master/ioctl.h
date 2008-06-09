@@ -67,23 +67,24 @@
 #define EC_IOCTL_SDO_ENTRY    EC_IOWR(0x0c, ec_ioctl_sdo_entry_t)
 #define EC_IOCTL_SDO_UPLOAD   EC_IOWR(0x0d, ec_ioctl_sdo_upload_t)
 #define EC_IOCTL_SDO_DOWNLOAD  EC_IOW(0x0e, ec_ioctl_sdo_download_t)
+#define EC_IOCTL_SII_READ     EC_IOWR(0x0f, ec_ioctl_sii_read_t)
 
 /*****************************************************************************/
 
 typedef struct {
-    unsigned int slave_count;
+    uint32_t slave_count;
     uint8_t mode;
     struct {
         uint8_t address[6];
         uint8_t attached;
-        unsigned int tx_count;
-        unsigned int rx_count;
+        uint32_t tx_count;
+        uint32_t rx_count;
     } devices[2];
 } ec_ioctl_master_t;
 
 /*****************************************************************************/
 
-#define EC_IOCTL_SLAVE_NAME_SIZE 104
+#define EC_IOCTL_SLAVE_NAME_SIZE 100
 
 typedef struct {
     // input
@@ -98,6 +99,7 @@ typedef struct {
     uint8_t state;
     uint8_t sync_count;
     uint16_t sdo_count;
+    uint32_t sii_nwords;
     char name[EC_IOCTL_SLAVE_NAME_SIZE];
 } ec_ioctl_slave_t;
 
@@ -106,7 +108,7 @@ typedef struct {
 typedef struct {
     // inputs
     uint16_t slave_position;
-    unsigned int sync_index;
+    uint32_t sync_index;
 
     // outputs
     uint16_t physical_start_address;
@@ -124,8 +126,8 @@ typedef struct {
 typedef struct {
     // inputs
     uint16_t slave_position;
-    unsigned int sync_index;
-    unsigned int pdo_pos;
+    uint32_t sync_index;
+    uint32_t pdo_pos;
 
     // outputs
     uint8_t dir;
@@ -141,9 +143,9 @@ typedef struct {
 typedef struct {
     // inputs
     uint16_t slave_position;
-    unsigned int sync_index;
-    unsigned int pdo_pos;
-    unsigned int entry_pos;
+    uint32_t sync_index;
+    uint32_t pdo_pos;
+    uint32_t entry_pos;
 
     // outputs
     uint16_t index;
@@ -156,37 +158,37 @@ typedef struct {
 
 typedef struct {
     // inputs
-	unsigned int index;
+	uint32_t index;
 
     // outputs
-	unsigned int data_size;
+	uint32_t data_size;
 	uint32_t logical_base_address;
 	uint16_t working_counter;
 	uint16_t expected_working_counter;
-    unsigned int fmmu_count;
+    uint32_t fmmu_count;
 } ec_ioctl_domain_t;
 
 /*****************************************************************************/
 
 typedef struct {
     // inputs
-	unsigned int domain_index;
-	unsigned int fmmu_index;
+	uint32_t domain_index;
+	uint32_t fmmu_index;
 
     // outputs
     uint16_t slave_config_alias;
     uint16_t slave_config_position;
     uint8_t fmmu_dir;
 	uint32_t logical_address;
-    unsigned int data_size;
+    uint32_t data_size;
 } ec_ioctl_domain_fmmu_t;
 
 /*****************************************************************************/
 
 typedef struct {
     // inputs
-	unsigned int domain_index;
-    unsigned int data_size;
+	uint32_t domain_index;
+    uint32_t data_size;
     unsigned char *target;
 } ec_ioctl_data_t;
 
@@ -236,11 +238,11 @@ typedef struct {
     uint16_t slave_position;
     uint16_t sdo_index;
     uint8_t sdo_entry_subindex;
-    unsigned int target_size;
+    uint32_t target_size;
     uint8_t *target;
 
     // outputs
-    unsigned int data_size;
+    uint32_t data_size;
 } ec_ioctl_sdo_upload_t;
 
 /*****************************************************************************/
@@ -250,9 +252,19 @@ typedef struct {
     uint16_t slave_position;
     uint16_t sdo_index;
     uint8_t sdo_entry_subindex;
-    unsigned int data_size;
+    uint32_t data_size;
     uint8_t *data;
 } ec_ioctl_sdo_download_t;
+
+/*****************************************************************************/
+
+typedef struct {
+    // inputs
+    uint16_t slave_position;
+    uint16_t offset;
+    uint32_t nwords;
+    uint16_t *words;
+} ec_ioctl_sii_read_t;
 
 /*****************************************************************************/
 

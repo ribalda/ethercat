@@ -196,6 +196,7 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
                 data.sync_count = slave->sii.sync_count;
                 data.sdo_count = ec_slave_sdo_count(slave);
+                data.sii_nwords = slave->sii_nwords;
 
                 if (slave->sii.name) {
                     strncpy(data.name, slave->sii.name,
@@ -757,6 +758,40 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                 }
 
                 ec_sdo_request_clear(&request.req);
+                break;
+            }
+
+        case EC_IOCTL_SII_READ:
+            {
+                ec_ioctl_sii_read_t data;
+                const ec_slave_t *slave;
+
+                if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+                    retval = -EFAULT;
+                    break;
+                }
+                
+                if (!(slave = ec_master_find_slave(
+                                master, 0, data.slave_position))) {
+                    EC_ERR("Slave %u does not exist!\n", data.slave_position);
+                    retval = -EINVAL;
+                    break;
+                }
+
+                if (!data.nwords
+                        || data.offset + data.nwords > slave->sii_nwords) {
+                    EC_ERR("Invalid SII read offset/size %u/%u for slave "
+                            "SII size %u!\n", data.offset,
+                            data.nwords, slave->sii_nwords);
+                    retval = -EINVAL;
+                    break;
+                }
+
+                if (copy_to_user((void __user *) data.words,
+                            slave->sii_words + data.offset, data.nwords * 2)) {
+                    retval = -EFAULT;
+                    break;
+                }
                 break;
             }
 

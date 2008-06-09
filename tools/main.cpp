@@ -41,6 +41,7 @@ void printUsage()
         << "  sdos               List Sdo dictionaries." << endl
         << "  sdo_download (sd)  Write an Sdo entry." << endl
         << "  sdo_upload (su)    Read an Sdo entry." << endl
+        << "  sii_read (sr)      Output a slave's SII contents." << endl
         << "  state              Request slave states." << endl
         << "  xml                Generate slave information xmls." << endl
 		<< "Global options:" << endl
@@ -183,6 +184,8 @@ int main(int argc, char **argv)
             master.sdoDownload(slavePosition, dataTypeStr, commandArgs);
         } else if (command == "sdo_upload" || command == "su") {
             master.sdoUpload(slavePosition, dataTypeStr, commandArgs);
+        } else if (command == "sii_read" || command == "sr") {
+            master.siiRead(slavePosition);
         } else if (command == "state") {
             master.requestStates(slavePosition, commandArgs);
         } else if (command == "xml") {

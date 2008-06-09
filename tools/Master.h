@@ -50,6 +50,7 @@ class Master
         void listSdos(int, bool = false);
         void sdoDownload(int, const string &, const vector<string> &);
         void sdoUpload(int, const string &, const vector<string> &);
+        void siiRead(int);
         void requestStates(int, const vector<string> &);
         void generateXml(int);
 

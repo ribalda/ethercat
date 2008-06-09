@@ -606,6 +606,47 @@ void Master::sdoUpload(
 
 /****************************************************************************/
 
+void Master::siiRead(int slavePosition)
+{
+    ec_ioctl_sii_read_t data;
+    ec_ioctl_slave_t slave;
+    unsigned int i;
+
+    if (slavePosition < 0) {
+        stringstream err;
+        err << "'sii_read' requires a slave! Please specify --slave.";
+        throw MasterException(err.str());
+    }
+    data.slave_position = slavePosition;
+
+    open(Read);
+
+    getSlave(&slave, slavePosition);
+
+    if (!slave.sii_nwords)
+        return;
+
+    data.offset = 0;
+    data.nwords = slave.sii_nwords;
+    data.words = new uint16_t[data.nwords];
+
+    if (ioctl(fd, EC_IOCTL_SII_READ, &data) < 0) {
+        stringstream err;
+        delete [] data.words;
+        err << "Failed to read SII: " << strerror(errno);
+        throw MasterException(err.str());
+    }
+
+    for (i = 0; i < data.nwords; i++) {
+        uint16_t *w = data.words + i;
+        cout << *(uint8_t *) w << *((uint8_t *) w + 1);
+    }
+
+    delete [] data.words;
+}
+
+/****************************************************************************/
+
 void Master::requestStates(
         int slavePosition,
         const vector<string> &commandArgs
