@@ -451,9 +451,6 @@ void Master::sdoDownload(
         throw MasterException(err.str());
     }
 
-    cerr << "dt " << dataType->name << endl;
-    printRawData(data.data, data.data_size);
-
     open(ReadWrite);
 
     if (ioctl(fd, EC_IOCTL_SDO_DOWNLOAD, &data) < 0) {
