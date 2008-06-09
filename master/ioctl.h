@@ -41,24 +41,31 @@
 #ifndef __EC_IOCTL_H__
 #define __EC_IOCTL_H__
 
+#include <linux/ioctl.h>
+
 /*****************************************************************************/
 
-enum {
-    EC_IOCTL_MASTER,
-    EC_IOCTL_SLAVE,
-    EC_IOCTL_SYNC,
-    EC_IOCTL_PDO,
-    EC_IOCTL_PDO_ENTRY,
-	EC_IOCTL_DOMAIN_COUNT,
-	EC_IOCTL_DOMAIN,
-	EC_IOCTL_DOMAIN_FMMU,
-	EC_IOCTL_DATA,
-    EC_IOCTL_SET_DEBUG,
-    EC_IOCTL_SLAVE_STATE,
-    EC_IOCTL_SDO,
-    EC_IOCTL_SDO_ENTRY,
-    EC_IOCTL_SDO_UPLOAD,
-};
+#define EC_IOCTL_TYPE    0xa4
+
+#define EC_IO(nr)          _IO(EC_IOCTL_TYPE,nr)
+#define EC_IOR(nr,type)   _IOR(EC_IOCTL_TYPE,nr,type)
+#define EC_IOW(nr,type)   _IOW(EC_IOCTL_TYPE,nr,type)
+#define EC_IOWR(nr,type) _IOWR(EC_IOCTL_TYPE,nr,type)
+
+#define EC_IOCTL_MASTER        EC_IOR(0x00, ec_ioctl_master_t)
+#define EC_IOCTL_SLAVE        EC_IOWR(0x01, ec_ioctl_slave_t)
+#define EC_IOCTL_SYNC         EC_IOWR(0x02, ec_ioctl_sync_t)
+#define EC_IOCTL_PDO          EC_IOWR(0x03, ec_ioctl_pdo_t)
+#define EC_IOCTL_PDO_ENTRY    EC_IOWR(0x04, ec_ioctl_pdo_entry_t)
+#define EC_IOCTL_DOMAIN_COUNT   EC_IO(0x05)
+#define EC_IOCTL_DOMAIN       EC_IOWR(0x06, ec_ioctl_domain_t)
+#define EC_IOCTL_DOMAIN_FMMU  EC_IOWR(0x07, ec_ioctl_domain_fmmu_t)
+#define EC_IOCTL_DATA         EC_IOWR(0x08, ec_ioctl_data_t)
+#define EC_IOCTL_SET_DEBUG      EC_IO(0x09)
+#define EC_IOCTL_SLAVE_STATE   EC_IOW(0x0a, ec_ioctl_slave_state_t)
+#define EC_IOCTL_SDO          EC_IOWR(0x0b, ec_ioctl_sdo_t)
+#define EC_IOCTL_SDO_ENTRY    EC_IOWR(0x0c, ec_ioctl_sdo_entry_t)
+#define EC_IOCTL_SDO_UPLOAD   EC_IOWR(0x0d, ec_ioctl_sdo_upload_t)
 
 /*****************************************************************************/
 
