@@ -90,6 +90,7 @@ Master::Master()
 {
     index = 0;
     fd = -1;
+    currentPermissions = Read;
 }
 
 /****************************************************************************/
@@ -101,36 +102,17 @@ Master::~Master()
 
 /****************************************************************************/
 
-void Master::open(unsigned int index)
+void Master::setIndex(unsigned int i)
 {
-    stringstream deviceName;
-    
-    Master::index = index;
-
-    deviceName << "/dev/EtherCAT" << index;
-    
-    if ((fd = ::open(deviceName.str().c_str(), O_RDONLY)) == -1) {
-        stringstream err;
-        err << "Failed to open master device " << deviceName.str() << ": "
-            << strerror(errno);
-        throw MasterException(err.str());
-    }
-}
-
-/****************************************************************************/
-
-void Master::close()
-{
-    if (fd == -1)
-        return;
-
-    ::close(fd);
+    index = i;
 }
 
 /****************************************************************************/
 
 void Master::outputData(int domainIndex)
 {
+    open(Read);
+
     if (domainIndex == -1) {
         unsigned int numDomains = domainCount(), i;
 
@@ -164,6 +146,8 @@ void Master::setDebug(const vector<string> &commandArgs)
         throw MasterException(err.str());
     }
 
+    open(ReadWrite);
+
     if (ioctl(fd, EC_IOCTL_SET_DEBUG, debugLevel) < 0) {
         stringstream err;
         err << "Failed to set debug level: " << strerror(errno);
@@ -175,6 +159,8 @@ void Master::setDebug(const vector<string> &commandArgs)
 
 void Master::showDomains(int domainIndex)
 {
+    open(Read);
+
     if (domainIndex == -1) {
         unsigned int numDomains = domainCount(), i;
 
@@ -190,10 +176,14 @@ void Master::showDomains(int domainIndex)
 
 void Master::listSlaves()
 {
-    unsigned int numSlaves = slaveCount(), i;
+    unsigned int numSlaves, i;
     ec_ioctl_slave_t slave;
     uint16_t lastAlias, aliasIndex;
     
+    open(Read);
+
+    numSlaves = slaveCount();
+
     lastAlias = 0;
     aliasIndex = 0;
     for (i = 0; i < numSlaves; i++) {
@@ -229,6 +219,7 @@ void Master::showMaster()
     stringstream err;
     unsigned int i;
     
+    open(Read);
     getMaster(&data);
 
     cout
@@ -277,6 +268,8 @@ void Master::showMaster()
 
 void Master::listPdos(int slavePosition, bool quiet)
 {
+    open(Read);
+
     if (slavePosition == -1) {
         unsigned int numSlaves = slaveCount(), i;
 
@@ -292,6 +285,8 @@ void Master::listPdos(int slavePosition, bool quiet)
 
 void Master::listSdos(int slavePosition, bool quiet)
 {
+    open(Read);
+
     if (slavePosition == -1) {
         unsigned int numSlaves = slaveCount(), i;
 
@@ -357,6 +352,9 @@ void Master::sdoUpload(
     } else { // no data type specified: fetch from dictionary
         ec_ioctl_sdo_entry_t entry;
         unsigned int entryByteSize;
+
+        open(Read);
+
         try {
             getSdoEntry(&entry, slavePosition,
                     data.sdo_index, data.sdo_entry_subindex);
@@ -383,12 +381,17 @@ void Master::sdoUpload(
 
     data.target = new uint8_t[data.target_size + 1];
 
+    open(Read);
+
     if (ioctl(fd, EC_IOCTL_SDO_UPLOAD, &data) < 0) {
         stringstream err;
         err << "Failed to upload Sdo: " << strerror(errno);
         delete [] data.target;
+        close();
         throw MasterException(err.str());
     }
+
+    close();
 
     if (dataType->byteSize && data.data_size != dataType->byteSize) {
         stringstream err;
@@ -470,6 +473,8 @@ void Master::requestStates(
         throw MasterException(err.str());
     }
 
+    open(ReadWrite);
+
     if (slavePosition == -1) {
         unsigned int i, numSlaves = slaveCount();
         for (i = 0; i < numSlaves; i++)
@@ -483,6 +488,8 @@ void Master::requestStates(
 
 void Master::generateXml(int slavePosition)
 {
+    open(Read);
+
     if (slavePosition == -1) {
         unsigned int numSlaves = slaveCount(), i;
 
@@ -492,6 +499,43 @@ void Master::generateXml(int slavePosition)
     } else {
         generateSlaveXml(slavePosition);
     }
+}
+
+/****************************************************************************/
+
+void Master::open(Permissions perm)
+{
+    stringstream deviceName;
+
+    if (fd != -1) { // already open
+        if (currentPermissions < perm) { // more permissions required
+            close();
+        } else {
+            return;
+        }
+    }
+    
+    deviceName << "/dev/EtherCAT" << index;
+    
+    if ((fd = ::open(deviceName.str().c_str(),
+                    perm == ReadWrite ? O_RDWR : O_RDONLY)) == -1) {
+        stringstream err;
+        err << "Failed to open master device " << deviceName.str() << ": "
+            << strerror(errno);
+        throw MasterException(err.str());
+    }
+
+    currentPermissions = perm;
+}
+
+/****************************************************************************/
+
+void Master::close()
+{
+    if (fd == -1)
+        return;
+
+    ::close(fd);
 }
 
 /****************************************************************************/

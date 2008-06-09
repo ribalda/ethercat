@@ -162,7 +162,7 @@ int main(int argc, char **argv)
 	getOptions(argc, argv);
 
     try {
-        master.open(masterIndex);
+        master.setIndex(masterIndex);
 
         if (command == "data") {
             master.outputData(domainIndex);

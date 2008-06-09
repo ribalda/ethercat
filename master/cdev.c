@@ -474,6 +474,8 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             }
 
         case EC_IOCTL_SET_DEBUG:
+            if (!(filp->f_mode & FMODE_WRITE))
+                return -EPERM;
             if (ec_master_debug_level(master, (unsigned int) arg)) {
                 retval = -EINVAL;
             }
@@ -483,6 +485,9 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             {
                 ec_ioctl_slave_state_t data;
                 ec_slave_t *slave;
+
+                if (!(filp->f_mode & FMODE_WRITE))
+                    return -EPERM;
 
                 if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
                     retval = -EFAULT;
@@ -680,7 +685,7 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             }
 
         default:
-            retval = -ENOIOCTLCMD;
+            retval = -ENOTTY;
     }
 
     return retval;

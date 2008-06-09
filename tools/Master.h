@@ -39,8 +39,7 @@ class Master
         Master();
         ~Master();
 
-        void open(unsigned int);
-        void close();
+        void setIndex(unsigned int);
 
         void outputData(int);
         void setDebug(const vector<string> &);
@@ -54,6 +53,10 @@ class Master
         void generateXml(int);
 
     protected:
+        enum Permissions {Read, ReadWrite};
+        void open(Permissions);
+        void close();
+
         void outputDomainData(unsigned int);
         void showDomain(unsigned int);
         void listSlavePdos(uint16_t, bool = false, bool = false);
@@ -84,6 +87,7 @@ class Master
 
         unsigned int index;
         int fd;
+        Permissions currentPermissions;
 };
 
 /****************************************************************************/
