@@ -10,7 +10,6 @@ Version 1.4.0:
 
 * Slaves as array.
 * Replace all Sysfs files via the new ethercat tool.
-    - Sdo entry value write
     - Slave alias write
     - Slave SII write
     - Slave info (flags, mailbox, general) 
@@ -36,7 +35,6 @@ Future issues:
   kernel threads to user space daemon with a TCP interface replacing the
   cdev).
 * Implement user space realtime interface via cdev.
-* SDO write access from user space.
 * Mailbox protocol handlers.
 * Mailbox state machine using toggle bits.
 * Mailbox gateway.

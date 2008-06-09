@@ -18,23 +18,32 @@ using namespace std;
 
 #include "Master.h"
 
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-
-#define le16tocpu(x) x
-#define le32tocpu(x) x
-
-#elif __BYTE_ORDER == __BIG_ENDIAN
-
-#define le16tocpu(x) \
+#define swap16(x) \
         ((uint16_t)( \
         (((uint16_t)(x) & 0x00ffU) << 8) | \
         (((uint16_t)(x) & 0xff00U) >> 8) ))
-#define le32tocpu(x) \
+#define swap32(x) \
         ((uint32_t)( \
         (((uint32_t)(x) & 0x000000ffUL) << 24) | \
         (((uint32_t)(x) & 0x0000ff00UL) <<  8) | \
         (((uint32_t)(x) & 0x00ff0000UL) >>  8) | \
         (((uint32_t)(x) & 0xff000000UL) >> 24) ))
+
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+
+#define le16tocpu(x) x
+#define le32tocpu(x) x
+
+#define cputole16(x) x
+#define cputole32(x) x
+
+#elif __BYTE_ORDER == __BIG_ENDIAN
+
+#define le16tocpu(x) swap16(x)
+#define le32tocpu(x) swap32(x)
+
+#define cputole16(x) swap16(x)
+#define cputole32(x) swap32(x)
 
 #endif
 
@@ -300,6 +309,165 @@ void Master::listSdos(int slavePosition, bool quiet)
 
 /****************************************************************************/
 
+void Master::sdoDownload(
+        int slavePosition,
+        const string &dataTypeStr,
+        const vector<string> &commandArgs
+        )
+{
+    stringstream strIndex, strSubIndex, strValue, err;
+    int number, sval;
+    ec_ioctl_sdo_download_t data;
+    unsigned int i, uval;
+    const CoEDataType *dataType = NULL;
+
+    if (slavePosition < 0) {
+        err << "'sdo_download' requires a slave! Please specify --slave.";
+        throw MasterException(err.str());
+    }
+    data.slave_position = slavePosition;
+
+    if (commandArgs.size() != 3) {
+        err << "'sdo_download' takes 3 arguments!";
+        throw MasterException(err.str());
+    }
+
+    strIndex << commandArgs[0];
+    strIndex >> hex >> number;
+    if (strIndex.fail() || number < 0x0000 || number > 0xffff) {
+        err << "Invalid Sdo index '" << commandArgs[0] << "'!";
+        throw MasterException(err.str());
+    }
+    data.sdo_index = number;
+
+    strSubIndex << commandArgs[1];
+    strSubIndex >> hex >> number;
+    if (strSubIndex.fail() || number < 0x00 || number > 0xff) {
+        err << "Invalid Sdo subindex '" << commandArgs[1] << "'!";
+        throw MasterException(err.str());
+    }
+    data.sdo_entry_subindex = number;
+
+    if (dataTypeStr != "") { // data type specified
+        if (!(dataType = findDataType(dataTypeStr))) {
+            err << "Invalid data type '" << dataTypeStr << "'!";
+            throw MasterException(err.str());
+        }
+    } else { // no data type specified: fetch from dictionary
+        ec_ioctl_sdo_entry_t entry;
+        unsigned int entryByteSize;
+
+        open(Read);
+
+        try {
+            getSdoEntry(&entry, slavePosition,
+                    data.sdo_index, data.sdo_entry_subindex);
+        } catch (MasterException &e) {
+            err << "Failed to determine Sdo entry data type. "
+                << "Please specify --type.";
+            throw MasterException(err.str());
+        }
+        if (!(dataType = findDataType(entry.data_type))) {
+            err << "Pdo entry has unknown data type 0x"
+                << hex << setfill('0') << setw(4) << entry.data_type << "!"
+                << " Please specify --type.";
+            throw MasterException(err.str());
+        }
+    }
+
+    if (dataType->byteSize) {
+        data.data_size = dataType->byteSize;
+    } else {
+        data.data_size = DefaultBufferSize;
+    }
+
+    data.data = new uint8_t[data.data_size + 1];
+
+    strValue << commandArgs[2];
+
+    switch (dataType->coeCode) {
+        case 0x0002: // int8
+            strValue >> sval;
+            if ((uint32_t) sval > 0xff) {
+                delete [] data.data;
+                err << "Invalid value for type '"
+                    << dataType->name << "'!";
+                throw MasterException(err.str());
+            }
+            *data.data = (int8_t) sval;
+            break;
+        case 0x0003: // int16
+            strValue >> sval;
+            if ((uint32_t) sval > 0xffff) {
+                delete [] data.data;
+                err << "Invalid value for type '"
+                    << dataType->name << "'!";
+                throw MasterException(err.str());
+            }
+            *(int16_t *) data.data = cputole16(sval);
+            break;
+        case 0x0004: // int32
+            strValue >> sval;
+            *(int32_t *) data.data = cputole32(sval);
+            break;
+        case 0x0005: // uint8
+            strValue >> uval;
+            if ((uint32_t) uval > 0xff) {
+                delete [] data.data;
+                err << "Invalid value for type '"
+                    << dataType->name << "'!";
+                throw MasterException(err.str());
+            }
+            *data.data = (uint8_t) uval;
+            break;
+        case 0x0006: // uint16
+            strValue >> uval;
+            if ((uint32_t) uval > 0xffff) {
+                delete [] data.data;
+                err << "Invalid value for type '"
+                    << dataType->name << "'!";
+                throw MasterException(err.str());
+            }
+            *(uint16_t *) data.data = cputole16(uval);
+            break;
+        case 0x0007: // uint32
+            strValue >> uval;
+            *(uint32_t *) data.data = cputole32(uval);
+            break;
+        case 0x0009: // string
+            if (strValue.str().size() >= data.data_size) {
+                err << "String too big";
+                throw MasterException(err.str());
+            }
+            data.data_size = strValue.str().size();
+            strValue >> (char *) data.data;
+            break;
+        default:
+            break;
+    }
+
+    if (strValue.fail()) {
+        err << "Invalid value argument '" << commandArgs[2] << "'!";
+        throw MasterException(err.str());
+    }
+
+    cerr << "dt " << dataType->name << endl;
+    printRawData(data.data, data.data_size);
+
+    open(ReadWrite);
+
+    if (ioctl(fd, EC_IOCTL_SDO_DOWNLOAD, &data) < 0) {
+        stringstream err;
+        err << "Failed to download Sdo: " << strerror(errno);
+        delete [] data.data;
+        throw MasterException(err.str());
+    }
+
+    delete [] data.data;
+}
+
+/****************************************************************************/
+
 void Master::sdoUpload(
         int slavePosition,
         const string &dataTypeStr,
@@ -376,7 +544,7 @@ void Master::sdoUpload(
     if (dataType->byteSize) {
         data.target_size = dataType->byteSize;
     } else {
-        data.target_size = DefaultTargetSize;
+        data.target_size = DefaultBufferSize;
     }
 
     data.target = new uint8_t[data.target_size + 1];

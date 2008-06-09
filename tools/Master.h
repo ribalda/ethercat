@@ -48,6 +48,7 @@ class Master
         void showMaster();
         void listPdos(int, bool = false);
         void listSdos(int, bool = false);
+        void sdoDownload(int, const string &, const vector<string> &);
         void sdoUpload(int, const string &, const vector<string> &);
         void requestStates(int, const vector<string> &);
         void generateXml(int);
@@ -83,7 +84,7 @@ class Master
         static void printRawData(const uint8_t *, unsigned int);
         
     private:
-        enum {DefaultTargetSize = 1024};
+        enum {DefaultBufferSize = 1024};
 
         unsigned int index;
         int fd;

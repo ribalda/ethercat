@@ -684,6 +684,82 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                 break;
             }
 
+        case EC_IOCTL_SDO_DOWNLOAD:
+            {
+                ec_ioctl_sdo_download_t data;
+                ec_master_sdo_request_t request;
+
+                if (!(filp->f_mode & FMODE_WRITE))
+                    return -EPERM;
+
+                if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+                    retval = -EFAULT;
+                    break;
+                }
+                
+                if (!(request.slave = ec_master_find_slave(
+                                master, 0, data.slave_position))) {
+                    EC_ERR("Slave %u does not exist!\n", data.slave_position);
+                    retval = -EINVAL;
+                    break;
+                }
+
+                // copy data to download
+                if (!data.data_size) {
+                    EC_ERR("Zero data size!\n");
+                    retval = -EINVAL;
+                    break;
+                }
+
+                ec_sdo_request_init(&request.req);
+                ec_sdo_request_address(&request.req,
+                        data.sdo_index, data.sdo_entry_subindex);
+                if (ec_sdo_request_alloc(&request.req, data.data_size)) {
+                    ec_sdo_request_clear(&request.req);
+                    retval = -ENOMEM;
+                    break;
+                }
+                if (copy_from_user(request.req.data,
+                            (void __user *) data.data, data.data_size)) {
+                    ec_sdo_request_clear(&request.req);
+                    retval = -EFAULT;
+                    break;
+                }
+                request.req.data_size = data.data_size;
+                ecrt_sdo_request_write(&request.req);
+
+                // schedule request.
+                down(&master->sdo_sem);
+                list_add_tail(&request.list, &master->slave_sdo_requests);
+                up(&master->sdo_sem);
+
+                // wait for processing through FSM
+                if (wait_event_interruptible(master->sdo_queue,
+                            request.req.state != EC_REQUEST_QUEUED)) {
+                    // interrupted by signal
+                    down(&master->sdo_sem);
+                    if (request.req.state == EC_REQUEST_QUEUED) {
+                        list_del(&request.req.list);
+                        up(&master->sdo_sem);
+                        retval = -EINTR;
+                        break;
+                    }
+                    // request already processing: interrupt not possible.
+                    up(&master->sdo_sem);
+                }
+
+                // wait until master FSM has finished processing
+                wait_event(master->sdo_queue, request.req.state != EC_REQUEST_BUSY);
+
+                if (request.req.state != EC_REQUEST_SUCCESS) {
+                    retval = -EIO;
+                    break;
+                }
+
+                ec_sdo_request_clear(&request.req);
+                break;
+            }
+
         default:
             retval = -ENOTTY;
     }

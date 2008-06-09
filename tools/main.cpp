@@ -39,7 +39,8 @@ void printUsage()
         << "  master             Show master information." << endl
         << "  pdos               List Pdo mapping." << endl
         << "  sdos               List Sdo dictionaries." << endl
-        << "  sdo_upload (su)    Read Sdo entries." << endl
+        << "  sdo_download (sd)  Write an Sdo entry." << endl
+        << "  sdo_upload (su)    Read an Sdo entry." << endl
         << "  state              Request slave states." << endl
         << "  xml                Generate slave information xmls." << endl
 		<< "Global options:" << endl
@@ -178,6 +179,8 @@ int main(int argc, char **argv)
             master.listPdos(slavePosition, quiet);
         } else if (command == "sdos") {
             master.listSdos(slavePosition, quiet);
+        } else if (command == "sdo_download" || command == "sd") {
+            master.sdoDownload(slavePosition, dataTypeStr, commandArgs);
         } else if (command == "sdo_upload" || command == "su") {
             master.sdoUpload(slavePosition, dataTypeStr, commandArgs);
         } else if (command == "state") {

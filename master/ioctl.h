@@ -66,6 +66,7 @@
 #define EC_IOCTL_SDO          EC_IOWR(0x0b, ec_ioctl_sdo_t)
 #define EC_IOCTL_SDO_ENTRY    EC_IOWR(0x0c, ec_ioctl_sdo_entry_t)
 #define EC_IOCTL_SDO_UPLOAD   EC_IOWR(0x0d, ec_ioctl_sdo_upload_t)
+#define EC_IOCTL_SDO_DOWNLOAD  EC_IOW(0x0e, ec_ioctl_sdo_download_t)
 
 /*****************************************************************************/
 
@@ -241,6 +242,17 @@ typedef struct {
     // outputs
     unsigned int data_size;
 } ec_ioctl_sdo_upload_t;
+
+/*****************************************************************************/
+
+typedef struct {
+    // inputs
+    uint16_t slave_position;
+    uint16_t sdo_index;
+    uint8_t sdo_entry_subindex;
+    unsigned int data_size;
+    uint8_t *data;
+} ec_ioctl_sdo_download_t;
 
 /*****************************************************************************/
 
