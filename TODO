@@ -26,13 +26,13 @@ Version 1.4.0:
 * Attach Pdo names from SII or Coe dictioary to Pdos read via CoE.
 * Make scanning and configuration run parallel (each).
 * List of commands that require a slave.
+* Improve formatting of 'ethercat ls'.
 
 Future issues:
 
 * Distributed clocks.
-* Move slave handlers and state machines, etc. into a user space daemon (move
-  kernel threads to user space daemon with a TCP interface replacing the
-  cdev).
+* Move master threads, slave handlers and state machines into a user
+  space daemon.
 * Implement user space realtime interface via cdev.
 * Mailbox protocol handlers.
 * Mailbox state machine using toggle bits.
