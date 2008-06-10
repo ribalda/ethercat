@@ -1131,8 +1131,9 @@ void Master::listSlaveSdos(
         for (j = 0; j <= sdo.max_subindex; j++) {
             getSdoEntry(&entry, slavePosition, -i, j);
 
-            cout << "  " << hex << setfill('0') << setw(2)
-                << (unsigned int) entry.sdo_entry_subindex
+            cout << "  " << hex << setfill('0')
+                << setw(4) << sdo.sdo_index << ":" 
+                << setw(2) << (unsigned int) entry.sdo_entry_subindex
                 << ", ";
 
             if ((d = findDataType(entry.data_type))) {
