@@ -245,7 +245,7 @@ void ec_fsm_master_state_broadcast(
             for (i = 0; i < master->slave_count; i++) {
                 if (!(slave = (ec_slave_t *) kmalloc(sizeof(ec_slave_t),
                                 GFP_ATOMIC))) {
-                    EC_ERR("Failed to allocate slave %i!\n", i);
+                    EC_ERR("Failed to allocate slave %u!\n", i);
                     ec_master_destroy_slaves(master);
                     master->scan_busy = 0;
                     wake_up_interruptible(&master->scan_queue);
@@ -598,7 +598,7 @@ void ec_fsm_master_state_read_state(
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         EC_ERR("Failed to receive AL state datagram for slave %u"
-                " (datagram state %i)\n",
+                " (datagram state %u)\n",
                 slave->ring_position, datagram->state);
         fsm->state = ec_fsm_master_state_error;
         return;
@@ -659,7 +659,7 @@ void ec_fsm_master_state_clear_addresses(
         return;
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
-        EC_ERR("Failed to receive address clearing datagram (state %i).\n",
+        EC_ERR("Failed to receive address clearing datagram (state %u).\n",
                 datagram->state);
         master->scan_busy = 0;
         wake_up_interruptible(&master->scan_queue);
@@ -782,7 +782,7 @@ void ec_fsm_master_state_write_sii(
 
     if (!ec_fsm_sii_success(&fsm->fsm_sii)) {
         slave->error_flag = 1;
-        EC_ERR("Failed to write SII data to slave %i.\n",
+        EC_ERR("Failed to write SII data to slave %u.\n",
                 slave->ring_position);
         request->state = EC_REQUEST_FAILURE;
         wake_up(&master->sii_queue);

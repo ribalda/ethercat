@@ -147,7 +147,7 @@ int ec_datagram_prealloc(
     }
 
     if (!(datagram->data = kmalloc(size, GFP_ATOMIC))) {
-        EC_ERR("Failed to allocate %i bytes of datagram memory!\n", size);
+        EC_ERR("Failed to allocate %u bytes of datagram memory!\n", size);
         return -1;
     }
 

@@ -61,7 +61,7 @@ uint8_t *ec_slave_mbox_prepare_send(const ec_slave_t *slave, /**< slave */
     size_t total_size;
 
     if (unlikely(!slave->sii.mailbox_protocols)) {
-        EC_ERR("Slave %i does not support mailbox communication!\n",
+        EC_ERR("Slave %u does not support mailbox communication!\n",
                slave->ring_position);
         return NULL;
     }
@@ -168,7 +168,7 @@ uint8_t *ec_slave_mbox_fetch(const ec_slave_t *slave, /**< slave */
     data_size = EC_READ_U16(datagram->data);
 
     if (data_size > slave->sii.tx_mailbox_size - 6) {
-        EC_ERR("Corrupt mailbox response received from slave %i!\n",
+        EC_ERR("Corrupt mailbox response received from slave %u!\n",
                slave->ring_position);
         ec_print_data(datagram->data, slave->sii.tx_mailbox_size);
         return NULL;
@@ -181,7 +181,7 @@ uint8_t *ec_slave_mbox_fetch(const ec_slave_t *slave, /**< slave */
         const ec_code_msg_t *mbox_msg;
 	uint16_t code = EC_READ_U16(datagram->data + 8);
 
-        EC_ERR("Mailbox error response received from slave %i - ",
+        EC_ERR("Mailbox error response received from slave %u - ",
                slave->ring_position);
 
 	for (mbox_msg = mbox_error_messages; mbox_msg->code; mbox_msg++) {

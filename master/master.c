@@ -188,7 +188,7 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     master->kobj.ktype = &ktype_ec_master;
     master->kobj.parent = module_kobj;
     
-    if (kobject_set_name(&master->kobj, "master%i", index)) {
+    if (kobject_set_name(&master->kobj, "master%u", index)) {
         EC_ERR("Failed to set master kobject name.\n");
         kobject_put(&master->kobj);
         goto out_clear_fsm;
@@ -654,7 +654,7 @@ void ec_master_send_datagrams(ec_master_t *master /**< EtherCAT master */)
             EC_WRITE_U8(cur_data++, 0x00);
 
         if (unlikely(master->debug_level > 1))
-            EC_DBG("frame size: %i\n", cur_data - frame_data);
+            EC_DBG("frame size: %u\n", cur_data - frame_data);
 
         // send frame
         ec_device_send(&master->main_device, cur_data - frame_data);
@@ -675,7 +675,7 @@ void ec_master_send_datagrams(ec_master_t *master /**< EtherCAT master */)
 
     if (unlikely(master->debug_level > 1)) {
         cycles_end = get_cycles();
-        EC_DBG("ec_master_send_datagrams sent %i frames in %ius.\n",
+        EC_DBG("ec_master_send_datagrams sent %u frames in %uus.\n",
                frame_count,
                (unsigned int) (cycles_end - cycles_start) * 1000 / cpu_khz);
     }
@@ -795,17 +795,17 @@ void ec_master_output_stats(ec_master_t *master /**< EtherCAT master */)
         master->stats.output_jiffies = jiffies;
 
         if (master->stats.timeouts) {
-            EC_WARN("%i datagram%s TIMED OUT!\n", master->stats.timeouts,
+            EC_WARN("%u datagram%s TIMED OUT!\n", master->stats.timeouts,
                     master->stats.timeouts == 1 ? "" : "s");
             master->stats.timeouts = 0;
         }
         if (master->stats.corrupted) {
-            EC_WARN("%i frame%s CORRUPTED!\n", master->stats.corrupted,
+            EC_WARN("%u frame%s CORRUPTED!\n", master->stats.corrupted,
                     master->stats.corrupted == 1 ? "" : "s");
             master->stats.corrupted = 0;
         }
         if (master->stats.unmatched) {
-            EC_WARN("%i datagram%s UNMATCHED!\n", master->stats.unmatched,
+            EC_WARN("%u datagram%s UNMATCHED!\n", master->stats.unmatched,
                     master->stats.unmatched == 1 ? "" : "s");
             master->stats.unmatched = 0;
         }

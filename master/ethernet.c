@@ -255,8 +255,8 @@ int ec_eoe_send(ec_eoe_t *eoe /**< EoE handler */)
     }
 
 #if EOE_DEBUG_LEVEL > 0
-    EC_INFO("EoE %s TX sending fragment %i%s with %i octets (%i)."
-           " %i frames queued.\n", eoe->dev->name, eoe->tx_fragment_number,
+    EC_INFO("EoE %s TX sending fragment %u%s with %u octets (%u)."
+           " %u frames queued.\n", eoe->dev->name, eoe->tx_fragment_number,
            last_fragment ? "" : "+", current_size, complete_offset,
            eoe->tx_queued_frames);
 #endif
@@ -449,8 +449,8 @@ void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
     frame_number = (EC_READ_U16(data + 2) >> 12) & 0x000F;
 
 #if EOE_DEBUG_LEVEL > 0
-    EC_INFO("EoE %s RX fragment %i%s, offset %i, frame %i%s,"
-           " %i octets\n", eoe->dev->name, fragment_number,
+    EC_INFO("EoE %s RX fragment %u%s, offset %u, frame %u%s,"
+           " %u octets\n", eoe->dev->name, fragment_number,
            last_fragment ? "" : "+", fragment_offset, frame_number, 
            time_appended ? ", + timestamp" : "",
            time_appended ? rec_size - 8 : rec_size - 4);
@@ -537,7 +537,7 @@ void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
     else {
         eoe->rx_expected_fragment++;
 #if EOE_DEBUG_LEVEL > 0
-        EC_INFO("EoE %s RX expecting fragment %i\n",
+        EC_INFO("EoE %s RX expecting fragment %u\n",
                eoe->dev->name, eoe->rx_expected_fragment);
 #endif
         eoe->state = ec_eoe_state_rx_start;
@@ -703,7 +703,7 @@ int ec_eoedev_tx(struct sk_buff *skb, /**< transmit socket buffer */
 
 #if 0
     if (skb->len > eoe->slave->sii.tx_mailbox_size - 10) {
-        EC_WARN("EoE TX frame (%i octets) exceeds MTU. dropping.\n", skb->len);
+        EC_WARN("EoE TX frame (%u octets) exceeds MTU. dropping.\n", skb->len);
         dev_kfree_skb(skb);
         eoe->stats.tx_dropped++;
         return 0;
@@ -729,7 +729,7 @@ int ec_eoedev_tx(struct sk_buff *skb, /**< transmit socket buffer */
     spin_unlock_bh(&eoe->tx_queue_lock);
 
 #if EOE_DEBUG_LEVEL > 0
-    EC_INFO("EoE %s TX queued frame with %i octets (%i frames queued).\n",
+    EC_INFO("EoE %s TX queued frame with %u octets (%u frames queued).\n",
            eoe->dev->name, skb->len, eoe->tx_queued_frames);
     if (!eoe->tx_queue_active)
         EC_WARN("EoE TX queue is now full.\n");

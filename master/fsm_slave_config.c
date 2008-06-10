@@ -168,7 +168,7 @@ int ec_fsm_slave_config_success(const ec_fsm_slave_config_t *fsm /**< slave stat
 void ec_fsm_slave_config_state_start(ec_fsm_slave_config_t *fsm /**< slave state machine */)
 {
     if (fsm->slave->master->debug_level) {
-        EC_DBG("Configuring slave %i...\n", fsm->slave->ring_position);
+        EC_DBG("Configuring slave %u...\n", fsm->slave->ring_position);
     }
 
     ec_fsm_change_start(&fsm->fsm_change, fsm->slave, EC_SLAVE_STATE_INIT);
@@ -198,7 +198,7 @@ void ec_fsm_slave_config_state_init(ec_fsm_slave_config_t *fsm /**< slave state 
     }
 
     if (master->debug_level) {
-        EC_DBG("Slave %i is now in INIT.\n", slave->ring_position);
+        EC_DBG("Slave %u is now in INIT.\n", slave->ring_position);
     }
 
     // check and reset CRC fault counters
@@ -211,7 +211,7 @@ void ec_fsm_slave_config_state_init(ec_fsm_slave_config_t *fsm /**< slave state 
     }
 
     if (master->debug_level)
-        EC_DBG("Clearing FMMU configurations of slave %i...\n",
+        EC_DBG("Clearing FMMU configurations of slave %u...\n",
                slave->ring_position);
 
     // clear FMMU configurations
@@ -238,7 +238,7 @@ void ec_fsm_slave_config_state_clear_fmmus(ec_fsm_slave_config_t *fsm
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_config_state_error;
-        EC_ERR("Failed receive FMMU clearing datagram for slave %i.\n",
+        EC_ERR("Failed receive FMMU clearing datagram for slave %u.\n",
                fsm->slave->ring_position);
         return;
     }
@@ -246,7 +246,7 @@ void ec_fsm_slave_config_state_clear_fmmus(ec_fsm_slave_config_t *fsm
     if (datagram->working_counter != 1) {
         fsm->slave->error_flag = 1;
         fsm->state = ec_fsm_slave_config_state_error;
-        EC_ERR("Failed to clear FMMUs of slave %i: ",
+        EC_ERR("Failed to clear FMMUs of slave %u: ",
                fsm->slave->ring_position);
         ec_datagram_print_wc_error(datagram);
         return;
@@ -274,7 +274,7 @@ void ec_fsm_slave_config_enter_mbox_sync(
     if (slave->current_state == slave->requested_state) {
         fsm->state = ec_fsm_slave_config_state_end; // successful
         if (master->debug_level) {
-            EC_DBG("Finished configuration of slave %i.\n",
+            EC_DBG("Finished configuration of slave %u.\n",
                    slave->ring_position);
         }
         return;
@@ -290,7 +290,7 @@ void ec_fsm_slave_config_enter_mbox_sync(
     }
 
     if (master->debug_level) {
-        EC_DBG("Configuring mailbox sync managers of slave %i.\n",
+        EC_DBG("Configuring mailbox sync managers of slave %u.\n",
                slave->ring_position);
     }
 
@@ -352,7 +352,7 @@ void ec_fsm_slave_config_state_mbox_sync(ec_fsm_slave_config_t *fsm /**< slave s
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_config_state_error;
         EC_ERR("Failed to receive sync manager configuration datagram for"
-               " slave %i (datagram state %i).\n",
+               " slave %u (datagram state %u).\n",
                slave->ring_position, datagram->state);
         return;
     }
@@ -360,7 +360,7 @@ void ec_fsm_slave_config_state_mbox_sync(ec_fsm_slave_config_t *fsm /**< slave s
     if (datagram->working_counter != 1) {
         slave->error_flag = 1;
         fsm->state = ec_fsm_slave_config_state_error;
-        EC_ERR("Failed to set sync managers of slave %i: ",
+        EC_ERR("Failed to set sync managers of slave %u: ",
                slave->ring_position);
         ec_datagram_print_wc_error(datagram);
         return;
@@ -406,7 +406,7 @@ void ec_fsm_slave_config_state_preop(ec_fsm_slave_config_t *fsm /**< slave state
     slave->jiffies_preop = fsm->datagram->jiffies_received;
 
     if (master->debug_level) {
-        EC_DBG("Slave %i is now in PREOP.\n", slave->ring_position);
+        EC_DBG("Slave %u is now in PREOP.\n", slave->ring_position);
     }
 
     if (slave->current_state == slave->requested_state) {
@@ -551,7 +551,7 @@ void ec_fsm_slave_config_state_pdo_sync(ec_fsm_slave_config_t *fsm /**< slave st
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_config_state_error;
         EC_ERR("Failed to receive process data sync manager configuration"
-               " datagram for slave %i (datagram state %i).\n",
+               " datagram for slave %u (datagram state %u).\n",
                slave->ring_position, datagram->state);
         return;
     }
@@ -559,7 +559,7 @@ void ec_fsm_slave_config_state_pdo_sync(ec_fsm_slave_config_t *fsm /**< slave st
     if (datagram->working_counter != 1) {
         slave->error_flag = 1;
         fsm->state = ec_fsm_slave_config_state_error;
-        EC_ERR("Failed to set process data sync managers of slave %i: ",
+        EC_ERR("Failed to set process data sync managers of slave %u: ",
                 slave->ring_position);
         ec_datagram_print_wc_error(datagram);
         return;
@@ -685,8 +685,8 @@ void ec_fsm_slave_config_state_fmmu(ec_fsm_slave_config_t *fsm /**< slave state 
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_config_state_error;
-        EC_ERR("Failed to receive FMMUs datagram for slave %i"
-                " (datagram state %i).\n",
+        EC_ERR("Failed to receive FMMUs datagram for slave %u"
+                " (datagram state %u).\n",
                slave->ring_position, datagram->state);
         return;
     }
@@ -694,7 +694,7 @@ void ec_fsm_slave_config_state_fmmu(ec_fsm_slave_config_t *fsm /**< slave state 
     if (datagram->working_counter != 1) {
         slave->error_flag = 1;
         fsm->state = ec_fsm_slave_config_state_error;
-        EC_ERR("Failed to set FMMUs of slave %i: ",
+        EC_ERR("Failed to set FMMUs of slave %u: ",
                slave->ring_position);
         ec_datagram_print_wc_error(datagram);
         return;
@@ -739,13 +739,13 @@ void ec_fsm_slave_config_state_safeop(ec_fsm_slave_config_t *fsm /**< slave stat
     // slave is now in SAFEOP
 
     if (master->debug_level) {
-        EC_DBG("Slave %i is now in SAFEOP.\n", slave->ring_position);
+        EC_DBG("Slave %u is now in SAFEOP.\n", slave->ring_position);
     }
 
     if (fsm->slave->current_state == fsm->slave->requested_state) {
         fsm->state = ec_fsm_slave_config_state_end; // successful
         if (master->debug_level) {
-            EC_DBG("Finished configuration of slave %i.\n",
+            EC_DBG("Finished configuration of slave %u.\n",
                    slave->ring_position);
         }
         return;
@@ -780,8 +780,8 @@ void ec_fsm_slave_config_state_op(ec_fsm_slave_config_t *fsm /**< slave state ma
     // slave is now in OP
 
     if (master->debug_level) {
-        EC_DBG("Slave %i is now in OP.\n", slave->ring_position);
-        EC_DBG("Finished configuration of slave %i.\n", slave->ring_position);
+        EC_DBG("Slave %u is now in OP.\n", slave->ring_position);
+        EC_DBG("Finished configuration of slave %u.\n", slave->ring_position);
     }
 
     fsm->state = ec_fsm_slave_config_state_end; // successful

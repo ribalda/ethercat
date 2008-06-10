@@ -351,7 +351,7 @@ void ec_device_debug_ring_print(
         % EC_DEBUG_RING_SIZE;
     t0 = device->debug_frames[ring_index].t;
 
-    EC_DBG("Debug ring %i:\n", ring_index);
+    EC_DBG("Debug ring %u:\n", ring_index);
 
     // calculate index of the oldest frame in the ring
     ring_index = (device->debug_frame_index + EC_DEBUG_RING_SIZE
@@ -361,7 +361,7 @@ void ec_device_debug_ring_print(
         df = &device->debug_frames[ring_index];
         timersub(&t0, &df->t, &diff);
 
-        EC_DBG("Frame %i, dt=%u.%06u s, %s:\n",
+        EC_DBG("Frame %u, dt=%u.%06u s, %s:\n",
                 i + 1 - device->debug_frame_count,
                 (unsigned int) diff.tv_sec,
                 (unsigned int) diff.tv_usec,

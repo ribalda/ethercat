@@ -211,15 +211,15 @@ void ec_fsm_sii_state_read_check(
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_sii_state_error;
-        EC_ERR("Failed to receive SII read datagram from slave %i"
-                " (datagram state %i).\n",
+        EC_ERR("Failed to receive SII read datagram from slave %u"
+                " (datagram state %u).\n",
                fsm->slave->ring_position, datagram->state);
         return;
     }
 
     if (datagram->working_counter != 1) {
         fsm->state = ec_fsm_sii_state_error;
-        EC_ERR("Reception of SII read datagram failed on slave %i: ",
+        EC_ERR("Reception of SII read datagram failed on slave %u: ",
                 fsm->slave->ring_position);
         ec_datagram_print_wc_error(datagram);
         return;
@@ -260,15 +260,15 @@ void ec_fsm_sii_state_read_fetch(
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_sii_state_error;
-        EC_ERR("Failed to receive SII check/fetch datagram from slave %i"
-                " (datagram state %i).\n",
+        EC_ERR("Failed to receive SII check/fetch datagram from slave %u"
+                " (datagram state %u).\n",
                fsm->slave->ring_position, datagram->state);
         return;
     }
 
     if (datagram->working_counter != 1) {
         fsm->state = ec_fsm_sii_state_error;
-        EC_ERR("Reception of SII check/fetch datagram failed on slave %i: ",
+        EC_ERR("Reception of SII check/fetch datagram failed on slave %u: ",
                 fsm->slave->ring_position);
         ec_datagram_print_wc_error(datagram);
         return;
@@ -358,15 +358,15 @@ void ec_fsm_sii_state_write_check(
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_sii_state_error;
-        EC_ERR("Failed to receive SII write datagram for slave %i"
-                " (datagram state %i).\n",
+        EC_ERR("Failed to receive SII write datagram for slave %u"
+                " (datagram state %u).\n",
                fsm->slave->ring_position, datagram->state);
         return;
     }
 
     if (datagram->working_counter != 1) {
         fsm->state = ec_fsm_sii_state_error;
-        EC_ERR("Reception of SII write datagram failed on slave %i: ",
+        EC_ERR("Reception of SII write datagram failed on slave %u: ",
                 fsm->slave->ring_position);
         ec_datagram_print_wc_error(datagram);
         return;
@@ -398,15 +398,15 @@ void ec_fsm_sii_state_write_check2(
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_sii_state_error;
-        EC_ERR("Failed to receive SII write check datagram from slave %i"
-                " (datagram state %i).\n",
+        EC_ERR("Failed to receive SII write check datagram from slave %u"
+                " (datagram state %u).\n",
                fsm->slave->ring_position, datagram->state);
         return;
     }
 
     if (datagram->working_counter != 1) {
         fsm->state = ec_fsm_sii_state_error;
-        EC_ERR("Reception of SII write check datagram failed on slave %i: ",
+        EC_ERR("Reception of SII write check datagram failed on slave %u: ",
                 fsm->slave->ring_position);
         ec_datagram_print_wc_error(datagram);
         return;

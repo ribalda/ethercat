@@ -165,7 +165,7 @@ ssize_t ec_sdo_entry_info(
     off += sprintf(buffer + off, "Description: %s\n",
                    entry->description ? entry->description : "");
     off += sprintf(buffer + off, "Data type: 0x%04X\n", entry->data_type);
-    off += sprintf(buffer + off, "Bit length: %i\n", entry->bit_length);
+    off += sprintf(buffer + off, "Bit length: %u\n", entry->bit_length);
 
     return off;
 }
@@ -234,7 +234,7 @@ ssize_t ec_sdo_entry_format_data(
         if (entry->bit_length != 32)
             goto not_fit;
         value = EC_READ_U32(request->data);
-        off += sprintf(buffer + off, "%i (0x%08X)\n", value, value);
+        off += sprintf(buffer + off, "%u (0x%08X)\n", value, value);
     }
     else if (entry->data_type == 0x0009) { // string
         off += sprintf(buffer + off, "%s\n", request->data);

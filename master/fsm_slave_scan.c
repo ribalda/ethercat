@@ -187,8 +187,8 @@ void ec_fsm_slave_scan_state_address(ec_fsm_slave_scan_t *fsm /**< slave state m
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_scan_state_error;
-        EC_ERR("Failed to receive station address datagram for slave %i"
-                " (datagram state %i)\n",
+        EC_ERR("Failed to receive station address datagram for slave %u"
+                " (datagram state %u)\n",
                 fsm->slave->ring_position, datagram->state);
         return;
     }
@@ -196,7 +196,7 @@ void ec_fsm_slave_scan_state_address(ec_fsm_slave_scan_t *fsm /**< slave state m
     if (datagram->working_counter != 1) {
         fsm->slave->error_flag = 1;
         fsm->state = ec_fsm_slave_scan_state_error;
-        EC_ERR("Failed to write station address on slave %i: ",
+        EC_ERR("Failed to write station address on slave %u: ",
                fsm->slave->ring_position);
         ec_datagram_print_wc_error(datagram);
         return;
@@ -226,8 +226,8 @@ void ec_fsm_slave_scan_state_state(
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_scan_state_error;
-        EC_ERR("Failed to receive AL state datagram from slave %i"
-                " (datagram state %i).\n",
+        EC_ERR("Failed to receive AL state datagram from slave %u"
+                " (datagram state %u).\n",
                fsm->slave->ring_position, datagram->state);
         return;
     }
@@ -235,7 +235,7 @@ void ec_fsm_slave_scan_state_state(
     if (datagram->working_counter != 1) {
         fsm->slave->error_flag = 1;
         fsm->state = ec_fsm_slave_scan_state_error;
-        EC_ERR("Failed to read AL state of slave %i: ",
+        EC_ERR("Failed to read AL state of slave %u: ",
                fsm->slave->ring_position);
         ec_datagram_print_wc_error(datagram);
         return;
@@ -245,7 +245,7 @@ void ec_fsm_slave_scan_state_state(
     if (slave->current_state & EC_SLAVE_STATE_ACK_ERR) {
         char state_str[EC_STATE_STRING_SIZE];
         ec_state_string(slave->current_state, state_str);
-        EC_WARN("Slave %i has state error bit set (%s)!\n",
+        EC_WARN("Slave %u has state error bit set (%s)!\n",
                 slave->ring_position, state_str);
     }
 
@@ -271,8 +271,8 @@ void ec_fsm_slave_scan_state_base(ec_fsm_slave_scan_t *fsm /**< slave state mach
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_scan_state_error;
-        EC_ERR("Failed to receive base data datagram for slave %i"
-                " (datagram state %i).\n",
+        EC_ERR("Failed to receive base data datagram for slave %u"
+                " (datagram state %u).\n",
                slave->ring_position, datagram->state);
         return;
     }
@@ -280,7 +280,7 @@ void ec_fsm_slave_scan_state_base(ec_fsm_slave_scan_t *fsm /**< slave state mach
     if (datagram->working_counter != 1) {
         fsm->slave->error_flag = 1;
         fsm->state = ec_fsm_slave_scan_state_error;
-        EC_ERR("Failed to read base data from slave %i: ",
+        EC_ERR("Failed to read base data from slave %u: ",
                slave->ring_position);
         ec_datagram_print_wc_error(datagram);
         return;
@@ -322,8 +322,8 @@ void ec_fsm_slave_scan_state_datalink(ec_fsm_slave_scan_t *fsm /**< slave state 
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_scan_state_error;
-        EC_ERR("Failed to receive DL status datagram from slave %i"
-                " (datagram state %i).\n",
+        EC_ERR("Failed to receive DL status datagram from slave %u"
+                " (datagram state %u).\n",
                slave->ring_position, datagram->state);
         return;
     }
@@ -331,7 +331,7 @@ void ec_fsm_slave_scan_state_datalink(ec_fsm_slave_scan_t *fsm /**< slave state 
     if (datagram->working_counter != 1) {
         fsm->slave->error_flag = 1;
         fsm->state = ec_fsm_slave_scan_state_error;
-        EC_ERR("Failed to read DL status from slave %i: ",
+        EC_ERR("Failed to read DL status from slave %u: ",
                slave->ring_position);
         ec_datagram_print_wc_error(datagram);
         return;
@@ -369,7 +369,7 @@ void ec_fsm_slave_scan_state_sii_size(ec_fsm_slave_scan_t *fsm /**< slave state 
     if (!ec_fsm_sii_success(&fsm->fsm_sii)) {
         fsm->slave->error_flag = 1;
         fsm->state = ec_fsm_slave_scan_state_error;
-        EC_ERR("Failed to read SII size of slave %i.\n",
+        EC_ERR("Failed to read SII size of slave %u.\n",
                slave->ring_position);
         return;
     }
@@ -380,7 +380,7 @@ void ec_fsm_slave_scan_state_sii_size(ec_fsm_slave_scan_t *fsm /**< slave state 
     if (cat_type != 0xFFFF) { // not the last category
         off_t next_offset = 2UL + fsm->sii_offset + cat_size;
         if (next_offset >= EC_MAX_SII_SIZE) {
-            EC_WARN("SII size of slave %i exceeds"
+            EC_WARN("SII size of slave %u exceeds"
                     " %u words (0xffff limiter missing?).\n",
                     slave->ring_position, EC_MAX_SII_SIZE);
             // cut off category data...
@@ -398,7 +398,7 @@ void ec_fsm_slave_scan_state_sii_size(ec_fsm_slave_scan_t *fsm /**< slave state 
 
 alloc_sii:
     if (slave->sii_words) {
-        EC_WARN("Freeing old SII data on slave %i...\n",
+        EC_WARN("Freeing old SII data on slave %u...\n",
                 slave->ring_position);
         kfree(slave->sii_words);
     }
@@ -438,7 +438,7 @@ void ec_fsm_slave_scan_state_sii_data(ec_fsm_slave_scan_t *fsm /**< slave state 
     if (!ec_fsm_sii_success(&fsm->fsm_sii)) {
         fsm->slave->error_flag = 1;
         fsm->state = ec_fsm_slave_scan_state_error;
-        EC_ERR("Failed to fetch SII contents of slave %i.\n",
+        EC_ERR("Failed to fetch SII contents of slave %u.\n",
                slave->ring_position);
         return;
     }
@@ -551,7 +551,7 @@ void ec_fsm_slave_scan_state_sii_data(ec_fsm_slave_scan_t *fsm /**< slave state 
                 break;
             default:
                 if (fsm->slave->master->debug_level)
-                    EC_WARN("Unknown category type 0x%04X in slave %i.\n",
+                    EC_WARN("Unknown category type 0x%04X in slave %u.\n",
                             cat_type, slave->ring_position);
         }
 
