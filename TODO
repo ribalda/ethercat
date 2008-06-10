@@ -9,7 +9,6 @@ $Id$
 Version 1.4.0:
 
 * Replace all Sysfs files via the new ethercat tool.
-    - Slave alias write
     - Slave info (flags, mailbox, general) 
     - Config info (alias, position, type, Pdos, Sdos)
 * Slaves as array.
@@ -26,6 +25,7 @@ Version 1.4.0:
 * Check for sizes of uploaded Sdos when reading mapping from CoE.
 * Attach Pdo names from SII or Coe dictioary to Pdos read via CoE.
 * Make scanning and configuration run parallel (each).
+* List of commands that require a slave.
 
 Future issues:
 

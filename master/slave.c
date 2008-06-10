@@ -57,8 +57,6 @@ extern const ec_code_msg_t al_status_messages[];
 void ec_slave_clear(struct kobject *);
 void ec_slave_sdos_clear(struct kobject *);
 ssize_t ec_show_slave_attribute(struct kobject *, struct attribute *, char *);
-ssize_t ec_store_slave_attribute(struct kobject *, struct attribute *,
-                                 const char *, size_t);
 char *ec_slave_sii_string(ec_slave_t *, unsigned int);
 
 /*****************************************************************************/
@@ -66,19 +64,14 @@ char *ec_slave_sii_string(ec_slave_t *, unsigned int);
 /** \cond */
 
 EC_SYSFS_READ_ATTR(info);
-EC_SYSFS_READ_WRITE_ATTR(sii);
-EC_SYSFS_READ_WRITE_ATTR(alias);
 
 static struct attribute *def_attrs[] = {
     &attr_info,
-    &attr_sii,
-    &attr_alias,
     NULL,
 };
 
 static struct sysfs_ops sysfs_ops = {
     .show = ec_show_slave_attribute,
-    .store = ec_store_slave_attribute
 };
 
 static struct kobj_type ktype_ec_slave = {
@@ -848,30 +841,40 @@ ssize_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
 /*****************************************************************************/
 
 /**
- * Schedules an SII write request.
- * \return 0 case of success, otherwise error code.
+ * Writes SII contents to a slave.
+ * \return Zero on success, otherwise error code.
  */
 
-int ec_slave_schedule_sii_writing(
-        ec_sii_write_request_t *request /**< SII write request */
+int ec_slave_write_sii(
+        ec_slave_t *slave, /**< EtherCAT slave */
+        uint16_t offset, /**< SII word offset. */
+        unsigned int nwords, /**< Number of words. */
+        const uint16_t *words /**< New SII data. */
         )
 {
-    ec_master_t *master = request->slave->master;
+    ec_master_t *master = slave->master;
+    ec_sii_write_request_t request;
 
-    request->state = EC_REQUEST_QUEUED;
+    // init SII write request
+    INIT_LIST_HEAD(&request.list);
+    request.slave = slave;
+    request.words = words;
+    request.offset = offset;
+    request.nwords = nwords;
+    request.state = EC_REQUEST_QUEUED;
 
     // schedule SII write request.
     down(&master->sii_sem);
-    list_add_tail(&request->list, &master->sii_requests);
+    list_add_tail(&request.list, &master->sii_requests);
     up(&master->sii_sem);
 
     // wait for processing through FSM
     if (wait_event_interruptible(master->sii_queue,
-                request->state != EC_REQUEST_QUEUED)) {
+                request.state != EC_REQUEST_QUEUED)) {
         // interrupted by signal
         down(&master->sii_sem);
-        if (request->state == EC_REQUEST_QUEUED) {
-            list_del(&request->list);
+        if (request.state == EC_REQUEST_QUEUED) {
+            list_del(&request.list);
             up(&master->sii_sem);
             return -EINTR;
         }
@@ -881,184 +884,16 @@ int ec_slave_schedule_sii_writing(
 
     // wait until master FSM has finished processing
     wait_event(master->sii_queue,
-            request->state != EC_REQUEST_BUSY);
+            request.state != EC_REQUEST_BUSY);
 
-    return request->state == EC_REQUEST_SUCCESS ? 0 : -EIO;
-}
-
-/*****************************************************************************/
-
-/**
- * Calculates the SII checksum field.
- *
- * The checksum is generated with the polynom x^8+x^2+x+1 (0x07) and an
- * initial value of 0xff (see IEC 61158-6-12 ch. 5.4).
- *
- * The below code was originally generated with PYCRC
- * http://www.tty1.net/pycrc
- *
- * ./pycrc.py --width=8 --poly=0x07 --reflect-in=0 --xor-in=0xff
- *   --reflect-out=0 --xor-out=0 --generate c --algorithm=bit-by-bit
- *
- * \return CRC8
- */
-
-uint8_t ec_slave_sii_crc(
-        const uint8_t *data, /**< pointer to data */
-        size_t length /**< number of bytes in \a data */
-        )
-{
-    unsigned int i;
-    uint8_t bit, byte, crc = 0x48;
-
-    while (length--) {
-        byte = *data++;
-        for (i = 0; i < 8; i++) {
-            bit = crc & 0x80;
-            crc = (crc << 1) | ((byte >> (7 - i)) & 0x01);
-            if (bit) crc ^= 0x07;
+    if (request.state == EC_REQUEST_SUCCESS) {
+        if (offset <= 4 && offset + nwords > 4) { // alias was written
+            slave->sii.alias = EC_READ_U16(words + 4);
         }
+        return 0;
+    } else {
+        return -EIO;
     }
-
-    for (i = 0; i < 8; i++) {
-        bit = crc & 0x80;
-        crc <<= 1;
-        if (bit) crc ^= 0x07;
-    }
-
-    return crc;
-}
-
-/*****************************************************************************/
-
-/**
- * Writes complete SII contents to a slave.
- * \return data size written in case of success, otherwise error code.
- */
-
-ssize_t ec_slave_write_sii(ec_slave_t *slave, /**< EtherCAT slave */
-        const uint8_t *data, /**< new SII data */
-        size_t size /**< size of data in bytes */
-        )
-{
-    ec_sii_write_request_t request;
-    const uint16_t *cat_header;
-    uint16_t cat_type, cat_size;
-    int ret;
-    uint8_t crc;
-
-    if (slave->master->mode != EC_MASTER_MODE_IDLE) { // FIXME
-        EC_ERR("Writing SIIs only allowed in idle mode!\n");
-        return -EBUSY;
-    }
-
-    if (size % 2) {
-        EC_ERR("SII data size is odd (%u bytes)! SII data must be"
-                " word-aligned. Dropping.\n", size);
-        return -EINVAL;
-    }
-
-    // init SII write request
-    INIT_LIST_HEAD(&request.list);
-    request.slave = slave;
-    request.words = (const uint16_t *) data;
-    request.offset = 0;
-    request.nwords = size / 2;
-
-    if (request.nwords < 0x0041) {
-        EC_ERR("SII data too short (%u words)! Mimimum is"
-                " 40 fixed words + 1 delimiter. Dropping.\n",
-                request.nwords);
-        return -EINVAL;
-    }
-
-    // calculate checksum
-    crc = ec_slave_sii_crc(data, 14); // CRC over words 0 to 6
-    if (crc != data[14]) {
-        EC_WARN("SII CRC incorrect. Must be 0x%02x.\n", crc);
-    }
-
-    cat_header = request.words + EC_FIRST_SII_CATEGORY_OFFSET;
-    cat_type = EC_READ_U16(cat_header);
-    while (cat_type != 0xFFFF) { // cycle through categories
-        if (cat_header + 1 > request.words + request.nwords) {
-            EC_ERR("SII data corrupted! Dropping.\n");
-            return -EINVAL;
-        }
-        cat_size = EC_READ_U16(cat_header + 1);
-        if (cat_header + cat_size + 2 > request.words + request.nwords) {
-            EC_ERR("SII data corrupted! Dropping.\n");
-            return -EINVAL;
-        }
-        cat_header += cat_size + 2;
-        cat_type = EC_READ_U16(cat_header);
-    }
-
-    // SII data ok. schedule writing.
-    if ((ret = ec_slave_schedule_sii_writing(&request)))
-        return ret; // error code
-
-    return size; // success
-}
-
-/*****************************************************************************/
-
-/**
- * Writes the Secondary slave address (alias) to the slave's SII.
- * \return data size written in case of success, otherwise error code.
- */
-
-ssize_t ec_slave_write_alias(ec_slave_t *slave, /**< EtherCAT slave */
-        const uint8_t *data, /**< alias string */
-        size_t size /**< size of data in bytes */
-        )
-{
-    ec_sii_write_request_t request;
-    char *remainder;
-    uint16_t alias;
-    int ret;
-    uint8_t sii_data[16], crc;
-
-    if (slave->master->mode != EC_MASTER_MODE_IDLE) { // FIXME
-        EC_ERR("Writing to SII is only allowed in idle mode!\n");
-        return -EBUSY;
-    }
-
-    alias = simple_strtoul(data, &remainder, 0);
-    if (remainder == (char *) data || (*remainder && *remainder != '\n')) {
-        EC_ERR("Invalid alias value! Dropping.\n");
-        return -EINVAL;
-    }
-
-    if (!slave->sii_words || slave->sii_nwords < 8) {
-        EC_ERR("Failed to read SII contents from slave %u.\n",
-                slave->ring_position);
-        return -EINVAL;
-    }
-
-    // copy first 7 words of recent SII contents
-    memcpy(sii_data, (uint8_t *) slave->sii_words, 14);
-    
-    // write new alias address in word 4
-    EC_WRITE_U16(sii_data + 8, alias);
-
-    // calculate new checksum over words 0 to 6
-    crc = ec_slave_sii_crc(sii_data, 14);
-    EC_WRITE_U16(sii_data + 14, crc);
-
-    // init SII write request
-    INIT_LIST_HEAD(&request.list);
-    request.slave = slave;
-    request.words = (const uint16_t *) sii_data;
-    request.offset = 0x0000;
-    request.nwords = 8;
-
-    if ((ret = ec_slave_schedule_sii_writing(&request)))
-        return ret; // error code
-
-    slave->sii.alias = alias; // FIXME: do this in state machine
-
-    return size; // success
 }
 
 /*****************************************************************************/
@@ -1074,52 +909,12 @@ ssize_t ec_show_slave_attribute(struct kobject *kobj, /**< slave's kobject */
                                 )
 {
     ec_slave_t *slave = container_of(kobj, ec_slave_t, kobj);
-    unsigned int sii_size;
 
     if (attr == &attr_info) {
         return ec_slave_info(slave, buffer);
-    } else if (attr == &attr_sii) {
-        if (slave->sii_words) {
-            sii_size = slave->sii_nwords * 2;
-            if (sii_size > PAGE_SIZE) {
-                EC_ERR("SII contents of slave %u exceed 1 page (%u/%u).\n",
-                       slave->ring_position, sii_size,
-                       (int) PAGE_SIZE);
-            }
-            else {
-                memcpy(buffer, (uint8_t *) slave->sii_words, sii_size);
-                return sii_size;
-            }
-        }
-    } else if (attr == &attr_alias) {
-        return sprintf(buffer, "%u\n", slave->sii.alias);
     }
 
     return 0;
-}
-
-/*****************************************************************************/
-
-/**
-   Formats attribute data for SysFS write access.
-   \return number of bytes processed, or negative error code
-*/
-
-ssize_t ec_store_slave_attribute(struct kobject *kobj, /**< slave's kobject */
-                                 struct attribute *attr, /**< attribute */
-                                 const char *buffer, /**< memory with data */
-                                 size_t size /**< size of data to store */
-                                 )
-{
-    ec_slave_t *slave = container_of(kobj, ec_slave_t, kobj);
-
-    if (attr == &attr_sii) {
-        return ec_slave_write_sii(slave, buffer, size);
-    } else if (attr == &attr_alias) {
-        return ec_slave_write_alias(slave, buffer, size);
-    }
-
-    return -EIO;
 }
 
 /*****************************************************************************/

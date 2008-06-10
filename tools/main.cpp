@@ -24,6 +24,7 @@ static string command;
 vector<string> commandArgs;
 static bool quiet = false;
 string dataTypeStr;
+bool force = false;
 
 /*****************************************************************************/
 
@@ -32,6 +33,7 @@ void printUsage()
     cerr
         << "Usage: ethercat <COMMAND> [OPTIONS]" << endl
 		<< "Commands:" << endl
+        << "  alias              Write alias address(es)." << endl
         << "  data               Output binary domain process data." << endl
         << "  debug              Set the master debug level." << endl
         << "  domain             Show domain information." << endl
@@ -42,6 +44,7 @@ void printUsage()
         << "  sdo_download (sd)  Write an Sdo entry." << endl
         << "  sdo_upload (su)    Read an Sdo entry." << endl
         << "  sii_read (sr)      Output a slave's SII contents." << endl
+        << "  sii_write (sw)     Write slave's SII contents." << endl
         << "  state              Request slave states." << endl
         << "  xml                Generate slave information xmls." << endl
 		<< "Global options:" << endl
@@ -56,6 +59,7 @@ void printUsage()
         << "                         or 'all' for all domains (default)."
         << endl
         << "  --type    -t <type>    Forced Sdo data type." << endl
+        << "  --force   -f           Force action." << endl
         << "  --quiet   -q           Show less output." << endl
         << "  --help    -h           Show this help." << endl;
 }
@@ -73,13 +77,14 @@ void getOptions(int argc, char **argv)
         {"slave",  required_argument, NULL, 's'},
         {"domain", required_argument, NULL, 'd'},
         {"type",   required_argument, NULL, 't'},
+        {"force",  no_argument,       NULL, 'f'},
         {"quiet",  no_argument,       NULL, 'q'},
         {"help",   no_argument,       NULL, 'h'},
         {}
     };
 
     do {
-        c = getopt_long(argc, argv, "m:s:d:t:qh", longOptions, &optionIndex);
+        c = getopt_long(argc, argv, "m:s:d:t:fqh", longOptions, &optionIndex);
 
         switch (c) {
             case 'm':
@@ -127,6 +132,10 @@ void getOptions(int argc, char **argv)
                 dataTypeStr = optarg;
                 break;
 
+            case 'f':
+                force = true;
+                break;
+
             case 'q':
                 quiet = true;
                 break;
@@ -166,7 +175,9 @@ int main(int argc, char **argv)
     try {
         master.setIndex(masterIndex);
 
-        if (command == "data") {
+        if (command == "alias") {
+            master.writeAlias(slavePosition, force, commandArgs);
+        } else if (command == "data") {
             master.outputData(domainIndex);
         } else if (command == "debug") {
             master.setDebug(commandArgs);
@@ -186,6 +197,8 @@ int main(int argc, char **argv)
             master.sdoUpload(slavePosition, dataTypeStr, commandArgs);
         } else if (command == "sii_read" || command == "sr") {
             master.siiRead(slavePosition);
+        } else if (command == "sii_write" || command == "sw") {
+            master.siiWrite(slavePosition, force, commandArgs);
         } else if (command == "state") {
             master.requestStates(slavePosition, commandArgs);
         } else if (command == "xml") {

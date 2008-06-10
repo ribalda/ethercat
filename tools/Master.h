@@ -41,6 +41,7 @@ class Master
 
         void setIndex(unsigned int);
 
+        void writeAlias(int, bool, const vector<string> &);
         void outputData(int);
         void setDebug(const vector<string> &);
         void showDomains(int);
@@ -51,6 +52,7 @@ class Master
         void sdoDownload(int, const string &, const vector<string> &);
         void sdoUpload(int, const string &, const vector<string> &);
         void siiRead(int);
+        void siiWrite(int, bool, const vector<string> &);
         void requestStates(int, const vector<string> &);
         void generateXml(int);
 
@@ -59,6 +61,7 @@ class Master
         void open(Permissions);
         void close();
 
+        void writeSlaveAlias(uint16_t, uint16_t);
         void outputDomainData(unsigned int);
         void showDomain(unsigned int);
         void listSlavePdos(uint16_t, bool = false, bool = false);
@@ -83,6 +86,7 @@ class Master
 
         static string slaveState(uint8_t);
         static void printRawData(const uint8_t *, unsigned int);
+        static uint8_t calcSiiCrc(const uint8_t *, unsigned int);
         
     private:
         enum {DefaultBufferSize = 1024};

@@ -67,7 +67,8 @@
 #define EC_IOCTL_SDO_ENTRY    EC_IOWR(0x0c, ec_ioctl_sdo_entry_t)
 #define EC_IOCTL_SDO_UPLOAD   EC_IOWR(0x0d, ec_ioctl_sdo_upload_t)
 #define EC_IOCTL_SDO_DOWNLOAD  EC_IOW(0x0e, ec_ioctl_sdo_download_t)
-#define EC_IOCTL_SII_READ     EC_IOWR(0x0f, ec_ioctl_sii_read_t)
+#define EC_IOCTL_SII_READ     EC_IOWR(0x0f, ec_ioctl_sii_t)
+#define EC_IOCTL_SII_WRITE     EC_IOW(0x10, ec_ioctl_sii_t)
 
 /*****************************************************************************/
 
@@ -264,7 +265,7 @@ typedef struct {
     uint16_t offset;
     uint32_t nwords;
     uint16_t *words;
-} ec_ioctl_sii_read_t;
+} ec_ioctl_sii_t;
 
 /*****************************************************************************/
 

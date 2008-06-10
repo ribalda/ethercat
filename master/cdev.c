@@ -763,7 +763,7 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
         case EC_IOCTL_SII_READ:
             {
-                ec_ioctl_sii_read_t data;
+                ec_ioctl_sii_t data;
                 const ec_slave_t *slave;
 
                 if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
@@ -792,6 +792,54 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                     retval = -EFAULT;
                     break;
                 }
+                break;
+            }
+
+        case EC_IOCTL_SII_WRITE:
+            {
+                ec_ioctl_sii_t data;
+                ec_slave_t *slave;
+                unsigned int byte_size;
+                uint16_t *words;
+
+                if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+                    retval = -EFAULT;
+                    break;
+                }
+                
+                if (!(slave = ec_master_find_slave(
+                                master, 0, data.slave_position))) {
+                    EC_ERR("Slave %u does not exist!\n", data.slave_position);
+                    retval = -EINVAL;
+                    break;
+                }
+
+                if (!data.nwords)
+                    break;
+
+                byte_size = sizeof(uint16_t) * data.nwords;
+                if (!(words = kmalloc(byte_size, GFP_KERNEL))) {
+                    EC_ERR("Failed to allocate %u bytes for SII contents.\n",
+                            byte_size);
+                    retval = -ENOMEM;
+                    break;
+                }
+
+                if (copy_from_user(words,
+                            (void __user *) data.words, byte_size)) {
+                    retval = -EFAULT;
+                    kfree(words);
+                    break;
+                }
+
+                if (ec_slave_write_sii(slave,
+                            data.offset, data.nwords, words)) {
+                    retval = -EIO;
+                    kfree(words);
+                    break;
+                }
+
+                kfree(words);
                 break;
             }
 

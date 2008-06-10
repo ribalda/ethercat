@@ -13,6 +13,7 @@
 #include <iostream>
 #include <iomanip>
 #include <sstream>
+#include <fstream>
 #include <cctype> // toupper()
 using namespace std;
 
@@ -116,6 +117,60 @@ void Master::setIndex(unsigned int i)
     index = i;
 }
 
+/*****************************************************************************/
+
+/**
+ * Writes the Secondary slave address (alias) to the slave's SII.
+ */
+void Master::writeAlias(
+        int slavePosition,
+        bool force,
+        const vector<string> &commandArgs
+        )
+{
+    ec_ioctl_sii_t data;
+    ec_ioctl_slave_t slave;
+    unsigned int i;
+    uint16_t alias;
+    stringstream err, strAlias;
+    int number;
+
+    if (commandArgs.size() != 1) {
+        stringstream err;
+        err << "'alias' takes exactly one argument!";
+        throw MasterException(err.str());
+    }
+
+    strAlias << commandArgs[0];
+    strAlias >> hex >> number;
+    if (strAlias.fail() || number < 0x0000 || number > 0xffff) {
+        err << "Invalid alias '" << commandArgs[0] << "'!";
+        throw MasterException(err.str());
+    }
+    alias = number;
+
+    if (slavePosition == -1) {
+        unsigned int numSlaves, i;
+
+        if (!force) {
+            err << "This will write the alias addresses of all slaves to 0x"
+                << hex << setfill('0') << setw(4) << alias << "! "
+                << "Please specify --force to proceed.";
+            throw MasterException(err.str());
+        }
+
+        open(ReadWrite);
+        numSlaves = slaveCount();
+
+        for (i = 0; i < numSlaves; i++) {
+            writeSlaveAlias(i, alias);
+        }
+    } else {
+        open(ReadWrite);
+        writeSlaveAlias(slavePosition, alias);
+    }
+}
+
 /****************************************************************************/
 
 void Master::outputData(int domainIndex)
@@ -197,14 +252,17 @@ void Master::listSlaves()
     aliasIndex = 0;
     for (i = 0; i < numSlaves; i++) {
         getSlave(&slave, i);
-        cout << setw(2) << i << "  ";
+        cout << setfill(' ') << setw(2) << i << "  ";
 
         if (slave.alias) {
             lastAlias = slave.alias;
             aliasIndex = 0;
         }
         if (lastAlias) {
-            cout << setw(10) << "#" << lastAlias << ":" << aliasIndex;
+            cout << "#"
+                << hex << setfill('0') << setw(4) << lastAlias
+                << ":" << dec << aliasIndex;
+            aliasIndex++;
         }
 
         cout << "  " << slaveState(slave.state) << "  ";
@@ -212,8 +270,9 @@ void Master::listSlaves()
         if (strlen(slave.name)) {
             cout << slave.name;
         } else {
-            cout << "0x" << hex << setfill('0') << slave.vendor_id
-                << ":0x" << slave.product_code;
+            cout << hex << setfill('0')
+                << setw(8) << slave.vendor_id << ":"
+                << setw(8) << slave.product_code << dec;
         }
 
         cout << endl;
@@ -608,7 +667,7 @@ void Master::sdoUpload(
 
 void Master::siiRead(int slavePosition)
 {
-    ec_ioctl_sii_read_t data;
+    ec_ioctl_sii_t data;
     ec_ioctl_slave_t slave;
     unsigned int i;
 
@@ -643,6 +702,102 @@ void Master::siiRead(int slavePosition)
     }
 
     delete [] data.words;
+}
+
+/****************************************************************************/
+
+void Master::siiWrite(
+        int slavePosition,
+        bool force,
+        const vector<string> &commandArgs
+        )
+{
+    stringstream err;
+    ec_ioctl_sii_t data;
+    ifstream file;
+    unsigned int byte_size;
+    const uint16_t *categoryHeader;
+    uint16_t categoryType, categorySize;
+    uint8_t crc;
+
+    if (slavePosition < 0) {
+        err << "'sii_write' requires a slave! Please specify --slave.";
+        throw MasterException(err.str());
+    }
+    data.slave_position = slavePosition;
+
+    if (commandArgs.size() != 1) {
+        err << "'ssi_write' takes exactly one argument!";
+        throw MasterException(err.str());
+    }
+
+    file.open(commandArgs[0].c_str(), ifstream::in | ifstream::binary);
+    if (file.fail()) {
+        err << "Failed to open '" << commandArgs[0] << "'!";
+        throw MasterException(err.str());
+    }
+
+    // get length of file
+    file.seekg(0, ios::end);
+    byte_size = file.tellg();
+    file.seekg(0, ios::beg);
+
+    if (!byte_size || byte_size % 2) {
+        stringstream err;
+        err << "Invalid file size! Must be non-zero and even.";
+        throw MasterException(err.str());
+    }
+
+    data.nwords = byte_size / 2;
+    if (data.nwords < 0x0041 && !force) {
+        err << "SII data too short (" << data.nwords << " words)! Mimimum is"
+                " 40 fixed words + 1 delimiter. Use --force to write anyway.";
+        throw MasterException(err.str());
+    }
+
+    // allocate buffer and read file into buffer
+    data.words = new uint16_t[data.nwords];
+    file.read((char *) data.words, byte_size);
+    file.close();
+
+    if (!force) {
+        // calculate checksum over words 0 to 6
+        crc = calcSiiCrc((const uint8_t *) data.words, 14);
+        if (crc != ((const uint8_t *) data.words)[14]) {
+            err << "CRC incorrect. Must be 0x"
+                << hex << setfill('0') << setw(2) << (unsigned int) crc
+                << ". Use --force to write anyway.";
+            throw MasterException(err.str());
+        }
+
+        // cycle through categories to detect corruption
+        categoryHeader = data.words + 0x0040;
+        categoryType = le16tocpu(*categoryHeader);
+        while (categoryType != 0xffff) {
+            if (categoryHeader + 1 > data.words + data.nwords) {
+                err << "SII data seem to be corrupted! "
+                    << "Use --force to write anyway.";
+                throw MasterException(err.str());
+            }
+            categorySize = le16tocpu(*(categoryHeader + 1));
+            if (categoryHeader + categorySize + 2 > data.words + data.nwords) {
+                err << "SII data seem to be corrupted! "
+                    "Use --force to write anyway.";
+                throw MasterException(err.str());
+            }
+            categoryHeader += categorySize + 2;
+            categoryType = le16tocpu(*categoryHeader);
+        }
+    }
+
+    // send data to master
+    open(ReadWrite);
+    data.offset = 0;
+    if (ioctl(fd, EC_IOCTL_SII_WRITE, &data) < 0) {
+        stringstream err;
+        err << "Failed to write SII: " << strerror(errno);
+        throw MasterException(err.str());
+    }
 }
 
 /****************************************************************************/
@@ -742,6 +897,62 @@ void Master::close()
         return;
 
     ::close(fd);
+}
+
+/*****************************************************************************/
+
+/**
+ * Writes the Secondary slave address (alias) to the slave's SII.
+ */
+void Master::writeSlaveAlias(
+        uint16_t slavePosition,
+        uint16_t alias
+        )
+{
+    ec_ioctl_sii_t data;
+    ec_ioctl_slave_t slave;
+    stringstream err;
+    uint8_t crc;
+
+    open(ReadWrite);
+
+    getSlave(&slave, slavePosition);
+
+    if (slave.sii_nwords < 8) {
+        err << "Current SII contents are too small to set an alias "
+            << "(" << slave.sii_nwords << " words)!";
+        throw MasterException(err.str());
+    }
+
+    data.slave_position = slavePosition;
+    data.offset = 0;
+    data.nwords = 8;
+    data.words = new uint16_t[data.nwords];
+
+    // read first 8 SII words
+    if (ioctl(fd, EC_IOCTL_SII_READ, &data) < 0) {
+        delete [] data.words;
+        err << "Failed to read SII: " << strerror(errno);
+        throw MasterException(err.str());
+    }
+
+    // write new alias address in word 4
+    data.words[4] = cputole16(alias);
+
+    // calculate checksum over words 0 to 6
+    crc = calcSiiCrc((const uint8_t *) data.words, 14);
+
+    // write new checksum into first byte of word 7
+    *(uint8_t *) (data.words + 7) = crc;
+
+    // write first 8 words with new alias and checksum
+    if (ioctl(fd, EC_IOCTL_SII_WRITE, &data) < 0) {
+        delete [] data.words;
+        err << "Failed to write SII: " << strerror(errno);
+        throw MasterException(err.str());
+    }
+
+    delete [] data.words;
 }
 
 /****************************************************************************/
@@ -1330,4 +1541,46 @@ void Master::printRawData(
     cout << endl;
 }
 
-/****************************************************************************/
+/*****************************************************************************/
+
+/**
+ * Calculates the SII checksum field.
+ *
+ * The checksum is generated with the polynom x^8+x^2+x+1 (0x07) and an
+ * initial value of 0xff (see IEC 61158-6-12 ch. 5.4).
+ *
+ * The below code was originally generated with PYCRC
+ * http://www.tty1.net/pycrc
+ *
+ * ./pycrc.py --width=8 --poly=0x07 --reflect-in=0 --xor-in=0xff
+ *   --reflect-out=0 --xor-out=0 --generate c --algorithm=bit-by-bit
+ *
+ * \return CRC8
+ */
+uint8_t Master::calcSiiCrc(
+        const uint8_t *data, /**< pointer to data */
+        size_t length /**< number of bytes in \a data */
+        )
+{
+    unsigned int i;
+    uint8_t bit, byte, crc = 0x48;
+
+    while (length--) {
+        byte = *data++;
+        for (i = 0; i < 8; i++) {
+            bit = crc & 0x80;
+            crc = (crc << 1) | ((byte >> (7 - i)) & 0x01);
+            if (bit) crc ^= 0x07;
+        }
+    }
+
+    for (i = 0; i < 8; i++) {
+        bit = crc & 0x80;
+        crc <<= 1;
+        if (bit) crc ^= 0x07;
+    }
+
+    return crc;
+}
+
+/*****************************************************************************/
