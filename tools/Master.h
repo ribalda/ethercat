@@ -93,7 +93,6 @@ class Master
 
         unsigned int index;
         int fd;
-        Permissions currentPermissions;
 };
 
 /****************************************************************************/

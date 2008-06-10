@@ -100,7 +100,6 @@ Master::Master()
 {
     index = 0;
     fd = -1;
-    currentPermissions = Read;
 }
 
 /****************************************************************************/
@@ -416,7 +415,7 @@ void Master::sdoDownload(
         ec_ioctl_sdo_entry_t entry;
         unsigned int entryByteSize;
 
-        open(Read);
+        open(ReadWrite);
 
         try {
             getSdoEntry(&entry, slavePosition,
@@ -869,11 +868,7 @@ void Master::open(Permissions perm)
     stringstream deviceName;
 
     if (fd != -1) { // already open
-        if (currentPermissions < perm) { // more permissions required
-            close();
-        } else {
-            return;
-        }
+        return;
     }
     
     deviceName << "/dev/EtherCAT" << index;
@@ -885,8 +880,6 @@ void Master::open(Permissions perm)
             << strerror(errno);
         throw MasterException(err.str());
     }
-
-    currentPermissions = perm;
 }
 
 /****************************************************************************/
@@ -897,6 +890,7 @@ void Master::close()
         return;
 
     ::close(fd);
+    fd = -1;
 }
 
 /*****************************************************************************/
