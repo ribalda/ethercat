@@ -264,7 +264,8 @@ void Master::listSlaves()
             aliasIndex++;
         }
 
-        cout << "  " << slaveState(slave.state) << "  ";
+        cout << "  " << slaveState(slave.state)
+            << "  " << (slave.error_flag ? 'E' : '+') << "  ";
 
         if (strlen(slave.name)) {
             cout << slave.name;

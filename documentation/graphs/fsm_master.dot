@@ -34,13 +34,10 @@ digraph master {
     action_configure -> configure_slave [weight=10]
     action_configure -> action_next_slave_state
 
-    action_acknowledge [shape=point,label=""]
-    action_acknowledge -> acknowledge [weight=10]
-    action_acknowledge -> action_configure
-    action_acknowledge -> action_next_slave_state
-
     read_state [fontname="Helvetica"]
-    read_state -> action_acknowledge [weight=10]
+    read_state -> acknowledge
+    read_state -> action_configure [weight=10]
+    read_state -> action_next_slave_state
 
     acknowledge [fontname="Helvetica"]
     acknowledge -> action_configure [weight=10]

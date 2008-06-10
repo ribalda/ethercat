@@ -364,8 +364,7 @@ int ec_fsm_master_action_process_sdo(
                     continue;
                 }
 
-                if (slave->current_state == EC_SLAVE_STATE_INIT ||
-                        slave->error_flag) {
+                if (slave->current_state == EC_SLAVE_STATE_INIT) {
                     req->state = EC_REQUEST_FAILURE;
                     continue;
                 }
@@ -450,7 +449,7 @@ void ec_fsm_master_action_idle(
                 || slave->sdo_dictionary_fetched
                 || slave->current_state == EC_SLAVE_STATE_INIT
                 || jiffies - slave->jiffies_preop < EC_WAIT_SDO_DICT * HZ
-                || slave->error_flag) continue;
+                ) continue;
 
         if (master->debug_level) {
             EC_DBG("Fetching Sdo dictionary from slave %u.\n",
@@ -514,9 +513,8 @@ void ec_fsm_master_action_configure(
     ec_slave_t *slave = fsm->slave;
 
     // Does the slave have to be configured?
-    if (!slave->error_flag
-            && (slave->current_state != slave->requested_state
-                || slave->force_config)) {
+    if ((slave->current_state != slave->requested_state
+                || slave->force_config) && !slave->error_flag) {
         // Start slave configuration, if it is allowed.
         down(&master->config_sem);
         if (!master->allow_config) {
@@ -545,35 +543,6 @@ void ec_fsm_master_action_configure(
             fsm->state(fsm); // execute immediately
             return;
         }
-    }
-
-    // slave has error flag set; process next one
-    ec_fsm_master_action_next_slave_state(fsm);
-}
-
-/*****************************************************************************/
-
-/** Master action: Acknowledge.
- */
-void ec_fsm_master_action_acknowledge(
-        ec_fsm_master_t *fsm /**< Master state machine. */
-        )
-{
-    ec_slave_t *slave = fsm->slave;
-
-    if (!slave->error_flag) {
-        // Check, if new slave state has to be acknowledged
-        if (slave->current_state & EC_SLAVE_STATE_ACK_ERR) {
-            fsm->idle = 0;
-            fsm->state = ec_fsm_master_state_acknowledge;
-            ec_fsm_change_ack(&fsm->fsm_change, slave);
-            fsm->state(fsm); // execute immediately
-            return;
-        }
-
-        // No acknowlegde necessary; check for configuration
-        ec_fsm_master_action_configure(fsm);
-        return;
     }
 
     // slave has error flag set; process next one
@@ -619,7 +588,24 @@ void ec_fsm_master_state_read_state(
 
     // A single slave responded
     ec_slave_set_state(slave, EC_READ_U8(datagram->data));
-    ec_fsm_master_action_acknowledge(fsm);
+
+    if (!slave->error_flag) {
+        // Check, if new slave state has to be acknowledged
+        if (slave->current_state & EC_SLAVE_STATE_ACK_ERR) {
+            fsm->idle = 0;
+            fsm->state = ec_fsm_master_state_acknowledge;
+            ec_fsm_change_ack(&fsm->fsm_change, slave);
+            fsm->state(fsm); // execute immediately
+            return;
+        }
+
+        // No acknowlegde necessary; check for configuration
+        ec_fsm_master_action_configure(fsm);
+        return;
+    }
+
+    // slave has error flag set; process next one
+    ec_fsm_master_action_next_slave_state(fsm);
 }
 
 /*****************************************************************************/
@@ -781,7 +767,6 @@ void ec_fsm_master_state_write_sii(
     if (ec_fsm_sii_exec(&fsm->fsm_sii)) return;
 
     if (!ec_fsm_sii_success(&fsm->fsm_sii)) {
-        slave->error_flag = 1;
         EC_ERR("Failed to write SII data to slave %u.\n",
                 slave->ring_position);
         request->state = EC_REQUEST_FAILURE;

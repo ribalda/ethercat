@@ -193,6 +193,7 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                 data.serial_number = slave->sii.serial_number;
                 data.alias = slave->sii.alias;
                 data.state = slave->current_state;
+                data.error_flag = slave->error_flag;
 
                 data.sync_count = slave->sii.sync_count;
                 data.sdo_count = ec_slave_sdo_count(slave);

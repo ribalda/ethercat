@@ -85,7 +85,7 @@ typedef struct {
 
 /*****************************************************************************/
 
-#define EC_IOCTL_SLAVE_NAME_SIZE 100
+#define EC_IOCTL_SLAVE_NAME_SIZE 99
 
 typedef struct {
     // input
@@ -98,6 +98,7 @@ typedef struct {
     uint32_t serial_number;
     uint16_t alias;
     uint8_t state;
+    uint8_t error_flag;
     uint8_t sync_count;
     uint16_t sdo_count;
     uint32_t sii_nwords;
