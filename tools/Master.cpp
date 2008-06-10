@@ -15,6 +15,7 @@
 #include <sstream>
 #include <fstream>
 #include <cctype> // toupper()
+#include <list>
 using namespace std;
 
 #include "Master.h"
@@ -237,11 +238,27 @@ void Master::showDomains(int domainIndex)
 
 /****************************************************************************/
 
+struct SlaveInfo {
+    string pos;
+    string alias;
+    string relPos;
+    string state;
+    string flag;
+    string name;
+};
+
 void Master::listSlaves()
 {
     unsigned int numSlaves, i;
     ec_ioctl_slave_t slave;
     uint16_t lastAlias, aliasIndex;
+    SlaveInfo slaveInfo;
+    typedef list<SlaveInfo> SlaveInfoList;
+    SlaveInfoList slaveInfoList;
+    SlaveInfoList::const_iterator iter;
+    stringstream str;
+    unsigned int maxPosWidth = 0, maxAliasWidth = 0,
+                 maxRelPosWidth = 0, maxStateWidth = 0;
     
     open(Read);
 
@@ -251,31 +268,62 @@ void Master::listSlaves()
     aliasIndex = 0;
     for (i = 0; i < numSlaves; i++) {
         getSlave(&slave, i);
-        cout << setfill(' ') << setw(2) << i << "  ";
+        
+        str << dec << i;
+        slaveInfo.pos = str.str();
+        str.clear();
+        str.str("");
 
         if (slave.alias) {
             lastAlias = slave.alias;
             aliasIndex = 0;
         }
         if (lastAlias) {
-            cout << "#"
-                << hex << setfill('0') << setw(4) << lastAlias
-                << ":" << dec << aliasIndex;
+            str << "#" << hex << lastAlias;
+            slaveInfo.alias = str.str();
+            str.str("");
+            str << ":" << dec << aliasIndex;
+            slaveInfo.relPos = str.str();
+            str.str("");
             aliasIndex++;
+        } else {
+            slaveInfo.alias = "";
+            slaveInfo.relPos = "";
         }
 
-        cout << "  " << slaveState(slave.state)
-            << "  " << (slave.error_flag ? 'E' : '+') << "  ";
+        slaveInfo.state = slaveState(slave.state);
+        slaveInfo.flag = (slave.error_flag ? 'E' : '+');
 
         if (strlen(slave.name)) {
-            cout << slave.name;
+            slaveInfo.name = slave.name;
         } else {
-            cout << hex << setfill('0')
+            str << hex << setfill('0')
                 << setw(8) << slave.vendor_id << ":"
-                << setw(8) << slave.product_code << dec;
+                << setw(8) << slave.product_code;
+            slaveInfo.name = str.str();
+            str.str("");
         }
 
-        cout << endl;
+        slaveInfoList.push_back(slaveInfo);
+        if (slaveInfo.pos.length() > maxPosWidth)
+            maxPosWidth = slaveInfo.pos.length();
+        if (slaveInfo.alias.length() > maxAliasWidth)
+            maxAliasWidth = slaveInfo.alias.length();
+        if (slaveInfo.relPos.length() > maxRelPosWidth)
+            maxRelPosWidth = slaveInfo.relPos.length();
+        if (slaveInfo.state.length() > maxStateWidth)
+            maxStateWidth = slaveInfo.state.length();
+    }
+
+    for (iter = slaveInfoList.begin(); iter != slaveInfoList.end(); iter++) {
+        cout << setfill(' ') << right
+            << setw(maxPosWidth) << iter->pos << "  "
+            << setw(maxAliasWidth) << iter->alias
+            << left
+            << setw(maxRelPosWidth) << iter->relPos << "  "
+            << setw(maxStateWidth) << iter->state << "  "
+            << iter->flag << "  "
+            << iter->name << endl;
     }
 }
 
