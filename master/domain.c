@@ -54,14 +54,6 @@ ssize_t ec_show_domain_attribute(struct kobject *, struct attribute *, char *);
 
 /*****************************************************************************/
 
-/** Working counter increment values for logical read/write operations.
- *
- * \attention This is indexed by ec_direction_t.
- */
-static const unsigned int working_counter_increment[] = {2, 1};
-
-/*****************************************************************************/
-
 /** \cond */
 
 EC_SYSFS_READ_ATTR(image_size);
@@ -98,17 +90,16 @@ int ec_domain_init(
 {
     domain->master = master;
     domain->index = index;
+    INIT_LIST_HEAD(&domain->fmmu_configs);
     domain->data_size = 0;
-    domain->expected_working_counter = 0x0000;
     domain->data = NULL;
     domain->data_origin = EC_ORIG_INTERNAL;
-    domain->logical_base_address = 0L;
+    domain->logical_base_address = 0x00000000;
+    INIT_LIST_HEAD(&domain->datagrams);
     domain->working_counter = 0xFFFF;
+    domain->expected_working_counter = 0x0000;
     domain->working_counter_changes = 0;
     domain->notify_jiffies = 0;
-
-    INIT_LIST_HEAD(&domain->datagrams);
-    INIT_LIST_HEAD(&domain->fmmu_configs);
 
     // init kobject and add it to the hierarchy
     memset(&domain->kobj, 0x00, sizeof(struct kobject));
@@ -197,25 +188,22 @@ void ec_domain_add_fmmu_config(
         ec_fmmu_config_t *fmmu /**< FMMU configuration. */
         )
 {
-    unsigned int wc_increment;
     fmmu->domain = domain;
 
     domain->data_size += fmmu->data_size;
-    wc_increment = working_counter_increment[fmmu->dir];
-    domain->expected_working_counter += wc_increment;
-    
     list_add_tail(&fmmu->list, &domain->fmmu_configs);
 
     if (domain->master->debug_level)
-        EC_DBG("Domain %u: Added %u bytes (now %u) with dir %u -> WC %u"
-                " (now %u).\n", domain->index, fmmu->data_size,
-                domain->data_size, fmmu->dir, wc_increment,
-                domain->expected_working_counter);
+        EC_DBG("Domain %u: Added %u bytes, total %u.\n", domain->index,
+                fmmu->data_size, domain->data_size);
 }
 
 /*****************************************************************************/
 
 /** Allocates a domain datagram and appends it to the list.
+ *
+ * The datagram type and expected working counters are determined by the
+ * number of input and output fmmus that share the datagram.
  *
  * \return 0 in case of success, else < 0
  */
@@ -243,16 +231,22 @@ int ec_domain_add_datagram(
             kfree(datagram);
             return -1;
         }
+        // If LRW is used, output FMMUs increment the working counter by 2,
+        // while input FMMUs increment it by 1.
+        domain->expected_working_counter =
+            used[EC_DIR_OUTPUT] * 2 + used[EC_DIR_INPUT];
     } else if (used[EC_DIR_OUTPUT]) { // outputs only
         if (ec_datagram_lwr(datagram, logical_offset, data_size, data)) {
             kfree(datagram);
             return -1;
         }
+        domain->expected_working_counter = used[EC_DIR_OUTPUT];
     } else { // inputs only (or nothing)
         if (ec_datagram_lrd(datagram, logical_offset, data_size, data)) {
             kfree(datagram);
             return -1;
         }
+        domain->expected_working_counter = used[EC_DIR_INPUT];
     }
 
     list_add_tail(&datagram->list, &domain->datagrams);
@@ -278,9 +272,8 @@ int ec_domain_finish(
 {
     uint32_t datagram_offset;
     size_t datagram_size;
-    unsigned int datagram_count, i;
+    unsigned int datagram_count;
     unsigned int datagram_used[2];
-    ec_slave_config_t *sc;
     ec_fmmu_config_t *fmmu;
     const ec_datagram_t *datagram;
 
@@ -295,43 +288,39 @@ int ec_domain_finish(
         }
     }
 
-    // Cycle through all domain FMMUS, correct the logical base addresses and
-    // set up the datagrams to carry the process data.
+    // Cycle through all domain FMMUS and
+    // - correct the logical base addresses
+    // - set up the datagrams to carry the process data
     datagram_offset = 0;
     datagram_size = 0;
     datagram_count = 0;
     datagram_used[EC_DIR_OUTPUT] = 0;
     datagram_used[EC_DIR_INPUT] = 0;
 
-    list_for_each_entry(sc, &domain->master->configs, list) {
-        for (i = 0; i < sc->used_fmmus; i++) {
-            fmmu = &sc->fmmu_configs[i];
-            if (fmmu->domain != domain)
-                continue;
+    list_for_each_entry(fmmu, &domain->fmmu_configs, list) {
+        // Correct logical FMMU address
+        fmmu->logical_start_address += base_address;
 
-            // Correct logical FMMU address
-            fmmu->logical_start_address += base_address;
+        // Increment Input/Output counter to determine datagram types
+        // and calculate expected working counters
+        datagram_used[fmmu->dir]++;
 
-            // Increment Input/Output counter
-            datagram_used[fmmu->dir]++;
-
-            // If the current FMMU's data do not fit in the current datagram,
-            // allocate a new one.
-            if (datagram_size + fmmu->data_size > EC_MAX_DATA_SIZE) {
-                if (ec_domain_add_datagram(domain,
-                            domain->logical_base_address + datagram_offset,
-                            datagram_size, domain->data + datagram_offset,
-                            datagram_used))
-                    return -1;
-                datagram_offset += datagram_size;
-                datagram_size = 0;
-                datagram_count++;
-                datagram_used[EC_DIR_OUTPUT] = 0;
-                datagram_used[EC_DIR_INPUT] = 0;
-            }
-
-            datagram_size += fmmu->data_size;
+        // If the current FMMU's data do not fit in the current datagram,
+        // allocate a new one.
+        if (datagram_size + fmmu->data_size > EC_MAX_DATA_SIZE) {
+            if (ec_domain_add_datagram(domain,
+                        domain->logical_base_address + datagram_offset,
+                        datagram_size, domain->data + datagram_offset,
+                        datagram_used))
+                return -1;
+            datagram_offset += datagram_size;
+            datagram_size = 0;
+            datagram_count++;
+            datagram_used[EC_DIR_OUTPUT] = 0;
+            datagram_used[EC_DIR_INPUT] = 0;
         }
+
+        datagram_size += fmmu->data_size;
     }
 
     // allocate last datagram, if data are left
@@ -344,10 +333,12 @@ int ec_domain_finish(
         datagram_count++;
     }
 
-    EC_INFO("Domain %u with logical offset %u contains %u bytes.\n",
-            domain->index, domain->logical_base_address, domain->data_size);
+    EC_INFO("Domain%u: Logical address 0x%08x, %u byte, "
+            "expected working counter %u.\n", domain->index,
+            domain->logical_base_address, domain->data_size,
+            domain->expected_working_counter);
     list_for_each_entry(datagram, &domain->datagrams, list) {
-        EC_INFO("  Datagram %s, logical offset %u, size %u, type %s.\n",
+        EC_INFO("  Datagram %s: Logical offset 0x%08x, %u byte, type %s.\n",
                 datagram->name, EC_READ_U32(datagram->address),
                 datagram->data_size, ec_datagram_type_string(datagram));
     }
@@ -462,10 +453,10 @@ uint8_t *ecrt_domain_data(ec_domain_t *domain)
 
 void ecrt_domain_process(ec_domain_t *domain)
 {
-    unsigned int working_counter_sum;
+    uint16_t working_counter_sum;
     ec_datagram_t *datagram;
 
-    working_counter_sum = 0;
+    working_counter_sum = 0x0000;
     list_for_each_entry(datagram, &domain->datagrams, list) {
         ec_datagram_output_stats(datagram);
         if (datagram->state == EC_DATAGRAM_RECEIVED) {
@@ -485,8 +476,7 @@ void ecrt_domain_process(ec_domain_t *domain)
             EC_INFO("Domain %u: Working counter changed to %u/%u.\n",
                     domain->index, domain->working_counter,
                     domain->expected_working_counter);
-        }
-        else {
+        } else {
             EC_INFO("Domain %u: %u working counter changes. Currently %u/%u.\n",
                     domain->index, domain->working_counter_changes,
                     domain->working_counter, domain->expected_working_counter);

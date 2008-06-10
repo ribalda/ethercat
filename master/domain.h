@@ -63,18 +63,20 @@ struct ec_domain
     struct list_head list; /**< List item. */
     ec_master_t *master; /**< EtherCAT master owning the domain. */
     unsigned int index; /**< Index (just a number). */
+
+    struct list_head fmmu_configs; /**< FMMU configurations contained. */
     size_t data_size; /**< Size of the process data. */
-    uint16_t expected_working_counter; /**< Expected working counter. */
     uint8_t *data; /**< Memory for the process data. */
     ec_origin_t data_origin; /**< Origin of the \a data memory. */
-    struct list_head datagrams; /**< Datagrams for process data exchange. */
     uint32_t logical_base_address; /**< Logical offset address of the
                                      process data. */
+    struct list_head datagrams; /**< Datagrams for process data exchange. */
+
     uint16_t working_counter; /**< Last working counter value. */
+    uint16_t expected_working_counter; /**< Expected working counter. */
     unsigned int working_counter_changes; /**< Working counter changes
                                              since last notification. */
     unsigned long notify_jiffies; /**< Time of last notification. */
-    struct list_head fmmu_configs; /**< FMMU configurations contained. */
 };
 
 /*****************************************************************************/
