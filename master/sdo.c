@@ -126,7 +126,8 @@ void ec_sdo_destroy(
     // free all entries
     list_for_each_entry_safe(entry, next, &sdo->entries, list) {
         list_del(&entry->list);
-        ec_sdo_entry_destroy(entry);
+        ec_sdo_entry_clear(entry);
+        kfree(entry);
     }
 
     // destroy self

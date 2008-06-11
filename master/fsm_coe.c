@@ -915,12 +915,7 @@ void ec_fsm_coe_dict_entry_response(ec_fsm_coe_t *fsm
         return;
     }
 
-    if (ec_sdo_entry_init(entry, fsm->subindex, sdo)) {
-        EC_ERR("Failed to init entry!\n");
-        fsm->state = ec_fsm_coe_error;
-        return;
-    }
-
+    ec_sdo_entry_init(entry, sdo, fsm->subindex);
     entry->data_type = EC_READ_U16(data + 10);
     entry->bit_length = EC_READ_U16(data + 12);
 

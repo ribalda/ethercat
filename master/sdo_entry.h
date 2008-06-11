@@ -56,7 +56,6 @@ typedef struct ec_sdo ec_sdo_t;
 /** CANopen Sdo entry.
  */
 typedef struct {
-    struct kobject kobj; /**< kobject */
     struct list_head list; /**< List item. */
     ec_sdo_t *sdo; /**< Parent Sdo. */
     uint8_t subindex; /**< Subindex. */
@@ -67,8 +66,8 @@ typedef struct {
 
 /*****************************************************************************/
 
-int ec_sdo_entry_init(ec_sdo_entry_t *, uint8_t, ec_sdo_t *);
-void ec_sdo_entry_destroy(ec_sdo_entry_t *);
+void ec_sdo_entry_init(ec_sdo_entry_t *, ec_sdo_t *, uint8_t);
+void ec_sdo_entry_clear(ec_sdo_entry_t *);
 
 /*****************************************************************************/
 
