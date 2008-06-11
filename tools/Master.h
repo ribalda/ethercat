@@ -51,6 +51,7 @@ class Master
         void listSdos(int, bool = false);
         void sdoDownload(int, const string &, const vector<string> &);
         void sdoUpload(int, const string &, const vector<string> &);
+        void showSlaves(int);
         void siiRead(int);
         void siiWrite(int, bool, const vector<string> &);
         void requestStates(int, const vector<string> &);
@@ -66,6 +67,7 @@ class Master
         void showDomain(unsigned int);
         void listSlavePdos(uint16_t, bool = false, bool = false);
         void listSlaveSdos(uint16_t, bool = false, bool = false);
+        void showSlave(uint16_t);
         void generateSlaveXml(uint16_t);
         unsigned int domainCount();
         unsigned int slaveCount();

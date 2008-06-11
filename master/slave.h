@@ -54,69 +54,6 @@
 
 /*****************************************************************************/
 
-/** Slave state mask.
- *
- * Apply this mask to a slave state byte to get the slave state without
- * the error flag.
- */
-#define EC_SLAVE_STATE_MASK 0x0F
-
-/*****************************************************************************/
-
-/** State of an EtherCAT slave.
- */
-typedef enum {
-    EC_SLAVE_STATE_UNKNOWN = 0x00,
-    /**< unknown state */
-    EC_SLAVE_STATE_INIT = 0x01,
-    /**< INIT state (no mailbox communication, no IO) */
-    EC_SLAVE_STATE_PREOP = 0x02,
-    /**< PREOP state (mailbox communication, no IO) */
-    EC_SLAVE_STATE_SAFEOP = 0x04,
-    /**< SAFEOP (mailbox communication and input update) */
-    EC_SLAVE_STATE_OP = 0x08,
-    /**< OP (mailbox communication and input/output update) */
-    EC_SLAVE_STATE_ACK_ERR = 0x10
-    /**< Acknowledge/Error bit (no actual state) */
-} ec_slave_state_t;
-
-/*****************************************************************************/
-
-/** Supported mailbox protocols.
- */
-enum {
-    EC_MBOX_AOE = 0x01, /**< ADS-over-EtherCAT */
-    EC_MBOX_EOE = 0x02, /**< Ethernet-over-EtherCAT */
-    EC_MBOX_COE = 0x04, /**< CANopen-over-EtherCAT */
-    EC_MBOX_FOE = 0x08, /**< File-Access-over-EtherCAT */
-    EC_MBOX_SOE = 0x10, /**< Servo-Profile-over-EtherCAT */
-    EC_MBOX_VOE = 0x20  /**< Vendor specific */
-};
-
-/*****************************************************************************/
-
-/** Slave information interface CANopen-over-EtherCAT details flags.
- */
-typedef struct {
-    uint8_t enable_sdo : 1; /**< Enable Sdo access. */
-    uint8_t enable_sdo_info : 1; /**< SDO information service available. */
-    uint8_t enable_pdo_assign : 1; /**< Pdo mapping configurable. */
-    uint8_t enable_pdo_configuration : 1; /**< Pdo configuration possible. */
-    uint8_t enable_upload_at_startup : 1; /**< ?. */
-    uint8_t enable_sdo_complete_access : 1; /**< Complete access possible. */
-} ec_sii_coe_details_t;
-
-/*****************************************************************************/
-
-/** Slave information interface general flags.
- */
-typedef struct {
-    uint8_t enable_safeop : 1; /**< ?. */
-    uint8_t enable_not_lrw : 1; /**< Slave does not support LRW. */
-} ec_sii_general_flags_t;
-
-/*****************************************************************************/
-
 /** Slave information interface data.
  */
 typedef struct {

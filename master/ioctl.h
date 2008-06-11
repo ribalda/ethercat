@@ -43,6 +43,8 @@
 
 #include <linux/ioctl.h>
 
+#include "globals.h"
+
 /*****************************************************************************/
 
 #define EC_IOCTL_TYPE    0xa4
@@ -85,7 +87,7 @@ typedef struct {
 
 /*****************************************************************************/
 
-#define EC_IOCTL_SLAVE_NAME_SIZE 99
+#define EC_IOCTL_SLAVE_NAME_SIZE 77
 
 typedef struct {
     // input
@@ -97,6 +99,15 @@ typedef struct {
     uint32_t revision_number;
     uint32_t serial_number;
     uint16_t alias;
+    uint16_t rx_mailbox_offset;
+    uint16_t rx_mailbox_size;
+    uint16_t tx_mailbox_offset;
+    uint16_t tx_mailbox_size;
+    uint16_t mailbox_protocols;
+    uint8_t has_general_category;
+    ec_sii_coe_details_t coe_details;
+    ec_sii_general_flags_t general_flags;
+    int16_t current_on_ebus;
     uint8_t state;
     uint8_t error_flag;
     uint8_t sync_count;

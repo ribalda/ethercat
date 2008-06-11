@@ -713,6 +713,23 @@ void Master::sdoUpload(
 
 /****************************************************************************/
 
+void Master::showSlaves(int slavePosition)
+{
+    open(Read);
+
+    if (slavePosition == -1) {
+        unsigned int numSlaves = slaveCount(), i;
+
+        for (i = 0; i < numSlaves; i++) {
+            showSlave(i);
+        }
+    } else {
+        showSlave(slavePosition);
+    }
+}
+
+/****************************************************************************/
+
 void Master::siiRead(int slavePosition)
 {
     ec_ioctl_sii_t data;
@@ -1195,6 +1212,103 @@ void Master::listSlaveSdos(
                 << entry.description << "\"" << endl;
         }
     }
+}
+
+/****************************************************************************/
+
+void Master::showSlave(uint16_t slavePosition)
+{
+    ec_ioctl_slave_t slave;
+    list<string> protoList;
+    list<string>::const_iterator protoIter;
+    
+    getSlave(&slave, slavePosition);
+        
+    cout << "Slave " << dec << slavePosition << endl
+        << "Alias: 0x" << hex << setfill('0') << setw(4) << slave.alias << endl
+        << "State: " << slaveState(slave.state) << endl
+        << "Flag: " << (slave.error_flag ? 'E' : '+') << endl
+        << "Identity:" << endl
+        << "  Vendor Id: 0x"
+        << hex << setfill('0') << setw(8) << slave.vendor_id << endl
+        << "  Product code: 0x"
+        << setw(8) << slave.product_code << endl
+        << "  Revision number: 0x"
+        << setw(8) << slave.revision_number << endl
+        << "  Serial number: 0x"
+        << setw(8) << slave.serial_number << endl;
+
+    if (slave.mailbox_protocols) {
+        cout << "Mailboxes:" << endl
+        << "  RX: 0x"
+        << hex << setw(4) << slave.rx_mailbox_offset << "/"
+        << dec << slave.rx_mailbox_size
+        << ", TX: 0x"
+        << hex << setw(4) << slave.tx_mailbox_offset << "/"
+        << dec << slave.tx_mailbox_size << endl
+        << "  Supported protocols: ";
+
+        if (slave.mailbox_protocols & EC_MBOX_AOE) {
+            protoList.push_back("AoE");
+        }
+        if (slave.mailbox_protocols & EC_MBOX_EOE) {
+            protoList.push_back("EoE");
+        }
+        if (slave.mailbox_protocols & EC_MBOX_COE) {
+            protoList.push_back("CoE");
+        }
+        if (slave.mailbox_protocols & EC_MBOX_FOE) {
+            protoList.push_back("FoE");
+        }
+        if (slave.mailbox_protocols & EC_MBOX_SOE) {
+            protoList.push_back("SoE");
+        }
+        if (slave.mailbox_protocols & EC_MBOX_VOE) {
+            protoList.push_back("VoE");
+        }
+
+        for (protoIter = protoList.begin(); protoIter != protoList.end();
+                protoIter++) {
+            if (protoIter != protoList.begin())
+                cout << ", ";
+            cout << *protoIter;
+        }
+        cout << endl;
+    }
+
+    if (slave.has_general_category) {
+        cout << "General:" << endl
+            << "  Name: " << slave.name << endl;
+
+        if (slave.mailbox_protocols & EC_MBOX_COE) {
+            cout << "  CoE details:" << endl
+                << "    Enable Sdo: "
+                << (slave.coe_details.enable_sdo ? "yes" : "no") << endl
+                << "    Enable Sdo Info: "
+                << (slave.coe_details.enable_sdo_info ? "yes" : "no") << endl
+                << "    Enable Pdo Assign: "
+                << (slave.coe_details.enable_pdo_assign
+                        ? "yes" : "no") << endl
+                << "    Enable Pdo Configuration: "
+                << (slave.coe_details.enable_pdo_configuration
+                        ? "yes" : "no") << endl
+                << "    Enable Upload at startup: "
+                << (slave.coe_details.enable_upload_at_startup
+                        ? "yes" : "no") << endl
+                << "    Enable Sdo complete access: "
+                << (slave.coe_details.enable_sdo_complete_access
+                        ? "yes" : "no") << endl;
+        }
+
+        cout << "  Flags:" << endl
+            << "    Enable SafeOp: "
+            << (slave.general_flags.enable_safeop ? "yes" : "no") << endl
+            << "    Enable notLRW: "
+            << (slave.general_flags.enable_not_lrw ? "yes" : "no") << endl
+            << "  Current consumption: "
+            << dec << slave.current_on_ebus << " mA" << endl << sizeof(slave);
+    }
+    cout << endl;
 }
 
 /****************************************************************************/

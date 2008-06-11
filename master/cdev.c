@@ -192,6 +192,15 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                 data.revision_number = slave->sii.revision_number;
                 data.serial_number = slave->sii.serial_number;
                 data.alias = slave->sii.alias;
+                data.rx_mailbox_offset = slave->sii.rx_mailbox_offset;
+                data.rx_mailbox_size = slave->sii.rx_mailbox_size;
+                data.tx_mailbox_offset = slave->sii.tx_mailbox_offset;
+                data.tx_mailbox_size = slave->sii.tx_mailbox_size;
+                data.mailbox_protocols = slave->sii.mailbox_protocols;
+                data.has_general_category = slave->sii.has_general;
+                data.coe_details = slave->sii.coe_details;
+                data.general_flags = slave->sii.general_flags;
+                data.current_on_ebus = slave->sii.current_on_ebus;
                 data.state = slave->current_state;
                 data.error_flag = slave->error_flag;
 

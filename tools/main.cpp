@@ -37,12 +37,13 @@ void printUsage()
         << "  data               Output binary domain process data." << endl
         << "  debug              Set the master debug level." << endl
         << "  domain             Show domain information." << endl
-        << "  list (ls, slaves)  List all slaves (former 'lsec')." << endl
+        << "  list (ls)          List all slaves (former 'lsec')." << endl
         << "  master             Show master information." << endl
         << "  pdos               List Pdo mapping." << endl
         << "  sdos               List Sdo dictionaries." << endl
         << "  sdo_download (sd)  Write an Sdo entry." << endl
         << "  sdo_upload (su)    Read an Sdo entry." << endl
+        << "  slave              Show slave information." << endl
         << "  sii_read (sr)      Output a slave's SII contents." << endl
         << "  sii_write (sw)     Write slave's SII contents." << endl
         << "  state              Request slave states." << endl
@@ -183,7 +184,7 @@ int main(int argc, char **argv)
             master.setDebug(commandArgs);
         } else if (command == "domain") {
             master.showDomains(domainIndex);
-		} else if (command == "list" || command == "ls" || command == "slaves") {
+		} else if (command == "list" || command == "ls") {
             master.listSlaves();
 		} else if (command == "master") {
             master.showMaster();
@@ -195,6 +196,8 @@ int main(int argc, char **argv)
             master.sdoDownload(slavePosition, dataTypeStr, commandArgs);
         } else if (command == "sdo_upload" || command == "su") {
             master.sdoUpload(slavePosition, dataTypeStr, commandArgs);
+		} else if (command == "slave") {
+            master.showSlaves(slavePosition);
         } else if (command == "sii_read" || command == "sr") {
             master.siiRead(slavePosition);
         } else if (command == "sii_write" || command == "sw") {
