@@ -1101,6 +1101,40 @@ ec_slave_t *ec_master_find_slave(
 
 /*****************************************************************************/
 
+unsigned int ec_master_config_count(
+		const ec_master_t *master /**< EtherCAT master. */
+		)
+{
+	const ec_slave_config_t *sc;
+	unsigned int count = 0;
+
+	list_for_each_entry(sc, &master->configs, list) {
+		count++;
+	}
+
+	return count;
+}
+
+/*****************************************************************************/
+
+const ec_slave_config_t *ec_master_get_config_const(
+		const ec_master_t *master, /**< EtherCAT master. */
+		unsigned int index /**< List position. */
+		)
+{
+	const ec_slave_config_t *sc;
+
+	list_for_each_entry(sc, &master->configs, list) {
+		if (index--)
+			continue;
+		return sc;
+	}
+
+	return NULL;
+}
+
+/*****************************************************************************/
+
 unsigned int ec_master_domain_count(
 		const ec_master_t *master /**< EtherCAT master. */
 		)

@@ -171,6 +171,94 @@ void Master::writeAlias(
     }
 }
 
+/*****************************************************************************/
+
+/**
+ * Lists the bus configuration.
+ */
+void Master::showConfig()
+{
+    ec_ioctl_master_t master;
+    unsigned int i, j, k, l;
+    ec_ioctl_config_t config;
+    ec_ioctl_config_pdo_t pdo;
+    ec_ioctl_config_pdo_entry_t entry;
+    ec_ioctl_config_sdo_t sdo;
+
+    open(Read);
+    getMaster(&master);
+
+    for (i = 0; i < master.config_count; i++) {
+        getConfig(&config, i);
+
+        cout << "Alias: 0x"
+            << hex << setfill('0') << setw(4) << config.alias << endl
+            << "Position: " << dec << config.position << endl
+            << "Vendor Id: 0x"
+            << hex << setw(8) << config.vendor_id << endl
+            << "Product code: 0x"
+            << hex << setw(8) << config.product_code << endl
+            << "Attached: " << (config.attached ? "yes" : "no") << endl;
+
+        for (j = 0; j < 2; j++) {
+            if (config.pdo_count[j]) {
+                cout << (j ? "Input" : "Output")
+                    << " Pdo assignment / mapping " << endl;
+                for (k = 0; k < config.pdo_count[j]; k++) {
+                    getConfigPdo(&pdo, i, j, k);
+
+                    cout << "  Pdo 0x"
+                        << hex << setfill('0') << setw(4) << pdo.index
+                        << " \"" << pdo.name << "\"" << endl;
+
+                    for (l = 0; l < pdo.entry_count; l++) {
+                        getConfigPdoEntry(&entry, i, j, k, l);
+
+                        cout << "    Pdo entry 0x"
+                            << hex << setfill('0') << setw(4) << entry.index
+                            << ":" << setw(2) << (unsigned int) entry.subindex
+                            << ", " << dec << (unsigned int) entry.bit_length
+                            << " bit, \"" << entry.name << "\"" << endl;
+                    }
+                }
+            }
+        }
+
+        if (config.sdo_count) {
+            cout << "Sdo configuration:" << endl;
+            for (j = 0; j < config.sdo_count; j++) {
+                getConfigSdo(&sdo, i, j);
+
+                cout << "  0x"
+                    << hex << setfill('0') << setw(4) << sdo.index
+                    << ":" << setw(2) << (unsigned int) sdo.subindex
+                    << ", " << sdo.size << " byte: " << hex;
+
+                switch (sdo.size) {
+                    case 1:
+                        cout << "0x" << setw(2)
+                            << (unsigned int) *(uint8_t *) &sdo.data;
+                        break;
+                    case 2:
+                        cout << "0x" << setw(4)
+                            << le16tocpu(*(uint16_t *) &sdo.data);
+                        break;
+                    case 4:
+                        cout << "0x" << setw(8)
+                            << le32tocpu(*(uint32_t *) &sdo.data);
+                        break;
+                    default:
+                        cout << "???";
+                }
+
+                cout << endl;
+            }
+        }
+
+        cout << endl;
+    }
+}
+
 /****************************************************************************/
 
 void Master::outputData(int domainIndex)
@@ -1156,8 +1244,7 @@ void Master::listSlavePdos(
 
                 cout << "    Pdo entry 0x"
                     << hex << setfill('0') << setw(4) << entry.index
-                    << ":" << hex << setfill('0') << setw(2)
-                    << (unsigned int) entry.subindex
+                    << ":" << setw(2) << (unsigned int) entry.subindex
                     << ", " << dec << (unsigned int) entry.bit_length
                     << " bit, \"" << entry.name << "\"" << endl;
             }
@@ -1306,7 +1393,7 @@ void Master::showSlave(uint16_t slavePosition)
             << "    Enable notLRW: "
             << (slave.general_flags.enable_not_lrw ? "yes" : "no") << endl
             << "  Current consumption: "
-            << dec << slave.current_on_ebus << " mA" << endl << sizeof(slave);
+            << dec << slave.current_on_ebus << " mA" << endl;
     }
     cout << endl;
 }
@@ -1441,6 +1528,79 @@ void Master::getMaster(ec_ioctl_master_t *data)
     if (ioctl(fd, EC_IOCTL_MASTER, data) < 0) {
         stringstream err;
         err << "Failed to get master information: " << strerror(errno);
+        throw MasterException(err.str());
+    }
+}
+
+/****************************************************************************/
+
+void Master::getConfig(ec_ioctl_config_t *data, unsigned int index)
+{
+    data->config_index = index;
+
+    if (ioctl(fd, EC_IOCTL_CONFIG, data) < 0) {
+        stringstream err;
+        err << "Failed to get slave configuration: " << strerror(errno);
+        throw MasterException(err.str());
+    }
+}
+
+/****************************************************************************/
+
+void Master::getConfigPdo(
+        ec_ioctl_config_pdo_t *data,
+        unsigned int index,
+        unsigned int dir,
+        unsigned int pdo_pos
+        )
+{
+    data->config_index = index;
+    data->direction = dir;
+    data->pdo_pos = pdo_pos;
+
+    if (ioctl(fd, EC_IOCTL_CONFIG_PDO, data) < 0) {
+        stringstream err;
+        err << "Failed to get slave config Pdo: " << strerror(errno);
+        throw MasterException(err.str());
+    }
+}
+
+/****************************************************************************/
+
+void Master::getConfigPdoEntry(
+        ec_ioctl_config_pdo_entry_t *data,
+        unsigned int index,
+        unsigned int dir,
+        unsigned int pdo_pos,
+        unsigned int entry_pos
+        )
+{
+    data->config_index = index;
+    data->direction = dir;
+    data->pdo_pos = pdo_pos;
+    data->entry_pos = entry_pos;
+
+    if (ioctl(fd, EC_IOCTL_CONFIG_PDO_ENTRY, data) < 0) {
+        stringstream err;
+        err << "Failed to get slave config Pdo entry: " << strerror(errno);
+        throw MasterException(err.str());
+    }
+}
+
+/****************************************************************************/
+
+void Master::getConfigSdo(
+        ec_ioctl_config_sdo_t *data,
+        unsigned int index,
+        unsigned int sdo_pos
+        )
+{
+    data->config_index = index;
+    data->sdo_pos = sdo_pos;
+
+    if (ioctl(fd, EC_IOCTL_CONFIG_SDO, data) < 0) {
+        stringstream err;
+        err << "Failed to get slave config Sdo: " << strerror(errno);
         throw MasterException(err.str());
     }
 }

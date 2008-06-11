@@ -42,6 +42,7 @@ class Master
         void setIndex(unsigned int);
 
         void writeAlias(int, bool, const vector<string> &);
+        void showConfig();
         void outputData(int);
         void setDebug(const vector<string> &);
         void showDomains(int);
@@ -72,7 +73,12 @@ class Master
         unsigned int domainCount();
         unsigned int slaveCount();
         void getMaster(ec_ioctl_master_t *);
-        void slaveSyncs(uint16_t);
+        void getConfig(ec_ioctl_config_t *, unsigned int);
+        void getConfigPdo(ec_ioctl_config_pdo_t *, unsigned int,
+                unsigned int, unsigned int);
+        void getConfigPdoEntry(ec_ioctl_config_pdo_entry_t *, unsigned int,
+                unsigned int, unsigned int, unsigned int);
+        void getConfigSdo(ec_ioctl_config_sdo_t *, unsigned int, unsigned int);
         void getDomain(ec_ioctl_domain_t *, unsigned int);
         void getFmmu(ec_ioctl_domain_fmmu_t *, unsigned int, unsigned int);
         void getData(ec_ioctl_data_t *, unsigned int, unsigned int,

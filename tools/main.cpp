@@ -34,6 +34,7 @@ void printUsage()
         << "Usage: ethercat <COMMAND> [OPTIONS]" << endl
 		<< "Commands:" << endl
         << "  alias              Write alias address(es)." << endl
+        << "  config             Show slave configurations." << endl
         << "  data               Output binary domain process data." << endl
         << "  debug              Set the master debug level." << endl
         << "  domain             Show domain information." << endl
@@ -178,6 +179,8 @@ int main(int argc, char **argv)
 
         if (command == "alias") {
             master.writeAlias(slavePosition, force, commandArgs);
+        } else if (command == "config") {
+            master.showConfig();
         } else if (command == "data") {
             master.outputData(domainIndex);
         } else if (command == "debug") {

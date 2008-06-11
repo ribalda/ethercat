@@ -148,6 +148,7 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                 ec_ioctl_master_t data;
 
                 data.slave_count = master->slave_count;
+                data.config_count = ec_master_config_count(master);
                 data.mode = (uint8_t) master->mode;
                 
                 memcpy(data.devices[0].address, master->main_mac, ETH_ALEN); 
@@ -210,8 +211,8 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
                 if (slave->sii.name) {
                     strncpy(data.name, slave->sii.name,
-                            EC_IOCTL_SLAVE_NAME_SIZE);
-                    data.name[EC_IOCTL_SLAVE_NAME_SIZE - 1] = 0;
+                            EC_IOCTL_STRING_SIZE);
+                    data.name[EC_IOCTL_STRING_SIZE - 1] = 0;
                 } else {
                     data.name[0] = 0;
                 }
@@ -306,8 +307,8 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                 data.entry_count = ec_pdo_entry_count(pdo);
 
                 if (pdo->name) {
-                    strncpy(data.name, pdo->name, EC_IOCTL_PDO_NAME_SIZE);
-                    data.name[EC_IOCTL_PDO_NAME_SIZE - 1] = 0;
+                    strncpy(data.name, pdo->name, EC_IOCTL_STRING_SIZE);
+                    data.name[EC_IOCTL_STRING_SIZE - 1] = 0;
                 } else {
                     data.name[0] = 0;
                 }
@@ -369,9 +370,8 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                 data.subindex = entry->subindex;
                 data.bit_length = entry->bit_length;
                 if (entry->name) {
-                    strncpy(data.name, entry->name,
-                            EC_IOCTL_PDO_ENTRY_NAME_SIZE);
-                    data.name[EC_IOCTL_PDO_ENTRY_NAME_SIZE - 1] = 0;
+                    strncpy(data.name, entry->name, EC_IOCTL_STRING_SIZE);
+                    data.name[EC_IOCTL_STRING_SIZE - 1] = 0;
                 } else {
                     data.name[0] = 0;
                 }
@@ -546,8 +546,8 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                 data.max_subindex = sdo->max_subindex;
 
                 if (sdo->name) {
-                    strncpy(data.name, sdo->name, EC_IOCTL_SDO_NAME_SIZE);
-                    data.name[EC_IOCTL_SDO_NAME_SIZE - 1] = 0;
+                    strncpy(data.name, sdo->name, EC_IOCTL_STRING_SIZE);
+                    data.name[EC_IOCTL_STRING_SIZE - 1] = 0;
                 } else {
                     data.name[0] = 0;
                 }
@@ -610,8 +610,8 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
                 if (entry->description) {
                     strncpy(data.description, entry->description,
-                            EC_IOCTL_SDO_ENTRY_DESCRIPTION_SIZE);
-                    data.description[EC_IOCTL_SDO_ENTRY_DESCRIPTION_SIZE - 1]
+                            EC_IOCTL_STRING_SIZE);
+                    data.description[EC_IOCTL_STRING_SIZE - 1]
                         = 0;
                 } else {
                     data.description[0] = 0;
@@ -850,6 +850,186 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                 }
 
                 kfree(words);
+                break;
+            }
+
+        case EC_IOCTL_CONFIG:
+            {
+                ec_ioctl_config_t data;
+                const ec_slave_config_t *sc;
+
+                if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+                    retval = -EFAULT;
+                    break;
+                }
+                
+                if (!(sc = ec_master_get_config_const(
+                                master, data.config_index))) {
+                    EC_ERR("Slave config %u does not exist!\n",
+                            data.config_index);
+                    retval = -EINVAL;
+                    break;
+                }
+
+                data.alias = sc->alias;
+                data.position = sc->position;
+                data.vendor_id = sc->vendor_id;
+                data.product_code = sc->product_code;
+                data.pdo_count[EC_DIR_OUTPUT] =
+                    ec_pdo_list_count(&sc->pdos[EC_DIR_OUTPUT]);
+                data.pdo_count[EC_DIR_INPUT] =
+                    ec_pdo_list_count(&sc->pdos[EC_DIR_INPUT]);
+                data.sdo_count = ec_slave_config_sdo_count(sc);
+                data.attached = sc->slave != NULL;
+
+                if (copy_to_user((void __user *) arg, &data, sizeof(data))) {
+                    retval = -EFAULT;
+                    break;
+                }
+                break;
+            }
+
+        case EC_IOCTL_CONFIG_PDO:
+            {
+                ec_ioctl_config_pdo_t data;
+                const ec_slave_config_t *sc;
+                const ec_pdo_t *pdo;
+
+                if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+                    retval = -EFAULT;
+                    break;
+                }
+                
+                if (!(sc = ec_master_get_config_const(
+                                master, data.config_index))) {
+                    EC_ERR("Slave config %u does not exist!\n",
+                            data.config_index);
+                    retval = -EINVAL;
+                    break;
+                }
+
+                if (data.direction > EC_DIR_INPUT) {
+                    EC_ERR("Invalid direction %u!\n", data.direction);
+                    retval = -EINVAL;
+                    break;
+                }
+                
+                if (!(pdo = ec_pdo_list_find_pdo_by_pos_const(
+                                &sc->pdos[data.direction], data.pdo_pos))) {
+                    EC_ERR("Invalid Pdo position!\n");
+                    retval = -EINVAL;
+                    break;
+                }
+
+                data.index = pdo->index;
+                data.entry_count = ec_pdo_entry_count(pdo);
+
+                if (pdo->name) {
+                    strncpy(data.name, pdo->name, EC_IOCTL_STRING_SIZE);
+                    data.name[EC_IOCTL_STRING_SIZE - 1] = 0;
+                } else {
+                    data.name[0] = 0;
+                }
+
+                if (copy_to_user((void __user *) arg, &data, sizeof(data))) {
+                    retval = -EFAULT;
+                    break;
+                }
+                break;
+            }
+
+        case EC_IOCTL_CONFIG_PDO_ENTRY:
+            {
+                ec_ioctl_config_pdo_entry_t data;
+                const ec_slave_config_t *sc;
+                const ec_pdo_t *pdo;
+                const ec_pdo_entry_t *entry;
+
+                if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+                    retval = -EFAULT;
+                    break;
+                }
+                
+                if (!(sc = ec_master_get_config_const(
+                                master, data.config_index))) {
+                    EC_ERR("Slave config %u does not exist!\n",
+                            data.config_index);
+                    retval = -EINVAL;
+                    break;
+                }
+
+                if (data.direction > EC_DIR_INPUT) {
+                    EC_ERR("Invalid direction %u!\n", data.direction);
+                    retval = -EINVAL;
+                    break;
+                }
+                
+                if (!(pdo = ec_pdo_list_find_pdo_by_pos_const(
+                                &sc->pdos[data.direction], data.pdo_pos))) {
+                    EC_ERR("Invalid Pdo position!\n");
+                    retval = -EINVAL;
+                    break;
+                }
+
+                if (!(entry = ec_pdo_find_entry_by_pos_const(
+                                pdo, data.entry_pos))) {
+                    EC_ERR("Entry not found!\n");
+                    retval = -EINVAL;
+                    break;
+                }
+
+                data.index = entry->index;
+                data.subindex = entry->subindex;
+                data.bit_length = entry->bit_length;
+                if (entry->name) {
+                    strncpy(data.name, entry->name, EC_IOCTL_STRING_SIZE);
+                    data.name[EC_IOCTL_STRING_SIZE - 1] = 0;
+                } else {
+                    data.name[0] = 0;
+                }
+
+                if (copy_to_user((void __user *) arg, &data, sizeof(data))) {
+                    retval = -EFAULT;
+                    break;
+                }
+                break;
+            }
+
+        case EC_IOCTL_CONFIG_SDO:
+            {
+                ec_ioctl_config_sdo_t data;
+                const ec_slave_config_t *sc;
+                const ec_sdo_request_t *req;
+
+                if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+                    retval = -EFAULT;
+                    break;
+                }
+                
+                if (!(sc = ec_master_get_config_const(
+                                master, data.config_index))) {
+                    EC_ERR("Slave config %u does not exist!\n",
+                            data.config_index);
+                    retval = -EINVAL;
+                    break;
+                }
+
+                if (!(req = ec_slave_config_get_sdo_by_pos_const(
+                                sc, data.sdo_pos))) {
+                    EC_ERR("Invalid Sdo position!\n");
+                    retval = -EINVAL;
+                    break;
+                }
+
+                data.index = req->index;
+                data.subindex = req->subindex;
+                data.size = req->data_size;
+                memcpy(&data.data, req->data, min((u32) data.size, (u32) 4));
+
+                if (copy_to_user((void __user *) arg, &data, sizeof(data))) {
+                    retval = -EFAULT;
+                    break;
+                }
                 break;
             }
 

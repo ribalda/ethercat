@@ -462,6 +462,46 @@ void ec_slave_config_load_default_mapping(
     }
 }
 
+/*****************************************************************************/
+
+/**
+ */
+unsigned int ec_slave_config_sdo_count(
+        const ec_slave_config_t *sc /**< Slave configuration. */
+        )
+{
+	const ec_sdo_request_t *req;
+	unsigned int count = 0;
+
+	list_for_each_entry(req, &sc->sdo_configs, list) {
+		count++;
+	}
+
+	return count;
+}
+
+/*****************************************************************************/
+
+/** Finds an Sdo configuration via its position in the list.
+ *
+ * Const version.
+ */
+const ec_sdo_request_t *ec_slave_config_get_sdo_by_pos_const(
+        const ec_slave_config_t *sc, /**< Slave configuration. */
+        unsigned int pos /**< Position in the list. */
+        )
+{
+    const ec_sdo_request_t *req;
+
+    list_for_each_entry(req, &sc->sdo_configs, list) {
+        if (pos--)
+            continue;
+        return req;
+    }
+
+    return NULL;
+}
+
 /******************************************************************************
  *  Realtime interface
  *****************************************************************************/

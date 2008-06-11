@@ -8,8 +8,6 @@ $Id$
 
 Version 1.4.0:
 
-* Replace all Sysfs files via the new ethercat tool.
-    - Config info (alias, position, type, Pdos, Sdos)
 * Slaves as array.
 * Remove the end state of the master state machine.
 * Supply new ec_master_state_t.
@@ -25,6 +23,8 @@ Version 1.4.0:
 * Attach Pdo names from SII or Coe dictioary to Pdos read via CoE.
 * Make scanning and configuration run parallel (each).
 * List of commands that require a slave.
+* Remove configs_attached flag.
+* Remove EC_IOCTL_DOMAIN_COUNT.
 
 Future issues:
 

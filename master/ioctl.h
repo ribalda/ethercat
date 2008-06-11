@@ -54,28 +54,35 @@
 #define EC_IOW(nr,type)   _IOW(EC_IOCTL_TYPE,nr,type)
 #define EC_IOWR(nr,type) _IOWR(EC_IOCTL_TYPE,nr,type)
 
-#define EC_IOCTL_MASTER        EC_IOR(0x00, ec_ioctl_master_t)
-#define EC_IOCTL_SLAVE        EC_IOWR(0x01, ec_ioctl_slave_t)
-#define EC_IOCTL_SYNC         EC_IOWR(0x02, ec_ioctl_sync_t)
-#define EC_IOCTL_PDO          EC_IOWR(0x03, ec_ioctl_pdo_t)
-#define EC_IOCTL_PDO_ENTRY    EC_IOWR(0x04, ec_ioctl_pdo_entry_t)
-#define EC_IOCTL_DOMAIN_COUNT   EC_IO(0x05)
-#define EC_IOCTL_DOMAIN       EC_IOWR(0x06, ec_ioctl_domain_t)
-#define EC_IOCTL_DOMAIN_FMMU  EC_IOWR(0x07, ec_ioctl_domain_fmmu_t)
-#define EC_IOCTL_DATA         EC_IOWR(0x08, ec_ioctl_data_t)
-#define EC_IOCTL_SET_DEBUG      EC_IO(0x09)
-#define EC_IOCTL_SLAVE_STATE   EC_IOW(0x0a, ec_ioctl_slave_state_t)
-#define EC_IOCTL_SDO          EC_IOWR(0x0b, ec_ioctl_sdo_t)
-#define EC_IOCTL_SDO_ENTRY    EC_IOWR(0x0c, ec_ioctl_sdo_entry_t)
-#define EC_IOCTL_SDO_UPLOAD   EC_IOWR(0x0d, ec_ioctl_sdo_upload_t)
-#define EC_IOCTL_SDO_DOWNLOAD  EC_IOW(0x0e, ec_ioctl_sdo_download_t)
-#define EC_IOCTL_SII_READ     EC_IOWR(0x0f, ec_ioctl_sii_t)
-#define EC_IOCTL_SII_WRITE     EC_IOW(0x10, ec_ioctl_sii_t)
+#define EC_IOCTL_MASTER            EC_IOR(0x00, ec_ioctl_master_t)
+#define EC_IOCTL_SLAVE            EC_IOWR(0x01, ec_ioctl_slave_t)
+#define EC_IOCTL_SYNC             EC_IOWR(0x02, ec_ioctl_sync_t)
+#define EC_IOCTL_PDO              EC_IOWR(0x03, ec_ioctl_pdo_t)
+#define EC_IOCTL_PDO_ENTRY        EC_IOWR(0x04, ec_ioctl_pdo_entry_t)
+#define EC_IOCTL_DOMAIN_COUNT       EC_IO(0x05)
+#define EC_IOCTL_DOMAIN           EC_IOWR(0x06, ec_ioctl_domain_t)
+#define EC_IOCTL_DOMAIN_FMMU      EC_IOWR(0x07, ec_ioctl_domain_fmmu_t)
+#define EC_IOCTL_DATA             EC_IOWR(0x08, ec_ioctl_data_t)
+#define EC_IOCTL_SET_DEBUG          EC_IO(0x09)
+#define EC_IOCTL_SLAVE_STATE       EC_IOW(0x0a, ec_ioctl_slave_state_t)
+#define EC_IOCTL_SDO              EC_IOWR(0x0b, ec_ioctl_sdo_t)
+#define EC_IOCTL_SDO_ENTRY        EC_IOWR(0x0c, ec_ioctl_sdo_entry_t)
+#define EC_IOCTL_SDO_UPLOAD       EC_IOWR(0x0d, ec_ioctl_sdo_upload_t)
+#define EC_IOCTL_SDO_DOWNLOAD      EC_IOW(0x0e, ec_ioctl_sdo_download_t)
+#define EC_IOCTL_SII_READ         EC_IOWR(0x0f, ec_ioctl_sii_t)
+#define EC_IOCTL_SII_WRITE         EC_IOW(0x10, ec_ioctl_sii_t)
+#define EC_IOCTL_CONFIG           EC_IOWR(0x11, ec_ioctl_config_t)
+#define EC_IOCTL_CONFIG_PDO       EC_IOWR(0x12, ec_ioctl_config_pdo_t)
+#define EC_IOCTL_CONFIG_PDO_ENTRY EC_IOWR(0x12, ec_ioctl_config_pdo_entry_t)
+#define EC_IOCTL_CONFIG_SDO       EC_IOWR(0x13, ec_ioctl_config_sdo_t)
+
+#define EC_IOCTL_STRING_SIZE 64
 
 /*****************************************************************************/
 
 typedef struct {
     uint32_t slave_count;
+    uint32_t config_count;
     uint8_t mode;
     struct {
         uint8_t address[6];
@@ -86,8 +93,6 @@ typedef struct {
 } ec_ioctl_master_t;
 
 /*****************************************************************************/
-
-#define EC_IOCTL_SLAVE_NAME_SIZE 77
 
 typedef struct {
     // input
@@ -113,7 +118,7 @@ typedef struct {
     uint8_t sync_count;
     uint16_t sdo_count;
     uint32_t sii_nwords;
-    char name[EC_IOCTL_SLAVE_NAME_SIZE];
+    char name[EC_IOCTL_STRING_SIZE];
 } ec_ioctl_slave_t;
 
 /*****************************************************************************/
@@ -134,8 +139,6 @@ typedef struct {
 
 /*****************************************************************************/
 
-#define EC_IOCTL_PDO_NAME_SIZE 114
-
 typedef struct {
     // inputs
     uint16_t slave_position;
@@ -146,12 +149,10 @@ typedef struct {
     uint8_t dir;
     uint16_t index;
     uint8_t entry_count;
-    char name[EC_IOCTL_PDO_NAME_SIZE];
+    int8_t name[EC_IOCTL_STRING_SIZE];
 } ec_ioctl_pdo_t;
 
 /*****************************************************************************/
-
-#define EC_IOCTL_PDO_ENTRY_NAME_SIZE 110
 
 typedef struct {
     // inputs
@@ -164,7 +165,7 @@ typedef struct {
     uint16_t index;
     uint8_t subindex;
     uint8_t bit_length;
-    char name[EC_IOCTL_PDO_NAME_SIZE];
+    int8_t name[EC_IOCTL_STRING_SIZE];
 } ec_ioctl_pdo_entry_t;
 
 /*****************************************************************************/
@@ -202,7 +203,7 @@ typedef struct {
     // inputs
 	uint32_t domain_index;
     uint32_t data_size;
-    unsigned char *target;
+    uint8_t *target;
 } ec_ioctl_data_t;
 
 /*****************************************************************************/
@@ -215,8 +216,6 @@ typedef struct {
 
 /*****************************************************************************/
 
-#define EC_IOCTL_SDO_NAME_SIZE 121
-
 typedef struct {
     // inputs
     uint16_t slave_position;
@@ -225,12 +224,10 @@ typedef struct {
     // outputs
     uint16_t sdo_index;
     uint8_t max_subindex;
-    char name[EC_IOCTL_SDO_NAME_SIZE];
+    int8_t name[EC_IOCTL_STRING_SIZE];
 } ec_ioctl_sdo_t;
 
 /*****************************************************************************/
-
-#define EC_IOCTL_SDO_ENTRY_DESCRIPTION_SIZE 120
 
 typedef struct {
     // inputs
@@ -241,7 +238,7 @@ typedef struct {
     // outputs
     uint16_t data_type;
     uint16_t bit_length;
-    char description[EC_IOCTL_SDO_ENTRY_DESCRIPTION_SIZE];
+    int8_t description[EC_IOCTL_STRING_SIZE];
 } ec_ioctl_sdo_entry_t;
 
 /*****************************************************************************/
@@ -278,6 +275,66 @@ typedef struct {
     uint32_t nwords;
     uint16_t *words;
 } ec_ioctl_sii_t;
+
+/*****************************************************************************/
+
+typedef struct {
+    // inputs
+    uint32_t config_index;
+
+    // outputs
+    uint16_t alias;
+    uint16_t position;
+    uint32_t vendor_id;
+    uint32_t product_code;
+    uint32_t pdo_count[2];
+    uint32_t sdo_count;
+    uint8_t attached;
+} ec_ioctl_config_t;
+
+/*****************************************************************************/
+
+typedef struct {
+    // inputs
+    uint32_t config_index;
+    uint32_t direction;
+    uint32_t pdo_pos;
+
+    // outputs
+    uint16_t index;
+    uint8_t entry_count;
+    int8_t name[EC_IOCTL_STRING_SIZE];
+} ec_ioctl_config_pdo_t;
+
+/*****************************************************************************/
+
+typedef struct {
+    // inputs
+    uint32_t config_index;
+    uint32_t direction;
+    uint32_t pdo_pos;
+    uint32_t entry_pos;
+
+    // outputs
+    uint16_t index;
+    uint8_t subindex;
+    uint8_t bit_length;
+    int8_t name[EC_IOCTL_STRING_SIZE];
+} ec_ioctl_config_pdo_entry_t;
+
+/*****************************************************************************/
+
+typedef struct {
+    // inputs
+    uint32_t config_index;
+    uint32_t sdo_pos;
+
+    // outputs
+    uint16_t index;
+    uint8_t subindex;
+    uint32_t size;
+    uint8_t data[4];
+} ec_ioctl_config_sdo_t;
 
 /*****************************************************************************/
 
