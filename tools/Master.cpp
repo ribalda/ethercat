@@ -266,9 +266,12 @@ void Master::outputData(int domainIndex)
     open(Read);
 
     if (domainIndex == -1) {
-        unsigned int numDomains = domainCount(), i;
+        unsigned int i;
+        ec_ioctl_master_t master;
 
-        for (i = 0; i < numDomains; i++) {
+        getMaster(&master);
+
+        for (i = 0; i < master.domain_count; i++) {
             outputDomainData(i);
         }
     } else {
@@ -314,9 +317,12 @@ void Master::showDomains(int domainIndex)
     open(Read);
 
     if (domainIndex == -1) {
-        unsigned int numDomains = domainCount(), i;
+        unsigned int i;
+        ec_ioctl_master_t master;
 
-        for (i = 0; i < numDomains; i++) {
+        getMaster(&master);
+
+        for (i = 0; i < master.domain_count; i++) {
             showDomain(i);
         }
     } else {
@@ -1494,21 +1500,6 @@ void Master::generateSlaveXml(uint16_t slavePosition)
         << "     </Devices>" << endl
         << "  </Descriptions>" << endl
         << "</EtherCATInfo>" << endl;
-}
-
-/****************************************************************************/
-
-unsigned int Master::domainCount()
-{
-    int ret;
-
-    if ((ret = ioctl(fd, EC_IOCTL_DOMAIN_COUNT, 0)) < 0) {
-        stringstream err;
-        err << "Failed to get number of domains: " << strerror(errno);
-        throw MasterException(err.str());
-    }
-
-    return ret;
 }
 
 /****************************************************************************/

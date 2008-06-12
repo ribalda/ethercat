@@ -149,6 +149,7 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
                 data.slave_count = master->slave_count;
                 data.config_count = ec_master_config_count(master);
+                data.domain_count = ec_master_domain_count(master);
                 data.mode = (uint8_t) master->mode;
                 
                 memcpy(data.devices[0].address, master->main_mac, ETH_ALEN); 
@@ -367,10 +368,6 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                     retval = -EFAULT;
                 break;
             }
-
-        case EC_IOCTL_DOMAIN_COUNT:
-            retval = ec_master_domain_count(master);
-            break;
 
         case EC_IOCTL_DOMAIN:
             {

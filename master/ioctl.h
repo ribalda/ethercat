@@ -59,20 +59,19 @@
 #define EC_IOCTL_SYNC             EC_IOWR(0x02, ec_ioctl_sync_t)
 #define EC_IOCTL_PDO              EC_IOWR(0x03, ec_ioctl_pdo_t)
 #define EC_IOCTL_PDO_ENTRY        EC_IOWR(0x04, ec_ioctl_pdo_entry_t)
-#define EC_IOCTL_DOMAIN_COUNT       EC_IO(0x05)
-#define EC_IOCTL_DOMAIN           EC_IOWR(0x06, ec_ioctl_domain_t)
-#define EC_IOCTL_DOMAIN_FMMU      EC_IOWR(0x07, ec_ioctl_domain_fmmu_t)
-#define EC_IOCTL_DATA             EC_IOWR(0x08, ec_ioctl_data_t)
-#define EC_IOCTL_SET_DEBUG          EC_IO(0x09)
-#define EC_IOCTL_SLAVE_STATE       EC_IOW(0x0a, ec_ioctl_slave_state_t)
-#define EC_IOCTL_SDO              EC_IOWR(0x0b, ec_ioctl_sdo_t)
-#define EC_IOCTL_SDO_ENTRY        EC_IOWR(0x0c, ec_ioctl_sdo_entry_t)
-#define EC_IOCTL_SDO_UPLOAD       EC_IOWR(0x0d, ec_ioctl_sdo_upload_t)
-#define EC_IOCTL_SDO_DOWNLOAD      EC_IOW(0x0e, ec_ioctl_sdo_download_t)
-#define EC_IOCTL_SII_READ         EC_IOWR(0x0f, ec_ioctl_sii_t)
-#define EC_IOCTL_SII_WRITE         EC_IOW(0x10, ec_ioctl_sii_t)
-#define EC_IOCTL_CONFIG           EC_IOWR(0x11, ec_ioctl_config_t)
-#define EC_IOCTL_CONFIG_PDO       EC_IOWR(0x12, ec_ioctl_config_pdo_t)
+#define EC_IOCTL_DOMAIN           EC_IOWR(0x05, ec_ioctl_domain_t)
+#define EC_IOCTL_DOMAIN_FMMU      EC_IOWR(0x06, ec_ioctl_domain_fmmu_t)
+#define EC_IOCTL_DATA             EC_IOWR(0x07, ec_ioctl_data_t)
+#define EC_IOCTL_SET_DEBUG          EC_IO(0x08)
+#define EC_IOCTL_SLAVE_STATE       EC_IOW(0x09, ec_ioctl_slave_state_t)
+#define EC_IOCTL_SDO              EC_IOWR(0x0a, ec_ioctl_sdo_t)
+#define EC_IOCTL_SDO_ENTRY        EC_IOWR(0x0b, ec_ioctl_sdo_entry_t)
+#define EC_IOCTL_SDO_UPLOAD       EC_IOWR(0x0c, ec_ioctl_sdo_upload_t)
+#define EC_IOCTL_SDO_DOWNLOAD      EC_IOW(0x0d, ec_ioctl_sdo_download_t)
+#define EC_IOCTL_SII_READ         EC_IOWR(0x0e, ec_ioctl_sii_t)
+#define EC_IOCTL_SII_WRITE         EC_IOW(0x0f, ec_ioctl_sii_t)
+#define EC_IOCTL_CONFIG           EC_IOWR(0x10, ec_ioctl_config_t)
+#define EC_IOCTL_CONFIG_PDO       EC_IOWR(0x11, ec_ioctl_config_pdo_t)
 #define EC_IOCTL_CONFIG_PDO_ENTRY EC_IOWR(0x12, ec_ioctl_config_pdo_entry_t)
 #define EC_IOCTL_CONFIG_SDO       EC_IOWR(0x13, ec_ioctl_config_sdo_t)
 
@@ -83,6 +82,7 @@
 typedef struct {
     uint32_t slave_count;
     uint32_t config_count;
+    uint32_t domain_count;
     uint8_t mode;
     struct {
         uint8_t address[6];

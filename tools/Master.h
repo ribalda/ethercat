@@ -70,7 +70,6 @@ class Master
         void listSlaveSdos(uint16_t, bool = false, bool = false);
         void showSlave(uint16_t);
         void generateSlaveXml(uint16_t);
-        unsigned int domainCount();
         unsigned int slaveCount();
         void getMaster(ec_ioctl_master_t *);
         void getConfig(ec_ioctl_config_t *, unsigned int);
