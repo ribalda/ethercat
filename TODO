@@ -25,8 +25,6 @@ Version 1.4.0:
 * List of commands that require a slave.
 * Remove configs_attached flag.
 * Remove EC_IOCTL_DOMAIN_COUNT.
-* Remove ATOMIC allocations.
-* Clear FMMU configs.
 * Rename master MODE to STATE.
 
 Future issues:

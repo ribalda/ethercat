@@ -243,8 +243,8 @@ void ec_fsm_master_state_broadcast(
 
             // init slaves
             for (i = 0; i < master->slave_count; i++) {
-                if (!(slave = (ec_slave_t *) kmalloc(sizeof(ec_slave_t),
-                                GFP_ATOMIC))) {
+                if (!(slave = (ec_slave_t *)
+                            kmalloc(sizeof(ec_slave_t), GFP_KERNEL))) {
                     EC_ERR("Failed to allocate slave %u!\n", i);
                     ec_master_clear_slaves(master);
                     master->scan_busy = 0;

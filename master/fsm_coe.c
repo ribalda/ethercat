@@ -466,7 +466,7 @@ void ec_fsm_coe_dict_response(ec_fsm_coe_t *fsm /**< finite state machine */)
             continue;
         }
 
-        if (!(sdo = (ec_sdo_t *) kmalloc(sizeof(ec_sdo_t), GFP_ATOMIC))) {
+        if (!(sdo = (ec_sdo_t *) kmalloc(sizeof(ec_sdo_t), GFP_KERNEL))) {
             EC_ERR("Failed to allocate memory for Sdo!\n");
             fsm->state = ec_fsm_coe_error;
             return;
@@ -689,7 +689,7 @@ void ec_fsm_coe_dict_desc_response(ec_fsm_coe_t *fsm
 
     name_size = rec_size - 12;
     if (name_size) {
-        if (!(sdo->name = kmalloc(name_size + 1, GFP_ATOMIC))) {
+        if (!(sdo->name = kmalloc(name_size + 1, GFP_KERNEL))) {
             EC_ERR("Failed to allocate Sdo name!\n");
             fsm->state = ec_fsm_coe_error;
             return;
@@ -904,7 +904,7 @@ void ec_fsm_coe_dict_entry_response(ec_fsm_coe_t *fsm
     data_size = rec_size - 16;
 
     if (!(entry = (ec_sdo_entry_t *)
-          kmalloc(sizeof(ec_sdo_entry_t), GFP_ATOMIC))) {
+          kmalloc(sizeof(ec_sdo_entry_t), GFP_KERNEL))) {
         EC_ERR("Failed to allocate entry!\n");
         fsm->state = ec_fsm_coe_error;
         return;
@@ -916,7 +916,7 @@ void ec_fsm_coe_dict_entry_response(ec_fsm_coe_t *fsm
 
     if (data_size) {
         uint8_t *desc;
-        if (!(desc = kmalloc(data_size + 1, GFP_ATOMIC))) {
+        if (!(desc = kmalloc(data_size + 1, GFP_KERNEL))) {
             EC_ERR("Failed to allocate Sdo entry name!\n");
             fsm->state = ec_fsm_coe_error;
             return;
