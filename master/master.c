@@ -325,6 +325,9 @@ void ec_master_thread_stop(ec_master_t *master /**< EtherCAT master */)
         return;
     }
 
+    if (master->debug_level)
+        EC_DBG("Stopping master thread.\n");
+
     kill_proc(master->thread_id, SIGTERM, 1);
     wait_for_completion(&master->thread_exit);
     EC_INFO("Master thread exited.\n");
@@ -347,6 +350,9 @@ int ec_master_enter_idle_mode(ec_master_t *master /**< EtherCAT master */)
     master->release_cb = ec_master_release_cb;
     master->cb_data = master;
 
+    if (master->debug_level)
+        EC_DBG("ORPHANED -> IDLE.\n");
+
     master->mode = EC_MASTER_MODE_IDLE;
     if (ec_master_thread_start(master, ec_master_idle_thread)) {
         master->mode = EC_MASTER_MODE_ORPHANED;
@@ -362,6 +368,9 @@ int ec_master_enter_idle_mode(ec_master_t *master /**< EtherCAT master */)
  */
 void ec_master_leave_idle_mode(ec_master_t *master /**< EtherCAT master */)
 {
+    if (master->debug_level)
+        EC_DBG("IDLE -> ORPHANED.\n");
+
     master->mode = EC_MASTER_MODE_ORPHANED;
     
 #ifdef EC_EOE
@@ -381,6 +390,9 @@ int ec_master_enter_operation_mode(ec_master_t *master /**< EtherCAT master */)
 #ifdef EC_EOE
     ec_eoe_t *eoe;
 #endif
+
+    if (master->debug_level)
+        EC_DBG("IDLE -> OPERATION.\n");
 
     down(&master->config_sem);
     master->allow_config = 0; // temporarily disable slave configuration
@@ -457,6 +469,9 @@ void ec_master_leave_operation_mode(ec_master_t *master
 #ifdef EC_EOE
     ec_eoe_t *eoe;
 #endif
+
+    if (master->debug_level)
+        EC_DBG("OPERATION -> IDLE.\n");
 
     master->mode = EC_MASTER_MODE_IDLE;
 
