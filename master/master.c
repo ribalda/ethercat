@@ -251,14 +251,14 @@ void ec_master_clear_slaves(ec_master_t *master)
             slave < master->slaves + master->slave_count;
             slave++) {
         ec_slave_clear(slave);
-        kfree(slave);
     }
 
-    if (master->slave_count) {
+    if (master->slaves) {
         kfree(master->slaves);
         master->slaves = NULL;
-        master->slave_count = 0;
     }
+
+    master->slave_count = 0;
 }
 
 /*****************************************************************************/
