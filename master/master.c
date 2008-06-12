@@ -67,23 +67,12 @@ void ec_master_eoe_run(unsigned long);
 
 /*****************************************************************************/
 
-/** \cond */
-
-static struct kobj_type ktype_ec_master = {
-    .release = NULL,
-};
-
-/** \endcond */
-
-/*****************************************************************************/
-
 /**
    Master constructor.
    \return 0 in case of success, else < 0
 */
 
 int ec_master_init(ec_master_t *master, /**< EtherCAT master */
-        struct kobject *module_kobj, /**< kobject of the master module */
         unsigned int index, /**< master index */
         const uint8_t *main_mac, /**< MAC address of main device */
         const uint8_t *backup_mac, /**< MAC address of backup device */
@@ -160,13 +149,9 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     init_MUTEX(&master->sdo_sem);
     init_waitqueue_head(&master->sdo_queue);
 
-    // init character device
-    if (ec_cdev_init(&master->cdev, master, device_number))
-        goto out_return;
-
     // init devices
     if (ec_device_init(&master->main_device, master))
-        goto out_cdev;
+        goto out_return;
 
     if (ec_device_init(&master->backup_device, master))
         goto out_clear_main;
@@ -182,46 +167,27 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     // create state machine object
     ec_fsm_master_init(&master->fsm, master, &master->fsm_datagram);
 
-    // init kobject and add it to the hierarchy
-    memset(&master->kobj, 0x00, sizeof(struct kobject));
-    kobject_init(&master->kobj);
-    master->kobj.ktype = &ktype_ec_master;
-    master->kobj.parent = module_kobj;
-    
-    if (kobject_set_name(&master->kobj, "master%u", index)) {
-        EC_ERR("Failed to set master kobject name.\n");
-        kobject_put(&master->kobj);
+    // init character device
+    if (ec_cdev_init(&master->cdev, master, device_number))
         goto out_clear_fsm;
-    }
-    
-    if (kobject_add(&master->kobj)) {
-        EC_ERR("Failed to add master kobject.\n");
-        kobject_put(&master->kobj);
-        goto out_clear_fsm;
-    }
 
     return 0;
 
 out_clear_fsm:
     ec_fsm_master_clear(&master->fsm);
+    ec_datagram_clear(&master->fsm_datagram);
 out_clear_backup:
     ec_device_clear(&master->backup_device);
 out_clear_main:
     ec_device_clear(&master->main_device);
-out_cdev:
-    ec_cdev_clear(&master->cdev);
 out_return:
     return -1;
 }
 
 /*****************************************************************************/
 
-/**
-   Clear and free master.
-   This method is called by the kobject,
-   once there are no more references to it.
+/** Destructor.
 */
-
 void ec_master_clear(
         ec_master_t *master /**< EtherCAT master */
         )
@@ -237,10 +203,6 @@ void ec_master_clear(
     ec_datagram_clear(&master->fsm_datagram);
     ec_device_clear(&master->backup_device);
     ec_device_clear(&master->main_device);
-
-    // destroy self
-    kobject_del(&master->kobj);
-    kobject_put(&master->kobj);
 }
 
 /*****************************************************************************/
@@ -279,7 +241,7 @@ void ec_master_clear_slave_configs(ec_master_t *master)
 
 /*****************************************************************************/
 
-/** Destroy all slaves.
+/** Clear all slaves.
  */
 void ec_master_clear_slaves(ec_master_t *master)
 {
@@ -296,10 +258,8 @@ void ec_master_clear_slaves(ec_master_t *master)
 
 /*****************************************************************************/
 
-/**
-   Destroy all domains.
-*/
-
+/** Clear all domains.
+ */
 void ec_master_clear_domains(ec_master_t *master)
 {
     ec_domain_t *domain, *next;
@@ -313,10 +273,8 @@ void ec_master_clear_domains(ec_master_t *master)
 
 /*****************************************************************************/
 
-/**
-   Internal locking callback.
-*/
-
+/** Internal locking callback.
+ */
 int ec_master_request_cb(void *master /**< callback data */)
 {
     spin_lock(&((ec_master_t *) master)->internal_lock);
@@ -325,10 +283,8 @@ int ec_master_request_cb(void *master /**< callback data */)
 
 /*****************************************************************************/
 
-/**
-   Internal unlocking callback.
-*/
-
+/** Internal unlocking callback.
+ */
 void ec_master_release_cb(void *master /**< callback data */)
 {
     spin_unlock(&((ec_master_t *) master)->internal_lock);
@@ -336,10 +292,8 @@ void ec_master_release_cb(void *master /**< callback data */)
 
 /*****************************************************************************/
 
-/**
- * Starts the master thread.
+/** Starts the master thread.
  */
-
 int ec_master_thread_start(
         ec_master_t *master, /**< EtherCAT master */
         int (*thread_func)(ec_master_t *) /**< thread function to start */
@@ -357,10 +311,8 @@ int ec_master_thread_start(
 
 /*****************************************************************************/
 
-/**
- * Stops the master thread.
+/** Stops the master thread.
  */
-
 void ec_master_thread_stop(ec_master_t *master /**< EtherCAT master */)
 {
     if (!master->thread_id) {
@@ -382,10 +334,8 @@ void ec_master_thread_stop(ec_master_t *master /**< EtherCAT master */)
 
 /*****************************************************************************/
 
-/**
- * Transition function from ORPHANED to IDLE mode.
+/** Transition function from ORPHANED to IDLE mode.
  */
-
 int ec_master_enter_idle_mode(ec_master_t *master /**< EtherCAT master */)
 {
     master->request_cb = ec_master_request_cb;
@@ -403,10 +353,8 @@ int ec_master_enter_idle_mode(ec_master_t *master /**< EtherCAT master */)
 
 /*****************************************************************************/
 
-/**
- * Transition function from IDLE to ORPHANED mode.
+/** Transition function from IDLE to ORPHANED mode.
  */
-
 void ec_master_leave_idle_mode(ec_master_t *master /**< EtherCAT master */)
 {
     master->mode = EC_MASTER_MODE_ORPHANED;
@@ -420,10 +368,8 @@ void ec_master_leave_idle_mode(ec_master_t *master /**< EtherCAT master */)
 
 /*****************************************************************************/
 
-/**
- * Transition function from IDLE to OPERATION mode.
+/** Transition function from IDLE to OPERATION mode.
  */
-
 int ec_master_enter_operation_mode(ec_master_t *master /**< EtherCAT master */)
 {
     ec_slave_t *slave;
@@ -495,10 +441,8 @@ out_allow:
 
 /*****************************************************************************/
 
-/**
- * Transition function from OPERATION to IDLE mode.
+/** Transition function from OPERATION to IDLE mode.
  */
-
 void ec_master_leave_operation_mode(ec_master_t *master
                                     /**< EtherCAT master */)
 {
@@ -545,10 +489,8 @@ void ec_master_leave_operation_mode(ec_master_t *master
 
 /*****************************************************************************/
 
-/**
-   Places a datagram in the datagram queue.
-*/
-
+/** Places a datagram in the datagram queue.
+ */
 void ec_master_queue_datagram(ec_master_t *master, /**< EtherCAT master */
                               ec_datagram_t *datagram /**< datagram */
                               )
@@ -572,11 +514,10 @@ void ec_master_queue_datagram(ec_master_t *master, /**< EtherCAT master */
 
 /*****************************************************************************/
 
-/**
-   Sends the datagrams in the queue.
-   \return 0 in case of success, else < 0
-*/
-
+/** Sends the datagrams in the queue.
+ *
+ * \return 0 in case of success, else < 0
+ */
 void ec_master_send_datagrams(ec_master_t *master /**< EtherCAT master */)
 {
     ec_datagram_t *datagram, *next;
@@ -686,12 +627,12 @@ void ec_master_send_datagrams(ec_master_t *master /**< EtherCAT master */)
 
 /*****************************************************************************/
 
-/**
-   Processes a received frame.
-   This function is called by the network driver for every received frame.
-   \return 0 in case of success, else < 0
-*/
-
+/** Processes a received frame.
+ *
+ * This function is called by the network driver for every received frame.
+ * 
+ * \return 0 in case of success, else < 0
+ */
 void ec_master_receive_datagrams(ec_master_t *master, /**< EtherCAT master */
                                  const uint8_t *frame_data, /**< frame data */
                                  size_t size /**< size of the received data */
@@ -786,12 +727,11 @@ void ec_master_receive_datagrams(ec_master_t *master, /**< EtherCAT master */
 
 /*****************************************************************************/
 
-/**
-   Output statistics in cyclic mode.
-   This function outputs statistical data on demand, but not more often than
-   necessary. The output happens at most once a second.
-*/
-
+/** Output statistics in cyclic mode.
+ *
+ * This function outputs statistical data on demand, but not more often than
+ * necessary. The output happens at most once a second.
+ */
 void ec_master_output_stats(ec_master_t *master /**< EtherCAT master */)
 {
     if (unlikely(jiffies - master->stats.output_jiffies >= HZ)) {
@@ -817,10 +757,8 @@ void ec_master_output_stats(ec_master_t *master /**< EtherCAT master */)
 
 /*****************************************************************************/
 
-/**
- * Master kernel thread function for IDLE mode.
+/** Master kernel thread function for IDLE mode.
  */
-
 static int ec_master_idle_thread(ec_master_t *master)
 {
     cycles_t cycles_start, cycles_end;
@@ -875,10 +813,8 @@ schedule:
 
 /*****************************************************************************/
 
-/**
- * Master kernel thread function for IDLE mode.
+/** Master kernel thread function for IDLE mode.
  */
-
 static int ec_master_operation_thread(ec_master_t *master)
 {
     cycles_t cycles_start, cycles_end;
@@ -929,10 +865,8 @@ schedule:
 /*****************************************************************************/
 
 #ifdef EC_EOE
-/**
-   Starts Ethernet-over-EtherCAT processing on demand.
-*/
-
+/** Starts Ethernet-over-EtherCAT processing on demand.
+ */
 void ec_master_eoe_start(ec_master_t *master /**< EtherCAT master */)
 {
     if (master->eoe_running) {
@@ -958,10 +892,8 @@ void ec_master_eoe_start(ec_master_t *master /**< EtherCAT master */)
 
 /*****************************************************************************/
 
-/**
-   Stops the Ethernet-over-EtherCAT processing.
-*/
-
+/** Stops the Ethernet-over-EtherCAT processing.
+ */
 void ec_master_eoe_stop(ec_master_t *master /**< EtherCAT master */)
 {
     if (!master->eoe_running) return;
@@ -974,10 +906,8 @@ void ec_master_eoe_stop(ec_master_t *master /**< EtherCAT master */)
 
 /*****************************************************************************/
 
-/**
-   Does the Ethernet-over-EtherCAT processing.
-*/
-
+/** Does the Ethernet-over-EtherCAT processing.
+ */
 void ec_master_eoe_run(unsigned long data /**< master pointer */)
 {
     ec_master_t *master = (ec_master_t *) data;

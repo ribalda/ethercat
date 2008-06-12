@@ -42,7 +42,6 @@
 #define __EC_MASTER_H__
 
 #include <linux/list.h>
-#include <linux/sysfs.h>
 #include <linux/timer.h>
 #include <linux/wait.h>
 #include <asm/semaphore.h>
@@ -81,7 +80,6 @@ typedef struct {
  * Manages slaves, domains and IO.
  */
 struct ec_master {
-    struct kobject kobj; /**< kobject */
     unsigned int index; /**< master index */
     unsigned int reserved; /**< non-zero, if the master is reserved for RT */
 
@@ -168,8 +166,8 @@ struct ec_master {
 /*****************************************************************************/
 
 // master creation/deletion
-int ec_master_init(ec_master_t *, struct kobject *, unsigned int,
-        const uint8_t *, const uint8_t *, dev_t);
+int ec_master_init(ec_master_t *, unsigned int, const uint8_t *,
+        const uint8_t *, dev_t);
 void ec_master_clear(ec_master_t *);
 
 // mode transitions

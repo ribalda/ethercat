@@ -38,9 +38,6 @@
 /*****************************************************************************/
 
 #include <linux/module.h>
-#include <linux/kernel.h>
-#include <linux/init.h>
-#include <linux/fs.h>
 
 #include "globals.h"
 #include "master.h"
@@ -58,8 +55,6 @@ void __exit ec_cleanup_module(void);
 static int ec_mac_parse(uint8_t *, const char *, int);
 
 /*****************************************************************************/
-
-struct kobject kobj; /**< kobject for master module. */
 
 static char *main_devices[MAX_MASTERS]; /**< Main devices parameter. */
 static char *backup_devices[MAX_MASTERS]; /**< Backup devices parameter. */
@@ -106,26 +101,12 @@ int __init ec_init_module(void)
 
     init_MUTEX(&master_sem);
 
-    // init kobject and add it to the hierarchy
-    memset(&kobj, 0x00, sizeof(struct kobject));
-    kobject_init(&kobj); // no ktype
-    
-    if (kobject_set_name(&kobj, "ethercat")) {
-        EC_ERR("Failed to set module kobject name.\n");
-        ret = -ENOMEM;
-        goto out_put;
-    }
-    
-    if (kobject_add(&kobj)) {
-        EC_ERR("Failed to add module kobject.\n");
-        ret = -EEXIST;
-        goto out_put;
-    }
-    
-    if (alloc_chrdev_region(&device_number, 0, master_count, "EtherCAT")) {
-        EC_ERR("Failed to obtain device number(s)!\n");
-        ret = -EBUSY;
-        goto out_del;
+    if (master_count) {
+        if (alloc_chrdev_region(&device_number, 0, master_count, "EtherCAT")) {
+            EC_ERR("Failed to obtain device number(s)!\n");
+            ret = -EBUSY;
+            goto out_return;
+        }
     }
 
     // zero MAC addresses
@@ -154,9 +135,9 @@ int __init ec_init_module(void)
     }
     
     for (i = 0; i < master_count; i++) {
-        if (ec_master_init(&masters[i], &kobj, i, macs[i][0], macs[i][1],
-                device_number)) {
-            ret = -EIO;
+        if (ec_master_init(&masters[i], i, macs[i][0], macs[i][1],
+                    device_number)) {
+            ret = -ENOMEM;
             goto out_free_masters;
         }
     }
@@ -166,14 +147,12 @@ int __init ec_init_module(void)
     return ret;
 
 out_free_masters:
-    for (i--; i >= 0; i--) ec_master_clear(&masters[i]);
+    for (i--; i >= 0; i--)
+        ec_master_clear(&masters[i]);
     kfree(masters);
 out_cdev:
     unregister_chrdev_region(device_number, master_count);
-out_del:
-    kobject_del(&kobj);
-out_put:
-    kobject_put(&kobj);
+out_return:
     return ret;
 }
 
@@ -190,14 +169,11 @@ void __exit ec_cleanup_module(void)
     for (i = 0; i < master_count; i++) {
         ec_master_clear(&masters[i]);
     }
-    if (master_count)
+    if (master_count) {
         kfree(masters);
-
-    unregister_chrdev_region(device_number, master_count);
+        unregister_chrdev_region(device_number, master_count);
+    }
     
-    kobject_del(&kobj);
-    kobject_put(&kobj);
-
     EC_INFO("Master module cleaned up.\n");
 }
 
@@ -594,7 +570,7 @@ void ecrt_release_master(ec_master_t *master)
 {
     EC_INFO("Releasing master %u...\n", master->index);
 
-    if (master->mode != EC_MASTER_MODE_OPERATION) {
+    if (!master->reserved) {
         EC_WARN("Master %u was was not requested!\n", master->index);
         return;
     }
@@ -625,6 +601,7 @@ EXPORT_SYMBOL(ecdev_offer);
 EXPORT_SYMBOL(ecdev_withdraw);
 EXPORT_SYMBOL(ecdev_open);
 EXPORT_SYMBOL(ecdev_close);
+
 EXPORT_SYMBOL(ecrt_request_master);
 EXPORT_SYMBOL(ecrt_release_master);
 EXPORT_SYMBOL(ecrt_version_magic);
