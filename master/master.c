@@ -58,7 +58,7 @@
 /*****************************************************************************/
 
 void ec_master_destroy_slave_configs(ec_master_t *);
-void ec_master_destroy_domains(ec_master_t *);
+void ec_master_clear_domains(ec_master_t *);
 static int ec_master_idle_thread(ec_master_t *);
 static int ec_master_operation_thread(ec_master_t *);
 #ifdef EC_EOE
@@ -231,7 +231,7 @@ void ec_master_clear(
 #endif
     ec_master_destroy_slave_configs(master);
     ec_master_clear_slaves(master);
-    ec_master_destroy_domains(master);
+    ec_master_clear_domains(master);
     ec_fsm_master_clear(&master->fsm);
     ec_datagram_clear(&master->fsm_datagram);
     ec_device_clear(&master->backup_device);
@@ -299,13 +299,14 @@ void ec_master_clear_slaves(ec_master_t *master)
    Destroy all domains.
 */
 
-void ec_master_destroy_domains(ec_master_t *master)
+void ec_master_clear_domains(ec_master_t *master)
 {
     ec_domain_t *domain, *next;
 
     list_for_each_entry_safe(domain, next, &master->domains, list) {
         list_del(&domain->list);
-        ec_domain_destroy(domain);
+        ec_domain_clear(domain);
+        kfree(domain);
     }
 }
 
@@ -517,7 +518,7 @@ void ec_master_leave_operation_mode(ec_master_t *master
     master->cb_data = master;
     
     ec_master_destroy_slave_configs(master);
-    ec_master_destroy_domains(master);
+    ec_master_clear_domains(master);
 
     // set states for all slaves
     list_for_each_entry(slave, &master->slaves, list) {
@@ -1202,17 +1203,14 @@ ec_domain_t *ecrt_master_create_domain(ec_master_t *master /**< master */)
         return NULL;
     }
 
-    if (list_empty(&master->domains)) index = 0;
-    else {
+    if (list_empty(&master->domains)) {
+        index = 0;
+    } else {
         last_domain = list_entry(master->domains.prev, ec_domain_t, list);
         index = last_domain->index + 1;
     }
 
-    if (ec_domain_init(domain, master, index)) {
-        EC_ERR("Failed to init domain.\n");
-        return NULL;
-    }
-
+    ec_domain_init(domain, master, index);
     list_add_tail(&domain->list, &master->domains);
 
     return domain;

@@ -42,7 +42,6 @@
 #define __EC_DOMAIN_H__
 
 #include <linux/list.h>
-#include <linux/kobject.h>
 
 #include "globals.h"
 #include "datagram.h"
@@ -51,15 +50,13 @@
 
 /*****************************************************************************/
 
-/**
-   EtherCAT domain.
-   Handles the process data and the therefore needed datagrams of a certain
-   group of slaves.
-*/
-
+/** EtherCAT domain.
+ *
+ * Handles the process data and the therefore needed datagrams of a certain
+ * group of slaves.
+ */
 struct ec_domain
 {
-    struct kobject kobj; /**< kobject. */
     struct list_head list; /**< List item. */
     ec_master_t *master; /**< EtherCAT master owning the domain. */
     unsigned int index; /**< Index (just a number). */
@@ -81,8 +78,8 @@ struct ec_domain
 
 /*****************************************************************************/
 
-int ec_domain_init(ec_domain_t *, ec_master_t *, unsigned int);
-void ec_domain_destroy(ec_domain_t *);
+void ec_domain_init(ec_domain_t *, ec_master_t *, unsigned int);
+void ec_domain_clear(ec_domain_t *);
 
 void ec_domain_add_fmmu_config(ec_domain_t *, ec_fmmu_config_t *);
 int ec_domain_finish(ec_domain_t *, uint32_t);

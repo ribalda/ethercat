@@ -48,41 +48,13 @@
 
 /*****************************************************************************/
 
-void ec_domain_clear(struct kobject *);
 void ec_domain_clear_data(ec_domain_t *);
-ssize_t ec_show_domain_attribute(struct kobject *, struct attribute *, char *);
-
-/*****************************************************************************/
-
-/** \cond */
-
-EC_SYSFS_READ_ATTR(image_size);
-
-static struct attribute *def_attrs[] = {
-    &attr_image_size,
-    NULL,
-};
-
-static struct sysfs_ops sysfs_ops = {
-    .show = &ec_show_domain_attribute,
-    .store = NULL
-};
-
-static struct kobj_type ktype_ec_domain = {
-    .release = ec_domain_clear,
-    .sysfs_ops = &sysfs_ops,
-    .default_attrs = def_attrs
-};
-
-/** \endcond */
 
 /*****************************************************************************/
 
 /** Domain constructor.
- *
- * \return 0 in case of success, else < 0
  */
-int ec_domain_init(
+void ec_domain_init(
         ec_domain_t *domain, /**< EtherCAT domain. */
         ec_master_t *master, /**< Parent master. */
         unsigned int index /**< Index. */
@@ -100,69 +72,25 @@ int ec_domain_init(
     domain->expected_working_counter = 0x0000;
     domain->working_counter_changes = 0;
     domain->notify_jiffies = 0;
-
-    // init kobject and add it to the hierarchy
-    memset(&domain->kobj, 0x00, sizeof(struct kobject));
-    kobject_init(&domain->kobj);
-    domain->kobj.ktype = &ktype_ec_domain;
-    domain->kobj.parent = &master->kobj;
-    if (kobject_set_name(&domain->kobj, "domain%u", index)) {
-        EC_ERR("Failed to set kobj name.\n");
-        kobject_put(&domain->kobj);
-        return -1;
-    }
-    if (kobject_add(&domain->kobj)) {
-        EC_ERR("Failed to add domain kobject.\n");
-        kobject_put(&domain->kobj);
-        return -1;
-    }
-
-    return 0;
 }
 
 /*****************************************************************************/
 
 /** Domain destructor.
- *
- * Clears and frees a domain object.
  */
-void ec_domain_destroy(ec_domain_t *domain /**< EtherCAT domain */)
+void ec_domain_clear(ec_domain_t *domain /**< EtherCAT domain */)
 {
-    ec_datagram_t *datagram;
-
-    // dequeue datagrams
-    list_for_each_entry(datagram, &domain->datagrams, list) {
-        if (!list_empty(&datagram->queue)) // datagram queued?
-            list_del_init(&datagram->queue);
-    }
-
-    // destroy self
-    kobject_del(&domain->kobj);
-    kobject_put(&domain->kobj);
-}
-
-/*****************************************************************************/
-
-/** Clear and free domain.
- *
- * This method is called by the kobject, once there are no more references
- * to it.
- */
-void ec_domain_clear(struct kobject *kobj /**< kobject of the domain */)
-{
-    ec_domain_t *domain;
     ec_datagram_t *datagram, *next;
 
-    domain = container_of(kobj, ec_domain_t, kobj);
-
+    // dequeue and free datagrams
     list_for_each_entry_safe(datagram, next, &domain->datagrams, list) {
+        if (!list_empty(&datagram->queue)) // datagram queued?
+            list_del(&datagram->queue);
         ec_datagram_clear(datagram);
         kfree(datagram);
     }
 
     ec_domain_clear_data(domain);
-
-    kfree(domain);
 }
 
 /*****************************************************************************/
@@ -323,7 +251,8 @@ int ec_domain_finish(
         datagram_size += fmmu->data_size;
     }
 
-    // allocate last datagram, if data are left
+    // Allocate last datagram, if data are left (this is also the case if the
+    // process data fit into a single datagram)
     if (datagram_size) {
         if (ec_domain_add_datagram(domain,
                     domain->logical_base_address + datagram_offset,
@@ -343,27 +272,6 @@ int ec_domain_finish(
                 datagram->data_size, ec_datagram_type_string(datagram));
     }
     
-    return 0;
-}
-
-/*****************************************************************************/
-
-/**
-   Formats attribute data for SysFS reading.
-   \return number of bytes to read
-*/
-
-ssize_t ec_show_domain_attribute(struct kobject *kobj, /**< kobject */
-                                 struct attribute *attr, /**< attribute */
-                                 char *buffer /**< memory to store data in */
-                                 )
-{
-    ec_domain_t *domain = container_of(kobj, ec_domain_t, kobj);
-
-    if (attr == &attr_image_size) {
-        return sprintf(buffer, "%u\n", domain->data_size);
-    }
-
     return 0;
 }
 
@@ -477,9 +385,10 @@ void ecrt_domain_process(ec_domain_t *domain)
                     domain->index, domain->working_counter,
                     domain->expected_working_counter);
         } else {
-            EC_INFO("Domain %u: %u working counter changes. Currently %u/%u.\n",
-                    domain->index, domain->working_counter_changes,
-                    domain->working_counter, domain->expected_working_counter);
+            EC_INFO("Domain %u: %u working counter changes. "
+                    "Currently %u/%u.\n", domain->index,
+                    domain->working_counter_changes, domain->working_counter,
+                    domain->expected_working_counter);
         }
         domain->working_counter_changes = 0;
     }
