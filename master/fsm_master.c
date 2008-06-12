@@ -183,7 +183,7 @@ void ec_fsm_master_state_broadcast(
         )
 {
     ec_datagram_t *datagram = fsm->datagram;
-    unsigned int i;
+    unsigned int i, size;
     ec_slave_t *slave;
     ec_master_t *master = fsm->master;
 
@@ -241,10 +241,10 @@ void ec_fsm_master_state_broadcast(
                 return;
             }
 
-            if (!(master->slaves = (ec_slave_t *)
-                        kmalloc(sizeof(ec_slave_t) * master->slave_count,
-                            GFP_KERNEL))) {
-                EC_ERR("Failed to allocate slave memory!\n");
+            size = sizeof(ec_slave_t) * master->slave_count;
+            if (!(master->slaves = (ec_slave_t *) kmalloc(size, GFP_KERNEL))) {
+                EC_ERR("Failed to allocate %u bytes of slave memory!\n",
+                        size);
                 master->slave_count = 0; // FIXME avoid scanning!
                 master->scan_busy = 0;
                 wake_up_interruptible(&master->scan_queue);
