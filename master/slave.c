@@ -54,37 +54,7 @@ extern const ec_code_msg_t al_status_messages[];
 
 /*****************************************************************************/
 
-void ec_slave_clear(struct kobject *);
-void ec_slave_sdos_clear(struct kobject *);
-ssize_t ec_show_slave_attribute(struct kobject *, struct attribute *, char *);
 char *ec_slave_sii_string(ec_slave_t *, unsigned int);
-
-/*****************************************************************************/
-
-/** \cond */
-
-EC_SYSFS_READ_ATTR(info);
-
-static struct attribute *def_attrs[] = {
-    &attr_info,
-    NULL,
-};
-
-static struct sysfs_ops sysfs_ops = {
-    .show = ec_show_slave_attribute,
-};
-
-static struct kobj_type ktype_ec_slave = {
-    .release = ec_slave_clear,
-    .sysfs_ops = &sysfs_ops,
-    .default_attrs = def_attrs
-};
-
-static struct kobj_type ktype_ec_slave_sdos = {
-    .release = ec_slave_sdos_clear
-};
-
-/** \endcond */
 
 /*****************************************************************************/
 
@@ -93,11 +63,12 @@ static struct kobj_type ktype_ec_slave_sdos = {
    \return 0 in case of success, else < 0
 */
 
-int ec_slave_init(ec_slave_t *slave, /**< EtherCAT slave */
-                  ec_master_t *master, /**< EtherCAT master */
-                  uint16_t ring_position, /**< ring position */
-                  uint16_t station_address /**< station address to configure */
-                  )
+void ec_slave_init(
+        ec_slave_t *slave, /**< EtherCAT slave */
+        ec_master_t *master, /**< EtherCAT master */
+        uint16_t ring_position, /**< ring position */
+        uint16_t station_address /**< station address to configure */
+        )
 {
     unsigned int i;
 
@@ -159,43 +130,6 @@ int ec_slave_init(ec_slave_t *slave, /**< EtherCAT slave */
         slave->dl_signal[i] = 0;
         slave->sii.physical_layer[i] = 0xFF;
     }
-
-    // init kobject and add it to the hierarchy
-    memset(&slave->kobj, 0x00, sizeof(struct kobject));
-    kobject_init(&slave->kobj);
-    slave->kobj.ktype = &ktype_ec_slave;
-    slave->kobj.parent = &master->kobj;
-    if (kobject_set_name(&slave->kobj, "slave%03i", slave->ring_position)) {
-        EC_ERR("Failed to set kobject name.\n");
-        goto out_slave_put;
-    }
-    if (kobject_add(&slave->kobj)) {
-        EC_ERR("Failed to add slave's kobject.\n");
-        goto out_slave_put;
-    }
-
-    // init Sdo kobject and add it to the hierarchy
-    memset(&slave->sdo_kobj, 0x00, sizeof(struct kobject));
-    kobject_init(&slave->sdo_kobj);
-    slave->sdo_kobj.ktype = &ktype_ec_slave_sdos;
-    slave->sdo_kobj.parent = &slave->kobj;
-    if (kobject_set_name(&slave->sdo_kobj, "sdos")) {
-        EC_ERR("Failed to set kobject name.\n");
-        goto out_sdo_put;
-    }
-    if (kobject_add(&slave->sdo_kobj)) {
-        EC_ERR("Failed to add Sdos kobject.\n");
-        goto out_sdo_put;
-    }
-
-    return 0;
-
- out_sdo_put:
-    kobject_put(&slave->sdo_kobj);
-    kobject_del(&slave->kobj);
- out_slave_put:
-    kobject_put(&slave->kobj);
-    return -1;
 }
 
 /*****************************************************************************/
@@ -205,9 +139,11 @@ int ec_slave_init(ec_slave_t *slave, /**< EtherCAT slave */
    Clears and frees a slave object.
 */
 
-void ec_slave_destroy(ec_slave_t *slave /**< EtherCAT slave */)
+void ec_slave_clear(ec_slave_t *slave /**< EtherCAT slave */)
 {
     ec_sdo_t *sdo, *next_sdo;
+    unsigned int i;
+    ec_pdo_t *pdo, *next_pdo;
 
     if (slave->config)
         ec_slave_config_detach(slave->config);
@@ -215,33 +151,9 @@ void ec_slave_destroy(ec_slave_t *slave /**< EtherCAT slave */)
     // free all Sdos
     list_for_each_entry_safe(sdo, next_sdo, &slave->sdo_dictionary, list) {
         list_del(&sdo->list);
-        ec_sdo_destroy(sdo);
+        ec_sdo_clear(sdo);
+        kfree(sdo);
     }
-
-    // free Sdo kobject
-    kobject_del(&slave->sdo_kobj);
-    kobject_put(&slave->sdo_kobj);
-
-    // destroy self
-    kobject_del(&slave->kobj);
-    kobject_put(&slave->kobj);
-}
-
-/*****************************************************************************/
-
-/**
-   Clear and free slave.
-   This method is called by the kobject,
-   once there are no more references to it.
-*/
-
-void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
-{
-    ec_slave_t *slave;
-    ec_pdo_t *pdo, *next_pdo;
-    unsigned int i;
-
-    slave = container_of(kobj, ec_slave_t, kobj);
 
     // free all strings
     if (slave->sii.strings) {
@@ -262,18 +174,6 @@ void ec_slave_clear(struct kobject *kobj /**< kobject of the slave */)
 
     if (slave->sii_words)
         kfree(slave->sii_words);
-
-    kfree(slave);
-}
-
-/*****************************************************************************/
-
-/**
- * Sdo kobject clear method.
- */
-
-void ec_slave_sdos_clear(struct kobject *kobj /**< kobject for Sdos */)
-{
 }
 
 /*****************************************************************************/
@@ -607,239 +507,6 @@ char *ec_slave_sii_string(
 
 /*****************************************************************************/
 
-/** Outputs all information about a certain slave.
- */
-ssize_t ec_slave_info(const ec_slave_t *slave, /**< EtherCAT slave */
-        char *buffer /**< Output buffer */
-        )
-{
-    const ec_sync_t *sync;
-    const ec_pdo_t *pdo;
-    const ec_pdo_entry_t *pdo_entry;
-    int first, i;
-    char *large_buffer, *buf;
-    unsigned int size;
-
-    if (!(large_buffer = (char *) kmalloc(PAGE_SIZE * 2, GFP_KERNEL))) {
-        return -ENOMEM;
-    }
-
-    buf = large_buffer;
-
-    buf += sprintf(buf, "Ring position: %u\n",
-                   slave->ring_position);
-    buf += sprintf(buf, "State: ");
-    buf += ec_state_string(slave->current_state, buf);
-    buf += sprintf(buf, " (");
-    buf += ec_state_string(slave->requested_state, buf);
-    buf += sprintf(buf, ")\n");
-    buf += sprintf(buf, "Flags: %s\n\n", slave->error_flag ? "ERROR" : "ok");
-
-    buf += sprintf(buf, "Data link status:\n");
-    for (i = 0; i < 4; i++) {
-        buf += sprintf(buf, "  Port %u: Phy %u (",
-                i, slave->sii.physical_layer[i]);
-        switch (slave->sii.physical_layer[i]) {
-            case 0x00:
-                buf += sprintf(buf, "EBUS");
-                break;
-            case 0x01:
-                buf += sprintf(buf, "100BASE-TX");
-                break;
-            case 0x02:
-                buf += sprintf(buf, "100BASE-FX");
-                break;
-            default:
-                buf += sprintf(buf, "unknown");
-        }
-        buf += sprintf(buf, "), Link %s, Loop %s, %s\n",
-                       slave->dl_link[i] ? "up" : "down",
-                       slave->dl_loop[i] ? "closed" : "open",
-                       slave->dl_signal[i] ? "Signal detected" : "No signal");
-    }
-    buf += sprintf(buf, "\n");
-
-    if (slave->sii.alias)
-        buf += sprintf(buf, "Configured station alias:"
-                       " 0x%04X (%u)\n\n", slave->sii.alias, slave->sii.alias);
-
-    buf += sprintf(buf, "Identity:\n");
-    buf += sprintf(buf, "  Vendor ID: 0x%08X (%u)\n",
-                   slave->sii.vendor_id, slave->sii.vendor_id);
-    buf += sprintf(buf, "  Product code: 0x%08X (%u)\n",
-                   slave->sii.product_code, slave->sii.product_code);
-    buf += sprintf(buf, "  Revision number: 0x%08X (%u)\n",
-                   slave->sii.revision_number, slave->sii.revision_number);
-    buf += sprintf(buf, "  Serial number: 0x%08X (%u)\n\n",
-                   slave->sii.serial_number, slave->sii.serial_number);
-
-    if (slave->sii.mailbox_protocols) {
-        buf += sprintf(buf, "Mailboxes:\n");
-        buf += sprintf(buf, "  RX: 0x%04X/%u, TX: 0x%04X/%u\n",
-                slave->sii.rx_mailbox_offset, slave->sii.rx_mailbox_size,
-                slave->sii.tx_mailbox_offset, slave->sii.tx_mailbox_size);
-        buf += sprintf(buf, "  Supported protocols: ");
-
-        first = 1;
-        if (slave->sii.mailbox_protocols & EC_MBOX_AOE) {
-            buf += sprintf(buf, "AoE");
-            first = 0;
-        }
-        if (slave->sii.mailbox_protocols & EC_MBOX_EOE) {
-            if (!first) buf += sprintf(buf, ", ");
-            buf += sprintf(buf, "EoE");
-            first = 0;
-        }
-        if (slave->sii.mailbox_protocols & EC_MBOX_COE) {
-            if (!first) buf += sprintf(buf, ", ");
-            buf += sprintf(buf, "CoE");
-            first = 0;
-        }
-        if (slave->sii.mailbox_protocols & EC_MBOX_FOE) {
-            if (!first) buf += sprintf(buf, ", ");
-            buf += sprintf(buf, "FoE");
-            first = 0;
-        }
-        if (slave->sii.mailbox_protocols & EC_MBOX_SOE) {
-            if (!first) buf += sprintf(buf, ", ");
-            buf += sprintf(buf, "SoE");
-            first = 0;
-        }
-        if (slave->sii.mailbox_protocols & EC_MBOX_VOE) {
-            if (!first) buf += sprintf(buf, ", ");
-            buf += sprintf(buf, "VoE");
-        }
-        buf += sprintf(buf, "\n\n");
-    }
-
-    if (slave->sii.has_general) {
-        buf += sprintf(buf, "General:\n");
-
-        if (slave->sii.group)
-            buf += sprintf(buf, "  Group: %s\n", slave->sii.group);
-        if (slave->sii.image)
-            buf += sprintf(buf, "  Image: %s\n", slave->sii.image);
-        if (slave->sii.order)
-            buf += sprintf(buf, "  Order number: %s\n",
-                    slave->sii.order);
-        if (slave->sii.name)
-            buf += sprintf(buf, "  Name: %s\n", slave->sii.name);
-        if (slave->sii.mailbox_protocols & EC_MBOX_COE) {
-            buf += sprintf(buf, "  CoE details:\n");
-            buf += sprintf(buf, "    Enable Sdo: %s\n",
-                    slave->sii.coe_details.enable_sdo ? "yes" : "no");
-            buf += sprintf(buf, "    Enable Sdo Info: %s\n",
-                    slave->sii.coe_details.enable_sdo_info ? "yes" : "no");
-            buf += sprintf(buf, "    Enable Pdo Assign: %s\n",
-                    slave->sii.coe_details.enable_pdo_assign ? "yes" : "no");
-            buf += sprintf(buf, "    Enable Pdo Configuration: %s\n",
-                    slave->sii.coe_details.enable_pdo_configuration ?
-                    "yes" : "no");
-            buf += sprintf(buf, "    Enable Upload at startup: %s\n",
-                    slave->sii.coe_details.enable_upload_at_startup ?
-                    "yes" : "no");
-            buf += sprintf(buf, "    Enable Sdo complete access: %s\n",
-                    slave->sii.coe_details.enable_sdo_complete_access
-                    ? "yes" : "no");
-        }
-
-        buf += sprintf(buf, "  Flags:\n");
-        buf += sprintf(buf, "    Enable SafeOp: %s\n",
-                slave->sii.general_flags.enable_safeop ? "yes" : "no");
-        buf += sprintf(buf, "    Enable notLRW: %s\n",
-                slave->sii.general_flags.enable_not_lrw ? "yes" : "no");
-        buf += sprintf(buf, "  Current consumption: %i mA\n\n",
-                slave->sii.current_on_ebus);
-    }
-
-    if (slave->sii.sync_count) {
-        buf += sprintf(buf, "Sync managers / assigned Pdos:\n");
-
-        for (i = 0; i < slave->sii.sync_count; i++) {
-            sync = &slave->sii.syncs[i];
-            buf += sprintf(buf,
-                    "  SM%u: addr 0x%04X, size %u, control 0x%02X, %s\n",
-                    sync->index, sync->physical_start_address,
-                    sync->length, sync->control_register,
-                    sync->enable ? "enable" : "disable");
-
-            if (list_empty(&sync->pdos.list)) {
-                buf += sprintf(buf, "    No Pdos assigned.\n");
-            } else if (sync->assign_source != EC_ASSIGN_NONE) {
-                buf += sprintf(buf, "    Pdo assignment from ");
-                switch (sync->assign_source) {
-                    case EC_ASSIGN_SII:
-                        buf += sprintf(buf, "SII");
-                        break;
-                    case EC_ASSIGN_COE:
-                        buf += sprintf(buf, "CoE");
-                        break;
-                    case EC_ASSIGN_CUSTOM:
-                        buf += sprintf(buf, "application");
-                        break;
-                    default:
-                        buf += sprintf(buf, "?");
-                        break;
-                }
-                buf += sprintf(buf, ".\n");
-            }
-
-            list_for_each_entry(pdo, &sync->pdos.list, list) {
-                buf += sprintf(buf, "    %s 0x%04X \"%s\"\n",
-                        pdo->dir == EC_DIR_OUTPUT ? "RxPdo" : "TxPdo",
-                        pdo->index, pdo->name ? pdo->name : "???");
-
-                list_for_each_entry(pdo_entry, &pdo->entries, list) {
-                    buf += sprintf(buf,
-                            "      0x%04X:%02X, %u bit, \"%s\"\n",
-                            pdo_entry->index, pdo_entry->subindex,
-                            pdo_entry->bit_length,
-                            pdo_entry->name ? pdo_entry->name : "???");
-                }
-            }
-        }
-        buf += sprintf(buf, "\n");
-    }
-
-    // type-cast to avoid warnings on some compilers
-    if (!list_empty((struct list_head *) &slave->sii.pdos)) {
-        buf += sprintf(buf, "Available Pdos from SII:\n");
-
-        list_for_each_entry(pdo, &slave->sii.pdos, list) {
-            buf += sprintf(buf, "  %s 0x%04X \"%s\"",
-                    pdo->dir == EC_DIR_OUTPUT ? "RxPdo" : "TxPdo",
-                    pdo->index, pdo->name ? pdo->name : "???");
-            if (pdo->sync_index >= 0)
-                buf += sprintf(buf, ", default assignment: SM%u.\n",
-                        pdo->sync_index);
-            else
-                buf += sprintf(buf, ", no default assignment.\n");
-
-            list_for_each_entry(pdo_entry, &pdo->entries, list) {
-                buf += sprintf(buf, "    0x%04X:%02X, %u bit, \"%s\"\n",
-                        pdo_entry->index, pdo_entry->subindex,
-                        pdo_entry->bit_length,
-                        pdo_entry->name ? pdo_entry->name : "???");
-            }
-        }
-        buf += sprintf(buf, "\n");
-    }
-
-    size = buf - large_buffer;
-    if (size >= PAGE_SIZE) {
-        const char trunc[] = "\n---TRUNCATED---\n";
-        unsigned int len = strlen(trunc);
-        memcpy(large_buffer + PAGE_SIZE - len, trunc, len);
-    }
-
-    size = min(size, (unsigned int) PAGE_SIZE);
-    memcpy(buffer, large_buffer, size);
-    kfree(large_buffer);
-    return size;
-}
-
-/*****************************************************************************/
-
 /**
  * Writes SII contents to a slave.
  * \return Zero on success, otherwise error code.
@@ -894,27 +561,6 @@ int ec_slave_write_sii(
     } else {
         return -EIO;
     }
-}
-
-/*****************************************************************************/
-
-/**
-   Formats attribute data for SysFS read access.
-   \return number of bytes to read
-*/
-
-ssize_t ec_show_slave_attribute(struct kobject *kobj, /**< slave's kobject */
-                                struct attribute *attr, /**< attribute */
-                                char *buffer /**< memory to store data */
-                                )
-{
-    ec_slave_t *slave = container_of(kobj, ec_slave_t, kobj);
-
-    if (attr == &attr_info) {
-        return ec_slave_info(slave, buffer);
-    }
-
-    return 0;
 }
 
 /*****************************************************************************/

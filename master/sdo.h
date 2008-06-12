@@ -42,7 +42,6 @@
 #define __EC_SDO_H__
 
 #include <linux/list.h>
-#include <linux/kobject.h>
 
 #include "globals.h"
 #include "sdo_entry.h"
@@ -52,7 +51,6 @@
 /** CANopen Sdo.
  */
 struct ec_sdo {
-    struct kobject kobj; /**< kobject. */
     struct list_head list; /**< List item. */
     ec_slave_t *slave; /**< Parent slave. */
     uint16_t index; /**< Sdo index. */
@@ -64,8 +62,8 @@ struct ec_sdo {
 
 /*****************************************************************************/
 
-int ec_sdo_init(ec_sdo_t *, uint16_t, ec_slave_t *);
-void ec_sdo_destroy(ec_sdo_t *);
+void ec_sdo_init(ec_sdo_t *, ec_slave_t *, uint16_t);
+void ec_sdo_clear(ec_sdo_t *);
 
 ec_sdo_entry_t *ec_sdo_get_entry(ec_sdo_t *, uint8_t);
 const ec_sdo_entry_t *ec_sdo_get_entry_const(const ec_sdo_t *, uint8_t);

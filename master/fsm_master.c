@@ -228,7 +228,7 @@ void ec_fsm_master_state_broadcast(
             ec_master_eoe_stop(master);
             ec_master_clear_eoe_handlers(master);
 #endif
-            ec_master_destroy_slaves(master);
+            ec_master_clear_slaves(master);
             master->configs_attached = 0;
 
             master->slave_count = datagram->working_counter;
@@ -246,21 +246,14 @@ void ec_fsm_master_state_broadcast(
                 if (!(slave = (ec_slave_t *) kmalloc(sizeof(ec_slave_t),
                                 GFP_ATOMIC))) {
                     EC_ERR("Failed to allocate slave %u!\n", i);
-                    ec_master_destroy_slaves(master);
+                    ec_master_clear_slaves(master);
                     master->scan_busy = 0;
                     wake_up_interruptible(&master->scan_queue);
                     fsm->state = ec_fsm_master_state_error;
                     return;
                 }
 
-                if (ec_slave_init(slave, master, i, i + 1)) {
-                    // freeing of "slave" already done
-                    ec_master_destroy_slaves(master);
-                    master->scan_busy = 0;
-                    wake_up_interruptible(&master->scan_queue);
-                    fsm->state = ec_fsm_master_state_error;
-                    return;
-                }
+                ec_slave_init(slave, master, i, i + 1);
 
                 // do not force reconfiguration in operation mode to avoid
                 // unnecesssary process data interruptions

@@ -38,7 +38,7 @@
 
 /*****************************************************************************/
 
-#include <linux/module.h>
+#include <linux/slab.h>
 
 #include "master.h"
 
@@ -46,43 +46,12 @@
 
 /*****************************************************************************/
 
-ssize_t ec_show_sdo_attribute(struct kobject *, struct attribute *, char *);
-void ec_sdo_clear(struct kobject *);
-
-/*****************************************************************************/
-
-/** \cond */
-
-EC_SYSFS_READ_ATTR(info);
-
-static struct attribute *sdo_def_attrs[] = {
-    &attr_info,
-    NULL,
-};
-
-static struct sysfs_ops sdo_sysfs_ops = {
-    .show = &ec_show_sdo_attribute,
-    .store = NULL
-};
-
-static struct kobj_type ktype_ec_sdo = {
-    .release = ec_sdo_clear,
-    .sysfs_ops = &sdo_sysfs_ops,
-    .default_attrs = sdo_def_attrs
-};
-
-/** \endcond */
-
-/*****************************************************************************/
-
-/** Sdo constructor.
- *
- * \todo Turn parameters.
+/** Constructor.
  */
-int ec_sdo_init(
+void ec_sdo_init(
         ec_sdo_t *sdo, /**< Sdo. */
-        uint16_t index, /**< Sdo index. */
-        ec_slave_t *slave /**< Parent slave. */
+        ec_slave_t *slave, /**< Parent slave. */
+        uint16_t index /**< Sdo index. */
         )
 {
     sdo->slave = slave;
@@ -91,24 +60,6 @@ int ec_sdo_init(
     sdo->name = NULL;
     sdo->max_subindex = 0;
     INIT_LIST_HEAD(&sdo->entries);
-
-    // Init kobject and add it to the hierarchy
-    memset(&sdo->kobj, 0x00, sizeof(struct kobject));
-    kobject_init(&sdo->kobj);
-    sdo->kobj.ktype = &ktype_ec_sdo;
-    sdo->kobj.parent = &slave->sdo_kobj;
-    if (kobject_set_name(&sdo->kobj, "%4X", sdo->index)) {
-        EC_ERR("Failed to set kobj name.\n");
-        kobject_put(&sdo->kobj);
-        return -1;
-    }
-    if (kobject_add(&sdo->kobj)) {
-        EC_ERR("Failed to add Sdo kobject.\n");
-        kobject_put(&sdo->kobj);
-        return -1;
-    }
-
-    return 0;
 }
 
 /*****************************************************************************/
@@ -117,7 +68,7 @@ int ec_sdo_init(
  *
  * Clears and frees an Sdo object.
  */
-void ec_sdo_destroy(
+void ec_sdo_clear(
         ec_sdo_t *sdo /**< Sdo. */
         )
 {
@@ -130,27 +81,8 @@ void ec_sdo_destroy(
         kfree(entry);
     }
 
-    // destroy self
-    kobject_del(&sdo->kobj);
-    kobject_put(&sdo->kobj);
-}
-
-/*****************************************************************************/
-
-/** Clear and free Sdo.
- *
- * This method is called by the kobject,
- * once there are no more references to it.
- */
-void ec_sdo_clear(
-        struct kobject *kobj /**< Sdo's kobject. */
-        )
-{
-    ec_sdo_t *sdo = container_of(kobj, ec_sdo_t, kobj);
-
-    if (sdo->name) kfree(sdo->name);
-
-    kfree(sdo);
+    if (sdo->name)
+        kfree(sdo->name);
 }
 
 /*****************************************************************************/
@@ -199,47 +131,6 @@ const ec_sdo_entry_t *ec_sdo_get_entry_const(
     }
 
     return NULL;
-}
-
-/*****************************************************************************/
-
-/** Print Sdo information to a buffer.
- * 
- * /return size of bytes written to buffer.
- */ 
-ssize_t ec_sdo_info(
-        ec_sdo_t *sdo, /**< Sdo. */
-        char *buffer /**< Target buffer. */
-        )
-{
-    off_t off = 0;
-
-    off += sprintf(buffer + off, "Index: 0x%04X\n", sdo->index);
-    off += sprintf(buffer + off, "Name: %s\n", sdo->name ? sdo->name : "");
-    off += sprintf(buffer + off, "Max subindex: %u\n", sdo->max_subindex);
-
-    return off;
-}
-
-/*****************************************************************************/
-
-/** Show a Sysfs attribute of an Sdo.
- * 
- * /return Number of bytes written to buffer.
- */ 
-ssize_t ec_show_sdo_attribute(
-        struct kobject *kobj, /**< kobject */
-        struct attribute *attr, /**< Requested attribute. */
-        char *buffer /**< Buffer to write the data in. */
-        )
-{
-    ec_sdo_t *sdo = container_of(kobj, ec_sdo_t, kobj);
-
-    if (attr == &attr_info) {
-        return ec_sdo_info(sdo, buffer);
-    }
-
-    return 0;
 }
 
 /*****************************************************************************/

@@ -195,7 +195,7 @@ void ec_master_output_stats(ec_master_t *);
 #ifdef EC_EOE
 void ec_master_clear_eoe_handlers(ec_master_t *);
 #endif
-void ec_master_destroy_slaves(ec_master_t *);
+void ec_master_clear_slaves(ec_master_t *);
 
 unsigned int ec_master_config_count(const ec_master_t *);
 const ec_slave_config_t *ec_master_get_config_const(

@@ -230,7 +230,7 @@ void ec_master_clear(
     ec_master_clear_eoe_handlers(master);
 #endif
     ec_master_destroy_slave_configs(master);
-    ec_master_destroy_slaves(master);
+    ec_master_clear_slaves(master);
     ec_master_destroy_domains(master);
     ec_fsm_master_clear(&master->fsm);
     ec_datagram_clear(&master->fsm_datagram);
@@ -280,13 +280,14 @@ void ec_master_destroy_slave_configs(ec_master_t *master)
 
 /** Destroy all slaves.
  */
-void ec_master_destroy_slaves(ec_master_t *master)
+void ec_master_clear_slaves(ec_master_t *master)
 {
     ec_slave_t *slave, *next;
 
     list_for_each_entry_safe(slave, next, &master->slaves, list) {
         list_del(&slave->list);
-        ec_slave_destroy(slave);
+        ec_slave_clear(slave);
+        kfree(slave);
     }
 
     master->slave_count = 0;
@@ -412,7 +413,7 @@ void ec_master_leave_idle_mode(ec_master_t *master /**< EtherCAT master */)
     ec_master_eoe_stop(master);
 #endif
     ec_master_thread_stop(master);
-    ec_master_destroy_slaves(master);
+    ec_master_clear_slaves(master);
 }
 
 /*****************************************************************************/

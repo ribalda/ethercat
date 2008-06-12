@@ -99,7 +99,6 @@ typedef struct {
 struct ec_slave
 {
     struct list_head list; /**< list item */
-    struct kobject kobj; /**< kobject */
     ec_master_t *master; /**< master owning the slave */
 
     // addresses
@@ -131,7 +130,6 @@ struct ec_slave
     // slave information interface
     ec_sii_t sii; /**< SII data. */
 
-    struct kobject sdo_kobj; /**< kobject for Sdos */
     struct list_head sdo_dictionary; /**< Sdo dictionary list */
     uint8_t sdo_dictionary_fetched; /**< dictionary has been fetched */
     unsigned long jiffies_preop; /**< time, the slave went to PREOP */
@@ -140,8 +138,8 @@ struct ec_slave
 /*****************************************************************************/
 
 // slave construction/destruction
-int ec_slave_init(ec_slave_t *, ec_master_t *, uint16_t, uint16_t);
-void ec_slave_destroy(ec_slave_t *);
+void ec_slave_init(ec_slave_t *, ec_master_t *, uint16_t, uint16_t);
+void ec_slave_clear(ec_slave_t *);
 
 void ec_slave_clear_sync_managers(ec_slave_t *);
 

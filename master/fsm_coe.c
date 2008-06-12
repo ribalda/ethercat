@@ -472,12 +472,7 @@ void ec_fsm_coe_dict_response(ec_fsm_coe_t *fsm /**< finite state machine */)
             return;
         }
 
-        if (ec_sdo_init(sdo, sdo_index, slave)) {
-            EC_ERR("Failed to init Sdo!\n");
-            fsm->state = ec_fsm_coe_error;
-            return;
-        }
-
+        ec_sdo_init(sdo, slave, sdo_index);
         list_add_tail(&sdo->list, &slave->sdo_dictionary);
     }
 
