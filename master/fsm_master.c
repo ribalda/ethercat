@@ -231,7 +231,7 @@ void ec_fsm_master_state_broadcast(
             ec_master_clear_slaves(master);
             master->configs_attached = 0;
 
-            master->slave_count = datagram->working_counter;
+            master->slave_count = fsm->slaves_responding;
 
             if (!master->slave_count) {
                 // no slaves present -> finish state machine.
