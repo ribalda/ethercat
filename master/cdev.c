@@ -160,16 +160,10 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                 data.devices[1].tx_count = master->backup_device.tx_count;
                 data.devices[1].rx_count = master->backup_device.rx_count;
 
-                if (copy_to_user((void __user *) arg, &data, sizeof(data))) {
+                if (copy_to_user((void __user *) arg, &data, sizeof(data)))
                     retval = -EFAULT;
-                    break;
-                }
-
                 break;
             }
-
-            retval = master->slave_count;
-            break;
 
         case EC_IOCTL_SLAVE:
             {
@@ -217,11 +211,8 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                     data.name[0] = 0;
                 }
 
-                if (copy_to_user((void __user *) arg, &data, sizeof(data))) {
+                if (copy_to_user((void __user *) arg, &data, sizeof(data)))
                     retval = -EFAULT;
-                    break;
-                }
-
                 break;
             }
 
@@ -259,10 +250,8 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                 data.assign_source = sync->assign_source;
                 data.pdo_count = ec_pdo_list_count(&sync->pdos);
 
-                if (copy_to_user((void __user *) arg, &data, sizeof(data))) {
+                if (copy_to_user((void __user *) arg, &data, sizeof(data)))
                     retval = -EFAULT;
-                    break;
-                }
                 break;
             }
 
@@ -313,10 +302,8 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                     data.name[0] = 0;
                 }
 
-                if (copy_to_user((void __user *) arg, &data, sizeof(data))) {
+                if (copy_to_user((void __user *) arg, &data, sizeof(data)))
                     retval = -EFAULT;
-                    break;
-                }
                 break;
             }
 
@@ -376,10 +363,8 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                     data.name[0] = 0;
                 }
 
-                if (copy_to_user((void __user *) arg, &data, sizeof(data))) {
+                if (copy_to_user((void __user *) arg, &data, sizeof(data)))
                     retval = -EFAULT;
-                    break;
-                }
                 break;
             }
 
@@ -409,10 +394,8 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                 data.expected_working_counter = domain->expected_working_counter;
                 data.fmmu_count = ec_domain_fmmu_count(domain);
 
-                if (copy_to_user((void __user *) arg, &data, sizeof(data))) {
+                if (copy_to_user((void __user *) arg, &data, sizeof(data)))
                     retval = -EFAULT;
-                    break;
-                }
                 break;
             }
 
@@ -446,10 +429,8 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                 data.logical_address = fmmu->logical_start_address;
                 data.data_size = fmmu->data_size;
 
-                if (copy_to_user((void __user *) arg, &data, sizeof(data))) {
+                if (copy_to_user((void __user *) arg, &data, sizeof(data)))
                     retval = -EFAULT;
-                    break;
-                }
                 break;
             }
 
@@ -477,19 +458,16 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                 }
 
                 if (copy_to_user((void __user *) data.target, domain->data,
-                            domain->data_size)) {
+                            domain->data_size))
                     retval = -EFAULT;
-                    break;
-                }
                 break;
             }
 
         case EC_IOCTL_SET_DEBUG:
             if (!(filp->f_mode & FMODE_WRITE))
                 return -EPERM;
-            if (ec_master_debug_level(master, (unsigned int) arg)) {
+            if (ec_master_debug_level(master, (unsigned int) arg))
                 retval = -EINVAL;
-            }
             break;
 
         case EC_IOCTL_SLAVE_STATE:
@@ -552,10 +530,8 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                     data.name[0] = 0;
                 }
 
-                if (copy_to_user((void __user *) arg, &data, sizeof(data))) {
+                if (copy_to_user((void __user *) arg, &data, sizeof(data)))
                     retval = -EFAULT;
-                    break;
-                }
                 break;
             }
 
@@ -617,10 +593,8 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                     data.description[0] = 0;
                 }
 
-                if (copy_to_user((void __user *) arg, &data, sizeof(data))) {
+                if (copy_to_user((void __user *) arg, &data, sizeof(data)))
                     retval = -EFAULT;
-                    break;
-                }
                 break;
             }
 
@@ -798,10 +772,8 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                 }
 
                 if (copy_to_user((void __user *) data.words,
-                            slave->sii_words + data.offset, data.nwords * 2)) {
+                            slave->sii_words + data.offset, data.nwords * 2))
                     retval = -EFAULT;
-                    break;
-                }
                 break;
             }
 
@@ -843,11 +815,8 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                 }
 
                 if (ec_slave_write_sii(slave,
-                            data.offset, data.nwords, words)) {
+                            data.offset, data.nwords, words))
                     retval = -EIO;
-                    kfree(words);
-                    break;
-                }
 
                 kfree(words);
                 break;
@@ -882,10 +851,8 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                 data.sdo_count = ec_slave_config_sdo_count(sc);
                 data.attached = sc->slave != NULL;
 
-                if (copy_to_user((void __user *) arg, &data, sizeof(data))) {
+                if (copy_to_user((void __user *) arg, &data, sizeof(data)))
                     retval = -EFAULT;
-                    break;
-                }
                 break;
             }
 
@@ -931,10 +898,8 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                     data.name[0] = 0;
                 }
 
-                if (copy_to_user((void __user *) arg, &data, sizeof(data))) {
+                if (copy_to_user((void __user *) arg, &data, sizeof(data)))
                     retval = -EFAULT;
-                    break;
-                }
                 break;
             }
 
@@ -988,10 +953,8 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                     data.name[0] = 0;
                 }
 
-                if (copy_to_user((void __user *) arg, &data, sizeof(data))) {
+                if (copy_to_user((void __user *) arg, &data, sizeof(data)))
                     retval = -EFAULT;
-                    break;
-                }
                 break;
             }
 
@@ -1026,10 +989,8 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                 data.size = req->data_size;
                 memcpy(&data.data, req->data, min((u32) data.size, (u32) 4));
 
-                if (copy_to_user((void __user *) arg, &data, sizeof(data))) {
+                if (copy_to_user((void __user *) arg, &data, sizeof(data)))
                     retval = -EFAULT;
-                    break;
-                }
                 break;
             }
 
