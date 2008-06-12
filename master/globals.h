@@ -99,6 +99,9 @@
 /** Size of an FMMU configuration page. */
 #define EC_FMMU_PAGE_SIZE 16
 
+/** Maximum number of slave ports. */
+#define EC_SLAVE_MAX_PORTS 4
+
 /** Slave state mask.
  *
  * Apply this mask to a slave state byte to get the slave state without

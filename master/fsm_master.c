@@ -241,26 +241,26 @@ void ec_fsm_master_state_broadcast(
                 return;
             }
 
+            if (!(master->slaves = (ec_slave_t *)
+                        kmalloc(sizeof(ec_slave_t) * master->slave_count,
+                            GFP_KERNEL))) {
+                EC_ERR("Failed to allocate slave memory!\n");
+                master->slave_count = 0; // FIXME avoid scanning!
+                master->scan_busy = 0;
+                wake_up_interruptible(&master->scan_queue);
+                fsm->state = ec_fsm_master_state_error;
+                return;
+            }
+
             // init slaves
             for (i = 0; i < master->slave_count; i++) {
-                if (!(slave = (ec_slave_t *)
-                            kmalloc(sizeof(ec_slave_t), GFP_KERNEL))) {
-                    EC_ERR("Failed to allocate slave %u!\n", i);
-                    ec_master_clear_slaves(master);
-                    master->scan_busy = 0;
-                    wake_up_interruptible(&master->scan_queue);
-                    fsm->state = ec_fsm_master_state_error;
-                    return;
-                }
-
+                slave = master->slaves + i;
                 ec_slave_init(slave, master, i, i + 1);
 
                 // do not force reconfiguration in operation mode to avoid
                 // unnecesssary process data interruptions
                 if (master->mode != EC_MASTER_MODE_OPERATION)
                     slave->force_config = 1;
-
-                list_add_tail(&slave->list, &master->slaves);
             }
 
             // broadcast clear all station addresses
@@ -272,15 +272,15 @@ void ec_fsm_master_state_broadcast(
         }
     }
 
-    if (list_empty(&master->slaves)) {
-        fsm->state = ec_fsm_master_state_end;
-    } else {
+    if (master->slave_count) {
         // fetch state from first slave
-        fsm->slave = list_entry(master->slaves.next, ec_slave_t, list);
+        fsm->slave = master->slaves;
         ec_datagram_fprd(fsm->datagram, fsm->slave->station_address,
                 0x0130, 2);
         fsm->retries = EC_FSM_RETRIES;
         fsm->state = ec_fsm_master_state_read_state;
+    } else {
+        fsm->state = ec_fsm_master_state_end;
     }
 }
 
@@ -338,12 +338,14 @@ int ec_fsm_master_action_process_sdo(
         )
 {
     ec_master_t *master = fsm->master;
-    ec_master_sdo_request_t *request;
-    ec_sdo_request_t *req;
     ec_slave_t *slave;
+    ec_sdo_request_t *req;
+    ec_master_sdo_request_t *request;
 
     // search for internal requests to be processed
-    list_for_each_entry(slave, &master->slaves, list) {
+    for (slave = master->slaves;
+            slave < master->slaves + master->slave_count;
+            slave++) {
         if (!slave->config)
             continue;
         list_for_each_entry(req, &slave->config->sdo_requests, list) {
@@ -437,7 +439,9 @@ void ec_fsm_master_action_idle(
         return;
 
     // check, if slaves have an Sdo dictionary to read out.
-    list_for_each_entry(slave, &master->slaves, list) {
+    for (slave = master->slaves;
+            slave < master->slaves + master->slave_count;
+            slave++) {
         if (!(slave->sii.mailbox_protocols & EC_MBOX_COE)
                 || slave->sdo_dictionary_fetched
                 || slave->current_state == EC_SLAVE_STATE_INIT
@@ -476,15 +480,14 @@ void ec_fsm_master_action_next_slave_state(
         )
 {
     ec_master_t *master = fsm->master;
-    ec_slave_t *slave = fsm->slave;
 
     // is there another slave to query?
-    if (slave->list.next != &master->slaves) {
+    fsm->slave++;
+    if (fsm->slave < master->slaves + master->slave_count) {
         // fetch state from next slave
         fsm->idle = 1;
-        fsm->slave = list_entry(slave->list.next, ec_slave_t, list);
-        ec_datagram_fprd(fsm->datagram, fsm->slave->station_address,
-                         0x0130, 2);
+        ec_datagram_fprd(fsm->datagram,
+                fsm->slave->station_address, 0x0130, 2);
         fsm->retries = EC_FSM_RETRIES;
         fsm->state = ec_fsm_master_state_read_state;
         return;
@@ -654,7 +657,7 @@ void ec_fsm_master_state_clear_addresses(
     EC_INFO("Scanning bus.\n");
 
     // begin scanning of slaves
-    fsm->slave = list_entry(master->slaves.next, ec_slave_t, list);
+    fsm->slave = master->slaves;
     fsm->state = ec_fsm_master_state_scan_slave;
     ec_fsm_slave_scan_start(&fsm->fsm_slave_scan, fsm->slave);
     ec_fsm_slave_scan_exec(&fsm->fsm_slave_scan); // execute immediately
@@ -694,8 +697,8 @@ void ec_fsm_master_state_scan_slave(
 #endif
 
     // another slave to fetch?
-    if (slave->list.next != &master->slaves) {
-        fsm->slave = list_entry(slave->list.next, ec_slave_t, list);
+    fsm->slave++;
+    if (slave < master->slaves + master->slave_count) {
         ec_fsm_slave_scan_start(&fsm->fsm_slave_scan, fsm->slave);
         ec_fsm_slave_scan_exec(&fsm->fsm_slave_scan); // execute immediately
         return;

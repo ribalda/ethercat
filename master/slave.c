@@ -72,10 +72,9 @@ void ec_slave_init(
 {
     unsigned int i;
 
+    slave->master = master;
     slave->ring_position = ring_position;
     slave->station_address = station_address;
-
-    slave->master = master;
 
     slave->config = NULL;
     slave->requested_state = EC_SLAVE_STATE_PREOP;
@@ -87,6 +86,13 @@ void ec_slave_init(
     slave->base_revision = 0;
     slave->base_build = 0;
     slave->base_fmmu_count = 0;
+
+    for (i = 0; i < EC_SLAVE_MAX_PORTS; i++) {
+        slave->ports[i].dl_link = 0;
+        slave->ports[i].dl_loop = 0;
+        slave->ports[i].dl_signal = 0;
+        slave->sii.physical_layer[i] = 0xFF;
+    }
 
     slave->sii_words = NULL;
     slave->sii_nwords = 0;
@@ -123,13 +129,6 @@ void ec_slave_init(
 
     slave->sdo_dictionary_fetched = 0;
     slave->jiffies_preop = 0;
-
-    for (i = 0; i < 4; i++) {
-        slave->dl_link[i] = 0;
-        slave->dl_loop[i] = 0;
-        slave->dl_signal[i] = 0;
-        slave->sii.physical_layer[i] = 0xFF;
-    }
 }
 
 /*****************************************************************************/

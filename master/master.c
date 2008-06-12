@@ -92,7 +92,7 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     master->injection_seq_fsm = 0;
     master->injection_seq_rt = 0;
 
-    INIT_LIST_HEAD(&master->slaves);
+    master->slaves = NULL;
     master->slave_count = 0;
     
     INIT_LIST_HEAD(&master->configs);
@@ -245,15 +245,20 @@ void ec_master_clear_slave_configs(ec_master_t *master)
  */
 void ec_master_clear_slaves(ec_master_t *master)
 {
-    ec_slave_t *slave, *next;
+    ec_slave_t *slave;
 
-    list_for_each_entry_safe(slave, next, &master->slaves, list) {
-        list_del(&slave->list);
+    for (slave = master->slaves;
+            slave < master->slaves + master->slave_count;
+            slave++) {
         ec_slave_clear(slave);
         kfree(slave);
     }
 
-    master->slave_count = 0;
+    if (master->slave_count) {
+        kfree(master->slaves);
+        master->slaves = NULL;
+        master->slave_count = 0;
+    }
 }
 
 /*****************************************************************************/
@@ -413,7 +418,9 @@ int ec_master_enter_operation_mode(ec_master_t *master /**< EtherCAT master */)
     }
 
     // set states for all slaves
-    list_for_each_entry(slave, &master->slaves, list) {
+    for (slave = master->slaves;
+            slave < master->slaves + master->slave_count;
+            slave++) {
         ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
     }
 #ifdef EC_EOE
@@ -466,7 +473,9 @@ void ec_master_leave_operation_mode(ec_master_t *master
     ec_master_clear_slave_configs(master);
 
     // set states for all slaves
-    list_for_each_entry(slave, &master->slaves, list) {
+    for (slave = master->slaves;
+            slave < master->slaves + master->slave_count;
+            slave++) {
         ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
     }
 #ifdef EC_EOE
@@ -1013,23 +1022,25 @@ ec_slave_t *ec_master_find_slave(
         uint16_t position /**< Slave position. */
         )
 {
-    ec_slave_t *slave;
-    unsigned int alias_found = 0, relative_position = 0;
+    ec_slave_t *slave = master->slaves;
 
-	list_for_each_entry(slave, &master->slaves, list) {
-        if (!alias_found) {
-			if (alias && slave->sii.alias != alias)
+    if (alias) {
+        // find slave with the given alias
+        for (; slave < master->slaves + master->slave_count;
+                slave++) {
+			if (slave->sii.alias != alias)
 				continue;
-			alias_found = 1;
-			relative_position = 0;
 		}
-		if (relative_position == position) {
-            return slave;
-        }
-		relative_position++;
+        if (slave == master->slaves + master->slave_count)
+            return NULL;
 	}
 
-    return NULL;
+    slave += position;
+    if (slave < master->slaves + master->slave_count) {
+        return slave;
+    } else {
+        return NULL;
+    }
 }
 
 /*****************************************************************************/

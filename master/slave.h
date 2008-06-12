@@ -71,26 +71,36 @@ typedef struct {
 
     // Strings
     char **strings; /**< Strings in SII categories. */
-    unsigned int string_count; /**< number of SII strings */
+    unsigned int string_count; /**< Number of SII strings. */
 
     // General
     unsigned int has_general; /**< General category present. */
-    char *group; /**< slave group acc. to SII */
-    char *image; /**< slave image name acc. to SII */
-    char *order; /**< slave order number acc. to SII */
-    char *name; /**< slave name acc. to SII */
-    uint8_t physical_layer[4]; /**< port media */
+    char *group; /**< Group name. */
+    char *image; /**< Image name. */
+    char *order; /**< Order number. */
+    char *name; /**< Slave name. */
+    uint8_t physical_layer[EC_SLAVE_MAX_PORTS]; /**< Port media. */
     ec_sii_coe_details_t coe_details; /**< CoE detail flags. */
     ec_sii_general_flags_t general_flags; /**< General flags. */
-    int16_t current_on_ebus; /**< power consumption */
+    int16_t current_on_ebus; /**< Power consumption in mA. */
 
     // SyncM
-    ec_sync_t *syncs; /**< SII SYNC MANAGER categories */
-    unsigned int sync_count; /**< number of sync managers in SII */
+    ec_sync_t *syncs; /**< SYNC MANAGER categories. */
+    unsigned int sync_count; /**< Number of sync managers. */
 
     // [RT]XPDO
-    struct list_head pdos; /**< SII [RT]XPDO categories */
+    struct list_head pdos; /**< SII [RT]XPDO categories. */
 } ec_sii_t;
+
+/*****************************************************************************/
+
+/** EtherCAT slave port information.
+ */
+typedef struct {
+    uint8_t dl_link; /**< Link detected. */
+    uint8_t dl_loop; /**< Loop closed. */
+    uint8_t dl_signal; /**< Detected signal on RX port. */
+} ec_slave_port_t;
 
 /*****************************************************************************/
 
@@ -98,12 +108,11 @@ typedef struct {
  */
 struct ec_slave
 {
-    struct list_head list; /**< list item */
-    ec_master_t *master; /**< master owning the slave */
+    ec_master_t *master; /**< Master owning the slave. */
 
     // addresses
-    uint16_t ring_position; /**< ring position */
-    uint16_t station_address; /**< configured station address */
+    uint16_t ring_position; /**< Ring position. */
+    uint16_t station_address; /**< Configured station address. */
 
     // configuration
     ec_slave_config_t *config; /**< Current configuration. */
@@ -113,26 +122,24 @@ struct ec_slave
     unsigned int force_config; /**< Force (re-)configuration. */
 
     // base data
-    uint8_t base_type; /**< slave type */
-    uint8_t base_revision; /**< revision */
-    uint16_t base_build; /**< build number */
-    uint16_t base_fmmu_count; /**< number of supported FMMUs */
+    uint8_t base_type; /**< Slave type. */
+    uint8_t base_revision; /**< Revision. */
+    uint16_t base_build; /**< Build number. */
+    uint16_t base_fmmu_count; /**< Number of supported FMMUs. */
 
     // data link status
-    uint8_t dl_link[4]; /**< link detected */
-    uint8_t dl_loop[4]; /**< loop closed */
-    uint8_t dl_signal[4]; /**< detected signal on RX port */
+    ec_slave_port_t ports[EC_SLAVE_MAX_PORTS];
 
     // SII
     uint16_t *sii_words; /**< Complete SII image. */
     size_t sii_nwords; /**< Size of the SII contents in words. */
 
-    // slave information interface
-    ec_sii_t sii; /**< SII data. */
+    // Slave information interface
+    ec_sii_t sii; /**< Extracted SII data. */
 
     struct list_head sdo_dictionary; /**< Sdo dictionary list */
-    uint8_t sdo_dictionary_fetched; /**< dictionary has been fetched */
-    unsigned long jiffies_preop; /**< time, the slave went to PREOP */
+    uint8_t sdo_dictionary_fetched; /**< Dictionary has been fetched. */
+    unsigned long jiffies_preop; /**< Time, the slave went to PREOP. */
 };
 
 /*****************************************************************************/

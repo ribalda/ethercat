@@ -99,8 +99,8 @@ struct ec_master {
     unsigned int injection_seq_rt; /**< datagram injection sequence number
                                      for the realtime side */
 
-    struct list_head slaves; /**< list of slaves on the bus */
-    unsigned int slave_count; /**< number of slaves on the bus */
+    ec_slave_t *slaves; /**< Array of slaves on the bus. */
+    unsigned int slave_count; /**< Number of slaves on the bus. */
 
     struct list_head configs; /**< Bus configuration list. */
     unsigned int configs_attached; /**< Slave configurations were attached. */
