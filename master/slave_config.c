@@ -38,7 +38,7 @@
 
 /*****************************************************************************/
 
-#include <linux/module.h>
+#include <linux/slab.h>
 
 #include "globals.h"
 #include "master.h"
@@ -47,44 +47,13 @@
 
 /*****************************************************************************/
 
-void ec_slave_config_clear(struct kobject *);
-ssize_t ec_show_slave_config_attribute(struct kobject *, struct attribute *,
-        char *);
-
-/*****************************************************************************/
-
-/** \cond */
-
-EC_SYSFS_READ_ATTR(info);
-
-static struct attribute *def_attrs[] = {
-    &attr_info,
-    NULL,
-};
-
-static struct sysfs_ops sysfs_ops = {
-    .show = ec_show_slave_config_attribute
-};
-
-static struct kobj_type ktype_ec_slave_config = {
-    .release = ec_slave_config_clear,
-    .sysfs_ops = &sysfs_ops,
-    .default_attrs = def_attrs
-};
-
-/** \endcond */
-
-/*****************************************************************************/
-
 /** Slave configuration constructor.
  *
  * See ecrt_master_slave_config() for the usage of the \a alias and \a
  * position parameters.
- *
- * \retval 0 Success.
- * \retval <0 Failure.
  */
-int ec_slave_config_init(ec_slave_config_t *sc, /**< Slave configuration. */
+void ec_slave_config_init(
+        ec_slave_config_t *sc, /**< Slave configuration. */
         ec_master_t *master, /**< EtherCAT master. */
         uint16_t alias, /**< Slave alias. */
         uint16_t position, /**< Slave position. */
@@ -108,28 +77,6 @@ int ec_slave_config_init(ec_slave_config_t *sc, /**< Slave configuration. */
     INIT_LIST_HEAD(&sc->sdo_requests);
 
     sc->used_fmmus = 0;
-
-    // init kobject and add it to the hierarchy
-    memset(&sc->kobj, 0x00, sizeof(struct kobject));
-    kobject_init(&sc->kobj);
-    sc->kobj.ktype = &ktype_ec_slave_config;
-    sc->kobj.parent = &master->kobj;
-    if (kobject_set_name(&sc->kobj, "config-%u-%u", sc->alias, sc->position)) {
-        EC_ERR("Failed to set kobject name for slave config %u:%u.\n",
-                sc->alias, sc->position);
-        goto out_put;
-    }
-    if (kobject_add(&sc->kobj)) {
-        EC_ERR("Failed to add kobject for slave config %u:%u.\n",
-                sc->alias, sc->position);
-        goto out_put;
-    }
-
-    return 0;
-
- out_put:
-    kobject_put(&sc->kobj);
-    return -1;
 }
 
 /*****************************************************************************/
@@ -138,31 +85,14 @@ int ec_slave_config_init(ec_slave_config_t *sc, /**< Slave configuration. */
  *
  * Clears and frees a slave configuration object.
  */
-void ec_slave_config_destroy(
+void ec_slave_config_clear(
         ec_slave_config_t *sc /**< Slave configuration. */
         )
 {
-    ec_slave_config_detach(sc);
-
-    // destroy self
-    kobject_del(&sc->kobj);
-    kobject_put(&sc->kobj);
-}
-
-/*****************************************************************************/
-
-/** Clear and free the slave configuration.
- * 
- * This method is called by the kobject, once there are no more references to
- * it.
- */
-void ec_slave_config_clear(struct kobject *kobj /**< kobject of the config. */)
-{
-    ec_slave_config_t *sc;
     ec_direction_t dir;
     ec_sdo_request_t *req, *next_req;
 
-    sc = container_of(kobj, ec_slave_config_t, kobj);
+    ec_slave_config_detach(sc);
 
     // Free Pdo mappings
     for (dir = EC_DIR_OUTPUT; dir <= EC_DIR_INPUT; dir++)
@@ -181,8 +111,6 @@ void ec_slave_config_clear(struct kobject *kobj /**< kobject of the config. */)
         ec_sdo_request_clear(req);
         kfree(req);
     }
-
-    kfree(sc);
 }
 
 /*****************************************************************************/
@@ -224,99 +152,6 @@ int ec_slave_config_prepare_fmmu(
     fmmu = &sc->fmmu_configs[sc->used_fmmus++];
     ec_fmmu_config_init(fmmu, sc, domain, dir);
     return fmmu->logical_start_address;
-}
-
-/*****************************************************************************/
-
-/** Outputs all information about a certain slave configuration.
-*/
-ssize_t ec_slave_config_info(
-        const ec_slave_config_t *sc, /**< Slave configuration. */
-        char *buffer /**< Output buffer */
-        )
-{
-    char *buf = buffer;
-    ec_direction_t dir;
-    const ec_pdo_list_t *pdos;
-    const ec_pdo_t *pdo;
-    const ec_pdo_entry_t *entry;
-    char str[20];
-    const ec_sdo_request_t *req;
-
-    buf += sprintf(buf, "Alias: 0x%04X (%u)\n", sc->alias, sc->alias);
-    buf += sprintf(buf, "Position: %u\n", sc->position);
-
-    for (dir = EC_DIR_OUTPUT; dir <= EC_DIR_INPUT; dir++) {
-        pdos = &sc->pdos[dir];
-        
-        if (!list_empty(&pdos->list)) {
-            buf += sprintf(buf, "%s Pdo assignment / mapping:\n",
-                    dir == EC_DIR_OUTPUT ? "Output" : "Input");
-
-            list_for_each_entry(pdo, &pdos->list, list) {
-                buf += sprintf(buf, "  %s 0x%04X \"%s\"\n",
-                        pdo->dir == EC_DIR_OUTPUT ? "RxPdo" : "TxPdo",
-                        pdo->index, pdo->name ? pdo->name : "???");
-
-                list_for_each_entry(entry, &pdo->entries, list) {
-                    buf += sprintf(buf, "    0x%04X:%02X \"%s\", %u bit\n",
-                            entry->index, entry->subindex,
-                            entry->name ? entry->name : "???",
-                            entry->bit_length);
-                }
-            }
-        }
-    }
-    
-    // type-cast to avoid warnings on some compilers
-    if (!list_empty((struct list_head *) &sc->sdo_configs)) {
-        buf += sprintf(buf, "\nSdo configurations:\n");
-
-        list_for_each_entry(req, &sc->sdo_configs, list) {
-            switch (req->data_size) {
-                case 1: sprintf(str, "%u", EC_READ_U8(req->data)); break;
-                case 2: sprintf(str, "%u", EC_READ_U16(req->data)); break;
-                case 4: sprintf(str, "%u", EC_READ_U32(req->data)); break;
-                default: sprintf(str, "(invalid size)"); break;
-            }
-            buf += sprintf(buf, "  0x%04X:%02X -> %s\n",
-                    req->index, req->subindex, str);
-        }
-        buf += sprintf(buf, "\n");
-    }
-
-    // type-cast to avoid warnings on some compilers
-    if (!list_empty((struct list_head *) &sc->sdo_requests)) {
-        buf += sprintf(buf, "\nSdo requests:\n");
-
-        list_for_each_entry(req, &sc->sdo_requests, list) {
-            buf += sprintf(buf, "  0x%04X:%02X\n", req->index, req->subindex);
-        }
-        buf += sprintf(buf, "\n");
-    }
-
-    return buf - buffer;
-}
-
-/*****************************************************************************/
-
-/** Formats attribute data for SysFS read access.
- *
- * \return number of bytes to read
- */
-ssize_t ec_show_slave_config_attribute(
-        struct kobject *kobj, /**< Slave configuration's kobject */
-        struct attribute *attr, /**< Requested attribute. */
-        char *buffer /**< Memory to store data. */
-        )
-{
-    ec_slave_config_t *sc = container_of(kobj, ec_slave_config_t, kobj);
-
-    if (attr == &attr_info) {
-        return ec_slave_config_info(sc, buffer);
-    }
-
-    return 0;
 }
 
 /*****************************************************************************/
@@ -464,8 +299,6 @@ void ec_slave_config_load_default_mapping(
 
 /*****************************************************************************/
 
-/**
- */
 unsigned int ec_slave_config_sdo_count(
         const ec_slave_config_t *sc /**< Slave configuration. */
         )

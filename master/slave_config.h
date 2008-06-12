@@ -42,7 +42,6 @@
 #define __EC_SLAVE_CONFIG_H__
 
 #include <linux/list.h>
-#include <linux/kobject.h>
 
 #include "../include/ecrt.h"
 
@@ -57,7 +56,6 @@
  */
 struct ec_slave_config {
     struct list_head list; /**< List item. */
-    struct kobject kobj; /**< kobject. */
     ec_master_t *master; /**< Master owning the slave configuration. */
 
     uint16_t alias; /**< Slave alias. */
@@ -80,9 +78,9 @@ struct ec_slave_config {
 
 /*****************************************************************************/
 
-int ec_slave_config_init(ec_slave_config_t *, ec_master_t *, uint16_t,
+void ec_slave_config_init(ec_slave_config_t *, ec_master_t *, uint16_t,
         uint16_t, uint32_t, uint32_t);
-void ec_slave_config_destroy(ec_slave_config_t *);
+void ec_slave_config_clear(ec_slave_config_t *);
 
 int ec_slave_config_attach(ec_slave_config_t *);
 void ec_slave_config_detach(ec_slave_config_t *);

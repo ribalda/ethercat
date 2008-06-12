@@ -27,6 +27,7 @@ Version 1.4.0:
 * Remove EC_IOCTL_DOMAIN_COUNT.
 * Remove ATOMIC allocations.
 * Clear FMMU configs.
+* Rename master MODE to STATE.
 
 Future issues:
 

@@ -57,7 +57,7 @@
 
 /*****************************************************************************/
 
-void ec_master_destroy_slave_configs(ec_master_t *);
+void ec_master_clear_slave_configs(ec_master_t *);
 void ec_master_clear_domains(ec_master_t *);
 static int ec_master_idle_thread(ec_master_t *);
 static int ec_master_operation_thread(ec_master_t *);
@@ -226,17 +226,17 @@ void ec_master_clear(
         ec_master_t *master /**< EtherCAT master */
         )
 {
+    ec_cdev_clear(&master->cdev);
 #ifdef EC_EOE
     ec_master_clear_eoe_handlers(master);
 #endif
     ec_master_clear_domains(master);
-    ec_master_destroy_slave_configs(master);
+    ec_master_clear_slave_configs(master);
     ec_master_clear_slaves(master);
     ec_fsm_master_clear(&master->fsm);
     ec_datagram_clear(&master->fsm_datagram);
     ec_device_clear(&master->backup_device);
     ec_device_clear(&master->main_device);
-    ec_cdev_clear(&master->cdev);
 
     // destroy self
     kobject_del(&master->kobj);
@@ -264,15 +264,16 @@ void ec_master_clear_eoe_handlers(
 
 /*****************************************************************************/
 
-/** Destroy all slave configurations.
+/** Clear all slave configurations.
  */
-void ec_master_destroy_slave_configs(ec_master_t *master)
+void ec_master_clear_slave_configs(ec_master_t *master)
 {
     ec_slave_config_t *sc, *next;
 
     list_for_each_entry_safe(sc, next, &master->configs, list) {
         list_del(&sc->list);
-        ec_slave_config_destroy(sc);
+        ec_slave_config_clear(sc);
+        kfree(sc);
     }
 }
 
@@ -517,8 +518,8 @@ void ec_master_leave_operation_mode(ec_master_t *master
     master->release_cb = ec_master_release_cb;
     master->cb_data = master;
     
-    ec_master_destroy_slave_configs(master);
     ec_master_clear_domains(master);
+    ec_master_clear_slave_configs(master);
 
     // set states for all slaves
     list_for_each_entry(slave, &master->slaves, list) {
@@ -1367,11 +1368,8 @@ ec_slave_config_t *ecrt_master_slave_config(ec_master_t *master,
             return NULL;
         }
 
-        if (ec_slave_config_init(sc, master, alias, position, vendor_id,
-                    product_code)) {
-            EC_ERR("Failed to init slave configuration.\n");
-            return NULL;
-        }
+        ec_slave_config_init(sc, master,
+                alias, position, vendor_id, product_code);
 
         // try to find the addressed slave
         ec_slave_config_attach(sc);
