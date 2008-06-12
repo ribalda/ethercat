@@ -258,8 +258,6 @@ void ec_slave_config_load_default_mapping(
         EC_DBG("Loading default configuration for Pdo 0x%04X in"
                 " config %u:%u.\n", pdo->index, sc->alias, sc->position);
 
-    pdo->default_config = 1;
-
     if (!sc->slave) {
         EC_WARN("Failed to load default Pdo configuration for %u:%u:"
                 " Slave not found.\n", sc->alias, sc->position);

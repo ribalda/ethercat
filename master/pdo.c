@@ -53,7 +53,6 @@ void ec_pdo_init(
     pdo->sync_index = -1; // not assigned 
     pdo->name = NULL;
     INIT_LIST_HEAD(&pdo->entries);
-    pdo->default_config = 0;
 }
 
 /*****************************************************************************/
@@ -67,7 +66,6 @@ int ec_pdo_init_copy(ec_pdo_t *pdo, const ec_pdo_t *other_pdo)
     pdo->sync_index = other_pdo->sync_index;
     pdo->name = NULL;
     INIT_LIST_HEAD(&pdo->entries);
-    pdo->default_config = other_pdo->default_config;
 
     if (ec_pdo_set_name(pdo, other_pdo->name))
         goto out_return;

@@ -59,8 +59,6 @@ typedef struct {
     int8_t sync_index; /**< Assigned sync manager. */
     char *name; /**< Pdo name. */
     struct list_head entries; /**< List of Pdo entries. */
-    unsigned int default_config; /**< The entries contain the default Pdo
-                                   configuration. */
 } ec_pdo_t;
 
 /*****************************************************************************/
