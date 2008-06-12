@@ -369,7 +369,9 @@ ec_slave_config_t *ecrt_master_slave_config(
  *
  * \return 0 in case of success, else < 0
  */
-int ecrt_master_activate( ec_master_t *master /**< EtherCAT master. */);
+int ecrt_master_activate(
+        ec_master_t *master /**< EtherCAT master. */
+        );
 
 /** Sends all datagrams in the queue.
  *
