@@ -8,22 +8,23 @@ $Id$
 
 Version 1.4.0:
 
-* Remove the end state of the master state machine.
 * Supply new ec_master_state_t.
 * Implement ecrt_slave_config_state().
-* Make ecrt_master_slave_config() return no error when slave is not present
-  or invalid.
 * Remove get_cycles() calls and references to cpu_khz to increase
   portability.
+* Make ecrt_master_slave_config() return no error when slave is not present
+  or invalid.
+* Make scanning and configuration run parallel (each).
 * Adapt remaining examples.
 * READMEs for examples.
 * Update documentation.
 * Check for sizes of uploaded Sdos when reading mapping from CoE.
 * Attach Pdo names from SII or Coe dictioary to Pdos read via CoE.
-* Make scanning and configuration run parallel (each).
 * List of commands that require a slave.
 * Remove configs_attached flag.
 * Rename master MODE to STATE.
+* Remove the end state of the master state machine.
+* Add a -n (numeric) switch to ethercat command.
 
 Future issues:
 
@@ -34,7 +35,6 @@ Future issues:
 * Mailbox protocol handlers.
 * Mailbox state machine using toggle bits.
 * Mailbox gateway.
-* Add add -n (numeric) switch to ethercat command.
 * Separate CoE debugging.
 * Evaluate EEPROM contents after writing.
 * Optimize alignment of process data.
