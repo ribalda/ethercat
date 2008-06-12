@@ -229,9 +229,9 @@ void ec_master_clear(
 #ifdef EC_EOE
     ec_master_clear_eoe_handlers(master);
 #endif
+    ec_master_clear_domains(master);
     ec_master_destroy_slave_configs(master);
     ec_master_clear_slaves(master);
-    ec_master_clear_domains(master);
     ec_fsm_master_clear(&master->fsm);
     ec_datagram_clear(&master->fsm_datagram);
     ec_device_clear(&master->backup_device);
