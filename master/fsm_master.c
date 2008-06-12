@@ -698,7 +698,7 @@ void ec_fsm_master_state_scan_slave(
 
     // another slave to fetch?
     fsm->slave++;
-    if (slave < master->slaves + master->slave_count) {
+    if (fsm->slave < master->slaves + master->slave_count) {
         ec_fsm_slave_scan_start(&fsm->fsm_slave_scan, fsm->slave);
         ec_fsm_slave_scan_exec(&fsm->fsm_slave_scan); // execute immediately
         return;
