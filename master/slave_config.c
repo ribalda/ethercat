@@ -58,7 +58,8 @@ void ec_slave_config_init(
         uint16_t alias, /**< Slave alias. */
         uint16_t position, /**< Slave position. */
         uint32_t vendor_id, /**< Expected vendor ID. */
-        uint32_t product_code /**< Expected product code. */
+        uint32_t product_code, /**< Expected product code. */
+        uint32_t revision_number /**< Expected revision number. */
         )
 {
     ec_direction_t dir;
@@ -68,6 +69,7 @@ void ec_slave_config_init(
     sc->position = position;
     sc->vendor_id = vendor_id;
     sc->product_code = product_code;
+    sc->revision_number = revision_number;
     sc->slave = NULL;
 
     for (dir = EC_DIR_OUTPUT; dir <= EC_DIR_INPUT; dir++)
@@ -186,12 +188,14 @@ int ec_slave_config_attach(
 		return -2;
 	}
 	if (slave->sii.vendor_id != sc->vendor_id
-			|| slave->sii.product_code != sc->product_code) {
-		EC_ERR("Slave %u has an invalid type (0x%08X/0x%08X) for"
-				" configuration %u:%u (0x%08X/0x%08X).\n",
-				slave->ring_position, slave->sii.vendor_id,
-				slave->sii.product_code, sc->alias, sc->position,
-				sc->vendor_id, sc->product_code);
+			|| slave->sii.product_code != sc->product_code
+			|| slave->sii.revision_number != sc->revision_number) {
+		EC_ERR("Slave %u has an invalid type (0x%08X/0x%08X/0x%08X) for"
+				" configuration %u:%u (0x%08X/0x%08X/0x%08X).\n",
+				slave->ring_position,
+                slave->sii.vendor_id, slave->sii.product_code,
+                slave->sii.revision_number, sc->alias, sc->position,
+				sc->vendor_id, sc->product_code, sc->revision_number);
 		return -3;
 	}
 
