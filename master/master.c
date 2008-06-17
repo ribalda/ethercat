@@ -43,6 +43,8 @@
 #include <linux/string.h>
 #include <linux/slab.h>
 #include <linux/delay.h>
+#include <linux/device.h>
+#include <linux/version.h>
 
 #include "../include/ecrt.h"
 #include "globals.h"
@@ -172,9 +174,15 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     if (ec_cdev_init(&master->cdev, master, device_number))
         goto out_clear_fsm;
     
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 15)
     master->class_device = class_device_create(class,
             MKDEV(MAJOR(device_number), master->index),
             NULL, "EtherCAT%u", master->index);
+#else
+    master->class_device = class_device_create(class, NULL,
+            MKDEV(MAJOR(device_number), master->index),
+            NULL, "EtherCAT%u", master->index);
+#endif
     if (IS_ERR(master->class_device)) {
         EC_ERR("Failed to create class device!\n");
         goto out_clear_cdev;
