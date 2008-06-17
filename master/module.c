@@ -38,6 +38,7 @@
 /*****************************************************************************/
 
 #include <linux/module.h>
+#include <linux/sysfs.h>
 
 #include "globals.h"
 #include "master.h"
@@ -65,6 +66,7 @@ static unsigned int master_count; /**< Number of masters. */
 static unsigned int backup_count; /**< Number of backup devices. */
 
 dev_t device_number; /**< Device number for master cdevs. */
+struct class *class; /**< Device class. */
 
 static uint8_t macs[MAX_MASTERS][2][ETH_ALEN]; /**< MAC addresses. */
 
@@ -109,6 +111,12 @@ int __init ec_init_module(void)
         }
     }
 
+    class = class_create(THIS_MODULE, "EtherCAT");
+    if (IS_ERR(class)) {
+        EC_ERR("Failed to create device class.\n");
+        goto out_cdev;
+    }
+
     // zero MAC addresses
     memset(macs, 0x00, sizeof(uint8_t) * MAX_MASTERS * 2 * ETH_ALEN);
 
@@ -116,12 +124,12 @@ int __init ec_init_module(void)
     for (i = 0; i < master_count; i++) {
         if (ec_mac_parse(macs[i][0], main_devices[i], 0)) {
             ret = -EINVAL;
-            goto out_cdev;
+            goto out_class;
         }
         
         if (i < backup_count && ec_mac_parse(macs[i][1], backup_devices[i], 1)) {
             ret = -EINVAL;
-            goto out_cdev;
+            goto out_class;
         }
     }
     
@@ -130,7 +138,7 @@ int __init ec_init_module(void)
                         GFP_KERNEL))) {
             EC_ERR("Failed to allocate memory for EtherCAT masters.\n");
             ret = -ENOMEM;
-            goto out_cdev;
+            goto out_class;
         }
     }
     
@@ -150,8 +158,11 @@ out_free_masters:
     for (i--; i >= 0; i--)
         ec_master_clear(&masters[i]);
     kfree(masters);
+out_class:
+    class_destroy(class);
 out_cdev:
-    unregister_chrdev_region(device_number, master_count);
+    if (master_count)
+        unregister_chrdev_region(device_number, master_count);
 out_return:
     return ret;
 }
@@ -169,10 +180,14 @@ void __exit ec_cleanup_module(void)
     for (i = 0; i < master_count; i++) {
         ec_master_clear(&masters[i]);
     }
-    if (master_count) {
+
+    if (master_count)
         kfree(masters);
+    
+    class_destroy(class);
+    
+    if (master_count)
         unregister_chrdev_region(device_number, master_count);
-    }
     
     EC_INFO("Master module cleaned up.\n");
 }
