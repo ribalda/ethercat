@@ -60,12 +60,12 @@
 
 /*****************************************************************************/
 
-/**
-   Device constructor.
-   \return 0 in case of success, else < 0
-*/
-
-int ec_device_init(ec_device_t *device, /**< EtherCAT device */
+/** Constructor.
+ * 
+ * \return 0 in case of success, else < 0
+ */
+int ec_device_init(
+        ec_device_t *device, /**< EtherCAT device */
         ec_master_t *master /**< master owning the device */
         )
 {
@@ -129,11 +129,11 @@ out_return:
 
 /*****************************************************************************/
 
-/**
-   EtherCAT device destuctor.
-*/
-
-void ec_device_clear(ec_device_t *device /**< EtherCAT device */)
+/** Destuctor.
+ */
+void ec_device_clear(
+        ec_device_t *device /**< EtherCAT device */
+        )
 {
     unsigned int i;
 
@@ -147,11 +147,10 @@ void ec_device_clear(ec_device_t *device /**< EtherCAT device */)
 
 /*****************************************************************************/
 
-/**
-   Associate with net_device.
-*/
-
-void ec_device_attach(ec_device_t *device, /**< EtherCAT device */
+/** Associate with net_device.
+ */
+void ec_device_attach(
+        ec_device_t *device, /**< EtherCAT device */
         struct net_device *net_dev, /**< net_device structure */
         ec_pollfunc_t poll, /**< pointer to device's poll function */
         struct module *module /**< the device's module */
@@ -175,11 +174,11 @@ void ec_device_attach(ec_device_t *device, /**< EtherCAT device */
 
 /*****************************************************************************/
 
-/**
-   Disconnect from net_device.
-*/
-
-void ec_device_detach(ec_device_t *device /**< EtherCAT device */)
+/** Disconnect from net_device.
+ */
+void ec_device_detach(
+        ec_device_t *device /**< EtherCAT device */
+        )
 {
     unsigned int i;
 
@@ -196,12 +195,13 @@ void ec_device_detach(ec_device_t *device /**< EtherCAT device */)
 
 /*****************************************************************************/
 
-/**
-   Opens the EtherCAT device.
-   \return 0 in case of success, else < 0
-*/
-
-int ec_device_open(ec_device_t *device /**< EtherCAT device */)
+/** Opens the EtherCAT device.
+ *
+ * \return 0 in case of success, else < 0
+ */
+int ec_device_open(
+        ec_device_t *device /**< EtherCAT device */
+        )
 {
     if (!device->dev) {
         EC_ERR("No net_device to open!\n");
@@ -224,12 +224,13 @@ int ec_device_open(ec_device_t *device /**< EtherCAT device */)
 
 /*****************************************************************************/
 
-/**
-   Stops the EtherCAT device.
-   \return 0 in case of success, else < 0
-*/
-
-int ec_device_close(ec_device_t *device /**< EtherCAT device */)
+/** Stops the EtherCAT device.
+ *
+ * \return 0 in case of success, else < 0
+ */
+int ec_device_close(
+        ec_device_t *device /**< EtherCAT device */
+        )
 {
     if (!device->dev) {
         EC_ERR("No device to close!\n");
@@ -248,12 +249,13 @@ int ec_device_close(ec_device_t *device /**< EtherCAT device */)
 
 /*****************************************************************************/
 
-/**
-   Returns a pointer to the device's transmit memory.
-   \return pointer to the TX socket buffer
-*/
-
-uint8_t *ec_device_tx_data(ec_device_t *device /**< EtherCAT device */)
+/** Returns a pointer to the device's transmit memory.
+ *
+ * \return pointer to the TX socket buffer
+ */
+uint8_t *ec_device_tx_data(
+        ec_device_t *device /**< EtherCAT device */
+        )
 {
     /* cycle through socket buffers, because otherwise there is a race
      * condition, if multiple frames are sent and the DMA is not scheduled in
@@ -265,15 +267,15 @@ uint8_t *ec_device_tx_data(ec_device_t *device /**< EtherCAT device */)
 
 /*****************************************************************************/
 
-/**
-   Sends the content of the transmit socket buffer.
-   Cuts the socket buffer content to the (now known) size, and calls the
-   start_xmit() function of the assigned net_device.
-*/
-
-void ec_device_send(ec_device_t *device, /**< EtherCAT device */
-                    size_t size /**< number of bytes to send */
-                    )
+/** Sends the content of the transmit socket buffer.
+ *
+ * Cuts the socket buffer content to the (now known) size, and calls the
+ * start_xmit() function of the assigned net_device.
+ */
+void ec_device_send(
+        ec_device_t *device, /**< EtherCAT device */
+        size_t size /**< number of bytes to send */
+        )
 {
     struct sk_buff *skb = device->tx_skb[device->tx_ring_index];
 
@@ -304,10 +306,8 @@ void ec_device_send(ec_device_t *device, /**< EtherCAT device */
 /*****************************************************************************/
 
 #ifdef EC_DEBUG_RING
-/**
- * Appends frame data to the debug ring.
+/** Appends frame data to the debug ring.
  */
-
 void ec_device_debug_ring_append(
         ec_device_t *device, /**< EtherCAT device */
         ec_debug_frame_dir_t dir, /**< direction */
@@ -333,10 +333,8 @@ void ec_device_debug_ring_append(
 
 /*****************************************************************************/
 
-/**
- * Outputs the debug ring.
+/** Outputs the debug ring.
  */
-
 void ec_device_debug_ring_print(
         const ec_device_t *device /**< EtherCAT device */
         )
@@ -376,14 +374,15 @@ void ec_device_debug_ring_print(
 
 /*****************************************************************************/
 
-/**
-   Calls the poll function of the assigned net_device.
-   The master itself works without using interrupts. Therefore the processing
-   of received data and status changes of the network device has to be
-   done by the master calling the ISR "manually".
-*/
-
-void ec_device_poll(ec_device_t *device /**< EtherCAT device */)
+/** Calls the poll function of the assigned net_device.
+ *
+ * The master itself works without using interrupts. Therefore the processing
+ * of received data and status changes of the network device has to be
+ * done by the master calling the ISR "manually".
+ */
+void ec_device_poll(
+        ec_device_t *device /**< EtherCAT device */
+        )
 {
     device->cycles_poll = get_cycles();
     device->jiffies_poll = jiffies;
@@ -397,17 +396,80 @@ void ec_device_poll(ec_device_t *device /**< EtherCAT device */)
  *  Device interface
  *****************************************************************************/
 
-/**
-   Accepts a received frame.
-   Forwards the received data to the master. The master will analyze the frame
-   and dispatch the received commands to the sending instances.
-   \ingroup DeviceInterface
-*/
+/** Withdraws an EtherCAT device from the master.
+ *
+ * The device is disconnected from the master and all device ressources
+ * are freed.
+ *
+ * \attention Before calling this function, the ecdev_stop() function has
+ *            to be called, to be sure that the master does not use the device
+ *            any more.
+ * \ingroup DeviceInterface
+ */
+void ecdev_withdraw(ec_device_t *device /**< EtherCAT device */)
+{
+    ec_master_t *master = device->master;
+    char str[20];
 
-void ecdev_receive(ec_device_t *device, /**< EtherCAT device */
-                   const void *data, /**< pointer to received data */
-                   size_t size /**< number of bytes received */
-                   )
+    ec_mac_print(device->dev->dev_addr, str);
+    EC_INFO("Master %u releasing main device %s.\n", master->index, str);
+    
+    down(&master->device_sem);
+    ec_device_detach(device);
+    up(&master->device_sem);
+}
+
+/*****************************************************************************/
+
+/** Opens the network device and makes the master enter IDLE mode.
+ *
+ * \return 0 on success, else < 0
+ * \ingroup DeviceInterface
+ */
+int ecdev_open(ec_device_t *device /**< EtherCAT device */)
+{
+    if (ec_device_open(device)) {
+        EC_ERR("Failed to open device!\n");
+        return -1;
+    }
+
+    if (ec_master_enter_idle_mode(device->master)) {
+        EC_ERR("Failed to enter idle mode!\n");
+        return -1;
+    }
+
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Makes the master leave IDLE mode and closes the network device.
+ *
+ * \return 0 on success, else < 0
+ * \ingroup DeviceInterface
+ */
+void ecdev_close(ec_device_t *device /**< EtherCAT device */)
+{
+    ec_master_leave_idle_mode(device->master);
+
+    if (ec_device_close(device))
+        EC_WARN("Failed to close device!\n");
+}
+
+/*****************************************************************************/
+
+/** Accepts a received frame.
+ *
+ * Forwards the received data to the master. The master will analyze the frame
+ * and dispatch the received commands to the sending instances.
+ * 
+ * \ingroup DeviceInterface
+ */
+void ecdev_receive(
+        ec_device_t *device, /**< EtherCAT device */
+        const void *data, /**< pointer to received data */
+        size_t size /**< number of bytes received */
+        )
 {
     const void *ec_data = data + ETH_HLEN;
     size_t ec_size = size - ETH_HLEN;
@@ -430,19 +492,20 @@ void ecdev_receive(ec_device_t *device, /**< EtherCAT device */
 
 /*****************************************************************************/
 
-/**
-   Sets a new link state.
-   If the device notifies the master about the link being down, the master
-   will not try to send frames using this device.
-   \ingroup DeviceInterface
-*/
-
-void ecdev_set_link(ec_device_t *device, /**< EtherCAT device */
+/** Sets a new link state.
+ *
+ * If the device notifies the master about the link being down, the master
+ * will not try to send frames using this device.
+ * 
+ * \ingroup DeviceInterface
+ */
+void ecdev_set_link(
+        ec_device_t *device, /**< EtherCAT device */
         uint8_t state /**< new link state */
         )
 {
     if (unlikely(!device)) {
-        EC_WARN("ecdev_link_state: no device!\n");
+        EC_WARN("ecdev_set_link(): No device!\n");
         return;
     }
 
@@ -454,15 +517,16 @@ void ecdev_set_link(ec_device_t *device, /**< EtherCAT device */
 
 /*****************************************************************************/
 
-/**
-   Reads the link state.
-   \ingroup DeviceInterface
-*/
-
-uint8_t ecdev_get_link(ec_device_t *device /**< EtherCAT device */)
+/** Reads the link state.
+ *
+ * \ingroup DeviceInterface
+ */
+uint8_t ecdev_get_link(
+        const ec_device_t *device /**< EtherCAT device */
+        )
 {
     if (unlikely(!device)) {
-        EC_WARN("ecdev_link_state: no device!\n");
+        EC_WARN("ecdev_get_link(): No device!\n");
         return 0;
     }
 
@@ -473,6 +537,9 @@ uint8_t ecdev_get_link(ec_device_t *device /**< EtherCAT device */)
 
 /** \cond */
 
+EXPORT_SYMBOL(ecdev_withdraw);
+EXPORT_SYMBOL(ecdev_open);
+EXPORT_SYMBOL(ecdev_close);
 EXPORT_SYMBOL(ecdev_receive);
 EXPORT_SYMBOL(ecdev_get_link);
 EXPORT_SYMBOL(ecdev_set_link);

@@ -1733,10 +1733,7 @@ rtl8169_init_one(struct pci_dev *pdev, const struct pci_device_id *ent)
 	spin_lock_init(&tp->lock);
 
 	// offer device to EtherCAT master module
-	if (ecdev_offer(dev, ec_poll, THIS_MODULE, &tp->ecdev)) {
-		printk(KERN_ERR PFX "Failed to offer device.\n");
-		goto err_out_unmap_5;
-	}
+	tp->ecdev = ecdev_offer(dev, ec_poll, THIS_MODULE);
 
 	if (!tp->ecdev) {
 		printk(KERN_INFO "about to register device named %s (%p)...\n", dev->name, dev);

@@ -393,16 +393,15 @@ size_t ec_state_string(uint8_t states, /**< slave states */
  * The master decides, if it wants to use the device for EtherCAT operation,
  * or not. It is important, that the offered net_device is not used by the
  * kernel IP stack. If the master, accepted the offer, the address of the
- * newly created EtherCAT device is written to the ecdev pointer, else the
- * pointer is written to zero.
+ * newly created EtherCAT device is returned, else \a NULL is returned.
  *
- * \return 0 on success, else < 0
+ * \return Pointer to device, if accepted, or NULL if declined.
  * \ingroup DeviceInterface
  */
-int ecdev_offer(struct net_device *net_dev, /**< net_device to offer */
+ec_device_t *ecdev_offer(
+        struct net_device *net_dev, /**< net_device to offer */
         ec_pollfunc_t poll, /**< device poll function */
-        struct module *module, /**< pointer to the module */
-        ec_device_t **ecdev /**< pointer to store a device on success */
+        struct module *module /**< pointer to the module */
         )
 {
     ec_master_t *master;
@@ -428,8 +427,7 @@ int ecdev_offer(struct net_device *net_dev, /**< net_device to offer */
             up(&master->device_sem);
             
             sprintf(net_dev->name, "ec%u", master->index);
-            *ecdev = &master->main_device; // offer accepted
-            return 0; // no error
+            return &master->main_device; // offer accepted
         }
         else {
             up(&master->device_sem);
@@ -441,70 +439,7 @@ int ecdev_offer(struct net_device *net_dev, /**< net_device to offer */
         }
     }
 
-    *ecdev = NULL; // offer declined
-    return 0; // no error
-}
-
-/*****************************************************************************/
-
-/** Withdraws an EtherCAT device from the master.
- *
- * The device is disconnected from the master and all device ressources
- * are freed.
- *
- * \attention Before calling this function, the ecdev_stop() function has
- *            to be called, to be sure that the master does not use the device
- *            any more.
- * \ingroup DeviceInterface
- */
-void ecdev_withdraw(ec_device_t *device /**< EtherCAT device */)
-{
-    ec_master_t *master = device->master;
-    char str[20];
-
-    ec_mac_print(device->dev->dev_addr, str);
-    EC_INFO("Master %u releasing main device %s.\n", master->index, str);
-    
-    down(&master->device_sem);
-    ec_device_detach(device);
-    up(&master->device_sem);
-}
-
-/*****************************************************************************/
-
-/** Opens the network device and makes the master enter IDLE mode.
- *
- * \return 0 on success, else < 0
- * \ingroup DeviceInterface
- */
-int ecdev_open(ec_device_t *device /**< EtherCAT device */)
-{
-    if (ec_device_open(device)) {
-        EC_ERR("Failed to open device!\n");
-        return -1;
-    }
-
-    if (ec_master_enter_idle_mode(device->master)) {
-        EC_ERR("Failed to enter idle mode!\n");
-        return -1;
-    }
-
-    return 0;
-}
-
-/*****************************************************************************/
-
-/** Makes the master leave IDLE mode and closes the network device.
- *
- * \return 0 on success, else < 0
- * \ingroup DeviceInterface
- */
-void ecdev_close(ec_device_t *device /**< EtherCAT device */)
-{
-    ec_master_leave_idle_mode(device->master);
-
-    if (ec_device_close(device))
-        EC_WARN("Failed to close device!\n");
+    return NULL; // offer declined
 }
 
 /******************************************************************************
@@ -598,9 +533,6 @@ module_init(ec_init_module);
 module_exit(ec_cleanup_module);
 
 EXPORT_SYMBOL(ecdev_offer);
-EXPORT_SYMBOL(ecdev_withdraw);
-EXPORT_SYMBOL(ecdev_open);
-EXPORT_SYMBOL(ecdev_close);
 
 EXPORT_SYMBOL(ecrt_request_master);
 EXPORT_SYMBOL(ecrt_release_master);

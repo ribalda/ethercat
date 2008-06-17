@@ -1070,10 +1070,7 @@ static int __devinit rtl8139_init_one (struct pci_dev *pdev,
 	/* dev is fully set up and ready to use now */
     
 	// offer device to EtherCAT master module
-	if (ecdev_offer(dev, ec_poll, THIS_MODULE, &tp->ecdev)) {
-		printk(KERN_ERR PFX "Failed to offer device.\n");
-		goto err_out;
-	}
+	tp->ecdev = ecdev_offer(dev, ec_poll, THIS_MODULE);
 
 	if (!tp->ecdev) {
 		DPRINTK("about to register device named %s (%p)...\n", dev->name, dev);

@@ -49,6 +49,8 @@ Changes in version 1.4.0:
     - Exported ecrt_slave_config_sdo(), the generic Sdo configuration
       function.
     - Removed the bus_state and bus_tainted flags from ec_master_state_t.
+* Device interface changes:
+    - Moved device output parameter of ecdev_offer() to return value.
 * Replaces the Sysfs interface with a new 'ethercat' command-line tool. See
   'ethercat --help'.
 * Removed include/ecdb.h.

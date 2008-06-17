@@ -713,11 +713,7 @@ e1000_probe(struct pci_dev *pdev,
 	}
 
 	// offer device to EtherCAT master module
-	if (ecdev_offer(netdev, ec_poll, THIS_MODULE, &adapter->ecdev)) {
-		DPRINTK(PROBE, ERR, "Failed to offer device.\n");
-		goto err_register;
-	}
-
+	adapter->ecdev = ecdev_offer(netdev, ec_poll, THIS_MODULE);
 	if (adapter->ecdev) {
 		if (ecdev_open(adapter->ecdev)) {
 			ecdev_withdraw(adapter->ecdev);
