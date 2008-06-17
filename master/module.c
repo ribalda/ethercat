@@ -144,7 +144,7 @@ int __init ec_init_module(void)
     
     for (i = 0; i < master_count; i++) {
         if (ec_master_init(&masters[i], i, macs[i][0], macs[i][1],
-                    device_number)) {
+                    device_number, class)) {
             ret = -ENOMEM;
             goto out_free_masters;
         }

@@ -76,7 +76,8 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
         unsigned int index, /**< master index */
         const uint8_t *main_mac, /**< MAC address of main device */
         const uint8_t *backup_mac, /**< MAC address of backup device */
-        dev_t device_number /**< Character device number. */
+        dev_t device_number, /**< Character device number. */
+        struct class *class /**< Device class. */
         )
 {
     unsigned int i;
@@ -170,9 +171,19 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     // init character device
     if (ec_cdev_init(&master->cdev, master, device_number))
         goto out_clear_fsm;
+    
+    master->class_device = class_device_create(class,
+            MKDEV(MAJOR(device_number), master->index),
+            NULL, "EtherCAT%u", master->index);
+    if (IS_ERR(master->class_device)) {
+        EC_ERR("Failed to create class device!\n");
+        goto out_clear_cdev;
+    }
 
     return 0;
 
+out_clear_cdev:
+    ec_cdev_clear(&master->cdev);
 out_clear_fsm:
     ec_fsm_master_clear(&master->fsm);
     ec_datagram_clear(&master->fsm_datagram);
@@ -192,6 +203,7 @@ void ec_master_clear(
         ec_master_t *master /**< EtherCAT master */
         )
 {
+    class_device_unregister(master->class_device);
     ec_cdev_clear(&master->cdev);
 #ifdef EC_EOE
     ec_master_clear_eoe_handlers(master);
