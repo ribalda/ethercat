@@ -246,7 +246,6 @@ typedef struct {
     uint16_t position; /**< Slave position. */
     uint32_t vendor_id; /**< Slave vendor ID. */
     uint32_t product_code; /**< Slave product code. */
-    uint32_t revision_number; /**< Slave revision number. */
     uint16_t index; /**< Pdo entry index. */
     uint8_t subindex; /**< Pdo entry subindex. */
     unsigned int *offset; /**< Pointer to a variable to store the Pdo entry's
@@ -351,8 +350,7 @@ ec_slave_config_t *ecrt_master_slave_config(
         uint16_t alias, /**< Slave alias. */
         uint16_t position, /**< Slave position. */
         uint32_t vendor_id, /**< Expected vendor ID. */
-        uint32_t product_code, /**< Expected product code. */
-        uint32_t revision_number /**< Expected revision number. */
+        uint32_t product_code /**< Expected product code. */
         );
 
 /** Finishes the configuration phase and prepares for realtime mode.

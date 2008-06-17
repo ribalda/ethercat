@@ -63,7 +63,6 @@ struct ec_slave_config {
                          ring position. */
     uint32_t vendor_id; /**< Slave vendor ID. */
     uint32_t product_code; /**< Slave product code. */
-    uint32_t revision_number; /**< Slave revision number. */
 
     ec_slave_t *slave; /**< Slave pointer. This is \a NULL, if the slave is
                          offline. */
@@ -80,7 +79,7 @@ struct ec_slave_config {
 /*****************************************************************************/
 
 void ec_slave_config_init(ec_slave_config_t *, ec_master_t *, uint16_t,
-        uint16_t, uint32_t, uint32_t, uint32_t);
+        uint16_t, uint32_t, uint32_t);
 void ec_slave_config_clear(ec_slave_config_t *);
 
 int ec_slave_config_attach(ec_slave_config_t *);

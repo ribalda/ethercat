@@ -1287,7 +1287,7 @@ void ecrt_master_receive(ec_master_t *master)
 
 ec_slave_config_t *ecrt_master_slave_config(ec_master_t *master,
         uint16_t alias, uint16_t position, uint32_t vendor_id,
-        uint32_t product_code, uint32_t revision_number)
+        uint32_t product_code)
 {
     ec_slave_config_t *sc;
     unsigned int found = 0;
@@ -1304,21 +1304,18 @@ ec_slave_config_t *ecrt_master_slave_config(ec_master_t *master,
             EC_INFO("Using existing slave configuration for %u:%u\n",
                     alias, position);
         }
-        if (sc->vendor_id != vendor_id
-                || sc->product_code != product_code
-                || sc->revision_number != revision_number) {
+        if (sc->vendor_id != vendor_id || sc->product_code != product_code) {
             EC_ERR("Slave type mismatch. Slave was configured as"
-                    " 0x%08X/0x%08X/0x%08X before. Now configuring with"
-                    " 0x%08X/0x%08X/0x%08X.\n",
-                    sc->vendor_id, sc->product_code, sc->revision_number,
-                    vendor_id, product_code, revision_number);
+                    " 0x%08X/0x%08X before. Now configuring with"
+                    " 0x%08X/0x%08X.\n", sc->vendor_id, sc->product_code,
+                    vendor_id, product_code);
             return NULL;
         }
     } else {
         if (master->debug_level) {
             EC_INFO("Creating slave configuration for %u:%u,"
-                    " 0x%08X/0x%08X/0x%08X.\n", alias, position,
-                    vendor_id, product_code, revision_number);
+                    " 0x%08X/0x%08X.\n", alias, position, vendor_id,
+                    product_code);
         }
 
         if (!(sc = (ec_slave_config_t *) kmalloc(sizeof(ec_slave_config_t),
@@ -1328,7 +1325,7 @@ ec_slave_config_t *ecrt_master_slave_config(ec_master_t *master,
         }
 
         ec_slave_config_init(sc, master,
-                alias, position, vendor_id, product_code, revision_number);
+                alias, position, vendor_id, product_code);
 
         // try to find the addressed slave
         ec_slave_config_attach(sc);

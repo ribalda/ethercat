@@ -320,8 +320,7 @@ int ecrt_domain_reg_pdo_entry_list(ec_domain_t *domain,
     
     for (reg = regs; reg->index; reg++) {
         if (!(sc = ecrt_master_slave_config(domain->master, reg->alias,
-                        reg->position, reg->vendor_id, reg->product_code,
-                        reg->revision_number)))
+                        reg->position, reg->vendor_id, reg->product_code)))
             return -1;
 
         if ((ret = ecrt_slave_config_reg_pdo_entry(sc, reg->index,
