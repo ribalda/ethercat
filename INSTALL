@@ -17,6 +17,7 @@ documentation available from http://etherlab.org/en/ethercat.
 For the impatient: The procedure mainly consists of calling
 
 $ ./configure
+$ make
 $ make modules
 
 (and as root)
@@ -24,7 +25,23 @@ $ make modules
 # make install
 # make modules_install
 
-...and copying the init script and sysconfig file from $PREFIX/etc to the
-appropriate locations and customizing the sysconfig file.
+...and linking the init script and copying the sysconfig file from $PREFIX/etc
+to the appropriate locations and customizing the sysconfig file.
+
+# ln -s ${PREFIX}/etc/init.d/ethercat /etc/init.d/ethercat
+# cp ${PREFIX}/etc/sysconfig/ethercat /etc/sysconfig/ethercat
+# vi /etc/sysconfig/ethercat
+
+The EtherCAT character device will be created with mode 0660 and group root by
+default. If you want to give normal users reading access, create a udev rule
+like this:
+
+# echo KERNEL==\"EtherCAT[0-9]*\", MODE=\"0664\" > /etc/udev/rules.d/99-EtherCAT.rules
+
+Now you can start the EtherCAT master:
+
+# /etc/init.d/ethercat start
+
+Have fun!
 
 -------------------------------------------------------------------------------
