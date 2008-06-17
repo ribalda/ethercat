@@ -38,7 +38,7 @@
 /*****************************************************************************/
 
 #include <linux/module.h>
-#include <linux/sysfs.h>
+#include <linux/device.h>
 
 #include "globals.h"
 #include "master.h"
