@@ -49,7 +49,6 @@
 
 #------------------------------------------------------------------------------
 
-CDEV='EtherCAT'
 MODPROBE=/sbin/modprobe
 RMMOD=/sbin/rmmod
 MODINFO=/sbin/modinfo
@@ -173,29 +172,12 @@ start)
 
         MASTER_INDEX=$(expr ${MASTER_INDEX} + 1)
     done
-    MASTER_INDICES=`seq 0 $((${MASTER_INDEX} - 1))`
 
     # load master module
     if ! ${MODPROBE} ${MODPROBE_FLAGS} ec_master \
             main_devices=${DEVICES} backup_devices=${BACKUPS}; then
         exit_fail
     fi
-
-    # remove stale device nodes
-    rm -f /dev/${CDEV}*
-
-    # get dynamic major number
-    MAJOR=$(awk "\$2==\"EtherCAT\" {print \$1}" /proc/devices)
-    if [ -z "${MAJOR}" ]; then
-        echo "Failed to get device major number!"
-        ${RMMOD} ec_master
-        exit_fail
-    fi
-
-    # create character devices
-    for i in ${MASTER_INDICES}; do
-        mknod /dev/${CDEV}${i} c ${MAJOR} ${i}
-    done
 
     # check for modules to replace
     for MODULE in ${DEVICE_MODULES}; do
@@ -230,9 +212,6 @@ stop)
             exit_fail
         fi;
     done
-
-    # remove device nodes
-    rm -f /dev/${CDEV}*
 
     sleep 1
 
