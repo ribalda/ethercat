@@ -51,8 +51,6 @@
 
 int eccdev_open(struct inode *, struct file *);
 int eccdev_release(struct inode *, struct file *);
-ssize_t eccdev_read(struct file *, char __user *, size_t, loff_t *);
-ssize_t eccdev_write(struct file *, const char __user *, size_t, loff_t *);
 long eccdev_ioctl(struct file *, unsigned int, unsigned long);
 
 /*****************************************************************************/

@@ -61,8 +61,6 @@ typedef struct {
 int ec_cdev_init(ec_cdev_t *, ec_master_t *, dev_t);
 void ec_cdev_clear(ec_cdev_t *);
 
-int ec_cdev_request(ec_cdev_t *, uint32_t, uint32_t);
-
 /*****************************************************************************/
 
 #endif
