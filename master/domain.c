@@ -68,7 +68,7 @@ void ec_domain_init(
     domain->data_origin = EC_ORIG_INTERNAL;
     domain->logical_base_address = 0x00000000;
     INIT_LIST_HEAD(&domain->datagrams);
-    domain->working_counter = 0xFFFF;
+    domain->working_counter = 0x0000;
     domain->expected_working_counter = 0x0000;
     domain->working_counter_changes = 0;
     domain->notify_jiffies = 0;
