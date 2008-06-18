@@ -103,8 +103,7 @@ struct ec_master {
     ec_slave_t *slaves; /**< Array of slaves on the bus. */
     unsigned int slave_count; /**< Number of slaves on the bus. */
 
-    struct list_head configs; /**< Bus configuration list. */
-    unsigned int configs_attached; /**< Slave configurations were attached. */
+    struct list_head configs; /**< List of slave configurations. */
     
     unsigned int scan_busy; /**< Current scan state. */
     unsigned int allow_scan; /**< non-zero, if slave scanning is allowed */
@@ -188,7 +187,7 @@ void ec_master_receive_datagrams(ec_master_t *, const uint8_t *, size_t);
 void ec_master_queue_datagram(ec_master_t *, ec_datagram_t *);
 
 // misc.
-int ec_master_attach_slave_configs(ec_master_t *);
+void ec_master_attach_slave_configs(ec_master_t *);
 ec_slave_t *ec_master_find_slave(ec_master_t *, uint16_t, uint16_t);
 void ec_master_output_stats(ec_master_t *);
 #ifdef EC_EOE

@@ -1014,37 +1014,24 @@ void ec_master_detach_slave_configs(
 {
     ec_slave_config_t *sc;
 
-    if (!master->configs_attached)
-        return;
-
     list_for_each_entry(sc, &master->configs, list) {
         ec_slave_config_detach(sc); 
     }
-
-    master->configs_attached = 0;
 }
 
 /*****************************************************************************/
 
 /** Attaches the slave configurations to the slaves.
  */
-int ec_master_attach_slave_configs(
+void ec_master_attach_slave_configs(
         ec_master_t *master /**< EtherCAT master. */
         )
 {
     ec_slave_config_t *sc;
-    unsigned int errors = 0;
-
-    if (master->configs_attached)
-        return 0;
 
     list_for_each_entry(sc, &master->configs, list) {
-        if (ec_slave_config_attach(sc))
-            errors = 1;
+        ec_slave_config_attach(sc);
     }
-
-    master->configs_attached = !errors;
-    return errors ? -1 : 0;
 }
 
 /*****************************************************************************/
