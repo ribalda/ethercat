@@ -44,6 +44,10 @@
 #include "sdo_request.h"
 #include "fsm_coe_map.h"
 
+/** Retry reading the number of assigned Pdos if this time is not elapsed.
+ */
+#define EC_FSM_COE_MAP_TIMEOUT 5
+
 /*****************************************************************************/
 
 void ec_fsm_coe_map_state_start(ec_fsm_coe_map_t *);
@@ -183,7 +187,7 @@ void ec_fsm_coe_map_action_next_dir(
 
         ec_sdo_request_address(&fsm->request, fsm->sync_sdo_index, 0);
         ecrt_sdo_request_read(&fsm->request);
-        fsm->retries = 5;
+        fsm->jiffies_start = jiffies;
         fsm->state = ec_fsm_coe_map_state_pdo_count;
         ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, &fsm->request);
         ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
@@ -210,7 +214,7 @@ void ec_fsm_coe_map_state_pdo_count(
     if (ec_fsm_coe_exec(fsm->fsm_coe)) return;
 
     if (!ec_fsm_coe_success(fsm->fsm_coe)) {
-        if (fsm->retries--) {
+        if (jiffies - fsm->jiffies_start < HZ * EC_FSM_COE_MAP_TIMEOUT) {
             if (fsm->slave->master->debug_level)
                 EC_DBG("Failed to read number of assigned Pdos from "
                         "slave %u. Retrying...\n", fsm->slave->ring_position);
