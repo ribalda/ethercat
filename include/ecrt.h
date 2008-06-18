@@ -157,15 +157,16 @@ typedef struct ec_sdo_request ec_sdo_request_t; /**< \see ec_sdo_request. */
  */
 typedef struct {
     unsigned int slaves_responding; /**< Number of slaves in the bus. */
-    uint8_t slave_states; /**< Application-layer states of all slaves.
-                            The states are coded in the lower 4 bits. If a bit
-                            is set, it means that at least one slave in the
-                            bus is in the corresponding state:
-                            - Bit 0: \a INIT
-                            - Bit 1: \a PREOP
-                            - Bit 2: \a SAFEOP
-                            - Bit 3: \a OP */
-    uint8_t link_up; /**< \a true, if the network link is up. */
+    unsigned int al_states : 4; /**< Application-layer states of all slaves.
+                                  The states are coded in the lower 4 bits.
+                                  If a bit is set, it means that at least one
+                                  slave in the bus is in the corresponding
+                                  state:
+                                  - Bit 0: \a INIT
+                                  - Bit 1: \a PREOP
+                                  - Bit 2: \a SAFEOP
+                                  - Bit 3: \a OP */
+    unsigned int link_up : 1; /**< \a true, if the network link is up. */
 } ec_master_state_t;
 
 /*****************************************************************************/
@@ -177,17 +178,17 @@ typedef struct {
  * \see ecrt_slave_config_state().
  */
 typedef struct  {
-    uint8_t slave_state; /**< The application-layer state of the slave.
-                           - 1: \a INIT
-                           - 2: \a PREOP
-                           - 4: \a SAFEOP
-                           - 8: \a OP
-
-                           Note that each state is coded in a different
-                           bit! */
     unsigned int online : 1; /**< The slave is online. */
     unsigned int operational : 1; /**< The slave was brought into \a OP state
                                     using the specified configuration. */
+    unsigned int al_state : 4; /**< The application-layer state of the slave.
+                                 - 1: \a INIT
+                                 - 2: \a PREOP
+                                 - 4: \a SAFEOP
+                                 - 8: \a OP
+
+                                 Note that each state is coded in a different
+                                 bit! */
 } ec_slave_config_state_t;
 
 /*****************************************************************************/

@@ -8,8 +8,6 @@ $Id$
 
 Version 1.4.0:
 
-* Supply new ec_master_state_t.
-* Implement ecrt_slave_config_state().
 * Remove get_cycles() calls and references to cpu_khz to increase
   portability.
 * Make ecrt_master_slave_config() return no error when slave is not present

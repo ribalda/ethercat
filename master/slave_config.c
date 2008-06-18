@@ -618,6 +618,22 @@ ec_sdo_request_t *ecrt_slave_config_create_sdo_request(ec_slave_config_t *sc,
 
 /*****************************************************************************/
 
+void ecrt_slave_config_state(const ec_slave_config_t *sc,
+        ec_slave_config_state_t *state)
+{
+    state->online = sc->slave ? 1 : 0;
+    if (state->online) {
+        state->operational =
+            sc->slave->current_state == EC_SLAVE_STATE_OP;
+        state->al_state = sc->slave->current_state;
+    } else {
+        state->operational = 0;
+        state->al_state = EC_SLAVE_STATE_UNKNOWN;
+    }
+}
+
+/*****************************************************************************/
+
 /** \cond */
 
 EXPORT_SYMBOL(ecrt_slave_config_pdo_assign_add);
@@ -631,6 +647,7 @@ EXPORT_SYMBOL(ecrt_slave_config_sdo8);
 EXPORT_SYMBOL(ecrt_slave_config_sdo16);
 EXPORT_SYMBOL(ecrt_slave_config_sdo32);
 EXPORT_SYMBOL(ecrt_slave_config_create_sdo_request);
+EXPORT_SYMBOL(ecrt_slave_config_state);
 
 /** \endcond */
 

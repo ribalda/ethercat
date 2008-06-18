@@ -1372,7 +1372,7 @@ void ecrt_master_callbacks(ec_master_t *master, int (*request_cb)(void *),
 void ecrt_master_state(const ec_master_t *master, ec_master_state_t *state)
 {
     state->slaves_responding = master->fsm.slaves_responding;
-    state->slave_states = master->fsm.slave_states;
+    state->al_states = master->fsm.slave_states;
     state->link_up = master->main_device.link_state;
 }
 

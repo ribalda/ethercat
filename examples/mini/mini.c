@@ -60,6 +60,9 @@ spinlock_t master_lock = SPIN_LOCK_UNLOCKED;
 static ec_domain_t *domain1 = NULL;
 static ec_domain_state_t domain1_state = {};
 
+static ec_slave_config_t *sc_ana_in = NULL;
+static ec_slave_config_state_t sc_ana_in_state = {};
+
 static struct timer_list timer;
 static unsigned int counter = 0;
 
@@ -128,14 +131,14 @@ void check_domain1_state(void)
 {
     ec_domain_state_t ds;
 
+    spin_lock(&master_lock);
     ecrt_domain_state(domain1, &ds);
-    if (ds.working_counter != domain1_state.working_counter)
-        printk(KERN_INFO PFX "domain1 working_counter changed to %u.\n",
-                ds.working_counter);
+    spin_unlock(&master_lock);
 
+    if (ds.working_counter != domain1_state.working_counter)
+        printk(KERN_INFO PFX "Domain1: WC %u.\n", ds.working_counter);
     if (ds.wc_state != domain1_state.wc_state)
-        printk(KERN_INFO PFX "domain1 wc_state changed to %u.\n",
-                ds.wc_state);
+        printk(KERN_INFO PFX "Domain1: State %u.\n", ds.wc_state);
 
     domain1_state = ds;
 }
@@ -150,12 +153,35 @@ void check_master_state(void)
     ecrt_master_state(master, &ms);
     spin_unlock(&master_lock);
 
-    if (ms.slaves_responding != master_state.slaves_responding) {
-        printk(KERN_INFO PFX "slaves_responding changed to %u.\n",
-                ms.slaves_responding);
-    }
+    if (ms.slaves_responding != master_state.slaves_responding)
+        printk(KERN_INFO PFX "%u slave(s).\n", ms.slaves_responding);
+    if (ms.al_states != master_state.al_states)
+        printk(KERN_INFO PFX "AL states: 0x%02X.\n", ms.al_states);
+    if (ms.link_up != master_state.link_up)
+        printk(KERN_INFO PFX "Link is %s.\n", ms.link_up ? "up" : "down");
 
     master_state = ms;
+}
+
+/*****************************************************************************/
+
+void check_slave_config_states(void)
+{
+    ec_slave_config_state_t s;
+
+    spin_lock(&master_lock);
+    ecrt_slave_config_state(sc_ana_in, &s);
+    spin_unlock(&master_lock);
+
+    if (s.al_state != sc_ana_in_state.al_state)
+        printk(KERN_INFO PFX "AnaIn: State 0x%02X.\n", s.al_state);
+    if (s.online != sc_ana_in_state.online)
+        printk(KERN_INFO PFX "AnaIn: %s.\n", s.online ? "online" : "offline");
+    if (s.operational != sc_ana_in_state.operational)
+        printk(KERN_INFO PFX "AnaIn: %soperational.\n",
+                s.operational ? "" : "Not ");
+
+    sc_ana_in_state = s;
 }
 
 /*****************************************************************************/
@@ -207,6 +233,9 @@ void cyclic_task(unsigned long data)
 
         // check for master state (optional)
         check_master_state();
+
+        // check for islave configuration state(s) (optional)
+        check_slave_config_states();
         
 #ifdef SDO_ACCESS
         // read process data Sdo
@@ -269,14 +298,15 @@ int __init init_mini_module(void)
         goto out_release_master;
     }
 
-#ifdef CONFIGURE_PDOS
-    printk(KERN_INFO PFX "Configuring Pdos...\n");
-    if (!(sc = ecrt_master_slave_config(master, 0, 1, Beckhoff_EL3162))) {
+    if (!(sc_ana_in = ecrt_master_slave_config(
+                    master, 0, 1, Beckhoff_EL3162))) {
         printk(KERN_ERR PFX "Failed to get slave configuration.\n");
         goto out_release_master;
     }
 
-    if (ecrt_slave_config_pdos(sc, EC_END, el3162_pdos)) {
+#ifdef CONFIGURE_PDOS
+    printk(KERN_INFO PFX "Configuring Pdos...\n");
+    if (ecrt_slave_config_pdos(sc_ana_in, EC_END, el3162_pdos)) {
         printk(KERN_ERR PFX "Failed to configure Pdos.\n");
         goto out_release_master;
     }
