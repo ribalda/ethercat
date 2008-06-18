@@ -59,8 +59,6 @@ void ec_fsm_master_state_scan_slave(ec_fsm_master_t *);
 void ec_fsm_master_state_write_sii(ec_fsm_master_t *);
 void ec_fsm_master_state_sdo_dictionary(ec_fsm_master_t *);
 void ec_fsm_master_state_sdo_request(ec_fsm_master_t *);
-void ec_fsm_master_state_end(ec_fsm_master_t *);
-void ec_fsm_master_state_error(ec_fsm_master_t *);
 
 /*****************************************************************************/
 
@@ -113,34 +111,18 @@ void ec_fsm_master_clear(
  *
  * If the state machine's datagram is not sent or received yet, the execution
  * of the state machine is delayed to the next cycle.
- *
- * \return false, if state machine has terminated
  */
-int ec_fsm_master_exec(
+void ec_fsm_master_exec(
         ec_fsm_master_t *fsm /**< Master state machine. */
         )
 {
     if (fsm->datagram->state == EC_DATAGRAM_SENT
         || fsm->datagram->state == EC_DATAGRAM_QUEUED) {
         // datagram was not sent or received yet.
-        return ec_fsm_master_running(fsm);
+        return;
     }
 
     fsm->state(fsm);
-    return ec_fsm_master_running(fsm);
-}
-
-/*****************************************************************************/
-
-/**
- * \return false, if state machine has terminated
- */
-int ec_fsm_master_running(
-        const ec_fsm_master_t *fsm /**< Master state machine. */
-        )
-{
-    return fsm->state != ec_fsm_master_state_end
-        && fsm->state != ec_fsm_master_state_error;
 }
 
 /*****************************************************************************/
@@ -153,6 +135,18 @@ int ec_fsm_master_idle(
         )
 {
     return fsm->idle;
+}
+
+/*****************************************************************************/
+
+/** Restarts the master state machine.
+ */
+void ec_fsm_master_restart(
+        ec_fsm_master_t *fsm /**< Master state machine. */
+        )
+{
+    fsm->state = ec_fsm_master_state_start;
+    fsm->state(fsm); // execute immediately
 }
 
 /******************************************************************************
@@ -198,7 +192,7 @@ void ec_fsm_master_state_broadcast(
     }
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) { // link is down
-        fsm->state = ec_fsm_master_state_error;
+        ec_fsm_master_restart(fsm);
         return;
     }
 
@@ -240,7 +234,7 @@ void ec_fsm_master_state_broadcast(
                 // no slaves present -> finish state machine.
                 master->scan_busy = 0;
                 wake_up_interruptible(&master->scan_queue);
-                fsm->state = ec_fsm_master_state_end;
+                ec_fsm_master_restart(fsm);
                 return;
             }
 
@@ -251,7 +245,7 @@ void ec_fsm_master_state_broadcast(
                 master->slave_count = 0; // FIXME avoid scanning!
                 master->scan_busy = 0;
                 wake_up_interruptible(&master->scan_queue);
-                fsm->state = ec_fsm_master_state_error;
+                ec_fsm_master_restart(fsm);
                 return;
             }
 
@@ -283,7 +277,7 @@ void ec_fsm_master_state_broadcast(
         fsm->retries = EC_FSM_RETRIES;
         fsm->state = ec_fsm_master_state_read_state;
     } else {
-        fsm->state = ec_fsm_master_state_end;
+        ec_fsm_master_restart(fsm);
     }
 }
 
@@ -471,7 +465,7 @@ void ec_fsm_master_action_idle(
     if (ec_fsm_master_action_process_sii(fsm))
         return; // SII write request found
 
-    fsm->state = ec_fsm_master_state_end;
+    ec_fsm_master_restart(fsm);
 }
 
 /*****************************************************************************/
@@ -568,7 +562,7 @@ void ec_fsm_master_state_read_state(
         EC_ERR("Failed to receive AL state datagram for slave %u"
                 " (datagram state %u)\n",
                 slave->ring_position, datagram->state);
-        fsm->state = ec_fsm_master_state_error;
+        ec_fsm_master_restart(fsm);
         return;
     }
 
@@ -581,7 +575,7 @@ void ec_fsm_master_state_read_state(
                         fsm->slave->ring_position);
         }
         fsm->topology_change_pending = 1;
-        fsm->state = ec_fsm_master_state_error;
+        ec_fsm_master_restart(fsm);
         return;
     }
 
@@ -648,7 +642,7 @@ void ec_fsm_master_state_clear_addresses(
                 datagram->state);
         master->scan_busy = 0;
         wake_up_interruptible(&master->scan_queue);
-        fsm->state = ec_fsm_master_state_error;
+        ec_fsm_master_restart(fsm);
         return;
     }
 
@@ -721,7 +715,7 @@ void ec_fsm_master_state_scan_slave(
     ec_master_eoe_start(master);
 #endif
 
-    fsm->state = ec_fsm_master_state_end;
+    ec_fsm_master_restart(fsm);
 }
 
 /*****************************************************************************/
@@ -770,7 +764,7 @@ void ec_fsm_master_state_write_sii(
                 slave->ring_position);
         request->state = EC_REQUEST_FAILURE;
         wake_up(&master->sii_queue);
-        fsm->state = ec_fsm_master_state_error;
+        ec_fsm_master_restart(fsm);
         return;
     }
 
@@ -797,7 +791,7 @@ void ec_fsm_master_state_write_sii(
     if (ec_fsm_master_action_process_sii(fsm))
         return; // processing another request
 
-    fsm->state = ec_fsm_master_state_end;
+    ec_fsm_master_restart(fsm);
 }
 
 /*****************************************************************************/
@@ -814,7 +808,7 @@ void ec_fsm_master_state_sdo_dictionary(
     if (ec_fsm_coe_exec(&fsm->fsm_coe)) return;
 
     if (!ec_fsm_coe_success(&fsm->fsm_coe)) {
-        fsm->state = ec_fsm_master_state_error;
+        ec_fsm_master_restart(fsm);
         return;
     }
 
@@ -827,7 +821,7 @@ void ec_fsm_master_state_sdo_dictionary(
                sdo_count, entry_count, slave->ring_position);
     }
 
-    fsm->state = ec_fsm_master_state_end;
+    ec_fsm_master_restart(fsm);
 }
 
 /*****************************************************************************/
@@ -848,7 +842,7 @@ void ec_fsm_master_state_sdo_request(
                 fsm->slave->ring_position);
         request->state = EC_REQUEST_FAILURE;
         wake_up(&master->sdo_queue);
-        fsm->state = ec_fsm_master_state_error;
+        ec_fsm_master_restart(fsm);
         return;
     }
 
@@ -864,29 +858,7 @@ void ec_fsm_master_state_sdo_request(
     if (ec_fsm_master_action_process_sdo(fsm))
         return; // processing another request
 
-    fsm->state = ec_fsm_master_state_end;
-}
-
-/*****************************************************************************/
-
-/** State: ERROR.
- */
-void ec_fsm_master_state_error(
-        ec_fsm_master_t *fsm /**< Master state machine. */
-        )
-{
-    fsm->state = ec_fsm_master_state_start;
-}
-
-/*****************************************************************************/
-
-/** State: END.
- */
-void ec_fsm_master_state_end(
-        ec_fsm_master_t *fsm /**< Master state machine. */
-        )
-{
-    fsm->state = ec_fsm_master_state_start;
+    ec_fsm_master_restart(fsm);
 }
 
 /*****************************************************************************/

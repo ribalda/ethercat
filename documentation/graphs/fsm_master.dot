@@ -10,7 +10,7 @@ digraph master {
     start -> broadcast [weight=10]
 
     broadcast [fontname="Helvetica"]
-    broadcast -> end
+    broadcast -> start
     broadcast -> clear_addresses
     broadcast -> read_state [weight=10]
 
@@ -24,7 +24,7 @@ digraph master {
     action_idle -> action_process_sdo
     action_idle -> sdo_dictionary
     action_idle -> action_process_sii
-    action_idle -> end
+    action_idle -> start
 
     action_next_slave_state [shape=point,label=""]
     action_next_slave_state -> read_state
@@ -35,8 +35,8 @@ digraph master {
     action_configure -> action_next_slave_state
 
     read_state [fontname="Helvetica"]
-    read_state -> acknowledge
-    read_state -> action_configure [weight=10]
+    read_state -> acknowledge [weight=10]
+    read_state -> action_configure
     read_state -> action_next_slave_state
 
     acknowledge [fontname="Helvetica"]
@@ -46,21 +46,19 @@ digraph master {
     clear_addresses -> scan_slave [weight=10]
 
     scan_slave [fontname="Helvetica"]
-    scan_slave -> end
+    scan_slave -> start
 
     configure_slave [fontname="Helvetica"]
-    configure_slave -> action_next_slave_state [weight=10]
+    configure_slave -> action_next_slave_state
 
     write_sii [fontname="Helvetica"]
     write_sii -> action_process_sii
-    write_sii -> end
+    write_sii -> start
 
     sdo_dictionary [fontname="Helvetica"]
-    sdo_dictionary -> end
+    sdo_dictionary -> start
 
     sdo_request [fontname="Helvetica"]
     sdo_request -> action_process_sdo
-    sdo_request -> end
-
-    end [fontname="Helvetica"]
+    sdo_request -> start
 }

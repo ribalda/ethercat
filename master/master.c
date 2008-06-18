@@ -818,24 +818,22 @@ static int ec_master_idle_thread(ec_master_t *master)
         cycles_start = get_cycles();
         ec_datagram_output_stats(&master->fsm_datagram);
 
-        if (ec_fsm_master_running(&master->fsm)) { // datagram on the way
-            // receive
-            spin_lock_bh(&master->internal_lock);
-            ecrt_master_receive(master);
-            spin_unlock_bh(&master->internal_lock);
+        // receive
+        spin_lock_bh(&master->internal_lock);
+        ecrt_master_receive(master);
+        spin_unlock_bh(&master->internal_lock);
 
-            if (master->fsm_datagram.state == EC_DATAGRAM_SENT)
-                goto schedule;
-        }
+        if (master->fsm_datagram.state == EC_DATAGRAM_SENT)
+            goto schedule;
 
         // execute master state machine
-        if (ec_fsm_master_exec(&master->fsm)) { // datagram ready for sending
-            // queue and send
-            spin_lock_bh(&master->internal_lock);
-            ec_master_queue_datagram(master, &master->fsm_datagram);
-            ecrt_master_send(master);
-            spin_unlock_bh(&master->internal_lock);
-        }
+        ec_fsm_master_exec(&master->fsm);
+
+        // queue and send
+        spin_lock_bh(&master->internal_lock);
+        ec_master_queue_datagram(master, &master->fsm_datagram);
+        ecrt_master_send(master);
+        spin_unlock_bh(&master->internal_lock);
         
         cycles_end = get_cycles();
         master->idle_cycle_times[master->idle_cycle_time_pos]
@@ -883,10 +881,10 @@ static int ec_master_operation_thread(ec_master_t *master)
         ec_master_output_stats(master);
 
         // execute master state machine
-        if (ec_fsm_master_exec(&master->fsm)) {
-            // inject datagram
-            master->injection_seq_fsm++;
-        }
+        ec_fsm_master_exec(&master->fsm);
+
+        // inject datagram
+        master->injection_seq_fsm++;
 
         cycles_end = get_cycles();
         master->idle_cycle_times[master->idle_cycle_time_pos]
