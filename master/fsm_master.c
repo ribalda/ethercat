@@ -202,12 +202,16 @@ void ec_fsm_master_state_broadcast(
         return;
     }
 
-    // slave states changed?
-    if (EC_READ_U8(datagram->data) != fsm->slave_states) {
-        char states[EC_STATE_STRING_SIZE];
-        fsm->slave_states = EC_READ_U8(datagram->data);
-        ec_state_string(fsm->slave_states, states);
-        EC_INFO("Slave states: %s.\n", states);
+    if (fsm->slaves_responding) {
+        uint8_t states = EC_READ_U8(datagram->data);
+        if (states != fsm->slave_states) { // slave states changed?
+            char state_str[EC_STATE_STRING_SIZE];
+            fsm->slave_states = states;
+            ec_state_string(fsm->slave_states, state_str);
+            EC_INFO("Slave states: %s.\n", state_str);
+        }
+    } else {
+        fsm->slave_states = 0x00;
     }
 
     if (fsm->topology_change_pending) {
