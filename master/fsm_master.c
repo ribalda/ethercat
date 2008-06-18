@@ -260,9 +260,9 @@ void ec_fsm_master_state_broadcast(
                 slave = master->slaves + i;
                 ec_slave_init(slave, master, i, i + 1);
 
-                // do not force reconfiguration in operation mode to avoid
+                // do not force reconfiguration in operation phase to avoid
                 // unnecesssary process data interruptions
-                if (master->mode != EC_MASTER_MODE_OPERATION)
+                if (master->phase != EC_OPERATION)
                     slave->force_config = 1;
             }
 

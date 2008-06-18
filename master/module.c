@@ -484,7 +484,7 @@ ec_master_t *ecrt_request_master(unsigned int master_index)
 
     down(&master->device_sem);
     
-    if (master->mode != EC_MASTER_MODE_IDLE) {
+    if (master->phase != EC_IDLE) {
         up(&master->device_sem);
         EC_ERR("Master %u still waiting for devices!\n", master_index);
         goto out_release;
@@ -498,8 +498,8 @@ ec_master_t *ecrt_request_master(unsigned int master_index)
 
     up(&master->device_sem);
 
-    if (ec_master_enter_operation_mode(master)) {
-        EC_ERR("Failed to enter OPERATION mode!\n");
+    if (ec_master_enter_operation_phase(master)) {
+        EC_ERR("Failed to enter OPERATION phase!\n");
         goto out_module_put;
     }
 
@@ -525,7 +525,7 @@ void ecrt_release_master(ec_master_t *master)
         return;
     }
 
-    ec_master_leave_operation_mode(master);
+    ec_master_leave_operation_phase(master);
 
     module_put(master->main_device.module);
     master->reserved = 0;

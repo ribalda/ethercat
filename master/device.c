@@ -421,7 +421,7 @@ void ecdev_withdraw(ec_device_t *device /**< EtherCAT device */)
 
 /*****************************************************************************/
 
-/** Opens the network device and makes the master enter IDLE mode.
+/** Opens the network device and makes the master enter IDLE phase.
  *
  * \return 0 on success, else < 0
  * \ingroup DeviceInterface
@@ -433,8 +433,8 @@ int ecdev_open(ec_device_t *device /**< EtherCAT device */)
         return -1;
     }
 
-    if (ec_master_enter_idle_mode(device->master)) {
-        EC_ERR("Failed to enter idle mode!\n");
+    if (ec_master_enter_idle_phase(device->master)) {
+        EC_ERR("Failed to enter IDLE phase!\n");
         return -1;
     }
 
@@ -443,14 +443,14 @@ int ecdev_open(ec_device_t *device /**< EtherCAT device */)
 
 /*****************************************************************************/
 
-/** Makes the master leave IDLE mode and closes the network device.
+/** Makes the master leave IDLE phase and closes the network device.
  *
  * \return 0 on success, else < 0
  * \ingroup DeviceInterface
  */
 void ecdev_close(ec_device_t *device /**< EtherCAT device */)
 {
-    ec_master_leave_idle_mode(device->master);
+    ec_master_leave_idle_phase(device->master);
 
     if (ec_device_close(device))
         EC_WARN("Failed to close device!\n");

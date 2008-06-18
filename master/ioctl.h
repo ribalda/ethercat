@@ -83,7 +83,7 @@ typedef struct {
     uint32_t slave_count;
     uint32_t config_count;
     uint32_t domain_count;
-    uint8_t mode;
+    uint8_t phase;
     struct {
         uint8_t address[6];
         uint8_t attached;

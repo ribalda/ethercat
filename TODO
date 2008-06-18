@@ -16,7 +16,6 @@ Version 1.4.0:
 * Update documentation.
 * Check for sizes of uploaded Sdos when reading mapping from CoE.
 * Attach Pdo names from SII or Coe dictioary to Pdos read via CoE.
-* Rename master MODE to STATE.
 * Remove the end state of the master state machine.
 * Add a -n (numeric) switch to ethercat command.
 

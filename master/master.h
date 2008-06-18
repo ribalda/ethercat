@@ -53,13 +53,16 @@
 
 /*****************************************************************************/
 
-/** EtherCAT master mode.
+/** EtherCAT master phase.
  */
 typedef enum {
-    EC_MASTER_MODE_ORPHANED,
-    EC_MASTER_MODE_IDLE,
-    EC_MASTER_MODE_OPERATION
-} ec_master_mode_t;
+    EC_ORPHANED, /**< Orphaned phase. The master has no Ethernet device
+                   attached. */
+    EC_IDLE, /**< Idle phase. An Ethernet device is attached, but the master
+               is not in use, yet. */
+    EC_OPERATION /**< Operation phase. The master was requested by a realtime
+                   application. */
+} ec_master_phase_t;
 
 /*****************************************************************************/
 
@@ -80,25 +83,25 @@ typedef struct {
  * Manages slaves, domains and IO.
  */
 struct ec_master {
-    unsigned int index; /**< master index */
-    unsigned int reserved; /**< non-zero, if the master is reserved for RT */
+    unsigned int index; /**< Index. */
+    unsigned int reserved; /**< \a True, if the master is in use. */
 
     ec_cdev_t cdev; /**< Master character device. */
     struct class_device *class_device; /**< Master class device. */
 
-    ec_device_t main_device; /**< EtherCAT device */
-    const uint8_t *main_mac; /**< MAC address of main device */
-    ec_device_t backup_device; /**< EtherCAT backup device */
-    const uint8_t *backup_mac; /**< MAC address of backup device */
-    struct semaphore device_sem; /**< device semaphore */
+    ec_device_t main_device; /**< EtherCAT main device. */
+    const uint8_t *main_mac; /**< MAC address of main device. */
+    ec_device_t backup_device; /**< EtherCAT backup device. */
+    const uint8_t *backup_mac; /**< MAC address of backup device. */
+    struct semaphore device_sem; /**< Device semaphore. */
 
-    ec_fsm_master_t fsm; /**< master state machine */
-    ec_datagram_t fsm_datagram; /**< datagram used for state machines */
-    ec_master_mode_t mode; /**< master mode */
-    unsigned int injection_seq_fsm; /**< datagram injection sequence number
-                                      for the FSM side */
-    unsigned int injection_seq_rt; /**< datagram injection sequence number
-                                     for the realtime side */
+    ec_fsm_master_t fsm; /**< Master state machine. */
+    ec_datagram_t fsm_datagram; /**< Datagram used for state machines. */
+    ec_master_phase_t phase; /**< Master phase. */
+    unsigned int injection_seq_fsm; /**< Datagram injection sequence number
+                                      for the FSM side. */
+    unsigned int injection_seq_rt; /**< Datagram injection sequence number
+                                     for the realtime side. */
 
     ec_slave_t *slaves; /**< Array of slaves on the bus. */
     unsigned int slave_count; /**< Number of slaves on the bus. */
@@ -106,61 +109,62 @@ struct ec_master {
     struct list_head configs; /**< List of slave configurations. */
     
     unsigned int scan_busy; /**< Current scan state. */
-    unsigned int allow_scan; /**< non-zero, if slave scanning is allowed */
-    struct semaphore scan_sem; /**< semaphore protecting the scan_state
-                                 variable and the allow_scan flag */
-    wait_queue_head_t scan_queue; /**< queue for processes that wait for
-                                    slave scanning */
+    unsigned int allow_scan; /**< \a True, if slave scanning is allowed. */
+    struct semaphore scan_sem; /**< Semaphore protecting the \a scan_busy
+                                 variable and the \a allow_scan flag. */
+    wait_queue_head_t scan_queue; /**< Queue for processes that wait for
+                                    slave scanning. */
 
     unsigned int config_busy; /**< State of slave configuration. */
-    unsigned int allow_config; /**< non-zero, if slave scanning is allowed */
-    struct semaphore config_sem; /**< semaphore protecting the config_state
-                                   variable and the allow_config flag */
-    wait_queue_head_t config_queue; /**< queue for processes that wait for
-                                      slave configuration */
+    unsigned int allow_config; /**< \a True, if slave configuration is
+                                 allowed. */
+    struct semaphore config_sem; /**< Semaphore protecting the \a config_busy
+                                   variable and the allow_config flag. */
+    wait_queue_head_t config_queue; /**< Queue for processes that wait for
+                                      slave configuration. */
 
-    struct list_head datagram_queue; /**< datagram queue */
-    uint8_t datagram_index; /**< current datagram index */
+    struct list_head datagram_queue; /**< Datagram queue. */
+    uint8_t datagram_index; /**< Current datagram index. */
 
-    struct list_head domains; /**< list of domains */
+    struct list_head domains; /**< List of domains. */
 
     int debug_level; /**< Master debug level. */
-    ec_stats_t stats; /**< cyclic statistics */
-    unsigned int frames_timed_out; /**< there were frame timeouts in the last
-                                     call to ecrt_master_receive() */
+    ec_stats_t stats; /**< Cyclic statistics. */
+    unsigned int frames_timed_out; /**< There were frame timeouts in the last
+                                     call to ecrt_master_receive(). */
 
-    int thread_id; /**< master thread PID */
-    struct completion thread_exit; /**< thread completion object */
-    uint32_t idle_cycle_times[HZ]; /**< Idle cycle times ring */
+    int thread_id; /**< Master thread PID. */
+    struct completion thread_exit; /**< Thread completion object. */
+    uint32_t idle_cycle_times[HZ]; /**< Idle cycle times ring. */
     unsigned int idle_cycle_time_pos; /**< time ring buffer position */
 
 #ifdef EC_EOE
-    struct timer_list eoe_timer; /**< EoE timer object */
-    unsigned int eoe_running; /**< non-zero, if EoE processing is active. */
-    struct list_head eoe_handlers; /**< Ethernet-over-EtherCAT handlers */
-    uint32_t eoe_cycle_times[HZ]; /**< EoE cycle times ring */
-    unsigned int eoe_cycle_time_pos; /**< time ring buffer position */
+    struct timer_list eoe_timer; /**< EoE timer object. */
+    unsigned int eoe_running; /**< \a True, if EoE processing is active. */
+    struct list_head eoe_handlers; /**< Ethernet-over-EtherCAT handlers. */
+    uint32_t eoe_cycle_times[HZ]; /**< EoE cycle times ring. */
+    unsigned int eoe_cycle_time_pos; /**< Time ring buffer position. */
 #endif
 
-    spinlock_t internal_lock; /**< spinlock used in idle mode */
-    int (*request_cb)(void *); /**< lock request callback */
-    void (*release_cb)(void *); /**< lock release callback */
-    void *cb_data; /**< data parameter of locking callbacks */
-    int (*ext_request_cb)(void *); /**< external lock request callback */
-    void (*ext_release_cb)(void *); /**< externam lock release callback */
-    void *ext_cb_data; /**< data parameter of external locking callbacks */
+    spinlock_t internal_lock; /**< Spinlock used in \a IDLE phase. */
+    int (*request_cb)(void *); /**< Lock request callback. */
+    void (*release_cb)(void *); /**< Lock release callback. */
+    void *cb_data; /**< Data parameter of locking callbacks. */
+    int (*ext_request_cb)(void *); /**< External lock request callback. */
+    void (*ext_release_cb)(void *); /**< External lock release callback. */
+    void *ext_cb_data; /**< Data parameter of external locking callbacks. */
 
-    struct list_head sii_requests; /**< SII write requests */
-    struct semaphore sii_sem; /**< semaphore protecting the list of
-                                   SII write requests */
-    wait_queue_head_t sii_queue; /**< wait queue for SII
-                                      write requests from user space */
+    struct list_head sii_requests; /**< SII write requests. */
+    struct semaphore sii_sem; /**< Semaphore protecting the list of
+                                   SII write requests. */
+    wait_queue_head_t sii_queue; /**< Wait queue for SII
+                                      write requests from user space. */
 
     struct list_head slave_sdo_requests; /**< Sdo access requests. */
-    struct semaphore sdo_sem; /**< semaphore protecting the list of
-                                   Sdo access requests */
-    wait_queue_head_t sdo_queue; /**< wait queue for Sdo access requests
-                                   from user space */
+    struct semaphore sdo_sem; /**< Semaphore protecting the list of
+                                   Sdo access requests. */
+    wait_queue_head_t sdo_queue; /**< Wait queue for Sdo access requests
+                                   from user space. */
 };
 
 /*****************************************************************************/
@@ -170,11 +174,11 @@ int ec_master_init(ec_master_t *, unsigned int, const uint8_t *,
         const uint8_t *, dev_t, struct class *);
 void ec_master_clear(ec_master_t *);
 
-// mode transitions
-int ec_master_enter_idle_mode(ec_master_t *);
-void ec_master_leave_idle_mode(ec_master_t *);
-int ec_master_enter_operation_mode(ec_master_t *);
-void ec_master_leave_operation_mode(ec_master_t *);
+// phase transitions
+int ec_master_enter_idle_phase(ec_master_t *);
+void ec_master_leave_idle_phase(ec_master_t *);
+int ec_master_enter_operation_phase(ec_master_t *);
+void ec_master_leave_operation_phase(ec_master_t *);
 
 #ifdef EC_EOE
 // EoE

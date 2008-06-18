@@ -434,14 +434,14 @@ void Master::showMaster()
 
     cout
         << "Master" << index << endl
-        << "  State: ";
+        << "  Phase: ";
 
-    switch (data.mode) {
+    switch (data.phase) {
         case 0: cout << "Waiting for device..."; break;
         case 1: cout << "Idle"; break;
         case 2: cout << "Operation"; break;
         default:
-                err << "Invalid master state " << data.mode;
+                err << "Invalid master phase " << data.phase;
                 throw MasterException(err.str());
     }
 

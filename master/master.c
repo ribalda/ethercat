@@ -91,7 +91,7 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     master->backup_mac = backup_mac;
     init_MUTEX(&master->device_sem);
 
-    master->mode = EC_MASTER_MODE_ORPHANED;
+    master->phase = EC_ORPHANED;
     master->injection_seq_fsm = 0;
     master->injection_seq_rt = 0;
 
@@ -338,7 +338,9 @@ int ec_master_thread_start(
 
 /** Stops the master thread.
  */
-void ec_master_thread_stop(ec_master_t *master /**< EtherCAT master */)
+void ec_master_thread_stop(
+        ec_master_t *master /**< EtherCAT master */
+        )
 {
     if (!master->thread_id) {
         EC_WARN("ec_master_thread_stop: Already finished!\n");
@@ -362,9 +364,11 @@ void ec_master_thread_stop(ec_master_t *master /**< EtherCAT master */)
 
 /*****************************************************************************/
 
-/** Transition function from ORPHANED to IDLE mode.
+/** Transition function from ORPHANED to IDLE phase.
  */
-int ec_master_enter_idle_mode(ec_master_t *master /**< EtherCAT master */)
+int ec_master_enter_idle_phase(
+        ec_master_t *master /**< EtherCAT master */
+        )
 {
     master->request_cb = ec_master_request_cb;
     master->release_cb = ec_master_release_cb;
@@ -373,9 +377,9 @@ int ec_master_enter_idle_mode(ec_master_t *master /**< EtherCAT master */)
     if (master->debug_level)
         EC_DBG("ORPHANED -> IDLE.\n");
 
-    master->mode = EC_MASTER_MODE_IDLE;
+    master->phase = EC_IDLE;
     if (ec_master_thread_start(master, ec_master_idle_thread)) {
-        master->mode = EC_MASTER_MODE_ORPHANED;
+        master->phase = EC_ORPHANED;
         return -1;
     }
 
@@ -384,14 +388,14 @@ int ec_master_enter_idle_mode(ec_master_t *master /**< EtherCAT master */)
 
 /*****************************************************************************/
 
-/** Transition function from IDLE to ORPHANED mode.
+/** Transition function from IDLE to ORPHANED phase.
  */
-void ec_master_leave_idle_mode(ec_master_t *master /**< EtherCAT master */)
+void ec_master_leave_idle_phase(ec_master_t *master /**< EtherCAT master */)
 {
     if (master->debug_level)
         EC_DBG("IDLE -> ORPHANED.\n");
 
-    master->mode = EC_MASTER_MODE_ORPHANED;
+    master->phase = EC_ORPHANED;
     
 #ifdef EC_EOE
     ec_master_eoe_stop(master);
@@ -402,9 +406,9 @@ void ec_master_leave_idle_mode(ec_master_t *master /**< EtherCAT master */)
 
 /*****************************************************************************/
 
-/** Transition function from IDLE to OPERATION mode.
+/** Transition function from IDLE to OPERATION phase.
  */
-int ec_master_enter_operation_mode(ec_master_t *master /**< EtherCAT master */)
+int ec_master_enter_operation_phase(ec_master_t *master /**< EtherCAT master */)
 {
     ec_slave_t *slave;
 #ifdef EC_EOE
@@ -464,9 +468,9 @@ int ec_master_enter_operation_mode(ec_master_t *master /**< EtherCAT master */)
 #endif
 
     if (master->debug_level)
-        EC_DBG("Switching to operation mode.\n");
+        EC_DBG("Switching to operation phase.\n");
 
-    master->mode = EC_MASTER_MODE_OPERATION;
+    master->phase = EC_OPERATION;
     master->ext_request_cb = NULL;
     master->ext_release_cb = NULL;
     master->ext_cb_data = NULL;
@@ -480,9 +484,9 @@ out_allow:
 
 /*****************************************************************************/
 
-/** Transition function from OPERATION to IDLE mode.
+/** Transition function from OPERATION to IDLE phase.
  */
-void ec_master_leave_operation_mode(ec_master_t *master
+void ec_master_leave_operation_phase(ec_master_t *master
                                     /**< EtherCAT master */)
 {
     ec_slave_t *slave;
@@ -493,7 +497,7 @@ void ec_master_leave_operation_mode(ec_master_t *master
     if (master->debug_level)
         EC_DBG("OPERATION -> IDLE.\n");
 
-    master->mode = EC_MASTER_MODE_IDLE;
+    master->phase = EC_IDLE;
 
 #ifdef EC_EOE
     ec_master_eoe_stop(master);
@@ -771,7 +775,7 @@ void ec_master_receive_datagrams(ec_master_t *master, /**< EtherCAT master */
 
 /*****************************************************************************/
 
-/** Output statistics in cyclic mode.
+/** Output master statistics.
  *
  * This function outputs statistical data on demand, but not more often than
  * necessary. The output happens at most once a second.
@@ -801,7 +805,7 @@ void ec_master_output_stats(ec_master_t *master /**< EtherCAT master */)
 
 /*****************************************************************************/
 
-/** Master kernel thread function for IDLE mode.
+/** Master kernel thread function for IDLE phase.
  */
 static int ec_master_idle_thread(ec_master_t *master)
 {
@@ -857,7 +861,7 @@ schedule:
 
 /*****************************************************************************/
 
-/** Master kernel thread function for IDLE mode.
+/** Master kernel thread function for IDLE phase.
  */
 static int ec_master_operation_thread(ec_master_t *master)
 {
