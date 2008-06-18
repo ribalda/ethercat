@@ -1319,7 +1319,7 @@ ec_slave_config_t *ecrt_master_slave_config(ec_master_t *master,
         }
     }
 
-    if (found) {
+    if (found) { // config with same alias/position already existing
         if (master->debug_level) {
             EC_INFO("Using existing slave configuration for %u:%u\n",
                     alias, position);
