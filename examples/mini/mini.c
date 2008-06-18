@@ -50,7 +50,7 @@
 
 #define PFX "ec_mini: "
 
-#define AnaInPos  0, 5
+#define AnaInPos  0, 1
 #define DigOutPos 0, 3
 
 /*****************************************************************************/
