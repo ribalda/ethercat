@@ -10,8 +10,6 @@ Version 1.4.0:
 
 * Remove get_cycles() calls and references to cpu_khz to increase
   portability.
-* Make ecrt_master_slave_config() return no error when slave is not present
-  or invalid.
 * Make scanning and configuration run parallel (each).
 * Adapt remaining examples.
 * READMEs for examples.

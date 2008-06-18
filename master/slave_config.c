@@ -174,36 +174,38 @@ int ec_slave_config_attach(
 
     if (!(slave = ec_master_find_slave(
                     sc->master, sc->alias, sc->position))) {
-        EC_WARN("Failed to find slave for configuration %u:%u.\n",
-                sc->alias, sc->position);
+        if (sc->master->debug_level)
+            EC_DBG("Failed to find slave for configuration %u:%u.\n",
+                    sc->alias, sc->position);
         return -1;
     }
 
 	if (slave->config) {
-		EC_ERR("Failed to attach slave configuration %u:%u. Slave %u"
-				" already has a configuration!\n", sc->alias,
-				sc->position, slave->ring_position);
-		return -2;
-	}
-	if (slave->sii.vendor_id != sc->vendor_id
-			|| slave->sii.product_code != sc->product_code) {
-		EC_ERR("Slave %u has an invalid type (0x%08X/0x%08X) for"
-				" configuration %u:%u (0x%08X/0x%08X).\n",
-				slave->ring_position, slave->sii.vendor_id,
-				slave->sii.product_code, sc->alias, sc->position,
-				sc->vendor_id, sc->product_code);
-		return -3;
+        if (sc->master->debug_level)
+            EC_DBG("Failed to attach slave configuration %u:%u. Slave %u"
+                    " already has a configuration!\n", sc->alias,
+                    sc->position, slave->ring_position);
+        return -2;
+    }
+    if (slave->sii.vendor_id != sc->vendor_id
+            || slave->sii.product_code != sc->product_code) {
+        if (sc->master->debug_level)
+            EC_DBG("Slave %u has an invalid type (0x%08X/0x%08X) for"
+                    " configuration %u:%u (0x%08X/0x%08X).\n",
+                    slave->ring_position, slave->sii.vendor_id,
+                    slave->sii.product_code, sc->alias, sc->position,
+                    sc->vendor_id, sc->product_code);
+        return -3;
 	}
 
 	// attach slave
 	slave->config = sc;
 	sc->slave = slave;
+    ec_slave_request_state(slave, EC_SLAVE_STATE_OP);
 
     if (sc->master->debug_level)
         EC_DBG("Attached slave %u to config %u:%u.\n",
                 slave->ring_position, sc->alias, sc->position);
-
-    ec_slave_request_state(slave, EC_SLAVE_STATE_OP);
 
 	return 0;
 }
@@ -259,14 +261,16 @@ void ec_slave_config_load_default_mapping(
                 " config %u:%u.\n", pdo->index, sc->alias, sc->position);
 
     if (!sc->slave) {
-        EC_WARN("Failed to load default Pdo configuration for %u:%u:"
-                " Slave not found.\n", sc->alias, sc->position);
+        if (sc->master->debug_level)
+            EC_DBG("Failed to load default Pdo configuration for %u:%u:"
+                    " Slave not found.\n", sc->alias, sc->position);
         return;
     }
 
     if (!(sync = ec_slave_get_pdo_sync(sc->slave, pdo->dir))) {
-        EC_WARN("Slave %u does not provide a default Pdo"
-                " configuration!\n", sc->slave->ring_position);
+        if (sc->master->debug_level)
+            EC_DBG("Slave %u does not provide a default Pdo"
+                    " configuration!\n", sc->slave->ring_position);
         return;
     }
 
