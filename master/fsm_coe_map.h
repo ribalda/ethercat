@@ -72,6 +72,8 @@ struct ec_fsm_coe_map
     ec_sdo_t *pdo_sdo; /**< Current Pdo Sdo. */
     uint8_t pdo_subindices; /**< Number of Pdo entries. */
     uint16_t pdo_subindex; /**< Current subindex in Pdo Sdo. */
+
+    unsigned int retries; /**< Retry count. */
 };
 
 /*****************************************************************************/

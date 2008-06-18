@@ -183,6 +183,7 @@ void ec_fsm_coe_map_action_next_dir(
 
         ec_sdo_request_address(&fsm->request, fsm->sync_sdo_index, 0);
         ecrt_sdo_request_read(&fsm->request);
+        fsm->retries = 5;
         fsm->state = ec_fsm_coe_map_state_pdo_count;
         ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, &fsm->request);
         ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
@@ -209,6 +210,15 @@ void ec_fsm_coe_map_state_pdo_count(
     if (ec_fsm_coe_exec(fsm->fsm_coe)) return;
 
     if (!ec_fsm_coe_success(fsm->fsm_coe)) {
+        if (fsm->retries--) {
+            if (fsm->slave->master->debug_level)
+                EC_DBG("Failed to read number of assigned Pdos from "
+                        "slave %u. Retrying...\n", fsm->slave->ring_position);
+            ecrt_sdo_request_read(&fsm->request);
+            ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, &fsm->request);
+            ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
+            return;
+        }
         EC_ERR("Failed to read number of assigned Pdos from slave %u.\n",
                 fsm->slave->ring_position);
         fsm->state = ec_fsm_coe_map_state_error;
