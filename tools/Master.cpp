@@ -1461,7 +1461,7 @@ void Master::generateSlaveXml(uint16_t slavePosition)
                 
                 cout
                     << "              <BitLen>"
-                    << (unsigned int) entry.bit_length
+                    << dec << (unsigned int) entry.bit_length
                     << "</BitLen>" << endl;
 
                 if (entry.index) {
