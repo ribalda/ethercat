@@ -50,6 +50,9 @@
 
 #define PFX "ec_mini: "
 
+#define AnaInPos  0, 5
+#define DigOutPos 0, 3
+
 /*****************************************************************************/
 
 // EtherCAT
@@ -80,8 +83,8 @@ static unsigned int blink = 0;
 #define Beckhoff_EL3162 0x00000002, 0x0C5A3052
 
 const static ec_pdo_entry_reg_t domain1_regs[] = {
-    {0, 1, Beckhoff_EL3162, 0x3101, 2, &off_ana_in},
-    {0, 3, Beckhoff_EL2004, 0x3001, 1, &off_dig_out},
+    {AnaInPos,  Beckhoff_EL3162, 0x3101, 2, &off_ana_in},
+    {DigOutPos, Beckhoff_EL2004, 0x3001, 1, &off_dig_out},
     {}
 };
 
@@ -116,6 +119,7 @@ static ec_pdo_info_t el2004_pdos[] = {
     {EC_DIR_OUTPUT, 0x1601, 1, &el2004_channels[1]},
     {EC_DIR_OUTPUT, 0x1602, 1, &el2004_channels[2]},
     {EC_DIR_OUTPUT, 0x1603, 1, &el2004_channels[3]},
+    {EC_END}
 };
 #endif
 
@@ -191,7 +195,6 @@ void read_sdo(void)
 {
     switch (ecrt_sdo_request_state(sdo)) {
         case EC_SDO_REQUEST_UNUSED: // request was not used yet
-            ecrt_sdo_request_timeout(sdo, 500); // ms
             ecrt_sdo_request_read(sdo); // trigger first read
             break;
         case EC_SDO_REQUEST_BUSY:
@@ -299,7 +302,7 @@ int __init init_mini_module(void)
     }
 
     if (!(sc_ana_in = ecrt_master_slave_config(
-                    master, 0, 1, Beckhoff_EL3162))) {
+                    master, AnaInPos, Beckhoff_EL3162))) {
         printk(KERN_ERR PFX "Failed to get slave configuration.\n");
         goto out_release_master;
     }
@@ -311,12 +314,12 @@ int __init init_mini_module(void)
         goto out_release_master;
     }
 
-    if (!(sc = ecrt_master_slave_config(master, 0, 3, Beckhoff_EL2004))) {
+    if (!(sc = ecrt_master_slave_config(master, DigOutPos, Beckhoff_EL2004))) {
         printk(KERN_ERR PFX "Failed to get slave configuration.\n");
         goto out_release_master;
     }
 
-    if (ecrt_slave_config_pdos(sc, 4, el2004_pdos)) {
+    if (ecrt_slave_config_pdos(sc, EC_END, el2004_pdos)) {
         printk(KERN_ERR PFX "Failed to configure Pdos.\n");
         goto out_release_master;
     }
@@ -324,15 +327,11 @@ int __init init_mini_module(void)
 
 #ifdef SDO_ACCESS
     printk(KERN_INFO PFX "Creating Sdo requests...\n");
-    if (!(sc = ecrt_master_slave_config(master, 0, 1, Beckhoff_EL3162))) {
-        printk(KERN_ERR PFX "Failed to get slave configuration.\n");
-        goto out_release_master;
-    }
-
-    if (!(sdo = ecrt_slave_config_create_sdo_request(sc, 0x3102, 2, 2))) {
+    if (!(sdo = ecrt_slave_config_create_sdo_request(sc_ana_in, 0x3102, 2, 2))) {
         printk(KERN_ERR PFX "Failed to create Sdo request.\n");
         goto out_release_master;
     }
+    ecrt_sdo_request_timeout(sdo, 500); // ms
 #endif
 
     printk(KERN_INFO PFX "Registering Pdo entries...\n");
