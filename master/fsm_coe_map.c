@@ -61,6 +61,12 @@ void ec_fsm_coe_map_action_next_pdo_entry(ec_fsm_coe_map_t *);
 
 /*****************************************************************************/
 
+/** Sdo upload timeout in ms for reading Pdo assigment/mapping.
+ */
+#define EC_FSM_COE_MAP_UPLOAD_TIMEOUT 3000
+
+/*****************************************************************************/
+
 /**
    Constructor.
 */
@@ -73,6 +79,7 @@ void ec_fsm_coe_map_init(
     fsm->fsm_coe = fsm_coe;
     fsm->state = NULL;
     ec_sdo_request_init(&fsm->request);
+    fsm->request.response_timeout = EC_FSM_COE_MAP_UPLOAD_TIMEOUT;
     ec_pdo_list_init(&fsm->pdos);
 }
 
@@ -182,7 +189,6 @@ void ec_fsm_coe_map_action_next_dir(
         ec_pdo_list_clear_pdos(&fsm->pdos);
 
         ec_sdo_request_address(&fsm->request, fsm->sync_sdo_index, 0);
-        fsm->request.response_timeout = 10000;
         ecrt_sdo_request_read(&fsm->request);
         fsm->state = ec_fsm_coe_map_state_pdo_count;
         ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, &fsm->request);
@@ -247,7 +253,6 @@ void ec_fsm_coe_map_action_next_pdo(
     if (fsm->sync_subindex <= fsm->sync_subindices) {
         ec_sdo_request_address(&fsm->request, fsm->sync_sdo_index,
                 fsm->sync_subindex);
-        fsm->request.response_timeout = 5000;
         ecrt_sdo_request_read(&fsm->request);
         fsm->state = ec_fsm_coe_map_state_pdo;
         ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, &fsm->request);
@@ -314,7 +319,6 @@ void ec_fsm_coe_map_state_pdo(
     list_add_tail(&fsm->pdo->list, &fsm->pdos.list);
 
     ec_sdo_request_address(&fsm->request, fsm->pdo->index, 0);
-    fsm->request.response_timeout = 5000;
     ecrt_sdo_request_read(&fsm->request);
     fsm->state = ec_fsm_coe_map_state_pdo_entry_count;
     ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, &fsm->request);
@@ -370,7 +374,6 @@ void ec_fsm_coe_map_action_next_pdo_entry(
 {
     if (fsm->pdo_subindex <= fsm->pdo_subindices) {
         ec_sdo_request_address(&fsm->request, fsm->pdo->index, fsm->pdo_subindex);
-        fsm->request.response_timeout = 5000;
         ecrt_sdo_request_read(&fsm->request);
         fsm->state = ec_fsm_coe_map_state_pdo_entry;
         ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, &fsm->request);
