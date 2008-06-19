@@ -1401,7 +1401,7 @@ void ec_fsm_coe_up_check(ec_fsm_coe_t *fsm /**< finite state machine */)
     if (!ec_slave_mbox_check(datagram)) {
         unsigned long diff_ms =
             (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
-        if (diff_ms >= 100) {
+        if (diff_ms >= fsm->request->response_timeout) {
             fsm->state = ec_fsm_coe_error;
             EC_ERR("Timeout while checking Sdo upload on slave %u.\n",
                    slave->ring_position);
