@@ -16,8 +16,7 @@ Version 1.4.0:
 * Update documentation.
 * Attach Pdo names from SII or Coe dictioary to Pdos read via CoE.
 * Add a -n (numeric) switch to ethercat command.
-* Remove Eoe cylces and Idle cycles.
-* Store Sdo abort code in sdo_request_t and output it in user space.
+* Remove Eoe cycles and Idle cycles.
 
 Future issues:
 

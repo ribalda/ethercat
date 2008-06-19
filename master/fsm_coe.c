@@ -430,11 +430,23 @@ void ec_fsm_coe_dict_response(ec_fsm_coe_t *fsm /**< finite state machine */)
         return;
     }
 
+    if (rec_size < 3) {
+        EC_ERR("Received corrupted Sdo dictionary response (size %u).\n",
+                rec_size);
+        fsm->state = ec_fsm_coe_error;
+        return;
+    }
+
     if (EC_READ_U16(data) >> 12 == 0x8 && // Sdo information
         (EC_READ_U8(data + 2) & 0x7F) == 0x07) { // error response
         EC_ERR("Sdo information error response at slave %u!\n",
                slave->ring_position);
-        ec_canopen_abort_msg(EC_READ_U32(data + 6));
+        if (rec_size < 10) {
+            EC_ERR("Incomplete Sdo information error response:\n");
+            ec_print_data(data, rec_size);
+        } else {
+            ec_canopen_abort_msg(EC_READ_U32(data + 6));
+        }
         fsm->state = ec_fsm_coe_error;
         return;
     }
@@ -448,8 +460,8 @@ void ec_fsm_coe_dict_response(ec_fsm_coe_t *fsm /**< finite state machine */)
         return;
     }
 
-    if (rec_size < 8) {
-        EC_ERR("Invalid data size!\n");
+    if (rec_size < 8 || rec_size % 2) {
+        EC_ERR("Invalid data size %u!\n", rec_size);
         ec_print_data(data, rec_size);
         fsm->state = ec_fsm_coe_error;
         return;
@@ -656,12 +668,26 @@ void ec_fsm_coe_dict_desc_response(ec_fsm_coe_t *fsm
         return;
     }
 
+    if (rec_size < 3) {
+        EC_ERR("Received corrupted Sdo description response (size %u).\n",
+                rec_size);
+        fsm->state = ec_fsm_coe_error;
+        return;
+    }
+
     if (EC_READ_U16(data) >> 12 == 0x8 && // Sdo information
         (EC_READ_U8 (data + 2) & 0x7F) == 0x07) { // error response
         EC_ERR("Sdo information error response at slave %u while"
                " fetching Sdo 0x%04X!\n", slave->ring_position,
                sdo->index);
         ec_canopen_abort_msg(EC_READ_U32(data + 6));
+        fsm->state = ec_fsm_coe_error;
+        return;
+    }
+
+    if (rec_size < 8) {
+        EC_ERR("Received corrupted Sdo description response (size %u).\n",
+                rec_size);
         fsm->state = ec_fsm_coe_error;
         return;
     }
@@ -872,12 +898,26 @@ void ec_fsm_coe_dict_entry_response(ec_fsm_coe_t *fsm
         return;
     }
 
+    if (rec_size < 3) {
+        EC_ERR("Received corrupted Sdo entry description response "
+                "(size %u).\n", rec_size);
+        fsm->state = ec_fsm_coe_error;
+        return;
+    }
+
     if (EC_READ_U16(data) >> 12 == 0x8 && // Sdo information
         (EC_READ_U8 (data + 2) & 0x7F) == 0x07) { // error response
         EC_ERR("Sdo information error response at slave %u while"
                " fetching Sdo entry 0x%04X:%02X!\n", slave->ring_position,
                sdo->index, fsm->subindex);
         ec_canopen_abort_msg(EC_READ_U32(data + 6));
+        fsm->state = ec_fsm_coe_error;
+        return;
+    }
+
+    if (rec_size < 9) {
+        EC_ERR("Received corrupted Sdo entry description response "
+                "(size %u).\n", rec_size);
         fsm->state = ec_fsm_coe_error;
         return;
     }
@@ -895,7 +935,7 @@ void ec_fsm_coe_dict_entry_response(ec_fsm_coe_t *fsm
     }
 
     if (rec_size < 16) {
-        EC_ERR("Invalid data size!\n");
+        EC_ERR("Invalid data size %u!\n", rec_size);
         ec_print_data(data, rec_size);
         fsm->state = ec_fsm_coe_error;
         return;
@@ -1191,7 +1231,7 @@ void ec_fsm_coe_down_response(ec_fsm_coe_t *fsm /**< finite state machine */)
 
     if (rec_size < 6) {
         fsm->state = ec_fsm_coe_error;
-        EC_ERR("Received data is too small (%u bytes):\n", rec_size);
+        EC_ERR("Received data are too small (%u bytes):\n", rec_size);
         ec_print_data(data, rec_size);
         return;
     }
@@ -1205,9 +1245,10 @@ void ec_fsm_coe_down_response(ec_fsm_coe_t *fsm /**< finite state machine */)
         if (rec_size < 10) {
             EC_ERR("Incomplete Abort command:\n");
             ec_print_data(data, rec_size);
+        } else {
+            fsm->request->abort_code = EC_READ_U32(data + 6);
+            ec_canopen_abort_msg(fsm->request->abort_code);
         }
-        else
-            ec_canopen_abort_msg(EC_READ_U32(data + 6));
         return;
     }
 
@@ -1446,10 +1487,12 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
         EC_READ_U8 (data + 2) >> 5 == 0x4) { // abort Sdo transfer request
         EC_ERR("Sdo upload 0x%04X:%02X aborted on slave %u.\n",
                request->index, request->subindex, slave->ring_position);
-        if (rec_size >= 10)
-            ec_canopen_abort_msg(EC_READ_U32(data + 6));
-        else
+        if (rec_size >= 10) {
+            request->abort_code = EC_READ_U32(data + 6);
+            ec_canopen_abort_msg(request->abort_code);
+        } else {
             EC_ERR("No abort message.\n");
+        }
         fsm->state = ec_fsm_coe_error;
         return;
     }
@@ -1737,7 +1780,8 @@ void ec_fsm_coe_up_seg_response(ec_fsm_coe_t *fsm /**< finite state machine */)
         EC_READ_U8 (data + 2) >> 5 == 0x4) { // abort Sdo transfer request
         EC_ERR("Sdo upload 0x%04X:%02X aborted on slave %u.\n",
                request->index, request->subindex, slave->ring_position);
-        ec_canopen_abort_msg(EC_READ_U32(data + 6));
+        request->abort_code = EC_READ_U32(data + 6);
+        ec_canopen_abort_msg(request->abort_code);
         fsm->state = ec_fsm_coe_error;
         return;
     }

@@ -67,7 +67,7 @@
 #define EC_IOCTL_SDO              EC_IOWR(0x0a, ec_ioctl_sdo_t)
 #define EC_IOCTL_SDO_ENTRY        EC_IOWR(0x0b, ec_ioctl_sdo_entry_t)
 #define EC_IOCTL_SDO_UPLOAD       EC_IOWR(0x0c, ec_ioctl_sdo_upload_t)
-#define EC_IOCTL_SDO_DOWNLOAD      EC_IOW(0x0d, ec_ioctl_sdo_download_t)
+#define EC_IOCTL_SDO_DOWNLOAD     EC_IOWR(0x0d, ec_ioctl_sdo_download_t)
 #define EC_IOCTL_SII_READ         EC_IOWR(0x0e, ec_ioctl_sii_t)
 #define EC_IOCTL_SII_WRITE         EC_IOW(0x0f, ec_ioctl_sii_t)
 #define EC_IOCTL_CONFIG           EC_IOWR(0x10, ec_ioctl_config_t)
@@ -253,6 +253,7 @@ typedef struct {
 
     // outputs
     uint32_t data_size;
+    uint32_t abort_code;
 } ec_ioctl_sdo_upload_t;
 
 /*****************************************************************************/
@@ -264,6 +265,9 @@ typedef struct {
     uint8_t sdo_entry_subindex;
     uint32_t data_size;
     uint8_t *data;
+
+    // outputs
+    uint32_t abort_code;
 } ec_ioctl_sdo_download_t;
 
 /*****************************************************************************/

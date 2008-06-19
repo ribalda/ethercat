@@ -628,6 +628,7 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                     if (request.req.state == EC_REQUEST_QUEUED) {
                         list_del(&request.req.list);
                         up(&master->sdo_sem);
+                        ec_sdo_request_clear(&request.req);
                         retval = -EINTR;
                         break;
                     }
@@ -637,27 +638,31 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
                 // wait until master FSM has finished processing
                 wait_event(master->sdo_queue, request.req.state != EC_REQUEST_BUSY);
+                
+                data.abort_code = request.req.abort_code;
 
                 if (request.req.state != EC_REQUEST_SUCCESS) {
+                    data.data_size = 0;
                     retval = -EIO;
-                    break;
+                } else {
+                    if (request.req.data_size > data.target_size) {
+                        EC_ERR("Buffer too small.\n");
+                        ec_sdo_request_clear(&request.req);
+                        retval = -EOVERFLOW;
+                        break;
+                    }
+                    data.data_size = request.req.data_size;
+
+                    if (copy_to_user((void __user *) data.target,
+                                request.req.data, data.data_size)) {
+                        ec_sdo_request_clear(&request.req);
+                        retval = -EFAULT;
+                        break;
+                    }
                 }
 
-                if (request.req.data_size > data.target_size) {
-                    EC_ERR("Buffer too small.\n");
-                    retval = -EOVERFLOW;
-                    break;
-                }
-                data.data_size = request.req.data_size;
-
-                if (copy_to_user((void __user *) data.target,
-                            request.req.data, data.data_size)) {
-                    retval = -EFAULT;
-                    break;
-                }
                 if (__copy_to_user((void __user *) arg, &data, sizeof(data))) {
                     retval = -EFAULT;
-                    break;
                 }
 
                 ec_sdo_request_clear(&request.req);
@@ -721,6 +726,7 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                     if (request.req.state == EC_REQUEST_QUEUED) {
                         list_del(&request.req.list);
                         up(&master->sdo_sem);
+                        ec_sdo_request_clear(&request.req);
                         retval = -EINTR;
                         break;
                     }
@@ -731,9 +737,14 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                 // wait until master FSM has finished processing
                 wait_event(master->sdo_queue, request.req.state != EC_REQUEST_BUSY);
 
+                data.abort_code = request.req.abort_code;
+
                 if (request.req.state != EC_REQUEST_SUCCESS) {
                     retval = -EIO;
-                    break;
+                }
+
+                if (__copy_to_user((void __user *) arg, &data, sizeof(data))) {
+                    retval = -EFAULT;
                 }
 
                 ec_sdo_request_clear(&request.req);
