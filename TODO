@@ -8,11 +8,11 @@ $Id$
 
 Version 1.4.0:
 
+* Attach Pdo names from SII or Coe dictioary to Pdos read via CoE.
 * Make scanning and configuration run parallel (each).
 * Adapt remaining examples.
 * READMEs for examples.
 * Update documentation.
-* Attach Pdo names from SII or Coe dictioary to Pdos read via CoE.
 
 Future issues:
 
