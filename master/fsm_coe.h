@@ -60,7 +60,7 @@ struct ec_fsm_coe {
     unsigned int retries; /**< retries upon datagram timeout */
 
     void (*state)(ec_fsm_coe_t *); /**< CoE state function */
-    cycles_t cycles_start; /**< CoE timestamp */
+    unsigned long jiffies_start; /**< CoE timestamp. */
     ec_sdo_t *sdo; /**< current Sdo */
     uint8_t subindex; /**< current subindex */
     ec_sdo_request_t *request; /**< Sdo request */

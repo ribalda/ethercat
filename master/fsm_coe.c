@@ -317,7 +317,7 @@ void ec_fsm_coe_dict_request(ec_fsm_coe_t *fsm /**< finite state machine */)
         return;
     }
 
-    fsm->cycles_start = datagram->cycles_sent;
+    fsm->jiffies_start = datagram->jiffies_sent;
 
     ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
     fsm->retries = EC_FSM_RETRIES;
@@ -355,8 +355,9 @@ void ec_fsm_coe_dict_check(ec_fsm_coe_t *fsm /**< finite state machine */)
     }
 
     if (!ec_slave_mbox_check(datagram)) {
-        if (datagram->cycles_received
-            - fsm->cycles_start >= (cycles_t) 100 * cpu_khz) {
+        unsigned long diff_ms =
+            (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
+        if (diff_ms >= 100) {
             fsm->state = ec_fsm_coe_error;
             EC_ERR("Timeout while checking Sdo dictionary on slave %u.\n",
                    slave->ring_position);
@@ -494,7 +495,7 @@ void ec_fsm_coe_dict_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     }
 
     if (EC_READ_U8(data + 2) & 0x80 || fragments_left) { // more messages waiting. check again.
-        fsm->cycles_start = datagram->cycles_sent;
+        fsm->jiffies_start = datagram->jiffies_sent;
         ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
         fsm->retries = EC_FSM_RETRIES;
         fsm->state = ec_fsm_coe_dict_check;
@@ -556,7 +557,7 @@ void ec_fsm_coe_dict_desc_request(ec_fsm_coe_t *fsm /**< finite state machine */
         return;
     }
 
-    fsm->cycles_start = datagram->cycles_sent;
+    fsm->jiffies_start = datagram->jiffies_sent;
 
     ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
     fsm->retries = EC_FSM_RETRIES;
@@ -594,8 +595,9 @@ void ec_fsm_coe_dict_desc_check(ec_fsm_coe_t *fsm /**< finite state machine */)
     }
 
     if (!ec_slave_mbox_check(datagram)) {
-        if (datagram->cycles_received
-            - fsm->cycles_start >= (cycles_t) 100 * cpu_khz) {
+        unsigned long diff_ms =
+            (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
+        if (diff_ms >= 100) {
             fsm->state = ec_fsm_coe_error;
             EC_ERR("Timeout while checking Sdo description on slave %u.\n",
                    slave->ring_position);
@@ -784,7 +786,7 @@ void ec_fsm_coe_dict_entry_request(ec_fsm_coe_t *fsm
         return;
     }
 
-    fsm->cycles_start = datagram->cycles_sent;
+    fsm->jiffies_start = datagram->jiffies_sent;
 
     ec_slave_mbox_prepare_check(slave, datagram); // can not fail
     fsm->retries = EC_FSM_RETRIES;
@@ -823,8 +825,9 @@ void ec_fsm_coe_dict_entry_check(ec_fsm_coe_t *fsm
     }
 
     if (!ec_slave_mbox_check(datagram)) {
-        if (datagram->cycles_received
-            - fsm->cycles_start >= (cycles_t) 100 * cpu_khz) {
+        unsigned long diff_ms =
+            (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
+        if (diff_ms >= 100) {
             fsm->state = ec_fsm_coe_error;
             EC_ERR("Timeout while checking Sdo entry on slave %u.\n",
                    slave->ring_position);
@@ -1113,7 +1116,7 @@ void ec_fsm_coe_down_request(ec_fsm_coe_t *fsm /**< finite state machine */)
         return;
     }
 
-    fsm->cycles_start = datagram->cycles_sent;
+    fsm->jiffies_start = datagram->jiffies_sent;
 
     ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
     fsm->retries = EC_FSM_RETRIES;
@@ -1151,8 +1154,9 @@ void ec_fsm_coe_down_check(ec_fsm_coe_t *fsm /**< finite state machine */)
     }
 
     if (!ec_slave_mbox_check(datagram)) {
-        if (datagram->cycles_received
-            - fsm->cycles_start >= (cycles_t) 100 * cpu_khz) {
+        unsigned long diff_ms =
+            (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
+        if (diff_ms >= 100) {
             fsm->state = ec_fsm_coe_error;
             EC_ERR("Timeout while checking Sdo configuration on slave %u.\n",
                    slave->ring_position);
@@ -1357,7 +1361,7 @@ void ec_fsm_coe_up_request(ec_fsm_coe_t *fsm /**< finite state machine */)
         return;
     }
 
-    fsm->cycles_start = datagram->cycles_sent;
+    fsm->jiffies_start = datagram->jiffies_sent;
 
     ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
     fsm->retries = EC_FSM_RETRIES;
@@ -1395,8 +1399,9 @@ void ec_fsm_coe_up_check(ec_fsm_coe_t *fsm /**< finite state machine */)
     }
 
     if (!ec_slave_mbox_check(datagram)) {
-        if (datagram->cycles_received
-            - fsm->cycles_start >= (cycles_t) 100 * cpu_khz) {
+        unsigned long diff_ms =
+            (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
+        if (diff_ms >= 100) {
             fsm->state = ec_fsm_coe_error;
             EC_ERR("Timeout while checking Sdo upload on slave %u.\n",
                    slave->ring_position);
@@ -1649,7 +1654,7 @@ void ec_fsm_coe_up_seg_request(ec_fsm_coe_t *fsm /**< finite state machine */)
         return;
     }
 
-    fsm->cycles_start = datagram->cycles_sent;
+    fsm->jiffies_start = datagram->jiffies_sent;
 
     ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
     fsm->retries = EC_FSM_RETRIES;
@@ -1687,8 +1692,9 @@ void ec_fsm_coe_up_seg_check(ec_fsm_coe_t *fsm /**< finite state machine */)
     }
 
     if (!ec_slave_mbox_check(datagram)) {
-        if (datagram->cycles_received
-            - fsm->cycles_start >= (cycles_t) 100 * cpu_khz) {
+        unsigned long diff_ms =
+            (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
+        if (diff_ms >= 100) {
             fsm->state = ec_fsm_coe_error;
             EC_ERR("Timeout while checking Sdo upload segment on slave %u.\n",
                    slave->ring_position);
