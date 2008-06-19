@@ -44,10 +44,6 @@
 #include "sdo_request.h"
 #include "fsm_coe_map.h"
 
-/** Retry reading the number of assigned Pdos if this time is not elapsed.
- */
-#define EC_FSM_COE_MAP_TIMEOUT 5
-
 /*****************************************************************************/
 
 void ec_fsm_coe_map_state_start(ec_fsm_coe_map_t *);
@@ -186,8 +182,8 @@ void ec_fsm_coe_map_action_next_dir(
         ec_pdo_list_clear_pdos(&fsm->pdos);
 
         ec_sdo_request_address(&fsm->request, fsm->sync_sdo_index, 0);
+        fsm->request.response_timeout = 10000;
         ecrt_sdo_request_read(&fsm->request);
-        fsm->jiffies_start = jiffies;
         fsm->state = ec_fsm_coe_map_state_pdo_count;
         ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, &fsm->request);
         ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
@@ -214,15 +210,6 @@ void ec_fsm_coe_map_state_pdo_count(
     if (ec_fsm_coe_exec(fsm->fsm_coe)) return;
 
     if (!ec_fsm_coe_success(fsm->fsm_coe)) {
-        if (jiffies - fsm->jiffies_start < HZ * EC_FSM_COE_MAP_TIMEOUT) {
-            if (fsm->slave->master->debug_level)
-                EC_DBG("Failed to read number of assigned Pdos from "
-                        "slave %u. Retrying...\n", fsm->slave->ring_position);
-            ecrt_sdo_request_read(&fsm->request);
-            ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, &fsm->request);
-            ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
-            return;
-        }
         EC_ERR("Failed to read number of assigned Pdos from slave %u.\n",
                 fsm->slave->ring_position);
         fsm->state = ec_fsm_coe_map_state_error;
@@ -252,6 +239,7 @@ void ec_fsm_coe_map_action_next_pdo(
     if (fsm->sync_subindex <= fsm->sync_subindices) {
         ec_sdo_request_address(&fsm->request, fsm->sync_sdo_index,
                 fsm->sync_subindex);
+        fsm->request.response_timeout = 0;
         ecrt_sdo_request_read(&fsm->request);
         fsm->state = ec_fsm_coe_map_state_pdo;
         ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, &fsm->request);
@@ -309,6 +297,7 @@ void ec_fsm_coe_map_state_pdo(
     list_add_tail(&fsm->pdo->list, &fsm->pdos.list);
 
     ec_sdo_request_address(&fsm->request, fsm->pdo->index, 0);
+    fsm->request.response_timeout = 0;
     ecrt_sdo_request_read(&fsm->request);
     fsm->state = ec_fsm_coe_map_state_pdo_entry_count;
     ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, &fsm->request);
@@ -356,6 +345,7 @@ void ec_fsm_coe_map_action_next_pdo_entry(
 {
     if (fsm->pdo_subindex <= fsm->pdo_subindices) {
         ec_sdo_request_address(&fsm->request, fsm->pdo->index, fsm->pdo_subindex);
+        fsm->request.response_timeout = 0;
         ecrt_sdo_request_read(&fsm->request);
         fsm->state = ec_fsm_coe_map_state_pdo_entry;
         ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, &fsm->request);

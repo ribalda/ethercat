@@ -1024,6 +1024,7 @@ void ec_fsm_coe_down_start(ec_fsm_coe_t *fsm /**< finite state machine */)
         ec_print_data(data, 10 + request->data_size);
     }
 
+    fsm->request->jiffies_sent = jiffies;
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_coe_down_request;
 }
@@ -1052,6 +1053,19 @@ void ec_fsm_coe_down_request(ec_fsm_coe_t *fsm /**< finite state machine */)
     }
 
     if (datagram->working_counter != 1) {
+        if (!datagram->working_counter) {
+            unsigned long diff_ms =
+                (jiffies - fsm->request->jiffies_sent) * 1000 / HZ;
+            if (diff_ms < fsm->request->response_timeout) {
+                if (fsm->slave->master->debug_level) {
+                    EC_DBG("Slave %u did no respond to Sdo download request. "
+                            "Retrying after %u ms...\n",
+                            slave->ring_position, (u32) diff_ms);
+                    // no response; send request datagram again
+                    return;
+                }
+            }
+        }
         fsm->state = ec_fsm_coe_error;
         EC_ERR("Reception of CoE download request failed on slave %u: ",
                 slave->ring_position);
@@ -1253,6 +1267,7 @@ void ec_fsm_coe_up_start(ec_fsm_coe_t *fsm /**< finite state machine */)
         ec_print_data(data, 10);
     }
 
+    fsm->request->jiffies_sent = jiffies;
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_coe_up_request;
 }
@@ -1281,6 +1296,19 @@ void ec_fsm_coe_up_request(ec_fsm_coe_t *fsm /**< finite state machine */)
     }
 
     if (datagram->working_counter != 1) {
+        if (!datagram->working_counter) {
+            unsigned long diff_ms =
+                (jiffies - fsm->request->jiffies_sent) * 1000 / HZ;
+            if (diff_ms < fsm->request->response_timeout) {
+                if (fsm->slave->master->debug_level) {
+                    EC_DBG("Slave %u did no respond to Sdo upload request. "
+                            "Retrying after %u ms...\n",
+                            slave->ring_position, (u32) diff_ms);
+                    // no response; send request datagram again
+                    return;
+                }
+            }
+        }
         fsm->state = ec_fsm_coe_error;
         EC_ERR("Reception of CoE upload request failed on slave %u: ",
                 slave->ring_position);

@@ -58,12 +58,17 @@ struct ec_sdo_request {
     uint8_t *data; /**< Pointer to Sdo data. */
     size_t mem_size; /**< Size of Sdo data memory. */
     size_t data_size; /**< Size of Sdo data. */
-    uint32_t timeout; /**< Timeout in ms. */
+    uint32_t issue_timeout; /**< Maximum time in ms, the processing of the
+                              request may take. */
+    uint32_t response_timeout; /**< Maximum time in ms, the transfer is
+                                 retried, if the slave does not respond. */
     ec_direction_t dir; /**< Direction. EC_DIR_OUTPUT means downloading to
                           the slave, EC_DIR_INPUT means uploading from the
                           slave. */
     ec_request_state_t state; /**< Sdo request state. */
-    unsigned long start_jiffies; /**< Jiffies, when the request was issued. */
+    unsigned long jiffies_start; /**< Jiffies, when the request was issued. */
+    unsigned long jiffies_sent; /**< Jiffies, when the upload/download
+                                     request was sent. */
 };
 
 /*****************************************************************************/

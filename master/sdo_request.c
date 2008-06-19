@@ -70,7 +70,8 @@ void ec_sdo_request_init(
     req->mem_size = 0;
     req->data_size = 0;
     req->dir = EC_DIR_OUTPUT;
-    req->timeout = 0; // no timeout
+    req->issue_timeout = 0; // no timeout
+    req->response_timeout = 0; // immediate response required
     req->state = EC_REQUEST_INIT;
 }
 
@@ -170,8 +171,8 @@ int ec_sdo_request_copy_data(
  */
 int ec_sdo_request_timed_out(const ec_sdo_request_t *req /**< Sdo request. */)
 {
-    return req->timeout
-        && jiffies - req->start_jiffies > HZ * req->timeout / 1000;
+    return req->issue_timeout
+        && jiffies - req->jiffies_start > HZ * req->issue_timeout / 1000;
 }
 
 /*****************************************************************************
@@ -180,7 +181,7 @@ int ec_sdo_request_timed_out(const ec_sdo_request_t *req /**< Sdo request. */)
 
 void ecrt_sdo_request_timeout(ec_sdo_request_t *req, uint32_t timeout)
 {
-    req->timeout = timeout;
+    req->issue_timeout = timeout;
 }
 
 /*****************************************************************************/
@@ -210,7 +211,7 @@ void ecrt_sdo_request_read(ec_sdo_request_t *req)
 {
     req->dir = EC_DIR_INPUT;
     req->state = EC_REQUEST_QUEUED;
-    req->start_jiffies = jiffies;
+    req->jiffies_start = jiffies;
 }
 
 /*****************************************************************************/
@@ -219,7 +220,7 @@ void ecrt_sdo_request_write(ec_sdo_request_t *req)
 {
     req->dir = EC_DIR_OUTPUT;
     req->state = EC_REQUEST_QUEUED;
-    req->start_jiffies = jiffies;
+    req->jiffies_start = jiffies;
 }
 
 /*****************************************************************************/
