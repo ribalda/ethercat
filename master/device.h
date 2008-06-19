@@ -94,7 +94,9 @@ struct ec_device
     uint8_t link_state; /**< device link state */
     struct sk_buff *tx_skb[EC_TX_RING_SIZE]; /**< transmit skb ring */
     unsigned int tx_ring_index; /**< last ring entry used to transmit */
+#ifdef EC_HAVE_CYCLES
     cycles_t cycles_poll; /**< cycles of last poll */
+#endif
 #ifdef EC_DEBUG_RING
     struct timeval timeval_poll;
 #endif

@@ -342,6 +342,8 @@ void ec_master_thread_stop(
         ec_master_t *master /**< EtherCAT master */
         )
 {
+    unsigned long sleep_jiffies;
+    
     if (!master->thread_id) {
         EC_WARN("ec_master_thread_stop: Already finished!\n");
         return;
@@ -357,9 +359,8 @@ void ec_master_thread_stop(
     if (master->fsm_datagram.state != EC_DATAGRAM_SENT) return;
     
     // wait for FSM datagram
-    while (get_cycles() - master->fsm_datagram.cycles_sent
-            < (cycles_t) EC_IO_TIMEOUT /* us */ * (cpu_khz / 1000))
-        schedule();
+    sleep_jiffies = max(HZ / 100, 1); // 10 ms, at least 1 jiffy
+    schedule_timeout(sleep_jiffies);
 }
 
 /*****************************************************************************/
@@ -572,12 +573,16 @@ void ec_master_send_datagrams(ec_master_t *master /**< EtherCAT master */)
     size_t datagram_size;
     uint8_t *frame_data, *cur_data;
     void *follows_word;
+#ifdef EC_HAVE_CYCLES
     cycles_t cycles_start, cycles_sent, cycles_end;
+#endif
     unsigned long jiffies_sent;
     unsigned int frame_count, more_datagrams_waiting;
     struct list_head sent_datagrams;
 
+#ifdef EC_HAVE_CYCLES
     cycles_start = get_cycles();
+#endif
     frame_count = 0;
     INIT_LIST_HEAD(&sent_datagrams);
 
@@ -650,13 +655,17 @@ void ec_master_send_datagrams(ec_master_t *master /**< EtherCAT master */)
 
         // send frame
         ec_device_send(&master->main_device, cur_data - frame_data);
+#ifdef EC_HAVE_CYCLES
         cycles_sent = get_cycles();
+#endif
         jiffies_sent = jiffies;
 
         // set datagram states and sending timestamps
         list_for_each_entry_safe(datagram, next, &sent_datagrams, sent) {
             datagram->state = EC_DATAGRAM_SENT;
+#ifdef EC_HAVE_CYCLES
             datagram->cycles_sent = cycles_sent;
+#endif
             datagram->jiffies_sent = jiffies_sent;
             list_del_init(&datagram->sent); // empty list of sent datagrams
         }
@@ -665,12 +674,14 @@ void ec_master_send_datagrams(ec_master_t *master /**< EtherCAT master */)
     }
     while (more_datagrams_waiting);
 
+#ifdef EC_HAVE_CYCLES
     if (unlikely(master->debug_level > 1)) {
         cycles_end = get_cycles();
         EC_DBG("ec_master_send_datagrams sent %u frames in %uus.\n",
                frame_count,
                (unsigned int) (cycles_end - cycles_start) * 1000 / cpu_khz);
     }
+#endif
 }
 
 /*****************************************************************************/
@@ -767,7 +778,9 @@ void ec_master_receive_datagrams(ec_master_t *master, /**< EtherCAT master */
 
         // dequeue the received datagram
         datagram->state = EC_DATAGRAM_RECEIVED;
+#ifdef EC_HAVE_CYCLES
         datagram->cycles_received = master->main_device.cycles_poll;
+#endif
         datagram->jiffies_received = master->main_device.jiffies_poll;
         list_del_init(&datagram->queue);
     }
@@ -1260,20 +1273,34 @@ void ecrt_master_send(ec_master_t *master)
 void ecrt_master_receive(ec_master_t *master)
 {
     ec_datagram_t *datagram, *next;
+#ifdef EC_HAVE_CYCLES
     cycles_t cycles_timeout;
+#else
+    unsigned long diff_ms, timeout_ms;
+#endif
     unsigned int frames_timed_out = 0;
 
     // receive datagrams
     ec_device_poll(&master->main_device);
 
+#ifdef EC_HAVE_CYCLES
     cycles_timeout = (cycles_t) EC_IO_TIMEOUT /* us */ * (cpu_khz / 1000);
+#else
+    timeout_ms = max(EC_IO_TIMEOUT /* us */ / 1000, 2);
+#endif
 
     // dequeue all datagrams that timed out
     list_for_each_entry_safe(datagram, next, &master->datagram_queue, queue) {
         if (datagram->state != EC_DATAGRAM_SENT) continue;
 
+#ifdef EC_HAVE_CYCLES
         if (master->main_device.cycles_poll - datagram->cycles_sent
             > cycles_timeout) {
+#else
+        diff_ms = (master->main_device.jiffies_poll
+                - datagram->jiffies_sent) * 1000 / HZ;
+        if (diff_ms > timeout_ms) {
+#endif
             frames_timed_out = 1;
             list_del_init(&datagram->queue);
             datagram->state = EC_DATAGRAM_TIMED_OUT;
@@ -1283,8 +1310,14 @@ void ecrt_master_receive(ec_master_t *master)
             if (unlikely(master->debug_level > 0)) {
                 EC_DBG("TIMED OUT datagram %08x, index %02X waited %u us.\n",
                         (unsigned int) datagram, datagram->index,
+#ifdef EC_HAVE_CYCLES
                         (unsigned int) (master->main_device.cycles_poll
-                            - datagram->cycles_sent) * 1000 / cpu_khz);
+                            - datagram->cycles_sent) * 1000 / cpu_khz
+#else
+                        (unsigned int) (diff_ms * 1000)
+#endif
+                        );
+                
             }
         }
     }

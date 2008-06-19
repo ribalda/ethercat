@@ -101,9 +101,13 @@ void ec_datagram_init(ec_datagram_t *datagram /**< EtherCAT datagram. */)
     datagram->index = 0x00;
     datagram->working_counter = 0x0000;
     datagram->state = EC_DATAGRAM_INIT;
+#ifdef EC_HAVE_CYCLES
     datagram->cycles_sent = 0;
+#endif
     datagram->jiffies_sent = 0;
+#ifdef EC_HAVE_CYCLES
     datagram->cycles_received = 0;
+#endif
     datagram->jiffies_received = 0;
     datagram->skip_count = 0;
     datagram->stats_output_jiffies = 0;

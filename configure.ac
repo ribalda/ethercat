@@ -490,6 +490,30 @@ AM_CONDITIONAL(ENABLE_EOE, test "x$eoe" = "x1")
 AC_SUBST(ENABLE_EOE,[$eoe])
 
 #------------------------------------------------------------------------------
+# CPU timestamp counter support
+#------------------------------------------------------------------------------
+
+AC_ARG_ENABLE([cycles],
+    AS_HELP_STRING([--enable-cycles],
+                   [Use CPU timestamp counter (default: no)]),
+    [
+        case "${enableval}" in
+            yes) cycles=1
+                ;;
+            no) cycles=0
+                ;;
+            *) AC_MSG_ERROR([Invalid value for --enable-cycles])
+                ;;
+        esac
+    ],
+    [cycles=0]
+)
+
+if test "x${cycles}" = "x1"; then
+    AC_DEFINE([EC_HAVE_CYCLES], [1], [Use CPU timestamp counter])
+fi
+
+#------------------------------------------------------------------------------
 
 AC_CONFIG_FILES([
         Doxyfile

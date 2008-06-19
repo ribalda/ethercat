@@ -106,9 +106,13 @@ typedef struct {
     uint8_t index; /**< Index (set by master). */
     uint16_t working_counter; /**< Working counter. */
     ec_datagram_state_t state; /**< State. */
+#ifdef EC_HAVE_CYCLES
     cycles_t cycles_sent; /**< Time, when the datagram was sent. */
+#endif
     unsigned long jiffies_sent; /**< Jiffies, when the datagram was sent. */
+#ifdef EC_HAVE_CYCLES
     cycles_t cycles_received; /**< Time, when the datagram was received. */
+#endif
     unsigned long jiffies_received; /**< Jiffies, when the datagram was
                                       received. */
     unsigned int skip_count; /**< Number of requeues when not yet received. */

@@ -384,7 +384,9 @@ void ec_device_poll(
         ec_device_t *device /**< EtherCAT device */
         )
 {
+#ifdef EC_HAVE_CYCLES
     device->cycles_poll = get_cycles();
+#endif
     device->jiffies_poll = jiffies;
 #ifdef EC_DEBUG_RING
     do_gettimeofday(&device->timeval_poll);

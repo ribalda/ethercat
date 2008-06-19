@@ -8,14 +8,11 @@ $Id$
 
 Version 1.4.0:
 
-* Remove get_cycles() calls and references to cpu_khz to increase
-  portability.
 * Make scanning and configuration run parallel (each).
 * Adapt remaining examples.
 * READMEs for examples.
 * Update documentation.
 * Attach Pdo names from SII or Coe dictioary to Pdos read via CoE.
-* Add a -n (numeric) switch to ethercat command.
 * Remove Eoe cycles and Idle cycles.
 
 Future issues:
@@ -33,6 +30,7 @@ Future issues:
 * Wait for bus scanning, even when link is not up at ecrt_request_master()?
 * Redundancy with 2 network adapters.
 * Interface/buffers for asynchronous domain IO.
+* Add a -n (numeric) switch to ethercat command.
 
 Smaller issues:
 
