@@ -216,6 +216,14 @@ void ec_fsm_coe_map_state_pdo_count(
         return;
     }
 
+    if (fsm->request.data_size != sizeof(uint8_t)) {
+        EC_ERR("Invalid data size %u returned when uploading Sdo 0x%04X:%02X "
+                "from slave %u.\n", fsm->request.data_size,
+                fsm->request.index, fsm->request.subindex,
+                fsm->slave->ring_position);
+        fsm->state = ec_fsm_coe_map_state_error;
+        return;
+    }
     fsm->sync_subindices = EC_READ_U8(fsm->request.data);
 
     if (fsm->slave->master->debug_level)
@@ -280,6 +288,15 @@ void ec_fsm_coe_map_state_pdo(
         return;
     }
 
+    if (fsm->request.data_size != sizeof(uint16_t)) {
+        EC_ERR("Invalid data size %u returned when uploading Sdo 0x%04X:%02X "
+                "from slave %u.\n", fsm->request.data_size,
+                fsm->request.index, fsm->request.subindex,
+                fsm->slave->ring_position);
+        fsm->state = ec_fsm_coe_map_state_error;
+        return;
+    }
+
     if (!(fsm->pdo = (ec_pdo_t *)
                 kmalloc(sizeof(ec_pdo_t), GFP_KERNEL))) {
         EC_ERR("Failed to allocate Pdo.\n");
@@ -323,6 +340,14 @@ void ec_fsm_coe_map_state_pdo_entry_count(
         return;
     }
 
+    if (fsm->request.data_size != sizeof(uint8_t)) {
+        EC_ERR("Invalid data size %u returned when uploading Sdo 0x%04X:%02X "
+                "from slave %u.\n", fsm->request.data_size,
+                fsm->request.index, fsm->request.subindex,
+                fsm->slave->ring_position);
+        fsm->state = ec_fsm_coe_map_state_error;
+        return;
+    }
     fsm->pdo_subindices = EC_READ_U8(fsm->request.data);
 
     if (fsm->slave->master->debug_level)
@@ -377,7 +402,13 @@ void ec_fsm_coe_map_state_pdo_entry(
         return;
     }
 
-    {
+    if (fsm->request.data_size != sizeof(uint32_t)) {
+        EC_ERR("Invalid data size %u returned when uploading Sdo 0x%04X:%02X "
+                "from slave %u.\n", fsm->request.data_size,
+                fsm->request.index, fsm->request.subindex,
+                fsm->slave->ring_position);
+        fsm->state = ec_fsm_coe_map_state_error;
+    } else {
         uint32_t pdo_entry_info;
         ec_pdo_entry_t *pdo_entry;
 

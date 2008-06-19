@@ -14,9 +14,10 @@ Version 1.4.0:
 * Adapt remaining examples.
 * READMEs for examples.
 * Update documentation.
-* Check for sizes of uploaded Sdos when reading mapping from CoE.
 * Attach Pdo names from SII or Coe dictioary to Pdos read via CoE.
 * Add a -n (numeric) switch to ethercat command.
+* Remove Eoe cylces and Idle cycles.
+* Store Sdo abort code in sdo_request_t and output it in user space.
 
 Future issues:
 
