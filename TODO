@@ -13,7 +13,6 @@ Version 1.4.0:
 * READMEs for examples.
 * Update documentation.
 * Attach Pdo names from SII or Coe dictioary to Pdos read via CoE.
-* Remove Eoe cycles and Idle cycles.
 
 Future issues:
 

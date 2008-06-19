@@ -135,15 +135,11 @@ struct ec_master {
 
     int thread_id; /**< Master thread PID. */
     struct completion thread_exit; /**< Thread completion object. */
-    uint32_t idle_cycle_times[HZ]; /**< Idle cycle times ring. */
-    unsigned int idle_cycle_time_pos; /**< time ring buffer position */
 
 #ifdef EC_EOE
     struct timer_list eoe_timer; /**< EoE timer object. */
     unsigned int eoe_running; /**< \a True, if EoE processing is active. */
     struct list_head eoe_handlers; /**< Ethernet-over-EtherCAT handlers. */
-    uint32_t eoe_cycle_times[HZ]; /**< EoE cycle times ring. */
-    unsigned int eoe_cycle_time_pos; /**< Time ring buffer position. */
 #endif
 
     spinlock_t internal_lock; /**< Spinlock used in \a IDLE phase. */

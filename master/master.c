@@ -82,8 +82,6 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
         struct class *class /**< Device class. */
         )
 {
-    unsigned int i;
-
     master->index = index;
     master->reserved = 0;
 
@@ -122,16 +120,7 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     master->stats.output_jiffies = 0;
     master->frames_timed_out = 0;
 
-    for (i = 0; i < HZ; i++) {
-        master->idle_cycle_times[i] = 0;
 #ifdef EC_EOE
-        master->eoe_cycle_times[i] = 0;
-#endif
-    }
-    master->idle_cycle_time_pos = 0;
-#ifdef EC_EOE
-    master->eoe_cycle_time_pos = 0;
-
     init_timer(&master->eoe_timer);
     master->eoe_timer.function = ec_master_eoe_run;
     master->eoe_timer.data = (unsigned long) master;
@@ -822,13 +811,10 @@ void ec_master_output_stats(ec_master_t *master /**< EtherCAT master */)
  */
 static int ec_master_idle_thread(ec_master_t *master)
 {
-    cycles_t cycles_start, cycles_end;
-
     daemonize("EtherCAT-IDLE");
     allow_signal(SIGTERM);
 
     while (!signal_pending(current)) {
-        cycles_start = get_cycles();
         ec_datagram_output_stats(&master->fsm_datagram);
 
         // receive
@@ -848,12 +834,6 @@ static int ec_master_idle_thread(ec_master_t *master)
         ecrt_master_send(master);
         spin_unlock_bh(&master->internal_lock);
         
-        cycles_end = get_cycles();
-        master->idle_cycle_times[master->idle_cycle_time_pos]
-            = (u32) (cycles_end - cycles_start) * 1000 / cpu_khz;
-        master->idle_cycle_time_pos++;
-        master->idle_cycle_time_pos %= HZ;
-
 schedule:
         if (ec_fsm_master_idle(&master->fsm)) {
             set_current_state(TASK_INTERRUPTIBLE);
@@ -876,8 +856,6 @@ schedule:
  */
 static int ec_master_operation_thread(ec_master_t *master)
 {
-    cycles_t cycles_start, cycles_end;
-
     daemonize("EtherCAT-OP");
     allow_signal(SIGTERM);
 
@@ -888,8 +866,6 @@ static int ec_master_operation_thread(ec_master_t *master)
                 master->fsm_datagram.state == EC_DATAGRAM_QUEUED)
             goto schedule;
 
-        cycles_start = get_cycles();
-
         // output statistics
         ec_master_output_stats(master);
 
@@ -898,12 +874,6 @@ static int ec_master_operation_thread(ec_master_t *master)
 
         // inject datagram
         master->injection_seq_fsm++;
-
-        cycles_end = get_cycles();
-        master->idle_cycle_times[master->idle_cycle_time_pos]
-            = (u32) (cycles_end - cycles_start) * 1000 / cpu_khz;
-        master->idle_cycle_time_pos++;
-        master->idle_cycle_time_pos %= HZ;
 
 schedule:
         if (ec_fsm_master_idle(&master->fsm)) {
@@ -972,7 +942,6 @@ void ec_master_eoe_run(unsigned long data /**< master pointer */)
     ec_master_t *master = (ec_master_t *) data;
     ec_eoe_t *eoe;
     unsigned int none_open = 1;
-    cycles_t cycles_start, cycles_end;
     unsigned long restart_jiffies;
 
     list_for_each_entry(eoe, &master->eoe_handlers, list) {
@@ -985,8 +954,9 @@ void ec_master_eoe_run(unsigned long data /**< master pointer */)
         goto queue_timer;
 
     // receive datagrams
-    if (master->request_cb(master->cb_data)) goto queue_timer;
-    cycles_start = get_cycles();
+    if (master->request_cb(master->cb_data))
+        goto queue_timer;
+    
     ecrt_master_receive(master);
     master->release_cb(master->cb_data);
 
@@ -1004,12 +974,6 @@ void ec_master_eoe_run(unsigned long data /**< master pointer */)
     }
     ecrt_master_send(master);
     master->release_cb(master->cb_data);
-    cycles_end = get_cycles();
-
-    master->eoe_cycle_times[master->eoe_cycle_time_pos]
-        = (u32) (cycles_end - cycles_start) * 1000 / cpu_khz;
-    master->eoe_cycle_time_pos++;
-    master->eoe_cycle_time_pos %= HZ;
 
  queue_timer:
     restart_jiffies = HZ / EC_EOE_FREQUENCY;
