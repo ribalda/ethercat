@@ -225,7 +225,7 @@ void ec_fsm_sii_state_read_check(
         return;
     }
 
-    fsm->cycles_start = datagram->cycles_sent;
+    fsm->jiffies_start = datagram->jiffies_sent;
     fsm->check_once_more = 1;
 
     // issue check/fetch datagram
@@ -289,8 +289,9 @@ void ec_fsm_sii_state_read_fetch(
     if (EC_READ_U8(datagram->data + 1) & 0x81) { // busy bit or
 												 // read operation busy
         // still busy... timeout?
-        if (datagram->cycles_received
-            - fsm->cycles_start >= (cycles_t) SII_TIMEOUT * cpu_khz) {
+        unsigned long diff_ms =
+            (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
+        if (diff_ms >= SII_TIMEOUT) {
             if (fsm->check_once_more) {
 				fsm->check_once_more = 0;
 			} else {
@@ -372,7 +373,7 @@ void ec_fsm_sii_state_write_check(
         return;
     }
 
-    fsm->cycles_start = datagram->cycles_sent;
+    fsm->jiffies_start = datagram->jiffies_sent;
     fsm->check_once_more = 1;
 
     // issue check datagram
@@ -392,6 +393,7 @@ void ec_fsm_sii_state_write_check2(
 		)
 {
     ec_datagram_t *datagram = fsm->datagram;
+    unsigned long diff_ms;
 
     if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
         return;
@@ -425,8 +427,8 @@ void ec_fsm_sii_state_write_check2(
 
 	/* FIXME: some slaves never answer with the busy flag set...
 	 * wait a few ms for the write operation to complete. */
-	if (datagram->cycles_received - fsm->cycles_start
-			< (cycles_t) SII_INHIBIT * cpu_khz) {
+    diff_ms = (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
+    if (diff_ms < SII_INHIBIT) {
 #ifdef SII_DEBUG
 		EC_DBG("too early.\n");
 #endif
@@ -438,8 +440,7 @@ void ec_fsm_sii_state_write_check2(
     if (EC_READ_U8(datagram->data + 1) & 0x82) { // busy bit or
 												 // write operation busy bit
         // still busy... timeout?
-        if (datagram->cycles_received
-            - fsm->cycles_start >= (cycles_t) SII_TIMEOUT * cpu_khz) {
+        if (diff_ms >= SII_TIMEOUT) {
             if (fsm->check_once_more) {
 				fsm->check_once_more = 0;
 			} else {

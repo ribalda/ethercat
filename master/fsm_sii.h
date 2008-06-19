@@ -73,7 +73,7 @@ struct ec_fsm_sii
     uint16_t word_offset; /**< input: word offset in SII */
     ec_fsm_sii_addressing_t mode; /**< reading via APRD or NPRD */
     uint8_t value[4]; /**< raw SII value (32bit) */
-    cycles_t cycles_start; /**< start timestamp */
+    unsigned long jiffies_start; /**< Start timestamp. */
     uint8_t check_once_more; /**< one more try after timeout */
 };
 
