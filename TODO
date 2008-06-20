@@ -19,6 +19,7 @@ Version 1.4.0:
 * Remove #x:y alias output.
 * Race in jiffies frame timeout.
 * FoE
+* Allow master requesting when in ORPHANED phase
 
 Future issues:
 
