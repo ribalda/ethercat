@@ -1029,8 +1029,8 @@ ec_slave_t *ec_master_find_slave(
         // find slave with the given alias
         for (; slave < master->slaves + master->slave_count;
                 slave++) {
-			if (slave->sii.alias != alias)
-				continue;
+			if (slave->sii.alias == alias)
+                break;
 		}
         if (slave == master->slaves + master->slave_count)
             return NULL;
