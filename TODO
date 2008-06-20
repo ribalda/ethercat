@@ -13,6 +13,12 @@ Version 1.4.0:
 * Adapt remaining examples.
 * READMEs for examples.
 * Update documentation.
+* ethercat 'list_config'
+* Stop master thread at ecrt_master_request().
+* Overthink display style of hex numbers.
+* Remove #x:y alias output.
+* Race in jiffies frame timeout.
+* FoE
 
 Future issues:
 
@@ -26,7 +32,6 @@ Future issues:
 * Separate CoE debugging.
 * Evaluate EEPROM contents after writing.
 * Optimize alignment of process data.
-* Wait for bus scanning, even when link is not up at ecrt_request_master()?
 * Redundancy with 2 network adapters.
 * Interface/buffers for asynchronous domain IO.
 * Add a -n (numeric) switch to ethercat command.
