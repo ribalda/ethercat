@@ -202,7 +202,7 @@ int ec_pdo_list_copy(
 /** Compares two Pdo lists.
  *
  * Only the list is compared, not the Pdo entries (i. e. the Pdo
- * configuration).
+ * mapping).
  *
  * \retval 1 The given Pdo lists are equal.
  * \retval 0 The given Pdo lists differ.
