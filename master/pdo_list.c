@@ -318,3 +318,20 @@ unsigned int ec_pdo_list_count(
 }
 
 /*****************************************************************************/
+
+/** Outputs the Pdos in the list.
+ */
+void ec_pdo_list_print(
+        const ec_pdo_list_t *pl /**< Pdo list. */
+        )
+{
+    const ec_pdo_t *pdo;
+
+    list_for_each_entry(pdo, &pl->list, list) {
+        printk("0x%04X", pdo->index);
+        if (pdo->list.next != &pl->list)
+            printk(" ");
+    }
+}
+
+/*****************************************************************************/

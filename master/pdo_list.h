@@ -79,6 +79,8 @@ const ec_pdo_t *ec_pdo_list_find_pdo_by_pos_const(
         const ec_pdo_list_t *, unsigned int);
 unsigned int ec_pdo_list_count(const ec_pdo_list_t *);
 
+void ec_pdo_list_print(const ec_pdo_list_t *);
+
 /*****************************************************************************/
 
 #endif
