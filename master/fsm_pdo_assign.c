@@ -178,6 +178,15 @@ void ec_fsm_pdo_assign_next_dir(
             continue;
         }
 
+        if (fsm->slave->master->debug_level) {
+            EC_DBG("Sync Pdos: ");
+            ec_pdo_list_print(&fsm->sync->pdos);
+            printk("\n");
+            EC_DBG("Config Pdos: ");
+            ec_pdo_list_print(fsm->pdos);
+            printk("\n");
+        }
+
         // check if assignment has to be altered
         if (ec_pdo_list_equal(&fsm->sync->pdos, fsm->pdos))
             continue;
