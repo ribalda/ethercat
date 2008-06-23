@@ -45,6 +45,12 @@
 
 /*****************************************************************************/
 
+/** Maximum time in ms to wait for responses when reading out the dictionary.
+ */
+#define EC_FSM_COE_DICT_TIMEOUT 3000
+
+/*****************************************************************************/
+
 void ec_fsm_coe_dict_start(ec_fsm_coe_t *);
 void ec_fsm_coe_dict_request(ec_fsm_coe_t *);
 void ec_fsm_coe_dict_check(ec_fsm_coe_t *);
@@ -357,7 +363,7 @@ void ec_fsm_coe_dict_check(ec_fsm_coe_t *fsm /**< finite state machine */)
     if (!ec_slave_mbox_check(datagram)) {
         unsigned long diff_ms =
             (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
-        if (diff_ms >= 100) {
+        if (diff_ms >= EC_FSM_COE_DICT_TIMEOUT) {
             fsm->state = ec_fsm_coe_error;
             EC_ERR("Timeout while checking Sdo dictionary on slave %u.\n",
                    slave->ring_position);
@@ -454,10 +460,14 @@ void ec_fsm_coe_dict_response(ec_fsm_coe_t *fsm /**< finite state machine */)
 
     if (EC_READ_U16(data) >> 12 != 0x8 || // Sdo information
         (EC_READ_U8 (data + 2) & 0x7F) != 0x02) { // Get OD List response
-        EC_ERR("Invalid Sdo list response at slave %u!\n",
-               slave->ring_position);
-        ec_print_data(data, rec_size);
-        fsm->state = ec_fsm_coe_error;
+        if (fsm->slave->master->debug_level) {
+            EC_DBG("Invalid Sdo list response at slave %u! Retrying...\n",
+                    slave->ring_position);
+            ec_print_data(data, rec_size);
+        }
+        ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
+        fsm->retries = EC_FSM_RETRIES;
+        fsm->state = ec_fsm_coe_dict_check;
         return;
     }
 
@@ -597,7 +607,7 @@ void ec_fsm_coe_dict_desc_check(ec_fsm_coe_t *fsm /**< finite state machine */)
     if (!ec_slave_mbox_check(datagram)) {
         unsigned long diff_ms =
             (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
-        if (diff_ms >= 100) {
+        if (diff_ms >= EC_FSM_COE_DICT_TIMEOUT) {
             fsm->state = ec_fsm_coe_error;
             EC_ERR("Timeout while checking Sdo description on slave %u.\n",
                    slave->ring_position);
@@ -697,11 +707,16 @@ void ec_fsm_coe_dict_desc_response(ec_fsm_coe_t *fsm
     if (EC_READ_U16(data) >> 12 != 0x8 || // Sdo information
         (EC_READ_U8 (data + 2) & 0x7F) != 0x04 || // Object desc. response
         EC_READ_U16(data + 6) != sdo->index) { // Sdo index
-        EC_ERR("Invalid object description response at slave %u while"
-               " fetching Sdo 0x%04X!\n", slave->ring_position,
-               sdo->index);
-        ec_print_data(data, rec_size);
-        fsm->state = ec_fsm_coe_error;
+        if (fsm->slave->master->debug_level) {
+            EC_DBG("Invalid object description response at slave %u while"
+                    " fetching Sdo 0x%04X!\n", slave->ring_position,
+                    sdo->index);
+            ec_print_data(data, rec_size);
+        }
+        // check for CoE response again
+        ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
+        fsm->retries = EC_FSM_RETRIES;
+        fsm->state = ec_fsm_coe_dict_desc_check;
         return;
     }
 
@@ -827,7 +842,7 @@ void ec_fsm_coe_dict_entry_check(ec_fsm_coe_t *fsm
     if (!ec_slave_mbox_check(datagram)) {
         unsigned long diff_ms =
             (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
-        if (diff_ms >= 100) {
+        if (diff_ms >= EC_FSM_COE_DICT_TIMEOUT) {
             fsm->state = ec_fsm_coe_error;
             EC_ERR("Timeout while checking Sdo entry on slave %u.\n",
                    slave->ring_position);
@@ -929,11 +944,16 @@ void ec_fsm_coe_dict_entry_response(ec_fsm_coe_t *fsm
         (EC_READ_U8(data + 2) & 0x7F) != 0x06 || // Entry desc. response
         EC_READ_U16(data + 6) != sdo->index || // Sdo index
         EC_READ_U8(data + 8) != fsm->subindex) { // Sdo subindex
-        EC_ERR("Invalid entry description response at slave %u while"
-               " fetching Sdo entry 0x%04X:%02X!\n", slave->ring_position,
-               sdo->index, fsm->subindex);
-        ec_print_data(data, rec_size);
-        fsm->state = ec_fsm_coe_error;
+        if (fsm->slave->master->debug_level) {
+            EC_DBG("Invalid entry description response at slave %u while"
+                    " fetching Sdo entry 0x%04X:%02X!\n", slave->ring_position,
+                    sdo->index, fsm->subindex);
+            ec_print_data(data, rec_size);
+        }
+        // check for CoE response again
+        ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
+        fsm->retries = EC_FSM_RETRIES;
+        fsm->state = ec_fsm_coe_dict_entry_check;
         return;
     }
 
@@ -1101,7 +1121,7 @@ void ec_fsm_coe_down_request(ec_fsm_coe_t *fsm /**< finite state machine */)
                 (jiffies - fsm->request->jiffies_sent) * 1000 / HZ;
             if (diff_ms < fsm->request->response_timeout) {
                 if (fsm->slave->master->debug_level) {
-                    EC_DBG("Slave %u did no respond to Sdo download request. "
+                    EC_DBG("Slave %u did not respond to Sdo download request. "
                             "Retrying after %u ms...\n",
                             slave->ring_position, (u32) diff_ms);
                     // no response; send request datagram again
@@ -1156,10 +1176,10 @@ void ec_fsm_coe_down_check(ec_fsm_coe_t *fsm /**< finite state machine */)
     if (!ec_slave_mbox_check(datagram)) {
         unsigned long diff_ms =
             (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
-        if (diff_ms >= 100) {
+        if (diff_ms >= fsm->request->response_timeout) {
             fsm->state = ec_fsm_coe_error;
-            EC_ERR("Timeout while checking Sdo configuration on slave %u.\n",
-                   slave->ring_position);
+            EC_ERR("Timeout while waiting for Sdo download response on "
+                    "slave %u.\n", slave->ring_position);
             return;
         }
 
@@ -1260,12 +1280,15 @@ void ec_fsm_coe_down_response(ec_fsm_coe_t *fsm /**< finite state machine */)
         EC_READ_U8 (data + 2) >> 5 != 0x3 || // Download response
         EC_READ_U16(data + 3) != request->index || // index
         EC_READ_U8 (data + 5) != request->subindex) { // subindex
-        fsm->state = ec_fsm_coe_error;
-        EC_ERR("Sdo download 0x%04X:%02X (%u bytes) failed:\n",
-               request->index, request->subindex, request->data_size);
-        EC_ERR("Invalid Sdo download response at slave %u!\n",
-               slave->ring_position);
-        ec_print_data(data, rec_size);
+        if (slave->master->debug_level) {
+            EC_DBG("Invalid Sdo download response at slave %u! Retrying...\n",
+                    slave->ring_position);
+            ec_print_data(data, rec_size);
+        }
+        // check for CoE response again
+        ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
+        fsm->retries = EC_FSM_RETRIES;
+        fsm->state = ec_fsm_coe_down_check;
         return;
     }
 
@@ -1518,12 +1541,15 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
                 EC_READ_U8 (data + 2) >> 5 != 0x2 || // upload response
                 EC_READ_U16(data + 3) != request->index || // index
                 EC_READ_U8 (data + 5) != request->subindex) { // subindex
-            fsm->state = ec_fsm_coe_error;
-            EC_ERR("Sdo upload 0x%04X:%02X failed:\n",
-                    request->index, request->subindex);
-            EC_ERR("Invalid Sdo upload expedited response at slave %u!\n",
-                    slave->ring_position);
-            ec_print_data(data, rec_size);
+            if (fsm->slave->master->debug_level) {
+                EC_DBG("Invalid Sdo upload expedited response at slave %u!\n",
+                        slave->ring_position);
+                ec_print_data(data, rec_size);
+            }
+            // check for CoE response again
+            ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
+            fsm->retries = EC_FSM_RETRIES;
+            fsm->state = ec_fsm_coe_up_check;
             return;
         }
 
@@ -1559,12 +1585,15 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
                 EC_READ_U8 (data + 2) >> 5 != 0x2 || // upload response
                 EC_READ_U16(data + 3) != request->index || // index
                 EC_READ_U8 (data + 5) != request->subindex) { // subindex
-            fsm->state = ec_fsm_coe_error;
-            EC_ERR("Sdo upload 0x%04X:%02X failed:\n",
-                    request->index, request->subindex);
-            EC_ERR("Invalid Sdo normal upload response at slave %u!\n",
-                    slave->ring_position);
-            ec_print_data(data, rec_size);
+            if (fsm->slave->master->debug_level) {
+                EC_DBG("Invalid Sdo normal upload response at slave %u!\n",
+                        slave->ring_position);
+                ec_print_data(data, rec_size);
+            }
+            // check for CoE response again
+            ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
+            fsm->retries = EC_FSM_RETRIES;
+            fsm->state = ec_fsm_coe_up_check;
             return;
         }
 
@@ -1694,10 +1723,10 @@ void ec_fsm_coe_up_seg_check(ec_fsm_coe_t *fsm /**< finite state machine */)
     if (!ec_slave_mbox_check(datagram)) {
         unsigned long diff_ms =
             (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
-        if (diff_ms >= 100) {
+        if (diff_ms >= fsm->request->response_timeout) {
             fsm->state = ec_fsm_coe_error;
-            EC_ERR("Timeout while checking Sdo upload segment on slave %u.\n",
-                   slave->ring_position);
+            EC_ERR("Timeout while waiting for Sdo upload segment response "
+                    "on slave %u.\n", slave->ring_position);
             return;
         }
 
@@ -1794,11 +1823,15 @@ void ec_fsm_coe_up_seg_response(ec_fsm_coe_t *fsm /**< finite state machine */)
 
     if (EC_READ_U16(data) >> 12 != 0x3 || // Sdo response
         EC_READ_U8 (data + 2) >> 5 != 0x0) { // upload segment response
-        EC_ERR("Sdo upload 0x%04X:%02X failed:\n", request->index, request->subindex);
-        EC_ERR("Invalid Sdo upload segment response at slave %u!\n",
+        if (fsm->slave->master->debug_level) {
+            EC_DBG("Invalid Sdo upload segment response at slave %u!\n",
                slave->ring_position);
-        ec_print_data(data, rec_size);
-        fsm->state = ec_fsm_coe_error;
+            ec_print_data(data, rec_size);
+        }
+        // check for CoE response again
+        ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
+        fsm->retries = EC_FSM_RETRIES;
+        fsm->state = ec_fsm_coe_up_seg_check;
         return;
     }
 

@@ -44,6 +44,12 @@
 
 /*****************************************************************************/
 
+/** Default timeout in ms to wait for Sdo transfer responses.
+ */
+#define EC_SDO_REQUEST_RESPONSE_TIMEOUT 3000
+
+/*****************************************************************************/
+
 void ec_sdo_request_clear_data(ec_sdo_request_t *);
 
 /*****************************************************************************/
@@ -71,7 +77,7 @@ void ec_sdo_request_init(
     req->data_size = 0;
     req->dir = EC_DIR_OUTPUT;
     req->issue_timeout = 0; // no timeout
-    req->response_timeout = 0; // immediate response required
+    req->response_timeout = EC_SDO_REQUEST_RESPONSE_TIMEOUT;
     req->state = EC_REQUEST_INIT;
     req->abort_code = 0x00000000;
 }

@@ -61,12 +61,6 @@ void ec_fsm_coe_map_action_next_pdo_entry(ec_fsm_coe_map_t *);
 
 /*****************************************************************************/
 
-/** Sdo upload timeout in ms for reading Pdo assigment/mapping.
- */
-#define EC_FSM_COE_MAP_UPLOAD_TIMEOUT 3000
-
-/*****************************************************************************/
-
 /**
    Constructor.
 */
@@ -79,7 +73,6 @@ void ec_fsm_coe_map_init(
     fsm->fsm_coe = fsm_coe;
     fsm->state = NULL;
     ec_sdo_request_init(&fsm->request);
-    fsm->request.response_timeout = EC_FSM_COE_MAP_UPLOAD_TIMEOUT;
     ec_pdo_list_init(&fsm->pdos);
 }
 
