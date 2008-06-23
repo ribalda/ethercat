@@ -44,6 +44,10 @@
 #include "slave_config.h"
 #include "fsm_slave_config.h"
 
+/** Time in ms to wait for a response when downloading Sdo configurations.
+ */
+#define EC_FSM_SLAVE_CONF_SDO_CONF_TIMEOUT 3000
+
 /*****************************************************************************/
 
 void ec_fsm_slave_config_state_start(ec_fsm_slave_config_t *);
@@ -448,6 +452,7 @@ void ec_fsm_slave_config_enter_sdo_conf(ec_fsm_slave_config_t *fsm /**< slave st
     fsm->request = list_entry(fsm->slave->config->sdo_configs.next,
             ec_sdo_request_t, list);
     ecrt_sdo_request_write(fsm->request);
+    fsm->request->response_timeout = EC_FSM_SLAVE_CONF_SDO_CONF_TIMEOUT;
     ec_fsm_coe_transfer(&fsm->fsm_coe, fsm->slave, fsm->request);
     ec_fsm_coe_exec(&fsm->fsm_coe); // execute immediately
 }
