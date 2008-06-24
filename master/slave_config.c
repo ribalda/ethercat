@@ -434,6 +434,9 @@ int ecrt_slave_config_pdos(ec_slave_config_t *sc, unsigned int n_infos,
     unsigned int cleared[] = {0, 0};
     const ec_pdo_entry_info_t *ei;
 
+    if (!pdo_infos)
+        return 0;
+
     for (i = 0; i < n_infos; i++) {
         pi = &pdo_infos[i];
 
