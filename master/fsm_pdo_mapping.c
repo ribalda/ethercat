@@ -161,12 +161,12 @@ void ec_fsm_pdo_mapping_next_pdo(
         ec_fsm_pdo_mapping_t *fsm /**< Pdo mapping state machine. */
         )
 {
-    ec_direction_t dir;
+    uint8_t sync_index;
     const ec_pdo_list_t *pdos;
     const ec_pdo_t *pdo, *assigned_pdo;
     
-    for (dir = EC_DIR_OUTPUT; dir <= EC_DIR_INPUT; dir++) {
-        pdos = &fsm->slave->config->pdos[dir];
+    for (sync_index = 0; sync_index < EC_MAX_SYNCS; sync_index++) {
+        pdos = &fsm->slave->config->sync_configs[sync_index].pdos;
 
         list_for_each_entry(pdo, &pdos->list, list) {
             if (fsm->pdo) { // there was a Pdo mapping changed in the last run
@@ -251,15 +251,17 @@ void ec_fsm_pdo_mapping_add_entry(
 {
     uint32_t value;
 
+    if (fsm->slave->master->debug_level)
+        EC_DBG("Mapping Pdo entry 0x%04X:%02X (%u bit) at position %u.\n",
+                fsm->entry->index, fsm->entry->subindex,
+                fsm->entry->bit_length, fsm->entry_count);
+
     value = fsm->entry->index << 16
         | fsm->entry->subindex << 8 | fsm->entry->bit_length;
     EC_WRITE_U32(fsm->request.data, value);
     fsm->request.data_size = 4;
     ec_sdo_request_address(&fsm->request, fsm->pdo->index, fsm->entry_count);
     ecrt_sdo_request_write(&fsm->request);
-    if (fsm->slave->master->debug_level)
-        EC_DBG("Configuring Pdo entry %08X at position %u.\n",
-                value, fsm->entry_count);
     
     fsm->state = ec_fsm_pdo_mapping_state_add_entry;
     ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, &fsm->request);

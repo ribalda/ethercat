@@ -201,7 +201,7 @@ int ec_domain_finish(
     uint32_t datagram_offset;
     size_t datagram_size;
     unsigned int datagram_count;
-    unsigned int datagram_used[2];
+    unsigned int datagram_used[EC_DIR_COUNT];
     ec_fmmu_config_t *fmmu;
     const ec_datagram_t *datagram;
 

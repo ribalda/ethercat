@@ -55,15 +55,18 @@ void ec_fmmu_config_init(
         ec_fmmu_config_t *fmmu, /**< EtherCAT FMMU configuration. */
         ec_slave_config_t *sc, /**< EtherCAT slave configuration. */
         ec_domain_t *domain, /**< EtherCAT domain. */
+        uint8_t sync_index, /**< Sync manager index to use. */
         ec_direction_t dir /**< Pdo direction. */
         )
 {
     INIT_LIST_HEAD(&fmmu->list);
     fmmu->sc = sc;
+    fmmu->sync_index = sync_index;
     fmmu->dir = dir;
 
     fmmu->logical_start_address = domain->data_size;
-    fmmu->data_size = ec_pdo_list_total_size(&sc->pdos[dir]);
+    fmmu->data_size = ec_pdo_list_total_size(
+            &sc->sync_configs[sync_index].pdos);
 
     ec_domain_add_fmmu_config(domain, fmmu);
 }
@@ -81,10 +84,10 @@ void ec_fmmu_config_page(
         )
 {
     if (fmmu->sc->master->debug_level) {
-        EC_DBG("FMMU: LogAddr 0x%08X, Size %3u, PhysAddr 0x%04X, Dir %s\n",
-               fmmu->logical_start_address, fmmu->data_size,
-               sync->physical_start_address,
-               (sync->control_register & 0x04) ? "out" : "in");
+        EC_DBG("FMMU: LogAddr 0x%08X, Size %3u, PhysAddr 0x%04X, SM%u, "
+                "Dir %s\n", fmmu->logical_start_address, fmmu->data_size,
+               sync->physical_start_address, fmmu->sync_index,
+               fmmu->dir == EC_DIR_INPUT ? "in" : "out");
     }
 
     EC_WRITE_U32(data,      fmmu->logical_start_address);
@@ -93,7 +96,7 @@ void ec_fmmu_config_page(
     EC_WRITE_U8 (data + 7,  0x07); // logical end bit
     EC_WRITE_U16(data + 8,  sync->physical_start_address);
     EC_WRITE_U8 (data + 10, 0x00); // physical start bit
-    EC_WRITE_U8 (data + 11, (sync->control_register & 0x04) ? 0x02 : 0x01);
+    EC_WRITE_U8 (data + 11, fmmu->dir == EC_DIR_INPUT ? 0x01 : 0x02);
     EC_WRITE_U16(data + 12, 0x0001); // enable
     EC_WRITE_U16(data + 14, 0x0000); // reserved
 }

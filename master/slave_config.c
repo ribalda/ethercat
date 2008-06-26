@@ -61,7 +61,7 @@ void ec_slave_config_init(
         uint32_t product_code /**< Expected product code. */
         )
 {
-    ec_direction_t dir;
+    unsigned int i;
 
     sc->master = master;
     sc->alias = alias;
@@ -70,8 +70,8 @@ void ec_slave_config_init(
     sc->product_code = product_code;
     sc->slave = NULL;
 
-    for (dir = EC_DIR_OUTPUT; dir <= EC_DIR_INPUT; dir++)
-        ec_pdo_list_init(&sc->pdos[dir]);
+    for (i = 0; i < EC_MAX_SYNCS; i++)
+        ec_sync_config_init(&sc->sync_configs[i]);
 
     INIT_LIST_HEAD(&sc->sdo_configs);
     INIT_LIST_HEAD(&sc->sdo_requests);
@@ -89,14 +89,14 @@ void ec_slave_config_clear(
         ec_slave_config_t *sc /**< Slave configuration. */
         )
 {
-    ec_direction_t dir;
+    unsigned int i;
     ec_sdo_request_t *req, *next_req;
 
     ec_slave_config_detach(sc);
 
-    // Free Pdo mappings
-    for (dir = EC_DIR_OUTPUT; dir <= EC_DIR_INPUT; dir++)
-        ec_pdo_list_clear(&sc->pdos[dir]);
+    // Free sync managers
+    for (i = 0; i < EC_MAX_SYNCS; i++)
+        ec_sync_config_clear(&sc->sync_configs[i]);
 
     // free all Sdo configurations
     list_for_each_entry_safe(req, next_req, &sc->sdo_configs, list) {
@@ -130,6 +130,7 @@ void ec_slave_config_clear(
 int ec_slave_config_prepare_fmmu(
         ec_slave_config_t *sc, /**< Slave configuration. */
         ec_domain_t *domain, /**< Domain. */
+        uint8_t sync_index, /**< Sync manager index. */
         ec_direction_t dir /**< Pdo direction. */
         )
 {
@@ -139,7 +140,7 @@ int ec_slave_config_prepare_fmmu(
     // FMMU configuration already prepared?
     for (i = 0; i < sc->used_fmmus; i++) {
         fmmu = &sc->fmmu_configs[i];
-        if (fmmu->domain == domain && fmmu->dir == dir)
+        if (fmmu->domain == domain && fmmu->sync_index == sync_index)
             return fmmu->logical_start_address;
     }
 
@@ -150,7 +151,7 @@ int ec_slave_config_prepare_fmmu(
     }
 
     fmmu = &sc->fmmu_configs[sc->used_fmmus++];
-    ec_fmmu_config_init(fmmu, sc, domain, dir);
+    ec_fmmu_config_init(fmmu, sc, domain, sync_index, dir);
     return fmmu->logical_start_address;
 }
 
@@ -228,19 +229,25 @@ void ec_slave_config_detach(
 
 /** Loads the default Pdo assignment from the slave object.
  */
-void ec_slave_config_load_default_assignment(ec_slave_config_t *sc)
+void ec_slave_config_load_default_sync_config(ec_slave_config_t *sc)
 {
-    ec_direction_t dir;
-    ec_pdo_list_t *pdos;
-    ec_sync_t *sync;
+    uint8_t sync_index;
+    ec_sync_config_t *sync_config;
+    const ec_sync_t *sync;
 
     if (!sc->slave)
         return;
     
-    for (dir = EC_DIR_OUTPUT; dir <= EC_DIR_INPUT; dir++) {
-        pdos = &sc->pdos[dir];
-        if ((sync = ec_slave_get_pdo_sync(sc->slave, dir)))
-            ec_pdo_list_copy(pdos, &sync->pdos);
+    
+    for (sync_index = 0; sync_index < EC_MAX_SYNCS; sync_index++) {
+        sync_config = &sc->sync_configs[sync_index];
+        if ((sync = ec_slave_get_sync(sc->slave, sync_index))) {
+            sync_config->dir = ec_sync_default_direction(sync);
+            if (sync_config->dir == EC_DIR_INVALID)
+                EC_WARN("SM%u of slave %u has an invalid direction field!\n",
+                        sync_index, sc->slave->ring_position);
+            ec_pdo_list_copy(&sync_config->pdos, &sync->pdos);
+        }
     }
 }
 
@@ -253,50 +260,51 @@ void ec_slave_config_load_default_mapping(
         ec_pdo_t *pdo
         )
 {
+    unsigned int i;
     const ec_sync_t *sync;
     const ec_pdo_t *default_pdo;
 
+    if (!sc->slave)
+        return;
+
     if (sc->master->debug_level)
-        EC_DBG("Loading default configuration for Pdo 0x%04X in"
-                " config %u:%u.\n", pdo->index, sc->alias, sc->position);
+        EC_DBG("Loading default mapping for Pdo 0x%04X in config %u:%u.\n",
+                pdo->index, sc->alias, sc->position);
 
-    if (!sc->slave) {
-        if (sc->master->debug_level)
-            EC_DBG("Failed to load default Pdo configuration for %u:%u:"
-                    " Slave not found.\n", sc->alias, sc->position);
-        return;
-    }
+    // find Pdo in any sync manager (it could be reassigned later)
+    for (i = 0; i < sc->slave->sii.sync_count; i++) {
+        sync = &sc->slave->sii.syncs[i];
 
-    if (!(sync = ec_slave_get_pdo_sync(sc->slave, pdo->dir))) {
-        if (sc->master->debug_level)
-            EC_DBG("Slave %u does not provide a default Pdo"
-                    " configuration!\n", sc->slave->ring_position);
-        return;
-    }
+        list_for_each_entry(default_pdo, &sync->pdos.list, list) {
+            if (default_pdo->index != pdo->index)
+                continue;
 
-    list_for_each_entry(default_pdo, &sync->pdos.list, list) {
-        if (default_pdo->index != pdo->index)
-            continue;
+            if (default_pdo->name) {
+                if (sc->master->debug_level)
+                    EC_DBG("Found Pdo name \"%s\".\n", default_pdo->name);
 
-        if (sc->master->debug_level)
-            EC_DBG("  Found Pdo name \"%s\".\n",
-                    default_pdo->name);
-
-        // try to take Pdo name from mapped one
-        ec_pdo_set_name(pdo, default_pdo->name);
-
-        // copy entries (= default Pdo configuration)
-        if (ec_pdo_copy_entries(pdo, default_pdo))
-            return;
-
-        if (sc->master->debug_level) {
-            const ec_pdo_entry_t *entry;
-            list_for_each_entry(entry, &pdo->entries, list) {
-                EC_DBG("    Entry 0x%04X:%02X.\n",
-                        entry->index, entry->subindex);
+                // take Pdo name from assigned one
+                ec_pdo_set_name(pdo, default_pdo->name);
             }
+
+            // copy entries (= default Pdo mapping)
+            if (ec_pdo_copy_entries(pdo, default_pdo))
+                return;
+
+            if (sc->master->debug_level) {
+                const ec_pdo_entry_t *entry;
+                list_for_each_entry(entry, &pdo->entries, list) {
+                    EC_DBG("Entry 0x%04X:%02X.\n",
+                            entry->index, entry->subindex);
+                }
+            }
+
+            return;
         }
     }
+
+    if (sc->master->debug_level)
+        EC_DBG("No default mapping found.\n");
 }
 
 /*****************************************************************************/
@@ -341,18 +349,49 @@ const ec_sdo_request_t *ec_slave_config_get_sdo_by_pos_const(
  *  Realtime interface
  *****************************************************************************/
 
-int ecrt_slave_config_pdo_assign_add(ec_slave_config_t *sc,
-        ec_direction_t dir, uint16_t index)
+int ecrt_slave_config_sync_manager(ec_slave_config_t *sc, uint8_t sync_index,
+        ec_direction_t dir)
 {
-    ec_pdo_list_t *pl = &sc->pdos[dir];
-    ec_pdo_t *pdo;
+    ec_sync_config_t *sync_config;
     
     if (sc->master->debug_level)
-        EC_DBG("Adding Pdo 0x%04X to assignment for dir %u, config %u:%u.\n",
-                index, dir, sc->alias, sc->position);
+        EC_DBG("ecrt_slave_config_sync_manager(sc = 0x%x, sync_index = %u, "
+                "dir = %u)\n", (u32) sc, sync_index, dir);
 
-    if (!(pdo = ec_pdo_list_add_pdo(pl, dir, index)))
+    if (sync_index >= EC_MAX_SYNCS) {
+        EC_ERR("Invalid sync manager index %u!\n", sync_index);
         return -1;
+    }
+
+    if (dir != EC_DIR_OUTPUT && dir != EC_DIR_INPUT) {
+        EC_ERR("Invalid direction %u!\n", (u32) dir);
+        return -1;
+    }
+
+    sync_config = &sc->sync_configs[sync_index];
+    sync_config->dir = dir;
+    return 0;
+}
+
+/*****************************************************************************/
+
+int ecrt_slave_config_pdo_assign_add(ec_slave_config_t *sc,
+        uint8_t sync_index, uint16_t pdo_index)
+{
+    ec_pdo_t *pdo;
+
+    if (sc->master->debug_level)
+        EC_DBG("ecrt_slave_config_pdo_assign_add(sc = 0x%x, sync_index = %u, "
+                "pdo_index = 0x%04X)\n", (u32) sc, sync_index, pdo_index);
+
+    if (sync_index >= EC_MAX_SYNCS) {
+        EC_ERR("Invalid sync manager index %u!\n", sync_index);
+        return -1;
+    }
+
+    if (!(pdo = ec_pdo_list_add_pdo(&sc->sync_configs[sync_index].pdos, pdo_index)))
+        return -1;
+    pdo->sync_index = sync_index;
 
     ec_slave_config_load_default_mapping(sc, pdo);
     return 0;
@@ -361,13 +400,18 @@ int ecrt_slave_config_pdo_assign_add(ec_slave_config_t *sc,
 /*****************************************************************************/
 
 void ecrt_slave_config_pdo_assign_clear(ec_slave_config_t *sc,
-        ec_direction_t dir)
+        uint8_t sync_index)
 {
     if (sc->master->debug_level)
-        EC_DBG("Clearing Pdo assignment for dir %u, config %u:%u.\n",
-                dir, sc->alias, sc->position);
+        EC_DBG("ecrt_slave_config_pdo_assign_clear(sc = 0x%x, "
+                "sync_index = %u)\n", (u32) sc, sync_index);
 
-    ec_pdo_list_clear_pdos(&sc->pdos[dir]);
+    if (sync_index >= EC_MAX_SYNCS) {
+        EC_ERR("Invalid sync manager index %u!\n", sync_index);
+        return;
+    }
+
+    ec_pdo_list_clear_pdos(&sc->sync_configs[sync_index].pdos);
 }
 
 /*****************************************************************************/
@@ -376,16 +420,19 @@ int ecrt_slave_config_pdo_mapping_add(ec_slave_config_t *sc,
         uint16_t pdo_index, uint16_t entry_index, uint8_t entry_subindex,
         uint8_t entry_bit_length)
 {
-    ec_direction_t dir;
-    ec_pdo_t *pdo;
+    uint8_t sync_index;
+    ec_pdo_t *pdo = NULL;
     
     if (sc->master->debug_level)
-        EC_DBG("Adding Pdo entry 0x%04X:%02X (%u bit) to mapping of Pdo"
-                " 0x%04X, config %u:%u.\n", entry_index, entry_subindex,
-                entry_bit_length, pdo_index, sc->alias, sc->position);
+        EC_DBG("ecrt_slave_config_pdo_mapping_add(sc = 0x%x, "
+                "pdo_index = 0x%04X, entry_index = 0x%04X, "
+                "entry_subindex = 0x%02X, entry_bit_length = %u)\n",
+                (u32) sc, pdo_index, entry_index, entry_subindex,
+                entry_bit_length);
 
-    for (dir = EC_DIR_OUTPUT; dir <= EC_DIR_INPUT; dir++)
-        if ((pdo = ec_pdo_list_find_pdo(&sc->pdos[dir], pdo_index)))
+    for (sync_index = 0; sync_index < EC_MAX_SYNCS; sync_index++)
+        if ((pdo = ec_pdo_list_find_pdo(
+                        &sc->sync_configs[sync_index].pdos, pdo_index)))
             break;
 
     if (!pdo) {
@@ -403,15 +450,16 @@ int ecrt_slave_config_pdo_mapping_add(ec_slave_config_t *sc,
 void ecrt_slave_config_pdo_mapping_clear(ec_slave_config_t *sc,
         uint16_t pdo_index)
 {
-    ec_direction_t dir;
-    ec_pdo_t *pdo;
+    uint8_t sync_index;
+    ec_pdo_t *pdo = NULL;
     
     if (sc->master->debug_level)
-        EC_DBG("Clearing mapping of Pdo 0x%04X, config %u:%u.\n",
-                pdo_index, sc->alias, sc->position);
+        EC_DBG("ecrt_slave_config_pdo_mapping_clear(sc = 0x%x, "
+                "pdo_index = 0x%04X)\n", (u32) sc, pdo_index);
 
-    for (dir = EC_DIR_OUTPUT; dir <= EC_DIR_INPUT; dir++)
-        if ((pdo = ec_pdo_list_find_pdo(&sc->pdos[dir], pdo_index)))
+    for (sync_index = 0; sync_index < EC_MAX_SYNCS; sync_index++)
+        if ((pdo = ec_pdo_list_find_pdo(
+                        &sc->sync_configs[sync_index].pdos, pdo_index)))
             break;
 
     if (!pdo) {
@@ -425,46 +473,59 @@ void ecrt_slave_config_pdo_mapping_clear(ec_slave_config_t *sc,
 
 /*****************************************************************************/
 
-int ecrt_slave_config_pdos(ec_slave_config_t *sc, unsigned int n_infos,
-        const ec_pdo_info_t pdo_infos[])
+int ecrt_slave_config_sync_managers(ec_slave_config_t *sc,
+        unsigned int n_syncs, const ec_sync_info_t syncs[])
 {
-    unsigned int i, j;
-    const ec_pdo_info_t *pi;
-    ec_pdo_list_t *pl;
-    unsigned int cleared[] = {0, 0};
-    const ec_pdo_entry_info_t *ei;
+    unsigned int i, j, k;
+    const ec_sync_info_t *sync_info;
+    const ec_pdo_info_t *pdo_info;
+    const ec_pdo_entry_info_t *entry_info;
 
-    if (!pdo_infos)
+    if (sc->master->debug_level)
+        EC_DBG("ecrt_slave_config_sync_managers(sc = 0x%x, n_syncs = %u, "
+                "syncs = 0x%x)\n", (u32) sc, n_syncs, (u32) syncs);
+
+    if (!syncs)
         return 0;
 
-    for (i = 0; i < n_infos; i++) {
-        pi = &pdo_infos[i];
+    for (i = 0; i < n_syncs; i++) {
+        sync_info = &syncs[i];
 
-        if (pi->dir == EC_END)
+        if (sync_info->index == 0xff)
             break;
 
-        pl = &sc->pdos[pi->dir];
-
-        if (!cleared[pi->dir]) {
-            ecrt_slave_config_pdo_assign_clear(sc, pi->dir);
-            cleared[pi->dir] = 1;
+        if (sync_info->index >= EC_MAX_SYNCS) {
+            EC_ERR("Invalid sync manager index %u!\n", sync_info->index);
+            return -1;
         }
 
-        if (ecrt_slave_config_pdo_assign_add(sc, pi->dir, pi->index))
+        if (ecrt_slave_config_sync_manager(
+                    sc, sync_info->index, sync_info->dir))
             return -1;
 
-        if (pi->n_entries && pi->entries) { // mapping provided
-            if (sc->master->debug_level)
-                EC_DBG("  Pdo mapping information provided.\n");
+        if (sync_info->n_pdos && sync_info->pdos) {
+            ecrt_slave_config_pdo_assign_clear(sc, sync_info->index);
 
-            ecrt_slave_config_pdo_mapping_clear(sc, pi->index);
+            for (j = 0; j < sync_info->n_pdos; j++) {
+                pdo_info = &sync_info->pdos[j];
 
-            for (j = 0; j < pi->n_entries; j++) {
-                ei = &pi->entries[j];
-
-                if (ecrt_slave_config_pdo_mapping_add(sc, pi->index,
-                        ei->index, ei->subindex, ei->bit_length))
+                if (ecrt_slave_config_pdo_assign_add(
+                            sc, sync_info->index, pdo_info->index))
                     return -1;
+
+                if (pdo_info->n_entries && pdo_info->entries) {
+                    ecrt_slave_config_pdo_mapping_clear(sc, pdo_info->index);
+
+                    for (k = 0; k < pdo_info->n_entries; k++) {
+                        entry_info = &pdo_info->entries[k];
+
+                        if (ecrt_slave_config_pdo_mapping_add(sc,
+                                    pdo_info->index, entry_info->index,
+                                    entry_info->subindex,
+                                    entry_info->bit_length))
+                            return -1;
+                    }
+                }
             }
         }
     }
@@ -482,8 +543,8 @@ int ecrt_slave_config_reg_pdo_entry(
         unsigned int *bit_position
         )
 {
-    ec_direction_t dir;
-    ec_pdo_list_t *pdos;
+    uint8_t sync_index;
+    const ec_sync_config_t *sync_config;
     unsigned int bit_offset, bit_pos;
     ec_pdo_t *pdo;
     ec_pdo_entry_t *entry;
@@ -492,18 +553,33 @@ int ecrt_slave_config_reg_pdo_entry(
     if (sc->master->debug_level)
         EC_DBG("ecrt_slave_config_reg_pdo_entry(sc = 0x%x, index = 0x%04X, "
                 "subindex = 0x%02X, domain = 0x%x, bit_position = 0x%x)\n",
-                (unsigned int) sc, index, subindex, (unsigned int) domain,
-                (unsigned int) bit_position);
+                (u32) sc, index, subindex, (u32) domain, (u32) bit_position);
 
-    for (dir = EC_DIR_OUTPUT; dir <= EC_DIR_INPUT; dir++) {
-        pdos = &sc->pdos[dir];
+    for (sync_index = 0; sync_index < EC_MAX_SYNCS; sync_index++) {
+        sync_config = &sc->sync_configs[sync_index];
         bit_offset = 0;
-        list_for_each_entry(pdo, &pdos->list, list) {
+
+        list_for_each_entry(pdo, &sync_config->pdos.list, list) {
             list_for_each_entry(entry, &pdo->entries, list) {
                 if (entry->index != index || entry->subindex != subindex) {
                     bit_offset += entry->bit_length;
                 } else {
-                    goto found;
+                    sync_offset = ec_slave_config_prepare_fmmu(
+                            sc, domain, sync_index, sync_config->dir);
+                    if (sync_offset < 0)
+                        return -2;
+
+                    bit_pos = bit_offset % 8;
+                    if (bit_position) {
+                        *bit_position = bit_pos;
+                    } else if (bit_pos) {
+                        EC_ERR("Pdo entry 0x%04X:%02X does not byte-align "
+                                "in config %u:%u.\n", index, subindex,
+                                sc->alias, sc->position);
+                        return -3;
+                    }
+
+                    return sync_offset + bit_offset / 8;
                 }
             }
         }
@@ -512,22 +588,6 @@ int ecrt_slave_config_reg_pdo_entry(
     EC_ERR("Pdo entry 0x%04X:%02X is not mapped in slave config %u:%u.\n",
            index, subindex, sc->alias, sc->position);
     return -1;
-
-found:
-    sync_offset = ec_slave_config_prepare_fmmu(sc, domain, dir);
-    if (sync_offset < 0)
-        return -2;
-
-    bit_pos = bit_offset % 8;
-    if (bit_position) {
-        *bit_position = bit_pos;
-    } else if (bit_pos) {
-        EC_ERR("Pdo entry 0x%04X:%02X does not byte-align in config %u:%u.\n",
-                index, subindex, sc->alias, sc->position);
-        return -3;
-    }
-
-    return sync_offset + bit_offset / 8;
 }
 
 
@@ -643,11 +703,12 @@ void ecrt_slave_config_state(const ec_slave_config_t *sc,
 
 /** \cond */
 
+EXPORT_SYMBOL(ecrt_slave_config_sync_manager);
 EXPORT_SYMBOL(ecrt_slave_config_pdo_assign_add);
 EXPORT_SYMBOL(ecrt_slave_config_pdo_assign_clear);
 EXPORT_SYMBOL(ecrt_slave_config_pdo_mapping_add);
 EXPORT_SYMBOL(ecrt_slave_config_pdo_mapping_clear);
-EXPORT_SYMBOL(ecrt_slave_config_pdos);
+EXPORT_SYMBOL(ecrt_slave_config_sync_managers);
 EXPORT_SYMBOL(ecrt_slave_config_reg_pdo_entry);
 EXPORT_SYMBOL(ecrt_slave_config_sdo);
 EXPORT_SYMBOL(ecrt_slave_config_sdo8);

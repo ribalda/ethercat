@@ -53,8 +53,8 @@ typedef struct {
     struct list_head list; /**< List node used by domain. */
     const ec_slave_config_t *sc; /**< EtherCAT slave config. */
     const ec_domain_t *domain; /**< Domain. */
-    ec_direction_t dir; /**< Pdo direction. */
-
+    uint8_t sync_index; /**< Index of sync manager to use. */
+    ec_direction_t dir; /**< FMMU direction. */
     uint32_t logical_start_address; /**< Logical start address. */
     unsigned int data_size; /**< Covered Pdo size. */
 } ec_fmmu_config_t;
@@ -62,7 +62,7 @@ typedef struct {
 /*****************************************************************************/
 
 void ec_fmmu_config_init(ec_fmmu_config_t *, ec_slave_config_t *,
-        ec_domain_t *, ec_direction_t);
+        ec_domain_t *, uint8_t, ec_direction_t);
 
 void ec_fmmu_config_page(const ec_fmmu_config_t *, const ec_sync_t *,
         uint8_t *);

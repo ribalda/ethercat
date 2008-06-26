@@ -63,8 +63,7 @@ void ec_pdo_list_clear(ec_pdo_list_t *);
 
 void ec_pdo_list_clear_pdos(ec_pdo_list_t *);
 
-ec_pdo_t *ec_pdo_list_add_pdo(ec_pdo_list_t *, ec_direction_t,
-        uint16_t);
+ec_pdo_t *ec_pdo_list_add_pdo(ec_pdo_list_t *, uint16_t);
 int ec_pdo_list_add_pdo_copy(ec_pdo_list_t *, const ec_pdo_t *);
 
 int ec_pdo_list_copy(ec_pdo_list_t *, const ec_pdo_list_t *);

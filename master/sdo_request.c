@@ -75,7 +75,7 @@ void ec_sdo_request_init(
     req->data = NULL;
     req->mem_size = 0;
     req->data_size = 0;
-    req->dir = EC_DIR_OUTPUT;
+    req->dir = EC_DIR_INVALID;
     req->issue_timeout = 0; // no timeout
     req->response_timeout = EC_SDO_REQUEST_RESPONSE_TIMEOUT;
     req->state = EC_REQUEST_INIT;

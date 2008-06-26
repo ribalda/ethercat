@@ -87,7 +87,7 @@ void ec_slave_init(
     slave->base_build = 0;
     slave->base_fmmu_count = 0;
 
-    for (i = 0; i < EC_SLAVE_MAX_PORTS; i++) {
+    for (i = 0; i < EC_MAX_PORTS; i++) {
         slave->ports[i].dl_link = 0;
         slave->ports[i].dl_loop = 0;
         slave->ports[i].dl_signal = 0;
@@ -365,6 +365,10 @@ int ec_slave_fetch_sii_syncs(
 
     if (count) {
         total_count = count + slave->sii.sync_count;
+        if (total_count > EC_MAX_SYNCS) {
+            EC_ERR("Exceeded maximum number of sync managers!\n");
+            return -1;
+        }
         memsize = sizeof(ec_sync_t) * total_count;
         if (!(syncs = kmalloc(memsize, GFP_KERNEL))) {
             EC_ERR("Failed to allocate %u bytes for sync managers.\n",
@@ -380,9 +384,9 @@ int ec_slave_fetch_sii_syncs(
             index = i + slave->sii.sync_count;
             sync = &syncs[index];
 
-            ec_sync_init(sync, slave, index);
+            ec_sync_init(sync, slave);
             sync->physical_start_address = EC_READ_U16(data);
-            sync->length = EC_READ_U16(data + 2);
+            sync->default_length = EC_READ_U16(data + 2);
             sync->control_register = EC_READ_U8(data + 4);
             sync->enable = EC_READ_U8(data + 6);
         }
@@ -421,7 +425,6 @@ int ec_slave_fetch_sii_pdos(
         }
 
         ec_pdo_init(pdo);
-        pdo->dir = dir;
         pdo->index = EC_READ_U16(data);
         entry_count = EC_READ_U8(data + 2);
         pdo->sync_index = EC_READ_U8(data + 3);
@@ -462,12 +465,11 @@ int ec_slave_fetch_sii_pdos(
         if (pdo->sync_index >= 0) {
             ec_sync_t *sync;
 
-            if (pdo->sync_index >= slave->sii.sync_count) {
+            if (!(sync = ec_slave_get_sync(slave, pdo->sync_index))) {
                 EC_ERR("Invalid SM index %i for Pdo 0x%04X in slave %u.",
                         pdo->sync_index, pdo->index, slave->ring_position);
                 return -1;
             }
-            sync = &slave->sii.syncs[pdo->sync_index];
 
             if (ec_pdo_list_add_pdo_copy(&sync->pdos, pdo))
                 return -1;
@@ -564,37 +566,20 @@ int ec_slave_write_sii(
 
 /*****************************************************************************/
 
-/** Get the sync manager for either Rx- or Tx-Pdos.
+/** Get the sync manager given an index.
  *
- * \todo This seems not to be correct in every case...
  * \return pointer to sync manager, or NULL.
  */
-ec_sync_t *ec_slave_get_pdo_sync(
+ec_sync_t *ec_slave_get_sync(
         ec_slave_t *slave, /**< EtherCAT slave. */
-        ec_direction_t dir /**< Input or output. */
+        uint8_t sync_index /**< Sync manager index. */
         )
 {
-    unsigned int sync_index;
-
-    if (dir != EC_DIR_INPUT && dir != EC_DIR_OUTPUT) {
-        EC_ERR("Invalid direction!\n");
+    if (sync_index < slave->sii.sync_count) {
+        return &slave->sii.syncs[sync_index];
+    } else {
         return NULL;
     }
-
-    if (slave->sii.sync_count != 1) {
-        sync_index = (unsigned int) dir;
-        if (slave->sii.mailbox_protocols) sync_index += 2;
-
-        if (sync_index >= slave->sii.sync_count)
-            return NULL;
-    } else { // sync_count == 1
-        // A single sync manager may be used for inputs OR outputs!
-        if (ec_sync_direction(&slave->sii.syncs[0]) != dir)
-            return NULL;
-        sync_index = 0;
-    }
-
-    return &slave->sii.syncs[sync_index];
 }
 
 /*****************************************************************************/

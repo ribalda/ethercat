@@ -61,7 +61,7 @@ struct ec_fsm_coe_map
     ec_slave_t *slave; /**< EtherCAT slave */
     ec_sdo_request_t request; /**< Sdo request */
 
-    ec_direction_t dir; /**< index of the current sync manager */
+    uint8_t sync_index; /**< Index of the current sync manager. */
     ec_sync_t *sync; /**< Pdo sync manager. */
     uint16_t sync_sdo_index; /**< Index of the mapping Sdo. */
     uint8_t sync_subindices; /**< number of mapped Pdos */

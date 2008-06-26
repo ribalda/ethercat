@@ -40,8 +40,6 @@
 #ifndef __EC_SYNC_H__
 #define __EC_SYNC_H__
 
-#include <linux/list.h>
-
 #include "../include/ecrt.h"
 
 #include "globals.h"
@@ -64,9 +62,8 @@ typedef enum {
  */
 typedef struct {
     ec_slave_t *slave; /**< Slave, the sync manager belongs to. */
-    unsigned int index; /**< Sync manager index. */
     uint16_t physical_start_address; /**< Physical start address. */
-    uint16_t length; /**< Data length in bytes. */
+    uint16_t default_length; /**< Data length in bytes. */
     uint8_t control_register; /**< Control register value. */
     uint8_t enable; /**< Enable bit. */
     ec_pdo_list_t pdos; /**< Current Pdo assignment. */
@@ -75,15 +72,13 @@ typedef struct {
 
 /*****************************************************************************/
 
-void ec_sync_init(ec_sync_t *, ec_slave_t *, unsigned int);
+void ec_sync_init(ec_sync_t *, ec_slave_t *);
 void ec_sync_init_copy(ec_sync_t *, const ec_sync_t *);
 void ec_sync_clear(ec_sync_t *);
-
-void ec_sync_config(const ec_sync_t *, uint16_t, uint8_t *);
-
+void ec_sync_page(const ec_sync_t *, uint8_t, uint16_t, ec_direction_t,
+        uint8_t *);
 int ec_sync_add_pdo(ec_sync_t *, const ec_pdo_t *);
-
-ec_direction_t ec_sync_direction(const ec_sync_t *);
+ec_direction_t ec_sync_default_direction(const ec_sync_t *);
 
 /*****************************************************************************/
 

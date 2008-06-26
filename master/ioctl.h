@@ -146,7 +146,6 @@ typedef struct {
     uint32_t pdo_pos;
 
     // outputs
-    uint8_t dir;
     uint16_t index;
     uint8_t entry_count;
     int8_t name[EC_IOCTL_STRING_SIZE];
@@ -192,7 +191,8 @@ typedef struct {
     // outputs
     uint16_t slave_config_alias;
     uint16_t slave_config_position;
-    uint8_t fmmu_dir;
+    uint8_t sync_index;
+    ec_direction_t dir;
 	uint32_t logical_address;
     uint32_t data_size;
 } ec_ioctl_domain_fmmu_t;
@@ -291,7 +291,10 @@ typedef struct {
     uint16_t position;
     uint32_t vendor_id;
     uint32_t product_code;
-    uint32_t pdo_count[2];
+    struct {
+        ec_direction_t dir;
+        uint32_t pdo_count;
+    } syncs[16];
     uint32_t sdo_count;
     uint8_t attached;
 } ec_ioctl_config_t;
@@ -301,8 +304,8 @@ typedef struct {
 typedef struct {
     // inputs
     uint32_t config_index;
-    uint32_t direction;
-    uint32_t pdo_pos;
+    uint8_t sync_index;
+    uint16_t pdo_pos;
 
     // outputs
     uint16_t index;
@@ -315,9 +318,9 @@ typedef struct {
 typedef struct {
     // inputs
     uint32_t config_index;
-    uint32_t direction;
-    uint32_t pdo_pos;
-    uint32_t entry_pos;
+    uint8_t sync_index;
+    uint16_t pdo_pos;
+    uint8_t entry_pos;
 
     // outputs
     uint16_t index;

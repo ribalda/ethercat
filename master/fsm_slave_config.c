@@ -301,7 +301,9 @@ void ec_fsm_slave_config_enter_mbox_sync(
                 EC_SYNC_PAGE_SIZE * slave->sii.sync_count);
 
         for (i = 0; i < 2; i++) {
-            ec_sync_config(&slave->sii.syncs[i], slave->sii.syncs[i].length,
+            ec_sync_page(&slave->sii.syncs[i], i,
+                    slave->sii.syncs[i].default_length,
+                    EC_DIR_INVALID, // use default direction
                     datagram->data + EC_SYNC_PAGE_SIZE * i);
         }
     } else { // no mailbox sync manager configurations provided
@@ -316,19 +318,21 @@ void ec_fsm_slave_config_enter_mbox_sync(
                 EC_SYNC_PAGE_SIZE * 2);
         memset(datagram->data, 0x00, EC_SYNC_PAGE_SIZE * 2);
 
-        ec_sync_init(&sync, slave, 0);
+        ec_sync_init(&sync, slave);
         sync.physical_start_address = slave->sii.rx_mailbox_offset;
         sync.control_register = 0x26;
         sync.enable = 1;
-        ec_sync_config(&sync, slave->sii.rx_mailbox_size,
-                datagram->data + EC_SYNC_PAGE_SIZE * sync.index);
+        ec_sync_page(&sync, 0, slave->sii.rx_mailbox_size,
+                EC_DIR_INVALID, // use default direction
+                datagram->data);
 
-        ec_sync_init(&sync, slave, 1);
+        ec_sync_init(&sync, slave);
         sync.physical_start_address = slave->sii.tx_mailbox_offset;
         sync.control_register = 0x22;
         sync.enable = 1;
-        ec_sync_config(&sync, slave->sii.tx_mailbox_size,
-                datagram->data + EC_SYNC_PAGE_SIZE * sync.index);
+        ec_sync_page(&sync, 1, slave->sii.tx_mailbox_size,
+                EC_DIR_INVALID, // use default direction
+                datagram->data + EC_SYNC_PAGE_SIZE);
     }
 
     fsm->retries = EC_FSM_RETRIES;
@@ -499,8 +503,9 @@ void ec_fsm_slave_config_enter_pdo_sync(
     ec_slave_t *slave = fsm->slave;
     ec_datagram_t *datagram = fsm->datagram;
     unsigned int i, offset, num_pdo_syncs;
+    uint8_t sync_index;
     const ec_sync_t *sync;
-    ec_direction_t dir;
+    const ec_sync_config_t *sync_config;
     uint16_t size;
 
     if (slave->sii.mailbox_protocols) {
@@ -524,10 +529,12 @@ void ec_fsm_slave_config_enter_pdo_sync(
     memset(datagram->data, 0x00, EC_SYNC_PAGE_SIZE * num_pdo_syncs);
 
     for (i = 0; i < num_pdo_syncs; i++) {
-        sync = &slave->sii.syncs[i + offset];
-        dir = ec_sync_direction(sync);
-        size = ec_pdo_list_total_size(&slave->config->pdos[dir]);
-        ec_sync_config(sync, size, datagram->data + EC_SYNC_PAGE_SIZE * i);
+        sync_index = i + offset;
+        sync = &slave->sii.syncs[sync_index];
+        sync_config = &slave->config->sync_configs[sync_index];
+        size = ec_pdo_list_total_size(&sync_config->pdos);
+        ec_sync_page(sync, sync_index, size, sync_config->dir,
+                datagram->data + EC_SYNC_PAGE_SIZE * i);
     }
 
     fsm->retries = EC_FSM_RETRIES;
@@ -654,7 +661,7 @@ void ec_fsm_slave_config_enter_fmmu(ec_fsm_slave_config_t *fsm /**< slave state 
     memset(datagram->data, 0x00, EC_FMMU_PAGE_SIZE * slave->base_fmmu_count);
     for (i = 0; i < slave->config->used_fmmus; i++) {
         fmmu = &slave->config->fmmu_configs[i];
-        if (!(sync = ec_slave_get_pdo_sync(slave, fmmu->dir))) {
+        if (!(sync = ec_slave_get_sync(slave, fmmu->sync_index))) {
             slave->error_flag = 1;
             fsm->state = ec_fsm_slave_config_state_error;
             EC_ERR("Failed to determine Pdo sync manager for FMMU on slave"

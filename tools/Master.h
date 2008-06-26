@@ -12,6 +12,7 @@
 #include <vector>
 using namespace std;
 
+#include "../include/ecrt.h"
 #include "../master/ioctl.h"
 
 /****************************************************************************/
@@ -73,10 +74,10 @@ class Master
         unsigned int slaveCount();
         void getMaster(ec_ioctl_master_t *);
         void getConfig(ec_ioctl_config_t *, unsigned int);
-        void getConfigPdo(ec_ioctl_config_pdo_t *, unsigned int,
-                unsigned int, unsigned int);
+        void getConfigPdo(ec_ioctl_config_pdo_t *, unsigned int, uint8_t,
+                uint16_t);
         void getConfigPdoEntry(ec_ioctl_config_pdo_entry_t *, unsigned int,
-                unsigned int, unsigned int, unsigned int);
+                uint8_t, uint16_t, uint8_t);
         void getConfigSdo(ec_ioctl_config_sdo_t *, unsigned int, unsigned int);
         void getDomain(ec_ioctl_domain_t *, unsigned int);
         void getFmmu(ec_ioctl_domain_fmmu_t *, unsigned int, unsigned int);

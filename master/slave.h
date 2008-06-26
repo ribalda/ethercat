@@ -79,7 +79,7 @@ typedef struct {
     char *image; /**< Image name. */
     char *order; /**< Order number. */
     char *name; /**< Slave name. */
-    uint8_t physical_layer[EC_SLAVE_MAX_PORTS]; /**< Port media. */
+    uint8_t physical_layer[EC_MAX_PORTS]; /**< Port media. */
     ec_sii_coe_details_t coe_details; /**< CoE detail flags. */
     ec_sii_general_flags_t general_flags; /**< General flags. */
     int16_t current_on_ebus; /**< Power consumption in mA. */
@@ -128,7 +128,7 @@ struct ec_slave
     uint16_t base_fmmu_count; /**< Number of supported FMMUs. */
 
     // data link status
-    ec_slave_port_t ports[EC_SLAVE_MAX_PORTS];
+    ec_slave_port_t ports[EC_MAX_PORTS];
 
     // SII
     uint16_t *sii_words; /**< Complete SII image. */
@@ -161,7 +161,8 @@ int ec_slave_fetch_sii_pdos(ec_slave_t *, const uint8_t *, size_t,
         ec_direction_t);
 
 // misc.
-ec_sync_t *ec_slave_get_pdo_sync(ec_slave_t *, ec_direction_t); 
+ec_sync_t *ec_slave_get_sync(ec_slave_t *, uint8_t); 
+
 void ec_slave_sdo_dict_info(const ec_slave_t *,
         unsigned int *, unsigned int *);
 ec_sdo_t *ec_slave_get_sdo(ec_slave_t *, uint16_t);

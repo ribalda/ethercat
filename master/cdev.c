@@ -243,7 +243,7 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                 sync = &slave->sii.syncs[data.sync_index];
 
                 data.physical_start_address = sync->physical_start_address;
-                data.default_size = sync->length;
+                data.default_size = sync->default_length;
                 data.control_register = sync->control_register;
                 data.enable = sync->enable;
                 data.assign_source = sync->assign_source;
@@ -290,7 +290,6 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                     break;
                 }
 
-                data.dir = pdo->dir;
                 data.index = pdo->index;
                 data.entry_count = ec_pdo_entry_count(pdo);
 
@@ -420,7 +419,8 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
                 data.slave_config_alias = fmmu->sc->alias;
                 data.slave_config_position = fmmu->sc->position;
-                data.fmmu_dir = fmmu->dir;
+                data.sync_index = fmmu->sync_index;
+                data.dir = fmmu->dir;
                 data.logical_address = fmmu->logical_start_address;
                 data.data_size = fmmu->data_size;
 
@@ -832,6 +832,7 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             {
                 ec_ioctl_config_t data;
                 const ec_slave_config_t *sc;
+                uint8_t i;
 
                 if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
                     retval = -EFAULT;
@@ -850,10 +851,11 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                 data.position = sc->position;
                 data.vendor_id = sc->vendor_id;
                 data.product_code = sc->product_code;
-                data.pdo_count[EC_DIR_OUTPUT] =
-                    ec_pdo_list_count(&sc->pdos[EC_DIR_OUTPUT]);
-                data.pdo_count[EC_DIR_INPUT] =
-                    ec_pdo_list_count(&sc->pdos[EC_DIR_INPUT]);
+                for (i = 0; i < EC_MAX_SYNCS; i++) {
+                    data.syncs[i].dir = sc->sync_configs[i].dir;
+                    data.syncs[i].pdo_count =
+                        ec_pdo_list_count(&sc->sync_configs[i].pdos);
+                }
                 data.sdo_count = ec_slave_config_sdo_count(sc);
                 data.attached = sc->slave != NULL;
 
@@ -881,14 +883,16 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                     break;
                 }
 
-                if (data.direction > EC_DIR_INPUT) {
-                    EC_ERR("Invalid direction %u!\n", data.direction);
+                if (data.sync_index >= EC_MAX_SYNCS) {
+                    EC_ERR("Invalid sync manager index %u!\n",
+                            data.sync_index);
                     retval = -EINVAL;
                     break;
                 }
                 
                 if (!(pdo = ec_pdo_list_find_pdo_by_pos_const(
-                                &sc->pdos[data.direction], data.pdo_pos))) {
+                                &sc->sync_configs[data.sync_index].pdos,
+                                data.pdo_pos))) {
                     EC_ERR("Invalid Pdo position!\n");
                     retval = -EINVAL;
                     break;
@@ -929,14 +933,16 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                     break;
                 }
 
-                if (data.direction > EC_DIR_INPUT) {
-                    EC_ERR("Invalid direction %u!\n", data.direction);
+                if (data.sync_index >= EC_MAX_SYNCS) {
+                    EC_ERR("Invalid sync manager index %u!\n",
+                            data.sync_index);
                     retval = -EINVAL;
                     break;
                 }
                 
                 if (!(pdo = ec_pdo_list_find_pdo_by_pos_const(
-                                &sc->pdos[data.direction], data.pdo_pos))) {
+                                &sc->sync_configs[data.sync_index].pdos,
+                                data.pdo_pos))) {
                     EC_ERR("Invalid Pdo position!\n");
                     retval = -EINVAL;
                     break;

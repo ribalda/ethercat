@@ -49,13 +49,14 @@
  */
 void ec_sync_init(
         ec_sync_t *sync, /**< EtherCAT sync manager. */
-        ec_slave_t *slave, /**< EtherCAT slave. */
-        unsigned int index /**< Sync manager index. */
+        ec_slave_t *slave /**< EtherCAT slave. */
         )
 {
     sync->slave = slave;
-    sync->index = index;    
-
+    sync->physical_start_address = 0x0000;
+    sync->default_length = 0x0000;
+    sync->control_register = 0x00;
+    sync->enable = 0x00;
     ec_pdo_list_init(&sync->pdos);
     sync->assign_source = EC_ASSIGN_NONE;
 }
@@ -70,15 +71,12 @@ void ec_sync_init_copy(
         )
 {
    sync->slave = other->slave;
-   sync->index = other->index;
    sync->physical_start_address = other->physical_start_address;
-   sync->length = other->length;
+   sync->default_length = other->default_length;
    sync->control_register = other->control_register;
    sync->enable = other->enable;
-   
    ec_pdo_list_init(&sync->pdos);
    ec_pdo_list_copy(&sync->pdos, &other->pdos);
-
    sync->assign_source = other->assign_source;
 }
 
@@ -95,28 +93,37 @@ void ec_sync_clear(
 
 /*****************************************************************************/
 
-/** Initializes a sync manager configuration page with SII data.
+/** Initializes a sync manager configuration page.
  *
  * The referenced memory (\a data) must be at least \a EC_SYNC_SIZE bytes.
  */
-void ec_sync_config(
+void ec_sync_page(
         const ec_sync_t *sync, /**< Sync manager. */
+        uint8_t sync_index, /**< Index of the sync manager. */
         uint16_t data_size, /**< Data size. */
+        ec_direction_t dir, /**< Direction (overrides the control byte,
+                              if set to EC_DIR_INPUT or EC_DIR_OUTPUT). */
         uint8_t *data /**> Configuration memory. */
         )
 {
     // enable only if SII enable is set and size is > 0.
     uint16_t enable = sync->enable && data_size;
+    uint8_t control = sync->control_register;
 
-    if (sync->slave->master->debug_level) {
-        EC_DBG("SM%u: Addr 0x%04X, Size %3u, Ctrl 0x%02X, En %u\n",
-               sync->index, sync->physical_start_address,
-               data_size, sync->control_register, enable);
+    if (dir == EC_DIR_OUTPUT || dir == EC_DIR_INPUT) {
+        // override sync manager direction bits with dir parameter
+        EC_WRITE_BIT(&control, 2, dir == EC_DIR_OUTPUT ? 1 : 0);
+        EC_WRITE_BIT(&control, 3, 0);
     }
+
+    if (sync->slave->master->debug_level)
+        EC_DBG("SM%u: Addr 0x%04X, Size %3u, Ctrl 0x%02X, En %u\n",
+               sync_index, sync->physical_start_address,
+               data_size, control, enable);
 
     EC_WRITE_U16(data,     sync->physical_start_address);
     EC_WRITE_U16(data + 2, data_size);
-    EC_WRITE_U8 (data + 4, sync->control_register);
+    EC_WRITE_U8 (data + 4, control);
     EC_WRITE_U8 (data + 5, 0x00); // status byte (read only)
     EC_WRITE_U16(data + 6, enable);
 }
@@ -137,35 +144,17 @@ int ec_sync_add_pdo(
 
 /*****************************************************************************/
 
-/** Get direction covered by sync manager.
- *
- * \return Direction covered by the given sync manager.
+/** Determines the default direction from the control register.
  */
-ec_direction_t ec_sync_direction(
+ec_direction_t ec_sync_default_direction(
         const ec_sync_t *sync /**< EtherCAT sync manager. */
         )
 {
-    int index = sync->index;
-
-    if (sync->slave->sii.sync_count != 1) {
-        if (sync->slave && sync->slave->sii.mailbox_protocols) {
-            index -= 2;
-        }
-
-        if (index < 0 || index > 1) {
-            EC_WARN("ec_sync_get_direction(): invalid sync manager index.\n");
-            return EC_DIR_OUTPUT;
-        }
-    } else { // sync_count == 1
-        if (!list_empty(&sync->pdos.list)) {
-            const ec_pdo_t *pdo =
-                list_entry(sync->pdos.list.next, ec_pdo_t, list);
-            return pdo->dir;
-        }
-        
+    switch ((sync->control_register & 0x0C) >> 2) {
+        case 0x0: return EC_DIR_INPUT;
+        case 0x1: return EC_DIR_INPUT;
+        default: return EC_DIR_INVALID;
     }
-
-    return (ec_direction_t) index;
 }
 
 /*****************************************************************************/

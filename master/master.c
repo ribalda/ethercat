@@ -1306,10 +1306,6 @@ ec_slave_config_t *ecrt_master_slave_config(ec_master_t *master,
     }
 
     if (found) { // config with same alias/position already existing
-        if (master->debug_level) {
-            EC_INFO("Using existing slave configuration for %u:%u\n",
-                    alias, position);
-        }
         if (sc->vendor_id != vendor_id || sc->product_code != product_code) {
             EC_ERR("Slave type mismatch. Slave was configured as"
                     " 0x%08X/0x%08X before. Now configuring with"
@@ -1318,11 +1314,9 @@ ec_slave_config_t *ecrt_master_slave_config(ec_master_t *master,
             return NULL;
         }
     } else {
-        if (master->debug_level) {
-            EC_INFO("Creating slave configuration for %u:%u,"
-                    " 0x%08X/0x%08X.\n", alias, position, vendor_id,
-                    product_code);
-        }
+        if (master->debug_level)
+            EC_DBG("Creating slave configuration for %u:%u, 0x%08X/0x%08X.\n",
+                    alias, position, vendor_id, product_code);
 
         if (!(sc = (ec_slave_config_t *) kmalloc(sizeof(ec_slave_config_t),
                         GFP_KERNEL))) {
@@ -1334,8 +1328,8 @@ ec_slave_config_t *ecrt_master_slave_config(ec_master_t *master,
                 alias, position, vendor_id, product_code);
 
         // try to find the addressed slave
-        if (!ec_slave_config_attach(sc))
-            ec_slave_config_load_default_assignment(sc);
+        ec_slave_config_attach(sc);
+        ec_slave_config_load_default_sync_config(sc);
 
         list_add_tail(&sc->list, &master->configs);
     }

@@ -338,7 +338,7 @@ void ec_fsm_slave_scan_state_datalink(ec_fsm_slave_scan_t *fsm /**< slave state 
     }
 
     dl_status = EC_READ_U16(datagram->data);
-    for (i = 0; i < EC_SLAVE_MAX_PORTS; i++) {
+    for (i = 0; i < EC_MAX_PORTS; i++) {
         slave->ports[i].dl_link = dl_status & (1 << (4 + i)) ? 1 : 0;
         slave->ports[i].dl_loop = dl_status & (1 << (8 + i * 2)) ? 1 : 0;
         slave->ports[i].dl_signal = dl_status & (1 << (9 + i * 2)) ? 1 : 0;

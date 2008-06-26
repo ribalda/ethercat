@@ -121,7 +121,6 @@ uint16_t ec_pdo_list_total_size(
  */
 ec_pdo_t *ec_pdo_list_add_pdo(
         ec_pdo_list_t *pl, /**< Pdo list. */
-        ec_direction_t dir, /**< Direction. */
         uint16_t index /**< Pdo index. */
         )
 {
@@ -133,7 +132,6 @@ ec_pdo_t *ec_pdo_list_add_pdo(
     }
 
     ec_pdo_init(pdo);
-    pdo->dir = dir;
     pdo->index = index;
     list_add_tail(&pdo->list, &pl->list);
     return pdo;

@@ -220,41 +220,60 @@ typedef struct {
 /** Direction type for Pdo assignment functions.
  */
 typedef enum {
+    EC_DIR_INVALID, /**< Invalid direction. Do not use this value. */
     EC_DIR_OUTPUT, /**< Values written by the master. */
-    EC_DIR_INPUT   /**< Values read by the master. */
+    EC_DIR_INPUT, /**< Values read by the master. */
+    EC_DIR_COUNT /**< Number of directions. For internal use only. */
 } ec_direction_t;
 
 /*****************************************************************************/
 
-/** Pdo entry information.
+/** Pdo entry configuration information.
  *
- * This can be used to map multiple Pdo entries into a given Pdo using
- * ecrt_slave_config_pdos().
+ * This is the data type of the \a entries field in ec_pdo_info_t.
+ *
+ * \see ecrt_slave_config_sync_managers().
  */
 typedef struct {
-    uint16_t index; /**< Index of the Pdo entry to add to the Pdo
-                            mapping. */
-    uint8_t subindex; /**< Subindex of the Pdo entry. */
+    uint16_t index; /**< Pdo entry index. */
+    uint8_t subindex; /**< Pdo entry subindex. */
     uint8_t bit_length; /**< Size of the Pdo entry in bit. */
 } ec_pdo_entry_info_t;
 
 /*****************************************************************************/
 
-/** Pdo information.
- *
- * This can be use to assign multiple Pdos to a sync manager using
- * ecrt_slave_config_pdos().
+/** Pdo configuration information.
+ * 
+ * This is the data type of the \a pdos field in ec_sync_info_t.
+ * 
+ * \see ecrt_slave_config_sync_managers().
  */
 typedef struct {
-    ec_direction_t dir; /**< Pdo direction (input/output). */
-    uint16_t index; /**< Index of the Pdo to assign. */
-    unsigned int n_entries; /**< Number of Pdo entries in \a entries to map.
+    uint16_t index; /**< Pdo index. */
+    uint8_t n_entries; /**< Number of Pdo entries in \a entries to map.
                               Zero means, that the default mapping shall be
                               used (this can only be done if the slave is
                               present at bus configuration time). */
-    ec_pdo_entry_info_t *entries; /**< Array of Pdo entries to map. This must
-                                    contain at least \a n_entries values. */
+    ec_pdo_entry_info_t *entries; /**< Array of Pdo entries to map. Can either
+                                    be \a NULL, or must contain at
+                                    least \a n_entries values. */
 } ec_pdo_info_t;
+
+/*****************************************************************************/
+
+/** Sync manager configuration information.
+ *
+ * This can be use to configure multiple sync managers including the Pdo
+ * assignment and Pdo mapping. It is used as an input parameter type in
+ * ecrt_slave_config_sync_managers().
+ */
+typedef struct {
+    uint8_t index; /**< Sync manager index. */
+    ec_direction_t dir; /**< Sync manager direction. */
+    uint16_t n_pdos; /**< Number of Pdos in \a pdos. */
+    ec_pdo_info_t *pdos; /**< Array with Pdos to assign. This must contain
+                            at least \a n_pdos Pdos. */
+} ec_sync_info_t;
 
 /*****************************************************************************/
 
@@ -426,30 +445,46 @@ void ecrt_master_state(
  * Slave configuration methods
  *****************************************************************************/
 
+/** Configure a sync manager.
+ *
+ * Sets the direction of a sync manager. The direction bits from the default
+ * control register from SII will be overriden, when this function is called.
+ *
+ * \return zero on success, else non-zero
+ */
+int ecrt_slave_config_sync_manager(
+        ec_slave_config_t *sc, /**< Slave configuration. */
+        uint8_t sync_index, /**< Sync manager index. */
+        ec_direction_t dir /**< Input/Output. */
+        );
+
 /** Add a Pdo to a sync manager's Pdo assignment.
  *
- * \see ecrt_slave_config_pdos()
+ * \see ecrt_slave_config_sync_managers()
  * \return zero on success, else non-zero
  */
 int ecrt_slave_config_pdo_assign_add(
         ec_slave_config_t *sc, /**< Slave configuration. */
-        ec_direction_t dir, /**< Sync manager direction (input/output). */
+        uint8_t sync_index, /**< Sync manager index. */
         uint16_t index /**< Index of the Pdo to assign. */
         );
 
 /** Clear a sync manager's Pdo assignment.
  *
  * This can be called before assigning Pdos via
- * ecrt_slave_config_pdo_assign_add(), to clear the default assignment.
+ * ecrt_slave_config_pdo_assign_add(), to clear the default assignment of a
+ * sync manager.
+ * 
+ * \see ecrt_slave_config_sync_managers()
  */
 void ecrt_slave_config_pdo_assign_clear(
         ec_slave_config_t *sc, /**< Slave configuration. */
-        ec_direction_t dir /**< Sync manager direction (input/output). */
+        uint8_t sync_index /**< Sync manager index. */
         );
 
 /** Add a Pdo entry to the given Pdo's mapping.
  *
- * \see ecrt_slave_config_pdos()
+ * \see ecrt_slave_config_sync_managers()
  * \return zero on success, else non-zero
  */
 int ecrt_slave_config_pdo_mapping_add(
@@ -466,21 +501,23 @@ int ecrt_slave_config_pdo_mapping_add(
  *
  * This can be called before mapping Pdo entries via
  * ecrt_slave_config_pdo_mapping_add(), to clear the default mapping.
+ *
+ * \see ecrt_slave_config_sync_managers()
  */
 void ecrt_slave_config_pdo_mapping_clear(
         ec_slave_config_t *sc, /**< Slave configuration. */
         uint16_t pdo_index /**< Index of the Pdo. */
         );
 
-/** Specify the Pdo assignment and (optionally) the Pdo mappings.
+/** Specify a complete Pdo configuration.
  *
  * This function is a convenience wrapper for the functions
- * ecrt_slave_config_pdo_assign_clear(), ecrt_slave_config_pdo_assign_add(),
- * ecrt_slave_config_pdo_mapping_clear() and
- * ecrt_slave_config_pdo_mapping_add(), that are better suitable for automatic
- * code generation.
+ * ecrt_slave_config_sync_manager(), ecrt_slave_config_pdo_assign_clear(),
+ * ecrt_slave_config_pdo_assign_add(), ecrt_slave_config_pdo_mapping_clear()
+ * and ecrt_slave_config_pdo_mapping_add(), that are better suitable for
+ * automatic code generation.
  *
- * The following example shows, how to specify a complete Pdo assignment
+ * The following example shows, how to specify a complete configuration,
  * including the Pdo mappings. With this information, the master is able to
  * reserve the complete process data, even if the slave is not present at
  * configuration time:
@@ -497,41 +534,51 @@ void ecrt_slave_config_pdo_mapping_clear(
  * };
  * 
  * const ec_pdo_info_t el3162_pdos[] = {
- *     {EC_DIR_INPUT, 0x1A00, 2, el3162_channel1},
- *     {EC_DIR_INPUT, 0x1A01, 2, el3162_channel2},
+ *     {0x1A00, 2, el3162_channel1},
+ *     {0x1A01, 2, el3162_channel2},
  * };
  * 
- * if (ecrt_slave_config_pdos(sc, 2, el3162_pdos))
+ * const ec_pdo_info_t el3162_syncs[] = {
+ *     {2, EC_DIR_INPUT, 2, el3162_el3162_pdos},
+ * };
+ * 
+ * if (ecrt_slave_config_syncs(sc, 1, el3162_syncs))
  *     return -1; // error
  * \endcode
  * 
- * The next example shows, how to configure only the Pdo assignment. The
+ * The next example shows, how to configure the Pdo assignment only. The
  * entries for each assigned Pdo are taken from the Pdo's default mapping.
  * Please note, that Pdo entry registration will fail, if the Pdo
  * configuration is left empty and the slave is offline.
  *
  * \code
  * const ec_pdo_info_t pdos[] = {
- *     {EC_DIR_INPUT, 0x1600}, // Channel 1
- *     {EC_DIR_INPUT, 0x1601}  // Channel 2
+ *     {0x1600}, // Channel 1
+ *     {0x1601}  // Channel 2
  * };
  * 
- * if (ecrt_slave_config_pdos(slave_config_ana_in, 2, pdos))
+ * const ec_sync_info_t syncs[] = {
+ *     {2, EC_DIR_INPUT, 2, pdos},
+ * };
+ * 
+ * if (ecrt_slave_config_pdos(slave_config_ana_in, 2, syncs))
  *     return -1; // error
  * \endcode
  *
- * Processing of \a pdo_infos will stop, if
- * - the number of processed items reaches \a n_infos, or
- * - the \a dir member of an ec_pdo_info_t item is EC_END. In this case,
- *   \a n_infos should set to a number greater than the number of list items;
+ * Processing of \a syncs will stop, if
+ * - the number of processed items reaches \a n_syncs, or
+ * - the \a index member of an ec_sync_info_t item is 0xff. In this case,
+ *   \a n_syncs should set to a number greater than the number of list items;
  *   using EC_END is recommended.
  *
  * \return zero on success, else non-zero
  */
-int ecrt_slave_config_pdos(
+int ecrt_slave_config_sync_managers(
         ec_slave_config_t *sc, /**< Slave configuration. */
-        unsigned int n_infos, /**< Number of Pdo infos in \a pdo_infos. */
-        const ec_pdo_info_t pdo_infos[] /**< List with Pdos. */
+        unsigned int n_syncs, /**< Number of sync manager configurations in
+                                \a syncs. */
+        const ec_sync_info_t syncs[] /**< Array of sync manager
+                                       configurations. */
         );
 
 /** Registers a Pdo entry for process data exchange in a domain.

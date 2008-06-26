@@ -90,6 +90,12 @@
 /** Word offset of first SII category. */
 #define EC_FIRST_SII_CATEGORY_OFFSET 0x40
 
+/** Maximum number of slave ports. */
+#define EC_MAX_PORTS 4
+
+/** Maximum number of sync managers per slave. */
+#define EC_MAX_SYNCS 16
+
 /** Size of a sync manager configuration page. */
 #define EC_SYNC_PAGE_SIZE 8
 
@@ -98,9 +104,6 @@
 
 /** Size of an FMMU configuration page. */
 #define EC_FMMU_PAGE_SIZE 16
-
-/** Maximum number of slave ports. */
-#define EC_SLAVE_MAX_PORTS 4
 
 /** Slave state mask.
  *

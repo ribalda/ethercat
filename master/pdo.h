@@ -54,9 +54,8 @@
  */
 typedef struct {
     struct list_head list; /**< List item. */
-    ec_direction_t dir; /**< Pdo direction. */
     uint16_t index; /**< Pdo index. */
-    int8_t sync_index; /**< Assigned sync manager. */
+    int8_t sync_index; /**< Assigned sync manager. \todo remove? */
     char *name; /**< Pdo name. */
     struct list_head entries; /**< List of Pdo entries. */
 } ec_pdo_t;

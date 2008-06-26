@@ -31,67 +31,36 @@
  *
  *****************************************************************************/
 
-/**
-   \file
-   EtherCAT slave configuration structure.
-*/
+/** \file
+ * EtherCAT sync manager configuration methods.
+ */
 
 /*****************************************************************************/
-
-#ifndef __EC_SLAVE_CONFIG_H__
-#define __EC_SLAVE_CONFIG_H__
-
-#include <linux/list.h>
-
-#include "../include/ecrt.h"
 
 #include "globals.h"
-#include "slave.h"
 #include "sync_config.h"
-#include "fmmu_config.h"
 
 /*****************************************************************************/
 
-/** EtherCAT slave configuration.
+/** Constructor.
  */
-struct ec_slave_config {
-    struct list_head list; /**< List item. */
-    ec_master_t *master; /**< Master owning the slave configuration. */
-
-    uint16_t alias; /**< Slave alias. */
-    uint16_t position; /**< Index after alias. If alias is zero, this is the
-                         ring position. */
-    uint32_t vendor_id; /**< Slave vendor ID. */
-    uint32_t product_code; /**< Slave product code. */
-
-    ec_slave_t *slave; /**< Slave pointer. This is \a NULL, if the slave is
-                         offline. */
-
-    ec_sync_config_t sync_configs[EC_MAX_SYNCS]; /**< Sync manager
-                                                   configurations. */
-    ec_fmmu_config_t fmmu_configs[EC_MAX_FMMUS]; /**< FMMU configurations. */
-    uint8_t used_fmmus; /**< Number of FMMUs used. */
-
-    struct list_head sdo_configs; /**< List of Sdo configurations. */
-    struct list_head sdo_requests; /**< List of Sdo requests. */
-
-};
+void ec_sync_config_init(
+        ec_sync_config_t *sync_config /**< Sync manager configuration. */
+        )
+{
+    sync_config->dir = EC_DIR_INVALID;
+    ec_pdo_list_init(&sync_config->pdos);
+}
 
 /*****************************************************************************/
 
-void ec_slave_config_init(ec_slave_config_t *, ec_master_t *, uint16_t,
-        uint16_t, uint32_t, uint32_t);
-void ec_slave_config_clear(ec_slave_config_t *);
-
-int ec_slave_config_attach(ec_slave_config_t *);
-void ec_slave_config_detach(ec_slave_config_t *);
-
-void ec_slave_config_load_default_sync_config(ec_slave_config_t *);
-
-unsigned int ec_slave_config_sdo_count(const ec_slave_config_t *);
-const ec_sdo_request_t *ec_slave_config_get_sdo_by_pos_const(
-        const ec_slave_config_t *, unsigned int);
+/** Destructor.
+ */
+void ec_sync_config_clear(
+        ec_sync_config_t *sync_config /**< Sync manager configuration. */
+        )
+{
+    ec_pdo_list_clear(&sync_config->pdos);
+}
 
 /*****************************************************************************/
-
-#endif

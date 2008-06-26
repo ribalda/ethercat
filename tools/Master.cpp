@@ -200,11 +200,12 @@ void Master::showConfig()
             << hex << setw(8) << config.product_code << endl
             << "Attached: " << (config.attached ? "yes" : "no") << endl;
 
-        for (j = 0; j < 2; j++) {
-            if (config.pdo_count[j]) {
-                cout << (j ? "Input" : "Output")
-                    << " Pdo assignment / mapping " << endl;
-                for (k = 0; k < config.pdo_count[j]; k++) {
+        for (j = 0; j < 16; j++) {
+            if (config.syncs[j].pdo_count) {
+                cout << "SM" << dec << j << " ("
+                    << (config.syncs[j].dir == EC_DIR_INPUT
+                            ? "Input" : "Output") << ")" << endl;
+                for (k = 0; k < config.syncs[j].pdo_count; k++) {
                     getConfigPdo(&pdo, i, j, k);
 
                     cout << "  Pdo 0x"
@@ -1190,7 +1191,7 @@ void Master::showDomain(unsigned int domainIndex)
         cout << "  SlaveConfig "
             << fmmu.slave_config_alias << ":" << fmmu.slave_config_position
             << ", Dir "
-            << setfill(' ') << setw(3) << (fmmu.fmmu_dir ? "In" : "Out")
+            << setfill(' ') << setw(3) << (fmmu.dir == EC_DIR_INPUT ? "In" : "Out")
             << ", LogAddr 0x" 
             << hex << setfill('0') << setw(8) << fmmu.logical_address
             << ", Size " << dec << fmmu.data_size << endl;
@@ -1250,7 +1251,8 @@ void Master::listSlavePdos(
         for (j = 0; j < sync.pdo_count; j++) {
             getPdo(&pdo, slavePosition, i, j);
 
-            cout << "  " << (pdo.dir ? "T" : "R") << "xPdo 0x"
+            cout << "  " << (sync.control_register & 0x04 ? "R" : "T")
+                << "xPdo 0x"
                 << hex << setfill('0') << setw(4) << pdo.index
                 << " \"" << pdo.name << "\"" << endl;
 
@@ -1423,6 +1425,7 @@ void Master::generateSlaveXml(uint16_t slavePosition)
     ec_ioctl_slave_t slave;
     ec_ioctl_sync_t sync;
     ec_ioctl_pdo_t pdo;
+    string pdoType;
     ec_ioctl_pdo_entry_t entry;
     unsigned int i, j, k;
     
@@ -1449,9 +1452,11 @@ void Master::generateSlaveXml(uint16_t slavePosition)
 
         for (j = 0; j < sync.pdo_count; j++) {
             getPdo(&pdo, slavePosition, i, j);
+            pdoType = (sync.control_register & 0x04 ? "R" : "T");
+            pdoType += "xPdo";
 
             cout
-                << "          <" << (pdo.dir ? "T" : "R") << "xPdo>" << endl
+                << "          <" << pdoType << ">" << endl
                 << "            <Index>#x"
                 << hex << setfill('0') << setw(4) << pdo.index
                 << "</Index>" << endl
@@ -1503,7 +1508,7 @@ void Master::generateSlaveXml(uint16_t slavePosition)
             }
 
             cout
-                << "          </" << (pdo.dir ? "T" : "R") << "xPdo>" << endl;
+                << "          </" << pdoType << ">" << endl;
         }
     }
 
@@ -1553,12 +1558,12 @@ void Master::getConfig(ec_ioctl_config_t *data, unsigned int index)
 void Master::getConfigPdo(
         ec_ioctl_config_pdo_t *data,
         unsigned int index,
-        unsigned int dir,
-        unsigned int pdo_pos
+        uint8_t sync_index,
+        uint16_t pdo_pos
         )
 {
     data->config_index = index;
-    data->direction = dir;
+    data->sync_index = sync_index;
     data->pdo_pos = pdo_pos;
 
     if (ioctl(fd, EC_IOCTL_CONFIG_PDO, data) < 0) {
@@ -1573,13 +1578,13 @@ void Master::getConfigPdo(
 void Master::getConfigPdoEntry(
         ec_ioctl_config_pdo_entry_t *data,
         unsigned int index,
-        unsigned int dir,
-        unsigned int pdo_pos,
-        unsigned int entry_pos
+        uint8_t sync_index,
+        uint16_t pdo_pos,
+        uint8_t entry_pos
         )
 {
     data->config_index = index;
-    data->direction = dir;
+    data->sync_index = sync_index;
     data->pdo_pos = pdo_pos;
     data->entry_pos = entry_pos;
 

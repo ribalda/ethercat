@@ -61,7 +61,6 @@ void ec_pdo_init(
  */
 int ec_pdo_init_copy(ec_pdo_t *pdo, const ec_pdo_t *other_pdo)
 {
-    pdo->dir = other_pdo->dir;
     pdo->index = other_pdo->index;
     pdo->sync_index = other_pdo->sync_index;
     pdo->name = NULL;

@@ -62,10 +62,11 @@ struct ec_fsm_pdo_assign
     ec_fsm_coe_t *fsm_coe; /**< CoE state machine to use. */
     ec_slave_t *slave; /**< Slave the FSM runs on. */
 
-    ec_direction_t dir; /**< Current direction. */
+    uint8_t sync_index; /**< Current sync manager index. */
     const ec_pdo_list_t *pdos; /**< Target Pdo assignment. */
     const ec_sync_t *sync; /**< Current sync manager. */
-    unsigned int num_configured_dirs; /**< Number of configured directions. */
+    unsigned int num_configured_syncs; /**< Number of configured
+                                         assignments. */
     const ec_pdo_t *pdo; /**< Current Pdo. */
 
     ec_sdo_request_t request; /**< Sdo request. */

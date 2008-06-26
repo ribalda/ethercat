@@ -55,7 +55,7 @@ void ec_fsm_coe_map_state_pdo_entry(ec_fsm_coe_map_t *);
 void ec_fsm_coe_map_state_end(ec_fsm_coe_map_t *);
 void ec_fsm_coe_map_state_error(ec_fsm_coe_map_t *);
 
-void ec_fsm_coe_map_action_next_dir(ec_fsm_coe_map_t *);
+void ec_fsm_coe_map_action_next_sync(ec_fsm_coe_map_t *);
 void ec_fsm_coe_map_action_next_pdo(ec_fsm_coe_map_t *);
 void ec_fsm_coe_map_action_next_pdo_entry(ec_fsm_coe_map_t *);
 
@@ -134,50 +134,46 @@ int ec_fsm_coe_map_success(ec_fsm_coe_map_t *fsm /**< Finite state machine */)
  *  state functions
  *****************************************************************************/
 
-/**
- * Start reading Pdo assignment.
+/** Start reading Pdo assignment.
  */
-
 void ec_fsm_coe_map_state_start(
         ec_fsm_coe_map_t *fsm /**< finite state machine */
         )
 {
-    // read Pdo assignment for first direction
-    fsm->dir = (ec_direction_t) -1; // next is EC_DIR_OUTPUT
-    ec_fsm_coe_map_action_next_dir(fsm);
+    // read Pdo assignment for first sync manager
+    fsm->sync_index = 0xff; // next is 0
+    ec_fsm_coe_map_action_next_sync(fsm);
 }
 
 /*****************************************************************************/
 
-/**
- * Read Pdo assignment of next direction manager.
+/** Read Pdo assignment of next sync manager.
  */
-
-void ec_fsm_coe_map_action_next_dir(
-        ec_fsm_coe_map_t *fsm /**< finite state machine */
+void ec_fsm_coe_map_action_next_sync(
+        ec_fsm_coe_map_t *fsm /**< Finite state machine */
         )
 {
     ec_slave_t *slave = fsm->slave;
 
-    fsm->dir++;
+    fsm->sync_index++;
 
     if (slave->master->debug_level)
-        EC_DBG("Processing dir %u of slave %u.\n",
-                fsm->dir, slave->ring_position);
+        EC_DBG("Processing SM%u of slave %u.\n",
+                fsm->sync_index, slave->ring_position);
 
-    for (; fsm->dir <= EC_DIR_INPUT; fsm->dir++) {
-
-        if (!(fsm->sync = ec_slave_get_pdo_sync(slave, fsm->dir))) {
+    for (; fsm->sync_index < EC_MAX_SYNCS; fsm->sync_index++) {
+        if (!(fsm->sync = ec_slave_get_sync(slave, fsm->sync_index))) {
             if (slave->master->debug_level)
-                EC_DBG("No sync manager for direction %u!\n", fsm->dir);
+                EC_DBG("Slave %u does not provide a configuration for "
+                        "SM%u!\n", fsm->slave->ring_position, fsm->sync_index);
             continue;
         }
 
-        fsm->sync_sdo_index = 0x1C10 + fsm->sync->index;
+        fsm->sync_sdo_index = 0x1C10 + fsm->sync_index;
 
         if (slave->master->debug_level)
-            EC_DBG("Reading Pdo assignment of sync manager %u of slave %u.\n",
-                    fsm->sync->index, slave->ring_position);
+            EC_DBG("Reading Pdo assignment of SM%u of slave %u.\n",
+                    fsm->sync_index, slave->ring_position);
 
         ec_pdo_list_clear_pdos(&fsm->pdos);
 
@@ -226,7 +222,7 @@ void ec_fsm_coe_map_state_pdo_count(
     fsm->sync_subindices = EC_READ_U8(fsm->request.data);
 
     if (fsm->slave->master->debug_level)
-        EC_DBG("  %u Pdos assigned.\n", fsm->sync_subindices);
+        EC_DBG("%u Pdos assigned.\n", fsm->sync_subindices);
 
     // read first Pdo
     fsm->sync_subindex = 1;
@@ -263,8 +259,8 @@ void ec_fsm_coe_map_action_next_pdo(
     fsm->sync->assign_source = EC_ASSIGN_COE;
     ec_pdo_list_clear_pdos(&fsm->pdos);
 
-    // next direction
-    ec_fsm_coe_map_action_next_dir(fsm);
+    // next sync manager
+    ec_fsm_coe_map_action_next_sync(fsm);
 }
 
 /*****************************************************************************/
@@ -304,10 +300,10 @@ void ec_fsm_coe_map_state_pdo(
 
     ec_pdo_init(fsm->pdo);
     fsm->pdo->index = EC_READ_U16(fsm->request.data);
-    fsm->pdo->dir = ec_sync_direction(fsm->sync);
+    fsm->pdo->sync_index = fsm->sync_index;
 
     if (fsm->slave->master->debug_level)
-        EC_DBG("  Pdo 0x%04X.\n", fsm->pdo->index);
+        EC_DBG("Pdo 0x%04X.\n", fsm->pdo->index);
 
     list_add_tail(&fsm->pdo->list, &fsm->pdos.list);
 
@@ -348,7 +344,7 @@ void ec_fsm_coe_map_state_pdo_entry_count(
     fsm->pdo_subindices = EC_READ_U8(fsm->request.data);
 
     if (fsm->slave->master->debug_level)
-        EC_DBG("    %u Pdo entries mapped.\n", fsm->pdo_subindices);
+        EC_DBG("%u Pdo entries mapped.\n", fsm->pdo_subindices);
 
     // read first Pdo entry
     fsm->pdo_subindex = 1;
@@ -432,7 +428,7 @@ void ec_fsm_coe_map_state_pdo_entry(
         }
 
         if (fsm->slave->master->debug_level) {
-            EC_DBG("    Pdo entry 0x%04X:%02X, %u bit,  \"%s\".\n",
+            EC_DBG("Pdo entry 0x%04X:%02X, %u bit, \"%s\".\n",
                     pdo_entry->index, pdo_entry->subindex,
                     pdo_entry->bit_length,
                     pdo_entry->name ? pdo_entry->name : "???");

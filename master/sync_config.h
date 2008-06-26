@@ -31,66 +31,33 @@
  *
  *****************************************************************************/
 
-/**
-   \file
-   EtherCAT slave configuration structure.
-*/
+/** \file
+ * EtherCAT sync manager.
+ */
 
 /*****************************************************************************/
 
-#ifndef __EC_SLAVE_CONFIG_H__
-#define __EC_SLAVE_CONFIG_H__
-
-#include <linux/list.h>
+#ifndef __EC_SYNC_CONFIG_H__
+#define __EC_SYNC_CONFIG_H__
 
 #include "../include/ecrt.h"
 
 #include "globals.h"
-#include "slave.h"
-#include "sync_config.h"
-#include "fmmu_config.h"
+#include "pdo_list.h"
 
 /*****************************************************************************/
 
-/** EtherCAT slave configuration.
+/** Sync manager configuration.
  */
-struct ec_slave_config {
-    struct list_head list; /**< List item. */
-    ec_master_t *master; /**< Master owning the slave configuration. */
-
-    uint16_t alias; /**< Slave alias. */
-    uint16_t position; /**< Index after alias. If alias is zero, this is the
-                         ring position. */
-    uint32_t vendor_id; /**< Slave vendor ID. */
-    uint32_t product_code; /**< Slave product code. */
-
-    ec_slave_t *slave; /**< Slave pointer. This is \a NULL, if the slave is
-                         offline. */
-
-    ec_sync_config_t sync_configs[EC_MAX_SYNCS]; /**< Sync manager
-                                                   configurations. */
-    ec_fmmu_config_t fmmu_configs[EC_MAX_FMMUS]; /**< FMMU configurations. */
-    uint8_t used_fmmus; /**< Number of FMMUs used. */
-
-    struct list_head sdo_configs; /**< List of Sdo configurations. */
-    struct list_head sdo_requests; /**< List of Sdo requests. */
-
-};
+typedef struct {
+    ec_direction_t dir; /**< Sync manager direction. */
+    ec_pdo_list_t pdos; /**< Current Pdo assignment. */
+} ec_sync_config_t;
 
 /*****************************************************************************/
 
-void ec_slave_config_init(ec_slave_config_t *, ec_master_t *, uint16_t,
-        uint16_t, uint32_t, uint32_t);
-void ec_slave_config_clear(ec_slave_config_t *);
-
-int ec_slave_config_attach(ec_slave_config_t *);
-void ec_slave_config_detach(ec_slave_config_t *);
-
-void ec_slave_config_load_default_sync_config(ec_slave_config_t *);
-
-unsigned int ec_slave_config_sdo_count(const ec_slave_config_t *);
-const ec_sdo_request_t *ec_slave_config_get_sdo_by_pos_const(
-        const ec_slave_config_t *, unsigned int);
+void ec_sync_config_init(ec_sync_config_t *);
+void ec_sync_config_clear(ec_sync_config_t *);
 
 /*****************************************************************************/
 
