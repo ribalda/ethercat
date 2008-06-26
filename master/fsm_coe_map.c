@@ -140,8 +140,8 @@ void ec_fsm_coe_map_state_start(
         ec_fsm_coe_map_t *fsm /**< finite state machine */
         )
 {
-    // read Pdo assignment for first sync manager
-    fsm->sync_index = 0xff; // next is 0
+    // read Pdo assignment for first sync manager not reserved for mailbox
+    fsm->sync_index = 1; // next is 2
     ec_fsm_coe_map_action_next_sync(fsm);
 }
 
@@ -157,17 +157,9 @@ void ec_fsm_coe_map_action_next_sync(
 
     fsm->sync_index++;
 
-    if (slave->master->debug_level)
-        EC_DBG("Processing SM%u of slave %u.\n",
-                fsm->sync_index, slave->ring_position);
-
     for (; fsm->sync_index < EC_MAX_SYNCS; fsm->sync_index++) {
-        if (!(fsm->sync = ec_slave_get_sync(slave, fsm->sync_index))) {
-            if (slave->master->debug_level)
-                EC_DBG("Slave %u does not provide a configuration for "
-                        "SM%u!\n", fsm->slave->ring_position, fsm->sync_index);
+        if (!(fsm->sync = ec_slave_get_sync(slave, fsm->sync_index)))
             continue;
-        }
 
         fsm->sync_sdo_index = 0x1C10 + fsm->sync_index;
 
