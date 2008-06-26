@@ -238,7 +238,6 @@ void ec_slave_config_load_default_sync_config(ec_slave_config_t *sc)
     if (!sc->slave)
         return;
     
-    
     for (sync_index = 0; sync_index < EC_MAX_SYNCS; sync_index++) {
         sync_config = &sc->sync_configs[sync_index];
         if ((sync = ec_slave_get_sync(sc->slave, sync_index))) {
