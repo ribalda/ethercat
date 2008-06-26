@@ -174,7 +174,7 @@ void ec_fsm_pdo_assign_next_sync(
                 EC_ERR("Slave %u does not provide a configuration for sync "
                         "manager %u!\n", fsm->slave->ring_position,
                         fsm->sync_index);
-                fsm->state = ec_fsm_pdo_assign_state_end;
+                fsm->state = ec_fsm_pdo_assign_state_error;
                 return;
             }
             continue;
