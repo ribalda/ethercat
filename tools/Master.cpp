@@ -1191,9 +1191,10 @@ void Master::showDomain(unsigned int domainIndex)
 
         cout << "  SlaveConfig "
             << fmmu.slave_config_alias << ":" << fmmu.slave_config_position
-            << ", Dir "
-            << setfill(' ') << setw(3) << (fmmu.dir == EC_DIR_INPUT ? "In" : "Out")
-            << ", LogAddr 0x" 
+            << ", SM" << dec << (unsigned int) fmmu.sync_index << " ("
+            << setfill(' ') << setw(3)
+            << (fmmu.dir == EC_DIR_INPUT ? "Input" : "Output")
+            << "), LogAddr 0x" 
             << hex << setfill('0') << setw(8) << fmmu.logical_address
             << ", Size " << dec << fmmu.data_size << endl;
 
