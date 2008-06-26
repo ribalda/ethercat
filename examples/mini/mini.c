@@ -102,9 +102,14 @@ static ec_pdo_entry_info_t el3162_channel2[] = {
 };
 
 static ec_pdo_info_t el3162_pdos[] = {
-    {EC_DIR_INPUT, 0x1A00, 2, el3162_channel1},
-    {EC_DIR_INPUT, 0x1A01, 2, el3162_channel2},
-    {EC_END}
+    {0x1A00, 2, el3162_channel1},
+    {0x1A01, 2, el3162_channel2}
+};
+
+static ec_sync_info_t el3162_syncs[] = {
+    {2, EC_DIR_OUTPUT},
+    {3, EC_DIR_INPUT, 2, el3162_pdos},
+    {0xff}
 };
 
 static ec_pdo_entry_info_t el2004_channels[] = {
@@ -115,11 +120,16 @@ static ec_pdo_entry_info_t el2004_channels[] = {
 };
 
 static ec_pdo_info_t el2004_pdos[] = {
-    {EC_DIR_OUTPUT, 0x1600, 1, &el2004_channels[0]},
-    {EC_DIR_OUTPUT, 0x1601, 1, &el2004_channels[1]},
-    {EC_DIR_OUTPUT, 0x1602, 1, &el2004_channels[2]},
-    {EC_DIR_OUTPUT, 0x1603, 1, &el2004_channels[3]},
-    {EC_END}
+    {0x1600, 1, &el2004_channels[0]},
+    {0x1601, 1, &el2004_channels[1]},
+    {0x1602, 1, &el2004_channels[2]},
+    {0x1603, 1, &el2004_channels[3]}
+};
+
+static ec_sync_info_t el2004_syncs[] = {
+    {0, EC_DIR_OUTPUT, 4, el2004_pdos},
+    {1, EC_DIR_INPUT},
+    {0xff}
 };
 #endif
 
@@ -309,7 +319,7 @@ int __init init_mini_module(void)
 
 #ifdef CONFIGURE_PDOS
     printk(KERN_INFO PFX "Configuring Pdos...\n");
-    if (ecrt_slave_config_pdos(sc_ana_in, EC_END, el3162_pdos)) {
+    if (ecrt_slave_config_sync_managers(sc_ana_in, EC_END, el3162_syncs)) {
         printk(KERN_ERR PFX "Failed to configure Pdos.\n");
         goto out_release_master;
     }
@@ -319,7 +329,7 @@ int __init init_mini_module(void)
         goto out_release_master;
     }
 
-    if (ecrt_slave_config_pdos(sc, EC_END, el2004_pdos)) {
+    if (ecrt_slave_config_sync_managers(sc, EC_END, el2004_syncs)) {
         printk(KERN_ERR PFX "Failed to configure Pdos.\n");
         goto out_release_master;
     }
