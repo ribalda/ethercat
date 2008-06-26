@@ -858,6 +858,8 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                 }
                 data.sdo_count = ec_slave_config_sdo_count(sc);
                 data.attached = sc->slave != NULL;
+                data.operational = sc->slave &&
+                    sc->slave->current_state == EC_SLAVE_STATE_OP;
 
                 if (copy_to_user((void __user *) arg, &data, sizeof(data)))
                     retval = -EFAULT;

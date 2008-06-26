@@ -198,7 +198,8 @@ void Master::showConfig()
             << hex << setw(8) << config.vendor_id << endl
             << "Product code: 0x"
             << hex << setw(8) << config.product_code << endl
-            << "Attached: " << (config.attached ? "yes" : "no") << endl;
+            << "Attached: " << (config.attached ? "yes" : "no") << endl
+            << "Operational: " << (config.operational ? "yes" : "no") << endl;
 
         for (j = 0; j < 16; j++) {
             if (config.syncs[j].pdo_count) {

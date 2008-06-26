@@ -296,7 +296,9 @@ typedef struct {
         uint32_t pdo_count;
     } syncs[16];
     uint32_t sdo_count;
-    uint8_t attached;
+    uint8_t attached    : 1,
+            operational : 1;
+    
 } ec_ioctl_config_t;
 
 /*****************************************************************************/
