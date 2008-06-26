@@ -152,7 +152,7 @@ ec_direction_t ec_sync_default_direction(
 {
     switch ((sync->control_register & 0x0C) >> 2) {
         case 0x0: return EC_DIR_INPUT;
-        case 0x1: return EC_DIR_INPUT;
+        case 0x1: return EC_DIR_OUTPUT;
         default: return EC_DIR_INVALID;
     }
 }
