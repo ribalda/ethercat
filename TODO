@@ -8,6 +8,8 @@ $Id$
 
 Version 1.4.0:
 
+* Move EC_NUM_SYNCS define to ecrt.h.
+* Read Pdo mapping for unknown Pdos.
 * Attach Pdo names from SII or Coe dictioary to Pdos read via CoE.
 * Make scanning and configuration run parallel (each).
 * Adapt remaining examples.
@@ -20,6 +22,7 @@ Version 1.4.0:
 * Race in jiffies frame timeout.
 * FoE
 * Allow master requesting when in ORPHANED phase
+* Get original driver for r8169.
 
 Future issues:
 
