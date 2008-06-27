@@ -31,10 +31,10 @@
  *
  *****************************************************************************/
 
-/**
-   \file
-   EtherCAT slave configuration state machine.
-*/
+/** \file
+ *
+ * EtherCAT slave configuration state machine.
+ */
 
 /*****************************************************************************/
 
@@ -73,7 +73,8 @@ void ec_fsm_slave_config_state_error(ec_fsm_slave_config_t *);
 
 /** Constructor.
  */
-void ec_fsm_slave_config_init(ec_fsm_slave_config_t *fsm, /**< slave state machine */
+void ec_fsm_slave_config_init(
+        ec_fsm_slave_config_t *fsm, /**< slave state machine */
         ec_datagram_t *datagram /**< datagram structure to use */
         )
 {
@@ -90,7 +91,9 @@ void ec_fsm_slave_config_init(ec_fsm_slave_config_t *fsm, /**< slave state machi
 
 /** Destructor.
  */
-void ec_fsm_slave_config_clear(ec_fsm_slave_config_t *fsm /**< slave state machine */)
+void ec_fsm_slave_config_clear(
+        ec_fsm_slave_config_t *fsm /**< slave state machine */
+        )
 {
     // clear sub state machines
     ec_fsm_change_clear(&fsm->fsm_change);
@@ -101,11 +104,10 @@ void ec_fsm_slave_config_clear(ec_fsm_slave_config_t *fsm /**< slave state machi
 
 /*****************************************************************************/
 
-/**
- * Start slave configuration state machine.
+/** Start slave configuration state machine.
  */
-
-void ec_fsm_slave_config_start(ec_fsm_slave_config_t *fsm, /**< slave state machine */
+void ec_fsm_slave_config_start(
+        ec_fsm_slave_config_t *fsm, /**< slave state machine */
         ec_slave_t *slave /**< slave to configure */
         )
 {
@@ -116,10 +118,11 @@ void ec_fsm_slave_config_start(ec_fsm_slave_config_t *fsm, /**< slave state mach
 /*****************************************************************************/
 
 /**
-   \return false, if state machine has terminated
-*/
-
-int ec_fsm_slave_config_running(const ec_fsm_slave_config_t *fsm /**< slave state machine */)
+ * \return false, if state machine has terminated
+ */
+int ec_fsm_slave_config_running(
+        const ec_fsm_slave_config_t *fsm /**< slave state machine */
+        )
 {
     return fsm->state != ec_fsm_slave_config_state_end
         && fsm->state != ec_fsm_slave_config_state_error;
@@ -127,14 +130,16 @@ int ec_fsm_slave_config_running(const ec_fsm_slave_config_t *fsm /**< slave stat
 
 /*****************************************************************************/
 
-/**
-   Executes the current state of the state machine.
-   If the state machine's datagram is not sent or received yet, the execution
-   of the state machine is delayed to the next cycle.
-   \return false, if state machine has terminated
-*/
-
-int ec_fsm_slave_config_exec(ec_fsm_slave_config_t *fsm /**< slave state machine */)
+/** Executes the current state of the state machine.
+ *
+ * If the state machine's datagram is not sent or received yet, the execution
+ * of the state machine is delayed to the next cycle.
+ *
+ * \return false, if state machine has terminated
+ */
+int ec_fsm_slave_config_exec(
+        ec_fsm_slave_config_t *fsm /**< slave state machine */
+        )
 {
     if (fsm->datagram->state == EC_DATAGRAM_SENT
         || fsm->datagram->state == EC_DATAGRAM_QUEUED) {
@@ -149,10 +154,11 @@ int ec_fsm_slave_config_exec(ec_fsm_slave_config_t *fsm /**< slave state machine
 /*****************************************************************************/
 
 /**
-   \return true, if the state machine terminated gracefully
-*/
-
-int ec_fsm_slave_config_success(const ec_fsm_slave_config_t *fsm /**< slave state machine */)
+ * \return true, if the state machine terminated gracefully
+ */
+int ec_fsm_slave_config_success(
+        const ec_fsm_slave_config_t *fsm /**< slave state machine */
+        )
 {
     return fsm->state == ec_fsm_slave_config_state_end;
 }
@@ -161,15 +167,19 @@ int ec_fsm_slave_config_success(const ec_fsm_slave_config_t *fsm /**< slave stat
  * Slave configuration state machine
  *****************************************************************************/
 
-/**
-   Slave configuration state: START.
-*/
-
-void ec_fsm_slave_config_state_start(ec_fsm_slave_config_t *fsm /**< slave state machine */)
+/** Slave configuration state: START.
+ */
+void ec_fsm_slave_config_state_start(
+        ec_fsm_slave_config_t *fsm /**< slave state machine */
+        )
 {
     if (fsm->slave->master->debug_level) {
         EC_DBG("Configuring slave %u...\n", fsm->slave->ring_position);
     }
+    
+    // configuration will be done immediately; therefore reset the
+    // force flag
+    fsm->slave->force_config = 0;
 
     ec_fsm_change_start(&fsm->fsm_change, fsm->slave, EC_SLAVE_STATE_INIT);
     ec_fsm_change_exec(&fsm->fsm_change);
@@ -178,11 +188,11 @@ void ec_fsm_slave_config_state_start(ec_fsm_slave_config_t *fsm /**< slave state
 
 /*****************************************************************************/
 
-/**
-   Slave configuration state: INIT.
-*/
-
-void ec_fsm_slave_config_state_init(ec_fsm_slave_config_t *fsm /**< slave state machine */)
+/** Slave configuration state: INIT.
+ */
+void ec_fsm_slave_config_state_init(
+        ec_fsm_slave_config_t *fsm /**< slave state machine */
+        )
 {
     ec_master_t *master = fsm->slave->master;
     ec_slave_t *slave = fsm->slave;
@@ -200,10 +210,6 @@ void ec_fsm_slave_config_state_init(ec_fsm_slave_config_t *fsm /**< slave state 
     if (master->debug_level) {
         EC_DBG("Slave %u is now in INIT.\n", slave->ring_position);
     }
-
-    // check and reset CRC fault counters
-    //ec_slave_check_crc(slave);
-    // TODO: Implement state machine for CRC checking.
 
     if (!slave->base_fmmu_count) { // skip FMMU configuration
         ec_fsm_slave_config_enter_mbox_sync(fsm);
@@ -224,12 +230,11 @@ void ec_fsm_slave_config_state_init(ec_fsm_slave_config_t *fsm /**< slave state 
 
 /*****************************************************************************/
 
-/**
-   Slave configuration state: CLEAR FMMU.
-*/
-
-void ec_fsm_slave_config_state_clear_fmmus(ec_fsm_slave_config_t *fsm
-                                        /**< slave state machine */)
+/** Slave configuration state: CLEAR FMMU.
+ */
+void ec_fsm_slave_config_state_clear_fmmus(
+        ec_fsm_slave_config_t *fsm /**< slave state machine */
+        )
 {
     ec_datagram_t *datagram = fsm->datagram;
 
@@ -257,10 +262,8 @@ void ec_fsm_slave_config_state_clear_fmmus(ec_fsm_slave_config_t *fsm
 
 /*****************************************************************************/
 
-/**
- * Check for mailbox sync managers to be configured.
+/** Check for mailbox sync managers to be configured.
  */
-
 void ec_fsm_slave_config_enter_mbox_sync(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
@@ -341,11 +344,11 @@ void ec_fsm_slave_config_enter_mbox_sync(
 
 /*****************************************************************************/
 
-/**
-   Slave configuration state: SYNC.
-*/
-
-void ec_fsm_slave_config_state_mbox_sync(ec_fsm_slave_config_t *fsm /**< slave state machine */)
+/** Slave configuration state: SYNC.
+ */
+void ec_fsm_slave_config_state_mbox_sync(
+        ec_fsm_slave_config_t *fsm /**< slave state machine */
+        )
 {
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
@@ -375,11 +378,11 @@ void ec_fsm_slave_config_state_mbox_sync(ec_fsm_slave_config_t *fsm /**< slave s
 
 /*****************************************************************************/
 
-/**
- * Request PREOP state.
+/** Request PREOP state.
  */
-
-void ec_fsm_slave_config_enter_preop(ec_fsm_slave_config_t *fsm /**< slave state machine */)
+void ec_fsm_slave_config_enter_preop(
+        ec_fsm_slave_config_t *fsm /**< slave state machine */
+        )
 {
     fsm->state = ec_fsm_slave_config_state_preop;
     ec_fsm_change_start(&fsm->fsm_change, fsm->slave, EC_SLAVE_STATE_PREOP);
@@ -388,11 +391,11 @@ void ec_fsm_slave_config_enter_preop(ec_fsm_slave_config_t *fsm /**< slave state
 
 /*****************************************************************************/
 
-/**
-   Slave configuration state: PREOP.
-*/
-
-void ec_fsm_slave_config_state_preop(ec_fsm_slave_config_t *fsm /**< slave state machine */)
+/** Slave configuration state: PREOP.
+ */
+void ec_fsm_slave_config_state_preop(
+        ec_fsm_slave_config_t *fsm /**< slave state machine */
+        )
 {
     ec_slave_t *slave = fsm->slave;
     ec_master_t *master = fsm->slave->master;
@@ -433,11 +436,11 @@ void ec_fsm_slave_config_state_preop(ec_fsm_slave_config_t *fsm /**< slave state
 
 /*****************************************************************************/
 
-/**
- * Check for Sdo configurations to be applied.
+/** Check for Sdo configurations to be applied.
  */
-
-void ec_fsm_slave_config_enter_sdo_conf(ec_fsm_slave_config_t *fsm /**< slave state machine */)
+void ec_fsm_slave_config_enter_sdo_conf(
+        ec_fsm_slave_config_t *fsm /**< slave state machine */
+        )
 {
     ec_slave_t *slave = fsm->slave;
 
@@ -458,10 +461,8 @@ void ec_fsm_slave_config_enter_sdo_conf(ec_fsm_slave_config_t *fsm /**< slave st
 
 /*****************************************************************************/
 
-/**
-   Slave configuration state: SDO_CONF.
-*/
-
+/** Slave configuration state: SDO_CONF.
+ */
 void ec_fsm_slave_config_state_sdo_conf(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
@@ -492,10 +493,8 @@ void ec_fsm_slave_config_state_sdo_conf(
 
 /*****************************************************************************/
 
-/**
- * Check for Pdo sync managers to be configured.
+/** Check for Pdo sync managers to be configured.
  */
-
 void ec_fsm_slave_config_enter_pdo_sync(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
@@ -543,11 +542,11 @@ void ec_fsm_slave_config_enter_pdo_sync(
 
 /*****************************************************************************/
 
-/**
- * Configure Pdo sync managers.
+/** Configure Pdo sync managers.
  */
-
-void ec_fsm_slave_config_state_pdo_sync(ec_fsm_slave_config_t *fsm /**< slave state machine */)
+void ec_fsm_slave_config_state_pdo_sync(
+        ec_fsm_slave_config_t *fsm /**< slave state machine */
+        )
 {
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
@@ -580,10 +579,8 @@ void ec_fsm_slave_config_state_pdo_sync(ec_fsm_slave_config_t *fsm /**< slave st
 
 /*****************************************************************************/
 
-/**
-   Slave configuration state: PDO_MAPPING.
-*/
-
+/** Slave configuration state: PDO_MAPPING.
+ */
 void ec_fsm_slave_config_state_pdo_mapping(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
@@ -606,10 +603,8 @@ void ec_fsm_slave_config_state_pdo_mapping(
 
 /*****************************************************************************/
 
-/**
-   Slave configuration state: PDO_ASSIGN.
-*/
-
+/** Slave configuration state: PDO_ASSIGN.
+ */
 void ec_fsm_slave_config_state_pdo_assign(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
@@ -629,11 +624,11 @@ void ec_fsm_slave_config_state_pdo_assign(
 
 /*****************************************************************************/
 
-/**
- * Check for FMMUs to be configured.
+/** Check for FMMUs to be configured.
  */
-
-void ec_fsm_slave_config_enter_fmmu(ec_fsm_slave_config_t *fsm /**< slave state machine */)
+void ec_fsm_slave_config_enter_fmmu(
+        ec_fsm_slave_config_t *fsm /**< slave state machine */
+        )
 {
     ec_slave_t *slave = fsm->slave;
     ec_datagram_t *datagram = fsm->datagram;
@@ -678,11 +673,11 @@ void ec_fsm_slave_config_enter_fmmu(ec_fsm_slave_config_t *fsm /**< slave state 
 
 /*****************************************************************************/
 
-/**
-   Slave configuration state: FMMU.
-*/
-
-void ec_fsm_slave_config_state_fmmu(ec_fsm_slave_config_t *fsm /**< slave state machine */)
+/** Slave configuration state: FMMU.
+ */
+void ec_fsm_slave_config_state_fmmu(
+        ec_fsm_slave_config_t *fsm /**< slave state machine */
+        )
 {
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
@@ -712,11 +707,11 @@ void ec_fsm_slave_config_state_fmmu(ec_fsm_slave_config_t *fsm /**< slave state 
 
 /*****************************************************************************/
 
-/**
- * Request SAFEOP state.
+/** Request SAFEOP state.
  */
-
-void ec_fsm_slave_config_enter_safeop(ec_fsm_slave_config_t *fsm /**< slave state machine */)
+void ec_fsm_slave_config_enter_safeop(
+        ec_fsm_slave_config_t *fsm /**< slave state machine */
+        )
 {
     fsm->state = ec_fsm_slave_config_state_safeop;
     ec_fsm_change_start(&fsm->fsm_change, fsm->slave, EC_SLAVE_STATE_SAFEOP);
@@ -725,11 +720,11 @@ void ec_fsm_slave_config_enter_safeop(ec_fsm_slave_config_t *fsm /**< slave stat
 
 /*****************************************************************************/
 
-/**
-   Slave configuration state: SAFEOP.
-*/
-
-void ec_fsm_slave_config_state_safeop(ec_fsm_slave_config_t *fsm /**< slave state machine */)
+/** Slave configuration state: SAFEOP.
+ */
+void ec_fsm_slave_config_state_safeop(
+        ec_fsm_slave_config_t *fsm /**< slave state machine */
+        )
 {
     ec_master_t *master = fsm->slave->master;
     ec_slave_t *slave = fsm->slave;
@@ -766,11 +761,11 @@ void ec_fsm_slave_config_state_safeop(ec_fsm_slave_config_t *fsm /**< slave stat
 
 /*****************************************************************************/
 
-/**
-   Slave configuration state: OP
-*/
-
-void ec_fsm_slave_config_state_op(ec_fsm_slave_config_t *fsm /**< slave state machine */)
+/** Slave configuration state: OP
+ */
+void ec_fsm_slave_config_state_op(
+        ec_fsm_slave_config_t *fsm /**< slave state machine */
+        )
 {
     ec_master_t *master = fsm->slave->master;
     ec_slave_t *slave = fsm->slave;
@@ -798,21 +793,21 @@ void ec_fsm_slave_config_state_op(ec_fsm_slave_config_t *fsm /**< slave state ma
  *  Common state functions
  *****************************************************************************/
 
-/**
-   State: ERROR.
-*/
-
-void ec_fsm_slave_config_state_error(ec_fsm_slave_config_t *fsm /**< slave state machine */)
+/** State: ERROR.
+ */
+void ec_fsm_slave_config_state_error(
+        ec_fsm_slave_config_t *fsm /**< slave state machine */
+        )
 {
 }
 
 /*****************************************************************************/
 
-/**
-   State: END.
-*/
-
-void ec_fsm_slave_config_state_end(ec_fsm_slave_config_t *fsm /**< slave state machine */)
+/** State: END.
+ */
+void ec_fsm_slave_config_state_end(
+        ec_fsm_slave_config_t *fsm /**< slave state machine */
+        )
 {
 }
 

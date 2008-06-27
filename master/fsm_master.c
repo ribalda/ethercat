@@ -242,7 +242,7 @@ void ec_fsm_master_state_broadcast(
             if (!(master->slaves = (ec_slave_t *) kmalloc(size, GFP_KERNEL))) {
                 EC_ERR("Failed to allocate %u bytes of slave memory!\n",
                         size);
-                master->slave_count = 0; // FIXME avoid scanning!
+                master->slave_count = 0; // TODO avoid retrying scan!
                 master->scan_busy = 0;
                 wake_up_interruptible(&master->scan_queue);
                 ec_fsm_master_restart(fsm);
@@ -525,10 +525,6 @@ void ec_fsm_master_action_configure(
                         slave->ring_position, old_state, new_state,
                         slave->force_config ? " (forced)" : "");
             }
-
-            // configuration will be done immediately; therefore reset the
-            // force flag
-            slave->force_config = 0;
 
             fsm->idle = 0;
             fsm->state = ec_fsm_master_state_configure_slave;
