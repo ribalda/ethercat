@@ -1435,8 +1435,12 @@ void Master::showSlave(uint16_t slavePosition)
     
     getSlave(&slave, slavePosition);
         
-    cout << "Slave " << dec << slavePosition << endl
-        << "Alias: " << slave.alias << endl
+    cout << "=== Slave " << dec << slavePosition << " ===" << endl;
+    
+    if (slave.alias)
+        cout << "Alias: " << slave.alias << endl;
+
+    cout
         << "State: " << slaveState(slave.state) << endl
         << "Flag: " << (slave.error_flag ? 'E' : '+') << endl
         << "Identity:" << endl
@@ -1519,7 +1523,6 @@ void Master::showSlave(uint16_t slavePosition)
             << "  Current consumption: "
             << dec << slave.current_on_ebus << " mA" << endl;
     }
-    cout << endl;
 }
 
 /****************************************************************************/
