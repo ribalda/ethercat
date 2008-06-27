@@ -47,13 +47,12 @@ class Master
         void outputData(int);
         void setDebug(const vector<string> &);
         void showDomains(int);
-        void listSlaves();
         void showMaster();
         void listPdos(int, bool = false);
         void listSdos(int, bool = false);
         void sdoDownload(int, const string &, const vector<string> &);
         void sdoUpload(int, const string &, const vector<string> &);
-        void showSlaves(int);
+        void showSlaves(int, bool);
         void siiRead(int);
         void siiWrite(int, bool, const vector<string> &);
         void requestStates(int, const vector<string> &);
@@ -69,6 +68,7 @@ class Master
         void showDomain(unsigned int);
         void listSlavePdos(uint16_t, bool = false, bool = false);
         void listSlaveSdos(uint16_t, bool = false, bool = false);
+        void listSlaves(int);
         void showSlave(uint16_t);
         void generateSlaveXml(uint16_t);
         unsigned int slaveCount();

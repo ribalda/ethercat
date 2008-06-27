@@ -334,97 +334,6 @@ void Master::showDomains(int domainIndex)
 
 /****************************************************************************/
 
-struct SlaveInfo {
-    string pos;
-    string alias;
-    string relPos;
-    string state;
-    string flag;
-    string name;
-};
-
-void Master::listSlaves()
-{
-    unsigned int numSlaves, i;
-    ec_ioctl_slave_t slave;
-    uint16_t lastAlias, aliasIndex;
-    SlaveInfo slaveInfo;
-    typedef list<SlaveInfo> SlaveInfoList;
-    SlaveInfoList slaveInfoList;
-    SlaveInfoList::const_iterator iter;
-    stringstream str;
-    unsigned int maxPosWidth = 0, maxAliasWidth = 0,
-                 maxRelPosWidth = 0, maxStateWidth = 0;
-    
-    open(Read);
-
-    numSlaves = slaveCount();
-
-    lastAlias = 0;
-    aliasIndex = 0;
-    for (i = 0; i < numSlaves; i++) {
-        getSlave(&slave, i);
-        
-        str << dec << i;
-        slaveInfo.pos = str.str();
-        str.clear();
-        str.str("");
-
-        if (slave.alias) {
-            lastAlias = slave.alias;
-            aliasIndex = 0;
-        }
-        if (lastAlias) {
-            str << "#" << hex << lastAlias;
-            slaveInfo.alias = str.str();
-            str.str("");
-            str << ":" << dec << aliasIndex;
-            slaveInfo.relPos = str.str();
-            str.str("");
-            aliasIndex++;
-        } else {
-            slaveInfo.alias = "";
-            slaveInfo.relPos = "";
-        }
-
-        slaveInfo.state = slaveState(slave.state);
-        slaveInfo.flag = (slave.error_flag ? 'E' : '+');
-
-        if (strlen(slave.name)) {
-            slaveInfo.name = slave.name;
-        } else {
-            str << hex << setfill('0')
-                << setw(8) << slave.vendor_id << ":"
-                << setw(8) << slave.product_code;
-            slaveInfo.name = str.str();
-            str.str("");
-        }
-
-        slaveInfoList.push_back(slaveInfo);
-        if (slaveInfo.pos.length() > maxPosWidth)
-            maxPosWidth = slaveInfo.pos.length();
-        if (slaveInfo.alias.length() > maxAliasWidth)
-            maxAliasWidth = slaveInfo.alias.length();
-        if (slaveInfo.relPos.length() > maxRelPosWidth)
-            maxRelPosWidth = slaveInfo.relPos.length();
-        if (slaveInfo.state.length() > maxStateWidth)
-            maxStateWidth = slaveInfo.state.length();
-    }
-
-    for (iter = slaveInfoList.begin(); iter != slaveInfoList.end(); iter++) {
-        cout << setfill(' ') << right
-            << setw(maxPosWidth) << iter->pos << "  "
-            << setw(maxAliasWidth) << iter->alias
-            << left
-            << setw(maxRelPosWidth) << iter->relPos << "  "
-            << setw(maxStateWidth) << iter->state << "  "
-            << iter->flag << "  "
-            << iter->name << endl;
-    }
-}
-
-/****************************************************************************/
-
 void Master::showMaster()
 {
     ec_ioctl_master_t data;
@@ -821,18 +730,22 @@ void Master::sdoUpload(
 
 /****************************************************************************/
 
-void Master::showSlaves(int slavePosition)
+void Master::showSlaves(int slavePosition, bool verbose)
 {
     open(Read);
 
-    if (slavePosition == -1) {
-        unsigned int numSlaves = slaveCount(), i;
+    if (verbose) {
+        if (slavePosition == -1) {
+            unsigned int numSlaves = slaveCount(), i;
 
-        for (i = 0; i < numSlaves; i++) {
-            showSlave(i);
+            for (i = 0; i < numSlaves; i++) {
+                showSlave(i);
+            }
+        } else {
+            showSlave(slavePosition);
         }
     } else {
-        showSlave(slavePosition);
+        listSlaves(slavePosition);
     }
 }
 
@@ -1320,6 +1233,104 @@ void Master::listSlaveSdos(
             cout << ", " << dec << entry.bit_length << " bit, \""
                 << entry.description << "\"" << endl;
         }
+    }
+}
+
+/****************************************************************************/
+
+struct SlaveInfo {
+    string pos;
+    string alias;
+    string relPos;
+    string state;
+    string flag;
+    string name;
+};
+
+void Master::listSlaves(int slavePosition)
+{
+    unsigned int numSlaves, i;
+    ec_ioctl_slave_t slave;
+    uint16_t lastAlias, aliasIndex;
+    SlaveInfo slaveInfo;
+    typedef list<SlaveInfo> SlaveInfoList;
+    SlaveInfoList slaveInfoList;
+    SlaveInfoList::const_iterator iter;
+    stringstream str;
+    unsigned int maxPosWidth = 0, maxAliasWidth = 0,
+                 maxRelPosWidth = 0, maxStateWidth = 0;
+    
+    open(Read);
+
+    numSlaves = slaveCount();
+
+    lastAlias = 0;
+    aliasIndex = 0;
+    for (i = 0; i < numSlaves; i++) {
+        getSlave(&slave, i);
+        
+        if (slave.alias) {
+            lastAlias = slave.alias;
+            aliasIndex = 0;
+        }
+
+        if (slavePosition == -1 || i == slavePosition) {
+            str << dec << i;
+            slaveInfo.pos = str.str();
+            str.clear();
+            str.str("");
+
+            if (lastAlias) {
+                str << "#" << hex << lastAlias;
+                slaveInfo.alias = str.str();
+                str.str("");
+                str << ":" << dec << aliasIndex;
+                slaveInfo.relPos = str.str();
+                str.str("");
+            } else {
+                slaveInfo.alias = "";
+                slaveInfo.relPos = "";
+            }
+
+            slaveInfo.state = slaveState(slave.state);
+            slaveInfo.flag = (slave.error_flag ? 'E' : '+');
+
+            if (strlen(slave.name)) {
+                slaveInfo.name = slave.name;
+            } else {
+                str << hex << setfill('0')
+                    << setw(8) << slave.vendor_id << ":"
+                    << setw(8) << slave.product_code;
+                slaveInfo.name = str.str();
+                str.str("");
+            }
+
+
+            slaveInfoList.push_back(slaveInfo);
+
+            if (slaveInfo.pos.length() > maxPosWidth)
+                maxPosWidth = slaveInfo.pos.length();
+            if (slaveInfo.alias.length() > maxAliasWidth)
+                maxAliasWidth = slaveInfo.alias.length();
+            if (slaveInfo.relPos.length() > maxRelPosWidth)
+                maxRelPosWidth = slaveInfo.relPos.length();
+            if (slaveInfo.state.length() > maxStateWidth)
+                maxStateWidth = slaveInfo.state.length();
+        }
+
+        if (lastAlias)
+            aliasIndex++;
+    }
+
+    for (iter = slaveInfoList.begin(); iter != slaveInfoList.end(); iter++) {
+        cout << setfill(' ') << right
+            << setw(maxPosWidth) << iter->pos << "  "
+            << setw(maxAliasWidth) << iter->alias
+            << left
+            << setw(maxRelPosWidth) << iter->relPos << "  "
+            << setw(maxStateWidth) << iter->state << "  "
+            << iter->flag << "  "
+            << iter->name << endl;
     }
 }
 
