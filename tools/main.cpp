@@ -188,7 +188,7 @@ int main(int argc, char **argv)
         if (command == "alias") {
             master.writeAlias(slavePosition, force, commandArgs);
         } else if (command == "config") {
-            master.showConfig();
+            master.showConfigs(verbose);
         } else if (command == "data") {
             master.outputData(domainIndex);
         } else if (command == "debug") {

@@ -9,16 +9,15 @@ $Id$
 Version 1.4.0:
 
 * Move EC_NUM_SYNCS define to ecrt.h.
-* Read Pdo mapping for unknown Pdos.
+* Read Pdo mapping for unknown Pdos before configuring it.
 * Attach Pdo names from SII or Coe dictioary to Pdos read via CoE.
 * Make scanning and configuration run parallel (each).
 * Adapt remaining examples.
 * READMEs for examples.
 * Update documentation.
-* ethercat 'list_config'
-* Stop master thread at ecrt_master_request().
 * Overthink display style of hex numbers.
 * Remove #x:y alias output.
+* Add -a and -p switches for 'ethercat config' command.
 * Race in jiffies frame timeout.
 * FoE
 * Allow master requesting when in ORPHANED phase
@@ -42,6 +41,7 @@ Future issues:
 
 Smaller issues:
 
+* Stop master thread at ecrt_master_request() to get rid of allow_* flags.
 * Evaluate SII Size field (0x003E) to determine maximum SII memory size.
 * Unite fsm_pdo_mapping, fsm_pdo_config and fsm_coe_map.
 * Clear sync managers in INIT.

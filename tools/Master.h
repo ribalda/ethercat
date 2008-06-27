@@ -43,7 +43,7 @@ class Master
         void setIndex(unsigned int);
 
         void writeAlias(int, bool, const vector<string> &);
-        void showConfig();
+        void showConfigs(bool);
         void outputData(int);
         void setDebug(const vector<string> &);
         void showDomains(int);
@@ -64,6 +64,8 @@ class Master
         void close();
 
         void writeSlaveAlias(uint16_t, uint16_t);
+        void showConfigs();
+        void listConfigs();
         void outputDomainData(unsigned int);
         void showDomain(unsigned int);
         void listSlavePdos(uint16_t, bool = false, bool = false);

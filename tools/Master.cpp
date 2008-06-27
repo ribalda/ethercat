@@ -173,91 +173,14 @@ void Master::writeAlias(
 
 /*****************************************************************************/
 
-/**
- * Lists the bus configuration.
+/** Lists the bus configuration.
  */
-void Master::showConfig()
+void Master::showConfigs(bool verbose)
 {
-    ec_ioctl_master_t master;
-    unsigned int i, j, k, l;
-    ec_ioctl_config_t config;
-    ec_ioctl_config_pdo_t pdo;
-    ec_ioctl_config_pdo_entry_t entry;
-    ec_ioctl_config_sdo_t sdo;
-
-    open(Read);
-    getMaster(&master);
-
-    for (i = 0; i < master.config_count; i++) {
-        getConfig(&config, i);
-
-        cout << "Alias: 0x"
-            << hex << setfill('0') << setw(4) << config.alias << endl
-            << "Position: " << dec << config.position << endl
-            << "Vendor Id: 0x"
-            << hex << setw(8) << config.vendor_id << endl
-            << "Product code: 0x"
-            << hex << setw(8) << config.product_code << endl
-            << "Attached: " << (config.attached ? "yes" : "no") << endl
-            << "Operational: " << (config.operational ? "yes" : "no") << endl;
-
-        for (j = 0; j < 16; j++) {
-            if (config.syncs[j].pdo_count) {
-                cout << "SM" << dec << j << " ("
-                    << (config.syncs[j].dir == EC_DIR_INPUT
-                            ? "Input" : "Output") << ")" << endl;
-                for (k = 0; k < config.syncs[j].pdo_count; k++) {
-                    getConfigPdo(&pdo, i, j, k);
-
-                    cout << "  Pdo 0x"
-                        << hex << setfill('0') << setw(4) << pdo.index
-                        << " \"" << pdo.name << "\"" << endl;
-
-                    for (l = 0; l < pdo.entry_count; l++) {
-                        getConfigPdoEntry(&entry, i, j, k, l);
-
-                        cout << "    Pdo entry 0x"
-                            << hex << setfill('0') << setw(4) << entry.index
-                            << ":" << setw(2) << (unsigned int) entry.subindex
-                            << ", " << dec << (unsigned int) entry.bit_length
-                            << " bit, \"" << entry.name << "\"" << endl;
-                    }
-                }
-            }
-        }
-
-        if (config.sdo_count) {
-            cout << "Sdo configuration:" << endl;
-            for (j = 0; j < config.sdo_count; j++) {
-                getConfigSdo(&sdo, i, j);
-
-                cout << "  0x"
-                    << hex << setfill('0') << setw(4) << sdo.index
-                    << ":" << setw(2) << (unsigned int) sdo.subindex
-                    << ", " << sdo.size << " byte: " << hex;
-
-                switch (sdo.size) {
-                    case 1:
-                        cout << "0x" << setw(2)
-                            << (unsigned int) *(uint8_t *) &sdo.data;
-                        break;
-                    case 2:
-                        cout << "0x" << setw(4)
-                            << le16tocpu(*(uint16_t *) &sdo.data);
-                        break;
-                    case 4:
-                        cout << "0x" << setw(8)
-                            << le32tocpu(*(uint32_t *) &sdo.data);
-                        break;
-                    default:
-                        cout << "???";
-                }
-
-                cout << endl;
-            }
-        }
-
-        cout << endl;
+    if (verbose) {
+        showConfigs();
+    } else {
+        listConfigs();
     }
 }
 
@@ -1034,6 +957,180 @@ void Master::writeSlaveAlias(
     }
 
     delete [] data.words;
+}
+
+/*****************************************************************************/
+
+/** Lists the complete bus configuration.
+ */
+void Master::showConfigs()
+{
+    ec_ioctl_master_t master;
+    unsigned int i, j, k, l;
+    ec_ioctl_config_t config;
+    ec_ioctl_config_pdo_t pdo;
+    ec_ioctl_config_pdo_entry_t entry;
+    ec_ioctl_config_sdo_t sdo;
+
+    open(Read);
+    getMaster(&master);
+
+    for (i = 0; i < master.config_count; i++) {
+        getConfig(&config, i);
+
+        cout << "Alias: 0x"
+            << hex << setfill('0') << setw(4) << config.alias << endl
+            << "Position: " << dec << config.position << endl
+            << "Vendor Id: 0x"
+            << hex << setw(8) << config.vendor_id << endl
+            << "Product code: 0x"
+            << hex << setw(8) << config.product_code << endl
+            << "Attached: " << (config.attached ? "yes" : "no") << endl
+            << "Operational: " << (config.operational ? "yes" : "no") << endl;
+
+        for (j = 0; j < 16; j++) {
+            if (config.syncs[j].pdo_count) {
+                cout << "SM" << dec << j << " ("
+                    << (config.syncs[j].dir == EC_DIR_INPUT
+                            ? "Input" : "Output") << ")" << endl;
+                for (k = 0; k < config.syncs[j].pdo_count; k++) {
+                    getConfigPdo(&pdo, i, j, k);
+
+                    cout << "  Pdo 0x"
+                        << hex << setfill('0') << setw(4) << pdo.index
+                        << " \"" << pdo.name << "\"" << endl;
+
+                    for (l = 0; l < pdo.entry_count; l++) {
+                        getConfigPdoEntry(&entry, i, j, k, l);
+
+                        cout << "    Pdo entry 0x"
+                            << hex << setfill('0') << setw(4) << entry.index
+                            << ":" << setw(2) << (unsigned int) entry.subindex
+                            << ", " << dec << (unsigned int) entry.bit_length
+                            << " bit, \"" << entry.name << "\"" << endl;
+                    }
+                }
+            }
+        }
+
+        if (config.sdo_count) {
+            cout << "Sdo configuration:" << endl;
+            for (j = 0; j < config.sdo_count; j++) {
+                getConfigSdo(&sdo, i, j);
+
+                cout << "  0x"
+                    << hex << setfill('0') << setw(4) << sdo.index
+                    << ":" << setw(2) << (unsigned int) sdo.subindex
+                    << ", " << sdo.size << " byte: " << hex;
+
+                switch (sdo.size) {
+                    case 1:
+                        cout << "0x" << setw(2)
+                            << (unsigned int) *(uint8_t *) &sdo.data;
+                        break;
+                    case 2:
+                        cout << "0x" << setw(4)
+                            << le16tocpu(*(uint16_t *) &sdo.data);
+                        break;
+                    case 4:
+                        cout << "0x" << setw(8)
+                            << le32tocpu(*(uint32_t *) &sdo.data);
+                        break;
+                    default:
+                        cout << "???";
+                }
+
+                cout << endl;
+            }
+        }
+
+        cout << endl;
+    }
+}
+
+/*****************************************************************************/
+
+struct ConfigInfo {
+    string alias;
+    string pos;
+    string ident;
+    string att;
+    string op;
+};
+
+/** Lists the bus configuration.
+ */
+void Master::listConfigs()
+{
+    ec_ioctl_master_t master;
+    unsigned int i;
+    ec_ioctl_config_t config;
+    stringstream str;
+    ConfigInfo info;
+    typedef list<ConfigInfo> ConfigInfoList;
+    ConfigInfoList list;
+    ConfigInfoList::const_iterator iter;
+    unsigned int maxAliasWidth = 0, maxPosWidth = 0,
+                 maxAttWidth = 0, maxOpWidth = 0;
+
+    open(Read);
+    getMaster(&master);
+
+    for (i = 0; i < master.config_count; i++) {
+        getConfig(&config, i);
+
+        str << dec << config.alias;
+        info.alias = str.str();
+        str.clear();
+        str.str("");
+
+        str << dec << config.position;
+        info.pos = str.str();
+        str.clear();
+        str.str("");
+
+        str << "0x"
+            << hex << setfill('0') << setw(8) << config.vendor_id
+            << "/0x"
+            << hex << setw(8) << config.product_code;
+        info.ident = str.str();
+        str.clear();
+        str.str("");
+
+        str << (config.attached ? "attached" : "-");
+        info.att = str.str();
+        str.clear();
+        str.str("");
+
+        str << (config.operational ? "operational" : "-");
+        info.op = str.str();
+        str.clear();
+        str.str("");
+
+        list.push_back(info);
+
+        if (info.alias.length() > maxAliasWidth)
+            maxAliasWidth = info.alias.length();
+        if (info.pos.length() > maxPosWidth)
+            maxPosWidth = info.pos.length();
+        if (info.att.length() > maxAttWidth)
+            maxAttWidth = info.att.length();
+        if (info.op.length() > maxOpWidth)
+            maxOpWidth = info.op.length();
+    }
+
+    for (iter = list.begin(); iter != list.end(); iter++) {
+        cout << setfill(' ') << right
+            << setw(maxAliasWidth) << iter->alias
+            << ":" << left
+            << setw(maxPosWidth) << iter->pos
+            << "  "
+            << iter->ident
+            << "  "
+            << setw(maxAttWidth) << iter->att << "  "
+            << setw(maxOpWidth) << iter->op << "  "
+            << endl;
+    }
 }
 
 /****************************************************************************/
