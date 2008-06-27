@@ -1377,17 +1377,13 @@ void Master::listSlaves(int slavePosition)
             str.clear();
             str.str("");
 
-            if (lastAlias) {
-                str << "#" << hex << lastAlias;
-                slaveInfo.alias = str.str();
-                str.str("");
-                str << ":" << dec << aliasIndex;
-                slaveInfo.relPos = str.str();
-                str.str("");
-            } else {
-                slaveInfo.alias = "";
-                slaveInfo.relPos = "";
-            }
+            str << lastAlias;
+            slaveInfo.alias = str.str();
+            str.str("");
+
+            str << aliasIndex;
+            slaveInfo.relPos = str.str();
+            str.str("");
 
             slaveInfo.state = slaveState(slave.state);
             slaveInfo.flag = (slave.error_flag ? 'E' : '+');
@@ -1415,15 +1411,14 @@ void Master::listSlaves(int slavePosition)
                 maxStateWidth = slaveInfo.state.length();
         }
 
-        if (lastAlias)
-            aliasIndex++;
+        aliasIndex++;
     }
 
     for (iter = slaveInfoList.begin(); iter != slaveInfoList.end(); iter++) {
         cout << setfill(' ') << right
             << setw(maxPosWidth) << iter->pos << "  "
             << setw(maxAliasWidth) << iter->alias
-            << left
+            << ":" << left
             << setw(maxRelPosWidth) << iter->relPos << "  "
             << setw(maxStateWidth) << iter->state << "  "
             << iter->flag << "  "
