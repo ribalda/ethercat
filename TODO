@@ -15,8 +15,8 @@ Version 1.4.0:
 * Adapt remaining examples.
 * READMEs for examples.
 * Update documentation.
-* Overthink display style of hex numbers.
 * Add -a and -p switches for 'ethercat config' command.
+* Scan Sdo indices with optional '0x'.
 * Race in jiffies frame timeout.
 * FoE
 * Allow master requesting when in ORPHANED phase

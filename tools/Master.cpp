@@ -142,7 +142,7 @@ void Master::writeAlias(
     }
 
     strAlias << commandArgs[0];
-    strAlias >> hex >> number;
+    strAlias >> number;
     if (strAlias.fail() || number < 0x0000 || number > 0xffff) {
         err << "Invalid alias '" << commandArgs[0] << "'!";
         throw MasterException(err.str());
@@ -153,9 +153,8 @@ void Master::writeAlias(
         unsigned int numSlaves, i;
 
         if (!force) {
-            err << "This will write the alias addresses of all slaves to 0x"
-                << hex << setfill('0') << setw(4) << alias << "! "
-                << "Please specify --force to proceed.";
+            err << "This will write the alias addresses of all slaves to "
+                << alias << "! Please specify --force to proceed.";
             throw MasterException(err.str());
         }
 
@@ -978,11 +977,11 @@ void Master::showConfigs()
     for (i = 0; i < master.config_count; i++) {
         getConfig(&config, i);
 
-        cout << "Alias: 0x"
-            << hex << setfill('0') << setw(4) << config.alias << endl
-            << "Position: " << dec << config.position << endl
+        cout << "Alias: "
+            << dec << config.alias << endl
+            << "Position: " << config.position << endl
             << "Vendor Id: 0x"
-            << hex << setw(8) << config.vendor_id << endl
+            << hex << setfill('0') << setw(8) << config.vendor_id << endl
             << "Product code: 0x"
             << hex << setw(8) << config.product_code << endl
             << "Attached: " << (config.attached ? "yes" : "no") << endl
@@ -1306,7 +1305,7 @@ void Master::listSlaveSdos(
     for (i = 0; i < slave.sdo_count; i++) {
         getSdo(&sdo, slavePosition, i);
 
-        cout << "Sdo "
+        cout << "Sdo 0x"
             << hex << setfill('0') << setw(4) << sdo.sdo_index
             << ", \"" << sdo.name << "\"" << endl;
 
@@ -1316,7 +1315,7 @@ void Master::listSlaveSdos(
         for (j = 0; j <= sdo.max_subindex; j++) {
             getSdoEntry(&entry, slavePosition, -i, j);
 
-            cout << "  " << hex << setfill('0')
+            cout << "  0x" << hex << setfill('0')
                 << setw(4) << sdo.sdo_index << ":" 
                 << setw(2) << (unsigned int) entry.sdo_entry_subindex
                 << ", ";
@@ -1391,8 +1390,8 @@ void Master::listSlaves(int slavePosition)
             if (strlen(slave.name)) {
                 slaveInfo.name = slave.name;
             } else {
-                str << hex << setfill('0')
-                    << setw(8) << slave.vendor_id << ":"
+                str << "0x" << hex << setfill('0')
+                    << setw(8) << slave.vendor_id << ":0x"
                     << setw(8) << slave.product_code;
                 slaveInfo.name = str.str();
                 str.str("");
@@ -1437,7 +1436,7 @@ void Master::showSlave(uint16_t slavePosition)
     getSlave(&slave, slavePosition);
         
     cout << "Slave " << dec << slavePosition << endl
-        << "Alias: 0x" << hex << setfill('0') << setw(4) << slave.alias << endl
+        << "Alias: " << slave.alias << endl
         << "State: " << slaveState(slave.state) << endl
         << "Flag: " << (slave.error_flag ? 'E' : '+') << endl
         << "Identity:" << endl
