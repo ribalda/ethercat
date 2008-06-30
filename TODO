@@ -16,7 +16,6 @@ Version 1.4.0:
 * READMEs for examples.
 * Update documentation.
 * Add -a and -p switches for 'ethercat config' command.
-* Scan Sdo indices with optional '0x'.
 * Race in jiffies frame timeout.
 * FoE
 * Allow master requesting when in ORPHANED phase

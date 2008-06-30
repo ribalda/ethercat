@@ -142,7 +142,9 @@ void Master::writeAlias(
     }
 
     strAlias << commandArgs[0];
-    strAlias >> number;
+    strAlias
+        >> resetiosflags(ios::basefield) // guess base from prefix
+        >> number;
     if (strAlias.fail() || number < 0x0000 || number > 0xffff) {
         err << "Invalid alias '" << commandArgs[0] << "'!";
         throw MasterException(err.str());
@@ -217,7 +219,8 @@ void Master::setDebug(const vector<string> &commandArgs)
     }
 
     str << commandArgs[0];
-    str >> debugLevel;
+    str >> resetiosflags(ios::basefield) // guess base from prefix
+        >> debugLevel;
 
     if (str.fail()) {
         stringstream err;
@@ -350,9 +353,8 @@ void Master::sdoDownload(
         )
 {
     stringstream strIndex, strSubIndex, strValue, err;
-    int number, sval;
     ec_ioctl_sdo_download_t data;
-    unsigned int i, uval;
+    unsigned int i, number;
     const CoEDataType *dataType = NULL;
 
     if (slavePosition < 0) {
@@ -367,16 +369,19 @@ void Master::sdoDownload(
     }
 
     strIndex << commandArgs[0];
-    strIndex >> hex >> number;
-    if (strIndex.fail() || number < 0x0000 || number > 0xffff) {
+    strIndex
+        >> resetiosflags(ios::basefield) // guess base from prefix
+        >> data.sdo_index;
+    if (strIndex.fail()) {
         err << "Invalid Sdo index '" << commandArgs[0] << "'!";
         throw MasterException(err.str());
     }
-    data.sdo_index = number;
 
     strSubIndex << commandArgs[1];
-    strSubIndex >> hex >> number;
-    if (strSubIndex.fail() || number < 0x00 || number > 0xff) {
+    strSubIndex
+        >> resetiosflags(ios::basefield) // guess base from prefix
+        >> number;
+    if (strSubIndex.fail() || number > 0xff) {
         err << "Invalid Sdo subindex '" << commandArgs[1] << "'!";
         throw MasterException(err.str());
     }
@@ -418,70 +423,75 @@ void Master::sdoDownload(
     data.data = new uint8_t[data.data_size + 1];
 
     strValue << commandArgs[2];
+    strValue >> resetiosflags(ios::basefield); // guess base from prefix
+    strValue.exceptions(ios::failbit);
 
-    switch (dataType->coeCode) {
-        case 0x0002: // int8
-            strValue >> sval;
-            if ((uint32_t) sval > 0xff) {
-                delete [] data.data;
-                err << "Invalid value for type '"
-                    << dataType->name << "'!";
-                throw MasterException(err.str());
-            }
-            *data.data = (int8_t) sval;
-            break;
-        case 0x0003: // int16
-            strValue >> sval;
-            if ((uint32_t) sval > 0xffff) {
-                delete [] data.data;
-                err << "Invalid value for type '"
-                    << dataType->name << "'!";
-                throw MasterException(err.str());
-            }
-            *(int16_t *) data.data = cputole16(sval);
-            break;
-        case 0x0004: // int32
-            strValue >> sval;
-            *(int32_t *) data.data = cputole32(sval);
-            break;
-        case 0x0005: // uint8
-            strValue >> uval;
-            if ((uint32_t) uval > 0xff) {
-                delete [] data.data;
-                err << "Invalid value for type '"
-                    << dataType->name << "'!";
-                throw MasterException(err.str());
-            }
-            *data.data = (uint8_t) uval;
-            break;
-        case 0x0006: // uint16
-            strValue >> uval;
-            if ((uint32_t) uval > 0xffff) {
-                delete [] data.data;
-                err << "Invalid value for type '"
-                    << dataType->name << "'!";
-                throw MasterException(err.str());
-            }
-            *(uint16_t *) data.data = cputole16(uval);
-            break;
-        case 0x0007: // uint32
-            strValue >> uval;
-            *(uint32_t *) data.data = cputole32(uval);
-            break;
-        case 0x0009: // string
-            if (strValue.str().size() >= data.data_size) {
-                err << "String too big";
-                throw MasterException(err.str());
-            }
-            data.data_size = strValue.str().size();
-            strValue >> (char *) data.data;
-            break;
-        default:
-            break;
-    }
+    try {
+        switch (dataType->coeCode) {
+            case 0x0002: // int8
+                {
+                    int16_t val; // uint8_t is interpreted as char
+                    strValue >> val;
+                    if (val > 127 || val < -128)
+                        throw ios::failure("Value out of range");
+                    *data.data = val;
+                    break;
+                }
+            case 0x0003: // int16
+                {
+                    int16_t val;
+                    strValue >> val;
+                    *(int16_t *) data.data = cputole16(val);
+                    break;
+                }
+            case 0x0004: // int32
+                {
+                    int32_t val;
+                    strValue >> val;
+                    *(int32_t *) data.data = cputole32(val);
+                    break;
+                }
+            case 0x0005: // uint8
+                {
+                    uint16_t val; // uint8_t is interpreted as char
+                    strValue >> val;
+                    if (val > 0xff)
+                        throw ios::failure("Value out of range");
+                    *data.data = val;
+                    break;
+                }
+            case 0x0006: // uint16
+                {
+                    uint16_t val;
+                    strValue >> val;
+                    *(uint16_t *) data.data = cputole16(val);
+                    break;
+                }
+            case 0x0007: // uint32
+                {
+                    uint32_t val;
+                    strValue >> val;
+                    *(uint32_t *) data.data = cputole32(val);
+                    break;
+                }
+            case 0x0009: // string
+                if (strValue.str().size() >= data.data_size) {
+                    err << "String too large";
+                    throw MasterException(err.str());
+                }
+                data.data_size = strValue.str().size();
+                strValue >> (char *) data.data;
+                break;
 
-    if (strValue.fail()) {
-        err << "Invalid value argument '" << commandArgs[2] << "'!";
+            default:
+                delete [] data.data;
+                err << "Unknown data type 0x" << hex << dataType->coeCode;
+                throw MasterException(err.str());
+        }
+    } catch (ios::failure &e) {
+        delete [] data.data;
+        err << "Invalid value argument '" << commandArgs[2]
+            << "' for type '" << dataType->name << "'!";
         throw MasterException(err.str());
     }
 
@@ -491,8 +501,8 @@ void Master::sdoDownload(
         stringstream err;
         err << "Failed to download Sdo: ";
         if (errno == EIO && data.abort_code) {
-            err << "Abort code 0x" << hex << setfill('0') << setw(8)
-                << data.abort_code;
+            err << "Abort code 0x" << hex << setfill('0')
+                << setw(8) << data.abort_code;
         } else {
             err << strerror(errno);
         }
@@ -512,7 +522,7 @@ void Master::sdoUpload(
         )
 {
     stringstream strIndex, strSubIndex;
-    int number, sval;
+    int sval;
     ec_ioctl_sdo_upload_t data;
     unsigned int i, uval;
     const CoEDataType *dataType = NULL;
@@ -531,22 +541,25 @@ void Master::sdoUpload(
     }
 
     strIndex << commandArgs[0];
-    strIndex >> hex >> number;
-    if (strIndex.fail() || number < 0x0000 || number > 0xffff) {
+    strIndex
+        >> resetiosflags(ios::basefield) // guess base from prefix
+        >> data.sdo_index;
+    if (strIndex.fail()) {
         stringstream err;
         err << "Invalid Sdo index '" << commandArgs[0] << "'!";
         throw MasterException(err.str());
     }
-    data.sdo_index = number;
 
     strSubIndex << commandArgs[1];
-    strSubIndex >> hex >> number;
-    if (strSubIndex.fail() || number < 0x00 || number > 0xff) {
+    strSubIndex
+        >> resetiosflags(ios::basefield) // guess base from prefix
+        >> uval;
+    if (strSubIndex.fail() || uval > 0xff) {
         stringstream err;
         err << "Invalid Sdo subindex '" << commandArgs[1] << "'!";
         throw MasterException(err.str());
     }
-    data.sdo_entry_subindex = number;
+    data.sdo_entry_subindex = uval;
 
     if (dataTypeStr != "") { // data type specified
         if (!(dataType = findDataType(dataTypeStr))) {
@@ -592,8 +605,8 @@ void Master::sdoUpload(
         stringstream err;
         err << "Failed to upload Sdo: ";
         if (errno == EIO && data.abort_code) {
-            err << "Abort code 0x" << hex << setfill('0') << setw(8)
-                << data.abort_code;
+            err << "Abort code 0x" << hex << setfill('0')
+                << setw(8) << data.abort_code;
         } else {
             err << strerror(errno);
         }
@@ -981,9 +994,10 @@ void Master::showConfigs()
             << dec << config.alias << endl
             << "Position: " << config.position << endl
             << "Vendor Id: 0x"
-            << hex << setfill('0') << setw(8) << config.vendor_id << endl
+            << hex << setfill('0')
+            << setw(8) << config.vendor_id << endl
             << "Product code: 0x"
-            << hex << setw(8) << config.product_code << endl
+            << setw(8) << config.product_code << endl
             << "Attached: " << (config.attached ? "yes" : "no") << endl
             << "Operational: " << (config.operational ? "yes" : "no") << endl;
 
@@ -995,16 +1009,16 @@ void Master::showConfigs()
                 for (k = 0; k < config.syncs[j].pdo_count; k++) {
                     getConfigPdo(&pdo, i, j, k);
 
-                    cout << "  Pdo 0x"
-                        << hex << setfill('0') << setw(4) << pdo.index
+                    cout << "  Pdo 0x" << hex
+                        << setw(4) << pdo.index
                         << " \"" << pdo.name << "\"" << endl;
 
                     for (l = 0; l < pdo.entry_count; l++) {
                         getConfigPdoEntry(&entry, i, j, k, l);
 
-                        cout << "    Pdo entry 0x"
-                            << hex << setfill('0') << setw(4) << entry.index
-                            << ":" << setw(2) << (unsigned int) entry.subindex
+                        cout << "    Pdo entry 0x" << hex
+                            << setw(4) << entry.index << ":"
+                            << setw(2) << (unsigned int) entry.subindex
                             << ", " << dec << (unsigned int) entry.bit_length
                             << " bit, \"" << entry.name << "\"" << endl;
                     }
@@ -1018,9 +1032,10 @@ void Master::showConfigs()
                 getConfigSdo(&sdo, i, j);
 
                 cout << "  0x"
-                    << hex << setfill('0') << setw(4) << sdo.index
-                    << ":" << setw(2) << (unsigned int) sdo.subindex
-                    << ", " << sdo.size << " byte: " << hex;
+                    << hex << setfill('0')
+                    << setw(4) << sdo.index << ":"
+                    << setw(2) << (unsigned int) sdo.subindex
+                    << ", " << dec << sdo.size << " byte: " << hex;
 
                 switch (sdo.size) {
                     case 1:
@@ -1083,15 +1098,14 @@ void Master::listConfigs()
         str.clear();
         str.str("");
 
-        str << dec << config.position;
+        str << config.position;
         info.pos = str.str();
         str.clear();
         str.str("");
 
-        str << "0x"
-            << hex << setfill('0') << setw(8) << config.vendor_id
-            << "/0x"
-            << hex << setw(8) << config.product_code;
+        str << hex << setfill('0')
+            << "0x" << setw(8) << config.vendor_id
+            << "/0x" << setw(8) << config.product_code;
         info.ident = str.str();
         str.clear();
         str.str("");
@@ -1175,12 +1189,14 @@ void Master::showDomain(unsigned int domainIndex)
     
     getDomain(&domain, domainIndex);
 
-	cout << "Domain" << domainIndex << ":"
+	cout << "Domain" << dec << domainIndex << ":"
 		<< " LogBaseAddr 0x"
-		<< hex << setfill('0') << setw(8) << domain.logical_base_address
-		<< ", Size " << dec << setfill(' ') << setw(3) << domain.data_size
+		<< hex << setfill('0')
+        << setw(8) << domain.logical_base_address
+		<< ", Size " << dec << setfill(' ')
+        << setw(3) << domain.data_size
 		<< ", WorkingCounter "
-		<< dec << domain.working_counter << "/"
+		<< domain.working_counter << "/"
         << domain.expected_working_counter << endl;
 
     if (!domain.data_size)
@@ -1199,12 +1215,14 @@ void Master::showDomain(unsigned int domainIndex)
         getFmmu(&fmmu, domainIndex, i);
 
         cout << "  SlaveConfig "
-            << fmmu.slave_config_alias << ":" << fmmu.slave_config_position
-            << ", SM" << dec << (unsigned int) fmmu.sync_index << " ("
-            << setfill(' ') << setw(3)
+            << dec << fmmu.slave_config_alias
+            << ":" << fmmu.slave_config_position
+            << ", SM" << (unsigned int) fmmu.sync_index << " ("
+            << setfill(' ') << setw(6)
             << (fmmu.dir == EC_DIR_INPUT ? "Input" : "Output")
-            << "), LogAddr 0x" 
-            << hex << setfill('0') << setw(8) << fmmu.logical_address
+            << "), LogAddr 0x"
+            << hex << setfill('0')
+            << setw(8) << fmmu.logical_address
             << ", Size " << dec << fmmu.data_size << endl;
 
         dataOffset = fmmu.logical_address - domain.logical_base_address;
@@ -1250,7 +1268,8 @@ void Master::listSlavePdos(
 
         cout << "SM" << i << ":"
             << " PhysAddr 0x"
-            << hex << setfill('0') << setw(4) << sync.physical_start_address
+            << hex << setfill('0')
+            << setw(4) << sync.physical_start_address
             << ", DefaultSize "
             << dec << setfill(' ') << setw(4) << sync.default_size
             << ", ControlRegister 0x"
@@ -1264,7 +1283,8 @@ void Master::listSlavePdos(
 
             cout << "  " << (sync.control_register & 0x04 ? "R" : "T")
                 << "xPdo 0x"
-                << hex << setfill('0') << setw(4) << pdo.index
+                << hex << setfill('0')
+                << setw(4) << pdo.index
                 << " \"" << pdo.name << "\"" << endl;
 
             if (quiet)
@@ -1274,7 +1294,8 @@ void Master::listSlavePdos(
                 getPdoEntry(&entry, slavePosition, i, j, k);
 
                 cout << "    Pdo entry 0x"
-                    << hex << setfill('0') << setw(4) << entry.index
+                    << hex << setfill('0')
+                    << setw(4) << entry.index
                     << ":" << setw(2) << (unsigned int) entry.subindex
                     << ", " << dec << (unsigned int) entry.bit_length
                     << " bit, \"" << entry.name << "\"" << endl;
@@ -1306,7 +1327,8 @@ void Master::listSlaveSdos(
         getSdo(&sdo, slavePosition, i);
 
         cout << "Sdo 0x"
-            << hex << setfill('0') << setw(4) << sdo.sdo_index
+            << hex << setfill('0')
+            << setw(4) << sdo.sdo_index
             << ", \"" << sdo.name << "\"" << endl;
 
         if (quiet)
@@ -1316,7 +1338,7 @@ void Master::listSlaveSdos(
             getSdoEntry(&entry, slavePosition, -i, j);
 
             cout << "  0x" << hex << setfill('0')
-                << setw(4) << sdo.sdo_index << ":" 
+                << setw(4) << sdo.sdo_index << ":"
                 << setw(2) << (unsigned int) entry.sdo_entry_subindex
                 << ", ";
 
@@ -1444,13 +1466,14 @@ void Master::showSlave(uint16_t slavePosition)
         << "State: " << slaveState(slave.state) << endl
         << "Flag: " << (slave.error_flag ? 'E' : '+') << endl
         << "Identity:" << endl
-        << "  Vendor Id: 0x"
-        << hex << setfill('0') << setw(8) << slave.vendor_id << endl
-        << "  Product code: 0x"
+        << "  Vendor Id:       0x"
+        << hex << setfill('0')
+        << setw(8) << slave.vendor_id << endl
+        << "  Product code:    0x"
         << setw(8) << slave.product_code << endl
         << "  Revision number: 0x"
         << setw(8) << slave.revision_number << endl
-        << "  Serial number: 0x"
+        << "  Serial number:   0x"
         << setw(8) << slave.serial_number << endl;
 
     if (slave.mailbox_protocols) {
