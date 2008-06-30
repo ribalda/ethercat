@@ -1577,6 +1577,24 @@ void Master::generateSlaveXml(uint16_t slavePosition)
         << hex << setfill('0') << setw(8) << slave.revision_number
         << "\"/>" << endl;
 
+    if (strlen(slave.name)) {
+        cout
+            << "          <Name><![CDATA["
+            << slave.name
+            << "]]></Name>" << endl;
+    }
+
+    for (i = 0; i < slave.sync_count; i++) {
+        getSync(&sync, slavePosition, i);
+
+        cout
+            << "          <Sm Enable=\"" << dec << (unsigned int) sync.enable
+            << "\" StartAddress=\"" << sync.physical_start_address
+            << "\" ControlByte=\"" << (unsigned int) sync.control_register
+            << "\" DefaultSize=\"" << sync.default_size
+            << "\" />" << endl;
+    }
+
     for (i = 0; i < slave.sync_count; i++) {
         getSync(&sync, slavePosition, i);
 
