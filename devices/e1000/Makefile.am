@@ -105,6 +105,9 @@ EXTRA_DIST = \
 	e1000_param-2.6.24-ethercat.c \
 	e1000_param-2.6.24-orig.c
 
+BUILT_SOURCES = \
+	Kbuild
+
 modules:
 	$(MAKE) -C "@abs_top_srcdir@" modules
 

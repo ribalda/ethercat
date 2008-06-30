@@ -61,7 +61,7 @@ ifeq (@ENABLE_FORCEDETH@,1)
 endif
 
 ifeq (@ENABLE_E1000@,1)
-    obj-m += e1000/
+	obj-m += e1000/
 endif
 
 ifeq (@ENABLE_R8169@,1)

@@ -59,6 +59,9 @@ EXTRA_DIST = \
 	forcedeth-2.6.19-ethercat.c \
 	forcedeth-2.6.19-orig.c
 
+BUILT_SOURCES = \
+	Kbuild
+
 modules:
 	$(MAKE) -C "@abs_top_srcdir@" modules
 

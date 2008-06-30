@@ -37,31 +37,31 @@ obj-m := ec_master.o
 
 ec_master-objs := \
 	cdev.o \
-    datagram.o \
-    device.o \
-    domain.o \
-    fmmu_config.o \
-    fsm_change.o \
-    fsm_coe.o \
-    fsm_coe_map.o \
-    fsm_master.o \
-    fsm_pdo_assign.o \
-    fsm_pdo_mapping.o \
-    fsm_sii.o \
-    fsm_slave_config.o \
-    fsm_slave_scan.o \
-    mailbox.o \
-    master.o \
-    module.o \
-    pdo.o \
-    pdo_entry.o \
-    pdo_list.o \
-    sdo.o \
-    sdo_entry.o \
-    sdo_request.o \
-    slave.o \
-    slave_config.o \
-    sync.o \
+	datagram.o \
+	device.o \
+	domain.o \
+	fmmu_config.o \
+	fsm_change.o \
+	fsm_coe.o \
+	fsm_coe_map.o \
+	fsm_master.o \
+	fsm_pdo_assign.o \
+	fsm_pdo_mapping.o \
+	fsm_sii.o \
+	fsm_slave_config.o \
+	fsm_slave_scan.o \
+	mailbox.o \
+	master.o \
+	module.o \
+	pdo.o \
+	pdo_entry.o \
+	pdo_list.o \
+	sdo.o \
+	sdo_entry.o \
+	sdo_request.o \
+	slave.o \
+	slave_config.o \
+	sync.o \
 	sync_config.o
 
 ifeq (@ENABLE_EOE@,1)

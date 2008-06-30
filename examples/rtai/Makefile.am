@@ -37,15 +37,17 @@ EXTRA_DIST = \
 	Kbuild.in \
 	rtai_sample.c
 
-all:
+BUILT_SOURCES = \
+	Kbuild
+
+modules:
 	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" modules
+
+modules_install:
+	mkdir -p $(DESTDIR)$(LINUX_MOD_PATH)
+	cp $(srcdir)/ec_rtai_sample.ko $(DESTDIR)$(LINUX_MOD_PATH)
 
 clean-local:
 	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" clean
-
-install-data-local: modules_install
-
-modules_install:
-	cp $(srcdir)/ec_rtai_sample.ko $(DESTDIR)$(LINUX_MOD_PATH)
 
 #------------------------------------------------------------------------------

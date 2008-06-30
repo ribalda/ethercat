@@ -37,22 +37,25 @@ MODULE := ec_msr_sample
 
 obj-m := $(MODULE).o
 
-$(MODULE)-objs := msr_sample.o \
-                        rt_lib/msr-core/msr_lists.o \
-                        rt_lib/msr-core/msr_main.o \
-                        rt_lib/msr-core/msr_charbuf.o \
-                        rt_lib/msr-core/msr_reg.o \
-                        rt_lib/msr-core/msr_interpreter.o \
-                        rt_lib/msr-core/msr_messages.o \
-                        rt_lib/msr-core/msr_proc.o \
-                        rt_lib/msr-core/msr_error_reg.o \
-                        rt_lib/msr-utils/msr_utils.o \
-                        rt_lib/msr-utils/msr_time.o \
-                        rt_lib/msr-math/msr_base64.o \
-                        rt_lib/msr-math/msr_hex_bin.o \
-                        libm.o
+$(MODULE)-objs := \
+	msr_sample.o \
+	rt_lib/msr-core/msr_lists.o \
+	rt_lib/msr-core/msr_main.o \
+	rt_lib/msr-core/msr_charbuf.o \
+	rt_lib/msr-core/msr_reg.o \
+	rt_lib/msr-core/msr_interpreter.o \
+	rt_lib/msr-core/msr_messages.o \
+	rt_lib/msr-core/msr_proc.o \
+	rt_lib/msr-core/msr_error_reg.o \
+	rt_lib/msr-utils/msr_utils.o \
+	rt_lib/msr-utils/msr_time.o \
+	rt_lib/msr-math/msr_base64.o \
+	rt_lib/msr-math/msr_hex_bin.o \
+	libm.o
 
-EXTRA_CFLAGS := -I@MSR_DIR@/include -I@RTAI_DIR@/include \
-                -D_SIMULATION -mhard-float
+EXTRA_CFLAGS := \
+	-I@MSR_DIR@/include \
+	-I@RTAI_DIR@/include \
+	-D_SIMULATION -mhard-float
 
 #------------------------------------------------------------------------------
