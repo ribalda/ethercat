@@ -88,6 +88,7 @@ struct ec_master {
 
     ec_cdev_t cdev; /**< Master character device. */
     struct class_device *class_device; /**< Master class device. */
+    struct semaphore master_sem; /**< Master semaphore. */
 
     ec_device_t main_device; /**< EtherCAT main device. */
     const uint8_t *main_mac; /**< MAC address of main device. */

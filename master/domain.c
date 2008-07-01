@@ -344,10 +344,14 @@ size_t ecrt_domain_size(ec_domain_t *domain)
 
 void ecrt_domain_external_memory(ec_domain_t *domain, uint8_t *mem)
 {
+    down(&domain->master->master_sem);
+
     ec_domain_clear_data(domain);
 
     domain->data = mem;
     domain->data_origin = EC_ORIG_EXTERNAL;
+
+    up(&domain->master->master_sem);
 }
 
 /*****************************************************************************/

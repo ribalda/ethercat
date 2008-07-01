@@ -151,7 +151,11 @@ int ec_slave_config_prepare_fmmu(
     }
 
     fmmu = &sc->fmmu_configs[sc->used_fmmus++];
+
+    down(&sc->master->master_sem);
     ec_fmmu_config_init(fmmu, sc, domain, sync_index, dir);
+    up(&sc->master->master_sem);
+
     return fmmu->logical_start_address;
 }
 
@@ -388,11 +392,18 @@ int ecrt_slave_config_pdo_assign_add(ec_slave_config_t *sc,
         return -1;
     }
 
-    if (!(pdo = ec_pdo_list_add_pdo(&sc->sync_configs[sync_index].pdos, pdo_index)))
+    down(&sc->master->master_sem);
+
+    if (!(pdo = ec_pdo_list_add_pdo(&sc->sync_configs[sync_index].pdos,
+                    pdo_index))) {
+        up(&sc->master->master_sem);
         return -1;
+    }
     pdo->sync_index = sync_index;
 
     ec_slave_config_load_default_mapping(sc, pdo);
+
+    up(&sc->master->master_sem);
     return 0;
 }
 
@@ -410,7 +421,9 @@ void ecrt_slave_config_pdo_assign_clear(ec_slave_config_t *sc,
         return;
     }
 
+    down(&sc->master->master_sem);
     ec_pdo_list_clear_pdos(&sc->sync_configs[sync_index].pdos);
+    up(&sc->master->master_sem);
 }
 
 /*****************************************************************************/
@@ -421,6 +434,7 @@ int ecrt_slave_config_pdo_mapping_add(ec_slave_config_t *sc,
 {
     uint8_t sync_index;
     ec_pdo_t *pdo = NULL;
+    int retval = -1;
     
     if (sc->master->debug_level)
         EC_DBG("ecrt_slave_config_pdo_mapping_add(sc = 0x%x, "
@@ -434,14 +448,17 @@ int ecrt_slave_config_pdo_mapping_add(ec_slave_config_t *sc,
                         &sc->sync_configs[sync_index].pdos, pdo_index)))
             break;
 
-    if (!pdo) {
+    if (pdo) {
+        down(&sc->master->master_sem);
+        retval = ec_pdo_add_entry(pdo, entry_index, entry_subindex,
+                entry_bit_length) ? 0 : -1;
+        up(&sc->master->master_sem);
+    } else {
         EC_ERR("Pdo 0x%04X is not assigned in config %u:%u.\n",
                 pdo_index, sc->alias, sc->position);
-        return -1;
     }
 
-    return ec_pdo_add_entry(pdo, entry_index, entry_subindex,
-            entry_bit_length) ? 0 : -1;
+    return retval;
 }
 
 /*****************************************************************************/
@@ -461,13 +478,14 @@ void ecrt_slave_config_pdo_mapping_clear(ec_slave_config_t *sc,
                         &sc->sync_configs[sync_index].pdos, pdo_index)))
             break;
 
-    if (!pdo) {
+    if (pdo) {
+        down(&sc->master->master_sem);
+        ec_pdo_clear_entries(pdo);
+        up(&sc->master->master_sem);
+    } else {
         EC_WARN("Pdo 0x%04X is not assigned in config %u:%u.\n",
                 pdo_index, sc->alias, sc->position);
-        return;
     }
-
-    ec_pdo_clear_entries(pdo);
 }
 
 /*****************************************************************************/
@@ -563,11 +581,6 @@ int ecrt_slave_config_reg_pdo_entry(
                 if (entry->index != index || entry->subindex != subindex) {
                     bit_offset += entry->bit_length;
                 } else {
-                    sync_offset = ec_slave_config_prepare_fmmu(
-                            sc, domain, sync_index, sync_config->dir);
-                    if (sync_offset < 0)
-                        return -2;
-
                     bit_pos = bit_offset % 8;
                     if (bit_position) {
                         *bit_position = bit_pos;
@@ -577,6 +590,11 @@ int ecrt_slave_config_reg_pdo_entry(
                                 sc->alias, sc->position);
                         return -3;
                     }
+
+                    sync_offset = ec_slave_config_prepare_fmmu(
+                            sc, domain, sync_index, sync_config->dir);
+                    if (sync_offset < 0)
+                        return -2;
 
                     return sync_offset + bit_offset / 8;
                 }
@@ -618,7 +636,10 @@ int ecrt_slave_config_sdo(ec_slave_config_t *sc, uint16_t index,
         return -1;
     }
         
+    down(&sc->master->master_sem);
     list_add_tail(&req->list, &sc->sdo_configs);
+    up(&sc->master->master_sem);
+
     return 0;
 }
 
@@ -678,7 +699,10 @@ ec_sdo_request_t *ecrt_slave_config_create_sdo_request(ec_slave_config_t *sc,
     memset(req->data, 0x00, size);
     req->data_size = size;
     
+    down(&sc->master->master_sem);
     list_add_tail(&req->list, &sc->sdo_requests);
+    up(&sc->master->master_sem);
+
     return req; 
 }
 

@@ -138,8 +138,8 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
         EC_DBG("ioctl(filp = %x, cmd = %u (%u), arg = %x)\n",
                 (u32) filp, (u32) cmd, (u32) _IOC_NR(cmd), (u32) arg);
 
-    // FIXME lock
-    
+    down(&master->master_sem);
+
     switch (cmd) {
         case EC_IOCTL_MASTER:
             {
@@ -1012,6 +1012,7 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             retval = -ENOTTY;
     }
 
+    up(&master->master_sem);
     return retval;
 }
 

@@ -85,6 +85,8 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     master->index = index;
     master->reserved = 0;
 
+    init_MUTEX(&master->master_sem);
+
     master->main_mac = main_mac;
     master->backup_mac = backup_mac;
     init_MUTEX(&master->device_sem);
@@ -360,12 +362,12 @@ int ec_master_enter_idle_phase(
         ec_master_t *master /**< EtherCAT master */
         )
 {
+    if (master->debug_level)
+        EC_DBG("ORPHANED -> IDLE.\n");
+
     master->request_cb = ec_master_request_cb;
     master->release_cb = ec_master_release_cb;
     master->cb_data = master;
-
-    if (master->debug_level)
-        EC_DBG("ORPHANED -> IDLE.\n");
 
     master->phase = EC_IDLE;
     if (ec_master_thread_start(master, ec_master_idle_thread)) {
@@ -391,7 +393,10 @@ void ec_master_leave_idle_phase(ec_master_t *master /**< EtherCAT master */)
     ec_master_eoe_stop(master);
 #endif
     ec_master_thread_stop(master);
+
+    down(&master->master_sem);
     ec_master_clear_slaves(master);
+    up(&master->master_sem);
 }
 
 /*****************************************************************************/
@@ -457,9 +462,6 @@ int ec_master_enter_operation_phase(ec_master_t *master /**< EtherCAT master */)
     }
 #endif
 
-    if (master->debug_level)
-        EC_DBG("Switching to operation phase.\n");
-
     master->phase = EC_OPERATION;
     master->ext_request_cb = NULL;
     master->ext_release_cb = NULL;
@@ -498,8 +500,10 @@ void ec_master_leave_operation_phase(ec_master_t *master
     master->release_cb = ec_master_release_cb;
     master->cb_data = master;
     
+    down(&master->master_sem);
     ec_master_clear_domains(master);
     ec_master_clear_slave_configs(master);
+    up(&master->master_sem);
 
     // set states for all slaves
     for (slave = master->slaves;
@@ -826,7 +830,9 @@ static int ec_master_idle_thread(ec_master_t *master)
             goto schedule;
 
         // execute master state machine
+        down(&master->master_sem);
         ec_fsm_master_exec(&master->fsm);
+        up(&master->master_sem);
 
         // queue and send
         spin_lock_bh(&master->internal_lock);
@@ -870,7 +876,9 @@ static int ec_master_operation_thread(ec_master_t *master)
         ec_master_output_stats(master);
 
         // execute master state machine
+        down(&master->master_sem);
         ec_fsm_master_exec(&master->fsm);
+        up(&master->master_sem);
 
         // inject datagram
         master->injection_seq_fsm++;
@@ -1146,6 +1154,8 @@ ec_domain_t *ecrt_master_create_domain(ec_master_t *master /**< master */)
         return NULL;
     }
 
+    down(&master->master_sem);
+
     if (list_empty(&master->domains)) {
         index = 0;
     } else {
@@ -1155,6 +1165,8 @@ ec_domain_t *ecrt_master_create_domain(ec_master_t *master /**< master */)
 
     ec_domain_init(domain, master, index);
     list_add_tail(&domain->list, &master->domains);
+
+    up(&master->master_sem);
 
     return domain;
 }
@@ -1166,6 +1178,8 @@ int ecrt_master_activate(ec_master_t *master)
     uint32_t domain_offset;
     ec_domain_t *domain;
 
+    down(&master->master_sem);
+
     // finish all domains
     domain_offset = 0;
     list_for_each_entry(domain, &master->domains, list) {
@@ -1175,6 +1189,8 @@ int ecrt_master_activate(ec_master_t *master)
         }
         domain_offset += domain->data_size;
     }
+    
+    up(&master->master_sem);
 
     // restart EoE process and master thread with new locking
 #ifdef EC_EOE
@@ -1327,11 +1343,15 @@ ec_slave_config_t *ecrt_master_slave_config(ec_master_t *master,
         ec_slave_config_init(sc, master,
                 alias, position, vendor_id, product_code);
 
+
+        down(&master->master_sem);
+
         // try to find the addressed slave
         ec_slave_config_attach(sc);
         ec_slave_config_load_default_sync_config(sc);
-
         list_add_tail(&sc->list, &master->configs);
+
+        up(&master->master_sem);
     }
 
     return sc;
