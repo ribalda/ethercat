@@ -17,7 +17,7 @@ Version 1.4.0:
 * Update documentation.
 * Add -a and -p switches for 'ethercat config' command.
 * Race in jiffies frame timeout.
-* FoE
+* File access over EtherCAT (FoE).
 * Allow master requesting when in ORPHANED phase
 * Get original driver for r8169.
 
@@ -49,7 +49,6 @@ Smaller issues:
 
 Less important issues:
 
-* File access over EtherCAT (FoE).
 * Allow VLAN tagging.
 * Determine number of frames, the NIC can handle.
 
