@@ -43,15 +43,12 @@
 // Module parameters
 #define FREQUENCY 100
 
-// Optional features
+// Optional features (comment to disable)
 #define CONFIGURE_PDOS
 #define EXTERNAL_MEMORY
 #define SDO_ACCESS
 
 #define PFX "ec_mini: "
-
-#define AnaInPos  0, 1
-#define DigOutPos 0, 3
 
 /*****************************************************************************/
 
@@ -66,27 +63,31 @@ static ec_domain_state_t domain1_state = {};
 static ec_slave_config_t *sc_ana_in = NULL;
 static ec_slave_config_state_t sc_ana_in_state = {};
 
+// Timer
 static struct timer_list timer;
-static unsigned int counter = 0;
 
 /*****************************************************************************/
 
 // process data
 static uint8_t *domain1_pd; // process data memory
 
-static unsigned int off_ana_in; // offsets for Pdo entries
-static unsigned int off_dig_out;
-
-static unsigned int blink = 0;
+#define AnaInSlavePos  0, 1
+#define DigOutSlavePos 0, 3
 
 #define Beckhoff_EL2004 0x00000002, 0x07D43052
 #define Beckhoff_EL3162 0x00000002, 0x0C5A3052
 
+static unsigned int off_ana_in; // offsets for Pdo entries
+static unsigned int off_dig_out;
+
 const static ec_pdo_entry_reg_t domain1_regs[] = {
-    {AnaInPos,  Beckhoff_EL3162, 0x3101, 2, &off_ana_in},
-    {DigOutPos, Beckhoff_EL2004, 0x3001, 1, &off_dig_out},
+    {AnaInSlavePos,  Beckhoff_EL3162, 0x3101, 2, &off_ana_in},
+    {DigOutSlavePos, Beckhoff_EL2004, 0x3001, 1, &off_dig_out},
     {}
 };
+
+static unsigned int counter = 0;
+static unsigned int blink = 0;
 
 /*****************************************************************************/
 
@@ -312,7 +313,7 @@ int __init init_mini_module(void)
     }
 
     if (!(sc_ana_in = ecrt_master_slave_config(
-                    master, AnaInPos, Beckhoff_EL3162))) {
+                    master, AnaInSlavePos, Beckhoff_EL3162))) {
         printk(KERN_ERR PFX "Failed to get slave configuration.\n");
         goto out_release_master;
     }
@@ -324,7 +325,8 @@ int __init init_mini_module(void)
         goto out_release_master;
     }
 
-    if (!(sc = ecrt_master_slave_config(master, DigOutPos, Beckhoff_EL2004))) {
+    if (!(sc = ecrt_master_slave_config(
+                    master, DigOutSlavePos, Beckhoff_EL2004))) {
         printk(KERN_ERR PFX "Failed to get slave configuration.\n");
         goto out_release_master;
     }

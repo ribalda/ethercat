@@ -8,22 +8,22 @@ $Id$
 
 Version 1.4.0:
 
+* Race in jiffies frame timeout.
 * Move EC_NUM_SYNCS define to ecrt.h.
-* Read Pdo mapping for unknown Pdos before configuring it.
+* Read Pdo mapping for unknown Pdos before configuring them.
 * Attach Pdo names from SII or Coe dictioary to Pdos read via CoE.
 * Make scanning and configuration run parallel (each).
-* Adapt remaining examples.
-* READMEs for examples.
 * Update documentation.
 * Add -a and -p switches for 'ethercat config' command.
-* Race in jiffies frame timeout.
+* Add a -n (numeric) switch to ethercat command.
+* Make verbose and quite flags a master property.
 * File access over EtherCAT (FoE).
 * Allow master requesting when in ORPHANED phase
 * Get original driver for r8169.
+* Distributed clocks.
 
 Future issues:
 
-* Distributed clocks.
 * Move master threads, slave handlers and state machines into a user
   space daemon.
 * Implement user space realtime interface via cdev.
@@ -35,7 +35,6 @@ Future issues:
 * Optimize alignment of process data.
 * Redundancy with 2 network adapters.
 * Interface/buffers for asynchronous domain IO.
-* Add a -n (numeric) switch to ethercat command.
 
 Smaller issues:
 

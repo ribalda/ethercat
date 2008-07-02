@@ -37,100 +37,210 @@
 #include <linux/module.h>
 
 // RTAI
-#include "rtai_sched.h"
-#include "rtai_sem.h"
+#include <rtai_sched.h>
+#include <rtai_sem.h>
 
 // EtherCAT
 #include "../../include/ecrt.h"
-#include "../../include/ecdb.h"
 
 /*****************************************************************************/
 
-// RTAI task frequency in Hz
-#define FREQUENCY 2000
+// Module parameters
+
+#define FREQUENCY 2000 // task frequency in Hz
 #define INHIBIT_TIME 20
 
 #define TIMERTICKS (1000000000 / FREQUENCY)
 
+// Optional features (comment to disable)
+#define CONFIGURE_PDOS
+
 #define PFX "ec_rtai_sample: "
 
 /*****************************************************************************/
+
+// EtherCAT
+static ec_master_t *master = NULL;
+static ec_master_state_t master_state = {};
+spinlock_t master_lock = SPIN_LOCK_UNLOCKED;
+
+static ec_domain_t *domain1 = NULL;
+static ec_domain_state_t domain1_state = {};
+
+static ec_slave_config_t *sc_ana_in = NULL;
+static ec_slave_config_state_t sc_ana_in_state = {};
 
 // RTAI
 static RT_TASK task;
 static SEM master_sem;
 static cycles_t t_last_cycle = 0, t_critical;
 
-// EtherCAT
-static ec_master_t *master = NULL;
-static ec_domain_t *domain1 = NULL;
-static ec_master_status_t master_status, old_status = {};
+/*****************************************************************************/
 
-// data fields
-static void *r_dig_out;
-static void *r_ana_out;
-static void *r_count;
-//static void *r_freq;
+// process data
+static uint8_t *domain1_pd; // process data memory
 
-const static ec_pdo_reg_t domain1_pdo_regs[] = {
-    {"2",      Beckhoff_EL2004_Outputs,   &r_dig_out},
-    {"3",      Beckhoff_EL4132_Output1,   &r_ana_out},
-    {"#888:1", Beckhoff_EL5101_Value,     &r_count},
-    //{"4",      Beckhoff_EL5101_Frequency, &r_freq},
+#define AnaInSlavePos  0, 1
+#define DigOutSlavePos 0, 3
+
+#define Beckhoff_EL2004 0x00000002, 0x07D43052
+#define Beckhoff_EL3162 0x00000002, 0x0C5A3052
+
+static unsigned int off_ana_in; // offsets for Pdo entries
+static unsigned int off_dig_out;
+
+const static ec_pdo_entry_reg_t domain1_regs[] = {
+    {AnaInSlavePos,  Beckhoff_EL3162, 0x3101, 2, &off_ana_in},
+    {DigOutSlavePos, Beckhoff_EL2004, 0x3001, 1, &off_dig_out},
     {}
 };
+
+static unsigned int counter = 0;
+static unsigned int blink = 0;
+
+/*****************************************************************************/
+
+#ifdef CONFIGURE_PDOS
+static ec_pdo_entry_info_t el3162_channel1[] = {
+    {0x3101, 1,  8}, // status
+    {0x3101, 2, 16}  // value
+};
+
+static ec_pdo_entry_info_t el3162_channel2[] = {
+    {0x3102, 1,  8}, // status
+    {0x3102, 2, 16}  // value
+};
+
+static ec_pdo_info_t el3162_pdos[] = {
+    {0x1A00, 2, el3162_channel1},
+    {0x1A01, 2, el3162_channel2}
+};
+
+static ec_sync_info_t el3162_syncs[] = {
+    {2, EC_DIR_OUTPUT},
+    {3, EC_DIR_INPUT, 2, el3162_pdos},
+    {0xff}
+};
+
+static ec_pdo_entry_info_t el2004_channels[] = {
+    {0x3001, 1, 1}, // Value 1
+    {0x3001, 2, 1}, // Value 2
+    {0x3001, 3, 1}, // Value 3
+    {0x3001, 4, 1}  // Value 4
+};
+
+static ec_pdo_info_t el2004_pdos[] = {
+    {0x1600, 1, &el2004_channels[0]},
+    {0x1601, 1, &el2004_channels[1]},
+    {0x1602, 1, &el2004_channels[2]},
+    {0x1603, 1, &el2004_channels[3]}
+};
+
+static ec_sync_info_t el2004_syncs[] = {
+    {0, EC_DIR_OUTPUT, 4, el2004_pdos},
+    {1, EC_DIR_INPUT},
+    {0xff}
+};
+#endif
+
+/*****************************************************************************/
+
+void check_domain1_state(void)
+{
+    ec_domain_state_t ds;
+
+    spin_lock(&master_lock);
+    ecrt_domain_state(domain1, &ds);
+    spin_unlock(&master_lock);
+
+    if (ds.working_counter != domain1_state.working_counter)
+        printk(KERN_INFO PFX "Domain1: WC %u.\n", ds.working_counter);
+    if (ds.wc_state != domain1_state.wc_state)
+        printk(KERN_INFO PFX "Domain1: State %u.\n", ds.wc_state);
+
+    domain1_state = ds;
+}
+
+/*****************************************************************************/
+
+void check_master_state(void)
+{
+    ec_master_state_t ms;
+
+    spin_lock(&master_lock);
+    ecrt_master_state(master, &ms);
+    spin_unlock(&master_lock);
+
+    if (ms.slaves_responding != master_state.slaves_responding)
+        printk(KERN_INFO PFX "%u slave(s).\n", ms.slaves_responding);
+    if (ms.al_states != master_state.al_states)
+        printk(KERN_INFO PFX "AL states: 0x%02X.\n", ms.al_states);
+    if (ms.link_up != master_state.link_up)
+        printk(KERN_INFO PFX "Link is %s.\n", ms.link_up ? "up" : "down");
+
+    master_state = ms;
+}
+
+/*****************************************************************************/
+
+void check_slave_config_states(void)
+{
+    ec_slave_config_state_t s;
+
+    spin_lock(&master_lock);
+    ecrt_slave_config_state(sc_ana_in, &s);
+    spin_unlock(&master_lock);
+
+    if (s.al_state != sc_ana_in_state.al_state)
+        printk(KERN_INFO PFX "AnaIn: State 0x%02X.\n", s.al_state);
+    if (s.online != sc_ana_in_state.online)
+        printk(KERN_INFO PFX "AnaIn: %s.\n", s.online ? "online" : "offline");
+    if (s.operational != sc_ana_in_state.operational)
+        printk(KERN_INFO PFX "AnaIn: %soperational.\n",
+                s.operational ? "" : "Not ");
+
+    sc_ana_in_state = s;
+}
 
 /*****************************************************************************/
 
 void run(long data)
 {
-    static unsigned int blink = 0;
-    static unsigned int counter = 0;
-
     while (1) {
         t_last_cycle = get_cycles();
 
+        // receive process data
         rt_sem_wait(&master_sem);
         ecrt_master_receive(master);
         ecrt_domain_process(domain1);
         rt_sem_signal(&master_sem);
 
-        // process data
-        EC_WRITE_U8(r_dig_out, blink ? 0x0F : 0x00);
+        // check process data state (optional)
+        check_domain1_state();
+
+        if (counter) {
+            counter--;
+        } else { // do this at 1 Hz
+            counter = FREQUENCY;
+
+            // calculate new process data
+            blink = !blink;
+
+            // check for master state (optional)
+            check_master_state();
+
+            // check for islave configuration state(s) (optional)
+            check_slave_config_states();
+        }
+
+        // write process data
+        EC_WRITE_U8(domain1_pd + off_dig_out, blink ? 0x06 : 0x09);
 
         rt_sem_wait(&master_sem);
         ecrt_domain_queue(domain1);
         ecrt_master_send(master);
         rt_sem_signal(&master_sem);
 		
-        if (counter) {
-            counter--;
-        }
-        else {
-            counter = FREQUENCY;
-            blink = !blink;
-
-            rt_sem_wait(&master_sem);
-            ecrt_master_get_status(master, &master_status);
-            rt_sem_signal(&master_sem);
-
-            if (master_status.bus_status != old_status.bus_status) {
-                printk(KERN_INFO PFX "bus status changed to %i.\n",
-                        master_status.bus_status);
-            }
-            if (master_status.bus_tainted != old_status.bus_tainted) {
-                printk(KERN_INFO PFX "tainted flag changed to %u.\n",
-                        master_status.bus_tainted);
-            }
-            if (master_status.slaves_responding !=
-                    old_status.slaves_responding) {
-                printk(KERN_INFO PFX "slaves_responding changed to %u.\n",
-                        master_status.slaves_responding);
-            }
-
-            old_status = master_status;
-        }
-
         rt_task_wait_period();
     }
 }
@@ -159,6 +269,9 @@ void release_lock(void *data)
 int __init init_mod(void)
 {
     RTIME tick_period, requested_ticks, now;
+#ifdef CONFIGURE_PDOS
+    ec_slave_config_t *sc;
+#endif
 
     printk(KERN_INFO PFX "Starting...\n");
 
@@ -173,15 +286,39 @@ int __init init_mod(void)
 
     ecrt_master_callbacks(master, request_lock, release_lock, NULL);
 
-    printk(KERN_INFO PFX "Creating domain...\n");
+    printk(KERN_INFO PFX "Registering domain...\n");
     if (!(domain1 = ecrt_master_create_domain(master))) {
         printk(KERN_ERR PFX "Domain creation failed!\n");
         goto out_release_master;
     }
 
-    printk(KERN_INFO PFX "Registering Pdos...\n");
-    if (ecrt_domain_register_pdo_list(domain1, domain1_pdo_regs)) {
-        printk(KERN_ERR PFX "Pdo registration failed!\n");
+    if (!(sc_ana_in = ecrt_master_slave_config(
+                    master, AnaInSlavePos, Beckhoff_EL3162))) {
+        printk(KERN_ERR PFX "Failed to get slave configuration.\n");
+        goto out_release_master;
+    }
+
+#ifdef CONFIGURE_PDOS
+    printk(KERN_INFO PFX "Configuring Pdos...\n");
+    if (ecrt_slave_config_sync_managers(sc_ana_in, EC_END, el3162_syncs)) {
+        printk(KERN_ERR PFX "Failed to configure Pdos.\n");
+        goto out_release_master;
+    }
+
+    if (!(sc = ecrt_master_slave_config(master, DigOutSlavePos, Beckhoff_EL2004))) {
+        printk(KERN_ERR PFX "Failed to get slave configuration.\n");
+        goto out_release_master;
+    }
+
+    if (ecrt_slave_config_sync_managers(sc, EC_END, el2004_syncs)) {
+        printk(KERN_ERR PFX "Failed to configure Pdos.\n");
+        goto out_release_master;
+    }
+#endif
+
+    printk(KERN_INFO PFX "Registering Pdo entries...\n");
+    if (ecrt_domain_reg_pdo_entry_list(domain1, domain1_regs)) {
+        printk(KERN_ERR PFX "Pdo entry registration failed!\n");
         goto out_release_master;
     }
 
@@ -190,6 +327,9 @@ int __init init_mod(void)
         printk(KERN_ERR PFX "Failed to activate master!\n");
         goto out_release_master;
     }
+
+    // Get internal process data for domain
+    domain1_pd = ecrt_domain_data(domain1);
 
     printk(KERN_INFO PFX "Starting cyclic sample thread...\n");
     requested_ticks = nano2count(TIMERTICKS);

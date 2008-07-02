@@ -1,0 +1,28 @@
+-------------------------------------------------------------------------------
+
+$Id$
+
+-------------------------------------------------------------------------------
+
+This is a minimal example module for the use of the EtherCAT master realtime
+interface. It uses a kernel timer to generate a cyclic task.
+
+Most probably you'll have different EtherCAT slaves present. Try adjusting the
+section "process data" in mini.c to your bus configuration.
+
+There are some features that can be disabled by commenting out the respective
+defines at the head of mini.c.
+
+---
+
+To build the example module, call:
+
+make modules
+
+To run it, call:
+
+insmod ec_mini.ko
+
+...and watch the system logs for the outputs.
+
+-------------------------------------------------------------------------------

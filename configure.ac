@@ -384,36 +384,6 @@ fi
 AC_SUBST(RTAI_DIR,[$rtaidir])
 
 #------------------------------------------------------------------------------
-# MSR path (optional)
-#------------------------------------------------------------------------------
-
-AC_ARG_WITH([msr-dir],
-    AC_HELP_STRING(
-        [--with-msr-dir=<DIR>],
-        [MSR path (only for MSR example)]
-    ),
-    [
-        msrdir=[$withval]
-    ],
-    [
-        msrdir=""
-    ]
-)
-
-AC_MSG_CHECKING([for MSR path])
-
-if test -z "${msrdir}"; then
-    AC_MSG_RESULT([not specified.])
-else
-    if test \! -r ${msrdir}/include/msr.h; then
-        AC_MSG_ERROR([no MSR installation found in ${msrdir}!])
-    fi
-    AC_MSG_RESULT([$msrdir])
-fi
-
-AC_SUBST(MSR_DIR,[$msrdir])
-
-#------------------------------------------------------------------------------
 # Debug interface
 #------------------------------------------------------------------------------
 
@@ -526,8 +496,6 @@ AC_CONFIG_FILES([
         examples/Makefile
         examples/mini/Kbuild
         examples/mini/Makefile
-        examples/msr/Kbuild
-        examples/msr/Makefile
         examples/rtai/Kbuild
         examples/rtai/Makefile
         include/Makefile
