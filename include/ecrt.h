@@ -125,11 +125,15 @@
 
 /*****************************************************************************/
 
-/** End of the Pdo entry list.
+/** End of list marker.
  *
- * This is used in ecrt_slave_config_pdos().
+ * This can be used with ecrt_slave_config_pdos().
  */
 #define EC_END ~0U
+
+/** Maximum number of sync managers per slave.
+ */
+#define EC_MAX_SYNC_MANAGERS 16
 
 /******************************************************************************
  * Data types 
@@ -232,7 +236,7 @@ typedef enum {
  *
  * This is the data type of the \a entries field in ec_pdo_info_t.
  *
- * \see ecrt_slave_config_sync_managers().
+ * \see ecrt_slave_config_pdos().
  */
 typedef struct {
     uint16_t index; /**< Pdo entry index. */
@@ -246,11 +250,11 @@ typedef struct {
  * 
  * This is the data type of the \a pdos field in ec_sync_info_t.
  * 
- * \see ecrt_slave_config_sync_managers().
+ * \see ecrt_slave_config_pdos().
  */
 typedef struct {
     uint16_t index; /**< Pdo index. */
-    uint8_t n_entries; /**< Number of Pdo entries in \a entries to map.
+    unsigned int n_entries; /**< Number of Pdo entries in \a entries to map.
                               Zero means, that the default mapping shall be
                               used (this can only be done if the slave is
                               present at bus configuration time). */
@@ -265,12 +269,12 @@ typedef struct {
  *
  * This can be use to configure multiple sync managers including the Pdo
  * assignment and Pdo mapping. It is used as an input parameter type in
- * ecrt_slave_config_sync_managers().
+ * ecrt_slave_config_pdos().
  */
 typedef struct {
     uint8_t index; /**< Sync manager index. */
     ec_direction_t dir; /**< Sync manager direction. */
-    uint16_t n_pdos; /**< Number of Pdos in \a pdos. */
+    unsigned int n_pdos; /**< Number of Pdos in \a pdos. */
     ec_pdo_info_t *pdos; /**< Array with Pdos to assign. This must contain
                             at least \a n_pdos Pdos. */
 } ec_sync_info_t;
@@ -447,20 +451,21 @@ void ecrt_master_state(
 
 /** Configure a sync manager.
  *
- * Sets the direction of a sync manager. The direction bits from the default
- * control register from SII will be overriden, when this function is called.
+ * Sets the direction of a sync manager. This overrides the direction bits
+ * from the default control register from SII.
  *
  * \return zero on success, else non-zero
  */
 int ecrt_slave_config_sync_manager(
         ec_slave_config_t *sc, /**< Slave configuration. */
-        uint8_t sync_index, /**< Sync manager index. */
+        uint8_t sync_index, /**< Sync manager index. Must ba less
+                              than #EC_MAX_SYNC_MANAGERS. */
         ec_direction_t dir /**< Input/Output. */
         );
 
 /** Add a Pdo to a sync manager's Pdo assignment.
  *
- * \see ecrt_slave_config_sync_managers()
+ * \see ecrt_slave_config_pdos()
  * \return zero on success, else non-zero
  */
 int ecrt_slave_config_pdo_assign_add(
@@ -475,7 +480,7 @@ int ecrt_slave_config_pdo_assign_add(
  * ecrt_slave_config_pdo_assign_add(), to clear the default assignment of a
  * sync manager.
  * 
- * \see ecrt_slave_config_sync_managers()
+ * \see ecrt_slave_config_pdos()
  */
 void ecrt_slave_config_pdo_assign_clear(
         ec_slave_config_t *sc, /**< Slave configuration. */
@@ -484,7 +489,7 @@ void ecrt_slave_config_pdo_assign_clear(
 
 /** Add a Pdo entry to the given Pdo's mapping.
  *
- * \see ecrt_slave_config_sync_managers()
+ * \see ecrt_slave_config_pdos()
  * \return zero on success, else non-zero
  */
 int ecrt_slave_config_pdo_mapping_add(
@@ -502,7 +507,7 @@ int ecrt_slave_config_pdo_mapping_add(
  * This can be called before mapping Pdo entries via
  * ecrt_slave_config_pdo_mapping_add(), to clear the default mapping.
  *
- * \see ecrt_slave_config_sync_managers()
+ * \see ecrt_slave_config_pdos()
  */
 void ecrt_slave_config_pdo_mapping_clear(
         ec_slave_config_t *sc, /**< Slave configuration. */
@@ -523,27 +528,30 @@ void ecrt_slave_config_pdo_mapping_clear(
  * configuration time:
  *
  * \code
- * const ec_pdo_entry_info_t el3162_channel1[] = {
+ * ec_pdo_entry_info_t el3162_channel1[] = {
  *     {0x3101, 1,  8}, // status
  *     {0x3101, 2, 16}  // value
  * };
  * 
- * const ec_pdo_entry_info_t el3162_channel2[] = {
+ * ec_pdo_entry_info_t el3162_channel2[] = {
  *     {0x3102, 1,  8}, // status
  *     {0x3102, 2, 16}  // value
  * };
  * 
- * const ec_pdo_info_t el3162_pdos[] = {
+ * ec_pdo_info_t el3162_pdos[] = {
  *     {0x1A00, 2, el3162_channel1},
- *     {0x1A01, 2, el3162_channel2},
+ *     {0x1A01, 2, el3162_channel2}
  * };
  * 
- * const ec_pdo_info_t el3162_syncs[] = {
- *     {2, EC_DIR_INPUT, 2, el3162_el3162_pdos},
+ * ec_sync_info_t el3162_syncs[] = {
+ *     {2, EC_DIR_OUTPUT},
+ *     {3, EC_DIR_INPUT, 2, el3162_pdos},
+ *     {0xff}
  * };
  * 
- * if (ecrt_slave_config_syncs(sc, 1, el3162_syncs))
- *     return -1; // error
+ * if (ecrt_slave_config_pdos(sc_ana_in, EC_END, el3162_syncs)) {
+ *     // handle error
+ * }
  * \endcode
  * 
  * The next example shows, how to configure the Pdo assignment only. The
@@ -552,17 +560,18 @@ void ecrt_slave_config_pdo_mapping_clear(
  * configuration is left empty and the slave is offline.
  *
  * \code
- * const ec_pdo_info_t pdos[] = {
+ * ec_pdo_info_t pdos[] = {
  *     {0x1600}, // Channel 1
  *     {0x1601}  // Channel 2
  * };
  * 
- * const ec_sync_info_t syncs[] = {
- *     {2, EC_DIR_INPUT, 2, pdos},
+ * ec_sync_info_t syncs[] = {
+ *     {3, EC_DIR_INPUT, 2, pdos},
  * };
  * 
- * if (ecrt_slave_config_pdos(slave_config_ana_in, 2, syncs))
- *     return -1; // error
+ * if (ecrt_slave_config_pdos(slave_config_ana_in, 1, syncs)) {
+ *     // handle error
+ * }
  * \endcode
  *
  * Processing of \a syncs will stop, if
@@ -573,7 +582,7 @@ void ecrt_slave_config_pdo_mapping_clear(
  *
  * \return zero on success, else non-zero
  */
-int ecrt_slave_config_sync_managers(
+int ecrt_slave_config_pdos(
         ec_slave_config_t *sc, /**< Slave configuration. */
         unsigned int n_syncs, /**< Number of sync manager configurations in
                                 \a syncs. */

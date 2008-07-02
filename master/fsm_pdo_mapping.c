@@ -165,7 +165,7 @@ void ec_fsm_pdo_mapping_next_pdo(
     const ec_pdo_list_t *pdos;
     const ec_pdo_t *pdo, *assigned_pdo;
     
-    for (sync_index = 0; sync_index < EC_MAX_SYNCS; sync_index++) {
+    for (sync_index = 0; sync_index < EC_MAX_SYNC_MANAGERS; sync_index++) {
         pdos = &fsm->slave->config->sync_configs[sync_index].pdos;
 
         list_for_each_entry(pdo, &pdos->list, list) {

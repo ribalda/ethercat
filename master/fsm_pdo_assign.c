@@ -166,7 +166,7 @@ void ec_fsm_pdo_assign_next_sync(
 {
     fsm->sync_index++;
 
-    for (; fsm->sync_index < EC_MAX_SYNCS; fsm->sync_index++) {
+    for (; fsm->sync_index < EC_MAX_SYNC_MANAGERS; fsm->sync_index++) {
         fsm->pdos = &fsm->slave->config->sync_configs[fsm->sync_index].pdos;
         
         if (!(fsm->sync = ec_slave_get_sync(fsm->slave, fsm->sync_index))) {

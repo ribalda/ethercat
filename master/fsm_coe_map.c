@@ -157,7 +157,7 @@ void ec_fsm_coe_map_action_next_sync(
 
     fsm->sync_index++;
 
-    for (; fsm->sync_index < EC_MAX_SYNCS; fsm->sync_index++) {
+    for (; fsm->sync_index < EC_MAX_SYNC_MANAGERS; fsm->sync_index++) {
         if (!(fsm->sync = ec_slave_get_sync(slave, fsm->sync_index)))
             continue;
 

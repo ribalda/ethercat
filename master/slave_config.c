@@ -70,7 +70,7 @@ void ec_slave_config_init(
     sc->product_code = product_code;
     sc->slave = NULL;
 
-    for (i = 0; i < EC_MAX_SYNCS; i++)
+    for (i = 0; i < EC_MAX_SYNC_MANAGERS; i++)
         ec_sync_config_init(&sc->sync_configs[i]);
 
     INIT_LIST_HEAD(&sc->sdo_configs);
@@ -95,7 +95,7 @@ void ec_slave_config_clear(
     ec_slave_config_detach(sc);
 
     // Free sync managers
-    for (i = 0; i < EC_MAX_SYNCS; i++)
+    for (i = 0; i < EC_MAX_SYNC_MANAGERS; i++)
         ec_sync_config_clear(&sc->sync_configs[i]);
 
     // free all Sdo configurations
@@ -242,7 +242,7 @@ void ec_slave_config_load_default_sync_config(ec_slave_config_t *sc)
     if (!sc->slave)
         return;
     
-    for (sync_index = 0; sync_index < EC_MAX_SYNCS; sync_index++) {
+    for (sync_index = 0; sync_index < EC_MAX_SYNC_MANAGERS; sync_index++) {
         sync_config = &sc->sync_configs[sync_index];
         if ((sync = ec_slave_get_sync(sc->slave, sync_index))) {
             sync_config->dir = ec_sync_default_direction(sync);
@@ -361,7 +361,7 @@ int ecrt_slave_config_sync_manager(ec_slave_config_t *sc, uint8_t sync_index,
         EC_DBG("ecrt_slave_config_sync_manager(sc = 0x%x, sync_index = %u, "
                 "dir = %u)\n", (u32) sc, sync_index, dir);
 
-    if (sync_index >= EC_MAX_SYNCS) {
+    if (sync_index >= EC_MAX_SYNC_MANAGERS) {
         EC_ERR("Invalid sync manager index %u!\n", sync_index);
         return -1;
     }
@@ -387,7 +387,7 @@ int ecrt_slave_config_pdo_assign_add(ec_slave_config_t *sc,
         EC_DBG("ecrt_slave_config_pdo_assign_add(sc = 0x%x, sync_index = %u, "
                 "pdo_index = 0x%04X)\n", (u32) sc, sync_index, pdo_index);
 
-    if (sync_index >= EC_MAX_SYNCS) {
+    if (sync_index >= EC_MAX_SYNC_MANAGERS) {
         EC_ERR("Invalid sync manager index %u!\n", sync_index);
         return -1;
     }
@@ -416,7 +416,7 @@ void ecrt_slave_config_pdo_assign_clear(ec_slave_config_t *sc,
         EC_DBG("ecrt_slave_config_pdo_assign_clear(sc = 0x%x, "
                 "sync_index = %u)\n", (u32) sc, sync_index);
 
-    if (sync_index >= EC_MAX_SYNCS) {
+    if (sync_index >= EC_MAX_SYNC_MANAGERS) {
         EC_ERR("Invalid sync manager index %u!\n", sync_index);
         return;
     }
@@ -443,7 +443,7 @@ int ecrt_slave_config_pdo_mapping_add(ec_slave_config_t *sc,
                 (u32) sc, pdo_index, entry_index, entry_subindex,
                 entry_bit_length);
 
-    for (sync_index = 0; sync_index < EC_MAX_SYNCS; sync_index++)
+    for (sync_index = 0; sync_index < EC_MAX_SYNC_MANAGERS; sync_index++)
         if ((pdo = ec_pdo_list_find_pdo(
                         &sc->sync_configs[sync_index].pdos, pdo_index)))
             break;
@@ -473,7 +473,7 @@ void ecrt_slave_config_pdo_mapping_clear(ec_slave_config_t *sc,
         EC_DBG("ecrt_slave_config_pdo_mapping_clear(sc = 0x%x, "
                 "pdo_index = 0x%04X)\n", (u32) sc, pdo_index);
 
-    for (sync_index = 0; sync_index < EC_MAX_SYNCS; sync_index++)
+    for (sync_index = 0; sync_index < EC_MAX_SYNC_MANAGERS; sync_index++)
         if ((pdo = ec_pdo_list_find_pdo(
                         &sc->sync_configs[sync_index].pdos, pdo_index)))
             break;
@@ -490,7 +490,7 @@ void ecrt_slave_config_pdo_mapping_clear(ec_slave_config_t *sc,
 
 /*****************************************************************************/
 
-int ecrt_slave_config_sync_managers(ec_slave_config_t *sc,
+int ecrt_slave_config_pdos(ec_slave_config_t *sc,
         unsigned int n_syncs, const ec_sync_info_t syncs[])
 {
     unsigned int i, j, k;
@@ -499,7 +499,7 @@ int ecrt_slave_config_sync_managers(ec_slave_config_t *sc,
     const ec_pdo_entry_info_t *entry_info;
 
     if (sc->master->debug_level)
-        EC_DBG("ecrt_slave_config_sync_managers(sc = 0x%x, n_syncs = %u, "
+        EC_DBG("ecrt_slave_config_pdos(sc = 0x%x, n_syncs = %u, "
                 "syncs = 0x%x)\n", (u32) sc, n_syncs, (u32) syncs);
 
     if (!syncs)
@@ -511,7 +511,7 @@ int ecrt_slave_config_sync_managers(ec_slave_config_t *sc,
         if (sync_info->index == 0xff)
             break;
 
-        if (sync_info->index >= EC_MAX_SYNCS) {
+        if (sync_info->index >= EC_MAX_SYNC_MANAGERS) {
             EC_ERR("Invalid sync manager index %u!\n", sync_info->index);
             return -1;
         }
@@ -572,7 +572,7 @@ int ecrt_slave_config_reg_pdo_entry(
                 "subindex = 0x%02X, domain = 0x%x, bit_position = 0x%x)\n",
                 (u32) sc, index, subindex, (u32) domain, (u32) bit_position);
 
-    for (sync_index = 0; sync_index < EC_MAX_SYNCS; sync_index++) {
+    for (sync_index = 0; sync_index < EC_MAX_SYNC_MANAGERS; sync_index++) {
         sync_config = &sc->sync_configs[sync_index];
         bit_offset = 0;
 
@@ -731,7 +731,7 @@ EXPORT_SYMBOL(ecrt_slave_config_pdo_assign_add);
 EXPORT_SYMBOL(ecrt_slave_config_pdo_assign_clear);
 EXPORT_SYMBOL(ecrt_slave_config_pdo_mapping_add);
 EXPORT_SYMBOL(ecrt_slave_config_pdo_mapping_clear);
-EXPORT_SYMBOL(ecrt_slave_config_sync_managers);
+EXPORT_SYMBOL(ecrt_slave_config_pdos);
 EXPORT_SYMBOL(ecrt_slave_config_reg_pdo_entry);
 EXPORT_SYMBOL(ecrt_slave_config_sdo);
 EXPORT_SYMBOL(ecrt_slave_config_sdo8);

@@ -1001,7 +1001,7 @@ void Master::showConfigs()
             << "Attached: " << (config.attached ? "yes" : "no") << endl
             << "Operational: " << (config.operational ? "yes" : "no") << endl;
 
-        for (j = 0; j < 16; j++) {
+        for (j = 0; j < EC_MAX_SYNC_MANAGERS; j++) {
             if (config.syncs[j].pdo_count) {
                 cout << "SM" << dec << j << " ("
                     << (config.syncs[j].dir == EC_DIR_INPUT

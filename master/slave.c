@@ -365,7 +365,7 @@ int ec_slave_fetch_sii_syncs(
 
     if (count) {
         total_count = count + slave->sii.sync_count;
-        if (total_count > EC_MAX_SYNCS) {
+        if (total_count > EC_MAX_SYNC_MANAGERS) {
             EC_ERR("Exceeded maximum number of sync managers!\n");
             return -1;
         }

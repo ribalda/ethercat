@@ -1122,6 +1122,9 @@ unsigned int ec_master_domain_count(
 
 /*****************************************************************************/
 
+/** Common implementation for ec_master_find_domain() and
+ * ec_master_find_domain_const().
+ */
 #define EC_FIND_DOMAIN \
     do { \
         list_for_each_entry(domain, &master->domains, list) { \
@@ -1141,8 +1144,6 @@ ec_domain_t *ec_master_find_domain(
 	ec_domain_t *domain;
     EC_FIND_DOMAIN;
 }
-
-/*****************************************************************************/
 
 const ec_domain_t *ec_master_find_domain_const(
 		const ec_master_t *master, /**< EtherCAT master. */

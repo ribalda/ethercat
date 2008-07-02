@@ -47,6 +47,8 @@
 
 /*****************************************************************************/
 
+/** \cond */
+
 #define EC_IOCTL_TYPE 0xa4
 
 #define EC_IO(nr)           _IO(EC_IOCTL_TYPE, nr)
@@ -294,11 +296,10 @@ typedef struct {
     struct {
         ec_direction_t dir;
         uint32_t pdo_count;
-    } syncs[16];
+    } syncs[EC_MAX_SYNC_MANAGERS];
     uint32_t sdo_count;
     uint8_t attached    : 1,
             operational : 1;
-    
 } ec_ioctl_config_t;
 
 /*****************************************************************************/
@@ -346,5 +347,7 @@ typedef struct {
 } ec_ioctl_config_sdo_t;
 
 /*****************************************************************************/
+
+/** \endcond */
 
 #endif

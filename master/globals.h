@@ -93,9 +93,6 @@
 /** Maximum number of slave ports. */
 #define EC_MAX_PORTS 4
 
-/** Maximum number of sync managers per slave. */
-#define EC_MAX_SYNCS 16
-
 /** Size of a sync manager configuration page. */
 #define EC_SYNC_PAGE_SIZE 8
 

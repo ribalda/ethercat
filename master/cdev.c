@@ -1000,7 +1000,7 @@ int ec_cdev_ioctl_config(
     data.position = sc->position;
     data.vendor_id = sc->vendor_id;
     data.product_code = sc->product_code;
-    for (i = 0; i < EC_MAX_SYNCS; i++) {
+    for (i = 0; i < EC_MAX_SYNC_MANAGERS; i++) {
         data.syncs[i].dir = sc->sync_configs[i].dir;
         data.syncs[i].pdo_count =
             ec_pdo_list_count(&sc->sync_configs[i].pdos);
@@ -1035,7 +1035,7 @@ int ec_cdev_ioctl_config_pdo(
         return -EFAULT;
     }
 
-    if (data.sync_index >= EC_MAX_SYNCS) {
+    if (data.sync_index >= EC_MAX_SYNC_MANAGERS) {
         EC_ERR("Invalid sync manager index %u!\n",
                 data.sync_index);
         return -EINVAL;
@@ -1095,7 +1095,7 @@ int ec_cdev_ioctl_config_pdo_entry(
         return -EFAULT;
     }
 
-    if (data.sync_index >= EC_MAX_SYNCS) {
+    if (data.sync_index >= EC_MAX_SYNC_MANAGERS) {
         EC_ERR("Invalid sync manager index %u!\n",
                 data.sync_index);
         return -EINVAL;

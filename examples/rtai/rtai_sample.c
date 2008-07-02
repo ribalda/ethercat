@@ -300,7 +300,7 @@ int __init init_mod(void)
 
 #ifdef CONFIGURE_PDOS
     printk(KERN_INFO PFX "Configuring Pdos...\n");
-    if (ecrt_slave_config_sync_managers(sc_ana_in, EC_END, el3162_syncs)) {
+    if (ecrt_slave_config_pdos(sc_ana_in, EC_END, el3162_syncs)) {
         printk(KERN_ERR PFX "Failed to configure Pdos.\n");
         goto out_release_master;
     }
@@ -310,7 +310,7 @@ int __init init_mod(void)
         goto out_release_master;
     }
 
-    if (ecrt_slave_config_sync_managers(sc, EC_END, el2004_syncs)) {
+    if (ecrt_slave_config_pdos(sc, EC_END, el2004_syncs)) {
         printk(KERN_ERR PFX "Failed to configure Pdos.\n");
         goto out_release_master;
     }

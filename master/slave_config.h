@@ -67,7 +67,7 @@ struct ec_slave_config {
     ec_slave_t *slave; /**< Slave pointer. This is \a NULL, if the slave is
                          offline. */
 
-    ec_sync_config_t sync_configs[EC_MAX_SYNCS]; /**< Sync manager
+    ec_sync_config_t sync_configs[EC_MAX_SYNC_MANAGERS]; /**< Sync manager
                                                    configurations. */
     ec_fmmu_config_t fmmu_configs[EC_MAX_FMMUS]; /**< FMMU configurations. */
     uint8_t used_fmmus; /**< Number of FMMUs used. */
