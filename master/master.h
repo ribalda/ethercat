@@ -203,6 +203,8 @@ const ec_slave_config_t *ec_master_get_config_const(
         const ec_master_t *, unsigned int);
 unsigned int ec_master_domain_count(const ec_master_t *);
 ec_domain_t *ec_master_find_domain(ec_master_t *, unsigned int);
+const ec_domain_t *ec_master_find_domain_const(const ec_master_t *,
+        unsigned int);
 
 int ec_master_debug_level(ec_master_t *, int);
 

@@ -1124,20 +1124,35 @@ unsigned int ec_master_domain_count(
 
 /*****************************************************************************/
 
+#define EC_FIND_DOMAIN \
+    do { \
+        list_for_each_entry(domain, &master->domains, list) { \
+            if (index--) \
+                continue; \
+            return domain; \
+        } \
+        \
+        return NULL; \
+    } while (0)
+
 ec_domain_t *ec_master_find_domain(
 		ec_master_t *master, /**< EtherCAT master. */
 		unsigned int index /**< Domain index. */
 		)
 {
 	ec_domain_t *domain;
+    EC_FIND_DOMAIN;
+}
 
-	list_for_each_entry(domain, &master->domains, list) {
-		if (index--)
-			continue;
-		return domain;
-	}
+/*****************************************************************************/
 
-	return NULL;
+const ec_domain_t *ec_master_find_domain_const(
+		const ec_master_t *master, /**< EtherCAT master. */
+		unsigned int index /**< Domain index. */
+		)
+{
+	const ec_domain_t *domain;
+    EC_FIND_DOMAIN;
 }
 
 /*****************************************************************************/
