@@ -10,8 +10,8 @@ General Features:
 
 * Runs as kernel module for Linux 2.6.
 
-* Comes with EtherCAT-capable network driver for RTL8139 and compatible
-  network interface cards.
+* Comes with EtherCAT-capable network driver for serveral network interface
+  cards.
   - Interrupt-less network driver operation.
   - Easy implementation of additional network drivers through common device
     interface of the master.
@@ -32,19 +32,20 @@ General Features:
   - Automatic calculation of process data mapping, FMMU- and sync manager
     configuration within the domains.
 
-* Master finite state machine (FSM). Thus:
+* Master finite state machine (FSM).
   - Bus monitoring during realtime operation.
   - Automatic reconfiguration of slaves on bus power failure during realtime
     operation.
-  - Controlling of slave states during realtime operation.
+  - Setting slave states during realtime operation.
 
 * Special IDLE mode, when master is not in use.
   - Automatic scanning of slaves upon topology changes.
   - Bus visualisation and EoE processing without realtime process connected.
 
 * Implementation of the CANopen-over-EtherCAT (CoE) protocol.
-  - Configuration of CoE-capable slaves via SDO interface.
-  - SDO dictionary listing.
+  - Configuration of CoE-capable slaves via Sdo interface.
+  - Sdo information service (dictionary listing).
+  - Sdo access via the realtime interface.
 
 * Implementation of the Ethernet-over-EtherCAT (EoE) protocol.
   - Creates virtual network devices that are automatically coupled to
@@ -52,10 +53,9 @@ General Features:
   - Thus natively supports either a switched or a routed EoE network
     architecture with standard GNU/Linux tools.
 
-* User space interface via the system filesystem (Sysfs).
-  - Detailed information about master and slaves in a tree structure.
-  - User space tool 'lsec' for quick bus visualisation.
-  - Slave EEPROM image reading and writing.
+* User space interface via a command-line tool 'ethercat'.
+  - Detailed information about master, slaves and the bus configuration.
+  - Slave SII reading and writing.
 
 * Seamless integration in your favourite GNU/Linux distibution.
   - Master and network device configuration via sysconfig files.

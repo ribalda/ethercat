@@ -44,8 +44,8 @@
  *
  * Changes in Version 1.4:
  *
- * - Replaced ec_slave_t with ec_slave_config_t, separating the slave objects
- *   from the requested bus configuration. Therefore, renamed
+ * - Replaced ec_slave_t with ec_slave_config_t, separating the bus
+ *   configuration from the actual slaves. Therefore, renamed
  *   ecrt_master_get_slave() to ecrt_master_slave_config().
  * - Replaced slave address string with alias and position values. See
  *   ecrt_master_slave_config().
@@ -73,7 +73,7 @@
  * - Renamed ec_bus_status_t, ec_master_status_t to ec_bus_state_t and
  *   ec_master_state_t, respectively. Renamed ecrt_master_get_status() to
  *   ecrt_master_state(), for consistency reasons.
- * - Added ec_domain_state_t and ec_wc_state_t for a new output parameter
+ * - Added ec_domain_state_t and #ec_wc_state_t for a new output parameter
  *   of ecrt_domain_state(). The domain state object does now contain
  *   information, if the process data was exchanged completely.
  * - Former "Pdo registration" meant Pdo entry registration in fact, therefore
@@ -272,7 +272,9 @@ typedef struct {
  * ecrt_slave_config_pdos().
  */
 typedef struct {
-    uint8_t index; /**< Sync manager index. */
+    uint8_t index; /**< Sync manager index. Must be less
+                     than #EC_MAX_SYNC_MANAGERS for a valid sync manager,
+                     but can also be \a 0xff to mark the end of the list. */
     ec_direction_t dir; /**< Sync manager direction. */
     unsigned int n_pdos; /**< Number of Pdos in \a pdos. */
     ec_pdo_info_t *pdos; /**< Array with Pdos to assign. This must contain
@@ -458,7 +460,7 @@ void ecrt_master_state(
  */
 int ecrt_slave_config_sync_manager(
         ec_slave_config_t *sc, /**< Slave configuration. */
-        uint8_t sync_index, /**< Sync manager index. Must ba less
+        uint8_t sync_index, /**< Sync manager index. Must be less
                               than #EC_MAX_SYNC_MANAGERS. */
         ec_direction_t dir /**< Input/Output. */
         );
@@ -470,7 +472,8 @@ int ecrt_slave_config_sync_manager(
  */
 int ecrt_slave_config_pdo_assign_add(
         ec_slave_config_t *sc, /**< Slave configuration. */
-        uint8_t sync_index, /**< Sync manager index. */
+        uint8_t sync_index, /**< Sync manager index. Must be less
+                              than #EC_MAX_SYNC_MANAGERS. */
         uint16_t index /**< Index of the Pdo to assign. */
         );
 
@@ -484,7 +487,8 @@ int ecrt_slave_config_pdo_assign_add(
  */
 void ecrt_slave_config_pdo_assign_clear(
         ec_slave_config_t *sc, /**< Slave configuration. */
-        uint8_t sync_index /**< Sync manager index. */
+        uint8_t sync_index /**< Sync manager index. Must be less
+                              than #EC_MAX_SYNC_MANAGERS. */
         );
 
 /** Add a Pdo entry to the given Pdo's mapping.
