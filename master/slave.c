@@ -508,64 +508,6 @@ char *ec_slave_sii_string(
 
 /*****************************************************************************/
 
-/**
- * Writes SII contents to a slave.
- * \return Zero on success, otherwise error code.
- */
-
-int ec_slave_write_sii(
-        ec_slave_t *slave, /**< EtherCAT slave */
-        uint16_t offset, /**< SII word offset. */
-        unsigned int nwords, /**< Number of words. */
-        const uint16_t *words /**< New SII data. */
-        )
-{
-    ec_master_t *master = slave->master;
-    ec_sii_write_request_t request;
-
-    // init SII write request
-    INIT_LIST_HEAD(&request.list);
-    request.slave = slave;
-    request.words = words;
-    request.offset = offset;
-    request.nwords = nwords;
-    request.state = EC_REQUEST_QUEUED;
-
-    // schedule SII write request.
-    down(&master->sii_sem);
-    list_add_tail(&request.list, &master->sii_requests);
-    up(&master->sii_sem);
-
-    // wait for processing through FSM
-    if (wait_event_interruptible(master->sii_queue,
-                request.state != EC_REQUEST_QUEUED)) {
-        // interrupted by signal
-        down(&master->sii_sem);
-        if (request.state == EC_REQUEST_QUEUED) {
-            list_del(&request.list);
-            up(&master->sii_sem);
-            return -EINTR;
-        }
-        // request already processing: interrupt not possible.
-        up(&master->sii_sem);
-    }
-
-    // wait until master FSM has finished processing
-    wait_event(master->sii_queue,
-            request.state != EC_REQUEST_BUSY);
-
-    if (request.state == EC_REQUEST_SUCCESS) {
-        if (offset <= 4 && offset + nwords > 4) { // alias was written
-            slave->sii.alias = EC_READ_U16(words + 4);
-        }
-        return 0;
-    } else {
-        return -EIO;
-    }
-}
-
-/*****************************************************************************/
-
 /** Get the sync manager given an index.
  *
  * \return pointer to sync manager, or NULL.

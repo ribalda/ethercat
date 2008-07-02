@@ -171,9 +171,6 @@ const ec_sdo_t *ec_slave_get_sdo_by_pos_const(const ec_slave_t *, uint16_t);
 uint16_t ec_slave_sdo_count(const ec_slave_t *);
 const ec_pdo_t *ec_slave_find_pdo(const ec_slave_t *, uint16_t);
 
-int ec_slave_write_sii(ec_slave_t *, uint16_t, unsigned int,
-        const uint16_t *);
-
 /*****************************************************************************/
 
 #endif

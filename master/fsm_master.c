@@ -296,17 +296,14 @@ int ec_fsm_master_action_process_sii(
 
     // search the first request to be processed
     while (1) {
-        down(&master->sii_sem);
-        if (list_empty(&master->sii_requests)) {
-            up(&master->sii_sem);
+        if (list_empty(&master->sii_requests))
             break;
-        }
+
         // get first request
         request = list_entry(master->sii_requests.next,
                 ec_sii_write_request_t, list);
         list_del_init(&request->list); // dequeue
         request->state = EC_REQUEST_BUSY;
-        up(&master->sii_sem);
 
         // found pending SII write operation. execute it!
         if (master->debug_level)
@@ -379,17 +376,14 @@ int ec_fsm_master_action_process_sdo(
     
     // search the first external request to be processed
     while (1) {
-        down(&master->sdo_sem);
-        if (list_empty(&master->slave_sdo_requests)) {
-            up(&master->sdo_sem);
+        if (list_empty(&master->slave_sdo_requests))
             break;
-        }
+
         // get first request
         request = list_entry(master->slave_sdo_requests.next,
                 ec_master_sdo_request_t, list);
         list_del_init(&request->list); // dequeue
         request->req.state = EC_REQUEST_BUSY;
-        up(&master->sdo_sem);
 
         slave = request->slave;
         if (slave->current_state == EC_SLAVE_STATE_INIT) {
@@ -778,10 +772,15 @@ void ec_fsm_master_state_write_sii(
     if (master->debug_level)
         EC_DBG("Finished writing %u words of SII data to slave %u.\n",
                 request->nwords, slave->ring_position);
+
+    if (request->offset <= 4 && request->offset + request->nwords > 4) {
+        // alias was written
+        slave->sii.alias = EC_READ_U16(request->words + 4);
+    }
+    // TODO: Evaluate other SII contents!
+    
     request->state = EC_REQUEST_SUCCESS;
     wake_up(&master->sii_queue);
-
-    // TODO: Evaluate new SII contents!
 
     // check for another SII write request
     if (ec_fsm_master_action_process_sii(fsm))

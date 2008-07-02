@@ -136,11 +136,9 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     master->cb_data = NULL;
 
     INIT_LIST_HEAD(&master->sii_requests);
-    init_MUTEX(&master->sii_sem);
     init_waitqueue_head(&master->sii_queue);
 
     INIT_LIST_HEAD(&master->slave_sdo_requests);
-    init_MUTEX(&master->sdo_sem);
     init_waitqueue_head(&master->sdo_queue);
 
     // init devices

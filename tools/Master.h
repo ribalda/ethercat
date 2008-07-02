@@ -83,15 +83,15 @@ class Master
         void getConfigSdo(ec_ioctl_config_sdo_t *, unsigned int, unsigned int);
         void getDomain(ec_ioctl_domain_t *, unsigned int);
         void getFmmu(ec_ioctl_domain_fmmu_t *, unsigned int, unsigned int);
-        void getData(ec_ioctl_data_t *, unsigned int, unsigned int,
+        void getData(ec_ioctl_domain_data_t *, unsigned int, unsigned int,
                 unsigned char *);
         void getSlave(ec_ioctl_slave_t *, uint16_t);
-        void getSync(ec_ioctl_sync_t *, uint16_t, uint8_t);
-        void getPdo(ec_ioctl_pdo_t *, uint16_t, uint8_t, uint8_t);
-        void getPdoEntry(ec_ioctl_pdo_entry_t *, uint16_t, uint8_t, uint8_t,
-                uint8_t);
-        void getSdo(ec_ioctl_sdo_t *, uint16_t, uint16_t);
-        void getSdoEntry(ec_ioctl_sdo_entry_t *, uint16_t, int, uint8_t);
+        void getSync(ec_ioctl_slave_sync_t *, uint16_t, uint8_t);
+        void getPdo(ec_ioctl_slave_sync_pdo_t *, uint16_t, uint8_t, uint8_t);
+        void getPdoEntry(ec_ioctl_slave_sync_pdo_entry_t *, uint16_t, uint8_t,
+                uint8_t, uint8_t);
+        void getSdo(ec_ioctl_slave_sdo_t *, uint16_t, uint16_t);
+        void getSdoEntry(ec_ioctl_slave_sdo_entry_t *, uint16_t, int, uint8_t);
         void requestState(uint16_t, uint8_t);
 
         static string slaveState(uint8_t);

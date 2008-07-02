@@ -128,7 +128,7 @@ void Master::writeAlias(
         const vector<string> &commandArgs
         )
 {
-    ec_ioctl_sii_t data;
+    ec_ioctl_slave_sii_t data;
     ec_ioctl_slave_t slave;
     unsigned int i;
     uint16_t alias;
@@ -230,7 +230,7 @@ void Master::setDebug(const vector<string> &commandArgs)
 
     open(ReadWrite);
 
-    if (ioctl(fd, EC_IOCTL_SET_DEBUG, debugLevel) < 0) {
+    if (ioctl(fd, EC_IOCTL_MASTER_DEBUG, debugLevel) < 0) {
         stringstream err;
         err << "Failed to set debug level: " << strerror(errno);
         throw MasterException(err.str());
@@ -353,7 +353,7 @@ void Master::sdoDownload(
         )
 {
     stringstream strIndex, strSubIndex, strValue, err;
-    ec_ioctl_sdo_download_t data;
+    ec_ioctl_slave_sdo_download_t data;
     unsigned int i, number;
     const CoEDataType *dataType = NULL;
 
@@ -393,7 +393,7 @@ void Master::sdoDownload(
             throw MasterException(err.str());
         }
     } else { // no data type specified: fetch from dictionary
-        ec_ioctl_sdo_entry_t entry;
+        ec_ioctl_slave_sdo_entry_t entry;
         unsigned int entryByteSize;
 
         open(ReadWrite);
@@ -497,7 +497,7 @@ void Master::sdoDownload(
 
     open(ReadWrite);
 
-    if (ioctl(fd, EC_IOCTL_SDO_DOWNLOAD, &data) < 0) {
+    if (ioctl(fd, EC_IOCTL_SLAVE_SDO_DOWNLOAD, &data) < 0) {
         stringstream err;
         err << "Failed to download Sdo: ";
         if (errno == EIO && data.abort_code) {
@@ -523,7 +523,7 @@ void Master::sdoUpload(
 {
     stringstream strIndex, strSubIndex;
     int sval;
-    ec_ioctl_sdo_upload_t data;
+    ec_ioctl_slave_sdo_upload_t data;
     unsigned int i, uval;
     const CoEDataType *dataType = NULL;
 
@@ -568,7 +568,7 @@ void Master::sdoUpload(
             throw MasterException(err.str());
         }
     } else { // no data type specified: fetch from dictionary
-        ec_ioctl_sdo_entry_t entry;
+        ec_ioctl_slave_sdo_entry_t entry;
         unsigned int entryByteSize;
 
         open(Read);
@@ -601,7 +601,7 @@ void Master::sdoUpload(
 
     open(Read);
 
-    if (ioctl(fd, EC_IOCTL_SDO_UPLOAD, &data) < 0) {
+    if (ioctl(fd, EC_IOCTL_SLAVE_SDO_UPLOAD, &data) < 0) {
         stringstream err;
         err << "Failed to upload Sdo: ";
         if (errno == EIO && data.abort_code) {
@@ -688,7 +688,7 @@ void Master::showSlaves(int slavePosition, bool verbose)
 
 void Master::siiRead(int slavePosition)
 {
-    ec_ioctl_sii_t data;
+    ec_ioctl_slave_sii_t data;
     ec_ioctl_slave_t slave;
     unsigned int i;
 
@@ -710,7 +710,7 @@ void Master::siiRead(int slavePosition)
     data.nwords = slave.sii_nwords;
     data.words = new uint16_t[data.nwords];
 
-    if (ioctl(fd, EC_IOCTL_SII_READ, &data) < 0) {
+    if (ioctl(fd, EC_IOCTL_SLAVE_SII_READ, &data) < 0) {
         stringstream err;
         delete [] data.words;
         err << "Failed to read SII: " << strerror(errno);
@@ -734,7 +734,7 @@ void Master::siiWrite(
         )
 {
     stringstream err;
-    ec_ioctl_sii_t data;
+    ec_ioctl_slave_sii_t data;
     ifstream file;
     unsigned int byte_size;
     const uint16_t *categoryHeader;
@@ -814,7 +814,7 @@ void Master::siiWrite(
     // send data to master
     open(ReadWrite);
     data.offset = 0;
-    if (ioctl(fd, EC_IOCTL_SII_WRITE, &data) < 0) {
+    if (ioctl(fd, EC_IOCTL_SLAVE_SII_WRITE, &data) < 0) {
         stringstream err;
         err << "Failed to write SII: " << strerror(errno);
         throw MasterException(err.str());
@@ -925,7 +925,7 @@ void Master::writeSlaveAlias(
         uint16_t alias
         )
 {
-    ec_ioctl_sii_t data;
+    ec_ioctl_slave_sii_t data;
     ec_ioctl_slave_t slave;
     stringstream err;
     uint8_t crc;
@@ -946,7 +946,7 @@ void Master::writeSlaveAlias(
     data.words = new uint16_t[data.nwords];
 
     // read first 8 SII words
-    if (ioctl(fd, EC_IOCTL_SII_READ, &data) < 0) {
+    if (ioctl(fd, EC_IOCTL_SLAVE_SII_READ, &data) < 0) {
         delete [] data.words;
         err << "Failed to read SII: " << strerror(errno);
         throw MasterException(err.str());
@@ -962,7 +962,7 @@ void Master::writeSlaveAlias(
     *(uint8_t *) (data.words + 7) = crc;
 
     // write first 8 words with new alias and checksum
-    if (ioctl(fd, EC_IOCTL_SII_WRITE, &data) < 0) {
+    if (ioctl(fd, EC_IOCTL_SLAVE_SII_WRITE, &data) < 0) {
         delete [] data.words;
         err << "Failed to write SII: " << strerror(errno);
         throw MasterException(err.str());
@@ -1151,7 +1151,7 @@ void Master::listConfigs()
 void Master::outputDomainData(unsigned int domainIndex)
 {
     ec_ioctl_domain_t domain;
-    ec_ioctl_data_t data;
+    ec_ioctl_domain_data_t data;
     unsigned char *processData;
     unsigned int i;
     
@@ -1182,7 +1182,7 @@ void Master::showDomain(unsigned int domainIndex)
 {
     ec_ioctl_domain_t domain;
     unsigned char *processData;
-    ec_ioctl_data_t data;
+    ec_ioctl_domain_data_t data;
     unsigned int i, j;
     ec_ioctl_domain_fmmu_t fmmu;
     unsigned int dataOffset;
@@ -1253,9 +1253,9 @@ void Master::listSlavePdos(
         )
 {
     ec_ioctl_slave_t slave;
-    ec_ioctl_sync_t sync;
-    ec_ioctl_pdo_t pdo;
-    ec_ioctl_pdo_entry_t entry;
+    ec_ioctl_slave_sync_t sync;
+    ec_ioctl_slave_sync_pdo_t pdo;
+    ec_ioctl_slave_sync_pdo_entry_t entry;
     unsigned int i, j, k;
     
     getSlave(&slave, slavePosition);
@@ -1313,8 +1313,8 @@ void Master::listSlaveSdos(
         )
 {
     ec_ioctl_slave_t slave;
-    ec_ioctl_sdo_t sdo;
-    ec_ioctl_sdo_entry_t entry;
+    ec_ioctl_slave_sdo_t sdo;
+    ec_ioctl_slave_sdo_entry_t entry;
     unsigned int i, j, k;
     const CoEDataType *d;
     
@@ -1553,10 +1553,10 @@ void Master::showSlave(uint16_t slavePosition)
 void Master::generateSlaveXml(uint16_t slavePosition)
 {
     ec_ioctl_slave_t slave;
-    ec_ioctl_sync_t sync;
-    ec_ioctl_pdo_t pdo;
+    ec_ioctl_slave_sync_t sync;
+    ec_ioctl_slave_sync_pdo_t pdo;
     string pdoType;
-    ec_ioctl_pdo_entry_t entry;
+    ec_ioctl_slave_sync_pdo_entry_t entry;
     unsigned int i, j, k;
     
     getSlave(&slave, slavePosition);
@@ -1781,14 +1781,14 @@ void Master::getDomain(ec_ioctl_domain_t *data, unsigned int index)
 
 /****************************************************************************/
 
-void Master::getData(ec_ioctl_data_t *data, unsigned int domainIndex,
+void Master::getData(ec_ioctl_domain_data_t *data, unsigned int domainIndex,
         unsigned int dataSize, unsigned char *mem)
 {
     data->domain_index = domainIndex;
     data->data_size = dataSize;
     data->target = mem;
 
-    if (ioctl(fd, EC_IOCTL_DATA, data) < 0) {
+    if (ioctl(fd, EC_IOCTL_DOMAIN_DATA, data) < 0) {
         stringstream err;
         err << "Failed to get domain data: " << strerror(errno);
         throw MasterException(err.str());
@@ -1839,7 +1839,7 @@ void Master::getFmmu(
 /****************************************************************************/
 
 void Master::getSync(
-        ec_ioctl_sync_t *sync,
+        ec_ioctl_slave_sync_t *sync,
         uint16_t slaveIndex,
         uint8_t syncIndex
         )
@@ -1847,7 +1847,7 @@ void Master::getSync(
     sync->slave_position = slaveIndex;
     sync->sync_index = syncIndex;
 
-    if (ioctl(fd, EC_IOCTL_SYNC, sync)) {
+    if (ioctl(fd, EC_IOCTL_SLAVE_SYNC, sync)) {
         stringstream err;
         err << "Failed to get sync manager: ";
         if (errno == EINVAL)
@@ -1863,7 +1863,7 @@ void Master::getSync(
 /****************************************************************************/
 
 void Master::getPdo(
-        ec_ioctl_pdo_t *pdo,
+        ec_ioctl_slave_sync_pdo_t *pdo,
         uint16_t slaveIndex,
         uint8_t syncIndex,
         uint8_t pdoPos
@@ -1873,7 +1873,7 @@ void Master::getPdo(
     pdo->sync_index = syncIndex;
     pdo->pdo_pos = pdoPos;
 
-    if (ioctl(fd, EC_IOCTL_PDO, pdo)) {
+    if (ioctl(fd, EC_IOCTL_SLAVE_SYNC_PDO, pdo)) {
         stringstream err;
         err << "Failed to get Pdo: ";
         if (errno == EINVAL)
@@ -1891,7 +1891,7 @@ void Master::getPdo(
 /****************************************************************************/
 
 void Master::getPdoEntry(
-        ec_ioctl_pdo_entry_t *entry,
+        ec_ioctl_slave_sync_pdo_entry_t *entry,
         uint16_t slaveIndex,
         uint8_t syncIndex,
         uint8_t pdoPos,
@@ -1903,7 +1903,7 @@ void Master::getPdoEntry(
     entry->pdo_pos = pdoPos;
     entry->entry_pos = entryPos;
 
-    if (ioctl(fd, EC_IOCTL_PDO_ENTRY, entry)) {
+    if (ioctl(fd, EC_IOCTL_SLAVE_SYNC_PDO_ENTRY, entry)) {
         stringstream err;
         err << "Failed to get Pdo entry: ";
         if (errno == EINVAL)
@@ -1923,7 +1923,7 @@ void Master::getPdoEntry(
 /****************************************************************************/
 
 void Master::getSdo(
-        ec_ioctl_sdo_t *sdo,
+        ec_ioctl_slave_sdo_t *sdo,
         uint16_t slaveIndex,
         uint16_t sdoPosition
         )
@@ -1931,7 +1931,7 @@ void Master::getSdo(
     sdo->slave_position = slaveIndex;
     sdo->sdo_position = sdoPosition;
 
-    if (ioctl(fd, EC_IOCTL_SDO, sdo)) {
+    if (ioctl(fd, EC_IOCTL_SLAVE_SDO, sdo)) {
         stringstream err;
         err << "Failed to get Sdo: ";
         if (errno == EINVAL)
@@ -1947,7 +1947,7 @@ void Master::getSdo(
 /****************************************************************************/
 
 void Master::getSdoEntry(
-        ec_ioctl_sdo_entry_t *entry,
+        ec_ioctl_slave_sdo_entry_t *entry,
         uint16_t slaveIndex,
         int sdoSpec,
         uint8_t entrySubindex
@@ -1957,7 +1957,7 @@ void Master::getSdoEntry(
     entry->sdo_spec = sdoSpec;
     entry->sdo_entry_subindex = entrySubindex;
 
-    if (ioctl(fd, EC_IOCTL_SDO_ENTRY, entry)) {
+    if (ioctl(fd, EC_IOCTL_SLAVE_SDO_ENTRY, entry)) {
         stringstream err;
         err << "Failed to get Sdo entry: ";
         err << strerror(errno);

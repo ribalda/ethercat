@@ -152,14 +152,10 @@ struct ec_master {
     void *ext_cb_data; /**< Data parameter of external locking callbacks. */
 
     struct list_head sii_requests; /**< SII write requests. */
-    struct semaphore sii_sem; /**< Semaphore protecting the list of
-                                   SII write requests. */
     wait_queue_head_t sii_queue; /**< Wait queue for SII
                                       write requests from user space. */
 
     struct list_head slave_sdo_requests; /**< Sdo access requests. */
-    struct semaphore sdo_sem; /**< Semaphore protecting the list of
-                                   Sdo access requests. */
     wait_queue_head_t sdo_queue; /**< Wait queue for Sdo access requests
                                    from user space. */
 };
