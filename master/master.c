@@ -1023,6 +1023,29 @@ void ec_master_attach_slave_configs(
 
 /*****************************************************************************/
 
+/** Common implementation for ec_master_find_slave()
+ * and ec_master_find_slave_const().
+ */
+#define EC_FIND_SLAVE \
+    do { \
+        if (alias) { \
+            for (; slave < master->slaves + master->slave_count; \
+                    slave++) { \
+                if (slave->sii.alias == alias) \
+                break; \
+            } \
+            if (slave == master->slaves + master->slave_count) \
+            return NULL; \
+        } \
+        \
+        slave += position; \
+        if (slave < master->slaves + master->slave_count) { \
+            return slave; \
+        } else { \
+            return NULL; \
+        } \
+    } while (0)
+
 /** Finds a slave in the bus, given the alias and position.
  */
 ec_slave_t *ec_master_find_slave(
@@ -1032,24 +1055,21 @@ ec_slave_t *ec_master_find_slave(
         )
 {
     ec_slave_t *slave = master->slaves;
+    EC_FIND_SLAVE;
+}
 
-    if (alias) {
-        // find slave with the given alias
-        for (; slave < master->slaves + master->slave_count;
-                slave++) {
-			if (slave->sii.alias == alias)
-                break;
-		}
-        if (slave == master->slaves + master->slave_count)
-            return NULL;
-	}
-
-    slave += position;
-    if (slave < master->slaves + master->slave_count) {
-        return slave;
-    } else {
-        return NULL;
-    }
+/** Finds a slave in the bus, given the alias and position.
+ *
+ * Const version.
+ */
+const ec_slave_t *ec_master_find_slave_const(
+        const ec_master_t *master, /**< EtherCAT master. */
+        uint16_t alias, /**< Slave alias. */
+        uint16_t position /**< Slave position. */
+        )
+{
+    const ec_slave_t *slave = master->slaves;
+    EC_FIND_SLAVE;
 }
 
 /*****************************************************************************/
