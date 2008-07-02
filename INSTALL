@@ -42,6 +42,8 @@ Now you can start the EtherCAT master:
 
 # /etc/init.d/ethercat start
 
+Have a look at the examples/ subdirectory for some application examples.
+
 Have fun!
 
 -------------------------------------------------------------------------------
