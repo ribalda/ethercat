@@ -51,8 +51,9 @@ Changes in version 1.4.0:
     - Removed the bus_state and bus_tainted flags from ec_master_state_t.
 * Device interface changes:
     - Moved device output parameter of ecdev_offer() to return value.
-* Replaced the Sysfs interface with a new 'ethercat' command-line tool. See
-  'ethercat --help'. The tool is able to
+* Replaced the Sysfs interface with a new 'ethercat' command-line tool, that
+  communicates with the master via a character device and ioctls. The device
+  is created via udev. The tool is able to
     - Write alias addresses.
     - Show the bus configuration.
     - Output binary domain process data.
@@ -69,6 +70,8 @@ Changes in version 1.4.0:
     - Request slave states.
     - Generate slave information xmls.
 * Removed include/ecdb.h.
+* Using the timestamp counter is now optional (configure --enable-cycles),
+  because it is only available on Intel architectures.
 * Sdo dictionaries will now also be fetched in operation mode.
 * SII write requests will now also be processed in operation mode.
 * Mapping of Pdo entries is now supported.
@@ -92,7 +95,9 @@ Changes in version 1.4.0:
   domains have to be used for inputs and output.
 * Allow gaps in PDO mapping read from CoE.
 * Fixed bug in CoE code.
+* Added some timeouts for CoE transfers.
 * Ansynchronous handling of CoE Emergency requests.
+* Sync managers are disabled, if the size is zero.
 * Improved handling of large EEPROM contents.
 * Renamed ec_master module parameters main and backup to main_devices and
   backup_devices to avoid warnings of some compilers.
