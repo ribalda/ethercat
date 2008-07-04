@@ -4,6 +4,8 @@
 %
 %  $Id$
 %
+%  vi: spell spelllang=en
+% 
 %------------------------------------------------------------------------------
 
 %
@@ -320,7 +322,7 @@ EtherCAT functionality (see section~\ref{sec:ecrt}).
 
   \begin{itemize}
 
-  \item Master and network device configuration via Sysconfig files.
+  \item Master and network device configuration via sysconfig files.
 
   \item Init script for master control.
 
@@ -719,18 +721,17 @@ respectively.
 
 \paragraph{Tasks of a Network Driver}
 
-Network device drivers handle the lower two layers of the OSI model,
-that is the physical layer and the data-link layer. A network device
-itself natively handles the physical layer issues: It represents the
-hardware to connect to the medium and to send and receive data in the
-way, the physical layer protocol describes. The network device driver
-is responsible for getting data from the kernel's networking stack and
-forwarding it to the hardware, that does the physical transmission.
-If data is received by the hardware respectively, the driver is
-notified (usually by means of an interrupt) and has to read the data
-from the hardware memory and forward it to the network stack. There
-are a few more tasks, a network device driver has to handle, including
-queue control, statistics and device dependent features.
+Network device drivers usually handle the lower two layers of the OSI model,
+that is the physical layer and the data-link layer. A network device itself
+natively handles the physical layer issues: It represents the hardware to
+connect to the medium and to send and receive data in the way, the physical
+layer protocol describes. The network device driver is responsible for getting
+data from the kernel's networking stack and forwarding it to the hardware,
+that does the physical transmission.  If data is received by the hardware
+respectively, the driver is notified (usually by means of an interrupt) and
+has to read the data from the hardware memory and forward it to the network
+stack. There are a few more tasks, a network device driver has to handle,
+including queue control, statistics and device dependent features.
 
 \paragraph{Driver Startup}
 
@@ -767,98 +768,95 @@ callback is mandatory, but for reasonable operation the ones below are
 needed in any case:
 
 \begin{description}
-\item[int (*open)(struct net\_device *)] This function is called when
-  network communication has to be started, for example after a command
-  \textit{ifconfig ethX up} from user space. Frame reception has to be
-  enabled by the driver.
-\item[int (*stop)(struct net\_device *)] The purpose of this callback
-  is to ``close'' the device, i.~e. make the hardware stop receiving
-  frames.
-\item[int (*hard\_start\_xmit)(struct sk\_buff *, struct net\_device
-  *)] This function is cal\-led for each frame that has to be
-  transmitted.  The network stack passes the frame as a pointer to an
-  \textit{sk\_buff} structure (``socket buffer''\index{Socket buffer},
-  see below), which has to be freed after sending.
-\item[struct net\_device\_stats *(*get\_stats)(struct net\_device *)]
-  This call has to return a pointer to the device's
-  \textit{net\_device\_stats} structure, which permanently has to be
-  filled with frame statistics. This means, that every time a frame is
-  received, sent, or an error happened, the appropriate counter in
-  this structure has to be increased.
+
+\item[open()] This function is called when network communication has to be
+started, for example after a command \textit{ifconfig ethX up} from user
+space. Frame reception has to be enabled by the driver.
+
+\item[stop()] The purpose of this callback is to ``close'' the device, i.~e.
+make the hardware stop receiving frames.
+
+\item[hard\_start\_xmit()] This function is cal\-led for each frame that has
+to be transmitted. The network stack passes the frame as a pointer to an
+\textit{sk\_buff} structure (``socket buffer''\index{Socket buffer}, see
+below), which has to be freed after sending.
+
+\item[get\_stats()] This call has to return a pointer to the device's
+\textit{net\_device\_stats} structure, which permanently has to be filled with
+frame statistics. This means, that every time a frame is received, sent, or an
+error happened, the appropriate counter in this structure has to be increased.
+
 \end{description}
 
-The actual registration is done with the \textit{register\_netdev()}
-call, unregistering is done with \textit{unregister\_netdev()}.
+The actual registration is done with the \lstinline+register_netdev()+ call,
+unregistering is done with \lstinline+unregister_netdev()+.
 
 \paragraph{The netif Interface}
 \index{netif}
 
 All other communication in the direction interface $\to$ network stack is done
-via the \textit{netif\_*} calls. For example, on successful device opening, the
-network stack has to be notified, that it can now pass frames to the interface.
-This is done by calling \textit{netif\_start\_queue()}. After this call, the
-\textit{hard\_start\_xmit()} callback can be called by the network stack.
-Furthermore a network driver usually manages a frame transmission queue. If
-this gets filled up, the network stack has to be told to stop passing further
-frames for a while. This happens with a call to \textit{netif\_stop\_queue()}.
-If some frames have been sent, and there is enough space again to queue new
-frames, this can be notified with \textit{netif\_wake\_queue()}. Another
-important call is \textit{netif\_receive\_skb()}\footnote{This function is part
-of the NAPI (``New API''), that replaces the ``old'' kernel 2.4 technique for
-interfacing to the network stack (with \textit{netif\_rx()}).  NAPI is a
-technique to improve network performance on Linux. Read more in
-\url{http://www.cyberus.ca/~hadi/usenix-paper.tgz}}: It passes a frame to the
-network stack, that was just received by the device.  Frame data has to be
+via the \lstinline+netif_*()+ calls. For example, on successful device
+opening, the network stack has to be notified, that it can now pass frames to
+the interface.  This is done by calling \lstinline+netif_start_queue()+. After
+this call, the \lstinline+hard_start_xmit()+ callback can be called by the
+network stack.  Furthermore a network driver usually manages a frame
+transmission queue. If this gets filled up, the network stack has to be told
+to stop passing further frames for a while. This happens with a call to
+\lstinline+netif_stop_queue()+.  If some frames have been sent, and there is
+enough space again to queue new frames, this can be notified with
+\lstinline+netif_wake_queue()+. Another important call is
+\lstinline+netif_receive_skb()+\footnote{This function is part of the NAPI
+(``New API''), that replaces the kernel 2.4 technique for interfacing to the
+network stack (with \lstinline+netif_rx()+). NAPI is a technique to improve
+network performance on Linux. Read more in
+\url{http://www.cyberus.ca/~hadi/usenix-paper.tgz}.}: It passes a frame to the
+network stack, that was just received by the device. Frame data has to be
 packed into a so-called ``socket buffer'' for that (see below).
 
 \paragraph{Socket Buffers}
 \index{Socket buffer}
 
-Socket buffers are the basic data type for the whole network stack.
-They serve as containers for network data and are able to quickly add
-data headers and footers, or strip them off again. Therefore a socket
-buffer consists of an allocated buffer and several pointers that mark
-beginning of the buffer (\textit{head}), beginning of data
-(\textit{data}), end of data (\textit{tail}) and end of buffer
-(\textit{end}). In addition, a socket buffer holds network header
-information and (in case of received data) a pointer to the
-\textit{net\_device}, it was received on. There exist functions that
-create a socket buffer (\textit{dev\_alloc\_skb()}), add data either
-from front (\textit{skb\_push()}) or back (\textit{skb\_put()}),
-remove data from front (\textit{skb\_pull()}) or back
-(\textit{skb\_trim()}), or delete the buffer (\textit{kfree\_skb()}).
-A socket buffer is passed from layer to layer, and is freed by the
-layer that uses it the last time. In case of sending, freeing has to
-be done by the network driver.
+Socket buffers are the basic data type for the whole network stack.  They
+serve as containers for network data and are able to quickly add data headers
+and footers, or strip them off again. Therefore a socket buffer consists of an
+allocated buffer and several pointers that mark beginning of the buffer
+(\textit{head}), beginning of data (\textit{data}), end of data
+(\textit{tail}) and end of buffer (\textit{end}). In addition, a socket buffer
+holds network header information and (in case of received data) a pointer to
+the \textit{net\_device}, it was received on. There exist functions that
+create a socket buffer (\lstinline+dev_alloc_skb()+), add data either from
+front (\lstinline+skb_push()+) or back (\lstinline+skb_put()+), remove data
+from front (\lstinline+skb_pull()+) or back (\lstinline+skb_trim()+), or
+delete the buffer (\lstinline+kfree_skb()+).  A socket buffer is passed from
+layer to layer, and is freed by the layer that uses it the last time. In case
+of sending, freeing has to be done by the network driver.
 
 %------------------------------------------------------------------------------
 
 \section{EtherCAT Device Drivers}
 \label{sec:requirements}
 
-There are a few requirements for Ethernet network devices to function
-as EtherCAT devices, when connected to an EtherCAT bus.
+There are a few requirements for Ethernet network devices to function as
+EtherCAT devices, when connected to an EtherCAT bus.
 
 \paragraph{Dedicated Interfaces}
 
-For performance and realtime purposes, the EtherCAT master needs
-direct and exclusive access to the Ethernet hardware. This implies
-that the network device must not be connected to the kernel's network
-stack as usual, because the kernel would try to use it as an ordinary
-Ethernet device.
+For performance and realtime purposes, the EtherCAT master needs direct and
+exclusive access to the Ethernet hardware. This implies that the network
+device must not be connected to the kernel's network stack as usual, because
+the kernel would try to use it as an ordinary Ethernet device.
 
 \paragraph{Interrupt-less Operation}
 \index{Interrupt}
 
-EtherCAT frames travel through the logical EtherCAT ring and are then
-sent back to the master. Communication is highly deterministic: A
-frame is sent and will be received again after a constant time.
-Therefore, there is no need to notify the driver about frame
-reception: The master can instead query the hardware for received
-frames.
+EtherCAT frames travel through the logical EtherCAT ring and are then sent
+back to the master. Communication is highly deterministic: A frame is sent and
+will be received again after a constant time.  Therefore, there is no need to
+notify the driver about frame reception: The master can instead query the
+hardware for received frames.
 
-Figure~\ref{fig:interrupt} shows two workflows for cyclic frame
-transmission and reception with and without interrupts.
+Figure~\ref{fig:interrupt} shows two workflows for cyclic frame transmission
+and reception with and without interrupts.
 
 \begin{figure}[htbp]
   \centering
@@ -867,46 +865,42 @@ transmission and reception with and without interrupts.
   \label{fig:interrupt}
 \end{figure}
 
-In the left workflow ``Interrupt Operation'', the data from the last
-cycle is first processed and a new frame is assembled with new
-datagrams, which is then sent.  The cyclic work is done for now.
-Later, when the frame is received again by the hardware, an interrupt
-is triggered and the ISR is executed. The ISR will fetch the frame
-data from the hardware and initiate the frame dissection: The
-datagrams will be processed, so that the data is ready for processing
-in the next cycle.
+In the left workflow ``Interrupt Operation'', the data from the last cycle is
+first processed and a new frame is assembled with new datagrams, which is then
+sent.  The cyclic work is done for now.  Later, when the frame is received
+again by the hardware, an interrupt is triggered and the ISR is executed. The
+ISR will fetch the frame data from the hardware and initiate the frame
+dissection: The datagrams will be processed, so that the data is ready for
+processing in the next cycle.
 
-In the right workflow ``Interrupt-less Operation'', there is no
-hardware interrupt enabled.  Instead, the hardware will be polled by
-the master by executing the ISR. If the frame has been received in the
-meantime, it will be dissected. The situation is now the same as at
-the beginning of the left workflow: The received data is processed and
-a new frame is assembled and sent. There is nothing to do for the rest
-of the cycle.
+In the right workflow ``Interrupt-less Operation'', there is no hardware
+interrupt enabled.  Instead, the hardware will be polled by the master by
+executing the ISR. If the frame has been received in the meantime, it will be
+dissected. The situation is now the same as at the beginning of the left
+workflow: The received data is processed and a new frame is assembled and
+sent. There is nothing to do for the rest of the cycle.
 
-The interrupt-less operation is desirable, because there is simply no
-need for an interrupt. Moreover hardware interrupts are not conducive
-in improving the driver's realtime behaviour: Their indeterministic
-incidences contribute to increasing the jitter. Besides, if a realtime
-extension (like RTAI) is used, some additional effort would have to be
-made to prioritize interrupts.
+The interrupt-less operation is desirable, because there is simply no need for
+an interrupt. Moreover hardware interrupts are not conducive in improving the
+driver's realtime behaviour: Their indeterministic incidences contribute to
+increasing the jitter. Besides, if a realtime extension (like RTAI) is used,
+some additional effort would have to be made to prioritize interrupts.
 
 \paragraph{Ethernet and EtherCAT Devices}
 
-Another issue lies in the way Linux handles devices of the same type.
-For example, a PCI\nomenclature{PCI}{Peripheral Component
-  Interconnect, Computer Bus} driver scans the PCI bus for devices it
-can handle. Then it registers itself as the responsible driver for all
-of the devices found. The problem is, that an unmodified driver can
-not be told to ignore a device because it will be used for EtherCAT
-later. There must be a way to handle multiple devices of the same
-type, where one is reserved for EtherCAT, while the other is treated
+Another issue lies in the way Linux handles devices of the same type.  For
+example, a PCI\nomenclature{PCI}{Peripheral Component Interconnect, Computer
+Bus} driver scans the PCI bus for devices it can handle. Then it registers
+itself as the responsible driver for all of the devices found. The problem is,
+that an unmodified driver can not be told to ignore a device because it will
+be used for EtherCAT later. There must be a way to handle multiple devices of
+the same type, where one is reserved for EtherCAT, while the other is treated
 as an ordinary Ethernet device.
 
-For all this reasons, the author has decided that the only acceptable
-solution is to modify standard Ethernet drivers in a way that they
-keep their normal functionality, but gain the ability to treat one or
-more of the devices as EtherCAT-capable.
+For all this reasons, the author decided that the only acceptable solution is
+to modify standard Ethernet drivers in a way that they keep their normal
+functionality, but gain the ability to treat one or more of the devices as
+EtherCAT-capable.
 
 Below are the advantages of this solution:
 
@@ -1921,10 +1915,9 @@ $\rightarrow$~READ STATES
   for the first slave marked as offline.
   $\rightarrow$~REWRITE ADDRESSES
 
-\item[REWRITE ADDRESSES] If the station address was successfully
-  written, it is sear\-ched for the next slave marked as offline. If
-  there is one, its address is reconfigured, too.
-  $\rightarrow$~REWRITE ADDRESSES
+\item[REWRITE ADDRESSES] If the station address was successfully written, it is
+searched for the next slave marked as offline. If there is one, its address is
+reconfigured, too.  $\rightarrow$~REWRITE ADDRESSES
 
   If there are no more slaves marked as offline, the state machine is
   restarted. $\rightarrow$~START
@@ -2428,7 +2421,7 @@ approach was considered as difficult, because of several reasons:
   the instances using the network interfaces.
 \end{itemize}
 
-\paragraph{Number of Handlers}
+\paragraph{Number of Handlers} % FIXME
 
 The master module has a parameter \textit{ec\_eoeif\_count} to specify
 the number of EoE interfaces (and handlers) per master to create. This
@@ -3099,7 +3092,7 @@ extracted from the Linux kernel sources.
 
 The source code is documented using Doxygen~\cite{doxygen}. To build the HTML
 documentation, you must have the Doxygen software installed. The below command
-will generate the documents in the subdirecory \textit{doxygen-output}:
+will generate the documents in the subdirectory \textit{doxygen-output}:
 
 \begin{lstlisting}
 $ `\textbf{make doc}`
@@ -3119,9 +3112,9 @@ sysconfig file and the user space tools to the prefix path.
 # `\textbf{make install}`
 \end{lstlisting}
 
-If the target kernel's modules directory is not under
-\textit{/lib/modules}, a different destination directory can be
-specified with the \textit{DESTDIR} make variable. For example:
+If the target kernel's modules directory is not under \textit{/lib/modules}, a
+different destination directory can be specified with the \lstinline+DESTDIR+
+make variable. For example:
 
 \begin{lstlisting}
 # `\textbf{make DESTDIR=/vol/nfs/root modules\_install}`
@@ -3824,10 +3817,10 @@ for rapid realtime code generation under Linux with Simulink/RTW and EtherCAT
 technology. \url{http://etherlab.org/en}, 2008.
 
 \bibitem{dlspec} IEC 61158-4-12: Data-link Protocol Specification.
-International Electrotechnical Comission (IEC), 2005.
+International Electrotechnical Commission (IEC), 2005.
 
 \bibitem{alspec} IEC 61158-6-12: Application Layer Protocol Specification.
-International Electrotechnical Comission (IEC), 2005.
+International Electrotechnical Commission (IEC), 2005.
 
 \bibitem{gpl} GNU General Public License, Version 2.
 \url{http://www.gnu.org/licenses/gpl.txt}. August~9, 2006.
