@@ -3048,201 +3048,54 @@ tools to make all that possible.
 
 %------------------------------------------------------------------------------
 
-\section{The Sysfs Interface}
-\label{sec:sysfs}
+\section{Command-line Tool}
+\label{sec:ethercat}
 
-The system filesystem (Sysfs\index{Sysfs}) was introduced with Linux
-kernel 2.5 and is a well-defined interface for drivers to export
-information to user space. It serves also as an relief for the process
-filesystem (Procfs), where over the years much non-process information
-was concentrated.
+% --master
 
-Sysfs exports information about devices, classes and buses via a
-virtual filesystem, usually mounted to \textit{/sys}. The EtherCAT
-master slightly differs from this concept, because the only physical
-device is the network adapter it uses for bus communication, which is
-already represented in Sysfs. For the EtherCAT bus is no system bus
-like PCI (with device and driver structures), it would not make any
-sense to represent it as bus structure in Sysfs.
+\subsection{Character devices}
+\label{sec:cdev}
 
-Therefore, the EtherCAT master is represented as a new directory
-directly unter the Sysfs root. Every master gets its own Sysfs entry
-named \textit{ethercatX}, where X is the index of the master. Two
-masters would result in the directories \textit{/sys/ethercat0} and
-\textit{/sys/ethercat1}, respectively.
+Each master instance will get a character device as a user-space interface.
+The devices are named \textit{/dev/EtherCATX}, where $X$ is the index of the
+master.
 
-The Sysfs base class in the kernel code is the \textit{kobject}
-structure. Each object structure, that is to be represented in Sysfs,
-has to contain such a structure, because due to the concurrent access
-(through ``normal'' kernel code and Sysfs code) the object deletion
-gets a little more complicated: The object may not be freed until no
-instance uses it any more. Therefore, each kobject maintains a
-reference counter. If the reference counter gets zero, the object is
-finally freed. A kobject can be registered to appear as a directory in
-Sysfs with a call to \textit{kobject\_add()}. Each kobject type can
-define attributes, that appear as files in the kobject's
-directory. Callback functions have to be provided for reading (and
-perhaps writing) access.
+% FIXME
+% udev
+% rights
 
-\subsection{Master Attributes}
-\label{sec:sysfs-master}
+%------------------------------------------------------------------------------
 
-Below is a typical listing of the masters Sysfs directory (that is a
-file system representation of the master's kobject):
+\subsection{Listing the bus}
 
-\begin{lstlisting}[gobble=2]
-  `\$` `\textbf{ls /sys/ethercat0}`
-  debug_level          slave000  slave003  slave006
-  eeprom_write_enable  slave001  slave004  slave007
-  info                 slave002  slave005  slave008
+Slave information can be gathered with the subcommand \lstinline+slaves+:
+
+\begin{lstlisting}
+$ `\textbf{ethercat slaves}`
+0     0:0  PREOP  +  EK1100 Ethernet Kopplerklemme (2A E-Bus)
+1  5555:0  PREOP  +  EL3162 2K. Ana. Eingang 0-10V
+2  5555:1  PREOP  +  EL4102 2K. Ana. Ausgang 0-10V
+3  5555:2  PREOP  +  EL2004 4K. Dig. Ausgang 24V, 0,5A
 \end{lstlisting}
 
-The following attributes exist in the master directory:
+Every slave found is displayed as one text row. The columns have the following
+meanings:
 
-\begin{description}
-\item[debug\_level] (read/write) This attribute contains the master's
-  debug level, which controls, how much information is printed into
-  Syslog. The values 0 (no additional debug messages), 1 (a few
-  additional debug messages) and 2 (all additional debug messages) are
-  defined. Writing is done with command like
+\begin{enumerate}
 
-  \begin{lstlisting}[gobble=4]
-    # `\textbf{echo 1 > /sys/ethercat0/debug\_level}`
-  \end{lstlisting}
+\item Ring position in the bus.
 
-  and is receipted with a syslog message by the master:
+\item Alias and position (see section~\ref{sec:addr}).
 
-  \begin{lstlisting}[gobble=4]
-    EtherCAT: Master debug level set to 1.
-  \end{lstlisting}
+\item Application-layer state.
 
-\item[enable\_eeprom\_writing] (read/write) See
-  section~\ref{sec:eepromaccess} for how to use this attribute.
+\item Error flag: \lstinline!+! means that the slave is ok, \lstinline+E+
+means that an error has occurred during scanning or configuration.
 
-\item[info] (read only) This attribute contains information about the
-  master. Example contents are below:
+\item The slave's name, as it appears in the ``general'' SII category. If no
+name is found, the slave's vendor ID and product code are listed.
 
-  \begin{lstlisting}[gobble=4]
-    `\$` `\textbf{cat /sys/ethercat0/info}`
-
-    Mode: IDLE
-    Slaves: 9
-
-    Timing (min/avg/max) [us]:
-      Idle cycle: 4 / 4.38 / 34
-      EoE cycle: 9 / 11.91 / 23
-
-    EoE statistics (RX/TX) [bps]:
-      eoe0: 0 / 3184
-  \end{lstlisting}
-
-  The mode can be \textit{ORPHANED}, \textit{IDLE} or
-  \textit{OPERATION}. The other parameters are self-explanatory.
-
-\end{description}
-
-\subsubsection{Domain Attributes}
-\label{sec:sysfs-domain}
-
-In operation mode, each created domain is represented as a directory
-\textit{domainX}, where X is the domain index. Below is a listing of
-the domain directory contents:
-
-\begin{lstlisting}[gobble=2]
-  `\$` `\textbf{ls /sys/ethercat0/domain0}`
-  image_size
-\end{lstlisting}
-
-The domain directories currently only export the domain's image size.
-It is planned to export the whole process data mapping for debugging
-purposes.
-
-\subsubsection{Slave Attributes}
-\label{sec:sysfs-slave}
-
-Each slave on the bus is represented in its own directory
-\textit{slaveXXX}, where XXX is the slave's 3-digit ring position in
-the EtherCAT bus. Below is a listing of a slave directory:
-
-\begin{lstlisting}[gobble=2]
-  `\$` `\textbf{ls /sys/ethercat0/slave003}`
-  eeprom  info  state
-\end{lstlisting}
-
-\begin{description}
-\item[eeprom] (read/write) See section~\ref{sec:eepromaccess} for how
-  to use this attribute.
-
-\item[info] (read only) This attribute contains a bunch of information
-  about the slave. Below is an example output:
-
-  \begin{lstlisting}[gobble=4]
-    `\$` `\textbf{cat /sys/ethercat0/slave003/info}`
-
-    Name: EL4132 2K. Ana. Ausgang +/-10V
-    Vendor ID: 0x00000002
-    Product code: 0x10243052
-
-    State: INIT
-    Ring position: 3
-    Advanced position: 1:3
-
-    Data link status:
-      Port 0 (EBUS) Link down, Loop open, Signal detected
-      Port 1 (EBUS) Link down, Loop open, Signal detected
-      Port 2 (EBUS) Link down, Loop closed, No signal
-      Port 3 (EBUS) Link down, Loop closed, No signal
-
-    Mailboxes:
-      RX mailbox: 0x1800/246, TX mailbox: 0x18F6/246
-      Supported protocols: CoE, FoE
-
-    SII data:
-      Group: AnaOut
-      Image: TERM_AO
-      Order#: EL4132
-
-    Sync-Managers:
-      0: 0x1800, length 246, control 0x26, enable
-      1: 0x18F6, length 246, control 0x22, enable
-      2: 0x1000, length 0, control 0x24, enable
-      3: 0x1100, length 0, control 0x20, enable
-
-    Pdos:
-      RXPDO "Channel 1" (0x1600), Sync-Manager 2
-        "Output" 0x6411:1, 16 bit
-      RXPDO "Channel 2" (0x1601), Sync-Manager 2
-        "Output" 0x6411:2, 16 bit
-  \end{lstlisting}
-
-  This is nearly all of the SII category information needed to
-  configure the slave, supplemented with state and addressing
-  information.
-
-\item[state] (read/write) This attribute contains the slave's state.
-  It can be read or written:
-
-  \begin{lstlisting}[gobble=4]
-    # `\textbf{cat /sys/ethercat0/slave003/state}`
-    OP
-    # `\textbf{echo SAFEOP > /sys/ethercat0/slave003/state}`
-  \end{lstlisting}
-
-  This command should also be receipted with a syslog message:
-
-  \begin{lstlisting}[gobble=4]
-    EtherCAT: Accepted new state SAFEOP for slave 3.
-    EtherCAT: Changing state of slave 3 from OP to SAFEOP.
-    EtherCAT: Slave states: INIT, SAFEOP, OP.
-  \end{lstlisting}
-
-  After the new requested state was accepted from user space, the
-  operation state machine (see section~\ref{sec:fsm-op}) or the idle
-  state machine (section~\ref{sec:fsm-idle}) notices, that the
-  requested slave state differs from the current one, and therefore
-  executes the slave configuration state machine, until the slave has
-  reached the requested state.
-\end{description}
+\end{enumerate}
 
 %------------------------------------------------------------------------------
 
@@ -3250,118 +3103,49 @@ the EtherCAT bus. Below is a listing of a slave directory:
 \label{sec:siiaccess}
 \index{SII!Access}
 
-It is possible to directly read or write the complete E$^2$PROM
-contents of the slaves. This was introduced for the reasons below:
+It is possible to directly read or write the complete SII contents of the
+slaves. This was introduced for the reasons below:
 
 \begin{itemize}
-\item The format of the E$^2$PROM data is still in development and
-  categories can be added in the future. With read and write access,
-  the complete memory contents can be easily backed up and restored.
-\item Some E$^2$PROM data fields have to be altered (like the alias
-  address). A quick writing must be possible for that.
-\item Through read access, analyzing category data is possible from
-  user space.
+
+\item The format of the SII data is still in development and categories can be
+added in the future. With read and write access, the complete memory contents
+can be easily backed up and restored.
+
+\item Some SII data fields have to be altered (like the alias address). A quick
+writing must be possible for that.
+
+\item Through reading access, analyzing category data is possible from user
+space.
+
 \end{itemize}
 
-Reading out E$^2$PROM data is as easy as reading other attributes. Though the
-data are in binary format, analysis is easier with a tool like
-\textit{hexdump}:
+Reading out SII data is as easy as other commands. Though the data are in
+binary format, analysis is easier with a tool like \textit{hexdump}:
 
-\begin{lstlisting}[gobble=2]
-  `\$` `\textbf{cat /sys/ethercat0/slave003/eeprom | hexdump}`
-  0000000 0103 0000 0000 0000 0000 0000 0000 008c
-  0000010 0002 0000 3052 07f0 0000 0000 0000 0000
-  0000020 0000 0000 0000 0000 0000 0000 0000 0000
-  ...
+\begin{lstlisting}
+$ `\textbf{ethercat sii\_read --slave 3 | hexdump}`
+0000000 0103 0000 0000 0000 0000 0000 0000 008c
+0000010 0002 0000 3052 07f0 0000 0000 0000 0000
+0000020 0000 0000 0000 0000 0000 0000 0000 0000
+...
 \end{lstlisting}
 
-Backing up E$^2$PROM contents gets as easy as copying a file:
+Backing up SII contents can easily done with a redirection:
 
-\begin{lstlisting}[gobble=2]
-  `\$` `\textbf{cp /sys/ethercat0/slave003/eeprom slave003.eep}`
+\begin{lstlisting}
+$ `\textbf{ethercat sii\_read --slave 3 > sii-of-slave3.bin}`
 \end{lstlisting}
 
-Writing access is only possible as \textit{root}. Moreover writing has
-to be explicitly enabled and is only allowed in idle mode. This is a
-safety measure, because without the correct memory contents, a slave
-is unusable. Writing E$^2$PROM contents in operation mode is not
-provided yet.
+To download SII contents to a slave, writing access to the master's character
+device is necessary (see section~\ref{sec:cdev}).
 
-E$^2$PROM writing is enabled with the command below:
-
-\begin{lstlisting}[gobble=2]
-  # `\textbf{echo 1 > /sys/ethercat0/eeprom\_write\_enable}`
+\begin{lstlisting}
+# `\textbf{ethercat sii\_write --slave 3 sii-of-slave3.bin}`
 \end{lstlisting}
 
-The success can be seen in the Syslog messages again:
-
-\begin{lstlisting}[gobble=2]
-  EtherCAT: Slave EEPROM writing enabled.
-\end{lstlisting}
-
-Now, it is possible to write E$^2$PROM contents to a slave. The master
-will accept data through the \textit{eeprom} file and will perform a
-short validation of the contents, before starting the write operation.
-This validation checks the complete size and the category headers.
-
-\begin{lstlisting}[gobble=2]
-  # `\textbf{cat slave003.eep > /sys/ethercat0/slave003/eeprom}`
-\end{lstlisting}
-
-The write operation can take a few seconds.
-
-\begin{lstlisting}[gobble=2]
-  EtherCAT: EEPROM writing scheduled for slave 3, 88 words.
-  EtherCAT: Writing EEPROM of slave 3...
-  EtherCAT: Finished writing EEPROM of slave 3.
-\end{lstlisting}
-
-%------------------------------------------------------------------------------
-
-\section{User Space Tools}
-\index{User space!Tools}
-
-There is a user space tool called \textit{lsec}\index{lsec} (``List
-EtherCAT'') to visualize the EtherCAT bus. Running it usually results
-in an output like this:
-
-\begin{lstlisting}[gobble=2]
-  `\$` `\textbf{lsec}`
-  EtherCAT bus listing for master 0:
-     0  1:0  OP      EK1100 Ethernet Kopplerklemme (2A E-Bus)
-     1  1:1  INIT    EL4132 2K. Ana. Ausgang +/-10V
-     2  1:2  INIT    EL4132 2K. Ana. Ausgang +/-10V
-     3  1:3  SAFEOP  EL4132 2K. Ana. Ausgang +/-10V
-     4  1:4  INIT    EL5101 Incremental Encoder Interface
-     5  1:5  INIT    EL1014 4K. Dig. Eingang 24V, 10s
-     6  1:6  OP      EL6601 1 Port Switch (Ethernet, CoE)
-     7  1:7  INIT    EL5101 Incremental Encoder Interface
-     8  1:8  INIT    EL5001 1K. SSI Encoder
-\end{lstlisting}
-
-Every slave is displayed as one text row. The first column shows its
-ring position, the second displays the ``advanced position address''
-(see section~\ref{sec:addr}) and the third column displays the current
-slave state. The last column is the slave's name, as it appears in the
-``general'' E$^2$PROM category.
-
-The lsec program is a Perl script, that evaluates the Sysfs
-\textit{info} attributes of the slaves (see
-section~\ref{sec:sysfs-slave}). This is done for master $0$ by
-default, but the master index can be specified via command line:
-
-\begin{lstlisting}[gobble=2]
-  `\$` `\textbf{lsec -h}`
-  Usage: ec_list [OPTIONS]
-          -m <IDX>    Query master <IDX>.
-          -h          Show this help.
-\end{lstlisting}
-
-This script has proved as useful for troubleshooting: If it displays
-slaves, the master is up and running, and the bus connection is
-present, too. It is also useful when building up a bus: It can verify
-the list of slaves and help to create a process data image (see
-chapter~\ref{chapter:usage}).
+The SII contents will be checked for validity and then sent to the slave. The
+write operation may take a few seconds.
 
 %------------------------------------------------------------------------------
 
