@@ -277,6 +277,8 @@ int ec_domain_finish(
 
 /*****************************************************************************/
 
+/** Get the number of FMMU configurations of the domain.
+ */
 unsigned int ec_domain_fmmu_count(const ec_domain_t *domain)
 {
     const ec_fmmu_config_t *fmmu;
@@ -291,15 +293,17 @@ unsigned int ec_domain_fmmu_count(const ec_domain_t *domain)
 
 /*****************************************************************************/
 
+/** Get a certain FMMU configuration via its position in the list.
+ */
 const ec_fmmu_config_t *ec_domain_find_fmmu(
-        const ec_domain_t *domain,
-        unsigned int index
+        const ec_domain_t *domain, /**< EtherCAT domain. */
+        unsigned int pos /**< List position. */
         )
 {
     const ec_fmmu_config_t *fmmu;
 
     list_for_each_entry(fmmu, &domain->fmmu_configs, list) {
-        if (index--)
+        if (pos--)
             continue;
         return fmmu;
     }

@@ -227,7 +227,9 @@ int ec_pdo_equal_entries(
 
 /*****************************************************************************/
 
-/**
+/** Get the number of Pdo entries.
+ *
+ * \return Number of Pdo entries.
  */
 unsigned int ec_pdo_entry_count(
         const ec_pdo_t *pdo /**< Pdo. */

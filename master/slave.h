@@ -128,7 +128,7 @@ struct ec_slave
     uint16_t base_fmmu_count; /**< Number of supported FMMUs. */
 
     // data link status
-    ec_slave_port_t ports[EC_MAX_PORTS];
+    ec_slave_port_t ports[EC_MAX_PORTS]; /**< Port link status. */
 
     // SII
     uint16_t *sii_words; /**< Complete SII image. */

@@ -1072,6 +1072,10 @@ const ec_slave_t *ec_master_find_slave_const(
 
 /*****************************************************************************/
 
+/** Get the number of slave configurations provided by the application.
+ *
+ * \return Number of configurations.
+ */
 unsigned int ec_master_config_count(
 		const ec_master_t *master /**< EtherCAT master. */
 		)
@@ -1088,15 +1092,21 @@ unsigned int ec_master_config_count(
 
 /*****************************************************************************/
 
+/** Get a slave configuration via its position in the list.
+ *
+ * Const version.
+ *
+ * \return Slave configuration or \a NULL.
+ */
 const ec_slave_config_t *ec_master_get_config_const(
 		const ec_master_t *master, /**< EtherCAT master. */
-		unsigned int index /**< List position. */
+		unsigned int pos /**< List position. */
 		)
 {
 	const ec_slave_config_t *sc;
 
 	list_for_each_entry(sc, &master->configs, list) {
-		if (index--)
+		if (pos--)
 			continue;
 		return sc;
 	}
@@ -1106,6 +1116,10 @@ const ec_slave_config_t *ec_master_get_config_const(
 
 /*****************************************************************************/
 
+/** Get the number of domains.
+ *
+ * \return Number of domains.
+ */
 unsigned int ec_master_domain_count(
 		const ec_master_t *master /**< EtherCAT master. */
 		)
@@ -1136,6 +1150,10 @@ unsigned int ec_master_domain_count(
         return NULL; \
     } while (0)
 
+/** Get a domain via its position in the list.
+ *
+ * \return Domain pointer, or \a NULL if not found.
+ */
 ec_domain_t *ec_master_find_domain(
 		ec_master_t *master, /**< EtherCAT master. */
 		unsigned int index /**< Domain index. */
@@ -1145,6 +1163,12 @@ ec_domain_t *ec_master_find_domain(
     EC_FIND_DOMAIN;
 }
 
+/** Get a domain via its position in the list.
+ *
+ * Const version.
+ *
+ * \return Domain pointer, or \a NULL if not found.
+ */
 const ec_domain_t *ec_master_find_domain_const(
 		const ec_master_t *master, /**< EtherCAT master. */
 		unsigned int index /**< Domain index. */
@@ -1156,9 +1180,14 @@ const ec_domain_t *ec_master_find_domain_const(
 
 /*****************************************************************************/
 
+/** Set the debug level.
+ *
+ * \retval 0 Success.
+ * \retval -1 Invalid debug level.
+ */
 int ec_master_debug_level(
-        ec_master_t *master,
-        int level
+        ec_master_t *master, /**< EtherCAT master. */
+        int level /**< Debug level. May be 0, 1 or 2. */
         )
 {
     if (level < 0 || level > 2) {

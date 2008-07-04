@@ -299,7 +299,9 @@ const ec_pdo_t *ec_pdo_list_find_pdo_by_pos_const(
 
 /*****************************************************************************/
 
-/**
+/** Get the number of Pdos in the list.
+ *
+ * \return Number of Pdos.
  */
 unsigned int ec_pdo_list_count(
         const ec_pdo_list_t *pl /**< Pdo list. */

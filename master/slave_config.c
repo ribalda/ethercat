@@ -312,6 +312,10 @@ void ec_slave_config_load_default_mapping(
 
 /*****************************************************************************/
 
+/** Get the number of Sdo configurations.
+ *
+ * \return Number of Sdo configurations.
+ */
 unsigned int ec_slave_config_sdo_count(
         const ec_slave_config_t *sc /**< Slave configuration. */
         )

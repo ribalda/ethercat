@@ -297,10 +297,10 @@ typedef struct {
     uint8_t subindex; /**< Pdo entry subindex. */
     unsigned int *offset; /**< Pointer to a variable to store the Pdo entry's
                        (byte-)offset in the process data. */
-    unsigned int *bit_position; /** Pointer to a variable to store a bit 
-                                 position (0-7) within the \a offset. Can be
-                                 NULL, in which case an error is raised if the
-                                 Pdo entry does not byte-align. */
+    unsigned int *bit_position; /**< Pointer to a variable to store a bit 
+                                  position (0-7) within the \a offset. Can be
+                                  NULL, in which case an error is raised if the
+                                  Pdo entry does not byte-align. */
 } ec_pdo_entry_reg_t;
 
 /*****************************************************************************/
@@ -328,13 +328,24 @@ unsigned int ecrt_version_magic(void);
 
 /** Requests an EtherCAT master for realtime operation.
  * 
- * \return pointer to reserved master, or NULL on error
+ * Before an application can access an EtherCAT master, it has to reserve one
+ * for exclusive use.
+ *
+ * This function has to be the first function an application has to call to
+ * use EtherCAT. The function takes the index of the master as its argument.
+ * The first master has index 0, the n-th master has index n - 1. The number
+ * of masters has to be specified when loading the master module.
+ *
+ * \return Pointer to reserved master, or \a NULL on error.
  */
 ec_master_t *ecrt_request_master(
         unsigned int master_index /**< Index of the master to request. */
         );
 
 /** Releases a requested EtherCAT master.
+ *
+ * After use, a master it has to be released to make it available for other
+ * applications.
  */
 void ecrt_release_master(
         ec_master_t *master /**< EtherCAT master */
@@ -346,9 +357,15 @@ void ecrt_release_master(
 
 /** Sets the locking callbacks.
  *
+ * For concurrent master access, the application has to provide a locking
+ * mechanism (see section FIXME in the docs). The method takes two function
+ * pointers and a data value as its parameters. The arbitrary \a cb_data value
+ * will be passed as argument on every callback. Asynchronous master access
+ * (like EoE processing) is only possible if the callbacks have been set.
+ *
  * The request_cb function must return zero, to allow another instance
- * (the EoE process for example) to access the master. Non-zero means,
- * that access is forbidden at this time.
+ * (an EoE process for example) to access the master. Non-zero means,
+ * that access is currently forbidden.
  */
 void ecrt_master_callbacks(
         ec_master_t *master, /**< EtherCAT master */
@@ -357,7 +374,12 @@ void ecrt_master_callbacks(
         void *cb_data /**< Arbitrary user data. */
         );
 
-/** Creates a new domain.
+/** Creates a new process data domain.
+ *
+ * For process data exchange, at least one process data domain is needed.
+ * This method creates a new process data domain and returns a pointer to the
+ * new domain object. This object can be used for registering Pdos and
+ * exchanging them in cyclic operation.
  *
  * \return Pointer to the new domain on success, else NULL.
  */
@@ -422,8 +444,11 @@ int ecrt_master_activate(
 
 /** Sends all datagrams in the queue.
  *
- * This has to be called cyclically by the realtime application after
- * ecrt_master_activate() has returned.
+ * This method takes all datagrams, that have been queued for transmission,
+ * puts them into frames, and passes them to the Ethernet device for sending.
+ *
+ * Has to be called cyclically by the application after ecrt_master_activate()
+ * has returned.
  */
 void ecrt_master_send(
         ec_master_t *master /**< EtherCAT master. */
@@ -431,7 +456,12 @@ void ecrt_master_send(
 
 /** Fetches received frames from the hardware and processes the datagrams.
  *
- * This has to be called cyclically by the realtime application after
+ * Queries the network device for received frames by calling the interrupt
+ * service routine. Extracts received datagrams and dispatches the results to
+ * the datagram objects in the queue. Received datagrams, and the ones that
+ * timed out, will be marked, and dequeued.
+ *
+ * Has to be called cyclically by the realtime application after
  * ecrt_master_activate() has returned.
  */
 void ecrt_master_receive(

@@ -1195,6 +1195,8 @@ int ec_cdev_ioctl_config_sdo(
  * File operations
  *****************************************************************************/
 
+/** Called when the cdev is opened.
+ */
 int eccdev_open(struct inode *inode, struct file *filp)
 {
     ec_cdev_t *cdev = container_of(inode->i_cdev, ec_cdev_t, cdev);
@@ -1208,6 +1210,8 @@ int eccdev_open(struct inode *inode, struct file *filp)
 
 /*****************************************************************************/
 
+/** Called when the cdev is closed.
+ */
 int eccdev_release(struct inode *inode, struct file *filp)
 {
     ec_cdev_t *cdev = (ec_cdev_t *) filp->private_data;
@@ -1220,6 +1224,8 @@ int eccdev_release(struct inode *inode, struct file *filp)
 
 /*****************************************************************************/
 
+/** Called when an ioctl() command is issued.
+ */
 long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
     ec_cdev_t *cdev = (ec_cdev_t *) filp->private_data;

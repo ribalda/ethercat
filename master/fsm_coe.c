@@ -231,7 +231,11 @@ int ec_fsm_coe_success(ec_fsm_coe_t *fsm /**< Finite state machine */)
 
 /*****************************************************************************/
 
-/**
+/** Check if the received data are a CoE emergency request.
+ *
+ * If the check is positive, the emergency request is output.
+ *
+ * \return The data were an emergency request.
  */
 int ec_fsm_coe_check_emergency(
         ec_fsm_coe_t *fsm, /**< Finite state machine */
