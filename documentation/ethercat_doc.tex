@@ -218,6 +218,8 @@ The list below gives a short summary of the master features.
 
 \item Designed as a kernel module for Linux 2.6.
 
+\item Implemented according to IEC 61158-12 \cite{dlspec} \cite{alspec}.
+
 \item Comes with EtherCAT-capable drivers for several common Ethernet devices.
 
   \begin{itemize}
@@ -376,42 +378,40 @@ Figure~\ref{fig:arch} gives a general overview of the master architecture.
 \paragraph{Master Module}
 \index{Master module}
 
-The EtherCAT master mainly consists of the master module, containing one or
-more EtherCAT masters (section~\ref{sec:mastermod}), the ``Device Interface''
-(section~\ref{sec:ecdev}) and the ``Realtime Interface''
-(section~\ref{sec:ecrt}).
+Kernel module containing one or more EtherCAT master instances (see
+section~\ref{sec:mastermod}), the ``Device Interface'' (see
+section~\ref{sec:ecdev}) and the ``Realtime Interface'' (see
+section~\ref{sec:ecrt}).
 
 \paragraph{Device Modules}
 \index{Device modules}
 
-Furthermore there are EtherCAT-capable network device driver
-modules\index{Device modules}, that connect to the EtherCAT master via the
-device interface. These modified network drivers can handle both network
-devices used for EtherCAT operation and ``normal'' Ethernet devices. The
-common case is, that the master module offers a single EtherCAT master: An
-EtherCAT-capable network device driver module connects one network device to
-this master, that is now able to send and receive EtherCAT frames, while all
-other network devices handled by the network driver get connected to the
-kernel's network stack as usual.
+EtherCAT-capable Ethernet device driver modules\index{Device modules}, that
+offer their devices to the EtherCAT master via the device interface (see
+section~\ref{sec:ecdev}). These modified network drivers can handle network
+devices used for EtherCAT operation and ``normal'' Ethernet devices in
+parallel. A master can accept a certain device and then is able to send and
+receive EtherCAT frames. Ethernet devices declined by the master module are
+connected to the kernel's network stack as usual.
 
 \paragraph{Application Modules}
+\index{Application module}
 
-An application module''\index{Application module} is a kernel module, that
-uses the EtherCAT master (usually for cyclic exchange of process data with
-EtherCAT slaves). These modules are not part of the EtherCAT master
-code\footnote{Although there are some examples provided in the
-\textit{examples} directory, see chapter~\ref{chapter:usage}}, but have to be
-generated or written by the application engineer. An application module can
-``request'' a master through the realtime interface (see
-section~\ref{sec:ecrt}). If this succeeds, the module has the control over the
-master: It can provide a bus configuration and exchange process data.
+Kernel modules, that use the EtherCAT master (usually for cyclic exchange of
+process data with EtherCAT slaves). These modules are not part of the EtherCAT
+master code\footnote{Although there are some examples provided in the
+\textit{examples} directory, see chapter~\ref{chapter:examples}}, but have to
+be generated or written by the user. An application module can ``request'' a
+master through the realtime interface (see section~\ref{sec:ecrt}). If this
+succeeds, the module has the control over the master: It can provide a bus
+configuration and exchange process data.
 
 %------------------------------------------------------------------------------
 
 \section{Phases}
 \index{Master phases}
 
-The EtherCAT master has several phases (see fig.~\ref{fig:phases}):
+The EtherCAT master runs through several phases (see fig.~\ref{fig:phases}):
 
 \begin{figure}[htbp]
   \centering
@@ -422,10 +422,11 @@ The EtherCAT master has several phases (see fig.~\ref{fig:phases}):
 \begin{description}
 
 \item[Orphaned phase]\index{Orphaned phase} This mode takes effect, when the
-master has no Ethernet device connected. No bus communication is possible.
+master still waits for its Ethernet device to connect. No bus communication is
+possible until then.
 
-\item[Idle phase]\index{Idle phase} takes effect when the master has an
-Ethernet device connected, but is not requested by any application. The master
+\item[Idle phase]\index{Idle phase} takes effect when the master has accepted
+an Ethernet device, but is not requested by any application yet. The master
 runs its state machine (see section~\ref{sec:fsm-master}), that automatically
 scans the bus for slaves and executes pending operations from the user space
 interface (for example Sdo access). The command-line tool can be used to access
@@ -446,24 +447,37 @@ application that can provide a bus configuration and exchange process data.
 
 %------------------------------------------------------------------------------
 
-\section{The Master Module} % FIXME
-\label{sec:mastermod}
+\section{Master Module}
+\label{sec:mastermodule}
 \index{Master module}
 
-The EtherCAT master is designed to run as a kernel module. Moreover
-the master kernel module \textit{ec\_master} can handle multiple
-masters at the same time: The number of masters has to be passed to
-the module with the parameter \textit{ec\_master\_count}, that
-defaults to $1$. A certain master can later be addressed by its index.
-For example, if the master module has been loaded with the command
+The EtherCAT master kernel module \textit{ec\_master} can contain multiple
+master instances. Each master waits for a certain Ethernet device identified
+by its MAC address\index{MAC address}. These addresses have to be specified on
+module loading via the \textit{main\_devices} module parameter. The number of
+master instances to initialize is taken from the number of MAC addresses
+given.
 
-\begin{lstlisting}[gobble=2]
-  # `\textbf{modprobe ec\_master ec\_master\_count=2}`
+The below command loads the master module with a single master instance that
+waits for the Ethernet device with the MAC address
+\lstinline+00:0E:0C:DA:A2:20+. The master will be accessible via index $0$.
+
+\begin{lstlisting}
+# `\textbf{modprobe ec\_master main\_devices=00:0E:0C:DA:A2:20}`
 \end{lstlisting}
 
-the two masters can be addressed by their indices 0 and 1 respectively
-(see figure~\ref{fig:masters}). This master index mandatory for
-certain functions of the master interfaces.
+MAC addresses for multiple masters have to be separated by commas:
+
+\begin{lstlisting}
+# `\textbf{modprobe ec\_master main\_devices=00:0E:0C:DA:A2:20,00:e0:81:71:d5:1c}`
+\end{lstlisting}
+
+The two masters can be addressed by their indices 0 and 1 respectively (see
+figure~\ref{fig:masters}). The master index is needed for the
+\lstinline+ecrt_master_request()+ function of the realtime interface (see
+section~\ref{sec:ecrt}) and the \lstinline+--master+ option of the
+\textit{ethercat} command-line tool (see section~\ref{sec:ethercat}), which
+defaults to $0$.
 
 \begin{figure}[htbp]
   \centering
@@ -472,26 +486,32 @@ certain functions of the master interfaces.
   \label{fig:masters}
 \end{figure}
 
-\paragraph{Master Log Messages}
+\paragraph{Init script}
+\index{Init script}
 
-The master module gives information about it's state and events via
-the Syslog interface. The module loading command above should result
-in the Syslog messages below (or similar):
+Most probably you won't want to load the master module and the Ethernet driver
+modules manually, but start the master as a service. See
+section~\ref{sec:system} on how to do this.
 
-\begin{lstlisting}[gobble=2]
-  EtherCAT: Master driver, 1.1 (stable) - rev. 513,
-            compiled by fp at Aug  09 2006 09:43:50
-  EtherCAT: Initializing 2 EtherCAT master(s)...
-  EtherCAT: Initializing master 0.
-  EtherCAT: Initializing master 1.
-  EtherCAT: Master driver initialized.
+\paragraph{Syslog}
+
+The master module outputs information about it's state and events to the
+kernel ring buffer. These also end up in the system logs.  The above module
+loading command should result in the messages below:
+
+\begin{lstlisting}
+# `\textbf{dmesg | tail -2}`
+EtherCAT: Master driver `\masterversion`
+EtherCAT: 2 masters waiting for devices.
+
+# `\textbf{tail -2 /var/log/messages}`
+Jul  4 10:22:45 ethercat kernel: EtherCAT: Master driver `\masterversion`
+Jul  4 10:22:45 ethercat kernel: EtherCAT: 2 masters waiting
+                                 for devices.
 \end{lstlisting}
 
-The master provides information about it's version number, subversion
-revision number and compile information, like the date of compilation
-and the user, who compiled. All messages are prefixed either with
-\texttt{EtherCAT:}, \texttt{EtherCAT WARNING:} or \texttt{EtherCAT
-  ERROR:}, which makes searching the logs easier.
+All EtherCAT master output is prefixed with \lstinline+EtherCAT+ which makes
+searching the logs easier.
 
 %------------------------------------------------------------------------------
 
@@ -3348,42 +3368,54 @@ chapter~\ref{chapter:usage}).
 \section{System Integration}
 \label{sec:system}
 
-To integrate the EtherCAT master into a running system, it has to be
-guaranteed, that it is started on system startup. In addition, there has
-to be a persistent configuration, that is also applied on startup.
+To integrate the EtherCAT master as a service into a running system, it comes
+with an init script and a sysconfig file, that are described below.
 
-\subsubsection{The EtherCAT Init Script}
+\subsection{Init Script}
 \label{sec:init}
 \index{Init script}
 
-The EtherCAT master provides an ``init script'', that conforms to the
-requirements of the ``Linux Standard Base'' (LSB\index{LSB},
-\cite{lsb}). The script is installed to \textit{etc/init.d/ethercat}
-below the installation prefix and has to be copied to the appropriate
-location (see section~\ref{sec:make}), before the master can be
-inserted as a service. The different Linux distributions offer
-different ways to mark the service for starting and stopping in
-certain runlevels (for example, SUSE Linux provides the
-\textit{insserv} command).
+The EtherCAT master init script conforms to the requirements of the ``Linux
+Standard Base'' (LSB\index{LSB}, \cite{lsb}). The script is installed to
+\textit{etc/init.d/ethercat} below the installation prefix and has to be copied
+(or better: linked) to the appropriate location (see
+section~\ref{sec:install}), before the master can be inserted as a service.
+Please note, that the init script depends on the sysconfig file described
+below.
 
-To provide service dependencies (i.~e. which services have to be
-started before) right inside the init script code, LSB defines a
-special comment block. System tools can extract this information to
-insert the EtherCAT init script at the correct place in the startup
-sequence:
+To provide service dependencies (i.~e. which services have to be started before
+others) inside the init script code, LSB defines a special comment block.
+System tools can extract this information to insert the EtherCAT init script at
+the correct place in the startup sequence:
 
-\begin{lstlisting}[gobble=2]
-  ### BEGIN INIT INFO
-  # Provides:          ethercat
-  # Required-Start:    $local_fs $syslog $network
-  # Should-Start:      $time
-  # Required-Stop:     $local_fs $syslog $network
-  # Should-Stop:       $time
-  # Default-Start:     3 5
-  # Default-Stop:      0 1 2 6
-  # Short-Description: EtherCAT master modules
-  # Description:
-  ### END INIT INFO
+\lstinputlisting[firstline=38,lastline=48]
+    {../script/init.d/ethercat}
+
+\subsection{Sysconfig}
+\label{sec:sysconfig}
+\index{Sysconfig file}
+
+For persistent configuration, the init script uses a sysconfig file installed
+to \textit{etc/sysconfig/ethercat} (below the installation prefix), that is
+mandatory for the init script. The sysconfig file contains all configuration
+variables needed to operate one or more masters. The documentation is inside
+the file and included below:
+
+\lstinputlisting[numbers=left,firstline=9,basicstyle=\ttfamily\scriptsize]
+    {../script/sysconfig/ethercat}
+
+\subsection{Service}
+\label{sec:service}
+\index{Service}
+
+After the init script and the sysconfig file are placed into the right
+location, the EtherCAT master can be inserted as a service. The different Linux
+distributions offer different ways to mark a service for starting and stopping
+in certain runlevels. For example, SUSE Linux provides the \textit{insserv}
+command:
+
+\begin{lstlisting}
+# `\textbf{insserv ethercat}`
 \end{lstlisting}
 
 The init script can also be used for manually starting and stopping
@@ -3395,45 +3427,6 @@ the EtherCAT master. It has to be executed with one of the parameters
   Shutting down EtherCAT master                done
   Starting EtherCAT master                     done
 \end{lstlisting}
-
-\subsubsection{Sysconfig} % FIXME
-\label{sec:sysconfig}
-\index{Sysconfig file}
-
-For persistent configuration, the init script uses a sysconfig file
-installed to \textit{etc/sysconfig/ethercat} (below the installation
-prefix), that is mandatory for the init script. The sysconfig file
-contains all configuration variables needed to operate a master:
-
-\begin{description}
-\item[DEVICE\_INDEX] This variable must contain the PCI index of the
-  EtherCAT device.  Setting this is mandatory for the EtherCAT init
-  script. Default: $-1$
-\item[EOE\_INTERFACES] The number of virtual Ethernet-over-EtherCAT
-  interfaces, every master creates on startup. See
-  section~\ref{sec:eoeimp}. Default: $0$
-\item[EOE\_BRIDGE] If this variable is set, all EoE interfaces will be
-  added to a network bridge according to IEEE 802.1D after master
-  startup. The variable must contain the name of the bridge. To use
-  this functionality, the kernel must be configured with the
-  CONFIG\_BRIDGE option and the \textit{bridge-utils} package must be
-  installed (i.~e. the \textit{brctl} command is needed).
-\item[EOE\_IP\_ADDRESS] The IP address of the EoE bridge. Setting this
-  together with \$EOE\_IP\_NETMASK will let the local host communicate
-  with devices on the EoE bridge.
-\item[EOE\_IP\_NETMASK] IP netmask of the EoE bridge.
-\item[EOE\_EXTRA\_INTERFACES] The list of extra interfaces to include
-  in the EoE brid\-ge. Set this to interconnect the EoE bridge with
-  other local interfaces. If \$EOE\_\-BRIDGE is empty or undefined,
-  setting this variable has no effect. Important: The IP address of
-  the listed interfaces will be cleared. Setting
-  \$EOE\_\-IP\_\-ADDRESS and \$EOE\_IP\_NETMASK will re-enable them
-  for IP traffic.
-\item[EOE\_GATEWAY] The IP address of the default gateway. If this
-  variable is set, the gateway will be renewed after bridge
-  installation. This is necessary, if the default gateway's interface
-  is one of the \$EOE\_EXTRA\_INTERFACES.
-\end{description}
 
 %------------------------------------------------------------------------------
 
@@ -3706,9 +3699,10 @@ This command will install the compiled kernel modules to
 
 If the EtherCAT master shall be run as a service\footnote{Even if the EtherCAT
 master shall not be loaded on system startup, the use of the init script is
-recommended for manual (un-)loading.}, the init script and the sysconfig file
-have to be copied (or linked) to the appropriate locations. The below example
-is suitable for SUSE Linux. It may vary for other distributions.
+recommended for manual (un-)loading.} (see section~\ref{sec:system}), the init
+script and the sysconfig file have to be copied (or linked) to the appropriate
+locations. The below example is suitable for SUSE Linux. It may vary for other
+distributions.
 
 \begin{lstlisting}[gobble=2]
   # `\textbf{cd /opt/etherlab}`
