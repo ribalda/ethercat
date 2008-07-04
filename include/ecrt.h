@@ -422,7 +422,7 @@ ec_slave_config_t *ecrt_master_slave_config(
         uint32_t product_code /**< Expected product code. */
         );
 
-/** Finishes the configuration phase and prepares for realtime mode.
+/** Finishes the configuration phase and prepares for cyclic operation.
  *
  * This function tells the master that the configuration phase is finished and
  * the realtime operation will begin. The function allocates internal memory
