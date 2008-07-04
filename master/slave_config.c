@@ -512,7 +512,7 @@ int ecrt_slave_config_pdos(ec_slave_config_t *sc,
     for (i = 0; i < n_syncs; i++) {
         sync_info = &syncs[i];
 
-        if (sync_info->index == 0xff)
+        if (sync_info->index == (uint8_t) EC_END)
             break;
 
         if (sync_info->index >= EC_MAX_SYNC_MANAGERS) {
