@@ -7,34 +7,28 @@
 #------------------------------------------------------------------------------
 
 #
-# Master device and backup-device settings.
+# Master devices.
 #
-# The MASTER<X>_DEVICE variable specifies the ethernet device for master 'X',
-# while the MASTER<X>_BACKUP variable specifies the backup ethernet device for
-# redundancy purposes.
+# The MASTER<X>_DEVICE variable specifies the Ethernet device for a master
+# with index 'X'.
 #
 # Specify the MAC address (hexadecimal with colons) of the Ethernet device to
 # use. Example: "00:00:08:44:ab:66"
 #
 # The broadcast address "ff:ff:ff:ff:ff:ff" has a special meaning: It tells
-# the master to accept the first device offered by any ethernet driver.
+# the master to accept the first device offered by any Ethernet driver.
 #
 # The MASTER<X>_DEVICE variables also determine, how many masters will be
 # created: A non-empty variable MASTER0_DEVICE will create one master, adding
 # a non-empty variable MASTER1_DEVICE will create a second master, and so on.
 #
-# Note: The backup devices are not implemented, yet.
-#
 MASTER0_DEVICE=""
-MASTER0_BACKUP=""
-
 #MASTER1_DEVICE=""
-#MASTER1_BACKUP=""
 
 #
 # Ethernet driver modules to replace with EtherCAT-capable ones.
 #
-# The init script will try to unload the ethernet driver modules in the list
+# The init script will try to unload the Ethernet driver modules in the list
 # and replace them with the EtherCAT-capable ones, respectively. If a certain
 # (EtherCAT-capable) driver is not found, a warning will appear.
 #
