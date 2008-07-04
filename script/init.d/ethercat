@@ -43,7 +43,7 @@
 # Should-Stop:       $time ntp
 # Default-Start:     3 5
 # Default-Stop:      0 1 2 6
-# Short-Description: IgH EtherCAT master modules
+# Short-Description: EtherCAT Master
 # Description:
 ### END INIT INFO
 
