@@ -606,421 +606,54 @@ the module code.
 \label{sec:ecrt}
 \index{Application interface}
 
-%------------------------------------------------------------------------------
+The application interface provides functions and data structures for
+applications to access and use an EtherCAT master. The complete documentation
+of the interface is included as Doxygen~\cite{doxygen} comments in the header
+file \textit{include/ecrt.h}. You can either directly view the file comments
+or generate an HTML documentation as described in section~\ref{sec:gendoc}.
 
-\section{The Realtime Interface} % FIXME move information to ecrt.h, reference
-\label{sec:ecrt}
-\index{Realtime interface}
+The following sections cover a general description of the application
+interface.
 
-The realtime interface provides functions and data structures for applications
-to access and use an EtherCAT master.
-
-% \paragraph{Master Phases}
-% 
-% Every application should use the master in three phases:
-% 
-% \begin{enumerate}
-% \item \textit{Startup} - The master is requested and the bus is
-%   validated. Domains are created and Pdos are registered. Slave
-%   configurations are applied.
-% \item \textit{Operation} - Cyclic code is run, process data is
-%   exchanged and the master state machine is executed.
-% \item \textit{Shutdown} - Cyclic code is stopped and the master
-%   is released.
-% \end{enumerate}
-
-\subsubsection{Master Requesting and Releasing}
-
-Before an application can access an EtherCAT master provided by the
-master module, it has to reserve one for exclusive use. After use, it
-has to release the requested master and make it available for other
-modules. This is done with the following functions:
-
-\begin{lstlisting}[gobble=2,language=C]
-  ec_master_t *ecrt_request_master(unsigned int master_index);
-  void ecrt_release_master(ec_master_t *master);
-\end{lstlisting}
-
-The \textit{ecrt\_request\_master()} function has to be the first function a
-module has to call, when using EtherCAT. The function takes the index of the
-master as its argument. The first master has index 0, the $n$th master has
-index $n - 1$. The number of existent masters has to be specified when loading
-the master module (see section~\ref{sec:mastermod}). The function tries to
-reserve the specified master and scans for slaves. It returns a pointer to the
-reserved master object upon success, or \textit{NULL} if an error occurred.
-
-The \textit{ecrt\_release\_master()} function releases a reserved
-master after use. It takes the pointer to the master object returned
-by \textit{ecrt\_request\_master()} as its argument and can never
-fail.
-
-\subsubsection{Master Methods}
-\label{sec:ecrt-master}
-
-\paragraph{Domain Creation}
-
-For process data exchange, at least one process data domain is needed
-(see section~\ref{sec:processdata}).
-
-\begin{lstlisting}[gobble=2,language=C]
-  ec_domain_t *ecrt_master_create_domain(ec_master_t *master);
-\end{lstlisting}
-
-The \textit{ecrt\_master\_create\_domain()} method creates a new
-process data domain and returns a pointer to the new domain object.
-This object can be used for registering process data objects and
-exchange process data in cyclic operation. On failure, the function
-returns \textit{NULL}.
-
-\paragraph{Slave Handlers}
-
-To access a certain slave, there is a method to get a slave handler:
-
-\begin{lstlisting}[gobble=2,language=C]
-  ec_slave_t *ecrt_master_get_slave(const ec_master_t *,
-                                    const char *);
-\end{lstlisting}
-
-The \textit{ecrt\_master\_get\_slave()} method returns a pointer to a
-certain slave object, specified by its ASCII address (see
-section~\ref{sec:addr}). If the address is invalid, \textit{NULL} is
-returned.
-
-\paragraph{Master Activation}
-
-When all domains are created, and all process data objects are
-registered, the master can be activated:
-
-\begin{lstlisting}[gobble=2,language=C]
-  int ecrt_master_activate(ec_master_t *master);
-  void ecrt_master_deactivate(ec_master_t *master);
-\end{lstlisting}
-
-By calling the \textit{ecrt\_master\_activate()} method, all slaves
-are configured according to the prior method calls and are brought
-into OP state. In this case, the method has a return value of 0.
-Otherwise (wrong configuration or bus failure) the method returns
-non-zero.
-
-The \textit{ecrt\_master\_deactivate()} method is the counterpart to
-the activate call: It brings all slaves back into INIT state again.
-This method should be called prior to
-\textit{ecrt\_\-master\_\-release()}.
-
-\paragraph{Locking Callbacks}
-
-For concurrent master access, the application has to provide a locking
-mechanism (see section~\ref{sec:concurr}):
-
-\begin{lstlisting}[gobble=2,language=C]
-  void ecrt_master_callbacks(ec_master_t *master,
-                             int (*request_cb)(void *),
-                             void (*release_cb)(void *),
-                             void *cb_data);
-\end{lstlisting}
-
-The ``request lock'' and ``release lock'' callbacks can be set with
-the \textit{ecrt\_master\_call\-backs()} method. It takes two function
-pointers and a data value as additional arguments. The arbitrary data
-value will be passed as argument on every callback. Asynchronous
-master access (like EoE processing) is only possible if these
-callbacks have been set.
-
-\paragraph{Preparation of Cyclic Data Exchange}
-
-Cyclic operation mostly consists of the three steps input, processing and
-output. In EtherCAT terms this would mean: Receive datagrams, evaluate process
-data and send datagrams. The first cycle differs from this principle, because
-no datagrams have been sent yet, so there is nothing to receive. To avoid
-having a case differentiation (in terms of an \textit{if} clause), the
-following method exists:
-
-\begin{lstlisting}[gobble=2,language=C]
-  void ecrt_master_prepare(ec_master_t *master);
-\end{lstlisting}
-
-As a last thing before cyclic operation, a call to the
-\textit{ecrt\_master\_prepare()} method should be issued. It makes all
-process data domains queue their datagrams and issues a send command,
-so that the first receive call in cyclic operation will not fail.
-
-\paragraph{Frame Sending and Receiving}
-
-To send all queued datagrams and to later receive the sent datagrams
-there are two methods:
-
-\begin{lstlisting}[gobble=2,language=C]
-  void ecrt_master_send(ec_master_t *master);
-  void ecrt_master_receive(ec_master_t *master);
-\end{lstlisting}
-
-The \textit{ecrt\_master\_send()} method takes all datagrams, that
-have been queued for transmission, packs them into frames, and passes
-them to the network device for sending.
-
-The \textit{ecrt\_master\_receive()} queries the network device for
-received frames (by calling the ISR\index{ISR}), extracts received
-datagrams and dispatches the results to the datagram objects in the
-queue. Received datagrams, and the ones that timed out, will be
-marked, and then dequeued.
-
-\paragraph{Running the Operation State Machine}
-
-The master's operation state machine (see section~\ref{sec:fsm-op})
-monitors the bus in cyclic operation and reconfigures slaves, if
-necessary. Therefore, the following method should be called
-cyclically:
-
-\begin{lstlisting}[gobble=2,language=C]
-  void ecrt_master_run(ec_master_t *master);
-\end{lstlisting}
-
-The \textit{ecrt\_master\_run()} method executes the master's
-operation state machine step by step. It returns after processing one
-state and queuing a datagram. Calling this function is not mandatory,
-but highly recommended.
-
-\paragraph{Master Monitoring}
-
-It is also highly recommended to evaluate the master's error state. In
-this way it is possible to notice lost network links, failed bus
-segments, and other issues:
-
-\begin{lstlisting}[gobble=2,language=C]
-  int ecrt_master_state(const ec_master_t *master);
-\end{lstlisting}
-
-The \textit{ecrt\_master\_state()} method returns the master's error
-state. The following states are defined as part of the realtime
-interface:
+Every application should use the master in two steps:
 
 \begin{description}
-\item[EC\_MASTER\_OK] means, that no error has occurred.
-\item[EC\_MASTER\_LINK\_ERROR] means, that the network link is
-  currently down.
-\item[EC\_MASTER\_BUS\_ERROR] means, that one or more slaves do not
-  respond.
-\end{description}
 
-\subsubsection{Domain Methods}
-\label{sec:ecrt-domain}
+\item[Configuration] The master is requested and the configuration is applied.
+Domains are created Slaves are configured and Pdo entries are registered (see
+section~\ref{sec:masterconfig}).
 
-\paragraph{Pdo Registration}
-
-To access data of a slave's Pdo in cyclic operation, it is necessary
-to make it part of a process data domain:
-
-\begin{lstlisting}[gobble=2,language=C]
-  ec_slave_t *ecrt_domain_register_pdo(ec_domain_t *domain,
-                                       const char *address,
-                                       uint32_t vendor_id,
-                                       uint32_t product_code,
-                                       const char *pdo_name
-                                       void **data_ptr);
-  int ecrt_domain_register_pdo_list(ec_domain_t *domain,
-                                    const ec_pdo_reg_t *pdos);
-\end{lstlisting}
-
-The \textit{ecrt\_domain\_register\_pdo()} method registers a certain
-Pdo as part of the domain and takes the address of the process data
-pointer. This pointer will be set on master activation and then can be
-parameter to the \textit{EC\_READ\_*} and \textit{EC\_WRITE\_*} macros
-described below.
-
-A perhaps easier way to register multiple Pdos at the same time is to
-fill an array of \textit{ec\_pdo\_reg\_t} and hand it to the
-\textit{ecrt\_domain\_register\_pdo\_list()} method. Attention: This
-array has to be terminated by an empty structure (\textit{\{\}})!
-
-\paragraph{Evaluating Domain Data}
-
-To evaluate domain data, the following method has to be used:
-
-\begin{lstlisting}[gobble=2,language=C]
-  void ecrt_domain_process(ec_domain_t *domain);
-\end{lstlisting}
-
-The \textit{ecrt\_domain\_process()} method sets the domains state and
-re-queues its datagram for sending.
-
-\paragraph{Domain State}
-
-Similar to the master state, a domain has an own error state:
-
-\begin{lstlisting}[gobble=2,language=C]
-  int ecrt_domain_state(const ec_domain_t *domain);
-\end{lstlisting}
-
-The \textit{ecrt\_domain\_state()} method returns the domain's error state. It
-is non-zero if \textbf{not} all process data values could be exchanged, and
-zero otherwise.
-
-\subsubsection{Slave Methods}
-\label{sec:ecrt-slave}
-
-\paragraph{Sdo Configuration}
-
-To configure slave Sdos, the function interface below can be used:
-
-\begin{lstlisting}[gobble=2,language=C]
-  int ecrt_slave_conf_sdo8(ec_slave_t *slave,
-                           uint16_t sdo_index,
-                           uint8_t sdo_subindex,
-                           uint8_t value);
-  int ecrt_slave_conf_sdo16(ec_slave_t *slave,
-                            uint16_t sdo_index,
-                            uint8_t sdo_subindex,
-                            uint16_t value);
-  int ecrt_slave_conf_sdo32(ec_slave_t *slave,
-                            uint16_t sdo_index,
-                            uint8_t sdo_subindex,
-                            uint32_t value);
-\end{lstlisting}
-
-The \textit{ecrt\_slave\_conf\_sdo*()} methods prepare the configuration of a
-certain Sdo. The index and subindex of the Sdo, and the value have to be
-specified. The configuration is done each time, the slave is reconfigured. The
-methods only differ in the Sdo's data type. If the configuration could be
-prepared, zero is returned. If an error occurred, non-zero is returned.
-
-\paragraph{Variable-sized Pdos}
-
-For specifying the size of variable-sized Pdos, the following method
-can be used:
-
-\begin{lstlisting}[gobble=2,language=C]
-  int ecrt_slave_pdo_size(ec_slave_t *slave,
-                          const char *pdo_name,
-                          size_t size);
-\end{lstlisting}
-
-The \textit{ecrt\_slave\_pdo\_size()} method takes the name of the Pdo
-and the size. It returns zero on success, otherwise non-zero.
-
-\subsubsection{Process Data Access}
-\label{sec:macros}
-
-The endianess of the process data could differ from that of the CPU.
-Therefore, process data access has to be done by the macros below,
-that are also provided by the realtime interface:
-
-\begin{lstlisting}[gobble=2,language=C]
-  #define EC_READ_BIT(DATA, POS)
-  #define EC_WRITE_BIT(DATA, POS, VAL)
-
-  #define EC_READ_U8(DATA)
-  #define EC_READ_S8(DATA)
-  #define EC_READ_U16(DATA)
-  #define EC_READ_S16(DATA)
-  #define EC_READ_U32(DATA)
-  #define EC_READ_S32(DATA)
-
-  #define EC_WRITE_U8(DATA, VAL)
-  #define EC_WRITE_S8(DATA, VAL)
-  #define EC_WRITE_U16(DATA, VAL)
-  #define EC_WRITE_S16(DATA, VAL)
-  #define EC_WRITE_U32(DATA, VAL)
-  #define EC_WRITE_S32(DATA, VAL)
-\end{lstlisting}
-
-There are macros for bitwise access (\textit{EC\_READ\_BIT()},
-\textit{EC\_WRITE\_BIT()}), and byte-wise access (\textit{EC\_READ\_*()},
-\textit{EC\_WRITE\_*()}). The byte-wise macros carry the data type in their
-name. Example: \textit{EC\_WRITE\_S16()} writes a 16 bit signed value to
-EtherCAT data. The \textit{DATA} parameter is supposed to be a process data
-pointer, as provided at Pdo registration.
-
-The macros use the kernel's endianess conversion macros, that are
-preprocessed to empty macros in case of equal endianess. This is the
-definition for the \textit{EC\_\-READ\_\-U16()} macro:
-
-\begin{lstlisting}[gobble=2,language=C]
-  #define EC_READ_U16(DATA) \
-          ((uint16_t) le16_to_cpup((void *) (DATA)))
-\end{lstlisting}
-
-The \textit{le16\_to\_cpup()} macro converts a little-endian, 16 bit
-value to the CPU's architecture and takes a pointer to the input value
-as its argument. If the CPU's architecture is little-endian, too (for
-example on X86 and compatible), nothing has to be converted. In this
-case, the macro is replaced with an empty macro by the preprocessor
-and so there is no unneeded function call or case differentiation in
-the code.
-
-For keeping it portable, it is highly recommended to make use of these
-macros.
-
-%------------------------------------------------------------------------------
-
-\subsection{Slave Addressing}
-\label{sec:addr}
-\index{Slave!Addressing}
-
-The master offers the several slave addressing schemes (for Pdo
-registration or configuration) via the realtime interface. For this
-reason, slave addresses are ASCII\nomenclature{ASCII}{American
-  Standard Code for Information Interchange}-coded and passed as a
-string. The addressing schemes are independent of the EtherCAT
-protocol and represent an additional feature of the master.
-
-Below, the allowed addressing schemes are described. The descriptions
-are followed by a regular expression formally defining the addressing
-scheme, and one or more examples.
-
-\begin{description}
-
-\item[Position Addressing] This is the normal addressing scheme, where each
-slave is addressed by its ring position. The first slave has address 0, and the
-$n$th slave has address $n - 1$. This addressing scheme is useful for small
-buses that have a fixed number of slaves.
-
-RegEx: \texttt{[0-9]+} --- Example: \texttt{"42"}
-
-\item[Advanced Position Addressing] Bus couplers segment the bus into
-(physical) blocks. Though the logical ring positions keep being the same, it is
-easier to address a slave with its block number and the relative position
-inside the block. This addressing is done by passing the (zero-based) index of
-the bus coupler (not the coupler's ring position), followed by a colon and the
-relative position of the actual slave starting at the bus coupler.
-
-RegEx: \texttt{[0-9]+:[0-9]+} --- Examples: \texttt{"0:42"}, \texttt{"2:7"}
-
-\item[Alias Addressing] Each slave can have a ``secondary slave address'' or
-``alias address''\footnote{Information about how to set the alias can be found
-in section~\ref{sec:eepromaccess}} stored in its E$^2$PROM.  The alias is
-evaluated by the master and can be used to address the slave, which is useful
-when a clearly defined slave has to be addressed and the ring position is not
-known or can change over time. This scheme is used by starting the address
-string with a mesh (\#) followed by the alias address.  The latter can also be
-provided as hexadecimal value, prefixed with \textit{0x}.
-
-RegEx: \texttt{\#(0x[0-9A-F]+|[0-9]+)} --- Examples: \texttt{"\#6622"},
-\texttt{"\#0xBEEF"}
-
-\item[Advanced Alias Addressing] This is a mixture of the ``Alias Addressing''
-and ``Advanced Position Addressing'' schemes. A certain slave is addressed by
-specifying its relative position after an aliased slave. This is very useful,
-if a complete block of slaves can vary its position in the bus. The bus coupler
-preceding the block should get an alias. The block slaves can then be addressed
-by specifying this alias and their position inside the block. This scheme is
-used by starting the address string with a mesh (\#) followed by the alias
-address (which can be hexadecimal), then a colon and the relative position of
-the slave to address.
-
-RegEx: \texttt{\#(0x[0-9A-F]+|[0-9]+):[0-9]+} --- Examples:
-\texttt{"\#0xBEEF:7"}, \texttt{"\#6:2"}
+\item[Operation] Cyclic code is run, process data is exchanged (see
+section~\ref{sec:cyclic}).
 
 \end{description}
 
-In anticipation of section~\ref{sec:ecrt}, the functions accepting
-these address strings are \textit{ecrt\_\-master\_\-get\_slave()},
-\textit{ecrt\_domain\_register\_pdo()} and
-\textit{ecrt\_domain\_register\_pdo\_list()} (the latter through the
-\textit{ec\_pdo\_reg\_t} structure).
+%------------------------------------------------------------------------------
+
+\section{Master Configuration}
+\label{sec:masterconfig}
+
+\ldots
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=.8\textwidth]{images/app-config}
+  \caption{Master configuration structures}
+  \label{fig:app-config}
+\end{figure}
 
 %------------------------------------------------------------------------------
 
-\subsection{Concurrent Master Access}
+\section{Cyclic Operation}
+\label{sec:cyclic}
+
+\ldots
+% FIXME PDOS endianess
+
+
+%------------------------------------------------------------------------------
+
+\section{Concurrent Master Access} % FIXME
 \label{sec:concurr}
 \index{Concurrency}
 
@@ -3380,10 +3013,11 @@ are two points on the author's to-do list.
 \label{sec:installation}
 \index{Master!Installation}
 
-The current EtherCAT master code is available at~\cite{etherlab} or
-can be obtained from the EtherLab\textsuperscript{\textregistered} CD.
-The \textit{tar.bz2} file has to be unpacked with the commands below
-(or similar):
+\section{Building the software}
+
+The current EtherCAT master code is available at~\cite{etherlab} or can be
+obtained from the EtherLab CD. The \textit{tar.bz2} file has to be unpacked
+with the commands below (or similar):
 
 \begin{lstlisting}[gobble=2]
   `\$` `\textbf{tar xjf ethercat-\masterversion.tar.bz2}`
@@ -3460,22 +3094,37 @@ extracted from the Linux kernel sources.
 
 \end{table}
 
+\section{Building the documentation}
+\label{sec:gendoc}
+
+The source code is documented using Doxygen~\cite{doxygen}. To build the HTML
+documentation, you must have the Doxygen software installed. The below command
+will generate the documents in the subdirecory \textit{doxygen-output}:
+
+\begin{lstlisting}
+$ `\textbf{make doc}`
+\end{lstlisting}
+
+To view them, point your browser to \textit{doxygen-output/html/index.html}.
+
+\section{Installation}
+
 The below commands have to be entered as \textit{root}: The first one
 will install the kernel modules to the kernel's modules directory. The
 second one will install EtherCAT headers, the init script, the
 sysconfig file and the user space tools to the prefix path.
 
-\begin{lstlisting}[gobble=2]
-  # `\textbf{make modules\_install}`
-  # `\textbf{make install}`
+\begin{lstlisting}
+# `\textbf{make modules\_install}`
+# `\textbf{make install}`
 \end{lstlisting}
 
 If the target kernel's modules directory is not under
 \textit{/lib/modules}, a different destination directory can be
 specified with the \textit{DESTDIR} make variable. For example:
 
-\begin{lstlisting}[gobble=2]
-  # `\textbf{make DESTDIR=/vol/nfs/root modules\_install}`
+\begin{lstlisting}
+# `\textbf{make DESTDIR=/vol/nfs/root modules\_install}`
 \end{lstlisting}
 
 This command will install the compiled kernel modules to
@@ -3488,11 +3137,11 @@ script and the sysconfig file have to be copied (or linked) to the appropriate
 locations. The below example is suitable for SUSE Linux. It may vary for other
 distributions.
 
-\begin{lstlisting}[gobble=2]
-  # `\textbf{cd /opt/etherlab}`
-  # `\textbf{cp etc/sysconfig/ethercat /etc/sysconfig/}`
-  # `\textbf{ln -s etc/init.d/ethercat /etc/init.d/}`
-  # `\textbf{insserv ethercat}`
+\begin{lstlisting}
+# `\textbf{cd /opt/etherlab}`
+# `\textbf{cp etc/sysconfig/ethercat /etc/sysconfig/}`
+# `\textbf{ln -s etc/init.d/ethercat /etc/init.d/}`
+# `\textbf{insserv ethercat}`
 \end{lstlisting}
 
 Now the sysconfig file \texttt{/etc/sysconfig/ethercat} (see
@@ -3505,8 +3154,8 @@ device offered) and selecting the driver(s) to load via the
 After the basic configuration is done, the master can be started with
 the below command:
 
-\begin{lstlisting}[gobble=2]
-  # `\textbf{/etc/init.d/ethercat start}`
+\begin{lstlisting}
+# `\textbf{/etc/init.d/ethercat start}`
 \end{lstlisting}
 
 The operation of the master can be observed by looking at the
@@ -4169,28 +3818,39 @@ locking is denied. The requesting process must abort its cycle.
 %------------------------------------------------------------------------------
 
 \begin{thebibliography}{99}
-\bibitem{etherlab} Ingenieurgemeinschaft IgH: EtherLab -- Open Source
-  Toolkit for rapid realtime code generation under Linux with
-  Simulink/RTW and EtherCAT technology. URL: http://etherlab.org,
-  July~31, 2006.
+
+\bibitem{etherlab} Ingenieurgemeinschaft IgH: EtherLab -- Open Source Toolkit
+for rapid realtime code generation under Linux with Simulink/RTW and EtherCAT
+technology. \url{http://etherlab.org/en}, 2008.
+
 \bibitem{dlspec} IEC 61158-4-12: Data-link Protocol Specification.
-  International Electrotechnical Comission (IEC), 2005.
-\bibitem{alspec} IEC 61158-6-12: Application Layer Protocol
-  Specification. International Electrotechnical Comission (IEC), 2005.
-\bibitem{gpl} GNU General Public License, Version 2. URL:
-  http://www.gnu.org/licenses/gpl.txt. August~9, 2006.
-\bibitem{lsb} Linux Standard Base. URL:
-  http://www.freestandards.org/en/LSB. August~9, 2006.
-\bibitem{wireshark} Wireshark. URL: http://www.wireshark.org.
-  August~9, 2006.
-\bibitem{automata} {\it Hopcroft, J.~E. / Ullman, J.~D.}: Introduction
-  to Automata Theory, Languages and Computation. Adison-Wesley,
-  Reading, Mass.~1979.
+International Electrotechnical Comission (IEC), 2005.
+
+\bibitem{alspec} IEC 61158-6-12: Application Layer Protocol Specification.
+International Electrotechnical Comission (IEC), 2005.
+
+\bibitem{gpl} GNU General Public License, Version 2.
+\url{http://www.gnu.org/licenses/gpl.txt}. August~9, 2006.
+
+\bibitem{lsb} Linux Standard Base.
+\url{http://www.linuxfoundation.org/en/LSB}.  August~9, 2006.
+
+\bibitem{wireshark} Wireshark. \url{http://www.wireshark.org}. 2008.
+
+\bibitem{automata} {\it Hopcroft, J.~E. / Ullman, J.~D.}: Introduction to
+Automata Theory, Languages and Computation. Adison-Wesley, Reading,
+Mass.~1979.
+
 \bibitem{fsmmis} {\it Wagner, F. / Wolstenholme, P.}: State machine
-  misunderstandings. In: IEE journal ``Computing and Control
-  Engineering'', 2004.
-\bibitem{rtai} RTAI. The RealTime Application Interface for Linux from
-  DIAPM. URL: http://www.rtai.org, 2006.
+misunderstandings. In: IEE journal ``Computing and Control Engineering'',
+2004.
+
+\bibitem{rtai} RTAI. The RealTime Application Interface for Linux from DIAPM.
+\url{http://www.rtai.org}, 2006.
+
+\bibitem{doxygen} Doxygen. Source code documentation generator tool.
+\url{http://www.stack.nl/~dimitri/doxygen}, 2008.
+
 \end{thebibliography}
 
 \printnomenclature

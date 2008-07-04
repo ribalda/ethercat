@@ -5,6 +5,7 @@
 #-----------------------------------------------------------------------------
 
 FIGS := \
+	app-config.fig \
 	architecture.fig \
 	fmmus.fig \
 	fsm-change.fig \
