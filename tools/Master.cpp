@@ -689,6 +689,37 @@ void Master::showSlaves(int slavePosition)
 
 /****************************************************************************/
 
+struct CategoryName {
+    uint16_t type;
+    const char *name;
+};
+
+static const CategoryName categoryNames[] = {
+    {0x000a, "STRINGS"},
+    {0x0014, "DataTypes"},
+    {0x001e, "General"},
+    {0x0028, "FMMU"},
+    {0x0029, "SyncM"},
+    {0x0032, "TXPDO"},
+    {0x0033, "RXPDO"},
+    {0x003c, "DC"},
+    {}
+};
+
+const char *getCategoryName(uint16_t type)
+{
+    const CategoryName *cn = categoryNames;
+
+    while (cn->type) {
+        if (cn->type == type) {
+            return cn->name;
+        }
+        cn++;
+    }
+
+    return "unknown";
+}
+
 void Master::siiRead(int slavePosition)
 {
     ec_ioctl_slave_sii_t data;
@@ -741,7 +772,8 @@ void Master::siiRead(int slavePosition)
             categoryType = le16tocpu(*categoryHeader);
             while (categoryType != 0xffff) {
                 cout << "SII Category 0x" << hex
-                    << setw(4) << categoryType << flush;
+                    << setw(4) << categoryType
+                    << " (" << getCategoryName(categoryType) << ")" << flush;
 
                 if (categoryHeader + 1 > data.words + data.nwords) {
                     err << "SII data seem to be corrupted!";
@@ -750,7 +782,8 @@ void Master::siiRead(int slavePosition)
                 categorySize = le16tocpu(*(categoryHeader + 1));
                 cout << ", " << dec << categorySize << " words" << flush;
 
-                if (categoryHeader + 2 + categorySize > data.words + data.nwords) {
+                if (categoryHeader + 2 + categorySize
+                        > data.words + data.nwords) {
                     err << "SII data seem to be corrupted!";
                     throw MasterException(err.str());
                 }
