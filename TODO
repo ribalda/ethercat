@@ -21,6 +21,7 @@ Version 1.4.0:
 * Distributed clocks.
 * Fix datagram errors on application loading/unloading.
 * Race in jiffies frame timeout?
+* Break 'ethercat domain' output at 16 bytes.
 
 Future issues:
 
