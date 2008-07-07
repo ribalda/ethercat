@@ -694,6 +694,9 @@ void Master::siiRead(int slavePosition)
     ec_ioctl_slave_sii_t data;
     ec_ioctl_slave_t slave;
     unsigned int i;
+    const uint16_t *categoryHeader;
+    uint16_t categoryType, categorySize;
+    stringstream err;
 
     if (slavePosition < 0) {
         stringstream err;
@@ -720,9 +723,64 @@ void Master::siiRead(int slavePosition)
         throw MasterException(err.str());
     }
 
-    for (i = 0; i < data.nwords; i++) {
-        uint16_t *w = data.words + i;
-        cout << *(uint8_t *) w << *((uint8_t *) w + 1);
+    if (verbosity == Verbose) {
+        cout << "SII Area:" << hex << setfill('0');
+        for (i = 0; i < min(data.nwords, 0x0040U) * 2; i++) {
+            if (i % BreakAfterBytes) {
+                cout << " ";
+            } else {
+                cout << endl << "  ";
+            }
+            cout << setw(2) << (unsigned int) *((uint8_t *) data.words + i);
+        }
+        cout << endl;
+
+        if (data.nwords > 0x0040U) {
+            // cycle through categories
+            categoryHeader = data.words + 0x0040U;
+            categoryType = le16tocpu(*categoryHeader);
+            while (categoryType != 0xffff) {
+                cout << "SII Category 0x" << hex
+                    << setw(4) << categoryType << flush;
+
+                if (categoryHeader + 1 > data.words + data.nwords) {
+                    err << "SII data seem to be corrupted!";
+                    throw MasterException(err.str());
+                }
+                categorySize = le16tocpu(*(categoryHeader + 1));
+                cout << ", " << dec << categorySize << " words" << flush;
+
+                if (categoryHeader + 2 + categorySize > data.words + data.nwords) {
+                    err << "SII data seem to be corrupted!";
+                    throw MasterException(err.str());
+                }
+
+                cout << hex;
+                for (i = 0; i < categorySize * 2U; i++) {
+                    if (i % BreakAfterBytes) {
+                        cout << " ";
+                    } else {
+                        cout << endl << "  ";
+                    }
+                    cout << setw(2) << (unsigned int)
+                        *((uint8_t *) (categoryHeader + 2) + i);
+                }
+                cout << endl;
+
+                if (categoryHeader + 2 + categorySize + 1
+                        > data.words + data.nwords) {
+                    err << "SII data seem to be corrupted!"; 
+                    throw MasterException(err.str());
+                }
+                categoryHeader += 2 + categorySize;
+                categoryType = le16tocpu(*categoryHeader);
+            }
+        }
+    } else {
+        for (i = 0; i < data.nwords; i++) {
+            uint16_t *w = data.words + i;
+            cout << *(uint8_t *) w << *((uint8_t *) w + 1);
+        }
     }
 
     delete [] data.words;
@@ -795,7 +853,7 @@ void Master::siiWrite(
         }
 
         // cycle through categories to detect corruption
-        categoryHeader = data.words + 0x0040;
+        categoryHeader = data.words + 0x0040U;
         categoryType = le16tocpu(*categoryHeader);
         while (categoryType != 0xffff) {
             if (categoryHeader + 1 > data.words + data.nwords) {
@@ -804,12 +862,13 @@ void Master::siiWrite(
                 throw MasterException(err.str());
             }
             categorySize = le16tocpu(*(categoryHeader + 1));
-            if (categoryHeader + categorySize + 2 > data.words + data.nwords) {
+            if (categoryHeader + 2 + categorySize + 1
+                    > data.words + data.nwords) {
                 err << "SII data seem to be corrupted! "
                     "Use --force to write anyway.";
                 throw MasterException(err.str());
             }
-            categoryHeader += categorySize + 2;
+            categoryHeader += 2 + categorySize;
             categoryType = le16tocpu(*categoryHeader);
         }
     }
