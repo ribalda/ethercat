@@ -100,6 +100,7 @@ const CoEDataType *findDataType(uint16_t code)
 Master::Master()
 {
     index = 0;
+    verbosity = Normal;
     fd = -1;
 }
 
@@ -117,6 +118,13 @@ void Master::setIndex(unsigned int i)
     index = i;
 }
 
+/****************************************************************************/
+
+void Master::setVerbosity(Verbosity v)
+{
+    verbosity = v;
+}
+
 /*****************************************************************************/
 
 /**
@@ -128,9 +136,6 @@ void Master::writeAlias(
         const vector<string> &commandArgs
         )
 {
-    ec_ioctl_slave_sii_t data;
-    ec_ioctl_slave_t slave;
-    unsigned int i;
     uint16_t alias;
     stringstream err, strAlias;
     int number;
@@ -176,10 +181,10 @@ void Master::writeAlias(
 
 /** Lists the bus configuration.
  */
-void Master::showConfigs(bool verbose)
+void Master::showConfigs()
 {
-    if (verbose) {
-        showConfigs();
+    if (verbosity == Verbose) {
+        showDetailedConfigs();
     } else {
         listConfigs();
     }
@@ -312,7 +317,7 @@ void Master::showMaster()
 
 /****************************************************************************/
 
-void Master::listPdos(int slavePosition, bool quiet)
+void Master::listPdos(int slavePosition)
 {
     open(Read);
 
@@ -320,16 +325,16 @@ void Master::listPdos(int slavePosition, bool quiet)
         unsigned int numSlaves = slaveCount(), i;
 
         for (i = 0; i < numSlaves; i++) {
-            listSlavePdos(i, quiet, true);
+            listSlavePdos(i, true);
         }
     } else {
-        listSlavePdos(slavePosition, quiet, false);
+        listSlavePdos(slavePosition, false);
     }
 }
 
 /****************************************************************************/
 
-void Master::listSdos(int slavePosition, bool quiet)
+void Master::listSdos(int slavePosition)
 {
     open(Read);
 
@@ -337,10 +342,10 @@ void Master::listSdos(int slavePosition, bool quiet)
         unsigned int numSlaves = slaveCount(), i;
 
         for (i = 0; i < numSlaves; i++) {
-            listSlaveSdos(i, quiet, true);
+            listSlaveSdos(i, true);
         }
     } else {
-        listSlaveSdos(slavePosition, quiet, false);
+        listSlaveSdos(slavePosition, false);
     }
 }
 
@@ -354,7 +359,7 @@ void Master::sdoDownload(
 {
     stringstream strIndex, strSubIndex, strValue, err;
     ec_ioctl_slave_sdo_download_t data;
-    unsigned int i, number;
+    unsigned int number;
     const CoEDataType *dataType = NULL;
 
     if (slavePosition < 0) {
@@ -394,7 +399,6 @@ void Master::sdoDownload(
         }
     } else { // no data type specified: fetch from dictionary
         ec_ioctl_slave_sdo_entry_t entry;
-        unsigned int entryByteSize;
 
         open(ReadWrite);
 
@@ -524,7 +528,7 @@ void Master::sdoUpload(
     stringstream strIndex, strSubIndex;
     int sval;
     ec_ioctl_slave_sdo_upload_t data;
-    unsigned int i, uval;
+    unsigned int uval;
     const CoEDataType *dataType = NULL;
 
     if (slavePosition < 0) {
@@ -569,7 +573,6 @@ void Master::sdoUpload(
         }
     } else { // no data type specified: fetch from dictionary
         ec_ioctl_slave_sdo_entry_t entry;
-        unsigned int entryByteSize;
 
         open(Read);
 
@@ -665,11 +668,11 @@ void Master::sdoUpload(
 
 /****************************************************************************/
 
-void Master::showSlaves(int slavePosition, bool verbose)
+void Master::showSlaves(int slavePosition)
 {
     open(Read);
 
-    if (verbose) {
+    if (verbosity == Verbose) {
         if (slavePosition == -1) {
             unsigned int numSlaves = slaveCount(), i;
 
@@ -975,7 +978,7 @@ void Master::writeSlaveAlias(
 
 /** Lists the complete bus configuration.
  */
-void Master::showConfigs()
+void Master::showDetailedConfigs()
 {
     ec_ioctl_master_t master;
     unsigned int i, j, k, l;
@@ -1248,7 +1251,6 @@ void Master::showDomain(unsigned int domainIndex)
 
 void Master::listSlavePdos(
         uint16_t slavePosition,
-        bool quiet,
         bool withHeader
         )
 {
@@ -1287,7 +1289,7 @@ void Master::listSlavePdos(
                 << setw(4) << pdo.index
                 << " \"" << pdo.name << "\"" << endl;
 
-            if (quiet)
+            if (verbosity == Quiet)
                 continue;
 
             for (k = 0; k < pdo.entry_count; k++) {
@@ -1308,14 +1310,13 @@ void Master::listSlavePdos(
 
 void Master::listSlaveSdos(
         uint16_t slavePosition,
-        bool quiet,
         bool withHeader
         )
 {
     ec_ioctl_slave_t slave;
     ec_ioctl_slave_sdo_t sdo;
     ec_ioctl_slave_sdo_entry_t entry;
-    unsigned int i, j, k;
+    unsigned int i, j;
     const CoEDataType *d;
     
     getSlave(&slave, slavePosition);
@@ -1331,7 +1332,7 @@ void Master::listSlaveSdos(
             << setw(4) << sdo.sdo_index
             << ", \"" << sdo.name << "\"" << endl;
 
-        if (quiet)
+        if (verbosity == Quiet)
             continue;
 
         for (j = 0; j <= sdo.max_subindex; j++) {
@@ -1392,7 +1393,7 @@ void Master::listSlaves(int slavePosition)
             aliasIndex = 0;
         }
 
-        if (slavePosition == -1 || i == slavePosition) {
+        if (slavePosition == -1 || i == (unsigned int) slavePosition) {
             str << dec << i;
             slaveInfo.pos = str.str();
             str.clear();

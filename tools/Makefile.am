@@ -37,6 +37,6 @@ ethercat_SOURCES = \
     Master.cpp Master.h \
     main.cpp
 
-ethercat_CFLAGS = -I../master
+ethercat_CXXFLAGS = -I../master -Wall
 
 #------------------------------------------------------------------------------

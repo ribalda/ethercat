@@ -14,7 +14,6 @@ Version 1.4.0:
 * Update documentation.
 * Add -a and -p switches for 'ethercat config' command.
 * Add a -n (numeric) switch to ethercat command.
-* Make verbose and quite flags a master property.
 * File access over EtherCAT (FoE).
 * Allow master requesting when in ORPHANED phase
 * Get original driver for r8169.

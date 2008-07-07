@@ -22,8 +22,7 @@ static int slavePosition = -1;
 static int domainIndex = -1;
 static string command;
 vector<string> commandArgs;
-static bool quiet = false;
-static bool verbose = false;
+static Master::Verbosity verbosity = Master::Normal;
 string dataTypeStr;
 bool force = false;
 
@@ -141,13 +140,11 @@ void getOptions(int argc, char **argv)
                 break;
 
             case 'q':
-                quiet = true;
-                verbose = false;
+                verbosity = Master::Quiet;
                 break;
 
             case 'v':
-                verbose = true;
-                quiet = false;
+                verbosity = Master::Verbose;
                 break;
 
             case 'h':
@@ -182,13 +179,14 @@ int main(int argc, char **argv)
     
 	getOptions(argc, argv);
 
-    try {
-        master.setIndex(masterIndex);
+    master.setIndex(masterIndex);
+    master.setVerbosity(verbosity);
 
+    try {
         if (command == "alias") {
             master.writeAlias(slavePosition, force, commandArgs);
         } else if (command == "config") {
-            master.showConfigs(verbose);
+            master.showConfigs();
         } else if (command == "data") {
             master.outputData(domainIndex);
         } else if (command == "debug") {
@@ -198,16 +196,16 @@ int main(int argc, char **argv)
 		} else if (command == "master") {
             master.showMaster();
         } else if (command == "pdos") {
-            master.listPdos(slavePosition, quiet);
+            master.listPdos(slavePosition);
         } else if (command == "sdos") {
-            master.listSdos(slavePosition, quiet);
+            master.listSdos(slavePosition);
         } else if (command == "sdo_download" || command == "sd") {
             master.sdoDownload(slavePosition, dataTypeStr, commandArgs);
         } else if (command == "sdo_upload" || command == "su") {
             master.sdoUpload(slavePosition, dataTypeStr, commandArgs);
 		} else if (command == "slave" || command == "slaves"
                 || command == "list" || command == "ls") {
-            master.showSlaves(slavePosition, verbose);
+            master.showSlaves(slavePosition);
         } else if (command == "sii_read" || command == "sr") {
             master.siiRead(slavePosition);
         } else if (command == "sii_write" || command == "sw") {
