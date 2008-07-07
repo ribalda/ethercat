@@ -1202,7 +1202,7 @@ void Master::showDomain(unsigned int domainIndex)
 		<< domain.working_counter << "/"
         << domain.expected_working_counter << endl;
 
-    if (!domain.data_size)
+    if (!domain.data_size || verbosity != Verbose)
         return;
 
     processData = new unsigned char[domain.data_size];
