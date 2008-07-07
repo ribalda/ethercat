@@ -74,6 +74,7 @@ class Master
         void showDetailedConfigs();
         void listConfigs();
         void outputDomainData(unsigned int);
+        enum {BreakAfterBytes = 16};
         void showDomain(unsigned int);
         void listSlavePdos(uint16_t, bool = false);
         void listSlaveSdos(uint16_t, bool = false);

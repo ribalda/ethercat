@@ -1238,6 +1238,8 @@ void Master::showDomain(unsigned int domainIndex)
 
         cout << "    " << hex << setfill('0');
         for (j = 0; j < fmmu.data_size; j++) {
+            if (j && !(j % BreakAfterBytes))
+                cout << endl << "    ";
             cout << setw(2)
                 << (unsigned int) *(processData + dataOffset + j) << " ";
         }
