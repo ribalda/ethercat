@@ -657,6 +657,12 @@ int ecrt_slave_config_reg_pdo_entry(
  * master. This usually happens once on master activation, but can be repeated
  * subsequently, for example after the slave's power supply failed.
  *
+ * \attention The Sdos for Pdo assignment (\p 0x1C10 - \p 0x1C2F) and Pdo
+ * mapping (\p 0x1600 - \p 0x17FF and \p 0x1A00 - \p 0x1BFF) should not be
+ * configured with this function, because they are part of the slave
+ * configuration done by the master. Please use ecrt_slave_config_pdos() and
+ * friends instead.
+ *
  * This is the generic function for adding an Sdo configuration. Please note
  * that the this function does not do any endianess correction. If
  * datatype-specific functions are needed (that automatically correct the
