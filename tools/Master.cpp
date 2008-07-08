@@ -179,14 +179,35 @@ void Master::writeAlias(
 
 /*****************************************************************************/
 
+bool operator<(const ec_ioctl_config_t &a, const ec_ioctl_config_t &b)
+{
+    return a.alias < b.alias
+        || (a.alias == b.alias && a.position < b.position);
+}
+
 /** Lists the bus configuration.
  */
 void Master::showConfigs()
 {
+    ec_ioctl_master_t master;
+    unsigned int i;
+    ec_ioctl_config_t config;
+    ConfigList configList;
+
+    open(Read);
+    getMaster(&master);
+
+    for (i = 0; i < master.config_count; i++) {
+        getConfig(&config, i);
+        configList.push_back(config);
+    }
+
+    configList.sort();
+
     if (verbosity == Verbose) {
-        showDetailedConfigs();
+        showDetailedConfigs(configList);
     } else {
-        listConfigs();
+        listConfigs(configList);
     }
 }
 
@@ -1070,46 +1091,43 @@ void Master::writeSlaveAlias(
 
 /** Lists the complete bus configuration.
  */
-void Master::showDetailedConfigs()
+void Master::showDetailedConfigs(const ConfigList &configList)
 {
-    ec_ioctl_master_t master;
-    unsigned int i, j, k, l;
-    ec_ioctl_config_t config;
+    ConfigList::const_iterator configIter;
+    unsigned int j, k, l;
     ec_ioctl_config_pdo_t pdo;
     ec_ioctl_config_pdo_entry_t entry;
     ec_ioctl_config_sdo_t sdo;
 
-    open(Read);
-    getMaster(&master);
-
-    for (i = 0; i < master.config_count; i++) {
-        getConfig(&config, i);
+    for (configIter = configList.begin();
+            configIter != configList.end();
+            configIter++) {
 
         cout << "Alias: "
-            << dec << config.alias << endl
-            << "Position: " << config.position << endl
+            << dec << configIter->alias << endl
+            << "Position: " << configIter->position << endl
             << "Vendor Id: 0x"
             << hex << setfill('0')
-            << setw(8) << config.vendor_id << endl
+            << setw(8) << configIter->vendor_id << endl
             << "Product code: 0x"
-            << setw(8) << config.product_code << endl
-            << "Attached: " << (config.attached ? "yes" : "no") << endl
-            << "Operational: " << (config.operational ? "yes" : "no") << endl;
+            << setw(8) << configIter->product_code << endl
+            << "Attached: " << (configIter->attached ? "yes" : "no") << endl
+            << "Operational: " << (configIter->operational ? "yes" : "no") << endl;
 
         for (j = 0; j < EC_MAX_SYNC_MANAGERS; j++) {
-            if (config.syncs[j].pdo_count) {
+            if (configIter->syncs[j].pdo_count) {
                 cout << "SM" << dec << j << " ("
-                    << (config.syncs[j].dir == EC_DIR_INPUT
+                    << (configIter->syncs[j].dir == EC_DIR_INPUT
                             ? "Input" : "Output") << ")" << endl;
-                for (k = 0; k < config.syncs[j].pdo_count; k++) {
-                    getConfigPdo(&pdo, i, j, k);
+                for (k = 0; k < configIter->syncs[j].pdo_count; k++) {
+                    getConfigPdo(&pdo, configIter->config_index, j, k);
 
                     cout << "  Pdo 0x" << hex
                         << setw(4) << pdo.index
                         << " \"" << pdo.name << "\"" << endl;
 
                     for (l = 0; l < pdo.entry_count; l++) {
-                        getConfigPdoEntry(&entry, i, j, k, l);
+                        getConfigPdoEntry(&entry, configIter->config_index, j, k, l);
 
                         cout << "    Pdo entry 0x" << hex
                             << setw(4) << entry.index << ":"
@@ -1121,10 +1139,10 @@ void Master::showDetailedConfigs()
             }
         }
 
-        if (config.sdo_count) {
+        if (configIter->sdo_count) {
             cout << "Sdo configuration:" << endl;
-            for (j = 0; j < config.sdo_count; j++) {
-                getConfigSdo(&sdo, i, j);
+            for (j = 0; j < configIter->sdo_count; j++) {
+                getConfigSdo(&sdo, configIter->config_index, j);
 
                 cout << "  0x"
                     << hex << setfill('0')
@@ -1169,11 +1187,9 @@ struct ConfigInfo {
 
 /** Lists the bus configuration.
  */
-void Master::listConfigs()
+void Master::listConfigs(const ConfigList &configList)
 {
-    ec_ioctl_master_t master;
-    unsigned int i;
-    ec_ioctl_config_t config;
+    ConfigList::const_iterator configIter;
     stringstream str;
     ConfigInfo info;
     typedef list<ConfigInfo> ConfigInfoList;
@@ -1182,35 +1198,33 @@ void Master::listConfigs()
     unsigned int maxAliasWidth = 0, maxPosWidth = 0,
                  maxAttWidth = 0, maxOpWidth = 0;
 
-    open(Read);
-    getMaster(&master);
+    for (configIter = configList.begin();
+            configIter != configList.end();
+            configIter++) {
 
-    for (i = 0; i < master.config_count; i++) {
-        getConfig(&config, i);
-
-        str << dec << config.alias;
+        str << dec << configIter->alias;
         info.alias = str.str();
         str.clear();
         str.str("");
 
-        str << config.position;
+        str << configIter->position;
         info.pos = str.str();
         str.clear();
         str.str("");
 
         str << hex << setfill('0')
-            << "0x" << setw(8) << config.vendor_id
-            << "/0x" << setw(8) << config.product_code;
+            << "0x" << setw(8) << configIter->vendor_id
+            << "/0x" << setw(8) << configIter->product_code;
         info.ident = str.str();
         str.clear();
         str.str("");
 
-        str << (config.attached ? "attached" : "-");
+        str << (configIter->attached ? "attached" : "-");
         info.att = str.str();
         str.clear();
         str.str("");
 
-        str << (config.operational ? "operational" : "-");
+        str << (configIter->operational ? "operational" : "-");
         info.op = str.str();
         str.clear();
         str.str("");

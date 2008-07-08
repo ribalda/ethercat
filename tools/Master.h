@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <list>
 using namespace std;
 
 #include "../include/ecrt.h"
@@ -71,8 +72,9 @@ class Master
         void close();
 
         void writeSlaveAlias(uint16_t, uint16_t);
-        void showDetailedConfigs();
-        void listConfigs();
+        typedef list<ec_ioctl_config_t> ConfigList;
+        void showDetailedConfigs(const ConfigList &);
+        void listConfigs(const ConfigList &);
         void outputDomainData(unsigned int);
         enum {BreakAfterBytes = 16};
         void showDomain(unsigned int);
