@@ -3102,14 +3102,17 @@ To view them, point your browser to \textit{doxygen-output/html/index.html}.
 
 \section{Installation}
 
-The below commands have to be entered as \textit{root}: The first one
-will install the kernel modules to the kernel's modules directory. The
-second one will install EtherCAT headers, the init script, the
-sysconfig file and the user space tools to the prefix path.
+The below commands have to be entered as \textit{root}: The first one will
+install the EtherCAT header, init script, sysconfig file and the user space
+tools to the prefix path. The second one will install the kernel modules to the
+kernel's modules directory. The following \lstinline+depmod+ call is necessary
+to include the kernel modules into the \textit{modules.dep} file to make it
+available to the \lstinline+modprobe+ command, used in the init script. 
 
 \begin{lstlisting}
-# `\textbf{make modules\_install}`
 # `\textbf{make install}`
+# `\textbf{make modules\_install}`
+# `\textbf{depmod}`
 \end{lstlisting}
 
 If the target kernel's modules directory is not under \textit{/lib/modules}, a

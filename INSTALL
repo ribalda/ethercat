@@ -24,6 +24,7 @@ $ make modules
 
 # make install
 # make modules_install
+# depmod
 
 ...and linking the init script and copying the sysconfig file from $PREFIX/etc
 to the appropriate locations and customizing the sysconfig file.
