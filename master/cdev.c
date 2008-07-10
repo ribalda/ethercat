@@ -101,6 +101,23 @@ void ec_cdev_clear(ec_cdev_t *cdev /**< EtherCAT XML device */)
 
 /*****************************************************************************/
 
+/** Copies a string to an ioctl structure.
+ */
+void ec_cdev_strcpy(
+        char *target, /**< Target. */
+        const char *source /**< Source. */
+        )
+{
+    if (source) {
+        strncpy(target, source, EC_IOCTL_STRING_SIZE);
+        target[EC_IOCTL_STRING_SIZE - 1] = 0;
+    } else {
+        target[0] = 0;
+    }
+}
+
+/*****************************************************************************/
+
 /** Get master information.
  */
 int ec_cdev_ioctl_master(
@@ -179,14 +196,7 @@ int ec_cdev_ioctl_slave(
     data.sync_count = slave->sii.sync_count;
     data.sdo_count = ec_slave_sdo_count(slave);
     data.sii_nwords = slave->sii_nwords;
-
-    if (slave->sii.name) {
-        strncpy(data.name, slave->sii.name,
-                EC_IOCTL_STRING_SIZE);
-        data.name[EC_IOCTL_STRING_SIZE - 1] = 0;
-    } else {
-        data.name[0] = 0;
-    }
+    ec_cdev_strcpy(data.name, slave->sii.name);
 
     up(&master->master_sem);
 
@@ -292,13 +302,7 @@ int ec_cdev_ioctl_slave_sync_pdo(
 
     data.index = pdo->index;
     data.entry_count = ec_pdo_entry_count(pdo);
-
-    if (pdo->name) {
-        strncpy(data.name, pdo->name, EC_IOCTL_STRING_SIZE);
-        data.name[EC_IOCTL_STRING_SIZE - 1] = 0;
-    } else {
-        data.name[0] = 0;
-    }
+    ec_cdev_strcpy(data.name, pdo->name);
 
     up(&master->master_sem);
 
@@ -365,12 +369,7 @@ int ec_cdev_ioctl_slave_sync_pdo_entry(
     data.index = entry->index;
     data.subindex = entry->subindex;
     data.bit_length = entry->bit_length;
-    if (entry->name) {
-        strncpy(data.name, entry->name, EC_IOCTL_STRING_SIZE);
-        data.name[EC_IOCTL_STRING_SIZE - 1] = 0;
-    } else {
-        data.name[0] = 0;
-    }
+    ec_cdev_strcpy(data.name, entry->name);
 
     up(&master->master_sem);
 
@@ -585,13 +584,7 @@ int ec_cdev_ioctl_slave_sdo(
 
     data.sdo_index = sdo->index;
     data.max_subindex = sdo->max_subindex;
-
-    if (sdo->name) {
-        strncpy(data.name, sdo->name, EC_IOCTL_STRING_SIZE);
-        data.name[EC_IOCTL_STRING_SIZE - 1] = 0;
-    } else {
-        data.name[0] = 0;
-    }
+    ec_cdev_strcpy(data.name, sdo->name);
 
     up(&master->master_sem);
 
@@ -657,15 +650,7 @@ int ec_cdev_ioctl_slave_sdo_entry(
 
     data.data_type = entry->data_type;
     data.bit_length = entry->bit_length;
-
-    if (entry->description) {
-        strncpy(data.description, entry->description,
-                EC_IOCTL_STRING_SIZE);
-        data.description[EC_IOCTL_STRING_SIZE - 1]
-            = 0;
-    } else {
-        data.description[0] = 0;
-    }
+    ec_cdev_strcpy(data.description, entry->description);
 
     up(&master->master_sem);
 
@@ -1061,13 +1046,7 @@ int ec_cdev_ioctl_config_pdo(
 
     data.index = pdo->index;
     data.entry_count = ec_pdo_entry_count(pdo);
-
-    if (pdo->name) {
-        strncpy(data.name, pdo->name, EC_IOCTL_STRING_SIZE);
-        data.name[EC_IOCTL_STRING_SIZE - 1] = 0;
-    } else {
-        data.name[0] = 0;
-    }
+    ec_cdev_strcpy(data.name, pdo->name);
 
     up(&master->master_sem);
 
@@ -1129,12 +1108,7 @@ int ec_cdev_ioctl_config_pdo_entry(
     data.index = entry->index;
     data.subindex = entry->subindex;
     data.bit_length = entry->bit_length;
-    if (entry->name) {
-        strncpy(data.name, entry->name, EC_IOCTL_STRING_SIZE);
-        data.name[EC_IOCTL_STRING_SIZE - 1] = 0;
-    } else {
-        data.name[0] = 0;
-    }
+    ec_cdev_strcpy(data.name, entry->name);
 
     up(&master->master_sem);
 
