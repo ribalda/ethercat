@@ -1717,7 +1717,7 @@ void Master::generateSlaveXml(uint16_t slavePosition)
 
             cout
                 << "          <" << pdoType
-                << " Sm=\"" << i << "\" Fixed=\"1\">" << endl
+                << " Sm=\"" << i << "\" Fixed=\"1\" Mandatory=\"1\">" << endl
                 << "            <Index>#x"
                 << hex << setfill('0') << setw(4) << pdo.index
                 << "</Index>" << endl
