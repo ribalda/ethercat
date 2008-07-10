@@ -120,6 +120,9 @@ typedef struct {
     uint8_t sync_count;
     uint16_t sdo_count;
     uint32_t sii_nwords;
+    char group[EC_IOCTL_STRING_SIZE];
+    char image[EC_IOCTL_STRING_SIZE];
+    char order[EC_IOCTL_STRING_SIZE];
     char name[EC_IOCTL_STRING_SIZE];
 } ec_ioctl_slave_t;
 

@@ -196,6 +196,9 @@ int ec_cdev_ioctl_slave(
     data.sync_count = slave->sii.sync_count;
     data.sdo_count = ec_slave_sdo_count(slave);
     data.sii_nwords = slave->sii_nwords;
+    ec_cdev_strcpy(data.group, slave->sii.group);
+    ec_cdev_strcpy(data.image, slave->sii.image);
+    ec_cdev_strcpy(data.order, slave->sii.order);
     ec_cdev_strcpy(data.name, slave->sii.name);
 
     up(&master->master_sem);

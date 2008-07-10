@@ -1625,7 +1625,10 @@ void Master::showSlave(uint16_t slavePosition)
 
     if (slave.has_general_category) {
         cout << "General:" << endl
-            << "  Name: " << slave.name << endl;
+            << "  Group: " << slave.group << endl
+            << "  Image name: " << slave.image << endl
+            << "  Order number: " << slave.order << endl
+            << "  Device name: " << slave.name << endl;
 
         if (slave.mailbox_protocols & EC_MBOX_COE) {
             cout << "  CoE details:" << endl
@@ -1684,7 +1687,7 @@ void Master::generateSlaveXml(uint16_t slavePosition)
         << hex << setfill('0') << setw(8) << slave.product_code
         << "\" RevisionNo=\"#x"
         << hex << setfill('0') << setw(8) << slave.revision_number
-        << "\"/>" << endl;
+        << "\">" << slave.order << "</Type>" << endl;
 
     if (strlen(slave.name)) {
         cout
