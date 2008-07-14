@@ -369,8 +369,8 @@ void ec_fsm_coe_dict_check(ec_fsm_coe_t *fsm /**< finite state machine */)
             (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
         if (diff_ms >= EC_FSM_COE_DICT_TIMEOUT) {
             fsm->state = ec_fsm_coe_error;
-            EC_ERR("Timeout while checking Sdo dictionary on slave %u.\n",
-                   slave->ring_position);
+            EC_ERR("Timeout while waiting for Sdo dictionary list response "
+                    "on slave %u.\n", slave->ring_position);
             return;
         }
 
@@ -613,8 +613,8 @@ void ec_fsm_coe_dict_desc_check(ec_fsm_coe_t *fsm /**< finite state machine */)
             (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
         if (diff_ms >= EC_FSM_COE_DICT_TIMEOUT) {
             fsm->state = ec_fsm_coe_error;
-            EC_ERR("Timeout while checking Sdo description on slave %u.\n",
-                   slave->ring_position);
+            EC_ERR("Timeout while waiting for Sdo object description "
+                    "response on slave %u.\n", slave->ring_position);
             return;
         }
 
@@ -848,8 +848,8 @@ void ec_fsm_coe_dict_entry_check(ec_fsm_coe_t *fsm
             (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
         if (diff_ms >= EC_FSM_COE_DICT_TIMEOUT) {
             fsm->state = ec_fsm_coe_error;
-            EC_ERR("Timeout while checking Sdo entry on slave %u.\n",
-                   slave->ring_position);
+            EC_ERR("Timeout while waiting for Sdo entry description response "
+                    "on slave %u.\n", slave->ring_position);
             return;
         }
 
@@ -1430,8 +1430,8 @@ void ec_fsm_coe_up_check(ec_fsm_coe_t *fsm /**< finite state machine */)
             (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
         if (diff_ms >= fsm->request->response_timeout) {
             fsm->state = ec_fsm_coe_error;
-            EC_ERR("Timeout while checking Sdo upload on slave %u.\n",
-                   slave->ring_position);
+            EC_ERR("Timeout while waiting for Sdo upload response on "
+                    "slave %u.\n", slave->ring_position);
             return;
         }
 
