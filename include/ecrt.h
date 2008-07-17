@@ -825,6 +825,9 @@ void ecrt_domain_state(
  *
  * If the request cannot be processed in the specified time, if will be marked
  * as failed.
+ *
+ * The timeout is permanently stored in the request object and is valid until
+ * the next call of this method.
  */
 void ecrt_sdo_request_timeout(
         ec_sdo_request_t *req, /**< Sdo request. */
