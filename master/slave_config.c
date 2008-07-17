@@ -620,6 +620,11 @@ int ecrt_slave_config_sdo(ec_slave_config_t *sc, uint16_t index,
     ec_slave_t *slave = sc->slave;
     ec_sdo_request_t *req;
 
+    if (sc->master->debug_level)
+        EC_DBG("ecrt_slave_config_sdo(sc = 0x%x, index = 0x%04X, "
+                "subindex = 0x%02X, data = 0x%x, size = %u)\n", (u32) sc,
+                index, subindex, (u32) data, size);
+
     if (slave && !(slave->sii.mailbox_protocols & EC_MBOX_COE)) {
         EC_ERR("Slave %u does not support CoE!\n", slave->ring_position);
         return -1;
@@ -653,6 +658,12 @@ int ecrt_slave_config_sdo8(ec_slave_config_t *sc, uint16_t index,
         uint8_t subindex, uint8_t value)
 {
     uint8_t data[1];
+
+    if (sc->master->debug_level)
+        EC_DBG("ecrt_slave_config_sdo8(sc = 0x%x, index = 0x%04X, "
+                "subindex = 0x%02X, value = %u)\n", (u32) sc,
+                index, subindex, (u32) value);
+
     EC_WRITE_U8(data, value);
     return ecrt_slave_config_sdo(sc, index, subindex, data, 1);
 }
@@ -663,6 +674,12 @@ int ecrt_slave_config_sdo16(ec_slave_config_t *sc, uint16_t index,
         uint8_t subindex, uint16_t value)
 {
     uint8_t data[2];
+
+    if (sc->master->debug_level)
+        EC_DBG("ecrt_slave_config_sdo16(sc = 0x%x, index = 0x%04X, "
+                "subindex = 0x%02X, value = %u)\n", (u32) sc,
+                index, subindex, value);
+
     EC_WRITE_U16(data, value);
     return ecrt_slave_config_sdo(sc, index, subindex, data, 2);
 }
@@ -673,6 +690,12 @@ int ecrt_slave_config_sdo32(ec_slave_config_t *sc, uint16_t index,
         uint8_t subindex, uint32_t value)
 {
     uint8_t data[4];
+
+    if (sc->master->debug_level)
+        EC_DBG("ecrt_slave_config_sdo32(sc = 0x%x, index = 0x%04X, "
+                "subindex = 0x%02X, value = %u)\n", (u32) sc,
+                index, subindex, value);
+
     EC_WRITE_U32(data, value);
     return ecrt_slave_config_sdo(sc, index, subindex, data, 4);
 }
