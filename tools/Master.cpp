@@ -1139,8 +1139,8 @@ void Master::showDetailedConfigs(const ConfigList &configList)
             }
         }
 
+        cout << "Sdo configuration:" << endl;
         if (configIter->sdo_count) {
-            cout << "Sdo configuration:" << endl;
             for (j = 0; j < configIter->sdo_count; j++) {
                 getConfigSdo(&sdo, configIter->config_index, j);
 
@@ -1169,6 +1169,8 @@ void Master::showDetailedConfigs(const ConfigList &configList)
 
                 cout << endl;
             }
+        } else {
+            cout << "  None." << endl;
         }
 
         cout << endl;
