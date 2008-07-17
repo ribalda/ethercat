@@ -1128,9 +1128,9 @@ void ec_fsm_coe_down_request(ec_fsm_coe_t *fsm /**< finite state machine */)
                     EC_DBG("Slave %u did not respond to Sdo download request. "
                             "Retrying after %u ms...\n",
                             slave->ring_position, (u32) diff_ms);
-                    // no response; send request datagram again
-                    return;
                 }
+                // no response; send request datagram again
+                return;
             }
         }
         fsm->state = ec_fsm_coe_error;
@@ -1376,9 +1376,9 @@ void ec_fsm_coe_up_request(ec_fsm_coe_t *fsm /**< finite state machine */)
                     EC_DBG("Slave %u did no respond to Sdo upload request. "
                             "Retrying after %u ms...\n",
                             slave->ring_position, (u32) diff_ms);
-                    // no response; send request datagram again
-                    return;
                 }
+                // no response; send request datagram again
+                return;
             }
         }
         fsm->state = ec_fsm_coe_error;
