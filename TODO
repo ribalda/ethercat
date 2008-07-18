@@ -14,6 +14,8 @@ Version 1.4.0:
 * Update documentation.
 * Add -a and -p switches for 'ethercat config' command.
 * Add a -n (numeric) switch to ethercat command.
+* Add help pages for every ethercat command.
+* Show Pdos in 'ethercat slave -v'.
 * File access over EtherCAT (FoE).
 * Allow master requesting when in ORPHANED phase
 * Get original driver for r8169.
