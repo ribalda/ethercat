@@ -5,6 +5,7 @@
  ****************************************************************************/
 
 #include <getopt.h>
+#include <libgen.h> // basename()
 
 #include <iostream>
 #include <string>
@@ -17,6 +18,7 @@ using namespace std;
 
 #define DEFAULT_MASTER 0
 
+static string cmdName;
 static unsigned int masterIndex = DEFAULT_MASTER;
 static int slavePosition = -1;
 static int domainIndex = -1;
@@ -25,13 +27,14 @@ vector<string> commandArgs;
 static Master::Verbosity verbosity = Master::Normal;
 string dataTypeStr;
 bool force = false;
+bool helpWanted = false;
 
 /*****************************************************************************/
 
 void printUsage()
 {
     cerr
-        << "Usage: ethercat <COMMAND> [OPTIONS]" << endl
+        << "Usage: " << cmdName << " <COMMAND> [OPTIONS]" << endl
 		<< "Commands:" << endl
         << "  alias         Write alias addresses." << endl
         << "  config        Show bus configuration." << endl
@@ -63,7 +66,10 @@ void printUsage()
         << "  --force   -f           Force action." << endl
         << "  --quiet   -q           Output less information." << endl
         << "  --verbose -v           Output more information." << endl
-        << "  --help    -h           Show this help." << endl;
+        << "  --help    -h           Show this help." << endl
+        << "Call '" << cmdName << " <COMMAND> --help' for command-specific "
+        << "help." << endl
+        << "Send bug reports to " << PACKAGE_BUGREPORT << "." << endl;
 }
 
 /*****************************************************************************/
@@ -148,9 +154,12 @@ void getOptions(int argc, char **argv)
                 break;
 
             case 'h':
+                helpWanted = true;
+                break;
+
             case '?':
                 printUsage();
-                exit(0);
+                exit(1);
 
             default:
                 break;
@@ -160,10 +169,12 @@ void getOptions(int argc, char **argv)
 
 	argCount = argc - optind;
 
-	if (!argCount) {
-        cerr << "Please specify a command!" << endl;
-		printUsage();
-        exit(1);
+    if (!argCount) {
+        if (!helpWanted) {
+            cerr << "Please specify a command!" << endl;
+        }
+        printUsage();
+        exit(!helpWanted);
 	}
 
     command = argv[optind];
@@ -176,6 +187,8 @@ void getOptions(int argc, char **argv)
 int main(int argc, char **argv)
 {
     Master master;
+
+    cmdName = basename(argv[0]);
     
 	getOptions(argc, argv);
 
