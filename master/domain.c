@@ -393,10 +393,9 @@ void ecrt_domain_process(ec_domain_t *domain)
                     domain->index, domain->working_counter,
                     domain->expected_working_counter);
         } else {
-            EC_INFO("Domain %u: %u working counter changes. "
-                    "Currently %u/%u.\n", domain->index,
-                    domain->working_counter_changes, domain->working_counter,
-                    domain->expected_working_counter);
+            EC_INFO("Domain %u: %u working counter changes - now %u/%u.\n",
+                    domain->index, domain->working_counter_changes,
+                    domain->working_counter, domain->expected_working_counter);
         }
         domain->working_counter_changes = 0;
     }
