@@ -12,29 +12,93 @@
 #include <vector>
 using namespace std;
 
-#include "Master.h"
+#include "globals.h"
 
 /*****************************************************************************/
 
-#define DEFAULT_MASTER 0
-
-static string cmdName;
-static unsigned int masterIndex = DEFAULT_MASTER;
-static int slavePosition = -1;
-static int domainIndex = -1;
-static string command;
+string binaryBaseName;
+unsigned int masterIndex = 0;
+int slavePosition = -1;
+int domainIndex = -1;
+string command;
 vector<string> commandArgs;
-static Master::Verbosity verbosity = Master::Normal;
+Verbosity verbosity = Normal;
 string dataTypeStr;
 bool force = false;
+
 bool helpRequested = false;
+
+MasterDevice masterDev;
+
+/*****************************************************************************/
+
+struct Command {
+    void (*func)(void);
+    const char *helpString;
+
+    int execute(void) const;
+    void displayHelp(void) const;
+};
+
+struct CommandAlias {
+    const char *name;
+    const Command *command;
+};
+
+/*****************************************************************************/
+
+#define COMMAND(name) \
+    void command_##name(void); \
+    extern const char *help_##name; \
+    const Command cmd_##name = {command_##name, help_##name};
+
+COMMAND(alias);
+COMMAND(config);
+
+const CommandAlias commandAliases[] = {
+    {"alias",  &cmd_alias},
+
+    {"config", &cmd_config},
+    {"conf",   &cmd_config},
+    {"cf",     &cmd_config},
+};
+
+#if 0
+        } else if (command == "data") {
+            master.outputData(domainIndex);
+        } else if (command == "debug") {
+            master.setDebug(commandArgs);
+        } else if (command == "domain") {
+            master.showDomains(domainIndex);
+		} else if (command == "master") {
+            master.showMaster();
+        } else if (command == "pdos") {
+            master.listPdos(slavePosition);
+        } else if (command == "sdos") {
+            master.listSdos(slavePosition);
+        } else if (command == "sdo_download" || command == "sd") {
+            master.sdoDownload(slavePosition, dataTypeStr, commandArgs);
+        } else if (command == "sdo_upload" || command == "su") {
+            master.sdoUpload(slavePosition, dataTypeStr, commandArgs);
+		} else if (command == "slave" || command == "slaves"
+                || command == "list" || command == "ls") {
+            master.showSlaves(slavePosition);
+        } else if (command == "sii_read" || command == "sr") {
+            master.siiRead(slavePosition);
+        } else if (command == "sii_write" || command == "sw") {
+            master.siiWrite(slavePosition, force, commandArgs);
+        } else if (command == "state") {
+            master.requestStates(slavePosition, commandArgs);
+        } else if (command == "xml") {
+            master.generateXml(slavePosition);
+#endif
 
 /*****************************************************************************/
 
 void printUsage()
 {
     cerr
-        << "Usage: " << cmdName << " <COMMAND> [OPTIONS]" << endl
+        << "Usage: " << binaryBaseName << " <COMMAND> [OPTIONS]" << endl
 		<< "Commands:" << endl
         << "  alias         Write alias addresses." << endl
         << "  config        Show bus configuration." << endl
@@ -52,8 +116,8 @@ void printUsage()
         << "  state         Request slave states." << endl
         << "  xml           Generate slave information xmls." << endl
 		<< "Global options:" << endl
-        << "  --master  -m <master>  Index of the master to use. Default: "
-		<< DEFAULT_MASTER << endl
+        << "  --master  -m <master>  Index of the master to use. Default: 0"
+		<< endl
         << "  --slave   -s <index>   Positive numerical ring position,"
         << endl
         << "                         or 'all' for all slaves (default)."
@@ -67,8 +131,8 @@ void printUsage()
         << "  --quiet   -q           Output less information." << endl
         << "  --verbose -v           Output more information." << endl
         << "  --help    -h           Show this help." << endl
-        << "Call '" << cmdName << " <COMMAND> --help' for command-specific "
-        << "help." << endl
+        << "Call '" << binaryBaseName
+        << " <COMMAND> --help' for command-specific help." << endl
         << "Send bug reports to " << PACKAGE_BUGREPORT << "." << endl;
 }
 
@@ -146,11 +210,11 @@ void getOptions(int argc, char **argv)
                 break;
 
             case 'q':
-                verbosity = Master::Quiet;
+                verbosity = Quiet;
                 break;
 
             case 'v':
-                verbosity = Master::Verbose;
+                verbosity = Verbose;
                 break;
 
             case 'h':
@@ -184,60 +248,64 @@ void getOptions(int argc, char **argv)
 
 /****************************************************************************/
 
-int main(int argc, char **argv)
+int Command::execute() const
 {
-    Master master;
-
-    cmdName = basename(argv[0]);
-    
-	getOptions(argc, argv);
-
-    master.setIndex(masterIndex);
-    master.setVerbosity(verbosity);
-
     try {
-        if (command == "alias") {
-            master.writeAlias(slavePosition, force, commandArgs);
-        } else if (command == "config") {
-            master.showConfigs();
-        } else if (command == "data") {
-            master.outputData(domainIndex);
-        } else if (command == "debug") {
-            master.setDebug(commandArgs);
-        } else if (command == "domain") {
-            master.showDomains(domainIndex);
-		} else if (command == "master") {
-            master.showMaster();
-        } else if (command == "pdos") {
-            master.listPdos(slavePosition);
-        } else if (command == "sdos") {
-            master.listSdos(slavePosition);
-        } else if (command == "sdo_download" || command == "sd") {
-            master.sdoDownload(slavePosition, dataTypeStr, commandArgs);
-        } else if (command == "sdo_upload" || command == "su") {
-            master.sdoUpload(slavePosition, dataTypeStr, commandArgs);
-		} else if (command == "slave" || command == "slaves"
-                || command == "list" || command == "ls") {
-            master.showSlaves(slavePosition);
-        } else if (command == "sii_read" || command == "sr") {
-            master.siiRead(slavePosition);
-        } else if (command == "sii_write" || command == "sw") {
-            master.siiWrite(slavePosition, force, commandArgs);
-        } else if (command == "state") {
-            master.requestStates(slavePosition, commandArgs);
-        } else if (command == "xml") {
-            master.generateXml(slavePosition);
-        } else {
-            cerr << "Unknown command " << command << "!" << endl;
-            printUsage();
-            exit(1);
-        }
-    } catch (MasterException &e) {
+        func();
+    } catch (InvalidUsageException &e) {
+        cerr << e.what() << endl << endl;
+        displayHelp();
+        return 1;
+    } catch (ExecutionFailureException &e) {
         cerr << e.what() << endl;
-        exit(1);
+        return 1;
+    } catch (MasterDeviceException &e) {
+        cerr << e.what() << endl;
+        return 1;
     }
 
-	return 0;
+    return 0;
+}
+
+/****************************************************************************/
+
+void Command::displayHelp() const
+{
+    cerr << binaryBaseName << " " << command << " " << helpString;
+}
+
+/****************************************************************************/
+
+int main(int argc, char **argv)
+{
+    int retval = 0;
+    const CommandAlias *alias;
+    const CommandAlias *endAlias =
+        commandAliases + sizeof(commandAliases) / sizeof(CommandAlias);
+
+    binaryBaseName = basename(argv[0]);
+	getOptions(argc, argv);
+
+    // search command alias in alias map
+    for (alias = commandAliases; alias < endAlias; alias++) {
+        if (command == alias->name)
+            break;
+    }
+
+    if (alias < endAlias) { // command alias found
+        if (!helpRequested) {
+            masterDev.setIndex(masterIndex);
+            retval = alias->command->execute();
+        } else {
+            alias->command->displayHelp();
+        }
+    } else { // command not found
+        cerr << "Unknown command " << command << "!" << endl << endl;
+        printUsage();
+        retval = 1;
+    }
+
+	return retval;
 }
 
 /****************************************************************************/

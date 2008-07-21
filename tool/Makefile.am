@@ -34,7 +34,9 @@
 bin_PROGRAMS = ethercat
 
 ethercat_SOURCES = \
-    Master.cpp Master.h \
+    MasterDevice.cpp MasterDevice.h \
+    cmd_alias.cpp \
+    cmd_config.cpp \
     main.cpp
 
 ethercat_CXXFLAGS = -I../master -Wall

@@ -4,50 +4,22 @@
  *
  ****************************************************************************/
 
-#include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <sys/ioctl.h>
 
-#include <iostream>
-#include <iomanip>
 #include <sstream>
+using namespace std;
+
+#if 0
+#include <iostream>
 #include <fstream>
 #include <cctype> // toupper()
 #include <list>
-using namespace std;
-
-#include "Master.h"
-
-#define swap16(x) \
-        ((uint16_t)( \
-        (((uint16_t)(x) & 0x00ffU) << 8) | \
-        (((uint16_t)(x) & 0xff00U) >> 8) ))
-#define swap32(x) \
-        ((uint32_t)( \
-        (((uint32_t)(x) & 0x000000ffUL) << 24) | \
-        (((uint32_t)(x) & 0x0000ff00UL) <<  8) | \
-        (((uint32_t)(x) & 0x00ff0000UL) >>  8) | \
-        (((uint32_t)(x) & 0xff000000UL) >> 24) ))
-
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-
-#define le16tocpu(x) x
-#define le32tocpu(x) x
-
-#define cputole16(x) x
-#define cputole32(x) x
-
-#elif __BYTE_ORDER == __BIG_ENDIAN
-
-#define le16tocpu(x) swap16(x)
-#define le32tocpu(x) swap32(x)
-
-#define cputole16(x) swap16(x)
-#define cputole32(x) swap32(x)
-
 #endif
+
+#include "MasterDevice.h"
 
 /****************************************************************************/
 
@@ -97,86 +69,27 @@ const CoEDataType *findDataType(uint16_t code)
 
 /****************************************************************************/
 
-Master::Master()
+MasterDevice::MasterDevice()
 {
     index = 0;
-    verbosity = Normal;
     fd = -1;
 }
 
 /****************************************************************************/
 
-Master::~Master()
+MasterDevice::~MasterDevice()
 {
     close();
 }
 
 /****************************************************************************/
 
-void Master::setIndex(unsigned int i)
+void MasterDevice::setIndex(unsigned int i)
 {
     index = i;
 }
 
-/****************************************************************************/
-
-void Master::setVerbosity(Verbosity v)
-{
-    verbosity = v;
-}
-
-/*****************************************************************************/
-
-/**
- * Writes the Secondary slave address (alias) to the slave's SII.
- */
-void Master::writeAlias(
-        int slavePosition,
-        bool force,
-        const vector<string> &commandArgs
-        )
-{
-    uint16_t alias;
-    stringstream err, strAlias;
-    int number;
-
-    if (commandArgs.size() != 1) {
-        stringstream err;
-        err << "'alias' takes exactly one argument!";
-        throw MasterException(err.str());
-    }
-
-    strAlias << commandArgs[0];
-    strAlias
-        >> resetiosflags(ios::basefield) // guess base from prefix
-        >> number;
-    if (strAlias.fail() || number < 0x0000 || number > 0xffff) {
-        err << "Invalid alias '" << commandArgs[0] << "'!";
-        throw MasterException(err.str());
-    }
-    alias = number;
-
-    if (slavePosition == -1) {
-        unsigned int numSlaves, i;
-
-        if (!force) {
-            err << "This will write the alias addresses of all slaves to "
-                << alias << "! Please specify --force to proceed.";
-            throw MasterException(err.str());
-        }
-
-        open(ReadWrite);
-        numSlaves = slaveCount();
-
-        for (i = 0; i < numSlaves; i++) {
-            writeSlaveAlias(i, alias);
-        }
-    } else {
-        open(ReadWrite);
-        writeSlaveAlias(slavePosition, alias);
-    }
-}
-
+#if 0
 /*****************************************************************************/
 
 bool operator<(const ec_ioctl_config_t &a, const ec_ioctl_config_t &b)
@@ -241,7 +154,7 @@ void Master::setDebug(const vector<string> &commandArgs)
     if (commandArgs.size() != 1) {
         stringstream err;
         err << "'debug' takes exactly one argument!";
-        throw MasterException(err.str());
+        throw MasterDeviceException(err.str());
     }
 
     str << commandArgs[0];
@@ -251,7 +164,7 @@ void Master::setDebug(const vector<string> &commandArgs)
     if (str.fail()) {
         stringstream err;
         err << "Invalid debug level '" << commandArgs[0] << "'!";
-        throw MasterException(err.str());
+        throw MasterDeviceException(err.str());
     }
 
     open(ReadWrite);
@@ -259,7 +172,7 @@ void Master::setDebug(const vector<string> &commandArgs)
     if (ioctl(fd, EC_IOCTL_MASTER_DEBUG, debugLevel) < 0) {
         stringstream err;
         err << "Failed to set debug level: " << strerror(errno);
-        throw MasterException(err.str());
+        throw MasterDeviceException(err.str());
     }
 }
 
@@ -304,7 +217,7 @@ void Master::showMaster()
         case 2: cout << "Operation"; break;
         default:
                 err << "Invalid master phase " << data.phase;
-                throw MasterException(err.str());
+                throw MasterDeviceException(err.str());
     }
 
     cout << endl
@@ -385,13 +298,13 @@ void Master::sdoDownload(
 
     if (slavePosition < 0) {
         err << "'sdo_download' requires a slave! Please specify --slave.";
-        throw MasterException(err.str());
+        throw MasterDeviceException(err.str());
     }
     data.slave_position = slavePosition;
 
     if (commandArgs.size() != 3) {
         err << "'sdo_download' takes 3 arguments!";
-        throw MasterException(err.str());
+        throw MasterDeviceException(err.str());
     }
 
     strIndex << commandArgs[0];
@@ -400,7 +313,7 @@ void Master::sdoDownload(
         >> data.sdo_index;
     if (strIndex.fail()) {
         err << "Invalid Sdo index '" << commandArgs[0] << "'!";
-        throw MasterException(err.str());
+        throw MasterDeviceException(err.str());
     }
 
     strSubIndex << commandArgs[1];
@@ -409,14 +322,14 @@ void Master::sdoDownload(
         >> number;
     if (strSubIndex.fail() || number > 0xff) {
         err << "Invalid Sdo subindex '" << commandArgs[1] << "'!";
-        throw MasterException(err.str());
+        throw MasterDeviceException(err.str());
     }
     data.sdo_entry_subindex = number;
 
     if (dataTypeStr != "") { // data type specified
         if (!(dataType = findDataType(dataTypeStr))) {
             err << "Invalid data type '" << dataTypeStr << "'!";
-            throw MasterException(err.str());
+            throw MasterDeviceException(err.str());
         }
     } else { // no data type specified: fetch from dictionary
         ec_ioctl_slave_sdo_entry_t entry;
@@ -426,16 +339,16 @@ void Master::sdoDownload(
         try {
             getSdoEntry(&entry, slavePosition,
                     data.sdo_index, data.sdo_entry_subindex);
-        } catch (MasterException &e) {
+        } catch (MasterDeviceException &e) {
             err << "Failed to determine Sdo entry data type. "
                 << "Please specify --type.";
-            throw MasterException(err.str());
+            throw MasterDeviceException(err.str());
         }
         if (!(dataType = findDataType(entry.data_type))) {
             err << "Pdo entry has unknown data type 0x"
                 << hex << setfill('0') << setw(4) << entry.data_type << "!"
                 << " Please specify --type.";
-            throw MasterException(err.str());
+            throw MasterDeviceException(err.str());
         }
     }
 
@@ -502,7 +415,7 @@ void Master::sdoDownload(
             case 0x0009: // string
                 if (strValue.str().size() >= data.data_size) {
                     err << "String too large";
-                    throw MasterException(err.str());
+                    throw MasterDeviceException(err.str());
                 }
                 data.data_size = strValue.str().size();
                 strValue >> (char *) data.data;
@@ -511,13 +424,13 @@ void Master::sdoDownload(
             default:
                 delete [] data.data;
                 err << "Unknown data type 0x" << hex << dataType->coeCode;
-                throw MasterException(err.str());
+                throw MasterDeviceException(err.str());
         }
     } catch (ios::failure &e) {
         delete [] data.data;
         err << "Invalid value argument '" << commandArgs[2]
             << "' for type '" << dataType->name << "'!";
-        throw MasterException(err.str());
+        throw MasterDeviceException(err.str());
     }
 
     open(ReadWrite);
@@ -532,7 +445,7 @@ void Master::sdoDownload(
             err << strerror(errno);
         }
         delete [] data.data;
-        throw MasterException(err.str());
+        throw MasterDeviceException(err.str());
     }
 
     delete [] data.data;
@@ -555,14 +468,14 @@ void Master::sdoUpload(
     if (slavePosition < 0) {
         stringstream err;
         err << "'sdo_upload' requires a slave! Please specify --slave.";
-        throw MasterException(err.str());
+        throw MasterDeviceException(err.str());
     }
     data.slave_position = slavePosition;
 
     if (commandArgs.size() != 2) {
         stringstream err;
         err << "'sdo_upload' takes two arguments!";
-        throw MasterException(err.str());
+        throw MasterDeviceException(err.str());
     }
 
     strIndex << commandArgs[0];
@@ -572,7 +485,7 @@ void Master::sdoUpload(
     if (strIndex.fail()) {
         stringstream err;
         err << "Invalid Sdo index '" << commandArgs[0] << "'!";
-        throw MasterException(err.str());
+        throw MasterDeviceException(err.str());
     }
 
     strSubIndex << commandArgs[1];
@@ -582,7 +495,7 @@ void Master::sdoUpload(
     if (strSubIndex.fail() || uval > 0xff) {
         stringstream err;
         err << "Invalid Sdo subindex '" << commandArgs[1] << "'!";
-        throw MasterException(err.str());
+        throw MasterDeviceException(err.str());
     }
     data.sdo_entry_subindex = uval;
 
@@ -590,7 +503,7 @@ void Master::sdoUpload(
         if (!(dataType = findDataType(dataTypeStr))) {
             stringstream err;
             err << "Invalid data type '" << dataTypeStr << "'!";
-            throw MasterException(err.str());
+            throw MasterDeviceException(err.str());
         }
     } else { // no data type specified: fetch from dictionary
         ec_ioctl_slave_sdo_entry_t entry;
@@ -600,18 +513,18 @@ void Master::sdoUpload(
         try {
             getSdoEntry(&entry, slavePosition,
                     data.sdo_index, data.sdo_entry_subindex);
-        } catch (MasterException &e) {
+        } catch (MasterDeviceException &e) {
             stringstream err;
             err << "Failed to determine Sdo entry data type. "
                 << "Please specify --type.";
-            throw MasterException(err.str());
+            throw MasterDeviceException(err.str());
         }
         if (!(dataType = findDataType(entry.data_type))) {
             stringstream err;
             err << "Pdo entry has unknown data type 0x"
                 << hex << setfill('0') << setw(4) << entry.data_type << "!"
                 << " Please specify --type.";
-            throw MasterException(err.str());
+            throw MasterDeviceException(err.str());
         }
     }
 
@@ -636,7 +549,7 @@ void Master::sdoUpload(
         }
         delete [] data.target;
         close();
-        throw MasterException(err.str());
+        throw MasterDeviceException(err.str());
     }
 
     close();
@@ -646,7 +559,7 @@ void Master::sdoUpload(
         err << "Data type mismatch. Expected " << dataType->name
             << " with " << dataType->byteSize << " byte, but got "
             << data.data_size << " byte.";
-        throw MasterException(err.str());
+        throw MasterDeviceException(err.str());
     }
 
     cout << setfill('0');
@@ -753,7 +666,7 @@ void Master::siiRead(int slavePosition)
     if (slavePosition < 0) {
         stringstream err;
         err << "'sii_read' requires a slave! Please specify --slave.";
-        throw MasterException(err.str());
+        throw MasterDeviceException(err.str());
     }
     data.slave_position = slavePosition;
 
@@ -772,7 +685,7 @@ void Master::siiRead(int slavePosition)
         stringstream err;
         delete [] data.words;
         err << "Failed to read SII: " << strerror(errno);
-        throw MasterException(err.str());
+        throw MasterDeviceException(err.str());
     }
 
     if (verbosity == Verbose) {
@@ -798,7 +711,7 @@ void Master::siiRead(int slavePosition)
 
                 if (categoryHeader + 1 > data.words + data.nwords) {
                     err << "SII data seem to be corrupted!";
-                    throw MasterException(err.str());
+                    throw MasterDeviceException(err.str());
                 }
                 categorySize = le16tocpu(*(categoryHeader + 1));
                 cout << ", " << dec << categorySize << " words" << flush;
@@ -806,7 +719,7 @@ void Master::siiRead(int slavePosition)
                 if (categoryHeader + 2 + categorySize
                         > data.words + data.nwords) {
                     err << "SII data seem to be corrupted!";
-                    throw MasterException(err.str());
+                    throw MasterDeviceException(err.str());
                 }
 
                 cout << hex;
@@ -824,7 +737,7 @@ void Master::siiRead(int slavePosition)
                 if (categoryHeader + 2 + categorySize + 1
                         > data.words + data.nwords) {
                     err << "SII data seem to be corrupted!"; 
-                    throw MasterException(err.str());
+                    throw MasterDeviceException(err.str());
                 }
                 categoryHeader += 2 + categorySize;
                 categoryType = le16tocpu(*categoryHeader);
@@ -858,19 +771,19 @@ void Master::siiWrite(
 
     if (slavePosition < 0) {
         err << "'sii_write' requires a slave! Please specify --slave.";
-        throw MasterException(err.str());
+        throw MasterDeviceException(err.str());
     }
     data.slave_position = slavePosition;
 
     if (commandArgs.size() != 1) {
         err << "'ssi_write' takes exactly one argument!";
-        throw MasterException(err.str());
+        throw MasterDeviceException(err.str());
     }
 
     file.open(commandArgs[0].c_str(), ifstream::in | ifstream::binary);
     if (file.fail()) {
         err << "Failed to open '" << commandArgs[0] << "'!";
-        throw MasterException(err.str());
+        throw MasterDeviceException(err.str());
     }
 
     // get length of file
@@ -881,14 +794,14 @@ void Master::siiWrite(
     if (!byte_size || byte_size % 2) {
         stringstream err;
         err << "Invalid file size! Must be non-zero and even.";
-        throw MasterException(err.str());
+        throw MasterDeviceException(err.str());
     }
 
     data.nwords = byte_size / 2;
     if (data.nwords < 0x0041 && !force) {
         err << "SII data too short (" << data.nwords << " words)! Mimimum is"
                 " 40 fixed words + 1 delimiter. Use --force to write anyway.";
-        throw MasterException(err.str());
+        throw MasterDeviceException(err.str());
     }
 
     // allocate buffer and read file into buffer
@@ -903,7 +816,7 @@ void Master::siiWrite(
             err << "CRC incorrect. Must be 0x"
                 << hex << setfill('0') << setw(2) << (unsigned int) crc
                 << ". Use --force to write anyway.";
-            throw MasterException(err.str());
+            throw MasterDeviceException(err.str());
         }
 
         // cycle through categories to detect corruption
@@ -913,14 +826,14 @@ void Master::siiWrite(
             if (categoryHeader + 1 > data.words + data.nwords) {
                 err << "SII data seem to be corrupted! "
                     << "Use --force to write anyway.";
-                throw MasterException(err.str());
+                throw MasterDeviceException(err.str());
             }
             categorySize = le16tocpu(*(categoryHeader + 1));
             if (categoryHeader + 2 + categorySize + 1
                     > data.words + data.nwords) {
                 err << "SII data seem to be corrupted! "
                     "Use --force to write anyway.";
-                throw MasterException(err.str());
+                throw MasterDeviceException(err.str());
             }
             categoryHeader += 2 + categorySize;
             categoryType = le16tocpu(*categoryHeader);
@@ -933,7 +846,7 @@ void Master::siiWrite(
     if (ioctl(fd, EC_IOCTL_SLAVE_SII_WRITE, &data) < 0) {
         stringstream err;
         err << "Failed to write SII: " << strerror(errno);
-        throw MasterException(err.str());
+        throw MasterDeviceException(err.str());
     }
 }
 
@@ -950,7 +863,7 @@ void Master::requestStates(
     if (commandArgs.size() != 1) {
         stringstream err;
         err << "'state' takes exactly one argument!";
-        throw MasterException(err.str());
+        throw MasterDeviceException(err.str());
     }
 
     stateStr = commandArgs[0];
@@ -968,7 +881,7 @@ void Master::requestStates(
     } else {
         stringstream err;
         err << "Invalid state '" << commandArgs[0] << "'!";
-        throw MasterException(err.str());
+        throw MasterDeviceException(err.str());
     }
 
     open(ReadWrite);
@@ -999,9 +912,10 @@ void Master::generateXml(int slavePosition)
     }
 }
 
+#endif
 /****************************************************************************/
 
-void Master::open(Permissions perm)
+void MasterDevice::open(Permissions perm)
 {
     stringstream deviceName;
 
@@ -1016,13 +930,13 @@ void Master::open(Permissions perm)
         stringstream err;
         err << "Failed to open master device " << deviceName.str() << ": "
             << strerror(errno);
-        throw MasterException(err.str());
+        throw MasterDeviceException(err.str());
     }
 }
 
 /****************************************************************************/
 
-void Master::close()
+void MasterDevice::close()
 {
     if (fd == -1)
         return;
@@ -1031,61 +945,7 @@ void Master::close()
     fd = -1;
 }
 
-/*****************************************************************************/
-
-/**
- * Writes the Secondary slave address (alias) to the slave's SII.
- */
-void Master::writeSlaveAlias(
-        uint16_t slavePosition,
-        uint16_t alias
-        )
-{
-    ec_ioctl_slave_sii_t data;
-    ec_ioctl_slave_t slave;
-    stringstream err;
-    uint8_t crc;
-
-    open(ReadWrite);
-
-    getSlave(&slave, slavePosition);
-
-    if (slave.sii_nwords < 8) {
-        err << "Current SII contents are too small to set an alias "
-            << "(" << slave.sii_nwords << " words)!";
-        throw MasterException(err.str());
-    }
-
-    data.slave_position = slavePosition;
-    data.offset = 0;
-    data.nwords = 8;
-    data.words = new uint16_t[data.nwords];
-
-    // read first 8 SII words
-    if (ioctl(fd, EC_IOCTL_SLAVE_SII_READ, &data) < 0) {
-        delete [] data.words;
-        err << "Failed to read SII: " << strerror(errno);
-        throw MasterException(err.str());
-    }
-
-    // write new alias address in word 4
-    data.words[4] = cputole16(alias);
-
-    // calculate checksum over words 0 to 6
-    crc = calcSiiCrc((const uint8_t *) data.words, 14);
-
-    // write new checksum into first byte of word 7
-    *(uint8_t *) (data.words + 7) = crc;
-
-    // write first 8 words with new alias and checksum
-    if (ioctl(fd, EC_IOCTL_SLAVE_SII_WRITE, &data) < 0) {
-        delete [] data.words;
-        err << "Failed to write SII: " << strerror(errno);
-        throw MasterException(err.str());
-    }
-
-    delete [] data.words;
-}
+#if 0
 
 /*****************************************************************************/
 
@@ -1275,7 +1135,7 @@ void Master::outputDomainData(unsigned int domainIndex)
 
     try {
         getData(&data, domainIndex, domain.data_size, processData);
-    } catch (MasterException &e) {
+    } catch (MasterDeviceException &e) {
         delete [] processData;
         throw e;
     }
@@ -1317,7 +1177,7 @@ void Master::showDomain(unsigned int domainIndex)
 
     try {
         getData(&data, domainIndex, domain.data_size, processData);
-    } catch (MasterException &e) {
+    } catch (MasterDeviceException &e) {
         delete [] processData;
         throw e;
     }
@@ -1341,7 +1201,7 @@ void Master::showDomain(unsigned int domainIndex)
             stringstream err;
             err << "Fmmu information corrupted!";
             delete [] processData;
-            throw MasterException(err.str());
+            throw MasterDeviceException(err.str());
         }
 
         cout << "    " << hex << setfill('0');
@@ -1781,10 +1641,10 @@ void Master::generateSlaveXml(uint16_t slavePosition)
         << "  </Descriptions>" << endl
         << "</EtherCATInfo>" << endl;
 }
-
+#endif
 /****************************************************************************/
 
-unsigned int Master::slaveCount()
+unsigned int MasterDevice::slaveCount()
 {
     ec_ioctl_master_t data;
 
@@ -1794,31 +1654,31 @@ unsigned int Master::slaveCount()
 
 /****************************************************************************/
 
-void Master::getMaster(ec_ioctl_master_t *data)
+void MasterDevice::getMaster(ec_ioctl_master_t *data)
 {
     if (ioctl(fd, EC_IOCTL_MASTER, data) < 0) {
         stringstream err;
         err << "Failed to get master information: " << strerror(errno);
-        throw MasterException(err.str());
+        throw MasterDeviceException(err.str());
     }
 }
 
 /****************************************************************************/
 
-void Master::getConfig(ec_ioctl_config_t *data, unsigned int index)
+void MasterDevice::getConfig(ec_ioctl_config_t *data, unsigned int index)
 {
     data->config_index = index;
 
     if (ioctl(fd, EC_IOCTL_CONFIG, data) < 0) {
         stringstream err;
         err << "Failed to get slave configuration: " << strerror(errno);
-        throw MasterException(err.str());
+        throw MasterDeviceException(err.str());
     }
 }
 
 /****************************************************************************/
 
-void Master::getConfigPdo(
+void MasterDevice::getConfigPdo(
         ec_ioctl_config_pdo_t *data,
         unsigned int index,
         uint8_t sync_index,
@@ -1832,13 +1692,13 @@ void Master::getConfigPdo(
     if (ioctl(fd, EC_IOCTL_CONFIG_PDO, data) < 0) {
         stringstream err;
         err << "Failed to get slave config Pdo: " << strerror(errno);
-        throw MasterException(err.str());
+        throw MasterDeviceException(err.str());
     }
 }
 
 /****************************************************************************/
 
-void Master::getConfigPdoEntry(
+void MasterDevice::getConfigPdoEntry(
         ec_ioctl_config_pdo_entry_t *data,
         unsigned int index,
         uint8_t sync_index,
@@ -1854,13 +1714,13 @@ void Master::getConfigPdoEntry(
     if (ioctl(fd, EC_IOCTL_CONFIG_PDO_ENTRY, data) < 0) {
         stringstream err;
         err << "Failed to get slave config Pdo entry: " << strerror(errno);
-        throw MasterException(err.str());
+        throw MasterDeviceException(err.str());
     }
 }
 
 /****************************************************************************/
 
-void Master::getConfigSdo(
+void MasterDevice::getConfigSdo(
         ec_ioctl_config_sdo_t *data,
         unsigned int index,
         unsigned int sdo_pos
@@ -1872,13 +1732,13 @@ void Master::getConfigSdo(
     if (ioctl(fd, EC_IOCTL_CONFIG_SDO, data) < 0) {
         stringstream err;
         err << "Failed to get slave config Sdo: " << strerror(errno);
-        throw MasterException(err.str());
+        throw MasterDeviceException(err.str());
     }
 }
 
 /****************************************************************************/
 
-void Master::getDomain(ec_ioctl_domain_t *data, unsigned int index)
+void MasterDevice::getDomain(ec_ioctl_domain_t *data, unsigned int index)
 {
     data->index = index;
 
@@ -1889,13 +1749,13 @@ void Master::getDomain(ec_ioctl_domain_t *data, unsigned int index)
             err << "Domain " << index << " does not exist!";
         else
             err << strerror(errno);
-        throw MasterException(err.str());
+        throw MasterDeviceException(err.str());
     }
 }
 
 /****************************************************************************/
 
-void Master::getData(ec_ioctl_domain_data_t *data, unsigned int domainIndex,
+void MasterDevice::getData(ec_ioctl_domain_data_t *data, unsigned int domainIndex,
         unsigned int dataSize, unsigned char *mem)
 {
     data->domain_index = domainIndex;
@@ -1905,13 +1765,13 @@ void Master::getData(ec_ioctl_domain_data_t *data, unsigned int domainIndex,
     if (ioctl(fd, EC_IOCTL_DOMAIN_DATA, data) < 0) {
         stringstream err;
         err << "Failed to get domain data: " << strerror(errno);
-        throw MasterException(err.str());
+        throw MasterDeviceException(err.str());
     }
 }
 
 /****************************************************************************/
 
-void Master::getSlave(ec_ioctl_slave_t *slave, uint16_t slaveIndex)
+void MasterDevice::getSlave(ec_ioctl_slave_t *slave, uint16_t slaveIndex)
 {
     slave->position = slaveIndex;
 
@@ -1922,13 +1782,13 @@ void Master::getSlave(ec_ioctl_slave_t *slave, uint16_t slaveIndex)
             err << "Slave " << slaveIndex << " does not exist!";
         else
             err << strerror(errno);
-        throw MasterException(err.str());
+        throw MasterDeviceException(err.str());
     }
 }
 
 /****************************************************************************/
 
-void Master::getFmmu(
+void MasterDevice::getFmmu(
         ec_ioctl_domain_fmmu_t *fmmu,
         unsigned int domainIndex,
         unsigned int fmmuIndex
@@ -1946,13 +1806,13 @@ void Master::getFmmu(
                 << " FMMus!";
         else
             err << strerror(errno);
-        throw MasterException(err.str());
+        throw MasterDeviceException(err.str());
     }
 }
 
 /****************************************************************************/
 
-void Master::getSync(
+void MasterDevice::getSync(
         ec_ioctl_slave_sync_t *sync,
         uint16_t slaveIndex,
         uint8_t syncIndex
@@ -1970,13 +1830,13 @@ void Master::getSync(
                 << " sync managers!";
         else
             err << strerror(errno);
-        throw MasterException(err.str());
+        throw MasterDeviceException(err.str());
     }
 }
 
 /****************************************************************************/
 
-void Master::getPdo(
+void MasterDevice::getPdo(
         ec_ioctl_slave_sync_pdo_t *pdo,
         uint16_t slaveIndex,
         uint8_t syncIndex,
@@ -1998,13 +1858,13 @@ void Master::getPdo(
                 << pdoPos + 1 << " Pdos!" << endl;
         else
             err << strerror(errno);
-        throw MasterException(err.str());
+        throw MasterDeviceException(err.str());
     }
 }
 
 /****************************************************************************/
 
-void Master::getPdoEntry(
+void MasterDevice::getPdoEntry(
         ec_ioctl_slave_sync_pdo_entry_t *entry,
         uint16_t slaveIndex,
         uint8_t syncIndex,
@@ -2030,13 +1890,13 @@ void Master::getPdoEntry(
                 << " entries!" << endl;
         else
             err << strerror(errno);
-        throw MasterException(err.str());
+        throw MasterDeviceException(err.str());
     }
 }
 
 /****************************************************************************/
 
-void Master::getSdo(
+void MasterDevice::getSdo(
         ec_ioctl_slave_sdo_t *sdo,
         uint16_t slaveIndex,
         uint16_t sdoPosition
@@ -2054,13 +1914,13 @@ void Master::getSdo(
                 << endl;
         else
             err << strerror(errno);
-        throw MasterException(err.str());
+        throw MasterDeviceException(err.str());
     }
 }
 
 /****************************************************************************/
 
-void Master::getSdoEntry(
+void MasterDevice::getSdoEntry(
         ec_ioctl_slave_sdo_entry_t *entry,
         uint16_t slaveIndex,
         int sdoSpec,
@@ -2075,13 +1935,40 @@ void Master::getSdoEntry(
         stringstream err;
         err << "Failed to get Sdo entry: ";
         err << strerror(errno);
-        throw MasterException(err.str());
+        throw MasterDeviceException(err.str());
     }
 }
 
 /****************************************************************************/
 
-void Master::requestState(
+void MasterDevice::readSii(
+        ec_ioctl_slave_sii_t *data
+        )
+{
+    if (ioctl(fd, EC_IOCTL_SLAVE_SII_READ, data) < 0) {
+        stringstream err;
+        err << "Failed to read SII: " << strerror(errno);
+        throw MasterDeviceException(err.str());
+    }
+}
+
+/****************************************************************************/
+
+void MasterDevice::writeSii(
+        ec_ioctl_slave_sii_t *data
+        )
+{
+    if (ioctl(fd, EC_IOCTL_SLAVE_SII_WRITE, data) < 0) {
+        stringstream err;
+        err << "Failed to write SII: " << strerror(errno);
+        throw MasterDeviceException(err.str());
+    }
+}
+
+/****************************************************************************/
+
+#if 0
+void MasterDevice::requestState(
         uint16_t slavePosition,
         uint8_t state
         )
@@ -2098,7 +1985,7 @@ void Master::requestState(
             err << "Slave " << slavePosition << " does not exist!";
         else
             err << strerror(errno);
-        throw MasterException(err.str());
+        throw MasterDeviceException(err.str());
     }
 }
 
@@ -2130,46 +2017,5 @@ void Master::printRawData(
     cout << endl;
 }
 
-/*****************************************************************************/
-
-/**
- * Calculates the SII checksum field.
- *
- * The checksum is generated with the polynom x^8+x^2+x+1 (0x07) and an
- * initial value of 0xff (see IEC 61158-6-12 ch. 5.4).
- *
- * The below code was originally generated with PYCRC
- * http://www.tty1.net/pycrc
- *
- * ./pycrc.py --width=8 --poly=0x07 --reflect-in=0 --xor-in=0xff
- *   --reflect-out=0 --xor-out=0 --generate c --algorithm=bit-by-bit
- *
- * \return CRC8
- */
-uint8_t Master::calcSiiCrc(
-        const uint8_t *data, /**< pointer to data */
-        size_t length /**< number of bytes in \a data */
-        )
-{
-    unsigned int i;
-    uint8_t bit, byte, crc = 0x48;
-
-    while (length--) {
-        byte = *data++;
-        for (i = 0; i < 8; i++) {
-            bit = crc & 0x80;
-            crc = (crc << 1) | ((byte >> (7 - i)) & 0x01);
-            if (bit) crc ^= 0x07;
-        }
-    }
-
-    for (i = 0; i < 8; i++) {
-        bit = crc & 0x80;
-        crc <<= 1;
-        if (bit) crc ^= 0x07;
-    }
-
-    return crc;
-}
-
+#endif
 /*****************************************************************************/

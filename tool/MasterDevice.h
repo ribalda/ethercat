@@ -18,72 +18,32 @@ using namespace std;
 
 /****************************************************************************/
 
-class MasterException:
+class MasterDeviceException:
     public runtime_error
 {
     public:
         /** Constructor with std::string parameter. */
-        MasterException(
+        MasterDeviceException(
                 const string &s /**< Message. */
-                ): runtime_error(s) {}
-
-        /** Constructor with const char pointer parameter. */
-        MasterException(
-                const char *s /**< Message. */
                 ): runtime_error(s) {}
 };
 
 /****************************************************************************/
 
-class Master
+class MasterDevice
 {
     public:
-        Master();
-        ~Master();
+        MasterDevice();
+        ~MasterDevice();
 
         void setIndex(unsigned int);
 
-        enum Verbosity {
-            Quiet,
-            Normal,
-            Verbose
-        };
-        void setVerbosity(Verbosity);
-
-        void writeAlias(int, bool, const vector<string> &);
-        void showConfigs();
-        void outputData(int);
-        void setDebug(const vector<string> &);
-        void showDomains(int);
-        void showMaster();
-        void listPdos(int);
-        void listSdos(int);
-        void sdoDownload(int, const string &, const vector<string> &);
-        void sdoUpload(int, const string &, const vector<string> &);
-        void showSlaves(int);
-        void siiRead(int);
-        void siiWrite(int, bool, const vector<string> &);
-        void requestStates(int, const vector<string> &);
-        void generateXml(int);
-
-    protected:
         enum Permissions {Read, ReadWrite};
         void open(Permissions);
         void close();
 
-        void writeSlaveAlias(uint16_t, uint16_t);
-        typedef list<ec_ioctl_config_t> ConfigList;
-        void showDetailedConfigs(const ConfigList &);
-        void listConfigs(const ConfigList &);
-        void outputDomainData(unsigned int);
-        enum {BreakAfterBytes = 16};
-        void showDomain(unsigned int);
-        void listSlavePdos(uint16_t, bool = false);
-        void listSlaveSdos(uint16_t, bool = false);
-        void listSlaves(int);
-        void showSlave(uint16_t);
-        void generateSlaveXml(uint16_t);
         unsigned int slaveCount();
+
         void getMaster(ec_ioctl_master_t *);
         void getConfig(ec_ioctl_config_t *, unsigned int);
         void getConfigPdo(ec_ioctl_config_pdo_t *, unsigned int, uint8_t,
@@ -102,17 +62,30 @@ class Master
                 uint8_t, uint8_t);
         void getSdo(ec_ioctl_slave_sdo_t *, uint16_t, uint16_t);
         void getSdoEntry(ec_ioctl_slave_sdo_entry_t *, uint16_t, int, uint8_t);
+        void readSii(ec_ioctl_slave_sii_t *);
+        void writeSii(ec_ioctl_slave_sii_t *);
+
+    protected:
+#if 0
+        void outputDomainData(unsigned int);
+        enum {BreakAfterBytes = 16};
+        void showDomain(unsigned int);
+        void listSlavePdos(uint16_t, bool = false);
+        void listSlaveSdos(uint16_t, bool = false);
+        void listSlaves(int);
+        void showSlave(uint16_t);
+        void generateSlaveXml(uint16_t);
         void requestState(uint16_t, uint8_t);
 
         static string slaveState(uint8_t);
         static void printRawData(const uint8_t *, unsigned int);
         static uint8_t calcSiiCrc(const uint8_t *, unsigned int);
+#endif
         
     private:
-        enum {DefaultBufferSize = 1024};
+        //enum {DefaultBufferSize = 1024};
 
         unsigned int index;
-        Verbosity verbosity;
         int fd;
 };
 
