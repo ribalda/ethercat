@@ -27,7 +27,7 @@ vector<string> commandArgs;
 static Master::Verbosity verbosity = Master::Normal;
 string dataTypeStr;
 bool force = false;
-bool helpWanted = false;
+bool helpRequested = false;
 
 /*****************************************************************************/
 
@@ -154,7 +154,7 @@ void getOptions(int argc, char **argv)
                 break;
 
             case 'h':
-                helpWanted = true;
+                helpRequested = true;
                 break;
 
             case '?':
@@ -170,11 +170,11 @@ void getOptions(int argc, char **argv)
 	argCount = argc - optind;
 
     if (!argCount) {
-        if (!helpWanted) {
+        if (!helpRequested) {
             cerr << "Please specify a command!" << endl;
         }
         printUsage();
-        exit(!helpWanted);
+        exit(!helpRequested);
 	}
 
     command = argv[optind];
