@@ -504,7 +504,7 @@ AC_CONFIG_FILES([
         script/Makefile
         script/init.d/Makefile
         script/sysconfig/Makefile
-        tools/Makefile
+        tool/Makefile
 ])
 AC_OUTPUT
 

@@ -36,7 +36,7 @@ SUBDIRS = \
     include \
     master \
     script \
-    tools
+    tool
 
 DIST_SUBDIRS = \
     devices \
@@ -44,7 +44,7 @@ DIST_SUBDIRS = \
     include \
     master \
     script \
-    tools
+    tool
 
 EXTRA_DIST = \
 	Doxyfile \
