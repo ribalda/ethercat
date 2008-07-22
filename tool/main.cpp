@@ -273,6 +273,13 @@ void Command::displayHelp() const
 
 /****************************************************************************/
 
+bool substrMatch(const string &abb, const string &full)
+{
+    return full.substr(0, abb.length()) == abb;
+}
+    
+/****************************************************************************/
+
 bool abbrevMatch(const string &abb, const string &full)
 {
     unsigned int abbIndex;
@@ -294,10 +301,19 @@ list<const Command *> getMatchingCommands(const string &cmdStr)
     const Command *cmd;
     list<const Command *> res;
 
-    // find matching commands
+    // find matching commands from beginning of the string
     for (cmd = commands; cmd < cmdEnd; cmd++) {
-        if (abbrevMatch(cmdStr, cmd->name)) {
+        if (substrMatch(cmdStr, cmd->name)) {
             res.push_back(cmd);
+        }
+    }
+
+    if (!res.size()) { // nothing found
+        // find /any/ matching commands
+        for (cmd = commands; cmd < cmdEnd; cmd++) {
+            if (abbrevMatch(cmdStr, cmd->name)) {
+                res.push_back(cmd);
+            }
         }
     }
 
