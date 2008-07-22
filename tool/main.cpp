@@ -337,6 +337,7 @@ int main(int argc, char **argv)
     if (commands.size()) {
         if (commands.size() == 1) {
             cmd = commands.front();
+            commandName = cmd->name;
             if (!helpRequested) {
                 masterDev.setIndex(masterIndex);
                 retval = cmd->execute();
