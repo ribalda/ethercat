@@ -18,6 +18,8 @@ Version 1.4.0:
 * Allow master requesting when in ORPHANED phase
 * Get original driver for r8169.
 * Race in jiffies frame timeout?
+* Accept files from stdin.
+* Show attached slave position.
 
 Future issues:
 
