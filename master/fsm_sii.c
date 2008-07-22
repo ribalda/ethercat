@@ -43,15 +43,18 @@
 #include "master.h"
 #include "fsm_sii.h"
 
-/**
- * Read/Write timeout. [ms]
+/** Read/write timeout [ms].
+ *
+ * Used to calculate timeouts bsed on the jiffies counter.
+ *
+ * \attention Must be more than 10 to avoid problems on kernels that run with
+ * a timer interupt frequency of 100 Hz.
  */
-#define SII_TIMEOUT 10
+#define SII_TIMEOUT 20
 
-/**
- * Time before evaluating answer at writing. [ms]
+/** Time before evaluating answer at writing [ms].
  */
-#define SII_INHIBIT  5
+#define SII_INHIBIT 5
 
 //#define SII_DEBUG
 
