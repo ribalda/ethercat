@@ -84,7 +84,7 @@ static const Command commands[] = {
     INIT_COMMAND(sii_read, "Output a slave's SII contents."),
     INIT_COMMAND(sii_write, "Write slave's SII contents."),
     INIT_COMMAND(states, "Request slave states."),
-    INIT_COMMAND(xml, "Generate slave information xmls."),
+    INIT_COMMAND(xml, "Generate slave information XML."),
 };
 
 static const Command *cmdEnd = commands + sizeof(commands) / sizeof(Command);
@@ -344,7 +344,7 @@ int main(int argc, char **argv)
                 cmd->displayHelp();
             }
         } else {
-            cerr << "Ambigous command abbreviation! Matching:" << endl;
+            cerr << "Ambiguous command abbreviation! Matching:" << endl;
             for (ci = commands.begin(); ci != commands.end(); ci++) {
                 cerr << (*ci)->name << endl;
             }
