@@ -22,6 +22,7 @@ enum Verbosity {
 };
 
 extern string commandName;
+extern unsigned int masterIndex;
 extern int slavePosition;
 extern int domainIndex;
 extern vector<string> commandArgs;
@@ -85,5 +86,12 @@ class ExecutionFailureException:
 #define cputole32(x) swap32(x)
 
 #endif
+
+/****************************************************************************/
+
+enum {BreakAfterBytes = 16};
+enum {DefaultBufferSize = 1024};
+
+void printRawData(const uint8_t *, unsigned int);
 
 /****************************************************************************/

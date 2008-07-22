@@ -8,9 +8,6 @@
 #define __EC_MASTER_H__
 
 #include <stdexcept>
-#include <string>
-#include <vector>
-#include <list>
 using namespace std;
 
 #include "../include/ecrt.h"
@@ -64,27 +61,12 @@ class MasterDevice
         void getSdoEntry(ec_ioctl_slave_sdo_entry_t *, uint16_t, int, uint8_t);
         void readSii(ec_ioctl_slave_sii_t *);
         void writeSii(ec_ioctl_slave_sii_t *);
+		void setDebug(unsigned int);
+		void sdoDownload(ec_ioctl_slave_sdo_download_t *);
+		void sdoUpload(ec_ioctl_slave_sdo_upload_t *);
+		void requestState(uint16_t, uint8_t);
 
-    protected:
-#if 0
-        void outputDomainData(unsigned int);
-        enum {BreakAfterBytes = 16};
-        void showDomain(unsigned int);
-        void listSlavePdos(uint16_t, bool = false);
-        void listSlaveSdos(uint16_t, bool = false);
-        void listSlaves(int);
-        void showSlave(uint16_t);
-        void generateSlaveXml(uint16_t);
-        void requestState(uint16_t, uint8_t);
-
-        static string slaveState(uint8_t);
-        static void printRawData(const uint8_t *, unsigned int);
-        static uint8_t calcSiiCrc(const uint8_t *, unsigned int);
-#endif
-        
     private:
-        //enum {DefaultBufferSize = 1024};
-
         unsigned int index;
         int fd;
 };

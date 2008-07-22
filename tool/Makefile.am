@@ -35,8 +35,23 @@ bin_PROGRAMS = ethercat
 
 ethercat_SOURCES = \
     MasterDevice.cpp MasterDevice.h \
+	coe_datatypes.cpp \
+	sii_crc.cpp \
     cmd_alias.cpp \
     cmd_config.cpp \
+    cmd_data.cpp \
+    cmd_debug.cpp \
+	cmd_domain.cpp \
+	cmd_master.cpp \
+	cmd_pdos.cpp \
+	cmd_sdos.cpp \
+	cmd_sdo_download.cpp \
+	cmd_sdo_upload.cpp \
+	cmd_slaves.cpp \
+	cmd_sii_read.cpp \
+	cmd_sii_write.cpp \
+	cmd_states.cpp \
+	cmd_xml.cpp \
     main.cpp
 
 ethercat_CXXFLAGS = -I../master -Wall

@@ -8,8 +8,10 @@
 #include <libgen.h> // basename()
 
 #include <iostream>
+#include <iomanip>
 #include <string>
 #include <vector>
+#include <list>
 using namespace std;
 
 #include "globals.h"
@@ -36,6 +38,7 @@ struct Command {
     const char *name;
     void (*func)(void);
     const char *helpString;
+    const char *briefDesc;
 
     int execute(void) const;
     void displayHelp(void) const;
@@ -43,72 +46,73 @@ struct Command {
 
 /*****************************************************************************/
 
-#define COMMAND(name) \
+#define DEFINE_EXTERN_COMMAND(name) \
     void command_##name(void); \
     extern const char *help_##name
 
-#define INIT_COMMAND(name) {#name, command_##name, help_##name}
+#define INIT_COMMAND(name, desc) \
+    {#name, command_##name, help_##name, desc}
 
-COMMAND(alias);
-COMMAND(config);
+DEFINE_EXTERN_COMMAND(alias);
+DEFINE_EXTERN_COMMAND(config);
+DEFINE_EXTERN_COMMAND(data);
+DEFINE_EXTERN_COMMAND(debug);
+DEFINE_EXTERN_COMMAND(domains);
+DEFINE_EXTERN_COMMAND(master);
+DEFINE_EXTERN_COMMAND(pdos);
+DEFINE_EXTERN_COMMAND(sdos);
+DEFINE_EXTERN_COMMAND(sdo_download);
+DEFINE_EXTERN_COMMAND(sdo_upload);
+DEFINE_EXTERN_COMMAND(slaves);
+DEFINE_EXTERN_COMMAND(sii_read);
+DEFINE_EXTERN_COMMAND(sii_write);
+DEFINE_EXTERN_COMMAND(states);
+DEFINE_EXTERN_COMMAND(xml);
 
 static const Command commands[] = {
-    INIT_COMMAND(alias),
-    INIT_COMMAND(config),
+    INIT_COMMAND(alias, "Write alias addresses."),
+    INIT_COMMAND(config, "Show bus configuration."),
+    INIT_COMMAND(data, "Output binary domain process data."),
+    INIT_COMMAND(debug, "Set the master's debug level."),
+    INIT_COMMAND(domains, "Show domain information."),
+    INIT_COMMAND(master, "Show master information."),
+    INIT_COMMAND(pdos, "List Pdo assignment/mapping."),
+    INIT_COMMAND(sdos, "List Sdo dictionaries."),
+    INIT_COMMAND(sdo_download, "Write an Sdo entry."),
+    INIT_COMMAND(sdo_upload, "Read an Sdo entry."),
+    INIT_COMMAND(slaves, "Show slaves."),
+    INIT_COMMAND(sii_read, "Output a slave's SII contents."),
+    INIT_COMMAND(sii_write, "Write slave's SII contents."),
+    INIT_COMMAND(states, "Request slave states."),
+    INIT_COMMAND(xml, "Generate slave information xmls."),
 };
 
-#if 0
-        } else if (command == "data") {
-            master.outputData(domainIndex);
-        } else if (command == "debug") {
-            master.setDebug(commandArgs);
-        } else if (command == "domain") {
-            master.showDomains(domainIndex);
-		} else if (command == "master") {
-            master.showMaster();
-        } else if (command == "pdos") {
-            master.listPdos(slavePosition);
-        } else if (command == "sdos") {
-            master.listSdos(slavePosition);
-        } else if (command == "sdo_download" || command == "sd") {
-            master.sdoDownload(slavePosition, dataTypeStr, commandArgs);
-        } else if (command == "sdo_upload" || command == "su") {
-            master.sdoUpload(slavePosition, dataTypeStr, commandArgs);
-		} else if (command == "slave" || command == "slaves"
-                || command == "list" || command == "ls") {
-            master.showSlaves(slavePosition);
-        } else if (command == "sii_read" || command == "sr") {
-            master.siiRead(slavePosition);
-        } else if (command == "sii_write" || command == "sw") {
-            master.siiWrite(slavePosition, force, commandArgs);
-        } else if (command == "state") {
-            master.requestStates(slavePosition, commandArgs);
-        } else if (command == "xml") {
-            master.generateXml(slavePosition);
-#endif
+static const Command *cmdEnd = commands + sizeof(commands) / sizeof(Command);
 
 /*****************************************************************************/
 
 void printUsage()
 {
+    const Command *cmd;
+    size_t maxWidth = 0;
+
+    for (cmd = commands; cmd < cmdEnd; cmd++) {
+        if (strlen(cmd->name) > maxWidth) {
+            maxWidth = strlen(cmd->name);
+        }
+    }
+
     cerr
         << "Usage: " << binaryBaseName << " <COMMAND> [OPTIONS]" << endl
-		<< "Commands:" << endl
-        << "  alias         Write alias addresses." << endl
-        << "  config        Show bus configuration." << endl
-        << "  data          Output binary domain process data." << endl
-        << "  debug         Set the master's debug level." << endl
-        << "  domain        Show domain information." << endl
-        << "  master        Show master information." << endl
-        << "  pdos          List Pdo assignment/mapping." << endl
-        << "  sdo_download  Write an Sdo entry." << endl
-        << "  sdos          List Sdo dictionaries." << endl
-        << "  sdo_upload    Read an Sdo entry." << endl
-        << "  sii_read      Output a slave's SII contents." << endl
-        << "  sii_write     Write slave's SII contents." << endl
-        << "  slaves        Show slaves." << endl
-        << "  state         Request slave states." << endl
-        << "  xml           Generate slave information xmls." << endl
+		<< "Commands:" << endl;
+
+    cerr << left;
+    for (cmd = commands; cmd < cmdEnd; cmd++) {
+        cerr << "  " << setw(maxWidth) << cmd->name
+            << " " << cmd->briefDesc << endl;
+    }
+
+    cerr
         << "Commands can be generously abbreviated." << endl
 		<< "Global options:" << endl
         << "  --master  -m <master>  Index of the master to use. Default: 0"
@@ -116,8 +120,6 @@ void printUsage()
         << "  --slave   -s <index>   Positive numerical ring position,"
         << endl
         << "                         or 'all' for all slaves (default)."
-        << endl
-        << "  --domain  -d <index>   Positive numerical index,"
         << endl
         << "                         or 'all' for all domains (default)."
         << endl
@@ -289,12 +291,11 @@ bool abbrevMatch(const string &abb, const string &full)
 
 list<const Command *> getMatchingCommands(const string &cmdStr)
 {
-    const Command *cmd, *endCmd =
-        commands + sizeof(commands) / sizeof(Command);
+    const Command *cmd;
     list<const Command *> res;
 
     // find matching commands
-    for (cmd = commands; cmd < endCmd; cmd++) {
+    for (cmd = commands; cmd < cmdEnd; cmd++) {
         if (abbrevMatch(cmdStr, cmd->name)) {
             res.push_back(cmd);
         }
@@ -342,6 +343,22 @@ int main(int argc, char **argv)
     }
 
 	return retval;
+}
+
+/****************************************************************************/
+
+void printRawData(
+		const uint8_t *data,
+		unsigned int size
+		)
+{
+    cout << hex << setfill('0');
+    while (size--) {
+        cout << "0x" << setw(2) << (unsigned int) *data++;
+        if (size)
+            cout << " ";
+    }
+    cout << endl;
 }
 
 /****************************************************************************/
