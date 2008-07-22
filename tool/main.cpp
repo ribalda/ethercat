@@ -20,7 +20,7 @@ string binaryBaseName;
 unsigned int masterIndex = 0;
 int slavePosition = -1;
 int domainIndex = -1;
-string command;
+string commandName;
 vector<string> commandArgs;
 Verbosity verbosity = Normal;
 string dataTypeStr;
@@ -33,6 +33,7 @@ MasterDevice masterDev;
 /*****************************************************************************/
 
 struct Command {
+    const char *name;
     void (*func)(void);
     const char *helpString;
 
@@ -40,27 +41,20 @@ struct Command {
     void displayHelp(void) const;
 };
 
-struct CommandAlias {
-    const char *name;
-    const Command *command;
-};
-
 /*****************************************************************************/
 
 #define COMMAND(name) \
     void command_##name(void); \
-    extern const char *help_##name; \
-    const Command cmd_##name = {command_##name, help_##name};
+    extern const char *help_##name
+
+#define INIT_COMMAND(name) {#name, command_##name, help_##name}
 
 COMMAND(alias);
 COMMAND(config);
 
-const CommandAlias commandAliases[] = {
-    {"alias",  &cmd_alias},
-
-    {"config", &cmd_config},
-    {"conf",   &cmd_config},
-    {"cf",     &cmd_config},
+static const Command commands[] = {
+    INIT_COMMAND(alias),
+    INIT_COMMAND(config),
 };
 
 #if 0
@@ -115,6 +109,7 @@ void printUsage()
         << "  slaves        Show slaves." << endl
         << "  state         Request slave states." << endl
         << "  xml           Generate slave information xmls." << endl
+        << "Commands can be generously abbreviated." << endl
 		<< "Global options:" << endl
         << "  --master  -m <master>  Index of the master to use. Default: 0"
 		<< endl
@@ -241,7 +236,7 @@ void getOptions(int argc, char **argv)
         exit(!helpRequested);
 	}
 
-    command = argv[optind];
+    commandName = argv[optind];
     while (++optind < argc)
         commandArgs.push_back(string(argv[optind]));
 }
@@ -271,7 +266,41 @@ int Command::execute() const
 
 void Command::displayHelp() const
 {
-    cerr << binaryBaseName << " " << command << " " << helpString;
+    cerr << binaryBaseName << " " << commandName << " " << helpString;
+}
+
+/****************************************************************************/
+
+bool abbrevMatch(const string &abb, const string &full)
+{
+    unsigned int abbIndex;
+    size_t fullPos = 0;
+
+    for (abbIndex = 0; abbIndex < abb.length(); abbIndex++) {
+        fullPos = full.find(abb[abbIndex], fullPos);
+        if (fullPos == string::npos)
+            return false;
+    }
+
+    return true;
+}
+    
+/****************************************************************************/
+
+list<const Command *> getMatchingCommands(const string &cmdStr)
+{
+    const Command *cmd, *endCmd =
+        commands + sizeof(commands) / sizeof(Command);
+    list<const Command *> res;
+
+    // find matching commands
+    for (cmd = commands; cmd < endCmd; cmd++) {
+        if (abbrevMatch(cmdStr, cmd->name)) {
+            res.push_back(cmd);
+        }
+    }
+
+    return res;
 }
 
 /****************************************************************************/
@@ -279,28 +308,35 @@ void Command::displayHelp() const
 int main(int argc, char **argv)
 {
     int retval = 0;
-    const CommandAlias *alias;
-    const CommandAlias *endAlias =
-        commandAliases + sizeof(commandAliases) / sizeof(CommandAlias);
+    list<const Command *> commands;
+    list<const Command *>::const_iterator ci;
+    const Command *cmd;
 
     binaryBaseName = basename(argv[0]);
 	getOptions(argc, argv);
 
-    // search command alias in alias map
-    for (alias = commandAliases; alias < endAlias; alias++) {
-        if (command == alias->name)
-            break;
-    }
+    commands = getMatchingCommands(commandName);
 
-    if (alias < endAlias) { // command alias found
-        if (!helpRequested) {
-            masterDev.setIndex(masterIndex);
-            retval = alias->command->execute();
+    if (commands.size()) {
+        if (commands.size() == 1) {
+            cmd = commands.front();
+            if (!helpRequested) {
+                masterDev.setIndex(masterIndex);
+                retval = cmd->execute();
+            } else {
+                cmd->displayHelp();
+            }
         } else {
-            alias->command->displayHelp();
+            cerr << "Ambigous command abbreviation! Matching:" << endl;
+            for (ci = commands.begin(); ci != commands.end(); ci++) {
+                cerr << (*ci)->name << endl;
+            }
+            cerr << endl;
+            printUsage();
+            retval = 1;
         }
-    } else { // command not found
-        cerr << "Unknown command " << command << "!" << endl << endl;
+    } else {
+        cerr << "Unknown command " << commandName << "!" << endl << endl;
         printUsage();
         retval = 1;
     }

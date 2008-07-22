@@ -21,7 +21,7 @@ enum Verbosity {
     Verbose
 };
 
-extern string command;
+extern string commandName;
 extern int slavePosition;
 extern int domainIndex;
 extern vector<string> commandArgs;

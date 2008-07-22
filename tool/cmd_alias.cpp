@@ -47,7 +47,7 @@ void command_alias(void)
     unsigned int numSlaves, i;
 
     if (commandArgs.size() != 1) {
-        err << "'" << command << "' takes exactly one argument!";
+        err << "'" << commandName << "' takes exactly one argument!";
         throw InvalidUsageException(err);
     }
 
