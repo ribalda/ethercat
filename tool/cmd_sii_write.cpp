@@ -14,6 +14,7 @@ using namespace std;
 
 /****************************************************************************/
 
+// FIXME
 const char *help_sii_write =
     "[OPTIONS]\n"
     "\n"

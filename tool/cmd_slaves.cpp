@@ -13,6 +13,7 @@ using namespace std;
 
 /****************************************************************************/
 
+// FIXME
 const char *help_slaves =
     "[OPTIONS]\n"
     "\n"

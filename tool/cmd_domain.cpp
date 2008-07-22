@@ -15,8 +15,34 @@ using namespace std;
 const char *help_domains =
     "[OPTIONS]\n"
     "\n"
+    "Show information about the application's configured domains.\n"
     "\n"
-    "Command-specific options:\n";
+    "Without the --verbose option, one domain is displayed per line.\n"
+    "Example:\n"
+    "\n"
+    "Domain0: LogBaseAddr 0x00000000, Size   6, WorkingCounter 0/1\n"
+    "\n"
+    "The domain's base address for the logical datagram (LRD/LWR/LRW)\n"
+    "is displayed followed by the domain's process data size in byte.\n"
+    "The last values are the current datagram working counter sum and\n"
+    "the expected working counter sum. If the values are equal, all\n"
+    "Pdos are exchanged.\n"
+    "\n"
+    "If the --verbose option is given, the participating slave\n"
+    "configurations/FMMUs and the current process data are additionally\n"
+    "displayed:\n"
+    "\n"
+    "Domain1: LogBaseAddr 0x00000006, Size   6, WorkingCounter 0/1\n"
+    "  SlaveConfig 1001:0, SM3 ( Input), LogAddr 0x00000006, Size 6\n"
+    "    00 00 00 00 00 00\n"
+    "\n"
+    "The process data are displayed as raw hexadecimal bytes.\n"
+    "\n"
+    "Command-specific options:\n"
+    "  --domain   -d <index> Positive numerical domain index. If this\n"
+    "                        option is not specified, all domains are\n"
+    "                        displayed.\n"
+    "  --verbose  -v         Show FMMUs and process data.\n";
 
 /****************************************************************************/
 

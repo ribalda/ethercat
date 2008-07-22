@@ -11,6 +11,7 @@ using namespace std;
 
 /****************************************************************************/
 
+// FIXME
 const char *help_states =
     "[OPTIONS]\n"
     "\n"

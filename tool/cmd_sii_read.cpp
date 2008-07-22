@@ -12,6 +12,7 @@ using namespace std;
 
 /****************************************************************************/
 
+// FIXME
 const char *help_sii_read =
     "[OPTIONS]\n"
     "\n"

@@ -17,8 +17,25 @@ using namespace std;
 const char *help_config =
     "[OPTIONS]\n"
     "\n"
+    "Output information about the slave configurations supplied by the\n"
+    "application.\n"
     "\n"
-    "Command-specific options:\n";
+    "Without the --verbose option, each line of output shows one slave\n"
+    "configuration. Example:\n"
+    "\n"
+    "1001:0  0x0000003b/0x02010000  -  -\n"
+    "|       |                      |  |\n"
+    "|       |                      |  \\- Slave is operational.\n"
+    "|       |                      \\- Slave has been found.\n"
+    "|       \\- Hexadecimal vendor ID and product code, separated by a\n"
+    "|          slash.\n"
+    "\\- Decimal alias and position, separated by a colon.\n"
+    "\n"
+    "With the --verbose option given, the configured Pdos and Sdos are\n"
+    "additionally printed.\n"
+    "\n"
+    "Command-specific options:\n"
+    "  --verbose  -v  Show detailed configurations.\n";
 
 /*****************************************************************************/
 

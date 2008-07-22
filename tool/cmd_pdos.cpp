@@ -12,6 +12,7 @@ using namespace std;
 
 /****************************************************************************/
 
+// FIXME
 const char *help_pdos =
     "[OPTIONS]\n"
     "\n"

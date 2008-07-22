@@ -13,10 +13,19 @@ using namespace std;
 /*****************************************************************************/
 
 const char *help_debug =
-    "[OPTIONS]\n"
+    "<LEVEL>\n"
     "\n"
+    "Set the master debug level.\n"
     "\n"
-    "Command-specific options:\n";
+    "Debug messages are printed to syslog.\n"
+    "\n"
+    "Arguments:\n"
+    "  LEVEL must be an unsigned integer, specified\n"
+    "        either in decimal (no prefix), octal (prefix '0')\n"
+    "        or hexadecimal (prefix '0x').\n"
+    "        0 stands for no debugging output,\n"
+    "        1 means some debug messages, and\n"
+    "        2 outputs all frame data (use with caution!).\n";
 
 /****************************************************************************/
 

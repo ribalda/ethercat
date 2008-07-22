@@ -12,6 +12,7 @@ using namespace std;
 
 /****************************************************************************/
 
+// FIXME
 const char *help_xml =
     "[OPTIONS]\n"
     "\n"

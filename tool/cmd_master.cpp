@@ -15,8 +15,10 @@ using namespace std;
 const char *help_master =
     "[OPTIONS]\n"
     "\n"
+    "Show master and Ethernet device information.\n"
     "\n"
-    "Command-specific options:\n";
+    "Command-specific options:\n"
+    "  --master  -m <master>  Index of the master to use. Default: 0\n";
 
 /****************************************************************************/
 

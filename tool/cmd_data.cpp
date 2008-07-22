@@ -19,7 +19,7 @@ const char *help_data =
     "Command-specific options:\n"
     "  --domain -d <index> Positive numerical domain index. If this option\n"
     "                      is not specified, data of all domains are\n"
-    "                      output.\n";
+    "                      concatenated.\n";
 
 /****************************************************************************/
 
