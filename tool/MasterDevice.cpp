@@ -384,7 +384,7 @@ void MasterDevice::sdoDownload(ec_ioctl_slave_sdo_download_t *data)
 
 void MasterDevice::sdoUpload(ec_ioctl_slave_sdo_upload_t *data)
 {
-    if (ioctl(fd, EC_IOCTL_SLAVE_SDO_UPLOAD, &data) < 0) {
+    if (ioctl(fd, EC_IOCTL_SLAVE_SDO_UPLOAD, data) < 0) {
         stringstream err;
         err << "Failed to upload Sdo: ";
         if (errno == EIO && data->abort_code) {
