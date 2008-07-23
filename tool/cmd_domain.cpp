@@ -39,10 +39,9 @@ const char *help_domains =
     "The process data are displayed as raw hexadecimal bytes.\n"
     "\n"
     "Command-specific options:\n"
-    "  --domain   -d <index> Positive numerical domain index. If this\n"
-    "                        option is not specified, all domains are\n"
-    "                        displayed.\n"
-    "  --verbose  -v         Show FMMUs and process data.\n";
+    "  --domain   -d <index> Positive numerical domain index, or 'all'\n"
+    "                        for all domains (default).\n"
+    "  --verbose  -v         Show FMMUs and process data additionally.\n";
 
 /****************************************************************************/
 

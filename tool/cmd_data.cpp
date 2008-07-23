@@ -17,9 +17,9 @@ const char *help_data =
     "Output binary domain data.\n"
     "\n"
     "Command-specific options:\n"
-    "  --domain -d <index> Positive numerical domain index. If this option\n"
-    "                      is not specified, data of all domains are\n"
-    "                      concatenated.\n";
+    "  --domain -d <index> Positive numerical domain index, or 'all' for\n"
+    "                      all domains (default). In this case, data of all\n"
+    "                      domains are concatenated.\n";
 
 /****************************************************************************/
 
