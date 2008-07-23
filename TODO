@@ -22,6 +22,7 @@ Version 1.4.0:
 * Show attached slave position.
 * Display attached device's MAC address instead of ff's.
 * Use commandName in error messages.
+* Data type abbreviations.
 
 Future issues:
 
