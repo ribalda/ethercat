@@ -12,12 +12,40 @@ using namespace std;
 
 /****************************************************************************/
 
-// FIXME
 const char *help_pdos =
     "[OPTIONS]\n"
     "\n"
+    "Displays sync managers, assigned Pdos and mapped Pdo entries.\n"
     "\n"
-    "Command-specific options:\n";
+    "The information is displayed in three layers, which are indented\n"
+    "accordingly:\n"
+    "\n"
+    "1) Sync managers - Contains the sync manager information from the\n"
+    "   SII: Index, physical start address, default size (raw value from\n"
+    "   the SII), control register and enable word. Example:\n"
+    "\n"
+    "   SM3: PhysAddr 0x1100, DefaultSize 0, ControlRegister 0x20, Enable 1\n"
+    "\n"
+    "2) Assigned Pdos - Pdo direction, hexadecimal index and -if available-\n"
+    "   the Pdo name. Example:\n"
+    "\n"
+    "   TxPdo 0x1a00 \"Channel1\"\n"
+    "\n"
+    "3) Mapped Pdo entries - Pdo entry index and subindex (both\n"
+    "   hexadecimal), the length in bit and -if available- the\n"
+    "   description. Example:\n"
+    "\n"
+    "   Pdo entry 0x3101:01, 8 bit, \"Status\"\n"
+    "\n"
+    "Note, that the displayed Pdo assignment and Pdo mapping information\n"
+    "can either originate from the SII or from the CoE communication area.\n"
+    "\n"
+    "Command-specific options:\n"
+    "  --slave -s <index>  Positive numerical ring position, or 'all' for\n"
+    "                      all slaves (default).\n"
+    "\n"
+    "Numerical values can be specified either with decimal (no prefix),\n"
+    "octal (prefix '0') or hexadecimal (prefix '0x') base.\n";
 
 /****************************************************************************/
 	

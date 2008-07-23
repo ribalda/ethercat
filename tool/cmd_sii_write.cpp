@@ -14,12 +14,24 @@ using namespace std;
 
 /****************************************************************************/
 
-// FIXME
 const char *help_sii_write =
-    "[OPTIONS]\n"
+    "[OPTIONS] <FILENAME>\n"
     "\n"
+    "Writes SII contents from a local file to a slave.\n"
     "\n"
-    "Command-specific options:\n";
+    "The file contents are checked for validity and integrity. These checks\n"
+    "can be overridden with the --force option.\n"
+    "\n"
+    "Arguments:\n"
+    "  FILENAME must be a path to a file that contains a positive number\n"
+    "           of words.\n"
+    "\n"
+    "Command-specific options:\n"
+    "  --slave -s <index>  Positive numerical ring position (mandatory).\n"
+    "  --force             Override validity checks.\n"
+    "\n"
+    "Numerical values can be specified either with decimal (no prefix),\n"
+    "octal (prefix '0') or hexadecimal (prefix '0x') base.\n";
 
 /****************************************************************************/
 

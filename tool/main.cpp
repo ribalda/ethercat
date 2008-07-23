@@ -103,8 +103,9 @@ void printUsage()
     }
 
     cerr
-        << "Usage: " << binaryBaseName << " <COMMAND> [OPTIONS]" << endl
-		<< "Commands:" << endl;
+        << "Usage: " << binaryBaseName << " <COMMAND> [OPTIONS] [ARGUMENTS]"
+        << endl << endl
+		<< "Commands (can be abbreviated):" << endl;
 
     cerr << left;
     for (cmd = commands; cmd < cmdEnd; cmd++) {
@@ -113,21 +114,22 @@ void printUsage()
     }
 
     cerr
-        << "Commands can be abbreviated." << endl
+        << endl
 		<< "Global options:" << endl
-        << "  --master  -m <master>  Index of the master to use. Default: 0"
+        << "  --master  -m <master>  Index of the master to use. Default: 0."
 		<< endl
-        << "  --slave   -s <index>   Positive numerical ring position,"
-        << endl
-        << "                         or 'all' for all slaves (default)."
-        << endl
-        << "  --type    -t <type>    Forced Sdo data type." << endl
-        << "  --force   -f           Force action." << endl
+        << "  --force   -f           Force a command." << endl
         << "  --quiet   -q           Output less information." << endl
         << "  --verbose -v           Output more information." << endl
         << "  --help    -h           Show this help." << endl
+        << endl
+        << "Numerical values can be specified either with decimal "
+        << "(no prefix)," << endl
+        << "octal (prefix '0') or hexadecimal (prefix '0x') base." << endl
+        << endl
         << "Call '" << binaryBaseName
         << " <COMMAND> --help' for command-specific help." << endl
+        << endl
         << "Send bug reports to " << PACKAGE_BUGREPORT << "." << endl;
 }
 

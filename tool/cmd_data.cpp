@@ -19,7 +19,10 @@ const char *help_data =
     "Command-specific options:\n"
     "  --domain -d <index> Positive numerical domain index, or 'all' for\n"
     "                      all domains (default). In this case, data of all\n"
-    "                      domains are concatenated.\n";
+    "                      domains are concatenated.\n"
+    "\n"
+    "Numerical values can be specified either with decimal (no prefix),\n"
+    "octal (prefix '0') or hexadecimal (prefix '0x') base.\n";
 
 /****************************************************************************/
 

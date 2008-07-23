@@ -14,7 +14,6 @@ Version 1.4.0:
 * Get original driver for r8169.
 * Race in jiffies frame timeout?
 * ethercat tool:
-    - Add help pages for each command.
     - Add -a and -p switches for config command.
     - Show attached slave position.
     - Show Pdos in 'ethercat slave -v'.

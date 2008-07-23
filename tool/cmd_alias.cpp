@@ -21,16 +21,16 @@ const char *help_alias =
     "one or for multiple slaves.\n"
     "\n"
     "Arguments:\n"
-    "  ALIAS must be a 16 bit unsigned integer, specified\n"
-    "        either in decimal (no prefix), octal (prefix '0')\n"
-    "        or hexadecimal (prefix '0x').\n"
+    "  ALIAS must be an unsigned 16 bit number. Zero means no alias.\n"
     "\n"
     "Command-specific options:\n"
-    "  -s <SLAVE>  Write the alias of the slave with the given\n"
-    "              ring position. If this option is not\n"
-    "              specified, the alias of all slaves is set.\n"
-    "              The --force option is required in this\n"
-    "              case.\n";
+    "  --slave -s <index>  Positive numerical ring position, or 'all' for\n"
+    "                      all slaves (default). The --force option is\n"
+    "                      required in this case.\n"
+    "  --force             Acknowledge writing aliases of all slaves.\n"
+    "\n"
+    "Numerical values can be specified either with decimal (no prefix),\n"
+    "octal (prefix '0') or hexadecimal (prefix '0x') base.\n";
 
 /*****************************************************************************/
 

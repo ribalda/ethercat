@@ -12,12 +12,25 @@ using namespace std;
 
 /****************************************************************************/
 
-// FIXME
 const char *help_sii_read =
     "[OPTIONS]\n"
     "\n"
+    "Outputs the SII (EEPROM) contents of a slave.\n"
     "\n"
-    "Command-specific options:\n";
+    "Without the --verbose option, binary SII contents are output. They can\n"
+    "be piped to a tool like hexdump, for example:\n"
+    "\n"
+    "  ethercat sii_read -s2 | hexdump -C\n"
+    "\n"
+    "With the --verbose option given, a textual representation of the data\n"
+    "is output, that is separated by SII category names.\n"
+    "\n"
+    "Command-specific options:\n"
+    "  --slave   -s <index>  Positive numerical ring position (mandatory).\n"
+    "  --verbose -v          Output textual data with category names.\n"
+    "\n"
+    "Numerical values can be specified either with decimal (no prefix),\n"
+    "octal (prefix '0') or hexadecimal (prefix '0x') base.\n";
 
 /****************************************************************************/
 

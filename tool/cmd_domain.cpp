@@ -17,7 +17,7 @@ const char *help_domains =
     "\n"
     "Show information about the application's configured domains.\n"
     "\n"
-    "Without the --verbose option, one domain is displayed per line.\n"
+    "Without the --verbose option, the domains are displayed one-per-line.\n"
     "Example:\n"
     "\n"
     "Domain0: LogBaseAddr 0x00000000, Size   6, WorkingCounter 0/1\n"
@@ -36,12 +36,15 @@ const char *help_domains =
     "  SlaveConfig 1001:0, SM3 ( Input), LogAddr 0x00000006, Size 6\n"
     "    00 00 00 00 00 00\n"
     "\n"
-    "The process data are displayed as raw hexadecimal bytes.\n"
+    "The process data are displayed as hexadecimal bytes.\n"
     "\n"
     "Command-specific options:\n"
     "  --domain   -d <index> Positive numerical domain index, or 'all'\n"
     "                        for all domains (default).\n"
-    "  --verbose  -v         Show FMMUs and process data additionally.\n";
+    "  --verbose  -v         Show FMMUs and process data additionally.\n"
+    "\n"
+    "Numerical values can be specified either with decimal (no prefix),\n"
+    "octal (prefix '0') or hexadecimal (prefix '0x') base.\n";
 
 /****************************************************************************/
 

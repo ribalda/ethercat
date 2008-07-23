@@ -12,12 +12,21 @@ using namespace std;
 
 /****************************************************************************/
 
-// FIXME
 const char *help_xml =
     "[OPTIONS]\n"
     "\n"
+    "Generate slave description XMLs from the master's slave information.\n"
     "\n"
-    "Command-specific options:\n";
+    "Note that the Pdo information can either originate from the SII or\n"
+    "from the CoE communication area. For some slaves, this is dependant on\n"
+    "the last slave configuration.\n"
+    "\n"
+    "Command-specific options:\n"
+    "  --slave -s <index>  Positive numerical ring position, or 'all' for\n"
+    "                      all slaves (default).\n"
+    "\n"
+    "Numerical values can be specified either with decimal (no prefix),\n"
+    "octal (prefix '0') or hexadecimal (prefix '0x') base.\n";
 
 /****************************************************************************/
 

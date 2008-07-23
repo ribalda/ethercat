@@ -13,12 +13,33 @@ using namespace std;
 
 /****************************************************************************/
 
-// FIXME
 const char *help_download =
-    "[OPTIONS]\n"
+    "[OPTIONS] <INDEX> <SUBINDEX> <VALUE>\n"
     "\n"
+    "Download an Sdo entry to a slave.\n"
     "\n"
-    "Command-specific options:\n";
+    "The data type of the Sdo entry is taken from the Sdo dictionary by\n"
+    "default. It can be overridden with the --type option. If the slave\n"
+    "does not support the Sdo information service or the Sdo is not in the\n"
+    "dictionary, the --type option is mandatory.\n"
+    "\n"
+    "These are the valid Sdo entry data types:\n"
+    "  int8, int16, int32, uint8, uint16, uint32, string.\n"
+    "\n"
+    "Arguments:\n"
+    "  INDEX    is the Sdo index and must be an unsigned 16 bit number.\n"
+    "  SUBINDEX is the Sdo entry subindex and must be an unsigned 8 bit\n"
+    "           number.\n"
+    "  VALUE    is the value to download and must correspond to the Sdo\n"
+    "           entry datatype (see above).\n"
+    "\n"
+    "Command-specific options:\n"
+    "  --slave -s <index>  Positive numerical ring position (mandatory).\n"
+    "  --type  -t <type>   Forced Sdo entry data type (see above).\n"
+    "\n"
+    "Numerical values can be specified either with decimal (no prefix),\n"
+    "octal (prefix '0') or hexadecimal (prefix '0x') base.\n";
+
 
 /****************************************************************************/
 

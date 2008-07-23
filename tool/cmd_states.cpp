@@ -11,12 +11,20 @@ using namespace std;
 
 /****************************************************************************/
 
-// FIXME
 const char *help_states =
-    "[OPTIONS]\n"
+    "[OPTIONS] <STATE>\n"
     "\n"
+    "Request an application-layer state change for the specified slaves.\n"
     "\n"
-    "Command-specific options:\n";
+    "Arguments:\n"
+    "  STATE can be 'INIT', 'PREOP', 'SAFEOP', or 'OP'\n"
+    "\n"
+    "Command-specific options:\n"
+    "  --slave -s <index>  Positive numerical ring position, or 'all' for\n"
+    "                      all slaves (default).\n"
+    "\n"
+    "Numerical values can be specified either with decimal (no prefix),\n"
+    "octal (prefix '0') or hexadecimal (prefix '0x') base.\n";
 
 /****************************************************************************/
 

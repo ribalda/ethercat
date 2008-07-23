@@ -13,12 +13,40 @@ using namespace std;
 
 /****************************************************************************/
 
-// FIXME
 const char *help_slaves =
     "[OPTIONS]\n"
     "\n"
+    "Display slaves on the bus.\n"
     "\n"
-    "Command-specific options:\n";
+    "If the --verbose option is not given, the slaves are displayed\n"
+    "one-per-line. Example:\n"
+    "\n"
+    "1  5555:0  PREOP  +  EL3162 2C. Ana. Input 0-10V\n"
+    "|  |    |  |      |  |\n"
+    "|  |    |  |      |  \\- Name from SII if avaliable, otherwise\n"
+    "|  |    |  |      |     hexadecimal vendor ID and product code\n"
+    "|  |    |  |      |     separated by a colon.\n"
+    "|  |    |  |      \\- Error flag. '+' means no error, 'E' means,\n"
+    "|  |    |  |         that scanning or configuration failed.\n"
+    "|  |    |  \\- Current slave state.\n"
+    "|  |    \\- Relative position (decimal) after the last slave with an\n"
+    "|  |       alias address set.\n"
+    "|  \\- Alias address of the slave (if set to non-zero), or the alias\n"
+    "|     of the last slave with an alias set, or zero if there is none.\n"
+    "\\- Ring position (use this with any --slave option).\n"
+    "\n"
+    "If the --verbose option is given, a detailed (multi-line) description\n"
+    "is output for each slave.\n"
+    "\n"
+    "Command-specific options:\n"
+    "  --slave   -s <index>  Positive numerical ring position, or 'all' for\n"
+    "                        all slaves (default).\n"
+    "  --verbose -v          Show detailed slave information.\n"
+    "\n"
+    "Numerical values can be specified either with decimal (no prefix),\n"
+    "octal (prefix '0') or hexadecimal (prefix '0x') base.\n";
+
+/****************************************************************************/
 
 void listSlaves(int);
 void showSlave(uint16_t);

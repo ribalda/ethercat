@@ -18,7 +18,10 @@ const char *help_master =
     "Show master and Ethernet device information.\n"
     "\n"
     "Command-specific options:\n"
-    "  --master  -m <master>  Index of the master to use. Default: 0\n";
+    "  --master -m <index>  Index of the master to use. Default: 0.\n"
+    "\n"
+    "Numerical values can be specified either with decimal (no prefix),\n"
+    "octal (prefix '0') or hexadecimal (prefix '0x') base.\n";
 
 /****************************************************************************/
 
