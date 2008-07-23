@@ -66,9 +66,9 @@ void command_sii_read(void)
     stringstream err;
 
     if (slavePosition < 0) {
-        stringstream err;
-        err << "'sii_read' requires a slave! Please specify --slave.";
-        throw MasterDeviceException(err.str());
+        err << "'" << commandName << "' requires a slave! "
+            << "Please specify --slave.";
+        throw InvalidUsageException(err);
     }
     data.slave_position = slavePosition;
 
@@ -113,7 +113,7 @@ void command_sii_read(void)
 
                 if (categoryHeader + 1 > data.words + data.nwords) {
                     err << "SII data seem to be corrupted!";
-                    throw MasterDeviceException(err.str());
+                    throw CommandException(err);
                 }
                 categorySize = le16tocpu(*(categoryHeader + 1));
                 cout << ", " << dec << categorySize << " words" << flush;
@@ -121,7 +121,7 @@ void command_sii_read(void)
                 if (categoryHeader + 2 + categorySize
                         > data.words + data.nwords) {
                     err << "SII data seem to be corrupted!";
-                    throw MasterDeviceException(err.str());
+                    throw CommandException(err);
                 }
 
                 cout << hex;
@@ -139,7 +139,7 @@ void command_sii_read(void)
                 if (categoryHeader + 2 + categorySize + 1
                         > data.words + data.nwords) {
                     err << "SII data seem to be corrupted!"; 
-                    throw MasterDeviceException(err.str());
+                    throw CommandException(err);
                 }
                 categoryHeader += 2 + categorySize;
                 categoryType = le16tocpu(*categoryHeader);

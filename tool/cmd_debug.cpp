@@ -36,8 +36,8 @@ void command_debug(void)
     
     if (commandArgs.size() != 1) {
         stringstream err;
-        err << "'debug' takes exactly one argument!";
-        throw MasterDeviceException(err.str());
+        err << "'" << commandName << "' takes exactly one argument!";
+        throw InvalidUsageException(err);
     }
 
     str << commandArgs[0];
@@ -47,7 +47,7 @@ void command_debug(void)
     if (str.fail()) {
         stringstream err;
         err << "Invalid debug level '" << commandArgs[0] << "'!";
-        throw MasterDeviceException(err.str());
+        throw InvalidUsageException(err);
     }
 
     masterDev.open(MasterDevice::ReadWrite);

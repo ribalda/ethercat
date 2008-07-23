@@ -36,12 +36,10 @@ void command_master(void)
         << "  Phase: ";
 
     switch (data.phase) {
-        case 0: cout << "Waiting for device..."; break;
-        case 1: cout << "Idle"; break;
-        case 2: cout << "Operation"; break;
-        default:
-                err << "Invalid master phase " << data.phase;
-                throw MasterDeviceException(err.str());
+        case 0:  cout << "Waiting for device..."; break;
+        case 1:  cout << "Idle"; break;
+        case 2:  cout << "Operation"; break;
+        default: cout << "???";
     }
 
     cout << endl

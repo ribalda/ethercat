@@ -8,6 +8,7 @@
 #define __EC_MASTER_H__
 
 #include <stdexcept>
+#include <sstream>
 using namespace std;
 
 #include "../include/ecrt.h"
@@ -18,11 +19,13 @@ using namespace std;
 class MasterDeviceException:
     public runtime_error
 {
-    public:
+    friend class MasterDevice;
+    
+    protected:
         /** Constructor with std::string parameter. */
         MasterDeviceException(
-                const string &s /**< Message. */
-                ): runtime_error(s) {}
+                const stringstream &s /**< Message. */
+                ): runtime_error(s.str()) {}
 };
 
 /****************************************************************************/

@@ -30,14 +30,15 @@ void command_download(void)
     const CoEDataType *dataType = NULL;
 
     if (slavePosition < 0) {
-        err << "'sdo_download' requires a slave! Please specify --slave.";
-        throw MasterDeviceException(err.str());
+        err << "'" << commandName << "' requires a slave! "
+            << "Please specify --slave.";
+        throw InvalidUsageException(err);
     }
     data.slave_position = slavePosition;
 
     if (commandArgs.size() != 3) {
-        err << "'sdo_download' takes 3 arguments!";
-        throw MasterDeviceException(err.str());
+        err << "'" << commandName << "' takes 3 arguments!";
+        throw InvalidUsageException(err);
     }
 
     strIndex << commandArgs[0];
@@ -46,7 +47,7 @@ void command_download(void)
         >> data.sdo_index;
     if (strIndex.fail()) {
         err << "Invalid Sdo index '" << commandArgs[0] << "'!";
-        throw MasterDeviceException(err.str());
+        throw InvalidUsageException(err);
     }
 
     strSubIndex << commandArgs[1];
@@ -55,14 +56,14 @@ void command_download(void)
         >> number;
     if (strSubIndex.fail() || number > 0xff) {
         err << "Invalid Sdo subindex '" << commandArgs[1] << "'!";
-        throw MasterDeviceException(err.str());
+        throw InvalidUsageException(err);
     }
     data.sdo_entry_subindex = number;
 
     if (dataTypeStr != "") { // data type specified
         if (!(dataType = findDataType(dataTypeStr))) {
             err << "Invalid data type '" << dataTypeStr << "'!";
-            throw MasterDeviceException(err.str());
+            throw InvalidUsageException(err);
         }
     } else { // no data type specified: fetch from dictionary
         ec_ioctl_slave_sdo_entry_t entry;
@@ -75,13 +76,13 @@ void command_download(void)
         } catch (MasterDeviceException &e) {
             err << "Failed to determine Sdo entry data type. "
                 << "Please specify --type.";
-            throw ExecutionFailureException(err);
+            throw CommandException(err);
         }
         if (!(dataType = findDataType(entry.data_type))) {
             err << "Pdo entry has unknown data type 0x"
                 << hex << setfill('0') << setw(4) << entry.data_type << "!"
                 << " Please specify --type.";
-            throw ExecutionFailureException(err);
+            throw CommandException(err);
         }
     }
 
@@ -148,7 +149,7 @@ void command_download(void)
             case 0x0009: // string
                 if (strValue.str().size() >= data.data_size) {
                     err << "String too large";
-                    throw MasterDeviceException(err.str());
+                    throw CommandException(err);
                 }
                 data.data_size = strValue.str().size();
                 strValue >> (char *) data.data;
@@ -157,13 +158,13 @@ void command_download(void)
             default:
                 delete [] data.data;
                 err << "Unknown data type 0x" << hex << dataType->coeCode;
-                throw MasterDeviceException(err.str());
+                throw CommandException(err);
         }
     } catch (ios::failure &e) {
         delete [] data.data;
         err << "Invalid value argument '" << commandArgs[2]
             << "' for type '" << dataType->name << "'!";
-        throw MasterDeviceException(err.str());
+        throw InvalidUsageException(err);
     }
 
     masterDev.open(MasterDevice::ReadWrite);

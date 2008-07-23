@@ -119,9 +119,9 @@ void showDomain(unsigned int domainIndex)
         dataOffset = fmmu.logical_address - domain.logical_base_address;
         if (dataOffset + fmmu.data_size > domain.data_size) {
             stringstream err;
-            err << "Fmmu information corrupted!";
             delete [] processData;
-            throw MasterDeviceException(err.str());
+            err << "Fmmu information corrupted!";
+            throw CommandException(err);
         }
 
         cout << "    " << hex << setfill('0');

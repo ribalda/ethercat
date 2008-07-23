@@ -66,7 +66,7 @@ void command_alias(void)
         if (!force) {
             err << "This will write the alias addresses of all slaves to "
                 << alias << "! Please specify --force to proceed.";
-            throw ExecutionFailureException(err);
+            throw CommandException(err);
         }
 
         masterDev.open(MasterDevice::ReadWrite);
@@ -100,7 +100,7 @@ void writeSlaveAlias(
     if (slave.sii_nwords < 8) {
         err << "Current SII contents are too small to set an alias "
             << "(" << slave.sii_nwords << " words)!";
-        throw ExecutionFailureException(err);
+        throw CommandException(err);
     }
 
     // read first 8 SII words
@@ -114,7 +114,7 @@ void writeSlaveAlias(
     } catch (MasterDeviceException &e) {
         delete [] data.words;
         err << "Failed to read SII: " << e.what();
-        throw ExecutionFailureException(err);
+        throw CommandException(err);
     }
 
     // write new alias address in word 4
@@ -132,7 +132,7 @@ void writeSlaveAlias(
     } catch (MasterDeviceException &e) {
         delete [] data.words;
         err << "Failed to read SII: " << e.what();
-        throw ExecutionFailureException(err);
+        throw CommandException(err);
     }
 
     delete [] data.words;

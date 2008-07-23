@@ -251,7 +251,7 @@ int Command::execute() const
         cerr << e.what() << endl << endl;
         displayHelp();
         return 1;
-    } catch (ExecutionFailureException &e) {
+    } catch (CommandException &e) {
         cerr << e.what() << endl;
         return 1;
     } catch (MasterDeviceException &e) {

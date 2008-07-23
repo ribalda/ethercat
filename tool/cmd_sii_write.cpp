@@ -34,20 +34,21 @@ void command_sii_write(void)
     uint8_t crc;
 
     if (slavePosition < 0) {
-        err << "'sii_write' requires a slave! Please specify --slave.";
-        throw MasterDeviceException(err.str());
+        err << "'" << commandName << "' requires a slave! "
+            << "Please specify --slave.";
+        throw InvalidUsageException(err);
     }
     data.slave_position = slavePosition;
 
     if (commandArgs.size() != 1) {
-        err << "'ssi_write' takes exactly one argument!";
-        throw MasterDeviceException(err.str());
+        err << "'" << commandName << "' takes exactly one argument!";
+        throw InvalidUsageException(err);
     }
 
     file.open(commandArgs[0].c_str(), ifstream::in | ifstream::binary);
     if (file.fail()) {
         err << "Failed to open '" << commandArgs[0] << "'!";
-        throw MasterDeviceException(err.str());
+        throw CommandException(err);
     }
 
     // get length of file
@@ -56,16 +57,15 @@ void command_sii_write(void)
     file.seekg(0, ios::beg);
 
     if (!byte_size || byte_size % 2) {
-        stringstream err;
         err << "Invalid file size! Must be non-zero and even.";
-        throw MasterDeviceException(err.str());
+        throw CommandException(err);
     }
 
     data.nwords = byte_size / 2;
     if (data.nwords < 0x0041 && !force) {
         err << "SII data too short (" << data.nwords << " words)! Mimimum is"
                 " 40 fixed words + 1 delimiter. Use --force to write anyway.";
-        throw MasterDeviceException(err.str());
+        throw CommandException(err);
     }
 
     // allocate buffer and read file into buffer
@@ -80,7 +80,7 @@ void command_sii_write(void)
             err << "CRC incorrect. Must be 0x"
                 << hex << setfill('0') << setw(2) << (unsigned int) crc
                 << ". Use --force to write anyway.";
-            throw MasterDeviceException(err.str());
+            throw CommandException(err);
         }
 
         // cycle through categories to detect corruption
@@ -90,14 +90,14 @@ void command_sii_write(void)
             if (categoryHeader + 1 > data.words + data.nwords) {
                 err << "SII data seem to be corrupted! "
                     << "Use --force to write anyway.";
-                throw MasterDeviceException(err.str());
+                throw CommandException(err);
             }
             categorySize = le16tocpu(*(categoryHeader + 1));
             if (categoryHeader + 2 + categorySize + 1
                     > data.words + data.nwords) {
                 err << "SII data seem to be corrupted! "
                     "Use --force to write anyway.";
-                throw MasterDeviceException(err.str());
+                throw CommandException(err);
             }
             categoryHeader += 2 + categorySize;
             categoryType = le16tocpu(*categoryHeader);

@@ -46,12 +46,12 @@ class InvalidUsageException:
 
 /****************************************************************************/
 
-class ExecutionFailureException:
+class CommandException:
     public runtime_error
 {
     public:
         /** Constructor with std::string parameter. */
-        ExecutionFailureException(
+        CommandException(
                 const stringstream &s /**< Message. */
                 ): runtime_error(s.str()) {}
 };

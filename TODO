@@ -11,22 +11,22 @@ Version 1.4.0:
 * Read Pdo mapping for unknown Pdos before configuring them.
 * Attach Pdo names from SII or Coe dictioary to Pdos read via CoE.
 * Update documentation.
-* Add -a and -p switches for 'ethercat config' command.
-* Add a -n (numeric) switch to ethercat command.
-* Add help pages for every ethercat command.
-* Show Pdos in 'ethercat slave -v'.
-* Allow master requesting when in ORPHANED phase
 * Get original driver for r8169.
 * Race in jiffies frame timeout?
-* Accept files from stdin.
-* Show attached slave position.
-* Display attached device's MAC address instead of ff's.
-* Use commandName in error messages.
-* Data type abbreviations.
+* ethercat tool:
+    - Add help pages for each command.
+    - Add -a and -p switches for config command.
+    - Show attached slave position.
+    - Show Pdos in 'ethercat slave -v'.
+    - Accept files from stdin.
+    - Display attached device's MAC address instead of ff's.
+    - Data type abbreviations.
+    - Add a -n (numeric) switch.
 
 Future issues:
 
 * Distributed clocks.
+* Allow master requesting when in ORPHANED phase
 * Move master threads, slave handlers and state machines into a user
   space daemon.
 * Implement user space realtime interface via cdev.
@@ -43,7 +43,7 @@ Future issues:
 
 Smaller issues:
 
-* Stop master thread at ecrt_master_request() to get rid of allow_* flags.
+* Stop master thread at ecrt_master_request() to get rid of allow_* flags?
 * Evaluate SII Size field (0x003E) to determine maximum SII memory size.
 * Unite fsm_pdo_mapping, fsm_pdo_config and fsm_coe_map.
 * Clear sync managers in INIT.

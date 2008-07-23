@@ -51,7 +51,7 @@ void MasterDevice::open(Permissions perm)
 			stringstream err;
 			err << "Failed to open master device " << deviceName.str() << ": "
 				<< strerror(errno);
-			throw MasterDeviceException(err.str());
+			throw MasterDeviceException(err);
 		}
     }
 }
@@ -83,7 +83,7 @@ void MasterDevice::getMaster(ec_ioctl_master_t *data)
     if (ioctl(fd, EC_IOCTL_MASTER, data) < 0) {
         stringstream err;
         err << "Failed to get master information: " << strerror(errno);
-        throw MasterDeviceException(err.str());
+        throw MasterDeviceException(err);
     }
 }
 
@@ -96,7 +96,7 @@ void MasterDevice::getConfig(ec_ioctl_config_t *data, unsigned int index)
     if (ioctl(fd, EC_IOCTL_CONFIG, data) < 0) {
         stringstream err;
         err << "Failed to get slave configuration: " << strerror(errno);
-        throw MasterDeviceException(err.str());
+        throw MasterDeviceException(err);
     }
 }
 
@@ -116,7 +116,7 @@ void MasterDevice::getConfigPdo(
     if (ioctl(fd, EC_IOCTL_CONFIG_PDO, data) < 0) {
         stringstream err;
         err << "Failed to get slave config Pdo: " << strerror(errno);
-        throw MasterDeviceException(err.str());
+        throw MasterDeviceException(err);
     }
 }
 
@@ -138,7 +138,7 @@ void MasterDevice::getConfigPdoEntry(
     if (ioctl(fd, EC_IOCTL_CONFIG_PDO_ENTRY, data) < 0) {
         stringstream err;
         err << "Failed to get slave config Pdo entry: " << strerror(errno);
-        throw MasterDeviceException(err.str());
+        throw MasterDeviceException(err);
     }
 }
 
@@ -156,7 +156,7 @@ void MasterDevice::getConfigSdo(
     if (ioctl(fd, EC_IOCTL_CONFIG_SDO, data) < 0) {
         stringstream err;
         err << "Failed to get slave config Sdo: " << strerror(errno);
-        throw MasterDeviceException(err.str());
+        throw MasterDeviceException(err);
     }
 }
 
@@ -173,7 +173,7 @@ void MasterDevice::getDomain(ec_ioctl_domain_t *data, unsigned int index)
             err << "Domain " << index << " does not exist!";
         else
             err << strerror(errno);
-        throw MasterDeviceException(err.str());
+        throw MasterDeviceException(err);
     }
 }
 
@@ -189,7 +189,7 @@ void MasterDevice::getData(ec_ioctl_domain_data_t *data,
     if (ioctl(fd, EC_IOCTL_DOMAIN_DATA, data) < 0) {
         stringstream err;
         err << "Failed to get domain data: " << strerror(errno);
-        throw MasterDeviceException(err.str());
+        throw MasterDeviceException(err);
     }
 }
 
@@ -206,7 +206,7 @@ void MasterDevice::getSlave(ec_ioctl_slave_t *slave, uint16_t slaveIndex)
             err << "Slave " << slaveIndex << " does not exist!";
         else
             err << strerror(errno);
-        throw MasterDeviceException(err.str());
+        throw MasterDeviceException(err);
     }
 }
 
@@ -224,7 +224,7 @@ void MasterDevice::getFmmu(
     if (ioctl(fd, EC_IOCTL_DOMAIN_FMMU, fmmu)) {
         stringstream err;
         err << "Failed to get domain FMMU: " << strerror(errno);
-        throw MasterDeviceException(err.str());
+        throw MasterDeviceException(err);
     }
 }
 
@@ -242,7 +242,7 @@ void MasterDevice::getSync(
     if (ioctl(fd, EC_IOCTL_SLAVE_SYNC, sync)) {
         stringstream err;
         err << "Failed to get sync manager: " << strerror(errno);
-        throw MasterDeviceException(err.str());
+        throw MasterDeviceException(err);
     }
 }
 
@@ -262,7 +262,7 @@ void MasterDevice::getPdo(
     if (ioctl(fd, EC_IOCTL_SLAVE_SYNC_PDO, pdo)) {
         stringstream err;
         err << "Failed to get Pdo: " << strerror(errno);
-        throw MasterDeviceException(err.str());
+        throw MasterDeviceException(err);
     }
 }
 
@@ -284,7 +284,7 @@ void MasterDevice::getPdoEntry(
     if (ioctl(fd, EC_IOCTL_SLAVE_SYNC_PDO_ENTRY, entry)) {
         stringstream err;
         err << "Failed to get Pdo entry: " << strerror(errno);
-        throw MasterDeviceException(err.str());
+        throw MasterDeviceException(err);
     }
 }
 
@@ -302,7 +302,7 @@ void MasterDevice::getSdo(
     if (ioctl(fd, EC_IOCTL_SLAVE_SDO, sdo)) {
         stringstream err;
         err << "Failed to get Sdo: " << strerror(errno);
-        throw MasterDeviceException(err.str());
+        throw MasterDeviceException(err);
     }
 }
 
@@ -322,7 +322,7 @@ void MasterDevice::getSdoEntry(
     if (ioctl(fd, EC_IOCTL_SLAVE_SDO_ENTRY, entry)) {
         stringstream err;
         err << "Failed to get Sdo entry: " << strerror(errno);
-        throw MasterDeviceException(err.str());
+        throw MasterDeviceException(err);
     }
 }
 
@@ -335,7 +335,7 @@ void MasterDevice::readSii(
     if (ioctl(fd, EC_IOCTL_SLAVE_SII_READ, data) < 0) {
         stringstream err;
         err << "Failed to read SII: " << strerror(errno);
-        throw MasterDeviceException(err.str());
+        throw MasterDeviceException(err);
     }
 }
 
@@ -348,7 +348,7 @@ void MasterDevice::writeSii(
     if (ioctl(fd, EC_IOCTL_SLAVE_SII_WRITE, data) < 0) {
         stringstream err;
         err << "Failed to write SII: " << strerror(errno);
-        throw MasterDeviceException(err.str());
+        throw MasterDeviceException(err);
     }
 }
 
@@ -359,7 +359,7 @@ void MasterDevice::setDebug(unsigned int debugLevel)
     if (ioctl(fd, EC_IOCTL_MASTER_DEBUG, debugLevel) < 0) {
         stringstream err;
         err << "Failed to set debug level: " << strerror(errno);
-        throw MasterDeviceException(err.str());
+        throw MasterDeviceException(err);
 	}
 }
 
@@ -376,7 +376,7 @@ void MasterDevice::sdoDownload(ec_ioctl_slave_sdo_download_t *data)
         } else {
             err << strerror(errno);
         }
-        throw MasterDeviceException(err.str());
+        throw MasterDeviceException(err);
 	}
 }
 
@@ -393,7 +393,7 @@ void MasterDevice::sdoUpload(ec_ioctl_slave_sdo_upload_t *data)
         } else {
             err << strerror(errno);
         }
-        throw MasterDeviceException(err.str());
+        throw MasterDeviceException(err);
     }
 }
 
@@ -416,7 +416,7 @@ void MasterDevice::requestState(
             err << "Slave " << slavePosition << " does not exist!";
         else
             err << strerror(errno);
-        throw MasterDeviceException(err.str());
+        throw MasterDeviceException(err);
     }
 }
 

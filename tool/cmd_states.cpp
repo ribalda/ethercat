@@ -22,13 +22,13 @@ const char *help_states =
 
 void command_states(void)
 {
+    stringstream err;
     string stateStr;
     uint8_t state;
     
     if (commandArgs.size() != 1) {
-        stringstream err;
-        err << "'state' takes exactly one argument!";
-        throw MasterDeviceException(err.str());
+        err << "'" << commandName << "' takes exactly one argument!";
+        throw InvalidUsageException(err);
     }
 
     stateStr = commandArgs[0];
@@ -44,9 +44,8 @@ void command_states(void)
     } else if (stateStr == "OP") {
         state = 0x08;
     } else {
-        stringstream err;
         err << "Invalid state '" << commandArgs[0] << "'!";
-        throw MasterDeviceException(err.str());
+        throw InvalidUsageException(err);
     }
 
     masterDev.open(MasterDevice::ReadWrite);

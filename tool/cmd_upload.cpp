@@ -24,23 +24,22 @@ const char *help_upload =
 
 void command_upload(void)
 {
-    stringstream strIndex, strSubIndex;
+    stringstream err, strIndex, strSubIndex;
     int sval;
     ec_ioctl_slave_sdo_upload_t data;
     unsigned int uval;
     const CoEDataType *dataType = NULL;
 
     if (slavePosition < 0) {
-        stringstream err;
-        err << "'sdo_upload' requires a slave! Please specify --slave.";
-        throw MasterDeviceException(err.str());
+        err << "'" << commandName << "' requires a slave! "
+            << "Please specify --slave.";
+        throw InvalidUsageException(err);
     }
     data.slave_position = slavePosition;
 
     if (commandArgs.size() != 2) {
-        stringstream err;
-        err << "'sdo_upload' takes two arguments!";
-        throw MasterDeviceException(err.str());
+        err << "'" << commandName << "' takes two arguments!";
+        throw InvalidUsageException(err);
     }
 
     strIndex << commandArgs[0];
@@ -48,9 +47,8 @@ void command_upload(void)
         >> resetiosflags(ios::basefield) // guess base from prefix
         >> data.sdo_index;
     if (strIndex.fail()) {
-        stringstream err;
         err << "Invalid Sdo index '" << commandArgs[0] << "'!";
-        throw MasterDeviceException(err.str());
+        throw InvalidUsageException(err);
     }
 
     strSubIndex << commandArgs[1];
@@ -58,17 +56,15 @@ void command_upload(void)
         >> resetiosflags(ios::basefield) // guess base from prefix
         >> uval;
     if (strSubIndex.fail() || uval > 0xff) {
-        stringstream err;
         err << "Invalid Sdo subindex '" << commandArgs[1] << "'!";
-        throw MasterDeviceException(err.str());
+        throw InvalidUsageException(err);
     }
     data.sdo_entry_subindex = uval;
 
     if (dataTypeStr != "") { // data type specified
         if (!(dataType = findDataType(dataTypeStr))) {
-            stringstream err;
             err << "Invalid data type '" << dataTypeStr << "'!";
-            throw MasterDeviceException(err.str());
+            throw InvalidUsageException(err);
         }
     } else { // no data type specified: fetch from dictionary
         ec_ioctl_slave_sdo_entry_t entry;
@@ -79,17 +75,15 @@ void command_upload(void)
             masterDev.getSdoEntry(&entry, slavePosition,
                     data.sdo_index, data.sdo_entry_subindex);
         } catch (MasterDeviceException &e) {
-            stringstream err;
             err << "Failed to determine Sdo entry data type. "
                 << "Please specify --type.";
-            throw ExecutionFailureException(err);
+            throw CommandException(err);
         }
         if (!(dataType = findDataType(entry.data_type))) {
-            stringstream err;
             err << "Pdo entry has unknown data type 0x"
                 << hex << setfill('0') << setw(4) << entry.data_type << "!"
                 << " Please specify --type.";
-            throw ExecutionFailureException(err);
+            throw CommandException(err);
         }
     }
 
@@ -113,11 +107,10 @@ void command_upload(void)
     masterDev.close();
 
     if (dataType->byteSize && data.data_size != dataType->byteSize) {
-        stringstream err;
         err << "Data type mismatch. Expected " << dataType->name
             << " with " << dataType->byteSize << " byte, but got "
             << data.data_size << " byte.";
-        throw MasterDeviceException(err.str());
+        throw CommandException(err);
     }
 
     cout << setfill('0');
