@@ -61,8 +61,8 @@ DEFINE_EXTERN_COMMAND(domains);
 DEFINE_EXTERN_COMMAND(master);
 DEFINE_EXTERN_COMMAND(pdos);
 DEFINE_EXTERN_COMMAND(sdos);
-DEFINE_EXTERN_COMMAND(sdo_download);
-DEFINE_EXTERN_COMMAND(sdo_upload);
+DEFINE_EXTERN_COMMAND(download);
+DEFINE_EXTERN_COMMAND(upload);
 DEFINE_EXTERN_COMMAND(slaves);
 DEFINE_EXTERN_COMMAND(sii_read);
 DEFINE_EXTERN_COMMAND(sii_write);
@@ -78,8 +78,8 @@ static const Command commands[] = {
     INIT_COMMAND(master, "Show master information."),
     INIT_COMMAND(pdos, "List Pdo assignment/mapping."),
     INIT_COMMAND(sdos, "List Sdo dictionaries."),
-    INIT_COMMAND(sdo_download, "Write an Sdo entry."),
-    INIT_COMMAND(sdo_upload, "Read an Sdo entry."),
+    INIT_COMMAND(download, "Write an Sdo entry."),
+    INIT_COMMAND(upload, "Read an Sdo entry."),
     INIT_COMMAND(slaves, "Show slaves."),
     INIT_COMMAND(sii_read, "Output a slave's SII contents."),
     INIT_COMMAND(sii_write, "Write slave's SII contents."),
@@ -113,15 +113,13 @@ void printUsage()
     }
 
     cerr
-        << "Commands can be generously abbreviated." << endl
+        << "Commands can be abbreviated." << endl
 		<< "Global options:" << endl
         << "  --master  -m <master>  Index of the master to use. Default: 0"
 		<< endl
         << "  --slave   -s <index>   Positive numerical ring position,"
         << endl
         << "                         or 'all' for all slaves (default)."
-        << endl
-        << "                         or 'all' for all domains (default)."
         << endl
         << "  --type    -t <type>    Forced Sdo data type." << endl
         << "  --force   -f           Force action." << endl

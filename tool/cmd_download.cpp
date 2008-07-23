@@ -14,7 +14,7 @@ using namespace std;
 /****************************************************************************/
 
 // FIXME
-const char *help_sdo_download =
+const char *help_download =
     "[OPTIONS]\n"
     "\n"
     "\n"
@@ -22,7 +22,7 @@ const char *help_sdo_download =
 
 /****************************************************************************/
 
-void command_sdo_download(void)
+void command_download(void)
 {
     stringstream strIndex, strSubIndex, strValue, err;
     ec_ioctl_slave_sdo_download_t data;

@@ -45,8 +45,8 @@ ethercat_SOURCES = \
 	cmd_master.cpp \
 	cmd_pdos.cpp \
 	cmd_sdos.cpp \
-	cmd_sdo_download.cpp \
-	cmd_sdo_upload.cpp \
+	cmd_download.cpp \
+	cmd_upload.cpp \
 	cmd_slaves.cpp \
 	cmd_sii_read.cpp \
 	cmd_sii_write.cpp \

@@ -14,7 +14,7 @@ using namespace std;
 /****************************************************************************/
 
 // FIXME
-const char *help_sdo_upload =
+const char *help_upload =
     "[OPTIONS]\n"
     "\n"
     "\n"
@@ -22,7 +22,7 @@ const char *help_sdo_upload =
 
 /****************************************************************************/
 
-void command_sdo_upload(void)
+void command_upload(void)
 {
     stringstream strIndex, strSubIndex;
     int sval;
