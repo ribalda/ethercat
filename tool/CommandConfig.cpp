@@ -26,10 +26,9 @@ string CommandConfig::helpString() const
 {
     stringstream str;
 
-    str << "[OPTIONS]" << endl
+    str << getName() << " [OPTIONS]" << endl
     	<< endl
-    	<< "Output information about the slave configurations" << endl
-    	<< "supplied by the application." << endl
+    	<< getBriefDescription() << endl
     	<< endl
     	<< "Without the --verbose option, slave configurations are" << endl
     	<< "output one-per-line. Example:" << endl
@@ -39,25 +38,25 @@ string CommandConfig::helpString() const
     	<< "|       |                      |  \\- Slave is operational."
 		<< endl
     	<< "|       |                      \\- Slave has been found." << endl
-    	<< "|       \\- Hexadecimal vendor ID and product code, separated"
-		<< endl
-    	<< "|          by a slash." << endl
-    	<< "\\- Decimal alias and position, separated by a colon." << endl
+    	<< "|       \\- Vendor ID and product code (both" << endl
+    	<< "|          hexadecimal)." << endl
+    	<< "\\- Alias and relative position (both decimal)." << endl
     	<< endl
     	<< "With the --verbose option given, the configured Pdos and" << endl
-    	<< "Sdos are additionally printed." << endl
+    	<< "Sdos are output in addition." << endl
     	<< endl
     	<< "Command-specific options:" << endl
-    	<< "  --verbose  -v  Show detailed configurations." << endl;
+    	<< "  --verbose -v  Show detailed configurations." << endl;
 
 	return str.str();
 }
 
 /*****************************************************************************/
 
-/*****************************************************************************/
-
-bool operator<(const ec_ioctl_config_t &a, const ec_ioctl_config_t &b)
+bool operator<(
+        const ec_ioctl_config_t &a,
+        const ec_ioctl_config_t &b
+        )
 {
     return a.alias < b.alias
         || (a.alias == b.alias && a.position < b.position);

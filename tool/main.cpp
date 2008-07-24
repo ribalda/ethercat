@@ -49,8 +49,9 @@ bool helpRequested = false;
 
 /*****************************************************************************/
 
-void printUsage()
+string usage()
 {
+    stringstream str;
     CommandList::const_iterator ci;
     size_t maxWidth = 0;
 
@@ -60,19 +61,17 @@ void printUsage()
         }
     }
 
-    cerr
-        << "Usage: " << binaryBaseName << " <COMMAND> [OPTIONS] [ARGUMENTS]"
+    str << "Usage: " << binaryBaseName << " <COMMAND> [OPTIONS] [ARGUMENTS]"
         << endl << endl
 		<< "Commands (can be abbreviated):" << endl;
 
-    cerr << left;
+    str << left;
     for (ci = commandList.begin(); ci != commandList.end(); ci++) {
-        cerr << "  " << setw(maxWidth) << (*ci)->getName()
+        str << "  " << setw(maxWidth) << (*ci)->getName()
             << "  " << (*ci)->getBriefDescription() << endl;
     }
 
-    cerr
-        << endl
+    str << endl
 		<< "Global options:" << endl
         << "  --master  -m <master>  Index of the master to use. Default: 0."
 		<< endl
@@ -81,14 +80,14 @@ void printUsage()
         << "  --verbose -v           Output more information." << endl
         << "  --help    -h           Show this help." << endl
         << endl
-        << "Numerical values can be specified either with decimal "
-        << "(no prefix)," << endl
-        << "octal (prefix '0') or hexadecimal (prefix '0x') base." << endl
+        << Command::numericInfo()
         << endl
         << "Call '" << binaryBaseName
         << " <COMMAND> --help' for command-specific help." << endl
         << endl
         << "Send bug reports to " << PACKAGE_BUGREPORT << "." << endl;
+
+    return str.str();
 }
 
 /*****************************************************************************/
@@ -118,8 +117,8 @@ void getOptions(int argc, char **argv)
             case 'm':
                 number = strtoul(optarg, &remainder, 0);
                 if (remainder == optarg || *remainder || number < 0) {
-                    cerr << "Invalid master number " << optarg << "!" << endl;
-                    printUsage();
+                    cerr << "Invalid master number " << optarg << "!" << endl
+                        << endl << usage();
                     exit(1);
                 }
 				masterIndex = number;
@@ -132,9 +131,8 @@ void getOptions(int argc, char **argv)
                     number = strtoul(optarg, &remainder, 0);
                     if (remainder == optarg || *remainder
                             || number < 0 || number > 0xFFFF) {
-                        cerr << "Invalid slave position "
-                            << optarg << "!" << endl;
-                        printUsage();
+                        cerr << "Invalid slave position " << optarg << "!"
+                            << endl << endl << usage();
                         exit(1);
                     }
                     slavePosition = number;
@@ -148,8 +146,7 @@ void getOptions(int argc, char **argv)
                     number = strtoul(optarg, &remainder, 0);
                     if (remainder == optarg || *remainder || number < 0) {
                         cerr << "Invalid domain index "
-							<< optarg << "!" << endl;
-                        printUsage();
+							<< optarg << "!" << endl << endl << usage();
                         exit(1);
                     }
                     domainIndex = number;
@@ -177,7 +174,7 @@ void getOptions(int argc, char **argv)
                 break;
 
             case '?':
-                printUsage();
+                cerr << endl << usage();
                 exit(1);
 
             default:
@@ -189,11 +186,14 @@ void getOptions(int argc, char **argv)
 	argCount = argc - optind;
 
     if (!argCount) {
-        if (!helpRequested) {
-            cerr << "Please specify a command!" << endl;
+        if (helpRequested) {
+            cout << usage();
+            exit(0);
+        } else {
+            cerr << "Please specify a command!" << endl
+                << endl << usage();
+            exit(1);
         }
-        printUsage();
-        exit(!helpRequested);
 	}
 
     commandName = argv[optind];
@@ -264,10 +264,11 @@ int main(int argc, char **argv)
             cmd = matchingCommands.front();
             if (!helpRequested) {
                 try {
+                    cmd->setVerbosity(verbosity);
                     cmd->execute(masterDev, commandArgs);
                 } catch (InvalidUsageException &e) {
                     cerr << e.what() << endl << endl;
-                    cerr << cmd->helpString();
+                    cerr << binaryBaseName << " " << cmd->helpString();
                     retval = 1;
                 } catch (CommandException &e) {
                     cerr << e.what() << endl;
@@ -277,7 +278,7 @@ int main(int argc, char **argv)
                     retval = 1;
                 }
             } else {
-                cout << cmd->helpString();
+                cout << binaryBaseName << " " << cmd->helpString();
             }
         } else {
             cerr << "Ambiguous command abbreviation! Matching:" << endl;
@@ -286,13 +287,12 @@ int main(int argc, char **argv)
                     ci++) {
                 cerr << (*ci)->getName() << endl;
             }
-            cerr << endl;
-            printUsage();
+            cerr << endl << usage();
             retval = 1;
         }
     } else {
-        cerr << "Unknown command " << commandName << "!" << endl << endl;
-        printUsage();
+        cerr << "Unknown command " << commandName << "!" << endl
+            << endl << usage();
         retval = 1;
     }
 

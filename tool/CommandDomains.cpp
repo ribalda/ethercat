@@ -23,7 +23,7 @@ string CommandDomains::helpString() const
 {
     stringstream str;
 
-	str << getName() << " [OPTIONS]"
+	str << getName() << " [OPTIONS]" << endl
     	<< endl
     	<< getBriefDescription() << endl
         << endl
@@ -36,7 +36,7 @@ string CommandDomains::helpString() const
     	<< "(LRD/LWR/LRW) is displayed followed by the domain's" << endl
     	<< "process data size in byte. The last values are the current" << endl
     	<< "datagram working counter sum and the expected working" << endl
-    	<< "counter sum. If the values are equal, all Pdos are exchanged."
+    	<< "counter sum. If the values are equal, all Pdos were exchanged."
 		<< endl << endl
     	<< "If the --verbose option is given, the participating slave" << endl
     	<< "configurations/FMMUs and the current process data are" << endl
@@ -46,7 +46,7 @@ string CommandDomains::helpString() const
 		<< endl
     	<< "  SlaveConfig 1001:0, SM3 ( Input), LogAddr 0x00000006, Size 6"
 		<< endl
-    	<< "    00 00 00 00 00 00" << endl
+    	<< "    0x00 0x00 0x00 0x00 0x00 0x00" << endl
     	<< endl
     	<< "The process data are displayed as hexadecimal bytes." << endl
     	<< endl
@@ -55,7 +55,7 @@ string CommandDomains::helpString() const
     	<< "                        or 'all' for all domains (default)."
 		<< endl
     	<< "  --verbose -v          Show FMMUs and process data" << endl
-		<< "                        additionally." << endl
+		<< "                        in addition." << endl
     	<< endl
 		<< numericInfo();
 
@@ -143,7 +143,7 @@ void CommandDomains::showDomain(MasterDevice &m, unsigned int domainIndex)
         for (j = 0; j < fmmu.data_size; j++) {
             if (j && !(j % BreakAfterBytes))
                 cout << endl << "    ";
-            cout << setw(2)
+            cout << "0x" << setw(2)
                 << (unsigned int) *(processData + dataOffset + j) << " ";
         }
         cout << endl;

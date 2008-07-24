@@ -27,7 +27,7 @@ string CommandStates::helpString() const
         << getBriefDescription() << endl
         << endl
         << "Arguments:" << endl
-        << "  STATE can be 'INIT', 'PREOP', 'SAFEOP', or 'OP'" << endl
+        << "  STATE can be 'INIT', 'PREOP', 'SAFEOP', or 'OP'." << endl
         << endl
         << "Command-specific options:" << endl
         << "  --slave -s <index>  Positive numerical ring position," << endl

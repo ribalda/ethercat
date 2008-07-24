@@ -35,17 +35,18 @@ string CommandPdos::helpString() const
     	<< "   size (value from the SII), control register and enable" << endl
     	<< "   word. Example:" << endl
 		<< endl
-    	<< "   SM3: PhysAddr 0x1100, DefaultSize 0, ControlRegister 0x20,"
+    	<< "   SM3: PhysAddr 0x1100, DefaultSize 0, ControlRegister 0x20, "
 		<< "Enable 1" << endl
     	<< endl
     	<< "2) Assigned Pdos - Pdo direction, hexadecimal index and" << endl
-		<< "   -if available- the Pdo name. Example:" << endl
+		<< "   the Pdo name, if avaliable. Note that a 'Tx' and 'Rx'" << endl
+        << "   are seen from the slave's point of view. Example:" << endl
     	<< endl
     	<< "   TxPdo 0x1a00 \"Channel1\"" << endl
     	<< endl
     	<< "3) Mapped Pdo entries - Pdo entry index and subindex (both" << endl
-    	<< "   hexadecimal), the length in bit and -if available- the" << endl
-    	<< "   description. Example:" << endl
+    	<< "   hexadecimal), the length in bit and the description, if" << endl
+    	<< "   available. Example:" << endl
     	<< endl
     	<< "   Pdo entry 0x3101:01, 8 bit, \"Status\"" << endl
     	<< endl
@@ -55,7 +56,7 @@ string CommandPdos::helpString() const
     	<< endl
     	<< "Command-specific options:" << endl
     	<< "  --slave -s <index>  Positive numerical ring position," << endl
-    	<< "                      or 'all' forall slaves (default)." << endl
+    	<< "                      or 'all' for all slaves (default)." << endl
     	<< endl
 		<< numericInfo();
 

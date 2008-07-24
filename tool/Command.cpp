@@ -53,6 +53,19 @@ bool Command::matchesAbbrev(const string &abb) const
     
 /*****************************************************************************/
 
+string Command::numericInfo()
+{
+    stringstream str;
+
+    str << "Numerical values can be specified either with decimal (no" << endl
+        << "prefix), octal (prefix '0') or hexadecimal (prefix '0x') base."
+        << endl;
+
+    return str.str();
+}
+
+/*****************************************************************************/
+
 void Command::throwInvalidUsageException(const stringstream &s)
 {
     throw InvalidUsageException(s);
@@ -63,19 +76,6 @@ void Command::throwInvalidUsageException(const stringstream &s)
 void Command::throwCommandException(const stringstream &s)
 {
     throw CommandException(s);
-}
-
-/*****************************************************************************/
-
-string Command::numericInfo()
-{
-    stringstream str;
-
-    str << "Numerical values can be specified either with decimal (no" << endl
-        << "prefix), octal (prefix '0') or hexadecimal (prefix '0x') base."
-        << endl;
-
-    return str.str();
 }
 
 /****************************************************************************/

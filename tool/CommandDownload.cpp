@@ -38,7 +38,7 @@ string CommandDownload::helpString() const
     	<< "These are the valid Sdo entry data types:" << endl
     	<< "  int8, int16, int32, uint8, uint16, uint32, string." << endl
     	<< endl
-    	<< "Arguments:"
+    	<< "Arguments:" << endl
     	<< "  INDEX    is the Sdo index and must be an unsigned" << endl
 		<< "           16 bit number." << endl
     	<< "  SUBINDEX is the Sdo entry subindex and must be an" << endl
@@ -49,8 +49,7 @@ string CommandDownload::helpString() const
     	<< "Command-specific options:" << endl
     	<< "  --slave -s <index>  Positive numerical ring position" << endl
 		<< "                      (mandatory)." << endl
-    	<< "  --type  -t <type>   Forced Sdo entry data type (see" << endl
-		<< "                      above)." << endl
+    	<< "  --type  -t <type>   Sdo entry data type (see above)." << endl
     	<< endl
 		<< numericInfo();
 

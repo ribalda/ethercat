@@ -47,8 +47,7 @@ string CommandUpload::helpString() const
         << "Command-specific options:" << endl
         << "  --slave -s <index>  Positive numerical ring position" << endl
         << "                      (mandatory)." << endl
-        << "  --type  -t <type>   Forced Sdo entry data type (see" << endl
-        << "                      above)." << endl
+        << "  --type  -t <type>   Sdo entry data type (see above)." << endl
         << endl
         << numericInfo();
 

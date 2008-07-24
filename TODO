@@ -22,6 +22,7 @@ Version 1.4.0:
     - Display attached device's MAC address instead of ff's.
     - Data type abbreviations.
     - Add a -n (numeric) switch.
+    - Check for options, remove global variables.
 
 Future issues:
 

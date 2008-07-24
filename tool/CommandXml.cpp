@@ -23,14 +23,14 @@ string CommandXml::helpString() const
 {
     stringstream str;
 
-    str << getName() << " [OPTIONS]"
+    str << getName() << " [OPTIONS]" << endl
         << endl
         << getBriefDescription() << endl
         << endl
         << "Note that the Pdo information can either originate" << endl
         << "from the SII or from the CoE communication area. For" << endl
-        << "some slaves, this is dependant on the last slave" << endl
-        << "configuration." << endl
+        << "slaves, that support configuring Pdo assignment and" << endl
+        << "mapping, the output depends on the last configuration." << endl
         << endl
         << "Command-specific options:" << endl
         << "  --slave -s <index>  Positive numerical ring position," << endl

@@ -31,7 +31,8 @@ string CommandAlias::helpString() const
         << getBriefDescription() << endl
         << endl
         << "Arguments:" << endl
-        << "  ALIAS must be an unsigned 16 bit number. Zero means no alias."
+        << "  ALIAS must be an unsigned 16 bit number. Zero means" << endl
+        << "        removing an alias address." << endl
         << endl << endl
         << "Command-specific options:" << endl
         << "  --slave -s <index>  Positive numerical ring position, or 'all'"

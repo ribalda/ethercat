@@ -33,20 +33,20 @@ string CommandSlaves::helpString() const
         << endl
         << "1  5555:0  PREOP  +  EL3162 2C. Ana. Input 0-10V" << endl
         << "|  |    |  |      |  |" << endl
-        << "|  |    |  |      |  \\- Name from SII if avaliable," << endl
-        << "|  |    |  |      |     otherwise hexadecimal vendor ID" << endl
-        << "|  |    |  |      |     and product code separated by a" << endl
-        << "|  |    |  |      |     colon." << endl
+        << "|  |    |  |      |  \\- Name from the SII if avaliable," << endl
+        << "|  |    |  |      |     otherwise vendor ID and product" << endl
+        << "|  |    |  |      |     code (both hexadecimal)." << endl
         << "|  |    |  |      \\- Error flag. '+' means no error," << endl
-        << "|  |    |  |         'E' means that scanning or" << endl
+        << "|  |    |  |         'E' means that scan or" << endl
         << "|  |    |  |         configuration failed." << endl
-        << "|  |    |  \\- Current slave state." << endl
+        << "|  |    |  \\- Current application-layer state." << endl
         << "|  |    \\- Relative position (decimal) after the last" << endl
         << "|  |       slave with an alias address set." << endl
-        << "|  \\- Alias address of the slave (if set to non-zero)," << endl
-        << "|     or the alias of the last slave with an alias set," << endl
-        << "|     or zero if there is none." << endl
-        << "\\- Ring position (use this with any --slave option)." << endl
+        << "|  \\- Alias address of the slave (if set), or the alias" << endl
+        << "|     of the last slave with an alias, or zero if not" << endl
+        << "|     applicable" << endl
+        << "\\- Absolute ring position in the bus (use this with any" << endl
+        << "   --slave option)." << endl
         << endl
         << "If the --verbose option is given, a detailed (multi-line)" << endl
         << "description is output for each slave." << endl

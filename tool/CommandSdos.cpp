@@ -41,12 +41,12 @@ string CommandSdos::helpString() const
     	<< endl
     	<< "   0x1018:01, uint32, 32 bit, \"Vendor id\"" << endl
     	<< endl
-    	<< "If the --quiet option is given, only the Sdos are printed."
+    	<< "If the --quiet option is given, only the Sdos are output."
 		<< endl << endl
     	<< "Command-specific options:" << endl
     	<< "  --slave -s <index>  Positive numerical ring position," << endl
-		<< "                      'all' for all slaves (default)." << endl
-    	<< "  --quiet -q          Print only Sdos (without Sdo" << endl
+		<< "                      or 'all' for all slaves (default)." << endl
+    	<< "  --quiet -q          Only output Sdos (without the Sdo" << endl
 		<< "                      entries)." << endl
     	<< endl
 		<< numericInfo();

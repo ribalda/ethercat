@@ -76,12 +76,13 @@ class Command
         typedef vector<string> StringVector;
         virtual void execute(MasterDevice &, const StringVector &) = 0;
 
+        static string numericInfo();
+
     protected:
         void throwInvalidUsageException(const stringstream &);
         void throwCommandException(const stringstream &);
 
 		enum {BreakAfterBytes = 16};
-        static string numericInfo();
 
     private:
 		string name;
