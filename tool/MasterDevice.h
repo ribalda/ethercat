@@ -4,8 +4,8 @@
  *
  ****************************************************************************/
 
-#ifndef __EC_MASTER_H__
-#define __EC_MASTER_H__
+#ifndef __MASTER_DEVICE_H__
+#define __MASTER_DEVICE_H__
 
 #include <stdexcept>
 #include <sstream>
@@ -22,7 +22,7 @@ class MasterDeviceException:
     friend class MasterDevice;
     
     protected:
-        /** Constructor with std::string parameter. */
+        /** Constructor with stringstream parameter. */
         MasterDeviceException(
                 const stringstream &s /**< Message. */
                 ): runtime_error(s.str()) {}
