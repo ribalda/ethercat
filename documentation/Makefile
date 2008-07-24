@@ -10,16 +10,38 @@ FILE := ethercat_doc
 
 LATEX_OPTIONS := -file-line-error-style
 
+COMMANDS := \
+	alias \
+	config \
+	data \
+	debug \
+	domains \
+	master \
+	pdos \
+	sdos \
+	download \
+	upload \
+	slaves \
+	sii_read \
+	sii_write \
+	states \
+	xml
+
+EXT_PREFIX := external/ethercat_
+EXT_FILES := $(addprefix $(EXT_PREFIX),$(COMMANDS))
+ETHERCAT_CMD := ../tool/ethercat
+ETHERCAT_HELP := $(ETHERCAT_CMD) -h
+
 #------------------------------------------------------------------------------
 
-first: pdf
+all: pdf
 
-all: dvi pdf
+$(EXT_FILES): $(ETHERCAT_CMD)
+	@mkdir -pv external
+	@echo Creating $@...
+	$(shell $(subst $(EXT_PREFIX),$(ETHERCAT_HELP) ,$@) > $@)
 
-dvi:
-	latex $(LATEX_OPTIONS) \\nonstopmode\\input{$(FILE).tex}
-
-pdf:
+pdf: $(EXT_FILES)
 	pdflatex $(LATEX_OPTIONS) $(FILE)
 
 index:

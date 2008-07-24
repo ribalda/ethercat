@@ -301,7 +301,8 @@ EtherCAT functionality (see section~\ref{sec:ecrt}).
 
   \end{itemize}
 
-\item User space command-line-tool ``ethercat``.
+\item User space command-line-tool ``ethercat`` (see
+section~\ref{sec:ethercat})
 
   \begin{itemize}
 
@@ -2692,9 +2693,69 @@ master.
 
 %------------------------------------------------------------------------------
 
-\subsection{Listing the bus}
+\subsection{Setting alias addresses}
+
+\lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_alias}
+
+%------------------------------------------------------------------------------
+
+\subsection{Displaying the bus configuration}
+
+\lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_config}
+
+%------------------------------------------------------------------------------
+
+\subsection{Displaying process data}
+
+\lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_data}
+
+%------------------------------------------------------------------------------
+
+\subsection{Setting a master's debug level}
+
+\lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_debug}
+
+%------------------------------------------------------------------------------
+
+\subsection{Configured domains}
+
+\lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_domains}
+
+%------------------------------------------------------------------------------
+
+\subsection{Master and Ethernet device information}
+
+\lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_master}
+
+%------------------------------------------------------------------------------
+
+\subsection{Showing slaves' sync managers, Pdos and Pdo entries}
+
+\lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_pdos}
+
+%------------------------------------------------------------------------------
+
+\subsection{Displaying the Sdo dictionary}
+
+\lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_sdos}
+
+%------------------------------------------------------------------------------
+
+\subsection{Sdo access}
+
+\lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_download}
+
+\lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_upload}
+
+%------------------------------------------------------------------------------
+
+\subsection{Displaying slaves on the bus}
 
 Slave information can be gathered with the subcommand \lstinline+slaves+:
+
+\lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_slaves}
+
+Below is a typical output:
 
 \begin{lstlisting}
 $ `\textbf{ethercat slaves}`
@@ -2703,25 +2764,6 @@ $ `\textbf{ethercat slaves}`
 2  5555:1  PREOP  +  EL4102 2K. Ana. Ausgang 0-10V
 3  5555:2  PREOP  +  EL2004 4K. Dig. Ausgang 24V, 0,5A
 \end{lstlisting}
-
-Every slave found is displayed as one text row. The columns have the following
-meanings:
-
-\begin{enumerate}
-
-\item Ring position in the bus.
-
-\item Alias and position (see section~\ref{sec:addr}).
-
-\item Application-layer state.
-
-\item Error flag: \lstinline!+! means that the slave is ok, \lstinline+E+
-means that an error has occurred during scanning or configuration.
-
-\item The slave's name, as it appears in the ``general'' SII category. If no
-name is found, the slave's vendor ID and product code are listed.
-
-\end{enumerate}
 
 %------------------------------------------------------------------------------
 
@@ -2746,6 +2788,8 @@ space.
 
 \end{itemize}
 
+\lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_sii_read}
+
 Reading out SII data is as easy as other commands. Though the data are in
 binary format, analysis is easier with a tool like \textit{hexdump}:
 
@@ -2766,12 +2810,26 @@ $ `\textbf{ethercat sii\_read --slave 3 > sii-of-slave3.bin}`
 To download SII contents to a slave, writing access to the master's character
 device is necessary (see section~\ref{sec:cdev}).
 
+\lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_sii_write}
+
 \begin{lstlisting}
 # `\textbf{ethercat sii\_write --slave 3 sii-of-slave3.bin}`
 \end{lstlisting}
 
 The SII contents will be checked for validity and then sent to the slave. The
 write operation may take a few seconds.
+
+%------------------------------------------------------------------------------
+
+\subsection{Requesting application-layer states}
+
+\lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_states}
+
+%------------------------------------------------------------------------------
+
+\subsection{Generating slave description XML}
+
+\lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_xml}
 
 %------------------------------------------------------------------------------
 
