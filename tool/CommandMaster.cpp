@@ -8,31 +8,43 @@
 #include <iomanip>
 using namespace std;
 
-#include "globals.h"
+#include "CommandMaster.h"
+
+/*****************************************************************************/
+
+CommandMaster::CommandMaster():
+    Command("alias", "Show master and Ethernet device information.")
+{
+}
 
 /****************************************************************************/
 
-const char *help_master =
-    "[OPTIONS]\n"
-    "\n"
-    "Show master and Ethernet device information.\n"
-    "\n"
-    "Command-specific options:\n"
-    "  --master -m <index>  Index of the master to use. Default: 0.\n"
-    "\n"
-    "Numerical values can be specified either with decimal (no prefix),\n"
-    "octal (prefix '0') or hexadecimal (prefix '0x') base.\n";
+string CommandMaster::helpString() const
+{
+    stringstream str;
+
+	str << getName() << " [OPTIONS]" << endl
+    	<< endl
+    	<< getBriefDescription() << endl
+    	<< endl
+    	<< "Command-specific options:" << endl
+    	<< "  --master -m <index>  Index of the master to use. Default: 0."
+		<< endl << endl
+		<< numericInfo();
+
+	return str.str();
+}
 
 /****************************************************************************/
 
-void command_master(void)
+void CommandMaster::execute(MasterDevice &m, const StringVector &args)
 {
     ec_ioctl_master_t data;
     stringstream err;
     unsigned int i;
     
-    masterDev.open(MasterDevice::Read);
-    masterDev.getMaster(&data);
+    m.open(MasterDevice::Read);
+    m.getMaster(&data);
 
     cout
         << "Master" << masterIndex << endl

@@ -8,42 +8,58 @@
 #include <iomanip>
 using namespace std;
 
-#include "globals.h"
+#include "CommandDownload.h"
 #include "coe_datatypes.h"
+#include "byteorder.h"
+
+/*****************************************************************************/
+
+CommandDownload::CommandDownload():
+    Command("download", "Write an Sdo entry to a slave.")
+{
+}
+
+/*****************************************************************************/
+
+string CommandDownload::helpString() const
+{
+    stringstream str;
+
+    str << getName() << " [OPTIONS] <INDEX> <SUBINDEX> <VALUE>" << endl
+    	<< endl
+    	<< getBriefDescription() << endl
+    	<< endl
+    	<< "The data type of the Sdo entry is taken from the Sdo" << endl
+		<< "dictionary by default. It can be overridden with the" << endl
+		<< "--type option. If the slave does not support the Sdo" << endl
+		<< "information service or the Sdo is not in the dictionary," << endl
+		<< "the --type option is mandatory." << endl
+    	<< endl
+    	<< "These are the valid Sdo entry data types:" << endl
+    	<< "  int8, int16, int32, uint8, uint16, uint32, string." << endl
+    	<< endl
+    	<< "Arguments:"
+    	<< "  INDEX    is the Sdo index and must be an unsigned" << endl
+		<< "           16 bit number." << endl
+    	<< "  SUBINDEX is the Sdo entry subindex and must be an" << endl
+		<< "           unsigned 8 bit number." << endl
+    	<< "  VALUE    is the value to download and must correspond" << endl
+		<< "           to the Sdo entry datatype (see above)." << endl
+    	<< endl
+    	<< "Command-specific options:" << endl
+    	<< "  --slave -s <index>  Positive numerical ring position" << endl
+		<< "                      (mandatory)." << endl
+    	<< "  --type  -t <type>   Forced Sdo entry data type (see" << endl
+		<< "                      above)." << endl
+    	<< endl
+		<< numericInfo();
+
+	return str.str();
+}
 
 /****************************************************************************/
 
-const char *help_download =
-    "[OPTIONS] <INDEX> <SUBINDEX> <VALUE>\n"
-    "\n"
-    "Download an Sdo entry to a slave.\n"
-    "\n"
-    "The data type of the Sdo entry is taken from the Sdo dictionary by\n"
-    "default. It can be overridden with the --type option. If the slave\n"
-    "does not support the Sdo information service or the Sdo is not in the\n"
-    "dictionary, the --type option is mandatory.\n"
-    "\n"
-    "These are the valid Sdo entry data types:\n"
-    "  int8, int16, int32, uint8, uint16, uint32, string.\n"
-    "\n"
-    "Arguments:\n"
-    "  INDEX    is the Sdo index and must be an unsigned 16 bit number.\n"
-    "  SUBINDEX is the Sdo entry subindex and must be an unsigned 8 bit\n"
-    "           number.\n"
-    "  VALUE    is the value to download and must correspond to the Sdo\n"
-    "           entry datatype (see above).\n"
-    "\n"
-    "Command-specific options:\n"
-    "  --slave -s <index>  Positive numerical ring position (mandatory).\n"
-    "  --type  -t <type>   Forced Sdo entry data type (see above).\n"
-    "\n"
-    "Numerical values can be specified either with decimal (no prefix),\n"
-    "octal (prefix '0') or hexadecimal (prefix '0x') base.\n";
-
-
-/****************************************************************************/
-
-void command_download(void)
+void CommandDownload::execute(MasterDevice &m, const StringVector &args)
 {
     stringstream strIndex, strSubIndex, strValue, err;
     ec_ioctl_slave_sdo_download_t data;
@@ -51,59 +67,59 @@ void command_download(void)
     const CoEDataType *dataType = NULL;
 
     if (slavePosition < 0) {
-        err << "'" << commandName << "' requires a slave! "
+        err << "'" << getName() << "' requires a slave! "
             << "Please specify --slave.";
-        throw InvalidUsageException(err);
+        throwInvalidUsageException(err);
     }
     data.slave_position = slavePosition;
 
-    if (commandArgs.size() != 3) {
-        err << "'" << commandName << "' takes 3 arguments!";
-        throw InvalidUsageException(err);
+    if (args.size() != 3) {
+        err << "'" << getName() << "' takes 3 arguments!";
+        throwInvalidUsageException(err);
     }
 
-    strIndex << commandArgs[0];
+    strIndex << args[0];
     strIndex
         >> resetiosflags(ios::basefield) // guess base from prefix
         >> data.sdo_index;
     if (strIndex.fail()) {
-        err << "Invalid Sdo index '" << commandArgs[0] << "'!";
-        throw InvalidUsageException(err);
+        err << "Invalid Sdo index '" << args[0] << "'!";
+        throwInvalidUsageException(err);
     }
 
-    strSubIndex << commandArgs[1];
+    strSubIndex << args[1];
     strSubIndex
         >> resetiosflags(ios::basefield) // guess base from prefix
         >> number;
     if (strSubIndex.fail() || number > 0xff) {
-        err << "Invalid Sdo subindex '" << commandArgs[1] << "'!";
-        throw InvalidUsageException(err);
+        err << "Invalid Sdo subindex '" << args[1] << "'!";
+        throwInvalidUsageException(err);
     }
     data.sdo_entry_subindex = number;
 
     if (dataTypeStr != "") { // data type specified
         if (!(dataType = findDataType(dataTypeStr))) {
             err << "Invalid data type '" << dataTypeStr << "'!";
-            throw InvalidUsageException(err);
+            throwInvalidUsageException(err);
         }
     } else { // no data type specified: fetch from dictionary
         ec_ioctl_slave_sdo_entry_t entry;
 
-        masterDev.open(MasterDevice::ReadWrite);
+        m.open(MasterDevice::ReadWrite);
 
         try {
-            masterDev.getSdoEntry(&entry, slavePosition,
+            m.getSdoEntry(&entry, slavePosition,
                     data.sdo_index, data.sdo_entry_subindex);
         } catch (MasterDeviceException &e) {
             err << "Failed to determine Sdo entry data type. "
                 << "Please specify --type.";
-            throw CommandException(err);
+            throwCommandException(err);
         }
         if (!(dataType = findDataType(entry.data_type))) {
             err << "Pdo entry has unknown data type 0x"
                 << hex << setfill('0') << setw(4) << entry.data_type << "!"
                 << " Please specify --type.";
-            throw CommandException(err);
+            throwCommandException(err);
         }
     }
 
@@ -115,7 +131,7 @@ void command_download(void)
 
     data.data = new uint8_t[data.data_size + 1];
 
-    strValue << commandArgs[2];
+    strValue << args[2];
     strValue >> resetiosflags(ios::basefield); // guess base from prefix
     strValue.exceptions(ios::failbit);
 
@@ -170,7 +186,7 @@ void command_download(void)
             case 0x0009: // string
                 if (strValue.str().size() >= data.data_size) {
                     err << "String too large";
-                    throw CommandException(err);
+                    throwCommandException(err);
                 }
                 data.data_size = strValue.str().size();
                 strValue >> (char *) data.data;
@@ -179,19 +195,19 @@ void command_download(void)
             default:
                 delete [] data.data;
                 err << "Unknown data type 0x" << hex << dataType->coeCode;
-                throw CommandException(err);
+                throwCommandException(err);
         }
     } catch (ios::failure &e) {
         delete [] data.data;
-        err << "Invalid value argument '" << commandArgs[2]
+        err << "Invalid value argument '" << args[2]
             << "' for type '" << dataType->name << "'!";
-        throw InvalidUsageException(err);
+        throwInvalidUsageException(err);
     }
 
-    masterDev.open(MasterDevice::ReadWrite);
+    m.open(MasterDevice::ReadWrite);
 
 	try {
-		masterDev.sdoDownload(&data);
+			m.sdoDownload(&data);
 	} catch(MasterDeviceException &e) {
         delete [] data.data;
         throw e;

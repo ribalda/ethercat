@@ -7,57 +7,66 @@
 #include <iostream>
 using namespace std;
 
-#include "globals.h"
+#include "CommandData.h"
 
 /*****************************************************************************/
 
-const char *help_data =
-    "[OPTIONS]\n"
-    "\n"
-    "Output binary domain data.\n"
-    "\n"
-    "Command-specific options:\n"
-    "  --domain -d <index> Positive numerical domain index, or 'all' for\n"
-    "                      all domains (default). In this case, data of all\n"
-    "                      domains are concatenated.\n"
-    "\n"
-    "Numerical values can be specified either with decimal (no prefix),\n"
-    "octal (prefix '0') or hexadecimal (prefix '0x') base.\n";
-
-/****************************************************************************/
-
-void outputDomainData(unsigned int);
-
-/****************************************************************************/
-
-void command_data()
+CommandData::CommandData():
+    Command("data", "Output binary domain process data.")
 {
-    masterDev.open(MasterDevice::Read);
+}
+
+/*****************************************************************************/
+
+string CommandData::helpString() const
+{
+    stringstream str;
+
+    str << getName() << " [OPTIONS]" << endl
+    	<< endl
+    	<< getBriefDescription() << endl
+    	<< endl
+    	<< "Command-specific options:" << endl
+    	<< "  --domain -d <index>  Positive numerical domain index, or" << endl
+    	<< "                       'all' for all domains (default). In" << endl
+    	<< "                       this case, data of all domains are" << endl
+		<< "                       concatenated." << endl
+    	<< endl
+		<< numericInfo();
+
+	return str.str();
+}
+
+/****************************************************************************/
+
+void CommandData::execute(MasterDevice &m, const StringVector &args)
+{
+    m.open(MasterDevice::Read);
 
     if (domainIndex == -1) {
         unsigned int i;
         ec_ioctl_master_t master;
 
-        masterDev.getMaster(&master);
+        m.getMaster(&master);
 
         for (i = 0; i < master.domain_count; i++) {
-            outputDomainData(i);
+            outputDomainData(m, i);
         }
     } else {
-        outputDomainData(domainIndex);
+        outputDomainData(m, domainIndex);
     }
 }
 
 /****************************************************************************/
 
-void outputDomainData(unsigned int domainIndex)
+void CommandData::outputDomainData(MasterDevice &m, unsigned int domainIndex)
 {
     ec_ioctl_domain_t domain;
     ec_ioctl_domain_data_t data;
     unsigned char *processData;
     unsigned int i;
     
-    masterDev.getDomain(&domain, domainIndex);
+    m.getDomain(&domain, domainIndex);
 
     if (!domain.data_size)
         return;
@@ -65,7 +74,7 @@ void outputDomainData(unsigned int domainIndex)
     processData = new unsigned char[domain.data_size];
 
     try {
-        masterDev.getData(&data, domainIndex, domain.data_size, processData);
+        m.getData(&data, domainIndex, domain.data_size, processData);
     } catch (MasterDeviceException &e) {
         delete [] processData;
         throw e;

@@ -9,33 +9,47 @@
 #include <fstream>
 using namespace std;
 
-#include "globals.h"
+#include "CommandSiiWrite.h"
 #include "sii_crc.h"
+#include "byteorder.h"
+
+/*****************************************************************************/
+
+CommandSiiWrite::CommandSiiWrite():
+    Command("sii_write", "Write SII contents to a slave.")
+{
+}
+
+/*****************************************************************************/
+
+string CommandSiiWrite::helpString() const
+{
+    stringstream str;
+
+    str << getName() << " [OPTIONS] <FILENAME>" << endl
+        << endl 
+        << getBriefDescription() << endl
+        << endl
+        << "The file contents are checked for validity and integrity." << endl
+        << "These checks can be overridden with the --force option." << endl
+        << endl
+        << "Arguments:" << endl
+        << "  FILENAME must be a path to a file that contains a" << endl
+        << "           positive number of words." << endl
+        << endl
+        << "Command-specific options:" << endl
+        << "  --slave -s <index>  Positive numerical ring position" << endl
+        << "                      (mandatory)." << endl
+        << "  --force -f          Override validity checks." << endl
+        << endl
+        << numericInfo();
+
+    return str.str();
+}
 
 /****************************************************************************/
 
-const char *help_sii_write =
-    "[OPTIONS] <FILENAME>\n"
-    "\n"
-    "Writes SII contents from a local file to a slave.\n"
-    "\n"
-    "The file contents are checked for validity and integrity. These checks\n"
-    "can be overridden with the --force option.\n"
-    "\n"
-    "Arguments:\n"
-    "  FILENAME must be a path to a file that contains a positive number\n"
-    "           of words.\n"
-    "\n"
-    "Command-specific options:\n"
-    "  --slave -s <index>  Positive numerical ring position (mandatory).\n"
-    "  --force             Override validity checks.\n"
-    "\n"
-    "Numerical values can be specified either with decimal (no prefix),\n"
-    "octal (prefix '0') or hexadecimal (prefix '0x') base.\n";
-
-/****************************************************************************/
-
-void command_sii_write(void)
+void CommandSiiWrite::execute(MasterDevice &m, const StringVector &args)
 {
     stringstream err;
     ec_ioctl_slave_sii_t data;
@@ -46,21 +60,21 @@ void command_sii_write(void)
     uint8_t crc;
 
     if (slavePosition < 0) {
-        err << "'" << commandName << "' requires a slave! "
+        err << "'" << getName() << "' requires a slave! "
             << "Please specify --slave.";
-        throw InvalidUsageException(err);
+        throwInvalidUsageException(err);
     }
     data.slave_position = slavePosition;
 
-    if (commandArgs.size() != 1) {
-        err << "'" << commandName << "' takes exactly one argument!";
-        throw InvalidUsageException(err);
+    if (args.size() != 1) {
+        err << "'" << getName() << "' takes exactly one argument!";
+        throwInvalidUsageException(err);
     }
 
-    file.open(commandArgs[0].c_str(), ifstream::in | ifstream::binary);
+    file.open(args[0].c_str(), ifstream::in | ifstream::binary);
     if (file.fail()) {
-        err << "Failed to open '" << commandArgs[0] << "'!";
-        throw CommandException(err);
+        err << "Failed to open '" << args[0] << "'!";
+        throwCommandException(err);
     }
 
     // get length of file
@@ -70,14 +84,14 @@ void command_sii_write(void)
 
     if (!byte_size || byte_size % 2) {
         err << "Invalid file size! Must be non-zero and even.";
-        throw CommandException(err);
+        throwCommandException(err);
     }
 
     data.nwords = byte_size / 2;
     if (data.nwords < 0x0041 && !force) {
         err << "SII data too short (" << data.nwords << " words)! Mimimum is"
                 " 40 fixed words + 1 delimiter. Use --force to write anyway.";
-        throw CommandException(err);
+        throwCommandException(err);
     }
 
     // allocate buffer and read file into buffer
@@ -92,7 +106,7 @@ void command_sii_write(void)
             err << "CRC incorrect. Must be 0x"
                 << hex << setfill('0') << setw(2) << (unsigned int) crc
                 << ". Use --force to write anyway.";
-            throw CommandException(err);
+            throwCommandException(err);
         }
 
         // cycle through categories to detect corruption
@@ -102,14 +116,14 @@ void command_sii_write(void)
             if (categoryHeader + 1 > data.words + data.nwords) {
                 err << "SII data seem to be corrupted! "
                     << "Use --force to write anyway.";
-                throw CommandException(err);
+                throwCommandException(err);
             }
             categorySize = le16tocpu(*(categoryHeader + 1));
             if (categoryHeader + 2 + categorySize + 1
                     > data.words + data.nwords) {
                 err << "SII data seem to be corrupted! "
                     "Use --force to write anyway.";
-                throw CommandException(err);
+                throwCommandException(err);
             }
             categoryHeader += 2 + categorySize;
             categoryType = le16tocpu(*categoryHeader);
@@ -117,9 +131,9 @@ void command_sii_write(void)
     }
 
     // send data to master
-    masterDev.open(MasterDevice::ReadWrite);
+    m.open(MasterDevice::ReadWrite);
     data.offset = 0;
-	masterDev.writeSii(&data);
+	m.writeSii(&data);
 }
 
 /*****************************************************************************/

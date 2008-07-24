@@ -9,112 +9,103 @@
 #include <list>
 using namespace std;
 
-#include "globals.h"
+#include "CommandSlaves.h"
 
-/****************************************************************************/
+/*****************************************************************************/
 
-const char *help_slaves =
-    "[OPTIONS]\n"
-    "\n"
-    "Display slaves on the bus.\n"
-    "\n"
-    "If the --verbose option is not given, the slaves are displayed\n"
-    "one-per-line. Example:\n"
-    "\n"
-    "1  5555:0  PREOP  +  EL3162 2C. Ana. Input 0-10V\n"
-    "|  |    |  |      |  |\n"
-    "|  |    |  |      |  \\- Name from SII if avaliable, otherwise\n"
-    "|  |    |  |      |     hexadecimal vendor ID and product code\n"
-    "|  |    |  |      |     separated by a colon.\n"
-    "|  |    |  |      \\- Error flag. '+' means no error, 'E' means,\n"
-    "|  |    |  |         that scanning or configuration failed.\n"
-    "|  |    |  \\- Current slave state.\n"
-    "|  |    \\- Relative position (decimal) after the last slave with an\n"
-    "|  |       alias address set.\n"
-    "|  \\- Alias address of the slave (if set to non-zero), or the alias\n"
-    "|     of the last slave with an alias set, or zero if there is none.\n"
-    "\\- Ring position (use this with any --slave option).\n"
-    "\n"
-    "If the --verbose option is given, a detailed (multi-line) description\n"
-    "is output for each slave.\n"
-    "\n"
-    "Command-specific options:\n"
-    "  --slave   -s <index>  Positive numerical ring position, or 'all' for\n"
-    "                        all slaves (default).\n"
-    "  --verbose -v          Show detailed slave information.\n"
-    "\n"
-    "Numerical values can be specified either with decimal (no prefix),\n"
-    "octal (prefix '0') or hexadecimal (prefix '0x') base.\n";
-
-/****************************************************************************/
-
-void listSlaves(int);
-void showSlave(uint16_t);
-
-/****************************************************************************/
-
-void command_slaves()
+CommandSlaves::CommandSlaves():
+    Command("slaves", "Display slaves on the bus.")
 {
-    masterDev.open(MasterDevice::Read);
+}
 
-    if (verbosity == Verbose) {
+/*****************************************************************************/
+
+string CommandSlaves::helpString() const
+{
+    stringstream str;
+
+    str << getName() << " [OPTIONS]" << endl
+        << endl
+        << getBriefDescription() << endl
+        << endl
+        << "If the --verbose option is not given, the slaves are" << endl
+        << "displayed one-per-line. Example:" << endl
+        << endl
+        << "1  5555:0  PREOP  +  EL3162 2C. Ana. Input 0-10V" << endl
+        << "|  |    |  |      |  |" << endl
+        << "|  |    |  |      |  \\- Name from SII if avaliable," << endl
+        << "|  |    |  |      |     otherwise hexadecimal vendor ID" << endl
+        << "|  |    |  |      |     and product code separated by a" << endl
+        << "|  |    |  |      |     colon." << endl
+        << "|  |    |  |      \\- Error flag. '+' means no error," << endl
+        << "|  |    |  |         'E' means that scanning or" << endl
+        << "|  |    |  |         configuration failed." << endl
+        << "|  |    |  \\- Current slave state." << endl
+        << "|  |    \\- Relative position (decimal) after the last" << endl
+        << "|  |       slave with an alias address set." << endl
+        << "|  \\- Alias address of the slave (if set to non-zero)," << endl
+        << "|     or the alias of the last slave with an alias set," << endl
+        << "|     or zero if there is none." << endl
+        << "\\- Ring position (use this with any --slave option)." << endl
+        << endl
+        << "If the --verbose option is given, a detailed (multi-line)" << endl
+        << "description is output for each slave." << endl
+        << endl
+        << "Command-specific options:" << endl
+        << "  --slave   -s <index>  Positive numerical ring position," << endl
+        << "                        or 'all' for all slaves (default)." << endl
+        << "  --verbose -v          Show detailed slave information." << endl
+        << endl
+        << numericInfo();
+
+    return str.str();
+}
+
+/****************************************************************************/
+
+void CommandSlaves::execute(MasterDevice &m, const StringVector &args)
+{
+    m.open(MasterDevice::Read);
+
+    if (getVerbosity() == Verbose) {
         if (slavePosition == -1) {
-            unsigned int numSlaves = masterDev.slaveCount(), i;
+            unsigned int numSlaves = m.slaveCount(), i;
 
             for (i = 0; i < numSlaves; i++) {
-                showSlave(i);
+                showSlave(m, i);
             }
         } else {
-            showSlave(slavePosition);
+            showSlave(m, slavePosition);
         }
     } else {
-        listSlaves(slavePosition);
+        listSlaves(m, slavePosition);
     }
 }
 
 /****************************************************************************/
 
-string slaveState(uint8_t state)
-{
-    switch (state) {
-        case 1: return "INIT";
-        case 2: return "PREOP";
-        case 4: return "SAFEOP";
-        case 8: return "OP";
-        default: return "???";
-    }
-}
-
-/****************************************************************************/
-
-struct SlaveInfo {
-    string pos;
-    string alias;
-    string relPos;
-    string state;
-    string flag;
-    string name;
-};
-
-void listSlaves(int slavePosition)
+void CommandSlaves::listSlaves(
+        MasterDevice &m,
+        int slavePosition
+        )
 {
     unsigned int numSlaves, i;
     ec_ioctl_slave_t slave;
     uint16_t lastAlias, aliasIndex;
-    SlaveInfo slaveInfo;
-    typedef list<SlaveInfo> SlaveInfoList;
-    SlaveInfoList slaveInfoList;
-    SlaveInfoList::const_iterator iter;
+    Info info;
+    typedef list<Info> InfoList;
+    InfoList infoList;
+    InfoList::const_iterator iter;
     stringstream str;
     unsigned int maxPosWidth = 0, maxAliasWidth = 0,
                  maxRelPosWidth = 0, maxStateWidth = 0;
     
-    numSlaves = masterDev.slaveCount();
+    numSlaves = m.slaveCount();
 
     lastAlias = 0;
     aliasIndex = 0;
     for (i = 0; i < numSlaves; i++) {
-        masterDev.getSlave(&slave, i);
+        m.getSlave(&slave, i);
         
         if (slave.alias) {
             lastAlias = slave.alias;
@@ -123,48 +114,48 @@ void listSlaves(int slavePosition)
 
         if (slavePosition == -1 || i == (unsigned int) slavePosition) {
             str << dec << i;
-            slaveInfo.pos = str.str();
+            info.pos = str.str();
             str.clear();
             str.str("");
 
             str << lastAlias;
-            slaveInfo.alias = str.str();
+            info.alias = str.str();
             str.str("");
 
             str << aliasIndex;
-            slaveInfo.relPos = str.str();
+            info.relPos = str.str();
             str.str("");
 
-            slaveInfo.state = slaveState(slave.state);
-            slaveInfo.flag = (slave.error_flag ? 'E' : '+');
+            info.state = slaveState(slave.state);
+            info.flag = (slave.error_flag ? 'E' : '+');
 
             if (strlen(slave.name)) {
-                slaveInfo.name = slave.name;
+                info.name = slave.name;
             } else {
                 str << "0x" << hex << setfill('0')
                     << setw(8) << slave.vendor_id << ":0x"
                     << setw(8) << slave.product_code;
-                slaveInfo.name = str.str();
+                info.name = str.str();
                 str.str("");
             }
 
 
-            slaveInfoList.push_back(slaveInfo);
+            infoList.push_back(info);
 
-            if (slaveInfo.pos.length() > maxPosWidth)
-                maxPosWidth = slaveInfo.pos.length();
-            if (slaveInfo.alias.length() > maxAliasWidth)
-                maxAliasWidth = slaveInfo.alias.length();
-            if (slaveInfo.relPos.length() > maxRelPosWidth)
-                maxRelPosWidth = slaveInfo.relPos.length();
-            if (slaveInfo.state.length() > maxStateWidth)
-                maxStateWidth = slaveInfo.state.length();
+            if (info.pos.length() > maxPosWidth)
+                maxPosWidth = info.pos.length();
+            if (info.alias.length() > maxAliasWidth)
+                maxAliasWidth = info.alias.length();
+            if (info.relPos.length() > maxRelPosWidth)
+                maxRelPosWidth = info.relPos.length();
+            if (info.state.length() > maxStateWidth)
+                maxStateWidth = info.state.length();
         }
 
         aliasIndex++;
     }
 
-    for (iter = slaveInfoList.begin(); iter != slaveInfoList.end(); iter++) {
+    for (iter = infoList.begin(); iter != infoList.end(); iter++) {
         cout << setfill(' ') << right
             << setw(maxPosWidth) << iter->pos << "  "
             << setw(maxAliasWidth) << iter->alias
@@ -178,13 +169,16 @@ void listSlaves(int slavePosition)
 
 /****************************************************************************/
 
-void showSlave(uint16_t slavePosition)
+void CommandSlaves::showSlave(
+        MasterDevice &m,
+        uint16_t slavePosition
+        )
 {
     ec_ioctl_slave_t slave;
     list<string> protoList;
     list<string>::const_iterator protoIter;
     
-    masterDev.getSlave(&slave, slavePosition);
+    m.getSlave(&slave, slavePosition);
         
     cout << "=== Slave " << dec << slavePosition << " ===" << endl;
     
@@ -277,6 +271,19 @@ void showSlave(uint16_t slavePosition)
             << (slave.general_flags.enable_not_lrw ? "yes" : "no") << endl
             << "  Current consumption: "
             << dec << slave.current_on_ebus << " mA" << endl;
+    }
+}
+
+/****************************************************************************/
+
+string CommandSlaves::slaveState(uint8_t state)
+{
+    switch (state) {
+        case 1: return "INIT";
+        case 2: return "PREOP";
+        case 4: return "SAFEOP";
+        case 8: return "OP";
+        default: return "???";
     }
 }
 

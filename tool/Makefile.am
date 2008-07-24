@@ -29,30 +29,33 @@
 #  standard) as the (only) precondition to have the right to use EtherCAT
 #  Technology, IP and trade marks.
 #
+#  vim: syntax=make
+#
 #------------------------------------------------------------------------------
 
 bin_PROGRAMS = ethercat
 
 ethercat_SOURCES = \
-    MasterDevice.cpp MasterDevice.h \
+	MasterDevice.cpp MasterDevice.h \
+	Command.cpp \
+	CommandAlias.cpp \
+	CommandConfig.cpp \
+	CommandData.cpp \
+	CommandDebug.cpp \
+	CommandDomains.cpp \
+	CommandDownload.cpp \
+	CommandMaster.cpp \
+	CommandPdos.cpp \
+	CommandSdos.cpp \
+	CommandSiiRead.cpp \
+	CommandSiiWrite.cpp \
+	CommandSlaves.cpp \
+	CommandStates.cpp \
+	CommandUpload.cpp \
+	CommandXml.cpp \
 	coe_datatypes.cpp \
 	sii_crc.cpp \
-    cmd_alias.cpp \
-    cmd_config.cpp \
-    cmd_data.cpp \
-    cmd_debug.cpp \
-	cmd_domain.cpp \
-	cmd_master.cpp \
-	cmd_pdos.cpp \
-	cmd_sdos.cpp \
-	cmd_download.cpp \
-	cmd_upload.cpp \
-	cmd_slaves.cpp \
-	cmd_sii_read.cpp \
-	cmd_sii_write.cpp \
-	cmd_states.cpp \
-	cmd_xml.cpp \
-    main.cpp
+	main.cpp
 
 ethercat_CXXFLAGS = -I../master -Wall
 

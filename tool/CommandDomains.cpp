@@ -8,71 +8,83 @@
 #include <iomanip>
 using namespace std;
 
-#include "globals.h"
+#include "CommandDomains.h"
 
 /*****************************************************************************/
 
-const char *help_domains =
-    "[OPTIONS]\n"
-    "\n"
-    "Show information about the application's configured domains.\n"
-    "\n"
-    "Without the --verbose option, the domains are displayed one-per-line.\n"
-    "Example:\n"
-    "\n"
-    "Domain0: LogBaseAddr 0x00000000, Size   6, WorkingCounter 0/1\n"
-    "\n"
-    "The domain's base address for the logical datagram (LRD/LWR/LRW)\n"
-    "is displayed followed by the domain's process data size in byte.\n"
-    "The last values are the current datagram working counter sum and\n"
-    "the expected working counter sum. If the values are equal, all\n"
-    "Pdos are exchanged.\n"
-    "\n"
-    "If the --verbose option is given, the participating slave\n"
-    "configurations/FMMUs and the current process data are additionally\n"
-    "displayed:\n"
-    "\n"
-    "Domain1: LogBaseAddr 0x00000006, Size   6, WorkingCounter 0/1\n"
-    "  SlaveConfig 1001:0, SM3 ( Input), LogAddr 0x00000006, Size 6\n"
-    "    00 00 00 00 00 00\n"
-    "\n"
-    "The process data are displayed as hexadecimal bytes.\n"
-    "\n"
-    "Command-specific options:\n"
-    "  --domain   -d <index> Positive numerical domain index, or 'all'\n"
-    "                        for all domains (default).\n"
-    "  --verbose  -v         Show FMMUs and process data additionally.\n"
-    "\n"
-    "Numerical values can be specified either with decimal (no prefix),\n"
-    "octal (prefix '0') or hexadecimal (prefix '0x') base.\n";
-
-/****************************************************************************/
-
-void showDomain(unsigned int);
-
-/****************************************************************************/
-
-void command_domains(void)
+CommandDomains::CommandDomains():
+    Command("domains", "Show configured domains.")
 {
-    masterDev.open(MasterDevice::Read);
+}
+
+/*****************************************************************************/
+
+string CommandDomains::helpString() const
+{
+    stringstream str;
+
+	str << getName() << " [OPTIONS]"
+    	<< endl
+    	<< getBriefDescription() << endl
+        << endl
+    	<< "Without the --verbose option, the domains are displayed" << endl
+        << "one-per-line. Example:" << endl
+    	<< endl
+    	<< "Domain0: LogBaseAddr 0x00000000, Size   6, WorkingCounter 0/1"
+		<< endl << endl
+    	<< "The domain's base address for the logical datagram" << endl
+    	<< "(LRD/LWR/LRW) is displayed followed by the domain's" << endl
+    	<< "process data size in byte. The last values are the current" << endl
+    	<< "datagram working counter sum and the expected working" << endl
+    	<< "counter sum. If the values are equal, all Pdos are exchanged."
+		<< endl << endl
+    	<< "If the --verbose option is given, the participating slave" << endl
+    	<< "configurations/FMMUs and the current process data are" << endl
+    	<< "additionally displayed:" << endl
+    	<< endl
+    	<< "Domain1: LogBaseAddr 0x00000006, Size   6, WorkingCounter 0/1"
+		<< endl
+    	<< "  SlaveConfig 1001:0, SM3 ( Input), LogAddr 0x00000006, Size 6"
+		<< endl
+    	<< "    00 00 00 00 00 00" << endl
+    	<< endl
+    	<< "The process data are displayed as hexadecimal bytes." << endl
+    	<< endl
+    	<< "Command-specific options:" << endl
+    	<< "  --domain  -d <index>  Positive numerical domain index," << endl
+    	<< "                        or 'all' for all domains (default)."
+		<< endl
+    	<< "  --verbose -v          Show FMMUs and process data" << endl
+		<< "                        additionally." << endl
+    	<< endl
+		<< numericInfo();
+
+	return str.str();
+}
+
+/****************************************************************************/
+
+void CommandDomains::execute(MasterDevice &m, const StringVector &args)
+{
+    m.open(MasterDevice::Read);
 
     if (domainIndex == -1) {
         unsigned int i;
         ec_ioctl_master_t master;
 
-        masterDev.getMaster(&master);
+        m.getMaster(&master);
 
         for (i = 0; i < master.domain_count; i++) {
-            showDomain(i);
+            showDomain(m, i);
         }
     } else {
-        showDomain(domainIndex);
+        showDomain(m, domainIndex);
     }
 }
 
 /****************************************************************************/
 
-void showDomain(unsigned int domainIndex)
+void CommandDomains::showDomain(MasterDevice &m, unsigned int domainIndex)
 {
     ec_ioctl_domain_t domain;
     unsigned char *processData;
@@ -81,7 +93,7 @@ void showDomain(unsigned int domainIndex)
     ec_ioctl_domain_fmmu_t fmmu;
     unsigned int dataOffset;
     
-    masterDev.getDomain(&domain, domainIndex);
+    m.getDomain(&domain, domainIndex);
 
 	cout << "Domain" << dec << domainIndex << ":"
 		<< " LogBaseAddr 0x"
@@ -93,20 +105,20 @@ void showDomain(unsigned int domainIndex)
 		<< domain.working_counter << "/"
         << domain.expected_working_counter << endl;
 
-    if (!domain.data_size || verbosity != Verbose)
+    if (!domain.data_size || getVerbosity() != Verbose)
         return;
 
     processData = new unsigned char[domain.data_size];
 
     try {
-        masterDev.getData(&data, domainIndex, domain.data_size, processData);
+        m.getData(&data, domainIndex, domain.data_size, processData);
     } catch (MasterDeviceException &e) {
         delete [] processData;
         throw e;
     }
 
     for (i = 0; i < domain.fmmu_count; i++) {
-        masterDev.getFmmu(&fmmu, domainIndex, i);
+        m.getFmmu(&fmmu, domainIndex, i);
 
         cout << "  SlaveConfig "
             << dec << fmmu.slave_config_alias
@@ -124,7 +136,7 @@ void showDomain(unsigned int domainIndex)
             stringstream err;
             delete [] processData;
             err << "Fmmu information corrupted!";
-            throw CommandException(err);
+            throwCommandException(err);
         }
 
         cout << "    " << hex << setfill('0');

@@ -9,96 +9,54 @@
 
 #include <iostream>
 #include <iomanip>
-#include <string>
-#include <vector>
-#include <list>
 using namespace std;
 
-#include "globals.h"
+#include "CommandAlias.h"
+#include "CommandConfig.h"
+#include "CommandData.h"
+#include "CommandDebug.h"
+#include "CommandDomains.h"
+#include "CommandMaster.h"
+#include "CommandPdos.h"
+#include "CommandSdos.h"
+#include "CommandDownload.h"
+#include "CommandUpload.h"
+#include "CommandSlaves.h"
+#include "CommandSiiRead.h"
+#include "CommandSiiWrite.h"
+#include "CommandStates.h"
+#include "CommandXml.h"
 
 /*****************************************************************************/
 
-string binaryBaseName;
-unsigned int masterIndex = 0;
-int slavePosition = -1;
-int domainIndex = -1;
-string commandName;
-vector<string> commandArgs;
-Verbosity verbosity = Normal;
-string dataTypeStr;
-bool force = false;
-
-bool helpRequested = false;
+typedef list<Command *> CommandList;
+CommandList commandList;
 
 MasterDevice masterDev;
 
-/*****************************************************************************/
+string binaryBaseName;
+string commandName;
+Command::StringVector commandArgs;
 
-struct Command {
-    const char *name;
-    void (*func)(void);
-    const char *helpString;
-    const char *briefDesc;
-
-    int execute(void) const;
-    string getHelpString(void) const;
-};
-
-/*****************************************************************************/
-
-#define DEFINE_EXTERN_COMMAND(name) \
-    void command_##name(void); \
-    extern const char *help_##name
-
-#define INIT_COMMAND(name, desc) \
-    {#name, command_##name, help_##name, desc}
-
-DEFINE_EXTERN_COMMAND(alias);
-DEFINE_EXTERN_COMMAND(config);
-DEFINE_EXTERN_COMMAND(data);
-DEFINE_EXTERN_COMMAND(debug);
-DEFINE_EXTERN_COMMAND(domains);
-DEFINE_EXTERN_COMMAND(master);
-DEFINE_EXTERN_COMMAND(pdos);
-DEFINE_EXTERN_COMMAND(sdos);
-DEFINE_EXTERN_COMMAND(download);
-DEFINE_EXTERN_COMMAND(upload);
-DEFINE_EXTERN_COMMAND(slaves);
-DEFINE_EXTERN_COMMAND(sii_read);
-DEFINE_EXTERN_COMMAND(sii_write);
-DEFINE_EXTERN_COMMAND(states);
-DEFINE_EXTERN_COMMAND(xml);
-
-static const Command commands[] = {
-    INIT_COMMAND(alias, "Write alias addresses."),
-    INIT_COMMAND(config, "Show bus configuration."),
-    INIT_COMMAND(data, "Output binary domain process data."),
-    INIT_COMMAND(debug, "Set the master's debug level."),
-    INIT_COMMAND(domains, "Show domain information."),
-    INIT_COMMAND(master, "Show master information."),
-    INIT_COMMAND(pdos, "List Pdo assignment/mapping."),
-    INIT_COMMAND(sdos, "List Sdo dictionaries."),
-    INIT_COMMAND(download, "Write an Sdo entry."),
-    INIT_COMMAND(upload, "Read an Sdo entry."),
-    INIT_COMMAND(slaves, "Show slaves."),
-    INIT_COMMAND(sii_read, "Output a slave's SII contents."),
-    INIT_COMMAND(sii_write, "Write slave's SII contents."),
-    INIT_COMMAND(states, "Request slave states."),
-    INIT_COMMAND(xml, "Generate slave information XML."),
-};
-
-static const Command *cmdEnd = commands + sizeof(commands) / sizeof(Command);
+// option variables
+unsigned int masterIndex = 0;
+int slavePosition = -1;
+int domainIndex = -1;
+string dataTypeStr;
+Command::Verbosity verbosity = Command::Normal;
+bool force = false;
+bool helpRequested = false;
 
 /*****************************************************************************/
 
 void printUsage()
 {
-    const Command *cmd;
+    CommandList::const_iterator ci;
     size_t maxWidth = 0;
 
-    for (cmd = commands; cmd < cmdEnd; cmd++) {
-        if (strlen(cmd->name) > maxWidth) {
-            maxWidth = strlen(cmd->name);
+    for (ci = commandList.begin(); ci != commandList.end(); ci++) {
+        if ((*ci)->getName().length() > maxWidth) {
+            maxWidth = (*ci)->getName().length();
         }
     }
 
@@ -108,9 +66,9 @@ void printUsage()
 		<< "Commands (can be abbreviated):" << endl;
 
     cerr << left;
-    for (cmd = commands; cmd < cmdEnd; cmd++) {
-        cerr << "  " << setw(maxWidth) << cmd->name
-            << " " << cmd->briefDesc << endl;
+    for (ci = commandList.begin(); ci != commandList.end(); ci++) {
+        cerr << "  " << setw(maxWidth) << (*ci)->getName()
+            << "  " << (*ci)->getBriefDescription() << endl;
     }
 
     cerr
@@ -207,11 +165,11 @@ void getOptions(int argc, char **argv)
                 break;
 
             case 'q':
-                verbosity = Quiet;
+                verbosity = Command::Quiet;
                 break;
 
             case 'v':
-                verbosity = Verbose;
+                verbosity = Command::Verbose;
                 break;
 
             case 'h':
@@ -245,76 +203,23 @@ void getOptions(int argc, char **argv)
 
 /****************************************************************************/
 
-int Command::execute() const
+list<Command *> getMatchingCommands(const string &cmdStr)
 {
-    try {
-        func();
-    } catch (InvalidUsageException &e) {
-        cerr << e.what() << endl << endl;
-        cerr << getHelpString();
-        return 1;
-    } catch (CommandException &e) {
-        cerr << e.what() << endl;
-        return 1;
-    } catch (MasterDeviceException &e) {
-        cerr << e.what() << endl;
-        return 1;
-    }
-
-    return 0;
-}
-
-/****************************************************************************/
-
-string Command::getHelpString() const
-{
-    stringstream help;
-    help << binaryBaseName << " " << commandName << " " << helpString;
-    return help.str();
-}
-
-/****************************************************************************/
-
-bool substrMatch(const string &abb, const string &full)
-{
-    return full.substr(0, abb.length()) == abb;
-}
-    
-/****************************************************************************/
-
-bool abbrevMatch(const string &abb, const string &full)
-{
-    unsigned int abbIndex;
-    size_t fullPos = 0;
-
-    for (abbIndex = 0; abbIndex < abb.length(); abbIndex++) {
-        fullPos = full.find(abb[abbIndex], fullPos);
-        if (fullPos == string::npos)
-            return false;
-    }
-
-    return true;
-}
-    
-/****************************************************************************/
-
-list<const Command *> getMatchingCommands(const string &cmdStr)
-{
-    const Command *cmd;
-    list<const Command *> res;
+    CommandList::iterator ci;
+    list<Command *> res;
 
     // find matching commands from beginning of the string
-    for (cmd = commands; cmd < cmdEnd; cmd++) {
-        if (substrMatch(cmdStr, cmd->name)) {
-            res.push_back(cmd);
+    for (ci = commandList.begin(); ci != commandList.end(); ci++) {
+        if ((*ci)->matchesSubstr(cmdStr)) {
+            res.push_back(*ci);
         }
     }
 
     if (!res.size()) { // nothing found
         // find /any/ matching commands
-        for (cmd = commands; cmd < cmdEnd; cmd++) {
-            if (abbrevMatch(cmdStr, cmd->name)) {
-                res.push_back(cmd);
+        for (ci = commandList.begin(); ci != commandList.end(); ci++) {
+            if ((*ci)->matchesAbbrev(cmdStr)) {
+                res.push_back(*ci);
             }
         }
     }
@@ -327,29 +232,59 @@ list<const Command *> getMatchingCommands(const string &cmdStr)
 int main(int argc, char **argv)
 {
     int retval = 0;
-    list<const Command *> commands;
-    list<const Command *>::const_iterator ci;
-    const Command *cmd;
+    list<Command *> matchingCommands;
+    list<Command *>::const_iterator ci;
+    Command *cmd;
 
     binaryBaseName = basename(argv[0]);
+
+    commandList.push_back(new CommandAlias());
+    commandList.push_back(new CommandConfig());
+    commandList.push_back(new CommandData());
+    commandList.push_back(new CommandDebug());
+    commandList.push_back(new CommandDomains());
+    commandList.push_back(new CommandDownload());
+    commandList.push_back(new CommandMaster());
+    commandList.push_back(new CommandPdos());
+    commandList.push_back(new CommandSdos());
+    commandList.push_back(new CommandSiiRead());
+    commandList.push_back(new CommandSiiWrite());
+    commandList.push_back(new CommandSlaves());
+    commandList.push_back(new CommandStates());
+    commandList.push_back(new CommandUpload());
+    commandList.push_back(new CommandXml());
+
 	getOptions(argc, argv);
 
-    commands = getMatchingCommands(commandName);
+    matchingCommands = getMatchingCommands(commandName);
+    masterDev.setIndex(masterIndex);
 
-    if (commands.size()) {
-        if (commands.size() == 1) {
-            cmd = commands.front();
-            commandName = cmd->name;
+    if (matchingCommands.size()) {
+        if (matchingCommands.size() == 1) {
+            cmd = matchingCommands.front();
             if (!helpRequested) {
-                masterDev.setIndex(masterIndex);
-                retval = cmd->execute();
+                try {
+                    cmd->execute(masterDev, commandArgs);
+                } catch (InvalidUsageException &e) {
+                    cerr << e.what() << endl << endl;
+                    cerr << cmd->helpString();
+                    retval = 1;
+                } catch (CommandException &e) {
+                    cerr << e.what() << endl;
+                    retval = 1;
+                } catch (MasterDeviceException &e) {
+                    cerr << e.what() << endl;
+                    retval = 1;
+                }
             } else {
-                cout << cmd->getHelpString();
+                cout << cmd->helpString();
             }
         } else {
             cerr << "Ambiguous command abbreviation! Matching:" << endl;
-            for (ci = commands.begin(); ci != commands.end(); ci++) {
-                cerr << (*ci)->name << endl;
+            for (ci = matchingCommands.begin();
+                    ci != matchingCommands.end();
+                    ci++) {
+                cerr << (*ci)->getName() << endl;
             }
             cerr << endl;
             printUsage();
@@ -362,22 +297,6 @@ int main(int argc, char **argv)
     }
 
 	return retval;
-}
-
-/****************************************************************************/
-
-void printRawData(
-		const uint8_t *data,
-		unsigned int size
-		)
-{
-    cout << hex << setfill('0');
-    while (size--) {
-        cout << "0x" << setw(2) << (unsigned int) *data++;
-        if (size)
-            cout << " ";
-    }
-    cout << endl;
 }
 
 /****************************************************************************/

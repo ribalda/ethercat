@@ -8,68 +8,47 @@
 #include <iomanip>
 using namespace std;
 
-#include "globals.h"
+#include "CommandSiiRead.h"
+#include "byteorder.h"
 
-/****************************************************************************/
+/*****************************************************************************/
 
-const char *help_sii_read =
-    "[OPTIONS]\n"
-    "\n"
-    "Outputs the SII (EEPROM) contents of a slave.\n"
-    "\n"
-    "Without the --verbose option, binary SII contents are output. They can\n"
-    "be piped to a tool like hexdump, for example:\n"
-    "\n"
-    "  ethercat sii_read -s2 | hexdump -C\n"
-    "\n"
-    "With the --verbose option given, a textual representation of the data\n"
-    "is output, that is separated by SII category names.\n"
-    "\n"
-    "Command-specific options:\n"
-    "  --slave   -s <index>  Positive numerical ring position (mandatory).\n"
-    "  --verbose -v          Output textual data with category names.\n"
-    "\n"
-    "Numerical values can be specified either with decimal (no prefix),\n"
-    "octal (prefix '0') or hexadecimal (prefix '0x') base.\n";
-
-/****************************************************************************/
-
-struct CategoryName {
-    uint16_t type;
-    const char *name;
-};
-
-static const CategoryName categoryNames[] = {
-    {0x000a, "STRINGS"},
-    {0x0014, "DataTypes"},
-    {0x001e, "General"},
-    {0x0028, "FMMU"},
-    {0x0029, "SyncM"},
-    {0x0032, "TXPDO"},
-    {0x0033, "RXPDO"},
-    {0x003c, "DC"},
-    {}
-};
-
-/****************************************************************************/
-
-const char *getCategoryName(uint16_t type)
+CommandSiiRead::CommandSiiRead():
+    Command("sii_read", "Output a slave's SII contents.")
 {
-    const CategoryName *cn = categoryNames;
+}
 
-    while (cn->type) {
-        if (cn->type == type) {
-            return cn->name;
-        }
-        cn++;
-    }
+/*****************************************************************************/
 
-    return "unknown";
+string CommandSiiRead::helpString() const
+{
+    stringstream str;
+
+    str << getName() << " [OPTIONS]" << endl
+    	<< endl
+    	<< getBriefDescription() << endl
+    	<< endl
+    	<< "Without the --verbose option, binary SII contents are" << endl
+		<< "output." << endl
+    	<< endl
+    	<< "With the --verbose option given, a textual representation" << endl
+		<< "of the data is output, that is separated by SII category" << endl
+		<< "names." << endl
+    	<< endl
+    	<< "Command-specific options:" << endl
+    	<< "  --slave   -s <index>  Positive numerical ring position" << endl
+		<< "                        (mandatory)." << endl
+    	<< "  --verbose -v          Output textual data with" << endl
+		<< "                        category names." << endl
+    	<< endl
+		<< numericInfo();
+
+	return str.str();
 }
 
 /****************************************************************************/
 
-void command_sii_read(void)
+void CommandSiiRead::execute(MasterDevice &m, const StringVector &args)
 {
     ec_ioctl_slave_sii_t data;
     ec_ioctl_slave_t slave;
@@ -79,15 +58,15 @@ void command_sii_read(void)
     stringstream err;
 
     if (slavePosition < 0) {
-        err << "'" << commandName << "' requires a slave! "
+        err << "'" << getName() << "' requires a slave! "
             << "Please specify --slave.";
-        throw InvalidUsageException(err);
+        throwInvalidUsageException(err);
     }
     data.slave_position = slavePosition;
 
-    masterDev.open(MasterDevice::Read);
+    m.open(MasterDevice::Read);
 
-    masterDev.getSlave(&slave, slavePosition);
+    m.getSlave(&slave, slavePosition);
 
     if (!slave.sii_nwords)
         return;
@@ -97,13 +76,13 @@ void command_sii_read(void)
     data.words = new uint16_t[data.nwords];
 
 	try {
-		masterDev.readSii(&data);
+		m.readSii(&data);
 	} catch (MasterDeviceException &e) {
         delete [] data.words;
 		throw e;
 	}
 
-    if (verbosity == Verbose) {
+    if (getVerbosity() == Verbose) {
         cout << "SII Area:" << hex << setfill('0');
         for (i = 0; i < min(data.nwords, 0x0040U) * 2; i++) {
             if (i % BreakAfterBytes) {
@@ -126,7 +105,7 @@ void command_sii_read(void)
 
                 if (categoryHeader + 1 > data.words + data.nwords) {
                     err << "SII data seem to be corrupted!";
-                    throw CommandException(err);
+                    throwCommandException(err);
                 }
                 categorySize = le16tocpu(*(categoryHeader + 1));
                 cout << ", " << dec << categorySize << " words" << flush;
@@ -134,7 +113,7 @@ void command_sii_read(void)
                 if (categoryHeader + 2 + categorySize
                         > data.words + data.nwords) {
                     err << "SII data seem to be corrupted!";
-                    throw CommandException(err);
+                    throwCommandException(err);
                 }
 
                 cout << hex;
@@ -152,7 +131,7 @@ void command_sii_read(void)
                 if (categoryHeader + 2 + categorySize + 1
                         > data.words + data.nwords) {
                     err << "SII data seem to be corrupted!"; 
-                    throw CommandException(err);
+                    throwCommandException(err);
                 }
                 categoryHeader += 2 + categorySize;
                 categoryType = le16tocpu(*categoryHeader);
@@ -166,6 +145,36 @@ void command_sii_read(void)
     }
 
     delete [] data.words;
+}
+
+/****************************************************************************/
+
+const CommandSiiRead::CategoryName CommandSiiRead::categoryNames[] = {
+    {0x000a, "STRINGS"},
+    {0x0014, "DataTypes"},
+    {0x001e, "General"},
+    {0x0028, "FMMU"},
+    {0x0029, "SyncM"},
+    {0x0032, "TXPDO"},
+    {0x0033, "RXPDO"},
+    {0x003c, "DC"},
+    {}
+};
+
+/****************************************************************************/
+
+const char *CommandSiiRead::getCategoryName(uint16_t type)
+{
+    const CategoryName *cn = categoryNames;
+
+    while (cn->type) {
+        if (cn->type == type) {
+            return cn->name;
+        }
+        cn++;
+    }
+
+    return "unknown";
 }
 
 /*****************************************************************************/

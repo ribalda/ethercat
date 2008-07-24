@@ -8,50 +8,59 @@
 #include <iomanip>
 using namespace std;
 
-#include "globals.h"
+#include "CommandXml.h"
 
-/****************************************************************************/
+/*****************************************************************************/
 
-const char *help_xml =
-    "[OPTIONS]\n"
-    "\n"
-    "Generate slave description XMLs from the master's slave information.\n"
-    "\n"
-    "Note that the Pdo information can either originate from the SII or\n"
-    "from the CoE communication area. For some slaves, this is dependant on\n"
-    "the last slave configuration.\n"
-    "\n"
-    "Command-specific options:\n"
-    "  --slave -s <index>  Positive numerical ring position, or 'all' for\n"
-    "                      all slaves (default).\n"
-    "\n"
-    "Numerical values can be specified either with decimal (no prefix),\n"
-    "octal (prefix '0') or hexadecimal (prefix '0x') base.\n";
-
-/****************************************************************************/
-
-void generateSlaveXml(uint16_t);
-
-/****************************************************************************/
-
-void command_xml(void)
+CommandXml::CommandXml():
+    Command("xml", "Generate slave information XML.")
 {
-    masterDev.open(MasterDevice::Read);
+}
+
+/*****************************************************************************/
+
+string CommandXml::helpString() const
+{
+    stringstream str;
+
+    str << getName() << " [OPTIONS]"
+        << endl
+        << getBriefDescription() << endl
+        << endl
+        << "Note that the Pdo information can either originate" << endl
+        << "from the SII or from the CoE communication area. For" << endl
+        << "some slaves, this is dependant on the last slave" << endl
+        << "configuration." << endl
+        << endl
+        << "Command-specific options:" << endl
+        << "  --slave -s <index>  Positive numerical ring position," << endl
+        << "                      or 'all' for all slaves (default)." << endl
+        << endl
+        << numericInfo();
+
+    return str.str();
+}
+
+/****************************************************************************/
+
+void CommandXml::execute(MasterDevice &m, const StringVector &args)
+{
+    m.open(MasterDevice::Read);
 
     if (slavePosition == -1) {
-        unsigned int numSlaves = masterDev.slaveCount(), i;
+        unsigned int numSlaves = m.slaveCount(), i;
 
         for (i = 0; i < numSlaves; i++) {
-            generateSlaveXml(i);
+            generateSlaveXml(m, i);
         }
     } else {
-        generateSlaveXml(slavePosition);
+        generateSlaveXml(m, slavePosition);
     }
 }
 
 /****************************************************************************/
 
-void generateSlaveXml(uint16_t slavePosition)
+void CommandXml::generateSlaveXml(MasterDevice &m, uint16_t slavePosition)
 {
     ec_ioctl_slave_t slave;
     ec_ioctl_slave_sync_t sync;
@@ -60,7 +69,7 @@ void generateSlaveXml(uint16_t slavePosition)
     ec_ioctl_slave_sync_pdo_entry_t entry;
     unsigned int i, j, k;
     
-    masterDev.getSlave(&slave, slavePosition);
+    m.getSlave(&slave, slavePosition);
 
     cout
         << "<?xml version=\"1.0\" ?>" << endl
@@ -86,7 +95,7 @@ void generateSlaveXml(uint16_t slavePosition)
     }
 
     for (i = 0; i < slave.sync_count; i++) {
-        masterDev.getSync(&sync, slavePosition, i);
+        m.getSync(&sync, slavePosition, i);
 
         cout
             << "          <Sm Enable=\"" << dec << (unsigned int) sync.enable
@@ -97,10 +106,10 @@ void generateSlaveXml(uint16_t slavePosition)
     }
 
     for (i = 0; i < slave.sync_count; i++) {
-        masterDev.getSync(&sync, slavePosition, i);
+        m.getSync(&sync, slavePosition, i);
 
         for (j = 0; j < sync.pdo_count; j++) {
-            masterDev.getPdo(&pdo, slavePosition, i, j);
+            m.getPdo(&pdo, slavePosition, i, j);
             pdoType = (sync.control_register & 0x04 ? "R" : "T");
             pdoType += "xPdo";
 
@@ -113,7 +122,7 @@ void generateSlaveXml(uint16_t slavePosition)
                 << "            <Name>" << pdo.name << "</Name>" << endl;
 
             for (k = 0; k < pdo.entry_count; k++) {
-                masterDev.getPdoEntry(&entry, slavePosition, i, j, k);
+                m.getPdoEntry(&entry, slavePosition, i, j, k);
 
                 cout
                     << "            <Entry>" << endl

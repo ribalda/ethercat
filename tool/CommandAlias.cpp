@@ -9,56 +9,67 @@
 #include <sstream>
 using namespace std;
 
-#include "globals.h"
+#include "CommandAlias.h"
 #include "sii_crc.h"
+#include "byteorder.h"
 
 /*****************************************************************************/
 
-const char *help_alias =
-    "[OPTIONS] <ALIAS>\n"
-    "\n"
-    "Write the secondary slave address (alias) for either\n"
-    "one or for multiple slaves.\n"
-    "\n"
-    "Arguments:\n"
-    "  ALIAS must be an unsigned 16 bit number. Zero means no alias.\n"
-    "\n"
-    "Command-specific options:\n"
-    "  --slave -s <index>  Positive numerical ring position, or 'all' for\n"
-    "                      all slaves (default). The --force option is\n"
-    "                      required in this case.\n"
-    "  --force             Acknowledge writing aliases of all slaves.\n"
-    "\n"
-    "Numerical values can be specified either with decimal (no prefix),\n"
-    "octal (prefix '0') or hexadecimal (prefix '0x') base.\n";
+CommandAlias::CommandAlias():
+    Command("alias", "Write alias addresses.")
+{
+}
 
 /*****************************************************************************/
 
-void writeSlaveAlias(uint16_t, uint16_t);
+string CommandAlias::helpString() const
+{
+    stringstream str;
+
+    str << getName() << " [OPTIONS] <ALIAS>" << endl
+        << endl
+        << getBriefDescription() << endl
+        << endl
+        << "Arguments:" << endl
+        << "  ALIAS must be an unsigned 16 bit number. Zero means no alias."
+        << endl << endl
+        << "Command-specific options:" << endl
+        << "  --slave -s <index>  Positive numerical ring position, or 'all'"
+        << endl
+        << "                      for all slaves (default). The --force"
+        << endl
+        << "                      option is required in this case." << endl
+        << "  --force -f          Acknowledge writing aliases of all" << endl
+        << "                      slaves." << endl
+        << endl
+        << numericInfo();
+
+    return str.str();
+}
 
 /*****************************************************************************/
 
 /** Writes the Secondary slave address (alias) to the slave's SII.
  */
-void command_alias(void)
+void CommandAlias::execute(MasterDevice &m, const StringVector &args)
 {
     uint16_t alias;
     stringstream err, strAlias;
     int number;
     unsigned int numSlaves, i;
 
-    if (commandArgs.size() != 1) {
-        err << "'" << commandName << "' takes exactly one argument!";
-        throw InvalidUsageException(err);
+    if (args.size() != 1) {
+        err << "'" << getName() << "' takes exactly one argument!";
+        throwInvalidUsageException(err);
     }
 
-    strAlias << commandArgs[0];
+    strAlias << args[0];
     strAlias
         >> resetiosflags(ios::basefield) // guess base from prefix
         >> number;
     if (strAlias.fail() || number < 0x0000 || number > 0xffff) {
-        err << "Invalid alias '" << commandArgs[0] << "'!";
-        throw InvalidUsageException(err);
+        err << "Invalid alias '" << args[0] << "'!";
+        throwInvalidUsageException(err);
     }
     alias = number;
 
@@ -66,18 +77,18 @@ void command_alias(void)
         if (!force) {
             err << "This will write the alias addresses of all slaves to "
                 << alias << "! Please specify --force to proceed.";
-            throw CommandException(err);
+            throwCommandException(err);
         }
 
-        masterDev.open(MasterDevice::ReadWrite);
-        numSlaves = masterDev.slaveCount();
+        m.open(MasterDevice::ReadWrite);
+        numSlaves = m.slaveCount();
 
         for (i = 0; i < numSlaves; i++) {
-            writeSlaveAlias(i, alias);
+            writeSlaveAlias(m, i, alias);
         }
     } else {
-        masterDev.open(MasterDevice::ReadWrite);
-        writeSlaveAlias(slavePosition, alias);
+        m.open(MasterDevice::ReadWrite);
+        writeSlaveAlias(m, slavePosition, alias);
     }
 }
 
@@ -85,7 +96,8 @@ void command_alias(void)
 
 /** Writes the Secondary slave address (alias) to the slave's SII.
  */
-void writeSlaveAlias(
+void CommandAlias::writeSlaveAlias(
+        MasterDevice &m,
         uint16_t slavePosition,
         uint16_t alias
         )
@@ -95,12 +107,12 @@ void writeSlaveAlias(
     stringstream err;
     uint8_t crc;
 
-    masterDev.getSlave(&slave, slavePosition);
+    m.getSlave(&slave, slavePosition);
 
     if (slave.sii_nwords < 8) {
         err << "Current SII contents are too small to set an alias "
             << "(" << slave.sii_nwords << " words)!";
-        throw CommandException(err);
+        throwCommandException(err);
     }
 
     // read first 8 SII words
@@ -110,11 +122,11 @@ void writeSlaveAlias(
     data.words = new uint16_t[data.nwords];
 
     try {
-        masterDev.readSii(&data);
+        m.readSii(&data);
     } catch (MasterDeviceException &e) {
         delete [] data.words;
         err << "Failed to read SII: " << e.what();
-        throw CommandException(err);
+        throwCommandException(err);
     }
 
     // write new alias address in word 4
@@ -128,11 +140,11 @@ void writeSlaveAlias(
 
     // write first 8 words with new alias and checksum
     try {
-        masterDev.writeSii(&data);
+        m.writeSii(&data);
     } catch (MasterDeviceException &e) {
         delete [] data.words;
         err << "Failed to read SII: " << e.what();
-        throw CommandException(err);
+        throwCommandException(err);
     }
 
     delete [] data.words;

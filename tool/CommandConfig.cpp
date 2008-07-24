@@ -10,47 +10,50 @@
 #include <sstream>
 using namespace std;
 
-#include "globals.h"
+#include "CommandConfig.h"
+#include "byteorder.h"
 
 /*****************************************************************************/
 
-const char *help_config =
-    "[OPTIONS]\n"
-    "\n"
-    "Output information about the slave configurations supplied by the\n"
-    "application.\n"
-    "\n"
-    "Without the --verbose option, each line of output shows one slave\n"
-    "configuration. Example:\n"
-    "\n"
-    "1001:0  0x0000003b/0x02010000  -  -\n"
-    "|       |                      |  |\n"
-    "|       |                      |  \\- Slave is operational.\n"
-    "|       |                      \\- Slave has been found.\n"
-    "|       \\- Hexadecimal vendor ID and product code, separated by a\n"
-    "|          slash.\n"
-    "\\- Decimal alias and position, separated by a colon.\n"
-    "\n"
-    "With the --verbose option given, the configured Pdos and Sdos are\n"
-    "additionally printed.\n"
-    "\n"
-    "Command-specific options:\n"
-    "  --verbose  -v  Show detailed configurations.\n";
+CommandConfig::CommandConfig():
+    Command("config", "Show slave configurations.")
+{
+}
 
 /*****************************************************************************/
 
-struct ConfigInfo {
-    string alias;
-    string pos;
-    string ident;
-    string att;
-    string op;
-};
+string CommandConfig::helpString() const
+{
+    stringstream str;
 
-typedef list<ec_ioctl_config_t> ConfigList;
+    str << "[OPTIONS]" << endl
+    	<< endl
+    	<< "Output information about the slave configurations" << endl
+    	<< "supplied by the application." << endl
+    	<< endl
+    	<< "Without the --verbose option, slave configurations are" << endl
+    	<< "output one-per-line. Example:" << endl
+    	<< endl
+    	<< "1001:0  0x0000003b/0x02010000  -  -" << endl
+    	<< "|       |                      |  |" << endl
+    	<< "|       |                      |  \\- Slave is operational."
+		<< endl
+    	<< "|       |                      \\- Slave has been found." << endl
+    	<< "|       \\- Hexadecimal vendor ID and product code, separated"
+		<< endl
+    	<< "|          by a slash." << endl
+    	<< "\\- Decimal alias and position, separated by a colon." << endl
+    	<< endl
+    	<< "With the --verbose option given, the configured Pdos and" << endl
+    	<< "Sdos are additionally printed." << endl
+    	<< endl
+    	<< "Command-specific options:" << endl
+    	<< "  --verbose  -v  Show detailed configurations." << endl;
 
-void showDetailedConfigs(const ConfigList &configList);
-void listConfigs(const ConfigList &configList);
+	return str.str();
+}
+
+/*****************************************************************************/
 
 /*****************************************************************************/
 
@@ -64,25 +67,25 @@ bool operator<(const ec_ioctl_config_t &a, const ec_ioctl_config_t &b)
 
 /** Lists the bus configuration.
  */
-void command_config(void)
+void CommandConfig::execute(MasterDevice &m, const StringVector &args)
 {
     ec_ioctl_master_t master;
     unsigned int i;
     ec_ioctl_config_t config;
     ConfigList configList;
 
-    masterDev.open(MasterDevice::Read);
-    masterDev.getMaster(&master);
+    m.open(MasterDevice::Read);
+    m.getMaster(&master);
 
     for (i = 0; i < master.config_count; i++) {
-        masterDev.getConfig(&config, i);
+        m.getConfig(&config, i);
         configList.push_back(config);
     }
 
     configList.sort();
 
-    if (verbosity == Verbose) {
-        showDetailedConfigs(configList);
+    if (getVerbosity() == Verbose) {
+        showDetailedConfigs(m, configList);
     } else {
         listConfigs(configList);
     }
@@ -92,7 +95,10 @@ void command_config(void)
 
 /** Lists the complete bus configuration.
  */
-void showDetailedConfigs(const ConfigList &configList)
+void CommandConfig::showDetailedConfigs(
+		MasterDevice &m,
+		const ConfigList &configList
+		)
 {
     ConfigList::const_iterator configIter;
     unsigned int j, k, l;
@@ -121,14 +127,14 @@ void showDetailedConfigs(const ConfigList &configList)
                     << (configIter->syncs[j].dir == EC_DIR_INPUT
                             ? "Input" : "Output") << ")" << endl;
                 for (k = 0; k < configIter->syncs[j].pdo_count; k++) {
-                    masterDev.getConfigPdo(&pdo, configIter->config_index, j, k);
+                    m.getConfigPdo(&pdo, configIter->config_index, j, k);
 
                     cout << "  Pdo 0x" << hex
                         << setw(4) << pdo.index
                         << " \"" << pdo.name << "\"" << endl;
 
                     for (l = 0; l < pdo.entry_count; l++) {
-                        masterDev.getConfigPdoEntry(&entry,
+                        m.getConfigPdoEntry(&entry,
                                 configIter->config_index, j, k, l);
 
                         cout << "    Pdo entry 0x" << hex
@@ -144,7 +150,7 @@ void showDetailedConfigs(const ConfigList &configList)
         cout << "Sdo configuration:" << endl;
         if (configIter->sdo_count) {
             for (j = 0; j < configIter->sdo_count; j++) {
-                masterDev.getConfigSdo(&sdo, configIter->config_index, j);
+                m.getConfigSdo(&sdo, configIter->config_index, j);
 
                 cout << "  0x"
                     << hex << setfill('0')
@@ -183,14 +189,14 @@ void showDetailedConfigs(const ConfigList &configList)
 
 /** Lists the bus configuration.
  */
-void listConfigs(const ConfigList &configList)
+void CommandConfig::listConfigs(const ConfigList &configList)
 {
     ConfigList::const_iterator configIter;
     stringstream str;
-    ConfigInfo info;
-    typedef list<ConfigInfo> ConfigInfoList;
-    ConfigInfoList list;
-    ConfigInfoList::const_iterator iter;
+    Info info;
+    typedef list<Info> InfoList;
+    InfoList list;
+    InfoList::const_iterator iter;
     unsigned int maxAliasWidth = 0, maxPosWidth = 0,
                  maxAttWidth = 0, maxOpWidth = 0;
 
