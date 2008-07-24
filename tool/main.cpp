@@ -41,7 +41,7 @@ struct Command {
     const char *briefDesc;
 
     int execute(void) const;
-    void displayHelp(void) const;
+    string getHelpString(void) const;
 };
 
 /*****************************************************************************/
@@ -251,7 +251,7 @@ int Command::execute() const
         func();
     } catch (InvalidUsageException &e) {
         cerr << e.what() << endl << endl;
-        displayHelp();
+        cerr << getHelpString();
         return 1;
     } catch (CommandException &e) {
         cerr << e.what() << endl;
@@ -266,9 +266,11 @@ int Command::execute() const
 
 /****************************************************************************/
 
-void Command::displayHelp() const
+string Command::getHelpString() const
 {
-    cerr << binaryBaseName << " " << commandName << " " << helpString;
+    stringstream help;
+    help << binaryBaseName << " " << commandName << " " << helpString;
+    return help.str();
 }
 
 /****************************************************************************/
@@ -342,7 +344,7 @@ int main(int argc, char **argv)
                 masterDev.setIndex(masterIndex);
                 retval = cmd->execute();
             } else {
-                cmd->displayHelp();
+                cout << cmd->getHelpString();
             }
         } else {
             cerr << "Ambiguous command abbreviation! Matching:" << endl;
