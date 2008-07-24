@@ -192,6 +192,7 @@ int ec_slave_config_attach(
                     sc->position, slave->ring_position);
         return -2;
     }
+
     if (slave->sii.vendor_id != sc->vendor_id
             || slave->sii.product_code != sc->product_code) {
         if (sc->master->debug_level)
@@ -206,6 +207,11 @@ int ec_slave_config_attach(
 	// attach slave
 	slave->config = sc;
 	sc->slave = slave;
+
+    // force reconfiguration, because the master could have had no possibility
+    // for a reconfiguration, between two operation phases.
+    slave->force_config = 1;
+
     ec_slave_request_state(slave, EC_SLAVE_STATE_OP);
 
     if (sc->master->debug_level)
