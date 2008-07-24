@@ -13,7 +13,7 @@ using namespace std;
 /*****************************************************************************/
 
 CommandMaster::CommandMaster():
-    Command("alias", "Show master and Ethernet device information.")
+    Command("master", "Show master and Ethernet device information.")
 {
 }
 
