@@ -32,8 +32,6 @@ class CommandSlaves:
 
         void listSlaves(MasterDevice &, int);
         void showSlave(MasterDevice &, uint16_t);
-
-        static string slaveState(uint8_t);
 };
 
 /****************************************************************************/

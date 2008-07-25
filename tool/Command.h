@@ -83,6 +83,8 @@ class Command
         void throwCommandException(const stringstream &);
 
 		enum {BreakAfterBytes = 16};
+        
+        static string alStateString(uint8_t);
 
     private:
 		string name;

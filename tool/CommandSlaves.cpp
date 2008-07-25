@@ -126,7 +126,7 @@ void CommandSlaves::listSlaves(
             info.relPos = str.str();
             str.str("");
 
-            info.state = slaveState(slave.state);
+            info.state = alStateString(slave.state);
             info.flag = (slave.error_flag ? 'E' : '+');
 
             if (strlen(slave.name)) {
@@ -186,7 +186,7 @@ void CommandSlaves::showSlave(
         cout << "Alias: " << slave.alias << endl;
 
     cout
-        << "State: " << slaveState(slave.state) << endl
+        << "State: " << alStateString(slave.state) << endl
         << "Flag: " << (slave.error_flag ? 'E' : '+') << endl
         << "Identity:" << endl
         << "  Vendor Id:       0x"
@@ -271,19 +271,6 @@ void CommandSlaves::showSlave(
             << (slave.general_flags.enable_not_lrw ? "yes" : "no") << endl
             << "  Current consumption: "
             << dec << slave.current_on_ebus << " mA" << endl;
-    }
-}
-
-/****************************************************************************/
-
-string CommandSlaves::slaveState(uint8_t state)
-{
-    switch (state) {
-        case 1: return "INIT";
-        case 2: return "PREOP";
-        case 4: return "SAFEOP";
-        case 8: return "OP";
-        default: return "???";
     }
 }
 
