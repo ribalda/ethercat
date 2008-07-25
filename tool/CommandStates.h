@@ -19,8 +19,6 @@ class CommandStates:
 
         string helpString() const;
         void execute(MasterDevice &, const StringVector &);
-
-    protected:
 };
 
 /****************************************************************************/
