@@ -115,7 +115,7 @@ typedef struct {
     ec_sii_coe_details_t coe_details;
     ec_sii_general_flags_t general_flags;
     int16_t current_on_ebus;
-    uint8_t state;
+    uint8_t al_state;
     uint8_t error_flag;
     uint8_t sync_count;
     uint16_t sdo_count;
@@ -216,7 +216,7 @@ typedef struct {
 typedef struct {
     // inputs
 	uint16_t slave_position;
-    uint8_t requested_state;
+    uint8_t al_state;
 } ec_ioctl_slave_state_t;
 
 /*****************************************************************************/

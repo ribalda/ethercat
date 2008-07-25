@@ -190,7 +190,7 @@ int ec_cdev_ioctl_slave(
     data.coe_details = slave->sii.coe_details;
     data.general_flags = slave->sii.general_flags;
     data.current_on_ebus = slave->sii.current_on_ebus;
-    data.state = slave->current_state;
+    data.al_state = slave->current_state;
     data.error_flag = slave->error_flag;
 
     data.sync_count = slave->sii.sync_count;

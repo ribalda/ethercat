@@ -126,7 +126,7 @@ void CommandSlaves::listSlaves(
             info.relPos = str.str();
             str.str("");
 
-            info.state = alStateString(slave.state);
+            info.state = alStateString(slave.al_state);
             info.flag = (slave.error_flag ? 'E' : '+');
 
             if (strlen(slave.name)) {
@@ -186,7 +186,7 @@ void CommandSlaves::showSlave(
         cout << "Alias: " << slave.alias << endl;
 
     cout
-        << "State: " << alStateString(slave.state) << endl
+        << "State: " << alStateString(slave.al_state) << endl
         << "Flag: " << (slave.error_flag ? 'E' : '+') << endl
         << "Identity:" << endl
         << "  Vendor Id:       0x"

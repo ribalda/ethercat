@@ -407,7 +407,7 @@ void MasterDevice::requestState(
     ec_ioctl_slave_state_t data;
 
     data.slave_position = slavePosition;
-    data.requested_state = state;
+    data.al_state = state;
     
     if (ioctl(fd, EC_IOCTL_SLAVE_STATE, &data)) {
         stringstream err;

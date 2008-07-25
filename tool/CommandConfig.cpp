@@ -128,7 +128,7 @@ void CommandConfig::showDetailedConfigs(
         if (configIter->slave_position != -1) {
             m.getSlave(&slave, configIter->slave_position);
             cout << configIter->slave_position
-                << " (" << alStateString(slave.state) << ")" << endl;
+                << " (" << alStateString(slave.al_state) << ")" << endl;
         } else {
             cout << "none" << endl;
         }
@@ -245,7 +245,7 @@ void CommandConfig::listConfigs(
             str.clear();
             str.str("");
 
-            str << alStateString(slave.state);
+            str << alStateString(slave.al_state);
             info.state = str.str();
             str.clear();
             str.str("");
