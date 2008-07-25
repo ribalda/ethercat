@@ -545,7 +545,7 @@ int ec_cdev_ioctl_slave_state(
         return -EINVAL;
     }
 
-    ec_slave_request_state(slave, data.requested_state);
+    ec_slave_request_state(slave, data.al_state);
 
     up(&master->master_sem);
     return 0;
