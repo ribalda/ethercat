@@ -301,8 +301,7 @@ typedef struct {
         uint32_t pdo_count;
     } syncs[EC_MAX_SYNC_MANAGERS];
     uint32_t sdo_count;
-    uint8_t attached    : 1,
-            operational : 1;
+    int32_t slave_position;
 } ec_ioctl_config_t;
 
 /*****************************************************************************/

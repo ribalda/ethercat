@@ -16,7 +16,6 @@ Version 1.4.0:
 * ethercat tool:
     - Replace --slave by --position.
     - Add --alias option.
-    - Show attached slave position.
     - Show Pdos in 'ethercat slave -v'.
     - Accept files from stdin.
     - Display attached device's MAC address instead of ff's.

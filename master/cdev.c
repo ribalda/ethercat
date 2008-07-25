@@ -994,9 +994,7 @@ int ec_cdev_ioctl_config(
             ec_pdo_list_count(&sc->sync_configs[i].pdos);
     }
     data.sdo_count = ec_slave_config_sdo_count(sc);
-    data.attached = sc->slave != NULL;
-    data.operational = sc->slave &&
-        sc->slave->current_state == EC_SLAVE_STATE_OP;
+    data.slave_position = sc->slave ? sc->slave->ring_position : -1;
 
     up(&master->master_sem);
 

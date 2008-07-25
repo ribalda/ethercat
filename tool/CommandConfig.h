@@ -28,14 +28,14 @@ class CommandConfig:
 			string alias;
 			string pos;
 			string ident;
-			string att;
-			string op;
+			string slavePos;
+			string state;
 		};
 
 		typedef list<ec_ioctl_config_t> ConfigList;
 
 		void showDetailedConfigs(MasterDevice &, const ConfigList &);
-		void listConfigs(const ConfigList &);
+		void listConfigs(MasterDevice &m, const ConfigList &);
 };
 
 /****************************************************************************/

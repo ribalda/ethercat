@@ -33,11 +33,16 @@ string CommandConfig::helpString() const
     	<< "Without the --verbose option, slave configurations are" << endl
     	<< "output one-per-line. Example:" << endl
     	<< endl
-    	<< "1001:0  0x0000003b/0x02010000  -  -" << endl
+    	<< "1001:0  0x0000003b/0x02010000  3  OP" << endl
     	<< "|       |                      |  |" << endl
-    	<< "|       |                      |  \\- Slave is operational."
-		<< endl
-    	<< "|       |                      \\- Slave has been found." << endl
+    	<< "|       |                      |  \\- Application-layer" << endl
+    	<< "|       |                      |     state of the attached" << endl
+    	<< "|       |                      |     slave, or '-', if no" << endl
+    	<< "|       |                      |     slave is attached." << endl
+    	<< "|       |                      \\- Absolute decimal ring" << endl
+    	<< "|       |                         position of the attached" << endl
+    	<< "|       |                         slave, or '-' if none" << endl
+    	<< "|       |                         attached." << endl
     	<< "|       \\- Vendor ID and product code (both" << endl
     	<< "|          hexadecimal)." << endl
     	<< "\\- Alias and relative position (both decimal)." << endl
@@ -86,7 +91,7 @@ void CommandConfig::execute(MasterDevice &m, const StringVector &args)
     if (getVerbosity() == Verbose) {
         showDetailedConfigs(m, configList);
     } else {
-        listConfigs(configList);
+        listConfigs(m, configList);
     }
 }
 
@@ -101,6 +106,7 @@ void CommandConfig::showDetailedConfigs(
 {
     ConfigList::const_iterator configIter;
     unsigned int j, k, l;
+    ec_ioctl_slave_t slave;
     ec_ioctl_config_pdo_t pdo;
     ec_ioctl_config_pdo_entry_t entry;
     ec_ioctl_config_sdo_t sdo;
@@ -117,8 +123,15 @@ void CommandConfig::showDetailedConfigs(
             << setw(8) << configIter->vendor_id << endl
             << "Product code: 0x"
             << setw(8) << configIter->product_code << endl
-            << "Attached: " << (configIter->attached ? "yes" : "no") << endl
-            << "Operational: " << (configIter->operational ? "yes" : "no") << endl;
+            << "Attached slave: ";
+        
+        if (configIter->slave_position != -1) {
+            m.getSlave(&slave, configIter->slave_position);
+            cout << configIter->slave_position
+                << " (" << alStateString(slave.state) << ")" << endl;
+        } else {
+            cout << "none" << endl;
+        }
 
         for (j = 0; j < EC_MAX_SYNC_MANAGERS; j++) {
             if (configIter->syncs[j].pdo_count) {
@@ -188,7 +201,10 @@ void CommandConfig::showDetailedConfigs(
 
 /** Lists the bus configuration.
  */
-void CommandConfig::listConfigs(const ConfigList &configList)
+void CommandConfig::listConfigs(
+        MasterDevice &m,
+        const ConfigList &configList
+        )
 {
     ConfigList::const_iterator configIter;
     stringstream str;
@@ -197,7 +213,8 @@ void CommandConfig::listConfigs(const ConfigList &configList)
     InfoList list;
     InfoList::const_iterator iter;
     unsigned int maxAliasWidth = 0, maxPosWidth = 0,
-                 maxAttWidth = 0, maxOpWidth = 0;
+                 maxSlavePosWidth = 0, maxStateWidth = 0;
+    ec_ioctl_slave_t slave;
 
     for (configIter = configList.begin();
             configIter != configList.end();
@@ -220,15 +237,29 @@ void CommandConfig::listConfigs(const ConfigList &configList)
         str.clear();
         str.str("");
 
-        str << (configIter->attached ? "attached" : "-");
-        info.att = str.str();
-        str.clear();
-        str.str("");
+        if (configIter->slave_position != -1) {
+            m.getSlave(&slave, configIter->slave_position);
 
-        str << (configIter->operational ? "operational" : "-");
-        info.op = str.str();
-        str.clear();
-        str.str("");
+            str << configIter->slave_position;
+            info.slavePos = str.str();
+            str.clear();
+            str.str("");
+
+            str << alStateString(slave.state);
+            info.state = str.str();
+            str.clear();
+            str.str("");
+        } else {
+            str << "-";
+            info.slavePos = str.str();
+            str.clear();
+            str.str("");
+
+            str << "-";
+            info.state = str.str();
+            str.clear();
+            str.str("");
+        }
 
         list.push_back(info);
 
@@ -236,10 +267,10 @@ void CommandConfig::listConfigs(const ConfigList &configList)
             maxAliasWidth = info.alias.length();
         if (info.pos.length() > maxPosWidth)
             maxPosWidth = info.pos.length();
-        if (info.att.length() > maxAttWidth)
-            maxAttWidth = info.att.length();
-        if (info.op.length() > maxOpWidth)
-            maxOpWidth = info.op.length();
+        if (info.slavePos.length() > maxSlavePosWidth)
+            maxSlavePosWidth = info.slavePos.length();
+        if (info.state.length() > maxStateWidth)
+            maxStateWidth = info.state.length();
     }
 
     for (iter = list.begin(); iter != list.end(); iter++) {
@@ -250,8 +281,8 @@ void CommandConfig::listConfigs(const ConfigList &configList)
             << "  "
             << iter->ident
             << "  "
-            << setw(maxAttWidth) << iter->att << "  "
-            << setw(maxOpWidth) << iter->op << "  "
+            << setw(maxSlavePosWidth) << iter->slavePos << "  "
+            << setw(maxStateWidth) << iter->state << "  "
             << endl;
     }
 }
