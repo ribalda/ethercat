@@ -67,16 +67,16 @@ string CommandPdos::helpString() const
 
 void CommandPdos::execute(MasterDevice &m, const StringVector &args)
 {
+    SlaveList slaves;
+    SlaveList::const_iterator si;
+    bool showHeader;
+    
     m.open(MasterDevice::Read);
+    slaves = selectedSlaves(m);
+    showHeader = slaves.size() > 1;
 
-    if (slavePosition == -1) {
-        unsigned int numSlaves = m.slaveCount(), i;
-
-        for (i = 0; i < numSlaves; i++) {
-            listSlavePdos(m, i, true);
-        }
-    } else {
-        listSlavePdos(m, slavePosition, false);
+    for (si = slaves.begin(); si != slaves.end(); si++) {
+        listSlavePdos(m, *si, showHeader);
     }
 }
 
@@ -84,23 +84,20 @@ void CommandPdos::execute(MasterDevice &m, const StringVector &args)
 
 void CommandPdos::listSlavePdos(
 		MasterDevice &m,
-		uint16_t slavePosition,
-		bool withHeader
+        const ec_ioctl_slave_t &slave,
+		bool showHeader
 		)
 {
-    ec_ioctl_slave_t slave;
     ec_ioctl_slave_sync_t sync;
     ec_ioctl_slave_sync_pdo_t pdo;
     ec_ioctl_slave_sync_pdo_entry_t entry;
     unsigned int i, j, k;
     
-    m.getSlave(&slave, slavePosition);
-
-    if (withHeader)
-        cout << "=== Slave " << slavePosition << " ===" << endl;
+    if (showHeader)
+        cout << "=== Slave " << slave.position << " ===" << endl;
 
     for (i = 0; i < slave.sync_count; i++) {
-        m.getSync(&sync, slavePosition, i);
+        m.getSync(&sync, slave.position, i);
 
         cout << "SM" << i << ":"
             << " PhysAddr 0x"
@@ -115,7 +112,7 @@ void CommandPdos::listSlavePdos(
             << endl;
 
         for (j = 0; j < sync.pdo_count; j++) {
-            m.getPdo(&pdo, slavePosition, i, j);
+            m.getPdo(&pdo, slave.position, i, j);
 
             cout << "  " << (sync.control_register & 0x04 ? "R" : "T")
                 << "xPdo 0x"
@@ -127,7 +124,7 @@ void CommandPdos::listSlavePdos(
                 continue;
 
             for (k = 0; k < pdo.entry_count; k++) {
-                m.getPdoEntry(&entry, slavePosition, i, j, k);
+                m.getPdoEntry(&entry, slave.position, i, j, k);
 
                 cout << "    Pdo entry 0x"
                     << hex << setfill('0')

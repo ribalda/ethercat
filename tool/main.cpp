@@ -41,6 +41,7 @@ Command::StringVector commandArgs;
 // option variables
 unsigned int masterIndex = 0;
 int slavePosition = -1;
+int slaveAlias = -1;
 int domainIndex = -1;
 string dataTypeStr;
 Command::Verbosity verbosity = Command::Normal;
@@ -98,20 +99,22 @@ void getOptions(int argc, char **argv)
 	char *remainder;
 
     static struct option longOptions[] = {
-        //name,     has_arg,           flag, val
-        {"master",  required_argument, NULL, 'm'},
-        {"slave",   required_argument, NULL, 's'},
-        {"domain",  required_argument, NULL, 'd'},
-        {"type",    required_argument, NULL, 't'},
-        {"force",   no_argument,       NULL, 'f'},
-        {"quiet",   no_argument,       NULL, 'q'},
-        {"verbose", no_argument,       NULL, 'v'},
-        {"help",    no_argument,       NULL, 'h'},
+        //name,      has_arg,           flag, val
+        {"master",   required_argument, NULL, 'm'},
+        {"alias",    required_argument, NULL, 'a'},
+        {"position", required_argument, NULL, 'p'},
+        {"domain",   required_argument, NULL, 'd'},
+        {"type",     required_argument, NULL, 't'},
+        {"force",    no_argument,       NULL, 'f'},
+        {"quiet",    no_argument,       NULL, 'q'},
+        {"verbose",  no_argument,       NULL, 'v'},
+        {"help",     no_argument,       NULL, 'h'},
         {}
     };
 
     do {
-        c = getopt_long(argc, argv, "m:s:d:t:fqvh", longOptions, &optionIndex);
+        c = getopt_long(argc, argv, "m:a:p:d:t:fqvh",
+                longOptions, &optionIndex);
 
         switch (c) {
             case 'm':
@@ -124,7 +127,22 @@ void getOptions(int argc, char **argv)
 				masterIndex = number;
                 break;
 
-            case 's':
+            case 'a':
+                if (!strcmp(optarg, "all")) {
+                    slaveAlias = -1;
+                } else {
+                    number = strtoul(optarg, &remainder, 0);
+                    if (remainder == optarg || *remainder
+                            || number < 0 || number > 0xFFFF) {
+                        cerr << "Invalid slave alias " << optarg << "!"
+                            << endl << endl << usage();
+                        exit(1);
+                    }
+                    slaveAlias = number;
+                }
+                break;
+
+            case 'p':
                 if (!strcmp(optarg, "all")) {
                     slavePosition = -1;
                 } else {
@@ -265,6 +283,8 @@ int main(int argc, char **argv)
             if (!helpRequested) {
                 try {
                     cmd->setVerbosity(verbosity);
+                    cmd->setAlias(slaveAlias);
+                    cmd->setPosition(slavePosition);
                     cmd->execute(masterDev, commandArgs);
                 } catch (InvalidUsageException &e) {
                     cerr << e.what() << endl << endl;

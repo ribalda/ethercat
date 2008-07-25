@@ -57,7 +57,8 @@ void CommandAlias::execute(MasterDevice &m, const StringVector &args)
     uint16_t alias;
     stringstream err, strAlias;
     int number;
-    unsigned int numSlaves, i;
+    SlaveList slaves;
+    SlaveList::const_iterator si;
 
     if (args.size() != 1) {
         err << "'" << getName() << "' takes exactly one argument!";
@@ -74,22 +75,18 @@ void CommandAlias::execute(MasterDevice &m, const StringVector &args)
     }
     alias = number;
 
-    if (slavePosition == -1) {
-        if (!force) {
-            err << "This will write the alias addresses of all slaves to "
-                << alias << "! Please specify --force to proceed.";
-            throwCommandException(err);
-        }
+    m.open(MasterDevice::ReadWrite);
+    slaves = selectedSlaves(m);
+    
+    if (slaves.size() > 1 && !force) {
+        err << "This will write the alias addresses of "
+            << slaves.size() << " slaves to " << alias
+            << "! Please specify --force to proceed.";
+        throwCommandException(err);
+    }
 
-        m.open(MasterDevice::ReadWrite);
-        numSlaves = m.slaveCount();
-
-        for (i = 0; i < numSlaves; i++) {
-            writeSlaveAlias(m, i, alias);
-        }
-    } else {
-        m.open(MasterDevice::ReadWrite);
-        writeSlaveAlias(m, slavePosition, alias);
+    for (si = slaves.begin(); si != slaves.end(); si++) {
+        writeSlaveAlias(m, *si, alias);
     }
 }
 
@@ -99,16 +96,13 @@ void CommandAlias::execute(MasterDevice &m, const StringVector &args)
  */
 void CommandAlias::writeSlaveAlias(
         MasterDevice &m,
-        uint16_t slavePosition,
+        const ec_ioctl_slave_t &slave,
         uint16_t alias
         )
 {
     ec_ioctl_slave_sii_t data;
-    ec_ioctl_slave_t slave;
     stringstream err;
     uint8_t crc;
-
-    m.getSlave(&slave, slavePosition);
 
     if (slave.sii_nwords < 8) {
         err << "Current SII contents are too small to set an alias "
@@ -117,7 +111,7 @@ void CommandAlias::writeSlaveAlias(
     }
 
     // read first 8 SII words
-    data.slave_position = slavePosition;
+    data.slave_position = slave.position;
     data.offset = 0;
     data.nwords = 8;
     data.words = new uint16_t[data.nwords];

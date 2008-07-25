@@ -21,7 +21,7 @@ class CommandPdos:
         void execute(MasterDevice &, const StringVector &);
 
     protected:
-		void listSlavePdos(MasterDevice &, uint16_t, bool);
+		void listSlavePdos(MasterDevice &, const ec_ioctl_slave_t &, bool);
 };
 
 /****************************************************************************/

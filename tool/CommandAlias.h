@@ -21,7 +21,8 @@ class CommandAlias:
         void execute(MasterDevice &, const StringVector &);
 
     protected:
-        void writeSlaveAlias(MasterDevice &, uint16_t, uint16_t);
+        void writeSlaveAlias(MasterDevice &, const ec_ioctl_slave_t &,
+                uint16_t);
 };
 
 /****************************************************************************/

@@ -21,7 +21,7 @@ class CommandSdos:
         void execute(MasterDevice &, const StringVector &);
 
     protected:
-		void listSlaveSdos(MasterDevice &, uint16_t, bool);
+		void listSlaveSdos(MasterDevice &, const ec_ioctl_slave_t &, bool);
 };
 
 /****************************************************************************/

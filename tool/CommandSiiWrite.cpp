@@ -51,6 +51,7 @@ string CommandSiiWrite::helpString() const
 
 void CommandSiiWrite::execute(MasterDevice &m, const StringVector &args)
 {
+    SlaveList slaves;
     stringstream err;
     ec_ioctl_slave_sii_t data;
     ifstream file;
@@ -59,12 +60,14 @@ void CommandSiiWrite::execute(MasterDevice &m, const StringVector &args)
     uint16_t categoryType, categorySize;
     uint8_t crc;
 
-    if (slavePosition < 0) {
-        err << "'" << getName() << "' requires a slave! "
-            << "Please specify --slave.";
+    slaves = selectedSlaves(m);
+
+    if (slaves.size() != 1) {
+        err << "'" << getName() << "' requires a single slave ("
+            << slaves.size() << " selected).";
         throwInvalidUsageException(err);
     }
-    data.slave_position = slavePosition;
+    data.slave_position = slaves.front().position;
 
     if (args.size() != 1) {
         err << "'" << getName() << "' takes exactly one argument!";

@@ -9,6 +9,7 @@
 
 #include <stdexcept>
 #include <vector>
+#include <list>
 using namespace std;
 
 #include "MasterDevice.h"
@@ -16,7 +17,6 @@ using namespace std;
 /*****************************************************************************/
 
 extern unsigned int masterIndex;
-extern int slavePosition;
 extern int domainIndex;
 extern string dataTypeStr;
 extern bool force;
@@ -57,16 +57,20 @@ class Command
         Command(const string &, const string &);
 		virtual ~Command();
 
+        const string &getName() const;
+        const string &getBriefDescription() const;
+
         enum Verbosity {
             Quiet,
             Normal,
             Verbose
         };
         void setVerbosity(Verbosity);
-
-        const string &getName() const;
-        const string &getBriefDescription() const;
 		Verbosity getVerbosity() const;
+        void setAlias(int);
+        int getAlias() const;
+        void setPosition(int);
+        int getPosition() const;
 
         bool matchesSubstr(const string &) const;
         bool matchesAbbrev(const string &) const;
@@ -79,17 +83,22 @@ class Command
         static string numericInfo();
 
     protected:
+		enum {BreakAfterBytes = 16};
+
         void throwInvalidUsageException(const stringstream &);
         void throwCommandException(const stringstream &);
 
-		enum {BreakAfterBytes = 16};
-        
+        typedef list<ec_ioctl_slave_t> SlaveList;
+        SlaveList selectedSlaves(MasterDevice &);
+
         static string alStateString(uint8_t);
 
     private:
 		string name;
         string briefDesc;
         Verbosity verbosity;
+        int alias;
+        int position;
 
         Command();
 };
@@ -113,6 +122,20 @@ inline const string &Command::getBriefDescription() const
 inline Command::Verbosity Command::getVerbosity() const
 {
     return verbosity;
+}
+
+/****************************************************************************/
+
+inline int Command::getAlias() const
+{
+    return alias;
+}
+
+/****************************************************************************/
+
+inline int Command::getPosition() const
+{
+    return position;
 }
 
 /****************************************************************************/

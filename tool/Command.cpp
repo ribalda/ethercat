@@ -28,6 +28,20 @@ void Command::setVerbosity(Verbosity v)
 	verbosity = v;
 };
 
+/*****************************************************************************/
+
+void Command::setAlias(int a)
+{
+	alias = a;
+};
+
+/*****************************************************************************/
+
+void Command::setPosition(int p)
+{
+	position = p;
+};
+
 /****************************************************************************/
 
 bool Command::matchesSubstr(const string &cmd) const
@@ -76,6 +90,61 @@ void Command::throwInvalidUsageException(const stringstream &s)
 void Command::throwCommandException(const stringstream &s)
 {
     throw CommandException(s);
+}
+
+/*****************************************************************************/
+
+Command::SlaveList Command::selectedSlaves(MasterDevice &m)
+{
+    unsigned int numSlaves = m.slaveCount(), i, aliasIndex;
+    uint16_t lastAlias;
+    ec_ioctl_slave_t slave;
+    SlaveList list;
+
+    if (alias == -1) { // no alias given
+        if (position == -1) { // no alias and position given
+            // all items
+            for (i = 0; i < numSlaves; i++) {
+                m.getSlave(&slave, i);
+                list.push_back(slave);
+            }
+        } else { // no alias, but position given
+            // one item by position
+            m.getSlave(&slave, position);
+            list.push_back(slave);
+        }
+    } else { // alias given
+        if (position == -1) { // alias, but no position given
+            // take all items with a given alias
+            lastAlias = 0;
+            for (i = 0; i < numSlaves; i++) {
+                m.getSlave(&slave, i);
+                if (slave.alias) {
+                    lastAlias = slave.alias;
+                }
+                if (lastAlias == (uint16_t) alias) {
+                    list.push_back(slave);
+                }
+            }
+        } else { // alias and position given
+            lastAlias = 0;
+            aliasIndex = 0;
+            for (i = 0; i < numSlaves; i++) {
+                m.getSlave(&slave, i);
+                if (slave.alias) { // FIXME 'lock' first alias
+                    lastAlias = slave.alias;
+                    aliasIndex = 0;
+                }
+                if (lastAlias == (uint16_t) alias
+                        && aliasIndex == (unsigned int) position) {
+                    list.push_back(slave);
+                }
+                aliasIndex++;
+            }
+        }
+    }
+
+    return list;
 }
 
 /****************************************************************************/

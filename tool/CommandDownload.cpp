@@ -64,13 +64,7 @@ void CommandDownload::execute(MasterDevice &m, const StringVector &args)
     ec_ioctl_slave_sdo_download_t data;
     unsigned int number;
     const CoEDataType *dataType = NULL;
-
-    if (slavePosition < 0) {
-        err << "'" << getName() << "' requires a slave! "
-            << "Please specify --slave.";
-        throwInvalidUsageException(err);
-    }
-    data.slave_position = slavePosition;
+    SlaveList slaves;
 
     if (args.size() != 3) {
         err << "'" << getName() << "' takes 3 arguments!";
@@ -96,6 +90,14 @@ void CommandDownload::execute(MasterDevice &m, const StringVector &args)
     }
     data.sdo_entry_subindex = number;
 
+    m.open(MasterDevice::ReadWrite);
+    slaves = selectedSlaves(m);
+    if (slaves.size() != 1) {
+        err << slaves.size() << " slaves selected, single slave required!";
+        throwInvalidUsageException(err);
+    }
+    data.slave_position = slaves.front().position;
+
     if (dataTypeStr != "") { // data type specified
         if (!(dataType = findDataType(dataTypeStr))) {
             err << "Invalid data type '" << dataTypeStr << "'!";
@@ -104,10 +106,8 @@ void CommandDownload::execute(MasterDevice &m, const StringVector &args)
     } else { // no data type specified: fetch from dictionary
         ec_ioctl_slave_sdo_entry_t entry;
 
-        m.open(MasterDevice::ReadWrite);
-
         try {
-            m.getSdoEntry(&entry, slavePosition,
+            m.getSdoEntry(&entry, data.slave_position,
                     data.sdo_index, data.sdo_entry_subindex);
         } catch (MasterDeviceException &e) {
             err << "Failed to determine Sdo entry data type. "
@@ -203,10 +203,8 @@ void CommandDownload::execute(MasterDevice &m, const StringVector &args)
         throwInvalidUsageException(err);
     }
 
-    m.open(MasterDevice::ReadWrite);
-
 	try {
-			m.sdoDownload(&data);
+        m.sdoDownload(&data);
 	} catch(MasterDeviceException &e) {
         delete [] data.data;
         throw e;

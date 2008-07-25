@@ -50,29 +50,30 @@ string CommandSiiRead::helpString() const
 
 void CommandSiiRead::execute(MasterDevice &m, const StringVector &args)
 {
+    SlaveList slaves;
+    ec_ioctl_slave_t *slave;
     ec_ioctl_slave_sii_t data;
-    ec_ioctl_slave_t slave;
     unsigned int i;
     const uint16_t *categoryHeader;
     uint16_t categoryType, categorySize;
     stringstream err;
 
-    if (slavePosition < 0) {
-        err << "'" << getName() << "' requires a slave! "
-            << "Please specify --slave.";
+    m.open(MasterDevice::Read);
+    slaves = selectedSlaves(m);
+
+    if (slaves.size() != 1) {
+        err << "'" << getName() << "' requires a single slave ("
+            << slaves.size() << " selected).";
         throwInvalidUsageException(err);
     }
-    data.slave_position = slavePosition;
+    slave = &slaves.front();
+    data.slave_position = slave->position;
 
-    m.open(MasterDevice::Read);
-
-    m.getSlave(&slave, slavePosition);
-
-    if (!slave.sii_nwords)
+    if (!slave->sii_nwords)
         return;
 
     data.offset = 0;
-    data.nwords = slave.sii_nwords;
+    data.nwords = slave->sii_nwords;
     data.words = new uint16_t[data.nwords];
 
 	try {

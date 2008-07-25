@@ -65,20 +65,15 @@ string CommandSlaves::helpString() const
 
 void CommandSlaves::execute(MasterDevice &m, const StringVector &args)
 {
+    SlaveList slaves;
+    
     m.open(MasterDevice::Read);
+    slaves = selectedSlaves(m);
 
     if (getVerbosity() == Verbose) {
-        if (slavePosition == -1) {
-            unsigned int numSlaves = m.slaveCount(), i;
-
-            for (i = 0; i < numSlaves; i++) {
-                showSlave(m, i);
-            }
-        } else {
-            showSlave(m, slavePosition);
-        }
+        showSlaves(m, slaves);
     } else {
-        listSlaves(m, slavePosition);
+        listSlaves(m, slaves);
     }
 }
 
@@ -86,7 +81,7 @@ void CommandSlaves::execute(MasterDevice &m, const StringVector &args)
 
 void CommandSlaves::listSlaves(
         MasterDevice &m,
-        int slavePosition
+        const SlaveList &slaves
         )
 {
     unsigned int numSlaves, i;
@@ -112,7 +107,7 @@ void CommandSlaves::listSlaves(
             aliasIndex = 0;
         }
 
-        if (slavePosition == -1 || i == (unsigned int) slavePosition) {
+        if (slaveInList(slave, slaves)) {
             str << dec << i;
             info.pos = str.str();
             str.clear();
@@ -169,109 +164,127 @@ void CommandSlaves::listSlaves(
 
 /****************************************************************************/
 
-void CommandSlaves::showSlave(
+void CommandSlaves::showSlaves(
         MasterDevice &m,
-        uint16_t slavePosition
+        const SlaveList &slaves
         )
 {
-    ec_ioctl_slave_t slave;
+    SlaveList::const_iterator si;
     list<string> protoList;
     list<string>::const_iterator protoIter;
-    
-    m.getSlave(&slave, slavePosition);
-        
-    cout << "=== Slave " << dec << slavePosition << " ===" << endl;
-    
-    if (slave.alias)
-        cout << "Alias: " << slave.alias << endl;
 
-    cout
-        << "State: " << alStateString(slave.al_state) << endl
-        << "Flag: " << (slave.error_flag ? 'E' : '+') << endl
-        << "Identity:" << endl
-        << "  Vendor Id:       0x"
-        << hex << setfill('0')
-        << setw(8) << slave.vendor_id << endl
-        << "  Product code:    0x"
-        << setw(8) << slave.product_code << endl
-        << "  Revision number: 0x"
-        << setw(8) << slave.revision_number << endl
-        << "  Serial number:   0x"
-        << setw(8) << slave.serial_number << endl;
+    for (si = slaves.begin(); si != slaves.end(); si++) {
+        cout << "=== Slave " << dec << si->position << " ===" << endl;
 
-    if (slave.mailbox_protocols) {
-        cout << "Mailboxes:" << endl
-        << "  RX: 0x"
-        << hex << setw(4) << slave.rx_mailbox_offset << "/"
-        << dec << slave.rx_mailbox_size
-        << ", TX: 0x"
-        << hex << setw(4) << slave.tx_mailbox_offset << "/"
-        << dec << slave.tx_mailbox_size << endl
-        << "  Supported protocols: ";
+        if (si->alias)
+            cout << "Alias: " << si->alias << endl;
 
-        if (slave.mailbox_protocols & EC_MBOX_AOE) {
-            protoList.push_back("AoE");
-        }
-        if (slave.mailbox_protocols & EC_MBOX_EOE) {
-            protoList.push_back("EoE");
-        }
-        if (slave.mailbox_protocols & EC_MBOX_COE) {
-            protoList.push_back("CoE");
-        }
-        if (slave.mailbox_protocols & EC_MBOX_FOE) {
-            protoList.push_back("FoE");
-        }
-        if (slave.mailbox_protocols & EC_MBOX_SOE) {
-            protoList.push_back("SoE");
-        }
-        if (slave.mailbox_protocols & EC_MBOX_VOE) {
-            protoList.push_back("VoE");
+        cout
+            << "State: " << alStateString(si->al_state) << endl
+            << "Flag: " << (si->error_flag ? 'E' : '+') << endl
+            << "Identity:" << endl
+            << "  Vendor Id:       0x"
+            << hex << setfill('0')
+            << setw(8) << si->vendor_id << endl
+            << "  Product code:    0x"
+            << setw(8) << si->product_code << endl
+            << "  Revision number: 0x"
+            << setw(8) << si->revision_number << endl
+            << "  Serial number:   0x"
+            << setw(8) << si->serial_number << endl;
+
+        if (si->mailbox_protocols) {
+            cout << "Mailboxes:" << endl
+                << "  RX: 0x"
+                << hex << setw(4) << si->rx_mailbox_offset << "/"
+                << dec << si->rx_mailbox_size
+                << ", TX: 0x"
+                << hex << setw(4) << si->tx_mailbox_offset << "/"
+                << dec << si->tx_mailbox_size << endl
+                << "  Supported protocols: ";
+
+            if (si->mailbox_protocols & EC_MBOX_AOE) {
+                protoList.push_back("AoE");
+            }
+            if (si->mailbox_protocols & EC_MBOX_EOE) {
+                protoList.push_back("EoE");
+            }
+            if (si->mailbox_protocols & EC_MBOX_COE) {
+                protoList.push_back("CoE");
+            }
+            if (si->mailbox_protocols & EC_MBOX_FOE) {
+                protoList.push_back("FoE");
+            }
+            if (si->mailbox_protocols & EC_MBOX_SOE) {
+                protoList.push_back("SoE");
+            }
+            if (si->mailbox_protocols & EC_MBOX_VOE) {
+                protoList.push_back("VoE");
+            }
+
+            for (protoIter = protoList.begin(); protoIter != protoList.end();
+                    protoIter++) {
+                if (protoIter != protoList.begin())
+                    cout << ", ";
+                cout << *protoIter;
+            }
+            cout << endl;
         }
 
-        for (protoIter = protoList.begin(); protoIter != protoList.end();
-                protoIter++) {
-            if (protoIter != protoList.begin())
-                cout << ", ";
-            cout << *protoIter;
+        if (si->has_general_category) {
+            cout << "General:" << endl
+                << "  Group: " << si->group << endl
+                << "  Image name: " << si->image << endl
+                << "  Order number: " << si->order << endl
+                << "  Device name: " << si->name << endl;
+
+            if (si->mailbox_protocols & EC_MBOX_COE) {
+                cout << "  CoE details:" << endl
+                    << "    Enable Sdo: "
+                    << (si->coe_details.enable_sdo ? "yes" : "no") << endl
+                    << "    Enable Sdo Info: "
+                    << (si->coe_details.enable_sdo_info ? "yes" : "no") << endl
+                    << "    Enable Pdo Assign: "
+                    << (si->coe_details.enable_pdo_assign
+                            ? "yes" : "no") << endl
+                    << "    Enable Pdo Configuration: "
+                    << (si->coe_details.enable_pdo_configuration
+                            ? "yes" : "no") << endl
+                    << "    Enable Upload at startup: "
+                    << (si->coe_details.enable_upload_at_startup
+                            ? "yes" : "no") << endl
+                    << "    Enable Sdo complete access: "
+                    << (si->coe_details.enable_sdo_complete_access
+                            ? "yes" : "no") << endl;
+            }
+
+            cout << "  Flags:" << endl
+                << "    Enable SafeOp: "
+                << (si->general_flags.enable_safeop ? "yes" : "no") << endl
+                << "    Enable notLRW: "
+                << (si->general_flags.enable_not_lrw ? "yes" : "no") << endl
+                << "  Current consumption: "
+                << dec << si->current_on_ebus << " mA" << endl;
         }
-        cout << endl;
+    }
+}
+
+/****************************************************************************/
+
+bool CommandSlaves::slaveInList(
+        const ec_ioctl_slave_t &slave,
+        const SlaveList &slaves
+        )
+{
+    SlaveList::const_iterator si;
+
+    for (si = slaves.begin(); si != slaves.end(); si++) {
+        if (si->position == slave.position) {
+            return true;
+        }
     }
 
-    if (slave.has_general_category) {
-        cout << "General:" << endl
-            << "  Group: " << slave.group << endl
-            << "  Image name: " << slave.image << endl
-            << "  Order number: " << slave.order << endl
-            << "  Device name: " << slave.name << endl;
-
-        if (slave.mailbox_protocols & EC_MBOX_COE) {
-            cout << "  CoE details:" << endl
-                << "    Enable Sdo: "
-                << (slave.coe_details.enable_sdo ? "yes" : "no") << endl
-                << "    Enable Sdo Info: "
-                << (slave.coe_details.enable_sdo_info ? "yes" : "no") << endl
-                << "    Enable Pdo Assign: "
-                << (slave.coe_details.enable_pdo_assign
-                        ? "yes" : "no") << endl
-                << "    Enable Pdo Configuration: "
-                << (slave.coe_details.enable_pdo_configuration
-                        ? "yes" : "no") << endl
-                << "    Enable Upload at startup: "
-                << (slave.coe_details.enable_upload_at_startup
-                        ? "yes" : "no") << endl
-                << "    Enable Sdo complete access: "
-                << (slave.coe_details.enable_sdo_complete_access
-                        ? "yes" : "no") << endl;
-        }
-
-        cout << "  Flags:" << endl
-            << "    Enable SafeOp: "
-            << (slave.general_flags.enable_safeop ? "yes" : "no") << endl
-            << "    Enable notLRW: "
-            << (slave.general_flags.enable_not_lrw ? "yes" : "no") << endl
-            << "  Current consumption: "
-            << dec << slave.current_on_ebus << " mA" << endl;
-    }
+    return false;
 }
 
 /*****************************************************************************/

@@ -30,8 +30,10 @@ class CommandSlaves:
             string name;
         };
 
-        void listSlaves(MasterDevice &, int);
-        void showSlave(MasterDevice &, uint16_t);
+        void listSlaves(MasterDevice &, const SlaveList &);
+        void showSlaves(MasterDevice &, const SlaveList &);
+        
+        static bool slaveInList( const ec_ioctl_slave_t &, const SlaveList &);
 };
 
 /****************************************************************************/

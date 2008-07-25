@@ -58,18 +58,12 @@ string CommandUpload::helpString() const
 
 void CommandUpload::execute(MasterDevice &m, const StringVector &args)
 {
+    SlaveList slaves;
     stringstream err, strIndex, strSubIndex;
     int sval;
     ec_ioctl_slave_sdo_upload_t data;
     unsigned int uval;
     const CoEDataType *dataType = NULL;
-
-    if (slavePosition < 0) {
-        err << "'" << getName() << "' requires a slave! "
-            << "Please specify --slave.";
-        throwInvalidUsageException(err);
-    }
-    data.slave_position = slavePosition;
 
     if (args.size() != 2) {
         err << "'" << getName() << "' takes two arguments!";
@@ -95,6 +89,14 @@ void CommandUpload::execute(MasterDevice &m, const StringVector &args)
     }
     data.sdo_entry_subindex = uval;
 
+    m.open(MasterDevice::Read);
+    slaves = selectedSlaves(m);
+    if (slaves.size() != 1) {
+        err << slaves.size() << " slaves selected, single slave required!";
+        throwInvalidUsageException(err);
+    }
+    data.slave_position = slaves.front().position;
+
     if (dataTypeStr != "") { // data type specified
         if (!(dataType = findDataType(dataTypeStr))) {
             err << "Invalid data type '" << dataTypeStr << "'!";
@@ -103,10 +105,8 @@ void CommandUpload::execute(MasterDevice &m, const StringVector &args)
     } else { // no data type specified: fetch from dictionary
         ec_ioctl_slave_sdo_entry_t entry;
 
-        m.open(MasterDevice::Read);
-
         try {
-            m.getSdoEntry(&entry, slavePosition,
+            m.getSdoEntry(&entry, data.slave_position,
                     data.sdo_index, data.sdo_entry_subindex);
         } catch (MasterDeviceException &e) {
             err << "Failed to determine Sdo entry data type. "
@@ -128,8 +128,6 @@ void CommandUpload::execute(MasterDevice &m, const StringVector &args)
     }
 
     data.target = new uint8_t[data.target_size + 1];
-
-    m.open(MasterDevice::Read);
 
 	try {
 		m.sdoUpload(&data);

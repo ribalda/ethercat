@@ -58,16 +58,16 @@ string CommandSdos::helpString() const
 
 void CommandSdos::execute(MasterDevice &m, const StringVector &args)
 {
+    SlaveList slaves;
+    SlaveList::const_iterator si;
+    bool showHeader;
+
     m.open(MasterDevice::Read);
+    slaves = selectedSlaves(m);
+    showHeader = slaves.size() > 1;
 
-    if (slavePosition == -1) {
-        unsigned int numSlaves = m.slaveCount(), i;
-
-        for (i = 0; i < numSlaves; i++) {
-            listSlaveSdos(m, i, true);
-        }
-    } else {
-        listSlaveSdos(m, slavePosition, false);
+    for (si = slaves.begin(); si != slaves.end(); si++) {
+        listSlaveSdos(m, *si, showHeader);
     }
 }
 
@@ -75,23 +75,20 @@ void CommandSdos::execute(MasterDevice &m, const StringVector &args)
 
 void CommandSdos::listSlaveSdos(
 		MasterDevice &m,
-		uint16_t slavePosition,
-		bool withHeader
+        const ec_ioctl_slave_t &slave,
+		bool showHeader
 		)
 {
-    ec_ioctl_slave_t slave;
     ec_ioctl_slave_sdo_t sdo;
     ec_ioctl_slave_sdo_entry_t entry;
     unsigned int i, j;
     const CoEDataType *d;
     
-    m.getSlave(&slave, slavePosition);
-
-    if (withHeader)
-        cout << "=== Slave " << slavePosition << " ===" << endl;
+    if (showHeader)
+        cout << "=== Slave " << slave.position << " ===" << endl;
 
     for (i = 0; i < slave.sdo_count; i++) {
-        m.getSdo(&sdo, slavePosition, i);
+        m.getSdo(&sdo, slave.position, i);
 
         cout << "Sdo 0x"
             << hex << setfill('0')
@@ -102,7 +99,7 @@ void CommandSdos::listSlaveSdos(
             continue;
 
         for (j = 0; j <= sdo.max_subindex; j++) {
-            m.getSdoEntry(&entry, slavePosition, -i, j);
+            m.getSdoEntry(&entry, slave.position, -i, j);
 
             cout << "  0x" << hex << setfill('0')
                 << setw(4) << sdo.sdo_index << ":"

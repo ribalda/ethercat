@@ -45,32 +45,30 @@ string CommandXml::helpString() const
 
 void CommandXml::execute(MasterDevice &m, const StringVector &args)
 {
+    SlaveList slaves;
+    SlaveList::const_iterator si;
+
     m.open(MasterDevice::Read);
+    slaves = selectedSlaves(m);
 
-    if (slavePosition == -1) {
-        unsigned int numSlaves = m.slaveCount(), i;
-
-        for (i = 0; i < numSlaves; i++) {
-            generateSlaveXml(m, i);
-        }
-    } else {
-        generateSlaveXml(m, slavePosition);
+    for (si = slaves.begin(); si != slaves.end(); si++) {
+        generateSlaveXml(m, *si);
     }
 }
 
 /****************************************************************************/
 
-void CommandXml::generateSlaveXml(MasterDevice &m, uint16_t slavePosition)
+void CommandXml::generateSlaveXml(
+        MasterDevice &m,
+        const ec_ioctl_slave_t &slave
+        )
 {
-    ec_ioctl_slave_t slave;
     ec_ioctl_slave_sync_t sync;
     ec_ioctl_slave_sync_pdo_t pdo;
     string pdoType;
     ec_ioctl_slave_sync_pdo_entry_t entry;
     unsigned int i, j, k;
     
-    m.getSlave(&slave, slavePosition);
-
     cout
         << "<?xml version=\"1.0\" ?>" << endl
         << "  <EtherCATInfo>" << endl
@@ -95,7 +93,7 @@ void CommandXml::generateSlaveXml(MasterDevice &m, uint16_t slavePosition)
     }
 
     for (i = 0; i < slave.sync_count; i++) {
-        m.getSync(&sync, slavePosition, i);
+        m.getSync(&sync, slave.position, i);
 
         cout
             << "          <Sm Enable=\"" << dec << (unsigned int) sync.enable
@@ -106,10 +104,10 @@ void CommandXml::generateSlaveXml(MasterDevice &m, uint16_t slavePosition)
     }
 
     for (i = 0; i < slave.sync_count; i++) {
-        m.getSync(&sync, slavePosition, i);
+        m.getSync(&sync, slave.position, i);
 
         for (j = 0; j < sync.pdo_count; j++) {
-            m.getPdo(&pdo, slavePosition, i, j);
+            m.getPdo(&pdo, slave.position, i, j);
             pdoType = (sync.control_register & 0x04 ? "R" : "T");
             pdoType += "xPdo";
 
@@ -122,7 +120,7 @@ void CommandXml::generateSlaveXml(MasterDevice &m, uint16_t slavePosition)
                 << "            <Name>" << pdo.name << "</Name>" << endl;
 
             for (k = 0; k < pdo.entry_count; k++) {
-                m.getPdoEntry(&entry, slavePosition, i, j, k);
+                m.getPdoEntry(&entry, slave.position, i, j, k);
 
                 cout
                     << "            <Entry>" << endl

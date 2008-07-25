@@ -42,6 +42,8 @@ string CommandStates::helpString() const
 
 void CommandStates::execute(MasterDevice &m, const StringVector &args)
 {
+    SlaveList slaves;
+    SlaveList::const_iterator si;
     stringstream err;
     string stateStr;
     uint8_t state = 0x00;
@@ -69,13 +71,10 @@ void CommandStates::execute(MasterDevice &m, const StringVector &args)
     }
 
     m.open(MasterDevice::ReadWrite);
+    slaves = selectedSlaves(m);
 
-    if (slavePosition == -1) {
-        unsigned int i, numSlaves = m.slaveCount();
-        for (i = 0; i < numSlaves; i++)
-            m.requestState(i, state);
-    } else {
-        m.requestState(slavePosition, state);
+    for (si = slaves.begin(); si != slaves.end(); si++) {
+        m.requestState(si->position, state);
     }
 }
 
