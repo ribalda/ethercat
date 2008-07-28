@@ -16,15 +16,16 @@ using namespace std;
 #include "CommandData.h"
 #include "CommandDebug.h"
 #include "CommandDomains.h"
+#include "CommandDownload.h"
 #include "CommandMaster.h"
 #include "CommandPdos.h"
 #include "CommandSdos.h"
-#include "CommandDownload.h"
-#include "CommandUpload.h"
-#include "CommandSlaves.h"
 #include "CommandSiiRead.h"
 #include "CommandSiiWrite.h"
+#include "CommandSlaves.h"
 #include "CommandStates.h"
+#include "CommandUpload.h"
+#include "CommandVersion.h"
 #include "CommandXml.h"
 
 /*****************************************************************************/
@@ -268,6 +269,7 @@ int main(int argc, char **argv)
     commandList.push_back(new CommandSlaves());
     commandList.push_back(new CommandStates());
     commandList.push_back(new CommandUpload());
+    commandList.push_back(new CommandVersion());
     commandList.push_back(new CommandXml());
 
 	getOptions(argc, argv);

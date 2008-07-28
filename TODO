@@ -14,10 +14,7 @@ Version 1.4.0:
 * Get original driver for r8169.
 * Race in jiffies frame timeout?
 * ethercat tool:
-    - Data type abbreviations.
-    - Add a -n (numeric) switch.
     - Check for options, remove global variables.
-    - Add 'etherlab version'.
 
 Future issues:
 
@@ -36,6 +33,9 @@ Future issues:
 * Interface/buffers for asynchronous domain IO.
 * Make scanning and configuration run parallel (each).
 * File access over EtherCAT (FoE).
+* ethercat tool:
+    - Data type abbreviations.
+    - Add a -n (numeric) switch.
 
 Smaller issues:
 

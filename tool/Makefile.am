@@ -37,9 +37,9 @@ bin_PROGRAMS = ethercat
 
 ethercat_SOURCES = \
 	MasterDevice.cpp MasterDevice.h \
-	Command.cpp \
 	CommandAlias.cpp \
 	CommandConfig.cpp \
+	Command.cpp \
 	CommandData.cpp \
 	CommandDebug.cpp \
 	CommandDomains.cpp \
@@ -52,11 +52,18 @@ ethercat_SOURCES = \
 	CommandSlaves.cpp \
 	CommandStates.cpp \
 	CommandUpload.cpp \
+	CommandVersion.cpp \
 	CommandXml.cpp \
 	coe_datatypes.cpp \
 	sii_crc.cpp \
 	main.cpp
 
-ethercat_CXXFLAGS = -I../master -Wall
+REV = `if test -s $(srcdir)/../svnrevision; then \
+		cat $(srcdir)/../svnrevision; \
+	else \
+		svnversion $(srcdir)/.. 2>/dev/null || echo "unknown"; \
+	fi`
+
+ethercat_CXXFLAGS = -I../master -Wall -DSVNREV=$(REV)
 
 #------------------------------------------------------------------------------
