@@ -58,40 +58,19 @@ string CommandConfig::helpString() const
 
 /*****************************************************************************/
 
-bool operator<(
-        const ec_ioctl_config_t &a,
-        const ec_ioctl_config_t &b
-        )
-{
-    return a.alias < b.alias
-        || (a.alias == b.alias && a.position < b.position);
-}
-
-/*****************************************************************************/
-
 /** Lists the bus configuration.
  */
 void CommandConfig::execute(MasterDevice &m, const StringVector &args)
 {
-    ec_ioctl_master_t master;
-    unsigned int i;
-    ec_ioctl_config_t config;
-    ConfigList configList;
+    ConfigList configs;
 
     m.open(MasterDevice::Read);
-    m.getMaster(&master);
-
-    for (i = 0; i < master.config_count; i++) {
-        m.getConfig(&config, i);
-        configList.push_back(config);
-    }
-
-    configList.sort();
+    configs = selectedConfigs(m);
 
     if (getVerbosity() == Verbose) {
-        showDetailedConfigs(m, configList);
+        showDetailedConfigs(m, configs);
     } else {
-        listConfigs(m, configList);
+        listConfigs(m, configs);
     }
 }
 

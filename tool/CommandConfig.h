@@ -32,8 +32,6 @@ class CommandConfig:
 			string state;
 		};
 
-		typedef list<ec_ioctl_config_t> ConfigList;
-
 		void showDetailedConfigs(MasterDevice &, const ConfigList &);
 		void listConfigs(MasterDevice &m, const ConfigList &);
 };

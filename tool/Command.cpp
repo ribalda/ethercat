@@ -159,6 +159,69 @@ Command::SlaveList Command::selectedSlaves(MasterDevice &m)
     return list;
 }
 
+/*****************************************************************************/
+
+bool operator<(
+        const ec_ioctl_config_t &a,
+        const ec_ioctl_config_t &b
+        )
+{
+    return a.alias < b.alias
+        || (a.alias == b.alias && a.position < b.position);
+}
+
+/*****************************************************************************/
+
+Command::ConfigList Command::selectedConfigs(MasterDevice &m)
+{
+    unsigned int i;
+    int effAlias;
+    ec_ioctl_master_t master;
+    ec_ioctl_config_t config;
+    ConfigList list;
+    stringstream err;
+
+    m.getMaster(&master);
+
+    // Assume alias 0 if only position is given.
+    if (alias == -1 && position != -1) {
+        effAlias = 0;
+    } else {
+        effAlias = alias;
+    }
+
+    if (effAlias == -1) { // no alias given
+        if (position == -1) { // no alias and position given
+            // all items
+            for (i = 0; i < master.config_count; i++) {
+                m.getConfig(&config, i);
+                list.push_back(config);
+            }
+        }
+    } else { // alias given
+        if (position == -1) { // alias, but no position given
+            // take all items with a given alias
+            for (i = 0; i < master.config_count; i++) {
+                m.getConfig(&config, i);
+                if (config.alias == effAlias) {
+                    list.push_back(config);
+                }
+            }
+        } else { // alias and position given
+            for (i = 0; i < master.config_count; i++) {
+                m.getConfig(&config, i);
+                if (config.alias == effAlias && config.position == position) {
+                    list.push_back(config);
+                    break; // there can be at most one matching
+                }
+            }
+        }
+    }
+
+    list.sort();
+    return list;
+}
+
 /****************************************************************************/
 
 string Command::alStateString(uint8_t state)

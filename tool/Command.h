@@ -91,6 +91,8 @@ class Command
 
         typedef list<ec_ioctl_slave_t> SlaveList;
         SlaveList selectedSlaves(MasterDevice &);
+        typedef list<ec_ioctl_config_t> ConfigList;
+        ConfigList selectedConfigs(MasterDevice &);
 
         static string alStateString(uint8_t);
 
