@@ -85,6 +85,8 @@ Changes in version 1.4.0:
     - Added e1000 driver for kernel 2.6.24, thanks to Matthias Luescher.
     - Added alpha support for the Reaktek r8169 chipset, thanks to Scott
       Hassan.
+    - Fixed unnecessary watchdog executions in e1000 drivers (thanks to
+      Olav Zarges).
 * Removed the "bus validation" routines. Slave scanning is now done any time
   the bus topology changes, even during realtime operation. Because of this,
   the bus_tainted flag was deprecated and removed.
