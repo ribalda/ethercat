@@ -92,8 +92,7 @@ void CommandUpload::execute(MasterDevice &m, const StringVector &args)
     m.open(MasterDevice::Read);
     slaves = selectedSlaves(m);
     if (slaves.size() != 1) {
-        err << slaves.size() << " slaves selected, single slave required!";
-        throwInvalidUsageException(err);
+        throwSingleSlaveRequired(slaves.size());
     }
     data.slave_position = slaves.front().position;
 

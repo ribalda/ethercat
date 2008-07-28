@@ -63,9 +63,7 @@ void CommandSiiWrite::execute(MasterDevice &m, const StringVector &args)
     slaves = selectedSlaves(m);
 
     if (slaves.size() != 1) {
-        err << "'" << getName() << "' requires a single slave ("
-            << slaves.size() << " selected).";
-        throwInvalidUsageException(err);
+        throwSingleSlaveRequired(slaves.size());
     }
     data.slave_position = slaves.front().position;
 

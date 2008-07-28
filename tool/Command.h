@@ -85,8 +85,9 @@ class Command
     protected:
 		enum {BreakAfterBytes = 16};
 
-        void throwInvalidUsageException(const stringstream &);
-        void throwCommandException(const stringstream &);
+        void throwInvalidUsageException(const stringstream &) const;
+        void throwCommandException(const stringstream &) const;
+        void throwSingleSlaveRequired(unsigned int) const;
 
         typedef list<ec_ioctl_slave_t> SlaveList;
         SlaveList selectedSlaves(MasterDevice &);

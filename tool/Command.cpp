@@ -80,16 +80,28 @@ string Command::numericInfo()
 
 /*****************************************************************************/
 
-void Command::throwInvalidUsageException(const stringstream &s)
+void Command::throwInvalidUsageException(const stringstream &s) const
 {
     throw InvalidUsageException(s);
 }
 
 /*****************************************************************************/
 
-void Command::throwCommandException(const stringstream &s)
+void Command::throwCommandException(const stringstream &s) const
 {
     throw CommandException(s);
+}
+
+/*****************************************************************************/
+
+void Command::throwSingleSlaveRequired(unsigned int size) const
+{
+    stringstream err;
+
+    err << "The slave selection matches " << size << "slaves. '"
+        << name << "' requires a single slave.";
+
+    throwInvalidUsageException(err);
 }
 
 /*****************************************************************************/
