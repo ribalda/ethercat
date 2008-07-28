@@ -33,15 +33,16 @@ string CommandAlias::helpString() const
         << "Arguments:" << endl
         << "  ALIAS must be an unsigned 16 bit number. Zero means" << endl
         << "        removing an alias address." << endl
-        << endl << endl
+        << endl
+        << "If multiple slaves are selected, the --force option" << endl
+        << "is required." << endl
+        << endl
         << "Command-specific options:" << endl
-        << "  --slave -s <index>  Positive numerical ring position, or 'all'"
-        << endl
-        << "                      for all slaves (default). The --force"
-        << endl
-        << "                      option is required in this case." << endl
-        << "  --force -f          Acknowledge writing aliases of all" << endl
-        << "                      slaves." << endl
+        << "  --alias    -a <alias>" << endl
+        << "  --position -p <pos>    Slave selection. See the help of" << endl
+        << "                         the 'slaves' command." << endl
+        << "  --force    -f          Acknowledge writing aliases of" << endl
+        << "                         multiple slaves." << endl
         << endl
         << numericInfo();
 
@@ -83,6 +84,10 @@ void CommandAlias::execute(MasterDevice &m, const StringVector &args)
             << slaves.size() << " slaves to " << alias
             << "! Please specify --force to proceed.";
         throwCommandException(err);
+    }
+
+    if (!slaves.size() && getVerbosity() != Quiet) {
+        cerr << "Warning: Selection matches no slaves!" << endl;
     }
 
     for (si = slaves.begin(); si != slaves.end(); si++) {

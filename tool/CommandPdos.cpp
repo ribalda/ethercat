@@ -55,8 +55,9 @@ string CommandPdos::helpString() const
 		<< "CoE communication area." << endl
     	<< endl
     	<< "Command-specific options:" << endl
-    	<< "  --slave -s <index>  Positive numerical ring position," << endl
-    	<< "                      or 'all' for all slaves (default)." << endl
+        << "  --alias    -a <alias>" << endl
+        << "  --position -p <pos>    Slave selection. See the help of" << endl
+        << "                         the 'slaves' command." << endl
     	<< endl
 		<< numericInfo();
 

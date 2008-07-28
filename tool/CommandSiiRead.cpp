@@ -28,6 +28,8 @@ string CommandSiiRead::helpString() const
     	<< endl
     	<< getBriefDescription() << endl
     	<< endl
+        << "This command requires a single slave to be selected." << endl
+    	<< endl
     	<< "Without the --verbose option, binary SII contents are" << endl
 		<< "output." << endl
     	<< endl
@@ -36,10 +38,11 @@ string CommandSiiRead::helpString() const
 		<< "names." << endl
     	<< endl
     	<< "Command-specific options:" << endl
-    	<< "  --slave   -s <index>  Positive numerical ring position" << endl
-		<< "                        (mandatory)." << endl
-    	<< "  --verbose -v          Output textual data with" << endl
-		<< "                        category names." << endl
+        << "  --alias    -a <alias>" << endl
+        << "  --position -p <pos>    Slave selection. See the help of" << endl
+        << "                         the 'slaves' command." << endl
+    	<< "  --verbose  -v          Output textual data with" << endl
+		<< "                         category names." << endl
     	<< endl
 		<< numericInfo();
 

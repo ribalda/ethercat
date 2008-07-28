@@ -40,21 +40,39 @@ string CommandSlaves::helpString() const
         << "|  |    |  |         'E' means that scan or" << endl
         << "|  |    |  |         configuration failed." << endl
         << "|  |    |  \\- Current application-layer state." << endl
-        << "|  |    \\- Relative position (decimal) after the last" << endl
+        << "|  |    \\- Decimal relative position to the last" << endl
         << "|  |       slave with an alias address set." << endl
-        << "|  \\- Alias address of the slave (if set), or the alias" << endl
-        << "|     of the last slave with an alias, or zero if not" << endl
-        << "|     applicable" << endl
-        << "\\- Absolute ring position in the bus (use this with any" << endl
-        << "   --slave option)." << endl
+        << "|  \\- Decimal alias address of this slave (if set)," << endl
+        << "|     otherwise of the last slave with an alias set," << endl
+        << "|     or zero, if no alias was encountered up to this" << endl
+        << "|     position." << endl
+        << "\\- Absolute ring position in the bus." << endl
         << endl
         << "If the --verbose option is given, a detailed (multi-line)" << endl
         << "description is output for each slave." << endl
         << endl
+        << "Slave selection:" << endl
+        << "  Slaves for this and other commands can be selected with" << endl
+        << "  the --alias and --position parameters as follows:" << endl
+        << endl
+        << "  1) If neither the --alias nor the --position option" << endl
+        << "     is given, all slaves are selected." << endl
+        << "  2) If only the --position option is given, it is" << endl
+        << "     interpreted as an absolute ring position and" << endl
+        << "     a slave with this position is matched." << endl
+        << "  3) If only the --alias option is given, all slaves" << endl
+        << "     with the given alias address and subsequent" << endl
+        << "     slaves before a slave with a different alias" << endl
+        << "     address match (use -p0 if only the slaves" << endl
+        << "     with the given alias are desired, see 4))." << endl
+        << "  4) If both the --alias and the --position option are" << endl
+        << "     given, the latter is interpreted as relative" << endl
+        << "     position behind any slave with the given alias." << endl
+        << endl
         << "Command-specific options:" << endl
-        << "  --slave   -s <index>  Positive numerical ring position," << endl
-        << "                        or 'all' for all slaves (default)." << endl
-        << "  --verbose -v          Show detailed slave information." << endl
+        << "  --alias    -a <alias>  Slave alias (see above)." << endl
+        << "  --position -p <pos>    Slave position (see above)." << endl
+        << "  --verbose  -v          Show detailed slave information." << endl
         << endl
         << numericInfo();
 

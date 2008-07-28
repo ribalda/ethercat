@@ -44,10 +44,11 @@ string CommandSdos::helpString() const
     	<< "If the --quiet option is given, only the Sdos are output."
 		<< endl << endl
     	<< "Command-specific options:" << endl
-    	<< "  --slave -s <index>  Positive numerical ring position," << endl
-		<< "                      or 'all' for all slaves (default)." << endl
-    	<< "  --quiet -q          Only output Sdos (without the Sdo" << endl
-		<< "                      entries)." << endl
+        << "  --alias    -a <alias>" << endl
+        << "  --position -p <pos>    Slave selection. See the help of" << endl
+        << "                         the 'slaves' command." << endl
+    	<< "  --quiet    -q          Only output Sdos (without the" << endl
+		<< "                         Sdo entries)." << endl
     	<< endl
 		<< numericInfo();
 

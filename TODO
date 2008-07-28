@@ -14,13 +14,16 @@ Version 1.4.0:
 * Get original driver for r8169.
 * Race in jiffies frame timeout?
 * ethercat tool:
-    - Update help for --alias and --position.
     - Show Pdos in 'ethercat slave -v'.
     - Accept files from stdin.
     - Display attached device's MAC address instead of ff's.
     - Data type abbreviations.
     - Add a -n (numeric) switch.
     - Check for options, remove global variables.
+    - Remove MasterDevice::slaveCount().
+    - Alias index?
+    - Add 'etherlab version'.
+    - Remove 'all' parameter values.
 
 Future issues:
 

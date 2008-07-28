@@ -29,6 +29,8 @@ string CommandUpload::helpString() const
         << endl
         << getBriefDescription() << endl
         << endl
+        << "This command requires a single slave to be selected." << endl
+    	<< endl
         << "The data type of the Sdo entry is taken from the Sdo" << endl
         << "dictionary by default. It can be overridden with the" << endl
         << "--type option. If the slave does not support the Sdo" << endl
@@ -45,9 +47,10 @@ string CommandUpload::helpString() const
         << "           unsigned 8 bit number." << endl
         << endl
         << "Command-specific options:" << endl
-        << "  --slave -s <index>  Positive numerical ring position" << endl
-        << "                      (mandatory)." << endl
-        << "  --type  -t <type>   Sdo entry data type (see above)." << endl
+        << "  --alias    -a <alias>" << endl
+        << "  --position -p <pos>    Slave selection. See the help of" << endl
+        << "                         the 'slaves' command." << endl
+        << "  --type     -t <type>   Sdo entry data type (see above)." << endl
         << endl
         << numericInfo();
 

@@ -30,6 +30,8 @@ string CommandSiiWrite::helpString() const
         << endl 
         << getBriefDescription() << endl
         << endl
+        << "This command requires a single slave to be selected." << endl
+    	<< endl
         << "The file contents are checked for validity and integrity." << endl
         << "These checks can be overridden with the --force option." << endl
         << endl
@@ -38,9 +40,10 @@ string CommandSiiWrite::helpString() const
         << "           positive number of words." << endl
         << endl
         << "Command-specific options:" << endl
-        << "  --slave -s <index>  Positive numerical ring position" << endl
-        << "                      (mandatory)." << endl
-        << "  --force -f          Override validity checks." << endl
+        << "  --alias    -a <alias>" << endl
+        << "  --position -p <pos>    Slave selection. See the help of" << endl
+        << "                         the 'slaves' command." << endl
+        << "  --force    -f          Override validity checks." << endl
         << endl
         << numericInfo();
 
@@ -59,13 +62,6 @@ void CommandSiiWrite::execute(MasterDevice &m, const StringVector &args)
     const uint16_t *categoryHeader;
     uint16_t categoryType, categorySize;
     uint8_t crc;
-
-    slaves = selectedSlaves(m);
-
-    if (slaves.size() != 1) {
-        throwSingleSlaveRequired(slaves.size());
-    }
-    data.slave_position = slaves.front().position;
 
     if (args.size() != 1) {
         err << "'" << getName() << "' takes exactly one argument!";
@@ -131,8 +127,14 @@ void CommandSiiWrite::execute(MasterDevice &m, const StringVector &args)
         }
     }
 
-    // send data to master
     m.open(MasterDevice::ReadWrite);
+    slaves = selectedSlaves(m);
+    if (slaves.size() != 1) {
+        throwSingleSlaveRequired(slaves.size());
+    }
+    data.slave_position = slaves.front().position;
+
+    // send data to master
     data.offset = 0;
 	m.writeSii(&data);
 }

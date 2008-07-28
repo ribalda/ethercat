@@ -43,15 +43,33 @@ string CommandConfig::helpString() const
     	<< "|       |                         position of the attached" << endl
     	<< "|       |                         slave, or '-' if none" << endl
     	<< "|       |                         attached." << endl
-    	<< "|       \\- Vendor ID and product code (both" << endl
+    	<< "|       \\- Expected vendor ID and product code (both" << endl
     	<< "|          hexadecimal)." << endl
-    	<< "\\- Alias and relative position (both decimal)." << endl
+    	<< "\\- Alias address and relative position (both decimal)." << endl
     	<< endl
     	<< "With the --verbose option given, the configured Pdos and" << endl
     	<< "Sdos are output in addition." << endl
+        << endl
+        << "Configuration selection:" << endl
+        << "  Slave configurations can be selected with" << endl
+        << "  the --alias and --position parameters as follows:" << endl
+        << endl
+        << "  1) If neither the --alias nor the --position option" << endl
+        << "     is given, all slave configurations are selected." << endl
+        << "  2) If only the --position option is given, an alias" << endl
+        << "     of zero is assumed (see 4))." << endl
+        << "  3) If only the --alias option is given, all slave" << endl
+        << "     configurations with the given alias address" << endl
+        << "     match." << endl
+        << "  4) If both the --alias and the --position option are" << endl
+        << "     given, the specified configuration is matched." << endl
     	<< endl
     	<< "Command-specific options:" << endl
-    	<< "  --verbose -v  Show detailed configurations." << endl;
+        << "  --alias    -a <alias>  Configuration alias (see above)." << endl
+        << "  --position -p <pos>    Relative position (see above)." << endl
+    	<< "  --verbose  -v          Show detailed configurations." << endl
+        << endl
+        << numericInfo();
 
 	return str.str();
 }
