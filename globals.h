@@ -47,24 +47,20 @@
  *  Overall macros
  *****************************************************************************/
 
-/**
-   Helper macro for EC_STR(), literates a macro argument.
-   \param X argument to literate.
-*/
-
+/** Helper macro for EC_STR(), literates a macro argument.
+ *
+ * \param X argument to literate.
+ */
 #define EC_LIT(X) #X
 
-/**
-   Converts a macro argument to a string.
-   \param X argument to stringify.
-*/
-
+/** Converts a macro argument to a string.
+ *
+ * \param X argument to stringify.
+ */
 #define EC_STR(X) EC_LIT(X)
 
-/**
-   Master version string
-*/
-
+/** Master version string
+ */
 #define EC_MASTER_VERSION VERSION " " BRANCH " r" EC_STR(SVNREV)
 
 /*****************************************************************************/
