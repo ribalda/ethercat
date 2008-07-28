@@ -102,7 +102,8 @@ void CommandSlaves::listSlaves(
         const SlaveList &slaves
         )
 {
-    unsigned int numSlaves, i;
+    ec_ioctl_master_t master;
+    unsigned int i;
     ec_ioctl_slave_t slave;
     uint16_t lastAlias, aliasIndex;
     Info info;
@@ -113,11 +114,11 @@ void CommandSlaves::listSlaves(
     unsigned int maxPosWidth = 0, maxAliasWidth = 0,
                  maxRelPosWidth = 0, maxStateWidth = 0;
     
-    numSlaves = m.slaveCount();
+    m.getMaster(&master);
 
     lastAlias = 0;
     aliasIndex = 0;
-    for (i = 0; i < numSlaves; i++) {
+    for (i = 0; i < master.slave_count; i++) {
         m.getSlave(&slave, i);
         
         if (slave.alias) {

@@ -20,7 +20,6 @@ Version 1.4.0:
     - Data type abbreviations.
     - Add a -n (numeric) switch.
     - Check for options, remove global variables.
-    - Remove MasterDevice::slaveCount().
     - Add 'etherlab version'.
 
 Future issues:

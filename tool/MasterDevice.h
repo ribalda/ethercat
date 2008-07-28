@@ -42,8 +42,6 @@ class MasterDevice
         void open(Permissions);
         void close();
 
-        unsigned int slaveCount();
-
         void getMaster(ec_ioctl_master_t *);
         void getConfig(ec_ioctl_config_t *, unsigned int);
         void getConfigPdo(ec_ioctl_config_pdo_t *, unsigned int, uint8_t,

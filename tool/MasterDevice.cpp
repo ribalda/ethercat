@@ -68,16 +68,6 @@ void MasterDevice::close()
 
 /****************************************************************************/
 
-unsigned int MasterDevice::slaveCount()
-{
-    ec_ioctl_master_t data;
-
-    getMaster(&data);
-    return data.slave_count;
-}
-
-/****************************************************************************/
-
 void MasterDevice::getMaster(ec_ioctl_master_t *data)
 {
     if (ioctl(fd, EC_IOCTL_MASTER, data) < 0) {

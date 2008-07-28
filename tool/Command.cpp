@@ -108,15 +108,18 @@ void Command::throwSingleSlaveRequired(unsigned int size) const
 
 Command::SlaveList Command::selectedSlaves(MasterDevice &m)
 {
-    unsigned int numSlaves = m.slaveCount(), i, aliasIndex;
+    ec_ioctl_master_t master;
+    unsigned int i, aliasIndex;
     uint16_t lastAlias;
     ec_ioctl_slave_t slave;
     SlaveList list;
 
+    m.getMaster(&master);
+
     if (alias == -1) { // no alias given
         if (position == -1) { // no alias and position given
             // all items
-            for (i = 0; i < numSlaves; i++) {
+            for (i = 0; i < master.slave_count; i++) {
                 m.getSlave(&slave, i);
                 list.push_back(slave);
             }
@@ -129,7 +132,7 @@ Command::SlaveList Command::selectedSlaves(MasterDevice &m)
         if (position == -1) { // alias, but no position given
             // take all items with a given alias
             lastAlias = 0;
-            for (i = 0; i < numSlaves; i++) {
+            for (i = 0; i < master.slave_count; i++) {
                 m.getSlave(&slave, i);
                 if (slave.alias) {
                     lastAlias = slave.alias;
@@ -141,7 +144,7 @@ Command::SlaveList Command::selectedSlaves(MasterDevice &m)
         } else { // alias and position given
             lastAlias = 0;
             aliasIndex = 0;
-            for (i = 0; i < numSlaves; i++) {
+            for (i = 0; i < master.slave_count; i++) {
                 m.getSlave(&slave, i);
                 if (slave.alias && slave.alias == (uint16_t) alias) {
                     lastAlias = slave.alias;
