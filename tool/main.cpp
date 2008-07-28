@@ -95,8 +95,8 @@ string usage()
 
 void getOptions(int argc, char **argv)
 {
-    int c, argCount, optionIndex, number;
-	char *remainder;
+    int c, argCount;
+    stringstream str;
 
     static struct option longOptions[] = {
         //name,      has_arg,           flag, val
@@ -113,61 +113,59 @@ void getOptions(int argc, char **argv)
     };
 
     do {
-        c = getopt_long(argc, argv, "m:a:p:d:t:fqvh",
-                longOptions, &optionIndex);
+        c = getopt_long(argc, argv, "m:a:p:d:t:fqvh", longOptions, NULL);
 
         switch (c) {
             case 'm':
-                number = strtoul(optarg, &remainder, 0);
-                if (remainder == optarg || *remainder || number < 0) {
+                str.clear();
+                str.str("");
+                str << optarg;
+                str >> resetiosflags(ios::basefield) // guess base from prefix
+                    >> masterIndex;
+                if (str.fail() || masterIndex < 0) {
                     cerr << "Invalid master number " << optarg << "!" << endl
                         << endl << usage();
                     exit(1);
                 }
-				masterIndex = number;
                 break;
 
             case 'a':
-                if (!strcmp(optarg, "all")) {
-                    slaveAlias = -1;
-                } else {
-                    number = strtoul(optarg, &remainder, 0);
-                    if (remainder == optarg || *remainder
-                            || number < 0 || number > 0xFFFF) {
-                        cerr << "Invalid slave alias " << optarg << "!"
-                            << endl << endl << usage();
-                        exit(1);
-                    }
-                    slaveAlias = number;
+                str.clear();
+                str.str("");
+                str << optarg;
+                str >> resetiosflags(ios::basefield) // guess base from prefix
+                    >> slaveAlias;
+                if (str.fail() || slaveAlias < 0 || slaveAlias > 0xFFFF) {
+                    cerr << "Invalid slave alias " << optarg << "!" << endl
+                        << endl << usage();
+                    exit(1);
                 }
                 break;
 
             case 'p':
-                if (!strcmp(optarg, "all")) {
-                    slavePosition = -1;
-                } else {
-                    number = strtoul(optarg, &remainder, 0);
-                    if (remainder == optarg || *remainder
-                            || number < 0 || number > 0xFFFF) {
-                        cerr << "Invalid slave position " << optarg << "!"
-                            << endl << endl << usage();
-                        exit(1);
-                    }
-                    slavePosition = number;
+                str.clear();
+                str.str("");
+                str << optarg;
+                str >> resetiosflags(ios::basefield) // guess base from prefix
+                    >> slavePosition;
+                if (str.fail()
+                        || slavePosition < 0 || slavePosition > 0xFFFF) {
+                    cerr << "Invalid slave position " << optarg << "!" << endl
+                        << endl << usage();
+                    exit(1);
                 }
                 break;
 
             case 'd':
-                if (!strcmp(optarg, "all")) {
-                    domainIndex = -1;
-                } else {
-                    number = strtoul(optarg, &remainder, 0);
-                    if (remainder == optarg || *remainder || number < 0) {
-                        cerr << "Invalid domain index "
-							<< optarg << "!" << endl << endl << usage();
-                        exit(1);
-                    }
-                    domainIndex = number;
+                str.clear();
+                str.str("");
+                str << optarg;
+                str >> resetiosflags(ios::basefield) // guess base from prefix
+                    >> domainIndex;
+                if (str.fail() || domainIndex < 0) {
+                    cerr << "Invalid domain index " << optarg << "!" << endl
+                        << endl << usage();
+                    exit(1);
                 }
                 break;
 

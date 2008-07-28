@@ -23,7 +23,6 @@ Version 1.4.0:
     - Remove MasterDevice::slaveCount().
     - Alias index?
     - Add 'etherlab version'.
-    - Remove 'all' parameter values.
 
 Future issues:
 
