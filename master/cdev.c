@@ -135,11 +135,22 @@ int ec_cdev_ioctl_master(
     up(&master->master_sem);
 
     down(&master->device_sem);
-    memcpy(data.devices[0].address, master->main_mac, ETH_ALEN); 
+    if (master->main_device.dev) {
+        memcpy(data.devices[0].address,
+                master->main_device.dev->dev_addr, ETH_ALEN);
+    } else {
+        memcpy(data.devices[0].address, master->main_mac, ETH_ALEN); 
+    }
     data.devices[0].attached = master->main_device.dev ? 1 : 0;
     data.devices[0].tx_count = master->main_device.tx_count;
     data.devices[0].rx_count = master->main_device.rx_count;
-    memcpy(data.devices[1].address, master->backup_mac, ETH_ALEN); 
+
+    if (master->backup_device.dev) {
+        memcpy(data.devices[1].address,
+                master->backup_device.dev->dev_addr, ETH_ALEN); 
+    } else {
+        memcpy(data.devices[1].address, master->backup_mac, ETH_ALEN); 
+    }
     data.devices[1].attached = master->backup_device.dev ? 1 : 0;
     data.devices[1].tx_count = master->backup_device.tx_count;
     data.devices[1].rx_count = master->backup_device.rx_count;
