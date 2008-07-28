@@ -36,10 +36,9 @@
 bin_PROGRAMS = ethercat
 
 ethercat_SOURCES = \
-	MasterDevice.cpp MasterDevice.h \
+	Command.cpp \
 	CommandAlias.cpp \
 	CommandConfig.cpp \
-	Command.cpp \
 	CommandData.cpp \
 	CommandDebug.cpp \
 	CommandDomains.cpp \
@@ -54,9 +53,33 @@ ethercat_SOURCES = \
 	CommandUpload.cpp \
 	CommandVersion.cpp \
 	CommandXml.cpp \
+	MasterDevice.cpp \
 	coe_datatypes.cpp \
-	sii_crc.cpp \
-	main.cpp
+	main.cpp \
+	sii_crc.cpp
+
+noinst_HEADERS = \
+	Command.h \
+	CommandAlias.h \
+	CommandConfig.h \
+	CommandData.h \
+	CommandDebug.h \
+	CommandDomains.h \
+	CommandDownload.h \
+	CommandMaster.h \
+	CommandPdos.h \
+	CommandSdos.h \
+	CommandSiiRead.h \
+	CommandSiiWrite.h \
+	CommandSlaves.h \
+	CommandStates.h \
+	CommandUpload.h \
+	CommandVersion.h \
+	CommandXml.h \
+	MasterDevice.h  \
+	byteorder.h \
+	coe_datatypes.h \
+	sii_crc.h
 
 REV = `if test -s $(srcdir)/../svnrevision; then \
 		cat $(srcdir)/../svnrevision; \
