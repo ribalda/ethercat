@@ -4395,6 +4395,10 @@ e1000_clean_rx_irq(struct e1000_adapter *adapter,
 
 		if (adapter->ecdev) {
 			ecdev_receive(adapter->ecdev, skb->data, length);
+
+			// No need to detect link status as
+			// long as frames are received: Reset watchdog.
+			adapter->ec_watchdog_jiffies = jiffies;
 		} else {
 			skb->protocol = eth_type_trans(skb, netdev);
 #ifdef CONFIG_E1000_NAPI

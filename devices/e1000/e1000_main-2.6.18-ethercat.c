@@ -3814,6 +3814,11 @@ e1000_clean_rx_irq(struct e1000_adapter *adapter,
 
 		if (adapter->ecdev) {
 			ecdev_receive(adapter->ecdev, skb->data, length);
+
+			// No need to detect link status as
+			// long as frames are received: Reset watchdog.
+			adapter->ec_watchdog_jiffies = jiffies;
+
 			skb_trim(skb, 0);
 
 			if(unlikely((i & ~(E1000_RX_BUFFER_WRITE - 1)) == i)) {
