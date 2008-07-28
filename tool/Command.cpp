@@ -143,12 +143,11 @@ Command::SlaveList Command::selectedSlaves(MasterDevice &m)
             aliasIndex = 0;
             for (i = 0; i < numSlaves; i++) {
                 m.getSlave(&slave, i);
-                if (slave.alias) { // FIXME 'lock' first alias
+                if (slave.alias && slave.alias == (uint16_t) alias) {
                     lastAlias = slave.alias;
                     aliasIndex = 0;
                 }
-                if (lastAlias == (uint16_t) alias
-                        && aliasIndex == (unsigned int) position) {
+                if (lastAlias && aliasIndex == (unsigned int) position) {
                     list.push_back(slave);
                 }
                 aliasIndex++;

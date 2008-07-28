@@ -21,7 +21,6 @@ Version 1.4.0:
     - Add a -n (numeric) switch.
     - Check for options, remove global variables.
     - Remove MasterDevice::slaveCount().
-    - Alias index?
     - Add 'etherlab version'.
 
 Future issues:
