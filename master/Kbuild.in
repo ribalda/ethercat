@@ -74,7 +74,7 @@ endif
 REV := $(shell if test -s $(src)/../svnrevision; then \
 		cat $(src)/../svnrevision; \
 	else \
-		svnversion $(src) 2>/dev/null || echo "unknown"; \
+		svnversion $(src)/.. 2>/dev/null || echo "unknown"; \
 	fi)
 
 CFLAGS_module.o := -DSVNREV=$(REV)
