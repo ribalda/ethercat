@@ -19,6 +19,10 @@ class CommandSiiWrite:
 
         string helpString() const;
         void execute(MasterDevice &, const StringVector &);
+
+    protected:
+        void loadSiiData(ec_ioctl_slave_sii_t *, const istream &);
+        void checkSiiData(const ec_ioctl_slave_sii_t *data);
 };
 
 /****************************************************************************/
