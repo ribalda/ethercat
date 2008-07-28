@@ -87,6 +87,8 @@ Changes in version 1.4.0:
       Hassan.
     - Fixed unnecessary watchdog executions in e1000 drivers (thanks to
       Olav Zarges).
+    - Fixed missing protection for a spin_lock_irqrestore() call in e1000
+      drivers from 2.6.20 to 2.6.24 (thanks to Olav Zarges).
 * Removed the "bus validation" routines. Slave scanning is now done any time
   the bus topology changes, even during realtime operation. Because of this,
   the bus_tainted flag was deprecated and removed.

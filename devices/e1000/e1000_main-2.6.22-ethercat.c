@@ -3427,7 +3427,9 @@ e1000_xmit_frame(struct sk_buff *skb, struct net_device *netdev)
 	/* need: count + 2 desc gap to keep tail from touching
 	 * head, otherwise try next time */
 	if (unlikely(e1000_maybe_stop_tx(netdev, tx_ring, count + 2))) {
-		spin_unlock_irqrestore(&tx_ring->tx_lock, flags);
+		if (!adapter->ecdev) {
+			spin_unlock_irqrestore(&tx_ring->tx_lock, flags);
+		}
 		return NETDEV_TX_BUSY;
 	}
 
