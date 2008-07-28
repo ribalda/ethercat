@@ -13,8 +13,6 @@ Version 1.4.0:
 * Update documentation.
 * Get original driver for r8169.
 * Race in jiffies frame timeout?
-* ethercat tool:
-    - Check for options, remove global variables.
 
 Future issues:
 
@@ -36,6 +34,7 @@ Future issues:
 * ethercat tool:
     - Data type abbreviations.
     - Add a -n (numeric) switch.
+	- Check for unwanted options.
 
 Smaller issues:
 

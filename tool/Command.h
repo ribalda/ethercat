@@ -14,13 +14,6 @@ using namespace std;
 
 #include "MasterDevice.h"
 
-/*****************************************************************************/
-
-extern unsigned int masterIndex;
-extern int domainIndex;
-extern string dataTypeStr;
-extern bool force;
-
 /****************************************************************************/
 
 class InvalidUsageException:
@@ -71,6 +64,12 @@ class Command
         int getAlias() const;
         void setPosition(int);
         int getPosition() const;
+        void setDomain(int);
+        int getDomain() const;
+        void setDataType(const string &);
+        const string &getDataType() const;
+		void setForce(bool);
+		bool getForce() const;
 
         bool matchesSubstr(const string &) const;
         bool matchesAbbrev(const string &) const;
@@ -93,6 +92,8 @@ class Command
         SlaveList selectedSlaves(MasterDevice &);
         typedef list<ec_ioctl_config_t> ConfigList;
         ConfigList selectedConfigs(MasterDevice &);
+        typedef list<ec_ioctl_domain_t> DomainList;
+        DomainList selectedDomains(MasterDevice &);
 
         static string alStateString(uint8_t);
 
@@ -102,6 +103,9 @@ class Command
         Verbosity verbosity;
         int alias;
         int position;
+		int domain;
+		string dataType;
+		bool force;
 
         Command();
 };
@@ -139,6 +143,27 @@ inline int Command::getAlias() const
 inline int Command::getPosition() const
 {
     return position;
+}
+
+/****************************************************************************/
+
+inline int Command::getDomain() const
+{
+    return domain;
+}
+
+/****************************************************************************/
+
+inline const string &Command::getDataType() const
+{
+    return dataType;
+}
+
+/****************************************************************************/
+
+inline bool Command::getForce() const
+{
+    return force;
 }
 
 /****************************************************************************/

@@ -42,6 +42,27 @@ void Command::setPosition(int p)
 	position = p;
 };
 
+/*****************************************************************************/
+
+void Command::setDomain(int d)
+{
+	domain = d;
+};
+
+/*****************************************************************************/
+
+void Command::setDataType(const string &t)
+{
+	dataType = t;
+};
+
+/*****************************************************************************/
+
+void Command::setForce(bool f)
+{
+	force = f;
+};
+
 /****************************************************************************/
 
 bool Command::matchesSubstr(const string &cmd) const
@@ -222,6 +243,31 @@ Command::ConfigList Command::selectedConfigs(MasterDevice &m)
 
     list.sort();
     return list;
+}
+
+/****************************************************************************/
+
+Command::DomainList Command::selectedDomains(MasterDevice &m)
+{
+	ec_ioctl_domain_t d;
+	DomainList list;
+
+    if (domain == -1) {
+		ec_ioctl_master_t master;
+        unsigned int i;
+
+        m.getMaster(&master);
+
+        for (i = 0; i < master.domain_count; i++) {
+			m.getDomain(&d, i);
+			list.push_back(d);
+        }
+    } else {
+		m.getDomain(&d, domain);
+		list.push_back(d);
+    }
+
+	return list;
 }
 
 /****************************************************************************/

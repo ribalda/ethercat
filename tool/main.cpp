@@ -285,6 +285,9 @@ int main(int argc, char **argv)
                     cmd->setVerbosity(verbosity);
                     cmd->setAlias(slaveAlias);
                     cmd->setPosition(slavePosition);
+                    cmd->setDomain(domainIndex);
+                    cmd->setDataType(dataTypeStr);
+                    cmd->setForce(force);
                     cmd->execute(masterDev, commandArgs);
                 } catch (InvalidUsageException &e) {
                     cerr << e.what() << endl << endl;

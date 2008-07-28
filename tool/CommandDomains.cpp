@@ -66,36 +66,31 @@ string CommandDomains::helpString() const
 
 void CommandDomains::execute(MasterDevice &m, const StringVector &args)
 {
+	DomainList domains;
+	DomainList::const_iterator di;
+	
     m.open(MasterDevice::Read);
+	domains = selectedDomains(m);
 
-    if (domainIndex == -1) {
-        unsigned int i;
-        ec_ioctl_master_t master;
-
-        m.getMaster(&master);
-
-        for (i = 0; i < master.domain_count; i++) {
-            showDomain(m, i);
-        }
-    } else {
-        showDomain(m, domainIndex);
-    }
+	for (di = domains.begin(); di != domains.end(); di++) {
+		showDomain(m, *di);
+	}
 }
 
 /****************************************************************************/
 
-void CommandDomains::showDomain(MasterDevice &m, unsigned int domainIndex)
+void CommandDomains::showDomain(
+		MasterDevice &m,
+		const ec_ioctl_domain_t &domain
+		)
 {
-    ec_ioctl_domain_t domain;
     unsigned char *processData;
     ec_ioctl_domain_data_t data;
     unsigned int i, j;
     ec_ioctl_domain_fmmu_t fmmu;
     unsigned int dataOffset;
     
-    m.getDomain(&domain, domainIndex);
-
-	cout << "Domain" << dec << domainIndex << ":"
+	cout << "Domain" << dec << domain.index << ":"
 		<< " LogBaseAddr 0x"
 		<< hex << setfill('0')
         << setw(8) << domain.logical_base_address
@@ -111,14 +106,14 @@ void CommandDomains::showDomain(MasterDevice &m, unsigned int domainIndex)
     processData = new unsigned char[domain.data_size];
 
     try {
-        m.getData(&data, domainIndex, domain.data_size, processData);
+        m.getData(&data, domain.index, domain.data_size, processData);
     } catch (MasterDeviceException &e) {
         delete [] processData;
         throw e;
     }
 
     for (i = 0; i < domain.fmmu_count; i++) {
-        m.getFmmu(&fmmu, domainIndex, i);
+        m.getFmmu(&fmmu, domain.index, i);
 
         cout << "  SlaveConfig "
             << dec << fmmu.slave_config_alias

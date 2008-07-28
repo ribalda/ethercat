@@ -37,6 +37,7 @@ class MasterDevice
         ~MasterDevice();
 
         void setIndex(unsigned int);
+		unsigned int getIndex() const;
 
         enum Permissions {Read, ReadWrite};
         void open(Permissions);
@@ -71,6 +72,13 @@ class MasterDevice
         unsigned int index;
         int fd;
 };
+
+/****************************************************************************/
+
+inline unsigned int MasterDevice::getIndex() const
+{
+	return index;
+}
 
 /****************************************************************************/
 

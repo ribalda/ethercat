@@ -41,40 +41,35 @@ string CommandData::helpString() const
 
 void CommandData::execute(MasterDevice &m, const StringVector &args)
 {
+	DomainList domains;
+	DomainList::const_iterator di;
+	
     m.open(MasterDevice::Read);
+	domains = selectedDomains(m);
 
-    if (domainIndex == -1) {
-        unsigned int i;
-        ec_ioctl_master_t master;
-
-        m.getMaster(&master);
-
-        for (i = 0; i < master.domain_count; i++) {
-            outputDomainData(m, i);
-        }
-    } else {
-        outputDomainData(m, domainIndex);
-    }
+	for (di = domains.begin(); di != domains.end(); di++) {
+		outputDomainData(m, *di);
+	}
 }
 
 /****************************************************************************/
 
-void CommandData::outputDomainData(MasterDevice &m, unsigned int domainIndex)
+void CommandData::outputDomainData(
+		MasterDevice &m,
+		const ec_ioctl_domain_t &domain
+		)
 {
-    ec_ioctl_domain_t domain;
     ec_ioctl_domain_data_t data;
     unsigned char *processData;
     unsigned int i;
     
-    m.getDomain(&domain, domainIndex);
-
     if (!domain.data_size)
         return;
 
     processData = new unsigned char[domain.data_size];
 
     try {
-        m.getData(&data, domainIndex, domain.data_size, processData);
+        m.getData(&data, domain.index, domain.data_size, processData);
     } catch (MasterDeviceException &e) {
         delete [] processData;
         throw e;

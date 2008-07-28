@@ -47,7 +47,7 @@ void CommandMaster::execute(MasterDevice &m, const StringVector &args)
     m.getMaster(&data);
 
     cout
-        << "Master" << masterIndex << endl
+        << "Master" << m.getIndex() << endl
         << "  Phase: ";
 
     switch (data.phase) {

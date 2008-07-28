@@ -77,7 +77,7 @@ void CommandSiiWrite::execute(MasterDevice &m, const StringVector &args)
         file.close();
     }
 
-    if (!force) {
+    if (!getForce()) {
         try {
             checkSiiData(&data);
         } catch (CommandException &e) {

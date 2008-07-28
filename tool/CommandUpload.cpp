@@ -99,9 +99,9 @@ void CommandUpload::execute(MasterDevice &m, const StringVector &args)
     }
     data.slave_position = slaves.front().position;
 
-    if (dataTypeStr != "") { // data type specified
-        if (!(dataType = findDataType(dataTypeStr))) {
-            err << "Invalid data type '" << dataTypeStr << "'!";
+    if (!getDataType().empty()) { // data type specified
+        if (!(dataType = findDataType(getDataType()))) {
+            err << "Invalid data type '" << getDataType() << "'!";
             throwInvalidUsageException(err);
         }
     } else { // no data type specified: fetch from dictionary

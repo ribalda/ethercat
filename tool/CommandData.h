@@ -21,7 +21,7 @@ class CommandData:
         void execute(MasterDevice &, const StringVector &);
 
     protected:
-		void outputDomainData(MasterDevice &, unsigned int);
+		void outputDomainData(MasterDevice &, const ec_ioctl_domain_t &);
 };
 
 /****************************************************************************/
