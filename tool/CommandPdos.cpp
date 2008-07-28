@@ -32,8 +32,7 @@ string CommandPdos::helpString() const
     	<< endl
     	<< "1) Sync managers - Contains the sync manager information" << endl
     	<< "   from the SII: Index, physical start address, default" << endl
-    	<< "   size (value from the SII), control register and enable" << endl
-    	<< "   word. Example:" << endl
+    	<< "   size, control register and enable word. Example:" << endl
 		<< endl
     	<< "   SM3: PhysAddr 0x1100, DefaultSize 0, ControlRegister 0x20, "
 		<< "Enable 1" << endl

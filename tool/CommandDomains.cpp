@@ -36,8 +36,9 @@ string CommandDomains::helpString() const
     	<< "(LRD/LWR/LRW) is displayed followed by the domain's" << endl
     	<< "process data size in byte. The last values are the current" << endl
     	<< "datagram working counter sum and the expected working" << endl
-    	<< "counter sum. If the values are equal, all Pdos were exchanged."
-		<< endl << endl
+    	<< "counter sum. If the values are equal, all Pdos were" << endl
+        << "exchanged during the last cycle." << endl
+        << endl
     	<< "If the --verbose option is given, the participating slave" << endl
     	<< "configurations/FMMUs and the current process data are" << endl
     	<< "additionally displayed:" << endl
@@ -51,8 +52,9 @@ string CommandDomains::helpString() const
     	<< "The process data are displayed as hexadecimal bytes." << endl
     	<< endl
     	<< "Command-specific options:" << endl
-    	<< "  --domain  -d <index>  Positive numerical domain index," << endl
-    	<< "                        or 'all' for all domains (default)."
+    	<< "  --domain  -d <index>  Positive numerical domain index." << endl
+    	<< "                        If ommitted, all domains are" << endl
+        << "                        displayed." << endl
 		<< endl
     	<< "  --verbose -v          Show FMMUs and process data" << endl
 		<< "                        in addition." << endl

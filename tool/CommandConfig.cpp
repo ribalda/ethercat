@@ -55,14 +55,15 @@ string CommandConfig::helpString() const
         << "  the --alias and --position parameters as follows:" << endl
         << endl
         << "  1) If neither the --alias nor the --position option" << endl
-        << "     is given, all slave configurations are selected." << endl
+        << "     is given, all slave configurations are displayed." << endl
         << "  2) If only the --position option is given, an alias" << endl
         << "     of zero is assumed (see 4))." << endl
         << "  3) If only the --alias option is given, all slave" << endl
         << "     configurations with the given alias address" << endl
-        << "     match." << endl
+        << "     are displayed." << endl
         << "  4) If both the --alias and the --position option are" << endl
-        << "     given, the specified configuration is matched." << endl
+        << "     given, the selection can match a single" << endl
+        << "     configuration, that is displayed, if it exists." << endl
     	<< endl
     	<< "Command-specific options:" << endl
         << "  --alias    -a <alias>  Configuration alias (see above)." << endl

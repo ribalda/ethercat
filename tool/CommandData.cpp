@@ -29,8 +29,9 @@ string CommandData::helpString() const
         << "Data of multiple domains are concatenated." << endl
     	<< endl
     	<< "Command-specific options:" << endl
-    	<< "  --domain -d <index>  Positive numerical domain index, or" << endl
-    	<< "                       'all' for all domains (default)." << endl
+    	<< "  --domain -d <index>  Positive numerical domain index." << endl
+    	<< "                       If omitted, data of all domains" << endl
+    	<< "                       are output." << endl
     	<< endl
 		<< numericInfo();
 
