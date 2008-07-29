@@ -1053,6 +1053,7 @@ void ec_fsm_coe_down_start(ec_fsm_coe_t *fsm /**< finite state machine */)
     ec_slave_t *slave = fsm->slave;
     ec_sdo_request_t *request = fsm->request;
     uint8_t *data;
+    uint8_t size;
 
     if (fsm->slave->master->debug_level) {
         EC_DBG("Downloading Sdo 0x%04X:%02X to slave %u.\n",
@@ -1065,31 +1066,54 @@ void ec_fsm_coe_down_start(ec_fsm_coe_t *fsm /**< finite state machine */)
         fsm->state = ec_fsm_coe_error;
         return;
     }
+	
+	if (request->data_size <= 4) { // use expedited transfer type
+	    if (!(data = ec_slave_mbox_prepare_send(slave, datagram, 0x03, 10))) {
+	        fsm->state = ec_fsm_coe_error;
+	        return;
+	    }
 
-    if (slave->sii.rx_mailbox_size < 6 + 10 + request->data_size) {
-        EC_ERR("Sdo fragmenting not supported yet!\n");
-        fsm->state = ec_fsm_coe_error;
-        return;
-    }
+	    size = 4 - request->data_size;
 
-    if (!(data = ec_slave_mbox_prepare_send(slave, datagram, 0x03,
-                                            request->data_size + 10))) {
-        fsm->state = ec_fsm_coe_error;
-        return;
-    }
+	    EC_WRITE_U16(data, 0x2 << 12); // Sdo request
+	    EC_WRITE_U8 (data + 2, (0x3 // size specified, expedited
+								| size << 2
+	                            | 0x1 << 5)); // Download request
+	    EC_WRITE_U16(data + 3, request->index);
+	    EC_WRITE_U8 (data + 5, request->subindex);
+	    memcpy(data + 6, request->data, request->data_size);
 
-    EC_WRITE_U16(data, 0x2 << 12); // Sdo request
-    EC_WRITE_U8 (data + 2, (0x1 // size specified
-                            | 0x1 << 5)); // Download request
-    EC_WRITE_U16(data + 3, request->index);
-    EC_WRITE_U8 (data + 5, request->subindex);
-    EC_WRITE_U32(data + 6, request->data_size);
-    memcpy(data + 10, request->data, request->data_size);
+        if (slave->master->debug_level) {
+            EC_DBG("Expedited download request:\n");
+            ec_print_data(data, 10 + request->data_size);
+        }
+	}
+    else { // request->data_size > 4, use normal transfer type
+	    if (slave->sii.rx_mailbox_size < 6 + 10 + request->data_size) {
+	        EC_ERR("Sdo fragmenting not supported yet!\n");
+	        fsm->state = ec_fsm_coe_error;
+	        return;
+	    }
 
-    if (slave->master->debug_level) {
-        EC_DBG("Download request:\n");
-        ec_print_data(data, 10 + request->data_size);
-    }
+	    if (!(data = ec_slave_mbox_prepare_send(slave, datagram, 0x03,
+	                                            request->data_size + 10))) {
+	        fsm->state = ec_fsm_coe_error;
+	        return;
+	    }
+
+	    EC_WRITE_U16(data, 0x2 << 12); // Sdo request
+	    EC_WRITE_U8 (data + 2, (0x1 // size indicator, normal
+	                            | 0x1 << 5)); // Download request
+	    EC_WRITE_U16(data + 3, request->index);
+	    EC_WRITE_U8 (data + 5, request->subindex);
+	    EC_WRITE_U32(data + 6, request->data_size);
+	    memcpy(data + 10, request->data, request->data_size);
+
+        if (slave->master->debug_level) {
+            EC_DBG("Normal download request:\n");
+            ec_print_data(data, 10 + request->data_size);
+        }
+	}
 
     fsm->request->jiffies_sent = jiffies;
     fsm->retries = EC_FSM_RETRIES;

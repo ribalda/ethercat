@@ -97,16 +97,16 @@ Changes in version 1.4.0:
   queried via the ecrt_domain_state() and ecrt_slave_config_state() functions.
 * Added support for slaves that do not support the LRW datagram type. Separate
   domains have to be used for inputs and output.
-* Allow gaps in PDO mapping read from CoE.
-* Fixed bug in CoE code.
-* Added some timeouts for CoE transfers.
-* Ansynchronous handling of CoE Emergency requests.
+* CoE implementation:
+    - Use expedites transfer type for Sdos <= 4 byte (thanks to J. Mohre).
+    - Allow gaps in Pdo mapping (thanks to R. Roesch).
+    - Added some transfer timeouts.
+    - Ansynchronous handling of Emergency requests.
+    - Bugfixes.
 * Sync managers are disabled, if the size is zero.
-* Improved handling of large EEPROM contents.
 * Renamed ec_master module parameters main and backup to main_devices and
   backup_devices to avoid warnings of some compilers.
-* List end evaluate CoE detail flags from general category, list
-  'Flags' from general category in slave info file.
+* List end evaluate CoE detail flags from general category.
 * Added MODPROBE_FLAGS variable in start script and sysconfig file.
 * Implemented missing datagram types.
 * Changed all occurrences of 'EEPROM' to 'SII'
