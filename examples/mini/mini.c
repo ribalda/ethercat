@@ -43,10 +43,11 @@
 // Module parameters
 #define FREQUENCY 100
 
-// Optional features (comment to disable)
-#define CONFIGURE_PDOS
-#define EXTERNAL_MEMORY
-#define SDO_ACCESS
+// Optional features
+#define CONFIGURE_PDOS  1
+#define EL3162_ALT_PDOS 0
+#define EXTERNAL_MEMORY 1
+#define SDO_ACCESS      0
 
 #define PFX "ec_mini: "
 
@@ -81,7 +82,11 @@ static unsigned int off_ana_in; // offsets for Pdo entries
 static unsigned int off_dig_out;
 
 const static ec_pdo_entry_reg_t domain1_regs[] = {
+#if EL3162_ALT_PDOS
+    {AnaInSlavePos,  Beckhoff_EL3162, 0x6401, 2, &off_ana_in},
+#else
     {AnaInSlavePos,  Beckhoff_EL3162, 0x3101, 2, &off_ana_in},
+#endif
     {DigOutSlavePos, Beckhoff_EL2004, 0x3001, 1, &off_dig_out},
     {}
 };
@@ -91,20 +96,31 @@ static unsigned int blink = 0;
 
 /*****************************************************************************/
 
-#ifdef CONFIGURE_PDOS
-static ec_pdo_entry_info_t el3162_channel1[] = {
-    {0x3101, 1,  8}, // status
-    {0x3101, 2, 16}  // value
+#if CONFIGURE_PDOS
+
+static ec_pdo_entry_info_t el3162_pdo_entries[] = {
+    {0x3101, 1,  8}, // channel 1 status
+    {0x3101, 2, 16}, // channel 1 value
+    {0x3102, 1,  8}, // channel 2 status
+    {0x3102, 2, 16}, // channel 2 value
+    {0x6401, 1, 16}, // channel 1 value (alt.)
+    {0x6401, 2, 16}  // channel 2 value (alt.)
 };
 
-static ec_pdo_entry_info_t el3162_channel2[] = {
-    {0x3102, 1,  8}, // status
-    {0x3102, 2, 16}  // value
-};
-
+#if EL3162_ALT_PDOS
 static ec_pdo_info_t el3162_pdos[] = {
-    {0x1A00, 2, el3162_channel1},
-    {0x1A01, 2, el3162_channel2}
+    {0x1A10, 2, el3162_pdo_entries + 4},
+};
+
+static ec_sync_info_t el3162_syncs[] = {
+    {2, EC_DIR_OUTPUT},
+    {3, EC_DIR_INPUT, 1, el3162_pdos},
+    {0xff}
+};
+#else
+static ec_pdo_info_t el3162_pdos[] = {
+    {0x1A00, 2, el3162_pdo_entries},
+    {0x1A01, 2, el3162_pdo_entries + 2}
 };
 
 static ec_sync_info_t el3162_syncs[] = {
@@ -112,6 +128,7 @@ static ec_sync_info_t el3162_syncs[] = {
     {3, EC_DIR_INPUT, 2, el3162_pdos},
     {0xff}
 };
+#endif
 
 static ec_pdo_entry_info_t el2004_channels[] = {
     {0x3001, 1, 1}, // Value 1
@@ -136,7 +153,7 @@ static ec_sync_info_t el2004_syncs[] = {
 
 /*****************************************************************************/
 
-#ifdef SDO_ACCESS
+#if SDO_ACCESS
 static ec_sdo_request_t *sdo;
 #endif
 
@@ -201,7 +218,7 @@ void check_slave_config_states(void)
 
 /*****************************************************************************/
 
-#ifdef SDO_ACCESS
+#if SDO_ACCESS
 void read_sdo(void)
 {
     switch (ecrt_sdo_request_state(sdo)) {
@@ -251,7 +268,7 @@ void cyclic_task(unsigned long data)
         // check for islave configuration state(s) (optional)
         check_slave_config_states();
         
-#ifdef SDO_ACCESS
+#if SDO_ACCESS
         // read process data Sdo
         read_sdo();
 #endif
@@ -290,10 +307,10 @@ void release_lock(void *data)
 
 int __init init_mini_module(void)
 {
-#ifdef CONFIGURE_PDOS
+#if CONFIGURE_PDOS
     ec_slave_config_t *sc;
 #endif
-#ifdef EXTERNAL_MEMORY
+#if EXTERNAL_MEMORY
     unsigned int size;
 #endif
     
@@ -318,7 +335,7 @@ int __init init_mini_module(void)
         goto out_release_master;
     }
 
-#ifdef CONFIGURE_PDOS
+#if CONFIGURE_PDOS
     printk(KERN_INFO PFX "Configuring Pdos...\n");
     if (ecrt_slave_config_pdos(sc_ana_in, EC_END, el3162_syncs)) {
         printk(KERN_ERR PFX "Failed to configure Pdos.\n");
@@ -337,7 +354,7 @@ int __init init_mini_module(void)
     }
 #endif
 
-#ifdef SDO_ACCESS
+#if SDO_ACCESS
     printk(KERN_INFO PFX "Creating Sdo requests...\n");
     if (!(sdo = ecrt_slave_config_create_sdo_request(sc_ana_in, 0x3102, 2, 2))) {
         printk(KERN_ERR PFX "Failed to create Sdo request.\n");
@@ -352,7 +369,7 @@ int __init init_mini_module(void)
         goto out_release_master;
     }
 
-#ifdef EXTERNAL_MEMORY
+#if EXTERNAL_MEMORY
     if ((size = ecrt_domain_size(domain1))) {
         if (!(domain1_pd = (uint8_t *) kmalloc(size, GFP_KERNEL))) {
             printk(KERN_ERR PFX "Failed to allocate %u bytes of process data"
@@ -366,14 +383,14 @@ int __init init_mini_module(void)
     printk(KERN_INFO PFX "Activating master...\n");
     if (ecrt_master_activate(master)) {
         printk(KERN_ERR PFX "Failed to activate master!\n");
-#ifdef EXTERNAL_MEMORY
+#if EXTERNAL_MEMORY
         goto out_free_process_data;
 #else
         goto out_release_master;
 #endif
     }
 
-#ifndef EXTERNAL_MEMORY
+#if !EXTERNAL_MEMORY
     // Get internal process data for domain
     domain1_pd = ecrt_domain_data(domain1);
 #endif
@@ -387,7 +404,7 @@ int __init init_mini_module(void)
     printk(KERN_INFO PFX "Started.\n");
     return 0;
 
-#ifdef EXTERNAL_MEMORY
+#if EXTERNAL_MEMORY
 out_free_process_data:
     kfree(domain1_pd);
 #endif
@@ -407,7 +424,7 @@ void __exit cleanup_mini_module(void)
 
     del_timer_sync(&timer);
 
-#ifdef EXTERNAL_MEMORY
+#if EXTERNAL_MEMORY
     kfree(domain1_pd);
 #endif
 
