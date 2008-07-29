@@ -35,6 +35,7 @@ Future issues:
     - Data type abbreviations.
     - Add a -n (numeric) switch.
 	- Check for unwanted options.
+* Segmented Sdo downloads.
 
 Smaller issues:
 
