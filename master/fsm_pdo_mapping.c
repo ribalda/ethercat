@@ -186,8 +186,7 @@ void ec_fsm_pdo_mapping_next_pdo(
 
     if (!fsm->pdo) {
         if (fsm->slave->master->debug_level && !fsm->num_configured_pdos)
-            EC_DBG("Pdo mappings of slave %u are already configured"
-                    " correctly.\n", fsm->slave->ring_position);
+            EC_DBG("Pdo mappings are already configured correctly.\n");
         fsm->state = ec_fsm_pdo_mapping_state_end;
         return;
     }
@@ -196,15 +195,14 @@ void ec_fsm_pdo_mapping_next_pdo(
     if (!(fsm->slave->sii.mailbox_protocols & EC_MBOX_COE)
             || (fsm->slave->sii.has_general
                 && !fsm->slave->sii.coe_details.enable_pdo_configuration)) {
-        EC_ERR("Slave %u does not support changing the Pdo mapping!\n",
+        EC_WARN("Slave %u does not support Pdo mapping configuration!\n",
                 fsm->slave->ring_position);
         fsm->state = ec_fsm_pdo_mapping_state_error;
         return;
     }
 
     if (fsm->slave->master->debug_level) {
-        EC_DBG("Changing mapping of Pdo 0x%04X of slave %u.\n",
-                fsm->pdo->index, fsm->slave->ring_position);
+        EC_DBG("Changing mapping of Pdo 0x%04X.\n", fsm->pdo->index);
     }
 
     if (ec_sdo_request_alloc(&fsm->request, 4)) {
@@ -218,8 +216,7 @@ void ec_fsm_pdo_mapping_next_pdo(
     ec_sdo_request_address(&fsm->request, fsm->pdo->index, 0);
     ecrt_sdo_request_write(&fsm->request);
     if (fsm->slave->master->debug_level)
-        EC_DBG("Setting entry count to zero for Pdo 0x%04X.\n",
-                fsm->pdo->index);
+        EC_DBG("Setting entry count to zero.\n");
 
     fsm->state = ec_fsm_pdo_mapping_state_zero_count;
     ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, &fsm->request);
@@ -279,8 +276,7 @@ void ec_fsm_pdo_mapping_state_zero_count(
     if (ec_fsm_coe_exec(fsm->fsm_coe)) return;
 
     if (!ec_fsm_coe_success(fsm->fsm_coe)) {
-        EC_ERR("Failed to clear Pdo mapping for slave %u.\n",
-                fsm->slave->ring_position);
+        EC_WARN("Failed to clear mapping of Pdo 0x%04X.\n", fsm->pdo->index);
         fsm->state = ec_fsm_pdo_mapping_state_error;
         return;
     }
@@ -289,8 +285,7 @@ void ec_fsm_pdo_mapping_state_zero_count(
     if (!(fsm->entry =
                 ec_fsm_pdo_mapping_next_entry(fsm, &fsm->pdo->entries))) {
         if (fsm->slave->master->debug_level)
-            EC_DBG("No entries to map for Pdo 0x%04X of slave %u.\n",
-                    fsm->pdo->index, fsm->slave->ring_position);
+            EC_DBG("No entries to map.\n");
         ec_fsm_pdo_mapping_next_pdo(fsm);
         return;
     }
@@ -311,9 +306,9 @@ void ec_fsm_pdo_mapping_state_add_entry(
     if (ec_fsm_coe_exec(fsm->fsm_coe)) return;
 
     if (!ec_fsm_coe_success(fsm->fsm_coe)) {
-        EC_ERR("Failed to add entry 0x%04X:%02X for slave %u.\n",
-                fsm->entry->index, fsm->entry->subindex,
-                fsm->slave->ring_position);
+        EC_WARN("Failed to map Pdo entry 0x%04X:%02X at 0x%04X:%02X.\n",
+                fsm->entry->index, fsm->entry->subindex, fsm->pdo->index,
+                fsm->entry_count);
         fsm->state = ec_fsm_pdo_mapping_state_error;
         return;
     }
@@ -325,9 +320,9 @@ void ec_fsm_pdo_mapping_state_add_entry(
         fsm->request.data_size = 1;
         ec_sdo_request_address(&fsm->request, fsm->pdo->index, 0);
         ecrt_sdo_request_write(&fsm->request);
+
         if (fsm->slave->master->debug_level)
-            EC_DBG("Setting number of Pdo entries to %u.\n",
-                    fsm->entry_count);
+            EC_DBG("Setting number of Pdo entries to %u.\n", fsm->entry_count);
         
         fsm->state = ec_fsm_pdo_mapping_state_entry_count;
         ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, &fsm->request);
@@ -351,15 +346,14 @@ void ec_fsm_pdo_mapping_state_entry_count(
     if (ec_fsm_coe_exec(fsm->fsm_coe)) return;
 
     if (!ec_fsm_coe_success(fsm->fsm_coe)) {
-        EC_ERR("Failed to set number of entries for slave %u.\n",
-                fsm->slave->ring_position);
+        EC_WARN("Failed to set number of entries for Pdo 0x%04X.\n",
+                fsm->pdo->index);
         fsm->state = ec_fsm_pdo_mapping_state_error;
         return;
     }
 
     if (fsm->slave->master->debug_level)
-        EC_DBG("Successfully configured mapping for Pdo 0x%04X on slave %u.\n",
-                fsm->pdo->index, fsm->slave->ring_position);
+        EC_DBG("Pdo mapping configuration successful.\n");
 
     ec_fsm_pdo_mapping_next_pdo(fsm);
 }

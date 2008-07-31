@@ -13,6 +13,7 @@ Version 1.4.0:
 * Update documentation.
 * Get original driver for r8169.
 * Race in jiffies frame timeout?
+* Error at no sync manager for configuration.
 
 Future issues:
 

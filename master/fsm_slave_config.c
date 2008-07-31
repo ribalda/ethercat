@@ -588,14 +588,11 @@ void ec_fsm_slave_config_state_pdo_mapping(
     if (ec_fsm_pdo_mapping_exec(&fsm->fsm_pdo_mapping)) return;
 
     if (!ec_fsm_pdo_mapping_success(&fsm->fsm_pdo_mapping)) {
-        EC_ERR("Configuration of Pdo mapping failed for slave %u.\n",
+        EC_WARN("Configuration of Pdo mappings failed on slave %u.\n",
                 fsm->slave->ring_position);
-        fsm->slave->error_flag = 1;
-        fsm->state = ec_fsm_slave_config_state_error;
-        return;
     }
 
-    // start applying alternate Pdo assignments
+    // start applying Pdo assignments
     ec_fsm_pdo_assign_start(&fsm->fsm_pdo_assign, fsm->slave);
     fsm->state = ec_fsm_slave_config_state_pdo_assign;
     fsm->state(fsm); // execute immediately
@@ -612,11 +609,8 @@ void ec_fsm_slave_config_state_pdo_assign(
     if (ec_fsm_pdo_assign_exec(&fsm->fsm_pdo_assign)) return;
 
     if (!ec_fsm_pdo_assign_success(&fsm->fsm_pdo_assign)) {
-        EC_ERR("Pdo assignment failed for slave %u.\n",
+        EC_WARN("Configuration of Pdo assignments failed on slave %u.\n",
                 fsm->slave->ring_position);
-        fsm->slave->error_flag = 1;
-        fsm->state = ec_fsm_slave_config_state_error;
-        return;
     }
 
     ec_fsm_slave_config_enter_fmmu(fsm);
