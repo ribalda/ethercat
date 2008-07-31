@@ -57,6 +57,8 @@ void ec_fsm_pdo_entry_conf_state_zero_entry_count(ec_fsm_pdo_entry_t *);
 void ec_fsm_pdo_entry_conf_state_map_entry(ec_fsm_pdo_entry_t *);
 void ec_fsm_pdo_entry_conf_state_set_entry_count(ec_fsm_pdo_entry_t *);
 
+void ec_fsm_pdo_entry_conf_action_map(ec_fsm_pdo_entry_t *);
+
 void ec_fsm_pdo_entry_state_end(ec_fsm_pdo_entry_t *);
 void ec_fsm_pdo_entry_state_error(ec_fsm_pdo_entry_t *);
 
