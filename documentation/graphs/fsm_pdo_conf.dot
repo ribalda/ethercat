@@ -1,0 +1,54 @@
+
+/* $Id$ */
+
+digraph pdo_conf {
+    size="7,9"
+    center=1
+	ratio=fill
+
+    start [fontname="Helvetica"]
+    start -> action_next_sync [fontname="Helvetica",label="First SM",weight=10]
+    start -> end [fontname="Helvetica",label="No config"]
+
+    action_next_sync [shape=point,label=""]
+    action_next_sync -> action_check_assignment [fontname="Helvetica",label="No Pdos"]
+    action_next_sync -> action_pdo_mapping [fontname="Helvetica",label="First Pdo",weight=10]
+    action_next_sync -> end [fontname="Helvetica",label="No more SMs"]
+
+    action_pdo_mapping [shape=point,label=""]
+    action_pdo_mapping -> read_mapping [fontname="Helvetica",label="Unknown"]
+    action_pdo_mapping -> action_check_mapping [weight=10]
+
+    read_mapping [fontname="Helvetica"]
+    read_mapping -> action_check_mapping
+
+    action_check_mapping [shape=point,label=""]
+    action_check_mapping -> action_next_pdo_mapping
+    action_check_mapping -> mapping [weight=10]
+
+    mapping [fontname="Helvetica"]
+    mapping -> action_next_pdo_mapping [weight=10]
+
+    action_next_pdo_mapping [shape=point,label=""]
+    action_next_pdo_mapping -> action_check_assignment [weight=10]
+    action_next_pdo_mapping -> action_pdo_mapping
+    [fontname="Helvetica",label="Next Pdo"]
+
+    action_check_assignment [shape=point,label=""]
+    action_check_assignment -> action_next_sync [fontname="Helvetica",label="Assign ok"]
+    action_check_assignment -> zero_pdo_count [weight=10]
+
+    zero_pdo_count [fontname="Helvetica"]
+    zero_pdo_count -> action_next_sync [fontname="Helvetica",label="No Pdos"]
+    zero_pdo_count -> action_assign_pdo [fontname="Helvetica",label="First Pdo", weight=10]
+
+    action_assign_pdo [shape=point,label=""]
+    action_assign_pdo -> assign_pdo [weight=10]
+
+    assign_pdo [fontname="Helvetica"]
+    assign_pdo -> set_pdo_count [fontname="Helvetica",label="No more Pdos", weight=10]
+    assign_pdo -> action_assign_pdo [fontname="Helvetica",label="Next Pdo"]
+
+    set_pdo_count [fontname="Helvetica"]
+    set_pdo_count -> action_next_sync
+}

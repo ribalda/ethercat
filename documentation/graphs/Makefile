@@ -5,10 +5,11 @@
 #-----------------------------------------------------------------------------
 
 GRAPHS := \
-	fsm_coe_map \
 	fsm_master \
-	fsm_pdo_assign \
-	fsm_pdo_mapping \
+	fsm_pdo_conf \
+	fsm_pdo_read \
+	fsm_pdo_entry_conf \
+	fsm_pdo_entry_read \
 	fsm_slave_conf \
 	fsm_slave_scan
 

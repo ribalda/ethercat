@@ -48,8 +48,7 @@
 #include "datagram.h"
 #include "fsm_change.h"
 #include "fsm_coe.h"
-#include "fsm_pdo_assign.h"
-#include "fsm_pdo_mapping.h"
+#include "fsm_pdo.h"
 
 /*****************************************************************************/
 
@@ -60,21 +59,21 @@ typedef struct ec_fsm_slave_config ec_fsm_slave_config_t;
  */
 struct ec_fsm_slave_config
 {
-    ec_slave_t *slave; /**< Slave the FSM runs on. */
     ec_datagram_t *datagram; /**< Datagram used in the state machine. */
-    unsigned int retries; /**< Retries on datagram timeout. */
+    ec_fsm_change_t *fsm_change; /**< State change state machine. */
+    ec_fsm_coe_t *fsm_coe; /**< CoE state machine. */
+    ec_fsm_pdo_t *fsm_pdo; /**< Pdo configuration state machine. */
 
+    ec_slave_t *slave; /**< Slave the FSM runs on. */
     void (*state)(ec_fsm_slave_config_t *); /**< State function. */
+    unsigned int retries; /**< Retries on datagram timeout. */
     ec_sdo_request_t *request; /**< Sdo request for Sdo configuration. */
-    ec_fsm_change_t fsm_change; /**< State change state machine. */
-    ec_fsm_coe_t fsm_coe; /**< CoE state machine. */
-    ec_fsm_pdo_assign_t fsm_pdo_assign; /**< Pdo assignment state machine. */
-    ec_fsm_pdo_mapping_t fsm_pdo_mapping; /**< Pdo mapping state machine. */
 };
 
 /*****************************************************************************/
 
-void ec_fsm_slave_config_init(ec_fsm_slave_config_t *, ec_datagram_t *);
+void ec_fsm_slave_config_init(ec_fsm_slave_config_t *, ec_datagram_t *,
+        ec_fsm_change_t *, ec_fsm_coe_t *, ec_fsm_pdo_t *);
 void ec_fsm_slave_config_clear(ec_fsm_slave_config_t *);
 
 void ec_fsm_slave_config_start(ec_fsm_slave_config_t *, ec_slave_t *);

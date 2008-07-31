@@ -72,13 +72,12 @@ void ec_fsm_slave_scan_init(
         ec_datagram_t *datagram, /**< Datagram to use. */
         ec_fsm_slave_config_t *fsm_slave_config, /**< Slave configuration
                                                   state machine to use. */
-        ec_fsm_coe_map_t *fsm_coe_map /**< Pdo mapping state machine to use.
-                                       */
+        ec_fsm_pdo_t *fsm_pdo /**< Pdo configuration machine to use. */
         )
 {
     fsm->datagram = datagram;
     fsm->fsm_slave_config = fsm_slave_config;
-    fsm->fsm_coe_map = fsm_coe_map;
+    fsm->fsm_pdo = fsm_pdo;
 
     // init sub state machines
     ec_fsm_sii_init(&fsm->fsm_sii, fsm->datagram);
@@ -633,8 +632,8 @@ void ec_fsm_slave_scan_enter_pdos(
         EC_DBG("Scanning Pdo assignment and mapping of slave %u.\n",
                 slave->ring_position);
     fsm->state = ec_fsm_slave_scan_state_pdos;
-    ec_fsm_coe_map_start(fsm->fsm_coe_map, slave);
-    ec_fsm_coe_map_exec(fsm->fsm_coe_map); // execute immediately
+    ec_fsm_pdo_start_reading(fsm->fsm_pdo, slave);
+    ec_fsm_pdo_exec(fsm->fsm_pdo); // execute immediately
 }
 
 /*****************************************************************************/
@@ -645,15 +644,15 @@ void ec_fsm_slave_scan_state_pdos(
         ec_fsm_slave_scan_t *fsm /**< slave state machine */
         )
 {
-    if (ec_fsm_coe_map_exec(fsm->fsm_coe_map))
+    if (ec_fsm_pdo_exec(fsm->fsm_pdo))
         return;
 
-    if (!ec_fsm_coe_map_success(fsm->fsm_coe_map)) {
+    if (!ec_fsm_pdo_success(fsm->fsm_pdo)) {
         fsm->state = ec_fsm_slave_scan_state_error;
         return;
     }
 
-    // fetching of Pdo assignment/mapping finished
+    // reading Pdo configuration finished
     fsm->state = ec_fsm_slave_scan_state_end;
 }
 

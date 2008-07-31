@@ -43,10 +43,9 @@ EXTRA_DIST = \
 	fmmu_config.c fmmu_config.h \
 	fsm_change.c fsm_change.h \
 	fsm_coe.c fsm_coe.h \
-	fsm_coe_map.c fsm_coe_map.h \
 	fsm_master.c fsm_master.h \
-	fsm_pdo_assign.c fsm_pdo_assign.h \
-	fsm_pdo_mapping.c fsm_pdo_mapping.h \
+	fsm_pdo.c fsm_pdo.h \
+	fsm_pdo_entry.c fsm_pdo_entry.h \
 	fsm_sii.c fsm_sii.h \
 	fsm_slave_config.c fsm_slave_config.h \
 	fsm_slave_scan.c fsm_slave_scan.h \

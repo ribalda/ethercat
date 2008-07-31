@@ -79,13 +79,14 @@ void ec_fsm_master_init(
     fsm->slave_states = EC_SLAVE_STATE_UNKNOWN;
 
     // init sub-state-machines
-    ec_fsm_slave_config_init(&fsm->fsm_slave_config, fsm->datagram);
-    ec_fsm_slave_scan_init(&fsm->fsm_slave_scan, fsm->datagram,
-            &fsm->fsm_slave_config, &fsm->fsm_coe_map);
-    ec_fsm_sii_init(&fsm->fsm_sii, fsm->datagram);
-    ec_fsm_change_init(&fsm->fsm_change, fsm->datagram);
     ec_fsm_coe_init(&fsm->fsm_coe, fsm->datagram);
-    ec_fsm_coe_map_init(&fsm->fsm_coe_map, &fsm->fsm_coe);
+    ec_fsm_pdo_init(&fsm->fsm_pdo, &fsm->fsm_coe);
+    ec_fsm_change_init(&fsm->fsm_change, fsm->datagram);
+    ec_fsm_slave_config_init(&fsm->fsm_slave_config, fsm->datagram,
+            &fsm->fsm_change, &fsm->fsm_coe, &fsm->fsm_pdo);
+    ec_fsm_slave_scan_init(&fsm->fsm_slave_scan, fsm->datagram,
+            &fsm->fsm_slave_config, &fsm->fsm_pdo);
+    ec_fsm_sii_init(&fsm->fsm_sii, fsm->datagram);
 }
 
 /*****************************************************************************/
@@ -97,12 +98,12 @@ void ec_fsm_master_clear(
         )
 {
     // clear sub-state machines
+    ec_fsm_coe_clear(&fsm->fsm_coe);
+    ec_fsm_pdo_clear(&fsm->fsm_pdo);
+    ec_fsm_change_clear(&fsm->fsm_change);
     ec_fsm_slave_config_clear(&fsm->fsm_slave_config);
     ec_fsm_slave_scan_clear(&fsm->fsm_slave_scan);
     ec_fsm_sii_clear(&fsm->fsm_sii);
-    ec_fsm_change_clear(&fsm->fsm_change);
-    ec_fsm_coe_clear(&fsm->fsm_coe);
-    ec_fsm_coe_map_clear(&fsm->fsm_coe_map);
 }
 
 /*****************************************************************************/

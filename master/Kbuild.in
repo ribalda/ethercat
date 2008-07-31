@@ -43,10 +43,9 @@ ec_master-objs := \
 	fmmu_config.o \
 	fsm_change.o \
 	fsm_coe.o \
-	fsm_coe_map.o \
 	fsm_master.o \
-	fsm_pdo_assign.o \
-	fsm_pdo_mapping.o \
+	fsm_pdo.o \
+	fsm_pdo_entry.o \
 	fsm_sii.o \
 	fsm_slave_config.o \
 	fsm_slave_scan.o \

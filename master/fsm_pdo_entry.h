@@ -31,56 +31,55 @@
  *
  *****************************************************************************/
 
-/**
-   \file
-   EtherCAT Pdo assignment state machine structures.
-*/
+/** \file
+ * EtherCAT Pdo entry configuration state machine structures.
+ */
 
 /*****************************************************************************/
 
-#ifndef __EC_FSM_PDO_ASSIGN_H__
-#define __EC_FSM_PDO_ASSIGN_H__
-
-#include "../include/ecrt.h"
+#ifndef __EC_FSM_PDO_ENTRY_H__
+#define __EC_FSM_PDO_ENTRY_H__
 
 #include "globals.h"
+#include "../include/ecrt.h"
 #include "datagram.h"
 #include "fsm_coe.h"
 
 /*****************************************************************************/
 
 /**
- * \see ec_fsm_pdo_assign
+ * \see ec_fsm_pdo_entry
  */
-typedef struct ec_fsm_pdo_assign ec_fsm_pdo_assign_t;
+typedef struct ec_fsm_pdo_entry ec_fsm_pdo_entry_t;
 
-/** Pdo assignment state machine.
+/** Pdo configuration state machine.
  */
-struct ec_fsm_pdo_assign
+struct ec_fsm_pdo_entry
 {
-    void (*state)(ec_fsm_pdo_assign_t *); /**< State function. */
-    ec_fsm_coe_t *fsm_coe; /**< CoE state machine to use. */
-    ec_slave_t *slave; /**< Slave the FSM runs on. */
-
-    uint8_t sync_index; /**< Current sync manager index. */
-    const ec_pdo_list_t *pdos; /**< Target Pdo assignment. */
-    const ec_sync_t *sync; /**< Current sync manager. */
-    unsigned int num_configured_syncs; /**< Number of configured
-                                         assignments. */
-    const ec_pdo_t *pdo; /**< Current Pdo. */
-
+    void (*state)(ec_fsm_pdo_entry_t *); /**< state function */
+    ec_fsm_coe_t *fsm_coe; /**< CoE state machine to use */
     ec_sdo_request_t request; /**< Sdo request. */
-    unsigned int pdo_count; /**< Number of assigned Pdos. */
+
+    ec_slave_t *slave; /**< Slave the FSM runs on. */
+    ec_pdo_t *target_pdo; /**< Pdo to read the mapping for. */
+    const ec_pdo_t *source_pdo; /**< Pdo with desired mapping. */
+    const ec_pdo_entry_t *entry; /**< Current entry. */
+    unsigned int entry_count; /**< Number of entries. */
+    unsigned int entry_pos; /**< Position in Pdo mapping. */
 };
 
 /*****************************************************************************/
 
-void ec_fsm_pdo_assign_init(ec_fsm_pdo_assign_t *, ec_fsm_coe_t *);
-void ec_fsm_pdo_assign_clear(ec_fsm_pdo_assign_t *);
+void ec_fsm_pdo_entry_init(ec_fsm_pdo_entry_t *, ec_fsm_coe_t *);
+void ec_fsm_pdo_entry_clear(ec_fsm_pdo_entry_t *);
 
-void ec_fsm_pdo_assign_start(ec_fsm_pdo_assign_t *, ec_slave_t *);
-int ec_fsm_pdo_assign_exec(ec_fsm_pdo_assign_t *);
-int ec_fsm_pdo_assign_success(const ec_fsm_pdo_assign_t *);
+void ec_fsm_pdo_entry_start_reading(ec_fsm_pdo_entry_t *, ec_slave_t *,
+        ec_pdo_t *);
+void ec_fsm_pdo_entry_start_configuration(ec_fsm_pdo_entry_t *, ec_slave_t *,
+        const ec_pdo_t *);
+
+int ec_fsm_pdo_entry_exec(ec_fsm_pdo_entry_t *);
+int ec_fsm_pdo_entry_success(const ec_fsm_pdo_entry_t *);
 
 /*****************************************************************************/
 

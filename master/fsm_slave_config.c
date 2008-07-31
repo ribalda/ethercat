@@ -53,8 +53,7 @@ void ec_fsm_slave_config_state_mbox_sync(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_preop(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_sdo_conf(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_pdo_sync(ec_fsm_slave_config_t *);
-void ec_fsm_slave_config_state_pdo_assign(ec_fsm_slave_config_t *);
-void ec_fsm_slave_config_state_pdo_mapping(ec_fsm_slave_config_t *);
+void ec_fsm_slave_config_state_pdo_conf(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_fmmu(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_safeop(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_op(ec_fsm_slave_config_t *);
@@ -75,16 +74,16 @@ void ec_fsm_slave_config_state_error(ec_fsm_slave_config_t *);
  */
 void ec_fsm_slave_config_init(
         ec_fsm_slave_config_t *fsm, /**< slave state machine */
-        ec_datagram_t *datagram /**< datagram structure to use */
+        ec_datagram_t *datagram, /**< datagram structure to use */
+        ec_fsm_change_t *fsm_change, /**< State change state machine to use. */
+        ec_fsm_coe_t *fsm_coe, /**< CoE state machine to use. */
+        ec_fsm_pdo_t *fsm_pdo /**< Pdo configuration state machine to use. */
         )
 {
     fsm->datagram = datagram;
-
-    // init sub state machines
-    ec_fsm_change_init(&fsm->fsm_change, fsm->datagram);
-    ec_fsm_coe_init(&fsm->fsm_coe, fsm->datagram);
-    ec_fsm_pdo_assign_init(&fsm->fsm_pdo_assign, &fsm->fsm_coe);
-    ec_fsm_pdo_mapping_init(&fsm->fsm_pdo_mapping, &fsm->fsm_coe);
+    fsm->fsm_change = fsm_change;
+    fsm->fsm_coe = fsm_coe;
+    fsm->fsm_pdo = fsm_pdo;
 }
 
 /*****************************************************************************/
@@ -95,11 +94,6 @@ void ec_fsm_slave_config_clear(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-    // clear sub state machines
-    ec_fsm_change_clear(&fsm->fsm_change);
-    ec_fsm_coe_clear(&fsm->fsm_coe);
-    ec_fsm_pdo_assign_clear(&fsm->fsm_pdo_assign);
-    ec_fsm_pdo_mapping_clear(&fsm->fsm_pdo_mapping);
 }
 
 /*****************************************************************************/
@@ -181,8 +175,8 @@ void ec_fsm_slave_config_state_start(
     // force flag
     fsm->slave->force_config = 0;
 
-    ec_fsm_change_start(&fsm->fsm_change, fsm->slave, EC_SLAVE_STATE_INIT);
-    ec_fsm_change_exec(&fsm->fsm_change);
+    ec_fsm_change_start(fsm->fsm_change, fsm->slave, EC_SLAVE_STATE_INIT);
+    ec_fsm_change_exec(fsm->fsm_change);
     fsm->state = ec_fsm_slave_config_state_init;
 }
 
@@ -198,10 +192,10 @@ void ec_fsm_slave_config_state_init(
     ec_slave_t *slave = fsm->slave;
     ec_datagram_t *datagram = fsm->datagram;
 
-    if (ec_fsm_change_exec(&fsm->fsm_change)) return;
+    if (ec_fsm_change_exec(fsm->fsm_change)) return;
 
-    if (!ec_fsm_change_success(&fsm->fsm_change)) {
-        if (!fsm->fsm_change.spontaneous_change)
+    if (!ec_fsm_change_success(fsm->fsm_change)) {
+        if (!fsm->fsm_change->spontaneous_change)
             slave->error_flag = 1;
         fsm->state = ec_fsm_slave_config_state_error;
         return;
@@ -385,8 +379,8 @@ void ec_fsm_slave_config_enter_preop(
         )
 {
     fsm->state = ec_fsm_slave_config_state_preop;
-    ec_fsm_change_start(&fsm->fsm_change, fsm->slave, EC_SLAVE_STATE_PREOP);
-    ec_fsm_change_exec(&fsm->fsm_change); // execute immediately
+    ec_fsm_change_start(fsm->fsm_change, fsm->slave, EC_SLAVE_STATE_PREOP);
+    ec_fsm_change_exec(fsm->fsm_change); // execute immediately
 }
 
 /*****************************************************************************/
@@ -400,10 +394,10 @@ void ec_fsm_slave_config_state_preop(
     ec_slave_t *slave = fsm->slave;
     ec_master_t *master = fsm->slave->master;
 
-    if (ec_fsm_change_exec(&fsm->fsm_change)) return;
+    if (ec_fsm_change_exec(fsm->fsm_change)) return;
 
-    if (!ec_fsm_change_success(&fsm->fsm_change)) {
-        if (!fsm->fsm_change.spontaneous_change)
+    if (!ec_fsm_change_success(fsm->fsm_change)) {
+        if (!fsm->fsm_change->spontaneous_change)
             slave->error_flag = 1;
         fsm->state = ec_fsm_slave_config_state_error;
         return;
@@ -455,8 +449,8 @@ void ec_fsm_slave_config_enter_sdo_conf(
     fsm->request = list_entry(fsm->slave->config->sdo_configs.next,
             ec_sdo_request_t, list);
     ecrt_sdo_request_write(fsm->request);
-    ec_fsm_coe_transfer(&fsm->fsm_coe, fsm->slave, fsm->request);
-    ec_fsm_coe_exec(&fsm->fsm_coe); // execute immediately
+    ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, fsm->request);
+    ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
 }
 
 /*****************************************************************************/
@@ -467,9 +461,9 @@ void ec_fsm_slave_config_state_sdo_conf(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-    if (ec_fsm_coe_exec(&fsm->fsm_coe)) return;
+    if (ec_fsm_coe_exec(fsm->fsm_coe)) return;
 
-    if (!ec_fsm_coe_success(&fsm->fsm_coe)) {
+    if (!ec_fsm_coe_success(fsm->fsm_coe)) {
         EC_ERR("Sdo configuration failed for slave %u.\n",
                 fsm->slave->ring_position);
         fsm->slave->error_flag = 1;
@@ -482,8 +476,8 @@ void ec_fsm_slave_config_state_sdo_conf(
         fsm->request = list_entry(fsm->request->list.next, ec_sdo_request_t,
                 list);
         ecrt_sdo_request_write(fsm->request);
-        ec_fsm_coe_transfer(&fsm->fsm_coe, fsm->slave, fsm->request);
-        ec_fsm_coe_exec(&fsm->fsm_coe); // execute immediately
+        ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, fsm->request);
+        ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
         return;
     }
 
@@ -571,45 +565,25 @@ void ec_fsm_slave_config_state_pdo_sync(
         return;
     }
 
-    // Start configuring Pdo mapping
-    ec_fsm_pdo_mapping_start(&fsm->fsm_pdo_mapping, fsm->slave);
-    fsm->state = ec_fsm_slave_config_state_pdo_mapping;
+    // Start configuring Pdos
+    ec_fsm_pdo_start_configuration(fsm->fsm_pdo, fsm->slave);
+    fsm->state = ec_fsm_slave_config_state_pdo_conf;
     fsm->state(fsm); // execute immediately
 }
 
 /*****************************************************************************/
 
-/** Slave configuration state: PDO_MAPPING.
+/** Slave configuration state: PDO_CONF.
  */
-void ec_fsm_slave_config_state_pdo_mapping(
+void ec_fsm_slave_config_state_pdo_conf(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-    if (ec_fsm_pdo_mapping_exec(&fsm->fsm_pdo_mapping)) return;
+    if (ec_fsm_pdo_exec(fsm->fsm_pdo))
+        return;
 
-    if (!ec_fsm_pdo_mapping_success(&fsm->fsm_pdo_mapping)) {
-        EC_WARN("Configuration of Pdo mappings failed on slave %u.\n",
-                fsm->slave->ring_position);
-    }
-
-    // start applying Pdo assignments
-    ec_fsm_pdo_assign_start(&fsm->fsm_pdo_assign, fsm->slave);
-    fsm->state = ec_fsm_slave_config_state_pdo_assign;
-    fsm->state(fsm); // execute immediately
-}
-
-/*****************************************************************************/
-
-/** Slave configuration state: PDO_ASSIGN.
- */
-void ec_fsm_slave_config_state_pdo_assign(
-        ec_fsm_slave_config_t *fsm /**< slave state machine */
-        )
-{
-    if (ec_fsm_pdo_assign_exec(&fsm->fsm_pdo_assign)) return;
-
-    if (!ec_fsm_pdo_assign_success(&fsm->fsm_pdo_assign)) {
-        EC_WARN("Configuration of Pdo assignments failed on slave %u.\n",
+    if (!ec_fsm_pdo_success(fsm->fsm_pdo)) {
+        EC_WARN("Pdo configuration failed on slave %u.\n",
                 fsm->slave->ring_position);
     }
 
@@ -708,8 +682,8 @@ void ec_fsm_slave_config_enter_safeop(
         )
 {
     fsm->state = ec_fsm_slave_config_state_safeop;
-    ec_fsm_change_start(&fsm->fsm_change, fsm->slave, EC_SLAVE_STATE_SAFEOP);
-    ec_fsm_change_exec(&fsm->fsm_change); // execute immediately
+    ec_fsm_change_start(fsm->fsm_change, fsm->slave, EC_SLAVE_STATE_SAFEOP);
+    ec_fsm_change_exec(fsm->fsm_change); // execute immediately
 }
 
 /*****************************************************************************/
@@ -723,10 +697,10 @@ void ec_fsm_slave_config_state_safeop(
     ec_master_t *master = fsm->slave->master;
     ec_slave_t *slave = fsm->slave;
 
-    if (ec_fsm_change_exec(&fsm->fsm_change)) return;
+    if (ec_fsm_change_exec(fsm->fsm_change)) return;
 
-    if (!ec_fsm_change_success(&fsm->fsm_change)) {
-        if (!fsm->fsm_change.spontaneous_change)
+    if (!ec_fsm_change_success(fsm->fsm_change)) {
+        if (!fsm->fsm_change->spontaneous_change)
             fsm->slave->error_flag = 1;
         fsm->state = ec_fsm_slave_config_state_error;
         return;
@@ -749,8 +723,8 @@ void ec_fsm_slave_config_state_safeop(
 
     // set state to OP
     fsm->state = ec_fsm_slave_config_state_op;
-    ec_fsm_change_start(&fsm->fsm_change, slave, EC_SLAVE_STATE_OP);
-    ec_fsm_change_exec(&fsm->fsm_change); // execute immediately
+    ec_fsm_change_start(fsm->fsm_change, slave, EC_SLAVE_STATE_OP);
+    ec_fsm_change_exec(fsm->fsm_change); // execute immediately
 }
 
 /*****************************************************************************/
@@ -764,10 +738,10 @@ void ec_fsm_slave_config_state_op(
     ec_master_t *master = fsm->slave->master;
     ec_slave_t *slave = fsm->slave;
 
-    if (ec_fsm_change_exec(&fsm->fsm_change)) return;
+    if (ec_fsm_change_exec(fsm->fsm_change)) return;
 
-    if (!ec_fsm_change_success(&fsm->fsm_change)) {
-        if (!fsm->fsm_change.spontaneous_change)
+    if (!ec_fsm_change_success(fsm->fsm_change)) {
+        if (!fsm->fsm_change->spontaneous_change)
             slave->error_flag = 1;
         fsm->state = ec_fsm_slave_config_state_error;
         return;

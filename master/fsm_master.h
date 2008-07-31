@@ -48,7 +48,7 @@
 #include "sdo_request.h"
 #include "fsm_slave_config.h"
 #include "fsm_slave_scan.h"
-#include "fsm_coe_map.h"
+#include "fsm_pdo.h"
 
 /*****************************************************************************/
 
@@ -95,12 +95,12 @@ struct ec_fsm_master {
     off_t sii_index; /**< index to SII write request data */
     ec_sdo_request_t *sdo_request; /**< Sdo request to process. */
 
+    ec_fsm_coe_t fsm_coe; /**< CoE state machine */
+    ec_fsm_pdo_t fsm_pdo; /**< Pdo configuration state machine. */
+    ec_fsm_change_t fsm_change; /**< State change state machine */
     ec_fsm_slave_config_t fsm_slave_config; /**< slave state machine */
     ec_fsm_slave_scan_t fsm_slave_scan; /**< slave state machine */
     ec_fsm_sii_t fsm_sii; /**< SII state machine */
-    ec_fsm_change_t fsm_change; /**< State change state machine */
-    ec_fsm_coe_t fsm_coe; /**< CoE state machine */
-    ec_fsm_coe_map_t fsm_coe_map; /**< CoE mapping state machine */
 };
 
 /*****************************************************************************/

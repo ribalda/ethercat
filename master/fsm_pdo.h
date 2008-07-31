@@ -33,56 +33,57 @@
 
 /**
    \file
-   EtherCAT CoE mapping state machines.
+   EtherCAT Pdo configuration state machine structures.
 */
 
 /*****************************************************************************/
 
-#ifndef __EC_FSM_COE_MAP_H__
-#define __EC_FSM_COE_MAP_H__
+#ifndef __EC_FSM_PDO_H__
+#define __EC_FSM_PDO_H__
+
+#include "../include/ecrt.h"
 
 #include "globals.h"
 #include "datagram.h"
-#include "slave.h"
 #include "fsm_coe.h"
+#include "fsm_pdo_entry.h"
 
 /*****************************************************************************/
 
-typedef struct ec_fsm_coe_map ec_fsm_coe_map_t; /**< \see ec_fsm_coe_map */
-
 /**
- * \todo doc
+ * \see ec_fsm_pdo
  */
-struct ec_fsm_coe_map
+typedef struct ec_fsm_pdo ec_fsm_pdo_t;
+
+/** Pdo configuration state machine.
+ */
+struct ec_fsm_pdo
 {
-    void (*state)(ec_fsm_coe_map_t *); /**< CoE mapping state function */
-    ec_fsm_coe_t *fsm_coe; /**< CoE state machine to use */
+    void (*state)(ec_fsm_pdo_t *); /**< State function. */
+    ec_fsm_coe_t *fsm_coe; /**< CoE state machine to use. */
+    ec_fsm_pdo_entry_t fsm_pdo_entry; /**< Pdo entry state machine. */
+    ec_pdo_list_t pdos; /**< Pdo configuration. */
+    ec_sdo_request_t request; /**< Sdo request. */
+    ec_pdo_t slave_pdo; /**< Pdo actually appearing in a slave. */
 
-    ec_slave_t *slave; /**< EtherCAT slave */
-    ec_sdo_request_t request; /**< Sdo request */
-
-    uint8_t sync_index; /**< Index of the current sync manager. */
-    ec_sync_t *sync; /**< Pdo sync manager. */
-    uint16_t sync_sdo_index; /**< Index of the mapping Sdo. */
-    uint8_t sync_subindices; /**< number of mapped Pdos */
-    uint16_t sync_subindex; /**< current subindex in mapping Sdo */
-
-    ec_pdo_list_t pdos; /**< List of read in Pdos. */
+    ec_slave_t *slave; /**< Slave the FSM runs on. */
+    uint8_t sync_index; /**< Current sync manager index. */
+    ec_sync_t *sync; /**< Current sync manager. */
     ec_pdo_t *pdo; /**< Current Pdo. */
-    ec_sdo_t *pdo_sdo; /**< Current Pdo Sdo. */
-    uint8_t pdo_subindices; /**< Number of Pdo entries. */
-    uint16_t pdo_subindex; /**< Current subindex in Pdo Sdo. */
+    unsigned int pdo_pos; /**< Assignment position of current Pdos. */
+    unsigned int pdo_count; /**< Number of assigned Pdos. */
 };
 
 /*****************************************************************************/
 
-void ec_fsm_coe_map_init(ec_fsm_coe_map_t *, ec_fsm_coe_t *);
-void ec_fsm_coe_map_clear(ec_fsm_coe_map_t *);
+void ec_fsm_pdo_init(ec_fsm_pdo_t *, ec_fsm_coe_t *);
+void ec_fsm_pdo_clear(ec_fsm_pdo_t *);
 
-void ec_fsm_coe_map_start(ec_fsm_coe_map_t *, ec_slave_t *);
+void ec_fsm_pdo_start_reading(ec_fsm_pdo_t *, ec_slave_t *);
+void ec_fsm_pdo_start_configuration(ec_fsm_pdo_t *, ec_slave_t *);
 
-int ec_fsm_coe_map_exec(ec_fsm_coe_map_t *);
-int ec_fsm_coe_map_success(ec_fsm_coe_map_t *);
+int ec_fsm_pdo_exec(ec_fsm_pdo_t *);
+int ec_fsm_pdo_success(const ec_fsm_pdo_t *);
 
 /*****************************************************************************/
 

@@ -49,7 +49,7 @@
 #include "fsm_sii.h"
 #include "fsm_change.h"
 #include "fsm_coe.h"
-#include "fsm_coe_map.h"
+#include "fsm_pdo.h"
 
 /*****************************************************************************/
 
@@ -64,7 +64,7 @@ struct ec_fsm_slave_scan
     ec_datagram_t *datagram; /**< Datagram used in the state machine. */
     ec_fsm_slave_config_t *fsm_slave_config; /**< Slave configuration state
                                                machine to use. */
-    ec_fsm_coe_map_t *fsm_coe_map; /**< Pdo mapping state machine to use. */
+    ec_fsm_pdo_t *fsm_pdo; /**< Pdo configuration state machine to use. */
     unsigned int retries; /**< Retries on datagram timeout. */
 
     void (*state)(ec_fsm_slave_scan_t *); /**< State function. */
@@ -76,7 +76,7 @@ struct ec_fsm_slave_scan
 /*****************************************************************************/
 
 void ec_fsm_slave_scan_init(ec_fsm_slave_scan_t *, ec_datagram_t *,
-        ec_fsm_slave_config_t *, ec_fsm_coe_map_t *);
+        ec_fsm_slave_config_t *, ec_fsm_pdo_t *);
 void ec_fsm_slave_scan_clear(ec_fsm_slave_scan_t *);
 
 void ec_fsm_slave_scan_start(ec_fsm_slave_scan_t *, ec_slave_t *);

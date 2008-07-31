@@ -8,12 +8,14 @@ $Id$
 
 Version 1.4.0:
 
-* Read Pdo mapping for unknown Pdos before configuring them.
 * Attach Pdo names from SII or Coe dictioary to Pdos read via CoE.
 * Update documentation.
-* Get original driver for r8169.
 * Race in jiffies frame timeout?
-* Error at no sync manager for configuration.
+* Remove ec_sync_t::assign_source?
+* Repair rcethercat status.
+* Debug output for all configuration functions of the application interface.
+* Output warning, if there is no sync manager for a configuration.
+* Abort code messages in userspace.
 
 Future issues:
 
@@ -37,12 +39,12 @@ Future issues:
     - Add a -n (numeric) switch.
 	- Check for unwanted options.
 * Segmented Sdo downloads.
+* Get original driver for r8169.
 
 Smaller issues:
 
 * Stop master thread at ecrt_master_request() to get rid of allow_* flags?
 * Evaluate SII Size field (0x003E) to determine maximum SII memory size.
-* Unite fsm_pdo_mapping, fsm_pdo_config and fsm_coe_map.
 * Clear sync managers in INIT.
 * Read out CRC counters.
 * Configure slave ports to automatically open on link detection.
