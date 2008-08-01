@@ -37,8 +37,6 @@
 
 SUBDIRS = init.d sysconfig
 
-bin_SCRIPTS = lsec
-
-EXTRA_DIST = lsec ifup-eoe.sh
+EXTRA_DIST = ifup-eoe.sh
 
 #------------------------------------------------------------------------------
