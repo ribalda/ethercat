@@ -145,7 +145,7 @@ fi
 case "${1}" in
 
 start)
-    echo -n "Starting EtherCAT master @VERSION@"
+    echo -n "Starting EtherCAT master @VERSION@ "
 
     # construct DEVICES and BACKUPS from configuration variables
     DEVICES=""
@@ -197,7 +197,7 @@ start)
     ;;
 
 stop)
-    echo -n "Shutting down EtherCAT master @VERSION@"
+    echo -n "Shutting down EtherCAT master @VERSION@ "
 
     # unload EtherCAT device modules
     for MODULE in ${DEVICE_MODULES} master; do
@@ -229,7 +229,7 @@ restart)
     ;;
 
 status)
-    echo "Checking for EtherCAT master @VERSION@"
+    echo "Checking for EtherCAT master @VERSION@ "
 
     # count masters in configuration file
     MASTER_COUNT=0
@@ -242,7 +242,7 @@ status)
     RESULT=0
 
     for i in `seq 0 $(expr ${MASTER_COUNT} - 1)`; do
-        echo -n "Master${i}"
+        echo -n "Master${i} "
         
         # Check if the master is in idle or operation phase
         ${ETHERCAT} master --master ${i} 2>/dev/null | \
