@@ -127,14 +127,16 @@ int ec_cdev_ioctl_master(
 {
     ec_ioctl_master_t data;
 
-    down(&master->master_sem);
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
     data.slave_count = master->slave_count;
     data.config_count = ec_master_config_count(master);
     data.domain_count = ec_master_domain_count(master);
     data.phase = (uint8_t) master->phase;
     up(&master->master_sem);
 
-    down(&master->device_sem);
+    if (down_interruptible(&master->device_sem))
+        return -EINTR;
     if (master->main_device.dev) {
         memcpy(data.devices[0].address,
                 master->main_device.dev->dev_addr, ETH_ALEN);
@@ -178,7 +180,8 @@ int ec_cdev_ioctl_slave(
         return -EFAULT;
     }
 
-    down(&master->master_sem);
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
 
     if (!(slave = ec_master_find_slave_const(
                     master, 0, data.position))) {
@@ -237,7 +240,8 @@ int ec_cdev_ioctl_slave_sync(
         return -EFAULT;
     }
 
-    down(&master->master_sem);
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
 
     if (!(slave = ec_master_find_slave_const(
                     master, 0, data.slave_position))) {
@@ -287,7 +291,8 @@ int ec_cdev_ioctl_slave_sync_pdo(
         return -EFAULT;
     }
 
-    down(&master->master_sem);
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
 
     if (!(slave = ec_master_find_slave_const(
                     master, 0, data.slave_position))) {
@@ -344,7 +349,8 @@ int ec_cdev_ioctl_slave_sync_pdo_entry(
         return -EFAULT;
     }
 
-    down(&master->master_sem);
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
 
     if (!(slave = ec_master_find_slave_const(
                     master, 0, data.slave_position))) {
@@ -408,7 +414,8 @@ int ec_cdev_ioctl_domain(
         return -EFAULT;
     }
 
-    down(&master->master_sem);
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
 
     if (!(domain = ec_master_find_domain_const(master, data.index))) {
         up(&master->master_sem);
@@ -447,7 +454,8 @@ int ec_cdev_ioctl_domain_fmmu(
         return -EFAULT;
     }
 
-    down(&master->master_sem);
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
 
     if (!(domain = ec_master_find_domain_const(master, data.domain_index))) {
         up(&master->master_sem);
@@ -493,7 +501,8 @@ int ec_cdev_ioctl_domain_data(
         return -EFAULT;
     }
 
-    down(&master->master_sem);
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
 
     if (!(domain = ec_master_find_domain_const(master, data.domain_index))) {
         up(&master->master_sem);
@@ -547,7 +556,8 @@ int ec_cdev_ioctl_slave_state(
         return -EFAULT;
     }
 
-    down(&master->master_sem);
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
 
     if (!(slave = ec_master_find_slave(
                     master, 0, data.slave_position))) {
@@ -578,7 +588,8 @@ int ec_cdev_ioctl_slave_sdo(
         return -EFAULT;
     }
 
-    down(&master->master_sem);
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
 
     if (!(slave = ec_master_find_slave_const(
                     master, 0, data.slave_position))) {
@@ -625,7 +636,8 @@ int ec_cdev_ioctl_slave_sdo_entry(
         return -EFAULT;
     }
 
-    down(&master->master_sem);
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
 
     if (!(slave = ec_master_find_slave_const(
                     master, 0, data.slave_position))) {
@@ -695,7 +707,8 @@ int ec_cdev_ioctl_slave_sdo_upload(
             data.sdo_index, data.sdo_entry_subindex);
     ecrt_sdo_request_read(&request.req);
 
-    down(&master->master_sem);
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
 
     if (!(request.slave = ec_master_find_slave(
                     master, 0, data.slave_position))) {
@@ -796,7 +809,8 @@ int ec_cdev_ioctl_slave_sdo_download(
     ecrt_sdo_request_write(&request.req);
 
 
-    down(&master->master_sem);
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
 
     if (!(request.slave = ec_master_find_slave(
                     master, 0, data.slave_position))) {
@@ -858,7 +872,8 @@ int ec_cdev_ioctl_slave_sii_read(
         return -EFAULT;
     }
 
-    down(&master->master_sem);
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
 
     if (!(slave = ec_master_find_slave_const(
                     master, 0, data.slave_position))) {
@@ -921,7 +936,8 @@ int ec_cdev_ioctl_slave_sii_write(
         return -EFAULT;
     }
 
-    down(&master->master_sem);
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
 
     if (!(slave = ec_master_find_slave(
                     master, 0, data.slave_position))) {
@@ -984,7 +1000,8 @@ int ec_cdev_ioctl_config(
         return -EFAULT;
     }
 
-    down(&master->master_sem);
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
 
     if (!(sc = ec_master_get_config_const(
                     master, data.config_index))) {
@@ -1037,7 +1054,8 @@ int ec_cdev_ioctl_config_pdo(
         return -EINVAL;
     }
 
-    down(&master->master_sem);
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
 
     if (!(sc = ec_master_get_config_const(
                     master, data.config_index))) {
@@ -1091,7 +1109,8 @@ int ec_cdev_ioctl_config_pdo_entry(
         return -EINVAL;
     }
 
-    down(&master->master_sem);
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
 
     if (!(sc = ec_master_get_config_const(
                     master, data.config_index))) {
@@ -1146,7 +1165,8 @@ int ec_cdev_ioctl_config_sdo(
         return -EFAULT;
     }
 
-    down(&master->master_sem);
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
 
     if (!(sc = ec_master_get_config_const(
                     master, data.config_index))) {

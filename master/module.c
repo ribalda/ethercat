@@ -473,7 +473,9 @@ ec_master_t *ecrt_request_master(unsigned int master_index)
     }
     master = &masters[master_index];
 
-    down(&master_sem);
+    if (down_interruptible(&master_sem))
+        goto out_return;
+
     if (master->reserved) {
         up(&master_sem);
         EC_ERR("Master %u is already in use!\n", master_index);
@@ -482,7 +484,8 @@ ec_master_t *ecrt_request_master(unsigned int master_index)
     master->reserved = 1;
     up(&master_sem);
 
-    down(&master->device_sem);
+    if (down_interruptible(&master->device_sem))
+        goto out_release;
     
     if (master->phase != EC_IDLE) {
         up(&master->device_sem);

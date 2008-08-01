@@ -10,7 +10,6 @@ Version 1.4.0:
 
 * Update documentation.
 * Check for possible race condition in jiffy-based frame timeout calculation.
-* Use down_interruptible() for cdev calls.
 
 Future issues:
 
