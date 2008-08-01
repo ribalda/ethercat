@@ -709,6 +709,11 @@ ec_sdo_request_t *ecrt_slave_config_create_sdo_request(ec_slave_config_t *sc,
 {
     ec_sdo_request_t *req;
 
+    if (sc->master->debug_level)
+        EC_DBG("ecrt_slave_config_create_sdo_request(sc = 0x%x, "
+                "index = 0x%04X, subindex = 0x%02X, size = %u)\n", (u32) sc,
+                index, subindex, size);
+
     if (!(req = (ec_sdo_request_t *)
                 kmalloc(sizeof(ec_sdo_request_t), GFP_KERNEL))) {
         EC_ERR("Failed to allocate Sdo request memory!\n");

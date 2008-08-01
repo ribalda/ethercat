@@ -1219,6 +1219,9 @@ ec_domain_t *ecrt_master_create_domain(ec_master_t *master /**< master */)
     ec_domain_t *domain, *last_domain;
     unsigned int index;
 
+    if (master->debug_level)
+        EC_DBG("ecrt_master_create_domain(master = 0x%x)\n", (u32) master);
+
     if (!(domain = (ec_domain_t *) kmalloc(sizeof(ec_domain_t), GFP_KERNEL))) {
         EC_ERR("Error allocating domain memory!\n");
         return NULL;
@@ -1238,6 +1241,9 @@ ec_domain_t *ecrt_master_create_domain(ec_master_t *master /**< master */)
 
     up(&master->master_sem);
 
+    if (master->debug_level)
+        EC_DBG("Created domain %u.\n", domain->index);
+
     return domain;
 }
 
@@ -1247,6 +1253,9 @@ int ecrt_master_activate(ec_master_t *master)
 {
     uint32_t domain_offset;
     ec_domain_t *domain;
+
+    if (master->debug_level)
+        EC_DBG("ecrt_master_activate(master = 0x%x)\n", (u32) master);
 
     down(&master->master_sem);
 
@@ -1384,6 +1393,12 @@ ec_slave_config_t *ecrt_master_slave_config(ec_master_t *master,
     ec_slave_config_t *sc;
     unsigned int found = 0;
 
+
+    if (master->debug_level)
+        EC_DBG("ecrt_master_slave_config(master = 0x%x, alias = %u, "
+                "position = %u, vendor_id = %u, product_code = %u)\n",
+                (u32) master, alias, position, vendor_id, product_code);
+
     list_for_each_entry(sc, &master->configs, list) {
         if (sc->alias == alias && sc->position == position) {
             found = 1;
@@ -1432,6 +1447,11 @@ ec_slave_config_t *ecrt_master_slave_config(ec_master_t *master,
 void ecrt_master_callbacks(ec_master_t *master, int (*request_cb)(void *),
         void (*release_cb)(void *), void *cb_data)
 {
+    if (master->debug_level)
+        EC_DBG("ecrt_master_callbacks(master = 0x%x, request_cb = 0x%x, "
+                " release_cb = 0x%x, cb_data = 0x%x)\n", (u32) master,
+                (u32) request_cb, (u32) release_cb, (u32) cb_data);
+
     master->ext_request_cb = request_cb;
     master->ext_release_cb = release_cb;
     master->ext_cb_data = cb_data;

@@ -13,7 +13,6 @@ Version 1.4.0:
 * Race in jiffies frame timeout?
 * Remove ec_sync_t::assign_source?
 * Repair rcethercat status.
-* Debug output for all configuration functions of the application interface.
 * Abort code messages in userspace.
 
 Future issues:

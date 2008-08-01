@@ -322,6 +322,10 @@ int ecrt_domain_reg_pdo_entry_list(ec_domain_t *domain,
     ec_slave_config_t *sc;
     int ret;
     
+    if (domain->master->debug_level)
+        EC_DBG("ecrt_domain_reg_pdo_entry_list(domain = 0x%x, regs = 0x%x)\n",
+                (u32) domain, (u32) regs);
+
     for (reg = regs; reg->index; reg++) {
         if (!(sc = ecrt_master_slave_config(domain->master, reg->alias,
                         reg->position, reg->vendor_id, reg->product_code)))
@@ -348,6 +352,10 @@ size_t ecrt_domain_size(ec_domain_t *domain)
 
 void ecrt_domain_external_memory(ec_domain_t *domain, uint8_t *mem)
 {
+    if (domain->master->debug_level)
+        EC_DBG("ecrt_domain_external_memory(domain = 0x%x, mem = 0x%x)\n",
+                (u32) domain, (u32) mem);
+
     down(&domain->master->master_sem);
 
     ec_domain_clear_data(domain);
