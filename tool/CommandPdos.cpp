@@ -130,7 +130,8 @@ void CommandPdos::listSlavePdos(
                     << hex << setfill('0')
                     << setw(4) << entry.index
                     << ":" << setw(2) << (unsigned int) entry.subindex
-                    << ", " << dec << (unsigned int) entry.bit_length
+                    << ", " << dec << setfill(' ')
+                    << setw(2) << (unsigned int) entry.bit_length
                     << " bit, \"" << entry.name << "\"" << endl;
             }
         }
