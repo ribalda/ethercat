@@ -10,78 +10,61 @@ digraph slaveconf {
     start -> init [weight=10]
 
     init [fontname="Helvetica"]
-    //init -> init
-    //init -> error
-    init -> enter_mbox_sync [fontname="Helvetica",label ="No FMMUs"]
+    init -> enter_mbox_sync [fontname="Helvetica", label="No FMMUs"]
     init -> clear_fmmus [weight=10]
 
     clear_fmmus [fontname="Helvetica"]
-    //clear_fmmus -> clear_fmmus
-    //clear_fmmus -> error
     clear_fmmus -> enter_mbox_sync [weight=10]
 
-    enter_mbox_sync [shape=point,label=""]
-    enter_mbox_sync -> end [fontname="Helvetica",label="INIT\nrequested"]
-    enter_mbox_sync -> preop [fontname="Helvetica",label="No mailboxes"]
+    enter_mbox_sync [shape=point, label=""]
+    enter_mbox_sync -> end [fontname="Helvetica", label="INIT\nrequested"]
+    enter_mbox_sync -> preop [fontname="Helvetica", label="No mailboxes"]
     enter_mbox_sync -> mbox_sync [weight=10]
 
     mbox_sync [fontname="Helvetica"]
-    //mbox_sync -> mbox_sync
-    //mbox_sync -> error
     mbox_sync -> preop [weight=10]
 
     preop [fontname="Helvetica"]
-    //preop -> preop
-    //preop -> error
-    preop -> end [fontname="Helvetica",label="PREOP\nrequested"]
-    preop -> enter_safeop [fontname="Helvetica",label="No slave\nconfig attached"]
+    preop -> end [fontname="Helvetica", label="PREOP\nrequested"]
+    preop -> enter_safeop [fontname="Helvetica", label="No slave\nconfig attached"]
     preop -> enter_sdo_conf [weight=10]
 
-    enter_sdo_conf [shape=point,label=""]
-    enter_sdo_conf -> enter_pdo_sync [fontname="Helvetica",label="No Sdo\nconfigurations"]
+    enter_sdo_conf [shape=point, label=""]
+    enter_sdo_conf -> enter_pdo_conf [fontname="Helvetica", label="No Sdos\nconfigured"]
     enter_sdo_conf -> sdo_conf [weight=10]
 
     sdo_conf [fontname="Helvetica"]
-    //sdo_conf -> sdo_conf
-    //sdo_conf -> error
-    sdo_conf -> enter_pdo_sync [weight=10]
+    sdo_conf -> enter_pdo_conf [weight=10]
 
-    enter_pdo_sync [shape=point,label=""]
-    enter_pdo_sync -> enter_safeop [fontname="Helvetica",label="No Pdos"]
+    enter_pdo_conf [shape=point, label=""]
+    enter_pdo_conf -> pdo_conf [weight=10]
+
+    pdo_conf [fontname="Helvetica"]
+    pdo_conf -> enter_pdo_sync [weight=10]
+
+    enter_pdo_sync [shape=point, label=""]
+    enter_pdo_sync -> enter_fmmu [fontname="Helvetica", label="No Pdo SMs"]
     enter_pdo_sync -> pdo_sync [weight=10]
 
     pdo_sync [fontname="Helvetica"]
-    //pdo_sync -> pdo_sync
-    //pdo_sync -> error
-    pdo_sync -> pdo_conf [weight=10]
-
-    pdo_conf [fontname="Helvetica"]
-    //pdo_conf -> pdo_conf
-    //pdo_conf -> error
-    pdo_conf -> enter_fmmu [weight=10]
+    pdo_sync -> enter_fmmu [weight=10]
 
     enter_fmmu [shape=point,label=""]
-    enter_fmmu -> enter_safeop [fontname="Helvetica",label="No FMMUs\nto configure"]
+    enter_fmmu -> enter_safeop [fontname="Helvetica", label="No FMMUs\nconfigured"]
     enter_fmmu -> fmmu [weight=10]
 
     fmmu [fontname="Helvetica"]
-    //fmmu -> fmmu
-    //fmmu -> error
     fmmu -> enter_safeop [weight=10]
 
     enter_safeop [shape=point,label=""]
     enter_safeop -> safeop [weight=10]
 
     safeop [fontname="Helvetica"]
-    //safeop -> safeop
-    //safeop -> error
-    safeop -> end [fontname="Helvetica",label="SAFEOP\nrequested"]
+    safeop -> end [fontname="Helvetica", label="SAFEOP\nrequested"]
     safeop -> op [weight=10]
 
     op [fontname="Helvetica"]
-    //op -> op
-    //op -> error
-    op -> end [weight=10]
+    op -> end// [weight=10]
 
     end [fontname="Helvetica"]
 }

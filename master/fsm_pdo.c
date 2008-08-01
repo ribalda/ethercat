@@ -413,7 +413,7 @@ void ec_fsm_pdo_conf_action_next_sync(
         if (!(fsm->sync = ec_slave_get_sync(fsm->slave, fsm->sync_index))) {
             if (!list_empty(&fsm->pdos.list))
                 EC_WARN("Pdos configured for SM%u, but slave %u does not "
-                        "provide a sync manager configuration!\n",
+                        "provide the sync manager information!\n",
                         fsm->sync_index, fsm->slave->ring_position);
             continue;
         }

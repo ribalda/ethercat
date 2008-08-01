@@ -61,6 +61,7 @@ void ec_fsm_slave_config_state_op(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_mbox_sync(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_preop(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_sdo_conf(ec_fsm_slave_config_t *);
+void ec_fsm_slave_config_enter_pdo_conf(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_pdo_sync(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_fmmu(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_safeop(ec_fsm_slave_config_t *);
@@ -440,7 +441,7 @@ void ec_fsm_slave_config_enter_sdo_conf(
 
     // No CoE configuration to be applied?
     if (list_empty(&slave->config->sdo_configs)) { // skip Sdo configuration
-        ec_fsm_slave_config_enter_pdo_sync(fsm);
+        ec_fsm_slave_config_enter_pdo_conf(fsm);
         return;
     }
 
@@ -482,6 +483,39 @@ void ec_fsm_slave_config_state_sdo_conf(
     }
 
     // All Sdos are now configured.
+    ec_fsm_slave_config_enter_pdo_conf(fsm);
+}
+
+/*****************************************************************************/
+
+/** PDO_CONF entry function.
+ */
+void ec_fsm_slave_config_enter_pdo_conf(
+        ec_fsm_slave_config_t *fsm /**< slave state machine */
+        )
+{
+    // Start configuring Pdos
+    ec_fsm_pdo_start_configuration(fsm->fsm_pdo, fsm->slave);
+    fsm->state = ec_fsm_slave_config_state_pdo_conf;
+    fsm->state(fsm); // execute immediately
+}
+
+/*****************************************************************************/
+
+/** Slave configuration state: PDO_CONF.
+ */
+void ec_fsm_slave_config_state_pdo_conf(
+        ec_fsm_slave_config_t *fsm /**< slave state machine */
+        )
+{
+    if (ec_fsm_pdo_exec(fsm->fsm_pdo))
+        return;
+
+    if (!ec_fsm_pdo_success(fsm->fsm_pdo)) {
+        EC_WARN("Pdo configuration failed on slave %u.\n",
+                fsm->slave->ring_position);
+    }
+
     ec_fsm_slave_config_enter_pdo_sync(fsm);
 }
 
@@ -509,7 +543,7 @@ void ec_fsm_slave_config_enter_pdo_sync(
 
     if (slave->sii.sync_count <= offset) {
         // no Pdo sync managers to configure
-        ec_fsm_slave_config_enter_safeop(fsm);
+        ec_fsm_slave_config_enter_fmmu(fsm);
         return;
     }
 
@@ -563,28 +597,6 @@ void ec_fsm_slave_config_state_pdo_sync(
                 slave->ring_position);
         ec_datagram_print_wc_error(datagram);
         return;
-    }
-
-    // Start configuring Pdos
-    ec_fsm_pdo_start_configuration(fsm->fsm_pdo, fsm->slave);
-    fsm->state = ec_fsm_slave_config_state_pdo_conf;
-    fsm->state(fsm); // execute immediately
-}
-
-/*****************************************************************************/
-
-/** Slave configuration state: PDO_CONF.
- */
-void ec_fsm_slave_config_state_pdo_conf(
-        ec_fsm_slave_config_t *fsm /**< slave state machine */
-        )
-{
-    if (ec_fsm_pdo_exec(fsm->fsm_pdo))
-        return;
-
-    if (!ec_fsm_pdo_success(fsm->fsm_pdo)) {
-        EC_WARN("Pdo configuration failed on slave %u.\n",
-                fsm->slave->ring_position);
     }
 
     ec_fsm_slave_config_enter_fmmu(fsm);
