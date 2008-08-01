@@ -503,12 +503,19 @@ void ec_master_leave_operation_phase(ec_master_t *master
     ec_master_clear_slave_configs(master);
     up(&master->master_sem);
 
-    // set states for all slaves
     for (slave = master->slaves;
             slave < master->slaves + master->slave_count;
             slave++) {
+
+        // set states for all slaves
         ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
+
+        // mark for reconfiguration, because the master could have no
+        // possibility for a reconfiguration between two sequential operation
+        // phases.
+        slave->force_config = 1;
     }
+
 #ifdef EC_EOE
     // ... but leave EoE slaves in OP
     list_for_each_entry(eoe, &master->eoe_handlers, list) {
