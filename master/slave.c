@@ -667,3 +667,54 @@ const ec_pdo_t *ec_slave_find_pdo(
 }
 
 /*****************************************************************************/
+
+/** Find name for a Pdo and its entries.
+ */
+void ec_slave_find_names_for_pdo(
+        ec_slave_t *slave,
+        ec_pdo_t *pdo
+        )
+{
+    const ec_sdo_t *sdo;
+    ec_pdo_entry_t *pdo_entry;
+    const ec_sdo_entry_t *sdo_entry;
+
+    list_for_each_entry(sdo, &slave->sdo_dictionary, list) {
+        if (sdo->index == pdo->index) {
+            ec_pdo_set_name(pdo, sdo->name);
+        } else {
+            list_for_each_entry(pdo_entry, &pdo->entries, list) {
+                if (sdo->index == pdo_entry->index) {
+                    sdo_entry = ec_sdo_get_entry_const(
+                            sdo, pdo_entry->subindex);
+                    if (sdo_entry) {
+                        ec_pdo_entry_set_name(pdo_entry,
+                                sdo_entry->description);
+                    }
+                }
+            }
+        }
+    }
+}
+
+/*****************************************************************************/
+
+/** Attach Pdo names.
+ */
+void ec_slave_attach_pdo_names(
+        ec_slave_t *slave
+        )
+{
+    unsigned int i;
+    ec_sync_t *sync;
+    ec_pdo_t *pdo;
+    
+    for (i = 0; i < slave->sii.sync_count; i++) {
+        sync = slave->sii.syncs + i;
+        list_for_each_entry(pdo, &sync->pdos.list, list) {
+            ec_slave_find_names_for_pdo(slave, pdo);
+        }
+    }
+}
+
+/*****************************************************************************/

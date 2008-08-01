@@ -818,6 +818,9 @@ void ec_fsm_master_state_sdo_dictionary(
                sdo_count, entry_count, slave->ring_position);
     }
 
+    // attach pdo names from dictionary
+    ec_slave_attach_pdo_names(slave);
+
     ec_fsm_master_restart(fsm);
 }
 

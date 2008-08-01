@@ -119,6 +119,9 @@ int ec_pdo_set_name(
 {
     unsigned int len;
 
+    if (pdo->name && name && !strcmp(pdo->name, name))
+        return 0;
+    
     if (pdo->name)
         kfree(pdo->name);
 

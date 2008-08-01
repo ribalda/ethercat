@@ -8,9 +8,9 @@ $Id$
 
 Version 1.4.0:
 
-* Attach Pdo names from SII or Coe dictionary to Pdos read via CoE.
 * Update documentation.
 * Check for possible race condition in jiffy-based frame timeout calculation.
+* Use down_interruptible() for cdev calls.
 
 Future issues:
 
