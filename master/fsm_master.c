@@ -503,6 +503,7 @@ void ec_fsm_master_action_configure(
     // Does the slave have to be configured?
     if ((slave->current_state != slave->requested_state
                 || slave->force_config) && !slave->error_flag) {
+
         // Start slave configuration, if it is allowed.
         down(&master->config_sem);
         if (!master->allow_config) {
