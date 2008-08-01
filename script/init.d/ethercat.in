@@ -43,8 +43,8 @@
 # Should-Stop:       $time ntp
 # Default-Start:     3 5
 # Default-Stop:      0 1 2 6
-# Short-Description: EtherCAT Master
-# Description:
+# Short-Description: EtherCAT master
+# Description:       EtherCAT master @VERSION@
 ### END INIT INFO
 
 #------------------------------------------------------------------------------
@@ -52,6 +52,7 @@
 MODPROBE=/sbin/modprobe
 RMMOD=/sbin/rmmod
 MODINFO=/sbin/modinfo
+ETHERCAT=@prefix@/bin/ethercat
 
 #------------------------------------------------------------------------------
 
@@ -84,20 +85,6 @@ function exit_success()
 
 #------------------------------------------------------------------------------
 
-function exit_running()
-{
-    if [ -r /etc/rc.status ]; then
-        rc_reset
-        rc_status -v
-        rc_exit
-    else
-        echo " running"
-        exit 0
-    fi
-}
-
-#------------------------------------------------------------------------------
-
 function exit_fail()
 {
     if [ -r /etc/rc.status ]; then
@@ -112,15 +99,25 @@ function exit_fail()
 
 #------------------------------------------------------------------------------
 
-function exit_dead()
+function print_running()
+{
+    if [ -r /etc/rc.status ]; then
+        rc_reset
+        rc_status -v
+    else
+        echo " running"
+    fi
+}
+
+#------------------------------------------------------------------------------
+
+function print_dead()
 {
     if [ -r /etc/rc.status ]; then
         rc_failed
         rc_status -v
-        rc_exit
     else
         echo " dead"
-        exit 1
     fi
 }
 
@@ -148,7 +145,7 @@ fi
 case "${1}" in
 
 start)
-    echo -n "Starting EtherCAT master "
+    echo -n "Starting EtherCAT master @VERSION@"
 
     # construct DEVICES and BACKUPS from configuration variables
     DEVICES=""
@@ -200,7 +197,7 @@ start)
     ;;
 
 stop)
-    echo -n "Shutting down EtherCAT master "
+    echo -n "Shutting down EtherCAT master @VERSION@"
 
     # unload EtherCAT device modules
     for MODULE in ${DEVICE_MODULES} master; do
@@ -232,20 +229,35 @@ restart)
     ;;
 
 status)
-    echo -n "Checking for EtherCAT "
+    echo "Checking for EtherCAT master @VERSION@"
 
-    lsmod | grep -q "^ec_master "
-    MASTERS_RUNNING=$?
+    # count masters in configuration file
+    MASTER_COUNT=0
+    while true; do
+        DEVICE=$(eval echo "\${MASTER${MASTER_COUNT}_DEVICE}")
+        if [ -z "${DEVICE}" ]; then break; fi
+        MASTER_COUNT=$(expr ${MASTER_COUNT} + 1)
+    done
 
-    ! grep -q "(WAITING)" /sys/ethercat/master*/info
-    MASTERS_IDLE=$?
+    RESULT=0
 
-    # master module loaded and masters not waiting for devices?
-    if [ ${MASTERS_RUNNING} -eq 0 -a ${MASTERS_IDLE} -eq 0 ]; then
-        exit_running
-    else
-        exit_dead
-    fi
+    for i in `seq 0 $(expr ${MASTER_COUNT} - 1)`; do
+        echo -n "Master${i}"
+        
+        # Check if the master is in idle or operation phase
+        ${ETHERCAT} master --master ${i} 2>/dev/null | \
+            grep -qE 'Phase:[[:space:]]*Idle|Phase:[[:space:]]*Operation'
+        EXITCODE=$?
+
+        if [ ${EXITCODE} -eq 0 ]; then
+            print_running
+        else
+            print_dead
+            RESULT=1
+        fi
+    done
+
+    exit ${RESULT}
     ;;
 
 *)

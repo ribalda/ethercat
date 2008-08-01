@@ -503,6 +503,7 @@ AC_CONFIG_FILES([
         master/Makefile
         script/Makefile
         script/init.d/Makefile
+        script/init.d/ethercat
         script/sysconfig/Makefile
         tool/Makefile
 ])

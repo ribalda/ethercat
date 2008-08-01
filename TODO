@@ -8,8 +8,6 @@ $Id$
 
 Version 1.4.0:
 
-* Abort code messages in userspace.
-* Repair rcethercat status.
 * Attach Pdo names from SII or Coe dictionary to Pdos read via CoE.
 * Update documentation.
 * Check for possible race condition in jiffy-based frame timeout calculation.
@@ -17,10 +15,10 @@ Version 1.4.0:
 Future issues:
 
 * Distributed clocks.
-* Allow master requesting when in ORPHANED phase
+* Implement user space realtime interface via cdev.
 * Move master threads, slave handlers and state machines into a user
   space daemon.
-* Implement user space realtime interface via cdev.
+* Allow master requesting when in ORPHANED phase
 * Mailbox protocol handlers.
 * Mailbox state machine using toggle bits.
 * Mailbox gateway.
