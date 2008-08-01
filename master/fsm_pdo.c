@@ -60,7 +60,6 @@ void ec_fsm_pdo_conf_state_mapping(ec_fsm_pdo_t *);
 void ec_fsm_pdo_conf_state_zero_pdo_count(ec_fsm_pdo_t *);
 void ec_fsm_pdo_conf_state_assign_pdo(ec_fsm_pdo_t *);
 void ec_fsm_pdo_conf_state_set_pdo_count(ec_fsm_pdo_t *);
-void ec_fsm_pdo_conf_state_entries(ec_fsm_pdo_t *);
 
 void ec_fsm_pdo_conf_action_next_sync(ec_fsm_pdo_t *);
 void ec_fsm_pdo_conf_action_pdo_mapping(ec_fsm_pdo_t *);
@@ -433,7 +432,7 @@ void ec_fsm_pdo_conf_action_next_sync(
 
 /*****************************************************************************/
 
-/**
+/** Check if the mapping has to be read, otherwise start to configure it.
  */
 void ec_fsm_pdo_conf_action_pdo_mapping(
         ec_fsm_pdo_t *fsm /**< Pdo configuration state machine. */
@@ -469,7 +468,7 @@ void ec_fsm_pdo_conf_action_pdo_mapping(
 
 /*****************************************************************************/
 
-/**
+/** Execute the Pdo entry state machine to read the current Pdo's mapping.
  */
 void ec_fsm_pdo_conf_state_read_mapping(
         ec_fsm_pdo_t *fsm /**< Pdo configuration state machine. */
@@ -488,7 +487,9 @@ void ec_fsm_pdo_conf_state_read_mapping(
 
 /*****************************************************************************/
 
-/**
+/** Check if the mapping has to be re-configured.
+ *
+ * \todo Display mapping differences.
  */
 void ec_fsm_pdo_conf_action_check_mapping(
         ec_fsm_pdo_t *fsm /**< Pdo configuration state machine. */
@@ -515,7 +516,7 @@ void ec_fsm_pdo_conf_action_check_mapping(
 
 /*****************************************************************************/
 
-/**
+/** Let the Pdo entry state machine configure the current Pdo's mapping.
  */
 void ec_fsm_pdo_conf_state_mapping(
         ec_fsm_pdo_t *fsm /**< Pdo configuration state machine. */
@@ -533,7 +534,7 @@ void ec_fsm_pdo_conf_state_mapping(
 
 /*****************************************************************************/
 
-/**
+/** Check mapping of next Pdo, otherwise configure assignment.
  */
 void ec_fsm_pdo_conf_action_next_pdo_mapping(
         ec_fsm_pdo_t *fsm /**< Pdo configuration state machine. */
@@ -551,7 +552,7 @@ void ec_fsm_pdo_conf_action_next_pdo_mapping(
 
 /*****************************************************************************/
 
-/**
+/** Check if the Pdo assignment of the current SM has to be re-configured.
  */
 void ec_fsm_pdo_conf_action_check_assignment(
         ec_fsm_pdo_t *fsm /**< Pdo configuration state machine. */
