@@ -47,17 +47,6 @@
 
 /*****************************************************************************/
 
-/** EtherCAT Pdo assignment source.
- */
-typedef enum {
-    EC_ASSIGN_NONE, /**< No Pdos assigned. */
-    EC_ASSIGN_SII, /**< Pdo assignment read from SII. */
-    EC_ASSIGN_COE, /**< Pdo assignment read via CoE. */
-    EC_ASSIGN_CUSTOM, /**< Pdos assignment set by application. */
-} ec_assign_source_t;
-
-/*****************************************************************************/
-
 /** Sync manager.
  */
 typedef struct {
@@ -67,7 +56,6 @@ typedef struct {
     uint8_t control_register; /**< Control register value. */
     uint8_t enable; /**< Enable bit. */
     ec_pdo_list_t pdos; /**< Current Pdo assignment. */
-    ec_assign_source_t assign_source; /**< Pdo assignment source. */
 } ec_sync_t;
 
 /*****************************************************************************/

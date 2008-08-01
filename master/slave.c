@@ -473,8 +473,6 @@ int ec_slave_fetch_sii_pdos(
 
             if (ec_pdo_list_add_pdo_copy(&sync->pdos, pdo))
                 return -1;
-
-            sync->assign_source = EC_ASSIGN_SII;
         }
     }
 

@@ -58,7 +58,6 @@ void ec_sync_init(
     sync->control_register = 0x00;
     sync->enable = 0x00;
     ec_pdo_list_init(&sync->pdos);
-    sync->assign_source = EC_ASSIGN_NONE;
 }
 
 /*****************************************************************************/
@@ -77,7 +76,6 @@ void ec_sync_init_copy(
    sync->enable = other->enable;
    ec_pdo_list_init(&sync->pdos);
    ec_pdo_list_copy(&sync->pdos, &other->pdos);
-   sync->assign_source = other->assign_source;
 }
 
 /*****************************************************************************/

@@ -259,7 +259,6 @@ int ec_cdev_ioctl_slave_sync(
     data.default_size = sync->default_length;
     data.control_register = sync->control_register;
     data.enable = sync->enable;
-    data.assign_source = sync->assign_source;
     data.pdo_count = ec_pdo_list_count(&sync->pdos);
 
     up(&master->master_sem);

@@ -282,7 +282,6 @@ void ec_fsm_pdo_read_action_next_pdo(
         return;
     }
 
-    fsm->sync->assign_source = EC_ASSIGN_COE;
     ec_pdo_list_clear_pdos(&fsm->pdos);
 
     // next sync manager

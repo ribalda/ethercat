@@ -138,7 +138,6 @@ typedef struct {
     uint16_t default_size;
     uint8_t control_register;
     uint8_t enable;
-    uint8_t assign_source;
     uint8_t pdo_count;
 } ec_ioctl_slave_sync_t;
 
