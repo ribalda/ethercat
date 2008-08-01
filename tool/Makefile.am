@@ -54,7 +54,7 @@ ethercat_SOURCES = \
 	CommandVersion.cpp \
 	CommandXml.cpp \
 	MasterDevice.cpp \
-	coe_datatypes.cpp \
+	SdoCommand.cpp \
 	main.cpp \
 	sii_crc.cpp
 
@@ -77,8 +77,8 @@ noinst_HEADERS = \
 	CommandVersion.h \
 	CommandXml.h \
 	MasterDevice.h  \
+	SdoCommand.h \
 	byteorder.h \
-	coe_datatypes.h \
 	sii_crc.h
 
 REV = `if test -s $(srcdir)/../svnrevision; then \

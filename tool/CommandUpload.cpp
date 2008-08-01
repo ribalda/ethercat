@@ -9,13 +9,12 @@
 using namespace std;
 
 #include "CommandUpload.h"
-#include "coe_datatypes.h"
 #include "byteorder.h"
 
 /*****************************************************************************/
 
 CommandUpload::CommandUpload():
-    Command("upload", "Read an Sdo entry from a slave.")
+    SdoCommand("upload", "Read an Sdo entry from a slave.")
 {
 }
 
@@ -66,7 +65,7 @@ void CommandUpload::execute(MasterDevice &m, const StringVector &args)
     int sval;
     ec_ioctl_slave_sdo_upload_t data;
     unsigned int uval;
-    const CoEDataType *dataType = NULL;
+    const DataType *dataType = NULL;
 
     if (args.size() != 2) {
         err << "'" << getName() << "' takes two arguments!";
@@ -133,6 +132,12 @@ void CommandUpload::execute(MasterDevice &m, const StringVector &args)
 
 	try {
 		m.sdoUpload(&data);
+	} catch (MasterDeviceSdoAbortException &e) {
+        delete [] data.target;
+        err << "Sdo transfer aborted with code 0x"
+            << setfill('0') << hex << setw(8) << e.abortCode
+            << ": " << abortText(e.abortCode);
+        throwCommandException(err);
 	} catch (MasterDeviceException &e) {
         delete [] data.target;
         throw e;

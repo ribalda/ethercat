@@ -7,12 +7,12 @@
 #ifndef __COMMANDDOWNLOAD_H__
 #define __COMMANDDOWNLOAD_H__
 
-#include "Command.h"
+#include "SdoCommand.h"
 
 /****************************************************************************/
 
 class CommandDownload:
-    public Command
+    public SdoCommand
 {
     public:
         CommandDownload();

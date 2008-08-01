@@ -9,12 +9,11 @@
 using namespace std;
 
 #include "CommandSdos.h"
-#include "coe_datatypes.h"
 
 /*****************************************************************************/
 
 CommandSdos::CommandSdos():
-    Command("sdos", "List Sdo dictionaries.")
+    SdoCommand("sdos", "List Sdo dictionaries.")
 {
 }
 
@@ -83,7 +82,7 @@ void CommandSdos::listSlaveSdos(
     ec_ioctl_slave_sdo_t sdo;
     ec_ioctl_slave_sdo_entry_t entry;
     unsigned int i, j;
-    const CoEDataType *d;
+    const DataType *d;
     
     if (showHeader)
         cout << "=== Slave " << slave.position << " ===" << endl;

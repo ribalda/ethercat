@@ -7,12 +7,12 @@
 #ifndef __COMMANDUPLOAD_H__
 #define __COMMANDUPLOAD_H__
 
-#include "Command.h"
+#include "SdoCommand.h"
 
 /****************************************************************************/
 
 class CommandUpload:
-    public Command
+    public SdoCommand
 {
     public:
         CommandUpload();

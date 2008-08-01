@@ -9,13 +9,12 @@
 using namespace std;
 
 #include "CommandDownload.h"
-#include "coe_datatypes.h"
 #include "byteorder.h"
 
 /*****************************************************************************/
 
 CommandDownload::CommandDownload():
-    Command("download", "Write an Sdo entry to a slave.")
+    SdoCommand("download", "Write an Sdo entry to a slave.")
 {
 }
 
@@ -66,7 +65,7 @@ void CommandDownload::execute(MasterDevice &m, const StringVector &args)
     stringstream strIndex, strSubIndex, strValue, err;
     ec_ioctl_slave_sdo_download_t data;
     unsigned int number;
-    const CoEDataType *dataType = NULL;
+    const DataType *dataType = NULL;
     SlaveList slaves;
 
     if (args.size() != 3) {
@@ -207,6 +206,12 @@ void CommandDownload::execute(MasterDevice &m, const StringVector &args)
 
 	try {
         m.sdoDownload(&data);
+	} catch (MasterDeviceSdoAbortException &e) {
+        delete [] data.data;
+        err << "Sdo transfer aborted with code 0x"
+            << setfill('0') << hex << setw(8) << e.abortCode
+            << ": " << abortText(e.abortCode);
+        throwCommandException(err);
 	} catch(MasterDeviceException &e) {
         delete [] data.data;
         throw e;

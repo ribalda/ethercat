@@ -22,10 +22,33 @@ class MasterDeviceException:
     friend class MasterDevice;
     
     protected:
+        /** Constructor with string parameter. */
+        MasterDeviceException(
+                const string &s /**< Message. */
+                ): runtime_error(s) {}
+
         /** Constructor with stringstream parameter. */
         MasterDeviceException(
                 const stringstream &s /**< Message. */
                 ): runtime_error(s.str()) {}
+};
+
+/****************************************************************************/
+
+class MasterDeviceSdoAbortException:
+    public MasterDeviceException 
+{
+    friend class MasterDevice;
+
+    public:
+        uint32_t abortCode;
+    
+    protected:
+        /** Constructor with stringstream parameter. */
+        MasterDeviceSdoAbortException(uint32_t code):
+            MasterDeviceException("Sdo transfer aborted.") {
+                abortCode = code;
+            };
 };
 
 /****************************************************************************/

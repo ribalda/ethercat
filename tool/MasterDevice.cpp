@@ -359,14 +359,12 @@ void MasterDevice::sdoDownload(ec_ioctl_slave_sdo_download_t *data)
 {
     if (ioctl(fd, EC_IOCTL_SLAVE_SDO_DOWNLOAD, data) < 0) {
         stringstream err;
-        err << "Failed to download Sdo: ";
         if (errno == EIO && data->abort_code) {
-            err << "Abort code 0x" << hex << setfill('0')
-                << setw(8) << data->abort_code;
+            throw MasterDeviceSdoAbortException(data->abort_code);
         } else {
-            err << strerror(errno);
+            err << "Failed to download Sdo: " << strerror(errno);
+            throw MasterDeviceException(err);
         }
-        throw MasterDeviceException(err);
 	}
 }
 
@@ -376,14 +374,12 @@ void MasterDevice::sdoUpload(ec_ioctl_slave_sdo_upload_t *data)
 {
     if (ioctl(fd, EC_IOCTL_SLAVE_SDO_UPLOAD, data) < 0) {
         stringstream err;
-        err << "Failed to upload Sdo: ";
         if (errno == EIO && data->abort_code) {
-            err << "Abort code 0x" << hex << setfill('0')
-                << setw(8) << data->abort_code;
+            throw MasterDeviceSdoAbortException(data->abort_code);
         } else {
-            err << strerror(errno);
+            err << "Failed to upload Sdo: " << strerror(errno);
+            throw MasterDeviceException(err);
         }
-        throw MasterDeviceException(err);
     }
 }
 

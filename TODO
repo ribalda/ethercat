@@ -8,11 +8,11 @@ $Id$
 
 Version 1.4.0:
 
+* Abort code messages in userspace.
+* Repair rcethercat status.
 * Attach Pdo names from SII or Coe dictionary to Pdos read via CoE.
 * Update documentation.
-* Race in jiffies frame timeout?
-* Repair rcethercat status.
-* Abort code messages in userspace.
+* Check for possible race condition in jiffy-based frame timeout calculation.
 
 Future issues:
 

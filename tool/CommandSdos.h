@@ -7,12 +7,12 @@
 #ifndef __COMMANDSDOS_H__
 #define __COMMANDSDOS_H__
 
-#include "Command.h"
+#include "SdoCommand.h"
 
 /****************************************************************************/
 
 class CommandSdos:
-    public Command
+    public SdoCommand
 {
     public:
         CommandSdos();
