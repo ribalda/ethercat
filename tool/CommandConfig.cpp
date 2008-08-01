@@ -139,19 +139,18 @@ void CommandConfig::showDetailedConfigs(
                 for (k = 0; k < configIter->syncs[j].pdo_count; k++) {
                     m.getConfigPdo(&pdo, configIter->config_index, j, k);
 
-                    cout << "  Pdo 0x" << hex
-                        << setw(4) << pdo.index
-                        << " \"" << pdo.name << "\"" << endl;
+                    cout << "  Pdo 0x" << hex << setw(4) << pdo.index << endl;
 
                     for (l = 0; l < pdo.entry_count; l++) {
                         m.getConfigPdoEntry(&entry,
                                 configIter->config_index, j, k, l);
 
-                        cout << "    Pdo entry 0x" << hex
+                        cout << "    Pdo entry 0x" << hex << setfill('0')
                             << setw(4) << entry.index << ":"
                             << setw(2) << (unsigned int) entry.subindex
-                            << ", " << dec << (unsigned int) entry.bit_length
-                            << " bit, \"" << entry.name << "\"" << endl;
+                            << ", " << dec << setfill(' ')
+                            << setw(2) << (unsigned int) entry.bit_length
+                            << " bit" << endl;
                     }
                 }
             }
