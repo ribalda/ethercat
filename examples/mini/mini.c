@@ -45,7 +45,7 @@
 
 // Optional features
 #define CONFIGURE_PDOS  1
-#define EL3162_ALT_PDOS 0
+#define EL3152_ALT_PDOS 0
 #define EXTERNAL_MEMORY 1
 #define SDO_ACCESS      0
 
@@ -73,20 +73,25 @@ static struct timer_list timer;
 static uint8_t *domain1_pd; // process data memory
 
 #define AnaInSlavePos  0, 1
+#define AnaOutSlavePos 0, 2
 #define DigOutSlavePos 0, 3
 
 #define Beckhoff_EL2004 0x00000002, 0x07D43052
-#define Beckhoff_EL3162 0x00000002, 0x0C5A3052
+#define Beckhoff_EL3152 0x00000002, 0x0c503052
+#define Beckhoff_EL4102 0x00000002, 0x10063052
 
-static unsigned int off_ana_in; // offsets for Pdo entries
+// offsets for Pdo entries
+static unsigned int off_ana_in;
+static unsigned int off_ana_out;
 static unsigned int off_dig_out;
 
 const static ec_pdo_entry_reg_t domain1_regs[] = {
-#if EL3162_ALT_PDOS
-    {AnaInSlavePos,  Beckhoff_EL3162, 0x6401, 2, &off_ana_in},
+#if EL3152_ALT_PDOS
+    {AnaInSlavePos,  Beckhoff_EL3152, 0x6401, 1, &off_ana_in},
 #else
-    {AnaInSlavePos,  Beckhoff_EL3162, 0x3101, 2, &off_ana_in},
+    {AnaInSlavePos,  Beckhoff_EL3152, 0x3101, 2, &off_ana_in},
 #endif
+    {AnaOutSlavePos, Beckhoff_EL4102, 0x3001, 1, &off_ana_out},
     {DigOutSlavePos, Beckhoff_EL2004, 0x3001, 1, &off_dig_out},
     {}
 };
@@ -98,7 +103,9 @@ static unsigned int blink = 0;
 
 #if CONFIGURE_PDOS
 
-static ec_pdo_entry_info_t el3162_pdo_entries[] = {
+// Analog in --------------------------
+
+static ec_pdo_entry_info_t el3152_pdo_entries[] = {
     {0x3101, 1,  8}, // channel 1 status
     {0x3101, 2, 16}, // channel 1 value
     {0x3102, 1,  8}, // channel 2 status
@@ -107,28 +114,48 @@ static ec_pdo_entry_info_t el3162_pdo_entries[] = {
     {0x6401, 2, 16}  // channel 2 value (alt.)
 };
 
-#if EL3162_ALT_PDOS
-static ec_pdo_info_t el3162_pdos[] = {
-    {0x1A10, 2, el3162_pdo_entries + 4},
+#if EL3152_ALT_PDOS
+static ec_pdo_info_t el3152_pdos[] = {
+    {0x1A10, 2, el3152_pdo_entries + 4},
 };
 
-static ec_sync_info_t el3162_syncs[] = {
+static ec_sync_info_t el3152_syncs[] = {
     {2, EC_DIR_OUTPUT},
-    {3, EC_DIR_INPUT, 1, el3162_pdos},
+    {3, EC_DIR_INPUT, 1, el3152_pdos},
     {0xff}
 };
 #else
-static ec_pdo_info_t el3162_pdos[] = {
-    {0x1A00, 2, el3162_pdo_entries},
-    {0x1A01, 2, el3162_pdo_entries + 2}
+static ec_pdo_info_t el3152_pdos[] = {
+    {0x1A00, 2, el3152_pdo_entries},
+    {0x1A01, 2, el3152_pdo_entries + 2}
 };
 
-static ec_sync_info_t el3162_syncs[] = {
+static ec_sync_info_t el3152_syncs[] = {
     {2, EC_DIR_OUTPUT},
-    {3, EC_DIR_INPUT, 2, el3162_pdos},
+    {3, EC_DIR_INPUT, 1, el3152_pdos},
     {0xff}
 };
 #endif
+
+// Analog out -------------------------
+
+static ec_pdo_entry_info_t el4102_pdo_entries[] = {
+    {0x3001, 1, 16}, // channel 1 value
+    {0x3002, 1, 16}, // channel 2 value
+};
+
+static ec_pdo_info_t el4102_pdos[] = {
+    {0x1600, 1, el4102_pdo_entries},
+    {0x1601, 1, el4102_pdo_entries + 1}
+};
+
+static ec_sync_info_t el4102_syncs[] = {
+    {2, EC_DIR_OUTPUT, 2, el4102_pdos},
+    {3, EC_DIR_INPUT},
+    {0xff}
+};
+
+// Digital out ------------------------
 
 static ec_pdo_entry_info_t el2004_channels[] = {
     {0x3001, 1, 1}, // Value 1
@@ -330,14 +357,25 @@ int __init init_mini_module(void)
     }
 
     if (!(sc_ana_in = ecrt_master_slave_config(
-                    master, AnaInSlavePos, Beckhoff_EL3162))) {
+                    master, AnaInSlavePos, Beckhoff_EL3152))) {
         printk(KERN_ERR PFX "Failed to get slave configuration.\n");
         goto out_release_master;
     }
 
 #if CONFIGURE_PDOS
     printk(KERN_INFO PFX "Configuring Pdos...\n");
-    if (ecrt_slave_config_pdos(sc_ana_in, EC_END, el3162_syncs)) {
+    if (ecrt_slave_config_pdos(sc_ana_in, EC_END, el3152_syncs)) {
+        printk(KERN_ERR PFX "Failed to configure Pdos.\n");
+        goto out_release_master;
+    }
+
+    if (!(sc = ecrt_master_slave_config(
+                    master, AnaOutSlavePos, Beckhoff_EL4102))) {
+        printk(KERN_ERR PFX "Failed to get slave configuration.\n");
+        goto out_release_master;
+    }
+
+    if (ecrt_slave_config_pdos(sc, EC_END, el4102_syncs)) {
         printk(KERN_ERR PFX "Failed to configure Pdos.\n");
         goto out_release_master;
     }
