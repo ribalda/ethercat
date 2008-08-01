@@ -33,9 +33,9 @@
 
 /** \file
  *
- * EtherCAT Realtime Interface.
+ * EtherCAT master application interface.
  *
- * \defgroup RealtimeInterface EtherCAT Realtime Interface
+ * \defgroup ApplicationInterface EtherCAT Application Interface
  *
  * EtherCAT interface for realtime applications. This interface is designed
  * for realtime modules that want to use EtherCAT. There are functions to
