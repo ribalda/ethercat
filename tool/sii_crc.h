@@ -5,6 +5,7 @@
  ****************************************************************************/
 
 #include <iostream>
+#include <stdint.h>
 
 uint8_t calcSiiCrc(const uint8_t *, size_t);
 
