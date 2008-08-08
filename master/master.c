@@ -1263,6 +1263,7 @@ int ecrt_master_activate(ec_master_t *master)
     domain_offset = 0;
     list_for_each_entry(domain, &master->domains, list) {
         if (ec_domain_finish(domain, domain_offset)) {
+            up(&master->master_sem);
             EC_ERR("Failed to finish domain 0x%08X!\n", (u32) domain);
             return -1;
         }
