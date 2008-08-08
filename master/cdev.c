@@ -561,6 +561,7 @@ int ec_cdev_ioctl_slave_state(
 
     if (!(slave = ec_master_find_slave(
                     master, 0, data.slave_position))) {
+        up(&master->master_sem);
         EC_ERR("Slave %u does not exist!\n", data.slave_position);
         return -EINVAL;
     }
