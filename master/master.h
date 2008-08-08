@@ -135,6 +135,13 @@ struct ec_master {
                                      call to ecrt_master_receive(). */
 
     int thread_id; /**< Master thread PID. */
+    struct completion thread_can_terminate; /**< Thread termination completion
+                                              object. When stopping the
+                                              thread, it must be assured, that
+                                              it 'hears' a SIGTERM, therefore
+                                              the allow_singal() function must
+                                              have been called.
+                                             */
     struct completion thread_exit; /**< Thread completion object. */
 
 #ifdef EC_EOE

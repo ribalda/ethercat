@@ -313,6 +313,7 @@ int ec_master_thread_start(
         int (*thread_func)(ec_master_t *) /**< thread function to start */
         )
 {
+    init_completion(&master->thread_can_terminate);
     init_completion(&master->thread_exit);
 
     EC_INFO("Starting master thread.\n");
@@ -341,11 +342,15 @@ void ec_master_thread_stop(
     if (master->debug_level)
         EC_DBG("Stopping master thread.\n");
 
+    // wait until thread is ready to receive the SIGTERM
+    wait_for_completion(&master->thread_can_terminate);
+
     kill_proc(master->thread_id, SIGTERM, 1);
     wait_for_completion(&master->thread_exit);
     EC_INFO("Master thread exited.\n");
 
-    if (master->fsm_datagram.state != EC_DATAGRAM_SENT) return;
+    if (master->fsm_datagram.state != EC_DATAGRAM_SENT)
+        return;
     
     // wait for FSM datagram
     sleep_jiffies = max(HZ / 100, 1); // 10 ms, at least 1 jiffy
@@ -822,6 +827,7 @@ static int ec_master_idle_thread(ec_master_t *master)
 {
     daemonize("EtherCAT-IDLE");
     allow_signal(SIGTERM);
+    complete(&master->thread_can_terminate);
 
     while (!signal_pending(current)) {
         ec_datagram_output_stats(&master->fsm_datagram);
@@ -869,6 +875,7 @@ static int ec_master_operation_thread(ec_master_t *master)
 {
     daemonize("EtherCAT-OP");
     allow_signal(SIGTERM);
+    complete(&master->thread_can_terminate);
 
     while (!signal_pending(current)) {
         ec_datagram_output_stats(&master->fsm_datagram);
