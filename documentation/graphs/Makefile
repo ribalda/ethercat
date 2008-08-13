@@ -20,13 +20,17 @@ PDF = $(addsuffix .pdf,$(GRAPHS))
 
 #-----------------------------------------------------------------------------
 
-all: $(PDF)
+all: pdf
+
+pdf: $(PDF)
+
+ps: $(PS)
 
 %.ps: %.dot
 	dot -Tps -o $@ $<
 
 %.pdf: %.ps
-	ps2pdf $<
+	epstopdf $<
 
 clean:
 	@rm -f *.ps *.pdf

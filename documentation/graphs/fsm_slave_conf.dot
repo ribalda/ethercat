@@ -2,9 +2,7 @@
 /* $Id$ */
 
 digraph slaveconf {
-    size="7,9"
-    center=1
-    ratio=fill
+    size="3,5"
 
     start [fontname="Helvetica"]
     start -> init [weight=10]

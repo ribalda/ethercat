@@ -42,6 +42,8 @@ $(EXT_FILES): $(ETHERCAT_CMD)
 	$(shell $(subst $(EXT_PREFIX),$(ETHERCAT_HELP) ,$@) > $@)
 
 pdf: $(EXT_FILES)
+	$(MAKE) -C images
+	$(MAKE) -C graphs
 	pdflatex $(LATEX_OPTIONS) $(FILE)
 
 index:

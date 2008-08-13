@@ -4,60 +4,9 @@
 %
 %  $Id$
 %
-%  vi: spell spelllang=en
+%  vi: spell spelllang=en tw=78
 % 
 %------------------------------------------------------------------------------
-
-%
-%   Conventions
-% The IgH EtherCAT Master
-%   Feature Summary
-%   License
-% Architecture
-%   Phases
-%   Behavior (Scanning) TODO
-% Application Interface
-%   Interface version
-%   Master Requesting and Releasing
-%   Master Locking
-%   Slave configuration
-%   Configuring Pdo assignment and mapping
-%   Domains (memory)
-%   Pdo entry registration
-%   Sdo configuration
-%   Sdo access
-%   Cyclic operation
-% Ethernet Devices
-%   Device Interface
-%   Device Modules
-%   Network Driver Basics
-%   EtherCAT Network Drivers
-%   Device Selection
-%   The Device Interface
-%   Patching Network Drivers
-% The Master's State Machines
-%   Master
-%   Slave scanning
-%     SII
-%     Pdo assign/mapping
-%   Slave configuration
-%     State change
-%     Pdo assign/mapping
-%   CoE upload/download/information
-% Mailbox Protocol Implementations
-%     Ethernet-over-EtherCAT (EoE)
-%     CANopen-over-EtherCAT (CoE)
-% User Space
-%     The ethercat command
-%     System Integration
-%         The EtherCAT Init Script
-%         The EtherCAT Sysconfig File
-%     Monitoring and Debugging
-% Installation
-% Example applications
-% Bibliography
-% Glossary
-%
 
 \documentclass[a4paper,12pt,BCOR6mm,bibtotoc,idxtotoc]{scrbook}
 
@@ -443,15 +392,17 @@ application that can provide a bus configuration and exchange process data.
 
 %------------------------------------------------------------------------------
 
-\section{General behavior} % FIXME
+\section{General Behavior} % FIXME
 \index{Master behavior}
 
 \ldots
 
+%   Behavior (Scanning) TODO
+
 %------------------------------------------------------------------------------
 
 \section{Master Module}
-\label{sec:mastermodule}
+\label{sec:mastermod}
 \index{Master module}
 
 The EtherCAT master kernel module \textit{ec\_master} can contain multiple
@@ -609,6 +560,17 @@ the module code.
 \label{sec:ecrt}
 \index{Application interface}
 
+%   Interface version
+%   Master Requesting and Releasing
+%   Master Locking
+%   Slave configuration
+%   Configuring Pdo assignment and mapping
+%   Domains (memory)
+%   Pdo entry registration
+%   Sdo configuration
+%   Sdo access
+%   Cyclic operation
+
 The application interface provides functions and data structures for
 applications to access and use an EtherCAT master. The complete documentation
 of the interface is included as Doxygen~\cite{doxygen} comments in the header
@@ -668,14 +630,14 @@ and access to it has to be sequentialized. This is usually done by locking with
 semaphores, or other methods to protect critical sections.
 
 The master itself can not provide locking mechanisms, because it has no chance
-to know the appropriate kind of lock. Imagine, the application uses RTAI
-functionality, then ordinary kernel semaphores would not be sufficient. For
-that, an important design decision was made: The application that reserved a
-master must have the total control, therefore it has to take responsibility for
-providing the appropriate locking mechanisms. If another instance wants to
-access the master, it has to request the master lock by callbacks, that have to
-be set by the application. Moreover the application can deny access to the
-master if it considers it to be awkward at the moment.
+to know the appropriate kind of lock. For example if the application uses RTAI
+functionality, ordinary kernel semaphores would not be sufficient. For that, an
+important design decision was made: The application that reserved a master must
+have the total control, therefore it has to take responsibility for providing
+the appropriate locking mechanisms. If another instance wants to access the
+master, it has to request the master lock by callbacks, that have to be set by
+the application. Moreover the application can deny access to the master if it
+considers it to be awkward at the moment.
 
 \begin{figure}[htbp]
   \centering
@@ -693,11 +655,19 @@ Section~\ref{sec:concurrency} gives an example, of how to implement this.
 
 %------------------------------------------------------------------------------
 
-\chapter{Ethernet devices}
+\chapter{Ethernet Devices}
 \label{sec:devices}
 
-The EtherCAT protocol is based on the Ethernet standard. That's why the master
-relies on standard Ethernet hardware to communicate with the bus.
+%   Device Interface
+%   Device Modules
+%   Network Driver Basics
+%   EtherCAT Network Drivers
+%   Device Selection
+%   The Device Interface
+%   Patching Network Drivers
+
+The EtherCAT protocol is based on the Ethernet standard, so the master relies
+on standard Ethernet hardware to communicate with the bus.
 
 The term \textit{device} is used as a synonym for Ethernet network interface
 hardware. There are device driver modules that handle Ethernet hardware, which
@@ -755,35 +725,43 @@ by reading the device's interrupt register. For example, if the flag
 for received frames is set, frame data has to be copied from hardware
 to kernel memory and passed to the network stack.
 
-\paragraph{The net\_device structure}
+\paragraph{The \lstinline+net_device+ structure}
 \index{net\_device}
 
-The driver registers a \textit{net\_device} structure for each device
-to communicate with the network stack and to create a ``network
-interface''. In case of an Ethernet driver, this interface appears as
-\textit{ethX}, where X is a number assigned by the kernel on
-registration. The \textit{net\_device} structure receives events
-(either from user space or from the network stack) via several
-callbacks, which have to be set before registration. Not every
-callback is mandatory, but for reasonable operation the ones below are
-needed in any case:
+The driver registers a \lstinline+net_device+ structure for each device to
+communicate with the network stack and to create a ``network interface''. In
+case of an Ethernet driver, this interface appears as \textit{ethX}, where X is
+a number assigned by the kernel on registration. The \lstinline+net_device+
+structure receives events (either from user space or from the network stack)
+via several callbacks, which have to be set before registration. Not every
+callback is mandatory, but for reasonable operation the ones below are needed
+in any case:
+
+\newsavebox\boxopen
+\sbox\boxopen{\lstinline+open()+}
+\newsavebox\boxstop
+\sbox\boxstop{\lstinline+stop()+}
+\newsavebox\boxxmit
+\sbox\boxxmit{\lstinline+hard_start_xmit()+}
+\newsavebox\boxstats
+\sbox\boxstats{\lstinline+get_stats()+}
 
 \begin{description}
 
-\item[open()] This function is called when network communication has to be
-started, for example after a command \textit{ifconfig ethX up} from user
-space. Frame reception has to be enabled by the driver.
+\item[\usebox\boxopen] This function is called when network communication has
+to be started, for example after a command \lstinline+ip link set ethX up+ from
+user space. Frame reception has to be enabled by the driver.
 
-\item[stop()] The purpose of this callback is to ``close'' the device, i.~e.
-make the hardware stop receiving frames.
+\item[\usebox\boxstop] The purpose of this callback is to ``close'' the device,
+i.~e.  make the hardware stop receiving frames.
 
-\item[hard\_start\_xmit()] This function is cal\-led for each frame that has
-to be transmitted. The network stack passes the frame as a pointer to an
-\textit{sk\_buff} structure (``socket buffer''\index{Socket buffer}, see
+\item[\usebox\boxxmit] This function is called for each frame that has to be
+transmitted. The network stack passes the frame as a pointer to an
+\lstinline+sk_buff+ structure (``socket buffer''\index{Socket buffer}, see
 below), which has to be freed after sending.
 
-\item[get\_stats()] This call has to return a pointer to the device's
-\textit{net\_device\_stats} structure, which permanently has to be filled with
+\item[\usebox\boxstats] This call has to return a pointer to the device's
+\lstinline+net_device_stats+ structure, which permanently has to be filled with
 frame statistics. This means, that every time a frame is received, sent, or an
 error happened, the appropriate counter in this structure has to be increased.
 
@@ -796,14 +774,14 @@ unregistering is done with \lstinline+unregister_netdev()+.
 \index{netif}
 
 All other communication in the direction interface $\to$ network stack is done
-via the \lstinline+netif_*()+ calls. For example, on successful device
-opening, the network stack has to be notified, that it can now pass frames to
-the interface.  This is done by calling \lstinline+netif_start_queue()+. After
-this call, the \lstinline+hard_start_xmit()+ callback can be called by the
-network stack.  Furthermore a network driver usually manages a frame
-transmission queue. If this gets filled up, the network stack has to be told
-to stop passing further frames for a while. This happens with a call to
-\lstinline+netif_stop_queue()+.  If some frames have been sent, and there is
+via the \lstinline+netif_*()+ calls. For example, on successful device opening,
+the network stack has to be notified, that it can now pass frames to the
+interface. This is done by calling \lstinline+netif_start_queue()+. After this
+call, the \lstinline+hard_start_xmit()+ callback can be called by the network
+stack. Furthermore a network driver usually manages a frame transmission queue.
+If this gets filled up, the network stack has to be told to stop passing
+further frames for a while. This happens with a call to
+\lstinline+netif_stop_queue()+. If some frames have been sent, and there is
 enough space again to queue new frames, this can be notified with
 \lstinline+netif_wake_queue()+. Another important call is
 \lstinline+netif_receive_skb()+\footnote{This function is part of the NAPI
@@ -812,25 +790,26 @@ network stack (with \lstinline+netif_rx()+). NAPI is a technique to improve
 network performance on Linux. Read more in
 \url{http://www.cyberus.ca/~hadi/usenix-paper.tgz}.}: It passes a frame to the
 network stack, that was just received by the device. Frame data has to be
-packed into a so-called ``socket buffer'' for that (see below).
+included in a so-called ``socket buffer'' for that (see below).
 
 \paragraph{Socket Buffers}
 \index{Socket buffer}
 
-Socket buffers are the basic data type for the whole network stack.  They
-serve as containers for network data and are able to quickly add data headers
-and footers, or strip them off again. Therefore a socket buffer consists of an
+Socket buffers are the basic data type for the whole network stack. They serve
+as containers for network data and are able to quickly add data headers and
+footers, or strip them off again. Therefore a socket buffer consists of an
 allocated buffer and several pointers that mark beginning of the buffer
-(\textit{head}), beginning of data (\textit{data}), end of data
-(\textit{tail}) and end of buffer (\textit{end}). In addition, a socket buffer
-holds network header information and (in case of received data) a pointer to
-the \textit{net\_device}, it was received on. There exist functions that
-create a socket buffer (\lstinline+dev_alloc_skb()+), add data either from
-front (\lstinline+skb_push()+) or back (\lstinline+skb_put()+), remove data
-from front (\lstinline+skb_pull()+) or back (\lstinline+skb_trim()+), or
-delete the buffer (\lstinline+kfree_skb()+).  A socket buffer is passed from
-layer to layer, and is freed by the layer that uses it the last time. In case
-of sending, freeing has to be done by the network driver.
+(\lstinline+head+), beginning of data (\lstinline+data+), end of data
+(\lstinline+tail+) and end of buffer (\lstinline+end+). In addition, a socket
+buffer holds network header information and (in case of received data) a
+pointer to the \lstinline+net_device+, it was received on. There exist
+functions that create a socket buffer (\lstinline+dev_alloc_skb()+), add data
+either from front (\lstinline+skb_push()+) or back (\lstinline+skb_put()+),
+remove data from front (\lstinline+skb_pull()+) or back
+(\lstinline+skb_trim()+), or delete the buffer (\lstinline+kfree_skb()+).  A
+socket buffer is passed from layer to layer, and is freed by the layer that
+uses it the last time. In case of sending, freeing has to be done by the
+network driver.
 
 %------------------------------------------------------------------------------
 
@@ -843,25 +822,25 @@ EtherCAT devices, when connected to an EtherCAT bus.
 \paragraph{Dedicated Interfaces}
 
 For performance and realtime purposes, the EtherCAT master needs direct and
-exclusive access to the Ethernet hardware. This implies that the network
-device must not be connected to the kernel's network stack as usual, because
-the kernel would try to use it as an ordinary Ethernet device.
+exclusive access to the Ethernet hardware. This implies that the network device
+must not be connected to the kernel's network stack as usual, because the
+kernel would try to use it as an ordinary Ethernet device.
 
 \paragraph{Interrupt-less Operation}
 \index{Interrupt}
 
-EtherCAT frames travel through the logical EtherCAT ring and are then sent
-back to the master. Communication is highly deterministic: A frame is sent and
-will be received again after a constant time.  Therefore, there is no need to
-notify the driver about frame reception: The master can instead query the
-hardware for received frames.
+EtherCAT frames travel through the logical EtherCAT ring and are then sent back
+to the master. Communication is highly deterministic: A frame is sent and will
+be received again after a constant time, so there is no need to notify the
+driver about frame reception: The master can instead query the hardware for
+received frames, if it expects them to be already received.
 
 Figure~\ref{fig:interrupt} shows two workflows for cyclic frame transmission
 and reception with and without interrupts.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=.8\textwidth]{images/interrupt}
+  \includegraphics[width=.9\textwidth]{images/interrupt}
   \caption{Interrupt Operation versus Interrupt-less Operation}
   \label{fig:interrupt}
 \end{figure}
@@ -881,11 +860,11 @@ dissected. The situation is now the same as at the beginning of the left
 workflow: The received data is processed and a new frame is assembled and
 sent. There is nothing to do for the rest of the cycle.
 
-The interrupt-less operation is desirable, because there is simply no need for
-an interrupt. Moreover hardware interrupts are not conducive in improving the
-driver's realtime behaviour: Their indeterministic incidences contribute to
-increasing the jitter. Besides, if a realtime extension (like RTAI) is used,
-some additional effort would have to be made to prioritize interrupts.
+The interrupt-less operation is desirable, because hardware interrupts are not
+conducive in improving the driver's realtime behaviour: Their indeterministic
+incidences contribute to increasing the jitter. Besides, if a realtime
+extension (like RTAI) is used, some additional effort would have to be made to
+prioritize interrupts.
 
 \paragraph{Ethernet and EtherCAT Devices}
 
@@ -927,32 +906,12 @@ The chosen approach has the following disadvantages:
 \section{Device Selection}
 \label{sec:deviceselection}
 
-After loading the master module, at least one EtherCAT-capable network
-driver module has to be loaded, that connects one of its devices to
-the master. To specify an EtherCAT device and the master to connect
-to, all EtherCAT-capable network driver modules should provide two
-module parameters:
-
-\begin{description}
-\item[ec\_device\_index] PCI device index of the device that is
-  connected to the EtherCAT bus. If this parameter is left away, all
-  devices found are treated as ordinary Ethernet devices. Default:
-  $-1$
-\item[ec\_master\_index] Index of the master to connect to. Default:
-  $0$
-\end{description}
-
-The following command loads the EtherCAT-capable RTL8139 device
-driver, telling it to handle the second device as an EtherCAT device
-and connecting it to the first master:
-
-\begin{lstlisting}[gobble=2]
-  # `\textbf{modprobe ec\_8139too ec\_device\_index=1}`
-\end{lstlisting}
-
-Usually, this command does not have to be entered manually, but is
-called by the EtherCAT init script. See section~\ref{sec:init} for
-more information.
+After loading the master module, at least one EtherCAT-capable network driver
+module has to be loaded, that offers its devices to the master (see
+section~\ref{sec:ecdev}. The master module knows the devices to choose from the
+module parameters (see section~\ref{sec:mastermod}). If the init script is used
+to start the master, the drivers and devices to use can be specified in the
+sysconfig file (see section~\ref{sec:sysconfig}).
 
 %------------------------------------------------------------------------------
 
@@ -965,162 +924,18 @@ An anticipation to the section about the master module
 the way, a network device driver module can connect a device to a
 specific EtherCAT master.
 
-The master module provides a ``device interface'' for network device
-drivers. To use this interface, a network device driver module must
-include the header
-\textit{devices/ecdev.h}\nomenclature{ecdev}{EtherCAT Device}, coming
-with the EtherCAT master code. This header offers a function interface
-for EtherCAT devices which is explained below. All functions of the
-device interface are named with the prefix \textit{ecdev}.
+The master module provides a ``device interface'' for network device drivers.
+To use this interface, a network device driver module must include the header
+\textit{devices/ecdev.h}\nomenclature{ecdev}{EtherCAT Device}, coming with the
+EtherCAT master code. This header offers a function interface for EtherCAT
+devices. All functions of the device interface are named with the prefix
+\lstinline+ecdev+.
 
-\paragraph{Device Registration}
+The documentation of the device interface can be found in the header file or in
+the appropriate module of the interface documentation (see
+section~\ref{sec:gendoc} for generation instructions).
 
-A network device driver can connect a physical device to an EtherCAT
-master with the \textit{ecdev\_register()} function.
-
-\begin{lstlisting}[gobble=2,language=C]
-  ec_device_t *ecdev_register(unsigned int master_index,
-                              struct net_device *net_dev,
-                              ec_isr_t isr,
-                              struct module *module);
-\end{lstlisting}
-
-The first parameter \textit{master\_index} must be the index of the
-EtherCAT master to connect to (see section~\ref{sec:mastermod}),
-followed by \textit{net\_dev}, the pointer to the corresponding
-net\_device structure, which represents the network device to connect.
-The third parameter \textit{isr} must be a pointer to the interrupt
-service routine (ISR\index{ISR}) handling the device. The master will
-later execute the ISR in order to receive frames and to update the
-device status. The last parameter \textit{module} must be the pointer
-to the device driver module, which is usually accessible via the macro
-\textit{THIS\_MODULE} (see next paragraph). On success, the function
-returns a pointer to an \textit{ec\_device\_t} object, which has to be
-specified when calling further functions of the device interface.
-Therefore the device module has to store this pointer for future use.
-In error case, the \textit{ecdev\_register()} returns \textit{NULL},
-which means that the device could not be registered.  The reason for
-this is printed to \textit{Syslog}\index{Syslog}. In this case, the
-device module is supposed to abort the module initialisation and let
-the \textit{insmod} command fail.
-
-\paragraph{Implicit Dependencies}
-
-The reason for the module pointer has to be specified at device registration is
-a non-trivial one: The master has to know about the module, because there will
-be an implicit dependency between the device module and a later connected
-application module: When an application module connects to the master, the use
-count of the master module will be increased, so that the master module can not
-be unloaded for the time of the connection. This is reasonable, and so
-automatically done by the kernel. The kernel knows about this dependency,
-because the application module uses kernel symbols provided by the master
-module.  Moreover it is mandatory, that the device module can be unloaded
-neither, because it is implicitly used by the application module, too.
-Unloading it would lead to a fatal situation, because the master would have no
-device to send and receive frames for the application. This dependency can not
-be detected automatically, because the application module does not use any
-symbols of the device module. Therefore the master explicitly increments the
-use counter of the connected device module upon connection of an application
-and decrements it, if it disconnects again. In this manner, it is impossible to
-unload a device module while the master is in use. This is done with the kernel
-function pair \textit{try\_module\_get()}
-\index{try\_module\_get@\textit{try\_module\_get()}} and \textit{module\_put()}
-\index{module\_put@\textit{module\_put()}}. The first one increases the use
-count of a module and only fails, if the module is currently being unloaded.
-The last one decreases the use count again and never fails. Both functions take
-a pointer to the module as their argument, which the device module therefore
-has to specify upon device registration.
-
-\paragraph{Device Unregistering}
-
-The deregistration of a device is usually done in the device module's cleanup
-function, by calling the \textit{ecdev\_unregister()} function and specifying
-the master index and a pointer to the device object again.
-
-\begin{lstlisting}[gobble=2,language=C]
-  void ecdev_unregister(unsigned int master_index,
-                        ec_device_t *device);
-\end{lstlisting}
-
-This function can fail too (if the master index is invalid, or the
-given device was not registered), but due to the fact, that this
-failure can not be dealt with appropriately, because the device module
-is unloading anyway, the failure code would not be of any interest. So
-the function has a void return value.
-
-\paragraph{Starting the Master}
-
-When a device has been initialized completely and is ready to send and
-receive frames, the master has to be notified about this by calling
-the \textit{ecdev\_start()} function.
-
-\begin{lstlisting}[gobble=2,language=C]
-  int ecdev_start(unsigned int master_index);
-\end{lstlisting}
-
-The master will then enter ``Idle Mode'' and start scanning the bus
-(and possibly handling EoE slaves). Moreover it will make the bus
-accessible via Sysfs interface and react to user interactions. The
-function takes one parameter \textit{master\_index}, which has to be
-the same as at the call to \textit{ecdev\_register()}. The return
-value will be non-zero if the starting process failed. In this case
-the device module is supposed to abort the init sequence and make the
-init function return an error code.
-
-\paragraph{Stopping the Master}
-
-Before a device can be unregistered, the master has to be stopped by
-calling the \textit{ecdev\_stop()} function. It will stop processing
-messages of EoE slaves and leave ``Idle Mode''. The only parameter is
-\textit{master\_index}. This function can not fail.
-
-\begin{lstlisting}[gobble=2,language=C]
-  void ecdev_stop(unsigned int master_index);
-\end{lstlisting}
-
-A subsequent call to \textit{ecdev\_unregister()} will now unregister
-the device savely.
-
-\paragraph{Receiving Frames}
-
-The interrupt service routine handling device events usually has a
-section where new frames are fetched from the hardware and forwarded
-to the kernel network stack via \textit{netif\_receive\_skb()}. For an
-EtherCAT-capable device, this has to be replaced by calling the
-\textit{ecdev\_receive()} function to forward the received data to the
-connected EtherCAT master instead.
-
-\begin{lstlisting}[gobble=2,language=C]
-  void ecdev_receive(ec_device_t *device,
-                     const void *data,
-                     size_t size);
-\end{lstlisting}
-
-This function takes 3 arguments, a pointer to the device object
-(\textit{device}), a pointer to the received data, and the size of the
-received data. The data range has to include the Ethernet headers
-starting with the destination address and reach up to the last octet
-of EtherCAT data, excluding the FCS. Most network devices handle the
-FCS in hardware, so it is not seen by the driver code and therefore
-doesn't have to be cut off manually.
-
-\paragraph{Handling the Link Status}
-
-Information about the link status (i.~e. if there is a carrier signal detected
-on the physical port) is also important to the master. This information is
-usually gathered by the ISR and should be forwarded to the master by calling
-the \textit{ecdev\_link\_state()} function. The master then can react on this
-and warn the application of a lost link.
-
-\begin{lstlisting}[gobble=2,language=C]
-  void ecdev_link_state(ec_device_t *device,
-                        uint8_t new_state);
-\end{lstlisting}
-
-The parameter \textit{device} has to be a pointer to the device object
-returned by \textit{ecdev\_\-register()}. With the second parameter
-\textit{new\_state}, the new link state is passed: 1, if the link went
-up, and 0, if it went down.
+\ldots % FIXME general description of the device interface
 
 %------------------------------------------------------------------------------
 
@@ -1128,347 +943,43 @@ up, and 0, if it went down.
 \label{sec:patching}
 \index{Network drivers}
 
-This section will demonstrate, how to make a standard Ethernet driver
-EtherCAT-capable. The below code examples are taken out of the
-modified RealTek RTL8139 driver coming with the EtherCAT master
-(\textit{devices/8139too.c}). The driver was originally developed by
-Donald Becker, and is currently maintained by Jeff Garzik.
-
-Unfortunately, there is no standard procedure to enable an Ethernet
-driver for use with the EtherCAT master, but there are a few common
-techniques, that are described in this section.
+This section will describe, how to make a standard Ethernet driver
+EtherCAT-capable. Unfortunately, there is no standard procedure to enable an
+Ethernet driver for use with the EtherCAT master, but there are a few common
+techniques.
 
 \begin{enumerate}
-\item A first simple rule is, that \textit{netif\_*()}-calls must be
-  strictly avoided for all EtherCAT devices. As mentioned before,
-  EtherCAT devices have no connection to the network stack, and
-  therefore must not call its interface functions.
-\item Another important thing is, that EtherCAT devices should be
-  operated without interrupts. So any calls of registering interrupt
-  handlers and enabling interrupts at hardware level must be avoided,
-  too.
-\item The master does not use a new socket buffer for each send
-  operation: Instead there is a fix one allocated on master
-  initialization. This socket buffer is filled with an EtherCAT frame
-  with every send operation and passed to the
-  \textit{hard\_start\_xmit()} callback. For that it is necessary,
-  that the socket buffer is not be freed by the network driver as
-  usual.
+
+\item A first simple rule is, that \lstinline+netif_*()+ calls must be avoided
+for all EtherCAT devices. As mentioned before, EtherCAT devices have no
+connection to the network stack, and therefore must not call its interface
+functions.
+
+\item Another important thing is, that EtherCAT devices should be operated
+without interrupts. So any calls of registering interrupt handlers and enabling
+interrupts at hardware level must be avoided, too.
+
+\item The master does not use a new socket buffer for each send operation:
+Instead there is a fix one allocated on master initialization. This socket
+buffer is filled with an EtherCAT frame with every send operation and passed to
+the \lstinline+hard_start_xmit()+ callback. For that it is necessary, that the
+socket buffer is not be freed by the network driver as usual.
+
 \end{enumerate}
 
-As mentioned before, the driver will handle both EtherCAT and ordinary
-Ethernet devices. This implies, that for each device-dependent
-operation, it has to be checked if an EtherCAT device is involved, or
-just an Ethernet device. For means of simplicity, this example driver
-will only handle one EtherCAT device. This makes the case
-differentiations easier.
+An Ethernet driver usually handles several Ethernet devices, each described by
+a \lstinline+net_device+ structure with a \lstinline+priv_data+ field to
+attach driver-dependent data to the structure. To distinguish between normal
+Ethernet devices and the ones used by EtherCAT masters, the private data
+structure used by the driver could be extended by a pointer, that points to an
+\lstinline+ec_device_t+ object returned by \lstinline+ecdev_offer()+ (see
+section~\ref{sec:ecdev}) if the device is used by a master and otherwise is
+zero.
 
-\paragraph{Global Variables}
-
-First of all, there have to be additional global variables declared,
-as shown in the listing:
-
-\begin{lstlisting}[gobble=2,language=C,numbers=left]
-  static int ec_device_index = -1;
-  static int ec_device_master_index = 0;
-  static ec_device_t *rtl_ec_dev;
-  struct net_device *rtl_ec_net_dev = NULL;
-\end{lstlisting}
-
-\begin{description}
-\item[\linenum{1} -- \linenum{2}] To
-  comply to the requirements for parameters of EtherCAT device modules
-  described in section~\ref{sec:seldev}, there have to be additional
-  parameter variables: \textit{ec\_\-device\_\-index} holds the index
-  of the EtherCAT device and defaults to $-1$ (no EtherCAT device),
-  while \textit{ec\_device\_master\_index} stores index of the master,
-  the single device will be connected to. Default: $0$
-\item[\linenum{3}] \textit{rtl\_ec\_dev} will be
-  the pointer to the later registered RealTek EtherCAT device, which
-  can be used as a parameter for device methods.
-\item[\linenum{4}] \textit{rtl\_ec\_net\_dev} is
-  a pointer to the \textit{net\_device} structure of the dedicated
-  device and is set while scanning the PCI bus and finding the device
-  with the specified index. This is done inside the
-  \textit{pci\_module\_init()} function executed as the first thing on
-  module loading.
-\end{description}
-
-\paragraph{Module Initialization}
-
-Below is the (shortened) coding of the device driver's module init
-function:
-
-\begin{lstlisting}[gobble=2,language=C,numbers=left]
-  static int __init rtl8139_init_module(void)
-  {
-          if (pci_module_init(&rtl8139_pci_driver) < 0) {
-                  printk(KERN_ERR "Failed to init PCI mod.\n");
-                  goto out_return;
-          }
-
-          if (rtl_ec_net_dev) {
-                  printk(KERN_INFO "Registering"
-                         " EtherCAT device...\n");
-                  if (!(rtl_ec_dev =
-                          ecdev_register(ec_device_master_index,
-                                         rtl_ec_net_dev,
-                                         rtl8139_interrupt,
-                                         THIS_MODULE))) {
-                          printk(KERN_ERR "Failed to reg."
-                                          " EtherCAT device!\n");
-                          goto out_unreg_pci;
-                  }
-
-                  printk(KERN_INFO "Starting EtherCAT"
-                         " device...\n");
-                  if (ecdev_start(ec_device_master_index)) {
-                          printk(KERN_ERR "Failed to start"
-                                 " EtherCAT device!\n");
-                          goto out_unreg_ec;
-                  }
-          } else {
-                  printk(KERN_WARNING "No EtherCAT device"
-                         " registered!\n");
-          }
-
-          return 0;
-
-      out_unreg_ec:
-          ecdev_unregister(ec_device_master_index, rtl_ec_dev);
-      out_unreg_pci:
-          pci_unregister_driver(&rtl8139_pci_driver);
-      out_return:
-          return -1;
-  }
-\end{lstlisting}
-
-\begin{description}
-\item[\linenum{3}] This call initializes all
-  RTL8139-compatible devices found on the pci bus. If a device with
-  index \textit{ec\_device\_index} is found, a pointer to its
-  \textit{net\_device} structure is stored in
-  \textit{rtl\_ec\_net\_dev} for later use (see next listings).
-\item[\linenum{8}] If the specified device was
-  found, \textit{rtl\_ec\_net\_dev} is non-zero.
-\item[\linenum{11}] The device is connected to
-  the specified master with a call to \textit{ecdev\_register()}. If
-  this fails, module loading is aborted.
-\item[\linenum{23}] The device registration was
-  successful and the master is started. This can fail, which aborts
-  module loading.
-\item[\linenum{29}] If no EtherCAT device was
-  found, a warning is output.
-\end{description}
-
-\paragraph{Device Searching}
-
-During the PCI initialization phase, a variable \textit{board\_idx} is
-increased for each RTL8139-compatible device found. The code below is
-executed for each device:
-
-\begin{lstlisting}[gobble=2,language=C,numbers=left]
-  if (board_idx == ec_device_index) {
-          rtl_ec_net_dev = dev;
-          strcpy(dev->name, "ec0");
-  }
-\end{lstlisting}
-
-\begin{description}
-\item[\linenum{1}] The device with the specified
-  index will be the EtherCAT device.
-\end{description}
-
-\paragraph{Avoiding Device Registration}
-
-Later in the PCI initialization phase, the net\_devices get
-registered. This has to be avoided for EtherCAT devices and so this is
-a typical example for an EtherCAT case differentiation:
-
-\begin{lstlisting}[gobble=2,language=C,numbers=left]
-  if (dev != rtl_ec_net_dev) {
-          i = register_netdev(dev);
-          if (i) goto err_out;
-  }
-\end{lstlisting}
-
-\begin{description}
-\item[\linenum{1}] If the current net\_device is
-  not the EtherCAT device, it is registered at the network stack.
-\end{description}
-
-\paragraph{Avoiding Interrupt Registration}
-
-In the next two listings, there is an interrupt requested and the
-device's interrupts are enabled. This also has to be encapsulated by
-if-clauses, because interrupt operation is not wanted for EtherCAT
-devices.
-
-\begin{lstlisting}[gobble=2,language=C,numbers=left]
-  if (dev != rtl_ec_net_dev) {
-          retval = request_irq(dev->irq, rtl8139_interrupt,
-                               SA_SHIRQ, dev->name, dev);
-          if (retval) return retval;
-  }
-\end{lstlisting}
-
-\begin{lstlisting}[gobble=2,language=C,numbers=left]
-  if (dev != rtl_ec_net_dev) {
-          /* Enable all known interrupts by setting
-             the interrupt mask. */
-          RTL_W16(IntrMask, rtl8139_intr_mask);
-  }
-\end{lstlisting}
-
-\paragraph{Frame Sending}
-
-The listing below shows an excerpt of the function representing the
-\textit{hard\_start\_xmit()} callback of the net\_device.
-
-\begin{lstlisting}[gobble=2,language=C,numbers=left]
-  /* Note: the chip doesn't have auto-pad! */
-  if (likely(len < TX_BUF_SIZE)) {
-          if (len < ETH_ZLEN)
-                  memset(tp->tx_buf[entry], 0, ETH_ZLEN);
-          skb_copy_and_csum_dev(skb, tp->tx_buf[entry]);
-          if (dev != rtl_ec_net_dev) {
-                  dev_kfree_skb(skb);
-          }
-  } else {
-          if (dev != rtl_ec_net_dev) {
-                  dev_kfree_skb(skb);
-          }
-          tp->stats.tx_dropped++;
-          return 0;
-  }
-\end{lstlisting}
-
-\begin{description}
-\item[\linenum{6} + \linenum{10}] The
-  master uses a fixed socket buffer for transmission, which is reused
-  and may not be freed.
-\end{description}
-
-\paragraph{Frame Receiving}
-
-During ordinary frame reception, a socket buffer is created and filled
-with the received data. This is not necessary for an EtherCAT device:
-
-\begin{lstlisting}[gobble=2,language=C,numbers=left]
-  if (dev != rtl_ec_net_dev) {
-          /* Malloc up new buffer, compatible with net-2e. */
-          /* Omit the four octet CRC from the length. */
-
-          skb = dev_alloc_skb (pkt_size + 2);
-          if (likely(skb)) {
-                  skb->dev = dev;
-                  skb_reserve(skb, 2); /* 16 byte align
-                                          the IP fields. */
-                  eth_copy_and_sum(skb, &rx_ring[ring_off + 4],
-                                   pkt_size, 0);
-                  skb_put(skb, pkt_size);
-                  skb->protocol = eth_type_trans(skb, dev);
-
-                  dev->last_rx = jiffies;
-                  tp->stats.rx_bytes += pkt_size;
-                  tp->stats.rx_packets++;
-
-                  netif_receive_skb (skb);
-          } else {
-                  if (net_ratelimit())
-                          printk(KERN_WARNING
-                                 "%s: Memory squeeze, dropping"
-                                 " packet.\n", dev->name);
-                  tp->stats.rx_dropped++;
-          }
-  } else {
-          ecdev_receive(rtl_ec_dev,
-                        &rx_ring[ring_offset + 4], pkt_size);
-          dev->last_rx = jiffies;
-          tp->stats.rx_bytes += pkt_size;
-          tp->stats.rx_packets++;
-  }
-\end{lstlisting}
-
-\begin{description}
-\item[\linenum{28}] If the device is an EtherCAT
-  device, no socket buffer is allocated. Instead a pointer to the data
-  (which is still in the device's receive ring) is passed to the
-  EtherCAT master. Unnecessary copy operations are avoided.
-\item[\linenum{30} -- \linenum{32}] The
-  device's statistics are updated as usual.
-\end{description}
-
-\paragraph{Link State}
-
-The link state (i.~e. if there is a carrier signal detected on the
-receive port) is determined during execution of the ISR. The listing
-below shows the different processing for Ethernet and EtherCAT
-devices:
-
-\begin{lstlisting}[gobble=2,language=C,numbers=left]
-  if (dev != rtl_ec_net_dev) {
-          if (tp->phys[0] >= 0) {
-                  mii_check_media(&tp->mii, netif_msg_link(tp),
-                                  init_media);
-          }
-  } else {
-          void __iomem *ioaddr = tp->mmio_addr;
-          uint16_t link = RTL_R16(BasicModeStatus)
-                          & BMSR_LSTATUS;
-          ecdev_link_state(rtl_ec_dev, link ? 1 : 0);
-  }
-\end{lstlisting}
-
-\begin{description}
-\item[\linenum{3}] The ``media check'' is done
-  via the media independent interface (MII\nomenclature{MII}{Media
-    Independent Interface}), a standard interface for Fast Ethernet
-  devices.
-\item[\linenum{7} -- \linenum{10}] For
-  EtherCAT devices, the link state is fetched manually from the
-  appropriate device register, and passed to the EtherCAT master by
-  calling \textit{ecdev\_\-link\_\-state()}.
-\end{description}
-
-\paragraph{Module Cleanup}
-
-Below is the module's cleanup function:
-
-\begin{lstlisting}[gobble=2,language=C,numbers=left]
-  static void __exit rtl8139_cleanup_module (void)
-  {
-          printk(KERN_INFO "Cleaning up RTL8139-EtherCAT"
-                 " module...\n");
-
-          if (rtl_ec_net_dev) {
-                  printk(KERN_INFO "Stopping device...\n");
-                  ecdev_stop(ec_device_master_index);
-                  printk(KERN_INFO "Unregistering device...\n");
-                  ecdev_unregister(ec_device_master_index,
-                                   rtl_ec_dev);
-                  rtl_ec_dev = NULL;
-          }
-
-          pci_unregister_driver(&rtl8139_pci_driver);
-
-          printk(KERN_INFO "RTL8139-EtherCAT module"
-                 " cleaned up.\n");
-  }
-\end{lstlisting}
-
-\begin{description}
-
-\item[\linenum{6}] Stopping and deregistration is only done, if a device was
-registered before.
-
-\item[\linenum{8}] The master is first stopped, so it does not access the
-device any more.
-
-\item[\linenum{10}] After this, the device is unregistered. The master is now
-``orphaned''.
-
-\end{description}
+The RealTek RTL-8139 Fast Ethernet driver is a ``simple'' Ethernet driver and
+can be taken as an example to patch new drivers. The interesting sections can
+be found by searching the string ``ecdev" in the file
+\textit{devices/8139too-2.6.24-ethercat.c}.
 
 %------------------------------------------------------------------------------
 
@@ -1722,18 +1233,17 @@ pointer:
 In the master code, state pointers of all state machines\footnote{All except
 for the EoE state machine, because multiple EoE slaves have to be handled in
 parallel. For this reason each EoE handler object has its own state pointer.}
-are gathered in a single object of the \textit{ec\_fsm\_t} class. This is
-advantageous, because there is always one instance of every state machine
+are gathered in a single object of the \lstinline+ec_fsm_master_t+ class. This
+is advantageous, because there is always one instance of every state machine
 available and can be started on demand.
 
 \paragraph{Mealy and Moore}
 
-If a closer look is taken to the above listing, it can be seen that
-the actions executed (the ``outputs'' of the state machine) only
-depend on the current state. This accords to the ``Moore'' model
-introduced in section~\ref{sec:fsmtheory}. As mentioned, the ``Mealy''
-model offers a higher flexibility, which can be seen in the listing
-below:
+If a closer look is taken to the above listing, it can be seen that the
+actions executed (the ``outputs'' of the state machine) only depend on the
+current state. This accords to the ``Moore'' model introduced in
+section~\ref{sec:fsmtheory}. As mentioned, the ``Mealy'' model offers a higher
+flexibility, which can be seen in the listing below:
 
 \begin{lstlisting}[gobble=2,language=C,numbers=left]
   void state7(void *priv_data) {
@@ -1749,9 +1259,10 @@ below:
 \end{lstlisting}
 
 \begin{description}
-\item[\linenum{3} + \linenum{7}] The
-  state function executes the actions depending on the state
-  transition, that is about to be done.
+
+\item[\linenum{3} + \linenum{7}] The state function executes the actions
+depending on the state transition, that is about to be done.
+
 \end{description}
 
 The most flexible alternative is to execute certain actions depending
@@ -1772,13 +1283,13 @@ transition:
   }
 \end{lstlisting}
 
-This model is oftenly used in the master. It combines the best aspects
-of both approaches.
+This model is often used in the master. It combines the best aspects of both
+approaches.
 
 \paragraph{Using Sub State Machines}
 
-To avoid having too much states, certain functions of the EtherCAT master state
-machine have been sourced out into sub state machines.  This helps to
+To avoid having too much states, certain functions of the EtherCAT master
+state machine have been sourced out into sub state machines.  This helps to
 encapsulate the related workflows and moreover avoids the ``state explosion''
 phenomenon described in section~\ref{sec:fsmtheory}. If the master would
 instead use one big state machine, the number of states would be a multiple of
@@ -1810,208 +1321,57 @@ slave configuration state machine code:
 \end{lstlisting}
 
 \begin{description}
-\item[\linenum{3}] \textit{change\_state} is the
-  state pointer of the state change state machine. The state function,
-  the pointer points on, is executed\ldots
-\item[\linenum{6}] \ldots either until the state
-  machine terminates with the error state \ldots
-\item[\linenum{11}] \ldots or until the state
-  machine terminates in the end state. Until then, the ``higher''
-  state machine remains in the current state and executes the sub
-  state machine again in the next cycle.
+
+\item[\linenum{3}] \lstinline+change_state+ is the state pointer of the state
+change state machine. The state function, the pointer points on, is
+executed\ldots
+
+\item[\linenum{6}] \ldots either until the state machine terminates with the
+error state \ldots
+
+\item[\linenum{11}] \ldots or until the state machine terminates in the end
+state. Until then, the ``higher'' state machine remains in the current state
+and executes the sub state machine again in the next cycle.
+
 \end{description}
 
 \paragraph{State Machine Descriptions}
 
-The below sections describe every state machine used in the EtherCAT
-master. The textual descriptions of the state machines contain
-references to the transitions in the corresponding state transition
-diagrams, that are marked with an arrow followed by the name of the
-successive state.  Transitions caused by trivial error cases (i.~e. no
-response from slave) are not described explicitly. These transitions
-are drawn as dashed arrows in the diagrams.
+The below sections describe every state machine used in the EtherCAT master.
+The textual descriptions of the state machines contain references to the
+transitions in the corresponding state transition diagrams, that are marked
+with an arrow followed by the name of the successive state. Transitions caused
+by trivial error cases (i.~e. no response from slave) are not described
+explicitly. These transitions are drawn as dashed arrows in the diagrams.
 
 %------------------------------------------------------------------------------
 
-\section{The Operation State Machine}
-\label{sec:fsm-op}
-\index{FSM!Operation}
+\section{The Master State Machine}
+\label{sec:fsm-master}
+\index{FSM!Master}
 
-The Operation state machine is executed by calling the
-\textit{ecrt\_master\_run()} method in cyclic realtime code. Its
-purpose is to monitor the bus and to reconfigure slaves after a bus
-failure or power failure. Figure~\ref{fig:fsm-op} shows its transition
-diagram.
+The master state machine is executed in the context of the master thread.
+Figure~\ref{fig:fsm-master} shows its transition diagram. Its purposes are:
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=.8\textwidth]{images/fsm-op}
-  \caption{Transition diagram of the operation state machine}
-  \label{fig:fsm-op}
+  \includegraphics[width=\textwidth]{graphs/fsm_master}
+  \caption{Transition diagram of the master state machine}
+  \label{fig:fsm-master}
 \end{figure}
 
 \begin{description}
-\item[START] This is the beginning state of the operation state
-  machine. There is a datagram issued, that queries the ``AL Control
-  Response'' attribute \cite[section~5.3.2]{alspec} of all slaves via
-  broadcast. In this way, all slave states and the number of slaves
-  responding can be determined.  $\rightarrow$~BROADCAST
 
-\item[BROADCAST] The broadcast datagram is evaluated. A change in the number of
-responding slaves is treated as a topology change. If the number of slaves is
-not as expected, the bus is marked as ``tainted''. In this state, no slave
-reconfiguration is possible, because the assignment of known slaves and those
-present on the bus is ambiguous. If the number of slaves is considered as
-right, the bus is marked for validation, because it turned from tainted to
-normal state and it has to be checked, if all slaves are valid. Now, the state
-of every single slave has to be determined. For that, a (unicast) datagram is
-issued, that queries the first slave's ``AL Control Response'' attribute.
-$\rightarrow$~READ STATES
+\item[Bus monitoring] The bus topology is monitored. If it changes, the bus is
+(re-)scanned.
 
-\item[READ STATES] If the current slave did not respond to its configured
-station address, it is marked as offline, and the next slave is queried.
-$\rightarrow$~READ STATES
+\item[Slave configuration] The application-layer states of the slaves are
+monitored. If a slave is not in the state it supposed to be, the slave is
+(re-)configured.
 
-  If the slave responded, it is marked as online and its current state
-  is stored. The next slave is queried. $\rightarrow$~READ STATES
-
-  If all slaves have been queried, and the bus is marked for
-  validation, the validation is started by checking the first slaves
-  vendor ID. $\rightarrow$~VALIDATE VENDOR
-
-  If no validation has to be done, it is checked, if all slaves are in
-  the state they are supposed to be. If not, the first of slave with
-  the wrong state is reconfigured and brought in the required state.
-  $\rightarrow$~CONFIGURE SLAVES
-
-  If all slaves are in the correct state, the state machine is
-  restarted. $\rightarrow$~START
-
-\item[CONFIGURE SLAVES] The slave configuration state machine is
-  executed until termination. $\rightarrow$~CONFIGURE SLAVES
-
-  If there are still slaves in the wrong state after another check,
-  the first of these slaves is configured and brought into the correct
-  state again. $\rightarrow$~CONFIGURE SLAVES
-
-  If all slaves are in the correct state, the state machine is
-  restarted. $\rightarrow$~START
-
-\item[VALIDATE VENDOR] The SII state machine is executed until
-  termination. If the slave has the wrong vendor ID, the state machine
-  is restarted. $\rightarrow$~START
-
-  If the slave has the correct vendor ID, its product ID is queried.
-  $\rightarrow$~VALIDATE PRODUCT
-
-\item[VALIDATE PRODUCT] The SII state machine is executed until
-  termination. If the slave has the wrong product ID, the state
-  machine is restarted. $\rightarrow$~START
-
-  If the slave has the correct product ID, the next slave's vendor ID
-  is queried. $\rightarrow$~VALIDATE VENDOR
-
-  If all slaves have the correct vendor IDs and product codes, the
-  configured station addresses can be safely rewritten. This is done
-  for the first slave marked as offline.
-  $\rightarrow$~REWRITE ADDRESSES
-
-\item[REWRITE ADDRESSES] If the station address was successfully written, it is
-searched for the next slave marked as offline. If there is one, its address is
-reconfigured, too.  $\rightarrow$~REWRITE ADDRESSES
-
-  If there are no more slaves marked as offline, the state machine is
-  restarted. $\rightarrow$~START
-\end{description}
-
-%------------------------------------------------------------------------------
-
-\section{The Idle State Machine}
-\label{sec:fsm-idle}
-\index{FSM!Idle}
-
-The Idle state machine is executed by a kernel thread, if no application is
-connected. Its purpose is to make slave information available to user space,
-operate EoE-capable slaves, read and write SII contents and test slave
-functionality.  Figure~\ref{fig:fsm-idle} shows its transition diagram.
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=.8\textwidth]{images/fsm-idle}
-  \caption{Transition diagram of the idle state machine}
-  \label{fig:fsm-idle}
-\end{figure}
-
-\begin{description}
-\item[START] The beginning state of the idle state machine. Similar to
-  the operation state machine, a broadcast datagram is issued, to
-  query all slave states and the number of slaves.
-  $\rightarrow$~BROADCAST
-
-\item[BROADCAST] The number of responding slaves is evaluated. If it
-  has changed since the last time, this is treated as a topology
-  change and the internal list of slaves is cleared and rebuild
-  completely. The slave scan state machine is started for the first
-  slave. $\rightarrow$~SCAN FOR SLAVES
-
-  If no topology change happened, every single slave state is fetched.
-  $\rightarrow$~READ STATES
-
-\item[SCAN FOR SLAVES] The slave scan state machine is executed until
-  termination. $\rightarrow$~SCAN FOR SLAVES
-
-  If there is another slave to scan, the slave scan state machine is
-  started again. $\rightarrow$~SCAN FOR SLAVES
-
-  If all slave information has been fetched, slave addresses are
-  calculated and EoE processing is started. Then, the state machine is
-  restarted. $\rightarrow$~START
-
-\item[READ STATES] If the slave did not respond to the query, it is
-  marked as offline. The next slave is queried.
-  $\rightarrow$~READ STATES
-
-  If the slave responded, it is marked as online. And the next slave
-  is queried. $\rightarrow$~READ STATES
-
-  If all slave states have been determined, it is checked, if any
-  slaves are not in the state they supposed to be. If this is true,
-  the slave configuration state machine is started for the first of
-  them. $\rightarrow$~CONFIGURE SLAVES
-
-  If all slaves are in the correct state, it is checked, if any
-  E$^2$PROM write operations are pending. If this is true, the first
-  pending operation is executed by starting the SII state machine for
-  writing access. $\rightarrow$~WRITE EEPROM
-
-  If all these conditions are false, there is nothing to do and the
-  state machine is restarted. $\rightarrow$~START
-
-\item[CONFIGURE SLAVES] The slave configuration state machine is
-  executed until termination. $\rightarrow$~CONFIGURE SLAVES
-
-  After this, it is checked, if another slave needs a state change. If
-  this is true, the slave state change state machine is started for
-  this slave. $\rightarrow$~CONFIGURE SLAVES
-
-  If all slaves are in the correct state, it is determined, if any
-  E$^2$PROM write operations are pending. If this is true, the first
-  pending operation is executed by starting the SII state machine for
-  writing access. $\rightarrow$~WRITE EEPROM
-
-  If all prior conditions are false, the state machine is restarted.
-  $\rightarrow$~START
-
-\item[WRITE EEPROM] The SII state machine is executed until
-  termination. $\rightarrow$~WRITE EEPROM
-
-  If the current word has been written successfully, and there are
-  still word to write, the SII state machine is started for the next
-  word. $\rightarrow$~WRITE EEPROM
-
-  If all words have been written successfully, the new E$^2$PROM
-  contents are evaluated and the state machine is restarted.
-  $\rightarrow$~START
+\item[Request handling] Requests (either originating from the application or
+from external sources) are handled. This can be SII accesses, Sdo accesses,
+etc.
 
 \end{description}
 
@@ -2022,79 +1382,53 @@ functionality.  Figure~\ref{fig:fsm-idle} shows its transition diagram.
 \index{FSM!Slave Scan}
 
 The slave scan state machine, which can be seen in
-figure~\ref{fig:fsm-slavescan}, leads through the process of fetching
-all slave information.
+figure~\ref{fig:fsm-slavescan}, leads through the process of reading desired
+slave information.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=.6\textwidth]{images/fsm-slavescan}
+  \includegraphics[height=.8\textheight]{graphs/fsm_slave_scan}
   \caption{Transition diagram of the slave scan state machine}
   \label{fig:fsm-slavescan}
 \end{figure}
 
+The scan process includes the following steps:
+
 \begin{description}
-\item[START] In the beginning state of the slave scan state machine,
-  the station address is written to the slave, which is always the
-  ring position~+~$1$. In this way, the address 0x0000 (default
-  address) is not used, which makes it easy to detect unconfigured
-  slaves.  $\rightarrow$~ADDRESS
 
-\item[ADDRESS] The writing of the station address is verified. After
-  that, the slave's ``AL Control Response'' attribute is queried.
-  $\rightarrow$~STATE
+\item[Node Address] The node address is set for the slave, so that it can be
+node-addressed for all following operations.
 
-\item[STATE] The AL state is evaluated. A warning is output, if the
-  slave has still the \textit{Change} bit set. After that, the slave's
-  ``DL Information'' attribute is queried.
-  $\rightarrow$~BASE
+\item[AL State] The initial application-layer state is read.
 
-\item[BASE] The queried base data are evaluated: Slave type, revision
-  and build number, and even more important, the number of supported
-  sync managers and FMMUs are stored. After that, the slave's data
-  link layer information is read from the ``DL Status'' attribute at
-  address 0x0110. $\rightarrow$~DATALINK
+\item[Base Information] Base information (like the number of supported FMMUs)
+is read from the lower physical memory.
 
-\item[DATALINK] In this state, the DL information is evaluated: This
-  information about the communication ports contains, if the link is
-  up, if the loop has been closed and if there is a carrier detected
-  on the RX side of each port.
+\item[Data Link] Information about the physical ports is read.
 
-  Then, the state machine starts measuring the size of the slave's
-  E$^2$PROM contents. This is done by subsequently reading out each
-  category header, until the last category is reached (type 0xFFFF).
-  This procedure is started by querying the first category header at
-  word address 0x0040 via the SII state machine.
-  $\rightarrow$~EEPROM SIZE
+\item[SII Size] The size of the SII contents is determined to allocate SII
+image memory.
 
-\item[EEPROM SIZE] The SII state machine is executed until
-  termination. $\rightarrow$~EEPROM SIZE
+\item[SII Data] The SII contents are read into the master's image.
 
-  If the category type does not mark the end of the categories, the
-  position of the next category header is determined via the length of
-  the current category, and the SII state machine is started again.
-  $\rightarrow$~EEPROM SIZE
+\item[PREOP] If the slave supports CoE, it is set to PREOP state using the
+State change FSM (see section~\ref{sec:fsm-change}) to enable mailbox
+communication and read the Pdo configuration via CoE.
 
-  If the size of the E$^2$PROM contents has been determined, memory is
-  allocated, to read all the contents. The SII state machine is
-  started to read the first word. $\rightarrow$~EEPROM DATA
-
-\item[EEPROM DATA] The SII state machine is executed until
-  termination. $\rightarrow$~EEPROM DATA
-
-  Two words have been read. If more than one word is needed, the two
-  words are written in the allocated memory. Otherwise only one word
-  (the last word) is copied. If more words are to read, the SII state
-  machine is started again to read the next two words.
-  $\rightarrow$~EEPROM DATA
-
-  The complete E$^2$PROM contents have been read. The slave's identity
-  object and mailbox information are evaluated. Moreover the category
-  types STRINGS, GENERAL, SYNC and PDO are evaluated. The slave
-  scanning has been completed. $\rightarrow$~END
-
-\item[END] Slave scanning has been finished.
+\item[Pdos] The Pdos are read via CoE (if supported) using the Pdo FSM (see
+section~\ref{sec:fsm-pdo}). If this is successful, the Pdo information from
+the SII (if any) is overwritten.
 
 \end{description}
+
+%------------------------------------------------------------------------------
+
+%     SII
+%     Pdo assign/mapping
+%   Slave configuration
+%     State change
+%     Pdo assign/mapping
+%   CoE upload/download/information
 
 %------------------------------------------------------------------------------
 
@@ -2103,103 +1437,52 @@ all slave information.
 \index{FSM!Slave Configuration}
 
 The slave configuration state machine, which can be seen in
-figure~\ref{fig:fsm-slaveconf}, leads through the process of
-configuring a slave and bringing it to a certain state.
+figure~\ref{fig:fsm-slaveconf}, leads through the process of configuring a
+slave and bringing it to a certain application-layer state.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=.6\textwidth]{images/fsm-slaveconf}
+  \includegraphics[height=.9\textheight]{graphs/fsm_slave_conf}
   \caption{Transition diagram of the slave configuration state
     machine}
   \label{fig:fsm-slaveconf}
 \end{figure}
 
 \begin{description}
-\item[INIT] The state change state machine has been initialized to
-  bring the slave into the INIT state. Now, the slave state change
-  state machine is executed until termination. $\rightarrow$~INIT
 
-  If the slave state change failed, the configuration has to be
-  aborted. $\rightarrow$~END
+\item[INIT] The state change FSM is used to bring the slave to the INIT state.
 
-  The slave state change succeeded and the slave is now in INIT state.
-  If this is the target state, the configuration is finished.
-  $\rightarrow$~END
+\item[FMMU Clearing] To avoid that the slave reacts on any process data, the
+FMMU configuration are cleared. If the slave does not support FMMUs, this
+state is skipped. If INIT is the requested state, the state machine is
+finished.
 
-  If the slave does not support any sync managers, the sync manager
-  configuration can be skipped. The state change state machine is
-  started to bring the slave into PREOP state.
-  $\rightarrow$~PREOP
+\item[Mailbox Sync Manager Configuration] If the slaves support mailbox
+communication, the mailbox sync managers are configured. Otherwise this state
+is skipped.
 
-  Sync managers are configured conforming to the sync manager category
-  information provided in the slave's E$^2$PROM. The corresponding
-  datagram is issued. $\rightarrow$~SYNC
+\item[PREOP] The state change FSM is used to bring the slave to PREOP state.
+If this is the requested state, the state machine is finished.
 
-\item[SYNC] If the sync manager configuration datagram is accepted,
-  the sync manager configuration was successful. The slave may now
-  enter the PREOP state, and the state change state machine is
-  started. $\rightarrow$~PREOP
+\item[Sdo Configuration] If there is a slave configuration attached
+(see section~\ref{sec:attach}), and there are any Sdo configurations are
+provided by the application, these are sent to the slave.
 
-\item[PREOP] The state change state machine is executed until
-  termination. $\rightarrow$~PREOP
+\item[Pdo Configuration] The Pdo configuration state machine is executed to
+apply all necessary Pdo configurations.
 
-  If the state change failed, the configuration has to be aborted.
-  $\rightarrow$~END
+\item[Pdo Sync Manager Configuration] If any Pdo sync managers exist, they are
+configured.
 
-  If the PREOP state was the target state, the configuration is
-  finished. $\rightarrow$~END
+\item[FMMU Configuration] If there are FMMUs configurations supplied by the
+application (i.~e. if the application registered Pdo entries), they are
+applied. 
 
-  If the slave supports no FMMUs, the FMMU configuration can be
-  skipped. If the slave has Sdos to configure, it is begun with
-  sending the first Sdo. $\rightarrow$~SDO\_CONF
+\item[SAFEOP] The state change FSM is used to bring the slave to SAFEOP state.
+If this is the requested state, the state machine is finished.
 
-  If no Sdo configurations are provided, the slave can now directly be
-  brought into the SAFEOP state and the state change state machine is
-  started again. $\rightarrow$~SAFEOP
-
-  Otherwise, all supported FMMUs are configured according to the Pdos
-  requested via the master's realtime interface. The appropriate
-  datagram is issued. $\rightarrow$~FMMU
-
-\item[FMMU] The FMMU configuration datagram was accepted. If the slave
-  has Sdos to configure, it is begun with sending the first Sdo.
-  $\rightarrow$~SDO\_CONF
-
-  Otherwise, the slave can now be brought into the SAFEOP state. The
-  state change state machine is started.
-  $\rightarrow$~SAFEOP
-
-\item[SDO\_CONF] The CoE state machine is executed until termination.
-  $\rightarrow$~SDO\_CONF
-
-  If another Sdo has to be configured, a new Sdo download sequence is
-  begun. $\rightarrow$~SDO\_CONF
-
-  Otherwise, the slave can now be brought into the SAFEOP state. The
-  state change state machine is started.
-  $\rightarrow$~SAFEOP
-
-\item[SAFEOP] The state change state machine is executed until
-  termination. $\rightarrow$~SAFEOP
-
-  If the state change failed, the configuration has to be aborted.
-  $\rightarrow$~END
-
-  If the SAFEOP state was the target state, the configuration is
-  finished. $\rightarrow$~END
-
-  The slave can now directly be brought into the OP state and the
-  state change state machine is started a last time.
-  $\rightarrow$~OP
-
-\item[OP] The state change state machine is executed until
-  termination. $\rightarrow$~OP
-
-  If the state change state machine terminates, the slave
-  configuration is finished, regardless of its success.
-  $\rightarrow$~END
-
-\item[END] The termination state.
+\item[OP] The state change FSM is used to bring the slave to OP state.
+If this is the requested state, the state machine is finished.
 
 \end{description}
 
@@ -2210,16 +1493,18 @@ configuring a slave and bringing it to a certain state.
 \index{FSM!State Change}
 
 The state change state machine, which can be seen in
-figure~\ref{fig:fsm-change}, leads through the process of changing a
-slave's state. This implements the states and transitions described in
-\cite[section~6.4.1]{alspec}.
+figure~\ref{fig:fsm-change}, leads through the process of changing a slave's
+application-layer state. This implements the states and transitions described
+in \cite[section~6.4.1]{alspec}.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=.9\textwidth]{images/fsm-change}
-  \caption{Transition diagram of the state change state machine}
+  \includegraphics[width=.9\textwidth]{images/fsm-change} % FIXME
+  \caption{Transition Diagram of the State Change State Machine}
   \label{fig:fsm-change}
 \end{figure}
+
+% FIXME
 
 \begin{description}
 \item[START] The beginning state, where a datagram with the state
@@ -2283,15 +1568,17 @@ slave's state. This implements the states and transitions described in
 \index{FSM!SII}
 
 The SII\index{SII} state machine (shown in figure~\ref{fig:fsm-sii})
-implements the process of reading or writing E$^2$PROM data via the
-Slave Information Interface described in \cite[section~5.4]{alspec}.
+implements the process of reading or writing SII data via the
+Slave Information Interface described in \cite[section~6.4]{dlspec}.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=.9\textwidth]{images/fsm-sii}
-  \caption{Transition diagram of the SII state machine}
+  \includegraphics[width=.9\textwidth]{images/fsm-sii} % FIXME
+  \caption{Transition Diagram of the SII State Machine}
   \label{fig:fsm-sii}
 \end{figure}
+
+% FIXME
 
 \begin{description}
 \item[READ\_START] The beginning state for reading access, where the
@@ -2357,125 +1644,88 @@ protocols. See the below section for details.
 \label{sec:eoeimp}
 \index{EoE}
 
-The EtherCAT master implements the Ethernet-over-EtherCAT mailbox
-protocol to enable the tunneling of Ethernet frames to special slaves,
-that can either have physical Ethernet ports to forward the frames to,
-or have an own IP stack to receive the frames.
+The EtherCAT master implements the Ethernet-over-EtherCAT mailbox protocol to
+enable the tunneling of Ethernet frames to special slaves, that can either
+have physical Ethernet ports to forward the frames to, or have an own IP stack
+to receive the frames.
 
 \paragraph{Virtual Network Interfaces}
 
-The master creates a virtual EoE network interface for every
-EoE-capable slave. These interfaces are called \textit{eoeX}, where X
-is a number provided by the kernel on interface registration. Frames
-sent to these interfaces are forwarded to the associated slaves by the
-master. Frames, that are received by the slaves, are fetched by the
-master and forwarded to the virtual interfaces.
+The master creates a virtual EoE network interface for every EoE-capable
+slave. These interfaces are called either
+
+\begin{description}
+
+\item[eoeXsY] for a slave without an alias address (see
+section~\ref{sec:alias}), where X is the master index and Y is the slave's
+ring position, or
+
+\item[eoeXaY] for a slave with a non-zero alias address, where X is the master
+index and Y is the decimal alias address.
+
+\end{description}
+
+Frames sent to these interfaces are forwarded to the associated slaves by the
+master. Frames, that are received by the slaves, are fetched by the master and
+forwarded to the virtual interfaces.
 
 This bears the following advantages:
 
 \begin{itemize}
+
 \item Flexibility: The user can decide, how the EoE-capable slaves are
-  interconnected with the rest of the world.
-\item Standard tools can be used to monitor the EoE activity and to
-  configure the EoE interfaces.
-\item The Linux kernel's layer-2-bridging implementation (according to
-  the IEEE 802.1D MAC Bridging standard) can be used natively to
-  bridge Ethernet traffic between EoE-capable slaves.
-\item The Linux kernel's network stack can be used to route packets
-  between EoE-capable slaves and to track security issues, just like
-  having physical network interfaces.
+interconnected with the rest of the world.
+
+\item Standard tools can be used to monitor the EoE activity and to configure
+the EoE interfaces.
+
+\item The Linux kernel's layer-2-bridging implementation (according to the
+IEEE 802.1D MAC Bridging standard) can be used natively to bridge Ethernet
+traffic between EoE-capable slaves.
+
+\item The Linux kernel's network stack can be used to route packets between
+EoE-capable slaves and to track security issues, just like having physical
+network interfaces.
+
 \end{itemize}
 
 \paragraph{EoE Handlers}
 
-The virtual EoE interfaces and the related functionality is encapsulated in the
-\textit{ec\_eoe\_t} class (see section~\ref{sec:class-eoe}).  So the master
-does not create the network interfaces directly: This is done inside the
-constructor of the \textit{ec\_eoe\_t} class. An object of this class is called
-``EoE handler'' below. An EoE handler additionally contains a frame queue. Each
-time, the kernel passes a new socket buffer for sending via the interface's
-\textit{hard\_start\_xmit()} callback, the socket buffer is queued for
-transmission by the EoE state machine (see below). If the queue gets filled up,
-the passing of new socket buffers is suspended with a call to
-\textit{netif\_stop\_queue()}.
+The virtual EoE interfaces and the related functionality is encapsulated in
+the \lstinline+ec_eoe_t+ class. An object of this class is called ``EoE
+handler''. For example the master does not create the network interfaces
+directly: This is done inside the constructor of an EoE handler. An EoE
+handler additionally contains a frame queue. Each time, the kernel passes a
+new socket buffer for sending via the interface's
+\lstinline+hard_start_xmit()+ callback, the socket buffer is queued for
+transmission by the EoE state machine (see below). If the queue gets filled
+up, the passing of new socket buffers is suspended with a call to
+\lstinline+netif_stop_queue()+.
 
-\paragraph{Static Handler Creation}
+\paragraph{Creation of EoE Handlers}
 
-The master creates a pool of EoE handlers at startup, that are coupled
-to EoE-capable slaves on demand. The lifetime of the corresponding
-network interfaces is equal to the lifetime of the master module.
-This approach is opposed to creating the virtual network interfaces on
-demand (i.~e. on running across a new EoE-capable slave). The latter
-approach was considered as difficult, because of several reasons:
-
-\begin{itemize}
-\item The \textit{alloc\_netdev()} function can sleep and must be
-  called from a non-interrupt context. This reduces the flexibility of
-  choosing an appropriate method for cyclic EoE processing.
-\item Unregistering network interfaces requires them to be ``down'',
-  which can not be guaranteed upon sudden disappearing of an
-  EoE-capable slave.
-\item The connection to the EoE-capable slaves must be as continuous
-  as possible. Especially the transition from idle to operation mode
-  (and vice versa) causes the rebuilding of the internal data
-  structures. These transitions must be as transparent as possible for
-  the instances using the network interfaces.
-\end{itemize}
-
-\paragraph{Number of Handlers} % FIXME
-
-The master module has a parameter \textit{ec\_eoeif\_count} to specify
-the number of EoE interfaces (and handlers) per master to create. This
-parameter can either be specified when manually loading the master
-module, or (when using the init script) by setting the
-\$EOE\_INTERFACES variable in the sysconfig file (see
-section~\ref{sec:sysconfig}). Upon loading of the master module, the
-virtual interfaces become available:
-
-\begin{lstlisting}[gobble=2]
-  # `\textbf{ifconfig -a}`
-  eoe0      Link encap:Ethernet  HWaddr 00:11:22:33:44:06
-            BROADCAST MULTICAST  MTU:1500  Metric:1
-            RX packets:0 errors:0 dropped:0 overruns:0 frame:0
-            TX packets:0 errors:0 dropped:0 overruns:0 carrier:0
-            collisions:0 txqueuelen:1000
-            RX bytes:0 (0.0 b)  TX bytes:0 (0.0 b)
-
-  eoe1      Link encap:Ethernet  HWaddr 00:11:22:33:44:07
-            BROADCAST MULTICAST  MTU:1500  Metric:1
-            RX packets:0 errors:0 dropped:0 overruns:0 frame:0
-            TX packets:0 errors:0 dropped:0 overruns:0 carrier:0
-            collisions:0 txqueuelen:1000
-            RX bytes:0 (0.0 b)  TX bytes:0 (0.0 b)
-  ...
-\end{lstlisting}
-
-\paragraph{Coupling of EoE Slaves}
-
-During execution of the slave scan state machine (see
-section~\ref{sec:fsm-scan}), the master determines the supported
-mailbox protocols. This is done by examining the ``Supported Mailbox
-Protocols'' mask field at word address 0x001C of the SII\index{SII}.
-If bit 1 is set, the slave supports the EoE protocol. After slave
-scanning, the master runs through all slaves again and couples each
-EoE-capable slave to a free EoE handler. It can happen, that there are
-not enough EoE handlers to cover all EoE-capable slaves. In this case,
-the number of EoE handlers must be increased accordingly.
+During bus scanning (see section~\ref{sec:fsm-scan}), the master determines
+the supported mailbox protocols foe each slave. This is done by examining the
+``Supported Mailbox Protocols'' mask field at word address 0x001C of the
+SII\index{SII}. If bit 1 is set, the slave supports the EoE protocol. In this
+case, an EoE handler is created for that slave.
 
 \paragraph{EoE State Machine}
 \index{FSM!EoE}
 
-Every EoE handler owns an EoE state machine, that is used to send
-frames to the coupled slave and receive frames from the it via the EoE
+Every EoE handler owns an EoE state machine, that is used to send frames to
+the corresponding slave and receive frames from the it via the EoE
 communication primitives. This state machine is showed in
 figure~\ref{fig:fsm-eoe}.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=.7\textwidth]{images/fsm-eoe}
-  \caption{Transition diagram of the EoE state machine}
+  \includegraphics[width=.7\textwidth]{images/fsm-eoe} % FIXME
+  \caption{Transition Diagram of the EoE State Machine}
   \label{fig:fsm-eoe}
 \end{figure}
+
+% FIXME
 
 \begin{description}
 \item[RX\_START] The beginning state of the EoE state machine. A
@@ -2524,51 +1774,28 @@ figure~\ref{fig:fsm-eoe}.
 
 \paragraph{EoE Processing}
 
-To execute the EoE state machine of every active EoE handler, there
-must be a cyclic process. The easiest thing would be to execute the
-EoE state machines synchronously to the operation state machine (see
-section~\ref{sec:fsm-op}) with every realtime cycle. This approach has
-the following disadvantages:
+To execute the EoE state machine of every active EoE handler, there must be a
+cyclic process. The easiest solution would be to execute the EoE state
+machines synchronously with the master state machine (see
+section~\ref{sec:fsm-master}). This approach has the following disadvantage:
 
-\begin{itemize}
-
-\item Only one EoE fragment can be sent or received every few cycles.  This
+Only one EoE fragment could be sent or received every few cycles. This
 causes the data rate to be very low, because the EoE state machines are not
 executed in the time between the application cycles. Moreover, the data rate
 would be dependent on the period of the application task.
 
-\item The receiving and forwarding of frames to the kernel requires the dynamic
-allocation of frames. Some realtime extensions do not support calling memory
-allocation functions in realtime context, so the EoE state machine may not be
-executed with each application cycle.
-
-\end{itemize}
-
-To overcome these problems, an own cyclic process is needed to
-asynchronously execute the EoE state machines. For that, the master
-owns a kernel timer, that is executed each timer interrupt. This
-guarantees a constant bandwidth, but poses the new problem of
-concurrent access to the master. The locking mechanisms needed for
-this are introduced in section~\ref{sec:concurr}.
+To overcome this problem, an own cyclic process is needed to asynchronously
+execute the EoE state machines. For that, the master owns a kernel timer, that
+is executed each timer interrupt. This guarantees a constant bandwidth, but
+poses the new problem of concurrent access to the master. The locking
+mechanisms needed for this are introduced in section~\ref{sec:concurr}.
 Section~\ref{sec:concurrency} gives practical implementation examples.
-
-\paragraph{Idle phase}
-
-EoE data must also be exchanged in idle phase, to guarantee the continuous
-availability of the connection to the EoE-capable slaves. Although there is no
-application connected in this case, the master is still accessed by the master
-state machine (see section~\ref{sec:fsm-master}). With the EoE timer running in
-addition, there is still concurrency, that has to be protected by a lock.
-Therefore the master owns an internal spinlock that is used protect master
-access during idle phase.
 
 \paragraph{Automatic Configuration}
 
-By default, slaves are left in INIT state during idle mode. If an EoE
-interface is set to running state (i.~e. with the \textit{ifconfig up}
-command), the requested slave state of the related slave is
-automatically set to OP, whereupon the idle state machine will attempt
-to configure the slave and put it into operation.
+By default, slaves are left in PREOP state, if no configuration is applied. If
+an EoE interface link is set to ``up'', the requested slave's
+application-layer state is automatically set to OP.
 
 %------------------------------------------------------------------------------
 
@@ -2576,17 +1803,10 @@ to configure the slave and put it into operation.
 \label{sec:coeimp}
 \index{CoE}
 
-The CANopen-over-EtherCAT protocol \cite[section~5.6]{alspec} is used
-to configure slaves on application level. Each CoE-capable slave
-provides a list of Sdos for this reason.
+The CANopen-over-EtherCAT protocol \cite[section~5.6]{alspec} is used to
+configure slaves and exchange data objects on application level.
 
-\paragraph{Sdo Configuration}
-
-The Sdo configurations have to be provided by the application.  This is done
-via the \textit{ecrt\_slave\_conf\_sdo*()} methods (see
-section~\ref{sec:ecrt-slave}), that are part of the realtime interface. The
-slave stores the Sdo configurations in a linked list, but does not apply them
-at once.
+% FIXME
 
 \paragraph{Sdo Download State Machine}
 
@@ -2605,10 +1825,12 @@ in figure~\ref{fig:fsm-coedown}.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=.9\textwidth]{images/fsm-coedown}
+  \includegraphics[width=.9\textwidth]{images/fsm-coedown} % FIXME
   \caption{Transition diagram of the CoE download state machine}
   \label{fig:fsm-coedown}
 \end{figure}
+
+% FIXME
 
 \begin{description}
 \item[START] The beginning state of the CoE download state
@@ -2650,6 +1872,8 @@ in figure~\ref{fig:fsm-coedown}.
 \label{sec:user}
 \index{User space}
 
+% FIXME
+
 For the master runs as a kernel module, accessing it is natively
 limited to analyzing Syslog messages and controlling using modutils.
 
@@ -2680,7 +1904,7 @@ tools to make all that possible.
 
 % --master
 
-\subsection{Character devices}
+\subsection{Character Devices}
 \label{sec:cdev}
 
 Each master instance will get a character device as a user-space interface.
@@ -2693,55 +1917,55 @@ master.
 
 %------------------------------------------------------------------------------
 
-\subsection{Setting alias addresses}
+\subsection{Setting Alias Addresses}
 
 \lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_alias}
 
 %------------------------------------------------------------------------------
 
-\subsection{Displaying the bus configuration}
+\subsection{Displaying the Bus Configuration}
 
 \lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_config}
 
 %------------------------------------------------------------------------------
 
-\subsection{Displaying process data}
+\subsection{Displaying Process Data}
 
 \lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_data}
 
 %------------------------------------------------------------------------------
 
-\subsection{Setting a master's debug level}
+\subsection{Setting a Master's Debug Level}
 
 \lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_debug}
 
 %------------------------------------------------------------------------------
 
-\subsection{Configured domains}
+\subsection{Configured Domains}
 
 \lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_domains}
 
 %------------------------------------------------------------------------------
 
-\subsection{Master and Ethernet device information}
+\subsection{Master and Ethernet Devices}
 
 \lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_master}
 
 %------------------------------------------------------------------------------
 
-\subsection{Showing slaves' sync managers, Pdos and Pdo entries}
+\subsection{Sync Managers, Pdos and Pdo Entries}
 
 \lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_pdos}
 
 %------------------------------------------------------------------------------
 
-\subsection{Displaying the Sdo dictionary}
+\subsection{Sdo Dictionary}
 
 \lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_sdos}
 
 %------------------------------------------------------------------------------
 
-\subsection{Sdo access}
+\subsection{Sdo Access}
 
 \lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_download}
 
@@ -2749,7 +1973,7 @@ master.
 
 %------------------------------------------------------------------------------
 
-\subsection{Displaying slaves on the bus}
+\subsection{Slaves on the Bus}
 
 Slave information can be gathered with the subcommand \lstinline+slaves+:
 
@@ -2794,7 +2018,7 @@ Reading out SII data is as easy as other commands. Though the data are in
 binary format, analysis is easier with a tool like \textit{hexdump}:
 
 \begin{lstlisting}
-$ `\textbf{ethercat sii\_read --slave 3 | hexdump}`
+$ `\textbf{ethercat sii\_read --position 3 | hexdump}`
 0000000 0103 0000 0000 0000 0000 0000 0000 008c
 0000010 0002 0000 3052 07f0 0000 0000 0000 0000
 0000020 0000 0000 0000 0000 0000 0000 0000 0000
@@ -2804,7 +2028,7 @@ $ `\textbf{ethercat sii\_read --slave 3 | hexdump}`
 Backing up SII contents can easily done with a redirection:
 
 \begin{lstlisting}
-$ `\textbf{ethercat sii\_read --slave 3 > sii-of-slave3.bin}`
+$ `\textbf{ethercat sii\_read --position 3 > sii-of-slave3.bin}`
 \end{lstlisting}
 
 To download SII contents to a slave, writing access to the master's character
@@ -2813,7 +2037,7 @@ device is necessary (see section~\ref{sec:cdev}).
 \lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_sii_write}
 
 \begin{lstlisting}
-# `\textbf{ethercat sii\_write --slave 3 sii-of-slave3.bin}`
+# `\textbf{ethercat sii\_write --position 3 sii-of-slave3.bin}`
 \end{lstlisting}
 
 The SII contents will be checked for validity and then sent to the slave. The
@@ -2821,13 +2045,13 @@ write operation may take a few seconds.
 
 %------------------------------------------------------------------------------
 
-\subsection{Requesting application-layer states}
+\subsection{Requesting Application-Layer States}
 
 \lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_states}
 
 %------------------------------------------------------------------------------
 
-\subsection{Generating slave description XML}
+\subsection{Generating Slave Description XML}
 
 \lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_xml}
 
@@ -2845,8 +2069,8 @@ with an init script and a sysconfig file, that are described below.
 
 The EtherCAT master init script conforms to the requirements of the ``Linux
 Standard Base'' (LSB\index{LSB}, \cite{lsb}). The script is installed to
-\textit{etc/init.d/ethercat} below the installation prefix and has to be copied
-(or better: linked) to the appropriate location (see
+\textit{etc/init.d/ethercat} below the installation prefix and has to be
+copied (or better: linked) to the appropriate location (see
 section~\ref{sec:install}), before the master can be inserted as a service.
 Please note, that the init script depends on the sysconfig file described
 below.
@@ -2859,7 +2083,7 @@ the correct place in the startup sequence:
 \lstinputlisting[firstline=38,lastline=48]
     {../script/init.d/ethercat}
 
-\subsection{Sysconfig}
+\subsection{Sysconfig File}
 \label{sec:sysconfig}
 \index{Sysconfig file}
 
@@ -2872,7 +2096,7 @@ the file and included below:
 \lstinputlisting[numbers=left,firstline=9,basicstyle=\ttfamily\scriptsize]
     {../script/sysconfig/ethercat}
 
-\subsection{Service}
+\subsection{Starting the Master as a Service}
 \label{sec:service}
 \index{Service}
 
@@ -2902,6 +2126,8 @@ the EtherCAT master. It has to be executed with one of the parameters
 \label{sec:debug}
 \index{Monitoring}
 
+% FIXME
+
 For debugging purposes, every EtherCAT master registers a read-only network
 interface \textit{ecX}, where X is a number, provided by the kernel on device
 registration. While it is ``up'', the master forwards every frame sent and
@@ -2930,7 +2156,7 @@ are rare, there are a few aspects that can (and should be) dealt with.
 
 %------------------------------------------------------------------------------
 
-\subsection{Realtime Interface Profiling}
+\subsection{Application Interface Profiling}
 \label{sec:timing-profile}
 \index{Realtime!Profiling}
 
@@ -3064,24 +2290,24 @@ are two points on the author's to-do list.
 \label{sec:installation}
 \index{Master!Installation}
 
-\section{Building the software}
+\section{Building the Software}
 
 The current EtherCAT master code is available at~\cite{etherlab} or can be
 obtained from the EtherLab CD. The \textit{tar.bz2} file has to be unpacked
 with the commands below (or similar):
 
 \begin{lstlisting}[gobble=2]
-  `\$` `\textbf{tar xjf ethercat-\masterversion.tar.bz2}`
-  `\$` `\textbf{cd ethercat-\masterversion/}`
+  $ `\textbf{tar xjf ethercat-\masterversion.tar.bz2}`
+  $ `\textbf{cd ethercat-\masterversion/}`
 \end{lstlisting}
 
 The tarball was created with GNU Autotools, so the build process
 follows the below commands:
 
 \begin{lstlisting}[gobble=2]
-  `\$` `\textbf{./configure}`
-  `\$` `\textbf{make}`
-  `\$` `\textbf{make modules}`
+  $ `\textbf{./configure}`
+  $ `\textbf{make}`
+  $ `\textbf{make modules}`
 \end{lstlisting}
 
 Table~\ref{tab:config} lists important configuration switches and options.
@@ -3145,26 +2371,27 @@ extracted from the Linux kernel sources.
 
 \end{table}
 
-\section{Building the documentation}
+\section{Building the Interface Documentation}
 \label{sec:gendoc}
 
 The source code is documented using Doxygen~\cite{doxygen}. To build the HTML
-documentation, you must have the Doxygen software installed. The below command
+documentation, the Doxygen software has to be installed. The below command
 will generate the documents in the subdirectory \textit{doxygen-output}:
 
 \begin{lstlisting}
 $ `\textbf{make doc}`
 \end{lstlisting}
 
-To view them, point your browser to \textit{doxygen-output/html/index.html}.
+The interface documentation can be viewed by pointing a browser to
+\textit{doxygen-output/html/index.html}.
 
-\section{Installation}
+\section{Installing the Software}
 
 The below commands have to be entered as \textit{root}: The first one will
 install the EtherCAT header, init script, sysconfig file and the user space
-tools to the prefix path. The second one will install the kernel modules to the
-kernel's modules directory. The following \lstinline+depmod+ call is necessary
-to include the kernel modules into the \textit{modules.dep} file to make it
+tool to the prefix path. The second one will install the kernel modules to the
+kernel's modules directory. The final \lstinline+depmod+ call is necessary to
+include the kernel modules into the \textit{modules.dep} file to make it
 available to the \lstinline+modprobe+ command, used in the init script. 
 
 \begin{lstlisting}
@@ -3213,10 +2440,11 @@ the below command:
 # `\textbf{/etc/init.d/ethercat start}`
 \end{lstlisting}
 
-The operation of the master can be observed by looking at the
-Syslog\index{Syslog} messages, which should look like the ones below.  If
-EtherCAT slaves are connected to the master's EtherCAT device, the activity
-indicators should begin to flash.
+The operation of the master can be observed with the command
+\lstinline+ethercat master+ or by viewing the Syslog\index{Syslog}
+messages, which should look like the ones below. If EtherCAT slaves are
+connected to the master's EtherCAT device, the activity indicators should
+begin to flash.
 
 \begin{lstlisting}[numbers=left]
 EtherCAT: Master driver `\masterversion`
@@ -3255,11 +2483,13 @@ state machine and begins scanning the bus.
 
 %------------------------------------------------------------------------------
 
-\chapter{Application examples}
+\chapter{Application Examples}
 \label{chapter:examples}
 
-This chapter will give practical examples of how to use the EtherCAT master via
-the realtime interface by writing an application module.
+This chapter will give practical examples of how to use the EtherCAT master
+via the realtime interface by writing an application module.
+
+% FIXME remove examples?
 
 %------------------------------------------------------------------------------
 
