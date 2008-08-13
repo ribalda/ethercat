@@ -28,6 +28,7 @@ Future issues:
 * Interface/buffers for asynchronous domain IO.
 * Make scanning and configuration run parallel (each).
 * File access over EtherCAT (FoE).
+* Vendor-specific over EtherCAT (VoE).
 * ethercat tool:
     - Data type abbreviations.
     - Add a -n (numeric) switch.
