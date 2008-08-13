@@ -165,6 +165,9 @@ struct ec_master {
     struct list_head slave_sdo_requests; /**< Sdo access requests. */
     wait_queue_head_t sdo_queue; /**< Wait queue for Sdo access requests
                                    from user space. */
+
+    struct list_head phy_requests; /**< Physical memory requests. */
+    wait_queue_head_t phy_queue; /**< Wait queue for phy requests. */
 };
 
 /*****************************************************************************/

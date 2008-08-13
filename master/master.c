@@ -141,6 +141,9 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     INIT_LIST_HEAD(&master->slave_sdo_requests);
     init_waitqueue_head(&master->sdo_queue);
 
+    INIT_LIST_HEAD(&master->phy_requests);
+    init_waitqueue_head(&master->phy_queue);
+
     // init devices
     if (ec_device_init(&master->main_device, master))
         goto out_return;

@@ -59,6 +59,7 @@ void ec_fsm_master_state_scan_slave(ec_fsm_master_t *);
 void ec_fsm_master_state_write_sii(ec_fsm_master_t *);
 void ec_fsm_master_state_sdo_dictionary(ec_fsm_master_t *);
 void ec_fsm_master_state_sdo_request(ec_fsm_master_t *);
+void ec_fsm_master_state_phy_request(ec_fsm_master_t *);
 
 /*****************************************************************************/
 
@@ -324,6 +325,59 @@ int ec_fsm_master_action_process_sii(
 
 /*****************************************************************************/
 
+/** Check for pending phy requests and process one.
+ * 
+ * \return non-zero, if a phy request is processed.
+ */
+int ec_fsm_master_action_process_phy(
+        ec_fsm_master_t *fsm /**< Master state machine. */
+        )
+{
+    ec_master_t *master = fsm->master;
+    ec_phy_request_t *request;
+
+    // search the first request to be processed
+    while (1) {
+        if (list_empty(&master->phy_requests))
+            break;
+
+        // get first request
+        request = list_entry(master->phy_requests.next,
+                ec_phy_request_t, list);
+        list_del_init(&request->list); // dequeue
+        request->state = EC_REQUEST_BUSY;
+
+        // found pending request; process it!
+        if (master->debug_level)
+            EC_DBG("Processing phy request for slave %u...\n",
+                    request->slave->ring_position);
+        fsm->phy_request = request;
+
+        if (request->dir == EC_DIR_INPUT) {
+            ec_datagram_fprd(fsm->datagram, request->slave->station_address,
+                    request->offset, request->length);
+        } else {
+            if (request->length > fsm->datagram->mem_size) {
+                EC_ERR("Request length (%u) exceeds maximum datagram size (%u)!\n",
+                        request->length, fsm->datagram->mem_size);
+                request->state = EC_REQUEST_FAILURE;
+                wake_up(&master->phy_queue);
+                continue;
+            }
+            ec_datagram_fpwr(fsm->datagram, request->slave->station_address,
+                    request->offset, request->length);
+            memcpy(fsm->datagram->data, request->data, request->length);
+        }
+        fsm->retries = EC_FSM_RETRIES;
+        fsm->state = ec_fsm_master_state_phy_request;
+        return 1;
+    }
+
+    return 0;
+}
+
+/*****************************************************************************/
+
 /** Check for pending Sdo requests and process one.
  * 
  * \return non-zero, if an Sdo request is processed.
@@ -459,6 +513,10 @@ void ec_fsm_master_action_idle(
     // check for pending SII write operations.
     if (ec_fsm_master_action_process_sii(fsm))
         return; // SII write request found
+
+    // check for pending phy requests.
+    if (ec_fsm_master_action_process_phy(fsm))
+        return; // phy request processing
 
     ec_fsm_master_restart(fsm);
 }
@@ -856,6 +914,52 @@ void ec_fsm_master_state_sdo_request(
 
     // check for another Sdo request
     if (ec_fsm_master_action_process_sdo(fsm))
+        return; // processing another request
+
+    ec_fsm_master_restart(fsm);
+}
+
+/*****************************************************************************/
+
+/** Master state: PHY.
+ */
+void ec_fsm_master_state_phy_request(
+        ec_fsm_master_t *fsm /**< Master state machine. */
+        )
+{
+    ec_master_t *master = fsm->master;
+    ec_datagram_t *datagram = fsm->datagram;
+    ec_phy_request_t *request = fsm->phy_request;
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED) {
+        EC_ERR("Failed to receive phy request datagram (state %u).\n",
+                datagram->state);
+        request->state = EC_REQUEST_FAILURE;
+        wake_up(&master->phy_queue);
+        ec_fsm_master_restart(fsm);
+        return;
+    }
+    
+    if (request->dir == EC_DIR_INPUT) { // read request
+        if (request->data)
+            kfree(request->data);
+        request->data = kmalloc(request->length, GFP_KERNEL);
+        if (!request->data) {
+            EC_ERR("Failed to allocate %u bytes of memory for phy request.\n",
+                    request->length);
+            request->state = EC_REQUEST_FAILURE;
+            wake_up(&master->phy_queue);
+            ec_fsm_master_restart(fsm);
+            return;
+        }
+        memcpy(request->data, datagram->data, request->length);
+    }
+
+    request->state = EC_REQUEST_SUCCESS;
+    wake_up(&master->phy_queue);
+
+    // check for another PHY request
+    if (ec_fsm_master_action_process_phy(fsm))
         return; // processing another request
 
     ec_fsm_master_restart(fsm);

@@ -45,6 +45,8 @@ ethercat_SOURCES = \
 	CommandDownload.cpp \
 	CommandMaster.cpp \
 	CommandPdos.cpp \
+	CommandPhyRead.cpp \
+	CommandPhyWrite.cpp \
 	CommandSdos.cpp \
 	CommandSiiRead.cpp \
 	CommandSiiWrite.cpp \
@@ -68,6 +70,8 @@ noinst_HEADERS = \
 	CommandDownload.h \
 	CommandMaster.h \
 	CommandPdos.h \
+	CommandPhyRead.h \
+	CommandPhyWrite.h \
 	CommandSdos.h \
 	CommandSiiRead.h \
 	CommandSiiWrite.h \

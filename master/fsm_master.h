@@ -65,6 +65,20 @@ typedef struct {
 
 /*****************************************************************************/
 
+/** Physical memory request.
+ */
+typedef struct {
+    struct list_head list; /**< List head. */
+    ec_slave_t *slave; /**< EtherCAT slave. */
+    ec_direction_t dir; /**< Direction. */
+    uint16_t offset; /**< Physical memory offset. */
+    size_t length; /**< Number of bytes. */
+    uint8_t *data;
+    ec_request_state_t state; /**< State of the request. */
+} ec_phy_request_t;
+
+/*****************************************************************************/
+
 /** Slave/Sdo request record for master's Sdo request list.
  */
 typedef struct {
@@ -94,6 +108,7 @@ struct ec_fsm_master {
     ec_sii_write_request_t *sii_request; /**< SII write request */
     off_t sii_index; /**< index to SII write request data */
     ec_sdo_request_t *sdo_request; /**< Sdo request to process. */
+    ec_phy_request_t *phy_request; /**< Physical memory request to process. */
 
     ec_fsm_coe_t fsm_coe; /**< CoE state machine */
     ec_fsm_pdo_t fsm_pdo; /**< Pdo configuration state machine. */

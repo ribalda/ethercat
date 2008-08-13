@@ -986,6 +986,162 @@ int ec_cdev_ioctl_slave_sii_write(
 
 /*****************************************************************************/
 
+/** Read a slave's physical memory.
+ */
+int ec_cdev_ioctl_slave_phy_read(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg /**< ioctl() argument. */
+        )
+{
+    ec_ioctl_slave_phy_t data;
+    ec_slave_t *slave;
+    uint8_t *contents;
+    ec_phy_request_t request;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+        return -EFAULT;
+    }
+
+    if (!data.length)
+        return 0;
+
+    if (!(contents = kmalloc(data.length, GFP_KERNEL))) {
+        EC_ERR("Failed to allocate %u bytes for phy data.\n", data.length);
+        return -ENOMEM;
+    }
+
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
+
+    if (!(slave = ec_master_find_slave(
+                    master, 0, data.slave_position))) {
+        up(&master->master_sem);
+        EC_ERR("Slave %u does not exist!\n", data.slave_position);
+        return -EINVAL;
+    }
+
+    // init phy request
+    INIT_LIST_HEAD(&request.list);
+    request.slave = slave;
+    request.dir = EC_DIR_INPUT;
+    request.data = contents;
+    request.offset = data.offset;
+    request.length = data.length;
+    request.state = EC_REQUEST_QUEUED;
+
+    // schedule request.
+    list_add_tail(&request.list, &master->phy_requests);
+
+    up(&master->master_sem);
+
+    // wait for processing through FSM
+    if (wait_event_interruptible(master->phy_queue,
+                request.state != EC_REQUEST_QUEUED)) {
+        // interrupted by signal
+        down(&master->master_sem);
+        if (request.state == EC_REQUEST_QUEUED) {
+            // abort request
+            list_del(&request.list);
+            up(&master->master_sem);
+            kfree(contents);
+            return -EINTR;
+        }
+        up(&master->master_sem);
+    }
+
+    // wait until master FSM has finished processing
+    wait_event(master->phy_queue, request.state != EC_REQUEST_BUSY);
+
+    if (request.state == EC_REQUEST_SUCCESS) {
+        if (copy_to_user((void __user *) data.data, contents, data.length))
+            return -EFAULT;
+    }
+    kfree(contents);
+
+    return request.state == EC_REQUEST_SUCCESS ? 0 : -EIO;
+}
+
+/*****************************************************************************/
+
+/** Write a slave's physical memory.
+ */
+int ec_cdev_ioctl_slave_phy_write(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg /**< ioctl() argument. */
+        )
+{
+    ec_ioctl_slave_phy_t data;
+    ec_slave_t *slave;
+    uint8_t *contents;
+    ec_phy_request_t request;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+        return -EFAULT;
+    }
+
+    if (!data.length)
+        return 0;
+
+    if (!(contents = kmalloc(data.length, GFP_KERNEL))) {
+        EC_ERR("Failed to allocate %u bytes for phy data.\n", data.length);
+        return -ENOMEM;
+    }
+
+    if (copy_from_user(contents, (void __user *) data.data, data.length)) {
+        kfree(contents);
+        return -EFAULT;
+    }
+
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
+
+    if (!(slave = ec_master_find_slave(
+                    master, 0, data.slave_position))) {
+        up(&master->master_sem);
+        EC_ERR("Slave %u does not exist!\n", data.slave_position);
+        kfree(contents);
+        return -EINVAL;
+    }
+
+    // init phy request
+    INIT_LIST_HEAD(&request.list);
+    request.slave = slave;
+    request.dir = EC_DIR_OUTPUT;
+    request.data = contents;
+    request.offset = data.offset;
+    request.length = data.length;
+    request.state = EC_REQUEST_QUEUED;
+
+    // schedule request.
+    list_add_tail(&request.list, &master->phy_requests);
+
+    up(&master->master_sem);
+
+    // wait for processing through FSM
+    if (wait_event_interruptible(master->phy_queue,
+                request.state != EC_REQUEST_QUEUED)) {
+        // interrupted by signal
+        down(&master->master_sem);
+        if (request.state == EC_REQUEST_QUEUED) {
+            // abort request
+            list_del(&request.list);
+            up(&master->master_sem);
+            kfree(contents);
+            return -EINTR;
+        }
+        up(&master->master_sem);
+    }
+
+    // wait until master FSM has finished processing
+    wait_event(master->phy_queue, request.state != EC_REQUEST_BUSY);
+
+    kfree(contents);
+
+    return request.state == EC_REQUEST_SUCCESS ? 0 : -EIO;
+}
+
+/*****************************************************************************/
+
 /** Get slave configuration information.
  */
 int ec_cdev_ioctl_config(
@@ -1282,6 +1438,12 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             if (!(filp->f_mode & FMODE_WRITE))
                 return -EPERM;
             return ec_cdev_ioctl_slave_sii_write(master, arg);
+        case EC_IOCTL_SLAVE_PHY_READ:
+            return ec_cdev_ioctl_slave_phy_read(master, arg);
+        case EC_IOCTL_SLAVE_PHY_WRITE:
+            if (!(filp->f_mode & FMODE_WRITE))
+                return -EPERM;
+            return ec_cdev_ioctl_slave_phy_write(master, arg);
         case EC_IOCTL_CONFIG:
             return ec_cdev_ioctl_config(master, arg);
         case EC_IOCTL_CONFIG_PDO:

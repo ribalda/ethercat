@@ -344,6 +344,32 @@ void MasterDevice::writeSii(
 
 /****************************************************************************/
 
+void MasterDevice::readPhy(
+        ec_ioctl_slave_phy_t *data
+        )
+{
+    if (ioctl(fd, EC_IOCTL_SLAVE_PHY_READ, data) < 0) {
+        stringstream err;
+        err << "Failed to read physical memory: " << strerror(errno);
+        throw MasterDeviceException(err);
+    }
+}
+
+/****************************************************************************/
+
+void MasterDevice::writePhy(
+        ec_ioctl_slave_phy_t *data
+        )
+{
+    if (ioctl(fd, EC_IOCTL_SLAVE_PHY_WRITE, data) < 0) {
+        stringstream err;
+        err << "Failed to write physical memory: " << strerror(errno);
+        throw MasterDeviceException(err);
+    }
+}
+
+/****************************************************************************/
+
 void MasterDevice::setDebug(unsigned int debugLevel)
 {
     if (ioctl(fd, EC_IOCTL_MASTER_DEBUG, debugLevel) < 0) {

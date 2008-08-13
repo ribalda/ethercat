@@ -19,6 +19,8 @@ using namespace std;
 #include "CommandDownload.h"
 #include "CommandMaster.h"
 #include "CommandPdos.h"
+#include "CommandPhyRead.h"
+#include "CommandPhyWrite.h"
 #include "CommandSdos.h"
 #include "CommandSiiRead.h"
 #include "CommandSiiWrite.h"
@@ -263,6 +265,8 @@ int main(int argc, char **argv)
     commandList.push_back(new CommandDownload());
     commandList.push_back(new CommandMaster());
     commandList.push_back(new CommandPdos());
+    commandList.push_back(new CommandPhyRead());
+    commandList.push_back(new CommandPhyWrite());
     commandList.push_back(new CommandSdos());
     commandList.push_back(new CommandSiiRead());
     commandList.push_back(new CommandSiiWrite());
