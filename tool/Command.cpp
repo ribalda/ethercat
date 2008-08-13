@@ -119,7 +119,7 @@ void Command::throwSingleSlaveRequired(unsigned int size) const
 {
     stringstream err;
 
-    err << "The slave selection matches " << size << "slaves. '"
+    err << "The slave selection matches " << size << " slaves. '"
         << name << "' requires a single slave.";
 
     throwInvalidUsageException(err);
