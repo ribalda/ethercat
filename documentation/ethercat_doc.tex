@@ -603,7 +603,7 @@ section~\ref{sec:cyclic}).
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=.8\textwidth]{images/app-config}
-  \caption{Master configuration structures}
+  \caption{Master Configuration}
   \label{fig:app-config}
 \end{figure}
 
@@ -658,26 +658,12 @@ Section~\ref{sec:concurrency} gives an example, of how to implement this.
 \chapter{Ethernet Devices}
 \label{sec:devices}
 
-%   Device Interface
-%   Device Modules
-%   Network Driver Basics
-%   EtherCAT Network Drivers
-%   Device Selection
-%   The Device Interface
-%   Patching Network Drivers
-
-The EtherCAT protocol is based on the Ethernet standard, so the master relies
-on standard Ethernet hardware to communicate with the bus.
+The EtherCAT protocol is based on the Ethernet standard, so a master relies on
+standard Ethernet hardware to communicate with the bus.
 
 The term \textit{device} is used as a synonym for Ethernet network interface
 hardware. There are device driver modules that handle Ethernet hardware, which
-the master can use to connect to an EtherCAT bus.
-
-Section~\ref{sec:networkdrivers} offers an overview of general Linux
-network driver modules, while section~\ref{sec:requirements} will show
-the requirements to an EtherCAT-enabled network driver. Finally,
-sections~\ref{sec:seldev} to~\ref{sec:patching} show how to fulfill
-these requirements and implement such a driver module.
+a master can use to connect to an EtherCAT bus.
 
 %------------------------------------------------------------------------------
 
@@ -725,7 +711,7 @@ by reading the device's interrupt register. For example, if the flag
 for received frames is set, frame data has to be copied from hardware
 to kernel memory and passed to the network stack.
 
-\paragraph{The \lstinline+net_device+ structure}
+\paragraph{The \lstinline+net_device+ Structure}
 \index{net\_device}
 
 The driver registers a \lstinline+net_device+ structure for each device to
@@ -770,7 +756,7 @@ error happened, the appropriate counter in this structure has to be increased.
 The actual registration is done with the \lstinline+register_netdev()+ call,
 unregistering is done with \lstinline+unregister_netdev()+.
 
-\paragraph{The netif Interface}
+\paragraph{The \lstinline+netif+ Interface}
 \index{netif}
 
 All other communication in the direction interface $\to$ network stack is done
@@ -814,7 +800,7 @@ network driver.
 %------------------------------------------------------------------------------
 
 \section{EtherCAT Device Drivers}
-\label{sec:requirements}
+\label{sec:ethercatdrivers}
 
 There are a few requirements for Ethernet network devices to function as
 EtherCAT devices, when connected to an EtherCAT bus.
@@ -915,7 +901,7 @@ sysconfig file (see section~\ref{sec:sysconfig}).
 
 %------------------------------------------------------------------------------
 
-\section{The Device Interface}
+\section{EtherCAT Device Interface}
 \label{sec:ecdev}
 \index{Device interface}
 
@@ -1370,8 +1356,8 @@ monitored. If a slave is not in the state it supposed to be, the slave is
 (re-)configured.
 
 \item[Request handling] Requests (either originating from the application or
-from external sources) are handled. This can be SII accesses, Sdo accesses,
-etc.
+from external sources) are handled. A request is a job that the master shall
+process asynchronously, for example an SII access, Sdo access, or similar.
 
 \end{description}
 
@@ -1415,20 +1401,11 @@ image memory.
 State change FSM (see section~\ref{sec:fsm-change}) to enable mailbox
 communication and read the Pdo configuration via CoE.
 
-\item[Pdos] The Pdos are read via CoE (if supported) using the Pdo FSM (see
-section~\ref{sec:fsm-pdo}). If this is successful, the Pdo information from
-the SII (if any) is overwritten.
+\item[Pdos] The Pdos are read via CoE (if supported) using the Pdo Reading FSM
+(see section~\ref{sec:fsm-pdo}). If this is successful, the Pdo information
+from the SII (if any) is overwritten.
 
 \end{description}
-
-%------------------------------------------------------------------------------
-
-%     SII
-%     Pdo assign/mapping
-%   Slave configuration
-%     State change
-%     Pdo assign/mapping
-%   CoE upload/download/information
 
 %------------------------------------------------------------------------------
 
@@ -1499,67 +1476,40 @@ in \cite[section~6.4.1]{alspec}.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=.9\textwidth]{images/fsm-change} % FIXME
+  \includegraphics[width=.6\textwidth]{graphs/fsm_change}
   \caption{Transition Diagram of the State Change State Machine}
   \label{fig:fsm-change}
 \end{figure}
 
-% FIXME
-
 \begin{description}
-\item[START] The beginning state, where a datagram with the state
-  change command is written to the slave's ``AL Control Request''
-  attribute. Nothing can fail. $\rightarrow$~CHECK
 
-\item[CHECK] After the state change datagram has been sent, the ``AL
-  Control Response'' attribute is queried with a second datagram.
-  $\rightarrow$~STATUS
+\item[Start] The new application-layer state is requested via the ``AL Control
+Request'' register (see ~\cite[section 5.3.1]{alspec}).
 
-\item[STATUS] The read memory contents are evaluated: While the
-  parameter \textit{State} still contains the old slave state, the
-  slave is busy with reacting on the state change command. In this
-  case, the attribute has to be queried again.
-  $\rightarrow$~STATUS
+\item[Check for Response] Some slave need some time to respond to an AL state
+change command, and do not respond for some time. For this case, the command
+is issued again, until it is acknowledged.
 
-  In case of success, the \textit{State} parameter contains the new
-  state and the \textit{Change} bit is cleared. The slave is in the
-  requested state.  $\rightarrow$~END
+\item[Check AL Status] If the AL State change datagram was acknowledged, the
+``AL Control Response'' register (see~\cite[section 5.3.2]{alspec}) must be
+read out until the slave changes the AL state.
 
-  If the slave can not process the state change, the \textit{Change}
-  bit is set: Now the master tries to get the reason for this by
-  querying the \textit{AL Status Code} parameter.
-  $\rightarrow$~CODE
+\item[AL Status Code] If the slave refused the state change command, the
+reason can be read from the ``AL Status Code'' field in the ``AL State
+Changed'' registers (see~\cite[section 5.3.3]{alspec}).
 
-\item[END] If the state machine ends in this state, the slave's state
-  change has been successful.
+\item[Acknowledge State] If the state change was not successful, the master
+has to acknowledge the old state by writing to the ``AL Control request''
+register again.
 
-\item[CODE] The status code query has been sent. Reading the
-  \textit{AL Status Code} might fail, because not all slaves support
-  this parameter. Anyway, the master has to acknowledge the state
-  change error by writing the current slave state to the ``AL Control
-  Request'' attribute with the \textit{Acknowledge} bit set.
-  $\rightarrow$~ACK
-
-\item[ACK] After that, the ``AL Control Response'' attribute is
-  queried for the state of the acknowledgement.
-  $\rightarrow$~CHECK ACK
-
-\item[CHECK ACK] If the acknowledgement has been accepted by the
-  slave, the old state is kept. Still, the state change was
-  unsuccessful. $\rightarrow$~ERROR
-
-  If the acknowledgement is ignored by the slave, a timeout happens.
-  In any case, the overall state change was unsuccessful.
-  $\rightarrow$~ERROR
-
-  If there is still now response from the slave, but the timer did not
-  run out yet, the slave's ``AL Control Response'' attribute is
-  queried again.  $\rightarrow$~CHECK ACK
-
-\item[ERROR] If the state machine ends in this state, the slave's
-  state change was unsuccessful.
+\item[Check Acknowledge] After sending the acknowledge command, it has to read
+out the ``AL Control Response'' register again.
 
 \end{description}
+
+The ``start\_ack'' state is a shortcut in the state machine for the case, that
+the master wants to acknowledge a spontaneous AL state change, that was not
+requested.
 
 %------------------------------------------------------------------------------
 
@@ -1573,62 +1523,103 @@ Slave Information Interface described in \cite[section~6.4]{dlspec}.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=.9\textwidth]{images/fsm-sii} % FIXME
+  \includegraphics[width=.5\textwidth]{graphs/fsm_sii}
   \caption{Transition Diagram of the SII State Machine}
   \label{fig:fsm-sii}
 \end{figure}
 
-% FIXME
+This is how the reading part of the state machine works:
 
 \begin{description}
-\item[READ\_START] The beginning state for reading access, where the
-  read request and the requested address are written to the SII
-  attribute. Nothing can fail up to now.
-  $\rightarrow$~READ\_CHECK
 
-\item[READ\_CHECK] When the SII read request has been sent
-  successfully, a timer is started. A check/fetch datagram is issued,
-  that reads out the SII attribute for state and data.
-  $\rightarrow$~READ\_FETCH
+\item[Start Reading] The read request and the requested word address are
+written to the SII attribute.
 
-\item[READ\_FETCH] Upon reception of the check/fetch datagram, the
-  \textit{Read Operation} and \textit{Busy} parameters are checked:
-  \begin{itemize}
-  \item If the slave is still busy with fetching E$^2$PROM data into
-    the interface, the timer is checked. If it timed out, the reading
-    is aborted ($\rightarrow$~ERROR), if not, the check/fetch datagram
-    is issued again. $\rightarrow$~READ\_FETCH
+\item[Check Read Command] If the SII read request command has been
+acknowledged, a timer is started. A datagram is issued, that reads out the SII
+attribute for state and data.
 
-  \item If the slave is ready with reading data, these are copied from
-    the datagram and the read cycle is completed.
-    $\rightarrow$~END
-  \end{itemize}
+\item[Fetch Data] If the read operation is still busy (the SII is usually
+implemented as an E$^2$PROM), the state is read again. Otherwise the data are
+copied from the datagram.
+
 \end{description}
 
-The write access states behave nearly the same:
+The writing part works nearly similar:
 
 \begin{description}
-\item[WRITE\_START] The beginning state for writing access,
-  respectively. A write request, the target address and the data word
-  are written to the SII attribute. Nothing can fail.
-  $\rightarrow$~WRITE\_CHECK
 
-\item[WRITE\_CHECK] When the SII write request has been sent
-  successfully, the timer is started. A check datagram is issued, that
-  reads out the SII attribute for the state of the write operation.
-  $\rightarrow$~WRITE\_CHECK2
+\item[Start Writing] A write request, the target address and the data word are
+written to the SII attribute.
 
-\item[WRITE\_CHECK2] Upon reception of the check datagram, the
-  \textit{Write Operation} and \textit{Busy} parameters are checked:
-  \begin{itemize}
-  \item If the slave is still busy with writing E$^2$PROM data, the
-    timer is checked. If it timed out, the operation is aborted
-    ($\rightarrow$~ERROR), if not, the check datagram is issued again.
-    $\rightarrow$~WRITE\_CHECK2
-  \item If the slave is ready with writing data, the write cycle is
-    completed. $\rightarrow$~END
-  \end{itemize}
+\item[Check Write Command] If the SII write request command has been
+acknowledged, a timer is started. A datagram is issued, that reads out the SII
+attribute for the state of the write operation.
+
+\item[Wait while Busy] If the write operation is still busy (determined by a
+minimum wait time and the state of the busy flag), the state machine remains in
+this state to avoid that another write operation is issued too early.
+
 \end{description}
+
+%------------------------------------------------------------------------------
+
+\section{The Pdo State Machines}
+\label{sec:fsm-pdo}
+\index{FSM!Pdo}
+
+The Pdo state machines are a set of state machines that read or write the Pdo
+assignment and the Pdo mapping via the ``CoE Communication Area'' described in
+\cite[section 5.6.7.4]{alspec}. For the object access, the
+CANopen-over-EtherCAT access primitives are used (see
+section~\ref{sec:coeimp}), so the slave must support the CoE mailbox protocol.
+
+\paragraph{Pdo Reading FSM} This state machine (fig.~\ref{fig:fsm-pdo-read})
+has the purpose to read the complete Pdo configuration of a slave. It reads
+the Pdo assignment for each Sync Manager and uses the Pdo Entry Reading FSM
+(fig.~\ref{fig:fsm_pdo_entry_read}) to read the mapping for each assigned Pdo.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=.4\textwidth]{graphs/fsm_pdo_read}
+  \caption{Transition Diagram of the Pdo Reading State Machine}
+  \label{fig:fsm-pdo-read}
+\end{figure}
+
+Basically it reads the every Sync manager's Pdo assignment Sdo's
+(\lstinline+0x1C1x+) number of elements to determine the number of assigned
+Pdos for this sync manager and then reads out the subindices of the Sdo to get
+the assigned Pdo's indices. When a Pdo index is read, the Pdo Entry Reading
+FSM is executed to read the Pdo's mapped Pdo entries.
+
+\paragraph{Pdo Entry Reading FSM} This state machine
+(fig.~\ref{fig:fsm_pdo_entry_reading}) reads the Pdo mapping (the Pdo entries)
+of a Pdo. It reads the respective mapping Sdo (\lstinline+0x1600+ -
+\lstinline+0x17ff+, or \lstinline+0x1a00+ - \lstinline+0x1bff+) for the given
+Pdo by reading first the subindex zero (number of elements) to determine the
+number of mapped Pdo entries. After that, each subindex is read to get the
+mapped Pdo entry index, subindex and bit size.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=.4\textwidth]{graphs/fsm_pdo_entry_read}
+  \caption{Transition Diagram of the Pdo Entry Reading State Machine}
+  \label{fig:fsm-pdo-read}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=.9\textwidth]{graphs/fsm_pdo_conf}
+  \caption{Transition Diagram of the Pdo Configuration State Machine}
+  \label{fig:fsm-pdo-read}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=.4\textwidth]{graphs/fsm_pdo_entry_conf}
+  \caption{Transition Diagram of the Pdo Entry Configuration State Machine}
+  \label{fig:fsm-pdo-read}
+\end{figure}
 
 %------------------------------------------------------------------------------
 
@@ -1807,6 +1798,14 @@ The CANopen-over-EtherCAT protocol \cite[section~5.6]{alspec} is used to
 configure slaves and exchange data objects on application level.
 
 % FIXME
+%
+% Download / Upload
+% Expedited / Normal
+% Segmentung
+% Sdo Info Services
+%
+
+\ldots
 
 \paragraph{Sdo Download State Machine}
 
@@ -1874,28 +1873,27 @@ in figure~\ref{fig:fsm-coedown}.
 
 % FIXME
 
-For the master runs as a kernel module, accessing it is natively
-limited to analyzing Syslog messages and controlling using modutils.
+For the master runs as a kernel module, accessing it is natively limited to
+analyzing Syslog messages and controlling using modutils.
 
-It is necessary to implement further interfaces, that make it easier
-to access the master from user space and allow a finer influence. It
-should be possible to view and to change special parameters at runtime.
+It is necessary to implement further interfaces, that make it easier to access
+the master from user space and allow a finer influence. It should be possible
+to view and to change special parameters at runtime.
 
-Bus visualization is a second point: For development and debugging
-purposes it would be nice, if one could show the connected slaves with
-a single command.
+Bus visualization is a second point: For development and debugging purposes it
+would be nice, if one could show the connected slaves with a single command.
 
-Another aspect is automatic startup and configuration. If the master
-is to be integrated into a running system, it must be able to
-automatically start with a persistent configuration.
+Another aspect is automatic startup and configuration. If the master is to be
+integrated into a running system, it must be able to automatically start with
+a persistent configuration.
 
-A last thing is monitoring EtherCAT communication. For debugging
-purposes, there had to be a way to analyze EtherCAT datagrams. The
-best way would be with a popular network analyzer, like Wireshark
-\cite{wireshark} (the former Ethereal) or others.
+A last thing is monitoring EtherCAT communication. For debugging purposes,
+there had to be a way to analyze EtherCAT datagrams. The best way would be
+with a popular network analyzer, like Wireshark \cite{wireshark} (the former
+Ethereal) or others.
 
-This section covers all those points and introduces the interfaces and
-tools to make all that possible.
+This section covers all those points and introduces the interfaces and tools
+to make all that possible.
 
 %------------------------------------------------------------------------------
 

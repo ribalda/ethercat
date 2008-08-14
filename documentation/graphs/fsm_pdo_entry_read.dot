@@ -2,9 +2,6 @@
 /* $Id$ */
 
 digraph pdo_entry_read {
-    size="7,9"
-    center=1
-	ratio=fill
 
 	start [fontname="Helvetica"]
     start -> count [weight=5]

@@ -1,0 +1,34 @@
+
+/* $Id$ */
+
+digraph change {
+
+	start [fontname="Helvetica"]
+	start -> check [weight=5]
+
+	check [fontname="Helvetica"]
+	check -> status [weight=5]
+	check -> error [fontname="Helvetica", label="Response\ntimeout"]
+
+	status [fontname="Helvetica"]
+	status -> end [fontname="Helvetica", label="Success", weight=5]
+	status -> code [fontname="Helvetica", label="Refuse", weight=5]
+	status -> error [fontname="Helvetica", label="Change\ntimeout"]
+
+	code [fontname="Helvetica"]
+	code -> ack [weight=2]
+
+	start_ack [fontname="Helvetica"]
+	start_ack -> ack [fontname="Helvetica", label="Ack only"]
+
+	ack [fontname="Helvetica"]
+	ack -> check_ack [weight=2]
+
+	check_ack [fontname="Helvetica"]
+	check_ack -> end [fontname="Helvetica", label="Ack only"]
+	check_ack -> error [weight=2]
+
+	end [fontname="Helvetica"]
+
+	error [fontname="Helvetica"]
+}

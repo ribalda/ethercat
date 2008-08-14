@@ -2,9 +2,6 @@
 /* $Id$ */
 
 digraph pdo_entry_conf {
-    size="7,9"
-    center=1
-	ratio=fill
 
 	start [fontname="Helvetica"]
     start -> zero_entry_count [weight=10]

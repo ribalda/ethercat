@@ -8,10 +8,8 @@ FIGS := \
 	app-config.fig \
 	architecture.fig \
 	fmmus.fig \
-	fsm-change.fig \
 	fsm-coedown.fig \
 	fsm-eoe.fig \
-	fsm-sii.fig \
 	interrupt.fig \
 	master-locks.fig \
 	masters.fig \

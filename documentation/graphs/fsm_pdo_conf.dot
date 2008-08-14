@@ -2,9 +2,6 @@
 /* $Id$ */
 
 digraph pdo_conf {
-    size="7,9"
-    center=1
-	ratio=fill
 
     start [fontname="Helvetica"]
     start -> action_next_sync [fontname="Helvetica",label="First SM",weight=10]
