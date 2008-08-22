@@ -82,14 +82,13 @@
 
     {\Huge\bf IgH \includegraphics[height=2.4ex]{images/ethercat}
       Master \masterversion\\[1ex]
-      Documentation}
+      Preliminary Documentation}
 
     \vspace{1ex}
     \rule{\textwidth}{1.5mm}
 
-    \vspace{\fill}
-    {\Large Florian Pose, \url{fp@igh-essen.com}\\[1ex]
-      Ingenieurgemeinschaft \IgH}
+    \vspace{\fill} {\Large Dipl.-Ing. (FH) Florian Pose,
+    \url{fp@igh-essen.com}\\[1ex] Ingenieurgemeinschaft \IgH}
 
     \vspace{\fill}
     {\Large Essen, \SVNDate\\[1ex]
@@ -102,7 +101,7 @@
 \tableofcontents
 \listoftables
 \listoffigures
-\lstlistoflistings
+%\lstlistoflistings
 
 %------------------------------------------------------------------------------
 
@@ -199,7 +198,7 @@ independent architecture.
 
   \end{itemize}
 
-\item Common ``realtime interface'' for applications, that want to use
+\item Common ``Application Interface'' for applications, that want to use
 EtherCAT functionality (see section~\ref{sec:ecrt}).
 
 \item \textit{Domains} are introduced, to allow grouping of process
@@ -332,7 +331,7 @@ Figure~\ref{fig:arch} gives a general overview of the master architecture.
 
 Kernel module containing one or more EtherCAT master instances (see
 section~\ref{sec:mastermod}), the ``Device Interface'' (see
-section~\ref{sec:ecdev}) and the ``Realtime Interface'' (see
+section~\ref{sec:ecdev}) and the ``Application Interface'' (see
 section~\ref{sec:ecrt}).
 
 \paragraph{Device Modules}
@@ -352,11 +351,11 @@ connected to the kernel's network stack as usual.
 Kernel modules, that use the EtherCAT master (usually for cyclic exchange of
 process data with EtherCAT slaves). These modules are not part of the EtherCAT
 master code\footnote{Although there are some examples provided in the
-\textit{examples} directory, see chapter~\ref{chapter:examples}}, but have to
-be generated or written by the user. An application module can ``request'' a
-master through the realtime interface (see section~\ref{sec:ecrt}). If this
-succeeds, the module has the control over the master: It can provide a bus
-configuration and exchange process data.
+\textit{examples/} directory.}, but have to be generated or written by the
+user. An application module can ``request'' a master through the application
+interface (see section~\ref{sec:ecrt}). If this succeeds, the module has the
+control over the master: It can provide a bus configuration and exchange
+process data.
 
 %------------------------------------------------------------------------------
 
@@ -428,7 +427,7 @@ MAC addresses for multiple masters have to be separated by commas:
 
 The two masters can be addressed by their indices 0 and 1 respectively (see
 figure~\ref{fig:masters}). The master index is needed for the
-\lstinline+ecrt_master_request()+ function of the realtime interface (see
+\lstinline+ecrt_master_request()+ function of the application interface (see
 section~\ref{sec:ecrt}) and the \lstinline+--master+ option of the
 \textit{ethercat} command-line tool (see section~\ref{sec:ethercat}), which
 defaults to $0$.
@@ -593,12 +592,17 @@ section~\ref{sec:cyclic}).
 
 \end{description}
 
+\paragraph{Example Applications} \index{Example Applications} There are a few
+example applications in the \textit{examples/} subdirectory of the master
+code. They are documented in the source code.
+
 %------------------------------------------------------------------------------
 
 \section{Master Configuration}
 \label{sec:masterconfig}
 
 \ldots
+% FIXME Attaching
 
 \begin{figure}[htbp]
   \centering
@@ -646,12 +650,13 @@ considers it to be awkward at the moment.
   \label{fig:locks}
 \end{figure}
 
-Figure~\ref{fig:locks} exemplary shows, how two processes share one master: The
-application's cyclic task uses the master for process data exchange, while the
-master-internal EoE process uses it to communicate with EoE-capable slaves.
-Both have to acquire the master lock before access: The application task can
-access the lock natively, while the EoE process has to use the callbacks.
-Section~\ref{sec:concurrency} gives an example, of how to implement this.
+Figure~\ref{fig:locks} exemplary shows, how two processes share one master:
+The application's cyclic task uses the master for process data exchange, while
+the master-internal EoE process uses it to communicate with EoE-capable
+slaves.  Both have to acquire the master lock before access: The application
+task can access the lock natively, while the EoE process has to use the
+callbacks.  See the application interface documentation
+(section~\ref{sec:ecrt} of how to use the locking callbacks.
 
 %------------------------------------------------------------------------------
 
@@ -1441,8 +1446,8 @@ is skipped.
 \item[PREOP] The state change FSM is used to bring the slave to PREOP state.
 If this is the requested state, the state machine is finished.
 
-\item[Sdo Configuration] If there is a slave configuration attached
-(see section~\ref{sec:attach}), and there are any Sdo configurations are
+\item[Sdo Configuration] If there is a slave configuration attached (see
+section~\ref{sec:masterconfig}), and there are any Sdo configurations are
 provided by the application, these are sent to the slave.
 
 \item[Pdo Configuration] The Pdo configuration state machine is executed to
@@ -1577,7 +1582,7 @@ section~\ref{sec:coeimp}), so the slave must support the CoE mailbox protocol.
 \paragraph{Pdo Reading FSM} This state machine (fig.~\ref{fig:fsm-pdo-read})
 has the purpose to read the complete Pdo configuration of a slave. It reads
 the Pdo assignment for each Sync Manager and uses the Pdo Entry Reading FSM
-(fig.~\ref{fig:fsm_pdo_entry_read}) to read the mapping for each assigned Pdo.
+(fig.~\ref{fig:fsm-pdo-entry-read}) to read the mapping for each assigned Pdo.
 
 \begin{figure}[htbp]
   \centering
@@ -1593,8 +1598,8 @@ the assigned Pdo's indices. When a Pdo index is read, the Pdo Entry Reading
 FSM is executed to read the Pdo's mapped Pdo entries.
 
 \paragraph{Pdo Entry Reading FSM} This state machine
-(fig.~\ref{fig:fsm_pdo_entry_reading}) reads the Pdo mapping (the Pdo entries)
-of a Pdo. It reads the respective mapping Sdo (\lstinline+0x1600+ -
+(fig.~\ref{fig:fsm-pdo-entry-read}) reads the Pdo mapping (the Pdo entries) of
+a Pdo. It reads the respective mapping Sdo (\lstinline+0x1600+ -
 \lstinline+0x17ff+, or \lstinline+0x1a00+ - \lstinline+0x1bff+) for the given
 Pdo by reading first the subindex zero (number of elements) to determine the
 number of mapped Pdo entries. After that, each subindex is read to get the
@@ -1604,21 +1609,21 @@ mapped Pdo entry index, subindex and bit size.
   \centering
   \includegraphics[width=.4\textwidth]{graphs/fsm_pdo_entry_read}
   \caption{Transition Diagram of the Pdo Entry Reading State Machine}
-  \label{fig:fsm-pdo-read}
+  \label{fig:fsm-pdo-entry-read}
 \end{figure}
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=.9\textwidth]{graphs/fsm_pdo_conf}
   \caption{Transition Diagram of the Pdo Configuration State Machine}
-  \label{fig:fsm-pdo-read}
+  \label{fig:fsm-pdo-conf}
 \end{figure}
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=.4\textwidth]{graphs/fsm_pdo_entry_conf}
   \caption{Transition Diagram of the Pdo Entry Configuration State Machine}
-  \label{fig:fsm-pdo-read}
+  \label{fig:fsm-pdo-entry-conf}
 \end{figure}
 
 %------------------------------------------------------------------------------
@@ -1780,7 +1785,6 @@ execute the EoE state machines. For that, the master owns a kernel timer, that
 is executed each timer interrupt. This guarantees a constant bandwidth, but
 poses the new problem of concurrent access to the master. The locking
 mechanisms needed for this are introduced in section~\ref{sec:concurr}.
-Section~\ref{sec:concurrency} gives practical implementation examples.
 
 \paragraph{Automatic Configuration}
 
@@ -1801,7 +1805,7 @@ configure slaves and exchange data objects on application level.
 %
 % Download / Upload
 % Expedited / Normal
-% Segmentung
+% Segmenting
 % Sdo Info Services
 %
 
@@ -1916,6 +1920,7 @@ master.
 %------------------------------------------------------------------------------
 
 \subsection{Setting Alias Addresses}
+\label{sec:alias} % FIXME
 
 \lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_alias}
 
@@ -2069,9 +2074,9 @@ The EtherCAT master init script conforms to the requirements of the ``Linux
 Standard Base'' (LSB\index{LSB}, \cite{lsb}). The script is installed to
 \textit{etc/init.d/ethercat} below the installation prefix and has to be
 copied (or better: linked) to the appropriate location (see
-section~\ref{sec:install}), before the master can be inserted as a service.
-Please note, that the init script depends on the sysconfig file described
-below.
+section~\ref{sec:installation}), before the master can be inserted as a
+service.  Please note, that the init script depends on the sysconfig file
+described below.
 
 To provide service dependencies (i.~e. which services have to be started before
 others) inside the init script code, LSB defines a special comment block.
@@ -2156,10 +2161,11 @@ are rare, there are a few aspects that can (and should be) dealt with.
 
 \subsection{Application Interface Profiling}
 \label{sec:timing-profile}
-\index{Realtime!Profiling}
+\index{Profiling}
+% FIXME
 
 One of the most important timing aspects are the execution times of the
-realtime interface functions, that are called in cyclic context. These
+application interface functions, that are called in cyclic context. These
 functions make up an important part of the overall timing of the application.
 To measure the timing of the functions, the following code was used:
 
@@ -2187,7 +2193,7 @@ results were averaged. These can be seen in table~\ref{tab:profile}.
 
 \begin{table}[htpb]
   \centering
-  \caption{Profiling of a Realtime Cycle on a \unit{2.0}{\giga\hertz}
+  \caption{Profiling of an Application Cycle on a \unit{2.0}{\giga\hertz}
   Processor}
   \label{tab:profile}
   \vspace{2mm}
@@ -2256,11 +2262,11 @@ reason is, that even with interrupts enabled, the time from the event
 to the notification is unknown. Therefore the only way to confidently
 determine the bus cycle time is an electrical measuring.
 
-Anyway, the bus cycle time is an important factor when designing realtime code,
-because it limits the maximum frequency for the cyclic task of the application.
-In practice, these timing parameters are highly dependent on the hardware and
-often a trial and error method must be used to determine the limits of the
-system.
+Anyway, the bus cycle time is an important factor when designing realtime
+code, because it limits the maximum frequency for the cyclic task of the
+application.  In practice, these timing parameters are highly dependent on the
+hardware and often a trial and error method must be used to determine the
+limits of the system.
 
 The central question is: What happens, if the cycle frequency is too high? The
 answer is, that the EtherCAT frames that have been sent at the end of the cycle
@@ -2380,7 +2386,7 @@ will generate the documents in the subdirectory \textit{doxygen-output}:
 $ `\textbf{make doc}`
 \end{lstlisting}
 
-The interface documentation can be viewed by pointing a browser to
+The interface documentation can be viewed by pointing a browser to the file
 \textit{doxygen-output/html/index.html}.
 
 \section{Installing the Software}
@@ -2476,625 +2482,6 @@ loading. The master accepts the device with the address
 
 \item[\linenum{9} -- \linenum{16}] The master goes to idle phase, starts its
 state machine and begins scanning the bus.
-
-\end{description}
-
-%------------------------------------------------------------------------------
-
-\chapter{Application Examples}
-\label{chapter:examples}
-
-This chapter will give practical examples of how to use the EtherCAT master
-via the realtime interface by writing an application module.
-
-% FIXME remove examples?
-
-%------------------------------------------------------------------------------
-
-\section{Minimal Example}
-\label{sec:mini}
-\index{Examples!Minimal}
-
-This section will explain the use of the EtherCAT master from a minimal kernel
-module. The complete module code is obtainable as a part of the EtherCAT master
-code release (see~\cite{etherlab}, file \textit{examples/mini/mini.c}).
-
-The minimal example uses a kernel timer (software interrupt) to generate a
-cyclic task. After the timer function is executed, it re-adds itself with a
-delay of one \textit{jiffy}\index{jiffies}, which results in a timer frequency
-of \textit{HZ}\nomenclature{HZ}{Kernel macro containing the timer interrupt
-frequency}
-
-The module-global variables, needed to operate the master can be seen
-in listing~\ref{lst:minivar}.
-
-\begin{lstlisting}[gobble=2,language=C,numbers=left,caption={Minimal
-    variables},label=lst:minivar]
-  struct timer_list timer;
-
-  ec_master_t *master = NULL;
-  ec_domain_t *domain1 = NULL;
-
-  void *r_dig_in, *r_ana_out;
-
-  ec_pdo_reg_t domain1_pdos[] = {
-          {"1", Beckhoff_EL1014_Inputs, &r_dig_in},
-          {"2", Beckhoff_EL4132_Ouput1, &r_ana_out},
-          {}
-  };
-\end{lstlisting}
-
-\begin{description}
-\item[\linenum{1}] There is a timer object
-  declared, that is needed to tell the kernel to install a timer and
-  execute a certain function, if it runs out. This is done by a
-  variable of the \textit{timer\_list} structure.
-\item[\linenum{3} -- \linenum{4}] There
-  is a pointer declared, that will later point to a requested EtherCAT
-  master.  Additionally there is a pointer to a domain object needed,
-  that will manage process data IO.
-\item[\linenum{6}] The pointers \textit{r\_*}
-  will later point to the \underline{r}aw process data values inside
-  the domain memory. The addresses they point to will be set during a
-  call to \textit{ec\_\-master\_\-activate()}, that will create the
-  domain memory and configure the mapped process data image.
-\item[\linenum{8} -- \linenum{12}] The
-  configuration of the mapping of certain Pdos in a domain can easily
-  be done with the help of an initialization array of the
-  \textit{ec\_pdo\_reg\_t} type, defined as part of the realtime
-  interface. Each record must contain the ASCII bus-address of the
-  slave (see section~\ref{sec:addr}), the slave's vendor ID and
-  product code, and the index and subindex of the Pdo to map (these
-  four fields can be specified in junction, by using one of the
-  defines out of the \textit{include/ecdb.h} header). The last field
-  has to be the address of the process data pointer, so it can later
-  be redirected appropriately. Attention: The initialization array
-  must end with an empty record (\textit{\{\}})!
-\end{description}
-
-The initialization of the minimal application is done by the ``Minimal init
-function'' in listing~\ref{lst:miniinit}.
-
-\begin{lstlisting}[gobble=2,language=C,numbers=left,caption={Minimal init
-    function},label={lst:miniinit}]
-  int __init init_mini_module(void)
-  {
-          if (!(master = ecrt_request_master(0))) {
-                  goto out_return;
-          }
-
-          if (!(domain1 = ecrt_master_create_domain(master))) {
-                  goto out_release_master;
-          }
-
-          if (ecrt_domain_register_pdo_list(domain1,
-                                            domain1_pdos)) {
-                  goto out_release_master;
-          }
-
-          if (ecrt_master_activate(master)) {
-                  goto out_release_master;
-          }
-
-          ecrt_master_prepare(master);
-
-          init_timer(&timer);
-          timer.function = run;
-          timer.expires = jiffies + 10;
-          add_timer(&timer);
-
-          return 0;
-
-        out_release_master:
-          ecrt_release_master(master);
-        out_return:
-          return -1;
-  }
-\end{lstlisting}
-
-\begin{description}
-\item[\linenum{3}] It is tried to request the
-  first EtherCAT master (index 0). On success, the
-  \textit{ecrt\_\-request\_\-master()} function returns a pointer to
-  the reserved master, that can be used as an object to following
-  functions calls. On failure, the function returns \textit{NULL}.
-\item[\linenum{7}] In order to exchange process
-  data, a domain object has to be created. The
-  \textit{ecrt\_\-master\_\-create\_domain()} function also returns a
-  pointer to the created domain, or \textit{NULL} in error case.
-\item[\linenum{11}] The registration of domain
-  Pdos with an initialization array results in a single function call.
-  Alternatively the data fields could be registered with individual
-  calls of \textit{ecrt\_domain\_register\_pdo()}.
-\item[\linenum{16}] After the configuration of
-  process data mapping, the master can be activated for cyclic
-  operation. This will configure all slaves and bring them into
-  OP state.
-\item[\linenum{20}] This call is needed to avoid
-  a case differentiation in cyclic operation: The first operation in
-  cyclic mode is a receive call. Due to the fact, that there is
-  nothing to receive during the first cycle, there had to be an
-  \textit{if}-statement to avoid a warning. A call to
-  \textit{ec\_master\_prepare()} sends a first datagram containing a
-  process data exchange datagram, so that the first receive call will
-  not fail.
-\item[\linenum{22} -- \linenum{25}] The
-  master is now ready for cyclic operation. The kernel timer that
-  cyclically executes the \textit{run()} function is initialized and
-  started.
-\end{description}
-
-The coding of a cleanup function fo the minimal module can be seen in
-listing~\ref{lst:miniclean}.
-
-\begin{lstlisting}[gobble=2,language=C,numbers=left,caption={Minimal cleanup
-    function},label={lst:miniclean}]
-  void __exit cleanup_mini_module(void)
-  {
-          del_timer_sync(&timer);
-          ecrt_master_deactivate(master);
-          ecrt_release_master(master);
-  }
-\end{lstlisting}
-
-\begin{description}
-\item[\linenum{3}] To cleanup the module, it it
-  necessary to stop the cyclic processing. This is done by a call to
-  \textit{del\_timer\_sync()} which safely removes a queued timer
-  object. It is assured, that no cyclic work will be done after this
-  call returns.
-\item[\linenum{4}] This call deactivates the
-  master, which results in all slaves being brought to their INIT
-  state again.
-\item[\linenum{5}] This call releases the master,
-  removes any existing configuration and silently starts the idle
-  mode. The value of the master pointer is invalid after this call and
-  the module can be safely unloaded.
-\end{description}
-
-The final part of the minimal module is that for the cyclic work. Its
-coding can be seen in listing~\ref{lst:minirun}.
-
-\begin{lstlisting}[gobble=2,language=C,numbers=left,caption={Minimal cyclic
-    function},label={lst:minirun}]
-  void run(unsigned long data)
-  {
-          static uint8_t dig_in_0;
-
-          ecrt_master_receive(master);
-          ecrt_domain_process(domain1);
-
-          dig_in_0 = EC_READ_BIT(r_dig_in, 0);
-          EC_WRITE_S16(r_ana_out, dig_in_0 * 0x3FFF);
-
-          ecrt_master_run(master);
-          ecrt_master_send(master);
-
-          timer.expires += 1; // frequency = HZ
-          add_timer(&timer);
-  }
-\end{lstlisting}
-
-\begin{description}
-
-\item[\linenum{5}] The cyclic processing starts with receiving datagrams, that
-were sent in the last cycle. The frames containing these datagrams have to be
-received by the network interface card prior to this call.
-
-\item[\linenum{6}] The process data of domain 1 has been automatically copied
-into domain memory while datagram reception. This call checks the working
-counter for changes and re-queues the domain's datagram for sending.
-
-\item[\linenum{8}] This is an example for reading out a bit-oriented process
-data value (i.~e. bit 0) via the \textit{EC\_READ\_BIT()} macro. See
-section~\ref{sec:macros} for more information about those macros.
-
-\item[\linenum{9}] This line shows how to write a signed, 16-bit process data
-value. In this case, the slave is able to output voltages of
-\unit{-10--+10}{\volt} with a resolution of \unit{16}{bit}.  This write command
-outputs either \unit{0}{\volt} or \unit{+5}{\volt}, depending of the value of
-\textit{dig\_in\_0}.
-
-\item[\linenum{11}] This call runs the master's operation state machine (see
-section~\ref{sec:fsm-op}). A single state is processed, and datagrams are
-queued. Mainly bus observation is done: The bus state is determined and in case
-of slaves that lost their configuration, reconfiguration is tried.
-
-\item[\linenum{12}] This method sends all queued datagrams, in this case the
-domain's datagram and one of the master state machine. In best case, all
-datagrams fit into one frame.
-
-\item[\linenum{14} -- \linenum{15}] Kernel timers are implemented as
-``one-shot'' timers, so they have to be re-added after each execution. The time
-of the next execution is specified in \textit{jiffies} and will happen at the
-time of the next system timer interrupt. This results in the \textit{run()}
-function being executed with a frequency of \textit{HZ}.
-
-\end{description}
-
-%------------------------------------------------------------------------------
-
-\section{RTAI Example}
-\label{sec:rtai}
-\index{Examples!RTAI}
-
-The whole code can be seen in the EtherCAT master code release
-(see~\cite{etherlab}, file \textit{examples/rtai/rtai\_sample.c}).
-
-Listing~\ref{lst:rtaivar} shows the defines and global variables
-needed for a minimal RTAI module with EtherCAT processing.
-
-\begin{lstlisting}[gobble=2,language=C,numbers=left,caption={RTAI task
-    declaration},label={lst:rtaivar}]
-  #define FREQUENCY 10000
-  #define TIMERTICKS (1000000000 / FREQUENCY)
-
-  RT_TASK task;
-\end{lstlisting}
-
-\begin{description}
-\item[\linenum{1} -- \linenum{2}] RTAI
-  takes the cycle period as nanoseconds, so the easiest way is to
-  define a frequency and convert it to a cycle time in nanoseconds.
-\item[\linenum{4}] The \textit{task} variable
-  later contains information about the running RTAI task.
-\end{description}
-
-Listing~\ref{lst:rtaiinit} shows the module init function for the RTAI
-module. Most lines are the same as in listing~\ref{lst:miniinit},
-differences come up when starting the cyclic code.
-
-\begin{lstlisting}[gobble=2,language=C,numbers=left,caption={RTAI module init
-    function},label={lst:rtaiinit}]
-  int __init init_mod(void)
-  {
-          RTIME requested_ticks, tick_period, now;
-
-          if (!(master = ecrt_request_master(0))) {
-                  goto out_return;
-          }
-
-          if (!(domain1 = ecrt_master_create_domain(master))) {
-                  goto out_release_master;
-          }
-
-          if (ecrt_domain_register_pdo_list(domain1,
-                                            domain1_pdos)) {
-                  goto out_release_master;
-          }
-
-          if (ecrt_master_activate(master)) {
-                  goto out_release_master;
-          }
-
-          ecrt_master_prepare(master);
-
-          requested_ticks = nano2count(TIMERTICKS);
-          tick_period = start_rt_timer(requested_ticks);
-
-          if (rt_task_init(&task, run, 0, 2000, 0, 1, NULL)) {
-                  goto out_stop_timer;
-          }
-
-          now = rt_get_time();
-          if (rt_task_make_periodic(&task, now + tick_period,
-                                    tick_period)) {
-                  goto out_stop_task;
-          }
-
-          return 0;
-
-      out_stop_task:
-          rt_task_delete(&task);
-      out_stop_timer:
-          stop_rt_timer();
-      out_deactivate:
-          ecrt_master_deactivate(master);
-      out_release_master:
-          ecrt_release_master(master);
-      out_return:
-          return -1;
-  }
-\end{lstlisting}
-
-\begin{description}
-\item[\linenum{24} -- \linenum{25}] The
-  nanoseconds are converted to RTAI timer ticks and an RTAI timer is
-  started.  \textit{tick\_period} will be the ``real'' number of ticks
-  used for the timer period (which can be different to the requested
-  one).
-\item[\linenum{27}] The RTAI task is initialized
-  by specifying the cyclic function, the parameter to hand over, the
-  stack size, priority, a flag that tells, if the function will use
-  floating point operations and a signal handler.
-\item[\linenum{32}] The task is made periodic by
-  specifying a start time and a period.
-\end{description}
-
-The cleanup function of the RTAI module in listing~\ref{lst:rtaiclean}
-is nearly as simple as that of the minimal module.
-
-\begin{lstlisting}[gobble=2,language=C,numbers=left,caption={RTAI module
-    cleanup function},label={lst:rtaiclean}]
-  void __exit cleanup_mod(void)
-  {
-          rt_task_delete(&task);
-          stop_rt_timer();
-          ecrt_master_deactivate(master);
-          ecrt_release_master(master);
-          rt_sem_delete(&master_sem);
-  }
-\end{lstlisting}
-
-\begin{description}
-\item[\linenum{2}] The RTAI task will be stopped
-  and deleted.
-\item[\linenum{3}] After that, the RTAI timer can
-  be stopped.
-\end{description}
-
-The rest is the same as for the minimal module.
-
-Worth to mention is, that the cyclic function of the RTAI module
-(listing~\ref{lst:rtairun}) has a slightly different architecture. The
-function is not executed until returning for every cycle, but has an
-infinite loop in it, that is placed in a waiting state for the rest of
-each cycle.
-
-\begin{lstlisting}[gobble=2,language=C,numbers=left,caption={RTAI module cyclic
-    function},label={lst:rtairun}]
-  void run(long data)
-  {
-          while (1) {
-                  ecrt_master_receive(master);
-                  ecrt_domain_process(domain1);
-
-                  k_pos = EC_READ_U32(r_ssi_input);
-
-                  ecrt_master_run(master);
-                  ecrt_master_send(master);
-
-                  rt_task_wait_period();
-          }
-  }
-\end{lstlisting}
-
-\begin{description}
-\item[\linenum{3}] The \textit{while (1)} loop
-  executes for the lifetime of the RTAI task.
-\item[\linenum{12}] The
-  \textit{rt\_task\_wait\_period()} function sets the process into a
-  sleeping state until the beginning of the next cycle. It also
-  checks, if the cyclic function has to be terminated.
-\end{description}
-
-%------------------------------------------------------------------------------
-
-\section{Concurrency Example}
-\label{sec:concurrency}
-\index{Examples!Concurrency}
-
-As mentioned before, there can be concurrent access to the EtherCAT master. The
-application and a EoE\index{EoE} process can compete for master access, for
-example. In this case, the module has to provide the locking mechanism, because
-it depends on the module's architecture which lock has to be used. The module
-makes this locking mechanism available to the master through the master's
-locking callbacks.
-
-In case of RTAI, the lock can be an RTAI semaphore, as shown in
-listing~\ref{lst:convar}. A normal Linux semaphore would not be appropriate,
-because it could not block the RTAI task due to RTAI running in a higher domain
-than the Linux kernel (see~\cite{rtai}).
-
-\begin{lstlisting}[gobble=2,language=C,numbers=left,caption={RTAI semaphore for
-    concurrent access},label={lst:convar}]
-  SEM master_sem;
-\end{lstlisting}
-
-The module has to implement the two callbacks for requesting and
-releasing the master lock. An exemplary coding can be seen in
-listing~\ref{lst:conlock}.
-
-\begin{lstlisting}[gobble=2,language=C,numbers=left,caption={RTAI locking
-    callbacks for concurrent access},label={lst:conlock}]
-  int request_lock(void *data)
-  {
-          rt_sem_wait(&master_sem);
-          return 0;
-  }
-
-  void release_lock(void *data)
-  {
-          rt_sem_signal(&master_sem);
-  }
-\end{lstlisting}
-
-\begin{description}
-\item[\linenum{1}] The \textit{request\_lock()}
-  function has a data parameter. The master always passes the value,
-  that was specified when registering the callback function. This can
-  be used for handing the master pointer. Notice, that it has an
-  integer return value (see line 4).
-\item[\linenum{3}] The call to
-  \textit{rt\_sem\_wait()} either returns at once, when the semaphore
-  was free, or blocks until the semaphore is freed again. In any case,
-  the semaphore finally is reserved for the process calling the
-  request function.
-\item[\linenum{4}] When the lock was requested
-  successfully, the function should return 0. The module can prohibit
-  requesting the lock by returning non-zero (see paragraph ``Tuning
-  the jitter'' below).
-\item[\linenum{7}] The \textit{release\_lock()}
-  function gets the same argument passed, but has a void return value,
-  because is always succeeds.
-\item[\linenum{9}] The \textit{rt\_sem\_signal()}
-  function frees the semaphore, that was prior reserved with
-  \textit{rt\_sem\_wait()}.
-\end{description}
-
-In the module's init function, the semaphore must be initialized, and
-the callbacks must be passed to the EtherCAT master:
-
-\begin{lstlisting}[gobble=2,language=C,numbers=left,caption={Module init
-    function for concurrent access},label={lst:coninit}]
-  int __init init_mod(void)
-  {
-          RTIME tick_period, requested_ticks, now;
-
-          rt_sem_init(&master_sem, 1);
-
-          if (!(master = ecrt_request_master(0))) {
-                  goto out_return;
-          }
-
-          ecrt_master_callbacks(master, request_lock,
-                                release_lock, NULL);
-          // ...
-\end{lstlisting}
-
-\begin{description}
-\item[\linenum{5}] The call to
-  \textit{rt\_sem\_init()} initializes the semaphore and sets its
-  value to 1, meaning that only one process can reserve the semaphore
-  without blocking.
-\item[\linenum{11}] The callbacks are passed to
-  the master with a call to \textit{ecrt\_master\_callbacks()}. The
-  last parameter is the argument, that the master should pass with
-  each call to a callback function. Here it is not used and set to
-  \textit{NULL}.
-\end{description}
-
-For the cyclic function being only one competitor for master access,
-it has to request the lock like any other process. There is no need to
-use the callbacks (which are meant for processes of lower priority),
-so it can access the semaphore directly:
-
-\begin{lstlisting}[gobble=2,language=C,numbers=left,caption={RTAI cyclic
-    function for concurrent access},label={lst:conrun}]
-  void run(long data)
-  {
-          while (1) {
-                  rt_sem_wait(&master_sem);
-
-                  ecrt_master_receive(master);
-                  ecrt_domain_process(domain1);
-
-                  k_pos = EC_READ_U32(r_ssi_input);
-
-                  ecrt_master_run(master);
-                  ecrt_master_send(master);
-
-                  rt_sem_signal(&master_sem);
-                  rt_task_wait_period();
-          }
-  }
-\end{lstlisting}
-
-\begin{description}
-
-\item[\linenum{4}] Every access to the master has to be preceded by a call to
-\textit{rt\_sem\_wait()}, because another instance might currently access the
-master.
-
-\item[\linenum{14}] When cyclic processing finished, the semaphore has to be
-freed again, so that other processes have the possibility to access the master.
-
-\end{description}
-
-A little change has to be made to the cleanup function in case of
-concurrent master access.
-
-\begin{lstlisting}[gobble=2,language=C,numbers=left,caption={RTAI module
-    cleanup function for concurrent access},label={lst:conclean}]
-  void __exit cleanup_mod(void)
-  {
-          rt_task_delete(&task);
-          stop_rt_timer();
-          ecrt_master_deactivate(master);
-          ecrt_release_master(master);
-          rt_sem_delete(&master_sem);
-  }
-\end{lstlisting}
-
-\begin{description}
-\item[\linenum{7}] Upon module cleanup, the
-  semaphore has to be deleted, so that memory can be freed.
-\end{description}
-
-\paragraph{Tuning the Jitter}
-\index{Jitter}
-
-Concurrent access leads to higher jitter for the application task, because
-there are situations, in which the task has to wait for a process of lower
-priority to finish accessing the master.  In most cases this is acceptable,
-because a master access cycle (receive/process/send) only takes
-\unit{10-20}{\micro\second} on recent systems, what would be the maximum
-additional jitter. However some applications demand a minimum jitter. For this
-reason the master access can be prohibited by the application: If the time,
-another process wants to access the master, is to close to the beginning of the
-next application cycle, the module can disallow, that the lock is taken. In
-this case, the request callback has to return $1$, meaning that the lock has
-not been taken. The foreign process must abort its master access and try again
-next time.
-
-This measure helps to significantly reducing the jitter produced by concurrent
-master access. Below are excerpts of an example coding:
-
-\begin{lstlisting}[gobble=2,language=C,numbers=left,caption={Variables for
-    jitter reduction},label={lst:redvar}]
-  #define FREQUENCY 10000 // RTAI task frequency in Hz
-  // ...
-  cycles_t t_last_cycle = 0;
-  const cycles_t t_critical = cpu_khz * 1000 / FREQUENCY
-                              - cpu_khz * 30 / 1000;
-\end{lstlisting}
-
-\begin{description}
-
-\item[\linenum{3}] The variable \textit{t\_last\_cycle} holds the timer ticks
-at the beginning of the last realtime cycle.
-
-\item[\linenum{4}] \textit{t\_critical} contains the number of ticks, that may
-have passed since the beginning of the last cycle, until there is no more
-foreign access possible. It is calculated by subtracting the ticks for
-\unit{30}{\micro\second} from the ticks for a complete cycle.
-
-\end{description}
-
-\begin{lstlisting}[gobble=2,language=C,numbers=left,caption={Cyclic function
-    with reduced jitter},label={lst:redrun}]
-  void run(long data)
-  {
-          while (1) {
-                  t_last_cycle = get_cycles();
-                  rt_sem_wait(&master_sem);
-                  // ...
-\end{lstlisting}
-
-\begin{description}
-\item[\linenum{4}] The ticks of the beginning of
-  the current realtime cycle are taken before reserving the semaphore.
-\end{description}
-
-\begin{lstlisting}[gobble=2,language=C,numbers=left,caption={Request callback
-    for reduced jitter},label={lst:redreq}]
-  int request_lock(void *data)
-  {
-          // too close to the next RT cycle: deny access.
-          if (get_cycles() - t_last_cycle > t_critical)
-                  return -1;
-
-          // allow access
-          rt_sem_wait(&master_sem);
-          return 0;
-  }
-\end{lstlisting}
-
-\begin{description}
-
-\item[\linenum{4}] If the time of request is too close to the next realtime
-cycle (here: \unit{<30}{\micro\second} before the estimated beginning), the
-locking is denied. The requesting process must abort its cycle.
 
 \end{description}
 
