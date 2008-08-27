@@ -4,6 +4,10 @@ $Id$
 
 -------------------------------------------------------------------------------
 
+Changes since 1.4.0:
+
+* Added phy_read and phy_write commands to ethercat tool.
+
 Changes in version 1.4.0-rc2:
 
 * Fixed a deadlock causing race condition concerning thread signaling when the
