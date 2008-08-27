@@ -4,7 +4,17 @@ $Id$
 
 -------------------------------------------------------------------------------
 
-Changes in version 1.4.0:
+Changes in version 1.4.0-rc2:
+
+* Fixed a deadlock causing race condition concerning thread signaling when the
+  master thread had no opportunity to run, but shall be killed immediately
+  after creation.
+* Added missing up()s causing a semaphore being not released in some rare
+  cases.
+* Minor fixes.
+* Removed some deprecated files.
+
+Changes in version 1.4.0-rc1:
 
 * Realtime interface changes:
     - Replaced ec_slave_t with ec_slave_config_t, separating the bus
