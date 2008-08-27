@@ -32,7 +32,7 @@
 #------------------------------------------------------------------------------
 
 # HEADERS, because of tags target
-nodist_noinst_HEADERS = \
+noinst_HEADERS = \
 	Kbuild.in \
 	cdev.c cdev.h \
 	datagram.c datagram.h \
