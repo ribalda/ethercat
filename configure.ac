@@ -14,11 +14,6 @@ AC_CONFIG_SRCDIR([config.h.in])
 # Global
 #------------------------------------------------------------------------------
 
-branch=trunk
-
-AC_DEFINE_UNQUOTED(BRANCH, ["$branch"], [Subversion branch])
-AC_SUBST(BRANCH, [$branch])
-
 AC_PROG_CXX
 
 #------------------------------------------------------------------------------

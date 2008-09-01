@@ -71,7 +71,7 @@ mydist:
 	svn2cl $(srcdir)
 	@SVNREV=`svnversion $(srcdir)` && \
 	  $(MAKE) dist-bzip2 \
-	  distdir=$(PACKAGE)-$(VERSION)-$(BRANCH)-r$${SVNREV}
+	  distdir=$(PACKAGE)-$(VERSION)-r$${SVNREV}
 
 dist-hook:
 	if which svnversion >/dev/null 2>&1; then \
