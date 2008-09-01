@@ -43,7 +43,6 @@
 
 #include <linux/interrupt.h>
 
-#include "../include/ecrt.h"
 #include "../devices/ecdev.h"
 #include "globals.h"
 

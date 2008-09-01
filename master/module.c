@@ -545,6 +545,20 @@ unsigned int ecrt_version_magic(void)
 
 /*****************************************************************************/
 
+/** Global request state type translation table.
+ *
+ * Translates an internal request state to an external one.
+ */
+const ec_request_state_t ec_request_state_translation_table[] = {
+    EC_REQUEST_UNUSED,  // EC_INT_REQUEST_INIT,
+    EC_REQUEST_BUSY,    // EC_INT_REQUEST_QUEUED,
+    EC_REQUEST_BUSY,    // EC_INT_REQUEST_BUSY,
+    EC_REQUEST_SUCCESS, // EC_INT_REQUEST_SUCCESS,
+    EC_REQUEST_ERROR    // EC_INT_REQUEST_FAILURE
+};
+
+/*****************************************************************************/
+
 /** \cond */
 
 module_init(ec_init_module);

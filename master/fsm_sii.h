@@ -42,7 +42,6 @@
 #define __EC_FSM_SII_H__
 
 #include "globals.h"
-#include "../include/ecrt.h"
 #include "datagram.h"
 #include "slave.h"
 

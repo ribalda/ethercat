@@ -41,7 +41,6 @@
 #include <linux/list.h>
 #include <linux/netdevice.h>
 
-#include "../include/ecrt.h"
 #include "globals.h"
 #include "slave.h"
 #include "datagram.h"

@@ -54,18 +54,6 @@ void ec_sdo_request_clear_data(ec_sdo_request_t *);
 
 /*****************************************************************************/
 
-/** State type translation table.
- */
-static const ec_sdo_request_state_t state_translation_table[] = {
-    EC_SDO_REQUEST_UNUSED,  // EC_REQUEST_INIT,
-    EC_SDO_REQUEST_BUSY,    // EC_REQUEST_QUEUED,
-    EC_SDO_REQUEST_BUSY,    // EC_REQUEST_BUSY,
-    EC_SDO_REQUEST_SUCCESS, // EC_REQUEST_SUCCESS,
-    EC_SDO_REQUEST_ERROR    // EC_REQUEST_FAILURE
-};
-
-/*****************************************************************************/
-
 /** Sdo request constructor.
  */
 void ec_sdo_request_init(
@@ -78,7 +66,7 @@ void ec_sdo_request_init(
     req->dir = EC_DIR_INVALID;
     req->issue_timeout = 0; // no timeout
     req->response_timeout = EC_SDO_REQUEST_RESPONSE_TIMEOUT;
-    req->state = EC_REQUEST_INIT;
+    req->state = EC_INT_REQUEST_INIT;
     req->abort_code = 0x00000000;
 }
 
@@ -207,9 +195,9 @@ size_t ecrt_sdo_request_data_size(const ec_sdo_request_t *req)
 
 /*****************************************************************************/
 
-ec_sdo_request_state_t ecrt_sdo_request_state(const ec_sdo_request_t *req)
+ec_request_state_t ecrt_sdo_request_state(const ec_sdo_request_t *req)
 {
-   return state_translation_table[req->state];
+   return ec_request_state_translation_table[req->state];
 }
 
 /*****************************************************************************/
@@ -217,7 +205,7 @@ ec_sdo_request_state_t ecrt_sdo_request_state(const ec_sdo_request_t *req)
 void ecrt_sdo_request_read(ec_sdo_request_t *req)
 {
     req->dir = EC_DIR_INPUT;
-    req->state = EC_REQUEST_QUEUED;
+    req->state = EC_INT_REQUEST_QUEUED;
     req->abort_code = 0x00000000;
     req->jiffies_start = jiffies;
 }
@@ -227,7 +215,7 @@ void ecrt_sdo_request_read(ec_sdo_request_t *req)
 void ecrt_sdo_request_write(ec_sdo_request_t *req)
 {
     req->dir = EC_DIR_OUTPUT;
-    req->state = EC_REQUEST_QUEUED;
+    req->state = EC_INT_REQUEST_QUEUED;
     req->abort_code = 0x00000000;
     req->jiffies_start = jiffies;
 }

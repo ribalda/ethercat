@@ -43,8 +43,6 @@
 
 #include <linux/list.h>
 
-#include "../include/ecrt.h"
-
 #include "globals.h"
 #include "slave.h"
 #include "sync_config.h"
@@ -74,7 +72,7 @@ struct ec_slave_config {
 
     struct list_head sdo_configs; /**< List of Sdo configurations. */
     struct list_head sdo_requests; /**< List of Sdo requests. */
-
+    struct list_head voe_handlers; /**< List of VoE handlers. */
 };
 
 /*****************************************************************************/

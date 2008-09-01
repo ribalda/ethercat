@@ -33,32 +33,41 @@
 
 /**
    \file
-   EtherCAT master character device.
+   Vendor-specific-over-EtherCAT protocol handler.
 */
 
 /*****************************************************************************/
 
-#ifndef __EC_CDEV_H__
-#define __EC_CDEV_H__
+#ifndef __EC_VOE_HANDLER_H__
+#define __EC_VOE_HANDLER_H__
 
-#include <linux/fs.h>
-#include <linux/cdev.h>
+#include <linux/list.h>
 
 #include "globals.h"
+#include "datagram.h"
 
 /*****************************************************************************/
 
-/** EtherCAT master character device.
-*/
-typedef struct {
-    ec_master_t *master; /**< Master owning the device. */
-    struct cdev cdev; /**< Character device. */
-} ec_cdev_t;
+/** Vendor-specific-over-EtherCAT handler.
+ */
+struct ec_voe_handler {
+    struct list_head list; /**< List item. */
+    ec_slave_config_t *config; /**< Parent slave configuration. */
+    ec_datagram_t datagram; /**< State machine datagram. */
+    size_t data_size; /**< Size of Sdo data. */
+    ec_direction_t dir; /**< Direction. EC_DIR_OUTPUT means writing to
+                          the slave, EC_DIR_INPUT means reading from the
+                          slave. */
+    void (*state)(ec_voe_handler_t *); /**< State function */
+    ec_internal_request_state_t request_state; /**< Handler state. */
+    unsigned int retries; /**< retries upon datagram timeout */
+    unsigned long jiffies_start; /**< Timestamp for timeout calculation. */
+};
 
 /*****************************************************************************/
 
-int ec_cdev_init(ec_cdev_t *, ec_master_t *, dev_t);
-void ec_cdev_clear(ec_cdev_t *);
+int ec_voe_handler_init(ec_voe_handler_t *, ec_slave_config_t *, size_t);
+void ec_voe_handler_clear(ec_voe_handler_t *);
 
 /*****************************************************************************/
 

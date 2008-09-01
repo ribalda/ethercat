@@ -40,8 +40,6 @@
 #ifndef __EC_SYNC_H__
 #define __EC_SYNC_H__
 
-#include "../include/ecrt.h"
-
 #include "globals.h"
 #include "pdo_list.h"
 

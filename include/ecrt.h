@@ -113,7 +113,7 @@
 
 /** EtherCAT realtime interface minor version number.
  */
-#define ECRT_VER_MINOR 4
+#define ECRT_VER_MINOR 5
 
 /** EtherCAT realtime interface version word generator.
  */
@@ -150,6 +150,9 @@ typedef struct ec_domain ec_domain_t; /**< \see ec_domain */
 
 struct ec_sdo_request;
 typedef struct ec_sdo_request ec_sdo_request_t; /**< \see ec_sdo_request. */
+
+struct ec_voe_handler;
+typedef struct ec_voe_handler ec_voe_handler_t; /**< \see ec_voe_handler. */
 
 /*****************************************************************************/
 
@@ -305,16 +308,17 @@ typedef struct {
 
 /*****************************************************************************/
 
-/** Sdo request state.
+/** Request state.
  *
- * This is used as return type of ecrt_sdo_request_state().
+ * This is used as return type for ecrt_sdo_request_state() and
+ * ecrt_voe_handler_state().
  */
 typedef enum {
-    EC_SDO_REQUEST_UNUSED, /**< Not requested. */
-    EC_SDO_REQUEST_BUSY, /**< Request is being processed. */
-    EC_SDO_REQUEST_SUCCESS, /**< Request was processed successfully. */
-    EC_SDO_REQUEST_ERROR, /**< Request processing failed. */
-} ec_sdo_request_state_t;
+    EC_REQUEST_UNUSED, /**< Not requested. */
+    EC_REQUEST_BUSY, /**< Request is being processed. */
+    EC_REQUEST_SUCCESS, /**< Request was processed successfully. */
+    EC_REQUEST_ERROR, /**< Request processing failed. */
+} ec_request_state_t;
 
 /******************************************************************************
  * Global functions
@@ -727,6 +731,17 @@ ec_sdo_request_t *ecrt_slave_config_create_sdo_request(
         size_t size /**< Data size to reserve. */
         );
 
+/** Create an VoE handler to exchange vendor-specific data during realtime
+ * operation.
+ *
+ * The created VoE handler object is freed automatically when the master is
+ * released.
+ */
+ec_voe_handler_t *ecrt_slave_config_create_voe_handler(
+        ec_slave_config_t *sc, /**< Slave configuration. */
+        size_t size /**< Data size to reserve. */
+        );
+
 /** Outputs the state of the slave configuration.
  *
  * Stores the state information in the given \a state structure.
@@ -878,7 +893,7 @@ size_t ecrt_sdo_request_data_size(
  *
  * \return Request state.
  */
-ec_sdo_request_state_t ecrt_sdo_request_state(
+ec_request_state_t ecrt_sdo_request_state(
     const ec_sdo_request_t *req /**< Sdo request. */
     );
 
@@ -903,6 +918,73 @@ void ecrt_sdo_request_write(
 void ecrt_sdo_request_read(
         ec_sdo_request_t *req /**< Sdo request. */
         );
+
+/*****************************************************************************
+ * VoE handler methods.
+ ****************************************************************************/
+
+/** Access to the VoE handler's data.
+ *
+ * This function returns a pointer to the handler's internal memory.
+ *
+ * - After a read operation was successful, the memory contains the received
+ *   data. The size of the received data can be determined via
+ *   ecrt_voe_handler_data_size().
+ * - Before a write operation is triggered, the data have to be written to
+ *   the internal memory. Be sure, that the data fit into the memory. The
+ *   memory size is a parameter of ecrt_slave_config_create_voe_handler().
+ *
+ * \return Pointer to the internal memory.
+ */
+uint8_t *ecrt_voe_handler_data(
+        ec_voe_handler_t *voe /**< VoE handler. */
+        );
+
+/** Returns the current data size.
+ *
+ * When the VoE handler is created, the data size is set to the size of the
+ * reserved memory. At a write operation, the data size is set to the number
+ * of bytes to write. After a read operation the size is set to the size of
+ * the read data. The size is not modified in any other situation.
+ *
+ * \return Data size in bytes.
+ */
+size_t ecrt_voe_handler_data_size(
+        const ec_voe_handler_t *voe /**< VoE handler. */
+        );
+
+/** Start a VoE write operation.
+ *
+ * After this function has been called, the ecrt_voe_handler_execute() method
+ * must be called in every bus cycle as long as it returns EC_REQUEST_BUSY.
+ */
+void ecrt_voe_handler_write(
+        ec_voe_handler_t *voe, /**< VoE handler. */
+        size_t size /**< Number of bytes to write. */
+        );
+
+/** Start a VoE read operation.
+ *
+ * After this function has been called, the ecrt_voe_handler_execute() method
+ * must be called in every bus cycle as long as it returns EC_REQUEST_BUSY.
+ *
+ * On success, the size of the read data can be determined via
+ * ecrt_voe_handler_data_size().
+ */
+void ecrt_voe_handler_read(
+        ec_voe_handler_t *voe /**< VoE handler. */
+        );
+
+/** Execute the handler.
+ *
+ * This method executes the VoE handler. It has to be called in every bus cycle
+ * as long as it returns EC_REQUEST_BUSY.
+ *
+ * \return Handler state.
+ */
+ec_request_state_t ecrt_voe_handler_execute(
+    ec_voe_handler_t *voe /**< VoE handler. */
+    );
 
 /******************************************************************************
  * Bitwise read/write macros

@@ -42,7 +42,6 @@
 #define __EC_FSM_COE_H__
 
 #include "globals.h"
-#include "../include/ecrt.h"
 #include "datagram.h"
 #include "slave.h"
 #include "sdo.h"

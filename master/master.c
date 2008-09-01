@@ -46,7 +46,6 @@
 #include <linux/device.h>
 #include <linux/version.h>
 
-#include "../include/ecrt.h"
 #include "globals.h"
 #include "slave.h"
 #include "slave_config.h"

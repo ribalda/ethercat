@@ -40,8 +40,6 @@
 #ifndef __EC_FMMU_CONFIG_H__
 #define __EC_FMMU_CONFIG_H__
 
-#include "../include/ecrt.h"
-
 #include "globals.h"
 #include "sync.h"
 

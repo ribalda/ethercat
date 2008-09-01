@@ -41,7 +41,6 @@
 #include <linux/netdevice.h>
 #include <linux/etherdevice.h>
 
-#include "../include/ecrt.h"
 #include "globals.h"
 #include "master.h"
 #include "slave.h"

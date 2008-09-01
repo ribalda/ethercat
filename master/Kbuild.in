@@ -61,7 +61,8 @@ ec_master-objs := \
 	slave.o \
 	slave_config.o \
 	sync.o \
-	sync_config.o
+	sync_config.o \
+	voe_handler.o
 
 ifeq (@ENABLE_EOE@,1)
 	ec_master-objs += ethernet.o

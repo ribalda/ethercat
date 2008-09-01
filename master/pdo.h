@@ -43,8 +43,6 @@
 
 #include <linux/list.h>
 
-#include "../include/ecrt.h"
-
 #include "globals.h"
 #include "pdo_entry.h"
 

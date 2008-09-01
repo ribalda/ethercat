@@ -64,7 +64,8 @@ noinst_HEADERS = \
 	slave.c slave.h \
 	slave_config.c slave_config.h \
 	sync.c sync.h \
-	sync_config.c sync_config.h
+	sync_config.c sync_config.h \
+	voe_handler.c voe_handler.h
 
 BUILT_SOURCES = \
 	Kbuild

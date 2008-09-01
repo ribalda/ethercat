@@ -41,8 +41,6 @@
 #ifndef __EC_FSM_PDO_H__
 #define __EC_FSM_PDO_H__
 
-#include "../include/ecrt.h"
-
 #include "globals.h"
 #include "datagram.h"
 #include "fsm_coe.h"

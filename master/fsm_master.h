@@ -41,8 +41,6 @@
 #ifndef __EC_FSM_MASTER_H__
 #define __EC_FSM_MASTER_H__
 
-#include "../include/ecrt.h"
-
 #include "globals.h"
 #include "datagram.h"
 #include "sdo_request.h"
@@ -60,7 +58,7 @@ typedef struct {
     uint16_t offset; /**< SII word offset. */
     size_t nwords; /**< Number of words. */
     const uint16_t *words; /**< Pointer to the data words. */
-    ec_request_state_t state; /**< State of the request. */
+    ec_internal_request_state_t state; /**< State of the request. */
 } ec_sii_write_request_t;
 
 /*****************************************************************************/
@@ -74,7 +72,7 @@ typedef struct {
     uint16_t offset; /**< Physical memory offset. */
     size_t length; /**< Number of bytes. */
     uint8_t *data;
-    ec_request_state_t state; /**< State of the request. */
+    ec_internal_request_state_t state; /**< State of the request. */
 } ec_phy_request_t;
 
 /*****************************************************************************/

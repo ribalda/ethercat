@@ -44,8 +44,6 @@
 #include <linux/list.h>
 #include <linux/kobject.h>
 
-#include "../include/ecrt.h"
-
 #include "globals.h"
 #include "datagram.h"
 #include "pdo.h"

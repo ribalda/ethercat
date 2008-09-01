@@ -42,6 +42,7 @@
 
 #include "globals.h"
 #include "master.h"
+#include "voe_handler.h"
 
 #include "slave_config.h"
 
@@ -75,6 +76,7 @@ void ec_slave_config_init(
 
     INIT_LIST_HEAD(&sc->sdo_configs);
     INIT_LIST_HEAD(&sc->sdo_requests);
+    INIT_LIST_HEAD(&sc->voe_handlers);
 
     sc->used_fmmus = 0;
 }
@@ -91,6 +93,7 @@ void ec_slave_config_clear(
 {
     unsigned int i;
     ec_sdo_request_t *req, *next_req;
+    ec_voe_handler_t *voe, *next_voe;
 
     ec_slave_config_detach(sc);
 
@@ -110,6 +113,13 @@ void ec_slave_config_clear(
         list_del(&req->list);
         ec_sdo_request_clear(req);
         kfree(req);
+    }
+
+    // free all VoE handlers
+    list_for_each_entry_safe(voe, next_voe, &sc->voe_handlers, list) {
+        list_del(&voe->list);
+        ec_voe_handler_clear(voe);
+        kfree(voe);
     }
 }
 
@@ -738,6 +748,35 @@ ec_sdo_request_t *ecrt_slave_config_create_sdo_request(ec_slave_config_t *sc,
     up(&sc->master->master_sem);
 
     return req; 
+}
+
+/*****************************************************************************/
+
+ec_voe_handler_t *ecrt_slave_config_create_voe_handler(ec_slave_config_t *sc,
+        size_t size)
+{
+    ec_voe_handler_t *voe;
+
+    if (sc->master->debug_level)
+        EC_DBG("ecrt_slave_config_create_voe_handler(sc = 0x%x, size = %u)\n",
+                (u32) sc, size);
+
+    if (!(voe = (ec_voe_handler_t *)
+                kmalloc(sizeof(ec_voe_handler_t), GFP_KERNEL))) {
+        EC_ERR("Failed to allocate Sdo request memory!\n");
+        return NULL;
+    }
+
+    if (ec_voe_handler_init(voe, sc, size)) {
+        kfree(voe);
+        return NULL;
+    }
+
+    down(&sc->master->master_sem);
+    list_add_tail(&voe->list, &sc->voe_handlers);
+    up(&sc->master->master_sem);
+
+    return voe; 
 }
 
 /*****************************************************************************/

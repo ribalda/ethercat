@@ -305,7 +305,7 @@ int ec_fsm_master_action_process_sii(
         request = list_entry(master->sii_requests.next,
                 ec_sii_write_request_t, list);
         list_del_init(&request->list); // dequeue
-        request->state = EC_REQUEST_BUSY;
+        request->state = EC_INT_REQUEST_BUSY;
 
         // found pending SII write operation. execute it!
         if (master->debug_level)
@@ -345,7 +345,7 @@ int ec_fsm_master_action_process_phy(
         request = list_entry(master->phy_requests.next,
                 ec_phy_request_t, list);
         list_del_init(&request->list); // dequeue
-        request->state = EC_REQUEST_BUSY;
+        request->state = EC_INT_REQUEST_BUSY;
 
         // found pending request; process it!
         if (master->debug_level)
@@ -360,7 +360,7 @@ int ec_fsm_master_action_process_phy(
             if (request->length > fsm->datagram->mem_size) {
                 EC_ERR("Request length (%u) exceeds maximum datagram size (%u)!\n",
                         request->length, fsm->datagram->mem_size);
-                request->state = EC_REQUEST_FAILURE;
+                request->state = EC_INT_REQUEST_FAILURE;
                 wake_up(&master->phy_queue);
                 continue;
             }
@@ -398,10 +398,10 @@ int ec_fsm_master_action_process_sdo(
         if (!slave->config)
             continue;
         list_for_each_entry(req, &slave->config->sdo_requests, list) {
-            if (req->state == EC_REQUEST_QUEUED) {
+            if (req->state == EC_INT_REQUEST_QUEUED) {
 
                 if (ec_sdo_request_timed_out(req)) {
-                    req->state = EC_REQUEST_FAILURE;
+                    req->state = EC_INT_REQUEST_FAILURE;
                     if (master->debug_level)
                         EC_DBG("Sdo request for slave %u timed out...\n",
                                 slave->ring_position);
@@ -409,11 +409,11 @@ int ec_fsm_master_action_process_sdo(
                 }
 
                 if (slave->current_state == EC_SLAVE_STATE_INIT) {
-                    req->state = EC_REQUEST_FAILURE;
+                    req->state = EC_INT_REQUEST_FAILURE;
                     continue;
                 }
 
-                req->state = EC_REQUEST_BUSY;
+                req->state = EC_INT_REQUEST_BUSY;
                 if (master->debug_level)
                     EC_DBG("Processing Sdo request for slave %u...\n",
                             slave->ring_position);
@@ -438,13 +438,13 @@ int ec_fsm_master_action_process_sdo(
         request = list_entry(master->slave_sdo_requests.next,
                 ec_master_sdo_request_t, list);
         list_del_init(&request->list); // dequeue
-        request->req.state = EC_REQUEST_BUSY;
+        request->req.state = EC_INT_REQUEST_BUSY;
 
         slave = request->slave;
         if (slave->current_state == EC_SLAVE_STATE_INIT) {
             EC_ERR("Discarding Sdo request, slave %u is in INIT.\n",
                     slave->ring_position);
-            request->req.state = EC_REQUEST_FAILURE;
+            request->req.state = EC_INT_REQUEST_FAILURE;
             wake_up(&master->sdo_queue);
             continue;
         }
@@ -812,7 +812,7 @@ void ec_fsm_master_state_write_sii(
     if (!ec_fsm_sii_success(&fsm->fsm_sii)) {
         EC_ERR("Failed to write SII data to slave %u.\n",
                 slave->ring_position);
-        request->state = EC_REQUEST_FAILURE;
+        request->state = EC_INT_REQUEST_FAILURE;
         wake_up(&master->sii_queue);
         ec_fsm_master_restart(fsm);
         return;
@@ -839,7 +839,7 @@ void ec_fsm_master_state_write_sii(
     }
     // TODO: Evaluate other SII contents!
     
-    request->state = EC_REQUEST_SUCCESS;
+    request->state = EC_INT_REQUEST_SUCCESS;
     wake_up(&master->sii_queue);
 
     // check for another SII write request
@@ -898,14 +898,14 @@ void ec_fsm_master_state_sdo_request(
     if (!ec_fsm_coe_success(&fsm->fsm_coe)) {
         EC_DBG("Failed to process Sdo request for slave %u.\n",
                 fsm->slave->ring_position);
-        request->state = EC_REQUEST_FAILURE;
+        request->state = EC_INT_REQUEST_FAILURE;
         wake_up(&master->sdo_queue);
         ec_fsm_master_restart(fsm);
         return;
     }
 
     // Sdo request finished 
-    request->state = EC_REQUEST_SUCCESS;
+    request->state = EC_INT_REQUEST_SUCCESS;
     wake_up(&master->sdo_queue);
 
     if (master->debug_level)
@@ -934,7 +934,7 @@ void ec_fsm_master_state_phy_request(
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         EC_ERR("Failed to receive phy request datagram (state %u).\n",
                 datagram->state);
-        request->state = EC_REQUEST_FAILURE;
+        request->state = EC_INT_REQUEST_FAILURE;
         wake_up(&master->phy_queue);
         ec_fsm_master_restart(fsm);
         return;
@@ -947,7 +947,7 @@ void ec_fsm_master_state_phy_request(
         if (!request->data) {
             EC_ERR("Failed to allocate %u bytes of memory for phy request.\n",
                     request->length);
-            request->state = EC_REQUEST_FAILURE;
+            request->state = EC_INT_REQUEST_FAILURE;
             wake_up(&master->phy_queue);
             ec_fsm_master_restart(fsm);
             return;
@@ -955,7 +955,7 @@ void ec_fsm_master_state_phy_request(
         memcpy(request->data, datagram->data, request->length);
     }
 
-    request->state = EC_REQUEST_SUCCESS;
+    request->state = EC_INT_REQUEST_SUCCESS;
     wake_up(&master->phy_queue);
 
     // check for another PHY request

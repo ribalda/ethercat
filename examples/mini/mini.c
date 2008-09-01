@@ -48,6 +48,7 @@
 #define EL3152_ALT_PDOS 0
 #define EXTERNAL_MEMORY 1
 #define SDO_ACCESS      0
+#define VOE_ACCESS      0
 
 #define PFX "ec_mini: "
 
@@ -184,6 +185,10 @@ static ec_sync_info_t el2004_syncs[] = {
 static ec_sdo_request_t *sdo;
 #endif
 
+#if VOE_ACCESS
+static ec_voe_handler_t *voe;
+#endif
+
 /*****************************************************************************/
 
 void check_domain1_state(void)
@@ -249,20 +254,45 @@ void check_slave_config_states(void)
 void read_sdo(void)
 {
     switch (ecrt_sdo_request_state(sdo)) {
-        case EC_SDO_REQUEST_UNUSED: // request was not used yet
+        case EC_REQUEST_UNUSED: // request was not used yet
             ecrt_sdo_request_read(sdo); // trigger first read
             break;
-        case EC_SDO_REQUEST_BUSY:
+        case EC_REQUEST_BUSY:
             printk(KERN_INFO PFX "Still busy...\n");
             break;
-        case EC_SDO_REQUEST_SUCCESS:
+        case EC_REQUEST_SUCCESS:
             printk(KERN_INFO PFX "Sdo value: 0x%04X\n",
                     EC_READ_U16(ecrt_sdo_request_data(sdo)));
             ecrt_sdo_request_read(sdo); // trigger next read
             break;
-        case EC_SDO_REQUEST_ERROR:
+        case EC_REQUEST_ERROR:
             printk(KERN_INFO PFX "Failed to read Sdo!\n");
             ecrt_sdo_request_read(sdo); // retry reading
+            break;
+    }
+}
+#endif
+
+/*****************************************************************************/
+
+#if VOE_ACCESS
+void read_voe(void)
+{
+    switch (ecrt_voe_handler_execute(voe)) {
+        case EC_REQUEST_UNUSED:
+            ecrt_voe_handler_read(voe); // trigger first read
+            break;
+        case EC_REQUEST_BUSY:
+            printk(KERN_INFO PFX "VoE read still busy...\n");
+            break;
+        case EC_REQUEST_SUCCESS:
+            printk(KERN_INFO PFX "VoE received.\n");
+            // get data via ecrt_voe_handler_data(voe)
+            ecrt_voe_handler_read(voe); // trigger next read
+            break;
+        case EC_REQUEST_ERROR:
+            printk(KERN_INFO PFX "Failed to read VoE data!\n");
+            ecrt_voe_handler_read(voe); // retry reading
             break;
     }
 }
@@ -298,6 +328,10 @@ void cyclic_task(unsigned long data)
 #if SDO_ACCESS
         // read process data Sdo
         read_sdo();
+#endif
+
+#if VOE_ACCESS
+        read_voe();
 #endif
     }
 
@@ -399,6 +433,14 @@ int __init init_mini_module(void)
         goto out_release_master;
     }
     ecrt_sdo_request_timeout(sdo, 500); // ms
+#endif
+
+#if VOE_ACCESS
+    printk(KERN_INFO PFX "Creating VoE handlers...\n");
+    if (!(voe = ecrt_slave_config_create_voe_handler(sc_ana_in, 1000))) {
+        printk(KERN_ERR PFX "Failed to create VoE handler.\n");
+        goto out_release_master;
+    }
 #endif
 
     printk(KERN_INFO PFX "Registering Pdo entries...\n");

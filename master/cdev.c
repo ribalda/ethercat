@@ -726,10 +726,10 @@ int ec_cdev_ioctl_slave_sdo_upload(
 
     // wait for processing through FSM
     if (wait_event_interruptible(master->sdo_queue,
-                request.req.state != EC_REQUEST_QUEUED)) {
+                request.req.state != EC_INT_REQUEST_QUEUED)) {
         // interrupted by signal
         down(&master->master_sem);
-        if (request.req.state == EC_REQUEST_QUEUED) {
+        if (request.req.state == EC_INT_REQUEST_QUEUED) {
             list_del(&request.req.list);
             up(&master->master_sem);
             ec_sdo_request_clear(&request.req);
@@ -740,11 +740,11 @@ int ec_cdev_ioctl_slave_sdo_upload(
     }
 
     // wait until master FSM has finished processing
-    wait_event(master->sdo_queue, request.req.state != EC_REQUEST_BUSY);
+    wait_event(master->sdo_queue, request.req.state != EC_INT_REQUEST_BUSY);
 
     data.abort_code = request.req.abort_code;
 
-    if (request.req.state != EC_REQUEST_SUCCESS) {
+    if (request.req.state != EC_INT_REQUEST_SUCCESS) {
         data.data_size = 0;
         retval = -EIO;
     } else {
@@ -828,10 +828,10 @@ int ec_cdev_ioctl_slave_sdo_download(
 
     // wait for processing through FSM
     if (wait_event_interruptible(master->sdo_queue,
-                request.req.state != EC_REQUEST_QUEUED)) {
+                request.req.state != EC_INT_REQUEST_QUEUED)) {
         // interrupted by signal
         down(&master->master_sem);
-        if (request.req.state == EC_REQUEST_QUEUED) {
+        if (request.req.state == EC_INT_REQUEST_QUEUED) {
             list_del(&request.req.list);
             up(&master->master_sem);
             ec_sdo_request_clear(&request.req);
@@ -842,11 +842,11 @@ int ec_cdev_ioctl_slave_sdo_download(
     }
 
     // wait until master FSM has finished processing
-    wait_event(master->sdo_queue, request.req.state != EC_REQUEST_BUSY);
+    wait_event(master->sdo_queue, request.req.state != EC_INT_REQUEST_BUSY);
 
     data.abort_code = request.req.abort_code;
 
-    retval = request.req.state == EC_REQUEST_SUCCESS ? 0 : -EIO;
+    retval = request.req.state == EC_INT_REQUEST_SUCCESS ? 0 : -EIO;
 
     if (__copy_to_user((void __user *) arg, &data, sizeof(data))) {
         retval = -EFAULT;
@@ -954,7 +954,7 @@ int ec_cdev_ioctl_slave_sii_write(
     request.words = words;
     request.offset = data.offset;
     request.nwords = data.nwords;
-    request.state = EC_REQUEST_QUEUED;
+    request.state = EC_INT_REQUEST_QUEUED;
 
     // schedule SII write request.
     list_add_tail(&request.list, &master->sii_requests);
@@ -963,10 +963,10 @@ int ec_cdev_ioctl_slave_sii_write(
 
     // wait for processing through FSM
     if (wait_event_interruptible(master->sii_queue,
-                request.state != EC_REQUEST_QUEUED)) {
+                request.state != EC_INT_REQUEST_QUEUED)) {
         // interrupted by signal
         down(&master->master_sem);
-        if (request.state == EC_REQUEST_QUEUED) {
+        if (request.state == EC_INT_REQUEST_QUEUED) {
             // abort request
             list_del(&request.list);
             up(&master->master_sem);
@@ -977,11 +977,11 @@ int ec_cdev_ioctl_slave_sii_write(
     }
 
     // wait until master FSM has finished processing
-    wait_event(master->sii_queue, request.state != EC_REQUEST_BUSY);
+    wait_event(master->sii_queue, request.state != EC_INT_REQUEST_BUSY);
 
     kfree(words);
 
-    return request.state == EC_REQUEST_SUCCESS ? 0 : -EIO;
+    return request.state == EC_INT_REQUEST_SUCCESS ? 0 : -EIO;
 }
 
 /*****************************************************************************/
@@ -1027,7 +1027,7 @@ int ec_cdev_ioctl_slave_phy_read(
     request.data = contents;
     request.offset = data.offset;
     request.length = data.length;
-    request.state = EC_REQUEST_QUEUED;
+    request.state = EC_INT_REQUEST_QUEUED;
 
     // schedule request.
     list_add_tail(&request.list, &master->phy_requests);
@@ -1036,10 +1036,10 @@ int ec_cdev_ioctl_slave_phy_read(
 
     // wait for processing through FSM
     if (wait_event_interruptible(master->phy_queue,
-                request.state != EC_REQUEST_QUEUED)) {
+                request.state != EC_INT_REQUEST_QUEUED)) {
         // interrupted by signal
         down(&master->master_sem);
-        if (request.state == EC_REQUEST_QUEUED) {
+        if (request.state == EC_INT_REQUEST_QUEUED) {
             // abort request
             list_del(&request.list);
             up(&master->master_sem);
@@ -1050,15 +1050,15 @@ int ec_cdev_ioctl_slave_phy_read(
     }
 
     // wait until master FSM has finished processing
-    wait_event(master->phy_queue, request.state != EC_REQUEST_BUSY);
+    wait_event(master->phy_queue, request.state != EC_INT_REQUEST_BUSY);
 
-    if (request.state == EC_REQUEST_SUCCESS) {
+    if (request.state == EC_INT_REQUEST_SUCCESS) {
         if (copy_to_user((void __user *) data.data, contents, data.length))
             return -EFAULT;
     }
     kfree(contents);
 
-    return request.state == EC_REQUEST_SUCCESS ? 0 : -EIO;
+    return request.state == EC_INT_REQUEST_SUCCESS ? 0 : -EIO;
 }
 
 /*****************************************************************************/
@@ -1110,7 +1110,7 @@ int ec_cdev_ioctl_slave_phy_write(
     request.data = contents;
     request.offset = data.offset;
     request.length = data.length;
-    request.state = EC_REQUEST_QUEUED;
+    request.state = EC_INT_REQUEST_QUEUED;
 
     // schedule request.
     list_add_tail(&request.list, &master->phy_requests);
@@ -1119,10 +1119,10 @@ int ec_cdev_ioctl_slave_phy_write(
 
     // wait for processing through FSM
     if (wait_event_interruptible(master->phy_queue,
-                request.state != EC_REQUEST_QUEUED)) {
+                request.state != EC_INT_REQUEST_QUEUED)) {
         // interrupted by signal
         down(&master->master_sem);
-        if (request.state == EC_REQUEST_QUEUED) {
+        if (request.state == EC_INT_REQUEST_QUEUED) {
             // abort request
             list_del(&request.list);
             up(&master->master_sem);
@@ -1133,11 +1133,11 @@ int ec_cdev_ioctl_slave_phy_write(
     }
 
     // wait until master FSM has finished processing
-    wait_event(master->phy_queue, request.state != EC_REQUEST_BUSY);
+    wait_event(master->phy_queue, request.state != EC_INT_REQUEST_BUSY);
 
     kfree(contents);
 
-    return request.state == EC_REQUEST_SUCCESS ? 0 : -EIO;
+    return request.state == EC_INT_REQUEST_SUCCESS ? 0 : -EIO;
 }
 
 /*****************************************************************************/
