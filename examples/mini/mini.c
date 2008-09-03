@@ -73,8 +73,8 @@ static struct timer_list timer;
 // process data
 static uint8_t *domain1_pd; // process data memory
 
-#define AnaInSlavePos  0, 1
-#define AnaOutSlavePos 0, 2
+#define AnaInSlavePos  0, 2
+#define AnaOutSlavePos 0, 1
 #define DigOutSlavePos 0, 3
 
 #define Beckhoff_EL2004 0x00000002, 0x07D43052
