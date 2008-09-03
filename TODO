@@ -6,6 +6,10 @@ $Id$
 
 -------------------------------------------------------------------------------
 
+* Remove ecrt_domain_state().
+* Simplyfy master fsm by introducing a common request state to handle external
+* requests (replace write_sii, sdo_request, etc).
+
 Version 1.4.0:
 
 * Update documentation.
