@@ -33,9 +33,10 @@ to the appropriate locations and customizing the sysconfig file.
 # cp ${PREFIX}/etc/sysconfig/ethercat /etc/sysconfig/ethercat
 # vi /etc/sysconfig/ethercat
 
-The EtherCAT character device will be created with mode 0660 and group root by
-default. If you want to give normal users reading access, create a udev rule
-like this:
+Make sure, that the 'udev' package is installed, to automatically create the
+EtherCAT character devices. The character devices will be created with mode
+0660 and group root by default. If you want to give normal users reading
+access, create a udev rule like this:
 
 # echo KERNEL==\"EtherCAT[0-9]*\", MODE=\"0664\" > /etc/udev/rules.d/99-EtherCAT.rules
 

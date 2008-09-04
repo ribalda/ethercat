@@ -1909,13 +1909,13 @@ to make all that possible.
 \subsection{Character Devices}
 \label{sec:cdev}
 
-Each master instance will get a character device as a user-space interface.
-The devices are named \textit{/dev/EtherCATX}, where $X$ is the index of the
-master.
+Each master instance will get a character device as a userspace interface.
+The devices are named \textit{/dev/EtherCATx}, where $x \in \{0 \ldots n\}$ is
+the index of the master.
 
-% FIXME
-% udev
-% rights
+\paragraph{Device Node Creation} The character device nodes are automatically
+created, if the \lstinline+udev+ Package is installed. See section
+\ref{sec:autonode} for how to install and configure it.
 
 %------------------------------------------------------------------------------
 
@@ -2444,11 +2444,10 @@ the below command:
 # `\textbf{/etc/init.d/ethercat start}`
 \end{lstlisting}
 
-The operation of the master can be observed with the command
-\lstinline+ethercat master+ or by viewing the Syslog\index{Syslog}
-messages, which should look like the ones below. If EtherCAT slaves are
-connected to the master's EtherCAT device, the activity indicators should
-begin to flash.
+At this time, the operation of the master can be observed by viewing the
+Syslog\index{Syslog} messages, which should look like the ones below. If
+EtherCAT slaves are connected to the master's EtherCAT device, the activity
+indicators should begin to flash.
 
 \begin{lstlisting}[numbers=left]
 EtherCAT: Master driver `\masterversion`
@@ -2484,6 +2483,36 @@ loading. The master accepts the device with the address
 state machine and begins scanning the bus.
 
 \end{description}
+
+\section{Automatic Device Node Creation}
+\label{sec:autonode}
+
+The \lstinline+ethercat+ command-line tool (see section~\ref{sec:ethercat})
+communicates with the master via a character device. The corresponding device
+nodes are created automatically, if the udev daemon is running.
+Note, that on some distributions, the \lstinline+udev+ package is not
+installed by default.
+
+The device nodes will be created with mode \lstinline+0660+ and group
+\lstinline+root+ by default. If you want to give normal users reading access,
+create a udev rule file (for example
+\textit{/etc/udev/rules.d/99-EtherCAT.rules} with the following content:
+
+\begin{lstlisting}
+KERNEL=="EtherCAT[0-9]*", MODE="0664"
+\end{lstlisting}
+
+After the udev rule file is created and the EtherCAT master is restarted with
+\lstinline[breaklines=true]+/etc/init.d/ethercat restart+, the device node
+will be automatically created with the desired rights:
+
+\begin{lstlisting}
+# `\textbf{ls -l /dev/EtherCAT0}`
+crw-rw-r--  1 root root 252, 0 2008-09-03 16:19 /dev/EtherCAT0
+\end{lstlisting}
+
+Now, the \lstinline+ethercat+ tool can be used (see
+section~\ref{sec:ethercat}) even as a non-root user.
 
 %------------------------------------------------------------------------------
 
