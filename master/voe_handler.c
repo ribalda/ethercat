@@ -44,6 +44,10 @@
 #include "mailbox.h"
 #include "voe_handler.h"
 
+/** VoE mailbox type.
+ */
+#define EC_MBOX_TYPE_VOE 0xff
+
 /** VoE response timeout in [ms].
  */
 #define EC_VOE_RESPONSE_TIMEOUT 500
@@ -169,8 +173,8 @@ void ec_voe_handler_state_write_start(ec_voe_handler_t *voe)
         return;
     }
 	
-    if (!(data = ec_slave_mbox_prepare_send(
-                    slave, &voe->datagram, 0x01, voe->data_size))) {
+    if (!(data = ec_slave_mbox_prepare_send(slave, &voe->datagram,
+                    EC_MBOX_TYPE_VOE, voe->data_size))) {
         voe->state = ec_voe_handler_state_error;
         voe->request_state = EC_INT_REQUEST_FAILURE;
         return;
@@ -341,7 +345,7 @@ void ec_voe_handler_state_read_response(ec_voe_handler_t *voe)
         return;
     }
 
-    if (mbox_prot != 0x01) { // VoE
+    if (mbox_prot != EC_MBOX_TYPE_VOE) {
         voe->state = ec_voe_handler_state_error;
         voe->request_state = EC_INT_REQUEST_FAILURE;
         EC_WARN("Received mailbox protocol 0x%02X as response.\n", mbox_prot);
