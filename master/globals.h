@@ -88,6 +88,9 @@
 #define EC_MAX_DATA_SIZE (ETH_DATA_LEN - EC_FRAME_HEADER_SIZE \
                           - EC_DATAGRAM_HEADER_SIZE - EC_DATAGRAM_FOOTER_SIZE)
 
+/** Mailbox header size.  */
+#define EC_MBOX_HEADER_SIZE 6
+
 /** Word offset of first SII category. */
 #define EC_FIRST_SII_CATEGORY_OFFSET 0x40
 

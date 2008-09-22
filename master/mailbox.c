@@ -66,7 +66,7 @@ uint8_t *ec_slave_mbox_prepare_send(const ec_slave_t *slave, /**< slave */
         return NULL;
     }
 
-    total_size = size + 6;
+    total_size = EC_MBOX_HEADER_SIZE + size;
     if (unlikely(total_size > slave->sii.rx_mailbox_size)) {
         EC_ERR("Data size does not fit in mailbox!\n");
         return NULL;
@@ -82,7 +82,7 @@ uint8_t *ec_slave_mbox_prepare_send(const ec_slave_t *slave, /**< slave */
     EC_WRITE_U8 (datagram->data + 4, 0x00); // channel & priority
     EC_WRITE_U8 (datagram->data + 5, type); // underlying protocol type
 
-    return datagram->data + 6;
+    return datagram->data + EC_MBOX_HEADER_SIZE;
 }
 
 /*****************************************************************************/
@@ -167,7 +167,7 @@ uint8_t *ec_slave_mbox_fetch(const ec_slave_t *slave, /**< slave */
 
     data_size = EC_READ_U16(datagram->data);
 
-    if (data_size > slave->sii.tx_mailbox_size - 6) {
+    if (data_size + EC_MBOX_HEADER_SIZE > slave->sii.tx_mailbox_size) {
         EC_ERR("Corrupt mailbox response received from slave %u!\n",
                slave->ring_position);
         ec_print_data(datagram->data, slave->sii.tx_mailbox_size);
@@ -179,12 +179,12 @@ uint8_t *ec_slave_mbox_fetch(const ec_slave_t *slave, /**< slave */
 
     if (*type == 0x00) {
         const ec_code_msg_t *mbox_msg;
-	uint16_t code = EC_READ_U16(datagram->data + 8);
+        uint16_t code = EC_READ_U16(datagram->data + 8);
 
         EC_ERR("Mailbox error response received from slave %u - ",
-               slave->ring_position);
+                slave->ring_position);
 
-	for (mbox_msg = mbox_error_messages; mbox_msg->code; mbox_msg++) {
+        for (mbox_msg = mbox_error_messages; mbox_msg->code; mbox_msg++) {
             if (mbox_msg->code != code) continue;
             printk("Code 0x%04X: \"%s\".\n",
                    mbox_msg->code, mbox_msg->message);
@@ -195,12 +195,12 @@ uint8_t *ec_slave_mbox_fetch(const ec_slave_t *slave, /**< slave */
             printk("Unknown error reply code 0x%04X.\n", code);
 
         if (slave->master->debug_level)
-            ec_print_data(datagram->data + 6, data_size);
+            ec_print_data(datagram->data + EC_MBOX_HEADER_SIZE, data_size);
 
         return NULL;
     }
 
-    return datagram->data + 6;
+    return datagram->data + EC_MBOX_HEADER_SIZE;
 }
 
 /*****************************************************************************/
