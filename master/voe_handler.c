@@ -48,6 +48,10 @@
  */
 #define EC_MBOX_TYPE_VOE 0xff
 
+/** VoE header size.
+ */
+#define EC_VOE_HEADER_SIZE 6
+
 /** VoE response timeout in [ms].
  */
 #define EC_VOE_RESPONSE_TIMEOUT 500
@@ -77,13 +81,16 @@ int ec_voe_handler_init(
         )
 {
     voe->config = sc;
+    voe->vendor_id = 0x00000000;
+    voe->vendor_type = 0x0000;
     voe->data_size = 0;
     voe->dir = EC_DIR_INVALID;
     voe->state = ec_voe_handler_state_error;
     voe->request_state = EC_INT_REQUEST_INIT;
 
     ec_datagram_init(&voe->datagram);
-    if (ec_datagram_prealloc(&voe->datagram, size + 6))
+    if (ec_datagram_prealloc(&voe->datagram,
+                size + EC_MBOX_HEADER_SIZE + EC_VOE_HEADER_SIZE))
         return -1;
 
     return 0;
@@ -104,9 +111,18 @@ void ec_voe_handler_clear(
  * Application interface.
  ****************************************************************************/
 
+void ecrt_voe_handler_header(ec_voe_handler_t *voe, uint32_t vendor_id,
+        uint16_t vendor_type)
+{
+    voe->vendor_id = vendor_id;
+    voe->vendor_type = vendor_type;
+}
+
+/*****************************************************************************/
+
 uint8_t *ecrt_voe_handler_data(ec_voe_handler_t *voe)
 {
-    return voe->datagram.data + 6;
+    return voe->datagram.data + EC_MBOX_HEADER_SIZE + EC_VOE_HEADER_SIZE;
 }
 
 /*****************************************************************************/
@@ -130,7 +146,7 @@ void ecrt_voe_handler_read(ec_voe_handler_t *voe)
 void ecrt_voe_handler_write(ec_voe_handler_t *voe, size_t size)
 {
     voe->dir = EC_DIR_OUTPUT;
-    voe->datagram.data_size = size + 6;
+    voe->data_size = size;
     voe->state = ec_voe_handler_state_write_start;
     voe->request_state = EC_INT_REQUEST_QUEUED;
 }
@@ -174,11 +190,14 @@ void ec_voe_handler_state_write_start(ec_voe_handler_t *voe)
     }
 	
     if (!(data = ec_slave_mbox_prepare_send(slave, &voe->datagram,
-                    EC_MBOX_TYPE_VOE, voe->data_size))) {
+                    EC_MBOX_TYPE_VOE, EC_VOE_HEADER_SIZE + voe->data_size))) {
         voe->state = ec_voe_handler_state_error;
         voe->request_state = EC_INT_REQUEST_FAILURE;
         return;
     }
+
+    EC_WRITE_U32(data,     voe->vendor_id);
+    EC_WRITE_U16(data + 4, voe->vendor_type);
 
     voe->retries = EC_FSM_RETRIES;
     voe->jiffies_start = jiffies;
@@ -353,12 +372,19 @@ void ec_voe_handler_state_read_response(ec_voe_handler_t *voe)
         return;
     }
 
+    if (rec_size < EC_VOE_HEADER_SIZE) {
+        voe->state = ec_voe_handler_state_error;
+        voe->request_state = EC_INT_REQUEST_FAILURE;
+        EC_ERR("Received VoE header is incomplete (%u bytes)!\n", rec_size);
+        return;
+    }
+
     if (master->debug_level) {
         EC_DBG("VoE data:\n");
         ec_print_data(data, rec_size);
     }
 
-    voe->data_size = rec_size;
+    voe->data_size = rec_size - EC_VOE_HEADER_SIZE;
     voe->request_state = EC_INT_REQUEST_SUCCESS;
     voe->state = ec_voe_handler_state_end; // success
 }
@@ -379,6 +405,7 @@ void ec_voe_handler_state_error(ec_voe_handler_t *voe)
 
 /** \cond */
 
+EXPORT_SYMBOL(ecrt_voe_handler_header);
 EXPORT_SYMBOL(ecrt_voe_handler_data);
 EXPORT_SYMBOL(ecrt_voe_handler_data_size);
 EXPORT_SYMBOL(ecrt_voe_handler_read);

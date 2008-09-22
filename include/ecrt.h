@@ -923,9 +923,21 @@ void ecrt_sdo_request_read(
  * VoE handler methods.
  ****************************************************************************/
 
+/** Sets the VoE header containing vendor ID and vendor type.
+ *
+ * A VoE message shall contain a 4-byte vendor ID, followed by a 2-byte vendor
+ * type at as header. These numbers can be set with this function.
+ */
+void ecrt_voe_handler_header(
+        ec_voe_handler_t *voe, /**< VoE handler. */
+        uint32_t vendor_id, /**< Vendor ID. */
+        uint16_t vendor_type /**< Vendor-specific type. */
+        );
+
 /** Access to the VoE handler's data.
  *
- * This function returns a pointer to the handler's internal memory.
+ * This function returns a pointer to the VoE handler's internal memory, after
+ * the VoE header (see ecrt_voe_handler_header()).
  *
  * - After a read operation was successful, the memory contains the received
  *   data. The size of the received data can be determined via
@@ -941,6 +953,9 @@ uint8_t *ecrt_voe_handler_data(
         );
 
 /** Returns the current data size.
+ *
+ * The data size is the size of the VoE data without the header (see
+ * ecrt_voe_handler_header()).
  *
  * When the VoE handler is created, the data size is set to the size of the
  * reserved memory. At a write operation, the data size is set to the number
@@ -960,7 +975,7 @@ size_t ecrt_voe_handler_data_size(
  */
 void ecrt_voe_handler_write(
         ec_voe_handler_t *voe, /**< VoE handler. */
-        size_t size /**< Number of bytes to write. */
+        size_t size /**< Number of bytes to write (without the VoE header). */
         );
 
 /** Start a VoE read operation.
