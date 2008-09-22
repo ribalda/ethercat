@@ -811,6 +811,7 @@ EXPORT_SYMBOL(ecrt_slave_config_sdo8);
 EXPORT_SYMBOL(ecrt_slave_config_sdo16);
 EXPORT_SYMBOL(ecrt_slave_config_sdo32);
 EXPORT_SYMBOL(ecrt_slave_config_create_sdo_request);
+EXPORT_SYMBOL(ecrt_slave_config_create_voe_handler);
 EXPORT_SYMBOL(ecrt_slave_config_state);
 
 /** \endcond */
