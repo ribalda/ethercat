@@ -6,19 +6,15 @@ $Id$
 
 -------------------------------------------------------------------------------
 
+Version 1.5.0:
+
+* Implement user space realtime interface via cdev.
 * Remove ecrt_domain_state().
-* Simplyfy master fsm by introducing a common request state to handle external
-* requests (replace write_sii, sdo_request, etc).
-
-Version 1.4.0:
-
-* Update documentation.
-* Check for possible race condition in jiffy-based frame timeout calculation.
+* Segmented Sdo downloads.
 
 Future issues:
 
 * Distributed clocks.
-* Implement user space realtime interface via cdev.
 * Move master threads, slave handlers and state machines into a user
   space daemon.
 * Allow master requesting when in ORPHANED phase
@@ -32,13 +28,13 @@ Future issues:
 * Interface/buffers for asynchronous domain IO.
 * Make scanning and configuration run parallel (each).
 * File access over EtherCAT (FoE).
-* Vendor-specific over EtherCAT (VoE).
 * ethercat tool:
     - Data type abbreviations.
     - Add a -n (numeric) switch.
 	- Check for unwanted options.
-* Segmented Sdo downloads.
 * Get original driver for r8169.
+* Simplyfy master fsm by introducing a common request state to handle external
+  requests (replace write_sii, sdo_request, etc).
 
 Smaller issues:
 
