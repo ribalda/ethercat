@@ -6,6 +6,7 @@
 
 #include <getopt.h>
 #include <libgen.h> // basename()
+#include <stdlib.h>
 
 #include <iostream>
 #include <iomanip>

@@ -7,6 +7,7 @@
 #include <iostream>
 #include <iomanip>
 #include <list>
+#include <string.h>
 using namespace std;
 
 #include "CommandSlaves.h"

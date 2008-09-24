@@ -8,6 +8,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <sys/ioctl.h>
+#include <string.h>
 
 #include <sstream>
 #include <iomanip>
