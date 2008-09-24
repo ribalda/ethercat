@@ -281,6 +281,13 @@ void ec_fsm_coe_dict_start(ec_fsm_coe_t *fsm /**< finite state machine */)
         return;
     }
 
+    if (slave->sii.has_general && !slave->sii.coe_details.enable_sdo_info) {
+        EC_ERR("Slave %u does not support Sdo information service!\n",
+                slave->ring_position);
+        fsm->state = ec_fsm_coe_error;
+        return;
+    }
+
     if (!(data = ec_slave_mbox_prepare_send(slave, datagram, 0x03, 8))) {
         fsm->state = ec_fsm_coe_error;
         return;

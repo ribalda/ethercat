@@ -489,8 +489,11 @@ void ec_fsm_master_action_idle(
             slave < master->slaves + master->slave_count;
             slave++) {
         if (!(slave->sii.mailbox_protocols & EC_MBOX_COE)
+                || (slave->sii.has_general
+                    && !slave->sii.coe_details.enable_sdo_info)
                 || slave->sdo_dictionary_fetched
                 || slave->current_state == EC_SLAVE_STATE_INIT
+                || slave->current_state == EC_SLAVE_STATE_UNKNOWN
                 || jiffies - slave->jiffies_preop < EC_WAIT_SDO_DICT * HZ
                 ) continue;
 
