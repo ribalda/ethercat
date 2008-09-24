@@ -189,8 +189,6 @@ void CommandSlaves::showSlaves(
         )
 {
     SlaveList::const_iterator si;
-    list<string> protoList;
-    list<string>::const_iterator protoIter;
 
     for (si = slaves.begin(); si != slaves.end(); si++) {
         cout << "=== Slave " << dec << si->position << " ===" << endl;
@@ -213,6 +211,9 @@ void CommandSlaves::showSlaves(
             << setw(8) << si->serial_number << endl;
 
         if (si->mailbox_protocols) {
+            list<string> protoList;
+            list<string>::const_iterator protoIter;
+
             cout << "Mailboxes:" << endl
                 << "  RX: 0x"
                 << hex << setw(4) << si->rx_mailbox_offset << "/"
