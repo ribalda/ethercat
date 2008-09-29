@@ -518,8 +518,10 @@ int ec_cdev_ioctl_domain_data(
     }
 
     if (copy_to_user((void __user *) data.target, domain->data,
-                domain->data_size))
+                domain->data_size)) {
+        up(&master->master_sem);
         return -EFAULT;
+    }
 
     up(&master->master_sem);
     return 0;
@@ -808,7 +810,6 @@ int ec_cdev_ioctl_slave_sdo_download(
     }
     request.req.data_size = data.data_size;
     ecrt_sdo_request_write(&request.req);
-
 
     if (down_interruptible(&master->master_sem))
         return -EINTR;
