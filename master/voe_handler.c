@@ -46,7 +46,7 @@
 
 /** VoE mailbox type.
  */
-#define EC_MBOX_TYPE_VOE 0xff
+#define EC_MBOX_TYPE_VOE 0x0f
 
 /** VoE header size.
  */
