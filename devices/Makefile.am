@@ -35,7 +35,7 @@ SUBDIRS = e1000
 
 DIST_SUBDIRS = e1000
 
-EXTRA_DIST = \
+noinst_HEADERS = \
 	8139too-2.6.13-ethercat.c \
 	8139too-2.6.13-orig.c \
 	8139too-2.6.17-ethercat.c \
@@ -53,6 +53,8 @@ EXTRA_DIST = \
 	Kbuild.in \
 	e100-2.6.18-ethercat.c \
 	e100-2.6.18-orig.c \
+	e100-2.6.20-ethercat.c \
+	e100-2.6.20-orig.c \
 	ecdev.h \
 	forcedeth-2.6.17-ethercat.c \
 	forcedeth-2.6.17-orig.c \
