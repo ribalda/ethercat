@@ -1748,10 +1748,9 @@ static int e100_tx_clean(struct nic *nic)
 				le32_to_cpu(cb->u.tcb.tbd.buf_addr),
 				le16_to_cpu(cb->u.tcb.tbd.size),
 				PCI_DMA_TODEVICE);
-            if (!nic->ecdev) {
-                dev_kfree_skb_any(cb->skb);
-				cb->skb = NULL;
-			}
+			if (!nic->ecdev)
+				dev_kfree_skb_any(cb->skb);
+			cb->skb = NULL;
 			tx_cleaned = 1;
 		}
 		cb->status = 0;
@@ -1779,7 +1778,8 @@ static void e100_clean_cbs(struct nic *nic)
 					le32_to_cpu(cb->u.tcb.tbd.buf_addr),
 					le16_to_cpu(cb->u.tcb.tbd.size),
 					PCI_DMA_TODEVICE);
-				dev_kfree_skb(cb->skb);
+				if (!nic->ecdev)
+					dev_kfree_skb(cb->skb);
 			}
 			nic->cb_to_clean = nic->cb_to_clean->next;
 			nic->cbs_avail++;
