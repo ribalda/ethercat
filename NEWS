@@ -10,6 +10,7 @@ Changes since 1.4.0:
 * Separated datagram initialization from filling the payload with zeros.
   Introduced new method ec_datagram_zero() for that.
 * Added phy_read and phy_write commands to ethercat tool.
+* Added driver for Intel PRO/100 NICs.
 
 Changes in version 1.4.0-rc2:
 
