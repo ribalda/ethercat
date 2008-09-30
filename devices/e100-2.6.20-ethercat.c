@@ -1945,10 +1945,24 @@ static int e100_rx_indicate(struct nic *nic, struct rx *rx,
 
 	if (nic->ecdev) {
 		// make receive frame descriptior usable again
-		rfd->status = 0x0000;
-		rfd->command = cpu_to_le16(cb_el);
-		rx->dma_addr = pci_map_single(nic->pdev, rx->skb->data,
+		memcpy(skb->data, &nic->blank_rfd, sizeof(struct rfd));
+		rx->dma_addr = pci_map_single(nic->pdev, skb->data,
 				RFD_BUF_LEN, PCI_DMA_BIDIRECTIONAL);
+		if(pci_dma_mapping_error(rx->dma_addr)) {
+			rx->dma_addr = 0;
+		}
+
+		/* Link the RFD to end of RFA by linking previous RFD to
+		 * this one, and clearing EL bit of previous.  */
+		if(rx->prev->skb) {
+			struct rfd *prev_rfd = (struct rfd *)rx->prev->skb->data;
+			put_unaligned(cpu_to_le32(rx->dma_addr),
+					(u32 *)&prev_rfd->link);
+			wmb();
+			prev_rfd->command &= ~cpu_to_le16(cb_el);
+			pci_dma_sync_single_for_device(nic->pdev, rx->prev->dma_addr,
+					sizeof(struct rfd), PCI_DMA_TODEVICE);
+		}
 	} else {
 		rx->skb = NULL;
 	}
