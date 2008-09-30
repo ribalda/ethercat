@@ -111,11 +111,24 @@ void ec_voe_handler_clear(
  * Application interface.
  ****************************************************************************/
 
-void ecrt_voe_handler_header(ec_voe_handler_t *voe, uint32_t vendor_id,
+void ecrt_voe_handler_send_header(ec_voe_handler_t *voe, uint32_t vendor_id,
         uint16_t vendor_type)
 {
     voe->vendor_id = vendor_id;
     voe->vendor_type = vendor_type;
+}
+
+/*****************************************************************************/
+
+void ecrt_voe_handler_received_header(const ec_voe_handler_t *voe,
+        uint32_t *vendor_id, uint16_t *vendor_type)
+{
+    uint8_t *header = voe->datagram.data + EC_MBOX_HEADER_SIZE;
+
+    if (vendor_id)
+        *vendor_id = EC_READ_U32(header);
+    if (vendor_type)
+        *vendor_type = EC_READ_U16(header + 4);
 }
 
 /*****************************************************************************/
@@ -405,7 +418,8 @@ void ec_voe_handler_state_error(ec_voe_handler_t *voe)
 
 /** \cond */
 
-EXPORT_SYMBOL(ecrt_voe_handler_header);
+EXPORT_SYMBOL(ecrt_voe_handler_send_header);
+EXPORT_SYMBOL(ecrt_voe_handler_received_header);
 EXPORT_SYMBOL(ecrt_voe_handler_data);
 EXPORT_SYMBOL(ecrt_voe_handler_data_size);
 EXPORT_SYMBOL(ecrt_voe_handler_read);

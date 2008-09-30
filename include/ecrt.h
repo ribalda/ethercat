@@ -923,21 +923,35 @@ void ecrt_sdo_request_read(
  * VoE handler methods.
  ****************************************************************************/
 
-/** Sets the VoE header containing vendor ID and vendor type.
+/** Sets the VoE header for future send operations.
  *
  * A VoE message shall contain a 4-byte vendor ID, followed by a 2-byte vendor
  * type at as header. These numbers can be set with this function.
  */
-void ecrt_voe_handler_header(
+void ecrt_voe_handler_send_header(
         ec_voe_handler_t *voe, /**< VoE handler. */
         uint32_t vendor_id, /**< Vendor ID. */
         uint16_t vendor_type /**< Vendor-specific type. */
         );
 
+/** Reads the header data of a received VoE message.
+ *
+ * This method can be used after a read operation has succeded, to get the
+ * received header information.
+ *
+ * The header information is stored at the memory given by the pointer
+ * parameters.
+ */
+void ecrt_voe_handler_received_header(
+        const ec_voe_handler_t *voe, /**< VoE handler. */
+        uint32_t *vendor_id, /**< Vendor ID. */
+        uint16_t *vendor_type /**< Vendor-specific type. */
+        );
+
 /** Access to the VoE handler's data.
  *
  * This function returns a pointer to the VoE handler's internal memory, after
- * the VoE header (see ecrt_voe_handler_header()).
+ * the VoE header (see ecrt_voe_handler_send_header()).
  *
  * - After a read operation was successful, the memory contains the received
  *   data. The size of the received data can be determined via
@@ -955,7 +969,7 @@ uint8_t *ecrt_voe_handler_data(
 /** Returns the current data size.
  *
  * The data size is the size of the VoE data without the header (see
- * ecrt_voe_handler_header()).
+ * ecrt_voe_handler_send_header()).
  *
  * When the VoE handler is created, the data size is set to the size of the
  * reserved memory. At a write operation, the data size is set to the number
@@ -971,7 +985,8 @@ size_t ecrt_voe_handler_data_size(
 /** Start a VoE write operation.
  *
  * After this function has been called, the ecrt_voe_handler_execute() method
- * must be called in every bus cycle as long as it returns EC_REQUEST_BUSY.
+ * must be called in every bus cycle as long as it returns EC_REQUEST_BUSY. No
+ * other operation may be started while the handler is busy.
  */
 void ecrt_voe_handler_write(
         ec_voe_handler_t *voe, /**< VoE handler. */
@@ -981,10 +996,12 @@ void ecrt_voe_handler_write(
 /** Start a VoE read operation.
  *
  * After this function has been called, the ecrt_voe_handler_execute() method
- * must be called in every bus cycle as long as it returns EC_REQUEST_BUSY.
+ * must be called in every bus cycle as long as it returns EC_REQUEST_BUSY. No
+ * other operation may be started while the handler is busy.
  *
  * On success, the size of the read data can be determined via
- * ecrt_voe_handler_data_size().
+ * ecrt_voe_handler_data_size(), while the VoE header of the received data
+ * can be retrieved with ecrt_voe_handler_received_header().
  */
 void ecrt_voe_handler_read(
         ec_voe_handler_t *voe /**< VoE handler. */
