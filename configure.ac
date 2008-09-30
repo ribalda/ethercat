@@ -184,61 +184,6 @@ fi
 AC_SUBST(KERNEL_E100,[$kernele100])
 
 #------------------------------------------------------------------------------
-# forcedeth driver
-#------------------------------------------------------------------------------
-
-AC_ARG_ENABLE([forcedeth],
-    AS_HELP_STRING([--enable-forcedeth],
-                   [Enable forcedeth driver]),
-    [
-        case "${enableval}" in
-            yes) enableforcedeth=1
-                ;;
-            no) enableforcedeth=0
-                ;;
-            *) AC_MSG_ERROR([Invalid value for --enable-forcedeth])
-                ;;
-        esac
-    ],
-    [enableforcedeth=0] # disabled by default!
-)
-
-AM_CONDITIONAL(ENABLE_FORCEDETH, test "x$enableforcedeth" = "x1")
-AC_SUBST(ENABLE_FORCEDETH,[$enableforcedeth])
-
-AC_ARG_WITH([forcedeth-kernel],
-    AC_HELP_STRING(
-        [--with-forcedeth-kernel=<X.Y.Z>],
-        [forcedeth kernel (only if differing)]
-    ),
-    [
-        kernelforcedeth=[$withval]
-    ],
-    [
-        kernelforcedeth=$linuxversion
-    ]
-)
-
-if test "x${enableforcedeth}" = "x1"; then
-    AC_MSG_CHECKING([for kernel for forcedeth driver])
-
-    kernels=`ls -1 ${srcdir}/devices/ | grep -oE "^forcedeth-.*-" | cut -d "-" -f 2 | uniq`
-    found=0
-    for k in $kernels; do
-        if test "$kernelforcedeth" = "$k"; then
-            found=1
-        fi
-    done
-    if test $found -ne 1; then
-        AC_MSG_ERROR([kernel $kernelforcedeth not available for forcedeth driver!])
-    fi
-
-    AC_MSG_RESULT([$kernelforcedeth])
-fi
-
-AC_SUBST(KERNEL_FORCEDETH,[$kernelforcedeth])
-
-#------------------------------------------------------------------------------
 # e1000 driver
 #------------------------------------------------------------------------------
 
