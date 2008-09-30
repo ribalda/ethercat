@@ -57,11 +57,4 @@ ifeq (@ENABLE_E1000@,1)
 	obj-m += e1000/
 endif
 
-ifeq (@ENABLE_R8169@,1)
-	EC_R8169_OBJ := r8169-@KERNEL_R8169@-ethercat.o
-	obj-m += ec_r8169.o
-	ec_r8169-objs := $(EC_R8169_OBJ)
-	CFLAGS_$(EC_R8169_OBJ) = -DSVNREV=$(REV)
-endif
-
 #------------------------------------------------------------------------------
