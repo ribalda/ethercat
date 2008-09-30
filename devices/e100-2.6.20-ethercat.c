@@ -1884,8 +1884,6 @@ static int e100_rx_indicate(struct nic *nic, struct rx *rx,
 	if(unlikely(work_done && *work_done >= work_to_do))
 		return -EAGAIN;
 
-	return -ENODATA; // FIXME
-
 	/* Need to sync before taking a peek at cb_complete bit */
 	pci_dma_sync_single_for_cpu(nic->pdev, rx->dma_addr,
 		sizeof(struct rfd), PCI_DMA_FROMDEVICE);
@@ -1901,9 +1899,6 @@ static int e100_rx_indicate(struct nic *nic, struct rx *rx,
 	actual_size = le16_to_cpu(rfd->actual_size) & 0x3FFF;
 	if(unlikely(actual_size > RFD_BUF_LEN - sizeof(struct rfd)))
 		actual_size = RFD_BUF_LEN - sizeof(struct rfd);
-
-	printk(KERN_INFO "ec_e100 rx %p rec %u\n", rx, actual_size);
-	msleep(500); // FIXME
 
 	/* Get data */
 	pci_unmap_single(nic->pdev, rx->dma_addr,
@@ -1935,15 +1930,12 @@ static int e100_rx_indicate(struct nic *nic, struct rx *rx,
 		nic->net_stats.rx_bytes += actual_size;
 		nic->netdev->last_rx = jiffies;
 		if (nic->ecdev) {
-#if 0
 			ecdev_receive(nic->ecdev,
 					skb->data + sizeof(struct rfd), actual_size);
-#endif
+
 			// No need to detect link status as
 			// long as frames are received: Reset watchdog.
-#if 0
 			nic->ec_watchdog_jiffies = jiffies;
-#endif
 		} else {
 			netif_receive_skb(skb);
 		}
@@ -1951,8 +1943,15 @@ static int e100_rx_indicate(struct nic *nic, struct rx *rx,
 			(*work_done)++;
 	}
 
-	if (!nic->ecdev)
+	if (nic->ecdev) {
+		// make receive frame descriptior usable again
+		rfd->status = 0x0000;
+		rfd->command = cpu_to_le16(cb_el);
+		rx->dma_addr = pci_map_single(nic->pdev, rx->skb->data,
+				RFD_BUF_LEN, PCI_DMA_BIDIRECTIONAL);
+	} else {
 		rx->skb = NULL;
+	}
 
 	return 0;
 }
