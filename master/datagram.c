@@ -56,7 +56,6 @@
 
 #define EC_FUNC_FOOTER \
     datagram->data_size = data_size; \
-    memset(datagram->data, 0x00, data_size); \
     return 0;
 
 /** \endcond */
@@ -157,6 +156,15 @@ int ec_datagram_prealloc(
 
     datagram->mem_size = size;
     return 0;
+}
+
+/*****************************************************************************/
+
+/** Fills the datagram payload memory with zeros.
+ */
+void ec_datagram_zero(ec_datagram_t *datagram /**< EtherCAT datagram. */)
+{
+    memset(datagram->data, 0x00, datagram->data_size);
 }
 
 /*****************************************************************************/

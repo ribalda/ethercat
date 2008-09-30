@@ -218,7 +218,7 @@ void ec_fsm_slave_config_state_init(
     // clear FMMU configurations
     ec_datagram_fpwr(datagram, slave->station_address,
             0x0600, EC_FMMU_PAGE_SIZE * slave->base_fmmu_count);
-    memset(datagram->data, 0x00, EC_FMMU_PAGE_SIZE * slave->base_fmmu_count);
+    ec_datagram_zero(datagram);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_slave_config_state_clear_fmmus;
 }
@@ -295,8 +295,7 @@ void ec_fsm_slave_config_enter_mbox_sync(
     if (slave->sii.sync_count >= 2) { // mailbox configuration provided
         ec_datagram_fpwr(datagram, slave->station_address, 0x0800,
                 EC_SYNC_PAGE_SIZE * slave->sii.sync_count);
-        memset(datagram->data, 0x00,
-                EC_SYNC_PAGE_SIZE * slave->sii.sync_count);
+        ec_datagram_zero(datagram);
 
         for (i = 0; i < 2; i++) {
             ec_sync_page(&slave->sii.syncs[i], i,
@@ -314,7 +313,7 @@ void ec_fsm_slave_config_enter_mbox_sync(
 
         ec_datagram_fpwr(datagram, slave->station_address, 0x0800,
                 EC_SYNC_PAGE_SIZE * 2);
-        memset(datagram->data, 0x00, EC_SYNC_PAGE_SIZE * 2);
+        ec_datagram_zero(datagram);
 
         ec_sync_init(&sync, slave);
         sync.physical_start_address = slave->sii.rx_mailbox_offset;
@@ -553,7 +552,7 @@ void ec_fsm_slave_config_enter_pdo_sync(
     ec_datagram_fpwr(datagram, slave->station_address,
             0x0800 + EC_SYNC_PAGE_SIZE * offset,
             EC_SYNC_PAGE_SIZE * num_pdo_syncs);
-    memset(datagram->data, 0x00, EC_SYNC_PAGE_SIZE * num_pdo_syncs);
+    ec_datagram_zero(datagram);
 
     for (i = 0; i < num_pdo_syncs; i++) {
         sync_index = i + offset;
@@ -633,7 +632,7 @@ void ec_fsm_slave_config_enter_fmmu(
     // configure FMMUs
     ec_datagram_fpwr(datagram, slave->station_address,
                      0x0600, EC_FMMU_PAGE_SIZE * slave->base_fmmu_count);
-    memset(datagram->data, 0x00, EC_FMMU_PAGE_SIZE * slave->base_fmmu_count);
+    ec_datagram_zero(datagram);
     for (i = 0; i < slave->config->used_fmmus; i++) {
         fmmu = &slave->config->fmmu_configs[i];
         if (!(sync = ec_slave_get_sync(slave, fmmu->sync_index))) {

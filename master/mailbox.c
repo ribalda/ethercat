@@ -100,6 +100,7 @@ int ec_slave_mbox_prepare_check(const ec_slave_t *slave, /**< slave */
     if (ec_datagram_fprd(datagram, slave->station_address, 0x808, 8))
         return -1;
 
+    ec_datagram_zero(datagram);
     return 0;
 }
 
@@ -128,7 +129,10 @@ int ec_slave_mbox_prepare_fetch(const ec_slave_t *slave, /**< slave */
 {
     if (ec_datagram_fprd(datagram, slave->station_address,
                          slave->sii.tx_mailbox_offset,
-                         slave->sii.tx_mailbox_size)) return -1;
+                         slave->sii.tx_mailbox_size))
+        return -1;
+
+    ec_datagram_zero(datagram);
     return 0;
 }
 

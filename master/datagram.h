@@ -125,6 +125,7 @@ typedef struct {
 void ec_datagram_init(ec_datagram_t *);
 void ec_datagram_clear(ec_datagram_t *);
 int ec_datagram_prealloc(ec_datagram_t *, size_t);
+void ec_datagram_zero(ec_datagram_t *);
 
 int ec_datagram_aprd(ec_datagram_t *, uint16_t, uint16_t, size_t);
 int ec_datagram_apwr(ec_datagram_t *, uint16_t, uint16_t, size_t);

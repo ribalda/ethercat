@@ -241,6 +241,7 @@ void ec_fsm_sii_state_read_check(
             break;
     }
 
+    ec_datagram_zero(datagram);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_sii_state_read_fetch;
 }
@@ -381,6 +382,7 @@ void ec_fsm_sii_state_write_check(
 
     // issue check datagram
     ec_datagram_fprd(datagram, fsm->slave->station_address, 0x502, 2);
+    ec_datagram_zero(datagram);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_sii_state_write_check2;
 }

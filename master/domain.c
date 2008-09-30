@@ -177,6 +177,7 @@ int ec_domain_add_datagram(
         domain->expected_working_counter = used[EC_DIR_INPUT];
     }
 
+    ec_datagram_zero(datagram);
     list_add_tail(&datagram->list, &domain->datagrams);
     return 0;
 }

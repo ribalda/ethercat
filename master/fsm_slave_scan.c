@@ -203,6 +203,7 @@ void ec_fsm_slave_scan_state_address(ec_fsm_slave_scan_t *fsm /**< slave state m
 
     // Read AL state
     ec_datagram_fprd(datagram, fsm->slave->station_address, 0x0130, 2);
+    ec_datagram_zero(datagram);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_slave_scan_state_state;
 }
@@ -250,6 +251,7 @@ void ec_fsm_slave_scan_state_state(
 
     // read base data
     ec_datagram_fprd(datagram, fsm->slave->station_address, 0x0000, 6);
+    ec_datagram_zero(datagram);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_slave_scan_state_base;
 }
@@ -299,6 +301,7 @@ void ec_fsm_slave_scan_state_base(ec_fsm_slave_scan_t *fsm /**< slave state mach
 
     // read data link status
     ec_datagram_fprd(datagram, slave->station_address, 0x0110, 2);
+    ec_datagram_zero(datagram);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_slave_scan_state_datalink;
 }

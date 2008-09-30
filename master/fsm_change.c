@@ -223,6 +223,7 @@ void ec_fsm_change_state_check(ec_fsm_change_t *fsm
 
     // read AL status from slave
     ec_datagram_fprd(datagram, slave->station_address, 0x0130, 2);
+    ec_datagram_zero(datagram);
     fsm->retries = EC_FSM_RETRIES;
     fsm->spontaneous_change = 0;
     fsm->state = ec_fsm_change_state_status;
@@ -299,6 +300,7 @@ void ec_fsm_change_state_status(ec_fsm_change_t *fsm
                req_state, slave->ring_position, cur_state);
         // fetch AL status error code
         ec_datagram_fprd(datagram, slave->station_address, 0x0134, 2);
+        ec_datagram_zero(datagram);
         fsm->retries = EC_FSM_RETRIES;
         fsm->state = ec_fsm_change_state_code;
         return;
@@ -319,6 +321,7 @@ void ec_fsm_change_state_status(ec_fsm_change_t *fsm
  check_again:
     // no timeout yet. check again
     ec_datagram_fprd(datagram, slave->station_address, 0x0130, 2);
+    ec_datagram_zero(datagram);
     fsm->retries = EC_FSM_RETRIES;
 }
 
@@ -457,6 +460,7 @@ void ec_fsm_change_state_ack(ec_fsm_change_t *fsm /**< finite state machine */)
 
     // read new AL status
     ec_datagram_fprd(datagram, slave->station_address, 0x0130, 2);
+    ec_datagram_zero(datagram);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_change_state_check_ack;
 }
@@ -525,6 +529,7 @@ void ec_fsm_change_state_check_ack(ec_fsm_change_t *fsm
 
     // reread new AL status
     ec_datagram_fprd(datagram, slave->station_address, 0x0130, 2);
+    ec_datagram_zero(datagram);
     fsm->retries = EC_FSM_RETRIES;
 }
 

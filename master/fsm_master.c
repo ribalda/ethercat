@@ -165,6 +165,7 @@ void ec_fsm_master_state_start(
 {
     fsm->idle = 1;
     ec_datagram_brd(fsm->datagram, 0x0130, 2);
+    ec_datagram_zero(fsm->datagram);
     fsm->state = ec_fsm_master_state_broadcast;
 }
 
@@ -276,6 +277,7 @@ void ec_fsm_master_state_broadcast(
         fsm->slave = master->slaves;
         ec_datagram_fprd(fsm->datagram, fsm->slave->station_address,
                 0x0130, 2);
+        ec_datagram_zero(datagram);
         fsm->retries = EC_FSM_RETRIES;
         fsm->state = ec_fsm_master_state_read_state;
     } else {
@@ -356,6 +358,7 @@ int ec_fsm_master_action_process_phy(
         if (request->dir == EC_DIR_INPUT) {
             ec_datagram_fprd(fsm->datagram, request->slave->station_address,
                     request->offset, request->length);
+            ec_datagram_zero(fsm->datagram);
         } else {
             if (request->length > fsm->datagram->mem_size) {
                 EC_ERR("Request length (%u) exceeds maximum datagram size (%u)!\n",
@@ -541,6 +544,7 @@ void ec_fsm_master_action_next_slave_state(
         fsm->idle = 1;
         ec_datagram_fprd(fsm->datagram,
                 fsm->slave->station_address, 0x0130, 2);
+        ec_datagram_zero(fsm->datagram);
         fsm->retries = EC_FSM_RETRIES;
         fsm->state = ec_fsm_master_state_read_state;
         return;
