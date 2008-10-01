@@ -60,8 +60,8 @@
 
 void ec_master_clear_slave_configs(ec_master_t *);
 void ec_master_clear_domains(ec_master_t *);
-static int ec_master_idle_thread(ec_master_t *);
-static int ec_master_operation_thread(ec_master_t *);
+static int ec_master_idle_thread(void *);
+static int ec_master_operation_thread(void *);
 #ifdef EC_EOE
 void ec_master_eoe_run(unsigned long);
 #endif
@@ -120,6 +120,8 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     master->stats.unmatched = 0;
     master->stats.output_jiffies = 0;
     master->frames_timed_out = 0;
+
+    master->thread = NULL;
 
 #ifdef EC_EOE
     init_timer(&master->eoe_timer);
@@ -312,16 +314,18 @@ void ec_master_release_cb(void *master /**< callback data */)
  */
 int ec_master_thread_start(
         ec_master_t *master, /**< EtherCAT master */
-        int (*thread_func)(ec_master_t *) /**< thread function to start */
+        int (*thread_func)(void *), /**< thread function to start */
+        const char *name /**< Thread name. */
         )
 {
-    init_completion(&master->thread_can_terminate);
-    init_completion(&master->thread_exit);
-
-    EC_INFO("Starting master thread.\n");
-    if (!(master->thread_id = kernel_thread((int (*)(void *)) thread_func,
-                    master, CLONE_KERNEL)))
+    EC_INFO("Starting %s thread.\n", name);
+    master->thread = kthread_run(thread_func, master, name);
+    if (IS_ERR(master->thread)) {
+        EC_ERR("Failed to start master thread (error %i)!\n",
+                (int) PTR_ERR(master->thread));
+        master->thread = NULL;
         return -1;
+    }
     
     return 0;
 }
@@ -336,19 +340,16 @@ void ec_master_thread_stop(
 {
     unsigned long sleep_jiffies;
     
-    if (!master->thread_id) {
-        EC_WARN("ec_master_thread_stop: Already finished!\n");
+    if (!master->thread) {
+        EC_WARN("ec_master_thread_stop(): Already finished!\n");
         return;
     }
 
     if (master->debug_level)
         EC_DBG("Stopping master thread.\n");
 
-    // wait until thread is ready to receive the SIGTERM
-    wait_for_completion(&master->thread_can_terminate);
-
-    kill_proc(master->thread_id, SIGTERM, 1);
-    wait_for_completion(&master->thread_exit);
+    kthread_stop(master->thread);
+    master->thread = NULL;
     EC_INFO("Master thread exited.\n");
 
     if (master->fsm_datagram.state != EC_DATAGRAM_SENT)
@@ -375,7 +376,8 @@ int ec_master_enter_idle_phase(
     master->cb_data = master;
 
     master->phase = EC_IDLE;
-    if (ec_master_thread_start(master, ec_master_idle_thread)) {
+    if (ec_master_thread_start(master, ec_master_idle_thread,
+                "EtherCAT-IDLE")) {
         master->phase = EC_ORPHANED;
         return -1;
     }
@@ -531,7 +533,8 @@ void ec_master_leave_operation_phase(ec_master_t *master
     }
 #endif
 
-    if (ec_master_thread_start(master, ec_master_idle_thread))
+    if (ec_master_thread_start(master, ec_master_idle_thread,
+                "EtherCAT-IDLE"))
         EC_WARN("Failed to restart master thread!\n");
 #ifdef EC_EOE
     ec_master_eoe_start(master);
@@ -825,13 +828,14 @@ void ec_master_output_stats(ec_master_t *master /**< EtherCAT master */)
 
 /** Master kernel thread function for IDLE phase.
  */
-static int ec_master_idle_thread(ec_master_t *master)
+static int ec_master_idle_thread(void *priv_data)
 {
-    daemonize("EtherCAT-IDLE");
-    allow_signal(SIGTERM);
-    complete(&master->thread_can_terminate);
+    ec_master_t *master = (ec_master_t *) priv_data;
 
-    while (!signal_pending(current)) {
+    if (master->debug_level)
+        EC_DBG("Idle thread running.\n");
+
+    while (!kthread_should_stop()) {
         ec_datagram_output_stats(&master->fsm_datagram);
 
         // receive
@@ -843,7 +847,8 @@ static int ec_master_idle_thread(ec_master_t *master)
             goto schedule;
 
         // execute master state machine
-        down(&master->master_sem);
+        if (down_interruptible(&master->master_sem))
+            break;
         ec_fsm_master_exec(&master->fsm);
         up(&master->master_sem);
 
@@ -863,23 +868,23 @@ schedule:
         }
     }
     
-    master->thread_id = 0;
     if (master->debug_level)
         EC_DBG("Master IDLE thread exiting...\n");
-    complete_and_exit(&master->thread_exit, 0);
+    return 0;
 }
 
 /*****************************************************************************/
 
 /** Master kernel thread function for IDLE phase.
  */
-static int ec_master_operation_thread(ec_master_t *master)
+static int ec_master_operation_thread(void *priv_data)
 {
-    daemonize("EtherCAT-OP");
-    allow_signal(SIGTERM);
-    complete(&master->thread_can_terminate);
+    ec_master_t *master = (ec_master_t *) priv_data;
 
-    while (!signal_pending(current)) {
+    if (master->debug_level)
+        EC_DBG("Operation thread running.\n");
+
+    while (!kthread_should_stop()) {
         ec_datagram_output_stats(&master->fsm_datagram);
         if (master->injection_seq_rt != master->injection_seq_fsm ||
                 master->fsm_datagram.state == EC_DATAGRAM_SENT ||
@@ -890,7 +895,8 @@ static int ec_master_operation_thread(ec_master_t *master)
         ec_master_output_stats(master);
 
         // execute master state machine
-        down(&master->master_sem);
+        if (down_interruptible(&master->master_sem))
+            break;
         ec_fsm_master_exec(&master->fsm);
         up(&master->master_sem);
 
@@ -907,10 +913,9 @@ schedule:
         }
     }
     
-    master->thread_id = 0;
     if (master->debug_level)
         EC_DBG("Master OP thread exiting...\n");
-    complete_and_exit(&master->thread_exit, 0);
+    return 0;
 }
 
 /*****************************************************************************/
@@ -1296,7 +1301,8 @@ int ecrt_master_activate(ec_master_t *master)
     master->release_cb = master->ext_release_cb;
     master->cb_data = master->ext_cb_data;
     
-    if (ec_master_thread_start(master, ec_master_operation_thread)) {
+    if (ec_master_thread_start(master, ec_master_operation_thread,
+                "EtherCAT-OP")) {
         EC_ERR("Failed to start master thread!\n");
         return -1;
     }
