@@ -1623,7 +1623,6 @@ static void e100_watchdog(unsigned long data)
 	struct ethtool_cmd cmd;
 
 	DPRINTK(TIMER, DEBUG, "right now = %ld\n", jiffies);
-	printk(KERN_INFO "ec_e100: watchdog\n");
 
 	/* mii library handles link maintenance tasks */
 
