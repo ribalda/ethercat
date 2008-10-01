@@ -2875,7 +2875,7 @@ static int e100_suspend(struct pci_dev *pdev, pm_message_t state)
 	struct nic *nic = netdev_priv(netdev);
 
 	if (nic->ecdev)
-		return;
+		return 0;
 
 	if (netif_running(netdev))
 		netif_poll_disable(nic->netdev);
@@ -2906,7 +2906,7 @@ static int e100_resume(struct pci_dev *pdev)
 	struct nic *nic = netdev_priv(netdev);
 
 	if (nic->ecdev)
-		return;
+		return 0;
 
 	pci_set_power_state(pdev, PCI_D0);
 	pci_restore_state(pdev);
