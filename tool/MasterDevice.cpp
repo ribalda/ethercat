@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <sys/ioctl.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <sstream>
 #include <iomanip>
