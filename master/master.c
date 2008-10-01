@@ -1377,16 +1377,15 @@ void ecrt_master_receive(ec_master_t *master)
             ec_master_output_stats(master);
 
             if (unlikely(master->debug_level > 0)) {
-                EC_DBG("TIMED OUT datagram %08x, index %02X waited %u us.\n",
-                        (unsigned int) datagram, datagram->index,
+                unsigned int time_us;
 #ifdef EC_HAVE_CYCLES
-                        (unsigned int) (master->main_device.cycles_poll
-                            - datagram->cycles_sent) * 1000 / cpu_khz
+                time_us = (unsigned int) (master->main_device.cycles_poll -
+                        datagram->cycles_sent) * 1000 / cpu_khz;
 #else
-                        (unsigned int) (diff_ms * 1000)
+                time_us = (unsigned int) (diff_ms * 1000);
 #endif
-                        );
-                
+                EC_DBG("TIMED OUT datagram %08x, index %02X waited %u us.\n",
+                        (unsigned int) datagram, datagram->index, time_us);
             }
         }
     }
