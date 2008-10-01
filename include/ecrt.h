@@ -42,6 +42,10 @@
  * request a master, to map process data, to communicate with slaves via CoE
  * and to configure and activate the bus.
  *
+ * Changes in version 1.5:
+ *
+ * - Changed the return value of ecrt_request_master().
+ *
  * Changes in Version 1.4:
  *
  * - Replaced ec_slave_t with ec_slave_config_t, separating the bus
@@ -340,7 +344,11 @@ unsigned int ecrt_version_magic(void);
  * The first master has index 0, the n-th master has index n - 1. The number
  * of masters has to be specified when loading the master module.
  *
- * \return Pointer to reserved master, or \a NULL on error.
+ * \attention In kernel context, the returned pointer has to be checked for
+ * errors using the IS_ERR() macro.
+ *
+ * \return If \a IS_ERR() returns zero, the result is a pointer to the
+ * reserved master, otherwise, the result is an error code.
  */
 ec_master_t *ecrt_request_master(
         unsigned int master_index /**< Index of the master to request. */

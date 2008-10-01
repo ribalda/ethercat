@@ -35,6 +35,7 @@
 #include <linux/timer.h>
 #include <linux/spinlock.h>
 #include <linux/interrupt.h>
+#include <linux/err.h>
 
 #include "../../include/ecrt.h" // EtherCAT realtime interface
 
@@ -368,6 +369,7 @@ void release_lock(void *data)
 
 int __init init_mini_module(void)
 {
+    int ret = -1;
 #if CONFIGURE_PDOS
     ec_slave_config_t *sc;
 #endif
@@ -377,8 +379,10 @@ int __init init_mini_module(void)
     
     printk(KERN_INFO PFX "Starting...\n");
 
-    if (!(master = ecrt_request_master(0))) {
-        printk(KERN_ERR PFX "Requesting master 0 failed!\n");
+    master = ecrt_request_master(0);
+    if (IS_ERR(master)) {
+        ret = PTR_ERR(master); 
+        printk(KERN_ERR PFX "Requesting master 0 failed.\n");
         goto out_return;
     }
 
@@ -493,7 +497,7 @@ out_release_master:
     ecrt_release_master(master);
 out_return:
     printk(KERN_ERR PFX "Failed to load. Aborting.\n");
-    return -1;
+    return ret;
 }
 
 /*****************************************************************************/

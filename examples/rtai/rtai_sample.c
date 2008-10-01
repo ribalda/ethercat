@@ -35,6 +35,7 @@
 
 // Linux
 #include <linux/module.h>
+#include <linux/err.h>
 
 // RTAI
 #include <rtai_sched.h>
@@ -268,6 +269,7 @@ void release_lock(void *data)
 
 int __init init_mod(void)
 {
+    int ret = -1;
     RTIME tick_period, requested_ticks, now;
 #ifdef CONFIGURE_PDOS
     ec_slave_config_t *sc;
@@ -279,7 +281,10 @@ int __init init_mod(void)
 
     t_critical = cpu_khz * 1000 / FREQUENCY - cpu_khz * INHIBIT_TIME / 1000;
 
-    if (!(master = ecrt_request_master(0))) {
+
+    master = ecrt_request_master(0);
+    if (IS_ERR(master)) {
+        ret = PTR_ERR(master); 
         printk(KERN_ERR PFX "Requesting master 0 failed!\n");
         goto out_return;
     }
@@ -361,7 +366,7 @@ int __init init_mod(void)
  out_return:
     rt_sem_delete(&master_sem);
     printk(KERN_ERR PFX "Failed to load. Aborting.\n");
-    return -1;
+    return ret;
 }
 
 /*****************************************************************************/

@@ -39,6 +39,7 @@
 
 #include <linux/module.h>
 #include <linux/device.h>
+#include <linux/err.h>
 
 #include "globals.h"
 #include "master.h"
@@ -463,39 +464,47 @@ ec_device_t *ecdev_offer(
 
 ec_master_t *ecrt_request_master(unsigned int master_index)
 {
-    ec_master_t *master;
+    ec_master_t *master, *errptr = NULL;
 
     EC_INFO("Requesting master %u...\n", master_index);
 
     if (master_index >= master_count) {
         EC_ERR("Invalid master index %u.\n", master_index);
+        errptr = ERR_PTR(-EINVAL);
         goto out_return;
     }
     master = &masters[master_index];
 
-    if (down_interruptible(&master_sem))
+    if (down_interruptible(&master_sem)) {
+        errptr = ERR_PTR(-EINTR);
         goto out_return;
+    }
 
     if (master->reserved) {
         up(&master_sem);
         EC_ERR("Master %u is already in use!\n", master_index);
+        errptr = ERR_PTR(-EBUSY);
         goto out_return;
     }
     master->reserved = 1;
     up(&master_sem);
 
-    if (down_interruptible(&master->device_sem))
+    if (down_interruptible(&master->device_sem)) {
+        errptr = ERR_PTR(-EINTR);
         goto out_release;
+    }
     
     if (master->phase != EC_IDLE) {
         up(&master->device_sem);
         EC_ERR("Master %u still waiting for devices!\n", master_index);
+        errptr = ERR_PTR(-ENODEV);
         goto out_release;
     }
 
     if (!try_module_get(master->main_device.module)) {
         up(&master->device_sem);
         EC_ERR("Device module is unloading!\n");
+        errptr = ERR_PTR(-ENODEV);
         goto out_release;
     }
 
@@ -503,6 +512,7 @@ ec_master_t *ecrt_request_master(unsigned int master_index)
 
     if (ec_master_enter_operation_phase(master)) {
         EC_ERR("Failed to enter OPERATION phase!\n");
+        errptr = ERR_PTR(-EIO);
         goto out_module_put;
     }
 
@@ -514,7 +524,7 @@ ec_master_t *ecrt_request_master(unsigned int master_index)
  out_release:
     master->reserved = 0;
  out_return:
-    return NULL;
+    return errptr;
 }
 
 /*****************************************************************************/
