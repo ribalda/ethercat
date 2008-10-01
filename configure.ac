@@ -15,6 +15,7 @@ AC_CONFIG_SRCDIR([config.h.in])
 #------------------------------------------------------------------------------
 
 AC_PROG_CXX
+AC_PROG_LIBTOOL
 
 #------------------------------------------------------------------------------
 # Linux sources
@@ -369,6 +370,28 @@ if test "x${cycles}" = "x1"; then
 fi
 
 #------------------------------------------------------------------------------
+# Userspace library generation
+#------------------------------------------------------------------------------
+
+AC_ARG_ENABLE([userlib],
+    AS_HELP_STRING([--enable-userlib],
+                   [Generation of the userspace library (default: yes)]),
+    [
+        case "${enableval}" in
+            yes) userlib=1
+                ;;
+            no) userlib=0
+                ;;
+            *) AC_MSG_ERROR([Invalid value for --enable-userlib])
+                ;;
+        esac
+    ],
+    [userlib=1]
+)
+
+AM_CONDITIONAL(ENABLE_USERLIB, test "x$userlib" = "x1")
+
+#------------------------------------------------------------------------------
 
 AC_CONFIG_FILES([
         Doxyfile
@@ -383,7 +406,9 @@ AC_CONFIG_FILES([
         examples/mini/Makefile
         examples/rtai/Kbuild
         examples/rtai/Makefile
+        examples/user/Makefile
         include/Makefile
+        lib/Makefile
         master/Kbuild
         master/Makefile
         script/Makefile

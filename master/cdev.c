@@ -66,6 +66,15 @@ static struct file_operations eccdev_fops = {
 
 /*****************************************************************************/
 
+/** Private data structure for file handles.
+ */
+typedef struct {
+    ec_cdev_t *cdev;
+    unsigned int requested;
+} ec_cdev_priv_t;
+
+/*****************************************************************************/
+
 /** Constructor.
  * 
  * \return 0 in case of success, else < 0
@@ -1354,6 +1363,32 @@ int ec_cdev_ioctl_config_sdo(
     return 0;
 }
 
+/*****************************************************************************/
+
+/** Request the master from userspace.
+ */
+int ec_cdev_ioctl_request(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    ec_ioctl_request_t data;
+    int ret = 0;
+
+    data.handle = ecrt_request_master(master->index);
+
+    if (IS_ERR(data.handle)) {
+        ret = PTR_ERR(data.handle);
+    } else {
+        priv->requested = 1;
+        if (copy_to_user((void __user *) arg, &data, sizeof(data)))
+            ret = -EFAULT;
+    }
+
+    return ret;
+}
+
 /******************************************************************************
  * File operations
  *****************************************************************************/
@@ -1364,8 +1399,18 @@ int eccdev_open(struct inode *inode, struct file *filp)
 {
     ec_cdev_t *cdev = container_of(inode->i_cdev, ec_cdev_t, cdev);
     ec_master_t *master = cdev->master;
+    ec_cdev_priv_t *priv;
 
-    filp->private_data = cdev;
+    priv = kmalloc(sizeof(ec_cdev_priv_t), GFP_KERNEL);
+    if (!priv) {
+        EC_ERR("Failed to allocate memory for private data structure.\n");
+        return -ENOMEM;
+    }
+
+    priv->cdev = cdev;
+    priv->requested = 0;
+
+    filp->private_data = priv;
     if (master->debug_level)
         EC_DBG("File opened.\n");
     return 0;
@@ -1377,11 +1422,15 @@ int eccdev_open(struct inode *inode, struct file *filp)
  */
 int eccdev_release(struct inode *inode, struct file *filp)
 {
-    ec_cdev_t *cdev = (ec_cdev_t *) filp->private_data;
-    ec_master_t *master = cdev->master;
+    ec_cdev_priv_t *priv = (ec_cdev_priv_t *) filp->private_data;
+    ec_master_t *master = priv->cdev->master;
+
+    if (priv->requested)
+        ecrt_release_master(master);
 
     if (master->debug_level)
         EC_DBG("File closed.\n");
+    kfree(priv);
     return 0;
 }
 
@@ -1391,8 +1440,8 @@ int eccdev_release(struct inode *inode, struct file *filp)
  */
 long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
-    ec_cdev_t *cdev = (ec_cdev_t *) filp->private_data;
-    ec_master_t *master = cdev->master;
+    ec_cdev_priv_t *priv = (ec_cdev_priv_t *) filp->private_data;
+    ec_master_t *master = priv->cdev->master;
 
     if (master->debug_level)
         EC_DBG("ioctl(filp = %x, cmd = %u (%u), arg = %x)\n",
@@ -1453,6 +1502,10 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             return ec_cdev_ioctl_config_pdo_entry(master, arg);
         case EC_IOCTL_CONFIG_SDO:
             return ec_cdev_ioctl_config_sdo(master, arg);
+        case EC_IOCTL_REQUEST:
+            if (!(filp->f_mode & FMODE_WRITE))
+				return -EPERM;
+			return ec_cdev_ioctl_request(master, arg, priv);
         default:
             return -ENOTTY;
     }

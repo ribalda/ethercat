@@ -31,84 +31,12 @@
 #
 #------------------------------------------------------------------------------
 
-SUBDIRS = \
-    devices \
-    include \
-    master \
-    script \
-    tool
+AM_CFLAGS = -Wall
 
-if ENABLE_USERLIB
-SUBDIRS += lib
-endif
+noinst_PROGRAMS = ec_user_example
 
-DIST_SUBDIRS = \
-    devices \
-    examples \
-    include \
-    lib \
-    master \
-    script \
-    tool
-
-EXTRA_DIST = \
-	Doxyfile \
-	FEATURES \
-	globals.h \
-	Kbuild.in \
-	README.EoE
-
-BUILT_SOURCES = \
-	Kbuild
-
-modules:
-	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" modules
-
-modules_install:
-	$(MAKE) -C master modules_install
-	$(MAKE) -C devices modules_install
-
-clean-local:
-	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" clean
-	@rm -f Modules.symvers
-
-mydist:
-	svn2cl $(srcdir)
-	@SVNREV=`svnversion $(srcdir)` && \
-	  $(MAKE) dist-bzip2 \
-	  distdir=$(PACKAGE)-$(VERSION)-r$${SVNREV}
-
-dist-hook:
-	if which svnversion >/dev/null 2>&1; then \
-		svnversion $(srcdir) 2>/dev/null >$(distdir)/svnrevision; \
-	fi
-
-mrproper: clean cleandoc
-	rm -rf \
-		*~ \
-		aclocal.m4 \
-		autoconf \
-		autom4te.cache \
-		ChangeLog \
-		config.h \
-		config.h.in \
-		config.log \
-		config.status \
-		configure \
-		configure.in \
-		Doxyfile \
-		Kbuild \
-		libtool \
-		Makefile \
-		Makefile.in \
-		Module.symvers \
-		stamp-h1 \
-		TAGS
-
-doc:
-	doxygen Doxyfile
-
-cleandoc:
-	@rm -rf doxygen-output
+ec_user_example_SOURCES = main.c
+ec_user_example_CFLAGS = -I$(srcdir)/../../include
+ec_user_example_LDFLAGS = -L$(srcdir)/../../lib/.libs -lethercat
 
 #------------------------------------------------------------------------------
