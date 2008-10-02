@@ -1443,7 +1443,6 @@ ec_slave_config_t *ecrt_master_slave_config(ec_master_t *master,
         ec_slave_config_init(sc, master,
                 alias, position, vendor_id, product_code);
 
-
         down(&master->master_sem);
 
         // try to find the addressed slave
