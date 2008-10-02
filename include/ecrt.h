@@ -788,6 +788,8 @@ size_t ecrt_domain_size(
         ec_domain_t *domain /**< Domain. */
         );
 
+#ifdef __KERNEL__
+
 /** Provide external memory to store the domain's process data.
  *
  * Call this after all Pdo entries have been registered and before activating
@@ -801,6 +803,8 @@ void ecrt_domain_external_memory(
         uint8_t *memory /**< Address of the memory to store the process
                           data in. */
         );
+
+#endif /* __KERNEL__ */
 
 /** Returns the domain's process data.
  *
