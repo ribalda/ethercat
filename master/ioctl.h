@@ -78,7 +78,9 @@
 #define EC_IOCTL_CONFIG_PDO           EC_IOWR(0x13, ec_ioctl_config_pdo_t)
 #define EC_IOCTL_CONFIG_PDO_ENTRY     EC_IOWR(0x14, ec_ioctl_config_pdo_entry_t)
 #define EC_IOCTL_CONFIG_SDO           EC_IOWR(0x15, ec_ioctl_config_sdo_t)
-#define EC_IOCTL_REQUEST               EC_IOR(0x16, ec_ioctl_request_t)
+
+#define EC_IOCTL_REQUEST                EC_IO(0x16)
+#define EC_IOCTL_CREATE_DOMAIN          EC_IO(0x17)
 
 #define EC_IOCTL_STRING_SIZE 64
 
@@ -359,12 +361,6 @@ typedef struct {
     uint32_t size;
     uint8_t data[4];
 } ec_ioctl_config_sdo_t;
-
-/*****************************************************************************/
-
-typedef struct {
-    ec_master_t *handle;
-} ec_ioctl_request_t;
 
 /*****************************************************************************/
 

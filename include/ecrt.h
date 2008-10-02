@@ -367,6 +367,8 @@ void ecrt_release_master(
  * Master methods
  *****************************************************************************/
 
+#ifdef __KERNEL__
+
 /** Sets the locking callbacks.
  *
  * For concurrent master access, the application has to provide a locking
@@ -385,6 +387,8 @@ void ecrt_master_callbacks(
         void (*release_cb)(void *), /**< Lock release function. */
         void *cb_data /**< Arbitrary user data. */
         );
+
+#endif /* __KERNEL__ */
 
 /** Creates a new process data domain.
  *

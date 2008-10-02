@@ -40,6 +40,11 @@ lib_LTLIBRARIES = libethercat.la
 libethercat_la_LDFLAGS = -version-info 1:0:0
 libethercat_la_CFLAGS = -I$(srcdir)/..
 libethercat_la_SOURCES = \
-	common.c
+	common.c \
+	master.c
+
+noinst_HEADERS = \
+	domain.h \
+	master.h
 
 #------------------------------------------------------------------------------

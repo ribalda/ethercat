@@ -31,66 +31,12 @@
  *
  *****************************************************************************/
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <string.h>
-#include <sys/ioctl.h>
-
-#include "master.h"
-#include "master/ioctl.h"
+#include "include/ecrt.h"
 
 /*****************************************************************************/
 
-unsigned int ecrt_version_magic(void)
-{
-    return ECRT_VERSION_MAGIC;
-}
-
-/*****************************************************************************/
-
-#define MAX_PATH_LEN 64
-
-ec_master_t *ecrt_request_master(unsigned int master_index)
-{
-    char path[MAX_PATH_LEN];
-    ec_master_t *master;
-
-    master = malloc(sizeof(ec_master_t));
-    if (!master) {
-        fprintf(stderr, "Failed to allocate memory.\n");
-        return 0;
-    }
-
-    snprintf(path, MAX_PATH_LEN - 1, "/dev/EtherCAT%u", master_index);
-
-    master->fd = open(path, O_RDWR);
-    if (master->fd == -1) {
-        fprintf(stderr, "Failed to open %s: %s\n", path, strerror(errno));
-        free(master);
-        return 0;
-    }
-
-    if (ioctl(master->fd, EC_IOCTL_REQUEST, NULL) == -1) {
-        fprintf(stderr, "Failed to request master %u: %s\n",
-                master_index, strerror(errno));
-        close(master->fd);
-        free(master);
-        return 0; 
-    }
-
-    return master;
-}
-
-/*****************************************************************************/
-
-void ecrt_release_master(ec_master_t *master)
-{
-    close(master->fd);
-    free(master);
-}
+struct ec_master {
+    int fd;
+};
 
 /*****************************************************************************/

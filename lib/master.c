@@ -31,66 +31,73 @@
  *
  *****************************************************************************/
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <stdio.h>
 #include <stdlib.h>
+#include <sys/ioctl.h>
+#include <stdio.h>
 #include <errno.h>
 #include <string.h>
-#include <sys/ioctl.h>
 
 #include "master.h"
+#include "domain.h"
 #include "master/ioctl.h"
 
 /*****************************************************************************/
 
-unsigned int ecrt_version_magic(void)
+ec_domain_t *ecrt_master_create_domain(ec_master_t *master)
 {
-    return ECRT_VERSION_MAGIC;
-}
+    ec_domain_t *domain;
+    int index;
 
-/*****************************************************************************/
-
-#define MAX_PATH_LEN 64
-
-ec_master_t *ecrt_request_master(unsigned int master_index)
-{
-    char path[MAX_PATH_LEN];
-    ec_master_t *master;
-
-    master = malloc(sizeof(ec_master_t));
-    if (!master) {
+    domain = malloc(sizeof(ec_domain_t));
+    if (!domain) {
         fprintf(stderr, "Failed to allocate memory.\n");
         return 0;
     }
-
-    snprintf(path, MAX_PATH_LEN - 1, "/dev/EtherCAT%u", master_index);
-
-    master->fd = open(path, O_RDWR);
-    if (master->fd == -1) {
-        fprintf(stderr, "Failed to open %s: %s\n", path, strerror(errno));
-        free(master);
-        return 0;
-    }
-
-    if (ioctl(master->fd, EC_IOCTL_REQUEST, NULL) == -1) {
-        fprintf(stderr, "Failed to request master %u: %s\n",
-                master_index, strerror(errno));
-        close(master->fd);
-        free(master);
+    
+    index = ioctl(master->fd, EC_IOCTL_CREATE_DOMAIN, NULL);
+    if (index == -1) {
+        fprintf(stderr, "Failed to create domain: %s\n", strerror(errno));
+        free(domain);
         return 0; 
     }
 
-    return master;
+    domain->index = (unsigned int) index;
+    return domain;
 }
 
 /*****************************************************************************/
 
-void ecrt_release_master(ec_master_t *master)
+ec_slave_config_t *ecrt_master_slave_config(ec_master_t *master,
+        uint16_t alias, uint16_t position, uint32_t vendor_id,
+        uint32_t product_code)
 {
-    close(master->fd);
-    free(master);
+    return 0;
 }
+
+/*****************************************************************************/
+
+int ecrt_master_activate(ec_master_t *master)
+{
+    return 0;
+}
+
+/*****************************************************************************/
+
+void ecrt_master_send(ec_master_t *master)
+{
+}
+
+/*****************************************************************************/
+
+void ecrt_master_receive(ec_master_t *master)
+{
+}
+
+/*****************************************************************************/
+
+void ecrt_master_state(const ec_master_t *master, ec_master_state_t *state)
+{
+}
+
 
 /*****************************************************************************/

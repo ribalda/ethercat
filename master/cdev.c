@@ -1373,20 +1373,39 @@ int ec_cdev_ioctl_request(
         ec_cdev_priv_t *priv /**< Private data structure of file handle. */
         )
 {
-    ec_ioctl_request_t data;
+	ec_master_t *m;
     int ret = 0;
 
-    data.handle = ecrt_request_master(master->index);
-
-    if (IS_ERR(data.handle)) {
-        ret = PTR_ERR(data.handle);
+    m = ecrt_request_master(master->index);
+    if (IS_ERR(m)) {
+        ret = PTR_ERR(m);
     } else {
         priv->requested = 1;
-        if (copy_to_user((void __user *) arg, &data, sizeof(data)))
-            ret = -EFAULT;
     }
 
     return ret;
+}
+
+/*****************************************************************************/
+
+/** Create a domain.
+ */
+int ec_cdev_ioctl_create_domain(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    ec_domain_t *domain;
+
+	if (unlikely(!priv->requested))
+		return -EPERM;
+
+    domain = ecrt_master_create_domain(master);
+    if (!domain)
+        return -ENOMEM;
+
+    return domain->index;
 }
 
 /******************************************************************************
@@ -1506,6 +1525,10 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             if (!(filp->f_mode & FMODE_WRITE))
 				return -EPERM;
 			return ec_cdev_ioctl_request(master, arg, priv);
+        case EC_IOCTL_CREATE_DOMAIN:
+            if (!(filp->f_mode & FMODE_WRITE))
+				return -EPERM;
+			return ec_cdev_ioctl_create_domain(master, arg, priv);
         default:
             return -ENOTTY;
     }
