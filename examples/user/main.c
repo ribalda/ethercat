@@ -4,14 +4,18 @@
  *
  ****************************************************************************/
 
-#include <unistd.h>
-#include <sys/time.h>
-#include <stdio.h>
 #include <errno.h>
-#include <string.h>
 #include <signal.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/resource.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include "ecrt.h"
+
+#define PRIORITY 1
 
 /****************************************************************************/
 
@@ -50,8 +54,16 @@ int main(int argc, char **argv)
     if (!sc)
         return -1;
 
+    printf("Activating master...\n");
     if (ecrt_master_activate(master))
         return -1;
+
+#if PRIORITY
+    pid_t pid = getpid();
+    if (setpriority(PRIO_PROCESS, pid, -19))
+        fprintf(stderr, "Warning: Failed to set priority: %s\n",
+                strerror(errno));
+#endif
 
     sa.sa_handler = signal_handler;
     sigemptyset(&sa.sa_mask);
@@ -61,25 +73,27 @@ int main(int argc, char **argv)
         return -1;
     }
 
+    printf("Starting timer...\n");
     tv.it_interval.tv_sec = 0;
-    tv.it_interval.tv_usec = 10000;
+    tv.it_interval.tv_usec = 100000;
     tv.it_value.tv_sec = 0;
-    tv.it_value.tv_usec = 1;
+    tv.it_value.tv_usec = 1000;
     if (setitimer(ITIMER_REAL, &tv, NULL)) {
         fprintf(stderr, "Failed to start timer: %s\n", strerror(errno));
         return 1;
     }
 
+    printf("Started.\n");
 	while (1) {
         sleep(1);
 
-        while (sig_alarms != user_alarms) {
-
-#if 0
-            struct timeval t;
-            gettimeofday(&t, NULL);
-            printf("%u %u\n", t.tv_sec, t.tv_usec);
+#if 1
+        struct timeval t;
+        gettimeofday(&t, NULL);
+        printf("%u.%06u\n", t.tv_sec, t.tv_usec);
 #endif
+
+        while (sig_alarms != user_alarms) {
             ecrt_master_receive(master);
             ecrt_master_send(master);
 
