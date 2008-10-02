@@ -82,6 +82,9 @@
 #define EC_IOCTL_REQUEST                EC_IO(0x16)
 #define EC_IOCTL_CREATE_DOMAIN          EC_IO(0x17)
 #define EC_IOCTL_CREATE_SLAVE_CONFIG  EC_IOWR(0x18, ec_ioctl_config_t)
+#define EC_IOCTL_ACTIVATE               EC_IO(0x19)
+#define EC_IOCTL_SEND                   EC_IO(0x1a)
+#define EC_IOCTL_RECEIVE                EC_IO(0x1b)
 
 #define EC_IOCTL_STRING_SIZE 64
 

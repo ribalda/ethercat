@@ -102,6 +102,12 @@ ec_slave_config_t *ecrt_master_slave_config(ec_master_t *master,
 
 int ecrt_master_activate(ec_master_t *master)
 {
+    if (ioctl(master->fd, EC_IOCTL_ACTIVATE, NULL) == -1) {
+        fprintf(stderr, "Failed to activate master: %s\n",
+                strerror(errno));
+        return -1; 
+    }
+
     return 0;
 }
 
@@ -109,12 +115,18 @@ int ecrt_master_activate(ec_master_t *master)
 
 void ecrt_master_send(ec_master_t *master)
 {
+    if (ioctl(master->fd, EC_IOCTL_SEND, NULL) == -1) {
+        fprintf(stderr, "Failed to send: %s\n", strerror(errno));
+    }
 }
 
 /*****************************************************************************/
 
 void ecrt_master_receive(ec_master_t *master)
 {
+    if (ioctl(master->fd, EC_IOCTL_RECEIVE, NULL) == -1) {
+        fprintf(stderr, "Failed to receive: %s\n", strerror(errno));
+    }
 }
 
 /*****************************************************************************/
@@ -122,6 +134,5 @@ void ecrt_master_receive(ec_master_t *master)
 void ecrt_master_state(const ec_master_t *master, ec_master_state_t *state)
 {
 }
-
 
 /*****************************************************************************/

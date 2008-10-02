@@ -1452,6 +1452,63 @@ int ec_cdev_ioctl_create_slave_config(
     return 0;
 }
 
+/*****************************************************************************/
+
+/** Activates the master.
+ */
+int ec_cdev_ioctl_activate(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+	if (unlikely(!priv->requested))
+		return -EPERM;
+
+    if (ecrt_master_activate(master))
+        return -EIO;
+
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Send frames.
+ */
+int ec_cdev_ioctl_send(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+	if (unlikely(!priv->requested))
+		return -EPERM;
+
+    spin_lock_bh(&master->internal_lock);
+    ecrt_master_send(master);
+    spin_unlock_bh(&master->internal_lock);
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Receive frames.
+ */
+int ec_cdev_ioctl_receive(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+	if (unlikely(!priv->requested))
+		return -EPERM;
+
+    spin_lock_bh(&master->internal_lock);
+    ecrt_master_receive(master);
+    spin_unlock_bh(&master->internal_lock);
+    return 0;
+}
+
 /******************************************************************************
  * File operations
  *****************************************************************************/
@@ -1577,6 +1634,18 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             if (!(filp->f_mode & FMODE_WRITE))
 				return -EPERM;
 			return ec_cdev_ioctl_create_slave_config(master, arg, priv);
+        case EC_IOCTL_ACTIVATE:
+            if (!(filp->f_mode & FMODE_WRITE))
+				return -EPERM;
+			return ec_cdev_ioctl_activate(master, arg, priv);
+        case EC_IOCTL_SEND:
+            if (!(filp->f_mode & FMODE_WRITE))
+				return -EPERM;
+			return ec_cdev_ioctl_send(master, arg, priv);
+        case EC_IOCTL_RECEIVE:
+            if (!(filp->f_mode & FMODE_WRITE))
+				return -EPERM;
+			return ec_cdev_ioctl_receive(master, arg, priv);
         default:
             return -ENOTTY;
     }
