@@ -12,6 +12,18 @@ Changes since 1.4.0:
 * Added phy_read and phy_write commands to ethercat tool.
 * Added driver for Intel PRO/100 NICs.
 
+Changes since 1.4.0-rc2:
+
+* Ported the master thread to the kthread interface.
+* Added missing semaphore up() in an ioctl(). In rare cases, the master
+  semaphore was not released.
+* Minor fix in 'slaves' command that fixed duplicate display of supported
+  mailbox protocols.
+* The Sdo Information Service is only queried, if the slave has the
+  corresponding SII bit set.
+* Added some missing header files in the command-line-tool code.
+* Removed unstable e100, forcedeth, and r8169 drivers.
+
 Changes in version 1.4.0-rc2:
 
 * Fixed a deadlock causing race condition concerning thread signaling when the
