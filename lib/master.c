@@ -39,6 +39,7 @@
 
 #include "master.h"
 #include "domain.h"
+#include "slave_config.h"
 #include "master/ioctl.h"
 
 /*****************************************************************************/
@@ -71,7 +72,30 @@ ec_slave_config_t *ecrt_master_slave_config(ec_master_t *master,
         uint16_t alias, uint16_t position, uint32_t vendor_id,
         uint32_t product_code)
 {
-    return 0;
+    ec_ioctl_config_t data;
+    ec_slave_config_t *sc;
+    int index;
+
+    sc = malloc(sizeof(ec_slave_config_t));
+    if (!sc) {
+        fprintf(stderr, "Failed to allocate memory.\n");
+        return 0;
+    }
+    
+    data.alias = alias;
+    data.position = position;
+    data.vendor_id = vendor_id;
+    data.product_code = product_code;
+    
+    if (ioctl(master->fd, EC_IOCTL_CREATE_SLAVE_CONFIG, &data) == -1) {
+        fprintf(stderr, "Failed to create slave config: %s\n",
+                strerror(errno));
+        free(sc);
+        return 0; 
+    }
+
+    sc->index = data.config_index;
+    return sc;
 }
 
 /*****************************************************************************/

@@ -1408,6 +1408,50 @@ int ec_cdev_ioctl_create_domain(
     return domain->index;
 }
 
+/*****************************************************************************/
+
+/** Create a slave configuration.
+ */
+int ec_cdev_ioctl_create_slave_config(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    ec_ioctl_config_t data;
+    ec_slave_config_t *sc, *entry;
+
+	if (unlikely(!priv->requested))
+		return -EPERM;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+        return -EFAULT;
+    }
+
+    sc = ecrt_master_slave_config(master, data.alias, data.position,
+            data.vendor_id, data.product_code);
+    if (!sc)
+        return -ENODEV; // FIXME
+
+    data.config_index = 0;
+
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
+
+    list_for_each_entry(entry, &master->configs, list) {
+        if (entry == sc)
+            break;
+        data.config_index++;
+    }
+
+    up(&master->master_sem);
+
+    if (copy_to_user((void __user *) arg, &data, sizeof(data)))
+        return -EFAULT;
+
+    return 0;
+}
+
 /******************************************************************************
  * File operations
  *****************************************************************************/
@@ -1529,6 +1573,10 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             if (!(filp->f_mode & FMODE_WRITE))
 				return -EPERM;
 			return ec_cdev_ioctl_create_domain(master, arg, priv);
+        case EC_IOCTL_CREATE_SLAVE_CONFIG:
+            if (!(filp->f_mode & FMODE_WRITE))
+				return -EPERM;
+			return ec_cdev_ioctl_create_slave_config(master, arg, priv);
         default:
             return -ENOTTY;
     }

@@ -45,6 +45,7 @@ libethercat_la_SOURCES = \
 
 noinst_HEADERS = \
 	domain.h \
-	master.h
+	master.h \
+	slave_config.h
 
 #------------------------------------------------------------------------------
