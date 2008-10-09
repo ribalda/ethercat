@@ -11,7 +11,6 @@ using namespace std;
 
 #include "CommandPhyWrite.h"
 #include "sii_crc.h"
-#include "byteorder.h"
 
 /*****************************************************************************/
 

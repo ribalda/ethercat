@@ -11,7 +11,6 @@ using namespace std;
 
 #include "CommandSiiWrite.h"
 #include "sii_crc.h"
-#include "byteorder.h"
 
 /*****************************************************************************/
 
@@ -173,14 +172,14 @@ void CommandSiiWrite::checkSiiData(
 
     // cycle through categories to detect corruption
     categoryHeader = data->words + 0x0040U;
-    categoryType = le16tocpu(*categoryHeader);
+    categoryType = le16_to_cpup(categoryHeader);
     while (categoryType != 0xffff) {
         if (categoryHeader + 1 > data->words + data->nwords) {
             err << "SII data seem to be corrupted! "
                 << "Use --force to write anyway.";
             throwCommandException(err);
         }
-        categorySize = le16tocpu(*(categoryHeader + 1));
+        categorySize = le16_to_cpup(categoryHeader + 1);
         if (categoryHeader + 2 + categorySize + 1
                 > data->words + data->nwords) {
             err << "SII data seem to be corrupted! "
@@ -188,7 +187,7 @@ void CommandSiiWrite::checkSiiData(
             throwCommandException(err);
         }
         categoryHeader += 2 + categorySize;
-        categoryType = le16tocpu(*categoryHeader);
+        categoryType = le16_to_cpup(categoryHeader);
     }
 }
 

@@ -99,11 +99,11 @@
 #ifndef __ECRT_H__
 #define __ECRT_H__
 
-#include <asm/byteorder.h>
-
 #ifdef __KERNEL__
+#include <asm/byteorder.h>
 #include <linux/types.h>
 #else
+#include <stdlib.h> // for size_t
 #include <stdint.h>
 #endif
 
@@ -1056,6 +1056,46 @@ ec_request_state_t ecrt_voe_handler_execute(
         if (VAL) *((uint8_t *) (DATA)) |=  (1 << (POS)); \
         else     *((uint8_t *) (DATA)) &= ~(1 << (POS)); \
     } while (0)
+
+/******************************************************************************
+ * Byte-swapping functions for user space
+ *****************************************************************************/
+
+#ifndef __KERNEL__
+
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+
+#define le16_to_cpu(x) x
+#define le32_to_cpu(x) x
+
+#define cpu_to_le16(x) x
+#define cpu_to_le32(x) x
+
+#elif __BYTE_ORDER == __BIG_ENDIAN
+
+#define swap16(x) \
+        ((uint16_t)( \
+        (((uint16_t)(x) & 0x00ffU) << 8) | \
+        (((uint16_t)(x) & 0xff00U) >> 8) ))
+#define swap32(x) \
+        ((uint32_t)( \
+        (((uint32_t)(x) & 0x000000ffUL) << 24) | \
+        (((uint32_t)(x) & 0x0000ff00UL) <<  8) | \
+        (((uint32_t)(x) & 0x00ff0000UL) >>  8) | \
+        (((uint32_t)(x) & 0xff000000UL) >> 24) ))
+
+#define le16_to_cpu(x) swap16(x)
+#define le32_to_cpu(x) swap32(x)
+
+#define cpu_to_le16(x) swap16(x)
+#define cpu_to_le32(x) swap32(x)
+
+#endif
+
+#define le16_to_cpup(x) le16_to_cpu(*((uint16_t *)(x)))
+#define le32_to_cpup(x) le32_to_cpu(*((uint32_t *)(x)))
+
+#endif /* ifndef __KERNEL__ */
 
 /******************************************************************************
  * Read macros

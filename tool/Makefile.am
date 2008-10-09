@@ -82,7 +82,6 @@ noinst_HEADERS = \
 	CommandXml.h \
 	MasterDevice.h  \
 	SdoCommand.h \
-	byteorder.h \
 	sii_crc.h
 
 REV = `if test -s $(srcdir)/../svnrevision; then \

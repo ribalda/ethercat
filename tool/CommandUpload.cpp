@@ -9,7 +9,6 @@
 using namespace std;
 
 #include "CommandUpload.h"
-#include "byteorder.h"
 
 /*****************************************************************************/
 
@@ -159,11 +158,11 @@ void CommandUpload::execute(MasterDevice &m, const StringVector &args)
             cout << sval << " 0x" << hex << setw(2) << sval << endl;
             break;
         case 0x0003: // int16
-            sval = le16tocpu(*(int16_t *) data.target);
+            sval = le16_to_cpup(data.target);
             cout << sval << " 0x" << hex << setw(4) << sval << endl;
             break;
         case 0x0004: // int32
-            sval = le32tocpu(*(int32_t *) data.target);
+            sval = le32_to_cpup(data.target);
             cout << sval << " 0x" << hex << setw(8) << sval << endl;
             break;
         case 0x0005: // uint8
@@ -171,11 +170,11 @@ void CommandUpload::execute(MasterDevice &m, const StringVector &args)
             cout << uval << " 0x" << hex << setw(2) << uval << endl;
             break;
         case 0x0006: // uint16
-            uval = le16tocpu(*(uint16_t *) data.target);
+            uval = le16_to_cpup(data.target);
             cout << uval << " 0x" << hex << setw(4) << uval << endl;
             break;
         case 0x0007: // uint32
-            uval = le32tocpu(*(uint32_t *) data.target);
+            uval = le32_to_cpup(data.target);
             cout << uval << " 0x" << hex << setw(8) << uval << endl;
             break;
         case 0x0009: // string

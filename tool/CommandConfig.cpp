@@ -11,7 +11,6 @@
 using namespace std;
 
 #include "CommandConfig.h"
-#include "byteorder.h"
 
 /*****************************************************************************/
 
@@ -174,11 +173,11 @@ void CommandConfig::showDetailedConfigs(
                         break;
                     case 2:
                         cout << "0x" << setw(4)
-                            << le16tocpu(*(uint16_t *) &sdo.data);
+                            << le16_to_cpup(&sdo.data);
                         break;
                     case 4:
                         cout << "0x" << setw(8)
-                            << le32tocpu(*(uint32_t *) &sdo.data);
+                            << le32_to_cpup(&sdo.data);
                         break;
                     default:
                         cout << "???";

@@ -9,7 +9,6 @@
 using namespace std;
 
 #include "CommandDownload.h"
-#include "byteorder.h"
 
 /*****************************************************************************/
 
@@ -150,14 +149,14 @@ void CommandDownload::execute(MasterDevice &m, const StringVector &args)
                 {
                     int16_t val;
                     strValue >> val;
-                    *(int16_t *) data.data = cputole16(val);
+                    *(int16_t *) data.data = cpu_to_le16(val);
                     break;
                 }
             case 0x0004: // int32
                 {
                     int32_t val;
                     strValue >> val;
-                    *(int32_t *) data.data = cputole32(val);
+                    *(int32_t *) data.data = cpu_to_le32(val);
                     break;
                 }
             case 0x0005: // uint8
@@ -173,14 +172,14 @@ void CommandDownload::execute(MasterDevice &m, const StringVector &args)
                 {
                     uint16_t val;
                     strValue >> val;
-                    *(uint16_t *) data.data = cputole16(val);
+                    *(uint16_t *) data.data = cpu_to_le16(val);
                     break;
                 }
             case 0x0007: // uint32
                 {
                     uint32_t val;
                     strValue >> val;
-                    *(uint32_t *) data.data = cputole32(val);
+                    *(uint32_t *) data.data = cpu_to_le32(val);
                     break;
                 }
             case 0x0009: // string

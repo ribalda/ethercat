@@ -9,7 +9,6 @@
 using namespace std;
 
 #include "CommandSiiRead.h"
-#include "byteorder.h"
 
 /*****************************************************************************/
 
@@ -99,7 +98,7 @@ void CommandSiiRead::execute(MasterDevice &m, const StringVector &args)
         if (data.nwords > 0x0040U) {
             // cycle through categories
             categoryHeader = data.words + 0x0040U;
-            categoryType = le16tocpu(*categoryHeader);
+            categoryType = le16_to_cpup(categoryHeader);
             while (categoryType != 0xffff) {
                 cout << "SII Category 0x" << hex
                     << setw(4) << categoryType
@@ -109,7 +108,7 @@ void CommandSiiRead::execute(MasterDevice &m, const StringVector &args)
                     err << "SII data seem to be corrupted!";
                     throwCommandException(err);
                 }
-                categorySize = le16tocpu(*(categoryHeader + 1));
+                categorySize = le16_to_cpup(categoryHeader + 1);
                 cout << ", " << dec << categorySize << " words" << flush;
 
                 if (categoryHeader + 2 + categorySize
@@ -136,7 +135,7 @@ void CommandSiiRead::execute(MasterDevice &m, const StringVector &args)
                     throwCommandException(err);
                 }
                 categoryHeader += 2 + categorySize;
-                categoryType = le16tocpu(*categoryHeader);
+                categoryType = le16_to_cpup(categoryHeader);
             }
         }
     } else {

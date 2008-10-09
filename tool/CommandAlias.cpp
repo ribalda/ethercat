@@ -11,7 +11,6 @@ using namespace std;
 
 #include "CommandAlias.h"
 #include "sii_crc.h"
-#include "byteorder.h"
 
 /*****************************************************************************/
 
@@ -130,7 +129,7 @@ void CommandAlias::writeSlaveAlias(
     }
 
     // write new alias address in word 4
-    data.words[4] = cputole16(alias);
+    data.words[4] = cpu_to_le16(alias);
 
     // calculate checksum over words 0 to 6
     crc = calcSiiCrc((const uint8_t *) data.words, 14);
