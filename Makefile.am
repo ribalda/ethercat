@@ -35,8 +35,11 @@ SUBDIRS = \
     devices \
     include \
     master \
-    script \
-    tool
+    script
+
+if BUILD_TOOL
+SUBDIRS += tool
+endif
 
 if ENABLE_USERLIB
 SUBDIRS += lib

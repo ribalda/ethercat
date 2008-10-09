@@ -370,6 +370,28 @@ if test "x${cycles}" = "x1"; then
 fi
 
 #------------------------------------------------------------------------------
+# Command-line tool
+#-----------------------------------------------------------------------------
+
+AC_ARG_ENABLE([tool],
+    AS_HELP_STRING([--enable-tool],
+                   [Build command-line tool (default: yes)]),
+    [
+        case "${enableval}" in
+            yes) tool=1
+                ;;
+            no) tool=0
+                ;;
+            *) AC_MSG_ERROR([Invalid value for --enable-tool])
+                ;;
+        esac
+    ],
+    [tool=1]
+)
+
+AM_CONDITIONAL(BUILD_TOOL, test "x$tool" = "x1")
+
+#------------------------------------------------------------------------------
 # Userspace library generation
 #------------------------------------------------------------------------------
 
