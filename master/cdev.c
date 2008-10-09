@@ -1509,6 +1509,285 @@ int ec_cdev_ioctl_receive(
     return 0;
 }
 
+/*****************************************************************************/
+
+/** Set the direction of a sync manager.
+ */
+int ec_cdev_ioctl_sc_sync(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    ec_ioctl_config_t data;
+    ec_slave_config_t *sc;
+    unsigned int i;
+    int ret = 0;
+
+	if (unlikely(!priv->requested)) {
+        ret = -EPERM;
+        goto out_return;
+    }
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+        ret = -EFAULT;
+        goto out_return;
+    }
+
+    if (down_interruptible(&master->master_sem)) {
+        ret = -EINTR;
+        goto out_return;
+    }
+
+    if (!(sc = ec_master_get_config(master, data.config_index))) {
+        ret = -ESRCH;
+        goto out_up;
+    }
+
+    for (i = 0; i < EC_MAX_SYNC_MANAGERS; i++) {
+        ec_direction_t dir = data.syncs[i].dir;
+        if (dir == EC_DIR_INPUT || dir == EC_DIR_OUTPUT) {
+            if (ecrt_slave_config_sync_manager(sc, i, dir)) {
+                ret = -EINVAL;
+                goto out_up;
+            }
+        }
+    }
+
+out_up:
+    up(&master->master_sem);
+out_return:
+    return ret;
+}
+
+/*****************************************************************************/
+
+/** Add a Pdo to the assignment.
+ */
+int ec_cdev_ioctl_sc_add_pdo(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    ec_ioctl_config_pdo_t data;
+    ec_slave_config_t *sc;
+
+	if (unlikely(!priv->requested))
+        return -EPERM;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
+        return -EFAULT;
+
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
+
+    if (!(sc = ec_master_get_config(master, data.config_index))) {
+        up(&master->master_sem);
+        return -ESRCH;
+    }
+
+    up(&master->master_sem); // FIXME
+
+    return ecrt_slave_config_pdo_assign_add(sc, data.sync_index, data.index);
+}
+
+/*****************************************************************************/
+
+/** Clears the Pdo assignment.
+ */
+int ec_cdev_ioctl_sc_clear_pdos(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    ec_ioctl_config_pdo_t data;
+    ec_slave_config_t *sc;
+
+	if (unlikely(!priv->requested))
+        return -EPERM;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
+        return -EFAULT;
+
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
+
+    if (!(sc = ec_master_get_config(master, data.config_index))) {
+        up(&master->master_sem);
+        return -ESRCH;
+    }
+
+    up(&master->master_sem); // FIXME
+
+    ecrt_slave_config_pdo_assign_clear(sc, data.sync_index);
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Add an entry to a Pdo's mapping.
+ */
+int ec_cdev_ioctl_sc_add_entry(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    ec_ioctl_add_pdo_entry_t data;
+    ec_slave_config_t *sc;
+
+	if (unlikely(!priv->requested))
+        return -EPERM;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
+        return -EFAULT;
+
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
+
+    if (!(sc = ec_master_get_config(master, data.config_index))) {
+        up(&master->master_sem);
+        return -ESRCH;
+    }
+
+    up(&master->master_sem); // FIXME
+
+    return ecrt_slave_config_pdo_mapping_add(sc, data.pdo_index,
+            data.entry_index, data.entry_subindex, data.entry_bit_length);
+}
+
+/*****************************************************************************/
+
+/** Clears the mapping of a Pdo.
+ */
+int ec_cdev_ioctl_sc_clear_entries(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    ec_ioctl_config_pdo_t data;
+    ec_slave_config_t *sc;
+
+	if (unlikely(!priv->requested))
+        return -EPERM;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
+        return -EFAULT;
+
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
+
+    if (!(sc = ec_master_get_config(master, data.config_index))) {
+        up(&master->master_sem);
+        return -ESRCH;
+    }
+
+    up(&master->master_sem); // FIXME
+
+    ecrt_slave_config_pdo_mapping_clear(sc, data.index);
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Registers a Pdo entry.
+ */
+int ec_cdev_ioctl_sc_reg_pdo_entry(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    ec_ioctl_reg_pdo_entry_t data;
+    ec_slave_config_t *sc;
+    ec_domain_t *domain;
+    int ret;
+
+	if (unlikely(!priv->requested))
+        return -EPERM;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
+        return -EFAULT;
+
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
+
+    if (!(sc = ec_master_get_config(master, data.config_index))) {
+        up(&master->master_sem);
+        return -ESRCH;
+    }
+
+    if (!(domain = ec_master_find_domain(master, data.domain_index))) {
+        up(&master->master_sem);
+        return -ESRCH;
+    }
+
+    up(&master->master_sem); // FIXME
+
+    ret = ecrt_slave_config_reg_pdo_entry(sc, data.entry_index,
+            data.entry_subindex, domain, &data.bit_position);
+
+    if (copy_to_user((void __user *) arg, &data, sizeof(data)))
+        return -EFAULT;
+
+    return ret;
+}
+
+/*****************************************************************************/
+
+/** Configures an Sdo.
+ */
+int ec_cdev_ioctl_sc_sdo(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    ec_ioctl_sc_sdo_t data;
+    ec_slave_config_t *sc;
+    uint8_t *sdo_data = NULL;
+    int ret;
+
+	if (unlikely(!priv->requested))
+        return -EPERM;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
+        return -EFAULT;
+
+    if (!data.size)
+        return -EINVAL;
+
+    if (!(sdo_data = kmalloc(data.size, GFP_KERNEL))) {
+        return -ENOMEM;
+    }
+
+    if (copy_from_user(sdo_data, (void __user *) data.data, data.size)) {
+        kfree(sdo_data);
+        return -EFAULT;
+    }
+
+    if (down_interruptible(&master->master_sem)) {
+        kfree(sdo_data);
+        return -EINTR;
+    }
+
+    if (!(sc = ec_master_get_config(master, data.config_index))) {
+        up(&master->master_sem);
+        kfree(sdo_data);
+        return -ESRCH;
+    }
+
+    up(&master->master_sem); // FIXME
+
+    ret = ecrt_slave_config_sdo(sc, data.index, data.subindex, sdo_data,
+            data.size);
+    kfree(sdo_data);
+    return ret;
+}
+
 /******************************************************************************
  * File operations
  *****************************************************************************/
@@ -1646,6 +1925,34 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             if (!(filp->f_mode & FMODE_WRITE))
 				return -EPERM;
 			return ec_cdev_ioctl_receive(master, arg, priv);
+        case EC_IOCTL_SC_SYNC:
+            if (!(filp->f_mode & FMODE_WRITE))
+				return -EPERM;
+			return ec_cdev_ioctl_sc_sync(master, arg, priv);
+        case EC_IOCTL_SC_ADD_PDO:
+            if (!(filp->f_mode & FMODE_WRITE))
+				return -EPERM;
+			return ec_cdev_ioctl_sc_add_pdo(master, arg, priv);
+        case EC_IOCTL_SC_CLEAR_PDOS:
+            if (!(filp->f_mode & FMODE_WRITE))
+				return -EPERM;
+			return ec_cdev_ioctl_sc_clear_pdos(master, arg, priv);
+        case EC_IOCTL_SC_ADD_ENTRY:
+            if (!(filp->f_mode & FMODE_WRITE))
+				return -EPERM;
+			return ec_cdev_ioctl_sc_add_entry(master, arg, priv);
+        case EC_IOCTL_SC_CLEAR_ENTRIES:
+            if (!(filp->f_mode & FMODE_WRITE))
+				return -EPERM;
+			return ec_cdev_ioctl_sc_clear_entries(master, arg, priv);
+        case EC_IOCTL_SC_REG_PDO_ENTRY:
+            if (!(filp->f_mode & FMODE_WRITE))
+				return -EPERM;
+			return ec_cdev_ioctl_sc_reg_pdo_entry(master, arg, priv);
+        case EC_IOCTL_SC_SDO:
+            if (!(filp->f_mode & FMODE_WRITE))
+				return -EPERM;
+			return ec_cdev_ioctl_sc_sdo(master, arg, priv);
         default:
             return -ENOTTY;
     }

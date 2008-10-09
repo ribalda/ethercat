@@ -37,6 +37,7 @@
 
 struct ec_domain {
     unsigned int index;
+    ec_master_t *master;
 };
 
 /*****************************************************************************/

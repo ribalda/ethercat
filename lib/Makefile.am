@@ -41,7 +41,9 @@ libethercat_la_LDFLAGS = -version-info 1:0:0
 libethercat_la_CFLAGS = -I$(srcdir)/..
 libethercat_la_SOURCES = \
 	common.c \
-	master.c
+	domain.c \
+	master.c \
+	slave_config.c
 
 noinst_HEADERS = \
 	domain.h \

@@ -31,85 +31,34 @@
  *
  *****************************************************************************/
 
-#include <stdlib.h>
-#include <sys/ioctl.h>
-#include <stdio.h>
-#include <errno.h>
-#include <string.h>
+/**
+   \file
+   EtherCAT domain methods.
+*/
 
-#include "master.h"
+/*****************************************************************************/
+
 #include "domain.h"
-#include "slave_config.h"
-#include "master/ioctl.h"
 
 /*****************************************************************************/
 
-ec_domain_t *ecrt_master_create_domain(ec_master_t *master)
+int ecrt_domain_reg_pdo_entry_list(ec_domain_t *domain,
+        const ec_pdo_entry_reg_t *regs)
 {
-    ec_domain_t *domain;
-    int index;
-
-    domain = malloc(sizeof(ec_domain_t));
-    if (!domain) {
-        fprintf(stderr, "Failed to allocate memory.\n");
-        return 0;
-    }
-    
-    index = ioctl(master->fd, EC_IOCTL_CREATE_DOMAIN, NULL);
-    if (index == -1) {
-        fprintf(stderr, "Failed to create domain: %s\n", strerror(errno));
-        free(domain);
-        return 0; 
-    }
-
-    domain->index = (unsigned int) index;
-    domain->master = master;
-    return domain;
-}
-
-/*****************************************************************************/
-
-ec_slave_config_t *ecrt_master_slave_config(ec_master_t *master,
-        uint16_t alias, uint16_t position, uint32_t vendor_id,
-        uint32_t product_code)
-{
-    ec_ioctl_config_t data;
+    const ec_pdo_entry_reg_t *reg;
     ec_slave_config_t *sc;
-    int index;
-
-    sc = malloc(sizeof(ec_slave_config_t));
-    if (!sc) {
-        fprintf(stderr, "Failed to allocate memory.\n");
-        return 0;
-    }
+    int ret;
     
-    data.alias = alias;
-    data.position = position;
-    data.vendor_id = vendor_id;
-    data.product_code = product_code;
-    
-    if (ioctl(master->fd, EC_IOCTL_CREATE_SLAVE_CONFIG, &data) == -1) {
-        fprintf(stderr, "Failed to create slave config: %s\n",
-                strerror(errno));
-        free(sc);
-        return 0; 
-    }
+    for (reg = regs; reg->index; reg++) {
+        if (!(sc = ecrt_master_slave_config(domain->master, reg->alias,
+                        reg->position, reg->vendor_id, reg->product_code)))
+            return -1;
 
-    sc->master = master;
-    sc->index = data.config_index;
-    sc->alias = alias;
-    sc->position = position;
-    return sc;
-}
+        if ((ret = ecrt_slave_config_reg_pdo_entry(sc, reg->index,
+                        reg->subindex, domain, reg->bit_position)) < 0)
+            return -1;
 
-/*****************************************************************************/
-
-int ecrt_master_activate(ec_master_t *master)
-{
-    if (ioctl(master->fd, EC_IOCTL_ACTIVATE, NULL) == -1) {
-        fprintf(stderr, "Failed to activate master: %s\n",
-                strerror(errno));
-        return -1; 
+        *reg->offset = ret;
     }
 
     return 0;
@@ -117,25 +66,33 @@ int ecrt_master_activate(ec_master_t *master)
 
 /*****************************************************************************/
 
-void ecrt_master_send(ec_master_t *master)
+size_t ecrt_domain_size(ec_domain_t *domain)
 {
-    if (ioctl(master->fd, EC_IOCTL_SEND, NULL) == -1) {
-        fprintf(stderr, "Failed to send: %s\n", strerror(errno));
-    }
+	return 0;
 }
 
 /*****************************************************************************/
 
-void ecrt_master_receive(ec_master_t *master)
+uint8_t *ecrt_domain_data(ec_domain_t *domain)
 {
-    if (ioctl(master->fd, EC_IOCTL_RECEIVE, NULL) == -1) {
-        fprintf(stderr, "Failed to receive: %s\n", strerror(errno));
-    }
+    return 0;
 }
 
 /*****************************************************************************/
 
-void ecrt_master_state(const ec_master_t *master, ec_master_state_t *state)
+void ecrt_domain_process(ec_domain_t *domain)
+{
+}
+
+/*****************************************************************************/
+
+void ecrt_domain_queue(ec_domain_t *domain)
+{
+}
+
+/*****************************************************************************/
+
+void ecrt_domain_state(const ec_domain_t *domain, ec_domain_state_t *state)
 {
 }
 

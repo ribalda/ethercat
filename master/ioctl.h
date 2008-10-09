@@ -85,6 +85,13 @@
 #define EC_IOCTL_ACTIVATE               EC_IO(0x19)
 #define EC_IOCTL_SEND                   EC_IO(0x1a)
 #define EC_IOCTL_RECEIVE                EC_IO(0x1b)
+#define EC_IOCTL_SC_SYNC               EC_IOW(0x1c, ec_ioctl_config_t)
+#define EC_IOCTL_SC_ADD_PDO            EC_IOW(0x1c, ec_ioctl_config_pdo_t)
+#define EC_IOCTL_SC_CLEAR_PDOS         EC_IOW(0x1d, ec_ioctl_config_pdo_t)
+#define EC_IOCTL_SC_ADD_ENTRY          EC_IOW(0x1e, ec_ioctl_add_pdo_entry_t)
+#define EC_IOCTL_SC_CLEAR_ENTRIES      EC_IOW(0x1f, ec_ioctl_config_pdo_t)
+#define EC_IOCTL_SC_REG_PDO_ENTRY     EC_IOWR(0x20, ec_ioctl_reg_pdo_entry_t)
+#define EC_IOCTL_SC_SDO                EC_IOW(0x21, ec_ioctl_sc_sdo_t)
 
 #define EC_IOCTL_STRING_SIZE 64
 
@@ -365,6 +372,41 @@ typedef struct {
     uint32_t size;
     uint8_t data[4];
 } ec_ioctl_config_sdo_t;
+
+/*****************************************************************************/
+
+typedef struct {
+    // inputs
+    uint32_t config_index;
+    uint16_t pdo_index;
+    uint16_t entry_index;
+    uint8_t entry_subindex;
+    uint8_t entry_bit_length;
+} ec_ioctl_add_pdo_entry_t;
+
+/*****************************************************************************/
+
+typedef struct {
+    // inputs
+    uint32_t config_index;
+    uint16_t entry_index;
+    uint8_t entry_subindex;
+    uint32_t domain_index;
+    
+    // outputs
+    unsigned int bit_position;
+} ec_ioctl_reg_pdo_entry_t;
+
+/*****************************************************************************/
+
+typedef struct {
+    // inputs
+    uint32_t config_index;
+    uint16_t index;
+    uint8_t subindex;
+    const uint8_t *data;
+    size_t size;
+} ec_ioctl_sc_sdo_t;
 
 /*****************************************************************************/
 
