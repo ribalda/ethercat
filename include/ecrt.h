@@ -812,6 +812,9 @@ void ecrt_domain_external_memory(
  * returned pointer will contain the address of that memory. Otherwise it will
  * point to the internally allocated memory.
  *
+ * \attention In case of internal domain memory (default), this method may not
+ * be called before ecrt_master_activate().
+ *
  * \return Pointer to the process data memory.
  */
 uint8_t *ecrt_domain_data(
