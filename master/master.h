@@ -41,6 +41,7 @@
 #ifndef __EC_MASTER_H__
 #define __EC_MASTER_H__
 
+#include <linux/version.h>
 #include <linux/list.h>
 #include <linux/timer.h>
 #include <linux/wait.h>
@@ -88,7 +89,12 @@ struct ec_master {
     unsigned int reserved; /**< \a True, if the master is in use. */
 
     ec_cdev_t cdev; /**< Master character device. */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 26)
+    struct device *class_device; /**< Master class device. */
+#else
     struct class_device *class_device; /**< Master class device. */
+#endif
+
     struct semaphore master_sem; /**< Master semaphore. */
 
     ec_device_t main_device; /**< EtherCAT main device. */
