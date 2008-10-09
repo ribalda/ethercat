@@ -1121,6 +1121,32 @@ unsigned int ec_master_config_count(
 
 /*****************************************************************************/
 
+/** Common implementation for ec_master_get_config()
+ * and ec_master_get_config_const().
+ */
+#define EC_FIND_CONFIG \
+    do { \
+		list_for_each_entry(sc, &master->configs, list) { \
+			if (pos--) \
+				continue; \
+			return sc; \
+		} \
+		return NULL; \
+    } while (0)
+
+/** Get a slave configuration via its position in the list.
+ *
+ * \return Slave configuration or \a NULL.
+ */
+ec_slave_config_t *ec_master_get_config(
+		const ec_master_t *master, /**< EtherCAT master. */
+		unsigned int pos /**< List position. */
+		)
+{
+	ec_slave_config_t *sc;
+	EC_FIND_CONFIG;
+}
+
 /** Get a slave configuration via its position in the list.
  *
  * Const version.
@@ -1133,14 +1159,7 @@ const ec_slave_config_t *ec_master_get_config_const(
 		)
 {
 	const ec_slave_config_t *sc;
-
-	list_for_each_entry(sc, &master->configs, list) {
-		if (pos--)
-			continue;
-		return sc;
-	}
-
-	return NULL;
+	EC_FIND_CONFIG;
 }
 
 /*****************************************************************************/

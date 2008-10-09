@@ -204,6 +204,8 @@ void ec_master_clear_eoe_handlers(ec_master_t *);
 void ec_master_clear_slaves(ec_master_t *);
 
 unsigned int ec_master_config_count(const ec_master_t *);
+ec_slave_config_t *ec_master_get_config(
+        const ec_master_t *, unsigned int);
 const ec_slave_config_t *ec_master_get_config_const(
         const ec_master_t *, unsigned int);
 unsigned int ec_master_domain_count(const ec_master_t *);
