@@ -6,6 +6,7 @@ $Id$
 
 Changes since 1.4.0:
 
+* Added a userspace library for accessing the application interface.
 * Added VoE protocol support.
 * Separated datagram initialization from filling the payload with zeros.
   Introduced new method ec_datagram_zero() for that.

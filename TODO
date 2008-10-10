@@ -8,9 +8,9 @@ $Id$
 
 Version 1.5.0:
 
-* Implement user space realtime interface via cdev.
 * Remove ecrt_domain_state().
 * Segmented Sdo downloads.
+* Overthink pointer return values.
 
 Future issues:
 
@@ -32,14 +32,12 @@ Future issues:
     - Data type abbreviations.
     - Add a -n (numeric) switch.
 	- Check for unwanted options.
-* Get original driver for r8169.
 * Simplyfy master fsm by introducing a common request state to handle external
   requests (replace write_sii, sdo_request, etc).
 
 Smaller issues:
 
 * Stop master thread at ecrt_master_request() to get rid of allow_* flags?
-* Evaluate SII Size field (0x003E) to determine maximum SII memory size.
 * Clear sync managers in INIT.
 * Read out CRC counters.
 * Configure slave ports to automatically open on link detection.
