@@ -39,6 +39,7 @@
 #include <errno.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <sys/mman.h>
 
 #include "master.h"
 #include "master/ioctl.h"
@@ -65,6 +66,9 @@ ec_master_t *ecrt_request_master(unsigned int master_index)
         return 0;
     }
 
+    master->process_data = NULL;
+    master->process_data_size = 0;
+
     snprintf(path, MAX_PATH_LEN - 1, "/dev/EtherCAT%u", master_index);
 
     master->fd = open(path, O_RDWR);
@@ -89,6 +93,10 @@ ec_master_t *ecrt_request_master(unsigned int master_index)
 
 void ecrt_release_master(ec_master_t *master)
 {
+    if (master->process_data)  {
+        munmap(master->process_data, master->process_data_size);
+    }
+
     close(master->fd);
     free(master);
 }

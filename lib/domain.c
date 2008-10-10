@@ -38,7 +38,15 @@
 
 /*****************************************************************************/
 
+#include <sys/ioctl.h>
+#include <sys/mman.h>
+#include <stdio.h>
+#include <errno.h>
+#include <string.h>
+
 #include "domain.h"
+#include "master.h"
+#include "master/ioctl.h"
 
 /*****************************************************************************/
 
@@ -68,19 +76,43 @@ int ecrt_domain_reg_pdo_entry_list(ec_domain_t *domain,
 
 uint8_t *ecrt_domain_data(ec_domain_t *domain)
 {
-    return 0;
+    if (!domain->process_data) {
+        int offset = 0;
+
+        offset = ioctl(domain->master->fd, EC_IOCTL_DOMAIN_OFFSET,
+                domain->index);
+        if (offset == -1) {
+            fprintf(stderr, "Failed to get domain offset: %s\n",
+                    strerror(errno));
+            return NULL; 
+        }
+    
+        domain->process_data = domain->master->process_data + offset;
+    }
+
+    return domain->process_data;
 }
 
 /*****************************************************************************/
 
 void ecrt_domain_process(ec_domain_t *domain)
 {
+    if (ioctl(domain->master->fd, EC_IOCTL_DOMAIN_PROCESS,
+                domain->index) == -1) {
+        fprintf(stderr, "Failed to process domain offset: %s\n",
+                strerror(errno));
+    }
 }
 
 /*****************************************************************************/
 
 void ecrt_domain_queue(ec_domain_t *domain)
 {
+    if (ioctl(domain->master->fd, EC_IOCTL_DOMAIN_QUEUE,
+                domain->index) == -1) {
+        fprintf(stderr, "Failed to queue domain offset: %s\n",
+                strerror(errno));
+    }
 }
 
 /*****************************************************************************/

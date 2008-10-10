@@ -780,6 +780,8 @@ int ecrt_domain_reg_pdo_entry_list(
                                                    registrations. */
         );
 
+#ifdef __KERNEL__
+
 /** Returns the current size of the domain's process data.
  *
  * \return Size of the process data image.
@@ -787,8 +789,6 @@ int ecrt_domain_reg_pdo_entry_list(
 size_t ecrt_domain_size(
         const ec_domain_t *domain /**< Domain. */
         );
-
-#ifdef __KERNEL__
 
 /** Provide external memory to store the domain's process data.
  *
@@ -808,12 +808,14 @@ void ecrt_domain_external_memory(
 
 /** Returns the domain's process data.
  *
- * If external memory was provided with ecrt_domain_external_memory(), the
- * returned pointer will contain the address of that memory. Otherwise it will
- * point to the internally allocated memory.
+ * - In kernel context: If external memory was provided with
+ * ecrt_domain_external_memory(), the returned pointer will contain the
+ * address of that memory. Otherwise it will point to the internally allocated
+ * memory. In the latter case, this method may not be called before
+ * ecrt_master_activate().
  *
- * \attention In case of internal domain memory (default), this method may not
- * be called before ecrt_master_activate().
+ * - In userspace context: This method has to be called after
+ * ecrt_master_activate() to get the mapped domain process data memory.
  *
  * \return Pointer to the process data memory.
  */

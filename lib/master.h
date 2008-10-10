@@ -37,6 +37,8 @@
 
 struct ec_master {
     int fd;
+    uint8_t *process_data;
+    size_t process_data_size;
 };
 
 /*****************************************************************************/

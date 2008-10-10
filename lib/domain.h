@@ -38,6 +38,7 @@
 struct ec_domain {
     unsigned int index;
     ec_master_t *master;
+    uint8_t *process_data;
 };
 
 /*****************************************************************************/

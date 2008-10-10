@@ -46,13 +46,29 @@
 
 /****************************************************************************/
 
+// Application parameters
+#define PRIORITY 1
+
 // Optional features
 #define CONFIGURE_PDOS  1
-#define EL3152_ALT_PDOS 0
-#define SDO_ACCESS      0
-#define VOE_ACCESS      0
 
-#define PRIORITY 1
+/****************************************************************************/
+
+// EtherCAT
+static ec_master_t *master = NULL;
+
+static ec_domain_t *domain1 = NULL;
+
+static ec_slave_config_t *sc_ana_in = NULL;
+
+// Timer
+static unsigned int sig_alarms = 0;
+static unsigned int user_alarms = 0;
+
+/****************************************************************************/
+
+// process data
+static uint8_t *domain1_pd = NULL;
 
 #define BusCouplerPos  0, 0
 #define AnaOutSlavePos 0, 1
@@ -64,28 +80,19 @@
 #define Beckhoff_EL3152 0x00000002, 0x0c503052
 #define Beckhoff_EL4102 0x00000002, 0x10063052
 
-/****************************************************************************/
-
-static unsigned int sig_alarms = 0;
-static unsigned int user_alarms = 0;
-
 // offsets for Pdo entries
-static unsigned int off_ana_in;
+static unsigned int off_ana_in_status;
+static unsigned int off_ana_in_value;
 static unsigned int off_ana_out;
 static unsigned int off_dig_out;
 
 const static ec_pdo_entry_reg_t domain1_regs[] = {
-#if EL3152_ALT_PDOS
-    {AnaInSlavePos,  Beckhoff_EL3152, 0x6401, 1, &off_ana_in},
-#else
-    {AnaInSlavePos,  Beckhoff_EL3152, 0x3101, 2, &off_ana_in},
-#endif
+    {AnaInSlavePos,  Beckhoff_EL3152, 0x3101, 1, &off_ana_in_status},
+    {AnaInSlavePos,  Beckhoff_EL3152, 0x3101, 2, &off_ana_in_value},
 	{AnaOutSlavePos, Beckhoff_EL4102, 0x3001, 1, &off_ana_out},
 	{DigOutSlavePos, Beckhoff_EL2004, 0x3001, 1, &off_dig_out},
 	{}
 };
-
-static ec_slave_config_t *sc_ana_in = NULL;
 
 /*****************************************************************************/
 
@@ -102,17 +109,6 @@ static ec_pdo_entry_info_t el3152_pdo_entries[] = {
     {0x6401, 2, 16}  // channel 2 value (alt.)
 };
 
-#if EL3152_ALT_PDOS
-static ec_pdo_info_t el3152_pdos[] = {
-    {0x1A10, 2, el3152_pdo_entries + 4},
-};
-
-static ec_sync_info_t el3152_syncs[] = {
-    {2, EC_DIR_OUTPUT},
-    {3, EC_DIR_INPUT, 1, el3152_pdos},
-    {0xff}
-};
-#else
 static ec_pdo_info_t el3152_pdos[] = {
     {0x1A00, 2, el3152_pdo_entries},
     {0x1A01, 2, el3152_pdo_entries + 2}
@@ -123,7 +119,6 @@ static ec_sync_info_t el3152_syncs[] = {
     {3, EC_DIR_INPUT, 2, el3152_pdos},
     {0xff}
 };
-#endif
 
 // Analog out -------------------------
 
@@ -168,6 +163,28 @@ static ec_sync_info_t el2004_syncs[] = {
 
 /****************************************************************************/
 
+void cyclic_task()
+{
+    ecrt_master_receive(master);
+    ecrt_domain_process(domain1);
+
+#if 0
+#if EL3152_ALT_PDOS
+    printf("AnaIn: value %u\n",
+            EC_READ_U16(domain1_pd + off_ana_in_value));
+#else
+    printf("AnaIn: state %u value %u\n",
+            EC_READ_U8(domain1_pd + off_ana_in_status),
+            EC_READ_U16(domain1_pd + off_ana_in_value));
+#endif
+#endif
+
+    ecrt_domain_queue(domain1);
+    ecrt_master_send(master);
+}
+
+/****************************************************************************/
+
 void signal_handler(int signum) {
     switch (signum) {
         case SIGALRM:
@@ -180,8 +197,6 @@ void signal_handler(int signum) {
 
 int main(int argc, char **argv)
 {
-	ec_master_t *master;
-	ec_domain_t *domain1;
 	ec_slave_config_t *sc;
     struct sigaction sa;
     struct itimerval tv;
@@ -244,6 +259,10 @@ int main(int argc, char **argv)
     if (ecrt_master_activate(master))
         return -1;
 
+    if (!(domain1_pd = ecrt_domain_data(domain1))) {
+        return -1;
+    }
+
 #if PRIORITY
     pid_t pid = getpid();
     if (setpriority(PRIO_PROCESS, pid, -19))
@@ -271,7 +290,7 @@ int main(int argc, char **argv)
 
     printf("Started.\n");
 	while (1) {
-        sleep(1);
+        sleep(1); // always interrupted by SIGALRM
 
 #if 0
         struct timeval t;
@@ -280,9 +299,7 @@ int main(int argc, char **argv)
 #endif
 
         while (sig_alarms != user_alarms) {
-            ecrt_master_receive(master);
-            ecrt_master_send(master);
-
+            cyclic_task();
             user_alarms++;
         }
 	}

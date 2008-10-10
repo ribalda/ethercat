@@ -39,6 +39,8 @@
 /*****************************************************************************/
 
 #include <linux/module.h>
+#include <linux/vmalloc.h>
+#include <linux/mm.h>
 
 #include "cdev.h"
 #include "master.h"
@@ -52,6 +54,10 @@
 int eccdev_open(struct inode *, struct file *);
 int eccdev_release(struct inode *, struct file *);
 long eccdev_ioctl(struct file *, unsigned int, unsigned long);
+int eccdev_mmap(struct file *, struct vm_area_struct *);
+
+static struct page *eccdev_vma_nopage(
+        struct vm_area_struct *, unsigned long, int *);
 
 /*****************************************************************************/
 
@@ -59,7 +65,12 @@ static struct file_operations eccdev_fops = {
     .owner          = THIS_MODULE,
     .open           = eccdev_open,
     .release        = eccdev_release,
-    .unlocked_ioctl = eccdev_ioctl
+    .unlocked_ioctl = eccdev_ioctl,
+    .mmap           = eccdev_mmap
+};
+
+struct vm_operations_struct eccdev_vm_ops = {
+    .nopage = eccdev_vma_nopage
 };
 
 /** \endcond */
@@ -71,6 +82,8 @@ static struct file_operations eccdev_fops = {
 typedef struct {
     ec_cdev_t *cdev;
     unsigned int requested;
+    uint8_t *process_data;
+    size_t process_data_size;
 } ec_cdev_priv_t;
 
 /*****************************************************************************/
@@ -1462,11 +1475,47 @@ int ec_cdev_ioctl_activate(
         ec_cdev_priv_t *priv /**< Private data structure of file handle. */
         )
 {
+    ec_domain_t *domain;
+    off_t offset;
+    
 	if (unlikely(!priv->requested))
 		return -EPERM;
 
+    /* Get the sum of the domains' process data sizes. */
+    
+    priv->process_data_size = 0;
+
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
+
+    list_for_each_entry(domain, &master->domains, list) {
+        priv->process_data_size += ecrt_domain_size(domain);
+    }
+    
+    up(&master->master_sem);
+
+    if (priv->process_data_size) {
+        priv->process_data = vmalloc(priv->process_data_size);
+        if (!priv->process_data) {
+            priv->process_data_size = 0;
+            return -ENOMEM;
+        }
+
+        /* Set the memory as external process data memory for the domains. */
+
+        offset = 0;
+        list_for_each_entry(domain, &master->domains, list) {
+            ecrt_domain_external_memory(domain, priv->process_data + offset);
+            offset += ecrt_domain_size(domain);
+        }
+    }
+
     if (ecrt_master_activate(master))
         return -EIO;
+
+    if (copy_to_user((void __user *) arg,
+                &priv->process_data_size, sizeof(size_t)))
+        return -EFAULT;
 
     return 0;
 }
@@ -1788,6 +1837,94 @@ int ec_cdev_ioctl_sc_sdo(
     return ret;
 }
 
+/*****************************************************************************/
+
+/** Gets the domain's offset in the total process data.
+ */
+int ec_cdev_ioctl_domain_offset(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    int offset = 0;
+    const ec_domain_t *domain;
+
+	if (unlikely(!priv->requested))
+        return -EPERM;
+
+    if (down_interruptible(&master->master_sem)) {
+        return -EINTR;
+    }
+
+    list_for_each_entry(domain, &master->domains, list) {
+        if (domain->index == arg) {
+            up(&master->master_sem);
+            return offset;
+        }
+        offset += ecrt_domain_size(domain);
+    }
+
+    up(&master->master_sem);
+    return -ESRCH;
+}
+
+/*****************************************************************************/
+
+/** Process the domain.
+ */
+int ec_cdev_ioctl_domain_process(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    ec_domain_t *domain;
+
+	if (unlikely(!priv->requested))
+        return -EPERM;
+
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
+
+    if (!(domain = ec_master_find_domain(master, arg))) {
+        up(&master->master_sem);
+        return -ESRCH;
+    }
+
+    ecrt_domain_process(domain);
+    up(&master->master_sem);
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Queue the domain.
+ */
+int ec_cdev_ioctl_domain_queue(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    ec_domain_t *domain;
+
+	if (unlikely(!priv->requested))
+        return -EPERM;
+
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
+
+    if (!(domain = ec_master_find_domain(master, arg))) {
+        up(&master->master_sem);
+        return -ESRCH;
+    }
+
+    ecrt_domain_queue(domain);
+    up(&master->master_sem);
+    return 0;
+}
+
 /******************************************************************************
  * File operations
  *****************************************************************************/
@@ -1808,6 +1945,8 @@ int eccdev_open(struct inode *inode, struct file *filp)
 
     priv->cdev = cdev;
     priv->requested = 0;
+    priv->process_data = NULL;
+    priv->process_data_size = 0;
 
     filp->private_data = priv;
     if (master->debug_level)
@@ -1826,6 +1965,9 @@ int eccdev_release(struct inode *inode, struct file *filp)
 
     if (priv->requested)
         ecrt_release_master(master);
+
+    if (priv->process_data)
+        vfree(priv->process_data);
 
     if (master->debug_level)
         EC_DBG("File closed.\n");
@@ -1953,9 +2095,68 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             if (!(filp->f_mode & FMODE_WRITE))
 				return -EPERM;
 			return ec_cdev_ioctl_sc_sdo(master, arg, priv);
+        case EC_IOCTL_DOMAIN_OFFSET:
+			return ec_cdev_ioctl_domain_offset(master, arg, priv);
+        case EC_IOCTL_DOMAIN_PROCESS:
+            if (!(filp->f_mode & FMODE_WRITE))
+				return -EPERM;
+			return ec_cdev_ioctl_domain_process(master, arg, priv);
+        case EC_IOCTL_DOMAIN_QUEUE:
+            if (!(filp->f_mode & FMODE_WRITE))
+				return -EPERM;
+			return ec_cdev_ioctl_domain_queue(master, arg, priv);
         default:
             return -ENOTTY;
     }
+}
+
+/*****************************************************************************/
+
+int eccdev_mmap(
+        struct file *filp,
+        struct vm_area_struct *vma
+        )
+{
+    ec_cdev_priv_t *priv = (ec_cdev_priv_t *) filp->private_data;
+
+    if (priv->cdev->master->debug_level)
+        EC_DBG("mmap()\n");
+
+    vma->vm_ops = &eccdev_vm_ops;
+    vma->vm_flags |= VM_RESERVED; /* Pages will not be swapped out */
+    vma->vm_private_data = priv;
+
+    return 0;
+}
+
+/*****************************************************************************/
+
+struct page *eccdev_vma_nopage(
+        struct vm_area_struct *vma,
+        unsigned long address,
+        int *type
+        )
+{
+    unsigned long offset;
+    struct page *page = NOPAGE_SIGBUS;
+    ec_cdev_priv_t *priv = (ec_cdev_priv_t *) vma->vm_private_data;
+
+    offset = (address - vma->vm_start) + (vma->vm_pgoff << PAGE_SHIFT);
+
+    if (offset >= priv->process_data_size)
+        return NOPAGE_SIGBUS;
+
+    page = vmalloc_to_page(priv->process_data + offset);
+
+    if (priv->cdev->master->debug_level)
+        EC_DBG("Nopage fault vma, address = %#lx, offset = %#lx, page = %p\n",
+                address, offset, page);
+
+    get_page(page);
+    if (type)
+        *type = VM_FAULT_MINOR;
+
+    return page;
 }
 
 /*****************************************************************************/

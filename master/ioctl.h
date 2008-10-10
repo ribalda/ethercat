@@ -82,7 +82,7 @@
 #define EC_IOCTL_REQUEST                EC_IO(0x16)
 #define EC_IOCTL_CREATE_DOMAIN          EC_IO(0x17)
 #define EC_IOCTL_CREATE_SLAVE_CONFIG  EC_IOWR(0x18, ec_ioctl_config_t)
-#define EC_IOCTL_ACTIVATE               EC_IO(0x19)
+#define EC_IOCTL_ACTIVATE              EC_IOR(0x19, size_t)
 #define EC_IOCTL_SEND                   EC_IO(0x1a)
 #define EC_IOCTL_RECEIVE                EC_IO(0x1b)
 #define EC_IOCTL_SC_SYNC               EC_IOW(0x1c, ec_ioctl_config_t)
@@ -92,6 +92,9 @@
 #define EC_IOCTL_SC_CLEAR_ENTRIES      EC_IOW(0x1f, ec_ioctl_config_pdo_t)
 #define EC_IOCTL_SC_REG_PDO_ENTRY     EC_IOWR(0x20, ec_ioctl_reg_pdo_entry_t)
 #define EC_IOCTL_SC_SDO                EC_IOW(0x21, ec_ioctl_sc_sdo_t)
+#define EC_IOCTL_DOMAIN_OFFSET          EC_IO(0x22)
+#define EC_IOCTL_DOMAIN_PROCESS         EC_IO(0x23)
+#define EC_IOCTL_DOMAIN_QUEUE           EC_IO(0x24)
 
 #define EC_IOCTL_STRING_SIZE 64
 

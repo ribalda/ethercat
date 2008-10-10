@@ -36,6 +36,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
+#include <sys/mman.h>
 
 #include "master.h"
 #include "domain.h"
@@ -64,6 +65,7 @@ ec_domain_t *ecrt_master_create_domain(ec_master_t *master)
 
     domain->index = (unsigned int) index;
     domain->master = master;
+    domain->process_data = NULL;
     return domain;
 }
 
@@ -106,10 +108,25 @@ ec_slave_config_t *ecrt_master_slave_config(ec_master_t *master,
 
 int ecrt_master_activate(ec_master_t *master)
 {
-    if (ioctl(master->fd, EC_IOCTL_ACTIVATE, NULL) == -1) {
+    if (ioctl(master->fd, EC_IOCTL_ACTIVATE,
+                &master->process_data_size) == -1) {
         fprintf(stderr, "Failed to activate master: %s\n",
                 strerror(errno));
         return -1; 
+    }
+
+    if (master->process_data_size) {
+        master->process_data = mmap(0, master->process_data_size,
+                PROT_READ | PROT_WRITE, MAP_PRIVATE, master->fd, 0);
+        if (master->process_data == MAP_FAILED) {
+            fprintf(stderr, "Failed to map process data: %s", strerror(errno));
+            master->process_data = NULL;
+            master->process_data_size = 0;
+            return -1;
+        }
+
+        // Access the mapped region to cause the initial page fault
+        printf("pd: %x\n", master->process_data[0]);
     }
 
     return 0;
