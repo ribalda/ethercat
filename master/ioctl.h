@@ -56,6 +56,7 @@
 #define EC_IOW(nr, type)   _IOW(EC_IOCTL_TYPE, nr, type)
 #define EC_IOWR(nr, type) _IOWR(EC_IOCTL_TYPE, nr, type)
 
+// Command-line tool
 #define EC_IOCTL_MASTER                EC_IOR(0x00, ec_ioctl_master_t)
 #define EC_IOCTL_SLAVE                EC_IOWR(0x01, ec_ioctl_slave_t)
 #define EC_IOCTL_SLAVE_SYNC           EC_IOWR(0x02, ec_ioctl_slave_sync_t)
@@ -79,22 +80,28 @@
 #define EC_IOCTL_CONFIG_PDO_ENTRY     EC_IOWR(0x14, ec_ioctl_config_pdo_entry_t)
 #define EC_IOCTL_CONFIG_SDO           EC_IOWR(0x15, ec_ioctl_config_sdo_t)
 
+// Application interface
 #define EC_IOCTL_REQUEST                EC_IO(0x16)
 #define EC_IOCTL_CREATE_DOMAIN          EC_IO(0x17)
 #define EC_IOCTL_CREATE_SLAVE_CONFIG  EC_IOWR(0x18, ec_ioctl_config_t)
 #define EC_IOCTL_ACTIVATE              EC_IOR(0x19, size_t)
 #define EC_IOCTL_SEND                   EC_IO(0x1a)
 #define EC_IOCTL_RECEIVE                EC_IO(0x1b)
-#define EC_IOCTL_SC_SYNC               EC_IOW(0x1c, ec_ioctl_config_t)
-#define EC_IOCTL_SC_ADD_PDO            EC_IOW(0x1c, ec_ioctl_config_pdo_t)
-#define EC_IOCTL_SC_CLEAR_PDOS         EC_IOW(0x1d, ec_ioctl_config_pdo_t)
-#define EC_IOCTL_SC_ADD_ENTRY          EC_IOW(0x1e, ec_ioctl_add_pdo_entry_t)
-#define EC_IOCTL_SC_CLEAR_ENTRIES      EC_IOW(0x1f, ec_ioctl_config_pdo_t)
-#define EC_IOCTL_SC_REG_PDO_ENTRY     EC_IOWR(0x20, ec_ioctl_reg_pdo_entry_t)
-#define EC_IOCTL_SC_SDO                EC_IOW(0x21, ec_ioctl_sc_sdo_t)
-#define EC_IOCTL_DOMAIN_OFFSET          EC_IO(0x22)
-#define EC_IOCTL_DOMAIN_PROCESS         EC_IO(0x23)
-#define EC_IOCTL_DOMAIN_QUEUE           EC_IO(0x24)
+#define EC_IOCTL_MASTER_STATE          EC_IOR(0x1c, ec_master_state_t)
+#define EC_IOCTL_SC_SYNC               EC_IOW(0x1d, ec_ioctl_config_t)
+#define EC_IOCTL_SC_ADD_PDO            EC_IOW(0x1e, ec_ioctl_config_pdo_t)
+#define EC_IOCTL_SC_CLEAR_PDOS         EC_IOW(0x1f, ec_ioctl_config_pdo_t)
+#define EC_IOCTL_SC_ADD_ENTRY          EC_IOW(0x20, ec_ioctl_add_pdo_entry_t)
+#define EC_IOCTL_SC_CLEAR_ENTRIES      EC_IOW(0x21, ec_ioctl_config_pdo_t)
+#define EC_IOCTL_SC_REG_PDO_ENTRY     EC_IOWR(0x22, ec_ioctl_reg_pdo_entry_t)
+#define EC_IOCTL_SC_SDO                EC_IOW(0x23, ec_ioctl_sc_sdo_t)
+#define EC_IOCTL_SC_STATE             EC_IOWR(0x24, ec_ioctl_sc_state_t)
+#define EC_IOCTL_DOMAIN_OFFSET          EC_IO(0x25)
+#define EC_IOCTL_DOMAIN_PROCESS         EC_IO(0x26)
+#define EC_IOCTL_DOMAIN_QUEUE           EC_IO(0x27)
+#define EC_IOCTL_DOMAIN_STATE         EC_IOWR(0x28, ec_ioctl_domain_state_t)
+
+/*****************************************************************************/
 
 #define EC_IOCTL_STRING_SIZE 64
 
@@ -410,6 +417,26 @@ typedef struct {
     const uint8_t *data;
     size_t size;
 } ec_ioctl_sc_sdo_t;
+
+/*****************************************************************************/
+
+typedef struct {
+    // inputs
+    uint32_t config_index;
+
+    // outputs
+    ec_slave_config_state_t *state;
+} ec_ioctl_sc_state_t;
+
+/*****************************************************************************/
+
+typedef struct {
+    // inputs
+    uint32_t domain_index;
+
+    // outputs
+    ec_domain_state_t *state;
+} ec_ioctl_domain_state_t;
 
 /*****************************************************************************/
 

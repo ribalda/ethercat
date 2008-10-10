@@ -117,7 +117,7 @@ int ecrt_master_activate(ec_master_t *master)
 
     if (master->process_data_size) {
         master->process_data = mmap(0, master->process_data_size,
-                PROT_READ | PROT_WRITE, MAP_PRIVATE, master->fd, 0);
+                PROT_READ | PROT_WRITE, MAP_SHARED, master->fd, 0);
         if (master->process_data == MAP_FAILED) {
             fprintf(stderr, "Failed to map process data: %s", strerror(errno));
             master->process_data = NULL;
@@ -154,6 +154,9 @@ void ecrt_master_receive(ec_master_t *master)
 
 void ecrt_master_state(const ec_master_t *master, ec_master_state_t *state)
 {
+    if (ioctl(master->fd, EC_IOCTL_MASTER_STATE, state) == -1) {
+        fprintf(stderr, "Failed to get master state: %s\n", strerror(errno));
+    }
 }
 
 /*****************************************************************************/

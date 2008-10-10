@@ -47,6 +47,7 @@
 /****************************************************************************/
 
 // Application parameters
+#define FREQUENCY 100
 #define PRIORITY 1
 
 // Optional features
@@ -56,10 +57,13 @@
 
 // EtherCAT
 static ec_master_t *master = NULL;
+static ec_master_state_t master_state = {};
 
 static ec_domain_t *domain1 = NULL;
+static ec_domain_state_t domain1_state = {};
 
 static ec_slave_config_t *sc_ana_in = NULL;
+static ec_slave_config_state_t sc_ana_in_state = {};
 
 // Timer
 static unsigned int sig_alarms = 0;
@@ -75,8 +79,9 @@ static uint8_t *domain1_pd = NULL;
 #define AnaInSlavePos  0, 2
 #define DigOutSlavePos 0, 3
 
-#define Beckhoff_EK1100 0x00000002, 0x044C2C52
-#define Beckhoff_EL2004 0x00000002, 0x07D43052
+#define Beckhoff_EK1100 0x00000002, 0x044c2c52
+#define Beckhoff_EL2004 0x00000002, 0x07d43052
+#define Beckhoff_EL2032 0x00000002, 0x07f03052
 #define Beckhoff_EL3152 0x00000002, 0x0c503052
 #define Beckhoff_EL4102 0x00000002, 0x10063052
 
@@ -90,9 +95,12 @@ const static ec_pdo_entry_reg_t domain1_regs[] = {
     {AnaInSlavePos,  Beckhoff_EL3152, 0x3101, 1, &off_ana_in_status},
     {AnaInSlavePos,  Beckhoff_EL3152, 0x3101, 2, &off_ana_in_value},
 	{AnaOutSlavePos, Beckhoff_EL4102, 0x3001, 1, &off_ana_out},
-	{DigOutSlavePos, Beckhoff_EL2004, 0x3001, 1, &off_dig_out},
+	{DigOutSlavePos, Beckhoff_EL2032, 0x3001, 1, &off_dig_out},
 	{}
 };
+
+static unsigned int counter = 0;
+static unsigned int blink = 0;
 
 /*****************************************************************************/
 
@@ -161,24 +169,100 @@ static ec_sync_info_t el2004_syncs[] = {
 };
 #endif
 
+/*****************************************************************************/
+
+void check_domain1_state(void)
+{
+    ec_domain_state_t ds;
+
+    ecrt_domain_state(domain1, &ds);
+
+    if (ds.working_counter != domain1_state.working_counter)
+        printf("Domain1: WC %u.\n", ds.working_counter);
+    if (ds.wc_state != domain1_state.wc_state)
+        printf("Domain1: State %u.\n", ds.wc_state);
+
+    domain1_state = ds;
+}
+
+/*****************************************************************************/
+
+void check_master_state(void)
+{
+    ec_master_state_t ms;
+
+    ecrt_master_state(master, &ms);
+
+    if (ms.slaves_responding != master_state.slaves_responding)
+        printf("%u slave(s).\n", ms.slaves_responding);
+    if (ms.al_states != master_state.al_states)
+        printf("AL states: 0x%02X.\n", ms.al_states);
+    if (ms.link_up != master_state.link_up)
+        printf("Link is %s.\n", ms.link_up ? "up" : "down");
+
+    master_state = ms;
+}
+
+/*****************************************************************************/
+
+void check_slave_config_states(void)
+{
+    ec_slave_config_state_t s;
+
+    ecrt_slave_config_state(sc_ana_in, &s);
+
+    if (s.al_state != sc_ana_in_state.al_state)
+        printf("AnaIn: State 0x%02X.\n", s.al_state);
+    if (s.online != sc_ana_in_state.online)
+        printf("AnaIn: %s.\n", s.online ? "online" : "offline");
+    if (s.operational != sc_ana_in_state.operational)
+        printf("AnaIn: %soperational.\n",
+                s.operational ? "" : "Not ");
+
+    sc_ana_in_state = s;
+}
+
 /****************************************************************************/
 
 void cyclic_task()
 {
+    int i;
+
+    // receive process data
     ecrt_master_receive(master);
     ecrt_domain_process(domain1);
 
+    // check process data state (optional)
+    check_domain1_state();
+
+    if (counter) {
+        counter--;
+    } else { // do this at 1 Hz
+        counter = FREQUENCY;
+
+        // calculate new process data
+        blink = !blink;
+
+        // check for master state (optional)
+        check_master_state();
+
+        // check for islave configuration state(s) (optional)
+        check_slave_config_states();
+    }
+
 #if 0
-#if EL3152_ALT_PDOS
-    printf("AnaIn: value %u\n",
-            EC_READ_U16(domain1_pd + off_ana_in_value));
-#else
+    // read process data
     printf("AnaIn: state %u value %u\n",
             EC_READ_U8(domain1_pd + off_ana_in_status),
             EC_READ_U16(domain1_pd + off_ana_in_value));
 #endif
+
+#if 1
+    // write process data
+    EC_WRITE_U8(domain1_pd + off_dig_out, blink ? 0x06 : 0x09);
 #endif
 
+    // send process data
     ecrt_domain_queue(domain1);
     ecrt_master_send(master);
 }
@@ -234,7 +318,7 @@ int main(int argc, char **argv)
     }
 
     if (!(sc = ecrt_master_slave_config(
-                    master, DigOutSlavePos, Beckhoff_EL2004))) {
+                    master, DigOutSlavePos, Beckhoff_EL2032))) {
         fprintf(stderr, "Failed to get slave configuration.\n");
         return -1;
     }
@@ -280,7 +364,7 @@ int main(int argc, char **argv)
 
     printf("Starting timer...\n");
     tv.it_interval.tv_sec = 0;
-    tv.it_interval.tv_usec = 10000;
+    tv.it_interval.tv_usec = 1000000 / FREQUENCY;
     tv.it_value.tv_sec = 0;
     tv.it_value.tv_usec = 1000;
     if (setitimer(ITIMER_REAL, &tv, NULL)) {

@@ -298,7 +298,7 @@ int ecrt_slave_config_sdo32(ec_slave_config_t *sc, uint16_t index,
 ec_sdo_request_t *ecrt_slave_config_create_sdo_request(ec_slave_config_t *sc,
         uint16_t index, uint8_t subindex, size_t size)
 {
-    return 0;
+    return 0; // TODO
 }
 
 /*****************************************************************************/
@@ -306,7 +306,7 @@ ec_sdo_request_t *ecrt_slave_config_create_sdo_request(ec_slave_config_t *sc,
 ec_voe_handler_t *ecrt_slave_config_create_voe_handler(ec_slave_config_t *sc,
         size_t size)
 {
-    return 0;
+    return 0; // TODO
 }
 
 /*****************************************************************************/
@@ -314,6 +314,15 @@ ec_voe_handler_t *ecrt_slave_config_create_voe_handler(ec_slave_config_t *sc,
 void ecrt_slave_config_state(const ec_slave_config_t *sc,
         ec_slave_config_state_t *state)
 {
+    ec_ioctl_sc_state_t data;
+
+    data.config_index = sc->index;
+    data.state = state;
+    
+    if (ioctl(sc->master->fd, EC_IOCTL_SC_STATE, &data) == -1) {
+        fprintf(stderr, "Failed to get slave configuration state: %s\n",
+                strerror(errno));
+    }
 }
 
 /*****************************************************************************/

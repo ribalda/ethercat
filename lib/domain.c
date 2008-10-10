@@ -119,6 +119,15 @@ void ecrt_domain_queue(ec_domain_t *domain)
 
 void ecrt_domain_state(const ec_domain_t *domain, ec_domain_state_t *state)
 {
+    ec_ioctl_domain_state_t data;
+
+    data.domain_index = domain->index;
+    data.state = state;
+    
+    if (ioctl(domain->master->fd, EC_IOCTL_DOMAIN_STATE, &data) == -1) {
+        fprintf(stderr, "Failed to get domain state: %s\n",
+                strerror(errno));
+    }
 }
 
 /*****************************************************************************/

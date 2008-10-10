@@ -1560,6 +1560,29 @@ int ec_cdev_ioctl_receive(
 
 /*****************************************************************************/
 
+/** Get the master state.
+ */
+int ec_cdev_ioctl_master_state(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    ec_master_state_t data;
+    
+	if (unlikely(!priv->requested))
+		return -EPERM;
+
+    ecrt_master_state(master, &data);
+
+    if (copy_to_user((void __user *) arg, &data, sizeof(data)))
+        return -EFAULT;
+
+    return 0;
+}
+
+/*****************************************************************************/
+
 /** Set the direction of a sync manager.
  */
 int ec_cdev_ioctl_sc_sync(
@@ -1839,6 +1862,45 @@ int ec_cdev_ioctl_sc_sdo(
 
 /*****************************************************************************/
 
+/** Get the slave configuration's state.
+ */
+int ec_cdev_ioctl_sc_state(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    ec_ioctl_sc_state_t data;
+    const ec_slave_config_t *sc;
+    ec_slave_config_state_t state;
+    
+	if (unlikely(!priv->requested))
+		return -EPERM;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+        return -EFAULT;
+    }
+
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
+
+    if (!(sc = ec_master_get_config_const(master, data.config_index))) {
+        up(&master->master_sem);
+        return -ESRCH;
+    }
+
+    ecrt_slave_config_state(sc, &state);
+
+    up(&master->master_sem);
+
+    if (copy_to_user((void __user *) data.state, &state, sizeof(state)))
+        return -EFAULT;
+
+    return 0;
+}
+
+/*****************************************************************************/
+
 /** Gets the domain's offset in the total process data.
  */
 int ec_cdev_ioctl_domain_offset(
@@ -1922,6 +1984,45 @@ int ec_cdev_ioctl_domain_queue(
 
     ecrt_domain_queue(domain);
     up(&master->master_sem);
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Get the domain state.
+ */
+int ec_cdev_ioctl_domain_state(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    ec_ioctl_domain_state_t data;
+    const ec_domain_t *domain;
+    ec_domain_state_t state;
+    
+	if (unlikely(!priv->requested))
+		return -EPERM;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+        return -EFAULT;
+    }
+
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
+
+    if (!(domain = ec_master_find_domain_const(master, data.domain_index))) {
+        up(&master->master_sem);
+        return -ESRCH;
+    }
+
+    ecrt_domain_state(domain, &state);
+
+    up(&master->master_sem);
+
+    if (copy_to_user((void __user *) data.state, &state, sizeof(state)))
+        return -EFAULT;
+
     return 0;
 }
 
@@ -2067,6 +2168,8 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             if (!(filp->f_mode & FMODE_WRITE))
 				return -EPERM;
 			return ec_cdev_ioctl_receive(master, arg, priv);
+        case EC_IOCTL_MASTER_STATE:
+			return ec_cdev_ioctl_master_state(master, arg, priv);
         case EC_IOCTL_SC_SYNC:
             if (!(filp->f_mode & FMODE_WRITE))
 				return -EPERM;
@@ -2095,6 +2198,8 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             if (!(filp->f_mode & FMODE_WRITE))
 				return -EPERM;
 			return ec_cdev_ioctl_sc_sdo(master, arg, priv);
+        case EC_IOCTL_SC_STATE:
+			return ec_cdev_ioctl_sc_state(master, arg, priv);
         case EC_IOCTL_DOMAIN_OFFSET:
 			return ec_cdev_ioctl_domain_offset(master, arg, priv);
         case EC_IOCTL_DOMAIN_PROCESS:
@@ -2105,6 +2210,8 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             if (!(filp->f_mode & FMODE_WRITE))
 				return -EPERM;
 			return ec_cdev_ioctl_domain_queue(master, arg, priv);
+        case EC_IOCTL_DOMAIN_STATE:
+			return ec_cdev_ioctl_domain_state(master, arg, priv);
         default:
             return -ENOTTY;
     }
