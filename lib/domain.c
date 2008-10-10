@@ -66,13 +66,6 @@ int ecrt_domain_reg_pdo_entry_list(ec_domain_t *domain,
 
 /*****************************************************************************/
 
-size_t ecrt_domain_size(ec_domain_t *domain)
-{
-	return 0;
-}
-
-/*****************************************************************************/
-
 uint8_t *ecrt_domain_data(ec_domain_t *domain)
 {
     return 0;

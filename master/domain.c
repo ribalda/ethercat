@@ -344,7 +344,7 @@ int ecrt_domain_reg_pdo_entry_list(ec_domain_t *domain,
 
 /*****************************************************************************/
 
-size_t ecrt_domain_size(ec_domain_t *domain)
+size_t ecrt_domain_size(const ec_domain_t *domain)
 {
     return domain->data_size;
 }
