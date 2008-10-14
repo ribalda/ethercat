@@ -45,6 +45,7 @@
 #include "cdev.h"
 #include "master.h"
 #include "slave_config.h"
+#include "voe_handler.h"
 #include "ioctl.h"
 
 /*****************************************************************************/
@@ -1862,6 +1863,54 @@ int ec_cdev_ioctl_sc_sdo(
 
 /*****************************************************************************/
 
+/** Create a VoE handler.
+ */
+int ec_cdev_ioctl_sc_create_voe_handler(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    ec_ioctl_voe_t data;
+    ec_slave_config_t *sc;
+    ec_voe_handler_t *voe;
+
+	if (unlikely(!priv->requested))
+		return -EPERM;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+        return -EFAULT;
+    }
+
+    data.voe_index = 0;
+
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
+
+    sc = ec_master_get_config(master, data.config_index);
+    if (!sc) {
+        up(&master->master_sem);
+        return -ESRCH;
+    }
+
+    list_for_each_entry(voe, &sc->voe_handlers, list) {
+        data.voe_index++;
+    }
+
+    up(&master->master_sem);
+
+    voe = ecrt_slave_config_create_voe_handler(sc, data.size);
+    if (!voe)
+        return -ENOMEM;
+
+    if (copy_to_user((void __user *) arg, &data, sizeof(data)))
+        return -EFAULT;
+
+    return 0;
+}
+
+/*****************************************************************************/
+
 /** Get the slave configuration's state.
  */
 int ec_cdev_ioctl_sc_state(
@@ -2021,6 +2070,277 @@ int ec_cdev_ioctl_domain_state(
     up(&master->master_sem);
 
     if (copy_to_user((void __user *) data.state, &state, sizeof(state)))
+        return -EFAULT;
+
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Sets the VoE send header.
+ */
+int ec_cdev_ioctl_voe_send_header(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    ec_ioctl_voe_t data;
+    ec_slave_config_t *sc;
+    ec_voe_handler_t *voe;
+    uint32_t vendor_id;
+    uint16_t vendor_type;
+
+	if (unlikely(!priv->requested))
+        return -EPERM;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
+        return -EFAULT;
+
+    if (get_user(vendor_id, data.vendor_id))
+        return -EFAULT;
+
+    if (get_user(vendor_type, data.vendor_type))
+        return -EFAULT;
+
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
+
+    if (!(sc = ec_master_get_config(master, data.config_index))) {
+        up(&master->master_sem);
+        return -ESRCH;
+    }
+
+    if (!(voe = ec_slave_config_find_voe_handler(sc, data.voe_index))) {
+        up(&master->master_sem);
+        return -ESRCH;
+    }
+
+    up(&master->master_sem);
+
+    ecrt_voe_handler_send_header(voe, vendor_id, vendor_type);
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Gets the received VoE header.
+ */
+int ec_cdev_ioctl_voe_rec_header(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    ec_ioctl_voe_t data;
+    ec_slave_config_t *sc;
+    ec_voe_handler_t *voe;
+    uint32_t vendor_id;
+    uint16_t vendor_type;
+
+	if (unlikely(!priv->requested))
+        return -EPERM;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
+        return -EFAULT;
+
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
+
+    if (!(sc = ec_master_get_config(master, data.config_index))) {
+        up(&master->master_sem);
+        return -ESRCH;
+    }
+
+    if (!(voe = ec_slave_config_find_voe_handler(sc, data.voe_index))) {
+        up(&master->master_sem);
+        return -ESRCH;
+    }
+
+    ecrt_voe_handler_received_header(voe, &vendor_id, &vendor_type);
+
+    up(&master->master_sem);
+
+    if (likely(data.vendor_id))
+        if (put_user(vendor_id, data.vendor_id))
+            return -EFAULT;
+
+    if (likely(data.vendor_type))
+        if (put_user(vendor_type, data.vendor_type))
+            return -EFAULT;
+
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Starts a VoE read operation.
+ */
+int ec_cdev_ioctl_voe_read(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    ec_ioctl_voe_t data;
+    ec_slave_config_t *sc;
+    ec_voe_handler_t *voe;
+
+	if (unlikely(!priv->requested))
+        return -EPERM;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
+        return -EFAULT;
+
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
+
+    if (!(sc = ec_master_get_config(master, data.config_index))) {
+        up(&master->master_sem);
+        return -ESRCH;
+    }
+
+    if (!(voe = ec_slave_config_find_voe_handler(sc, data.voe_index))) {
+        up(&master->master_sem);
+        return -ESRCH;
+    }
+
+    up(&master->master_sem);
+
+    ecrt_voe_handler_read(voe);
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Starts a VoE write operation.
+ */
+int ec_cdev_ioctl_voe_write(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    ec_ioctl_voe_t data;
+    ec_slave_config_t *sc;
+    ec_voe_handler_t *voe;
+
+	if (unlikely(!priv->requested))
+        return -EPERM;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
+        return -EFAULT;
+
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
+
+    if (!(sc = ec_master_get_config(master, data.config_index))) {
+        up(&master->master_sem);
+        return -ESRCH;
+    }
+
+    if (!(voe = ec_slave_config_find_voe_handler(sc, data.voe_index))) {
+        up(&master->master_sem);
+        return -ESRCH;
+    }
+
+    up(&master->master_sem);
+
+    if (data.size) {
+        if (data.size > ec_voe_handler_mem_size(voe))
+            return -EOVERFLOW;
+
+        if (copy_from_user(ecrt_voe_handler_data(voe),
+                    (void __user *) data.data, data.size))
+            return -EFAULT;
+    }
+
+    ecrt_voe_handler_write(voe, data.size);
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Executes the VoE state machine.
+ */
+int ec_cdev_ioctl_voe_exec(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    ec_ioctl_voe_t data;
+    ec_slave_config_t *sc;
+    ec_voe_handler_t *voe;
+
+	if (unlikely(!priv->requested))
+        return -EPERM;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
+        return -EFAULT;
+
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
+
+    if (!(sc = ec_master_get_config(master, data.config_index))) {
+        up(&master->master_sem);
+        return -ESRCH;
+    }
+
+    if (!(voe = ec_slave_config_find_voe_handler(sc, data.voe_index))) {
+        up(&master->master_sem);
+        return -ESRCH;
+    }
+
+    up(&master->master_sem);
+
+    data.state = ecrt_voe_handler_execute(voe);
+    if (data.state == EC_REQUEST_SUCCESS && voe->dir == EC_DIR_INPUT)
+        data.size = ecrt_voe_handler_data_size(voe);
+
+    if (copy_to_user((void __user *) arg, &data, sizeof(data)))
+        return -EFAULT;
+
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Reads the received VoE data.
+ */
+int ec_cdev_ioctl_voe_data(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    ec_ioctl_voe_t data;
+    ec_slave_config_t *sc;
+    ec_voe_handler_t *voe;
+
+	if (unlikely(!priv->requested))
+        return -EPERM;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
+        return -EFAULT;
+
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
+
+    if (!(sc = ec_master_get_config(master, data.config_index))) {
+        up(&master->master_sem);
+        return -ESRCH;
+    }
+
+    if (!(voe = ec_slave_config_find_voe_handler(sc, data.voe_index))) {
+        up(&master->master_sem);
+        return -ESRCH;
+    }
+
+    up(&master->master_sem);
+
+    if (copy_to_user((void __user *) data.data, ecrt_voe_handler_data(voe),
+                ecrt_voe_handler_data_size(voe)))
         return -EFAULT;
 
     return 0;
@@ -2198,6 +2518,10 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             if (!(filp->f_mode & FMODE_WRITE))
 				return -EPERM;
 			return ec_cdev_ioctl_sc_sdo(master, arg, priv);
+        case EC_IOCTL_SC_VOE:
+            if (!(filp->f_mode & FMODE_WRITE))
+				return -EPERM;
+			return ec_cdev_ioctl_sc_create_voe_handler(master, arg, priv);
         case EC_IOCTL_SC_STATE:
 			return ec_cdev_ioctl_sc_state(master, arg, priv);
         case EC_IOCTL_DOMAIN_OFFSET:
@@ -2212,6 +2536,26 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			return ec_cdev_ioctl_domain_queue(master, arg, priv);
         case EC_IOCTL_DOMAIN_STATE:
 			return ec_cdev_ioctl_domain_state(master, arg, priv);
+        case EC_IOCTL_VOE_SEND_HEADER:
+            if (!(filp->f_mode & FMODE_WRITE))
+				return -EPERM;
+			return ec_cdev_ioctl_voe_send_header(master, arg, priv);
+        case EC_IOCTL_VOE_REC_HEADER:
+			return ec_cdev_ioctl_voe_rec_header(master, arg, priv);
+        case EC_IOCTL_VOE_READ:
+            if (!(filp->f_mode & FMODE_WRITE))
+				return -EPERM;
+			return ec_cdev_ioctl_voe_read(master, arg, priv);
+        case EC_IOCTL_VOE_WRITE:
+            if (!(filp->f_mode & FMODE_WRITE))
+				return -EPERM;
+			return ec_cdev_ioctl_voe_write(master, arg, priv);
+        case EC_IOCTL_VOE_EXEC:
+            if (!(filp->f_mode & FMODE_WRITE))
+				return -EPERM;
+			return ec_cdev_ioctl_voe_exec(master, arg, priv);
+        case EC_IOCTL_VOE_DATA:
+			return ec_cdev_ioctl_voe_data(master, arg, priv);
         default:
             return -ENOTTY;
     }

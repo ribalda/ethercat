@@ -39,6 +39,7 @@
 
 #include "slave_config.h"
 #include "domain.h"
+#include "voe_handler.h"
 #include "master.h"
 #include "master/ioctl.h"
 
@@ -306,7 +307,45 @@ ec_sdo_request_t *ecrt_slave_config_create_sdo_request(ec_slave_config_t *sc,
 ec_voe_handler_t *ecrt_slave_config_create_voe_handler(ec_slave_config_t *sc,
         size_t size)
 {
-    return 0; // TODO
+    ec_ioctl_voe_t data;
+    ec_voe_handler_t *voe;
+    unsigned int index;
+
+    voe = malloc(sizeof(ec_voe_handler_t));
+    if (!voe) {
+        fprintf(stderr, "Failed to allocate memory.\n");
+        return 0;
+    }
+
+    if (size) {
+        voe->data = malloc(size);
+        if (!voe->data) {
+            fprintf(stderr, "Failed to allocate %u bytes of VoE data"
+                    " memory.\n", size);
+            free(voe);
+            return 0;
+        }
+    } else {
+        voe->data = NULL;
+    }
+
+    data.config_index = sc->index;
+    data.size = size;
+    
+    if (ioctl(sc->master->fd, EC_IOCTL_SC_VOE, &data) == -1) {
+        fprintf(stderr, "Failed to create VoE handler: %s\n",
+                strerror(errno));
+        if (voe->data)
+            free(voe->data);
+        free(voe);
+        return NULL; 
+    }
+
+    voe->config = sc;
+    voe->index = data.voe_index;
+    voe->data_size = size;
+    voe->mem_size = size;
+    return voe;
 }
 
 /*****************************************************************************/

@@ -107,6 +107,21 @@ void ec_voe_handler_clear(
     ec_datagram_clear(&voe->datagram);
 }
 
+/*****************************************************************************/
+
+/** Get usable memory size.
+ */
+size_t ec_voe_handler_mem_size(
+		const ec_voe_handler_t *voe /**< VoE handler. */
+		)
+{
+	if (voe->datagram.mem_size >= EC_MBOX_HEADER_SIZE + EC_VOE_HEADER_SIZE)
+		return voe->datagram.mem_size -
+			(EC_MBOX_HEADER_SIZE + EC_VOE_HEADER_SIZE);
+	else
+		return 0;
+}
+
 /*****************************************************************************
  * Application interface.
  ****************************************************************************/

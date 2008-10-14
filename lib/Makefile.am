@@ -43,11 +43,13 @@ libethercat_la_SOURCES = \
 	common.c \
 	domain.c \
 	master.c \
-	slave_config.c
+	slave_config.c \
+	voe_handler.c
 
 noinst_HEADERS = \
 	domain.h \
 	master.h \
-	slave_config.h
+	slave_config.h \
+	voe_handler.h
 
 #------------------------------------------------------------------------------

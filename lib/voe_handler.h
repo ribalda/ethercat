@@ -31,47 +31,16 @@
  *
  *****************************************************************************/
 
-/**
-   \file
-   Vendor-specific-over-EtherCAT protocol handler.
-*/
+#include "include/ecrt.h"
 
 /*****************************************************************************/
 
-#ifndef __EC_VOE_HANDLER_H__
-#define __EC_VOE_HANDLER_H__
-
-#include <linux/list.h>
-
-#include "globals.h"
-#include "datagram.h"
-
-/*****************************************************************************/
-
-/** Vendor-specific-over-EtherCAT handler.
- */
 struct ec_voe_handler {
-    struct list_head list; /**< List item. */
-    ec_slave_config_t *config; /**< Parent slave configuration. */
-    ec_datagram_t datagram; /**< State machine datagram. */
-    uint32_t vendor_id; /**< Vendor ID for the header. */
-    uint16_t vendor_type; /**< Vendor type for the header. */
-    size_t data_size; /**< Size of Sdo data. */
-    ec_direction_t dir; /**< Direction. EC_DIR_OUTPUT means writing to
-                          the slave, EC_DIR_INPUT means reading from the
-                          slave. */
-    void (*state)(ec_voe_handler_t *); /**< State function */
-    ec_internal_request_state_t request_state; /**< Handler state. */
-    unsigned int retries; /**< retries upon datagram timeout */
-    unsigned long jiffies_start; /**< Timestamp for timeout calculation. */
+    ec_slave_config_t *config;
+    unsigned int index;
+    size_t data_size;
+    size_t mem_size;
+    uint8_t *data;
 };
 
 /*****************************************************************************/
-
-int ec_voe_handler_init(ec_voe_handler_t *, ec_slave_config_t *, size_t);
-void ec_voe_handler_clear(ec_voe_handler_t *);
-size_t ec_voe_handler_mem_size(const ec_voe_handler_t *);
-
-/*****************************************************************************/
-
-#endif
