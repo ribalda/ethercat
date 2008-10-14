@@ -53,6 +53,8 @@ noinst_HEADERS = \
 	Kbuild.in \
 	e100-2.6.20-ethercat.c \
 	e100-2.6.20-orig.c \
+	e100-2.6.24-ethercat.c \
+	e100-2.6.24-orig.c \
 	e100-2.6.26-ethercat.c \
 	e100-2.6.26-orig.c \
 	ecdev.h
