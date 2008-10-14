@@ -89,6 +89,8 @@ void ec_slave_config_load_default_sync_config(ec_slave_config_t *);
 unsigned int ec_slave_config_sdo_count(const ec_slave_config_t *);
 const ec_sdo_request_t *ec_slave_config_get_sdo_by_pos_const(
         const ec_slave_config_t *, unsigned int);
+ec_voe_handler_t *ec_slave_config_find_voe_handler(ec_slave_config_t *,
+		unsigned int);
 
 /*****************************************************************************/
 

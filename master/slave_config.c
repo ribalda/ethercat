@@ -364,6 +364,26 @@ const ec_sdo_request_t *ec_slave_config_get_sdo_by_pos_const(
     return NULL;
 }
 
+/*****************************************************************************/
+
+/** Finds a VoE handler via its position in the list.
+ */
+ec_voe_handler_t *ec_slave_config_find_voe_handler(
+        ec_slave_config_t *sc, /**< Slave configuration. */
+        unsigned int pos /**< Position in the list. */
+        )
+{
+    ec_voe_handler_t *voe;
+
+    list_for_each_entry(voe, &sc->voe_handlers, list) {
+        if (pos--)
+            continue;
+        return voe;
+    }
+
+    return NULL;
+}
+
 /******************************************************************************
  *  Realtime interface
  *****************************************************************************/
