@@ -374,7 +374,7 @@ int main(int argc, char **argv)
 
     printf("Started.\n");
 	while (1) {
-        sleep(1); // always interrupted by SIGALRM
+        pause();
 
 #if 0
         struct timeval t;
