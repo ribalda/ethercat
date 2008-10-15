@@ -58,8 +58,6 @@
 
 /*****************************************************************************/
 
-void ec_voe_handler_clear_data(ec_voe_handler_t *);
-
 void ec_voe_handler_state_write_start(ec_voe_handler_t *);
 void ec_voe_handler_state_write_response(ec_voe_handler_t *);
 
@@ -199,6 +197,8 @@ ec_request_state_t ecrt_voe_handler_execute(ec_voe_handler_t *voe)
  * State functions.
  *****************************************************************************/
 
+/** Start writing VoE data.
+ */
 void ec_voe_handler_state_write_start(ec_voe_handler_t *voe)
 {
     ec_slave_t *slave = voe->config->slave;
@@ -234,6 +234,8 @@ void ec_voe_handler_state_write_start(ec_voe_handler_t *voe)
 
 /*****************************************************************************/
 
+/** Wait for the mailbox response.
+ */
 void ec_voe_handler_state_write_response(ec_voe_handler_t *voe)
 {
     ec_datagram_t *datagram = &voe->datagram;
@@ -282,6 +284,8 @@ void ec_voe_handler_state_write_response(ec_voe_handler_t *voe)
 
 /*****************************************************************************/
 
+/** Start reading VoE data.
+ */
 void ec_voe_handler_state_read_start(ec_voe_handler_t *voe)
 {
     ec_datagram_t *datagram = &voe->datagram;
@@ -306,6 +310,8 @@ void ec_voe_handler_state_read_start(ec_voe_handler_t *voe)
 
 /*****************************************************************************/
 
+/** Check for new data in the mailbox.
+ */
 void ec_voe_handler_state_read_check(ec_voe_handler_t *voe)
 {
     ec_datagram_t *datagram = &voe->datagram;
@@ -356,6 +362,8 @@ void ec_voe_handler_state_read_check(ec_voe_handler_t *voe)
 
 /*****************************************************************************/
 
+/** Read the pending mailbox data.
+ */
 void ec_voe_handler_state_read_response(ec_voe_handler_t *voe)
 {
     ec_datagram_t *datagram = &voe->datagram;
@@ -419,12 +427,16 @@ void ec_voe_handler_state_read_response(ec_voe_handler_t *voe)
 
 /*****************************************************************************/
 
+/** Successful termination state function.
+ */
 void ec_voe_handler_state_end(ec_voe_handler_t *voe)
 {
 }
 
 /*****************************************************************************/
 
+/** Failure termination state function.
+ */
 void ec_voe_handler_state_error(ec_voe_handler_t *voe)
 {
 }

@@ -50,18 +50,18 @@
 
 /*****************************************************************************/
 
-/** \cond */
-
-int eccdev_open(struct inode *, struct file *);
-int eccdev_release(struct inode *, struct file *);
-long eccdev_ioctl(struct file *, unsigned int, unsigned long);
-int eccdev_mmap(struct file *, struct vm_area_struct *);
+static int eccdev_open(struct inode *, struct file *);
+static int eccdev_release(struct inode *, struct file *);
+static long eccdev_ioctl(struct file *, unsigned int, unsigned long);
+static int eccdev_mmap(struct file *, struct vm_area_struct *);
 
 static struct page *eccdev_vma_nopage(
         struct vm_area_struct *, unsigned long, int *);
 
 /*****************************************************************************/
 
+/** File operation callbacks for the EtherCAT character device.
+ */
 static struct file_operations eccdev_fops = {
     .owner          = THIS_MODULE,
     .open           = eccdev_open,
@@ -70,21 +70,21 @@ static struct file_operations eccdev_fops = {
     .mmap           = eccdev_mmap
 };
 
+/** Callbacks for a virtual memory area retrieved with ecdevc_mmap().
+ */
 struct vm_operations_struct eccdev_vm_ops = {
     .nopage = eccdev_vma_nopage
 };
-
-/** \endcond */
 
 /*****************************************************************************/
 
 /** Private data structure for file handles.
  */
 typedef struct {
-    ec_cdev_t *cdev;
-    unsigned int requested;
-    uint8_t *process_data;
-    size_t process_data_size;
+    ec_cdev_t *cdev; /**< Character device. */
+    unsigned int requested; /**< Master wac requested via this file handle. */
+    uint8_t *process_data; /**< Total process data area. */
+    size_t process_data_size; /**< Size of the \a process_data. */
 } ec_cdev_priv_t;
 
 /*****************************************************************************/
@@ -2563,6 +2563,11 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 /*****************************************************************************/
 
+/** Memory-map callback for the EtherCAT character device.
+ *
+ * The actual mapping will be done in the eccdev_vma_nopage() callback of the
+ * virtual memory area.
+ */
 int eccdev_mmap(
         struct file *filp,
         struct vm_area_struct *vma
@@ -2582,10 +2587,16 @@ int eccdev_mmap(
 
 /*****************************************************************************/
 
+/** Page fault callback for a virtual memory area.
+ *
+ * Called at the first access on a virtual-memory area retrieved with
+ * ecdev_mmap().
+ */
 struct page *eccdev_vma_nopage(
-        struct vm_area_struct *vma,
-        unsigned long address,
-        int *type
+        struct vm_area_struct *vma, /**< Virtual memory area initialized by
+                                      the kernel. */
+        unsigned long address, /**< Requested virtual address. */
+        int *type /**< Type output parameter. */
         )
 {
     unsigned long offset;

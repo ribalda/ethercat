@@ -62,6 +62,7 @@ EXTRA_DIST = \
 	README.EoE
 
 BUILT_SOURCES = \
+	Doxyfile \
 	Kbuild
 
 modules:

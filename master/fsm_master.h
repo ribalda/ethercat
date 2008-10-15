@@ -71,7 +71,7 @@ typedef struct {
     ec_direction_t dir; /**< Direction. */
     uint16_t offset; /**< Physical memory offset. */
     size_t length; /**< Number of bytes. */
-    uint8_t *data;
+    uint8_t *data; /**< Data to write / memory for read data. */
     ec_internal_request_state_t state; /**< State of the request. */
 } ec_phy_request_t;
 
