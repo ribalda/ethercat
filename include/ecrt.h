@@ -746,6 +746,10 @@ ec_sdo_request_t *ecrt_slave_config_create_sdo_request(
 /** Create an VoE handler to exchange vendor-specific data during realtime
  * operation.
  *
+ * The number of VoE handlers per slave configuration is not limited, but
+ * usually it is enough to create one for sending and one for receiving, if
+ * both can be done simultaneously.
+ *
  * The created VoE handler object is freed automatically when the master is
  * released.
  */
@@ -947,7 +951,9 @@ void ecrt_sdo_request_read(
 /** Sets the VoE header for future send operations.
  *
  * A VoE message shall contain a 4-byte vendor ID, followed by a 2-byte vendor
- * type at as header. These numbers can be set with this function.
+ * type at as header. These numbers can be set with this function. The values
+ * are valid and will be used for future send operations until the next call
+ * of this method.
  */
 void ecrt_voe_handler_send_header(
         ec_voe_handler_t *voe, /**< VoE handler. */
@@ -957,8 +963,8 @@ void ecrt_voe_handler_send_header(
 
 /** Reads the header data of a received VoE message.
  *
- * This method can be used after a read operation has succeded, to get the
- * received header information.
+ * This method can be used to get the received VoE header information after a
+ * read operation has succeeded.
  *
  * The header information is stored at the memory given by the pointer
  * parameters.
@@ -971,15 +977,21 @@ void ecrt_voe_handler_received_header(
 
 /** Access to the VoE handler's data.
  *
- * This function returns a pointer to the VoE handler's internal memory, after
- * the VoE header (see ecrt_voe_handler_send_header()).
+ * This function returns a pointer to the VoE handler's internal memory, that
+ * points to the actual VoE data right after the VoE header (see
+ * ecrt_voe_handler_send_header()).
  *
  * - After a read operation was successful, the memory contains the received
  *   data. The size of the received data can be determined via
  *   ecrt_voe_handler_data_size().
- * - Before a write operation is triggered, the data have to be written to
- *   the internal memory. Be sure, that the data fit into the memory. The
+ * - Before a write operation is triggered, the data have to be written to the
+ *   internal memory. Be sure, that the data fit into the memory. The reserved
  *   memory size is a parameter of ecrt_slave_config_create_voe_handler().
+ *
+ * \attention The returned pointer is not necessarily persistent: After a read
+ * operation, the internal memory may have been reallocated. This can be
+ * avoided by reserving enough memory via the \a size parameter of
+ * ecrt_slave_config_create_voe_handler().
  *
  * \return Pointer to the internal memory.
  */
@@ -1019,6 +1031,10 @@ void ecrt_voe_handler_write(
  * After this function has been called, the ecrt_voe_handler_execute() method
  * must be called in every bus cycle as long as it returns EC_REQUEST_BUSY. No
  * other operation may be started while the handler is busy.
+ *
+ * The state machine queries the slave's send mailbox for new data to be send
+ * to the master. If no data appear within the EC_VOE_RESPONSE_TIMEOUT
+ * (defined in master/voe_handler.c), the operation fails.
  *
  * On success, the size of the read data can be determined via
  * ecrt_voe_handler_data_size(), while the VoE header of the received data
