@@ -199,7 +199,7 @@ independent architecture.
   \end{itemize}
 
 \item Common ``Application Interface'' for applications, that want to use
-EtherCAT functionality (see section~\ref{sec:ecrt}).
+EtherCAT functionality (see chap.~\ref{sec:ecrt}).
 
 \item \textit{Domains} are introduced, to allow grouping of process
   data transfers with different slave groups and task periods.
@@ -332,7 +332,7 @@ Figure~\ref{fig:arch} gives a general overview of the master architecture.
 Kernel module containing one or more EtherCAT master instances (see
 section~\ref{sec:mastermod}), the ``Device Interface'' (see
 section~\ref{sec:ecdev}) and the ``Application Interface'' (see
-section~\ref{sec:ecrt}).
+chap.~\ref{sec:ecrt}).
 
 \paragraph{Device Modules}
 \index{Device modules}
@@ -353,7 +353,7 @@ process data with EtherCAT slaves). These modules are not part of the EtherCAT
 master code\footnote{Although there are some examples provided in the
 \textit{examples/} directory.}, but have to be generated or written by the
 user. An application module can ``request'' a master through the application
-interface (see section~\ref{sec:ecrt}). If this succeeds, the module has the
+interface (see chap.~\ref{sec:ecrt}). If this succeeds, the module has the
 control over the master: It can provide a bus configuration and exchange
 process data.
 
@@ -428,7 +428,7 @@ MAC addresses for multiple masters have to be separated by commas:
 The two masters can be addressed by their indices 0 and 1 respectively (see
 figure~\ref{fig:masters}). The master index is needed for the
 \lstinline+ecrt_master_request()+ function of the application interface (see
-section~\ref{sec:ecrt}) and the \lstinline+--master+ option of the
+chap.~\ref{sec:ecrt}) and the \lstinline+--master+ option of the
 \textit{ethercat} command-line tool (see section~\ref{sec:ethercat}), which
 defaults to $0$.
 
@@ -629,7 +629,7 @@ code. They are documented in the source code.
 In some cases, one master is used by several instances, for example when an
 application does cyclic process data exchange, and there are EoE-capable slaves
 that require to exchange Ethernet data with the kernel (see
-section~\ref{sec:eoeimp}). For this reason, the master is a shared resource,
+section~\ref{sec:eoe}). For this reason, the master is a shared resource,
 and access to it has to be sequentialized. This is usually done by locking with
 semaphores, or other methods to protect critical sections.
 
@@ -655,8 +655,8 @@ The application's cyclic task uses the master for process data exchange, while
 the master-internal EoE process uses it to communicate with EoE-capable
 slaves.  Both have to acquire the master lock before access: The application
 task can access the lock natively, while the EoE process has to use the
-callbacks.  See the application interface documentation
-(section~\ref{sec:ecrt} of how to use the locking callbacks.
+callbacks.  See the application interface documentation (chap.~\ref{sec:ecrt}
+of how to use the locking callbacks.
 
 %------------------------------------------------------------------------------
 
@@ -1007,7 +1007,7 @@ time it waits for datagram reception. There is no difficulty when only
 one instance is using the master, but if more instances want to
 (synchronously\footnote{At this time, synchronous master access will
   be adequate to show the advantages of an FSM. The asynchronous
-  approach will be discussed in section~\ref{sec:eoeimp}}) use the
+  approach will be discussed in section~\ref{sec:eoe}}) use the
 master, it is inevitable to think about an alternative to the
 sequential model.
 
@@ -1577,7 +1577,7 @@ The Pdo state machines are a set of state machines that read or write the Pdo
 assignment and the Pdo mapping via the ``CoE Communication Area'' described in
 \cite[section 5.6.7.4]{alspec}. For the object access, the
 CANopen-over-EtherCAT access primitives are used (see
-section~\ref{sec:coeimp}), so the slave must support the CoE mailbox protocol.
+section~\ref{sec:coe}), so the slave must support the CoE mailbox protocol.
 
 \paragraph{Pdo Reading FSM} This state machine (fig.~\ref{fig:fsm-pdo-read})
 has the purpose to read the complete Pdo configuration of a slave. It reads
@@ -1637,7 +1637,7 @@ protocols. See the below section for details.
 %------------------------------------------------------------------------------
 
 \section{Ethernet-over-EtherCAT (EoE)}
-\label{sec:eoeimp}
+\label{sec:eoe}
 \index{EoE}
 
 The EtherCAT master implements the Ethernet-over-EtherCAT mailbox protocol to
@@ -1795,7 +1795,7 @@ application-layer state is automatically set to OP.
 %------------------------------------------------------------------------------
 
 \section{CANopen-over-EtherCAT (CoE)}
-\label{sec:coeimp}
+\label{sec:coe}
 \index{CoE}
 
 The CANopen-over-EtherCAT protocol \cite[section~5.6]{alspec} is used to
