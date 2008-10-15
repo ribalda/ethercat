@@ -63,7 +63,7 @@
 \SVN $Date$
 \SVN $Revision$
 
-\newcommand{\masterversion}{1.4.0}
+\newcommand{\masterversion}{1.5.0}
 \newcommand{\linenum}[1]{\normalfont\textcircled{\tiny #1}}
 
 \makeindex
@@ -568,6 +568,7 @@ the module code.
 %   Pdo entry registration
 %   Sdo configuration
 %   Sdo access
+%   VoE handlers
 %   Cyclic operation
 
 The application interface provides functions and data structures for
@@ -1868,6 +1869,32 @@ in figure~\ref{fig:fsm-coedown}.
 \item[ERROR] The Sdo download was aborted due to an error.
 
 \end{description}
+
+%------------------------------------------------------------------------------
+
+\section{Vendor-specific-over-EtherCAT (VoE)}
+\label{sec:voe}
+\index{VoE}
+
+The VoE protocol opens the possibility to implement a vendor-specific mailbox
+communication protocol. VoE mailbox messages are prepended by a VoE header
+containing a 32-bit vendor ID and a 16-bit vendor-type. There are no more
+constraints regarding this protocol.
+
+The EtherCAT master allows to create multiple VoE handlers per slave
+configuration via the application interface (see chap.~\ref{sec:ecrt}). These
+handlers contain the state machine necessary for the communication via VoE.
+One read or write operation may be issued at a time. After the operation is
+initiated, the handler must be executed cyclically until it is finished. After
+that, the results of the operation can be retrieved.
+
+A VoE handler has an own datagram structure, that is marked for exchange after
+each execution step. So the application can decide, how many handlers to
+execute before sending the corresponding EtherCAT frame(s).
+
+For more information about using VoE handlers, see the application interface
+documentation (chap.~\ref{sec:ecrt}) or the example applications provided in
+the \textit{examples/} subdirectory.
 
 %------------------------------------------------------------------------------
 
