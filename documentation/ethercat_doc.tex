@@ -20,7 +20,10 @@
 \usepackage{textcomp}
 \usepackage{url}
 \usepackage{SIunits}
-\usepackage[pdfpagelabels,plainpages=false]{hyperref}
+\usepackage{hyperref}
+
+\hypersetup{pdfpagelabels,plainpages=false}
+\hypersetup{linkcolor=blue,colorlinks=true,urlcolor=blue}
 
 \setlength{\parskip}{0.8ex plus 0.8ex minus 0.5ex}
 \setlength{\parindent}{0mm}
@@ -234,7 +237,7 @@ EtherCAT functionality (see chap.~\ref{sec:ecrt}).
 
   \item Slave configuration via Sdos.
 
-  \item Sdo access from user-space and from the application.
+  \item Sdo access from userspace and from the application.
 
   \end{itemize}
 
@@ -249,7 +252,7 @@ EtherCAT functionality (see chap.~\ref{sec:ecrt}).
 
   \end{itemize}
 
-\item User space command-line-tool ``ethercat`` (see
+\item Userspace command-line-tool ``ethercat`` (see
 section~\ref{sec:ethercat})
 
   \begin{itemize}
@@ -287,10 +290,15 @@ section~\ref{sec:ethercat})
 \section{License}
 \label{sec:license}
 
-The master code is released under the terms and conditions of the GNU
-General Public License\index{GPL} \cite{gpl} (version 2). Other
-developers, that want to use EtherCAT with Linux systems, are invited
-to use the master code or even participate on development.
+The master code is released under the terms and conditions of the GNU General
+Public License (GPL \cite{gpl})\index{GPL}, version 2. Other developers, that
+want to use EtherCAT with Linux systems, are invited to use the master code or
+even participate on development.
+
+To allow static linking of userspace application against the master's
+application interface (see chap.~\ref{sec:ecrt}), the userspace library (see
+sec.~\ref{sec:userlib}) is licensed under the terms and conditions of the GNU
+Lesser General Public License (LGPL \cite{lgpl})\index{LGPL}, version 2.1.
 
 %------------------------------------------------------------------------------
 
@@ -303,17 +311,17 @@ an early design decision, which has been made for several reasons:
 
 \begin{itemize}
 
-\item Kernel code has significantly better realtime characteristics, i.~e.
-less latency than user space code. It was foreseeable, that a fieldbus master
-has a lot of cyclic work to do. Cyclic work is usually triggered by timer
-interrupts inside the kernel. The execution delay of a function that processes
-timer interrupts is less, when it resides in kernel space, because there is no
-need of time-consuming context switches to a user space process.
+\item Kernel code has significantly better realtime characteristics,
+i.\,e.~less latency than userspace code. It was foreseeable, that a fieldbus
+master has a lot of cyclic work to do. Cyclic work is usually triggered by
+timer interrupts inside the kernel. The execution delay of a function that
+processes timer interrupts is less, when it resides in kernelspace, because
+there is no need of time-consuming context switches to a userspace process.
 
 \item It was also foreseeable, that the master code has to directly
 communicate with the Ethernet hardware. This has to be done in the kernel
 anyway (through network device drivers), which is one more reason for the
-master code being in kernel space.
+master code being in kernelspace.
 
 \end{itemize}
 
@@ -379,10 +387,10 @@ possible until then.
 \item[Idle phase]\index{Idle phase} takes effect when the master has accepted
 an Ethernet device, but is not requested by any application yet. The master
 runs its state machine (see section~\ref{sec:fsm-master}), that automatically
-scans the bus for slaves and executes pending operations from the user space
-interface (for example Sdo access). The command-line tool can be used to access
-the bus, but there is no process data exchange because of the missing bus
-configuration.
+scans the bus for slaves and executes pending operations from the userspace
+interface (for example Sdo access). The command-line tool can be used to
+access the bus, but there is no process data exchange because of the missing
+bus configuration.
 
 \item[Operation phase]\index{Operation phase} The master is requested by an
 application that can provide a bus configuration and exchange process data.
@@ -722,9 +730,9 @@ to kernel memory and passed to the network stack.
 
 The driver registers a \lstinline+net_device+ structure for each device to
 communicate with the network stack and to create a ``network interface''. In
-case of an Ethernet driver, this interface appears as \textit{ethX}, where X is
-a number assigned by the kernel on registration. The \lstinline+net_device+
-structure receives events (either from user space or from the network stack)
+case of an Ethernet driver, this interface appears as \textit{ethX}, where X
+is a number assigned by the kernel on registration. The \lstinline+net_device+
+structure receives events (either from userspace or from the network stack)
 via several callbacks, which have to be set before registration. Not every
 callback is mandatory, but for reasonable operation the ones below are needed
 in any case:
@@ -741,8 +749,8 @@ in any case:
 \begin{description}
 
 \item[\usebox\boxopen] This function is called when network communication has
-to be started, for example after a command \lstinline+ip link set ethX up+ from
-user space. Frame reception has to be enabled by the driver.
+to be started, for example after a command \lstinline+ip link set ethX up+
+from userspace. Frame reception has to be enabled by the driver.
 
 \item[\usebox\boxstop] The purpose of this callback is to ``close'' the device,
 i.~e.  make the hardware stop receiving frames.
@@ -1898,32 +1906,35 @@ the \textit{examples/} subdirectory.
 
 %------------------------------------------------------------------------------
 
-\chapter{User Space}
+\chapter{Userspace Interfaces}
 \label{sec:user}
-\index{User space}
-
-% FIXME
+\index{Userspace}
 
 For the master runs as a kernel module, accessing it is natively limited to
-analyzing Syslog messages and controlling using modutils.
+analyzing Syslog messages and controlling using \textit{modutils}.
 
-It is necessary to implement further interfaces, that make it easier to access
-the master from user space and allow a finer influence. It should be possible
+It was necessary to implement further interfaces, that make it easier to access
+the master from userspace and allow a finer influence. It should be possible
 to view and to change special parameters at runtime.
 
-Bus visualization is a second point: For development and debugging purposes it
-would be nice, if one could show the connected slaves with a single command.
+Bus visualization is another point: For development and debugging purposes it
+is necessary to show the connected slaves with a single command, for instance
+(see sec.~\ref{sec:ethercat}).
 
-Another aspect is automatic startup and configuration. If the master is to be
-integrated into a running system, it must be able to automatically start with
-a persistent configuration.
+The application interface has to be available in userspace, to allow userspace
+programs to use EtherCAT master functionality. This was implemented via a
+character interface and a userspace library (see sec.~\ref{sec:userlib}).
+
+Another aspect is automatic startup and configuration. The master must be able
+to automatically start up with a persistent configuration (see
+sec.~\ref{sec:system}).
 
 A last thing is monitoring EtherCAT communication. For debugging purposes,
 there had to be a way to analyze EtherCAT datagrams. The best way would be
 with a popular network analyzer, like Wireshark \cite{wireshark} (the former
-Ethereal) or others.
+Ethereal) or others (see sec.~\ref{sec:debug}).
 
-This section covers all those points and introduces the interfaces and tools
+This chapter covers all these points and introduces the interfaces and tools
 to make all that possible.
 
 %------------------------------------------------------------------------------
@@ -2037,8 +2048,8 @@ can be easily backed up and restored.
 \item Some SII data fields have to be altered (like the alias address). A quick
 writing must be possible for that.
 
-\item Through reading access, analyzing category data is possible from user
-space.
+\item Through reading access, analyzing category data is possible from
+userspace.
 
 \end{itemize}
 
@@ -2084,6 +2095,13 @@ write operation may take a few seconds.
 \subsection{Generating Slave Description XML}
 
 \lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_xml}
+
+%------------------------------------------------------------------------------
+
+\section{Userspace Library}
+\label{sec:userlib}
+
+\ldots
 
 %------------------------------------------------------------------------------
 
@@ -2411,7 +2429,7 @@ The interface documentation can be viewed by pointing a browser to the file
 \section{Installing the Software}
 
 The below commands have to be entered as \textit{root}: The first one will
-install the EtherCAT header, init script, sysconfig file and the user space
+install the EtherCAT header, init script, sysconfig file and the userspace
 tool to the prefix path. The second one will install the kernel modules to the
 kernel's modules directory. The final \lstinline+depmod+ call is necessary to
 include the kernel modules into the \textit{modules.dep} file to make it
@@ -2548,7 +2566,11 @@ International Electrotechnical Commission (IEC), 2005.
 International Electrotechnical Commission (IEC), 2005.
 
 \bibitem{gpl} GNU General Public License, Version 2.
-\url{http://www.gnu.org/licenses/gpl.txt}. August~9, 2006.
+\url{http://www.gnu.org/licenses/gpl-2.0.html}. October~15, 2008.
+
+\bibitem{lgpl} GNU Lesser General Public License, Version 2.1.
+\url{http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html}. October~15,
+2008.
 
 \bibitem{lsb} Linux Standard Base.
 \url{http://www.linuxfoundation.org/en/LSB}.  August~9, 2006.
