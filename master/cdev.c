@@ -55,8 +55,17 @@ static int eccdev_release(struct inode *, struct file *);
 static long eccdev_ioctl(struct file *, unsigned int, unsigned long);
 static int eccdev_mmap(struct file *, struct vm_area_struct *);
 
+/** This is the kernel version from which the .fault member of the
+ * vm_operations_struct is usable.
+ */
+#define PAGE_FAULT_VERSION KERNEL_VERSION(2, 6, 23)
+
+#if LINUX_VERSION_CODE >= PAGE_FAULT_VERSION
+static int eccdev_vma_fault(struct vm_area_struct *, struct vm_fault *);
+#else
 static struct page *eccdev_vma_nopage(
         struct vm_area_struct *, unsigned long, int *);
+#endif
 
 /*****************************************************************************/
 
@@ -73,7 +82,11 @@ static struct file_operations eccdev_fops = {
 /** Callbacks for a virtual memory area retrieved with ecdevc_mmap().
  */
 struct vm_operations_struct eccdev_vm_ops = {
+#if LINUX_VERSION_CODE >= PAGE_FAULT_VERSION
+    .fault = eccdev_vma_fault
+#else
     .nopage = eccdev_vma_nopage
+#endif
 };
 
 /*****************************************************************************/
@@ -2587,7 +2600,39 @@ int eccdev_mmap(
 
 /*****************************************************************************/
 
+#if LINUX_VERSION_CODE >= PAGE_FAULT_VERSION
+
 /** Page fault callback for a virtual memory area.
+ *
+ * Called at the first access on a virtual-memory area retrieved with
+ * ecdev_mmap().
+ */
+static int eccdev_vma_fault(
+        struct vm_area_struct *vma, /**< Virtual memory area. */
+        struct vm_fault *vmf /**< Fault data. */
+        )
+{
+    struct page *page;
+    ec_cdev_priv_t *priv = (ec_cdev_priv_t *) vma->vm_private_data;
+
+    if (vmf->pgoff >= priv->process_data_size)
+        return VM_FAULT_SIGBUS;
+
+    page = vmalloc_to_page(priv->process_data + vmf->pgoff);
+
+    if (priv->cdev->master->debug_level)
+        EC_DBG("Vma fault, address = %p, offset = %lu, page = %p\n",
+                vmf->virtual_address, vmf->pgoff, page);
+
+    get_page(page);
+    vmf->page = page;
+    vmf->flags = 0;
+    return 0;
+}
+
+#else
+
+/** Nopage callback for a virtual memory area.
  *
  * Called at the first access on a virtual-memory area retrieved with
  * ecdev_mmap().
@@ -2620,5 +2665,7 @@ struct page *eccdev_vma_nopage(
 
     return page;
 }
+
+#endif
 
 /*****************************************************************************/
