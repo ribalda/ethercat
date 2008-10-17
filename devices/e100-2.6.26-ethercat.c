@@ -1991,18 +1991,16 @@ static int e100_rx_indicate(struct nic *nic, struct rx *rx,
 		memcpy(skb->data, &nic->blank_rfd, sizeof(struct rfd));
 		rx->dma_addr = pci_map_single(nic->pdev, skb->data,
 				RFD_BUF_LEN, PCI_DMA_BIDIRECTIONAL);
-		if(pci_dma_mapping_error(rx->dma_addr)) {
+		if (pci_dma_mapping_error(rx->dma_addr)) {
 			rx->dma_addr = 0;
 		}
 
 		/* Link the RFD to end of RFA by linking previous RFD to
-		 * this one, and clearing EL bit of previous.  */
-		if(rx->prev->skb) {
+		 * this one.  We are safe to touch the previous RFD because
+		 * it is protected by the before last buffer's el bit being set */
+		if (rx->prev->skb) {
 			struct rfd *prev_rfd = (struct rfd *)rx->prev->skb->data;
-			put_unaligned(cpu_to_le32(rx->dma_addr),
-					(u32 *)&prev_rfd->link);
-			wmb();
-			prev_rfd->command &= ~cpu_to_le16(cb_el);
+			put_unaligned_le32(rx->dma_addr, &prev_rfd->link);
 			pci_dma_sync_single_for_device(nic->pdev, rx->prev->dma_addr,
 					sizeof(struct rfd), PCI_DMA_TODEVICE);
 		}
@@ -2133,19 +2131,22 @@ static int e100_rx_alloc_list(struct nic *nic)
 			return -ENOMEM;
 		}
 	}
-	/* Set the el-bit on the buffer that is before the last buffer.
-	 * This lets us update the next pointer on the last buffer without
-	 * worrying about hardware touching it.
-	 * We set the size to 0 to prevent hardware from touching this buffer.
-	 * When the hardware hits the before last buffer with el-bit and size
-	 * of 0, it will RNR interrupt, the RU will go into the No Resources
-	 * state.  It will not complete nor write to this buffer. */
-	rx = nic->rxs->prev->prev;
-	before_last = (struct rfd *)rx->skb->data;
-	before_last->command |= cpu_to_le16(cb_el);
-	before_last->size = 0;
-	pci_dma_sync_single_for_device(nic->pdev, rx->dma_addr,
-		sizeof(struct rfd), PCI_DMA_TODEVICE);
+
+	if (!nic->ecdev) {
+		/* Set the el-bit on the buffer that is before the last buffer.
+		 * This lets us update the next pointer on the last buffer without
+		 * worrying about hardware touching it.
+		 * We set the size to 0 to prevent hardware from touching this buffer.
+		 * When the hardware hits the before last buffer with el-bit and size
+		 * of 0, it will RNR interrupt, the RU will go into the No Resources
+		 * state.  It will not complete nor write to this buffer. */
+		rx = nic->rxs->prev->prev;
+		before_last = (struct rfd *)rx->skb->data;
+		before_last->command |= cpu_to_le16(cb_el);
+		before_last->size = 0;
+		pci_dma_sync_single_for_device(nic->pdev, rx->dma_addr,
+				sizeof(struct rfd), PCI_DMA_TODEVICE);
+	}
 
 	nic->rx_to_use = nic->rx_to_clean = nic->rxs;
 	nic->ru_running = RU_SUSPENDED;
