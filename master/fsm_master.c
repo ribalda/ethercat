@@ -790,6 +790,8 @@ void ec_fsm_master_state_configure_slave(
     if (ec_fsm_slave_config_exec(&fsm->fsm_slave_config))
         return;
 
+    fsm->slave->force_config = 0;
+
     // configuration finished
     master->config_busy = 0;
     wake_up_interruptible(&master->config_queue);

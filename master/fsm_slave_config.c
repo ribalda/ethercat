@@ -172,10 +172,6 @@ void ec_fsm_slave_config_state_start(
         EC_DBG("Configuring slave %u...\n", fsm->slave->ring_position);
     }
     
-    // configuration will be done immediately; therefore reset the
-    // force flag
-    fsm->slave->force_config = 0;
-
     ec_fsm_change_start(fsm->fsm_change, fsm->slave, EC_SLAVE_STATE_INIT);
     ec_fsm_change_exec(fsm->fsm_change);
     fsm->state = ec_fsm_slave_config_state_init;

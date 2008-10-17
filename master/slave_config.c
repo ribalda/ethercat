@@ -807,7 +807,8 @@ void ecrt_slave_config_state(const ec_slave_config_t *sc,
     state->online = sc->slave ? 1 : 0;
     if (state->online) {
         state->operational =
-            sc->slave->current_state == EC_SLAVE_STATE_OP;
+            sc->slave->current_state == EC_SLAVE_STATE_OP
+            && !sc->slave->force_config;
         state->al_state = sc->slave->current_state;
     } else {
         state->operational = 0;
