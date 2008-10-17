@@ -171,6 +171,9 @@ struct ec_master {
 
 /*****************************************************************************/
 
+// static funtions
+void ec_master_init_static(void);
+
 // master creation/deletion
 int ec_master_init(ec_master_t *, unsigned int, const uint8_t *,
         const uint8_t *, dev_t, struct class *);

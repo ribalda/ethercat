@@ -58,6 +58,22 @@
 
 /*****************************************************************************/
 
+#ifdef EC_HAVE_CYCLES
+
+/** Frame timeout in cycles.
+ */
+static cycles_t timeout_cycles;
+
+#else
+
+/** Frame timeout in jiffies.
+ */
+static unsigned long timeout_jiffies;
+    
+#endif
+
+/*****************************************************************************/
+
 void ec_master_clear_slave_configs(ec_master_t *);
 void ec_master_clear_domains(ec_master_t *);
 static int ec_master_idle_thread(void *);
@@ -65,6 +81,20 @@ static int ec_master_operation_thread(void *);
 #ifdef EC_EOE
 void ec_master_eoe_run(unsigned long);
 #endif
+
+/*****************************************************************************/
+
+/** Static variables initializer.
+*/
+void ec_master_init_static(void)
+{
+#ifdef EC_HAVE_CYCLES
+    timeout_cycles = (cycles_t) EC_IO_TIMEOUT /* us */ * (cpu_khz / 1000);
+#else
+    // one jiffy may always elapse between time measurement
+    timeout_jiffies = max(EC_IO_TIMEOUT * HZ / 1000000, 1);
+#endif
+}
 
 /*****************************************************************************/
 
@@ -1375,21 +1405,10 @@ void ecrt_master_send(ec_master_t *master)
 void ecrt_master_receive(ec_master_t *master)
 {
     ec_datagram_t *datagram, *next;
-#ifdef EC_HAVE_CYCLES
-    cycles_t cycles_timeout;
-#else
-    unsigned long diff_ms, timeout_ms;
-#endif
     unsigned int frames_timed_out = 0;
 
     // receive datagrams
     ec_device_poll(&master->main_device);
-
-#ifdef EC_HAVE_CYCLES
-    cycles_timeout = (cycles_t) EC_IO_TIMEOUT /* us */ * (cpu_khz / 1000);
-#else
-    timeout_ms = max(EC_IO_TIMEOUT /* us */ / 1000, 2);
-#endif
 
     // dequeue all datagrams that timed out
     list_for_each_entry_safe(datagram, next, &master->datagram_queue, queue) {
@@ -1397,11 +1416,10 @@ void ecrt_master_receive(ec_master_t *master)
 
 #ifdef EC_HAVE_CYCLES
         if (master->main_device.cycles_poll - datagram->cycles_sent
-            > cycles_timeout) {
+                > timeout_cycles) {
 #else
-        diff_ms = (master->main_device.jiffies_poll
-                - datagram->jiffies_sent) * 1000 / HZ;
-        if (diff_ms > timeout_ms) {
+        if (master->main_device.jiffies_poll - datagram->jiffies_sent
+                > timeout_jiffies) {
 #endif
             frames_timed_out = 1;
             list_del_init(&datagram->queue);
@@ -1415,7 +1433,8 @@ void ecrt_master_receive(ec_master_t *master)
                 time_us = (unsigned int) (master->main_device.cycles_poll -
                         datagram->cycles_sent) * 1000 / cpu_khz;
 #else
-                time_us = (unsigned int) (diff_ms * 1000);
+                time_us = (unsigned int) ((master->main_device.jiffies_poll -
+                            datagram->jiffies_sent) * 1000000 / HZ);
 #endif
                 EC_DBG("TIMED OUT datagram %08x, index %02X waited %u us.\n",
                         (unsigned int) datagram, datagram->index, time_us);

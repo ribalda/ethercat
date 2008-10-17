@@ -133,6 +133,9 @@ int __init ec_init_module(void)
             goto out_class;
         }
     }
+
+    // initialize static master variables
+    ec_master_init_static();
     
     if (master_count) {
         if (!(masters = kmalloc(sizeof(ec_master_t) * master_count,
