@@ -4,13 +4,15 @@ EtherCAT master TODO
 
 $Id$
 
+vim: spelllang=en spell
+
 -------------------------------------------------------------------------------
 
 Version 1.5.0:
 
 * Remove ecrt_domain_state().
 * Segmented Sdo downloads.
-* Overthink pointer return values.
+* Think over pointer return values.
 * Implement Sdo handlers in userspace library.
 
 Future issues:
@@ -33,7 +35,7 @@ Future issues:
     - Data type abbreviations.
     - Add a -n (numeric) switch.
 	- Check for unwanted options.
-* Simplyfy master fsm by introducing a common request state to handle external
+* Simplify master fsm by introducing a common request state to handle external
   requests (replace write_sii, sdo_request, etc).
 
 Smaller issues:
