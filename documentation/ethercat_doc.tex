@@ -2167,12 +2167,18 @@ directly, what results in a minimum additional delay (see
 sec.~\ref{sec:usertiming}).
 
 Also for performance reasons, the actual domain process data (see
-chap.~ref{sec:ecrt}) are not copied between kernel and user memory on every
+chap.~\ref{sec:ecrt}) are not copied between kernel and user memory on every
 access: Instead, the data are memory-mapped to the userspace application. Once
 the master is configured and activated, the master module creates one big
 process data memory area for all domains and maps it to userspace, so that the
 application can directly access the process data. For that, there is no
-additional delay accessing the process data from userspace.
+additional delay when accessing the process data from userspace.
+
+\paragraph{Differences} Because of the memory-mapping of the process data, the
+memory is managed internally by the library functions. As a result, it is not
+possible to provide external memory for domains, like in the kernel API. The
+corresponding functions are only available in kernelspace. This is the only
+difference when using the application interface in userspace.
 
 \subsection{Timing}
 \label{sec:usertiming}
