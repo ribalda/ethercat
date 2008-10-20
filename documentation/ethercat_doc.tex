@@ -1923,7 +1923,7 @@ is necessary to show the connected slaves with a single command, for instance
 
 The application interface has to be available in userspace, to allow userspace
 programs to use EtherCAT master functionality. This was implemented via a
-character interface and a userspace library (see sec.~\ref{sec:userlib}).
+character device and a userspace library (see sec.~\ref{sec:userlib}).
 
 Another aspect is automatic startup and configuration. The master must be able
 to automatically start up with a persistent configuration (see
@@ -2101,7 +2101,78 @@ write operation may take a few seconds.
 \section{Userspace Library}
 \label{sec:userlib}
 
-\ldots
+The native application interface (see chap.~\ref{sec:ecrt}) resides in
+kernelspace and hence is only accessible from inside the kernel. To make the
+application interface available from userspace programs, a userspace library
+has been created, that can be linked to programs under the terms and
+conditions of the LGPL, version 2 \cite{lgpl}.
+
+The library is named \textit{libethercat}. Its sources reside in the
+\textit{lib/} subdirectory and are build by default when using
+\lstinline+make+. It is installed in the \textit{lib/} path below the
+installation prefix as \textit{libethercat.a} (for static linking),
+\textit{libethercat.la} (for the use with \textit{libtool}) and
+\textit{libethercat.so} (for dynamic linking).
+
+\subsection{Usage}
+
+The application interface header \textit{ecrt.h} can be used both in kernel
+and in user context.
+
+The following minimal example shows how to build a program with EtherCAT
+functionality. An entire example can be found in the \textit{examples/user/}
+path of the master sources.
+
+\begin{lstlisting}[language=C]
+#include <ecrt.h>
+
+int main(void)
+{
+    ec_master_t *master = ecrt_request_master(0);
+
+    if (!master)
+        return 1; // error
+
+    pause(); // wait for signal
+    return 0;
+}
+\end{lstlisting}
+
+The program can be compiled and dynamically linked to the library with the
+below command:
+
+\begin{lstlisting}
+gcc ethercat.c -o ectest -I/opt/etherlab/include \
+    -L/opt/etherlab/lib -lethercat \
+    -Wl,--rpath -Wl,/opt/etherlab/lib
+\end{lstlisting}
+
+The library can also be linked statically to the program:
+
+\begin{lstlisting}
+gcc -static ectest.c -o ectest -I/opt/etherlab/include \
+    /opt/etherlab/lib/libethercat.a
+\end{lstlisting}
+
+\subsection{Implementation}
+\label{sec:userimp}
+
+Basically the kernel API was transferred into userspace via the master
+character device (see sec.~\ref{sec:cdev}).
+
+The function calls of the kernel API are mapped to the userspace via an
+\lstinline+ioctl()+ interface. Each function has its own \lstinline+ioctl()+
+call. The kernel part of the interface calls the according API functions
+directly, what results in a minimum additional delay (see
+sec.~\ref{sec:usertiming}).
+
+Also for performance reasons, the actual domain process data (see
+chap.~ref{sec:ecrt}) are not copied between kernel and user memory on every
+access: Instead, the data are memory-mapped to the userspace application. Once
+the master is configured and activated, the master module creates one big
+process data memory area for all domains and maps it to userspace, so that the
+application can directly access the process data. For that, there is no
+additional delay accessing the process data from userspace.
 
 \subsection{Timing}
 \label{sec:usertiming}
@@ -2157,8 +2228,9 @@ kernel.
   \end{tabular}
 \end{table}
 
-The test results show, that for this configuration, the userspace API adds
-about \unit{1}{\micro\second} delay for each function.
+The test results show, that for this configuration, the userspace API causes
+about \unit{1}{\micro\second} additional delay for each function, compared to
+the kernel API.
 
 %------------------------------------------------------------------------------
 
