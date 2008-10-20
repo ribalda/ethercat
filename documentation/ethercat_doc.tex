@@ -2103,6 +2103,63 @@ write operation may take a few seconds.
 
 \ldots
 
+\subsection{Timing}
+\label{sec:usertiming}
+
+An interesting aspect is the timing of the userspace library calls compared to
+those of the kernel API. Table~\ref{tab:usertiming} shows the call times and
+standard deviancies of typical (and time-critical) API functions measured on
+an Intel Pentium 4 M CPU with \unit{2.2}{\giga\hertz} and a standard 2.6.26
+kernel.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Application Interface Timing Comparison}
+  \label{tab:usertiming}
+  \vspace{2mm}
+  \begin{tabular}{l|c|c|c|c}
+
+    &
+    \multicolumn{2}{|c}{\textbf{Kernelspace}} &
+    \multicolumn{2}{|c}{\textbf{Userspace}}  \\
+
+    \textbf{Function} &
+    $\mu(t)$ &
+    $\sigma(t)$ &
+    $\mu(t)$ &
+    $\sigma(t)$ \\
+    \hline
+
+    \lstinline+ecrt_master_receive()+ &
+    \unit{1.1}{\micro\second} &
+    \unit{0.3}{\micro\second} &
+    \unit{2.2}{\micro\second} &
+    \unit{0.5}{\micro\second} \\
+
+    \lstinline+ecrt_domain_process()+ &
+    \unit{<0.1}{\micro\second} &
+    \unit{<0.1}{\micro\second} &
+    \unit{1.0}{\micro\second} &
+    \unit{0.2}{\micro\second} \\
+
+    \lstinline+ecrt_domain_queue()+ &
+    \unit{<0.1}{\micro\second} &
+    \unit{<0.1}{\micro\second} &
+    \unit{1.0}{\micro\second} &
+    \unit{0.1}{\micro\second} \\
+
+    \lstinline+ecrt_master_send()+ &
+    \unit{1.8}{\micro\second} &
+    \unit{0.2}{\micro\second} &
+    \unit{2.5}{\micro\second} &
+    \unit{0.5}{\micro\second} \\
+
+  \end{tabular}
+\end{table}
+
+The test results show, that for this configuration, the userspace API adds
+about \unit{1}{\micro\second} delay for each function.
+
 %------------------------------------------------------------------------------
 
 \section{System Integration}
