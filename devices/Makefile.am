@@ -35,6 +35,7 @@ SUBDIRS = e1000
 
 DIST_SUBDIRS = e1000
 
+# using HEADERS to enable tags target
 noinst_HEADERS = \
 	8139too-2.6.13-ethercat.c \
 	8139too-2.6.13-orig.c \
@@ -50,7 +51,6 @@ noinst_HEADERS = \
 	8139too-2.6.23-orig.c \
 	8139too-2.6.24-ethercat.c \
 	8139too-2.6.24-orig.c \
-	Kbuild.in \
 	e100-2.6.20-ethercat.c \
 	e100-2.6.20-orig.c \
 	e100-2.6.24-ethercat.c \
@@ -59,6 +59,9 @@ noinst_HEADERS = \
 	e100-2.6.26-orig.c \
 	ecdev.h
 
+EXTRA_DIST = \
+	Kbuild.in
+	
 BUILT_SOURCES = \
 	Kbuild
 

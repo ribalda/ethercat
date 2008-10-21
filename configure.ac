@@ -423,6 +423,7 @@ AC_CONFIG_FILES([
         devices/Makefile
         devices/e1000/Kbuild
         devices/e1000/Makefile
+        examples/Kbuild
         examples/Makefile
         examples/mini/Kbuild
         examples/mini/Makefile

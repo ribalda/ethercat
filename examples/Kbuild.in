@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 #
-#  $Id$
+#  $Id: Kbuild.in 1097 2008-04-03 15:31:34Z fp $
 #
 #  Copyright (C) 2006  Florian Pose, Ingenieurgemeinschaft IgH
 #
@@ -31,19 +31,6 @@
 #
 #------------------------------------------------------------------------------
 
-if ENABLE_USERLIB
-SUBDIRS = user
-endif
-
-DIST_SUBDIRS = \
-	mini \
-	rtai \
-	user
-
-EXTRA_DIST = \
-	Kbuild.in
-
-BUILT_SOURCES = \
-	Kbuild
+obj-m := mini/
 
 #------------------------------------------------------------------------------

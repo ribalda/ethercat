@@ -45,6 +45,9 @@ if ENABLE_USERLIB
 SUBDIRS += lib
 endif
 
+# userspace example depends on lib/
+SUBDIRS += examples
+
 DIST_SUBDIRS = \
     devices \
     examples \
