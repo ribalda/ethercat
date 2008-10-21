@@ -327,6 +327,10 @@ typedef enum {
  * Global functions
  *****************************************************************************/
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Returns the version magic of the realtime interface.
  *
  * \return Value of ECRT_VERSION_MAGIC() at EtherCAT master compile time.
@@ -1053,6 +1057,12 @@ void ecrt_voe_handler_read(
 ec_request_state_t ecrt_voe_handler_execute(
     ec_voe_handler_t *voe /**< VoE handler. */
     );
+
+/*****************************************************************************/
+
+#ifdef __cplusplus
+}
+#endif
 
 /******************************************************************************
  * Bitwise read/write macros
