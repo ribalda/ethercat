@@ -51,11 +51,23 @@ index:
 	makeindex $(FILE).glo -s nomencl.ist -o $(FILE).gls
 
 clean:
-	@rm -f $(FILE).aux $(FILE).dvi $(FILE).idx \
-		$(FILE).ilg $(FILE).ind $(FILE).log \
-		$(FILE).out $(FILE).pdf $(FILE).ps \
-		$(FILE).toc $(FILE).lot $(FILE).lof \
-		$(FILE).lol $(FILE).glo $(FILE).gls \
-		images/*.bak *~
+	@rm -f \
+		$(FILE).aux \
+		$(FILE).dvi \
+		$(FILE).glo \
+		$(FILE).gls \
+		$(FILE).idx \
+		$(FILE).ilg \
+		$(FILE).ind \
+		$(FILE).lof \
+		$(FILE).log \
+		$(FILE).lol \
+		$(FILE).lot \
+		$(FILE).nlo \
+		$(FILE).out \
+		$(FILE).pdf \
+		$(FILE).toc \
+		*~ \
+		images/*.bak
 
 #------------------------------------------------------------------------------
