@@ -2612,21 +2612,24 @@ static int eccdev_vma_fault(
         struct vm_fault *vmf /**< Fault data. */
         )
 {
-    struct page *page;
+    unsigned long offset = vmf->pgoff << PAGE_SHIFT;
     ec_cdev_priv_t *priv = (ec_cdev_priv_t *) vma->vm_private_data;
+    struct page *page;
 
-    if (vmf->pgoff >= priv->process_data_size)
+    if (offset >= priv->process_data_size)
         return VM_FAULT_SIGBUS;
 
-    page = vmalloc_to_page(priv->process_data + vmf->pgoff);
-
-    if (priv->cdev->master->debug_level)
-        EC_DBG("Vma fault, address = %p, offset = %lu, page = %p\n",
-                vmf->virtual_address, vmf->pgoff, page);
+    page = vmalloc_to_page(priv->process_data + offset);
+    if (!page)
+        return VM_FAULT_SIGBUS;
 
     get_page(page);
     vmf->page = page;
-    vmf->flags = 0;
+
+    if (priv->cdev->master->debug_level)
+        EC_DBG("Vma fault, virtual_address = %p, offset = %lu, page = %p\n",
+                vmf->virtual_address, offset, page);
+
     return 0;
 }
 
