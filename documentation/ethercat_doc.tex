@@ -449,9 +449,9 @@ to $0$.
 \paragraph{Init script}
 \index{Init script}
 
-Most probably you won't want to load the master module and the Ethernet driver
-modules manually, but start the master as a service. See sec.~\ref{sec:system}
-on how to do this.
+In most cases it is not necessary to load the master module and the Ethernet
+driver modules manually. There is an init script available, so the master can
+be started as a service (see sec.~\ref{sec:system}).
 
 \paragraph{Syslog}
 
@@ -576,10 +576,11 @@ the module code.
 %   Cyclic operation
 
 The application interface provides functions and data structures for
-applications to access and use an EtherCAT master. The complete documentation
-of the interface is included as Doxygen~\cite{doxygen} comments in the header
-file \textit{include/ecrt.h}. You can either directly view the file comments
-or generate an HTML documentation as described in sec.~\ref{sec:gendoc}.
+applications to access an EtherCAT master. The complete documentation of the
+interface is included as Doxygen~\cite{doxygen} comments in the header file
+\textit{include/ecrt.h}. It can either be read directly from the file
+comments, or as a more comfortable HTML documentation. The generation is
+described in sec.~\ref{sec:gendoc}.
 
 The following sections cover a general description of the application
 interface.
@@ -2661,9 +2662,9 @@ nodes are created automatically, if the udev daemon is running.  Note, that on
 some distributions, the \lstinline+udev+ package is not installed by default.
 
 The device nodes will be created with mode \lstinline+0660+ and group
-\lstinline+root+ by default. If you want to give normal users reading access,
-create a udev rule file (for example
-\textit{/etc/udev/rules.d/99-EtherCAT.rules} with the following content:
+\lstinline+root+ by default. If ``normal'' users shall have reading access, a
+udev rule file (for example \textit{/etc/udev/rules.d/99-EtherCAT.rules}) has
+to be created with the following contents:
 
 \begin{lstlisting}
 KERNEL=="EtherCAT[0-9]*", MODE="0664"
