@@ -398,12 +398,12 @@ application that can provide a bus configuration and exchange process data.
 
 %------------------------------------------------------------------------------
 
-\section{General Behavior} % FIXME
+\section{General Behavior}
 \index{Master behavior}
 
 \ldots
 
-%   Behavior (Scanning) TODO
+% TODO Behavior (Scanning)
 
 %------------------------------------------------------------------------------
 
@@ -561,15 +561,17 @@ physical memory to logical process data images.
 \label{chap:api}
 \index{Application interface}
 
-%   Interface version
-%   Master Requesting and Releasing
-%   Master Locking
-%   Configuring Pdo assignment and mapping
-%   Domains (memory)
-%   Pdo entry registration
-%   Sdo configuration
-%   Sdo access
-%   VoE handlers
+% TODO
+%
+% Interface version
+% Master Requesting and Releasing
+% Master Locking
+% Configuring Pdo assignment and mapping
+% Domains (memory)
+% Pdo entry registration
+% Sdo configuration
+% Sdo access
+% VoE handlers
 
 The application interface provides functions and data structures for
 applications to access an EtherCAT master. The complete documentation of the
@@ -701,8 +703,10 @@ calculate the process data image and apply the bus configuration for the first
 time. After activation, the application is in charge to send and receive
 frames.
 
-% TODO PDOS endianess
-% TODO Datagram injection
+% TODO
+%
+% PDO endianess
+% Datagram injection
 
 %------------------------------------------------------------------------------
 
@@ -828,8 +832,8 @@ in any case:
 to be started, for example after a command \lstinline+ip link set ethX up+
 from userspace. Frame reception has to be enabled by the driver.
 
-\item[\usebox\boxstop] The purpose of this callback is to ``close'' the device,
-i.~e.  make the hardware stop receiving frames.
+\item[\usebox\boxstop] The purpose of this callback is to ``close'' the
+device, i.~e. make the hardware stop receiving frames.
 
 \item[\usebox\boxxmit] This function is called for each frame that has to be
 transmitted. The network stack passes the frame as a pointer to an
@@ -1884,7 +1888,7 @@ application-layer state is automatically set to OP.
 The CANopen-over-EtherCAT protocol \cite[sec.~5.6]{alspec} is used to
 configure slaves and exchange data objects on application level.
 
-% FIXME
+% TODO
 %
 % Download / Upload
 % Expedited / Normal
@@ -2015,7 +2019,7 @@ to make all that possible.
 \section{Command-line Tool}
 \label{sec:tool}
 
-% --master
+% TODO --master
 
 \subsection{Character Devices}
 \label{sec:cdev}
@@ -2499,22 +2503,24 @@ in sec.~\ref{sec:timing-bus}.
 \label{sec:timing-bus}
 \index{Bus cycle}
 
-For measuring the time, a frame is ``on the wire'', two timestamps
-must be be taken:
+For measuring the time, a frame is ``on the wire'', two timestamps must be
+taken:
 
 \begin{enumerate}
-\item The time, the Ethernet hardware begins with physically sending
-  the frame.
-\item The time, the frame is completely received by the Ethernet
-  hardware.
+
+\item The time, the Ethernet hardware begins with physically sending the
+frame.
+
+\item The time, the frame is completely received by the Ethernet hardware.
+
 \end{enumerate}
 
 Both times are difficult to determine. The first reason is, that the
-interrupts are disabled and the master is not notified, when a frame
-is sent or received (polling would distort the results). The second
-reason is, that even with interrupts enabled, the time from the event
-to the notification is unknown. Therefore the only way to confidently
-determine the bus cycle time is an electrical measuring.
+interrupts are disabled and the master is not notified, when a frame is sent
+or received (polling would distort the results). The second reason is, that
+even with interrupts enabled, the time from the event to the notification is
+unknown. Therefore the only way to confidently determine the bus cycle time is
+an electrical measuring.
 
 Anyway, the bus cycle time is an important factor when designing realtime
 code, because it limits the maximum frequency for the cyclic task of the
@@ -2523,24 +2529,24 @@ hardware and often a trial and error method must be used to determine the
 limits of the system.
 
 The central question is: What happens, if the cycle frequency is too high? The
-answer is, that the EtherCAT frames that have been sent at the end of the cycle
-are not yet received, when the next cycle starts.  First this is noticed by
-\textit{ecrt\_domain\_process()}, because the working counter of the process
-data datagrams were not increased. The function will notify the user via
-Syslog\footnote{To limit Syslog output, a mechanism has been implemented, that
-outputs a summarized notification at maximum once a second.}. In this case, the
-process data keeps being the same as in the last cycle, because it is not
-erased by the domain. When the domain datagrams are queued again, the master
-notices, that they are already queued (and marked as sent). The master will
-mark them as unsent again and output a warning, that datagrams were
+answer is, that the EtherCAT frames that have been sent at the end of the
+cycle are not yet received, when the next cycle starts.  First this is noticed
+by \textit{ecrt\_domain\_process()}, because the working counter of the
+process data datagrams were not increased. The function will notify the user
+via Syslog\footnote{To limit Syslog output, a mechanism has been implemented,
+that outputs a summarized notification at maximum once a second.}. In this
+case, the process data keeps being the same as in the last cycle, because it
+is not erased by the domain. When the domain datagrams are queued again, the
+master notices, that they are already queued (and marked as sent). The master
+will mark them as unsent again and output a warning, that datagrams were
 ``skipped''.
 
 On the mentioned \unit{2.0}{\giga\hertz} system, the possible cycle frequency
 can be up to \unit{25}{\kilo\hertz} without skipped frames. This value can
-surely be increased by choosing faster hardware. Especially the RealTek network
-hardware could be replaced by a faster one. Besides, implementing a dedicated
-ISR for EtherCAT devices would also contribute to increasing the latency. These
-are two points on the author's to-do list.
+surely be increased by choosing faster hardware. Especially the RealTek
+network hardware could be replaced by a faster one. Besides, implementing a
+dedicated ISR for EtherCAT devices would also contribute to increasing the
+latency. These are two points on the author's to-do list.
 
 %------------------------------------------------------------------------------
 
@@ -2685,8 +2691,8 @@ Ethernet device to use (or \lstinline+ff:ff:ff:ff:ff:ff+ to use the first
 device offered) and selecting the driver(s) to load via the
 \lstinline+DEVICE_MODULES+ variable.
 
-After the basic configuration is done, the master can be started with
-the below command:
+After the basic configuration is done, the master can be started with the
+below command:
 
 \begin{lstlisting}
 # `\textbf{/etc/init.d/ethercat start}`
