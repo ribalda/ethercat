@@ -564,14 +564,12 @@ physical memory to logical process data images.
 %   Interface version
 %   Master Requesting and Releasing
 %   Master Locking
-%   Slave configuration
 %   Configuring Pdo assignment and mapping
 %   Domains (memory)
 %   Pdo entry registration
 %   Sdo configuration
 %   Sdo access
 %   VoE handlers
-%   Cyclic operation
 
 The application interface provides functions and data structures for
 applications to access an EtherCAT master. The complete documentation of the
@@ -708,7 +706,7 @@ frames.
 
 %------------------------------------------------------------------------------
 
-\section{Concurrent Master Access} % FIXME
+\section{Concurrent Master Access}
 \label{sec:concurr}
 \index{Concurrency}
 
@@ -742,8 +740,8 @@ The application's cyclic task uses the master for process data exchange, while
 the master-internal EoE process uses it to communicate with EoE-capable
 slaves.  Both have to acquire the master lock before access: The application
 task can access the lock natively, while the EoE process has to use the
-callbacks. See the application interface documentation (chap.~\ref{chap:api}
-of how to use the locking callbacks.
+callbacks. See the application interface documentation (chap.~\ref{chap:api})
+for how to use the locking callbacks.
 
 %------------------------------------------------------------------------------
 
