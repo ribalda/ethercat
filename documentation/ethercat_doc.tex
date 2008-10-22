@@ -327,39 +327,41 @@ Figure~\ref{fig:arch} gives a general overview of the master architecture.
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=.9\textwidth]{images/architecture}
-  \caption{Master architecture}
+  \caption{Master Architecture}
   \label{fig:arch}
 \end{figure}
 
-\paragraph{Master Module}
-\index{Master module}
+The components of the master environment are described below:
 
-Kernel module containing one or more EtherCAT master instances (see
-sec.~\ref{sec:mastermod}), the ``Device Interface'' (see sec.~\ref{sec:ecdev})
-and the ``Application Interface'' (see chap.~\ref{chap:api}).
+\begin{description}
 
-\paragraph{Device Modules}
-\index{Device modules}
+\item[Master Module]\index{Master Module} Kernel module containing one or more
+EtherCAT master instances (see sec.~\ref{sec:mastermod}), the ``Device
+Interface'' (see sec.~\ref{sec:ecdev}) and the ``Application Interface'' (see
+chap.~\ref{chap:api}).
 
-EtherCAT-capable Ethernet device driver modules\index{Device modules}, that
-offer their devices to the EtherCAT master via the device interface (see
-sec.~\ref{sec:ecdev}). These modified network drivers can handle network
-devices used for EtherCAT operation and ``normal'' Ethernet devices in
-parallel. A master can accept a certain device and then is able to send and
-receive EtherCAT frames. Ethernet devices declined by the master module are
-connected to the kernel's network stack as usual.
+\item[Device Modules]\index{Device modules} EtherCAT-capable Ethernet device
+driver modules\index{Device modules}, that offer their devices to the EtherCAT
+master via the device interface (see sec.~\ref{sec:ecdev}). These modified
+network drivers can handle network devices used for EtherCAT operation and
+``normal'' Ethernet devices in parallel. A master can accept a certain device
+and then is able to send and receive EtherCAT frames. Ethernet devices
+declined by the master module are connected to the kernel's network stack as
+usual.
 
-\paragraph{Application Modules}
-\index{Application module}
+\item[Application]\index{Application} A program that uses the EtherCAT master
+(usually for cyclic exchange of process data with EtherCAT slaves). These
+programs are not part of the EtherCAT master code\footnote{Although there are
+some examples provided in the \textit{examples/} directory.}, but have to be
+generated or written by the user. An application can ``request'' a master
+through the application interface (see chap.~\ref{chap:api}). If this
+succeeds, it has the control over the master: It can provide a bus
+configuration and exchange process data.  Applications can be kernel modules
+(that use the kernel application interface directly) or userspace programs,
+that use the application interface via the EtherCAT library (see
+sec.~\ref{sec:userlib}).
 
-Kernel modules, that use the EtherCAT master (usually for cyclic exchange of
-process data with EtherCAT slaves). These modules are not part of the EtherCAT
-master code\footnote{Although there are some examples provided in the
-\textit{examples/} directory.}, but have to be generated or written by the
-user. An application module can ``request'' a master through the application
-interface (see chap.~\ref{chap:api}). If this succeeds, the module has the
-control over the master: It can provide a bus configuration and exchange
-process data.
+\end{description}
 
 %------------------------------------------------------------------------------
 
@@ -374,6 +376,7 @@ The EtherCAT master runs through several phases (see fig.~\ref{fig:phases}):
   \caption{Master phases and transitions}
   \label{fig:phases}
 \end{figure}
+
 \begin{description}
 
 \item[Orphaned phase]\index{Orphaned phase} This mode takes effect, when the
@@ -590,7 +593,10 @@ Domains are created Slaves are configured and Pdo entries are registered (see
 sec.~\ref{sec:masterconfig}).
 
 \item[Operation] Cyclic code is run, process data is exchanged (see
-sec.~\ref{sec:cyclic}).
+sec.~\ref{sec:cyclic}). To enter operation mode, the master has to be
+``activated'' to calculate the process data image and apply the bus
+configuration for the first time. After activation, the application is in
+charge to send and receive frames.
 
 \end{description}
 
@@ -636,14 +642,15 @@ access to it has to be sequentialized. This is usually done by locking with
 semaphores, or other methods to protect critical sections.
 
 The master itself can not provide locking mechanisms, because it has no chance
-to know the appropriate kind of lock. For example if the application uses RTAI
-functionality, ordinary kernel semaphores would not be sufficient. For that, an
-important design decision was made: The application that reserved a master must
-have the total control, therefore it has to take responsibility for providing
-the appropriate locking mechanisms. If another instance wants to access the
-master, it has to request the master lock by callbacks, that have to be set by
-the application. Moreover the application can deny access to the master if it
-considers it to be awkward at the moment.
+to know the appropriate kind of lock. For example if the application is in
+kernelspace and uses RTAI functionality, ordinary kernel semaphores would not
+be sufficient. For that, an important design decision was made: The
+application that reserved a master must have the total control, therefore it
+has to take responsibility for providing the appropriate locking mechanisms.
+If another instance wants to access the master, it has to request the master
+lock by callbacks, that have to be set by the application. Moreover the
+application can deny access to the master if it considers it to be awkward at
+the moment.
 
 \begin{figure}[htbp]
   \centering
