@@ -7,6 +7,7 @@
 FIGS := \
 	app-config.fig \
 	architecture.fig \
+	attach.fig \
 	fmmus.fig \
 	fsm-coedown.fig \
 	fsm-eoe.fig \

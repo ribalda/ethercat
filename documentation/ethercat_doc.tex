@@ -446,7 +446,7 @@ to $0$.
   \label{fig:masters}
 \end{figure}
 
-\paragraph{Init script}
+\paragraph{Init Script}
 \index{Init script}
 
 In most cases it is not necessary to load the master module and the Ethernet
@@ -455,9 +455,9 @@ be started as a service (see sec.~\ref{sec:system}).
 
 \paragraph{Syslog}
 
-The master module outputs information about it's state and events to the
-kernel ring buffer. These also end up in the system logs.  The above module
-loading command should result in the messages below:
+The master module outputs information about its state and events to the kernel
+ring buffer. These also end up in the system logs.  The above module loading
+command should result in the messages below:
 
 \begin{lstlisting}
 # `\textbf{dmesg | tail -2}`
@@ -475,87 +475,85 @@ searching the logs easier.
 
 %------------------------------------------------------------------------------
 
-\section{Handling of Process Data} % FIXME
+\section{Process Data}
 \label{sec:processdata}
 
-\ldots
+This section shall introduce a few terms and ideas how the master handles
+process data.
 
 \paragraph{Process Data Image}
 \index{Process data}
 
-The slaves offer their inputs and outputs by presenting the master so-called
-``Process Data Objects'' (Pdos\index{Pdo}). The available Pdos can be
-determined by reading out the slave's TXPDO and RXPDO E$^2$PROM categories.
-The application can register the Pdos for data exchange during cyclic
-operation.  The sum of all registered Pdos defines the ``process data image'',
-which is exchanged via the ``Logical ReadWrite'' datagrams introduced
-in~\cite[sec.~5.4.2.4]{dlspec}.
+Slaves offer their inputs and outputs by presenting the master so-called
+``Process Data Objects'' (Pdos\index{Pdo}). The available Pdos can be either
+determined by reading out the slave's TXPDO and RXPDO SII categories from the
+E$^2$PROM (in case of fixed Pdos) or by reading out the appropriate CoE
+objects (see sec.~\ref{sec:coe}), if available.  The application can register
+the Pdos' entries for exchange during cyclic operation. The sum of all
+registered Pdo entries defines the ``process data image'', which is exchanged
+via datagrams with ``logical'' memory access (like LWR, LRD or LRW) introduced
+in~\cite[sec.~5.4]{dlspec}.
 
 \paragraph{Process Data Domains}
 \index{Domain}
 
 The process data image can be easily managed by creating so-called
-``domains'', which group Pdos and allocate the datagrams needed to
-exchange them. Domains are mandatory for process data exchange, so
-there has to be at least one. They were introduced for the following
-reasons:
+``domains'', which allow grouped Pdo exchange. They also take care of managing
+the datagram structures needed to exchange the Pdos. Domains are mandatory for
+process data exchange, so there has to be at least one. They were introduced
+for the following reasons:
 
 \begin{itemize}
-\item The maximum size of a ``Logical ReadWrite'' datagram is limited
-  due to the limited size of an Ethernet frame: The maximum data size
-  is the Ethernet data field size minus the EtherCAT frame header,
-  EtherCAT datagram header and EtherCAT datagram footer: $1500 - 2 -
-  12 - 2 = 1484$ octets. If the size of the process data image exceeds
-  this limit, multiple frames have to be sent, and the image has to be
-  partitioned for the use of multiple datagrams. A domain manages this
-  automatically.
-\item Not every Pdo has to be exchanged with the same frequency: The
-  values of Pdos can vary slowly over time (for example temperature
-  values), so exchanging them with a high frequency would just waste
-  bus bandwidth. For this reason, multiple domains can be created, to
-  group different Pdos and so allow separate exchange.
+
+\item The maximum size of a datagram is limited due to the limited size of an
+Ethernet frame: The maximum data size is the Ethernet data field size minus
+the EtherCAT frame header, EtherCAT datagram header and EtherCAT datagram
+footer: $1500 - 2 - 12 - 2 = 1484$ octets. If the size of the process data
+image exceeds this limit, multiple frames have to be sent, and the image has
+to be partitioned for the use of multiple datagrams. A domain manages this
+automatically.
+
+\item Not every Pdo has to be exchanged with the same frequency: The values of
+Pdos can vary slowly over time (for example temperature values), so exchanging
+them with a high frequency would just waste bus bandwidth. For this reason,
+multiple domains can be created, to group different Pdos and so allow separate
+exchange.
+
 \end{itemize}
 
-There is no upper limit for the number of domains, but each domain
-occupies one FMMU in each slave involved, so the maximum number of
-domains is also limited by the slaves' capabilities.
+There is no upper limit for the number of domains, but each domain occupies
+one FMMU in each slave involved, so the maximum number of domains is de facto
+limited by the slaves.
 
 \paragraph{FMMU Configuration}
 \index{FMMU!Configuration}
 
-An application can register Pdos for process data exchange. Every Pdo is part
-of a memory area in the slave's physical memory, that is protected by a sync
-manager \cite[sec.~6.7]{dlspec} for synchronized access. In order to make a
-sync manager react on a datagram accessing its memory, it is necessary to
-access the last byte covered by the sync manager. Otherwise the sync manager
-will not react on the datagram and no data will be exchanged. That is why the
-whole synchronized memory area has to be included into the process data image:
-For example, if a certain Pdo of a slave is registered for exchange with a
-certain domain, one FMMU will be configured to map the complete
-sync-manager-protected memory, the Pdo resides in. If a second Pdo of the same
-slave is registered for process data exchange within the same domain, and this
-Pdo resides in the same sync-manager-protected memory as the first Pdo, the
-FMMU configuration is not touched, because the appropriate memory is already
-part of the domain's process data image.  If the second Pdo belongs to another
-sync-manager-protected area, this complete area is also included into the
-domains process data image. See figure~\ref{fig:fmmus} for an overview, how
-FMMU's are configured to map physical memory to logical process data images.
+An application can register Pdo entries for exchange. Every Pdo entry and its
+parent Pdo is part of a memory area in the slave's physical memory, that is
+protected by a sync manager \cite[sec.~6.7]{dlspec} for synchronized access.
+In order to make a sync manager react on a datagram accessing its memory, it
+is necessary to access the last byte covered by the sync manager. Otherwise
+the sync manager will not react on the datagram and no data will be exchanged.
+That is why the whole synchronized memory area has to be included into the
+process data image: For example, if a certain Pdo entry of a slave is
+registered for exchange with a certain domain, one FMMU will be configured to
+map the complete sync-manager-protected memory, the Pdo entry resides in. If a
+second Pdo entry of the same slave is registered for process data exchange
+within the same domain, and it resides in the same sync-manager-protected
+memory as the first one, the FMMU configuration is not altered, because the
+desired memory is already part of the domain's process data image. If the
+second Pdo entry would belong to another sync-manager-protected area, this
+complete area would also be included into the domains process data image.
+
+Figure~\ref{fig:fmmus} gives an overview, how FMMUs are configured to map
+physical memory to logical process data images.
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\textwidth]{images/fmmus}
-  \caption{FMMU configuration for several domains}
+  \caption{FMMU Configuration}
   \label{fig:fmmus}
 \end{figure}
-
-\paragraph{Process Data Pointers} % FIXME
-
-The figure also demonstrates the way, the application can access the exchanged
-process data: At Pdo registration, the application has to provide the address
-of a process data pointer. Upon calculation of the domain image and allocation
-of process data memory, this pointer is redirected to the appropriate location
-inside the domain's process data memory and can later be easily dereferenced by
-the module code.
 
 %------------------------------------------------------------------------------
 
@@ -579,7 +577,7 @@ The application interface provides functions and data structures for
 applications to access an EtherCAT master. The complete documentation of the
 interface is included as Doxygen~\cite{doxygen} comments in the header file
 \textit{include/ecrt.h}. It can either be read directly from the file
-comments, or as a more comfortable HTML documentation. The generation is
+comments, or as a more comfortable HTML documentation. The HTML generation is
 described in sec.~\ref{sec:gendoc}.
 
 The following sections cover a general description of the application
@@ -590,18 +588,15 @@ Every application should use the master in two steps:
 \begin{description}
 
 \item[Configuration] The master is requested and the configuration is applied.
-Domains are created Slaves are configured and Pdo entries are registered (see
-sec.~\ref{sec:masterconfig}).
+For example, domains are created, slaves are configured and Pdo entries are
+registered (see sec.~\ref{sec:masterconfig}).
 
-\item[Operation] Cyclic code is run, process data is exchanged (see
-sec.~\ref{sec:cyclic}). To enter operation mode, the master has to be
-``activated'' to calculate the process data image and apply the bus
-configuration for the first time. After activation, the application is in
-charge to send and receive frames.
+\item[Operation] Cyclic code is run and process data are exchanged (see
+sec.~\ref{sec:cyclic}).
 
 \end{description}
 
-\paragraph{Example Applications} \index{Example Applications} There are a few
+\paragraph{Example Applications}\index{Example Applications} There are a few
 example applications in the \textit{examples/} subdirectory of the master
 code. They are documented in the source code.
 
@@ -610,8 +605,9 @@ code. They are documented in the source code.
 \section{Master Configuration}
 \label{sec:masterconfig}
 
-\ldots
-% FIXME Attaching
+The bus configuration is supplied via the application interface.
+Figure~\ref{fig:app-config} gives an overview of the objects, that can be
+configured by the application.
 
 \begin{figure}[htbp]
   \centering
@@ -620,14 +616,95 @@ code. They are documented in the source code.
   \label{fig:app-config}
 \end{figure}
 
+\subsection{Slave Configuration}
+
+The application has to tell the master about the expected bus topology. This
+can be done by creating ``slave configurations''. A slave configuration can be
+seen as an expected slave. When a slave configuration is created, the
+application provides the bus position (see below), vendor id and product code.
+
+When the bus configuration is applied, the master checks, if there is a slave
+with the given vendor id and product code at the given position. If this is
+the case, the slave configuration is ``attached'' to the real slave on the bus
+and the slave is configured according to the settings provided by the
+application. The state of a slave configuration can either be queried via the
+application interface or via the command-line tool (see
+sec.~\ref{sec:ethercat-config}).
+
+\paragraph{Slave Position} The slave position has to be specified as a tuple
+of ``alias`` and ``position''. This allows addressing slaves either via an
+absolute bus position, or a stored identifier called ``alias'', or a mixture
+of both. The alias is a 16-bit value stored in the slave's E$^2$PROM. It can
+be modified via the command-line tool (see sec.~\ref{sec:ethercat-alias}).
+Table~\ref{tab:slaveposition} shows, how the values are interpreted.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Specifying a Slave Position}
+  \label{tab:slaveposition}
+  \vspace{2mm}
+  \begin{tabular}{c|c|p{70mm}}
+    Alias & Position & Interpretation\\
+    \hline
+
+    \lstinline+0+ & \lstinline+0+ -- \lstinline+65535+ &
+
+    Position addressing. The position parameter is interpreted as the absolute
+    ring position in the bus.\\ \hline
+
+    \lstinline+1+ -- \lstinline+65535+ & \lstinline+0+ -- \lstinline+65535+ &
+
+    Alias addressing. The position parameter is interpreted as relative
+    position after the first slave with the given alias address. \\ \hline
+
+  \end{tabular}
+\end{table}
+
+Figure~\ref{fig:attach} shows an example of how slave configurations are
+attached. Some of the configurations were attached, while others remain
+detached. The below lists gives the reasons beginning with the top slave
+configuration.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=.7\textwidth]{images/attach}
+  \caption{Slave Configuration Attachment}
+  \label{fig:attach}
+\end{figure}
+
+\begin{enumerate}
+
+\item A zero alias means to use simple position addressing. Slave 1 exists and
+vendor id and product code match the expected values.
+
+\item Although the slave with position 0 is found, the product code does not
+match, so the configuration is not attached.
+
+\item The alias is non-zero, so alias addressing is used. Slave 2 is the first
+slave with alias \lstinline+0x2000+. Because the position value is zero, the
+same slave is used.
+
+\item There is no slave with the given alias, so the configuration can not be
+attached.
+
+\item Slave 2 is again the first slave with the alias \lstinline+0x2000+, but
+position is now 1, so slave 3 is attached.
+
+\end{enumerate}
+
 %------------------------------------------------------------------------------
 
 \section{Cyclic Operation}
 \label{sec:cyclic}
 
-\ldots
-% FIXME PDOS endianess
 
+To enter cyclic operation mode, the master has to be ``activated'' to
+calculate the process data image and apply the bus configuration for the first
+time. After activation, the application is in charge to send and receive
+frames.
+
+% TODO PDOS endianess
+% TODO Datagram injection
 
 %------------------------------------------------------------------------------
 
@@ -1607,8 +1684,8 @@ FSM is executed to read the Pdo's mapped Pdo entries.
 
 \paragraph{Pdo Entry Reading FSM} This state machine
 (fig.~\ref{fig:fsm-pdo-entry-read}) reads the Pdo mapping (the Pdo entries) of
-a Pdo. It reads the respective mapping Sdo (\lstinline+0x1600+ -
-\lstinline+0x17ff+, or \lstinline+0x1a00+ - \lstinline+0x1bff+) for the given
+a Pdo. It reads the respective mapping Sdo (\lstinline+0x1600+ --
+\lstinline+0x17ff+, or \lstinline+0x1a00+ -- \lstinline+0x1bff+) for the given
 Pdo by reading first the subindex zero (number of elements) to determine the
 number of mapped Pdo entries. After that, each subindex is read to get the
 mapped Pdo entry index, subindex and bit size.
@@ -1660,8 +1737,9 @@ slave. These interfaces are called either
 
 \begin{description}
 
-\item[eoeXsY] for a slave without an alias address (see sec.~\ref{sec:alias}),
-where X is the master index and Y is the slave's ring position, or
+\item[eoeXsY] for a slave without an alias address (see
+sec.~\ref{sec:ethercat-alias}), where X is the master index and Y is the
+slave's ring position, or
 
 \item[eoeXaY] for a slave with a non-zero alias address, where X is the master
 index and Y is the decimal alias address.
@@ -1955,13 +2033,14 @@ sec.~\ref{sec:autonode} for how to install and configure it.
 %------------------------------------------------------------------------------
 
 \subsection{Setting Alias Addresses}
-\label{sec:alias} % FIXME
+\label{sec:ethercat-alias}
 
 \lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_alias}
 
 %------------------------------------------------------------------------------
 
 \subsection{Displaying the Bus Configuration}
+\label{sec:ethercat-config}
 
 \lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_config}
 
@@ -2556,7 +2635,9 @@ $ `\textbf{make doc}`
 \end{lstlisting}
 
 The interface documentation can be viewed by pointing a browser to the file
-\textit{doxygen-output/html/index.html}.
+\textit{doxygen-output/html/index.html}. The functions and data structures of
+the application interface a covered by an own module ``Application
+Interface''.
 
 \section{Installing the Software}
 
