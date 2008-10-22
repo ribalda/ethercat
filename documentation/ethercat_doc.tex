@@ -571,7 +571,6 @@ physical memory to logical process data images.
 % Pdo entry registration
 % Sdo configuration
 % Sdo access
-% VoE handlers
 
 The application interface provides functions and data structures for
 applications to access an EtherCAT master. The complete documentation of the
@@ -707,6 +706,35 @@ frames.
 %
 % PDO endianess
 % Datagram injection
+
+%------------------------------------------------------------------------------
+
+\section{VoE Handlers}
+\label{sec:api-voe}
+
+During the configuration phase, the application can create handlers for the
+VoE mailbox protocol described in sec.~\ref{sec:voe}. One VoE handler always
+belongs to a certain slave configuration, so the creation function is a method
+of the slave configuration.
+
+A VoE handler manages the VoE data and the datagram used to transmit and
+receive VoE messages. Is contains the state machine necessary to transfer VoE
+messages.
+
+The VoE state machine can only process one operation at a time. As a result,
+either a read or write operation may be issued at a time\footnote{If
+simultaneous sending and receiving is desired, two VoE handlers can be created
+for the slave configuration.}. After the operation is initiated, the handler
+must be executed cyclically until it is finished. After that, the results of
+the operation can be retrieved.
+
+A VoE handler has an own datagram structure, that is marked for exchange after
+each execution step. So the application can decide, how many handlers to
+execute before sending the corresponding EtherCAT frame(s).
+
+For more information about the use of VoE handlers see the documentation of
+the application interface functions and the example applications provided in
+the \textit{examples/} directory.
 
 %------------------------------------------------------------------------------
 
@@ -1969,17 +1997,9 @@ constraints regarding this protocol.
 The EtherCAT master allows to create multiple VoE handlers per slave
 configuration via the application interface (see chap.~\ref{chap:api}). These
 handlers contain the state machine necessary for the communication via VoE.
-One read or write operation may be issued at a time. After the operation is
-initiated, the handler must be executed cyclically until it is finished. After
-that, the results of the operation can be retrieved.
 
-A VoE handler has an own datagram structure, that is marked for exchange after
-each execution step. So the application can decide, how many handlers to
-execute before sending the corresponding EtherCAT frame(s).
-
-For more information about using VoE handlers, see the application interface
-documentation (chap.~\ref{chap:api}) or the example applications provided in
-the \textit{examples/} subdirectory.
+For more information about using VoE handlers, see sec.~\ref{sec:api-voe} or
+the example applications provided in the \textit{examples/} subdirectory.
 
 %------------------------------------------------------------------------------
 
