@@ -300,7 +300,7 @@ Lesser General Public License (LGPL \cite{lgpl})\index{LGPL}, version 2.1.
 %------------------------------------------------------------------------------
 
 \chapter{Architecture}
-\label{sec:arch}
+\label{chap:arch}
 \index{Master!Architecture}
 
 The EtherCAT master is integrated into the Linux 2.6 kernel. This was
@@ -2212,7 +2212,7 @@ installation prefix as \textit{libethercat.a} (for static linking),
 \textit{libethercat.la} (for the use with \textit{libtool}) and
 \textit{libethercat.so} (for dynamic linking).
 
-\subsection{Usage}
+\subsection{Using the Library}
 
 The application interface header \textit{ecrt.h} can be used both in kernel
 and in user context.
@@ -2256,7 +2256,8 @@ gcc -static ectest.c -o ectest -I/opt/etherlab/include \
 \label{sec:userimp}
 
 Basically the kernel API was transferred into userspace via the master
-character device (see sec.~\ref{sec:cdev}).
+character device (see chap.~\ref{chap:arch}, fig.~\ref{fig:arch} and
+sec.~\ref{sec:cdev}).
 
 The function calls of the kernel API are mapped to the userspace via an
 \lstinline+ioctl()+ interface. Each function has its own \lstinline+ioctl()+
@@ -2264,19 +2265,20 @@ call. The kernel part of the interface calls the according API functions
 directly, what results in a minimum additional delay (see
 sec.~\ref{sec:usertiming}).
 
-Also for performance reasons, the actual domain process data (see
-chap.~\ref{chap:api}) are not copied between kernel and user memory on every
-access: Instead, the data are memory-mapped to the userspace application. Once
-the master is configured and activated, the master module creates one big
-process data memory area for all domains and maps it to userspace, so that the
-application can directly access the process data. For that, there is no
-additional delay when accessing the process data from userspace.
+For performance reasons, the actual domain process data (see
+sec.~\ref{sec:processdata}) are not copied between kernel and user memory on
+every access: Instead, the data are memory-mapped to the userspace
+application. Once the master is configured and activated, the master module
+creates one process data memory area spanning all domains and maps it to
+userspace, so that the application can directly access the process data. As a
+result, there is no additional delay when accessing process data from
+userspace.
 
-\paragraph{Differences} Because of the memory-mapping of the process data, the
-memory is managed internally by the library functions. As a result, it is not
-possible to provide external memory for domains, like in the kernel API. The
-corresponding functions are only available in kernelspace. This is the only
-difference when using the application interface in userspace.
+\paragraph{Kernel/User API Differences} Because of the memory-mapping of the
+process data, the memory is managed internally by the library functions. As a
+result, it is not possible to provide external memory for domains, like in the
+kernel API. The corresponding functions are only available in kernelspace.
+This is the only difference when using the application interface in userspace.
 
 \subsection{Timing}
 \label{sec:usertiming}
