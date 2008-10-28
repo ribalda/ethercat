@@ -16,6 +16,7 @@ AC_CONFIG_SRCDIR([config.h.in])
 
 AC_PROG_CXX
 AC_PROG_LIBTOOL
+AM_PROG_CC_C_O
 
 #------------------------------------------------------------------------------
 # Linux sources
