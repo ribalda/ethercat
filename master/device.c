@@ -170,6 +170,10 @@ void ec_device_attach(
         eth = (struct ethhdr *) (device->tx_skb[i]->data);
         memcpy(eth->h_source, net_dev->dev_addr, ETH_ALEN);
     }
+
+#ifdef EC_DEBUG_IF
+    ec_debug_register(&device->dbg, net_dev);
+#endif
 }
 
 /*****************************************************************************/
@@ -181,6 +185,10 @@ void ec_device_detach(
         )
 {
     unsigned int i;
+
+#ifdef EC_DEBUG_IF
+    ec_debug_unregister(&device->dbg);
+#endif
 
     device->dev = NULL;
     device->poll = NULL;

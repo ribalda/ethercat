@@ -54,19 +54,18 @@ struct net_device_stats *ec_dbgdev_stats(struct net_device *);
 
 /*****************************************************************************/
 
-/**
-   Debug constructor.
-   Initializes the debug object, creates a net_device and registeres it.
-*/
-
+/** Debug interface constructor.
+ *
+ * Initializes the debug object, creates a net_device and registeres it.
+ */
 int ec_debug_init(
         ec_debug_t *dbg, /**< debug object */
         const char *name /**< interface name */
         )
 {
-    int result;
-
+    dbg->registered = 0;
     dbg->opened = 0;
+
     memset(&dbg->stats, 0, sizeof(struct net_device_stats));
 
     if (!(dbg->dev =
@@ -84,50 +83,79 @@ int ec_debug_init(
     // initialize private data
     *((ec_debug_t **) netdev_priv(dbg->dev)) = dbg;
 
-    // connect the net_device to the kernel
-    if ((result = register_netdev(dbg->dev))) {
-        EC_ERR("Unable to register net_device: error %i\n", result);
-        goto out_free;
-    }
-
     return 0;
 
- out_free:
-    free_netdev(dbg->dev);
-    dbg->dev = NULL;
  out_return:
     return -1;
 }
 
 /*****************************************************************************/
 
-/**
-   Debug destructor.
-   Unregisteres the net_device and frees allocated memory.
-*/
-
-void ec_debug_clear(ec_debug_t *dbg /**< debug object */)
+/** Debug interface destructor.
+ *
+ * Unregisters the net_device and frees allocated memory.
+ */
+void ec_debug_clear(
+        ec_debug_t *dbg /**< debug object */
+        )
 {
-    if (dbg->dev) {
-        unregister_netdev(dbg->dev);
-        free_netdev(dbg->dev);
+    ec_debug_unregister(dbg);
+    free_netdev(dbg->dev);
+}
+
+/*****************************************************************************/
+
+/** Register debug interface.
+ */
+void ec_debug_register(
+        ec_debug_t *dbg, /**< debug object */
+        const struct net_device *net_dev /**< 'Real' Ethernet device. */
+        )
+{
+    int result;
+
+    ec_debug_unregister(dbg);
+
+    // use the Ethernet address of the physical device for the debug device
+    memcpy(dbg->dev->dev_addr, net_dev->dev_addr, ETH_ALEN);
+
+    // connect the net_device to the kernel
+    if ((result = register_netdev(dbg->dev))) {
+        EC_WARN("Unable to register net_device: error %i\n", result);
+    } else {
+        dbg->registered = 1;
     }
 }
 
 /*****************************************************************************/
 
-/**
-   Sends frame data to the interface.
-*/
+/** Unregister debug interface.
+ */
+void ec_debug_unregister(
+        ec_debug_t *dbg /**< debug object */
+        )
+{
+    if (dbg->registered) {
+        dbg->opened = 0;
+        dbg->registered = 0;
+        unregister_netdev(dbg->dev);
+    }
+}
 
-void ec_debug_send(ec_debug_t *dbg, /**< debug object */
-                   const uint8_t *data, /**< frame data */
-                   size_t size /**< size of the frame data */
-                   )
+/*****************************************************************************/
+
+/** Sends frame data to the interface.
+ */
+void ec_debug_send(
+        ec_debug_t *dbg, /**< debug object */
+        const uint8_t *data, /**< frame data */
+        size_t size /**< size of the frame data */
+        )
 {
     struct sk_buff *skb;
 
-    if (!dbg->opened) return;
+    if (!dbg->opened)
+        return;
 
     // allocate socket buffer
     if (!(skb = dev_alloc_skb(size))) {
@@ -153,11 +181,11 @@ void ec_debug_send(ec_debug_t *dbg, /**< debug object */
  *  NET_DEVICE functions
  *****************************************************************************/
 
-/**
-   Opens the virtual network device.
-*/
-
-int ec_dbgdev_open(struct net_device *dev /**< debug net_device */)
+/** Opens the virtual network device.
+ */
+int ec_dbgdev_open(
+        struct net_device *dev /**< debug net_device */
+        )
 {
     ec_debug_t *dbg = *((ec_debug_t **) netdev_priv(dev));
     dbg->opened = 1;
@@ -167,11 +195,11 @@ int ec_dbgdev_open(struct net_device *dev /**< debug net_device */)
 
 /*****************************************************************************/
 
-/**
-   Stops the virtual network device.
-*/
-
-int ec_dbgdev_stop(struct net_device *dev /**< debug net_device */)
+/** Stops the virtual network device.
+ */
+int ec_dbgdev_stop(
+        struct net_device *dev /**< debug net_device */
+        )
 {
     ec_debug_t *dbg = *((ec_debug_t **) netdev_priv(dev));
     dbg->opened = 0;
@@ -181,13 +209,12 @@ int ec_dbgdev_stop(struct net_device *dev /**< debug net_device */)
 
 /*****************************************************************************/
 
-/**
-   Transmits data via the virtual network device.
-*/
-
-int ec_dbgdev_tx(struct sk_buff *skb, /**< transmit socket buffer */
-                 struct net_device *dev /**< EoE net_device */
-                 )
+/** Transmits data via the virtual network device.
+ */
+int ec_dbgdev_tx(
+        struct sk_buff *skb, /**< transmit socket buffer */
+        struct net_device *dev /**< EoE net_device */
+        )
 {
     ec_debug_t *dbg = *((ec_debug_t **) netdev_priv(dev));
 
@@ -198,12 +225,11 @@ int ec_dbgdev_tx(struct sk_buff *skb, /**< transmit socket buffer */
 
 /*****************************************************************************/
 
-/**
-   Gets statistics about the virtual network device.
-*/
-
-struct net_device_stats *ec_dbgdev_stats(struct net_device *dev
-                                         /**< debug net_device */)
+/** Gets statistics about the virtual network device.
+ */
+struct net_device_stats *ec_dbgdev_stats(
+        struct net_device *dev /**< debug net_device */
+        )
 {
     ec_debug_t *dbg = *((ec_debug_t **) netdev_priv(dev));
     return &dbg->stats;
