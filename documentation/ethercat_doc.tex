@@ -2409,17 +2409,17 @@ and slaves. This allows to connect another PC with a network monitor like
 Wireshark~\cite{wireshark}, for example.
 
 For convenience, so-called ``debug interfaces'' are supported. Debug
-interfaces allow to monitor EtherCAT traffic with a network monitor (like
-Wireshark or tcpdump) running on the master machine without using external
-hardware. To use this functionality, the master sources have to be configured
-with the \lstinline+--enable-debug-if+ switch (see
-sec.~\ref{sec:installation}).
+interfaces are virtual network interfaces allowing to capture EtherCAT traffic
+with a network monitor (like Wireshark or tcpdump) running on the master
+machine without using external hardware. To use this functionality, the master
+sources have to be configured with the \lstinline+--enable-debug-if+ switch
+(see sec.~\ref{sec:installation}).
 
 Every EtherCAT master registers a read-only network interface per attached
-device. The interfaces are named \textit{ecdbgmX} for the main device, and
-\textit{ecdbgbX} for the backup device (for future use), where X is the master
-index. The below listing shows one debug interface among some standard
-interfaces:
+physical Ethernet device. The network interfaces are named \textit{ecdbgmX}
+for the main device, and \textit{ecdbgbX} for the backup device (for future
+use), where X is the master index. The below listing shows a debug interface
+among some standard network interfaces:
 
 \begin{lstlisting}
 # `\textbf{ip link}`
@@ -2427,13 +2427,15 @@ interfaces:
     link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
 4: eth0: <BROADCAST,MULTICAST> mtu 1500 qdisc noop qlen 1000
     link/ether 00:13:46:3b:ad:d7 brd ff:ff:ff:ff:ff:ff
-8: ecdbgm0: <BROADCAST,MULTICAST> mtu 1500 qdisc pfifo_fast qlen 1000
+8: ecdbgm0: <BROADCAST,MULTICAST> mtu 1500 qdisc pfifo_fast
+                                                 qlen 1000
     link/ether 00:04:61:03:d1:01 brd ff:ff:ff:ff:ff:ff
 \end{lstlisting}
 
 While a debug interface is enabled, all frames sent or received to or from the
 physical device are additionally forwarded to the debug interface by the
-corresponding master. Interfaces can be enabled with the below command:
+corresponding master. Network interfaces can be enabled with the below
+command:
 
 \begin{lstlisting}
 # `\textbf{ip link set dev ecdbgm0 up}`
@@ -2442,9 +2444,9 @@ corresponding master. Interfaces can be enabled with the below command:
 Please note, that the frame rate can be very high. With an application
 connected, the debug interface can produce thousands of frames per second.
 
-\paragraph{Attention} The socket buffers needed for the operation of the
-debugging interface have to be allocated dynamically. Some Linux realtime
-extensions do not allow this in realtime context!
+\paragraph{Attention} The socket buffers needed for the operation of the debug
+interface have to be allocated dynamically. Some Linux realtime extensions do
+not allow this in realtime context!
 
 %------------------------------------------------------------------------------
 
