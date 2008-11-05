@@ -750,6 +750,11 @@ void ec_master_receive_datagrams(ec_master_t *master, /**< EtherCAT master */
     ec_datagram_t *datagram;
 
     if (unlikely(size < EC_FRAME_HEADER_SIZE)) {
+        if (master->debug_level) {
+            EC_DBG("Corrupted frame received (size %u < %u byte):\n",
+                    size, EC_FRAME_HEADER_SIZE);
+            ec_print_data(frame_data, size);
+        }
         master->stats.corrupted++;
         ec_master_output_stats(master);
         return;
@@ -762,6 +767,11 @@ void ec_master_receive_datagrams(ec_master_t *master, /**< EtherCAT master */
     cur_data += EC_FRAME_HEADER_SIZE;
 
     if (unlikely(frame_size > size)) {
+        if (master->debug_level) {
+            EC_DBG("Corrupted frame received (invalid frame size %u for "
+                    "received size %u):\n", frame_size, size);
+            ec_print_data(frame_data, size);
+        }
         master->stats.corrupted++;
         ec_master_output_stats(master);
         return;
@@ -778,6 +788,11 @@ void ec_master_receive_datagrams(ec_master_t *master, /**< EtherCAT master */
 
         if (unlikely(cur_data - frame_data
                      + data_size + EC_DATAGRAM_FOOTER_SIZE > size)) {
+            if (master->debug_level) {
+                EC_DBG("Corrupted frame received (invalid data size %u):\n",
+                        data_size);
+                ec_print_data(frame_data, size);
+            }
             master->stats.corrupted++;
             ec_master_output_stats(master);
             return;
