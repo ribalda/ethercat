@@ -14,7 +14,14 @@ Changes since 1.4.0:
 * Added phy_read and phy_write commands to ethercat tool.
 * Added driver for Intel PRO/100 NICs.
 
-Changes since 1.4.0-rc2:
+Changes since 1.4.0-rc3:
+
+* Fixed race condition in jiffy-based frame timeout calculation.
+* Fixed race condition concerning the ec_slave_config_state->operational flag.
+* Fixed wrong calculation of the expected working counter if the process data
+  of a domain span several datagrams.
+
+Changes in 1.4.0-rc3:
 
 * Ported the master thread to the kthread interface.
 * Added missing semaphore up() in an ioctl(). In rare cases, the master

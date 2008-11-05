@@ -161,20 +161,20 @@ int ec_domain_add_datagram(
         }
         // If LRW is used, output FMMUs increment the working counter by 2,
         // while input FMMUs increment it by 1.
-        domain->expected_working_counter =
+        domain->expected_working_counter +=
             used[EC_DIR_OUTPUT] * 2 + used[EC_DIR_INPUT];
     } else if (used[EC_DIR_OUTPUT]) { // outputs only
         if (ec_datagram_lwr(datagram, logical_offset, data_size, data)) {
             kfree(datagram);
             return -1;
         }
-        domain->expected_working_counter = used[EC_DIR_OUTPUT];
+        domain->expected_working_counter += used[EC_DIR_OUTPUT];
     } else { // inputs only (or nothing)
         if (ec_datagram_lrd(datagram, logical_offset, data_size, data)) {
             kfree(datagram);
             return -1;
         }
-        domain->expected_working_counter = used[EC_DIR_INPUT];
+        domain->expected_working_counter += used[EC_DIR_INPUT];
     }
 
     ec_datagram_zero(datagram);
