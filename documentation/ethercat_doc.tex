@@ -308,12 +308,12 @@ an early design decision, which has been made for several reasons:
 
 \begin{itemize}
 
-\item Kernel code has significantly better realtime characteristics,
-i.\,e.~less latency than userspace code. It was foreseeable, that a fieldbus
-master has a lot of cyclic work to do. Cyclic work is usually triggered by
-timer interrupts inside the kernel. The execution delay of a function that
-processes timer interrupts is less, when it resides in kernelspace, because
-there is no need of time-consuming context switches to a userspace process.
+\item Kernel code has significantly better realtime characteristics, i.\,e.\
+less latency than userspace code. It was foreseeable, that a fieldbus master
+has a lot of cyclic work to do. Cyclic work is usually triggered by timer
+interrupts inside the kernel. The execution delay of a function that processes
+timer interrupts is less, when it resides in kernelspace, because there is no
+need of time-consuming context switches to a userspace process.
 
 \item It was also foreseeable, that the master code has to directly
 communicate with the Ethernet hardware. This has to be done in the kernel
@@ -362,48 +362,6 @@ that use the application interface via the EtherCAT library (see
 sec.~\ref{sec:userlib}).
 
 \end{description}
-
-%------------------------------------------------------------------------------
-
-\section{Phases}
-\index{Master phases}
-
-The EtherCAT master runs through several phases (see fig.~\ref{fig:phases}):
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=.9\textwidth]{images/phases}
-  \caption{Master phases and transitions}
-  \label{fig:phases}
-\end{figure}
-
-\begin{description}
-
-\item[Orphaned phase]\index{Orphaned phase} This mode takes effect, when the
-master still waits for its Ethernet device to connect. No bus communication is
-possible until then.
-
-\item[Idle phase]\index{Idle phase} takes effect when the master has accepted
-an Ethernet device, but is not requested by any application yet. The master
-runs its state machine (see sec.~\ref{sec:fsm-master}), that automatically
-scans the bus for slaves and executes pending operations from the userspace
-interface (for example Sdo access). The command-line tool can be used to
-access the bus, but there is no process data exchange because of the missing
-bus configuration.
-
-\item[Operation phase]\index{Operation phase} The master is requested by an
-application that can provide a bus configuration and exchange process data.
-
-\end{description}
-
-%------------------------------------------------------------------------------
-
-\section{General Behavior}
-\index{Master behavior}
-
-\ldots
-
-% TODO Behavior (Scanning)
 
 %------------------------------------------------------------------------------
 
@@ -472,6 +430,41 @@ Jul  4 10:22:45 ethercat kernel: EtherCAT: 2 masters waiting
 
 All EtherCAT master output is prefixed with \lstinline+EtherCAT+ which makes
 searching the logs easier.
+
+%------------------------------------------------------------------------------
+
+\section{Master Phases}
+\index{Master phases}
+
+Every EtherCAT master provided by the master module (see
+sec.~\ref{sec:mastermod}) runs through several phases (see
+fig.~\ref{fig:phases}):
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=.9\textwidth]{images/phases}
+  \caption{Master phases and transitions}
+  \label{fig:phases}
+\end{figure}
+
+\begin{description}
+
+\item[Orphaned phase]\index{Orphaned phase} This mode takes effect, when the
+master still waits for its Ethernet device to connect. No bus communication is
+possible until then.
+
+\item[Idle phase]\index{Idle phase} takes effect when the master has accepted
+an Ethernet device, but is not requested by any application yet. The master
+runs its state machine (see sec.~\ref{sec:fsm-master}), that automatically
+scans the bus for slaves and executes pending operations from the userspace
+interface (for example Sdo access). The command-line tool can be used to
+access the bus, but there is no process data exchange because of the missing
+bus configuration.
+
+\item[Operation phase]\index{Operation phase} The master is requested by an
+application that can provide a bus configuration and exchange process data.
+
+\end{description}
 
 %------------------------------------------------------------------------------
 
@@ -631,7 +624,7 @@ application interface or via the command-line tool (see
 sec.~\ref{sec:ethercat-config}).
 
 \paragraph{Slave Position} The slave position has to be specified as a tuple
-of ``alias`` and ``position''. This allows addressing slaves either via an
+of ``alias'' and ``position''. This allows addressing slaves either via an
 absolute bus position, or a stored identifier called ``alias'', or a mixture
 of both. The alias is a 16-bit value stored in the slave's E$^2$PROM. It can
 be modified via the command-line tool (see sec.~\ref{sec:ethercat-alias}).
@@ -861,7 +854,7 @@ to be started, for example after a command \lstinline+ip link set ethX up+
 from userspace. Frame reception has to be enabled by the driver.
 
 \item[\usebox\boxstop] The purpose of this callback is to ``close'' the
-device, i.~e. make the hardware stop receiving frames.
+device, i.\,e.\ make the hardware stop receiving frames.
 
 \item[\usebox\boxxmit] This function is called for each frame that has to be
 transmitted. The network stack passes the frame as a pointer to an
@@ -1447,7 +1440,7 @@ The below sections describe every state machine used in the EtherCAT master.
 The textual descriptions of the state machines contain references to the
 transitions in the corresponding state transition diagrams, that are marked
 with an arrow followed by the name of the successive state. Transitions caused
-by trivial error cases (i.~e. no response from slave) are not described
+by trivial error cases (i.\,e.\ no response from slave) are not described
 explicitly. These transitions are drawn as dashed arrows in the diagrams.
 
 %------------------------------------------------------------------------------
@@ -1572,7 +1565,7 @@ apply all necessary Pdo configurations.
 configured.
 
 \item[FMMU Configuration] If there are FMMUs configurations supplied by the
-application (i.~e. if the application registered Pdo entries), they are
+application (i.\,e.\ if the application registered Pdo entries), they are
 applied. 
 
 \item[SAFEOP] The state change FSM is used to bring the slave to SAFEOP state.
@@ -1604,7 +1597,7 @@ in \cite[sec.~6.4.1]{alspec}.
 \begin{description}
 
 \item[Start] The new application-layer state is requested via the ``AL Control
-Request'' register (see ~\cite[sec. 5.3.1]{alspec}).
+Request'' register (see~\cite[sec. 5.3.1]{alspec}).
 
 \item[Check for Response] Some slave need some time to respond to an AL state
 change command, and do not respond for some time. For this case, the command
@@ -1755,10 +1748,11 @@ protocols. See the below section for details.
 \label{sec:eoe}
 \index{EoE}
 
-The EtherCAT master implements the Ethernet-over-EtherCAT mailbox protocol to
-enable the tunneling of Ethernet frames to special slaves, that can either
-have physical Ethernet ports to forward the frames to, or have an own IP stack
-to receive the frames.
+The EtherCAT master implements the
+Ethernet-over-EtherCAT\nomenclature{EoE}{Ethernet-over-EtherCAT, Mailbox
+Protocol} mailbox protocol~\cite[sec.~5.7]{alspec} to enable the tunneling of
+Ethernet frames to special slaves, that can either have physical Ethernet
+ports to forward the frames to, or have an own IP stack to receive the frames.
 
 \paragraph{Virtual Network Interfaces}
 
@@ -1913,8 +1907,9 @@ application-layer state is automatically set to OP.
 \label{sec:coe}
 \index{CoE}
 
-The CANopen-over-EtherCAT protocol \cite[sec.~5.6]{alspec} is used to
-configure slaves and exchange data objects on application level.
+The CANopen-over-EtherCAT\nomenclature{CoE}{CANopen-over-EtherCAT, Mailbox
+Protocol} protocol~\cite[sec.~5.6]{alspec} is used to configure slaves and
+exchange data objects on application level.
 
 % TODO
 %
@@ -2358,10 +2353,10 @@ sec.~\ref{sec:installation}), before the master can be inserted as a service.
 Please note, that the init script depends on the sysconfig file described
 below.
 
-To provide service dependencies (i.~e. which services have to be started before
-others) inside the init script code, LSB defines a special comment block.
-System tools can extract this information to insert the EtherCAT init script at
-the correct place in the startup sequence:
+To provide service dependencies (i.\,e.\ which services have to be started
+before others) inside the init script code, LSB defines a special comment
+block. System tools can extract this information to insert the EtherCAT init
+script at the correct place in the startup sequence:
 
 \lstinputlisting[firstline=38,lastline=48]
     {../script/init.d/ethercat}
@@ -2409,25 +2404,48 @@ the EtherCAT master. It has to be executed with one of the parameters
 \label{sec:debug}
 \index{Monitoring}
 
-% FIXME
+EtherCAT buses can always be monitored by inserting a switch between master
+and slaves. This allows to connect another PC with a network monitor like
+Wireshark~\cite{wireshark}, for example.
 
-For debugging purposes, every EtherCAT master registers a read-only network
-interface \textit{ecX}, where X is a number, provided by the kernel on device
-registration. While it is ``up'', the master forwards every frame sent and
-received to this interface.
+For convenience, so-called ``debug interfaces'' are supported. Debug interfaces
+allow to monitor EtherCAT traffic with a network monitor (like Wireshark or
+tcpdump) running on the same machine. To use this functionality, the master
+sources have to be configured with the \lstinline+--enable-debug-if+ switch
+(see sec.~\ref{sec:installation}).
 
-This makes it possible to connect an network monitor (like Wireshark or
-tcpdump) to the debug interface and monitor the EtherCAT frames.
+Every EtherCAT master registers two read-only network interfaces. These are
+named \textit{ecdbgmX} (main device) and \textit{ecdbgbX} (backup device for
+future use), where X is the master index. The debug interfaces are listed in
+the below output:
 
-% FIXME schedule()
-It has to be considered, that can be frame rate can be very high. The master
-state machine usually runs every kernel timer interrupt (usually up to
-\unit{1}{\kilo\hertz}) and with a connected application, the rate can be even
-higher.
+\begin{lstlisting}
+# `\textbf{ip link}`
+1: lo: <LOOPBACK,UP> mtu 16436 qdisc noqueue
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+4: eth0: <BROADCAST,MULTICAST> mtu 1500 qdisc noop qlen 1000
+    link/ether 00:04:61:03:d1:01 brd ff:ff:ff:ff:ff:ff
+8: ecdbgm0: <BROADCAST,MULTICAST> mtu 1500 qdisc pfifo_fast
+    qlen 1000
+    link/ether 00:00:00:00:00:00 brd ff:ff:ff:ff:ff:ff
+9: ecdbgb0: <BROADCAST,MULTICAST> mtu 1500 qdisc noop qlen 1000
+    link/ether 00:00:00:00:00:00 brd ff:ff:ff:ff:ff:ff
+\end{lstlisting}
 
-\paragraph{Attention:} The socket buffers needed for the operation of
-the debugging interface have to be allocated dynamically. Some Linux
-realtime extensions do not allow this in realtime context!
+While a debug interface is enabled, the corresponding master forwards all
+frames sent and received to or from the bus to that interface. Interfaces can
+be enabled for example with the command:
+
+\begin{lstlisting}
+# `\textbf{ip link set dev ecdbgm0 up}`
+\end{lstlisting}
+
+Please note, that the frame rate can be very high. With an application
+connected, the debug interface can produce thousands of frames per second.
+
+\paragraph{Attention} The socket buffers needed for the operation of the
+debugging interface have to be allocated dynamically. Some Linux realtime
+extensions do not allow this in realtime context!
 
 %------------------------------------------------------------------------------
 
@@ -2789,6 +2807,13 @@ crw-rw-r--  1 root root 252, 0 2008-09-03 16:19 /dev/EtherCAT0
 Now, the \lstinline+ethercat+ tool can be used (see sec.~\ref{sec:tool}) even
 as a non-root user.
 
+If non-root users shall have writing access, the following udev rule can be
+used instead:
+
+\begin{lstlisting}
+KERNEL=="EtherCAT[0-9]*", MODE="0664", GROUP="users"
+\end{lstlisting}
+
 %------------------------------------------------------------------------------
 
 \begin{thebibliography}{99}
@@ -2811,15 +2836,15 @@ International Electrotechnical Commission (IEC), 2005.
 2008.
 
 \bibitem{lsb} Linux Standard Base.
-\url{http://www.linuxfoundation.org/en/LSB}.  August~9, 2006.
+\url{http://www.linuxfoundation.org/en/LSB}. August~9, 2006.
 
 \bibitem{wireshark} Wireshark. \url{http://www.wireshark.org}. 2008.
 
-\bibitem{automata} {\it Hopcroft, J.~E. / Ullman, J.~D.}: Introduction to
+\bibitem{automata} {\it Hopcroft, J.\,E.\ / Ullman, J.\,D.}: Introduction to
 Automata Theory, Languages and Computation. Adison-Wesley, Reading,
 Mass.~1979.
 
-\bibitem{fsmmis} {\it Wagner, F. / Wolstenholme, P.}: State machine
+\bibitem{fsmmis} {\it Wagner, F.\ / Wolstenholme, P.}: State machine
 misunderstandings. In: IEE journal ``Computing and Control Engineering'',
 2004.
 
