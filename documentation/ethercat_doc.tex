@@ -2400,41 +2400,40 @@ the EtherCAT master. It has to be executed with one of the parameters
 
 %------------------------------------------------------------------------------
 
-\section{Monitoring and Debugging}
+\section{Debug Interfaces}
 \label{sec:debug}
-\index{Monitoring}
+\index{Debug Interfaces}
 
 EtherCAT buses can always be monitored by inserting a switch between master
 and slaves. This allows to connect another PC with a network monitor like
 Wireshark~\cite{wireshark}, for example.
 
-For convenience, so-called ``debug interfaces'' are supported. Debug interfaces
-allow to monitor EtherCAT traffic with a network monitor (like Wireshark or
-tcpdump) running on the same machine. To use this functionality, the master
-sources have to be configured with the \lstinline+--enable-debug-if+ switch
-(see sec.~\ref{sec:installation}).
+For convenience, so-called ``debug interfaces'' are supported. Debug
+interfaces allow to monitor EtherCAT traffic with a network monitor (like
+Wireshark or tcpdump) running on the master machine without using external
+hardware. To use this functionality, the master sources have to be configured
+with the \lstinline+--enable-debug-if+ switch (see
+sec.~\ref{sec:installation}).
 
-Every EtherCAT master registers two read-only network interfaces. These are
-named \textit{ecdbgmX} (main device) and \textit{ecdbgbX} (backup device for
-future use), where X is the master index. The debug interfaces are listed in
-the below output:
+Every EtherCAT master registers a read-only network interface per attached
+device. The interfaces are named \textit{ecdbgmX} for the main device, and
+\textit{ecdbgbX} for the backup device (for future use), where X is the master
+index. The below listing shows one debug interface among some standard
+interfaces:
 
 \begin{lstlisting}
 # `\textbf{ip link}`
 1: lo: <LOOPBACK,UP> mtu 16436 qdisc noqueue
     link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
 4: eth0: <BROADCAST,MULTICAST> mtu 1500 qdisc noop qlen 1000
+    link/ether 00:13:46:3b:ad:d7 brd ff:ff:ff:ff:ff:ff
+8: ecdbgm0: <BROADCAST,MULTICAST> mtu 1500 qdisc pfifo_fast qlen 1000
     link/ether 00:04:61:03:d1:01 brd ff:ff:ff:ff:ff:ff
-8: ecdbgm0: <BROADCAST,MULTICAST> mtu 1500 qdisc pfifo_fast
-    qlen 1000
-    link/ether 00:00:00:00:00:00 brd ff:ff:ff:ff:ff:ff
-9: ecdbgb0: <BROADCAST,MULTICAST> mtu 1500 qdisc noop qlen 1000
-    link/ether 00:00:00:00:00:00 brd ff:ff:ff:ff:ff:ff
 \end{lstlisting}
 
-While a debug interface is enabled, the corresponding master forwards all
-frames sent and received to or from the bus to that interface. Interfaces can
-be enabled for example with the command:
+While a debug interface is enabled, all frames sent or received to or from the
+physical device are additionally forwarded to the debug interface by the
+corresponding master. Interfaces can be enabled with the below command:
 
 \begin{lstlisting}
 # `\textbf{ip link set dev ecdbgm0 up}`
