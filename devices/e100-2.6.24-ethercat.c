@@ -1658,17 +1658,17 @@ static void e100_watchdog(unsigned long data)
 
 	mii_check_link(&nic->mii);
 
-	/* Software generated interrupt to recover from (rare) Rx
-	 * allocation failure.
-	 * Unfortunately have to use a spinlock to not re-enable interrupts
-	 * accidentally, due to hardware that shares a register between the
-	 * interrupt mask bit and the SW Interrupt generation bit */
-	if (!nic->ecdev)
+	if (!nic->ecdev) {
+		/* Software generated interrupt to recover from (rare) Rx
+		 * allocation failure.
+		 * Unfortunately have to use a spinlock to not re-enable interrupts
+		 * accidentally, due to hardware that shares a register between the
+		 * interrupt mask bit and the SW Interrupt generation bit */
 		spin_lock_irq(&nic->cmd_lock);
-	iowrite8(ioread8(&nic->csr->scb.cmd_hi) | irq_sw_gen,&nic->csr->scb.cmd_hi);
-	e100_write_flush(nic);
-	if (!nic->ecdev)
+		iowrite8(ioread8(&nic->csr->scb.cmd_hi) | irq_sw_gen,&nic->csr->scb.cmd_hi);
+		e100_write_flush(nic);
 		spin_unlock_irq(&nic->cmd_lock);
+	}
 
 	e100_update_stats(nic);
 	e100_adjust_adaptive_ifs(nic, cmd.speed, cmd.duplex);
