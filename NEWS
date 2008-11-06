@@ -22,6 +22,7 @@ Changes since 1.4.0-rc3:
 * Fixed race condition concerning the ec_slave_config_state->operational flag.
 * Fixed wrong calculation of the expected working counter if the process data
   of a domain span several datagrams.
+* Fixed typo in logging output.
 
 Changes in 1.4.0-rc3:
 

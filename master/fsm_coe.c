@@ -1404,7 +1404,7 @@ void ec_fsm_coe_up_request(ec_fsm_coe_t *fsm /**< finite state machine */)
                 (jiffies - fsm->request->jiffies_sent) * 1000 / HZ;
             if (diff_ms < fsm->request->response_timeout) {
                 if (fsm->slave->master->debug_level) {
-                    EC_DBG("Slave %u did no respond to Sdo upload request. "
+                    EC_DBG("Slave %u did not respond to Sdo upload request. "
                             "Retrying after %u ms...\n",
                             slave->ring_position, (u32) diff_ms);
                 }
