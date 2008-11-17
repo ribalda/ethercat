@@ -135,7 +135,7 @@ void ec_slave_config_clear(
  * returns with success.
  *
  * \retval >=0 Success, logical offset byte address.
- * \retval -1  Error, FMMU limit reached.
+ * \retval  <0 Error code.
  */
 int ec_slave_config_prepare_fmmu(
         ec_slave_config_t *sc, /**< Slave configuration. */
@@ -157,7 +157,7 @@ int ec_slave_config_prepare_fmmu(
     if (sc->used_fmmus == EC_MAX_FMMUS) {
         EC_ERR("FMMU limit reached for slave configuration %u:%u!\n",
                 sc->alias, sc->position);
-        return -1;
+        return -EOVERFLOW;
     }
 
     fmmu = &sc->fmmu_configs[sc->used_fmmus++];
@@ -173,10 +173,8 @@ int ec_slave_config_prepare_fmmu(
 
 /** Attaches the configuration to the addressed slave object.
  *
- * \retval 0 Success.
- * \retval -1 Slave not found.
- * \retval -2 Slave already configured.
- * \retval -3 Invalid slave type found at the given position.
+ * \retval  0 Success.
+ * \retval <0 Error code.
  */
 int ec_slave_config_attach(
         ec_slave_config_t *sc /**< Slave configuration. */
@@ -192,7 +190,7 @@ int ec_slave_config_attach(
         if (sc->master->debug_level)
             EC_DBG("Failed to find slave for configuration %u:%u.\n",
                     sc->alias, sc->position);
-        return -1;
+        return -ENOENT;
     }
 
 	if (slave->config) {
@@ -200,7 +198,7 @@ int ec_slave_config_attach(
             EC_DBG("Failed to attach slave configuration %u:%u. Slave %u"
                     " already has a configuration!\n", sc->alias,
                     sc->position, slave->ring_position);
-        return -2;
+        return -EEXIST;
     }
 
     if (slave->sii.vendor_id != sc->vendor_id
@@ -211,7 +209,7 @@ int ec_slave_config_attach(
                     slave->ring_position, slave->sii.vendor_id,
                     slave->sii.product_code, sc->alias, sc->position,
                     sc->vendor_id, sc->product_code);
-        return -3;
+        return -EINVAL;
 	}
 
 	// attach slave
@@ -399,12 +397,12 @@ int ecrt_slave_config_sync_manager(ec_slave_config_t *sc, uint8_t sync_index,
 
     if (sync_index >= EC_MAX_SYNC_MANAGERS) {
         EC_ERR("Invalid sync manager index %u!\n", sync_index);
-        return -1;
+        return -ENOENT;
     }
 
     if (dir != EC_DIR_OUTPUT && dir != EC_DIR_INPUT) {
         EC_ERR("Invalid direction %u!\n", (u32) dir);
-        return -1;
+        return -EINVAL;
     }
 
     sync_config = &sc->sync_configs[sync_index];
@@ -425,15 +423,15 @@ int ecrt_slave_config_pdo_assign_add(ec_slave_config_t *sc,
 
     if (sync_index >= EC_MAX_SYNC_MANAGERS) {
         EC_ERR("Invalid sync manager index %u!\n", sync_index);
-        return -1;
+        return -EINVAL;
     }
 
     down(&sc->master->master_sem);
 
-    if (!(pdo = ec_pdo_list_add_pdo(&sc->sync_configs[sync_index].pdos,
-                    pdo_index))) {
+    pdo = ec_pdo_list_add_pdo(&sc->sync_configs[sync_index].pdos, pdo_index);
+    if (IS_ERR(pdo)) {
         up(&sc->master->master_sem);
-        return -1;
+        return PTR_ERR(pdo);
     }
     pdo->sync_index = sync_index;
 
@@ -470,7 +468,8 @@ int ecrt_slave_config_pdo_mapping_add(ec_slave_config_t *sc,
 {
     uint8_t sync_index;
     ec_pdo_t *pdo = NULL;
-    int retval = -1;
+    ec_pdo_entry_t *entry;
+    int retval = 0;
     
     if (sc->master->debug_level)
         EC_DBG("ecrt_slave_config_pdo_mapping_add(sc = 0x%x, "
@@ -486,12 +485,15 @@ int ecrt_slave_config_pdo_mapping_add(ec_slave_config_t *sc,
 
     if (pdo) {
         down(&sc->master->master_sem);
-        retval = ec_pdo_add_entry(pdo, entry_index, entry_subindex,
-                entry_bit_length) ? 0 : -1;
+        entry = ec_pdo_add_entry(pdo, entry_index, entry_subindex,
+                entry_bit_length);
         up(&sc->master->master_sem);
+        if (IS_ERR(entry))
+            retval = PTR_ERR(entry);
     } else {
         EC_ERR("Pdo 0x%04X is not assigned in config %u:%u.\n",
                 pdo_index, sc->alias, sc->position);
+        retval = -ENOENT; 
     }
 
     return retval;
@@ -529,6 +531,7 @@ void ecrt_slave_config_pdo_mapping_clear(ec_slave_config_t *sc,
 int ecrt_slave_config_pdos(ec_slave_config_t *sc,
         unsigned int n_syncs, const ec_sync_info_t syncs[])
 {
+    int ret;
     unsigned int i, j, k;
     const ec_sync_info_t *sync_info;
     const ec_pdo_info_t *pdo_info;
@@ -549,12 +552,13 @@ int ecrt_slave_config_pdos(ec_slave_config_t *sc,
 
         if (sync_info->index >= EC_MAX_SYNC_MANAGERS) {
             EC_ERR("Invalid sync manager index %u!\n", sync_info->index);
-            return -1;
+            return -ENOENT;
         }
 
-        if (ecrt_slave_config_sync_manager(
-                    sc, sync_info->index, sync_info->dir))
-            return -1;
+        ret = ecrt_slave_config_sync_manager(
+                sc, sync_info->index, sync_info->dir);
+        if (ret)
+            return ret;
 
         if (sync_info->n_pdos && sync_info->pdos) {
             ecrt_slave_config_pdo_assign_clear(sc, sync_info->index);
@@ -562,9 +566,10 @@ int ecrt_slave_config_pdos(ec_slave_config_t *sc,
             for (j = 0; j < sync_info->n_pdos; j++) {
                 pdo_info = &sync_info->pdos[j];
 
-                if (ecrt_slave_config_pdo_assign_add(
-                            sc, sync_info->index, pdo_info->index))
-                    return -1;
+                ret = ecrt_slave_config_pdo_assign_add(
+                        sc, sync_info->index, pdo_info->index);
+                if (ret)
+                    return ret;
 
                 if (pdo_info->n_entries && pdo_info->entries) {
                     ecrt_slave_config_pdo_mapping_clear(sc, pdo_info->index);
@@ -572,11 +577,12 @@ int ecrt_slave_config_pdos(ec_slave_config_t *sc,
                     for (k = 0; k < pdo_info->n_entries; k++) {
                         entry_info = &pdo_info->entries[k];
 
-                        if (ecrt_slave_config_pdo_mapping_add(sc,
-                                    pdo_info->index, entry_info->index,
-                                    entry_info->subindex,
-                                    entry_info->bit_length))
-                            return -1;
+                        ret = ecrt_slave_config_pdo_mapping_add(sc,
+                                pdo_info->index, entry_info->index,
+                                entry_info->subindex,
+                                entry_info->bit_length);
+                        if (ret)
+                            return ret;
                     }
                 }
             }
@@ -624,13 +630,13 @@ int ecrt_slave_config_reg_pdo_entry(
                         EC_ERR("Pdo entry 0x%04X:%02X does not byte-align "
                                 "in config %u:%u.\n", index, subindex,
                                 sc->alias, sc->position);
-                        return -3;
+                        return -EFAULT;
                     }
 
                     sync_offset = ec_slave_config_prepare_fmmu(
                             sc, domain, sync_index, sync_config->dir);
                     if (sync_offset < 0)
-                        return -2;
+                        return sync_offset;
 
                     return sync_offset + bit_offset / 8;
                 }
@@ -640,7 +646,7 @@ int ecrt_slave_config_reg_pdo_entry(
 
     EC_ERR("Pdo entry 0x%04X:%02X is not mapped in slave config %u:%u.\n",
            index, subindex, sc->alias, sc->position);
-    return -1;
+    return -ENOENT;
 }
 
 
@@ -651,6 +657,7 @@ int ecrt_slave_config_sdo(ec_slave_config_t *sc, uint16_t index,
 {
     ec_slave_t *slave = sc->slave;
     ec_sdo_request_t *req;
+    int ret;
 
     if (sc->master->debug_level)
         EC_DBG("ecrt_slave_config_sdo(sc = 0x%x, index = 0x%04X, "
@@ -659,28 +666,28 @@ int ecrt_slave_config_sdo(ec_slave_config_t *sc, uint16_t index,
 
     if (slave && !(slave->sii.mailbox_protocols & EC_MBOX_COE)) {
         EC_ERR("Slave %u does not support CoE!\n", slave->ring_position);
-        return -1;
+        return -EPROTONOSUPPORT; // protocol not supported
     }
 
     if (!(req = (ec_sdo_request_t *)
           kmalloc(sizeof(ec_sdo_request_t), GFP_KERNEL))) {
         EC_ERR("Failed to allocate memory for Sdo configuration!\n");
-        return -1;
+        return -ENOMEM;
     }
 
     ec_sdo_request_init(req);
     ec_sdo_request_address(req, index, subindex);
 
-    if (ec_sdo_request_copy_data(req, data, size)) {
+    ret = ec_sdo_request_copy_data(req, data, size);
+    if (ret < 0) {
         ec_sdo_request_clear(req);
         kfree(req);
-        return -1;
+        return ret;
     }
         
     down(&sc->master->master_sem);
     list_add_tail(&req->list, &sc->sdo_configs);
     up(&sc->master->master_sem);
-
     return 0;
 }
 

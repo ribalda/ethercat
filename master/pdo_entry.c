@@ -56,6 +56,9 @@ void ec_pdo_entry_init(
 /*****************************************************************************/
 
 /** Pdo entry copy constructor.
+ *
+ * \retval  0 Success.
+ * \retval <0 Error code.
  */
 int ec_pdo_entry_init_copy(
         ec_pdo_entry_t *entry, /**< Pdo entry. */
@@ -67,10 +70,7 @@ int ec_pdo_entry_init_copy(
     entry->name = NULL;
     entry->bit_length = other->bit_length;
 
-    if (ec_pdo_entry_set_name(entry, other->name))
-        return -1;
-
-    return 0;
+    return ec_pdo_entry_set_name(entry, other->name);
 }
 
 /*****************************************************************************/
@@ -86,6 +86,9 @@ void ec_pdo_entry_clear(ec_pdo_entry_t *entry /**< Pdo entry. */)
 /*****************************************************************************/
 
 /** Set Pdo entry name.
+ *
+ * \retval  0 Success.
+ * \retval <0 Error code.
  */
 int ec_pdo_entry_set_name(
         ec_pdo_entry_t *entry, /**< Pdo entry. */
@@ -103,7 +106,7 @@ int ec_pdo_entry_set_name(
     if (name && (len = strlen(name))) {
         if (!(entry->name = (char *) kmalloc(len + 1, GFP_KERNEL))) {
             EC_ERR("Failed to allocate Pdo entry name.\n");
-            return -1;
+            return -ENOMEM;
         }
         memcpy(entry->name, name, len + 1);
     } else {

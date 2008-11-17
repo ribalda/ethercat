@@ -51,7 +51,7 @@ int ecrt_slave_config_sync_manager(ec_slave_config_t *sc, uint8_t sync_index,
     unsigned int i;
 
     if (sync_index >= EC_MAX_SYNC_MANAGERS)
-        return -1;
+        return -ENOENT;
 
     memset(&data, 0x00, sizeof(ec_ioctl_config_t));
     data.config_index = sc->index;
@@ -60,7 +60,7 @@ int ecrt_slave_config_sync_manager(ec_slave_config_t *sc, uint8_t sync_index,
     if (ioctl(sc->master->fd, EC_IOCTL_SC_SYNC, &data) == -1) {
         fprintf(stderr, "Failed to config sync manager: %s\n",
                 strerror(errno));
-        return -1; 
+        return -1; // FIXME
     }
     
     return 0;
@@ -80,7 +80,7 @@ int ecrt_slave_config_pdo_assign_add(ec_slave_config_t *sc,
     if (ioctl(sc->master->fd, EC_IOCTL_SC_ADD_PDO, &data) == -1) {
         fprintf(stderr, "Failed to add Pdo: %s\n",
                 strerror(errno));
-        return -1; 
+        return -1;  // FIXME
     }
     
     return 0;
@@ -119,7 +119,7 @@ int ecrt_slave_config_pdo_mapping_add(ec_slave_config_t *sc,
     if (ioctl(sc->master->fd, EC_IOCTL_SC_ADD_ENTRY, &data) == -1) {
         fprintf(stderr, "Failed to add Pdo entry: %s\n",
                 strerror(errno));
-        return -1; 
+        return -1;  // FIXME
     }
     
     return 0;
@@ -146,6 +146,7 @@ void ecrt_slave_config_pdo_mapping_clear(ec_slave_config_t *sc,
 int ecrt_slave_config_pdos(ec_slave_config_t *sc,
         unsigned int n_syncs, const ec_sync_info_t syncs[])
 {
+    int ret;
     unsigned int i, j, k;
     const ec_sync_info_t *sync_info;
     const ec_pdo_info_t *pdo_info;
@@ -163,12 +164,13 @@ int ecrt_slave_config_pdos(ec_slave_config_t *sc,
         if (sync_info->index >= EC_MAX_SYNC_MANAGERS) {
             fprintf(stderr, "Invalid sync manager index %u!\n",
                     sync_info->index);
-            return -1;
+            return -ENOENT;
         }
 
-        if (ecrt_slave_config_sync_manager(
-                    sc, sync_info->index, sync_info->dir))
-            return -1;
+        ret = ecrt_slave_config_sync_manager(
+                sc, sync_info->index, sync_info->dir);
+        if (ret)
+            return ret;
 
         if (sync_info->n_pdos && sync_info->pdos) {
             ecrt_slave_config_pdo_assign_clear(sc, sync_info->index);
@@ -176,9 +178,10 @@ int ecrt_slave_config_pdos(ec_slave_config_t *sc,
             for (j = 0; j < sync_info->n_pdos; j++) {
                 pdo_info = &sync_info->pdos[j];
 
-                if (ecrt_slave_config_pdo_assign_add(
-                            sc, sync_info->index, pdo_info->index))
-                    return -1;
+                ret = ecrt_slave_config_pdo_assign_add(
+                        sc, sync_info->index, pdo_info->index);
+                if (ret)
+                    return ret;
 
                 if (pdo_info->n_entries && pdo_info->entries) {
                     ecrt_slave_config_pdo_mapping_clear(sc, pdo_info->index);
@@ -186,11 +189,12 @@ int ecrt_slave_config_pdos(ec_slave_config_t *sc,
                     for (k = 0; k < pdo_info->n_entries; k++) {
                         entry_info = &pdo_info->entries[k];
 
-                        if (ecrt_slave_config_pdo_mapping_add(sc,
-                                    pdo_info->index, entry_info->index,
-                                    entry_info->subindex,
-                                    entry_info->bit_length))
-                            return -1;
+                        ret = ecrt_slave_config_pdo_mapping_add(sc,
+                                pdo_info->index, entry_info->index,
+                                entry_info->subindex,
+                                entry_info->bit_length);
+                        if (ret)
+                            return ret;
                     }
                 }
             }
@@ -222,7 +226,7 @@ int ecrt_slave_config_reg_pdo_entry(
     if (ret == -1) {
         fprintf(stderr, "Failed to register Pdo entry: %s\n",
                 strerror(errno));
-        return -2;
+        return -2; // FIXME
     }
 
     if (bit_position) {
@@ -232,7 +236,7 @@ int ecrt_slave_config_reg_pdo_entry(
             fprintf(stderr, "Pdo entry 0x%04X:%02X does not byte-align "
                     "in config %u:%u.\n", index, subindex,
                     sc->alias, sc->position);
-            return -3;
+            return -3; // FIXME
         }
     }
 
@@ -254,7 +258,7 @@ int ecrt_slave_config_sdo(ec_slave_config_t *sc, uint16_t index,
 
     if (ioctl(sc->master->fd, EC_IOCTL_SC_REG_PDO_ENTRY, &data) == -1) {
         fprintf(stderr, "Failed to configure Sdo.\n");
-        return -1;
+        return -1; // FIXME
     }
 
     return 0;

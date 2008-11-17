@@ -133,7 +133,8 @@ void ec_domain_add_fmmu_config(
  * The datagram type and expected working counters are determined by the
  * number of input and output fmmus that share the datagram.
  *
- * \return 0 in case of success, else < 0
+ * \retval  0 Success.
+ * \retval <0 Error code.
  */
 int ec_domain_add_datagram(
         ec_domain_t *domain, /**< EtherCAT domain. */
@@ -144,10 +145,11 @@ int ec_domain_add_datagram(
         )
 {
     ec_datagram_t *datagram;
+    int ret;
 
     if (!(datagram = kmalloc(sizeof(ec_datagram_t), GFP_KERNEL))) {
         EC_ERR("Failed to allocate domain datagram!\n");
-        return -1;
+        return -ENOMEM;
     }
 
     ec_datagram_init(datagram);
@@ -155,24 +157,27 @@ int ec_domain_add_datagram(
             "domain%u-%u", domain->index, logical_offset);
 
     if (used[EC_DIR_OUTPUT] && used[EC_DIR_INPUT]) { // inputs and outputs
-        if (ec_datagram_lrw(datagram, logical_offset, data_size, data)) {
+        ret = ec_datagram_lrw(datagram, logical_offset, data_size, data);
+        if (ret < 0) {
             kfree(datagram);
-            return -1;
+            return ret;
         }
         // If LRW is used, output FMMUs increment the working counter by 2,
         // while input FMMUs increment it by 1.
         domain->expected_working_counter +=
             used[EC_DIR_OUTPUT] * 2 + used[EC_DIR_INPUT];
     } else if (used[EC_DIR_OUTPUT]) { // outputs only
-        if (ec_datagram_lwr(datagram, logical_offset, data_size, data)) {
+        ret = ec_datagram_lwr(datagram, logical_offset, data_size, data);
+        if (ret < 0) {
             kfree(datagram);
-            return -1;
+            return ret;
         }
         domain->expected_working_counter += used[EC_DIR_OUTPUT];
     } else { // inputs only (or nothing)
-        if (ec_datagram_lrd(datagram, logical_offset, data_size, data)) {
+        ret = ec_datagram_lrd(datagram, logical_offset, data_size, data);
+        if (ret < 0) {
             kfree(datagram);
-            return -1;
+            return ret;
         }
         domain->expected_working_counter += used[EC_DIR_INPUT];
     }
@@ -191,8 +196,8 @@ int ec_domain_add_datagram(
  *
  * \todo Check for FMMUs that do not fit into any datagram.
  *
- * \retval 0 in case of success
- * \retval <0 on failure.
+ * \retval  0 Success
+ * \retval <0 Error code.
  */
 int ec_domain_finish(
         ec_domain_t *domain, /**< EtherCAT domain. */
@@ -205,6 +210,7 @@ int ec_domain_finish(
     unsigned int datagram_used[EC_DIR_COUNT];
     ec_fmmu_config_t *fmmu;
     const ec_datagram_t *datagram;
+    int ret;
 
     domain->logical_base_address = base_address;
 
@@ -213,7 +219,7 @@ int ec_domain_finish(
                     (uint8_t *) kmalloc(domain->data_size, GFP_KERNEL))) {
             EC_ERR("Failed to allocate %u bytes internal memory for"
                     " domain %u!\n", domain->data_size, domain->index);
-            return -1;
+            return -ENOMEM;
         }
     }
 
@@ -237,11 +243,12 @@ int ec_domain_finish(
         // If the current FMMU's data do not fit in the current datagram,
         // allocate a new one.
         if (datagram_size + fmmu->data_size > EC_MAX_DATA_SIZE) {
-            if (ec_domain_add_datagram(domain,
-                        domain->logical_base_address + datagram_offset,
-                        datagram_size, domain->data + datagram_offset,
-                        datagram_used))
-                return -1;
+            ret = ec_domain_add_datagram(domain,
+                    domain->logical_base_address + datagram_offset,
+                    datagram_size, domain->data + datagram_offset,
+                    datagram_used);
+            if (ret < 0)
+                return ret;
             datagram_offset += datagram_size;
             datagram_size = 0;
             datagram_count++;
@@ -255,11 +262,12 @@ int ec_domain_finish(
     // Allocate last datagram, if data are left (this is also the case if the
     // process data fit into a single datagram)
     if (datagram_size) {
-        if (ec_domain_add_datagram(domain,
-                    domain->logical_base_address + datagram_offset,
-                    datagram_size, domain->data + datagram_offset,
-                    datagram_used))
-            return -1;
+        ret = ec_domain_add_datagram(domain,
+                domain->logical_base_address + datagram_offset,
+                datagram_size, domain->data + datagram_offset,
+                datagram_used);
+        if (ret < 0)
+            return ret;
         datagram_count++;
     }
 
@@ -328,13 +336,15 @@ int ecrt_domain_reg_pdo_entry_list(ec_domain_t *domain,
                 (u32) domain, (u32) regs);
 
     for (reg = regs; reg->index; reg++) {
-        if (!(sc = ecrt_master_slave_config(domain->master, reg->alias,
-                        reg->position, reg->vendor_id, reg->product_code)))
-            return -1;
+        sc = ecrt_master_slave_config_err(domain->master, reg->alias,
+                reg->position, reg->vendor_id, reg->product_code);
+        if (IS_ERR(sc))
+            return PTR_ERR(sc);
 
-        if ((ret = ecrt_slave_config_reg_pdo_entry(sc, reg->index,
-                        reg->subindex, domain, reg->bit_position)) < 0)
-            return -1;
+        ret = ecrt_slave_config_reg_pdo_entry(sc, reg->index,
+                        reg->subindex, domain, reg->bit_position);
+        if (ret < 0)
+            return ret;
 
         *reg->offset = ret;
     }

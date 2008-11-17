@@ -288,7 +288,8 @@ void ec_fsm_coe_dict_start(ec_fsm_coe_t *fsm /**< finite state machine */)
         return;
     }
 
-    if (!(data = ec_slave_mbox_prepare_send(slave, datagram, 0x03, 8))) {
+    data = ec_slave_mbox_prepare_send(slave, datagram, 0x03, 8);
+    if (IS_ERR(data)) {
         fsm->state = ec_fsm_coe_error;
         return;
     }
@@ -428,8 +429,8 @@ void ec_fsm_coe_dict_response(ec_fsm_coe_t *fsm /**< finite state machine */)
         return;
     }
 
-    if (!(data = ec_slave_mbox_fetch(slave, datagram,
-				     &mbox_prot, &rec_size))) {
+    data = ec_slave_mbox_fetch(slave, datagram, &mbox_prot, &rec_size);
+    if (IS_ERR(data)) {
         fsm->state = ec_fsm_coe_error;
         return;
     }
@@ -532,7 +533,8 @@ void ec_fsm_coe_dict_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     // fetch Sdo descriptions
     fsm->sdo = list_entry(slave->sdo_dictionary.next, ec_sdo_t, list);
 
-    if (!(data = ec_slave_mbox_prepare_send(slave, datagram, 0x03, 8))) {
+    data = ec_slave_mbox_prepare_send(slave, datagram, 0x03, 8);
+    if (IS_ERR(data)) {
         fsm->state = ec_fsm_coe_error;
         return;
     }
@@ -671,8 +673,8 @@ void ec_fsm_coe_dict_desc_response(ec_fsm_coe_t *fsm
         return;
     }
 
-    if (!(data = ec_slave_mbox_fetch(slave, datagram,
-				     &mbox_prot, &rec_size))) {
+    data = ec_slave_mbox_fetch(slave, datagram, &mbox_prot, &rec_size);
+    if (IS_ERR(data)) {
         fsm->state = ec_fsm_coe_error;
         return;
     }
@@ -763,7 +765,8 @@ void ec_fsm_coe_dict_desc_response(ec_fsm_coe_t *fsm
 
     fsm->subindex = 0;
 
-    if (!(data = ec_slave_mbox_prepare_send(slave, datagram, 0x03, 10))) {
+    data = ec_slave_mbox_prepare_send(slave, datagram, 0x03, 10);
+    if (IS_ERR(data)) {
         fsm->state = ec_fsm_coe_error;
         return;
     }
@@ -907,8 +910,8 @@ void ec_fsm_coe_dict_entry_response(ec_fsm_coe_t *fsm
         return;
     }
 
-    if (!(data = ec_slave_mbox_fetch(slave, datagram,
-				     &mbox_prot, &rec_size))) {
+    data = ec_slave_mbox_fetch(slave, datagram, &mbox_prot, &rec_size);
+    if (IS_ERR(data)) {
         fsm->state = ec_fsm_coe_error;
         return;
     }
@@ -1005,7 +1008,8 @@ void ec_fsm_coe_dict_entry_response(ec_fsm_coe_t *fsm
     if (fsm->subindex < sdo->max_subindex) {
         fsm->subindex++;
 
-        if (!(data = ec_slave_mbox_prepare_send(slave, datagram, 0x03, 10))) {
+        data = ec_slave_mbox_prepare_send(slave, datagram, 0x03, 10);
+        if (IS_ERR(data)) {
             fsm->state = ec_fsm_coe_error;
             return;
         }
@@ -1027,7 +1031,8 @@ void ec_fsm_coe_dict_entry_response(ec_fsm_coe_t *fsm
     if (fsm->sdo->list.next != &slave->sdo_dictionary) {
         fsm->sdo = list_entry(fsm->sdo->list.next, ec_sdo_t, list);
 
-        if (!(data = ec_slave_mbox_prepare_send(slave, datagram, 0x03, 8))) {
+        data = ec_slave_mbox_prepare_send(slave, datagram, 0x03, 8);
+        if (IS_ERR(data)) {
             fsm->state = ec_fsm_coe_error;
             return;
         }
@@ -1075,7 +1080,8 @@ void ec_fsm_coe_down_start(ec_fsm_coe_t *fsm /**< finite state machine */)
     }
 	
 	if (request->data_size <= 4) { // use expedited transfer type
-	    if (!(data = ec_slave_mbox_prepare_send(slave, datagram, 0x03, 10))) {
+	    data = ec_slave_mbox_prepare_send(slave, datagram, 0x03, 10);
+        if (IS_ERR(data)) {
 	        fsm->state = ec_fsm_coe_error;
 	        return;
 	    }
@@ -1102,8 +1108,9 @@ void ec_fsm_coe_down_start(ec_fsm_coe_t *fsm /**< finite state machine */)
 	        return;
 	    }
 
-	    if (!(data = ec_slave_mbox_prepare_send(slave, datagram, 0x03,
-	                                            request->data_size + 10))) {
+	    data = ec_slave_mbox_prepare_send(slave, datagram, 0x03,
+                request->data_size + 10);
+        if (IS_ERR(data)) {
 	        fsm->state = ec_fsm_coe_error;
 	        return;
 	    }
@@ -1263,8 +1270,8 @@ void ec_fsm_coe_down_response(ec_fsm_coe_t *fsm /**< finite state machine */)
         return;
     }
 
-    if (!(data = ec_slave_mbox_fetch(slave, datagram,
-				     &mbox_prot, &rec_size))) {
+    data = ec_slave_mbox_fetch(slave, datagram, &mbox_prot, &rec_size);
+    if (IS_ERR(data)) {
         fsm->state = ec_fsm_coe_error;
         return;
     }
@@ -1354,7 +1361,8 @@ void ec_fsm_coe_up_start(ec_fsm_coe_t *fsm /**< finite state machine */)
         return;
     }
 
-    if (!(data = ec_slave_mbox_prepare_send(slave, datagram, 0x03, 10))) {
+    data = ec_slave_mbox_prepare_send(slave, datagram, 0x03, 10);
+    if (IS_ERR(data)) {
         fsm->state = ec_fsm_coe_error;
         return;
     }
@@ -1514,8 +1522,8 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
         return;
     }
 
-    if (!(data = ec_slave_mbox_fetch(slave, datagram,
-				     &mbox_prot, &rec_size))) {
+    data = ec_slave_mbox_fetch(slave, datagram, &mbox_prot, &rec_size);
+    if (IS_ERR(data)) {
         fsm->state = ec_fsm_coe_error;
         return;
     }
@@ -1658,8 +1666,9 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
             EC_WARN("Sdo data incomplete (%u / %u).\n",
                     data_size, complete_size);
 
-            if (!(data = ec_slave_mbox_prepare_send(slave, datagram,
-                                                    0x03, 3))) {
+            data = ec_slave_mbox_prepare_send(slave, datagram,
+                    0x03, 3);
+            if (IS_ERR(data)) {
                 fsm->state = ec_fsm_coe_error;
                 return;
             }
@@ -1814,8 +1823,8 @@ void ec_fsm_coe_up_seg_response(ec_fsm_coe_t *fsm /**< finite state machine */)
         return;
     }
 
-    if (!(data = ec_slave_mbox_fetch(slave, datagram,
-				     &mbox_prot, &rec_size))) {
+    data = ec_slave_mbox_fetch(slave, datagram, &mbox_prot, &rec_size);
+    if (IS_ERR(data)) {
         fsm->state = ec_fsm_coe_error;
         return;
     }
@@ -1886,7 +1895,8 @@ void ec_fsm_coe_up_seg_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     if (!last_segment) {
         fsm->toggle = !fsm->toggle;
 
-        if (!(data = ec_slave_mbox_prepare_send(slave, datagram, 0x03, 3))) {
+        data = ec_slave_mbox_prepare_send(slave, datagram, 0x03, 3);
+        if (IS_ERR(data)) {
             fsm->state = ec_fsm_coe_error;
             return;
         }

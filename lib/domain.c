@@ -59,11 +59,11 @@ int ecrt_domain_reg_pdo_entry_list(ec_domain_t *domain,
     for (reg = regs; reg->index; reg++) {
         if (!(sc = ecrt_master_slave_config(domain->master, reg->alias,
                         reg->position, reg->vendor_id, reg->product_code)))
-            return -1;
+            return -1; // FIXME
 
         if ((ret = ecrt_slave_config_reg_pdo_entry(sc, reg->index,
                         reg->subindex, domain, reg->bit_position)) < 0)
-            return -1;
+            return -1; // FIXME
 
         *reg->offset = ret;
     }
@@ -98,8 +98,7 @@ void ecrt_domain_process(ec_domain_t *domain)
 {
     if (ioctl(domain->master->fd, EC_IOCTL_DOMAIN_PROCESS,
                 domain->index) == -1) {
-        fprintf(stderr, "Failed to process domain offset: %s\n",
-                strerror(errno));
+        fprintf(stderr, "Failed to process domain: %s\n", strerror(errno));
     }
 }
 
@@ -109,8 +108,7 @@ void ecrt_domain_queue(ec_domain_t *domain)
 {
     if (ioctl(domain->master->fd, EC_IOCTL_DOMAIN_QUEUE,
                 domain->index) == -1) {
-        fprintf(stderr, "Failed to queue domain offset: %s\n",
-                strerror(errno));
+        fprintf(stderr, "Failed to queue domain: %s\n", strerror(errno));
     }
 }
 

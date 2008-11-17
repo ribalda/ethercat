@@ -39,6 +39,7 @@
 /*****************************************************************************/
 
 #include <linux/slab.h>
+#include <linux/err.h>
 
 #include "pdo.h"
 
@@ -58,18 +59,25 @@ void ec_pdo_init(
 /*****************************************************************************/
 
 /** Pdo copy constructor.
+ *
+ * \retval  0 Success.
+ * \retval <0 Error code.
  */
 int ec_pdo_init_copy(ec_pdo_t *pdo, const ec_pdo_t *other_pdo)
 {
+    int ret = 0;
+
     pdo->index = other_pdo->index;
     pdo->sync_index = other_pdo->sync_index;
     pdo->name = NULL;
     INIT_LIST_HEAD(&pdo->entries);
 
-    if (ec_pdo_set_name(pdo, other_pdo->name))
+    ret = ec_pdo_set_name(pdo, other_pdo->name);
+    if (ret < 0)
         goto out_return;
 
-    if (ec_pdo_copy_entries(pdo, other_pdo))
+    ret = ec_pdo_copy_entries(pdo, other_pdo);
+    if (ret < 0)
         goto out_clear;
 
     return 0;
@@ -77,7 +85,7 @@ int ec_pdo_init_copy(ec_pdo_t *pdo, const ec_pdo_t *other_pdo)
 out_clear:
     ec_pdo_clear(pdo);
 out_return:
-    return -1;
+    return ret;
 }
 
 /*****************************************************************************/
@@ -111,6 +119,9 @@ void ec_pdo_clear_entries(ec_pdo_t *pdo /**< EtherCAT Pdo. */)
 /*****************************************************************************/
 
 /** Set Pdo name.
+ *
+ * \retval  0 Success.
+ * \retval <0 Error code.
  */
 int ec_pdo_set_name(
         ec_pdo_t *pdo, /**< Pdo. */
@@ -128,7 +139,7 @@ int ec_pdo_set_name(
     if (name && (len = strlen(name))) {
         if (!(pdo->name = (char *) kmalloc(len + 1, GFP_KERNEL))) {
             EC_ERR("Failed to allocate Pdo name.\n");
-            return -1;
+            return -ENOMEM;
         }
         memcpy(pdo->name, name, len + 1);
     } else {
@@ -141,6 +152,8 @@ int ec_pdo_set_name(
 /*****************************************************************************/
 
 /** Add a new Pdo entry to the configuration.
+ *
+ * \retval Pointer to the added entry, otherwise a ERR_PTR() code.
  */
 ec_pdo_entry_t *ec_pdo_add_entry(
         ec_pdo_t *pdo,
@@ -153,7 +166,7 @@ ec_pdo_entry_t *ec_pdo_add_entry(
 
     if (!(entry = kmalloc(sizeof(ec_pdo_entry_t), GFP_KERNEL))) {
         EC_ERR("Failed to allocate memory for Pdo entry.\n");
-        return NULL;
+        return ERR_PTR(-ENOMEM);
     }
 
     ec_pdo_entry_init(entry);
@@ -167,10 +180,14 @@ ec_pdo_entry_t *ec_pdo_add_entry(
 /*****************************************************************************/
 
 /** Copy Pdo entries from another Pdo.
+ *
+ * \retval  0 Success.
+ * \retval <0 Error code.
  */
 int ec_pdo_copy_entries(ec_pdo_t *pdo, const ec_pdo_t *other)
 {
     ec_pdo_entry_t *entry, *other_entry;
+    int ret;
 
     ec_pdo_clear_entries(pdo);
 
@@ -178,12 +195,13 @@ int ec_pdo_copy_entries(ec_pdo_t *pdo, const ec_pdo_t *other)
         if (!(entry = (ec_pdo_entry_t *)
                     kmalloc(sizeof(ec_pdo_entry_t), GFP_KERNEL))) {
             EC_ERR("Failed to allocate memory for Pdo entry copy.\n");
-            return -1;
+            return -ENOMEM;
         }
 
-        if (ec_pdo_entry_init_copy(entry, other_entry)) {
+        ret = ec_pdo_entry_init_copy(entry, other_entry);
+        if (ret < 0) {
             kfree(entry);
-            return -1;
+            return ret;
         }
 
         list_add_tail(&entry->list, &pdo->entries);

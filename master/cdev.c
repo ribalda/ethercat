@@ -112,18 +112,20 @@ int ec_cdev_init(
 		dev_t dev_num /**< Device number. */
 		)
 {
+    int ret;
+
     cdev->master = master;
 
     cdev_init(&cdev->cdev, &eccdev_fops);
     cdev->cdev.owner = THIS_MODULE;
 
-    if (cdev_add(&cdev->cdev,
-		 MKDEV(MAJOR(dev_num), master->index), 1)) {
+    ret = cdev_add(&cdev->cdev,
+		 MKDEV(MAJOR(dev_num), master->index), 1);
+    if (ret) {
 		EC_ERR("Failed to add character device!\n");
-		return -1;
     }
 
-    return 0;
+    return ret;
 }
 
 /*****************************************************************************/
@@ -572,10 +574,7 @@ int ec_cdev_ioctl_master_debug(
         unsigned long arg /**< ioctl() argument. */
         )
 {
-    if (ec_master_debug_level(master, (unsigned int) arg))
-        return -EINVAL;
-
-    return 0;
+    return ec_master_debug_level(master, (unsigned int) arg);
 }
 
 /*****************************************************************************/
@@ -1491,6 +1490,7 @@ int ec_cdev_ioctl_activate(
 {
     ec_domain_t *domain;
     off_t offset;
+    int ret;
     
 	if (unlikely(!priv->requested))
 		return -EPERM;
@@ -1524,8 +1524,9 @@ int ec_cdev_ioctl_activate(
         }
     }
 
-    if (ecrt_master_activate(master))
-        return -EIO;
+    ret = ecrt_master_activate(master);
+    if (ret < 0)
+        return ret;
 
     if (copy_to_user((void __user *) arg,
                 &priv->process_data_size, sizeof(size_t)))
@@ -1626,7 +1627,7 @@ int ec_cdev_ioctl_sc_sync(
     }
 
     if (!(sc = ec_master_get_config(master, data.config_index))) {
-        ret = -ESRCH;
+        ret = -ENOENT;
         goto out_up;
     }
 
@@ -1670,7 +1671,7 @@ int ec_cdev_ioctl_sc_add_pdo(
 
     if (!(sc = ec_master_get_config(master, data.config_index))) {
         up(&master->master_sem);
-        return -ESRCH;
+        return -ENOENT;
     }
 
     up(&master->master_sem); // FIXME
@@ -1702,7 +1703,7 @@ int ec_cdev_ioctl_sc_clear_pdos(
 
     if (!(sc = ec_master_get_config(master, data.config_index))) {
         up(&master->master_sem);
-        return -ESRCH;
+        return -ENOENT;
     }
 
     up(&master->master_sem); // FIXME
@@ -1735,7 +1736,7 @@ int ec_cdev_ioctl_sc_add_entry(
 
     if (!(sc = ec_master_get_config(master, data.config_index))) {
         up(&master->master_sem);
-        return -ESRCH;
+        return -ENOENT;
     }
 
     up(&master->master_sem); // FIXME
@@ -1768,7 +1769,7 @@ int ec_cdev_ioctl_sc_clear_entries(
 
     if (!(sc = ec_master_get_config(master, data.config_index))) {
         up(&master->master_sem);
-        return -ESRCH;
+        return -ENOENT;
     }
 
     up(&master->master_sem); // FIXME
@@ -1803,12 +1804,12 @@ int ec_cdev_ioctl_sc_reg_pdo_entry(
 
     if (!(sc = ec_master_get_config(master, data.config_index))) {
         up(&master->master_sem);
-        return -ESRCH;
+        return -ENOENT;
     }
 
     if (!(domain = ec_master_find_domain(master, data.domain_index))) {
         up(&master->master_sem);
-        return -ESRCH;
+        return -ENOENT;
     }
 
     up(&master->master_sem); // FIXME
@@ -1863,7 +1864,7 @@ int ec_cdev_ioctl_sc_sdo(
     if (!(sc = ec_master_get_config(master, data.config_index))) {
         up(&master->master_sem);
         kfree(sdo_data);
-        return -ESRCH;
+        return -ENOENT;
     }
 
     up(&master->master_sem); // FIXME
@@ -1903,7 +1904,7 @@ int ec_cdev_ioctl_sc_create_voe_handler(
     sc = ec_master_get_config(master, data.config_index);
     if (!sc) {
         up(&master->master_sem);
-        return -ESRCH;
+        return -ENOENT;
     }
 
     list_for_each_entry(voe, &sc->voe_handlers, list) {
@@ -1948,7 +1949,7 @@ int ec_cdev_ioctl_sc_state(
 
     if (!(sc = ec_master_get_config_const(master, data.config_index))) {
         up(&master->master_sem);
-        return -ESRCH;
+        return -ENOENT;
     }
 
     ecrt_slave_config_state(sc, &state);
@@ -1990,7 +1991,7 @@ int ec_cdev_ioctl_domain_offset(
     }
 
     up(&master->master_sem);
-    return -ESRCH;
+    return -ENOENT;
 }
 
 /*****************************************************************************/
@@ -2013,7 +2014,7 @@ int ec_cdev_ioctl_domain_process(
 
     if (!(domain = ec_master_find_domain(master, arg))) {
         up(&master->master_sem);
-        return -ESRCH;
+        return -ENOENT;
     }
 
     ecrt_domain_process(domain);
@@ -2041,7 +2042,7 @@ int ec_cdev_ioctl_domain_queue(
 
     if (!(domain = ec_master_find_domain(master, arg))) {
         up(&master->master_sem);
-        return -ESRCH;
+        return -ENOENT;
     }
 
     ecrt_domain_queue(domain);
@@ -2075,7 +2076,7 @@ int ec_cdev_ioctl_domain_state(
 
     if (!(domain = ec_master_find_domain_const(master, data.domain_index))) {
         up(&master->master_sem);
-        return -ESRCH;
+        return -ENOENT;
     }
 
     ecrt_domain_state(domain, &state);
@@ -2121,12 +2122,12 @@ int ec_cdev_ioctl_voe_send_header(
 
     if (!(sc = ec_master_get_config(master, data.config_index))) {
         up(&master->master_sem);
-        return -ESRCH;
+        return -ENOENT;
     }
 
     if (!(voe = ec_slave_config_find_voe_handler(sc, data.voe_index))) {
         up(&master->master_sem);
-        return -ESRCH;
+        return -ENOENT;
     }
 
     up(&master->master_sem);
@@ -2162,12 +2163,12 @@ int ec_cdev_ioctl_voe_rec_header(
 
     if (!(sc = ec_master_get_config(master, data.config_index))) {
         up(&master->master_sem);
-        return -ESRCH;
+        return -ENOENT;
     }
 
     if (!(voe = ec_slave_config_find_voe_handler(sc, data.voe_index))) {
         up(&master->master_sem);
-        return -ESRCH;
+        return -ENOENT;
     }
 
     ecrt_voe_handler_received_header(voe, &vendor_id, &vendor_type);
@@ -2210,12 +2211,12 @@ int ec_cdev_ioctl_voe_read(
 
     if (!(sc = ec_master_get_config(master, data.config_index))) {
         up(&master->master_sem);
-        return -ESRCH;
+        return -ENOENT;
     }
 
     if (!(voe = ec_slave_config_find_voe_handler(sc, data.voe_index))) {
         up(&master->master_sem);
-        return -ESRCH;
+        return -ENOENT;
     }
 
     up(&master->master_sem);
@@ -2249,12 +2250,12 @@ int ec_cdev_ioctl_voe_write(
 
     if (!(sc = ec_master_get_config(master, data.config_index))) {
         up(&master->master_sem);
-        return -ESRCH;
+        return -ENOENT;
     }
 
     if (!(voe = ec_slave_config_find_voe_handler(sc, data.voe_index))) {
         up(&master->master_sem);
-        return -ESRCH;
+        return -ENOENT;
     }
 
     up(&master->master_sem);
@@ -2297,12 +2298,12 @@ int ec_cdev_ioctl_voe_exec(
 
     if (!(sc = ec_master_get_config(master, data.config_index))) {
         up(&master->master_sem);
-        return -ESRCH;
+        return -ENOENT;
     }
 
     if (!(voe = ec_slave_config_find_voe_handler(sc, data.voe_index))) {
         up(&master->master_sem);
-        return -ESRCH;
+        return -ENOENT;
     }
 
     up(&master->master_sem);
@@ -2342,12 +2343,12 @@ int ec_cdev_ioctl_voe_data(
 
     if (!(sc = ec_master_get_config(master, data.config_index))) {
         up(&master->master_sem);
-        return -ESRCH;
+        return -ENOENT;
     }
 
     if (!(voe = ec_slave_config_find_voe_handler(sc, data.voe_index))) {
         up(&master->master_sem);
-        return -ESRCH;
+        return -ENOENT;
     }
 
     up(&master->master_sem);

@@ -111,6 +111,8 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
         struct class *class /**< Device class. */
         )
 {
+    int ret;
+
     master->index = index;
     master->reserved = 0;
 
@@ -176,16 +178,19 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     init_waitqueue_head(&master->phy_queue);
 
     // init devices
-    if (ec_device_init(&master->main_device, master))
+    ret = ec_device_init(&master->main_device, master);
+    if (ret < 0)
         goto out_return;
 
-    if (ec_device_init(&master->backup_device, master))
+    ret = ec_device_init(&master->backup_device, master);
+    if (ret < 0)
         goto out_clear_main;
 
     // init state machine datagram
     ec_datagram_init(&master->fsm_datagram);
     snprintf(master->fsm_datagram.name, EC_DATAGRAM_NAME_SIZE, "master-fsm");
-    if (ec_datagram_prealloc(&master->fsm_datagram, EC_MAX_DATA_SIZE)) {
+    ret = ec_datagram_prealloc(&master->fsm_datagram, EC_MAX_DATA_SIZE);
+    if (ret < 0) {
         EC_ERR("Failed to allocate FSM datagram.\n");
         goto out_clear_backup;
     }
@@ -194,7 +199,8 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     ec_fsm_master_init(&master->fsm, master, &master->fsm_datagram);
 
     // init character device
-    if (ec_cdev_init(&master->cdev, master, device_number))
+    ret = ec_cdev_init(&master->cdev, master, device_number);
+    if (ret)
         goto out_clear_fsm;
     
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 26)
@@ -212,6 +218,7 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
 #endif
     if (IS_ERR(master->class_device)) {
         EC_ERR("Failed to create class device!\n");
+        ret = PTR_ERR(master->class_device);
         goto out_clear_cdev;
     }
 
@@ -227,7 +234,7 @@ out_clear_backup:
 out_clear_main:
     ec_device_clear(&master->main_device);
 out_return:
-    return -1;
+    return ret;
 }
 
 /*****************************************************************************/
@@ -349,6 +356,9 @@ void ec_master_release_cb(void *master /**< callback data */)
 /*****************************************************************************/
 
 /** Starts the master thread.
+ *
+ * \retval  0 Success.
+ * \retval <0 Error code.
  */
 int ec_master_thread_start(
         ec_master_t *master, /**< EtherCAT master */
@@ -359,10 +369,10 @@ int ec_master_thread_start(
     EC_INFO("Starting %s thread.\n", name);
     master->thread = kthread_run(thread_func, master, name);
     if (IS_ERR(master->thread)) {
-        EC_ERR("Failed to start master thread (error %i)!\n",
-                (int) PTR_ERR(master->thread));
+        int err = (int) PTR_ERR(master->thread);
+        EC_ERR("Failed to start master thread (error %i)!\n", err);
         master->thread = NULL;
-        return -1;
+        return err;
     }
     
     return 0;
@@ -406,6 +416,8 @@ int ec_master_enter_idle_phase(
         ec_master_t *master /**< EtherCAT master */
         )
 {
+    int ret;
+
     if (master->debug_level)
         EC_DBG("ORPHANED -> IDLE.\n");
 
@@ -414,13 +426,12 @@ int ec_master_enter_idle_phase(
     master->cb_data = master;
 
     master->phase = EC_IDLE;
-    if (ec_master_thread_start(master, ec_master_idle_thread,
-                "EtherCAT-IDLE")) {
+    ret = ec_master_thread_start(master, ec_master_idle_thread,
+            "EtherCAT-IDLE");
+    if (ret)
         master->phase = EC_ORPHANED;
-        return -1;
-    }
 
-    return 0;
+    return ret;
 }
 
 /*****************************************************************************/
@@ -450,6 +461,7 @@ void ec_master_leave_idle_phase(ec_master_t *master /**< EtherCAT master */)
  */
 int ec_master_enter_operation_phase(ec_master_t *master /**< EtherCAT master */)
 {
+    int ret = 0;
     ec_slave_t *slave;
 #ifdef EC_EOE
     ec_eoe_t *eoe;
@@ -464,8 +476,9 @@ int ec_master_enter_operation_phase(ec_master_t *master /**< EtherCAT master */)
         up(&master->config_sem);
 
         // wait for slave configuration to complete
-        if (wait_event_interruptible(master->config_queue,
-                    !master->config_busy)) {
+        ret = wait_event_interruptible(master->config_queue,
+                    !master->config_busy);
+        if (ret) {
             EC_INFO("Finishing slave configuration interrupted by signal.\n");
             goto out_allow;
         }
@@ -484,7 +497,8 @@ int ec_master_enter_operation_phase(ec_master_t *master /**< EtherCAT master */)
         up(&master->scan_sem);
 
         // wait for slave scan to complete
-        if (wait_event_interruptible(master->scan_queue, !master->scan_busy)) {
+        ret = wait_event_interruptible(master->scan_queue, !master->scan_busy);
+        if (ret) {
             EC_INFO("Waiting for slave scan interrupted by signal.\n");
             goto out_allow;
         }
@@ -511,12 +525,12 @@ int ec_master_enter_operation_phase(ec_master_t *master /**< EtherCAT master */)
     master->ext_request_cb = NULL;
     master->ext_release_cb = NULL;
     master->ext_cb_data = NULL;
-    return 0;
+    return ret;
     
 out_allow:
     master->allow_scan = 1;
     master->allow_config = 1;
-    return -1;
+    return ret;
 }
 
 /*****************************************************************************/
@@ -1275,8 +1289,8 @@ const ec_domain_t *ec_master_find_domain_const(
 
 /** Set the debug level.
  *
- * \retval 0 Success.
- * \retval -1 Invalid debug level.
+ * \retval       0 Success.
+ * \retval -EINVAL Invalid debug level.
  */
 int ec_master_debug_level(
         ec_master_t *master, /**< EtherCAT master. */
@@ -1285,7 +1299,7 @@ int ec_master_debug_level(
 {
     if (level < 0 || level > 2) {
         EC_ERR("Invalid debug level %i!\n", level);
-        return -1;
+        return -EINVAL;
     }
 
     if (level != master->debug_level) {
@@ -1351,6 +1365,7 @@ int ecrt_master_activate(ec_master_t *master)
 {
     uint32_t domain_offset;
     ec_domain_t *domain;
+    int ret;
 
     if (master->debug_level)
         EC_DBG("ecrt_master_activate(master = 0x%x)\n", (u32) master);
@@ -1360,10 +1375,11 @@ int ecrt_master_activate(ec_master_t *master)
     // finish all domains
     domain_offset = 0;
     list_for_each_entry(domain, &master->domains, list) {
-        if (ec_domain_finish(domain, domain_offset)) {
+        ret = ec_domain_finish(domain, domain_offset);
+        if (ret < 0) {
             up(&master->master_sem);
             EC_ERR("Failed to finish domain 0x%08X!\n", (u32) domain);
-            return -1;
+            return ret;
         }
         domain_offset += domain->data_size;
     }
@@ -1385,10 +1401,11 @@ int ecrt_master_activate(ec_master_t *master)
     master->release_cb = master->ext_release_cb;
     master->cb_data = master->ext_cb_data;
     
-    if (ec_master_thread_start(master, ec_master_operation_thread,
-                "EtherCAT-OP")) {
+    ret = ec_master_thread_start(master, ec_master_operation_thread,
+                "EtherCAT-OP");
+    if (ret < 0) {
         EC_ERR("Failed to start master thread!\n");
-        return -1;
+        return ret;
     }
 #ifdef EC_EOE
     ec_master_eoe_start(master);

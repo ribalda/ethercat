@@ -116,8 +116,7 @@ uint16_t ec_pdo_list_total_size(
 
 /** Add a new Pdo to the list.
  *
- * \retval >0 Pointer to new Pdo.
- * \retval NULL No memory.
+ * \return Pointer to new Pdo, otherwise an ERR_PTR() code.
  */
 ec_pdo_t *ec_pdo_list_add_pdo(
         ec_pdo_list_t *pl, /**< Pdo list. */
@@ -128,7 +127,7 @@ ec_pdo_t *ec_pdo_list_add_pdo(
 
     if (!(pdo = (ec_pdo_t *) kmalloc(sizeof(ec_pdo_t), GFP_KERNEL))) {
         EC_ERR("Failed to allocate memory for Pdo.\n");
-        return NULL;
+        return ERR_PTR(-ENOMEM);
     }
 
     ec_pdo_init(pdo);
@@ -149,22 +148,24 @@ int ec_pdo_list_add_pdo_copy(
         )
 {
     ec_pdo_t *mapped_pdo;
+    int ret;
 
     // Pdo already mapped?
     list_for_each_entry(mapped_pdo, &pl->list, list) {
         if (mapped_pdo->index != pdo->index) continue;
         EC_ERR("Pdo 0x%04X is already mapped!\n", pdo->index);
-        return -1;
+        return -EEXIST;
     }
     
     if (!(mapped_pdo = kmalloc(sizeof(ec_pdo_t), GFP_KERNEL))) {
         EC_ERR("Failed to allocate Pdo memory.\n");
-        return -1;
+        return -ENOMEM;
     }
 
-    if (ec_pdo_init_copy(mapped_pdo, pdo)) {
+    ret = ec_pdo_init_copy(mapped_pdo, pdo);
+    if (ret < 0) {
         kfree(mapped_pdo);
-        return -1;
+        return ret;
     }
 
     list_add_tail(&mapped_pdo->list, &pl->list);
@@ -183,13 +184,15 @@ int ec_pdo_list_copy(
         )
 {
     ec_pdo_t *other_pdo;
+    int ret;
 
     ec_pdo_list_clear_pdos(pl);
 
     // Pdo already mapped?
     list_for_each_entry(other_pdo, &other->list, list) {
-        if (ec_pdo_list_add_pdo_copy(pl, other_pdo))
-            return -1;
+        ret = ec_pdo_list_add_pdo_copy(pl, other_pdo);
+        if (ret)
+            return ret;
     }
     
     return 0;

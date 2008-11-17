@@ -69,6 +69,7 @@ int ec_device_init(
         ec_master_t *master /**< master owning the device */
         )
 {
+    int ret;
     unsigned int i;
     struct ethhdr *eth;
 #ifdef EC_DEBUG_IF
@@ -91,7 +92,8 @@ int ec_device_init(
 
     sprintf(ifname, "ecdbg%c%u", mb, master->index);
 
-    if (ec_debug_init(&device->dbg, ifname)) {
+    ret = ec_debug_init(&device->dbg, ifname);
+    if (ret < 0) {
         EC_ERR("Failed to init debug device!\n");
         goto out_return;
     }
@@ -103,6 +105,7 @@ int ec_device_init(
     for (i = 0; i < EC_TX_RING_SIZE; i++) {
         if (!(device->tx_skb[i] = dev_alloc_skb(ETH_FRAME_LEN))) {
             EC_ERR("Error allocating device socket buffer!\n");
+            ret = -ENOMEM;
             goto out_tx_ring;
         }
 
@@ -124,12 +127,12 @@ out_tx_ring:
     ec_debug_clear(&device->dbg);
 out_return:
 #endif
-    return -1;
+    return ret;
 }
 
 /*****************************************************************************/
 
-/** Destuctor.
+/** Destructor.
  */
 void ec_device_clear(
         ec_device_t *device /**< EtherCAT device */
@@ -211,9 +214,11 @@ int ec_device_open(
         ec_device_t *device /**< EtherCAT device */
         )
 {
+    int ret;
+
     if (!device->dev) {
         EC_ERR("No net_device to open!\n");
-        return -1;
+        return -ENODEV;
     }
 
     if (device->open) {
@@ -225,9 +230,11 @@ int ec_device_open(
     device->tx_count = 0;
     device->rx_count = 0;
 
-    if (device->dev->open(device->dev) == 0) device->open = 1;
+    ret = device->dev->open(device->dev);
+    if (!ret)
+        device->open = 1;
 
-    return device->open ? 0 : -1;
+    return ret;
 }
 
 /*****************************************************************************/
@@ -240,9 +247,11 @@ int ec_device_close(
         ec_device_t *device /**< EtherCAT device */
         )
 {
+    int ret;
+
     if (!device->dev) {
         EC_ERR("No device to close!\n");
-        return -1;
+        return -ENODEV;
     }
 
     if (!device->open) {
@@ -250,9 +259,11 @@ int ec_device_close(
         return 0;
     }
 
-    if (device->dev->stop(device->dev) == 0) device->open = 0;
+    ret = device->dev->stop(device->dev);
+    if (!ret)
+        device->open = 0;
 
-    return !device->open ? 0 : -1;
+    return ret;
 }
 
 /*****************************************************************************/
@@ -438,14 +449,18 @@ void ecdev_withdraw(ec_device_t *device /**< EtherCAT device */)
  */
 int ecdev_open(ec_device_t *device /**< EtherCAT device */)
 {
-    if (ec_device_open(device)) {
+    int ret;
+
+    ret = ec_device_open(device);
+    if (ret) {
         EC_ERR("Failed to open device!\n");
-        return -1;
+        return ret;
     }
 
-    if (ec_master_enter_idle_phase(device->master)) {
+    ret = ec_master_enter_idle_phase(device->master);
+    if (ret) {
         EC_ERR("Failed to enter IDLE phase!\n");
-        return -1;
+        return ret;
     }
 
     return 0;

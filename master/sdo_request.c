@@ -145,6 +145,9 @@ int ec_sdo_request_alloc(
 /** Copies Sdo data from an external source.
  *
  * If the \a mem_size is to small, new memory is allocated.
+ *
+ * \retval  0 Success.
+ * \retval <0 Error code.
  */
 int ec_sdo_request_copy_data(
         ec_sdo_request_t *req, /**< Sdo request. */
@@ -152,8 +155,9 @@ int ec_sdo_request_copy_data(
         size_t size /**< Number of bytes in \a source. */
         )
 {
-    if (ec_sdo_request_alloc(req, size))
-        return -1;
+    int ret = ec_sdo_request_alloc(req, size);
+    if (ret < 0)
+        return ret;
 
     memcpy(req->data, source, size);
     req->data_size = size;

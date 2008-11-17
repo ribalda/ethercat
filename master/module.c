@@ -115,6 +115,7 @@ int __init ec_init_module(void)
     class = class_create(THIS_MODULE, "EtherCAT");
     if (IS_ERR(class)) {
         EC_ERR("Failed to create device class.\n");
+        ret = PTR_ERR(class);
         goto out_cdev;
     }
 
@@ -123,14 +124,14 @@ int __init ec_init_module(void)
 
     // process MAC parameters
     for (i = 0; i < master_count; i++) {
-        if (ec_mac_parse(macs[i][0], main_devices[i], 0)) {
-            ret = -EINVAL;
+        ret = ec_mac_parse(macs[i][0], main_devices[i], 0);
+        if (ret)
             goto out_class;
-        }
         
-        if (i < backup_count && ec_mac_parse(macs[i][1], backup_devices[i], 1)) {
-            ret = -EINVAL;
-            goto out_class;
+        if (i < backup_count) {
+            ret = ec_mac_parse(macs[i][1], backup_devices[i], 1);
+            if (ret)
+                goto out_class;
         }
     }
 
@@ -147,11 +148,10 @@ int __init ec_init_module(void)
     }
     
     for (i = 0; i < master_count; i++) {
-        if (ec_master_init(&masters[i], i, macs[i][0], macs[i][1],
-                    device_number, class)) {
-            ret = -ENOMEM;
+        ret = ec_master_init(&masters[i], i, macs[i][0], macs[i][1],
+                    device_number, class);
+        if (ret)
             goto out_free_masters;
-        }
     }
     
     EC_INFO("%u master%s waiting for devices.\n",

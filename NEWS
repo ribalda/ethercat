@@ -15,6 +15,7 @@ Changes since 1.4.0:
 * Added driver for Intel PRO/100 NICs.
 * Debug interfaces are created with the Ethernet addresses of the attached
   physical device.
+* Improved error case return codes of many functions.
 
 Changes since 1.4.0-rc3:
 

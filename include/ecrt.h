@@ -43,7 +43,8 @@
  *
  * Changes in version 1.5:
  *
- * - Changed the return value of ecrt_request_master().
+ * - Changed the meaning of the negative return values of
+ *   ecrt_slave_config_reg_pdo_entry() and ecrt_slave_config_sdo*().
  *
  * Changes in Version 1.4:
  *
@@ -652,9 +653,7 @@ int ecrt_slave_config_pdos(
  * entry does not byte-align.
  *
  * \retval >=0 Success: Offset of the Pdo entry's process data.
- * \retval -1  Error: Pdo entry not found.
- * \retval -2  Error: Failed to register Pdo entry.
- * \retval -3  Error: Pdo entry is not byte-aligned.
+ * \retval  <0 Error code.
  */
 int ecrt_slave_config_reg_pdo_entry(
         ec_slave_config_t *sc, /**< Slave configuration. */
@@ -684,7 +683,8 @@ int ecrt_slave_config_reg_pdo_entry(
  * endianess), have a look at ecrt_slave_config_sdo8(),
  * ecrt_slave_config_sdo16() and ecrt_slave_config_sdo32().
  *
- * \return 0 in case of success, else < 0
+ * \retval  0 Success.
+ * \retval <0 Error code.
  */
 int ecrt_slave_config_sdo(
         ec_slave_config_t *sc, /**< Slave configuration. */
@@ -697,7 +697,9 @@ int ecrt_slave_config_sdo(
 /** Add a configuration value for an 8-bit SDO.
  *
  * \see ecrt_slave_config_sdo().
- * \return 0 in case of success, else < 0
+ *
+ * \retval  0 Success.
+ * \retval <0 Error code.
  */
 int ecrt_slave_config_sdo8(
         ec_slave_config_t *sc, /**< Slave configuration */
@@ -709,7 +711,9 @@ int ecrt_slave_config_sdo8(
 /** Add a configuration value for a 16-bit SDO.
  *
  * \see ecrt_slave_config_sdo().
- * \return 0 in case of success, else < 0
+ *
+ * \retval  0 Success.
+ * \retval <0 Error code.
  */
 int ecrt_slave_config_sdo16(
         ec_slave_config_t *sc, /**< Slave configuration */
@@ -721,7 +725,9 @@ int ecrt_slave_config_sdo16(
 /** Add a configuration value for a 32-bit SDO.
  *
  * \see ecrt_slave_config_sdo().
- * \return 0 in case of success, else < 0
+ *
+ * \retval  0 Success.
+ * \retval <0 Error code.
  */
 int ecrt_slave_config_sdo32(
         ec_slave_config_t *sc, /**< Slave configuration */

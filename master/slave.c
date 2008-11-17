@@ -243,45 +243,47 @@ int ec_slave_fetch_sii_strings(
         size_t data_size /**< number of bytes */
         )
 {
-    int i;
+    int i, err;
     size_t size;
     off_t offset;
 
     slave->sii.string_count = data[0];
 
-    if (!slave->sii.string_count)
-        return 0;
-
-    if (!(slave->sii.strings =
-                kmalloc(sizeof(char *) * slave->sii.string_count,
-                    GFP_KERNEL))) {
-        EC_ERR("Failed to allocate string array memory.\n");
-        goto out_zero;
-    }
-
-    offset = 1;
-    for (i = 0; i < slave->sii.string_count; i++) {
-        size = data[offset];
-        // allocate memory for string structure and data at a single blow
-        if (!(slave->sii.strings[i] =
-                    kmalloc(sizeof(char) * size + 1, GFP_KERNEL))) {
-            EC_ERR("Failed to allocate string memory.\n");
-            goto out_free;
+    if (slave->sii.string_count) {
+        if (!(slave->sii.strings =
+                    kmalloc(sizeof(char *) * slave->sii.string_count,
+                        GFP_KERNEL))) {
+            EC_ERR("Failed to allocate string array memory.\n");
+            err = -ENOMEM;
+            goto out_zero;
         }
-        memcpy(slave->sii.strings[i], data + offset + 1, size);
-        slave->sii.strings[i][size] = 0x00; // append binary zero
-        offset += 1 + size;
+
+        offset = 1;
+        for (i = 0; i < slave->sii.string_count; i++) {
+            size = data[offset];
+            // allocate memory for string structure and data at a single blow
+            if (!(slave->sii.strings[i] =
+                        kmalloc(sizeof(char) * size + 1, GFP_KERNEL))) {
+                EC_ERR("Failed to allocate string memory.\n");
+                err = -ENOMEM;
+                goto out_free;
+            }
+            memcpy(slave->sii.strings[i], data + offset + 1, size);
+            slave->sii.strings[i][size] = 0x00; // append binary zero
+            offset += 1 + size;
+        }
     }
 
     return 0;
 
 out_free:
-    for (i--; i >= 0; i--) kfree(slave->sii.strings[i]);
+    for (i--; i >= 0; i--)
+        kfree(slave->sii.strings[i]);
     kfree(slave->sii.strings);
     slave->sii.strings = NULL;
 out_zero:
     slave->sii.string_count = 0;
-    return -1;
+    return err;
 }
 
 /*****************************************************************************/
@@ -303,7 +305,7 @@ int ec_slave_fetch_sii_general(
     if (data_size != 32) {
         EC_ERR("Wrong size of general category (%u/32) in slave %u.\n",
                 data_size, slave->ring_position);
-        return -1;
+        return -EINVAL;
     }
 
     slave->sii.group = ec_slave_sii_string(slave, data[0]);
@@ -358,7 +360,7 @@ int ec_slave_fetch_sii_syncs(
     if (data_size % 8) {
         EC_ERR("Invalid SII sync manager category size %u in slave %u.\n",
                 data_size, slave->ring_position);
-        return -1;
+        return -EINVAL;
     }
 
     count = data_size / 8;
@@ -367,13 +369,13 @@ int ec_slave_fetch_sii_syncs(
         total_count = count + slave->sii.sync_count;
         if (total_count > EC_MAX_SYNC_MANAGERS) {
             EC_ERR("Exceeded maximum number of sync managers!\n");
-            return -1;
+            return -EOVERFLOW;
         }
         memsize = sizeof(ec_sync_t) * total_count;
         if (!(syncs = kmalloc(memsize, GFP_KERNEL))) {
             EC_ERR("Failed to allocate %u bytes for sync managers.\n",
                     memsize);
-            return -1;
+            return -ENOMEM;
         }
 
         for (i = 0; i < slave->sii.sync_count; i++)
@@ -414,6 +416,7 @@ int ec_slave_fetch_sii_pdos(
         ec_direction_t dir /**< Pdo direction. */
         )
 {
+    int ret;
     ec_pdo_t *pdo;
     ec_pdo_entry_t *entry;
     unsigned int entry_count, i;
@@ -421,18 +424,19 @@ int ec_slave_fetch_sii_pdos(
     while (data_size >= 8) {
         if (!(pdo = kmalloc(sizeof(ec_pdo_t), GFP_KERNEL))) {
             EC_ERR("Failed to allocate Pdo memory.\n");
-            return -1;
+            return -ENOMEM;
         }
 
         ec_pdo_init(pdo);
         pdo->index = EC_READ_U16(data);
         entry_count = EC_READ_U8(data + 2);
         pdo->sync_index = EC_READ_U8(data + 3);
-        if (ec_pdo_set_name(pdo,
-                ec_slave_sii_string(slave, EC_READ_U8(data + 5)))) {
+        ret = ec_pdo_set_name(pdo,
+                ec_slave_sii_string(slave, EC_READ_U8(data + 5)));
+        if (ret) {
             ec_pdo_clear(pdo);
             kfree(pdo);
-            return -1;
+            return ret;
         }
         list_add_tail(&pdo->list, &slave->sii.pdos);
 
@@ -442,17 +446,18 @@ int ec_slave_fetch_sii_pdos(
         for (i = 0; i < entry_count; i++) {
             if (!(entry = kmalloc(sizeof(ec_pdo_entry_t), GFP_KERNEL))) {
                 EC_ERR("Failed to allocate Pdo entry memory.\n");
-                return -1;
+                return -ENOMEM;
             }
 
             ec_pdo_entry_init(entry);
             entry->index = EC_READ_U16(data);
             entry->subindex = EC_READ_U8(data + 2);
-            if (ec_pdo_entry_set_name(entry,
-                    ec_slave_sii_string(slave, EC_READ_U8(data + 3)))) {
+            ret = ec_pdo_entry_set_name(entry,
+                    ec_slave_sii_string(slave, EC_READ_U8(data + 3)));
+            if (ret) {
                 ec_pdo_entry_clear(entry);
                 kfree(entry);
-                return -1;
+                return ret;
             }
             entry->bit_length = EC_READ_U8(data + 5);
             list_add_tail(&entry->list, &pdo->entries);
@@ -468,11 +473,12 @@ int ec_slave_fetch_sii_pdos(
             if (!(sync = ec_slave_get_sync(slave, pdo->sync_index))) {
                 EC_ERR("Invalid SM index %i for Pdo 0x%04X in slave %u.",
                         pdo->sync_index, pdo->index, slave->ring_position);
-                return -1;
+                return -ENOENT;
             }
 
-            if (ec_pdo_list_add_pdo_copy(&sync->pdos, pdo))
-                return -1;
+            ret = ec_pdo_list_add_pdo_copy(&sync->pdos, pdo);
+            if (ret)
+                return ret;
         }
     }
 

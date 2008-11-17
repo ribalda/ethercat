@@ -57,6 +57,9 @@ struct net_device_stats *ec_dbgdev_stats(struct net_device *);
 /** Debug interface constructor.
  *
  * Initializes the debug object, creates a net_device and registeres it.
+ *
+ * \retval  0 Success.
+ * \retval <0 Error code.
  */
 int ec_debug_init(
         ec_debug_t *dbg, /**< debug object */
@@ -71,7 +74,7 @@ int ec_debug_init(
     if (!(dbg->dev =
           alloc_netdev(sizeof(ec_debug_t *), name, ether_setup))) {
         EC_ERR("Unable to allocate net_device for debug object!\n");
-        goto out_return;
+        return -ENODEV;
     }
 
     // initialize net_device
@@ -84,9 +87,6 @@ int ec_debug_init(
     *((ec_debug_t **) netdev_priv(dbg->dev)) = dbg;
 
     return 0;
-
- out_return:
-    return -1;
 }
 
 /*****************************************************************************/

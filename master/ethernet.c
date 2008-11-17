@@ -92,7 +92,7 @@ int ec_eoe_init(
         )
 {
     ec_eoe_t **priv;
-    int result, i;
+    int i, ret = 0;
     char name[EC_DATAGRAM_NAME_SIZE];
 
     eoe->slave = slave;
@@ -131,6 +131,7 @@ int ec_eoe_init(
 
     if (!(eoe->dev = alloc_netdev(sizeof(ec_eoe_t *), name, ether_setup))) {
         EC_ERR("Unable to allocate net_device %s for EoE handler!\n", name);
+        ret = -ENODEV;
         goto out_return;
     }
 
@@ -156,8 +157,9 @@ int ec_eoe_init(
 #endif
 
     // connect the net_device to the kernel
-    if ((result = register_netdev(eoe->dev))) {
-        EC_ERR("Unable to register net_device: error %i\n", result);
+    ret = register_netdev(eoe->dev);
+    if (ret) {
+        EC_ERR("Unable to register net_device: error %i\n", ret);
         goto out_free;
     }
 
@@ -169,7 +171,7 @@ int ec_eoe_init(
     free_netdev(eoe->dev);
     eoe->dev = NULL;
  out_return:
-    return -1;
+    return ret;
 }
 
 /*****************************************************************************/
@@ -272,9 +274,10 @@ int ec_eoe_send(ec_eoe_t *eoe /**< EoE handler */)
     printk("\n");
 #endif
 
-    if (!(data = ec_slave_mbox_prepare_send(eoe->slave, &eoe->datagram,
-                                            0x02, current_size + 4)))
-        return -1;
+    data = ec_slave_mbox_prepare_send(eoe->slave, &eoe->datagram,
+            0x02, current_size + 4);
+    if (IS_ERR(data))
+        return PTR_ERR(data);
 
     EC_WRITE_U8 (data,     0x00); // eoe fragment req.
     EC_WRITE_U8 (data + 1, last_fragment);
@@ -415,8 +418,9 @@ void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
         return;
     }
 
-    if (!(data = ec_slave_mbox_fetch(eoe->slave, &eoe->datagram,
-                                     &mbox_prot, &rec_size))) {
+    data = ec_slave_mbox_fetch(eoe->slave, &eoe->datagram,
+            &mbox_prot, &rec_size);
+    if (IS_ERR(data)) {
         eoe->stats.rx_errors++;
         eoe->state = ec_eoe_state_tx_start;
         return;

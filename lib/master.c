@@ -111,7 +111,7 @@ int ecrt_master_activate(ec_master_t *master)
                 &master->process_data_size) == -1) {
         fprintf(stderr, "Failed to activate master: %s\n",
                 strerror(errno));
-        return -1; 
+        return -1; // FIXME
     }
 
     if (master->process_data_size) {
@@ -121,7 +121,7 @@ int ecrt_master_activate(ec_master_t *master)
             fprintf(stderr, "Failed to map process data: %s", strerror(errno));
             master->process_data = NULL;
             master->process_data_size = 0;
-            return -1;
+            return -1; // FIXME
         }
 
         // Access the mapped region to cause the initial page fault

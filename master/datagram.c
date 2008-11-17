@@ -48,8 +48,9 @@
 /** \cond */
 
 #define EC_FUNC_HEADER \
-    if (unlikely(ec_datagram_prealloc(datagram, data_size))) \
-        return -1; \
+    ret = ec_datagram_prealloc(datagram, data_size); \
+    if (unlikely(ret)) \
+        return ret; \
     datagram->index = 0; \
     datagram->working_counter = 0; \
     datagram->state = EC_DATAGRAM_INIT;
@@ -171,7 +172,7 @@ void ec_datagram_zero(ec_datagram_t *datagram /**< EtherCAT datagram. */)
 
 /** Initializes an EtherCAT APRD datagram.
  *
- * \return 0 in case of success, else < 0
+ * \return Return value of ec_datagram_prealloc().
  */
 int ec_datagram_aprd(
         ec_datagram_t *datagram, /**< EtherCAT datagram. */
@@ -180,6 +181,7 @@ int ec_datagram_aprd(
         size_t data_size /**< Number of bytes to read. */
         )
 {
+    int ret;
     EC_FUNC_HEADER;
     datagram->type = EC_DATAGRAM_APRD;
     EC_WRITE_S16(datagram->address, (int16_t) ring_position * (-1));
@@ -191,7 +193,7 @@ int ec_datagram_aprd(
 
 /** Initializes an EtherCAT APWR datagram.
  *
- * \return 0 in case of success, else < 0
+ * \return Return value of ec_datagram_prealloc().
  */
 int ec_datagram_apwr(
         ec_datagram_t *datagram, /**< EtherCAT datagram. */
@@ -200,6 +202,7 @@ int ec_datagram_apwr(
         size_t data_size /**< Number of bytes to write. */
         )
 {
+    int ret;
     EC_FUNC_HEADER;
     datagram->type = EC_DATAGRAM_APWR;
     EC_WRITE_S16(datagram->address, (int16_t) ring_position * (-1));
@@ -211,7 +214,7 @@ int ec_datagram_apwr(
 
 /** Initializes an EtherCAT APRW datagram.
  *
- * \return 0 in case of success, else < 0
+ * \return Return value of ec_datagram_prealloc().
  */
 int ec_datagram_aprw(
         ec_datagram_t *datagram, /**< EtherCAT datagram. */
@@ -220,6 +223,7 @@ int ec_datagram_aprw(
         size_t data_size /**< Number of bytes to write. */
         )
 {
+    int ret;
     EC_FUNC_HEADER;
     datagram->type = EC_DATAGRAM_APRW;
     EC_WRITE_S16(datagram->address, (int16_t) ring_position * (-1));
@@ -231,7 +235,7 @@ int ec_datagram_aprw(
 
 /** Initializes an EtherCAT ARMW datagram.
  *
- * \return 0 in case of success, else < 0
+ * \return Return value of ec_datagram_prealloc().
  */
 int ec_datagram_armw(
         ec_datagram_t *datagram, /**< EtherCAT datagram. */
@@ -240,6 +244,7 @@ int ec_datagram_armw(
         size_t data_size /**< Number of bytes to read. */
         )
 {
+    int ret;
     EC_FUNC_HEADER;
     datagram->type = EC_DATAGRAM_ARMW;
     EC_WRITE_S16(datagram->address, (int16_t) ring_position * (-1));
@@ -251,7 +256,7 @@ int ec_datagram_armw(
 
 /** Initializes an EtherCAT FPRD datagram.
  *
- * \return 0 in case of success, else < 0
+ * \return Return value of ec_datagram_prealloc().
  */
 int ec_datagram_fprd(
         ec_datagram_t *datagram, /**< EtherCAT datagram. */
@@ -260,6 +265,8 @@ int ec_datagram_fprd(
         size_t data_size /**< Number of bytes to read. */
         )
 {
+    int ret;
+
     if (unlikely(configured_address == 0x0000))
         EC_WARN("Using configured station address 0x0000!\n");
 
@@ -274,7 +281,7 @@ int ec_datagram_fprd(
 
 /** Initializes an EtherCAT FPWR datagram.
  *
- * \return 0 in case of success, else < 0
+ * \return Return value of ec_datagram_prealloc().
  */
 int ec_datagram_fpwr(
         ec_datagram_t *datagram, /**< EtherCAT datagram. */
@@ -283,6 +290,8 @@ int ec_datagram_fpwr(
         size_t data_size /**< Number of bytes to write. */
         )
 {
+    int ret;
+
     if (unlikely(configured_address == 0x0000))
         EC_WARN("Using configured station address 0x0000!\n");
 
@@ -297,7 +306,7 @@ int ec_datagram_fpwr(
 
 /** Initializes an EtherCAT FPRW datagram.
  *
- * \return 0 in case of success, else < 0
+ * \return Return value of ec_datagram_prealloc().
  */
 int ec_datagram_fprw(
         ec_datagram_t *datagram, /**< EtherCAT datagram. */
@@ -306,6 +315,8 @@ int ec_datagram_fprw(
         size_t data_size /**< Number of bytes to write. */
         )
 {
+    int ret;
+
     if (unlikely(configured_address == 0x0000))
         EC_WARN("Using configured station address 0x0000!\n");
 
@@ -320,7 +331,7 @@ int ec_datagram_fprw(
 
 /** Initializes an EtherCAT FRMW datagram.
  *
- * \return 0 in case of success, else < 0
+ * \return Return value of ec_datagram_prealloc().
  */
 int ec_datagram_frmw(
         ec_datagram_t *datagram, /**< EtherCAT datagram. */
@@ -329,6 +340,8 @@ int ec_datagram_frmw(
         size_t data_size /**< Number of bytes to write. */
         )
 {
+    int ret;
+
     if (unlikely(configured_address == 0x0000))
         EC_WARN("Using configured station address 0x0000!\n");
 
@@ -343,7 +356,7 @@ int ec_datagram_frmw(
 
 /** Initializes an EtherCAT BRD datagram.
  *
- * \return 0 in case of success, else < 0
+ * \return Return value of ec_datagram_prealloc().
  */
 int ec_datagram_brd(
         ec_datagram_t *datagram, /**< EtherCAT datagram. */
@@ -351,6 +364,7 @@ int ec_datagram_brd(
         size_t data_size /**< Number of bytes to read. */
         )
 {
+    int ret;
     EC_FUNC_HEADER;
     datagram->type = EC_DATAGRAM_BRD;
     EC_WRITE_U16(datagram->address, 0x0000);
@@ -362,7 +376,7 @@ int ec_datagram_brd(
 
 /** Initializes an EtherCAT BWR datagram.
  *
- * \return 0 in case of success, else < 0
+ * \return Return value of ec_datagram_prealloc().
  */
 int ec_datagram_bwr(
         ec_datagram_t *datagram, /**< EtherCAT datagram. */
@@ -370,6 +384,7 @@ int ec_datagram_bwr(
         size_t data_size /**< Number of bytes to write. */
         )
 {
+    int ret;
     EC_FUNC_HEADER;
     datagram->type = EC_DATAGRAM_BWR;
     EC_WRITE_U16(datagram->address, 0x0000);
@@ -381,7 +396,7 @@ int ec_datagram_bwr(
 
 /** Initializes an EtherCAT BRW datagram.
  *
- * \return 0 in case of success, else < 0
+ * \return Return value of ec_datagram_prealloc().
  */
 int ec_datagram_brw(
         ec_datagram_t *datagram, /**< EtherCAT datagram. */
@@ -389,6 +404,7 @@ int ec_datagram_brw(
         size_t data_size /**< Number of bytes to write. */
         )
 {
+    int ret;
     EC_FUNC_HEADER;
     datagram->type = EC_DATAGRAM_BRW;
     EC_WRITE_U16(datagram->address, 0x0000);
@@ -403,7 +419,7 @@ int ec_datagram_brw(
  * \attention It is assumed, that the external memory is at least \a data_size
  *            bytes large.
  *
- * \return 0 in case of success, else < 0
+ * \return Return value of ec_datagram_prealloc().
  */
 int ec_datagram_lrd(
         ec_datagram_t *datagram, /**< EtherCAT datagram. */
@@ -412,6 +428,7 @@ int ec_datagram_lrd(
         uint8_t *external_memory /**< Pointer to the memory to use. */
         )
 {
+    int ret;
     datagram->data = external_memory;
     datagram->data_origin = EC_ORIG_EXTERNAL;
     EC_FUNC_HEADER;
@@ -427,7 +444,7 @@ int ec_datagram_lrd(
  * \attention It is assumed, that the external memory is at least \a data_size
  *            bytes large.
  *
- * \return 0 in case of success, else < 0
+ * \return Return value of ec_datagram_prealloc().
  */
 int ec_datagram_lwr(
         ec_datagram_t *datagram, /**< EtherCAT datagram. */
@@ -436,6 +453,7 @@ int ec_datagram_lwr(
         uint8_t *external_memory /**< Pointer to the memory to use. */
         )
 {
+    int ret;
     datagram->data = external_memory;
     datagram->data_origin = EC_ORIG_EXTERNAL;
     EC_FUNC_HEADER;
@@ -451,7 +469,7 @@ int ec_datagram_lwr(
  * \attention It is assumed, that the external memory is at least \a data_size
  *            bytes large.
  *
- * \return 0 in case of success, else < 0
+ * \return Return value of ec_datagram_prealloc().
  */
 int ec_datagram_lrw(
         ec_datagram_t *datagram, /**< EtherCAT datagram. */
@@ -460,6 +478,7 @@ int ec_datagram_lrw(
         uint8_t *external_memory /**< Pointer to the memory to use. */
         )
 {
+    int ret;
     datagram->data = external_memory;
     datagram->data_origin = EC_ORIG_EXTERNAL;
     EC_FUNC_HEADER;

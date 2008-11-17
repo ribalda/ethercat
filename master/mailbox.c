@@ -49,7 +49,7 @@
 
 /**
    Prepares a mailbox-send datagram.
-   \return pointer to mailbox datagram data
+   \return Pointer to mailbox datagram data, or ERR_PTR() code.
 */
 
 uint8_t *ec_slave_mbox_prepare_send(const ec_slave_t *slave, /**< slave */
@@ -59,23 +59,25 @@ uint8_t *ec_slave_mbox_prepare_send(const ec_slave_t *slave, /**< slave */
                                     )
 {
     size_t total_size;
+    int ret;
 
     if (unlikely(!slave->sii.mailbox_protocols)) {
         EC_ERR("Slave %u does not support mailbox communication!\n",
                slave->ring_position);
-        return NULL;
+        return ERR_PTR(-EPROTONOSUPPORT);
     }
 
     total_size = EC_MBOX_HEADER_SIZE + size;
     if (unlikely(total_size > slave->sii.rx_mailbox_size)) {
         EC_ERR("Data size does not fit in mailbox!\n");
-        return NULL;
+        return ERR_PTR(-EOVERFLOW);
     }
 
-    if (ec_datagram_fpwr(datagram, slave->station_address,
+    ret = ec_datagram_fpwr(datagram, slave->station_address,
                          slave->sii.rx_mailbox_offset,
-                         slave->sii.rx_mailbox_size))
-        return NULL;
+                         slave->sii.rx_mailbox_size);
+    if (ret)
+        return ERR_PTR(ret);
 
     EC_WRITE_U16(datagram->data,     size); // mailbox service data length
     EC_WRITE_U16(datagram->data + 2, slave->station_address); // station addr.
@@ -97,8 +99,9 @@ int ec_slave_mbox_prepare_check(const ec_slave_t *slave, /**< slave */
                                 ec_datagram_t *datagram /**< datagram */
                                 )
 {
-    if (ec_datagram_fprd(datagram, slave->station_address, 0x808, 8))
-        return -1;
+    int ret = ec_datagram_fprd(datagram, slave->station_address, 0x808, 8);
+    if (ret)
+        return ret;
 
     ec_datagram_zero(datagram);
     return 0;
@@ -127,10 +130,11 @@ int ec_slave_mbox_prepare_fetch(const ec_slave_t *slave, /**< slave */
                                 ec_datagram_t *datagram /**< datagram */
                                 )
 {
-    if (ec_datagram_fprd(datagram, slave->station_address,
+    int ret = ec_datagram_fprd(datagram, slave->station_address,
                          slave->sii.tx_mailbox_offset,
-                         slave->sii.tx_mailbox_size))
-        return -1;
+                         slave->sii.tx_mailbox_size);
+    if (ret)
+        return ret;
 
     ec_datagram_zero(datagram);
     return 0;
@@ -156,11 +160,10 @@ const ec_code_msg_t mbox_error_messages[] = {
 
 /*****************************************************************************/
 
-/**
-   Processes received mailbox data.
-   \return pointer to the received data
-*/
-
+/** Processes received mailbox data.
+ *
+ * \return Pointer to the received data, or ERR_PTR() code.
+ */
 uint8_t *ec_slave_mbox_fetch(const ec_slave_t *slave, /**< slave */
                              ec_datagram_t *datagram, /**< datagram */
                              uint8_t *type, /**< expected mailbox protocol */
@@ -175,7 +178,7 @@ uint8_t *ec_slave_mbox_fetch(const ec_slave_t *slave, /**< slave */
         EC_ERR("Corrupt mailbox response received from slave %u!\n",
                slave->ring_position);
         ec_print_data(datagram->data, slave->sii.tx_mailbox_size);
-        return NULL;
+        return ERR_PTR(-EPROTO);
     }
 
     *type = EC_READ_U8(datagram->data + 5) & 0x0F;
@@ -201,7 +204,7 @@ uint8_t *ec_slave_mbox_fetch(const ec_slave_t *slave, /**< slave */
         if (slave->master->debug_level)
             ec_print_data(datagram->data + EC_MBOX_HEADER_SIZE, data_size);
 
-        return NULL;
+        return ERR_PTR(-EPROTO);
     }
 
     return datagram->data + EC_MBOX_HEADER_SIZE;
