@@ -734,10 +734,11 @@ int ecrt_slave_config_sdo32(ec_slave_config_t *sc, uint16_t index,
 
 /*****************************************************************************/
 
-ec_sdo_request_t *ecrt_slave_config_create_sdo_request(ec_slave_config_t *sc,
-        uint16_t index, uint8_t subindex, size_t size)
+ec_sdo_request_t *ecrt_slave_config_create_sdo_request_err(
+        ec_slave_config_t *sc, uint16_t index, uint8_t subindex, size_t size)
 {
     ec_sdo_request_t *req;
+    int ret;
 
     if (sc->master->debug_level)
         EC_DBG("ecrt_slave_config_create_sdo_request(sc = 0x%x, "
@@ -747,16 +748,17 @@ ec_sdo_request_t *ecrt_slave_config_create_sdo_request(ec_slave_config_t *sc,
     if (!(req = (ec_sdo_request_t *)
                 kmalloc(sizeof(ec_sdo_request_t), GFP_KERNEL))) {
         EC_ERR("Failed to allocate Sdo request memory!\n");
-        return NULL;
+        return ERR_PTR(-ENOMEM);
     }
 
     ec_sdo_request_init(req);
     ec_sdo_request_address(req, index, subindex);
 
-    if (ec_sdo_request_alloc(req, size)) {
+    ret = ec_sdo_request_alloc(req, size);
+    if (ret < 0) {
         ec_sdo_request_clear(req);
         kfree(req);
-        return NULL;
+        return ERR_PTR(ret);
     }
 
     // prepare data for optional writing
@@ -772,10 +774,21 @@ ec_sdo_request_t *ecrt_slave_config_create_sdo_request(ec_slave_config_t *sc,
 
 /*****************************************************************************/
 
-ec_voe_handler_t *ecrt_slave_config_create_voe_handler(ec_slave_config_t *sc,
-        size_t size)
+ec_sdo_request_t *ecrt_slave_config_create_sdo_request(
+        ec_slave_config_t *sc, uint16_t index, uint8_t subindex, size_t size)
+{
+    ec_sdo_request_t *s = ecrt_slave_config_create_sdo_request_err(sc, index,
+            subindex, size);
+    return IS_ERR(s) ? NULL : s;
+}
+
+/*****************************************************************************/
+
+ec_voe_handler_t *ecrt_slave_config_create_voe_handler_err(
+        ec_slave_config_t *sc, size_t size)
 {
     ec_voe_handler_t *voe;
+    int ret;
 
     if (sc->master->debug_level)
         EC_DBG("ecrt_slave_config_create_voe_handler(sc = 0x%x, size = %u)\n",
@@ -784,12 +797,13 @@ ec_voe_handler_t *ecrt_slave_config_create_voe_handler(ec_slave_config_t *sc,
     if (!(voe = (ec_voe_handler_t *)
                 kmalloc(sizeof(ec_voe_handler_t), GFP_KERNEL))) {
         EC_ERR("Failed to allocate Sdo request memory!\n");
-        return NULL;
+        return ERR_PTR(-ENOMEM);
     }
 
-    if (ec_voe_handler_init(voe, sc, size)) {
+    ret = ec_voe_handler_init(voe, sc, size);
+    if (ret < 0) {
         kfree(voe);
-        return NULL;
+        return ERR_PTR(ret);
     }
 
     down(&sc->master->master_sem);
@@ -797,6 +811,16 @@ ec_voe_handler_t *ecrt_slave_config_create_voe_handler(ec_slave_config_t *sc,
     up(&sc->master->master_sem);
 
     return voe; 
+}
+
+/*****************************************************************************/
+
+ec_voe_handler_t *ecrt_slave_config_create_voe_handler(
+        ec_slave_config_t *sc, size_t size)
+{
+    ec_voe_handler_t *voe = ecrt_slave_config_create_voe_handler_err(sc,
+            size);
+    return IS_ERR(voe) ? NULL : voe;
 }
 
 /*****************************************************************************/

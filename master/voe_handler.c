@@ -71,6 +71,8 @@ void ec_voe_handler_state_error(ec_voe_handler_t *);
 /*****************************************************************************/
 
 /** VoE handler constructor.
+ *
+ * \return Return value of ec_datagram_prealloc().
  */
 int ec_voe_handler_init(
         ec_voe_handler_t *voe, /**< VoE handler. */
@@ -87,11 +89,8 @@ int ec_voe_handler_init(
     voe->request_state = EC_INT_REQUEST_INIT;
 
     ec_datagram_init(&voe->datagram);
-    if (ec_datagram_prealloc(&voe->datagram,
-                size + EC_MBOX_HEADER_SIZE + EC_VOE_HEADER_SIZE))
-        return -1;
-
-    return 0;
+    return ec_datagram_prealloc(&voe->datagram,
+            size + EC_MBOX_HEADER_SIZE + EC_VOE_HEADER_SIZE);
 }
 
 /*****************************************************************************/

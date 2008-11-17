@@ -465,7 +465,11 @@ ec_device_t *ecdev_offer(
  *  Realtime interface
  *****************************************************************************/
 
-ec_master_t *ecrt_request_master(unsigned int master_index)
+/** Request a master.
+ *
+ * Same as ecrt_request_master(), but with ERR_PTR() return value.
+ */
+ec_master_t *ecrt_request_master_err(unsigned int master_index)
 {
     ec_master_t *master, *errptr = NULL;
 
@@ -528,6 +532,14 @@ ec_master_t *ecrt_request_master(unsigned int master_index)
     master->reserved = 0;
  out_return:
     return errptr;
+}
+
+/*****************************************************************************/
+
+ec_master_t *ecrt_request_master(unsigned int master_index)
+{
+    ec_master_t *master = ecrt_request_master_err(master_index);
+    return IS_ERR(master) ? NULL : master;
 }
 
 /*****************************************************************************/

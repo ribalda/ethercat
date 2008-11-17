@@ -237,6 +237,8 @@ size_t ec_state_string(uint8_t, char *);
 ssize_t ec_mac_print(const uint8_t *, char *);
 int ec_mac_is_zero(const uint8_t *);
 
+ec_master_t *ecrt_request_master_err(unsigned int);
+
 /*****************************************************************************/
 
 /** Code/Message pair.

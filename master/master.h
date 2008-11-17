@@ -218,6 +218,10 @@ const ec_domain_t *ec_master_find_domain_const(const ec_master_t *,
 
 int ec_master_debug_level(ec_master_t *, int);
 
+ec_domain_t *ecrt_master_create_domain_err(ec_master_t *);
+ec_slave_config_t *ecrt_master_slave_config_err(ec_master_t *, uint16_t,
+        uint16_t, uint32_t, uint32_t);
+
 /*****************************************************************************/
 
 #endif

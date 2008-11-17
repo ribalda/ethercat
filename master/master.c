@@ -1300,7 +1300,9 @@ int ec_master_debug_level(
  *  Realtime interface
  *****************************************************************************/
 
-ec_domain_t *ecrt_master_create_domain(ec_master_t *master /**< master */)
+ec_domain_t *ecrt_master_create_domain_err(
+        ec_master_t *master /**< master */
+        )
 {
     ec_domain_t *domain, *last_domain;
     unsigned int index;
@@ -1310,7 +1312,7 @@ ec_domain_t *ecrt_master_create_domain(ec_master_t *master /**< master */)
 
     if (!(domain = (ec_domain_t *) kmalloc(sizeof(ec_domain_t), GFP_KERNEL))) {
         EC_ERR("Error allocating domain memory!\n");
-        return NULL;
+        return ERR_PTR(-ENOMEM);
     }
 
     down(&master->master_sem);
@@ -1331,6 +1333,16 @@ ec_domain_t *ecrt_master_create_domain(ec_master_t *master /**< master */)
         EC_DBG("Created domain %u.\n", domain->index);
 
     return domain;
+}
+
+/*****************************************************************************/
+
+ec_domain_t *ecrt_master_create_domain(
+        ec_master_t *master /**< master */
+        )
+{
+    ec_domain_t *d = ecrt_master_create_domain_err(master);
+    return IS_ERR(d) ? NULL : d;
 }
 
 /*****************************************************************************/
@@ -1462,7 +1474,7 @@ void ecrt_master_receive(ec_master_t *master)
 
 /*****************************************************************************/
 
-ec_slave_config_t *ecrt_master_slave_config(ec_master_t *master,
+ec_slave_config_t *ecrt_master_slave_config_err(ec_master_t *master,
         uint16_t alias, uint16_t position, uint32_t vendor_id,
         uint32_t product_code)
 {
@@ -1488,7 +1500,7 @@ ec_slave_config_t *ecrt_master_slave_config(ec_master_t *master,
                     " 0x%08X/0x%08X before. Now configuring with"
                     " 0x%08X/0x%08X.\n", sc->vendor_id, sc->product_code,
                     vendor_id, product_code);
-            return NULL;
+            return ERR_PTR(-ENOENT);
         }
     } else {
         if (master->debug_level)
@@ -1498,7 +1510,7 @@ ec_slave_config_t *ecrt_master_slave_config(ec_master_t *master,
         if (!(sc = (ec_slave_config_t *) kmalloc(sizeof(ec_slave_config_t),
                         GFP_KERNEL))) {
             EC_ERR("Failed to allocate memory for slave configuration.\n");
-            return NULL;
+            return ERR_PTR(-ENOMEM);
         }
 
         ec_slave_config_init(sc, master,
@@ -1515,6 +1527,17 @@ ec_slave_config_t *ecrt_master_slave_config(ec_master_t *master,
     }
 
     return sc;
+}
+
+/*****************************************************************************/
+
+ec_slave_config_t *ecrt_master_slave_config(ec_master_t *master,
+        uint16_t alias, uint16_t position, uint32_t vendor_id,
+        uint32_t product_code)
+{
+    ec_slave_config_t *sc = ecrt_master_slave_config_err(master, alias,
+            position, vendor_id, product_code);
+    return IS_ERR(sc) ? NULL : sc;
 }
 
 /*****************************************************************************/

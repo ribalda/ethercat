@@ -132,7 +132,7 @@ void ec_datagram_clear(ec_datagram_t *datagram /**< EtherCAT datagram. */)
  * \attention If external payload memory has been provided, no range checking
  *            is done!
  *
- * \return 0 in case of success, else < 0
+ * \return 0 in case of success, otherwise \a -ENOMEM.
  */
 int ec_datagram_prealloc(
         ec_datagram_t *datagram, /**< EtherCAT datagram. */
@@ -151,7 +151,7 @@ int ec_datagram_prealloc(
 
     if (!(datagram->data = kmalloc(size, GFP_KERNEL))) {
         EC_ERR("Failed to allocate %u bytes of datagram memory!\n", size);
-        return -1;
+        return -ENOMEM;
     }
 
     datagram->mem_size = size;

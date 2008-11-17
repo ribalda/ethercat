@@ -12,9 +12,10 @@ Version 1.5.0:
 
 * Remove ecrt_domain_state().
 * Segmented Sdo downloads.
-* Think over pointer return values.
 * Implement Sdo handlers in userspace library.
 * Clear slave list on link down.
+* Check force_config flag before error.
+* Remove allow_scanning flag.
 
 Future issues:
 

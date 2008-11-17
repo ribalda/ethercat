@@ -117,6 +117,8 @@ void ec_sdo_request_address(
 /** Pre-allocates the data memory.
  *
  * If the \a mem_size is already bigger than \a size, nothing is done.
+ *
+ * \return 0 on success, otherwise -ENOMEM.
  */
 int ec_sdo_request_alloc(
         ec_sdo_request_t *req, /**< Sdo request. */
@@ -130,7 +132,7 @@ int ec_sdo_request_alloc(
 
     if (!(req->data = (uint8_t *) kmalloc(size, GFP_KERNEL))) {
         EC_ERR("Failed to allocate %u bytes of Sdo memory.\n", size);
-        return -1;
+        return -ENOMEM;
     }
 
     req->mem_size = size;

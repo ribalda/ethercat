@@ -347,11 +347,7 @@ unsigned int ecrt_version_magic(void);
  * The first master has index 0, the n-th master has index n - 1. The number
  * of masters has to be specified when loading the master module.
  *
- * \attention In kernel context, the returned pointer has to be checked for
- * errors using the IS_ERR() macro.
- *
- * \return If \a IS_ERR() returns zero, the result is a pointer to the
- * reserved master, otherwise, the result is an error code.
+ * \return Pointer to the reserved master, otherwise \a NULL.
  */
 ec_master_t *ecrt_request_master(
         unsigned int master_index /**< Index of the master to request. */

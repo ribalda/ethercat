@@ -1403,7 +1403,7 @@ int ec_cdev_ioctl_request(
 	ec_master_t *m;
     int ret = 0;
 
-    m = ecrt_request_master(master->index);
+    m = ecrt_request_master_err(master->index);
     if (IS_ERR(m)) {
         ret = PTR_ERR(m);
     } else {
@@ -1428,9 +1428,9 @@ int ec_cdev_ioctl_create_domain(
 	if (unlikely(!priv->requested))
 		return -EPERM;
 
-    domain = ecrt_master_create_domain(master);
-    if (!domain)
-        return -ENOMEM;
+    domain = ecrt_master_create_domain_err(master);
+    if (IS_ERR(domain))
+        return PTR_ERR(domain);
 
     return domain->index;
 }
@@ -1455,10 +1455,10 @@ int ec_cdev_ioctl_create_slave_config(
         return -EFAULT;
     }
 
-    sc = ecrt_master_slave_config(master, data.alias, data.position,
+    sc = ecrt_master_slave_config_err(master, data.alias, data.position,
             data.vendor_id, data.product_code);
-    if (!sc)
-        return -ENODEV; // FIXME
+    if (IS_ERR(sc))
+        return PTR_ERR(sc);
 
     data.config_index = 0;
 
@@ -1912,9 +1912,9 @@ int ec_cdev_ioctl_sc_create_voe_handler(
 
     up(&master->master_sem);
 
-    voe = ecrt_slave_config_create_voe_handler(sc, data.size);
-    if (!voe)
-        return -ENOMEM;
+    voe = ecrt_slave_config_create_voe_handler_err(sc, data.size);
+    if (IS_ERR(voe))
+        return PTR_ERR(voe);
 
     if (copy_to_user((void __user *) arg, &data, sizeof(data)))
         return -EFAULT;
