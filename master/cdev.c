@@ -2227,6 +2227,45 @@ int ec_cdev_ioctl_voe_read(
 
 /*****************************************************************************/
 
+/** Starts a VoE read operation without sending a sync message first.
+ */
+int ec_cdev_ioctl_voe_read_nosync(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    ec_ioctl_voe_t data;
+    ec_slave_config_t *sc;
+    ec_voe_handler_t *voe;
+
+	if (unlikely(!priv->requested))
+        return -EPERM;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
+        return -EFAULT;
+
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
+
+    if (!(sc = ec_master_get_config(master, data.config_index))) {
+        up(&master->master_sem);
+        return -ENOENT;
+    }
+
+    if (!(voe = ec_slave_config_find_voe_handler(sc, data.voe_index))) {
+        up(&master->master_sem);
+        return -ENOENT;
+    }
+
+    up(&master->master_sem);
+
+    ecrt_voe_handler_read_nosync(voe);
+    return 0;
+}
+
+/*****************************************************************************/
+
 /** Starts a VoE write operation.
  */
 int ec_cdev_ioctl_voe_write(
@@ -2559,6 +2598,10 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
         case EC_IOCTL_VOE_READ:
             if (!(filp->f_mode & FMODE_WRITE))
 				return -EPERM;
+        case EC_IOCTL_VOE_READ_NOSYNC:
+            if (!(filp->f_mode & FMODE_WRITE))
+				return -EPERM;
+			return ec_cdev_ioctl_voe_read_nosync(master, arg, priv);
 			return ec_cdev_ioctl_voe_read(master, arg, priv);
         case EC_IOCTL_VOE_WRITE:
             if (!(filp->f_mode & FMODE_WRITE))

@@ -1049,6 +1049,25 @@ void ecrt_voe_handler_read(
         ec_voe_handler_t *voe /**< VoE handler. */
         );
 
+/** Start a VoE read operation without querying the sync manager status.
+ *
+ * After this function has been called, the ecrt_voe_handler_execute() method
+ * must be called in every bus cycle as long as it returns EC_REQUEST_BUSY. No
+ * other operation may be started while the handler is busy.
+ *
+ * The state machine queries the slave by sending an empty mailbox. The slave
+ * fills its data to the master in this mailbox. If no data appear within the
+ * EC_VOE_RESPONSE_TIMEOUT (defined in master/voe_handler.c), the operation
+ * fails.
+ *
+ * On success, the size of the read data can be determined via
+ * ecrt_voe_handler_data_size(), while the VoE header of the received data
+ * can be retrieved with ecrt_voe_handler_received_header().
+ */
+void ecrt_voe_handler_read_nosync(
+        ec_voe_handler_t *voe /**< VoE handler. */
+        );
+
 /** Execute the handler.
  *
  * This method executes the VoE handler. It has to be called in every bus cycle

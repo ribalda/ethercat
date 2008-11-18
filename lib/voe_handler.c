@@ -111,6 +111,20 @@ void ecrt_voe_handler_read(ec_voe_handler_t *voe)
 
 /*****************************************************************************/
 
+void ecrt_voe_handler_read_nosync(ec_voe_handler_t *voe)
+{
+    ec_ioctl_voe_t data;
+
+    data.config_index = voe->config->index;
+    data.voe_index = voe->index;
+
+    if (ioctl(voe->config->master->fd, EC_IOCTL_VOE_READ_NOSYNC, &data) == -1)
+        fprintf(stderr, "Failed to initiate VoE reading: %s\n",
+                strerror(errno));
+}
+
+/*****************************************************************************/
+
 void ecrt_voe_handler_write(ec_voe_handler_t *voe, size_t size)
 {
     ec_ioctl_voe_t data;

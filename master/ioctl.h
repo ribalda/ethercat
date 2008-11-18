@@ -104,9 +104,10 @@
 #define EC_IOCTL_VOE_SEND_HEADER       EC_IOW(0x2a, ec_ioctl_voe_t)
 #define EC_IOCTL_VOE_REC_HEADER       EC_IOWR(0x2b, ec_ioctl_voe_t)
 #define EC_IOCTL_VOE_READ              EC_IOW(0x2c, ec_ioctl_voe_t)
-#define EC_IOCTL_VOE_WRITE            EC_IOWR(0x2d, ec_ioctl_voe_t)
-#define EC_IOCTL_VOE_EXEC             EC_IOWR(0x2e, ec_ioctl_voe_t)
-#define EC_IOCTL_VOE_DATA             EC_IOWR(0x2f, ec_ioctl_voe_t)
+#define EC_IOCTL_VOE_READ_NOSYNC       EC_IOW(0x2d, ec_ioctl_voe_t)
+#define EC_IOCTL_VOE_WRITE            EC_IOWR(0x2e, ec_ioctl_voe_t)
+#define EC_IOCTL_VOE_EXEC             EC_IOWR(0x2f, ec_ioctl_voe_t)
+#define EC_IOCTL_VOE_DATA             EC_IOWR(0x30, ec_ioctl_voe_t)
 
 /*****************************************************************************/
 
