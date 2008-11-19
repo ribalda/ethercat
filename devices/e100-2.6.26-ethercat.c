@@ -2273,9 +2273,11 @@ static int e100_up(struct nic *nic)
 	e100_start_receiver(nic, NULL);
 	if (!nic->ecdev) {
 		mod_timer(&nic->watchdog, jiffies);
-		if((err = request_irq(nic->pdev->irq, e100_intr, IRQF_SHARED,
-						nic->netdev->name, nic->netdev)))
-			goto err_no_irq;
+	}
+	if((err = request_irq(nic->pdev->irq, e100_intr, IRQF_SHARED,
+					nic->netdev->name, nic->netdev)))
+		goto err_no_irq;
+	if (!nic->ecdev) {
 		netif_wake_queue(nic->netdev);
 		napi_enable(&nic->napi);
 		/* enable ints _after_ enabling poll, preventing a race between
