@@ -659,15 +659,14 @@ static void e100_enable_irq(struct nic *nic)
 
 static void e100_disable_irq(struct nic *nic)
 {
-	unsigned long flags;
+	unsigned long flags = 0;
 
-    if (nic->ecdev)
-        return;
-
-	spin_lock_irqsave(&nic->cmd_lock, flags);
+	if (!nic->ecdev)
+		spin_lock_irqsave(&nic->cmd_lock, flags);
 	writeb(irq_mask_all, &nic->csr->scb.cmd_hi);
 	e100_write_flush(nic);
-	spin_unlock_irqrestore(&nic->cmd_lock, flags);
+	if (!nic->ecdev)
+		spin_unlock_irqrestore(&nic->cmd_lock, flags);
 }
 
 static void e100_hw_reset(struct nic *nic)
@@ -2095,7 +2094,7 @@ void e100_ec_poll(struct net_device *netdev)
 {
 	struct nic *nic = netdev_priv(netdev);
 
-	e100_rx_clean(nic, NULL, 100); // FIXME
+	e100_rx_clean(nic, NULL, 100);
 	e100_tx_clean(nic);
 
     if (jiffies - nic->ec_watchdog_jiffies >= 2 * HZ) {
@@ -2131,9 +2130,6 @@ static int e100_poll(struct net_device *netdev, int *budget)
 static void e100_netpoll(struct net_device *netdev)
 {
 	struct nic *nic = netdev_priv(netdev);
-
-    if (nic->ecdev)
-        return;
 
 	e100_disable_irq(nic);
 	e100_intr(nic->pdev->irq, netdev);
