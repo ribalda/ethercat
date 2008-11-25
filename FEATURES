@@ -4,64 +4,80 @@ This is the FEATURES file of the IgH EtherCAT Master.
 
 $Id$
 
+vim: spelllang=en spell
+
 -------------------------------------------------------------------------------
 
 General Features:
 
-* Runs as kernel module for Linux 2.6.
+* EtherCAT master implementation conforming to IEC/PAS 62407.
+  - Runs as kernel module for Linux 2.6.
+  - Multiple masters possible on one machine.
 
-* Comes with EtherCAT-capable network driver for serveral network interface
-  cards.
-  - Interrupt-less network driver operation.
-  - Easy implementation of additional network drivers through common device
+* EtherCAT-capable versions of standard Linux drivers for wide-spread
+  Ethernet devices.
+  - Interrupt-less operation of Ethernet devices.
+  - Easy implementation of additional Ethernet drivers through common device
     interface of the master.
-  - Runs even with PCMCIA cards.
+  - Operation possible with any device supported by the standard drivers,
+    including PCMCIA devices.
 
-* Supports multiple EtherCAT masters on one machine.
+* Supports any realtime environment through independent architecture.
+  - RTAI, Xenomai, RT-Preempt, etc.
+  - Operation possible even without any realtime extension.
 
-* Supports any realtime extension through independent architecture.
-  - RTAI, IPIPE, ADEOS, etc.
-  - Runs well even without realtime extension.
-
-* Common kernel interface for realtime modules using EtherCAT functionality.
-  - Synchronous transmission and reception of EtherCAT frames.
+* Common API for Realtime-Applications in kernel- and userspace.
+  - Requesting and releasing masters.
+  - Dynamic slave configuration, even for slaves that are offline.
+  - Detailed configuration of the slaves' Pdos and Sdos.
+  - Creation of process data domains (see below). Registration of Pdo entries
+    for exchange within a domain.
+  - Monitoring the states of masters, slave configurations and domains.
+  - Sdo handlers for application-triggered CoE transfers (see below).
+  - VoE handlers for Vendor-specific mailbox protocols (see below).
+  - Similar userspace implementation of the kernel API via a C-library.
   - Avoidance of unnecessary copy operations for process data.
 
 * Separating slave groups through domains.
   - Handling of multiple slave groups with different sampling rates.
   - Automatic calculation of process data mapping, FMMU- and sync manager
     configuration within the domains.
+  - Process data exchange can be monitored via a per-domain mechanism.
 
 * Master finite state machine (FSM).
-  - Bus monitoring during realtime operation.
-  - Automatic reconfiguration of slaves on bus power failure during realtime
-    operation.
-  - Setting slave states during realtime operation.
-
-* Special IDLE mode, when master is not in use.
-  - Automatic scanning of slaves upon topology changes.
-  - Bus visualisation and EoE processing without realtime process connected.
+  - The same state machine runs when the master is idle and also when an
+    application is connected.
+  - Bus monitoring. Slave states are read cyclically. Automatic scanning of the
+    bus on a topology change.
+  - Automatic configuration of slaves, if a application-layer state change is
+    requested.
 
 * Implementation of the CANopen-over-EtherCAT (CoE) protocol.
-  - Configuration of CoE-capable slaves via Sdo interface.
+  - Configuration of CoE-capable slaves.
   - Sdo information service (dictionary listing).
-  - Sdo access via the realtime interface.
+  - Sdo transfers via the application interface and the command-line tool.
 
 * Implementation of the Ethernet-over-EtherCAT (EoE) protocol.
-  - Creates virtual network devices that are automatically coupled to
-    EoE-capable	slaves.
-  - Thus natively supports either a switched or a routed EoE network
-    architecture with standard GNU/Linux tools.
+  - Creates a virtual network interface for any EoE-capable	slave.
+  - Natively supports either a switched or a routed EoE network
+    architecture.
 
-* User space interface via a command-line tool 'ethercat'.
-  - Detailed information about master, slaves and the bus configuration.
-  - Slave SII reading and writing.
+* Userspace command-line tool 'ethercat'.
+  - Detailed information about master, slaves, domains and bus configuration.
+  - Reading/Writing alias addresses.
+  - Listing slave configurations.
+  - Viewing process data.
+  - Sdo download/upload; listing Sdo dictionaries.
+  - Access to slave registers.
+  - Slave SII (EEPROM) access.
+  - Requesting application-layer states.
+  - Generation of slave description XML from existing slaves.
 
-* Seamless integration in your favourite GNU/Linux distibution.
-  - Master and network device configuration via sysconfig files.
+* Seamless integration in any GNU/Linux distribution.
+  - Master and Ethernet device configuration via sysconfig file.
   - "Linux standard base"-compatible init script for master control.
 
-* Virtual read-only network interface for debugging purposes and for
-  monitoring the EtherCAT traffic (through Wireshark, or others).
+* Virtual read-only network interface for debugging and traffic monitoring
+  purposes (using Wireshark, etc.). No additional hardware necessary.
 
 -------------------------------------------------------------------------------
