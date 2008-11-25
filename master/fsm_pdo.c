@@ -402,6 +402,11 @@ void ec_fsm_pdo_conf_action_next_sync(
     fsm->sync_index++;
 
     for (; fsm->sync_index < EC_MAX_SYNC_MANAGERS; fsm->sync_index++) {
+        if (!fsm->slave->config) { // slave configuration removed in the meantime
+            fsm->state = ec_fsm_pdo_state_error;
+            return;
+        }
+
         if (ec_pdo_list_copy(&fsm->pdos,
                     &fsm->slave->config->sync_configs[fsm->sync_index].pdos)) {
             fsm->state = ec_fsm_pdo_state_error;

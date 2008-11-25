@@ -5,7 +5,10 @@ digraph slaveconf {
     size="3,5"
 
     start [fontname="Helvetica"]
-    start -> init [weight=10]
+    start -> enter_init [weight=10]
+
+    enter_init [shape=point, label=""]
+    enter_init -> init [weight=10]
 
     init [fontname="Helvetica"]
     init -> enter_mbox_sync [fontname="Helvetica", label="No FMMUs"]
@@ -32,12 +35,14 @@ digraph slaveconf {
     enter_sdo_conf -> sdo_conf [weight=10]
 
     sdo_conf [fontname="Helvetica"]
+    sdo_conf -> enter_init [fontname="Helvetica", label="Config\ndetached"]
     sdo_conf -> enter_pdo_conf [weight=10]
 
     enter_pdo_conf [shape=point, label=""]
     enter_pdo_conf -> pdo_conf [weight=10]
 
     pdo_conf [fontname="Helvetica"]
+    pdo_conf -> enter_init [fontname="Helvetica", label="Config\ndetached"]
     pdo_conf -> enter_pdo_sync [weight=10]
 
     enter_pdo_sync [shape=point, label=""]
@@ -45,6 +50,7 @@ digraph slaveconf {
     enter_pdo_sync -> pdo_sync [weight=10]
 
     pdo_sync [fontname="Helvetica"]
+    pdo_sync -> enter_init [fontname="Helvetica", label="Config\ndetached"]
     pdo_sync -> enter_fmmu [weight=10]
 
     enter_fmmu [shape=point,label=""]

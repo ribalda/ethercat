@@ -66,6 +66,7 @@ struct ec_fsm_slave_config
     void (*state)(ec_fsm_slave_config_t *); /**< State function. */
     unsigned int retries; /**< Retries on datagram timeout. */
     ec_sdo_request_t *request; /**< Sdo request for Sdo configuration. */
+    ec_sdo_request_t request_copy; /**< Copied Sdo request. */
 };
 
 /*****************************************************************************/

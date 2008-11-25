@@ -58,6 +58,7 @@ void ec_fsm_slave_config_state_fmmu(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_safeop(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_op(ec_fsm_slave_config_t *);
 
+void ec_fsm_slave_config_enter_init(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_mbox_sync(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_preop(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_sdo_conf(ec_fsm_slave_config_t *);
@@ -68,6 +69,8 @@ void ec_fsm_slave_config_enter_safeop(ec_fsm_slave_config_t *);
 
 void ec_fsm_slave_config_state_end(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_error(ec_fsm_slave_config_t *);
+
+void ec_fsm_slave_config_reconfigure(ec_fsm_slave_config_t *);
 
 /*****************************************************************************/
 
@@ -81,6 +84,8 @@ void ec_fsm_slave_config_init(
         ec_fsm_pdo_t *fsm_pdo /**< Pdo configuration state machine to use. */
         )
 {
+    ec_sdo_request_init(&fsm->request_copy);
+
     fsm->datagram = datagram;
     fsm->fsm_change = fsm_change;
     fsm->fsm_coe = fsm_coe;
@@ -95,6 +100,7 @@ void ec_fsm_slave_config_clear(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
+    ec_sdo_request_clear(&fsm->request_copy);
 }
 
 /*****************************************************************************/
@@ -172,6 +178,17 @@ void ec_fsm_slave_config_state_start(
         EC_DBG("Configuring slave %u...\n", fsm->slave->ring_position);
     }
     
+    ec_fsm_slave_config_enter_init(fsm);
+}
+
+/*****************************************************************************/
+
+/** Start state change to INIT.
+ */
+void ec_fsm_slave_config_enter_init(
+        ec_fsm_slave_config_t *fsm /**< slave state machine */
+        )
+{
     ec_fsm_change_start(fsm->fsm_change, fsm->slave, EC_SLAVE_STATE_INIT);
     ec_fsm_change_exec(fsm->fsm_change);
     fsm->state = ec_fsm_slave_config_state_init;
@@ -444,8 +461,9 @@ void ec_fsm_slave_config_enter_sdo_conf(
     fsm->state = ec_fsm_slave_config_state_sdo_conf;
     fsm->request = list_entry(fsm->slave->config->sdo_configs.next,
             ec_sdo_request_t, list);
-    ecrt_sdo_request_write(fsm->request);
-    ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, fsm->request);
+    ec_sdo_request_copy(&fsm->request_copy, fsm->request);
+    ecrt_sdo_request_write(&fsm->request_copy);
+    ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, &fsm->request_copy);
     ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
 }
 
@@ -467,12 +485,18 @@ void ec_fsm_slave_config_state_sdo_conf(
         return;
     }
 
+    if (!fsm->slave->config) { // config removed in the meantime
+        ec_fsm_slave_config_reconfigure(fsm);
+        return;
+    }
+
     // Another Sdo to configure?
     if (fsm->request->list.next != &fsm->slave->config->sdo_configs) {
-        fsm->request = list_entry(fsm->request->list.next, ec_sdo_request_t,
-                list);
-        ecrt_sdo_request_write(fsm->request);
-        ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, fsm->request);
+        fsm->request = list_entry(fsm->request->list.next,
+                ec_sdo_request_t, list);
+        ec_sdo_request_copy(&fsm->request_copy, fsm->request);
+        ecrt_sdo_request_write(&fsm->request_copy);
+        ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, &fsm->request_copy);
         ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
         return;
     }
@@ -505,6 +529,11 @@ void ec_fsm_slave_config_state_pdo_conf(
 {
     if (ec_fsm_pdo_exec(fsm->fsm_pdo))
         return;
+
+    if (!fsm->slave->config) { // config removed in the meantime
+        ec_fsm_slave_config_reconfigure(fsm);
+        return;
+    }
 
     if (!ec_fsm_pdo_success(fsm->fsm_pdo)) {
         EC_WARN("Pdo configuration failed on slave %u.\n",
@@ -591,6 +620,11 @@ void ec_fsm_slave_config_state_pdo_sync(
         EC_ERR("Failed to set process data sync managers of slave %u: ",
                 slave->ring_position);
         ec_datagram_print_wc_error(datagram);
+        return;
+    }
+
+    if (!fsm->slave->config) { // config removed in the meantime
+        ec_fsm_slave_config_reconfigure(fsm);
         return;
     }
 
@@ -762,6 +796,22 @@ void ec_fsm_slave_config_state_op(
     }
 
     fsm->state = ec_fsm_slave_config_state_end; // successful
+}
+
+/*****************************************************************************/
+
+/** Reconfigure the slave starting at INIT.
+ */
+void ec_fsm_slave_config_reconfigure(
+        ec_fsm_slave_config_t *fsm /**< slave state machine */
+        )
+{
+    if (fsm->slave->master->debug_level) {
+        EC_DBG("Slave configuration for slave %u detached during "
+                "configuration. Reconfiguring.", fsm->slave->ring_position);
+    }
+
+    ec_fsm_slave_config_enter_init(fsm); // reconfigure
 }
 
 /******************************************************************************

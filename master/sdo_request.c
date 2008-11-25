@@ -83,6 +83,22 @@ void ec_sdo_request_clear(
 
 /*****************************************************************************/
 
+/** Copy another Sdo request.
+ *
+ * \attention Only the index subindex and data are copied.
+ */
+int ec_sdo_request_copy(
+        ec_sdo_request_t *req,
+        const ec_sdo_request_t *other
+        )
+{
+    req->index = other->index;
+    req->subindex = other->subindex;
+    return ec_sdo_request_copy_data(req, other->data, other->data_size);
+}
+
+/*****************************************************************************/
+
 /** Sdo request destructor.
  */
 void ec_sdo_request_clear_data(
