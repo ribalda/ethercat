@@ -18,13 +18,13 @@ General Features:
   Ethernet devices.
   - Interrupt-less operation of Ethernet devices.
   - Easy implementation of additional Ethernet drivers through common device
-    interface of the master.
+    interface.
   - Operation possible with any device supported by the standard drivers,
     including PCMCIA devices.
 
 * Supports any realtime environment through independent architecture.
   - RTAI, Xenomai, RT-Preempt, etc.
-  - Operation possible even without any realtime extension.
+  - Operation possible without any realtime extension at all.
 
 * Common API for Realtime-Applications in kernel- and userspace.
   - Requesting and releasing masters.
@@ -45,22 +45,24 @@ General Features:
   - Process data exchange can be monitored via a per-domain mechanism.
 
 * Master finite state machine (FSM).
-  - The same state machine runs when the master is idle and also when an
-    application is connected.
-  - Bus monitoring. Slave states are read cyclically. Automatic scanning of the
-    bus on a topology change.
+  - The same state machine runs both in idle mode and in realtime operation.
+  - Bus monitoring: Slave states are read cyclically. Automatic scanning of the
+    bus after a topology change.
   - Automatic configuration of slaves, if a application-layer state change is
     requested.
 
-* Implementation of the CANopen-over-EtherCAT (CoE) protocol.
+* Implementation of the CANopen-over-EtherCAT (CoE) mailbox protocol.
   - Configuration of CoE-capable slaves.
   - Sdo information service (dictionary listing).
-  - Sdo transfers via the application interface and the command-line tool.
+  - Sdo transfers both via the application interface and the command-line tool.
 
-* Implementation of the Ethernet-over-EtherCAT (EoE) protocol.
-  - Creates a virtual network interface for any EoE-capable	slave.
-  - Natively supports either a switched or a routed EoE network
-    architecture.
+* Implementation of the Ethernet-over-EtherCAT (EoE) mailbox protocol.
+  - Virtual network interface for any EoE-capable slave.
+  - Both a switched and a routed EoE network architecture is natively supported
+    and configurable with standard tools.
+
+* Implementation of the Vendor-specific-over-EtherCAT (VoE) mailbox protocol.
+  - Communication with vendor-specific mailbox protocols via the API. 
 
 * Userspace command-line tool 'ethercat'.
   - Detailed information about master, slaves, domains and bus configuration.
@@ -70,12 +72,12 @@ General Features:
   - Sdo download/upload; listing Sdo dictionaries.
   - Access to slave registers.
   - Slave SII (EEPROM) access.
-  - Requesting application-layer states.
+  - Controlling application-layer states.
   - Generation of slave description XML from existing slaves.
 
 * Seamless integration in any GNU/Linux distribution.
+  - "Linux Standard Base"-compatible init script for master control.
   - Master and Ethernet device configuration via sysconfig file.
-  - "Linux standard base"-compatible init script for master control.
 
 * Virtual read-only network interface for debugging and traffic monitoring
   purposes (using Wireshark, etc.). No additional hardware necessary.
