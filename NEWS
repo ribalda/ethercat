@@ -16,6 +16,7 @@ Changes since 1.4.0:
 * Debug interfaces are created with the Ethernet addresses of the attached
   physical device.
 * Improved error case return codes of many functions.
+* Added 8139too driver for 2.6.25.
 
 Changes since 1.4.0-rc3:
 
