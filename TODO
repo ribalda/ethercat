@@ -16,10 +16,17 @@ Version 1.5.0:
 * Clear slave list on link down.
 * Check force_config flag before error.
 * Remove allow_scanning flag.
+* File access over EtherCAT (FoE).
+* Improve application-triggered SDO transfers by moving the statemachine into
+  the SDO handlers.
+* External memory for SDO transfers.
+* Bus information via userspace library (slaves, sync managers, pdos, entries).
+* C++ implementation of the library.
+* Distributed clocks.
+* Bus simulator interface.
 
 Future issues:
 
-* Distributed clocks.
 * Move master threads, slave handlers and state machines into a user
   space daemon.
 * Allow master requesting when in ORPHANED phase
@@ -32,7 +39,6 @@ Future issues:
 * Redundancy with 2 network adapters.
 * Interface/buffers for asynchronous domain IO.
 * Make scanning and configuration run parallel (each).
-* File access over EtherCAT (FoE).
 * ethercat tool:
     - Data type abbreviations.
     - Add a -n (numeric) switch.
