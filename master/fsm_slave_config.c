@@ -281,6 +281,10 @@ void ec_fsm_slave_config_enter_clear_sync(
         return;
     }
 
+    if (slave->master->debug_level)
+        EC_DBG("Clearing sync manager configurations of slave %u...\n",
+                slave->ring_position);
+
     sync_size = EC_SYNC_PAGE_SIZE * slave->sii.sync_count;
 
     // clear sync manager configurations
