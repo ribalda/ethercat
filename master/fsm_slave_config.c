@@ -42,6 +42,7 @@
 void ec_fsm_slave_config_state_start(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_init(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_clear_fmmus(ec_fsm_slave_config_t *);
+void ec_fsm_slave_config_state_clear_sync(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_mbox_sync(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_boot_preop(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_sdo_conf(ec_fsm_slave_config_t *);
@@ -52,6 +53,7 @@ void ec_fsm_slave_config_state_safeop(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_op(ec_fsm_slave_config_t *);
 
 void ec_fsm_slave_config_enter_init(ec_fsm_slave_config_t *);
+void ec_fsm_slave_config_enter_clear_sync(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_mbox_sync(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_boot_preop(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_sdo_conf(ec_fsm_slave_config_t *);
@@ -213,7 +215,7 @@ void ec_fsm_slave_config_state_init(
     }
 
     if (!slave->base_fmmu_count) { // skip FMMU configuration
-        ec_fsm_slave_config_enter_mbox_sync(fsm);
+        ec_fsm_slave_config_enter_clear_sync(fsm);
         return;
     }
 
@@ -253,6 +255,65 @@ void ec_fsm_slave_config_state_clear_fmmus(
         fsm->slave->error_flag = 1;
         fsm->state = ec_fsm_slave_config_state_error;
         EC_ERR("Failed to clear FMMUs of slave %u: ",
+               fsm->slave->ring_position);
+        ec_datagram_print_wc_error(datagram);
+        return;
+    }
+
+    ec_fsm_slave_config_enter_clear_sync(fsm);
+}
+
+/*****************************************************************************/
+
+/** Clear the sync manager configurations.
+ */
+void ec_fsm_slave_config_enter_clear_sync(
+        ec_fsm_slave_config_t *fsm /**< slave state machine */
+        )
+{
+    ec_slave_t *slave = fsm->slave;
+    ec_datagram_t *datagram = fsm->datagram;
+    size_t sync_size;
+
+    if (!slave->sii.sync_count) {
+        // no mailbox protocols supported
+        ec_fsm_slave_config_enter_mbox_sync(fsm);
+        return;
+    }
+
+    sync_size = EC_SYNC_PAGE_SIZE * slave->sii.sync_count;
+
+    // clear sync manager configurations
+    ec_datagram_fpwr(datagram, slave->station_address, 0x0800, sync_size);
+    memset(datagram->data, 0x00, sync_size);
+    fsm->retries = EC_FSM_RETRIES;
+    fsm->state = ec_fsm_slave_config_state_clear_sync;
+}
+
+/*****************************************************************************/
+
+/** Slave configuration state: CLEAR SYNC.
+ */
+void ec_fsm_slave_config_state_clear_sync(
+        ec_fsm_slave_config_t *fsm /**< slave state machine */
+        )
+{
+    ec_datagram_t *datagram = fsm->datagram;
+
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+        return;
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED) {
+        fsm->state = ec_fsm_slave_config_state_error;
+        EC_ERR("Failed receive sync manager clearing datagram"
+                " for slave %u.\n", fsm->slave->ring_position);
+        return;
+    }
+
+    if (datagram->working_counter != 1) {
+        fsm->slave->error_flag = 1;
+        fsm->state = ec_fsm_slave_config_state_error;
+        EC_ERR("Failed to clear sync manager configurations of slave %u: ",
                fsm->slave->ring_position);
         ec_datagram_print_wc_error(datagram);
         return;
