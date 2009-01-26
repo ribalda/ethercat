@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- *  $Id:$
+ *  $Id$
  *
  *  Copyright (C) 2008  Olav Zarges, imc Meﬂsysteme GmbH
  *
@@ -51,6 +51,8 @@
 #define EC_FSM_FOE_TIMEOUT 3000
 
 #define EC_MBOX_TYPE_FILEACCESS 0x04
+
+#define myDEBUG
 
 /*****************************************************************************/
 
@@ -188,18 +190,18 @@ void ec_fsm_foe_end(ec_fsm_foe_t *fsm /**< finite state machine */)
 // uint8_t	Counter:4
 
 #define	EC_FOE_HEADER_SIZE		6
-// uint8_t	OpMode
+// uint8_t	OpCode
 // uint8_t	reserved
 // uint32_t	PacketNo, Password, ErrorCode
 
 enum {
-	EC_FOE_OPMODE_RRQ  = 1,
-	EC_FOE_OPMODE_WRQ  = 2,
-	EC_FOE_OPMODE_DATA = 3,
-	EC_FOE_OPMODE_ACK  = 4,
-	EC_FOE_OPMODE_ERR  = 5,
-	EC_FOE_OPMODE_BUSY = 6
-} ec_foe_opmode_t;
+	EC_FOE_OPCODE_RRQ  = 1,
+	EC_FOE_OPCODE_WRQ  = 2,
+	EC_FOE_OPCODE_DATA = 3,
+	EC_FOE_OPCODE_ACK  = 4,
+	EC_FOE_OPCODE_ERR  = 5,
+	EC_FOE_OPCODE_BUSY = 6
+} ec_foe_opcode_t;
 
 /*****************************************************************************/
 /**
@@ -224,7 +226,7 @@ int ec_foe_prepare_data_send( ec_fsm_foe_t *fsm ) {
     		EC_MBOX_TYPE_FILEACCESS, current_size + EC_FOE_HEADER_SIZE)))
         return -1;
 
-    EC_WRITE_U8 ( data, EC_FOE_OPMODE_DATA ); 		// OpMode = DataBlock req.
+    EC_WRITE_U8 ( data, EC_FOE_OPCODE_DATA ); 		// OpCode = DataBlock req.
     EC_WRITE_U32( data + 2, fsm->tx_packet_no );	// PacketNo, Password
 
     memcpy(data + EC_FOE_HEADER_SIZE, fsm->tx_buffer + fsm->tx_buffer_offset, current_size);
@@ -254,7 +256,7 @@ int ec_foe_prepare_wrq_send( ec_fsm_foe_t *fsm ) {
     		EC_MBOX_TYPE_FILEACCESS, current_size + EC_FOE_HEADER_SIZE)))
         return -1;
 
-    EC_WRITE_U16( data, EC_FOE_OPMODE_WRQ); // fsm write request
+    EC_WRITE_U16( data, EC_FOE_OPCODE_WRQ); // fsm write request
     EC_WRITE_U32( data + 2, fsm->tx_packet_no );
 
     memcpy(data + EC_FOE_HEADER_SIZE, fsm->tx_filename, current_size);
@@ -375,7 +377,7 @@ void ec_fsm_foe_state_ack_read( ec_fsm_foe_t *fsm ) {
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
     uint8_t *data, mbox_prot;
-    uint16_t opMode;
+    uint8_t opCode;
     size_t rec_size;
 
 #ifdef	myDEBUG
@@ -408,9 +410,9 @@ void ec_fsm_foe_state_ack_read( ec_fsm_foe_t *fsm ) {
         return;
     }
 
-    opMode = EC_READ_U16(data);
+    opCode = EC_READ_U8(data);
 
-    if ( opMode == EC_FOE_OPMODE_BUSY ) {
+    if (opCode == EC_FOE_OPCODE_BUSY) {
     	// slave ist noch nicht bereit
         if (ec_foe_prepare_data_send(fsm)) {
         	ec_foe_set_tx_error(fsm, FOE_PROT_ERROR);
@@ -421,7 +423,7 @@ void ec_fsm_foe_state_ack_read( ec_fsm_foe_t *fsm ) {
         return;
     }
 
-    if ( opMode == EC_FOE_OPMODE_ACK ) {
+    if (opCode == EC_FOE_OPCODE_ACK) {
         fsm->tx_packet_no++;
         fsm->tx_buffer_offset += fsm->tx_current_size;
 
@@ -530,10 +532,14 @@ int ec_foe_prepare_rrq_send( ec_fsm_foe_t *fsm ) {
     		EC_MBOX_TYPE_FILEACCESS, current_size + EC_FOE_HEADER_SIZE)))
         return -1;
 
-    EC_WRITE_U16( data, EC_FOE_OPMODE_RRQ); // fsm read request
-    EC_WRITE_U32( data + 2, 0 );
-
+    EC_WRITE_U16(data, EC_FOE_OPCODE_RRQ); // fsm read request
+    EC_WRITE_U32(data + 2, 0x00000000); // no passwd
     memcpy(data + EC_FOE_HEADER_SIZE, fsm->rx_filename, current_size);
+
+    if (fsm->slave->master->debug_level) {
+        EC_DBG("FoE Read Request:\n");
+        ec_print_data(data, current_size + EC_FOE_HEADER_SIZE);
+    }
 
     return 0;
 }
@@ -548,7 +554,7 @@ int ec_foe_prepare_send_ack( ec_fsm_foe_t *foe ) {
     		EC_MBOX_TYPE_FILEACCESS, EC_FOE_HEADER_SIZE)))
         return -1;
 
-    EC_WRITE_U16( data, EC_FOE_OPMODE_ACK);
+    EC_WRITE_U16( data, EC_FOE_OPCODE_ACK);
     EC_WRITE_U32( data + 2, foe->rx_expected_packet_no  );
 
     return 0;
@@ -698,7 +704,7 @@ void ec_fsm_foe_state_data_check ( ec_fsm_foe_t *fsm ) {
 
 void ec_fsm_foe_state_data_read ( ec_fsm_foe_t *fsm ) {
     size_t 	rec_size;
-    uint8_t *data, opMode, packet_no, mbox_prot;
+    uint8_t *data, opCode, packet_no, mbox_prot;
 
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
@@ -706,6 +712,7 @@ void ec_fsm_foe_state_data_read ( ec_fsm_foe_t *fsm ) {
 #ifdef	myDEBUG
 	printk("ec_fsm_foe_state_data_read()\n");
 #endif
+
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
     	ec_foe_set_rx_error(fsm, FOE_RECEIVE_ERROR);
         EC_ERR("Failed to receive FoE DATA READ datagram for"
@@ -733,37 +740,59 @@ void ec_fsm_foe_state_data_read ( ec_fsm_foe_t *fsm ) {
         return;
     }
 
-    opMode = EC_READ_U16(data);
+    opCode = EC_READ_U8(data);
 
-    if (opMode == EC_FOE_OPMODE_BUSY) {
+    if (opCode == EC_FOE_OPCODE_BUSY) {
         if (ec_foe_prepare_send_ack(fsm)) {
             ec_foe_set_rx_error(fsm, FOE_PROT_ERROR);
         }
         return;
     }
 
-    if (opMode != EC_FOE_OPMODE_DATA) {
-        ec_foe_set_rx_error(fsm, FOE_OPMODE_ERROR);
+    if (opCode == EC_FOE_OPCODE_ERR) {
+        fsm->request->error_code = EC_READ_U32(data + 2);
+        EC_ERR("Received FoE Error Request (code %08x) on slave %u.\n",
+                fsm->request->error_code, slave->ring_position);
+        if (rec_size > 6) {
+            uint8_t text[1024];
+            strncpy(text, data + 6, min(rec_size - 6, sizeof(text)));
+            EC_ERR("FoE Error Text: %s\n", text);
+        }
+        ec_foe_set_rx_error(fsm, FOE_OPCODE_ERROR);
+        return;
+    }
+
+    if (opCode != EC_FOE_OPCODE_DATA) {
+        EC_ERR("Received OPCODE %x, expected %x on slave %u.\n",
+                opCode, EC_FOE_OPCODE_DATA, slave->ring_position);
+        fsm->request->error_code = 0x00000000;
+        ec_foe_set_rx_error(fsm, FOE_OPCODE_ERROR);
         return;
     }
 
     packet_no = EC_READ_U16(data + 2);
     if (packet_no != fsm->rx_expected_packet_no) {
+        EC_ERR("Received unexpected packet number on slave %u.\n",
+                slave->ring_position);
         ec_foe_set_rx_error(fsm, FOE_PACKETNO_ERROR);
         return;
     }
 
     rec_size -= EC_FOE_HEADER_SIZE;
 
-    if ( fsm->rx_buffer_size >= fsm->rx_buffer_offset + rec_size ) {
-        memcpy ( fsm->rx_buffer + fsm->rx_buffer_offset, data + EC_FOE_HEADER_SIZE, rec_size );
+    if (fsm->rx_buffer_size >= fsm->rx_buffer_offset + rec_size) {
+        memcpy(fsm->rx_buffer + fsm->rx_buffer_offset,
+                data + EC_FOE_HEADER_SIZE, rec_size);
         fsm->rx_buffer_offset += rec_size;
     }
 
-    fsm->rx_last_packet = (rec_size + EC_MBOX_HEADER_SIZE + EC_FOE_HEADER_SIZE != fsm->slave->sii.rx_mailbox_size);
+    fsm->rx_last_packet =
+        (rec_size + EC_MBOX_HEADER_SIZE + EC_FOE_HEADER_SIZE
+         != fsm->slave->sii.rx_mailbox_size);
 
     if (fsm->rx_last_packet ||
-    	slave->sii.rx_mailbox_size - EC_MBOX_HEADER_SIZE - EC_FOE_HEADER_SIZE  + fsm->rx_buffer_offset <= fsm->rx_buffer_size) {
+    	(slave->sii.rx_mailbox_size - EC_MBOX_HEADER_SIZE
+         - EC_FOE_HEADER_SIZE + fsm->rx_buffer_offset) <= fsm->rx_buffer_size) {
     	// either it was the last packet or a new packet will fit into the delivered buffer
 #ifdef	myDEBUG
     	printk ("last_packet=true\n");
@@ -776,8 +805,8 @@ void ec_fsm_foe_state_data_read ( ec_fsm_foe_t *fsm ) {
 	    fsm->state = ec_fsm_foe_state_sent_ack;
     }
     else {
-    	// no more data fits into the deliverd buffer
-    	// ... wait for new read request (an den Treiber)
+    	// no more data fits into the delivered buffer
+    	// ... wait for new read request
     	printk ("ERROR: data doesn't fit in receive buffer\n");
     	printk ("       rx_buffer_size  = %d\n", fsm->rx_buffer_size);
     	printk ("       rx_buffer_offset= %d\n", fsm->rx_buffer_offset);
@@ -785,7 +814,7 @@ void ec_fsm_foe_state_data_read ( ec_fsm_foe_t *fsm ) {
     	printk ("       rx_mailbox_size = %d\n", slave->sii.rx_mailbox_size);
     	printk ("       rx_last_packet  = %d\n", fsm->rx_last_packet);
 //    	fsm->state = ec_fsm_state_wait_next_read;
-    	fsm->request->abort_code = FOE_READY;
+    	fsm->request->result = FOE_READY;
     }
 }
 
@@ -834,17 +863,19 @@ void ec_fsm_foe_state_sent_ack( ec_fsm_foe_t *fsm ) {
 
 /*****************************************************************************/
 
-void ec_foe_set_tx_error( ec_fsm_foe_t *fsm, uint32_t errorcode ) {
+void ec_foe_set_tx_error(ec_fsm_foe_t *fsm, uint32_t errorcode)
+{
 	fsm->tx_errors++;
-	fsm->request->abort_code = errorcode;
+	fsm->request->result = errorcode;
 	fsm->state = ec_fsm_foe_error;
 }
 
 /*****************************************************************************/
 
-void ec_foe_set_rx_error( ec_fsm_foe_t *fsm, uint32_t errorcode ) {
+void ec_foe_set_rx_error(ec_fsm_foe_t *fsm, uint32_t errorcode)
+{
 	fsm->rx_errors++;
-	fsm->request->abort_code = errorcode;
+	fsm->request->result = errorcode;
 	fsm->state = ec_fsm_foe_error;
 }
 

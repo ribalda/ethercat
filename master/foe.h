@@ -38,7 +38,7 @@ typedef enum {
     FOE_PROT_ERROR         = 5,
     FOE_NODATA_ERROR       = 6,
     FOE_PACKETNO_ERROR     = 7,
-    FOE_OPMODE_ERROR       = 8,
+    FOE_OPCODE_ERROR       = 8,
     FOE_TIMEOUT_ERROR      = 9,
     FOE_SEND_RX_DATA_ERROR = 10,
     FOE_RX_DATA_ACK_ERROR  = 11,

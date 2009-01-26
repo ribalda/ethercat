@@ -493,17 +493,14 @@ int ec_fsm_master_action_process_foe(
         request->req.state = EC_REQUEST_BUSY;
         slave = request->slave;
 
-        EC_DBG("---- Master read command from queue ----\n");
-        // found pending FOE write operation. execute it!
         if (master->debug_level)
-            EC_DBG("Writing FOE data to slave %u...\n",
-                    request->slave->ring_position);
+            EC_DBG("Processing FoE request for slave %u.\n",
+                    slave->ring_position);
 
         fsm->foe_request = &request->req;
         fsm->slave = slave;
         fsm->state = ec_fsm_master_state_foe_request;
         ec_fsm_foe_transfer(&fsm->fsm_foe, slave, &request->req);
-        //(&fsm->fsm_foe, request->slave, request->offset, request->words);
         ec_fsm_foe_exec(&fsm->fsm_foe);
         return 1;
     }
@@ -526,6 +523,10 @@ void ec_fsm_master_action_idle(
 
     // Check for pending SDO requests
     if (ec_fsm_master_action_process_sdo(fsm))
+        return;
+
+    // Check for pending FoE requests
+    if (ec_fsm_master_action_process_foe(fsm))
         return;
 
     // check, if slaves have an SDO dictionary to read out.
@@ -912,10 +913,11 @@ void ec_fsm_master_state_foe_request(
     ec_foe_request_t *request = fsm->foe_request;
     ec_slave_t *slave = fsm->slave;
 
-    if (ec_fsm_foe_exec(&fsm->fsm_foe)) return;
+    if (ec_fsm_foe_exec(&fsm->fsm_foe))
+        return;
 
     if (!ec_fsm_foe_success(&fsm->fsm_foe)) {
-        EC_ERR("Failed to handle FOE request to slave %u.\n",
+        EC_ERR("Failed to handle FoE request to slave %u.\n",
                 slave->ring_position);
         request->state = EC_INT_REQUEST_FAILURE;
         wake_up(&master->foe_queue);
@@ -923,10 +925,10 @@ void ec_fsm_master_state_foe_request(
         return;
     }
 
-    // finished writing FOE
+    // finished transferring FoE
     if (master->debug_level)
-        EC_DBG("Finished writing %u words of FOE data to slave %u.\n",
-                request->data_size, slave->ring_position);
+        EC_DBG("Successfully transferred %u bytes of FoE data from/to"
+                " slave %u.\n", request->data_size, slave->ring_position);
 
     request->state = EC_INT_REQUEST_SUCCESS;
     wake_up(&master->foe_queue);

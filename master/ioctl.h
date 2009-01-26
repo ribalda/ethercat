@@ -334,7 +334,8 @@ typedef struct {
 
     // outputs
     uint32_t data_size;
-    uint32_t abort_code;
+    uint32_t result;
+    uint32_t error_code;
     char file_name[32];
 } ec_ioctl_slave_foe_t;
 

@@ -41,6 +41,7 @@
 #include <linux/jiffies.h>
 
 #include "foe_request.h"
+#include "foe.h"
 
 /*****************************************************************************/
 
@@ -68,7 +69,8 @@ void ec_foe_request_init(
     req->issue_timeout = 0; // no timeout
     req->response_timeout = EC_FOE_REQUEST_RESPONSE_TIMEOUT;
     req->state = EC_INT_REQUEST_INIT;
-    req->abort_code = 0x00000000;
+    req->result = FOE_BUSY;
+    req->error_code = 0x00000000;
 }
 
 /*****************************************************************************/
@@ -184,7 +186,7 @@ void ec_foe_request_read(ec_foe_request_t *req)
 {
     req->dir = EC_DIR_INPUT;
     req->state = EC_INT_REQUEST_QUEUED;
-    req->abort_code = 0x00000000;
+    req->result = FOE_BUSY;
     req->jiffies_start = jiffies;
 }
 
@@ -194,7 +196,7 @@ void ec_foe_request_write(ec_foe_request_t *req)
 {
     req->dir = EC_DIR_OUTPUT;
     req->state = EC_INT_REQUEST_QUEUED;
-    req->abort_code = 0x00000000;
+    req->result = FOE_BUSY;
     req->jiffies_start = jiffies;
 }
 

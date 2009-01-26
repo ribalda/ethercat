@@ -9,6 +9,7 @@
 using namespace std;
 
 #include "CommandFoeRead.h"
+#include "foe.h"
 
 /*****************************************************************************/
 
@@ -82,7 +83,19 @@ void CommandFoeRead::execute(MasterDevice &m, const StringVector &args)
 		m.readFoe(&data);
 	} catch (MasterDeviceException &e) {
         delete [] data.buffer;
-		throw e;
+        if (data.result) {
+            if (data.result == FOE_OPCODE_ERROR) {
+                err << "FoE read aborted with error code 0x"
+                    << setw(8) << setfill('0') << hex << data.error_code
+                    << ": " << errorText(data.error_code);
+            } else {
+                err << "Failed to write via FoE: "
+                    << resultText(data.result);
+            }
+            throwCommandException(err);
+        } else {
+            throw e;
+        }
 	}
 
     // TODO --output-file

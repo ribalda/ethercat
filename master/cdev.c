@@ -2429,6 +2429,11 @@ int ec_cdev_ioctl_slave_foe_read(
 
     up(&master->master_sem);
 
+    if (master->debug_level) {
+        EC_DBG("Scheduled FoE read request on slave %u.\n",
+                request.slave->ring_position);
+    }
+
     // wait for processing through FSM
     if (wait_event_interruptible(master->foe_queue,
                 request.req.state != EC_INT_REQUEST_QUEUED)) {
@@ -2447,11 +2452,12 @@ int ec_cdev_ioctl_slave_foe_read(
     // wait until master FSM has finished processing
     wait_event(master->foe_queue, request.req.state != EC_REQUEST_BUSY);
 
-    data.abort_code = request.req.abort_code;
+    data.result = request.req.result;
+    data.error_code = request.req.error_code;
 
 	if (master->debug_level) {
-		EC_DBG("%d bytes read via FoE (abort_code = 0x%x).\n",
-				request.req.data_size, request.req.abort_code);
+		EC_DBG("Read %d bytes via FoE (result = 0x%x).\n",
+				request.req.data_size, request.req.result);
 	}
 
     if (request.req.state != EC_REQUEST_SUCCESS) {
@@ -2476,7 +2482,12 @@ int ec_cdev_ioctl_slave_foe_read(
         retval = -EFAULT;
     }
 
+    if (master->debug_level)
+        EC_DBG("FoE read request finished on slave %u.\n",
+                request.slave->ring_position);
+
     ec_foe_request_clear(&request.req);
+
     return retval;
 }
 
@@ -2551,7 +2562,8 @@ int ec_cdev_ioctl_slave_foe_write(
     // wait until master FSM has finished processing
     wait_event(master->foe_queue, request.req.state != EC_REQUEST_BUSY);
 
-    data.abort_code = request.req.abort_code;
+    data.result = request.req.result;
+    data.error_code = request.req.error_code;
 
     retval = request.req.state == EC_REQUEST_SUCCESS ? 0 : -EIO;
 

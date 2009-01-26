@@ -16,9 +16,9 @@ FoeCommand::FoeCommand(const string &name, const string &briefDesc):
 
 /****************************************************************************/
 
-std::string FoeCommand::errorString(int abort_code)
+std::string FoeCommand::resultText(int result)
 {
-	switch (abort_code) {
+	switch (result) {
 		case FOE_BUSY:
 			return "FOE_BUSY";
 		case FOE_READY:
@@ -35,8 +35,8 @@ std::string FoeCommand::errorString(int abort_code)
 			return "FOE_NODATA_ERROR";
 		case FOE_PACKETNO_ERROR:
 			return "FOE_PACKETNO_ERROR";
-		case FOE_OPMODE_ERROR:
-			return "FOE_OPMODE_ERROR";
+		case FOE_OPCODE_ERROR:
+			return "FOE_OPCODE_ERROR";
 		case FOE_TIMEOUT_ERROR:
 			return "FOE_TIMEOUT_ERROR";
 		case FOE_SEND_RX_DATA_ERROR:
@@ -53,6 +53,38 @@ std::string FoeCommand::errorString(int abort_code)
 			return "FOE_MBOX_PROT_ERROR";
 		default:
 			return "???";
+	}
+}
+
+/****************************************************************************/
+
+std::string FoeCommand::errorText(int errorCode)
+{
+	switch (errorCode) {
+        case 0x00008001:
+            return "Not found.";
+        case 0x00008002:
+            return "Access denied.";
+        case 0x00008003:
+            return "Disk full.";
+        case 0x00008004:
+            return "Illegal.";
+        case 0x00008005:
+            return "Packet number wrong.";
+        case 0x00008006:
+            return "Already exists.";
+        case 0x00008007:
+            return "No user.";
+        case 0x00008008:
+            return "Bootstrap only.";
+        case 0x00008009:
+            return "Not Bootstrap.";
+        case 0x0000800a:
+            return "No rights.";
+        case 0x0000800b:
+            return "Program Error.";
+		default:
+			return "Unknown error code";
 	}
 }
 
