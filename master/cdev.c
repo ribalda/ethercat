@@ -2452,7 +2452,7 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
     ec_master_t *master = priv->cdev->master;
 
     if (master->debug_level)
-        EC_DBG("ioctl(filp = %x, cmd = %u (%u), arg = %x)\n",
+        EC_DBG("ioctl(filp = 0x%x, cmd = 0x%x (0x%x), arg = 0x%x)\n",
                 (u32) filp, (u32) cmd, (u32) _IOC_NR(cmd), (u32) arg);
 
     switch (cmd) {
