@@ -43,7 +43,7 @@ void ec_fsm_slave_config_state_start(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_init(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_clear_fmmus(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_mbox_sync(ec_fsm_slave_config_t *);
-void ec_fsm_slave_config_state_preop(ec_fsm_slave_config_t *);
+void ec_fsm_slave_config_state_boot_preop(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_sdo_conf(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_pdo_sync(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_pdo_conf(ec_fsm_slave_config_t *);
@@ -53,7 +53,7 @@ void ec_fsm_slave_config_state_op(ec_fsm_slave_config_t *);
 
 void ec_fsm_slave_config_enter_init(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_mbox_sync(ec_fsm_slave_config_t *);
-void ec_fsm_slave_config_enter_preop(ec_fsm_slave_config_t *);
+void ec_fsm_slave_config_enter_boot_preop(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_sdo_conf(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_pdo_conf(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_pdo_sync(ec_fsm_slave_config_t *);
@@ -289,7 +289,7 @@ void ec_fsm_slave_config_enter_mbox_sync(
         if (master->debug_level)
             EC_DBG("Slave %u does not support mailbox communication.\n",
                     slave->ring_position);
-        ec_fsm_slave_config_enter_preop(fsm);
+        ec_fsm_slave_config_enter_boot_preop(fsm);
         return;
     }
 
@@ -298,7 +298,29 @@ void ec_fsm_slave_config_enter_mbox_sync(
                slave->ring_position);
     }
 
-    if (slave->sii.sync_count >= 2) { // mailbox configuration provided
+    if (slave->requested_state == EC_SLAVE_STATE_BOOT) {
+        ec_sync_t sync;
+
+        ec_datagram_fpwr(datagram, slave->station_address, 0x0800,
+                EC_SYNC_PAGE_SIZE * 2);
+        memset(datagram->data, 0x00, EC_SYNC_PAGE_SIZE * 2);
+
+        ec_sync_init(&sync, slave);
+        sync.physical_start_address = slave->sii.boot_rx_mailbox_offset;
+        sync.control_register = 0x26;
+        sync.enable = 1;
+        ec_sync_page(&sync, 0, slave->sii.boot_rx_mailbox_size,
+                EC_DIR_INVALID, // use default direction
+                datagram->data);
+
+        ec_sync_init(&sync, slave);
+        sync.physical_start_address = slave->sii.boot_tx_mailbox_offset;
+        sync.control_register = 0x22;
+        sync.enable = 1;
+        ec_sync_page(&sync, 1, slave->sii.boot_tx_mailbox_size,
+                EC_DIR_INVALID, // use default direction
+                datagram->data + EC_SYNC_PAGE_SIZE);
+    } else if (slave->sii.sync_count >= 2) { // mailbox configuration provided
         ec_datagram_fpwr(datagram, slave->station_address, 0x0800,
                 EC_SYNC_PAGE_SIZE * slave->sii.sync_count);
         ec_datagram_zero(datagram);
@@ -322,18 +344,18 @@ void ec_fsm_slave_config_enter_mbox_sync(
         ec_datagram_zero(datagram);
 
         ec_sync_init(&sync, slave);
-        sync.physical_start_address = slave->sii.rx_mailbox_offset;
+        sync.physical_start_address = slave->sii.std_rx_mailbox_offset;
         sync.control_register = 0x26;
         sync.enable = 1;
-        ec_sync_page(&sync, 0, slave->sii.rx_mailbox_size,
+        ec_sync_page(&sync, 0, slave->sii.std_rx_mailbox_size,
                 EC_DIR_INVALID, // use default direction
                 datagram->data);
 
         ec_sync_init(&sync, slave);
-        sync.physical_start_address = slave->sii.tx_mailbox_offset;
+        sync.physical_start_address = slave->sii.std_tx_mailbox_offset;
         sync.control_register = 0x22;
         sync.enable = 1;
-        ec_sync_page(&sync, 1, slave->sii.tx_mailbox_size,
+        ec_sync_page(&sync, 1, slave->sii.std_tx_mailbox_size,
                 EC_DIR_INVALID, // use default direction
                 datagram->data + EC_SYNC_PAGE_SIZE);
     }
@@ -373,27 +395,33 @@ void ec_fsm_slave_config_state_mbox_sync(
         return;
     }
 
-    ec_fsm_slave_config_enter_preop(fsm);
+    ec_fsm_slave_config_enter_boot_preop(fsm);
 }
 
 /*****************************************************************************/
 
 /** Request PREOP state.
  */
-void ec_fsm_slave_config_enter_preop(
+void ec_fsm_slave_config_enter_boot_preop(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-    fsm->state = ec_fsm_slave_config_state_preop;
-    ec_fsm_change_start(fsm->fsm_change, fsm->slave, EC_SLAVE_STATE_PREOP);
+    fsm->state = ec_fsm_slave_config_state_boot_preop;
+
+    if (fsm->slave->requested_state != EC_SLAVE_STATE_BOOT) {
+        ec_fsm_change_start(fsm->fsm_change, fsm->slave, EC_SLAVE_STATE_PREOP);
+    } else { // BOOT
+        ec_fsm_change_start(fsm->fsm_change, fsm->slave, EC_SLAVE_STATE_BOOT);
+    }
+
     ec_fsm_change_exec(fsm->fsm_change); // execute immediately
 }
 
 /*****************************************************************************/
 
-/** Slave configuration state: PREOP.
+/** Slave configuration state: BOOT/PREOP.
  */
-void ec_fsm_slave_config_state_preop(
+void ec_fsm_slave_config_state_boot_preop(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
@@ -409,11 +437,13 @@ void ec_fsm_slave_config_state_preop(
         return;
     }
 
-    // slave is now in PREOP
+    // slave is now in BOOT/PREOP
     slave->jiffies_preop = fsm->datagram->jiffies_received;
 
     if (master->debug_level) {
-        EC_DBG("Slave %u is now in PREOP.\n", slave->ring_position);
+        EC_DBG("Slave %u is now in %s.\n", slave->ring_position,
+                slave->requested_state != EC_SLAVE_STATE_BOOT
+                ? "PREOP" : "BOOT");
     }
 
     if (slave->current_state == slave->requested_state) {

@@ -284,6 +284,7 @@ string Command::alStateString(uint8_t state)
     switch (state) {
         case 1: return "INIT";
         case 2: return "PREOP";
+        case 3: return "BOOT";
         case 4: return "SAFEOP";
         case 8: return "OP";
         default: return "???";

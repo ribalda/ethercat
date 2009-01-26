@@ -19,6 +19,9 @@ Changes since 1.4.0:
   physical device.
 * Improved error case return codes of many functions.
 * Added 8139too driver for 2.6.25.
+* Implemented the File Access over EtherCAT (FoE) mailbox protocol.
+* Going to the Bootstrap state is now supported by the state machines and the
+  command-line tool.
 
 Changes in 1.4.0:
 

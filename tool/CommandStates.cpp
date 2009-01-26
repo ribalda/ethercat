@@ -28,7 +28,7 @@ string CommandStates::helpString() const
         << getBriefDescription() << endl
         << endl
         << "Arguments:" << endl
-        << "  STATE can be 'INIT', 'PREOP', 'SAFEOP', or 'OP'." << endl
+        << "  STATE can be 'INIT', 'PREOP', 'BOOT', 'SAFEOP', or 'OP'." << endl
         << endl
         << "Command-specific options:" << endl
         << "  --alias    -a <alias>" << endl
@@ -63,6 +63,8 @@ void CommandStates::execute(MasterDevice &m, const StringVector &args)
         state = 0x01;
     } else if (stateStr == "PREOP") {
         state = 0x02;
+    } else if (stateStr == "BOOT") {
+        state = 0x03;
     } else if (stateStr == "SAFEOP") {
         state = 0x04;
     } else if (stateStr == "OP") {

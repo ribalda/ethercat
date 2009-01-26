@@ -54,10 +54,14 @@ typedef struct {
     uint32_t product_code; /**< Vendor-specific product code. */
     uint32_t revision_number; /**< Revision number. */
     uint32_t serial_number; /**< Serial number. */
-    uint16_t rx_mailbox_offset; /**< Mailbox address (master to slave). */
-    uint16_t rx_mailbox_size; /**< Mailbox size (master to slave). */
-    uint16_t tx_mailbox_offset; /**< Mailbox address (slave to master). */
-    uint16_t tx_mailbox_size; /**< Mailbox size (slave to master). */
+    uint16_t boot_rx_mailbox_offset; /**< Bootstrap receive mailbox address. */
+    uint16_t boot_rx_mailbox_size; /**< Bootstrap receive mailbox size. */
+    uint16_t boot_tx_mailbox_offset; /**< Bootstrap transmit mailbox address. */
+    uint16_t boot_tx_mailbox_size; /**< Bootstrap transmit mailbox size. */
+    uint16_t std_rx_mailbox_offset; /**< Standard receive mailbox address. */
+    uint16_t std_rx_mailbox_size; /**< Standard receive mailbox size. */
+    uint16_t std_tx_mailbox_offset; /**< Standard transmit mailbox address. */
+    uint16_t std_tx_mailbox_size; /**< Standard transmit mailbox size. */
     uint16_t mailbox_protocols; /**< Supported mailbox protocols. */
 
     // Strings

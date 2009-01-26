@@ -115,6 +115,8 @@ typedef enum {
     /**< INIT state (no mailbox communication, no IO) */
     EC_SLAVE_STATE_PREOP = 0x02,
     /**< PREOP state (mailbox communication, no IO) */
+    EC_SLAVE_STATE_BOOT = 0x03,
+    /**< Bootstrap state (mailbox communication, firmware update) */
     EC_SLAVE_STATE_SAFEOP = 0x04,
     /**< SAFEOP (mailbox communication and input update) */
     EC_SLAVE_STATE_OP = 0x08,
@@ -226,7 +228,7 @@ extern char *ec_master_version_str;
 
 void ec_print_data(const uint8_t *, size_t);
 void ec_print_data_diff(const uint8_t *, const uint8_t *, size_t);
-size_t ec_state_string(uint8_t, char *);
+size_t ec_state_string(uint8_t, char *, uint8_t);
 ssize_t ec_mac_print(const uint8_t *, char *);
 int ec_mac_is_zero(const uint8_t *);
 

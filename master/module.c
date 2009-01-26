@@ -358,8 +358,9 @@ void ec_print_data_diff(const uint8_t *d1, /**< first data */
 /** Prints slave states in clear text.
  */
 size_t ec_state_string(uint8_t states, /**< slave states */
-                       char *buffer /**< target buffer
+                       char *buffer, /**< target buffer
                                        (min. EC_STATE_STRING_SIZE bytes) */
+                       uint8_t multi /**< Show multi-state mask. */
                        )
 {
     off_t off = 0;
@@ -370,24 +371,42 @@ size_t ec_state_string(uint8_t states, /**< slave states */
         return off;
     }
 
-    if (states & EC_SLAVE_STATE_INIT) {
-        off += sprintf(buffer + off, "INIT");
+    if (multi) { // multiple slaves
+        if (states & EC_SLAVE_STATE_INIT) {
+            off += sprintf(buffer + off, "INIT");
+            first = 0;
+        }
+        if (states & EC_SLAVE_STATE_PREOP) {
+            if (!first) off += sprintf(buffer + off, ", ");
+            off += sprintf(buffer + off, "PREOP");
+            first = 0;
+        }
+        if (states & EC_SLAVE_STATE_SAFEOP) {
+            if (!first) off += sprintf(buffer + off, ", ");
+            off += sprintf(buffer + off, "SAFEOP");
+            first = 0;
+        }
+        if (states & EC_SLAVE_STATE_OP) {
+            if (!first) off += sprintf(buffer + off, ", ");
+            off += sprintf(buffer + off, "OP");
+        }
+    } else { // single slave
+        if ((states & EC_SLAVE_STATE_MASK) == EC_SLAVE_STATE_INIT) {
+            off += sprintf(buffer + off, "INIT");
+        } else if ((states & EC_SLAVE_STATE_MASK) == EC_SLAVE_STATE_PREOP) {
+            off += sprintf(buffer + off, "PREOP");
+        } else if ((states & EC_SLAVE_STATE_MASK) == EC_SLAVE_STATE_BOOT) {
+            off += sprintf(buffer + off, "BOOT");
+        } else if ((states & EC_SLAVE_STATE_MASK) == EC_SLAVE_STATE_SAFEOP) {
+            off += sprintf(buffer + off, "SAFEOP");
+        } else if ((states & EC_SLAVE_STATE_MASK) == EC_SLAVE_STATE_OP) {
+            off += sprintf(buffer + off, "OP");
+        } else {
+            off += sprintf(buffer + off, "(invalid)");
+        }
         first = 0;
     }
-    if (states & EC_SLAVE_STATE_PREOP) {
-        if (!first) off += sprintf(buffer + off, ", ");
-        off += sprintf(buffer + off, "PREOP");
-        first = 0;
-    }
-    if (states & EC_SLAVE_STATE_SAFEOP) {
-        if (!first) off += sprintf(buffer + off, ", ");
-        off += sprintf(buffer + off, "SAFEOP");
-        first = 0;
-    }
-    if (states & EC_SLAVE_STATE_OP) {
-        if (!first) off += sprintf(buffer + off, ", ");
-        off += sprintf(buffer + off, "OP");
-    }
+
     if (states & EC_SLAVE_STATE_ACK_ERR) {
         if (!first) off += sprintf(buffer + off, " + ");
         off += sprintf(buffer + off, "ERROR");

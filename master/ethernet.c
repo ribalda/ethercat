@@ -218,6 +218,7 @@ void ec_eoe_flush(ec_eoe_t *eoe /**< EoE handler */)
 
 /**
    Sends a frame or the next fragment.
+   \todo bootstrap mailboxes / use configured mailbox sizes
 */
 
 int ec_eoe_send(ec_eoe_t *eoe /**< EoE handler */)
@@ -231,12 +232,11 @@ int ec_eoe_send(ec_eoe_t *eoe /**< EoE handler */)
 
     remaining_size = eoe->tx_frame->skb->len - eoe->tx_offset;
 
-    if (remaining_size <= eoe->slave->sii.tx_mailbox_size - 10) {
+    if (remaining_size <= eoe->slave->sii.std_tx_mailbox_size - 10) {
         current_size = remaining_size;
         last_fragment = 1;
-    }
-    else {
-        current_size = ((eoe->slave->sii.tx_mailbox_size - 10) / 32) * 32;
+    } else {
+        current_size = ((eoe->slave->sii.std_tx_mailbox_size - 10) / 32) * 32;
         last_fragment = 0;
     }
 

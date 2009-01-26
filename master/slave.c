@@ -90,15 +90,19 @@ void ec_slave_init(
     slave->sii_words = NULL;
     slave->sii_nwords = 0;
 
-    slave->sii.alias = 0;
-    slave->sii.vendor_id = 0;
-    slave->sii.product_code = 0;
-    slave->sii.revision_number = 0;
-    slave->sii.serial_number = 0;
-    slave->sii.rx_mailbox_offset = 0;
-    slave->sii.rx_mailbox_size = 0;
-    slave->sii.tx_mailbox_offset = 0;
-    slave->sii.tx_mailbox_size = 0;
+    slave->sii.alias = 0x0000;
+    slave->sii.vendor_id = 0x00000000;
+    slave->sii.product_code = 0x00000000;
+    slave->sii.revision_number = 0x00000000;
+    slave->sii.serial_number = 0x00000000;
+    slave->sii.boot_rx_mailbox_offset = 0x0000;
+    slave->sii.boot_rx_mailbox_size = 0x0000;
+    slave->sii.boot_tx_mailbox_offset = 0x0000;
+    slave->sii.boot_tx_mailbox_size = 0x0000;
+    slave->sii.std_rx_mailbox_offset = 0x0000;
+    slave->sii.std_rx_mailbox_size = 0x0000;
+    slave->sii.std_tx_mailbox_offset = 0x0000;
+    slave->sii.std_tx_mailbox_size = 0x0000;
     slave->sii.mailbox_protocols = 0;
 
     slave->sii.strings = NULL;
@@ -199,8 +203,8 @@ void ec_slave_set_state(ec_slave_t *slave, /**< EtherCAT slave */
         if (slave->master->debug_level) {
             char old_state[EC_STATE_STRING_SIZE],
                 cur_state[EC_STATE_STRING_SIZE];
-            ec_state_string(slave->current_state, old_state);
-            ec_state_string(new_state, cur_state);
+            ec_state_string(slave->current_state, old_state, 0);
+            ec_state_string(new_state, cur_state, 0);
             EC_DBG("Slave %u: %s -> %s.\n",
                    slave->ring_position, old_state, cur_state);
         }

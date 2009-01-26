@@ -201,7 +201,7 @@ void ec_fsm_master_state_broadcast(
         if (states != fsm->slave_states) { // slave states changed?
             char state_str[EC_STATE_STRING_SIZE];
             fsm->slave_states = states;
-            ec_state_string(fsm->slave_states, state_str);
+            ec_state_string(fsm->slave_states, state_str, 1);
             EC_INFO("Slave states: %s.\n", state_str);
         }
     } else {
@@ -622,8 +622,8 @@ void ec_fsm_master_action_configure(
             if (master->debug_level) {
                 char old_state[EC_STATE_STRING_SIZE],
                      new_state[EC_STATE_STRING_SIZE];
-                ec_state_string(slave->current_state, old_state);
-                ec_state_string(slave->requested_state, new_state);
+                ec_state_string(slave->current_state, old_state, 0);
+                ec_state_string(slave->requested_state, new_state, 0);
                 EC_DBG("Changing state of slave %u from %s to %s%s.\n",
                         slave->ring_position, old_state, new_state,
                         slave->force_config ? " (forced)" : "");

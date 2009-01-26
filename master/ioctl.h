@@ -135,10 +135,14 @@ typedef struct {
     uint32_t revision_number;
     uint32_t serial_number;
     uint16_t alias;
-    uint16_t rx_mailbox_offset;
-    uint16_t rx_mailbox_size;
-    uint16_t tx_mailbox_offset;
-    uint16_t tx_mailbox_size;
+    uint16_t boot_rx_mailbox_offset;
+    uint16_t boot_rx_mailbox_size;
+    uint16_t boot_tx_mailbox_offset;
+    uint16_t boot_tx_mailbox_size;
+    uint16_t std_rx_mailbox_offset;
+    uint16_t std_rx_mailbox_size;
+    uint16_t std_tx_mailbox_offset;
+    uint16_t std_tx_mailbox_size;
     uint16_t mailbox_protocols;
     uint8_t has_general_category;
     ec_sii_coe_details_t coe_details;

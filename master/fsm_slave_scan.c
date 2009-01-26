@@ -237,7 +237,7 @@ void ec_fsm_slave_scan_state_state(
     slave->current_state = EC_READ_U8(datagram->data);
     if (slave->current_state & EC_SLAVE_STATE_ACK_ERR) {
         char state_str[EC_STATE_STRING_SIZE];
-        ec_state_string(slave->current_state, state_str);
+        ec_state_string(slave->current_state, state_str, 0);
         EC_WARN("Slave %u has state error bit set (%s)!\n",
                 slave->ring_position, state_str);
     }
@@ -469,13 +469,21 @@ void ec_fsm_slave_scan_state_sii_data(ec_fsm_slave_scan_t *fsm /**< slave state 
         EC_READ_U32(slave->sii_words + 0x000C);
     slave->sii.serial_number =
         EC_READ_U32(slave->sii_words + 0x000E);
-    slave->sii.rx_mailbox_offset =
+    slave->sii.boot_rx_mailbox_offset =
+        EC_READ_U16(slave->sii_words + 0x0014);
+    slave->sii.boot_rx_mailbox_size =
+        EC_READ_U16(slave->sii_words + 0x0015);
+    slave->sii.boot_tx_mailbox_offset =
+        EC_READ_U16(slave->sii_words + 0x0016);
+    slave->sii.boot_tx_mailbox_size =
+        EC_READ_U16(slave->sii_words + 0x0017);
+    slave->sii.std_rx_mailbox_offset =
         EC_READ_U16(slave->sii_words + 0x0018);
-    slave->sii.rx_mailbox_size =
+    slave->sii.std_rx_mailbox_size =
         EC_READ_U16(slave->sii_words + 0x0019);
-    slave->sii.tx_mailbox_offset =
+    slave->sii.std_tx_mailbox_offset =
         EC_READ_U16(slave->sii_words + 0x001A);
-    slave->sii.tx_mailbox_size =
+    slave->sii.std_tx_mailbox_size =
         EC_READ_U16(slave->sii_words + 0x001B);
     slave->sii.mailbox_protocols =
         EC_READ_U16(slave->sii_words + 0x001C);

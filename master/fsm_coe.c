@@ -1095,7 +1095,7 @@ void ec_fsm_coe_down_start(ec_fsm_coe_t *fsm /**< finite state machine */)
         }
 	}
     else { // request->data_size > 4, use normal transfer type
-	    if (slave->sii.rx_mailbox_size < 6 + 10 + request->data_size) {
+	    if (slave->sii.std_rx_mailbox_size < 6 + 10 + request->data_size) {
 	        EC_ERR("SDO fragmenting not supported yet!\n");
 	        fsm->state = ec_fsm_coe_error;
 	        return;

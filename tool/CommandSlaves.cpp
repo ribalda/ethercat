@@ -216,12 +216,18 @@ void CommandSlaves::showSlaves(
             list<string>::const_iterator protoIter;
 
             cout << "Mailboxes:" << endl
-                << "  RX: 0x"
-                << hex << setw(4) << si->rx_mailbox_offset << "/"
-                << dec << si->rx_mailbox_size
+               << "  Bootstrap RX: 0x"
+                << hex << setw(4) << si->boot_rx_mailbox_offset << "/"
+                << dec << si->boot_rx_mailbox_size
                 << ", TX: 0x"
-                << hex << setw(4) << si->tx_mailbox_offset << "/"
-                << dec << si->tx_mailbox_size << endl
+                << hex << setw(4) << si->boot_tx_mailbox_offset << "/"
+                << dec << si->boot_tx_mailbox_size << endl
+                << "  Standard  RX: 0x"
+                << hex << setw(4) << si->std_rx_mailbox_offset << "/"
+                << dec << si->std_rx_mailbox_size
+                << ", TX: 0x"
+                << hex << setw(4) << si->std_tx_mailbox_offset << "/"
+                << dec << si->std_tx_mailbox_size << endl
                 << "  Supported protocols: ";
 
             if (si->mailbox_protocols & EC_MBOX_AOE) {

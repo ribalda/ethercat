@@ -187,7 +187,7 @@ void ec_fsm_change_state_check(ec_fsm_change_t *fsm
     if (datagram->working_counter == 0) {
         if (datagram->jiffies_received - fsm->jiffies_start >= 3 * HZ) {
             char state_str[EC_STATE_STRING_SIZE];
-            ec_state_string(fsm->requested_state, state_str);
+            ec_state_string(fsm->requested_state, state_str, 0);
             fsm->state = ec_fsm_change_state_error;
             EC_ERR("Failed to set state %s on slave %u: ",
                     state_str, fsm->slave->ring_position);
@@ -204,7 +204,7 @@ void ec_fsm_change_state_check(ec_fsm_change_t *fsm
 
     if (unlikely(datagram->working_counter > 1)) {
         char state_str[EC_STATE_STRING_SIZE];
-        ec_state_string(fsm->requested_state, state_str);
+        ec_state_string(fsm->requested_state, state_str, 0);
         fsm->state = ec_fsm_change_state_error;
         EC_ERR("Failed to set state %s on slave %u: ",
                 state_str, fsm->slave->ring_position);
@@ -247,7 +247,7 @@ void ec_fsm_change_state_status(ec_fsm_change_t *fsm
 
     if (datagram->working_counter != 1) {
         char req_state[EC_STATE_STRING_SIZE];
-        ec_state_string(fsm->requested_state, req_state);
+        ec_state_string(fsm->requested_state, req_state, 0);
         fsm->state = ec_fsm_change_state_error;
         EC_ERR("Failed to check state %s on slave %u: ",
                req_state, slave->ring_position);
@@ -271,7 +271,7 @@ void ec_fsm_change_state_status(ec_fsm_change_t *fsm
     if (slave->current_state != fsm->old_state) { // state changed
         char req_state[EC_STATE_STRING_SIZE], cur_state[EC_STATE_STRING_SIZE];
 
-        ec_state_string(slave->current_state, cur_state);
+        ec_state_string(slave->current_state, cur_state, 0);
 
         if ((slave->current_state & 0x0F) != (fsm->old_state & 0x0F)) {
             // Slave spontaneously changed its state just before the new state
@@ -287,7 +287,7 @@ void ec_fsm_change_state_status(ec_fsm_change_t *fsm
         // state change error
 
         slave->error_flag = 1;
-        ec_state_string(fsm->requested_state, req_state);
+        ec_state_string(fsm->requested_state, req_state, 0);
 
         EC_ERR("Failed to set %s state, slave %u refused state change (%s).\n",
                req_state, slave->ring_position, cur_state);
@@ -304,7 +304,7 @@ void ec_fsm_change_state_status(ec_fsm_change_t *fsm
     if (datagram->jiffies_received - fsm->jiffies_start >= HZ) { // 1s
         // timeout while checking
         char state_str[EC_STATE_STRING_SIZE];
-        ec_state_string(fsm->requested_state, state_str);
+        ec_state_string(fsm->requested_state, state_str, 0);
         fsm->state = ec_fsm_change_state_error;
         EC_ERR("Timeout while setting state %s on slave %u.\n",
                 state_str, slave->ring_position);
@@ -326,7 +326,7 @@ void ec_fsm_change_state_status(ec_fsm_change_t *fsm
 
 const ec_code_msg_t al_status_messages[] = {
     {0x0001, "Unspecified error"},
-    {0x0011, "Invalud requested state change"},
+    {0x0011, "Invalid requested state change"},
     {0x0012, "Unknown requested state"},
     {0x0013, "Bootstrap not supported"},
     {0x0014, "No valid firmware"},
@@ -498,7 +498,7 @@ void ec_fsm_change_state_check_ack(ec_fsm_change_t *fsm
 
     if (!(slave->current_state & EC_SLAVE_STATE_ACK_ERR)) {
         char state_str[EC_STATE_STRING_SIZE];
-        ec_state_string(slave->current_state, state_str);
+        ec_state_string(slave->current_state, state_str, 0);
         if (fsm->mode == EC_FSM_CHANGE_MODE_FULL) {
             fsm->state = ec_fsm_change_state_error;
         }
@@ -513,7 +513,7 @@ void ec_fsm_change_state_check_ack(ec_fsm_change_t *fsm
     if (datagram->jiffies_received - fsm->jiffies_start >= HZ) { // 1s
         // timeout while checking
         char state_str[EC_STATE_STRING_SIZE];
-        ec_state_string(slave->current_state, state_str);
+        ec_state_string(slave->current_state, state_str, 0);
         fsm->state = ec_fsm_change_state_error;
         EC_ERR("Timeout while acknowledging state %s on slave %u.\n",
                state_str, slave->ring_position);

@@ -214,12 +214,13 @@ int ec_foe_prepare_data_send( ec_fsm_foe_t *fsm ) {
 
     remaining_size = fsm->tx_buffer_size - fsm->tx_buffer_offset;
 
-    if (remaining_size < fsm->slave->sii.tx_mailbox_size - EC_MBOX_HEADER_SIZE - EC_FOE_HEADER_SIZE) {
+    if (remaining_size < fsm->slave->sii.std_tx_mailbox_size
+            - EC_MBOX_HEADER_SIZE - EC_FOE_HEADER_SIZE) {
         current_size = remaining_size;
         fsm->tx_last_packet = 1;
-    }
-    else {
-        current_size = fsm->slave->sii.tx_mailbox_size - EC_MBOX_HEADER_SIZE - EC_FOE_HEADER_SIZE;
+    } else {
+        current_size = fsm->slave->sii.std_tx_mailbox_size
+            - EC_MBOX_HEADER_SIZE - EC_FOE_HEADER_SIZE;
     }
 
     if (!(data = ec_slave_mbox_prepare_send(fsm->slave, fsm->datagram,
@@ -788,12 +789,12 @@ void ec_fsm_foe_state_data_read ( ec_fsm_foe_t *fsm ) {
 
     fsm->rx_last_packet =
         (rec_size + EC_MBOX_HEADER_SIZE + EC_FOE_HEADER_SIZE
-         != fsm->slave->sii.rx_mailbox_size);
+         != fsm->slave->sii.std_rx_mailbox_size);
 
     if (fsm->rx_last_packet ||
-    	(slave->sii.rx_mailbox_size - EC_MBOX_HEADER_SIZE
-         - EC_FOE_HEADER_SIZE + fsm->rx_buffer_offset) <= fsm->rx_buffer_size) {
-    	// either it was the last packet or a new packet will fit into the delivered buffer
+            (slave->sii.std_rx_mailbox_size - EC_MBOX_HEADER_SIZE
+             - EC_FOE_HEADER_SIZE + fsm->rx_buffer_offset) <= fsm->rx_buffer_size) {
+        // either it was the last packet or a new packet will fit into the delivered buffer
 #ifdef	myDEBUG
     	printk ("last_packet=true\n");
 #endif
@@ -811,7 +812,7 @@ void ec_fsm_foe_state_data_read ( ec_fsm_foe_t *fsm ) {
     	printk ("       rx_buffer_size  = %d\n", fsm->rx_buffer_size);
     	printk ("       rx_buffer_offset= %d\n", fsm->rx_buffer_offset);
     	printk ("       rec_size        = %d\n", rec_size);
-    	printk ("       rx_mailbox_size = %d\n", slave->sii.rx_mailbox_size);
+    	printk ("       rx_mailbox_size = %d\n", slave->sii.std_rx_mailbox_size);
     	printk ("       rx_last_packet  = %d\n", fsm->rx_last_packet);
 //    	fsm->state = ec_fsm_state_wait_next_read;
     	fsm->request->result = FOE_READY;
