@@ -57,14 +57,15 @@ const char *SdoCommand::abortText(uint32_t abortCode)
 /****************************************************************************/
 
 const SdoCommand::DataType SdoCommand::dataTypes[] = {
-    {"int8",   0x0002, 1},
-    {"int16",  0x0003, 2},
-    {"int32",  0x0004, 4},
-    {"uint8",  0x0005, 1},
-    {"uint16", 0x0006, 2},
-    {"uint32", 0x0007, 4},
-    {"string", 0x0009, 0},
-    {"raw",    0xffff, 0},
+    {"int8",         0x0002, 1},
+    {"int16",        0x0003, 2},
+    {"int32",        0x0004, 4},
+    {"uint8",        0x0005, 1},
+    {"uint16",       0x0006, 2},
+    {"uint32",       0x0007, 4},
+    {"string",       0x0009, 0},
+    {"octet_string", 0x000a, 0},
+    {"raw",          0xffff, 0},
     {}
 };
 

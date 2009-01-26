@@ -36,7 +36,8 @@ string CommandDownload::helpString() const
 		<< "the --type option is mandatory." << endl
     	<< endl
     	<< "These are the valid SDO entry data types:" << endl
-    	<< "  int8, int16, int32, uint8, uint16, uint32, string." << endl
+    	<< "  int8, int16, int32, uint8, uint16, uint32, string," << endl
+        << "  octet_string." << endl
     	<< endl
     	<< "Arguments:" << endl
     	<< "  INDEX    is the SDO index and must be an unsigned" << endl
@@ -183,6 +184,14 @@ void CommandDownload::execute(MasterDevice &m, const StringVector &args)
                     break;
                 }
             case 0x0009: // string
+                if (strValue.str().size() >= data.data_size) {
+                    err << "String too large";
+                    throwCommandException(err);
+                }
+                data.data_size = strValue.str().size();
+                strValue >> (char *) data.data;
+                break;
+            case 0x000a: // octet_string
                 if (strValue.str().size() >= data.data_size) {
                     err << "String too large";
                     throwCommandException(err);

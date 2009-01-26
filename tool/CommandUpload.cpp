@@ -36,7 +36,8 @@ string CommandUpload::helpString() const
         << "the --type option is mandatory."  << endl
         << endl
         << "These are the valid SDO entry data types:" << endl
-        << "  int8, int16, int32, uint8, uint16, uint32, string." << endl
+        << "  int8, int16, int32, uint8, uint16, uint32, string," << endl
+        << "  octet_string." << endl
         << endl
         << "Arguments:" << endl
         << "  INDEX    is the SDO index and must be an unsigned" << endl
@@ -178,6 +179,10 @@ void CommandUpload::execute(MasterDevice &m, const StringVector &args)
             cout << uval << " 0x" << hex << setw(8) << uval << endl;
             break;
         case 0x0009: // string
+            cout << string((const char *) data.target, data.data_size)
+                << endl;
+            break;
+        case 0x000a: // octet_string
             cout << string((const char *) data.target, data.data_size)
                 << endl;
             break;
