@@ -56,6 +56,7 @@ struct ec_fsm_coe {
     ec_sdo_t *sdo; /**< current SDO */
     uint8_t subindex; /**< current subindex */
     ec_sdo_request_t *request; /**< SDO request */
+    uint32_t complete_size; /**< Used when segmenting. */
     uint8_t toggle; /**< toggle bit for segment commands */
 };
 
