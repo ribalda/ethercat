@@ -20,7 +20,7 @@ Changes since 1.4.0:
 * Improved error case return codes of many functions.
 * Added 8139too driver for 2.6.25.
 
-Changes since 1.4.0-rc3:
+Changes in 1.4.0:
 
 * Fixed race condition in jiffy-based frame timeout calculation.
 * Fixed race condition concerning the ec_slave_config_state->operational flag.
