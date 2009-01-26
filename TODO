@@ -24,6 +24,7 @@ Version 1.5.0:
 * C++ implementation of the library.
 * Distributed clocks.
 * Bus simulator interface.
+* Pdo -> PDO. Sdo -> SDO "-over-"
 
 Future issues:
 

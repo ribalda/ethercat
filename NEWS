@@ -32,6 +32,8 @@ Changes since 1.4.0-rc3:
 * Removed 'bashisms' from init script ('function' keyword).
 * Fixed bug in e1000 drivers. Memory was allocated when sending the first
   frame.
+* Modified licence headers to avoid conflicts with the GPL.
+* Restricted licence to GPLv2 only.
 
 Changes in 1.4.0-rc3:
 
