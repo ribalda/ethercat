@@ -4,29 +4,29 @@ This is the INSTALL file of the IgH EtherCAT Master.
 
 $Id$
 
+vim: set spelllang=en spell tw=78
+
 -------------------------------------------------------------------------------
 
 Building and installing
 =======================
 
-The build and installation procedure is described in section 2.1 in the
-documentation available from http://etherlab.org/en/ethercat.
+The complete build and installation procedure is described in the respective
+section of the documentation available from http://etherlab.org/en/ethercat.
 
 -------------------------------------------------------------------------------
 
 For the impatient: The procedure mainly consists of calling
 
 $ ./configure
-$ make
-$ make modules
+$ make all modules
 
-(and as root)
+... and as root:
 
-# make install
-# make modules_install
+# make modules_install install
 # depmod
 
-...and linking the init script and copying the sysconfig file from $PREFIX/etc
+... and linking the init script and copying the sysconfig file from $PREFIX/etc
 to the appropriate locations and customizing the sysconfig file.
 
 # ln -s ${PREFIX}/etc/init.d/ethercat /etc/init.d/ethercat

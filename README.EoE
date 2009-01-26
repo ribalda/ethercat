@@ -2,6 +2,10 @@
 
 $Id$
 
+vim: spelllang=en spell tw=78
+
+-------------------------------------------------------------------------------
+
 This file shall give additional information on how to set up a network
 environment with Ethernet over EtherCAT devices.
 
