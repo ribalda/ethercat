@@ -218,7 +218,6 @@ void ec_eoe_flush(ec_eoe_t *eoe /**< EoE handler */)
 
 /**
    Sends a frame or the next fragment.
-   \todo bootstrap mailboxes / use configured mailbox sizes
 */
 
 int ec_eoe_send(ec_eoe_t *eoe /**< EoE handler */)
