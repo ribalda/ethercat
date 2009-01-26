@@ -27,6 +27,7 @@ Changes since 1.4.0-rc3:
 * Fixed a kernel oops when a slave configuration is detached while the actual
   configuration is in progress.
 * Fixed typo in logging output.
+* Removed bashisms from init script.
 
 Changes in 1.4.0-rc3:
 

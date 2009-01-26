@@ -71,8 +71,7 @@ fi
 
 #------------------------------------------------------------------------------
 
-function exit_success()
-{
+exit_success() {
     if [ -r /etc/rc.status ]; then
         rc_reset
         rc_status -v
@@ -85,8 +84,7 @@ function exit_success()
 
 #------------------------------------------------------------------------------
 
-function exit_fail()
-{
+exit_fail() {
     if [ -r /etc/rc.status ]; then
         rc_failed
         rc_status -v
@@ -99,8 +97,7 @@ function exit_fail()
 
 #------------------------------------------------------------------------------
 
-function print_running()
-{
+print_running() {
     if [ -r /etc/rc.status ]; then
         rc_reset
         rc_status -v
@@ -111,8 +108,7 @@ function print_running()
 
 #------------------------------------------------------------------------------
 
-function print_dead()
-{
+print_dead() {
     if [ -r /etc/rc.status ]; then
         rc_failed
         rc_status -v
@@ -123,8 +119,7 @@ function print_dead()
 
 #------------------------------------------------------------------------------
 
-function parse_mac_address()
-{
+parse_mac_address() {
     if [ -z "${1}" ]; then
         MAC=""
     elif echo ${1} | grep -qE '^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$'; then
