@@ -225,8 +225,8 @@ void ec_fsm_pdo_read_state_pdo_count(
     if (ec_fsm_coe_exec(fsm->fsm_coe)) return;
 
     if (!ec_fsm_coe_success(fsm->fsm_coe)) {
-        EC_ERR("Failed to read number of assigned PDOs for SM%u.\n",
-                fsm->sync_index);
+        EC_ERR("Failed to read number of assigned PDOs for SM%u"
+                " of slave %u.\n", fsm->sync_index, fsm->slave->ring_position);
         fsm->state = ec_fsm_pdo_state_error;
         return;
     }

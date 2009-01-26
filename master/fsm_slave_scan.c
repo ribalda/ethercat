@@ -48,6 +48,7 @@ void ec_fsm_slave_scan_state_datalink(ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_state_sii_size(ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_state_sii_data(ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_state_preop(ec_fsm_slave_scan_t *);
+void ec_fsm_slave_scan_state_sync(ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_state_pdos(ec_fsm_slave_scan_t *);
 
 void ec_fsm_slave_scan_state_end(ec_fsm_slave_scan_t *);
@@ -589,17 +590,33 @@ void ec_fsm_slave_scan_enter_preop(
         )
 {
     ec_slave_t *slave = fsm->slave;
+    uint8_t current_state = slave->current_state & EC_SLAVE_STATE_MASK;
 
-    if ((slave->current_state & EC_SLAVE_STATE_MASK) < EC_SLAVE_STATE_PREOP) {
-        if (slave->master->debug_level)
-            EC_DBG("Slave %u is not in the state to do mailbox com, setting"
-                    " to PREOP.\n", slave->ring_position);
+    if (current_state != EC_SLAVE_STATE_PREOP
+            && current_state != EC_SLAVE_STATE_SAFEOP
+            && current_state != EC_SLAVE_STATE_OP) {
+        if (slave->master->debug_level) {
+            char str[EC_STATE_STRING_SIZE];
+            ec_state_string(current_state, str, 0);
+            EC_DBG("Slave %u is not in the state to do mailbox com (%s),"
+                    " setting to PREOP.\n", slave->ring_position, str);
+        }
+
         fsm->state = ec_fsm_slave_scan_state_preop;
         ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
         ec_fsm_slave_config_start(fsm->fsm_slave_config, slave);
         ec_fsm_slave_config_exec(fsm->fsm_slave_config);
     } else {
-        ec_fsm_slave_scan_enter_pdos(fsm);
+        if (slave->master->debug_level)
+            EC_DBG("Reading mailbox syncmanager configuration of slave %u.\n",
+                    slave->ring_position);
+
+        /* Scan current sync manager configuration to get configured mailbox
+         * sizes. */
+        ec_datagram_fprd(fsm->datagram, slave->station_address, 0x0800,
+                EC_SYNC_PAGE_SIZE * 2);
+        fsm->retries = EC_FSM_RETRIES;
+        fsm->state = ec_fsm_slave_scan_state_sync;
     }
 }
 
@@ -617,6 +634,55 @@ void ec_fsm_slave_scan_state_preop(
     if (!ec_fsm_slave_config_success(fsm->fsm_slave_config)) {
         fsm->state = ec_fsm_slave_scan_state_error;
         return;
+    }
+
+    ec_fsm_slave_scan_enter_pdos(fsm);
+}
+
+/*****************************************************************************/
+
+/** Slave scan state: SYNC.
+ */
+void ec_fsm_slave_scan_state_sync(
+        ec_fsm_slave_scan_t *fsm /**< slave state machine */
+        )
+{
+    ec_datagram_t *datagram = fsm->datagram;
+    ec_slave_t *slave = fsm->slave;
+
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+        return;
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED) {
+        fsm->state = ec_fsm_slave_scan_state_error;
+        EC_ERR("Failed to receive sync manager configuration datagram"
+                " from slave %u (datagram state %u).\n",
+               slave->ring_position, datagram->state);
+        return;
+    }
+
+    if (datagram->working_counter != 1) {
+        fsm->slave->error_flag = 1;
+        fsm->state = ec_fsm_slave_scan_state_error;
+        EC_ERR("Failed to read DL status from slave %u: ",
+               slave->ring_position);
+        ec_datagram_print_wc_error(datagram);
+        return;
+    }
+
+    slave->configured_rx_mailbox_offset = EC_READ_U16(datagram->data);
+    slave->configured_rx_mailbox_size = EC_READ_U16(datagram->data + 2);
+    slave->configured_tx_mailbox_offset = EC_READ_U16(datagram->data + 8);
+    slave->configured_tx_mailbox_size = EC_READ_U16(datagram->data + 10);
+
+    if (slave->master->debug_level) {
+        EC_DBG("Mailbox configuration of slave %u:\n", slave->ring_position);
+        EC_DBG(" RX offset=0x%04x size=%u\n",
+                slave->configured_rx_mailbox_offset,
+                slave->configured_rx_mailbox_size);
+        EC_DBG(" TX offset=0x%04x size=%u\n",
+                slave->configured_tx_mailbox_offset,
+                slave->configured_tx_mailbox_size);
     }
 
     ec_fsm_slave_scan_enter_pdos(fsm);
