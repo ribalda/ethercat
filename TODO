@@ -24,6 +24,7 @@ Version 1.5.0:
 * C++ implementation of the library.
 * Distributed clocks.
 * Bus simulator interface.
+* Implement ecrt_master_slave() in kernel space.
 
 Future issues:
 

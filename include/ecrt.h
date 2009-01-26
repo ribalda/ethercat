@@ -1,27 +1,27 @@
 /******************************************************************************
  *
- * $Id$
+ *  $Id$
  *
- * Copyright (C) 2006-2008  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2008  Florian Pose, Ingenieurgemeinschaft IgH
  *
- * This file is part of the IgH EtherCAT master userspace library.
- * 
- * The IgH EtherCAT master userspace library is free software; you can
- * redistribute it and/or modify it under the terms of the GNU Lesser General
- * Public License as published by the Free Software Foundation; version 2.1 of
- * the License.
+ *  This file is part of the IgH EtherCAT master userspace library.
+ *  
+ *  The IgH EtherCAT master userspace library is free software; you can
+ *  redistribute it and/or modify it under the terms of the GNU Lesser General
+ *  Public License as published by the Free Software Foundation; version 2.1
+ *  of the License.
  *
- * The IgH EtherCAT master userspace library is distributed in the hope that
- * it will be useful, but WITHOUT ANY WARRANTY; without even the implied
- * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ *  The IgH EtherCAT master userspace library is distributed in the hope that
+ *  it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+ *  warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU Lesser General Public License
- * along with the IgH EtherCAT master userspace library. If not, see
- * <http://www.gnu.org/licenses/>.
- * 
- * Using the EtherCAT technology and brand is permitted in compliance with the
- * industrial property and similar rights of Beckhoff Automation GmbH.
+ *  You should have received a copy of the GNU Lesser General Public License
+ *  along with the IgH EtherCAT master userspace library. If not, see
+ *  <http://www.gnu.org/licenses/>.
+ *  
+ *  Using the EtherCAT technology and brand is permitted in compliance with
+ *  the industrial property and similar rights of Beckhoff Automation GmbH.
  *
  *****************************************************************************/
 
@@ -40,6 +40,11 @@
  *
  * - Changed the meaning of the negative return values of
  *   ecrt_slave_config_reg_pdo_entry() and ecrt_slave_config_sdo*().
+ * - Imlemented the Vendor-specific over EtherCAT mailbox protocol. See
+ *   ecrt_slave_config_create_voe_handler().
+ * - Renamed ec_sdo_request_state_t to ec_request_state_t, because it is also
+ *   used by VoE handlers.
+ * - Added ecrt_master_slave() to get information about a certain slave.
  *
  * Changes in Version 1.4:
  *
@@ -134,6 +139,12 @@
  */
 #define EC_MAX_SYNC_MANAGERS 16
 
+/** Maximum string length.
+ *
+ * Used in ec_slave_info_t.
+ */
+#define EC_MAX_STRING_LENGTH 64
+
 /******************************************************************************
  * Data types 
  *****************************************************************************/
@@ -196,6 +207,29 @@ typedef struct  {
                                  Note that each state is coded in a different
                                  bit! */
 } ec_slave_config_state_t;
+
+/*****************************************************************************/
+
+/** Slave information.
+ *
+ * This is used as an output parameter of ecrt_master_slave().
+ *
+ * \see ecrt_master_slave().
+ */
+typedef struct {
+    uint16_t position; /**< Offset of the slave in the ring. */
+    uint32_t vendor_id; /**< Vendor-ID stored on the slave. */
+    uint32_t product_code; /**< Product-Code stored on the slave. */
+    uint32_t revision_number; /**< Revision-Number stored on the slave. */
+    uint32_t serial_number; /**< Serial-Number stored on the slave. */
+    uint16_t alias; /**< The slaves alias if not equal to 0. */
+    int16_t current_on_ebus;
+    uint8_t al_state; /**< Current state of the slave. */
+    uint8_t error_flag; /**< Error flag for that slave. */
+    uint8_t sync_count; /**< Number of sync managers. */
+    uint16_t sdo_count; /**< Number of SDO's. */
+    char name[EC_MAX_STRING_LENGTH]; /**< Name of the slave. */
+} ec_slave_info_t;
 
 /*****************************************************************************/
 
@@ -431,6 +465,23 @@ ec_slave_config_t *ecrt_master_slave_config(
         uint16_t position, /**< Slave position. */
         uint32_t vendor_id, /**< Expected vendor ID. */
         uint32_t product_code /**< Expected product code. */
+        );
+
+/** Obtains slave information.
+ *
+ * Tries to find the slave with the given ring position. The obtained
+ * information is stored in a structure. No memory is allocated on the heap in
+ * this function.
+ *
+ * \attention The pointer to this structure must point to a valid variable.
+ *
+ * \return 0 in case of success, else < 0
+ */
+int ecrt_master_slave(
+        ec_master_t *master, /**< EtherCAT master */
+        uint16_t position, /**< Slave position. */
+        ec_slave_info_t *slave_info /**< Structure that will output the
+                                      information */
         );
 
 /** Finishes the configuration phase and prepares for cyclic operation.

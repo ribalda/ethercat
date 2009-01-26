@@ -22,6 +22,7 @@ Changes since 1.4.0:
 * Implemented the File Access over EtherCAT (FoE) mailbox protocol.
 * Going to the Bootstrap state is now supported by the state machines and the
   command-line tool.
+* Introduced ecrt_master_slave() to get information about a certain slave.
 
 Changes in 1.4.0:
 

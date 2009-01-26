@@ -100,6 +100,38 @@ ec_slave_config_t *ecrt_master_slave_config(ec_master_t *master,
 
 /*****************************************************************************/
 
+int ecrt_master_slave(ec_master_t *master, uint16_t position,
+        ec_slave_info_t *slave_info)
+{
+    ec_ioctl_slave_t data;
+    int index;
+
+    data.position = position;
+
+    if (ioctl(master->fd, EC_IOCTL_SLAVE, &data) == -1) {
+        fprintf(stderr, "Failed to get slave info: %s\n",
+                strerror(errno));
+        return -1;
+    }
+
+    slave_info->position = data.position;
+    slave_info->vendor_id = data.vendor_id;
+    slave_info->product_code = data.product_code;
+    slave_info->revision_number = data.revision_number;
+    slave_info->serial_number = data.serial_number;
+    slave_info->alias = data.alias;
+    slave_info->current_on_ebus = data.current_on_ebus;
+    slave_info->al_state = data.al_state;
+    slave_info->error_flag = data.error_flag;
+    slave_info->sync_count = data.sync_count;
+    slave_info->sdo_count = data.sdo_count;
+    strncpy(slave_info->name, data.name, EC_IOCTL_STRING_SIZE);
+
+    return 0;
+}
+
+/*****************************************************************************/
+
 int ecrt_master_activate(ec_master_t *master)
 {
     if (ioctl(master->fd, EC_IOCTL_ACTIVATE,
