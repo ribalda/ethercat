@@ -56,7 +56,10 @@ void ec_pdo_init(
  * \retval  0 Success.
  * \retval <0 Error code.
  */
-int ec_pdo_init_copy(ec_pdo_t *pdo, const ec_pdo_t *other_pdo)
+int ec_pdo_init_copy(
+        ec_pdo_t *pdo, /**< PDO to create. */
+        const ec_pdo_t *other_pdo /**< PDO to copy from. */
+        )
 {
     int ret = 0;
 
@@ -149,10 +152,10 @@ int ec_pdo_set_name(
  * \retval Pointer to the added entry, otherwise a ERR_PTR() code.
  */
 ec_pdo_entry_t *ec_pdo_add_entry(
-        ec_pdo_t *pdo,
-        uint16_t index,
-        uint8_t subindex,
-        uint8_t bit_length
+        ec_pdo_t *pdo, /**< PDO. */
+        uint16_t index, /**< New entry's index. */
+        uint8_t subindex, /**< New entry's subindex. */
+        uint8_t bit_length /**< New entry's bit length. */
         )
 {
     ec_pdo_entry_t *entry;
@@ -177,7 +180,10 @@ ec_pdo_entry_t *ec_pdo_add_entry(
  * \retval  0 Success.
  * \retval <0 Error code.
  */
-int ec_pdo_copy_entries(ec_pdo_t *pdo, const ec_pdo_t *other)
+int ec_pdo_copy_entries(
+        ec_pdo_t *pdo, /**< PDO whos entries shall be replaced. */
+        const ec_pdo_t *other /**< Pdo with entries to copy. */
+        )
 {
     ec_pdo_entry_t *entry, *other_entry;
     int ret;

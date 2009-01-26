@@ -81,8 +81,8 @@ void ec_sdo_request_clear(
  * \attention Only the index subindex and data are copied.
  */
 int ec_sdo_request_copy(
-        ec_sdo_request_t *req,
-        const ec_sdo_request_t *other
+        ec_sdo_request_t *req, /**< SDO request. */
+        const ec_sdo_request_t *other /**< Other SDO request to copy from. */
         )
 {
     req->index = other->index;

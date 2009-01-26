@@ -1307,6 +1307,8 @@ int ec_master_debug_level(
  *  Realtime interface
  *****************************************************************************/
 
+/** Same as ecrt_master_create_domain(), but with ERR_PTR() return value.
+ */
 ec_domain_t *ecrt_master_create_domain_err(
         ec_master_t *master /**< master */
         )
@@ -1484,6 +1486,8 @@ void ecrt_master_receive(ec_master_t *master)
 
 /*****************************************************************************/
 
+/** Same as ecrt_master_slave_config(), but with ERR_PTR() return value.
+ */
 ec_slave_config_t *ecrt_master_slave_config_err(ec_master_t *master,
         uint16_t alias, uint16_t position, uint32_t vendor_id,
         uint32_t product_code)

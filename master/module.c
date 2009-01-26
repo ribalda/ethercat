@@ -462,7 +462,9 @@ ec_device_t *ecdev_offer(
  *
  * Same as ecrt_request_master(), but with ERR_PTR() return value.
  */
-ec_master_t *ecrt_request_master_err(unsigned int master_index)
+ec_master_t *ecrt_request_master_err(
+        unsigned int master_index /**< Master index. */
+        )
 {
     ec_master_t *master, *errptr = NULL;
 

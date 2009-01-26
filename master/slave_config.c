@@ -734,6 +734,9 @@ int ecrt_slave_config_sdo32(ec_slave_config_t *sc, uint16_t index,
 
 /*****************************************************************************/
 
+/** Same as ecrt_slave_config_create_sdo_request(), but with ERR_PTR() return
+ * value.
+ */
 ec_sdo_request_t *ecrt_slave_config_create_sdo_request_err(
         ec_slave_config_t *sc, uint16_t index, uint8_t subindex, size_t size)
 {
@@ -784,6 +787,9 @@ ec_sdo_request_t *ecrt_slave_config_create_sdo_request(
 
 /*****************************************************************************/
 
+/** Same as ecrt_slave_config_create_voe_handler(), but with ERR_PTR() return
+ * value.
+ */
 ec_voe_handler_t *ecrt_slave_config_create_voe_handler_err(
         ec_slave_config_t *sc, size_t size)
 {
