@@ -70,24 +70,24 @@ const SdoCommand::DataType SdoCommand::dataTypes[] = {
 
 /*****************************************************************************/
 
-/** Sdo abort messages.
+/** SDO abort messages.
  *
- * The "Abort Sdo transfer request" supplies an abort code, which can be
+ * The "Abort SDO transfer request" supplies an abort code, which can be
  * translated to clear text. This table does the mapping of the codes and
  * messages.
  */
 const SdoCommand::AbortMessage SdoCommand::abortMessages[] = {
     {0x05030000, "Toggle bit not changed"},
-    {0x05040000, "Sdo protocol timeout"},
+    {0x05040000, "SDO protocol timeout"},
     {0x05040001, "Client/Server command specifier not valid or unknown"},
     {0x05040005, "Out of memory"},
     {0x06010000, "Unsupported access to an object"},
     {0x06010001, "Attempt to read a write-only object"},
     {0x06010002, "Attempt to write a read-only object"},
     {0x06020000, "This object does not exist in the object directory"},
-    {0x06040041, "The object cannot be mapped into the Pdo"},
+    {0x06040041, "The object cannot be mapped into the PDO"},
     {0x06040042, "The number and length of the objects to be mapped would"
-     " exceed the Pdo length"},
+     " exceed the PDO length"},
     {0x06040043, "General parameter incompatibility reason"},
     {0x06040047, "Gerneral internal incompatibility in device"},
     {0x06060000, "Access failure due to a hardware error"},

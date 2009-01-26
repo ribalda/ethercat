@@ -26,7 +26,7 @@
 
 /**
    \file
-   Vendor-specific-over-EtherCAT protocol handler.
+   Vendor specific over EtherCAT protocol handler.
 */
 
 /*****************************************************************************/
@@ -41,7 +41,7 @@
 
 /*****************************************************************************/
 
-/** Vendor-specific-over-EtherCAT handler.
+/** Vendor specific over EtherCAT handler.
  */
 struct ec_voe_handler {
     struct list_head list; /**< List item. */
@@ -49,7 +49,7 @@ struct ec_voe_handler {
     ec_datagram_t datagram; /**< State machine datagram. */
     uint32_t vendor_id; /**< Vendor ID for the header. */
     uint16_t vendor_type; /**< Vendor type for the header. */
-    size_t data_size; /**< Size of Sdo data. */
+    size_t data_size; /**< Size of VoE data. */
     ec_direction_t dir; /**< Direction. EC_DIR_OUTPUT means writing to
                           the slave, EC_DIR_INPUT means reading from the
                           slave. */

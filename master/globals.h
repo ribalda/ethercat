@@ -51,7 +51,7 @@
 /** Number of state machine retries on datagram timeout. */
 #define EC_FSM_RETRIES 3
 
-/** Seconds to wait before fetching Sdo dictionary
+/** Seconds to wait before fetching SDO dictionary
     after slave entered PREOP state. */
 #define EC_WAIT_SDO_DICT 3
 
@@ -126,21 +126,21 @@ typedef enum {
 /** Supported mailbox protocols.
  */
 enum {
-    EC_MBOX_AOE = 0x01, /**< ADS-over-EtherCAT */
-    EC_MBOX_EOE = 0x02, /**< Ethernet-over-EtherCAT */
-    EC_MBOX_COE = 0x04, /**< CANopen-over-EtherCAT */
-    EC_MBOX_FOE = 0x08, /**< File-Access-over-EtherCAT */
-    EC_MBOX_SOE = 0x10, /**< Servo-Profile-over-EtherCAT */
+    EC_MBOX_AOE = 0x01, /**< ADS over EtherCAT */
+    EC_MBOX_EOE = 0x02, /**< Ethernet over EtherCAT */
+    EC_MBOX_COE = 0x04, /**< CANopen over EtherCAT */
+    EC_MBOX_FOE = 0x08, /**< File-Access over EtherCAT */
+    EC_MBOX_SOE = 0x10, /**< Servo-Profile over EtherCAT */
     EC_MBOX_VOE = 0x20  /**< Vendor specific */
 };
 
-/** Slave information interface CANopen-over-EtherCAT details flags.
+/** Slave information interface CANopen over EtherCAT details flags.
  */
 typedef struct {
-    uint8_t enable_sdo : 1; /**< Enable Sdo access. */
+    uint8_t enable_sdo : 1; /**< Enable SDO access. */
     uint8_t enable_sdo_info : 1; /**< SDO information service available. */
-    uint8_t enable_pdo_assign : 1; /**< Pdo mapping configurable. */
-    uint8_t enable_pdo_configuration : 1; /**< Pdo configuration possible. */
+    uint8_t enable_pdo_assign : 1; /**< PDO mapping configurable. */
+    uint8_t enable_pdo_configuration : 1; /**< PDO configuration possible. */
     uint8_t enable_upload_at_startup : 1; /**< ?. */
     uint8_t enable_sdo_complete_access : 1; /**< Complete access possible. */
 } ec_sii_coe_details_t;

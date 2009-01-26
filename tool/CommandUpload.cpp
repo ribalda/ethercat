@@ -13,7 +13,7 @@ using namespace std;
 /*****************************************************************************/
 
 CommandUpload::CommandUpload():
-    SdoCommand("upload", "Read an Sdo entry from a slave.")
+    SdoCommand("upload", "Read an SDO entry from a slave.")
 {
 }
 
@@ -29,26 +29,26 @@ string CommandUpload::helpString() const
         << endl
         << "This command requires a single slave to be selected." << endl
     	<< endl
-        << "The data type of the Sdo entry is taken from the Sdo" << endl
+        << "The data type of the SDO entry is taken from the SDO" << endl
         << "dictionary by default. It can be overridden with the" << endl
-        << "--type option. If the slave does not support the Sdo" << endl
-        << "information service or the Sdo is not in the dictionary," << endl
+        << "--type option. If the slave does not support the SDO" << endl
+        << "information service or the SDO is not in the dictionary," << endl
         << "the --type option is mandatory."  << endl
         << endl
-        << "These are the valid Sdo entry data types:" << endl
+        << "These are the valid SDO entry data types:" << endl
         << "  int8, int16, int32, uint8, uint16, uint32, string." << endl
         << endl
         << "Arguments:" << endl
-        << "  INDEX    is the Sdo index and must be an unsigned" << endl
+        << "  INDEX    is the SDO index and must be an unsigned" << endl
         << "           16 bit number." << endl
-        << "  SUBINDEX is the Sdo entry subindex and must be an" << endl
+        << "  SUBINDEX is the SDO entry subindex and must be an" << endl
         << "           unsigned 8 bit number." << endl
         << endl
         << "Command-specific options:" << endl
         << "  --alias    -a <alias>" << endl
         << "  --position -p <pos>    Slave selection. See the help of" << endl
         << "                         the 'slaves' command." << endl
-        << "  --type     -t <type>   Sdo entry data type (see above)." << endl
+        << "  --type     -t <type>   SDO entry data type (see above)." << endl
         << endl
         << numericInfo();
 
@@ -76,7 +76,7 @@ void CommandUpload::execute(MasterDevice &m, const StringVector &args)
         >> resetiosflags(ios::basefield) // guess base from prefix
         >> data.sdo_index;
     if (strIndex.fail()) {
-        err << "Invalid Sdo index '" << args[0] << "'!";
+        err << "Invalid SDO index '" << args[0] << "'!";
         throwInvalidUsageException(err);
     }
 
@@ -85,7 +85,7 @@ void CommandUpload::execute(MasterDevice &m, const StringVector &args)
         >> resetiosflags(ios::basefield) // guess base from prefix
         >> uval;
     if (strSubIndex.fail() || uval > 0xff) {
-        err << "Invalid Sdo subindex '" << args[1] << "'!";
+        err << "Invalid SDO subindex '" << args[1] << "'!";
         throwInvalidUsageException(err);
     }
     data.sdo_entry_subindex = uval;
@@ -109,12 +109,12 @@ void CommandUpload::execute(MasterDevice &m, const StringVector &args)
             m.getSdoEntry(&entry, data.slave_position,
                     data.sdo_index, data.sdo_entry_subindex);
         } catch (MasterDeviceException &e) {
-            err << "Failed to determine Sdo entry data type. "
+            err << "Failed to determine SDO entry data type. "
                 << "Please specify --type.";
             throwCommandException(err);
         }
         if (!(dataType = findDataType(entry.data_type))) {
-            err << "Pdo entry has unknown data type 0x"
+            err << "PDO entry has unknown data type 0x"
                 << hex << setfill('0') << setw(4) << entry.data_type << "!"
                 << " Please specify --type.";
             throwCommandException(err);
@@ -133,7 +133,7 @@ void CommandUpload::execute(MasterDevice &m, const StringVector &args)
 		m.sdoUpload(&data);
 	} catch (MasterDeviceSdoAbortException &e) {
         delete [] data.target;
-        err << "Sdo transfer aborted with code 0x"
+        err << "SDO transfer aborted with code 0x"
             << setfill('0') << hex << setw(8) << e.abortCode
             << ": " << abortText(e.abortCode);
         throwCommandException(err);

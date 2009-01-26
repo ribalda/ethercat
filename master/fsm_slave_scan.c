@@ -65,7 +65,7 @@ void ec_fsm_slave_scan_init(
         ec_datagram_t *datagram, /**< Datagram to use. */
         ec_fsm_slave_config_t *fsm_slave_config, /**< Slave configuration
                                                   state machine to use. */
-        ec_fsm_pdo_t *fsm_pdo /**< Pdo configuration machine to use. */
+        ec_fsm_pdo_t *fsm_pdo /**< PDO configuration machine to use. */
         )
 {
     fsm->datagram = datagram;
@@ -536,12 +536,12 @@ void ec_fsm_slave_scan_state_sii_data(ec_fsm_slave_scan_t *fsm /**< slave state 
                 break;
             case 0x0032:
                 if (ec_slave_fetch_sii_pdos( slave, (uint8_t *) cat_word,
-                            cat_size * 2, EC_DIR_INPUT)) // TxPdo
+                            cat_size * 2, EC_DIR_INPUT)) // TxPDO
                     goto end;
                 break;
             case 0x0033:
                 if (ec_slave_fetch_sii_pdos( slave, (uint8_t *) cat_word,
-                            cat_size * 2, EC_DIR_OUTPUT)) // RxPdo
+                            cat_size * 2, EC_DIR_OUTPUT)) // RxPDO
                     goto end;
                 break;
             default:
@@ -625,7 +625,7 @@ void ec_fsm_slave_scan_enter_pdos(
     ec_slave_t *slave = fsm->slave;
 
     if (slave->master->debug_level)
-        EC_DBG("Scanning Pdo assignment and mapping of slave %u.\n",
+        EC_DBG("Scanning PDO assignment and mapping of slave %u.\n",
                 slave->ring_position);
     fsm->state = ec_fsm_slave_scan_state_pdos;
     ec_fsm_pdo_start_reading(fsm->fsm_pdo, slave);
@@ -648,7 +648,7 @@ void ec_fsm_slave_scan_state_pdos(
         return;
     }
 
-    // reading Pdo configuration finished
+    // reading PDO configuration finished
     fsm->state = ec_fsm_slave_scan_state_end;
 }
 

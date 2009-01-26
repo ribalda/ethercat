@@ -121,13 +121,13 @@ void ec_sync_page(
 
 /*****************************************************************************/
 
-/** Adds a Pdo to the list of known mapped Pdos.
+/** Adds a PDO to the list of known mapped PDOs.
  *
  * \return 0 on success, else < 0
  */
 int ec_sync_add_pdo(
         ec_sync_t *sync, /**< EtherCAT sync manager. */
-        const ec_pdo_t *pdo /**< Pdo to map. */
+        const ec_pdo_t *pdo /**< PDO to map. */
         )
 {
     return ec_pdo_list_add_pdo_copy(&sync->pdos, pdo);

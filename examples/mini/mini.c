@@ -75,7 +75,7 @@ static uint8_t *domain1_pd; // process data memory
 #define Beckhoff_EL3152 0x00000002, 0x0c503052
 #define Beckhoff_EL4102 0x00000002, 0x10063052
 
-// offsets for Pdo entries
+// offsets for PDO entries
 static unsigned int off_ana_in;
 static unsigned int off_ana_out;
 static unsigned int off_dig_out;
@@ -255,12 +255,12 @@ void read_sdo(void)
             printk(KERN_INFO PFX "Still busy...\n");
             break;
         case EC_REQUEST_SUCCESS:
-            printk(KERN_INFO PFX "Sdo value: 0x%04X\n",
+            printk(KERN_INFO PFX "SDO value: 0x%04X\n",
                     EC_READ_U16(ecrt_sdo_request_data(sdo)));
             ecrt_sdo_request_read(sdo); // trigger next read
             break;
         case EC_REQUEST_ERROR:
-            printk(KERN_INFO PFX "Failed to read Sdo!\n");
+            printk(KERN_INFO PFX "Failed to read SDO!\n");
             ecrt_sdo_request_read(sdo); // retry reading
             break;
     }
@@ -320,7 +320,7 @@ void cyclic_task(unsigned long data)
         check_slave_config_states();
         
 #if SDO_ACCESS
-        // read process data Sdo
+        // read process data SDO
         read_sdo();
 #endif
 
@@ -394,9 +394,9 @@ int __init init_mini_module(void)
     }
 
 #if CONFIGURE_PDOS
-    printk(KERN_INFO PFX "Configuring Pdos...\n");
+    printk(KERN_INFO PFX "Configuring PDOs...\n");
     if (ecrt_slave_config_pdos(sc_ana_in, EC_END, el3152_syncs)) {
-        printk(KERN_ERR PFX "Failed to configure Pdos.\n");
+        printk(KERN_ERR PFX "Failed to configure PDOs.\n");
         goto out_release_master;
     }
 
@@ -407,7 +407,7 @@ int __init init_mini_module(void)
     }
 
     if (ecrt_slave_config_pdos(sc, EC_END, el4102_syncs)) {
-        printk(KERN_ERR PFX "Failed to configure Pdos.\n");
+        printk(KERN_ERR PFX "Failed to configure PDOs.\n");
         goto out_release_master;
     }
 
@@ -418,15 +418,15 @@ int __init init_mini_module(void)
     }
 
     if (ecrt_slave_config_pdos(sc, EC_END, el2004_syncs)) {
-        printk(KERN_ERR PFX "Failed to configure Pdos.\n");
+        printk(KERN_ERR PFX "Failed to configure PDOs.\n");
         goto out_release_master;
     }
 #endif
 
 #if SDO_ACCESS
-    printk(KERN_INFO PFX "Creating Sdo requests...\n");
+    printk(KERN_INFO PFX "Creating SDO requests...\n");
     if (!(sdo = ecrt_slave_config_create_sdo_request(sc_ana_in, 0x3102, 2, 2))) {
-        printk(KERN_ERR PFX "Failed to create Sdo request.\n");
+        printk(KERN_ERR PFX "Failed to create SDO request.\n");
         goto out_release_master;
     }
     ecrt_sdo_request_timeout(sdo, 500); // ms
@@ -440,9 +440,9 @@ int __init init_mini_module(void)
     }
 #endif
 
-    printk(KERN_INFO PFX "Registering Pdo entries...\n");
+    printk(KERN_INFO PFX "Registering PDO entries...\n");
     if (ecrt_domain_reg_pdo_entry_list(domain1, domain1_regs)) {
-        printk(KERN_ERR PFX "Pdo entry registration failed!\n");
+        printk(KERN_ERR PFX "PDO entry registration failed!\n");
         goto out_release_master;
     }
 

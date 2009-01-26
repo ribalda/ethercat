@@ -306,7 +306,7 @@ int ec_cdev_ioctl_slave_sync(
 
 /*****************************************************************************/
 
-/** Get slave sync manager Pdo information.
+/** Get slave sync manager PDO information.
  */
 int ec_cdev_ioctl_slave_sync_pdo(
         ec_master_t *master, /**< EtherCAT master. */
@@ -343,7 +343,7 @@ int ec_cdev_ioctl_slave_sync_pdo(
     if (!(pdo = ec_pdo_list_find_pdo_by_pos_const(
                     &sync->pdos, data.pdo_pos))) {
         up(&master->master_sem);
-        EC_ERR("Sync manager %u does not contain a Pdo with "
+        EC_ERR("Sync manager %u does not contain a PDO with "
                 "position %u in slave %u!\n", data.sync_index,
                 data.pdo_pos, data.slave_position);
         return -EINVAL;
@@ -363,7 +363,7 @@ int ec_cdev_ioctl_slave_sync_pdo(
 
 /*****************************************************************************/
 
-/** Get slave sync manager Pdo entry information.
+/** Get slave sync manager PDO entry information.
  */
 int ec_cdev_ioctl_slave_sync_pdo_entry(
         ec_master_t *master, /**< EtherCAT master. */
@@ -401,7 +401,7 @@ int ec_cdev_ioctl_slave_sync_pdo_entry(
     if (!(pdo = ec_pdo_list_find_pdo_by_pos_const(
                     &sync->pdos, data.pdo_pos))) {
         up(&master->master_sem);
-        EC_ERR("Sync manager %u does not contain a Pdo with "
+        EC_ERR("Sync manager %u does not contain a PDO with "
                 "position %u in slave %u!\n", data.sync_index,
                 data.pdo_pos, data.slave_position);
         return -EINVAL;
@@ -410,7 +410,7 @@ int ec_cdev_ioctl_slave_sync_pdo_entry(
     if (!(entry = ec_pdo_find_entry_by_pos_const(
                     pdo, data.entry_pos))) {
         up(&master->master_sem);
-        EC_ERR("Pdo 0x%04X does not contain an entry with "
+        EC_ERR("PDO 0x%04X does not contain an entry with "
                 "position %u in slave %u!\n", data.pdo_pos,
                 data.entry_pos, data.slave_position);
         return -EINVAL;
@@ -604,7 +604,7 @@ int ec_cdev_ioctl_slave_state(
 
 /*****************************************************************************/
 
-/** Get slave Sdo information.
+/** Get slave SDO information.
  */
 int ec_cdev_ioctl_slave_sdo(
         ec_master_t *master, /**< EtherCAT master. */
@@ -632,7 +632,7 @@ int ec_cdev_ioctl_slave_sdo(
     if (!(sdo = ec_slave_get_sdo_by_pos_const(
                     slave, data.sdo_position))) {
         up(&master->master_sem);
-        EC_ERR("Sdo %u does not exist in slave %u!\n",
+        EC_ERR("SDO %u does not exist in slave %u!\n",
                 data.sdo_position, data.slave_position);
         return -EINVAL;
     }
@@ -651,7 +651,7 @@ int ec_cdev_ioctl_slave_sdo(
 
 /*****************************************************************************/
 
-/** Get slave Sdo entry information.
+/** Get slave SDO entry information.
  */
 int ec_cdev_ioctl_slave_sdo_entry(
         ec_master_t *master, /**< EtherCAT master. */
@@ -681,7 +681,7 @@ int ec_cdev_ioctl_slave_sdo_entry(
         if (!(sdo = ec_slave_get_sdo_by_pos_const(
                         slave, -data.sdo_spec))) {
             up(&master->master_sem);
-            EC_ERR("Sdo %u does not exist in slave %u!\n",
+            EC_ERR("SDO %u does not exist in slave %u!\n",
                     -data.sdo_spec, data.slave_position);
             return -EINVAL;
         }
@@ -689,7 +689,7 @@ int ec_cdev_ioctl_slave_sdo_entry(
         if (!(sdo = ec_slave_get_sdo_const(
                         slave, data.sdo_spec))) {
             up(&master->master_sem);
-            EC_ERR("Sdo 0x%04X does not exist in slave %u!\n",
+            EC_ERR("SDO 0x%04X does not exist in slave %u!\n",
                     data.sdo_spec, data.slave_position);
             return -EINVAL;
         }
@@ -698,7 +698,7 @@ int ec_cdev_ioctl_slave_sdo_entry(
     if (!(entry = ec_sdo_get_entry_const(
                     sdo, data.sdo_entry_subindex))) {
         up(&master->master_sem);
-        EC_ERR("Sdo entry 0x%04X:%02X does not exist "
+        EC_ERR("SDO entry 0x%04X:%02X does not exist "
                 "in slave %u!\n", sdo->index,
                 data.sdo_entry_subindex, data.slave_position);
         return -EINVAL;
@@ -718,7 +718,7 @@ int ec_cdev_ioctl_slave_sdo_entry(
 
 /*****************************************************************************/
 
-/** Upload Sdo.
+/** Upload SDO.
  */
 int ec_cdev_ioctl_slave_sdo_upload(
         ec_master_t *master, /**< EtherCAT master. */
@@ -803,7 +803,7 @@ int ec_cdev_ioctl_slave_sdo_upload(
 
 /*****************************************************************************/
 
-/** Download Sdo.
+/** Download SDO.
  */
 int ec_cdev_ioctl_slave_sdo_download(
         ec_master_t *master, /**< EtherCAT master. */
@@ -1219,7 +1219,7 @@ int ec_cdev_ioctl_config(
 
 /*****************************************************************************/
 
-/** Get slave configuration Pdo information.
+/** Get slave configuration PDO information.
  */
 int ec_cdev_ioctl_config_pdo(
         ec_master_t *master, /**< EtherCAT master. */
@@ -1255,7 +1255,7 @@ int ec_cdev_ioctl_config_pdo(
                     &sc->sync_configs[data.sync_index].pdos,
                     data.pdo_pos))) {
         up(&master->master_sem);
-        EC_ERR("Invalid Pdo position!\n");
+        EC_ERR("Invalid PDO position!\n");
         return -EINVAL;
     }
 
@@ -1273,7 +1273,7 @@ int ec_cdev_ioctl_config_pdo(
 
 /*****************************************************************************/
 
-/** Get slave configuration Pdo entry information.
+/** Get slave configuration PDO entry information.
  */
 int ec_cdev_ioctl_config_pdo_entry(
         ec_master_t *master, /**< EtherCAT master. */
@@ -1310,7 +1310,7 @@ int ec_cdev_ioctl_config_pdo_entry(
                     &sc->sync_configs[data.sync_index].pdos,
                     data.pdo_pos))) {
         up(&master->master_sem);
-        EC_ERR("Invalid Pdo position!\n");
+        EC_ERR("Invalid PDO position!\n");
         return -EINVAL;
     }
 
@@ -1336,7 +1336,7 @@ int ec_cdev_ioctl_config_pdo_entry(
 
 /*****************************************************************************/
 
-/** Get slave configuration Sdo information.
+/** Get slave configuration SDO information.
  */
 int ec_cdev_ioctl_config_sdo(
         ec_master_t *master, /**< EtherCAT master. */
@@ -1365,7 +1365,7 @@ int ec_cdev_ioctl_config_sdo(
     if (!(req = ec_slave_config_get_sdo_by_pos_const(
                     sc, data.sdo_pos))) {
         up(&master->master_sem);
-        EC_ERR("Invalid Sdo position!\n");
+        EC_ERR("Invalid SDO position!\n");
         return -EINVAL;
     }
 
@@ -1642,7 +1642,7 @@ out_return:
 
 /*****************************************************************************/
 
-/** Add a Pdo to the assignment.
+/** Add a PDO to the assignment.
  */
 int ec_cdev_ioctl_sc_add_pdo(
         ec_master_t *master, /**< EtherCAT master. */
@@ -1674,7 +1674,7 @@ int ec_cdev_ioctl_sc_add_pdo(
 
 /*****************************************************************************/
 
-/** Clears the Pdo assignment.
+/** Clears the PDO assignment.
  */
 int ec_cdev_ioctl_sc_clear_pdos(
         ec_master_t *master, /**< EtherCAT master. */
@@ -1707,7 +1707,7 @@ int ec_cdev_ioctl_sc_clear_pdos(
 
 /*****************************************************************************/
 
-/** Add an entry to a Pdo's mapping.
+/** Add an entry to a PDO's mapping.
  */
 int ec_cdev_ioctl_sc_add_entry(
         ec_master_t *master, /**< EtherCAT master. */
@@ -1740,7 +1740,7 @@ int ec_cdev_ioctl_sc_add_entry(
 
 /*****************************************************************************/
 
-/** Clears the mapping of a Pdo.
+/** Clears the mapping of a PDO.
  */
 int ec_cdev_ioctl_sc_clear_entries(
         ec_master_t *master, /**< EtherCAT master. */
@@ -1773,7 +1773,7 @@ int ec_cdev_ioctl_sc_clear_entries(
 
 /*****************************************************************************/
 
-/** Registers a Pdo entry.
+/** Registers a PDO entry.
  */
 int ec_cdev_ioctl_sc_reg_pdo_entry(
         ec_master_t *master, /**< EtherCAT master. */
@@ -1818,7 +1818,7 @@ int ec_cdev_ioctl_sc_reg_pdo_entry(
 
 /*****************************************************************************/
 
-/** Configures an Sdo.
+/** Configures an SDO.
  */
 int ec_cdev_ioctl_sc_sdo(
         ec_master_t *master, /**< EtherCAT master. */

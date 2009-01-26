@@ -107,7 +107,7 @@ void MasterDevice::getConfigPdo(
 
     if (ioctl(fd, EC_IOCTL_CONFIG_PDO, data) < 0) {
         stringstream err;
-        err << "Failed to get slave config Pdo: " << strerror(errno);
+        err << "Failed to get slave config PDO: " << strerror(errno);
         throw MasterDeviceException(err);
     }
 }
@@ -129,7 +129,7 @@ void MasterDevice::getConfigPdoEntry(
 
     if (ioctl(fd, EC_IOCTL_CONFIG_PDO_ENTRY, data) < 0) {
         stringstream err;
-        err << "Failed to get slave config Pdo entry: " << strerror(errno);
+        err << "Failed to get slave config PDO entry: " << strerror(errno);
         throw MasterDeviceException(err);
     }
 }
@@ -147,7 +147,7 @@ void MasterDevice::getConfigSdo(
 
     if (ioctl(fd, EC_IOCTL_CONFIG_SDO, data) < 0) {
         stringstream err;
-        err << "Failed to get slave config Sdo: " << strerror(errno);
+        err << "Failed to get slave config SDO: " << strerror(errno);
         throw MasterDeviceException(err);
     }
 }
@@ -253,7 +253,7 @@ void MasterDevice::getPdo(
 
     if (ioctl(fd, EC_IOCTL_SLAVE_SYNC_PDO, pdo)) {
         stringstream err;
-        err << "Failed to get Pdo: " << strerror(errno);
+        err << "Failed to get PDO: " << strerror(errno);
         throw MasterDeviceException(err);
     }
 }
@@ -275,7 +275,7 @@ void MasterDevice::getPdoEntry(
 
     if (ioctl(fd, EC_IOCTL_SLAVE_SYNC_PDO_ENTRY, entry)) {
         stringstream err;
-        err << "Failed to get Pdo entry: " << strerror(errno);
+        err << "Failed to get PDO entry: " << strerror(errno);
         throw MasterDeviceException(err);
     }
 }
@@ -293,7 +293,7 @@ void MasterDevice::getSdo(
 
     if (ioctl(fd, EC_IOCTL_SLAVE_SDO, sdo)) {
         stringstream err;
-        err << "Failed to get Sdo: " << strerror(errno);
+        err << "Failed to get SDO: " << strerror(errno);
         throw MasterDeviceException(err);
     }
 }
@@ -313,7 +313,7 @@ void MasterDevice::getSdoEntry(
 
     if (ioctl(fd, EC_IOCTL_SLAVE_SDO_ENTRY, entry)) {
         stringstream err;
-        err << "Failed to get Sdo entry: " << strerror(errno);
+        err << "Failed to get SDO entry: " << strerror(errno);
         throw MasterDeviceException(err);
     }
 }
@@ -390,7 +390,7 @@ void MasterDevice::sdoDownload(ec_ioctl_slave_sdo_download_t *data)
         if (errno == EIO && data->abort_code) {
             throw MasterDeviceSdoAbortException(data->abort_code);
         } else {
-            err << "Failed to download Sdo: " << strerror(errno);
+            err << "Failed to download SDO: " << strerror(errno);
             throw MasterDeviceException(err);
         }
 	}
@@ -405,7 +405,7 @@ void MasterDevice::sdoUpload(ec_ioctl_slave_sdo_upload_t *data)
         if (errno == EIO && data->abort_code) {
             throw MasterDeviceSdoAbortException(data->abort_code);
         } else {
-            err << "Failed to upload Sdo: " << strerror(errno);
+            err << "Failed to upload SDO: " << strerror(errno);
             throw MasterDeviceException(err);
         }
     }

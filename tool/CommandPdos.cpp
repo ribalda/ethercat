@@ -13,7 +13,7 @@ using namespace std;
 /*****************************************************************************/
 
 CommandPdos::CommandPdos():
-    Command("pdos", "List Sync managers, Pdo assignment and mapping.")
+    Command("pdos", "List Sync managers, PDO assignment and mapping.")
 {
 }
 
@@ -37,19 +37,19 @@ string CommandPdos::helpString() const
     	<< "   SM3: PhysAddr 0x1100, DefaultSize 0, ControlRegister 0x20, "
 		<< "Enable 1" << endl
     	<< endl
-    	<< "2) Assigned Pdos - Pdo direction, hexadecimal index and" << endl
-		<< "   the Pdo name, if avaliable. Note that a 'Tx' and 'Rx'" << endl
+    	<< "2) Assigned PDOs - PDO direction, hexadecimal index and" << endl
+		<< "   the PDO name, if avaliable. Note that a 'Tx' and 'Rx'" << endl
         << "   are seen from the slave's point of view. Example:" << endl
     	<< endl
-    	<< "   TxPdo 0x1a00 \"Channel1\"" << endl
+    	<< "   TxPDO 0x1a00 \"Channel1\"" << endl
     	<< endl
-    	<< "3) Mapped Pdo entries - Pdo entry index and subindex (both" << endl
+    	<< "3) Mapped PDO entries - PDO entry index and subindex (both" << endl
     	<< "   hexadecimal), the length in bit and the description, if" << endl
     	<< "   available. Example:" << endl
     	<< endl
-    	<< "   Pdo entry 0x3101:01, 8 bit, \"Status\"" << endl
+    	<< "   PDO entry 0x3101:01, 8 bit, \"Status\"" << endl
     	<< endl
-    	<< "Note, that the displayed Pdo assignment and Pdo mapping" << endl
+    	<< "Note, that the displayed PDO assignment and PDO mapping" << endl
     	<< "information can either originate from the SII or from the" << endl
 		<< "CoE communication area." << endl
     	<< endl
@@ -115,7 +115,7 @@ void CommandPdos::listSlavePdos(
             m.getPdo(&pdo, slave.position, i, j);
 
             cout << "  " << (sync.control_register & 0x04 ? "R" : "T")
-                << "xPdo 0x"
+                << "xPDO 0x"
                 << hex << setfill('0')
                 << setw(4) << pdo.index
                 << " \"" << pdo.name << "\"" << endl;
@@ -126,7 +126,7 @@ void CommandPdos::listSlavePdos(
             for (k = 0; k < pdo.entry_count; k++) {
                 m.getPdoEntry(&entry, slave.position, i, j, k);
 
-                cout << "    Pdo entry 0x"
+                cout << "    PDO entry 0x"
                     << hex << setfill('0')
                     << setw(4) << entry.index
                     << ":" << setw(2) << (unsigned int) entry.subindex

@@ -46,8 +46,8 @@ string CommandConfig::helpString() const
     	<< "|          hexadecimal)." << endl
     	<< "\\- Alias address and relative position (both decimal)." << endl
     	<< endl
-    	<< "With the --verbose option given, the configured Pdos and" << endl
-    	<< "Sdos are output in addition." << endl
+    	<< "With the --verbose option given, the configured PDOs and" << endl
+    	<< "SDOs are output in addition." << endl
         << endl
         << "Configuration selection:" << endl
         << "  Slave configurations can be selected with" << endl
@@ -138,13 +138,13 @@ void CommandConfig::showDetailedConfigs(
                 for (k = 0; k < configIter->syncs[j].pdo_count; k++) {
                     m.getConfigPdo(&pdo, configIter->config_index, j, k);
 
-                    cout << "  Pdo 0x" << hex << setw(4) << pdo.index << endl;
+                    cout << "  PDO 0x" << hex << setw(4) << pdo.index << endl;
 
                     for (l = 0; l < pdo.entry_count; l++) {
                         m.getConfigPdoEntry(&entry,
                                 configIter->config_index, j, k, l);
 
-                        cout << "    Pdo entry 0x" << hex << setfill('0')
+                        cout << "    PDO entry 0x" << hex << setfill('0')
                             << setw(4) << entry.index << ":"
                             << setw(2) << (unsigned int) entry.subindex
                             << ", " << dec << setfill(' ')
@@ -155,7 +155,7 @@ void CommandConfig::showDetailedConfigs(
             }
         }
 
-        cout << "Sdo configuration:" << endl;
+        cout << "SDO configuration:" << endl;
         if (configIter->sdo_count) {
             for (j = 0; j < configIter->sdo_count; j++) {
                 m.getConfigSdo(&sdo, configIter->config_index, j);

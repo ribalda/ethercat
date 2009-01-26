@@ -78,7 +78,7 @@ static uint8_t *domain1_pd = NULL;
 #define Beckhoff_EL3152 0x00000002, 0x0c503052
 #define Beckhoff_EL4102 0x00000002, 0x10063052
 
-// offsets for Pdo entries
+// offsets for PDO entries
 static unsigned int off_ana_in_status;
 static unsigned int off_ana_in_value;
 static unsigned int off_ana_out;
@@ -293,9 +293,9 @@ int main(int argc, char **argv)
     }
 
 #if CONFIGURE_PDOS
-    printf("Configuring Pdos...\n");
+    printf("Configuring PDOs...\n");
     if (ecrt_slave_config_pdos(sc_ana_in, EC_END, el3152_syncs)) {
-        fprintf(stderr, "Failed to configure Pdos.\n");
+        fprintf(stderr, "Failed to configure PDOs.\n");
         return -1;
     }
 
@@ -306,7 +306,7 @@ int main(int argc, char **argv)
     }
 
     if (ecrt_slave_config_pdos(sc, EC_END, el4102_syncs)) {
-        fprintf(stderr, "Failed to configure Pdos.\n");
+        fprintf(stderr, "Failed to configure PDOs.\n");
         return -1;
     }
 
@@ -317,7 +317,7 @@ int main(int argc, char **argv)
     }
 
     if (ecrt_slave_config_pdos(sc, EC_END, el2004_syncs)) {
-        fprintf(stderr, "Failed to configure Pdos.\n");
+        fprintf(stderr, "Failed to configure PDOs.\n");
         return -1;
     }
 #endif
@@ -328,7 +328,7 @@ int main(int argc, char **argv)
         return -1;
 
     if (ecrt_domain_reg_pdo_entry_list(domain1, domain1_regs)) {
-        fprintf(stderr, "Pdo entry registration failed!\n");
+        fprintf(stderr, "PDO entry registration failed!\n");
 		return -1;
     }
 

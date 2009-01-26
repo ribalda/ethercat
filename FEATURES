@@ -29,11 +29,11 @@ General Features:
 * Common API for Realtime-Applications in kernel- and userspace.
   - Requesting and releasing masters.
   - Dynamic slave configuration, even for slaves that are offline.
-  - Detailed configuration of the slaves' Pdos and Sdos.
-  - Creation of process data domains (see below). Registration of Pdo entries
+  - Detailed configuration of the slaves' PDOs and SDOs.
+  - Creation of process data domains (see below). Registration of PDO entries
     for exchange within a domain.
   - Monitoring the states of masters, slave configurations and domains.
-  - Sdo handlers for application-triggered CoE transfers (see below).
+  - SDO handlers for application-triggered CoE transfers (see below).
   - VoE handlers for Vendor-specific mailbox protocols (see below).
   - Similar userspace implementation of the kernel API via a C-library.
   - Avoidance of unnecessary copy operations for process data.
@@ -51,17 +51,17 @@ General Features:
   - Automatic configuration of slaves, if a application-layer state change is
     requested.
 
-* Implementation of the CANopen-over-EtherCAT (CoE) mailbox protocol.
+* Implementation of the CANopen over EtherCAT (CoE) mailbox protocol.
   - Configuration of CoE-capable slaves.
-  - Sdo information service (dictionary listing).
-  - Sdo transfers both via the application interface and the command-line tool.
+  - SDO information service (dictionary listing).
+  - SDO transfers both via the application interface and the command-line tool.
 
-* Implementation of the Ethernet-over-EtherCAT (EoE) mailbox protocol.
+* Implementation of the Ethernet over EtherCAT (EoE) mailbox protocol.
   - Virtual network interface for any EoE-capable slave.
   - Both a switched and a routed EoE network architecture is natively supported
     and configurable with standard tools.
 
-* Implementation of the Vendor-specific-over-EtherCAT (VoE) mailbox protocol.
+* Implementation of the Vendor specific over EtherCAT (VoE) mailbox protocol.
   - Communication with vendor-specific mailbox protocols via the API. 
 
 * Userspace command-line tool 'ethercat'.
@@ -69,7 +69,7 @@ General Features:
   - Reading/Writing alias addresses.
   - Listing slave configurations.
   - Viewing process data.
-  - Sdo download/upload; listing Sdo dictionaries.
+  - SDO download/upload; listing SDO dictionaries.
   - Access to slave registers.
   - Slave SII (EEPROM) access.
   - Controlling application-layer states.

@@ -26,7 +26,7 @@
 
 /**
    \file
-   CANopen Sdo functions.
+   CANopen SDO functions.
 */
 
 /*****************************************************************************/
@@ -42,9 +42,9 @@
 /** Constructor.
  */
 void ec_sdo_init(
-        ec_sdo_t *sdo, /**< Sdo. */
+        ec_sdo_t *sdo, /**< SDO. */
         ec_slave_t *slave, /**< Parent slave. */
-        uint16_t index /**< Sdo index. */
+        uint16_t index /**< SDO index. */
         )
 {
     sdo->slave = slave;
@@ -57,12 +57,12 @@ void ec_sdo_init(
 
 /*****************************************************************************/
 
-/** Sdo destructor.
+/** SDO destructor.
  *
- * Clears and frees an Sdo object.
+ * Clears and frees an SDO object.
  */
 void ec_sdo_clear(
-        ec_sdo_t *sdo /**< Sdo. */
+        ec_sdo_t *sdo /**< SDO. */
         )
 {
     ec_sdo_entry_t *entry, *next;
@@ -80,13 +80,13 @@ void ec_sdo_clear(
 
 /*****************************************************************************/
 
-/** Get an Sdo entry from an Sdo via its subindex.
+/** Get an SDO entry from an SDO via its subindex.
  * 
- * \retval >0 Pointer to the requested Sdo entry.
- * \retval NULL Sdo entry not found.
+ * \retval >0 Pointer to the requested SDO entry.
+ * \retval NULL SDO entry not found.
  */
 ec_sdo_entry_t *ec_sdo_get_entry(
-        ec_sdo_t *sdo, /**< Sdo. */
+        ec_sdo_t *sdo, /**< SDO. */
         uint8_t subindex /**< Entry subindex. */
         )
 {
@@ -103,15 +103,15 @@ ec_sdo_entry_t *ec_sdo_get_entry(
 
 /*****************************************************************************/
 
-/** Get an Sdo entry from an Sdo via its subindex.
+/** Get an SDO entry from an SDO via its subindex.
  *
  * const version.
  * 
- * \retval >0 Pointer to the requested Sdo entry.
- * \retval NULL Sdo entry not found.
+ * \retval >0 Pointer to the requested SDO entry.
+ * \retval NULL SDO entry not found.
  */
 const ec_sdo_entry_t *ec_sdo_get_entry_const(
-        const ec_sdo_t *sdo, /**< Sdo. */
+        const ec_sdo_t *sdo, /**< SDO. */
         uint8_t subindex /**< Entry subindex. */
         )
 {

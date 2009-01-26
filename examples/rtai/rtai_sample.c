@@ -80,7 +80,7 @@ static uint8_t *domain1_pd; // process data memory
 #define Beckhoff_EL2004 0x00000002, 0x07D43052
 #define Beckhoff_EL3162 0x00000002, 0x0C5A3052
 
-static unsigned int off_ana_in; // offsets for Pdo entries
+static unsigned int off_ana_in; // offsets for PDO entries
 static unsigned int off_dig_out;
 
 const static ec_pdo_entry_reg_t domain1_regs[] = {
@@ -297,9 +297,9 @@ int __init init_mod(void)
     }
 
 #ifdef CONFIGURE_PDOS
-    printk(KERN_INFO PFX "Configuring Pdos...\n");
+    printk(KERN_INFO PFX "Configuring PDOs...\n");
     if (ecrt_slave_config_pdos(sc_ana_in, EC_END, el3162_syncs)) {
-        printk(KERN_ERR PFX "Failed to configure Pdos.\n");
+        printk(KERN_ERR PFX "Failed to configure PDOs.\n");
         goto out_release_master;
     }
 
@@ -309,14 +309,14 @@ int __init init_mod(void)
     }
 
     if (ecrt_slave_config_pdos(sc, EC_END, el2004_syncs)) {
-        printk(KERN_ERR PFX "Failed to configure Pdos.\n");
+        printk(KERN_ERR PFX "Failed to configure PDOs.\n");
         goto out_release_master;
     }
 #endif
 
-    printk(KERN_INFO PFX "Registering Pdo entries...\n");
+    printk(KERN_INFO PFX "Registering PDO entries...\n");
     if (ecrt_domain_reg_pdo_entry_list(domain1, domain1_regs)) {
-        printk(KERN_ERR PFX "Pdo entry registration failed!\n");
+        printk(KERN_ERR PFX "PDO entry registration failed!\n");
         goto out_release_master;
     }
 

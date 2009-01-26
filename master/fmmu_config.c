@@ -41,7 +41,7 @@
 /** FMMU configuration constructor.
  *
  * Inits an FMMU configuration, sets the logical start address and adds the
- * process data size for the mapped Pdos of the given direction to the domain
+ * process data size for the mapped PDOs of the given direction to the domain
  * data size.
  */
 void ec_fmmu_config_init(
@@ -49,7 +49,7 @@ void ec_fmmu_config_init(
         ec_slave_config_t *sc, /**< EtherCAT slave configuration. */
         ec_domain_t *domain, /**< EtherCAT domain. */
         uint8_t sync_index, /**< Sync manager index to use. */
-        ec_direction_t dir /**< Pdo direction. */
+        ec_direction_t dir /**< PDO direction. */
         )
 {
     INIT_LIST_HEAD(&fmmu->list);

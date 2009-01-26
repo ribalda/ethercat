@@ -140,7 +140,7 @@ void ec_slave_clear(ec_slave_t *slave /**< EtherCAT slave */)
     if (slave->config)
         ec_slave_config_detach(slave->config);
 
-    // free all Sdos
+    // free all SDOs
     list_for_each_entry_safe(sdo, next_sdo, &slave->sdo_dictionary, list) {
         list_del(&sdo->list);
         ec_sdo_clear(sdo);
@@ -157,7 +157,7 @@ void ec_slave_clear(ec_slave_t *slave /**< EtherCAT slave */)
     // free all sync managers
     ec_slave_clear_sync_managers(slave);
 
-    // free all SII Pdos
+    // free all SII PDOs
     list_for_each_entry_safe(pdo, next_pdo, &slave->sii.pdos, list) {
         list_del(&pdo->list);
         ec_pdo_clear(pdo);
@@ -398,7 +398,7 @@ int ec_slave_fetch_sii_syncs(
 /*****************************************************************************/
 
 /**
-   Fetches data from a [RT]XPdo category.
+   Fetches data from a [RT]xPDO category.
    \return 0 in case of success, else < 0
 */
 
@@ -406,7 +406,7 @@ int ec_slave_fetch_sii_pdos(
         ec_slave_t *slave, /**< EtherCAT slave */
         const uint8_t *data, /**< category data */
         size_t data_size, /**< number of bytes */
-        ec_direction_t dir /**< Pdo direction. */
+        ec_direction_t dir /**< PDO direction. */
         )
 {
     int ret;
@@ -416,7 +416,7 @@ int ec_slave_fetch_sii_pdos(
 
     while (data_size >= 8) {
         if (!(pdo = kmalloc(sizeof(ec_pdo_t), GFP_KERNEL))) {
-            EC_ERR("Failed to allocate Pdo memory.\n");
+            EC_ERR("Failed to allocate PDO memory.\n");
             return -ENOMEM;
         }
 
@@ -438,7 +438,7 @@ int ec_slave_fetch_sii_pdos(
 
         for (i = 0; i < entry_count; i++) {
             if (!(entry = kmalloc(sizeof(ec_pdo_entry_t), GFP_KERNEL))) {
-                EC_ERR("Failed to allocate Pdo entry memory.\n");
+                EC_ERR("Failed to allocate PDO entry memory.\n");
                 return -ENOMEM;
             }
 
@@ -459,12 +459,12 @@ int ec_slave_fetch_sii_pdos(
             data += 8;
         }
 
-        // if sync manager index is positive, the Pdo is mapped by default
+        // if sync manager index is positive, the PDO is mapped by default
         if (pdo->sync_index >= 0) {
             ec_sync_t *sync;
 
             if (!(sync = ec_slave_get_sync(slave, pdo->sync_index))) {
-                EC_ERR("Invalid SM index %i for Pdo 0x%04X in slave %u.",
+                EC_ERR("Invalid SM index %i for PDO 0x%04X in slave %u.",
                         pdo->sync_index, pdo->index, slave->ring_position);
                 return -ENOENT;
             }
@@ -524,11 +524,11 @@ ec_sync_t *ec_slave_get_sync(
 /*****************************************************************************/
 
 /**
-   Counts the total number of Sdos and entries in the dictionary.
+   Counts the total number of SDOs and entries in the dictionary.
 */
 
 void ec_slave_sdo_dict_info(const ec_slave_t *slave, /**< EtherCAT slave */
-                            unsigned int *sdo_count, /**< number of Sdos */
+                            unsigned int *sdo_count, /**< number of SDOs */
                             unsigned int *entry_count /**< total number of
                                                          entries */
                             )
@@ -551,13 +551,13 @@ void ec_slave_sdo_dict_info(const ec_slave_t *slave, /**< EtherCAT slave */
 /*****************************************************************************/
 
 /**
- * Get an Sdo from the dictionary.
- * \returns The desired Sdo, or NULL.
+ * Get an SDO from the dictionary.
+ * \returns The desired SDO, or NULL.
  */
 
 ec_sdo_t *ec_slave_get_sdo(
         ec_slave_t *slave, /**< EtherCAT slave */
-        uint16_t index /**< Sdo index */
+        uint16_t index /**< SDO index */
         )
 {
     ec_sdo_t *sdo;
@@ -574,16 +574,16 @@ ec_sdo_t *ec_slave_get_sdo(
 /*****************************************************************************/
 
 /**
- * Get an Sdo from the dictionary.
+ * Get an SDO from the dictionary.
  *
  * const version.
  *
- * \returns The desired Sdo, or NULL.
+ * \returns The desired SDO, or NULL.
  */
 
 const ec_sdo_t *ec_slave_get_sdo_const(
         const ec_slave_t *slave, /**< EtherCAT slave */
-        uint16_t index /**< Sdo index */
+        uint16_t index /**< SDO index */
         )
 {
     const ec_sdo_t *sdo;
@@ -599,13 +599,13 @@ const ec_sdo_t *ec_slave_get_sdo_const(
 
 /*****************************************************************************/
 
-/** Get an Sdo from the dictionary, given its position in the list.
- * \returns The desired Sdo, or NULL.
+/** Get an SDO from the dictionary, given its position in the list.
+ * \returns The desired SDO, or NULL.
  */
 
 const ec_sdo_t *ec_slave_get_sdo_by_pos_const(
         const ec_slave_t *slave, /**< EtherCAT slave. */
-        uint16_t sdo_position /**< Sdo list position. */
+        uint16_t sdo_position /**< SDO list position. */
         )
 {
     const ec_sdo_t *sdo;
@@ -621,8 +621,8 @@ const ec_sdo_t *ec_slave_get_sdo_by_pos_const(
 
 /*****************************************************************************/
 
-/** Get the number of Sdos in the dictionary.
- * \returns Sdo count.
+/** Get the number of SDOs in the dictionary.
+ * \returns SDO count.
  */
 
 uint16_t ec_slave_sdo_count(
@@ -641,12 +641,12 @@ uint16_t ec_slave_sdo_count(
 
 /*****************************************************************************/
 
-/** Finds a mapped Pdo.
- * \returns The desired Pdo object, or NULL.
+/** Finds a mapped PDO.
+ * \returns The desired PDO object, or NULL.
  */
 const ec_pdo_t *ec_slave_find_pdo(
         const ec_slave_t *slave, /**< Slave. */
-        uint16_t index /**< Pdo index to find. */
+        uint16_t index /**< PDO index to find. */
         )
 {
     unsigned int i;
@@ -667,7 +667,7 @@ const ec_pdo_t *ec_slave_find_pdo(
 
 /*****************************************************************************/
 
-/** Find name for a Pdo and its entries.
+/** Find name for a PDO and its entries.
  */
 void ec_slave_find_names_for_pdo(
         ec_slave_t *slave,
@@ -698,7 +698,7 @@ void ec_slave_find_names_for_pdo(
 
 /*****************************************************************************/
 
-/** Attach Pdo names.
+/** Attach PDO names.
  */
 void ec_slave_attach_pdo_names(
         ec_slave_t *slave

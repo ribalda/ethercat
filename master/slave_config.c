@@ -94,14 +94,14 @@ void ec_slave_config_clear(
     for (i = 0; i < EC_MAX_SYNC_MANAGERS; i++)
         ec_sync_config_clear(&sc->sync_configs[i]);
 
-    // free all Sdo configurations
+    // free all SDO configurations
     list_for_each_entry_safe(req, next_req, &sc->sdo_configs, list) {
         list_del(&req->list);
         ec_sdo_request_clear(req);
         kfree(req);
     }
 
-    // free all Sdo requests
+    // free all SDO requests
     list_for_each_entry_safe(req, next_req, &sc->sdo_requests, list) {
         list_del(&req->list);
         ec_sdo_request_clear(req);
@@ -134,7 +134,7 @@ int ec_slave_config_prepare_fmmu(
         ec_slave_config_t *sc, /**< Slave configuration. */
         ec_domain_t *domain, /**< Domain. */
         uint8_t sync_index, /**< Sync manager index. */
-        ec_direction_t dir /**< Pdo direction. */
+        ec_direction_t dir /**< PDO direction. */
         )
 {
     unsigned int i;
@@ -234,7 +234,7 @@ void ec_slave_config_detach(
 
 /*****************************************************************************/
 
-/** Loads the default Pdo assignment from the slave object.
+/** Loads the default PDO assignment from the slave object.
  */
 void ec_slave_config_load_default_sync_config(ec_slave_config_t *sc)
 {
@@ -259,7 +259,7 @@ void ec_slave_config_load_default_sync_config(ec_slave_config_t *sc)
 
 /*****************************************************************************/
 
-/** Loads the default mapping for a Pdo from the slave object.
+/** Loads the default mapping for a PDO from the slave object.
  */
 void ec_slave_config_load_default_mapping(
         const ec_slave_config_t *sc,
@@ -274,10 +274,10 @@ void ec_slave_config_load_default_mapping(
         return;
 
     if (sc->master->debug_level)
-        EC_DBG("Loading default mapping for Pdo 0x%04X in config %u:%u.\n",
+        EC_DBG("Loading default mapping for PDO 0x%04X in config %u:%u.\n",
                 pdo->index, sc->alias, sc->position);
 
-    // find Pdo in any sync manager (it could be reassigned later)
+    // find PDO in any sync manager (it could be reassigned later)
     for (i = 0; i < sc->slave->sii.sync_count; i++) {
         sync = &sc->slave->sii.syncs[i];
 
@@ -287,13 +287,13 @@ void ec_slave_config_load_default_mapping(
 
             if (default_pdo->name) {
                 if (sc->master->debug_level)
-                    EC_DBG("Found Pdo name \"%s\".\n", default_pdo->name);
+                    EC_DBG("Found PDO name \"%s\".\n", default_pdo->name);
 
-                // take Pdo name from assigned one
+                // take PDO name from assigned one
                 ec_pdo_set_name(pdo, default_pdo->name);
             }
 
-            // copy entries (= default Pdo mapping)
+            // copy entries (= default PDO mapping)
             if (ec_pdo_copy_entries(pdo, default_pdo))
                 return;
 
@@ -315,9 +315,9 @@ void ec_slave_config_load_default_mapping(
 
 /*****************************************************************************/
 
-/** Get the number of Sdo configurations.
+/** Get the number of SDO configurations.
  *
- * \return Number of Sdo configurations.
+ * \return Number of SDO configurations.
  */
 unsigned int ec_slave_config_sdo_count(
         const ec_slave_config_t *sc /**< Slave configuration. */
@@ -335,7 +335,7 @@ unsigned int ec_slave_config_sdo_count(
 
 /*****************************************************************************/
 
-/** Finds an Sdo configuration via its position in the list.
+/** Finds an SDO configuration via its position in the list.
  *
  * Const version.
  */
@@ -484,7 +484,7 @@ int ecrt_slave_config_pdo_mapping_add(ec_slave_config_t *sc,
         if (IS_ERR(entry))
             retval = PTR_ERR(entry);
     } else {
-        EC_ERR("Pdo 0x%04X is not assigned in config %u:%u.\n",
+        EC_ERR("PDO 0x%04X is not assigned in config %u:%u.\n",
                 pdo_index, sc->alias, sc->position);
         retval = -ENOENT; 
     }
@@ -514,7 +514,7 @@ void ecrt_slave_config_pdo_mapping_clear(ec_slave_config_t *sc,
         ec_pdo_clear_entries(pdo);
         up(&sc->master->master_sem);
     } else {
-        EC_WARN("Pdo 0x%04X is not assigned in config %u:%u.\n",
+        EC_WARN("PDO 0x%04X is not assigned in config %u:%u.\n",
                 pdo_index, sc->alias, sc->position);
     }
 }
@@ -620,7 +620,7 @@ int ecrt_slave_config_reg_pdo_entry(
                     if (bit_position) {
                         *bit_position = bit_pos;
                     } else if (bit_pos) {
-                        EC_ERR("Pdo entry 0x%04X:%02X does not byte-align "
+                        EC_ERR("PDO entry 0x%04X:%02X does not byte-align "
                                 "in config %u:%u.\n", index, subindex,
                                 sc->alias, sc->position);
                         return -EFAULT;
@@ -637,7 +637,7 @@ int ecrt_slave_config_reg_pdo_entry(
         }
     }
 
-    EC_ERR("Pdo entry 0x%04X:%02X is not mapped in slave config %u:%u.\n",
+    EC_ERR("PDO entry 0x%04X:%02X is not mapped in slave config %u:%u.\n",
            index, subindex, sc->alias, sc->position);
     return -ENOENT;
 }
@@ -664,7 +664,7 @@ int ecrt_slave_config_sdo(ec_slave_config_t *sc, uint16_t index,
 
     if (!(req = (ec_sdo_request_t *)
           kmalloc(sizeof(ec_sdo_request_t), GFP_KERNEL))) {
-        EC_ERR("Failed to allocate memory for Sdo configuration!\n");
+        EC_ERR("Failed to allocate memory for SDO configuration!\n");
         return -ENOMEM;
     }
 
@@ -747,7 +747,7 @@ ec_sdo_request_t *ecrt_slave_config_create_sdo_request_err(
 
     if (!(req = (ec_sdo_request_t *)
                 kmalloc(sizeof(ec_sdo_request_t), GFP_KERNEL))) {
-        EC_ERR("Failed to allocate Sdo request memory!\n");
+        EC_ERR("Failed to allocate SDO request memory!\n");
         return ERR_PTR(-ENOMEM);
     }
 
@@ -796,7 +796,7 @@ ec_voe_handler_t *ecrt_slave_config_create_voe_handler_err(
 
     if (!(voe = (ec_voe_handler_t *)
                 kmalloc(sizeof(ec_voe_handler_t), GFP_KERNEL))) {
-        EC_ERR("Failed to allocate Sdo request memory!\n");
+        EC_ERR("Failed to allocate VoE request memory!\n");
         return ERR_PTR(-ENOMEM);
     }
 

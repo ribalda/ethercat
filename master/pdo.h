@@ -41,14 +41,14 @@
 
 /*****************************************************************************/
 
-/** Pdo description.
+/** PDO description.
  */
 typedef struct {
     struct list_head list; /**< List item. */
-    uint16_t index; /**< Pdo index. */
+    uint16_t index; /**< PDO index. */
     int8_t sync_index; /**< Assigned sync manager. \todo remove? */
-    char *name; /**< Pdo name. */
-    struct list_head entries; /**< List of Pdo entries. */
+    char *name; /**< PDO name. */
+    struct list_head entries; /**< List of PDO entries. */
 } ec_pdo_t;
 
 /*****************************************************************************/

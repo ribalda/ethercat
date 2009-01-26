@@ -44,7 +44,7 @@
 
 typedef struct ec_fsm_coe ec_fsm_coe_t; /**< \see ec_fsm_coe */
 
-/** Finite state machines for the CANopen-over-EtherCAT protocol.
+/** Finite state machines for the CANopen over EtherCAT protocol.
  */
 struct ec_fsm_coe {
     ec_slave_t *slave; /**< slave the FSM runs on */
@@ -53,9 +53,9 @@ struct ec_fsm_coe {
 
     void (*state)(ec_fsm_coe_t *); /**< CoE state function */
     unsigned long jiffies_start; /**< CoE timestamp. */
-    ec_sdo_t *sdo; /**< current Sdo */
+    ec_sdo_t *sdo; /**< current SDO */
     uint8_t subindex; /**< current subindex */
-    ec_sdo_request_t *request; /**< Sdo request */
+    ec_sdo_request_t *request; /**< SDO request */
     uint8_t toggle; /**< toggle bit for segment commands */
 };
 

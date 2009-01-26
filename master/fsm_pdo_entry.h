@@ -25,7 +25,7 @@
  *****************************************************************************/
 
 /** \file
- * EtherCAT Pdo entry configuration state machine structures.
+ * EtherCAT PDO entry configuration state machine structures.
  */
 
 /*****************************************************************************/
@@ -44,20 +44,20 @@
  */
 typedef struct ec_fsm_pdo_entry ec_fsm_pdo_entry_t;
 
-/** Pdo configuration state machine.
+/** PDO configuration state machine.
  */
 struct ec_fsm_pdo_entry
 {
     void (*state)(ec_fsm_pdo_entry_t *); /**< state function */
     ec_fsm_coe_t *fsm_coe; /**< CoE state machine to use */
-    ec_sdo_request_t request; /**< Sdo request. */
+    ec_sdo_request_t request; /**< SDO request. */
 
     ec_slave_t *slave; /**< Slave the FSM runs on. */
-    ec_pdo_t *target_pdo; /**< Pdo to read the mapping for. */
-    const ec_pdo_t *source_pdo; /**< Pdo with desired mapping. */
+    ec_pdo_t *target_pdo; /**< PDO to read the mapping for. */
+    const ec_pdo_t *source_pdo; /**< PDO with desired mapping. */
     const ec_pdo_entry_t *entry; /**< Current entry. */
     unsigned int entry_count; /**< Number of entries. */
-    unsigned int entry_pos; /**< Position in Pdo mapping. */
+    unsigned int entry_pos; /**< Position in PDO mapping. */
 };
 
 /*****************************************************************************/

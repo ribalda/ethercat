@@ -31,7 +31,7 @@ digraph slaveconf {
     preop -> enter_sdo_conf [weight=10]
 
     enter_sdo_conf [shape=point, label=""]
-    enter_sdo_conf -> enter_pdo_conf [fontname="Helvetica", label="No Sdos\nconfigured"]
+    enter_sdo_conf -> enter_pdo_conf [fontname="Helvetica", label="No SDOs\nconfigured"]
     enter_sdo_conf -> sdo_conf [weight=10]
 
     sdo_conf [fontname="Helvetica"]
@@ -46,7 +46,7 @@ digraph slaveconf {
     pdo_conf -> enter_pdo_sync [weight=10]
 
     enter_pdo_sync [shape=point, label=""]
-    enter_pdo_sync -> enter_fmmu [fontname="Helvetica", label="No Pdo SMs"]
+    enter_pdo_sync -> enter_fmmu [fontname="Helvetica", label="No PDO SMs"]
     enter_pdo_sync -> pdo_sync [weight=10]
 
     pdo_sync [fontname="Helvetica"]

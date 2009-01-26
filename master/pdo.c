@@ -38,10 +38,10 @@
 
 /*****************************************************************************/
 
-/** Pdo constructor.
+/** PDO constructor.
  */
 void ec_pdo_init(
-        ec_pdo_t *pdo /**< EtherCAT Pdo */
+        ec_pdo_t *pdo /**< EtherCAT PDO */
         )
 {
     pdo->sync_index = -1; // not assigned 
@@ -51,7 +51,7 @@ void ec_pdo_init(
 
 /*****************************************************************************/
 
-/** Pdo copy constructor.
+/** PDO copy constructor.
  *
  * \retval  0 Success.
  * \retval <0 Error code.
@@ -83,9 +83,9 @@ out_return:
 
 /*****************************************************************************/
 
-/** Pdo destructor.
+/** PDO destructor.
  */
-void ec_pdo_clear(ec_pdo_t *pdo /**< EtherCAT Pdo. */)
+void ec_pdo_clear(ec_pdo_t *pdo /**< EtherCAT PDO. */)
 {
     if (pdo->name)
         kfree(pdo->name);
@@ -95,13 +95,13 @@ void ec_pdo_clear(ec_pdo_t *pdo /**< EtherCAT Pdo. */)
 
 /*****************************************************************************/
 
-/** Clear Pdo entry list.
+/** Clear PDO entry list.
  */
-void ec_pdo_clear_entries(ec_pdo_t *pdo /**< EtherCAT Pdo. */)
+void ec_pdo_clear_entries(ec_pdo_t *pdo /**< EtherCAT PDO. */)
 {
     ec_pdo_entry_t *entry, *next;
 
-    // free all Pdo entries
+    // free all PDO entries
     list_for_each_entry_safe(entry, next, &pdo->entries, list) {
         list_del(&entry->list);
         ec_pdo_entry_clear(entry);
@@ -111,13 +111,13 @@ void ec_pdo_clear_entries(ec_pdo_t *pdo /**< EtherCAT Pdo. */)
 
 /*****************************************************************************/
 
-/** Set Pdo name.
+/** Set PDO name.
  *
  * \retval  0 Success.
  * \retval <0 Error code.
  */
 int ec_pdo_set_name(
-        ec_pdo_t *pdo, /**< Pdo. */
+        ec_pdo_t *pdo, /**< PDO. */
         const char *name /**< New name. */
         )
 {
@@ -131,7 +131,7 @@ int ec_pdo_set_name(
 
     if (name && (len = strlen(name))) {
         if (!(pdo->name = (char *) kmalloc(len + 1, GFP_KERNEL))) {
-            EC_ERR("Failed to allocate Pdo name.\n");
+            EC_ERR("Failed to allocate PDO name.\n");
             return -ENOMEM;
         }
         memcpy(pdo->name, name, len + 1);
@@ -144,7 +144,7 @@ int ec_pdo_set_name(
 
 /*****************************************************************************/
 
-/** Add a new Pdo entry to the configuration.
+/** Add a new PDO entry to the configuration.
  *
  * \retval Pointer to the added entry, otherwise a ERR_PTR() code.
  */
@@ -158,7 +158,7 @@ ec_pdo_entry_t *ec_pdo_add_entry(
     ec_pdo_entry_t *entry;
 
     if (!(entry = kmalloc(sizeof(ec_pdo_entry_t), GFP_KERNEL))) {
-        EC_ERR("Failed to allocate memory for Pdo entry.\n");
+        EC_ERR("Failed to allocate memory for PDO entry.\n");
         return ERR_PTR(-ENOMEM);
     }
 
@@ -172,7 +172,7 @@ ec_pdo_entry_t *ec_pdo_add_entry(
 
 /*****************************************************************************/
 
-/** Copy Pdo entries from another Pdo.
+/** Copy PDO entries from another PDO.
  *
  * \retval  0 Success.
  * \retval <0 Error code.
@@ -187,7 +187,7 @@ int ec_pdo_copy_entries(ec_pdo_t *pdo, const ec_pdo_t *other)
     list_for_each_entry(other_entry, &other->entries, list) {
         if (!(entry = (ec_pdo_entry_t *)
                     kmalloc(sizeof(ec_pdo_entry_t), GFP_KERNEL))) {
-            EC_ERR("Failed to allocate memory for Pdo entry copy.\n");
+            EC_ERR("Failed to allocate memory for PDO entry copy.\n");
             return -ENOMEM;
         }
 
@@ -205,14 +205,14 @@ int ec_pdo_copy_entries(ec_pdo_t *pdo, const ec_pdo_t *other)
 
 /*****************************************************************************/
 
-/** Compares the entries of two Pdos.
+/** Compares the entries of two PDOs.
  *
- * \retval 1 The entries of the given Pdos are equal.
- * \retval 0 The entries of the given Pdos differ.
+ * \retval 1 The entries of the given PDOs are equal.
+ * \retval 0 The entries of the given PDOs differ.
  */
 int ec_pdo_equal_entries(
-        const ec_pdo_t *pdo1, /**< First Pdo. */
-        const ec_pdo_t *pdo2 /**< Second Pdo. */
+        const ec_pdo_t *pdo1, /**< First PDO. */
+        const ec_pdo_t *pdo2 /**< Second PDO. */
         )
 {
     const struct list_head *head1, *head2, *item1, *item2;
@@ -241,12 +241,12 @@ int ec_pdo_equal_entries(
 
 /*****************************************************************************/
 
-/** Get the number of Pdo entries.
+/** Get the number of PDO entries.
  *
- * \return Number of Pdo entries.
+ * \return Number of PDO entries.
  */
 unsigned int ec_pdo_entry_count(
-        const ec_pdo_t *pdo /**< Pdo. */
+        const ec_pdo_t *pdo /**< PDO. */
         )
 {
     const ec_pdo_entry_t *entry;
@@ -261,12 +261,12 @@ unsigned int ec_pdo_entry_count(
 
 /*****************************************************************************/
 
-/** Finds a Pdo entry via its position in the list.
+/** Finds a PDO entry via its position in the list.
  *
  * Const version.
  */
 const ec_pdo_entry_t *ec_pdo_find_entry_by_pos_const(
-        const ec_pdo_t *pdo, /**< Pdo. */
+        const ec_pdo_t *pdo, /**< PDO. */
         unsigned int pos /**< Position in the list. */
         )
 {

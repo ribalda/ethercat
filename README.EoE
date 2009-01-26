@@ -3,7 +3,7 @@
 $Id$
 
 This file shall give additional information on how to set up a network
-environment with Ethernet-over-EtherCAT devices.
+environment with Ethernet over EtherCAT devices.
 
 A virtual network interface will appear for every EoE-capable slave. The
 interface naming scheme is either eoeXsY, where X is the master index and Y is

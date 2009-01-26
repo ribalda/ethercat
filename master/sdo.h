@@ -26,7 +26,7 @@
 
 /**
    \file
-   EtherCAT CANopen Sdo structure.
+   EtherCAT CANopen SDO structure.
 */
 
 /*****************************************************************************/
@@ -41,14 +41,14 @@
 
 /*****************************************************************************/
 
-/** CANopen Sdo.
+/** CANopen SDO.
  */
 struct ec_sdo {
     struct list_head list; /**< List item. */
     ec_slave_t *slave; /**< Parent slave. */
-    uint16_t index; /**< Sdo index. */
+    uint16_t index; /**< SDO index. */
     uint8_t object_code; /**< Object code. */
-    char *name; /**< Sdo name. */
+    char *name; /**< SDO name. */
     uint8_t max_subindex; /**< Maximum subindex. */
     struct list_head entries; /**< List of entries. */
 };

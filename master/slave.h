@@ -128,7 +128,7 @@ struct ec_slave
     // Slave information interface
     ec_sii_t sii; /**< Extracted SII data. */
 
-    struct list_head sdo_dictionary; /**< Sdo dictionary list */
+    struct list_head sdo_dictionary; /**< SDO dictionary list */
     uint8_t sdo_dictionary_fetched; /**< Dictionary has been fetched. */
     unsigned long jiffies_preop; /**< Time, the slave went to PREOP. */
 };

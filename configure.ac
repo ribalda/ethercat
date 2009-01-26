@@ -321,7 +321,7 @@ if test "x${debugring}" = "x1"; then
 fi
 
 #------------------------------------------------------------------------------
-# Ethernet-over-EtherCAT support
+# Ethernet over EtherCAT support
 #------------------------------------------------------------------------------
 
 AC_ARG_ENABLE([eoe],

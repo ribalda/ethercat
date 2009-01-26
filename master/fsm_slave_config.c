@@ -74,7 +74,7 @@ void ec_fsm_slave_config_init(
         ec_datagram_t *datagram, /**< datagram structure to use */
         ec_fsm_change_t *fsm_change, /**< State change state machine to use. */
         ec_fsm_coe_t *fsm_coe, /**< CoE state machine to use. */
-        ec_fsm_pdo_t *fsm_pdo /**< Pdo configuration state machine to use. */
+        ec_fsm_pdo_t *fsm_pdo /**< PDO configuration state machine to use. */
         )
 {
     ec_sdo_request_init(&fsm->request_copy);
@@ -436,7 +436,7 @@ void ec_fsm_slave_config_state_preop(
 
 /*****************************************************************************/
 
-/** Check for Sdo configurations to be applied.
+/** Check for SDO configurations to be applied.
  */
 void ec_fsm_slave_config_enter_sdo_conf(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
@@ -445,12 +445,12 @@ void ec_fsm_slave_config_enter_sdo_conf(
     ec_slave_t *slave = fsm->slave;
 
     // No CoE configuration to be applied?
-    if (list_empty(&slave->config->sdo_configs)) { // skip Sdo configuration
+    if (list_empty(&slave->config->sdo_configs)) { // skip SDO configuration
         ec_fsm_slave_config_enter_pdo_conf(fsm);
         return;
     }
 
-    // start Sdo configuration
+    // start SDO configuration
     fsm->state = ec_fsm_slave_config_state_sdo_conf;
     fsm->request = list_entry(fsm->slave->config->sdo_configs.next,
             ec_sdo_request_t, list);
@@ -471,7 +471,7 @@ void ec_fsm_slave_config_state_sdo_conf(
     if (ec_fsm_coe_exec(fsm->fsm_coe)) return;
 
     if (!ec_fsm_coe_success(fsm->fsm_coe)) {
-        EC_ERR("Sdo configuration failed for slave %u.\n",
+        EC_ERR("SDO configuration failed for slave %u.\n",
                 fsm->slave->ring_position);
         fsm->slave->error_flag = 1;
         fsm->state = ec_fsm_slave_config_state_error;
@@ -483,7 +483,7 @@ void ec_fsm_slave_config_state_sdo_conf(
         return;
     }
 
-    // Another Sdo to configure?
+    // Another SDO to configure?
     if (fsm->request->list.next != &fsm->slave->config->sdo_configs) {
         fsm->request = list_entry(fsm->request->list.next,
                 ec_sdo_request_t, list);
@@ -494,7 +494,7 @@ void ec_fsm_slave_config_state_sdo_conf(
         return;
     }
 
-    // All Sdos are now configured.
+    // All SDOs are now configured.
     ec_fsm_slave_config_enter_pdo_conf(fsm);
 }
 
@@ -506,7 +506,7 @@ void ec_fsm_slave_config_enter_pdo_conf(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-    // Start configuring Pdos
+    // Start configuring PDOs
     ec_fsm_pdo_start_configuration(fsm->fsm_pdo, fsm->slave);
     fsm->state = ec_fsm_slave_config_state_pdo_conf;
     fsm->state(fsm); // execute immediately
@@ -529,7 +529,7 @@ void ec_fsm_slave_config_state_pdo_conf(
     }
 
     if (!ec_fsm_pdo_success(fsm->fsm_pdo)) {
-        EC_WARN("Pdo configuration failed on slave %u.\n",
+        EC_WARN("PDO configuration failed on slave %u.\n",
                 fsm->slave->ring_position);
     }
 
@@ -538,7 +538,7 @@ void ec_fsm_slave_config_state_pdo_conf(
 
 /*****************************************************************************/
 
-/** Check for Pdo sync managers to be configured.
+/** Check for PDO sync managers to be configured.
  */
 void ec_fsm_slave_config_enter_pdo_sync(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
@@ -559,7 +559,7 @@ void ec_fsm_slave_config_enter_pdo_sync(
     }
 
     if (slave->sii.sync_count <= offset) {
-        // no Pdo sync managers to configure
+        // no PDO sync managers to configure
         ec_fsm_slave_config_enter_fmmu(fsm);
         return;
     }
@@ -587,7 +587,7 @@ void ec_fsm_slave_config_enter_pdo_sync(
 
 /*****************************************************************************/
 
-/** Configure Pdo sync managers.
+/** Configure PDO sync managers.
  */
 void ec_fsm_slave_config_state_pdo_sync(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
@@ -661,7 +661,7 @@ void ec_fsm_slave_config_enter_fmmu(
         if (!(sync = ec_slave_get_sync(slave, fmmu->sync_index))) {
             slave->error_flag = 1;
             fsm->state = ec_fsm_slave_config_state_error;
-            EC_ERR("Failed to determine Pdo sync manager for FMMU on slave"
+            EC_ERR("Failed to determine PDO sync manager for FMMU on slave"
                     " %u!\n", slave->ring_position);
             return;
         }

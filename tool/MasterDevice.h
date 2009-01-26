@@ -46,7 +46,7 @@ class MasterDeviceSdoAbortException:
     protected:
         /** Constructor with stringstream parameter. */
         MasterDeviceSdoAbortException(uint32_t code):
-            MasterDeviceException("Sdo transfer aborted.") {
+            MasterDeviceException("SDO transfer aborted.") {
                 abortCode = code;
             };
 };

@@ -261,20 +261,20 @@ void CommandSlaves::showSlaves(
 
             if (si->mailbox_protocols & EC_MBOX_COE) {
                 cout << "  CoE details:" << endl
-                    << "    Enable Sdo: "
+                    << "    Enable SDO: "
                     << (si->coe_details.enable_sdo ? "yes" : "no") << endl
-                    << "    Enable Sdo Info: "
+                    << "    Enable SDO Info: "
                     << (si->coe_details.enable_sdo_info ? "yes" : "no") << endl
-                    << "    Enable Pdo Assign: "
+                    << "    Enable PDO Assign: "
                     << (si->coe_details.enable_pdo_assign
                             ? "yes" : "no") << endl
-                    << "    Enable Pdo Configuration: "
+                    << "    Enable PDO Configuration: "
                     << (si->coe_details.enable_pdo_configuration
                             ? "yes" : "no") << endl
                     << "    Enable Upload at startup: "
                     << (si->coe_details.enable_upload_at_startup
                             ? "yes" : "no") << endl
-                    << "    Enable Sdo complete access: "
+                    << "    Enable SDO complete access: "
                     << (si->coe_details.enable_sdo_complete_access
                             ? "yes" : "no") << endl;
             }

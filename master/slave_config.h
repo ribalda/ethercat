@@ -63,8 +63,8 @@ struct ec_slave_config {
     ec_fmmu_config_t fmmu_configs[EC_MAX_FMMUS]; /**< FMMU configurations. */
     uint8_t used_fmmus; /**< Number of FMMUs used. */
 
-    struct list_head sdo_configs; /**< List of Sdo configurations. */
-    struct list_head sdo_requests; /**< List of Sdo requests. */
+    struct list_head sdo_configs; /**< List of SDO configurations. */
+    struct list_head sdo_requests; /**< List of SDO requests. */
     struct list_head voe_handlers; /**< List of VoE handlers. */
 };
 

@@ -227,19 +227,19 @@ EtherCAT functionality (see chap.~\ref{chap:api}).
 
   \end{itemize}
 
-\item CANopen-over-EtherCAT (CoE)
+\item CANopen over EtherCAT (CoE)
 
   \begin{itemize}
 
-  \item Sdo upload, download and information service.
+  \item SDO upload, download and information service.
 
-  \item Slave configuration via Sdos.
+  \item Slave configuration via SDOs.
 
-  \item Sdo access from userspace and from the application.
+  \item SDO access from userspace and from the application.
 
   \end{itemize}
 
-\item Ethernet-over-EtherCAT (EoE)
+\item Ethernet over EtherCAT (EoE)
 
   \begin{itemize}
 
@@ -254,12 +254,12 @@ EtherCAT functionality (see chap.~\ref{chap:api}).
 
   \begin{itemize}
 
-  \item Showing the current bus with slaves, Pdos and Sdos.
+  \item Showing the current bus with slaves, PDOs and SDOs.
   \item Showing the bus configuration.
   \item Showing domains and process data.
   \item Setting the master's debug level.
   \item Writing alias addresses.
-  \item Sdo uploading/downloading.
+  \item SDO uploading/downloading.
   \item Reading/writing a slave's SII.
   \item Setting slave states.
   \item Generate slave description XML.
@@ -457,7 +457,7 @@ possible until then.
 an Ethernet device, but is not requested by any application yet. The master
 runs its state machine (see sec.~\ref{sec:fsm-master}), that automatically
 scans the bus for slaves and executes pending operations from the userspace
-interface (for example Sdo access). The command-line tool can be used to
+interface (for example SDO access). The command-line tool can be used to
 access the bus, but there is no process data exchange because of the missing
 bus configuration.
 
@@ -478,12 +478,12 @@ process data.
 \index{Process data}
 
 Slaves offer their inputs and outputs by presenting the master so-called
-``Process Data Objects'' (Pdos\index{Pdo}). The available Pdos can be either
+``Process Data Objects'' (PDOs\index{PDO}). The available PDOs can be either
 determined by reading out the slave's TXPDO and RXPDO SII categories from the
-E$^2$PROM (in case of fixed Pdos) or by reading out the appropriate CoE
+E$^2$PROM (in case of fixed PDOs) or by reading out the appropriate CoE
 objects (see sec.~\ref{sec:coe}), if available.  The application can register
-the Pdos' entries for exchange during cyclic operation. The sum of all
-registered Pdo entries defines the ``process data image'', which is exchanged
+the PDOs' entries for exchange during cyclic operation. The sum of all
+registered PDO entries defines the ``process data image'', which is exchanged
 via datagrams with ``logical'' memory access (like LWR, LRD or LRW) introduced
 in~\cite[sec.~5.4]{dlspec}.
 
@@ -491,8 +491,8 @@ in~\cite[sec.~5.4]{dlspec}.
 \index{Domain}
 
 The process data image can be easily managed by creating so-called
-``domains'', which allow grouped Pdo exchange. They also take care of managing
-the datagram structures needed to exchange the Pdos. Domains are mandatory for
+``domains'', which allow grouped PDO exchange. They also take care of managing
+the datagram structures needed to exchange the PDOs. Domains are mandatory for
 process data exchange, so there has to be at least one. They were introduced
 for the following reasons:
 
@@ -506,10 +506,10 @@ image exceeds this limit, multiple frames have to be sent, and the image has
 to be partitioned for the use of multiple datagrams. A domain manages this
 automatically.
 
-\item Not every Pdo has to be exchanged with the same frequency: The values of
-Pdos can vary slowly over time (for example temperature values), so exchanging
+\item Not every PDO has to be exchanged with the same frequency: The values of
+PDOs can vary slowly over time (for example temperature values), so exchanging
 them with a high frequency would just waste bus bandwidth. For this reason,
-multiple domains can be created, to group different Pdos and so allow separate
+multiple domains can be created, to group different PDOs and so allow separate
 exchange.
 
 \end{itemize}
@@ -521,21 +521,21 @@ limited by the slaves.
 \paragraph{FMMU Configuration}
 \index{FMMU!Configuration}
 
-An application can register Pdo entries for exchange. Every Pdo entry and its
-parent Pdo is part of a memory area in the slave's physical memory, that is
+An application can register PDO entries for exchange. Every PDO entry and its
+parent PDO is part of a memory area in the slave's physical memory, that is
 protected by a sync manager \cite[sec.~6.7]{dlspec} for synchronized access.
 In order to make a sync manager react on a datagram accessing its memory, it
 is necessary to access the last byte covered by the sync manager. Otherwise
 the sync manager will not react on the datagram and no data will be exchanged.
 That is why the whole synchronized memory area has to be included into the
-process data image: For example, if a certain Pdo entry of a slave is
+process data image: For example, if a certain PDO entry of a slave is
 registered for exchange with a certain domain, one FMMU will be configured to
-map the complete sync-manager-protected memory, the Pdo entry resides in. If a
-second Pdo entry of the same slave is registered for process data exchange
+map the complete sync-manager-protected memory, the PDO entry resides in. If a
+second PDO entry of the same slave is registered for process data exchange
 within the same domain, and it resides in the same sync-manager-protected
 memory as the first one, the FMMU configuration is not altered, because the
 desired memory is already part of the domain's process data image. If the
-second Pdo entry would belong to another sync-manager-protected area, this
+second PDO entry would belong to another sync-manager-protected area, this
 complete area would also be included into the domains process data image.
 
 Figure~\ref{fig:fmmus} gives an overview, how FMMUs are configured to map
@@ -559,11 +559,11 @@ physical memory to logical process data images.
 % Interface version
 % Master Requesting and Releasing
 % Master Locking
-% Configuring Pdo assignment and mapping
+% Configuring PDO assignment and mapping
 % Domains (memory)
-% Pdo entry registration
-% Sdo configuration
-% Sdo access
+% PDO entry registration
+% SDO configuration
+% SDO access
 
 The application interface provides functions and data structures for
 applications to access an EtherCAT master. The complete documentation of the
@@ -580,7 +580,7 @@ Every application should use the master in two steps:
 \begin{description}
 
 \item[Configuration] The master is requested and the configuration is applied.
-For example, domains are created, slaves are configured and Pdo entries are
+For example, domains are created, slaves are configured and PDO entries are
 registered (see sec.~\ref{sec:masterconfig}).
 
 \item[Operation] Cyclic code is run and process data are exchanged (see
@@ -1470,7 +1470,7 @@ monitored. If a slave is not in the state it supposed to be, the slave is
 
 \item[Request handling] Requests (either originating from the application or
 from external sources) are handled. A request is a job that the master shall
-process asynchronously, for example an SII access, Sdo access, or similar.
+process asynchronously, for example an SII access, SDO access, or similar.
 
 \end{description}
 
@@ -1512,10 +1512,10 @@ image memory.
 
 \item[PREOP] If the slave supports CoE, it is set to PREOP state using the
 State change FSM (see sec.~\ref{sec:fsm-change}) to enable mailbox
-communication and read the Pdo configuration via CoE.
+communication and read the PDO configuration via CoE.
 
-\item[Pdos] The Pdos are read via CoE (if supported) using the Pdo Reading FSM
-(see sec.~\ref{sec:fsm-pdo}). If this is successful, the Pdo information from
+\item[PDOs] The PDOs are read via CoE (if supported) using the PDO Reading FSM
+(see sec.~\ref{sec:fsm-pdo}). If this is successful, the PDO information from
 the SII (if any) is overwritten.
 
 \end{description}
@@ -1554,18 +1554,18 @@ is skipped.
 \item[PREOP] The state change FSM is used to bring the slave to PREOP state.
 If this is the requested state, the state machine is finished.
 
-\item[Sdo Configuration] If there is a slave configuration attached (see
-sec.~\ref{sec:masterconfig}), and there are any Sdo configurations are
+\item[SDO Configuration] If there is a slave configuration attached (see
+sec.~\ref{sec:masterconfig}), and there are any SDO configurations are
 provided by the application, these are sent to the slave.
 
-\item[Pdo Configuration] The Pdo configuration state machine is executed to
-apply all necessary Pdo configurations.
+\item[PDO Configuration] The PDO configuration state machine is executed to
+apply all necessary PDO configurations.
 
-\item[Pdo Sync Manager Configuration] If any Pdo sync managers exist, they are
+\item[PDO Sync Manager Configuration] If any PDO sync managers exist, they are
 configured.
 
 \item[FMMU Configuration] If there are FMMUs configurations supplied by the
-application (i.\,e.\ if the application registered Pdo entries), they are
+application (i.\,e.\ if the application registered PDO entries), they are
 applied. 
 
 \item[SAFEOP] The state change FSM is used to bring the slave to SAFEOP state.
@@ -1677,60 +1677,60 @@ this state to avoid that another write operation is issued too early.
 
 %------------------------------------------------------------------------------
 
-\section{The Pdo State Machines}
+\section{The PDO State Machines}
 \label{sec:fsm-pdo}
-\index{FSM!Pdo}
+\index{FSM!PDO}
 
-The Pdo state machines are a set of state machines that read or write the Pdo
-assignment and the Pdo mapping via the ``CoE Communication Area'' described in
-\cite[sec. 5.6.7.4]{alspec}. For the object access, the CANopen-over-EtherCAT
+The PDO state machines are a set of state machines that read or write the PDO
+assignment and the PDO mapping via the ``CoE Communication Area'' described in
+\cite[sec. 5.6.7.4]{alspec}. For the object access, the CANopen over EtherCAT
 access primitives are used (see sec.~\ref{sec:coe}), so the slave must support
 the CoE mailbox protocol.
 
-\paragraph{Pdo Reading FSM} This state machine (fig.~\ref{fig:fsm-pdo-read})
-has the purpose to read the complete Pdo configuration of a slave. It reads
-the Pdo assignment for each Sync Manager and uses the Pdo Entry Reading FSM
-(fig.~\ref{fig:fsm-pdo-entry-read}) to read the mapping for each assigned Pdo.
+\paragraph{PDO Reading FSM} This state machine (fig.~\ref{fig:fsm-pdo-read})
+has the purpose to read the complete PDO configuration of a slave. It reads
+the PDO assignment for each Sync Manager and uses the PDO Entry Reading FSM
+(fig.~\ref{fig:fsm-pdo-entry-read}) to read the mapping for each assigned PDO.
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=.4\textwidth]{graphs/fsm_pdo_read}
-  \caption{Transition Diagram of the Pdo Reading State Machine}
+  \caption{Transition Diagram of the PDO Reading State Machine}
   \label{fig:fsm-pdo-read}
 \end{figure}
 
-Basically it reads the every Sync manager's Pdo assignment Sdo's
+Basically it reads the every Sync manager's PDO assignment SDO's
 (\lstinline+0x1C1x+) number of elements to determine the number of assigned
-Pdos for this sync manager and then reads out the subindices of the Sdo to get
-the assigned Pdo's indices. When a Pdo index is read, the Pdo Entry Reading
-FSM is executed to read the Pdo's mapped Pdo entries.
+PDOs for this sync manager and then reads out the subindices of the SDO to get
+the assigned PDO's indices. When a PDO index is read, the PDO Entry Reading
+FSM is executed to read the PDO's mapped PDO entries.
 
-\paragraph{Pdo Entry Reading FSM} This state machine
-(fig.~\ref{fig:fsm-pdo-entry-read}) reads the Pdo mapping (the Pdo entries) of
-a Pdo. It reads the respective mapping Sdo (\lstinline+0x1600+ --
+\paragraph{PDO Entry Reading FSM} This state machine
+(fig.~\ref{fig:fsm-pdo-entry-read}) reads the PDO mapping (the PDO entries) of
+a PDO. It reads the respective mapping SDO (\lstinline+0x1600+ --
 \lstinline+0x17ff+, or \lstinline+0x1a00+ -- \lstinline+0x1bff+) for the given
-Pdo by reading first the subindex zero (number of elements) to determine the
-number of mapped Pdo entries. After that, each subindex is read to get the
-mapped Pdo entry index, subindex and bit size.
+PDO by reading first the subindex zero (number of elements) to determine the
+number of mapped PDO entries. After that, each subindex is read to get the
+mapped PDO entry index, subindex and bit size.
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=.4\textwidth]{graphs/fsm_pdo_entry_read}
-  \caption{Transition Diagram of the Pdo Entry Reading State Machine}
+  \caption{Transition Diagram of the PDO Entry Reading State Machine}
   \label{fig:fsm-pdo-entry-read}
 \end{figure}
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=.9\textwidth]{graphs/fsm_pdo_conf}
-  \caption{Transition Diagram of the Pdo Configuration State Machine}
+  \caption{Transition Diagram of the PDO Configuration State Machine}
   \label{fig:fsm-pdo-conf}
 \end{figure}
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=.4\textwidth]{graphs/fsm_pdo_entry_conf}
-  \caption{Transition Diagram of the Pdo Entry Configuration State Machine}
+  \caption{Transition Diagram of the PDO Entry Configuration State Machine}
   \label{fig:fsm-pdo-entry-conf}
 \end{figure}
 
@@ -1744,12 +1744,12 @@ protocols. See the below section for details.
 
 %------------------------------------------------------------------------------
 
-\section{Ethernet-over-EtherCAT (EoE)}
+\section{Ethernet over EtherCAT (EoE)}
 \label{sec:eoe}
 \index{EoE}
 
 The EtherCAT master implements the
-Ethernet-over-EtherCAT\nomenclature{EoE}{Ethernet-over-EtherCAT, Mailbox
+Ethernet over EtherCAT\nomenclature{EoE}{Ethernet over EtherCAT, Mailbox
 Protocol} mailbox protocol~\cite[sec.~5.7]{alspec} to enable the tunneling of
 Ethernet frames to special slaves, that can either have physical Ethernet
 ports to forward the frames to, or have an own IP stack to receive the frames.
@@ -1903,11 +1903,11 @@ application-layer state is automatically set to OP.
 
 %------------------------------------------------------------------------------
 
-\section{CANopen-over-EtherCAT (CoE)}
+\section{CANopen over EtherCAT (CoE)}
 \label{sec:coe}
 \index{CoE}
 
-The CANopen-over-EtherCAT\nomenclature{CoE}{CANopen-over-EtherCAT, Mailbox
+The CANopen over EtherCAT\nomenclature{CoE}{CANopen over EtherCAT, Mailbox
 Protocol} protocol~\cite[sec.~5.6]{alspec} is used to configure slaves and
 exchange data objects on application level.
 
@@ -1916,23 +1916,23 @@ exchange data objects on application level.
 % Download / Upload
 % Expedited / Normal
 % Segmenting
-% Sdo Info Services
+% SDO Info Services
 %
 
 \ldots
 
-\paragraph{Sdo Download State Machine}
+\paragraph{SDO Download State Machine}
 
-The best time to apply Sdo configurations is during the slave's PREOP state,
+The best time to apply SDO configurations is during the slave's PREOP state,
 because mailbox communication is already possible and slave's application will
 start with updating input data in the succeeding SAFEOP state. Therefore the
-Sdo configuration has to be part of the slave configuration state machine (see
-sec.~\ref{sec:fsm-conf}): It is implemented via an Sdo download state machine,
+SDO configuration has to be part of the slave configuration state machine (see
+sec.~\ref{sec:fsm-conf}): It is implemented via an SDO download state machine,
 that is executed just before entering the slave's SAFEOP state. In this way,
-it is guaranteed that the Sdo configurations are applied each time, the slave
+it is guaranteed that the SDO configurations are applied each time, the slave
 is reconfigured.
 
-The transition diagram of the Sdo Download state machine can be seen
+The transition diagram of the SDO Download state machine can be seen
 in figure~\ref{fig:fsm-coedown}.
 
 \begin{figure}[htbp]
@@ -1946,7 +1946,7 @@ in figure~\ref{fig:fsm-coedown}.
 
 \begin{description}
 \item[START] The beginning state of the CoE download state
-  machine. The ``Sdo Download Normal Request'' mailbox command is
+  machine. The ``SDO Download Normal Request'' mailbox command is
   sent. $\rightarrow$~REQUEST
 
 \item[REQUEST] It is checked, if the CoE download request has been
@@ -1955,7 +1955,7 @@ in figure~\ref{fig:fsm-coedown}.
 
 \item[CHECK] If no mailbox data is available, the timer is checked.
   \begin{itemize}
-  \item If it timed out, the Sdo download is aborted.
+  \item If it timed out, the SDO download is aborted.
     $\rightarrow$~ERROR
   \item Otherwise, the mailbox is queried again.
     $\rightarrow$~CHECK
@@ -1965,22 +1965,22 @@ in figure~\ref{fig:fsm-coedown}.
   $\rightarrow$~RESPONSE
 
 \item[RESPONSE] If the mailbox response could not be fetched, the data
-  is invalid, the wrong protocol was received, or a ``Abort Sdo
-  Transfer Request'' was received, the Sdo download is aborted.
+  is invalid, the wrong protocol was received, or a ``Abort SDO
+  Transfer Request'' was received, the SDO download is aborted.
   $\rightarrow$~ERROR
 
-  If a ``Sdo Download Normal Response'' acknowledgement was received,
-  the Sdo download was successful. $\rightarrow$~END
+  If a ``SDO Download Normal Response'' acknowledgement was received,
+  the SDO download was successful. $\rightarrow$~END
 
-\item[END] The Sdo download was successful.
+\item[END] The SDO download was successful.
 
-\item[ERROR] The Sdo download was aborted due to an error.
+\item[ERROR] The SDO download was aborted due to an error.
 
 \end{description}
 
 %------------------------------------------------------------------------------
 
-\section{Vendor-specific-over-EtherCAT (VoE)}
+\section{Vendor specific over EtherCAT (VoE)}
 \label{sec:voe}
 \index{VoE}
 
@@ -2087,19 +2087,19 @@ sec.~\ref{sec:autonode} for how to install and configure it.
 
 %------------------------------------------------------------------------------
 
-\subsection{Sync Managers, Pdos and Pdo Entries}
+\subsection{Sync Managers, PDOs and PDO Entries}
 
 \lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_pdos}
 
 %------------------------------------------------------------------------------
 
-\subsection{Sdo Dictionary}
+\subsection{SDO Dictionary}
 
 \lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_sdos}
 
 %------------------------------------------------------------------------------
 
-\subsection{Sdo Access}
+\subsection{SDO Access}
 
 \lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_download}
 

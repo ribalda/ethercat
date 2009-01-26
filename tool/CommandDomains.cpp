@@ -36,7 +36,7 @@ string CommandDomains::helpString() const
     	<< "(LRD/LWR/LRW) is displayed followed by the domain's" << endl
     	<< "process data size in byte. The last values are the current" << endl
     	<< "datagram working counter sum and the expected working" << endl
-    	<< "counter sum. If the values are equal, all Pdos were" << endl
+    	<< "counter sum. If the values are equal, all PDOs were" << endl
         << "exchanged during the last cycle." << endl
         << endl
     	<< "If the --verbose option is given, the participating slave" << endl

@@ -42,7 +42,7 @@
  */
 typedef struct {
     ec_direction_t dir; /**< Sync manager direction. */
-    ec_pdo_list_t pdos; /**< Current Pdo assignment. */
+    ec_pdo_list_t pdos; /**< Current PDO assignment. */
 } ec_sync_config_t;
 
 /*****************************************************************************/

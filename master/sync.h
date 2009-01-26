@@ -46,7 +46,7 @@ typedef struct {
     uint16_t default_length; /**< Data length in bytes. */
     uint8_t control_register; /**< Control register value. */
     uint8_t enable; /**< Enable bit. */
-    ec_pdo_list_t pdos; /**< Current Pdo assignment. */
+    ec_pdo_list_t pdos; /**< Current PDO assignment. */
 } ec_sync_t;
 
 /*****************************************************************************/

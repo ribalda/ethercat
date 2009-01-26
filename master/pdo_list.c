@@ -26,7 +26,7 @@
 
 /**
    \file
-   EtherCAT Pdo list methods.
+   EtherCAT PDO list methods.
 */
 
 /*****************************************************************************/
@@ -42,10 +42,10 @@
 
 /*****************************************************************************/
 
-/** Pdo list constructor.
+/** PDO list constructor.
  */
 void ec_pdo_list_init(
-        ec_pdo_list_t *pl /**< Pdo list. */
+        ec_pdo_list_t *pl /**< PDO list. */
         )
 {
     INIT_LIST_HEAD(&pl->list);
@@ -53,18 +53,18 @@ void ec_pdo_list_init(
 
 /*****************************************************************************/
 
-/** Pdo list destructor.
+/** PDO list destructor.
  */
-void ec_pdo_list_clear(ec_pdo_list_t *pl /**< Pdo list. */)
+void ec_pdo_list_clear(ec_pdo_list_t *pl /**< PDO list. */)
 {
     ec_pdo_list_clear_pdos(pl);
 }
 
 /*****************************************************************************/
 
-/** Clears the list of mapped Pdos.
+/** Clears the list of mapped PDOs.
  */
-void ec_pdo_list_clear_pdos(ec_pdo_list_t *pl /**< Pdo list. */)
+void ec_pdo_list_clear_pdos(ec_pdo_list_t *pl /**< PDO list. */)
 {
     ec_pdo_t *pdo, *next;
 
@@ -77,12 +77,12 @@ void ec_pdo_list_clear_pdos(ec_pdo_list_t *pl /**< Pdo list. */)
 
 /*****************************************************************************/
 
-/** Calculates the total size of the mapped Pdo entries.
+/** Calculates the total size of the mapped PDO entries.
  *
  * \retval Data size in byte.
  */
 uint16_t ec_pdo_list_total_size(
-        const ec_pdo_list_t *pl /**< Pdo list. */
+        const ec_pdo_list_t *pl /**< PDO list. */
         )
 {
     unsigned int bit_size;
@@ -107,19 +107,19 @@ uint16_t ec_pdo_list_total_size(
 
 /*****************************************************************************/
 
-/** Add a new Pdo to the list.
+/** Add a new PDO to the list.
  *
- * \return Pointer to new Pdo, otherwise an ERR_PTR() code.
+ * \return Pointer to new PDO, otherwise an ERR_PTR() code.
  */
 ec_pdo_t *ec_pdo_list_add_pdo(
-        ec_pdo_list_t *pl, /**< Pdo list. */
-        uint16_t index /**< Pdo index. */
+        ec_pdo_list_t *pl, /**< PDO list. */
+        uint16_t index /**< PDO index. */
         )
 {
     ec_pdo_t *pdo;
 
     if (!(pdo = (ec_pdo_t *) kmalloc(sizeof(ec_pdo_t), GFP_KERNEL))) {
-        EC_ERR("Failed to allocate memory for Pdo.\n");
+        EC_ERR("Failed to allocate memory for PDO.\n");
         return ERR_PTR(-ENOMEM);
     }
 
@@ -131,27 +131,27 @@ ec_pdo_t *ec_pdo_list_add_pdo(
 
 /*****************************************************************************/
 
-/** Add the copy of an existing Pdo to the list.
+/** Add the copy of an existing PDO to the list.
  *
  * \return 0 on success, else < 0
  */
 int ec_pdo_list_add_pdo_copy(
-        ec_pdo_list_t *pl, /**< Pdo list. */
-        const ec_pdo_t *pdo /**< Pdo to add. */
+        ec_pdo_list_t *pl, /**< PDO list. */
+        const ec_pdo_t *pdo /**< PDO to add. */
         )
 {
     ec_pdo_t *mapped_pdo;
     int ret;
 
-    // Pdo already mapped?
+    // PDO already mapped?
     list_for_each_entry(mapped_pdo, &pl->list, list) {
         if (mapped_pdo->index != pdo->index) continue;
-        EC_ERR("Pdo 0x%04X is already mapped!\n", pdo->index);
+        EC_ERR("PDO 0x%04X is already mapped!\n", pdo->index);
         return -EEXIST;
     }
     
     if (!(mapped_pdo = kmalloc(sizeof(ec_pdo_t), GFP_KERNEL))) {
-        EC_ERR("Failed to allocate Pdo memory.\n");
+        EC_ERR("Failed to allocate PDO memory.\n");
         return -ENOMEM;
     }
 
@@ -167,13 +167,13 @@ int ec_pdo_list_add_pdo_copy(
 
 /*****************************************************************************/
 
-/** Makes a deep copy of another Pdo list.
+/** Makes a deep copy of another PDO list.
  *
  * \return 0 on success, else < 0
  */
 int ec_pdo_list_copy(
-        ec_pdo_list_t *pl, /**< Pdo list. */
-        const ec_pdo_list_t *other /**< Pdo list to copy from. */
+        ec_pdo_list_t *pl, /**< PDO list. */
+        const ec_pdo_list_t *other /**< PDO list to copy from. */
         )
 {
     ec_pdo_t *other_pdo;
@@ -181,7 +181,7 @@ int ec_pdo_list_copy(
 
     ec_pdo_list_clear_pdos(pl);
 
-    // Pdo already mapped?
+    // PDO already mapped?
     list_for_each_entry(other_pdo, &other->list, list) {
         ret = ec_pdo_list_add_pdo_copy(pl, other_pdo);
         if (ret)
@@ -193,13 +193,13 @@ int ec_pdo_list_copy(
 
 /*****************************************************************************/
 
-/** Compares two Pdo lists.
+/** Compares two PDO lists.
  *
- * Only the list is compared, not the Pdo entries (i. e. the Pdo
+ * Only the list is compared, not the PDO entries (i. e. the PDO
  * mapping).
  *
- * \retval 1 The given Pdo lists are equal.
- * \retval 0 The given Pdo lists differ.
+ * \retval 1 The given PDO lists are equal.
+ * \retval 0 The given PDO lists differ.
  */
 int ec_pdo_list_equal(
         const ec_pdo_list_t *pl1, /**< First list. */
@@ -233,11 +233,11 @@ int ec_pdo_list_equal(
 
 /*****************************************************************************/
 
-/** Finds a Pdo with the given index.
+/** Finds a PDO with the given index.
  */
 ec_pdo_t *ec_pdo_list_find_pdo(
-        const ec_pdo_list_t *pl, /**< Pdo list. */
-        uint16_t index /**< Pdo index. */
+        const ec_pdo_list_t *pl, /**< PDO list. */
+        uint16_t index /**< PDO index. */
         )
 {
     ec_pdo_t *pdo;
@@ -253,11 +253,11 @@ ec_pdo_t *ec_pdo_list_find_pdo(
 
 /*****************************************************************************/
 
-/** Finds a Pdo with the given index and returns a const pointer.
+/** Finds a PDO with the given index and returns a const pointer.
  */
 const ec_pdo_t *ec_pdo_list_find_pdo_const(
-        const ec_pdo_list_t *pl, /**< Pdo list. */
-        uint16_t index /**< Pdo index. */
+        const ec_pdo_list_t *pl, /**< PDO list. */
+        uint16_t index /**< PDO index. */
         )
 {
     const ec_pdo_t *pdo;
@@ -273,12 +273,12 @@ const ec_pdo_t *ec_pdo_list_find_pdo_const(
 
 /*****************************************************************************/
 
-/** Finds a Pdo via its position in the list.
+/** Finds a PDO via its position in the list.
  *
  * Const version.
  */
 const ec_pdo_t *ec_pdo_list_find_pdo_by_pos_const(
-        const ec_pdo_list_t *pl, /**< Pdo list. */
+        const ec_pdo_list_t *pl, /**< PDO list. */
         unsigned int pos /**< Position in the list. */
         )
 {
@@ -295,12 +295,12 @@ const ec_pdo_t *ec_pdo_list_find_pdo_by_pos_const(
 
 /*****************************************************************************/
 
-/** Get the number of Pdos in the list.
+/** Get the number of PDOs in the list.
  *
- * \return Number of Pdos.
+ * \return Number of PDOs.
  */
 unsigned int ec_pdo_list_count(
-        const ec_pdo_list_t *pl /**< Pdo list. */
+        const ec_pdo_list_t *pl /**< PDO list. */
         )
 {
     const ec_pdo_t *pdo;
@@ -315,10 +315,10 @@ unsigned int ec_pdo_list_count(
 
 /*****************************************************************************/
 
-/** Outputs the Pdos in the list.
+/** Outputs the PDOs in the list.
  */
 void ec_pdo_list_print(
-        const ec_pdo_list_t *pl /**< Pdo list. */
+        const ec_pdo_list_t *pl /**< PDO list. */
         )
 {
     const ec_pdo_t *pdo;

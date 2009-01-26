@@ -37,10 +37,10 @@
 
 /*****************************************************************************/
 
-/** Pdo entry constructor.
+/** PDO entry constructor.
  */
 void ec_pdo_entry_init(
-        ec_pdo_entry_t *entry /**< Pdo entry. */
+        ec_pdo_entry_t *entry /**< PDO entry. */
         )
 {
     entry->name = NULL;
@@ -48,14 +48,14 @@ void ec_pdo_entry_init(
 
 /*****************************************************************************/
 
-/** Pdo entry copy constructor.
+/** PDO entry copy constructor.
  *
  * \retval  0 Success.
  * \retval <0 Error code.
  */
 int ec_pdo_entry_init_copy(
-        ec_pdo_entry_t *entry, /**< Pdo entry. */
-        const ec_pdo_entry_t *other /**< Pdo entry to copy from. */
+        ec_pdo_entry_t *entry, /**< PDO entry. */
+        const ec_pdo_entry_t *other /**< PDO entry to copy from. */
         )
 {
     entry->index = other->index;
@@ -68,9 +68,9 @@ int ec_pdo_entry_init_copy(
 
 /*****************************************************************************/
 
-/** Pdo entry destructor.
+/** PDO entry destructor.
  */
-void ec_pdo_entry_clear(ec_pdo_entry_t *entry /**< Pdo entry. */)
+void ec_pdo_entry_clear(ec_pdo_entry_t *entry /**< PDO entry. */)
 {
     if (entry->name)
         kfree(entry->name);
@@ -78,13 +78,13 @@ void ec_pdo_entry_clear(ec_pdo_entry_t *entry /**< Pdo entry. */)
 
 /*****************************************************************************/
 
-/** Set Pdo entry name.
+/** Set PDO entry name.
  *
  * \retval  0 Success.
  * \retval <0 Error code.
  */
 int ec_pdo_entry_set_name(
-        ec_pdo_entry_t *entry, /**< Pdo entry. */
+        ec_pdo_entry_t *entry, /**< PDO entry. */
         const char *name /**< New name. */
         )
 {
@@ -98,7 +98,7 @@ int ec_pdo_entry_set_name(
 
     if (name && (len = strlen(name))) {
         if (!(entry->name = (char *) kmalloc(len + 1, GFP_KERNEL))) {
-            EC_ERR("Failed to allocate Pdo entry name.\n");
+            EC_ERR("Failed to allocate PDO entry name.\n");
             return -ENOMEM;
         }
         memcpy(entry->name, name, len + 1);
@@ -111,14 +111,14 @@ int ec_pdo_entry_set_name(
 
 /*****************************************************************************/
 
-/** Compares two Pdo entries.
+/** Compares two PDO entries.
  *
  * \retval 1 The entries are equal.
  * \retval 0 The entries differ.
  */
 int ec_pdo_entry_equal(
-        const ec_pdo_entry_t *entry1, /**< First Pdo entry. */
-        const ec_pdo_entry_t *entry2 /**< Second Pdo entry. */
+        const ec_pdo_entry_t *entry1, /**< First PDO entry. */
+        const ec_pdo_entry_t *entry2 /**< Second PDO entry. */
         )
 {
     return entry1->index == entry2->index

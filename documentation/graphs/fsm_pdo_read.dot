@@ -14,8 +14,8 @@ digraph pdo_read {
     pdo_count -> action_next_pdo [weight=5]
 
     action_next_pdo [shape=point,label=""]
-    action_next_pdo -> pdo [fontname="Helvetica", label="Next Pdo", weight=5]
-	action_next_pdo -> action_next_sync [fontname="Helvetica", label="No more Pdos"]
+    action_next_pdo -> pdo [fontname="Helvetica", label="Next PDO", weight=5]
+	action_next_pdo -> action_next_sync [fontname="Helvetica", label="No more PDOs"]
 
 	pdo [fontname="Helvetica"]
     pdo -> pdo_entries [weight=5]

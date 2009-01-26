@@ -34,6 +34,8 @@ Changes since 1.4.0-rc3:
   frame.
 * Modified licence headers to avoid conflicts with the GPL.
 * Restricted licence to GPLv2 only.
+* Fixed spelling of 'PDO', 'SDO' (all uppercase) and 'xx over EtherCAT'
+  (without hyphens).
 
 Changes in 1.4.0-rc3:
 
@@ -42,7 +44,7 @@ Changes in 1.4.0-rc3:
   semaphore was not released.
 * Minor fix in 'slaves' command that fixed duplicate display of supported
   mailbox protocols.
-* The Sdo Information Service is only queried, if the slave has the
+* The SDO Information Service is only queried, if the slave has the
   corresponding SII bit set.
 * Added some missing header files in the command-line-tool code.
 * Removed unstable e100, forcedeth, and r8169 drivers.
@@ -73,18 +75,18 @@ Changes in version 1.4.0-rc1:
       offers the possibility to use a shared-memory region. Therefore,
       added the domain methods ecrt_domain_size() and
       ecrt_domain_external_memory().
-    - Pdo entry registration functions do not return a process data pointer,
+    - PDO entry registration functions do not return a process data pointer,
       but an offset in the domain's process data. In addition, an optional bit
       position can be requested. This was necessary for the external domain
       memory. An additional advantage is, that the returned offset is
       immediately valid. If the domain's process data is allocated internally,
       the start address can be retrieved with ecrt_domain_data().
     - Replaced ecrt_slave_pdo_mapping/add/clear() with
-      ecrt_slave_config_pdo_assign_add() to add a Pdo to a sync manager's Pdo
-      assignment and ecrt_slave_config_pdo_mapping_add() to add a Pdo entry to a
-      Pdo's mapping. ecrt_slave_config_pdos() is a convenience function
+      ecrt_slave_config_pdo_assign_add() to add a PDO to a sync manager's PDO
+      assignment and ecrt_slave_config_pdo_mapping_add() to add a PDO entry to a
+      PDO's mapping. ecrt_slave_config_pdos() is a convenience function
       for both, that uses the new data types ec_pdo_info_t and
-      ec_pdo_entry_info_t. Pdo entries, that are mapped with these functions
+      ec_pdo_entry_info_t. PDO entries, that are mapped with these functions
       can now immediately be registered, even if the bus is offline.
     - Renamed ec_bus_status_t, ec_master_status_t to ec_bus_state_t and
       ec_master_state_t, respectively. Renamed ecrt_master_get_status() to
@@ -92,15 +94,15 @@ Changes in version 1.4.0-rc1:
     - Added ec_domain_state_t and ec_wc_state_t for a new output parameter
       of ecrt_domain_state(). The domain state object does now contain
       information, if the process data was exchanged completely.
-    - Former "Pdo registration" meant Pdo entry registration in fact, therefore
+    - Former "PDO registration" meant PDO entry registration in fact, therefore
       renamed ec_pdo_reg_t to ec_pdo_entry_reg_t and ecrt_domain_register_pdo()
       to ecrt_slave_config_reg_pdo_entry().
     - Removed ecrt_domain_register_pdo_range(), because it's functionality can
-      be reached by specifying an explicit Pdo assignment/mapping and
-      registering the mapped Pdo entries.
-    - Added an Sdo access interface, working with Sdo requests. These can be
+      be reached by specifying an explicit PDO assignment/mapping and
+      registering the mapped PDO entries.
+    - Added an SDO access interface, working with SDO requests. These can be
       scheduled for reading and writing during realtime operation.
-    - Exported ecrt_slave_config_sdo(), the generic Sdo configuration function.
+    - Exported ecrt_slave_config_sdo(), the generic SDO configuration function.
     - Removed the bus_state and bus_tainted flags from ec_master_state_t.
 * Device interface changes:
     - Moved device output parameter of ecdev_offer() to return value.
@@ -113,10 +115,10 @@ Changes in version 1.4.0-rc1:
     - Set the master's debug level.
     - Show domain information.
     - Show master information.
-    - List Pdo assignment/mapping.
-    - Write an Sdo entry.
-    - List Sdo dictionaries.
-    - Read an Sdo entry.
+    - List PDO assignment/mapping.
+    - Write an SDO entry.
+    - List SDO dictionaries.
+    - Read an SDO entry.
     - Output a slave's SII contents.
     - Write slave's SII contents.
     - Show slaves.
@@ -125,11 +127,11 @@ Changes in version 1.4.0-rc1:
 * Removed include/ecdb.h.
 * Using the timestamp counter is now optional (configure --enable-cycles),
   because it is only available on Intel architectures.
-* Sdo dictionaries will now also be fetched in operation mode.
+* SDO dictionaries will now also be fetched in operation mode.
 * SII write requests will now also be processed in operation mode.
-* Mapping of Pdo entries is now supported.
-* Current Pdo assignment/mapping is now read via CoE during bus scan, using
-  direct Sdo access, independent of the dictionary.
+* Mapping of PDO entries is now supported.
+* Current PDO assignment/mapping is now read via CoE during bus scan, using
+  direct SDO access, independent of the dictionary.
 * Network driver news:
     - Added 8139too driver for kernel 2.6.22, thanks to Erwin Burgstaller.
     - Added 8139too driver for kernel 2.6.23, thanks to Richard Hacker.
@@ -151,8 +153,8 @@ Changes in version 1.4.0-rc1:
 * Added support for slaves that do not support the LRW datagram type. Separate
   domains have to be used for inputs and output.
 * CoE implementation:
-    - Use expedites transfer type for Sdos <= 4 byte (thanks to J. Mohre).
-    - Allow gaps in Pdo mapping (thanks to R. Roesch).
+    - Use expedites transfer type for SDOs <= 4 byte (thanks to J. Mohre).
+    - Allow gaps in PDO mapping (thanks to R. Roesch).
     - Added some transfer timeouts.
     - Ansynchronous handling of Emergency requests.
     - Bugfixes.

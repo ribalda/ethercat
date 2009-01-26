@@ -8,8 +8,8 @@ digraph pdo_conf {
     start -> end [fontname="Helvetica",label="No config"]
 
     action_next_sync [shape=point,label=""]
-    action_next_sync -> action_check_assignment [fontname="Helvetica",label="No Pdos"]
-    action_next_sync -> action_pdo_mapping [fontname="Helvetica",label="First Pdo",weight=10]
+    action_next_sync -> action_check_assignment [fontname="Helvetica",label="No PDOs"]
+    action_next_sync -> action_pdo_mapping [fontname="Helvetica",label="First PDO",weight=10]
     action_next_sync -> end [fontname="Helvetica",label="No more SMs"]
 
     action_pdo_mapping [shape=point,label=""]
@@ -29,22 +29,22 @@ digraph pdo_conf {
     action_next_pdo_mapping [shape=point,label=""]
     action_next_pdo_mapping -> action_check_assignment [weight=10]
     action_next_pdo_mapping -> action_pdo_mapping
-    [fontname="Helvetica",label="Next Pdo"]
+    [fontname="Helvetica",label="Next PDO"]
 
     action_check_assignment [shape=point,label=""]
     action_check_assignment -> action_next_sync [fontname="Helvetica",label="Assign ok"]
     action_check_assignment -> zero_pdo_count [weight=10]
 
     zero_pdo_count [fontname="Helvetica"]
-    zero_pdo_count -> action_next_sync [fontname="Helvetica",label="No Pdos"]
-    zero_pdo_count -> action_assign_pdo [fontname="Helvetica",label="First Pdo", weight=10]
+    zero_pdo_count -> action_next_sync [fontname="Helvetica",label="No PDOs"]
+    zero_pdo_count -> action_assign_pdo [fontname="Helvetica",label="First PDO", weight=10]
 
     action_assign_pdo [shape=point,label=""]
     action_assign_pdo -> assign_pdo [weight=10]
 
     assign_pdo [fontname="Helvetica"]
-    assign_pdo -> set_pdo_count [fontname="Helvetica",label="No more Pdos", weight=10]
-    assign_pdo -> action_assign_pdo [fontname="Helvetica",label="Next Pdo"]
+    assign_pdo -> set_pdo_count [fontname="Helvetica",label="No more PDOs", weight=10]
+    assign_pdo -> action_assign_pdo [fontname="Helvetica",label="Next PDO"]
 
     set_pdo_count [fontname="Helvetica"]
     set_pdo_count -> action_next_sync

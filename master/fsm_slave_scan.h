@@ -55,7 +55,7 @@ struct ec_fsm_slave_scan
     ec_datagram_t *datagram; /**< Datagram used in the state machine. */
     ec_fsm_slave_config_t *fsm_slave_config; /**< Slave configuration state
                                                machine to use. */
-    ec_fsm_pdo_t *fsm_pdo; /**< Pdo configuration state machine to use. */
+    ec_fsm_pdo_t *fsm_pdo; /**< PDO configuration state machine to use. */
     unsigned int retries; /**< Retries on datagram timeout. */
 
     void (*state)(ec_fsm_slave_scan_t *); /**< State function. */

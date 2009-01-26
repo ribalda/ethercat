@@ -13,7 +13,7 @@ using namespace std;
 /*****************************************************************************/
 
 CommandSdos::CommandSdos():
-    SdoCommand("sdos", "List Sdo dictionaries.")
+    SdoCommand("sdos", "List SDO dictionaries.")
 {
 }
 
@@ -27,27 +27,27 @@ string CommandSdos::helpString() const
     	<< endl
     	<< getBriefDescription() << endl
     	<< endl
-    	<< "Sdo dictionary information is displayed in two layers," << endl
+    	<< "SDO dictionary information is displayed in two layers," << endl
     	<< "which are indented accordingly:" << endl
     	<< endl
-    	<< "1) Sdos - Hexadecimal Sdo index and the name. Example:" << endl
+    	<< "1) SDOs - Hexadecimal SDO index and the name. Example:" << endl
     	<< endl
-    	<< "   Sdo 0x1018, \"Identity object\"" << endl
+    	<< "   SDO 0x1018, \"Identity object\"" << endl
     	<< endl
-    	<< "2) Sdo entries - Sdo index and Sdo entry subindex (both" << endl
+    	<< "2) SDO entries - SDO index and SDO entry subindex (both" << endl
 		<< "   hexadecimal) followed by the data type, the length in" << endl
 		<< "   bit, and the description. Example:" << endl
     	<< endl
     	<< "   0x1018:01, uint32, 32 bit, \"Vendor id\"" << endl
     	<< endl
-    	<< "If the --quiet option is given, only the Sdos are output."
+    	<< "If the --quiet option is given, only the SDOs are output."
 		<< endl << endl
     	<< "Command-specific options:" << endl
         << "  --alias    -a <alias>" << endl
         << "  --position -p <pos>    Slave selection. See the help of" << endl
         << "                         the 'slaves' command." << endl
-    	<< "  --quiet    -q          Only output Sdos (without the" << endl
-		<< "                         Sdo entries)." << endl
+    	<< "  --quiet    -q          Only output SDOs (without the" << endl
+		<< "                         SDO entries)." << endl
     	<< endl
 		<< numericInfo();
 
@@ -90,7 +90,7 @@ void CommandSdos::listSlaveSdos(
     for (i = 0; i < slave.sdo_count; i++) {
         m.getSdo(&sdo, slave.position, i);
 
-        cout << "Sdo 0x"
+        cout << "SDO 0x"
             << hex << setfill('0')
             << setw(4) << sdo.sdo_index
             << ", \"" << sdo.name << "\"" << endl;

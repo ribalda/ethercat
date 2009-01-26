@@ -28,9 +28,9 @@ string CommandXml::helpString() const
         << endl
         << getBriefDescription() << endl
         << endl
-        << "Note that the Pdo information can either originate" << endl
+        << "Note that the PDO information can either originate" << endl
         << "from the SII or from the CoE communication area. For" << endl
-        << "slaves, that support configuring Pdo assignment and" << endl
+        << "slaves, that support configuring PDO assignment and" << endl
         << "mapping, the output depends on the last configuration." << endl
         << endl
         << "Command-specific options:" << endl
@@ -111,7 +111,7 @@ void CommandXml::generateSlaveXml(
         for (j = 0; j < sync.pdo_count; j++) {
             m.getPdo(&pdo, slave.position, i, j);
             pdoType = (sync.control_register & 0x04 ? "R" : "T");
-            pdoType += "xPdo";
+            pdoType += "xPdo"; // last 2 letters lowercase in XML!
 
             cout
                 << "          <" << pdoType

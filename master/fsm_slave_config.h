@@ -53,13 +53,13 @@ struct ec_fsm_slave_config
     ec_datagram_t *datagram; /**< Datagram used in the state machine. */
     ec_fsm_change_t *fsm_change; /**< State change state machine. */
     ec_fsm_coe_t *fsm_coe; /**< CoE state machine. */
-    ec_fsm_pdo_t *fsm_pdo; /**< Pdo configuration state machine. */
+    ec_fsm_pdo_t *fsm_pdo; /**< PDO configuration state machine. */
 
     ec_slave_t *slave; /**< Slave the FSM runs on. */
     void (*state)(ec_fsm_slave_config_t *); /**< State function. */
     unsigned int retries; /**< Retries on datagram timeout. */
-    ec_sdo_request_t *request; /**< Sdo request for Sdo configuration. */
-    ec_sdo_request_t request_copy; /**< Copied Sdo request. */
+    ec_sdo_request_t *request; /**< SDO request for SDO configuration. */
+    ec_sdo_request_t request_copy; /**< Copied SDO request. */
 };
 
 /*****************************************************************************/

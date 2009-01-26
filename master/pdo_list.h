@@ -26,7 +26,7 @@
 
 /**
    \file
-   EtherCAT Pdo list structure.
+   EtherCAT PDO list structure.
 */
 
 /*****************************************************************************/
@@ -41,10 +41,10 @@
 
 /*****************************************************************************/
 
-/** EtherCAT Pdo list.
+/** EtherCAT PDO list.
  */
 typedef struct {
-    struct list_head list; /**< List of Pdos. */
+    struct list_head list; /**< List of PDOs. */
 } ec_pdo_list_t;
 
 /*****************************************************************************/

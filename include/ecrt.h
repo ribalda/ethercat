@@ -56,18 +56,18 @@
  *   offers the possibility to use a shared-memory region. Therefore,
  *   added the domain methods ecrt_domain_size() and
  *   ecrt_domain_external_memory().
- * - Pdo entry registration functions do not return a process data pointer,
+ * - PDO entry registration functions do not return a process data pointer,
  *   but an offset in the domain's process data. In addition, an optional bit
  *   position can be requested. This was necessary for the external domain
  *   memory. An additional advantage is, that the returned offset is
  *   immediately valid. If the domain's process data is allocated internally,
  *   the start address can be retrieved with ecrt_domain_data().
  * - Replaced ecrt_slave_pdo_mapping/add/clear() with
- *   ecrt_slave_config_pdo_assign_add() to add a Pdo to a sync manager's Pdo
- *   assignment and ecrt_slave_config_pdo_mapping_add() to add a Pdo entry to a
- *   Pdo's mapping. ecrt_slave_config_pdos() is a convenience function
+ *   ecrt_slave_config_pdo_assign_add() to add a PDO to a sync manager's PDO
+ *   assignment and ecrt_slave_config_pdo_mapping_add() to add a PDO entry to a
+ *   PDO's mapping. ecrt_slave_config_pdos() is a convenience function
  *   for both, that uses the new data types ec_pdo_info_t and
- *   ec_pdo_entry_info_t. Pdo entries, that are mapped with these functions
+ *   ec_pdo_entry_info_t. PDO entries, that are mapped with these functions
  *   can now immediately be registered, even if the bus is offline.
  * - Renamed ec_bus_status_t, ec_master_status_t to ec_bus_state_t and
  *   ec_master_state_t, respectively. Renamed ecrt_master_get_status() to
@@ -75,15 +75,15 @@
  * - Added ec_domain_state_t and #ec_wc_state_t for a new output parameter
  *   of ecrt_domain_state(). The domain state object does now contain
  *   information, if the process data was exchanged completely.
- * - Former "Pdo registration" meant Pdo entry registration in fact, therefore
+ * - Former "PDO registration" meant PDO entry registration in fact, therefore
  *   renamed ec_pdo_reg_t to ec_pdo_entry_reg_t and ecrt_domain_register_pdo()
  *   to ecrt_slave_config_reg_pdo_entry().
  * - Removed ecrt_domain_register_pdo_range(), because it's functionality can
- *   be reached by specifying an explicit Pdo assignment/mapping and
- *   registering the mapped Pdo entries.
- * - Added an Sdo access interface, working with Sdo requests. These can be
+ *   be reached by specifying an explicit PDO assignment/mapping and
+ *   registering the mapped PDO entries.
+ * - Added an SDO access interface, working with SDO requests. These can be
  *   scheduled for reading and writing during realtime operation.
- * - Exported ecrt_slave_config_sdo(), the generic Sdo configuration function.
+ * - Exported ecrt_slave_config_sdo(), the generic SDO configuration function.
  * - Removed the bus_state and bus_tainted flags from ec_master_state_t.
  *
  * @{
@@ -223,7 +223,7 @@ typedef struct {
 
 /*****************************************************************************/
 
-/** Direction type for Pdo assignment functions.
+/** Direction type for PDO assignment functions.
  */
 typedef enum {
     EC_DIR_INVALID, /**< Invalid direction. Do not use this value. */
@@ -234,33 +234,33 @@ typedef enum {
 
 /*****************************************************************************/
 
-/** Pdo entry configuration information.
+/** PDO entry configuration information.
  *
  * This is the data type of the \a entries field in ec_pdo_info_t.
  *
  * \see ecrt_slave_config_pdos().
  */
 typedef struct {
-    uint16_t index; /**< Pdo entry index. */
-    uint8_t subindex; /**< Pdo entry subindex. */
-    uint8_t bit_length; /**< Size of the Pdo entry in bit. */
+    uint16_t index; /**< PDO entry index. */
+    uint8_t subindex; /**< PDO entry subindex. */
+    uint8_t bit_length; /**< Size of the PDO entry in bit. */
 } ec_pdo_entry_info_t;
 
 /*****************************************************************************/
 
-/** Pdo configuration information.
+/** PDO configuration information.
  * 
  * This is the data type of the \a pdos field in ec_sync_info_t.
  * 
  * \see ecrt_slave_config_pdos().
  */
 typedef struct {
-    uint16_t index; /**< Pdo index. */
-    unsigned int n_entries; /**< Number of Pdo entries in \a entries to map.
+    uint16_t index; /**< PDO index. */
+    unsigned int n_entries; /**< Number of PDO entries in \a entries to map.
                               Zero means, that the default mapping shall be
                               used (this can only be done if the slave is
                               present at bus configuration time). */
-    ec_pdo_entry_info_t *entries; /**< Array of Pdo entries to map. Can either
+    ec_pdo_entry_info_t *entries; /**< Array of PDO entries to map. Can either
                                     be \a NULL, or must contain at
                                     least \a n_entries values. */
 } ec_pdo_info_t;
@@ -269,8 +269,8 @@ typedef struct {
 
 /** Sync manager configuration information.
  *
- * This can be use to configure multiple sync managers including the Pdo
- * assignment and Pdo mapping. It is used as an input parameter type in
+ * This can be use to configure multiple sync managers including the PDO
+ * assignment and PDO mapping. It is used as an input parameter type in
  * ecrt_slave_config_pdos().
  */
 typedef struct {
@@ -278,14 +278,14 @@ typedef struct {
                      than #EC_MAX_SYNC_MANAGERS for a valid sync manager,
                      but can also be \a 0xff to mark the end of the list. */
     ec_direction_t dir; /**< Sync manager direction. */
-    unsigned int n_pdos; /**< Number of Pdos in \a pdos. */
-    ec_pdo_info_t *pdos; /**< Array with Pdos to assign. This must contain
-                            at least \a n_pdos Pdos. */
+    unsigned int n_pdos; /**< Number of PDOs in \a pdos. */
+    ec_pdo_info_t *pdos; /**< Array with PDOs to assign. This must contain
+                            at least \a n_pdos PDOs. */
 } ec_sync_info_t;
 
 /*****************************************************************************/
 
-/** List record type for Pdo entry mass-registration.
+/** List record type for PDO entry mass-registration.
  *
  * This type is used for the array parameter of the
  * ecrt_domain_reg_pdo_entry_list()
@@ -295,14 +295,14 @@ typedef struct {
     uint16_t position; /**< Slave position. */
     uint32_t vendor_id; /**< Slave vendor ID. */
     uint32_t product_code; /**< Slave product code. */
-    uint16_t index; /**< Pdo entry index. */
-    uint8_t subindex; /**< Pdo entry subindex. */
-    unsigned int *offset; /**< Pointer to a variable to store the Pdo entry's
+    uint16_t index; /**< PDO entry index. */
+    uint8_t subindex; /**< PDO entry subindex. */
+    unsigned int *offset; /**< Pointer to a variable to store the PDO entry's
                        (byte-)offset in the process data. */
     unsigned int *bit_position; /**< Pointer to a variable to store a bit 
                                   position (0-7) within the \a offset. Can be
                                   NULL, in which case an error is raised if the
-                                  Pdo entry does not byte-align. */
+                                  PDO entry does not byte-align. */
 } ec_pdo_entry_reg_t;
 
 /*****************************************************************************/
@@ -389,7 +389,7 @@ void ecrt_master_callbacks(
  *
  * For process data exchange, at least one process data domain is needed.
  * This method creates a new process data domain and returns a pointer to the
- * new domain object. This object can be used for registering Pdos and
+ * new domain object. This object can be used for registering PDOs and
  * exchanging them in cyclic operation.
  *
  * \return Pointer to the new domain on success, else NULL.
@@ -506,7 +506,7 @@ int ecrt_slave_config_sync_manager(
         ec_direction_t dir /**< Input/Output. */
         );
 
-/** Add a Pdo to a sync manager's Pdo assignment.
+/** Add a PDO to a sync manager's PDO assignment.
  *
  * \see ecrt_slave_config_pdos()
  * \return zero on success, else non-zero
@@ -515,12 +515,12 @@ int ecrt_slave_config_pdo_assign_add(
         ec_slave_config_t *sc, /**< Slave configuration. */
         uint8_t sync_index, /**< Sync manager index. Must be less
                               than #EC_MAX_SYNC_MANAGERS. */
-        uint16_t index /**< Index of the Pdo to assign. */
+        uint16_t index /**< Index of the PDO to assign. */
         );
 
-/** Clear a sync manager's Pdo assignment.
+/** Clear a sync manager's PDO assignment.
  *
- * This can be called before assigning Pdos via
+ * This can be called before assigning PDOs via
  * ecrt_slave_config_pdo_assign_add(), to clear the default assignment of a
  * sync manager.
  * 
@@ -532,34 +532,34 @@ void ecrt_slave_config_pdo_assign_clear(
                               than #EC_MAX_SYNC_MANAGERS. */
         );
 
-/** Add a Pdo entry to the given Pdo's mapping.
+/** Add a PDO entry to the given PDO's mapping.
  *
  * \see ecrt_slave_config_pdos()
  * \return zero on success, else non-zero
  */
 int ecrt_slave_config_pdo_mapping_add(
         ec_slave_config_t *sc, /**< Slave configuration. */
-        uint16_t pdo_index, /**< Index of the Pdo. */
-        uint16_t entry_index, /**< Index of the Pdo entry to add to the Pdo's
+        uint16_t pdo_index, /**< Index of the PDO. */
+        uint16_t entry_index, /**< Index of the PDO entry to add to the PDO's
                                 mapping. */
-        uint8_t entry_subindex, /**< Subindex of the Pdo entry to add to the
-                                  Pdo's mapping. */
-        uint8_t entry_bit_length /**< Size of the Pdo entry in bit. */
+        uint8_t entry_subindex, /**< Subindex of the PDO entry to add to the
+                                  PDO's mapping. */
+        uint8_t entry_bit_length /**< Size of the PDO entry in bit. */
         );
 
-/** Clear the mapping of a given Pdo.
+/** Clear the mapping of a given PDO.
  *
- * This can be called before mapping Pdo entries via
+ * This can be called before mapping PDO entries via
  * ecrt_slave_config_pdo_mapping_add(), to clear the default mapping.
  *
  * \see ecrt_slave_config_pdos()
  */
 void ecrt_slave_config_pdo_mapping_clear(
         ec_slave_config_t *sc, /**< Slave configuration. */
-        uint16_t pdo_index /**< Index of the Pdo. */
+        uint16_t pdo_index /**< Index of the PDO. */
         );
 
-/** Specify a complete Pdo configuration.
+/** Specify a complete PDO configuration.
  *
  * This function is a convenience wrapper for the functions
  * ecrt_slave_config_sync_manager(), ecrt_slave_config_pdo_assign_clear(),
@@ -568,7 +568,7 @@ void ecrt_slave_config_pdo_mapping_clear(
  * automatic code generation.
  *
  * The following example shows, how to specify a complete configuration,
- * including the Pdo mappings. With this information, the master is able to
+ * including the PDO mappings. With this information, the master is able to
  * reserve the complete process data, even if the slave is not present at
  * configuration time:
  *
@@ -599,9 +599,9 @@ void ecrt_slave_config_pdo_mapping_clear(
  * }
  * \endcode
  * 
- * The next example shows, how to configure the Pdo assignment only. The
- * entries for each assigned Pdo are taken from the Pdo's default mapping.
- * Please note, that Pdo entry registration will fail, if the Pdo
+ * The next example shows, how to configure the PDO assignment only. The
+ * entries for each assigned PDO are taken from the PDO's default mapping.
+ * Please note, that PDO entry registration will fail, if the PDO
  * configuration is left empty and the slave is offline.
  *
  * \code
@@ -635,44 +635,44 @@ int ecrt_slave_config_pdos(
                                        configurations. */
         );
 
-/** Registers a Pdo entry for process data exchange in a domain.
+/** Registers a PDO entry for process data exchange in a domain.
  *
- * Searches the assigned Pdos for the given Pdo entry. An error is raised, if
+ * Searches the assigned PDOs for the given PDO entry. An error is raised, if
  * the given entry is not mapped. Otherwise, the corresponding sync manager
  * and FMMU configurations are provided for slave configuration and the
- * respective sync manager's assigned Pdos are appended to the given domain,
- * if not already done. The offset of the requested Pdo entry's data inside
- * the domain's process data is returned. Optionally, the Pdo entry bit
+ * respective sync manager's assigned PDOs are appended to the given domain,
+ * if not already done. The offset of the requested PDO entry's data inside
+ * the domain's process data is returned. Optionally, the PDO entry bit
  * position (0-7) can be retrieved via the \a bit_position output parameter.
- * This pointer may be \a NULL, in this case an error is raised if the Pdo
+ * This pointer may be \a NULL, in this case an error is raised if the PDO
  * entry does not byte-align.
  *
- * \retval >=0 Success: Offset of the Pdo entry's process data.
+ * \retval >=0 Success: Offset of the PDO entry's process data.
  * \retval  <0 Error code.
  */
 int ecrt_slave_config_reg_pdo_entry(
         ec_slave_config_t *sc, /**< Slave configuration. */
-        uint16_t entry_index, /**< Index of the Pdo entry to register. */
-        uint8_t entry_subindex, /**< Subindex of the Pdo entry to register. */
+        uint16_t entry_index, /**< Index of the PDO entry to register. */
+        uint8_t entry_subindex, /**< Subindex of the PDO entry to register. */
         ec_domain_t *domain, /**< Domain. */
         unsigned int *bit_position /**< Optional address if bit addressing 
                                  is desired */
         );
 
-/** Add an Sdo configuration.
+/** Add an SDO configuration.
  *
- * An Sdo configuration is stored in the slave configuration object and is
+ * An SDO configuration is stored in the slave configuration object and is
  * downloaded to the slave whenever the slave is being configured by the
  * master. This usually happens once on master activation, but can be repeated
  * subsequently, for example after the slave's power supply failed.
  *
- * \attention The Sdos for Pdo assignment (\p 0x1C10 - \p 0x1C2F) and Pdo
+ * \attention The SDOs for PDO assignment (\p 0x1C10 - \p 0x1C2F) and PDO
  * mapping (\p 0x1600 - \p 0x17FF and \p 0x1A00 - \p 0x1BFF) should not be
  * configured with this function, because they are part of the slave
  * configuration done by the master. Please use ecrt_slave_config_pdos() and
  * friends instead.
  *
- * This is the generic function for adding an Sdo configuration. Please note
+ * This is the generic function for adding an SDO configuration. Please note
  * that the this function does not do any endianess correction. If
  * datatype-specific functions are needed (that automatically correct the
  * endianess), have a look at ecrt_slave_config_sdo8(),
@@ -683,8 +683,8 @@ int ecrt_slave_config_reg_pdo_entry(
  */
 int ecrt_slave_config_sdo(
         ec_slave_config_t *sc, /**< Slave configuration. */
-        uint16_t index, /**< Index of the Sdo to configure. */
-        uint8_t subindex, /**< Subindex of the Sdo to configure. */
+        uint16_t index, /**< Index of the SDO to configure. */
+        uint8_t subindex, /**< Subindex of the SDO to configure. */
         const uint8_t *data, /**< Pointer to the data. */
         size_t size /**< Size of the \a data. */
         );
@@ -731,15 +731,15 @@ int ecrt_slave_config_sdo32(
         uint32_t value /**< Value to set. */
         );
 
-/** Create an Sdo request to exchange Sdos during realtime operation.
+/** Create an SDO request to exchange SDOs during realtime operation.
  *
- * The created Sdo request object is freed automatically when the master is
+ * The created SDO request object is freed automatically when the master is
  * released.
  */
 ec_sdo_request_t *ecrt_slave_config_create_sdo_request(
         ec_slave_config_t *sc, /**< Slave configuration. */
-        uint16_t index, /**< Sdo index. */
-        uint8_t subindex, /**< Sdo subindex. */
+        uint16_t index, /**< SDO index. */
+        uint8_t subindex, /**< SDO subindex. */
         size_t size /**< Data size to reserve. */
         );
 
@@ -771,7 +771,7 @@ void ecrt_slave_config_state(
  * Domain methods
  *****************************************************************************/
 
-/** Registers a bunch of Pdo entries for a domain.
+/** Registers a bunch of PDO entries for a domain.
  *
  * \todo doc
  * \attention The registration array has to be terminated with an empty
@@ -780,7 +780,7 @@ void ecrt_slave_config_state(
  */
 int ecrt_domain_reg_pdo_entry_list(
         ec_domain_t *domain, /**< Domain. */
-        const ec_pdo_entry_reg_t *pdo_entry_regs /**< Array of Pdo
+        const ec_pdo_entry_reg_t *pdo_entry_regs /**< Array of PDO
                                                    registrations. */
         );
 
@@ -796,11 +796,11 @@ size_t ecrt_domain_size(
 
 /** Provide external memory to store the domain's process data.
  *
- * Call this after all Pdo entries have been registered and before activating
+ * Call this after all PDO entries have been registered and before activating
  * the master.
  *
  * The size of the allocated memory must be at least ecrt_domain_size(), after
- * all Pdo entries have been registered.
+ * all PDO entries have been registered.
  */
 void ecrt_domain_external_memory(
         ec_domain_t *domain, /**< Domain. */
@@ -858,10 +858,10 @@ void ecrt_domain_state(
         );
 
 /*****************************************************************************
- * Sdo request methods.
+ * SDO request methods.
  ****************************************************************************/
 
-/** Set the timeout for an Sdo request.
+/** Set the timeout for an SDO request.
  *
  * If the request cannot be processed in the specified time, if will be marked
  * as failed.
@@ -870,14 +870,14 @@ void ecrt_domain_state(
  * the next call of this method.
  */
 void ecrt_sdo_request_timeout(
-        ec_sdo_request_t *req, /**< Sdo request. */
+        ec_sdo_request_t *req, /**< SDO request. */
         uint32_t timeout /**< Timeout in milliseconds. Zero means no
                            timeout. */
         );
 
-/** Access to the Sdo request's data.
+/** Access to the SDO request's data.
  *
- * This function returns a pointer to the request's internal Sdo data memory.
+ * This function returns a pointer to the request's internal SDO data memory.
  *
  * - After a read operation was successful, integer data can be evaluated using
  *   the EC_READ_*() macros as usual. Example:
@@ -893,45 +893,45 @@ void ecrt_sdo_request_timeout(
  *   \endcode
  *
  * \attention The return value can be invalid during a read operation, because
- * the internal Sdo data memory could be re-allocated if the read Sdo data do
+ * the internal SDO data memory could be re-allocated if the read SDO data do
  * not fit inside.
  *
- * \return Pointer to the internal Sdo data memory.
+ * \return Pointer to the internal SDO data memory.
  */
 uint8_t *ecrt_sdo_request_data(
-        ec_sdo_request_t *req /**< Sdo request. */
+        ec_sdo_request_t *req /**< SDO request. */
         );
 
-/** Returns the current Sdo data size.
+/** Returns the current SDO data size.
  *
- * When the Sdo request is created, the data size is set to the size of the
+ * When the SDO request is created, the data size is set to the size of the
  * reserved memory. After a read operation the size is set to the size of the
  * read data. The size is not modified in any other situation.
  *
- * \return Sdo data size in bytes.
+ * \return SDO data size in bytes.
  */
 size_t ecrt_sdo_request_data_size(
-        const ec_sdo_request_t *req /**< Sdo request. */
+        const ec_sdo_request_t *req /**< SDO request. */
         );
 
-/** Get the current state of the Sdo request.
+/** Get the current state of the SDO request.
  *
  * \return Request state.
  */
 ec_request_state_t ecrt_sdo_request_state(
-    const ec_sdo_request_t *req /**< Sdo request. */
+    const ec_sdo_request_t *req /**< SDO request. */
     );
 
-/** Schedule an Sdo write operation.
+/** Schedule an SDO write operation.
  *
  * \attention This method may not be called while ecrt_sdo_request_state()
  * returns EC_SDO_REQUEST_BUSY.
  */
 void ecrt_sdo_request_write(
-        ec_sdo_request_t *req /**< Sdo request. */
+        ec_sdo_request_t *req /**< SDO request. */
         );
 
-/** Schedule an Sdo read operation.
+/** Schedule an SDO read operation.
  *
  * \attention This method may not be called while ecrt_sdo_request_state()
  * returns EC_SDO_REQUEST_BUSY.
@@ -941,7 +941,7 @@ void ecrt_sdo_request_write(
  * ecrt_sdo_request_state() returns EC_SDO_REQUEST_BUSY.
  */
 void ecrt_sdo_request_read(
-        ec_sdo_request_t *req /**< Sdo request. */
+        ec_sdo_request_t *req /**< SDO request. */
         );
 
 /*****************************************************************************

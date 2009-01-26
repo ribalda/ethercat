@@ -40,12 +40,12 @@
 
 /*****************************************************************************/
 
-/** Pdo entry description.
+/** PDO entry description.
  */
 typedef struct {
     struct list_head list; /**< list item */
-    uint16_t index; /**< Pdo entry index */
-    uint8_t subindex; /**< Pdo entry subindex */
+    uint16_t index; /**< PDO entry index */
+    uint8_t subindex; /**< PDO entry subindex */
     char *name; /**< entry name */
     uint8_t bit_length; /**< entry length in bit */
 } ec_pdo_entry_t;

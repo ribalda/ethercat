@@ -374,9 +374,9 @@ int ec_fsm_master_action_process_phy(
 
 /*****************************************************************************/
 
-/** Check for pending Sdo requests and process one.
+/** Check for pending SDO requests and process one.
  * 
- * \return non-zero, if an Sdo request is processed.
+ * \return non-zero, if an SDO request is processed.
  */
 int ec_fsm_master_action_process_sdo(
         ec_fsm_master_t *fsm /**< Master state machine. */
@@ -399,7 +399,7 @@ int ec_fsm_master_action_process_sdo(
                 if (ec_sdo_request_timed_out(req)) {
                     req->state = EC_INT_REQUEST_FAILURE;
                     if (master->debug_level)
-                        EC_DBG("Sdo request for slave %u timed out...\n",
+                        EC_DBG("SDO request for slave %u timed out...\n",
                                 slave->ring_position);
                     continue;
                 }
@@ -411,7 +411,7 @@ int ec_fsm_master_action_process_sdo(
 
                 req->state = EC_INT_REQUEST_BUSY;
                 if (master->debug_level)
-                    EC_DBG("Processing Sdo request for slave %u...\n",
+                    EC_DBG("Processing SDO request for slave %u...\n",
                             slave->ring_position);
 
                 fsm->idle = 0;
@@ -438,19 +438,19 @@ int ec_fsm_master_action_process_sdo(
 
         slave = request->slave;
         if (slave->current_state == EC_SLAVE_STATE_INIT) {
-            EC_ERR("Discarding Sdo request, slave %u is in INIT.\n",
+            EC_ERR("Discarding SDO request, slave %u is in INIT.\n",
                     slave->ring_position);
             request->req.state = EC_INT_REQUEST_FAILURE;
             wake_up(&master->sdo_queue);
             continue;
         }
 
-        // Found pending Sdo request. Execute it!
+        // Found pending SDO request. Execute it!
         if (master->debug_level)
-            EC_DBG("Processing Sdo request for slave %u...\n",
+            EC_DBG("Processing SDO request for slave %u...\n",
                     slave->ring_position);
 
-        // Start uploading Sdo
+        // Start uploading SDO
         fsm->idle = 0;
         fsm->sdo_request = &request->req;
         fsm->slave = slave;
@@ -476,11 +476,11 @@ void ec_fsm_master_action_idle(
     ec_master_t *master = fsm->master;
     ec_slave_t *slave;
 
-    // Check for pending Sdo requests
+    // Check for pending SDO requests
     if (ec_fsm_master_action_process_sdo(fsm))
         return;
 
-    // check, if slaves have an Sdo dictionary to read out.
+    // check, if slaves have an SDO dictionary to read out.
     for (slave = master->slaves;
             slave < master->slaves + master->slave_count;
             slave++) {
@@ -494,13 +494,13 @@ void ec_fsm_master_action_idle(
                 ) continue;
 
         if (master->debug_level) {
-            EC_DBG("Fetching Sdo dictionary from slave %u.\n",
+            EC_DBG("Fetching SDO dictionary from slave %u.\n",
                     slave->ring_position);
         }
 
         slave->sdo_dictionary_fetched = 1;
 
-        // start fetching Sdo dictionary
+        // start fetching SDO dictionary
         fsm->idle = 0;
         fsm->slave = slave;
         fsm->state = ec_fsm_master_state_sdo_dictionary;
@@ -869,12 +869,12 @@ void ec_fsm_master_state_sdo_dictionary(
         return;
     }
 
-    // Sdo dictionary fetching finished
+    // SDO dictionary fetching finished
 
     if (master->debug_level) {
         unsigned int sdo_count, entry_count;
         ec_slave_sdo_dict_info(slave, &sdo_count, &entry_count);
-        EC_DBG("Fetched %u Sdos and %u entries from slave %u.\n",
+        EC_DBG("Fetched %u SDOs and %u entries from slave %u.\n",
                sdo_count, entry_count, slave->ring_position);
     }
 
@@ -898,7 +898,7 @@ void ec_fsm_master_state_sdo_request(
     if (ec_fsm_coe_exec(&fsm->fsm_coe)) return;
 
     if (!ec_fsm_coe_success(&fsm->fsm_coe)) {
-        EC_DBG("Failed to process Sdo request for slave %u.\n",
+        EC_DBG("Failed to process SDO request for slave %u.\n",
                 fsm->slave->ring_position);
         request->state = EC_INT_REQUEST_FAILURE;
         wake_up(&master->sdo_queue);
@@ -906,15 +906,15 @@ void ec_fsm_master_state_sdo_request(
         return;
     }
 
-    // Sdo request finished 
+    // SDO request finished 
     request->state = EC_INT_REQUEST_SUCCESS;
     wake_up(&master->sdo_queue);
 
     if (master->debug_level)
-        EC_DBG("Finished Sdo request for slave %u.\n",
+        EC_DBG("Finished SDO request for slave %u.\n",
                 fsm->slave->ring_position);
 
-    // check for another Sdo request
+    // check for another SDO request
     if (ec_fsm_master_action_process_sdo(fsm))
         return; // processing another request
 

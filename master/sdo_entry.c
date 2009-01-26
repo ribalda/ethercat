@@ -26,7 +26,7 @@
 
 /**
    \file
-   CANopen-over-EtherCAT Sdo entry functions.
+   CANopen over EtherCAT SDO entry functions.
 */
 
 /*****************************************************************************/
@@ -40,8 +40,8 @@
 /** Constructor.
  */
 void ec_sdo_entry_init(
-        ec_sdo_entry_t *entry, /**< Sdo entry. */
-        ec_sdo_t *sdo, /**< Parent Sdo. */
+        ec_sdo_entry_t *entry, /**< SDO entry. */
+        ec_sdo_t *sdo, /**< Parent SDO. */
         uint8_t subindex /**< Subindex. */
         )
 {
@@ -57,7 +57,7 @@ void ec_sdo_entry_init(
 /** Destructor.
  */
 void ec_sdo_entry_clear(
-        ec_sdo_entry_t *entry /**< Sdo entry. */
+        ec_sdo_entry_t *entry /**< SDO entry. */
         )
 {
 

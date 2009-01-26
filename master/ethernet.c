@@ -26,7 +26,7 @@
 
 /**
    \file
-   Ethernet-over-EtherCAT (EoE).
+   Ethernet over EtherCAT (EoE).
 */
 
 /*****************************************************************************/

@@ -26,7 +26,7 @@
  *****************************************************************************/
 
 /** \file
- * Vendor-specific-over-EtherCAT protocol handler functions.
+ * Vendor specific over EtherCAT protocol handler functions.
  */
 
 /*****************************************************************************/

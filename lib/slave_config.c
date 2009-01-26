@@ -73,7 +73,7 @@ int ecrt_slave_config_pdo_assign_add(ec_slave_config_t *sc,
     data.index = pdo_index;
 
     if (ioctl(sc->master->fd, EC_IOCTL_SC_ADD_PDO, &data) == -1) {
-        fprintf(stderr, "Failed to add Pdo: %s\n",
+        fprintf(stderr, "Failed to add PDO: %s\n",
                 strerror(errno));
         return -1;  // FIXME
     }
@@ -92,7 +92,7 @@ void ecrt_slave_config_pdo_assign_clear(ec_slave_config_t *sc,
     data.sync_index = sync_index;
 
     if (ioctl(sc->master->fd, EC_IOCTL_SC_CLEAR_PDOS, &data) == -1) {
-        fprintf(stderr, "Failed to clear Pdos: %s\n",
+        fprintf(stderr, "Failed to clear PDOs: %s\n",
                 strerror(errno));
     }
 }
@@ -112,7 +112,7 @@ int ecrt_slave_config_pdo_mapping_add(ec_slave_config_t *sc,
     data.entry_bit_length = entry_bit_length;
 
     if (ioctl(sc->master->fd, EC_IOCTL_SC_ADD_ENTRY, &data) == -1) {
-        fprintf(stderr, "Failed to add Pdo entry: %s\n",
+        fprintf(stderr, "Failed to add PDO entry: %s\n",
                 strerror(errno));
         return -1;  // FIXME
     }
@@ -131,7 +131,7 @@ void ecrt_slave_config_pdo_mapping_clear(ec_slave_config_t *sc,
     data.index = pdo_index;
 
     if (ioctl(sc->master->fd, EC_IOCTL_SC_CLEAR_ENTRIES, &data) == -1) {
-        fprintf(stderr, "Failed to clear Pdo entries: %s\n",
+        fprintf(stderr, "Failed to clear PDO entries: %s\n",
                 strerror(errno));
     }
 }
@@ -219,7 +219,7 @@ int ecrt_slave_config_reg_pdo_entry(
 
     ret = ioctl(sc->master->fd, EC_IOCTL_SC_REG_PDO_ENTRY, &data);
     if (ret == -1) {
-        fprintf(stderr, "Failed to register Pdo entry: %s\n",
+        fprintf(stderr, "Failed to register PDO entry: %s\n",
                 strerror(errno));
         return -2; // FIXME
     }
@@ -228,7 +228,7 @@ int ecrt_slave_config_reg_pdo_entry(
         *bit_position = data.bit_position;
     } else {
         if (data.bit_position) {
-            fprintf(stderr, "Pdo entry 0x%04X:%02X does not byte-align "
+            fprintf(stderr, "PDO entry 0x%04X:%02X does not byte-align "
                     "in config %u:%u.\n", index, subindex,
                     sc->alias, sc->position);
             return -3; // FIXME
@@ -252,7 +252,7 @@ int ecrt_slave_config_sdo(ec_slave_config_t *sc, uint16_t index,
     data.size = size;
 
     if (ioctl(sc->master->fd, EC_IOCTL_SC_REG_PDO_ENTRY, &data) == -1) {
-        fprintf(stderr, "Failed to configure Sdo.\n");
+        fprintf(stderr, "Failed to configure SDO.\n");
         return -1; // FIXME
     }
 

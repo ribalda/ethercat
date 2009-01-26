@@ -139,7 +139,7 @@ struct ec_master {
 #ifdef EC_EOE
     struct timer_list eoe_timer; /**< EoE timer object. */
     unsigned int eoe_running; /**< \a True, if EoE processing is active. */
-    struct list_head eoe_handlers; /**< Ethernet-over-EtherCAT handlers. */
+    struct list_head eoe_handlers; /**< Ethernet over EtherCAT handlers. */
 #endif
 
     spinlock_t internal_lock; /**< Spinlock used in \a IDLE phase. */
@@ -154,8 +154,8 @@ struct ec_master {
     wait_queue_head_t sii_queue; /**< Wait queue for SII
                                       write requests from user space. */
 
-    struct list_head slave_sdo_requests; /**< Sdo access requests. */
-    wait_queue_head_t sdo_queue; /**< Wait queue for Sdo access requests
+    struct list_head slave_sdo_requests; /**< SDO access requests. */
+    wait_queue_head_t sdo_queue; /**< Wait queue for SDO access requests
                                    from user space. */
 
     struct list_head phy_requests; /**< Physical memory requests. */

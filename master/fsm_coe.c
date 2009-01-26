@@ -74,24 +74,24 @@ void ec_fsm_coe_error(ec_fsm_coe_t *);
 /*****************************************************************************/
 
 /**
-   Sdo abort messages.
-   The "abort Sdo transfer request" supplies an abort code,
+   SDO abort messages.
+   The "abort SDO transfer request" supplies an abort code,
    which can be translated to clear text. This table does
    the mapping of the codes and messages.
 */
 
 const ec_code_msg_t sdo_abort_messages[] = {
     {0x05030000, "Toggle bit not changed"},
-    {0x05040000, "Sdo protocol timeout"},
+    {0x05040000, "SDO protocol timeout"},
     {0x05040001, "Client/Server command specifier not valid or unknown"},
     {0x05040005, "Out of memory"},
     {0x06010000, "Unsupported access to an object"},
     {0x06010001, "Attempt to read a write-only object"},
     {0x06010002, "Attempt to write a read-only object"},
     {0x06020000, "This object does not exist in the object directory"},
-    {0x06040041, "The object cannot be mapped into the Pdo"},
+    {0x06040041, "The object cannot be mapped into the PDO"},
     {0x06040042, "The number and length of the objects to be mapped would"
-     " exceed the Pdo length"},
+     " exceed the PDO length"},
     {0x06040043, "General parameter incompatibility reason"},
     {0x06040047, "Gerneral internal incompatibility in device"},
     {0x06060000, "Access failure due to a hardware error"},
@@ -120,7 +120,7 @@ const ec_code_msg_t sdo_abort_messages[] = {
 /*****************************************************************************/
 
 /**
-   Outputs an Sdo abort message.
+   Outputs an SDO abort message.
 */
 
 void ec_canopen_abort_msg(uint32_t abort_code)
@@ -129,13 +129,13 @@ void ec_canopen_abort_msg(uint32_t abort_code)
 
     for (abort_msg = sdo_abort_messages; abort_msg->code; abort_msg++) {
         if (abort_msg->code == abort_code) {
-            EC_ERR("Sdo abort message 0x%08X: \"%s\".\n",
+            EC_ERR("SDO abort message 0x%08X: \"%s\".\n",
                    abort_msg->code, abort_msg->message);
             return;
         }
     }
 
-    EC_ERR("Unknown Sdo abort code 0x%08X.\n", abort_code);
+    EC_ERR("Unknown SDO abort code 0x%08X.\n", abort_code);
 }
 
 /*****************************************************************************/
@@ -165,7 +165,7 @@ void ec_fsm_coe_clear(ec_fsm_coe_t *fsm /**< finite state machine */)
 /*****************************************************************************/
 
 /**
-   Starts reading a slaves' Sdo dictionary.
+   Starts reading a slaves' SDO dictionary.
 */
 
 void ec_fsm_coe_dictionary(ec_fsm_coe_t *fsm, /**< finite state machine */
@@ -179,13 +179,13 @@ void ec_fsm_coe_dictionary(ec_fsm_coe_t *fsm, /**< finite state machine */
 /*****************************************************************************/
 
 /**
-   Starts to transfer an Sdo to/from a slave.
+   Starts to transfer an SDO to/from a slave.
 */
 
 void ec_fsm_coe_transfer(
         ec_fsm_coe_t *fsm, /**< State machine. */
         ec_slave_t *slave, /**< EtherCAT slave. */
-        ec_sdo_request_t *request /**< Sdo request. */
+        ec_sdo_request_t *request /**< SDO request. */
         )
 {
     fsm->slave = slave;
@@ -275,7 +275,7 @@ void ec_fsm_coe_dict_start(ec_fsm_coe_t *fsm /**< finite state machine */)
     }
 
     if (slave->sii.has_general && !slave->sii.coe_details.enable_sdo_info) {
-        EC_ERR("Slave %u does not support Sdo information service!\n",
+        EC_ERR("Slave %u does not support SDO information service!\n",
                 slave->ring_position);
         fsm->state = ec_fsm_coe_error;
         return;
@@ -287,11 +287,11 @@ void ec_fsm_coe_dict_start(ec_fsm_coe_t *fsm /**< finite state machine */)
         return;
     }
 
-    EC_WRITE_U16(data, 0x8 << 12); // Sdo information
+    EC_WRITE_U16(data, 0x8 << 12); // SDO information
     EC_WRITE_U8 (data + 2, 0x01); // Get OD List Request
     EC_WRITE_U8 (data + 3, 0x00);
     EC_WRITE_U16(data + 4, 0x0000);
-    EC_WRITE_U16(data + 6, 0x0001); // deliver all Sdos!
+    EC_WRITE_U16(data + 6, 0x0001); // deliver all SDOs!
 
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_coe_dict_request;
@@ -370,7 +370,7 @@ void ec_fsm_coe_dict_check(ec_fsm_coe_t *fsm /**< finite state machine */)
             (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
         if (diff_ms >= EC_FSM_COE_DICT_TIMEOUT) {
             fsm->state = ec_fsm_coe_error;
-            EC_ERR("Timeout while waiting for Sdo dictionary list response "
+            EC_ERR("Timeout while waiting for SDO dictionary list response "
                     "on slave %u.\n", slave->ring_position);
             return;
         }
@@ -443,18 +443,18 @@ void ec_fsm_coe_dict_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     }
 
     if (rec_size < 3) {
-        EC_ERR("Received corrupted Sdo dictionary response (size %u).\n",
+        EC_ERR("Received corrupted SDO dictionary response (size %u).\n",
                 rec_size);
         fsm->state = ec_fsm_coe_error;
         return;
     }
 
-    if (EC_READ_U16(data) >> 12 == 0x8 && // Sdo information
+    if (EC_READ_U16(data) >> 12 == 0x8 && // SDO information
         (EC_READ_U8(data + 2) & 0x7F) == 0x07) { // error response
-        EC_ERR("Sdo information error response at slave %u!\n",
+        EC_ERR("SDO information error response at slave %u!\n",
                slave->ring_position);
         if (rec_size < 10) {
-            EC_ERR("Incomplete Sdo information error response:\n");
+            EC_ERR("Incomplete SDO information error response:\n");
             ec_print_data(data, rec_size);
         } else {
             ec_canopen_abort_msg(EC_READ_U32(data + 6));
@@ -463,10 +463,10 @@ void ec_fsm_coe_dict_response(ec_fsm_coe_t *fsm /**< finite state machine */)
         return;
     }
 
-    if (EC_READ_U16(data) >> 12 != 0x8 || // Sdo information
+    if (EC_READ_U16(data) >> 12 != 0x8 || // SDO information
         (EC_READ_U8 (data + 2) & 0x7F) != 0x02) { // Get OD List response
         if (fsm->slave->master->debug_level) {
-            EC_DBG("Invalid Sdo list response at slave %u! Retrying...\n",
+            EC_DBG("Invalid SDO list response at slave %u! Retrying...\n",
                     slave->ring_position);
             ec_print_data(data, rec_size);
         }
@@ -489,13 +489,13 @@ void ec_fsm_coe_dict_response(ec_fsm_coe_t *fsm /**< finite state machine */)
         sdo_index = EC_READ_U16(data + 8 + i * 2);
         if (!sdo_index) {
             if (slave->master->debug_level)
-                EC_WARN("Sdo dictionary of slave %u contains index 0x0000.\n",
+                EC_WARN("SDO dictionary of slave %u contains index 0x0000.\n",
                         slave->ring_position);
             continue;
         }
 
         if (!(sdo = (ec_sdo_t *) kmalloc(sizeof(ec_sdo_t), GFP_KERNEL))) {
-            EC_ERR("Failed to allocate memory for Sdo!\n");
+            EC_ERR("Failed to allocate memory for SDO!\n");
             fsm->state = ec_fsm_coe_error;
             return;
         }
@@ -506,7 +506,7 @@ void ec_fsm_coe_dict_response(ec_fsm_coe_t *fsm /**< finite state machine */)
 
     fragments_left = EC_READ_U16(data + 4);
     if (slave->master->debug_level && fragments_left) {
-        EC_DBG("Sdo list fragments left: %u\n", fragments_left);
+        EC_DBG("SDO list fragments left: %u\n", fragments_left);
     }
 
     if (EC_READ_U8(data + 2) & 0x80 || fragments_left) { // more messages waiting. check again.
@@ -518,12 +518,12 @@ void ec_fsm_coe_dict_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     }
 
     if (list_empty(&slave->sdo_dictionary)) {
-        // no Sdos in dictionary. finished.
+        // no SDOs in dictionary. finished.
         fsm->state = ec_fsm_coe_end; // success
         return;
     }
 
-    // fetch Sdo descriptions
+    // fetch SDO descriptions
     fsm->sdo = list_entry(slave->sdo_dictionary.next, ec_sdo_t, list);
 
     data = ec_slave_mbox_prepare_send(slave, datagram, 0x03, 8);
@@ -532,11 +532,11 @@ void ec_fsm_coe_dict_response(ec_fsm_coe_t *fsm /**< finite state machine */)
         return;
     }
 
-    EC_WRITE_U16(data, 0x8 << 12); // Sdo information
+    EC_WRITE_U16(data, 0x8 << 12); // SDO information
     EC_WRITE_U8 (data + 2, 0x03); // Get object description request
     EC_WRITE_U8 (data + 3, 0x00);
     EC_WRITE_U16(data + 4, 0x0000);
-    EC_WRITE_U16(data + 6, fsm->sdo->index); // Sdo index
+    EC_WRITE_U16(data + 6, fsm->sdo->index); // SDO index
 
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_coe_dict_desc_request;
@@ -559,7 +559,7 @@ void ec_fsm_coe_dict_desc_request(ec_fsm_coe_t *fsm /**< finite state machine */
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_coe_error;
-        EC_ERR("Failed to receive CoE Sdo description request datagram for"
+        EC_ERR("Failed to receive CoE SDO description request datagram for"
                " slave %u (datagram state %u).\n",
                slave->ring_position, datagram->state);
         return;
@@ -567,7 +567,7 @@ void ec_fsm_coe_dict_desc_request(ec_fsm_coe_t *fsm /**< finite state machine */
 
     if (datagram->working_counter != 1) {
         fsm->state = ec_fsm_coe_error;
-        EC_ERR("Reception of CoE Sdo description"
+        EC_ERR("Reception of CoE SDO description"
                 " request failed on slave %u: ", slave->ring_position);
         ec_datagram_print_wc_error(datagram);
         return;
@@ -615,7 +615,7 @@ void ec_fsm_coe_dict_desc_check(ec_fsm_coe_t *fsm /**< finite state machine */)
             (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
         if (diff_ms >= EC_FSM_COE_DICT_TIMEOUT) {
             fsm->state = ec_fsm_coe_error;
-            EC_ERR("Timeout while waiting for Sdo object description "
+            EC_ERR("Timeout while waiting for SDO object description "
                     "response on slave %u.\n", slave->ring_position);
             return;
         }
@@ -652,7 +652,7 @@ void ec_fsm_coe_dict_desc_response(ec_fsm_coe_t *fsm
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_coe_error;
-        EC_ERR("Failed to receive CoE Sdo description response datagram from"
+        EC_ERR("Failed to receive CoE SDO description response datagram from"
                " slave %u (datagram state %u).\n",
                slave->ring_position, datagram->state);
         return;
@@ -660,7 +660,7 @@ void ec_fsm_coe_dict_desc_response(ec_fsm_coe_t *fsm
 
     if (datagram->working_counter != 1) {
         fsm->state = ec_fsm_coe_error;
-        EC_ERR("Reception of CoE Sdo description"
+        EC_ERR("Reception of CoE SDO description"
                 " response failed on slave %u: ", slave->ring_position);
         ec_datagram_print_wc_error(datagram);
         return;
@@ -687,16 +687,16 @@ void ec_fsm_coe_dict_desc_response(ec_fsm_coe_t *fsm
     }
 
     if (rec_size < 3) {
-        EC_ERR("Received corrupted Sdo description response (size %u).\n",
+        EC_ERR("Received corrupted SDO description response (size %u).\n",
                 rec_size);
         fsm->state = ec_fsm_coe_error;
         return;
     }
 
-    if (EC_READ_U16(data) >> 12 == 0x8 && // Sdo information
+    if (EC_READ_U16(data) >> 12 == 0x8 && // SDO information
         (EC_READ_U8 (data + 2) & 0x7F) == 0x07) { // error response
-        EC_ERR("Sdo information error response at slave %u while"
-               " fetching Sdo 0x%04X!\n", slave->ring_position,
+        EC_ERR("SDO information error response at slave %u while"
+               " fetching SDO 0x%04X!\n", slave->ring_position,
                sdo->index);
         ec_canopen_abort_msg(EC_READ_U32(data + 6));
         fsm->state = ec_fsm_coe_error;
@@ -704,18 +704,18 @@ void ec_fsm_coe_dict_desc_response(ec_fsm_coe_t *fsm
     }
 
     if (rec_size < 8) {
-        EC_ERR("Received corrupted Sdo description response (size %u).\n",
+        EC_ERR("Received corrupted SDO description response (size %u).\n",
                 rec_size);
         fsm->state = ec_fsm_coe_error;
         return;
     }
 
-    if (EC_READ_U16(data) >> 12 != 0x8 || // Sdo information
+    if (EC_READ_U16(data) >> 12 != 0x8 || // SDO information
         (EC_READ_U8 (data + 2) & 0x7F) != 0x04 || // Object desc. response
-        EC_READ_U16(data + 6) != sdo->index) { // Sdo index
+        EC_READ_U16(data + 6) != sdo->index) { // SDO index
         if (fsm->slave->master->debug_level) {
             EC_DBG("Invalid object description response at slave %u while"
-                    " fetching Sdo 0x%04X!\n", slave->ring_position,
+                    " fetching SDO 0x%04X!\n", slave->ring_position,
                     sdo->index);
             ec_print_data(data, rec_size);
         }
@@ -739,7 +739,7 @@ void ec_fsm_coe_dict_desc_response(ec_fsm_coe_t *fsm
     name_size = rec_size - 12;
     if (name_size) {
         if (!(sdo->name = kmalloc(name_size + 1, GFP_KERNEL))) {
-            EC_ERR("Failed to allocate Sdo name!\n");
+            EC_ERR("Failed to allocate SDO name!\n");
             fsm->state = ec_fsm_coe_error;
             return;
         }
@@ -764,12 +764,12 @@ void ec_fsm_coe_dict_desc_response(ec_fsm_coe_t *fsm
         return;
     }
 
-    EC_WRITE_U16(data, 0x8 << 12); // Sdo information
+    EC_WRITE_U16(data, 0x8 << 12); // SDO information
     EC_WRITE_U8 (data + 2, 0x05); // Get entry description request
     EC_WRITE_U8 (data + 3, 0x00);
     EC_WRITE_U16(data + 4, 0x0000);
-    EC_WRITE_U16(data + 6, sdo->index); // Sdo index
-    EC_WRITE_U8 (data + 8, fsm->subindex); // Sdo subindex
+    EC_WRITE_U16(data + 6, sdo->index); // SDO index
+    EC_WRITE_U8 (data + 8, fsm->subindex); // SDO subindex
     EC_WRITE_U8 (data + 9, 0x00); // value info (no values)
 
     fsm->retries = EC_FSM_RETRIES;
@@ -794,7 +794,7 @@ void ec_fsm_coe_dict_entry_request(ec_fsm_coe_t *fsm
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_coe_error;
-        EC_ERR("Failed to receive CoE Sdo entry request datagram for"
+        EC_ERR("Failed to receive CoE SDO entry request datagram for"
                " slave %u (datagram state %u).\n",
                slave->ring_position, datagram->state);
         return;
@@ -802,7 +802,7 @@ void ec_fsm_coe_dict_entry_request(ec_fsm_coe_t *fsm
 
     if (datagram->working_counter != 1) {
         fsm->state = ec_fsm_coe_error;
-        EC_ERR("Reception of CoE Sdo entry request failed on slave %u: ",
+        EC_ERR("Reception of CoE SDO entry request failed on slave %u: ",
                 slave->ring_position);
         ec_datagram_print_wc_error(datagram);
         return;
@@ -851,7 +851,7 @@ void ec_fsm_coe_dict_entry_check(ec_fsm_coe_t *fsm
             (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
         if (diff_ms >= EC_FSM_COE_DICT_TIMEOUT) {
             fsm->state = ec_fsm_coe_error;
-            EC_ERR("Timeout while waiting for Sdo entry description response "
+            EC_ERR("Timeout while waiting for SDO entry description response "
                     "on slave %u.\n", slave->ring_position);
             return;
         }
@@ -889,7 +889,7 @@ void ec_fsm_coe_dict_entry_response(ec_fsm_coe_t *fsm
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_coe_error;
-        EC_ERR("Failed to receive CoE Sdo description response datagram from"
+        EC_ERR("Failed to receive CoE SDO description response datagram from"
                " slave %u (datagram state %u).\n",
                slave->ring_position, datagram->state);
         return;
@@ -897,7 +897,7 @@ void ec_fsm_coe_dict_entry_response(ec_fsm_coe_t *fsm
 
     if (datagram->working_counter != 1) {
         fsm->state = ec_fsm_coe_error;
-        EC_ERR("Reception of CoE Sdo description"
+        EC_ERR("Reception of CoE SDO description"
                 " response failed on slave %u: ", slave->ring_position);
         ec_datagram_print_wc_error(datagram);
         return;
@@ -924,16 +924,16 @@ void ec_fsm_coe_dict_entry_response(ec_fsm_coe_t *fsm
     }
 
     if (rec_size < 3) {
-        EC_ERR("Received corrupted Sdo entry description response "
+        EC_ERR("Received corrupted SDO entry description response "
                 "(size %u).\n", rec_size);
         fsm->state = ec_fsm_coe_error;
         return;
     }
 
-    if (EC_READ_U16(data) >> 12 == 0x8 && // Sdo information
+    if (EC_READ_U16(data) >> 12 == 0x8 && // SDO information
         (EC_READ_U8 (data + 2) & 0x7F) == 0x07) { // error response
-        EC_ERR("Sdo information error response at slave %u while"
-               " fetching Sdo entry 0x%04X:%02X!\n", slave->ring_position,
+        EC_ERR("SDO information error response at slave %u while"
+               " fetching SDO entry 0x%04X:%02X!\n", slave->ring_position,
                sdo->index, fsm->subindex);
         ec_canopen_abort_msg(EC_READ_U32(data + 6));
         fsm->state = ec_fsm_coe_error;
@@ -941,19 +941,19 @@ void ec_fsm_coe_dict_entry_response(ec_fsm_coe_t *fsm
     }
 
     if (rec_size < 9) {
-        EC_ERR("Received corrupted Sdo entry description response "
+        EC_ERR("Received corrupted SDO entry description response "
                 "(size %u).\n", rec_size);
         fsm->state = ec_fsm_coe_error;
         return;
     }
 
-    if (EC_READ_U16(data) >> 12 != 0x8 || // Sdo information
+    if (EC_READ_U16(data) >> 12 != 0x8 || // SDO information
         (EC_READ_U8(data + 2) & 0x7F) != 0x06 || // Entry desc. response
-        EC_READ_U16(data + 6) != sdo->index || // Sdo index
-        EC_READ_U8(data + 8) != fsm->subindex) { // Sdo subindex
+        EC_READ_U16(data + 6) != sdo->index || // SDO index
+        EC_READ_U8(data + 8) != fsm->subindex) { // SDO subindex
         if (fsm->slave->master->debug_level) {
             EC_DBG("Invalid entry description response at slave %u while"
-                    " fetching Sdo entry 0x%04X:%02X!\n", slave->ring_position,
+                    " fetching SDO entry 0x%04X:%02X!\n", slave->ring_position,
                     sdo->index, fsm->subindex);
             ec_print_data(data, rec_size);
         }
@@ -987,7 +987,7 @@ void ec_fsm_coe_dict_entry_response(ec_fsm_coe_t *fsm
     if (data_size) {
         uint8_t *desc;
         if (!(desc = kmalloc(data_size + 1, GFP_KERNEL))) {
-            EC_ERR("Failed to allocate Sdo entry name!\n");
+            EC_ERR("Failed to allocate SDO entry name!\n");
             fsm->state = ec_fsm_coe_error;
             return;
         }
@@ -1007,12 +1007,12 @@ void ec_fsm_coe_dict_entry_response(ec_fsm_coe_t *fsm
             return;
         }
 
-        EC_WRITE_U16(data, 0x8 << 12); // Sdo information
+        EC_WRITE_U16(data, 0x8 << 12); // SDO information
         EC_WRITE_U8 (data + 2, 0x05); // Get entry description request
         EC_WRITE_U8 (data + 3, 0x00);
         EC_WRITE_U16(data + 4, 0x0000);
-        EC_WRITE_U16(data + 6, sdo->index); // Sdo index
-        EC_WRITE_U8 (data + 8, fsm->subindex); // Sdo subindex
+        EC_WRITE_U16(data + 6, sdo->index); // SDO index
+        EC_WRITE_U8 (data + 8, fsm->subindex); // SDO subindex
         EC_WRITE_U8 (data + 9, 0x00); // value info (no values)
 
         fsm->retries = EC_FSM_RETRIES;
@@ -1020,7 +1020,7 @@ void ec_fsm_coe_dict_entry_response(ec_fsm_coe_t *fsm
         return;
     }
 
-    // another Sdo description to fetch?
+    // another SDO description to fetch?
     if (fsm->sdo->list.next != &slave->sdo_dictionary) {
         fsm->sdo = list_entry(fsm->sdo->list.next, ec_sdo_t, list);
 
@@ -1030,11 +1030,11 @@ void ec_fsm_coe_dict_entry_response(ec_fsm_coe_t *fsm
             return;
         }
 
-        EC_WRITE_U16(data, 0x8 << 12); // Sdo information
+        EC_WRITE_U16(data, 0x8 << 12); // SDO information
         EC_WRITE_U8 (data + 2, 0x03); // Get object description request
         EC_WRITE_U8 (data + 3, 0x00);
         EC_WRITE_U16(data + 4, 0x0000);
-        EC_WRITE_U16(data + 6, fsm->sdo->index); // Sdo index
+        EC_WRITE_U16(data + 6, fsm->sdo->index); // SDO index
 
         fsm->retries = EC_FSM_RETRIES;
         fsm->state = ec_fsm_coe_dict_desc_request;
@@ -1061,7 +1061,7 @@ void ec_fsm_coe_down_start(ec_fsm_coe_t *fsm /**< finite state machine */)
     uint8_t size;
 
     if (fsm->slave->master->debug_level) {
-        EC_DBG("Downloading Sdo 0x%04X:%02X to slave %u.\n",
+        EC_DBG("Downloading SDO 0x%04X:%02X to slave %u.\n",
                request->index, request->subindex, slave->ring_position);
         ec_print_data(request->data, request->data_size);
     }
@@ -1081,7 +1081,7 @@ void ec_fsm_coe_down_start(ec_fsm_coe_t *fsm /**< finite state machine */)
 
 	    size = 4 - request->data_size;
 
-	    EC_WRITE_U16(data, 0x2 << 12); // Sdo request
+	    EC_WRITE_U16(data, 0x2 << 12); // SDO request
 	    EC_WRITE_U8 (data + 2, (0x3 // size specified, expedited
 								| size << 2
 	                            | 0x1 << 5)); // Download request
@@ -1096,7 +1096,7 @@ void ec_fsm_coe_down_start(ec_fsm_coe_t *fsm /**< finite state machine */)
 	}
     else { // request->data_size > 4, use normal transfer type
 	    if (slave->sii.rx_mailbox_size < 6 + 10 + request->data_size) {
-	        EC_ERR("Sdo fragmenting not supported yet!\n");
+	        EC_ERR("SDO fragmenting not supported yet!\n");
 	        fsm->state = ec_fsm_coe_error;
 	        return;
 	    }
@@ -1108,7 +1108,7 @@ void ec_fsm_coe_down_start(ec_fsm_coe_t *fsm /**< finite state machine */)
 	        return;
 	    }
 
-	    EC_WRITE_U16(data, 0x2 << 12); // Sdo request
+	    EC_WRITE_U16(data, 0x2 << 12); // SDO request
 	    EC_WRITE_U8 (data + 2, (0x1 // size indicator, normal
 	                            | 0x1 << 5)); // Download request
 	    EC_WRITE_U16(data + 3, request->index);
@@ -1156,7 +1156,7 @@ void ec_fsm_coe_down_request(ec_fsm_coe_t *fsm /**< finite state machine */)
                 (jiffies - fsm->request->jiffies_sent) * 1000 / HZ;
             if (diff_ms < fsm->request->response_timeout) {
                 if (fsm->slave->master->debug_level) {
-                    EC_DBG("Slave %u did not respond to Sdo download request. "
+                    EC_DBG("Slave %u did not respond to SDO download request. "
                             "Retrying after %u ms...\n",
                             slave->ring_position, (u32) diff_ms);
                 }
@@ -1213,7 +1213,7 @@ void ec_fsm_coe_down_check(ec_fsm_coe_t *fsm /**< finite state machine */)
             (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
         if (diff_ms >= fsm->request->response_timeout) {
             fsm->state = ec_fsm_coe_error;
-            EC_ERR("Timeout while waiting for Sdo download response on "
+            EC_ERR("Timeout while waiting for SDO download response on "
                     "slave %u.\n", slave->ring_position);
             return;
         }
@@ -1295,10 +1295,10 @@ void ec_fsm_coe_down_response(ec_fsm_coe_t *fsm /**< finite state machine */)
         return;
     }
 
-    if (EC_READ_U16(data) >> 12 == 0x2 && // Sdo request
-        EC_READ_U8 (data + 2) >> 5 == 0x4) { // abort Sdo transfer request
+    if (EC_READ_U16(data) >> 12 == 0x2 && // SDO request
+        EC_READ_U8 (data + 2) >> 5 == 0x4) { // abort SDO transfer request
         fsm->state = ec_fsm_coe_error;
-        EC_ERR("Sdo download 0x%04X:%02X (%u bytes) aborted on slave %u.\n",
+        EC_ERR("SDO download 0x%04X:%02X (%u bytes) aborted on slave %u.\n",
                request->index, request->subindex, request->data_size,
                slave->ring_position);
         if (rec_size < 10) {
@@ -1311,12 +1311,12 @@ void ec_fsm_coe_down_response(ec_fsm_coe_t *fsm /**< finite state machine */)
         return;
     }
 
-    if (EC_READ_U16(data) >> 12 != 0x3 || // Sdo response
+    if (EC_READ_U16(data) >> 12 != 0x3 || // SDO response
         EC_READ_U8 (data + 2) >> 5 != 0x3 || // Download response
         EC_READ_U16(data + 3) != request->index || // index
         EC_READ_U8 (data + 5) != request->subindex) { // subindex
         if (slave->master->debug_level) {
-            EC_DBG("Invalid Sdo download response at slave %u! Retrying...\n",
+            EC_DBG("Invalid SDO download response at slave %u! Retrying...\n",
                     slave->ring_position);
             ec_print_data(data, rec_size);
         }
@@ -1345,7 +1345,7 @@ void ec_fsm_coe_up_start(ec_fsm_coe_t *fsm /**< finite state machine */)
     uint8_t *data;
 
     if (master->debug_level)
-        EC_DBG("Uploading Sdo 0x%04X:%02X from slave %u.\n",
+        EC_DBG("Uploading SDO 0x%04X:%02X from slave %u.\n",
                request->index, request->subindex, slave->ring_position);
 
     if (!(slave->sii.mailbox_protocols & EC_MBOX_COE)) {
@@ -1360,7 +1360,7 @@ void ec_fsm_coe_up_start(ec_fsm_coe_t *fsm /**< finite state machine */)
         return;
     }
 
-    EC_WRITE_U16(data, 0x2 << 12); // Sdo request
+    EC_WRITE_U16(data, 0x2 << 12); // SDO request
     EC_WRITE_U8 (data + 2, 0x2 << 5); // initiate upload request
     EC_WRITE_U16(data + 3, request->index);
     EC_WRITE_U8 (data + 5, request->subindex);
@@ -1405,7 +1405,7 @@ void ec_fsm_coe_up_request(ec_fsm_coe_t *fsm /**< finite state machine */)
                 (jiffies - fsm->request->jiffies_sent) * 1000 / HZ;
             if (diff_ms < fsm->request->response_timeout) {
                 if (fsm->slave->master->debug_level) {
-                    EC_DBG("Slave %u did not respond to Sdo upload request. "
+                    EC_DBG("Slave %u did not respond to SDO upload request. "
                             "Retrying after %u ms...\n",
                             slave->ring_position, (u32) diff_ms);
                 }
@@ -1462,7 +1462,7 @@ void ec_fsm_coe_up_check(ec_fsm_coe_t *fsm /**< finite state machine */)
             (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
         if (diff_ms >= fsm->request->response_timeout) {
             fsm->state = ec_fsm_coe_error;
-            EC_ERR("Timeout while waiting for Sdo upload response on "
+            EC_ERR("Timeout while waiting for SDO upload response on "
                     "slave %u.\n", slave->ring_position);
             return;
         }
@@ -1542,14 +1542,14 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
 
     if (rec_size < 3) {
         fsm->state = ec_fsm_coe_error;
-        EC_ERR("Received currupted Sdo upload response (%u bytes)!\n", rec_size);
+        EC_ERR("Received currupted SDO upload response (%u bytes)!\n", rec_size);
         ec_print_data(data, rec_size);
         return;
     }
 
-    if (EC_READ_U16(data) >> 12 == 0x2 && // Sdo request
-        EC_READ_U8 (data + 2) >> 5 == 0x4) { // abort Sdo transfer request
-        EC_ERR("Sdo upload 0x%04X:%02X aborted on slave %u.\n",
+    if (EC_READ_U16(data) >> 12 == 0x2 && // SDO request
+        EC_READ_U8 (data + 2) >> 5 == 0x4) { // abort SDO transfer request
+        EC_ERR("SDO upload 0x%04X:%02X aborted on slave %u.\n",
                request->index, request->subindex, slave->ring_position);
         if (rec_size >= 10) {
             request->abort_code = EC_READ_U32(data + 6);
@@ -1567,18 +1567,18 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     if (expedited) {
         if (rec_size < 7) {
             fsm->state = ec_fsm_coe_error;
-            EC_ERR("Received currupted Sdo expedited upload"
+            EC_ERR("Received currupted SDO expedited upload"
                     " response (only %u bytes)!\n", rec_size);
             ec_print_data(data, rec_size);
             return;
         }
 
-        if (EC_READ_U16(data) >> 12 != 0x3 || // Sdo response
+        if (EC_READ_U16(data) >> 12 != 0x3 || // SDO response
                 EC_READ_U8 (data + 2) >> 5 != 0x2 || // upload response
                 EC_READ_U16(data + 3) != request->index || // index
                 EC_READ_U8 (data + 5) != request->subindex) { // subindex
             if (fsm->slave->master->debug_level) {
-                EC_DBG("Invalid Sdo upload expedited response at slave %u!\n",
+                EC_DBG("Invalid SDO upload expedited response at slave %u!\n",
                         slave->ring_position);
                 ec_print_data(data, rec_size);
             }
@@ -1598,7 +1598,7 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
 
         if (rec_size < 6 + complete_size) {
             fsm->state = ec_fsm_coe_error;
-            EC_ERR("Received currupted Sdo expedited upload"
+            EC_ERR("Received currupted SDO expedited upload"
                     " response (only %u bytes)!\n", rec_size);
             ec_print_data(data, rec_size);
             return;
@@ -1611,18 +1611,18 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     } else { // normal
         if (rec_size < 10) {
             fsm->state = ec_fsm_coe_error;
-            EC_ERR("Received currupted Sdo normal upload"
+            EC_ERR("Received currupted SDO normal upload"
                     " response (only %u bytes)!\n", rec_size);
             ec_print_data(data, rec_size);
             return;
         }
 
-        if (EC_READ_U16(data) >> 12 != 0x3 || // Sdo response
+        if (EC_READ_U16(data) >> 12 != 0x3 || // SDO response
                 EC_READ_U8 (data + 2) >> 5 != 0x2 || // upload response
                 EC_READ_U16(data + 3) != request->index || // index
                 EC_READ_U8 (data + 5) != request->subindex) { // subindex
             if (fsm->slave->master->debug_level) {
-                EC_DBG("Invalid Sdo normal upload response at slave %u!\n",
+                EC_DBG("Invalid SDO normal upload response at slave %u!\n",
                         slave->ring_position);
                 ec_print_data(data, rec_size);
             }
@@ -1656,7 +1656,7 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
         fsm->toggle = 0;
 
         if (data_size < complete_size) {
-            EC_WARN("Sdo data incomplete (%u / %u).\n",
+            EC_WARN("SDO data incomplete (%u / %u).\n",
                     data_size, complete_size);
 
             data = ec_slave_mbox_prepare_send(slave, datagram,
@@ -1666,7 +1666,7 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
                 return;
             }
 
-            EC_WRITE_U16(data, 0x2 << 12); // Sdo request
+            EC_WRITE_U16(data, 0x2 << 12); // SDO request
             EC_WRITE_U8 (data + 2, (fsm->toggle << 4 // toggle
                                     | 0x3 << 5)); // upload segment request
 
@@ -1762,7 +1762,7 @@ void ec_fsm_coe_up_seg_check(ec_fsm_coe_t *fsm /**< finite state machine */)
             (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
         if (diff_ms >= fsm->request->response_timeout) {
             fsm->state = ec_fsm_coe_error;
-            EC_ERR("Timeout while waiting for Sdo upload segment response "
+            EC_ERR("Timeout while waiting for SDO upload segment response "
                     "on slave %u.\n", slave->ring_position);
             return;
         }
@@ -1842,15 +1842,15 @@ void ec_fsm_coe_up_seg_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     }
 
     if (rec_size < 10) {
-        EC_ERR("Received currupted Sdo upload segment response!\n");
+        EC_ERR("Received currupted SDO upload segment response!\n");
         ec_print_data(data, rec_size);
         fsm->state = ec_fsm_coe_error;
         return;
     }
 
-    if (EC_READ_U16(data) >> 12 == 0x2 && // Sdo request
-        EC_READ_U8 (data + 2) >> 5 == 0x4) { // abort Sdo transfer request
-        EC_ERR("Sdo upload 0x%04X:%02X aborted on slave %u.\n",
+    if (EC_READ_U16(data) >> 12 == 0x2 && // SDO request
+        EC_READ_U8 (data + 2) >> 5 == 0x4) { // abort SDO transfer request
+        EC_ERR("SDO upload 0x%04X:%02X aborted on slave %u.\n",
                request->index, request->subindex, slave->ring_position);
         request->abort_code = EC_READ_U32(data + 6);
         ec_canopen_abort_msg(request->abort_code);
@@ -1858,10 +1858,10 @@ void ec_fsm_coe_up_seg_response(ec_fsm_coe_t *fsm /**< finite state machine */)
         return;
     }
 
-    if (EC_READ_U16(data) >> 12 != 0x3 || // Sdo response
+    if (EC_READ_U16(data) >> 12 != 0x3 || // SDO response
         EC_READ_U8 (data + 2) >> 5 != 0x0) { // upload segment response
         if (fsm->slave->master->debug_level) {
-            EC_DBG("Invalid Sdo upload segment response at slave %u!\n",
+            EC_DBG("Invalid SDO upload segment response at slave %u!\n",
                slave->ring_position);
             ec_print_data(data, rec_size);
         }
@@ -1877,7 +1877,7 @@ void ec_fsm_coe_up_seg_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     data_size = rec_size - 10;
 
     if (data_size != seg_size) {
-        EC_WARN("Sdo segment data invalid (%u / %u)"
+        EC_WARN("SDO segment data invalid (%u / %u)"
                 " - Fragmenting not implemented.\n",
                 data_size, seg_size);
     }
@@ -1894,7 +1894,7 @@ void ec_fsm_coe_up_seg_response(ec_fsm_coe_t *fsm /**< finite state machine */)
             return;
         }
 
-        EC_WRITE_U16(data, 0x2 << 12); // Sdo request
+        EC_WRITE_U16(data, 0x2 << 12); // SDO request
         EC_WRITE_U8 (data + 2, (fsm->toggle << 4 // toggle
                                 | 0x3 << 5)); // upload segment request
 
