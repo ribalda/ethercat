@@ -25,6 +25,8 @@
   e1000-devel Mailing List <e1000-devel@lists.sourceforge.net>
   Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
 
+  vim: noexpandtab
+
 *******************************************************************************/
 
 #include "e1000-2.6.18-ethercat.h"
@@ -465,8 +467,14 @@ e1000_up(struct e1000_adapter *adapter)
 	 * next_to_use != next_to_clean */
 	for (i = 0; i < adapter->num_rx_queues; i++) {
 		struct e1000_rx_ring *ring = &adapter->rx_ring[i];
-		adapter->alloc_rx_buf(adapter, ring,
-		                      E1000_DESC_UNUSED(ring));
+		if (adapter->ecdev) {
+			/* fill rx ring completely! */
+			adapter->alloc_rx_buf(adapter, ring, ring->count);
+		} else {
+            /* this one leaves the last ring element unallocated! */
+			adapter->alloc_rx_buf(adapter, ring,
+					E1000_DESC_UNUSED(ring));
+		}
 	}
 
 	adapter->tx_queue_len = netdev->tx_queue_len;
@@ -2170,7 +2178,14 @@ e1000_leave_82542_rst(struct e1000_adapter *adapter)
 		/* No need to loop, because 82542 supports only 1 queue */
 		struct e1000_rx_ring *ring = &adapter->rx_ring[0];
 		e1000_configure_rx(adapter);
-		adapter->alloc_rx_buf(adapter, ring, E1000_DESC_UNUSED(ring));
+		if (adapter->ecdev) { 
+			/* fill rx ring completely! */
+			adapter->alloc_rx_buf(adapter, ring, ring->count);
+		} else {
+            /* this one leaves the last ring element unallocated! */
+			adapter->alloc_rx_buf(adapter, ring, E1000_DESC_UNUSED(ring));
+		}
+
 	}
 }
 

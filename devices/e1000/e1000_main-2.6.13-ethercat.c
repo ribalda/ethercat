@@ -24,6 +24,8 @@
   Linux NICS <linux.nics@intel.com>
   Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
 
+  vim: noexpandtab
+
 *******************************************************************************/
 
 #include "e1000-2.6.13-ethercat.h"

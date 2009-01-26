@@ -2,6 +2,8 @@
 
 $Id$
 
+vim: spelllang=en spell
+
 -------------------------------------------------------------------------------
 
 Changes since 1.4.0:
@@ -27,7 +29,9 @@ Changes since 1.4.0-rc3:
 * Fixed a kernel oops when a slave configuration is detached while the actual
   configuration is in progress.
 * Fixed typo in logging output.
-* Removed bashisms from init script.
+* Removed 'bashisms' from init script ('function' keyword).
+* Fixed bug in e1000 drivers. Memory was allocated when sending the first
+  frame.
 
 Changes in 1.4.0-rc3:
 

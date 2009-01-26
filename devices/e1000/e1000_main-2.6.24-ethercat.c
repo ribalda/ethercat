@@ -24,6 +24,8 @@
   e1000-devel Mailing List <e1000-devel@lists.sourceforge.net>
   Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
 
+  vim: noexpandtab
+
 *******************************************************************************/
 
 #include "e1000-2.6.24-ethercat.h"
@@ -541,8 +543,14 @@ static void e1000_configure(struct e1000_adapter *adapter)
 	 * next_to_use != next_to_clean */
 	for (i = 0; i < adapter->num_rx_queues; i++) {
 		struct e1000_rx_ring *ring = &adapter->rx_ring[i];
-		adapter->alloc_rx_buf(adapter, ring,
-		                      E1000_DESC_UNUSED(ring));
+		if (adapter->ecdev) {
+			/* fill rx ring completely! */
+			adapter->alloc_rx_buf(adapter, ring, ring->count);
+		} else {
+            /* this one leaves the last ring element unallocated! */
+			adapter->alloc_rx_buf(adapter, ring,
+					E1000_DESC_UNUSED(ring));
+		}
 	}
 
 	adapter->tx_queue_len = netdev->tx_queue_len;
@@ -2394,7 +2402,14 @@ e1000_leave_82542_rst(struct e1000_adapter *adapter)
 		/* No need to loop, because 82542 supports only 1 queue */
 		struct e1000_rx_ring *ring = &adapter->rx_ring[0];
 		e1000_configure_rx(adapter);
-		adapter->alloc_rx_buf(adapter, ring, E1000_DESC_UNUSED(ring));
+		if (adapter->ecdev) { 
+			/* fill rx ring completely! */
+			adapter->alloc_rx_buf(adapter, ring, ring->count);
+		} else {
+            /* this one leaves the last ring element unallocated! */
+			adapter->alloc_rx_buf(adapter, ring, E1000_DESC_UNUSED(ring));
+		}
+
 	}
 }
 
@@ -3833,10 +3848,12 @@ e1000_intr_msi(int irq, void *data)
 	struct net_device *netdev = data;
 	struct e1000_adapter *adapter = netdev_priv(netdev);
 	struct e1000_hw *hw = &adapter->hw;
-	int ec_work_done = 0;
 	int i;
 	
 	if (adapter->ecdev) {
+#ifdef CONFIG_E1000_NAPI
+		int ec_work_done = 0;
+#endif
 		for (i = 0; i < E1000_MAX_INTR; i++)
 #ifdef CONFIG_E1000_NAPI
 			if (unlikely(!adapter->clean_rx(adapter, adapter->rx_ring,
@@ -3913,7 +3930,6 @@ e1000_intr(int irq, void *data)
 	struct e1000_hw *hw = &adapter->hw;
 	uint32_t rctl, icr = E1000_READ_REG(hw, ICR);
 	int i;
-	int ec_work_done = 0;
 	if (unlikely(!icr))
 		return IRQ_NONE;  /* Not our interrupt */
 
@@ -3951,6 +3967,9 @@ e1000_intr(int irq, void *data)
 	}
 
 	if (adapter->ecdev) {
+#ifdef CONFIG_E1000_NAPI
+		int ec_work_done = 0;
+#endif
 		for (i = 0; i < E1000_MAX_INTR; i++)
 #ifdef CONFIG_E1000_NAPI
 			if (unlikely(!adapter->clean_rx(adapter, adapter->rx_ring,
