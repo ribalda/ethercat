@@ -34,6 +34,7 @@ noinst_HEADERS = \
 	doxygen.c \
 	ethernet.c ethernet.h \
 	fmmu_config.c fmmu_config.h \
+	foe.h \
 	fsm_change.c fsm_change.h \
 	fsm_coe.c fsm_coe.h \
 	fsm_master.c fsm_master.h \

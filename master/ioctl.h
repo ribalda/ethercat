@@ -68,39 +68,41 @@
 #define EC_IOCTL_SLAVE_SII_WRITE       EC_IOW(0x0f, ec_ioctl_slave_sii_t)
 #define EC_IOCTL_SLAVE_PHY_READ       EC_IOWR(0x10, ec_ioctl_slave_phy_t)
 #define EC_IOCTL_SLAVE_PHY_WRITE       EC_IOW(0x11, ec_ioctl_slave_phy_t)
-#define EC_IOCTL_CONFIG               EC_IOWR(0x12, ec_ioctl_config_t)
-#define EC_IOCTL_CONFIG_PDO           EC_IOWR(0x13, ec_ioctl_config_pdo_t)
-#define EC_IOCTL_CONFIG_PDO_ENTRY     EC_IOWR(0x14, ec_ioctl_config_pdo_entry_t)
-#define EC_IOCTL_CONFIG_SDO           EC_IOWR(0x15, ec_ioctl_config_sdo_t)
+#define EC_IOCTL_SLAVE_FOE_READ       EC_IOWR(0x12, ec_ioctl_slave_foe_t)
+#define EC_IOCTL_SLAVE_FOE_WRITE       EC_IOW(0x13, ec_ioctl_slave_foe_t)
+#define EC_IOCTL_CONFIG               EC_IOWR(0x14, ec_ioctl_config_t)
+#define EC_IOCTL_CONFIG_PDO           EC_IOWR(0x15, ec_ioctl_config_pdo_t)
+#define EC_IOCTL_CONFIG_PDO_ENTRY     EC_IOWR(0x16, ec_ioctl_config_pdo_entry_t)
+#define EC_IOCTL_CONFIG_SDO           EC_IOWR(0x17, ec_ioctl_config_sdo_t)
 
 // Application interface
-#define EC_IOCTL_REQUEST                EC_IO(0x16)
-#define EC_IOCTL_CREATE_DOMAIN          EC_IO(0x17)
-#define EC_IOCTL_CREATE_SLAVE_CONFIG  EC_IOWR(0x18, ec_ioctl_config_t)
-#define EC_IOCTL_ACTIVATE              EC_IOR(0x19, size_t)
-#define EC_IOCTL_SEND                   EC_IO(0x1a)
-#define EC_IOCTL_RECEIVE                EC_IO(0x1b)
-#define EC_IOCTL_MASTER_STATE          EC_IOR(0x1c, ec_master_state_t)
-#define EC_IOCTL_SC_SYNC               EC_IOW(0x1d, ec_ioctl_config_t)
-#define EC_IOCTL_SC_ADD_PDO            EC_IOW(0x1e, ec_ioctl_config_pdo_t)
-#define EC_IOCTL_SC_CLEAR_PDOS         EC_IOW(0x1f, ec_ioctl_config_pdo_t)
-#define EC_IOCTL_SC_ADD_ENTRY          EC_IOW(0x20, ec_ioctl_add_pdo_entry_t)
-#define EC_IOCTL_SC_CLEAR_ENTRIES      EC_IOW(0x21, ec_ioctl_config_pdo_t)
-#define EC_IOCTL_SC_REG_PDO_ENTRY     EC_IOWR(0x22, ec_ioctl_reg_pdo_entry_t)
-#define EC_IOCTL_SC_SDO                EC_IOW(0x23, ec_ioctl_sc_sdo_t)
-#define EC_IOCTL_SC_VOE               EC_IOWR(0x24, ec_ioctl_voe_t)
-#define EC_IOCTL_SC_STATE             EC_IOWR(0x25, ec_ioctl_sc_state_t)
-#define EC_IOCTL_DOMAIN_OFFSET          EC_IO(0x26)
-#define EC_IOCTL_DOMAIN_PROCESS         EC_IO(0x27)
-#define EC_IOCTL_DOMAIN_QUEUE           EC_IO(0x28)
-#define EC_IOCTL_DOMAIN_STATE         EC_IOWR(0x29, ec_ioctl_domain_state_t)
-#define EC_IOCTL_VOE_SEND_HEADER       EC_IOW(0x2a, ec_ioctl_voe_t)
-#define EC_IOCTL_VOE_REC_HEADER       EC_IOWR(0x2b, ec_ioctl_voe_t)
-#define EC_IOCTL_VOE_READ              EC_IOW(0x2c, ec_ioctl_voe_t)
-#define EC_IOCTL_VOE_READ_NOSYNC       EC_IOW(0x2d, ec_ioctl_voe_t)
-#define EC_IOCTL_VOE_WRITE            EC_IOWR(0x2e, ec_ioctl_voe_t)
-#define EC_IOCTL_VOE_EXEC             EC_IOWR(0x2f, ec_ioctl_voe_t)
-#define EC_IOCTL_VOE_DATA             EC_IOWR(0x30, ec_ioctl_voe_t)
+#define EC_IOCTL_REQUEST                EC_IO(0x18)
+#define EC_IOCTL_CREATE_DOMAIN          EC_IO(0x19)
+#define EC_IOCTL_CREATE_SLAVE_CONFIG  EC_IOWR(0x1a, ec_ioctl_config_t)
+#define EC_IOCTL_ACTIVATE              EC_IOR(0x1b, size_t)
+#define EC_IOCTL_SEND                   EC_IO(0x1c)
+#define EC_IOCTL_RECEIVE                EC_IO(0x1d)
+#define EC_IOCTL_MASTER_STATE          EC_IOR(0x1e, ec_master_state_t)
+#define EC_IOCTL_SC_SYNC               EC_IOW(0x1f, ec_ioctl_config_t)
+#define EC_IOCTL_SC_ADD_PDO            EC_IOW(0x20, ec_ioctl_config_pdo_t)
+#define EC_IOCTL_SC_CLEAR_PDOS         EC_IOW(0x21, ec_ioctl_config_pdo_t)
+#define EC_IOCTL_SC_ADD_ENTRY          EC_IOW(0x22, ec_ioctl_add_pdo_entry_t)
+#define EC_IOCTL_SC_CLEAR_ENTRIES      EC_IOW(0x23, ec_ioctl_config_pdo_t)
+#define EC_IOCTL_SC_REG_PDO_ENTRY     EC_IOWR(0x24, ec_ioctl_reg_pdo_entry_t)
+#define EC_IOCTL_SC_SDO                EC_IOW(0x25, ec_ioctl_sc_sdo_t)
+#define EC_IOCTL_SC_VOE               EC_IOWR(0x26, ec_ioctl_voe_t)
+#define EC_IOCTL_SC_STATE             EC_IOWR(0x27, ec_ioctl_sc_state_t)
+#define EC_IOCTL_DOMAIN_OFFSET          EC_IO(0x28)
+#define EC_IOCTL_DOMAIN_PROCESS         EC_IO(0x29)
+#define EC_IOCTL_DOMAIN_QUEUE           EC_IO(0x2a)
+#define EC_IOCTL_DOMAIN_STATE         EC_IOWR(0x2b, ec_ioctl_domain_state_t)
+#define EC_IOCTL_VOE_SEND_HEADER       EC_IOW(0x2c, ec_ioctl_voe_t)
+#define EC_IOCTL_VOE_REC_HEADER       EC_IOWR(0x2d, ec_ioctl_voe_t)
+#define EC_IOCTL_VOE_READ              EC_IOW(0x2e, ec_ioctl_voe_t)
+#define EC_IOCTL_VOE_READ_NOSYNC       EC_IOW(0x2f, ec_ioctl_voe_t)
+#define EC_IOCTL_VOE_WRITE            EC_IOWR(0x30, ec_ioctl_voe_t)
+#define EC_IOCTL_VOE_EXEC             EC_IOWR(0x31, ec_ioctl_voe_t)
+#define EC_IOCTL_VOE_DATA             EC_IOWR(0x32, ec_ioctl_voe_t)
 
 /*****************************************************************************/
 
@@ -320,6 +322,21 @@ typedef struct {
     uint16_t length;
     uint8_t *data;
 } ec_ioctl_slave_phy_t;
+
+/*****************************************************************************/
+
+typedef struct {
+    // inputs
+    uint16_t slave_position;
+    uint16_t offset;
+    uint32_t buffer_size;
+    uint8_t *buffer;
+
+    // outputs
+    uint32_t data_size;
+    uint32_t abort_code;
+    char file_name[32];
+} ec_ioctl_slave_foe_t;
 
 /*****************************************************************************/
 

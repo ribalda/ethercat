@@ -70,6 +70,8 @@ class Command
         const string &getDataType() const;
 		void setForce(bool);
 		bool getForce() const;
+		void setOutputFile(const string &);
+		const string &getOutputFile() const;
 
         bool matchesSubstr(const string &) const;
         bool matchesAbbrev(const string &) const;
@@ -106,6 +108,7 @@ class Command
 		int domain;
 		string dataType;
 		bool force;
+		string outputFile;
 
         Command();
 };
@@ -164,6 +167,13 @@ inline const string &Command::getDataType() const
 inline bool Command::getForce() const
 {
     return force;
+}
+
+/****************************************************************************/
+
+inline const string &Command::getOutputFile() const
+{
+    return outputFile;
 }
 
 /****************************************************************************/

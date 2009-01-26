@@ -372,6 +372,32 @@ void MasterDevice::writePhy(
 
 /****************************************************************************/
 
+void MasterDevice::readFoe(
+        ec_ioctl_slave_foe_t *data
+        )
+{
+    if (ioctl(fd, EC_IOCTL_SLAVE_FOE_READ, data) < 0) {
+        stringstream err;
+        err << "Failed to read via FoE: " << strerror(errno);
+        throw MasterDeviceException(err);
+    }
+}
+
+/****************************************************************************/
+
+void MasterDevice::writeFoe(
+        ec_ioctl_slave_foe_t *data
+        )
+{
+    if (ioctl(fd, EC_IOCTL_SLAVE_FOE_WRITE, data) < 0) {
+        stringstream err;
+        err << "Failed to write via FoE: " << strerror(errno);
+        throw MasterDeviceException(err);
+    }
+}
+
+/****************************************************************************/
+
 void MasterDevice::setDebug(unsigned int debugLevel)
 {
     if (ioctl(fd, EC_IOCTL_MASTER_DEBUG, debugLevel) < 0) {

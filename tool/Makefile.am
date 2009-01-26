@@ -36,6 +36,8 @@ ethercat_SOURCES = \
 	CommandDebug.cpp \
 	CommandDomains.cpp \
 	CommandDownload.cpp \
+	CommandFoeRead.cpp \
+	CommandFoeWrite.cpp \
 	CommandMaster.cpp \
 	CommandPdos.cpp \
 	CommandPhyRead.cpp \
@@ -48,6 +50,7 @@ ethercat_SOURCES = \
 	CommandUpload.cpp \
 	CommandVersion.cpp \
 	CommandXml.cpp \
+	FoeCommand.cpp \
 	MasterDevice.cpp \
 	SdoCommand.cpp \
 	main.cpp \
@@ -61,6 +64,8 @@ noinst_HEADERS = \
 	CommandDebug.h \
 	CommandDomains.h \
 	CommandDownload.h \
+	CommandFoeRead.h \
+	CommandFoeWrite.h \
 	CommandMaster.h \
 	CommandPdos.h \
 	CommandPhyRead.h \
@@ -73,7 +78,8 @@ noinst_HEADERS = \
 	CommandUpload.h \
 	CommandVersion.h \
 	CommandXml.h \
-	MasterDevice.h  \
+	FoeCommand.h \
+	MasterDevice.h \
 	SdoCommand.h \
 	sii_crc.h
 

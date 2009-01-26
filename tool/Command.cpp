@@ -63,6 +63,13 @@ void Command::setForce(bool f)
 	force = f;
 };
 
+/*****************************************************************************/
+
+void Command::setOutputFile(const string &f)
+{
+	outputFile = f;
+};
+
 /****************************************************************************/
 
 bool Command::matchesSubstr(const string &cmd) const

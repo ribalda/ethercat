@@ -170,6 +170,9 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     INIT_LIST_HEAD(&master->phy_requests);
     init_waitqueue_head(&master->phy_queue);
 
+    INIT_LIST_HEAD(&master->foe_requests);
+    init_waitqueue_head(&master->foe_queue);
+
     // init devices
     ret = ec_device_init(&master->main_device, master);
     if (ret < 0)

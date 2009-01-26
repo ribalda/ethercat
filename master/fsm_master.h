@@ -36,10 +36,12 @@
 
 #include "globals.h"
 #include "datagram.h"
+#include "foe_request.h"
 #include "sdo_request.h"
 #include "fsm_slave_config.h"
 #include "fsm_slave_scan.h"
 #include "fsm_pdo.h"
+#include "fsm_foe.h"
 
 /*****************************************************************************/
 
@@ -80,6 +82,16 @@ typedef struct {
 
 /*****************************************************************************/
 
+/** FoE write request.
+ */
+typedef struct {
+    struct list_head list; /**< List head. */
+    ec_slave_t *slave; /**< EtherCAT slave. */
+    ec_foe_request_t req; /**< FoE request. */
+} ec_master_foe_request_t;
+
+/*****************************************************************************/
+
 typedef struct ec_fsm_master ec_fsm_master_t; /**< \see ec_fsm_master */
 
 /** Finite state machine of an EtherCAT master.
@@ -100,6 +112,8 @@ struct ec_fsm_master {
     off_t sii_index; /**< index to SII write request data */
     ec_sdo_request_t *sdo_request; /**< SDO request to process. */
     ec_phy_request_t *phy_request; /**< Physical memory request to process. */
+    ec_foe_request_t *foe_request; /**< FoE request to process. */
+    off_t foe_index; /**< index to FoE write request data */
 
     ec_fsm_coe_t fsm_coe; /**< CoE state machine */
     ec_fsm_pdo_t fsm_pdo; /**< PDO configuration state machine. */
@@ -107,6 +121,7 @@ struct ec_fsm_master {
     ec_fsm_slave_config_t fsm_slave_config; /**< slave state machine */
     ec_fsm_slave_scan_t fsm_slave_scan; /**< slave state machine */
     ec_fsm_sii_t fsm_sii; /**< SII state machine */
+    ec_fsm_foe_t fsm_foe; /**< FoE state machine */
 };
 
 /*****************************************************************************/

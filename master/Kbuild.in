@@ -34,8 +34,10 @@ ec_master-objs := \
 	device.o \
 	domain.o \
 	fmmu_config.o \
+	foe_request.o \
 	fsm_change.o \
 	fsm_coe.o \
+	fsm_foe.o \
 	fsm_master.o \
 	fsm_pdo.o \
 	fsm_pdo_entry.o \

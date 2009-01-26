@@ -18,6 +18,8 @@ using namespace std;
 #include "CommandDebug.h"
 #include "CommandDomains.h"
 #include "CommandDownload.h"
+#include "CommandFoeRead.h"
+#include "CommandFoeWrite.h"
 #include "CommandMaster.h"
 #include "CommandPdos.h"
 #include "CommandPhyRead.h"
@@ -51,6 +53,7 @@ string dataTypeStr;
 Command::Verbosity verbosity = Command::Normal;
 bool force = false;
 bool helpRequested = false;
+string outputFile;
 
 /*****************************************************************************/
 
@@ -103,21 +106,22 @@ void getOptions(int argc, char **argv)
     stringstream str;
 
     static struct option longOptions[] = {
-        //name,      has_arg,           flag, val
-        {"master",   required_argument, NULL, 'm'},
-        {"alias",    required_argument, NULL, 'a'},
-        {"position", required_argument, NULL, 'p'},
-        {"domain",   required_argument, NULL, 'd'},
-        {"type",     required_argument, NULL, 't'},
-        {"force",    no_argument,       NULL, 'f'},
-        {"quiet",    no_argument,       NULL, 'q'},
-        {"verbose",  no_argument,       NULL, 'v'},
-        {"help",     no_argument,       NULL, 'h'},
+        //name,         has_arg,           flag, val
+        {"master",      required_argument, NULL, 'm'},
+        {"alias",       required_argument, NULL, 'a'},
+        {"position",    required_argument, NULL, 'p'},
+        {"domain",      required_argument, NULL, 'd'},
+        {"type",        required_argument, NULL, 't'},
+        {"output-file", required_argument, NULL, 'o'},
+        {"force",       no_argument,       NULL, 'f'},
+        {"quiet",       no_argument,       NULL, 'q'},
+        {"verbose",     no_argument,       NULL, 'v'},
+        {"help",        no_argument,       NULL, 'h'},
         {}
     };
 
     do {
-        c = getopt_long(argc, argv, "m:a:p:d:t:fqvh", longOptions, NULL);
+        c = getopt_long(argc, argv, "m:a:p:d:t:o:fqvh", longOptions, NULL);
 
         switch (c) {
             case 'm':
@@ -175,6 +179,10 @@ void getOptions(int argc, char **argv)
 
             case 't':
                 dataTypeStr = optarg;
+                break;
+
+            case 'o':
+                outputFile = optarg;
                 break;
 
             case 'f':
@@ -264,6 +272,8 @@ int main(int argc, char **argv)
     commandList.push_back(new CommandDebug());
     commandList.push_back(new CommandDomains());
     commandList.push_back(new CommandDownload());
+    commandList.push_back(new CommandFoeRead());
+    commandList.push_back(new CommandFoeWrite());
     commandList.push_back(new CommandMaster());
     commandList.push_back(new CommandPdos());
     commandList.push_back(new CommandPhyRead());
@@ -292,6 +302,7 @@ int main(int argc, char **argv)
                     cmd->setPosition(slavePosition);
                     cmd->setDomain(domainIndex);
                     cmd->setDataType(dataTypeStr);
+                    cmd->setOutputFile(outputFile);
                     cmd->setForce(force);
                     cmd->execute(masterDev, commandArgs);
                 } catch (InvalidUsageException &e) {

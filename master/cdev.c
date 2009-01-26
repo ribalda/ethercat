@@ -2392,6 +2392,182 @@ int ec_cdev_ioctl_voe_data(
     return 0;
 }
 
+/*****************************************************************************/
+
+/** Read a file from a slave via FoE.
+ */
+int ec_cdev_ioctl_slave_foe_read(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg /**< ioctl() argument. */
+        )
+{
+    ec_ioctl_slave_foe_t data;
+    ec_master_foe_request_t request;
+    int retval;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+        return -EFAULT;
+    }
+
+    ec_foe_request_init(&request.req, data.file_name);
+    ec_foe_request_read(&request.req);
+    ec_foe_request_alloc(&request.req, 10000); // FIXME
+
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
+
+    if (!(request.slave = ec_master_find_slave(
+                    master, 0, data.slave_position))) {
+        up(&master->master_sem);
+        ec_foe_request_clear(&request.req);
+        EC_ERR("Slave %u does not exist!\n", data.slave_position);
+        return -EINVAL;
+    }
+
+    // schedule request.
+    list_add_tail(&request.list, &master->foe_requests);
+
+    up(&master->master_sem);
+
+    // wait for processing through FSM
+    if (wait_event_interruptible(master->foe_queue,
+                request.req.state != EC_INT_REQUEST_QUEUED)) {
+        // interrupted by signal
+        down(&master->master_sem);
+        if (request.req.state == EC_INT_REQUEST_QUEUED) {
+            list_del(&request.list);
+            up(&master->master_sem);
+            ec_foe_request_clear(&request.req);
+            return -EINTR;
+        }
+        // request already processing: interrupt not possible.
+        up(&master->master_sem);
+    }
+
+    // wait until master FSM has finished processing
+    wait_event(master->foe_queue, request.req.state != EC_REQUEST_BUSY);
+
+    data.abort_code = request.req.abort_code;
+
+	if (master->debug_level) {
+		EC_DBG("%d bytes read via FoE (abort_code = 0x%x).\n",
+				request.req.data_size, request.req.abort_code);
+	}
+
+    if (request.req.state != EC_REQUEST_SUCCESS) {
+        data.data_size = 0;
+        retval = -EIO;
+    } else {
+        if (request.req.data_size > data.buffer_size) {
+            EC_ERR("Buffer too small.\n");
+            ec_foe_request_clear(&request.req);
+            return -EOVERFLOW;
+        }
+        data.data_size = request.req.data_size;
+        if (copy_to_user((void __user *) data.buffer,
+                    request.req.buffer, data.data_size)) {
+            ec_foe_request_clear(&request.req);
+            return -EFAULT;
+        }
+        retval = 0;
+    }
+
+    if (__copy_to_user((void __user *) arg, &data, sizeof(data))) {
+        retval = -EFAULT;
+    }
+
+    ec_foe_request_clear(&request.req);
+    return retval;
+}
+
+/*****************************************************************************/
+
+/** Write a file to a slave via FoE
+ */
+int ec_cdev_ioctl_slave_foe_write(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg /**< ioctl() argument. */
+        )
+{
+    ec_ioctl_slave_foe_t data;
+    ec_master_foe_request_t request;
+    int retval;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+        return -EFAULT;
+    }
+
+    INIT_LIST_HEAD(&request.list);
+
+    ec_foe_request_init(&request.req, data.file_name);
+
+    if (ec_foe_request_alloc(&request.req, data.buffer_size)) {
+        ec_foe_request_clear(&request.req);
+        return -ENOMEM;
+    }
+    if (copy_from_user(request.req.buffer,
+                (void __user *) data.buffer, data.buffer_size)) {
+        ec_foe_request_clear(&request.req);
+        return -EFAULT;
+    }
+    request.req.data_size = data.buffer_size;
+    ec_foe_request_write(&request.req);
+
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
+
+    if (!(request.slave = ec_master_find_slave(
+                    master, 0, data.slave_position))) {
+        up(&master->master_sem);
+        EC_ERR("Slave %u does not exist!\n", data.slave_position);
+        ec_foe_request_clear(&request.req);
+        return -EINVAL;
+    }
+
+	if (master->debug_level) {
+		EC_DBG("Scheduling FoE write request.\n");
+	}
+
+    // schedule FoE write request.
+    list_add_tail(&request.list, &master->foe_requests);
+
+    up(&master->master_sem);
+
+    // wait for processing through FSM
+    if (wait_event_interruptible(master->foe_queue,
+                request.req.state != EC_INT_REQUEST_QUEUED)) {
+        // interrupted by signal
+        down(&master->master_sem);
+        if (request.req.state == EC_INT_REQUEST_QUEUED) {
+            // abort request
+            list_del(&request.list);
+            up(&master->master_sem);
+            ec_foe_request_clear(&request.req);
+            return -EINTR;
+        }
+        up(&master->master_sem);
+    }
+
+    // wait until master FSM has finished processing
+    wait_event(master->foe_queue, request.req.state != EC_REQUEST_BUSY);
+
+    data.abort_code = request.req.abort_code;
+
+    retval = request.req.state == EC_REQUEST_SUCCESS ? 0 : -EIO;
+
+    if (__copy_to_user((void __user *) arg, &data, sizeof(data))) {
+        retval = -EFAULT;
+    }
+
+    ec_foe_request_clear(&request.req);
+
+	if (master->debug_level) {
+		printk ("Finished FoE writing.\n");
+	}
+
+    return retval;
+}
+
 /******************************************************************************
  * File operations
  *****************************************************************************/
@@ -2502,6 +2678,12 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             if (!(filp->f_mode & FMODE_WRITE))
                 return -EPERM;
             return ec_cdev_ioctl_slave_phy_write(master, arg);
+        case EC_IOCTL_SLAVE_FOE_READ:
+            return ec_cdev_ioctl_slave_foe_read(master, arg);
+        case EC_IOCTL_SLAVE_FOE_WRITE:
+            if (!(filp->f_mode & FMODE_WRITE))
+                return -EPERM;
+            return ec_cdev_ioctl_slave_foe_write(master, arg);
         case EC_IOCTL_CONFIG:
             return ec_cdev_ioctl_config(master, arg);
         case EC_IOCTL_CONFIG_PDO:
