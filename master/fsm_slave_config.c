@@ -458,6 +458,8 @@ void ec_fsm_slave_config_enter_mbox_sync(
 /*****************************************************************************/
 
 /** Slave configuration state: SYNC.
+ *
+ * \todo Timeout for response.
  */
 void ec_fsm_slave_config_state_mbox_sync(
         ec_fsm_slave_config_t *fsm /**< slave state machine */

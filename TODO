@@ -25,6 +25,8 @@ Version 1.5.0:
 * Distributed clocks.
 * Bus simulator interface.
 * Implement ecrt_master_slave() in kernel space.
+* Rename phy-commands to register commands.
+* Timeout for sync manager config after clearing.
 
 Future issues:
 
