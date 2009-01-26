@@ -1494,7 +1494,7 @@ ec_slave_config_t *ecrt_master_slave_config_err(ec_master_t *master,
 
     if (master->debug_level)
         EC_DBG("ecrt_master_slave_config(master = 0x%x, alias = %u, "
-                "position = %u, vendor_id = %u, product_code = %u)\n",
+                "position = %u, vendor_id = 0x%x, product_code = 0x%x)\n",
                 (u32) master, alias, position, vendor_id, product_code);
 
     list_for_each_entry(sc, &master->configs, list) {
