@@ -60,6 +60,8 @@ struct ec_fsm_slave_config
     unsigned int retries; /**< Retries on datagram timeout. */
     ec_sdo_request_t *request; /**< SDO request for SDO configuration. */
     ec_sdo_request_t request_copy; /**< Copied SDO request. */
+    unsigned long jiffies_start; /**< For timeout calculations. */
+    unsigned int take_time; /**< Store jiffies after datagram reception. */
 };
 
 /*****************************************************************************/

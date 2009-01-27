@@ -451,6 +451,8 @@ void ec_fsm_slave_config_enter_mbox_sync(
             slave->sii.boot_tx_mailbox_size;
     }
 
+    fsm->take_time = 1;
+
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_slave_config_state_mbox_sync;
 }
@@ -479,7 +481,36 @@ void ec_fsm_slave_config_state_mbox_sync(
         return;
     }
 
-    if (datagram->working_counter != 1) {
+    if (fsm->take_time) {
+        fsm->take_time = 0;
+        fsm->jiffies_start = datagram->jiffies_sent;
+    }
+
+    /* Because the sync manager configurations are cleared during the last
+     * cycle, some slaves do not immediately respond to the mailbox sync
+     * manager configuration datagram. Therefore, resend the datagram for
+     * a certain time, if the slave does not respond.
+     */
+    if (datagram->working_counter == 0) {
+        unsigned long diff = datagram->jiffies_received - fsm->jiffies_start;
+
+        if (diff >= HZ) {
+            slave->error_flag = 1;
+            fsm->state = ec_fsm_slave_config_state_error;
+            EC_ERR("Timeout while configuring mailbox sync managers of"
+                    " slave %u.\n", slave->ring_position);
+            return;
+        }
+        else if (slave->master->debug_level) {
+            EC_DBG("Resending after %u ms...\n",
+                    (unsigned int) diff * 1000 / HZ);
+        }
+
+        // send configuration datagram again
+        fsm->retries = EC_FSM_RETRIES;
+        return;
+    }
+    else if (datagram->working_counter != 1) {
         slave->error_flag = 1;
         fsm->state = ec_fsm_slave_config_state_error;
         EC_ERR("Failed to set sync managers of slave %u: ",
