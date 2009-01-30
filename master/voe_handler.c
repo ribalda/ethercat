@@ -159,7 +159,7 @@ void ecrt_voe_handler_read(ec_voe_handler_t *voe)
 {
     voe->dir = EC_DIR_INPUT;
     voe->state = ec_voe_handler_state_read_start;
-    voe->request_state = EC_INT_REQUEST_QUEUED;
+    voe->request_state = EC_INT_REQUEST_BUSY;
 }
 
 /*****************************************************************************/
@@ -168,7 +168,7 @@ void ecrt_voe_handler_read_nosync(ec_voe_handler_t *voe)
 {
     voe->dir = EC_DIR_INPUT;
     voe->state = ec_voe_handler_state_read_nosync_start;
-    voe->request_state = EC_INT_REQUEST_QUEUED;
+    voe->request_state = EC_INT_REQUEST_BUSY;
 }
 
 /*****************************************************************************/
@@ -178,16 +178,16 @@ void ecrt_voe_handler_write(ec_voe_handler_t *voe, size_t size)
     voe->dir = EC_DIR_OUTPUT;
     voe->data_size = size;
     voe->state = ec_voe_handler_state_write_start;
-    voe->request_state = EC_INT_REQUEST_QUEUED;
+    voe->request_state = EC_INT_REQUEST_BUSY;
 }
 
 /*****************************************************************************/
 
 ec_request_state_t ecrt_voe_handler_execute(ec_voe_handler_t *voe)
 {
-    if (voe->config->slave) {
+    if (voe->config->slave) { // FIXME locking?
         voe->state(voe);
-        if (voe->request_state == EC_REQUEST_BUSY)
+        if (voe->request_state == EC_INT_REQUEST_BUSY)
             ec_master_queue_datagram(voe->config->master, &voe->datagram);
     } else {
         voe->state = ec_voe_handler_state_error;
