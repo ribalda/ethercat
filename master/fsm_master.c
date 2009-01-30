@@ -490,7 +490,7 @@ int ec_fsm_master_action_process_foe(
         request = list_entry(master->foe_requests.next,
                 ec_master_foe_request_t, list);
         list_del_init(&request->list); // dequeue
-        request->req.state = EC_REQUEST_BUSY;
+        request->req.state = EC_INT_REQUEST_BUSY;
         slave = request->slave;
 
         if (master->debug_level)

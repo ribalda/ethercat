@@ -2454,7 +2454,7 @@ int ec_cdev_ioctl_slave_foe_read(
     }
 
     // wait until master FSM has finished processing
-    wait_event(master->foe_queue, request.req.state != EC_REQUEST_BUSY);
+    wait_event(master->foe_queue, request.req.state != EC_INT_REQUEST_BUSY);
 
     data.result = request.req.result;
     data.error_code = request.req.error_code;
@@ -2464,7 +2464,7 @@ int ec_cdev_ioctl_slave_foe_read(
 				request.req.data_size, request.req.result);
 	}
 
-    if (request.req.state != EC_REQUEST_SUCCESS) {
+    if (request.req.state != EC_INT_REQUEST_SUCCESS) {
         data.data_size = 0;
         retval = -EIO;
     } else {
@@ -2564,12 +2564,12 @@ int ec_cdev_ioctl_slave_foe_write(
     }
 
     // wait until master FSM has finished processing
-    wait_event(master->foe_queue, request.req.state != EC_REQUEST_BUSY);
+    wait_event(master->foe_queue, request.req.state != EC_INT_REQUEST_BUSY);
 
     data.result = request.req.result;
     data.error_code = request.req.error_code;
 
-    retval = request.req.state == EC_REQUEST_SUCCESS ? 0 : -EIO;
+    retval = request.req.state == EC_INT_REQUEST_SUCCESS ? 0 : -EIO;
 
     if (__copy_to_user((void __user *) arg, &data, sizeof(data))) {
         retval = -EFAULT;
