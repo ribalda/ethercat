@@ -359,6 +359,26 @@ const ec_sdo_request_t *ec_slave_config_get_sdo_by_pos_const(
 
 /** Finds a VoE handler via its position in the list.
  */
+ec_sdo_request_t *ec_slave_config_find_sdo_request(
+        ec_slave_config_t *sc, /**< Slave configuration. */
+        unsigned int pos /**< Position in the list. */
+        )
+{
+    ec_sdo_request_t *req;
+
+    list_for_each_entry(req, &sc->sdo_requests, list) {
+        if (pos--)
+            continue;
+        return req;
+    }
+
+    return NULL;
+}
+
+/*****************************************************************************/
+
+/** Finds a VoE handler via its position in the list.
+ */
 ec_voe_handler_t *ec_slave_config_find_voe_handler(
         ec_slave_config_t *sc, /**< Slave configuration. */
         unsigned int pos /**< Position in the list. */
