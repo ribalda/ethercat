@@ -2347,6 +2347,8 @@ int ec_cdev_ioctl_voe_exec(
     data.state = ecrt_voe_handler_execute(voe);
     if (data.state == EC_REQUEST_SUCCESS && voe->dir == EC_DIR_INPUT)
         data.size = ecrt_voe_handler_data_size(voe);
+    else
+        data.size = 0;
 
     if (copy_to_user((void __user *) arg, &data, sizeof(data)))
         return -EFAULT;

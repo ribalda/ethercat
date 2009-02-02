@@ -142,7 +142,6 @@ ec_request_state_t ecrt_voe_handler_execute(ec_voe_handler_t *voe)
 
     data.config_index = voe->config->index;
     data.voe_index = voe->index;
-    data.size = 0;
 
     if (ioctl(voe->config->master->fd, EC_IOCTL_VOE_EXEC, &data) == -1) {
         fprintf(stderr, "Failed to execute VoE handler: %s\n",
