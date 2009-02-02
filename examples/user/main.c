@@ -45,6 +45,7 @@
 
 // Optional features
 #define CONFIGURE_PDOS  1
+#define SDO_ACCESS      0
 
 /****************************************************************************/
 
@@ -68,14 +69,15 @@ static unsigned int user_alarms = 0;
 static uint8_t *domain1_pd = NULL;
 
 #define BusCouplerPos  0, 0
-#define AnaOutSlavePos 0, 1
-#define AnaInSlavePos  0, 2
-#define DigOutSlavePos 0, 3
+#define DigOutSlavePos 0, 2
+#define AnaInSlavePos  0, 3
+#define AnaOutSlavePos 0, 4
 
 #define Beckhoff_EK1100 0x00000002, 0x044c2c52
 #define Beckhoff_EL2004 0x00000002, 0x07d43052
 #define Beckhoff_EL2032 0x00000002, 0x07f03052
 #define Beckhoff_EL3152 0x00000002, 0x0c503052
+#define Beckhoff_EL3102 0x00000002, 0x0c1e3052
 #define Beckhoff_EL4102 0x00000002, 0x10063052
 
 // offsets for PDO entries
@@ -85,8 +87,8 @@ static unsigned int off_ana_out;
 static unsigned int off_dig_out;
 
 const static ec_pdo_entry_reg_t domain1_regs[] = {
-    {AnaInSlavePos,  Beckhoff_EL3152, 0x3101, 1, &off_ana_in_status},
-    {AnaInSlavePos,  Beckhoff_EL3152, 0x3101, 2, &off_ana_in_value},
+    {AnaInSlavePos,  Beckhoff_EL3102, 0x3101, 1, &off_ana_in_status},
+    {AnaInSlavePos,  Beckhoff_EL3102, 0x3101, 2, &off_ana_in_value},
 	{AnaOutSlavePos, Beckhoff_EL4102, 0x3001, 1, &off_ana_out},
 	{DigOutSlavePos, Beckhoff_EL2032, 0x3001, 1, &off_dig_out},
 	{}
@@ -101,7 +103,7 @@ static unsigned int blink = 0;
 
 // Analog in --------------------------
 
-static ec_pdo_entry_info_t el3152_pdo_entries[] = {
+static ec_pdo_entry_info_t el3102_pdo_entries[] = {
     {0x3101, 1,  8}, // channel 1 status
     {0x3101, 2, 16}, // channel 1 value
     {0x3102, 1,  8}, // channel 2 status
@@ -110,14 +112,14 @@ static ec_pdo_entry_info_t el3152_pdo_entries[] = {
     {0x6401, 2, 16}  // channel 2 value (alt.)
 };
 
-static ec_pdo_info_t el3152_pdos[] = {
-    {0x1A00, 2, el3152_pdo_entries},
-    {0x1A01, 2, el3152_pdo_entries + 2}
+static ec_pdo_info_t el3102_pdos[] = {
+    {0x1A00, 2, el3102_pdo_entries},
+    {0x1A01, 2, el3102_pdo_entries + 2}
 };
 
-static ec_sync_info_t el3152_syncs[] = {
+static ec_sync_info_t el3102_syncs[] = {
     {2, EC_DIR_OUTPUT},
-    {3, EC_DIR_INPUT, 2, el3152_pdos},
+    {3, EC_DIR_INPUT, 2, el3102_pdos},
     {0xff}
 };
 
@@ -160,6 +162,12 @@ static ec_sync_info_t el2004_syncs[] = {
     {1, EC_DIR_INPUT},
     {0xff}
 };
+#endif
+
+/*****************************************************************************/
+
+#if SDO_ACCESS
+static ec_sdo_request_t *sdo;
 #endif
 
 /*****************************************************************************/
@@ -215,6 +223,31 @@ void check_slave_config_states(void)
     sc_ana_in_state = s;
 }
 
+/*****************************************************************************/
+
+#if SDO_ACCESS
+void read_sdo(void)
+{
+    switch (ecrt_sdo_request_state(sdo)) {
+        case EC_REQUEST_UNUSED: // request was not used yet
+            ecrt_sdo_request_read(sdo); // trigger first read
+            break;
+        case EC_REQUEST_BUSY:
+            fprintf(stderr, "Still busy...\n");
+            break;
+        case EC_REQUEST_SUCCESS:
+            fprintf(stderr, "SDO value: 0x%04X\n",
+                    EC_READ_U16(ecrt_sdo_request_data(sdo)));
+            ecrt_sdo_request_read(sdo); // trigger next read
+            break;
+        case EC_REQUEST_ERROR:
+            fprintf(stderr, "Failed to read SDO!\n");
+            ecrt_sdo_request_read(sdo); // retry reading
+            break;
+    }
+}
+#endif
+
 /****************************************************************************/
 
 void cyclic_task()
@@ -241,6 +274,12 @@ void cyclic_task()
 
         // check for islave configuration state(s) (optional)
         check_slave_config_states();
+
+#if SDO_ACCESS
+        // read process data SDO
+        read_sdo();
+#endif
+
     }
 
 #if 0
@@ -287,14 +326,23 @@ int main(int argc, char **argv)
         return -1;
 
     if (!(sc_ana_in = ecrt_master_slave_config(
-                    master, AnaInSlavePos, Beckhoff_EL3152))) {
+                    master, AnaInSlavePos, Beckhoff_EL3102))) {
         fprintf(stderr, "Failed to get slave configuration.\n");
         return -1;
     }
 
+#if SDO_ACCESS
+    fprintf(stderr, "Creating SDO requests...\n");
+    if (!(sdo = ecrt_slave_config_create_sdo_request(sc_ana_in, 0x3102, 2, 2))) {
+        fprintf(stderr, "Failed to create SDO request.\n");
+        return -1;
+    }
+    ecrt_sdo_request_timeout(sdo, 500); // ms
+#endif
+
 #if CONFIGURE_PDOS
     printf("Configuring PDOs...\n");
-    if (ecrt_slave_config_pdos(sc_ana_in, EC_END, el3152_syncs)) {
+    if (ecrt_slave_config_pdos(sc_ana_in, EC_END, el3102_syncs)) {
         fprintf(stderr, "Failed to configure PDOs.\n");
         return -1;
     }

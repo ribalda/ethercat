@@ -1874,6 +1874,55 @@ int ec_cdev_ioctl_sc_sdo(
 
 /*****************************************************************************/
 
+/** Create an SDO request.
+ */
+int ec_cdev_ioctl_sc_create_sdo_request(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    ec_ioctl_sdo_request_t data;
+    ec_slave_config_t *sc;
+    ec_sdo_request_t *req;
+
+	if (unlikely(!priv->requested))
+		return -EPERM;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+        return -EFAULT;
+    }
+
+    data.request_index = 0;
+
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
+
+    sc = ec_master_get_config(master, data.config_index);
+    if (!sc) {
+        up(&master->master_sem);
+        return -ENOENT;
+    }
+
+    list_for_each_entry(req, &sc->sdo_requests, list) {
+        data.request_index++;
+    }
+
+    up(&master->master_sem);
+
+    req = ecrt_slave_config_create_sdo_request_err(sc, data.sdo_index,
+            data.sdo_subindex, data.size);
+    if (IS_ERR(req))
+        return PTR_ERR(req);
+
+    if (copy_to_user((void __user *) arg, &data, sizeof(data)))
+        return -EFAULT;
+
+    return 0;
+}
+
+/*****************************************************************************/
+
 /** Create a VoE handler.
  */
 int ec_cdev_ioctl_sc_create_voe_handler(
@@ -2083,6 +2132,209 @@ int ec_cdev_ioctl_domain_state(
     if (copy_to_user((void __user *) data.state, &state, sizeof(state)))
         return -EFAULT;
 
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Sets an SDO request's timeout.
+ */
+int ec_cdev_ioctl_sdo_request_timeout(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    ec_ioctl_sdo_request_t data;
+    ec_slave_config_t *sc;
+    ec_sdo_request_t *req;
+
+	if (unlikely(!priv->requested))
+        return -EPERM;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
+        return -EFAULT;
+
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
+
+    if (!(sc = ec_master_get_config(master, data.config_index))) {
+        up(&master->master_sem);
+        return -ENOENT;
+    }
+
+    if (!(req = ec_slave_config_find_sdo_request(sc, data.request_index))) {
+        up(&master->master_sem);
+        return -ENOENT;
+    }
+
+    up(&master->master_sem);
+
+    ecrt_sdo_request_timeout(req, data.timeout);
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Gets an SDO request's state.
+ */
+int ec_cdev_ioctl_sdo_request_state(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    ec_ioctl_sdo_request_t data;
+    ec_slave_config_t *sc;
+    ec_sdo_request_t *req;
+
+	if (unlikely(!priv->requested))
+        return -EPERM;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
+        return -EFAULT;
+
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
+
+    if (!(sc = ec_master_get_config(master, data.config_index))) {
+        up(&master->master_sem);
+        return -ENOENT;
+    }
+
+    if (!(req = ec_slave_config_find_sdo_request(sc, data.request_index))) {
+        up(&master->master_sem);
+        return -ENOENT;
+    }
+
+    data.state = ecrt_sdo_request_state(req);
+    if (data.state == EC_REQUEST_SUCCESS && req->dir == EC_DIR_INPUT)
+        data.size = ecrt_sdo_request_data_size(req);
+    else
+        data.size = 0;
+
+    up(&master->master_sem);
+
+    if (copy_to_user((void __user *) arg, &data, sizeof(data)))
+        return -EFAULT;
+
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Starts an SDO read operation.
+ */
+int ec_cdev_ioctl_sdo_request_read(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    ec_ioctl_sdo_request_t data;
+    ec_slave_config_t *sc;
+    ec_sdo_request_t *req;
+
+	if (unlikely(!priv->requested))
+        return -EPERM;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
+        return -EFAULT;
+
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
+
+    if (!(sc = ec_master_get_config(master, data.config_index))) {
+        up(&master->master_sem);
+        return -ENOENT;
+    }
+
+    if (!(req = ec_slave_config_find_sdo_request(sc, data.request_index))) {
+        up(&master->master_sem);
+        return -ENOENT;
+    }
+
+    up(&master->master_sem);
+
+    ecrt_sdo_request_read(req);
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Starts an SDO write operation.
+ */
+int ec_cdev_ioctl_sdo_request_write(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    ec_ioctl_sdo_request_t data;
+    ec_slave_config_t *sc;
+    ec_sdo_request_t *req;
+
+	if (unlikely(!priv->requested))
+        return -EPERM;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
+        return -EFAULT;
+
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
+
+    if (!(sc = ec_master_get_config(master, data.config_index))) {
+        up(&master->master_sem);
+        return -ENOENT;
+    }
+
+    if (!(req = ec_slave_config_find_sdo_request(sc, data.request_index))) {
+        up(&master->master_sem);
+        return -ENOENT;
+    }
+
+    up(&master->master_sem);
+
+    ecrt_sdo_request_write(req);
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Read SDO data.
+ */
+int ec_cdev_ioctl_sdo_request_data(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    ec_ioctl_sdo_request_t data;
+    ec_slave_config_t *sc;
+    ec_sdo_request_t *req;
+
+	if (unlikely(!priv->requested))
+        return -EPERM;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
+        return -EFAULT;
+
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
+
+    if (!(sc = ec_master_get_config(master, data.config_index))) {
+        up(&master->master_sem);
+        return -ENOENT;
+    }
+
+    if (!(req = ec_slave_config_find_sdo_request(sc, data.request_index))) {
+        up(&master->master_sem);
+        return -ENOENT;
+    }
+
+    up(&master->master_sem);
+
+    ecrt_sdo_request_timeout(req, data.timeout);
     return 0;
 }
 
@@ -2646,7 +2898,7 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
     ec_master_t *master = priv->cdev->master;
 
     if (master->debug_level)
-        EC_DBG("ioctl(filp = 0x%x, cmd = 0x%x (0x%x), arg = 0x%x)\n",
+        EC_DBG("ioctl(filp = 0x%x, cmd = 0x%08x (0x%02x), arg = 0x%x)\n",
                 (u32) filp, (u32) cmd, (u32) _IOC_NR(cmd), (u32) arg);
 
     switch (cmd) {
@@ -2764,6 +3016,10 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             if (!(filp->f_mode & FMODE_WRITE))
 				return -EPERM;
 			return ec_cdev_ioctl_sc_sdo(master, arg, priv);
+        case EC_IOCTL_SC_SDO_REQUEST:
+            if (!(filp->f_mode & FMODE_WRITE))
+				return -EPERM;
+			return ec_cdev_ioctl_sc_create_sdo_request(master, arg, priv);
         case EC_IOCTL_SC_VOE:
             if (!(filp->f_mode & FMODE_WRITE))
 				return -EPERM;
@@ -2782,6 +3038,22 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			return ec_cdev_ioctl_domain_queue(master, arg, priv);
         case EC_IOCTL_DOMAIN_STATE:
 			return ec_cdev_ioctl_domain_state(master, arg, priv);
+        case EC_IOCTL_SDO_REQUEST_TIMEOUT:
+            if (!(filp->f_mode & FMODE_WRITE))
+				return -EPERM;
+			return ec_cdev_ioctl_sdo_request_timeout(master, arg, priv);
+        case EC_IOCTL_SDO_REQUEST_STATE:
+			return ec_cdev_ioctl_sdo_request_state(master, arg, priv);
+        case EC_IOCTL_SDO_REQUEST_READ:
+            if (!(filp->f_mode & FMODE_WRITE))
+				return -EPERM;
+			return ec_cdev_ioctl_sdo_request_read(master, arg, priv);
+        case EC_IOCTL_SDO_REQUEST_WRITE:
+            if (!(filp->f_mode & FMODE_WRITE))
+				return -EPERM;
+			return ec_cdev_ioctl_sdo_request_write(master, arg, priv);
+        case EC_IOCTL_SDO_REQUEST_DATA:
+			return ec_cdev_ioctl_sdo_request_data(master, arg, priv);
         case EC_IOCTL_VOE_SEND_HEADER:
             if (!(filp->f_mode & FMODE_WRITE))
 				return -EPERM;

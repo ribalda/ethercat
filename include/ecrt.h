@@ -45,6 +45,8 @@
  * - Renamed ec_sdo_request_state_t to ec_request_state_t, because it is also
  *   used by VoE handlers.
  * - Added ecrt_master_slave() to get information about a certain slave.
+ * - Removed 'const' from argument of ecrt_sdo_request_state(), because the
+ *   userspace library has to modify object internals.
  *
  * Changes in Version 1.4:
  *
@@ -969,9 +971,15 @@ size_t ecrt_sdo_request_data_size(
  *
  * \return Request state.
  */
+#ifdef __KERNEL__
 ec_request_state_t ecrt_sdo_request_state(
-    const ec_sdo_request_t *req /**< SDO request. */
+        const ec_sdo_request_t *req /**< SDO request. */
     );
+#else
+ec_request_state_t ecrt_sdo_request_state(
+        ec_sdo_request_t *req /**< SDO request. */
+    );
+#endif
 
 /** Schedule an SDO write operation.
  *

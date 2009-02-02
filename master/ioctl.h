@@ -90,19 +90,25 @@
 #define EC_IOCTL_SC_CLEAR_ENTRIES      EC_IOW(0x23, ec_ioctl_config_pdo_t)
 #define EC_IOCTL_SC_REG_PDO_ENTRY     EC_IOWR(0x24, ec_ioctl_reg_pdo_entry_t)
 #define EC_IOCTL_SC_SDO                EC_IOW(0x25, ec_ioctl_sc_sdo_t)
-#define EC_IOCTL_SC_VOE               EC_IOWR(0x26, ec_ioctl_voe_t)
-#define EC_IOCTL_SC_STATE             EC_IOWR(0x27, ec_ioctl_sc_state_t)
-#define EC_IOCTL_DOMAIN_OFFSET          EC_IO(0x28)
-#define EC_IOCTL_DOMAIN_PROCESS         EC_IO(0x29)
-#define EC_IOCTL_DOMAIN_QUEUE           EC_IO(0x2a)
-#define EC_IOCTL_DOMAIN_STATE         EC_IOWR(0x2b, ec_ioctl_domain_state_t)
-#define EC_IOCTL_VOE_SEND_HEADER       EC_IOW(0x2c, ec_ioctl_voe_t)
-#define EC_IOCTL_VOE_REC_HEADER       EC_IOWR(0x2d, ec_ioctl_voe_t)
-#define EC_IOCTL_VOE_READ              EC_IOW(0x2e, ec_ioctl_voe_t)
-#define EC_IOCTL_VOE_READ_NOSYNC       EC_IOW(0x2f, ec_ioctl_voe_t)
-#define EC_IOCTL_VOE_WRITE            EC_IOWR(0x30, ec_ioctl_voe_t)
-#define EC_IOCTL_VOE_EXEC             EC_IOWR(0x31, ec_ioctl_voe_t)
-#define EC_IOCTL_VOE_DATA             EC_IOWR(0x32, ec_ioctl_voe_t)
+#define EC_IOCTL_SC_SDO_REQUEST       EC_IOWR(0x26, ec_ioctl_sdo_request_t)
+#define EC_IOCTL_SC_VOE               EC_IOWR(0x27, ec_ioctl_voe_t)
+#define EC_IOCTL_SC_STATE             EC_IOWR(0x28, ec_ioctl_sc_state_t)
+#define EC_IOCTL_DOMAIN_OFFSET          EC_IO(0x29)
+#define EC_IOCTL_DOMAIN_PROCESS         EC_IO(0x2a)
+#define EC_IOCTL_DOMAIN_QUEUE           EC_IO(0x2b)
+#define EC_IOCTL_DOMAIN_STATE         EC_IOWR(0x2c, ec_ioctl_domain_state_t)
+#define EC_IOCTL_SDO_REQUEST_TIMEOUT  EC_IOWR(0x2d, ec_ioctl_sdo_request_t)
+#define EC_IOCTL_SDO_REQUEST_STATE    EC_IOWR(0x2e, ec_ioctl_sdo_request_t)
+#define EC_IOCTL_SDO_REQUEST_READ     EC_IOWR(0x2f, ec_ioctl_sdo_request_t)
+#define EC_IOCTL_SDO_REQUEST_WRITE    EC_IOWR(0x30, ec_ioctl_sdo_request_t)
+#define EC_IOCTL_SDO_REQUEST_DATA     EC_IOWR(0x31, ec_ioctl_sdo_request_t)
+#define EC_IOCTL_VOE_SEND_HEADER       EC_IOW(0x32, ec_ioctl_voe_t)
+#define EC_IOCTL_VOE_REC_HEADER       EC_IOWR(0x33, ec_ioctl_voe_t)
+#define EC_IOCTL_VOE_READ              EC_IOW(0x34, ec_ioctl_voe_t)
+#define EC_IOCTL_VOE_READ_NOSYNC       EC_IOW(0x35, ec_ioctl_voe_t)
+#define EC_IOCTL_VOE_WRITE            EC_IOWR(0x36, ec_ioctl_voe_t)
+#define EC_IOCTL_VOE_EXEC             EC_IOWR(0x37, ec_ioctl_voe_t)
+#define EC_IOCTL_VOE_DATA             EC_IOWR(0x38, ec_ioctl_voe_t)
 
 /*****************************************************************************/
 
@@ -460,6 +466,22 @@ typedef struct {
     // outputs
     ec_domain_state_t *state;
 } ec_ioctl_domain_state_t;
+
+/*****************************************************************************/
+
+typedef struct {
+    // inputs
+    uint32_t config_index;
+
+    // inputs/outputs
+    uint32_t request_index;
+    uint16_t sdo_index;
+    uint8_t sdo_subindex;
+    size_t size;
+    uint8_t *data;
+    uint32_t timeout;
+    ec_request_state_t state;
+} ec_ioctl_sdo_request_t;
 
 /*****************************************************************************/
 

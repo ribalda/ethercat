@@ -33,6 +33,7 @@
 
 #include "slave_config.h"
 #include "domain.h"
+#include "sdo_request.h"
 #include "voe_handler.h"
 #include "master.h"
 #include "master/ioctl.h"
@@ -297,7 +298,48 @@ int ecrt_slave_config_sdo32(ec_slave_config_t *sc, uint16_t index,
 ec_sdo_request_t *ecrt_slave_config_create_sdo_request(ec_slave_config_t *sc,
         uint16_t index, uint8_t subindex, size_t size)
 {
-    return 0; // TODO
+    ec_ioctl_sdo_request_t data;
+    ec_sdo_request_t *req;
+
+    req = malloc(sizeof(ec_sdo_request_t));
+    if (!req) {
+        fprintf(stderr, "Failed to allocate memory.\n");
+        return 0;
+    }
+
+    if (size) {
+        req->data = malloc(size);
+        if (!req->data) {
+            fprintf(stderr, "Failed to allocate %u bytes of SDO data"
+                    " memory.\n", size);
+            free(req);
+            return 0;
+        }
+    } else {
+        req->data = NULL;
+    }
+
+    data.config_index = sc->index;
+    data.sdo_index = index;
+    data.sdo_subindex = subindex;
+    data.size = size;
+    
+    if (ioctl(sc->master->fd, EC_IOCTL_SC_SDO_REQUEST, &data) == -1) {
+        fprintf(stderr, "Failed to create SDO request: %s\n",
+                strerror(errno));
+        if (req->data)
+            free(req->data);
+        free(req);
+        return NULL; 
+    }
+
+    req->config = sc;
+    req->index = data.request_index;
+    req->sdo_index = data.sdo_index;
+    req->sdo_subindex = data.sdo_subindex;
+    req->data_size = size;
+    req->mem_size = size;
+    return req;
 }
 
 /*****************************************************************************/
