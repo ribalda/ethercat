@@ -83,12 +83,12 @@ noinst_HEADERS = \
 	SdoCommand.h \
 	sii_crc.h
 
-REV = `if test -s $(srcdir)/../svnrevision; then \
-		cat $(srcdir)/../svnrevision; \
+REV = `if test -s $(top_srcdir)/svnrevision; then \
+		cat $(top_srcdir)/svnrevision; \
 	else \
 		svnversion $(srcdir)/.. 2>/dev/null || echo "unknown"; \
 	fi`
 
-ethercat_CXXFLAGS = -I../master -Wall -DSVNREV=$(REV)
+ethercat_CXXFLAGS = -I$(top_srcdir)/master -Wall -DSVNREV=$(REV)
 
 #------------------------------------------------------------------------------
