@@ -50,7 +50,9 @@ noinst_HEADERS = \
 	e100-2.6.24-orig.c \
 	e100-2.6.26-ethercat.c \
 	e100-2.6.26-orig.c \
-	ecdev.h
+	ecdev.h \
+	r8169-2.6.24-ethercat.c \
+	r8169-2.6.24-orig.c
 
 EXTRA_DIST = \
 	Kbuild.in
@@ -71,6 +73,9 @@ if ENABLE_E100
 endif
 if ENABLE_E1000
 	$(MAKE) -C e1000 modules_install
+endif
+if ENABLE_R8169
+	cp $(srcdir)/ec_r8169.ko $(DESTDIR)$(LINUX_MOD_PATH)
 endif
 
 clean-local:
