@@ -2348,7 +2348,10 @@ int ec_cdev_ioctl_sdo_request_data(
 
     up(&master->master_sem);
 
-    ecrt_sdo_request_timeout(req, data.timeout);
+    if (copy_to_user((void __user *) data.data, ecrt_sdo_request_data(req),
+                ecrt_sdo_request_data_size(req)))
+        return -EFAULT;
+
     return 0;
 }
 
