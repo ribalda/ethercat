@@ -24,6 +24,7 @@ Version 1.5.0:
 * Distributed clocks.
 * Bus simulator interface.
 * Implement ecrt_master_slave() in kernel space.
+* Implement EoE-locking callbacks for library.
 * Rename phy-commands to register commands.
 * Check for ioctl() interface version.
 
