@@ -2273,12 +2273,18 @@ int ec_cdev_ioctl_sdo_request_write(
     ec_ioctl_sdo_request_t data;
     ec_slave_config_t *sc;
     ec_sdo_request_t *req;
+    int ret;
 
 	if (unlikely(!priv->requested))
         return -EPERM;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
         return -EFAULT;
+
+    if (!data.size) {
+        EC_ERR("Sdo download: Data size may not be zero!\n");
+        return -EINVAL;
+    }
 
     if (down_interruptible(&master->master_sem))
         return -EINTR;
@@ -2295,6 +2301,14 @@ int ec_cdev_ioctl_sdo_request_write(
 
     up(&master->master_sem);
 
+    ret = ec_sdo_request_alloc(req, data.size);
+    if (ret)
+        return ret;
+
+    if (copy_from_user(req->data, (void __user *) data.data, data.size))
+        return -EFAULT;
+
+    req->data_size = data.size;
     ecrt_sdo_request_write(req);
     return 0;
 }
