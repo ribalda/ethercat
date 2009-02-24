@@ -20,7 +20,10 @@
 #  along with the IgH EtherCAT master userspace library. If not, see
 #  <http://www.gnu.org/licenses/>.
 # 
-#  Using the EtherCAT technology and brand is permitted in compliance with the
+#  ---
+#
+#  The license mentioned above concerns the source code only. Using the
+#  EtherCAT technology and brand is only permitted in compliance with the
 #  industrial property and similar rights of Beckhoff Automation GmbH.
 #
 #------------------------------------------------------------------------------
