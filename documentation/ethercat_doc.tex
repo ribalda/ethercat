@@ -250,19 +250,40 @@ EtherCAT functionality (see chap.~\ref{chap:api}).
 
   \end{itemize}
 
+\item Vendor-specific over EtherCAT (VoE)
+
+  \begin{itemize}
+
+  \item Communication with vendor-specific mailbox protocols via the API.
+
+  \end{itemize}
+
+\item File Access over EtherCAT (FoE)
+
+  \begin{itemize}
+
+  \item Loading and storing files via the command-line tool.
+
+  \item Updating a slave's firmware can be done easily.
+
+  \end{itemize}
+
 \item Userspace command-line-tool ``ethercat`` (see sec.~\ref{sec:tool})
 
   \begin{itemize}
 
-  \item Showing the current bus with slaves, PDOs and SDOs.
-  \item Showing the bus configuration.
-  \item Showing domains and process data.
+  \item Detailed information about master, slaves, domains and bus
+  configuration.
   \item Setting the master's debug level.
-  \item Writing alias addresses.
-  \item SDO uploading/downloading.
-  \item Reading/writing a slave's SII.
-  \item Setting slave states.
-  \item Generate slave description XML.
+  \item Reading/Writing alias addresses.
+  \item Listing slave configurations.
+  \item Viewing process data.
+  \item SDO download/upload; listing SDO dictionaries.
+  \item Loading and storing files via FoE.
+  \item Access to slave registers.
+  \item Slave SII (EEPROM) access.
+  \item Controlling application-layer states.
+  \item Generation of slave description XML from existing slaves.
 
   \end{itemize}
 

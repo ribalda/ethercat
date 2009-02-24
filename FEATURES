@@ -51,25 +51,31 @@ General Features:
   - Automatic configuration of slaves, if a application-layer state change is
     requested.
 
-* Implementation of the CANopen over EtherCAT (CoE) mailbox protocol.
+* Implementation of the "CANopen over EtherCAT" (CoE) mailbox protocol.
   - Configuration of CoE-capable slaves.
   - SDO information service (dictionary listing).
   - SDO transfers both via the application interface and the command-line tool.
 
-* Implementation of the Ethernet over EtherCAT (EoE) mailbox protocol.
+* Implementation of the "Ethernet over EtherCAT" (EoE) mailbox protocol.
   - Virtual network interface for any EoE-capable slave.
   - Both a switched and a routed EoE network architecture is natively supported
     and configurable with standard tools.
 
-* Implementation of the Vendor specific over EtherCAT (VoE) mailbox protocol.
+* Implementation of the "Vendor-specific over EtherCAT" (VoE) mailbox protocol.
   - Communication with vendor-specific mailbox protocols via the API. 
+
+* Implementation of the "File Access over EtherCAT" (FoE) mailbox protocol.
+  - Loading and storing files via the command-line tool.
+  - Updating a slave's firmware can be done easily.
 
 * Userspace command-line tool 'ethercat'.
   - Detailed information about master, slaves, domains and bus configuration.
+  - Setting the master's debug level.
   - Reading/Writing alias addresses.
   - Listing slave configurations.
   - Viewing process data.
   - SDO download/upload; listing SDO dictionaries.
+  - Loading and storing files via FoE.
   - Access to slave registers.
   - Slave SII (EEPROM) access.
   - Controlling application-layer states.
