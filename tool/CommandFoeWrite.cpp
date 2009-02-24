@@ -5,6 +5,7 @@
  ****************************************************************************/
 
 #include <libgen.h> // basename()
+#include <string.h>
 
 #include <iostream>
 #include <iomanip>
