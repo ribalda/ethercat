@@ -1425,7 +1425,7 @@ static void rtl_check_media (struct net_device *dev, unsigned int init_media)
 
 	if (tp->ecdev) {
 		void __iomem *ioaddr = tp->mmio_addr;
-		uint16_t state = RTL_R16(BasicModeStatus) & BMSR_LSTATUS;
+		u16 state = RTL_R16(BasicModeStatus) & BMSR_LSTATUS;
 		ecdev_set_link(tp->ecdev, state ? 1 : 0);
 	}
 	else {
