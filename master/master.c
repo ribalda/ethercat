@@ -202,18 +202,22 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     if (ret)
         goto out_clear_fsm;
     
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 26)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)
+    master->class_device = device_create(class, NULL,
+            MKDEV(MAJOR(device_number), master->index), NULL,
+            "EtherCAT%u", master->index);
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 26)
     master->class_device = device_create(class, NULL,
             MKDEV(MAJOR(device_number), master->index),
             "EtherCAT%u", master->index);
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 15)
     master->class_device = class_device_create(class, NULL,
-            MKDEV(MAJOR(device_number), master->index),
-            NULL, "EtherCAT%u", master->index);
+            MKDEV(MAJOR(device_number), master->index), NULL,
+            "EtherCAT%u", master->index);
 #else
     master->class_device = class_device_create(class,
-            MKDEV(MAJOR(device_number), master->index),
-            NULL, "EtherCAT%u", master->index);
+            MKDEV(MAJOR(device_number), master->index), NULL,
+            "EtherCAT%u", master->index);
 #endif
     if (IS_ERR(master->class_device)) {
         EC_ERR("Failed to create class device!\n");

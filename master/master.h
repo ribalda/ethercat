@@ -42,7 +42,12 @@
 #include <linux/timer.h>
 #include <linux/wait.h>
 #include <linux/kthread.h>
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)
+#include <linux/semaphore.h>
+#else
 #include <asm/semaphore.h>
+#endif
 
 #include "device.h"
 #include "domain.h"
