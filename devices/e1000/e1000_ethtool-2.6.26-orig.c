@@ -1028,7 +1028,7 @@ e1000_free_desc_rings(struct e1000_adapter *adapter)
 	if (txdr->desc && txdr->buffer_info) {
 		for (i = 0; i < txdr->count; i++) {
 			if (txdr->buffer_info[i].dma)
-				pci_unmap_single(pdev, txdr->buffer_info[i]dma,
+				pci_unmap_single(pdev, txdr->buffer_info[i].dma,
 						 txdr->buffer_info[i].length,
 						 PCI_DMA_TODEVICE);
 			if (txdr->buffer_info[i].skb)
@@ -1039,7 +1039,7 @@ e1000_free_desc_rings(struct e1000_adapter *adapter)
 	if (rxdr->desc && rxdr->buffer_info) {
 		for (i = 0; i < rxdr->count; i++) {
 			if (rxdr->buffer_info[i].dma)
-				pci_unmap_single(pdev, rxdr->buffer_info[i]dma,
+				pci_unmap_single(pdev, rxdr->buffer_info[i].dma,
 						 rxdr->buffer_info[i].length,
 						 PCI_DMA_FROMDEVICE);
 			if (rxdr->buffer_info[i].skb)
