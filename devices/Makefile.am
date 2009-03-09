@@ -51,6 +51,8 @@ noinst_HEADERS = \
 	8139too-2.6.25-orig.c \
 	8139too-2.6.26-ethercat.c \
 	8139too-2.6.26-orig.c \
+	8139too-2.6.27-ethercat.c \
+	8139too-2.6.27-orig.c \
 	e100-2.6.20-ethercat.c \
 	e100-2.6.20-orig.c \
 	e100-2.6.24-ethercat.c \
