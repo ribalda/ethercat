@@ -255,7 +255,7 @@ int ecrt_slave_config_sdo(ec_slave_config_t *sc, uint16_t index,
     data.data = sdo_data;
     data.size = size;
 
-    if (ioctl(sc->master->fd, EC_IOCTL_SC_REG_PDO_ENTRY, &data) == -1) {
+    if (ioctl(sc->master->fd, EC_IOCTL_SC_SDO, &data) == -1) {
         fprintf(stderr, "Failed to configure SDO.\n");
         return -1; // FIXME
     }
