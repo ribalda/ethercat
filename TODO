@@ -10,26 +10,33 @@ vim: spelllang=en spell
 
 Version 1.5.0:
 
-* Remove ecrt_domain_state().
-* Segmented SDO downloads.
+* Re-work EoE code.
+* Replace locking callbacks.
+* Implement EoE callbacks for library.
+* Finish library implementation.
 * Clear slave list on link down.
+* Rescan command.
+* Override sync manager size?
+* Remove ecrt_domain_state()?
 * Check force_config flag before error.
 * Remove allow_scanning flag.
 * Test File access over EtherCAT (FoE) reading.
-* Improve application-triggered SDO transfers by moving the statemachine into
-  the SDO handlers.
-* External memory for SDO transfers.
-* Bus information via userspace library (slaves, sync managers, PDOs, entries).
-* C++ implementation of the library.
 * Distributed clocks.
-* Bus simulator interface.
 * Implement ecrt_master_slave() in kernel space.
-* Implement EoE-locking callbacks for library.
 * Rename phy-commands to register commands.
 * Check for ioctl() interface version.
+* Improve application-triggered SDO transfers by moving the statemachine into
+  the SDO handlers.
+* FoE in application interface?
+* Apply watchdog patches from J. Mohre.
 
 Future issues:
 
+* Segmented SDO downloads.
+* External memory for SDO transfers.
+* Bus information via userspace library (slaves, sync managers, PDOs, entries).
+* C++ implementation of the library.
+* Bus simulator interface.
 * Move master threads, slave handlers and state machines into a user
   space daemon.
 * Allow master requesting when in ORPHANED phase
