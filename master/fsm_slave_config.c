@@ -583,7 +583,7 @@ void ec_fsm_slave_config_state_boot_preop(
     }
 
     if (!slave->config) {
-        EC_DBG("Slave %u is not configured.\n", slave->ring_position);
+        EC_WARN("Slave %u is not configured.\n", slave->ring_position);
         ec_fsm_slave_config_enter_safeop(fsm);
         return;
     }
