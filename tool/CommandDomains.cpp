@@ -94,6 +94,12 @@ void CommandDomains::execute(MasterDevice &m, const StringVector &args)
 	DomainList domains;
 	DomainList::const_iterator di;
 	
+    if (args.size()) {
+        stringstream err;
+        err << "'" << getName() << "' takes no arguments!";
+        throwInvalidUsageException(err);
+    }
+
     m.open(MasterDevice::Read);
 	domains = selectedDomains(m);
 

@@ -73,6 +73,12 @@ void CommandXml::execute(MasterDevice &m, const StringVector &args)
     SlaveList slaves;
     SlaveList::const_iterator si;
 
+    if (args.size()) {
+        stringstream err;
+        err << "'" << getName() << "' takes no arguments!";
+        throwInvalidUsageException(err);
+    }
+
     m.open(MasterDevice::Read);
     slaves = selectedSlaves(m);
 

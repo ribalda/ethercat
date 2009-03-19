@@ -66,6 +66,11 @@ void CommandMaster::execute(MasterDevice &m, const StringVector &args)
     stringstream err;
     unsigned int i;
     
+    if (args.size()) {
+        err << "'" << getName() << "' takes no arguments!";
+        throwInvalidUsageException(err);
+    }
+
     m.open(MasterDevice::Read);
     m.getMaster(&data);
 

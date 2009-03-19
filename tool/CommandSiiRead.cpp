@@ -83,6 +83,11 @@ void CommandSiiRead::execute(MasterDevice &m, const StringVector &args)
     uint16_t categoryType, categorySize;
     stringstream err;
 
+    if (args.size()) {
+        err << "'" << getName() << "' takes no arguments!";
+        throwInvalidUsageException(err);
+    }
+
     m.open(MasterDevice::Read);
     slaves = selectedSlaves(m);
 

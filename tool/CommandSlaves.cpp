@@ -109,6 +109,12 @@ void CommandSlaves::execute(MasterDevice &m, const StringVector &args)
 {
     SlaveList slaves;
     
+    if (args.size()) {
+        stringstream err;
+        err << "'" << getName() << "' takes no arguments!";
+        throwInvalidUsageException(err);
+    }
+
     m.open(MasterDevice::Read);
     slaves = selectedSlaves(m);
 

@@ -85,6 +85,12 @@ void CommandSdos::execute(MasterDevice &m, const StringVector &args)
     SlaveList::const_iterator si;
     bool showHeader;
 
+    if (args.size()) {
+        stringstream err;
+        err << "'" << getName() << "' takes no arguments!";
+        throwInvalidUsageException(err);
+    }
+
     m.open(MasterDevice::Read);
     slaves = selectedSlaves(m);
     showHeader = slaves.size() > 1;

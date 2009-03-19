@@ -56,6 +56,12 @@ string CommandVersion::helpString() const
 
 void CommandVersion::execute(MasterDevice &m, const StringVector &args)
 {
+    if (args.size()) {
+        stringstream err;
+        err << "'" << getName() << "' takes no arguments!";
+        throwInvalidUsageException(err);
+    }
+
     cout << "IgH EtherCAT master " << EC_MASTER_VERSION << endl;
 }
 

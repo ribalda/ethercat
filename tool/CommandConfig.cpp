@@ -105,6 +105,12 @@ void CommandConfig::execute(MasterDevice &m, const StringVector &args)
 {
     ConfigList configs;
 
+    if (args.size()) {
+        stringstream err;
+        err << "'" << getName() << "' takes no arguments!";
+        throwInvalidUsageException(err);
+    }
+
     m.open(MasterDevice::Read);
     configs = selectedConfigs(m);
 
