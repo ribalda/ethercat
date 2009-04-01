@@ -2991,7 +2991,16 @@ static irqreturn_t rtl8169_interrupt(int irq, void *dev_instance)
 			rtl8169_check_link_status(dev, tp, ioaddr);
 
 #ifdef CONFIG_R8169_NAPI
-		if (!tp->ecdev && (status & tp->napi_event)) {
+		if (tp->ecdev) {
+			/* Rx interrupt */
+			if (status & (RxOK | RxOverflow | RxFIFOOver))
+				rtl8169_rx_interrupt(dev, tp, ioaddr, ~(u32)0);
+
+			/* Tx interrupt */
+			if (status & (TxOK | TxErr))
+				rtl8169_tx_interrupt(dev, tp, ioaddr);
+			
+		} else if (status & tp->napi_event) {
 			RTL_W16(IntrMask, tp->intr_event & ~tp->napi_event);
 			tp->intr_mask = ~tp->napi_event;
 
