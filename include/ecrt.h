@@ -51,51 +51,6 @@
  * - Removed 'const' from argument of ecrt_sdo_request_state(), because the
  *   userspace library has to modify object internals.
  *
- * Changes in Version 1.4:
- *
- * - Replaced ec_slave_t with ec_slave_config_t, separating the bus
- *   configuration from the actual slaves. Therefore, renamed
- *   ecrt_master_get_slave() to ecrt_master_slave_config().
- * - Replaced slave address string with alias and position values. See
- *   ecrt_master_slave_config().
- * - Removed ecrt_master_get_slave_by_pos(), because it is no longer
- *   necessary due to alias/position addressing.
- * - Added ec_slave_config_state_t for the new method
- *   ecrt_slave_config_state().
- * - Process data memory for a domain can now be allocated externally. This
- *   offers the possibility to use a shared-memory region. Therefore,
- *   added the domain methods ecrt_domain_size() and
- *   ecrt_domain_external_memory().
- * - PDO entry registration functions do not return a process data pointer,
- *   but an offset in the domain's process data. In addition, an optional bit
- *   position can be requested. This was necessary for the external domain
- *   memory. An additional advantage is, that the returned offset is
- *   immediately valid. If the domain's process data is allocated internally,
- *   the start address can be retrieved with ecrt_domain_data().
- * - Replaced ecrt_slave_pdo_mapping/add/clear() with
- *   ecrt_slave_config_pdo_assign_add() to add a PDO to a sync manager's PDO
- *   assignment and ecrt_slave_config_pdo_mapping_add() to add a PDO entry to a
- *   PDO's mapping. ecrt_slave_config_pdos() is a convenience function
- *   for both, that uses the new data types ec_pdo_info_t and
- *   ec_pdo_entry_info_t. PDO entries, that are mapped with these functions
- *   can now immediately be registered, even if the bus is offline.
- * - Renamed ec_bus_status_t, ec_master_status_t to ec_bus_state_t and
- *   ec_master_state_t, respectively. Renamed ecrt_master_get_status() to
- *   ecrt_master_state(), for consistency reasons.
- * - Added ec_domain_state_t and #ec_wc_state_t for a new output parameter
- *   of ecrt_domain_state(). The domain state object does now contain
- *   information, if the process data was exchanged completely.
- * - Former "PDO registration" meant PDO entry registration in fact, therefore
- *   renamed ec_pdo_reg_t to ec_pdo_entry_reg_t and ecrt_domain_register_pdo()
- *   to ecrt_slave_config_reg_pdo_entry().
- * - Removed ecrt_domain_register_pdo_range(), because it's functionality can
- *   be reached by specifying an explicit PDO assignment/mapping and
- *   registering the mapped PDO entries.
- * - Added an SDO access interface, working with SDO requests. These can be
- *   scheduled for reading and writing during realtime operation.
- * - Exported ecrt_slave_config_sdo(), the generic SDO configuration function.
- * - Removed the bus_state and bus_tainted flags from ec_master_state_t.
- *
  * @{
  */
 
