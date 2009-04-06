@@ -376,8 +376,8 @@ int __init init_mini_module(void)
     printk(KERN_INFO PFX "Starting...\n");
 
     master = ecrt_request_master(0);
-    if (IS_ERR(master)) {
-        ret = PTR_ERR(master); 
+    if (!master) {
+        ret = -EBUSY; 
         printk(KERN_ERR PFX "Requesting master 0 failed.\n");
         goto out_return;
     }
