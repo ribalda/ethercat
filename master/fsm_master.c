@@ -339,9 +339,7 @@ int ec_fsm_master_action_process_phy(
     ec_phy_request_t *request;
 
     // search the first request to be processed
-    while (1) {
-        if (list_empty(&master->phy_requests))
-            break;
+    while (!list_empty(&master->phy_requests)) {
 
         // get first request
         request = list_entry(master->phy_requests.next,
@@ -351,8 +349,10 @@ int ec_fsm_master_action_process_phy(
 
         // found pending request; process it!
         if (master->debug_level)
-            EC_DBG("Processing phy request for slave %u...\n",
-                    request->slave->ring_position);
+            EC_DBG("Processing phy request for slave %u, "
+                    "offset 0x%04x, length %u...\n",
+                    request->slave->ring_position,
+                    request->offset, request->length);
         fsm->phy_request = request;
 
         if (request->dir == EC_DIR_INPUT) {
@@ -361,8 +361,9 @@ int ec_fsm_master_action_process_phy(
             ec_datagram_zero(fsm->datagram);
         } else {
             if (request->length > fsm->datagram->mem_size) {
-                EC_ERR("Request length (%u) exceeds maximum datagram size (%u)!\n",
-                        request->length, fsm->datagram->mem_size);
+                EC_ERR("Request length (%u) exceeds maximum "
+                        "datagram size (%u)!\n", request->length,
+                        fsm->datagram->mem_size);
                 request->state = EC_INT_REQUEST_FAILURE;
                 wake_up(&master->phy_queue);
                 continue;
