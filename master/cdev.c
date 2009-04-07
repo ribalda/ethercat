@@ -3090,11 +3090,11 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
         case EC_IOCTL_VOE_READ:
             if (!(filp->f_mode & FMODE_WRITE))
 				return -EPERM;
+			return ec_cdev_ioctl_voe_read(master, arg, priv);
         case EC_IOCTL_VOE_READ_NOSYNC:
             if (!(filp->f_mode & FMODE_WRITE))
 				return -EPERM;
 			return ec_cdev_ioctl_voe_read_nosync(master, arg, priv);
-			return ec_cdev_ioctl_voe_read(master, arg, priv);
         case EC_IOCTL_VOE_WRITE:
             if (!(filp->f_mode & FMODE_WRITE))
 				return -EPERM;
