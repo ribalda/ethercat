@@ -157,6 +157,23 @@ typedef struct {
     uint8_t enable_not_lrw : 1; /**< Slave does not support LRW. */
 } ec_sii_general_flags_t;
 
+/** EtherCAT slave port descriptor.
+ */
+typedef enum {
+    EC_PORT_NOT_IMPLEMENTED,
+    EC_PORT_NOT_CONFIGURED,
+    EC_PORT_EBUS,
+    EC_PORT_MII
+} ec_slave_port_desc_t;
+
+/** EtherCAT slave distributed clocks range.
+ */
+typedef enum {
+    EC_DC_32, /**< 32 bit. */
+    EC_DC_64 /*< 64 bit for system time, system time offset and
+               port 0 receive time. */
+} ec_slave_dc_range_t;
+
 /*****************************************************************************/
 
 /** Convenience macro for printing EtherCAT-specific information to syslog.

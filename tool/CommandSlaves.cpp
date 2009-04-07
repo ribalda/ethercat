@@ -219,6 +219,7 @@ void CommandSlaves::showSlaves(
         )
 {
     SlaveList::const_iterator si;
+    int i;
 
     for (si = slaves.begin(); si != slaves.end(); si++) {
         cout << "=== Slave " << dec << si->position << " ===" << endl;
@@ -239,6 +240,50 @@ void CommandSlaves::showSlaves(
             << setw(8) << si->revision_number << endl
             << "  Serial number:   0x"
             << setw(8) << si->serial_number << endl;
+
+        cout << "Ports:" << endl;
+        for (i = 0; i < EC_MAX_PORTS; i++) {
+            cout << "  " << i << ": ";
+            switch (si->ports[i]) {
+                case EC_PORT_NOT_IMPLEMENTED:
+                    cout << "Not implemented.";
+                    break;
+                case EC_PORT_NOT_CONFIGURED:
+                    cout << "Not configured.";
+                    break;
+                case EC_PORT_EBUS:
+                    cout << "EBUS.";
+                    break;
+                case EC_PORT_MII:
+                    cout << "MII.";
+                    break;
+                default:
+                    cout << "???";
+            }
+            cout << endl;
+        }
+
+        cout << "DL information:" << endl
+            << "  FMMU bit operation: "
+            << (si->fmmu_bit ? "yes" : "no") << endl
+            << "  Distributed clocks: ";
+        if (si->dc_supported) {
+            cout << "yes (";
+            switch (si->dc_range) {
+                case EC_DC_32:
+                    cout << "32 bit";
+                    break;
+                case EC_DC_64:
+                    cout << "64 bit";
+                    break;
+                default:
+                    cout << "???";
+            }
+            cout << ")";
+        } else {
+            cout << "no";
+        }
+        cout << endl;
 
         if (si->mailbox_protocols) {
             list<string> protoList;

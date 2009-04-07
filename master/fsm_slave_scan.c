@@ -247,7 +247,7 @@ void ec_fsm_slave_scan_state_state(
     }
 
     // read base data
-    ec_datagram_fprd(datagram, fsm->slave->station_address, 0x0000, 6);
+    ec_datagram_fprd(datagram, fsm->slave->station_address, 0x0000, 12);
     ec_datagram_zero(datagram);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_slave_scan_state_base;
@@ -263,6 +263,8 @@ void ec_fsm_slave_scan_state_base(ec_fsm_slave_scan_t *fsm /**< slave state mach
 {
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
+    u8 octet;
+    int i;
 
     if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
         return;
@@ -287,14 +289,32 @@ void ec_fsm_slave_scan_state_base(ec_fsm_slave_scan_t *fsm /**< slave state mach
     slave->base_type       = EC_READ_U8 (datagram->data);
     slave->base_revision   = EC_READ_U8 (datagram->data + 1);
     slave->base_build      = EC_READ_U16(datagram->data + 2);
-    slave->base_fmmu_count = EC_READ_U8 (datagram->data + 4);
 
+    slave->base_fmmu_count = EC_READ_U8 (datagram->data + 4);
     if (slave->base_fmmu_count > EC_MAX_FMMUS) {
         EC_WARN("Slave %u has more FMMUs (%u) than the master can"
                 " handle (%u).\n", slave->ring_position,
                 slave->base_fmmu_count, EC_MAX_FMMUS);
         slave->base_fmmu_count = EC_MAX_FMMUS;
     }
+
+    slave->base_sync_count = EC_READ_U8 (datagram->data + 5);
+    if (slave->base_sync_count > EC_MAX_SYNC_MANAGERS) {
+        EC_WARN("Slave %u provides more sync managers (%u) than the master can"
+                " handle (%u).\n", slave->ring_position,
+                slave->base_sync_count, EC_MAX_SYNC_MANAGERS);
+        slave->base_sync_count = EC_MAX_SYNC_MANAGERS;
+    }
+
+    octet = EC_READ_U8(datagram->data + 7);
+    for (i = 0; i < EC_MAX_PORTS; i++) {
+        slave->base_ports[i] = (octet >> (2 * i)) & 0x03;
+    }
+    
+    octet = EC_READ_U8(datagram->data + 8);
+    slave->base_fmmu_bit_operation = octet & 0x01;
+    slave->base_dc_supported = (octet >> 2) & 0x01;
+    slave->base_dc_range = ((octet >> 3) & 0x01) ? EC_DC_64 : EC_DC_32;
 
     // read data link status
     ec_datagram_fprd(datagram, slave->station_address, 0x0110, 2);

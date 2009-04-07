@@ -86,13 +86,20 @@ void ec_slave_init(
     slave->base_revision = 0;
     slave->base_build = 0;
     slave->base_fmmu_count = 0;
+    slave->base_sync_count = 0;
 
     for (i = 0; i < EC_MAX_PORTS; i++) {
+        slave->base_ports[i] = EC_PORT_NOT_IMPLEMENTED;
+
         slave->ports[i].dl_link = 0;
         slave->ports[i].dl_loop = 0;
         slave->ports[i].dl_signal = 0;
         slave->sii.physical_layer[i] = 0xFF;
     }
+
+    slave->base_fmmu_bit_operation = 0;
+    slave->base_dc_supported = 0;
+    slave->base_dc_range = EC_DC_32;
 
     slave->sii_words = NULL;
     slave->sii_nwords = 0;

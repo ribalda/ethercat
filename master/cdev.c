@@ -209,6 +209,7 @@ int ec_cdev_ioctl_slave(
 {
     ec_ioctl_slave_t data;
     const ec_slave_t *slave;
+    int i;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
         return -EFAULT;
@@ -242,6 +243,12 @@ int ec_cdev_ioctl_slave(
     data.coe_details = slave->sii.coe_details;
     data.general_flags = slave->sii.general_flags;
     data.current_on_ebus = slave->sii.current_on_ebus;
+    for (i = 0; i < EC_MAX_PORTS; i++) {
+        data.ports[i] = slave->base_ports[i];
+    }
+    data.fmmu_bit = slave->base_fmmu_bit_operation;
+    data.dc_supported = slave->base_dc_supported;
+    data.dc_range = slave->base_dc_range;
     data.al_state = slave->current_state;
     data.error_flag = slave->error_flag;
 

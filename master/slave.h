@@ -127,7 +127,12 @@ struct ec_slave
     uint8_t base_type; /**< Slave type. */
     uint8_t base_revision; /**< Revision. */
     uint16_t base_build; /**< Build number. */
-    uint16_t base_fmmu_count; /**< Number of supported FMMUs. */
+    uint8_t base_fmmu_count; /**< Number of supported FMMUs. */
+    uint8_t base_sync_count; /**< Number of supported sync managers. */
+    ec_slave_port_desc_t base_ports[EC_MAX_PORTS]; /**< Port descriptors. */
+    uint8_t base_fmmu_bit_operation; /**< FMMU bit operation is supported. */
+    uint8_t base_dc_supported; /**< Distributed clocks are supported. */
+    ec_slave_dc_range_t base_dc_range; /**< DC range. */
 
     // data link status
     ec_slave_port_t ports[EC_MAX_PORTS]; /**< Port link status. */
