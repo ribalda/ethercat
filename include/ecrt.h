@@ -50,6 +50,7 @@
  * - Added ecrt_master_slave() to get information about a certain slave.
  * - Removed 'const' from argument of ecrt_sdo_request_state(), because the
  *   userspace library has to modify object internals.
+ * - Added 64-bit data access macros.
  *
  * @{
  */
@@ -1130,9 +1131,11 @@ ec_request_state_t ecrt_voe_handler_execute(
 
 #define le16_to_cpu(x) x
 #define le32_to_cpu(x) x
+#define le64_to_cpu(x) x
 
 #define cpu_to_le16(x) x
 #define cpu_to_le32(x) x
+#define cpu_to_le64(x) x
 
 #elif __BYTE_ORDER == __BIG_ENDIAN
 
@@ -1146,17 +1149,30 @@ ec_request_state_t ecrt_voe_handler_execute(
         (((uint32_t)(x) & 0x0000ff00UL) <<  8) | \
         (((uint32_t)(x) & 0x00ff0000UL) >>  8) | \
         (((uint32_t)(x) & 0xff000000UL) >> 24) ))
+#define swap64(x) \
+        ((uint64_t)( \
+        (((uint64_t)(x) & 0x00000000000000ffULL) << 56) | \
+        (((uint64_t)(x) & 0x000000000000ff00ULL) << 40) | \
+        (((uint64_t)(x) & 0x0000000000ff0000ULL) << 24) | \
+        (((uint64_t)(x) & 0x00000000ff000000ULL) <<  8) | \
+        (((uint64_t)(x) & 0x000000ff00000000ULL) >>  8) | \
+        (((uint64_t)(x) & 0x0000ff0000000000ULL) >> 24) | \
+        (((uint64_t)(x) & 0x00ff000000000000ULL) >> 40) | \
+        (((uint64_t)(x) & 0xff00000000000000ULL) >> 56) ))
 
 #define le16_to_cpu(x) swap16(x)
 #define le32_to_cpu(x) swap32(x)
+#define le64_to_cpu(x) swap64(x)
 
 #define cpu_to_le16(x) swap16(x)
 #define cpu_to_le32(x) swap32(x)
+#define cpu_to_le64(x) swap64(x)
 
 #endif
 
 #define le16_to_cpup(x) le16_to_cpu(*((uint16_t *)(x)))
 #define le32_to_cpup(x) le32_to_cpu(*((uint32_t *)(x)))
+#define le64_to_cpup(x) le64_to_cpu(*((uint64_t *)(x)))
 
 #endif /* ifndef __KERNEL__ */
 
@@ -1210,6 +1226,22 @@ ec_request_state_t ecrt_voe_handler_execute(
  */
 #define EC_READ_S32(DATA) \
      ((int32_t) le32_to_cpup((void *) (DATA)))
+
+/** Read a 64-bit unsigned value from EtherCAT data.
+ *
+ * \param DATA EtherCAT data pointer
+ * \return EtherCAT data value
+ */
+#define EC_READ_U64(DATA) \
+     ((uint64_t) le64_to_cpup((void *) (DATA)))
+
+/** Read a 64-bit signed value from EtherCAT data.
+ *
+ * \param DATA EtherCAT data pointer
+ * \return EtherCAT data value
+ */
+#define EC_READ_S64(DATA) \
+     ((int64_t) le64_to_cpup((void *) (DATA)))
 
 /******************************************************************************
  * Write macros
@@ -1265,6 +1297,23 @@ ec_request_state_t ecrt_voe_handler_execute(
  * \param VAL new value
  */
 #define EC_WRITE_S32(DATA, VAL) EC_WRITE_U32(DATA, VAL)
+
+/** Write a 64-bit unsigned value to EtherCAT data.
+ *
+ * \param DATA EtherCAT data pointer
+ * \param VAL new value
+ */
+#define EC_WRITE_U64(DATA, VAL) \
+    do { \
+        *((uint64_t *) (DATA)) = cpu_to_le64((uint64_t) (VAL)); \
+    } while (0)
+
+/** Write a 64-bit signed value to EtherCAT data.
+ *
+ * \param DATA EtherCAT data pointer
+ * \param VAL new value
+ */
+#define EC_WRITE_S64(DATA, VAL) EC_WRITE_U64(DATA, VAL)
 
 /*****************************************************************************/
 

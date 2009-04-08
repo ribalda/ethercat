@@ -28,6 +28,7 @@ Changes since 1.4.0:
   command-line tool.
 * Introduced ecrt_master_slave() to get information about a certain slave.
 * SDO entry access rights are shown in 'ethercat sdos'.
+* Added 64-bit data access macros to application header.
 
 Changes in 1.4.0:
 
