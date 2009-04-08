@@ -46,7 +46,7 @@ string CommandPhyRead::helpString() const
 {
     stringstream str;
 
-    str << getName() << " [OPTIONS] <OFFSET> <LENGTH>" << endl
+    str << getName() << " [OPTIONS] <OFFSET> [LENGTH]" << endl
     	<< endl
     	<< getBriefDescription() << endl
     	<< endl
@@ -57,12 +57,19 @@ string CommandPhyRead::helpString() const
         << "         be an unsigned 16 bit number." << endl
         << "  LENGTH is the number of bytes to read and must also be" << endl
         << "         an unsigned 16 bit number. OFFSET plus LENGTH" << endl
-        << "         may not exceed 64k." << endl
+        << "         may not exceed 64k. The length is ignored (and" << endl
+        << "         can be omitted), if a selected data type" << endl
+        << "         implies a length." << endl
+        << endl
+        << "These are the valid data types:" << endl
+        << "  int8, int16, int32, int64, uint8, uint16, uint32," << endl
+        << "  uint64, string, octet_string, raw." << endl
         << endl
     	<< "Command-specific options:" << endl
         << "  --alias    -a <alias>" << endl
         << "  --position -p <pos>    Slave selection. See the help of" << endl
         << "                         the 'slaves' command." << endl
+        << "  --type     -t <type>   Data type (see above)." << endl
     	<< endl
 		<< numericInfo();
 
@@ -75,11 +82,11 @@ void CommandPhyRead::execute(MasterDevice &m, const StringVector &args)
 {
     SlaveList slaves;
     ec_ioctl_slave_phy_t data;
-    stringstream strOffset, strLength, err;
-    uint16_t i;
+    stringstream strOffset, err;
+    const DataType *dataType = NULL;
 
-    if (args.size() != 2) {
-        err << "'" << getName() << "' takes two arguments!";
+    if (args.size() < 1 || args.size() > 2) {
+        err << "'" << getName() << "' takes one or two arguments!";
         throwInvalidUsageException(err);
     }
 
@@ -92,17 +99,41 @@ void CommandPhyRead::execute(MasterDevice &m, const StringVector &args)
         throwInvalidUsageException(err);
     }
 
-    strLength << args[1];
-    strLength
-        >> resetiosflags(ios::basefield) // guess base from prefix
-        >> data.length;
-    if (strLength.fail()) {
-        err << "Invalid length '" << args[1] << "'!";
-        throwInvalidUsageException(err);
+    if (args.size() > 1) {
+        stringstream strLength;
+        strLength << args[1];
+        strLength
+            >> resetiosflags(ios::basefield) // guess base from prefix
+            >> data.length;
+        if (strLength.fail()) {
+            err << "Invalid length '" << args[1] << "'!";
+            throwInvalidUsageException(err);
+        }
+
+        if (!data.length) {
+            err << "Length may not be zero!";
+            throwInvalidUsageException(err);
+        }
+    } else { // no length argument given
+        data.length = 0;
+    }
+
+    if (!getDataType().empty()) {
+        if (!(dataType = findDataType(getDataType()))) {
+            err << "Invalid data type '" << getDataType() << "'!";
+            throwInvalidUsageException(err);
+        }
+
+        if (dataType->byteSize) {
+            // override length argument
+            data.length = dataType->byteSize;
+        }
     }
 
     if (!data.length) {
-        return;
+        err << "The length argument is mandatory, if no datatype is " << endl
+            << "specified, or the datatype does not imply a length!";
+        throwInvalidUsageException(err);
     }
 
     if ((uint32_t) data.offset + data.length > 0xffff) {
@@ -127,11 +158,84 @@ void CommandPhyRead::execute(MasterDevice &m, const StringVector &args)
 		throw e;
 	}
 
-    for (i = 0; i < data.length; i++) {
-        cout << data.data[i];
+    cout << setfill('0');
+    if (!dataType ||
+            dataType->name == "string" ||
+            dataType->name == "octet_string") {
+        uint16_t i;
+        for (i = 0; i < data.length; i++) {
+            cout << data.data[i];
+        }
+    } else if (dataType->name == "int8") {
+        int sval = *(int8_t *) data.data;
+        cout << sval << " 0x" << hex << setw(2) << sval << endl;
+    } else if (dataType->name == "int16") {
+        int sval = le16_to_cpup(data.data);
+        cout << sval << " 0x" << hex << setw(4) << sval << endl;
+    } else if (dataType->name == "int32") {
+        int sval = le32_to_cpup(data.data);
+        cout << sval << " 0x" << hex << setw(8) << sval << endl;
+    } else if (dataType->name == "int64") {
+        long long int sval = le64_to_cpup(data.data);
+        cout << sval << " 0x" << hex << setw(16) << sval << endl;
+    } else if (dataType->name == "uint8") {
+        unsigned int uval = (unsigned int) *(uint8_t *) data.data;
+        cout << uval << " 0x" << hex << setw(2) << uval << endl;
+    } else if (dataType->name == "uint16") {
+        unsigned int uval = le16_to_cpup(data.data);
+        cout << uval << " 0x" << hex << setw(4) << uval << endl;
+    } else if (dataType->name == "uint32") {
+        unsigned int uval = le32_to_cpup(data.data);
+        cout << uval << " 0x" << hex << setw(8) << uval << endl;
+    } else if (dataType->name == "uint64") {
+        long long unsigned int uval = le32_to_cpup(data.data);
+        cout << uval << " 0x" << hex << setw(8) << uval << endl;
+    } else {
+        uint8_t *d = data.data;
+        unsigned int size = data.length;
+
+        cout << hex << setfill('0');
+        while (size--) {
+            cout << "0x" << setw(2) << (unsigned int) *d++;
+            if (size)
+                cout << " ";
+        }
+        cout << endl;
     }
 
     delete [] data.data;
 }
+
+/****************************************************************************/
+
+const CommandPhyRead::DataType *CommandPhyRead::findDataType(
+        const string &str
+        )
+{
+    const DataType *d;
+    
+    for (d = dataTypes; d->name; d++)
+        if (str == d->name)
+            return d;
+
+    return NULL;
+}
+
+/****************************************************************************/
+
+const CommandPhyRead::DataType CommandPhyRead::dataTypes[] = {
+    {"int8",         1},
+    {"int16",        2},
+    {"int32",        4},
+    {"int64",        8},
+    {"uint8",        1},
+    {"uint16",       2},
+    {"uint32",       4},
+    {"uint64",       8},
+    {"string",       0},
+    {"octet_string", 0},
+    {"raw",          0},
+    {}
+};
 
 /*****************************************************************************/

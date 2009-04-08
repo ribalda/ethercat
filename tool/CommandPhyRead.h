@@ -42,6 +42,14 @@ class CommandPhyRead:
 
         string helpString() const;
         void execute(MasterDevice &, const StringVector &);
+
+    private:
+        struct DataType {
+            const char *name;
+            unsigned int byteSize;
+        };
+        static const DataType dataTypes[];
+        static const DataType *findDataType(const string &);
 };
 
 /****************************************************************************/
