@@ -166,8 +166,8 @@ struct ec_master {
     wait_queue_head_t sdo_queue; /**< Wait queue for SDO access requests
                                    from user space. */
 
-    struct list_head phy_requests; /**< Physical memory requests. */
-    wait_queue_head_t phy_queue; /**< Wait queue for phy requests. */
+    struct list_head reg_requests; /**< Register requests. */
+    wait_queue_head_t reg_queue; /**< Wait queue for register requests. */
 
     struct list_head foe_requests; /**< FoE write requests. */
     wait_queue_head_t foe_queue; /**< Wait queue for FoE

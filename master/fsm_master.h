@@ -61,17 +61,17 @@ typedef struct {
 
 /*****************************************************************************/
 
-/** Physical memory request.
+/** Register request.
  */
 typedef struct {
     struct list_head list; /**< List head. */
     ec_slave_t *slave; /**< EtherCAT slave. */
     ec_direction_t dir; /**< Direction. */
-    uint16_t offset; /**< Physical memory offset. */
+    uint16_t offset; /**< Register address. */
     size_t length; /**< Number of bytes. */
     uint8_t *data; /**< Data to write / memory for read data. */
     ec_internal_request_state_t state; /**< State of the request. */
-} ec_phy_request_t;
+} ec_reg_request_t;
 
 /*****************************************************************************/
 
@@ -114,7 +114,7 @@ struct ec_fsm_master {
     ec_sii_write_request_t *sii_request; /**< SII write request */
     off_t sii_index; /**< index to SII write request data */
     ec_sdo_request_t *sdo_request; /**< SDO request to process. */
-    ec_phy_request_t *phy_request; /**< Physical memory request to process. */
+    ec_reg_request_t *reg_request; /**< Register request to process. */
     ec_foe_request_t *foe_request; /**< FoE request to process. */
     off_t foe_index; /**< index to FoE write request data */
 

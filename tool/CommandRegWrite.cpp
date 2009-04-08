@@ -32,19 +32,19 @@
 #include <fstream>
 using namespace std;
 
-#include "CommandPhyWrite.h"
+#include "CommandRegWrite.h"
 #include "sii_crc.h"
 
 /*****************************************************************************/
 
-CommandPhyWrite::CommandPhyWrite():
-    Command("phy_write", "Write data to a slave's physical memory.")
+CommandRegWrite::CommandRegWrite():
+    Command("reg_write", "Write data to a slave's registers.")
 {
 }
 
 /*****************************************************************************/
 
-string CommandPhyWrite::helpString() const
+string CommandRegWrite::helpString() const
 {
     stringstream str;
 
@@ -55,7 +55,7 @@ string CommandPhyWrite::helpString() const
         << "This command requires a single slave to be selected." << endl
     	<< endl
         << "Arguments:" << endl
-        << "  OFFSET   must be the physical memory offset to start." << endl
+        << "  OFFSET   must be the register address." << endl
         << "  FILENAME must be a path to a file with data to write." << endl
         << "           If it is '-', data are read from stdin." << endl
         << endl
@@ -71,10 +71,10 @@ string CommandPhyWrite::helpString() const
 
 /****************************************************************************/
 
-void CommandPhyWrite::execute(MasterDevice &m, const StringVector &args)
+void CommandRegWrite::execute(MasterDevice &m, const StringVector &args)
 {
     stringstream strOffset, err;
-    ec_ioctl_slave_phy_t data;
+    ec_ioctl_slave_reg_t data;
     ifstream file;
     SlaveList slaves;
 
@@ -93,14 +93,14 @@ void CommandPhyWrite::execute(MasterDevice &m, const StringVector &args)
     }
 
     if (args[1] == "-") {
-        loadPhyData(&data, cin);
+        loadRegData(&data, cin);
     } else {
         file.open(args[1].c_str(), ifstream::in | ifstream::binary);
         if (file.fail()) {
             err << "Failed to open '" << args[0] << "'!";
             throwCommandException(err);
         }
-        loadPhyData(&data, file);
+        loadRegData(&data, file);
         file.close();
     }
 
@@ -126,14 +126,14 @@ void CommandPhyWrite::execute(MasterDevice &m, const StringVector &args)
 
     // send data to master
     try {
-        m.writePhy(&data);
+        m.writeReg(&data);
     } catch (MasterDeviceException &e) {
         delete [] data.data;
         throw e;
     }
 
     if (getVerbosity() == Verbose) {
-        cerr << "Physical memory writing finished." << endl;
+        cerr << "Register writing finished." << endl;
     }
 
     delete [] data.data;
@@ -141,8 +141,8 @@ void CommandPhyWrite::execute(MasterDevice &m, const StringVector &args)
 
 /*****************************************************************************/
 
-void CommandPhyWrite::loadPhyData(
-        ec_ioctl_slave_phy_t *data,
+void CommandRegWrite::loadRegData(
+        ec_ioctl_slave_reg_t *data,
         const istream &in
         )
 {

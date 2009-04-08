@@ -1041,17 +1041,17 @@ int ec_cdev_ioctl_slave_sii_write(
 
 /*****************************************************************************/
 
-/** Read a slave's physical memory.
+/** Read a slave's registers.
  */
-int ec_cdev_ioctl_slave_phy_read(
+int ec_cdev_ioctl_slave_reg_read(
         ec_master_t *master, /**< EtherCAT master. */
         unsigned long arg /**< ioctl() argument. */
         )
 {
-    ec_ioctl_slave_phy_t data;
+    ec_ioctl_slave_reg_t data;
     ec_slave_t *slave;
     uint8_t *contents;
-    ec_phy_request_t request;
+    ec_reg_request_t request;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
         return -EFAULT;
@@ -1061,7 +1061,7 @@ int ec_cdev_ioctl_slave_phy_read(
         return 0;
 
     if (!(contents = kmalloc(data.length, GFP_KERNEL))) {
-        EC_ERR("Failed to allocate %u bytes for phy data.\n", data.length);
+        EC_ERR("Failed to allocate %u bytes for register data.\n", data.length);
         return -ENOMEM;
     }
 
@@ -1075,7 +1075,7 @@ int ec_cdev_ioctl_slave_phy_read(
         return -EINVAL;
     }
 
-    // init phy request
+    // init register request
     INIT_LIST_HEAD(&request.list);
     request.slave = slave;
     request.dir = EC_DIR_INPUT;
@@ -1085,12 +1085,12 @@ int ec_cdev_ioctl_slave_phy_read(
     request.state = EC_INT_REQUEST_QUEUED;
 
     // schedule request.
-    list_add_tail(&request.list, &master->phy_requests);
+    list_add_tail(&request.list, &master->reg_requests);
 
     up(&master->master_sem);
 
     // wait for processing through FSM
-    if (wait_event_interruptible(master->phy_queue,
+    if (wait_event_interruptible(master->reg_queue,
                 request.state != EC_INT_REQUEST_QUEUED)) {
         // interrupted by signal
         down(&master->master_sem);
@@ -1105,7 +1105,7 @@ int ec_cdev_ioctl_slave_phy_read(
     }
 
     // wait until master FSM has finished processing
-    wait_event(master->phy_queue, request.state != EC_INT_REQUEST_BUSY);
+    wait_event(master->reg_queue, request.state != EC_INT_REQUEST_BUSY);
 
     if (request.state == EC_INT_REQUEST_SUCCESS) {
         if (copy_to_user((void __user *) data.data, contents, data.length))
@@ -1118,17 +1118,17 @@ int ec_cdev_ioctl_slave_phy_read(
 
 /*****************************************************************************/
 
-/** Write a slave's physical memory.
+/** Write a slave's registers.
  */
-int ec_cdev_ioctl_slave_phy_write(
+int ec_cdev_ioctl_slave_reg_write(
         ec_master_t *master, /**< EtherCAT master. */
         unsigned long arg /**< ioctl() argument. */
         )
 {
-    ec_ioctl_slave_phy_t data;
+    ec_ioctl_slave_reg_t data;
     ec_slave_t *slave;
     uint8_t *contents;
-    ec_phy_request_t request;
+    ec_reg_request_t request;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
         return -EFAULT;
@@ -1138,7 +1138,7 @@ int ec_cdev_ioctl_slave_phy_write(
         return 0;
 
     if (!(contents = kmalloc(data.length, GFP_KERNEL))) {
-        EC_ERR("Failed to allocate %u bytes for phy data.\n", data.length);
+        EC_ERR("Failed to allocate %u bytes for register data.\n", data.length);
         return -ENOMEM;
     }
 
@@ -1158,7 +1158,7 @@ int ec_cdev_ioctl_slave_phy_write(
         return -EINVAL;
     }
 
-    // init phy request
+    // init register request
     INIT_LIST_HEAD(&request.list);
     request.slave = slave;
     request.dir = EC_DIR_OUTPUT;
@@ -1168,12 +1168,12 @@ int ec_cdev_ioctl_slave_phy_write(
     request.state = EC_INT_REQUEST_QUEUED;
 
     // schedule request.
-    list_add_tail(&request.list, &master->phy_requests);
+    list_add_tail(&request.list, &master->reg_requests);
 
     up(&master->master_sem);
 
     // wait for processing through FSM
-    if (wait_event_interruptible(master->phy_queue,
+    if (wait_event_interruptible(master->reg_queue,
                 request.state != EC_INT_REQUEST_QUEUED)) {
         // interrupted by signal
         down(&master->master_sem);
@@ -1188,7 +1188,7 @@ int ec_cdev_ioctl_slave_phy_write(
     }
 
     // wait until master FSM has finished processing
-    wait_event(master->phy_queue, request.state != EC_INT_REQUEST_BUSY);
+    wait_event(master->reg_queue, request.state != EC_INT_REQUEST_BUSY);
 
     kfree(contents);
 
@@ -2981,12 +2981,12 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             if (!(filp->f_mode & FMODE_WRITE))
                 return -EPERM;
             return ec_cdev_ioctl_slave_sii_write(master, arg);
-        case EC_IOCTL_SLAVE_PHY_READ:
-            return ec_cdev_ioctl_slave_phy_read(master, arg);
-        case EC_IOCTL_SLAVE_PHY_WRITE:
+        case EC_IOCTL_SLAVE_REG_READ:
+            return ec_cdev_ioctl_slave_reg_read(master, arg);
+        case EC_IOCTL_SLAVE_REG_WRITE:
             if (!(filp->f_mode & FMODE_WRITE))
                 return -EPERM;
-            return ec_cdev_ioctl_slave_phy_write(master, arg);
+            return ec_cdev_ioctl_slave_reg_write(master, arg);
         case EC_IOCTL_SLAVE_FOE_READ:
             return ec_cdev_ioctl_slave_foe_read(master, arg);
         case EC_IOCTL_SLAVE_FOE_WRITE:

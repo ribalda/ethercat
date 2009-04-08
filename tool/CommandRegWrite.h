@@ -27,29 +27,24 @@
  *
  ****************************************************************************/
 
-#ifndef __COMMANDPHYREAD_H__
-#define __COMMANDPHYREAD_H__
+#ifndef __COMMANDREGWRITE_H__
+#define __COMMANDREGWRITE_H__
 
 #include "Command.h"
 
 /****************************************************************************/
 
-class CommandPhyRead:
+class CommandRegWrite:
     public Command
 {
     public:
-        CommandPhyRead();
+        CommandRegWrite();
 
         string helpString() const;
         void execute(MasterDevice &, const StringVector &);
 
     private:
-        struct DataType {
-            const char *name;
-            unsigned int byteSize;
-        };
-        static const DataType dataTypes[];
-        static const DataType *findDataType(const string &);
+        void loadRegData(ec_ioctl_slave_reg_t *, const istream &);
 };
 
 /****************************************************************************/

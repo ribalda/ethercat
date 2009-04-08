@@ -369,26 +369,26 @@ void MasterDevice::writeSii(
 
 /****************************************************************************/
 
-void MasterDevice::readPhy(
-        ec_ioctl_slave_phy_t *data
+void MasterDevice::readReg(
+        ec_ioctl_slave_reg_t *data
         )
 {
-    if (ioctl(fd, EC_IOCTL_SLAVE_PHY_READ, data) < 0) {
+    if (ioctl(fd, EC_IOCTL_SLAVE_REG_READ, data) < 0) {
         stringstream err;
-        err << "Failed to read physical memory: " << strerror(errno);
+        err << "Failed to read register: " << strerror(errno);
         throw MasterDeviceException(err);
     }
 }
 
 /****************************************************************************/
 
-void MasterDevice::writePhy(
-        ec_ioctl_slave_phy_t *data
+void MasterDevice::writeReg(
+        ec_ioctl_slave_reg_t *data
         )
 {
-    if (ioctl(fd, EC_IOCTL_SLAVE_PHY_WRITE, data) < 0) {
+    if (ioctl(fd, EC_IOCTL_SLAVE_REG_WRITE, data) < 0) {
         stringstream err;
-        err << "Failed to write physical memory: " << strerror(errno);
+        err << "Failed to write register: " << strerror(errno);
         throw MasterDeviceException(err);
     }
 }

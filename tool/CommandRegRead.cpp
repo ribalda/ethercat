@@ -31,18 +31,18 @@
 #include <iomanip>
 using namespace std;
 
-#include "CommandPhyRead.h"
+#include "CommandRegRead.h"
 
 /*****************************************************************************/
 
-CommandPhyRead::CommandPhyRead():
-    Command("phy_read", "Output a slave's physical memory contents.")
+CommandRegRead::CommandRegRead():
+    Command("reg_read", "Output a slave's register contents.")
 {
 }
 
 /*****************************************************************************/
 
-string CommandPhyRead::helpString() const
+string CommandRegRead::helpString() const
 {
     stringstream str;
 
@@ -53,7 +53,7 @@ string CommandPhyRead::helpString() const
         << "This command requires a single slave to be selected." << endl
     	<< endl
         << "Arguments:" << endl
-        << "  OFFSET is the physical memory address. Must" << endl
+        << "  OFFSET is the register address. Must" << endl
         << "         be an unsigned 16 bit number." << endl
         << "  LENGTH is the number of bytes to read and must also be" << endl
         << "         an unsigned 16 bit number. OFFSET plus LENGTH" << endl
@@ -78,10 +78,10 @@ string CommandPhyRead::helpString() const
 
 /****************************************************************************/
 
-void CommandPhyRead::execute(MasterDevice &m, const StringVector &args)
+void CommandRegRead::execute(MasterDevice &m, const StringVector &args)
 {
     SlaveList slaves;
-    ec_ioctl_slave_phy_t data;
+    ec_ioctl_slave_reg_t data;
     stringstream strOffset, err;
     const DataType *dataType = NULL;
 
@@ -152,7 +152,7 @@ void CommandPhyRead::execute(MasterDevice &m, const StringVector &args)
     data.data = new uint8_t[data.length];
 
 	try {
-		m.readPhy(&data);
+		m.readReg(&data);
 	} catch (MasterDeviceException &e) {
         delete [] data.data;
 		throw e;
@@ -208,7 +208,7 @@ void CommandPhyRead::execute(MasterDevice &m, const StringVector &args)
 
 /****************************************************************************/
 
-const CommandPhyRead::DataType *CommandPhyRead::findDataType(
+const CommandRegRead::DataType *CommandRegRead::findDataType(
         const string &str
         )
 {
@@ -223,7 +223,7 @@ const CommandPhyRead::DataType *CommandPhyRead::findDataType(
 
 /****************************************************************************/
 
-const CommandPhyRead::DataType CommandPhyRead::dataTypes[] = {
+const CommandRegRead::DataType CommandRegRead::dataTypes[] = {
     {"int8",         1},
     {"int16",        2},
     {"int32",        4},

@@ -56,7 +56,7 @@ void ec_fsm_master_state_scan_slave(ec_fsm_master_t *);
 void ec_fsm_master_state_write_sii(ec_fsm_master_t *);
 void ec_fsm_master_state_sdo_dictionary(ec_fsm_master_t *);
 void ec_fsm_master_state_sdo_request(ec_fsm_master_t *);
-void ec_fsm_master_state_phy_request(ec_fsm_master_t *);
+void ec_fsm_master_state_reg_request(ec_fsm_master_t *);
 void ec_fsm_master_state_foe_request(ec_fsm_master_t *);
 
 /*****************************************************************************/
@@ -327,29 +327,29 @@ int ec_fsm_master_action_process_sii(
 
 /*****************************************************************************/
 
-/** Check for pending phy requests and process one.
+/** Check for pending register requests and process one.
  * 
- * \return non-zero, if a phy request is processed.
+ * \return non-zero, if a register request is processed.
  */
-int ec_fsm_master_action_process_phy(
+int ec_fsm_master_action_process_register(
         ec_fsm_master_t *fsm /**< Master state machine. */
         )
 {
     ec_master_t *master = fsm->master;
-    ec_phy_request_t *request;
+    ec_reg_request_t *request;
 
     // search the first request to be processed
-    while (!list_empty(&master->phy_requests)) {
+    while (!list_empty(&master->reg_requests)) {
 
         // get first request
-        request = list_entry(master->phy_requests.next,
-                ec_phy_request_t, list);
+        request = list_entry(master->reg_requests.next,
+                ec_reg_request_t, list);
         list_del_init(&request->list); // dequeue
         request->state = EC_INT_REQUEST_BUSY;
 
         // found pending request; process it!
         if (master->debug_level)
-            EC_DBG("Processing phy request for slave %u, "
+            EC_DBG("Processing register request for slave %u, "
                     "offset 0x%04x, length %u...\n",
                     request->slave->ring_position,
                     request->offset, request->length);
@@ -359,11 +359,11 @@ int ec_fsm_master_action_process_phy(
                     "datagram size (%u)!\n", request->length,
                     fsm->datagram->mem_size);
             request->state = EC_INT_REQUEST_FAILURE;
-            wake_up(&master->phy_queue);
+            wake_up(&master->reg_queue);
             continue;
         }
 
-        fsm->phy_request = request;
+        fsm->reg_request = request;
 
         if (request->dir == EC_DIR_INPUT) {
             ec_datagram_fprd(fsm->datagram, request->slave->station_address,
@@ -375,7 +375,7 @@ int ec_fsm_master_action_process_phy(
             memcpy(fsm->datagram->data, request->data, request->length);
         }
         fsm->retries = EC_FSM_RETRIES;
-        fsm->state = ec_fsm_master_state_phy_request;
+        fsm->state = ec_fsm_master_state_reg_request;
         return 1;
     }
 
@@ -568,9 +568,9 @@ void ec_fsm_master_action_idle(
     if (ec_fsm_master_action_process_sii(fsm))
         return; // SII write request found
 
-    // check for pending phy requests.
-    if (ec_fsm_master_action_process_phy(fsm))
-        return; // phy request processing
+    // check for pending register requests.
+    if (ec_fsm_master_action_process_register(fsm))
+        return; // register request processing
 
     ec_fsm_master_restart(fsm);
 }
@@ -1014,21 +1014,21 @@ void ec_fsm_master_state_sdo_request(
 
 /*****************************************************************************/
 
-/** Master state: PHY.
+/** Master state: REG REQUEST.
  */
-void ec_fsm_master_state_phy_request(
+void ec_fsm_master_state_reg_request(
         ec_fsm_master_t *fsm /**< Master state machine. */
         )
 {
     ec_master_t *master = fsm->master;
     ec_datagram_t *datagram = fsm->datagram;
-    ec_phy_request_t *request = fsm->phy_request;
+    ec_reg_request_t *request = fsm->reg_request;
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
-        EC_ERR("Failed to receive phy request datagram (state %u).\n",
+        EC_ERR("Failed to receive register request datagram (state %u).\n",
                 datagram->state);
         request->state = EC_INT_REQUEST_FAILURE;
-        wake_up(&master->phy_queue);
+        wake_up(&master->reg_queue);
         ec_fsm_master_restart(fsm);
         return;
     }
@@ -1039,10 +1039,10 @@ void ec_fsm_master_state_phy_request(
                 kfree(request->data);
             request->data = kmalloc(request->length, GFP_KERNEL);
             if (!request->data) {
-                EC_ERR("Failed to allocate %u bytes of memory for phy request.\n",
-                        request->length);
+                EC_ERR("Failed to allocate %u bytes of memory for"
+                        " register data.\n", request->length);
                 request->state = EC_INT_REQUEST_FAILURE;
-                wake_up(&master->phy_queue);
+                wake_up(&master->reg_queue);
                 ec_fsm_master_restart(fsm);
                 return;
             }
@@ -1054,10 +1054,10 @@ void ec_fsm_master_state_phy_request(
         request->state = EC_INT_REQUEST_FAILURE;
     }
 
-    wake_up(&master->phy_queue);
+    wake_up(&master->reg_queue);
 
-    // check for another PHY request
-    if (ec_fsm_master_action_process_phy(fsm))
+    // check for another register request
+    if (ec_fsm_master_action_process_register(fsm))
         return; // processing another request
 
     ec_fsm_master_restart(fsm);

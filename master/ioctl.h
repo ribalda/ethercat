@@ -69,8 +69,8 @@
 #define EC_IOCTL_SLAVE_SDO_DOWNLOAD   EC_IOWR(0x0d, ec_ioctl_slave_sdo_download_t)
 #define EC_IOCTL_SLAVE_SII_READ       EC_IOWR(0x0e, ec_ioctl_slave_sii_t)
 #define EC_IOCTL_SLAVE_SII_WRITE       EC_IOW(0x0f, ec_ioctl_slave_sii_t)
-#define EC_IOCTL_SLAVE_PHY_READ       EC_IOWR(0x10, ec_ioctl_slave_phy_t)
-#define EC_IOCTL_SLAVE_PHY_WRITE       EC_IOW(0x11, ec_ioctl_slave_phy_t)
+#define EC_IOCTL_SLAVE_REG_READ       EC_IOWR(0x10, ec_ioctl_slave_reg_t)
+#define EC_IOCTL_SLAVE_REG_WRITE       EC_IOW(0x11, ec_ioctl_slave_reg_t)
 #define EC_IOCTL_SLAVE_FOE_READ       EC_IOWR(0x12, ec_ioctl_slave_foe_t)
 #define EC_IOCTL_SLAVE_FOE_WRITE       EC_IOW(0x13, ec_ioctl_slave_foe_t)
 #define EC_IOCTL_CONFIG               EC_IOWR(0x14, ec_ioctl_config_t)
@@ -340,7 +340,7 @@ typedef struct {
     uint16_t offset;
     uint16_t length;
     uint8_t *data;
-} ec_ioctl_slave_phy_t;
+} ec_ioctl_slave_reg_t;
 
 /*****************************************************************************/
 
