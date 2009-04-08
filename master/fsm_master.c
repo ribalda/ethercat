@@ -353,6 +353,16 @@ int ec_fsm_master_action_process_phy(
                     "offset 0x%04x, length %u...\n",
                     request->slave->ring_position,
                     request->offset, request->length);
+
+        if (request->length > fsm->datagram->mem_size) {
+            EC_ERR("Request length (%u) exceeds maximum "
+                    "datagram size (%u)!\n", request->length,
+                    fsm->datagram->mem_size);
+            request->state = EC_INT_REQUEST_FAILURE;
+            wake_up(&master->phy_queue);
+            continue;
+        }
+
         fsm->phy_request = request;
 
         if (request->dir == EC_DIR_INPUT) {
@@ -360,14 +370,6 @@ int ec_fsm_master_action_process_phy(
                     request->offset, request->length);
             ec_datagram_zero(fsm->datagram);
         } else {
-            if (request->length > fsm->datagram->mem_size) {
-                EC_ERR("Request length (%u) exceeds maximum "
-                        "datagram size (%u)!\n", request->length,
-                        fsm->datagram->mem_size);
-                request->state = EC_INT_REQUEST_FAILURE;
-                wake_up(&master->phy_queue);
-                continue;
-            }
             ec_datagram_fpwr(fsm->datagram, request->slave->station_address,
                     request->offset, request->length);
             memcpy(fsm->datagram->data, request->data, request->length);
