@@ -79,7 +79,7 @@ void CommandPhyWrite::execute(MasterDevice &m, const StringVector &args)
     SlaveList slaves;
 
     if (args.size() != 2) {
-        err << "'" << getName() << "' takes exactly one argument!";
+        err << "'" << getName() << "' takes exactly two arguments!";
         throwInvalidUsageException(err);
     }
     
