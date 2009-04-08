@@ -27,6 +27,7 @@ Changes since 1.4.0:
 * Going to the Bootstrap state is now supported by the state machines and the
   command-line tool.
 * Introduced ecrt_master_slave() to get information about a certain slave.
+* SDO entry access rights are shown in 'ethercat sdos'.
 
 Changes in 1.4.0:
 

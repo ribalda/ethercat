@@ -288,6 +288,8 @@ typedef struct {
     // outputs
     uint16_t data_type;
     uint16_t bit_length;
+    uint8_t read_access[EC_SDO_ENTRY_ACCESS_COUNT];
+    uint8_t write_access[EC_SDO_ENTRY_ACCESS_COUNT];
     int8_t description[EC_IOCTL_STRING_SIZE];
 } ec_ioctl_slave_sdo_entry_t;
 

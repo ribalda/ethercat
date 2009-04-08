@@ -773,7 +773,7 @@ void ec_fsm_coe_dict_desc_response(ec_fsm_coe_t *fsm
     EC_WRITE_U16(data + 4, 0x0000);
     EC_WRITE_U16(data + 6, sdo->index); // SDO index
     EC_WRITE_U8 (data + 8, fsm->subindex); // SDO subindex
-    EC_WRITE_U8 (data + 9, 0x00); // value info (no values)
+    EC_WRITE_U8 (data + 9, 0x01); // value info (access rights only)
 
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_coe_dict_entry_request;
@@ -886,6 +886,7 @@ void ec_fsm_coe_dict_entry_response(ec_fsm_coe_t *fsm
     uint8_t *data, mbox_prot;
     size_t rec_size, data_size;
     ec_sdo_entry_t *entry;
+    u16 word;
 
     if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
         return; // FIXME: request again?
@@ -986,6 +987,15 @@ void ec_fsm_coe_dict_entry_response(ec_fsm_coe_t *fsm
     ec_sdo_entry_init(entry, sdo, fsm->subindex);
     entry->data_type = EC_READ_U16(data + 10);
     entry->bit_length = EC_READ_U16(data + 12);
+
+    // read access rights
+    word = EC_READ_U16(data + 14);
+    entry->read_access[EC_SDO_ENTRY_ACCESS_PREOP] = word & 0x0001;
+    entry->read_access[EC_SDO_ENTRY_ACCESS_SAFEOP] = (word >> 1)  & 0x0001;
+    entry->read_access[EC_SDO_ENTRY_ACCESS_OP] = (word >> 2)  & 0x0001;
+    entry->write_access[EC_SDO_ENTRY_ACCESS_PREOP] = (word >> 3) & 0x0001;
+    entry->write_access[EC_SDO_ENTRY_ACCESS_SAFEOP] = (word >> 4)  & 0x0001;
+    entry->write_access[EC_SDO_ENTRY_ACCESS_OP] = (word >> 5)  & 0x0001;
 
     if (data_size) {
         uint8_t *desc;

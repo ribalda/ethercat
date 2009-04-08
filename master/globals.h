@@ -174,6 +174,17 @@ typedef enum {
                port 0 receive time. */
 } ec_slave_dc_range_t;
 
+/** Access states for SDO entries.
+ *
+ * The access rights are managed per AL state.
+ */
+enum {
+    EC_SDO_ENTRY_ACCESS_PREOP, /**< Access rights in PREOP. */
+    EC_SDO_ENTRY_ACCESS_SAFEOP, /**< Access rights in SAFEOP. */
+    EC_SDO_ENTRY_ACCESS_OP, /**< Access rights in OP. */
+    EC_SDO_ENTRY_ACCESS_COUNT /**< Number of states. */
+};
+
 /*****************************************************************************/
 
 /** Convenience macro for printing EtherCAT-specific information to syslog.

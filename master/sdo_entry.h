@@ -57,6 +57,8 @@ typedef struct {
     uint8_t subindex; /**< Subindex. */
     uint16_t data_type; /**< Data type. */
     uint16_t bit_length; /**< Data size in bit. */
+    uint8_t read_access[EC_SDO_ENTRY_ACCESS_COUNT]; /**< Read access. */
+    uint8_t write_access[EC_SDO_ENTRY_ACCESS_COUNT]; /**< Write access. */
     char *description; /**< Description. */
 } ec_sdo_entry_t;
 

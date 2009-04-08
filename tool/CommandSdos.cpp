@@ -58,11 +58,18 @@ string CommandSdos::helpString() const
     	<< "   SDO 0x1018, \"Identity object\"" << endl
     	<< endl
     	<< "2) SDO entries - SDO index and SDO entry subindex (both" << endl
-		<< "   hexadecimal) followed by the data type, the length in" << endl
-		<< "   bit, and the description. Example:" << endl
+		<< "   hexadecimal) followed by the access rights (see" << endl
+        << "   below), the data type, the length in bit, and the" << endl
+        << "   description. Example:" << endl
     	<< endl
-    	<< "   0x1018:01, uint32, 32 bit, \"Vendor id\"" << endl
+    	<< "   0x1018:01, rwrwrw, uint32, 32 bit, \"Vendor id\"" << endl
     	<< endl
+        << "The access rights are specified for the AL states PREOP," << endl
+        << "SAFEOP and OP. An 'r' means, that the entry is readable" << endl
+        << "in the corresponding state, an 'w' means writable," << endl
+        << "respectively. If a right is not granted, a dash '-' is" << endl
+        << "shown." << endl
+        << endl
     	<< "If the --quiet option is given, only the SDOs are output."
 		<< endl << endl
     	<< "Command-specific options:" << endl
@@ -133,6 +140,13 @@ void CommandSdos::listSlaveSdos(
             cout << "  0x" << hex << setfill('0')
                 << setw(4) << sdo.sdo_index << ":"
                 << setw(2) << (unsigned int) entry.sdo_entry_subindex
+                << ", "
+                << (entry.read_access[EC_SDO_ENTRY_ACCESS_PREOP] ? "r" : "-")
+                << (entry.write_access[EC_SDO_ENTRY_ACCESS_PREOP] ? "w" : "-")
+                << (entry.read_access[EC_SDO_ENTRY_ACCESS_SAFEOP] ? "r" : "-")
+                << (entry.write_access[EC_SDO_ENTRY_ACCESS_SAFEOP] ? "w" : "-")
+                << (entry.read_access[EC_SDO_ENTRY_ACCESS_OP] ? "r" : "-")
+                << (entry.write_access[EC_SDO_ENTRY_ACCESS_OP] ? "w" : "-")
                 << ", ";
 
             if ((d = findDataType(entry.data_type))) {

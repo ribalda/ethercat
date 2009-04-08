@@ -720,6 +720,18 @@ int ec_cdev_ioctl_slave_sdo_entry(
 
     data.data_type = entry->data_type;
     data.bit_length = entry->bit_length;
+    data.read_access[EC_SDO_ENTRY_ACCESS_PREOP] =
+        entry->read_access[EC_SDO_ENTRY_ACCESS_PREOP];
+    data.read_access[EC_SDO_ENTRY_ACCESS_SAFEOP] =
+        entry->read_access[EC_SDO_ENTRY_ACCESS_SAFEOP];
+    data.read_access[EC_SDO_ENTRY_ACCESS_OP] =
+        entry->read_access[EC_SDO_ENTRY_ACCESS_OP];
+    data.write_access[EC_SDO_ENTRY_ACCESS_PREOP] =
+        entry->write_access[EC_SDO_ENTRY_ACCESS_PREOP];
+    data.write_access[EC_SDO_ENTRY_ACCESS_SAFEOP] =
+        entry->write_access[EC_SDO_ENTRY_ACCESS_SAFEOP];
+    data.write_access[EC_SDO_ENTRY_ACCESS_OP] =
+        entry->write_access[EC_SDO_ENTRY_ACCESS_OP];
     ec_cdev_strcpy(data.description, entry->description);
 
     up(&master->master_sem);
