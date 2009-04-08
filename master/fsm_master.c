@@ -1031,22 +1031,27 @@ void ec_fsm_master_state_phy_request(
         return;
     }
     
-    if (request->dir == EC_DIR_INPUT) { // read request
-        if (request->data)
-            kfree(request->data);
-        request->data = kmalloc(request->length, GFP_KERNEL);
-        if (!request->data) {
-            EC_ERR("Failed to allocate %u bytes of memory for phy request.\n",
-                    request->length);
-            request->state = EC_INT_REQUEST_FAILURE;
-            wake_up(&master->phy_queue);
-            ec_fsm_master_restart(fsm);
-            return;
+    if (datagram->working_counter == 1) {
+        if (request->dir == EC_DIR_INPUT) { // read request
+            if (request->data)
+                kfree(request->data);
+            request->data = kmalloc(request->length, GFP_KERNEL);
+            if (!request->data) {
+                EC_ERR("Failed to allocate %u bytes of memory for phy request.\n",
+                        request->length);
+                request->state = EC_INT_REQUEST_FAILURE;
+                wake_up(&master->phy_queue);
+                ec_fsm_master_restart(fsm);
+                return;
+            }
+            memcpy(request->data, datagram->data, request->length);
         }
-        memcpy(request->data, datagram->data, request->length);
+
+        request->state = EC_INT_REQUEST_SUCCESS;
+    } else {
+        request->state = EC_INT_REQUEST_FAILURE;
     }
 
-    request->state = EC_INT_REQUEST_SUCCESS;
     wake_up(&master->phy_queue);
 
     // check for another PHY request
