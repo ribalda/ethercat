@@ -188,7 +188,7 @@ void CommandRegRead::execute(MasterDevice &m, const StringVector &args)
         unsigned int uval = le32_to_cpup(data.data);
         cout << uval << " 0x" << hex << setw(8) << uval << endl;
     } else if (dataType->name == "uint64") {
-        long long unsigned int uval = le32_to_cpup(data.data);
+        long long unsigned int uval = le64_to_cpup(data.data);
         cout << uval << " 0x" << hex << setw(8) << uval << endl;
     } else { // raw
         uint8_t *d = data.data;
