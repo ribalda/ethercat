@@ -38,7 +38,7 @@ using namespace std;
 /*****************************************************************************/
 
 CommandRegWrite::CommandRegWrite():
-    Command("reg_write", "Write data to a slave's registers.")
+    CommandReg("reg_write", "Write data to a slave's registers.")
 {
 }
 
@@ -48,21 +48,30 @@ string CommandRegWrite::helpString() const
 {
     stringstream str;
 
-    str << getName() << " [OPTIONS] <OFFSET> <FILENAME>" << endl
+    str << getName() << " [OPTIONS] <OFFSET> <DATA>" << endl
         << endl 
         << getBriefDescription() << endl
         << endl
         << "This command requires a single slave to be selected." << endl
     	<< endl
         << "Arguments:" << endl
-        << "  OFFSET   must be the register address." << endl
-        << "  FILENAME must be a path to a file with data to write." << endl
-        << "           If it is '-', data are read from stdin." << endl
+        << "  OFFSET  is the register address to write to." << endl
+        << "  DATA    depends on whether a datatype was specified" << endl
+		<< "          with the --type option: If not, DATA must be" << endl
+		<< "          either a path to a file with data to write," << endl
+		<< "          or '-', which means, that data are read from" << endl
+		<< "          stdin. If a datatype was specified, VALUE is" << endl
+		<< "          interpreted respective to the given type." << endl
         << endl
+        << "These are the valid data types:" << endl
+        << "  int8, int16, int32, int64, uint8, uint16, uint32," << endl
+        << "  uint64, string." << endl
+		<< endl
         << "Command-specific options:" << endl
         << "  --alias    -a <alias>" << endl
         << "  --position -p <pos>    Slave selection. See the help of" << endl
         << "                         the 'slaves' command." << endl
+        << "  --type     -t <type>   Data type (see above)." << endl
         << endl
         << numericInfo();
 
@@ -92,17 +101,85 @@ void CommandRegWrite::execute(MasterDevice &m, const StringVector &args)
         throwInvalidUsageException(err);
     }
 
-    if (args[1] == "-") {
-        loadRegData(&data, cin);
-    } else {
-        file.open(args[1].c_str(), ifstream::in | ifstream::binary);
-        if (file.fail()) {
-            err << "Failed to open '" << args[0] << "'!";
-            throwCommandException(err);
+	if (getDataType().empty()) {
+		if (args[1] == "-") {
+			loadRegData(&data, cin);
+		} else {
+			file.open(args[1].c_str(), ifstream::in | ifstream::binary);
+			if (file.fail()) {
+				err << "Failed to open '" << args[1] << "'!";
+				throwCommandException(err);
+			}
+			loadRegData(&data, file);
+			file.close();
+		}
+	} else {
+		stringstream strValue;
+		const DataType *dataType = findDataType(getDataType());
+
+        if (!dataType) {
+            err << "Invalid data type '" << getDataType() << "'!";
+            throwInvalidUsageException(err);
         }
-        loadRegData(&data, file);
-        file.close();
-    }
+
+		if (dataType->byteSize) {
+			data.length = dataType->byteSize;
+			data.data = new uint8_t[data.length];
+		}
+
+		strValue << args[1];
+		strValue >> resetiosflags(ios::basefield); // guess base from prefix
+		strValue.exceptions(ios::failbit);
+
+		try {
+			if (dataType->name == "int8") {
+				int16_t val; // uint8_t is interpreted as char
+				strValue >> val;
+				if (val > 127 || val < -128)
+					throw ios::failure("Value out of range");
+				*data.data = (int8_t) val;
+			} else if (dataType->name == "int16") {
+				int16_t val;
+				strValue >> val;
+				*(int16_t *) data.data = cpu_to_le16(val);
+			} else if (dataType->name == "int32") {
+				int32_t val;
+				strValue >> val;
+				*(int32_t *) data.data = cpu_to_le32(val);
+			} else if (dataType->name == "uint8") {
+				uint16_t val; // uint8_t is interpreted as char
+				strValue >> val;
+				if (val > 0xff)
+					throw ios::failure("Value out of range");
+				*data.data = (uint8_t) val;
+			} else if (dataType->name == "uint16") {
+				uint16_t val;
+				strValue >> val;
+				*(uint16_t *) data.data = cpu_to_le16(val);
+			} else if (dataType->name == "uint32") {
+				uint32_t val;
+				strValue >> val;
+				*(uint32_t *) data.data = cpu_to_le32(val);
+			} else if (dataType->name == "string" ||
+					dataType->name == "octet_string") {
+				data.length = strValue.str().size();
+				if (!data.length) {
+					err << "Zero-size string now allowed!";
+					throwCommandException(err);
+				}
+				data.data = new uint8_t[data.length];
+				strValue >> (char *) data.data;
+			} else {
+				err << "Invalid data type " << dataType->name;
+				throwCommandException(err);
+			}
+		} catch (ios::failure &e) {
+			delete [] data.data;
+			err << "Invalid value argument '" << args[1]
+				<< "' for type '" << dataType->name << "'!";
+			throwInvalidUsageException(err);
+		}
+	}
 
     if ((uint32_t) data.offset + data.length > 0xffff) {
         err << "Offset and length exceeding 64k!";

@@ -27,24 +27,26 @@
  *
  ****************************************************************************/
 
-#ifndef __COMMANDREGWRITE_H__
-#define __COMMANDREGWRITE_H__
+#ifndef __COMMANDREG_H__
+#define __COMMANDREG_H__
 
-#include "CommandReg.h"
+#include "Command.h"
 
 /****************************************************************************/
 
-class CommandRegWrite:
-    public CommandReg
+class CommandReg:
+    public Command
 {
     public:
-        CommandRegWrite();
+        CommandReg(const string &, const string &);
 
-        string helpString() const;
-        void execute(MasterDevice &, const StringVector &);
-
-    private:
-        void loadRegData(ec_ioctl_slave_reg_t *, const istream &);
+    protected:
+        struct DataType {
+            const char *name;
+            unsigned int byteSize;
+        };
+        static const DataType dataTypes[];
+        static const DataType *findDataType(const string &);
 };
 
 /****************************************************************************/

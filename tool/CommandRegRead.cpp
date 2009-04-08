@@ -36,7 +36,7 @@ using namespace std;
 /*****************************************************************************/
 
 CommandRegRead::CommandRegRead():
-    Command("reg_read", "Output a slave's register contents.")
+    CommandReg("reg_read", "Output a slave's register contents.")
 {
 }
 
@@ -63,7 +63,7 @@ string CommandRegRead::helpString() const
         << endl
         << "These are the valid data types:" << endl
         << "  int8, int16, int32, int64, uint8, uint16, uint32," << endl
-        << "  uint64, string, octet_string, raw." << endl
+        << "  uint64, string, raw." << endl
         << endl
     	<< "Command-specific options:" << endl
         << "  --alias    -a <alias>" << endl
@@ -159,13 +159,13 @@ void CommandRegRead::execute(MasterDevice &m, const StringVector &args)
 	}
 
     cout << setfill('0');
-    if (!dataType ||
-            dataType->name == "string" ||
-            dataType->name == "octet_string") {
+    if (!dataType || dataType->name == "string") {
         uint16_t i;
         for (i = 0; i < data.length; i++) {
             cout << data.data[i];
         }
+        if (dataType)
+            cout << endl;
     } else if (dataType->name == "int8") {
         int sval = *(int8_t *) data.data;
         cout << sval << " 0x" << hex << setw(2) << sval << endl;
@@ -190,7 +190,7 @@ void CommandRegRead::execute(MasterDevice &m, const StringVector &args)
     } else if (dataType->name == "uint64") {
         long long unsigned int uval = le32_to_cpup(data.data);
         cout << uval << " 0x" << hex << setw(8) << uval << endl;
-    } else {
+    } else { // raw
         uint8_t *d = data.data;
         unsigned int size = data.length;
 
@@ -205,37 +205,5 @@ void CommandRegRead::execute(MasterDevice &m, const StringVector &args)
 
     delete [] data.data;
 }
-
-/****************************************************************************/
-
-const CommandRegRead::DataType *CommandRegRead::findDataType(
-        const string &str
-        )
-{
-    const DataType *d;
-    
-    for (d = dataTypes; d->name; d++)
-        if (str == d->name)
-            return d;
-
-    return NULL;
-}
-
-/****************************************************************************/
-
-const CommandRegRead::DataType CommandRegRead::dataTypes[] = {
-    {"int8",         1},
-    {"int16",        2},
-    {"int32",        4},
-    {"int64",        8},
-    {"uint8",        1},
-    {"uint16",       2},
-    {"uint32",       4},
-    {"uint64",       8},
-    {"string",       0},
-    {"octet_string", 0},
-    {"raw",          0},
-    {}
-};
 
 /*****************************************************************************/

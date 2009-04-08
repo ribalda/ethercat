@@ -27,26 +27,44 @@
  *
  ****************************************************************************/
 
-#ifndef __COMMANDREGWRITE_H__
-#define __COMMANDREGWRITE_H__
-
 #include "CommandReg.h"
 
+/*****************************************************************************/
+
+CommandReg::CommandReg(const string &name, const string &briefDesc):
+    Command(name, briefDesc)
+{
+}
+
 /****************************************************************************/
 
-class CommandRegWrite:
-    public CommandReg
+const CommandReg::DataType *CommandReg::findDataType(
+        const string &str
+        )
 {
-    public:
-        CommandRegWrite();
+    const DataType *d;
+    
+    for (d = dataTypes; d->name; d++)
+        if (str == d->name)
+            return d;
 
-        string helpString() const;
-        void execute(MasterDevice &, const StringVector &);
+    return NULL;
+}
 
-    private:
-        void loadRegData(ec_ioctl_slave_reg_t *, const istream &);
+/****************************************************************************/
+
+const CommandReg::DataType CommandReg::dataTypes[] = {
+    {"int8",         1},
+    {"int16",        2},
+    {"int32",        4},
+    {"int64",        8},
+    {"uint8",        1},
+    {"uint16",       2},
+    {"uint32",       4},
+    {"uint64",       8},
+    {"string",       0},
+    {"raw",          0},
+    {}
 };
 
-/****************************************************************************/
-
-#endif
+/*****************************************************************************/

@@ -30,26 +30,18 @@
 #ifndef __COMMANDREGREAD_H__
 #define __COMMANDREGREAD_H__
 
-#include "Command.h"
+#include "CommandReg.h"
 
 /****************************************************************************/
 
 class CommandRegRead:
-    public Command
+    public CommandReg
 {
     public:
         CommandRegRead();
 
         string helpString() const;
         void execute(MasterDevice &, const StringVector &);
-
-    private:
-        struct DataType {
-            const char *name;
-            unsigned int byteSize;
-        };
-        static const DataType dataTypes[];
-        static const DataType *findDataType(const string &);
 };
 
 /****************************************************************************/
