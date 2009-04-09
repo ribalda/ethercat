@@ -190,6 +190,7 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     snprintf(master->fsm_datagram.name, EC_DATAGRAM_NAME_SIZE, "master-fsm");
     ret = ec_datagram_prealloc(&master->fsm_datagram, EC_MAX_DATA_SIZE);
     if (ret < 0) {
+        ec_datagram_clear(&master->fsm_datagram);
         EC_ERR("Failed to allocate FSM datagram.\n");
         goto out_clear_backup;
     }
@@ -197,10 +198,20 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     // create state machine object
     ec_fsm_master_init(&master->fsm, master, &master->fsm_datagram);
 
+    // init sync datagram
+    ec_datagram_init(&master->sync_datagram);
+    snprintf(master->sync_datagram.name, EC_DATAGRAM_NAME_SIZE, "sync");
+    ret = ec_datagram_armw(&master->sync_datagram, 0 /* FIXME */, 0x0910, 4);
+    if (ret < 0) {
+        ec_datagram_clear(&master->sync_datagram);
+        EC_ERR("Failed to allocate synchronisation datagram.\n");
+        goto out_clear_fsm;
+    }
+
     // init character device
     ret = ec_cdev_init(&master->cdev, master, device_number);
     if (ret)
-        goto out_clear_fsm;
+        goto out_clear_sync;
     
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)
     master->class_device = device_create(class, NULL,
@@ -229,6 +240,8 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
 
 out_clear_cdev:
     ec_cdev_clear(&master->cdev);
+out_clear_sync:
+    ec_datagram_clear(&master->sync_datagram);
 out_clear_fsm:
     ec_fsm_master_clear(&master->fsm);
     ec_datagram_clear(&master->fsm_datagram);
@@ -253,13 +266,17 @@ void ec_master_clear(
 #else
     class_device_unregister(master->class_device);
 #endif
+
     ec_cdev_clear(&master->cdev);
+    
 #ifdef EC_EOE
     ec_master_clear_eoe_handlers(master);
 #endif
     ec_master_clear_domains(master);
     ec_master_clear_slave_configs(master);
     ec_master_clear_slaves(master);
+
+    ec_datagram_clear(&master->sync_datagram);
     ec_fsm_master_clear(&master->fsm);
     ec_datagram_clear(&master->fsm_datagram);
     ec_device_clear(&master->backup_device);
@@ -1314,7 +1331,7 @@ int ec_master_debug_level(
 }
 
 /******************************************************************************
- *  Realtime interface
+ *  Application interface
  *****************************************************************************/
 
 /** Same as ecrt_master_create_domain(), but with ERR_PTR() return value.
@@ -1590,6 +1607,14 @@ void ecrt_master_state(const ec_master_t *master, ec_master_state_t *state)
 
 /*****************************************************************************/
 
+void ecrt_master_sync(ec_master_t *master)
+{
+    ec_datagram_zero(&master->sync_datagram);
+    ec_master_queue_datagram(master, &master->sync_datagram);
+}
+
+/*****************************************************************************/
+
 /** \cond */
 
 EXPORT_SYMBOL(ecrt_master_create_domain);
@@ -1599,6 +1624,7 @@ EXPORT_SYMBOL(ecrt_master_receive);
 EXPORT_SYMBOL(ecrt_master_callbacks);
 EXPORT_SYMBOL(ecrt_master_slave_config);
 EXPORT_SYMBOL(ecrt_master_state);
+EXPORT_SYMBOL(ecrt_master_sync);
 
 /** \endcond */
 

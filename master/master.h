@@ -117,6 +117,9 @@ struct ec_master {
 
     struct list_head configs; /**< List of slave configurations. */
     
+    ec_datagram_t sync_datagram; /**< Datagram used for DC drift
+                                   compensation. */
+    
     unsigned int scan_busy; /**< Current scan state. */
     unsigned int allow_scan; /**< \a True, if slave scanning is allowed. */
     struct semaphore scan_sem; /**< Semaphore protecting the \a scan_busy
