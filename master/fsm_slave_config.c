@@ -52,6 +52,8 @@ void ec_fsm_slave_config_state_sdo_conf(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_pdo_sync(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_pdo_conf(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_fmmu(ec_fsm_slave_config_t *);
+void ec_fsm_slave_config_state_dc_read(ec_fsm_slave_config_t *);
+void ec_fsm_slave_config_state_dc_offset(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_dc_cycle(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_dc_start(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_dc_assign(ec_fsm_slave_config_t *);
@@ -66,8 +68,7 @@ void ec_fsm_slave_config_enter_sdo_conf(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_pdo_conf(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_pdo_sync(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_fmmu(ec_fsm_slave_config_t *);
-void ec_fsm_slave_config_enter_dc_cycle(ec_fsm_slave_config_t *);
-void ec_fsm_slave_config_enter_dc_assign(ec_fsm_slave_config_t *);
+void ec_fsm_slave_config_enter_dc_read(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_safeop(ec_fsm_slave_config_t *);
 
 void ec_fsm_slave_config_state_end(ec_fsm_slave_config_t *);
@@ -811,7 +812,7 @@ void ec_fsm_slave_config_enter_fmmu(
     }
 
     if (!slave->base_fmmu_count) { // skip FMMU configuration
-        ec_fsm_slave_config_enter_dc_cycle(fsm);
+        ec_fsm_slave_config_enter_dc_read(fsm);
         return;
     }
 
@@ -867,28 +868,111 @@ void ec_fsm_slave_config_state_fmmu(
         return;
     }
 
-	ec_fsm_slave_config_enter_dc_cycle(fsm);
+    ec_fsm_slave_config_enter_dc_read(fsm);
 }
 
 /*****************************************************************************/
 
 /** Check for DCs to be configured.
  */
-void ec_fsm_slave_config_enter_dc_cycle(
+void ec_fsm_slave_config_enter_dc_read(
+        ec_fsm_slave_config_t *fsm /**< slave state machine */
+        )
+{
+    ec_slave_t *slave = fsm->slave;
+
+    if (slave->base_dc_supported) {
+        // read DC system time and system time offset
+        ec_datagram_fprd(fsm->datagram, slave->station_address, 0x0910, 24);
+        fsm->retries = EC_FSM_RETRIES;
+        fsm->state = ec_fsm_slave_config_state_dc_read;
+    } else {
+        ec_fsm_slave_config_enter_safeop(fsm);
+    }
+}
+
+/*****************************************************************************/
+
+/** Slave configuration state: DC READ.
+ */
+void ec_fsm_slave_config_state_dc_read(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
-    ec_slave_config_t *config = slave->config;
+    u64 system_time, old_offset, new_offset;
+
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+        return;
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED) {
+        fsm->state = ec_fsm_slave_config_state_error;
+        EC_ERR("Failed to receive DC times datagram for slave %u"
+                " (datagram state %u).\n",
+                slave->ring_position, datagram->state);
+        return;
+    }
+
+    if (datagram->working_counter != 1) {
+        slave->error_flag = 1;
+        fsm->state = ec_fsm_slave_config_state_error;
+        EC_ERR("Failed to get DC times of slave %u: ",
+                slave->ring_position);
+        ec_datagram_print_wc_error(datagram);
+        return;
+    }
+
+    system_time = EC_READ_U64(datagram->data);
+    old_offset = EC_READ_U64(datagram->data + 16);
+    new_offset = slave->master->app_time - system_time + old_offset;
+
+    if (slave->master->debug_level)
+        EC_DBG("Slave %u: DC system_time=%llu old_offset=%llu, "
+                "app_time=%llu, new_offset=%llu\n",
+                slave->ring_position, system_time, old_offset,
+                slave->master->app_time, new_offset);
+
+    // set DC system time offset
+    ec_datagram_fpwr(datagram, slave->station_address, 0x0920, 8);
+    EC_WRITE_U64(datagram->data, new_offset);
+    fsm->retries = EC_FSM_RETRIES;
+    fsm->state = ec_fsm_slave_config_state_dc_offset;
+}
+
+/*****************************************************************************/
+
+/** Slave configuration state: DC OFFSET.
+ */
+void ec_fsm_slave_config_state_dc_offset(
+        ec_fsm_slave_config_t *fsm /**< slave state machine */
+        )
+{
+    ec_datagram_t *datagram = fsm->datagram;
+    ec_slave_t *slave = fsm->slave;
+    ec_slave_config_t *config = slave->config; // FIXME
+
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+        return;
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED) {
+        fsm->state = ec_fsm_slave_config_state_error;
+        EC_ERR("Failed to receive DC system time offset datagram for slave %u"
+                " (datagram state %u).\n",
+                slave->ring_position, datagram->state);
+        return;
+    }
+
+    if (datagram->working_counter != 1) {
+        slave->error_flag = 1;
+        fsm->state = ec_fsm_slave_config_state_error;
+        EC_ERR("Failed to set DC system time offset of slave %u: ",
+                slave->ring_position);
+        ec_datagram_print_wc_error(datagram);
+        return;
+    }
 
     if (config->dc_assign_activate) {
-        if (!slave->base_dc_supported) {
-            EC_WARN("Attempt to enable synchronized mode for slave %u,"
-                    " that seems not to support distributed clocks!\n",
-                    slave->ring_position);
-        }
-
         // set DC cycle times
         ec_datagram_fpwr(datagram, slave->station_address, 0x09A0, 8);
         EC_WRITE_U32(datagram->data, config->dc_sync_cycle_times[0]);
@@ -896,7 +980,7 @@ void ec_fsm_slave_config_enter_dc_cycle(
         fsm->retries = EC_FSM_RETRIES;
         fsm->state = ec_fsm_slave_config_state_dc_cycle;
     } else {
-        ec_fsm_slave_config_enter_dc_assign(fsm);
+        ec_fsm_slave_config_enter_safeop(fsm);
     }
 }
 
@@ -910,6 +994,7 @@ void ec_fsm_slave_config_state_dc_cycle(
 {
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
+    u64 start_time;
 
     if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
         return;
@@ -932,8 +1017,13 @@ void ec_fsm_slave_config_state_dc_cycle(
     }
 
     // set DC start time
+    start_time = slave->master->app_time + 1000000000; // now plus 1 s
+    if (slave->master->debug_level)
+        EC_DBG("Slave %u: Setting DC cyclic operation start time to %llu.\n",
+                slave->ring_position, start_time);
+
     ec_datagram_fpwr(datagram, slave->station_address, 0x0990, 8);
-    EC_WRITE_U64(datagram->data, 0x37E11D600ULL); // 15 s, FIXME
+    EC_WRITE_U64(datagram->data, start_time);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_slave_config_state_dc_start;
 }
@@ -948,6 +1038,7 @@ void ec_fsm_slave_config_state_dc_start(
 {
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
+    ec_slave_config_t *config = slave->config; // FIXME
 
     if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
         return;
@@ -968,21 +1059,6 @@ void ec_fsm_slave_config_state_dc_start(
         ec_datagram_print_wc_error(datagram);
         return;
     }
-
-    ec_fsm_slave_config_enter_dc_assign(fsm);
-}
-
-/*****************************************************************************/
-
-/** Set the DC AssignActivate word.
- */
-void ec_fsm_slave_config_enter_dc_assign(
-        ec_fsm_slave_config_t *fsm /**< slave state machine */
-        )
-{
-    ec_datagram_t *datagram = fsm->datagram;
-    ec_slave_t *slave = fsm->slave;
-    ec_slave_config_t *config = slave->config;
 
     // assign sync unit to EtherCAT or PDI
     ec_datagram_fpwr(datagram, slave->station_address, 0x0980, 2);

@@ -67,9 +67,11 @@
 #ifdef __KERNEL__
 #include <asm/byteorder.h>
 #include <linux/types.h>
+#include <linux/time.h>
 #else
 #include <stdlib.h> // for size_t
 #include <stdint.h>
+#include <sys/time.h> // for struct timeval
 #endif
 
 /******************************************************************************
@@ -505,9 +507,13 @@ void ecrt_master_state(
         );
 
 /** Queues the DC drift compensation datagram for sending.
+ *
+ * The reference clock will by synchronized to the \a app_time, while the
+ * other slaves will by synchronized to the reference clock.
  */
 void ecrt_master_sync(
-        ec_master_t *master /**< EtherCAT master. */
+        ec_master_t *master, /**< EtherCAT master. */
+        const struct timeval *app_time /**< Application time. */
         );
 
 /******************************************************************************
@@ -685,14 +691,14 @@ int ecrt_slave_config_reg_pdo_entry(
  *
  * The AssignActivate word is vendor-specific and can be taken from the XML
  * device description file (Device -> Dc -> AssignActivate). Set this to zero,
- * if the slave shall be not operated without distributed clocks (default).
+ * if the slave shall be operated without distributed clocks (default).
  */
 void ecrt_slave_config_dc_assign_activate(
 		ec_slave_config_t *sc, /**< Slave configuration. */
         uint16_t assign_activate /**< AssignActivate word. */
 		);
 
-/** Sets the cylce times for the SYNC0 and SYNC1 signals.
+/** Sets the cycle times for the SYNC0 and SYNC1 signals.
  */
 void ecrt_slave_config_dc_sync_cycle_times(
 		ec_slave_config_t *sc, /**< Slave configuration. */

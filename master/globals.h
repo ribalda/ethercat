@@ -251,6 +251,13 @@ enum {
         .name = EC_STR(NAME), .owner = THIS_MODULE, .mode = S_IRUGO | S_IWUSR \
     }
 
+/** Timeval to nanoseconds conversion.
+ *
+ * \param TV Pointer to struct timeval.
+ */
+#define EC_TIMEVAL2NANO(TV) \
+    (((TV)->tv_sec - 946684800ULL) * 1000000000ULL + (TV)->tv_usec * 1000ULL)
+
 /*****************************************************************************/
 
 extern char *ec_master_version_str;

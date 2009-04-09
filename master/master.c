@@ -198,6 +198,16 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     // create state machine object
     ec_fsm_master_init(&master->fsm, master, &master->fsm_datagram);
 
+    // init reference sync datagram
+    ec_datagram_init(&master->ref_sync_datagram);
+    snprintf(master->ref_sync_datagram.name, EC_DATAGRAM_NAME_SIZE, "refsync");
+    ret = ec_datagram_apwr(&master->ref_sync_datagram, 0, 0x0910, 8);
+    if (ret < 0) {
+        ec_datagram_clear(&master->ref_sync_datagram);
+        EC_ERR("Failed to allocate reference synchronisation datagram.\n");
+        goto out_clear_fsm;
+    }
+
     // init sync datagram
     ec_datagram_init(&master->sync_datagram);
     snprintf(master->sync_datagram.name, EC_DATAGRAM_NAME_SIZE, "sync");
@@ -205,7 +215,7 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     if (ret < 0) {
         ec_datagram_clear(&master->sync_datagram);
         EC_ERR("Failed to allocate synchronisation datagram.\n");
-        goto out_clear_fsm;
+        goto out_clear_ref_sync;
     }
 
     // init character device
@@ -242,6 +252,8 @@ out_clear_cdev:
     ec_cdev_clear(&master->cdev);
 out_clear_sync:
     ec_datagram_clear(&master->sync_datagram);
+out_clear_ref_sync:
+    ec_datagram_clear(&master->ref_sync_datagram);
 out_clear_fsm:
     ec_fsm_master_clear(&master->fsm);
     ec_datagram_clear(&master->fsm_datagram);
@@ -277,6 +289,7 @@ void ec_master_clear(
     ec_master_clear_slaves(master);
 
     ec_datagram_clear(&master->sync_datagram);
+    ec_datagram_clear(&master->ref_sync_datagram);
     ec_fsm_master_clear(&master->fsm);
     ec_datagram_clear(&master->fsm_datagram);
     ec_device_clear(&master->backup_device);
@@ -1607,10 +1620,19 @@ void ecrt_master_state(const ec_master_t *master, ec_master_state_t *state)
 
 /*****************************************************************************/
 
-void ecrt_master_sync(ec_master_t *master)
+void ecrt_master_sync(ec_master_t *master, const struct timeval *app_time)
 {
+    master->app_time = EC_TIMEVAL2NANO(app_time);
+
+#if 1
+    EC_WRITE_U32(master->ref_sync_datagram.data, master->app_time);
+    ec_master_queue_datagram(master, &master->ref_sync_datagram);
+#endif
+
+#if 1
     ec_datagram_zero(&master->sync_datagram);
     ec_master_queue_datagram(master, &master->sync_datagram);
+#endif
 }
 
 /*****************************************************************************/
