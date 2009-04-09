@@ -146,6 +146,10 @@ void CommandRegWrite::execute(MasterDevice &m, const StringVector &args)
 				int32_t val;
 				strValue >> val;
 				*(int32_t *) data.data = cpu_to_le32(val);
+			} else if (dataType->name == "int64") {
+				int64_t val;
+				strValue >> val;
+				*(int64_t *) data.data = cpu_to_le64(val);
 			} else if (dataType->name == "uint8") {
 				uint16_t val; // uint8_t is interpreted as char
 				strValue >> val;
@@ -160,6 +164,10 @@ void CommandRegWrite::execute(MasterDevice &m, const StringVector &args)
 				uint32_t val;
 				strValue >> val;
 				*(uint32_t *) data.data = cpu_to_le32(val);
+			} else if (dataType->name == "uint64") {
+				uint64_t val;
+				strValue >> val;
+				*(uint64_t *) data.data = cpu_to_le64(val);
 			} else if (dataType->name == "string" ||
 					dataType->name == "octet_string") {
 				data.length = strValue.str().size();
