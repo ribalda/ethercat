@@ -167,29 +167,29 @@ void CommandRegRead::execute(MasterDevice &m, const StringVector &args)
         if (dataType)
             cout << endl;
     } else if (dataType->name == "int8") {
-        int sval = *(int8_t *) data.data;
-        cout << sval << " 0x" << hex << setw(2) << sval << endl;
+        int val = (int) *data.data;
+        cout << "0x" << hex << setw(2) << val << " " << dec << val << endl;
     } else if (dataType->name == "int16") {
-        int sval = le16_to_cpup(data.data);
-        cout << sval << " 0x" << hex << setw(4) << sval << endl;
+        int16_t val = le16_to_cpup(data.data);
+        cout << "0x" << hex << setw(4) << val << " " << dec << val << endl;
     } else if (dataType->name == "int32") {
-        int sval = le32_to_cpup(data.data);
-        cout << sval << " 0x" << hex << setw(8) << sval << endl;
+        int32_t val = le32_to_cpup(data.data);
+        cout << "0x" << hex << setw(8) << val << " " << dec << val << endl;
     } else if (dataType->name == "int64") {
-        long long int sval = le64_to_cpup(data.data);
-        cout << sval << " 0x" << hex << setw(16) << sval << endl;
+        int64_t val = le64_to_cpup(data.data);
+        cout << "0x" << hex << setw(16) << val << " " << dec << val << endl;
     } else if (dataType->name == "uint8") {
-        unsigned int uval = (unsigned int) *(uint8_t *) data.data;
-        cout << uval << " 0x" << hex << setw(2) << uval << endl;
+        unsigned int val = (unsigned int) *data.data;
+        cout << "0x" << hex << setw(2) << val << " " << dec << val << endl;
     } else if (dataType->name == "uint16") {
-        unsigned int uval = le16_to_cpup(data.data);
-        cout << uval << " 0x" << hex << setw(4) << uval << endl;
+        uint16_t val = le16_to_cpup(data.data);
+        cout << "0x" << hex << setw(4) << val << " " << dec << val << endl;
     } else if (dataType->name == "uint32") {
-        unsigned int uval = le32_to_cpup(data.data);
-        cout << uval << " 0x" << hex << setw(8) << uval << endl;
+        uint32_t val = le32_to_cpup(data.data);
+        cout << "0x" << hex << setw(8) << val << " " << dec << val << endl;
     } else if (dataType->name == "uint64") {
-        long long unsigned int uval = le64_to_cpup(data.data);
-        cout << uval << " 0x" << hex << setw(16) << uval << endl;
+        uint64_t val = le64_to_cpup(data.data);
+        cout << "0x" << hex << setw(16) << val << " " << dec << val << endl;
     } else { // raw
         uint8_t *d = data.data;
         unsigned int size = data.length;

@@ -85,10 +85,9 @@ void CommandUpload::execute(MasterDevice &m, const StringVector &args)
 {
     SlaveList slaves;
     stringstream err, strIndex, strSubIndex;
-    int sval;
     ec_ioctl_slave_sdo_upload_t data;
-    unsigned int uval;
     const DataType *dataType = NULL;
+    unsigned int uval;
 
     if (args.size() != 2) {
         err << "'" << getName() << "' takes two arguments!";
@@ -178,28 +177,46 @@ void CommandUpload::execute(MasterDevice &m, const StringVector &args)
     cout << setfill('0');
     switch (dataType->coeCode) {
         case 0x0002: // int8
-            sval = *(int8_t *) data.target;
-            cout << sval << " 0x" << hex << setw(2) << sval << endl;
+            {
+                int val = (int) *data.target;
+                cout << "0x" << hex << setw(2) << val
+                    << " " << dec << val << endl;
+            }
             break;
         case 0x0003: // int16
-            sval = le16_to_cpup(data.target);
-            cout << sval << " 0x" << hex << setw(4) << sval << endl;
+            {
+                int16_t val = le16_to_cpup(data.target);
+                cout << "0x" << hex << setw(4) << val
+                    << " " << dec << val << endl;
+            }
             break;
         case 0x0004: // int32
-            sval = le32_to_cpup(data.target);
-            cout << sval << " 0x" << hex << setw(8) << sval << endl;
+            {
+                int32_t val = le32_to_cpup(data.target);
+                cout << "0x" << hex << setw(8) << val
+                    << " " << dec << val << endl;
+            }
             break;
         case 0x0005: // uint8
-            uval = (unsigned int) *(uint8_t *) data.target;
-            cout << uval << " 0x" << hex << setw(2) << uval << endl;
+            {
+                unsigned int val = (unsigned int) *data.target;
+                cout << "0x" << hex << setw(2) << val
+                    << " " << dec << val << endl;
+            }
             break;
         case 0x0006: // uint16
-            uval = le16_to_cpup(data.target);
-            cout << uval << " 0x" << hex << setw(4) << uval << endl;
+            {
+                uint16_t val = le16_to_cpup(data.target);
+                cout << "0x" << hex << setw(4) << val
+                    << " " << dec << val << endl;
+            }
             break;
         case 0x0007: // uint32
-            uval = le32_to_cpup(data.target);
-            cout << uval << " 0x" << hex << setw(8) << uval << endl;
+            {
+                uint32_t val = le32_to_cpup(data.target);
+                cout << "0x" << hex << setw(8) << val
+                    << " " << dec << val << endl;
+            }
             break;
         case 0x0009: // string
             cout << string((const char *) data.target, data.data_size)
