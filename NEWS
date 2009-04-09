@@ -10,6 +10,7 @@ Changes since 1.4.0:
 
 * Added a userspace library for accessing the application interface. This
   library is licensed under LGPLv2.
+* Added distributed clocks support.
 * Added VoE mailbox protocol support.
 * Separated datagram initialization from filling the payload with zeros.
   Introduced new method ec_datagram_zero() for that.

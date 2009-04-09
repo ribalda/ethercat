@@ -41,6 +41,10 @@
  *
  * Changes in version 1.5:
  *
+ * - Added the distributed clocks feature and the respective methods
+ *   ecrt_slave_config_dc_assign_activate() and
+ *   ecrt_slave_config_dc_sync_cycle_times() to configure a slave for cyclic
+ *   operation.
  * - Changed the meaning of the negative return values of
  *   ecrt_slave_config_reg_pdo_entry() and ecrt_slave_config_sdo*().
  * - Imlemented the Vendor-specific over EtherCAT mailbox protocol. See
@@ -670,6 +674,25 @@ int ecrt_slave_config_reg_pdo_entry(
         unsigned int *bit_position /**< Optional address if bit addressing 
                                  is desired */
         );
+
+/** Sets the AssignActivate word necessary for DC operation.
+ *
+ * The AssignActivate word is vendor-specific and can be taken from the XML
+ * device description file (Device -> Dc -> AssignActivate). Set this to zero,
+ * if the slave shall be not operated without distributed clocks (default).
+ */
+void ecrt_slave_config_dc_assign_activate(
+		ec_slave_config_t *sc, /**< Slave configuration. */
+        uint16_t assign_activate /**< AssignActivate word. */
+		);
+
+/** Sets the cylce times for the SYNC0 and SYNC1 signals.
+ */
+void ecrt_slave_config_dc_sync_cycle_times(
+		ec_slave_config_t *sc, /**< Slave configuration. */
+        uint32_t sync0_cycle_time, /**< SYNC0 cycle time [ns]. */
+		uint32_t sync1_cycle_time /**< SYNC1 cycle time [ns]. */
+		);
 
 /** Add an SDO configuration.
  *

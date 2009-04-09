@@ -61,20 +61,26 @@ void ec_slave_config_init(
     unsigned int i;
 
     sc->master = master;
+
     sc->alias = alias;
     sc->position = position;
     sc->vendor_id = vendor_id;
     sc->product_code = product_code;
+
     sc->slave = NULL;
 
     for (i = 0; i < EC_MAX_SYNC_MANAGERS; i++)
         ec_sync_config_init(&sc->sync_configs[i]);
 
+    sc->used_fmmus = 0;
+
+	sc->dc_assign_activate = 0x0000;
+	sc->dc_sync_cycle_times[0] = 0x00000000;
+	sc->dc_sync_cycle_times[1] = 0x00000000;
+
     INIT_LIST_HEAD(&sc->sdo_configs);
     INIT_LIST_HEAD(&sc->sdo_requests);
     INIT_LIST_HEAD(&sc->voe_handlers);
-
-    sc->used_fmmus = 0;
 }
 
 /*****************************************************************************/
@@ -399,7 +405,7 @@ ec_voe_handler_t *ec_slave_config_find_voe_handler(
 }
 
 /******************************************************************************
- *  Realtime interface
+ *  Application interface
  *****************************************************************************/
 
 int ecrt_slave_config_sync_manager(ec_slave_config_t *sc, uint8_t sync_index,
@@ -665,6 +671,22 @@ int ecrt_slave_config_reg_pdo_entry(
     return -ENOENT;
 }
 
+/*****************************************************************************/
+
+void ecrt_slave_config_dc_assign_activate(ec_slave_config_t *sc,
+        uint16_t assign_activate)
+{
+	sc->dc_assign_activate = assign_activate;
+}
+
+/*****************************************************************************/
+
+void ecrt_slave_config_dc_sync_cycle_times(ec_slave_config_t *sc,
+        uint32_t sync0_cycle_time, uint32_t sync1_cycle_time)
+{
+	sc->dc_sync_cycle_times[0] = sync0_cycle_time;
+	sc->dc_sync_cycle_times[1] = sync1_cycle_time;
+}
 
 /*****************************************************************************/
 
@@ -880,6 +902,8 @@ EXPORT_SYMBOL(ecrt_slave_config_pdo_mapping_add);
 EXPORT_SYMBOL(ecrt_slave_config_pdo_mapping_clear);
 EXPORT_SYMBOL(ecrt_slave_config_pdos);
 EXPORT_SYMBOL(ecrt_slave_config_reg_pdo_entry);
+EXPORT_SYMBOL(ecrt_slave_config_dc_assign_activate);
+EXPORT_SYMBOL(ecrt_slave_config_dc_sync_cycle_times);
 EXPORT_SYMBOL(ecrt_slave_config_sdo);
 EXPORT_SYMBOL(ecrt_slave_config_sdo8);
 EXPORT_SYMBOL(ecrt_slave_config_sdo16);
