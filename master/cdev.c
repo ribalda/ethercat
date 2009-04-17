@@ -180,6 +180,7 @@ int ec_cdev_ioctl_master(
         memcpy(data.devices[0].address, master->main_mac, ETH_ALEN); 
     }
     data.devices[0].attached = master->main_device.dev ? 1 : 0;
+    data.devices[0].link_state = master->main_device.link_state ? 1 : 0;
     data.devices[0].tx_count = master->main_device.tx_count;
     data.devices[0].rx_count = master->main_device.rx_count;
 
@@ -190,6 +191,7 @@ int ec_cdev_ioctl_master(
         memcpy(data.devices[1].address, master->backup_mac, ETH_ALEN); 
     }
     data.devices[1].attached = master->backup_device.dev ? 1 : 0;
+    data.devices[1].link_state = master->backup_device.link_state ? 1 : 0;
     data.devices[1].tx_count = master->backup_device.tx_count;
     data.devices[1].rx_count = master->backup_device.rx_count;
     up(&master->device_sem);

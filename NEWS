@@ -33,6 +33,7 @@ Changes since 1.4.0:
 * Added debug level for all masters as a module parameter. Thanks to Erwin
   Burgstaller.
 * Clear slave list on link down.
+* Output device link state in 'ethercat master'.
 
 Changes in 1.4.0:
 

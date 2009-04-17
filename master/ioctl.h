@@ -127,6 +127,7 @@ typedef struct {
     struct {
         uint8_t address[6];
         uint8_t attached;
+        uint8_t link_state;
         uint32_t tx_count;
         uint32_t rx_count;
     } devices[2];

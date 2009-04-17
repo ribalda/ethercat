@@ -107,6 +107,7 @@ void CommandMaster::execute(MasterDevice &m, const StringVector &args)
                 << setw(2) << (unsigned int) data.devices[i].address[5] << " ("
                 << (data.devices[i].attached ? "attached" : "waiting...")
                 << ")" << endl << dec
+                << "    Link: " << (data.devices[i].link_state ? "UP" : "DOWN") << endl
                 << "    Tx count: " << data.devices[i].tx_count << endl
                 << "    Rx count: " << data.devices[i].rx_count;
         }
