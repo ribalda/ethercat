@@ -55,12 +55,13 @@ static int ec_mac_parse(uint8_t *, const char *, int);
 /*****************************************************************************/
 
 static char *main_devices[MAX_MASTERS]; /**< Main devices parameter. */
+static unsigned int master_count; /**< Number of masters. */
 static char *backup_devices[MAX_MASTERS]; /**< Backup devices parameter. */
+static unsigned int backup_count; /**< Number of backup devices. */
+static unsigned int debug_level;  /**< Debug level parameter. */
 
 static ec_master_t *masters; /**< Array of masters. */
 static struct semaphore master_sem; /**< Master semaphore. */
-static unsigned int master_count; /**< Number of masters. */
-static unsigned int backup_count; /**< Number of backup devices. */
 
 dev_t device_number; /**< Device number for master cdevs. */
 struct class *class; /**< Device class. */
@@ -82,6 +83,8 @@ module_param_array(main_devices, charp, &master_count, S_IRUGO);
 MODULE_PARM_DESC(main_devices, "MAC addresses of main devices");
 module_param_array(backup_devices, charp, &backup_count, S_IRUGO);
 MODULE_PARM_DESC(backup_devices, "MAC addresses of backup devices");
+module_param_named(debug_level, debug_level, uint, S_IRUGO);
+MODULE_PARM_DESC(debug_level, "Debug level");
 
 /** \endcond */
 
@@ -145,7 +148,7 @@ int __init ec_init_module(void)
     
     for (i = 0; i < master_count; i++) {
         ret = ec_master_init(&masters[i], i, macs[i][0], macs[i][1],
-                    device_number, class);
+                    device_number, class, debug_level);
         if (ret)
             goto out_free_masters;
     }

@@ -143,7 +143,7 @@ struct ec_master {
 
     struct list_head domains; /**< List of domains. */
 
-    int debug_level; /**< Master debug level. */
+    unsigned int debug_level; /**< Master debug level. */
     ec_stats_t stats; /**< Cyclic statistics. */
     unsigned int frames_timed_out; /**< There were frame timeouts in the last
                                      call to ecrt_master_receive(). */
@@ -187,7 +187,7 @@ void ec_master_init_static(void);
 
 // master creation/deletion
 int ec_master_init(ec_master_t *, unsigned int, const uint8_t *,
-        const uint8_t *, dev_t, struct class *);
+        const uint8_t *, dev_t, struct class *, unsigned int);
 void ec_master_clear(ec_master_t *);
 
 // phase transitions
@@ -227,7 +227,7 @@ ec_domain_t *ec_master_find_domain(ec_master_t *, unsigned int);
 const ec_domain_t *ec_master_find_domain_const(const ec_master_t *,
         unsigned int);
 
-int ec_master_debug_level(ec_master_t *, int);
+int ec_master_debug_level(ec_master_t *, unsigned int);
 
 ec_domain_t *ecrt_master_create_domain_err(ec_master_t *);
 ec_slave_config_t *ecrt_master_slave_config_err(ec_master_t *, uint16_t,

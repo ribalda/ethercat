@@ -30,6 +30,8 @@ Changes since 1.4.0:
 * Introduced ecrt_master_slave() to get information about a certain slave.
 * SDO entry access rights are shown in 'ethercat sdos'.
 * Added 64-bit data access macros to application header.
+* Added debug level for all masters as a module parameter. Thanks to Erwin
+  Burgstaller.
 
 Changes in 1.4.0:
 

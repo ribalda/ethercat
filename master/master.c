@@ -104,7 +104,8 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
         const uint8_t *main_mac, /**< MAC address of main device */
         const uint8_t *backup_mac, /**< MAC address of backup device */
         dev_t device_number, /**< Character device number. */
-        struct class *class /**< Device class. */
+        struct class *class, /**< Device class. */
+        unsigned int debug_level /**< Debug level (module parameter). */
         )
 {
     int ret;
@@ -142,7 +143,7 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
 
     INIT_LIST_HEAD(&master->domains);
 
-    master->debug_level = 0;
+    master->debug_level = debug_level;
     master->stats.timeouts = 0;
     master->stats.corrupted = 0;
     master->stats.unmatched = 0;
@@ -1327,17 +1328,17 @@ const ec_domain_t *ec_master_find_domain_const(
  */
 int ec_master_debug_level(
         ec_master_t *master, /**< EtherCAT master. */
-        int level /**< Debug level. May be 0, 1 or 2. */
+        unsigned int level /**< Debug level. May be 0, 1 or 2. */
         )
 {
-    if (level < 0 || level > 2) {
-        EC_ERR("Invalid debug level %i!\n", level);
+    if (level > 2) {
+        EC_ERR("Invalid debug level %u!\n", level);
         return -EINVAL;
     }
 
     if (level != master->debug_level) {
         master->debug_level = level;
-        EC_INFO("Master debug level set to %i.\n", master->debug_level);
+        EC_INFO("Master debug level set to %u.\n", master->debug_level);
     }
 
     return 0;
