@@ -44,6 +44,8 @@
 #include "voe_handler.h"
 #include "ioctl.h"
 
+#define DEBUG_IOCTL 0
+
 /*****************************************************************************/
 
 static int eccdev_open(struct inode *, struct file *);
@@ -2901,8 +2903,10 @@ int eccdev_open(struct inode *inode, struct file *filp)
     priv->process_data_size = 0;
 
     filp->private_data = priv;
-    if (master->debug_level)
-        EC_DBG("File opened.\n");
+
+#if DEBUG_IOCTL
+    EC_DBG("File opened.\n");
+#endif
     return 0;
 }
 
@@ -2921,8 +2925,10 @@ int eccdev_release(struct inode *inode, struct file *filp)
     if (priv->process_data)
         vfree(priv->process_data);
 
-    if (master->debug_level)
-        EC_DBG("File closed.\n");
+#if DEBUG_IOCTL
+    EC_DBG("File closed.\n");
+#endif
+
     kfree(priv);
     return 0;
 }
@@ -2936,9 +2942,10 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
     ec_cdev_priv_t *priv = (ec_cdev_priv_t *) filp->private_data;
     ec_master_t *master = priv->cdev->master;
 
-    if (master->debug_level)
-        EC_DBG("ioctl(filp = 0x%x, cmd = 0x%08x (0x%02x), arg = 0x%x)\n",
-                (u32) filp, (u32) cmd, (u32) _IOC_NR(cmd), (u32) arg);
+#if DEBUG_IOCTL
+    EC_DBG("ioctl(filp = 0x%x, cmd = 0x%08x (0x%02x), arg = 0x%x)\n",
+            (u32) filp, (u32) cmd, (u32) _IOC_NR(cmd), (u32) arg);
+#endif
 
     switch (cmd) {
         case EC_IOCTL_MASTER:
