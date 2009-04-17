@@ -2888,7 +2888,6 @@ int ec_cdev_ioctl_slave_foe_write(
 int eccdev_open(struct inode *inode, struct file *filp)
 {
     ec_cdev_t *cdev = container_of(inode->i_cdev, ec_cdev_t, cdev);
-    ec_master_t *master = cdev->master;
     ec_cdev_priv_t *priv;
 
     priv = kmalloc(sizeof(ec_cdev_priv_t), GFP_KERNEL);
