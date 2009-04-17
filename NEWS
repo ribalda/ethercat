@@ -32,6 +32,7 @@ Changes since 1.4.0:
 * Added 64-bit data access macros to application header.
 * Added debug level for all masters as a module parameter. Thanks to Erwin
   Burgstaller.
+* Clear slave list on link down.
 
 Changes in 1.4.0:
 

@@ -73,6 +73,7 @@ void ec_fsm_master_init(
     fsm->datagram = datagram;
     fsm->state = ec_fsm_master_state_start;
     fsm->idle = 0;
+    fsm->link_state = 0;
     fsm->slaves_responding = 0;
     fsm->topology_change_pending = 0;
     fsm->slave_states = EC_SLAVE_STATE_UNKNOWN;
@@ -193,6 +194,16 @@ void ec_fsm_master_state_broadcast(
         fsm->slaves_responding = datagram->working_counter;
         EC_INFO("%u slave(s) responding.\n", fsm->slaves_responding);
     }
+
+    if (fsm->link_state && !master->main_device.link_state) { // link went down
+        // clear slave list
+#ifdef EC_EOE
+        ec_master_eoe_stop(master);
+        ec_master_clear_eoe_handlers(master);
+#endif
+        ec_master_clear_slaves(master);
+    }
+    fsm->link_state = master->main_device.link_state;
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) { // link is down
         ec_fsm_master_restart(fsm);

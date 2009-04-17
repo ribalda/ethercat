@@ -19,7 +19,6 @@ Version 1.5.0:
 * Re-work EoE code.
 * Replace locking callbacks.
 * Implement EoE callbacks for library.
-* Clear slave list on link down.
 * Rescan command.
 * Override sync manager size?
 * Remove ecrt_domain_state()?
