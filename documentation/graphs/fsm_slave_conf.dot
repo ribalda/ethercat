@@ -11,9 +11,9 @@ digraph slaveconf {
     enter_init -> init [weight=10]
 
     reconfigure [shape=point, label=""]
-    reconfigure -> init [fontname="Helvetica", label="Config\ndetached"]
+    reconfigure -> enter_init [fontname="Helvetica", label="Config\ndetached"]
 
-    init [fontname="Helvetica"]
+    init [fontname="Helvetica", style="bold"]
     init -> enter_clear_sync [fontname="Helvetica", label="No FMMUs"]
     init -> clear_fmmus [weight=10]
 
@@ -21,11 +21,18 @@ digraph slaveconf {
     clear_fmmus -> enter_clear_sync [weight=10]
 
     enter_clear_sync [shape=point, label=""]
-    enter_clear_sync -> enter_mbox_sync [fontname="Helvetica", label="No SMs"]
+    enter_clear_sync -> enter_clear_dc_assign [fontname="Helvetica", label="No SMs"]
     enter_clear_sync -> clear_sync [weight=10]
 
     clear_sync [fontname="Helvetica"]
-    clear_sync -> enter_mbox_sync [weight=10]
+    clear_sync -> enter_clear_dc_assign [weight=10]
+
+    enter_clear_dc_assign [shape=point, label=""]
+    enter_clear_dc_assign -> enter_mbox_sync [fontname="Helvetica", label="No DC\nsupport"]
+    enter_clear_dc_assign -> clear_dc_assign [weight=10]
+
+    clear_dc_assign [fontname="Helvetica"]
+    clear_dc_assign -> enter_mbox_sync [weight=10]
 
     enter_mbox_sync [shape=point, label=""]
     enter_mbox_sync -> end [fontname="Helvetica", label="INIT\nrequested"]
@@ -38,7 +45,7 @@ digraph slaveconf {
     enter_boot_preop [shape=point, label=""]
     enter_boot_preop -> boot_preop [weight=10]
 
-    boot_preop [fontname="Helvetica"]
+    boot_preop [fontname="Helvetica", style="bold"]
     boot_preop -> end [fontname="Helvetica", label="PREOP\nor BOOT\nrequested"]
     boot_preop -> enter_safeop [fontname="Helvetica", label="No slave\nconfig attached"]
     boot_preop -> enter_sdo_conf [weight=10]
@@ -96,12 +103,12 @@ digraph slaveconf {
     enter_safeop [shape=point,label=""]
     enter_safeop -> safeop [weight=10]
 
-    safeop [fontname="Helvetica"]
+    safeop [fontname="Helvetica", style="bold"]
     safeop -> end [fontname="Helvetica", label="SAFEOP\nrequested"]
     safeop -> op [weight=10]
 
-    op [fontname="Helvetica"]
-    op -> end// [weight=10]
+    op [fontname="Helvetica", style="bold"]
+    op -> end
 
     end [fontname="Helvetica"]
 }

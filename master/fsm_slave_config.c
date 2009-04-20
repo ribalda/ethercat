@@ -46,6 +46,7 @@ void ec_fsm_slave_config_state_start(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_init(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_clear_fmmus(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_clear_sync(ec_fsm_slave_config_t *);
+void ec_fsm_slave_config_state_clear_dc_assign(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_mbox_sync(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_boot_preop(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_sdo_conf(ec_fsm_slave_config_t *);
@@ -62,6 +63,7 @@ void ec_fsm_slave_config_state_op(ec_fsm_slave_config_t *);
 
 void ec_fsm_slave_config_enter_init(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_clear_sync(ec_fsm_slave_config_t *);
+void ec_fsm_slave_config_enter_clear_dc_assign(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_mbox_sync(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_boot_preop(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_sdo_conf(ec_fsm_slave_config_t *);
@@ -286,7 +288,7 @@ void ec_fsm_slave_config_enter_clear_sync(
 
     if (!slave->sii.sync_count) { // FIXME use base_sync_count?
         // no sync managers
-        ec_fsm_slave_config_enter_mbox_sync(fsm);
+        ec_fsm_slave_config_enter_clear_dc_assign(fsm);
         return;
     }
 
@@ -327,6 +329,64 @@ void ec_fsm_slave_config_state_clear_sync(
         fsm->slave->error_flag = 1;
         fsm->state = ec_fsm_slave_config_state_error;
         EC_ERR("Failed to clear sync manager configurations of slave %u: ",
+               fsm->slave->ring_position);
+        ec_datagram_print_wc_error(datagram);
+        return;
+    }
+
+    ec_fsm_slave_config_enter_clear_dc_assign(fsm);
+}
+
+/*****************************************************************************/
+
+/** Clear the DC assignment.
+ */
+void ec_fsm_slave_config_enter_clear_dc_assign(
+        ec_fsm_slave_config_t *fsm /**< slave state machine */
+        )
+{
+    ec_slave_t *slave = fsm->slave;
+    ec_datagram_t *datagram = fsm->datagram;
+
+    if (!slave->base_dc_supported) {
+        ec_fsm_slave_config_enter_mbox_sync(fsm);
+        return;
+    }
+
+    if (slave->master->debug_level)
+        EC_DBG("Clearing DC assignment of slave %u...\n",
+                slave->ring_position);
+
+    ec_datagram_fpwr(datagram, slave->station_address, 0x0980, 2);
+    ec_datagram_zero(datagram);
+    fsm->retries = EC_FSM_RETRIES;
+    fsm->state = ec_fsm_slave_config_state_clear_dc_assign;
+}
+
+/*****************************************************************************/
+
+/** Slave configuration state: CLEAR DC ASSIGN.
+ */
+void ec_fsm_slave_config_state_clear_dc_assign(
+        ec_fsm_slave_config_t *fsm /**< slave state machine */
+        )
+{
+    ec_datagram_t *datagram = fsm->datagram;
+
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+        return;
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED) {
+        fsm->state = ec_fsm_slave_config_state_error;
+        EC_ERR("Failed receive DC assignment clearing datagram"
+                " for slave %u.\n", fsm->slave->ring_position);
+        return;
+    }
+
+    if (datagram->working_counter != 1) {
+        fsm->slave->error_flag = 1;
+        fsm->state = ec_fsm_slave_config_state_error;
+        EC_ERR("Failed to clear DC assignment of slave %u: ",
                fsm->slave->ring_position);
         ec_datagram_print_wc_error(datagram);
         return;
