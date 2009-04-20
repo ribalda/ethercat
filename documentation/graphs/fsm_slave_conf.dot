@@ -21,18 +21,24 @@ digraph slaveconf {
     clear_fmmus -> enter_clear_sync [weight=10]
 
     enter_clear_sync [shape=point, label=""]
-    enter_clear_sync -> enter_clear_dc_assign [fontname="Helvetica", label="No SMs"]
+    enter_clear_sync -> enter_dc_clear_assign [fontname="Helvetica", label="No SMs"]
     enter_clear_sync -> clear_sync [weight=10]
 
     clear_sync [fontname="Helvetica"]
-    clear_sync -> enter_clear_dc_assign [weight=10]
+    clear_sync -> enter_dc_clear_assign [weight=10]
 
-    enter_clear_dc_assign [shape=point, label=""]
-    enter_clear_dc_assign -> enter_mbox_sync [fontname="Helvetica", label="No DC\nsupport"]
-    enter_clear_dc_assign -> clear_dc_assign [weight=10]
+    enter_dc_clear_assign [shape=point, label=""]
+    enter_dc_clear_assign -> enter_mbox_sync [fontname="Helvetica", label="No DC\nsupport"]
+    enter_dc_clear_assign -> dc_clear_assign [weight=10]
 
-    clear_dc_assign [fontname="Helvetica"]
-    clear_dc_assign -> enter_mbox_sync [weight=10]
+    dc_clear_assign [fontname="Helvetica"]
+    dc_clear_assign -> dc_read_offset [weight=10]
+
+    dc_read_offset [fontname="Helvetica"]
+    dc_read_offset -> dc_write_offset [weight=10]
+
+    dc_write_offset [fontname="Helvetica"]
+    dc_write_offset -> enter_mbox_sync [weight=10]
 
     enter_mbox_sync [shape=point, label=""]
     enter_mbox_sync -> end [fontname="Helvetica", label="INIT\nrequested"]
@@ -70,31 +76,26 @@ digraph slaveconf {
     enter_pdo_sync -> pdo_sync [weight=10]
 
     pdo_sync [fontname="Helvetica"]
-    pdo_sync -> reconfigure
     pdo_sync -> enter_fmmu [weight=10]
 
     enter_fmmu [shape=point,label=""]
-    enter_fmmu -> enter_dc_read [fontname="Helvetica", label="No FMMUs\nconfigured"]
+    enter_fmmu -> reconfigure
+    enter_fmmu -> enter_dc_cycle [fontname="Helvetica", label="No FMMUs\nconfigured"]
     enter_fmmu -> fmmu [weight=10]
 
     fmmu [fontname="Helvetica"]
-    fmmu -> enter_dc_read [weight=10]
+    fmmu -> enter_dc_cycle [weight=10]
 
-    enter_dc_read [shape=point,label=""]
-    enter_dc_read -> dc_read [weight=10]
-    enter_dc_read -> enter_safeop [fontname="Helvetica", label="DC not\nsupported"]
-
-    dc_read [fontname="Helvetica"]
-    dc_read -> dc_offset [weight=10]
-
-    dc_offset [fontname="Helvetica"]
-    dc_offset -> dc_cycle [weight=10]
-    dc_offset -> enter_safeop [fontname="Helvetica", label="DC\nunused"]
+    enter_dc_cycle [shape=point,label=""]
+    enter_dc_cycle -> reconfigure
+    enter_dc_cycle -> dc_cycle [weight=10]
+    enter_dc_cycle -> enter_safeop [fontname="Helvetica", label="DC not\nconfigured"]
 
     dc_cycle [fontname="Helvetica"]
     dc_cycle -> dc_start [weight=10]
 
     dc_start [fontname="Helvetica"]
+    dc_start -> reconfigure
     dc_start -> dc_assign [weight=10]
 
     dc_assign [fontname="Helvetica"]
