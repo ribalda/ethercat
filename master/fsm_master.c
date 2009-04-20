@@ -828,6 +828,9 @@ void ec_fsm_master_state_scan_slave(
     master->scan_busy = 0;
     wake_up_interruptible(&master->scan_queue);
 
+	// find DC reference clock
+	ec_master_find_dc_ref_clock(master);
+	
     // Attach slave configurations
     ec_master_attach_slave_configs(master);
 

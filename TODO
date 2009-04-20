@@ -13,8 +13,7 @@ Version 1.5.0:
 * Distributed clocks:
     - Delay calculation.
     - Synchronize the reference clock to the master clock.
-    - Reference clock zero.
-    - Configuration must exist, config state machine.
+	- Output reference clock and application time in 'ethercat master'.
 * Read alias from register 0x0012 instead of SII.
 * Finish library implementation.
 * Re-work EoE code.

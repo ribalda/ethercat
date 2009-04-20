@@ -128,6 +128,8 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     
     INIT_LIST_HEAD(&master->configs);
 
+	master->app_time = 0ULL;
+
     master->scan_busy = 0;
     master->allow_scan = 1;
     init_MUTEX(&master->scan_sem);
@@ -212,12 +214,13 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     // init sync datagram
     ec_datagram_init(&master->sync_datagram);
     snprintf(master->sync_datagram.name, EC_DATAGRAM_NAME_SIZE, "sync");
-    ret = ec_datagram_armw(&master->sync_datagram, 0 /* FIXME */, 0x0910, 4);
+    ret = ec_datagram_prealloc(&master->sync_datagram, 4);
     if (ret < 0) {
         ec_datagram_clear(&master->sync_datagram);
         EC_ERR("Failed to allocate synchronisation datagram.\n");
         goto out_clear_ref_sync;
     }
+	ec_master_find_dc_ref_clock(master);
 
     // init character device
     ret = ec_cdev_init(&master->cdev, master, device_number);
@@ -1342,6 +1345,30 @@ int ec_master_debug_level(
     }
 
     return 0;
+}
+
+/*****************************************************************************/
+
+/** Finds the DC reference clock.
+ */
+void ec_master_find_dc_ref_clock(
+        ec_master_t *master /**< EtherCAT master. */
+		)
+{
+	ec_slave_t *slave;
+	uint16_t ref_clock_addr = 0xffff;
+
+    for (slave = master->slaves;
+            slave < master->slaves + master->slave_count;
+            slave++) {
+		if (slave->base_dc_supported) {
+			ref_clock_addr = slave->station_address;
+			break;
+		}
+    }
+
+	// This call always succeeds, because the datagram has been pre-allocated.
+	ec_datagram_frmw(&master->sync_datagram, ref_clock_addr, 0x0910, 4);
 }
 
 /******************************************************************************

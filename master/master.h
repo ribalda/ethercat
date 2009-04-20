@@ -233,6 +233,8 @@ ec_domain_t *ecrt_master_create_domain_err(ec_master_t *);
 ec_slave_config_t *ecrt_master_slave_config_err(ec_master_t *, uint16_t,
         uint16_t, uint32_t, uint32_t);
 
+void ec_master_find_dc_ref_clock(ec_master_t *);
+
 /*****************************************************************************/
 
 #endif
