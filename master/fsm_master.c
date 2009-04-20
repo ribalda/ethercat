@@ -196,7 +196,11 @@ void ec_fsm_master_state_broadcast(
     }
 
     if (fsm->link_state && !master->main_device.link_state) { // link went down
-        // clear slave list
+        if (master->debug_level) {
+            EC_DBG("Master state machine detected "
+                    "link down. Clearing slave list.\n");
+        }
+
 #ifdef EC_EOE
         ec_master_eoe_stop(master);
         ec_master_clear_eoe_handlers(master);
@@ -205,7 +209,7 @@ void ec_fsm_master_state_broadcast(
     }
     fsm->link_state = master->main_device.link_state;
 
-    if (datagram->state != EC_DATAGRAM_RECEIVED) { // link is down
+    if (datagram->state != EC_DATAGRAM_RECEIVED) {
         ec_fsm_master_restart(fsm);
         return;
     }
