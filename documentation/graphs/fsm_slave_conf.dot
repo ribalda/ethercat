@@ -10,39 +10,52 @@ digraph slaveconf {
     enter_init [shape=point, label=""]
     enter_init -> init [weight=10]
 
+    reconfigure [shape=point, label=""]
+    reconfigure -> init [fontname="Helvetica", label="Config\ndetached"]
+
     init [fontname="Helvetica"]
-    init -> enter_mbox_sync [fontname="Helvetica", label="No FMMUs"]
+    init -> enter_clear_sync [fontname="Helvetica", label="No FMMUs"]
     init -> clear_fmmus [weight=10]
 
     clear_fmmus [fontname="Helvetica"]
-    clear_fmmus -> enter_mbox_sync [weight=10]
+    clear_fmmus -> enter_clear_sync [weight=10]
+
+    enter_clear_sync [shape=point, label=""]
+    enter_clear_sync -> enter_mbox_sync [fontname="Helvetica", label="No SMs"]
+    enter_clear_sync -> clear_sync [weight=10]
+
+    clear_sync [fontname="Helvetica"]
+    clear_sync -> enter_mbox_sync [weight=10]
 
     enter_mbox_sync [shape=point, label=""]
     enter_mbox_sync -> end [fontname="Helvetica", label="INIT\nrequested"]
-    enter_mbox_sync -> preop [fontname="Helvetica", label="No mailboxes"]
+    enter_mbox_sync -> enter_boot_preop [fontname="Helvetica", label="No mailboxes"]
     enter_mbox_sync -> mbox_sync [weight=10]
 
     mbox_sync [fontname="Helvetica"]
-    mbox_sync -> preop [weight=10]
+    mbox_sync -> enter_boot_preop [weight=10]
 
-    preop [fontname="Helvetica"]
-    preop -> end [fontname="Helvetica", label="PREOP\nrequested"]
-    preop -> enter_safeop [fontname="Helvetica", label="No slave\nconfig attached"]
-    preop -> enter_sdo_conf [weight=10]
+    enter_boot_preop [shape=point, label=""]
+    enter_boot_preop -> boot_preop [weight=10]
+
+    boot_preop [fontname="Helvetica"]
+    boot_preop -> end [fontname="Helvetica", label="PREOP\nor BOOT\nrequested"]
+    boot_preop -> enter_safeop [fontname="Helvetica", label="No slave\nconfig attached"]
+    boot_preop -> enter_sdo_conf [weight=10]
 
     enter_sdo_conf [shape=point, label=""]
     enter_sdo_conf -> enter_pdo_conf [fontname="Helvetica", label="No SDOs\nconfigured"]
     enter_sdo_conf -> sdo_conf [weight=10]
 
     sdo_conf [fontname="Helvetica"]
-    sdo_conf -> enter_init [fontname="Helvetica", label="Config\ndetached"]
+    sdo_conf -> reconfigure
     sdo_conf -> enter_pdo_conf [weight=10]
 
     enter_pdo_conf [shape=point, label=""]
     enter_pdo_conf -> pdo_conf [weight=10]
 
     pdo_conf [fontname="Helvetica"]
-    pdo_conf -> enter_init [fontname="Helvetica", label="Config\ndetached"]
+    pdo_conf -> reconfigure
     pdo_conf -> enter_pdo_sync [weight=10]
 
     enter_pdo_sync [shape=point, label=""]
@@ -50,15 +63,35 @@ digraph slaveconf {
     enter_pdo_sync -> pdo_sync [weight=10]
 
     pdo_sync [fontname="Helvetica"]
-    pdo_sync -> enter_init [fontname="Helvetica", label="Config\ndetached"]
+    pdo_sync -> reconfigure
     pdo_sync -> enter_fmmu [weight=10]
 
     enter_fmmu [shape=point,label=""]
-    enter_fmmu -> enter_safeop [fontname="Helvetica", label="No FMMUs\nconfigured"]
+    enter_fmmu -> enter_dc_read [fontname="Helvetica", label="No FMMUs\nconfigured"]
     enter_fmmu -> fmmu [weight=10]
 
     fmmu [fontname="Helvetica"]
-    fmmu -> enter_safeop [weight=10]
+    fmmu -> enter_dc_read [weight=10]
+
+    enter_dc_read [shape=point,label=""]
+    enter_dc_read -> dc_read [weight=10]
+    enter_dc_read -> enter_safeop [fontname="Helvetica", label="DC not\nsupported"]
+
+    dc_read [fontname="Helvetica"]
+    dc_read -> dc_offset [weight=10]
+
+    dc_offset [fontname="Helvetica"]
+    dc_offset -> dc_cycle [weight=10]
+    dc_offset -> enter_safeop [fontname="Helvetica", label="DC\nunused"]
+
+    dc_cycle [fontname="Helvetica"]
+    dc_cycle -> dc_start [weight=10]
+
+    dc_start [fontname="Helvetica"]
+    dc_start -> dc_assign [weight=10]
+
+    dc_assign [fontname="Helvetica"]
+    dc_assign -> enter_safeop [weight=10]
 
     enter_safeop [shape=point,label=""]
     enter_safeop -> safeop [weight=10]
