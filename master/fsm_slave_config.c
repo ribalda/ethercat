@@ -284,8 +284,8 @@ void ec_fsm_slave_config_enter_clear_sync(
     ec_datagram_t *datagram = fsm->datagram;
     size_t sync_size;
 
-    if (!slave->sii.sync_count) {
-        // no mailbox protocols supported
+    if (!slave->sii.sync_count) { // FIXME use base_sync_count?
+        // no sync managers
         ec_fsm_slave_config_enter_mbox_sync(fsm);
         return;
     }
@@ -570,7 +570,7 @@ void ec_fsm_slave_config_state_boot_preop(
         return;
     }
 
-    // slave is now in BOOT/PREOP
+    // slave is now in BOOT or PREOP
     slave->jiffies_preop = fsm->datagram->jiffies_received;
 
     if (master->debug_level) {
@@ -980,6 +980,7 @@ void ec_fsm_slave_config_state_dc_offset(
         fsm->retries = EC_FSM_RETRIES;
         fsm->state = ec_fsm_slave_config_state_dc_cycle;
     } else {
+        // DC are unused
         ec_fsm_slave_config_enter_safeop(fsm);
     }
 }
