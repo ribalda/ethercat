@@ -506,6 +506,9 @@ AC_CONFIG_FILES([
         devices/e1000/Makefile
         examples/Kbuild
         examples/Makefile
+        examples/dc_rtai/Kbuild
+        examples/dc_rtai/Makefile
+        examples/dc_user/Makefile
         examples/mini/Kbuild
         examples/mini/Makefile
         examples/rtai/Kbuild

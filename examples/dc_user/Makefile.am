@@ -15,9 +15,9 @@
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General
 #  Public License for more details.
 #
-#  You should have received a copy of the GNU General Public License along
-#  with the IgH EtherCAT Master; if not, write to the Free Software
-#  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+#  You should have received a copy of the GNU General Public License along with
+#  the IgH EtherCAT Master; if not, write to the Free Software Foundation,
+#  Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 #  ---
 #  
@@ -27,23 +27,12 @@
 #
 #------------------------------------------------------------------------------
 
-if ENABLE_USERLIB
-SUBDIRS = \
-	dc_user \
-	user
-endif
+AM_CFLAGS = -Wall
 
-DIST_SUBDIRS = \
-	dc_rtai \
-	dc_user \
-	mini \
-	rtai \
-	user
+noinst_PROGRAMS = ec_dc_user_example
 
-EXTRA_DIST = \
-	Kbuild.in
-
-BUILT_SOURCES = \
-	Kbuild
+ec_dc_user_example_SOURCES = main.c
+ec_dc_user_example_CFLAGS = -I$(top_srcdir)/include
+ec_dc_user_example_LDFLAGS = -L$(top_builddir)/lib/.libs -lethercat
 
 #------------------------------------------------------------------------------

@@ -1,5 +1,7 @@
 #------------------------------------------------------------------------------
 #
+#  IgH EtherCAT master module
+#
 #  $Id$
 #
 #  Copyright (C) 2006-2008  Florian Pose, Ingenieurgemeinschaft IgH
@@ -27,23 +29,21 @@
 #
 #------------------------------------------------------------------------------
 
-if ENABLE_USERLIB
-SUBDIRS = \
-	dc_user \
-	user
-endif
-
-DIST_SUBDIRS = \
-	dc_rtai \
-	dc_user \
-	mini \
-	rtai \
-	user
-
 EXTRA_DIST = \
-	Kbuild.in
+	Kbuild.in \
+	dc_rtai_sample.c
 
 BUILT_SOURCES = \
 	Kbuild
+
+modules:
+	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" modules
+
+modules_install:
+	mkdir -p $(DESTDIR)$(LINUX_MOD_PATH)
+	cp $(srcdir)/ec_dc_rtai_sample.ko $(DESTDIR)$(LINUX_MOD_PATH)
+
+clean-local:
+	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" clean
 
 #------------------------------------------------------------------------------

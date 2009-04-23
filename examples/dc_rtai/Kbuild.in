@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 #
-#  $Id$
+#  $Id: Kbuild.in 1667 2009-02-24 12:51:39Z fp $
 #
 #  Copyright (C) 2006-2008  Florian Pose, Ingenieurgemeinschaft IgH
 #
@@ -25,25 +25,16 @@
 #  EtherCAT technology and brand is only permitted in compliance with the
 #  industrial property and similar rights of Beckhoff Automation GmbH.
 #
+#  ---
+#
+#  vi: syntax=make
+#
 #------------------------------------------------------------------------------
 
-if ENABLE_USERLIB
-SUBDIRS = \
-	dc_user \
-	user
-endif
+obj-m := ec_dc_rtai_sample.o
 
-DIST_SUBDIRS = \
-	dc_rtai \
-	dc_user \
-	mini \
-	rtai \
-	user
+ec_dc_rtai_sample-objs := dc_rtai_sample.o
 
-EXTRA_DIST = \
-	Kbuild.in
-
-BUILT_SOURCES = \
-	Kbuild
+EXTRA_CFLAGS := -I@RTAI_DIR@/include
 
 #------------------------------------------------------------------------------
