@@ -44,7 +44,8 @@
  * - Added the distributed clocks feature and the respective methods
  *   ecrt_slave_config_dc_assign_activate() and
  *   ecrt_slave_config_dc_sync_cycle_times() to configure a slave for cyclic
- *   operation, and ecrt_master_sync() for drift compensation.
+ *   operation, and ecrt_master_sync_reference_clock() and
+ *   ecrt_master_sync_slave_clocks() for drift compensation.
  * - Changed the meaning of the negative return values of
  *   ecrt_slave_config_reg_pdo_entry() and ecrt_slave_config_sdo*().
  * - Imlemented the Vendor-specific over EtherCAT mailbox protocol. See
@@ -506,14 +507,21 @@ void ecrt_master_state(
         ec_master_state_t *state /**< Structure to store the information. */
         );
 
-/** Queues the DC drift compensation datagram for sending.
+/** Queues the DC reference clock drift compensation datagram for sending.
  *
- * The reference clock will by synchronized to the \a app_time, while the
- * other slaves will by synchronized to the reference clock.
+ * The reference clock will by synchronized to the \a app_time.
  */
-void ecrt_master_sync(
+void ecrt_master_sync_reference_clock(
         ec_master_t *master, /**< EtherCAT master. */
         const struct timeval *app_time /**< Application time. */
+        );
+
+/** Queues the DC clock drift compensation datagram for sending.
+ *
+ * All slave clocks synchronized to the reference clock.
+ */
+void ecrt_master_sync_slave_clocks(
+        ec_master_t *master /**< EtherCAT master. */
         );
 
 /******************************************************************************

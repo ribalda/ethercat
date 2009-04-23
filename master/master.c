@@ -1648,19 +1648,20 @@ void ecrt_master_state(const ec_master_t *master, ec_master_state_t *state)
 
 /*****************************************************************************/
 
-void ecrt_master_sync(ec_master_t *master, const struct timeval *app_time)
+void ecrt_master_sync_reference_clock(ec_master_t *master,
+        const struct timeval *app_time)
 {
     master->app_time = EC_TIMEVAL2NANO(app_time);
-
-#if 1
     EC_WRITE_U32(master->ref_sync_datagram.data, master->app_time);
     ec_master_queue_datagram(master, &master->ref_sync_datagram);
-#endif
+}
 
-#if 1
+/*****************************************************************************/
+
+void ecrt_master_sync_slave_clocks(ec_master_t *master)
+{
     ec_datagram_zero(&master->sync_datagram);
     ec_master_queue_datagram(master, &master->sync_datagram);
-#endif
 }
 
 /*****************************************************************************/
@@ -1674,7 +1675,8 @@ EXPORT_SYMBOL(ecrt_master_receive);
 EXPORT_SYMBOL(ecrt_master_callbacks);
 EXPORT_SYMBOL(ecrt_master_slave_config);
 EXPORT_SYMBOL(ecrt_master_state);
-EXPORT_SYMBOL(ecrt_master_sync);
+EXPORT_SYMBOL(ecrt_master_sync_reference_clock);
+EXPORT_SYMBOL(ecrt_master_sync_slave_clocks);
 
 /** \endcond */
 
