@@ -92,6 +92,7 @@ digraph slaveconf {
     enter_dc_cycle -> enter_safeop [fontname="Helvetica", label="DC not\nconfigured"]
 
     dc_cycle [fontname="Helvetica"]
+    dc_cycle -> reconfigure
     dc_cycle -> dc_start [weight=10]
 
     dc_start [fontname="Helvetica"]

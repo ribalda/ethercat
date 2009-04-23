@@ -1062,7 +1062,13 @@ void ec_fsm_slave_config_state_dc_cycle(
 {
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
+    ec_slave_config_t *config = slave->config;
     u64 start_time;
+
+    if (!config) { // config removed in the meantime
+        ec_fsm_slave_config_reconfigure(fsm);
+        return;
+    }
 
     if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
         return;
@@ -1085,7 +1091,8 @@ void ec_fsm_slave_config_state_dc_cycle(
     }
 
     // set DC start time
-    start_time = slave->master->app_time + 10000000ULL; // now + 100 ms
+    start_time = slave->master->app_time +
+        config->dc_sync_shift_times[0] + 100000000ULL; // now + shift + x ns
     if (slave->master->debug_level)
         EC_DBG("Slave %u: Setting DC cyclic operation start time to %llu.\n",
                 slave->ring_position, start_time);

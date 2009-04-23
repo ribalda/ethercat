@@ -77,6 +77,8 @@ void ec_slave_config_init(
 	sc->dc_assign_activate = 0x0000;
 	sc->dc_sync_cycle_times[0] = 0x00000000;
 	sc->dc_sync_cycle_times[1] = 0x00000000;
+	sc->dc_sync_shift_times[0] = 0x00000000;
+	sc->dc_sync_shift_times[1] = 0x00000000;
 
     INIT_LIST_HEAD(&sc->sdo_configs);
     INIT_LIST_HEAD(&sc->sdo_requests);
@@ -690,6 +692,15 @@ void ecrt_slave_config_dc_sync_cycle_times(ec_slave_config_t *sc,
 
 /*****************************************************************************/
 
+void ecrt_slave_config_dc_sync_shift_times(ec_slave_config_t *sc,
+        uint32_t sync0_shift_time, uint32_t sync1_shift_time)
+{
+	sc->dc_sync_shift_times[0] = sync0_shift_time;
+	sc->dc_sync_shift_times[1] = sync1_shift_time;
+}
+
+/*****************************************************************************/
+
 int ecrt_slave_config_sdo(ec_slave_config_t *sc, uint16_t index,
         uint8_t subindex, const uint8_t *data, size_t size)
 {
@@ -904,6 +915,7 @@ EXPORT_SYMBOL(ecrt_slave_config_pdos);
 EXPORT_SYMBOL(ecrt_slave_config_reg_pdo_entry);
 EXPORT_SYMBOL(ecrt_slave_config_dc_assign_activate);
 EXPORT_SYMBOL(ecrt_slave_config_dc_sync_cycle_times);
+EXPORT_SYMBOL(ecrt_slave_config_dc_sync_shift_times);
 EXPORT_SYMBOL(ecrt_slave_config_sdo);
 EXPORT_SYMBOL(ecrt_slave_config_sdo8);
 EXPORT_SYMBOL(ecrt_slave_config_sdo16);

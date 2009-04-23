@@ -68,6 +68,7 @@ struct ec_slave_config {
 
 	uint16_t dc_assign_activate; /**< Vendor-specific AssignActivate word. */
 	uint32_t dc_sync_cycle_times[2]; /**< SYNC[0,1] cycle times. */
+	uint32_t dc_sync_shift_times[2]; /**< SYNC[0,1] shift times. */
 
     struct list_head sdo_configs; /**< List of SDO configurations. */
     struct list_head sdo_requests; /**< List of SDO requests. */
