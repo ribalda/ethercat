@@ -42,8 +42,9 @@
  * Changes in version 1.5:
  *
  * - Added the distributed clocks feature and the respective methods
- *   ecrt_slave_config_dc_assign_activate() and
- *   ecrt_slave_config_dc_sync_cycle_times() to configure a slave for cyclic
+ *   ecrt_slave_config_dc_assign_activate(),
+ *   ecrt_slave_config_dc_sync_cycle_times() and
+ *   ecrt_slave_config_dc_sync_shift_times() to configure a slave for cyclic
  *   operation, and ecrt_master_sync_reference_clock() and
  *   ecrt_master_sync_slave_clocks() for drift compensation.
  * - Changed the meaning of the negative return values of
@@ -712,6 +713,14 @@ void ecrt_slave_config_dc_sync_cycle_times(
 		ec_slave_config_t *sc, /**< Slave configuration. */
         uint32_t sync0_cycle_time, /**< SYNC0 cycle time [ns]. */
 		uint32_t sync1_cycle_time /**< SYNC1 cycle time [ns]. */
+		);
+
+/** Sets the shift times for the SYNC0 and SYNC1 signals.
+ */
+void ecrt_slave_config_dc_sync_shift_times(
+		ec_slave_config_t *sc, /**< Slave configuration. */
+        uint32_t sync0_shift_time, /**< SYNC0 shift time [ns]. */
+		uint32_t sync1_shift_time /**< SYNC1 shift time [ns]. */
 		);
 
 /** Add an SDO configuration.
