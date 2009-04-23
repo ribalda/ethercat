@@ -244,6 +244,53 @@ int ecrt_slave_config_reg_pdo_entry(
 
 /*****************************************************************************/
 
+void ecrt_slave_config_dc_assign_activate(ec_slave_config_t *sc,
+        uint16_t assign_activate)
+{
+    ec_ioctl_sc_dc_t data;
+
+    data.config_index = sc->index;
+    data.assign_activate = assign_activate;
+
+    if (ioctl(sc->master->fd, EC_IOCTL_SC_DC_ASSIGN, &data) == -1) {
+        fprintf(stderr, "Failed to set assign_activate word.\n");
+    }
+}
+
+/*****************************************************************************/
+
+void ecrt_slave_config_dc_sync_cycle_times(ec_slave_config_t *sc,
+        uint32_t sync0_cycle_time, uint32_t sync1_cycle_time)
+{
+    ec_ioctl_sc_dc_t data;
+
+    data.config_index = sc->index;
+	data.cycle[0] = sync0_cycle_time;
+	data.cycle[1] = sync1_cycle_time;
+
+    if (ioctl(sc->master->fd, EC_IOCTL_SC_DC_CYCLE, &data) == -1) {
+        fprintf(stderr, "Failed to set assign_activate word.\n");
+    }
+}
+
+/*****************************************************************************/
+
+void ecrt_slave_config_dc_sync_shift_times(ec_slave_config_t *sc,
+        uint32_t sync0_shift_time, uint32_t sync1_shift_time)
+{
+    ec_ioctl_sc_dc_t data;
+
+    data.config_index = sc->index;
+	data.shift[0] = sync0_shift_time;
+	data.shift[1] = sync1_shift_time;
+
+    if (ioctl(sc->master->fd, EC_IOCTL_SC_DC_SHIFT, &data) == -1) {
+        fprintf(stderr, "Failed to set assign_activate word.\n");
+    }
+}
+
+/*****************************************************************************/
+
 int ecrt_slave_config_sdo(ec_slave_config_t *sc, uint16_t index,
         uint8_t subindex, const uint8_t *sdo_data, size_t size)
 {

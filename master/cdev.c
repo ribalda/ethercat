@@ -1621,6 +1621,49 @@ int ec_cdev_ioctl_master_state(
 
 /*****************************************************************************/
 
+/** Sync the reference clock.
+ */
+int ec_cdev_ioctl_sync_ref(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    ec_ioctl_dc_t data;
+    
+	if (unlikely(!priv->requested))
+		return -EPERM;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
+        return -EFAULT;
+
+    spin_lock_bh(&master->internal_lock);
+    ecrt_master_sync_reference_clock(master, &data.app_time);
+    spin_unlock_bh(&master->internal_lock);
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Sync the slave clocks.
+ */
+int ec_cdev_ioctl_sync_slaves(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+	if (unlikely(!priv->requested))
+		return -EPERM;
+
+    spin_lock_bh(&master->internal_lock);
+    ecrt_master_sync_slave_clocks(master);
+    spin_unlock_bh(&master->internal_lock);
+    return 0;
+}
+
+/*****************************************************************************/
+
 /** Set the direction of a sync manager.
  */
 int ec_cdev_ioctl_sc_sync(
@@ -1844,6 +1887,108 @@ int ec_cdev_ioctl_sc_reg_pdo_entry(
         return -EFAULT;
 
     return ret;
+}
+
+/*****************************************************************************/
+
+/** Sets the DC AssignActivate word.
+ */
+int ec_cdev_ioctl_sc_dc_assign(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    ec_ioctl_sc_dc_t data;
+    ec_slave_config_t *sc;
+
+	if (unlikely(!priv->requested))
+        return -EPERM;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
+        return -EFAULT;
+
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
+
+    if (!(sc = ec_master_get_config(master, data.config_index))) {
+        up(&master->master_sem);
+        return -ENOENT;
+    }
+
+    ecrt_slave_config_dc_assign_activate(sc, data.assign_activate);
+
+    up(&master->master_sem);
+
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Sets the DC cycle times.
+ */
+int ec_cdev_ioctl_sc_dc_cycle(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    ec_ioctl_sc_dc_t data;
+    ec_slave_config_t *sc;
+
+	if (unlikely(!priv->requested))
+        return -EPERM;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
+        return -EFAULT;
+
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
+
+    if (!(sc = ec_master_get_config(master, data.config_index))) {
+        up(&master->master_sem);
+        return -ENOENT;
+    }
+
+    ecrt_slave_config_dc_sync_cycle_times(sc, data.cycle[0], data.cycle[1]);
+
+    up(&master->master_sem);
+
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Sets the DC shift times.
+ */
+int ec_cdev_ioctl_sc_dc_shift(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    ec_ioctl_sc_dc_t data;
+    ec_slave_config_t *sc;
+
+	if (unlikely(!priv->requested))
+        return -EPERM;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
+        return -EFAULT;
+
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
+
+    if (!(sc = ec_master_get_config(master, data.config_index))) {
+        up(&master->master_sem);
+        return -ENOENT;
+    }
+
+    ecrt_slave_config_dc_sync_shift_times(sc, data.shift[0], data.shift[1]);
+
+    up(&master->master_sem);
+
+    return 0;
 }
 
 /*****************************************************************************/
@@ -3035,6 +3180,14 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			return ec_cdev_ioctl_receive(master, arg, priv);
         case EC_IOCTL_MASTER_STATE:
 			return ec_cdev_ioctl_master_state(master, arg, priv);
+        case EC_IOCTL_SYNC_REF:
+            if (!(filp->f_mode & FMODE_WRITE))
+				return -EPERM;
+			return ec_cdev_ioctl_sync_ref(master, arg, priv);
+        case EC_IOCTL_SYNC_SLAVES:
+            if (!(filp->f_mode & FMODE_WRITE))
+				return -EPERM;
+			return ec_cdev_ioctl_sync_slaves(master, arg, priv);
         case EC_IOCTL_SC_SYNC:
             if (!(filp->f_mode & FMODE_WRITE))
 				return -EPERM;
@@ -3059,6 +3212,18 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             if (!(filp->f_mode & FMODE_WRITE))
 				return -EPERM;
 			return ec_cdev_ioctl_sc_reg_pdo_entry(master, arg, priv);
+        case EC_IOCTL_SC_DC_ASSIGN:
+            if (!(filp->f_mode & FMODE_WRITE))
+				return -EPERM;
+			return ec_cdev_ioctl_sc_dc_assign(master, arg, priv);
+        case EC_IOCTL_SC_DC_CYCLE:
+            if (!(filp->f_mode & FMODE_WRITE))
+				return -EPERM;
+			return ec_cdev_ioctl_sc_dc_cycle(master, arg, priv);
+        case EC_IOCTL_SC_DC_SHIFT:
+            if (!(filp->f_mode & FMODE_WRITE))
+				return -EPERM;
+			return ec_cdev_ioctl_sc_dc_shift(master, arg, priv);
         case EC_IOCTL_SC_SDO:
             if (!(filp->f_mode & FMODE_WRITE))
 				return -EPERM;

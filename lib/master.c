@@ -189,3 +189,28 @@ void ecrt_master_state(const ec_master_t *master, ec_master_state_t *state)
 }
 
 /*****************************************************************************/
+
+void ecrt_master_sync_reference_clock(ec_master_t *master,
+        const struct timeval *app_time)
+{
+    ec_ioctl_dc_t data;
+
+    data.app_time.tv_sec = app_time->tv_sec;
+    data.app_time.tv_usec = app_time->tv_usec;
+
+    if (ioctl(master->fd, EC_IOCTL_SYNC_REF, &data) == -1) {
+        fprintf(stderr, "Failed to sync reference clock: %s\n",
+                strerror(errno));
+    }
+}
+
+/*****************************************************************************/
+
+void ecrt_master_sync_slave_clocks(ec_master_t *master)
+{
+    if (ioctl(master->fd, EC_IOCTL_SYNC_SLAVES, NULL) == -1) {
+        fprintf(stderr, "Failed to sync slave clocks: %s\n", strerror(errno));
+    }
+}
+
+/*****************************************************************************/
