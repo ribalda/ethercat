@@ -12,8 +12,13 @@ Version 1.5.0:
 
 * Distributed clocks:
     - Delay calculation.
-	- Output reference clock and application time in 'ethercat master'.
     - User same application time offset when setting start times.
+    - Replace timeval by uint64 EtherCAT time.
+* Fix arguments of reg_read.
+* Sign/Abs type for reg_ commands?
+* Number layout for reg_read.
+* Show Record / Array / List type of SDOs.
+* Limit bandwidth of state machine datagram.
 * Read alias from register 0x0012 instead of SII.
 * Finish library implementation.
 * Re-work EoE code.

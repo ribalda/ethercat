@@ -622,6 +622,8 @@ void ec_master_leave_operation_phase(ec_master_t *master
     }
 #endif
 
+    master->app_time = 0ULL;
+
     if (ec_master_thread_start(master, ec_master_idle_thread,
                 "EtherCAT-IDLE"))
         EC_WARN("Failed to restart master thread!\n");

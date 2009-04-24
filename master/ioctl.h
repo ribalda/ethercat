@@ -136,6 +136,8 @@ typedef struct {
         uint32_t tx_count;
         uint32_t rx_count;
     } devices[2];
+    uint64_t app_time;
+    uint16_t ref_clock;
 } ec_ioctl_master_t;
 
 /*****************************************************************************/

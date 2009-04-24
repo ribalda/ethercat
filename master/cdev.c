@@ -173,6 +173,7 @@ int ec_cdev_ioctl_master(
 
     if (down_interruptible(&master->device_sem))
         return -EINTR;
+
     if (master->main_device.dev) {
         memcpy(data.devices[0].address,
                 master->main_device.dev->dev_addr, ETH_ALEN);
@@ -194,7 +195,15 @@ int ec_cdev_ioctl_master(
     data.devices[1].link_state = master->backup_device.link_state ? 1 : 0;
     data.devices[1].tx_count = master->backup_device.tx_count;
     data.devices[1].rx_count = master->backup_device.rx_count;
+
     up(&master->device_sem);
+
+    data.app_time = master->app_time;
+    data.ref_clock = EC_READ_U16(master->sync_datagram.address);
+    if (data.ref_clock < 0xffff) {
+        // ref_clock address is station_address, output ring position
+        data.ref_clock--;
+    }
 
     if (copy_to_user((void __user *) arg, &data, sizeof(data)))
         return -EFAULT;

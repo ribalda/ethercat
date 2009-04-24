@@ -33,6 +33,8 @@ using namespace std;
 
 #include "CommandMaster.h"
 
+#define MAX_TIME_STR_SIZE 50
+
 /*****************************************************************************/
 
 CommandMaster::CommandMaster():
@@ -65,6 +67,9 @@ void CommandMaster::execute(MasterDevice &m, const StringVector &args)
     ec_ioctl_master_t data;
     stringstream err;
     unsigned int i;
+    time_t epoch;
+    char time_str[MAX_TIME_STR_SIZE + 1];
+    size_t time_str_size;
     
     if (args.size()) {
         err << "'" << getName() << "' takes no arguments!";
@@ -86,10 +91,11 @@ void CommandMaster::execute(MasterDevice &m, const StringVector &args)
     }
 
     cout << endl
-        << "  Slaves: " << data.slave_count << endl;
+        << "  Slaves: " << data.slave_count << endl
+        << "  Ethernet devices:" << endl;
 
     for (i = 0; i < 2; i++) {
-        cout << "  Device" << i << ": ";
+        cout << "    " << (i == 0 ? "Main" : "Backup") << ": ";
         if (data.devices[i].address[0] == 0x00
                 && data.devices[i].address[1] == 0x00
                 && data.devices[i].address[2] == 0x00
@@ -107,12 +113,29 @@ void CommandMaster::execute(MasterDevice &m, const StringVector &args)
                 << setw(2) << (unsigned int) data.devices[i].address[5] << " ("
                 << (data.devices[i].attached ? "attached" : "waiting...")
                 << ")" << endl << dec
-                << "    Link: " << (data.devices[i].link_state ? "UP" : "DOWN") << endl
-                << "    Tx count: " << data.devices[i].tx_count << endl
-                << "    Rx count: " << data.devices[i].rx_count;
+                << "      Link: " << (data.devices[i].link_state ? "UP" : "DOWN") << endl
+                << "      Tx count: " << data.devices[i].tx_count << endl
+                << "      Rx count: " << data.devices[i].rx_count;
         }
         cout << endl;
     }
+
+    cout << "  Distributed clocks:" << endl
+        << "    Reference clock: ";
+    if (data.ref_clock != 0xffff) {
+        cout << "Slave " << dec << data.ref_clock;
+    } else {
+        cout << "None";
+    }
+    cout << endl
+        << "    Application time: " << data.app_time << endl
+        << "                      ";
+
+    epoch = data.app_time / 1000000000 + 946684800ULL;
+    time_str_size = strftime(time_str, MAX_TIME_STR_SIZE,
+            "%Y-%m-%d %H:%M:%S", gmtime(&epoch));
+    cout << string(time_str, time_str_size) << "."
+        << setfill('0') << setw(9) << data.app_time % 1000000000 << endl;
 }
 
 /*****************************************************************************/
