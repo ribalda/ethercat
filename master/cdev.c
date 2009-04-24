@@ -1647,7 +1647,7 @@ int ec_cdev_ioctl_sync_ref(
         return -EFAULT;
 
     spin_lock_bh(&master->internal_lock);
-    ecrt_master_sync_reference_clock(master, &data.app_time);
+    ecrt_master_sync_reference_clock(master, data.app_time);
     spin_unlock_bh(&master->internal_lock);
     return 0;
 }

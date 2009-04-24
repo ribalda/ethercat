@@ -12,8 +12,8 @@ Version 1.5.0:
 
 * Distributed clocks:
     - Delay calculation.
-    - User same application time offset when setting start times.
-    - Replace timeval by uint64 EtherCAT time.
+    - Use common application time offset when setting start times.
+    - Check 32/64 bit operations.
 * Fix arguments of reg_read.
 * Sign/Abs type for reg_ commands?
 * Number layout for reg_read.

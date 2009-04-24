@@ -169,7 +169,7 @@ void cyclic_task()
         sync_ref_counter--;
     } else {
         sync_ref_counter = 9;
-        ecrt_master_sync_reference_clock(master, &app_time);
+        ecrt_master_sync_reference_clock(master, EC_TIMEVAL2NANO(&app_time));
     }
     ecrt_master_sync_slave_clocks(master);
 

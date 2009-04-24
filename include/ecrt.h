@@ -46,7 +46,8 @@
  *   ecrt_slave_config_dc_sync_cycle_times() and
  *   ecrt_slave_config_dc_sync_shift_times() to configure a slave for cyclic
  *   operation, and ecrt_master_sync_reference_clock() and
- *   ecrt_master_sync_slave_clocks() for drift compensation.
+ *   ecrt_master_sync_slave_clocks() for drift compensation. The
+ *   EC_TIMEVAL2NANO() macro can be used for epoch time conversion.
  * - Changed the meaning of the negative return values of
  *   ecrt_slave_config_reg_pdo_entry() and ecrt_slave_config_sdo*().
  * - Imlemented the Vendor-specific over EtherCAT mailbox protocol. See
@@ -113,6 +114,17 @@
  * Used in ec_slave_info_t.
  */
 #define EC_MAX_STRING_LENGTH 64
+
+/** Timeval to nanoseconds conversion.
+ *
+ * This macro converts a unix epoch time to EtherCAT DC time.
+ *
+ * \see ecrt_master_sync_reference_clock()
+ *
+ * \param TV Pointer to struct timeval.
+ */
+#define EC_TIMEVAL2NANO(TV) \
+    (((TV)->tv_sec - 946684800ULL) * 1000000000ULL + (TV)->tv_usec * 1000ULL)
 
 /******************************************************************************
  * Data types 
@@ -510,11 +522,13 @@ void ecrt_master_state(
 
 /** Queues the DC reference clock drift compensation datagram for sending.
  *
- * The reference clock will by synchronized to the \a app_time.
+ * The reference clock will by synchronized to the \a app_time. The time is
+ * defined as nanoseconds from 2000-01-01 00:00. Converting an epoch time can
+ * be done with the EC_TIMEVAL2NANO() macro.
  */
 void ecrt_master_sync_reference_clock(
         ec_master_t *master, /**< EtherCAT master. */
-        const struct timeval *app_time /**< Application time. */
+        uint64_t app_time /**< Application time. */
         );
 
 /** Queues the DC clock drift compensation datagram for sending.

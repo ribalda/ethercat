@@ -220,13 +220,16 @@ void run(long data)
             tv.tv_usec -= 1000000;
             tv.tv_sec++;
         }
-        //printk(KERN_INFO PFX "tv=%u.%06u\n", (u32) tv.tv_sec, (u32) tv.tv_usec);
             
         if (sync_ref_counter) {
             sync_ref_counter--;
         } else {
             sync_ref_counter = 9;
-            ecrt_master_sync_reference_clock(master, &tv);
+#if 0
+            printk(KERN_INFO PFX "ref: %u %u %llu\n",
+                    (u32) tv.tv_sec, (u32) tv.tv_usec, EC_TIMEVAL2NANO(&tv));
+#endif
+            ecrt_master_sync_reference_clock(master, EC_TIMEVAL2NANO(&tv));
         }
 		ecrt_master_sync_slave_clocks(master);
         ecrt_domain_queue(domain1);

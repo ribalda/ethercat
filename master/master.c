@@ -1651,9 +1651,9 @@ void ecrt_master_state(const ec_master_t *master, ec_master_state_t *state)
 /*****************************************************************************/
 
 void ecrt_master_sync_reference_clock(ec_master_t *master,
-        const struct timeval *app_time)
+        uint64_t app_time)
 {
-    master->app_time = EC_TIMEVAL2NANO(app_time);
+    master->app_time = app_time;
     EC_WRITE_U32(master->ref_sync_datagram.data, master->app_time);
     ec_master_queue_datagram(master, &master->ref_sync_datagram);
 }

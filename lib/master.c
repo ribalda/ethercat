@@ -190,13 +190,11 @@ void ecrt_master_state(const ec_master_t *master, ec_master_state_t *state)
 
 /*****************************************************************************/
 
-void ecrt_master_sync_reference_clock(ec_master_t *master,
-        const struct timeval *app_time)
+void ecrt_master_sync_reference_clock(ec_master_t *master, uint64_t app_time)
 {
     ec_ioctl_dc_t data;
 
-    data.app_time.tv_sec = app_time->tv_sec;
-    data.app_time.tv_usec = app_time->tv_usec;
+    data.app_time = app_time;
 
     if (ioctl(master->fd, EC_IOCTL_SYNC_REF, &data) == -1) {
         fprintf(stderr, "Failed to sync reference clock: %s\n",

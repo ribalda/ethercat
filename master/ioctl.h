@@ -389,7 +389,7 @@ typedef struct {
 
 typedef struct {
     // inputs
-    struct timeval app_time;
+    uint64_t app_time;
 } ec_ioctl_dc_t;
 
 /*****************************************************************************/
