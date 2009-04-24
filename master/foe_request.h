@@ -73,7 +73,6 @@ typedef struct {
 void ec_foe_request_init(ec_foe_request_t *, uint8_t* file_name);
 void ec_foe_request_clear(ec_foe_request_t *);
 
-void ec_foe_request_address(ec_foe_request_t *, uint16_t, uint8_t);
 int ec_foe_request_alloc(ec_foe_request_t *, size_t);
 int ec_foe_request_copy_data(ec_foe_request_t *, const uint8_t *, size_t);
 int ec_foe_request_timed_out(const ec_foe_request_t *);

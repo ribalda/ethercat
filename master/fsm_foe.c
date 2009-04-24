@@ -57,13 +57,15 @@
 
 /*****************************************************************************/
 
+/** FoE OpCodes.
+ */
 enum {
-    EC_FOE_OPCODE_RRQ  = 1,
-    EC_FOE_OPCODE_WRQ  = 2,
-    EC_FOE_OPCODE_DATA = 3,
-    EC_FOE_OPCODE_ACK  = 4,
-    EC_FOE_OPCODE_ERR  = 5,
-    EC_FOE_OPCODE_BUSY = 6
+    EC_FOE_OPCODE_RRQ  = 1, /**< Read request. */
+    EC_FOE_OPCODE_WRQ  = 2, /**< Write request. */
+    EC_FOE_OPCODE_DATA = 3, /**< Data. */
+    EC_FOE_OPCODE_ACK  = 4, /**< Acknowledge. */
+    EC_FOE_OPCODE_ERR  = 5, /**< Error. */
+    EC_FOE_OPCODE_BUSY = 6  /**< Busy. */
 } ec_foe_opcode_t;
 
 /*****************************************************************************/
