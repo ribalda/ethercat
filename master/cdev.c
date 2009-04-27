@@ -262,6 +262,7 @@ int ec_cdev_ioctl_slave(
     data.fmmu_bit = slave->base_fmmu_bit_operation;
     data.dc_supported = slave->base_dc_supported;
     data.dc_range = slave->base_dc_range;
+    data.has_dc_system_time = slave->has_dc_system_time;
     data.al_state = slave->current_state;
     data.error_flag = slave->error_flag;
 

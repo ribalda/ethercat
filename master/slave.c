@@ -100,6 +100,7 @@ void ec_slave_init(
     slave->base_fmmu_bit_operation = 0;
     slave->base_dc_supported = 0;
     slave->base_dc_range = EC_DC_32;
+    slave->has_dc_system_time = 0;
 
     slave->sii_words = NULL;
     slave->sii_nwords = 0;

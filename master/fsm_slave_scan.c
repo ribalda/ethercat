@@ -47,6 +47,7 @@ void ec_fsm_slave_scan_state_start(ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_state_address(ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_state_state(ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_state_base(ec_fsm_slave_scan_t *);
+void ec_fsm_slave_scan_state_dc_cap(ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_state_datalink(ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_state_sii_size(ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_state_sii_data(ec_fsm_slave_scan_t *);
@@ -57,6 +58,7 @@ void ec_fsm_slave_scan_state_pdos(ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_state_end(ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_state_error(ec_fsm_slave_scan_t *);
 
+void ec_fsm_slave_scan_enter_datalink(ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_enter_preop(ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_enter_pdos(ec_fsm_slave_scan_t *);
 
@@ -315,6 +317,78 @@ void ec_fsm_slave_scan_state_base(ec_fsm_slave_scan_t *fsm /**< slave state mach
     slave->base_fmmu_bit_operation = octet & 0x01;
     slave->base_dc_supported = (octet >> 2) & 0x01;
     slave->base_dc_range = ((octet >> 3) & 0x01) ? EC_DC_64 : EC_DC_32;
+
+    if (slave->base_dc_supported) {
+        // read DC capabilities
+        ec_datagram_fprd(datagram, slave->station_address, 0x0910,
+                slave->base_dc_range == EC_DC_64 ? 8 : 4);
+        ec_datagram_zero(datagram);
+        fsm->retries = EC_FSM_RETRIES;
+        fsm->state = ec_fsm_slave_scan_state_dc_cap;
+    } else {
+        ec_fsm_slave_scan_enter_datalink(fsm);
+    }
+}
+
+/*****************************************************************************/
+
+/**
+   Slave scan state: DC CAPABILITIES.
+*/
+
+void ec_fsm_slave_scan_state_dc_cap(
+        ec_fsm_slave_scan_t *fsm /**< slave state machine */
+        )
+{
+    ec_datagram_t *datagram = fsm->datagram;
+    ec_slave_t *slave = fsm->slave;
+
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+        return;
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED) {
+        fsm->state = ec_fsm_slave_scan_state_error;
+        EC_ERR("Failed to receive system time datagram for slave %u"
+                " (datagram state %u).\n",
+               slave->ring_position, datagram->state);
+        return;
+    }
+
+    if (datagram->working_counter == 1) {
+        slave->has_dc_system_time = 1;
+        if (slave->master->debug_level) {
+            EC_DBG("Slave %u has the System Time register.\n",
+                    slave->ring_position);
+        }
+    } else if (datagram->working_counter == 0) {
+        if (slave->master->debug_level) {
+            EC_DBG("Slave %u has no System Time register; delay "
+                    "measurement only.\n", slave->ring_position);
+        }
+    } else {
+        fsm->slave->error_flag = 1;
+        fsm->state = ec_fsm_slave_scan_state_error;
+        EC_ERR("Failed to determine, if system time register is "
+                "supported by slave %u: ", slave->ring_position);
+        ec_datagram_print_wc_error(datagram);
+        return;
+    }
+
+    ec_fsm_slave_scan_enter_datalink(fsm);
+}
+
+/*****************************************************************************/
+
+/**
+   Slave scan entry function: DATALINK.
+*/
+
+void ec_fsm_slave_scan_enter_datalink(
+        ec_fsm_slave_scan_t *fsm /**< slave state machine */
+        )
+{
+    ec_datagram_t *datagram = fsm->datagram;
+    ec_slave_t *slave = fsm->slave;
 
     // read data link status
     ec_datagram_fprd(datagram, slave->station_address, 0x0110, 2);

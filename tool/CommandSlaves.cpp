@@ -268,18 +268,21 @@ void CommandSlaves::showSlaves(
             << (si->fmmu_bit ? "yes" : "no") << endl
             << "  Distributed clocks: ";
         if (si->dc_supported) {
-            cout << "yes (";
-            switch (si->dc_range) {
-                case EC_DC_32:
-                    cout << "32 bit";
-                    break;
-                case EC_DC_64:
-                    cout << "64 bit";
-                    break;
-                default:
-                    cout << "???";
+            if (si->has_dc_system_time) {
+                cout << "yes, ";
+                switch (si->dc_range) {
+                    case EC_DC_32:
+                        cout << "32 bit";
+                        break;
+                    case EC_DC_64:
+                        cout << "64 bit";
+                        break;
+                    default:
+                        cout << "???";
+                }
+            } else {
+                cout << "yes, delay measurement only";
             }
-            cout << ")";
         } else {
             cout << "no";
         }

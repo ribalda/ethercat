@@ -1363,7 +1363,7 @@ void ec_master_find_dc_ref_clock(
     for (slave = master->slaves;
             slave < master->slaves + master->slave_count;
             slave++) {
-		if (slave->base_dc_supported) {
+		if (slave->base_dc_supported && slave->has_dc_system_time) {
 			ref_clock_addr = slave->station_address;
 			break;
 		}

@@ -169,6 +169,7 @@ typedef struct {
     uint8_t fmmu_bit;
     uint8_t dc_supported;
     ec_slave_dc_range_t dc_range;
+    uint8_t has_dc_system_time;
     uint8_t al_state;
     uint8_t error_flag;
     uint8_t sync_count;

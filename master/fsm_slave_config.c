@@ -348,7 +348,7 @@ void ec_fsm_slave_config_enter_dc_clear_assign(
     ec_slave_t *slave = fsm->slave;
     ec_datagram_t *datagram = fsm->datagram;
 
-    if (!slave->base_dc_supported) {
+    if (!slave->base_dc_supported || !slave->has_dc_system_time) {
         ec_fsm_slave_config_enter_mbox_sync(fsm);
         return;
     }
@@ -1035,7 +1035,7 @@ void ec_fsm_slave_config_enter_dc_cycle(
     }
 
     if (config->dc_assign_activate) {
-        if (!slave->base_dc_supported) {
+        if (!slave->base_dc_supported || !slave->has_dc_system_time) {
             EC_WARN("Slave %u seems not to support distributed clocks!\n",
                     slave->ring_position);
         }

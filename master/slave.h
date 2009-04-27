@@ -133,6 +133,9 @@ struct ec_slave
     uint8_t base_fmmu_bit_operation; /**< FMMU bit operation is supported. */
     uint8_t base_dc_supported; /**< Distributed clocks are supported. */
     ec_slave_dc_range_t base_dc_range; /**< DC range. */
+    uint8_t has_dc_system_time; /**< The slave supports the DC system time
+                                  register. Otherwise it can only be used for
+                                  delay measurement. */
 
     // data link status
     ec_slave_port_t ports[EC_MAX_PORTS]; /**< Port link status. */
