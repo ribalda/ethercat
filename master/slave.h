@@ -92,16 +92,6 @@ typedef struct {
 
 /*****************************************************************************/
 
-/** EtherCAT slave port information.
- */
-typedef struct {
-    uint8_t dl_link; /**< Link detected. */
-    uint8_t dl_loop; /**< Loop closed. */
-    uint8_t dl_signal; /**< Detected signal on RX port. */
-} ec_slave_port_t;
-
-/*****************************************************************************/
-
 /** EtherCAT slave.
  */
 struct ec_slave
@@ -136,6 +126,8 @@ struct ec_slave
     uint8_t has_dc_system_time; /**< The slave supports the DC system time
                                   register. Otherwise it can only be used for
                                   delay measurement. */
+    uint32_t dc_receive_times[EC_MAX_PORTS]; /**< Port receive times for delay
+                                               measurement. */
 
     // data link status
     ec_slave_port_t ports[EC_MAX_PORTS]; /**< Port link status. */

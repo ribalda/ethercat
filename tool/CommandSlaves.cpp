@@ -241,28 +241,6 @@ void CommandSlaves::showSlaves(
             << "  Serial number:   0x"
             << setw(8) << si->serial_number << endl;
 
-        cout << "Ports:" << endl;
-        for (i = 0; i < EC_MAX_PORTS; i++) {
-            cout << "  " << i << ": ";
-            switch (si->ports[i]) {
-                case EC_PORT_NOT_IMPLEMENTED:
-                    cout << "Not implemented.";
-                    break;
-                case EC_PORT_NOT_CONFIGURED:
-                    cout << "Not configured.";
-                    break;
-                case EC_PORT_EBUS:
-                    cout << "EBUS.";
-                    break;
-                case EC_PORT_MII:
-                    cout << "MII.";
-                    break;
-                default:
-                    cout << "???";
-            }
-            cout << endl;
-        }
-
         cout << "DL information:" << endl
             << "  FMMU bit operation: "
             << (si->fmmu_bit ? "yes" : "no") << endl
@@ -280,13 +258,62 @@ void CommandSlaves::showSlaves(
                     default:
                         cout << "???";
                 }
+                cout << endl;
             } else {
-                cout << "yes, delay measurement only";
+                cout << "yes, delay measurement only" << endl;
             }
         } else {
-            cout << "no";
+            cout << "no" << endl;
         }
+
+        cout << "Port  Type  Link  Loop    Signal";
+        if (si->dc_supported)
+            cout << "  RxTime      Diff";
         cout << endl;
+            
+        for (i = 0; i < EC_MAX_PORTS; i++) {
+            cout << "   " << i << "  " << setfill(' ') << left << setw(4);
+            switch (si->port_descs[i]) {
+                case EC_PORT_NOT_IMPLEMENTED:
+                    cout << "N/A";
+                    break;
+                case EC_PORT_NOT_CONFIGURED:
+                    cout << "N/C";
+                    break;
+                case EC_PORT_EBUS:
+                    cout << "EBUS";
+                    break;
+                case EC_PORT_MII:
+                    cout << "MII";
+                    break;
+                default:
+                    cout << "???";
+            }
+
+            cout << "  " << setw(4)
+                << (si->ports[i].dl_link ? "up" : "down")
+                << "  " << setw(6)
+                << (si->ports[i].dl_loop ? "closed" : "open")
+                << "  " << setw(3)
+                << (si->ports[i].dl_signal ? "yes" : "no");
+            
+            if (si->dc_supported) {
+                cout << "     " << setw(10) << right;
+                if (si->ports[i].dl_signal) {
+                    cout << dec << si->dc_receive_times[i];
+                } else {
+                    cout << "-";
+                }
+                cout << "  " << setw(10);
+                if (si->ports[i].dl_signal) {
+                    cout << si->dc_receive_times[i] - si->dc_receive_times[0];
+                } else {
+                    cout << "-";
+                }
+            }
+
+            cout << endl;
+        }
 
         if (si->mailbox_protocols) {
             list<string> protoList;

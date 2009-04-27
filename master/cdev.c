@@ -257,7 +257,11 @@ int ec_cdev_ioctl_slave(
     data.general_flags = slave->sii.general_flags;
     data.current_on_ebus = slave->sii.current_on_ebus;
     for (i = 0; i < EC_MAX_PORTS; i++) {
-        data.ports[i] = slave->base_ports[i];
+        data.port_descs[i] = slave->base_ports[i];
+        data.ports[i].dl_link = slave->ports[i].dl_link;
+        data.ports[i].dl_loop = slave->ports[i].dl_loop;
+        data.ports[i].dl_signal = slave->ports[i].dl_signal;
+        data.dc_receive_times[i] = slave->dc_receive_times[i];
     }
     data.fmmu_bit = slave->base_fmmu_bit_operation;
     data.dc_supported = slave->base_dc_supported;

@@ -48,6 +48,7 @@ void ec_fsm_slave_scan_state_address(ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_state_state(ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_state_base(ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_state_dc_cap(ec_fsm_slave_scan_t *);
+void ec_fsm_slave_scan_state_dc_times(ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_state_datalink(ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_state_sii_size(ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_state_sii_data(ec_fsm_slave_scan_t *);
@@ -257,11 +258,11 @@ void ec_fsm_slave_scan_state_state(
 
 /*****************************************************************************/
 
-/**
-   Slave scan state: BASE.
-*/
-
-void ec_fsm_slave_scan_state_base(ec_fsm_slave_scan_t *fsm /**< slave state machine */)
+/** Slave scan state: BASE.
+ */
+void ec_fsm_slave_scan_state_base(
+        ec_fsm_slave_scan_t *fsm /**< slave state machine */
+        )
 {
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
@@ -372,6 +373,51 @@ void ec_fsm_slave_scan_state_dc_cap(
                 "supported by slave %u: ", slave->ring_position);
         ec_datagram_print_wc_error(datagram);
         return;
+    }
+
+    // read DC port receive times
+    ec_datagram_fprd(datagram, slave->station_address, 0x0900, 16);
+    ec_datagram_zero(datagram);
+    fsm->retries = EC_FSM_RETRIES;
+    fsm->state = ec_fsm_slave_scan_state_dc_times;
+}
+
+/*****************************************************************************/
+
+/**
+   Slave scan state: DC TIMES.
+*/
+
+void ec_fsm_slave_scan_state_dc_times(
+        ec_fsm_slave_scan_t *fsm /**< slave state machine */
+        )
+{
+    ec_datagram_t *datagram = fsm->datagram;
+    ec_slave_t *slave = fsm->slave;
+    int i;
+
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+        return;
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED) {
+        fsm->state = ec_fsm_slave_scan_state_error;
+        EC_ERR("Failed to receive system time datagram for slave %u"
+                " (datagram state %u).\n",
+               slave->ring_position, datagram->state);
+        return;
+    }
+
+    if (datagram->working_counter != 1) {
+        fsm->slave->error_flag = 1;
+        fsm->state = ec_fsm_slave_scan_state_error;
+        EC_ERR("Failed to get DC receive times of slave %u: ",
+                slave->ring_position);
+        ec_datagram_print_wc_error(datagram);
+        return;
+    }
+
+    for (i = 0; i < EC_MAX_PORTS; i++) {
+        slave->dc_receive_times[i] = EC_READ_U32(datagram->data + 4 * i);
     }
 
     ec_fsm_slave_scan_enter_datalink(fsm);

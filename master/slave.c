@@ -95,6 +95,8 @@ void ec_slave_init(
         slave->ports[i].dl_loop = 0;
         slave->ports[i].dl_signal = 0;
         slave->sii.physical_layer[i] = 0xFF;
+
+        slave->dc_receive_times[i] = 0U;
     }
 
     slave->base_fmmu_bit_operation = 0;

@@ -166,6 +166,14 @@ typedef enum {
     EC_PORT_MII
 } ec_slave_port_desc_t;
 
+/** EtherCAT slave port information.
+ */
+typedef struct {
+    uint8_t dl_link; /**< Link detected. */
+    uint8_t dl_loop; /**< Loop closed. */
+    uint8_t dl_signal; /**< Detected signal on RX port. */
+} ec_slave_port_t;
+
 /** EtherCAT slave distributed clocks range.
  */
 typedef enum {

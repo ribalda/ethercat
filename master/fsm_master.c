@@ -52,6 +52,7 @@ void ec_fsm_master_state_read_state(ec_fsm_master_t *);
 void ec_fsm_master_state_acknowledge(ec_fsm_master_t *);
 void ec_fsm_master_state_configure_slave(ec_fsm_master_t *);
 void ec_fsm_master_state_clear_addresses(ec_fsm_master_t *);
+void ec_fsm_master_state_dc_measure_delays(ec_fsm_master_t *);
 void ec_fsm_master_state_scan_slave(ec_fsm_master_t *);
 void ec_fsm_master_state_write_sii(ec_fsm_master_t *);
 void ec_fsm_master_state_sdo_dictionary(ec_fsm_master_t *);
@@ -770,6 +771,42 @@ void ec_fsm_master_state_clear_addresses(
         EC_WARN("Failed to clear all station addresses: Cleared %u of %u",
                 datagram->working_counter, master->slave_count);
     }
+
+    if (master->debug_level)
+        EC_DBG("Sending broadcast-write to measure transmission delays.\n");
+
+    ec_datagram_bwr(datagram, 0x0900, 1);
+    ec_datagram_zero(datagram);
+    fsm->retries = EC_FSM_RETRIES;
+    fsm->state = ec_fsm_master_state_dc_measure_delays;
+}
+
+/*****************************************************************************/
+
+/** Master state: DC MEASURE DELAYS.
+ */
+void ec_fsm_master_state_dc_measure_delays(
+        ec_fsm_master_t *fsm /**< Master state machine. */
+        )
+{
+    ec_master_t *master = fsm->master;
+    ec_datagram_t *datagram = fsm->datagram;
+
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+        return;
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED) {
+        EC_ERR("Failed to receive delay measuring datagram (state %u).\n",
+                datagram->state);
+        master->scan_busy = 0;
+        wake_up_interruptible(&master->scan_queue);
+        ec_fsm_master_restart(fsm);
+        return;
+    }
+
+    if (master->debug_level)
+        EC_DBG("%u slaves responded to delay measuring.\n",
+                datagram->working_counter);
 
     EC_INFO("Scanning bus.\n");
 

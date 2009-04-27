@@ -43,7 +43,10 @@ digraph master {
     acknowledge -> action_configure [weight=10]
 
     clear_addresses [fontname="Helvetica"]
-    clear_addresses -> scan_slave [weight=10]
+    clear_addresses -> dc_measure_delays [weight=10]
+
+    dc_measure_delays [fontname="Helvetica"]
+    dc_measure_delays -> scan_slave [weight=10]
 
     scan_slave [fontname="Helvetica"]
     scan_slave -> start
