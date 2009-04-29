@@ -16,15 +16,21 @@ COMMANDS := \
 	data \
 	debug \
 	domains \
+	download \
+	foe_read \
+	foe_write \
+	graph \
 	master \
 	pdos \
+	reg_read \
+	reg_write \
 	sdos \
-	download \
-	upload \
-	slaves \
 	sii_read \
 	sii_write \
+	slaves \
 	states \
+	upload \
+	version \
 	xml
 
 EXT_PREFIX := external/ethercat_

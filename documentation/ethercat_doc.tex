@@ -2107,6 +2107,28 @@ sec.~\ref{sec:autonode} for how to install and configure it.
 
 %------------------------------------------------------------------------------
 
+\subsection{SDO Access}
+
+\lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_download}
+
+\lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_upload}
+
+%------------------------------------------------------------------------------
+
+\subsection{File-Access over EtherCAT}
+
+\lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_foe_read}
+
+\lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_foe_write}
+
+%------------------------------------------------------------------------------
+
+\subsection{Creating Topology Graphs}
+
+\lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_graph}
+
+%------------------------------------------------------------------------------
+
 \subsection{Master and Ethernet Devices}
 
 \lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_master}
@@ -2119,35 +2141,17 @@ sec.~\ref{sec:autonode} for how to install and configure it.
 
 %------------------------------------------------------------------------------
 
+\subsection{Register Access}
+
+\lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_reg_read}
+
+\lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_reg_write}
+
+%------------------------------------------------------------------------------
+
 \subsection{SDO Dictionary}
 
 \lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_sdos}
-
-%------------------------------------------------------------------------------
-
-\subsection{SDO Access}
-
-\lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_download}
-
-\lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_upload}
-
-%------------------------------------------------------------------------------
-
-\subsection{Slaves on the Bus}
-
-Slave information can be gathered with the subcommand \lstinline+slaves+:
-
-\lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_slaves}
-
-Below is a typical output:
-
-\begin{lstlisting}
-$ `\textbf{ethercat slaves}`
-0     0:0  PREOP  +  EK1100 Ethernet Kopplerklemme (2A E-Bus)
-1  5555:0  PREOP  +  EL3162 2K. Ana. Eingang 0-10V
-2  5555:1  PREOP  +  EL4102 2K. Ana. Ausgang 0-10V
-3  5555:2  PREOP  +  EL2004 4K. Dig. Ausgang 24V, 0,5A
-\end{lstlisting}
 
 %------------------------------------------------------------------------------
 
@@ -2205,9 +2209,33 @@ write operation may take a few seconds.
 
 %------------------------------------------------------------------------------
 
+\subsection{Slaves on the Bus}
+
+Slave information can be gathered with the subcommand \lstinline+slaves+:
+
+\lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_slaves}
+
+Below is a typical output:
+
+\begin{lstlisting}
+$ `\textbf{ethercat slaves}`
+0     0:0  PREOP  +  EK1100 Ethernet Kopplerklemme (2A E-Bus)
+1  5555:0  PREOP  +  EL3162 2K. Ana. Eingang 0-10V
+2  5555:1  PREOP  +  EL4102 2K. Ana. Ausgang 0-10V
+3  5555:2  PREOP  +  EL2004 4K. Dig. Ausgang 24V, 0,5A
+\end{lstlisting}
+
+%------------------------------------------------------------------------------
+
 \subsection{Requesting Application-Layer States}
 
 \lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_states}
+
+%------------------------------------------------------------------------------
+
+\subsection{Displaying the Master Version}
+
+\lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_version}
 
 %------------------------------------------------------------------------------
 
