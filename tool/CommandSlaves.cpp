@@ -266,7 +266,7 @@ void CommandSlaves::showSlaves(
             cout << "no" << endl;
         }
 
-        cout << "Port  Type  Link  Loop    Signal";
+        cout << "Port  Type  Link  Loop    Signal  NextSlave";
         if (si->dc_supported)
             cout << "  RxTime      Diff";
         cout << endl;
@@ -294,11 +294,18 @@ void CommandSlaves::showSlaves(
                 << (si->ports[i].dl_link ? "up" : "down")
                 << "  " << setw(6)
                 << (si->ports[i].dl_loop ? "closed" : "open")
-                << "  " << setw(3)
-                << (si->ports[i].dl_signal ? "yes" : "no");
+                << "  " << setw(6)
+                << (si->ports[i].dl_signal ? "yes" : "no")
+                << "  " << setw(9) << right;
+
+            if (si->next_slave[i] != 0xffff) {
+                cout << dec << si->next_slave[i];
+            } else {
+                cout << "-";
+            }
             
             if (si->dc_supported) {
-                cout << "     " << setw(10) << right;
+                cout << "  " << setw(10) << right;
                 if (si->ports[i].dl_signal) {
                     cout << dec << si->dc_receive_times[i];
                 } else {

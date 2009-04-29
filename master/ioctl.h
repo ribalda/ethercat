@@ -167,6 +167,7 @@ typedef struct {
     int16_t current_on_ebus;
     ec_slave_port_desc_t port_descs[EC_MAX_PORTS];
     ec_slave_port_t ports[EC_MAX_PORTS];
+    uint16_t next_slave[EC_MAX_PORTS];
     uint8_t fmmu_bit;
     uint8_t dc_supported;
     ec_slave_dc_range_t dc_range;

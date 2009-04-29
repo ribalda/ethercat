@@ -867,6 +867,9 @@ void ec_fsm_master_state_scan_slave(
 
 	// find DC reference clock
 	ec_master_find_dc_ref_clock(master);
+
+    // calculate bus topology
+    ec_master_calc_topology(master);
 	
     // Attach slave configurations
     ec_master_attach_slave_configs(master);

@@ -1373,6 +1373,57 @@ void ec_master_find_dc_ref_clock(
 	ec_datagram_frmw(&master->sync_datagram, ref_clock_addr, 0x0910, 4);
 }
 
+/*****************************************************************************/
+
+/** Calculates the bus topology; recursion function.
+ */
+int ec_master_calc_topology_rec(
+        ec_master_t *master, /**< EtherCAT master. */
+        ec_slave_t *port0_slave, /**< Slave at port 0. */
+        unsigned int *slave_position /**< Slave position. */
+		)
+{
+    ec_slave_t *slave = master->slaves + *slave_position;
+    unsigned int i;
+    int ret;
+
+    slave->next_slave[0] = port0_slave;
+
+    for (i = 1; i < EC_MAX_PORTS; i++) {
+        if (!slave->ports[i].dl_loop) {
+            *slave_position = *slave_position + 1;
+            if (*slave_position < master->slave_count) {
+                slave->next_slave[i] = master->slaves + *slave_position;
+                ret = ec_master_calc_topology_rec(master,
+                        slave, slave_position);
+                if (ret)
+                    return ret;
+            } else {
+                return -1;
+            }
+        }
+    }
+
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Calculates the bus topology.
+ */
+void ec_master_calc_topology(
+        ec_master_t *master /**< EtherCAT master. */
+		)
+{
+    unsigned int slave_position = 0;
+
+    if (master->slave_count == 0)
+        return;
+
+    if (ec_master_calc_topology_rec(master, NULL, &slave_position))
+        EC_ERR("Failed to calculate bus topology.\n");
+}
+
 /******************************************************************************
  *  Application interface
  *****************************************************************************/

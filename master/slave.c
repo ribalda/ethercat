@@ -97,6 +97,8 @@ void ec_slave_init(
         slave->sii.physical_layer[i] = 0xFF;
 
         slave->dc_receive_times[i] = 0U;
+
+        slave->next_slave[i] = NULL;
     }
 
     slave->base_fmmu_bit_operation = 0;

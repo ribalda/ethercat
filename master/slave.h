@@ -131,6 +131,7 @@ struct ec_slave
 
     // data link status
     ec_slave_port_t ports[EC_MAX_PORTS]; /**< Port link status. */
+    ec_slave_t *next_slave[EC_MAX_PORTS]; /**< Connected slaves. */
 
     // SII
     uint16_t *sii_words; /**< Complete SII image. */

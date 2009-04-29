@@ -262,6 +262,11 @@ int ec_cdev_ioctl_slave(
         data.ports[i].dl_loop = slave->ports[i].dl_loop;
         data.ports[i].dl_signal = slave->ports[i].dl_signal;
         data.dc_receive_times[i] = slave->dc_receive_times[i];
+        if (slave->next_slave[i]) {
+            data.next_slave[i] = slave->next_slave[i]->ring_position;
+        } else {
+            data.next_slave[i] = 0xffff;
+        }
     }
     data.fmmu_bit = slave->base_fmmu_bit_operation;
     data.dc_supported = slave->base_dc_supported;
