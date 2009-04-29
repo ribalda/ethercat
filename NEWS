@@ -34,6 +34,8 @@ Changes since 1.4.0:
   Burgstaller.
 * Clear slave list on link down.
 * Output device link state in 'ethercat master'.
+* Added 'ethercat graph' command which outputs the bus topology in
+  DOT language.
 
 Changes in 1.4.0:
 
