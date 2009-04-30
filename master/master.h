@@ -122,6 +122,7 @@ struct ec_master {
                                        reference clock to the master clock. */
     ec_datagram_t sync_datagram; /**< Datagram used for DC drift
                                    compensation. */
+    ec_slave_t *dc_ref_clock; /**< DC reference clock slave. */
     
     unsigned int scan_busy; /**< Current scan state. */
     unsigned int allow_scan; /**< \a True, if slave scanning is allowed. */
@@ -233,8 +234,7 @@ ec_domain_t *ecrt_master_create_domain_err(ec_master_t *);
 ec_slave_config_t *ecrt_master_slave_config_err(ec_master_t *, uint16_t,
         uint16_t, uint32_t, uint32_t);
 
-void ec_master_find_dc_ref_clock(ec_master_t *);
-void ec_master_calc_topology(ec_master_t *);
+void ec_master_calc_dc(ec_master_t *);
 
 /*****************************************************************************/
 

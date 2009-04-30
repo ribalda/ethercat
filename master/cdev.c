@@ -257,21 +257,23 @@ int ec_cdev_ioctl_slave(
     data.general_flags = slave->sii.general_flags;
     data.current_on_ebus = slave->sii.current_on_ebus;
     for (i = 0; i < EC_MAX_PORTS; i++) {
-        data.port_descs[i] = slave->base_ports[i];
-        data.ports[i].dl_link = slave->ports[i].dl_link;
-        data.ports[i].dl_loop = slave->ports[i].dl_loop;
-        data.ports[i].dl_signal = slave->ports[i].dl_signal;
-        data.dc_receive_times[i] = slave->dc_receive_times[i];
-        if (slave->next_slave[i]) {
-            data.next_slave[i] = slave->next_slave[i]->ring_position;
+        data.ports[i].desc = slave->ports[i].desc;
+        data.ports[i].link.link_up = slave->ports[i].link.link_up;
+        data.ports[i].link.loop_closed = slave->ports[i].link.loop_closed;
+        data.ports[i].link.signal_detected = slave->ports[i].link.signal_detected;
+        data.ports[i].receive_time = slave->ports[i].receive_time;
+        if (slave->ports[i].next_slave) {
+            data.ports[i].next_slave = slave->ports[i].next_slave->ring_position;
         } else {
-            data.next_slave[i] = 0xffff;
+            data.ports[i].next_slave = 0xffff;
         }
+        data.ports[i].delay_to_next_dc = slave->ports[i].delay_to_next_dc;
     }
     data.fmmu_bit = slave->base_fmmu_bit_operation;
     data.dc_supported = slave->base_dc_supported;
     data.dc_range = slave->base_dc_range;
     data.has_dc_system_time = slave->has_dc_system_time;
+    data.transition_delay = slave->transition_delay;
     data.al_state = slave->current_state;
     data.error_flag = slave->error_flag;
 

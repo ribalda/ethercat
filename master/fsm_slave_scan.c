@@ -311,7 +311,7 @@ void ec_fsm_slave_scan_state_base(
 
     octet = EC_READ_U8(datagram->data + 7);
     for (i = 0; i < EC_MAX_PORTS; i++) {
-        slave->base_ports[i] = (octet >> (2 * i)) & 0x03;
+        slave->ports[i].desc = (octet >> (2 * i)) & 0x03;
     }
     
     octet = EC_READ_U8(datagram->data + 8);
@@ -417,7 +417,7 @@ void ec_fsm_slave_scan_state_dc_times(
     }
 
     for (i = 0; i < EC_MAX_PORTS; i++) {
-        slave->dc_receive_times[i] = EC_READ_U32(datagram->data + 4 * i);
+        slave->ports[i].receive_time = EC_READ_U32(datagram->data + 4 * i);
     }
 
     ec_fsm_slave_scan_enter_datalink(fsm);
@@ -478,9 +478,9 @@ void ec_fsm_slave_scan_state_datalink(ec_fsm_slave_scan_t *fsm /**< slave state 
 
     dl_status = EC_READ_U16(datagram->data);
     for (i = 0; i < EC_MAX_PORTS; i++) {
-        slave->ports[i].dl_link = dl_status & (1 << (4 + i)) ? 1 : 0;
-        slave->ports[i].dl_loop = dl_status & (1 << (8 + i * 2)) ? 1 : 0;
-        slave->ports[i].dl_signal = dl_status & (1 << (9 + i * 2)) ? 1 : 0;
+        slave->ports[i].link.link_up = dl_status & (1 << (4 + i)) ? 1 : 0;
+        slave->ports[i].link.loop_closed = dl_status & (1 << (8 + i * 2)) ? 1 : 0;
+        slave->ports[i].link.signal_detected = dl_status & (1 << (9 + i * 2)) ? 1 : 0;
     }
 
     // Start fetching SII size

@@ -11,7 +11,6 @@ vim700: spelllang=en spell
 Version 1.5.0:
 
 * Distributed clocks:
-    - Delay calculation.
     - Use common application time offset when setting start times.
     - Check 32/64 bit operations.
     - Set system time offset only when application time available.

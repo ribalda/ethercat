@@ -89,22 +89,24 @@ void ec_slave_init(
     slave->base_sync_count = 0;
 
     for (i = 0; i < EC_MAX_PORTS; i++) {
-        slave->base_ports[i] = EC_PORT_NOT_IMPLEMENTED;
+        slave->ports[i].desc = EC_PORT_NOT_IMPLEMENTED;
 
-        slave->ports[i].dl_link = 0;
-        slave->ports[i].dl_loop = 0;
-        slave->ports[i].dl_signal = 0;
+        slave->ports[i].link.link_up = 0;
+        slave->ports[i].link.loop_closed = 0;
+        slave->ports[i].link.signal_detected = 0;
         slave->sii.physical_layer[i] = 0xFF;
 
-        slave->dc_receive_times[i] = 0U;
+        slave->ports[i].receive_time = 0U;
 
-        slave->next_slave[i] = NULL;
+        slave->ports[i].next_slave = NULL;
+        slave->ports[i].delay_to_next_dc = 0U;
     }
 
     slave->base_fmmu_bit_operation = 0;
     slave->base_dc_supported = 0;
     slave->base_dc_range = EC_DC_32;
     slave->has_dc_system_time = 0;
+    slave->transition_delay = 0U;
 
     slave->sii_words = NULL;
     slave->sii_nwords = 0;
@@ -737,6 +739,129 @@ void ec_slave_attach_pdo_names(
             ec_slave_find_names_for_pdo(slave, pdo);
         }
     }
+}
+
+/*****************************************************************************/
+
+/** Calculates the sum of round-trip-times of connected ports 1-3.
+ */
+uint32_t ec_slave_calc_rtt_sum(
+        ec_slave_t *slave /**< EtherCAT slave. */
+		)
+{
+    uint32_t rtt_sum = 0, rtt;
+    unsigned int i;
+    
+    for (i = 1; i < EC_MAX_PORTS; i++) {
+        if (slave->ports[i].next_slave) {
+            rtt = slave->ports[i].receive_time - slave->ports[i - 1].receive_time;
+            rtt_sum += rtt;
+        }
+    }
+
+    return rtt_sum;
+}
+
+/*****************************************************************************/
+
+/** Finds the next slave supporting DC delay measurement.
+ */
+ec_slave_t *ec_slave_find_next_dc_slave(
+        ec_slave_t *slave /**< EtherCAT slave. */
+		)
+{
+    ec_slave_t *dc_slave = NULL;
+
+    if (slave->base_dc_supported) {
+        dc_slave = slave;
+    } else {
+        unsigned int i;
+
+        for (i = 1; i < EC_MAX_PORTS; i++) {
+            ec_slave_t *next = slave->ports[i].next_slave;
+            if (next) {
+                dc_slave = ec_slave_find_next_dc_slave(next);
+                if (dc_slave)
+                    break;
+            }
+        }
+    }
+
+    return dc_slave;
+}
+
+/*****************************************************************************/
+
+/** Calculates the port transition delays.
+ */
+void ec_slave_calc_port_delays(
+        ec_slave_t *slave /**< EtherCAT slave. */
+		)
+{
+    unsigned int i;
+    ec_slave_t *next, *next_dc;
+    uint32_t rtt, next_rtt_sum;
+
+    if (!slave->base_dc_supported)
+        return;
+
+    for (i = 1; i < EC_MAX_PORTS; i++) {
+        next = slave->ports[i].next_slave;
+        if (!next)
+            continue;
+        next_dc = ec_slave_find_next_dc_slave(next);
+        if (!next_dc)
+            continue;
+
+        rtt = slave->ports[i].receive_time - slave->ports[i - 1].receive_time;
+        next_rtt_sum = ec_slave_calc_rtt_sum(next_dc);
+
+        slave->ports[i].delay_to_next_dc = (rtt - next_rtt_sum) / 2; // FIXME
+        next_dc->ports[0].delay_to_next_dc = (rtt - next_rtt_sum) / 2;
+
+#if 0
+        EC_DBG("delay %u:%u rtt=%u next_rtt_sum=%u delay=%u\n",
+                slave->ring_position, i, rtt, next_rtt_sum,
+                slave->ports[i].delay_to_next_dc);
+#endif
+    }
+}
+
+/*****************************************************************************/
+
+/** Calculates the bus topology; recursion function.
+ */
+void ec_slave_calc_transition_delays_rec(
+        ec_slave_t *slave, /**< Current slave. */
+        uint32_t *delay /**< Sum of delays. */
+		)
+{
+    unsigned int i;
+    ec_slave_t *next, *next_dc;
+
+#if 0
+    EC_DBG("%u: %u\n", slave->ring_position, *delay);
+#endif
+
+    slave->transition_delay = *delay;
+
+    for (i = 1; i < EC_MAX_PORTS; i++) {
+        ec_slave_port_t *port = &slave->ports[i];
+        next = port->next_slave;
+        if (!next)
+            continue;
+        next_dc = ec_slave_find_next_dc_slave(next);
+        if (!next_dc)
+            continue;
+
+        *delay = *delay + port->delay_to_next_dc;
+#if 0
+        EC_DBG("%u:%u %u\n", slave->ring_position, i, *delay);
+#endif
+        ec_slave_calc_transition_delays_rec(next_dc, delay);
+    }
+
+    *delay = *delay + slave->ports[0].delay_to_next_dc;
 }
 
 /*****************************************************************************/

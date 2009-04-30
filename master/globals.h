@@ -169,10 +169,10 @@ typedef enum {
 /** EtherCAT slave port information.
  */
 typedef struct {
-    uint8_t dl_link; /**< Link detected. */
-    uint8_t dl_loop; /**< Loop closed. */
-    uint8_t dl_signal; /**< Detected signal on RX port. */
-} ec_slave_port_t;
+    uint8_t link_up; /**< Link detected. */
+    uint8_t loop_closed; /**< Loop closed. */
+    uint8_t signal_detected; /**< Detected signal on RX port. */
+} ec_slave_port_link_t;
 
 /** EtherCAT slave distributed clocks range.
  */

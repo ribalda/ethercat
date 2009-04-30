@@ -72,7 +72,6 @@ void CommandGraph::execute(MasterDevice &m, const StringVector &args)
     SlaveVector slaves;
     ec_ioctl_slave_t slave;
     SlaveVector::const_iterator si;
-    string font("fontname=\"Helvetica\"");
     map<int, string> portMedia;
     map<int, string>::const_iterator mi;
     map<int, int> mediaWeights;
@@ -102,51 +101,84 @@ void CommandGraph::execute(MasterDevice &m, const StringVector &args)
         << endl
         << "strict graph bus {" << endl
         << "    rankdir=\"LR\"" << endl
+        << "    ranksep=0.8" << endl
+        << "    nodesep=0.8" << endl
+        << "    node [fontname=\"Helvetica\"]" << endl
+        << "    edge [fontname=\"Helvetica\",fontsize=\"10\"]" << endl
         << endl
-        << "    master [" << font << ",label=\"EtherCAT\\nMaster\"]" << endl;
+        << "    master [label=\"EtherCAT\\nMaster\"]" << endl;
 
     if (slaves.size()) {
-        cout << "    master -- slave0 [" << font;
-
-        mi = portMedia.find(slaves.front().port_descs[0]);
+        cout << "    master -- slave0"; 
+        mi = portMedia.find(slaves.front().ports[0].desc);
         if (mi != portMedia.end())
-            cout << ",label=\"" << mi->second << "\"";
+            cout << "[label=\"" << mi->second << "\"]";
 
-        cout << "]" << endl;
+        cout << endl;
     }
     cout << endl;
 
     for (si = slaves.begin(); si != slaves.end(); si++) {
-	    cout << "    slave" << si->position << " [" << font <<
-            ",shape=\"box\",label=\"" << si->position;
+	    cout << "    slave" << si->position << " [shape=\"box\""
+            << ",label=\"" << si->position;
         if (string(si->order).size())
             cout << "\\n" << si->order;
+        if (si->dc_supported) {
+            cout << "\\nDC: ";
+            if (si->has_dc_system_time) {
+                switch (si->dc_range) {
+                    case EC_DC_32:
+                        cout << "32 bit";
+                        break;
+                    case EC_DC_64:
+                        cout << "64 bit";
+                        break;
+                    default:
+                        break;
+                }
+            } else {
+                cout << "Delay meas.";
+            }
+            cout << "\\nDelay: " << si->transition_delay << " ns";
+        }
         cout << "\"]" << endl;
 
         for (i = 1; i < EC_MAX_PORTS; i++) {
-            if (si->next_slave[i] == 0xffff)
+            uint16_t next_pos = si->ports[i].next_slave;
+            ec_ioctl_slave_t *next = NULL;
+
+            if (next_pos == 0xffff)
                 continue;
 
-            cout << "    slave" << si->position << " -- "
-                << "slave" << si->next_slave[i] << " [" << font << ","
-                << "taillabel=\"" << i << "\"";
+            if (next_pos < slaves.size()) {
+                next = &slaves[next_pos];
+            } else {
+                cerr << "Invalid next slave pointer." << endl;
+            }
 
-            mi = portMedia.find(si->port_descs[i]);
-            if (mi == portMedia.end()) {
+            cout << "    slave" << si->position << " -- "
+                << "slave" << next_pos << " [taillabel=\"" << i;
+
+            if (si->dc_supported) {
+                cout << " [" << si->ports[i].delay_to_next_dc << "]";
+            }
+            cout << "\",headlabel=\"0";
+
+            if (next && next->dc_supported) {
+                cout << " [" << next->ports[0].delay_to_next_dc << "]";
+            }
+            cout << "\"";
+
+            mi = portMedia.find(si->ports[i].desc);
+            if (mi == portMedia.end() && next) {
                 /* Try medium of next-hop slave. */
-                unsigned int pos = si->next_slave[i];
-                if (pos < slaves.size()) {
-                    ec_ioctl_slave_t *next = &slaves[pos];
-                    mi = portMedia.find(next->port_descs[0]);
-                } else {
-                    cerr << "Invalid next slave pointer." << endl;
-                }
+                mi = portMedia.find(next->ports[0].desc);
             }
             
             if (mi != portMedia.end())
                 cout << ",label=\"" << mi->second << "\"";
 
-            wi = mediaWeights.find(si->port_descs[i]);
+            wi = mediaWeights.find(si->ports[i].desc);
             if (wi != mediaWeights.end())
                 cout << ",weight=\"" << wi->second << "\"";
             

@@ -77,6 +77,7 @@ static int ec_master_operation_thread(void *);
 #ifdef EC_EOE
 void ec_master_eoe_run(unsigned long);
 #endif
+void ec_master_find_dc_ref_clock(ec_master_t *);
 
 /*****************************************************************************/
 
@@ -341,6 +342,8 @@ void ec_master_clear_slave_configs(ec_master_t *master)
 void ec_master_clear_slaves(ec_master_t *master)
 {
     ec_slave_t *slave;
+
+    master->dc_ref_clock = NULL;
 
     for (slave = master->slaves;
             slave < master->slaves + master->slave_count;
@@ -1357,20 +1360,22 @@ void ec_master_find_dc_ref_clock(
         ec_master_t *master /**< EtherCAT master. */
 		)
 {
-	ec_slave_t *slave;
-	uint16_t ref_clock_addr = 0xffff;
+	ec_slave_t *slave, *ref = NULL;
 
     for (slave = master->slaves;
             slave < master->slaves + master->slave_count;
             slave++) {
-		if (slave->base_dc_supported && slave->has_dc_system_time) {
-			ref_clock_addr = slave->station_address;
-			break;
-		}
+        if (slave->base_dc_supported && slave->has_dc_system_time) {
+            ref = slave;
+            break;
+        }
     }
 
-	// This call always succeeds, because the datagram has been pre-allocated.
-	ec_datagram_frmw(&master->sync_datagram, ref_clock_addr, 0x0910, 4);
+    master->dc_ref_clock = ref;
+    
+    // This call always succeeds, because the datagram has been pre-allocated.
+    ec_datagram_frmw(&master->sync_datagram,
+            ref ? ref->station_address : 0xffff, 0x0910, 4);
 }
 
 /*****************************************************************************/
@@ -1387,13 +1392,13 @@ int ec_master_calc_topology_rec(
     unsigned int i;
     int ret;
 
-    slave->next_slave[0] = port0_slave;
+    slave->ports[0].next_slave = port0_slave;
 
     for (i = 1; i < EC_MAX_PORTS; i++) {
-        if (!slave->ports[i].dl_loop) {
+        if (!slave->ports[i].link.loop_closed) {
             *slave_position = *slave_position + 1;
             if (*slave_position < master->slave_count) {
-                slave->next_slave[i] = master->slaves + *slave_position;
+                slave->ports[i].next_slave = master->slaves + *slave_position;
                 ret = ec_master_calc_topology_rec(master,
                         slave, slave_position);
                 if (ret)
@@ -1422,6 +1427,45 @@ void ec_master_calc_topology(
 
     if (ec_master_calc_topology_rec(master, NULL, &slave_position))
         EC_ERR("Failed to calculate bus topology.\n");
+}
+
+/*****************************************************************************/
+
+/** Calculates the bus transition delays.
+ */
+void ec_master_calc_transition_delays(
+        ec_master_t *master /**< EtherCAT master. */
+		)
+{
+	ec_slave_t *slave;
+
+    for (slave = master->slaves;
+            slave < master->slaves + master->slave_count;
+            slave++) {
+        ec_slave_calc_port_delays(slave);
+    }
+
+    if (master->dc_ref_clock) {
+        uint32_t delay = 0;
+        ec_slave_calc_transition_delays_rec(master->dc_ref_clock, &delay);
+    }
+}
+
+/*****************************************************************************/
+
+/** Distributed-clocks calculations.
+ */
+void ec_master_calc_dc(
+        ec_master_t *master /**< EtherCAT master. */
+		)
+{
+	// find DC reference clock
+	ec_master_find_dc_ref_clock(master);
+
+    // calculate bus topology
+    ec_master_calc_topology(master);
+
+    ec_master_calc_transition_delays(master);
 }
 
 /******************************************************************************

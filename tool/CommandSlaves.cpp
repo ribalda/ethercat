@@ -262,18 +262,20 @@ void CommandSlaves::showSlaves(
             } else {
                 cout << "yes, delay measurement only" << endl;
             }
+            cout << "  DC transition delay: "
+                << si->transition_delay << " ns" << endl;
         } else {
             cout << "no" << endl;
         }
 
         cout << "Port  Type  Link  Loop    Signal  NextSlave";
         if (si->dc_supported)
-            cout << "  RxTime      Diff";
+            cout << "  RxTime [ns]  Diff [ns]   NextDc [ns]";
         cout << endl;
             
         for (i = 0; i < EC_MAX_PORTS; i++) {
             cout << "   " << i << "  " << setfill(' ') << left << setw(4);
-            switch (si->port_descs[i]) {
+            switch (si->ports[i].desc) {
                 case EC_PORT_NOT_IMPLEMENTED:
                     cout << "N/A";
                     break;
@@ -291,29 +293,35 @@ void CommandSlaves::showSlaves(
             }
 
             cout << "  " << setw(4)
-                << (si->ports[i].dl_link ? "up" : "down")
+                << (si->ports[i].link.link_up ? "up" : "down")
                 << "  " << setw(6)
-                << (si->ports[i].dl_loop ? "closed" : "open")
+                << (si->ports[i].link.loop_closed ? "closed" : "open")
                 << "  " << setw(6)
-                << (si->ports[i].dl_signal ? "yes" : "no")
+                << (si->ports[i].link.signal_detected ? "yes" : "no")
                 << "  " << setw(9) << right;
 
-            if (si->next_slave[i] != 0xffff) {
-                cout << dec << si->next_slave[i];
+            if (si->ports[i].next_slave != 0xffff) {
+                cout << dec << si->ports[i].next_slave;
             } else {
                 cout << "-";
             }
             
             if (si->dc_supported) {
-                cout << "  " << setw(10) << right;
-                if (si->ports[i].dl_signal) {
-                    cout << dec << si->dc_receive_times[i];
+                cout << "  " << setw(11) << right;
+                if (!si->ports[i].link.loop_closed) {
+                    cout << dec << si->ports[i].receive_time;
                 } else {
                     cout << "-";
                 }
                 cout << "  " << setw(10);
-                if (si->ports[i].dl_signal) {
-                    cout << si->dc_receive_times[i] - si->dc_receive_times[0];
+                if (!si->ports[i].link.loop_closed) {
+                    cout << si->ports[i].receive_time - si->ports[0].receive_time;
+                } else {
+                    cout << "-";
+                }
+                cout << "  " << setw(10);
+                if (!si->ports[i].link.loop_closed) {
+                    cout << si->ports[i].delay_to_next_dc;
                 } else {
                     cout << "-";
                 }

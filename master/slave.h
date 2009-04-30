@@ -48,6 +48,20 @@
 
 /*****************************************************************************/
 
+/** Slave port.
+ */
+typedef struct {
+    ec_slave_port_desc_t desc; /**< Port descriptors. */
+    ec_slave_port_link_t link; /**< Port link status. */
+    ec_slave_t *next_slave; /**< Connected slaves. */
+    uint32_t receive_time; /**< Port receive times for delay
+                                            measurement. */
+    uint32_t delay_to_next_dc; /**< Delay to next slave with DC support behind
+                                 this port [ns]. */
+} ec_slave_port_t;
+
+/*****************************************************************************/
+
 /** Slave information interface data.
  */
 typedef struct {
@@ -102,6 +116,8 @@ struct ec_slave
     uint16_t ring_position; /**< Ring position. */
     uint16_t station_address; /**< Configured station address. */
 
+    ec_slave_port_t ports[EC_MAX_PORTS]; /**< Ports. */
+
     // configuration
     ec_slave_config_t *config; /**< Current configuration. */
     ec_slave_state_t requested_state; /**< Requested application state. */
@@ -119,19 +135,14 @@ struct ec_slave
     uint16_t base_build; /**< Build number. */
     uint8_t base_fmmu_count; /**< Number of supported FMMUs. */
     uint8_t base_sync_count; /**< Number of supported sync managers. */
-    ec_slave_port_desc_t base_ports[EC_MAX_PORTS]; /**< Port descriptors. */
     uint8_t base_fmmu_bit_operation; /**< FMMU bit operation is supported. */
     uint8_t base_dc_supported; /**< Distributed clocks are supported. */
     ec_slave_dc_range_t base_dc_range; /**< DC range. */
     uint8_t has_dc_system_time; /**< The slave supports the DC system time
                                   register. Otherwise it can only be used for
                                   delay measurement. */
-    uint32_t dc_receive_times[EC_MAX_PORTS]; /**< Port receive times for delay
-                                               measurement. */
-
-    // data link status
-    ec_slave_port_t ports[EC_MAX_PORTS]; /**< Port link status. */
-    ec_slave_t *next_slave[EC_MAX_PORTS]; /**< Connected slaves. */
+    uint32_t transition_delay; /**< DC transition delay (from reference
+                                 clock). */
 
     // SII
     uint16_t *sii_words; /**< Complete SII image. */
@@ -174,6 +185,9 @@ const ec_sdo_t *ec_slave_get_sdo_by_pos_const(const ec_slave_t *, uint16_t);
 uint16_t ec_slave_sdo_count(const ec_slave_t *);
 const ec_pdo_t *ec_slave_find_pdo(const ec_slave_t *, uint16_t);
 void ec_slave_attach_pdo_names(ec_slave_t *);
+
+void ec_slave_calc_port_delays(ec_slave_t *);
+void ec_slave_calc_transition_delays_rec(ec_slave_t *, uint32_t *);
 
 /*****************************************************************************/
 

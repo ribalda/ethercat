@@ -165,14 +165,18 @@ typedef struct {
     ec_sii_coe_details_t coe_details;
     ec_sii_general_flags_t general_flags;
     int16_t current_on_ebus;
-    ec_slave_port_desc_t port_descs[EC_MAX_PORTS];
-    ec_slave_port_t ports[EC_MAX_PORTS];
-    uint16_t next_slave[EC_MAX_PORTS];
+    struct {
+        ec_slave_port_desc_t desc;
+        ec_slave_port_link_t link;
+        uint32_t receive_time;
+        uint16_t next_slave;
+        uint32_t delay_to_next_dc;
+    } ports[EC_MAX_PORTS];
     uint8_t fmmu_bit;
     uint8_t dc_supported;
     ec_slave_dc_range_t dc_range;
     uint8_t has_dc_system_time;
-    uint32_t dc_receive_times[EC_MAX_PORTS];
+    uint32_t transition_delay;
     uint8_t al_state;
     uint8_t error_flag;
     uint8_t sync_count;
