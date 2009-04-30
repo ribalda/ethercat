@@ -438,9 +438,10 @@ void ec_fsm_slave_config_state_dc_read_offset(
                 slave->ring_position, system_time, old_offset,
                 slave->master->app_time, new_offset);
 
-    // set DC system time offset
-    ec_datagram_fpwr(datagram, slave->station_address, 0x0920, 8);
+    // set DC system time offset and transmission delay
+    ec_datagram_fpwr(datagram, slave->station_address, 0x0920, 12);
     EC_WRITE_U64(datagram->data, new_offset);
+	EC_WRITE_U32(datagram->data + 8, slave->transmission_delay);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_slave_config_state_dc_write_offset;
 }
