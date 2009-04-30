@@ -263,7 +263,7 @@ void CommandSlaves::showSlaves(
                 cout << "yes, delay measurement only" << endl;
             }
             cout << "  DC system time transmission delay: "
-                << si->transmission_delay << " ns" << endl;
+                << dec << si->transmission_delay << " ns" << endl;
         } else {
             cout << "no" << endl;
         }
