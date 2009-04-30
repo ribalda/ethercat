@@ -159,35 +159,35 @@ void CommandRegRead::execute(MasterDevice &m, const StringVector &args)
 	}
 
     cout << setfill('0');
-    if (!dataType || dataType->name == "string") {
+    if (!dataType || string(dataType->name) == "string") {
         uint16_t i;
         for (i = 0; i < data.length; i++) {
             cout << data.data[i];
         }
         if (dataType)
             cout << endl;
-    } else if (dataType->name == "int8") {
+    } else if (string(dataType->name) == "int8") {
         int val = (int) *data.data;
         cout << "0x" << hex << setw(2) << val << " " << dec << val << endl;
-    } else if (dataType->name == "int16") {
+    } else if (string(dataType->name) == "int16") {
         int16_t val = le16_to_cpup(data.data);
         cout << "0x" << hex << setw(4) << val << " " << dec << val << endl;
-    } else if (dataType->name == "int32") {
+    } else if (string(dataType->name) == "int32") {
         int32_t val = le32_to_cpup(data.data);
         cout << "0x" << hex << setw(8) << val << " " << dec << val << endl;
-    } else if (dataType->name == "int64") {
+    } else if (string(dataType->name) == "int64") {
         int64_t val = le64_to_cpup(data.data);
         cout << "0x" << hex << setw(16) << val << " " << dec << val << endl;
-    } else if (dataType->name == "uint8") {
+    } else if (string(dataType->name) == "uint8") {
         unsigned int val = (unsigned int) *data.data;
         cout << "0x" << hex << setw(2) << val << " " << dec << val << endl;
-    } else if (dataType->name == "uint16") {
+    } else if (string(dataType->name) == "uint16") {
         uint16_t val = le16_to_cpup(data.data);
         cout << "0x" << hex << setw(4) << val << " " << dec << val << endl;
-    } else if (dataType->name == "uint32") {
+    } else if (string(dataType->name) == "uint32") {
         uint32_t val = le32_to_cpup(data.data);
         cout << "0x" << hex << setw(8) << val << " " << dec << val << endl;
-    } else if (dataType->name == "uint64") {
+    } else if (string(dataType->name) == "uint64") {
         uint64_t val = le64_to_cpup(data.data);
         cout << "0x" << hex << setw(16) << val << " " << dec << val << endl;
     } else { // raw

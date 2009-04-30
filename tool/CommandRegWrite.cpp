@@ -132,44 +132,44 @@ void CommandRegWrite::execute(MasterDevice &m, const StringVector &args)
 		strValue.exceptions(ios::failbit);
 
 		try {
-			if (dataType->name == "int8") {
+			if (string(dataType->name) == "int8") {
 				int16_t val; // uint8_t is interpreted as char
 				strValue >> val;
 				if (val > 127 || val < -128)
 					throw ios::failure("Value out of range");
 				*data.data = (int8_t) val;
-			} else if (dataType->name == "int16") {
+			} else if (string(dataType->name) == "int16") {
 				int16_t val;
 				strValue >> val;
 				*(int16_t *) data.data = cpu_to_le16(val);
-			} else if (dataType->name == "int32") {
+			} else if (string(dataType->name) == "int32") {
 				int32_t val;
 				strValue >> val;
 				*(int32_t *) data.data = cpu_to_le32(val);
-			} else if (dataType->name == "int64") {
+			} else if (string(dataType->name) == "int64") {
 				int64_t val;
 				strValue >> val;
 				*(int64_t *) data.data = cpu_to_le64(val);
-			} else if (dataType->name == "uint8") {
+			} else if (string(dataType->name) == "uint8") {
 				uint16_t val; // uint8_t is interpreted as char
 				strValue >> val;
 				if (val > 0xff)
 					throw ios::failure("Value out of range");
 				*data.data = (uint8_t) val;
-			} else if (dataType->name == "uint16") {
+			} else if (string(dataType->name) == "uint16") {
 				uint16_t val;
 				strValue >> val;
 				*(uint16_t *) data.data = cpu_to_le16(val);
-			} else if (dataType->name == "uint32") {
+			} else if (string(dataType->name) == "uint32") {
 				uint32_t val;
 				strValue >> val;
 				*(uint32_t *) data.data = cpu_to_le32(val);
-			} else if (dataType->name == "uint64") {
+			} else if (string(dataType->name) == "uint64") {
 				uint64_t val;
 				strValue >> val;
 				*(uint64_t *) data.data = cpu_to_le64(val);
-			} else if (dataType->name == "string" ||
-					dataType->name == "octet_string") {
+			} else if (string(dataType->name) == "string" ||
+					string(dataType->name) == "octet_string") {
 				data.length = strValue.str().size();
 				if (!data.length) {
 					err << "Zero-size string now allowed!";
