@@ -106,7 +106,7 @@ void ec_slave_init(
     slave->base_dc_supported = 0;
     slave->base_dc_range = EC_DC_32;
     slave->has_dc_system_time = 0;
-    slave->transition_delay = 0U;
+    slave->transmission_delay = 0U;
 
     slave->sii_words = NULL;
     slave->sii_nwords = 0;
@@ -792,7 +792,7 @@ ec_slave_t *ec_slave_find_next_dc_slave(
 
 /*****************************************************************************/
 
-/** Calculates the port transition delays.
+/** Calculates the port transmission delays.
  */
 void ec_slave_calc_port_delays(
         ec_slave_t *slave /**< EtherCAT slave. */
@@ -829,9 +829,9 @@ void ec_slave_calc_port_delays(
 
 /*****************************************************************************/
 
-/** Calculates the bus topology; recursion function.
+/** Recursively calculates transmission delays.
  */
-void ec_slave_calc_transition_delays_rec(
+void ec_slave_calc_transmission_delays_rec(
         ec_slave_t *slave, /**< Current slave. */
         uint32_t *delay /**< Sum of delays. */
 		)
@@ -843,7 +843,7 @@ void ec_slave_calc_transition_delays_rec(
     EC_DBG("%u: %u\n", slave->ring_position, *delay);
 #endif
 
-    slave->transition_delay = *delay;
+    slave->transmission_delay = *delay;
 
     for (i = 1; i < EC_MAX_PORTS; i++) {
         ec_slave_port_t *port = &slave->ports[i];
@@ -858,7 +858,7 @@ void ec_slave_calc_transition_delays_rec(
 #if 0
         EC_DBG("%u:%u %u\n", slave->ring_position, i, *delay);
 #endif
-        ec_slave_calc_transition_delays_rec(next_dc, delay);
+        ec_slave_calc_transmission_delays_rec(next_dc, delay);
     }
 
     *delay = *delay + slave->ports[0].delay_to_next_dc;

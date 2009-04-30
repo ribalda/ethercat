@@ -139,7 +139,7 @@ void CommandGraph::execute(MasterDevice &m, const StringVector &args)
             } else {
                 cout << "Delay meas.";
             }
-            cout << "\\nDelay: " << si->transition_delay << " ns";
+            cout << "\\nDelay: " << si->transmission_delay << " ns";
         }
         cout << "\"]" << endl;
 

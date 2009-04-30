@@ -141,8 +141,8 @@ struct ec_slave
     uint8_t has_dc_system_time; /**< The slave supports the DC system time
                                   register. Otherwise it can only be used for
                                   delay measurement. */
-    uint32_t transition_delay; /**< DC transition delay (from reference
-                                 clock). */
+    uint32_t transmission_delay; /**< DC system time transmission delay
+                                   (offset from reference clock). */
 
     // SII
     uint16_t *sii_words; /**< Complete SII image. */
@@ -187,7 +187,7 @@ const ec_pdo_t *ec_slave_find_pdo(const ec_slave_t *, uint16_t);
 void ec_slave_attach_pdo_names(ec_slave_t *);
 
 void ec_slave_calc_port_delays(ec_slave_t *);
-void ec_slave_calc_transition_delays_rec(ec_slave_t *, uint32_t *);
+void ec_slave_calc_transmission_delays_rec(ec_slave_t *, uint32_t *);
 
 /*****************************************************************************/
 

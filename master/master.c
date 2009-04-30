@@ -1431,9 +1431,9 @@ void ec_master_calc_topology(
 
 /*****************************************************************************/
 
-/** Calculates the bus transition delays.
+/** Calculates the bus transmission delays.
  */
-void ec_master_calc_transition_delays(
+void ec_master_calc_transmission_delays(
         ec_master_t *master /**< EtherCAT master. */
 		)
 {
@@ -1447,7 +1447,7 @@ void ec_master_calc_transition_delays(
 
     if (master->dc_ref_clock) {
         uint32_t delay = 0;
-        ec_slave_calc_transition_delays_rec(master->dc_ref_clock, &delay);
+        ec_slave_calc_transmission_delays_rec(master->dc_ref_clock, &delay);
     }
 }
 
@@ -1465,7 +1465,7 @@ void ec_master_calc_dc(
     // calculate bus topology
     ec_master_calc_topology(master);
 
-    ec_master_calc_transition_delays(master);
+    ec_master_calc_transmission_delays(master);
 }
 
 /******************************************************************************

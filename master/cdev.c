@@ -273,7 +273,7 @@ int ec_cdev_ioctl_slave(
     data.dc_supported = slave->base_dc_supported;
     data.dc_range = slave->base_dc_range;
     data.has_dc_system_time = slave->has_dc_system_time;
-    data.transition_delay = slave->transition_delay;
+    data.transmission_delay = slave->transmission_delay;
     data.al_state = slave->current_state;
     data.error_flag = slave->error_flag;
 
