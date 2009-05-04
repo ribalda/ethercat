@@ -517,6 +517,7 @@ AC_CONFIG_FILES([
         examples/user/Makefile
         include/Makefile
         lib/Makefile
+        m4/Makefile
         master/Kbuild
         master/Makefile
         script/Makefile
