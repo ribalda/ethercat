@@ -51,6 +51,7 @@ DIST_SUBDIRS = \
     examples \
     include \
     lib \
+    m4 \
     master \
     script \
     tool
