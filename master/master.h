@@ -118,6 +118,8 @@ struct ec_master {
     struct list_head configs; /**< List of slave configurations. */
     
     u64 app_time; /**< Time of the last ecrt_master_sync() call. */
+    u64 app_start_time; /**< Application start time. */
+    u8 has_start_time; /**< Start time already taken. */
     ec_datagram_t ref_sync_datagram; /**< Datagram used for synchronizing the
                                        reference clock to the master clock. */
     ec_datagram_t sync_datagram; /**< Datagram used for DC drift

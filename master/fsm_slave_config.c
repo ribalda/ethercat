@@ -34,6 +34,8 @@
 
 /*****************************************************************************/
 
+#include <asm/div64.h>
+
 #include "globals.h"
 #include "master.h"
 #include "mailbox.h"
@@ -1063,6 +1065,7 @@ void ec_fsm_slave_config_state_dc_cycle(
 {
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
+    ec_master_t *master = slave->master;
     ec_slave_config_t *config = slave->config;
     u64 start_time;
 
@@ -1092,9 +1095,38 @@ void ec_fsm_slave_config_state_dc_cycle(
     }
 
     // set DC start time
-    start_time = slave->master->app_time +
-        config->dc_sync_shift_times[0] + 100000000ULL; // now + shift + x ns
-    if (slave->master->debug_level)
+    start_time = master->app_time + 100000000ULL; // now + X ns
+    // FIXME use slave's local system time here?
+
+    if (config->dc_sync_cycle_times[0]) {
+        // find correct phase
+        if (master->has_start_time) {
+            u32 cycle_time, shift_time, remainder;
+            u64 start, diff;
+
+            cycle_time = config->dc_sync_cycle_times[0];
+            shift_time = config->dc_sync_shift_times[0];
+            diff = start_time - master->app_start_time;
+            remainder = do_div(diff, cycle_time);
+
+            start = start_time + cycle_time - remainder + shift_time;
+
+            if (master->debug_level) {
+                EC_DBG("app_start_time=%llu\n", master->app_start_time);
+                EC_DBG("    start_time=%llu\n", start_time);
+                EC_DBG("    cycle_time=%u\n", cycle_time);
+                EC_DBG("    shift_time=%u\n", shift_time);
+                EC_DBG("     remainder=%u\n", remainder);
+                EC_DBG("         start=%llu\n", start);
+            }
+            start_time = start;
+        } else {
+            EC_WARN("No application time supplied. Cyclic start time will "
+                    "not be in phase for slave %u.", slave->ring_position);
+        }
+    }
+
+    if (master->debug_level)
         EC_DBG("Slave %u: Setting DC cyclic operation start time to %llu.\n",
                 slave->ring_position, start_time);
 

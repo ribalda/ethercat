@@ -130,6 +130,8 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     INIT_LIST_HEAD(&master->configs);
 
 	master->app_time = 0ULL;
+	master->app_start_time = 0ULL;
+	master->has_start_time = 0;
 
     master->scan_busy = 0;
     master->allow_scan = 1;
@@ -626,6 +628,8 @@ void ec_master_leave_operation_phase(ec_master_t *master
 #endif
 
     master->app_time = 0ULL;
+    master->app_start_time = 0ULL;
+    master->has_start_time = 0;
 
     if (ec_master_thread_start(master, ec_master_idle_thread,
                 "EtherCAT-IDLE"))
@@ -1748,6 +1752,11 @@ void ecrt_master_state(const ec_master_t *master, ec_master_state_t *state)
 void ecrt_master_application_time(ec_master_t *master, uint64_t app_time)
 {
     master->app_time = app_time;
+
+    if (unlikely(!master->has_start_time)) {
+        master->app_start_time = app_time;
+        master->has_start_time = 1;
+    }
 }
 
 /*****************************************************************************/
