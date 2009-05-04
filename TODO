@@ -13,6 +13,7 @@ Version 1.5.0:
 * Distributed clocks:
     - Check 32/64 bit operations.
     - Use vendor correction factors when calculating transmission delays.
+    - Use SYNC1 generation.
 * Fix unloading problem of ec_e100 driver.
 * Use ec_datagram_zero() where possible.
 * Fix arguments of reg_read.
