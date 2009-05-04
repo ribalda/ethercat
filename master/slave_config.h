@@ -66,9 +66,8 @@ struct ec_slave_config {
     ec_fmmu_config_t fmmu_configs[EC_MAX_FMMUS]; /**< FMMU configurations. */
     uint8_t used_fmmus; /**< Number of FMMUs used. */
 
-	uint16_t dc_assign_activate; /**< Vendor-specific AssignActivate word. */
-	uint32_t dc_sync_cycle_times[2]; /**< SYNC[0,1] cycle times. */
-	uint32_t dc_sync_shift_times[2]; /**< SYNC[0,1] shift times. */
+    uint16_t dc_assign_activate; /**< Vendor-specific AssignActivate word. */
+    ec_sync_signal_t dc_sync[EC_SYNC_SIGNAL_COUNT]; /**< DC sync signals. */
 
     struct list_head sdo_configs; /**< List of SDO configurations. */
     struct list_head sdo_requests; /**< List of SDO requests. */

@@ -42,12 +42,12 @@
  * Changes in version 1.5:
  *
  * - Added the distributed clocks feature and the respective methods
- *   ecrt_slave_config_dc_assign_activate(),
- *   ecrt_slave_config_dc_sync_cycle_times() and
- *   ecrt_slave_config_dc_sync_shift_times() to configure a slave for cyclic
- *   operation, and ecrt_master_sync_reference_clock() and
- *   ecrt_master_sync_slave_clocks() for drift compensation. The
- *   EC_TIMEVAL2NANO() macro can be used for epoch time conversion.
+ *   ecrt_slave_config_dc_assign_activate() and
+ *   ecrt_slave_config_dc_sync_signals() to configure a slave for cyclic
+ *   operation, and ecrt_master_application_time(),
+ *   ecrt_master_sync_reference_clock() and  ecrt_master_sync_slave_clocks()
+ *   for offset and drift compensation. The EC_TIMEVAL2NANO() macro can be
+ *   used for epoch time conversion.
  * - Changed the meaning of the negative return values of
  *   ecrt_slave_config_reg_pdo_entry() and ecrt_slave_config_sdo*().
  * - Imlemented the Vendor-specific over EtherCAT mailbox protocol. See
@@ -733,20 +733,14 @@ void ecrt_slave_config_dc_assign_activate(
         uint16_t assign_activate /**< AssignActivate word. */
 		);
 
-/** Sets the cycle times for the SYNC0 and SYNC1 signals.
+/** Sets the cycle and shift times for the sync signals.
  */
-void ecrt_slave_config_dc_sync_cycle_times(
+void ecrt_slave_config_dc_sync_signals(
 		ec_slave_config_t *sc, /**< Slave configuration. */
-        uint32_t sync0_cycle_time, /**< SYNC0 cycle time [ns]. */
-		uint32_t sync1_cycle_time /**< SYNC1 cycle time [ns]. */
-		);
-
-/** Sets the shift times for the SYNC0 and SYNC1 signals.
- */
-void ecrt_slave_config_dc_sync_shift_times(
-		ec_slave_config_t *sc, /**< Slave configuration. */
-        uint32_t sync0_shift_time, /**< SYNC0 shift time [ns]. */
-		uint32_t sync1_shift_time /**< SYNC1 shift time [ns]. */
+        uint32_t sync0_cycle, /**< SYNC0 cycle time [ns]. */
+		uint32_t sync0_shift, /**< SYNC0 shift time [ns]. */
+        uint32_t sync1_cycle, /**< SYNC1 cycle time [ns]. */
+		uint32_t sync1_shift /**< SYNC1 shift time [ns]. */
 		);
 
 /** Add an SDO configuration.

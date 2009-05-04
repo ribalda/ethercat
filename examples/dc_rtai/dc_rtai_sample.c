@@ -329,8 +329,7 @@ int __init init_mod(void)
 #if 1
     // configure SYNC signals for this slave
 	ecrt_slave_config_dc_assign_activate(sc, 0x0700);
-	ecrt_slave_config_dc_sync_cycle_times(sc, 1000000, 0);
-	ecrt_slave_config_dc_sync_shift_times(sc,  440000, 0);
+	ecrt_slave_config_dc_sync_signals(sc, 1000000, 440000, 0, 0);
 #endif
 
     printk(KERN_INFO PFX "Activating master...\n");

@@ -1045,8 +1045,8 @@ void ec_fsm_slave_config_enter_dc_cycle(
 
         // set DC cycle times
         ec_datagram_fpwr(datagram, slave->station_address, 0x09A0, 8);
-        EC_WRITE_U32(datagram->data, config->dc_sync_cycle_times[0]);
-        EC_WRITE_U32(datagram->data + 4, config->dc_sync_cycle_times[1]);
+        EC_WRITE_U32(datagram->data, config->dc_sync[0].cycle_time);
+        EC_WRITE_U32(datagram->data + 4, config->dc_sync[1].cycle_time);
         fsm->retries = EC_FSM_RETRIES;
         fsm->state = ec_fsm_slave_config_state_dc_cycle;
     } else {
@@ -1067,6 +1067,7 @@ void ec_fsm_slave_config_state_dc_cycle(
     ec_slave_t *slave = fsm->slave;
     ec_master_t *master = slave->master;
     ec_slave_config_t *config = slave->config;
+    ec_sync_signal_t *sync0 = &config->dc_sync[0];
     u64 start_time;
 
     if (!config) { // config removed in the meantime
@@ -1098,24 +1099,23 @@ void ec_fsm_slave_config_state_dc_cycle(
     start_time = master->app_time + 100000000ULL; // now + X ns
     // FIXME use slave's local system time here?
 
-    if (config->dc_sync_cycle_times[0]) {
+    if (sync0->cycle_time) {
         // find correct phase
         if (master->has_start_time) {
-            u32 cycle_time, shift_time, remainder;
-            u64 start, diff;
+            u64 diff, start;
+            u32 remainder;
 
-            cycle_time = config->dc_sync_cycle_times[0];
-            shift_time = config->dc_sync_shift_times[0];
             diff = start_time - master->app_start_time;
-            remainder = do_div(diff, cycle_time);
+            remainder = do_div(diff, sync0->cycle_time);
 
-            start = start_time + cycle_time - remainder + shift_time;
+            start = start_time +
+                sync0->cycle_time - remainder + sync0->shift_time;
 
             if (master->debug_level) {
                 EC_DBG("app_start_time=%llu\n", master->app_start_time);
                 EC_DBG("    start_time=%llu\n", start_time);
-                EC_DBG("    cycle_time=%u\n", cycle_time);
-                EC_DBG("    shift_time=%u\n", shift_time);
+                EC_DBG("    cycle_time=%u\n", sync0->cycle_time);
+                EC_DBG("    shift_time=%u\n", sync0->shift_time);
                 EC_DBG("     remainder=%u\n", remainder);
                 EC_DBG("         start=%llu\n", start);
             }

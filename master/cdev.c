@@ -1940,7 +1940,7 @@ int ec_cdev_ioctl_sc_dc_assign(
 
 /** Sets the DC cycle times.
  */
-int ec_cdev_ioctl_sc_dc_cycle(
+int ec_cdev_ioctl_sc_dc_sync_signals(
         ec_master_t *master, /**< EtherCAT master. */
         unsigned long arg, /**< ioctl() argument. */
         ec_cdev_priv_t *priv /**< Private data structure of file handle. */
@@ -1963,41 +1963,11 @@ int ec_cdev_ioctl_sc_dc_cycle(
         return -ENOENT;
     }
 
-    ecrt_slave_config_dc_sync_cycle_times(sc, data.cycle[0], data.cycle[1]);
-
-    up(&master->master_sem);
-
-    return 0;
-}
-
-/*****************************************************************************/
-
-/** Sets the DC shift times.
- */
-int ec_cdev_ioctl_sc_dc_shift(
-        ec_master_t *master, /**< EtherCAT master. */
-        unsigned long arg, /**< ioctl() argument. */
-        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
-        )
-{
-    ec_ioctl_sc_dc_t data;
-    ec_slave_config_t *sc;
-
-	if (unlikely(!priv->requested))
-        return -EPERM;
-
-    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
-        return -EFAULT;
-
-    if (down_interruptible(&master->master_sem))
-        return -EINTR;
-
-    if (!(sc = ec_master_get_config(master, data.config_index))) {
-        up(&master->master_sem);
-        return -ENOENT;
-    }
-
-    ecrt_slave_config_dc_sync_shift_times(sc, data.shift[0], data.shift[1]);
+    ecrt_slave_config_dc_sync_signals(sc,
+            data.sync[0].cycle_time,
+            data.sync[0].shift_time,
+            data.sync[1].cycle_time,
+            data.sync[1].shift_time);
 
     up(&master->master_sem);
 
@@ -3229,14 +3199,10 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             if (!(filp->f_mode & FMODE_WRITE))
 				return -EPERM;
 			return ec_cdev_ioctl_sc_dc_assign(master, arg, priv);
-        case EC_IOCTL_SC_DC_CYCLE:
+        case EC_IOCTL_SC_DC_SYNC:
             if (!(filp->f_mode & FMODE_WRITE))
 				return -EPERM;
-			return ec_cdev_ioctl_sc_dc_cycle(master, arg, priv);
-        case EC_IOCTL_SC_DC_SHIFT:
-            if (!(filp->f_mode & FMODE_WRITE))
-				return -EPERM;
-			return ec_cdev_ioctl_sc_dc_shift(master, arg, priv);
+			return ec_cdev_ioctl_sc_dc_sync_signals(master, arg, priv);
         case EC_IOCTL_SC_SDO:
             if (!(filp->f_mode & FMODE_WRITE))
 				return -EPERM;

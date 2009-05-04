@@ -240,8 +240,7 @@ int main(int argc, char **argv)
 #if 1
     // configure SYNC signals for this slave
 	ecrt_slave_config_dc_assign_activate(sc, 0x0700);
-	ecrt_slave_config_dc_sync_cycle_times(sc, 10000000, 0);
-	ecrt_slave_config_dc_sync_shift_times(sc,  4400000, 0);
+	ecrt_slave_config_dc_sync_signals(sc, 10000000, 4400000, 0, 0);
 #endif
 
     printf("Activating master...\n");

@@ -102,6 +102,9 @@
 /** Size of an FMMU configuration page. */
 #define EC_FMMU_PAGE_SIZE 16
 
+/** Number of DC sync signals. */
+#define EC_SYNC_SIGNAL_COUNT 2
+
 /** Slave state mask.
  *
  * Apply this mask to a slave state byte to get the slave state without
@@ -181,6 +184,13 @@ typedef enum {
     EC_DC_64 /*< 64 bit for system time, system time offset and
                port 0 receive time. */
 } ec_slave_dc_range_t;
+
+/** EtherCAT slave sync signal configuration.
+ */
+typedef struct {
+    uint32_t cycle_time; /**< Cycle time [ns]. */
+    uint32_t shift_time; /**< Shift time [ns]. */
+} ec_sync_signal_t;
 
 /** Access states for SDO entries.
  *
