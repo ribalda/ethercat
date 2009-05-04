@@ -520,15 +520,27 @@ void ecrt_master_state(
         ec_master_state_t *state /**< Structure to store the information. */
         );
 
-/** Queues the DC reference clock drift compensation datagram for sending.
+/** Sets the application time.
  *
- * The reference clock will by synchronized to the \a app_time. The time is
- * defined as nanoseconds from 2000-01-01 00:00. Converting an epoch time can
- * be done with the EC_TIMEVAL2NANO() macro.
+ * The master has to know the application time when operation slaves with
+ * distributed clocks. The time is not incremented by the master, so this
+ * method has to be called cyclically.
+ * 
+ * The time is defined as nanoseconds from 2000-01-01 00:00. Converting an
+ * epoch time can be done with the EC_TIMEVAL2NANO() macro.
  */
-void ecrt_master_sync_reference_clock(
+void ecrt_master_application_time(
         ec_master_t *master, /**< EtherCAT master. */
         uint64_t app_time /**< Application time. */
+        );
+
+/** Queues the DC reference clock drift compensation datagram for sending.
+ *
+ * The reference clock will by synchronized to the application time provided
+ * by the last call off ecrt_master_application_time().
+ */
+void ecrt_master_sync_reference_clock(
+        ec_master_t *master /**< EtherCAT master. */
         );
 
 /** Queues the DC clock drift compensation datagram for sending.

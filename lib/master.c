@@ -190,13 +190,23 @@ void ecrt_master_state(const ec_master_t *master, ec_master_state_t *state)
 
 /*****************************************************************************/
 
-void ecrt_master_sync_reference_clock(ec_master_t *master, uint64_t app_time)
+void ecrt_master_application_time(ec_master_t *master, uint64_t app_time)
 {
-    ec_ioctl_dc_t data;
+    ec_ioctl_app_time_t data;
 
     data.app_time = app_time;
 
-    if (ioctl(master->fd, EC_IOCTL_SYNC_REF, &data) == -1) {
+    if (ioctl(master->fd, EC_IOCTL_APP_TIME, &data) == -1) {
+        fprintf(stderr, "Failed to set application time: %s\n",
+                strerror(errno));
+    }
+}
+
+/*****************************************************************************/
+
+void ecrt_master_sync_reference_clock(ec_master_t *master)
+{
+    if (ioctl(master->fd, EC_IOCTL_SYNC_REF, NULL) == -1) {
         fprintf(stderr, "Failed to sync reference clock: %s\n",
                 strerror(errno));
     }

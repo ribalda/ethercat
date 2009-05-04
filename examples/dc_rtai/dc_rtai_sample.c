@@ -51,7 +51,7 @@
 
 #define NUM_DIG_OUT 1
 
-#define PFX "ec_dc_sample: "
+#define PFX "ec_dc_rtai_sample: "
 
 /*****************************************************************************/
 
@@ -220,16 +220,13 @@ void run(long data)
             tv.tv_usec -= 1000000;
             tv.tv_sec++;
         }
+        ecrt_master_application_time(master, EC_TIMEVAL2NANO(&tv));
             
         if (sync_ref_counter) {
             sync_ref_counter--;
         } else {
             sync_ref_counter = 9;
-#if 0
-            printk(KERN_INFO PFX "ref: %u %u %llu\n",
-                    (u32) tv.tv_sec, (u32) tv.tv_usec, EC_TIMEVAL2NANO(&tv));
-#endif
-            ecrt_master_sync_reference_clock(master, EC_TIMEVAL2NANO(&tv));
+            ecrt_master_sync_reference_clock(master);
         }
 		ecrt_master_sync_slave_clocks(master);
         ecrt_domain_queue(domain1);

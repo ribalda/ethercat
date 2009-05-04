@@ -1650,16 +1650,11 @@ int ec_cdev_ioctl_sync_ref(
         ec_cdev_priv_t *priv /**< Private data structure of file handle. */
         )
 {
-    ec_ioctl_dc_t data;
-    
 	if (unlikely(!priv->requested))
 		return -EPERM;
 
-    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
-        return -EFAULT;
-
     spin_lock_bh(&master->internal_lock);
-    ecrt_master_sync_reference_clock(master, data.app_time);
+    ecrt_master_sync_reference_clock(master);
     spin_unlock_bh(&master->internal_lock);
     return 0;
 }
