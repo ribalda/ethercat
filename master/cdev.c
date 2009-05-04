@@ -199,11 +199,8 @@ int ec_cdev_ioctl_master(
     up(&master->device_sem);
 
     data.app_time = master->app_time;
-    data.ref_clock = EC_READ_U16(master->sync_datagram.address);
-    if (data.ref_clock < 0xffff) {
-        // ref_clock address is station_address, output ring position
-        data.ref_clock--;
-    }
+    data.ref_clock =
+        master->dc_ref_clock ? master->dc_ref_clock->ring_position : 0xffff;
 
     if (copy_to_user((void __user *) arg, &data, sizeof(data)))
         return -EFAULT;
