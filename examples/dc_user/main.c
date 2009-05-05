@@ -237,11 +237,8 @@ int main(int argc, char **argv)
 	if (off_counter_out < 0)
         return -1;
 
-#if 1
     // configure SYNC signals for this slave
-	ecrt_slave_config_dc_assign_activate(sc, 0x0700);
-	ecrt_slave_config_dc_sync_signals(sc, 10000000, 4400000, 0, 0);
-#endif
+	ecrt_slave_config_dc(sc, 0x0700, 10000000, 4400000, 0, 0);
 
     printf("Activating master...\n");
     if (ecrt_master_activate(master))
