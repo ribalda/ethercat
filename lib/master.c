@@ -222,3 +222,60 @@ void ecrt_master_sync_slave_clocks(ec_master_t *master)
 }
 
 /*****************************************************************************/
+
+int ecrt_slave_sdo_download(ec_master_t* master, uint16_t slave_position,
+        uint16_t index, uint8_t subindex, uint8_t *data,
+        size_t data_size, uint32_t *abort_code)
+{
+    ec_ioctl_slave_sdo_download_t download;
+
+    download.slave_position = slave_position;
+    download.sdo_index = index;
+    download.sdo_entry_subindex = subindex;
+    download.data_size = data_size;
+    download.data = data;
+
+    if (ioctl(master->fd, EC_IOCTL_SLAVE_SDO_DOWNLOAD, &download) == -1) {
+        if (errno == -EIO) {
+            if (abort_code) {
+                *abort_code = download.abort_code;
+            }
+        }
+        fprintf(stderr, "Failed to execute SDO download: %s\n",
+            strerror(errno));
+        return -1;
+    }
+
+    return 0;
+}
+
+/*****************************************************************************/
+
+int ecrt_slave_sdo_upload(ec_master_t* master, uint16_t slave_position,
+        uint16_t index, uint8_t subindex, uint8_t *target,
+        size_t target_size, size_t *result_size, uint32_t *abort_code)
+{
+    ec_ioctl_slave_sdo_upload_t upload;
+
+    upload.slave_position = slave_position;
+    upload.sdo_index = index;
+    upload.sdo_entry_subindex = subindex;
+    upload.target_size = target_size;
+    upload.target = target;
+
+    if (ioctl(master->fd, EC_IOCTL_SLAVE_SDO_UPLOAD, &upload) == -1) {
+        if (errno == -EIO) {
+            if (abort_code) {
+                *abort_code = upload.abort_code;
+            }
+        }
+        fprintf(stderr, "Failed to execute SDO upload: %s\n",
+                strerror(errno));
+        return -1;
+    }
+
+    *result_size = upload.data_size;
+    return 0;
+}
+
+/*****************************************************************************/

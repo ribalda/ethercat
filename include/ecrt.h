@@ -55,6 +55,8 @@
  * - Renamed ec_sdo_request_state_t to ec_request_state_t, because it is also
  *   used by VoE handlers.
  * - Added ecrt_master_slave() to get information about a certain slave.
+ * - Added ecrt_slave_sdo_upload() and ecrt_slave_sdo_download() methods to
+ *   let an application transfer SDOs before activating the master.
  * - Removed 'const' from argument of ecrt_sdo_request_state(), because the
  *   userspace library has to modify object internals.
  * - Added 64-bit data access macros.
@@ -448,6 +450,8 @@ ec_slave_config_t *ecrt_master_slave_config(
         uint32_t product_code /**< Expected product code. */
         );
 
+#ifndef __KERNEL__
+
 /** Obtains slave information.
  *
  * Tries to find the slave with the given ring position. The obtained
@@ -464,6 +468,8 @@ int ecrt_master_slave(
         ec_slave_info_t *slave_info /**< Structure that will output the
                                       information */
         );
+
+#endif /* ifndef __KERNEL__ */
 
 /** Finishes the configuration phase and prepares for cyclic operation.
  *
@@ -550,6 +556,50 @@ void ecrt_master_sync_reference_clock(
 void ecrt_master_sync_slave_clocks(
         ec_master_t *master /**< EtherCAT master. */
         );
+
+#ifndef __KERNEL__
+
+/** Executes an SDO write request to download data.
+ *
+ * This function operates aside of the normal way to request SDOs. Before the
+ * activation of the master, these requests are processed by the master state
+ * machine itself. After activation the user has to ensure cyclic processing.
+ *
+ * \retval  0 Success.
+ * \retval -1 An error occured.
+ */
+int ecrt_slave_sdo_download(
+        ec_master_t* master, /**< EtherCAT master. */
+        uint16_t slave_position, /**< Slave position. */
+        uint16_t index, /**< Index of the SDO. */
+        uint8_t subindex, /**< Subindex of the SDO. */
+        uint8_t *data, /**< Data buffer to download. */
+        size_t data_size, /**< Size of the data buffer. */
+        uint32_t *abort_code /**< Abort code of the SDO download. */
+        );
+
+/** Executes a SDO read request to upload data.
+ *
+ * This function operates aside of the normal way to request SDOs. Before the
+ * activation of the master, these requests are processed by the master state
+ * machine itself. After activation the user have to ensure cyclic
+ * processing.
+ *
+ * \retval  0 Success.
+ * \retval -1 Error occured.
+ */
+int ecrt_slave_sdo_upload(
+        ec_master_t* master, /**< EtherCAT master. */
+        uint16_t slave_position, /**< Slave position. */
+        uint16_t index, /**< Index of the SDO. */
+        uint8_t subindex, /**< Subindex of the SDO. */
+        uint8_t *target, /**< Target buffer for the upload. */
+        size_t target_size, /**< Size of the target buffer. */
+        size_t *result_size, /**< Uploaded data size. */
+        uint32_t *abort_code /**< Abort code of the SDO upload. */
+        );
+
+#endif /* ifndef __KERNEL__ */
 
 /******************************************************************************
  * Slave configuration methods
