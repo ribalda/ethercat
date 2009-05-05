@@ -522,6 +522,7 @@ int ec_fsm_master_action_process_foe(
         fsm->foe_request = &request->req;
         fsm->slave = slave;
         fsm->state = ec_fsm_master_state_foe_request;
+        fsm->idle = 0;
         ec_fsm_foe_transfer(&fsm->fsm_foe, slave, &request->req);
         ec_fsm_foe_exec(&fsm->fsm_foe);
         return 1;
@@ -975,6 +976,8 @@ void ec_fsm_master_state_foe_request(
 
     if (ec_fsm_foe_exec(&fsm->fsm_foe))
         return;
+
+    fsm->idle = 1;
 
     if (!ec_fsm_foe_success(&fsm->fsm_foe)) {
         EC_ERR("Failed to handle FoE request to slave %u.\n",
