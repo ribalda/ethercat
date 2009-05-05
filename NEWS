@@ -39,6 +39,7 @@ Changes since 1.4.0:
 * Added ecrt_slave_sdo_upload() and ecrt_slave_sdo_download() methods to let
   an application transfer SDOs before activating the master. Thanks to Stefan
   Weiser.
+* Changed EC_MAX_SII_SIZE to 4096.
 
 Changes in 1.4.0:
 
