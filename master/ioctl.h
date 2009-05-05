@@ -129,6 +129,7 @@ typedef struct {
     uint32_t config_count;
     uint32_t domain_count;
     uint8_t phase;
+    uint8_t scan_busy;
     struct {
         uint8_t address[6];
         uint8_t attached;

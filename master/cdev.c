@@ -169,6 +169,7 @@ int ec_cdev_ioctl_master(
     data.config_count = ec_master_config_count(master);
     data.domain_count = ec_master_domain_count(master);
     data.phase = (uint8_t) master->phase;
+    data.scan_busy = master->scan_busy;
     up(&master->master_sem);
 
     if (down_interruptible(&master->device_sem))
