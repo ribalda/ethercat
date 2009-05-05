@@ -40,6 +40,12 @@
 
 /*****************************************************************************/
 
+/** Timeout while waiting for AL state change [s].
+ */
+#define EC_AL_STATE_CHANGE_TIMEOUT 2
+
+/*****************************************************************************/
+
 void ec_fsm_change_state_start(ec_fsm_change_t *);
 void ec_fsm_change_state_check(ec_fsm_change_t *);
 void ec_fsm_change_state_status(ec_fsm_change_t *);
@@ -304,7 +310,8 @@ void ec_fsm_change_state_status(ec_fsm_change_t *fsm
 
     // still old state
 
-    if (datagram->jiffies_received - fsm->jiffies_start >= HZ) { // 1s
+    if (datagram->jiffies_received - fsm->jiffies_start >=
+            EC_AL_STATE_CHANGE_TIMEOUT * HZ) {
         // timeout while checking
         char state_str[EC_STATE_STRING_SIZE];
         ec_state_string(fsm->requested_state, state_str, 0);
@@ -513,7 +520,8 @@ void ec_fsm_change_state_check_ack(ec_fsm_change_t *fsm
         return;
     }
 
-    if (datagram->jiffies_received - fsm->jiffies_start >= HZ) { // 1s
+    if (datagram->jiffies_received - fsm->jiffies_start >=
+            EC_AL_STATE_CHANGE_TIMEOUT * HZ) {
         // timeout while checking
         char state_str[EC_STATE_STRING_SIZE];
         ec_state_string(slave->current_state, state_str, 0);
