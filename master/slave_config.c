@@ -675,18 +675,11 @@ int ecrt_slave_config_reg_pdo_entry(
 
 /*****************************************************************************/
 
-void ecrt_slave_config_dc_assign_activate(ec_slave_config_t *sc,
-        uint16_t assign_activate)
-{
-	sc->dc_assign_activate = assign_activate;
-}
-
-/*****************************************************************************/
-
-void ecrt_slave_config_dc_sync_signals(ec_slave_config_t *sc,
+void ecrt_slave_config_dc(ec_slave_config_t *sc, uint16_t assign_activate,
         uint32_t sync0_cycle_time, uint32_t sync0_shift_time,
         uint32_t sync1_cycle_time, uint32_t sync1_shift_time)
 {
+	sc->dc_assign_activate = assign_activate;
 	sc->dc_sync[0].cycle_time = sync0_cycle_time;
 	sc->dc_sync[0].shift_time = sync0_shift_time;
 	sc->dc_sync[1].cycle_time = sync1_cycle_time;
@@ -907,8 +900,7 @@ EXPORT_SYMBOL(ecrt_slave_config_pdo_mapping_add);
 EXPORT_SYMBOL(ecrt_slave_config_pdo_mapping_clear);
 EXPORT_SYMBOL(ecrt_slave_config_pdos);
 EXPORT_SYMBOL(ecrt_slave_config_reg_pdo_entry);
-EXPORT_SYMBOL(ecrt_slave_config_dc_assign_activate);
-EXPORT_SYMBOL(ecrt_slave_config_dc_sync_signals);
+EXPORT_SYMBOL(ecrt_slave_config_dc);
 EXPORT_SYMBOL(ecrt_slave_config_sdo);
 EXPORT_SYMBOL(ecrt_slave_config_sdo8);
 EXPORT_SYMBOL(ecrt_slave_config_sdo16);

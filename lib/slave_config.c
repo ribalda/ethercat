@@ -244,34 +244,20 @@ int ecrt_slave_config_reg_pdo_entry(
 
 /*****************************************************************************/
 
-void ecrt_slave_config_dc_assign_activate(ec_slave_config_t *sc,
-        uint16_t assign_activate)
-{
-    ec_ioctl_sc_dc_t data;
-
-    data.config_index = sc->index;
-    data.assign_activate = assign_activate;
-
-    if (ioctl(sc->master->fd, EC_IOCTL_SC_DC_ASSIGN, &data) == -1) {
-        fprintf(stderr, "Failed to set assign_activate word.\n");
-    }
-}
-
-/*****************************************************************************/
-
-void ecrt_slave_config_dc_sync_signals(ec_slave_config_t *sc,
+void ecrt_slave_config_dc(ec_slave_config_t *sc, uint16_t assign_activate,
         uint32_t sync0_cycle_time, uint32_t sync0_shift_time,
         uint32_t sync1_cycle_time, uint32_t sync1_shift_time)
 {
     ec_ioctl_sc_dc_t data;
 
     data.config_index = sc->index;
+    data.assign_activate = assign_activate;
 	data.sync[0].cycle_time = sync0_cycle_time;
 	data.sync[0].shift_time = sync0_shift_time;
 	data.sync[1].cycle_time = sync1_cycle_time;
 	data.sync[1].shift_time = sync1_shift_time;
 
-    if (ioctl(sc->master->fd, EC_IOCTL_SC_DC_SYNC, &data) == -1) {
+    if (ioctl(sc->master->fd, EC_IOCTL_SC_DC, &data) == -1) {
         fprintf(stderr, "Failed to set assign_activate word.\n");
     }
 }

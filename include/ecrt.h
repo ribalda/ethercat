@@ -41,9 +41,8 @@
  *
  * Changes in version 1.5:
  *
- * - Added the distributed clocks feature and the respective methods
- *   ecrt_slave_config_dc_assign_activate() and
- *   ecrt_slave_config_dc_sync_signals() to configure a slave for cyclic
+ * - Added the distributed clocks feature and the respective method
+ *   ecrt_slave_config_dc() to configure a slave for cyclic
  *   operation, and ecrt_master_application_time(),
  *   ecrt_master_sync_reference_clock() and  ecrt_master_sync_slave_clocks()
  *   for offset and drift compensation. The EC_TIMEVAL2NANO() macro can be
@@ -772,21 +771,18 @@ int ecrt_slave_config_reg_pdo_entry(
                                  is desired */
         );
 
-/** Sets the AssignActivate word necessary for DC operation.
+/** Configure distributed clocks.
+ *
+ * Sets the AssignActivate word and the cycle and shift times for the sync
+ * signals.
  *
  * The AssignActivate word is vendor-specific and can be taken from the XML
  * device description file (Device -> Dc -> AssignActivate). Set this to zero,
  * if the slave shall be operated without distributed clocks (default).
  */
-void ecrt_slave_config_dc_assign_activate(
+void ecrt_slave_config_dc(
 		ec_slave_config_t *sc, /**< Slave configuration. */
-        uint16_t assign_activate /**< AssignActivate word. */
-		);
-
-/** Sets the cycle and shift times for the sync signals.
- */
-void ecrt_slave_config_dc_sync_signals(
-		ec_slave_config_t *sc, /**< Slave configuration. */
+        uint16_t assign_activate, /**< AssignActivate word. */
         uint32_t sync0_cycle, /**< SYNC0 cycle time [ns]. */
 		uint32_t sync0_shift, /**< SYNC0 shift time [ns]. */
         uint32_t sync1_cycle, /**< SYNC1 cycle time [ns]. */
