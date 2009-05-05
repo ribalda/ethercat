@@ -199,9 +199,10 @@ void ec_fsm_foe_end(ec_fsm_foe_t *fsm /**< finite state machine */)
    Sends a file or the next fragment.
 */
 
-int ec_foe_prepare_data_send( ec_fsm_foe_t *fsm ) {
-    size_t       remaining_size, current_size;
-    uint8_t*     data;
+int ec_foe_prepare_data_send(ec_fsm_foe_t *fsm)
+{
+    size_t remaining_size, current_size;
+    uint8_t *data;
 
     remaining_size = fsm->tx_buffer_size - fsm->tx_buffer_offset;
 
@@ -214,9 +215,10 @@ int ec_foe_prepare_data_send( ec_fsm_foe_t *fsm ) {
             - EC_MBOX_HEADER_SIZE - EC_FOE_HEADER_SIZE;
     }
 
-    if (!(data = ec_slave_mbox_prepare_send(fsm->slave, fsm->datagram,
-                    EC_MBOX_TYPE_FILEACCESS,
-                    current_size + EC_FOE_HEADER_SIZE)))
+    data = ec_slave_mbox_prepare_send(fsm->slave,
+            fsm->datagram, EC_MBOX_TYPE_FILEACCESS,
+            current_size + EC_FOE_HEADER_SIZE);
+    if (IS_ERR(data))
         return -1;
 
     EC_WRITE_U8 ( data, EC_FOE_OPCODE_DATA );    // OpCode = DataBlock req.
@@ -234,7 +236,8 @@ int ec_foe_prepare_data_send( ec_fsm_foe_t *fsm ) {
    Prepare a write request (WRQ) with filename
 */
 
-int ec_foe_prepare_wrq_send( ec_fsm_foe_t *fsm ) {
+int ec_foe_prepare_wrq_send(ec_fsm_foe_t *fsm)
+{
     size_t current_size;
     uint8_t *data;
 
@@ -245,8 +248,9 @@ int ec_foe_prepare_wrq_send( ec_fsm_foe_t *fsm ) {
 
     current_size = fsm->tx_filename_len;
 
-    if (!(data = ec_slave_mbox_prepare_send(fsm->slave, fsm->datagram,
-                    EC_MBOX_TYPE_FILEACCESS, current_size + EC_FOE_HEADER_SIZE)))
+    data = ec_slave_mbox_prepare_send(fsm->slave, fsm->datagram,
+            EC_MBOX_TYPE_FILEACCESS, current_size + EC_FOE_HEADER_SIZE);
+    if (IS_ERR(data))
         return -1;
 
     EC_WRITE_U16( data, EC_FOE_OPCODE_WRQ); // fsm write request
@@ -305,7 +309,8 @@ void ec_fsm_foe_write_start(ec_fsm_foe_t *fsm /**< finite state machine */)
 
 /*****************************************************************************/
 
-void ec_fsm_foe_state_ack_check( ec_fsm_foe_t *fsm ) {
+void ec_fsm_foe_state_ack_check(ec_fsm_foe_t *fsm)
+{
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
@@ -354,7 +359,8 @@ void ec_fsm_foe_state_ack_check( ec_fsm_foe_t *fsm ) {
 
 /*****************************************************************************/
 
-void ec_fsm_foe_state_ack_read( ec_fsm_foe_t *fsm ) {
+void ec_fsm_foe_state_ack_read(ec_fsm_foe_t *fsm)
+{
 
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
@@ -433,7 +439,8 @@ void ec_fsm_foe_state_ack_read( ec_fsm_foe_t *fsm ) {
    fragment, if necessary.
 */
 
-void ec_fsm_foe_state_wrq_sent( ec_fsm_foe_t *fsm ) {
+void ec_fsm_foe_state_wrq_sent(ec_fsm_foe_t *fsm)
+{
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
@@ -473,7 +480,8 @@ void ec_fsm_foe_state_wrq_sent( ec_fsm_foe_t *fsm ) {
    fragment, if necessary.
 */
 
-void ec_fsm_foe_state_data_sent( ec_fsm_foe_t *fsm ) {
+void ec_fsm_foe_state_data_sent(ec_fsm_foe_t *fsm)
+{
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
@@ -508,14 +516,16 @@ void ec_fsm_foe_state_data_sent( ec_fsm_foe_t *fsm ) {
    Prepare a read request (RRQ) with filename
 */
 
-int ec_foe_prepare_rrq_send( ec_fsm_foe_t *fsm ) {
+int ec_foe_prepare_rrq_send(ec_fsm_foe_t *fsm)
+{
     size_t current_size;
     uint8_t *data;
 
     current_size = fsm->rx_filename_len;
 
-    if (!(data = ec_slave_mbox_prepare_send(fsm->slave, fsm->datagram,
-                    EC_MBOX_TYPE_FILEACCESS, current_size + EC_FOE_HEADER_SIZE)))
+    data = ec_slave_mbox_prepare_send(fsm->slave, fsm->datagram,
+            EC_MBOX_TYPE_FILEACCESS, current_size + EC_FOE_HEADER_SIZE);
+    if (IS_ERR(data))
         return -1;
 
     EC_WRITE_U16(data, EC_FOE_OPCODE_RRQ); // fsm read request
@@ -533,15 +543,17 @@ int ec_foe_prepare_rrq_send( ec_fsm_foe_t *fsm ) {
 
 /*****************************************************************************/
 
-int ec_foe_prepare_send_ack( ec_fsm_foe_t *foe ) {
+int ec_foe_prepare_send_ack(ec_fsm_foe_t *foe)
+{
     uint8_t *data;
 
-    if (!(data = ec_slave_mbox_prepare_send(foe->slave, foe->datagram,
-                    EC_MBOX_TYPE_FILEACCESS, EC_FOE_HEADER_SIZE)))
+    data = ec_slave_mbox_prepare_send(foe->slave, foe->datagram,
+            EC_MBOX_TYPE_FILEACCESS, EC_FOE_HEADER_SIZE);
+    if (IS_ERR(data))
         return -1;
 
-    EC_WRITE_U16( data, EC_FOE_OPCODE_ACK);
-    EC_WRITE_U32( data + 2, foe->rx_expected_packet_no  );
+    EC_WRITE_U16(data, EC_FOE_OPCODE_ACK);
+    EC_WRITE_U32(data + 2, foe->rx_expected_packet_no);
 
     return 0;
 }
