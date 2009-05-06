@@ -555,6 +555,7 @@ int ec_master_enter_operation_phase(ec_master_t *master /**< EtherCAT master */)
             slave++) {
         ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
     }
+
 #ifdef EC_EOE
     // ... but set EoE slaves to OP
     list_for_each_entry(eoe, &master->eoe_handlers, list) {
@@ -1548,6 +1549,11 @@ int ecrt_master_activate(ec_master_t *master)
         domain_offset += domain->data_size;
     }
     
+    // always set DC reference clock to OP
+    if (master->dc_ref_clock) {
+        ec_slave_request_state(master->dc_ref_clock, EC_SLAVE_STATE_OP);
+    }
+
     up(&master->master_sem);
 
     // restart EoE process and master thread with new locking
