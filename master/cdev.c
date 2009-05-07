@@ -1257,6 +1257,10 @@ int ec_cdev_ioctl_config(
     }
     data.sdo_count = ec_slave_config_sdo_count(sc);
     data.slave_position = sc->slave ? sc->slave->ring_position : -1;
+    data.dc_assign_activate = sc->dc_assign_activate;
+    for (i = 0; i < EC_SYNC_SIGNAL_COUNT; i++) {
+        data.dc_sync[i] = sc->dc_sync[i];
+    }
 
     up(&master->master_sem);
 
@@ -1936,7 +1940,7 @@ int ec_cdev_ioctl_sc_dc(
         ec_cdev_priv_t *priv /**< Private data structure of file handle. */
         )
 {
-    ec_ioctl_sc_dc_t data;
+    ec_ioctl_config_t data;
     ec_slave_config_t *sc;
 
 	if (unlikely(!priv->requested))
@@ -1953,11 +1957,11 @@ int ec_cdev_ioctl_sc_dc(
         return -ENOENT;
     }
 
-    ecrt_slave_config_dc(sc, data.assign_activate,
-            data.sync[0].cycle_time,
-            data.sync[0].shift_time,
-            data.sync[1].cycle_time,
-            data.sync[1].shift_time);
+    ecrt_slave_config_dc(sc, data.dc_assign_activate,
+            data.dc_sync[0].cycle_time,
+            data.dc_sync[0].shift_time,
+            data.dc_sync[1].cycle_time,
+            data.dc_sync[1].shift_time);
 
     up(&master->master_sem);
 

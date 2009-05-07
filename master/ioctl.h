@@ -95,7 +95,7 @@
 #define EC_IOCTL_SC_ADD_ENTRY          EC_IOW(0x25, ec_ioctl_add_pdo_entry_t)
 #define EC_IOCTL_SC_CLEAR_ENTRIES      EC_IOW(0x26, ec_ioctl_config_pdo_t)
 #define EC_IOCTL_SC_REG_PDO_ENTRY     EC_IOWR(0x27, ec_ioctl_reg_pdo_entry_t)
-#define EC_IOCTL_SC_DC                 EC_IOW(0x28, ec_ioctl_sc_dc_t)
+#define EC_IOCTL_SC_DC                 EC_IOW(0x28, ec_ioctl_config_t)
 #define EC_IOCTL_SC_SDO                EC_IOW(0x29, ec_ioctl_sc_sdo_t)
 #define EC_IOCTL_SC_SDO_REQUEST       EC_IOWR(0x2a, ec_ioctl_sdo_request_t)
 #define EC_IOCTL_SC_VOE               EC_IOWR(0x2b, ec_ioctl_voe_t)
@@ -391,14 +391,9 @@ typedef struct {
     } syncs[EC_MAX_SYNC_MANAGERS];
     uint32_t sdo_count;
     int32_t slave_position;
+    uint16_t dc_assign_activate;
+    ec_sync_signal_t dc_sync[EC_SYNC_SIGNAL_COUNT];
 } ec_ioctl_config_t;
-
-/*****************************************************************************/
-
-typedef struct {
-    // inputs
-    uint64_t app_time;
-} ec_ioctl_app_time_t;
 
 /*****************************************************************************/
 
@@ -473,15 +468,6 @@ typedef struct {
 typedef struct {
     // inputs
     uint32_t config_index;
-    uint16_t assign_activate;
-    ec_sync_signal_t sync[EC_SYNC_SIGNAL_COUNT];
-} ec_ioctl_sc_dc_t;
-
-/*****************************************************************************/
-
-typedef struct {
-    // inputs
-    uint32_t config_index;
     uint16_t index;
     uint8_t subindex;
     const uint8_t *data;
@@ -538,6 +524,13 @@ typedef struct {
     uint8_t *data;
     ec_request_state_t state;
 } ec_ioctl_voe_t;
+
+/*****************************************************************************/
+
+typedef struct {
+    // inputs
+    uint64_t app_time;
+} ec_ioctl_app_time_t;
 
 /*****************************************************************************/
 

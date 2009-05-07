@@ -14,7 +14,6 @@ Version 1.5.0:
     - Check 32/64 bit operations.
     - Use vendor correction factors when calculating transmission delays.
     - Skip setting system time offset when application detached.
-    - Output DC configuration in 'ethercat config'.
     - How to set the SYNC1 shift time?
     - Do not output graph, if topology calculation failed.
 * Fix unloading problem of ec_e100 driver.
