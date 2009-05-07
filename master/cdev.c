@@ -1640,6 +1640,29 @@ int ec_cdev_ioctl_master_state(
 
 /*****************************************************************************/
 
+/** Get the master state.
+ */
+int ec_cdev_ioctl_app_time(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    ec_ioctl_app_time_t data;
+    
+	if (unlikely(!priv->requested))
+		return -EPERM;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+        return -EFAULT;
+    }
+
+    ecrt_master_application_time(master, data.app_time);
+    return 0;
+}
+
+/*****************************************************************************/
+
 /** Sync the reference clock.
  */
 int ec_cdev_ioctl_sync_ref(
@@ -3130,6 +3153,10 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			return ec_cdev_ioctl_receive(master, arg, priv);
         case EC_IOCTL_MASTER_STATE:
 			return ec_cdev_ioctl_master_state(master, arg, priv);
+        case EC_IOCTL_APP_TIME:
+            if (!(filp->f_mode & FMODE_WRITE))
+				return -EPERM;
+			return ec_cdev_ioctl_app_time(master, arg, priv);
         case EC_IOCTL_SYNC_REF:
             if (!(filp->f_mode & FMODE_WRITE))
 				return -EPERM;
