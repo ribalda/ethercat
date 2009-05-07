@@ -1043,6 +1043,12 @@ void ec_fsm_slave_config_enter_dc_cycle(
                     slave->ring_position);
         }
 
+        if (slave->master->debug_level)
+            EC_DBG("Slave %u: Setting DC cycle times to %u / %u.\n",
+                    slave->ring_position,
+                    config->dc_sync[0].cycle_time,
+                    config->dc_sync[1].cycle_time);
+
         // set DC cycle times
         ec_datagram_fpwr(datagram, slave->station_address, 0x09A0, 8);
         EC_WRITE_U32(datagram->data, config->dc_sync[0].cycle_time);
@@ -1122,7 +1128,7 @@ void ec_fsm_slave_config_state_dc_cycle(
             start_time = start;
         } else {
             EC_WARN("No application time supplied. Cyclic start time will "
-                    "not be in phase for slave %u.", slave->ring_position);
+                    "not be in phase for slave %u.\n", slave->ring_position);
         }
     }
 
@@ -1172,6 +1178,10 @@ void ec_fsm_slave_config_state_dc_start(
         ec_datagram_print_wc_error(datagram);
         return;
     }
+
+    if (slave->master->debug_level)
+        EC_DBG("Slave %u: Setting DC AssignActivate to 0x%04x.\n",
+                slave->ring_position, config->dc_assign_activate);
 
     // assign sync unit to EtherCAT or PDI
     ec_datagram_fpwr(datagram, slave->station_address, 0x0980, 2);
