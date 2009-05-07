@@ -1101,10 +1101,11 @@ void ec_fsm_coe_down_start(ec_fsm_coe_t *fsm /**< finite state machine */)
 	    EC_WRITE_U16(data + 3, request->index);
 	    EC_WRITE_U8 (data + 5, request->subindex);
 	    memcpy(data + 6, request->data, request->data_size);
+        memset(data + 6 + request->data_size, 0x00, 4 - request->data_size);
 
         if (slave->master->debug_level) {
             EC_DBG("Expedited download request:\n");
-            ec_print_data(data, 10 + request->data_size);
+            ec_print_data(data, 10);
         }
 	}
     else { // request->data_size > 4, use normal transfer type
