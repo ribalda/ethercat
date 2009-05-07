@@ -50,4 +50,8 @@ ifeq (@ENABLE_E1000@,1)
 	CFLAGS_e1000_main-@KERNEL_E1000@-ethercat.o = -DSVNREV=$(REV)
 endif
 
+KBUILD_EXTRA_SYMBOLS := \
+	@abs_top_builddir@/Module.symvers \
+	@abs_top_builddir@/master/Module.symvers
+
 #------------------------------------------------------------------------------

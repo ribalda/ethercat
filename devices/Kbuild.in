@@ -62,4 +62,8 @@ ifeq (@ENABLE_R8169@,1)
 	CFLAGS_$(EC_R8169_OBJ) = -DSVNREV=$(REV)
 endif
 
+KBUILD_EXTRA_SYMBOLS := \
+	@abs_top_builddir@/Module.symvers \
+	@abs_top_builddir@/master/Module.symvers
+
 #------------------------------------------------------------------------------

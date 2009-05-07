@@ -37,4 +37,8 @@ ec_dc_rtai_sample-objs := dc_rtai_sample.o
 
 EXTRA_CFLAGS := -I@RTAI_DIR@/include
 
+KBUILD_EXTRA_SYMBOLS := \
+	@abs_top_builddir@/Module.symvers \
+	@abs_top_builddir@/master/Module.symvers
+
 #------------------------------------------------------------------------------
