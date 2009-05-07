@@ -225,11 +225,12 @@ void CommandConfig::showDetailedConfigs(
                 << "  AssignActivate: 0x" << hex << setfill('0')
                 << setw(4) << configIter->dc_assign_activate << endl;
 
-            cout << "        Cycle time [ns]  Shift time [ns]" << endl;
+            cout << "         Cycle [ns]   Shift [ns]" << endl;
             for (i = 0; i < EC_SYNC_SIGNAL_COUNT; i++) {
-                cout << "  SYNC" << dec << i << setfill(' ') << right
+                cout << "  SYNC" << dec << i << "  "
+                    << setfill(' ') << right
                     << setw(11) << configIter->dc_sync[i].cycle_time
-                    << "      "
+                    << "  "
                     << setw(11) << configIter->dc_sync[i].shift_time
                     << endl;
             }
