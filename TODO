@@ -43,6 +43,7 @@ Version 1.5.0:
 * Improve application-triggered SDO transfers by moving the statemachine into
   the SDO handlers.
 * Apply watchdog patches from J. Mohre.
+* Move device driver files in subdirectories.
 
 Future issues:
 
