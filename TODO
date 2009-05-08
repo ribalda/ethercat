@@ -14,7 +14,7 @@ Version 1.5.0:
     - Check 32/64 bit operations.
     - Use vendor correction factors when calculating transmission delays.
     - Skip setting system time offset when application detached.
-    - How to set the SYNC1 shift time?
+    - How to use the SYNC1 shift time?
     - Do not output graph, if topology calculation failed.
     - Set the "Cyclic Generation Start Time" based on the slave's
       "System Time" register instead of using the application time.
@@ -40,7 +40,7 @@ Version 1.5.0:
 * Test File access over EtherCAT (FoE) reading.
 * Implement ecrt_master_slave() in kernel space.
 * Check for ioctl() interface version.
-* Improve application-triggered SDO transfers by moving the statemachine into
+* Improve application-triggered SDO transfers by moving the state machine into
   the SDO handlers.
 * Apply watchdog patches from J. Mohre.
 * Move device driver files in subdirectories.
