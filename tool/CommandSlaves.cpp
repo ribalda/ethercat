@@ -335,7 +335,7 @@ void CommandSlaves::showSlaves(
             list<string>::const_iterator protoIter;
 
             cout << "Mailboxes:" << endl
-               << "  Bootstrap RX: 0x"
+                << "  Bootstrap RX: 0x" << setfill('0')
                 << hex << setw(4) << si->boot_rx_mailbox_offset << "/"
                 << dec << si->boot_rx_mailbox_size
                 << ", TX: 0x"
