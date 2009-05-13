@@ -20,6 +20,7 @@ Version 1.5.0:
       "System Time" register instead of using the application time.
     - Check if register 0x0980 is working, to avoid clearing it when
       configuring.
+    - Create an interface to query the System Time Difference registers.
 * Fix unloading problem of ec_e100 driver.
 * Use ec_datagram_zero() where possible.
 * Fix arguments of reg_read.
