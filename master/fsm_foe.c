@@ -46,8 +46,12 @@
  */
 #define EC_FSM_FOE_TIMEOUT 3000
 
+/** Mailbox type FoE.
+ */
 #define EC_MBOX_TYPE_FILEACCESS 0x04
 
+/** Size of the FoE header.
+ */
 #define EC_FOE_HEADER_SIZE 6
 // uint8_t  OpCode
 // uint8_t  reserved
@@ -152,6 +156,8 @@ int ec_fsm_foe_success(ec_fsm_foe_t *fsm /**< Finite state machine */)
 
 /*****************************************************************************/
 
+/** Prepares an FoE transfer.
+ */
 void ec_fsm_foe_transfer(
         ec_fsm_foe_t *fsm, /**< State machine. */
         ec_slave_t *slave, /**< EtherCAT slave. */
@@ -263,7 +269,11 @@ int ec_foe_prepare_wrq_send(ec_fsm_foe_t *fsm)
 
 /*****************************************************************************/
 
-void ec_fsm_foe_write(ec_fsm_foe_t *fsm /**< finite state machine */)
+/** Start a write operation.
+ */
+void ec_fsm_foe_write(
+        ec_fsm_foe_t *fsm /**< FoE statemachine. */
+        )
 {
     fsm->tx_buffer = fsm->request->buffer;
     fsm->tx_buffer_size = fsm->request->data_size;
@@ -276,10 +286,9 @@ void ec_fsm_foe_write(ec_fsm_foe_t *fsm /**< finite state machine */)
 }
 
 /*****************************************************************************/
-/**
-   Initializes the SII write state machine.
-*/
 
+/** Initializes the FoE write state machine.
+ */
 void ec_fsm_foe_write_start(ec_fsm_foe_t *fsm /**< finite state machine */)
 {
     ec_slave_t *slave = fsm->slave;
@@ -309,7 +318,11 @@ void ec_fsm_foe_write_start(ec_fsm_foe_t *fsm /**< finite state machine */)
 
 /*****************************************************************************/
 
-void ec_fsm_foe_state_ack_check(ec_fsm_foe_t *fsm)
+/** Check for acknowledge.
+ */
+void ec_fsm_foe_state_ack_check(
+        ec_fsm_foe_t *fsm /**< FoE statemachine. */
+        )
 {
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
@@ -359,9 +372,12 @@ void ec_fsm_foe_state_ack_check(ec_fsm_foe_t *fsm)
 
 /*****************************************************************************/
 
-void ec_fsm_foe_state_ack_read(ec_fsm_foe_t *fsm)
+/** Acknowledge a read operation.
+ */
+void ec_fsm_foe_state_ack_read(
+        ec_fsm_foe_t *fsm /**< FoE statemachine. */
+        )
 {
-
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
     uint8_t *data, mbox_prot;
@@ -433,13 +449,15 @@ void ec_fsm_foe_state_ack_read(ec_fsm_foe_t *fsm)
 }
 
 /*****************************************************************************/
-/**
-   State: WRQ SENT.
-   Checks is the previous transmit datagram succeded and sends the next
-   fragment, if necessary.
-*/
 
-void ec_fsm_foe_state_wrq_sent(ec_fsm_foe_t *fsm)
+/** State: WRQ SENT.
+ *
+ * Checks is the previous transmit datagram succeded and sends the next
+ * fragment, if necessary.
+ */
+void ec_fsm_foe_state_wrq_sent(
+        ec_fsm_foe_t *fsm /**< FoE statemachine. */
+        )
 {
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
@@ -474,13 +492,15 @@ void ec_fsm_foe_state_wrq_sent(ec_fsm_foe_t *fsm)
 }
 
 /*****************************************************************************/
-/**
-   State: WRQ SENT.
-   Checks is the previous transmit datagram succeded and sends the next
-   fragment, if necessary.
-*/
 
-void ec_fsm_foe_state_data_sent(ec_fsm_foe_t *fsm)
+/** State: WRQ SENT.
+ *
+ * Checks is the previous transmit datagram succeded and sends the next
+ * fragment, if necessary.
+ */
+void ec_fsm_foe_state_data_sent(
+        ec_fsm_foe_t *fsm /**< Foe statemachine. */
+        )
 {
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
@@ -543,7 +563,11 @@ int ec_foe_prepare_rrq_send(ec_fsm_foe_t *fsm)
 
 /*****************************************************************************/
 
-int ec_foe_prepare_send_ack(ec_fsm_foe_t *foe)
+/** Prepare to send an acknowledge.
+ */
+int ec_foe_prepare_send_ack(
+        ec_fsm_foe_t *foe /**< FoE statemachine. */
+        )
 {
     uint8_t *data;
 
@@ -559,13 +583,16 @@ int ec_foe_prepare_send_ack(ec_fsm_foe_t *foe)
 }
 
 /*****************************************************************************/
-/**
-   State: RRQ SENT.
-   Checks is the previous transmit datagram succeded and sends the next
-   fragment, if necessary.
-*/
 
-void ec_fsm_foe_state_rrq_sent( ec_fsm_foe_t *fsm ) {
+/** State: RRQ SENT.
+ *
+ * Checks is the previous transmit datagram succeded and sends the next
+ * fragment, if necessary.
+ */
+void ec_fsm_foe_state_rrq_sent(
+        ec_fsm_foe_t *fsm /**< FoE statemachine. */
+        )
+{
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
@@ -600,7 +627,11 @@ void ec_fsm_foe_state_rrq_sent( ec_fsm_foe_t *fsm ) {
 
 /*****************************************************************************/
 
-void ec_fsm_foe_read(ec_fsm_foe_t *fsm /**< finite state machine */)
+/** Start a read operation.
+ */
+void ec_fsm_foe_read(
+        ec_fsm_foe_t *fsm /**< FoE state machine. */
+        )
 {
     fsm->state = ec_fsm_foe_read_start;
     fsm->rx_filename = fsm->request->file_name;
@@ -612,7 +643,11 @@ void ec_fsm_foe_read(ec_fsm_foe_t *fsm /**< finite state machine */)
 
 /*****************************************************************************/
 
-void ec_fsm_foe_read_start(ec_fsm_foe_t *fsm /**< finite state machine */)
+/** Starting state for read operations.
+ */
+void ec_fsm_foe_read_start(
+        ec_fsm_foe_t *fsm /**< FoE statemachine. */
+        )
 {
     size_t current_size;
     ec_slave_t *slave = fsm->slave;
@@ -645,7 +680,12 @@ void ec_fsm_foe_read_start(ec_fsm_foe_t *fsm /**< finite state machine */)
 
 /*****************************************************************************/
 
-void ec_fsm_foe_state_data_check ( ec_fsm_foe_t *fsm ) {
+/** Check for data.
+ */
+void ec_fsm_foe_state_data_check(
+        ec_fsm_foe_t *fsm /**< FoE statemachine. */
+        )
+{
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
@@ -694,7 +734,11 @@ void ec_fsm_foe_state_data_check ( ec_fsm_foe_t *fsm ) {
 
 /*****************************************************************************/
 
-void ec_fsm_foe_state_data_read(ec_fsm_foe_t *fsm)
+/** Start reading data.
+ */
+void ec_fsm_foe_state_data_read(
+        ec_fsm_foe_t *fsm /**< FoE statemachine. */
+        )
 {
     size_t rec_size;
     uint8_t *data, opCode, packet_no, mbox_prot;
@@ -815,8 +859,12 @@ void ec_fsm_foe_state_data_read(ec_fsm_foe_t *fsm)
 
 /*****************************************************************************/
 
-void ec_fsm_foe_state_sent_ack( ec_fsm_foe_t *fsm ) {
-
+/** Sent an acknowledge.
+ */
+void ec_fsm_foe_state_sent_ack(
+        ec_fsm_foe_t *fsm /**< FoE statemachine. */
+        )
+{
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
@@ -859,7 +907,12 @@ void ec_fsm_foe_state_sent_ack( ec_fsm_foe_t *fsm ) {
 
 /*****************************************************************************/
 
-void ec_foe_set_tx_error(ec_fsm_foe_t *fsm, uint32_t errorcode)
+/** Set an error code and go to the send error state.
+ */
+void ec_foe_set_tx_error(
+        ec_fsm_foe_t *fsm, /**< FoE statemachine. */
+        uint32_t errorcode /**< FoE error code. */
+        )
 {
     fsm->tx_errors++;
     fsm->request->result = errorcode;
@@ -868,7 +921,12 @@ void ec_foe_set_tx_error(ec_fsm_foe_t *fsm, uint32_t errorcode)
 
 /*****************************************************************************/
 
-void ec_foe_set_rx_error(ec_fsm_foe_t *fsm, uint32_t errorcode)
+/** Set an error code and go to the receive error state.
+ */
+void ec_foe_set_rx_error(
+        ec_fsm_foe_t *fsm, /**< FoE statemachine. */
+        uint32_t errorcode /**< FoE error code. */
+        )
 {
     fsm->rx_errors++;
     fsm->request->result = errorcode;

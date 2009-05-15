@@ -124,10 +124,13 @@ struct ec_slave
     ec_slave_state_t current_state; /**< Current application state. */
     unsigned int error_flag; /**< Stop processing after an error. */
     unsigned int force_config; /**< Force (re-)configuration. */
-    uint16_t configured_rx_mailbox_offset;
-    uint16_t configured_rx_mailbox_size;
-    uint16_t configured_tx_mailbox_offset;
-    uint16_t configured_tx_mailbox_size;
+    uint16_t configured_rx_mailbox_offset; /**< Configured receive mailbox
+                                             offset. */
+    uint16_t configured_rx_mailbox_size; /**< Configured receive mailbox size.
+                                          */
+    uint16_t configured_tx_mailbox_offset; /**< Configured send mailbox
+                                             offset. */
+    uint16_t configured_tx_mailbox_size; /**< Configured send mailbox size. */
 
     // base data
     uint8_t base_type; /**< Slave type. */

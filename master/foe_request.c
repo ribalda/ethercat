@@ -149,7 +149,9 @@ int ec_foe_request_copy_data(
  *
  * \return non-zero if the timeout was exceeded, else zero.
  */
-int ec_foe_request_timed_out(const ec_foe_request_t *req /**< FoE request. */)
+int ec_foe_request_timed_out(
+        const ec_foe_request_t *req /**< FoE request. */
+        )
 {
     return req->issue_timeout
         && jiffies - req->jiffies_start > HZ * req->issue_timeout / 1000;
@@ -157,28 +159,49 @@ int ec_foe_request_timed_out(const ec_foe_request_t *req /**< FoE request. */)
 
 /*****************************************************************************/
 
-void ec_foe_request_timeout(ec_foe_request_t *req, uint32_t timeout)
+/** Set the request timeout.
+ */
+void ec_foe_request_timeout(
+        ec_foe_request_t *req, /**< FoE request. */
+        uint32_t timeout /**< Timeout in ms. */
+        )
 {
     req->issue_timeout = timeout;
 }
 
 /*****************************************************************************/
 
-uint8_t *ec_foe_request_data(ec_foe_request_t *req)
+/** Returns a pointer to the request's data.
+ *
+ * \return Data pointer.
+ */
+uint8_t *ec_foe_request_data(
+        ec_foe_request_t *req /**< FoE request. */
+        )
 {
     return req->buffer;
 }
 
 /*****************************************************************************/
 
-size_t ec_foe_request_data_size(const ec_foe_request_t *req)
+/** Returns the data size.
+ *
+ * \return Data size.
+ */
+size_t ec_foe_request_data_size(
+        const ec_foe_request_t *req /**< FoE request. */
+        )
 {
     return req->data_size;
 }
 
 /*****************************************************************************/
 
-void ec_foe_request_read(ec_foe_request_t *req)
+/** Prepares a read request (slave to master).
+ */
+void ec_foe_request_read(
+        ec_foe_request_t *req /**< FoE request. */
+        )
 {
     req->dir = EC_DIR_INPUT;
     req->state = EC_INT_REQUEST_QUEUED;
@@ -188,7 +211,11 @@ void ec_foe_request_read(ec_foe_request_t *req)
 
 /*****************************************************************************/
 
-void ec_foe_request_write(ec_foe_request_t *req)
+/** Prepares a write request (master to slave).
+ */
+void ec_foe_request_write(
+        ec_foe_request_t *req /**< FoE request. */
+        )
 {
     req->dir = EC_DIR_OUTPUT;
     req->state = EC_INT_REQUEST_QUEUED;

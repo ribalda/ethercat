@@ -60,6 +60,8 @@ struct ec_fsm_foe {
     ec_foe_request_t *request; /**< FoE request */
     uint8_t toggle; /**< toggle bit for segment commands */
 
+    /** \cond */
+
     uint32_t tx_errors;
     uint8_t *tx_buffer;
     uint32_t tx_buffer_size;
@@ -81,6 +83,8 @@ struct ec_fsm_foe {
     uint32_t rx_last_packet;
     uint8_t *rx_filename;
     uint32_t rx_filename_len;
+
+    /** \endcond */
 };
 
 /*****************************************************************************/

@@ -45,6 +45,7 @@ Version 1.5.0:
   the SDO handlers.
 * Apply watchdog patches from J. Mohre.
 * Move device driver files in subdirectories.
+* Document ec_fsm_foe members.
 
 Future issues:
 

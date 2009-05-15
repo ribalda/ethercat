@@ -44,6 +44,8 @@
 #include "voe_handler.h"
 #include "ioctl.h"
 
+/** Set to 1 to enable ioctl() command debugging.
+ */
 #define DEBUG_IOCTL 0
 
 /*****************************************************************************/
