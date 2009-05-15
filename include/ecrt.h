@@ -120,12 +120,12 @@
  *
  * This macro converts a unix epoch time to EtherCAT DC time.
  *
- * \see ecrt_master_sync_reference_clock()
+ * \see void ecrt_master_application_time()
  *
- * \param TV Pointer to struct timeval.
+ * \param TV struct timeval containing epoch time.
  */
 #define EC_TIMEVAL2NANO(TV) \
-    (((TV)->tv_sec - 946684800ULL) * 1000000000ULL + (TV)->tv_usec * 1000ULL)
+    (((TV).tv_sec - 946684800ULL) * 1000000000ULL + (TV).tv_usec * 1000ULL)
 
 /******************************************************************************
  * Data types 
@@ -205,7 +205,7 @@ typedef struct {
     uint32_t revision_number; /**< Revision-Number stored on the slave. */
     uint32_t serial_number; /**< Serial-Number stored on the slave. */
     uint16_t alias; /**< The slaves alias if not equal to 0. */
-    int16_t current_on_ebus;
+    int16_t current_on_ebus; /**< Used current in mA. */
     uint8_t al_state; /**< Current state of the slave. */
     uint8_t error_flag; /**< Error flag for that slave. */
     uint8_t sync_count; /**< Number of sync managers. */
@@ -527,9 +527,14 @@ void ecrt_master_state(
 
 /** Sets the application time.
  *
- * The master has to know the application time when operation slaves with
- * distributed clocks. The time is not incremented by the master, so this
- * method has to be called cyclically.
+ * The master has to know the application's time when operating slaves with
+ * distributed clocks. The time is not incremented by the master itself, so
+ * this method has to be called cyclically.
+ * 
+ * The time is used when setting the slaves' <tt>System Time Offset</tt> and
+ * <tt>Cyclic Operation Start Time</tt> registers and when synchronizing the
+ * DC reference clock to the application time via
+ * ecrt_master_sync_reference_clock().
  * 
  * The time is defined as nanoseconds from 2000-01-01 00:00. Converting an
  * epoch time can be done with the EC_TIMEVAL2NANO() macro.

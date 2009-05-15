@@ -220,7 +220,7 @@ void run(long data)
             tv.tv_usec -= 1000000;
             tv.tv_sec++;
         }
-        ecrt_master_application_time(master, EC_TIMEVAL2NANO(&tv));
+        ecrt_master_application_time(master, EC_TIMEVAL2NANO(tv));
             
         if (sync_ref_counter) {
             sync_ref_counter--;

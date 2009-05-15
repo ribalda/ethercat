@@ -164,7 +164,7 @@ void cyclic_task()
         app_time.tv_usec -= 1000000;
         app_time.tv_sec++;
     }
-    ecrt_master_application_time(master, EC_TIMEVAL2NANO(&app_time));
+    ecrt_master_application_time(master, EC_TIMEVAL2NANO(app_time));
 
     if (sync_ref_counter) {
         sync_ref_counter--;
