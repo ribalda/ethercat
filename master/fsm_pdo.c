@@ -214,6 +214,7 @@ void ec_fsm_pdo_read_action_next_sync(
     if (slave->master->debug_level)
         EC_DBG("Reading of PDO configuration finished.\n");
 
+    ec_pdo_list_clear_pdos(&fsm->pdos);
     fsm->state = ec_fsm_pdo_state_end;
 }
 
@@ -230,7 +231,7 @@ void ec_fsm_pdo_read_state_pdo_count(
     if (!ec_fsm_coe_success(fsm->fsm_coe)) {
         EC_ERR("Failed to read number of assigned PDOs for SM%u"
                 " of slave %u.\n", fsm->sync_index, fsm->slave->ring_position);
-        fsm->state = ec_fsm_pdo_state_error;
+        ec_fsm_pdo_read_action_next_sync(fsm);
         return;
     }
 
@@ -239,7 +240,7 @@ void ec_fsm_pdo_read_state_pdo_count(
                 "from slave %u.\n", fsm->request.data_size,
                 fsm->request.index, fsm->request.subindex,
                 fsm->slave->ring_position);
-        fsm->state = ec_fsm_pdo_state_error;
+        ec_fsm_pdo_read_action_next_sync(fsm);
         return;
     }
     fsm->pdo_count = EC_READ_U8(fsm->request.data);
@@ -272,11 +273,7 @@ void ec_fsm_pdo_read_action_next_pdo(
 
     // finished reading PDO configuration
     
-    if (ec_pdo_list_copy(&fsm->sync->pdos, &fsm->pdos)) {
-        fsm->state = ec_fsm_pdo_state_error;
-        return;
-    }
-
+    ec_pdo_list_copy(&fsm->sync->pdos, &fsm->pdos);
     ec_pdo_list_clear_pdos(&fsm->pdos);
 
     // next sync manager
@@ -296,7 +293,7 @@ void ec_fsm_pdo_read_state_pdo(
     if (!ec_fsm_coe_success(fsm->fsm_coe)) {
         EC_ERR("Failed to read index of assigned PDO %u from SM%u.\n",
                 fsm->pdo_pos, fsm->sync_index);
-        fsm->state = ec_fsm_pdo_state_error;
+        ec_fsm_pdo_read_action_next_sync(fsm);
         return;
     }
 
@@ -305,14 +302,14 @@ void ec_fsm_pdo_read_state_pdo(
                 "from slave %u.\n", fsm->request.data_size,
                 fsm->request.index, fsm->request.subindex,
                 fsm->slave->ring_position);
-        fsm->state = ec_fsm_pdo_state_error;
+        ec_fsm_pdo_read_action_next_sync(fsm);
         return;
     }
 
     if (!(fsm->pdo = (ec_pdo_t *)
                 kmalloc(sizeof(ec_pdo_t), GFP_KERNEL))) {
         EC_ERR("Failed to allocate PDO.\n");
-        fsm->state = ec_fsm_pdo_state_error;
+        ec_fsm_pdo_read_action_next_sync(fsm);
         return;
     }
 
@@ -344,7 +341,7 @@ void ec_fsm_pdo_read_state_pdo_entries(
     if (!ec_fsm_pdo_entry_success(&fsm->fsm_pdo_entry)) {
         EC_ERR("Failed to read mapped PDO entries for PDO 0x%04X.\n",
                 fsm->pdo->index);
-        fsm->state = ec_fsm_pdo_state_error;
+        ec_fsm_pdo_read_action_next_sync(fsm);
         return;
     }
 
