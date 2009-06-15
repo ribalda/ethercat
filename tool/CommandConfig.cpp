@@ -167,7 +167,8 @@ void CommandConfig::showDetailedConfigs(
                 for (k = 0; k < configIter->syncs[j].pdo_count; k++) {
                     m.getConfigPdo(&pdo, configIter->config_index, j, k);
 
-                    cout << "  PDO 0x" << hex << setw(4) << pdo.index << endl;
+                    cout << "  PDO 0x" << hex << setfill('0')
+                        << setw(4) << pdo.index << endl;
 
                     for (l = 0; l < pdo.entry_count; l++) {
                         m.getConfigPdoEntry(&entry,
