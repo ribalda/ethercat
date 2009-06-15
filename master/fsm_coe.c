@@ -1504,7 +1504,8 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
     ec_master_t *master = slave->master;
-    uint8_t *data, mbox_prot;
+    uint16_t rec_index;
+    uint8_t *data, mbox_prot, rec_subindex;
     size_t rec_size, data_size;
     ec_sdo_request_t *request = fsm->request;
     unsigned int expedited, size_specified;
@@ -1553,7 +1554,7 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
         return;
     }
 
-    if (rec_size < 3) {
+    if (rec_size < 6) {
         fsm->state = ec_fsm_coe_error;
         EC_ERR("Received currupted SDO upload response (%u bytes)!\n", rec_size);
         ec_print_data(data, rec_size);
@@ -1561,7 +1562,7 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     }
 
     if (EC_READ_U16(data) >> 12 == 0x2 && // SDO request
-        EC_READ_U8 (data + 2) >> 5 == 0x4) { // abort SDO transfer request
+            EC_READ_U8(data + 2) >> 5 == 0x4) { // abort SDO transfer request
         EC_ERR("SDO upload 0x%04X:%02X aborted on slave %u.\n",
                request->index, request->subindex, slave->ring_position);
         if (rec_size >= 10) {
@@ -1574,34 +1575,37 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
         return;
     }
 
+    if (EC_READ_U16(data) >> 12 != 0x3 || // SDO response
+            EC_READ_U8(data + 2) >> 5 != 0x2) { // upload response
+        EC_ERR("Received unknown response while uploading SDO 0x%04X:%02X"
+                " from slave %u.\n", request->index, request->subindex,
+                slave->ring_position);
+        ec_print_data(data, rec_size);
+        fsm->state = ec_fsm_coe_error;
+        return;
+    }
+
+    rec_index = EC_READ_U16(data + 3);
+    rec_subindex = EC_READ_U8(data + 5);
+
+    if (rec_index != request->index || rec_subindex != request->subindex) {
+        EC_ERR("Received upload response for wrong SDO (0x%04X:%02X,"
+                " requested: 0x%04X:%02X) from slave %u.\n",
+                rec_index, rec_subindex, request->index, request->subindex,
+                slave->ring_position);
+        ec_print_data(data, rec_size);
+
+        // check for CoE response again
+        ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
+        fsm->retries = EC_FSM_RETRIES;
+        fsm->state = ec_fsm_coe_up_check;
+        return;
+    }
+
     // normal or expedited?
     expedited = EC_READ_U8(data + 2) & 0x02;
 
     if (expedited) {
-        if (rec_size < 7) {
-            fsm->state = ec_fsm_coe_error;
-            EC_ERR("Received currupted SDO expedited upload"
-                    " response (only %u bytes)!\n", rec_size);
-            ec_print_data(data, rec_size);
-            return;
-        }
-
-        if (EC_READ_U16(data) >> 12 != 0x3 || // SDO response
-                EC_READ_U8 (data + 2) >> 5 != 0x2 || // upload response
-                EC_READ_U16(data + 3) != request->index || // index
-                EC_READ_U8 (data + 5) != request->subindex) { // subindex
-            if (fsm->slave->master->debug_level) {
-                EC_DBG("Invalid SDO upload expedited response at slave %u!\n",
-                        slave->ring_position);
-                ec_print_data(data, rec_size);
-            }
-            // check for CoE response again
-            ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-            fsm->retries = EC_FSM_RETRIES;
-            fsm->state = ec_fsm_coe_up_check;
-            return;
-        }
-
         size_specified = EC_READ_U8(data + 2) & 0x01;
         if (size_specified) {
             fsm->complete_size = 4 - ((EC_READ_U8(data + 2) & 0x0C) >> 2);
@@ -1627,22 +1631,6 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
             EC_ERR("Received currupted SDO normal upload"
                     " response (only %u bytes)!\n", rec_size);
             ec_print_data(data, rec_size);
-            return;
-        }
-
-        if (EC_READ_U16(data) >> 12 != 0x3 || // SDO response
-                EC_READ_U8 (data + 2) >> 5 != 0x2 || // upload response
-                EC_READ_U16(data + 3) != request->index || // index
-                EC_READ_U8 (data + 5) != request->subindex) { // subindex
-            if (fsm->slave->master->debug_level) {
-                EC_DBG("Invalid SDO normal upload response at slave %u!\n",
-                        slave->ring_position);
-                ec_print_data(data, rec_size);
-            }
-            // check for CoE response again
-            ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-            fsm->retries = EC_FSM_RETRIES;
-            fsm->state = ec_fsm_coe_up_check;
             return;
         }
 
@@ -1862,7 +1850,7 @@ void ec_fsm_coe_up_seg_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     }
 
     if (EC_READ_U16(data) >> 12 == 0x2 && // SDO request
-        EC_READ_U8 (data + 2) >> 5 == 0x4) { // abort SDO transfer request
+            EC_READ_U8 (data + 2) >> 5 == 0x4) { // abort SDO transfer request
         EC_ERR("SDO upload 0x%04X:%02X aborted on slave %u.\n",
                request->index, request->subindex, slave->ring_position);
         request->abort_code = EC_READ_U32(data + 6);
