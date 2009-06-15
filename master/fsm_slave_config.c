@@ -288,7 +288,7 @@ void ec_fsm_slave_config_enter_clear_sync(
     ec_datagram_t *datagram = fsm->datagram;
     size_t sync_size;
 
-    if (!slave->sii.sync_count) { // FIXME use base_sync_count?
+    if (!slave->base_sync_count) {
         // no sync managers
         ec_fsm_slave_config_enter_dc_clear_assign(fsm);
         return;
@@ -298,7 +298,7 @@ void ec_fsm_slave_config_enter_clear_sync(
         EC_DBG("Clearing sync manager configurations of slave %u...\n",
                 slave->ring_position);
 
-    sync_size = EC_SYNC_PAGE_SIZE * slave->sii.sync_count;
+    sync_size = EC_SYNC_PAGE_SIZE * slave->base_sync_count;
 
     // clear sync manager configurations
     ec_datagram_fpwr(datagram, slave->station_address, 0x0800, sync_size);
@@ -602,9 +602,9 @@ void ec_fsm_slave_config_enter_mbox_sync(
                 EC_DIR_INVALID, // use default direction
                 datagram->data + EC_SYNC_PAGE_SIZE);
         slave->configured_tx_mailbox_offset =
-            slave->sii.boot_tx_mailbox_offset;
+            slave->sii.std_tx_mailbox_offset;
         slave->configured_tx_mailbox_size =
-            slave->sii.boot_tx_mailbox_size;
+            slave->sii.std_tx_mailbox_size;
     }
 
     fsm->take_time = 1;
