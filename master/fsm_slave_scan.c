@@ -301,7 +301,7 @@ void ec_fsm_slave_scan_state_base(
         slave->base_fmmu_count = EC_MAX_FMMUS;
     }
 
-    slave->base_sync_count = EC_READ_U8 (datagram->data + 5);
+    slave->base_sync_count = EC_READ_U8(datagram->data + 5);
     if (slave->base_sync_count > EC_MAX_SYNC_MANAGERS) {
         EC_WARN("Slave %u provides more sync managers (%u) than the master can"
                 " handle (%u).\n", slave->ring_position,
