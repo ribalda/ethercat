@@ -21,7 +21,7 @@ Changes since 1.4.0:
 * Improved error case return codes of many functions.
 * Added 8139too driver for 2.6.25.
 * Added 8139too driver for 2.6.26, thanks to M. Luescher.
-* Added 8139too driver for 2.6.27 and 2.6.28, thanks to M. Goetze.
+* Added 8139too driver for 2.6.27, 2.6.28 and 2.6.29, thanks to M. Goetze.
 * Added e1000 driver for 2.6.26, thanks to M. Luescher.
 * Implemented the File Access over EtherCAT (FoE) mailbox protocol, thanks to
   O. Zarges.
