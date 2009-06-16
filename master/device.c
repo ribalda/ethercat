@@ -226,7 +226,11 @@ int ec_device_open(
     device->tx_count = 0;
     device->rx_count = 0;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 29)
+    ret = device->dev->netdev_ops->ndo_open(device->dev);
+#else
     ret = device->dev->open(device->dev);
+#endif
     if (!ret)
         device->open = 1;
 
@@ -255,7 +259,11 @@ int ec_device_close(
         return 0;
     }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 29)
+    ret = device->dev->netdev_ops->ndo_stop(device->dev);
+#else
     ret = device->dev->stop(device->dev);
+#endif
     if (!ret)
         device->open = 0;
 
@@ -306,7 +314,11 @@ void ec_device_send(
     }
 
     // start sending
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 29)
+    if (device->dev->netdev_ops->ndo_start_xmit(skb, device->dev) == NETDEV_TX_OK) {
+#else
     if (device->dev->hard_start_xmit(skb, device->dev) == NETDEV_TX_OK) {
+#endif
 		device->tx_count++;
 #ifdef EC_DEBUG_IF
 		ec_debug_send(&device->dbg, skb->data, ETH_HLEN + size);
