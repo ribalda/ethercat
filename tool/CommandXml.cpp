@@ -82,8 +82,17 @@ void CommandXml::execute(MasterDevice &m, const StringVector &args)
     m.open(MasterDevice::Read);
     slaves = selectedSlaves(m);
 
+    cout << "<?xml version=\"1.0\" ?>" << endl;
+    if (slaves.size() > 1) {
+        cout << "<EtherCATInfoList>" << endl;
+    }
+
     for (si = slaves.begin(); si != slaves.end(); si++) {
-        generateSlaveXml(m, *si);
+        generateSlaveXml(m, *si, slaves.size() > 1 ? 1 : 0);
+    }
+
+    if (slaves.size() > 1) {
+        cout << "</EtherCATInfoList>" << endl;
     }
 }
 
@@ -91,26 +100,30 @@ void CommandXml::execute(MasterDevice &m, const StringVector &args)
 
 void CommandXml::generateSlaveXml(
         MasterDevice &m,
-        const ec_ioctl_slave_t &slave
+        const ec_ioctl_slave_t &slave,
+        unsigned int indent
         )
 {
     ec_ioctl_slave_sync_t sync;
     ec_ioctl_slave_sync_pdo_t pdo;
-    string pdoType;
+    string pdoType, in;
     ec_ioctl_slave_sync_pdo_entry_t entry;
     unsigned int i, j, k;
+
+    for (i = 0; i < indent; i++) {
+        in += "  ";
+    }
     
     cout
-        << "<?xml version=\"1.0\" ?>" << endl
-        << "  <EtherCATInfo>" << endl
-        << "    <!-- Slave " << slave.position << " -->" << endl
-        << "    <Vendor>" << endl
-        << "      <Id>" << slave.vendor_id << "</Id>" << endl
-        << "    </Vendor>" << endl
-        << "    <Descriptions>" << endl
-        << "      <Devices>" << endl
-        << "        <Device>" << endl
-        << "          <Type ProductCode=\"#x"
+        << in << "<EtherCATInfo>" << endl
+        << in << "  <!-- Slave " << slave.position << " -->" << endl
+        << in << "  <Vendor>" << endl
+        << in << "    <Id>" << slave.vendor_id << "</Id>" << endl
+        << in << "  </Vendor>" << endl
+        << in << "  <Descriptions>" << endl
+        << in << "    <Devices>" << endl
+        << in << "      <Device>" << endl
+        << in << "        <Type ProductCode=\"#x"
         << hex << setfill('0') << setw(8) << slave.product_code
         << "\" RevisionNo=\"#x"
         << hex << setfill('0') << setw(8) << slave.revision_number
@@ -118,7 +131,7 @@ void CommandXml::generateSlaveXml(
 
     if (strlen(slave.name)) {
         cout
-            << "          <Name><![CDATA["
+            << in << "        <Name><![CDATA["
             << slave.name
             << "]]></Name>" << endl;
     }
@@ -127,7 +140,7 @@ void CommandXml::generateSlaveXml(
         m.getSync(&sync, slave.position, i);
 
         cout
-            << "          <Sm Enable=\"" << dec << (unsigned int) sync.enable
+            << in << "        <Sm Enable=\"" << dec << (unsigned int) sync.enable
             << "\" StartAddress=\"" << sync.physical_start_address
             << "\" ControlByte=\"" << (unsigned int) sync.control_register
             << "\" DefaultSize=\"" << sync.default_size
@@ -143,37 +156,37 @@ void CommandXml::generateSlaveXml(
             pdoType += "xPdo"; // last 2 letters lowercase in XML!
 
             cout
-                << "          <" << pdoType
+                << in << "        <" << pdoType
                 << " Sm=\"" << i << "\" Fixed=\"1\" Mandatory=\"1\">" << endl
-                << "            <Index>#x"
+                << in << "          <Index>#x"
                 << hex << setfill('0') << setw(4) << pdo.index
                 << "</Index>" << endl
-                << "            <Name>" << pdo.name << "</Name>" << endl;
+                << in << "          <Name>" << pdo.name << "</Name>" << endl;
 
             for (k = 0; k < pdo.entry_count; k++) {
                 m.getPdoEntry(&entry, slave.position, i, j, k);
 
                 cout
-                    << "            <Entry>" << endl
-                    << "              <Index>#x"
+                    << in << "          <Entry>" << endl
+                    << in << "            <Index>#x"
                     << hex << setfill('0') << setw(4) << entry.index
                     << "</Index>" << endl;
                 if (entry.index)
                     cout
-                        << "              <SubIndex>"
+                        << in << "            <SubIndex>"
                         << dec << (unsigned int) entry.subindex
                         << "</SubIndex>" << endl;
                 
                 cout
-                    << "              <BitLen>"
+                    << in << "            <BitLen>"
                     << dec << (unsigned int) entry.bit_length
                     << "</BitLen>" << endl;
 
                 if (entry.index) {
                     cout
-                        << "              <Name>" << entry.name
+                        << in << "            <Name>" << entry.name
                         << "</Name>" << endl
-                        << "              <DataType>";
+                        << in << "            <DataType>";
 
                     if (entry.bit_length == 1) {
                         cout << "BOOL";
@@ -192,18 +205,19 @@ void CommandXml::generateSlaveXml(
                         cout << "</DataType>" << endl;
                 }
 
-                cout << "            </Entry>" << endl;
+                cout << in << "          </Entry>" << endl;
             }
 
             cout
-                << "          </" << pdoType << ">" << endl;
+                << in << "        </" << pdoType << ">" << endl;
         }
     }
 
     cout
-        << "        </Device>" << endl
-        << "     </Devices>" << endl
-        << "  </Descriptions>" << endl
-        << "</EtherCATInfo>" << endl;
+        << in << "      </Device>" << endl
+        << in << "    </Devices>" << endl
+        << in << "  </Descriptions>" << endl
+        << in << "</EtherCATInfo>" << endl;
 }
+
 /*****************************************************************************/

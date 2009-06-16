@@ -40,6 +40,8 @@ Changes since 1.4.0:
   an application transfer SDOs before activating the master. Thanks to Stefan
   Weiser.
 * Changed EC_MAX_SII_SIZE to 4096.
+* 'ethercat xml' creates valid XML <EtherCATInfoList> for more than one slave
+  (thanks to E. Burgstaller).
 
 Changes in 1.4.0:
 

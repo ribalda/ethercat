@@ -44,7 +44,8 @@ class CommandXml:
         void execute(MasterDevice &, const StringVector &);
 
     protected:
-        void generateSlaveXml(MasterDevice &, const ec_ioctl_slave_t &);
+        void generateSlaveXml(MasterDevice &, const ec_ioctl_slave_t &,
+                unsigned int);
 };
 
 /****************************************************************************/
