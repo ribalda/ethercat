@@ -6,6 +6,7 @@
 
 GRAPHS := \
 	fsm_change \
+	fsm_eoe \
 	fsm_master \
 	fsm_pdo_conf \
 	fsm_pdo_entry_conf \

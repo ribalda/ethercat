@@ -1,0 +1,70 @@
+
+/* $Id$ */
+
+digraph sii {
+    node [fontname="Helvetica"]
+    edge [fontname="Helvetica",fontsize=12]
+
+    start [shape=point]
+    start -> query
+
+    query [label="Query all Mailboxes"]
+    query -> check_read
+
+    check_read [shape=diamond,label="Frames to read?"]
+    check_read -> unset_idle_read [label="yes"]
+    check_read -> check_idle_read [label="no"]
+
+    unset_idle_read [label="Reset idle flag"]
+    unset_idle_read -> read
+
+    read [label="Read next segment"]
+    read -> check_read_finished
+
+    check_read_finished [shape=diamond,label="Frame complete?"]
+    check_read_finished -> read [label="no"]
+    check_read_finished -> check_write [label="yes"]
+
+    check_idle_read [shape=diamond,label="Idle flag set?"]
+    check_idle_read -> set_idle_read [label="no"]
+    check_idle_read -> sleep_read [label="yes"]
+
+    set_idle_read [label="Set idle flag"]
+    set_idle_read -> check_write
+
+    sleep_read [label="Sleep"]
+    sleep_read -> check_write
+
+    check_write [shape=diamond,label="Frames to write?"]
+    check_write -> unset_idle_write [label="yes"]
+    check_write -> check_idle_write [label="no"]
+
+    unset_idle_write [label="Reset idle flag"]
+    unset_idle_write -> write
+
+    write [label="Write next segment"]
+    write -> check_write_finished
+
+    check_write_finished [shape=diamond,label="Frame complete?"]
+    check_write_finished -> check_read_remaining [label="yes"]
+    check_write_finished -> write [label="no"]
+
+    check_read_remaining [shape=diamond,label="Remaining segments to read?"]
+    check_read_remaining -> query [label="no"]
+    check_read_remaining -> read [label="yes"]
+
+    check_idle_write [shape=diamond,label="Idle flag set?"]
+    check_idle_write -> set_idle_write [label="no"]
+    check_idle_write -> sleep_write [label="yes"]
+
+    set_idle_write [label="Set idle flag"]
+    set_idle_write -> check_read_remaining
+
+    sleep_write [label="Sleep"]
+    sleep_write -> query
+
+    /*{rank=same; check_read; check_idle_read}
+    {rank=same; unset_idle_read; set_idle_read; sleep_read}
+    {rank=same; check_write; check_idle_write}
+    {rank=same; unset_idle_write; set_idle_write; sleep_write}*/
+}
