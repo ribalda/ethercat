@@ -15,15 +15,15 @@ Changes since 1.4.0:
 * Separated datagram initialization from filling the payload with zeros.
   Introduced new method ec_datagram_zero() for that.
 * Added phy_read and phy_write commands to ethercat tool.
-* Added driver for Intel PRO/100 NICs.
+* Added e100 driver for Intel PRO/100 NICs.
+    - Added e100 driver for 2.6.28, thanks to Kim. H. Madsen.
+* Added 8139too driver for kernels 2.6.25 (F. Pose), 2.6.26 (M. Luescher),
+  2.6.27, 2.6.28 and 2.6.29 (M. Goetze).
+* Added e1000 driver for 2.6.26 (M. Luescher).
+* Added r8169 driver for 2.6.24 and 2.6.28.
 * Debug interfaces are created with the Ethernet addresses of the attached
   physical device.
 * Improved error case return codes of many functions.
-* Added 8139too driver for 2.6.25.
-* Added 8139too driver for 2.6.26, thanks to M. Luescher.
-* Added 8139too driver for 2.6.27, 2.6.28 and 2.6.29, thanks to M. Goetze.
-* Added e1000 driver for 2.6.26, thanks to M. Luescher.
-* Added e100 driver for 2.6.28, thanks to Kim. H. Madsen.
 * Implemented the File Access over EtherCAT (FoE) mailbox protocol, thanks to
   O. Zarges.
 * Going to the Bootstrap state is now supported by the state machines and the
@@ -162,7 +162,7 @@ Changes in version 1.4.0-rc1:
     - Added 8139too driver for kernel 2.6.24.
     - Added e1000 driver for kernel 2.6.22.
     - Added e1000 driver for kernel 2.6.24, thanks to Matthias Luescher.
-    - Added alpha support for the Reaktek r8169 chipset, thanks to Scott
+    - Added alpha support for the Realtek r8169 chipset, thanks to Scott
       Hassan.
     - Fixed unnecessary watchdog executions in e1000 drivers (thanks to
       Olav Zarges).
@@ -180,8 +180,8 @@ Changes in version 1.4.0-rc1:
     - Use expedites transfer type for SDOs <= 4 byte (thanks to J. Mohre).
     - Allow gaps in PDO mapping (thanks to R. Roesch).
     - Added some transfer timeouts.
-    - Ansynchronous handling of Emergency requests.
-    - Bugfixes.
+    - Asynchronous handling of Emergency requests.
+    - Bug fixes.
 * Sync managers are disabled, if the size is zero.
 * Renamed ec_master module parameters main and backup to main_devices and
   backup_devices to avoid warnings of some compilers.
