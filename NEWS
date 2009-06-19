@@ -43,6 +43,8 @@ Changes since 1.4.0:
 * Changed EC_MAX_SII_SIZE to 4096.
 * 'ethercat xml' creates valid XML <EtherCATInfoList> for more than one slave
   (thanks to E. Burgstaller).
+* Module symbol versions file for ec_master.ko is installed to
+  prefix/modules/ec_master.symvers.
 
 Changes in 1.4.0:
 
