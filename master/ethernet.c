@@ -102,6 +102,7 @@ int ec_eoe_init(
     INIT_LIST_HEAD(&eoe->tx_queue);
     eoe->tx_frame = NULL;
     eoe->tx_queue_active = 0;
+    eoe->tx_queue_size = EC_EOE_TX_QUEUE_SIZE;
     eoe->tx_queued_frames = 0;
     eoe->tx_queue_lock = SPIN_LOCK_UNLOCKED;
     eoe->tx_frame_number = 0xFF;
@@ -308,8 +309,8 @@ void ec_eoe_run(ec_eoe_t *eoe /**< EoE handler */)
 
     // update statistics
     if (jiffies - eoe->rate_jiffies > HZ) {
-        eoe->rx_rate = eoe->rx_counter * 8;
-        eoe->tx_rate = eoe->tx_counter * 8;
+        eoe->rx_rate = eoe->rx_counter;
+        eoe->tx_rate = eoe->tx_counter;
         eoe->rx_counter = 0;
         eoe->tx_counter = 0;
         eoe->rate_jiffies = jiffies;
@@ -574,7 +575,7 @@ void ec_eoe_state_tx_start(ec_eoe_t *eoe /**< EoE handler */)
     eoe->tx_frame = list_entry(eoe->tx_queue.next, ec_eoe_frame_t, queue);
     list_del(&eoe->tx_frame->queue);
     if (!eoe->tx_queue_active &&
-        eoe->tx_queued_frames == EC_EOE_TX_QUEUE_SIZE / 2) {
+        eoe->tx_queued_frames == eoe->tx_queue_size / 2) {
         netif_wake_queue(eoe->dev);
         eoe->tx_queue_active = 1;
 #if EOE_DEBUG_LEVEL > 0
@@ -722,7 +723,7 @@ int ec_eoedev_tx(struct sk_buff *skb, /**< transmit socket buffer */
     spin_lock_bh(&eoe->tx_queue_lock);
     list_add_tail(&frame->queue, &eoe->tx_queue);
     eoe->tx_queued_frames++;
-    if (eoe->tx_queued_frames == EC_EOE_TX_QUEUE_SIZE) {
+    if (eoe->tx_queued_frames == eoe->tx_queue_size) {
         netif_stop_queue(dev);
         eoe->tx_queue_active = 0;
     }

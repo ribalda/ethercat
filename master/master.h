@@ -51,6 +51,7 @@
 
 #include "device.h"
 #include "domain.h"
+#include "ethernet.h"
 #include "fsm_master.h"
 #include "cdev.h"
 
@@ -229,6 +230,8 @@ unsigned int ec_master_domain_count(const ec_master_t *);
 ec_domain_t *ec_master_find_domain(ec_master_t *, unsigned int);
 const ec_domain_t *ec_master_find_domain_const(const ec_master_t *,
         unsigned int);
+uint16_t ec_master_eoe_handler_count(const ec_master_t *);
+const ec_eoe_t *ec_master_get_eoe_handler_const(const ec_master_t *, uint16_t);
 
 int ec_master_debug_level(ec_master_t *, unsigned int);
 

@@ -45,11 +45,6 @@
 
 /*****************************************************************************/
 
-/** Size of the datagram description string. */
-#define EC_DATAGRAM_NAME_SIZE 20
-
-/*****************************************************************************/
-
 /** EtherCAT datagram type.
  */
 typedef enum {

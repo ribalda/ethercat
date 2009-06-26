@@ -483,4 +483,20 @@ void MasterDevice::requestState(
     }
 }
 
+/****************************************************************************/
+
+void MasterDevice::getEoeHandler(
+        ec_ioctl_eoe_handler_t *eoe,
+        uint16_t eoeHandlerIndex
+        )
+{
+    eoe->eoe_index = eoeHandlerIndex;
+
+    if (ioctl(fd, EC_IOCTL_EOE_HANDLER, eoe)) {
+        stringstream err;
+        err << "Failed to get EoE handler: " << strerror(errno);
+        throw MasterDeviceException(err);
+    }
+}
+
 /*****************************************************************************/

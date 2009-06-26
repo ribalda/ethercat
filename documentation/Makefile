@@ -17,6 +17,7 @@ COMMANDS := \
 	debug \
 	domains \
 	download \
+	eoe \
 	foe_read \
 	foe_write \
 	graph \

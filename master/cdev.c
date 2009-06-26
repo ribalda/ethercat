@@ -42,6 +42,7 @@
 #include "master.h"
 #include "slave_config.h"
 #include "voe_handler.h"
+#include "ethernet.h"
 #include "ioctl.h"
 
 /** Set to 1 to enable ioctl() command debugging.
@@ -170,6 +171,7 @@ int ec_cdev_ioctl_master(
     data.slave_count = master->slave_count;
     data.config_count = ec_master_config_count(master);
     data.domain_count = ec_master_domain_count(master);
+    data.eoe_handler_count = ec_master_eoe_handler_count(master);
     data.phase = (uint8_t) master->phase;
     data.scan_busy = master->scan_busy;
     up(&master->master_sem);
@@ -1428,6 +1430,53 @@ int ec_cdev_ioctl_config_sdo(
     data.subindex = req->subindex;
     data.size = req->data_size;
     memcpy(&data.data, req->data, min((u32) data.size, (u32) 4));
+
+    up(&master->master_sem);
+
+    if (copy_to_user((void __user *) arg, &data, sizeof(data)))
+        return -EFAULT;
+
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Get EoE handler information.
+ */
+int ec_cdev_ioctl_eoe_handler(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg /**< ioctl() argument. */
+        )
+{
+    ec_ioctl_eoe_handler_t data;
+	const ec_eoe_t *eoe;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+        return -EFAULT;
+    }
+
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
+
+    if (!(eoe = ec_master_get_eoe_handler_const(master, data.eoe_index))) {
+        up(&master->master_sem);
+        EC_ERR("EoE handler %u does not exist!\n", data.eoe_index);
+        return -EINVAL;
+    }
+
+	if (eoe->slave) {
+		data.slave_position = eoe->slave->ring_position;
+	} else {
+		data.slave_position = 0xffff;
+	}
+	snprintf(data.name, EC_DATAGRAM_NAME_SIZE, eoe->dev->name);
+    data.open = eoe->opened;
+    data.rx_bytes = eoe->stats.tx_bytes;
+    data.rx_rate = eoe->tx_rate;
+    data.tx_bytes = eoe->stats.rx_bytes;
+    data.tx_rate = eoe->tx_rate;
+    data.tx_queued_frames = eoe->tx_queued_frames;
+    data.tx_queue_size = eoe->tx_queue_size;
 
     up(&master->master_sem);
 
@@ -3133,6 +3182,8 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             return ec_cdev_ioctl_config_pdo_entry(master, arg);
         case EC_IOCTL_CONFIG_SDO:
             return ec_cdev_ioctl_config_sdo(master, arg);
+        case EC_IOCTL_EOE_HANDLER:
+            return ec_cdev_ioctl_eoe_handler(master, arg);
         case EC_IOCTL_REQUEST:
             if (!(filp->f_mode & FMODE_WRITE))
 				return -EPERM;

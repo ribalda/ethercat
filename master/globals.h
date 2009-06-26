@@ -105,6 +105,12 @@
 /** Number of DC sync signals. */
 #define EC_SYNC_SIGNAL_COUNT 2
 
+/** Size of the datagram description string.
+ *
+ * This is also used as the maximum lenth of EoE device names.
+ **/
+#define EC_DATAGRAM_NAME_SIZE 20
+
 /** Slave state mask.
  *
  * Apply this mask to a slave state byte to get the slave state without

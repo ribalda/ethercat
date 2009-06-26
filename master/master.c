@@ -1334,6 +1334,50 @@ const ec_domain_t *ec_master_find_domain_const(
 
 /*****************************************************************************/
 
+/** Get the number of EoE handlers.
+ *
+ * \return Number of EoE handlers.
+ */
+uint16_t ec_master_eoe_handler_count(
+		const ec_master_t *master /**< EtherCAT master. */
+		)
+{
+	const ec_eoe_t *eoe;
+	unsigned int count = 0;
+
+	list_for_each_entry(eoe, &master->eoe_handlers, list) {
+		count++;
+	}
+
+	return count;
+}
+
+/*****************************************************************************/
+
+/** Get an EoE handler via its position in the list.
+ *
+ * Const version.
+ *
+ * \return EoE handler pointer, or \a NULL if not found.
+ */
+const ec_eoe_t *ec_master_get_eoe_handler_const(
+		const ec_master_t *master, /**< EtherCAT master. */
+		uint16_t index /**< EoE handler index. */
+		)
+{
+	const ec_eoe_t *eoe;
+
+	list_for_each_entry(eoe, &master->eoe_handlers, list) {
+		if (index--)
+			continue;
+		return eoe;
+	}
+
+	return NULL;
+}
+
+/*****************************************************************************/
+
 /** Set the debug level.
  *
  * \retval       0 Success.

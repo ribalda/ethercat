@@ -34,6 +34,9 @@
 
 /*****************************************************************************/
 
+#ifndef __EC_ETHERNET_H__
+#define __EC_ETHERNET_H__
+
 #include <linux/list.h>
 #include <linux/netdevice.h>
 
@@ -82,6 +85,7 @@ struct ec_eoe
     uint32_t rx_counter; /**< octets received during last second */
     uint32_t rx_rate; /**< receive rate (bps) */
     struct list_head tx_queue; /**< queue for frames to send */
+    unsigned int tx_queue_size; /**< Transmit queue size. */
     unsigned int tx_queue_active; /**< kernel netif queue started */
     unsigned int tx_queued_frames; /**< number of frames in the queue */
     spinlock_t tx_queue_lock; /**< spinlock for the send queue */
@@ -100,5 +104,9 @@ void ec_eoe_clear(ec_eoe_t *);
 void ec_eoe_run(ec_eoe_t *);
 void ec_eoe_queue(ec_eoe_t *);
 int ec_eoe_is_open(const ec_eoe_t *);
+
+/*****************************************************************************/
+
+#endif
 
 /*****************************************************************************/

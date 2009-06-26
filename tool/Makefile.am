@@ -41,6 +41,7 @@ ethercat_SOURCES = \
 	CommandDebug.cpp \
 	CommandDomains.cpp \
 	CommandDownload.cpp \
+	CommandEoe.cpp \
 	CommandFoeRead.cpp \
 	CommandFoeWrite.cpp \
 	CommandGraph.cpp \
@@ -71,6 +72,7 @@ noinst_HEADERS = \
 	CommandDebug.h \
 	CommandDomains.h \
 	CommandDownload.h \
+	CommandEoe.h \
 	CommandFoeRead.h \
 	CommandFoeWrite.h \
 	CommandGraph.h \
