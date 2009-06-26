@@ -95,6 +95,7 @@ struct ec_eoe
     size_t tx_offset; /**< number of octets sent */
     uint32_t tx_counter; /**< octets transmitted during last second */
     uint32_t tx_rate; /**< transmit rate (bps) */
+    unsigned int tries; /**< Tries. */
 };
 
 /*****************************************************************************/

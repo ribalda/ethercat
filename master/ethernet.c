@@ -45,18 +45,22 @@
 
 /*****************************************************************************/
 
-/**
- * Defines the debug level of EoE processing.
+/** Defines the debug level of EoE processing.
  *
  * 0 = No debug messages.
- * 1 = Output actions.
- * 2 = Output actions and frame data.
+ * 1 = Output warnings.
+ * 2 = Output actions.
+ * 3 = Output actions and frame data.
  */
-
 #define EOE_DEBUG_LEVEL 0
 
-/** size of the EoE tx queue */
+/** Size of the EoE tx queue.
+ */
 #define EC_EOE_TX_QUEUE_SIZE 100
+
+/** Number of tries.
+ */
+#define EC_EOE_TRIES 10
 
 /*****************************************************************************/
 
@@ -229,7 +233,7 @@ int ec_eoe_send(ec_eoe_t *eoe /**< EoE handler */)
     size_t remaining_size, current_size, complete_offset;
     unsigned int last_fragment;
     uint8_t *data;
-#if EOE_DEBUG_LEVEL > 1
+#if EOE_DEBUG_LEVEL >= 3
     unsigned int i;
 #endif
 
@@ -251,14 +255,14 @@ int ec_eoe_send(ec_eoe_t *eoe /**< EoE handler */)
         complete_offset = remaining_size / 32 + 1;
     }
 
-#if EOE_DEBUG_LEVEL > 0
+#if EOE_DEBUG_LEVEL >= 2
     EC_DBG("EoE %s TX sending fragment %u%s with %u octets (%u)."
            " %u frames queued.\n", eoe->dev->name, eoe->tx_fragment_number,
            last_fragment ? "" : "+", current_size, complete_offset,
            eoe->tx_queued_frames);
 #endif
 
-#if EOE_DEBUG_LEVEL > 1
+#if EOE_DEBUG_LEVEL >= 3
     EC_DBG("");
     for (i = 0; i < current_size; i++) {
         printk("%02X ", eoe->tx_frame->skb->data[eoe->tx_offset + i]);
@@ -377,6 +381,10 @@ void ec_eoe_state_rx_check(ec_eoe_t *eoe /**< EoE handler */)
 {
     if (eoe->datagram.state != EC_DATAGRAM_RECEIVED) {
         eoe->stats.rx_errors++;
+#if EOE_DEBUG_LEVEL >= 1
+        EC_WARN("Failed to receive mbox check datagram for %s.\n",
+                eoe->dev->name);
+#endif
         eoe->state = ec_eoe_state_tx_start;
         return;
     }
@@ -405,12 +413,16 @@ void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
     uint8_t *data, frame_type, last_fragment, time_appended, mbox_prot;
     uint8_t frame_number, fragment_offset, fragment_number;
     off_t offset;
-#if EOE_DEBUG_LEVEL > 1
+#if EOE_DEBUG_LEVEL >= 3
     unsigned int i;
 #endif
 
     if (eoe->datagram.state != EC_DATAGRAM_RECEIVED) {
         eoe->stats.rx_errors++;
+#if EOE_DEBUG_LEVEL >= 1
+        EC_WARN("Failed to receive mbox fetch datagram for %s.\n",
+                eoe->dev->name);
+#endif
         eoe->state = ec_eoe_state_tx_start;
         return;
     }
@@ -419,12 +431,20 @@ void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
             &mbox_prot, &rec_size);
     if (IS_ERR(data)) {
         eoe->stats.rx_errors++;
+#if EOE_DEBUG_LEVEL >= 1
+        EC_WARN("Invalid mailbox response for %s.\n",
+                eoe->dev->name);
+#endif
         eoe->state = ec_eoe_state_tx_start;
         return;
     }
 
     if (mbox_prot != 0x02) { // EoE FIXME mailbox handler necessary
         eoe->stats.rx_errors++;
+#if EOE_DEBUG_LEVEL >= 1
+        EC_WARN("Other mailbox protocol response for %s.\n",
+                eoe->dev->name);
+#endif
         eoe->state = ec_eoe_state_tx_start;
         return;
     }
@@ -432,8 +452,8 @@ void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
     frame_type = EC_READ_U16(data) & 0x000F;
 
     if (frame_type != 0x00) {
-#if EOE_DEBUG_LEVEL > 0
-        EC_DBG("EoE %s: Other frame received.\n", eoe->dev->name);
+#if EOE_DEBUG_LEVEL >= 1
+        EC_WARN("%s: Other frame received. Dropping.\n", eoe->dev->name);
 #endif
         eoe->stats.rx_dropped++;
         eoe->state = ec_eoe_state_tx_start;
@@ -448,7 +468,7 @@ void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
     fragment_offset = (EC_READ_U16(data + 2) >> 6) & 0x003F;
     frame_number = (EC_READ_U16(data + 2) >> 12) & 0x000F;
 
-#if EOE_DEBUG_LEVEL > 0
+#if EOE_DEBUG_LEVEL >= 2
     EC_DBG("EoE %s RX fragment %u%s, offset %u, frame %u%s,"
            " %u octets\n", eoe->dev->name, fragment_number,
            last_fragment ? "" : "+", fragment_offset, frame_number, 
@@ -456,7 +476,7 @@ void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
            time_appended ? rec_size - 8 : rec_size - 4);
 #endif
 
-#if EOE_DEBUG_LEVEL > 1
+#if EOE_DEBUG_LEVEL >= 3
     EC_DBG("");
     for (i = 0; i < rec_size - 4; i++) {
         printk("%02X ", data[i + 4]);
@@ -503,6 +523,9 @@ void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
             dev_kfree_skb(eoe->rx_skb);
             eoe->rx_skb = NULL;
             eoe->stats.rx_errors++;
+#if EOE_DEBUG_LEVEL >= 1
+            EC_WARN("Fragmenting error at %s.\n", eoe->dev->name);
+#endif
             eoe->state = ec_eoe_state_tx_start;
             return;
         }
@@ -518,7 +541,7 @@ void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
         eoe->stats.rx_bytes += eoe->rx_skb->len;
         eoe->rx_counter += eoe->rx_skb->len;
 
-#if EOE_DEBUG_LEVEL > 0
+#if EOE_DEBUG_LEVEL >= 2
         EC_DBG("EoE %s RX frame completed with %u octets.\n",
                eoe->dev->name, eoe->rx_skb->len);
 #endif
@@ -536,7 +559,7 @@ void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
     }
     else {
         eoe->rx_expected_fragment++;
-#if EOE_DEBUG_LEVEL > 0
+#if EOE_DEBUG_LEVEL >= 2
         EC_DBG("EoE %s RX expecting fragment %u\n",
                eoe->dev->name, eoe->rx_expected_fragment);
 #endif
@@ -554,7 +577,7 @@ void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
 
 void ec_eoe_state_tx_start(ec_eoe_t *eoe /**< EoE handler */)
 {
-#if EOE_DEBUG_LEVEL > 0
+#if EOE_DEBUG_LEVEL >= 2
     unsigned int wakeup = 0;
 #endif
 
@@ -578,7 +601,7 @@ void ec_eoe_state_tx_start(ec_eoe_t *eoe /**< EoE handler */)
         eoe->tx_queued_frames == eoe->tx_queue_size / 2) {
         netif_wake_queue(eoe->dev);
         eoe->tx_queue_active = 1;
-#if EOE_DEBUG_LEVEL > 0
+#if EOE_DEBUG_LEVEL >= 2
         wakeup = 1;
 #endif
     }
@@ -597,14 +620,18 @@ void ec_eoe_state_tx_start(ec_eoe_t *eoe /**< EoE handler */)
         eoe->tx_frame = NULL;
         eoe->stats.tx_errors++;
         eoe->state = ec_eoe_state_rx_start;
+#if EOE_DEBUG_LEVEL >= 1
+        EC_WARN("Send error at %s.\n", eoe->dev->name);
+#endif
         return;
     }
 
-#if EOE_DEBUG_LEVEL > 0
+#if EOE_DEBUG_LEVEL >= 2
     if (wakeup)
         EC_DBG("EoE %s waking up TX queue...\n", eoe->dev->name);
 #endif
 
+    eoe->tries = EC_EOE_TRIES;
     eoe->state = ec_eoe_state_tx_sent;
 }
 
@@ -619,14 +646,38 @@ void ec_eoe_state_tx_start(ec_eoe_t *eoe /**< EoE handler */)
 void ec_eoe_state_tx_sent(ec_eoe_t *eoe /**< EoE handler */)
 {
     if (eoe->datagram.state != EC_DATAGRAM_RECEIVED) {
-        eoe->stats.tx_errors++;
-        eoe->state = ec_eoe_state_rx_start;
+        if (eoe->tries) {
+            eoe->tries--; // try again
+            eoe->queue_datagram = 1;
+#if EOE_DEBUG_LEVEL >= 1
+            EC_WARN("Failed to receive send datagram for %s. Retrying.\n",
+                    eoe->dev->name);
+#endif
+        } else {
+            eoe->stats.tx_errors++;
+#if EOE_DEBUG_LEVEL >= 1
+            EC_WARN("Failed to receive send datagram for %s. Giving up.\n",
+                    eoe->dev->name);
+#endif
+            eoe->state = ec_eoe_state_rx_start;
+        }
         return;
     }
 
     if (eoe->datagram.working_counter != 1) {
-        eoe->stats.tx_errors++;
-        eoe->state = ec_eoe_state_rx_start;
+        if (eoe->tries) {
+            eoe->tries--; // try again
+            eoe->queue_datagram = 1;
+#if EOE_DEBUG_LEVEL >= 1
+            EC_WARN("No sending response for %s. Retrying.\n", eoe->dev->name);
+#endif
+        } else {
+            eoe->stats.tx_errors++;
+#if EOE_DEBUG_LEVEL >= 1
+            EC_WARN("No sending response for %s. Giving up.\n", eoe->dev->name);
+#endif
+            eoe->state = ec_eoe_state_rx_start;
+        }
         return;
     }
 
@@ -646,6 +697,9 @@ void ec_eoe_state_tx_sent(ec_eoe_t *eoe /**< EoE handler */)
             kfree(eoe->tx_frame);
             eoe->tx_frame = NULL;
             eoe->stats.tx_errors++;
+#if EOE_DEBUG_LEVEL >= 1
+        EC_WARN("Send error at %s.\n", eoe->dev->name);
+#endif
             eoe->state = ec_eoe_state_rx_start;
         }
     }
@@ -729,7 +783,7 @@ int ec_eoedev_tx(struct sk_buff *skb, /**< transmit socket buffer */
     }
     spin_unlock_bh(&eoe->tx_queue_lock);
 
-#if EOE_DEBUG_LEVEL > 0
+#if EOE_DEBUG_LEVEL >= 2
     EC_DBG("EoE %s TX queued frame with %u octets (%u frames queued).\n",
            eoe->dev->name, skb->len, eoe->tx_queued_frames);
     if (!eoe->tx_queue_active)
