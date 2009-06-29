@@ -702,7 +702,9 @@ int ec_eoedev_open(struct net_device *dev /**< EoE net_device */)
     eoe->opened = 1;
     netif_start_queue(dev);
     eoe->tx_queue_active = 1;
+#if EOE_DEBUG_LEVEL >= 2
     EC_DBG("%s opened.\n", dev->name);
+#endif
     ec_slave_request_state(eoe->slave, EC_SLAVE_STATE_OP);
     return 0;
 }
@@ -718,7 +720,9 @@ int ec_eoedev_stop(struct net_device *dev /**< EoE net_device */)
     eoe->tx_queue_active = 0;
     eoe->opened = 0;
     ec_eoe_flush(eoe);
+#if EOE_DEBUG_LEVEL >= 2
     EC_DBG("%s stopped.\n", dev->name);
+#endif
     ec_slave_request_state(eoe->slave, EC_SLAVE_STATE_PREOP);
     return 0;
 }
