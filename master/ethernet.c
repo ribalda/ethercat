@@ -81,11 +81,10 @@ struct net_device_stats *ec_eoedev_stats(struct net_device *);
 
 /*****************************************************************************/
 
-/**
- * EoE constructor.
+/** EoE constructor.
+ *
  * Initializes the EoE handler, creates a net_device and registers it.
  */
-
 int ec_eoe_init(
         ec_eoe_t *eoe, /**< EoE handler */
         ec_slave_t *slave /**< EtherCAT slave */
@@ -177,11 +176,10 @@ int ec_eoe_init(
 
 /*****************************************************************************/
 
-/**
-   EoE destructor.
-   Unregisteres the net_device and frees allocated memory.
-*/
-
+/** EoE destructor.
+ *
+ * Unregisteres the net_device and frees allocated memory.
+ */
 void ec_eoe_clear(ec_eoe_t *eoe /**< EoE handler */)
 {
     unregister_netdev(eoe->dev); // possibly calls close callback
@@ -202,10 +200,8 @@ void ec_eoe_clear(ec_eoe_t *eoe /**< EoE handler */)
 
 /*****************************************************************************/
 
-/**
-   Empties the transmit queue.
-*/
-
+/** Empties the transmit queue.
+ */
 void ec_eoe_flush(ec_eoe_t *eoe /**< EoE handler */)
 {
     ec_eoe_frame_t *frame, *next;
@@ -224,10 +220,8 @@ void ec_eoe_flush(ec_eoe_t *eoe /**< EoE handler */)
 
 /*****************************************************************************/
 
-/**
-   Sends a frame or the next fragment.
-*/
-
+/** Sends a frame or the next fragment.
+ */
 int ec_eoe_send(ec_eoe_t *eoe /**< EoE handler */)
 {
     size_t remaining_size, current_size, complete_offset;
@@ -295,10 +289,8 @@ int ec_eoe_send(ec_eoe_t *eoe /**< EoE handler */)
 
 /*****************************************************************************/
 
-/**
-   Runs the EoE state machine.
-*/
-
+/** Runs the EoE state machine.
+ */
 void ec_eoe_run(ec_eoe_t *eoe /**< EoE handler */)
 {
     if (!eoe->opened)
@@ -325,10 +317,8 @@ void ec_eoe_run(ec_eoe_t *eoe /**< EoE handler */)
 
 /*****************************************************************************/
 
-/**
- * Queues the datagram, if necessary.
+/** Queues the datagram, if necessary.
  */
-
 void ec_eoe_queue(ec_eoe_t *eoe /**< EoE handler */)
 {
    if (eoe->queue_datagram) {
@@ -339,11 +329,10 @@ void ec_eoe_queue(ec_eoe_t *eoe /**< EoE handler */)
 
 /*****************************************************************************/
 
-/**
-   Returns the state of the device.
-   \return 1 if the device is "up", 0 if it is "down"
-*/
-
+/** Returns the state of the device.
+ *
+ * \return 1 if the device is "up", 0 if it is "down"
+ */
 int ec_eoe_is_open(const ec_eoe_t *eoe /**< EoE handler */)
 {
     return eoe->opened;
@@ -353,12 +342,11 @@ int ec_eoe_is_open(const ec_eoe_t *eoe /**< EoE handler */)
  *  STATE PROCESSING FUNCTIONS
  *****************************************************************************/
 
-/**
-   State: RX_START.
-   Starts a new receiving sequence by queueing a datagram that checks the
-   slave's mailbox for a new EoE datagram.
-*/
-
+/** State: RX_START.
+ *
+ * Starts a new receiving sequence by queueing a datagram that checks the
+ * slave's mailbox for a new EoE datagram.
+ */
 void ec_eoe_state_rx_start(ec_eoe_t *eoe /**< EoE handler */)
 {
     if (eoe->slave->error_flag || !eoe->slave->master->main_device.link_state)
@@ -371,12 +359,11 @@ void ec_eoe_state_rx_start(ec_eoe_t *eoe /**< EoE handler */)
 
 /*****************************************************************************/
 
-/**
-   State: RX_CHECK.
-   Processes the checking datagram sent in RX_START and issues a receive
-   datagram, if new data is available.
-*/
-
+/** State: RX_CHECK.
+ *
+ * Processes the checking datagram sent in RX_START and issues a receive
+ * datagram, if new data is available.
+ */
 void ec_eoe_state_rx_check(ec_eoe_t *eoe /**< EoE handler */)
 {
     if (eoe->datagram.state != EC_DATAGRAM_RECEIVED) {
@@ -401,12 +388,11 @@ void ec_eoe_state_rx_check(ec_eoe_t *eoe /**< EoE handler */)
 
 /*****************************************************************************/
 
-/**
-   State: RX_FETCH.
-   Checks if the requested data of RX_CHECK was received and processes the
-   EoE datagram.
-*/
-
+/** State: RX_FETCH.
+ *
+ * Checks if the requested data of RX_CHECK was received and processes the EoE
+ * datagram.
+ */
 void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
 {
     size_t rec_size, data_size;
@@ -569,12 +555,11 @@ void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
 
 /*****************************************************************************/
 
-/**
-   State: TX START.
-   Starts a new transmit sequence. If no data is available, a new receive
-   sequence is started instead.
-*/
-
+/** State: TX START.
+ *
+ * Starts a new transmit sequence. If no data is available, a new receive
+ * sequence is started instead.
+ */
 void ec_eoe_state_tx_start(ec_eoe_t *eoe /**< EoE handler */)
 {
 #if EOE_DEBUG_LEVEL >= 2
@@ -637,12 +622,11 @@ void ec_eoe_state_tx_start(ec_eoe_t *eoe /**< EoE handler */)
 
 /*****************************************************************************/
 
-/**
-   State: TX SENT.
-   Checks is the previous transmit datagram succeded and sends the next
-   fragment, if necessary.
-*/
-
+/** State: TX SENT.
+ *
+ * Checks is the previous transmit datagram succeded and sends the next
+ * fragment, if necessary.
+ */
 void ec_eoe_state_tx_sent(ec_eoe_t *eoe /**< EoE handler */)
 {
     if (eoe->datagram.state != EC_DATAGRAM_RECEIVED) {
@@ -709,10 +693,8 @@ void ec_eoe_state_tx_sent(ec_eoe_t *eoe /**< EoE handler */)
  *  NET_DEVICE functions
  *****************************************************************************/
 
-/**
-   Opens the virtual network device.
-*/
-
+/** Opens the virtual network device.
+ */
 int ec_eoedev_open(struct net_device *dev /**< EoE net_device */)
 {
     ec_eoe_t *eoe = *((ec_eoe_t **) netdev_priv(dev));
@@ -727,10 +709,8 @@ int ec_eoedev_open(struct net_device *dev /**< EoE net_device */)
 
 /*****************************************************************************/
 
-/**
-   Stops the virtual network device.
-*/
-
+/** Stops the virtual network device.
+ */
 int ec_eoedev_stop(struct net_device *dev /**< EoE net_device */)
 {
     ec_eoe_t *eoe = *((ec_eoe_t **) netdev_priv(dev));
@@ -745,10 +725,8 @@ int ec_eoedev_stop(struct net_device *dev /**< EoE net_device */)
 
 /*****************************************************************************/
 
-/**
-   Transmits data via the virtual network device.
-*/
-
+/** Transmits data via the virtual network device.
+ */
 int ec_eoedev_tx(struct sk_buff *skb, /**< transmit socket buffer */
                  struct net_device *dev /**< EoE net_device */
                 )
@@ -795,12 +773,11 @@ int ec_eoedev_tx(struct sk_buff *skb, /**< transmit socket buffer */
 
 /*****************************************************************************/
 
-/**
-   Gets statistics about the virtual network device.
-*/
-
-struct net_device_stats *ec_eoedev_stats(struct net_device *dev
-                                         /**< EoE net_device */)
+/** Gets statistics about the virtual network device.
+ */
+struct net_device_stats *ec_eoedev_stats(
+        struct net_device *dev /**< EoE net_device */
+        )
 {
     ec_eoe_t *eoe = *((ec_eoe_t **) netdev_priv(dev));
     return &eoe->stats;
