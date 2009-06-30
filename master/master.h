@@ -155,12 +155,11 @@ struct ec_master {
     struct task_struct *thread; /**< Master thread. */
 
 #ifdef EC_EOE
-    struct timer_list eoe_timer; /**< EoE timer object. */
-    unsigned int eoe_running; /**< \a True, if EoE processing is active. */
+    struct task_struct *eoe_thread; /**< EoE thread. */
     struct list_head eoe_handlers; /**< Ethernet over EtherCAT handlers. */
 #endif
 
-    spinlock_t internal_lock; /**< Spinlock used in \a IDLE phase. */
+    struct semaphore io_sem; /**< Semaphore used in \a IDLE phase. */
     int (*request_cb)(void *); /**< Lock request callback. */
     void (*release_cb)(void *); /**< Lock release callback. */
     void *cb_data; /**< Data parameter of locking callbacks. */

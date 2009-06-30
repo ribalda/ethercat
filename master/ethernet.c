@@ -52,7 +52,7 @@
  * 2 = Output actions.
  * 3 = Output actions and frame data.
  */
-#define EOE_DEBUG_LEVEL 0
+#define EOE_DEBUG_LEVEL 1
 
 /** Size of the EoE tx queue.
  */
@@ -60,7 +60,7 @@
 
 /** Number of tries.
  */
-#define EC_EOE_TRIES 10
+#define EC_EOE_TRIES 100
 
 /*****************************************************************************/
 
@@ -107,7 +107,7 @@ int ec_eoe_init(
     eoe->tx_queue_active = 0;
     eoe->tx_queue_size = EC_EOE_TX_QUEUE_SIZE;
     eoe->tx_queued_frames = 0;
-    eoe->tx_queue_lock = SPIN_LOCK_UNLOCKED;
+    init_MUTEX(&eoe->tx_queue_sem);
     eoe->tx_frame_number = 0xFF;
     memset(&eoe->stats, 0, sizeof(struct net_device_stats));
 
@@ -116,6 +116,8 @@ int ec_eoe_init(
     eoe->rx_rate = 0;
     eoe->tx_rate = 0;
     eoe->rate_jiffies = 0;
+    eoe->rx_idle = 1;
+    eoe->tx_idle = 1;
 
     /* device name eoe<MASTER>[as]<SLAVE>, because networking scripts don't
      * like hyphens etc. in interface names. */
@@ -206,7 +208,7 @@ void ec_eoe_flush(ec_eoe_t *eoe /**< EoE handler */)
 {
     ec_eoe_frame_t *frame, *next;
 
-    spin_lock_bh(&eoe->tx_queue_lock);
+    down(&eoe->tx_queue_sem);
 
     list_for_each_entry_safe(frame, next, &eoe->tx_queue, queue) {
         list_del(&frame->queue);
@@ -215,7 +217,7 @@ void ec_eoe_flush(ec_eoe_t *eoe /**< EoE handler */)
     }
     eoe->tx_queued_frames = 0;
 
-    spin_unlock_bh(&eoe->tx_queue_lock);
+    up(&eoe->tx_queue_sem);
 }
 
 /*****************************************************************************/
@@ -338,6 +340,18 @@ int ec_eoe_is_open(const ec_eoe_t *eoe /**< EoE handler */)
     return eoe->opened;
 }
 
+/*****************************************************************************/
+
+/** Returns the idle state.
+ *
+ * \retval 1 The device is idle.
+ * \retval 0 The device is busy.
+ */
+int ec_eoe_is_idle(const ec_eoe_t *eoe /**< EoE handler */)
+{
+    return eoe->rx_idle && eoe->tx_idle;
+}
+
 /******************************************************************************
  *  STATE PROCESSING FUNCTIONS
  *****************************************************************************/
@@ -349,8 +363,12 @@ int ec_eoe_is_open(const ec_eoe_t *eoe /**< EoE handler */)
  */
 void ec_eoe_state_rx_start(ec_eoe_t *eoe /**< EoE handler */)
 {
-    if (eoe->slave->error_flag || !eoe->slave->master->main_device.link_state)
+    if (eoe->slave->error_flag ||
+            !eoe->slave->master->main_device.link_state) {
+        eoe->rx_idle = 1;
+        eoe->tx_idle = 1;
         return;
+    }
 
     ec_slave_mbox_prepare_check(eoe->slave, &eoe->datagram);
     eoe->queue_datagram = 1;
@@ -377,10 +395,12 @@ void ec_eoe_state_rx_check(ec_eoe_t *eoe /**< EoE handler */)
     }
 
     if (!ec_slave_mbox_check(&eoe->datagram)) {
+        eoe->rx_idle = 1;
         eoe->state = ec_eoe_state_tx_start;
         return;
     }
 
+    eoe->rx_idle = 0;
     ec_slave_mbox_prepare_fetch(eoe->slave, &eoe->datagram);
     eoe->queue_datagram = 1;
     eoe->state = ec_eoe_state_rx_fetch;
@@ -566,13 +586,18 @@ void ec_eoe_state_tx_start(ec_eoe_t *eoe /**< EoE handler */)
     unsigned int wakeup = 0;
 #endif
 
-    if (eoe->slave->error_flag || !eoe->slave->master->main_device.link_state)
+    if (eoe->slave->error_flag ||
+            !eoe->slave->master->main_device.link_state) {
+        eoe->rx_idle = 1;
+        eoe->tx_idle = 1;
         return;
+    }
 
-    spin_lock_bh(&eoe->tx_queue_lock);
+    down(&eoe->tx_queue_sem);
 
     if (!eoe->tx_queued_frames || list_empty(&eoe->tx_queue)) {
-        spin_unlock_bh(&eoe->tx_queue_lock);
+        up(&eoe->tx_queue_sem);
+        eoe->tx_idle = 1;
         // no data available.
         // start a new receive immediately.
         ec_eoe_state_rx_start(eoe);
@@ -592,7 +617,9 @@ void ec_eoe_state_tx_start(ec_eoe_t *eoe /**< EoE handler */)
     }
 
     eoe->tx_queued_frames--;
-    spin_unlock_bh(&eoe->tx_queue_lock);
+    up(&eoe->tx_queue_sem);
+
+    eoe->tx_idle = 0;
 
     eoe->tx_frame_number++;
     eoe->tx_frame_number %= 16;
@@ -633,15 +660,11 @@ void ec_eoe_state_tx_sent(ec_eoe_t *eoe /**< EoE handler */)
         if (eoe->tries) {
             eoe->tries--; // try again
             eoe->queue_datagram = 1;
-#if EOE_DEBUG_LEVEL >= 1
-            EC_WARN("Failed to receive send datagram for %s. Retrying.\n",
-                    eoe->dev->name);
-#endif
         } else {
             eoe->stats.tx_errors++;
 #if EOE_DEBUG_LEVEL >= 1
-            EC_WARN("Failed to receive send datagram for %s. Giving up.\n",
-                    eoe->dev->name);
+            EC_WARN("Failed to receive send datagram for %s after %u tries.\n",
+                    eoe->dev->name, EC_EOE_TRIES);
 #endif
             eoe->state = ec_eoe_state_rx_start;
         }
@@ -652,13 +675,11 @@ void ec_eoe_state_tx_sent(ec_eoe_t *eoe /**< EoE handler */)
         if (eoe->tries) {
             eoe->tries--; // try again
             eoe->queue_datagram = 1;
-#if EOE_DEBUG_LEVEL >= 1
-            EC_WARN("No sending response for %s. Retrying.\n", eoe->dev->name);
-#endif
         } else {
             eoe->stats.tx_errors++;
 #if EOE_DEBUG_LEVEL >= 1
-            EC_WARN("No sending response for %s. Giving up.\n", eoe->dev->name);
+            EC_WARN("No sending response for %s after %u tries.\n",
+                    eoe->dev->name, EC_EOE_TRIES);
 #endif
             eoe->state = ec_eoe_state_rx_start;
         }
@@ -700,6 +721,8 @@ int ec_eoedev_open(struct net_device *dev /**< EoE net_device */)
     ec_eoe_t *eoe = *((ec_eoe_t **) netdev_priv(dev));
     ec_eoe_flush(eoe);
     eoe->opened = 1;
+    eoe->rx_idle = 0;
+    eoe->tx_idle = 0;
     netif_start_queue(dev);
     eoe->tx_queue_active = 1;
 #if EOE_DEBUG_LEVEL >= 2
@@ -717,6 +740,8 @@ int ec_eoedev_stop(struct net_device *dev /**< EoE net_device */)
 {
     ec_eoe_t *eoe = *((ec_eoe_t **) netdev_priv(dev));
     netif_stop_queue(dev);
+    eoe->rx_idle = 1;
+    eoe->tx_idle = 1;
     eoe->tx_queue_active = 0;
     eoe->opened = 0;
     ec_eoe_flush(eoe);
@@ -756,14 +781,14 @@ int ec_eoedev_tx(struct sk_buff *skb, /**< transmit socket buffer */
 
     frame->skb = skb;
 
-    spin_lock_bh(&eoe->tx_queue_lock);
+    down(&eoe->tx_queue_sem);
     list_add_tail(&frame->queue, &eoe->tx_queue);
     eoe->tx_queued_frames++;
     if (eoe->tx_queued_frames == eoe->tx_queue_size) {
         netif_stop_queue(dev);
         eoe->tx_queue_active = 0;
     }
-    spin_unlock_bh(&eoe->tx_queue_lock);
+    up(&eoe->tx_queue_sem);
 
 #if EOE_DEBUG_LEVEL >= 2
     EC_DBG("EoE %s TX queued frame with %u octets (%u frames queued).\n",

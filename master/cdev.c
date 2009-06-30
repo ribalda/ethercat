@@ -1645,9 +1645,9 @@ int ec_cdev_ioctl_send(
 	if (unlikely(!priv->requested))
 		return -EPERM;
 
-    spin_lock_bh(&master->internal_lock);
+    down(&master->io_sem);
     ecrt_master_send(master);
-    spin_unlock_bh(&master->internal_lock);
+    up(&master->io_sem);
     return 0;
 }
 
@@ -1664,9 +1664,9 @@ int ec_cdev_ioctl_receive(
 	if (unlikely(!priv->requested))
 		return -EPERM;
 
-    spin_lock_bh(&master->internal_lock);
+    down(&master->io_sem);
     ecrt_master_receive(master);
-    spin_unlock_bh(&master->internal_lock);
+    up(&master->io_sem);
     return 0;
 }
 
@@ -1729,9 +1729,9 @@ int ec_cdev_ioctl_sync_ref(
 	if (unlikely(!priv->requested))
 		return -EPERM;
 
-    spin_lock_bh(&master->internal_lock);
+    down(&master->io_sem);
     ecrt_master_sync_reference_clock(master);
-    spin_unlock_bh(&master->internal_lock);
+    up(&master->io_sem);
     return 0;
 }
 
@@ -1748,9 +1748,9 @@ int ec_cdev_ioctl_sync_slaves(
 	if (unlikely(!priv->requested))
 		return -EPERM;
 
-    spin_lock_bh(&master->internal_lock);
+    down(&master->io_sem);
     ecrt_master_sync_slave_clocks(master);
-    spin_unlock_bh(&master->internal_lock);
+    up(&master->io_sem);
     return 0;
 }
 

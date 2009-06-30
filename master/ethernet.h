@@ -78,23 +78,28 @@ struct ec_eoe
     struct net_device_stats stats; /**< device statistics */
     unsigned int opened; /**< net_device is opened */
     unsigned long rate_jiffies; /**< time of last rate output */
+
     struct sk_buff *rx_skb; /**< current rx socket buffer */
     off_t rx_skb_offset; /**< current write pointer in the socket buffer */
     size_t rx_skb_size; /**< size of the allocated socket buffer memory */
     uint8_t rx_expected_fragment; /**< next expected fragment number */
     uint32_t rx_counter; /**< octets received during last second */
     uint32_t rx_rate; /**< receive rate (bps) */
+    unsigned int rx_idle; /**< Idle flag. */
+
     struct list_head tx_queue; /**< queue for frames to send */
     unsigned int tx_queue_size; /**< Transmit queue size. */
     unsigned int tx_queue_active; /**< kernel netif queue started */
     unsigned int tx_queued_frames; /**< number of frames in the queue */
-    spinlock_t tx_queue_lock; /**< spinlock for the send queue */
+    struct semaphore tx_queue_sem; /**< Semaphore for the send queue. */
     ec_eoe_frame_t *tx_frame; /**< current TX frame */
     uint8_t tx_frame_number; /**< number of the transmitted frame */
     uint8_t tx_fragment_number; /**< number of the fragment */
     size_t tx_offset; /**< number of octets sent */
     uint32_t tx_counter; /**< octets transmitted during last second */
     uint32_t tx_rate; /**< transmit rate (bps) */
+    unsigned int tx_idle; /**< Idle flag. */
+
     unsigned int tries; /**< Tries. */
 };
 
@@ -105,6 +110,7 @@ void ec_eoe_clear(ec_eoe_t *);
 void ec_eoe_run(ec_eoe_t *);
 void ec_eoe_queue(ec_eoe_t *);
 int ec_eoe_is_open(const ec_eoe_t *);
+int ec_eoe_is_idle(const ec_eoe_t *);
 
 /*****************************************************************************/
 

@@ -21,6 +21,10 @@ Version 1.5.0:
     - Check if register 0x0980 is working, to avoid clearing it when
       configuring.
     - Create an interface to query the System Time Difference registers.
+* EoE:
+    - Only execute one EoE handler per cycle.
+    - Replace locking callbacks.
+    - Allow EoE with userspace application.
 * Implement 'ethercat foe_read --output-file ...'.
 * Fix unloading problem of ec_e100 driver.
 * Use ec_datagram_zero() where possible.
@@ -31,15 +35,11 @@ Version 1.5.0:
 * Limit bandwidth of state machine datagram.
 * Read alias from register 0x0012 instead of SII.
 * Finish library implementation.
-* Re-work EoE code.
-* Replace locking callbacks.
-* Implement EoE callbacks for library.
 * Rescan command.
 * Override sync manager size?
 * Remove ecrt_domain_state()?
 * Check force_config flag before error.
 * Remove allow_scanning flag.
-* Test File access over EtherCAT (FoE) reading.
 * Implement ecrt_master_slave() in kernel space.
 * Check for ioctl() interface version.
 * Improve application-triggered SDO transfers by moving the state machine into
@@ -81,7 +81,6 @@ Smaller issues:
 * Clear sync managers in INIT.
 * Read out CRC counters.
 * Configure slave ports to automatically open on link detection.
-* Only execute one EoE handler per EoE cycle.
 * Fix datagram errors on application loading/unloading.
 
 Less important issues:

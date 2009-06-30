@@ -45,9 +45,6 @@
  * EtherCAT master
  *****************************************************************************/
 
-/** Clock frequency for the EoE state machines. */
-#define EC_EOE_FREQUENCY 1000
-
 /** Datagram timeout in microseconds. */
 #define EC_IO_TIMEOUT 500
 

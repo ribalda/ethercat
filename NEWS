@@ -46,6 +46,7 @@ Changes since 1.4.0:
 * Module symbol versions file for ec_master.ko is installed to
   prefix/modules/ec_master.symvers.
 * Added 'ethercat eoe' command to display Ethernet over EtherCAT statistics.
+* Significantly improved EoE bandwidth by running EoE processing in a kthread.
 
 Changes in 1.4.0:
 
