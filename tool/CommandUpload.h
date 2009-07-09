@@ -44,7 +44,7 @@ class CommandUpload:
         void execute(MasterDevice &, const StringVector &);
 
     protected:
-		enum {DefaultBufferSize = 1024};
+		enum {DefaultBufferSize = 64 * 1024};
 
         static void printRawData(const uint8_t *, unsigned int);
 };
