@@ -71,6 +71,7 @@ uint8_t *ec_slave_mbox_prepare_send(const ec_slave_t *slave, /**< slave */
         return ERR_PTR(-EOVERFLOW);
     }
 
+    ec_datagram_zero(datagram);
     ret = ec_datagram_fpwr(datagram, slave->station_address,
             slave->configured_rx_mailbox_offset,
             slave->configured_rx_mailbox_size);
