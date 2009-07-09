@@ -55,10 +55,10 @@ digraph slaveconf {
 
     boot_preop [style="bold"]
     boot_preop -> end [label="PREOP\nor BOOT\nrequested"]
-    boot_preop -> enter_safeop [label="No slave\nconfig attached"]
     boot_preop -> enter_sdo_conf [weight=10]
 
     enter_sdo_conf [shape=point, label=""]
+    enter_sdo_conf -> enter_pdo_sync [label="No config\nattached"]
     enter_sdo_conf -> enter_pdo_conf [label="No SDOs\nconfigured"]
     enter_sdo_conf -> sdo_conf [weight=10]
 
@@ -81,7 +81,7 @@ digraph slaveconf {
     pdo_sync -> enter_fmmu [weight=10]
 
     enter_fmmu [shape=point,label=""]
-    enter_fmmu -> reconfigure
+    enter_fmmu -> enter_safeop [label="No config\nattached"]
     enter_fmmu -> enter_dc_cycle [label="No FMMUs\nconfigured"]
     enter_fmmu -> fmmu [weight=10]
 

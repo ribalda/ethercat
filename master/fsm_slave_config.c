@@ -735,12 +735,6 @@ void ec_fsm_slave_config_state_boot_preop(
         return;
     }
 
-    if (!slave->config) {
-        EC_WARN("Slave %u is not configured.\n", slave->ring_position);
-        ec_fsm_slave_config_enter_safeop(fsm);
-        return;
-    }
-
     ec_fsm_slave_config_enter_sdo_conf(fsm);
 }
 
@@ -754,8 +748,12 @@ void ec_fsm_slave_config_enter_sdo_conf(
 {
     ec_slave_t *slave = fsm->slave;
 
+    if (!slave->config) {
+        ec_fsm_slave_config_enter_pdo_sync(fsm);
+        return;
+    }
+
     // No CoE configuration to be applied?
-	// FIXME check for config
     if (list_empty(&slave->config->sdo_configs)) { // skip SDO configuration
         ec_fsm_slave_config_enter_pdo_conf(fsm);
         return;
@@ -862,8 +860,8 @@ void ec_fsm_slave_config_enter_pdo_sync(
     unsigned int i, offset, num_pdo_syncs;
     uint8_t sync_index;
     const ec_sync_t *sync;
-    const ec_sync_config_t *sync_config;
     uint16_t size;
+    ec_direction_t dir;
 
     if (slave->sii.mailbox_protocols) {
         offset = 2; // slave has mailboxes
@@ -888,10 +886,19 @@ void ec_fsm_slave_config_enter_pdo_sync(
     for (i = 0; i < num_pdo_syncs; i++) {
         sync_index = i + offset;
         sync = &slave->sii.syncs[sync_index];
-        sync_config = &slave->config->sync_configs[sync_index];
-        size = ec_pdo_list_total_size(&sync_config->pdos);
-        ec_sync_page(sync, sync_index, size, sync_config->dir,
-                datagram->data + EC_SYNC_PAGE_SIZE * i);
+
+        if (slave->config) {
+            const ec_sync_config_t *sync_config;
+            sync_config = &slave->config->sync_configs[sync_index];
+            size = ec_pdo_list_total_size(&sync_config->pdos);
+            dir = sync_config->dir;
+        } else {
+            size = sync->default_length;
+            dir = EC_DIR_INVALID;
+        }
+
+        ec_sync_page(sync, sync_index, size, dir, datagram->data +
+                EC_SYNC_PAGE_SIZE * i);
     }
 
     fsm->retries = EC_FSM_RETRIES;
@@ -946,8 +953,8 @@ void ec_fsm_slave_config_enter_fmmu(
     const ec_fmmu_config_t *fmmu;
     const ec_sync_t *sync;
 
-    if (!slave->config) { // config removed in the meantime
-        ec_fsm_slave_config_reconfigure(fsm);
+    if (!slave->config) {
+        ec_fsm_slave_config_enter_safeop(fsm);
         return;
     }
 
