@@ -49,6 +49,7 @@ Version 1.5.0:
 * Move device driver files in subdirectories.
 * Document ec_fsm_foe members.
 * Test KBUILD_EXTRA_SYMBOLS.
+* Remove default buffer size in SDO upload.
 
 Future issues:
 
