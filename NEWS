@@ -28,6 +28,10 @@ Changes since 1.4.0:
   O. Zarges.
 * Going to the Bootstrap state is now supported by the state machines and the
   command-line tool.
+* Added ecrt_open_master() and ecrt_master_reserve() separation for
+  the userspace libary (thanks to Martin Troxler).
+* Added ecrt_master() userspace interface, to get information about a
+  master (thanks to Martin Troxler).
 * Introduced ecrt_master_slave() to get information about a certain slave.
 * SDO entry access rights are shown in 'ethercat sdos'.
 * Added 64-bit data access macros to application header.

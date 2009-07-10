@@ -50,9 +50,25 @@ unsigned int ecrt_version_magic(void)
 
 /*****************************************************************************/
 
+ec_master_t *ecrt_request_master(unsigned int master_index)
+{
+    ec_master_t *master = ecrt_open_master(master_index);
+    if (master) {
+        if (ecrt_master_reserve(master) < 0) {
+            close(master->fd);
+            free(master);
+            master = 0;
+        }
+    }
+
+    return master;
+}
+
+/*****************************************************************************/
+
 #define MAX_PATH_LEN 64
 
-ec_master_t *ecrt_request_master(unsigned int master_index)
+ec_master_t *ecrt_open_master(unsigned int master_index)
 {
     char path[MAX_PATH_LEN];
     ec_master_t *master;
@@ -73,14 +89,6 @@ ec_master_t *ecrt_request_master(unsigned int master_index)
         fprintf(stderr, "Failed to open %s: %s\n", path, strerror(errno));
         free(master);
         return 0;
-    }
-
-    if (ioctl(master->fd, EC_IOCTL_REQUEST, NULL) == -1) {
-        fprintf(stderr, "Failed to request master %u: %s\n",
-                master_index, strerror(errno));
-        close(master->fd);
-        free(master);
-        return 0; 
     }
 
     return master;

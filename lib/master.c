@@ -42,6 +42,17 @@
 
 /*****************************************************************************/
 
+int ecrt_master_reserve(ec_master_t *master)
+{
+    if (ioctl(master->fd, EC_IOCTL_REQUEST, NULL) == -1) {
+        fprintf(stderr, "Failed to reserve master: %s\n",
+                strerror(errno));
+        return -1;
+    }
+}
+
+/*****************************************************************************/
+
 ec_domain_t *ecrt_master_create_domain(ec_master_t *master)
 {
     ec_domain_t *domain;
@@ -103,6 +114,23 @@ ec_slave_config_t *ecrt_master_slave_config(ec_master_t *master,
 
 /*****************************************************************************/
 
+int ecrt_master(ec_master_t* master, ec_master_info_t *master_info)
+{
+	ec_ioctl_master_t data;
+
+	if (ioctl(master->fd, EC_IOCTL_MASTER, &data) < 0) {
+        fprintf(stderr, "Failed to get master info: %s\n", strerror(errno));
+		return -1;
+	}
+
+	master_info->slave_count = data.slave_count;
+	master_info->link_up = data.devices[0].link_state;
+	master_info->app_time = data.app_time;
+	return 0;
+}
+
+/*****************************************************************************/
+
 int ecrt_master_slave(ec_master_t *master, uint16_t position,
         ec_slave_info_t *slave_info)
 {
@@ -112,8 +140,7 @@ int ecrt_master_slave(ec_master_t *master, uint16_t position,
     data.position = position;
 
     if (ioctl(master->fd, EC_IOCTL_SLAVE, &data) == -1) {
-        fprintf(stderr, "Failed to get slave info: %s\n",
-                strerror(errno));
+        fprintf(stderr, "Failed to get slave info: %s\n", strerror(errno));
         return -1;
     }
 
@@ -129,7 +156,6 @@ int ecrt_master_slave(ec_master_t *master, uint16_t position,
     slave_info->sync_count = data.sync_count;
     slave_info->sdo_count = data.sdo_count;
     strncpy(slave_info->name, data.name, EC_IOCTL_STRING_SIZE);
-
     return 0;
 }
 
