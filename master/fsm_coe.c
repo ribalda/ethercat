@@ -1105,7 +1105,7 @@ void ec_fsm_coe_down_start(ec_fsm_coe_t *fsm /**< finite state machine */)
 
         if (slave->master->debug_level) {
             EC_DBG("Expedited download request:\n");
-            ec_print_data(data, 10);
+			ec_print_data(data, 10 + request->data_size);
         }
 	}
     else { // request->data_size > 4, use normal transfer type
@@ -1662,7 +1662,7 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
                         data_size, fsm->complete_size);
 
             data = ec_slave_mbox_prepare_send(slave, datagram,
-                    0x03, 3);
+					0x03, 10);
             if (IS_ERR(data)) {
                 fsm->state = ec_fsm_coe_error;
                 return;
@@ -1674,7 +1674,7 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
 
             if (master->debug_level) {
                 EC_DBG("Upload segment request:\n");
-                ec_print_data(data, 3);
+				ec_print_data(data, 10);
             }
 
             fsm->retries = EC_FSM_RETRIES;
@@ -1876,7 +1876,7 @@ void ec_fsm_coe_up_seg_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     last_segment = EC_READ_U8(data + 2) & 0x01;
     seg_size = (EC_READ_U8(data + 2) & 0xE) >> 1;
     if (rec_size > 10) {
-        data_size = rec_size - 10;
+		data_size = rec_size - 3;	// Header of segment upload is smaller then normal upload
     } else { // == 10
         /* seg_size contains the number of trailing bytes to ignore. */
         data_size = rec_size - seg_size;
@@ -1890,13 +1890,13 @@ void ec_fsm_coe_up_seg_response(ec_fsm_coe_t *fsm /**< finite state machine */)
         return;
     }
 
-    memcpy(request->data + request->data_size, data + 10, data_size);
+	memcpy(request->data + request->data_size, data + 3, data_size);
     request->data_size += data_size;
 
     if (!last_segment) {
         fsm->toggle = !fsm->toggle;
 
-        data = ec_slave_mbox_prepare_send(slave, datagram, 0x03, 3);
+		data = ec_slave_mbox_prepare_send(slave, datagram, 0x03, 10);
         if (IS_ERR(data)) {
             fsm->state = ec_fsm_coe_error;
             return;
@@ -1908,7 +1908,7 @@ void ec_fsm_coe_up_seg_response(ec_fsm_coe_t *fsm /**< finite state machine */)
 
         if (master->debug_level) {
             EC_DBG("Upload segment request:\n");
-            ec_print_data(data, 3);
+			ec_print_data(data, 10);
         }
 
         fsm->retries = EC_FSM_RETRIES;

@@ -192,6 +192,22 @@ typedef struct  {
 
 /*****************************************************************************/
 
+#ifndef __KERNEL__
+
+/** Master information.
+ *
+ * This is used as an output parameter of ecrt_master().
+ *
+ * \see ecrt_master().
+ */
+typedef struct {
+   unsigned int slave_count; /**< Number of slaves in the bus. */
+   unsigned int link_up : 1; /**< \a true, if the network link is up. */
+   uint64_t app_time; /**< Application time. */
+} ec_master_info_t;
+
+/*****************************************************************************/
+
 /** Slave information.
  *
  * This is used as an output parameter of ecrt_master_slave().
@@ -212,6 +228,8 @@ typedef struct {
     uint16_t sdo_count; /**< Number of SDO's. */
     char name[EC_MAX_STRING_LENGTH]; /**< Name of the slave. */
 } ec_slave_info_t;
+
+#endif // #ifndef __KERNEL__
 
 /*****************************************************************************/
 
@@ -374,6 +392,52 @@ void ecrt_release_master(
         ec_master_t *master /**< EtherCAT master */
         );
 
+
+#ifndef __KERNEL__
+
+/** Opens an EtherCAT master for userspace access.
+ *
+ * This function has to be the first function an application has to call to
+ * use EtherCAT. The function takes the index of the master as its argument.
+ * The first master has index 0, the n-th master has index n - 1. The number
+ * of masters has to be specified when loading the master module.
+ *
+ * \return Pointer to the opened master, otherwise \a NULL.
+ */
+ec_master_t *ecrt_open_master(
+		unsigned int master_index /**< Index of the master to request. */
+		);
+
+/** Reserves an EtherCAT master for realtime operation.
+ *
+ * Before an application can use PDO/domain registration functions or SDO
+ * request functions on the master, it has to reserve one for exclusive use.
+ *
+ * \return 0 in case of success, else < 0
+ *
+ */
+
+int ecrt_reserve_master(
+		ec_master_t *master /**< EtherCAT master */
+		);
+
+/** Obtains master information.
+ *
+ * No memory is allocated on the heap in
+ * this function.
+ *
+ * \attention The pointer to this structure must point to a valid variable.
+ *
+ * \return 0 in case of success, else < 0
+ */
+int ecrt_master(
+		ec_master_t *master, /**< EtherCAT master */
+		ec_master_info_t *master_info /**< Structure that will output the
+									  information */
+		);
+
+#endif // #ifndef __KERNEL__
+
 /******************************************************************************
  * Master methods
  *****************************************************************************/
@@ -468,7 +532,7 @@ int ecrt_master_slave(
                                       information */
         );
 
-#endif /* ifndef __KERNEL__ */
+#endif /* #ifndef __KERNEL__ */
 
 /** Finishes the configuration phase and prepares for cyclic operation.
  *
@@ -603,7 +667,7 @@ int ecrt_slave_sdo_upload(
         uint32_t *abort_code /**< Abort code of the SDO upload. */
         );
 
-#endif /* ifndef __KERNEL__ */
+#endif /* #ifndef __KERNEL__ */
 
 /******************************************************************************
  * Slave configuration methods
