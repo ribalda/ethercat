@@ -145,6 +145,11 @@ struct ec_master {
     struct list_head datagram_queue; /**< Datagram queue. */
     uint8_t datagram_index; /**< Current datagram index. */
 
+    struct list_head ext_datagram_queue; /**< Queue for non-application
+                                           datagrams. */
+    struct semaphore ext_queue_sem; /**< Semaphore protecting the \a
+                                      ext_datagram_queue. */
+
     struct list_head domains; /**< List of domains. */
 
     unsigned int debug_level; /**< Master debug level. */
@@ -160,12 +165,13 @@ struct ec_master {
 #endif
 
     struct semaphore io_sem; /**< Semaphore used in \a IDLE phase. */
-    int (*request_cb)(void *); /**< Lock request callback. */
-    void (*release_cb)(void *); /**< Lock release callback. */
-    void *cb_data; /**< Data parameter of locking callbacks. */
-    int (*ext_request_cb)(void *); /**< External lock request callback. */
-    void (*ext_release_cb)(void *); /**< External lock release callback. */
-    void *ext_cb_data; /**< Data parameter of external locking callbacks. */
+
+    void (*send_cb)(ec_master_t *); /**< Current send datagrams callback. */
+    void (*receive_cb)(ec_master_t *); /**< Current receive datagrams callback. */
+    void (*app_send_cb)(ec_master_t *); /**< Application's send datagrams
+                                          callback. */
+    void (*app_receive_cb)(ec_master_t *); /**< Application's receive datagrams
+                                      callback. */
 
     struct list_head sii_requests; /**< SII write requests. */
     wait_queue_head_t sii_queue; /**< Wait queue for SII
@@ -208,6 +214,7 @@ void ec_master_eoe_stop(ec_master_t *);
 // datagram IO
 void ec_master_receive_datagrams(ec_master_t *, const uint8_t *, size_t);
 void ec_master_queue_datagram(ec_master_t *, ec_datagram_t *);
+void ec_master_queue_datagram_ext(ec_master_t *, ec_datagram_t *);
 
 // misc.
 void ec_master_attach_slave_configs(ec_master_t *);
@@ -239,6 +246,9 @@ ec_slave_config_t *ecrt_master_slave_config_err(ec_master_t *, uint16_t,
         uint16_t, uint32_t, uint32_t);
 
 void ec_master_calc_dc(ec_master_t *);
+
+void ec_master_internal_send_cb(ec_master_t *);
+void ec_master_internal_receive_cb(ec_master_t *);
 
 /*****************************************************************************/
 

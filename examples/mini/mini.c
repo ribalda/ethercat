@@ -29,7 +29,7 @@
 
 #include <linux/module.h>
 #include <linux/timer.h>
-#include <linux/spinlock.h>
+#include <linux/semaphore.h>
 #include <linux/interrupt.h>
 #include <linux/err.h>
 
@@ -54,7 +54,7 @@
 // EtherCAT
 static ec_master_t *master = NULL;
 static ec_master_state_t master_state = {};
-spinlock_t master_lock = SPIN_LOCK_UNLOCKED;
+struct semaphore master_sem;
 
 static ec_domain_t *domain1 = NULL;
 static ec_domain_state_t domain1_state = {};
@@ -192,9 +192,9 @@ void check_domain1_state(void)
 {
     ec_domain_state_t ds;
 
-    spin_lock(&master_lock);
+    down(&master_sem);
     ecrt_domain_state(domain1, &ds);
-    spin_unlock(&master_lock);
+    up(&master_sem);
 
     if (ds.working_counter != domain1_state.working_counter)
         printk(KERN_INFO PFX "Domain1: WC %u.\n", ds.working_counter);
@@ -210,9 +210,9 @@ void check_master_state(void)
 {
     ec_master_state_t ms;
 
-    spin_lock(&master_lock);
+    down(&master_sem);
     ecrt_master_state(master, &ms);
-    spin_unlock(&master_lock);
+    up(&master_sem);
 
     if (ms.slaves_responding != master_state.slaves_responding)
         printk(KERN_INFO PFX "%u slave(s).\n", ms.slaves_responding);
@@ -230,9 +230,9 @@ void check_slave_config_states(void)
 {
     ec_slave_config_state_t s;
 
-    spin_lock(&master_lock);
+    down(&master_sem);
     ecrt_slave_config_state(sc_ana_in, &s);
-    spin_unlock(&master_lock);
+    up(&master_sem);
 
     if (s.al_state != sc_ana_in_state.al_state)
         printk(KERN_INFO PFX "AnaIn: State 0x%02X.\n", s.al_state);
@@ -300,10 +300,10 @@ void read_voe(void)
 void cyclic_task(unsigned long data)
 {
     // receive process data
-    spin_lock(&master_lock);
+    down(&master_sem);
     ecrt_master_receive(master);
     ecrt_domain_process(domain1);
-    spin_unlock(&master_lock);
+    up(&master_sem);
 
     // check process data state (optional)
     check_domain1_state();
@@ -336,10 +336,10 @@ void cyclic_task(unsigned long data)
     EC_WRITE_U8(domain1_pd + off_dig_out, blink ? 0x06 : 0x09);
 
     // send process data
-    spin_lock(&master_lock);
+    down(&master_sem);
     ecrt_domain_queue(domain1);
     ecrt_master_send(master);
-    spin_unlock(&master_lock);
+    up(&master_sem);
 
     // restart timer
     timer.expires += HZ / FREQUENCY;
@@ -348,17 +348,20 @@ void cyclic_task(unsigned long data)
 
 /*****************************************************************************/
 
-int request_lock(void *data)
+void send_callback(ec_master_t *master)
 {
-    spin_lock(&master_lock);
-    return 0; // access allowed
+    down(&master_sem);
+    ecrt_master_send_ext(master);
+    up(&master_sem);
 }
 
 /*****************************************************************************/
 
-void release_lock(void *data)
+void receive_callback(ec_master_t *master)
 {
-    spin_unlock(&master_lock);
+    down(&master_sem);
+    ecrt_master_receive(master);
+    up(&master_sem);
 }
 
 /*****************************************************************************/
@@ -382,7 +385,8 @@ int __init init_mini_module(void)
         goto out_return;
     }
 
-    ecrt_master_callbacks(master, request_lock, release_lock, NULL);
+    init_MUTEX(&master_sem);
+    ecrt_master_callbacks(master, send_callback, receive_callback);
 
     printk(KERN_INFO PFX "Registering domain...\n");
     if (!(domain1 = ecrt_master_create_domain(master))) {

@@ -146,6 +146,9 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     INIT_LIST_HEAD(&master->datagram_queue);
     master->datagram_index = 0;
 
+    INIT_LIST_HEAD(&master->ext_datagram_queue);
+    init_MUTEX(&master->ext_queue_sem);
+
     INIT_LIST_HEAD(&master->domains);
 
     master->debug_level = debug_level;
@@ -163,9 +166,10 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
 #endif
 
     init_MUTEX(&master->io_sem);
-    master->request_cb = NULL;
-    master->release_cb = NULL;
-    master->cb_data = NULL;
+    master->send_cb = NULL;
+    master->receive_cb = NULL;
+    master->app_send_cb = NULL;
+    master->app_receive_cb = NULL;
 
     INIT_LIST_HEAD(&master->sii_requests);
     init_waitqueue_head(&master->sii_queue);
@@ -375,22 +379,27 @@ void ec_master_clear_domains(ec_master_t *master)
 
 /*****************************************************************************/
 
-/** Internal locking callback.
+/** Internal sending callback.
  */
-int ec_master_request_cb(void *data /**< callback data */)
+void ec_master_internal_send_cb(
+        ec_master_t *master /**< EtherCAT master. */
+        )
 {
-    ec_master_t *master = (ec_master_t *) data;
     down(&master->io_sem);
-    return 0;
+    ecrt_master_send_ext(master);
+    up(&master->io_sem);
 }
 
 /*****************************************************************************/
 
-/** Internal unlocking callback.
+/** Internal receiving callback.
  */
-void ec_master_release_cb(void *data /**< callback data */)
+void ec_master_internal_receive_cb(
+        ec_master_t *master /**< EtherCAT master. */
+        )
 {
-    ec_master_t *master = (ec_master_t *) data;
+    down(&master->io_sem);
+    ecrt_master_receive(master);
     up(&master->io_sem);
 }
 
@@ -462,9 +471,8 @@ int ec_master_enter_idle_phase(
     if (master->debug_level)
         EC_DBG("ORPHANED -> IDLE.\n");
 
-    master->request_cb = ec_master_request_cb;
-    master->release_cb = ec_master_release_cb;
-    master->cb_data = master;
+    master->send_cb = ec_master_internal_send_cb;
+    master->receive_cb = ec_master_internal_receive_cb;
 
     master->phase = EC_IDLE;
     ret = ec_master_thread_start(master, ec_master_idle_thread,
@@ -564,9 +572,8 @@ int ec_master_enter_operation_phase(ec_master_t *master /**< EtherCAT master */)
 #endif
 
     master->phase = EC_OPERATION;
-    master->ext_request_cb = NULL;
-    master->ext_release_cb = NULL;
-    master->ext_cb_data = NULL;
+    master->app_send_cb = NULL;
+    master->app_receive_cb = NULL;
     return ret;
     
 out_allow:
@@ -597,9 +604,8 @@ void ec_master_leave_operation_phase(ec_master_t *master
 #endif
     ec_master_thread_stop(master);
     
-    master->request_cb = ec_master_request_cb;
-    master->release_cb = ec_master_release_cb;
-    master->cb_data = master;
+    master->send_cb = ec_master_internal_send_cb;
+    master->receive_cb = ec_master_internal_receive_cb;
     
     down(&master->master_sem);
     ec_master_clear_domains(master);
@@ -646,9 +652,10 @@ void ec_master_leave_operation_phase(ec_master_t *master
 
 /** Places a datagram in the datagram queue.
  */
-void ec_master_queue_datagram(ec_master_t *master, /**< EtherCAT master */
-                              ec_datagram_t *datagram /**< datagram */
-                              )
+void ec_master_queue_datagram(
+        ec_master_t *master, /**< EtherCAT master */
+        ec_datagram_t *datagram /**< datagram */
+        )
 {
     ec_datagram_t *queued_datagram;
 
@@ -665,6 +672,20 @@ void ec_master_queue_datagram(ec_master_t *master, /**< EtherCAT master */
 
     list_add_tail(&datagram->queue, &master->datagram_queue);
     datagram->state = EC_DATAGRAM_QUEUED;
+}
+
+/*****************************************************************************/
+
+/** Places a datagram in the non-application datagram queue.
+ */
+void ec_master_queue_datagram_ext(
+        ec_master_t *master, /**< EtherCAT master */
+        ec_datagram_t *datagram /**< datagram */
+        )
+{
+    down(&master->ext_queue_sem);
+    list_add_tail(&datagram->queue, &master->ext_datagram_queue);
+    up(&master->ext_queue_sem);
 }
 
 /*****************************************************************************/
@@ -1048,8 +1069,8 @@ void ec_master_eoe_start(ec_master_t *master /**< EtherCAT master */)
     if (list_empty(&master->eoe_handlers))
         return;
 
-    if (!master->request_cb || !master->release_cb) {
-        EC_WARN("No EoE processing because of missing locking callbacks!\n");
+    if (!master->send_cb || !master->receive_cb) {
+        EC_WARN("No EoE processing because of missing callbacks!\n");
         return;
     }
 
@@ -1109,11 +1130,7 @@ static int ec_master_eoe_thread(void *priv_data)
             goto schedule;
 
         // receive datagrams
-        if (master->request_cb(master->cb_data))
-            goto schedule;
-        
-        ecrt_master_receive(master);
-        master->release_cb(master->cb_data);
+        master->receive_cb(master);
 
         // actual EoE processing
         sth_to_send = 0;
@@ -1128,15 +1145,13 @@ static int ec_master_eoe_thread(void *priv_data)
         }
 
         if (sth_to_send) {
-            // send datagrams
-            if (master->request_cb(master->cb_data)) {
-                goto schedule;
-            }
             list_for_each_entry(eoe, &master->eoe_handlers, list) {
                 ec_eoe_queue(eoe);
             }
-            ecrt_master_send(master);
-            master->release_cb(master->cb_data);
+            // (try to) send datagrams
+            down(&master->ext_queue_sem);
+            master->send_cb(master);
+            up(&master->ext_queue_sem);
         }
 
 schedule:
@@ -1641,9 +1656,9 @@ int ecrt_master_activate(ec_master_t *master)
 
     master->injection_seq_fsm = 0;
     master->injection_seq_rt = 0;
-    master->request_cb = master->ext_request_cb;
-    master->release_cb = master->ext_release_cb;
-    master->cb_data = master->ext_cb_data;
+
+    master->send_cb = master->app_send_cb;
+    master->receive_cb = master->app_receive_cb;
     
     ret = ec_master_thread_start(master, ec_master_operation_thread,
                 "EtherCAT-OP");
@@ -1735,6 +1750,21 @@ void ecrt_master_receive(ec_master_t *master)
 
 /*****************************************************************************/
 
+void ecrt_master_send_ext(ec_master_t *master)
+{
+    ec_datagram_t *datagram, *next;
+
+    list_for_each_entry_safe(datagram, next, &master->ext_datagram_queue,
+            queue) {
+        list_del(&datagram->queue);
+        ec_master_queue_datagram(master, datagram);
+    }
+
+    ecrt_master_send(master);
+}
+
+/*****************************************************************************/
+
 /** Same as ecrt_master_slave_config(), but with ERR_PTR() return value.
  */
 ec_slave_config_t *ecrt_master_slave_config_err(ec_master_t *master,
@@ -1805,17 +1835,16 @@ ec_slave_config_t *ecrt_master_slave_config(ec_master_t *master,
 
 /*****************************************************************************/
 
-void ecrt_master_callbacks(ec_master_t *master, int (*request_cb)(void *),
-        void (*release_cb)(void *), void *cb_data)
+void ecrt_master_callbacks(ec_master_t *master,
+        void (*send_cb)(ec_master_t *), void (*receive_cb)(ec_master_t *))
 {
     if (master->debug_level)
-        EC_DBG("ecrt_master_callbacks(master = 0x%x, request_cb = 0x%x, "
-                " release_cb = 0x%x, cb_data = 0x%x)\n", (u32) master,
-                (u32) request_cb, (u32) release_cb, (u32) cb_data);
+        EC_DBG("ecrt_master_callbacks(master = 0x%x, send_cb = 0x%x, "
+                " receive_cb = 0x%x)\n", (u32) master, (u32) send_cb,
+                (u32) receive_cb);
 
-    master->ext_request_cb = request_cb;
-    master->ext_release_cb = release_cb;
-    master->ext_cb_data = cb_data;
+    master->app_send_cb = send_cb;
+    master->app_receive_cb = receive_cb;
 }
 
 /*****************************************************************************/
@@ -1862,6 +1891,7 @@ void ecrt_master_sync_slave_clocks(ec_master_t *master)
 EXPORT_SYMBOL(ecrt_master_create_domain);
 EXPORT_SYMBOL(ecrt_master_activate);
 EXPORT_SYMBOL(ecrt_master_send);
+EXPORT_SYMBOL(ecrt_master_send_ext);
 EXPORT_SYMBOL(ecrt_master_receive);
 EXPORT_SYMBOL(ecrt_master_callbacks);
 EXPORT_SYMBOL(ecrt_master_slave_config);

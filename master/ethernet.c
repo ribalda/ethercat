@@ -324,7 +324,7 @@ void ec_eoe_run(ec_eoe_t *eoe /**< EoE handler */)
 void ec_eoe_queue(ec_eoe_t *eoe /**< EoE handler */)
 {
    if (eoe->queue_datagram) {
-       ec_master_queue_datagram(eoe->slave->master, &eoe->datagram);
+       ec_master_queue_datagram_ext(eoe->slave->master, &eoe->datagram);
        eoe->queue_datagram = 0;
    }
 }

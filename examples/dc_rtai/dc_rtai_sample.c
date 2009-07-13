@@ -58,7 +58,6 @@
 // EtherCAT
 static ec_master_t *master = NULL;
 static ec_master_state_t master_state = {};
-spinlock_t master_lock = SPIN_LOCK_UNLOCKED;
 
 static ec_domain_t *domain1 = NULL;
 static ec_domain_state_t domain1_state = {};
@@ -125,9 +124,9 @@ void check_domain1_state(void)
 {
     ec_domain_state_t ds;
 
-    spin_lock(&master_lock);
+    rt_sem_wait(&master_sem);
     ecrt_domain_state(domain1, &ds);
-    spin_unlock(&master_lock);
+    rt_sem_signal(&master_sem);
 
     if (ds.working_counter != domain1_state.working_counter)
         printk(KERN_INFO PFX "Domain1: WC %u.\n", ds.working_counter);
@@ -143,9 +142,9 @@ void check_master_state(void)
 {
     ec_master_state_t ms;
 
-    spin_lock(&master_lock);
+    rt_sem_wait(&master_sem);
     ecrt_master_state(master, &ms);
-    spin_unlock(&master_lock);
+    rt_sem_signal(&master_sem);
 
     if (ms.slaves_responding != master_state.slaves_responding)
         printk(KERN_INFO PFX "%u slave(s).\n", ms.slaves_responding);
@@ -239,21 +238,26 @@ void run(long data)
 
 /*****************************************************************************/
 
-int request_lock(void *data)
+void send_callback(ec_master_t *master)
 {
     // too close to the next real time cycle: deny access...
-    if (get_cycles() - t_last_cycle > t_critical) return -1;
-
-    // allow access
-    rt_sem_wait(&master_sem);
-    return 0;
+    if (get_cycles() - t_last_cycle <= t_critical) {
+        rt_sem_wait(&master_sem);
+        ecrt_master_send_ext(master);
+        rt_sem_signal(&master_sem);
+    }
 }
 
 /*****************************************************************************/
 
-void release_lock(void *data)
+void receive_callback(ec_master_t *master)
 {
-    rt_sem_signal(&master_sem);
+    // too close to the next real time cycle: deny access...
+    if (get_cycles() - t_last_cycle <= t_critical) {
+        rt_sem_wait(&master_sem);
+        ecrt_master_receive(master);
+        rt_sem_signal(&master_sem);
+    }
 }
 
 /*****************************************************************************/
@@ -277,7 +281,7 @@ int __init init_mod(void)
         goto out_return;
     }
 
-    ecrt_master_callbacks(master, request_lock, release_lock, NULL);
+    ecrt_master_callbacks(master, send_callback, receive_callback);
 
     printk(KERN_INFO PFX "Registering domain...\n");
     if (!(domain1 = ecrt_master_create_domain(master))) {

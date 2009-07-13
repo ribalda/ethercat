@@ -42,24 +42,27 @@
  * Changes in version 1.5:
  *
  * - Added the distributed clocks feature and the respective method
- *   ecrt_slave_config_dc() to configure a slave for cyclic
- *   operation, and ecrt_master_application_time(),
- *   ecrt_master_sync_reference_clock() and  ecrt_master_sync_slave_clocks()
- *   for offset and drift compensation. The EC_TIMEVAL2NANO() macro can be
- *   used for epoch time conversion.
+ *   ecrt_slave_config_dc() to configure a slave for cyclic operation, and
+ *   ecrt_master_application_time(), ecrt_master_sync_reference_clock() and
+ *   ecrt_master_sync_slave_clocks() for offset and drift compensation. The
+ *   EC_TIMEVAL2NANO() macro can be used for epoch time conversion.
+ * - Improved the callback mechanism. ecrt_master_callbacks() now takes two
+ *   callback functions for sending and receiving datagrams.
+ *   ecrt_master_send_ext() is used to execute the sending of non-application
+ *   datagrams.
  * - Added ecrt_open_master() and ecrt_master_reserve() separation for
  *   userspace.
  * - Added ecrt_master() userspace interface, to get information about a
  *   master.
+ * - Added ecrt_master_slave() to get information about a certain slave.
+ * - Added ecrt_slave_sdo_upload() and ecrt_slave_sdo_download() methods to
+ *   let an application transfer SDOs before activating the master.
  * - Changed the meaning of the negative return values of
  *   ecrt_slave_config_reg_pdo_entry() and ecrt_slave_config_sdo*().
  * - Imlemented the Vendor-specific over EtherCAT mailbox protocol. See
  *   ecrt_slave_config_create_voe_handler().
  * - Renamed ec_sdo_request_state_t to ec_request_state_t, because it is also
  *   used by VoE handlers.
- * - Added ecrt_master_slave() to get information about a certain slave.
- * - Added ecrt_slave_sdo_upload() and ecrt_slave_sdo_download() methods to
- *   let an application transfer SDOs before activating the master.
  * - Removed 'const' from argument of ecrt_sdo_request_state(), because the
  *   userspace library has to modify object internals.
  * - Added 64-bit data access macros.
@@ -442,21 +445,23 @@ int ecrt_master_reserve(
 
 /** Sets the locking callbacks.
  *
- * For concurrent master access, the application has to provide a locking
- * mechanism (see section FIXME in the docs). The method takes two function
- * pointers and a data value as its parameters. The arbitrary \a cb_data value
- * will be passed as argument on every callback. Asynchronous master access
- * (like EoE processing) is only possible if the callbacks have been set.
+ * For concurrent master access, i. e. if other instances than the application
+ * want to send and receive datagrams on the bus, the application has to
+ * provide a callback mechanism. This method takes two function pointers as
+ * its parameters. Asynchronous master access (like EoE processing) is only
+ * possible if the callbacks have been set.
  *
- * The request_cb function must return zero, to allow another instance
- * (an EoE process for example) to access the master. Non-zero means,
- * that access is currently forbidden.
+ * The task of the send callback (\a request_cb) is to decide, if the bus is
+ * currently accessible. In this case, it can call the ecrt_master_send_ext()
+ * method.
+ *
+ * The task of the receive callback (\a receive_cb) is to decide, if a call to
+ * ecrt_master_receive() is allowed and to execute it respectively.
  */
 void ecrt_master_callbacks(
         ec_master_t *master, /**< EtherCAT master */
-        int (*request_cb)(void *), /**< Lock request function. */
-        void (*release_cb)(void *), /**< Lock release function. */
-        void *cb_data /**< Arbitrary user data. */
+        void (*send_cb)(ec_master_t *), /**< Datagram sending callback. */
+        void (*receive_cb)(ec_master_t *) /**< Receive callback. */
         );
 
 #endif /* __KERNEL__ */
@@ -588,6 +593,15 @@ void ecrt_master_send(
  * ecrt_master_activate() has returned.
  */
 void ecrt_master_receive(
+        ec_master_t *master /**< EtherCAT master. */
+        );
+
+/** Sends non-application datagrams.
+ *
+ * This method has to be called in the send callback function passed via
+ * ecrt_master_callbacks() to allow the sending of non-application datagrams.
+ */
+void ecrt_master_send_ext(
         ec_master_t *master /**< EtherCAT master. */
         );
 
