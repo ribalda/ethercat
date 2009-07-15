@@ -1637,9 +1637,7 @@ static void e100_watchdog(unsigned long data)
 		}
 
 		mii_check_link(&nic->mii);
-	}
 
-	if (!nic->ecdev) {
 		/* Software generated interrupt to recover from (rare) Rx
 		 * allocation failure.
 		 * Unfortunately have to use a spinlock to not re-enable interrupts
