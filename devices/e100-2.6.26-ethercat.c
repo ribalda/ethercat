@@ -1658,9 +1658,9 @@ static void e100_watchdog(unsigned long data)
 		} else if(!mii_link_ok(&nic->mii) && netif_carrier_ok(nic->netdev)) {
 			DPRINTK(LINK, INFO, "link down\n");
 		}
-	}
 
-	mii_check_link(&nic->mii);
+		mii_check_link(&nic->mii);
+	}
 
 	if (!nic->ecdev) {
 		/* Software generated interrupt to recover from (rare) Rx
@@ -1672,24 +1672,23 @@ static void e100_watchdog(unsigned long data)
 		iowrite8(ioread8(&nic->csr->scb.cmd_hi) | irq_sw_gen,&nic->csr->scb.cmd_hi);
 		e100_write_flush(nic);
 		spin_unlock_irq(&nic->cmd_lock);
-	}
 
-	e100_update_stats(nic);
-	e100_adjust_adaptive_ifs(nic, cmd.speed, cmd.duplex);
+		e100_update_stats(nic);
+		e100_adjust_adaptive_ifs(nic, cmd.speed, cmd.duplex);
 
-	if(nic->mac <= mac_82557_D100_C)
-		/* Issue a multicast command to workaround a 557 lock up */
-		e100_set_multicast_list(nic->netdev);
+		if(nic->mac <= mac_82557_D100_C)
+			/* Issue a multicast command to workaround a 557 lock up */
+			e100_set_multicast_list(nic->netdev);
 
-	if(nic->flags & ich && cmd.speed==SPEED_10 && cmd.duplex==DUPLEX_HALF)
-		/* Need SW workaround for ICH[x] 10Mbps/half duplex Tx hang. */
-		nic->flags |= ich_10h_workaround;
-	else
-		nic->flags &= ~ich_10h_workaround;
+		if(nic->flags & ich && cmd.speed==SPEED_10 && cmd.duplex==DUPLEX_HALF)
+			/* Need SW workaround for ICH[x] 10Mbps/half duplex Tx hang. */
+			nic->flags |= ich_10h_workaround;
+		else
+			nic->flags &= ~ich_10h_workaround;
 
-	if (!nic->ecdev)
 		mod_timer(&nic->watchdog,
 				round_jiffies(jiffies + E100_WATCHDOG_PERIOD));
+	}
 }
 
 static void e100_xmit_prepare(struct nic *nic, struct cb *cb,
