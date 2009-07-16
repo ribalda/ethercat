@@ -2186,7 +2186,7 @@ static int e100_up(struct nic *nic)
 		mod_timer(&nic->watchdog, jiffies);
 	}
 	if((err = request_irq(nic->pdev->irq, e100_intr, IRQF_SHARED,
-					nic->netdev->name, nic->netdev)))
+		nic->netdev->name, nic->netdev)))
 		goto err_no_irq;
 	if (!nic->ecdev) {
         netif_wake_queue(nic->netdev);
@@ -2215,8 +2215,8 @@ static void e100_down(struct nic *nic)
         netif_stop_queue(nic->netdev);
     }
 	e100_hw_reset(nic);
+	free_irq(nic->pdev->irq, nic->netdev);
     if (!nic->ecdev) {
-        free_irq(nic->pdev->irq, nic->netdev);
 		del_timer_sync(&nic->watchdog);
         netif_carrier_off(nic->netdev);
 	}
