@@ -45,6 +45,7 @@
  */
 typedef struct {
     ec_direction_t dir; /**< Sync manager direction. */
+    ec_watchdog_mode_t watchdog_mode; /**< Watchdog mode. */
     ec_pdo_list_t pdos; /**< Current PDO assignment. */
 } ec_sync_config_t;
 

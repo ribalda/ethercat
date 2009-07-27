@@ -58,6 +58,11 @@ struct ec_slave_config {
     uint32_t vendor_id; /**< Slave vendor ID. */
     uint32_t product_code; /**< Slave product code. */
 
+    uint16_t watchdog_divider; /**< Watchdog divider as a number of 40ns
+                                 intervals (see spec. reg. 0x0400). */
+    uint16_t watchdog_intervals; /**< Process data watchdog intervals (see
+                                   spec. reg. 0x0420). */
+
     ec_slave_t *slave; /**< Slave pointer. This is \a NULL, if the slave is
                          offline. */
 

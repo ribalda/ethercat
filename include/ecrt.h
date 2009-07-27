@@ -50,6 +50,9 @@
  *   callback functions for sending and receiving datagrams.
  *   ecrt_master_send_ext() is used to execute the sending of non-application
  *   datagrams.
+ * - Added watchdog configuration (method ecrt_slave_config_watchdog(),
+ *   #ec_watchdog_mode_t, \a watchdog_mode parameter in ec_sync_info_t and
+ *   ecrt_slave_config_sync_manager()).
  * - Added ecrt_open_master() and ecrt_master_reserve() separation for
  *   userspace.
  * - Added ecrt_master() userspace interface, to get information about a
@@ -61,7 +64,7 @@
  *   ecrt_slave_config_reg_pdo_entry() and ecrt_slave_config_sdo*().
  * - Imlemented the Vendor-specific over EtherCAT mailbox protocol. See
  *   ecrt_slave_config_create_voe_handler().
- * - Renamed ec_sdo_request_state_t to ec_request_state_t, because it is also
+ * - Renamed ec_sdo_request_state_t to #ec_request_state_t, because it is also
  *   used by VoE handlers.
  * - Removed 'const' from argument of ecrt_sdo_request_state(), because the
  *   userspace library has to modify object internals.
@@ -275,6 +278,18 @@ typedef enum {
 
 /*****************************************************************************/
 
+/** Watchdog mode for sync manager configuration.
+ *
+ * Used to specify, if a sync manager's watchdog is to be enabled.
+ */
+typedef enum {
+    EC_WD_DEFAULT, /**< Use the default setting of the sync manager. */
+    EC_WD_ENABLE, /**< Enable the watchdog. */
+    EC_WD_DISABLE, /**< Disable the watchdog. */
+} ec_watchdog_mode_t;
+
+/*****************************************************************************/
+
 /** PDO entry configuration information.
  *
  * This is the data type of the \a entries field in ec_pdo_info_t.
@@ -322,6 +337,7 @@ typedef struct {
     unsigned int n_pdos; /**< Number of PDOs in \a pdos. */
     ec_pdo_info_t *pdos; /**< Array with PDOs to assign. This must contain
                             at least \a n_pdos PDOs. */
+    ec_watchdog_mode_t watchdog_mode; /**< Watchdog mode. */
 } ec_sync_info_t;
 
 /*****************************************************************************/
@@ -709,7 +725,18 @@ int ecrt_slave_config_sync_manager(
         ec_slave_config_t *sc, /**< Slave configuration. */
         uint8_t sync_index, /**< Sync manager index. Must be less
                               than #EC_MAX_SYNC_MANAGERS. */
-        ec_direction_t dir /**< Input/Output. */
+        ec_direction_t direction, /**< Input/Output. */
+        ec_watchdog_mode_t watchdog_mode /** Watchdog mode. */
+        );
+
+/** Configure a slave's watchdog times.
+*/	 
+void ecrt_slave_config_watchdog(
+        ec_slave_config_t *sc, /**< Slave configuration. */
+        uint16_t watchdog_divider, /**< Number of 40 ns intervals. Used as a
+                                    base unit for all slave watchdogs. */
+        uint16_t watchdog_intervals /**< Number of base intervals for process
+                                      data watchdog. */
         );
 
 /** Add a PDO to a sync manager's PDO assignment.

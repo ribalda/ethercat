@@ -95,8 +95,7 @@ void ec_sync_page(
         const ec_sync_t *sync, /**< Sync manager. */
         uint8_t sync_index, /**< Index of the sync manager. */
         uint16_t data_size, /**< Data size. */
-        ec_direction_t dir, /**< Direction (overrides the control byte,
-                              if set to EC_DIR_INPUT or EC_DIR_OUTPUT). */
+        const ec_sync_config_t *sync_config, /**< Configuration. */
         uint8_t *data /**> Configuration memory. */
         )
 {
@@ -104,10 +103,28 @@ void ec_sync_page(
     uint16_t enable = sync->enable && data_size;
     uint8_t control = sync->control_register;
 
-    if (dir == EC_DIR_OUTPUT || dir == EC_DIR_INPUT) {
-        // override sync manager direction bits with dir parameter
-        EC_WRITE_BIT(&control, 2, dir == EC_DIR_OUTPUT ? 1 : 0);
-        EC_WRITE_BIT(&control, 3, 0);
+    if (sync_config) {
+
+        switch (sync_config->dir) {
+            case EC_DIR_OUTPUT:
+            case EC_DIR_INPUT:
+                EC_WRITE_BIT(&control, 2,
+                        sync_config->dir == EC_DIR_OUTPUT ? 1 : 0);
+                EC_WRITE_BIT(&control, 3, 0);
+                break;
+            default:
+                break;
+        }
+
+        switch (sync_config->watchdog_mode) {
+            case EC_WD_ENABLE:
+            case EC_WD_DISABLE:
+                EC_WRITE_BIT(&control, 6,
+                        sync_config->watchdog_mode == EC_WD_ENABLE);
+                break;
+            default:
+                break;
+        }
     }
 
     if (sync->slave->master->debug_level)

@@ -44,7 +44,7 @@
 /*****************************************************************************/
 
 int ecrt_slave_config_sync_manager(ec_slave_config_t *sc, uint8_t sync_index,
-        ec_direction_t dir)
+        ec_direction_t dir, ec_watchdog_mode_t watchdog_mode)
 {
     ec_ioctl_config_t data;
     unsigned int i;
@@ -55,6 +55,8 @@ int ecrt_slave_config_sync_manager(ec_slave_config_t *sc, uint8_t sync_index,
     memset(&data, 0x00, sizeof(ec_ioctl_config_t));
     data.config_index = sc->index;
     data.syncs[sync_index].dir = dir;
+    data.syncs[sync_index].watchdog_mode = watchdog_mode;
+    data.syncs[sync_index].config_this = 1;
 
     if (ioctl(sc->master->fd, EC_IOCTL_SC_SYNC, &data) == -1) {
         fprintf(stderr, "Failed to config sync manager: %s\n",
@@ -63,6 +65,24 @@ int ecrt_slave_config_sync_manager(ec_slave_config_t *sc, uint8_t sync_index,
     }
     
     return 0;
+}
+
+/*****************************************************************************/
+
+void ecrt_slave_config_watchdog(ec_slave_config_t *sc,
+        uint16_t divider, uint16_t intervals)
+{
+    ec_ioctl_config_t data;
+
+    memset(&data, 0x00, sizeof(ec_ioctl_config_t));
+    data.config_index = sc->index;
+    data.watchdog_divider = divider;
+    data.watchdog_intervals = intervals;
+
+    if (ioctl(sc->master->fd, EC_IOCTL_SC_WATCHDOG, &data) == -1) {
+        fprintf(stderr, "Failed to config watchdog: %s\n",
+                strerror(errno));
+    }
 }
 
 /*****************************************************************************/
@@ -166,8 +186,8 @@ int ecrt_slave_config_pdos(ec_slave_config_t *sc,
             return -ENOENT;
         }
 
-        ret = ecrt_slave_config_sync_manager(
-                sc, sync_info->index, sync_info->dir);
+        ret = ecrt_slave_config_sync_manager(sc, sync_info->index,
+                sync_info->dir, sync_info->watchdog_mode);
         if (ret)
             return ret;
 

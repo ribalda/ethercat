@@ -54,6 +54,8 @@ void ec_fsm_slave_config_state_dc_write_offset(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_mbox_sync(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_boot_preop(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_sdo_conf(ec_fsm_slave_config_t *);
+void ec_fsm_slave_config_state_watchdog_divider(ec_fsm_slave_config_t *);
+void ec_fsm_slave_config_state_watchdog(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_pdo_sync(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_pdo_conf(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_fmmu(ec_fsm_slave_config_t *);
@@ -70,6 +72,8 @@ void ec_fsm_slave_config_enter_mbox_sync(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_boot_preop(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_sdo_conf(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_pdo_conf(ec_fsm_slave_config_t *);
+void ec_fsm_slave_config_enter_watchdog_divider(ec_fsm_slave_config_t *);
+void ec_fsm_slave_config_enter_watchdog(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_pdo_sync(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_fmmu(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_dc_cycle(ec_fsm_slave_config_t *);
@@ -558,7 +562,7 @@ void ec_fsm_slave_config_enter_mbox_sync(
         for (i = 0; i < 2; i++) {
             ec_sync_page(&slave->sii.syncs[i], i,
                     slave->sii.syncs[i].default_length,
-                    EC_DIR_INVALID, // use default direction
+                    NULL, // use default sync manager configuration
                     datagram->data + EC_SYNC_PAGE_SIZE * i);
         }
 
@@ -587,7 +591,7 @@ void ec_fsm_slave_config_enter_mbox_sync(
         sync.control_register = 0x26;
         sync.enable = 1;
         ec_sync_page(&sync, 0, slave->sii.std_rx_mailbox_size,
-                EC_DIR_INVALID, // use default direction
+                NULL, // use default sync manager configuration
                 datagram->data);
         slave->configured_rx_mailbox_offset =
             slave->sii.std_rx_mailbox_offset;
@@ -599,7 +603,7 @@ void ec_fsm_slave_config_enter_mbox_sync(
         sync.control_register = 0x22;
         sync.enable = 1;
         ec_sync_page(&sync, 1, slave->sii.std_tx_mailbox_size,
-                EC_DIR_INVALID, // use default direction
+                NULL, // use default sync manager configuration
                 datagram->data + EC_SYNC_PAGE_SIZE);
         slave->configured_tx_mailbox_offset =
             slave->sii.std_tx_mailbox_offset;
@@ -844,6 +848,125 @@ void ec_fsm_slave_config_state_pdo_conf(
                 fsm->slave->ring_position);
     }
 
+    ec_fsm_slave_config_enter_watchdog_divider(fsm);
+}
+
+/*****************************************************************************/
+
+/** WATCHDOG_DIVIDER entry function.
+ */
+void ec_fsm_slave_config_enter_watchdog_divider(
+        ec_fsm_slave_config_t *fsm /**< slave state machine */
+        )
+{
+    ec_slave_t *slave = fsm->slave;
+    ec_datagram_t *datagram = fsm->datagram;
+    ec_master_t *master = slave->master;    
+    ec_slave_config_t *config = slave->config;
+
+    if (config && config->watchdog_divider) {
+        if (master->debug_level)
+            EC_DBG("Setting watchdog divider to %u.\n",
+                    config->watchdog_divider);
+
+        ec_datagram_fpwr(datagram, slave->station_address, 0x0400, 2);
+        EC_WRITE_U16(datagram->data, config->watchdog_divider);
+        fsm->retries = EC_FSM_RETRIES;
+        fsm->state = ec_fsm_slave_config_state_watchdog_divider;
+    } else {
+        ec_fsm_slave_config_enter_watchdog(fsm);
+    }
+}
+
+/*****************************************************************************/
+
+/** Slave configuration state: WATCHDOG_DIVIDER.
+ */
+void ec_fsm_slave_config_state_watchdog_divider(
+        ec_fsm_slave_config_t *fsm /**< slave state machine */
+        )
+{
+    ec_datagram_t *datagram = fsm->datagram;
+    ec_slave_t *slave = fsm->slave;
+
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+        return;
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED) {
+        fsm->state = ec_fsm_slave_config_state_error;
+        EC_ERR("Failed to receive watchdog divider configuration datagram for"
+               " slave %u (datagram state %u).\n",
+               slave->ring_position, datagram->state);
+        return;
+    }
+
+    if (datagram->working_counter != 1) {
+        slave->error_flag = 1;
+        EC_WARN("Failed to set watchdog divider of slave %u: ",
+               slave->ring_position);
+        ec_datagram_print_wc_error(datagram);
+        return;
+    }
+
+    ec_fsm_slave_config_enter_watchdog(fsm);
+}
+
+/*****************************************************************************/
+
+/** WATCHDOG entry function
+ */
+void ec_fsm_slave_config_enter_watchdog(
+        ec_fsm_slave_config_t *fsm /**< slave state machine */
+        )
+{
+    ec_datagram_t *datagram = fsm->datagram;
+    ec_slave_t *slave = fsm->slave;
+    ec_slave_config_t *config = slave->config;
+
+    if (config && config->watchdog_intervals) {
+        if (slave->master->debug_level)
+            EC_DBG("Setting process data watchdog intervals to %u.\n",
+                    config->watchdog_intervals);
+
+        ec_datagram_fpwr(datagram, slave->station_address, 0x0420, 2);
+        EC_WRITE_U16(datagram->data, config->watchdog_intervals);
+
+        fsm->retries = EC_FSM_RETRIES;
+        fsm->state = ec_fsm_slave_config_state_watchdog;
+    }
+
+    ec_fsm_slave_config_enter_pdo_sync(fsm);
+}
+
+/*****************************************************************************/
+
+/** Slave configuration state: WATCHDOG.
+ */
+
+void ec_fsm_slave_config_state_watchdog(
+        ec_fsm_slave_config_t *fsm /**< slave state machine */
+        )
+{
+    ec_datagram_t *datagram = fsm->datagram;
+    ec_slave_t *slave = fsm->slave;
+
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+        return;
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED) {
+        fsm->state = ec_fsm_slave_config_state_error;
+        EC_ERR("Failed to receive sync manager watchdog configuration "
+                "datagram for slave %u (datagram state %u).\n",
+                slave->ring_position, datagram->state);
+        return;
+    }
+
+    if (datagram->working_counter != 1) {
+        EC_WARN("Failed to set process data watchdog intervals of slave %u: ",
+               slave->ring_position);
+        ec_datagram_print_wc_error(datagram);
+    }
+
     ec_fsm_slave_config_enter_pdo_sync(fsm);
 }
 
@@ -861,7 +984,6 @@ void ec_fsm_slave_config_enter_pdo_sync(
     uint8_t sync_index;
     const ec_sync_t *sync;
     uint16_t size;
-    ec_direction_t dir;
 
     if (slave->sii.mailbox_protocols) {
         offset = 2; // slave has mailboxes
@@ -884,21 +1006,20 @@ void ec_fsm_slave_config_enter_pdo_sync(
     ec_datagram_zero(datagram);
 
     for (i = 0; i < num_pdo_syncs; i++) {
+        const ec_sync_config_t *sync_config;
         sync_index = i + offset;
         sync = &slave->sii.syncs[sync_index];
 
         if (slave->config) {
-            const ec_sync_config_t *sync_config;
             sync_config = &slave->config->sync_configs[sync_index];
             size = ec_pdo_list_total_size(&sync_config->pdos);
-            dir = sync_config->dir;
         } else {
+            sync_config = NULL;
             size = sync->default_length;
-            dir = EC_DIR_INVALID;
         }
 
-        ec_sync_page(sync, sync_index, size, dir, datagram->data +
-                EC_SYNC_PAGE_SIZE * i);
+        ec_sync_page(sync, sync_index, size, sync_config,
+                datagram->data + EC_SYNC_PAGE_SIZE * i);
     }
 
     fsm->retries = EC_FSM_RETRIES;

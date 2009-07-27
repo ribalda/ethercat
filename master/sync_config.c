@@ -45,6 +45,7 @@ void ec_sync_config_init(
         )
 {
     sync_config->dir = EC_DIR_INVALID;
+    sync_config->watchdog_mode = EC_WD_DEFAULT;
     ec_pdo_list_init(&sync_config->pdos);
 }
 

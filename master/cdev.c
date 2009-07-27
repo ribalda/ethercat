@@ -1759,7 +1759,7 @@ int ec_cdev_ioctl_sync_slaves(
 
 /*****************************************************************************/
 
-/** Set the direction of a sync manager.
+/** Configure a sync manager.
  */
 int ec_cdev_ioctl_sc_sync(
         ec_master_t *master, /**< EtherCAT master. */
@@ -1793,14 +1793,57 @@ int ec_cdev_ioctl_sc_sync(
     }
 
     for (i = 0; i < EC_MAX_SYNC_MANAGERS; i++) {
-        ec_direction_t dir = data.syncs[i].dir;
-        if (dir == EC_DIR_INPUT || dir == EC_DIR_OUTPUT) {
-            if (ecrt_slave_config_sync_manager(sc, i, dir)) {
+        if (data.syncs[i].config_this) {
+            if (ecrt_slave_config_sync_manager(sc, i, data.syncs[i].dir,
+                        data.syncs[i].watchdog_mode)) {
                 ret = -EINVAL;
                 goto out_up;
             }
         }
     }
+
+out_up:
+    up(&master->master_sem);
+out_return:
+    return ret;
+}
+
+/*****************************************************************************/
+
+/** Configure a slave's watchdogs.
+ */
+int ec_cdev_ioctl_sc_watchdog(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    ec_ioctl_config_t data;
+    ec_slave_config_t *sc;
+    int ret = 0;
+
+    if (unlikely(!priv->requested)) {
+        ret = -EPERM;
+        goto out_return;
+    }
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+        ret = -EFAULT;
+        goto out_return;
+    }
+
+    if (down_interruptible(&master->master_sem)) {
+        ret = -EINTR;
+        goto out_return;
+    }
+
+    if (!(sc = ec_master_get_config(master, data.config_index))) {
+        ret = -ENOENT;
+        goto out_up;
+    }
+
+    ecrt_slave_config_watchdog(sc,
+            data.watchdog_divider, data.watchdog_intervals);
 
 out_up:
     up(&master->master_sem);
@@ -3229,6 +3272,10 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             if (!(filp->f_mode & FMODE_WRITE))
                 return -EPERM;
             return ec_cdev_ioctl_sc_sync(master, arg, priv);
+        case EC_IOCTL_SC_WATCHDOG:
+            if (!(filp->f_mode & FMODE_WRITE))
+                return -EPERM;
+            return ec_cdev_ioctl_sc_watchdog(master, arg, priv);
         case EC_IOCTL_SC_ADD_PDO:
             if (!(filp->f_mode & FMODE_WRITE))
                 return -EPERM;

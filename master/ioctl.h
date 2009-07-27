@@ -91,32 +91,33 @@
 #define EC_IOCTL_SYNC_REF               EC_IO(0x21)
 #define EC_IOCTL_SYNC_SLAVES            EC_IO(0x22)
 #define EC_IOCTL_SC_SYNC               EC_IOW(0x23, ec_ioctl_config_t)
-#define EC_IOCTL_SC_ADD_PDO            EC_IOW(0x24, ec_ioctl_config_pdo_t)
-#define EC_IOCTL_SC_CLEAR_PDOS         EC_IOW(0x25, ec_ioctl_config_pdo_t)
-#define EC_IOCTL_SC_ADD_ENTRY          EC_IOW(0x26, ec_ioctl_add_pdo_entry_t)
-#define EC_IOCTL_SC_CLEAR_ENTRIES      EC_IOW(0x27, ec_ioctl_config_pdo_t)
-#define EC_IOCTL_SC_REG_PDO_ENTRY     EC_IOWR(0x28, ec_ioctl_reg_pdo_entry_t)
-#define EC_IOCTL_SC_DC                 EC_IOW(0x29, ec_ioctl_config_t)
-#define EC_IOCTL_SC_SDO                EC_IOW(0x2a, ec_ioctl_sc_sdo_t)
-#define EC_IOCTL_SC_SDO_REQUEST       EC_IOWR(0x2b, ec_ioctl_sdo_request_t)
-#define EC_IOCTL_SC_VOE               EC_IOWR(0x2c, ec_ioctl_voe_t)
-#define EC_IOCTL_SC_STATE             EC_IOWR(0x2d, ec_ioctl_sc_state_t)
-#define EC_IOCTL_DOMAIN_OFFSET          EC_IO(0x2e)
-#define EC_IOCTL_DOMAIN_PROCESS         EC_IO(0x2f)
-#define EC_IOCTL_DOMAIN_QUEUE           EC_IO(0x30)
-#define EC_IOCTL_DOMAIN_STATE         EC_IOWR(0x31, ec_ioctl_domain_state_t)
-#define EC_IOCTL_SDO_REQUEST_TIMEOUT  EC_IOWR(0x32, ec_ioctl_sdo_request_t)
-#define EC_IOCTL_SDO_REQUEST_STATE    EC_IOWR(0x33, ec_ioctl_sdo_request_t)
-#define EC_IOCTL_SDO_REQUEST_READ     EC_IOWR(0x34, ec_ioctl_sdo_request_t)
-#define EC_IOCTL_SDO_REQUEST_WRITE    EC_IOWR(0x35, ec_ioctl_sdo_request_t)
-#define EC_IOCTL_SDO_REQUEST_DATA     EC_IOWR(0x36, ec_ioctl_sdo_request_t)
-#define EC_IOCTL_VOE_SEND_HEADER       EC_IOW(0x37, ec_ioctl_voe_t)
-#define EC_IOCTL_VOE_REC_HEADER       EC_IOWR(0x38, ec_ioctl_voe_t)
-#define EC_IOCTL_VOE_READ              EC_IOW(0x39, ec_ioctl_voe_t)
-#define EC_IOCTL_VOE_READ_NOSYNC       EC_IOW(0x3a, ec_ioctl_voe_t)
-#define EC_IOCTL_VOE_WRITE            EC_IOWR(0x3b, ec_ioctl_voe_t)
-#define EC_IOCTL_VOE_EXEC             EC_IOWR(0x3c, ec_ioctl_voe_t)
-#define EC_IOCTL_VOE_DATA             EC_IOWR(0x3d, ec_ioctl_voe_t)
+#define EC_IOCTL_SC_WATCHDOG           EC_IOW(0x24, ec_ioctl_config_t)
+#define EC_IOCTL_SC_ADD_PDO            EC_IOW(0x25, ec_ioctl_config_pdo_t)
+#define EC_IOCTL_SC_CLEAR_PDOS         EC_IOW(0x26, ec_ioctl_config_pdo_t)
+#define EC_IOCTL_SC_ADD_ENTRY          EC_IOW(0x27, ec_ioctl_add_pdo_entry_t)
+#define EC_IOCTL_SC_CLEAR_ENTRIES      EC_IOW(0x28, ec_ioctl_config_pdo_t)
+#define EC_IOCTL_SC_REG_PDO_ENTRY     EC_IOWR(0x29, ec_ioctl_reg_pdo_entry_t)
+#define EC_IOCTL_SC_DC                 EC_IOW(0x2a, ec_ioctl_config_t)
+#define EC_IOCTL_SC_SDO                EC_IOW(0x2b, ec_ioctl_sc_sdo_t)
+#define EC_IOCTL_SC_SDO_REQUEST       EC_IOWR(0x2c, ec_ioctl_sdo_request_t)
+#define EC_IOCTL_SC_VOE               EC_IOWR(0x2d, ec_ioctl_voe_t)
+#define EC_IOCTL_SC_STATE             EC_IOWR(0x2e, ec_ioctl_sc_state_t)
+#define EC_IOCTL_DOMAIN_OFFSET          EC_IO(0x2f)
+#define EC_IOCTL_DOMAIN_PROCESS         EC_IO(0x20)
+#define EC_IOCTL_DOMAIN_QUEUE           EC_IO(0x31)
+#define EC_IOCTL_DOMAIN_STATE         EC_IOWR(0x32, ec_ioctl_domain_state_t)
+#define EC_IOCTL_SDO_REQUEST_TIMEOUT  EC_IOWR(0x33, ec_ioctl_sdo_request_t)
+#define EC_IOCTL_SDO_REQUEST_STATE    EC_IOWR(0x34, ec_ioctl_sdo_request_t)
+#define EC_IOCTL_SDO_REQUEST_READ     EC_IOWR(0x35, ec_ioctl_sdo_request_t)
+#define EC_IOCTL_SDO_REQUEST_WRITE    EC_IOWR(0x36, ec_ioctl_sdo_request_t)
+#define EC_IOCTL_SDO_REQUEST_DATA     EC_IOWR(0x37, ec_ioctl_sdo_request_t)
+#define EC_IOCTL_VOE_SEND_HEADER       EC_IOW(0x38, ec_ioctl_voe_t)
+#define EC_IOCTL_VOE_REC_HEADER       EC_IOWR(0x39, ec_ioctl_voe_t)
+#define EC_IOCTL_VOE_READ              EC_IOW(0x3a, ec_ioctl_voe_t)
+#define EC_IOCTL_VOE_READ_NOSYNC       EC_IOW(0x3b, ec_ioctl_voe_t)
+#define EC_IOCTL_VOE_WRITE            EC_IOWR(0x3c, ec_ioctl_voe_t)
+#define EC_IOCTL_VOE_EXEC             EC_IOWR(0x3d, ec_ioctl_voe_t)
+#define EC_IOCTL_VOE_DATA             EC_IOWR(0x3e, ec_ioctl_voe_t)
 
 /*****************************************************************************/
 
@@ -389,8 +390,12 @@ typedef struct {
     uint32_t product_code;
     struct {
         ec_direction_t dir;
+        ec_watchdog_mode_t watchdog_mode;
         uint32_t pdo_count;
+        uint8_t config_this;
     } syncs[EC_MAX_SYNC_MANAGERS];
+    uint16_t watchdog_divider;
+    uint16_t watchdog_intervals;
     uint32_t sdo_count;
     int32_t slave_position;
     uint16_t dc_assign_activate;

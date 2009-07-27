@@ -66,6 +66,8 @@ void ec_slave_config_init(
     sc->position = position;
     sc->vendor_id = vendor_id;
     sc->product_code = product_code;
+    sc->watchdog_divider = 0; // use default
+    sc->watchdog_intervals = 0; // use default
 
     sc->slave = NULL;
 
@@ -411,13 +413,14 @@ ec_voe_handler_t *ec_slave_config_find_voe_handler(
  *****************************************************************************/
 
 int ecrt_slave_config_sync_manager(ec_slave_config_t *sc, uint8_t sync_index,
-        ec_direction_t dir)
+        ec_direction_t dir, ec_watchdog_mode_t watchdog_mode)
 {
     ec_sync_config_t *sync_config;
     
     if (sc->master->debug_level)
         EC_DBG("ecrt_slave_config_sync_manager(sc = 0x%x, sync_index = %u, "
-                "dir = %u)\n", (u32) sc, sync_index, dir);
+                "dir = %i, watchdog_mode = %i)\n",
+                (u32) sc, sync_index, dir, watchdog_mode);
 
     if (sync_index >= EC_MAX_SYNC_MANAGERS) {
         EC_ERR("Invalid sync manager index %u!\n", sync_index);
@@ -431,7 +434,21 @@ int ecrt_slave_config_sync_manager(ec_slave_config_t *sc, uint8_t sync_index,
 
     sync_config = &sc->sync_configs[sync_index];
     sync_config->dir = dir;
+    sync_config->watchdog_mode = watchdog_mode;
     return 0;
+}
+
+/*****************************************************************************/
+
+void ecrt_slave_config_watchdog(ec_slave_config_t *sc,
+        uint16_t divider, uint16_t intervals)
+{
+    if (sc->master->debug_level)
+        EC_DBG("%s(sc = 0x%x, divider = %u, intervals = %u)\n",
+                __func__, (u32) sc, divider, intervals);
+
+    sc->watchdog_divider = divider;
+    sc->watchdog_intervals = intervals;
 }
 
 /*****************************************************************************/
@@ -579,8 +596,8 @@ int ecrt_slave_config_pdos(ec_slave_config_t *sc,
             return -ENOENT;
         }
 
-        ret = ecrt_slave_config_sync_manager(
-                sc, sync_info->index, sync_info->dir);
+        ret = ecrt_slave_config_sync_manager(sc, sync_info->index,
+                sync_info->dir, sync_info->watchdog_mode);
         if (ret)
             return ret;
 
@@ -894,6 +911,7 @@ void ecrt_slave_config_state(const ec_slave_config_t *sc,
 /** \cond */
 
 EXPORT_SYMBOL(ecrt_slave_config_sync_manager);
+EXPORT_SYMBOL(ecrt_slave_config_watchdog);
 EXPORT_SYMBOL(ecrt_slave_config_pdo_assign_add);
 EXPORT_SYMBOL(ecrt_slave_config_pdo_assign_clear);
 EXPORT_SYMBOL(ecrt_slave_config_pdo_mapping_add);
