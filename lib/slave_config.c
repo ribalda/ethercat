@@ -252,10 +252,10 @@ void ecrt_slave_config_dc(ec_slave_config_t *sc, uint16_t assign_activate,
 
     data.config_index = sc->index;
     data.dc_assign_activate = assign_activate;
-	data.dc_sync[0].cycle_time = sync0_cycle_time;
-	data.dc_sync[0].shift_time = sync0_shift_time;
-	data.dc_sync[1].cycle_time = sync1_cycle_time;
-	data.dc_sync[1].shift_time = sync1_shift_time;
+    data.dc_sync[0].cycle_time = sync0_cycle_time;
+    data.dc_sync[0].shift_time = sync0_shift_time;
+    data.dc_sync[1].cycle_time = sync1_cycle_time;
+    data.dc_sync[1].shift_time = sync1_shift_time;
 
     if (ioctl(sc->master->fd, EC_IOCTL_SC_DC, &data) == -1) {
         fprintf(stderr, "Failed to set assign_activate word.\n");

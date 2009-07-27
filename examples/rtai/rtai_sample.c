@@ -236,7 +236,7 @@ void run(long data)
         ecrt_domain_queue(domain1);
         ecrt_master_send(master);
         rt_sem_signal(&master_sem);
-		
+
         rt_task_wait_period();
     }
 }

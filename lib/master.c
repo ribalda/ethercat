@@ -116,17 +116,17 @@ ec_slave_config_t *ecrt_master_slave_config(ec_master_t *master,
 
 int ecrt_master(ec_master_t* master, ec_master_info_t *master_info)
 {
-	ec_ioctl_master_t data;
+    ec_ioctl_master_t data;
 
-	if (ioctl(master->fd, EC_IOCTL_MASTER, &data) < 0) {
+    if (ioctl(master->fd, EC_IOCTL_MASTER, &data) < 0) {
         fprintf(stderr, "Failed to get master info: %s\n", strerror(errno));
-		return -1;
-	}
+        return -1;
+    }
 
-	master_info->slave_count = data.slave_count;
-	master_info->link_up = data.devices[0].link_state;
-	master_info->app_time = data.app_time;
-	return 0;
+    master_info->slave_count = data.slave_count;
+    master_info->link_up = data.devices[0].link_state;
+    master_info->app_time = data.app_time;
+    return 0;
 }
 
 /*****************************************************************************/

@@ -92,9 +92,9 @@ static unsigned int off_dig_out;
 const static ec_pdo_entry_reg_t domain1_regs[] = {
     {AnaInSlavePos,  Beckhoff_EL3102, 0x3101, 1, &off_ana_in_status},
     {AnaInSlavePos,  Beckhoff_EL3102, 0x3101, 2, &off_ana_in_value},
-	{AnaOutSlavePos, Beckhoff_EL4102, 0x3001, 1, &off_ana_out},
-	{DigOutSlavePos, Beckhoff_EL2032, 0x3001, 1, &off_dig_out},
-	{}
+    {AnaOutSlavePos, Beckhoff_EL4102, 0x3001, 1, &off_ana_out},
+    {DigOutSlavePos, Beckhoff_EL2032, 0x3001, 1, &off_dig_out},
+    {}
 };
 
 static unsigned int counter = 0;
@@ -316,13 +316,13 @@ void signal_handler(int signum) {
 
 int main(int argc, char **argv)
 {
-	ec_slave_config_t *sc;
+    ec_slave_config_t *sc;
     struct sigaction sa;
     struct itimerval tv;
     
     master = ecrt_request_master(0);
-	if (!master)
-		return -1;
+    if (!master)
+        return -1;
 
     domain1 = ecrt_master_create_domain(master);
     if (!domain1)
@@ -380,7 +380,7 @@ int main(int argc, char **argv)
 
     if (ecrt_domain_reg_pdo_entry_list(domain1, domain1_regs)) {
         fprintf(stderr, "PDO entry registration failed!\n");
-		return -1;
+        return -1;
     }
 
     printf("Activating master...\n");
@@ -417,7 +417,7 @@ int main(int argc, char **argv)
     }
 
     printf("Started.\n");
-	while (1) {
+    while (1) {
         pause();
 
 #if 0
@@ -430,9 +430,9 @@ int main(int argc, char **argv)
             cyclic_task();
             user_alarms++;
         }
-	}
+    }
 
-	return 0;
+    return 0;
 }
 
 /****************************************************************************/

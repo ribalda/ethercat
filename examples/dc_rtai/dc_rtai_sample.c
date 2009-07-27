@@ -161,7 +161,7 @@ void check_master_state(void)
 void run(long data)
 {
     int i;
-	struct timeval tv;
+    struct timeval tv;
     unsigned int sync_ref_counter = 0;
 
     count2timeval(nano2count(rt_get_real_time_ns()), &tv);
@@ -181,18 +181,18 @@ void run(long data)
         if (counter) {
             counter--;
         } else {
-			u32 c;
-			
+            u32 c;
+
             counter = FREQUENCY;
 
             // check for master state (optional)
             check_master_state();
 
-			c = EC_READ_U32(domain1_pd + off_counter_in);
-			if (counter_value != c) {
-				counter_value = c;
-				printk(KERN_INFO PFX "counter=%u\n", counter_value);
-			}
+            c = EC_READ_U32(domain1_pd + off_counter_in);
+            if (counter_value != c) {
+                counter_value = c;
+                printk(KERN_INFO PFX "counter=%u\n", counter_value);
+            }
 
         }
 
@@ -210,10 +210,10 @@ void run(long data)
             EC_WRITE_U8(domain1_pd + off_dig_out[i], blink ? 0x66 : 0x99);
         }
 
-		EC_WRITE_U8(domain1_pd + off_counter_out, blink ? 0x00 : 0x02);
+        EC_WRITE_U8(domain1_pd + off_counter_out, blink ? 0x00 : 0x02);
 
         rt_sem_wait(&master_sem);
-		
+
         tv.tv_usec += 1000;
         if (tv.tv_usec >= 1000000)  {
             tv.tv_usec -= 1000000;
@@ -227,11 +227,11 @@ void run(long data)
             sync_ref_counter = 9;
             ecrt_master_sync_reference_clock(master);
         }
-		ecrt_master_sync_slave_clocks(master);
+        ecrt_master_sync_slave_clocks(master);
         ecrt_domain_queue(domain1);
         ecrt_master_send(master);
         rt_sem_signal(&master_sem);
-		
+
         rt_task_wait_period();
     }
 }
@@ -292,10 +292,10 @@ int __init init_mod(void)
     printk(KERN_INFO PFX "Configuring PDOs...\n");
 
     // create configuration for reference clock FIXME
-	if (!(sc = ecrt_master_slave_config(master, 0, 0, Beckhoff_EK1100))) {
-		printk(KERN_ERR PFX "Failed to get slave configuration.\n");
-		goto out_release_master;
-	}
+    if (!(sc = ecrt_master_slave_config(master, 0, 0, Beckhoff_EK1100))) {
+        printk(KERN_ERR PFX "Failed to get slave configuration.\n");
+        goto out_release_master;
+    }
 
     for (i = 0; i < NUM_DIG_OUT; i++) {
         if (!(sc = ecrt_master_slave_config(master,
@@ -316,22 +316,22 @@ int __init init_mod(void)
             goto out_release_master;
     }
 
-	if (!(sc = ecrt_master_slave_config(master,
-					CounterSlavePos, IDS_Counter))) {
-		printk(KERN_ERR PFX "Failed to get slave configuration.\n");
-		goto out_release_master;
-	}
-	off_counter_in = ecrt_slave_config_reg_pdo_entry(sc,
-			0x6020, 0x11, domain1, NULL);
-	if (off_counter_in < 0)
-		goto out_release_master;
-	off_counter_out = ecrt_slave_config_reg_pdo_entry(sc,
-			0x7020, 1, domain1, NULL);
-	if (off_counter_out < 0)
-		goto out_release_master;
+    if (!(sc = ecrt_master_slave_config(master,
+                    CounterSlavePos, IDS_Counter))) {
+        printk(KERN_ERR PFX "Failed to get slave configuration.\n");
+        goto out_release_master;
+    }
+    off_counter_in = ecrt_slave_config_reg_pdo_entry(sc,
+            0x6020, 0x11, domain1, NULL);
+    if (off_counter_in < 0)
+        goto out_release_master;
+    off_counter_out = ecrt_slave_config_reg_pdo_entry(sc,
+            0x7020, 1, domain1, NULL);
+    if (off_counter_out < 0)
+        goto out_release_master;
 
     // configure SYNC signals for this slave
-	ecrt_slave_config_dc(sc, 0x0700, 1000000, 440000, 0, 0);
+    ecrt_slave_config_dc(sc, 0x0700, 1000000, 440000, 0, 0);
 
     printk(KERN_INFO PFX "Activating master...\n");
     if (ecrt_master_activate(master)) {
