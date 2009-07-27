@@ -641,7 +641,7 @@ void ec_fsm_pdo_conf_state_zero_pdo_count(
 
     // assign first PDO
     fsm->pdo_pos = 1;
-	ec_fsm_pdo_conf_action_assign_pdo(fsm);
+    ec_fsm_pdo_conf_action_assign_pdo(fsm);
 }
 
 /*****************************************************************************/

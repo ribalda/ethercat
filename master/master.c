@@ -129,9 +129,9 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     
     INIT_LIST_HEAD(&master->configs);
 
-	master->app_time = 0ULL;
-	master->app_start_time = 0ULL;
-	master->has_start_time = 0;
+    master->app_time = 0ULL;
+    master->app_start_time = 0ULL;
+    master->has_start_time = 0;
 
     master->scan_busy = 0;
     master->allow_scan = 1;
@@ -224,7 +224,7 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
         EC_ERR("Failed to allocate synchronisation datagram.\n");
         goto out_clear_ref_sync;
     }
-	ec_master_find_dc_ref_clock(master);
+    ec_master_find_dc_ref_clock(master);
 
     // init character device
     ret = ec_cdev_init(&master->cdev, master, device_number);
@@ -1257,17 +1257,17 @@ const ec_slave_t *ec_master_find_slave_const(
  * \return Number of configurations.
  */
 unsigned int ec_master_config_count(
-		const ec_master_t *master /**< EtherCAT master. */
-		)
+        const ec_master_t *master /**< EtherCAT master. */
+        )
 {
-	const ec_slave_config_t *sc;
-	unsigned int count = 0;
+    const ec_slave_config_t *sc;
+    unsigned int count = 0;
 
-	list_for_each_entry(sc, &master->configs, list) {
-		count++;
-	}
+    list_for_each_entry(sc, &master->configs, list) {
+        count++;
+    }
 
-	return count;
+    return count;
 }
 
 /*****************************************************************************/
@@ -1277,12 +1277,12 @@ unsigned int ec_master_config_count(
  */
 #define EC_FIND_CONFIG \
     do { \
-		list_for_each_entry(sc, &master->configs, list) { \
-			if (pos--) \
-				continue; \
-			return sc; \
-		} \
-		return NULL; \
+        list_for_each_entry(sc, &master->configs, list) { \
+            if (pos--) \
+                continue; \
+            return sc; \
+        } \
+        return NULL; \
     } while (0)
 
 /** Get a slave configuration via its position in the list.
@@ -1290,12 +1290,12 @@ unsigned int ec_master_config_count(
  * \return Slave configuration or \a NULL.
  */
 ec_slave_config_t *ec_master_get_config(
-		const ec_master_t *master, /**< EtherCAT master. */
-		unsigned int pos /**< List position. */
-		)
+        const ec_master_t *master, /**< EtherCAT master. */
+        unsigned int pos /**< List position. */
+        )
 {
-	ec_slave_config_t *sc;
-	EC_FIND_CONFIG;
+    ec_slave_config_t *sc;
+    EC_FIND_CONFIG;
 }
 
 /** Get a slave configuration via its position in the list.
@@ -1305,12 +1305,12 @@ ec_slave_config_t *ec_master_get_config(
  * \return Slave configuration or \a NULL.
  */
 const ec_slave_config_t *ec_master_get_config_const(
-		const ec_master_t *master, /**< EtherCAT master. */
-		unsigned int pos /**< List position. */
-		)
+        const ec_master_t *master, /**< EtherCAT master. */
+        unsigned int pos /**< List position. */
+        )
 {
-	const ec_slave_config_t *sc;
-	EC_FIND_CONFIG;
+    const ec_slave_config_t *sc;
+    EC_FIND_CONFIG;
 }
 
 /*****************************************************************************/
@@ -1320,17 +1320,17 @@ const ec_slave_config_t *ec_master_get_config_const(
  * \return Number of domains.
  */
 unsigned int ec_master_domain_count(
-		const ec_master_t *master /**< EtherCAT master. */
-		)
+        const ec_master_t *master /**< EtherCAT master. */
+        )
 {
-	const ec_domain_t *domain;
-	unsigned int count = 0;
+    const ec_domain_t *domain;
+    unsigned int count = 0;
 
-	list_for_each_entry(domain, &master->domains, list) {
-		count++;
-	}
+    list_for_each_entry(domain, &master->domains, list) {
+        count++;
+    }
 
-	return count;
+    return count;
 }
 
 /*****************************************************************************/
@@ -1354,11 +1354,11 @@ unsigned int ec_master_domain_count(
  * \return Domain pointer, or \a NULL if not found.
  */
 ec_domain_t *ec_master_find_domain(
-		ec_master_t *master, /**< EtherCAT master. */
-		unsigned int index /**< Domain index. */
-		)
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned int index /**< Domain index. */
+        )
 {
-	ec_domain_t *domain;
+    ec_domain_t *domain;
     EC_FIND_DOMAIN;
 }
 
@@ -1369,11 +1369,11 @@ ec_domain_t *ec_master_find_domain(
  * \return Domain pointer, or \a NULL if not found.
  */
 const ec_domain_t *ec_master_find_domain_const(
-		const ec_master_t *master, /**< EtherCAT master. */
-		unsigned int index /**< Domain index. */
-		)
+        const ec_master_t *master, /**< EtherCAT master. */
+        unsigned int index /**< Domain index. */
+        )
 {
-	const ec_domain_t *domain;
+    const ec_domain_t *domain;
     EC_FIND_DOMAIN;
 }
 
@@ -1384,17 +1384,17 @@ const ec_domain_t *ec_master_find_domain_const(
  * \return Number of EoE handlers.
  */
 uint16_t ec_master_eoe_handler_count(
-		const ec_master_t *master /**< EtherCAT master. */
-		)
+        const ec_master_t *master /**< EtherCAT master. */
+        )
 {
-	const ec_eoe_t *eoe;
-	unsigned int count = 0;
+    const ec_eoe_t *eoe;
+    unsigned int count = 0;
 
-	list_for_each_entry(eoe, &master->eoe_handlers, list) {
-		count++;
-	}
+    list_for_each_entry(eoe, &master->eoe_handlers, list) {
+        count++;
+    }
 
-	return count;
+    return count;
 }
 
 /*****************************************************************************/
@@ -1406,19 +1406,19 @@ uint16_t ec_master_eoe_handler_count(
  * \return EoE handler pointer, or \a NULL if not found.
  */
 const ec_eoe_t *ec_master_get_eoe_handler_const(
-		const ec_master_t *master, /**< EtherCAT master. */
-		uint16_t index /**< EoE handler index. */
-		)
+        const ec_master_t *master, /**< EtherCAT master. */
+        uint16_t index /**< EoE handler index. */
+        )
 {
-	const ec_eoe_t *eoe;
+    const ec_eoe_t *eoe;
 
-	list_for_each_entry(eoe, &master->eoe_handlers, list) {
-		if (index--)
-			continue;
-		return eoe;
-	}
+    list_for_each_entry(eoe, &master->eoe_handlers, list) {
+        if (index--)
+            continue;
+        return eoe;
+    }
 
-	return NULL;
+    return NULL;
 }
 
 /*****************************************************************************/
@@ -1452,9 +1452,9 @@ int ec_master_debug_level(
  */
 void ec_master_find_dc_ref_clock(
         ec_master_t *master /**< EtherCAT master. */
-		)
+        )
 {
-	ec_slave_t *slave, *ref = NULL;
+    ec_slave_t *slave, *ref = NULL;
 
     for (slave = master->slaves;
             slave < master->slaves + master->slave_count;
@@ -1480,7 +1480,7 @@ int ec_master_calc_topology_rec(
         ec_master_t *master, /**< EtherCAT master. */
         ec_slave_t *port0_slave, /**< Slave at port 0. */
         unsigned int *slave_position /**< Slave position. */
-		)
+        )
 {
     ec_slave_t *slave = master->slaves + *slave_position;
     unsigned int i;
@@ -1512,7 +1512,7 @@ int ec_master_calc_topology_rec(
  */
 void ec_master_calc_topology(
         ec_master_t *master /**< EtherCAT master. */
-		)
+        )
 {
     unsigned int slave_position = 0;
 
@@ -1529,9 +1529,9 @@ void ec_master_calc_topology(
  */
 void ec_master_calc_transmission_delays(
         ec_master_t *master /**< EtherCAT master. */
-		)
+        )
 {
-	ec_slave_t *slave;
+    ec_slave_t *slave;
 
     for (slave = master->slaves;
             slave < master->slaves + master->slave_count;
@@ -1551,10 +1551,10 @@ void ec_master_calc_transmission_delays(
  */
 void ec_master_calc_dc(
         ec_master_t *master /**< EtherCAT master. */
-		)
+        )
 {
-	// find DC reference clock
-	ec_master_find_dc_ref_clock(master);
+    // find DC reference clock
+    ec_master_find_dc_ref_clock(master);
 
     // calculate bus topology
     ec_master_calc_topology(master);

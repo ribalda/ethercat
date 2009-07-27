@@ -108,14 +108,14 @@ void ec_voe_handler_clear(
 /** Get usable memory size.
  */
 size_t ec_voe_handler_mem_size(
-		const ec_voe_handler_t *voe /**< VoE handler. */
-		)
+        const ec_voe_handler_t *voe /**< VoE handler. */
+        )
 {
-	if (voe->datagram.mem_size >= EC_MBOX_HEADER_SIZE + EC_VOE_HEADER_SIZE)
-		return voe->datagram.mem_size -
-			(EC_MBOX_HEADER_SIZE + EC_VOE_HEADER_SIZE);
-	else
-		return 0;
+    if (voe->datagram.mem_size >= EC_MBOX_HEADER_SIZE + EC_VOE_HEADER_SIZE)
+        return voe->datagram.mem_size -
+            (EC_MBOX_HEADER_SIZE + EC_VOE_HEADER_SIZE);
+    else
+        return 0;
 }
 
 /*****************************************************************************
@@ -223,7 +223,7 @@ void ec_voe_handler_state_write_start(ec_voe_handler_t *voe)
         voe->request_state = EC_INT_REQUEST_FAILURE;
         return;
     }
-	
+
     data = ec_slave_mbox_prepare_send(slave, &voe->datagram,
             EC_MBOX_TYPE_VOE, EC_VOE_HEADER_SIZE + voe->data_size);
     if (IS_ERR(data)) {
@@ -308,7 +308,7 @@ void ec_voe_handler_state_read_start(ec_voe_handler_t *voe)
         voe->request_state = EC_INT_REQUEST_FAILURE;
         return;
     }
-	
+
     ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
 
     voe->jiffies_start = jiffies;
@@ -451,7 +451,7 @@ void ec_voe_handler_state_read_nosync_start(ec_voe_handler_t *voe)
         voe->request_state = EC_INT_REQUEST_FAILURE;
         return;
     }
-	
+
     ec_slave_mbox_prepare_fetch(slave, datagram); // can not fail.
 
     voe->jiffies_start = jiffies;
@@ -502,7 +502,7 @@ void ec_voe_handler_state_read_nosync_response(ec_voe_handler_t *voe)
     }
 
     if (!(data = ec_slave_mbox_fetch(slave, datagram,
-				     &mbox_prot, &rec_size))) {
+                    &mbox_prot, &rec_size))) {
         voe->state = ec_voe_handler_state_error;
         voe->request_state = EC_INT_REQUEST_FAILURE;
         return;

@@ -867,7 +867,7 @@ void ec_fsm_master_state_scan_slave(
     wake_up_interruptible(&master->scan_queue);
 
     ec_master_calc_dc(master);
-	
+
     // Attach slave configurations
     ec_master_attach_slave_configs(master);
 
@@ -967,7 +967,7 @@ void ec_fsm_master_state_write_sii(
 /** Master state: WRITE FOE.
  */
 void ec_fsm_master_state_foe_request(
-		ec_fsm_master_t *fsm /**< Master state machine. */
+        ec_fsm_master_t *fsm /**< Master state machine. */
         )
 {
     ec_master_t *master = fsm->master;

@@ -1084,57 +1084,57 @@ void ec_fsm_coe_down_start(ec_fsm_coe_t *fsm /**< finite state machine */)
         fsm->state = ec_fsm_coe_error;
         return;
     }
-	
-	if (request->data_size <= 4) { // use expedited transfer type
-	    data = ec_slave_mbox_prepare_send(slave, datagram, 0x03, 10);
+
+    if (request->data_size <= 4) { // use expedited transfer type
+        data = ec_slave_mbox_prepare_send(slave, datagram, 0x03, 10);
         if (IS_ERR(data)) {
-	        fsm->state = ec_fsm_coe_error;
-	        return;
-	    }
+            fsm->state = ec_fsm_coe_error;
+            return;
+        }
 
-	    size = 4 - request->data_size;
+        size = 4 - request->data_size;
 
-	    EC_WRITE_U16(data, 0x2 << 12); // SDO request
-	    EC_WRITE_U8 (data + 2, (0x3 // size specified, expedited
-								| size << 2
-	                            | 0x1 << 5)); // Download request
-	    EC_WRITE_U16(data + 3, request->index);
-	    EC_WRITE_U8 (data + 5, request->subindex);
-	    memcpy(data + 6, request->data, request->data_size);
+        EC_WRITE_U16(data, 0x2 << 12); // SDO request
+        EC_WRITE_U8 (data + 2, (0x3 // size specified, expedited
+                    | size << 2
+                    | 0x1 << 5)); // Download request
+        EC_WRITE_U16(data + 3, request->index);
+        EC_WRITE_U8 (data + 5, request->subindex);
+        memcpy(data + 6, request->data, request->data_size);
         memset(data + 6 + request->data_size, 0x00, 4 - request->data_size);
 
         if (slave->master->debug_level) {
             EC_DBG("Expedited download request:\n");
             ec_print_data(data, 10);
         }
-	}
+    }
     else { // request->data_size > 4, use normal transfer type
-	    if (slave->configured_rx_mailbox_size < 6 + 10 + request->data_size) {
-	        EC_ERR("SDO fragmenting not supported yet!\n");
-	        fsm->state = ec_fsm_coe_error;
-	        return;
-	    }
+        if (slave->configured_rx_mailbox_size < 6 + 10 + request->data_size) {
+            EC_ERR("SDO fragmenting not supported yet!\n");
+            fsm->state = ec_fsm_coe_error;
+            return;
+        }
 
-	    data = ec_slave_mbox_prepare_send(slave, datagram, 0x03,
+        data = ec_slave_mbox_prepare_send(slave, datagram, 0x03,
                 request->data_size + 10);
         if (IS_ERR(data)) {
-	        fsm->state = ec_fsm_coe_error;
-	        return;
-	    }
+            fsm->state = ec_fsm_coe_error;
+            return;
+        }
 
-	    EC_WRITE_U16(data, 0x2 << 12); // SDO request
-	    EC_WRITE_U8 (data + 2, (0x1 // size indicator, normal
-	                            | 0x1 << 5)); // Download request
-	    EC_WRITE_U16(data + 3, request->index);
-	    EC_WRITE_U8 (data + 5, request->subindex);
-	    EC_WRITE_U32(data + 6, request->data_size);
-	    memcpy(data + 10, request->data, request->data_size);
+        EC_WRITE_U16(data, 0x2 << 12); // SDO request
+        EC_WRITE_U8 (data + 2, (0x1 // size indicator, normal
+                    | 0x1 << 5)); // Download request
+        EC_WRITE_U16(data + 3, request->index);
+        EC_WRITE_U8 (data + 5, request->subindex);
+        EC_WRITE_U32(data + 6, request->data_size);
+        memcpy(data + 10, request->data, request->data_size);
 
         if (slave->master->debug_level) {
             EC_DBG("Normal download request:\n");
             ec_print_data(data, 10 + request->data_size);
         }
-	}
+    }
 
     fsm->request->jiffies_sent = jiffies;
     fsm->retries = EC_FSM_RETRIES;

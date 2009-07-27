@@ -139,7 +139,7 @@ int ec_fsm_sii_exec(ec_fsm_sii_t *fsm /**< finite state machine */)
     fsm->state(fsm);
 
     return fsm->state != ec_fsm_sii_state_end
-		&& fsm->state != ec_fsm_sii_state_error;
+        && fsm->state != ec_fsm_sii_state_error;
 }
 
 /*****************************************************************************/
@@ -164,8 +164,8 @@ int ec_fsm_sii_success(ec_fsm_sii_t *fsm /**< Finite state machine */)
 */
 
 void ec_fsm_sii_state_start_reading(
-		ec_fsm_sii_t *fsm /**< finite state machine */
-		)
+        ec_fsm_sii_t *fsm /**< finite state machine */
+        )
 {
     ec_datagram_t *datagram = fsm->datagram;
 
@@ -184,8 +184,8 @@ void ec_fsm_sii_state_start_reading(
     EC_WRITE_U16(datagram->data + 2, fsm->word_offset);
 
 #ifdef SII_DEBUG
-	EC_DBG("reading SII data:\n");
-	ec_print_data(datagram->data, 4);
+    EC_DBG("reading SII data:\n");
+    ec_print_data(datagram->data, 4);
 #endif
 
     fsm->retries = EC_FSM_RETRIES;
@@ -200,8 +200,8 @@ void ec_fsm_sii_state_start_reading(
 */
 
 void ec_fsm_sii_state_read_check(
-		ec_fsm_sii_t *fsm /**< finite state machine */
-		)
+        ec_fsm_sii_t *fsm /**< finite state machine */
+        )
 {
     ec_datagram_t *datagram = fsm->datagram;
 
@@ -250,8 +250,8 @@ void ec_fsm_sii_state_read_check(
 */
 
 void ec_fsm_sii_state_read_fetch(
-		ec_fsm_sii_t *fsm /**< finite state machine */
-		)
+        ec_fsm_sii_t *fsm /**< finite state machine */
+        )
 {
     ec_datagram_t *datagram = fsm->datagram;
 
@@ -275,8 +275,8 @@ void ec_fsm_sii_state_read_fetch(
     }
 
 #ifdef SII_DEBUG
-	EC_DBG("checking SII read state:\n");
-	ec_print_data(datagram->data, 10);
+    EC_DBG("checking SII read state:\n");
+    ec_print_data(datagram->data, 10);
 #endif
 
     if (EC_READ_U8(datagram->data + 1) & 0x20) {
@@ -286,15 +286,15 @@ void ec_fsm_sii_state_read_fetch(
     }
 
     // check "busy bit"
-    if (EC_READ_U8(datagram->data + 1) & 0x81) { // busy bit or
-												 // read operation busy
+    if (EC_READ_U8(datagram->data + 1) & 0x81) { /* busy bit or
+                                                    read operation busy */
         // still busy... timeout?
         unsigned long diff_ms =
             (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
         if (diff_ms >= SII_TIMEOUT) {
             if (fsm->check_once_more) {
-				fsm->check_once_more = 0;
-			} else {
+                fsm->check_once_more = 0;
+            } else {
                 EC_ERR("SII: Read timeout.\n");
                 fsm->state = ec_fsm_sii_state_error;
                 return;
@@ -319,23 +319,23 @@ void ec_fsm_sii_state_read_fetch(
 */
 
 void ec_fsm_sii_state_start_writing(
-		ec_fsm_sii_t *fsm /**< finite state machine */
-		)
+        ec_fsm_sii_t *fsm /**< finite state machine */
+        )
 {
     ec_datagram_t *datagram = fsm->datagram;
 
     // initiate write operation
     ec_datagram_fpwr(datagram, fsm->slave->station_address, 0x502, 8);
-    EC_WRITE_U8 (datagram->data,     0x81); // two address octets
-											// + enable write access
+    EC_WRITE_U8 (datagram->data,     0x81); /* two address octets
+                                               + enable write access */
     EC_WRITE_U8 (datagram->data + 1, 0x02); // request write operation
     EC_WRITE_U16(datagram->data + 2, fsm->word_offset);
-	memset(datagram->data + 4, 0x00, 2);
+    memset(datagram->data + 4, 0x00, 2);
     memcpy(datagram->data + 6, fsm->value, 2);
 
 #ifdef SII_DEBUG
-	EC_DBG("writing SII data:\n");
-	ec_print_data(datagram->data, 8);
+    EC_DBG("writing SII data:\n");
+    ec_print_data(datagram->data, 8);
 #endif
 
     fsm->retries = EC_FSM_RETRIES;
@@ -349,8 +349,8 @@ void ec_fsm_sii_state_start_writing(
 */
 
 void ec_fsm_sii_state_write_check(
-		ec_fsm_sii_t *fsm /**< finite state machine */
-		)
+        ec_fsm_sii_t *fsm /**< finite state machine */
+        )
 {
     ec_datagram_t *datagram = fsm->datagram;
 
@@ -390,8 +390,8 @@ void ec_fsm_sii_state_write_check(
 */
 
 void ec_fsm_sii_state_write_check2(
-		ec_fsm_sii_t *fsm /**< finite state machine */
-		)
+        ec_fsm_sii_t *fsm /**< finite state machine */
+        )
 {
     ec_datagram_t *datagram = fsm->datagram;
     unsigned long diff_ms;
@@ -416,8 +416,8 @@ void ec_fsm_sii_state_write_check2(
     }
 
 #ifdef SII_DEBUG
-	EC_DBG("checking SII write state:\n");
-	ec_print_data(datagram->data, 2);
+    EC_DBG("checking SII write state:\n");
+    ec_print_data(datagram->data, 2);
 #endif
 
     if (EC_READ_U8(datagram->data + 1) & 0x20) {
@@ -426,25 +426,25 @@ void ec_fsm_sii_state_write_check2(
         return;
     }
 
-	/* FIXME: some slaves never answer with the busy flag set...
-	 * wait a few ms for the write operation to complete. */
+    /* FIXME: some slaves never answer with the busy flag set...
+     * wait a few ms for the write operation to complete. */
     diff_ms = (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
     if (diff_ms < SII_INHIBIT) {
 #ifdef SII_DEBUG
-		EC_DBG("too early.\n");
+        EC_DBG("too early.\n");
 #endif
         // issue check datagram again
         fsm->retries = EC_FSM_RETRIES;
         return;
-	}
+    }
 
-    if (EC_READ_U8(datagram->data + 1) & 0x82) { // busy bit or
-												 // write operation busy bit
+    if (EC_READ_U8(datagram->data + 1) & 0x82) { /* busy bit or
+                                                    write operation busy bit */
         // still busy... timeout?
         if (diff_ms >= SII_TIMEOUT) {
             if (fsm->check_once_more) {
-				fsm->check_once_more = 0;
-			} else {
+                fsm->check_once_more = 0;
+            } else {
                 EC_ERR("SII: Write timeout.\n");
                 fsm->state = ec_fsm_sii_state_error;
                 return;
@@ -473,8 +473,8 @@ void ec_fsm_sii_state_write_check2(
 */
 
 void ec_fsm_sii_state_error(
-		ec_fsm_sii_t *fsm /**< finite state machine */
-		)
+        ec_fsm_sii_t *fsm /**< finite state machine */
+        )
 {
 }
 
@@ -485,8 +485,8 @@ void ec_fsm_sii_state_error(
 */
 
 void ec_fsm_sii_state_end(
-		ec_fsm_sii_t *fsm /**< finite state machine */
-		)
+        ec_fsm_sii_t *fsm /**< finite state machine */
+        )
 {
 }
 

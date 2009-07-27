@@ -319,15 +319,15 @@ void ec_device_send(
 #else
     if (device->dev->hard_start_xmit(skb, device->dev) == NETDEV_TX_OK) {
 #endif
-		device->tx_count++;
+        device->tx_count++;
 #ifdef EC_DEBUG_IF
-		ec_debug_send(&device->dbg, skb->data, ETH_HLEN + size);
+        ec_debug_send(&device->dbg, skb->data, ETH_HLEN + size);
 #endif
 #ifdef EC_DEBUG_RING
-		ec_device_debug_ring_append(
-				device, TX, skb->data + ETH_HLEN, size);
+        ec_device_debug_ring_append(
+                device, TX, skb->data + ETH_HLEN, size);
 #endif
-	}
+    }
 }
 
 /*****************************************************************************/

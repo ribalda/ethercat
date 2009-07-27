@@ -118,7 +118,7 @@ void ec_datagram_clear(ec_datagram_t *datagram /**< EtherCAT datagram. */)
 {
     if (datagram->data_origin == EC_ORIG_INTERNAL && datagram->data) {
         kfree(datagram->data);
-    	datagram->data = NULL;
+        datagram->data = NULL;
     }
 }
 

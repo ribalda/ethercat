@@ -74,11 +74,11 @@ void ec_slave_config_init(
 
     sc->used_fmmus = 0;
 
-	sc->dc_assign_activate = 0x0000;
-	sc->dc_sync[0].cycle_time = 0x00000000;
-	sc->dc_sync[1].cycle_time = 0x00000000;
-	sc->dc_sync[0].shift_time = 0x00000000;
-	sc->dc_sync[1].shift_time = 0x00000000;
+    sc->dc_assign_activate = 0x0000;
+    sc->dc_sync[0].cycle_time = 0x00000000;
+    sc->dc_sync[1].cycle_time = 0x00000000;
+    sc->dc_sync[0].shift_time = 0x00000000;
+    sc->dc_sync[1].shift_time = 0x00000000;
 
     INIT_LIST_HEAD(&sc->sdo_configs);
     INIT_LIST_HEAD(&sc->sdo_requests);
@@ -184,10 +184,10 @@ int ec_slave_config_attach(
         ec_slave_config_t *sc /**< Slave configuration. */
         )
 {
-	ec_slave_t *slave;
+    ec_slave_t *slave;
 
-	if (sc->slave)
-		return 0; // already attached
+    if (sc->slave)
+        return 0; // already attached
 
     if (!(slave = ec_master_find_slave(
                     sc->master, sc->alias, sc->position))) {
@@ -197,7 +197,7 @@ int ec_slave_config_attach(
         return -ENOENT;
     }
 
-	if (slave->config) {
+    if (slave->config) {
         if (sc->master->debug_level)
             EC_DBG("Failed to attach slave configuration %u:%u. Slave %u"
                     " already has a configuration!\n", sc->alias,
@@ -214,11 +214,11 @@ int ec_slave_config_attach(
                     slave->sii.product_code, sc->alias, sc->position,
                     sc->vendor_id, sc->product_code);
         return -EINVAL;
-	}
+    }
 
-	// attach slave
-	slave->config = sc;
-	sc->slave = slave;
+    // attach slave
+    slave->config = sc;
+    sc->slave = slave;
 
     ec_slave_request_state(slave, EC_SLAVE_STATE_OP);
 
@@ -226,7 +226,7 @@ int ec_slave_config_attach(
         EC_DBG("Attached slave %u to config %u:%u.\n",
                 slave->ring_position, sc->alias, sc->position);
 
-	return 0;
+    return 0;
 }
 
 /*****************************************************************************/
@@ -334,14 +334,14 @@ unsigned int ec_slave_config_sdo_count(
         const ec_slave_config_t *sc /**< Slave configuration. */
         )
 {
-	const ec_sdo_request_t *req;
-	unsigned int count = 0;
+    const ec_sdo_request_t *req;
+    unsigned int count = 0;
 
-	list_for_each_entry(req, &sc->sdo_configs, list) {
-		count++;
-	}
+    list_for_each_entry(req, &sc->sdo_configs, list) {
+        count++;
+    }
 
-	return count;
+    return count;
 }
 
 /*****************************************************************************/
@@ -679,11 +679,11 @@ void ecrt_slave_config_dc(ec_slave_config_t *sc, uint16_t assign_activate,
         uint32_t sync0_cycle_time, uint32_t sync0_shift_time,
         uint32_t sync1_cycle_time, uint32_t sync1_shift_time)
 {
-	sc->dc_assign_activate = assign_activate;
-	sc->dc_sync[0].cycle_time = sync0_cycle_time;
-	sc->dc_sync[0].shift_time = sync0_shift_time;
-	sc->dc_sync[1].cycle_time = sync1_cycle_time;
-	sc->dc_sync[1].shift_time = sync1_shift_time;
+    sc->dc_assign_activate = assign_activate;
+    sc->dc_sync[0].cycle_time = sync0_cycle_time;
+    sc->dc_sync[0].shift_time = sync0_shift_time;
+    sc->dc_sync[1].cycle_time = sync1_cycle_time;
+    sc->dc_sync[1].shift_time = sync1_shift_time;
 }
 
 /*****************************************************************************/

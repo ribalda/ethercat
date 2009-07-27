@@ -239,13 +239,13 @@ typedef struct {
 
 typedef struct {
     // inputs
-	uint32_t index;
+    uint32_t index;
 
     // outputs
-	uint32_t data_size;
-	uint32_t logical_base_address;
-	uint16_t working_counter;
-	uint16_t expected_working_counter;
+    uint32_t data_size;
+    uint32_t logical_base_address;
+    uint16_t working_counter;
+    uint16_t expected_working_counter;
     uint32_t fmmu_count;
 } ec_ioctl_domain_t;
 
@@ -253,15 +253,15 @@ typedef struct {
 
 typedef struct {
     // inputs
-	uint32_t domain_index;
-	uint32_t fmmu_index;
+    uint32_t domain_index;
+    uint32_t fmmu_index;
 
     // outputs
     uint16_t slave_config_alias;
     uint16_t slave_config_position;
     uint8_t sync_index;
     ec_direction_t dir;
-	uint32_t logical_address;
+    uint32_t logical_address;
     uint32_t data_size;
 } ec_ioctl_domain_fmmu_t;
 
@@ -269,7 +269,7 @@ typedef struct {
 
 typedef struct {
     // inputs
-	uint32_t domain_index;
+    uint32_t domain_index;
     uint32_t data_size;
     uint8_t *target;
 } ec_ioctl_domain_data_t;
@@ -278,7 +278,7 @@ typedef struct {
 
 typedef struct {
     // inputs
-	uint16_t slave_position;
+    uint16_t slave_position;
     uint8_t al_state;
 } ec_ioctl_slave_state_t;
 
@@ -448,15 +448,15 @@ typedef struct {
     uint16_t eoe_index;
 
     // outputs
-	char name[EC_DATAGRAM_NAME_SIZE];
-	uint16_t slave_position;
-	uint8_t open;
-	uint32_t rx_bytes;
-	uint32_t rx_rate;
-	uint32_t tx_bytes;
-	uint32_t tx_rate;
-	uint32_t tx_queued_frames;
-	uint32_t tx_queue_size;
+    char name[EC_DATAGRAM_NAME_SIZE];
+    uint16_t slave_position;
+    uint8_t open;
+    uint32_t rx_bytes;
+    uint32_t rx_rate;
+    uint32_t tx_bytes;
+    uint32_t tx_rate;
+    uint32_t tx_queued_frames;
+    uint32_t tx_queue_size;
 } ec_ioctl_eoe_handler_t;
 
 /*****************************************************************************/

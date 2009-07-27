@@ -108,10 +108,10 @@ typedef struct {
  * \return 0 in case of success, else < 0
  */
 int ec_cdev_init(
-		ec_cdev_t *cdev, /**< EtherCAT master character device. */
-		ec_master_t *master, /**< Parent master. */
-		dev_t dev_num /**< Device number. */
-		)
+        ec_cdev_t *cdev, /**< EtherCAT master character device. */
+        ec_master_t *master, /**< Parent master. */
+        dev_t dev_num /**< Device number. */
+        )
 {
     int ret;
 
@@ -121,9 +121,9 @@ int ec_cdev_init(
     cdev->cdev.owner = THIS_MODULE;
 
     ret = cdev_add(&cdev->cdev,
-		 MKDEV(MAJOR(dev_num), master->index), 1);
+            MKDEV(MAJOR(dev_num), master->index), 1);
     if (ret) {
-		EC_ERR("Failed to add character device!\n");
+        EC_ERR("Failed to add character device!\n");
     }
 
     return ret;
@@ -1449,7 +1449,7 @@ int ec_cdev_ioctl_eoe_handler(
         )
 {
     ec_ioctl_eoe_handler_t data;
-	const ec_eoe_t *eoe;
+    const ec_eoe_t *eoe;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
         return -EFAULT;
@@ -1464,12 +1464,12 @@ int ec_cdev_ioctl_eoe_handler(
         return -EINVAL;
     }
 
-	if (eoe->slave) {
-		data.slave_position = eoe->slave->ring_position;
-	} else {
-		data.slave_position = 0xffff;
-	}
-	snprintf(data.name, EC_DATAGRAM_NAME_SIZE, eoe->dev->name);
+    if (eoe->slave) {
+        data.slave_position = eoe->slave->ring_position;
+    } else {
+        data.slave_position = 0xffff;
+    }
+    snprintf(data.name, EC_DATAGRAM_NAME_SIZE, eoe->dev->name);
     data.open = eoe->opened;
     data.rx_bytes = eoe->stats.tx_bytes;
     data.rx_rate = eoe->tx_rate;
@@ -1496,7 +1496,7 @@ int ec_cdev_ioctl_request(
         ec_cdev_priv_t *priv /**< Private data structure of file handle. */
         )
 {
-	ec_master_t *m;
+    ec_master_t *m;
     int ret = 0;
 
     m = ecrt_request_master_err(master->index);
@@ -1521,8 +1521,8 @@ int ec_cdev_ioctl_create_domain(
 {
     ec_domain_t *domain;
 
-	if (unlikely(!priv->requested))
-		return -EPERM;
+    if (unlikely(!priv->requested))
+        return -EPERM;
 
     domain = ecrt_master_create_domain_err(master);
     if (IS_ERR(domain))
@@ -1544,8 +1544,8 @@ int ec_cdev_ioctl_create_slave_config(
     ec_ioctl_config_t data;
     ec_slave_config_t *sc, *entry;
 
-	if (unlikely(!priv->requested))
-		return -EPERM;
+    if (unlikely(!priv->requested))
+        return -EPERM;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
         return -EFAULT;
@@ -1589,8 +1589,8 @@ int ec_cdev_ioctl_activate(
     off_t offset;
     int ret;
     
-	if (unlikely(!priv->requested))
-		return -EPERM;
+    if (unlikely(!priv->requested))
+        return -EPERM;
 
     /* Get the sum of the domains' process data sizes. */
     
@@ -1645,8 +1645,8 @@ int ec_cdev_ioctl_send(
         ec_cdev_priv_t *priv /**< Private data structure of file handle. */
         )
 {
-	if (unlikely(!priv->requested))
-		return -EPERM;
+    if (unlikely(!priv->requested))
+        return -EPERM;
 
     down(&master->io_sem);
     ecrt_master_send(master);
@@ -1664,8 +1664,8 @@ int ec_cdev_ioctl_receive(
         ec_cdev_priv_t *priv /**< Private data structure of file handle. */
         )
 {
-	if (unlikely(!priv->requested))
-		return -EPERM;
+    if (unlikely(!priv->requested))
+        return -EPERM;
 
     down(&master->io_sem);
     ecrt_master_receive(master);
@@ -1685,8 +1685,8 @@ int ec_cdev_ioctl_master_state(
 {
     ec_master_state_t data;
     
-	if (unlikely(!priv->requested))
-		return -EPERM;
+    if (unlikely(!priv->requested))
+        return -EPERM;
 
     ecrt_master_state(master, &data);
 
@@ -1708,8 +1708,8 @@ int ec_cdev_ioctl_app_time(
 {
     ec_ioctl_app_time_t data;
     
-	if (unlikely(!priv->requested))
-		return -EPERM;
+    if (unlikely(!priv->requested))
+        return -EPERM;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
         return -EFAULT;
@@ -1729,8 +1729,8 @@ int ec_cdev_ioctl_sync_ref(
         ec_cdev_priv_t *priv /**< Private data structure of file handle. */
         )
 {
-	if (unlikely(!priv->requested))
-		return -EPERM;
+    if (unlikely(!priv->requested))
+        return -EPERM;
 
     down(&master->io_sem);
     ecrt_master_sync_reference_clock(master);
@@ -1748,8 +1748,8 @@ int ec_cdev_ioctl_sync_slaves(
         ec_cdev_priv_t *priv /**< Private data structure of file handle. */
         )
 {
-	if (unlikely(!priv->requested))
-		return -EPERM;
+    if (unlikely(!priv->requested))
+        return -EPERM;
 
     down(&master->io_sem);
     ecrt_master_sync_slave_clocks(master);
@@ -1772,7 +1772,7 @@ int ec_cdev_ioctl_sc_sync(
     unsigned int i;
     int ret = 0;
 
-	if (unlikely(!priv->requested)) {
+    if (unlikely(!priv->requested)) {
         ret = -EPERM;
         goto out_return;
     }
@@ -1821,7 +1821,7 @@ int ec_cdev_ioctl_sc_add_pdo(
     ec_ioctl_config_pdo_t data;
     ec_slave_config_t *sc;
 
-	if (unlikely(!priv->requested))
+    if (unlikely(!priv->requested))
         return -EPERM;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
@@ -1853,7 +1853,7 @@ int ec_cdev_ioctl_sc_clear_pdos(
     ec_ioctl_config_pdo_t data;
     ec_slave_config_t *sc;
 
-	if (unlikely(!priv->requested))
+    if (unlikely(!priv->requested))
         return -EPERM;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
@@ -1886,7 +1886,7 @@ int ec_cdev_ioctl_sc_add_entry(
     ec_ioctl_add_pdo_entry_t data;
     ec_slave_config_t *sc;
 
-	if (unlikely(!priv->requested))
+    if (unlikely(!priv->requested))
         return -EPERM;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
@@ -1919,7 +1919,7 @@ int ec_cdev_ioctl_sc_clear_entries(
     ec_ioctl_config_pdo_t data;
     ec_slave_config_t *sc;
 
-	if (unlikely(!priv->requested))
+    if (unlikely(!priv->requested))
         return -EPERM;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
@@ -1954,7 +1954,7 @@ int ec_cdev_ioctl_sc_reg_pdo_entry(
     ec_domain_t *domain;
     int ret;
 
-	if (unlikely(!priv->requested))
+    if (unlikely(!priv->requested))
         return -EPERM;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
@@ -1997,7 +1997,7 @@ int ec_cdev_ioctl_sc_dc(
     ec_ioctl_config_t data;
     ec_slave_config_t *sc;
 
-	if (unlikely(!priv->requested))
+    if (unlikely(!priv->requested))
         return -EPERM;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
@@ -2037,7 +2037,7 @@ int ec_cdev_ioctl_sc_sdo(
     uint8_t *sdo_data = NULL;
     int ret;
 
-	if (unlikely(!priv->requested))
+    if (unlikely(!priv->requested))
         return -EPERM;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
@@ -2088,8 +2088,8 @@ int ec_cdev_ioctl_sc_create_sdo_request(
     ec_slave_config_t *sc;
     ec_sdo_request_t *req;
 
-	if (unlikely(!priv->requested))
-		return -EPERM;
+    if (unlikely(!priv->requested))
+        return -EPERM;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
         return -EFAULT;
@@ -2137,8 +2137,8 @@ int ec_cdev_ioctl_sc_create_voe_handler(
     ec_slave_config_t *sc;
     ec_voe_handler_t *voe;
 
-	if (unlikely(!priv->requested))
-		return -EPERM;
+    if (unlikely(!priv->requested))
+        return -EPERM;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
         return -EFAULT;
@@ -2185,8 +2185,8 @@ int ec_cdev_ioctl_sc_state(
     const ec_slave_config_t *sc;
     ec_slave_config_state_t state;
     
-	if (unlikely(!priv->requested))
-		return -EPERM;
+    if (unlikely(!priv->requested))
+        return -EPERM;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
         return -EFAULT;
@@ -2223,7 +2223,7 @@ int ec_cdev_ioctl_domain_offset(
     int offset = 0;
     const ec_domain_t *domain;
 
-	if (unlikely(!priv->requested))
+    if (unlikely(!priv->requested))
         return -EPERM;
 
     if (down_interruptible(&master->master_sem)) {
@@ -2254,7 +2254,7 @@ int ec_cdev_ioctl_domain_process(
 {
     ec_domain_t *domain;
 
-	if (unlikely(!priv->requested))
+    if (unlikely(!priv->requested))
         return -EPERM;
 
     if (down_interruptible(&master->master_sem))
@@ -2282,7 +2282,7 @@ int ec_cdev_ioctl_domain_queue(
 {
     ec_domain_t *domain;
 
-	if (unlikely(!priv->requested))
+    if (unlikely(!priv->requested))
         return -EPERM;
 
     if (down_interruptible(&master->master_sem))
@@ -2312,8 +2312,8 @@ int ec_cdev_ioctl_domain_state(
     const ec_domain_t *domain;
     ec_domain_state_t state;
     
-	if (unlikely(!priv->requested))
-		return -EPERM;
+    if (unlikely(!priv->requested))
+        return -EPERM;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
         return -EFAULT;
@@ -2351,7 +2351,7 @@ int ec_cdev_ioctl_sdo_request_timeout(
     ec_slave_config_t *sc;
     ec_sdo_request_t *req;
 
-	if (unlikely(!priv->requested))
+    if (unlikely(!priv->requested))
         return -EPERM;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
@@ -2390,7 +2390,7 @@ int ec_cdev_ioctl_sdo_request_state(
     ec_slave_config_t *sc;
     ec_sdo_request_t *req;
 
-	if (unlikely(!priv->requested))
+    if (unlikely(!priv->requested))
         return -EPERM;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
@@ -2437,7 +2437,7 @@ int ec_cdev_ioctl_sdo_request_read(
     ec_slave_config_t *sc;
     ec_sdo_request_t *req;
 
-	if (unlikely(!priv->requested))
+    if (unlikely(!priv->requested))
         return -EPERM;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
@@ -2477,7 +2477,7 @@ int ec_cdev_ioctl_sdo_request_write(
     ec_sdo_request_t *req;
     int ret;
 
-	if (unlikely(!priv->requested))
+    if (unlikely(!priv->requested))
         return -EPERM;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
@@ -2529,7 +2529,7 @@ int ec_cdev_ioctl_sdo_request_data(
     ec_slave_config_t *sc;
     ec_sdo_request_t *req;
 
-	if (unlikely(!priv->requested))
+    if (unlikely(!priv->requested))
         return -EPERM;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
@@ -2573,7 +2573,7 @@ int ec_cdev_ioctl_voe_send_header(
     uint32_t vendor_id;
     uint16_t vendor_type;
 
-	if (unlikely(!priv->requested))
+    if (unlikely(!priv->requested))
         return -EPERM;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
@@ -2620,7 +2620,7 @@ int ec_cdev_ioctl_voe_rec_header(
     uint32_t vendor_id;
     uint16_t vendor_type;
 
-	if (unlikely(!priv->requested))
+    if (unlikely(!priv->requested))
         return -EPERM;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
@@ -2668,7 +2668,7 @@ int ec_cdev_ioctl_voe_read(
     ec_slave_config_t *sc;
     ec_voe_handler_t *voe;
 
-	if (unlikely(!priv->requested))
+    if (unlikely(!priv->requested))
         return -EPERM;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
@@ -2707,7 +2707,7 @@ int ec_cdev_ioctl_voe_read_nosync(
     ec_slave_config_t *sc;
     ec_voe_handler_t *voe;
 
-	if (unlikely(!priv->requested))
+    if (unlikely(!priv->requested))
         return -EPERM;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
@@ -2746,7 +2746,7 @@ int ec_cdev_ioctl_voe_write(
     ec_slave_config_t *sc;
     ec_voe_handler_t *voe;
 
-	if (unlikely(!priv->requested))
+    if (unlikely(!priv->requested))
         return -EPERM;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
@@ -2794,7 +2794,7 @@ int ec_cdev_ioctl_voe_exec(
     ec_slave_config_t *sc;
     ec_voe_handler_t *voe;
 
-	if (unlikely(!priv->requested))
+    if (unlikely(!priv->requested))
         return -EPERM;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
@@ -2841,7 +2841,7 @@ int ec_cdev_ioctl_voe_data(
     ec_slave_config_t *sc;
     ec_voe_handler_t *voe;
 
-	if (unlikely(!priv->requested))
+    if (unlikely(!priv->requested))
         return -EPERM;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
@@ -2932,10 +2932,10 @@ int ec_cdev_ioctl_slave_foe_read(
     data.result = request.req.result;
     data.error_code = request.req.error_code;
 
-	if (master->debug_level) {
-		EC_DBG("Read %d bytes via FoE (result = 0x%x).\n",
-				request.req.data_size, request.req.result);
-	}
+    if (master->debug_level) {
+        EC_DBG("Read %d bytes via FoE (result = 0x%x).\n",
+                request.req.data_size, request.req.result);
+    }
 
     if (request.req.state != EC_INT_REQUEST_SUCCESS) {
         data.data_size = 0;
@@ -3012,9 +3012,9 @@ int ec_cdev_ioctl_slave_foe_write(
         return -EINVAL;
     }
 
-	if (master->debug_level) {
-		EC_DBG("Scheduling FoE write request.\n");
-	}
+    if (master->debug_level) {
+        EC_DBG("Scheduling FoE write request.\n");
+    }
 
     // schedule FoE write request.
     list_add_tail(&request.list, &master->foe_requests);
@@ -3050,9 +3050,9 @@ int ec_cdev_ioctl_slave_foe_write(
 
     ec_foe_request_clear(&request.req);
 
-	if (master->debug_level) {
-		printk ("Finished FoE writing.\n");
-	}
+    if (master->debug_level) {
+        printk("Finished FoE writing.\n");
+    }
 
     return retval;
 }
@@ -3189,136 +3189,136 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             return ec_cdev_ioctl_eoe_handler(master, arg);
         case EC_IOCTL_REQUEST:
             if (!(filp->f_mode & FMODE_WRITE))
-				return -EPERM;
-			return ec_cdev_ioctl_request(master, arg, priv);
+                return -EPERM;
+            return ec_cdev_ioctl_request(master, arg, priv);
         case EC_IOCTL_CREATE_DOMAIN:
             if (!(filp->f_mode & FMODE_WRITE))
-				return -EPERM;
-			return ec_cdev_ioctl_create_domain(master, arg, priv);
+                return -EPERM;
+            return ec_cdev_ioctl_create_domain(master, arg, priv);
         case EC_IOCTL_CREATE_SLAVE_CONFIG:
             if (!(filp->f_mode & FMODE_WRITE))
-				return -EPERM;
-			return ec_cdev_ioctl_create_slave_config(master, arg, priv);
+                return -EPERM;
+            return ec_cdev_ioctl_create_slave_config(master, arg, priv);
         case EC_IOCTL_ACTIVATE:
             if (!(filp->f_mode & FMODE_WRITE))
-				return -EPERM;
-			return ec_cdev_ioctl_activate(master, arg, priv);
+                return -EPERM;
+            return ec_cdev_ioctl_activate(master, arg, priv);
         case EC_IOCTL_SEND:
             if (!(filp->f_mode & FMODE_WRITE))
-				return -EPERM;
-			return ec_cdev_ioctl_send(master, arg, priv);
+                return -EPERM;
+            return ec_cdev_ioctl_send(master, arg, priv);
         case EC_IOCTL_RECEIVE:
             if (!(filp->f_mode & FMODE_WRITE))
-				return -EPERM;
-			return ec_cdev_ioctl_receive(master, arg, priv);
+                return -EPERM;
+            return ec_cdev_ioctl_receive(master, arg, priv);
         case EC_IOCTL_MASTER_STATE:
-			return ec_cdev_ioctl_master_state(master, arg, priv);
+            return ec_cdev_ioctl_master_state(master, arg, priv);
         case EC_IOCTL_APP_TIME:
             if (!(filp->f_mode & FMODE_WRITE))
-				return -EPERM;
-			return ec_cdev_ioctl_app_time(master, arg, priv);
+                return -EPERM;
+            return ec_cdev_ioctl_app_time(master, arg, priv);
         case EC_IOCTL_SYNC_REF:
             if (!(filp->f_mode & FMODE_WRITE))
-				return -EPERM;
-			return ec_cdev_ioctl_sync_ref(master, arg, priv);
+                return -EPERM;
+            return ec_cdev_ioctl_sync_ref(master, arg, priv);
         case EC_IOCTL_SYNC_SLAVES:
             if (!(filp->f_mode & FMODE_WRITE))
-				return -EPERM;
-			return ec_cdev_ioctl_sync_slaves(master, arg, priv);
+                return -EPERM;
+            return ec_cdev_ioctl_sync_slaves(master, arg, priv);
         case EC_IOCTL_SC_SYNC:
             if (!(filp->f_mode & FMODE_WRITE))
-				return -EPERM;
-			return ec_cdev_ioctl_sc_sync(master, arg, priv);
+                return -EPERM;
+            return ec_cdev_ioctl_sc_sync(master, arg, priv);
         case EC_IOCTL_SC_ADD_PDO:
             if (!(filp->f_mode & FMODE_WRITE))
-				return -EPERM;
-			return ec_cdev_ioctl_sc_add_pdo(master, arg, priv);
+                return -EPERM;
+            return ec_cdev_ioctl_sc_add_pdo(master, arg, priv);
         case EC_IOCTL_SC_CLEAR_PDOS:
             if (!(filp->f_mode & FMODE_WRITE))
-				return -EPERM;
-			return ec_cdev_ioctl_sc_clear_pdos(master, arg, priv);
+                return -EPERM;
+            return ec_cdev_ioctl_sc_clear_pdos(master, arg, priv);
         case EC_IOCTL_SC_ADD_ENTRY:
             if (!(filp->f_mode & FMODE_WRITE))
-				return -EPERM;
-			return ec_cdev_ioctl_sc_add_entry(master, arg, priv);
+                return -EPERM;
+            return ec_cdev_ioctl_sc_add_entry(master, arg, priv);
         case EC_IOCTL_SC_CLEAR_ENTRIES:
             if (!(filp->f_mode & FMODE_WRITE))
-				return -EPERM;
-			return ec_cdev_ioctl_sc_clear_entries(master, arg, priv);
+                return -EPERM;
+            return ec_cdev_ioctl_sc_clear_entries(master, arg, priv);
         case EC_IOCTL_SC_REG_PDO_ENTRY:
             if (!(filp->f_mode & FMODE_WRITE))
-				return -EPERM;
-			return ec_cdev_ioctl_sc_reg_pdo_entry(master, arg, priv);
+                return -EPERM;
+            return ec_cdev_ioctl_sc_reg_pdo_entry(master, arg, priv);
         case EC_IOCTL_SC_DC:
             if (!(filp->f_mode & FMODE_WRITE))
-				return -EPERM;
-			return ec_cdev_ioctl_sc_dc(master, arg, priv);
+                return -EPERM;
+            return ec_cdev_ioctl_sc_dc(master, arg, priv);
         case EC_IOCTL_SC_SDO:
             if (!(filp->f_mode & FMODE_WRITE))
-				return -EPERM;
-			return ec_cdev_ioctl_sc_sdo(master, arg, priv);
+                return -EPERM;
+            return ec_cdev_ioctl_sc_sdo(master, arg, priv);
         case EC_IOCTL_SC_SDO_REQUEST:
             if (!(filp->f_mode & FMODE_WRITE))
-				return -EPERM;
-			return ec_cdev_ioctl_sc_create_sdo_request(master, arg, priv);
+                return -EPERM;
+            return ec_cdev_ioctl_sc_create_sdo_request(master, arg, priv);
         case EC_IOCTL_SC_VOE:
             if (!(filp->f_mode & FMODE_WRITE))
-				return -EPERM;
-			return ec_cdev_ioctl_sc_create_voe_handler(master, arg, priv);
+                return -EPERM;
+            return ec_cdev_ioctl_sc_create_voe_handler(master, arg, priv);
         case EC_IOCTL_SC_STATE:
-			return ec_cdev_ioctl_sc_state(master, arg, priv);
+            return ec_cdev_ioctl_sc_state(master, arg, priv);
         case EC_IOCTL_DOMAIN_OFFSET:
-			return ec_cdev_ioctl_domain_offset(master, arg, priv);
+            return ec_cdev_ioctl_domain_offset(master, arg, priv);
         case EC_IOCTL_DOMAIN_PROCESS:
             if (!(filp->f_mode & FMODE_WRITE))
-				return -EPERM;
-			return ec_cdev_ioctl_domain_process(master, arg, priv);
+                return -EPERM;
+            return ec_cdev_ioctl_domain_process(master, arg, priv);
         case EC_IOCTL_DOMAIN_QUEUE:
             if (!(filp->f_mode & FMODE_WRITE))
-				return -EPERM;
-			return ec_cdev_ioctl_domain_queue(master, arg, priv);
+                return -EPERM;
+            return ec_cdev_ioctl_domain_queue(master, arg, priv);
         case EC_IOCTL_DOMAIN_STATE:
-			return ec_cdev_ioctl_domain_state(master, arg, priv);
+            return ec_cdev_ioctl_domain_state(master, arg, priv);
         case EC_IOCTL_SDO_REQUEST_TIMEOUT:
             if (!(filp->f_mode & FMODE_WRITE))
-				return -EPERM;
-			return ec_cdev_ioctl_sdo_request_timeout(master, arg, priv);
+                return -EPERM;
+            return ec_cdev_ioctl_sdo_request_timeout(master, arg, priv);
         case EC_IOCTL_SDO_REQUEST_STATE:
-			return ec_cdev_ioctl_sdo_request_state(master, arg, priv);
+            return ec_cdev_ioctl_sdo_request_state(master, arg, priv);
         case EC_IOCTL_SDO_REQUEST_READ:
             if (!(filp->f_mode & FMODE_WRITE))
-				return -EPERM;
-			return ec_cdev_ioctl_sdo_request_read(master, arg, priv);
+                return -EPERM;
+            return ec_cdev_ioctl_sdo_request_read(master, arg, priv);
         case EC_IOCTL_SDO_REQUEST_WRITE:
             if (!(filp->f_mode & FMODE_WRITE))
-				return -EPERM;
-			return ec_cdev_ioctl_sdo_request_write(master, arg, priv);
+                return -EPERM;
+            return ec_cdev_ioctl_sdo_request_write(master, arg, priv);
         case EC_IOCTL_SDO_REQUEST_DATA:
-			return ec_cdev_ioctl_sdo_request_data(master, arg, priv);
+            return ec_cdev_ioctl_sdo_request_data(master, arg, priv);
         case EC_IOCTL_VOE_SEND_HEADER:
             if (!(filp->f_mode & FMODE_WRITE))
-				return -EPERM;
-			return ec_cdev_ioctl_voe_send_header(master, arg, priv);
+                return -EPERM;
+            return ec_cdev_ioctl_voe_send_header(master, arg, priv);
         case EC_IOCTL_VOE_REC_HEADER:
-			return ec_cdev_ioctl_voe_rec_header(master, arg, priv);
+            return ec_cdev_ioctl_voe_rec_header(master, arg, priv);
         case EC_IOCTL_VOE_READ:
             if (!(filp->f_mode & FMODE_WRITE))
-				return -EPERM;
-			return ec_cdev_ioctl_voe_read(master, arg, priv);
+                return -EPERM;
+            return ec_cdev_ioctl_voe_read(master, arg, priv);
         case EC_IOCTL_VOE_READ_NOSYNC:
             if (!(filp->f_mode & FMODE_WRITE))
-				return -EPERM;
-			return ec_cdev_ioctl_voe_read_nosync(master, arg, priv);
+                return -EPERM;
+            return ec_cdev_ioctl_voe_read_nosync(master, arg, priv);
         case EC_IOCTL_VOE_WRITE:
             if (!(filp->f_mode & FMODE_WRITE))
-				return -EPERM;
-			return ec_cdev_ioctl_voe_write(master, arg, priv);
+                return -EPERM;
+            return ec_cdev_ioctl_voe_write(master, arg, priv);
         case EC_IOCTL_VOE_EXEC:
             if (!(filp->f_mode & FMODE_WRITE))
-				return -EPERM;
-			return ec_cdev_ioctl_voe_exec(master, arg, priv);
+                return -EPERM;
+            return ec_cdev_ioctl_voe_exec(master, arg, priv);
         case EC_IOCTL_VOE_DATA:
-			return ec_cdev_ioctl_voe_data(master, arg, priv);
+            return ec_cdev_ioctl_voe_data(master, arg, priv);
         default:
             return -ENOTTY;
     }

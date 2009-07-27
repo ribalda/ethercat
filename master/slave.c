@@ -747,7 +747,7 @@ void ec_slave_attach_pdo_names(
  */
 uint32_t ec_slave_calc_rtt_sum(
         ec_slave_t *slave /**< EtherCAT slave. */
-		)
+        )
 {
     uint32_t rtt_sum = 0, rtt;
     unsigned int i;
@@ -768,7 +768,7 @@ uint32_t ec_slave_calc_rtt_sum(
  */
 ec_slave_t *ec_slave_find_next_dc_slave(
         ec_slave_t *slave /**< EtherCAT slave. */
-		)
+        )
 {
     ec_slave_t *dc_slave = NULL;
 
@@ -796,7 +796,7 @@ ec_slave_t *ec_slave_find_next_dc_slave(
  */
 void ec_slave_calc_port_delays(
         ec_slave_t *slave /**< EtherCAT slave. */
-		)
+        )
 {
     unsigned int i;
     ec_slave_t *next, *next_dc;
@@ -834,7 +834,7 @@ void ec_slave_calc_port_delays(
 void ec_slave_calc_transmission_delays_rec(
         ec_slave_t *slave, /**< Current slave. */
         uint32_t *delay /**< Sum of delays. */
-		)
+        )
 {
     unsigned int i;
     ec_slave_t *next, *next_dc;
