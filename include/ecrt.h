@@ -63,7 +63,7 @@
  *   methods to let an application transfer SDOs before activating the master.
  * - Changed the meaning of the negative return values of
  *   ecrt_slave_config_reg_pdo_entry() and ecrt_slave_config_sdo*().
- * - Imlemented the Vendor-specific over EtherCAT mailbox protocol. See
+ * - Implemented the Vendor-specific over EtherCAT mailbox protocol. See
  *   ecrt_slave_config_create_voe_handler().
  * - Renamed ec_sdo_request_state_t to #ec_request_state_t, because it is also
  *   used by VoE handlers.
@@ -129,7 +129,7 @@
 
 /** Timeval to nanoseconds conversion.
  *
- * This macro converts a unix epoch time to EtherCAT DC time.
+ * This macro converts a Unix epoch time to EtherCAT DC time.
  *
  * \see void ecrt_master_application_time()
  *
@@ -236,7 +236,7 @@ typedef struct {
     uint8_t al_state; /**< Current state of the slave. */
     uint8_t error_flag; /**< Error flag for that slave. */
     uint8_t sync_count; /**< Number of sync managers. */
-    uint16_t sdo_count; /**< Number of SDO's. */
+    uint16_t sdo_count; /**< Number of SDOs. */
     char name[EC_MAX_STRING_LENGTH]; /**< Name of the slave. */
 } ec_slave_info_t;
 
@@ -468,8 +468,8 @@ int ecrt_master_reserve(
  * its parameters. Asynchronous master access (like EoE processing) is only
  * possible if the callbacks have been set.
  *
- * The task of the send callback (\a request_cb) is to decide, if the bus is
- * currently accessible. In this case, it can call the ecrt_master_send_ext()
+ * The task of the send callback (\a send_cb) is to decide, if the bus is
+ * currently accessible and whether or not to call the ecrt_master_send_ext()
  * method.
  *
  * The task of the receive callback (\a receive_cb) is to decide, if a call to
@@ -643,7 +643,7 @@ int ecrt_master_sdo_download(
  * processing.
  *
  * \retval  0 Success.
- * \retval -1 Error occured.
+ * \retval -1 Error occurred.
  */
 int ecrt_master_sdo_upload(
         ec_master_t *master, /**< EtherCAT master. */
