@@ -52,7 +52,6 @@ Future issues:
 
 * Segmented SDO downloads.
 * External memory for SDO transfers.
-* Bus information via userspace library (sync managers, PDOs, entries).
 * C++ implementation of the library.
 * Bus simulator interface.
 * Move master threads, slave handlers and state machines into a user
