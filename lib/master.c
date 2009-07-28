@@ -131,13 +131,13 @@ int ecrt_master(ec_master_t* master, ec_master_info_t *master_info)
 
 /*****************************************************************************/
 
-int ecrt_master_slave(ec_master_t *master, uint16_t position,
+int ecrt_master_get_slave(ec_master_t *master, uint16_t slave_position,
         ec_slave_info_t *slave_info)
 {
     ec_ioctl_slave_t data;
     int index;
 
-    data.position = position;
+    data.position = slave_position;
 
     if (ioctl(master->fd, EC_IOCTL_SLAVE, &data) == -1) {
         fprintf(stderr, "Failed to get slave info: %s\n", strerror(errno));
@@ -156,6 +156,152 @@ int ecrt_master_slave(ec_master_t *master, uint16_t position,
     slave_info->sync_count = data.sync_count;
     slave_info->sdo_count = data.sdo_count;
     strncpy(slave_info->name, data.name, EC_IOCTL_STRING_SIZE);
+    return 0;
+}
+
+/*****************************************************************************/
+
+int ecrt_master_get_sync_manager(ec_master_t *master, uint16_t slave_position,
+        uint8_t sync_index, ec_sync_info_t *sync)
+{
+	ec_ioctl_slave_sync_t data;
+
+    if (sync_index >= EC_MAX_SYNC_MANAGERS)
+        return -ENOENT;
+
+    memset(&data, 0x00, sizeof(ec_ioctl_slave_sync_t));
+    data.slave_position = slave_position;
+    data.sync_index = sync_index;
+
+    if (ioctl(master->fd, EC_IOCTL_SLAVE_SYNC, &data) == -1) {
+        fprintf(stderr, "Failed to get sync manager information: %s\n",
+                strerror(errno));
+        return -1; // FIXME
+    }
+
+    sync->index = sync_index;
+	sync->dir = EC_READ_BIT(&data.control_register, 2) ?
+        EC_DIR_OUTPUT : EC_DIR_INPUT;
+    sync->n_pdos = data.pdo_count;
+    sync->pdos = NULL;
+    sync->watchdog_mode = EC_READ_BIT(&data.control_register, 6) ?
+        EC_WD_ENABLE : EC_WD_DISABLE;
+
+    return 0;
+}
+
+/*****************************************************************************/
+
+int ecrt_master_get_pdo(ec_master_t *master, uint16_t slave_position,
+        uint8_t sync_index, uint16_t pos, ec_pdo_info_t *pdo)
+{
+	ec_ioctl_slave_sync_pdo_t data;
+
+    if (sync_index >= EC_MAX_SYNC_MANAGERS)
+        return -ENOENT;
+
+    memset(&data, 0x00, sizeof(ec_ioctl_slave_sync_pdo_t));
+    data.slave_position = slave_position;
+    data.sync_index = sync_index;
+    data.pdo_pos = pos;
+
+    if (ioctl(master->fd, EC_IOCTL_SLAVE_SYNC_PDO, &data) == -1) {
+        fprintf(stderr, "Failed to get pdo information: %s\n",
+                strerror(errno));
+        return -1; // FIXME
+    }
+
+    pdo->index = data.index;
+    pdo->n_entries = data.entry_count;
+    pdo->entries = NULL;
+
+    return 0;
+}
+
+/*****************************************************************************/
+
+int ecrt_master_get_pdo_entry(ec_master_t *master, uint16_t slave_position,
+        uint8_t sync_index, uint16_t pdo_pos, uint16_t entry_pos,
+        ec_pdo_entry_info_t *entry)
+{
+	ec_ioctl_slave_sync_pdo_entry_t data;
+
+    if (sync_index >= EC_MAX_SYNC_MANAGERS)
+        return -ENOENT;
+
+    memset(&data, 0x00, sizeof(ec_ioctl_slave_sync_pdo_entry_t));
+    data.slave_position = slave_position;
+    data.sync_index = sync_index;
+    data.pdo_pos = pdo_pos;
+    data.entry_pos = entry_pos;
+
+    if (ioctl(master->fd, EC_IOCTL_SLAVE_SYNC_PDO_ENTRY, &data) == -1) {
+        fprintf(stderr, "Failed to get pdo entry information: %s\n",
+                strerror(errno));
+        return -1; // FIXME
+    }
+
+    entry->index = data.index;
+    entry->subindex = data.subindex;
+    entry->bit_length = data.bit_length;
+
+    return 0;
+}
+
+/*****************************************************************************/
+
+int ecrt_master_sdo_download(ec_master_t *master, uint16_t slave_position,
+        uint16_t index, uint8_t subindex, uint8_t *data,
+        size_t data_size, uint32_t *abort_code)
+{
+    ec_ioctl_slave_sdo_download_t download;
+
+    download.slave_position = slave_position;
+    download.sdo_index = index;
+    download.sdo_entry_subindex = subindex;
+    download.data_size = data_size;
+    download.data = data;
+
+    if (ioctl(master->fd, EC_IOCTL_SLAVE_SDO_DOWNLOAD, &download) == -1) {
+        if (errno == -EIO) {
+            if (abort_code) {
+                *abort_code = download.abort_code;
+            }
+        }
+        fprintf(stderr, "Failed to execute SDO download: %s\n",
+            strerror(errno));
+        return -1;
+    }
+
+    return 0;
+}
+
+/*****************************************************************************/
+
+int ecrt_master_sdo_upload(ec_master_t *master, uint16_t slave_position,
+        uint16_t index, uint8_t subindex, uint8_t *target,
+        size_t target_size, size_t *result_size, uint32_t *abort_code)
+{
+    ec_ioctl_slave_sdo_upload_t upload;
+
+    upload.slave_position = slave_position;
+    upload.sdo_index = index;
+    upload.sdo_entry_subindex = subindex;
+    upload.target_size = target_size;
+    upload.target = target;
+
+    if (ioctl(master->fd, EC_IOCTL_SLAVE_SDO_UPLOAD, &upload) == -1) {
+        if (errno == -EIO) {
+            if (abort_code) {
+                *abort_code = upload.abort_code;
+            }
+        }
+        fprintf(stderr, "Failed to execute SDO upload: %s\n",
+                strerror(errno));
+        return -1;
+    }
+
+    *result_size = upload.data_size;
     return 0;
 }
 
@@ -245,63 +391,6 @@ void ecrt_master_sync_slave_clocks(ec_master_t *master)
     if (ioctl(master->fd, EC_IOCTL_SYNC_SLAVES, NULL) == -1) {
         fprintf(stderr, "Failed to sync slave clocks: %s\n", strerror(errno));
     }
-}
-
-/*****************************************************************************/
-
-int ecrt_slave_sdo_download(ec_master_t* master, uint16_t slave_position,
-        uint16_t index, uint8_t subindex, uint8_t *data,
-        size_t data_size, uint32_t *abort_code)
-{
-    ec_ioctl_slave_sdo_download_t download;
-
-    download.slave_position = slave_position;
-    download.sdo_index = index;
-    download.sdo_entry_subindex = subindex;
-    download.data_size = data_size;
-    download.data = data;
-
-    if (ioctl(master->fd, EC_IOCTL_SLAVE_SDO_DOWNLOAD, &download) == -1) {
-        if (errno == -EIO) {
-            if (abort_code) {
-                *abort_code = download.abort_code;
-            }
-        }
-        fprintf(stderr, "Failed to execute SDO download: %s\n",
-            strerror(errno));
-        return -1;
-    }
-
-    return 0;
-}
-
-/*****************************************************************************/
-
-int ecrt_slave_sdo_upload(ec_master_t* master, uint16_t slave_position,
-        uint16_t index, uint8_t subindex, uint8_t *target,
-        size_t target_size, size_t *result_size, uint32_t *abort_code)
-{
-    ec_ioctl_slave_sdo_upload_t upload;
-
-    upload.slave_position = slave_position;
-    upload.sdo_index = index;
-    upload.sdo_entry_subindex = subindex;
-    upload.target_size = target_size;
-    upload.target = target;
-
-    if (ioctl(master->fd, EC_IOCTL_SLAVE_SDO_UPLOAD, &upload) == -1) {
-        if (errno == -EIO) {
-            if (abort_code) {
-                *abort_code = upload.abort_code;
-            }
-        }
-        fprintf(stderr, "Failed to execute SDO upload: %s\n",
-                strerror(errno));
-        return -1;
-    }
-
-    *result_size = upload.data_size;
-    return 0;
 }
 
 /*****************************************************************************/

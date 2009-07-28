@@ -55,11 +55,12 @@
  *   ecrt_slave_config_sync_manager()).
  * - Added ecrt_open_master() and ecrt_master_reserve() separation for
  *   userspace.
- * - Added ecrt_master() userspace interface, to get information about a
- *   master.
- * - Added ecrt_master_slave() to get information about a certain slave.
- * - Added ecrt_slave_sdo_upload() and ecrt_slave_sdo_download() methods to
- *   let an application transfer SDOs before activating the master.
+ * - Added bus information interface (methods ecrt_master(),
+ *   ecrt_master_get_slave(), ecrt_master_get_sync_manager(),
+ *   ecrt_master_get_pdo() and ecrt_master_get_pdo_entry()) to get information
+ *   about the currently connected slaves and the PDO entries provided.
+ * - Added ecrt_master_sdo_download() and ecrt_master_sdo_upload()
+ *   methods to let an application transfer SDOs before activating the master.
  * - Changed the meaning of the negative return values of
  *   ecrt_slave_config_reg_pdo_entry() and ecrt_slave_config_sdo*().
  * - Imlemented the Vendor-specific over EtherCAT mailbox protocol. See
@@ -220,9 +221,9 @@ typedef struct {
 
 /** Slave information.
  *
- * This is used as an output parameter of ecrt_master_slave().
+ * This is used as an output parameter of ecrt_master_get_slave().
  *
- * \see ecrt_master_slave().
+ * \see ecrt_master_get_slave().
  */
 typedef struct {
     uint16_t position; /**< Offset of the slave in the ring. */
@@ -557,11 +558,102 @@ int ecrt_master(
  *
  * \return 0 in case of success, else < 0
  */
-int ecrt_master_slave(
+int ecrt_master_get_slave(
         ec_master_t *master, /**< EtherCAT master */
-        uint16_t position, /**< Slave position. */
+        uint16_t slave_position, /**< Slave position. */
         ec_slave_info_t *slave_info /**< Structure that will output the
                                       information */
+        );
+
+/** Returns the proposed configuration of a slave's sync manager.
+ *
+ * Fills a given ec_sync_info_t structure with the attributes of a sync
+ * manager. The \a pdos field of the return value is left empty. Use
+ * ecrt_master_get_pdo() to get the PDO information.
+ *
+ * \return zero on success, else non-zero
+ */
+int ecrt_master_get_sync_manager(
+        ec_master_t *master, /**< EtherCAT master. */
+        uint16_t slave_position, /**< Slave position. */
+        uint8_t sync_index, /**< Sync manager index. Must be less
+                                than #EC_MAX_SYNC_MANAGERS. */
+        ec_sync_info_t *sync /**< Pointer to output structure. */
+        );
+
+/** Returns information about a currently assigned PDO.
+ *
+ * Fills a given ec_pdo_info_t structure with the attributes of a currently
+ * assigned PDO of the given sync manager. The \a entries field of the return
+ * value is left empty. Use ecrt_master_get_pdo_entry() to get the PDO
+ * entry information.
+ *
+ * \retval zero on success, else non-zero
+ */
+int ecrt_master_get_pdo(
+        ec_master_t *master, /**< EtherCAT master. */
+        uint16_t slave_position, /**< Slave position. */
+        uint8_t sync_index, /**< Sync manager index. Must be less
+                                 than #EC_MAX_SYNC_MANAGERS. */
+        uint16_t pos, /**< Zero-based PDO position. */
+        ec_pdo_info_t *pdo /**< Pointer to output structure. */
+        );
+
+/** Returns information about a currently mapped PDO entry.
+ *
+ * Fills a given ec_pdo_entry_info_t structure with the attributes of a
+ * currently mapped PDO entry of the given PDO.
+ *
+ * \retval zero on success, else non-zero
+ */
+int ecrt_master_get_pdo_entry(
+        ec_master_t *master, /**< EtherCAT master. */
+        uint16_t slave_position, /**< Slave position. */
+        uint8_t sync_index, /**< Sync manager index. Must be less
+                                 than #EC_MAX_SYNC_MANAGERS. */
+        uint16_t pdo_pos, /**< Zero-based PDO position. */
+        uint16_t entry_pos, /**< Zero-based PDO entry position. */
+        ec_pdo_entry_info_t *entry /**< Pointer to output structure. */
+        );
+
+/** Executes an SDO write request to download data.
+ *
+ * This function operates aside of the normal way to request SDOs. Before the
+ * activation of the master, these requests are processed by the master state
+ * machine itself. After activation the user has to ensure cyclic processing.
+ *
+ * \retval  0 Success.
+ * \retval -1 An error occured.
+ */
+int ecrt_master_sdo_download(
+        ec_master_t *master, /**< EtherCAT master. */
+        uint16_t slave_position, /**< Slave position. */
+        uint16_t index, /**< Index of the SDO. */
+        uint8_t subindex, /**< Subindex of the SDO. */
+        uint8_t *data, /**< Data buffer to download. */
+        size_t data_size, /**< Size of the data buffer. */
+        uint32_t *abort_code /**< Abort code of the SDO download. */
+        );
+
+/** Executes a SDO read request to upload data.
+ *
+ * This function operates aside of the normal way to request SDOs. Before the
+ * activation of the master, these requests are processed by the master state
+ * machine itself. After activation the user have to ensure cyclic
+ * processing.
+ *
+ * \retval  0 Success.
+ * \retval -1 Error occured.
+ */
+int ecrt_master_sdo_upload(
+        ec_master_t *master, /**< EtherCAT master. */
+        uint16_t slave_position, /**< Slave position. */
+        uint16_t index, /**< Index of the SDO. */
+        uint8_t subindex, /**< Subindex of the SDO. */
+        uint8_t *target, /**< Target buffer for the upload. */
+        size_t target_size, /**< Size of the target buffer. */
+        size_t *result_size, /**< Uploaded data size. */
+        uint32_t *abort_code /**< Abort code of the SDO upload. */
         );
 
 #endif /* #ifndef __KERNEL__ */
@@ -665,50 +757,6 @@ void ecrt_master_sync_reference_clock(
 void ecrt_master_sync_slave_clocks(
         ec_master_t *master /**< EtherCAT master. */
         );
-
-#ifndef __KERNEL__
-
-/** Executes an SDO write request to download data.
- *
- * This function operates aside of the normal way to request SDOs. Before the
- * activation of the master, these requests are processed by the master state
- * machine itself. After activation the user has to ensure cyclic processing.
- *
- * \retval  0 Success.
- * \retval -1 An error occured.
- */
-int ecrt_slave_sdo_download(
-        ec_master_t* master, /**< EtherCAT master. */
-        uint16_t slave_position, /**< Slave position. */
-        uint16_t index, /**< Index of the SDO. */
-        uint8_t subindex, /**< Subindex of the SDO. */
-        uint8_t *data, /**< Data buffer to download. */
-        size_t data_size, /**< Size of the data buffer. */
-        uint32_t *abort_code /**< Abort code of the SDO download. */
-        );
-
-/** Executes a SDO read request to upload data.
- *
- * This function operates aside of the normal way to request SDOs. Before the
- * activation of the master, these requests are processed by the master state
- * machine itself. After activation the user have to ensure cyclic
- * processing.
- *
- * \retval  0 Success.
- * \retval -1 Error occured.
- */
-int ecrt_slave_sdo_upload(
-        ec_master_t* master, /**< EtherCAT master. */
-        uint16_t slave_position, /**< Slave position. */
-        uint16_t index, /**< Index of the SDO. */
-        uint8_t subindex, /**< Subindex of the SDO. */
-        uint8_t *target, /**< Target buffer for the upload. */
-        size_t target_size, /**< Size of the target buffer. */
-        size_t *result_size, /**< Uploaded data size. */
-        uint32_t *abort_code /**< Abort code of the SDO upload. */
-        );
-
-#endif /* #ifndef __KERNEL__ */
 
 /******************************************************************************
  * Slave configuration methods

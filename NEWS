@@ -35,10 +35,15 @@ Changes since 1.4.0:
 * Going to the Bootstrap state is now supported by the state machines and the
   command-line tool.
 * Added ecrt_open_master() and ecrt_master_reserve() separation for
-  the userspace libary (thanks to Martin Troxler).
-* Added ecrt_master() userspace interface, to get information about a
-  master (thanks to Martin Troxler).
-* Introduced ecrt_master_slave() to get information about a certain slave.
+  the userspace library (thanks to Martin Troxler).
+* Added bus information interface (methods ecrt_master(),
+  ecrt_master_get_slave(), ecrt_master_get_sync_manager(),
+  ecrt_master_get_pdo() and ecrt_master_get_pdo_entry()) to get information
+  about the currently connected slaves and the PDO entries provided (thanks to
+  Martin Troxler and Stefan Weiser).
+* Added ecrt_master_sdo_download() and ecrt_master_sdo_upload()
+  methods to let an application transfer SDOs before activating the master
+  (thanks to Stefan Weiser).
 * Fixed SDO upload segment response (thanks to Christoph Peter).
 * SDO entry access rights are shown in 'ethercat sdos'.
 * Added 64-bit data access macros to application header.
@@ -48,9 +53,6 @@ Changes since 1.4.0:
 * Output device link state in 'ethercat master'.
 * Added 'ethercat graph' command which outputs the bus topology in
   DOT language.
-* Added ecrt_slave_sdo_upload() and ecrt_slave_sdo_download() methods to let
-  an application transfer SDOs before activating the master. Thanks to Stefan
-  Weiser.
 * Changed EC_MAX_SII_SIZE to 4096.
 * 'ethercat xml' creates valid XML <EtherCATInfoList> for more than one slave
   (thanks to E. Burgstaller).
