@@ -354,19 +354,21 @@ void cyclic_task(unsigned long data)
 
 /*****************************************************************************/
 
-void send_callback(ec_master_t *master)
+void send_callback(void *cb_data)
 {
+    ec_master_t *m = (ec_master_t *) cb_data;
     down(&master_sem);
-    ecrt_master_send_ext(master);
+    ecrt_master_send_ext(m);
     up(&master_sem);
 }
 
 /*****************************************************************************/
 
-void receive_callback(ec_master_t *master)
+void receive_callback(void *cb_data)
 {
+    ec_master_t *m = (ec_master_t *) cb_data;
     down(&master_sem);
-    ecrt_master_receive(master);
+    ecrt_master_receive(m);
     up(&master_sem);
 }
 
@@ -392,7 +394,7 @@ int __init init_mini_module(void)
     }
 
     init_MUTEX(&master_sem);
-    ecrt_master_callbacks(master, send_callback, receive_callback);
+    ecrt_master_callbacks(master, send_callback, receive_callback, master);
 
     printk(KERN_INFO PFX "Registering domain...\n");
     if (!(domain1 = ecrt_master_create_domain(master))) {

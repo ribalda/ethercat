@@ -477,8 +477,10 @@ int ecrt_master_reserve(
  */
 void ecrt_master_callbacks(
         ec_master_t *master, /**< EtherCAT master */
-        void (*send_cb)(ec_master_t *), /**< Datagram sending callback. */
-        void (*receive_cb)(ec_master_t *) /**< Receive callback. */
+        void (*send_cb)(void *), /**< Datagram sending callback. */
+        void (*receive_cb)(void *), /**< Receive callback. */
+        void *cb_data /**< Arbitraty pointer passed to the callback functions.
+                       */
         );
 
 #endif /* __KERNEL__ */

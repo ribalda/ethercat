@@ -166,12 +166,14 @@ struct ec_master {
 
     struct semaphore io_sem; /**< Semaphore used in \a IDLE phase. */
 
-    void (*send_cb)(ec_master_t *); /**< Current send datagrams callback. */
-    void (*receive_cb)(ec_master_t *); /**< Current receive datagrams callback. */
-    void (*app_send_cb)(ec_master_t *); /**< Application's send datagrams
+    void (*send_cb)(void *); /**< Current send datagrams callback. */
+    void (*receive_cb)(void *); /**< Current receive datagrams callback. */
+    void *cb_data; /**< Current callback data. */
+    void (*app_send_cb)(void *); /**< Application's send datagrams
                                           callback. */
-    void (*app_receive_cb)(ec_master_t *); /**< Application's receive datagrams
+    void (*app_receive_cb)(void *); /**< Application's receive datagrams
                                       callback. */
+    void *app_cb_data; /**< Application callback data. */
 
     struct list_head sii_requests; /**< SII write requests. */
     wait_queue_head_t sii_queue; /**< Wait queue for SII
@@ -247,8 +249,8 @@ ec_slave_config_t *ecrt_master_slave_config_err(ec_master_t *, uint16_t,
 
 void ec_master_calc_dc(ec_master_t *);
 
-void ec_master_internal_send_cb(ec_master_t *);
-void ec_master_internal_receive_cb(ec_master_t *);
+void ec_master_internal_send_cb(void *);
+void ec_master_internal_receive_cb(void *);
 
 /*****************************************************************************/
 
