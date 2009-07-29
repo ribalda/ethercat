@@ -37,6 +37,7 @@ ethercat_SOURCES = \
 	Command.cpp \
 	CommandAlias.cpp \
 	CommandConfig.cpp \
+	CommandCStruct.cpp \
 	CommandData.cpp \
 	CommandDebug.cpp \
 	CommandDomains.cpp \
@@ -68,6 +69,7 @@ noinst_HEADERS = \
 	Command.h \
 	CommandAlias.h \
 	CommandConfig.h \
+	CommandCStruct.h \
 	CommandData.h \
 	CommandDebug.h \
 	CommandDomains.h \
