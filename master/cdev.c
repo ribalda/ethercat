@@ -171,7 +171,9 @@ int ec_cdev_ioctl_master(
     data.slave_count = master->slave_count;
     data.config_count = ec_master_config_count(master);
     data.domain_count = ec_master_domain_count(master);
+#ifdef EC_EOE
     data.eoe_handler_count = ec_master_eoe_handler_count(master);
+#endif
     data.phase = (uint8_t) master->phase;
     data.scan_busy = master->scan_busy;
     up(&master->master_sem);
@@ -1441,6 +1443,8 @@ int ec_cdev_ioctl_config_sdo(
 
 /*****************************************************************************/
 
+#ifdef EC_EOE
+
 /** Get EoE handler information.
  */
 int ec_cdev_ioctl_eoe_handler(
@@ -1485,6 +1489,8 @@ int ec_cdev_ioctl_eoe_handler(
 
     return 0;
 }
+
+#endif
 
 /*****************************************************************************/
 
@@ -3228,8 +3234,10 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             return ec_cdev_ioctl_config_pdo_entry(master, arg);
         case EC_IOCTL_CONFIG_SDO:
             return ec_cdev_ioctl_config_sdo(master, arg);
+#ifdef EC_EOE
         case EC_IOCTL_EOE_HANDLER:
             return ec_cdev_ioctl_eoe_handler(master, arg);
+#endif
         case EC_IOCTL_REQUEST:
             if (!(filp->f_mode & FMODE_WRITE))
                 return -EPERM;

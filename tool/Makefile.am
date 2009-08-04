@@ -27,9 +27,11 @@
 #
 #  ---
 #
-#  vim: syntax=make
+#  vim: syntax=automake
 #
 #------------------------------------------------------------------------------
+
+EXTRA_DIST =
 
 bin_PROGRAMS = ethercat
 
@@ -42,7 +44,6 @@ ethercat_SOURCES = \
 	CommandDebug.cpp \
 	CommandDomains.cpp \
 	CommandDownload.cpp \
-	CommandEoe.cpp \
 	CommandFoeRead.cpp \
 	CommandFoeWrite.cpp \
 	CommandGraph.cpp \
@@ -65,6 +66,12 @@ ethercat_SOURCES = \
 	main.cpp \
 	sii_crc.cpp
 
+if ENABLE_EOE
+ethercat_SOURCES += CommandEoe.cpp
+else
+EXTRA_DIST += CommandEoe.cpp
+endif
+
 noinst_HEADERS = \
 	Command.h \
 	CommandAlias.h \
@@ -74,7 +81,6 @@ noinst_HEADERS = \
 	CommandDebug.h \
 	CommandDomains.h \
 	CommandDownload.h \
-	CommandEoe.h \
 	CommandFoeRead.h \
 	CommandFoeWrite.h \
 	CommandGraph.h \
@@ -95,6 +101,12 @@ noinst_HEADERS = \
 	MasterDevice.h \
 	SdoCommand.h \
 	sii_crc.h
+
+if ENABLE_EOE
+noinst_HEADERS += CommandEoe.h
+else
+EXTRA_DIST += CommandEoe.h
+endif
 
 REV = `if test -s $(top_srcdir)/svnrevision; then \
 		cat $(top_srcdir)/svnrevision; \

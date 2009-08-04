@@ -1386,6 +1386,8 @@ const ec_domain_t *ec_master_find_domain_const(
 
 /*****************************************************************************/
 
+#ifdef EC_EOE
+
 /** Get the number of EoE handlers.
  *
  * \return Number of EoE handlers.
@@ -1427,6 +1429,8 @@ const ec_eoe_t *ec_master_get_eoe_handler_const(
 
     return NULL;
 }
+
+#endif
 
 /*****************************************************************************/
 

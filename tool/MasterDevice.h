@@ -117,7 +117,9 @@ class MasterDevice
 		void requestState(uint16_t, uint8_t);
 		void readFoe(ec_ioctl_slave_foe_t *);
         void writeFoe(ec_ioctl_slave_foe_t *);
+#ifdef EC_EOE
         void getEoeHandler(ec_ioctl_eoe_handler_t *, uint16_t);
+#endif
 
     private:
         unsigned int index;

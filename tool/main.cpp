@@ -42,7 +42,9 @@ using namespace std;
 #include "CommandDebug.h"
 #include "CommandDomains.h"
 #include "CommandDownload.h"
-#include "CommandEoe.h"
+#ifdef EC_EOE
+# include "CommandEoe.h"
+#endif
 #include "CommandFoeRead.h"
 #include "CommandFoeWrite.h"
 #include "CommandGraph.h"
@@ -299,7 +301,9 @@ int main(int argc, char **argv)
     commandList.push_back(new CommandDebug());
     commandList.push_back(new CommandDomains());
     commandList.push_back(new CommandDownload());
+#ifdef EC_EOE
     commandList.push_back(new CommandEoe());
+#endif
     commandList.push_back(new CommandFoeRead());
     commandList.push_back(new CommandFoeWrite());
     commandList.push_back(new CommandGraph());

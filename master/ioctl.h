@@ -77,7 +77,9 @@
 #define EC_IOCTL_CONFIG_PDO           EC_IOWR(0x15, ec_ioctl_config_pdo_t)
 #define EC_IOCTL_CONFIG_PDO_ENTRY     EC_IOWR(0x16, ec_ioctl_config_pdo_entry_t)
 #define EC_IOCTL_CONFIG_SDO           EC_IOWR(0x17, ec_ioctl_config_sdo_t)
+#ifdef EC_EOE
 #define EC_IOCTL_EOE_HANDLER          EC_IOWR(0x18, ec_ioctl_eoe_handler_t)
+#endif
 
 // Application interface
 #define EC_IOCTL_REQUEST                EC_IO(0x19)
@@ -129,7 +131,9 @@ typedef struct {
     uint32_t slave_count;
     uint32_t config_count;
     uint32_t domain_count;
+#ifdef EC_EOE
     uint32_t eoe_handler_count;
+#endif
     uint8_t phase;
     uint8_t scan_busy;
     struct {
@@ -448,6 +452,8 @@ typedef struct {
 
 /*****************************************************************************/
 
+#ifdef EC_EOE
+
 typedef struct {
     // input
     uint16_t eoe_index;
@@ -463,6 +469,8 @@ typedef struct {
     uint32_t tx_queued_frames;
     uint32_t tx_queue_size;
 } ec_ioctl_eoe_handler_t;
+
+#endif
 
 /*****************************************************************************/
 
