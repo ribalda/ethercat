@@ -159,18 +159,18 @@ void CommandConfig::showDetailedConfigs(
             cout << "none" << endl;
         }
 
-        cout << "Watchdog Divider: ";
+        cout << "Watchdog divider: ";
         if (configIter->watchdog_divider) {
             cout << dec << configIter->watchdog_divider;
         } else {
-            cout << "default";
+            cout << "(Default)";
         }
         cout << endl
-            << "Watchdog Intervals: ";
+            << "Watchdog intervals: ";
         if (configIter->watchdog_intervals) {
             cout << dec << configIter->watchdog_intervals;
         } else {
-            cout << "default";
+            cout << "(Default)";
         }
         cout << endl;
 
