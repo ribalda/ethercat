@@ -18,6 +18,7 @@
 \usepackage{listings}
 \usepackage{svn}
 \usepackage{SIunits}
+\usepackage{amsmath} % for \text{}
 \usepackage{hyperref}
 
 \hypersetup{pdfpagelabels,plainpages=false}
@@ -227,6 +228,20 @@ EtherCAT functionality (see chap.~\ref{chap:api}).
 
   \end{itemize}
 
+\item Distributed Clocks support (see sec.~\ref{sec:dc}).
+
+  \begin{itemize}
+
+  \item Configuration of the slave's DC parameters through the application
+  interface.
+
+  \item Synchronization (offset and drift compensation) of the distributed
+  slave clocks to the reference clock.
+
+  \item Optional synchronization of the reference clock to the master clock.
+
+  \end{itemize}
+
 \item CANopen over EtherCAT (CoE)
 
   \begin{itemize}
@@ -268,7 +283,7 @@ EtherCAT functionality (see chap.~\ref{chap:api}).
 
   \end{itemize}
 
-\item Userspace command-line-tool ``ethercat`` (see sec.~\ref{sec:tool})
+\item Userspace command-line-tool ``ethercat'' (see sec.~\ref{sec:tool})
 
   \begin{itemize}
 
@@ -283,7 +298,7 @@ EtherCAT functionality (see chap.~\ref{chap:api}).
   \item Access to slave registers.
   \item Slave SII (EEPROM) access.
   \item Controlling application-layer states.
-  \item Generation of slave description XML from existing slaves.
+  \item Generation of slave description XML and C-code from existing slaves.
 
   \end{itemize}
 
@@ -773,10 +788,10 @@ kernelspace and uses RTAI functionality, ordinary kernel semaphores would not
 be sufficient. For that, an important design decision was made: The
 application that reserved a master must have the total control, therefore it
 has to take responsibility for providing the appropriate locking mechanisms.
-If another instance wants to access the master, it has to request the master
-lock by callbacks, that have to be set by the application. Moreover the
-application can deny access to the master if it considers it to be awkward at
-the moment.
+If another instance wants to access the master, it has to request the bus
+access via callbacks, that have to be provided by the application. Moreover
+the application can deny access to the master if it considers it to be awkward
+at the moment.
 
 \begin{figure}[htbp]
   \centering
@@ -788,10 +803,126 @@ the moment.
 Figure~\ref{fig:locks} exemplary shows, how two processes share one master:
 The application's cyclic task uses the master for process data exchange, while
 the master-internal EoE process uses it to communicate with EoE-capable
-slaves.  Both have to acquire the master lock before access: The application
-task can access the lock natively, while the EoE process has to use the
-callbacks. See the application interface documentation (chap.~\ref{chap:api})
-for how to use the locking callbacks.
+slaves. Both have to access the bus from time to time, but the EoE process
+does this by ``asking'' the application to do the bus access for it. In this
+way, the application can use the appropriate locking mechanism to avoid
+accessing the bus at the same time. See the application interface
+documentation (chap.~\ref{chap:api}) for how to use these callbacks.
+
+%------------------------------------------------------------------------------
+
+\section{Distributed Clocks}
+\label{sec:dc}
+\index{Distributed Clocks}
+
+From version 1.5, the master supports EtherCAT's ``Distributed Clocks''
+feature. It is possible to synchronize the slave clocks on the bus to the
+``reference clock'' (which is the local clock of the first slave with DC
+support) and to synchronize the reference clock to the ``master clock'' (which
+is the local clock of the master). All other clocks on the bus (after the
+reference clock) are considered as ``slave clocks'' (see fig.~\ref{fig:dc}).
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=.8\textwidth]{images/dc}
+  \caption{Distributed Clocks}
+  \label{fig:dc}
+\end{figure}
+
+\paragraph{Local Clocks} Any EtherCAT slave that supports DC has a local clock
+register with nanosecond resolution. If the slave is powered, the clock starts
+from zero, meaning that when slaves are powered on at different times, their
+clocks will have different values. These ``offsets'' have to be compensated by
+the distributed clocks mechanism. On the other hand, the clocks do not run
+exactly with the same speed, since the used quarts units have a natural
+frequency deviation. This deviation is usually very small, but over longer
+periods, the error would accumulate and the difference between local clocks
+would grow. This clock ``drift'' has also to be compensated by the DC
+mechanism.
+
+\paragraph{Application Time} The common time base for the bus has to be
+provided by the application. This application time $t_\text{app}$ is used
+
+\begin{enumerate}
+\item to configure the slaves' clock offsets (see below),
+\item to program the slave's start times for sync pulse generation (see
+below).
+\item to synchronize the reference clock to the master clock (optional).
+\end{enumerate}
+
+\paragraph{Offset Compensation} For the offset compensation, each slave
+provides a ``System Time Offset'' register $t_\text{off}$, that is added to
+the internal clock value $t_\text{int}$ to get the ``System Time''
+$t_\text{sys}$:
+
+\begin{eqnarray}
+t_\text{sys} & = & t_\text{int} + t_\text{off} \\
+\Rightarrow t_\text{int} & = & t_\text{sys} - t_\text{off} \nonumber
+\end{eqnarray}
+
+The master reads the values of both registers to calculate a new system time
+offset in a way, that the resulting system time shall match the master's
+application time $t_\text{app}$:
+
+\begin{eqnarray}
+t_\text{sys} & \stackrel{!}{=} & t_\text{app} \\
+\Rightarrow t_\text{int} + t_\text{off} & \stackrel{!}{=} & t_\text{app} \nonumber \\
+\Rightarrow t_\text{off} & = & t_\text{app} - t_\text{int} \nonumber \\
+\Rightarrow t_\text{off} & = & t_\text{app} - (t_\text{sys} - t_\text{off}) \nonumber \\
+\Rightarrow t_\text{off} & = & t_\text{app} - t_\text{sys} + t_\text{off}
+\end{eqnarray}
+
+The small time offset error resulting from the different times of reading and
+writing the registers will be compensated by the drift compensation.
+
+\paragraph{Drift Compensation} The drift compensation is possible due to a
+special mechanism in each DC-capable slave: A write operation to the ``System
+time'' register will cause the internal time control loop to compare the
+written time (minus the programmed transmission delay, see below) to the
+current system time. The calculated time error will be used as an input to the
+time controller, that will tune the local clock speed to be a little faster or
+slower\footnote{The local slave clock will be incremented either with
+\unit{9}{\nano\second}, \unit{10}{\nano\second} or \unit{11}{\nano\second}
+every \unit{10}{\nano\second}.}, according to the sign of the error.
+
+\paragraph{Transmission Delays} The Ethernet frame needs a small amount of
+time to get from slave to slave. The resulting transmission delay times
+accumulate on the bus and can reach microsecond magnitude and thus have to be
+considered during the drift compensation. EtherCAT slaves supporting DC
+provide a mechanism to measure the transmission delays: For each of the four
+slave ports there is a receive time register. A write operation to the receive
+time register of port 0 starts the measuring and the current system time is
+latched and stored in a receive time register once the frame is received on
+the corresponding port. The master can read out the relative receive times,
+then calculate time delays between the slaves (using its knowledge of the bus
+topology), and finally calculate the time delays from the reference clock to
+each slave. These values are programmed into the slaves' transmission delay
+registers. In this way, the drift compensation can reach nanosecond synchrony. 
+
+\paragraph{Checking Synchrony} DC-capable slaves provide the 32-bit ``System
+time difference'' register at address \lstinline+0x092c+, where the system
+time difference of the last drift compensation is stored in nanosecond
+resolution and in sign-and-magnitude coding\footnote{This allows
+broadcast-reading all system time difference registers on the bus to get an
+upper approximation}. To check for bus synchrony, the system time difference
+registers can also be cyclically read via the command-line-tool (see
+sec.~\ref{sec:regaccess}):
+
+\begin{lstlisting}
+$ `\textbf{watch -n0 "ethercat reg\_read -p4 -tint32 0x92c"}`
+\end{lstlisting}
+
+\paragraph{Sync Signals} Synchronous clocks are only the prerequisite for
+synchronous events on the bus. Each slave with DC support provides two ``sync
+signals'', that can be programmed to create events, that will for example
+cause the slave application to latch its inputs on a certain time. A sync
+event can either be generated once or cyclically, depending on what makes
+sense for the slave application. Programming the sync signals is a matter of
+setting the so-called ``AssignActivate'' word and the sync signals' cycle- and
+shift times. The AssignActivate word is slave-specific and has to be taken
+from the XML slave description (\lstinline+Device+ $\rightarrow$
+\lstinline+Dc+), where also typical sync signal configurations ``OpModes'' can
+be found.
 
 %------------------------------------------------------------------------------
 
@@ -2155,6 +2286,7 @@ sec.~\ref{sec:autonode} for how to install and configure it.
 %------------------------------------------------------------------------------
 
 \subsection{Register Access}
+\label{sec:regaccess}
 
 \lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_reg_read}
 
@@ -2322,10 +2454,10 @@ character device (see chap.~\ref{chap:arch}, fig.~\ref{fig:arch} and
 sec.~\ref{sec:cdev}).
 
 The function calls of the kernel API are mapped to the userspace via an
-\lstinline+ioctl()+ interface. Each function has its own \lstinline+ioctl()+
-call. The kernel part of the interface calls the according API functions
-directly, what results in a minimum additional delay (see
-sec.~\ref{sec:usertiming}).
+\lstinline+ioctl()+ interface. The userspace API functions share a set of
+generic \lstinline+ioctl()+ calls. The kernel part of the interface calls the
+according API functions directly, what results in a minimum additional delay
+(see sec.~\ref{sec:usertiming}).
 
 For performance reasons, the actual domain process data (see
 sec.~\ref{sec:processdata}) are not copied between kernel and user memory on

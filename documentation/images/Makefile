@@ -8,6 +8,7 @@ FIGS := \
 	app-config.fig \
 	architecture.fig \
 	attach.fig \
+	dc.fig \
 	fmmus.fig \
 	fsm-coedown.fig \
 	fsm-eoe.fig \
