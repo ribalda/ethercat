@@ -159,11 +159,34 @@ void CommandConfig::showDetailedConfigs(
             cout << "none" << endl;
         }
 
+        cout << "Watchdog Divider: ";
+        if (configIter->watchdog_divider) {
+            cout << dec << configIter->watchdog_divider;
+        } else {
+            cout << "default";
+        }
+        cout << endl
+            << "Watchdog Intervals: ";
+        if (configIter->watchdog_intervals) {
+            cout << dec << configIter->watchdog_intervals;
+        } else {
+            cout << "default";
+        }
+        cout << endl;
+
         for (j = 0; j < EC_MAX_SYNC_MANAGERS; j++) {
             if (configIter->syncs[j].pdo_count) {
-                cout << "SM" << dec << j << " ("
+                cout << "SM" << dec << j << ", Dir: "
                     << (configIter->syncs[j].dir == EC_DIR_INPUT
-                            ? "Input" : "Output") << ")" << endl;
+                            ? "Input" : "Output") << ", Watchdog: ";
+                switch (configIter->syncs[j].watchdog_mode) {
+                    case EC_WD_DEFAULT: cout << "Default"; break;
+                    case EC_WD_ENABLE: cout << "Enable"; break;
+                    case EC_WD_DISABLE: cout << "Disable"; break;
+                    default: cout << "???"; break;
+                }
+                cout << endl;
+
                 for (k = 0; k < configIter->syncs[j].pdo_count; k++) {
                     m.getConfigPdo(&pdo, configIter->config_index, j, k);
 

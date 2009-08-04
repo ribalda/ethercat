@@ -1258,9 +1258,12 @@ int ec_cdev_ioctl_config(
     data.product_code = sc->product_code;
     for (i = 0; i < EC_MAX_SYNC_MANAGERS; i++) {
         data.syncs[i].dir = sc->sync_configs[i].dir;
+        data.syncs[i].watchdog_mode = sc->sync_configs[i].watchdog_mode;
         data.syncs[i].pdo_count =
             ec_pdo_list_count(&sc->sync_configs[i].pdos);
     }
+    data.watchdog_divider = sc->watchdog_divider;
+    data.watchdog_intervals = sc->watchdog_intervals;
     data.sdo_count = ec_slave_config_sdo_count(sc);
     data.slave_position = sc->slave ? sc->slave->ring_position : -1;
     data.dc_assign_activate = sc->dc_assign_activate;
