@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  $Id: CommandSlaves.h 1667 2009-02-24 12:51:39Z fp $
+ *  $Id$
  *
  *  Copyright (C) 2006-2009  Florian Pose, Ingenieurgemeinschaft IgH
  *

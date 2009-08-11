@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  $Id: CommandXml.cpp 1778 2009-06-16 08:04:50Z fp $
+ *  $Id$
  *
  *  Copyright (C) 2006-2009  Florian Pose, Ingenieurgemeinschaft IgH
  *
