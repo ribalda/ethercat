@@ -6,6 +6,7 @@ syntax: glob
 **.mod.c
 **.o
 **.o.cmd
+**.swp
 .tmp_versions
 ChangeLog
 Doxyfile
