@@ -61,6 +61,7 @@ Changes since 1.4.0:
 * Added 'ethercat eoe' command to display Ethernet over EtherCAT statistics.
 * Added 'ethercat cstruct' command to output PDO information in C language.
 * Significantly improved EoE bandwidth by running EoE processing in a kthread.
+* Implemented CompleteAccess for SDO downloads.
 
 Changes in 1.4.0:
 

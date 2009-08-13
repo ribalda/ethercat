@@ -53,6 +53,8 @@
  * - Added watchdog configuration (method ecrt_slave_config_watchdog(),
  *   #ec_watchdog_mode_t, \a watchdog_mode parameter in ec_sync_info_t and
  *   ecrt_slave_config_sync_manager()).
+ * - Added ecrt_slave_config_complete_sdo() method to download an SDO during
+ *   configuration via CompleteAccess.
  * - Added ecrt_open_master() and ecrt_master_reserve() separation for
  *   userspace.
  * - Added bus information interface (methods ecrt_master(),
@@ -1030,6 +1032,23 @@ int ecrt_slave_config_sdo32(
         uint16_t sdo_index, /**< Index of the SDO to configure. */
         uint8_t sdo_subindex, /**< Subindex of the SDO to configure. */
         uint32_t value /**< Value to set. */
+        );
+
+/** Add configuration data for a complete SDO.
+ *
+ * The SDO data are transferred via CompleteAccess. Data for the first
+ * subindex (0) have to be included.
+ *
+ * \see ecrt_slave_config_sdo().
+ *
+ * \retval  0 Success.
+ * \retval <0 Error code.
+ */
+int ecrt_slave_config_complete_sdo(
+        ec_slave_config_t *sc, /**< Slave configuration. */
+        uint16_t index, /**< Index of the SDO to configure. */
+        const uint8_t *data, /**< Pointer to the data. */
+        size_t size /**< Size of the \a data. */
         );
 
 /** Create an SDO request to exchange SDOs during realtime operation.

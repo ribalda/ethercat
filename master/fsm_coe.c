@@ -1074,8 +1074,14 @@ void ec_fsm_coe_down_start(ec_fsm_coe_t *fsm /**< finite state machine */)
     uint8_t size;
 
     if (fsm->slave->master->debug_level) {
-        EC_DBG("Downloading SDO 0x%04X:%02X to slave %u.\n",
-               request->index, request->subindex, slave->ring_position);
+        char subidxstr[10];
+        if (request->complete_access) {
+            subidxstr[0] = 0x00;
+        } else {
+            sprintf(subidxstr, ":%02X", request->subindex);
+        }
+        EC_DBG("Downloading SDO 0x%04X%s to slave %u.\n",
+                request->index, subidxstr, slave->ring_position);
         ec_print_data(request->data, request->data_size);
     }
 
@@ -1097,9 +1103,11 @@ void ec_fsm_coe_down_start(ec_fsm_coe_t *fsm /**< finite state machine */)
         EC_WRITE_U16(data, 0x2 << 12); // SDO request
         EC_WRITE_U8 (data + 2, (0x3 // size specified, expedited
                     | size << 2
+                    | ((request->complete_access ? 1 : 0) << 4) 
                     | 0x1 << 5)); // Download request
         EC_WRITE_U16(data + 3, request->index);
-        EC_WRITE_U8 (data + 5, request->subindex);
+        EC_WRITE_U8 (data + 5,
+                request->complete_access ? 0x00 : request->subindex);
         memcpy(data + 6, request->data, request->data_size);
         memset(data + 6 + request->data_size, 0x00, 4 - request->data_size);
 
@@ -1110,7 +1118,7 @@ void ec_fsm_coe_down_start(ec_fsm_coe_t *fsm /**< finite state machine */)
     }
     else { // request->data_size > 4, use normal transfer type
         if (slave->configured_rx_mailbox_size < 6 + 10 + request->data_size) {
-            EC_ERR("SDO fragmenting not supported yet!\n");
+            EC_ERR("SDO fragmenting not supported yet!\n"); // FIXME
             fsm->state = ec_fsm_coe_error;
             return;
         }
@@ -1124,9 +1132,11 @@ void ec_fsm_coe_down_start(ec_fsm_coe_t *fsm /**< finite state machine */)
 
         EC_WRITE_U16(data, 0x2 << 12); // SDO request
         EC_WRITE_U8 (data + 2, (0x1 // size indicator, normal
+                    | ((request->complete_access ? 1 : 0) << 4) 
                     | 0x1 << 5)); // Download request
         EC_WRITE_U16(data + 3, request->index);
-        EC_WRITE_U8 (data + 5, request->subindex);
+        EC_WRITE_U8 (data + 5,
+                request->complete_access ? 0x00 : request->subindex);
         EC_WRITE_U32(data + 6, request->data_size);
         memcpy(data + 10, request->data, request->data_size);
 
@@ -1311,12 +1321,18 @@ void ec_fsm_coe_down_response(ec_fsm_coe_t *fsm /**< finite state machine */)
 
     if (EC_READ_U16(data) >> 12 == 0x2 && // SDO request
         EC_READ_U8 (data + 2) >> 5 == 0x4) { // abort SDO transfer request
+        char subidxstr[10];
         fsm->state = ec_fsm_coe_error;
-        EC_ERR("SDO download 0x%04X:%02X (%u bytes) aborted on slave %u.\n",
-               request->index, request->subindex, request->data_size,
-               slave->ring_position);
+        if (request->complete_access) {
+            subidxstr[0] = 0x00;
+        } else {
+            sprintf(subidxstr, ":%02X", request->subindex);
+        }
+        EC_ERR("SDO download 0x%04X%s (%u bytes) aborted on slave %u.\n",
+                request->index, subidxstr, request->data_size,
+                slave->ring_position);
         if (rec_size < 10) {
-            EC_ERR("Incomplete Abort command:\n");
+            EC_ERR("Incomplete abort command:\n");
             ec_print_data(data, rec_size);
         } else {
             fsm->request->abort_code = EC_READ_U32(data + 6);

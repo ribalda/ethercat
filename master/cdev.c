@@ -1434,7 +1434,8 @@ int ec_cdev_ioctl_config_sdo(
     data.index = req->index;
     data.subindex = req->subindex;
     data.size = req->data_size;
-    memcpy(&data.data, req->data, min((u32) data.size, (u32) 4));
+    memcpy(&data.data, req->data,
+            min((u32) data.size, (u32) EC_MAX_SDO_DATA_SIZE));
 
     up(&master->master_sem);
 
@@ -2120,8 +2121,12 @@ int ec_cdev_ioctl_sc_sdo(
 
     up(&master->master_sem); // FIXME
 
-    ret = ecrt_slave_config_sdo(sc, data.index, data.subindex, sdo_data,
-            data.size);
+    if (data.complete_access) {
+        ret = ecrt_slave_config_complete_sdo(sc, data.index, sdo_data, data.size);
+    } else {
+        ret = ecrt_slave_config_sdo(sc, data.index, data.subindex, sdo_data,
+                data.size);
+    }
     kfree(sdo_data);
     return ret;
 }

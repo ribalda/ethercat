@@ -438,6 +438,11 @@ typedef struct {
 
 /*****************************************************************************/
 
+/** Maximum size for displayed SDO data.
+ * \todo Make this dynamic.
+ */
+#define EC_MAX_SDO_DATA_SIZE 1024
+
 typedef struct {
     // inputs
     uint32_t config_index;
@@ -447,7 +452,7 @@ typedef struct {
     uint16_t index;
     uint8_t subindex;
     uint32_t size;
-    uint8_t data[4];
+    uint8_t data[EC_MAX_SDO_DATA_SIZE];
 } ec_ioctl_config_sdo_t;
 
 /*****************************************************************************/
@@ -505,6 +510,7 @@ typedef struct {
     uint8_t subindex;
     const uint8_t *data;
     size_t size;
+    uint8_t complete_access;
 } ec_ioctl_sc_sdo_t;
 
 /*****************************************************************************/

@@ -131,7 +131,7 @@ void CommandConfig::showDetailedConfigs(
 		)
 {
     ConfigList::const_iterator configIter;
-    unsigned int j, k, l;
+    unsigned int i, j, k, l;
     ec_ioctl_slave_t slave;
     ec_ioctl_config_pdo_t pdo;
     ec_ioctl_config_pdo_entry_t entry;
@@ -217,26 +217,23 @@ void CommandConfig::showDetailedConfigs(
                     << hex << setfill('0')
                     << setw(4) << sdo.index << ":"
                     << setw(2) << (unsigned int) sdo.subindex
-                    << ", " << dec << sdo.size << " byte: " << hex;
+                    << ", " << dec << sdo.size << " byte" << endl;
 
-                switch (sdo.size) {
-                    case 1:
-                        cout << "0x" << setw(2)
-                            << (unsigned int) *(uint8_t *) &sdo.data;
-                        break;
-                    case 2:
-                        cout << "0x" << setw(4)
-                            << le16_to_cpup(&sdo.data);
-                        break;
-                    case 4:
-                        cout << "0x" << setw(8)
-                            << le32_to_cpup(&sdo.data);
-                        break;
-                    default:
-                        cout << "???";
+                cout << "    " << hex;
+                for (i = 0; i < min((uint32_t) sdo.size,
+                            (uint32_t) EC_MAX_SDO_DATA_SIZE); i++) {
+                    cout << setw(2) << (unsigned int) sdo.data[i];
+                    if ((i + 1) % 16 == 0 && i < sdo.size - 1) {
+                        cout << endl << "    ";
+                    } else {
+                        cout << " ";
+                    }
                 }
 
                 cout << endl;
+                if (sdo.size > EC_MAX_SDO_DATA_SIZE) {
+                    cout << "    ..." << endl;
+                }
             }
         } else {
             cout << "  None." << endl;

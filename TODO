@@ -47,6 +47,9 @@ Version 1.5.0:
 * Document ec_fsm_foe members.
 * Test KBUILD_EXTRA_SYMBOLS.
 * Remove default buffer size in SDO upload.
+* Check for Enable SDO Complete Access flag.
+* Implement CompleteAccess for command-line tool.
+* Implement CompleteAccess for SDO uploads.
 
 Future issues:
 
