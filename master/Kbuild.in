@@ -71,12 +71,12 @@ ifeq (@ENABLE_DEBUG_IF@,1)
 	ec_master-objs += debug.o
 endif
 
-REV := $(shell if test -s $(src)/../svnrevision; then \
-		cat $(src)/../svnrevision; \
+REV := $(shell if test -s $(src)/../revision; then \
+		cat $(src)/../revision; \
 	else \
-		svnversion $(src)/.. 2>/dev/null || echo "unknown"; \
+		hg id -i $(src)/.. 2>/dev/null || echo "unknown"; \
 	fi)
 
-CFLAGS_module.o := -DSVNREV=$(REV)
+CFLAGS_module.o := -DREV=$(REV)
 
 #------------------------------------------------------------------------------

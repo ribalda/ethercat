@@ -33,10 +33,10 @@
 
 TOPDIR := $(src)/../..
 
-REV := $(shell if test -s $(TOPDIR)/svnrevision; then \
-		cat $(TOPDIR)/svnrevision; \
+REV := $(shell if test -s $(TOPDIR)/revision; then \
+		cat $(TOPDIR)/revision; \
 	else \
-		svnversion $(TOPDIR) 2>/dev/null || echo "unknown"; \
+		hg id -i $(TOPDIR) 2>/dev/null || echo "unknown"; \
 	fi)
 
 ifeq (@ENABLE_E1000@,1)
@@ -47,7 +47,7 @@ ifeq (@ENABLE_E1000@,1)
 		e1000_param-@KERNEL_E1000@-ethercat.o
 	obj-m += ec_e1000.o
 	ec_e1000-objs := $(EC_E1000_OBJ)
-	CFLAGS_e1000_main-@KERNEL_E1000@-ethercat.o = -DSVNREV=$(REV)
+	CFLAGS_e1000_main-@KERNEL_E1000@-ethercat.o = -DREV=$(REV)
 endif
 
 KBUILD_EXTRA_SYMBOLS := \

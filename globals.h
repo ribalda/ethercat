@@ -57,7 +57,7 @@
 
 /** Master version string
  */
-#define EC_MASTER_VERSION VERSION " r" EC_STR(SVNREV)
+#define EC_MASTER_VERSION VERSION " " EC_STR(REV)
 
 /*****************************************************************************/
 

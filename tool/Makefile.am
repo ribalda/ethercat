@@ -108,12 +108,12 @@ else
 EXTRA_DIST += CommandEoe.h
 endif
 
-REV = `if test -s $(top_srcdir)/svnrevision; then \
-		cat $(top_srcdir)/svnrevision; \
+REV = `if test -s $(top_srcdir)/revision; then \
+		cat $(top_srcdir)/revision; \
 	else \
-		svnversion $(srcdir)/.. 2>/dev/null || echo "unknown"; \
+		hg id -i $(top_srcdir) 2>/dev/null || echo "unknown"; \
 	fi`
 
-ethercat_CXXFLAGS = -I$(top_srcdir)/master -Wall -DSVNREV=$(REV)
+ethercat_CXXFLAGS = -I$(top_srcdir)/master -Wall -DREV=$(REV)
 
 #------------------------------------------------------------------------------
