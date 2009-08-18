@@ -50,6 +50,8 @@ Version 1.5.0:
 * Check for Enable SDO Complete Access flag.
 * Implement CompleteAccess for command-line tool.
 * Implement CompleteAccess for SDO uploads.
+* Implement identifier parameter for cstruct command.
+* Implement sync delimiter for cstruct command.
 
 Future issues:
 
