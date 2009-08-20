@@ -121,6 +121,7 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     init_MUTEX(&master->device_sem);
 
     master->phase = EC_ORPHANED;
+    master->active = 0;
     master->injection_seq_fsm = 0;
     master->injection_seq_rt = 0;
 
@@ -592,67 +593,17 @@ out_allow:
 
 /** Transition function from OPERATION to IDLE phase.
  */
-void ec_master_leave_operation_phase(ec_master_t *master
-                                    /**< EtherCAT master */)
+void ec_master_leave_operation_phase(
+        ec_master_t *master /**< EtherCAT master */
+        )
 {
-    ec_slave_t *slave;
-#ifdef EC_EOE
-    ec_eoe_t *eoe;
-#endif
+    if (master->active)
+        ecrt_master_deactivate(master);
 
     if (master->debug_level)
         EC_DBG("OPERATION -> IDLE.\n");
 
     master->phase = EC_IDLE;
-
-#ifdef EC_EOE
-    ec_master_eoe_stop(master);
-#endif
-    ec_master_thread_stop(master);
-    
-    master->send_cb = ec_master_internal_send_cb;
-    master->receive_cb = ec_master_internal_receive_cb;
-    master->cb_data = master;
-    
-    down(&master->master_sem);
-    ec_master_clear_domains(master);
-    ec_master_clear_slave_configs(master);
-    up(&master->master_sem);
-
-    for (slave = master->slaves;
-            slave < master->slaves + master->slave_count;
-            slave++) {
-
-        // set states for all slaves
-        ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
-
-        // mark for reconfiguration, because the master could have no
-        // possibility for a reconfiguration between two sequential operation
-        // phases.
-        slave->force_config = 1;
-    }
-
-#ifdef EC_EOE
-    // ... but leave EoE slaves in OP
-    list_for_each_entry(eoe, &master->eoe_handlers, list) {
-        if (ec_eoe_is_open(eoe))
-            ec_slave_request_state(eoe->slave, EC_SLAVE_STATE_OP);
-    }
-#endif
-
-    master->app_time = 0ULL;
-    master->app_start_time = 0ULL;
-    master->has_start_time = 0;
-
-    if (ec_master_thread_start(master, ec_master_idle_thread,
-                "EtherCAT-IDLE"))
-        EC_WARN("Failed to restart master thread!\n");
-#ifdef EC_EOE
-    ec_master_eoe_start(master);
-#endif
-
-    master->allow_scan = 1;
-    master->allow_config = 1;
 }
 
 /*****************************************************************************/
@@ -1635,6 +1586,11 @@ int ecrt_master_activate(ec_master_t *master)
     if (master->debug_level)
         EC_DBG("ecrt_master_activate(master = 0x%x)\n", (u32) master);
 
+    if (master->active) {
+        EC_WARN("%s: Master already active!\n", __func__);
+        return 0;
+    }
+
     down(&master->master_sem);
 
     // finish all domains
@@ -1684,7 +1640,76 @@ int ecrt_master_activate(ec_master_t *master)
 
     master->allow_config = 1; // request the current configuration
     master->allow_scan = 1; // allow re-scanning on topology change
+    master->active = 1;
     return 0;
+}
+
+/*****************************************************************************/
+
+void ecrt_master_deactivate(ec_master_t *master)
+{
+    ec_slave_t *slave;
+#ifdef EC_EOE
+    ec_eoe_t *eoe;
+#endif
+
+    if (master->debug_level)
+        EC_DBG("ecrt_master_deactivate(master = 0x%x)\n", (u32) master);
+
+    if (!master->active) {
+        EC_WARN("%s: Master not active.\n", __func__);
+        return;
+    }
+
+#ifdef EC_EOE
+    ec_master_eoe_stop(master);
+#endif
+    ec_master_thread_stop(master);
+    
+    master->send_cb = ec_master_internal_send_cb;
+    master->receive_cb = ec_master_internal_receive_cb;
+    master->cb_data = master;
+    
+    down(&master->master_sem);
+    ec_master_clear_domains(master);
+    ec_master_clear_slave_configs(master);
+    up(&master->master_sem);
+
+    for (slave = master->slaves;
+            slave < master->slaves + master->slave_count;
+            slave++) {
+
+        // set states for all slaves
+        ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
+
+        // mark for reconfiguration, because the master could have no
+        // possibility for a reconfiguration between two sequential operation
+        // phases.
+        slave->force_config = 1;
+    }
+
+#ifdef EC_EOE
+    // ... but leave EoE slaves in OP
+    list_for_each_entry(eoe, &master->eoe_handlers, list) {
+        if (ec_eoe_is_open(eoe))
+            ec_slave_request_state(eoe->slave, EC_SLAVE_STATE_OP);
+    }
+#endif
+
+    master->app_time = 0ULL;
+    master->app_start_time = 0ULL;
+    master->has_start_time = 0;
+
+    if (ec_master_thread_start(master, ec_master_idle_thread,
+                "EtherCAT-IDLE"))
+        EC_WARN("Failed to restart master thread!\n");
+#ifdef EC_EOE
+    ec_master_eoe_start(master);
+#endif
+
+    master->allow_scan = 1;
+    master->allow_config = 1;
+    master->active = 0;
 }
 
 /*****************************************************************************/
@@ -1903,6 +1928,7 @@ void ecrt_master_sync_slave_clocks(ec_master_t *master)
 
 EXPORT_SYMBOL(ecrt_master_create_domain);
 EXPORT_SYMBOL(ecrt_master_activate);
+EXPORT_SYMBOL(ecrt_master_deactivate);
 EXPORT_SYMBOL(ecrt_master_send);
 EXPORT_SYMBOL(ecrt_master_send_ext);
 EXPORT_SYMBOL(ecrt_master_receive);

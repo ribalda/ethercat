@@ -175,6 +175,7 @@ int ec_cdev_ioctl_master(
     data.eoe_handler_count = ec_master_eoe_handler_count(master);
 #endif
     data.phase = (uint8_t) master->phase;
+    data.active = (uint8_t) master->active;
     data.scan_busy = master->scan_busy;
     up(&master->master_sem);
 

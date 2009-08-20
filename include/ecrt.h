@@ -55,6 +55,7 @@
  *   ecrt_slave_config_sync_manager()).
  * - Added ecrt_slave_config_complete_sdo() method to download an SDO during
  *   configuration via CompleteAccess.
+ * - Added ecrt_master_deactivate() to remove the bus configuration.
  * - Added ecrt_open_master() and ecrt_master_reserve() separation for
  *   userspace.
  * - Added bus information interface (methods ecrt_master(),
@@ -679,6 +680,18 @@ int ecrt_master_sdo_upload(
  * \return 0 in case of success, else < 0
  */
 int ecrt_master_activate(
+        ec_master_t *master /**< EtherCAT master. */
+        );
+
+/** Deactivates the master.
+ *
+ * Removes the bus configuration. All objects created by
+ * ecrt_master_create_domain(), ecrt_master_slave_config(), ecrt_domain_data()
+ * ecrt_slave_config_create_sdo_request() and
+ * ecrt_slave_config_create_voe_handler() are freed, so pointers to them
+ * become invalid.
+ */
+void ecrt_master_deactivate(
         ec_master_t *master /**< EtherCAT master. */
         );
 

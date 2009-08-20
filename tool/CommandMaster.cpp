@@ -91,6 +91,7 @@ void CommandMaster::execute(MasterDevice &m, const StringVector &args)
     }
 
     cout << endl
+        << "  Active: " << (data.active ? "yes" : "no") << endl
         << "  Slaves: " << data.slave_count << endl
         << "  Ethernet devices:" << endl;
 

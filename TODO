@@ -52,6 +52,7 @@ Version 1.5.0:
 * Implement CompleteAccess for SDO uploads.
 * Implement identifier parameter for cstruct command.
 * Implement sync delimiter for cstruct command.
+* Implement ecrt_master_deactivate() in userspace.
 
 Future issues:
 

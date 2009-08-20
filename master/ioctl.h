@@ -135,6 +135,7 @@ typedef struct {
     uint32_t eoe_handler_count;
 #endif
     uint8_t phase;
+    uint8_t active;
     uint8_t scan_busy;
     struct {
         uint8_t address[6];
