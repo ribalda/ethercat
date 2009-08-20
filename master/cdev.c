@@ -1648,6 +1648,23 @@ int ec_cdev_ioctl_activate(
 
 /*****************************************************************************/
 
+/** Deactivates the master.
+ */
+int ec_cdev_ioctl_deactivate(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    if (unlikely(!priv->requested))
+        return -EPERM;
+
+    ecrt_master_deactivate(master);
+    return 0;
+}
+
+/*****************************************************************************/
+
 /** Send frames.
  */
 int ec_cdev_ioctl_send(
@@ -3263,6 +3280,10 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             if (!(filp->f_mode & FMODE_WRITE))
                 return -EPERM;
             return ec_cdev_ioctl_activate(master, arg, priv);
+        case EC_IOCTL_DEACTIVATE:
+            if (!(filp->f_mode & FMODE_WRITE))
+                return -EPERM;
+            return ec_cdev_ioctl_deactivate(master, arg, priv);
         case EC_IOCTL_SEND:
             if (!(filp->f_mode & FMODE_WRITE))
                 return -EPERM;
