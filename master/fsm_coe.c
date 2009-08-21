@@ -1821,7 +1821,6 @@ void ec_fsm_coe_up_seg_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     uint8_t *data, mbox_prot;
     size_t rec_size, data_size;
     ec_sdo_request_t *request = fsm->request;
-    uint32_t seg_size;
     unsigned int last_segment;
 
     if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
@@ -1899,14 +1898,11 @@ void ec_fsm_coe_up_seg_response(ec_fsm_coe_t *fsm /**< finite state machine */)
         return;
     }
 
-    last_segment = EC_READ_U8(data + 2) & 0x01;
-    seg_size = (EC_READ_U8(data + 2) & 0xE) >> 1;
-    if (rec_size > 10) {
-        data_size = rec_size - 3; /* Header of segment upload is smaller than
-                                     normal upload */
-    } else { // == 10
-        /* seg_size contains the number of trailing bytes to ignore. */
-        data_size = rec_size - seg_size;
+    data_size = rec_size - 3; /* Header of segment upload is smaller than
+                                 normal upload */
+    if (rec_size == 10) {
+        uint8_t seg_size = (EC_READ_U8(data + 2) & 0xE) >> 1;
+        data_size -= seg_size;
     }
 
     if (request->data_size + data_size > fsm->complete_size) {
@@ -1920,6 +1916,7 @@ void ec_fsm_coe_up_seg_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     memcpy(request->data + request->data_size, data + 3, data_size);
     request->data_size += data_size;
 
+    last_segment = EC_READ_U8(data + 2) & 0x01;
     if (!last_segment) {
         fsm->toggle = !fsm->toggle;
         ec_fsm_coe_up_prepare_segment_request(fsm);
