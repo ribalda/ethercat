@@ -335,6 +335,16 @@ int ecrt_master_activate(ec_master_t *master)
 
 /*****************************************************************************/
 
+void ecrt_master_deactivate(ec_master_t *master)
+{
+    if (ioctl(master->fd, EC_IOCTL_DEACTIVATE, NULL) == -1) {
+        fprintf(stderr, "Failed to deactivate master: %s\n", strerror(errno));
+        return;
+    }
+}
+
+/*****************************************************************************/
+
 void ecrt_master_send(ec_master_t *master)
 {
     if (ioctl(master->fd, EC_IOCTL_SEND, NULL) == -1) {

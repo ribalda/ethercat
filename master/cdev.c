@@ -175,6 +175,7 @@ int ec_cdev_ioctl_master(
     data.eoe_handler_count = ec_master_eoe_handler_count(master);
 #endif
     data.phase = (uint8_t) master->phase;
+    data.active = (uint8_t) master->active;
     data.scan_busy = master->scan_busy;
     up(&master->master_sem);
 
@@ -1642,6 +1643,23 @@ int ec_cdev_ioctl_activate(
                 &priv->process_data_size, sizeof(size_t)))
         return -EFAULT;
 
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Deactivates the master.
+ */
+int ec_cdev_ioctl_deactivate(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    if (unlikely(!priv->requested))
+        return -EPERM;
+
+    ecrt_master_deactivate(master);
     return 0;
 }
 
@@ -3262,6 +3280,10 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             if (!(filp->f_mode & FMODE_WRITE))
                 return -EPERM;
             return ec_cdev_ioctl_activate(master, arg, priv);
+        case EC_IOCTL_DEACTIVATE:
+            if (!(filp->f_mode & FMODE_WRITE))
+                return -EPERM;
+            return ec_cdev_ioctl_deactivate(master, arg, priv);
         case EC_IOCTL_SEND:
             if (!(filp->f_mode & FMODE_WRITE))
                 return -EPERM;
