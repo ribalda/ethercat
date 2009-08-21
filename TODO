@@ -20,7 +20,6 @@ Version 1.5.0:
       "System Time" register instead of using the application time.
     - Check if register 0x0980 is working, to avoid clearing it when
       configuring.
-    - Create an interface to query the System Time Difference registers.
 * Remove byte-swapping functions from user space.
 * EoE:
     - Only execute one EoE handler per cycle.

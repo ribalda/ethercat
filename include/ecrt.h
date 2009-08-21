@@ -45,7 +45,9 @@
  *   ecrt_slave_config_dc() to configure a slave for cyclic operation, and
  *   ecrt_master_application_time(), ecrt_master_sync_reference_clock() and
  *   ecrt_master_sync_slave_clocks() for offset and drift compensation. The
- *   EC_TIMEVAL2NANO() macro can be used for epoch time conversion.
+ *   EC_TIMEVAL2NANO() macro can be used for epoch time conversion, while the
+ *   ecrt_master_sync_monitor_queue() and ecrt_master_sync_monitor_process()
+ *   methods can be used to monitor the synchrony. 
  * - Improved the callback mechanism. ecrt_master_callbacks() now takes two
  *   callback functions for sending and receiving datagrams.
  *   ecrt_master_send_ext() is used to execute the sending of non-application
@@ -772,6 +774,28 @@ void ecrt_master_sync_reference_clock(
  * All slave clocks synchronized to the reference clock.
  */
 void ecrt_master_sync_slave_clocks(
+        ec_master_t *master /**< EtherCAT master. */
+        );
+
+/** Queues the DC synchonity monitoring datagram for sending.
+ *
+ * The datagram broadcast-reads all "System time difference" registers (\a
+ * 0x092c) to get an upper estiomation of the DC synchony. The result can be
+ * checked with the ecrt_master_sync_monitor_process() method.
+ */
+void ecrt_master_sync_monitor_queue(
+        ec_master_t *master /**< EtherCAT master. */
+        );
+
+/** Processes the DC synchonity monitoring datagram.
+ *
+ * If the sync monitoring datagram was sent before with
+ * ecrt_master_sync_monitor_queue(), the result can be queried with this
+ * method.
+ *
+ * \return Upper estination of the maximum time difference in ns.
+ */
+uint32_t ecrt_master_sync_monitor_process(
         ec_master_t *master /**< EtherCAT master. */
         );
 

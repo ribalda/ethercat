@@ -227,12 +227,23 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
         EC_ERR("Failed to allocate synchronisation datagram.\n");
         goto out_clear_ref_sync;
     }
+
+    // init sync monitor datagram
+    ec_datagram_init(&master->sync_mon_datagram);
+    snprintf(master->sync_mon_datagram.name, EC_DATAGRAM_NAME_SIZE, "syncmon");
+    ret = ec_datagram_brd(&master->sync_mon_datagram, 0x092c, 4);
+    if (ret < 0) {
+        ec_datagram_clear(&master->sync_mon_datagram);
+        EC_ERR("Failed to allocate sync monitoring datagram.\n");
+        goto out_clear_sync;
+    }
+
     ec_master_find_dc_ref_clock(master);
 
     // init character device
     ret = ec_cdev_init(&master->cdev, master, device_number);
     if (ret)
-        goto out_clear_sync;
+        goto out_clear_sync_mon;
     
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)
     master->class_device = device_create(class, NULL,
@@ -261,6 +272,8 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
 
 out_clear_cdev:
     ec_cdev_clear(&master->cdev);
+out_clear_sync_mon:
+    ec_datagram_clear(&master->sync_mon_datagram);
 out_clear_sync:
     ec_datagram_clear(&master->sync_datagram);
 out_clear_ref_sync:
@@ -299,6 +312,7 @@ void ec_master_clear(
     ec_master_clear_slave_configs(master);
     ec_master_clear_slaves(master);
 
+    ec_datagram_clear(&master->sync_mon_datagram);
     ec_datagram_clear(&master->sync_datagram);
     ec_datagram_clear(&master->ref_sync_datagram);
     ec_fsm_master_clear(&master->fsm);
@@ -1924,6 +1938,25 @@ void ecrt_master_sync_slave_clocks(ec_master_t *master)
 
 /*****************************************************************************/
 
+void ecrt_master_sync_monitor_queue(ec_master_t *master)
+{
+    ec_datagram_zero(&master->sync_mon_datagram);
+    ec_master_queue_datagram(master, &master->sync_mon_datagram);
+}
+
+/*****************************************************************************/
+
+uint32_t ecrt_master_sync_monitor_process(ec_master_t *master)
+{
+    if (master->sync_mon_datagram.state == EC_DATAGRAM_RECEIVED) {
+        return EC_READ_U32(master->sync_mon_datagram.data) & 0x7fffffff;
+    } else {
+        return 0xffffffff;
+    }
+}
+
+/*****************************************************************************/
+
 /** \cond */
 
 EXPORT_SYMBOL(ecrt_master_create_domain);
@@ -1938,6 +1971,8 @@ EXPORT_SYMBOL(ecrt_master_state);
 EXPORT_SYMBOL(ecrt_master_application_time);
 EXPORT_SYMBOL(ecrt_master_sync_reference_clock);
 EXPORT_SYMBOL(ecrt_master_sync_slave_clocks);
+EXPORT_SYMBOL(ecrt_master_sync_monitor_queue);
+EXPORT_SYMBOL(ecrt_master_sync_monitor_process);
 
 /** \endcond */
 

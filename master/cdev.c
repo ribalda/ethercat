@@ -1787,6 +1787,50 @@ int ec_cdev_ioctl_sync_slaves(
 
 /*****************************************************************************/
 
+/** Queue the sync monitoring datagram.
+ */
+int ec_cdev_ioctl_sync_mon_queue(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    if (unlikely(!priv->requested))
+        return -EPERM;
+
+    down(&master->io_sem);
+    ecrt_master_sync_monitor_queue(master);
+    up(&master->io_sem);
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Processes the sync monitoring datagram.
+ */
+int ec_cdev_ioctl_sync_mon_process(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    uint32_t time_diff;
+
+    if (unlikely(!priv->requested))
+        return -EPERM;
+
+    down(&master->io_sem);
+    time_diff = ecrt_master_sync_monitor_process(master);
+    up(&master->io_sem);
+
+    if (copy_to_user((void __user *) arg, &time_diff, sizeof(time_diff)))
+        return -EFAULT;
+
+    return 0;
+}
+
+/*****************************************************************************/
+
 /** Configure a sync manager.
  */
 int ec_cdev_ioctl_sc_sync(
@@ -3306,6 +3350,14 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             if (!(filp->f_mode & FMODE_WRITE))
                 return -EPERM;
             return ec_cdev_ioctl_sync_slaves(master, arg, priv);
+        case EC_IOCTL_SYNC_MON_QUEUE:
+            if (!(filp->f_mode & FMODE_WRITE))
+                return -EPERM;
+            return ec_cdev_ioctl_sync_mon_queue(master, arg, priv);
+        case EC_IOCTL_SYNC_MON_PROCESS:
+            if (!(filp->f_mode & FMODE_WRITE))
+                return -EPERM;
+            return ec_cdev_ioctl_sync_mon_process(master, arg, priv);
         case EC_IOCTL_SC_SYNC:
             if (!(filp->f_mode & FMODE_WRITE))
                 return -EPERM;
