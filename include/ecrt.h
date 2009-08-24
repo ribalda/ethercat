@@ -819,13 +819,17 @@ int ecrt_slave_config_sync_manager(
         );
 
 /** Configure a slave's watchdog times.
-*/	 
+ */
 void ecrt_slave_config_watchdog(
         ec_slave_config_t *sc, /**< Slave configuration. */
         uint16_t watchdog_divider, /**< Number of 40 ns intervals. Used as a
-                                    base unit for all slave watchdogs. */
+                                     base unit for all slave watchdogs. If set
+                                     to zero, the value is not written, so the
+                                     default ist used. */
         uint16_t watchdog_intervals /**< Number of base intervals for process
-                                      data watchdog. */
+                                      data watchdog. If set to zero, the value
+                                      is not written, so the default is used.
+                                     */
         );
 
 /** Add a PDO to a sync manager's PDO assignment.
