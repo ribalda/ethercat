@@ -53,6 +53,7 @@ Version 1.5.0:
 * Implement sync delimiter for cstruct command.
 * Change SDO index at runtime for SDO request.
 * Implement ecrt_slave_config_request_state().
+* Output skipped datagrams again.
 
 Future issues:
 
