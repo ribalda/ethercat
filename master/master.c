@@ -365,6 +365,69 @@ void ec_master_clear_slaves(ec_master_t *master)
 
     master->dc_ref_clock = NULL;
 
+    // external requests are obsolete, so we wake pending waiters and remove
+    // them from the list
+    //
+	// SII requests
+	while (1) {
+		ec_sii_write_request_t *request;
+		if (list_empty(&master->sii_requests))
+			break;
+		// get first request
+        request = list_entry(master->sii_requests.next,
+                ec_sii_write_request_t, list);
+		list_del_init(&request->list); // dequeue
+		EC_INFO("Discarding SII request, slave %u does not exist anymore.\n",
+				request->slave->ring_position);
+		request->state = EC_INT_REQUEST_FAILURE;
+		wake_up(&master->sii_queue);
+	}
+
+	// Register requests
+	while (1) {
+	    ec_reg_request_t *request;
+		if (list_empty(&master->reg_requests))
+			break;
+		// get first request
+		request = list_entry(master->reg_requests.next,
+				ec_reg_request_t, list);
+		list_del_init(&request->list); // dequeue
+		EC_INFO("Discarding Reg request, slave %u does not exist anymore.\n",
+				request->slave->ring_position);
+		request->state = EC_INT_REQUEST_FAILURE;
+		wake_up(&master->reg_queue);
+	}
+
+	// SDO requests
+	while (1) {
+		ec_master_sdo_request_t *request;
+		if (list_empty(&master->slave_sdo_requests))
+			break;
+		// get first request
+		request = list_entry(master->slave_sdo_requests.next,
+				ec_master_sdo_request_t, list);
+		list_del_init(&request->list); // dequeue
+		EC_INFO("Discarding SDO request, slave %u does not exist anymore.\n",
+				request->slave->ring_position);
+		request->req.state = EC_INT_REQUEST_FAILURE;
+		wake_up(&master->sdo_queue);
+	}
+
+	// FoE requests
+	while (1) {
+		ec_master_foe_request_t *request;
+		if (list_empty(&master->foe_requests))
+			break;
+		// get first request
+		request = list_entry(master->foe_requests.next,
+				ec_master_foe_request_t, list);
+		list_del_init(&request->list); // dequeue
+		EC_INFO("Discarding FOE request, slave %u does not exist anymore.\n",
+				request->slave->ring_position);
+		request->req.state = EC_INT_REQUEST_FAILURE;
+		wake_up(&master->foe_queue);
+	}
+
     for (slave = master->slaves;
             slave < master->slaves + master->slave_count;
             slave++) {
