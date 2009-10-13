@@ -102,6 +102,29 @@ AC_SUBST(LINUX_MOD_PATH,[/lib/modules/$kernelrelease/ethercat])
 AC_MSG_RESULT([$LINUX_SOURCE_DIR (Kernel $LINUX_KERNEL_RELEASE)])
 
 #------------------------------------------------------------------------------
+# Generic Ethernet driver
+#------------------------------------------------------------------------------
+
+AC_ARG_ENABLE([generic],
+    AS_HELP_STRING([--enable-generic],
+                   [Enable generic Ethernet driver]),
+    [
+        case "${enableval}" in
+            yes) enablegeneric=1
+                ;;
+            no) enablegeneric=0
+                ;;
+            *) AC_MSG_ERROR([Invalid value for --enable-generic])
+                ;;
+        esac
+    ],
+    [enablegeneric=0]
+)
+
+AM_CONDITIONAL(ENABLE_GENERIC, test "x$enablegeneric" = "x1")
+AC_SUBST(ENABLE_GENERIC,[$enablegeneric])
+
+#------------------------------------------------------------------------------
 # 8139too driver
 #------------------------------------------------------------------------------
 

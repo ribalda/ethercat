@@ -37,6 +37,13 @@ REV := $(shell if test -s $(src)/../revision; then \
 		hg id -i $(src)/.. 2>/dev/null || echo "unknown"; \
 	fi)
 
+ifeq (@ENABLE_GENERIC@,1)
+	EC_GENERIC_OBJ := generic.o
+	obj-m += ec_generic.o
+	ec_generic-objs := $(EC_GENERIC_OBJ)
+	CFLAGS_$(EC_GENERIC_OBJ) = -DREV=$(REV)
+endif
+
 ifeq (@ENABLE_8139TOO@,1)
 	EC_8139TOO_OBJ := 8139too-@KERNEL_8139TOO@-ethercat.o
 	obj-m += ec_8139too.o
