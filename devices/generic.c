@@ -75,6 +75,7 @@ typedef struct {
 int ec_gen_device_open(ec_gen_device_t *);
 int ec_gen_device_stop(ec_gen_device_t *);
 int ec_gen_device_start_xmit(ec_gen_device_t *, struct sk_buff *);
+void ec_gen_device_poll(ec_gen_device_t *);
 
 /*****************************************************************************/
 
@@ -107,6 +108,8 @@ static int ec_gen_netdev_start_xmit(
 
 void ec_gen_poll(struct net_device *dev)
 {
+    ec_gen_device_t *gendev = *((ec_gen_device_t **) netdev_priv(dev));
+    ec_gen_device_poll(gendev);
 }
 
 /*****************************************************************************/
@@ -267,6 +270,35 @@ int ec_gen_device_start_xmit(
     ret = kernel_sendmsg(dev->socket, &msg, &iov, 1, len);
 
     return ret == len ? NETDEV_TX_OK : NETDEV_TX_BUSY;
+}
+
+/*****************************************************************************/
+
+/** Polls the device.
+ */
+void ec_gen_device_poll(
+        ec_gen_device_t *dev
+        )
+{
+    struct msghdr msg;
+    struct kvec iov;
+    char buf[2000]; // FIXME
+    int ret, budget = 10; // FIXME
+
+    iov.iov_base = buf;
+    iov.iov_len = 2000;
+    memset(&msg, 0, sizeof(msg));
+
+    do {
+        ret = kernel_recvmsg(dev->socket, &msg, &iov, 1, iov.iov_len,
+                MSG_DONTWAIT);
+        if (ret > 0) {
+            ecdev_receive(dev->ecdev, buf, ret);
+        } else if (ret < 0) {
+            break;
+        }
+        budget--;
+    } while (budget);
 }
 
 /*****************************************************************************/
