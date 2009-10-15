@@ -45,6 +45,8 @@
 
 #define PFX "ec_generic: "
 
+#define ETH_P_ETHERCAT 0x88A4
+
 /*****************************************************************************/
 
 int __init ec_gen_init_module(void);
@@ -66,9 +68,7 @@ struct list_head generic_devices;
 typedef struct {
     struct list_head list;
     struct net_device *netdev;
-#if 0
-    struct net_device *real_netdev;
-#endif
+    struct socket *socket;
     ec_device_t *ecdev;
 } ec_gen_device_t;
 
@@ -130,9 +130,7 @@ int ec_gen_device_init(
     char null = 0x00;
 
     dev->ecdev = NULL;
-#if 0
-    dev->real_netdev = real_netdev;
-#endif
+    dev->socket = NULL;
 
 	dev->netdev = alloc_netdev(sizeof(ec_gen_device_t *), &null, ether_setup);
 	if (!dev->netdev) {
@@ -158,7 +156,46 @@ void ec_gen_device_clear(
         ecdev_close(dev->ecdev);
         ecdev_withdraw(dev->ecdev);
     }
+    if (dev->socket) {
+        sock_release(dev->socket);
+    }
     free_netdev(dev->netdev);
+}
+
+/*****************************************************************************/
+
+/** Creates a network socket.
+ */
+int ec_gen_device_create_socket(
+        ec_gen_device_t *dev,
+        struct net_device *real_netdev
+        )
+{
+    int ret;
+    struct sockaddr_ll sa;
+
+    ret = sock_create_kern(PF_PACKET, SOCK_RAW, htons(ETH_P_ETHERCAT), &dev->socket);
+    if (ret) {
+        printk(KERN_ERR PFX "Failed to create socket.\n");
+        return ret;
+    }
+
+    printk(KERN_ERR PFX "Binding socket to interface %i (%s).\n",
+            real_netdev->ifindex, real_netdev->name);
+
+    memset(&sa, 0x00, sizeof(sa));
+    sa.sll_family = AF_PACKET;
+    sa.sll_protocol = htons(ETH_P_ETHERCAT);
+    sa.sll_ifindex = real_netdev->ifindex;
+    ret = kernel_bind(dev->socket, (struct sockaddr *) &sa, sizeof(sa));
+    if (ret) {
+        printk(KERN_ERR PFX "Failed to bind() socket to interface.\n");
+        sock_release(dev->socket);
+        dev->socket = NULL;
+        return ret;
+    }
+
+    return 0;
 }
 
 /*****************************************************************************/
@@ -166,17 +203,22 @@ void ec_gen_device_clear(
 /** Offer generic device to master.
  */
 int ec_gen_device_offer(
-        ec_gen_device_t *dev
+        ec_gen_device_t *dev,
+        struct net_device *real_netdev
         )
 {
     int ret = 0;
 
 	dev->ecdev = ecdev_offer(dev->netdev, ec_gen_poll, THIS_MODULE);
     if (dev->ecdev) {
-        if (ecdev_open(dev->ecdev)) {
+        if (ec_gen_device_create_socket(dev, real_netdev)) {
+            ecdev_withdraw(dev->ecdev);
+            dev->ecdev = NULL;
+        } else if (ecdev_open(dev->ecdev)) {
             ecdev_withdraw(dev->ecdev);
             dev->ecdev = NULL;
         } else {
+            ecdev_set_link(dev->ecdev, 1); // FIXME
             ret = 1;
         }
     }
@@ -192,17 +234,7 @@ int ec_gen_device_open(
         ec_gen_device_t *dev
         )
 {
-    int ret = 0;
-
-#if 0
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 29)
-    ret = dev->real_netdev->netdev_ops->ndo_open(dev->real_netdev);
-#else
-    ret = dev->real_netdev->open(dev->real_netdev);
-#endif
-#endif
-
-    return ret;
+    return 0;
 }
 
 /*****************************************************************************/
@@ -213,17 +245,7 @@ int ec_gen_device_stop(
         ec_gen_device_t *dev
         )
 {
-    int ret = 0;
-
-#if 0
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 29)
-    ret = dev->real_netdev->netdev_ops->ndo_stop(dev->real_netdev);
-#else
-    ret = dev->real_netdev->stop(dev->real_netdev);
-#endif
-#endif
-
-    return ret;
+    return 0;
 }
 
 /*****************************************************************************/
@@ -233,7 +255,18 @@ int ec_gen_device_start_xmit(
         struct sk_buff *skb
         )
 {
-    return 0;
+    struct msghdr msg;
+    struct kvec iov;
+    size_t len = skb->len;
+    int ret;
+
+    iov.iov_base = skb->data;
+    iov.iov_len = len;
+    memset(&msg, 0, sizeof(msg));
+
+    ret = kernel_sendmsg(dev->socket, &msg, &iov, 1, len);
+
+    return ret == len ? NETDEV_TX_OK : NETDEV_TX_BUSY;
 }
 
 /*****************************************************************************/
@@ -258,7 +291,7 @@ int offer_device(
         return ret;
     }
 
-    if (ec_gen_device_offer(gendev)) {
+    if (ec_gen_device_offer(gendev, netdev)) {
         list_add_tail(&gendev->list, &generic_devices);
     } else {
         ec_gen_device_clear(gendev);
