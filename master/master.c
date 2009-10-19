@@ -121,6 +121,7 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     init_MUTEX(&master->device_sem);
 
     master->phase = EC_ORPHANED;
+    master->active = 0;
     master->injection_seq_fsm = 0;
     master->injection_seq_rt = 0;
 
@@ -226,12 +227,23 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
         EC_ERR("Failed to allocate synchronisation datagram.\n");
         goto out_clear_ref_sync;
     }
+
+    // init sync monitor datagram
+    ec_datagram_init(&master->sync_mon_datagram);
+    snprintf(master->sync_mon_datagram.name, EC_DATAGRAM_NAME_SIZE, "syncmon");
+    ret = ec_datagram_brd(&master->sync_mon_datagram, 0x092c, 4);
+    if (ret < 0) {
+        ec_datagram_clear(&master->sync_mon_datagram);
+        EC_ERR("Failed to allocate sync monitoring datagram.\n");
+        goto out_clear_sync;
+    }
+
     ec_master_find_dc_ref_clock(master);
 
     // init character device
     ret = ec_cdev_init(&master->cdev, master, device_number);
     if (ret)
-        goto out_clear_sync;
+        goto out_clear_sync_mon;
     
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)
     master->class_device = device_create(class, NULL,
@@ -260,6 +272,8 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
 
 out_clear_cdev:
     ec_cdev_clear(&master->cdev);
+out_clear_sync_mon:
+    ec_datagram_clear(&master->sync_mon_datagram);
 out_clear_sync:
     ec_datagram_clear(&master->sync_datagram);
 out_clear_ref_sync:
@@ -298,6 +312,7 @@ void ec_master_clear(
     ec_master_clear_slave_configs(master);
     ec_master_clear_slaves(master);
 
+    ec_datagram_clear(&master->sync_mon_datagram);
     ec_datagram_clear(&master->sync_datagram);
     ec_datagram_clear(&master->ref_sync_datagram);
     ec_fsm_master_clear(&master->fsm);
@@ -349,6 +364,69 @@ void ec_master_clear_slaves(ec_master_t *master)
     ec_slave_t *slave;
 
     master->dc_ref_clock = NULL;
+
+    // external requests are obsolete, so we wake pending waiters and remove
+    // them from the list
+    //
+	// SII requests
+	while (1) {
+		ec_sii_write_request_t *request;
+		if (list_empty(&master->sii_requests))
+			break;
+		// get first request
+        request = list_entry(master->sii_requests.next,
+                ec_sii_write_request_t, list);
+		list_del_init(&request->list); // dequeue
+		EC_INFO("Discarding SII request, slave %u does not exist anymore.\n",
+				request->slave->ring_position);
+		request->state = EC_INT_REQUEST_FAILURE;
+		wake_up(&master->sii_queue);
+	}
+
+	// Register requests
+	while (1) {
+	    ec_reg_request_t *request;
+		if (list_empty(&master->reg_requests))
+			break;
+		// get first request
+		request = list_entry(master->reg_requests.next,
+				ec_reg_request_t, list);
+		list_del_init(&request->list); // dequeue
+		EC_INFO("Discarding Reg request, slave %u does not exist anymore.\n",
+				request->slave->ring_position);
+		request->state = EC_INT_REQUEST_FAILURE;
+		wake_up(&master->reg_queue);
+	}
+
+	// SDO requests
+	while (1) {
+		ec_master_sdo_request_t *request;
+		if (list_empty(&master->slave_sdo_requests))
+			break;
+		// get first request
+		request = list_entry(master->slave_sdo_requests.next,
+				ec_master_sdo_request_t, list);
+		list_del_init(&request->list); // dequeue
+		EC_INFO("Discarding SDO request, slave %u does not exist anymore.\n",
+				request->slave->ring_position);
+		request->req.state = EC_INT_REQUEST_FAILURE;
+		wake_up(&master->sdo_queue);
+	}
+
+	// FoE requests
+	while (1) {
+		ec_master_foe_request_t *request;
+		if (list_empty(&master->foe_requests))
+			break;
+		// get first request
+		request = list_entry(master->foe_requests.next,
+				ec_master_foe_request_t, list);
+		list_del_init(&request->list); // dequeue
+		EC_INFO("Discarding FOE request, slave %u does not exist anymore.\n",
+				request->slave->ring_position);
+		request->req.state = EC_INT_REQUEST_FAILURE;
+		wake_up(&master->foe_queue);
+	}
 
     for (slave = master->slaves;
             slave < master->slaves + master->slave_count;
@@ -592,67 +670,17 @@ out_allow:
 
 /** Transition function from OPERATION to IDLE phase.
  */
-void ec_master_leave_operation_phase(ec_master_t *master
-                                    /**< EtherCAT master */)
+void ec_master_leave_operation_phase(
+        ec_master_t *master /**< EtherCAT master */
+        )
 {
-    ec_slave_t *slave;
-#ifdef EC_EOE
-    ec_eoe_t *eoe;
-#endif
+    if (master->active)
+        ecrt_master_deactivate(master);
 
     if (master->debug_level)
         EC_DBG("OPERATION -> IDLE.\n");
 
     master->phase = EC_IDLE;
-
-#ifdef EC_EOE
-    ec_master_eoe_stop(master);
-#endif
-    ec_master_thread_stop(master);
-    
-    master->send_cb = ec_master_internal_send_cb;
-    master->receive_cb = ec_master_internal_receive_cb;
-    master->cb_data = master;
-    
-    down(&master->master_sem);
-    ec_master_clear_domains(master);
-    ec_master_clear_slave_configs(master);
-    up(&master->master_sem);
-
-    for (slave = master->slaves;
-            slave < master->slaves + master->slave_count;
-            slave++) {
-
-        // set states for all slaves
-        ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
-
-        // mark for reconfiguration, because the master could have no
-        // possibility for a reconfiguration between two sequential operation
-        // phases.
-        slave->force_config = 1;
-    }
-
-#ifdef EC_EOE
-    // ... but leave EoE slaves in OP
-    list_for_each_entry(eoe, &master->eoe_handlers, list) {
-        if (ec_eoe_is_open(eoe))
-            ec_slave_request_state(eoe->slave, EC_SLAVE_STATE_OP);
-    }
-#endif
-
-    master->app_time = 0ULL;
-    master->app_start_time = 0ULL;
-    master->has_start_time = 0;
-
-    if (ec_master_thread_start(master, ec_master_idle_thread,
-                "EtherCAT-IDLE"))
-        EC_WARN("Failed to restart master thread!\n");
-#ifdef EC_EOE
-    ec_master_eoe_start(master);
-#endif
-
-    master->allow_scan = 1;
-    master->allow_config = 1;
 }
 
 /*****************************************************************************/
@@ -1635,6 +1663,11 @@ int ecrt_master_activate(ec_master_t *master)
     if (master->debug_level)
         EC_DBG("ecrt_master_activate(master = 0x%p)\n", master);
 
+    if (master->active) {
+        EC_WARN("%s: Master already active!\n", __func__);
+        return 0;
+    }
+
     down(&master->master_sem);
 
     // finish all domains
@@ -1684,7 +1717,76 @@ int ecrt_master_activate(ec_master_t *master)
 
     master->allow_config = 1; // request the current configuration
     master->allow_scan = 1; // allow re-scanning on topology change
+    master->active = 1;
     return 0;
+}
+
+/*****************************************************************************/
+
+void ecrt_master_deactivate(ec_master_t *master)
+{
+    ec_slave_t *slave;
+#ifdef EC_EOE
+    ec_eoe_t *eoe;
+#endif
+
+    if (master->debug_level)
+        EC_DBG("ecrt_master_deactivate(master = 0x%x)\n", (u32) master);
+
+    if (!master->active) {
+        EC_WARN("%s: Master not active.\n", __func__);
+        return;
+    }
+
+#ifdef EC_EOE
+    ec_master_eoe_stop(master);
+#endif
+    ec_master_thread_stop(master);
+    
+    master->send_cb = ec_master_internal_send_cb;
+    master->receive_cb = ec_master_internal_receive_cb;
+    master->cb_data = master;
+    
+    down(&master->master_sem);
+    ec_master_clear_domains(master);
+    ec_master_clear_slave_configs(master);
+    up(&master->master_sem);
+
+    for (slave = master->slaves;
+            slave < master->slaves + master->slave_count;
+            slave++) {
+
+        // set states for all slaves
+        ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
+
+        // mark for reconfiguration, because the master could have no
+        // possibility for a reconfiguration between two sequential operation
+        // phases.
+        slave->force_config = 1;
+    }
+
+#ifdef EC_EOE
+    // ... but leave EoE slaves in OP
+    list_for_each_entry(eoe, &master->eoe_handlers, list) {
+        if (ec_eoe_is_open(eoe))
+            ec_slave_request_state(eoe->slave, EC_SLAVE_STATE_OP);
+    }
+#endif
+
+    master->app_time = 0ULL;
+    master->app_start_time = 0ULL;
+    master->has_start_time = 0;
+
+    if (ec_master_thread_start(master, ec_master_idle_thread,
+                "EtherCAT-IDLE"))
+        EC_WARN("Failed to restart master thread!\n");
+#ifdef EC_EOE
+    ec_master_eoe_start(master);
+#endif
+
+    master->allow_scan = 1;
+    master->allow_config = 1;
+    master->active = 0;
 }
 
 /*****************************************************************************/
@@ -1899,10 +2001,30 @@ void ecrt_master_sync_slave_clocks(ec_master_t *master)
 
 /*****************************************************************************/
 
+void ecrt_master_sync_monitor_queue(ec_master_t *master)
+{
+    ec_datagram_zero(&master->sync_mon_datagram);
+    ec_master_queue_datagram(master, &master->sync_mon_datagram);
+}
+
+/*****************************************************************************/
+
+uint32_t ecrt_master_sync_monitor_process(ec_master_t *master)
+{
+    if (master->sync_mon_datagram.state == EC_DATAGRAM_RECEIVED) {
+        return EC_READ_U32(master->sync_mon_datagram.data) & 0x7fffffff;
+    } else {
+        return 0xffffffff;
+    }
+}
+
+/*****************************************************************************/
+
 /** \cond */
 
 EXPORT_SYMBOL(ecrt_master_create_domain);
 EXPORT_SYMBOL(ecrt_master_activate);
+EXPORT_SYMBOL(ecrt_master_deactivate);
 EXPORT_SYMBOL(ecrt_master_send);
 EXPORT_SYMBOL(ecrt_master_send_ext);
 EXPORT_SYMBOL(ecrt_master_receive);
@@ -1912,6 +2034,8 @@ EXPORT_SYMBOL(ecrt_master_state);
 EXPORT_SYMBOL(ecrt_master_application_time);
 EXPORT_SYMBOL(ecrt_master_sync_reference_clock);
 EXPORT_SYMBOL(ecrt_master_sync_slave_clocks);
+EXPORT_SYMBOL(ecrt_master_sync_monitor_queue);
+EXPORT_SYMBOL(ecrt_master_sync_monitor_process);
 
 /** \endcond */
 

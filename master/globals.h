@@ -248,30 +248,6 @@ enum {
 #define EC_DBG(fmt, args...) \
     printk(KERN_DEBUG "EtherCAT DEBUG: " fmt, ##args)
 
-/** Convenience macro for defining read-only SysFS attributes.
- *
- * This results in creating a static variable called attr_\a NAME. The SysFS
- * file will be world-readable.
- *
- * \param NAME name of the attribute to create.
- */
-#define EC_SYSFS_READ_ATTR(NAME) \
-    static struct attribute attr_##NAME = { \
-        .name = EC_STR(NAME), .owner = THIS_MODULE, .mode = S_IRUGO \
-    }
-
-/** Convenience macro for defining read-write SysFS attributes.
- *
- * This results in creating a static variable called attr_\a NAME. The SysFS
- * file will be word-readable plus owner-writable.
- *
- * \param NAME name of the attribute to create.
- */
-#define EC_SYSFS_READ_WRITE_ATTR(NAME) \
-    static struct attribute attr_##NAME = { \
-        .name = EC_STR(NAME), .owner = THIS_MODULE, .mode = S_IRUGO | S_IWUSR \
-    }
-
 /*****************************************************************************/
 
 extern char *ec_master_version_str;

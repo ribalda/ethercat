@@ -108,6 +108,7 @@ struct ec_master {
     ec_fsm_master_t fsm; /**< Master state machine. */
     ec_datagram_t fsm_datagram; /**< Datagram used for state machines. */
     ec_master_phase_t phase; /**< Master phase. */
+    unsigned int active; /**< Master has been activated. */
     unsigned int injection_seq_fsm; /**< Datagram injection sequence number
                                       for the FSM side. */
     unsigned int injection_seq_rt; /**< Datagram injection sequence number
@@ -125,6 +126,8 @@ struct ec_master {
                                        reference clock to the master clock. */
     ec_datagram_t sync_datagram; /**< Datagram used for DC drift
                                    compensation. */
+    ec_datagram_t sync_mon_datagram; /**< Datagram used for DC synchronisation
+                                       monitoring. */
     ec_slave_t *dc_ref_clock; /**< DC reference clock slave. */
     
     unsigned int scan_busy; /**< Current scan state. */

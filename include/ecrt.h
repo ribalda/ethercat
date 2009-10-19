@@ -45,7 +45,9 @@
  *   ecrt_slave_config_dc() to configure a slave for cyclic operation, and
  *   ecrt_master_application_time(), ecrt_master_sync_reference_clock() and
  *   ecrt_master_sync_slave_clocks() for offset and drift compensation. The
- *   EC_TIMEVAL2NANO() macro can be used for epoch time conversion.
+ *   EC_TIMEVAL2NANO() macro can be used for epoch time conversion, while the
+ *   ecrt_master_sync_monitor_queue() and ecrt_master_sync_monitor_process()
+ *   methods can be used to monitor the synchrony. 
  * - Improved the callback mechanism. ecrt_master_callbacks() now takes two
  *   callback functions for sending and receiving datagrams.
  *   ecrt_master_send_ext() is used to execute the sending of non-application
@@ -55,6 +57,7 @@
  *   ecrt_slave_config_sync_manager()).
  * - Added ecrt_slave_config_complete_sdo() method to download an SDO during
  *   configuration via CompleteAccess.
+ * - Added ecrt_master_deactivate() to remove the bus configuration.
  * - Added ecrt_open_master() and ecrt_master_reserve() separation for
  *   userspace.
  * - Added bus information interface (methods ecrt_master(),
@@ -682,6 +685,18 @@ int ecrt_master_activate(
         ec_master_t *master /**< EtherCAT master. */
         );
 
+/** Deactivates the master.
+ *
+ * Removes the bus configuration. All objects created by
+ * ecrt_master_create_domain(), ecrt_master_slave_config(), ecrt_domain_data()
+ * ecrt_slave_config_create_sdo_request() and
+ * ecrt_slave_config_create_voe_handler() are freed, so pointers to them
+ * become invalid.
+ */
+void ecrt_master_deactivate(
+        ec_master_t *master /**< EtherCAT master. */
+        );
+
 /** Sends all datagrams in the queue.
  *
  * This method takes all datagrams, that have been queued for transmission,
@@ -762,6 +777,28 @@ void ecrt_master_sync_slave_clocks(
         ec_master_t *master /**< EtherCAT master. */
         );
 
+/** Queues the DC synchonity monitoring datagram for sending.
+ *
+ * The datagram broadcast-reads all "System time difference" registers (\a
+ * 0x092c) to get an upper estiomation of the DC synchony. The result can be
+ * checked with the ecrt_master_sync_monitor_process() method.
+ */
+void ecrt_master_sync_monitor_queue(
+        ec_master_t *master /**< EtherCAT master. */
+        );
+
+/** Processes the DC synchonity monitoring datagram.
+ *
+ * If the sync monitoring datagram was sent before with
+ * ecrt_master_sync_monitor_queue(), the result can be queried with this
+ * method.
+ *
+ * \return Upper estination of the maximum time difference in ns.
+ */
+uint32_t ecrt_master_sync_monitor_process(
+        ec_master_t *master /**< EtherCAT master. */
+        );
+
 /******************************************************************************
  * Slave configuration methods
  *****************************************************************************/
@@ -782,13 +819,17 @@ int ecrt_slave_config_sync_manager(
         );
 
 /** Configure a slave's watchdog times.
-*/	 
+ */
 void ecrt_slave_config_watchdog(
         ec_slave_config_t *sc, /**< Slave configuration. */
         uint16_t watchdog_divider, /**< Number of 40 ns intervals. Used as a
-                                    base unit for all slave watchdogs. */
+                                     base unit for all slave watchdogs. If set
+                                     to zero, the value is not written, so the
+                                     default ist used. */
         uint16_t watchdog_intervals /**< Number of base intervals for process
-                                      data watchdog. */
+                                      data watchdog. If set to zero, the value
+                                      is not written, so the default is used.
+                                     */
         );
 
 /** Add a PDO to a sync manager's PDO assignment.
