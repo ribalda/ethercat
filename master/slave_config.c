@@ -418,9 +418,9 @@ int ecrt_slave_config_sync_manager(ec_slave_config_t *sc, uint8_t sync_index,
     ec_sync_config_t *sync_config;
     
     if (sc->master->debug_level)
-        EC_DBG("ecrt_slave_config_sync_manager(sc = 0x%x, sync_index = %u, "
+        EC_DBG("ecrt_slave_config_sync_manager(sc = 0x%p, sync_index = %u, "
                 "dir = %i, watchdog_mode = %i)\n",
-                (u32) sc, sync_index, dir, watchdog_mode);
+                 sc, sync_index, dir, watchdog_mode);
 
     if (sync_index >= EC_MAX_SYNC_MANAGERS) {
         EC_ERR("Invalid sync manager index %u!\n", sync_index);
@@ -444,8 +444,8 @@ void ecrt_slave_config_watchdog(ec_slave_config_t *sc,
         uint16_t divider, uint16_t intervals)
 {
     if (sc->master->debug_level)
-        EC_DBG("%s(sc = 0x%x, divider = %u, intervals = %u)\n",
-                __func__, (u32) sc, divider, intervals);
+        EC_DBG("%s(sc = 0x%p, divider = %u, intervals = %u)\n",
+                __func__, sc, divider, intervals);
 
     sc->watchdog_divider = divider;
     sc->watchdog_intervals = intervals;
@@ -459,8 +459,8 @@ int ecrt_slave_config_pdo_assign_add(ec_slave_config_t *sc,
     ec_pdo_t *pdo;
 
     if (sc->master->debug_level)
-        EC_DBG("ecrt_slave_config_pdo_assign_add(sc = 0x%x, sync_index = %u, "
-                "pdo_index = 0x%04X)\n", (u32) sc, sync_index, pdo_index);
+        EC_DBG("ecrt_slave_config_pdo_assign_add(sc = 0x%p, sync_index = %u, "
+                "pdo_index = 0x%04X)\n", sc, sync_index, pdo_index);
 
     if (sync_index >= EC_MAX_SYNC_MANAGERS) {
         EC_ERR("Invalid sync manager index %u!\n", sync_index);
@@ -488,8 +488,8 @@ void ecrt_slave_config_pdo_assign_clear(ec_slave_config_t *sc,
         uint8_t sync_index)
 {
     if (sc->master->debug_level)
-        EC_DBG("ecrt_slave_config_pdo_assign_clear(sc = 0x%x, "
-                "sync_index = %u)\n", (u32) sc, sync_index);
+        EC_DBG("ecrt_slave_config_pdo_assign_clear(sc = 0x%p, "
+                "sync_index = %u)\n", sc, sync_index);
 
     if (sync_index >= EC_MAX_SYNC_MANAGERS) {
         EC_ERR("Invalid sync manager index %u!\n", sync_index);
@@ -513,10 +513,10 @@ int ecrt_slave_config_pdo_mapping_add(ec_slave_config_t *sc,
     int retval = 0;
     
     if (sc->master->debug_level)
-        EC_DBG("ecrt_slave_config_pdo_mapping_add(sc = 0x%x, "
+        EC_DBG("ecrt_slave_config_pdo_mapping_add(sc = 0x%p, "
                 "pdo_index = 0x%04X, entry_index = 0x%04X, "
                 "entry_subindex = 0x%02X, entry_bit_length = %u)\n",
-                (u32) sc, pdo_index, entry_index, entry_subindex,
+                sc, pdo_index, entry_index, entry_subindex,
                 entry_bit_length);
 
     for (sync_index = 0; sync_index < EC_MAX_SYNC_MANAGERS; sync_index++)
@@ -549,8 +549,8 @@ void ecrt_slave_config_pdo_mapping_clear(ec_slave_config_t *sc,
     ec_pdo_t *pdo = NULL;
     
     if (sc->master->debug_level)
-        EC_DBG("ecrt_slave_config_pdo_mapping_clear(sc = 0x%x, "
-                "pdo_index = 0x%04X)\n", (u32) sc, pdo_index);
+        EC_DBG("ecrt_slave_config_pdo_mapping_clear(sc = 0x%p, "
+                "pdo_index = 0x%04X)\n", sc, pdo_index);
 
     for (sync_index = 0; sync_index < EC_MAX_SYNC_MANAGERS; sync_index++)
         if ((pdo = ec_pdo_list_find_pdo(
@@ -579,8 +579,8 @@ int ecrt_slave_config_pdos(ec_slave_config_t *sc,
     const ec_pdo_entry_info_t *entry_info;
 
     if (sc->master->debug_level)
-        EC_DBG("ecrt_slave_config_pdos(sc = 0x%x, n_syncs = %u, "
-                "syncs = 0x%x)\n", (u32) sc, n_syncs, (u32) syncs);
+        EC_DBG("ecrt_slave_config_pdos(sc = 0x%p, n_syncs = %u, "
+                "syncs = 0x%p)\n", sc, n_syncs, syncs);
 
     if (!syncs)
         return 0;
@@ -651,9 +651,9 @@ int ecrt_slave_config_reg_pdo_entry(
     int sync_offset;
 
     if (sc->master->debug_level)
-        EC_DBG("ecrt_slave_config_reg_pdo_entry(sc = 0x%x, index = 0x%04X, "
-                "subindex = 0x%02X, domain = 0x%x, bit_position = 0x%x)\n",
-                (u32) sc, index, subindex, (u32) domain, (u32) bit_position);
+        EC_DBG("ecrt_slave_config_reg_pdo_entry(sc = 0x%p, index = 0x%04X, "
+                "subindex = 0x%02X, domain = 0x%p, bit_position = 0x%p)\n",
+                sc, index, subindex, domain, bit_position);
 
     for (sync_index = 0; sync_index < EC_MAX_SYNC_MANAGERS; sync_index++) {
         sync_config = &sc->sync_configs[sync_index];
@@ -713,9 +713,9 @@ int ecrt_slave_config_sdo(ec_slave_config_t *sc, uint16_t index,
     int ret;
 
     if (sc->master->debug_level)
-        EC_DBG("ecrt_slave_config_sdo(sc = 0x%x, index = 0x%04X, "
-                "subindex = 0x%02X, data = 0x%x, size = %u)\n", (u32) sc,
-                index, subindex, (u32) data, size);
+        EC_DBG("ecrt_slave_config_sdo(sc = 0x%p, index = 0x%04X, "
+                "subindex = 0x%02X, data = 0x%p, size = %zu)\n", sc,
+                index, subindex, data, size);
 
     if (slave && !(slave->sii.mailbox_protocols & EC_MBOX_COE)) {
         EC_ERR("Slave %u does not support CoE!\n", slave->ring_position);
@@ -752,8 +752,8 @@ int ecrt_slave_config_sdo8(ec_slave_config_t *sc, uint16_t index,
     uint8_t data[1];
 
     if (sc->master->debug_level)
-        EC_DBG("ecrt_slave_config_sdo8(sc = 0x%x, index = 0x%04X, "
-                "subindex = 0x%02X, value = %u)\n", (u32) sc,
+        EC_DBG("ecrt_slave_config_sdo8(sc = 0x%p, index = 0x%04X, "
+                "subindex = 0x%02X, value = %u)\n", sc,
                 index, subindex, (u32) value);
 
     EC_WRITE_U8(data, value);
@@ -768,8 +768,8 @@ int ecrt_slave_config_sdo16(ec_slave_config_t *sc, uint16_t index,
     uint8_t data[2];
 
     if (sc->master->debug_level)
-        EC_DBG("ecrt_slave_config_sdo16(sc = 0x%x, index = 0x%04X, "
-                "subindex = 0x%02X, value = %u)\n", (u32) sc,
+        EC_DBG("ecrt_slave_config_sdo16(sc = 0x%p, index = 0x%04X, "
+                "subindex = 0x%02X, value = %u)\n", sc,
                 index, subindex, value);
 
     EC_WRITE_U16(data, value);
@@ -784,8 +784,8 @@ int ecrt_slave_config_sdo32(ec_slave_config_t *sc, uint16_t index,
     uint8_t data[4];
 
     if (sc->master->debug_level)
-        EC_DBG("ecrt_slave_config_sdo32(sc = 0x%x, index = 0x%04X, "
-                "subindex = 0x%02X, value = %u)\n", (u32) sc,
+        EC_DBG("ecrt_slave_config_sdo32(sc = 0x%p, index = 0x%04X, "
+                "subindex = 0x%02X, value = %u)\n", sc,
                 index, subindex, value);
 
     EC_WRITE_U32(data, value);
@@ -802,9 +802,8 @@ int ecrt_slave_config_complete_sdo(ec_slave_config_t *sc, uint16_t index,
     int ret;
 
     if (sc->master->debug_level)
-        EC_DBG("ecrt_slave_config_complete_sdo(sc = 0x%x, index = 0x%04X, "
-                "data = 0x%x, size = %u)\n", (u32) sc,
-                index, (u32) data, size);
+        EC_DBG("ecrt_slave_config_complete_sdo(sc = 0x%p, index = 0x%04X, "
+                "data = 0x%p, size = %zu)\n", sc, index, data, size);
 
     if (slave && !(slave->sii.mailbox_protocols & EC_MBOX_COE)) {
         EC_ERR("Slave %u does not support CoE!\n", slave->ring_position);
@@ -846,8 +845,8 @@ ec_sdo_request_t *ecrt_slave_config_create_sdo_request_err(
     int ret;
 
     if (sc->master->debug_level)
-        EC_DBG("ecrt_slave_config_create_sdo_request(sc = 0x%x, "
-                "index = 0x%04X, subindex = 0x%02X, size = %u)\n", (u32) sc,
+        EC_DBG("ecrt_slave_config_create_sdo_request(sc = 0x%p, "
+                "index = 0x%04X, subindex = 0x%02X, size = %zu)\n", sc,
                 index, subindex, size);
 
     if (!(req = (ec_sdo_request_t *)
@@ -899,8 +898,8 @@ ec_voe_handler_t *ecrt_slave_config_create_voe_handler_err(
     int ret;
 
     if (sc->master->debug_level)
-        EC_DBG("ecrt_slave_config_create_voe_handler(sc = 0x%x, size = %u)\n",
-                (u32) sc, size);
+        EC_DBG("ecrt_slave_config_create_voe_handler(sc = 0x%p, size = %zu)\n",
+                sc, size);
 
     if (!(voe = (ec_voe_handler_t *)
                 kmalloc(sizeof(ec_voe_handler_t), GFP_KERNEL))) {

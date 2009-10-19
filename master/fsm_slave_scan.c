@@ -544,7 +544,7 @@ alloc_sii:
 
     if (!(slave->sii_words =
                 (uint16_t *) kmalloc(slave->sii_nwords * 2, GFP_KERNEL))) {
-        EC_ERR("Failed to allocate %u words of SII data for slave %u.\n",
+        EC_ERR("Failed to allocate %zu words of SII data for slave %u.\n",
                slave->sii_nwords, slave->ring_position);
         slave->sii_nwords = 0;
         slave->error_flag = 1;

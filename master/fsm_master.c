@@ -366,13 +366,13 @@ int ec_fsm_master_action_process_register(
         // found pending request; process it!
         if (master->debug_level)
             EC_DBG("Processing register request for slave %u, "
-                    "offset 0x%04x, length %u...\n",
+                    "offset 0x%04x, length %zu...\n",
                     request->slave->ring_position,
                     request->offset, request->length);
 
         if (request->length > fsm->datagram->mem_size) {
-            EC_ERR("Request length (%u) exceeds maximum "
-                    "datagram size (%u)!\n", request->length,
+            EC_ERR("Request length (%zu) exceeds maximum "
+                    "datagram size (%zu)!\n", request->length,
                     fsm->datagram->mem_size);
             request->state = EC_INT_REQUEST_FAILURE;
             wake_up(&master->reg_queue);
@@ -943,7 +943,7 @@ void ec_fsm_master_state_write_sii(
 
     // finished writing SII
     if (master->debug_level)
-        EC_DBG("Finished writing %u words of SII data to slave %u.\n",
+        EC_DBG("Finished writing %zu words of SII data to slave %u.\n",
                 request->nwords, slave->ring_position);
 
     if (request->offset <= 4 && request->offset + request->nwords > 4) {
@@ -990,7 +990,7 @@ void ec_fsm_master_state_foe_request(
 
     // finished transferring FoE
     if (master->debug_level)
-        EC_DBG("Successfully transferred %u bytes of FoE data from/to"
+        EC_DBG("Successfully transferred %zu bytes of FoE data from/to"
                 " slave %u.\n", request->data_size, slave->ring_position);
 
     request->state = EC_INT_REQUEST_SUCCESS;
@@ -1096,7 +1096,7 @@ void ec_fsm_master_state_reg_request(
                 kfree(request->data);
             request->data = kmalloc(request->length, GFP_KERNEL);
             if (!request->data) {
-                EC_ERR("Failed to allocate %u bytes of memory for"
+                EC_ERR("Failed to allocate %zu bytes of memory for"
                         " register data.\n", request->length);
                 request->state = EC_INT_REQUEST_FAILURE;
                 wake_up(&master->reg_queue);

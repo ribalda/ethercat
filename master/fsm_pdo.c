@@ -236,7 +236,7 @@ void ec_fsm_pdo_read_state_pdo_count(
     }
 
     if (fsm->request.data_size != sizeof(uint8_t)) {
-        EC_ERR("Invalid data size %u returned when uploading SDO 0x%04X:%02X "
+        EC_ERR("Invalid data size %zu returned when uploading SDO 0x%04X:%02X "
                 "from slave %u.\n", fsm->request.data_size,
                 fsm->request.index, fsm->request.subindex,
                 fsm->slave->ring_position);
@@ -298,7 +298,7 @@ void ec_fsm_pdo_read_state_pdo(
     }
 
     if (fsm->request.data_size != sizeof(uint16_t)) {
-        EC_ERR("Invalid data size %u returned when uploading SDO 0x%04X:%02X "
+        EC_ERR("Invalid data size %zu returned when uploading SDO 0x%04X:%02X "
                 "from slave %u.\n", fsm->request.data_size,
                 fsm->request.index, fsm->request.subindex,
                 fsm->slave->ring_position);

@@ -849,7 +849,7 @@ void ec_fsm_foe_state_data_read(
         printk ("ERROR: data doesn't fit in receive buffer\n");
         printk ("       rx_buffer_size  = %d\n", fsm->rx_buffer_size);
         printk ("       rx_buffer_offset= %d\n", fsm->rx_buffer_offset);
-        printk ("       rec_size        = %d\n", rec_size);
+        printk ("       rec_size        = %zd\n", rec_size);
         printk ("       rx_mailbox_size = %d\n",
                 slave->configured_rx_mailbox_size);
         printk ("       rx_last_packet  = %d\n", fsm->rx_last_packet);

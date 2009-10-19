@@ -446,7 +446,7 @@ void ec_fsm_coe_dict_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     }
 
     if (rec_size < 3) {
-        EC_ERR("Received corrupted SDO dictionary response (size %u).\n",
+        EC_ERR("Received corrupted SDO dictionary response (size %zu).\n",
                 rec_size);
         fsm->state = ec_fsm_coe_error;
         return;
@@ -480,7 +480,7 @@ void ec_fsm_coe_dict_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     }
 
     if (rec_size < 8 || rec_size % 2) {
-        EC_ERR("Invalid data size %u!\n", rec_size);
+        EC_ERR("Invalid data size %zu!\n", rec_size);
         ec_print_data(data, rec_size);
         fsm->state = ec_fsm_coe_error;
         return;
@@ -690,7 +690,7 @@ void ec_fsm_coe_dict_desc_response(ec_fsm_coe_t *fsm
     }
 
     if (rec_size < 3) {
-        EC_ERR("Received corrupted SDO description response (size %u).\n",
+        EC_ERR("Received corrupted SDO description response (size %zu).\n",
                 rec_size);
         fsm->state = ec_fsm_coe_error;
         return;
@@ -707,7 +707,7 @@ void ec_fsm_coe_dict_desc_response(ec_fsm_coe_t *fsm
     }
 
     if (rec_size < 8) {
-        EC_ERR("Received corrupted SDO description response (size %u).\n",
+        EC_ERR("Received corrupted SDO description response (size %zu).\n",
                 rec_size);
         fsm->state = ec_fsm_coe_error;
         return;
@@ -929,7 +929,7 @@ void ec_fsm_coe_dict_entry_response(ec_fsm_coe_t *fsm
 
     if (rec_size < 3) {
         EC_ERR("Received corrupted SDO entry description response "
-                "(size %u).\n", rec_size);
+                "(size %zu).\n", rec_size);
         fsm->state = ec_fsm_coe_error;
         return;
     }
@@ -946,7 +946,7 @@ void ec_fsm_coe_dict_entry_response(ec_fsm_coe_t *fsm
 
     if (rec_size < 9) {
         EC_ERR("Received corrupted SDO entry description response "
-                "(size %u).\n", rec_size);
+                "(size %zu).\n", rec_size);
         fsm->state = ec_fsm_coe_error;
         return;
     }
@@ -969,7 +969,7 @@ void ec_fsm_coe_dict_entry_response(ec_fsm_coe_t *fsm
     }
 
     if (rec_size < 16) {
-        EC_ERR("Invalid data size %u!\n", rec_size);
+        EC_ERR("Invalid data size %zu!\n", rec_size);
         ec_print_data(data, rec_size);
         fsm->state = ec_fsm_coe_error;
         return;
@@ -1314,7 +1314,7 @@ void ec_fsm_coe_down_response(ec_fsm_coe_t *fsm /**< finite state machine */)
 
     if (rec_size < 6) {
         fsm->state = ec_fsm_coe_error;
-        EC_ERR("Received data are too small (%u bytes):\n", rec_size);
+        EC_ERR("Received data are too small (%zu bytes):\n", rec_size);
         ec_print_data(data, rec_size);
         return;
     }
@@ -1328,7 +1328,7 @@ void ec_fsm_coe_down_response(ec_fsm_coe_t *fsm /**< finite state machine */)
         } else {
             sprintf(subidxstr, ":%02X", request->subindex);
         }
-        EC_ERR("SDO download 0x%04X%s (%u bytes) aborted on slave %u.\n",
+        EC_ERR("SDO download 0x%04X%s (%zu bytes) aborted on slave %u.\n",
                 request->index, subidxstr, request->data_size,
                 slave->ring_position);
         if (rec_size < 10) {
@@ -1597,7 +1597,7 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
 
     if (rec_size < 6) {
         fsm->state = ec_fsm_coe_error;
-        EC_ERR("Received currupted SDO upload response (%u bytes)!\n", rec_size);
+        EC_ERR("Received currupted SDO upload response (%zu bytes)!\n", rec_size);
         ec_print_data(data, rec_size);
         return;
     }
@@ -1657,7 +1657,7 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
         if (rec_size < 6 + fsm->complete_size) {
             fsm->state = ec_fsm_coe_error;
             EC_ERR("Received currupted SDO expedited upload"
-                    " response (only %u bytes)!\n", rec_size);
+                    " response (only %zu bytes)!\n", rec_size);
             ec_print_data(data, rec_size);
             return;
         }
@@ -1670,7 +1670,7 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
         if (rec_size < 10) {
             fsm->state = ec_fsm_coe_error;
             EC_ERR("Received currupted SDO normal upload"
-                    " response (only %u bytes)!\n", rec_size);
+                    " response (only %zu bytes)!\n", rec_size);
             ec_print_data(data, rec_size);
             return;
         }
@@ -1699,7 +1699,7 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
 
         if (data_size < fsm->complete_size) {
             if (master->debug_level)
-                EC_DBG("SDO data incomplete (%u / %u). Segmenting...\n",
+                EC_DBG("SDO data incomplete (%zu / %u). Segmenting...\n",
                         data_size, fsm->complete_size);
 
             ec_fsm_coe_up_prepare_segment_request(fsm);
@@ -1930,7 +1930,7 @@ void ec_fsm_coe_up_seg_response(ec_fsm_coe_t *fsm /**< finite state machine */)
 
     if (request->data_size != fsm->complete_size) {
         EC_WARN("SDO upload 0x%04X:%02X on slave %u: Assembled data"
-                " size (%u) does not match complete size (%u)!\n",
+                " size (%zu) does not match complete size (%u)!\n",
                 request->index, request->subindex, slave->ring_position,
                 request->data_size, fsm->complete_size);
     }
