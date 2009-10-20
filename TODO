@@ -54,6 +54,11 @@ Version 1.5.0:
 * Change SDO index at runtime for SDO request.
 * Implement ecrt_slave_config_request_state().
 * Output skipped datagrams again.
+* Output warning on unmatched slave configuration.
+* ec_direction_t default
+* Send_ext context warn
+* XML hex
+* r8169
 
 Future issues:
 
