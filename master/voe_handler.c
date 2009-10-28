@@ -489,7 +489,7 @@ void ec_voe_handler_state_read_nosync_response(ec_voe_handler_t *voe)
         voe->state = ec_voe_handler_state_error;
         voe->request_state = EC_INT_REQUEST_FAILURE;
         if (master->debug_level)
-            EC_DBG("Slave %u did not send VoE data.", slave->ring_position);
+            EC_DBG("Slave %u did not send VoE data.\n", slave->ring_position);
         return;
     }
 
