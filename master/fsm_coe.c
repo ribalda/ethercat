@@ -1526,6 +1526,7 @@ void ec_fsm_coe_up_prepare_segment_request(
     EC_WRITE_U16(data, 0x2 << 12); // SDO request
     EC_WRITE_U8 (data + 2, (fsm->toggle << 4 // toggle
                 | 0x3 << 5)); // upload segment request
+    memset(data + 3, 0x00, 7);
 
     if (fsm->slave->master->debug_level) {
         EC_DBG("Upload segment request:\n");

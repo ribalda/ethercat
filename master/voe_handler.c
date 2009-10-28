@@ -234,6 +234,7 @@ void ec_voe_handler_state_write_start(ec_voe_handler_t *voe)
 
     EC_WRITE_U32(data,     voe->vendor_id);
     EC_WRITE_U16(data + 4, voe->vendor_type);
+    /* data already in datagram */
 
     voe->retries = EC_FSM_RETRIES;
     voe->jiffies_start = jiffies;
