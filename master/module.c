@@ -463,7 +463,8 @@ ec_device_t *ecdev_offer(
             ec_device_attach(&master->main_device, net_dev, poll, module);
             up(&master->device_sem);
             
-            sprintf(net_dev->name, "ec%u", master->index);
+            snprintf(net_dev->name, IFNAMSIZ, "ec%u", master->index);
+
             return &master->main_device; // offer accepted
         }
         else {
