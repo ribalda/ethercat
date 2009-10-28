@@ -185,7 +185,6 @@ int ec_eoe_init(
 void ec_eoe_clear(ec_eoe_t *eoe /**< EoE handler */)
 {
     unregister_netdev(eoe->dev); // possibly calls close callback
-    free_netdev(eoe->dev);
 
     // empty transmit queue
     ec_eoe_flush(eoe);
@@ -195,7 +194,10 @@ void ec_eoe_clear(ec_eoe_t *eoe /**< EoE handler */)
         kfree(eoe->tx_frame);
     }
 
-    if (eoe->rx_skb) dev_kfree_skb(eoe->rx_skb);
+    if (eoe->rx_skb)
+        dev_kfree_skb(eoe->rx_skb);
+
+    free_netdev(eoe->dev);
 
     ec_datagram_clear(&eoe->datagram);
 }
