@@ -80,8 +80,6 @@ void ec_domain_clear(ec_domain_t *domain /**< EtherCAT domain */)
 
     // dequeue and free datagrams
     list_for_each_entry_safe(datagram, next, &domain->datagrams, list) {
-        if (!list_empty(&datagram->queue)) // datagram queued?
-            list_del(&datagram->queue);
         ec_datagram_clear(datagram);
         kfree(datagram);
     }

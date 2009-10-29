@@ -116,9 +116,22 @@ void ec_datagram_init(ec_datagram_t *datagram /**< EtherCAT datagram. */)
  */
 void ec_datagram_clear(ec_datagram_t *datagram /**< EtherCAT datagram. */)
 {
+    ec_datagram_unqueue(datagram);
+
     if (datagram->data_origin == EC_ORIG_INTERNAL && datagram->data) {
         kfree(datagram->data);
         datagram->data = NULL;
+    }
+}
+
+/*****************************************************************************/
+
+/** Unqueue datagram.
+ */
+void ec_datagram_unqueue(ec_datagram_t *datagram /**< EtherCAT datagram. */)
+{
+    if (!list_empty(&datagram->queue)) {
+        list_del_init(&datagram->queue);
     }
 }
 
