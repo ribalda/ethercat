@@ -72,6 +72,13 @@ typedef struct {
     ec_device_t *ecdev;
 } ec_gen_device_t;
 
+typedef struct {
+    struct list_head list;
+    char name[IFNAMSIZ];
+    int ifindex;
+    uint8_t dev_addr[ETH_ALEN];
+} ec_gen_interface_desc_t;
+
 int ec_gen_device_open(ec_gen_device_t *);
 int ec_gen_device_stop(ec_gen_device_t *);
 int ec_gen_device_start_xmit(ec_gen_device_t *, struct sk_buff *);
@@ -127,8 +134,7 @@ static const struct net_device_ops ec_gen_netdev_ops = {
 /** Init generic device.
  */
 int ec_gen_device_init(
-        ec_gen_device_t *dev,
-        struct net_device *real_netdev
+        ec_gen_device_t *dev
         )
 {
     ec_gen_device_t **priv;
@@ -141,7 +147,6 @@ int ec_gen_device_init(
     if (!dev->netdev) {
         return -ENOMEM;
     }
-    memcpy(dev->netdev->dev_addr, real_netdev->dev_addr, ETH_ALEN);
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 29)
     dev->netdev->netdev_ops = &ec_gen_netdev_ops;
@@ -181,7 +186,7 @@ void ec_gen_device_clear(
  */
 int ec_gen_device_create_socket(
         ec_gen_device_t *dev,
-        struct net_device *real_netdev
+        ec_gen_interface_desc_t *desc
         )
 {
     int ret;
@@ -194,12 +199,12 @@ int ec_gen_device_create_socket(
     }
 
     printk(KERN_ERR PFX "Binding socket to interface %i (%s).\n",
-            real_netdev->ifindex, real_netdev->name);
+            desc->ifindex, desc->name);
 
     memset(&sa, 0x00, sizeof(sa));
     sa.sll_family = AF_PACKET;
     sa.sll_protocol = htons(ETH_P_ETHERCAT);
-    sa.sll_ifindex = real_netdev->ifindex;
+    sa.sll_ifindex = desc->ifindex;
     ret = kernel_bind(dev->socket, (struct sockaddr *) &sa, sizeof(sa));
     if (ret) {
         printk(KERN_ERR PFX "Failed to bind() socket to interface.\n");
@@ -217,14 +222,16 @@ int ec_gen_device_create_socket(
  */
 int ec_gen_device_offer(
         ec_gen_device_t *dev,
-        struct net_device *real_netdev
+        ec_gen_interface_desc_t *desc
         )
 {
     int ret = 0;
 
+    memcpy(dev->netdev->dev_addr, desc->dev_addr, ETH_ALEN);
+
     dev->ecdev = ecdev_offer(dev->netdev, ec_gen_poll, THIS_MODULE);
     if (dev->ecdev) {
-        if (ec_gen_device_create_socket(dev, real_netdev)) {
+        if (ec_gen_device_create_socket(dev, desc)) {
             ecdev_withdraw(dev->ecdev);
             dev->ecdev = NULL;
         } else if (ecdev_open(dev->ecdev)) {
@@ -316,7 +323,7 @@ void ec_gen_device_poll(
 /** Offer device.
  */
 int offer_device(
-        struct net_device *netdev
+        ec_gen_interface_desc_t *desc
         )
 {
     ec_gen_device_t *gendev;
@@ -327,13 +334,13 @@ int offer_device(
         return -ENOMEM;
     }
 
-    ret = ec_gen_device_init(gendev, netdev);
+    ret = ec_gen_device_init(gendev);
     if (ret) {
         kfree(gendev);
         return ret;
     }
 
-    if (ec_gen_device_offer(gendev, netdev)) {
+    if (ec_gen_device_offer(gendev, desc)) {
         list_add_tail(&gendev->list, &generic_devices);
     } else {
         ec_gen_device_clear(gendev);
@@ -368,27 +375,47 @@ void clear_devices(void)
 int __init ec_gen_init_module(void)
 {
     int ret = 0;
+    struct list_head descs;
     struct net_device *netdev;
+    ec_gen_interface_desc_t *desc, *next;
 
     printk(KERN_INFO PFX "EtherCAT master generic Ethernet device module %s\n",
             EC_MASTER_VERSION);
 
     INIT_LIST_HEAD(&generic_devices);
+    INIT_LIST_HEAD(&descs);
 
     read_lock(&dev_base_lock);
     for_each_netdev(&init_net, netdev) {
         if (netdev->type != ARPHRD_ETHER)
             continue;
-        ret = offer_device(netdev);
-        if (ret) {
+        desc = kmalloc(sizeof(ec_gen_interface_desc_t), GFP_KERNEL);
+        if (!desc) {
+            ret = -ENOMEM;
             read_unlock(&dev_base_lock);
             goto out_err;
         }
+        strncpy(desc->name, netdev->name, IFNAMSIZ);
+        desc->ifindex = netdev->ifindex;
+        memcpy(desc->dev_addr, netdev->dev_addr, ETH_ALEN);
+        list_add_tail(&desc->list, &descs);
     }
     read_unlock(&dev_base_lock);
+
+    list_for_each_entry_safe(desc, next, &descs, list) {
+        ret = offer_device(desc);
+        if (ret) {
+            goto out_err;
+        }
+        kfree(desc);
+    }
     return ret;
 
 out_err:
+    list_for_each_entry_safe(desc, next, &descs, list) {
+        list_del(&desc->list);
+        kfree(desc);
+    }
     clear_devices();
     return ret;
 }
