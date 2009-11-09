@@ -314,11 +314,11 @@ void ec_gen_device_poll(
     struct kvec iov;
     int ret, budget = 10; // FIXME
 
-    iov.iov_base = dev->rx_buf;
-    iov.iov_len = EC_GEN_RX_BUF_SIZE;
-    memset(&msg, 0, sizeof(msg));
-
     do {
+        iov.iov_base = dev->rx_buf;
+        iov.iov_len = EC_GEN_RX_BUF_SIZE;
+        memset(&msg, 0, sizeof(msg));
+
         ret = kernel_recvmsg(dev->socket, &msg, &iov, 1, iov.iov_len,
                 MSG_DONTWAIT);
         if (ret > 0) {
