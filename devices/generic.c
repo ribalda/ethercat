@@ -47,6 +47,8 @@
 
 #define ETH_P_ETHERCAT 0x88A4
 
+#define EC_GEN_RX_BUF_SIZE 1600
+
 /*****************************************************************************/
 
 int __init ec_gen_init_module(void);
@@ -70,6 +72,7 @@ typedef struct {
     struct net_device *netdev;
     struct socket *socket;
     ec_device_t *ecdev;
+    uint8_t *rx_buf;
 } ec_gen_device_t;
 
 typedef struct {
@@ -142,6 +145,7 @@ int ec_gen_device_init(
 
     dev->ecdev = NULL;
     dev->socket = NULL;
+    dev->rx_buf = NULL;
 
     dev->netdev = alloc_netdev(sizeof(ec_gen_device_t *), &null, ether_setup);
     if (!dev->netdev) {
@@ -178,6 +182,10 @@ void ec_gen_device_clear(
         sock_release(dev->socket);
     }
     free_netdev(dev->netdev);
+
+    if (dev->rx_buf) {
+        kfree(dev->rx_buf);
+    }
 }
 
 /*****************************************************************************/
@@ -191,6 +199,11 @@ int ec_gen_device_create_socket(
 {
     int ret;
     struct sockaddr_ll sa;
+
+    dev->rx_buf = kmalloc(EC_GEN_RX_BUF_SIZE, GFP_KERNEL);
+    if (!dev->rx_buf) {
+        return -ENOMEM;
+    }
 
     ret = sock_create_kern(PF_PACKET, SOCK_RAW, htons(ETH_P_ETHERCAT), &dev->socket);
     if (ret) {
@@ -299,18 +312,17 @@ void ec_gen_device_poll(
 {
     struct msghdr msg;
     struct kvec iov;
-    char buf[2000]; // FIXME
     int ret, budget = 10; // FIXME
 
-    iov.iov_base = buf;
-    iov.iov_len = 2000;
+    iov.iov_base = dev->rx_buf;
+    iov.iov_len = EC_GEN_RX_BUF_SIZE;
     memset(&msg, 0, sizeof(msg));
 
     do {
         ret = kernel_recvmsg(dev->socket, &msg, &iov, 1, iov.iov_len,
                 MSG_DONTWAIT);
         if (ret > 0) {
-            ecdev_receive(dev->ecdev, buf, ret);
+            ecdev_receive(dev->ecdev, dev->rx_buf, ret);
         } else if (ret < 0) {
             break;
         }
