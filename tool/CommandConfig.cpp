@@ -131,7 +131,7 @@ void CommandConfig::showDetailedConfigs(
 		)
 {
     ConfigList::const_iterator configIter;
-    unsigned int j, k, l;
+    unsigned int i, j, k, l;
     ec_ioctl_slave_t slave;
     ec_ioctl_config_pdo_t pdo;
     ec_ioctl_config_pdo_entry_t entry;
@@ -159,11 +159,34 @@ void CommandConfig::showDetailedConfigs(
             cout << "none" << endl;
         }
 
+        cout << "Watchdog divider: ";
+        if (configIter->watchdog_divider) {
+            cout << dec << configIter->watchdog_divider;
+        } else {
+            cout << "(Default)";
+        }
+        cout << endl
+            << "Watchdog intervals: ";
+        if (configIter->watchdog_intervals) {
+            cout << dec << configIter->watchdog_intervals;
+        } else {
+            cout << "(Default)";
+        }
+        cout << endl;
+
         for (j = 0; j < EC_MAX_SYNC_MANAGERS; j++) {
             if (configIter->syncs[j].pdo_count) {
-                cout << "SM" << dec << j << " ("
+                cout << "SM" << dec << j << ", Dir: "
                     << (configIter->syncs[j].dir == EC_DIR_INPUT
-                            ? "Input" : "Output") << ")" << endl;
+                            ? "Input" : "Output") << ", Watchdog: ";
+                switch (configIter->syncs[j].watchdog_mode) {
+                    case EC_WD_DEFAULT: cout << "Default"; break;
+                    case EC_WD_ENABLE: cout << "Enable"; break;
+                    case EC_WD_DISABLE: cout << "Disable"; break;
+                    default: cout << "???"; break;
+                }
+                cout << endl;
+
                 for (k = 0; k < configIter->syncs[j].pdo_count; k++) {
                     m.getConfigPdo(&pdo, configIter->config_index, j, k);
 
@@ -194,26 +217,23 @@ void CommandConfig::showDetailedConfigs(
                     << hex << setfill('0')
                     << setw(4) << sdo.index << ":"
                     << setw(2) << (unsigned int) sdo.subindex
-                    << ", " << dec << sdo.size << " byte: " << hex;
+                    << ", " << dec << sdo.size << " byte" << endl;
 
-                switch (sdo.size) {
-                    case 1:
-                        cout << "0x" << setw(2)
-                            << (unsigned int) *(uint8_t *) &sdo.data;
-                        break;
-                    case 2:
-                        cout << "0x" << setw(4)
-                            << le16_to_cpup(&sdo.data);
-                        break;
-                    case 4:
-                        cout << "0x" << setw(8)
-                            << le32_to_cpup(&sdo.data);
-                        break;
-                    default:
-                        cout << "???";
+                cout << "    " << hex;
+                for (i = 0; i < min((uint32_t) sdo.size,
+                            (uint32_t) EC_MAX_SDO_DATA_SIZE); i++) {
+                    cout << setw(2) << (unsigned int) sdo.data[i];
+                    if ((i + 1) % 16 == 0 && i < sdo.size - 1) {
+                        cout << endl << "    ";
+                    } else {
+                        cout << " ";
+                    }
                 }
 
                 cout << endl;
+                if (sdo.size > EC_MAX_SDO_DATA_SIZE) {
+                    cout << "    ..." << endl;
+                }
             }
         } else {
             cout << "  None." << endl;

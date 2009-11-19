@@ -13,6 +13,7 @@ LATEX_OPTIONS := -file-line-error-style
 COMMANDS := \
 	alias \
 	config \
+	cstruct \
 	data \
 	debug \
 	domains \

@@ -506,6 +506,12 @@ void ecdev_receive(
 {
     const void *ec_data = data + ETH_HLEN;
     size_t ec_size = size - ETH_HLEN;
+
+    if (unlikely(!data)) {
+        EC_WARN("%s() called with NULL data.\n", __func__);
+        return;
+    }
+
     device->rx_count++;
 
     if (unlikely(device->master->debug_level > 1)) {

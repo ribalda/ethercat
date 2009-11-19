@@ -933,9 +933,9 @@ void ec_fsm_slave_config_enter_watchdog(
 
         fsm->retries = EC_FSM_RETRIES;
         fsm->state = ec_fsm_slave_config_state_watchdog;
+    } else {
+        ec_fsm_slave_config_enter_pdo_sync(fsm);
     }
-
-    ec_fsm_slave_config_enter_pdo_sync(fsm);
 }
 
 /*****************************************************************************/

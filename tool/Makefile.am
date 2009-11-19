@@ -27,9 +27,11 @@
 #
 #  ---
 #
-#  vim: syntax=make
+#  vim: syntax=automake
 #
 #------------------------------------------------------------------------------
+
+EXTRA_DIST =
 
 bin_PROGRAMS = ethercat
 
@@ -37,11 +39,11 @@ ethercat_SOURCES = \
 	Command.cpp \
 	CommandAlias.cpp \
 	CommandConfig.cpp \
+	CommandCStruct.cpp \
 	CommandData.cpp \
 	CommandDebug.cpp \
 	CommandDomains.cpp \
 	CommandDownload.cpp \
-	CommandEoe.cpp \
 	CommandFoeRead.cpp \
 	CommandFoeWrite.cpp \
 	CommandGraph.cpp \
@@ -64,15 +66,21 @@ ethercat_SOURCES = \
 	main.cpp \
 	sii_crc.cpp
 
+if ENABLE_EOE
+ethercat_SOURCES += CommandEoe.cpp
+else
+EXTRA_DIST += CommandEoe.cpp
+endif
+
 noinst_HEADERS = \
 	Command.h \
 	CommandAlias.h \
 	CommandConfig.h \
+	CommandCStruct.h \
 	CommandData.h \
 	CommandDebug.h \
 	CommandDomains.h \
 	CommandDownload.h \
-	CommandEoe.h \
 	CommandFoeRead.h \
 	CommandFoeWrite.h \
 	CommandGraph.h \
@@ -94,12 +102,18 @@ noinst_HEADERS = \
 	SdoCommand.h \
 	sii_crc.h
 
-REV = `if test -s $(top_srcdir)/svnrevision; then \
-		cat $(top_srcdir)/svnrevision; \
+if ENABLE_EOE
+noinst_HEADERS += CommandEoe.h
+else
+EXTRA_DIST += CommandEoe.h
+endif
+
+REV = `if test -s $(top_srcdir)/revision; then \
+		cat $(top_srcdir)/revision; \
 	else \
-		svnversion $(srcdir)/.. 2>/dev/null || echo "unknown"; \
+		hg id -i $(top_srcdir) 2>/dev/null || echo "unknown"; \
 	fi`
 
-ethercat_CXXFLAGS = -I$(top_srcdir)/master -Wall -DSVNREV=$(REV)
+ethercat_CXXFLAGS = -I$(top_srcdir)/master -Wall -DREV=$(REV)
 
 #------------------------------------------------------------------------------

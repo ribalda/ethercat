@@ -45,7 +45,9 @@
  *   ecrt_slave_config_dc() to configure a slave for cyclic operation, and
  *   ecrt_master_application_time(), ecrt_master_sync_reference_clock() and
  *   ecrt_master_sync_slave_clocks() for offset and drift compensation. The
- *   EC_TIMEVAL2NANO() macro can be used for epoch time conversion.
+ *   EC_TIMEVAL2NANO() macro can be used for epoch time conversion, while the
+ *   ecrt_master_sync_monitor_queue() and ecrt_master_sync_monitor_process()
+ *   methods can be used to monitor the synchrony. 
  * - Improved the callback mechanism. ecrt_master_callbacks() now takes two
  *   callback functions for sending and receiving datagrams.
  *   ecrt_master_send_ext() is used to execute the sending of non-application
@@ -53,6 +55,9 @@
  * - Added watchdog configuration (method ecrt_slave_config_watchdog(),
  *   #ec_watchdog_mode_t, \a watchdog_mode parameter in ec_sync_info_t and
  *   ecrt_slave_config_sync_manager()).
+ * - Added ecrt_slave_config_complete_sdo() method to download an SDO during
+ *   configuration via CompleteAccess.
+ * - Added ecrt_master_deactivate() to remove the bus configuration.
  * - Added ecrt_open_master() and ecrt_master_reserve() separation for
  *   userspace.
  * - Added bus information interface (methods ecrt_master(),
@@ -63,7 +68,7 @@
  *   methods to let an application transfer SDOs before activating the master.
  * - Changed the meaning of the negative return values of
  *   ecrt_slave_config_reg_pdo_entry() and ecrt_slave_config_sdo*().
- * - Imlemented the Vendor-specific over EtherCAT mailbox protocol. See
+ * - Implemented the Vendor-specific over EtherCAT mailbox protocol. See
  *   ecrt_slave_config_create_voe_handler().
  * - Renamed ec_sdo_request_state_t to #ec_request_state_t, because it is also
  *   used by VoE handlers.
@@ -129,7 +134,7 @@
 
 /** Timeval to nanoseconds conversion.
  *
- * This macro converts a unix epoch time to EtherCAT DC time.
+ * This macro converts a Unix epoch time to EtherCAT DC time.
  *
  * \see void ecrt_master_application_time()
  *
@@ -237,7 +242,7 @@ typedef struct {
     uint8_t al_state; /**< Current state of the slave. */
     uint8_t error_flag; /**< Error flag for that slave. */
     uint8_t sync_count; /**< Number of sync managers. */
-    uint16_t sdo_count; /**< Number of SDO's. */
+    uint16_t sdo_count; /**< Number of SDOs. */
     char name[EC_MAX_STRING_LENGTH]; /**< Name of the slave. */
 } ec_slave_info_t;
 
@@ -469,8 +474,8 @@ int ecrt_master_reserve(
  * its parameters. Asynchronous master access (like EoE processing) is only
  * possible if the callbacks have been set.
  *
- * The task of the send callback (\a request_cb) is to decide, if the bus is
- * currently accessible. In this case, it can call the ecrt_master_send_ext()
+ * The task of the send callback (\a send_cb) is to decide, if the bus is
+ * currently accessible and whether or not to call the ecrt_master_send_ext()
  * method.
  *
  * The task of the receive callback (\a receive_cb) is to decide, if a call to
@@ -478,8 +483,10 @@ int ecrt_master_reserve(
  */
 void ecrt_master_callbacks(
         ec_master_t *master, /**< EtherCAT master */
-        void (*send_cb)(ec_master_t *), /**< Datagram sending callback. */
-        void (*receive_cb)(ec_master_t *) /**< Receive callback. */
+        void (*send_cb)(void *), /**< Datagram sending callback. */
+        void (*receive_cb)(void *), /**< Receive callback. */
+        void *cb_data /**< Arbitraty pointer passed to the callback functions.
+                       */
         );
 
 #endif /* __KERNEL__ */
@@ -644,7 +651,7 @@ int ecrt_master_sdo_download(
  * processing.
  *
  * \retval  0 Success.
- * \retval -1 Error occured.
+ * \retval -1 Error occurred.
  */
 int ecrt_master_sdo_upload(
         ec_master_t *master, /**< EtherCAT master. */
@@ -676,6 +683,18 @@ int ecrt_master_sdo_upload(
  * \return 0 in case of success, else < 0
  */
 int ecrt_master_activate(
+        ec_master_t *master /**< EtherCAT master. */
+        );
+
+/** Deactivates the master.
+ *
+ * Removes the bus configuration. All objects created by
+ * ecrt_master_create_domain(), ecrt_master_slave_config(), ecrt_domain_data()
+ * ecrt_slave_config_create_sdo_request() and
+ * ecrt_slave_config_create_voe_handler() are freed, so pointers to them
+ * become invalid.
+ */
+void ecrt_master_deactivate(
         ec_master_t *master /**< EtherCAT master. */
         );
 
@@ -759,6 +778,28 @@ void ecrt_master_sync_slave_clocks(
         ec_master_t *master /**< EtherCAT master. */
         );
 
+/** Queues the DC synchonity monitoring datagram for sending.
+ *
+ * The datagram broadcast-reads all "System time difference" registers (\a
+ * 0x092c) to get an upper estiomation of the DC synchony. The result can be
+ * checked with the ecrt_master_sync_monitor_process() method.
+ */
+void ecrt_master_sync_monitor_queue(
+        ec_master_t *master /**< EtherCAT master. */
+        );
+
+/** Processes the DC synchonity monitoring datagram.
+ *
+ * If the sync monitoring datagram was sent before with
+ * ecrt_master_sync_monitor_queue(), the result can be queried with this
+ * method.
+ *
+ * \return Upper estination of the maximum time difference in ns.
+ */
+uint32_t ecrt_master_sync_monitor_process(
+        ec_master_t *master /**< EtherCAT master. */
+        );
+
 /******************************************************************************
  * Slave configuration methods
  *****************************************************************************/
@@ -779,13 +820,17 @@ int ecrt_slave_config_sync_manager(
         );
 
 /** Configure a slave's watchdog times.
-*/	 
+ */
 void ecrt_slave_config_watchdog(
         ec_slave_config_t *sc, /**< Slave configuration. */
         uint16_t watchdog_divider, /**< Number of 40 ns intervals. Used as a
-                                    base unit for all slave watchdogs. */
+                                     base unit for all slave watchdogs. If set
+                                     to zero, the value is not written, so the
+                                     default ist used. */
         uint16_t watchdog_intervals /**< Number of base intervals for process
-                                      data watchdog. */
+                                      data watchdog. If set to zero, the value
+                                      is not written, so the default is used.
+                                     */
         );
 
 /** Add a PDO to a sync manager's PDO assignment.
@@ -1029,6 +1074,23 @@ int ecrt_slave_config_sdo32(
         uint16_t sdo_index, /**< Index of the SDO to configure. */
         uint8_t sdo_subindex, /**< Subindex of the SDO to configure. */
         uint32_t value /**< Value to set. */
+        );
+
+/** Add configuration data for a complete SDO.
+ *
+ * The SDO data are transferred via CompleteAccess. Data for the first
+ * subindex (0) have to be included.
+ *
+ * \see ecrt_slave_config_sdo().
+ *
+ * \retval  0 Success.
+ * \retval <0 Error code.
+ */
+int ecrt_slave_config_complete_sdo(
+        ec_slave_config_t *sc, /**< Slave configuration. */
+        uint16_t index, /**< Index of the SDO to configure. */
+        const uint8_t *data, /**< Pointer to the data. */
+        size_t size /**< Size of the \a data. */
         );
 
 /** Create an SDO request to exchange SDOs during realtime operation.

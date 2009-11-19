@@ -243,24 +243,28 @@ void run(long data)
 
 /*****************************************************************************/
 
-void send_callback(ec_master_t *master)
+void send_callback(void *cb_data)
 {
+    ec_master_t *m = (ec_master_t *) cb_data;
+
     // too close to the next real time cycle: deny access...
     if (get_cycles() - t_last_cycle <= t_critical) {
         rt_sem_wait(&master_sem);
-        ecrt_master_send_ext(master);
+        ecrt_master_send_ext(m);
         rt_sem_signal(&master_sem);
     }
 }
 
 /*****************************************************************************/
 
-void receive_callback(ec_master_t *master)
+void receive_callback(void *cb_data)
 {
+    ec_master_t *m = (ec_master_t *) cb_data;
+
     // too close to the next real time cycle: deny access...
     if (get_cycles() - t_last_cycle <= t_critical) {
         rt_sem_wait(&master_sem);
-        ecrt_master_receive(master);
+        ecrt_master_receive(m);
         rt_sem_signal(&master_sem);
     }
 }
@@ -288,7 +292,7 @@ int __init init_mod(void)
         goto out_return;
     }
 
-    ecrt_master_callbacks(master, send_callback, receive_callback);
+    ecrt_master_callbacks(master, send_callback, receive_callback, master);
 
     printk(KERN_INFO PFX "Registering domain...\n");
     if (!(domain1 = ecrt_master_create_domain(master))) {

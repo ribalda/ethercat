@@ -20,7 +20,6 @@ Version 1.5.0:
       "System Time" register instead of using the application time.
     - Check if register 0x0980 is working, to avoid clearing it when
       configuring.
-    - Create an interface to query the System Time Difference registers.
 * Remove byte-swapping functions from user space.
 * EoE:
     - Only execute one EoE handler per cycle.
@@ -47,6 +46,14 @@ Version 1.5.0:
 * Document ec_fsm_foe members.
 * Test KBUILD_EXTRA_SYMBOLS.
 * Remove default buffer size in SDO upload.
+* Check for Enable SDO Complete Access flag.
+* Implement CompleteAccess for command-line tool.
+* Implement CompleteAccess for SDO uploads.
+* Implement identifier parameter for cstruct command.
+* Implement sync delimiter for cstruct command.
+* Change SDO index at runtime for SDO request.
+* Implement ecrt_slave_config_request_state().
+* Output skipped datagrams again.
 
 Future issues:
 

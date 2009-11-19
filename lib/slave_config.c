@@ -294,6 +294,29 @@ int ecrt_slave_config_sdo(ec_slave_config_t *sc, uint16_t index,
     data.subindex = subindex;
     data.data = sdo_data;
     data.size = size;
+    data.complete_access = 0;
+
+    if (ioctl(sc->master->fd, EC_IOCTL_SC_SDO, &data) == -1) {
+        fprintf(stderr, "Failed to configure SDO.\n");
+        return -1; // FIXME
+    }
+
+    return 0;
+}
+
+/*****************************************************************************/
+
+int ecrt_slave_config_complete_sdo(ec_slave_config_t *sc, uint16_t index,
+        const uint8_t *sdo_data, size_t size)
+{
+    ec_ioctl_sc_sdo_t data;
+
+    data.config_index = sc->index;
+    data.index = index;
+    data.subindex = 0;
+    data.data = sdo_data;
+    data.size = size;
+    data.complete_access = 1;
 
     if (ioctl(sc->master->fd, EC_IOCTL_SC_SDO, &data) == -1) {
         fprintf(stderr, "Failed to configure SDO.\n");

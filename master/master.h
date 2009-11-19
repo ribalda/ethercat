@@ -108,6 +108,7 @@ struct ec_master {
     ec_fsm_master_t fsm; /**< Master state machine. */
     ec_datagram_t fsm_datagram; /**< Datagram used for state machines. */
     ec_master_phase_t phase; /**< Master phase. */
+    unsigned int active; /**< Master has been activated. */
     unsigned int injection_seq_fsm; /**< Datagram injection sequence number
                                       for the FSM side. */
     unsigned int injection_seq_rt; /**< Datagram injection sequence number
@@ -125,6 +126,8 @@ struct ec_master {
                                        reference clock to the master clock. */
     ec_datagram_t sync_datagram; /**< Datagram used for DC drift
                                    compensation. */
+    ec_datagram_t sync_mon_datagram; /**< Datagram used for DC synchronisation
+                                       monitoring. */
     ec_slave_t *dc_ref_clock; /**< DC reference clock slave. */
     
     unsigned int scan_busy; /**< Current scan state. */
@@ -166,12 +169,14 @@ struct ec_master {
 
     struct semaphore io_sem; /**< Semaphore used in \a IDLE phase. */
 
-    void (*send_cb)(ec_master_t *); /**< Current send datagrams callback. */
-    void (*receive_cb)(ec_master_t *); /**< Current receive datagrams callback. */
-    void (*app_send_cb)(ec_master_t *); /**< Application's send datagrams
+    void (*send_cb)(void *); /**< Current send datagrams callback. */
+    void (*receive_cb)(void *); /**< Current receive datagrams callback. */
+    void *cb_data; /**< Current callback data. */
+    void (*app_send_cb)(void *); /**< Application's send datagrams
                                           callback. */
-    void (*app_receive_cb)(ec_master_t *); /**< Application's receive datagrams
+    void (*app_receive_cb)(void *); /**< Application's receive datagrams
                                       callback. */
+    void *app_cb_data; /**< Application callback data. */
 
     struct list_head sii_requests; /**< SII write requests. */
     wait_queue_head_t sii_queue; /**< Wait queue for SII
@@ -236,8 +241,10 @@ unsigned int ec_master_domain_count(const ec_master_t *);
 ec_domain_t *ec_master_find_domain(ec_master_t *, unsigned int);
 const ec_domain_t *ec_master_find_domain_const(const ec_master_t *,
         unsigned int);
+#ifdef EC_EOE
 uint16_t ec_master_eoe_handler_count(const ec_master_t *);
 const ec_eoe_t *ec_master_get_eoe_handler_const(const ec_master_t *, uint16_t);
+#endif
 
 int ec_master_debug_level(ec_master_t *, unsigned int);
 
@@ -247,8 +254,8 @@ ec_slave_config_t *ecrt_master_slave_config_err(ec_master_t *, uint16_t,
 
 void ec_master_calc_dc(ec_master_t *);
 
-void ec_master_internal_send_cb(ec_master_t *);
-void ec_master_internal_receive_cb(ec_master_t *);
+void ec_master_internal_send_cb(void *);
+void ec_master_internal_receive_cb(void *);
 
 /*****************************************************************************/
 

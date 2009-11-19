@@ -485,6 +485,8 @@ void MasterDevice::requestState(
 
 /****************************************************************************/
 
+#ifdef EC_EOE
+
 void MasterDevice::getEoeHandler(
         ec_ioctl_eoe_handler_t *eoe,
         uint16_t eoeHandlerIndex
@@ -498,5 +500,7 @@ void MasterDevice::getEoeHandler(
         throw MasterDeviceException(err);
     }
 }
+
+#endif
 
 /*****************************************************************************/

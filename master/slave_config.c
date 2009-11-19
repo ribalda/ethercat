@@ -794,6 +794,48 @@ int ecrt_slave_config_sdo32(ec_slave_config_t *sc, uint16_t index,
 
 /*****************************************************************************/
 
+int ecrt_slave_config_complete_sdo(ec_slave_config_t *sc, uint16_t index,
+        const uint8_t *data, size_t size)
+{
+    ec_slave_t *slave = sc->slave;
+    ec_sdo_request_t *req;
+    int ret;
+
+    if (sc->master->debug_level)
+        EC_DBG("ecrt_slave_config_complete_sdo(sc = 0x%x, index = 0x%04X, "
+                "data = 0x%x, size = %u)\n", (u32) sc,
+                index, (u32) data, size);
+
+    if (slave && !(slave->sii.mailbox_protocols & EC_MBOX_COE)) {
+        EC_ERR("Slave %u does not support CoE!\n", slave->ring_position);
+        return -EPROTONOSUPPORT; // protocol not supported
+    }
+
+    if (!(req = (ec_sdo_request_t *)
+          kmalloc(sizeof(ec_sdo_request_t), GFP_KERNEL))) {
+        EC_ERR("Failed to allocate memory for SDO configuration!\n");
+        return -ENOMEM;
+    }
+
+    ec_sdo_request_init(req);
+    ec_sdo_request_address(req, index, 0);
+    req->complete_access = 1;
+
+    ret = ec_sdo_request_copy_data(req, data, size);
+    if (ret < 0) {
+        ec_sdo_request_clear(req);
+        kfree(req);
+        return ret;
+    }
+        
+    down(&sc->master->master_sem);
+    list_add_tail(&req->list, &sc->sdo_configs);
+    up(&sc->master->master_sem);
+    return 0;
+}
+
+/*****************************************************************************/
+
 /** Same as ecrt_slave_config_create_sdo_request(), but with ERR_PTR() return
  * value.
  */
@@ -923,6 +965,7 @@ EXPORT_SYMBOL(ecrt_slave_config_sdo);
 EXPORT_SYMBOL(ecrt_slave_config_sdo8);
 EXPORT_SYMBOL(ecrt_slave_config_sdo16);
 EXPORT_SYMBOL(ecrt_slave_config_sdo32);
+EXPORT_SYMBOL(ecrt_slave_config_complete_sdo);
 EXPORT_SYMBOL(ecrt_slave_config_create_sdo_request);
 EXPORT_SYMBOL(ecrt_slave_config_create_voe_handler);
 EXPORT_SYMBOL(ecrt_slave_config_state);

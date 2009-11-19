@@ -26,7 +26,7 @@ Changes since 1.4.0:
 * Added 8139too driver for kernels 2.6.25 (F. Pose), 2.6.26 (M. Luescher),
   2.6.27, 2.6.28 and 2.6.29 (M. Goetze).
 * Added e1000 driver for 2.6.26 (M. Luescher).
-* Added r8169 driver for 2.6.24 and 2.6.28.
+* Added r8169 driver for 2.6.24, 2.6.28 and 2.6.29.
 * Debug interfaces are created with the Ethernet addresses of the attached
   physical device.
 * Improved error case return codes of many functions.
@@ -45,6 +45,8 @@ Changes since 1.4.0:
   methods to let an application transfer SDOs before activating the master
   (thanks to Stefan Weiser).
 * Fixed SDO upload segment response (thanks to Christoph Peter).
+* Fixed SDO upload segment response for 10 bytes mailbox length (thanks to
+  Joerg Mohre).
 * SDO entry access rights are shown in 'ethercat sdos'.
 * Added 64-bit data access macros to application header.
 * Added debug level for all masters as a module parameter. Thanks to Erwin
@@ -59,7 +61,10 @@ Changes since 1.4.0:
 * Module symbol versions file for ec_master.ko is installed to
   prefix/modules/ec_master.symvers.
 * Added 'ethercat eoe' command to display Ethernet over EtherCAT statistics.
+* Added 'ethercat cstruct' command to output PDO information in C language.
 * Significantly improved EoE bandwidth by running EoE processing in a kthread.
+* Switched version control from Subversion to Mercurial.
+* Implemented CompleteAccess for SDO downloads.
 
 Changes in 1.4.0:
 

@@ -1,8 +1,8 @@
-/******************************************************************************
+/*****************************************************************************
  *
  *  $Id$
  *
- *  Copyright (C) 2006-2008  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2009  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -25,40 +25,28 @@
  *  EtherCAT technology and brand is only permitted in compliance with the
  *  industrial property and similar rights of Beckhoff Automation GmbH.
  *
- *****************************************************************************/
+ ****************************************************************************/
 
-/**
-   \file
-   Global definitions and macros.
-*/
+#ifndef __COMMANDCSTRUCT_H__
+#define __COMMANDCSTRUCT_H__
 
-/*****************************************************************************/
+#include "Command.h"
 
-#ifndef __EC_GLOBALS_H__
-#define __EC_GLOBALS_H__
+/****************************************************************************/
 
-#include "config.h"
+class CommandCStruct:
+    public Command
+{
+    public:
+        CommandCStruct();
 
-/******************************************************************************
- *  Overall macros
- *****************************************************************************/
+        string helpString() const;
+        void execute(MasterDevice &, const StringVector &);
 
-/** Helper macro for EC_STR(), literates a macro argument.
- *
- * \param X argument to literate.
- */
-#define EC_LIT(X) #X
+    protected:
+        void generateSlaveCStruct(MasterDevice &, const ec_ioctl_slave_t &);
+};
 
-/** Converts a macro argument to a string.
- *
- * \param X argument to stringify.
- */
-#define EC_STR(X) EC_LIT(X)
-
-/** Master version string
- */
-#define EC_MASTER_VERSION VERSION " " EC_STR(REV)
-
-/*****************************************************************************/
+/****************************************************************************/
 
 #endif

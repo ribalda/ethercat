@@ -81,14 +81,13 @@ clean-local:
 	@rm -f Modules.symvers
 
 mydist:
-	svn2cl $(srcdir)
-	@SVNREV=`svnversion $(srcdir)` && \
-	  $(MAKE) dist-bzip2 \
-	  distdir=$(PACKAGE)-$(VERSION)-r$${SVNREV}
+	hg log --style=changelog $(srcdir) > ChangeLog
+	@REV=`hg id -i $(srcdir)` && \
+		$(MAKE) dist-bzip2 distdir=$(PACKAGE)-$(VERSION)-$${REV}
 
 dist-hook:
-	if which svnversion >/dev/null 2>&1; then \
-		svnversion $(srcdir) 2>/dev/null >$(distdir)/svnrevision; \
+	if which hg >/dev/null 2>&1; then \
+		hg id -i $(srcdir) 2>/dev/null >$(distdir)/revision; \
 	fi
 
 mrproper: clean cleandoc

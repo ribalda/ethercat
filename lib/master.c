@@ -336,6 +336,16 @@ int ecrt_master_activate(ec_master_t *master)
 
 /*****************************************************************************/
 
+void ecrt_master_deactivate(ec_master_t *master)
+{
+    if (ioctl(master->fd, EC_IOCTL_DEACTIVATE, NULL) == -1) {
+        fprintf(stderr, "Failed to deactivate master: %s\n", strerror(errno));
+        return;
+    }
+}
+
+/*****************************************************************************/
+
 void ecrt_master_send(ec_master_t *master)
 {
     if (ioctl(master->fd, EC_IOCTL_SEND, NULL) == -1) {
@@ -392,6 +402,31 @@ void ecrt_master_sync_slave_clocks(ec_master_t *master)
     if (ioctl(master->fd, EC_IOCTL_SYNC_SLAVES, NULL) == -1) {
         fprintf(stderr, "Failed to sync slave clocks: %s\n", strerror(errno));
     }
+}
+
+/*****************************************************************************/
+
+void ecrt_master_sync_monitor_queue(ec_master_t *master)
+{
+    if (ioctl(master->fd, EC_IOCTL_SYNC_MON_QUEUE, NULL) == -1) {
+        fprintf(stderr, "Failed to queue sync monitor datagram: %s\n",
+                strerror(errno));
+    }
+}
+
+/*****************************************************************************/
+
+uint32_t ecrt_master_sync_monitor_process(ec_master_t *master)
+{
+    uint32_t time_diff;
+
+    if (ioctl(master->fd, EC_IOCTL_SYNC_MON_PROCESS, &time_diff) == -1) {
+        time_diff = 0xffffffff;
+        fprintf(stderr, "Failed to process sync monitor datagram: %s\n",
+                strerror(errno));
+    }
+
+    return time_diff;
 }
 
 /*****************************************************************************/

@@ -171,8 +171,11 @@ int ec_cdev_ioctl_master(
     data.slave_count = master->slave_count;
     data.config_count = ec_master_config_count(master);
     data.domain_count = ec_master_domain_count(master);
+#ifdef EC_EOE
     data.eoe_handler_count = ec_master_eoe_handler_count(master);
+#endif
     data.phase = (uint8_t) master->phase;
+    data.active = (uint8_t) master->active;
     data.scan_busy = master->scan_busy;
     up(&master->master_sem);
 
@@ -1256,9 +1259,12 @@ int ec_cdev_ioctl_config(
     data.product_code = sc->product_code;
     for (i = 0; i < EC_MAX_SYNC_MANAGERS; i++) {
         data.syncs[i].dir = sc->sync_configs[i].dir;
+        data.syncs[i].watchdog_mode = sc->sync_configs[i].watchdog_mode;
         data.syncs[i].pdo_count =
             ec_pdo_list_count(&sc->sync_configs[i].pdos);
     }
+    data.watchdog_divider = sc->watchdog_divider;
+    data.watchdog_intervals = sc->watchdog_intervals;
     data.sdo_count = ec_slave_config_sdo_count(sc);
     data.slave_position = sc->slave ? sc->slave->ring_position : -1;
     data.dc_assign_activate = sc->dc_assign_activate;
@@ -1429,7 +1435,8 @@ int ec_cdev_ioctl_config_sdo(
     data.index = req->index;
     data.subindex = req->subindex;
     data.size = req->data_size;
-    memcpy(&data.data, req->data, min((u32) data.size, (u32) 4));
+    memcpy(&data.data, req->data,
+            min((u32) data.size, (u32) EC_MAX_SDO_DATA_SIZE));
 
     up(&master->master_sem);
 
@@ -1440,6 +1447,8 @@ int ec_cdev_ioctl_config_sdo(
 }
 
 /*****************************************************************************/
+
+#ifdef EC_EOE
 
 /** Get EoE handler information.
  */
@@ -1485,6 +1494,8 @@ int ec_cdev_ioctl_eoe_handler(
 
     return 0;
 }
+
+#endif
 
 /*****************************************************************************/
 
@@ -1622,7 +1633,7 @@ int ec_cdev_ioctl_activate(
     }
 
     ecrt_master_callbacks(master, ec_master_internal_send_cb,
-            ec_master_internal_receive_cb);
+            ec_master_internal_receive_cb, master);
 
     ret = ecrt_master_activate(master);
     if (ret < 0)
@@ -1632,6 +1643,23 @@ int ec_cdev_ioctl_activate(
                 &priv->process_data_size, sizeof(size_t)))
         return -EFAULT;
 
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Deactivates the master.
+ */
+int ec_cdev_ioctl_deactivate(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    if (unlikely(!priv->requested))
+        return -EPERM;
+
+    ecrt_master_deactivate(master);
     return 0;
 }
 
@@ -1754,6 +1782,50 @@ int ec_cdev_ioctl_sync_slaves(
     down(&master->io_sem);
     ecrt_master_sync_slave_clocks(master);
     up(&master->io_sem);
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Queue the sync monitoring datagram.
+ */
+int ec_cdev_ioctl_sync_mon_queue(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    if (unlikely(!priv->requested))
+        return -EPERM;
+
+    down(&master->io_sem);
+    ecrt_master_sync_monitor_queue(master);
+    up(&master->io_sem);
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Processes the sync monitoring datagram.
+ */
+int ec_cdev_ioctl_sync_mon_process(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    uint32_t time_diff;
+
+    if (unlikely(!priv->requested))
+        return -EPERM;
+
+    down(&master->io_sem);
+    time_diff = ecrt_master_sync_monitor_process(master);
+    up(&master->io_sem);
+
+    if (copy_to_user((void __user *) arg, &time_diff, sizeof(time_diff)))
+        return -EFAULT;
+
     return 0;
 }
 
@@ -2111,8 +2183,12 @@ int ec_cdev_ioctl_sc_sdo(
 
     up(&master->master_sem); // FIXME
 
-    ret = ecrt_slave_config_sdo(sc, data.index, data.subindex, sdo_data,
-            data.size);
+    if (data.complete_access) {
+        ret = ecrt_slave_config_complete_sdo(sc, data.index, sdo_data, data.size);
+    } else {
+        ret = ecrt_slave_config_sdo(sc, data.index, data.subindex, sdo_data,
+                data.size);
+    }
     kfree(sdo_data);
     return ret;
 }
@@ -3228,8 +3304,10 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             return ec_cdev_ioctl_config_pdo_entry(master, arg);
         case EC_IOCTL_CONFIG_SDO:
             return ec_cdev_ioctl_config_sdo(master, arg);
+#ifdef EC_EOE
         case EC_IOCTL_EOE_HANDLER:
             return ec_cdev_ioctl_eoe_handler(master, arg);
+#endif
         case EC_IOCTL_REQUEST:
             if (!(filp->f_mode & FMODE_WRITE))
                 return -EPERM;
@@ -3246,6 +3324,10 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             if (!(filp->f_mode & FMODE_WRITE))
                 return -EPERM;
             return ec_cdev_ioctl_activate(master, arg, priv);
+        case EC_IOCTL_DEACTIVATE:
+            if (!(filp->f_mode & FMODE_WRITE))
+                return -EPERM;
+            return ec_cdev_ioctl_deactivate(master, arg, priv);
         case EC_IOCTL_SEND:
             if (!(filp->f_mode & FMODE_WRITE))
                 return -EPERM;
@@ -3268,6 +3350,14 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             if (!(filp->f_mode & FMODE_WRITE))
                 return -EPERM;
             return ec_cdev_ioctl_sync_slaves(master, arg, priv);
+        case EC_IOCTL_SYNC_MON_QUEUE:
+            if (!(filp->f_mode & FMODE_WRITE))
+                return -EPERM;
+            return ec_cdev_ioctl_sync_mon_queue(master, arg, priv);
+        case EC_IOCTL_SYNC_MON_PROCESS:
+            if (!(filp->f_mode & FMODE_WRITE))
+                return -EPERM;
+            return ec_cdev_ioctl_sync_mon_process(master, arg, priv);
         case EC_IOCTL_SC_SYNC:
             if (!(filp->f_mode & FMODE_WRITE))
                 return -EPERM;

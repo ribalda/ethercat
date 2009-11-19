@@ -37,11 +37,14 @@ using namespace std;
 
 #include "CommandAlias.h"
 #include "CommandConfig.h"
+#include "CommandCStruct.h"
 #include "CommandData.h"
 #include "CommandDebug.h"
 #include "CommandDomains.h"
 #include "CommandDownload.h"
-#include "CommandEoe.h"
+#ifdef EC_EOE
+# include "CommandEoe.h"
+#endif
 #include "CommandFoeRead.h"
 #include "CommandFoeWrite.h"
 #include "CommandGraph.h"
@@ -293,11 +296,14 @@ int main(int argc, char **argv)
 
     commandList.push_back(new CommandAlias());
     commandList.push_back(new CommandConfig());
+    commandList.push_back(new CommandCStruct());
     commandList.push_back(new CommandData());
     commandList.push_back(new CommandDebug());
     commandList.push_back(new CommandDomains());
     commandList.push_back(new CommandDownload());
+#ifdef EC_EOE
     commandList.push_back(new CommandEoe());
+#endif
     commandList.push_back(new CommandFoeRead());
     commandList.push_back(new CommandFoeWrite());
     commandList.push_back(new CommandGraph());
