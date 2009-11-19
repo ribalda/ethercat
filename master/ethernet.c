@@ -34,6 +34,7 @@
 
 /*****************************************************************************/
 
+#include <linux/version.h>
 #include <linux/netdevice.h>
 #include <linux/etherdevice.h>
 
@@ -79,6 +80,16 @@ int ec_eoedev_stop(struct net_device *);
 int ec_eoedev_tx(struct sk_buff *, struct net_device *);
 struct net_device_stats *ec_eoedev_stats(struct net_device *);
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 31)
+static const struct net_device_ops ec_eoe_netdev_ops =
+{
+    .ndo_open = ec_eoedev_open,
+    .ndo_stop = ec_eoedev_stop,
+    .ndo_start_xmit = ec_eoedev_tx,
+    .ndo_get_stats = ec_eoedev_stats,
+};
+#endif
+
 /*****************************************************************************/
 
 /** EoE constructor.
@@ -107,7 +118,8 @@ int ec_eoe_init(
     eoe->tx_queue_active = 0;
     eoe->tx_queue_size = EC_EOE_TX_QUEUE_SIZE;
     eoe->tx_queued_frames = 0;
-    init_MUTEX(&eoe->tx_queue_sem);
+
+    sema_init(&eoe->tx_queue_sem, 1);
     eoe->tx_frame_number = 0xFF;
     memset(&eoe->stats, 0, sizeof(struct net_device_stats));
 
@@ -138,10 +150,14 @@ int ec_eoe_init(
     }
 
     // initialize net_device
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 31)
+    eoe->dev->netdev_ops = &ec_eoe_netdev_ops;
+#else
     eoe->dev->open = ec_eoedev_open;
     eoe->dev->stop = ec_eoedev_stop;
     eoe->dev->hard_start_xmit = ec_eoedev_tx;
     eoe->dev->get_stats = ec_eoedev_stats;
+#endif
 
     for (i = 0; i < ETH_ALEN; i++)
         eoe->dev->dev_addr[i] = i | (i << 4);

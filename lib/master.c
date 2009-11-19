@@ -125,6 +125,7 @@ int ecrt_master(ec_master_t* master, ec_master_info_t *master_info)
 
     master_info->slave_count = data.slave_count;
     master_info->link_up = data.devices[0].link_state;
+    master_info->scan_busy = data.scan_busy;
     master_info->app_time = data.app_time;
     return 0;
 }

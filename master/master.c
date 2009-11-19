@@ -114,11 +114,12 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     master->index = index;
     master->reserved = 0;
 
-    init_MUTEX(&master->master_sem);
+    sema_init(&master->master_sem, 1);
 
     master->main_mac = main_mac;
     master->backup_mac = backup_mac;
-    init_MUTEX(&master->device_sem);
+
+    sema_init(&master->device_sem, 1);
 
     master->phase = EC_ORPHANED;
     master->injection_seq_fsm = 0;
@@ -135,19 +136,19 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
 
     master->scan_busy = 0;
     master->allow_scan = 1;
-    init_MUTEX(&master->scan_sem);
+    sema_init(&master->scan_sem, 1);
     init_waitqueue_head(&master->scan_queue);
 
     master->config_busy = 0;
     master->allow_config = 1;
-    init_MUTEX(&master->config_sem);
+    sema_init(&master->config_sem, 1);
     init_waitqueue_head(&master->config_queue);
     
     INIT_LIST_HEAD(&master->datagram_queue);
     master->datagram_index = 0;
 
     INIT_LIST_HEAD(&master->ext_datagram_queue);
-    init_MUTEX(&master->ext_queue_sem);
+    sema_init(&master->ext_queue_sem, 1);
 
     INIT_LIST_HEAD(&master->domains);
 
@@ -165,7 +166,7 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     INIT_LIST_HEAD(&master->eoe_handlers);
 #endif
 
-    init_MUTEX(&master->io_sem);
+    sema_init(&master->io_sem, 1);
     master->send_cb = NULL;
     master->receive_cb = NULL;
     master->app_send_cb = NULL;
@@ -347,6 +348,64 @@ void ec_master_clear_slaves(ec_master_t *master)
     ec_slave_t *slave;
 
     master->dc_ref_clock = NULL;
+
+	// external requests are obsolete, so we wake pending waiters and remove them from the list
+	// SII
+	while (1) {
+		ec_sii_write_request_t *request;
+		if (list_empty(&master->sii_requests))
+			break;
+		// get first request
+		request = list_entry(master->sii_requests.next, ec_sii_write_request_t,
+				list);
+		list_del_init(&request->list); // dequeue
+		EC_INFO("Discarding SII request, slave %u does not exist anymore.\n",
+				request->slave->ring_position);
+		request->state = EC_INT_REQUEST_FAILURE;
+		wake_up(&master->sii_queue);
+	}
+	// Reg
+	while (1) {
+	    ec_reg_request_t *request;
+		if (list_empty(&master->reg_requests))
+			break;
+		// get first request
+		request = list_entry(master->reg_requests.next,
+				ec_reg_request_t, list);
+		list_del_init(&request->list); // dequeue
+		EC_INFO("Discarding Reg request, slave %u does not exist anymore.\n",
+				request->slave->ring_position);
+		request->state = EC_INT_REQUEST_FAILURE;
+		wake_up(&master->reg_queue);
+	}
+	// SDO
+	while (1) {
+		ec_master_sdo_request_t *request;
+		if (list_empty(&master->slave_sdo_requests))
+			break;
+		// get first request
+		request = list_entry(master->slave_sdo_requests.next,
+				ec_master_sdo_request_t, list);
+		list_del_init(&request->list); // dequeue
+		EC_INFO("Discarding SDO request, slave %u does not exist anymore.\n",
+				request->slave->ring_position);
+		request->req.state = EC_INT_REQUEST_FAILURE;
+		wake_up(&master->sdo_queue);
+	}
+	// FOE
+	while (1) {
+		ec_master_foe_request_t *request;
+		if (list_empty(&master->foe_requests))
+			break;
+		// get first request
+		request = list_entry(master->foe_requests.next,
+				ec_master_foe_request_t, list);
+		list_del_init(&request->list); // dequeue
+		EC_INFO("Discarding FOE request, slave %u does not exist anymore.\n",
+				request->slave->ring_position);
+		request->req.state = EC_INT_REQUEST_FAILURE;
+		wake_up(&master->foe_queue);
+	}
 
     for (slave = master->slaves;
             slave < master->slaves + master->slave_count;

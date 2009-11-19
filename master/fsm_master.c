@@ -344,7 +344,7 @@ int ec_fsm_master_action_process_sii(
 /*****************************************************************************/
 
 /** Check for pending register requests and process one.
- * 
+ *
  * \return non-zero, if a register request is processed.
  */
 int ec_fsm_master_action_process_register(
@@ -949,6 +949,7 @@ void ec_fsm_master_state_write_sii(
     if (request->offset <= 4 && request->offset + request->nwords > 4) {
         // alias was written
         slave->sii.alias = EC_READ_U16(request->words + 4);
+        // TODO: read alias from register 0x0012
     }
     // TODO: Evaluate other SII contents!
 
@@ -1089,7 +1090,7 @@ void ec_fsm_master_state_reg_request(
         ec_fsm_master_restart(fsm);
         return;
     }
-    
+
     if (datagram->working_counter == 1) {
         if (request->dir == EC_DIR_INPUT) { // read request
             if (request->data)

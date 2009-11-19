@@ -34,6 +34,7 @@
 
 /*****************************************************************************/
 
+#include <linux/version.h>
 #include <linux/netdevice.h>
 #include <linux/etherdevice.h>
 
@@ -47,6 +48,16 @@ int ec_dbgdev_open(struct net_device *);
 int ec_dbgdev_stop(struct net_device *);
 int ec_dbgdev_tx(struct sk_buff *, struct net_device *);
 struct net_device_stats *ec_dbgdev_stats(struct net_device *);
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 31)
+static const struct net_device_ops ec_dbg_netdev_ops =
+{
+    .ndo_open = ec_dbgdev_open,
+    .ndo_stop = ec_dbgdev_stop,
+    .ndo_start_xmit = ec_dbgdev_tx,
+    .ndo_get_stats = ec_dbgdev_stats,
+};
+#endif
 
 /*****************************************************************************/
 
@@ -74,10 +85,14 @@ int ec_debug_init(
     }
 
     // initialize net_device
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 31)
+    dbg->dev->netdev_ops = &ec_dbg_netdev_ops;
+#else
     dbg->dev->open = ec_dbgdev_open;
     dbg->dev->stop = ec_dbgdev_stop;
     dbg->dev->hard_start_xmit = ec_dbgdev_tx;
     dbg->dev->get_stats = ec_dbgdev_stats;
+#endif
 
     // initialize private data
     *((ec_debug_t **) netdev_priv(dbg->dev)) = dbg;
