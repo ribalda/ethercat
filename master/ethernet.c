@@ -81,6 +81,17 @@ struct net_device_stats *ec_eoedev_stats(struct net_device *);
 
 /*****************************************************************************/
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 29)
+static const struct net_device_ops ec_eoedev_ops = {
+    .ndo_open = ec_eoedev_open,
+    .ndo_stop = ec_eoedev_stop,
+    .ndo_start_xmit = ec_eoedev_tx,
+    .ndo_get_stats = ec_eoedev_stats,
+};
+#endif
+
+/*****************************************************************************/
+
 /** EoE constructor.
  *
  * Initializes the EoE handler, creates a net_device and registers it.
@@ -138,10 +149,14 @@ int ec_eoe_init(
     }
 
     // initialize net_device
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 29)
+    eoe->dev->netdev_ops = &ec_eoedev_ops;
+#else
     eoe->dev->open = ec_eoedev_open;
     eoe->dev->stop = ec_eoedev_stop;
     eoe->dev->hard_start_xmit = ec_eoedev_tx;
     eoe->dev->get_stats = ec_eoedev_stats;
+#endif
 
     for (i = 0; i < ETH_ALEN; i++)
         eoe->dev->dev_addr[i] = i | (i << 4);
