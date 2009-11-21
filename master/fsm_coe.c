@@ -45,6 +45,10 @@
  */
 #define EC_FSM_COE_DICT_TIMEOUT 3000
 
+#define EC_COE_DOWN_REQ_HEADER_SIZE      10
+#define EC_COE_DOWN_SEG_REQ_HEADER_SIZE  3
+#define EC_COE_DOWN_SEG_MIN_DATA_SIZE    7
+
 /*****************************************************************************/
 
 void ec_fsm_coe_dict_start(ec_fsm_coe_t *);
@@ -1063,11 +1067,11 @@ void ec_fsm_coe_dict_entry_response(ec_fsm_coe_t *fsm
  *  CoE state machine
  *****************************************************************************/
 
-/**
-   CoE state: DOWN START.
-*/
-
-void ec_fsm_coe_down_start(ec_fsm_coe_t *fsm /**< finite state machine */)
+/** CoE state: DOWN START.
+ */
+void ec_fsm_coe_down_start(
+        ec_fsm_coe_t *fsm /**< finite state machine */
+        )
 {
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
@@ -1093,14 +1097,16 @@ void ec_fsm_coe_down_start(ec_fsm_coe_t *fsm /**< finite state machine */)
         return;
     }
 
-    if (slave->configured_rx_mailbox_size < 16) {
+    if (slave->configured_rx_mailbox_size < 
+            EC_MBOX_HEADER_SIZE + EC_COE_DOWN_REQ_HEADER_SIZE) {
         EC_ERR("Mailbox too small!\n");
         fsm->state = ec_fsm_coe_error;
         return;
     }
 
     if (request->data_size <= 4) { // use expedited transfer type
-        data = ec_slave_mbox_prepare_send(slave, datagram, 0x03, 10);
+        data = ec_slave_mbox_prepare_send(slave, datagram, 0x03,
+                EC_COE_DOWN_REQ_HEADER_SIZE);
         if (IS_ERR(data)) {
             fsm->state = ec_fsm_coe_error;
             return;
@@ -1123,18 +1129,21 @@ void ec_fsm_coe_down_start(ec_fsm_coe_t *fsm /**< finite state machine */)
 
         if (slave->master->debug_level) {
             EC_DBG("Expedited download request:\n");
-            ec_print_data(data, 10);
+            ec_print_data(data, EC_COE_DOWN_REQ_HEADER_SIZE);
         }
     }
     else { // request->data_size > 4, use normal transfer type
-        size_t data_size;
+        size_t data_size,
+               max_data_size =
+                   slave->configured_rx_mailbox_size - EC_MBOX_HEADER_SIZE,
+               required_data_size =
+                   EC_COE_DOWN_REQ_HEADER_SIZE + request->data_size;
 
-        if (slave->configured_rx_mailbox_size <
-                6 + 10 + request->data_size) {
+        if (max_data_size < required_data_size) {
             // segmenting needed
-            data_size = slave->configured_rx_mailbox_size - 6;
+            data_size = max_data_size;
         } else {
-            data_size = 10 + request->data_size;
+            data_size = required_data_size;
         }
 
         data = ec_slave_mbox_prepare_send(slave, datagram, 0x03,
@@ -1148,19 +1157,21 @@ void ec_fsm_coe_down_start(ec_fsm_coe_t *fsm /**< finite state machine */)
         fsm->remaining = request->data_size;
 
         EC_WRITE_U16(data, 0x2 << 12); // SDO request
-        EC_WRITE_U8 (data + 2, (0x1 // size indicator, normal
-                    | ((request->complete_access ? 1 : 0) << 4) 
-                    | 0x1 << 5)); // Download request
+        EC_WRITE_U8(data + 2,
+                0x1 // size indicator, normal
+                | ((request->complete_access ? 1 : 0) << 4) 
+                | 0x1 << 5); // Download request
         EC_WRITE_U16(data + 3, request->index);
         EC_WRITE_U8 (data + 5,
                 request->complete_access ? 0x00 : request->subindex);
         EC_WRITE_U32(data + 6, request->data_size);
 
-        if (data_size > 10) {
-            size_t segment_size = data_size - 10;
-            fsm->remaining -= segment_size;
-            memcpy(data + 10, request->data, segment_size);
+        if (data_size > EC_COE_DOWN_REQ_HEADER_SIZE) {
+            size_t segment_size = data_size - EC_COE_DOWN_REQ_HEADER_SIZE;
+            memcpy(data + EC_COE_DOWN_REQ_HEADER_SIZE,
+                    request->data, segment_size);
             fsm->offset += segment_size;
+            fsm->remaining -= segment_size;
         }
 
         if (slave->master->debug_level) {
@@ -1278,6 +1289,69 @@ void ec_fsm_coe_down_check(ec_fsm_coe_t *fsm /**< finite state machine */)
 
 /*****************************************************************************/
 
+void ec_fsm_coe_down_prepare_segment_request(
+        ec_fsm_coe_t *fsm /**< finite state machine */
+        )
+{
+    ec_datagram_t *datagram = fsm->datagram;
+    ec_slave_t *slave = fsm->slave;
+    ec_sdo_request_t *request = fsm->request;
+    size_t max_segment_size =
+        slave->configured_rx_mailbox_size
+        - EC_MBOX_HEADER_SIZE
+        - EC_COE_DOWN_SEG_REQ_HEADER_SIZE;
+    size_t segment_size, data_size;
+    uint8_t last_segment, seg_data_size, *data;
+
+    if (fsm->remaining > max_segment_size) {
+        segment_size = max_segment_size;
+        last_segment = 0;
+    } else {
+        segment_size = fsm->remaining;
+        last_segment = 1;
+    }
+
+    if (segment_size > EC_COE_DOWN_SEG_MIN_DATA_SIZE) {
+        seg_data_size = 0x00;
+        data_size = EC_COE_DOWN_SEG_REQ_HEADER_SIZE + segment_size;
+    } else {
+        seg_data_size = EC_COE_DOWN_SEG_MIN_DATA_SIZE - segment_size;
+        data_size = EC_COE_DOWN_SEG_REQ_HEADER_SIZE
+            + EC_COE_DOWN_SEG_MIN_DATA_SIZE;
+    }
+
+    data = ec_slave_mbox_prepare_send(slave, datagram, 0x03,
+            data_size);
+    if (IS_ERR(data)) {
+        fsm->state = ec_fsm_coe_error;
+        return;
+    }
+
+    EC_WRITE_U16(data, 0x2 << 12); // SDO request
+    EC_WRITE_U8(data + 2, (last_segment ? 1 : 0)
+            | (seg_data_size << 1) 
+            | (fsm->toggle << 4)
+            | (0x00 << 5)); // Download segment request
+    memcpy(data + EC_COE_DOWN_SEG_REQ_HEADER_SIZE,
+            request->data + fsm->offset, segment_size);
+    if (segment_size < EC_COE_DOWN_SEG_MIN_DATA_SIZE) {
+        memset(data + EC_COE_DOWN_SEG_REQ_HEADER_SIZE + segment_size, 0x00,
+                EC_COE_DOWN_SEG_MIN_DATA_SIZE - segment_size);
+    }
+
+    fsm->offset += segment_size;
+    fsm->remaining -= segment_size;
+
+    if (slave->master->debug_level) {
+        EC_DBG("Download segment request:\n");
+        ec_print_data(data, data_size);
+    }
+
+    fsm->state = ec_fsm_coe_down_seg_check;
+}
+
+/*****************************************************************************/
+
 /**
    CoE state: DOWN RESPONSE.
    \todo Timeout behavior
@@ -1381,54 +1455,8 @@ void ec_fsm_coe_down_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     }
 
     if (fsm->remaining) { // more segments to download
-        size_t max_segment_size = slave->configured_rx_mailbox_size - 9;
-        size_t segment_size, data_size;
-        uint8_t last_segment, seg_data_size;
-
-        if (fsm->remaining > max_segment_size) {
-            segment_size = max_segment_size;
-            last_segment = 0;
-        } else {
-            segment_size = fsm->remaining;
-            last_segment = 1;
-        }
-
-        if (segment_size > 7) {
-            seg_data_size = 0x00;
-            data_size = 3 + segment_size;
-        } else {
-            seg_data_size = 7 - segment_size;
-            data_size = 10;
-        }
-
-        data = ec_slave_mbox_prepare_send(slave, datagram, 0x03,
-                data_size);
-        if (IS_ERR(data)) {
-            fsm->state = ec_fsm_coe_error;
-            return;
-        }
-
         fsm->toggle = 0;
-
-        EC_WRITE_U16(data, 0x2 << 12); // SDO request
-        EC_WRITE_U8(data + 2, (last_segment ? 1 : 0)
-                | (seg_data_size << 1) 
-                | (fsm->toggle << 4)
-                | (0x00 << 5)); // Download segment request
-        memcpy(data + 3, request->data + fsm->offset, segment_size);
-        if (segment_size < 7) {
-            memset(data + 3 + segment_size, 0x00, 7 - segment_size);
-        }
-
-        fsm->offset += segment_size;
-        fsm->remaining -= segment_size;
-
-        if (slave->master->debug_level) {
-            EC_DBG("Download segment request:\n");
-            ec_print_data(data, data_size);
-        }
-
-        fsm->state = ec_fsm_coe_down_seg_check; // success
+        ec_fsm_coe_down_prepare_segment_request(fsm);
     } else {
         fsm->state = ec_fsm_coe_end; // success
     }
@@ -1597,54 +1625,8 @@ void ec_fsm_coe_down_seg_response(
     }
 
     if (fsm->remaining) { // more segments to download
-        size_t max_segment_size = slave->configured_rx_mailbox_size - 9;
-        size_t segment_size, data_size;
-        uint8_t last_segment, seg_data_size;
-
-        if (fsm->remaining > max_segment_size) {
-            segment_size = max_segment_size;
-            last_segment = 0;
-        } else {
-            segment_size = fsm->remaining;
-            last_segment = 1;
-        }
-
-        if (segment_size > 7) {
-            seg_data_size = 0x00;
-            data_size = 3 + segment_size;
-        } else {
-            seg_data_size = 7 - segment_size;
-            data_size = 10;
-        }
-
-        data = ec_slave_mbox_prepare_send(slave, datagram, 0x03,
-                data_size);
-        if (IS_ERR(data)) {
-            fsm->state = ec_fsm_coe_error;
-            return;
-        }
-
         fsm->toggle = !fsm->toggle;
-
-        EC_WRITE_U16(data, 0x2 << 12); // SDO request
-        EC_WRITE_U8(data + 2, (last_segment ? 1 : 0)
-                | (seg_data_size << 1) 
-                | (fsm->toggle << 4)
-                | (0x00 << 5)); // Download segment request
-        memcpy(data + 3, request->data + fsm->offset, segment_size);
-        if (segment_size < 7) {
-            memset(data + 3 + segment_size, 0x00, 7 - segment_size);
-        }
-
-        fsm->offset += segment_size;
-        fsm->remaining -= segment_size;
-
-        if (slave->master->debug_level) {
-            EC_DBG("Download segment request:\n");
-            ec_print_data(data, data_size);
-        }
-
-        fsm->state = ec_fsm_coe_down_seg_check; // success
+        ec_fsm_coe_down_prepare_segment_request(fsm);
     } else {
         fsm->state = ec_fsm_coe_end; // success
     }
