@@ -816,7 +816,7 @@ int ec_cdev_ioctl_slave_sdo_upload(
         // interrupted by signal
         down(&master->master_sem);
         if (request.req.state == EC_INT_REQUEST_QUEUED) {
-            list_del(&request.req.list);
+            list_del(&request.list);
             up(&master->master_sem);
             ec_sdo_request_clear(&request.req);
             return -EINTR;
@@ -917,7 +917,7 @@ int ec_cdev_ioctl_slave_sdo_download(
         // interrupted by signal
         down(&master->master_sem);
         if (request.req.state == EC_INT_REQUEST_QUEUED) {
-            list_del(&request.req.list);
+            list_del(&request.list);
             up(&master->master_sem);
             ec_sdo_request_clear(&request.req);
             return -EINTR;
