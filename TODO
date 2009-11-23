@@ -21,14 +21,9 @@ Version 1.5.0:
     - Check if register 0x0980 is working, to avoid clearing it when
       configuring.
 * Remove byte-swapping functions from user space.
-* EoE:
-    - Only execute one EoE handler per cycle.
-    - Mailbox protocol handlers.
-    - Mailbox state machine using toggle bits.
 * Implement 'ethercat foe_read --output-file ...'.
 * Use ec_datagram_zero() where possible.
 * Fix arguments of reg_read.
-* Sign/Abs type for reg_ commands?
 * Number layout for reg_read.
 * Show Record / Array / List type of SDOs.
 * Limit bandwidth of state machine datagram.
@@ -36,13 +31,11 @@ Version 1.5.0:
 * Finish library implementation.
 * Rescan command.
 * Override sync manager size?
-* Remove ecrt_domain_state()?
 * Check force_config flag before error.
 * Remove allow_scanning flag.
 * Check for ioctl() interface version.
 * Improve application-triggered SDO transfers by moving the state machine into
   the SDO handlers.
-* Move device driver files in subdirectories.
 * Document ec_fsm_foe members.
 * Test KBUILD_EXTRA_SYMBOLS.
 * Remove default buffer size in SDO upload.
@@ -62,7 +55,8 @@ Version 1.5.0:
 
 Future issues:
 
-* Segmented SDO downloads.
+* Mailbox protocol handlers.
+* Mailbox state machine using toggle bits.
 * External memory for SDO transfers.
 * C++ implementation of the library.
 * Bus simulator interface.
