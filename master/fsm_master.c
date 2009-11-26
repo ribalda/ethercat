@@ -60,6 +60,7 @@ void ec_fsm_master_state_sdo_request(ec_fsm_master_t *);
 void ec_fsm_master_state_reg_request(ec_fsm_master_t *);
 void ec_fsm_master_state_foe_request(ec_fsm_master_t *);
 
+
 /*****************************************************************************/
 
 /** Constructor.
@@ -115,18 +116,21 @@ void ec_fsm_master_clear(
  *
  * If the state machine's datagram is not sent or received yet, the execution
  * of the state machine is delayed to the next cycle.
+ *
+ * \return true, if the state machine was executed
  */
-void ec_fsm_master_exec(
+int ec_fsm_master_exec(
         ec_fsm_master_t *fsm /**< Master state machine. */
         )
 {
     if (fsm->datagram->state == EC_DATAGRAM_SENT
         || fsm->datagram->state == EC_DATAGRAM_QUEUED) {
         // datagram was not sent or received yet.
-        return;
+        return 0;
     }
 
     fsm->state(fsm);
+    return 1;
 }
 
 /*****************************************************************************/
@@ -411,7 +415,6 @@ int ec_fsm_master_action_process_sdo(
     ec_master_t *master = fsm->master;
     ec_slave_t *slave;
     ec_sdo_request_t *req;
-    ec_master_sdo_request_t *request;
 
     // search for internal requests to be processed
     for (slave = master->slaves;
@@ -425,7 +428,7 @@ int ec_fsm_master_action_process_sdo(
                 if (ec_sdo_request_timed_out(req)) {
                     req->state = EC_INT_REQUEST_FAILURE;
                     if (master->debug_level)
-                        EC_DBG("SDO request for slave %u timed out...\n",
+                        EC_DBG("Internal SDO request for slave %u timed out...\n",
                                 slave->ring_position);
                     continue;
                 }
@@ -437,7 +440,7 @@ int ec_fsm_master_action_process_sdo(
 
                 req->state = EC_INT_REQUEST_BUSY;
                 if (master->debug_level)
-                    EC_DBG("Processing SDO request for slave %u...\n",
+                    EC_DBG("Processing internal SDO request for slave %u...\n",
                             slave->ring_position);
 
                 fsm->idle = 0;
@@ -450,42 +453,6 @@ int ec_fsm_master_action_process_sdo(
             }
         }
     }
-
-    // search the first external request to be processed
-    while (1) {
-        if (list_empty(&master->slave_sdo_requests))
-            break;
-
-        // get first request
-        request = list_entry(master->slave_sdo_requests.next,
-                ec_master_sdo_request_t, list);
-        list_del_init(&request->list); // dequeue
-        request->req.state = EC_INT_REQUEST_BUSY;
-
-        slave = request->slave;
-        if (slave->current_state == EC_SLAVE_STATE_INIT) {
-            EC_ERR("Discarding SDO request, slave %u is in INIT.\n",
-                    slave->ring_position);
-            request->req.state = EC_INT_REQUEST_FAILURE;
-            wake_up(&master->sdo_queue);
-            continue;
-        }
-
-        // Found pending SDO request. Execute it!
-        if (master->debug_level)
-            EC_DBG("Processing SDO request for slave %u...\n",
-                    slave->ring_position);
-
-        // Start uploading SDO
-        fsm->idle = 0;
-        fsm->sdo_request = &request->req;
-        fsm->slave = slave;
-        fsm->state = ec_fsm_master_state_sdo_request;
-        ec_fsm_coe_transfer(&fsm->fsm_coe, slave, &request->req);
-        ec_fsm_coe_exec(&fsm->fsm_coe); // execute immediately
-        return 1;
-    }
-
     return 0;
 }
 
@@ -1047,7 +1014,7 @@ void ec_fsm_master_state_sdo_request(
     if (ec_fsm_coe_exec(&fsm->fsm_coe)) return;
 
     if (!ec_fsm_coe_success(&fsm->fsm_coe)) {
-        EC_DBG("Failed to process SDO request for slave %u.\n",
+        EC_DBG("Failed to process internal SDO request for slave %u.\n",
                 fsm->slave->ring_position);
         request->state = EC_INT_REQUEST_FAILURE;
         wake_up(&master->sdo_queue);
@@ -1060,7 +1027,7 @@ void ec_fsm_master_state_sdo_request(
     wake_up(&master->sdo_queue);
 
     if (master->debug_level)
-        EC_DBG("Finished SDO request for slave %u.\n",
+        EC_DBG("Finished internal SDO request for slave %u.\n",
                 fsm->slave->ring_position);
 
     // check for another SDO request

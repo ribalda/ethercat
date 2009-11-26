@@ -44,6 +44,7 @@ ec_master-objs := \
 	fsm_coe.o \
 	fsm_foe.o \
 	fsm_master.o \
+	fsm_slave.o \
 	fsm_pdo.o \
 	fsm_pdo_entry.o \
 	fsm_sii.o \

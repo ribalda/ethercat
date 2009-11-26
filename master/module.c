@@ -332,6 +332,11 @@ void ec_print_data(const uint8_t *data, /**< pointer to data */
             printk("\n");
             EC_DBG("");
         }
+        if (i == 128 && size > 256)
+        {
+            EC_DBG("dropped %d bytes\n",size-128-i);
+            i = size - 128;
+        }
     }
     printk("\n");
 }

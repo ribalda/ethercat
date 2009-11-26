@@ -45,6 +45,7 @@
 #include "pdo.h"
 #include "sync.h"
 #include "sdo.h"
+#include "fsm_slave.h"
 
 /*****************************************************************************/
 
@@ -157,6 +158,9 @@ struct ec_slave
     struct list_head sdo_dictionary; /**< SDO dictionary list */
     uint8_t sdo_dictionary_fetched; /**< Dictionary has been fetched. */
     unsigned long jiffies_preop; /**< Time, the slave went to PREOP. */
+
+    ec_fsm_slave_t fsm; /**< Slave state machine. */
+    ec_datagram_t fsm_datagram; /**< Datagram used for state machines. */
 };
 
 /*****************************************************************************/

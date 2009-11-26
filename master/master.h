@@ -114,6 +114,7 @@ struct ec_master {
     unsigned int injection_seq_rt; /**< Datagram injection sequence number
                                      for the realtime side. */
 
+
     ec_slave_t *slaves; /**< Array of slaves on the bus. */
     unsigned int slave_count; /**< Number of slaves on the bus. */
 
@@ -152,6 +153,8 @@ struct ec_master {
                                            datagrams. */
     struct semaphore ext_queue_sem; /**< Semaphore protecting the \a
                                       ext_datagram_queue. */
+
+    struct list_head sdo_datagram_queue; /**< SDO Datagram queue. */
 
     struct list_head domains; /**< List of domains. */
 
@@ -220,6 +223,8 @@ void ec_master_eoe_stop(ec_master_t *);
 void ec_master_receive_datagrams(ec_master_t *, const uint8_t *, size_t);
 void ec_master_queue_datagram(ec_master_t *, ec_datagram_t *);
 void ec_master_queue_datagram_ext(ec_master_t *, ec_datagram_t *);
+void ec_master_queue_sdo_datagram(ec_master_t *, ec_datagram_t *);
+void ec_master_inject_sdo_datagrams(ec_master_t *);
 
 // misc.
 void ec_master_attach_slave_configs(ec_master_t *);

@@ -67,6 +67,7 @@ void ec_slave_init(
         )
 {
     unsigned int i;
+    int ret;
 
     slave->master = master;
     slave->ring_position = ring_position;
@@ -147,6 +148,20 @@ void ec_slave_init(
 
     slave->sdo_dictionary_fetched = 0;
     slave->jiffies_preop = 0;
+
+    // init state machine datagram
+    ec_datagram_init(&slave->fsm_datagram);
+    snprintf(slave->fsm_datagram.name, EC_DATAGRAM_NAME_SIZE, "slave%u-fsm",slave->ring_position);
+    ret = ec_datagram_prealloc(&slave->fsm_datagram, EC_MAX_DATA_SIZE);
+    if (ret < 0) {
+        ec_datagram_clear(&slave->fsm_datagram);
+        EC_ERR("Failed to allocate Slave %u FSM datagram.\n",slave->ring_position);
+        return;
+    }
+
+    // create state machine object
+    ec_fsm_slave_init(&slave->fsm, slave, &slave->fsm_datagram);
+
 }
 
 /*****************************************************************************/
@@ -191,6 +206,9 @@ void ec_slave_clear(ec_slave_t *slave /**< EtherCAT slave */)
 
     if (slave->sii_words)
         kfree(slave->sii_words);
+    ec_fsm_slave_clear(&slave->fsm);
+    ec_datagram_clear(&slave->fsm_datagram);
+
 }
 
 /*****************************************************************************/

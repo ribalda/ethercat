@@ -805,6 +805,8 @@ int ec_cdev_ioctl_slave_sdo_upload(
         return -EINVAL;
     }
 
+    if (master->debug_level)
+        EC_DBG("Schedule SDO upload request for slave %u\n",request.slave->ring_position);
     // schedule request.
     list_add_tail(&request.list, &master->slave_sdo_requests);
 
@@ -827,6 +829,9 @@ int ec_cdev_ioctl_slave_sdo_upload(
 
     // wait until master FSM has finished processing
     wait_event(master->sdo_queue, request.req.state != EC_INT_REQUEST_BUSY);
+
+    if (master->debug_level)
+        EC_DBG("Scheduled SDO upload request for slave %u done\n",request.slave->ring_position);
 
     data.abort_code = request.req.abort_code;
 
@@ -906,6 +911,8 @@ int ec_cdev_ioctl_slave_sdo_download(
         return -EINVAL;
     }
     
+    if (master->debug_level)
+        EC_DBG("Schedule SDO download request for slave %u\n",request.slave->ring_position);
     // schedule request.
     list_add_tail(&request.list, &master->slave_sdo_requests);
 
@@ -928,6 +935,9 @@ int ec_cdev_ioctl_slave_sdo_download(
 
     // wait until master FSM has finished processing
     wait_event(master->sdo_queue, request.req.state != EC_INT_REQUEST_BUSY);
+
+    if (master->debug_level)
+        EC_DBG("Scheduled SDO download request for slave %u done\n",request.slave->ring_position);
 
     data.abort_code = request.req.abort_code;
 

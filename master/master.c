@@ -151,6 +151,8 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     INIT_LIST_HEAD(&master->ext_datagram_queue);
     sema_init(&master->ext_queue_sem, 1);
 
+    INIT_LIST_HEAD(&master->sdo_datagram_queue);
+
     INIT_LIST_HEAD(&master->domains);
 
     master->debug_level = debug_level;
@@ -684,6 +686,39 @@ void ec_master_leave_operation_phase(
     master->phase = EC_IDLE;
 }
 
+
+/*****************************************************************************/
+
+/** Injects sdo datagrams that fit into the datagram queue
+ */
+void ec_master_inject_sdo_datagrams(
+        ec_master_t *master /**< EtherCAT master */
+        )
+{
+    ec_datagram_t *sdo_datagram, *n;
+    list_for_each_entry_safe(sdo_datagram, n, &master->sdo_datagram_queue, queue) {
+        list_del_init(&sdo_datagram->queue);
+        if (master->debug_level)
+            EC_DBG("queuing SDO datagram %08x\n",(unsigned int)sdo_datagram);
+        ec_master_queue_datagram(master, sdo_datagram);
+    }
+}
+
+/*****************************************************************************/
+
+/** Places a sdo datagram in the sdo datagram queue.
+ */
+void ec_master_queue_sdo_datagram(
+        ec_master_t *master, /**< EtherCAT master */
+        ec_datagram_t *datagram /**< datagram */
+        )
+{
+    down(&master->io_sem);
+    list_add_tail(&datagram->queue, &master->sdo_datagram_queue);
+    datagram->state = EC_DATAGRAM_QUEUED;
+    up(&master->io_sem);
+}
+
 /*****************************************************************************/
 
 /** Places a datagram in the datagram queue.
@@ -695,6 +730,8 @@ void ec_master_queue_datagram(
 {
     ec_datagram_t *queued_datagram;
 
+    if (datagram->state == EC_DATAGRAM_SENT)
+        return;
     // check, if the datagram is already queued
     list_for_each_entry(queued_datagram, &master->datagram_queue, queue) {
         if (queued_datagram == datagram) {
@@ -1001,7 +1038,8 @@ void ec_master_output_stats(ec_master_t *master /**< EtherCAT master */)
 static int ec_master_idle_thread(void *priv_data)
 {
     ec_master_t *master = (ec_master_t *) priv_data;
-
+    ec_slave_t *slave = NULL;
+    int fsm_exec;
     if (master->debug_level)
         EC_DBG("Idle thread running.\n");
 
@@ -1013,22 +1051,27 @@ static int ec_master_idle_thread(void *priv_data)
         ecrt_master_receive(master);
         up(&master->io_sem);
 
-        if (master->fsm_datagram.state == EC_DATAGRAM_SENT)
-            goto schedule;
-
-        // execute master state machine
+        fsm_exec = 0;
+        // execute master & slave state machines
         if (down_interruptible(&master->master_sem))
             break;
-        ec_fsm_master_exec(&master->fsm);
+        fsm_exec = ec_fsm_master_exec(&master->fsm);
+        for (slave = master->slaves;
+                slave < master->slaves + master->slave_count;
+                slave++) {
+            ec_fsm_slave_exec(&slave->fsm);
+        }
         up(&master->master_sem);
 
         // queue and send
         down(&master->io_sem);
-        ec_master_queue_datagram(master, &master->fsm_datagram);
+        if (fsm_exec) {
+            ec_master_queue_datagram(master, &master->fsm_datagram);
+        }
+        ec_master_inject_sdo_datagrams(master);
         ecrt_master_send(master);
         up(&master->io_sem);
-        
-schedule:
+
         if (ec_fsm_master_idle(&master->fsm)) {
             set_current_state(TASK_INTERRUPTIBLE);
             schedule_timeout(1);
@@ -1045,35 +1088,38 @@ schedule:
 
 /*****************************************************************************/
 
-/** Master kernel thread function for IDLE phase.
+/** Master kernel thread function for OPERATION phase.
  */
 static int ec_master_operation_thread(void *priv_data)
 {
     ec_master_t *master = (ec_master_t *) priv_data;
-
+    ec_slave_t *slave = NULL;
+    int fsm_exec;
     if (master->debug_level)
         EC_DBG("Operation thread running.\n");
 
     while (!kthread_should_stop()) {
         ec_datagram_output_stats(&master->fsm_datagram);
-        if (master->injection_seq_rt != master->injection_seq_fsm ||
-                master->fsm_datagram.state == EC_DATAGRAM_SENT ||
-                master->fsm_datagram.state == EC_DATAGRAM_QUEUED)
-            goto schedule;
+        if (master->injection_seq_rt == master->injection_seq_fsm) {
+            // output statistics
+            ec_master_output_stats(master);
 
-        // output statistics
-        ec_master_output_stats(master);
+            fsm_exec = 0;
+            // execute master & slave state machines
+            if (down_interruptible(&master->master_sem))
+                break;
+            fsm_exec += ec_fsm_master_exec(&master->fsm);
+            for (slave = master->slaves;
+                    slave < master->slaves + master->slave_count;
+                    slave++) {
+                ec_fsm_slave_exec(&slave->fsm);
+            }
+            up(&master->master_sem);
 
-        // execute master state machine
-        if (down_interruptible(&master->master_sem))
-            break;
-        ec_fsm_master_exec(&master->fsm);
-        up(&master->master_sem);
-
-        // inject datagram
-        master->injection_seq_fsm++;
-
-schedule:
+            // inject datagrams (let the rt thread queue them, see ecrt_master_send)
+            if (fsm_exec)
+                master->injection_seq_fsm++;
+        }
         if (ec_fsm_master_idle(&master->fsm)) {
             set_current_state(TASK_INTERRUPTIBLE);
             schedule_timeout(1);
@@ -1797,10 +1843,11 @@ void ecrt_master_send(ec_master_t *master)
     ec_datagram_t *datagram, *n;
 
     if (master->injection_seq_rt != master->injection_seq_fsm) {
-        // inject datagram produced by master FSM
+        // inject datagrams produced by master & slave FSMs
         ec_master_queue_datagram(master, &master->fsm_datagram);
         master->injection_seq_rt = master->injection_seq_fsm;
     }
+    ec_master_inject_sdo_datagrams(master);
 
     if (unlikely(!master->main_device.link_state)) {
         // link is down, no datagram can be sent
