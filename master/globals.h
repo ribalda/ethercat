@@ -48,6 +48,12 @@
 /** Datagram timeout in microseconds. */
 #define EC_IO_TIMEOUT 500
 
+/** SDO injection timeout in microseconds. */
+#define EC_SDO_INJECTION_TIMEOUT 10000
+
+/** time to send a byte in nanoseconds. */
+#define EC_BYTE_TRANSMITION_TIME 80LL
+
 /** Number of state machine retries on datagram timeout. */
 #define EC_FSM_RETRIES 3
 

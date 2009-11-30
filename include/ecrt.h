@@ -698,6 +698,15 @@ void ecrt_master_deactivate(
         ec_master_t *master /**< EtherCAT master. */
         );
 
+
+/** Set max. number of databytes in a cycle
+ *
+ */
+int ecrt_master_set_max_cycle_size(
+        ec_master_t *master, /**< EtherCAT master. */
+        size_t max_cycle_data_size /**< Max. number of databytes in a cycle */
+        );
+
 /** Sends all datagrams in the queue.
  *
  * This method takes all datagrams, that have been queued for transmission,

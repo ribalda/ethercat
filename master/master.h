@@ -155,7 +155,7 @@ struct ec_master {
                                       ext_datagram_queue. */
 
     struct list_head sdo_datagram_queue; /**< SDO Datagram queue. */
-
+    size_t max_queue_size; /** max. size of datagram queue */
     struct list_head domains; /**< List of domains. */
 
     unsigned int debug_level; /**< Master debug level. */

@@ -59,13 +59,14 @@
 /** Frame timeout in cycles.
  */
 static cycles_t timeout_cycles;
-
+static cycles_t sdo_injection_timeout_cycles;
 #else
 
 /** Frame timeout in jiffies.
  */
 static unsigned long timeout_jiffies;
-    
+static unsigned long sdo_injection_timeout_jiffies;
+
 #endif
 
 /*****************************************************************************/
@@ -87,9 +88,11 @@ void ec_master_init_static(void)
 {
 #ifdef EC_HAVE_CYCLES
     timeout_cycles = (cycles_t) EC_IO_TIMEOUT /* us */ * (cpu_khz / 1000);
+    sdo_injection_timeout_cycles = (cycles_t) EC_SDO_INJECTION_TIMEOUT /* us */ * (cpu_khz / 1000);
 #else
     // one jiffy may always elapse between time measurement
     timeout_jiffies = max(EC_IO_TIMEOUT * HZ / 1000000, 1);
+    sdo_injection_timeout_jiffies = max(EC_SDO_INJECTION_TIMEOUT * HZ / 1000000, 1);
 #endif
 }
 
@@ -152,6 +155,7 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     sema_init(&master->ext_queue_sem, 1);
 
     INIT_LIST_HEAD(&master->sdo_datagram_queue);
+    master->max_queue_size = EC_MAX_DATA_SIZE;
 
     INIT_LIST_HEAD(&master->domains);
 
@@ -695,12 +699,56 @@ void ec_master_inject_sdo_datagrams(
         ec_master_t *master /**< EtherCAT master */
         )
 {
-    ec_datagram_t *sdo_datagram, *n;
-    list_for_each_entry_safe(sdo_datagram, n, &master->sdo_datagram_queue, queue) {
-        list_del_init(&sdo_datagram->queue);
-        if (master->debug_level)
-            EC_DBG("queuing SDO datagram %08x\n",(unsigned int)sdo_datagram);
-        ec_master_queue_datagram(master, sdo_datagram);
+    ec_datagram_t *datagram, *n;
+    size_t queue_size = 0;
+    list_for_each_entry(datagram, &master->datagram_queue, queue) {
+        queue_size += datagram->data_size;
+    }
+    list_for_each_entry_safe(datagram, n, &master->sdo_datagram_queue, queue) {
+        queue_size += datagram->data_size;
+        if (queue_size <= master->max_queue_size) {
+            list_del_init(&datagram->queue);
+            if (master->debug_level) {
+                EC_DBG("Injecting SDO datagram %08x size=%u, queue_size=%u\n",(unsigned int)datagram,datagram->data_size,queue_size);
+            }
+#ifdef EC_HAVE_CYCLES
+            datagram->cycles_sent = 0;
+#endif
+            datagram->jiffies_sent = 0;
+            ec_master_queue_datagram(master, datagram);
+        }
+        else {
+            if (datagram->data_size > master->max_queue_size) {
+                list_del_init(&datagram->queue);
+                datagram->state = EC_DATAGRAM_ERROR;
+                EC_ERR("SDO datagram %08x is too large, size=%u, max_queue_size=%u\n",(unsigned int)datagram,datagram->data_size,master->max_queue_size);
+            }
+            else {
+#ifdef EC_HAVE_CYCLES
+                cycles_t cycles_now = get_cycles();
+                if (cycles_now - datagram->cycles_sent
+                        > sdo_injection_timeout_cycles) {
+#else
+                if (jiffies - datagram->jiffies_sent
+                        > sdo_injection_timeout_jiffies) {
+#endif
+                    unsigned int time_us;
+                    list_del_init(&datagram->queue);
+                    datagram->state = EC_DATAGRAM_ERROR;
+#ifdef EC_HAVE_CYCLES
+                    time_us = (unsigned int) ((cycles_now - datagram->cycles_sent) * 1000LL) / cpu_khz;
+#else
+                    time_us = (unsigned int) ((jiffies - datagram->jiffies_sent) * 1000000 / HZ);
+#endif
+                    EC_ERR("Timeout %u us: injecting SDO datagram %08x size=%u, max_queue_size=%u\n",time_us,(unsigned int)datagram,datagram->data_size,master->max_queue_size);
+                }
+                else  {
+                    if (master->debug_level) {
+                        EC_DBG("Deferred injecting of SDO datagram %08x size=%u, queue_size=%u\n",(unsigned int)datagram,datagram->data_size,queue_size);
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -713,9 +761,17 @@ void ec_master_queue_sdo_datagram(
         ec_datagram_t *datagram /**< datagram */
         )
 {
+    if (master->debug_level) {
+        EC_DBG("Requesting SDO datagram %08x size=%u\n",(unsigned int)datagram,datagram->data_size);
+    }
+    datagram->state = EC_DATAGRAM_QUEUED;
+#ifdef EC_HAVE_CYCLES
+    datagram->cycles_sent = get_cycles();
+#endif
+    datagram->jiffies_sent = jiffies;
+
     down(&master->io_sem);
     list_add_tail(&datagram->queue, &master->sdo_datagram_queue);
-    datagram->state = EC_DATAGRAM_QUEUED;
     up(&master->io_sem);
 }
 

@@ -344,6 +344,21 @@ void ecrt_master_deactivate(ec_master_t *master)
     }
 }
 
+
+/*****************************************************************************/
+
+int ecrt_master_set_max_cycle_size(ec_master_t *master,size_t max_cycle_data_size)
+{
+    if (ioctl(master->fd, EC_IOCTL_SET_MAX_CYCLE_SIZE,
+                &max_cycle_data_size) == -1) {
+        fprintf(stderr, "Failed to activate master: %s\n",
+                strerror(errno));
+        return -1; // FIXME
+    }
+    return 0;
+}
+
+
 /*****************************************************************************/
 
 void ecrt_master_send(ec_master_t *master)
