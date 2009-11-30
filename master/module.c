@@ -318,6 +318,8 @@ static int ec_mac_parse(uint8_t *mac, const char *src, int allow_empty)
 /*****************************************************************************/
 
 /** Outputs frame contents for debugging purposes.
+ * If the data block is larger than 256 bytes, only the first 128
+ * and the last 128 bytes will be shown
  */
 void ec_print_data(const uint8_t *data, /**< pointer to data */
                    size_t size /**< number of bytes to output */
@@ -332,10 +334,11 @@ void ec_print_data(const uint8_t *data, /**< pointer to data */
             printk("\n");
             EC_DBG("");
         }
-        if (i == 128 && size > 256)
+        if (i+1 == 128 && size > 256)
         {
-            EC_DBG("dropped %d bytes\n",size-128-i);
+            printk("dropped %d bytes\n",size-128-i);
             i = size - 128;
+            EC_DBG("");
         }
     }
     printk("\n");
