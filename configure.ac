@@ -519,6 +519,29 @@ AC_ARG_ENABLE([userlib],
 AM_CONDITIONAL(ENABLE_USERLIB, test "x$userlib" = "x1")
 
 #------------------------------------------------------------------------------
+# TTY driver
+#------------------------------------------------------------------------------
+
+AC_ARG_ENABLE([tty],
+    AS_HELP_STRING([--enable-tty],
+                   [Generation of the ec_tty module (default: no)]),
+    [
+        case "${enableval}" in
+            yes) tty=1
+                ;;
+            no) tty=0
+                ;;
+            *) AC_MSG_ERROR([Invalid value for --enable-tty])
+                ;;
+        esac
+    ],
+    [tty=0]
+)
+
+AM_CONDITIONAL(ENABLE_TTY, test "x$tty" = "x1")
+AC_SUBST(ENABLE_TTY,[$tty])
+
+#------------------------------------------------------------------------------
 
 AC_CONFIG_FILES([
         Doxyfile
@@ -548,6 +571,8 @@ AC_CONFIG_FILES([
         script/init.d/ethercat
         script/sysconfig/Makefile
         tool/Makefile
+        tty/Makefile
+        tty/Kbuild
 ])
 AC_OUTPUT
 

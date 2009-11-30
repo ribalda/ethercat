@@ -43,6 +43,10 @@ if ENABLE_USERLIB
 SUBDIRS += lib
 endif
 
+if ENABLE_TTY
+SUBDIRS += tty
+endif
+
 # userspace example depends on lib/
 SUBDIRS += examples
 
@@ -54,7 +58,8 @@ DIST_SUBDIRS = \
     m4 \
     master \
     script \
-    tool
+    tool \
+	tty
 
 noinst_HEADERS = \
 	globals.h

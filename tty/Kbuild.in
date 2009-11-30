@@ -21,18 +21,27 @@
 #
 #  ---
 #  
-#  The license mentioned above concerns the source code only. Using the
-#  EtherCAT technology and brand is only permitted in compliance with the
-#  industrial property and similar rights of Beckhoff Automation GmbH.
+#  The license mentioned above concerns the source code only. Using the EtherCAT
+#  technology and brand is only permitted in compliance with the industrial
+#  property and similar rights of Beckhoff Automation GmbH.
+#
+#  ---
 #
 #  vi: syntax=make
 #
 #------------------------------------------------------------------------------
 
-obj-m := examples/ master/ devices/
+obj-m := ec_tty.o
 
-ifeq (@ENABLE_TTY@,1)
-	obj-m += tty/
-endif
+ec_tty-objs := \
+	module.o
+
+REV := $(shell if test -s $(src)/../revision; then \
+		cat $(src)/../revision; \
+	else \
+		hg id -i $(src)/.. 2>/dev/null || echo "unknown"; \
+	fi)
+
+CFLAGS_module.o := -DREV=$(REV)
 
 #------------------------------------------------------------------------------
