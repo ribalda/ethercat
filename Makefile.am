@@ -80,6 +80,9 @@ modules:
 modules_install:
 	$(MAKE) -C master modules_install
 	$(MAKE) -C devices modules_install
+if ENABLE_TTY
+	$(MAKE) -C tty modules_install
+endif
 
 clean-local:
 	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" clean
