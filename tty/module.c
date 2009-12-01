@@ -38,7 +38,6 @@
 #include <linux/tty.h>
 #include <linux/tty_driver.h>
 #include <linux/termios.h>
-#include <linux/semaphore.h>
 
 #include "../master/globals.h"
 #include "../include/ectty.h"
