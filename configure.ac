@@ -560,6 +560,8 @@ AC_CONFIG_FILES([
         examples/mini/Makefile
         examples/rtai/Kbuild
         examples/rtai/Makefile
+        examples/tty/Makefile
+        examples/tty/Kbuild
         examples/user/Makefile
         include/Makefile
         lib/Makefile

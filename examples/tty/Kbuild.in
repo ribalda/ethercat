@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 #
-#  $Id: Kbuild.in 1097 2008-04-03 15:31:34Z fp $
+#  $Id$
 #
 #  Copyright (C) 2006-2008  Florian Pose, Ingenieurgemeinschaft IgH
 #
@@ -25,14 +25,18 @@
 #  EtherCAT technology and brand is only permitted in compliance with the
 #  industrial property and similar rights of Beckhoff Automation GmbH.
 #
+#  ---
+#
 #  vi: syntax=make
 #
 #------------------------------------------------------------------------------
 
-obj-m := mini/
+obj-m := ec_tty_example.o
 
-ifeq (@ENABLE_TTY@,1)
-	obj-m += tty/
-endif
+ec_tty_example-objs := tty.o
+
+KBUILD_EXTRA_SYMBOLS := \
+	@abs_top_builddir@/Module.symvers \
+	@abs_top_builddir@/master/Module.symvers
 
 #------------------------------------------------------------------------------

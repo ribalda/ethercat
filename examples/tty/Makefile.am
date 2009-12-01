@@ -1,6 +1,10 @@
 #------------------------------------------------------------------------------
 #
-#  $Id: Kbuild.in 1097 2008-04-03 15:31:34Z fp $
+#  Makefile.am
+#
+#  IgH EtherCAT master module
+#
+#  $Id$
 #
 #  Copyright (C) 2006-2008  Florian Pose, Ingenieurgemeinschaft IgH
 #
@@ -25,14 +29,23 @@
 #  EtherCAT technology and brand is only permitted in compliance with the
 #  industrial property and similar rights of Beckhoff Automation GmbH.
 #
-#  vi: syntax=make
-#
 #------------------------------------------------------------------------------
 
-obj-m := mini/
+EXTRA_DIST = \
+	Kbuild.in \
+	tty.c
 
-ifeq (@ENABLE_TTY@,1)
-	obj-m += tty/
-endif
+BUILT_SOURCES = \
+	Kbuild
+
+modules:
+	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" modules
+
+modules_install:
+	mkdir -p $(DESTDIR)$(LINUX_MOD_PATH)
+	cp $(srcdir)/ec_tty_example.ko $(DESTDIR)$(LINUX_MOD_PATH)
+
+clean-local:
+	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" clean
 
 #------------------------------------------------------------------------------
