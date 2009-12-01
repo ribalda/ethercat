@@ -40,6 +40,7 @@
 #endif
 
 #include "../../include/ecrt.h" // EtherCAT realtime interface
+#include "../../include/ectty.h" // EtherCAT TTY interface
 
 /*****************************************************************************/
 
@@ -117,6 +118,7 @@ typedef struct {
 static serial_device_t *ser = NULL;
 static char tx_data[] = "ATZ\r\n";
 static off_t tx_off = 0;
+static ec_tty_t *tty = NULL;
         
 /*****************************************************************************/
 
@@ -444,21 +446,30 @@ int __init init_mini_module(void)
     printk(KERN_INFO PFX "Starting...\n");
 
     ser = kmalloc(sizeof(*ser), GFP_KERNEL);
-    if (ser == NULL) {
+    if (!ser) {
         printk(KERN_ERR PFX "Failed to allocate serial device object.\n");
-        return -ENOMEM;
+        ret = -ENOMEM;
+        goto out_return;
     }
+
     ret = serial_init(ser, 22, 22);
     if (ret) {
         printk(KERN_ERR PFX "Failed to init serial device object.\n");
-        return ret;
+        goto out_free_serial;
+    }
+
+    tty = ectty_create();
+    if (IS_ERR(tty)) {
+        printk(KERN_ERR PFX "Failed to create tty.\n");
+        ret = PTR_ERR(tty);
+        goto out_serial;
     }
     
     master = ecrt_request_master(0);
     if (!master) {
         ret = -EBUSY; 
         printk(KERN_ERR PFX "Requesting master 0 failed.\n");
-        goto out_return;
+        goto out_tty;
     }
 
     init_MUTEX(&master_sem);
@@ -513,6 +524,12 @@ int __init init_mini_module(void)
 out_release_master:
     printk(KERN_ERR PFX "Releasing master...\n");
     ecrt_release_master(master);
+out_tty:
+    ectty_free(tty);
+out_serial:
+    serial_clear(ser);
+out_free_serial:
+    kfree(ser);
 out_return:
     printk(KERN_ERR PFX "Failed to load. Aborting.\n");
     return ret;
@@ -528,6 +545,10 @@ void __exit cleanup_mini_module(void)
 
     printk(KERN_INFO PFX "Releasing master...\n");
     ecrt_release_master(master);
+
+    ectty_free(tty);
+    serial_clear(ser);
+    kfree(ser);
 
     printk(KERN_INFO PFX "Unloading.\n");
 }
