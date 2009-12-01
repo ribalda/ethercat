@@ -116,8 +116,6 @@ struct ec_fsm_master {
     off_t sii_index; /**< index to SII write request data */
     ec_sdo_request_t *sdo_request; /**< SDO request to process. */
     ec_reg_request_t *reg_request; /**< Register request to process. */
-    ec_foe_request_t *foe_request; /**< FoE request to process. */
-    off_t foe_index; /**< index to FoE write request data */
 
     ec_fsm_coe_t fsm_coe; /**< CoE state machine */
     ec_fsm_pdo_t fsm_pdo; /**< PDO configuration state machine. */
@@ -125,7 +123,6 @@ struct ec_fsm_master {
     ec_fsm_slave_config_t fsm_slave_config; /**< slave state machine */
     ec_fsm_slave_scan_t fsm_slave_scan; /**< slave state machine */
     ec_fsm_sii_t fsm_sii; /**< SII state machine */
-    ec_fsm_foe_t fsm_foe; /**< FoE state machine */
 };
 
 /*****************************************************************************/

@@ -40,7 +40,7 @@
 #include "datagram.h"
 #include "sdo_request.h"
 #include "fsm_coe.h"
-
+#include "fsm_foe.h"
 
 typedef struct ec_fsm_slave ec_fsm_slave_t; /**< \see ec_fsm_slave */
 
@@ -52,8 +52,11 @@ struct ec_fsm_slave {
 
     void (*state)(ec_fsm_slave_t *); /**< master state function */
     ec_sdo_request_t *sdo_request; /**< SDO request to process. */
+    ec_foe_request_t *foe_request; /**< FoE request to process. */
+    off_t foe_index; /**< index to FoE write request data */
 
     ec_fsm_coe_t fsm_coe; /**< CoE state machine */
+    ec_fsm_foe_t fsm_foe; /**< FoE state machine */
 };
 
 /*****************************************************************************/

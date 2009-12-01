@@ -152,6 +152,9 @@ void ec_slave_init(
     INIT_LIST_HEAD(&slave->slave_sdo_requests);
     init_waitqueue_head(&slave->sdo_queue);
 
+    INIT_LIST_HEAD(&slave->foe_requests);
+    init_waitqueue_head(&slave->foe_queue);
+
     // init state machine datagram
     ec_datagram_init(&slave->fsm_datagram);
     snprintf(slave->fsm_datagram.name, EC_DATAGRAM_NAME_SIZE, "slave%u-fsm",slave->ring_position);

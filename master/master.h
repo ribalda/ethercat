@@ -154,7 +154,7 @@ struct ec_master {
     struct semaphore ext_queue_sem; /**< Semaphore protecting the \a
                                       ext_datagram_queue. */
 
-    struct list_head sdo_datagram_queue; /**< SDO Datagram queue. */
+    struct list_head external_datagram_queue; /**< External Datagram queue. */
     size_t max_queue_size; /** max. size of datagram queue */
     struct list_head domains; /**< List of domains. */
 
@@ -188,9 +188,6 @@ struct ec_master {
     struct list_head reg_requests; /**< Register requests. */
     wait_queue_head_t reg_queue; /**< Wait queue for register requests. */
 
-    struct list_head foe_requests; /**< FoE write requests. */
-    wait_queue_head_t foe_queue; /**< Wait queue for FoE
-                                      write requests from user space. */
 };
 
 /*****************************************************************************/
@@ -219,8 +216,8 @@ void ec_master_eoe_stop(ec_master_t *);
 void ec_master_receive_datagrams(ec_master_t *, const uint8_t *, size_t);
 void ec_master_queue_datagram(ec_master_t *, ec_datagram_t *);
 void ec_master_queue_datagram_ext(ec_master_t *, ec_datagram_t *);
-void ec_master_queue_sdo_datagram(ec_master_t *, ec_datagram_t *);
-void ec_master_inject_sdo_datagrams(ec_master_t *);
+void ec_master_queue_external_datagram(ec_master_t *, ec_datagram_t *);
+void ec_master_inject_external_datagrams(ec_master_t *);
 
 // misc.
 void ec_master_attach_slave_configs(ec_master_t *);

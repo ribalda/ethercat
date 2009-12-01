@@ -3057,7 +3057,7 @@ int ec_cdev_ioctl_slave_foe_read(
     }
 
     // schedule request.
-    list_add_tail(&request.list, &master->foe_requests);
+    list_add_tail(&request.list, &request.slave->foe_requests);
 
     up(&master->master_sem);
 
@@ -3067,7 +3067,7 @@ int ec_cdev_ioctl_slave_foe_read(
     }
 
     // wait for processing through FSM
-    if (wait_event_interruptible(master->foe_queue,
+    if (wait_event_interruptible(request.slave->foe_queue,
                 request.req.state != EC_INT_REQUEST_QUEUED)) {
         // interrupted by signal
         down(&master->master_sem);
@@ -3082,7 +3082,7 @@ int ec_cdev_ioctl_slave_foe_read(
     }
 
     // wait until master FSM has finished processing
-    wait_event(master->foe_queue, request.req.state != EC_INT_REQUEST_BUSY);
+    wait_event(request.slave->foe_queue, request.req.state != EC_INT_REQUEST_BUSY);
 
     data.result = request.req.result;
     data.error_code = request.req.error_code;
@@ -3172,12 +3172,12 @@ int ec_cdev_ioctl_slave_foe_write(
     }
 
     // schedule FoE write request.
-    list_add_tail(&request.list, &master->foe_requests);
+    list_add_tail(&request.list, &request.slave->foe_requests);
 
     up(&master->master_sem);
 
     // wait for processing through FSM
-    if (wait_event_interruptible(master->foe_queue,
+    if (wait_event_interruptible(request.slave->foe_queue,
                 request.req.state != EC_INT_REQUEST_QUEUED)) {
         // interrupted by signal
         down(&master->master_sem);
@@ -3192,7 +3192,7 @@ int ec_cdev_ioctl_slave_foe_write(
     }
 
     // wait until master FSM has finished processing
-    wait_event(master->foe_queue, request.req.state != EC_INT_REQUEST_BUSY);
+    wait_event(request.slave->foe_queue, request.req.state != EC_INT_REQUEST_BUSY);
 
     data.result = request.req.result;
     data.error_code = request.req.error_code;

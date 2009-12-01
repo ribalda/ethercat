@@ -58,7 +58,6 @@ void ec_fsm_master_state_write_sii(ec_fsm_master_t *);
 void ec_fsm_master_state_sdo_dictionary(ec_fsm_master_t *);
 void ec_fsm_master_state_sdo_request(ec_fsm_master_t *);
 void ec_fsm_master_state_reg_request(ec_fsm_master_t *);
-void ec_fsm_master_state_foe_request(ec_fsm_master_t *);
 
 
 /*****************************************************************************/
@@ -82,7 +81,6 @@ void ec_fsm_master_init(
 
     // init sub-state-machines
     ec_fsm_coe_init(&fsm->fsm_coe, fsm->datagram);
-    ec_fsm_foe_init(&fsm->fsm_foe, fsm->datagram);
     ec_fsm_pdo_init(&fsm->fsm_pdo, &fsm->fsm_coe);
     ec_fsm_change_init(&fsm->fsm_change, fsm->datagram);
     ec_fsm_slave_config_init(&fsm->fsm_slave_config, fsm->datagram,
@@ -102,7 +100,6 @@ void ec_fsm_master_clear(
 {
     // clear sub-state machines
     ec_fsm_coe_clear(&fsm->fsm_coe);
-    ec_fsm_foe_clear(&fsm->fsm_foe);
     ec_fsm_pdo_clear(&fsm->fsm_pdo);
     ec_fsm_change_clear(&fsm->fsm_change);
     ec_fsm_slave_config_clear(&fsm->fsm_slave_config);
@@ -456,47 +453,6 @@ int ec_fsm_master_action_process_sdo(
     return 0;
 }
 
-/*****************************************************************************/
-
-/** Check for pending FoE requests and process one.
- *
- * \return non-zero, if an FoE request is processed.
- */
-int ec_fsm_master_action_process_foe(
-        ec_fsm_master_t *fsm /**< Master state machine. */
-        )
-{
-    ec_master_t *master = fsm->master;
-    ec_slave_t *slave;
-    ec_master_foe_request_t *request;
-
-    // search the first request to be processed
-    while (1) {
-        if (list_empty(&master->foe_requests))
-            break;
-
-        // get first request
-        request = list_entry(master->foe_requests.next,
-                ec_master_foe_request_t, list);
-        list_del_init(&request->list); // dequeue
-        request->req.state = EC_INT_REQUEST_BUSY;
-        slave = request->slave;
-
-        if (master->debug_level)
-            EC_DBG("Processing FoE request for slave %u.\n",
-                    slave->ring_position);
-
-        fsm->foe_request = &request->req;
-        fsm->slave = slave;
-        fsm->state = ec_fsm_master_state_foe_request;
-        fsm->idle = 0;
-        ec_fsm_foe_transfer(&fsm->fsm_foe, slave, &request->req);
-        ec_fsm_foe_exec(&fsm->fsm_foe);
-        return 1;
-    }
-
-    return 0;
-}
 
 /*****************************************************************************/
 
@@ -511,12 +467,8 @@ void ec_fsm_master_action_idle(
     ec_master_t *master = fsm->master;
     ec_slave_t *slave;
 
-    // Check for pending SDO requests
+    // Check for pending internal SDO requests
     if (ec_fsm_master_action_process_sdo(fsm))
-        return;
-
-    // Check for pending FoE requests
-    if (ec_fsm_master_action_process_foe(fsm))
         return;
 
     // check, if slaves have an SDO dictionary to read out.
@@ -926,43 +878,6 @@ void ec_fsm_master_state_write_sii(
     // check for another SII write request
     if (ec_fsm_master_action_process_sii(fsm))
         return; // processing another request
-
-    ec_fsm_master_restart(fsm);
-}
-
-/*****************************************************************************/
-
-/** Master state: WRITE FOE.
- */
-void ec_fsm_master_state_foe_request(
-        ec_fsm_master_t *fsm /**< Master state machine. */
-        )
-{
-    ec_master_t *master = fsm->master;
-    ec_foe_request_t *request = fsm->foe_request;
-    ec_slave_t *slave = fsm->slave;
-
-    if (ec_fsm_foe_exec(&fsm->fsm_foe))
-        return;
-
-    fsm->idle = 1;
-
-    if (!ec_fsm_foe_success(&fsm->fsm_foe)) {
-        EC_ERR("Failed to handle FoE request to slave %u.\n",
-                slave->ring_position);
-        request->state = EC_INT_REQUEST_FAILURE;
-        wake_up(&master->foe_queue);
-        ec_fsm_master_restart(fsm);
-        return;
-    }
-
-    // finished transferring FoE
-    if (master->debug_level)
-        EC_DBG("Successfully transferred %u bytes of FoE data from/to"
-                " slave %u.\n", request->data_size, slave->ring_position);
-
-    request->state = EC_INT_REQUEST_SUCCESS;
-    wake_up(&master->foe_queue);
 
     ec_fsm_master_restart(fsm);
 }

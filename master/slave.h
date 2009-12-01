@@ -162,6 +162,9 @@ struct ec_slave
     struct list_head slave_sdo_requests; /**< SDO access requests. */
     wait_queue_head_t sdo_queue; /**< Wait queue for SDO access requests
                                    from user space. */
+    struct list_head foe_requests; /**< FoE write requests. */
+    wait_queue_head_t foe_queue; /**< Wait queue for FoE
+                                      write requests from user space. */
     ec_fsm_slave_t fsm; /**< Slave state machine. */
     ec_datagram_t fsm_datagram; /**< Datagram used for state machines. */
 };
