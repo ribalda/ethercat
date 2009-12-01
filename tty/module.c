@@ -45,11 +45,14 @@
 
 /*****************************************************************************/
 
+#define PFX "ec_tty: "
+
 #define EC_TTY_MAX_DEVICES 10
 
 /*****************************************************************************/
 
 char *ec_master_version_str = EC_MASTER_VERSION; /**< Version string. */
+unsigned int debug_level = 0;
 
 static struct tty_driver *tty_driver = NULL;
 ec_tty_t *ttys[EC_TTY_MAX_DEVICES];
@@ -64,7 +67,6 @@ MODULE_DESCRIPTION("EtherCAT TTY driver module");
 MODULE_LICENSE("GPL");
 MODULE_VERSION(EC_MASTER_VERSION);
 
-unsigned int debug_level = 0;
 module_param_named(debug_level, debug_level, uint, S_IRUGO);
 MODULE_PARM_DESC(debug_level, "Debug level");
 
@@ -103,7 +105,7 @@ int __init ec_tty_init_module(void)
 {
     int i, ret = 0;
 
-    EC_INFO("TTY driver %s\n", EC_MASTER_VERSION);
+    printk(KERN_INFO PFX "TTY driver %s\n", EC_MASTER_VERSION);
 
     init_MUTEX(&tty_sem);
 
@@ -113,7 +115,7 @@ int __init ec_tty_init_module(void)
 
     tty_driver = alloc_tty_driver(EC_TTY_MAX_DEVICES);
     if (!tty_driver) {
-        EC_ERR("Failed to allocate tty driver.\n");
+        printk(KERN_ERR PFX "Failed to allocate tty driver.\n");
         ret = -ENOMEM;
         goto out_return;
     }
@@ -132,7 +134,7 @@ int __init ec_tty_init_module(void)
 
     ret = tty_register_driver(tty_driver);
     if (ret) {
-        EC_ERR("Failed to register tty driver.\n");
+        printk(KERN_ERR PFX "Failed to register tty driver.\n");
         goto out_put;
     }
 
@@ -154,7 +156,7 @@ void __exit ec_tty_cleanup_module(void)
 {
     tty_unregister_driver(tty_driver);
     put_tty_driver(tty_driver);
-    EC_INFO("TTY module cleaned up.\n");
+    printk(KERN_INFO PFX "Module unloading.\n");
 }
 
 /*****************************************************************************/
@@ -165,7 +167,7 @@ int ec_tty_init(ec_tty_t *tty, int minor)
 
     tty->dev = tty_register_device(tty_driver, tty->minor, NULL);
     if (IS_ERR(tty->dev)) {
-        EC_ERR("Failed to register tty device.\n");
+        printk(KERN_ERR PFX "Failed to register tty device.\n");
         return PTR_ERR(tty->dev);
     }
 
@@ -224,7 +226,7 @@ ec_tty_t *ectty_create(void)
             tty = kmalloc(sizeof(ec_tty_t), GFP_KERNEL);
             if (!tty) {
                 up(&tty_sem);
-                EC_ERR("Failed to allocate memory for tty device.\n");
+                printk(KERN_ERR PFX "Failed to allocate memory.\n");
                 return ERR_PTR(-ENOMEM);
             }
 
@@ -242,6 +244,7 @@ ec_tty_t *ectty_create(void)
     }
 
     up(&tty_sem);
+    printk(KERN_ERR PFX "No free interfaces avaliable.\n");
     return ERR_PTR(-EBUSY);
 }
 
@@ -249,9 +252,8 @@ ec_tty_t *ectty_create(void)
 
 void ectty_free(ec_tty_t *tty)
 {
-    int minor = tty->minor;
     ec_tty_clear(tty);
-    ttys[minor] = NULL;
+    ttys[tty->minor] = NULL;
     kfree(tty);
 }
 
