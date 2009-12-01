@@ -38,16 +38,22 @@
 #include <linux/tty.h>
 #include <linux/tty_driver.h>
 #include <linux/termios.h>
+#include <linux/semaphore.h>
 
 #include "../master/globals.h"
+#include "../include/ectty.h"
 
 /*****************************************************************************/
 
-int __init ec_tty_init_module(void);
-void __exit ec_tty_cleanup_module(void);
+#define EC_TTY_MAX_DEVICES 10
 
-unsigned int debug_level = 0;
+/*****************************************************************************/
+
 char *ec_master_version_str = EC_MASTER_VERSION; /**< Version string. */
+
+static struct tty_driver *tty_driver = NULL;
+ec_tty_t *ttys[EC_TTY_MAX_DEVICES];
+struct semaphore tty_sem;
 
 /*****************************************************************************/
 
@@ -58,11 +64,11 @@ MODULE_DESCRIPTION("EtherCAT TTY driver module");
 MODULE_LICENSE("GPL");
 MODULE_VERSION(EC_MASTER_VERSION);
 
+unsigned int debug_level = 0;
 module_param_named(debug_level, debug_level, uint, S_IRUGO);
 MODULE_PARM_DESC(debug_level, "Debug level");
 
-struct tty_driver *tty_driver = NULL;
-struct device *tty_device = NULL;
+/** \endcond */
 
 static int ec_tty_open(struct tty_struct *, struct file *);
 static void ec_tty_close(struct tty_struct *, struct file *);
@@ -82,7 +88,10 @@ static struct ktermios ec_tty_std_termios = {
     .c_cc = INIT_C_CC,
 };
 
-/** \endcond */
+struct ec_tty {
+    int minor;
+    struct device *dev;
+};
 
 /*****************************************************************************/
 
@@ -92,11 +101,17 @@ static struct ktermios ec_tty_std_termios = {
  */
 int __init ec_tty_init_module(void)
 {
-    int ret = 0;
+    int i, ret = 0;
 
     EC_INFO("TTY driver %s\n", EC_MASTER_VERSION);
 
-    tty_driver = alloc_tty_driver(1);
+    init_MUTEX(&tty_sem);
+
+    for (i = 0; i < EC_TTY_MAX_DEVICES; i++) {
+        ttys[i] = NULL;
+    }
+
+    tty_driver = alloc_tty_driver(EC_TTY_MAX_DEVICES);
     if (!tty_driver) {
         EC_ERR("Failed to allocate tty driver.\n");
         ret = -ENOMEM;
@@ -121,17 +136,8 @@ int __init ec_tty_init_module(void)
         goto out_put;
     }
 
-    tty_device = tty_register_device(tty_driver, 0, NULL);
-    if (IS_ERR(tty_device)) {
-        EC_ERR("Failed to register tty device.\n");
-        ret = PTR_ERR(tty_device);
-        goto out_unreg;
-    }
-
     return ret;
         
-out_unreg:
-    tty_unregister_driver(tty_driver);
 out_put:
     put_tty_driver(tty_driver);
 out_return:
@@ -146,13 +152,36 @@ out_return:
  */
 void __exit ec_tty_cleanup_module(void)
 {
-    tty_unregister_device(tty_driver, 0);
     tty_unregister_driver(tty_driver);
     put_tty_driver(tty_driver);
     EC_INFO("TTY module cleaned up.\n");
 }
 
 /*****************************************************************************/
+
+int ec_tty_init(ec_tty_t *tty, int minor)
+{
+    tty->minor = minor;
+
+    tty->dev = tty_register_device(tty_driver, tty->minor, NULL);
+    if (IS_ERR(tty->dev)) {
+        EC_ERR("Failed to register tty device.\n");
+        return PTR_ERR(tty->dev);
+    }
+
+    return 0;
+}
+
+/*****************************************************************************/
+
+void ec_tty_clear(ec_tty_t *tty)
+{
+    tty_unregister_device(tty_driver, tty->minor);
+}
+
+/******************************************************************************
+ * Device callbacks
+ *****************************************************************************/
 
 static int ec_tty_open(struct tty_struct *tty, struct file *file)
 {
@@ -177,12 +206,64 @@ static int ec_tty_write(
     return -EIO;
 }
 
+/******************************************************************************
+ * Public functions and methods
+ *****************************************************************************/
+
+ec_tty_t *ectty_create(void)
+{
+    ec_tty_t *tty;
+    int minor, ret;
+
+    if (down_interruptible(&tty_sem)) {
+        return ERR_PTR(-EINTR);
+    }
+
+    for (minor = 0; minor < EC_TTY_MAX_DEVICES; minor++) {
+        if (!ttys[minor]) {
+            tty = kmalloc(sizeof(ec_tty_t), GFP_KERNEL);
+            if (!tty) {
+                up(&tty_sem);
+                EC_ERR("Failed to allocate memory for tty device.\n");
+                return ERR_PTR(-ENOMEM);
+            }
+
+            ret = ec_tty_init(tty, minor);
+            if (ret) {
+                up(&tty_sem);
+                kfree(tty);
+                return ERR_PTR(ret);
+            }
+
+            ttys[minor] = tty;
+            up(&tty_sem);
+            return tty;
+        }
+    }
+
+    up(&tty_sem);
+    return ERR_PTR(-EBUSY);
+}
+
+/*****************************************************************************/
+
+void ectty_free(ec_tty_t *tty)
+{
+    int minor = tty->minor;
+    ec_tty_clear(tty);
+    ttys[minor] = NULL;
+    kfree(tty);
+}
+
 /*****************************************************************************/
 
 /** \cond */
 
 module_init(ec_tty_init_module);
 module_exit(ec_tty_cleanup_module);
+
+EXPORT_SYMBOL(ectty_create);
+EXPORT_SYMBOL(ectty_free);
 
 /** \endcond */
 
