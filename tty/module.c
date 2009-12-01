@@ -187,14 +187,29 @@ void ec_tty_clear(ec_tty_t *tty)
 
 static int ec_tty_open(struct tty_struct *tty, struct file *file)
 {
-    return -EBUSY;
+    ec_tty_t *t;
+    int line = tty->index;
+
+    printk(KERN_INFO PFX "Opening line %i.\n", line);
+
+	if (line < 0 || line >= EC_TTY_MAX_DEVICES) {
+		return -ENXIO;
+    }
+
+    t = ttys[line];
+    if (!t) {
+        return -ENXIO;
+    }
+
+    tty->driver_data = t;
+    return 0;
 }
 
 /*****************************************************************************/
 
 static void ec_tty_close(struct tty_struct *tty, struct file *file)
 {
-    return;
+    printk(KERN_INFO PFX "Closing line %i.\n", tty->index);
 }
 
 /*****************************************************************************/
