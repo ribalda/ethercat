@@ -185,10 +185,6 @@ struct ec_master {
     wait_queue_head_t sii_queue; /**< Wait queue for SII
                                       write requests from user space. */
 
-    struct list_head slave_sdo_requests; /**< SDO access requests. */
-    wait_queue_head_t sdo_queue; /**< Wait queue for SDO access requests
-                                   from user space. */
-
     struct list_head reg_requests; /**< Register requests. */
     wait_queue_head_t reg_queue; /**< Wait queue for register requests. */
 

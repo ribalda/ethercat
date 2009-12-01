@@ -808,12 +808,12 @@ int ec_cdev_ioctl_slave_sdo_upload(
     if (master->debug_level)
         EC_DBG("Schedule SDO upload request for slave %u\n",request.slave->ring_position);
     // schedule request.
-    list_add_tail(&request.list, &master->slave_sdo_requests);
+    list_add_tail(&request.list, &request.slave->slave_sdo_requests);
 
     up(&master->master_sem);
 
     // wait for processing through FSM
-    if (wait_event_interruptible(master->sdo_queue,
+    if (wait_event_interruptible(request.slave->sdo_queue,
                 request.req.state != EC_INT_REQUEST_QUEUED)) {
         // interrupted by signal
         down(&master->master_sem);
@@ -828,7 +828,7 @@ int ec_cdev_ioctl_slave_sdo_upload(
     }
 
     // wait until master FSM has finished processing
-    wait_event(master->sdo_queue, request.req.state != EC_INT_REQUEST_BUSY);
+    wait_event(request.slave->sdo_queue, request.req.state != EC_INT_REQUEST_BUSY);
 
     if (master->debug_level)
         EC_DBG("Scheduled SDO upload request for slave %u done\n",request.slave->ring_position);
@@ -914,12 +914,12 @@ int ec_cdev_ioctl_slave_sdo_download(
     if (master->debug_level)
         EC_DBG("Schedule SDO download request for slave %u\n",request.slave->ring_position);
     // schedule request.
-    list_add_tail(&request.list, &master->slave_sdo_requests);
+    list_add_tail(&request.list, &request.slave->slave_sdo_requests);
 
     up(&master->master_sem);
 
     // wait for processing through FSM
-    if (wait_event_interruptible(master->sdo_queue,
+    if (wait_event_interruptible(request.slave->sdo_queue,
                 request.req.state != EC_INT_REQUEST_QUEUED)) {
         // interrupted by signal
         down(&master->master_sem);
@@ -934,7 +934,7 @@ int ec_cdev_ioctl_slave_sdo_download(
     }
 
     // wait until master FSM has finished processing
-    wait_event(master->sdo_queue, request.req.state != EC_INT_REQUEST_BUSY);
+    wait_event(request.slave->sdo_queue, request.req.state != EC_INT_REQUEST_BUSY);
 
     if (master->debug_level)
         EC_DBG("Scheduled SDO download request for slave %u done\n",request.slave->ring_position);

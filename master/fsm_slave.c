@@ -115,9 +115,7 @@ void ec_fsm_slave_state_idle(
     ec_master_sdo_request_t *request, *next;
 
     // search the first matching external request to be processed
-    list_for_each_entry_safe(request, next, &master->slave_sdo_requests, list) {
-        if (request->slave != slave)
-            continue;
+    list_for_each_entry_safe(request, next, &slave->slave_sdo_requests, list) {
         list_del_init(&request->list); // dequeue
         request->req.state = EC_INT_REQUEST_BUSY;
 
@@ -125,7 +123,7 @@ void ec_fsm_slave_state_idle(
             EC_ERR("Discarding SDO request, slave %u is in INIT.\n",
                     slave->ring_position);
             request->req.state = EC_INT_REQUEST_FAILURE;
-            wake_up(&master->sdo_queue);
+            wake_up(&slave->sdo_queue);
             continue;
         }
 
@@ -165,7 +163,7 @@ void ec_fsm_slave_state_sdo_request(
         EC_DBG("Failed to process SDO request for slave %u.\n",
                 fsm->slave->ring_position);
         request->state = EC_INT_REQUEST_FAILURE;
-        wake_up(&master->sdo_queue);
+        wake_up(&slave->sdo_queue);
         fsm->sdo_request = NULL;
         fsm->state = ec_fsm_slave_state_idle;
         return;
@@ -173,7 +171,7 @@ void ec_fsm_slave_state_sdo_request(
 
     // SDO request finished
     request->state = EC_INT_REQUEST_SUCCESS;
-    wake_up(&master->sdo_queue);
+    wake_up(&slave->sdo_queue);
 
     if (master->debug_level)
         EC_DBG("Finished SDO request for slave %u.\n",

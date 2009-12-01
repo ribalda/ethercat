@@ -184,9 +184,6 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     INIT_LIST_HEAD(&master->sii_requests);
     init_waitqueue_head(&master->sii_queue);
 
-    INIT_LIST_HEAD(&master->slave_sdo_requests);
-    init_waitqueue_head(&master->sdo_queue);
-
     INIT_LIST_HEAD(&master->reg_requests);
     init_waitqueue_head(&master->reg_queue);
 
@@ -405,21 +402,6 @@ void ec_master_clear_slaves(ec_master_t *master)
 		wake_up(&master->reg_queue);
 	}
 
-	// SDO requests
-	while (1) {
-		ec_master_sdo_request_t *request;
-		if (list_empty(&master->slave_sdo_requests))
-			break;
-		// get first request
-		request = list_entry(master->slave_sdo_requests.next,
-				ec_master_sdo_request_t, list);
-		list_del_init(&request->list); // dequeue
-		EC_INFO("Discarding SDO request, slave %u does not exist anymore.\n",
-				request->slave->ring_position);
-		request->req.state = EC_INT_REQUEST_FAILURE;
-		wake_up(&master->sdo_queue);
-	}
-
 	// FoE requests
 	while (1) {
 		ec_master_foe_request_t *request;
@@ -438,6 +420,20 @@ void ec_master_clear_slaves(ec_master_t *master)
     for (slave = master->slaves;
             slave < master->slaves + master->slave_count;
             slave++) {
+        // SDO requests
+        while (1) {
+            ec_master_sdo_request_t *request;
+            if (list_empty(&slave->slave_sdo_requests))
+                break;
+            // get first request
+            request = list_entry(slave->slave_sdo_requests.next,
+                    ec_master_sdo_request_t, list);
+            list_del_init(&request->list); // dequeue
+            EC_INFO("Discarding SDO request, slave %u does not exist anymore.\n",
+                    request->slave->ring_position);
+            request->req.state = EC_INT_REQUEST_FAILURE;
+            wake_up(&slave->sdo_queue);
+        }
         ec_slave_clear(slave);
     }
 
@@ -769,6 +765,8 @@ void ec_master_queue_sdo_datagram(
     datagram->cycles_sent = get_cycles();
 #endif
     datagram->jiffies_sent = jiffies;
+
+    master->fsm.idle = 0;
 
     down(&master->io_sem);
     list_add_tail(&datagram->queue, &master->sdo_datagram_queue);

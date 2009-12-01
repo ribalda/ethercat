@@ -149,6 +149,9 @@ void ec_slave_init(
     slave->sdo_dictionary_fetched = 0;
     slave->jiffies_preop = 0;
 
+    INIT_LIST_HEAD(&slave->slave_sdo_requests);
+    init_waitqueue_head(&slave->sdo_queue);
+
     // init state machine datagram
     ec_datagram_init(&slave->fsm_datagram);
     snprintf(slave->fsm_datagram.name, EC_DATAGRAM_NAME_SIZE, "slave%u-fsm",slave->ring_position);

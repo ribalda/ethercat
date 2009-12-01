@@ -1017,14 +1017,14 @@ void ec_fsm_master_state_sdo_request(
         EC_DBG("Failed to process internal SDO request for slave %u.\n",
                 fsm->slave->ring_position);
         request->state = EC_INT_REQUEST_FAILURE;
-        wake_up(&master->sdo_queue);
+        wake_up(&fsm->slave->sdo_queue);
         ec_fsm_master_restart(fsm);
         return;
     }
 
     // SDO request finished
     request->state = EC_INT_REQUEST_SUCCESS;
-    wake_up(&master->sdo_queue);
+    wake_up(&fsm->slave->sdo_queue);
 
     if (master->debug_level)
         EC_DBG("Finished internal SDO request for slave %u.\n",
