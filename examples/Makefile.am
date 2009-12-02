@@ -38,6 +38,7 @@ DIST_SUBDIRS = \
 	dc_user \
 	mini \
 	rtai \
+	tty \
 	user
 
 EXTRA_DIST = \
