@@ -38,6 +38,7 @@
 #include <linux/tty.h>
 #include <linux/tty_driver.h>
 #include <linux/termios.h>
+#include <linux/timer.h>
 
 #include "../master/globals.h"
 #include "../include/ectty.h"
@@ -47,6 +48,7 @@
 #define PFX "ec_tty: "
 
 #define EC_TTY_MAX_DEVICES 10
+#define EC_TTY_TX_BUFFER_SIZE 100
 
 /*****************************************************************************/
 
@@ -71,16 +73,6 @@ MODULE_PARM_DESC(debug_level, "Debug level");
 
 /** \endcond */
 
-static int ec_tty_open(struct tty_struct *, struct file *);
-static void ec_tty_close(struct tty_struct *, struct file *);
-static int ec_tty_write(struct tty_struct *, const unsigned char *, int);
-
-static const struct tty_operations ec_tty_ops = {
-    .open = ec_tty_open,
-    .close = ec_tty_close,
-    .write = ec_tty_write,
-};
-
 static struct ktermios ec_tty_std_termios = {
     .c_iflag = ICRNL | IXON,
     .c_oflag = OPOST | ONLCR,
@@ -92,7 +84,15 @@ static struct ktermios ec_tty_std_termios = {
 struct ec_tty {
     int minor;
     struct device *dev;
+    uint8_t tx_buffer[EC_TTY_TX_BUFFER_SIZE];
+    unsigned int tx_read_idx;
+    unsigned int tx_write_idx;
+    unsigned int wakeup;
+    struct timer_list timer;
+    struct tty_struct *tty;
 };
+
+static const struct tty_operations ec_tty_ops; // see below
 
 /*****************************************************************************/
 
@@ -160,9 +160,32 @@ void __exit ec_tty_cleanup_module(void)
 
 /*****************************************************************************/
 
+void ec_tty_wakeup(unsigned long data)
+{
+    ec_tty_t *tty = (ec_tty_t *) data;
+
+    if (tty->wakeup) {
+        if (tty->tty) {
+            printk("Waking up.\n");
+            tty_wakeup(tty->tty);
+        }
+        tty->wakeup = 0;
+    }
+
+    tty->timer.expires += 1;
+    add_timer(&tty->timer);
+}
+
+/*****************************************************************************/
+
 int ec_tty_init(ec_tty_t *tty, int minor)
 {
     tty->minor = minor;
+    tty->tx_read_idx = 0;
+    tty->tx_write_idx = 0;
+    tty->wakeup = 0;
+    init_timer(&tty->timer);
+    tty->tty = NULL;
 
     tty->dev = tty_register_device(tty_driver, tty->minor, NULL);
     if (IS_ERR(tty->dev)) {
@@ -170,6 +193,10 @@ int ec_tty_init(ec_tty_t *tty, int minor)
         return PTR_ERR(tty->dev);
     }
 
+    tty->timer.function = ec_tty_wakeup;
+    tty->timer.data = (unsigned long) tty;
+    tty->timer.expires = jiffies + 10;
+    add_timer(&tty->timer);
     return 0;
 }
 
@@ -177,7 +204,30 @@ int ec_tty_init(ec_tty_t *tty, int minor)
 
 void ec_tty_clear(ec_tty_t *tty)
 {
+    del_timer_sync(&tty->timer);
     tty_unregister_device(tty_driver, tty->minor);
+}
+
+/*****************************************************************************/
+
+unsigned int ec_tty_tx_size(ec_tty_t *tty)
+{
+    unsigned int ret;
+    
+    if (tty->tx_write_idx >= tty->tx_read_idx) {
+        ret = tty->tx_write_idx - tty->tx_read_idx;
+    } else {
+        ret = EC_TTY_TX_BUFFER_SIZE + tty->tx_write_idx - tty->tx_read_idx;
+    }
+
+    return ret;
+}
+
+/*****************************************************************************/
+
+unsigned int ec_tty_tx_space(ec_tty_t *tty)
+{
+    return EC_TTY_TX_BUFFER_SIZE - 1 - ec_tty_tx_size(tty);
 }
 
 /******************************************************************************
@@ -200,6 +250,11 @@ static int ec_tty_open(struct tty_struct *tty, struct file *file)
         return -ENXIO;
     }
 
+    if (t->tty) {
+        return -EBUSY;
+    }
+
+    t->tty = tty;
     tty->driver_data = t;
     return 0;
 }
@@ -208,7 +263,13 @@ static int ec_tty_open(struct tty_struct *tty, struct file *file)
 
 static void ec_tty_close(struct tty_struct *tty, struct file *file)
 {
+    ec_tty_t *t = (ec_tty_t *) tty->driver_data;
+
     printk(KERN_INFO PFX "Closing line %i.\n", tty->index);
+
+    if (t->tty == tty) {
+        t->tty = NULL;
+    }
 }
 
 /*****************************************************************************/
@@ -219,8 +280,189 @@ static int ec_tty_write(
         int count
         )
 {
-    return -EIO;
+    ec_tty_t *t = (ec_tty_t *) tty->driver_data;
+    unsigned int data_size, i;
+    
+    printk(KERN_INFO PFX "%s(count=%i)\n", __func__, count);
+
+    if (count <= 0) {
+        return 0;
+    }
+
+    data_size = min(ec_tty_tx_space(t), (unsigned int) count);
+    for (i = 0; i < data_size; i++) {
+        t->tx_buffer[t->tx_write_idx] = buffer[i];
+        t->tx_write_idx = (t->tx_write_idx + 1) % EC_TTY_TX_BUFFER_SIZE;
+    }
+
+    printk(KERN_INFO PFX "%s(): %u bytes written.\n", __func__, data_size);
+    return data_size;
 }
+
+/*****************************************************************************/
+
+static void ec_tty_put_char(struct tty_struct *tty, unsigned char ch)
+{
+    ec_tty_t *t = (ec_tty_t *) tty->driver_data;
+
+    printk(KERN_INFO PFX "%s(): c=%02x.\n", __func__, (unsigned int) ch);
+
+    if (ec_tty_tx_space(t)) {
+        t->tx_buffer[t->tx_write_idx] = ch;
+        t->tx_write_idx = (t->tx_write_idx + 1) % EC_TTY_TX_BUFFER_SIZE;
+    } else {
+        printk(KERN_WARNING PFX "%s(): Dropped a byte!\n", __func__);
+    }
+}
+
+/*****************************************************************************/
+
+static int ec_tty_write_room(struct tty_struct *tty)
+{
+    ec_tty_t *t = (ec_tty_t *) tty->driver_data;
+    int ret = ec_tty_tx_space(t);
+    
+    printk(KERN_INFO PFX "%s() = %i.\n", __func__, ret);
+
+    return ret;
+}
+
+/*****************************************************************************/
+
+static int ec_tty_chars_in_buffer(struct tty_struct *tty)
+{
+    ec_tty_t *t = (ec_tty_t *) tty->driver_data;
+    int ret;
+    
+    printk(KERN_INFO PFX "%s().\n", __func__);
+
+    ret = ec_tty_tx_size(t);
+
+    printk(KERN_INFO PFX "%s() = %i.\n", __func__, ret);
+    
+    return ret;
+}
+
+/*****************************************************************************/
+
+static void ec_tty_flush_buffer(struct tty_struct *tty)
+{
+    printk(KERN_INFO PFX "%s().\n", __func__);
+}
+
+/*****************************************************************************/
+
+static int ec_tty_ioctl(struct tty_struct *tty, struct file *file,
+		    unsigned int cmd, unsigned long arg)
+{
+    printk(KERN_INFO PFX "%s().\n", __func__);
+    return -ENOTTY;
+}
+
+/*****************************************************************************/
+
+static void ec_tty_throttle(struct tty_struct *tty)
+{
+    printk(KERN_INFO PFX "%s().\n", __func__);
+}
+
+/*****************************************************************************/
+
+static void ec_tty_unthrottle(struct tty_struct *tty)
+{
+    printk(KERN_INFO PFX "%s().\n", __func__);
+}
+
+/*****************************************************************************/
+
+static void ec_tty_set_termios(struct tty_struct *tty,
+			   struct ktermios *old_termios)
+{
+    printk(KERN_INFO PFX "%s().\n", __func__);
+}
+
+/*****************************************************************************/
+
+static void ec_tty_stop(struct tty_struct *tty)
+{
+    printk(KERN_INFO PFX "%s().\n", __func__);
+}
+
+/*****************************************************************************/
+
+static void ec_tty_start(struct tty_struct *tty)
+{
+    printk(KERN_INFO PFX "%s().\n", __func__);
+}
+
+/*****************************************************************************/
+
+static void ec_tty_hangup(struct tty_struct *tty)
+{
+    printk(KERN_INFO PFX "%s().\n", __func__);
+}
+
+/*****************************************************************************/
+
+static void ec_tty_break(struct tty_struct *tty, int break_state)
+{
+    printk(KERN_INFO PFX "%s(break_state = %i).\n", __func__, break_state);
+}
+
+/*****************************************************************************/
+
+static void ec_tty_send_xchar(struct tty_struct *tty, char ch)
+{
+    printk(KERN_INFO PFX "%s(ch=%02x).\n", __func__, (unsigned int) ch);
+}
+
+/*****************************************************************************/
+
+static void ec_tty_wait_until_sent(struct tty_struct *tty, int timeout)
+{
+    printk(KERN_INFO PFX "%s(timeout=%i).\n", __func__, timeout);
+}
+
+/*****************************************************************************/
+
+static int ec_tty_tiocmget(struct tty_struct *tty, struct file *file)
+{
+    printk(KERN_INFO PFX "%s().\n", __func__);
+    return -EBUSY;
+}
+
+/*****************************************************************************/
+
+static int ec_tty_tiocmset(struct tty_struct *tty, struct file *file,
+		    unsigned int set, unsigned int clear)
+{
+    printk(KERN_INFO PFX "%s(set=%u, clear=%u).\n", __func__, set, clear);
+    return -EBUSY;
+}
+
+/*****************************************************************************/
+
+static const struct tty_operations ec_tty_ops = {
+    .open = ec_tty_open,
+    .close = ec_tty_close,
+    .write = ec_tty_write,
+	.put_char = ec_tty_put_char,
+	.write_room = ec_tty_write_room,
+	.chars_in_buffer = ec_tty_chars_in_buffer,
+	.flush_buffer = ec_tty_flush_buffer,
+	.ioctl = ec_tty_ioctl,
+	.throttle = ec_tty_throttle,
+	.unthrottle = ec_tty_unthrottle,
+	.set_termios = ec_tty_set_termios,
+	.stop = ec_tty_stop,
+	.start = ec_tty_start,
+	.hangup = ec_tty_hangup,
+	.break_ctl = ec_tty_break,
+	.send_xchar = ec_tty_send_xchar,
+	.wait_until_sent = ec_tty_wait_until_sent,
+	.tiocmget = ec_tty_tiocmget,
+	.tiocmset = ec_tty_tiocmset,
+};
 
 /******************************************************************************
  * Public functions and methods
@@ -237,6 +479,8 @@ ec_tty_t *ectty_create(void)
 
     for (minor = 0; minor < EC_TTY_MAX_DEVICES; minor++) {
         if (!ttys[minor]) {
+            printk(KERN_INFO PFX "Creating TTY interface %i.\n", minor);
+
             tty = kmalloc(sizeof(ec_tty_t), GFP_KERNEL);
             if (!tty) {
                 up(&tty_sem);
@@ -266,9 +510,33 @@ ec_tty_t *ectty_create(void)
 
 void ectty_free(ec_tty_t *tty)
 {
+    printk(KERN_INFO PFX "Freeing TTY interface %i.\n", tty->minor);
+
     ec_tty_clear(tty);
     ttys[tty->minor] = NULL;
     kfree(tty);
+}
+
+/*****************************************************************************/
+
+unsigned int ectty_tx_data(ec_tty_t *tty, uint8_t *buffer, size_t size)
+{
+    unsigned int data_size = min(ec_tty_tx_size(tty), size), i;
+
+    if (data_size)  {
+        printk(KERN_INFO PFX "Fetching %u bytes to send.\n", data_size);
+    }
+
+    for (i = 0; i < data_size; i++) {
+        buffer[i] = tty->tx_buffer[tty->tx_read_idx];
+        tty->tx_read_idx = (tty->tx_read_idx + 1) % EC_TTY_TX_BUFFER_SIZE;
+    }
+
+    if (data_size) {
+        tty->wakeup = 1;
+    }
+
+    return data_size;
 }
 
 /*****************************************************************************/
@@ -280,6 +548,7 @@ module_exit(ec_tty_cleanup_module);
 
 EXPORT_SYMBOL(ectty_create);
 EXPORT_SYMBOL(ectty_free);
+EXPORT_SYMBOL(ectty_tx_data);
 
 /** \endcond */
 

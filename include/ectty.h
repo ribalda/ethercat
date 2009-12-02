@@ -69,6 +69,19 @@ void ectty_free(
         ec_tty_t *tty /**< TTY interface. */
         );
 
+/** Reads data to send from the TTY interface.
+ *
+ * If there are data to send, they are copied into the \a buffer. At maximum,
+ * \a size bytes are copied. The actual number of bytes copied is returned.
+ *
+ * \return Number of bytes copied.
+ */
+unsigned int ectty_tx_data(
+        ec_tty_t *tty, /**< TTY interface. */
+        uint8_t *buffer, /**< Buffer for data to transmit. */
+        size_t size /**< Available space in \a buffer. */
+        );
+
 /*****************************************************************************/
 
 /** @} */

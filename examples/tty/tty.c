@@ -116,8 +116,6 @@ typedef struct {
 } serial_device_t;
 
 static serial_device_t *ser = NULL;
-static char tx_data[] = "ATZ\r\n";
-static off_t tx_off = 0;
 static ec_tty_t *tty = NULL;
         
 /*****************************************************************************/
@@ -283,17 +281,10 @@ void serial_run(serial_device_t *ser, uint16_t status, uint8_t *rx_data)
             
             tx_accepted_toggle = status & 0x0001;
             if (tx_accepted_toggle != ser->tx_accepted_toggle) { // ready
-                // send new data
-                size_t rem = sizeof(tx_data) - tx_off;
-                if (rem > 0) {
-                    if (rem < ser->max_tx_data_size) {
-                        ser->tx_data_size = rem;
-                    } else {
-                        ser->tx_data_size = ser->max_tx_data_size;
-                    }
+                ser->tx_data_size =
+                    ectty_tx_data(tty, ser->tx_data, ser->max_tx_data_size);
+                if (ser->tx_data_size) {
                     printk(KERN_INFO PFX "Sending %u bytes.\n", ser->tx_data_size);
-                    memcpy(ser->tx_data, tx_data, ser->tx_data_size);
-                    tx_off += ser->tx_data_size;
                     ser->tx_request_toggle = !ser->tx_request_toggle;
                     ser->tx_accepted_toggle = tx_accepted_toggle;
                 }
@@ -397,8 +388,6 @@ void cyclic_task(unsigned long data)
 
         // check for master state (optional)
         check_master_state();
-
-        tx_off = 0;
     }
 
     serial_run(ser, EC_READ_U16(domain1_pd + off_status), domain1_pd + off_rx);
