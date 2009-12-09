@@ -32,7 +32,8 @@ noinst_HEADERS = \
 	module.c
 
 EXTRA_DIST = \
-	Kbuild.in
+	Kbuild.in \
+	README
 
 BUILT_SOURCES = \
 	Kbuild
