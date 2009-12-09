@@ -82,6 +82,14 @@ unsigned int ectty_tx_data(
         size_t size /**< Available space in \a buffer. */
         );
 
+/** Pushes received data to the TTY interface.
+ */
+void ectty_rx_data(
+        ec_tty_t *tty, /**< TTY interface. */
+        const uint8_t *buffer, /**< Buffer with received data. */
+        size_t size /**< Number of bytes in \a buffer. */
+        );
+
 /*****************************************************************************/
 
 /** @} */

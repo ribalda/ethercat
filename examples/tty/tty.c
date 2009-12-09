@@ -294,12 +294,10 @@ void serial_run(serial_device_t *ser, uint16_t status, uint8_t *rx_data)
 
             rx_request_toggle = status & 0x0002;
             if (rx_request_toggle != ser->rx_request_toggle) {
-                uint8_t rx_data_size = status >> 8, i;
+                uint8_t rx_data_size = status >> 8;
                 ser->rx_request_toggle = rx_request_toggle;
-                printk(KERN_INFO PFX "Received %u bytes:\n", rx_data_size);
-                for (i = 0; i < rx_data_size; i++) {
-                    printk(KERN_INFO PFX "%02x\n", rx_data[i]);
-                }
+                printk(KERN_INFO PFX "Received %u bytes.\n", rx_data_size);
+                ectty_rx_data(tty, rx_data, rx_data_size);
                 ser->rx_accepted_toggle = !ser->rx_accepted_toggle;
             }
 
