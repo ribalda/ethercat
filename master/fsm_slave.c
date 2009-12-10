@@ -142,16 +142,14 @@ int ec_fsm_slave_action_process_sdo(
 
     // search the first external request to be processed
     list_for_each_entry_safe(request, next, &slave->slave_sdo_requests, list) {
-        list_del_init(&request->list); // dequeue
-        request->req.state = EC_INT_REQUEST_BUSY;
 
         if (slave->current_state == EC_SLAVE_STATE_INIT) {
-            EC_ERR("Discarding SDO request, slave %u is in INIT.\n",
+            EC_WARN("Postponing SDO request, slave %u is in INIT.\n",
                     slave->ring_position);
-            request->req.state = EC_INT_REQUEST_FAILURE;
-            wake_up(&slave->sdo_queue);
-            continue;
+            return 0;
         }
+        list_del_init(&request->list); // dequeue
+        request->req.state = EC_INT_REQUEST_BUSY;
 
         // Found pending SDO request. Execute it!
         if (master->debug_level)
