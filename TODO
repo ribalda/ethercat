@@ -26,8 +26,6 @@ Version 1.5.0:
 * Fix arguments of reg_read.
 * Number layout for reg_read.
 * Show Record / Array / List type of SDOs.
-* Limit bandwidth of state machine datagram.
-* Read alias from register 0x0012 instead of SII.
 * Finish library implementation.
 * Rescan command.
 * Override sync manager size?
