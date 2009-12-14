@@ -805,6 +805,8 @@ int ec_cdev_ioctl_slave_sdo_upload(
         return -EINVAL;
     }
 
+    if (master->debug_level)
+        EC_DBG("Schedule SDO upload request for slave %u\n",request.slave->ring_position);
     // schedule request.
     list_add_tail(&request.list, &master->slave_sdo_requests);
 
@@ -816,7 +818,7 @@ int ec_cdev_ioctl_slave_sdo_upload(
         // interrupted by signal
         down(&master->master_sem);
         if (request.req.state == EC_INT_REQUEST_QUEUED) {
-            list_del(&request.req.list);
+            list_del(&request.list);
             up(&master->master_sem);
             ec_sdo_request_clear(&request.req);
             return -EINTR;
@@ -827,6 +829,9 @@ int ec_cdev_ioctl_slave_sdo_upload(
 
     // wait until master FSM has finished processing
     wait_event(master->sdo_queue, request.req.state != EC_INT_REQUEST_BUSY);
+
+    if (master->debug_level)
+        EC_DBG("Scheduled SDO upload request for slave %u done\n",request.slave->ring_position);
 
     data.abort_code = request.req.abort_code;
 
@@ -906,6 +911,8 @@ int ec_cdev_ioctl_slave_sdo_download(
         return -EINVAL;
     }
     
+    if (master->debug_level)
+        EC_DBG("Schedule SDO download request for slave %u\n",request.slave->ring_position);
     // schedule request.
     list_add_tail(&request.list, &master->slave_sdo_requests);
 
@@ -917,7 +924,7 @@ int ec_cdev_ioctl_slave_sdo_download(
         // interrupted by signal
         down(&master->master_sem);
         if (request.req.state == EC_INT_REQUEST_QUEUED) {
-            list_del(&request.req.list);
+            list_del(&request.list);
             up(&master->master_sem);
             ec_sdo_request_clear(&request.req);
             return -EINTR;
@@ -928,6 +935,9 @@ int ec_cdev_ioctl_slave_sdo_download(
 
     // wait until master FSM has finished processing
     wait_event(master->sdo_queue, request.req.state != EC_INT_REQUEST_BUSY);
+
+    if (master->debug_level)
+        EC_DBG("Scheduled SDO download request for slave %u done\n",request.slave->ring_position);
 
     data.abort_code = request.req.abort_code;
 
@@ -1662,6 +1672,32 @@ int ec_cdev_ioctl_deactivate(
     ecrt_master_deactivate(master);
     return 0;
 }
+
+
+/*****************************************************************************/
+
+/** Set max. number of databytes in a cycle
+ */
+int ec_cdev_ioctl_set_max_cycle_size(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    size_t max_cycle_size;
+
+    if (copy_from_user(&max_cycle_size, (void __user *) arg, sizeof(max_cycle_size))) {
+        return -EFAULT;
+    }
+
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
+    master->max_queue_size = max_cycle_size;
+    up(&master->master_sem);
+
+    return 0;
+}
+
 
 /*****************************************************************************/
 
@@ -3456,6 +3492,10 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             return ec_cdev_ioctl_voe_exec(master, arg, priv);
         case EC_IOCTL_VOE_DATA:
             return ec_cdev_ioctl_voe_data(master, arg, priv);
+        case EC_IOCTL_SET_MAX_CYCLE_SIZE:
+            if (!(filp->f_mode & FMODE_WRITE))
+                return -EPERM;
+            return ec_cdev_ioctl_set_max_cycle_size(master,arg,priv);
         default:
             return -ENOTTY;
     }

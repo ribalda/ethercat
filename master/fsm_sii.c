@@ -248,7 +248,6 @@ void ec_fsm_sii_state_read_check(
    SII state: READ FETCH.
    Fetches the result of an SII-read datagram.
 */
-
 void ec_fsm_sii_state_read_fetch(
         ec_fsm_sii_t *fsm /**< finite state machine */
         )
@@ -302,6 +301,7 @@ void ec_fsm_sii_state_read_fetch(
         }
 
         // issue check/fetch datagram again
+        fsm->datagram->state = EC_DATAGRAM_INIT;
         fsm->retries = EC_FSM_RETRIES;
         return;
     }
@@ -435,6 +435,7 @@ void ec_fsm_sii_state_write_check2(
 #endif
         // issue check datagram again
         fsm->retries = EC_FSM_RETRIES;
+        fsm->datagram->state = EC_DATAGRAM_INIT;
         return;
     }
 
@@ -453,6 +454,7 @@ void ec_fsm_sii_state_write_check2(
 
         // issue check datagram again
         fsm->retries = EC_FSM_RETRIES;
+        fsm->datagram->state = EC_DATAGRAM_INIT;
         return;
     }
 
