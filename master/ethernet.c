@@ -34,6 +34,7 @@
 
 /*****************************************************************************/
 
+#include <linux/version.h>
 #include <linux/netdevice.h>
 #include <linux/etherdevice.h>
 
@@ -118,7 +119,8 @@ int ec_eoe_init(
     eoe->tx_queue_active = 0;
     eoe->tx_queue_size = EC_EOE_TX_QUEUE_SIZE;
     eoe->tx_queued_frames = 0;
-    init_MUTEX(&eoe->tx_queue_sem);
+
+    sema_init(&eoe->tx_queue_sem, 1);
     eoe->tx_frame_number = 0xFF;
     memset(&eoe->stats, 0, sizeof(struct net_device_stats));
 

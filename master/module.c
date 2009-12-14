@@ -101,7 +101,7 @@ int __init ec_init_module(void)
 
     EC_INFO("Master driver %s\n", EC_MASTER_VERSION);
 
-    init_MUTEX(&master_sem);
+    sema_init(&master_sem, 1);
 
     if (master_count) {
         if (alloc_chrdev_region(&device_number, 0, master_count, "EtherCAT")) {

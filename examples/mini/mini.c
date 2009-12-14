@@ -393,7 +393,7 @@ int __init init_mini_module(void)
         goto out_return;
     }
 
-    init_MUTEX(&master_sem);
+    sema_init(&master_sem, 1);
     ecrt_master_callbacks(master, send_callback, receive_callback, master);
 
     printk(KERN_INFO PFX "Registering domain...\n");

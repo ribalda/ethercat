@@ -114,11 +114,12 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     master->index = index;
     master->reserved = 0;
 
-    init_MUTEX(&master->master_sem);
+    sema_init(&master->master_sem, 1);
 
     master->main_mac = main_mac;
     master->backup_mac = backup_mac;
-    init_MUTEX(&master->device_sem);
+
+    sema_init(&master->device_sem, 1);
 
     master->phase = EC_ORPHANED;
     master->active = 0;
@@ -136,19 +137,19 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
 
     master->scan_busy = 0;
     master->allow_scan = 1;
-    init_MUTEX(&master->scan_sem);
+    sema_init(&master->scan_sem, 1);
     init_waitqueue_head(&master->scan_queue);
 
     master->config_busy = 0;
     master->allow_config = 1;
-    init_MUTEX(&master->config_sem);
+    sema_init(&master->config_sem, 1);
     init_waitqueue_head(&master->config_queue);
     
     INIT_LIST_HEAD(&master->datagram_queue);
     master->datagram_index = 0;
 
     INIT_LIST_HEAD(&master->ext_datagram_queue);
-    init_MUTEX(&master->ext_queue_sem);
+    sema_init(&master->ext_queue_sem, 1);
 
     INIT_LIST_HEAD(&master->domains);
 
@@ -166,7 +167,7 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     INIT_LIST_HEAD(&master->eoe_handlers);
 #endif
 
-    init_MUTEX(&master->io_sem);
+    sema_init(&master->io_sem, 1);
     master->send_cb = NULL;
     master->receive_cb = NULL;
     master->cb_data = NULL;
