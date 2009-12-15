@@ -699,12 +699,12 @@ void ecrt_master_deactivate(
         );
 
 
-/** Set max. number of databytes in a cycle
+/** Set interval between calls to ecrt_master_send
  *
  */
-int ecrt_master_set_max_cycle_size(
+int ecrt_master_set_send_interval(
         ec_master_t *master, /**< EtherCAT master. */
-        size_t max_cycle_data_size /**< Max. number of databytes in a cycle */
+		size_t send_interval /**< Send interval in us */
         );
 
 /** Sends all datagrams in the queue.

@@ -41,7 +41,7 @@
 #include <linux/delay.h>
 #include <linux/device.h>
 #include <linux/version.h>
-
+#include <linux/hrtimer.h>
 #include "globals.h"
 #include "slave.h"
 #include "slave_config.h"
@@ -159,7 +159,7 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     sema_init(&master->ext_queue_sem, 1);
 
     INIT_LIST_HEAD(&master->external_datagram_queue);
-    master->max_queue_size = EC_MAX_DATA_SIZE;
+	ec_master_set_send_interval(master,1000000 / HZ); // send interval in IDLE phase
 
     INIT_LIST_HEAD(&master->domains);
 
@@ -692,65 +692,81 @@ void ec_master_leave_operation_phase(
 /** Injects external datagrams that fit into the datagram queue
  */
 void ec_master_inject_external_datagrams(
-        ec_master_t *master /**< EtherCAT master */
-        )
+		ec_master_t *master /**< EtherCAT master */
+		)
 {
-    ec_datagram_t *datagram, *n;
-    size_t queue_size = 0;
-    list_for_each_entry(datagram, &master->datagram_queue, queue) {
-        queue_size += datagram->data_size;
-    }
-    list_for_each_entry_safe(datagram, n, &master->external_datagram_queue, queue) {
-        queue_size += datagram->data_size;
-        if (queue_size <= master->max_queue_size) {
-            list_del_init(&datagram->queue);
+	ec_datagram_t *datagram, *n;
+	size_t queue_size = 0;
+	list_for_each_entry(datagram, &master->datagram_queue, queue) {
+		queue_size += datagram->data_size;
+	}
+	list_for_each_entry_safe(datagram, n, &master->external_datagram_queue, queue) {
+		queue_size += datagram->data_size;
+		if (queue_size <= master->max_queue_size) {
+			list_del_init(&datagram->queue);
 #if DEBUG_INJECT
-            if (master->debug_level) {
-                EC_DBG("Injecting external datagram %08x size=%u, queue_size=%u\n",(unsigned int)datagram,datagram->data_size,queue_size);
-            }
+			if (master->debug_level) {
+				EC_DBG("Injecting external datagram %08x size=%u, queue_size=%u\n",(unsigned int)datagram,datagram->data_size,queue_size);
+			}
 #endif
 #ifdef EC_HAVE_CYCLES
-            datagram->cycles_sent = 0;
+			datagram->cycles_sent = 0;
 #endif
-            datagram->jiffies_sent = 0;
-            ec_master_queue_datagram(master, datagram);
-        }
-        else {
-            if (datagram->data_size > master->max_queue_size) {
-                list_del_init(&datagram->queue);
-                datagram->state = EC_DATAGRAM_ERROR;
-                EC_ERR("External datagram %08x is too large, size=%u, max_queue_size=%u\n",(unsigned int)datagram,datagram->data_size,master->max_queue_size);
-            }
-            else {
+			datagram->jiffies_sent = 0;
+			ec_master_queue_datagram(master, datagram);
+		}
+		else {
+			if (datagram->data_size > master->max_queue_size) {
+				list_del_init(&datagram->queue);
+				datagram->state = EC_DATAGRAM_ERROR;
+				EC_ERR("External datagram %08x is too large, size=%u, max_queue_size=%u\n",(unsigned int)datagram,datagram->data_size,master->max_queue_size);
+			}
+			else {
 #ifdef EC_HAVE_CYCLES
-                cycles_t cycles_now = get_cycles();
-                if (cycles_now - datagram->cycles_sent
-                        > sdo_injection_timeout_cycles) {
+				cycles_t cycles_now = get_cycles();
+				if (cycles_now - datagram->cycles_sent
+						> sdo_injection_timeout_cycles) {
 #else
-                if (jiffies - datagram->jiffies_sent
-                        > sdo_injection_timeout_jiffies) {
+				if (jiffies - datagram->jiffies_sent
+						> sdo_injection_timeout_jiffies) {
 #endif
-                    unsigned int time_us;
-                    list_del_init(&datagram->queue);
-                    datagram->state = EC_DATAGRAM_ERROR;
+					unsigned int time_us;
+					list_del_init(&datagram->queue);
+					datagram->state = EC_DATAGRAM_ERROR;
 #ifdef EC_HAVE_CYCLES
-                    time_us = (unsigned int) ((cycles_now - datagram->cycles_sent) * 1000LL) / cpu_khz;
+					time_us = (unsigned int) ((cycles_now - datagram->cycles_sent) * 1000LL) / cpu_khz;
 #else
-                    time_us = (unsigned int) ((jiffies - datagram->jiffies_sent) * 1000000 / HZ);
+					time_us = (unsigned int) ((jiffies - datagram->jiffies_sent) * 1000000 / HZ);
 #endif
-                    EC_ERR("Timeout %u us: injecting external datagram %08x size=%u, max_queue_size=%u\n",time_us,(unsigned int)datagram,datagram->data_size,master->max_queue_size);
-                }
-                else  {
+					EC_ERR("Timeout %u us: injecting external datagram %08x size=%u, max_queue_size=%u\n",time_us,(unsigned int)datagram,datagram->data_size,master->max_queue_size);
+				}
+				else  {
 #if DEBUG_INJECT
-                    if (master->debug_level) {
-                        EC_DBG("Deferred injecting of external datagram %08x size=%u, queue_size=%u\n",(unsigned int)datagram,datagram->data_size,queue_size);
-                    }
+					if (master->debug_level) {
+						EC_DBG("Deferred injecting of external datagram %08x size=%u, queue_size=%u\n",(unsigned int)datagram,datagram->data_size,queue_size);
+					}
 #endif
-                }
-            }
-        }
-    }
+				}
+			}
+		}
+	}
 }
+
+/*****************************************************************************/
+
+/** sets the expected interval between calls to ecrt_master_send
+	and calculates the maximum amount of data to queue
+ */
+void ec_master_set_send_interval(
+		ec_master_t *master, /**< EtherCAT master */
+		size_t send_interval /**< send interval */
+		)
+{
+	master->send_interval = send_interval;
+	master->max_queue_size = (send_interval * 1000) / EC_BYTE_TRANSMITION_TIME;
+	master->max_queue_size -= master->max_queue_size / 10;
+}
+
 
 /*****************************************************************************/
 
@@ -761,22 +777,30 @@ void ec_master_queue_external_datagram(
         ec_datagram_t *datagram /**< datagram */
         )
 {
-#if DEBUG_INJECT
-    if (master->debug_level) {
-        EC_DBG("Requesting external datagram %08x size=%u\n",(unsigned int)datagram,datagram->data_size);
-    }
-#endif
-    datagram->state = EC_DATAGRAM_QUEUED;
-#ifdef EC_HAVE_CYCLES
-    datagram->cycles_sent = get_cycles();
-#endif
-    datagram->jiffies_sent = jiffies;
-
-    master->fsm.idle = 0;
+	ec_datagram_t *queued_datagram;
 
     down(&master->io_sem);
-    list_add_tail(&datagram->queue, &master->external_datagram_queue);
-    up(&master->io_sem);
+	// check, if the datagram is already queued
+	list_for_each_entry(queued_datagram, &master->external_datagram_queue, queue) {
+		if (queued_datagram == datagram) {
+			datagram->state = EC_DATAGRAM_QUEUED;
+			return;
+		}
+	}
+#if DEBUG_INJECT
+	if (master->debug_level) {
+		EC_DBG("Requesting external datagram %08x size=%u\n",(unsigned int)datagram,datagram->data_size);
+	}
+#endif
+	list_add_tail(&datagram->queue, &master->external_datagram_queue);
+	datagram->state = EC_DATAGRAM_QUEUED;
+#ifdef EC_HAVE_CYCLES
+	datagram->cycles_sent = get_cycles();
+#endif
+	datagram->jiffies_sent = jiffies;
+
+	master->fsm.idle = 0;
+	up(&master->io_sem);
 }
 
 /*****************************************************************************/
@@ -1091,6 +1115,49 @@ void ec_master_output_stats(ec_master_t *master /**< EtherCAT master */)
     }
 }
 
+
+/*****************************************************************************/
+/*
+ * Sleep related functions:
+ */
+static enum hrtimer_restart ec_master_nanosleep_wakeup(struct hrtimer *timer)
+{
+	struct hrtimer_sleeper *t =
+		container_of(timer, struct hrtimer_sleeper, timer);
+	struct task_struct *task = t->task;
+
+	t->task = NULL;
+	if (task)
+		wake_up_process(task);
+
+	return HRTIMER_NORESTART;
+}
+
+void ec_master_nanosleep(const unsigned long nsecs)
+{
+	struct hrtimer_sleeper t;
+	enum hrtimer_mode mode = HRTIMER_MODE_REL;
+	hrtimer_init(&t.timer, CLOCK_MONOTONIC,mode);
+	t.timer.function = ec_master_nanosleep_wakeup;
+	t.task = current;
+#ifdef CONFIG_HIGH_RES_TIMERS
+	t.timer.cb_mode = HRTIMER_CB_IRQSAFE_NO_RESTART;
+#endif
+	t.timer.expires = ktime_set(0,nsecs);
+	do {
+		set_current_state(TASK_INTERRUPTIBLE);
+		hrtimer_start(&t.timer, t.timer.expires, mode);
+
+		if (likely(t.task))
+			schedule();
+
+		hrtimer_cancel(&t.timer);
+		mode = HRTIMER_MODE_ABS;
+
+	} while (t.task && !signal_pending(current));
+}
+
+
 /*****************************************************************************/
 
 /** Master kernel thread function for IDLE phase.
@@ -1100,8 +1167,9 @@ static int ec_master_idle_thread(void *priv_data)
     ec_master_t *master = (ec_master_t *) priv_data;
     ec_slave_t *slave = NULL;
     int fsm_exec;
-    if (master->debug_level)
-        EC_DBG("Idle thread running.\n");
+	ec_master_set_send_interval(master,1000000 / HZ); // send interval in IDLE phase
+	if (master->debug_level)
+		EC_DBG("Idle thread running with send interval = %d us, max data size=%d\n",master->send_interval,master->max_queue_size);
 
     while (!kthread_should_stop()) {
         ec_datagram_output_stats(&master->fsm_datagram);
@@ -1132,13 +1200,10 @@ static int ec_master_idle_thread(void *priv_data)
         ecrt_master_send(master);
         up(&master->io_sem);
 
-        if (ec_fsm_master_idle(&master->fsm)) {
-            set_current_state(TASK_INTERRUPTIBLE);
-            schedule_timeout(1);
-        }
-        else {
-            schedule();
-        }
+		if (ec_fsm_master_idle(&master->fsm))
+			ec_master_nanosleep(master->send_interval*1000);
+		else
+			schedule();
     }
     
     if (master->debug_level)
@@ -1156,7 +1221,7 @@ static int ec_master_operation_thread(void *priv_data)
     ec_slave_t *slave = NULL;
     int fsm_exec;
     if (master->debug_level)
-        EC_DBG("Operation thread running.\n");
+		EC_DBG("Operation thread running with fsm interval = %d us, max data size=%d\n",master->send_interval,master->max_queue_size);
 
     while (!kthread_should_stop()) {
         ec_datagram_output_stats(&master->fsm_datagram);
@@ -1180,14 +1245,9 @@ static int ec_master_operation_thread(void *priv_data)
             if (fsm_exec)
                 master->injection_seq_fsm++;
         }
-        if (ec_fsm_master_idle(&master->fsm)) {
-            set_current_state(TASK_INTERRUPTIBLE);
-            schedule_timeout(1);
-        }
-        else {
-            schedule();
-        }
-    }
+		// the op thread should not work faster than the sending RT thread
+		ec_master_nanosleep(master->send_interval*1000);
+	}
     
     if (master->debug_level)
         EC_DBG("Master OP thread exiting...\n");

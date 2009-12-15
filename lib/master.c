@@ -347,11 +347,11 @@ void ecrt_master_deactivate(ec_master_t *master)
 
 /*****************************************************************************/
 
-int ecrt_master_set_max_cycle_size(ec_master_t *master,size_t max_cycle_data_size)
+int ecrt_master_set_send_interval(ec_master_t *master,size_t send_interval_us)
 {
-    if (ioctl(master->fd, EC_IOCTL_SET_MAX_CYCLE_SIZE,
-                &max_cycle_data_size) == -1) {
-        fprintf(stderr, "Failed to activate master: %s\n",
+	if (ioctl(master->fd, EC_IOCTL_SET_SEND_INTERVAL,
+				&send_interval_us) == -1) {
+		fprintf(stderr, "Failed to set send interval: %s\n",
                 strerror(errno));
         return -1; // FIXME
     }

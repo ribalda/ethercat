@@ -123,7 +123,7 @@
 #define EC_IOCTL_VOE_WRITE            EC_IOWR(0x3f, ec_ioctl_voe_t)
 #define EC_IOCTL_VOE_EXEC             EC_IOWR(0x40, ec_ioctl_voe_t)
 #define EC_IOCTL_VOE_DATA             EC_IOWR(0x41, ec_ioctl_voe_t)
-#define EC_IOCTL_SET_MAX_CYCLE_SIZE    EC_IOW(0x42, size_t)
+#define EC_IOCTL_SET_SEND_INTERVAL    EC_IOW(0x42, size_t)
 
 /*****************************************************************************/
 
