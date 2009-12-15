@@ -42,6 +42,7 @@
 /*****************************************************************************/
 
 void ec_fsm_slave_state_idle(ec_fsm_slave_t *);
+void ec_fsm_slave_state_ready(ec_fsm_slave_t *);
 int ec_fsm_slave_action_process_sdo(ec_fsm_slave_t *);
 int ec_fsm_slave_action_process_foe(ec_fsm_slave_t *);
 void ec_fsm_slave_state_sdo_request(ec_fsm_slave_t *);
@@ -102,6 +103,25 @@ void ec_fsm_slave_exec(
     return;
 }
 
+
+/*****************************************************************************/
+
+/** Sets the current state of the state machine to READY
+ *
+ */
+void ec_fsm_slave_ready(
+		ec_fsm_slave_t *fsm /**< Slave state machine. */
+		)
+{
+	if (fsm->state == ec_fsm_slave_state_idle) {
+		if (fsm->slave->master->debug_level) {
+			EC_DBG("Slave %u ready for SDO/FOE.\n",fsm->slave->ring_position);
+		}
+		fsm->state = ec_fsm_slave_state_ready;
+	}
+	return;
+}
+
 /******************************************************************************
  * Slave state machine
  *****************************************************************************/
@@ -113,15 +133,29 @@ void ec_fsm_slave_exec(
  *
  */
 void ec_fsm_slave_state_idle(
-        ec_fsm_slave_t *fsm /**< Slave state machine. */
+		ec_fsm_slave_t *fsm /**< Slave state machine. */
         )
 {
-    // Check for pending external SDO requests
-    if (ec_fsm_slave_action_process_sdo(fsm))
-        return;
-    // Check for pending FOE requests
-    if (ec_fsm_slave_action_process_foe(fsm))
-        return;
+	// do nothing
+}
+
+
+/*****************************************************************************/
+
+/** Slave state: READY.
+ *
+ *
+ */
+void ec_fsm_slave_state_ready(
+		ec_fsm_slave_t *fsm /**< Slave state machine. */
+		)
+{
+	// Check for pending external SDO requests
+	if (ec_fsm_slave_action_process_sdo(fsm))
+		return;
+	// Check for pending FOE requests
+	if (ec_fsm_slave_action_process_foe(fsm))
+		return;
 
 }
 
@@ -143,10 +177,17 @@ int ec_fsm_slave_action_process_sdo(
     // search the first external request to be processed
     list_for_each_entry_safe(request, next, &slave->slave_sdo_requests, list) {
 
-        if (slave->current_state == EC_SLAVE_STATE_INIT) {
+		if (slave->current_state & EC_SLAVE_STATE_ACK_ERR) {
+			EC_WARN("Postponing SDO request, slave %u has ERROR.\n",
+					slave->ring_position);
+			fsm->state = ec_fsm_slave_state_idle;
+			return 0;
+		}
+		if (slave->current_state == EC_SLAVE_STATE_INIT) {
             EC_WARN("Postponing SDO request, slave %u is in INIT.\n",
                     slave->ring_position);
-            return 0;
+			fsm->state = ec_fsm_slave_state_idle;
+			return 0;
         }
         list_del_init(&request->list); // dequeue
         request->req.state = EC_INT_REQUEST_BUSY;
@@ -184,11 +225,17 @@ int ec_fsm_slave_action_process_foe(
 
     // search the first request to be processed
     list_for_each_entry_safe(request, next, &slave->foe_requests, list) {
-        list_del_init(&request->list); // dequeue
+		if (slave->current_state & EC_SLAVE_STATE_ACK_ERR) {
+			EC_WARN("Postponing FOE request, slave %u has ERROR.\n",
+					slave->ring_position);
+			fsm->state = ec_fsm_slave_state_idle;
+			return 0;
+		}
+		list_del_init(&request->list); // dequeue
         request->req.state = EC_INT_REQUEST_BUSY;
 
         if (master->debug_level)
-            EC_DBG("Processing FoE request for slave %u.\n",
+			EC_DBG("Processing FOE request for slave %u.\n",
                     slave->ring_position);
 
         fsm->foe_request = &request->req;
@@ -239,7 +286,7 @@ void ec_fsm_slave_state_sdo_request(
     wake_up(&slave->sdo_queue);
 
     fsm->sdo_request = NULL;
-    fsm->state = ec_fsm_slave_state_idle;
+	fsm->state = ec_fsm_slave_state_ready;
 }
 
 
@@ -280,6 +327,6 @@ void ec_fsm_slave_state_foe_request(
     wake_up(&slave->foe_queue);
 
     fsm->foe_request = NULL;
-    fsm->state = ec_fsm_slave_state_idle;
+	fsm->state = ec_fsm_slave_state_ready;
 }
 

@@ -471,7 +471,14 @@ void ec_fsm_master_action_idle(
     if (ec_fsm_master_action_process_sdo(fsm))
         return;
 
-    // check, if slaves have an SDO dictionary to read out.
+	// enable processing of SDO/FOE requests
+	for (slave = master->slaves;
+			slave < master->slaves + master->slave_count;
+			slave++) {
+		ec_fsm_slave_ready(&slave->fsm);
+	}
+
+	// check, if slaves have an SDO dictionary to read out.
     for (slave = master->slaves;
             slave < master->slaves + master->slave_count;
             slave++) {

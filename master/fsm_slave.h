@@ -65,7 +65,7 @@ void ec_fsm_slave_init(ec_fsm_slave_t *, ec_slave_t *, ec_datagram_t *);
 void ec_fsm_slave_clear(ec_fsm_slave_t *);
 
 void ec_fsm_slave_exec(ec_fsm_slave_t *);
-int ec_fsm_slave_idle(const ec_fsm_slave_t *);
+void ec_fsm_slave_ready(ec_fsm_slave_t *);
 
 /*****************************************************************************/
 
