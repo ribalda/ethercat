@@ -849,12 +849,11 @@ void ec_master_queue_datagram_ext(
 
 /** Sends the datagrams in the queue.
  *
- * \return 0 in case of success, else < 0
  */
 void ec_master_send_datagrams(ec_master_t *master /**< EtherCAT master */)
 {
     ec_datagram_t *datagram, *next;
-    size_t datagram_size;
+	size_t datagram_size;
     uint8_t *frame_data, *cur_data;
     void *follows_word;
 #ifdef EC_HAVE_CYCLES
@@ -1167,6 +1166,7 @@ static int ec_master_idle_thread(void *priv_data)
     ec_master_t *master = (ec_master_t *) priv_data;
     ec_slave_t *slave = NULL;
     int fsm_exec;
+	size_t sent_bytes;
 	ec_master_set_send_interval(master,1000000 / HZ); // send interval in IDLE phase
 	if (master->debug_level)
 		EC_DBG("Idle thread running with send interval = %d us, max data size=%d\n",master->send_interval,master->max_queue_size);
@@ -1198,12 +1198,13 @@ static int ec_master_idle_thread(void *priv_data)
         }
         ec_master_inject_external_datagrams(master);
         ecrt_master_send(master);
+		sent_bytes = master->main_device.tx_skb[master->main_device.tx_ring_index]->len;
         up(&master->io_sem);
 
 		if (ec_fsm_master_idle(&master->fsm))
 			ec_master_nanosleep(master->send_interval*1000);
 		else
-			schedule();
+			ec_master_nanosleep(sent_bytes*EC_BYTE_TRANSMITION_TIME);
     }
     
     if (master->debug_level)
@@ -1982,7 +1983,7 @@ void ecrt_master_send(ec_master_t *master)
     }
 
     // send frames
-    ec_master_send_datagrams(master);
+	ec_master_send_datagrams(master);
 }
 
 /*****************************************************************************/
