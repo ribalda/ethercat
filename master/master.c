@@ -1132,6 +1132,20 @@ static enum hrtimer_restart ec_master_nanosleep_wakeup(struct hrtimer *timer)
 	return HRTIMER_NORESTART;
 }
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,28)
+/* compatibility with new hrtimer interface */
+static inline ktime_t hrtimer_get_expires(const struct hrtimer *timer)
+{
+	return timer->expires;
+}
+
+static inline void hrtimer_set_expires(struct hrtimer *timer, ktime_t time)
+{
+	timer->expires = time;
+}
+#endif
+
+
 void ec_master_nanosleep(const unsigned long nsecs)
 {
 	struct hrtimer_sleeper t;
@@ -1140,12 +1154,18 @@ void ec_master_nanosleep(const unsigned long nsecs)
 	t.timer.function = ec_master_nanosleep_wakeup;
 	t.task = current;
 #ifdef CONFIG_HIGH_RES_TIMERS
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(2, 6, 24)
 	t.timer.cb_mode = HRTIMER_CB_IRQSAFE_NO_RESTART;
+#elif LINUX_VERSION_CODE <= KERNEL_VERSION(2, 6, 26)
+	t.timer.cb_mode = HRTIMER_CB_IRQSAFE_NO_SOFTIRQ;
+#elif LINUX_VERSION_CODE <= KERNEL_VERSION(2, 6, 28)
+	t.timer.cb_mode = HRTIMER_CB_IRQSAFE_UNLOCKED;
 #endif
-	t.timer.expires = ktime_set(0,nsecs);
+#endif
+	hrtimer_set_expires(&t.timer, ktime_set(0,nsecs));
 	do {
 		set_current_state(TASK_INTERRUPTIBLE);
-		hrtimer_start(&t.timer, t.timer.expires, mode);
+		hrtimer_start(&t.timer, hrtimer_get_expires(&t.timer), mode);
 
 		if (likely(t.task))
 			schedule();
