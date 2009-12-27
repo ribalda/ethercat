@@ -114,7 +114,7 @@ int ec_foe_request_alloc(
     ec_foe_request_clear_data(req);
 
     if (!(req->buffer = (uint8_t *) kmalloc(size, GFP_KERNEL))) {
-        EC_ERR("Failed to allocate %u bytes of FoE memory.\n", size);
+        EC_ERR("Failed to allocate %zu bytes of FoE memory.\n", size);
         return -1;
     }
 

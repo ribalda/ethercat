@@ -309,16 +309,18 @@ void ec_device_send(
     skb->len = ETH_HLEN + size;
 
     if (unlikely(device->master->debug_level > 1)) {
-        EC_DBG("sending frame:\n");
-        ec_print_data(skb->data + ETH_HLEN, size);
+        EC_DBG("Sending frame:\n");
+        ec_print_data(skb->data, ETH_HLEN + size);
     }
 
     // start sending
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 29)
-    if (device->dev->netdev_ops->ndo_start_xmit(skb, device->dev) == NETDEV_TX_OK) {
+    if (device->dev->netdev_ops->ndo_start_xmit(skb, device->dev) ==
+            NETDEV_TX_OK)
 #else
-    if (device->dev->hard_start_xmit(skb, device->dev) == NETDEV_TX_OK) {
+    if (device->dev->hard_start_xmit(skb, device->dev) == NETDEV_TX_OK)
 #endif
+    {
         device->tx_count++;
 #ifdef EC_DEBUG_IF
         ec_debug_send(&device->dbg, skb->data, ETH_HLEN + size);
@@ -516,7 +518,7 @@ void ecdev_receive(
 
     if (unlikely(device->master->debug_level > 1)) {
         EC_DBG("Received frame:\n");
-        ec_print_data(ec_data, ec_size);
+        ec_print_data(data, size);
     }
 
 #ifdef EC_DEBUG_IF

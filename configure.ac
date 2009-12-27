@@ -102,6 +102,29 @@ AC_SUBST(LINUX_MOD_PATH,[/lib/modules/$kernelrelease/ethercat])
 AC_MSG_RESULT([$LINUX_SOURCE_DIR (Kernel $LINUX_KERNEL_RELEASE)])
 
 #------------------------------------------------------------------------------
+# Generic Ethernet driver
+#------------------------------------------------------------------------------
+
+AC_ARG_ENABLE([generic],
+    AS_HELP_STRING([--enable-generic],
+                   [Enable generic Ethernet driver]),
+    [
+        case "${enableval}" in
+            yes) enablegeneric=1
+                ;;
+            no) enablegeneric=0
+                ;;
+            *) AC_MSG_ERROR([Invalid value for --enable-generic])
+                ;;
+        esac
+    ],
+    [enablegeneric=0]
+)
+
+AM_CONDITIONAL(ENABLE_GENERIC, test "x$enablegeneric" = "x1")
+AC_SUBST(ENABLE_GENERIC,[$enablegeneric])
+
+#------------------------------------------------------------------------------
 # 8139too driver
 #------------------------------------------------------------------------------
 
@@ -496,6 +519,29 @@ AC_ARG_ENABLE([userlib],
 AM_CONDITIONAL(ENABLE_USERLIB, test "x$userlib" = "x1")
 
 #------------------------------------------------------------------------------
+# TTY driver
+#------------------------------------------------------------------------------
+
+AC_ARG_ENABLE([tty],
+    AS_HELP_STRING([--enable-tty],
+                   [Generation of the ec_tty module (default: no)]),
+    [
+        case "${enableval}" in
+            yes) tty=1
+                ;;
+            no) tty=0
+                ;;
+            *) AC_MSG_ERROR([Invalid value for --enable-tty])
+                ;;
+        esac
+    ],
+    [tty=0]
+)
+
+AM_CONDITIONAL(ENABLE_TTY, test "x$tty" = "x1")
+AC_SUBST(ENABLE_TTY,[$tty])
+
+#------------------------------------------------------------------------------
 
 AC_CONFIG_FILES([
         Doxyfile
@@ -514,6 +560,8 @@ AC_CONFIG_FILES([
         examples/mini/Makefile
         examples/rtai/Kbuild
         examples/rtai/Makefile
+        examples/tty/Makefile
+        examples/tty/Kbuild
         examples/user/Makefile
         include/Makefile
         lib/Makefile
@@ -525,6 +573,8 @@ AC_CONFIG_FILES([
         script/init.d/ethercat
         script/sysconfig/Makefile
         tool/Makefile
+        tty/Makefile
+        tty/Kbuild
 ])
 AC_OUTPUT
 

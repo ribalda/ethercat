@@ -45,6 +45,10 @@
  */
 #define EC_FSM_COE_DICT_TIMEOUT 3000
 
+#define EC_COE_DOWN_REQ_HEADER_SIZE      10
+#define EC_COE_DOWN_SEG_REQ_HEADER_SIZE  3
+#define EC_COE_DOWN_SEG_MIN_DATA_SIZE    7
+
 /*****************************************************************************/
 
 void ec_fsm_coe_dict_start(ec_fsm_coe_t *);
@@ -62,6 +66,8 @@ void ec_fsm_coe_down_start(ec_fsm_coe_t *);
 void ec_fsm_coe_down_request(ec_fsm_coe_t *);
 void ec_fsm_coe_down_check(ec_fsm_coe_t *);
 void ec_fsm_coe_down_response(ec_fsm_coe_t *);
+void ec_fsm_coe_down_seg_check(ec_fsm_coe_t *);
+void ec_fsm_coe_down_seg_response(ec_fsm_coe_t *);
 
 void ec_fsm_coe_up_start(ec_fsm_coe_t *);
 void ec_fsm_coe_up_request(ec_fsm_coe_t *);
@@ -446,7 +452,7 @@ void ec_fsm_coe_dict_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     }
 
     if (rec_size < 3) {
-        EC_ERR("Received corrupted SDO dictionary response (size %u).\n",
+        EC_ERR("Received corrupted SDO dictionary response (size %zu).\n",
                 rec_size);
         fsm->state = ec_fsm_coe_error;
         return;
@@ -480,7 +486,7 @@ void ec_fsm_coe_dict_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     }
 
     if (rec_size < 8 || rec_size % 2) {
-        EC_ERR("Invalid data size %u!\n", rec_size);
+        EC_ERR("Invalid data size %zu!\n", rec_size);
         ec_print_data(data, rec_size);
         fsm->state = ec_fsm_coe_error;
         return;
@@ -690,7 +696,7 @@ void ec_fsm_coe_dict_desc_response(ec_fsm_coe_t *fsm
     }
 
     if (rec_size < 3) {
-        EC_ERR("Received corrupted SDO description response (size %u).\n",
+        EC_ERR("Received corrupted SDO description response (size %zu).\n",
                 rec_size);
         fsm->state = ec_fsm_coe_error;
         return;
@@ -707,7 +713,7 @@ void ec_fsm_coe_dict_desc_response(ec_fsm_coe_t *fsm
     }
 
     if (rec_size < 8) {
-        EC_ERR("Received corrupted SDO description response (size %u).\n",
+        EC_ERR("Received corrupted SDO description response (size %zu).\n",
                 rec_size);
         fsm->state = ec_fsm_coe_error;
         return;
@@ -929,7 +935,7 @@ void ec_fsm_coe_dict_entry_response(ec_fsm_coe_t *fsm
 
     if (rec_size < 3) {
         EC_ERR("Received corrupted SDO entry description response "
-                "(size %u).\n", rec_size);
+                "(size %zu).\n", rec_size);
         fsm->state = ec_fsm_coe_error;
         return;
     }
@@ -946,7 +952,7 @@ void ec_fsm_coe_dict_entry_response(ec_fsm_coe_t *fsm
 
     if (rec_size < 9) {
         EC_ERR("Received corrupted SDO entry description response "
-                "(size %u).\n", rec_size);
+                "(size %zu).\n", rec_size);
         fsm->state = ec_fsm_coe_error;
         return;
     }
@@ -969,7 +975,7 @@ void ec_fsm_coe_dict_entry_response(ec_fsm_coe_t *fsm
     }
 
     if (rec_size < 16) {
-        EC_ERR("Invalid data size %u!\n", rec_size);
+        EC_ERR("Invalid data size %zu!\n", rec_size);
         ec_print_data(data, rec_size);
         fsm->state = ec_fsm_coe_error;
         return;
@@ -1061,17 +1067,17 @@ void ec_fsm_coe_dict_entry_response(ec_fsm_coe_t *fsm
  *  CoE state machine
  *****************************************************************************/
 
-/**
-   CoE state: DOWN START.
-*/
-
-void ec_fsm_coe_down_start(ec_fsm_coe_t *fsm /**< finite state machine */)
+/** CoE state: DOWN START.
+ */
+void ec_fsm_coe_down_start(
+        ec_fsm_coe_t *fsm /**< finite state machine */
+        )
 {
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
     ec_sdo_request_t *request = fsm->request;
     uint8_t *data;
-    uint8_t size;
+    uint8_t data_set_size;
 
     if (fsm->slave->master->debug_level) {
         char subidxstr[10];
@@ -1091,18 +1097,28 @@ void ec_fsm_coe_down_start(ec_fsm_coe_t *fsm /**< finite state machine */)
         return;
     }
 
+    if (slave->configured_rx_mailbox_size < 
+            EC_MBOX_HEADER_SIZE + EC_COE_DOWN_REQ_HEADER_SIZE) {
+        EC_ERR("Mailbox too small!\n");
+        fsm->state = ec_fsm_coe_error;
+        return;
+    }
+
     if (request->data_size <= 4) { // use expedited transfer type
-        data = ec_slave_mbox_prepare_send(slave, datagram, 0x03, 10);
+        data = ec_slave_mbox_prepare_send(slave, datagram, 0x03,
+                EC_COE_DOWN_REQ_HEADER_SIZE);
         if (IS_ERR(data)) {
             fsm->state = ec_fsm_coe_error;
             return;
         }
 
-        size = 4 - request->data_size;
+        fsm->remaining = 0;
+
+        data_set_size = 4 - request->data_size;
 
         EC_WRITE_U16(data, 0x2 << 12); // SDO request
         EC_WRITE_U8 (data + 2, (0x3 // size specified, expedited
-                    | size << 2
+                    | data_set_size << 2
                     | ((request->complete_access ? 1 : 0) << 4) 
                     | 0x1 << 5)); // Download request
         EC_WRITE_U16(data + 3, request->index);
@@ -1113,36 +1129,54 @@ void ec_fsm_coe_down_start(ec_fsm_coe_t *fsm /**< finite state machine */)
 
         if (slave->master->debug_level) {
             EC_DBG("Expedited download request:\n");
-            ec_print_data(data, 10);
+            ec_print_data(data, EC_COE_DOWN_REQ_HEADER_SIZE);
         }
     }
     else { // request->data_size > 4, use normal transfer type
-        if (slave->configured_rx_mailbox_size < 6 + 10 + request->data_size) {
-            EC_ERR("SDO fragmenting not supported yet!\n"); // FIXME
-            fsm->state = ec_fsm_coe_error;
-            return;
+        size_t data_size,
+               max_data_size =
+                   slave->configured_rx_mailbox_size - EC_MBOX_HEADER_SIZE,
+               required_data_size =
+                   EC_COE_DOWN_REQ_HEADER_SIZE + request->data_size;
+
+        if (max_data_size < required_data_size) {
+            // segmenting needed
+            data_size = max_data_size;
+        } else {
+            data_size = required_data_size;
         }
 
         data = ec_slave_mbox_prepare_send(slave, datagram, 0x03,
-                request->data_size + 10);
+                data_size);
         if (IS_ERR(data)) {
             fsm->state = ec_fsm_coe_error;
             return;
         }
 
+        fsm->offset = 0;
+        fsm->remaining = request->data_size;
+
         EC_WRITE_U16(data, 0x2 << 12); // SDO request
-        EC_WRITE_U8 (data + 2, (0x1 // size indicator, normal
-                    | ((request->complete_access ? 1 : 0) << 4) 
-                    | 0x1 << 5)); // Download request
+        EC_WRITE_U8(data + 2,
+                0x1 // size indicator, normal
+                | ((request->complete_access ? 1 : 0) << 4) 
+                | 0x1 << 5); // Download request
         EC_WRITE_U16(data + 3, request->index);
         EC_WRITE_U8 (data + 5,
                 request->complete_access ? 0x00 : request->subindex);
         EC_WRITE_U32(data + 6, request->data_size);
-        memcpy(data + 10, request->data, request->data_size);
+
+        if (data_size > EC_COE_DOWN_REQ_HEADER_SIZE) {
+            size_t segment_size = data_size - EC_COE_DOWN_REQ_HEADER_SIZE;
+            memcpy(data + EC_COE_DOWN_REQ_HEADER_SIZE,
+                    request->data, segment_size);
+            fsm->offset += segment_size;
+            fsm->remaining -= segment_size;
+        }
 
         if (slave->master->debug_level) {
             EC_DBG("Normal download request:\n");
-            ec_print_data(data, 10 + request->data_size);
+            ec_print_data(data, data_size);
         }
     }
 
@@ -1255,6 +1289,69 @@ void ec_fsm_coe_down_check(ec_fsm_coe_t *fsm /**< finite state machine */)
 
 /*****************************************************************************/
 
+void ec_fsm_coe_down_prepare_segment_request(
+        ec_fsm_coe_t *fsm /**< finite state machine */
+        )
+{
+    ec_datagram_t *datagram = fsm->datagram;
+    ec_slave_t *slave = fsm->slave;
+    ec_sdo_request_t *request = fsm->request;
+    size_t max_segment_size =
+        slave->configured_rx_mailbox_size
+        - EC_MBOX_HEADER_SIZE
+        - EC_COE_DOWN_SEG_REQ_HEADER_SIZE;
+    size_t segment_size, data_size;
+    uint8_t last_segment, seg_data_size, *data;
+
+    if (fsm->remaining > max_segment_size) {
+        segment_size = max_segment_size;
+        last_segment = 0;
+    } else {
+        segment_size = fsm->remaining;
+        last_segment = 1;
+    }
+
+    if (segment_size > EC_COE_DOWN_SEG_MIN_DATA_SIZE) {
+        seg_data_size = 0x00;
+        data_size = EC_COE_DOWN_SEG_REQ_HEADER_SIZE + segment_size;
+    } else {
+        seg_data_size = EC_COE_DOWN_SEG_MIN_DATA_SIZE - segment_size;
+        data_size = EC_COE_DOWN_SEG_REQ_HEADER_SIZE
+            + EC_COE_DOWN_SEG_MIN_DATA_SIZE;
+    }
+
+    data = ec_slave_mbox_prepare_send(slave, datagram, 0x03,
+            data_size);
+    if (IS_ERR(data)) {
+        fsm->state = ec_fsm_coe_error;
+        return;
+    }
+
+    EC_WRITE_U16(data, 0x2 << 12); // SDO request
+    EC_WRITE_U8(data + 2, (last_segment ? 1 : 0)
+            | (seg_data_size << 1) 
+            | (fsm->toggle << 4)
+            | (0x00 << 5)); // Download segment request
+    memcpy(data + EC_COE_DOWN_SEG_REQ_HEADER_SIZE,
+            request->data + fsm->offset, segment_size);
+    if (segment_size < EC_COE_DOWN_SEG_MIN_DATA_SIZE) {
+        memset(data + EC_COE_DOWN_SEG_REQ_HEADER_SIZE + segment_size, 0x00,
+                EC_COE_DOWN_SEG_MIN_DATA_SIZE - segment_size);
+    }
+
+    fsm->offset += segment_size;
+    fsm->remaining -= segment_size;
+
+    if (slave->master->debug_level) {
+        EC_DBG("Download segment request:\n");
+        ec_print_data(data, data_size);
+    }
+
+    fsm->state = ec_fsm_coe_down_seg_check;
+}
+
+/*****************************************************************************/
+
 /**
    CoE state: DOWN RESPONSE.
    \todo Timeout behavior
@@ -1314,7 +1411,7 @@ void ec_fsm_coe_down_response(ec_fsm_coe_t *fsm /**< finite state machine */)
 
     if (rec_size < 6) {
         fsm->state = ec_fsm_coe_error;
-        EC_ERR("Received data are too small (%u bytes):\n", rec_size);
+        EC_ERR("Received data are too small (%zu bytes):\n", rec_size);
         ec_print_data(data, rec_size);
         return;
     }
@@ -1328,7 +1425,7 @@ void ec_fsm_coe_down_response(ec_fsm_coe_t *fsm /**< finite state machine */)
         } else {
             sprintf(subidxstr, ":%02X", request->subindex);
         }
-        EC_ERR("SDO download 0x%04X%s (%u bytes) aborted on slave %u.\n",
+        EC_ERR("SDO download 0x%04X%s (%zu bytes) aborted on slave %u.\n",
                 request->index, subidxstr, request->data_size,
                 slave->ring_position);
         if (rec_size < 10) {
@@ -1357,7 +1454,182 @@ void ec_fsm_coe_down_response(ec_fsm_coe_t *fsm /**< finite state machine */)
         return;
     }
 
-    fsm->state = ec_fsm_coe_end; // success
+    if (fsm->remaining) { // more segments to download
+        fsm->toggle = 0;
+        ec_fsm_coe_down_prepare_segment_request(fsm);
+    } else {
+        fsm->state = ec_fsm_coe_end; // success
+    }
+}
+
+/*****************************************************************************/
+
+/**
+   CoE state: DOWN SEG CHECK.
+*/
+
+void ec_fsm_coe_down_seg_check(ec_fsm_coe_t *fsm /**< finite state machine */)
+{
+    ec_datagram_t *datagram = fsm->datagram;
+    ec_slave_t *slave = fsm->slave;
+
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+        return;
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED) {
+        fsm->state = ec_fsm_coe_error;
+        EC_ERR("Failed to receive CoE mailbox check datagram for slave %u"
+                " (datagram state %u).\n",
+               slave->ring_position, datagram->state);
+        return;
+    }
+
+    if (datagram->working_counter != 1) {
+        fsm->state = ec_fsm_coe_error;
+        EC_ERR("Reception of CoE mailbox segment check"
+                " datagram failed on slave %u: ", slave->ring_position);
+        ec_datagram_print_wc_error(datagram);
+        return;
+    }
+
+    if (!ec_slave_mbox_check(datagram)) {
+        unsigned long diff_ms =
+            (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
+        if (diff_ms >= fsm->request->response_timeout) {
+            fsm->state = ec_fsm_coe_error;
+            EC_ERR("Timeout while waiting for SDO download segment response "
+                    "on slave %u.\n", slave->ring_position);
+            return;
+        }
+
+        ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
+        fsm->retries = EC_FSM_RETRIES;
+        return;
+    }
+
+    // Fetch response
+    ec_slave_mbox_prepare_fetch(slave, datagram); // can not fail.
+    fsm->retries = EC_FSM_RETRIES;
+    fsm->state = ec_fsm_coe_down_seg_response;
+}
+
+/*****************************************************************************/
+
+/**
+   CoE state: DOWN SEG RESPONSE.
+   \todo Timeout behavior
+*/
+
+void ec_fsm_coe_down_seg_response(
+        ec_fsm_coe_t *fsm /**< finite state machine */
+        )
+{
+    ec_datagram_t *datagram = fsm->datagram;
+    ec_slave_t *slave = fsm->slave;
+    uint8_t *data, mbox_prot;
+    size_t rec_size;
+    ec_sdo_request_t *request = fsm->request;
+
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+        return; // FIXME: request again?
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED) {
+        fsm->state = ec_fsm_coe_error;
+        EC_ERR("Failed to receive CoE download response datagram from"
+               " slave %u (datagram state %u).\n",
+               slave->ring_position, datagram->state);
+        return;
+    }
+
+    if (datagram->working_counter != 1) {
+        fsm->state = ec_fsm_coe_error;
+        EC_ERR("Reception of CoE download response failed on slave %u: ",
+                slave->ring_position);
+        ec_datagram_print_wc_error(datagram);
+        return;
+    }
+
+    data = ec_slave_mbox_fetch(slave, datagram, &mbox_prot, &rec_size);
+    if (IS_ERR(data)) {
+        fsm->state = ec_fsm_coe_error;
+        return;
+    }
+
+    if (mbox_prot != 0x03) { // CoE
+        fsm->state = ec_fsm_coe_error;
+        EC_ERR("Received mailbox protocol 0x%02X as response.\n", mbox_prot);
+        return;
+    }
+
+    if (ec_fsm_coe_check_emergency(fsm, data, rec_size)) {
+        // check for CoE response again
+        ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
+        fsm->retries = EC_FSM_RETRIES;
+        fsm->state = ec_fsm_coe_down_check;
+        return;
+    }
+
+    if (slave->master->debug_level) {
+        EC_DBG("Download response:\n");
+        ec_print_data(data, rec_size);
+    }
+
+    if (rec_size < 6) {
+        fsm->state = ec_fsm_coe_error;
+        EC_ERR("Received data are too small (%zu bytes):\n", rec_size);
+        ec_print_data(data, rec_size);
+        return;
+    }
+
+    if (EC_READ_U16(data) >> 12 == 0x2 && // SDO request
+        EC_READ_U8 (data + 2) >> 5 == 0x4) { // abort SDO transfer request
+        char subidxstr[10];
+        fsm->state = ec_fsm_coe_error;
+        if (request->complete_access) {
+            subidxstr[0] = 0x00;
+        } else {
+            sprintf(subidxstr, ":%02X", request->subindex);
+        }
+        EC_ERR("SDO download 0x%04X%s (%zu bytes) aborted on slave %u.\n",
+                request->index, subidxstr, request->data_size,
+                slave->ring_position);
+        if (rec_size < 10) {
+            EC_ERR("Incomplete abort command:\n");
+            ec_print_data(data, rec_size);
+        } else {
+            fsm->request->abort_code = EC_READ_U32(data + 6);
+            ec_canopen_abort_msg(fsm->request->abort_code);
+        }
+        return;
+    }
+
+    if (EC_READ_U16(data) >> 12 != 0x3 ||
+            ((EC_READ_U8(data + 2) >> 5) != 0x01)) { // segment response
+        if (slave->master->debug_level) {
+            EC_DBG("Invalid SDO download response at slave %u! Retrying...\n",
+                    slave->ring_position);
+            ec_print_data(data, rec_size);
+        }
+        // check for CoE response again
+        ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
+        fsm->retries = EC_FSM_RETRIES;
+        fsm->state = ec_fsm_coe_down_seg_check;
+        return;
+    }
+
+    if (((EC_READ_U8(data + 2) >> 4) & 0x01) != fsm->toggle) {
+        EC_ERR("Invalid toggle received during segmented download:\n");
+        ec_print_data(data, rec_size);
+        fsm->state = ec_fsm_coe_error;
+        return;
+    }
+
+    if (fsm->remaining) { // more segments to download
+        fsm->toggle = !fsm->toggle;
+        ec_fsm_coe_down_prepare_segment_request(fsm);
+    } else {
+        fsm->state = ec_fsm_coe_end; // success
+    }
 }
 
 /*****************************************************************************/
@@ -1526,6 +1798,7 @@ void ec_fsm_coe_up_prepare_segment_request(
     EC_WRITE_U16(data, 0x2 << 12); // SDO request
     EC_WRITE_U8 (data + 2, (fsm->toggle << 4 // toggle
                 | 0x3 << 5)); // upload segment request
+    memset(data + 3, 0x00, 7);
 
     if (fsm->slave->master->debug_level) {
         EC_DBG("Upload segment request:\n");
@@ -1597,7 +1870,7 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
 
     if (rec_size < 6) {
         fsm->state = ec_fsm_coe_error;
-        EC_ERR("Received currupted SDO upload response (%u bytes)!\n", rec_size);
+        EC_ERR("Received currupted SDO upload response (%zu bytes)!\n", rec_size);
         ec_print_data(data, rec_size);
         return;
     }
@@ -1657,7 +1930,7 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
         if (rec_size < 6 + fsm->complete_size) {
             fsm->state = ec_fsm_coe_error;
             EC_ERR("Received currupted SDO expedited upload"
-                    " response (only %u bytes)!\n", rec_size);
+                    " response (only %zu bytes)!\n", rec_size);
             ec_print_data(data, rec_size);
             return;
         }
@@ -1670,7 +1943,7 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
         if (rec_size < 10) {
             fsm->state = ec_fsm_coe_error;
             EC_ERR("Received currupted SDO normal upload"
-                    " response (only %u bytes)!\n", rec_size);
+                    " response (only %zu bytes)!\n", rec_size);
             ec_print_data(data, rec_size);
             return;
         }
@@ -1699,7 +1972,7 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
 
         if (data_size < fsm->complete_size) {
             if (master->debug_level)
-                EC_DBG("SDO data incomplete (%u / %u). Segmenting...\n",
+                EC_DBG("SDO data incomplete (%zu / %u). Segmenting...\n",
                         data_size, fsm->complete_size);
 
             ec_fsm_coe_up_prepare_segment_request(fsm);
@@ -1927,7 +2200,7 @@ void ec_fsm_coe_up_seg_response(ec_fsm_coe_t *fsm /**< finite state machine */)
 
     if (request->data_size != fsm->complete_size) {
         EC_WARN("SDO upload 0x%04X:%02X on slave %u: Assembled data"
-                " size (%u) does not match complete size (%u)!\n",
+                " size (%zu) does not match complete size (%u)!\n",
                 request->index, request->subindex, slave->ring_position,
                 request->data_size, fsm->complete_size);
     }

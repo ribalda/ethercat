@@ -43,6 +43,10 @@ if ENABLE_USERLIB
 SUBDIRS += lib
 endif
 
+if ENABLE_TTY
+SUBDIRS += tty
+endif
+
 # userspace example depends on lib/
 SUBDIRS += examples
 
@@ -54,7 +58,8 @@ DIST_SUBDIRS = \
     m4 \
     master \
     script \
-    tool
+    tool \
+	tty
 
 noinst_HEADERS = \
 	globals.h
@@ -75,6 +80,9 @@ modules:
 modules_install:
 	$(MAKE) -C master modules_install
 	$(MAKE) -C devices modules_install
+if ENABLE_TTY
+	$(MAKE) -C tty modules_install
+endif
 
 clean-local:
 	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" clean

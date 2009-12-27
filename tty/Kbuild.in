@@ -21,30 +21,27 @@
 #
 #  ---
 #  
-#  The license mentioned above concerns the source code only. Using the
-#  EtherCAT technology and brand is only permitted in compliance with the
-#  industrial property and similar rights of Beckhoff Automation GmbH.
+#  The license mentioned above concerns the source code only. Using the EtherCAT
+#  technology and brand is only permitted in compliance with the industrial
+#  property and similar rights of Beckhoff Automation GmbH.
+#
+#  ---
+#
+#  vi: syntax=make
 #
 #------------------------------------------------------------------------------
 
-if ENABLE_USERLIB
-SUBDIRS = \
-	dc_user \
-	user
-endif
+obj-m := ec_tty.o
 
-DIST_SUBDIRS = \
-	dc_rtai \
-	dc_user \
-	mini \
-	rtai \
-	tty \
-	user
+ec_tty-objs := \
+	module.o
 
-EXTRA_DIST = \
-	Kbuild.in
+REV := $(shell if test -s $(src)/../revision; then \
+		cat $(src)/../revision; \
+	else \
+		hg id -i $(src)/.. 2>/dev/null || echo "unknown"; \
+	fi)
 
-BUILT_SOURCES = \
-	Kbuild
+CFLAGS_module.o := -DREV=$(REV)
 
 #------------------------------------------------------------------------------

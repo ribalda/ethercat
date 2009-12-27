@@ -212,7 +212,7 @@ void ec_voe_handler_state_write_start(ec_voe_handler_t *voe)
     uint8_t *data;
 
     if (slave->master->debug_level) {
-        EC_DBG("Writing %u bytes of VoE data to slave %u.\n",
+        EC_DBG("Writing %zu bytes of VoE data to slave %u.\n",
                voe->data_size, slave->ring_position);
         ec_print_data(ecrt_voe_handler_data(voe), voe->data_size);
     }
@@ -234,6 +234,7 @@ void ec_voe_handler_state_write_start(ec_voe_handler_t *voe)
 
     EC_WRITE_U32(data,     voe->vendor_id);
     EC_WRITE_U16(data + 4, voe->vendor_type);
+    /* data already in datagram */
 
     voe->retries = EC_FSM_RETRIES;
     voe->jiffies_start = jiffies;
@@ -419,7 +420,7 @@ void ec_voe_handler_state_read_response(ec_voe_handler_t *voe)
     if (rec_size < EC_VOE_HEADER_SIZE) {
         voe->state = ec_voe_handler_state_error;
         voe->request_state = EC_INT_REQUEST_FAILURE;
-        EC_ERR("Received VoE header is incomplete (%u bytes)!\n", rec_size);
+        EC_ERR("Received VoE header is incomplete (%zu bytes)!\n", rec_size);
         return;
     }
 
@@ -488,7 +489,7 @@ void ec_voe_handler_state_read_nosync_response(ec_voe_handler_t *voe)
         voe->state = ec_voe_handler_state_error;
         voe->request_state = EC_INT_REQUEST_FAILURE;
         if (master->debug_level)
-            EC_DBG("Slave %u did not send VoE data.", slave->ring_position);
+            EC_DBG("Slave %u did not send VoE data.\n", slave->ring_position);
         return;
     }
 
@@ -519,7 +520,7 @@ void ec_voe_handler_state_read_nosync_response(ec_voe_handler_t *voe)
     if (rec_size < EC_VOE_HEADER_SIZE) {
         voe->state = ec_voe_handler_state_error;
         voe->request_state = EC_INT_REQUEST_FAILURE;
-        EC_ERR("Received VoE header is incomplete (%u bytes)!\n", rec_size);
+        EC_ERR("Received VoE header is incomplete (%zu bytes)!\n", rec_size);
         return;
     }
 

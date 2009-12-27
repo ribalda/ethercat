@@ -193,7 +193,7 @@ void ec_fsm_pdo_entry_read_state_count(
     }
 
     if (fsm->request.data_size != sizeof(uint8_t)) {
-        EC_ERR("Invalid data size %u at uploading SDO 0x%04X:%02X.\n",
+        EC_ERR("Invalid data size %zu at uploading SDO 0x%04X:%02X.\n",
                 fsm->request.data_size, fsm->request.index,
                 fsm->request.subindex);
         fsm->state = ec_fsm_pdo_entry_state_error;
@@ -248,7 +248,7 @@ void ec_fsm_pdo_entry_read_state_entry(
     }
 
     if (fsm->request.data_size != sizeof(uint32_t)) {
-        EC_ERR("Invalid data size %u at uploading SDO 0x%04X:%02X.\n",
+        EC_ERR("Invalid data size %zu at uploading SDO 0x%04X:%02X.\n",
                 fsm->request.data_size, fsm->request.index,
                 fsm->request.subindex);
         fsm->state = ec_fsm_pdo_entry_state_error;

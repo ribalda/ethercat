@@ -345,7 +345,7 @@ int ec_slave_fetch_sii_general(
     uint8_t flags;
 
     if (data_size != 32) {
-        EC_ERR("Wrong size of general category (%u/32) in slave %u.\n",
+        EC_ERR("Wrong size of general category (%zu/32) in slave %u.\n",
                 data_size, slave->ring_position);
         return -EINVAL;
     }
@@ -400,7 +400,7 @@ int ec_slave_fetch_sii_syncs(
 
     // one sync manager struct is 4 words long
     if (data_size % 8) {
-        EC_ERR("Invalid SII sync manager category size %u in slave %u.\n",
+        EC_ERR("Invalid SII sync manager category size %zu in slave %u.\n",
                 data_size, slave->ring_position);
         return -EINVAL;
     }
@@ -415,7 +415,7 @@ int ec_slave_fetch_sii_syncs(
         }
         memsize = sizeof(ec_sync_t) * total_count;
         if (!(syncs = kmalloc(memsize, GFP_KERNEL))) {
-            EC_ERR("Failed to allocate %u bytes for sync managers.\n",
+            EC_ERR("Failed to allocate %zu bytes for sync managers.\n",
                     memsize);
             return -ENOMEM;
         }
