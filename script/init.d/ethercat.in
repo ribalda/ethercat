@@ -173,13 +173,17 @@ start)
         if ! ${MODINFO} ${ECMODULE} > /dev/null; then
             continue # ec_* module not found
         fi
-        if lsmod | grep "^${MODULE} " > /dev/null; then
-            if ! ${RMMOD} ${MODULE}; then
-                exit_fail
+        if [ ${MODULE} != "generic" ]; then
+            if lsmod | grep "^${MODULE} " > /dev/null; then
+                if ! ${RMMOD} ${MODULE}; then
+                    exit_fail
+                fi
             fi
         fi
         if ! ${MODPROBE} ${MODPROBE_FLAGS} ${ECMODULE}; then
-            ${MODPROBE} ${MODPROBE_FLAGS} ${MODULE} # try to restore module
+            if [ ${MODULE} != "generic" ]; then
+                ${MODPROBE} ${MODPROBE_FLAGS} ${MODULE} # try to restore
+            fi
             exit_fail
         fi
     done
@@ -205,8 +209,10 @@ stop)
 
     # reload previous modules
     for MODULE in ${DEVICE_MODULES}; do
-        if ! ${MODPROBE} ${MODPROBE_FLAGS} ${MODULE}; then
-            echo Warning: Failed to restore ${MODULE}.
+        if [ ${MODULE} != "generic" ]; then
+            if ! ${MODPROBE} ${MODPROBE_FLAGS} ${MODULE}; then
+                echo Warning: Failed to restore ${MODULE}.
+            fi
         fi
     done
 

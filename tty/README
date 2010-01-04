@@ -1,0 +1,25 @@
+$Id$
+
+vim700: spelllang=en spell
+
+Virtual TTY interface driver for EtherCAT slave supporting serial comm
+
+Quick installation guide:
+
+./configure --with-linux-dir=/your/linux/directory --enable-tty
+make all modules
+make modules_install install
+rcethercat start
+insmod tty/ec_tty.ko
+insmod examples/tty/ec_tty_example.ko
+
+The default settings for the serial line are 9600 8 N 1.
+
+The tty example operates a Beckhoff EL6002 at ring position 1. For a short
+test, connect port X1 with a serial port via null modem cable. If a minicom is
+started on that port and the below command is entered, the output should be
+visible in minicom:
+
+echo "Hello World" > /dev/ttyEC0
+
+Have a lot of fun!

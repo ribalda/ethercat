@@ -61,6 +61,8 @@ struct ec_fsm_coe {
     ec_sdo_request_t *request; /**< SDO request */
     uint32_t complete_size; /**< Used when segmenting. */
     uint8_t toggle; /**< toggle bit for segment commands */
+    uint32_t offset; /**< Data offset during segmented download. */
+    uint32_t remaining; /**< Remaining bytes during segmented download. */
 };
 
 /*****************************************************************************/

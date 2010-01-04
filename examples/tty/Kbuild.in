@@ -25,26 +25,18 @@
 #  EtherCAT technology and brand is only permitted in compliance with the
 #  industrial property and similar rights of Beckhoff Automation GmbH.
 #
+#  ---
+#
+#  vi: syntax=make
+#
 #------------------------------------------------------------------------------
 
-if ENABLE_USERLIB
-SUBDIRS = \
-	dc_user \
-	user
-endif
+obj-m := ec_tty_example.o
 
-DIST_SUBDIRS = \
-	dc_rtai \
-	dc_user \
-	mini \
-	rtai \
-	tty \
-	user
+ec_tty_example-objs := tty.o
 
-EXTRA_DIST = \
-	Kbuild.in
-
-BUILT_SOURCES = \
-	Kbuild
+KBUILD_EXTRA_SYMBOLS := \
+	@abs_top_builddir@/Module.symvers \
+	@abs_top_builddir@/master/Module.symvers
 
 #------------------------------------------------------------------------------

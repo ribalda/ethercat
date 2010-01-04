@@ -145,7 +145,7 @@ int ec_sdo_request_alloc(
     ec_sdo_request_clear_data(req);
 
     if (!(req->data = (uint8_t *) kmalloc(size, GFP_KERNEL))) {
-        EC_ERR("Failed to allocate %u bytes of SDO memory.\n", size);
+        EC_ERR("Failed to allocate %zu bytes of SDO memory.\n", size);
         return -ENOMEM;
     }
 

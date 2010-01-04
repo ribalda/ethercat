@@ -80,8 +80,6 @@ void ec_domain_clear(ec_domain_t *domain /**< EtherCAT domain */)
 
     // dequeue and free datagrams
     list_for_each_entry_safe(datagram, next, &domain->datagrams, list) {
-        if (!list_empty(&datagram->queue)) // datagram queued?
-            list_del(&datagram->queue);
         ec_datagram_clear(datagram);
         kfree(datagram);
     }
@@ -118,7 +116,7 @@ void ec_domain_add_fmmu_config(
     list_add_tail(&fmmu->list, &domain->fmmu_configs);
 
     if (domain->master->debug_level)
-        EC_DBG("Domain %u: Added %u bytes, total %u.\n", domain->index,
+        EC_DBG("Domain %u: Added %u bytes, total %zu.\n", domain->index,
                 fmmu->data_size, domain->data_size);
 }
 
@@ -213,7 +211,7 @@ int ec_domain_finish(
     if (domain->data_size && domain->data_origin == EC_ORIG_INTERNAL) {
         if (!(domain->data =
                     (uint8_t *) kmalloc(domain->data_size, GFP_KERNEL))) {
-            EC_ERR("Failed to allocate %u bytes internal memory for"
+            EC_ERR("Failed to allocate %zu bytes internal memory for"
                     " domain %u!\n", domain->data_size, domain->index);
             return -ENOMEM;
         }
@@ -267,12 +265,12 @@ int ec_domain_finish(
         datagram_count++;
     }
 
-    EC_INFO("Domain%u: Logical address 0x%08x, %u byte, "
+    EC_INFO("Domain%u: Logical address 0x%08x, %zu byte, "
             "expected working counter %u.\n", domain->index,
             domain->logical_base_address, domain->data_size,
             domain->expected_working_counter);
     list_for_each_entry(datagram, &domain->datagrams, list) {
-        EC_INFO("  Datagram %s: Logical offset 0x%08x, %u byte, type %s.\n",
+        EC_INFO("  Datagram %s: Logical offset 0x%08x, %zu byte, type %s.\n",
                 datagram->name, EC_READ_U32(datagram->address),
                 datagram->data_size, ec_datagram_type_string(datagram));
     }
@@ -328,8 +326,8 @@ int ecrt_domain_reg_pdo_entry_list(ec_domain_t *domain,
     int ret;
     
     if (domain->master->debug_level)
-        EC_DBG("ecrt_domain_reg_pdo_entry_list(domain = 0x%x, regs = 0x%x)\n",
-                (u32) domain, (u32) regs);
+        EC_DBG("ecrt_domain_reg_pdo_entry_list(domain = 0x%p, regs = 0x%p)\n",
+                domain, regs);
 
     for (reg = regs; reg->index; reg++) {
         sc = ecrt_master_slave_config_err(domain->master, reg->alias,
@@ -360,8 +358,8 @@ size_t ecrt_domain_size(const ec_domain_t *domain)
 void ecrt_domain_external_memory(ec_domain_t *domain, uint8_t *mem)
 {
     if (domain->master->debug_level)
-        EC_DBG("ecrt_domain_external_memory(domain = 0x%x, mem = 0x%x)\n",
-                (u32) domain, (u32) mem);
+        EC_DBG("ecrt_domain_external_memory(domain = 0x%p, mem = 0x%p)\n",
+                domain, mem);
 
     down(&domain->master->master_sem);
 

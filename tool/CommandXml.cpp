@@ -191,18 +191,18 @@ void CommandXml::generateSlaveXml(
                     if (entry.bit_length == 1) {
                         cout << "BOOL";
                     } else if (!(entry.bit_length % 8)) {
-                        if (entry.bit_length <= 64)
+                        if (entry.bit_length <= 64) {
                             cout << "UINT" << (unsigned int) entry.bit_length;
-                        else
+                        } else {
                             cout << "STRING("
                                 << (unsigned int) (entry.bit_length / 8)
                                 << ")";
+                        }
                     } else {
-                        cerr << "Invalid bit length "
-                            << (unsigned int) entry.bit_length << endl;
+                        cout << "BIT" << (unsigned int) entry.bit_length;
                     }
 
-                        cout << "</DataType>" << endl;
+                    cout << "</DataType>" << endl;
                 }
 
                 cout << in << "          </Entry>" << endl;

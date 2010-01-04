@@ -116,9 +116,22 @@ void ec_datagram_init(ec_datagram_t *datagram /**< EtherCAT datagram. */)
  */
 void ec_datagram_clear(ec_datagram_t *datagram /**< EtherCAT datagram. */)
 {
+    ec_datagram_unqueue(datagram);
+
     if (datagram->data_origin == EC_ORIG_INTERNAL && datagram->data) {
         kfree(datagram->data);
         datagram->data = NULL;
+    }
+}
+
+/*****************************************************************************/
+
+/** Unqueue datagram.
+ */
+void ec_datagram_unqueue(ec_datagram_t *datagram /**< EtherCAT datagram. */)
+{
+    if (!list_empty(&datagram->queue)) {
+        list_del_init(&datagram->queue);
     }
 }
 
@@ -149,7 +162,7 @@ int ec_datagram_prealloc(
     }
 
     if (!(datagram->data = kmalloc(size, GFP_KERNEL))) {
-        EC_ERR("Failed to allocate %u bytes of datagram memory!\n", size);
+        EC_ERR("Failed to allocate %zu bytes of datagram memory!\n", size);
         return -ENOMEM;
     }
 
@@ -516,8 +529,8 @@ void ec_datagram_output_stats(
         datagram->stats_output_jiffies = jiffies;
     
         if (unlikely(datagram->skip_count)) {
-            EC_WARN("Datagram %x (%s) was SKIPPED %u time%s.\n",
-                    (unsigned int) datagram, datagram->name,
+            EC_WARN("Datagram %p (%s) was SKIPPED %u time%s.\n",
+                    datagram, datagram->name,
                     datagram->skip_count,
                     datagram->skip_count == 1 ? "" : "s");
             datagram->skip_count = 0;

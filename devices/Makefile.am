@@ -63,11 +63,14 @@ noinst_HEADERS = \
 	e100-2.6.24-orig.c \
 	e100-2.6.26-ethercat.c \
 	e100-2.6.26-orig.c \
+	e100-2.6.27-ethercat.c \
+	e100-2.6.27-orig.c \
 	e100-2.6.28-ethercat.c \
 	e100-2.6.28-orig.c \
 	e100-2.6.29-ethercat.c \
 	e100-2.6.29-orig.c \
 	ecdev.h \
+	generic.c \
 	r8169-2.6.24-ethercat.c \
 	r8169-2.6.24-orig.c \
 	r8169-2.6.28-ethercat.c \
@@ -86,6 +89,9 @@ modules:
 
 modules_install:
 	mkdir -p $(DESTDIR)$(LINUX_MOD_PATH)
+if ENABLE_GENERIC
+	cp $(srcdir)/ec_generic.ko $(DESTDIR)$(LINUX_MOD_PATH)
+endif
 if ENABLE_8139TOO
 	cp $(srcdir)/ec_8139too.ko $(DESTDIR)$(LINUX_MOD_PATH)
 endif

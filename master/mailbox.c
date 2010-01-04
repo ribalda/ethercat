@@ -66,12 +66,11 @@ uint8_t *ec_slave_mbox_prepare_send(const ec_slave_t *slave, /**< slave */
     total_size = EC_MBOX_HEADER_SIZE + size;
 
     if (unlikely(total_size > slave->configured_rx_mailbox_size)) {
-        EC_ERR("Data size (%u) does not fit in mailbox (%u)!\n",
+        EC_ERR("Data size (%zu) does not fit in mailbox (%u)!\n",
                 total_size, slave->configured_rx_mailbox_size);
         return ERR_PTR(-EOVERFLOW);
     }
 
-    ec_datagram_zero(datagram);
     ret = ec_datagram_fpwr(datagram, slave->station_address,
             slave->configured_rx_mailbox_offset,
             slave->configured_rx_mailbox_size);

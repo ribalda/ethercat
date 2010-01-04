@@ -25,8 +25,14 @@
 #  EtherCAT technology and brand is only permitted in compliance with the
 #  industrial property and similar rights of Beckhoff Automation GmbH.
 #
+#  vi: syntax=make
+#
 #------------------------------------------------------------------------------
 
 obj-m := mini/
+
+ifeq (@ENABLE_TTY@,1)
+	obj-m += tty/
+endif
 
 #------------------------------------------------------------------------------

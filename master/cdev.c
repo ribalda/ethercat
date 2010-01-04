@@ -587,7 +587,7 @@ int ec_cdev_ioctl_domain_data(
 
     if (domain->data_size != data.data_size) {
         up(&master->master_sem);
-        EC_ERR("Data size mismatch %u/%u!\n",
+        EC_ERR("Data size mismatch %u/%zu!\n",
                 data.data_size, domain->data_size);
         return -EFAULT;
     }
@@ -982,7 +982,7 @@ int ec_cdev_ioctl_slave_sii_read(
             || data.offset + data.nwords > slave->sii_nwords) {
         up(&master->master_sem);
         EC_ERR("Invalid SII read offset/size %u/%u for slave "
-                "SII size %u!\n", data.offset,
+                "SII size %zu!\n", data.offset,
                 data.nwords, slave->sii_nwords);
         return -EINVAL;
     }
@@ -3088,7 +3088,7 @@ int ec_cdev_ioctl_slave_foe_read(
     data.error_code = request.req.error_code;
 
     if (master->debug_level) {
-        EC_DBG("Read %d bytes via FoE (result = 0x%x).\n",
+        EC_DBG("Read %zd bytes via FoE (result = 0x%x).\n",
                 request.req.data_size, request.req.result);
     }
 

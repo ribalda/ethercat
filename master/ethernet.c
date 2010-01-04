@@ -80,9 +80,10 @@ int ec_eoedev_stop(struct net_device *);
 int ec_eoedev_tx(struct sk_buff *, struct net_device *);
 struct net_device_stats *ec_eoedev_stats(struct net_device *);
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 31)
-static const struct net_device_ops ec_eoe_netdev_ops =
-{
+/*****************************************************************************/
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 29)
+static const struct net_device_ops ec_eoedev_ops = {
     .ndo_open = ec_eoedev_open,
     .ndo_stop = ec_eoedev_stop,
     .ndo_start_xmit = ec_eoedev_tx,
@@ -150,8 +151,8 @@ int ec_eoe_init(
     }
 
     // initialize net_device
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 31)
-    eoe->dev->netdev_ops = &ec_eoe_netdev_ops;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 29)
+    eoe->dev->netdev_ops = &ec_eoedev_ops;
 #else
     eoe->dev->open = ec_eoedev_open;
     eoe->dev->stop = ec_eoedev_stop;
@@ -201,7 +202,6 @@ int ec_eoe_init(
 void ec_eoe_clear(ec_eoe_t *eoe /**< EoE handler */)
 {
     unregister_netdev(eoe->dev); // possibly calls close callback
-    free_netdev(eoe->dev);
 
     // empty transmit queue
     ec_eoe_flush(eoe);
@@ -211,7 +211,10 @@ void ec_eoe_clear(ec_eoe_t *eoe /**< EoE handler */)
         kfree(eoe->tx_frame);
     }
 
-    if (eoe->rx_skb) dev_kfree_skb(eoe->rx_skb);
+    if (eoe->rx_skb)
+        dev_kfree_skb(eoe->rx_skb);
+
+    free_netdev(eoe->dev);
 
     ec_datagram_clear(&eoe->datagram);
 }
