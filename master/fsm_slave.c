@@ -282,8 +282,8 @@ void ec_fsm_slave_state_sdo_request(
         EC_DBG("Failed to process SDO request for slave %u.\n",
                 fsm->slave->ring_position);
         request->state = EC_INT_REQUEST_FAILURE;
-		wake_up(&slave->foe_queue);
-		fsm->foe_request = NULL;
+		wake_up(&slave->sdo_queue);
+		fsm->sdo_request = NULL;
 		fsm->state = ec_fsm_slave_state_idle;
         return;
     }
