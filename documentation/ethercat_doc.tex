@@ -62,13 +62,17 @@
 \newcommand{\IgH}{\raisebox{-0.7667ex}
   {\includegraphics[height=2.2ex]{images/ighsign}}}
 
-\rcsInfo $RcsId$
+\rcsInfo $RCSId$
 
 \newcommand{\masterversion}{1.5.0}
 \newcommand{\linenum}[1]{\normalfont\textcircled{\tiny #1}}
 
 \makeindex
 \makenomenclature
+
+% Revision and date on inner footer
+\ifoot[\scriptsize\rcsInfoRevision, \rcsInfoDate]
+    {\scriptsize\rcsInfoRevision, \rcsInfoDate}
 
 %------------------------------------------------------------------------------
 
@@ -98,6 +102,8 @@
 \end{titlepage}
 
 %------------------------------------------------------------------------------
+
+\pagestyle{scrplain}
 
 \tableofcontents
 \listoftables
