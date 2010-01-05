@@ -6,7 +6,6 @@
 
 FIGS := \
 	app-config.fig \
-	architecture.fig \
 	attach.fig \
 	dc.fig \
 	fmmus.fig \
