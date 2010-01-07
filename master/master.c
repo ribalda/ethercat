@@ -2053,6 +2053,56 @@ ec_slave_config_t *ecrt_master_slave_config(ec_master_t *master,
 
 /*****************************************************************************/
 
+int ecrt_master(ec_master_t *master, ec_master_info_t *master_info)
+{
+    if (master->debug_level)
+        EC_DBG("ecrt_master(master = 0x%p, master_info = 0x%p)\n",
+                master, master_info);
+
+    master_info->slave_count = master->slave_count;
+    master_info->link_up = master->main_device.link_state;
+    master_info->scan_busy = master->scan_busy;
+    master_info->app_time = master->app_time;
+    return 0;
+}
+
+/*****************************************************************************/
+
+int ecrt_master_get_slave(ec_master_t *master, uint16_t slave_position,
+        ec_slave_info_t *slave_info)
+{
+    const ec_slave_t *slave;
+
+    if (down_interruptible(&master->master_sem)) {
+        return -EINTR;
+    }
+
+    slave = ec_master_find_slave_const(master, 0, slave_position);
+
+    slave_info->position = slave->ring_position;
+    slave_info->vendor_id = slave->sii.vendor_id;
+    slave_info->product_code = slave->sii.product_code;
+    slave_info->revision_number = slave->sii.revision_number;
+    slave_info->serial_number = slave->sii.serial_number;
+    slave_info->alias = slave->sii.alias;
+    slave_info->current_on_ebus = slave->sii.current_on_ebus;
+    slave_info->al_state = slave->current_state;
+    slave_info->error_flag = slave->error_flag;
+    slave_info->sync_count = slave->sii.sync_count;
+    slave_info->sdo_count = ec_slave_sdo_count(slave);
+    if (slave->sii.name) {
+        strncpy(slave_info->name, slave->sii.name, EC_MAX_STRING_LENGTH);
+    } else {
+        slave_info->name[0] = 0;
+    }
+
+    up(&master->master_sem);
+
+    return 0;
+}
+
+/*****************************************************************************/
+
 void ecrt_master_callbacks(ec_master_t *master,
         void (*send_cb)(void *), void (*receive_cb)(void *), void *cb_data)
 {
@@ -2133,6 +2183,8 @@ EXPORT_SYMBOL(ecrt_master_send);
 EXPORT_SYMBOL(ecrt_master_send_ext);
 EXPORT_SYMBOL(ecrt_master_receive);
 EXPORT_SYMBOL(ecrt_master_callbacks);
+EXPORT_SYMBOL(ecrt_master);
+EXPORT_SYMBOL(ecrt_master_get_slave);
 EXPORT_SYMBOL(ecrt_master_slave_config);
 EXPORT_SYMBOL(ecrt_master_state);
 EXPORT_SYMBOL(ecrt_master_application_time);
