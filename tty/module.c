@@ -40,6 +40,7 @@
 #include <linux/tty_flip.h>
 #include <linux/termios.h>
 #include <linux/timer.h>
+#include <linux/version.h>
 
 #include "../master/globals.h"
 #include "../include/ectty.h"
@@ -379,7 +380,11 @@ static int ec_tty_write(
 
 /*****************************************************************************/
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 26)
+static int ec_tty_put_char(struct tty_struct *tty, unsigned char ch)
+#else
 static void ec_tty_put_char(struct tty_struct *tty, unsigned char ch)
+#endif
 {
     ec_tty_t *t = (ec_tty_t *) tty->driver_data;
 
@@ -390,8 +395,14 @@ static void ec_tty_put_char(struct tty_struct *tty, unsigned char ch)
     if (ec_tty_tx_space(t)) {
         t->tx_buffer[t->tx_write_idx] = ch;
         t->tx_write_idx = (t->tx_write_idx + 1) % EC_TTY_TX_BUFFER_SIZE;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 26)
+        return 1;
+#endif
     } else {
         printk(KERN_WARNING PFX "%s(): Dropped a byte!\n", __func__);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 26)
+        return 0;
+#endif
     }
 }
 
@@ -506,10 +517,18 @@ static void ec_tty_hangup(struct tty_struct *tty)
 
 /*****************************************************************************/
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)
+static int ec_tty_break(struct tty_struct *tty, int break_state)
+#else
 static void ec_tty_break(struct tty_struct *tty, int break_state)
+#endif
 {
 #if EC_TTY_DEBUG >= 2
     printk(KERN_INFO PFX "%s(break_state = %i).\n", __func__, break_state);
+#endif
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)
+    return -EIO; // not implemented
 #endif
 }
 
