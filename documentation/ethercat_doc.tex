@@ -16,7 +16,7 @@
 \usepackage{makeidx}
 \usepackage[refpage]{nomencl}
 \usepackage{listings}
-\usepackage{svn}
+\usepackage[nofancy]{rcsinfo}
 \usepackage{SIunits}
 \usepackage{amsmath} % for \text{}
 \usepackage{hyperref}
@@ -62,14 +62,17 @@
 \newcommand{\IgH}{\raisebox{-0.7667ex}
   {\includegraphics[height=2.2ex]{images/ighsign}}}
 
-\SVN $Date$
-\SVN $Revision$
+\rcsInfo $RCSId$
 
 \newcommand{\masterversion}{1.5.0}
 \newcommand{\linenum}[1]{\normalfont\textcircled{\tiny #1}}
 
 \makeindex
 \makenomenclature
+
+% Revision and date on inner footer
+\ifoot[\scriptsize\rcsInfoRevision, \rcsInfoDate]
+    {\scriptsize\rcsInfoRevision, \rcsInfoDate}
 
 %------------------------------------------------------------------------------
 
@@ -84,7 +87,7 @@
 
     {\Huge\bf IgH \includegraphics[height=2.4ex]{images/ethercat}
       Master \masterversion\\[1ex]
-      Preliminary Documentation}
+      Documentation}
 
     \vspace{1ex}
     \rule{\textwidth}{1.5mm}
@@ -93,12 +96,14 @@
     \url{fp@igh-essen.com}\\[1ex] Ingenieurgemeinschaft \IgH}
 
     \vspace{\fill}
-    {\Large Essen, \SVNDate\\[1ex]
-      Revision \SVNRevision}
+    {\Large Essen, \rcsInfoLongDate\\[1ex]
+      Revision \rcsInfoRevision}
   \end{center}
 \end{titlepage}
 
 %------------------------------------------------------------------------------
+
+\pagestyle{scrplain}
 
 \tableofcontents
 \listoftables
@@ -172,15 +177,20 @@ The list below gives a short summary of the master features.
 
 \item Implemented according to IEC 61158-12 \cite{dlspec} \cite{alspec}.
 
-\item Comes with EtherCAT-capable drivers for several common Ethernet devices.
+\item Comes with EtherCAT-capable native drivers for several common Ethernet
+chips, as well as a generic driver for all chips supported by the Linux
+kernel.
 
   \begin{itemize}
 
-  \item The Ethernet hardware is operated without interrupts.
+  \item The native drivers operate the hardware without interrupts.
 
-  \item Drivers for additional Ethernet hardware can easily be implemented
-  using the common device interface (see sec.~\ref{sec:ecdev}) provided by the
-  master module.
+  \item Native drivers for additional Ethernet hardware can easily be
+  implemented using the common device interface (see sec.~\ref{sec:ecdev})
+  provided by the master module.
+
+  \item For any other hardware, the generic driver can be used. It uses the
+  lower layers of the Linux network stack.
 
   \end{itemize}
 
@@ -192,9 +202,9 @@ independent architecture.
 
   \begin{itemize}
 
-  \item RTAI\nomenclature{RTAI}{Realtime Application Interface},
+  \item RTAI\nomenclature{RTAI}{Realtime Application Interface} \cite{rtai},
   ADEOS\nomenclature{ADEOS}{Adaptive Domain Environment for Operating
-  Systems}, etc.
+  Systems}, RT-Preempt \cite{rt-preempt}, etc.
 
   \item It runs well even without realtime extensions.
 
@@ -362,7 +372,7 @@ Figure~\ref{fig:arch} gives a general overview of the master architecture.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=.9\textwidth]{images/architecture}
+  \includegraphics[width=\textwidth]{images/architecture}
   \caption{Master Architecture}
   \label{fig:arch}
 \end{figure}
@@ -933,8 +943,29 @@ The EtherCAT protocol is based on the Ethernet standard, so a master relies on
 standard Ethernet hardware to communicate with the bus.
 
 The term \textit{device} is used as a synonym for Ethernet network interface
-hardware. There are device driver modules that handle Ethernet hardware, which
-a master can use to connect to an EtherCAT bus.
+hardware.
+
+\paragraph{Native Ethernet Device Drivers} There are native device driver
+modules (see sec.~\ref{sec:native-drivers}) that handle Ethernet hardware,
+which a master can use to connect to an EtherCAT bus. They offer their
+Ethernet hardware to the master module via the device interface (see
+sec.~\ref{sec:ecdev}) and must be capable to prepare Ethernet devices either
+for EtherCAT (realtime) operation or for ``normal'' operation using the
+kernel's network stack. The advantage of this approach is that the master can
+operate nearly directly on the hardware, which allows a high performance. The
+disadvantage is, that there has to be an EtherCAT-capable version of the
+original Ethernet driver.
+
+\paragraph{Generic Ethernet Device Driver} From master version 1.5, there is a
+generic Ethernet device driver module (see sec.~\ref{sec:generic-driver}),
+that uses the lower layers of the network stack to connect to the hardware.
+The advantage is, that arbitrary Ethernet hardware can be used for EtherCAT
+operation, independently of the actual hardware driver (so all Linux Ethernet
+drivers are supported without modifications). The disadvantage is, that this
+approach does not support realtime extensions like RTAI, because the Linux
+network stack is addressed. Moreover the performance is a little worse than
+the native approach, because the Ethernet frame data have to traverse the
+network stack.
 
 %------------------------------------------------------------------------------
 
@@ -947,52 +978,44 @@ Ethernet device to communicate with the bus. Therefore it is necessary
 to understand how Linux handles network devices and their drivers,
 respectively.
 
-\paragraph{Tasks of a Network Driver}
+\paragraph{Tasks of a Network Driver} Network device drivers usually handle
+the lower two layers of the OSI model, that is the physical layer and the
+data-link layer. A network device itself natively handles the physical layer
+issues: It represents the hardware to connect to the medium and to send and
+receive data in the way, the physical layer protocol describes. The network
+device driver is responsible for getting data from the kernel's networking
+stack and forwarding it to the hardware, that does the physical transmission.
+If data is received by the hardware respectively, the driver is notified
+(usually by means of an interrupt) and has to read the data from the hardware
+memory and forward it to the network stack. There are a few more tasks, a
+network device driver has to handle, including queue control, statistics and
+device dependent features.
 
-Network device drivers usually handle the lower two layers of the OSI model,
-that is the physical layer and the data-link layer. A network device itself
-natively handles the physical layer issues: It represents the hardware to
-connect to the medium and to send and receive data in the way, the physical
-layer protocol describes. The network device driver is responsible for getting
-data from the kernel's networking stack and forwarding it to the hardware,
-that does the physical transmission.  If data is received by the hardware
-respectively, the driver is notified (usually by means of an interrupt) and
-has to read the data from the hardware memory and forward it to the network
-stack. There are a few more tasks, a network device driver has to handle,
-including queue control, statistics and device dependent features.
+\paragraph{Driver Startup} Usually, a driver searches for compatible devices
+on module loading.  For PCI drivers, this is done by scanning the PCI bus and
+checking for known device IDs. If a device is found, data structures are
+allocated and the device is taken into operation.
 
-\paragraph{Driver Startup}
+\paragraph{Interrupt Operation}\index{Interrupt} A network device usually
+provides a hardware interrupt that is used to notify the driver of received
+frames and success of transmission, or errors, respectively. The driver has to
+register an interrupt service routine
+(ISR\index{ISR}\nomenclature{ISR}{Interrupt Service Routine}), that is
+executed each time, the hardware signals such an event. If the interrupt was
+thrown by the own device (multiple devices can share one hardware interrupt),
+the reason for the interrupt has to be determined by reading the device's
+interrupt register. For example, if the flag for received frames is set, frame
+data has to be copied from hardware to kernel memory and passed to the network
+stack.
 
-Usually, a driver searches for compatible devices on module loading.
-For PCI drivers, this is done by scanning the PCI bus and checking for
-known device IDs. If a device is found, data structures are allocated
-and the device is taken into operation.
-
-\paragraph{Interrupt Operation}
-\index{Interrupt}
-
-A network device usually provides a hardware interrupt that is used to
-notify the driver of received frames and success of transmission, or
-errors, respectively. The driver has to register an interrupt service
-routine (ISR\index{ISR}\nomenclature{ISR}{Interrupt Service Routine}),
-that is executed each time, the hardware signals such an event. If the
-interrupt was thrown by the own device (multiple devices can share one
-hardware interrupt), the reason for the interrupt has to be determined
-by reading the device's interrupt register. For example, if the flag
-for received frames is set, frame data has to be copied from hardware
-to kernel memory and passed to the network stack.
-
-\paragraph{The \lstinline+net_device+ Structure}
-\index{net\_device}
-
-The driver registers a \lstinline+net_device+ structure for each device to
-communicate with the network stack and to create a ``network interface''. In
-case of an Ethernet driver, this interface appears as \textit{ethX}, where X
-is a number assigned by the kernel on registration. The \lstinline+net_device+
-structure receives events (either from userspace or from the network stack)
-via several callbacks, which have to be set before registration. Not every
-callback is mandatory, but for reasonable operation the ones below are needed
-in any case:
+\paragraph{The \lstinline+net_device+ Structure}\index{net\_device} The driver
+registers a \lstinline+net_device+ structure for each device to communicate
+with the network stack and to create a ``network interface''. In case of an
+Ethernet driver, this interface appears as \textit{ethX}, where X is a number
+assigned by the kernel on registration. The \lstinline+net_device+ structure
+receives events (either from userspace or from the network stack) via several
+callbacks, which have to be set before registration. Not every callback is
+mandatory, but for reasonable operation the ones below are needed in any case:
 
 \newsavebox\boxopen
 \sbox\boxopen{\lstinline+open()+}
@@ -1027,17 +1050,15 @@ error happened, the appropriate counter in this structure has to be increased.
 The actual registration is done with the \lstinline+register_netdev()+ call,
 unregistering is done with \lstinline+unregister_netdev()+.
 
-\paragraph{The \lstinline+netif+ Interface}
-\index{netif}
-
-All other communication in the direction interface $\to$ network stack is done
-via the \lstinline+netif_*()+ calls. For example, on successful device opening,
-the network stack has to be notified, that it can now pass frames to the
+\paragraph{The \lstinline+netif+ Interface}\index{netif} All other
+communication in the direction interface $\to$ network stack is done via the
+\lstinline+netif_*()+ calls. For example, on successful device opening, the
+network stack has to be notified, that it can now pass frames to the
 interface. This is done by calling \lstinline+netif_start_queue()+. After this
 call, the \lstinline+hard_start_xmit()+ callback can be called by the network
-stack. Furthermore a network driver usually manages a frame transmission queue.
-If this gets filled up, the network stack has to be told to stop passing
-further frames for a while. This happens with a call to
+stack. Furthermore a network driver usually manages a frame transmission
+queue.  If this gets filled up, the network stack has to be told to stop
+passing further frames for a while. This happens with a call to
 \lstinline+netif_stop_queue()+. If some frames have been sent, and there is
 enough space again to queue new frames, this can be notified with
 \lstinline+netif_wake_queue()+. Another important call is
@@ -1049,48 +1070,42 @@ network performance on Linux. Read more in
 network stack, that was just received by the device. Frame data has to be
 included in a so-called ``socket buffer'' for that (see below).
 
-\paragraph{Socket Buffers}
-\index{Socket buffer}
-
-Socket buffers are the basic data type for the whole network stack. They serve
-as containers for network data and are able to quickly add data headers and
-footers, or strip them off again. Therefore a socket buffer consists of an
-allocated buffer and several pointers that mark beginning of the buffer
-(\lstinline+head+), beginning of data (\lstinline+data+), end of data
-(\lstinline+tail+) and end of buffer (\lstinline+end+). In addition, a socket
-buffer holds network header information and (in case of received data) a
-pointer to the \lstinline+net_device+, it was received on. There exist
-functions that create a socket buffer (\lstinline+dev_alloc_skb()+), add data
-either from front (\lstinline+skb_push()+) or back (\lstinline+skb_put()+),
-remove data from front (\lstinline+skb_pull()+) or back
-(\lstinline+skb_trim()+), or delete the buffer (\lstinline+kfree_skb()+).  A
-socket buffer is passed from layer to layer, and is freed by the layer that
-uses it the last time. In case of sending, freeing has to be done by the
-network driver.
+\paragraph{Socket Buffers}\index{Socket buffer} Socket buffers are the basic
+data type for the whole network stack. They serve as containers for network
+data and are able to quickly add data headers and footers, or strip them off
+again. Therefore a socket buffer consists of an allocated buffer and several
+pointers that mark beginning of the buffer (\lstinline+head+), beginning of
+data (\lstinline+data+), end of data (\lstinline+tail+) and end of buffer
+(\lstinline+end+). In addition, a socket buffer holds network header
+information and (in case of received data) a pointer to the
+\lstinline+net_device+, it was received on. There exist functions that create
+a socket buffer (\lstinline+dev_alloc_skb()+), add data either from front
+(\lstinline+skb_push()+) or back (\lstinline+skb_put()+), remove data from
+front (\lstinline+skb_pull()+) or back (\lstinline+skb_trim()+), or delete the
+buffer (\lstinline+kfree_skb()+).  A socket buffer is passed from layer to
+layer, and is freed by the layer that uses it the last time. In case of
+sending, freeing has to be done by the network driver.
 
 %------------------------------------------------------------------------------
 
-\section{EtherCAT Device Drivers}
-\label{sec:drivers}
+\section{Native EtherCAT Device Drivers}
+\label{sec:native-drivers}
 
-There are a few requirements for Ethernet network devices to function as
-EtherCAT devices, when connected to an EtherCAT bus.
+There are a few requirements, that applies to Ethernet hardware when used with
+a native Ethernet driver with EtherCAT functionality.
 
-\paragraph{Dedicated Interfaces}
+\paragraph{Dedicated Hardware} For performance and realtime purposes, the
+EtherCAT master needs direct and exclusive access to the Ethernet hardware.
+This implies that the network device must not be connected to the kernel's
+network stack as usual, because the kernel would try to use it as an ordinary
+Ethernet device.
 
-For performance and realtime purposes, the EtherCAT master needs direct and
-exclusive access to the Ethernet hardware. This implies that the network device
-must not be connected to the kernel's network stack as usual, because the
-kernel would try to use it as an ordinary Ethernet device.
-
-\paragraph{Interrupt-less Operation}
-\index{Interrupt}
-
-EtherCAT frames travel through the logical EtherCAT ring and are then sent back
-to the master. Communication is highly deterministic: A frame is sent and will
-be received again after a constant time, so there is no need to notify the
-driver about frame reception: The master can instead query the hardware for
-received frames, if it expects them to be already received.
+\paragraph{Interrupt-less Operation}\index{Interrupt} EtherCAT frames travel
+through the logical EtherCAT ring and are then sent back to the master.
+Communication is highly deterministic: A frame is sent and will be received
+again after a constant time, so there is no need to notify the driver about
+frame reception: The master can instead query the hardware for received
+frames, if it expects them to be already received.
 
 Figure~\ref{fig:interrupt} shows two workflows for cyclic frame transmission
 and reception with and without interrupts.
@@ -1123,16 +1138,15 @@ incidences contribute to increasing the jitter. Besides, if a realtime
 extension (like RTAI) is used, some additional effort would have to be made to
 prioritize interrupts.
 
-\paragraph{Ethernet and EtherCAT Devices}
-
-Another issue lies in the way Linux handles devices of the same type.  For
-example, a PCI\nomenclature{PCI}{Peripheral Component Interconnect, Computer
-Bus} driver scans the PCI bus for devices it can handle. Then it registers
-itself as the responsible driver for all of the devices found. The problem is,
-that an unmodified driver can not be told to ignore a device because it will
-be used for EtherCAT later. There must be a way to handle multiple devices of
-the same type, where one is reserved for EtherCAT, while the other is treated
-as an ordinary Ethernet device.
+\paragraph{Ethernet and EtherCAT Devices} Another issue lies in the way Linux
+handles devices of the same type.  For example, a
+PCI\nomenclature{PCI}{Peripheral Component Interconnect, Computer Bus} driver
+scans the PCI bus for devices it can handle. Then it registers itself as the
+responsible driver for all of the devices found. The problem is, that an
+unmodified driver can not be told to ignore a device because it will be used
+for EtherCAT later. There must be a way to handle multiple devices of the same
+type, where one is reserved for EtherCAT, while the other is treated as an
+ordinary Ethernet device.
 
 For all this reasons, the author decided that the only acceptable solution is
 to modify standard Ethernet drivers in a way that they keep their normal
@@ -1160,15 +1174,64 @@ The chosen approach has the following disadvantages:
 
 %------------------------------------------------------------------------------
 
-\section{Device Selection}
-\label{sec:deviceselection}
+\section{Generic EtherCAT Device Driver}
+\label{sec:generic-driver}
 
-After loading the master module, at least one EtherCAT-capable network driver
-module has to be loaded, that offers its devices to the master (see
-sec.~\ref{sec:ecdev}. The master module knows the devices to choose from the
-module parameters (see sec.~\ref{sec:mastermod}). If the init script is used
-to start the master, the drivers and devices to use can be specified in the
-sysconfig file (see sec.~\ref{sec:sysconfig}).
+Since there are approaches to enable the complete Linux kernel for realtime
+operation \cite{rt-preempt}, it is possible to operate without native
+implementations of EtherCAT-capable Ethernet device drivers and use the Linux
+network stack instead. Fig.~\ref{fig:arch} shows the ``Generic Ethernet Driver
+Module'', that connects to local Ethernet devices via the network stack. The
+kernel module is named \lstinline+ec_generic+ and can be loaded after the
+master module like a native EtherCAT-capable Ethernet driver.
+
+The generic device driver scans the network stack for interfaces, that have
+been registered by Ethernet device drivers. It offers all possible devices to
+the EtherCAT master. If the master accepts a device, the generic driver
+creates a packet socket (see \lstinline+man 7 packet+) with
+\lstinline+socket_type+ set to \lstinline+SOCK_RAW+, bound to that device. All
+functions of the device interface (see sec.~\ref{sec:ecdev}) will then operate
+on that socket.
+
+Below are the advantages of this solution:
+
+\begin{itemize}
+\item Any Ethernet hardware, that is covered by a Linux Ethernet driver can be
+used for EtherCAT.
+\item No modifications have to be made to the actual Ethernet drivers.
+\end{itemize}
+
+The generic approach has the following disadvantages:
+
+\begin{itemize}
+\item The performance is a little worse than the native approach, because the
+frame data have to traverse the lower layers of the network stack.
+\item It is not possible to use in-kernel realtime extensions like RTAI with
+the generic driver, because the network stack code uses dynamic memory
+allocations and other things, that could cause the system to freeze in
+realtime context.
+\end{itemize}
+
+%------------------------------------------------------------------------------
+
+\section{Providing Ethernet Devices}
+\label{sec:providing-devices}
+
+After loading the master module, additional module(s) have to be loaded to
+offer devices to the master(s) (see sec.~\ref{sec:ecdev}). The master module
+knows the devices to choose from the module parameters (see
+sec.~\ref{sec:mastermod}). If the init script is used to start the master, the
+drivers and devices to use can be specified in the sysconfig file (see
+sec.~\ref{sec:sysconfig}).
+
+Modules offering Ethernet devices can be
+
+\begin{itemize}
+\item native EtherCAT-capable network driver modules (see
+sec.~\ref{sec:native-drivers}) or
+\item the generic EtherCAT device driver module (see
+sec.~\ref{sec:generic-driver}).
+\end{itemize}
 
 %------------------------------------------------------------------------------
 
@@ -1196,14 +1259,15 @@ sec.~\ref{sec:gendoc} for generation instructions).
 
 %------------------------------------------------------------------------------
 
-\section{Patching Network Drivers}
+\section{Patching Native Network Drivers}
 \label{sec:patching}
 \index{Network drivers}
 
 This section will describe, how to make a standard Ethernet driver
-EtherCAT-capable. Unfortunately, there is no standard procedure to enable an
-Ethernet driver for use with the EtherCAT master, but there are a few common
-techniques.
+EtherCAT-capable, using the native approach (see
+sec.~\ref{sec:native-drivers}). Unfortunately, there is no standard procedure
+to enable an Ethernet driver for use with the EtherCAT master, but there are a
+few common techniques.
 
 \begin{enumerate}
 
@@ -2605,14 +2669,21 @@ the EtherCAT master. It has to be executed with one of the parameters
 
 EtherCAT buses can always be monitored by inserting a switch between master
 and slaves. This allows to connect another PC with a network monitor like
-Wireshark~\cite{wireshark}, for example.
+Wireshark~\cite{wireshark}, for example. It is also possible to listen to
+local network interfaces on the machine running the EtherCAT master directly.
+If the generic Ethernet driver (see sec.~\ref{sec:generic-driver}) is used,
+the network monitor can directly listen on the network interface connected to
+the EtherCAT bus.
 
-For convenience, so-called ``debug interfaces'' are supported. Debug
-interfaces are virtual network interfaces allowing to capture EtherCAT traffic
-with a network monitor (like Wireshark or tcpdump) running on the master
-machine without using external hardware. To use this functionality, the master
-sources have to be configured with the \lstinline+--enable-debug-if+ switch
-(see sec.~\ref{sec:installation}).
+When using native Ethernet drivers (see sec.~\ref{sec:native-drivers}), there
+are no local network interfaces to listen to, because the Ethernet devices
+used for EtherCAT are not registered at the network stack. For that case,
+so-called ``debug interfaces'' are supported, which are virtual network
+interfaces allowing to capture EtherCAT traffic with a network monitor (like
+Wireshark or tcpdump) running on the master machine without using external
+hardware. To use this functionality, the master sources have to be configured
+with the \lstinline+--enable-debug-if+ switch (see
+sec.~\ref{sec:installation}).
 
 Every EtherCAT master registers a read-only network interface per attached
 physical Ethernet device. The network interfaces are named \textit{ecdbgmX}
@@ -2644,8 +2715,8 @@ Please note, that the frame rate can be very high. With an application
 connected, the debug interface can produce thousands of frames per second.
 
 \paragraph{Attention} The socket buffers needed for the operation of debug
-interfaces have to be allocated dynamically. Some Linux realtime extensions do
-not allow this in realtime context!
+interfaces have to be allocated dynamically. Some Linux realtime extensions
+(like RTAI) do not allow this in realtime context!
 
 %------------------------------------------------------------------------------
 
@@ -2832,6 +2903,11 @@ Table~\ref{tab:config} lists important configuration switches and options.
 
 \hline
 
+\lstinline+--enable-tool+ & Build the command-line tool ``ethercat'' (see
+sec.~\ref{sec:tool}). & yes\\
+
+\lstinline+--enable-userlib+ & Build the userspace library. & yes\\
+
 \lstinline+--enable-eoe+ & Enable EoE support & yes\\
 
 \lstinline+--enable-cycles+ & Use CPU timestamp counter. Enable this on Intel
@@ -2854,6 +2930,13 @@ architecture to get finer timing calculation. & no\\
 \lstinline+--enable-e1000+ & Enable e1000 driver & no\\
 
 \lstinline+--with-e1000-kernel+ & e1000 kernel & $\dagger$\\
+
+\lstinline+--enable-r8169+ & Enable r8169 driver & no\\
+
+\lstinline+--with-r8169-kernel+ & r8169 kernel & $\dagger$\\
+
+\lstinline+--enable-generic+ & Build the generic Ethernet driver (see
+sec.~\ref{sec:generic-driver}). & no\\
 
   \end{tabular}
   \vspace{2mm}
@@ -3049,7 +3132,10 @@ misunderstandings. In: IEE journal ``Computing and Control Engineering'',
 2004.
 
 \bibitem{rtai} RTAI. The RealTime Application Interface for Linux from DIAPM.
-\url{http://www.rtai.org}, 2006.
+\url{https://www.rtai.org}, 2010.
+
+\bibitem{rt-preempt} RT PREEMPT HOWTO.
+\url{http://rt.wiki.kernel.org/index.php/RT_PREEMPT_HOWTO}, 2010.
 
 \bibitem{doxygen} Doxygen. Source code documentation generator tool.
 \url{http://www.stack.nl/~dimitri/doxygen}, 2008.

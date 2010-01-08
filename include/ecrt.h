@@ -208,8 +208,6 @@ typedef struct  {
 
 /*****************************************************************************/
 
-#ifndef __KERNEL__
-
 /** Master information.
  *
  * This is used as an output parameter of ecrt_master().
@@ -245,8 +243,6 @@ typedef struct {
     uint16_t sdo_count; /**< Number of SDOs. */
     char name[EC_MAX_STRING_LENGTH]; /**< Name of the slave. */
 } ec_slave_info_t;
-
-#endif // #ifndef __KERNEL__
 
 /*****************************************************************************/
 
@@ -539,8 +535,6 @@ ec_slave_config_t *ecrt_master_slave_config(
         uint32_t product_code /**< Expected product code. */
         );
 
-#ifndef __KERNEL__
-
 /** Obtains master information.
  *
  * No memory is allocated on the heap in
@@ -572,6 +566,8 @@ int ecrt_master_get_slave(
         ec_slave_info_t *slave_info /**< Structure that will output the
                                       information */
         );
+
+#ifndef __KERNEL__
 
 /** Returns the proposed configuration of a slave's sync manager.
  *

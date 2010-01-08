@@ -14,13 +14,16 @@ General Features:
   - Runs as kernel module for Linux 2.6.
   - Multiple masters possible on one machine.
 
-* EtherCAT-capable versions of standard Linux drivers for wide-spread
-  Ethernet devices.
-  - Interrupt-less operation of Ethernet devices.
-  - Easy implementation of additional Ethernet drivers through common device
-    interface.
+* Native EtherCAT-capable versions of standard Linux drivers for wide-spread
+  Ethernet devices, as well as a generic driver for all chips supported by the
+  Linux kernel.
+  - Interrupt-less operation of Ethernet devices when using native drivers.
+  - Easy implementation of additional native Ethernet drivers through common
+    device interface.
   - Operation possible with any device supported by the standard drivers,
     including PCMCIA devices.
+  - For any other hardware, the generic driver can be used. It uses the lower
+    layers of the Linux network stack.
 
 * Supports any realtime environment through independent architecture.
   - RTAI, Xenomai, RT-Preempt, etc.
