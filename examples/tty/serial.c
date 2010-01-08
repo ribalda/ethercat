@@ -423,7 +423,7 @@ int create_serial_devices(ec_master_t *master, ec_domain_t *domain)
 
 /*****************************************************************************/
 
-void cleanup_serial_devices(void)
+void free_serial_devices(void)
 {
     printk(KERN_INFO PFX "Cleaning up serial devices...\n");
 

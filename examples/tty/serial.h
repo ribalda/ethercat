@@ -29,6 +29,7 @@
 
 int create_serial_devices(ec_master_t *, ec_domain_t *);
 void free_serial_devices(void);
+
 void run_serial_devices(u8 *);
 
 /*****************************************************************************/
