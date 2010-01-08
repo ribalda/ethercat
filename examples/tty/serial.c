@@ -51,6 +51,8 @@ typedef enum {
 } serial_state_t;
 
 typedef struct {
+    struct list_head list;
+
     ec_tty_t *tty;
     ec_slave_config_t *sc;
 
@@ -76,7 +78,7 @@ typedef struct {
     u32 off_rx;
 } el6002_t;
 
-static el6002_t *ser = NULL;
+LIST_HEAD(handlers);
         
 /*****************************************************************************/
 
@@ -363,7 +365,9 @@ void el6002_run(el6002_t *ser, u8 *pd)
 
 void run_serial_devices(u8 *pd)
 {
-    if (ser) {
+    el6002_t *ser;
+
+    list_for_each_entry(ser, &handlers, list) {
         el6002_run(ser, pd);
     }
 }
@@ -375,20 +379,21 @@ int create_serial_devices(ec_master_t *master, ec_domain_t *domain)
     int i, ret;
     ec_master_info_t master_info;
     ec_slave_info_t slave_info;
-    
+    el6002_t *ser, *next;
+
     printk(KERN_INFO PFX "Registering serial devices...\n");
 
     ret = ecrt_master(master, &master_info);
     if (ret) {
         printk(KERN_ERR PFX "Failed to obtain master information.\n");
-        return ret;
+        goto out_return;
     }
 
     for (i = 0; i < master_info.slave_count; i++) {
         ret = ecrt_master_get_slave(master, i, &slave_info);
         if (ret) {
-            printk(KERN_ERR PFX "Failed to obtain master information.\n");
-            return ret;
+            printk(KERN_ERR PFX "Failed to obtain slave information.\n");
+            goto out_free_handlers;
         }
 
         if (slave_info.vendor_id != VendorIdBeckhoff
@@ -402,32 +407,44 @@ int create_serial_devices(ec_master_t *master, ec_domain_t *domain)
         ser = kmalloc(sizeof(*ser), GFP_KERNEL);
         if (!ser) {
             printk(KERN_ERR PFX "Failed to allocate serial device object.\n");
-            return -ENOMEM;
+            ret = -ENOMEM;
+            goto out_free_handlers;
         }
 
         ret = el6002_init(ser, master, i, domain);
         if (ret) {
             printk(KERN_ERR PFX "Failed to init serial device object.\n");
             kfree(ser);
-            ser = NULL;
-            return ret;
+            goto out_free_handlers;
         }
 
-        break; // FIXME
+        list_add_tail(&ser->list, &handlers);
     }
 
 
     printk(KERN_INFO PFX "Finished.\n");
     return 0;
+
+out_free_handlers:
+    list_for_each_entry_safe(ser, next, &handlers, list) {
+        list_del(&ser->list);
+        el6002_clear(ser);
+        kfree(ser);
+    }
+out_return:
+    return ret;
 }
 
 /*****************************************************************************/
 
 void free_serial_devices(void)
 {
+    el6002_t *ser, *next;
+
     printk(KERN_INFO PFX "Cleaning up serial devices...\n");
 
-    if (ser) {
+    list_for_each_entry_safe(ser, next, &handlers, list) {
+        list_del(&ser->list);
         el6002_clear(ser);
         kfree(ser);
     }
