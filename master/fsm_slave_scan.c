@@ -769,20 +769,15 @@ void ec_fsm_slave_scan_state_regalias(
         return;
     }
 
-    if (datagram->working_counter != 1) {
-        fsm->slave->error_flag = 1;
-        fsm->state = ec_fsm_slave_scan_state_error;
-        EC_ERR("Failed to read reg alias of slave %u: ",
+	if (datagram->working_counter != 1) {
+		EC_WARN("Failed to read reg alias of slave %u.\n",
                fsm->slave->ring_position);
-        ec_datagram_print_wc_error(datagram);
-        return;
-    }
-
-    slave->sii.alias = EC_READ_U16(datagram->data);
-    if (slave->master->debug_level)
-         EC_DBG("Alias of slave %u is %u.\n",
-                 slave->ring_position,slave->sii.alias);
-
+	} else {
+		slave->sii.alias = EC_READ_U16(datagram->data);
+		if (slave->master->debug_level)
+			 EC_DBG("Alias of slave %u is %u.\n",
+					 slave->ring_position,slave->sii.alias);
+	}
     if (slave->sii.mailbox_protocols & EC_MBOX_COE) {
         ec_fsm_slave_scan_enter_preop(fsm);
     } else {
