@@ -10,6 +10,37 @@ vim700: spelllang=en spell
 
 Version 1.5.0:
 
+* Fix link detection in generic driver.
+* Remove byte-swapping functions from user space.
+* Implement 'ethercat foe_read --output-file ...'.
+* Use ec_datagram_zero() wherever possible.
+* Fix arguments of reg_read.
+* Number layout for reg_read.
+* Finish library implementation.
+* Rescan command.
+* Document ec_fsm_foe members.
+* Implement identifier parameter for cstruct command.
+* Implement sync delimiter for cstruct command.
+* Change SDO index at runtime for SDO request.
+* Output skipped datagrams again.
+* Output warning on unmatched slave configuration.
+* Output warning when send_ext() is called in illegal context.
+* Output hexadecimal values in 'ethercat xml'.
+* Add native drivers from 2.6.24 up to 2.6.31.
+
+Future issues:
+
+* Implement ecrt_slave_config_request_state().
+* Implement CompleteAccess for command-line tool.
+* Implement CompleteAccess for SDO uploads.
+* Check for Enable SDO Complete Access flag.
+* Remove default buffer size in SDO upload.
+* Improve application-triggered SDO transfers by moving the state machine into
+  the SDO handlers.
+* Check for ioctl() interface version.
+* Remove allow_scanning flag.
+* Override sync manager size?
+* Show Record / Array / List type of SDOs.
 * Distributed clocks:
     - Check 32/64 bit operations.
     - Use vendor correction factors when calculating transmission delays.
@@ -20,39 +51,6 @@ Version 1.5.0:
       "System Time" register instead of using the application time.
     - Check if register 0x0980 is working, to avoid clearing it when
       configuring.
-* Remove byte-swapping functions from user space.
-* Implement 'ethercat foe_read --output-file ...'.
-* Use ec_datagram_zero() where possible.
-* Fix arguments of reg_read.
-* Number layout for reg_read.
-* Show Record / Array / List type of SDOs.
-* Finish library implementation.
-* Rescan command.
-* Override sync manager size?
-* Check force_config flag before error.
-* Remove allow_scanning flag.
-* Check for ioctl() interface version.
-* Improve application-triggered SDO transfers by moving the state machine into
-  the SDO handlers.
-* Document ec_fsm_foe members.
-* Test KBUILD_EXTRA_SYMBOLS.
-* Remove default buffer size in SDO upload.
-* Check for Enable SDO Complete Access flag.
-* Implement CompleteAccess for command-line tool.
-* Implement CompleteAccess for SDO uploads.
-* Implement identifier parameter for cstruct command.
-* Implement sync delimiter for cstruct command.
-* Change SDO index at runtime for SDO request.
-* Implement ecrt_slave_config_request_state().
-* Output skipped datagrams again.
-* Output warning on unmatched slave configuration.
-* ec_direction_t default
-* Send_ext context warn
-* XML hex
-* r8169
-
-Future issues:
-
 * Mailbox protocol handlers.
 * Mailbox state machine using toggle bits.
 * External memory for SDO transfers.
