@@ -2865,19 +2865,58 @@ latency. These are two points on the author's to-do list.
 \label{sec:installation}
 \index{Master!Installation}
 
+\section{Getting the Software}
+\label{sec:getting}
+
+There are several ways to get the master software:
+
+\begin{enumerate}
+
+\item An official release (for example \masterversion), can be downloaded from
+the master's website\footnote{\url{http://etherlab.org/en/ethercat/index.php}}
+at~the EtherLab project~\cite{etherlab} as a tarball.
+
+\item The most recent development revision (and moreover any other revision)
+can be obtained via the Mercurial~\cite{mercurial} repository on the master's
+project page on
+SourceForge.net\footnote{\url{http://sourceforge.net/projects/etherlabmaster}}.
+The whole repository can be cloned with the command
+
+\begin{lstlisting}[breaklines=true]
+hg clone http://etherlabmaster.hg.sourceforge.net/hgweb/etherlabmaster/etherlabmaster `\textit{local-dir}`
+\end{lstlisting}
+
+\item Without a local Mercurial installation, tarballs of arbitrary revisions
+can be downloaded via the ``bz2'' links in the browsable repository
+pages\footnote{\url{http://etherlabmaster.hg.sourceforge.net/hgweb/etherlabmaster/etherlabmaster}}.
+
+\end{enumerate}
+
 \section{Building the Software}
 
-The current EtherCAT master code is available at~\cite{etherlab} or can be
-obtained from the EtherLab CD. The \textit{tar.bz2} file has to be unpacked
-with the commands below (or similar):
+After downloading a tarball or cloning the repository as described in
+sec.~\ref{sec:getting}, the sources have to be prepared and configured for the
+build process.
+
+When a tarball was downloaded, it has to be extracted with the following
+commands:
 
 \begin{lstlisting}[gobble=2]
   $ `\textbf{tar xjf ethercat-\masterversion.tar.bz2}`
   $ `\textbf{cd ethercat-\masterversion/}`
 \end{lstlisting}
 
-The tarball was created with GNU Autotools, so the build process
-follows the below commands:
+The software configuration is managed with Autoconf~\cite{autoconf} so the
+released versions contain a \lstinline+configure+ shell script, that has to be
+executed for configuration (see below).
+
+\paragraph{Bootstrap} When downloading or cloning directly from the
+repository, the \lstinline+configure+ script does not yet exist. It can be
+created via the \lstinline+bootstrap.sh+ script in the master sources. The
+autoconf and automake packages are required for this.
+
+\paragraph{Configuration and Build} The configuration and the build process
+follow the below commands:
 
 \begin{lstlisting}[gobble=2]
   $ `\textbf{./configure}`
@@ -3139,6 +3178,11 @@ misunderstandings. In: IEE journal ``Computing and Control Engineering'',
 
 \bibitem{doxygen} Doxygen. Source code documentation generator tool.
 \url{http://www.stack.nl/~dimitri/doxygen}, 2008.
+
+\bibitem{mercurial} Mercurial SCM. \url{http://mercurial.selenic.com}, 2010.
+
+\bibitem{autoconf} Autoconf -- GNU Project -- Free Software Foundation (FSF).
+\url{http://www.gnu.org/software/autoconf}, 2010.
 
 \end{thebibliography}
 
