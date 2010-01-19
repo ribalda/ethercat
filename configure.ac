@@ -475,6 +475,30 @@ if test "x${cycles}" = "x1"; then
 fi
 
 #------------------------------------------------------------------------------
+# High-resolution timer support
+#------------------------------------------------------------------------------
+
+AC_ARG_ENABLE([hrtimer],
+    AS_HELP_STRING([--enable-hrtimer],
+                   [Use high-resolution timer for scheduling (default: no)]),
+    [
+        case "${enableval}" in
+            yes) hrtimer=1
+                ;;
+            no) hrtimer=0
+                ;;
+            *) AC_MSG_ERROR([Invalid value for --enable-hrtimer])
+                ;;
+        esac
+    ],
+    [hrtimer=0]
+)
+
+if test "x${hrtimer}" = "x1"; then
+    AC_DEFINE([EC_USE_HRTIMER], [1], [Use hrtimer for scheduling])
+fi
+
+#------------------------------------------------------------------------------
 # Command-line tool
 #-----------------------------------------------------------------------------
 

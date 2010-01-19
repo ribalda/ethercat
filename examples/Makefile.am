@@ -27,10 +27,17 @@
 #
 #------------------------------------------------------------------------------
 
+SUBDIRS =
+
 if ENABLE_USERLIB
-SUBDIRS = \
+SUBDIRS += \
 	dc_user \
 	user
+endif
+
+if ENABLE_TTY
+SUBDIRS += \
+	tty
 endif
 
 DIST_SUBDIRS = \
