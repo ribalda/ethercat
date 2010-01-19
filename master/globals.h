@@ -51,8 +51,11 @@
 /** SDO injection timeout in microseconds. */
 #define EC_SDO_INJECTION_TIMEOUT 10000
 
-/** time to send a byte in nanoseconds. */
-#define EC_BYTE_TRANSMITION_TIME 80
+/** Time to send a byte in nanoseconds.
+ *
+ * t_ns = 1 / (100 MBit/s / 8 bit/byte) = 80 ns/byte
+ */
+#define EC_BYTE_TRANSMISSION_TIME_NS 80
 
 /** Number of state machine retries on datagram timeout. */
 #define EC_FSM_RETRIES 3
