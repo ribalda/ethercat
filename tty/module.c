@@ -41,6 +41,8 @@
 #include <linux/termios.h>
 #include <linux/timer.h>
 #include <linux/version.h>
+#include <linux/serial.h>
+#include <linux/uaccess.h>
 
 #include "../master/globals.h"
 #include "../include/ectty.h"
@@ -78,11 +80,15 @@ MODULE_PARM_DESC(debug_level, "Debug level");
 
 /** \endcond */
 
+/** Standard termios for ec_tty devices.
+ *
+ * Simplest possible configuration, as you would expect.
+ */
 static struct ktermios ec_tty_std_termios = {
-    .c_iflag = ICRNL | IXON,
-    .c_oflag = OPOST,
-    .c_cflag = B38400 | CS8 | CREAD | HUPCL,
-    .c_lflag = ISIG | ICANON | ECHO | ECHOE | ECHOK | ECHOCTL | ECHOKE | IEXTEN,
+    .c_iflag = 0,
+    .c_oflag = 0,
+    .c_cflag = B9600 | CS8 | CREAD,
+    .c_lflag = 0,
     .c_cc = INIT_C_CC,
 };
 
@@ -139,7 +145,6 @@ int __init ec_tty_init_module(void)
     tty_driver->subtype = SERIAL_TYPE_NORMAL;
     tty_driver->flags = TTY_DRIVER_REAL_RAW | TTY_DRIVER_DYNAMIC_DEV;
     tty_driver->init_termios = ec_tty_std_termios;
-    tty_driver->init_termios.c_cflag = B9600 | CS8 | CREAD | HUPCL | CLOCAL;
     tty_set_operations(tty_driver, &ec_tty_ops);
 
     ret = tty_register_driver(tty_driver);
@@ -301,6 +306,23 @@ void ec_tty_clear(ec_tty_t *tty)
     tty_unregister_device(tty_driver, tty->minor);
 }
 
+/*****************************************************************************/
+
+int ec_tty_get_serial_info(ec_tty_t *tty, struct serial_struct *data)
+{
+	struct serial_struct tmp;
+  
+	if (!data)
+		return -EFAULT;
+
+	memset(&tmp, 0, sizeof(tmp));
+    
+	if (copy_to_user(data, &tmp, sizeof(*data))) {
+        return -EFAULT;
+    }
+	return 0;
+}
+
 /******************************************************************************
  * Device callbacks
  *****************************************************************************/
@@ -454,28 +476,38 @@ static void ec_tty_flush_buffer(struct tty_struct *tty)
 static int ec_tty_ioctl(struct tty_struct *tty, struct file *file,
 		    unsigned int cmd, unsigned long arg)
 {
+    ec_tty_t *t = (ec_tty_t *) tty->driver_data;
+    int ret = -ENOTTY;
+    
 #if EC_TTY_DEBUG >= 2
-    printk(KERN_INFO PFX "%s().\n", __func__);
+    printk(KERN_INFO PFX "%s(tty=%p, file=%p, cmd=%08x, arg=%08lx).\n",
+            __func__, tty, file, cmd, arg);
+    printk(KERN_INFO PFX "decoded: type=%02x nr=%u\n",
+            _IOC_TYPE(cmd), _IOC_NR(cmd));
 #endif
-    return -ENOTTY;
-}
 
-/*****************************************************************************/
+    switch (cmd) {
+		case TIOCGSERIAL:
+			if (access_ok(VERIFY_WRITE,
+                        (void *) arg, sizeof(struct serial_struct))) {
+                ret = ec_tty_get_serial_info(t, (struct serial_struct *) arg);
+            } else {
+                ret = -EFAULT;
+            }
+            break;
 
-static void ec_tty_throttle(struct tty_struct *tty)
-{
+        case TIOCSSERIAL: // TODO
+            break;
+
+        default:
 #if EC_TTY_DEBUG >= 2
-    printk(KERN_INFO PFX "%s().\n", __func__);
+            printk(KERN_INFO PFX "no ioctl()!\n");
 #endif
-}
+            ret = -ENOIOCTLCMD;
+            break;
+    }
 
-/*****************************************************************************/
-
-static void ec_tty_unthrottle(struct tty_struct *tty)
-{
-#if EC_TTY_DEBUG >= 2
-    printk(KERN_INFO PFX "%s().\n", __func__);
-#endif
+    return ret;
 }
 
 /*****************************************************************************/
@@ -483,8 +515,18 @@ static void ec_tty_unthrottle(struct tty_struct *tty)
 static void ec_tty_set_termios(struct tty_struct *tty,
 			   struct ktermios *old_termios)
 {
+    //ec_tty_t *t = (ec_tty_t *) tty->driver_data;
+
 #if EC_TTY_DEBUG >= 2
     printk(KERN_INFO PFX "%s().\n", __func__);
+#endif
+
+    if (tty->termios->c_cflag == old_termios->c_cflag)
+        return;
+
+#if EC_TTY_DEBUG >= 2
+    printk(KERN_INFO "cflag changed from %x to %x.\n",
+            old_termios->c_cflag, tty->termios->c_cflag);
 #endif
 }
 
@@ -552,27 +594,6 @@ static void ec_tty_wait_until_sent(struct tty_struct *tty, int timeout)
 
 /*****************************************************************************/
 
-static int ec_tty_tiocmget(struct tty_struct *tty, struct file *file)
-{
-#if EC_TTY_DEBUG >= 2
-    printk(KERN_INFO PFX "%s().\n", __func__);
-#endif
-    return -EBUSY;
-}
-
-/*****************************************************************************/
-
-static int ec_tty_tiocmset(struct tty_struct *tty, struct file *file,
-		    unsigned int set, unsigned int clear)
-{
-#if EC_TTY_DEBUG >= 2
-    printk(KERN_INFO PFX "%s(set=%u, clear=%u).\n", __func__, set, clear);
-#endif
-    return -EBUSY;
-}
-
-/*****************************************************************************/
-
 static const struct tty_operations ec_tty_ops = {
     .open = ec_tty_open,
     .close = ec_tty_close,
@@ -582,8 +603,6 @@ static const struct tty_operations ec_tty_ops = {
 	.chars_in_buffer = ec_tty_chars_in_buffer,
 	.flush_buffer = ec_tty_flush_buffer,
 	.ioctl = ec_tty_ioctl,
-	.throttle = ec_tty_throttle,
-	.unthrottle = ec_tty_unthrottle,
 	.set_termios = ec_tty_set_termios,
 	.stop = ec_tty_stop,
 	.start = ec_tty_start,
@@ -591,8 +610,6 @@ static const struct tty_operations ec_tty_ops = {
 	.break_ctl = ec_tty_break,
 	.send_xchar = ec_tty_send_xchar,
 	.wait_until_sent = ec_tty_wait_until_sent,
-	.tiocmget = ec_tty_tiocmget,
-	.tiocmset = ec_tty_tiocmset,
 };
 
 /******************************************************************************
