@@ -203,6 +203,7 @@ int ec_domain_finish(
     unsigned int datagram_count;
     unsigned int datagram_used[EC_DIR_COUNT];
     ec_fmmu_config_t *fmmu;
+    ec_fmmu_config_t *fmmu_temp;
     const ec_datagram_t *datagram;
     int ret;
 
@@ -225,15 +226,21 @@ int ec_domain_finish(
     datagram_count = 0;
     datagram_used[EC_DIR_OUTPUT] = 0;
     datagram_used[EC_DIR_INPUT] = 0;
-
+    list_for_each_entry(fmmu_temp, &domain->fmmu_configs, list) {
+       ec_slave_config_t *sc = (ec_slave_config_t *)fmmu_temp->sc; // we have to remove the constness, sorry
+       sc->used_for_fmmu_datagram[fmmu_temp->dir] = 0;
+    }
     list_for_each_entry(fmmu, &domain->fmmu_configs, list) {
         // Correct logical FMMU address
         fmmu->logical_start_address += base_address;
 
         // Increment Input/Output counter to determine datagram types
         // and calculate expected working counters
-        datagram_used[fmmu->dir]++;
-
+        if (fmmu->sc->used_for_fmmu_datagram[fmmu->dir] == 0) {
+            ec_slave_config_t *sc = (ec_slave_config_t *)fmmu->sc;
+            datagram_used[fmmu->dir]++;
+            sc->used_for_fmmu_datagram[fmmu->dir] = 1;
+        }
         // If the current FMMU's data do not fit in the current datagram,
         // allocate a new one.
         if (datagram_size + fmmu->data_size > EC_MAX_DATA_SIZE) {
@@ -248,6 +255,10 @@ int ec_domain_finish(
             datagram_count++;
             datagram_used[EC_DIR_OUTPUT] = 0;
             datagram_used[EC_DIR_INPUT] = 0;
+            list_for_each_entry(fmmu_temp, &domain->fmmu_configs, list) {
+                ec_slave_config_t *sc = (ec_slave_config_t *)fmmu_temp->sc;
+               sc->used_for_fmmu_datagram[fmmu_temp->dir] = 0;
+            }
         }
 
         datagram_size += fmmu->data_size;
