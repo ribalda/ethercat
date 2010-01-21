@@ -33,7 +33,11 @@
 
 obj-m := ec_tty_example.o
 
-ec_tty_example-objs := tty.o
+ec_tty_example-objs := \
+	serial.o \
+	tty.o
+
+CFLAGS_tty.o := -I$(src)
 
 KBUILD_EXTRA_SYMBOLS := \
 	@abs_top_builddir@/Module.symvers \

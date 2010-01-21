@@ -31,9 +31,12 @@
 #
 #------------------------------------------------------------------------------
 
-EXTRA_DIST = \
-	Kbuild.in \
+noinst_HEADERS = \
+	serial.h \
 	tty.c
+
+EXTRA_DIST = \
+	Kbuild.in
 
 BUILT_SOURCES = \
 	Kbuild

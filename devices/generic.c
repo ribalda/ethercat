@@ -70,16 +70,16 @@ struct list_head generic_devices;
 typedef struct {
     struct list_head list;
     struct net_device *netdev;
-	struct net_device *used_netdev;
-	struct socket *socket;
+    struct net_device *used_netdev;
+    struct socket *socket;
     ec_device_t *ecdev;
     uint8_t *rx_buf;
 } ec_gen_device_t;
 
 typedef struct {
     struct list_head list;
-	struct net_device *netdev;
-	char name[IFNAMSIZ];
+    struct net_device *netdev;
+    char name[IFNAMSIZ];
     int ifindex;
     uint8_t dev_addr[ETH_ALEN];
 } ec_gen_interface_desc_t;
@@ -202,7 +202,7 @@ int ec_gen_device_create_socket(
     int ret;
     struct sockaddr_ll sa;
 
-	dev->rx_buf = kmalloc(EC_GEN_RX_BUF_SIZE, GFP_KERNEL);
+    dev->rx_buf = kmalloc(EC_GEN_RX_BUF_SIZE, GFP_KERNEL);
     if (!dev->rx_buf) {
         return -ENOMEM;
     }
@@ -242,8 +242,8 @@ int ec_gen_device_offer(
 {
     int ret = 0;
 
-	dev->used_netdev = desc->netdev;
-	memcpy(dev->netdev->dev_addr, desc->dev_addr, ETH_ALEN);
+    dev->used_netdev = desc->netdev;
+    memcpy(dev->netdev->dev_addr, desc->dev_addr, ETH_ALEN);
 
     dev->ecdev = ecdev_offer(dev->netdev, ec_gen_poll, THIS_MODULE);
     if (dev->ecdev) {
@@ -254,7 +254,7 @@ int ec_gen_device_offer(
             ecdev_withdraw(dev->ecdev);
             dev->ecdev = NULL;
         } else {
-			ecdev_set_link(dev->ecdev, netif_carrier_ok(dev->used_netdev)); // FIXME
+            ecdev_set_link(dev->ecdev, netif_carrier_ok(dev->used_netdev)); // FIXME
             ret = 1;
         }
     }
@@ -296,7 +296,7 @@ int ec_gen_device_start_xmit(
     size_t len = skb->len;
     int ret;
 
-	ecdev_set_link(dev->ecdev,netif_carrier_ok(dev->used_netdev));
+    ecdev_set_link(dev->ecdev, netif_carrier_ok(dev->used_netdev));
 
     iov.iov_base = skb->data;
     iov.iov_len = len;
@@ -319,8 +319,9 @@ void ec_gen_device_poll(
     struct kvec iov;
     int ret, budget = 10; // FIXME
 
-	ecdev_set_link(dev->ecdev,netif_carrier_ok(dev->used_netdev));
-	do {
+    ecdev_set_link(dev->ecdev, netif_carrier_ok(dev->used_netdev));
+
+    do {
         iov.iov_base = dev->rx_buf;
         iov.iov_len = EC_GEN_RX_BUF_SIZE;
         memset(&msg, 0, sizeof(msg));
@@ -414,7 +415,7 @@ int __init ec_gen_init_module(void)
             goto out_err;
         }
         strncpy(desc->name, netdev->name, IFNAMSIZ);
-		desc->netdev = netdev;
+        desc->netdev = netdev;
         desc->ifindex = netdev->ifindex;
         memcpy(desc->dev_addr, netdev->dev_addr, ETH_ALEN);
         list_add_tail(&desc->list, &descs);

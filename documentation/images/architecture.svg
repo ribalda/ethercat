@@ -1,0 +1,1036 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Creator: fig2dev Version 3.2 Patchlevel 5 -->
+<!-- CreationDate: Mon Jan  4 12:21:21 2010 -->
+<!-- Magnification: 1.050 -->
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="875.73413"
+   height="994.51697"
+   viewBox="1640 672 6544 9311"
+   id="svg2"
+   sodipodi:version="0.32"
+   inkscape:version="0.46"
+   sodipodi:docname="architecture.svg"
+   inkscape:output_extension="org.inkscape.output.svg.inkscape"
+   version="1.0">
+  <metadata
+     id="metadata215">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <defs
+     id="defs213">
+    <inkscape:perspective
+       sodipodi:type="inkscape:persp3d"
+       inkscape:vp_x="0 : 367.84955 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_z="644.98529 : 367.84955 : 1"
+       inkscape:persp3d-origin="322.49265 : 245.23303 : 1"
+       id="perspective161" />
+  </defs>
+  <sodipodi:namedview
+     inkscape:window-height="1000"
+     inkscape:window-width="1385"
+     inkscape:pageshadow="2"
+     inkscape:pageopacity="0.0"
+     guidetolerance="4"
+     gridtolerance="4"
+     objecttolerance="4"
+     borderopacity="1.0"
+     bordercolor="#666666"
+     pagecolor="#ffffff"
+     id="base"
+     showgrid="false"
+     inkscape:zoom="0.89892561"
+     inkscape:cx="414.38143"
+     inkscape:cy="658.79847"
+     inkscape:window-x="135"
+     inkscape:window-y="70"
+     inkscape:current-layer="svg2"
+     inkscape:object-paths="true"
+     inkscape:object-nodes="true"
+     inkscape:document-units="mm"
+     units="mm"
+     showborder="true"
+     inkscape:window-maximized="0" />
+  <rect
+     id="rect116"
+     style="fill:#e7f5ff;fill-opacity:1;stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+     rx="125"
+     height="2456"
+     width="2645"
+     y="3934.2466"
+     x="3519.4934"
+     ry="125" />
+  <rect
+     id="rect94"
+     style="fill:#fff1cb;fill-opacity:1;stroke:#000000;stroke-width:7.99999952;stroke-linecap:butt;stroke-linejoin:miter"
+     rx="110"
+     height="1322"
+     width="2844.3892"
+     y="6769.2471"
+     x="4150.7104"
+     ry="110" />
+  <path
+     style="fill:none;stroke:#2988e6;stroke-width:21.28297615;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+     d="M 4860.2219,8470.2466 L 4860.2219,5376.4053 L 2290.3936,5376.4053"
+     id="polyline86"
+     sodipodi:nodetypes="csc" />
+  <g
+     id="g3632"
+     transform="translate(-855.77813,108.24668)">
+    <polygon
+       points="5433,8362 6047,8362 6047,9212 5433,9212 5433,8834 5338,8834 5338,8362 5433,8362 "
+       style="fill:none;stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polygon6" />
+    <rect
+       x="5763"
+       y="8598"
+       width="188"
+       height="188"
+       rx="0"
+       style="fill:none;stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+       id="rect8" />
+    <rect
+       x="5574"
+       y="8929"
+       width="94"
+       height="94"
+       rx="0"
+       style="fill:none;stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+       id="rect10" />
+    <polyline
+       points="5433,8456 5338,8456 "
+       style="stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline12" />
+    <polyline
+       points="5433,8551 5338,8551 "
+       style="stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline14" />
+    <polyline
+       points="5433,8598 5338,8598 "
+       style="stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline16" />
+    <polyline
+       points="5433,8692 5338,8692 "
+       style="stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline18" />
+    <polyline
+       points="5433,8645 5338,8645 "
+       style="stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline20" />
+    <polyline
+       points="5433,8503 5338,8503 "
+       style="stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline22" />
+    <polyline
+       points="5433,8409 5338,8409 "
+       style="stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline24" />
+    <polyline
+       points="5433,8740 5338,8740 "
+       style="stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline26" />
+    <polyline
+       points="5433,8787 5338,8787 "
+       style="stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline28" />
+    <rect
+       x="5338"
+       y="9212"
+       width="803"
+       height="41"
+       rx="0"
+       style="fill:none;stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+       id="rect30" />
+    <rect
+       x="5811"
+       y="9259"
+       width="94"
+       height="94"
+       rx="0"
+       style="fill:none;stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+       id="rect88" />
+  </g>
+  <g
+     id="g3544"
+     transform="translate(-855.77863,108.24668)">
+    <polyline
+       points="6850,8456 6755,8456 "
+       style="stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline38" />
+    <polyline
+       points="6850,8551 6755,8551 "
+       style="stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline40" />
+    <polyline
+       points="6850,8598 6755,8598 "
+       style="stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline42" />
+    <polyline
+       points="6850,8692 6755,8692 "
+       style="stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline44" />
+    <polyline
+       points="6850,8503 6755,8503 "
+       style="stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline48" />
+    <polyline
+       points="6850,8409 6755,8409 "
+       style="stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline50" />
+    <polyline
+       points="6850,8740 6755,8740 "
+       style="stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline52" />
+    <polyline
+       points="6850,8787 6755,8787 "
+       style="stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline54" />
+    <polygon
+       points="6850,8362 7464,8362 7464,9212 6850,9212 6850,8834 6755,8834 6755,8362 6850,8362 "
+       style="fill:none;stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polygon32" />
+    <rect
+       x="7181"
+       y="8598"
+       width="188"
+       height="188"
+       rx="0"
+       style="fill:none;stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+       id="rect34" />
+    <rect
+       x="6992"
+       y="8929"
+       width="94"
+       height="94"
+       rx="0"
+       style="fill:none;stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+       id="rect36" />
+    <polyline
+       points="6850,8645 6755,8645 "
+       style="stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline46" />
+    <rect
+       x="6755"
+       y="9212"
+       width="803"
+       height="41"
+       rx="0"
+       style="fill:none;stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+       id="rect56" />
+    <rect
+       x="7228"
+       y="9259"
+       width="94"
+       height="94"
+       rx="0"
+       style="fill:none;stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+       id="rect90" />
+  </g>
+  <path
+     style="stroke:#000000;stroke-width:7.99484348;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:47.96906081,47.96906081;opacity:1;color:#000000;fill:none;fill-opacity:1;fill-rule:nonzero;marker:none;marker-start:none;marker-mid:none;marker-end:none;stroke-miterlimit:4;stroke-dashoffset:0;stroke-opacity:1;visibility:visible;display:inline;overflow:visible;enable-background:accumulate"
+     d="M 1062.4922,8281.2467 L 8802.7378,8281.2467"
+     id="polyline108"
+     sodipodi:nodetypes="cc" />
+  <rect
+     id="rect110"
+     style="fill:none;stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+     rx="141"
+     height="2456"
+     width="1795"
+     y="3934.2466"
+     x="1251.4921"
+     ry="141" />
+  <polyline
+     id="polyline112"
+     style="stroke:#000000;stroke-width:7.99484348;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:47.96906081,47.96906081;opacity:1;color:#000000;fill:none;fill-opacity:1;fill-rule:nonzero;marker:none;marker-start:none;marker-mid:none;marker-end:none;stroke-miterlimit:4;stroke-dashoffset:0;stroke-opacity:1;visibility:visible;display:inline;overflow:visible;enable-background:accumulate"
+     points="8173,8692 8173,2314 "
+     transform="translate(629.73724,108.24668)" />
+  <polyline
+     id="polyline114"
+     style="stroke:#000000;stroke-width:7.99484348;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:47.96906081,47.96906081;fill:none;stroke-miterlimit:4;stroke-dashoffset:0"
+     points="1653,8692 1653,2314 "
+     transform="translate(-590.50768,108.24668)" />
+  <path
+     style="stroke:#000000;stroke-width:7.99484348;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:47.96906081,47.96906081;opacity:1;color:#000000;fill:none;fill-opacity:1;fill-rule:nonzero;marker:none;marker-start:none;marker-mid:none;marker-end:none;stroke-miterlimit:4;stroke-dashoffset:0;stroke-opacity:1;visibility:visible;display:inline;overflow:visible;enable-background:accumulate"
+     d="M 8802.7378,2895.2467 L 1062.4922,2895.2467"
+     id="polyline118"
+     sodipodi:nodetypes="cc" />
+  <text
+     style="font-size:126px;font-style:normal;font-weight:normal;text-anchor:end;fill:#000000;stroke:none;stroke-width:0.025in;font-family:Courier"
+     id="text138"
+     font-size="126"
+     font-weight="normal"
+     font-style="normal"
+     y="6547.6665"
+     x="4783.7314"
+     xml:space="preserve">ecdev_*()</text>
+  <text
+     style="font-size:126px;font-style:normal;font-weight:normal;text-align:start;line-height:100%;text-anchor:start;fill:#000000;stroke:none;font-family:Sans"
+     id="text144"
+     font-size="152"
+     font-weight="normal"
+     font-style="normal"
+     y="4170.2471"
+     x="3613.4937"
+     xml:space="preserve"
+     sodipodi:linespacing="100%">EtherCAT Master Module</text>
+  <text
+     style="font-size:152px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-indent:0;text-align:start;text-decoration:none;line-height:normal;letter-spacing:normal;word-spacing:normal;text-transform:none;direction:ltr;block-progression:tb;writing-mode:lr-tb;text-anchor:end;opacity:1;fill:#2988e6;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:0.02500001in;stroke-linecap:butt;stroke-linejoin:miter;marker:none;marker-start:none;marker-mid:none;marker-end:none;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;visibility:visible;display:inline;overflow:visible;enable-background:accumulate;font-family:Sans;-inkscape-font-specification:Bitstream Vera Sans"
+     id="text150"
+     font-size="152"
+     font-weight="normal"
+     font-style="normal"
+     y="9648.541"
+     x="5212.2598"
+     xml:space="preserve">EtherCAT</text>
+  <text
+     style="font-size:152px;font-style:normal;font-weight:normal;text-anchor:end;fill:#000000;stroke:none;stroke-width:0.025in;font-family:Sans"
+     id="text152"
+     font-size="152"
+     font-weight="normal"
+     font-style="normal"
+     y="9656.4453"
+     x="6582.5713"
+     xml:space="preserve">Ethernet</text>
+  <text
+     style="font-size:152px;font-style:normal;font-weight:normal;text-anchor:end;fill:#2988e6;fill-opacity:1;stroke:none;stroke-width:0.025in;stroke-opacity:1;font-family:Sans"
+     id="text154"
+     font-size="152"
+     font-weight="normal"
+     font-style="normal"
+     y="8611.2471"
+     x="4388.2222"
+     xml:space="preserve">NIC</text>
+  <text
+     style="font-size:152px;font-style:normal;font-weight:normal;text-anchor:end;fill:#000000;stroke:none;stroke-width:0.025in;font-family:Sans"
+     id="text156"
+     font-size="152"
+     font-weight="normal"
+     font-style="normal"
+     y="8611.2471"
+     x="5805.2222"
+     xml:space="preserve">NIC</text>
+  <text
+     style="font-size:152px;font-style:normal;font-weight:normal;text-anchor:start;fill:#000000;stroke:none;stroke-width:0.025in;font-family:Sans"
+     id="text158"
+     font-size="152"
+     font-weight="normal"
+     font-style="normal"
+     y="8517.2471"
+     x="1157.4919"
+     xml:space="preserve">Hardware</text>
+  <g
+     style="stroke:none;stroke-width:0.025in"
+     id="g160"
+     transform="matrix(1.101966e-5,1,-1,1.101966e-5,3355.623,5236.4294)">
+    <text
+       style="font-size:126px;font-style:normal;font-weight:normal;text-anchor:end;fill:#000000;stroke:none;font-family:Courier"
+       id="text162"
+       font-size="126"
+       font-weight="normal"
+       font-style="normal"
+       y="0"
+       x="0"
+       xml:space="preserve">ecrt_*()</text>
+  </g>
+  <text
+     style="font-size:132.14363098px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#000000;stroke:none;stroke-width:0.025in;font-family:Sans"
+     id="text164"
+     font-size="152"
+     font-weight="normal"
+     font-style="normal"
+     y="4170.2471"
+     x="1346.4922"
+     xml:space="preserve"
+     sodipodi:linespacing="100%"><tspan
+       sodipodi:role="line"
+       id="tspan3492"
+       x="1346.4922"
+       y="4170.2471"
+       style="font-size:132.14363098px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;stroke:none;stroke-width:2.25;font-family:Sans">Application Module</tspan></text>
+  <g
+     id="g3351"
+     transform="translate(-44.46203,331.40336)">
+    <circle
+       transform="translate(-546.04563,-79)"
+       cx="2607"
+       cy="5113"
+       r="481"
+       style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:8"
+       id="circle76"
+       sodipodi:cx="2607"
+       sodipodi:cy="5113"
+       sodipodi:rx="481"
+       sodipodi:ry="481"
+       d="m 3088,5113 c 0,265.649 -215.351,481 -481,481 -265.649,0 -481,-215.351 -481,-481 0,-265.649 215.351,-481 481,-481 265.649,0 481,215.351 481,481 z" />
+    <text
+       xml:space="preserve"
+       x="2059.2063"
+       y="5073.6719"
+       font-style="normal"
+       font-weight="normal"
+       font-size="152"
+       id="text168"
+       style="font-size:132.14363098px;font-style:normal;font-variant:normal;font-weight:400;font-stretch:normal;text-indent:0;text-align:center;text-decoration:none;line-height:100%;letter-spacing:normal;word-spacing:normal;text-transform:none;direction:ltr;block-progression:tb;writing-mode:lr-tb;text-anchor:middle;opacity:1;fill:#000000;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:2.25;stroke-linecap:butt;stroke-linejoin:miter;marker:none;marker-start:none;marker-mid:none;marker-end:none;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;visibility:visible;display:inline;overflow:visible;enable-background:accumulate;font-family:Sans"
+       sodipodi:linespacing="100%">Task</text>
+  </g>
+  <text
+     style="font-size:152px;font-style:normal;font-weight:normal;text-anchor:start;fill:#000000;stroke:none;stroke-width:0.025in;font-family:Sans"
+     id="text170"
+     font-size="152"
+     font-weight="normal"
+     font-style="normal"
+     y="3131.2466"
+     x="1157.4919"
+     xml:space="preserve">Kernelspace</text>
+  <text
+     style="font-size:152px;font-style:normal;font-weight:normal;text-anchor:start;fill:#000000;stroke:none;stroke-width:0.025in;font-family:Sans"
+     id="text172"
+     font-size="152"
+     font-weight="normal"
+     font-style="normal"
+     y="2800.2466"
+     x="1157.4919"
+     xml:space="preserve">Userspace</text>
+  <g
+     style="stroke:none;stroke-width:0.025in"
+     id="g178"
+     transform="matrix(1.101966e-5,1,-1,1.101966e-5,3235.4925,1572.2467)">
+    <text
+       style="font-size:120.13056946px;font-style:normal;font-weight:normal;text-anchor:end;fill:#000000;stroke:none;font-family:Courier"
+       id="text180"
+       font-size="126"
+       font-weight="normal"
+       font-style="normal"
+       y="0"
+       x="0"
+       xml:space="preserve">ecrt_*()</text>
+  </g>
+  <text
+     style="font-size:126px;font-style:normal;font-weight:normal;text-anchor:end;fill:#000000;stroke:none;stroke-width:0.025in;font-family:Courier"
+     id="text182"
+     font-size="126"
+     font-weight="normal"
+     font-style="normal"
+     y="6547.6665"
+     x="8061.1538"
+     xml:space="preserve">netif_*()</text>
+  <g
+     id="g3355"
+     transform="translate(-44.46203,187.24668)">
+    <path
+       style="text-align:center;text-anchor:middle;fill:#ffffff;stroke:#000000;stroke-width:8;stroke-linecap:butt"
+       d="M 3563.9543,4456 C 3758.9776,4441.1691 3945.8786,4536.8144 4047.9255,4703.6691 C 4149.9724,4870.5238 4149.9724,5080.4762 4047.9255,5247.3309 C 3945.8786,5414.1856 3758.9776,5509.8309 3563.9543,5495 L 3563.9543,4456 z"
+       id="path64" />
+    <text
+       transform="matrix(1.101966e-5,1,-1,1.101966e-5,0,0)"
+       id="text3482"
+       style="font-size:126px;font-style:normal;font-weight:normal;line-height:100%;text-anchor:middle;fill:#000000;stroke:none;stroke-width:0.025in;font-family:Sans"
+       font-size="126"
+       font-weight="normal"
+       font-style="normal"
+       y="-3836.0801"
+       x="4979.6079"
+       xml:space="preserve"
+       sodipodi:linespacing="100%"><tspan
+         style="font-size:126px;font-style:normal;font-weight:normal;text-anchor:middle;fill:#000000;stroke:none;stroke-width:0.025in;font-family:Sans"
+         y="-3836.0801"
+         x="4979.6079"
+         id="tspan3484"
+         sodipodi:role="line">Application</tspan><tspan
+         style="font-size:126px;font-style:normal;font-weight:normal;text-anchor:middle;fill:#000000;stroke:none;stroke-width:0.025in;font-family:Sans"
+         y="-3710.0801"
+         x="4979.6079"
+         id="tspan3486"
+         sodipodi:role="line">Interface</tspan></text>
+  </g>
+  <rect
+     style="opacity:1;fill:#e2ffe8;fill-opacity:1;fill-rule:nonzero;stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter;marker:none;marker-start:none;marker-mid:none;marker-end:none;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;visibility:visible;display:inline;overflow:visible;enable-background:accumulate"
+     id="rect3560"
+     width="1238.0494"
+     height="2456.2253"
+     x="6368.5278"
+     y="3934.1538"
+     rx="110.00001"
+     ry="110.00001" />
+  <g
+     id="g3580"
+     transform="translate(548.92606,108.24163)">
+    <g
+       transform="matrix(-3.6732199e-6,-1,1,-3.6732199e-6,7653,5055)"
+       id="g3586"
+       style="stroke:#000000;stroke-width:0.02499999in" />
+  </g>
+  <text
+     xml:space="preserve"
+     style="font-size:126px;font-style:normal;font-weight:normal;text-align:start;line-height:100%;text-anchor:start;fill:#000000;stroke:none;stroke-width:0.025in;font-family:Sans"
+     x="6491.4546"
+     y="4117.1338"
+     id="text3606"
+     sodipodi:linespacing="100%"><tspan
+       sodipodi:role="line"
+       id="tspan3610"
+       x="6491.4546"
+       y="4117.1338"
+       style="font-size:132.14363098px;text-align:start;text-anchor:start;stroke:none;stroke-width:2.25000358">Generic</tspan><tspan
+       sodipodi:role="line"
+       id="tspan3612"
+       x="6491.4546"
+       y="4249.2773"
+       style="font-size:132.14363098px;text-align:start;text-anchor:start;stroke:none;stroke-width:2.25000358">Ethernet</tspan><tspan
+       sodipodi:role="line"
+       id="tspan3614"
+       x="6491.4546"
+       y="4381.4209"
+       style="font-size:132.14363098px;text-align:start;text-anchor:start;stroke:none;stroke-width:2.25000358">Driver Module</tspan></text>
+  <rect
+     id="rect3618"
+     style="fill:none;stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+     rx="110.00002"
+     height="1322"
+     width="1438.59"
+     y="6769.2471"
+     x="7142.6431"
+     ry="110" />
+  <text
+     style="font-size:132.14363098px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;fill:#000000;stroke:none;stroke-width:0.025in;font-family:Sans"
+     id="text3620"
+     font-size="152"
+     font-weight="normal"
+     font-style="normal"
+     y="7005.2471"
+     x="7291.0054"
+     xml:space="preserve"
+     sodipodi:linespacing="125%"><tspan
+       sodipodi:role="line"
+       id="tspan3652"
+       x="7291.0054"
+       y="7005.2471"
+       style="font-size:132.14363098px;stroke:none;stroke-width:2.25">Standard</tspan><tspan
+       sodipodi:role="line"
+       id="tspan3654"
+       x="7291.0054"
+       y="7170.4268"
+       style="font-size:132.14363098px;stroke:none;stroke-width:2.25">Ethernet Driver</tspan></text>
+  <g
+     id="g3662"
+     transform="translate(735.84514,108.24668)">
+    <polyline
+       points="6850,8456 6755,8456 "
+       style="stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline3664" />
+    <polyline
+       points="6850,8551 6755,8551 "
+       style="stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline3666" />
+    <polyline
+       points="6850,8598 6755,8598 "
+       style="stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline3668" />
+    <polyline
+       points="6850,8692 6755,8692 "
+       style="stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline3670" />
+    <polyline
+       points="6850,8503 6755,8503 "
+       style="stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline3672" />
+    <polyline
+       points="6850,8409 6755,8409 "
+       style="stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline3674" />
+    <polyline
+       points="6850,8740 6755,8740 "
+       style="stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline3676" />
+    <polyline
+       points="6850,8787 6755,8787 "
+       style="stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline3678" />
+    <polygon
+       points="6850,8362 7464,8362 7464,9212 6850,9212 6850,8834 6755,8834 6755,8362 6850,8362 "
+       style="fill:none;stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polygon3680" />
+    <rect
+       x="7181"
+       y="8598"
+       width="188"
+       height="188"
+       rx="0"
+       style="fill:none;stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+       id="rect3682" />
+    <rect
+       x="6992"
+       y="8929"
+       width="94"
+       height="94"
+       rx="0"
+       style="fill:none;stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+       id="rect3684" />
+    <polyline
+       points="6850,8645 6755,8645 "
+       style="stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline3686" />
+    <rect
+       x="6755"
+       y="9212"
+       width="803"
+       height="41"
+       rx="0"
+       style="fill:none;stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+       id="rect3688" />
+    <rect
+       x="7228"
+       y="9259"
+       width="94"
+       height="94"
+       rx="0"
+       style="fill:none;stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+       id="rect3690" />
+  </g>
+  <text
+     style="font-size:152px;font-style:normal;font-weight:normal;text-anchor:end;fill:#d7842f;fill-opacity:1;stroke:none;stroke-width:0.025in;stroke-opacity:1;font-family:Sans"
+     id="text3694"
+     font-size="152"
+     font-weight="normal"
+     font-style="normal"
+     y="8611.2471"
+     x="7396.8452"
+     xml:space="preserve">NIC</text>
+  <path
+     style="opacity:1;fill:none;fill-opacity:1;fill-rule:nonzero;stroke:#d7842f;stroke-width:21.28297615;stroke-linecap:butt;stroke-linejoin:miter;marker:none;marker-start:none;marker-mid:none;marker-end:none;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;visibility:visible;display:inline;overflow:visible;enable-background:accumulate"
+     d="M 7872.6931,8470.2466 L 7868.8456,7288.0988 L 8265.1137,7288.0988 L 8265.1137,5867.8297 L 6863.0311,5867.8297 L 6863.0311,6525.8099 L 5332.4291,6525.8099 L 5332.4291,5520.389 L 5332.4291,1670.4938 L 2799.8817,1670.4938"
+     id="path3698"
+     sodipodi:nodetypes="cccccccccc" />
+  <g
+     id="g3399"
+     transform="translate(-44.46203,187.24668)">
+    <circle
+       transform="translate(-523.27342,-76.596732)"
+       cx="2929"
+       cy="1559"
+       r="614"
+       style="fill:#ffffff;stroke:#000000;stroke-width:8"
+       id="circle72"
+       sodipodi:cx="2929"
+       sodipodi:cy="1559"
+       sodipodi:rx="614"
+       sodipodi:ry="614"
+       d="m 3543,1559 c 0,339.1028 -274.8972,614 -614,614 -339.1028,0 -614,-274.8972 -614,-614 0,-339.1028 274.8972,-614 614,-614 339.1028,0 614,274.8972 614,614 z" />
+    <text
+       sodipodi:linespacing="100%"
+       xml:space="preserve"
+       x="2409.6025"
+       y="1450.2573"
+       font-style="normal"
+       font-weight="normal"
+       font-size="152"
+       id="text202"
+       style="font-size:123.86800385px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-indent:0;text-align:center;text-decoration:none;line-height:100%;letter-spacing:normal;word-spacing:normal;text-transform:none;direction:ltr;block-progression:tb;writing-mode:lr-tb;text-anchor:middle;opacity:1;fill:#000000;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:0.02500001in;stroke-linecap:butt;stroke-linejoin:miter;marker:none;marker-start:none;marker-mid:none;marker-end:none;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;visibility:visible;display:inline;overflow:visible;enable-background:accumulate;font-family:Sans;-inkscape-font-specification:Sans"><tspan
+         y="1450.2573"
+         x="2409.6025"
+         id="tspan3488"
+         sodipodi:role="line">Userspace</tspan><tspan
+         y="1574.1254"
+         x="2409.6025"
+         id="tspan3490"
+         sodipodi:role="line">Application</tspan></text>
+  </g>
+  <g
+     id="g3389"
+     transform="translate(-44.46203,187.24668)">
+    <rect
+       ry="110"
+       x="3563.9546"
+       y="676"
+       width="1181"
+       height="1606"
+       rx="110"
+       style="fill:#feeaff;fill-opacity:1;stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+       id="rect124" />
+    <g
+       transform="matrix(1.101966e-5,1,-1,1.101966e-5,4319.9543,1527)"
+       id="g174"
+       style="stroke:#000000;stroke-width:0.025in">
+      <text
+         xml:space="preserve"
+         x="-52.580063"
+         y="-52.831627"
+         font-style="normal"
+         font-weight="normal"
+         font-size="152"
+         id="text176"
+         style="font-size:132.14363098px;font-style:normal;font-weight:normal;text-anchor:middle;fill:#000000;stroke:none;stroke-width:2.25;font-family:Sans">libethercat</text>
+    </g>
+    <g
+       id="g3383">
+      <path
+         id="path198"
+         d="M 3563.9543,960 C 3758.9776,945.1691 3945.8786,1040.8144 4047.9255,1207.6691 C 4149.9724,1374.5238 4149.9724,1584.4762 4047.9255,1751.3309 C 3945.8786,1918.1856 3758.9776,2013.8309 3563.9543,1999 L 3563.9543,960 z"
+         style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:7.99791002;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none" />
+      <text
+         xml:space="preserve"
+         x="1474.2281"
+         y="-3836.1189"
+         font-style="normal"
+         font-weight="normal"
+         font-size="126"
+         id="text206"
+         style="font-size:120.13056946px;font-style:normal;font-weight:normal;text-align:center;line-height:125%;writing-mode:lr-tb;text-anchor:middle;fill:#000000;stroke:none;stroke-width:0.025in;font-family:Sans"
+         transform="matrix(1.101966e-5,1,-1,1.101966e-5,0,0)"
+         sodipodi:linespacing="125%"><tspan
+           sodipodi:role="line"
+           id="tspan3478"
+           x="1474.2281"
+           y="-3836.1189"
+           style="font-size:120.13056946px;stroke:none;stroke-width:2.25">Application</tspan><tspan
+           sodipodi:role="line"
+           id="tspan3480"
+           x="1474.2281"
+           y="-3685.9556"
+           style="font-size:120.13056946px;stroke:none;stroke-width:2.25">Interface</tspan></text>
+    </g>
+  </g>
+  <path
+     style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:8.00239849;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+     d="M 6353.8719,1844.4653 C 6353.8719,1844.4653 6037.3171,1909.1337 5856.8104,2229.688 C 5670.9667,2559.7199 5707.6919,3934.2468 5707.6919,3934.2468"
+     id="path3375"
+     sodipodi:nodetypes="czc" />
+  <g
+     id="g3377"
+     transform="translate(-44.46203,187.24668)">
+    <circle
+       transform="translate(-546.04563,-79)"
+       cx="7409"
+       cy="1740"
+       r="519"
+       style="fill:#fffdbf;fill-opacity:1;stroke:#000000;stroke-width:7.99791002;stroke-miterlimit:4;stroke-dasharray:none"
+       id="circle80"
+       sodipodi:cx="7409"
+       sodipodi:cy="1740"
+       sodipodi:rx="519"
+       sodipodi:ry="519"
+       d="m 7928,1740 c 0,286.6358 -232.3642,519 -519,519 -286.6358,0 -519,-232.3642 -519,-519 0,-286.6358 232.3642,-519 519,-519 286.6358,0 519,232.3642 519,519 z" />
+    <text
+       sodipodi:linespacing="125%"
+       xml:space="preserve"
+       x="6863.0659"
+       y="1620.1797"
+       font-style="normal"
+       font-weight="normal"
+       font-size="152"
+       id="text188"
+       style="font-size:152px;font-style:normal;font-weight:normal;text-align:center;line-height:125%;writing-mode:lr-tb;text-anchor:middle;fill:#000000;stroke:none;stroke-width:0.025in;font-family:Sans"><tspan
+         style="stroke:none;stroke-width:2.25"
+         y="1620.1797"
+         x="6863.0659"
+         id="tspan3471"
+         sodipodi:role="line">'ethercat'</tspan><tspan
+         style="stroke:none;stroke-width:2.25"
+         y="1810.1797"
+         x="6863.0659"
+         id="tspan3473"
+         sodipodi:role="line">Tool</tspan></text>
+  </g>
+  <g
+     id="g3369"
+     transform="translate(-44.46203,187.24668)">
+    <path
+       style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:8;stroke-linecap:butt"
+       d="M 6247.9543,2708 C 6247.9543,3073.3364 5951.7907,3369.5 5586.4543,3369.5 C 5221.1179,3369.5 4924.9543,3073.3364 4924.9543,2708"
+       id="path66" />
+    <text
+       sodipodi:linespacing="125%"
+       xml:space="preserve"
+       x="5582.8276"
+       y="3003.1301"
+       font-style="normal"
+       font-weight="normal"
+       font-size="152"
+       id="text70"
+       style="font-size:132.6353302px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:center;line-height:125%;writing-mode:lr-tb;text-anchor:middle;fill:#000000;stroke:none;stroke-width:0.025in;font-family:Sans"><tspan
+         style="stroke:none;stroke-width:2.25"
+         y="3003.1301"
+         x="5582.8276"
+         id="tspan3467"
+         sodipodi:role="line">Character</tspan><tspan
+         style="stroke:none;stroke-width:2.25"
+         y="3168.9243"
+         x="5582.8276"
+         id="tspan3469"
+         sodipodi:role="line">Device</tspan></text>
+  </g>
+  <g
+     id="g3345"
+     transform="translate(-44.46203,187.24668)">
+    <path
+       style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:7.99484348;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none"
+       d="M 4649.9543,6204 C 4649.9543,5916.8119 4882.7662,5684 5169.9543,5684 C 5457.1424,5684 5689.9543,5916.8119 5689.9543,6204 L 4649.9543,6204 z"
+       id="path58" />
+    <text
+       sodipodi:linespacing="125%"
+       xml:space="preserve"
+       x="5169.9546"
+       y="5968"
+       font-style="normal"
+       font-weight="normal"
+       font-size="126"
+       id="text60"
+       style="font-size:126px;font-style:normal;font-weight:normal;text-align:center;line-height:125%;writing-mode:lr-tb;text-anchor:middle;fill:#000000;stroke:none;stroke-width:0.025in;font-family:Sans"><tspan
+         id="tspan3341"
+         sodipodi:role="line"
+         x="5169.9546"
+         y="5968">Device</tspan><tspan
+         id="tspan3343"
+         sodipodi:role="line"
+         x="5169.9546"
+         y="6125.5">Interface</tspan></text>
+  </g>
+  <g
+     id="g3516"
+     transform="translate(603.21026,108.24163)">
+    <path
+       style="fill:none;stroke:#000000;stroke-width:7.99999666;stroke-linecap:butt"
+       d="M 7322,6283 C 7322,6126.4273 7448.9273,5999.5 7605.5,5999.5 C 7762.0727,5999.5 7889,6126.4273 7889,6283"
+       id="path74" />
+    <rect
+       x="7228"
+       y="3826"
+       width="755"
+       height="2456"
+       style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:7.99999666;stroke-linecap:butt;stroke-linejoin:miter"
+       id="rect106"
+       ry="109.99843"
+       rx="109.99843" />
+    <g
+       transform="matrix(-3.6732199e-6,-1,1,-3.6732199e-6,7653,5055)"
+       id="g146"
+       style="stroke:#000000;stroke-width:0.02499999in">
+      <text
+         xml:space="preserve"
+         x="0"
+         y="0"
+         font-style="normal"
+         font-weight="normal"
+         font-size="152"
+         id="text148"
+         style="font-size:152px;font-style:normal;font-weight:normal;text-anchor:middle;fill:#000000;stroke:none;stroke-width:2.24999905;font-family:Sans">Network Stack</text>
+    </g>
+  </g>
+  <g
+     id="g3656"
+     transform="translate(735.84554,108.24668)">
+    <rect
+       x="6736.9302"
+       y="7313.9893"
+       width="791.13934"
+       height="394.02103"
+       style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter"
+       id="rect3658"
+       ry="197.01051"
+       rx="197.61028" />
+    <text
+       xml:space="preserve"
+       x="7124.9805"
+       y="7542.9409"
+       font-style="normal"
+       font-weight="normal"
+       font-size="126"
+       id="text3660"
+       style="font-size:126px;font-style:normal;font-weight:normal;text-anchor:middle;fill:#000000;stroke:none;stroke-width:0.025in;font-family:Sans">net_device</text>
+  </g>
+  <g
+     id="g3522"
+     transform="translate(-855.77813,108.24668)"
+     style="stroke:#000000;stroke-opacity:1">
+    <rect
+       x="5314.6245"
+       y="7311.3203"
+       width="801.75134"
+       height="399.35959"
+       style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       id="rect96"
+       ry="199.67979"
+       rx="200.26093" />
+    <text
+       xml:space="preserve"
+       x="5707.9805"
+       y="7542.9409"
+       font-style="normal"
+       font-weight="normal"
+       font-size="126"
+       id="text134"
+       style="font-size:126px;font-style:normal;font-weight:normal;text-anchor:middle;fill:#000000;stroke:none;stroke-width:0.02500000000000000in;font-family:Sans;stroke-opacity:1">net_device</text>
+  </g>
+  <path
+     style="opacity:1;fill:none;fill-opacity:1;fill-rule:nonzero;stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter;marker:none;marker-start:none;marker-mid:none;marker-end:none;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;visibility:visible;display:inline;overflow:visible;enable-background:accumulate"
+     d="M 6271.9418,8470.2466 L 6271.9418,6649.2935 L 8116.176,6649.2936 L 8116.1764,6390.2468"
+     id="path3764"
+     sodipodi:nodetypes="cccc" />
+  <rect
+     style="opacity:1;fill:#fff1cb;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:0.1872962;stroke-linecap:butt;stroke-linejoin:miter;marker:none;marker-start:none;marker-mid:none;marker-end:none;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;visibility:visible;display:inline;overflow:visible;enable-background:accumulate"
+     id="rect3335"
+     width="2522.5874"
+     height="192.61136"
+     x="4222.7207"
+     y="6871.001" />
+  <text
+     style="font-size:132.14363098px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;fill:#000000;stroke:none;stroke-width:0.025in;font-family:Sans"
+     id="text140"
+     font-size="152"
+     font-weight="normal"
+     font-style="normal"
+     y="7005.2471"
+     x="4279.7266"
+     xml:space="preserve"
+     sodipodi:linespacing="125%"><tspan
+       sodipodi:role="line"
+       id="tspan3463"
+       x="4279.7266"
+       y="7005.2471"
+       style="font-size:132.14363098px;stroke:none;stroke-width:2.25">Native EtherCAT-capable Ethernet Driver</tspan></text>
+  <g
+     id="g3526"
+     transform="translate(-855.77823,108.24668)">
+    <rect
+       x="6733.9658"
+       y="7312.4976"
+       width="797.06891"
+       height="397.00394"
+       style="opacity:1;fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter;marker:none;marker-start:none;marker-mid:none;marker-end:none;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;visibility:visible;display:inline;overflow:visible;enable-background:accumulate"
+       id="rect98"
+       ry="198.50197"
+       rx="199.09135" />
+    <text
+       xml:space="preserve"
+       x="7124.9805"
+       y="7542.9409"
+       font-style="normal"
+       font-weight="normal"
+       font-size="126"
+       id="text136"
+       style="font-size:126px;font-style:normal;font-weight:normal;text-anchor:middle;fill:#000000;stroke:none;stroke-width:0.025in;font-family:Sans">net_device</text>
+  </g>
+  <text
+     style="font-size:152px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-indent:0;text-align:start;text-decoration:none;line-height:normal;letter-spacing:normal;word-spacing:normal;text-transform:none;direction:ltr;block-progression:tb;writing-mode:lr-tb;text-anchor:end;opacity:1;fill:#d7842f;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:0.02500001in;stroke-linecap:butt;stroke-linejoin:miter;marker:none;marker-start:none;marker-mid:none;marker-end:none;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;visibility:visible;display:inline;overflow:visible;enable-background:accumulate;font-family:Sans;-inkscape-font-specification:Bitstream Vera Sans"
+     id="text3291"
+     font-size="152"
+     font-weight="normal"
+     font-style="normal"
+     y="9648.541"
+     x="8220.8818"
+     xml:space="preserve">EtherCAT</text>
+  <g
+     id="g3315"
+     transform="translate(-164.59259,187.24668)">
+    <rect
+       ry="306.34152"
+       y="5365.6782"
+       x="6626.0581"
+       height="612.68304"
+       width="843.54913"
+       id="rect3301"
+       style="opacity:1;fill:#ffffff;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:8.00239849;stroke-linecap:butt;stroke-linejoin:miter;marker:none;marker-start:none;marker-mid:none;marker-end:none;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;visibility:visible;display:inline;overflow:visible;enable-background:accumulate"
+       rx="306.34152" />
+    <text
+       id="text3303"
+       y="5564.6763"
+       x="7042.9937"
+       style="font-size:120.13056946px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       xml:space="preserve"><tspan
+         style="font-size:120.13056946px;text-align:center;text-anchor:middle"
+         y="5564.6763"
+         x="7042.9937"
+         id="tspan3305"
+         sodipodi:role="line">Generic</tspan><tspan
+         id="tspan3309"
+         style="font-size:120.13056946px;text-align:center;text-anchor:middle"
+         y="5714.8394"
+         x="7042.9937"
+         sodipodi:role="line">Ethernet</tspan><tspan
+         id="tspan3307"
+         style="font-size:120.13056946px;text-align:center;text-anchor:middle"
+         y="5865.0029"
+         x="7042.9937"
+         sodipodi:role="line">Device</tspan></text>
+  </g>
+  <text
+     xml:space="preserve"
+     style="font-size:96.10446167px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+     x="-5836.0796"
+     y="7408.0576"
+     id="text3311"
+     transform="matrix(0,-1,1,0,0,0)"><tspan
+       sodipodi:role="line"
+       id="tspan3313"
+       x="-5836.0796"
+       y="7408.0576"
+       style="font-size:96.10446167px">Packet Socket</tspan></text>
+  <path
+     style="fill:#d7842f;fill-opacity:1;fill-rule:nonzero;stroke:#000000;stroke-width:2.25;stroke-linecap:butt;stroke-linejoin:miter;marker:none;marker-start:none;marker-mid:none;marker-end:none;stroke-miterlimit:4;stroke-dashoffset:0;stroke-opacity:1;visibility:visible;display:inline;overflow:visible;enable-background:accumulate"
+     d="M 7293.8713,5777.4673 C 7246.566,5782.1256 7209.78,5820.8944 7209.7799,5867.9407 C 7209.7799,5913.3576 7244.0471,5950.9172 7288.991,5957.6632 C 7299.3854,5926.8045 7305.1335,5893.7579 7305.1335,5859.3063 C 7305.1335,5830.9654 7301.0093,5803.4808 7293.8713,5777.4673 z"
+     id="path3300" />
+  <g
+     id="g3337">
+    <rect
+       ry="141.73228"
+       rx="141.73228"
+       y="5140.0127"
+       x="4332.8213"
+       height="489.50626"
+       width="833.20209"
+       id="rect3328"
+       style="opacity:1;fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:#000000;stroke-width:7.99484348;stroke-linecap:butt;stroke-linejoin:miter;marker:none;marker-start:none;marker-mid:none;marker-end:none;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;visibility:visible;display:inline;overflow:visible;enable-background:accumulate" />
+    <text
+       sodipodi:linespacing="100%"
+       xml:space="preserve"
+       x="4747.3921"
+       y="5428.1396"
+       font-style="normal"
+       font-weight="normal"
+       font-size="152"
+       id="text184"
+       style="font-size:126px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-indent:0;text-align:start;text-decoration:none;line-height:100%;letter-spacing:normal;word-spacing:normal;text-transform:none;direction:ltr;block-progression:tb;writing-mode:lr-tb;text-anchor:middle;fill:#000000;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:0.02500001in;stroke-linecap:butt;stroke-linejoin:miter;marker:none;marker-start:none;marker-mid:none;marker-end:none;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;visibility:visible;display:inline;overflow:visible;enable-background:accumulate;font-family:Sans;-inkscape-font-specification:Bitstream Vera Sans">Master 0</text>
+  </g>
+  <g
+     id="g3332">
+    <rect
+       ry="141.73228"
+       rx="141.73228"
+       y="4578.2729"
+       x="4894.561"
+       height="489.50626"
+       width="833.20209"
+       id="rect3330"
+       style="opacity:1;fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:#000000;stroke-width:7.99484348;stroke-linecap:butt;stroke-linejoin:miter;marker:none;marker-start:none;marker-mid:none;marker-end:none;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;visibility:visible;display:inline;overflow:visible;enable-background:accumulate" />
+    <text
+       xml:space="preserve"
+       x="5318.4526"
+       y="4865.9692"
+       font-style="normal"
+       font-weight="normal"
+       font-size="152"
+       id="text3365"
+       style="font-size:126px;font-style:normal;font-weight:normal;line-height:100%;text-anchor:middle;fill:#000000;stroke:none;stroke-width:0.025in;font-family:Sans"
+       sodipodi:linespacing="100%"><tspan
+         sodipodi:role="line"
+         id="tspan3367"
+         x="5318.4526"
+         y="4865.9692">Master 1</tspan></text>
+  </g>
+</svg>
