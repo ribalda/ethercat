@@ -29,6 +29,7 @@
 
 #include <linux/module.h>
 #include <linux/err.h>
+#include <linux/termios.h>
 
 #include "../../include/ecrt.h" // EtherCAT realtime interface
 #include "../../include/ectty.h" // EtherCAT TTY interface
@@ -200,12 +201,45 @@ ec_sync_info_t el6002_syncs[] = {
 
 /****************************************************************************/
 
+int el6002_cflag_changed(void *data, unsigned short cflag)
+{
+    el6002_t *ser = (el6002_t *) data;
+    int cs = 0, stop, par;
+
+    printk(KERN_INFO PFX "%s(data=%p, cflag=%x).\n", __func__, ser, cflag);
+
+    switch (cflag & CSIZE) {
+        case CS7:
+            cs = 7;
+            break;
+        case CS8:
+            cs = 8;
+            break;
+        default: /* CS5 or CS6 */
+            return -EINVAL; // not supported
+    }
+
+    stop = (cflag & CSTOPB) ? 2 : 1;
+
+    if (cflag & PARENB) {
+        par = (cflag & PARODD) ? 1 : 2;
+    } else {
+        par = 0;
+    }
+
+    printk(KERN_INFO PFX "CS%u stopb=%u par=%i.\n", cs, stop, par);
+
+    return 0;
+}
+
+/****************************************************************************/
+
 int el6002_init(el6002_t *ser, ec_master_t *master, u16 position,
         ec_domain_t *domain)
 {
     int ret = 0;
 
-    ser->tty = ectty_create();
+    ser->tty = ectty_create(el6002_cflag_changed, ser);
     if (IS_ERR(ser->tty)) {
         printk(KERN_ERR PFX "Failed to create tty.\n");
         ret = PTR_ERR(ser->tty);

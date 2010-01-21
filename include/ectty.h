@@ -54,10 +54,19 @@ typedef struct ec_tty ec_tty_t; /**< \see ec_tty */
  *****************************************************************************/
 
 /** Create a virtual TTY interface.
- * 
+ *
+ * \param cflag_cb This callback function is called when the serial settings
+ * shall be changed. The \a cb_data argument is the same as the \a cb_data
+ * given on device creation, while the \a cflag argument contains the new
+ * settings.
+ * \param cb_data Arbitrary data to pass to callbacks.
+ *
  * \return Pointer to the interface object, otherwise an ERR_PTR value.
  */
-ec_tty_t *ectty_create(void);
+ec_tty_t *ectty_create(
+        int (*cflag_cb)(void *cb_data, unsigned short cflag),
+        void *cb_data
+        );
 
 /******************************************************************************
  * TTY interface methods

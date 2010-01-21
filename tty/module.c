@@ -107,6 +107,9 @@ struct ec_tty {
 
     struct timer_list timer;
     struct tty_struct *tty;
+
+    int (*cflag_cb)(void *, unsigned short);
+    void *cb_data;
 };
 
 static const struct tty_operations ec_tty_ops; // see below
@@ -242,10 +245,10 @@ void ec_tty_wakeup(unsigned long data)
         unsigned char *cbuf;
         int space = tty_prepare_flip_string(tty->tty, &cbuf, to_recv);
 
-		if (space < to_recv) {
-			printk(KERN_WARNING PFX "Insufficient space to_recv=%d space=%d\n",
+        if (space < to_recv) {
+            printk(KERN_WARNING PFX "Insufficient space to_recv=%d space=%d\n",
                     to_recv, space);
-		}
+        }
 
         if (space < 0) {
             to_recv = 0;
@@ -266,7 +269,7 @@ void ec_tty_wakeup(unsigned long data)
             }
             tty_flip_buffer_push(tty->tty);
         }
-	}
+    }
     
     tty->timer.expires += 1;
     add_timer(&tty->timer);
@@ -274,7 +277,8 @@ void ec_tty_wakeup(unsigned long data)
 
 /*****************************************************************************/
 
-int ec_tty_init(ec_tty_t *tty, int minor)
+int ec_tty_init(ec_tty_t *tty, int minor,
+        int (*cflag_cb)(void *, unsigned short), void *cb_data)
 {
     tty->minor = minor;
     tty->tx_read_idx = 0;
@@ -284,6 +288,8 @@ int ec_tty_init(ec_tty_t *tty, int minor)
     tty->rx_write_idx = 0;
     init_timer(&tty->timer);
     tty->tty = NULL;
+    tty->cflag_cb = cflag_cb;
+    tty->cb_data = cb_data;
 
     tty->dev = tty_register_device(tty_driver, tty->minor, NULL);
     if (IS_ERR(tty->dev)) {
@@ -310,17 +316,17 @@ void ec_tty_clear(ec_tty_t *tty)
 
 int ec_tty_get_serial_info(ec_tty_t *tty, struct serial_struct *data)
 {
-	struct serial_struct tmp;
-  
-	if (!data)
-		return -EFAULT;
+    struct serial_struct tmp;
 
-	memset(&tmp, 0, sizeof(tmp));
-    
-	if (copy_to_user(data, &tmp, sizeof(*data))) {
+    if (!data)
+        return -EFAULT;
+
+    memset(&tmp, 0, sizeof(tmp));
+
+    if (copy_to_user(data, &tmp, sizeof(*data))) {
         return -EFAULT;
     }
-	return 0;
+    return 0;
 }
 
 /******************************************************************************
@@ -336,8 +342,8 @@ static int ec_tty_open(struct tty_struct *tty, struct file *file)
     printk(KERN_INFO PFX "Opening line %i.\n", line);
 #endif
 
-	if (line < 0 || line >= EC_TTY_MAX_DEVICES) {
-		return -ENXIO;
+    if (line < 0 || line >= EC_TTY_MAX_DEVICES) {
+        return -ENXIO;
     }
 
     t = ttys[line];
@@ -474,7 +480,7 @@ static void ec_tty_flush_buffer(struct tty_struct *tty)
 /*****************************************************************************/
 
 static int ec_tty_ioctl(struct tty_struct *tty, struct file *file,
-		    unsigned int cmd, unsigned long arg)
+        unsigned int cmd, unsigned long arg)
 {
     ec_tty_t *t = (ec_tty_t *) tty->driver_data;
     int ret = -ENOTTY;
@@ -487,8 +493,8 @@ static int ec_tty_ioctl(struct tty_struct *tty, struct file *file,
 #endif
 
     switch (cmd) {
-		case TIOCGSERIAL:
-			if (access_ok(VERIFY_WRITE,
+        case TIOCGSERIAL:
+            if (access_ok(VERIFY_WRITE,
                         (void *) arg, sizeof(struct serial_struct))) {
                 ret = ec_tty_get_serial_info(t, (struct serial_struct *) arg);
             } else {
@@ -513,9 +519,10 @@ static int ec_tty_ioctl(struct tty_struct *tty, struct file *file,
 /*****************************************************************************/
 
 static void ec_tty_set_termios(struct tty_struct *tty,
-			   struct ktermios *old_termios)
+        struct ktermios *old_termios)
 {
-    //ec_tty_t *t = (ec_tty_t *) tty->driver_data;
+    ec_tty_t *t = (ec_tty_t *) tty->driver_data;
+    int ret;
 
 #if EC_TTY_DEBUG >= 2
     printk(KERN_INFO PFX "%s().\n", __func__);
@@ -528,6 +535,13 @@ static void ec_tty_set_termios(struct tty_struct *tty,
     printk(KERN_INFO "cflag changed from %x to %x.\n",
             old_termios->c_cflag, tty->termios->c_cflag);
 #endif
+
+    ret = t->cflag_cb(t->cb_data, tty->termios->c_cflag);
+    if (ret) {
+        printk(KERN_ERR PFX "ERROR: cflag 0x%x not accepted.\n",
+                tty->termios->c_cflag);
+        tty->termios->c_cflag = old_termios->c_cflag;
+    }
 }
 
 /*****************************************************************************/
@@ -598,25 +612,25 @@ static const struct tty_operations ec_tty_ops = {
     .open = ec_tty_open,
     .close = ec_tty_close,
     .write = ec_tty_write,
-	.put_char = ec_tty_put_char,
-	.write_room = ec_tty_write_room,
-	.chars_in_buffer = ec_tty_chars_in_buffer,
-	.flush_buffer = ec_tty_flush_buffer,
-	.ioctl = ec_tty_ioctl,
-	.set_termios = ec_tty_set_termios,
-	.stop = ec_tty_stop,
-	.start = ec_tty_start,
-	.hangup = ec_tty_hangup,
-	.break_ctl = ec_tty_break,
-	.send_xchar = ec_tty_send_xchar,
-	.wait_until_sent = ec_tty_wait_until_sent,
+    .put_char = ec_tty_put_char,
+    .write_room = ec_tty_write_room,
+    .chars_in_buffer = ec_tty_chars_in_buffer,
+    .flush_buffer = ec_tty_flush_buffer,
+    .ioctl = ec_tty_ioctl,
+    .set_termios = ec_tty_set_termios,
+    .stop = ec_tty_stop,
+    .start = ec_tty_start,
+    .hangup = ec_tty_hangup,
+    .break_ctl = ec_tty_break,
+    .send_xchar = ec_tty_send_xchar,
+    .wait_until_sent = ec_tty_wait_until_sent,
 };
 
 /******************************************************************************
  * Public functions and methods
  *****************************************************************************/
 
-ec_tty_t *ectty_create(void)
+ec_tty_t *ectty_create(int (*cflag_cb)(void *, unsigned short), void *cb_data)
 {
     ec_tty_t *tty;
     int minor, ret;
@@ -636,7 +650,7 @@ ec_tty_t *ectty_create(void)
                 return ERR_PTR(-ENOMEM);
             }
 
-            ret = ec_tty_init(tty, minor);
+            ret = ec_tty_init(tty, minor, cflag_cb, cb_data);
             if (ret) {
                 up(&tty_sem);
                 kfree(tty);
