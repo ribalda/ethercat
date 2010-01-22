@@ -45,7 +45,11 @@
 
 #define VendorIdBeckhoff 0x00000002
 #define ProductCodeBeckhoffEL6002 0x17723052
-#define Beckhoff_EL6002 VendorIdBeckhoff, ProductCodeBeckhoffEL6002
+
+#define VendorIdIds 0x000012ad
+#define ProductCodeIdsCSI71A 0x17723052
+
+/*****************************************************************************/
 
 typedef enum {
     SER_REQUEST_INIT,
@@ -285,7 +289,7 @@ int el6002_cflag_changed(void *data, tcflag_t cflag)
 #endif
 
     rtscts = cflag & CRTSCTS;
-    printk(KERN_INFO PFX "Requested rts/cts: %s.\n", rtscts ? "yes" : "no");
+    printk(KERN_INFO PFX "Requested RTS/CTS: %s.\n", rtscts ? "yes" : "no");
     
     cbaud = cflag & CBAUD;
 
@@ -362,7 +366,7 @@ int el6002_cflag_changed(void *data, tcflag_t cflag)
 /****************************************************************************/
 
 int el6002_init(el6002_t *ser, ec_master_t *master, u16 position,
-        ec_domain_t *domain)
+        ec_domain_t *domain, u32 vendor, u32 product)
 {
     int ret = 0;
 
@@ -395,7 +399,7 @@ int el6002_init(el6002_t *ser, ec_master_t *master, u16 position,
     ser->config_error = 0;
 
     if (!(ser->sc = ecrt_master_slave_config(
-                    master, 0, position, Beckhoff_EL6002))) {
+                    master, 0, position, vendor, product))) {
         printk(KERN_ERR PFX "Failed to create slave configuration.\n");
         ret = -EBUSY;
         goto out_free_tty;
@@ -582,12 +586,12 @@ void el6002_run(el6002_t *ser, u8 *pd)
         case SER_SET_RTSCTS:
             switch (ecrt_sdo_request_state(ser->rtscts_sdo)) {
                 case EC_REQUEST_SUCCESS:
-                    printk(KERN_INFO PFX "Slave accepted rts/cts.\n");
+                    printk(KERN_INFO PFX "Slave accepted RTS/CTS.\n");
                     ser->current_rtscts = ser->requested_rtscts;
                     ser->state = SER_REQUEST_INIT;
                     break;
                 case EC_REQUEST_ERROR:
-                    printk(KERN_INFO PFX "Failed to set rts/cts!\n");
+                    printk(KERN_INFO PFX "Failed to set RTS/CTS!\n");
                     ser->state = SER_REQUEST_INIT;
                     ser->config_error = 1;
                     break;
@@ -648,6 +652,34 @@ void run_serial_devices(u8 *pd)
 
 /*****************************************************************************/
 
+int create_el6002_handler(ec_master_t *master, ec_domain_t *domain,
+        u16 position, u32 vendor, u32 product)
+{
+    el6002_t *ser;
+    int ret;
+
+    printk(KERN_INFO PFX "Creating handler for EL6002 at position %u\n",
+            position);
+
+    ser = kmalloc(sizeof(*ser), GFP_KERNEL);
+    if (!ser) {
+        printk(KERN_ERR PFX "Failed to allocate serial device object.\n");
+        return -ENOMEM;
+    }
+
+    ret = el6002_init(ser, master, position, domain, vendor, product);
+    if (ret) {
+        printk(KERN_ERR PFX "Failed to init serial device object.\n");
+        kfree(ser);
+        return ret;
+    }
+
+    list_add_tail(&ser->list, &handlers);
+    return 0;
+}
+
+/*****************************************************************************/
+
 int create_serial_devices(ec_master_t *master, ec_domain_t *domain)
 {
     int i, ret;
@@ -670,31 +702,22 @@ int create_serial_devices(ec_master_t *master, ec_domain_t *domain)
             goto out_free_handlers;
         }
 
-        if (slave_info.vendor_id != VendorIdBeckhoff
-                || slave_info.product_code != ProductCodeBeckhoffEL6002) {
-            continue;
+        if (slave_info.vendor_id == VendorIdBeckhoff
+                && slave_info.product_code == ProductCodeBeckhoffEL6002) {
+            if (create_el6002_handler(master, domain, i,
+                    slave_info.vendor_id, slave_info.product_code)) {
+                goto out_free_handlers;
+            }
         }
 
-        printk(KERN_INFO PFX "Creating handler for serial device"
-                " at position %i\n", i);
-
-        ser = kmalloc(sizeof(*ser), GFP_KERNEL);
-        if (!ser) {
-            printk(KERN_ERR PFX "Failed to allocate serial device object.\n");
-            ret = -ENOMEM;
-            goto out_free_handlers;
+        if (slave_info.vendor_id == VendorIdIds
+                && slave_info.product_code == ProductCodeIdsCSI71A) {
+            if (create_el6002_handler(master, domain, i,
+                    slave_info.vendor_id, slave_info.product_code)) {
+                goto out_free_handlers;
+            }
         }
-
-        ret = el6002_init(ser, master, i, domain);
-        if (ret) {
-            printk(KERN_ERR PFX "Failed to init serial device object.\n");
-            kfree(ser);
-            goto out_free_handlers;
-        }
-
-        list_add_tail(&ser->list, &handlers);
     }
-
 
     printk(KERN_INFO PFX "Finished.\n");
     return 0;
