@@ -336,7 +336,7 @@ int ec_tty_get_serial_info(ec_tty_t *tty, struct serial_struct *data)
 static int ec_tty_open(struct tty_struct *tty, struct file *file)
 {
     ec_tty_t *t;
-    int line = tty->index;
+    int line = tty->index, ret;
 
 #if EC_TTY_DEBUG >= 1
     printk(KERN_INFO PFX "Opening line %i.\n", line);
@@ -357,6 +357,15 @@ static int ec_tty_open(struct tty_struct *tty, struct file *file)
 
     t->tty = tty;
     tty->driver_data = t;
+
+    // request initial settings
+    ret = t->cflag_cb(t->cb_data, t->tty->termios->c_cflag);
+    if (ret) {
+        printk(KERN_ERR PFX "Error: Device does not accept"
+                " initial configuration!\n");
+        return ret;
+    }
+
     return 0;
 }
 
