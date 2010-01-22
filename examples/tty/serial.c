@@ -58,13 +58,10 @@ typedef enum {
     SER_SET_RTSCTS,
     SER_SET_BAUD_RATE,
     SER_SET_DATA_FRAME,
-} serial_state_t;
+} el60xx_port_state;
 
 typedef struct {
-    struct list_head list;
-
     ec_tty_t *tty;
-    ec_slave_config_t *sc;
 
     size_t max_tx_data_size;
     size_t max_rx_data_size;
@@ -72,7 +69,7 @@ typedef struct {
     u8 *tx_data;
     u8 tx_data_size;
 
-    serial_state_t state;
+    el60xx_port_state state;
 
     u8 tx_request_toggle;
     u8 tx_accepted_toggle;
@@ -101,6 +98,14 @@ typedef struct {
 
     unsigned int config_error;
 
+} el60xx_port_t;
+
+#define EL6002_PORTS 2
+
+typedef struct {
+    struct list_head list;
+    ec_slave_config_t *sc;
+    el60xx_port_t port[EL6002_PORTS];
 } el6002_t;
 
 LIST_HEAD(handlers);
@@ -274,9 +279,9 @@ el600x_baud_rate_t el600x_baud_rate[] = {
 
 /****************************************************************************/
 
-int el6002_cflag_changed(void *data, tcflag_t cflag)
+int el60xx_cflag_changed(void *data, tcflag_t cflag)
 {
-    el6002_t *ser = (el6002_t *) data;
+    el60xx_port_t *port = (el60xx_port_t *) data;
     unsigned int data_bits, stop_bits;
     tcflag_t cbaud, rtscts;
     parity_t par;
@@ -285,7 +290,7 @@ int el6002_cflag_changed(void *data, tcflag_t cflag)
     el600x_data_frame_t *df_to_use = NULL;
 
 #if DEBUG
-    printk(KERN_INFO PFX "%s(data=%p, cflag=%x).\n", __func__, ser, cflag);
+    printk(KERN_INFO PFX "%s(data=%p, cflag=%x).\n", __func__, port, cflag);
 #endif
 
     rtscts = cflag & CRTSCTS;
@@ -356,117 +361,103 @@ int el6002_cflag_changed(void *data, tcflag_t cflag)
         return -EINVAL;
     }
 
-    ser->requested_rtscts = rtscts != 0;
-    ser->requested_baud_rate = b_to_use->value;
-    ser->requested_data_frame = df_to_use->value;
-    ser->config_error = 0;
+    port->requested_rtscts = rtscts != 0;
+    port->requested_baud_rate = b_to_use->value;
+    port->requested_data_frame = df_to_use->value;
+    port->config_error = 0;
     return 0;
 }
 
 /****************************************************************************/
 
-int el6002_init(el6002_t *ser, ec_master_t *master, u16 position,
-        ec_domain_t *domain, u32 vendor, u32 product)
+int el60xx_port_init(el60xx_port_t *port, ec_slave_config_t *sc,
+        ec_domain_t *domain, unsigned int slot_offset)
 {
     int ret = 0;
 
-    ser->tty = ectty_create(el6002_cflag_changed, ser);
-    if (IS_ERR(ser->tty)) {
+    port->tty = ectty_create(el60xx_cflag_changed, port);
+    if (IS_ERR(port->tty)) {
         printk(KERN_ERR PFX "Failed to create tty.\n");
-        ret = PTR_ERR(ser->tty);
+        ret = PTR_ERR(port->tty);
         goto out_return;
     }
 
-    ser->sc = NULL;
-    ser->max_tx_data_size = 22;
-    ser->max_rx_data_size = 22;
-    ser->tx_data = NULL;
-    ser->tx_data_size = 0;
-    ser->state = SER_REQUEST_INIT;
-    ser->tx_request_toggle = 0;
-    ser->rx_accepted_toggle = 0;
-    ser->control = 0x0000;
-    ser->off_ctrl = 0;
-    ser->off_tx = 0;
-    ser->off_status = 0;
-    ser->off_rx = 0;
-    ser->requested_rtscts = 0x00; // no hardware handshake
-    ser->current_rtscts = 0xff;
-    ser->requested_baud_rate = 6; // 9600
-    ser->current_baud_rate = 0;
-    ser->requested_data_frame = 0x03; // 8N1
-    ser->current_data_frame = 0x00;
-    ser->config_error = 0;
+    port->max_tx_data_size = 22;
+    port->max_rx_data_size = 22;
+    port->tx_data = NULL;
+    port->tx_data_size = 0;
+    port->state = SER_REQUEST_INIT;
+    port->tx_request_toggle = 0;
+    port->rx_accepted_toggle = 0;
+    port->control = 0x0000;
+    port->off_ctrl = 0;
+    port->off_tx = 0;
+    port->off_status = 0;
+    port->off_rx = 0;
+    port->requested_rtscts = 0x00; // no hardware handshake
+    port->current_rtscts = 0xff;
+    port->requested_baud_rate = 6; // 9600
+    port->current_baud_rate = 0;
+    port->requested_data_frame = 0x03; // 8N1
+    port->current_data_frame = 0x00;
+    port->config_error = 0;
 
-    if (!(ser->sc = ecrt_master_slave_config(
-                    master, 0, position, vendor, product))) {
-        printk(KERN_ERR PFX "Failed to create slave configuration.\n");
-        ret = -EBUSY;
-        goto out_free_tty;
-    }
-
-    if (!(ser->rtscts_sdo = ecrt_slave_config_create_sdo_request(ser->sc,
-                    0x8000, 0x01, 1))) {
+    if (!(port->rtscts_sdo = ecrt_slave_config_create_sdo_request(sc,
+                    0x8000 + slot_offset, 0x01, 1))) {
         printk(KERN_ERR PFX "Failed to create SDO request.\n");
         ret = -ENOMEM;
         goto out_free_tty;
     }
 
-    if (!(ser->baud_sdo = ecrt_slave_config_create_sdo_request(ser->sc,
-                    0x8000, 0x11, 1))) {
+    if (!(port->baud_sdo = ecrt_slave_config_create_sdo_request(sc,
+                    0x8000 + slot_offset, 0x11, 1))) {
         printk(KERN_ERR PFX "Failed to create SDO request.\n");
         ret = -ENOMEM;
         goto out_free_tty;
     }
 
-    if (!(ser->frame_sdo = ecrt_slave_config_create_sdo_request(ser->sc,
-                    0x8000, 0x15, 1))) {
+    if (!(port->frame_sdo = ecrt_slave_config_create_sdo_request(sc,
+                    0x8000 + slot_offset, 0x15, 1))) {
         printk(KERN_ERR PFX "Failed to create SDO request.\n");
         ret = -ENOMEM;
         goto out_free_tty;
     }
 
-    if (ecrt_slave_config_pdos(ser->sc, EC_END, el6002_syncs)) {
-        printk(KERN_ERR PFX "Failed to configure PDOs.\n");
-        ret = -ENOMEM;
-        goto out_free_tty;
-    }
-    
     ret = ecrt_slave_config_reg_pdo_entry(
-            ser->sc, 0x7001, 0x01, domain, NULL);
+            sc, 0x7001 + slot_offset, 0x01, domain, NULL);
     if (ret < 0) {
         printk(KERN_ERR PFX "Failed to register PDO entry.\n");
         goto out_free_tty;
     }
-    ser->off_ctrl = ret;
+    port->off_ctrl = ret;
 
     ret = ecrt_slave_config_reg_pdo_entry(
-            ser->sc, 0x7000, 0x11, domain, NULL);
+            sc, 0x7000 + slot_offset, 0x11, domain, NULL);
     if (ret < 0) {
         printk(KERN_ERR PFX "Failed to register PDO entry.\n");
         goto out_free_tty;
     }
-    ser->off_tx = ret;
+    port->off_tx = ret;
 
     ret = ecrt_slave_config_reg_pdo_entry(
-            ser->sc, 0x6001, 0x01, domain, NULL);
+            sc, 0x6001 + slot_offset, 0x01, domain, NULL);
     if (ret < 0) {
         printk(KERN_ERR PFX "Failed to register PDO entry.\n");
         goto out_free_tty;
     }
-    ser->off_status = ret;
+    port->off_status = ret;
 
     ret = ecrt_slave_config_reg_pdo_entry(
-            ser->sc, 0x6000, 0x11, domain, NULL);
+            sc, 0x6000 + slot_offset, 0x11, domain, NULL);
     if (ret < 0) {
         printk(KERN_ERR PFX "Failed to register PDO entry.\n");
         goto out_free_tty;
     }
-    ser->off_rx = ret;
+    port->off_rx = ret;
 
-    if (ser->max_tx_data_size > 0) {
-        ser->tx_data = kmalloc(ser->max_tx_data_size, GFP_KERNEL);
-        if (ser->tx_data == NULL) {
+    if (port->max_tx_data_size > 0) {
+        port->tx_data = kmalloc(port->max_tx_data_size, GFP_KERNEL);
+        if (port->tx_data == NULL) {
             ret = -ENOMEM;
             goto out_free_tty;
         }
@@ -475,125 +466,125 @@ int el6002_init(el6002_t *ser, ec_master_t *master, u16 position,
     return 0;
 
 out_free_tty:
-    ectty_free(ser->tty);
+    ectty_free(port->tty);
 out_return:
     return ret;
 }
 
 /****************************************************************************/
 
-void el6002_clear(el6002_t *ser)
+void el60xx_port_clear(el60xx_port_t *port)
 {
-    ectty_free(ser->tty);
-    if (ser->tx_data) {
-        kfree(ser->tx_data);
+    ectty_free(port->tty);
+    if (port->tx_data) {
+        kfree(port->tx_data);
     }
 }
 
 /****************************************************************************/
 
-void el6002_run(el6002_t *ser, u8 *pd)
+void el60xx_port_run(el60xx_port_t *port, u8 *pd)
 {
-    u16 status = EC_READ_U16(pd + ser->off_status);
-    u8 *rx_data = pd + ser->off_rx;
+    u16 status = EC_READ_U16(pd + port->off_status);
+    u8 *rx_data = pd + port->off_rx;
     uint8_t tx_accepted_toggle, rx_request_toggle;
 
-    switch (ser->state) {
+    switch (port->state) {
         case SER_READY:
 
             /* Check, if hardware handshaking has to be configured. */
-            if (!ser->config_error &&
-                    ser->requested_rtscts != ser->current_rtscts) {
-                EC_WRITE_U8(ecrt_sdo_request_data(ser->rtscts_sdo),
-                        ser->requested_rtscts);
-                ecrt_sdo_request_write(ser->rtscts_sdo);
-                ser->state = SER_SET_RTSCTS;
+            if (!port->config_error &&
+                    port->requested_rtscts != port->current_rtscts) {
+                EC_WRITE_U8(ecrt_sdo_request_data(port->rtscts_sdo),
+                        port->requested_rtscts);
+                ecrt_sdo_request_write(port->rtscts_sdo);
+                port->state = SER_SET_RTSCTS;
                 break;
             }
 
             /* Check, if the baud rate has to be configured. */
-            if (!ser->config_error &&
-                    ser->requested_baud_rate != ser->current_baud_rate) {
-                EC_WRITE_U8(ecrt_sdo_request_data(ser->baud_sdo),
-                        ser->requested_baud_rate);
-                ecrt_sdo_request_write(ser->baud_sdo);
-                ser->state = SER_SET_BAUD_RATE;
+            if (!port->config_error &&
+                    port->requested_baud_rate != port->current_baud_rate) {
+                EC_WRITE_U8(ecrt_sdo_request_data(port->baud_sdo),
+                        port->requested_baud_rate);
+                ecrt_sdo_request_write(port->baud_sdo);
+                port->state = SER_SET_BAUD_RATE;
                 break;
             }
 
             /* Check, if the data frame has to be configured. */
-            if (!ser->config_error &&
-                    ser->requested_data_frame != ser->current_data_frame) {
-                EC_WRITE_U8(ecrt_sdo_request_data(ser->frame_sdo),
-                        ser->requested_data_frame);
-                ecrt_sdo_request_write(ser->frame_sdo);
-                ser->state = SER_SET_DATA_FRAME;
+            if (!port->config_error &&
+                    port->requested_data_frame != port->current_data_frame) {
+                EC_WRITE_U8(ecrt_sdo_request_data(port->frame_sdo),
+                        port->requested_data_frame);
+                ecrt_sdo_request_write(port->frame_sdo);
+                port->state = SER_SET_DATA_FRAME;
                 break;
             }
 
             /* Send data */
             
             tx_accepted_toggle = status & 0x0001;
-            if (tx_accepted_toggle != ser->tx_accepted_toggle) { // ready
-                ser->tx_data_size =
-                    ectty_tx_data(ser->tty, ser->tx_data, ser->max_tx_data_size);
-                if (ser->tx_data_size) {
+            if (tx_accepted_toggle != port->tx_accepted_toggle) { // ready
+                port->tx_data_size =
+                    ectty_tx_data(port->tty, port->tx_data, port->max_tx_data_size);
+                if (port->tx_data_size) {
 #if DEBUG
-                    printk(KERN_INFO PFX "Sending %u bytes.\n", ser->tx_data_size);
+                    printk(KERN_INFO PFX "Sending %u bytes.\n", port->tx_data_size);
 #endif
-                    ser->tx_request_toggle = !ser->tx_request_toggle;
-                    ser->tx_accepted_toggle = tx_accepted_toggle;
+                    port->tx_request_toggle = !port->tx_request_toggle;
+                    port->tx_accepted_toggle = tx_accepted_toggle;
                 }
             }
 
             /* Receive data */
 
             rx_request_toggle = status & 0x0002;
-            if (rx_request_toggle != ser->rx_request_toggle) {
+            if (rx_request_toggle != port->rx_request_toggle) {
                 uint8_t rx_data_size = status >> 8;
-                ser->rx_request_toggle = rx_request_toggle;
+                port->rx_request_toggle = rx_request_toggle;
 #if DEBUG
                 printk(KERN_INFO PFX "Received %u bytes.\n", rx_data_size);
 #endif
-                ectty_rx_data(ser->tty, rx_data, rx_data_size);
-                ser->rx_accepted_toggle = !ser->rx_accepted_toggle;
+                ectty_rx_data(port->tty, rx_data, rx_data_size);
+                port->rx_accepted_toggle = !port->rx_accepted_toggle;
             }
 
-            ser->control =
-                ser->tx_request_toggle |
-                ser->rx_accepted_toggle << 1 |
-                ser->tx_data_size << 8;
+            port->control =
+                port->tx_request_toggle |
+                port->rx_accepted_toggle << 1 |
+                port->tx_data_size << 8;
             break;
 
         case SER_REQUEST_INIT:
             if (status & (1 << 2)) {
-                ser->control = 0x0000;
-                ser->state = SER_WAIT_FOR_INIT_RESPONSE;
+                port->control = 0x0000;
+                port->state = SER_WAIT_FOR_INIT_RESPONSE;
             } else {
-                ser->control = 1 << 2; // CW.2, request initialization
+                port->control = 1 << 2; // CW.2, request initialization
             }
             break;
 
         case SER_WAIT_FOR_INIT_RESPONSE:
             if (!(status & (1 << 2))) {
                 printk(KERN_INFO PFX "EL600x init successful.\n");
-                ser->tx_accepted_toggle = 1;
-                ser->control = 0x0000;
-                ser->state = SER_READY;
+                port->tx_accepted_toggle = 1;
+                port->control = 0x0000;
+                port->state = SER_READY;
             }
             break;
 
         case SER_SET_RTSCTS:
-            switch (ecrt_sdo_request_state(ser->rtscts_sdo)) {
+            switch (ecrt_sdo_request_state(port->rtscts_sdo)) {
                 case EC_REQUEST_SUCCESS:
                     printk(KERN_INFO PFX "Slave accepted RTS/CTS.\n");
-                    ser->current_rtscts = ser->requested_rtscts;
-                    ser->state = SER_REQUEST_INIT;
+                    port->current_rtscts = port->requested_rtscts;
+                    port->state = SER_REQUEST_INIT;
                     break;
                 case EC_REQUEST_ERROR:
                     printk(KERN_INFO PFX "Failed to set RTS/CTS!\n");
-                    ser->state = SER_REQUEST_INIT;
-                    ser->config_error = 1;
+                    port->state = SER_REQUEST_INIT;
+                    port->config_error = 1;
                     break;
                 default:
                     break;
@@ -601,16 +592,16 @@ void el6002_run(el6002_t *ser, u8 *pd)
             break;
 
         case SER_SET_BAUD_RATE:
-            switch (ecrt_sdo_request_state(ser->baud_sdo)) {
+            switch (ecrt_sdo_request_state(port->baud_sdo)) {
                 case EC_REQUEST_SUCCESS:
                     printk(KERN_INFO PFX "Slave accepted baud rate.\n");
-                    ser->current_baud_rate = ser->requested_baud_rate;
-                    ser->state = SER_REQUEST_INIT;
+                    port->current_baud_rate = port->requested_baud_rate;
+                    port->state = SER_REQUEST_INIT;
                     break;
                 case EC_REQUEST_ERROR:
                     printk(KERN_INFO PFX "Failed to set baud rate!\n");
-                    ser->state = SER_REQUEST_INIT;
-                    ser->config_error = 1;
+                    port->state = SER_REQUEST_INIT;
+                    port->config_error = 1;
                     break;
                 default:
                     break;
@@ -618,16 +609,16 @@ void el6002_run(el6002_t *ser, u8 *pd)
             break;
 
         case SER_SET_DATA_FRAME:
-            switch (ecrt_sdo_request_state(ser->frame_sdo)) {
+            switch (ecrt_sdo_request_state(port->frame_sdo)) {
                 case EC_REQUEST_SUCCESS:
                     printk(KERN_INFO PFX "Slave accepted data frame.\n");
-                    ser->current_data_frame = ser->requested_data_frame;
-                    ser->state = SER_REQUEST_INIT;
+                    port->current_data_frame = port->requested_data_frame;
+                    port->state = SER_REQUEST_INIT;
                     break;
                 case EC_REQUEST_ERROR:
                     printk(KERN_INFO PFX "Failed to set data frame!\n");
-                    ser->state = SER_REQUEST_INIT;
-                    ser->config_error = 1;
+                    port->state = SER_REQUEST_INIT;
+                    port->config_error = 1;
                     break;
                 default:
                     break;
@@ -635,18 +626,77 @@ void el6002_run(el6002_t *ser, u8 *pd)
             break;
     }
 
-    EC_WRITE_U16(pd + ser->off_ctrl, ser->control);
-    memcpy(pd + ser->off_tx, ser->tx_data, ser->tx_data_size);
+    EC_WRITE_U16(pd + port->off_ctrl, port->control);
+    memcpy(pd + port->off_tx, port->tx_data, port->tx_data_size);
+}
+
+/****************************************************************************/
+
+int el6002_init(el6002_t *el6002, ec_master_t *master, u16 position,
+        ec_domain_t *domain, u32 vendor, u32 product)
+{
+    int ret = 0, i;
+
+    if (!(el6002->sc = ecrt_master_slave_config(
+                    master, 0, position, vendor, product))) {
+        printk(KERN_ERR PFX "Failed to create slave configuration.\n");
+        ret = -EBUSY;
+        goto out_return;
+    }
+
+    if (ecrt_slave_config_pdos(el6002->sc, EC_END, el6002_syncs)) {
+        printk(KERN_ERR PFX "Failed to configure PDOs.\n");
+        ret = -ENOMEM;
+        goto out_return;
+    }
+
+    for (i = 0; i < EL6002_PORTS; i++) {
+        if (el60xx_port_init(el6002->port + i, el6002->sc, domain, i * 0x10)) {
+            printk(KERN_ERR PFX "Failed to init port X%u.\n", i);
+            goto out_ports;
+        }
+    }
+
+    return 0;
+
+out_ports:
+    for (i--; i <= 0; i--) {
+        el60xx_port_clear(el6002->port + i);
+    }
+out_return:
+    return ret;
+}
+
+/****************************************************************************/
+
+void el6002_clear(el6002_t *el6002)
+{
+    int i;
+
+    for (i = 0; i < EL6002_PORTS; i++) {
+        el60xx_port_clear(el6002->port + i);
+    }
+}
+
+/****************************************************************************/
+
+void el6002_run(el6002_t *el6002, u8 *pd)
+{
+    int i;
+
+    for (i = 0; i < EL6002_PORTS; i++) {
+        el60xx_port_run(el6002->port + i, pd);
+    }
 }
 
 /*****************************************************************************/
 
 void run_serial_devices(u8 *pd)
 {
-    el6002_t *ser;
+    el6002_t *el6002;
 
-    list_for_each_entry(ser, &handlers, list) {
-        el6002_run(ser, pd);
+    list_for_each_entry(el6002, &handlers, list) {
+        el6002_run(el6002, pd);
     }
 }
 
@@ -655,26 +705,26 @@ void run_serial_devices(u8 *pd)
 int create_el6002_handler(ec_master_t *master, ec_domain_t *domain,
         u16 position, u32 vendor, u32 product)
 {
-    el6002_t *ser;
+    el6002_t *el6002;
     int ret;
 
     printk(KERN_INFO PFX "Creating handler for EL6002 at position %u\n",
             position);
 
-    ser = kmalloc(sizeof(*ser), GFP_KERNEL);
-    if (!ser) {
+    el6002 = kmalloc(sizeof(*el6002), GFP_KERNEL);
+    if (!el6002) {
         printk(KERN_ERR PFX "Failed to allocate serial device object.\n");
         return -ENOMEM;
     }
 
-    ret = el6002_init(ser, master, position, domain, vendor, product);
+    ret = el6002_init(el6002, master, position, domain, vendor, product);
     if (ret) {
         printk(KERN_ERR PFX "Failed to init serial device object.\n");
-        kfree(ser);
+        kfree(el6002);
         return ret;
     }
 
-    list_add_tail(&ser->list, &handlers);
+    list_add_tail(&el6002->list, &handlers);
     return 0;
 }
 
