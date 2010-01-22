@@ -77,6 +77,9 @@ typedef struct {
     u32 off_tx;
     u32 off_status;
     u32 off_rx;
+
+    u8 data_frame_config;
+
 } el6002_t;
 
 LIST_HEAD(handlers);
@@ -199,36 +202,94 @@ ec_sync_info_t el6002_syncs[] = {
    {0xff}
 };
 
+typedef enum {
+    PAR_NONE,
+    PAR_ODD,
+    PAR_EVEN
+} parity_t;
+
+typedef struct {
+    u8 value;
+    unsigned short data_bits;
+    parity_t parity;
+    unsigned short stop_bits;
+} el600x_data_frame_t;
+
+/** EL600x supported values for SDO 4074.
+ */
+el600x_data_frame_t el600x_data_frame[] = {
+    {0x01, 7, PAR_EVEN, 1},
+    {0x09, 7, PAR_EVEN, 2},
+    {0x02, 7, PAR_ODD,  1},
+    {0x0a, 7, PAR_ODD,  2},
+    {0x03, 8, PAR_NONE, 1},
+    {0x0b, 8, PAR_NONE, 2},
+    {0x04, 8, PAR_EVEN, 1},
+    {0x0c, 8, PAR_EVEN, 2},
+    {0x05, 8, PAR_ODD,  1},
+    {0x0d, 8, PAR_ODD,  2},
+};
+
 /****************************************************************************/
 
 int el6002_cflag_changed(void *data, unsigned short cflag)
 {
     el6002_t *ser = (el6002_t *) data;
-    int cs = 0, stop, par;
+    unsigned short data_bits, stop_bits;
+    parity_t par;
+    unsigned int i;
+    el600x_data_frame_t *df_to_use = NULL;
 
     printk(KERN_INFO PFX "%s(data=%p, cflag=%x).\n", __func__, ser, cflag);
 
     switch (cflag & CSIZE) {
+        case CS5:
+            data_bits = 5;
+            break;
+        case CS6:
+            data_bits = 6;
+            break;
         case CS7:
-            cs = 7;
+            data_bits = 7;
             break;
         case CS8:
-            cs = 8;
+            data_bits = 8;
             break;
         default: /* CS5 or CS6 */
-            return -EINVAL; // not supported
+            data_bits = 0;
     }
-
-    stop = (cflag & CSTOPB) ? 2 : 1;
 
     if (cflag & PARENB) {
-        par = (cflag & PARODD) ? 1 : 2;
+        par = (cflag & PARODD) ? PAR_ODD : PAR_EVEN;
     } else {
-        par = 0;
+        par = PAR_NONE;
     }
 
-    printk(KERN_INFO PFX "CS%u stopb=%u par=%i.\n", cs, stop, par);
+    stop_bits = (cflag & CSTOPB) ? 2 : 1;
 
+    printk(KERN_INFO PFX "Requested Data frame type %u%c%u.\n",
+            data_bits,
+            (par == PAR_NONE ? 'N' : (par == PAR_ODD ? 'O' : 'E')),
+            stop_bits);
+
+    for (i = 0; i < sizeof(el600x_data_frame) / sizeof(el600x_data_frame_t);
+            i++) {
+        el600x_data_frame_t *df = el600x_data_frame + i;
+        if (df->data_bits == data_bits &&
+                df->parity == par &&
+                df->stop_bits == stop_bits) {
+            df_to_use = df;
+            break;
+        }
+    }
+
+    if (!df_to_use) {
+        printk(KERN_ERR PFX "Error: Data frame type not supported.\n");
+        return -EINVAL;
+    }
+
+    printk(KERN_ERR PFX "Reconfiguring.\n");
+    ser->data_frame_config = df_to_use->value;
     return 0;
 }
 
