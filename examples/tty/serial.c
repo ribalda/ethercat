@@ -39,6 +39,8 @@
 // Optional features
 #define PFX "ec_tty_example: "
 
+#define DEBUG 0
+
 /*****************************************************************************/
 
 #define VendorIdBeckhoff 0x00000002
@@ -48,7 +50,10 @@
 typedef enum {
     SER_REQUEST_INIT,
     SER_WAIT_FOR_INIT_RESPONSE,
-    SER_READY
+    SER_READY,
+    SER_SET_RTSCTS,
+    SER_SET_BAUD_RATE,
+    SER_SET_DATA_FRAME,
 } serial_state_t;
 
 typedef struct {
@@ -78,7 +83,19 @@ typedef struct {
     u32 off_status;
     u32 off_rx;
 
-    u8 data_frame_config;
+    ec_sdo_request_t *rtscts_sdo;
+    u8 requested_rtscts;
+    u8 current_rtscts;
+
+    ec_sdo_request_t *baud_sdo;
+    u8 requested_baud_rate;
+    u8 current_baud_rate;
+
+    ec_sdo_request_t *frame_sdo;
+    u8 requested_data_frame;
+    u8 current_data_frame;
+
+    unsigned int config_error;
 
 } el6002_t;
 
@@ -210,12 +227,12 @@ typedef enum {
 
 typedef struct {
     u8 value;
-    unsigned short data_bits;
+    unsigned int data_bits;
     parity_t parity;
-    unsigned short stop_bits;
+    unsigned int stop_bits;
 } el600x_data_frame_t;
 
-/** EL600x supported values for SDO 4074.
+/** EL600x supported values for data frame SDO.
  */
 el600x_data_frame_t el600x_data_frame[] = {
     {0x01, 7, PAR_EVEN, 1},
@@ -230,17 +247,64 @@ el600x_data_frame_t el600x_data_frame[] = {
     {0x0d, 8, PAR_ODD,  2},
 };
 
+typedef struct {
+    u8 value;
+    unsigned int baud;
+    tcflag_t cbaud;
+} el600x_baud_rate_t;
+
+/** EL600x supported values for baud rate SDO.
+ */
+el600x_baud_rate_t el600x_baud_rate[] = {
+    {1,   300,    B300},
+    {2,   600,    B600},
+    {3,   1200,   B1200},
+    {4,   2400,   B2400},
+    {5,   4800,   B4800},
+    {6,   9600,   B9600},
+    {7,   19200,  B19200},
+    {8,   38400,  B38400},
+    {9,   57600,  B57600},
+    {10,  115200, B115200}
+};
+
 /****************************************************************************/
 
-int el6002_cflag_changed(void *data, unsigned short cflag)
+int el6002_cflag_changed(void *data, tcflag_t cflag)
 {
     el6002_t *ser = (el6002_t *) data;
-    unsigned short data_bits, stop_bits;
+    unsigned int data_bits, stop_bits;
+    tcflag_t cbaud, rtscts;
     parity_t par;
     unsigned int i;
+    el600x_baud_rate_t *b_to_use = NULL;
     el600x_data_frame_t *df_to_use = NULL;
 
+#if DEBUG
     printk(KERN_INFO PFX "%s(data=%p, cflag=%x).\n", __func__, ser, cflag);
+#endif
+
+    rtscts = cflag & CRTSCTS;
+    printk(KERN_INFO PFX "Requested rts/cts: %s.\n", rtscts ? "yes" : "no");
+    
+    cbaud = cflag & CBAUD;
+
+    for (i = 0; i < sizeof(el600x_baud_rate) / sizeof(el600x_baud_rate_t);
+            i++) {
+        el600x_baud_rate_t *b = el600x_baud_rate + i;
+        if (b->cbaud == cbaud) {
+            b_to_use = b;
+            break;
+        }
+    }
+
+    if (b_to_use) {
+        printk(KERN_INFO PFX "Requested baud rate: %u.\n", b_to_use->baud);
+    } else {
+        printk(KERN_ERR PFX "Error: Baud rate index %x not supported.\n",
+                cbaud);
+        return -EINVAL;
+    }
 
     switch (cflag & CSIZE) {
         case CS5:
@@ -267,7 +331,7 @@ int el6002_cflag_changed(void *data, unsigned short cflag)
 
     stop_bits = (cflag & CSTOPB) ? 2 : 1;
 
-    printk(KERN_INFO PFX "Requested Data frame type %u%c%u.\n",
+    printk(KERN_INFO PFX "Requested Data frame: %u%c%u.\n",
             data_bits,
             (par == PAR_NONE ? 'N' : (par == PAR_ODD ? 'O' : 'E')),
             stop_bits);
@@ -288,8 +352,10 @@ int el6002_cflag_changed(void *data, unsigned short cflag)
         return -EINVAL;
     }
 
-    printk(KERN_ERR PFX "Reconfiguring.\n");
-    ser->data_frame_config = df_to_use->value;
+    ser->requested_rtscts = rtscts != 0;
+    ser->requested_baud_rate = b_to_use->value;
+    ser->requested_data_frame = df_to_use->value;
+    ser->config_error = 0;
     return 0;
 }
 
@@ -320,11 +386,39 @@ int el6002_init(el6002_t *ser, ec_master_t *master, u16 position,
     ser->off_tx = 0;
     ser->off_status = 0;
     ser->off_rx = 0;
+    ser->requested_rtscts = 0x00; // no hardware handshake
+    ser->current_rtscts = 0xff;
+    ser->requested_baud_rate = 6; // 9600
+    ser->current_baud_rate = 0;
+    ser->requested_data_frame = 0x03; // 8N1
+    ser->current_data_frame = 0x00;
+    ser->config_error = 0;
 
     if (!(ser->sc = ecrt_master_slave_config(
                     master, 0, position, Beckhoff_EL6002))) {
         printk(KERN_ERR PFX "Failed to create slave configuration.\n");
         ret = -EBUSY;
+        goto out_free_tty;
+    }
+
+    if (!(ser->rtscts_sdo = ecrt_slave_config_create_sdo_request(ser->sc,
+                    0x8000, 0x01, 1))) {
+        printk(KERN_ERR PFX "Failed to create SDO request.\n");
+        ret = -ENOMEM;
+        goto out_free_tty;
+    }
+
+    if (!(ser->baud_sdo = ecrt_slave_config_create_sdo_request(ser->sc,
+                    0x8000, 0x11, 1))) {
+        printk(KERN_ERR PFX "Failed to create SDO request.\n");
+        ret = -ENOMEM;
+        goto out_free_tty;
+    }
+
+    if (!(ser->frame_sdo = ecrt_slave_config_create_sdo_request(ser->sc,
+                    0x8000, 0x15, 1))) {
+        printk(KERN_ERR PFX "Failed to create SDO request.\n");
+        ret = -ENOMEM;
         goto out_free_tty;
     }
 
@@ -403,6 +497,36 @@ void el6002_run(el6002_t *ser, u8 *pd)
     switch (ser->state) {
         case SER_READY:
 
+            /* Check, if hardware handshaking has to be configured. */
+            if (!ser->config_error &&
+                    ser->requested_rtscts != ser->current_rtscts) {
+                EC_WRITE_U8(ecrt_sdo_request_data(ser->rtscts_sdo),
+                        ser->requested_rtscts);
+                ecrt_sdo_request_write(ser->rtscts_sdo);
+                ser->state = SER_SET_RTSCTS;
+                break;
+            }
+
+            /* Check, if the baud rate has to be configured. */
+            if (!ser->config_error &&
+                    ser->requested_baud_rate != ser->current_baud_rate) {
+                EC_WRITE_U8(ecrt_sdo_request_data(ser->baud_sdo),
+                        ser->requested_baud_rate);
+                ecrt_sdo_request_write(ser->baud_sdo);
+                ser->state = SER_SET_BAUD_RATE;
+                break;
+            }
+
+            /* Check, if the data frame has to be configured. */
+            if (!ser->config_error &&
+                    ser->requested_data_frame != ser->current_data_frame) {
+                EC_WRITE_U8(ecrt_sdo_request_data(ser->frame_sdo),
+                        ser->requested_data_frame);
+                ecrt_sdo_request_write(ser->frame_sdo);
+                ser->state = SER_SET_DATA_FRAME;
+                break;
+            }
+
             /* Send data */
             
             tx_accepted_toggle = status & 0x0001;
@@ -410,7 +534,9 @@ void el6002_run(el6002_t *ser, u8 *pd)
                 ser->tx_data_size =
                     ectty_tx_data(ser->tty, ser->tx_data, ser->max_tx_data_size);
                 if (ser->tx_data_size) {
+#if DEBUG
                     printk(KERN_INFO PFX "Sending %u bytes.\n", ser->tx_data_size);
+#endif
                     ser->tx_request_toggle = !ser->tx_request_toggle;
                     ser->tx_accepted_toggle = tx_accepted_toggle;
                 }
@@ -422,7 +548,9 @@ void el6002_run(el6002_t *ser, u8 *pd)
             if (rx_request_toggle != ser->rx_request_toggle) {
                 uint8_t rx_data_size = status >> 8;
                 ser->rx_request_toggle = rx_request_toggle;
+#if DEBUG
                 printk(KERN_INFO PFX "Received %u bytes.\n", rx_data_size);
+#endif
                 ectty_rx_data(ser->tty, rx_data, rx_data_size);
                 ser->rx_accepted_toggle = !ser->rx_accepted_toggle;
             }
@@ -444,10 +572,61 @@ void el6002_run(el6002_t *ser, u8 *pd)
 
         case SER_WAIT_FOR_INIT_RESPONSE:
             if (!(status & (1 << 2))) {
-                printk(KERN_INFO PFX "Init successful.\n");
+                printk(KERN_INFO PFX "EL600x init successful.\n");
                 ser->tx_accepted_toggle = 1;
                 ser->control = 0x0000;
                 ser->state = SER_READY;
+            }
+            break;
+
+        case SER_SET_RTSCTS:
+            switch (ecrt_sdo_request_state(ser->rtscts_sdo)) {
+                case EC_REQUEST_SUCCESS:
+                    printk(KERN_INFO PFX "Slave accepted rts/cts.\n");
+                    ser->current_rtscts = ser->requested_rtscts;
+                    ser->state = SER_REQUEST_INIT;
+                    break;
+                case EC_REQUEST_ERROR:
+                    printk(KERN_INFO PFX "Failed to set rts/cts!\n");
+                    ser->state = SER_REQUEST_INIT;
+                    ser->config_error = 1;
+                    break;
+                default:
+                    break;
+            }
+            break;
+
+        case SER_SET_BAUD_RATE:
+            switch (ecrt_sdo_request_state(ser->baud_sdo)) {
+                case EC_REQUEST_SUCCESS:
+                    printk(KERN_INFO PFX "Slave accepted baud rate.\n");
+                    ser->current_baud_rate = ser->requested_baud_rate;
+                    ser->state = SER_REQUEST_INIT;
+                    break;
+                case EC_REQUEST_ERROR:
+                    printk(KERN_INFO PFX "Failed to set baud rate!\n");
+                    ser->state = SER_REQUEST_INIT;
+                    ser->config_error = 1;
+                    break;
+                default:
+                    break;
+            }
+            break;
+
+        case SER_SET_DATA_FRAME:
+            switch (ecrt_sdo_request_state(ser->frame_sdo)) {
+                case EC_REQUEST_SUCCESS:
+                    printk(KERN_INFO PFX "Slave accepted data frame.\n");
+                    ser->current_data_frame = ser->requested_data_frame;
+                    ser->state = SER_REQUEST_INIT;
+                    break;
+                case EC_REQUEST_ERROR:
+                    printk(KERN_INFO PFX "Failed to set data frame!\n");
+                    ser->state = SER_REQUEST_INIT;
+                    ser->config_error = 1;
+                    break;
+                default:
+                    break;
             }
             break;
     }

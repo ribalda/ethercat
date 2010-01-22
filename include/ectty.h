@@ -64,7 +64,7 @@ typedef struct ec_tty ec_tty_t; /**< \see ec_tty */
  * \return Pointer to the interface object, otherwise an ERR_PTR value.
  */
 ec_tty_t *ectty_create(
-        int (*cflag_cb)(void *cb_data, unsigned short cflag),
+        int (*cflag_cb)(void *cb_data, tcflag_t cflag),
         void *cb_data
         );
 

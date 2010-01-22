@@ -108,7 +108,7 @@ struct ec_tty {
     struct timer_list timer;
     struct tty_struct *tty;
 
-    int (*cflag_cb)(void *, unsigned short);
+    int (*cflag_cb)(void *, tcflag_t);
     void *cb_data;
 };
 
@@ -278,7 +278,7 @@ void ec_tty_wakeup(unsigned long data)
 /*****************************************************************************/
 
 int ec_tty_init(ec_tty_t *tty, int minor,
-        int (*cflag_cb)(void *, unsigned short), void *cb_data)
+        int (*cflag_cb)(void *, tcflag_t), void *cb_data)
 {
     tty->minor = minor;
     tty->tx_read_idx = 0;
@@ -639,7 +639,7 @@ static const struct tty_operations ec_tty_ops = {
  * Public functions and methods
  *****************************************************************************/
 
-ec_tty_t *ectty_create(int (*cflag_cb)(void *, unsigned short), void *cb_data)
+ec_tty_t *ectty_create(int (*cflag_cb)(void *, tcflag_t), void *cb_data)
 {
     ec_tty_t *tty;
     int minor, ret;
