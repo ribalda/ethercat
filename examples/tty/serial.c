@@ -699,7 +699,7 @@ int el6002_init(el6002_t *el6002, ec_master_t *master, u16 position,
     return 0;
 
 out_ports:
-    for (i--; i <= 0; i--) {
+    for (i--; i >= 0; i--) {
         el60xx_port_clear(el6002->port + i);
     }
 out_return:
