@@ -66,6 +66,8 @@ static struct tty_driver *tty_driver = NULL;
 ec_tty_t *ttys[EC_TTY_MAX_DEVICES];
 struct semaphore tty_sem;
 
+void ec_tty_wakeup(unsigned long);
+
 /*****************************************************************************/
 
 /** \cond */
@@ -177,6 +179,45 @@ void __exit ec_tty_cleanup_module(void)
     printk(KERN_INFO PFX "Module unloading.\n");
 }
 
+/******************************************************************************
+ * ec_tty_t methods.
+ *****************************************************************************/
+
+int ec_tty_init(ec_tty_t *tty, int minor,
+        int (*cflag_cb)(void *, tcflag_t), void *cb_data)
+{
+    tty->minor = minor;
+    tty->tx_read_idx = 0;
+    tty->tx_write_idx = 0;
+    tty->wakeup = 0;
+    tty->rx_read_idx = 0;
+    tty->rx_write_idx = 0;
+    init_timer(&tty->timer);
+    tty->tty = NULL;
+    tty->cflag_cb = cflag_cb;
+    tty->cb_data = cb_data;
+
+    tty->dev = tty_register_device(tty_driver, tty->minor, NULL);
+    if (IS_ERR(tty->dev)) {
+        printk(KERN_ERR PFX "Failed to register tty device.\n");
+        return PTR_ERR(tty->dev);
+    }
+
+    tty->timer.function = ec_tty_wakeup;
+    tty->timer.data = (unsigned long) tty;
+    tty->timer.expires = jiffies + 10;
+    add_timer(&tty->timer);
+    return 0;
+}
+
+/*****************************************************************************/
+
+void ec_tty_clear(ec_tty_t *tty)
+{
+    del_timer_sync(&tty->timer);
+    tty_unregister_device(tty_driver, tty->minor);
+}
+
 /*****************************************************************************/
 
 unsigned int ec_tty_tx_size(ec_tty_t *tty)
@@ -223,6 +264,25 @@ unsigned int ec_tty_rx_space(ec_tty_t *tty)
 
 /*****************************************************************************/
 
+int ec_tty_get_serial_info(ec_tty_t *tty, struct serial_struct *data)
+{
+    struct serial_struct tmp;
+
+    if (!data)
+        return -EFAULT;
+
+    memset(&tmp, 0, sizeof(tmp));
+
+    if (copy_to_user(data, &tmp, sizeof(*data))) {
+        return -EFAULT;
+    }
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Timer function.
+ */
 void ec_tty_wakeup(unsigned long data)
 {
     ec_tty_t *tty = (ec_tty_t *) data;
@@ -265,7 +325,8 @@ void ec_tty_wakeup(unsigned long data)
 
             for (i = 0; i < to_recv; i++) {
                 cbuf[i] = tty->rx_buffer[tty->rx_read_idx];
-                tty->rx_read_idx = (tty->rx_read_idx + 1) % EC_TTY_RX_BUFFER_SIZE;
+                tty->rx_read_idx =
+                    (tty->rx_read_idx + 1) % EC_TTY_RX_BUFFER_SIZE;
             }
             tty_flip_buffer_push(tty->tty);
         }
@@ -273,60 +334,6 @@ void ec_tty_wakeup(unsigned long data)
     
     tty->timer.expires += 1;
     add_timer(&tty->timer);
-}
-
-/*****************************************************************************/
-
-int ec_tty_init(ec_tty_t *tty, int minor,
-        int (*cflag_cb)(void *, tcflag_t), void *cb_data)
-{
-    tty->minor = minor;
-    tty->tx_read_idx = 0;
-    tty->tx_write_idx = 0;
-    tty->wakeup = 0;
-    tty->rx_read_idx = 0;
-    tty->rx_write_idx = 0;
-    init_timer(&tty->timer);
-    tty->tty = NULL;
-    tty->cflag_cb = cflag_cb;
-    tty->cb_data = cb_data;
-
-    tty->dev = tty_register_device(tty_driver, tty->minor, NULL);
-    if (IS_ERR(tty->dev)) {
-        printk(KERN_ERR PFX "Failed to register tty device.\n");
-        return PTR_ERR(tty->dev);
-    }
-
-    tty->timer.function = ec_tty_wakeup;
-    tty->timer.data = (unsigned long) tty;
-    tty->timer.expires = jiffies + 10;
-    add_timer(&tty->timer);
-    return 0;
-}
-
-/*****************************************************************************/
-
-void ec_tty_clear(ec_tty_t *tty)
-{
-    del_timer_sync(&tty->timer);
-    tty_unregister_device(tty_driver, tty->minor);
-}
-
-/*****************************************************************************/
-
-int ec_tty_get_serial_info(ec_tty_t *tty, struct serial_struct *data)
-{
-    struct serial_struct tmp;
-
-    if (!data)
-        return -EFAULT;
-
-    memset(&tmp, 0, sizeof(tmp));
-
-    if (copy_to_user(data, &tmp, sizeof(*data))) {
-        return -EFAULT;
-    }
-    return 0;
 }
 
 /******************************************************************************
@@ -733,7 +740,8 @@ void ectty_rx_data(ec_tty_t *tty, const uint8_t *buffer, size_t size)
 
         for (i = 0; i < size; i++) {
             tty->rx_buffer[tty->rx_write_idx] = buffer[i];
-            tty->rx_write_idx = (tty->rx_write_idx + 1) % EC_TTY_RX_BUFFER_SIZE;
+            tty->rx_write_idx =
+                (tty->rx_write_idx + 1) % EC_TTY_RX_BUFFER_SIZE;
         }
     }
 }
