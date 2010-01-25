@@ -51,7 +51,7 @@
 
 #define PFX "ec_tty: "
 
-#define EC_TTY_MAX_DEVICES 10
+#define EC_TTY_MAX_DEVICES 32
 #define EC_TTY_TX_BUFFER_SIZE 100
 #define EC_TTY_RX_BUFFER_SIZE 100
 
@@ -183,30 +183,50 @@ void __exit ec_tty_cleanup_module(void)
  * ec_tty_t methods.
  *****************************************************************************/
 
-int ec_tty_init(ec_tty_t *tty, int minor,
+int ec_tty_init(ec_tty_t *t, int minor,
         const ec_tty_operations_t *ops, void *cb_data)
 {
-    tty->minor = minor;
-    tty->tx_read_idx = 0;
-    tty->tx_write_idx = 0;
-    tty->wakeup = 0;
-    tty->rx_read_idx = 0;
-    tty->rx_write_idx = 0;
-    init_timer(&tty->timer);
-    tty->tty = NULL;
-    tty->ops = *ops;
-    tty->cb_data = cb_data;
+    int ret;
+    tcflag_t cflag;
+    struct tty_struct *tty;
 
-    tty->dev = tty_register_device(tty_driver, tty->minor, NULL);
-    if (IS_ERR(tty->dev)) {
+    t->minor = minor;
+    t->tx_read_idx = 0;
+    t->tx_write_idx = 0;
+    t->wakeup = 0;
+    t->rx_read_idx = 0;
+    t->rx_write_idx = 0;
+    init_timer(&t->timer);
+    t->tty = NULL;
+    t->ops = *ops;
+    t->cb_data = cb_data;
+
+    t->dev = tty_register_device(tty_driver, t->minor, NULL);
+    if (IS_ERR(t->dev)) {
         printk(KERN_ERR PFX "Failed to register tty device.\n");
-        return PTR_ERR(tty->dev);
+        return PTR_ERR(t->dev);
     }
 
-    tty->timer.function = ec_tty_wakeup;
-    tty->timer.data = (unsigned long) tty;
-    tty->timer.expires = jiffies + 10;
-    add_timer(&tty->timer);
+    // Tell the device-specific implementation about the initial cflags
+    tty = tty_driver->ttys[minor];
+
+    if (tty && tty->termios) { // already opened before
+        cflag = tty->termios->c_cflag;
+    } else {
+        cflag = tty_driver->init_termios.c_cflag;
+    }
+    ret = t->ops.cflag_changed(t->cb_data, cflag);
+    if (ret) {
+        printk(KERN_ERR PFX "ERROR: Initial cflag 0x%x not accepted.\n",
+                cflag);
+        tty_unregister_device(tty_driver, t->minor);
+        return ret;
+    }
+
+    t->timer.function = ec_tty_wakeup;
+    t->timer.data = (unsigned long) t;
+    t->timer.expires = jiffies + 10;
+    add_timer(&t->timer);
     return 0;
 }
 
