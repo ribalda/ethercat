@@ -110,7 +110,7 @@ struct ec_tty {
     struct timer_list timer;
     struct tty_struct *tty;
 
-    int (*cflag_cb)(void *, tcflag_t);
+    ec_tty_operations_t ops;
     void *cb_data;
 };
 
@@ -184,7 +184,7 @@ void __exit ec_tty_cleanup_module(void)
  *****************************************************************************/
 
 int ec_tty_init(ec_tty_t *tty, int minor,
-        int (*cflag_cb)(void *, tcflag_t), void *cb_data)
+        const ec_tty_operations_t *ops, void *cb_data)
 {
     tty->minor = minor;
     tty->tx_read_idx = 0;
@@ -194,7 +194,7 @@ int ec_tty_init(ec_tty_t *tty, int minor,
     tty->rx_write_idx = 0;
     init_timer(&tty->timer);
     tty->tty = NULL;
-    tty->cflag_cb = cflag_cb;
+    tty->ops = *ops;
     tty->cb_data = cb_data;
 
     tty->dev = tty_register_device(tty_driver, tty->minor, NULL);
@@ -343,7 +343,7 @@ void ec_tty_wakeup(unsigned long data)
 static int ec_tty_open(struct tty_struct *tty, struct file *file)
 {
     ec_tty_t *t;
-    int line = tty->index, ret;
+    int line = tty->index;
 
 #if EC_TTY_DEBUG >= 1
     printk(KERN_INFO PFX "Opening line %i.\n", line);
@@ -364,15 +364,6 @@ static int ec_tty_open(struct tty_struct *tty, struct file *file)
 
     t->tty = tty;
     tty->driver_data = t;
-
-    // request initial settings
-    ret = t->cflag_cb(t->cb_data, t->tty->termios->c_cflag);
-    if (ret) {
-        printk(KERN_ERR PFX "Error: Device does not accept"
-                " initial configuration!\n");
-        return ret;
-    }
-
     return 0;
 }
 
@@ -552,7 +543,7 @@ static void ec_tty_set_termios(struct tty_struct *tty,
             old_termios->c_cflag, tty->termios->c_cflag);
 #endif
 
-    ret = t->cflag_cb(t->cb_data, tty->termios->c_cflag);
+    ret = t->ops.cflag_changed(t->cb_data, tty->termios->c_cflag);
     if (ret) {
         printk(KERN_ERR PFX "ERROR: cflag 0x%x not accepted.\n",
                 tty->termios->c_cflag);
@@ -646,7 +637,7 @@ static const struct tty_operations ec_tty_ops = {
  * Public functions and methods
  *****************************************************************************/
 
-ec_tty_t *ectty_create(int (*cflag_cb)(void *, tcflag_t), void *cb_data)
+ec_tty_t *ectty_create(const ec_tty_operations_t *ops, void *cb_data)
 {
     ec_tty_t *tty;
     int minor, ret;
@@ -666,7 +657,7 @@ ec_tty_t *ectty_create(int (*cflag_cb)(void *, tcflag_t), void *cb_data)
                 return ERR_PTR(-ENOMEM);
             }
 
-            ret = ec_tty_init(tty, minor, cflag_cb, cb_data);
+            ret = ec_tty_init(tty, minor, ops, cb_data);
             if (ret) {
                 up(&tty_sem);
                 kfree(tty);

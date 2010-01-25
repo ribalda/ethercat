@@ -376,6 +376,12 @@ int el60xx_cflag_changed(void *data, tcflag_t cflag)
 
 /****************************************************************************/
 
+static ec_tty_operations_t el60xx_tty_ops = {
+    .cflag_changed = el60xx_cflag_changed,
+};
+
+/****************************************************************************/
+
 int el60xx_port_init(el60xx_port_t *port, ec_slave_config_t *sc,
         ec_domain_t *domain, unsigned int slot_offset, const char *name)
 {
@@ -383,7 +389,7 @@ int el60xx_port_init(el60xx_port_t *port, ec_slave_config_t *sc,
 
     strncpy(port->name, name, EL6002_PORT_NAME_SIZE);
 
-    port->tty = ectty_create(el60xx_cflag_changed, port);
+    port->tty = ectty_create(&el60xx_tty_ops, port);
     if (IS_ERR(port->tty)) {
         printk(KERN_ERR PFX "Failed to create tty for %s.\n",
                 port->name);
