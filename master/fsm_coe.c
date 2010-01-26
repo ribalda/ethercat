@@ -627,8 +627,9 @@ void ec_fsm_coe_dict_desc_check(ec_fsm_coe_t *fsm /**< finite state machine */)
             (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
         if (diff_ms >= EC_FSM_COE_DICT_TIMEOUT) {
             fsm->state = ec_fsm_coe_error;
-            EC_ERR("Timeout while waiting for SDO object description "
-                    "response on slave %u.\n", slave->ring_position);
+            EC_ERR("Timeout while waiting for SDO 0x%04x object description "
+                    "response on slave %u.\n", fsm->sdo->index,
+                    slave->ring_position);
             return;
         }
 
@@ -863,8 +864,9 @@ void ec_fsm_coe_dict_entry_check(ec_fsm_coe_t *fsm
             (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
         if (diff_ms >= EC_FSM_COE_DICT_TIMEOUT) {
             fsm->state = ec_fsm_coe_error;
-            EC_ERR("Timeout while waiting for SDO entry description response "
-                    "on slave %u.\n", slave->ring_position);
+            EC_ERR("Timeout while waiting for SDO entry 0x%04x:%x"
+                    " description response on slave %u.\n",
+                    fsm->sdo->index, fsm->subindex, slave->ring_position);
             return;
         }
 
