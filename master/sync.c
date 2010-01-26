@@ -99,8 +99,10 @@ void ec_sync_page(
         uint8_t *data /**> Configuration memory. */
         )
 {
-    // enable only if SII enable is set and size is > 0.
-    uint16_t enable = sync->enable && data_size;
+    // enable only if SII enable is set and size is > 0 and SM is not virtual
+    uint16_t enable = (sync->enable & 0x01)
+                        && data_size
+                        && ((sync->enable & 0x04) == 0);
     uint8_t control = sync->control_register;
 
     if (sync_config) {
