@@ -49,6 +49,8 @@
 #define EC_COE_DOWN_SEG_REQ_HEADER_SIZE  3
 #define EC_COE_DOWN_SEG_MIN_DATA_SIZE    7
 
+#define DEBUG_RETRIES 0
+
 /*****************************************************************************/
 
 void ec_fsm_coe_dict_start(ec_fsm_coe_t *);
@@ -1213,11 +1215,13 @@ void ec_fsm_coe_down_request(ec_fsm_coe_t *fsm /**< finite state machine */)
             unsigned long diff_ms =
                 (jiffies - fsm->request->jiffies_sent) * 1000 / HZ;
             if (diff_ms < fsm->request->response_timeout) {
+#if DEBUG_RETRIES
                 if (fsm->slave->master->debug_level) {
                     EC_DBG("Slave %u did not respond to SDO download request. "
                             "Retrying after %u ms...\n",
                             slave->ring_position, (u32) diff_ms);
                 }
+#endif
                 // no response; send request datagram again
                 return;
             }
@@ -1706,11 +1710,13 @@ void ec_fsm_coe_up_request(ec_fsm_coe_t *fsm /**< finite state machine */)
             unsigned long diff_ms =
                 (jiffies - fsm->request->jiffies_sent) * 1000 / HZ;
             if (diff_ms < fsm->request->response_timeout) {
+#if DEBUG_RETRIES
                 if (fsm->slave->master->debug_level) {
                     EC_DBG("Slave %u did not respond to SDO upload request. "
                             "Retrying after %u ms...\n",
                             slave->ring_position, (u32) diff_ms);
                 }
+#endif
                 // no response; send request datagram again
                 return;
             }
