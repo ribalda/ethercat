@@ -43,7 +43,7 @@
 
 /** Maximum time in ms to wait for responses when reading out the dictionary.
  */
-#define EC_FSM_COE_DICT_TIMEOUT 3000
+#define EC_FSM_COE_DICT_TIMEOUT 1000
 
 #define EC_COE_DOWN_REQ_HEADER_SIZE      10
 #define EC_COE_DOWN_SEG_REQ_HEADER_SIZE  3
