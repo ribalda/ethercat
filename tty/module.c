@@ -502,6 +502,8 @@ static void ec_tty_flush_buffer(struct tty_struct *tty)
 #if EC_TTY_DEBUG >= 2
     printk(KERN_INFO PFX "%s().\n", __func__);
 #endif
+
+    // FIXME empty ring buffer
 }
 
 /*****************************************************************************/
@@ -534,7 +536,7 @@ static int ec_tty_ioctl(struct tty_struct *tty, struct file *file,
 
         default:
 #if EC_TTY_DEBUG >= 2
-            printk(KERN_INFO PFX "no ioctl()!\n");
+            printk(KERN_INFO PFX "no ioctl() -> handled by tty core!\n");
 #endif
             ret = -ENOIOCTLCMD;
             break;
