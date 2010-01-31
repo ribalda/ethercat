@@ -49,6 +49,7 @@ MODPROBE=/sbin/modprobe
 RMMOD=/sbin/rmmod
 MODINFO=/sbin/modinfo
 ETHERCAT=@prefix@/bin/ethercat
+MASTER_ARGS=
 
 #------------------------------------------------------------------------------
 
@@ -162,7 +163,7 @@ start)
     done
 
     # load master module
-    if ! ${MODPROBE} ${MODPROBE_FLAGS} ec_master \
+    if ! ${MODPROBE} ${MODPROBE_FLAGS} ec_master ${MASTER_ARGS} \
             main_devices=${DEVICES} backup_devices=${BACKUPS}; then
         exit_fail
     fi

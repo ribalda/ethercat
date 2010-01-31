@@ -42,6 +42,8 @@
 #ifndef __ECTTY_H__
 #define __ECTTY_H__
 
+#include <linux/termios.h>
+
 /******************************************************************************
  * Data types 
  *****************************************************************************/
@@ -49,15 +51,29 @@
 struct ec_tty;
 typedef struct ec_tty ec_tty_t; /**< \see ec_tty */
 
+/**
+ * \param cflag_changed This callback function is called when the serial
+ * settings shall be changed. The \a cflag argument contains the new settings.
+ */
+typedef struct {
+    int (*cflag_changed)(void *, tcflag_t);
+} ec_tty_operations_t;
+
 /******************************************************************************
  * Global functions
  *****************************************************************************/
 
 /** Create a virtual TTY interface.
- * 
+ *
+ * \param ops Set of callbacks.
+ * \param cb_data Arbitrary data, that is passed to any callback.
+ *
  * \return Pointer to the interface object, otherwise an ERR_PTR value.
  */
-ec_tty_t *ectty_create(void);
+ec_tty_t *ectty_create(
+        const ec_tty_operations_t *ops,
+        void *cb_data
+        );
 
 /******************************************************************************
  * TTY interface methods

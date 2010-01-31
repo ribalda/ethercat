@@ -43,11 +43,14 @@
 
 /** Maximum time in ms to wait for responses when reading out the dictionary.
  */
-#define EC_FSM_COE_DICT_TIMEOUT 3000
+#define EC_FSM_COE_DICT_TIMEOUT 1000
 
 #define EC_COE_DOWN_REQ_HEADER_SIZE      10
 #define EC_COE_DOWN_SEG_REQ_HEADER_SIZE  3
 #define EC_COE_DOWN_SEG_MIN_DATA_SIZE    7
+
+#define DEBUG_RETRIES 0
+#define DEBUG_LONG 0
 
 /*****************************************************************************/
 
@@ -624,8 +627,9 @@ void ec_fsm_coe_dict_desc_check(ec_fsm_coe_t *fsm /**< finite state machine */)
             (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
         if (diff_ms >= EC_FSM_COE_DICT_TIMEOUT) {
             fsm->state = ec_fsm_coe_error;
-            EC_ERR("Timeout while waiting for SDO object description "
-                    "response on slave %u.\n", slave->ring_position);
+            EC_ERR("Timeout while waiting for SDO 0x%04x object description "
+                    "response on slave %u.\n", fsm->sdo->index,
+                    slave->ring_position);
             return;
         }
 
@@ -860,8 +864,9 @@ void ec_fsm_coe_dict_entry_check(ec_fsm_coe_t *fsm
             (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
         if (diff_ms >= EC_FSM_COE_DICT_TIMEOUT) {
             fsm->state = ec_fsm_coe_error;
-            EC_ERR("Timeout while waiting for SDO entry description response "
-                    "on slave %u.\n", slave->ring_position);
+            EC_ERR("Timeout while waiting for SDO entry 0x%04x:%x"
+                    " description response on slave %u.\n",
+                    fsm->sdo->index, fsm->subindex, slave->ring_position);
             return;
         }
 
@@ -1196,6 +1201,7 @@ void ec_fsm_coe_down_request(ec_fsm_coe_t *fsm /**< finite state machine */)
 {
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
+    unsigned long diff_ms;
 
     if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
         return; // FIXME: check for response first?
@@ -1208,26 +1214,38 @@ void ec_fsm_coe_down_request(ec_fsm_coe_t *fsm /**< finite state machine */)
         return;
     }
 
+    diff_ms = (jiffies - fsm->request->jiffies_sent) * 1000 / HZ;
+
     if (datagram->working_counter != 1) {
         if (!datagram->working_counter) {
-            unsigned long diff_ms =
-                (jiffies - fsm->request->jiffies_sent) * 1000 / HZ;
             if (diff_ms < fsm->request->response_timeout) {
+#if DEBUG_RETRIES
                 if (fsm->slave->master->debug_level) {
                     EC_DBG("Slave %u did not respond to SDO download request. "
                             "Retrying after %u ms...\n",
                             slave->ring_position, (u32) diff_ms);
                 }
+#endif
                 // no response; send request datagram again
                 return;
             }
         }
         fsm->state = ec_fsm_coe_error;
-        EC_ERR("Reception of CoE download request failed on slave %u: ",
-                slave->ring_position);
+        EC_ERR("Reception of CoE download request for SDO 0x%04x:%x failed"
+                " with timeout after %u ms on slave %u: ",
+                fsm->request->index, fsm->request->subindex, (u32) diff_ms,
+                fsm->slave->ring_position);
         ec_datagram_print_wc_error(datagram);
         return;
     }
+
+#if DEBUG_LONG
+    if (diff_ms > 200) {
+        EC_WARN("SDO 0x%04x:%x download took %u ms on slave %u.\n",
+                fsm->request->index, fsm->request->subindex, (u32) diff_ms,
+                fsm->slave->ring_position);
+    }
+#endif
 
     fsm->jiffies_start = datagram->jiffies_sent;
 
@@ -1271,8 +1289,10 @@ void ec_fsm_coe_down_check(ec_fsm_coe_t *fsm /**< finite state machine */)
             (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
         if (diff_ms >= fsm->request->response_timeout) {
             fsm->state = ec_fsm_coe_error;
-            EC_ERR("Timeout while waiting for SDO download response on "
-                    "slave %u.\n", slave->ring_position);
+            EC_ERR("Timeout after %u ms while waiting for SDO 0x%04x:%x"
+                    " download response on slave %u.\n", (u32) diff_ms,
+                    fsm->request->index, fsm->request->subindex, 
+                    slave->ring_position);
             return;
         }
 
@@ -1689,6 +1709,7 @@ void ec_fsm_coe_up_request(ec_fsm_coe_t *fsm /**< finite state machine */)
 {
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
+    unsigned long diff_ms;
 
     if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
         return; // FIXME: check for response first?
@@ -1701,26 +1722,38 @@ void ec_fsm_coe_up_request(ec_fsm_coe_t *fsm /**< finite state machine */)
         return;
     }
 
+    diff_ms = (jiffies - fsm->request->jiffies_sent) * 1000 / HZ;
+
     if (datagram->working_counter != 1) {
         if (!datagram->working_counter) {
-            unsigned long diff_ms =
-                (jiffies - fsm->request->jiffies_sent) * 1000 / HZ;
             if (diff_ms < fsm->request->response_timeout) {
+#if DEBUG_RETRIES
                 if (fsm->slave->master->debug_level) {
                     EC_DBG("Slave %u did not respond to SDO upload request. "
                             "Retrying after %u ms...\n",
                             slave->ring_position, (u32) diff_ms);
                 }
+#endif
                 // no response; send request datagram again
                 return;
             }
         }
         fsm->state = ec_fsm_coe_error;
-        EC_ERR("Reception of CoE upload request failed on slave %u: ",
-                slave->ring_position);
+        EC_ERR("Reception of CoE upload request for SDO 0x%04x:%x failed"
+                " with timeout after %u ms on slave %u: ",
+                fsm->request->index, fsm->request->subindex, (u32) diff_ms,
+                fsm->slave->ring_position);
         ec_datagram_print_wc_error(datagram);
         return;
     }
+
+#if DEBUG_LONG
+    if (diff_ms > 200) {
+        EC_WARN("SDO 0x%04x:%x upload took %u ms on slave %u.\n",
+                fsm->request->index, fsm->request->subindex, (u32) diff_ms,
+                fsm->slave->ring_position);
+    }
+#endif
 
     fsm->jiffies_start = datagram->jiffies_sent;
 
@@ -1764,8 +1797,10 @@ void ec_fsm_coe_up_check(ec_fsm_coe_t *fsm /**< finite state machine */)
             (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
         if (diff_ms >= fsm->request->response_timeout) {
             fsm->state = ec_fsm_coe_error;
-            EC_ERR("Timeout while waiting for SDO upload response on "
-                    "slave %u.\n", slave->ring_position);
+            EC_ERR("Timeout after %u ms while waiting for SDO 0x%04x:%x"
+                    " upload response on slave %u.\n", (u32) diff_ms,
+                    fsm->request->index, fsm->request->subindex,
+                    slave->ring_position);
             return;
         }
 
