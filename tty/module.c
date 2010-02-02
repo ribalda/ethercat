@@ -109,6 +109,8 @@ struct ec_tty {
 
     struct timer_list timer;
     struct tty_struct *tty;
+    unsigned int open_count;
+    struct semaphore sem;
 
     ec_tty_operations_t ops;
     void *cb_data;
@@ -198,6 +200,8 @@ int ec_tty_init(ec_tty_t *t, int minor,
     t->rx_write_idx = 0;
     init_timer(&t->timer);
     t->tty = NULL;
+    t->open_count = 0;
+    init_MUTEX(&t->sem);
     t->ops = *ops;
     t->cb_data = cb_data;
 
@@ -366,24 +370,29 @@ static int ec_tty_open(struct tty_struct *tty, struct file *file)
     int line = tty->index;
 
 #if EC_TTY_DEBUG >= 1
-    printk(KERN_INFO PFX "Opening line %i.\n", line);
+    printk(KERN_INFO PFX "%s(tty=%p, file=%p): Opening line %i.\n",
+            __func__, tty, file, line);
 #endif
 
     if (line < 0 || line >= EC_TTY_MAX_DEVICES) {
+        tty->driver_data = NULL;
         return -ENXIO;
     }
 
     t = ttys[line];
     if (!t) {
+        tty->driver_data = NULL;
         return -ENXIO;
     }
 
-    if (t->tty) {
-        return -EBUSY;
+    if (!t->tty) {
+        t->tty = tty;
+        tty->driver_data = t;
     }
 
-    t->tty = tty;
-    tty->driver_data = t;
+    down(&t->sem);
+    t->open_count++;
+    up(&t->sem);
     return 0;
 }
 
@@ -394,11 +403,16 @@ static void ec_tty_close(struct tty_struct *tty, struct file *file)
     ec_tty_t *t = (ec_tty_t *) tty->driver_data;
 
 #if EC_TTY_DEBUG >= 1
-    printk(KERN_INFO PFX "Closing line %i.\n", tty->index);
+    printk(KERN_INFO PFX "%s(tty=%p, file=%p): Closing line %i.\n",
+            __func__, tty, file, tty->index);
 #endif
 
-    if (t->tty == tty) {
-        t->tty = NULL;
+    if (t) {
+        down(&t->sem);
+        if (--t->open_count == 0) {
+            t->tty = NULL;
+        }
+        up(&t->sem);
     }
 }
 
