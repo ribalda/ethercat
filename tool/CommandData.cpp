@@ -46,28 +46,28 @@ string CommandData::helpString() const
     stringstream str;
 
     str << getName() << " [OPTIONS]" << endl
-    	<< endl
-    	<< getBriefDescription() << endl
+        << endl
+        << getBriefDescription() << endl
         << endl
         << "Data of multiple domains are concatenated." << endl
-    	<< endl
-    	<< "Command-specific options:" << endl
-    	<< "  --domain -d <index>  Positive numerical domain index." << endl
-    	<< "                       If omitted, data of all domains" << endl
-    	<< "                       are output." << endl
-    	<< endl
-		<< numericInfo();
+        << endl
+        << "Command-specific options:" << endl
+        << "  --domain -d <index>  Positive numerical domain index." << endl
+        << "                       If omitted, data of all domains" << endl
+        << "                       are output." << endl
+        << endl
+        << numericInfo();
 
-	return str.str();
+    return str.str();
 }
 
 /****************************************************************************/
 
 void CommandData::execute(MasterDevice &m, const StringVector &args)
 {
-	DomainList domains;
-	DomainList::const_iterator di;
-	
+    DomainList domains;
+    DomainList::const_iterator di;
+
     if (args.size()) {
         stringstream err;
         err << "'" << getName() << "' takes no arguments!";
@@ -75,19 +75,19 @@ void CommandData::execute(MasterDevice &m, const StringVector &args)
     }
 
     m.open(MasterDevice::Read);
-	domains = selectedDomains(m);
+    domains = selectedDomains(m);
 
-	for (di = domains.begin(); di != domains.end(); di++) {
-		outputDomainData(m, *di);
-	}
+    for (di = domains.begin(); di != domains.end(); di++) {
+        outputDomainData(m, *di);
+    }
 }
 
 /****************************************************************************/
 
 void CommandData::outputDomainData(
-		MasterDevice &m,
-		const ec_ioctl_domain_t &domain
-		)
+        MasterDevice &m,
+        const ec_ioctl_domain_t &domain
+        )
 {
     ec_ioctl_domain_data_t data;
     unsigned char *processData;

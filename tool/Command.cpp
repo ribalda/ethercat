@@ -48,49 +48,49 @@ Command::~Command()
 
 void Command::setVerbosity(Verbosity v)
 {
-	verbosity = v;
+    verbosity = v;
 };
 
 /*****************************************************************************/
 
 void Command::setAlias(int a)
 {
-	alias = a;
+    alias = a;
 };
 
 /*****************************************************************************/
 
 void Command::setPosition(int p)
 {
-	position = p;
+    position = p;
 };
 
 /*****************************************************************************/
 
 void Command::setDomain(int d)
 {
-	domain = d;
+    domain = d;
 };
 
 /*****************************************************************************/
 
 void Command::setDataType(const string &t)
 {
-	dataType = t;
+    dataType = t;
 };
 
 /*****************************************************************************/
 
 void Command::setForce(bool f)
 {
-	force = f;
+    force = f;
 };
 
 /*****************************************************************************/
 
 void Command::setOutputFile(const string &f)
 {
-	outputFile = f;
+    outputFile = f;
 };
 
 /****************************************************************************/
@@ -279,25 +279,25 @@ Command::ConfigList Command::selectedConfigs(MasterDevice &m)
 
 Command::DomainList Command::selectedDomains(MasterDevice &m)
 {
-	ec_ioctl_domain_t d;
-	DomainList list;
+    ec_ioctl_domain_t d;
+    DomainList list;
 
     if (domain == -1) {
-		ec_ioctl_master_t master;
+        ec_ioctl_master_t master;
         unsigned int i;
 
         m.getMaster(&master);
 
         for (i = 0; i < master.domain_count; i++) {
-			m.getDomain(&d, i);
-			list.push_back(d);
+            m.getDomain(&d, i);
+            list.push_back(d);
         }
     } else {
-		m.getDomain(&d, domain);
-		list.push_back(d);
+        m.getDomain(&d, domain);
+        list.push_back(d);
     }
 
-	return list;
+    return list;
 }
 
 /****************************************************************************/

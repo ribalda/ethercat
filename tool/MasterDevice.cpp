@@ -69,15 +69,15 @@ void MasterDevice::open(Permissions perm)
     stringstream deviceName;
 
     if (fd == -1) { // not already open
-		deviceName << "/dev/EtherCAT" << index;
+        deviceName << "/dev/EtherCAT" << index;
 
-		if ((fd = ::open(deviceName.str().c_str(),
-						perm == ReadWrite ? O_RDWR : O_RDONLY)) == -1) {
-			stringstream err;
-			err << "Failed to open master device " << deviceName.str() << ": "
-				<< strerror(errno);
-			throw MasterDeviceException(err);
-		}
+        if ((fd = ::open(deviceName.str().c_str(),
+                        perm == ReadWrite ? O_RDWR : O_RDONLY)) == -1) {
+            stringstream err;
+            err << "Failed to open master device " << deviceName.str() << ": "
+                << strerror(errno);
+            throw MasterDeviceException(err);
+        }
     }
 }
 
@@ -86,9 +86,9 @@ void MasterDevice::open(Permissions perm)
 void MasterDevice::close()
 {
     if (fd != -1) {
-		::close(fd);
-		fd = -1;
-	}
+        ::close(fd);
+        fd = -1;
+    }
 }
 
 /****************************************************************************/
@@ -427,7 +427,7 @@ void MasterDevice::setDebug(unsigned int debugLevel)
         stringstream err;
         err << "Failed to set debug level: " << strerror(errno);
         throw MasterDeviceException(err);
-	}
+    }
 }
 
 /****************************************************************************/
@@ -442,7 +442,7 @@ void MasterDevice::sdoDownload(ec_ioctl_slave_sdo_download_t *data)
             err << "Failed to download SDO: " << strerror(errno);
             throw MasterDeviceException(err);
         }
-	}
+    }
 }
 
 /****************************************************************************/

@@ -41,8 +41,8 @@ class FoeCommand:
         FoeCommand(const string &, const string &);
 
     protected:
-		static std::string resultText(int);
-		static std::string errorText(int);
+        static std::string resultText(int);
+        static std::string errorText(int);
 };
 
 /****************************************************************************/

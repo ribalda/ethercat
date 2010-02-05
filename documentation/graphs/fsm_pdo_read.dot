@@ -3,25 +3,25 @@
 
 digraph pdo_read {
 
-	start [fontname="Helvetica"]
+    start [fontname="Helvetica"]
     start -> action_next_sync [fontname="Helvetica", label="First SM", weight=5]
 
     action_next_sync [shape=point,label=""]
     action_next_sync -> pdo_count [weight=5]
     action_next_sync -> end
 
-	pdo_count [fontname="Helvetica"]
+    pdo_count [fontname="Helvetica"]
     pdo_count -> action_next_pdo [weight=5]
 
     action_next_pdo [shape=point,label=""]
     action_next_pdo -> pdo [fontname="Helvetica", label="Next PDO", weight=5]
-	action_next_pdo -> action_next_sync [fontname="Helvetica", label="No more PDOs"]
+    action_next_pdo -> action_next_sync [fontname="Helvetica", label="No more PDOs"]
 
-	pdo [fontname="Helvetica"]
+    pdo [fontname="Helvetica"]
     pdo -> pdo_entries [weight=5]
 
-	pdo_entries [fontname="Helvetica"]
+    pdo_entries [fontname="Helvetica"]
     pdo_entries -> action_next_pdo
 
-	end [fontname="Helvetica"]
+    end [fontname="Helvetica"]
 }

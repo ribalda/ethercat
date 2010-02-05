@@ -44,12 +44,12 @@ class CommandSiiRead:
         void execute(MasterDevice &, const StringVector &);
 
     protected:
-		struct CategoryName {
-			uint16_t type;
-			const char *name;
-		};
-		static const CategoryName categoryNames[];
-		static const char *getCategoryName(uint16_t);
+        struct CategoryName {
+            uint16_t type;
+            const char *name;
+        };
+        static const CategoryName categoryNames[];
+        static const char *getCategoryName(uint16_t);
 };
 
 /****************************************************************************/

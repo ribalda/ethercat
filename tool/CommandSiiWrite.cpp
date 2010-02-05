@@ -53,7 +53,7 @@ string CommandSiiWrite::helpString() const
         << getBriefDescription() << endl
         << endl
         << "This command requires a single slave to be selected." << endl
-    	<< endl
+        << endl
         << "The file contents are checked for validity and integrity." << endl
         << "These checks can be overridden with the --force option." << endl
         << endl

@@ -753,7 +753,7 @@ void ec_fsm_slave_scan_enter_regalias(
 */
 void ec_fsm_slave_scan_state_regalias(
         ec_fsm_slave_scan_t *fsm /**< slave state machine */
-		)
+        )
 {
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;

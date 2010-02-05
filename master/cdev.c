@@ -1684,15 +1684,16 @@ int ec_cdev_ioctl_set_send_interval(
         ec_cdev_priv_t *priv /**< Private data structure of file handle. */
         )
 {
-	size_t send_interval;
+    size_t send_interval;
 
-	if (copy_from_user(&send_interval, (void __user *) arg, sizeof(send_interval))) {
+    if (copy_from_user(&send_interval, (void __user *) arg,
+                sizeof(send_interval))) {
         return -EFAULT;
     }
 
     if (down_interruptible(&master->master_sem))
         return -EINTR;
-	ec_master_set_send_interval(master,send_interval);
+    ec_master_set_send_interval(master,send_interval);
     up(&master->master_sem);
 
     return 0;
@@ -3492,10 +3493,10 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             return ec_cdev_ioctl_voe_exec(master, arg, priv);
         case EC_IOCTL_VOE_DATA:
             return ec_cdev_ioctl_voe_data(master, arg, priv);
-		case EC_IOCTL_SET_SEND_INTERVAL:
+        case EC_IOCTL_SET_SEND_INTERVAL:
             if (!(filp->f_mode & FMODE_WRITE))
                 return -EPERM;
-			return ec_cdev_ioctl_set_send_interval(master,arg,priv);
+            return ec_cdev_ioctl_set_send_interval(master,arg,priv);
         default:
             return -ENOTTY;
     }

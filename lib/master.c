@@ -165,7 +165,7 @@ int ecrt_master_get_slave(ec_master_t *master, uint16_t slave_position,
 int ecrt_master_get_sync_manager(ec_master_t *master, uint16_t slave_position,
         uint8_t sync_index, ec_sync_info_t *sync)
 {
-	ec_ioctl_slave_sync_t data;
+    ec_ioctl_slave_sync_t data;
 
     if (sync_index >= EC_MAX_SYNC_MANAGERS)
         return -ENOENT;
@@ -181,7 +181,7 @@ int ecrt_master_get_sync_manager(ec_master_t *master, uint16_t slave_position,
     }
 
     sync->index = sync_index;
-	sync->dir = EC_READ_BIT(&data.control_register, 2) ?
+    sync->dir = EC_READ_BIT(&data.control_register, 2) ?
         EC_DIR_OUTPUT : EC_DIR_INPUT;
     sync->n_pdos = data.pdo_count;
     sync->pdos = NULL;
@@ -196,7 +196,7 @@ int ecrt_master_get_sync_manager(ec_master_t *master, uint16_t slave_position,
 int ecrt_master_get_pdo(ec_master_t *master, uint16_t slave_position,
         uint8_t sync_index, uint16_t pos, ec_pdo_info_t *pdo)
 {
-	ec_ioctl_slave_sync_pdo_t data;
+    ec_ioctl_slave_sync_pdo_t data;
 
     if (sync_index >= EC_MAX_SYNC_MANAGERS)
         return -ENOENT;
@@ -225,7 +225,7 @@ int ecrt_master_get_pdo_entry(ec_master_t *master, uint16_t slave_position,
         uint8_t sync_index, uint16_t pdo_pos, uint16_t entry_pos,
         ec_pdo_entry_info_t *entry)
 {
-	ec_ioctl_slave_sync_pdo_entry_t data;
+    ec_ioctl_slave_sync_pdo_entry_t data;
 
     if (sync_index >= EC_MAX_SYNC_MANAGERS)
         return -ENOENT;
@@ -349,9 +349,9 @@ void ecrt_master_deactivate(ec_master_t *master)
 
 int ecrt_master_set_send_interval(ec_master_t *master,size_t send_interval_us)
 {
-	if (ioctl(master->fd, EC_IOCTL_SET_SEND_INTERVAL,
-				&send_interval_us) == -1) {
-		fprintf(stderr, "Failed to set send interval: %s\n",
+    if (ioctl(master->fd, EC_IOCTL_SET_SEND_INTERVAL,
+                &send_interval_us) == -1) {
+        fprintf(stderr, "Failed to set send interval: %s\n",
                 strerror(errno));
         return -1; // FIXME
     }

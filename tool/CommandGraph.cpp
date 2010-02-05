@@ -119,7 +119,7 @@ void CommandGraph::execute(MasterDevice &m, const StringVector &args)
     cout << endl;
 
     for (si = slaves.begin(); si != slaves.end(); si++) {
-	    cout << "    slave" << si->position << " [shape=\"box\""
+        cout << "    slave" << si->position << " [shape=\"box\""
             << ",label=\"" << si->position;
         if (string(si->order).size())
             cout << "\\n" << si->order;

@@ -47,43 +47,43 @@ string CommandPdos::helpString() const
     stringstream str;
 
     str << getName() << " [OPTIONS]" << endl
-    	<< endl
-    	<< getBriefDescription() << endl
         << endl
-    	<< "The information is displayed in three layers, which are" << endl
-    	<< "indented accordingly:" << endl
-    	<< endl
-    	<< "1) Sync managers - Contains the sync manager information" << endl
-    	<< "   from the SII: Index, physical start address, default" << endl
-    	<< "   size, control register and enable word. Example:" << endl
-		<< endl
-    	<< "   SM3: PhysAddr 0x1100, DefaultSize 0, ControlRegister 0x20, "
-		<< "Enable 1" << endl
-    	<< endl
-    	<< "2) Assigned PDOs - PDO direction, hexadecimal index and" << endl
-		<< "   the PDO name, if avaliable. Note that a 'Tx' and 'Rx'" << endl
+        << getBriefDescription() << endl
+        << endl
+        << "The information is displayed in three layers, which are" << endl
+        << "indented accordingly:" << endl
+        << endl
+        << "1) Sync managers - Contains the sync manager information" << endl
+        << "   from the SII: Index, physical start address, default" << endl
+        << "   size, control register and enable word. Example:" << endl
+        << endl
+        << "   SM3: PhysAddr 0x1100, DefaultSize 0, ControlRegister 0x20, "
+        << "Enable 1" << endl
+        << endl
+        << "2) Assigned PDOs - PDO direction, hexadecimal index and" << endl
+        << "   the PDO name, if avaliable. Note that a 'Tx' and 'Rx'" << endl
         << "   are seen from the slave's point of view. Example:" << endl
-    	<< endl
-    	<< "   TxPDO 0x1a00 \"Channel1\"" << endl
-    	<< endl
-    	<< "3) Mapped PDO entries - PDO entry index and subindex (both" << endl
-    	<< "   hexadecimal), the length in bit and the description, if" << endl
-    	<< "   available. Example:" << endl
-    	<< endl
-    	<< "   PDO entry 0x3101:01, 8 bit, \"Status\"" << endl
-    	<< endl
-    	<< "Note, that the displayed PDO assignment and PDO mapping" << endl
-    	<< "information can either originate from the SII or from the" << endl
-		<< "CoE communication area." << endl
-    	<< endl
-    	<< "Command-specific options:" << endl
+        << endl
+        << "   TxPDO 0x1a00 \"Channel1\"" << endl
+        << endl
+        << "3) Mapped PDO entries - PDO entry index and subindex (both" << endl
+        << "   hexadecimal), the length in bit and the description, if" << endl
+        << "   available. Example:" << endl
+        << endl
+        << "   PDO entry 0x3101:01, 8 bit, \"Status\"" << endl
+        << endl
+        << "Note, that the displayed PDO assignment and PDO mapping" << endl
+        << "information can either originate from the SII or from the" << endl
+        << "CoE communication area." << endl
+        << endl
+        << "Command-specific options:" << endl
         << "  --alias    -a <alias>" << endl
         << "  --position -p <pos>    Slave selection. See the help of" << endl
         << "                         the 'slaves' command." << endl
-    	<< endl
-		<< numericInfo();
+        << endl
+        << numericInfo();
 
-	return str.str();
+    return str.str();
 }
 
 /****************************************************************************/
@@ -112,10 +112,10 @@ void CommandPdos::execute(MasterDevice &m, const StringVector &args)
 /****************************************************************************/
 
 void CommandPdos::listSlavePdos(
-		MasterDevice &m,
+        MasterDevice &m,
         const ec_ioctl_slave_t &slave,
-		bool showHeader
-		)
+        bool showHeader
+        )
 {
     ec_ioctl_slave_sync_t sync;
     ec_ioctl_slave_sync_pdo_t pdo;

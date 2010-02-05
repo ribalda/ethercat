@@ -83,7 +83,7 @@ class MasterDevice
         ~MasterDevice();
 
         void setIndex(unsigned int);
-		unsigned int getIndex() const;
+        unsigned int getIndex() const;
 
         enum Permissions {Read, ReadWrite};
         void open(Permissions);
@@ -111,11 +111,11 @@ class MasterDevice
         void writeSii(ec_ioctl_slave_sii_t *);
         void readReg(ec_ioctl_slave_reg_t *);
         void writeReg(ec_ioctl_slave_reg_t *);
-		void setDebug(unsigned int);
-		void sdoDownload(ec_ioctl_slave_sdo_download_t *);
-		void sdoUpload(ec_ioctl_slave_sdo_upload_t *);
-		void requestState(uint16_t, uint8_t);
-		void readFoe(ec_ioctl_slave_foe_t *);
+        void setDebug(unsigned int);
+        void sdoDownload(ec_ioctl_slave_sdo_download_t *);
+        void sdoUpload(ec_ioctl_slave_sdo_upload_t *);
+        void requestState(uint16_t, uint8_t);
+        void readFoe(ec_ioctl_slave_foe_t *);
         void writeFoe(ec_ioctl_slave_foe_t *);
 #ifdef EC_EOE
         void getEoeHandler(ec_ioctl_eoe_handler_t *, uint16_t);
@@ -130,7 +130,7 @@ class MasterDevice
 
 inline unsigned int MasterDevice::getIndex() const
 {
-	return index;
+    return index;
 }
 
 /****************************************************************************/

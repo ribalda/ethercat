@@ -49,28 +49,28 @@ string CommandConfig::helpString() const
     stringstream str;
 
     str << getName() << " [OPTIONS]" << endl
-    	<< endl
-    	<< getBriefDescription() << endl
-    	<< endl
-    	<< "Without the --verbose option, slave configurations are" << endl
-    	<< "output one-per-line. Example:" << endl
-    	<< endl
-    	<< "1001:0  0x0000003b/0x02010000  3  OP" << endl
-    	<< "|       |                      |  |" << endl
-    	<< "|       |                      |  \\- Application-layer" << endl
-    	<< "|       |                      |     state of the attached" << endl
-    	<< "|       |                      |     slave, or '-', if no" << endl
-    	<< "|       |                      |     slave is attached." << endl
-    	<< "|       |                      \\- Absolute decimal ring" << endl
-    	<< "|       |                         position of the attached" << endl
-    	<< "|       |                         slave, or '-' if none" << endl
-    	<< "|       |                         attached." << endl
-    	<< "|       \\- Expected vendor ID and product code (both" << endl
-    	<< "|          hexadecimal)." << endl
-    	<< "\\- Alias address and relative position (both decimal)." << endl
-    	<< endl
-    	<< "With the --verbose option given, the configured PDOs and" << endl
-    	<< "SDOs are output in addition." << endl
+        << endl
+        << getBriefDescription() << endl
+        << endl
+        << "Without the --verbose option, slave configurations are" << endl
+        << "output one-per-line. Example:" << endl
+        << endl
+        << "1001:0  0x0000003b/0x02010000  3  OP" << endl
+        << "|       |                      |  |" << endl
+        << "|       |                      |  \\- Application-layer" << endl
+        << "|       |                      |     state of the attached" << endl
+        << "|       |                      |     slave, or '-', if no" << endl
+        << "|       |                      |     slave is attached." << endl
+        << "|       |                      \\- Absolute decimal ring" << endl
+        << "|       |                         position of the attached" << endl
+        << "|       |                         slave, or '-' if none" << endl
+        << "|       |                         attached." << endl
+        << "|       \\- Expected vendor ID and product code (both" << endl
+        << "|          hexadecimal)." << endl
+        << "\\- Alias address and relative position (both decimal)." << endl
+        << endl
+        << "With the --verbose option given, the configured PDOs and" << endl
+        << "SDOs are output in addition." << endl
         << endl
         << "Configuration selection:" << endl
         << "  Slave configurations can be selected with" << endl
@@ -86,15 +86,15 @@ string CommandConfig::helpString() const
         << "  4) If both the --alias and the --position option are" << endl
         << "     given, the selection can match a single" << endl
         << "     configuration, that is displayed, if it exists." << endl
-    	<< endl
-    	<< "Command-specific options:" << endl
+        << endl
+        << "Command-specific options:" << endl
         << "  --alias    -a <alias>  Configuration alias (see above)." << endl
         << "  --position -p <pos>    Relative position (see above)." << endl
-    	<< "  --verbose  -v          Show detailed configurations." << endl
+        << "  --verbose  -v          Show detailed configurations." << endl
         << endl
         << numericInfo();
 
-	return str.str();
+    return str.str();
 }
 
 /*****************************************************************************/
@@ -126,9 +126,9 @@ void CommandConfig::execute(MasterDevice &m, const StringVector &args)
 /** Lists the complete bus configuration.
  */
 void CommandConfig::showDetailedConfigs(
-		MasterDevice &m,
-		const ConfigList &configList
-		)
+        MasterDevice &m,
+        const ConfigList &configList
+        )
 {
     ConfigList::const_iterator configIter;
     unsigned int i, j, k, l;

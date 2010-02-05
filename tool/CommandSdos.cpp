@@ -47,41 +47,41 @@ string CommandSdos::helpString() const
     stringstream str;
 
     str << getName() << " [OPTIONS]" << endl
-    	<< endl
-    	<< getBriefDescription() << endl
-    	<< endl
-    	<< "SDO dictionary information is displayed in two layers," << endl
-    	<< "which are indented accordingly:" << endl
-    	<< endl
-    	<< "1) SDOs - Hexadecimal SDO index and the name. Example:" << endl
-    	<< endl
-    	<< "   SDO 0x1018, \"Identity object\"" << endl
-    	<< endl
-    	<< "2) SDO entries - SDO index and SDO entry subindex (both" << endl
-		<< "   hexadecimal) followed by the access rights (see" << endl
+        << endl
+        << getBriefDescription() << endl
+        << endl
+        << "SDO dictionary information is displayed in two layers," << endl
+        << "which are indented accordingly:" << endl
+        << endl
+        << "1) SDOs - Hexadecimal SDO index and the name. Example:" << endl
+        << endl
+        << "   SDO 0x1018, \"Identity object\"" << endl
+        << endl
+        << "2) SDO entries - SDO index and SDO entry subindex (both" << endl
+        << "   hexadecimal) followed by the access rights (see" << endl
         << "   below), the data type, the length in bit, and the" << endl
         << "   description. Example:" << endl
-    	<< endl
-    	<< "   0x1018:01, rwrwrw, uint32, 32 bit, \"Vendor id\"" << endl
-    	<< endl
+        << endl
+        << "   0x1018:01, rwrwrw, uint32, 32 bit, \"Vendor id\"" << endl
+        << endl
         << "The access rights are specified for the AL states PREOP," << endl
         << "SAFEOP and OP. An 'r' means, that the entry is readable" << endl
         << "in the corresponding state, an 'w' means writable," << endl
         << "respectively. If a right is not granted, a dash '-' is" << endl
         << "shown." << endl
         << endl
-    	<< "If the --quiet option is given, only the SDOs are output."
-		<< endl << endl
-    	<< "Command-specific options:" << endl
+        << "If the --quiet option is given, only the SDOs are output."
+        << endl << endl
+        << "Command-specific options:" << endl
         << "  --alias    -a <alias>" << endl
         << "  --position -p <pos>    Slave selection. See the help of" << endl
         << "                         the 'slaves' command." << endl
-    	<< "  --quiet    -q          Only output SDOs (without the" << endl
-		<< "                         SDO entries)." << endl
-    	<< endl
-		<< numericInfo();
+        << "  --quiet    -q          Only output SDOs (without the" << endl
+        << "                         SDO entries)." << endl
+        << endl
+        << numericInfo();
 
-	return str.str();
+    return str.str();
 }
 
 /****************************************************************************/
@@ -110,10 +110,10 @@ void CommandSdos::execute(MasterDevice &m, const StringVector &args)
 /****************************************************************************/
 
 void CommandSdos::listSlaveSdos(
-		MasterDevice &m,
+        MasterDevice &m,
         const ec_ioctl_slave_t &slave,
-		bool showHeader
-		)
+        bool showHeader
+        )
 {
     ec_ioctl_slave_sdo_t sdo;
     ec_ioctl_slave_sdo_entry_t entry;

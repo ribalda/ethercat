@@ -3,17 +3,17 @@
 
 digraph pdo_entry_read {
 
-	start [fontname="Helvetica"]
+    start [fontname="Helvetica"]
     start -> count [weight=5]
 
-	count [fontname="Helvetica"]
-	count -> action_next [weight=5]
+    count [fontname="Helvetica"]
+    count -> action_next [weight=5]
 
     action_next [shape=point,label=""]
     action_next -> pdo_entry [fontname="Helvetica", label="Next entry", weight=5]
-	action_next -> end [fontname="Helvetica", label="No more entries"]
+    action_next -> end [fontname="Helvetica", label="No more entries"]
 
-	pdo_entry [fontname="Helvetica"]
+    pdo_entry [fontname="Helvetica"]
     pdo_entry -> action_next
 
     end [fontname="Helvetica"]

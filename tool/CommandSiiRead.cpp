@@ -47,28 +47,28 @@ string CommandSiiRead::helpString() const
     stringstream str;
 
     str << getName() << " [OPTIONS]" << endl
-    	<< endl
-    	<< getBriefDescription() << endl
-    	<< endl
+        << endl
+        << getBriefDescription() << endl
+        << endl
         << "This command requires a single slave to be selected." << endl
-    	<< endl
-    	<< "Without the --verbose option, binary SII contents are" << endl
-		<< "output." << endl
-    	<< endl
-    	<< "With the --verbose option given, a textual representation" << endl
-		<< "of the data is output, that is separated by SII category" << endl
-		<< "names." << endl
-    	<< endl
-    	<< "Command-specific options:" << endl
+        << endl
+        << "Without the --verbose option, binary SII contents are" << endl
+        << "output." << endl
+        << endl
+        << "With the --verbose option given, a textual representation" << endl
+        << "of the data is output, that is separated by SII category" << endl
+        << "names." << endl
+        << endl
+        << "Command-specific options:" << endl
         << "  --alias    -a <alias>" << endl
         << "  --position -p <pos>    Slave selection. See the help of" << endl
         << "                         the 'slaves' command." << endl
-    	<< "  --verbose  -v          Output textual data with" << endl
-		<< "                         category names." << endl
-    	<< endl
-		<< numericInfo();
+        << "  --verbose  -v          Output textual data with" << endl
+        << "                         category names." << endl
+        << endl
+        << numericInfo();
 
-	return str.str();
+    return str.str();
 }
 
 /****************************************************************************/
@@ -104,12 +104,12 @@ void CommandSiiRead::execute(MasterDevice &m, const StringVector &args)
     data.nwords = slave->sii_nwords;
     data.words = new uint16_t[data.nwords];
 
-	try {
-		m.readSii(&data);
-	} catch (MasterDeviceException &e) {
+    try {
+        m.readSii(&data);
+    } catch (MasterDeviceException &e) {
         delete [] data.words;
-		throw e;
-	}
+        throw e;
+    }
 
     if (getVerbosity() == Verbose) {
         cout << "SII Area:" << hex << setfill('0');

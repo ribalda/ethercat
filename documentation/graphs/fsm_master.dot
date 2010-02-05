@@ -4,7 +4,7 @@
 digraph master {
     size="7,9"
     center=1
-	ratio=fill
+    ratio=fill
 
     start [fontname="Helvetica"]
     start -> broadcast [weight=10]

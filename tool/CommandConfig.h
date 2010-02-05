@@ -46,17 +46,17 @@ class CommandConfig:
         string helpString() const;
         void execute(MasterDevice &, const StringVector &);
 
-	protected:
-		struct Info {
-			string alias;
-			string pos;
-			string ident;
-			string slavePos;
-			string state;
-		};
+    protected:
+        struct Info {
+            string alias;
+            string pos;
+            string ident;
+            string slavePos;
+            string state;
+        };
 
-		void showDetailedConfigs(MasterDevice &, const ConfigList &);
-		void listConfigs(MasterDevice &m, const ConfigList &);
+        void showDetailedConfigs(MasterDevice &, const ConfigList &);
+        void listConfigs(MasterDevice &m, const ConfigList &);
 };
 
 /****************************************************************************/

@@ -71,7 +71,7 @@ class Command
 {
     public:
         Command(const string &, const string &);
-		virtual ~Command();
+        virtual ~Command();
 
         const string &getName() const;
         const string &getBriefDescription() const;
@@ -82,7 +82,7 @@ class Command
             Verbose
         };
         void setVerbosity(Verbosity);
-		Verbosity getVerbosity() const;
+        Verbosity getVerbosity() const;
         void setAlias(int);
         int getAlias() const;
         void setPosition(int);
@@ -91,10 +91,10 @@ class Command
         int getDomain() const;
         void setDataType(const string &);
         const string &getDataType() const;
-		void setForce(bool);
-		bool getForce() const;
-		void setOutputFile(const string &);
-		const string &getOutputFile() const;
+        void setForce(bool);
+        bool getForce() const;
+        void setOutputFile(const string &);
+        const string &getOutputFile() const;
 
         bool matchesSubstr(const string &) const;
         bool matchesAbbrev(const string &) const;
@@ -107,7 +107,7 @@ class Command
         static string numericInfo();
 
     protected:
-		enum {BreakAfterBytes = 16};
+        enum {BreakAfterBytes = 16};
 
         void throwInvalidUsageException(const stringstream &) const;
         void throwCommandException(const stringstream &) const;
@@ -123,15 +123,15 @@ class Command
         static string alStateString(uint8_t);
 
     private:
-		string name;
+        string name;
         string briefDesc;
         Verbosity verbosity;
         int alias;
         int position;
-		int domain;
-		string dataType;
-		bool force;
-		string outputFile;
+        int domain;
+        string dataType;
+        bool force;
+        string outputFile;
 
         Command();
 };

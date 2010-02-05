@@ -27,6 +27,8 @@
 #  technology and brand is only permitted in compliance with the industrial
 #  property and similar rights of Beckhoff Automation GmbH.
 #
+#  vim: expandtab
+#
 #------------------------------------------------------------------------------
 
 # this ifup.d script adds special network interfaces to a network bridge
@@ -47,8 +49,8 @@ fi
 
 # does the EoE bridge already exist?
 if ! ${BRCTL} show | grep -q "^${BRNAME}"; then
-	${LOGGER} Creating ${BRNAME}
-	${BRCTL} addbr ${BRNAME} # create it
+    ${LOGGER} Creating ${BRNAME}
+    ${BRCTL} addbr ${BRNAME} # create it
 fi
 
 ${LOGGER} Adding ${IFNAME} to ${BRNAME}

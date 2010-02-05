@@ -155,7 +155,7 @@ struct ec_master {
                                       ext_datagram_queue. */
 
     struct list_head external_datagram_queue; /**< External Datagram queue. */
-	size_t send_interval;	/* interval between calls to ecrt_master_send */
+    size_t send_interval; /* interval between calls to ecrt_master_send */
     size_t max_queue_size; /** max. size of datagram queue */
     struct list_head domains; /**< List of domains. */
 

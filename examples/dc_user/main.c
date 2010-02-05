@@ -193,13 +193,13 @@ void signal_handler(int signum) {
 
 int main(int argc, char **argv)
 {
-	ec_slave_config_t *sc;
+    ec_slave_config_t *sc;
     struct sigaction sa;
     struct itimerval tv;
     
     master = ecrt_request_master(0);
-	if (!master)
-		return -1;
+    if (!master)
+        return -1;
 
     domain1 = ecrt_master_create_domain(master);
     if (!domain1)

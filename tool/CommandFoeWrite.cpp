@@ -56,7 +56,7 @@ string CommandFoeWrite::helpString() const
         << getBriefDescription() << endl
         << endl
         << "This command requires a single slave to be selected." << endl
-    	<< endl
+        << endl
         << "Arguments:" << endl
         << "  FILENAME can either be a path to a file, or '-'. In" << endl
         << "           the latter case, data are read from stdin and" << endl

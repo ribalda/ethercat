@@ -48,16 +48,16 @@ string CommandMaster::helpString() const
 {
     stringstream str;
 
-	str << getName() << " [OPTIONS]" << endl
-    	<< endl
-    	<< getBriefDescription() << endl
-    	<< endl
-    	<< "Command-specific options:" << endl
-    	<< "  --master -m <index>  Index of the master to use. Default: 0."
-		<< endl << endl
-		<< numericInfo();
+    str << getName() << " [OPTIONS]" << endl
+        << endl
+        << getBriefDescription() << endl
+        << endl
+        << "Command-specific options:" << endl
+        << "  --master -m <index>  Index of the master to use. Default: 0."
+        << endl << endl
+        << numericInfo();
 
-	return str.str();
+    return str.str();
 }
 
 /****************************************************************************/

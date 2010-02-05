@@ -795,35 +795,35 @@ void ec_master_queue_external_datagram(
         ec_datagram_t *datagram /**< datagram */
         )
 {
-	ec_datagram_t *queued_datagram;
+    ec_datagram_t *queued_datagram;
 
     down(&master->io_sem);
 
-	// check, if the datagram is already queued
-	list_for_each_entry(queued_datagram, &master->external_datagram_queue,
+    // check, if the datagram is already queued
+    list_for_each_entry(queued_datagram, &master->external_datagram_queue,
             queue) {
-		if (queued_datagram == datagram) {
-			datagram->state = EC_DATAGRAM_QUEUED;
-			return;
-		}
-	}
+        if (queued_datagram == datagram) {
+            datagram->state = EC_DATAGRAM_QUEUED;
+            return;
+        }
+    }
 
 #if DEBUG_INJECT
-	if (master->debug_level) {
-		EC_DBG("Requesting external datagram %p size=%u\n",
+    if (master->debug_level) {
+        EC_DBG("Requesting external datagram %p size=%u\n",
                 datagram, datagram->data_size);
-	}
+    }
 #endif
 
-	list_add_tail(&datagram->queue, &master->external_datagram_queue);
-	datagram->state = EC_DATAGRAM_QUEUED;
+    list_add_tail(&datagram->queue, &master->external_datagram_queue);
+    datagram->state = EC_DATAGRAM_QUEUED;
 #ifdef EC_HAVE_CYCLES
-	datagram->cycles_sent = get_cycles();
+    datagram->cycles_sent = get_cycles();
 #endif
-	datagram->jiffies_sent = jiffies;
+    datagram->jiffies_sent = jiffies;
 
-	master->fsm.idle = 0;
-	up(&master->io_sem);
+    master->fsm.idle = 0;
+    up(&master->io_sem);
 }
 
 /*****************************************************************************/
@@ -876,7 +876,7 @@ void ec_master_queue_datagram_ext(
 void ec_master_send_datagrams(ec_master_t *master /**< EtherCAT master */)
 {
     ec_datagram_t *datagram, *next;
-	size_t datagram_size;
+    size_t datagram_size;
     uint8_t *frame_data, *cur_data;
     void *follows_word;
 #ifdef EC_HAVE_CYCLES
@@ -1222,13 +1222,13 @@ static int ec_master_idle_thread(void *priv_data)
     ec_master_t *master = (ec_master_t *) priv_data;
     ec_slave_t *slave = NULL;
     int fsm_exec;
-	size_t sent_bytes;
+    size_t sent_bytes;
 
     // send interval in IDLE phase
-	ec_master_set_send_interval(master, 1000000 / HZ); 
+    ec_master_set_send_interval(master, 1000000 / HZ); 
 
-	if (master->debug_level)
-		EC_DBG("Idle thread running with send interval = %d us,"
+    if (master->debug_level)
+        EC_DBG("Idle thread running with send interval = %d us,"
                 " max data size=%d\n", master->send_interval,
                 master->max_queue_size);
 
@@ -1259,20 +1259,20 @@ static int ec_master_idle_thread(void *priv_data)
         }
         ec_master_inject_external_datagrams(master);
         ecrt_master_send(master);
-		sent_bytes = master->main_device.tx_skb[
+        sent_bytes = master->main_device.tx_skb[
             master->main_device.tx_ring_index]->len;
         up(&master->io_sem);
 
-		if (ec_fsm_master_idle(&master->fsm)) {
+        if (ec_fsm_master_idle(&master->fsm)) {
 #ifdef EC_USE_HRTIMER
-			ec_master_nanosleep(master->send_interval * 1000);
+            ec_master_nanosleep(master->send_interval * 1000);
 #else
             set_current_state(TASK_INTERRUPTIBLE);
             schedule_timeout(1);
 #endif
         } else {
 #ifdef EC_USE_HRTIMER
-			ec_master_nanosleep(sent_bytes * EC_BYTE_TRANSMISSION_TIME_NS);
+            ec_master_nanosleep(sent_bytes * EC_BYTE_TRANSMISSION_TIME_NS);
 #else
             schedule();
 #endif
@@ -1296,7 +1296,7 @@ static int ec_master_operation_thread(void *priv_data)
     int fsm_exec;
 
     if (master->debug_level)
-		EC_DBG("Operation thread running with fsm interval = %d us,"
+        EC_DBG("Operation thread running with fsm interval = %d us,"
                 " max data size=%d\n",
                 master->send_interval,
                 master->max_queue_size);
@@ -1326,8 +1326,8 @@ static int ec_master_operation_thread(void *priv_data)
         }
 
 #ifdef EC_USE_HRTIMER
-		// the op thread should not work faster than the sending RT thread
-		ec_master_nanosleep(master->send_interval * 1000);
+        // the op thread should not work faster than the sending RT thread
+        ec_master_nanosleep(master->send_interval * 1000);
 #else
         if (ec_fsm_master_idle(&master->fsm)) {
             set_current_state(TASK_INTERRUPTIBLE);
@@ -1337,7 +1337,7 @@ static int ec_master_operation_thread(void *priv_data)
             schedule();
         }
 #endif
-	}
+    }
     
     if (master->debug_level)
         EC_DBG("Master OP thread exiting...\n");
@@ -2072,7 +2072,7 @@ void ecrt_master_send(ec_master_t *master)
     }
 
     // send frames
-	ec_master_send_datagrams(master);
+    ec_master_send_datagrams(master);
 }
 
 /*****************************************************************************/

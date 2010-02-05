@@ -46,21 +46,21 @@ string CommandDebug::helpString() const
 {
     stringstream str;
 
-	str << getName() << " <LEVEL>" << endl
-		<< endl
-    	<< getBriefDescription() << endl
-    	<< endl
-    	<< "Debug messages are printed to syslog." << endl
-    	<< endl
-    	<< "Arguments:" << endl
-    	<< "  LEVEL can have one of the following values:" << endl
-    	<< "        0 for no debugging output," << endl
-    	<< "        1 for some debug messages, or" << endl
-    	<< "        2 for printing all frame contents (use with caution!)."
-		<< endl << endl
-    	<< numericInfo();
+    str << getName() << " <LEVEL>" << endl
+        << endl
+        << getBriefDescription() << endl
+        << endl
+        << "Debug messages are printed to syslog." << endl
+        << endl
+        << "Arguments:" << endl
+        << "  LEVEL can have one of the following values:" << endl
+        << "        0 for no debugging output," << endl
+        << "        1 for some debug messages, or" << endl
+        << "        2 for printing all frame contents (use with caution!)."
+        << endl << endl
+        << numericInfo();
 
-	return str.str();
+    return str.str();
 }
 
 /****************************************************************************/

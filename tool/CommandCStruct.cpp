@@ -53,7 +53,7 @@ string CommandCStruct::helpString() const
         << endl
         << "The output C code can be used directly with the" << endl
         << "ecrt_slave_config_pdos() function of the application" << endl
-		<< "interface." << endl
+        << "interface." << endl
         << endl
         << "Command-specific options:" << endl
         << "  --alias    -a <alias>" << endl

@@ -47,38 +47,38 @@ string CommandDownload::helpString() const
     stringstream str;
 
     str << getName() << " [OPTIONS] <INDEX> <SUBINDEX> <VALUE>" << endl
-    	<< endl
-    	<< getBriefDescription() << endl
+        << endl
+        << getBriefDescription() << endl
         << endl
         << "This command requires a single slave to be selected." << endl
-    	<< endl
-    	<< "The data type of the SDO entry is taken from the SDO" << endl
-		<< "dictionary by default. It can be overridden with the" << endl
-		<< "--type option. If the slave does not support the SDO" << endl
-		<< "information service or the SDO is not in the dictionary," << endl
-		<< "the --type option is mandatory." << endl
-    	<< endl
-    	<< "These are the valid SDO entry data types:" << endl
-    	<< "  int8, int16, int32, uint8, uint16, uint32, string," << endl
+        << endl
+        << "The data type of the SDO entry is taken from the SDO" << endl
+        << "dictionary by default. It can be overridden with the" << endl
+        << "--type option. If the slave does not support the SDO" << endl
+        << "information service or the SDO is not in the dictionary," << endl
+        << "the --type option is mandatory." << endl
+        << endl
+        << "These are the valid SDO entry data types:" << endl
+        << "  int8, int16, int32, uint8, uint16, uint32, string," << endl
         << "  octet_string." << endl
-    	<< endl
-    	<< "Arguments:" << endl
-    	<< "  INDEX    is the SDO index and must be an unsigned" << endl
-		<< "           16 bit number." << endl
-    	<< "  SUBINDEX is the SDO entry subindex and must be an" << endl
-		<< "           unsigned 8 bit number." << endl
-    	<< "  VALUE    is the value to download and must correspond" << endl
-		<< "           to the SDO entry datatype (see above)." << endl
-    	<< endl
-    	<< "Command-specific options:" << endl
+        << endl
+        << "Arguments:" << endl
+        << "  INDEX    is the SDO index and must be an unsigned" << endl
+        << "           16 bit number." << endl
+        << "  SUBINDEX is the SDO entry subindex and must be an" << endl
+        << "           unsigned 8 bit number." << endl
+        << "  VALUE    is the value to download and must correspond" << endl
+        << "           to the SDO entry datatype (see above)." << endl
+        << endl
+        << "Command-specific options:" << endl
         << "  --alias    -a <alias>" << endl
         << "  --position -p <pos>    Slave selection. See the help of" << endl
         << "                         the 'slaves' command." << endl
-    	<< "  --type     -t <type>   SDO entry data type (see above)." << endl
-    	<< endl
-		<< numericInfo();
+        << "  --type     -t <type>   SDO entry data type (see above)." << endl
+        << endl
+        << numericInfo();
 
-	return str.str();
+    return str.str();
 }
 
 /****************************************************************************/
@@ -235,15 +235,15 @@ void CommandDownload::execute(MasterDevice &m, const StringVector &args)
         throwInvalidUsageException(err);
     }
 
-	try {
+    try {
         m.sdoDownload(&data);
-	} catch (MasterDeviceSdoAbortException &e) {
+    } catch (MasterDeviceSdoAbortException &e) {
         delete [] data.data;
         err << "SDO transfer aborted with code 0x"
             << setfill('0') << hex << setw(8) << e.abortCode
             << ": " << abortText(e.abortCode);
         throwCommandException(err);
-	} catch(MasterDeviceException &e) {
+    } catch(MasterDeviceException &e) {
         delete [] data.data;
         throw e;
     }

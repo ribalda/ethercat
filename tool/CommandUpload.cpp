@@ -51,7 +51,7 @@ string CommandUpload::helpString() const
         << getBriefDescription() << endl
         << endl
         << "This command requires a single slave to be selected." << endl
-    	<< endl
+        << endl
         << "The data type of the SDO entry is taken from the SDO" << endl
         << "dictionary by default. It can be overridden with the" << endl
         << "--type option. If the slave does not support the SDO" << endl
@@ -152,15 +152,15 @@ void CommandUpload::execute(MasterDevice &m, const StringVector &args)
 
     data.target = new uint8_t[data.target_size + 1];
 
-	try {
-		m.sdoUpload(&data);
-	} catch (MasterDeviceSdoAbortException &e) {
+    try {
+        m.sdoUpload(&data);
+    } catch (MasterDeviceSdoAbortException &e) {
         delete [] data.target;
         err << "SDO transfer aborted with code 0x"
             << setfill('0') << hex << setw(8) << e.abortCode
             << ": " << abortText(e.abortCode);
         throwCommandException(err);
-	} catch (MasterDeviceException &e) {
+    } catch (MasterDeviceException &e) {
         delete [] data.target;
         throw e;
     }
@@ -237,9 +237,9 @@ void CommandUpload::execute(MasterDevice &m, const StringVector &args)
 /****************************************************************************/
 
 void CommandUpload::printRawData(
-		const uint8_t *data,
-		unsigned int size
-		)
+        const uint8_t *data,
+        unsigned int size
+        )
 {
     cout << hex << setfill('0');
     while (size--) {

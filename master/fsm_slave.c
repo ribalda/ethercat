@@ -62,9 +62,11 @@ void ec_fsm_slave_init(
     fsm->slave = slave;
     fsm->datagram = datagram;
     fsm->datagram->data_size = 0;
-	if (slave->master->debug_level)
-		EC_DBG("init fsm for slave %u...\n",slave->ring_position);
-	fsm->state = ec_fsm_slave_state_idle;
+
+    if (slave->master->debug_level)
+        EC_DBG("Init FSM for slave %u...\n", slave->ring_position);
+
+    fsm->state = ec_fsm_slave_state_idle;
 
     // init sub-state-machines
     ec_fsm_coe_init(&fsm->fsm_coe, fsm->datagram);
@@ -112,16 +114,17 @@ void ec_fsm_slave_exec(
  *
  */
 void ec_fsm_slave_ready(
-		ec_fsm_slave_t *fsm /**< Slave state machine. */
-		)
+        ec_fsm_slave_t *fsm /**< Slave state machine. */
+        )
 {
-	if (fsm->state == ec_fsm_slave_state_idle) {
-		if (fsm->slave->master->debug_level) {
-			EC_DBG("Slave %u ready for SDO/FOE.\n",fsm->slave->ring_position);
-		}
-		fsm->state = ec_fsm_slave_state_ready;
-	}
-	return;
+    if (fsm->state == ec_fsm_slave_state_idle) {
+        if (fsm->slave->master->debug_level) {
+            EC_DBG("Slave %u ready for SDO/FOE.\n",
+                    fsm->slave->ring_position);
+        }
+        fsm->state = ec_fsm_slave_state_ready;
+    }
+    return;
 }
 
 /******************************************************************************
@@ -135,10 +138,10 @@ void ec_fsm_slave_ready(
  *
  */
 void ec_fsm_slave_state_idle(
-		ec_fsm_slave_t *fsm /**< Slave state machine. */
+        ec_fsm_slave_t *fsm /**< Slave state machine. */
         )
 {
-	// do nothing
+    // do nothing
 }
 
 
@@ -149,18 +152,17 @@ void ec_fsm_slave_state_idle(
  *
  */
 void ec_fsm_slave_state_ready(
-		ec_fsm_slave_t *fsm /**< Slave state machine. */
-		)
+        ec_fsm_slave_t *fsm /**< Slave state machine. */
+        )
 {
-	// Check for pending external SDO requests
-	if (ec_fsm_slave_action_process_sdo(fsm))
-		return;
-	// Check for pending FOE requests
-	if (ec_fsm_slave_action_process_foe(fsm))
-		return;
+    // Check for pending external SDO requests
+    if (ec_fsm_slave_action_process_sdo(fsm))
+        return;
 
+    // Check for pending FOE requests
+    if (ec_fsm_slave_action_process_foe(fsm))
+        return;
 }
-
 
 /*****************************************************************************/
 
@@ -180,25 +182,27 @@ int ec_fsm_slave_action_process_sdo(
     list_for_each_entry_safe(request, next, &slave->slave_sdo_requests, list) {
 
         list_del_init(&request->list); // dequeue
-		if (slave->current_state & EC_SLAVE_STATE_ACK_ERR) {
-			EC_WARN("Aborting SDO request, slave %u has ERROR.\n",
-					slave->ring_position);
-			request->req.state = EC_INT_REQUEST_FAILURE;
-			wake_up(&slave->sdo_queue);
-			fsm->sdo_request = NULL;
-			fsm->state = ec_fsm_slave_state_idle;
-			return 0;
-		}
-		if (slave->current_state == EC_SLAVE_STATE_INIT) {
-			EC_WARN("Aborting SDO request, slave %u is in INIT.\n",
-					slave->ring_position);
-			request->req.state = EC_INT_REQUEST_FAILURE;
-			wake_up(&slave->sdo_queue);
-			fsm->sdo_request = NULL;
-			fsm->state = ec_fsm_slave_state_idle;
-			return 0;
-		}
-		request->req.state = EC_INT_REQUEST_BUSY;
+        if (slave->current_state & EC_SLAVE_STATE_ACK_ERR) {
+            EC_WARN("Aborting SDO request, slave %u has ERROR.\n",
+                    slave->ring_position);
+            request->req.state = EC_INT_REQUEST_FAILURE;
+            wake_up(&slave->sdo_queue);
+            fsm->sdo_request = NULL;
+            fsm->state = ec_fsm_slave_state_idle;
+            return 0;
+        }
+
+        if (slave->current_state == EC_SLAVE_STATE_INIT) {
+            EC_WARN("Aborting SDO request, slave %u is in INIT.\n",
+                    slave->ring_position);
+            request->req.state = EC_INT_REQUEST_FAILURE;
+            wake_up(&slave->sdo_queue);
+            fsm->sdo_request = NULL;
+            fsm->state = ec_fsm_slave_state_idle;
+            return 0;
+        }
+
+        request->req.state = EC_INT_REQUEST_BUSY;
 
         // Found pending SDO request. Execute it!
         if (master->debug_level)
@@ -233,20 +237,20 @@ int ec_fsm_slave_action_process_foe(
 
     // search the first request to be processed
     list_for_each_entry_safe(request, next, &slave->foe_requests, list) {
-		if (slave->current_state & EC_SLAVE_STATE_ACK_ERR) {
-			EC_WARN("Aborting FOE request, slave %u has ERROR.\n",
-					slave->ring_position);
-			request->req.state = EC_INT_REQUEST_FAILURE;
-			wake_up(&slave->sdo_queue);
-			fsm->sdo_request = NULL;
-			fsm->state = ec_fsm_slave_state_idle;
-			return 0;
-		}
-		list_del_init(&request->list); // dequeue
+        if (slave->current_state & EC_SLAVE_STATE_ACK_ERR) {
+            EC_WARN("Aborting FOE request, slave %u has ERROR.\n",
+                    slave->ring_position);
+            request->req.state = EC_INT_REQUEST_FAILURE;
+            wake_up(&slave->sdo_queue);
+            fsm->sdo_request = NULL;
+            fsm->state = ec_fsm_slave_state_idle;
+            return 0;
+        }
+        list_del_init(&request->list); // dequeue
         request->req.state = EC_INT_REQUEST_BUSY;
 
         if (master->debug_level)
-			EC_DBG("Processing FOE request for slave %u.\n",
+            EC_DBG("Processing FOE request for slave %u.\n",
                     slave->ring_position);
 
         fsm->foe_request = &request->req;
@@ -282,9 +286,9 @@ void ec_fsm_slave_state_sdo_request(
         EC_DBG("Failed to process SDO request for slave %u.\n",
                 fsm->slave->ring_position);
         request->state = EC_INT_REQUEST_FAILURE;
-		wake_up(&slave->sdo_queue);
-		fsm->sdo_request = NULL;
-		fsm->state = ec_fsm_slave_state_idle;
+        wake_up(&slave->sdo_queue);
+        fsm->sdo_request = NULL;
+        fsm->state = ec_fsm_slave_state_idle;
         return;
     }
 
@@ -297,9 +301,8 @@ void ec_fsm_slave_state_sdo_request(
     wake_up(&slave->sdo_queue);
 
     fsm->sdo_request = NULL;
-	fsm->state = ec_fsm_slave_state_ready;
+    fsm->state = ec_fsm_slave_state_ready;
 }
-
 
 /*****************************************************************************/
 
@@ -338,6 +341,7 @@ void ec_fsm_slave_state_foe_request(
     wake_up(&slave->foe_queue);
 
     fsm->foe_request = NULL;
-	fsm->state = ec_fsm_slave_state_ready;
+    fsm->state = ec_fsm_slave_state_ready;
 }
 
+/*****************************************************************************/

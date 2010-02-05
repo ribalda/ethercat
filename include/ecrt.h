@@ -217,7 +217,7 @@ typedef struct  {
 typedef struct {
    unsigned int slave_count; /**< Number of slaves in the bus. */
    unsigned int link_up : 1; /**< \a true, if the network link is up. */
-   uint8_t scan_busy;	/**< \a true, while the master is scanning the bus */   
+   uint8_t scan_busy; /**< \a true, while the master is scanning the bus */   
    uint64_t app_time; /**< Application time. */
 } ec_master_info_t;
 
@@ -426,8 +426,8 @@ ec_master_t *ecrt_request_master(
  * \return Pointer to the opened master, otherwise \a NULL.
  */
 ec_master_t *ecrt_open_master(
-		unsigned int master_index /**< Index of the master to request. */
-		);
+        unsigned int master_index /**< Index of the master to request. */
+        );
 
 #endif // #ifndef __KERNEL__
 
@@ -455,8 +455,8 @@ void ecrt_release_master(
  *
  */
 int ecrt_master_reserve(
-		ec_master_t *master /**< EtherCAT master */
-		);
+        ec_master_t *master /**< EtherCAT master */
+        );
 
 #endif // #ifndef __KERNEL__
 
@@ -545,10 +545,10 @@ ec_slave_config_t *ecrt_master_slave_config(
  * \return 0 in case of success, else < 0
  */
 int ecrt_master(
-		ec_master_t *master, /**< EtherCAT master */
-		ec_master_info_t *master_info /**< Structure that will output the
-									  information */
-		);
+        ec_master_t *master, /**< EtherCAT master */
+        ec_master_info_t *master_info /**< Structure that will output the
+                                        information */
+        );
 
 /** Obtains slave information.
  *
@@ -700,7 +700,7 @@ void ecrt_master_deactivate(
  */
 int ecrt_master_set_send_interval(
         ec_master_t *master, /**< EtherCAT master. */
-		size_t send_interval /**< Send interval in us */
+        size_t send_interval /**< Send interval in us */
         );
 
 /** Sends all datagrams in the queue.
@@ -1001,13 +1001,13 @@ int ecrt_slave_config_reg_pdo_entry(
  * if the slave shall be operated without distributed clocks (default).
  */
 void ecrt_slave_config_dc(
-		ec_slave_config_t *sc, /**< Slave configuration. */
+        ec_slave_config_t *sc, /**< Slave configuration. */
         uint16_t assign_activate, /**< AssignActivate word. */
         uint32_t sync0_cycle, /**< SYNC0 cycle time [ns]. */
-		uint32_t sync0_shift, /**< SYNC0 shift time [ns]. */
+        uint32_t sync0_shift, /**< SYNC0 shift time [ns]. */
         uint32_t sync1_cycle, /**< SYNC1 cycle time [ns]. */
-		uint32_t sync1_shift /**< SYNC1 shift time [ns]. */
-		);
+        uint32_t sync1_shift /**< SYNC1 shift time [ns]. */
+        );
 
 /** Add an SDO configuration.
  *

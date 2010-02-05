@@ -50,25 +50,25 @@ string CommandFoeRead::helpString() const
     stringstream str;
 
     str << getName() << " [OPTIONS] <SOURCEFILE>" << endl
-    	<< endl
-    	<< getBriefDescription() << endl
-    	<< endl
+        << endl
+        << getBriefDescription() << endl
+        << endl
         << "This command requires a single slave to be selected." << endl
-    	<< endl
+        << endl
         << "Arguments:" << endl
         << "  SOURCEFILE is the name of the source file on the slave." << endl
         << endl
-    	<< "Command-specific options:" << endl
+        << "Command-specific options:" << endl
         << "  --output-file -o <file>   Local target filename. If" << endl
         << "                            '-' (default), data are" << endl
         << "                            printed to stdout." << endl
         << "  --alias       -a <alias>  " << endl
         << "  --position    -p <pos>    Slave selection. See the help" << endl
         << "                            of the 'slaves' command." << endl
-    	<< endl
-		<< numericInfo();
+        << endl
+        << numericInfo();
 
-	return str.str();
+    return str.str();
 }
 
 /****************************************************************************/
@@ -104,9 +104,9 @@ void CommandFoeRead::execute(MasterDevice &m, const StringVector &args)
 
     strncpy(data.file_name, args[0].c_str(), sizeof(data.file_name));
 
-	try {
-		m.readFoe(&data);
-	} catch (MasterDeviceException &e) {
+    try {
+        m.readFoe(&data);
+    } catch (MasterDeviceException &e) {
         delete [] data.buffer;
         if (data.result) {
             if (data.result == FOE_OPCODE_ERROR) {
@@ -121,13 +121,13 @@ void CommandFoeRead::execute(MasterDevice &m, const StringVector &args)
         } else {
             throw e;
         }
-	}
+    }
 
     // TODO --output-file
-	for (i = 0; i < data.data_size; i++) {
-		uint8_t *w = data.buffer + i;
-		cout << *(uint8_t *) w ;
-	}
+    for (i = 0; i < data.data_size; i++) {
+        uint8_t *w = data.buffer + i;
+        cout << *(uint8_t *) w ;
+    }
 
     delete [] data.buffer;
 }

@@ -45,11 +45,11 @@ string CommandVersion::helpString() const
 {
     stringstream str;
 
-	str << getName() << " [OPTIONS]" << endl
-    	<< endl
-    	<< getBriefDescription() << endl;
+    str << getName() << " [OPTIONS]" << endl
+        << endl
+        << getBriefDescription() << endl;
 
-	return str.str();
+    return str.str();
 }
 
 /****************************************************************************/

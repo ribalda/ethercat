@@ -3,31 +3,31 @@
 
 digraph sii {
 
-	start_reading [fontname="Helvetica"]
-	start_reading -> read_check [weight=5]
+    start_reading [fontname="Helvetica"]
+    start_reading -> read_check [weight=5]
 
-	read_check [fontname="Helvetica"]
-	read_check -> error
-	read_check -> read_fetch [weight=5]
+    read_check [fontname="Helvetica"]
+    read_check -> error
+    read_check -> read_fetch [weight=5]
 
-	read_fetch [fontname="Helvetica"]
-	read_fetch -> error
-	read_fetch -> end [weight=5]
-	read_fetch -> read_fetch
+    read_fetch [fontname="Helvetica"]
+    read_fetch -> error
+    read_fetch -> end [weight=5]
+    read_fetch -> read_fetch
 
-	start_writing [fontname="Helvetica"]
-	start_writing -> write_check [weight=5]
+    start_writing [fontname="Helvetica"]
+    start_writing -> write_check [weight=5]
 
-	write_check [fontname="Helvetica"]
-	write_check -> error
-	write_check -> write_check2 [weight=5]
+    write_check [fontname="Helvetica"]
+    write_check -> error
+    write_check -> write_check2 [weight=5]
 
-	write_check2 [fontname="Helvetica"]
-	write_check2 -> error
-	write_check2 -> end [weight=5]
-	write_check2 -> write_check2
+    write_check2 [fontname="Helvetica"]
+    write_check2 -> error
+    write_check2 -> end [weight=5]
+    write_check2 -> write_check2
 
-	end [fontname="Helvetica"]
+    end [fontname="Helvetica"]
 
-	error [fontname="Helvetica"]
+    error [fontname="Helvetica"]
 }

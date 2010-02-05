@@ -47,11 +47,11 @@ string CommandRegRead::helpString() const
     stringstream str;
 
     str << getName() << " [OPTIONS] <OFFSET> [LENGTH]" << endl
-    	<< endl
-    	<< getBriefDescription() << endl
-    	<< endl
+        << endl
+        << getBriefDescription() << endl
+        << endl
         << "This command requires a single slave to be selected." << endl
-    	<< endl
+        << endl
         << "Arguments:" << endl
         << "  OFFSET is the register address. Must" << endl
         << "         be an unsigned 16 bit number." << endl
@@ -65,15 +65,15 @@ string CommandRegRead::helpString() const
         << "  int8, int16, int32, int64, uint8, uint16, uint32," << endl
         << "  uint64, string, raw." << endl
         << endl
-    	<< "Command-specific options:" << endl
+        << "Command-specific options:" << endl
         << "  --alias    -a <alias>" << endl
         << "  --position -p <pos>    Slave selection. See the help of" << endl
         << "                         the 'slaves' command." << endl
         << "  --type     -t <type>   Data type (see above)." << endl
-    	<< endl
-		<< numericInfo();
+        << endl
+        << numericInfo();
 
-	return str.str();
+    return str.str();
 }
 
 /****************************************************************************/
@@ -151,12 +151,12 @@ void CommandRegRead::execute(MasterDevice &m, const StringVector &args)
 
     data.data = new uint8_t[data.length];
 
-	try {
-		m.readReg(&data);
-	} catch (MasterDeviceException &e) {
+    try {
+        m.readReg(&data);
+    } catch (MasterDeviceException &e) {
         delete [] data.data;
-		throw e;
-	}
+        throw e;
+    }
 
     cout << setfill('0');
     if (!dataType || string(dataType->name) == "string") {

@@ -99,7 +99,7 @@ string usage()
 
     str << "Usage: " << binaryBaseName << " <COMMAND> [OPTIONS] [ARGUMENTS]"
         << endl << endl
-		<< "Commands (can be abbreviated):" << endl;
+        << "Commands (can be abbreviated):" << endl;
 
     str << left;
     for (ci = commandList.begin(); ci != commandList.end(); ci++) {
@@ -108,9 +108,9 @@ string usage()
     }
 
     str << endl
-		<< "Global options:" << endl
+        << "Global options:" << endl
         << "  --master  -m <master>  Index of the master to use. Default: 0."
-		<< endl
+        << endl
         << "  --force   -f           Force a command." << endl
         << "  --quiet   -q           Output less information." << endl
         << "  --verbose -v           Output more information." << endl
@@ -239,7 +239,7 @@ void getOptions(int argc, char **argv)
     }
     while (c != -1);
 
-	argCount = argc - optind;
+    argCount = argc - optind;
 
     if (!argCount) {
         if (helpRequested) {
@@ -250,7 +250,7 @@ void getOptions(int argc, char **argv)
                 << endl << usage();
             exit(1);
         }
-	}
+    }
 
     commandName = argv[optind];
     while (++optind < argc)
@@ -320,7 +320,7 @@ int main(int argc, char **argv)
     commandList.push_back(new CommandVersion());
     commandList.push_back(new CommandXml());
 
-	getOptions(argc, argv);
+    getOptions(argc, argv);
 
     matchingCommands = getMatchingCommands(commandName);
     masterDev.setIndex(masterIndex);
@@ -368,7 +368,7 @@ int main(int argc, char **argv)
         retval = 1;
     }
 
-	return retval;
+    return retval;
 }
 
 /****************************************************************************/
