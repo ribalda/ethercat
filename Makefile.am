@@ -68,11 +68,14 @@ EXTRA_DIST = \
 	Doxyfile.in \
 	FEATURES \
 	Kbuild.in \
-	README.EoE
+	README.EoE \
+	ethercat.spec \
+	ethercat.spec.in
 
 BUILT_SOURCES = \
 	Doxyfile \
-	Kbuild
+	Kbuild \
+	ethercat.spec
 
 modules:
 	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" modules

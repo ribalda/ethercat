@@ -596,6 +596,7 @@ AC_CONFIG_FILES([
         devices/Makefile
         devices/e1000/Kbuild
         devices/e1000/Makefile
+        ethercat.spec
         examples/Kbuild
         examples/Makefile
         examples/dc_rtai/Kbuild
@@ -605,8 +606,8 @@ AC_CONFIG_FILES([
         examples/mini/Makefile
         examples/rtai/Kbuild
         examples/rtai/Makefile
-        examples/tty/Makefile
         examples/tty/Kbuild
+        examples/tty/Makefile
         examples/user/Makefile
         include/Makefile
         lib/Makefile
@@ -618,8 +619,8 @@ AC_CONFIG_FILES([
         script/init.d/ethercat
         script/sysconfig/Makefile
         tool/Makefile
-        tty/Makefile
         tty/Kbuild
+        tty/Makefile
 ])
 AC_OUTPUT
 
