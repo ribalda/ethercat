@@ -130,7 +130,7 @@ int __init ec_tty_init_module(void)
 
     printk(KERN_INFO PFX "TTY driver %s\n", EC_MASTER_VERSION);
 
-    init_MUTEX(&tty_sem);
+    sema_init(&tty_sem, 1);
 
     for (i = 0; i < EC_TTY_MAX_DEVICES; i++) {
         ttys[i] = NULL;
@@ -201,7 +201,7 @@ int ec_tty_init(ec_tty_t *t, int minor,
     init_timer(&t->timer);
     t->tty = NULL;
     t->open_count = 0;
-    init_MUTEX(&t->sem);
+    sema_init(&t->sem, 1);
     t->ops = *ops;
     t->cb_data = cb_data;
 
