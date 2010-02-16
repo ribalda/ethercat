@@ -59,8 +59,7 @@ Changes since 1.4.0:
 * Changed EC_MAX_SII_SIZE to 4096.
 * 'ethercat xml' creates valid XML <EtherCATInfoList> for more than one slave
   (thanks to E. Burgstaller).
-* Module symbol versions file for ec_master.ko is installed to
-  prefix/modules/ec_master.symvers.
+* Module symbol versions file is installed to $prefix/share/ethercat.
 * Added 'ethercat eoe' command to display Ethernet over EtherCAT statistics.
 * Added 'ethercat cstruct' command to output PDO information in C language.
 * Significantly improved EoE bandwidth by running EoE processing in a kthread.

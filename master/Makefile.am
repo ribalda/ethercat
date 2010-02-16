@@ -82,18 +82,4 @@ modules_install:
 clean-local:
 	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" clean
 
-modulesdir=@prefix@/modules
-SYMVERS=$(top_builddir)/Module.symvers
-SYMVERSS=$(top_builddir)/Modules.symvers
-
-install-data-local:
-	for symvers in $(SYMVERS) $(SYMVERSS); do \
-		if test -f $$symvers; then \
-			mkdir -p $(DESTDIR)$(modulesdir) && \
-			cp -vf $$symvers \
-			$(DESTDIR)$(modulesdir)/ec_master.symvers; \
-			break; \
-		fi; \
-	done
-
 #------------------------------------------------------------------------------

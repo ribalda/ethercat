@@ -84,9 +84,11 @@ if ENABLE_TTY
 	$(MAKE) -C tty modules_install
 endif
 
+dist_pkgdata_DATA = $(LINUX_SYMVERS)
+
 clean-local:
 	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" clean
-	@rm -f Modules.symvers
+	@rm -f $(LINUX_SYMVERS)
 
 mydist:
 	hg log --style=changelog $(srcdir) > ChangeLog
@@ -100,25 +102,25 @@ dist-hook:
 
 mrproper: clean cleandoc
 	rm -rf \
+		$(LINUX_SYMVERS) \
 		*~ \
+		ChangeLog \
+		Doxyfile \
+		Kbuild \
+		Makefile \
+		Makefile.in \
+		TAGS \
 		aclocal.m4 \
 		autoconf \
 		autom4te.cache \
-		ChangeLog \
 		config.h \
 		config.h.in \
 		config.log \
 		config.status \
 		configure \
 		configure.in \
-		Doxyfile \
-		Kbuild \
 		libtool \
-		Makefile \
-		Makefile.in \
-		Module.symvers \
-		stamp-h1 \
-		TAGS
+		stamp-h1
 
 doc:
 	doxygen Doxyfile

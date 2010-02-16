@@ -40,7 +40,7 @@ ec_tty_example-objs := \
 CFLAGS_tty.o := -I$(src)
 
 KBUILD_EXTRA_SYMBOLS := \
-	@abs_top_builddir@/Module.symvers \
-	@abs_top_builddir@/master/Module.symvers
+	@abs_top_builddir@/$(LINUX_SYMVERS) \
+	@abs_top_builddir@/master/$(LINUX_SYMVERS)
 
 #------------------------------------------------------------------------------
