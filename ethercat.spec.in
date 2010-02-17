@@ -76,7 +76,7 @@ http://etherlab.org/en/ethercat.
 %setup
 
 %build
-%configure --enable-tty --enable-generic \
+%configure --enable-tty --enable-generic --enable-e100 \
     --with-linux-dir=/usr/src/linux-obj/%_target_cpu/default
 make
 mkdir obj
