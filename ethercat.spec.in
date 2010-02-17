@@ -40,6 +40,8 @@ Provides: @PACKAGE@
 Source: %{name}-%{version}.tar.bz2
 BuildRoot: /tmp/%{name}-%{version}
 
+BuildRequires: %kernel_module_package_buildreqs
+
 #----------------------------------------------------------------------------
 # Main Package
 #----------------------------------------------------------------------------
@@ -52,24 +54,7 @@ This is an open-source EtherCAT master implementation for Linux 2.6. See the
 FEATURES file for a list of features. For more information, see
 http://etherlab.org/en/ethercat.
 
-#----------------------------------------------------------------------------
-# Kernel module package
-#----------------------------------------------------------------------------
-
-%package kmp-rt
-
-Summary: Realtime kernel modules for the EtherCAT master.
-Group: EtherLab
-
-Requires: kernel-rt
-
-BuildRequires: kernel-rt-devel
-BuildRequires: linux-kernel-headers
-
-%description kmp-rt
-This is an open-source EtherCAT master implementation for Linux 2.6. See the
-FEATURES file for a list of features. For more information, see
-http://etherlab.org/en/ethercat.
+%kernel_module_package
 
 #----------------------------------------------------------------------------
 # Development package
@@ -91,11 +76,30 @@ http://etherlab.org/en/ethercat.
 %setup
 
 %build
-%configure --enable-tty --enable-generic
-make all modules
+%configure --enable-tty --enable-generic \
+    --with-linux-dir=/usr/src/linux-obj/%_target_cpu/default
+make
+mkdir obj
+for flavor in %flavors_to_build; do
+    target=obj/$flavor
+    rm -rf $target
+    mkdir $target
+    cp -r config.h globals.h Kbuild master/ devices/ \
+        examples/ tty/ include/ $target
+    make -C /usr/src/linux-obj/%_target_cpu/$flavor modules M=$PWD/$target
+done
 
 %install
-make DESTDIR=${RPM_BUILD_ROOT} install modules_install
+for flavor in %flavors_to_build; do
+	md5sum obj/$flavor/Module.symvers
+done
+make DESTDIR=${RPM_BUILD_ROOT} install
+for flavor in %flavors_to_build; do
+    target=obj/$flavor
+    make -C /usr/src/linux-obj/%_target_cpu/$flavor modules_install \
+        M=$PWD/$target INSTALL_MOD_PATH=${RPM_BUILD_ROOT} \
+        INSTALL_MOD_DIR=ethercat
+done
 
 %clean
 rm -rf ${RPM_BUILD_ROOT}
@@ -115,11 +119,6 @@ rm -rf ${RPM_BUILD_ROOT}
 /etc/sysconfig/ethercat
 /usr/bin/ethercat
 /usr/lib/libethercat.so*
-
-%files kmp-rt
-%defattr(-,root,root)
-/lib/modules/*/ethercat/*.ko
-/usr/share/@PACKAGE@/@LINUX_SYMVERS@
 
 %files devel
 %defattr(-,root,root)
