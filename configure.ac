@@ -102,27 +102,6 @@ AC_SUBST(LINUX_MOD_PATH,[/lib/modules/$kernelrelease/ethercat])
 AC_MSG_RESULT([$LINUX_SOURCE_DIR (Kernel $LINUX_KERNEL_RELEASE)])
 
 #------------------------------------------------------------------------------
-# Determine the name of the symbol version file
-#------------------------------------------------------------------------------
-
-AC_MSG_CHECKING([for Linux symbol version file])
-
-symvers=
-for file in Module.symvers Modules.symvers; do
-	if test -f "$LINUX_SOURCE_DIR/$file"; then
-		symvers=$file
-		break
-	fi
-done
-
-AC_SUBST(LINUX_SYMVERS,[$symvers])
-if test -n "$symvers"; then
-	AC_MSG_RESULT([$LINUX_SYMVERS])
-else
-	AC_MSG_RESULT(["(none)"])
-fi
-
-#------------------------------------------------------------------------------
 # Generic Ethernet driver
 #------------------------------------------------------------------------------
 
