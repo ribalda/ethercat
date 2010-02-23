@@ -96,7 +96,7 @@ fi
 linuxversion=`echo $kernelrelease | grep -oE "^[[0-9]]+\.[[0-9]]+\.[[0-9]]+"`
 
 AC_SUBST(LINUX_SOURCE_DIR,[$sourcedir])
-AC_MSG_RESULT([$LINUX_SOURCE_DIR (Kernel $kernelrelease)])
+AC_MSG_RESULT([$LINUX_SOURCE_DIR (Kernel $linuxversion)])
 
 #------------------------------------------------------------------------------
 # Linux module installation subdirectory
@@ -112,7 +112,7 @@ AC_ARG_WITH([module-dir],
 )
 AC_SUBST(INSTALL_MOD_DIR,[$moddir])
 
-AC_MSG_CHECKING([Linux modules installation directory])
+AC_MSG_CHECKING([for Linux modules installation directory])
 AC_MSG_RESULT([$INSTALL_MOD_DIR])
 
 #------------------------------------------------------------------------------
