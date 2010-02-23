@@ -122,10 +122,8 @@ modules:
 	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" modules
 
 modules_install:
-	mkdir -p $(DESTDIR)$(LINUX_MOD_PATH)
-if ENABLE_E1000
-	cp $(srcdir)/ec_e1000.ko $(DESTDIR)$(LINUX_MOD_PATH)
-endif
+	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" \
+		INSTALL_MOD_DIR="$(INSTALL_MOD_DIR)" modules_install
 
 clean-local:
 	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" clean

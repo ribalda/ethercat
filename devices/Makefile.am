@@ -92,22 +92,8 @@ modules:
 	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" modules
 
 modules_install:
-	mkdir -p $(DESTDIR)$(LINUX_MOD_PATH)
-if ENABLE_GENERIC
-	cp $(srcdir)/ec_generic.ko $(DESTDIR)$(LINUX_MOD_PATH)
-endif
-if ENABLE_8139TOO
-	cp $(srcdir)/ec_8139too.ko $(DESTDIR)$(LINUX_MOD_PATH)
-endif
-if ENABLE_E100
-	cp $(srcdir)/ec_e100.ko $(DESTDIR)$(LINUX_MOD_PATH)
-endif
-if ENABLE_E1000
-	$(MAKE) -C e1000 modules_install
-endif
-if ENABLE_R8169
-	cp $(srcdir)/ec_r8169.ko $(DESTDIR)$(LINUX_MOD_PATH)
-endif
+	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" \
+		INSTALL_MOD_DIR="$(INSTALL_MOD_DIR)" modules_install
 
 clean-local:
 	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" clean

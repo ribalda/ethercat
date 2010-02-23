@@ -96,10 +96,24 @@ fi
 linuxversion=`echo $kernelrelease | grep -oE "^[[0-9]]+\.[[0-9]]+\.[[0-9]]+"`
 
 AC_SUBST(LINUX_SOURCE_DIR,[$sourcedir])
-AC_SUBST(LINUX_KERNEL_RELEASE,[$kernelrelease])
-AC_SUBST(LINUX_KERNEL_VERSION,[$linuxversion])
-AC_SUBST(LINUX_MOD_PATH,[/lib/modules/$kernelrelease/ethercat])
-AC_MSG_RESULT([$LINUX_SOURCE_DIR (Kernel $LINUX_KERNEL_RELEASE)])
+AC_MSG_RESULT([$LINUX_SOURCE_DIR (Kernel $kernelrelease)])
+
+#------------------------------------------------------------------------------
+# Linux module installation subdirectory
+#------------------------------------------------------------------------------
+
+AC_ARG_WITH([module-dir],
+    AC_HELP_STRING(
+        [--with-module-dir=<DIR>],
+        [Linux module installation dir. Default: ethercat]
+    ),
+    [moddir=[$withval]],
+    [moddir="ethercat"]
+)
+AC_SUBST(INSTALL_MOD_DIR,[$moddir])
+
+AC_MSG_CHECKING([Linux modules installation directory])
+AC_MSG_RESULT([$INSTALL_MOD_DIR])
 
 #------------------------------------------------------------------------------
 # Generic Ethernet driver

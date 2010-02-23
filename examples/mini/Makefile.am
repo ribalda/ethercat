@@ -42,8 +42,8 @@ modules:
 	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" modules
 
 modules_install:
-	mkdir -p $(DESTDIR)$(LINUX_MOD_PATH)
-	cp $(srcdir)/ec_mini.ko $(DESTDIR)$(LINUX_MOD_PATH)
+	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" \
+		INSTALL_MOD_DIR="$(INSTALL_MOD_DIR)" modules_install
 
 clean-local:
 	$(MAKE) -C "$(LINUX_SOURCE_DIR)" M="@abs_srcdir@" clean
