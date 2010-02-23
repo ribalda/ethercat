@@ -68,6 +68,8 @@ unsigned int ec_pdo_entry_count(const ec_pdo_t *);
 const ec_pdo_entry_t *ec_pdo_find_entry_by_pos_const(
         const ec_pdo_t *, unsigned int);
 
+void ec_pdo_print_entries(const ec_pdo_t *);
+
 /*****************************************************************************/
 
 #endif

@@ -84,6 +84,21 @@ void ec_fsm_pdo_entry_clear(
 
 /*****************************************************************************/
 
+/** Print the current and desired PDO mapping.
+ */
+void ec_fsm_pdo_entry_print(
+        ec_fsm_pdo_entry_t *fsm /**< PDO configuration state machine. */
+        )
+{
+    printk("Currently mapped PDO entries: ");
+    ec_pdo_print_entries(fsm->cur_pdo);
+    printk(". Entries to map: ");
+    ec_pdo_print_entries(fsm->source_pdo);
+    printk("\n");
+}
+
+/*****************************************************************************/
+
 /** Start reading a PDO's entries.
  */
 void ec_fsm_pdo_entry_start_reading(
@@ -107,11 +122,18 @@ void ec_fsm_pdo_entry_start_reading(
 void ec_fsm_pdo_entry_start_configuration(
         ec_fsm_pdo_entry_t *fsm, /**< PDO mapping state machine. */
         ec_slave_t *slave, /**< slave to configure */
-        const ec_pdo_t *pdo /**< PDO with the desired entries. */
+        const ec_pdo_t *pdo, /**< PDO with the desired entries. */
+        const ec_pdo_t *cur_pdo /**< Current PDO mapping. */
         )
 {
     fsm->slave = slave;
     fsm->source_pdo = pdo;
+    fsm->cur_pdo = cur_pdo;
+
+    if (fsm->slave->master->debug_level) {
+        EC_DBG("Changing mapping of PDO 0x%04X.\n", pdo->index);
+        EC_DBG(""); ec_fsm_pdo_entry_print(fsm);
+    }
 
     fsm->state = ec_fsm_pdo_entry_conf_state_start;
 }
@@ -310,6 +332,7 @@ void ec_fsm_pdo_entry_conf_state_start(
                 && !fsm->slave->sii.coe_details.enable_pdo_configuration)) {
         EC_WARN("Slave %u does not support changing the PDO mapping!\n",
                 fsm->slave->ring_position);
+        EC_WARN(""); ec_fsm_pdo_entry_print(fsm);
         fsm->state = ec_fsm_pdo_entry_state_error;
         return;
     }
@@ -361,6 +384,7 @@ void ec_fsm_pdo_entry_conf_state_zero_entry_count(
 
     if (!ec_fsm_coe_success(fsm->fsm_coe)) {
         EC_WARN("Failed to clear PDO mapping.\n");
+        EC_WARN(""); ec_fsm_pdo_entry_print(fsm);
         fsm->state = ec_fsm_pdo_entry_state_error;
         return;
     }
@@ -422,6 +446,7 @@ void ec_fsm_pdo_entry_conf_state_map_entry(
         EC_WARN("Failed to map PDO entry 0x%04X:%02X (%u bit) to "
                 "position %u.\n", fsm->entry->index, fsm->entry->subindex,
                 fsm->entry->bit_length, fsm->entry_pos);
+        EC_WARN(""); ec_fsm_pdo_entry_print(fsm);
         fsm->state = ec_fsm_pdo_entry_state_error;
         return;
     }
@@ -461,7 +486,8 @@ void ec_fsm_pdo_entry_conf_state_set_entry_count(
     if (ec_fsm_coe_exec(fsm->fsm_coe)) return;
 
     if (!ec_fsm_coe_success(fsm->fsm_coe)) {
-        EC_ERR("Failed to set number of entries.\n");
+        EC_WARN("Failed to set number of entries.\n");
+        EC_WARN(""); ec_fsm_pdo_entry_print(fsm);
         fsm->state = ec_fsm_pdo_entry_state_error;
         return;
     }

@@ -58,6 +58,7 @@ struct ec_fsm_pdo_entry
     ec_slave_t *slave; /**< Slave the FSM runs on. */
     ec_pdo_t *target_pdo; /**< PDO to read the mapping for. */
     const ec_pdo_t *source_pdo; /**< PDO with desired mapping. */
+    const ec_pdo_t *cur_pdo; /**< PDO with current mapping (display only). */
     const ec_pdo_entry_t *entry; /**< Current entry. */
     unsigned int entry_count; /**< Number of entries. */
     unsigned int entry_pos; /**< Position in PDO mapping. */
@@ -71,7 +72,7 @@ void ec_fsm_pdo_entry_clear(ec_fsm_pdo_entry_t *);
 void ec_fsm_pdo_entry_start_reading(ec_fsm_pdo_entry_t *, ec_slave_t *,
         ec_pdo_t *);
 void ec_fsm_pdo_entry_start_configuration(ec_fsm_pdo_entry_t *, ec_slave_t *,
-        const ec_pdo_t *);
+        const ec_pdo_t *, const ec_pdo_t *);
 
 int ec_fsm_pdo_entry_exec(ec_fsm_pdo_entry_t *);
 int ec_fsm_pdo_entry_success(const ec_fsm_pdo_entry_t *);

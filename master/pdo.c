@@ -291,3 +291,25 @@ const ec_pdo_entry_t *ec_pdo_find_entry_by_pos_const(
 }
 
 /*****************************************************************************/
+
+/** Outputs the PDOs in the list.
+ */
+void ec_pdo_print_entries(
+        const ec_pdo_t *pdo /**< PDO. */
+        )
+{
+    const ec_pdo_entry_t *entry;
+
+    if (list_empty(&pdo->entries)) {
+        printk("(none)");
+    } else {
+        list_for_each_entry(entry, &pdo->entries, list) {
+            printk("0x%04X:%02X/%u",
+                    entry->index, entry->subindex, entry->bit_length);
+            if (entry->list.next != &pdo->entries)
+                printk(" ");
+        }
+    }
+}
+
+/*****************************************************************************/

@@ -326,10 +326,14 @@ void ec_pdo_list_print(
 {
     const ec_pdo_t *pdo;
 
-    list_for_each_entry(pdo, &pl->list, list) {
-        printk("0x%04X", pdo->index);
-        if (pdo->list.next != &pl->list)
-            printk(" ");
+    if (list_empty(&pl->list)) {
+        printk("(none)");
+    } else {
+        list_for_each_entry(pdo, &pl->list, list) {
+            printk("0x%04X", pdo->index);
+            if (pdo->list.next != &pl->list)
+                printk(" ");
+        }
     }
 }
 
