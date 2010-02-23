@@ -257,8 +257,8 @@ void ec_voe_handler_state_write_response(ec_voe_handler_t *voe)
         voe->state = ec_voe_handler_state_error;
         voe->request_state = EC_INT_REQUEST_FAILURE;
         EC_ERR("Failed to receive VoE write request datagram for"
-               " slave %u (datagram state %u).\n",
-               slave->ring_position, datagram->state);
+               " slave %u: ", slave->ring_position);
+        ec_datagram_print_state(datagram);
         return;
     }
 
@@ -332,9 +332,9 @@ void ec_voe_handler_state_read_check(ec_voe_handler_t *voe)
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         voe->state = ec_voe_handler_state_error;
         voe->request_state = EC_INT_REQUEST_FAILURE;
-        EC_ERR("Failed to receive VoE mailbox check datagram from slave %u"
-                " (datagram state %u).\n",
-               slave->ring_position, datagram->state);
+        EC_ERR("Failed to receive VoE mailbox check datagram from slave %u: ",
+               slave->ring_position);
+        ec_datagram_print_state(datagram);
         return;
     }
 
@@ -388,8 +388,8 @@ void ec_voe_handler_state_read_response(ec_voe_handler_t *voe)
         voe->state = ec_voe_handler_state_error;
         voe->request_state = EC_INT_REQUEST_FAILURE;
         EC_ERR("Failed to receive VoE read datagram for"
-               " slave %u (datagram state %u).\n",
-               slave->ring_position, datagram->state);
+               " slave %u: ", slave->ring_position);
+        ec_datagram_print_state(datagram);
         return;
     }
 
@@ -480,8 +480,8 @@ void ec_voe_handler_state_read_nosync_response(ec_voe_handler_t *voe)
         voe->state = ec_voe_handler_state_error;
         voe->request_state = EC_INT_REQUEST_FAILURE;
         EC_ERR("Failed to receive VoE read datagram for"
-               " slave %u (datagram state %u).\n",
-               slave->ring_position, datagram->state);
+               " slave %u: ", slave->ring_position);
+        ec_datagram_print_state(datagram);
         return;
     }
 

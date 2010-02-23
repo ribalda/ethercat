@@ -419,9 +419,9 @@ void ec_fsm_slave_config_state_dc_read_offset(
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_config_state_error;
-        EC_ERR("Failed to receive DC times datagram for slave %u"
-                " (datagram state %u).\n",
-                slave->ring_position, datagram->state);
+        EC_ERR("Failed to receive DC times datagram for slave %u: ",
+                slave->ring_position);
+        ec_datagram_print_state(datagram);
         return;
     }
 
@@ -468,9 +468,9 @@ void ec_fsm_slave_config_state_dc_write_offset(
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_config_state_error;
-        EC_ERR("Failed to receive DC system time offset datagram for slave %u"
-                " (datagram state %u).\n",
-                slave->ring_position, datagram->state);
+        EC_ERR("Failed to receive DC system time offset datagram for"
+                " slave %u: ", slave->ring_position);
+        ec_datagram_print_state(datagram);
         return;
     }
 
@@ -636,8 +636,8 @@ void ec_fsm_slave_config_state_mbox_sync(
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_config_state_error;
         EC_ERR("Failed to receive sync manager configuration datagram for"
-               " slave %u (datagram state %u).\n",
-               slave->ring_position, datagram->state);
+               " slave %u: ", slave->ring_position);
+        ec_datagram_print_state(datagram);
         return;
     }
 
@@ -895,8 +895,8 @@ void ec_fsm_slave_config_state_watchdog_divider(
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_config_state_error;
         EC_ERR("Failed to receive watchdog divider configuration datagram for"
-               " slave %u (datagram state %u).\n",
-               slave->ring_position, datagram->state);
+               " slave %u: ", slave->ring_position);
+        ec_datagram_print_state(datagram);
         return;
     }
 
@@ -956,8 +956,8 @@ void ec_fsm_slave_config_state_watchdog(
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_config_state_error;
         EC_ERR("Failed to receive sync manager watchdog configuration "
-                "datagram for slave %u (datagram state %u).\n",
-                slave->ring_position, datagram->state);
+                "datagram for slave %u: ", slave->ring_position);
+        ec_datagram_print_state(datagram);
         return;
     }
 
@@ -1043,8 +1043,8 @@ void ec_fsm_slave_config_state_pdo_sync(
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_config_state_error;
         EC_ERR("Failed to receive process data sync manager configuration"
-               " datagram for slave %u (datagram state %u).\n",
-               slave->ring_position, datagram->state);
+               " datagram for slave %u: ", slave->ring_position);
+        ec_datagram_print_state(datagram);
         return;
     }
 
@@ -1130,9 +1130,9 @@ void ec_fsm_slave_config_state_fmmu(
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_config_state_error;
-        EC_ERR("Failed to receive FMMUs datagram for slave %u"
-                " (datagram state %u).\n",
-               slave->ring_position, datagram->state);
+        EC_ERR("Failed to receive FMMUs datagram for slave %u: ",
+               slave->ring_position);
+        ec_datagram_print_state(datagram);
         return;
     }
 
@@ -1214,9 +1214,9 @@ void ec_fsm_slave_config_state_dc_cycle(
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_config_state_error;
-        EC_ERR("Failed to receive DC cycle times datagram for slave %u"
-                " (datagram state %u).\n",
-                slave->ring_position, datagram->state);
+        EC_ERR("Failed to receive DC cycle times datagram for slave %u: ",
+                slave->ring_position);
+        ec_datagram_print_state(datagram);
         return;
     }
 
@@ -1292,9 +1292,9 @@ void ec_fsm_slave_config_state_dc_start(
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_config_state_error;
-        EC_ERR("Failed to receive DC start time datagram for slave %u"
-                " (datagram state %u).\n",
-                slave->ring_position, datagram->state);
+        EC_ERR("Failed to receive DC start time datagram for slave %u: ",
+                slave->ring_position);
+        ec_datagram_print_state(datagram);
         return;
     }
 
@@ -1334,9 +1334,9 @@ void ec_fsm_slave_config_state_dc_assign(
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_config_state_error;
-        EC_ERR("Failed to receive DC activation datagram for slave %u"
-                " (datagram state %u).\n",
-                slave->ring_position, datagram->state);
+        EC_ERR("Failed to receive DC activation datagram for slave %u: ",
+                slave->ring_position);
+        ec_datagram_print_state(datagram);
         return;
     }
 

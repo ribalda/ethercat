@@ -182,9 +182,9 @@ void ec_fsm_change_state_check(ec_fsm_change_t *fsm
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_change_state_error;
-        EC_ERR("Failed to receive state datagram from slave %u"
-                " (datagram state %u)!\n",
-               fsm->slave->ring_position, datagram->state);
+        EC_ERR("Failed to receive state datagram from slave %u: ",
+               fsm->slave->ring_position);
+        ec_datagram_print_state(datagram);
         return;
     }
 
@@ -248,9 +248,9 @@ void ec_fsm_change_state_status(ec_fsm_change_t *fsm
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_change_state_error;
-        EC_ERR("Failed to receive state checking datagram from slave %u"
-                " (datagram state %u).\n",
-               slave->ring_position, datagram->state);
+        EC_ERR("Failed to receive state checking datagram from slave %u: ",
+               slave->ring_position);
+        ec_datagram_print_state(datagram);
         return;
     }
 
@@ -386,9 +386,9 @@ void ec_fsm_change_state_code(ec_fsm_change_t *fsm
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_change_state_error;
-        EC_ERR("Failed to receive AL status code datagram from slave %u"
-                " (datagram state %u).\n",
-               fsm->slave->ring_position, datagram->state);
+        EC_ERR("Failed to receive AL status code datagram from slave %u: ",
+               fsm->slave->ring_position);
+        ec_datagram_print_state(datagram);
         return;
     }
 
@@ -445,9 +445,9 @@ void ec_fsm_change_state_ack(ec_fsm_change_t *fsm /**< finite state machine */)
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_change_state_error;
-        EC_ERR("Failed to receive state ack datagram for slave %u"
-                " (datagram state %u).\n",
-               slave->ring_position, datagram->state);
+        EC_ERR("Failed to receive state ack datagram for slave %u: ",
+               slave->ring_position);
+        ec_datagram_print_state(datagram);
         return;
     }
 
@@ -485,9 +485,9 @@ void ec_fsm_change_state_check_ack(ec_fsm_change_t *fsm
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_change_state_error;
-        EC_ERR("Failed to receive state ack check datagram from slave %u"
-                " (datagram state %u).\n",
-               slave->ring_position, datagram->state);
+        EC_ERR("Failed to receive state ack check datagram from slave %u: ",
+               slave->ring_position);
+        ec_datagram_print_state(datagram);
         return;
     }
 

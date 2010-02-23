@@ -607,9 +607,9 @@ void ec_fsm_master_state_read_state(
         return;
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
-        EC_ERR("Failed to receive AL state datagram for slave %u"
-                " (datagram state %u)\n",
-                slave->ring_position, datagram->state);
+        EC_ERR("Failed to receive AL state datagram for slave %u: ",
+                slave->ring_position);
+        ec_datagram_print_state(datagram);
         ec_fsm_master_restart(fsm);
         return;
     }

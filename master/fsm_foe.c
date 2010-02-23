@@ -333,9 +333,9 @@ void ec_fsm_foe_state_ack_check(
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         ec_foe_set_rx_error(fsm, FOE_RECEIVE_ERROR);
-        EC_ERR("Failed to receive FoE mailbox check datagram for slave %u"
-                " (datagram state %u).\n",
-               slave->ring_position, datagram->state);
+        EC_ERR("Failed to receive FoE mailbox check datagram for slave %u: ",
+               slave->ring_position);
+        ec_datagram_print_state(datagram);
         return;
     }
 
@@ -391,8 +391,8 @@ void ec_fsm_foe_state_ack_read(
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         ec_foe_set_rx_error(fsm, FOE_RECEIVE_ERROR);
         EC_ERR("Failed to receive FoE ack response datagram for"
-               " slave %u (datagram state %u).\n",
-               slave->ring_position, datagram->state);
+               " slave %u: ", slave->ring_position);
+        ec_datagram_print_state(datagram);
         return;
     }
 
@@ -468,9 +468,9 @@ void ec_fsm_foe_state_wrq_sent(
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         ec_foe_set_rx_error(fsm, FOE_RECEIVE_ERROR);
-        EC_ERR("Failed to send FoE WRQ for slave %u"
-                " (datagram state %u).\n",
-                slave->ring_position, datagram->state);
+        EC_ERR("Failed to send FoE WRQ for slave %u: ",
+                slave->ring_position);
+        ec_datagram_print_state(datagram);
         return;
     }
 
@@ -512,8 +512,8 @@ void ec_fsm_foe_state_data_sent(
     if (fsm->datagram->state != EC_DATAGRAM_RECEIVED) {
         ec_foe_set_tx_error(fsm, FOE_RECEIVE_ERROR);
         EC_ERR("Failed to receive FoE ack response datagram for"
-               " slave %u (datagram state %u).\n",
-               slave->ring_position, datagram->state);
+               " slave %u: ", slave->ring_position);
+        ec_datagram_print_state(datagram);
         return;
     }
 
@@ -602,9 +602,9 @@ void ec_fsm_foe_state_rrq_sent(
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         ec_foe_set_rx_error(fsm, FOE_RECEIVE_ERROR);
-        EC_ERR("Failed to send FoE RRQ for slave %u"
-                " (datagram state %u).\n",
-                slave->ring_position, datagram->state);
+        EC_ERR("Failed to send FoE RRQ for slave %u" ": ",
+                slave->ring_position);
+        ec_datagram_print_state(datagram);
         return;
     }
 
@@ -695,9 +695,9 @@ void ec_fsm_foe_state_data_check(
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         ec_foe_set_rx_error(fsm, FOE_RECEIVE_ERROR);
-        EC_ERR("Failed to send FoE DATA READ for slave %u"
-                " (datagram state %u).\n",
-                slave->ring_position, datagram->state);
+        EC_ERR("Failed to send FoE DATA READ for slave %u: ",
+                slave->ring_position);
+        ec_datagram_print_state(datagram);
         return;
     }
 
@@ -753,8 +753,8 @@ void ec_fsm_foe_state_data_read(
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         ec_foe_set_rx_error(fsm, FOE_RECEIVE_ERROR);
         EC_ERR("Failed to receive FoE DATA READ datagram for"
-               " slave %u (datagram state %u).\n",
-               slave->ring_position, datagram->state);
+               " slave %u: ", slave->ring_position);
+        ec_datagram_print_state(datagram);
         return;
     }
 
@@ -874,9 +874,9 @@ void ec_fsm_foe_state_sent_ack(
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         ec_foe_set_rx_error(fsm, FOE_RECEIVE_ERROR);
-        EC_ERR("Failed to send FoE ACK for slave %u"
-                " (datagram state %u).\n",
-                slave->ring_position, datagram->state);
+        EC_ERR("Failed to send FoE ACK for slave %u: ",
+                slave->ring_position);
+        ec_datagram_print_state(datagram);
         return;
     }
 

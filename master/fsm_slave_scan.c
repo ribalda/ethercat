@@ -179,7 +179,9 @@ void ec_fsm_slave_scan_state_start(ec_fsm_slave_scan_t *fsm /**< slave state mac
    Slave scan state: ADDRESS.
 */
 
-void ec_fsm_slave_scan_state_address(ec_fsm_slave_scan_t *fsm /**< slave state machine */)
+void ec_fsm_slave_scan_state_address(
+        ec_fsm_slave_scan_t *fsm /**< slave state machine */
+        )
 {
     ec_datagram_t *datagram = fsm->datagram;
 
@@ -188,9 +190,9 @@ void ec_fsm_slave_scan_state_address(ec_fsm_slave_scan_t *fsm /**< slave state m
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_scan_state_error;
-        EC_ERR("Failed to receive station address datagram for slave %u"
-                " (datagram state %u)\n",
-                fsm->slave->ring_position, datagram->state);
+        EC_ERR("Failed to receive station address datagram for slave %u: ",
+                fsm->slave->ring_position);
+        ec_datagram_print_state(datagram);
         return;
     }
 
@@ -228,9 +230,9 @@ void ec_fsm_slave_scan_state_state(
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_scan_state_error;
-        EC_ERR("Failed to receive AL state datagram from slave %u"
-                " (datagram state %u).\n",
-               fsm->slave->ring_position, datagram->state);
+        EC_ERR("Failed to receive AL state datagram from slave %u: ",
+               fsm->slave->ring_position);
+        ec_datagram_print_state(datagram);
         return;
     }
 
@@ -276,9 +278,9 @@ void ec_fsm_slave_scan_state_base(
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_scan_state_error;
-        EC_ERR("Failed to receive base data datagram for slave %u"
-                " (datagram state %u).\n",
-               slave->ring_position, datagram->state);
+        EC_ERR("Failed to receive base data datagram for slave %u: ",
+               slave->ring_position);
+        ec_datagram_print_state(datagram);
         return;
     }
 
@@ -351,9 +353,9 @@ void ec_fsm_slave_scan_state_dc_cap(
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_scan_state_error;
-        EC_ERR("Failed to receive system time datagram for slave %u"
-                " (datagram state %u).\n",
-               slave->ring_position, datagram->state);
+        EC_ERR("Failed to receive system time datagram for slave %u: ",
+               slave->ring_position);
+        ec_datagram_print_state(datagram);
         return;
     }
 
@@ -403,9 +405,9 @@ void ec_fsm_slave_scan_state_dc_times(
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_scan_state_error;
-        EC_ERR("Failed to receive system time datagram for slave %u"
-                " (datagram state %u).\n",
-               slave->ring_position, datagram->state);
+        EC_ERR("Failed to receive system time datagram for slave %u: ",
+               slave->ring_position);
+        ec_datagram_print_state(datagram);
         return;
     }
 
@@ -463,9 +465,9 @@ void ec_fsm_slave_scan_state_datalink(ec_fsm_slave_scan_t *fsm /**< slave state 
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_scan_state_error;
-        EC_ERR("Failed to receive DL status datagram from slave %u"
-                " (datagram state %u).\n",
-               slave->ring_position, datagram->state);
+        EC_ERR("Failed to receive DL status datagram from slave %u: ",
+               slave->ring_position);
+        ec_datagram_print_state(datagram);
         return;
     }
 
@@ -763,9 +765,9 @@ void ec_fsm_slave_scan_state_regalias(
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_scan_state_error;
-        EC_ERR("Failed to receive get reg alias datagram from slave %u"
-                " (datagram state %u).\n",
-               fsm->slave->ring_position, datagram->state);
+        EC_ERR("Failed to receive get reg alias datagram from slave %u: ",
+               fsm->slave->ring_position);
+        ec_datagram_print_state(datagram);
         return;
     }
 
@@ -860,8 +862,8 @@ void ec_fsm_slave_scan_state_sync(
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_scan_state_error;
         EC_ERR("Failed to receive sync manager configuration datagram"
-                " from slave %u (datagram state %u).\n",
-               slave->ring_position, datagram->state);
+                " from slave %u: ", slave->ring_position);
+        ec_datagram_print_state(datagram);
         return;
     }
 

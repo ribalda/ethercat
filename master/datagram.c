@@ -500,6 +500,43 @@ int ec_datagram_lrw(
 
 /*****************************************************************************/
 
+/** Prints the state of a datagram.
+ *
+ * Outputs a text message.
+ */
+void ec_datagram_print_state(
+        const ec_datagram_t *datagram /**< EtherCAT datagram */
+        )
+{
+    printk("Datagram ");
+    switch (datagram->state) {
+        case EC_DATAGRAM_INIT:
+            printk("initialized");
+            break;
+        case EC_DATAGRAM_QUEUED:
+            printk("queued");
+            break;
+        case EC_DATAGRAM_SENT:
+            printk("sent");
+            break;
+        case EC_DATAGRAM_RECEIVED:
+            printk("received");
+            break;
+        case EC_DATAGRAM_TIMED_OUT:
+            printk("timed out");
+            break;
+        case EC_DATAGRAM_ERROR:
+            printk("error");
+            break;
+        default:
+            printk("???");
+    }
+
+    printk(".\n");
+}
+
+/*****************************************************************************/
+
 /** Evaluates the working counter of a single-cast datagram.
  *
  * Outputs an error message.
