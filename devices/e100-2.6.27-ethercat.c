@@ -2888,8 +2888,10 @@ static int __devinit e100_probe(struct pci_dev *pdev,
 		device_set_wakeup_enable(&pdev->dev, true);
 	}
 
+#ifdef CONFIG_PCI // avoid compiler error on kernels not supporting PCI
 	/* ack any pending wake events, disable PME */
 	pci_pme_active(pdev, false);
+#endif
 
 	// offer device to EtherCAT master module
 	nic->ecdev = ecdev_offer(netdev, e100_ec_poll, THIS_MODULE);
