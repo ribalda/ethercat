@@ -27,6 +27,7 @@ Version 1.5.0:
 * Output warning when send_ext() is called in illegal context.
 * Output hexadecimal values in 'ethercat xml'.
 * Add native drivers from 2.6.24 up to 2.6.31.
+* Reset al_states on link down.
 
 Future issues:
 
