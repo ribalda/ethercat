@@ -110,7 +110,7 @@ void CommandDomains::execute(const StringVector &args)
         m.open(MasterDevice::Read);
         domains = selectedDomains(m);
 
-        if (doIndent) {
+        if (domains.size() && doIndent) {
             cout << "Master" << dec << *mi << endl;
         }
 

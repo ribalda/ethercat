@@ -129,7 +129,7 @@ void CommandPdos::listSlavePdos(
     ec_ioctl_slave_sync_pdo_entry_t entry;
     unsigned int i, j, k;
     
-    if (showHeader)
+    if (showHeader && slave.sync_count)
         cout << "=== Master " << m.getIndex()
             << ", Slave " << slave.position << " ===" << endl;
 

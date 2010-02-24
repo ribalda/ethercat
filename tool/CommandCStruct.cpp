@@ -165,7 +165,7 @@ void CommandCStruct::generateSlaveCStruct(
     }
 
     cout
-        << "/* Slave " << slave.position;
+        << "/* Master " << m.getIndex() << ", Slave " << slave.position;
     if (strlen(slave.order)) {
         cout << ", \"" << slave.order << "\"";
     }

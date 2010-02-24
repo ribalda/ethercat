@@ -75,17 +75,16 @@ void CommandData::execute(const StringVector &args)
         throwInvalidUsageException(err);
     }
 
-    if (getMasterIndices().size() != 1) {
-        stringstream err;
-        err << getName() << " requires to select a single master!";
-        throwInvalidUsageException(err);
-    }
-    MasterDevice m(getMasterIndices().front());
-    m.open(MasterDevice::Read);
-    domains = selectedDomains(m);
+    MasterIndexList::const_iterator mi;
+    for (mi = getMasterIndices().begin();
+            mi != getMasterIndices().end(); mi++) {
+        MasterDevice m(*mi);
+        m.open(MasterDevice::Read);
+        domains = selectedDomains(m);
 
-    for (di = domains.begin(); di != domains.end(); di++) {
-        outputDomainData(m, *di);
+        for (di = domains.begin(); di != domains.end(); di++) {
+            outputDomainData(m, *di);
+        }
     }
 }
 

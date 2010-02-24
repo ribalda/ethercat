@@ -84,14 +84,16 @@ void CommandEoe::execute(const StringVector &args)
         m.open(MasterDevice::Read);
         m.getMaster(&master);
 
-        if (doIndent) {
-            cout << "Master" << dec << *mi << endl;
-        }
+        if (master.eoe_handler_count) {
+            if (doIndent) {
+                cout << "Master" << dec << *mi << endl;
+            }
 
-        cout << indent << "Interface  Slave  State  "
-            << "RxBytes  RxRate  "
-            << "TxBytes  TxRate  TxQueue"
-            << endl;
+            cout << indent << "Interface  Slave  State  "
+                << "RxBytes  RxRate  "
+                << "TxBytes  TxRate  TxQueue"
+                << endl;
+        }
 
         for (i = 0; i < master.eoe_handler_count; i++) {
             stringstream queue;

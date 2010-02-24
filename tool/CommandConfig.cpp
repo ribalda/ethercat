@@ -121,8 +121,8 @@ void CommandConfig::execute(const StringVector &args)
         m.open(MasterDevice::Read);
         configs = selectedConfigs(m);
 
-        if (doIndent) {
-            cout << "Master" << dec << *mi << endl;
+        if (configs.size() && doIndent) {
+            cout << "Master" << dec << m.getIndex() << endl;
         }
 
         if (getVerbosity() == Verbose) {

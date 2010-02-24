@@ -125,10 +125,6 @@ void CommandSlaves::execute(const StringVector &args)
         m.open(MasterDevice::Read);
         slaves = selectedSlaves(m);
 
-        if (doIndent) {
-            cout << "Master" << dec << *mi << endl;
-        }
-
         if (getVerbosity() == Verbose) {
             showSlaves(m, slaves);
         } else {
@@ -211,6 +207,10 @@ void CommandSlaves::listSlaves(
         }
 
         aliasIndex++;
+    }
+
+    if (infoList.size() && doIndent) {
+        cout << "Master" << dec << m.getIndex() << endl;
     }
 
     for (iter = infoList.begin(); iter != infoList.end(); iter++) {

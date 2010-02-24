@@ -28,6 +28,9 @@ Version 1.5.0:
 * Output hexadecimal values in 'ethercat xml'.
 * Add native drivers from 2.6.24 up to 2.6.31.
 * Reset al_states on link down.
+* Implement indent in 'ethercat ma'
+* Add master index to log messages.
+* Implement 0xXXXX:YY format for specifying SDOs.
 
 Future issues:
 
