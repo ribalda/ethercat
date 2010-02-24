@@ -32,6 +32,7 @@
 using namespace std;
 
 #include "CommandDownload.h"
+#include "MasterDevice.h"
 
 /*****************************************************************************/
 
@@ -83,7 +84,7 @@ string CommandDownload::helpString() const
 
 /****************************************************************************/
 
-void CommandDownload::execute(MasterDevice &m, const StringVector &args)
+void CommandDownload::execute(const StringVector &args)
 {
     stringstream strIndex, strSubIndex, strValue, err;
     ec_ioctl_slave_sdo_download_t data;
@@ -115,6 +116,11 @@ void CommandDownload::execute(MasterDevice &m, const StringVector &args)
     }
     data.sdo_entry_subindex = number;
 
+    if (getMasterIndices().size() != 1) {
+        err << getName() << " requires to select a single master!";
+        throwInvalidUsageException(err);
+    }
+    MasterDevice m(getMasterIndices().front());
     m.open(MasterDevice::ReadWrite);
     slaves = selectedSlaves(m);
     if (slaves.size() != 1) {

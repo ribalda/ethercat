@@ -41,7 +41,7 @@ class CommandSdos:
         CommandSdos();
 
         string helpString() const;
-        void execute(MasterDevice &, const StringVector &);
+        void execute(const StringVector &);
 
     protected:
         void listSlaveSdos(MasterDevice &, const ec_ioctl_slave_t &, bool);

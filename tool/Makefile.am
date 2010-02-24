@@ -38,8 +38,8 @@ bin_PROGRAMS = ethercat
 ethercat_SOURCES = \
 	Command.cpp \
 	CommandAlias.cpp \
-	CommandConfig.cpp \
 	CommandCStruct.cpp \
+	CommandConfig.cpp \
 	CommandData.cpp \
 	CommandDebug.cpp \
 	CommandDomains.cpp \
@@ -62,6 +62,7 @@ ethercat_SOURCES = \
 	CommandXml.cpp \
 	FoeCommand.cpp \
 	MasterDevice.cpp \
+	NumberListParser.cpp \
 	SdoCommand.cpp \
 	main.cpp \
 	sii_crc.cpp
@@ -75,8 +76,8 @@ endif
 noinst_HEADERS = \
 	Command.h \
 	CommandAlias.h \
-	CommandConfig.h \
 	CommandCStruct.h \
+	CommandConfig.h \
 	CommandData.h \
 	CommandDebug.h \
 	CommandDomains.h \
@@ -99,6 +100,7 @@ noinst_HEADERS = \
 	CommandXml.h \
 	FoeCommand.h \
 	MasterDevice.h \
+	NumberListParser.h \
 	SdoCommand.h \
 	sii_crc.h
 

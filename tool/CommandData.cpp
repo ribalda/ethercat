@@ -31,6 +31,7 @@
 using namespace std;
 
 #include "CommandData.h"
+#include "MasterDevice.h"
 
 /*****************************************************************************/
 
@@ -63,7 +64,7 @@ string CommandData::helpString() const
 
 /****************************************************************************/
 
-void CommandData::execute(MasterDevice &m, const StringVector &args)
+void CommandData::execute(const StringVector &args)
 {
     DomainList domains;
     DomainList::const_iterator di;
@@ -74,6 +75,12 @@ void CommandData::execute(MasterDevice &m, const StringVector &args)
         throwInvalidUsageException(err);
     }
 
+    if (getMasterIndices().size() != 1) {
+        stringstream err;
+        err << getName() << " requires to select a single master!";
+        throwInvalidUsageException(err);
+    }
+    MasterDevice m(getMasterIndices().front());
     m.open(MasterDevice::Read);
     domains = selectedDomains(m);
 

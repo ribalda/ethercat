@@ -34,6 +34,7 @@
 using namespace std;
 
 #include "CommandSlaves.h"
+#include "MasterDevice.h"
 
 /*****************************************************************************/
 
@@ -105,9 +106,10 @@ string CommandSlaves::helpString() const
 
 /****************************************************************************/
 
-void CommandSlaves::execute(MasterDevice &m, const StringVector &args)
+void CommandSlaves::execute(const StringVector &args)
 {
     SlaveList slaves;
+    bool doIndent;
     
     if (args.size()) {
         stringstream err;
@@ -115,13 +117,23 @@ void CommandSlaves::execute(MasterDevice &m, const StringVector &args)
         throwInvalidUsageException(err);
     }
 
-    m.open(MasterDevice::Read);
-    slaves = selectedSlaves(m);
+    doIndent = getMasterIndices().size() > 1;
+    MasterIndexList::const_iterator mi;
+    for (mi = getMasterIndices().begin();
+            mi != getMasterIndices().end(); mi++) {
+        MasterDevice m(*mi);
+        m.open(MasterDevice::Read);
+        slaves = selectedSlaves(m);
 
-    if (getVerbosity() == Verbose) {
-        showSlaves(m, slaves);
-    } else {
-        listSlaves(m, slaves);
+        if (doIndent) {
+            cout << "Master" << dec << *mi << endl;
+        }
+
+        if (getVerbosity() == Verbose) {
+            showSlaves(m, slaves);
+        } else {
+            listSlaves(m, slaves, doIndent);
+        }
     }
 }
 
@@ -129,7 +141,8 @@ void CommandSlaves::execute(MasterDevice &m, const StringVector &args)
 
 void CommandSlaves::listSlaves(
         MasterDevice &m,
-        const SlaveList &slaves
+        const SlaveList &slaves,
+        bool doIndent
         )
 {
     ec_ioctl_master_t master;
@@ -143,6 +156,7 @@ void CommandSlaves::listSlaves(
     stringstream str;
     unsigned int maxPosWidth = 0, maxAliasWidth = 0,
                  maxRelPosWidth = 0, maxStateWidth = 0;
+    string indent(doIndent ? "  " : "");
     
     m.getMaster(&master);
 
@@ -200,7 +214,7 @@ void CommandSlaves::listSlaves(
     }
 
     for (iter = infoList.begin(); iter != infoList.end(); iter++) {
-        cout << setfill(' ') << right
+        cout << indent << setfill(' ') << right
             << setw(maxPosWidth) << iter->pos << "  "
             << setw(maxAliasWidth) << iter->alias
             << ":" << left
@@ -222,7 +236,8 @@ void CommandSlaves::showSlaves(
     int i;
 
     for (si = slaves.begin(); si != slaves.end(); si++) {
-        cout << "=== Slave " << dec << si->position << " ===" << endl;
+        cout << "=== Master " << dec << m.getIndex()
+            << ", Slave " << dec << si->position << " ===" << endl;
 
         if (si->alias)
             cout << "Alias: " << si->alias << endl;

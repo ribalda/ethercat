@@ -34,6 +34,7 @@ using namespace std;
 
 #include "CommandRegWrite.h"
 #include "sii_crc.h"
+#include "MasterDevice.h"
 
 /*****************************************************************************/
 
@@ -80,7 +81,7 @@ string CommandRegWrite::helpString() const
 
 /****************************************************************************/
 
-void CommandRegWrite::execute(MasterDevice &m, const StringVector &args)
+void CommandRegWrite::execute(const StringVector &args)
 {
     stringstream strOffset, err;
     ec_ioctl_slave_reg_t data;
@@ -100,6 +101,12 @@ void CommandRegWrite::execute(MasterDevice &m, const StringVector &args)
         err << "Invalid offset '" << args[0] << "'!";
         throwInvalidUsageException(err);
     }
+  
+    if (getMasterIndices().size() != 1) {
+        err << getName() << " requires to select a single master!";
+        throwInvalidUsageException(err);
+    }
+    MasterDevice m(getMasterIndices().front());
 
     if (getDataType().empty()) {
         if (args[1] == "-") {

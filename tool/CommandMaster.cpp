@@ -32,6 +32,7 @@
 using namespace std;
 
 #include "CommandMaster.h"
+#include "MasterDevice.h"
 
 #define MAX_TIME_STR_SIZE 50
 
@@ -53,7 +54,9 @@ string CommandMaster::helpString() const
         << getBriefDescription() << endl
         << endl
         << "Command-specific options:" << endl
-        << "  --master -m <index>  Index of the master to use. Default: 0."
+        << "  --master -m <indices>  Master indices. A comma-separated" << endl
+        << "                         list with ranges is supported." << endl
+        << "                         Example: 1,4,5,7-9. Default: - (all)."
         << endl << endl
         << numericInfo();
 
@@ -62,7 +65,7 @@ string CommandMaster::helpString() const
 
 /****************************************************************************/
 
-void CommandMaster::execute(MasterDevice &m, const StringVector &args)
+void CommandMaster::execute(const StringVector &args)
 {
     ec_ioctl_master_t data;
     stringstream err;
@@ -76,67 +79,79 @@ void CommandMaster::execute(MasterDevice &m, const StringVector &args)
         throwInvalidUsageException(err);
     }
 
-    m.open(MasterDevice::Read);
-    m.getMaster(&data);
+    MasterIndexList::const_iterator mi;
+    for (mi = getMasterIndices().begin();
+            mi != getMasterIndices().end(); mi++) {
+        MasterDevice m(*mi);
+        m.open(MasterDevice::Read);
+        m.getMaster(&data);
 
-    cout
-        << "Master" << m.getIndex() << endl
-        << "  Phase: ";
+        cout
+            << "Master" << m.getIndex() << endl
+            << "  Phase: ";
 
-    switch (data.phase) {
-        case 0:  cout << "Waiting for device..."; break;
-        case 1:  cout << "Idle"; break;
-        case 2:  cout << "Operation"; break;
-        default: cout << "???";
-    }
-
-    cout << endl
-        << "  Active: " << (data.active ? "yes" : "no") << endl
-        << "  Slaves: " << data.slave_count << endl
-        << "  Ethernet devices:" << endl;
-
-    for (i = 0; i < 2; i++) {
-        cout << "    " << (i == 0 ? "Main" : "Backup") << ": ";
-        if (data.devices[i].address[0] == 0x00
-                && data.devices[i].address[1] == 0x00
-                && data.devices[i].address[2] == 0x00
-                && data.devices[i].address[3] == 0x00
-                && data.devices[i].address[4] == 0x00
-                && data.devices[i].address[5] == 0x00) {
-            cout << "None.";
-        } else {
-            cout << hex << setfill('0')
-                << setw(2) << (unsigned int) data.devices[i].address[0] << ":"
-                << setw(2) << (unsigned int) data.devices[i].address[1] << ":"
-                << setw(2) << (unsigned int) data.devices[i].address[2] << ":"
-                << setw(2) << (unsigned int) data.devices[i].address[3] << ":"
-                << setw(2) << (unsigned int) data.devices[i].address[4] << ":"
-                << setw(2) << (unsigned int) data.devices[i].address[5] << " ("
-                << (data.devices[i].attached ? "attached" : "waiting...")
-                << ")" << endl << dec
-                << "      Link: " << (data.devices[i].link_state ? "UP" : "DOWN") << endl
-                << "      Tx count: " << data.devices[i].tx_count << endl
-                << "      Rx count: " << data.devices[i].rx_count;
+        switch (data.phase) {
+            case 0:  cout << "Waiting for device..."; break;
+            case 1:  cout << "Idle"; break;
+            case 2:  cout << "Operation"; break;
+            default: cout << "???";
         }
-        cout << endl;
-    }
 
-    cout << "  Distributed clocks:" << endl
-        << "    Reference clock: ";
-    if (data.ref_clock != 0xffff) {
-        cout << "Slave " << dec << data.ref_clock;
-    } else {
-        cout << "None";
-    }
-    cout << endl
-        << "    Application time: " << data.app_time << endl
-        << "                      ";
+        cout << endl
+            << "  Active: " << (data.active ? "yes" : "no") << endl
+            << "  Slaves: " << data.slave_count << endl
+            << "  Ethernet devices:" << endl;
 
-    epoch = data.app_time / 1000000000 + 946684800ULL;
-    time_str_size = strftime(time_str, MAX_TIME_STR_SIZE,
-            "%Y-%m-%d %H:%M:%S", gmtime(&epoch));
-    cout << string(time_str, time_str_size) << "."
-        << setfill('0') << setw(9) << data.app_time % 1000000000 << endl;
+        for (i = 0; i < 2; i++) {
+            cout << "    " << (i == 0 ? "Main" : "Backup") << ": ";
+            if (data.devices[i].address[0] == 0x00
+                    && data.devices[i].address[1] == 0x00
+                    && data.devices[i].address[2] == 0x00
+                    && data.devices[i].address[3] == 0x00
+                    && data.devices[i].address[4] == 0x00
+                    && data.devices[i].address[5] == 0x00) {
+                cout << "None.";
+            } else {
+                cout << hex << setfill('0')
+                    << setw(2) << (unsigned int) data.devices[i].address[0]
+                    << ":"
+                    << setw(2) << (unsigned int) data.devices[i].address[1]
+                    << ":"
+                    << setw(2) << (unsigned int) data.devices[i].address[2]
+                    << ":"
+                    << setw(2) << (unsigned int) data.devices[i].address[3]
+                    << ":"
+                    << setw(2) << (unsigned int) data.devices[i].address[4]
+                    << ":"
+                    << setw(2) << (unsigned int) data.devices[i].address[5]
+                    << " ("
+                    << (data.devices[i].attached ? "attached" : "waiting...")
+                    << ")" << endl << dec
+                    << "      Link: "
+                    << (data.devices[i].link_state ? "UP" : "DOWN") << endl
+                    << "      Tx count: " << data.devices[i].tx_count << endl
+                    << "      Rx count: " << data.devices[i].rx_count;
+            }
+            cout << endl;
+        }
+
+        cout << "  Distributed clocks:" << endl
+            << "    Reference clock: ";
+        if (data.ref_clock != 0xffff) {
+            cout << "Slave " << dec << data.ref_clock;
+        } else {
+            cout << "None";
+        }
+        cout << endl
+            << "    Application time: " << data.app_time << endl
+            << "                      ";
+
+        epoch = data.app_time / 1000000000 + 946684800ULL;
+        time_str_size = strftime(time_str, MAX_TIME_STR_SIZE,
+                "%Y-%m-%d %H:%M:%S", gmtime(&epoch));
+        cout << string(time_str, time_str_size) << "."
+            << setfill('0') << setw(9) << data.app_time % 1000000000 << endl;
+    }
 }
 
 /*****************************************************************************/

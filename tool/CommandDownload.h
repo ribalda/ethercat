@@ -41,7 +41,7 @@ class CommandDownload:
         CommandDownload();
 
         string helpString() const;
-        void execute(MasterDevice &, const StringVector &);
+        void execute(const StringVector &);
 
     protected:
         enum {DefaultBufferSize = 1024};

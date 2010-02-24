@@ -32,6 +32,7 @@
 using namespace std;
 
 #include "CommandUpload.h"
+#include "MasterDevice.h"
 
 /*****************************************************************************/
 
@@ -81,7 +82,7 @@ string CommandUpload::helpString() const
 
 /****************************************************************************/
 
-void CommandUpload::execute(MasterDevice &m, const StringVector &args)
+void CommandUpload::execute(const StringVector &args)
 {
     SlaveList slaves;
     stringstream err, strIndex, strSubIndex;
@@ -113,6 +114,11 @@ void CommandUpload::execute(MasterDevice &m, const StringVector &args)
     }
     data.sdo_entry_subindex = uval;
 
+    if (getMasterIndices().size() != 1) {
+        err << getName() << " requires to select a single master!";
+        throwInvalidUsageException(err);
+    }
+    MasterDevice m(getMasterIndices().front());
     m.open(MasterDevice::Read);
     slaves = selectedSlaves(m);
     if (slaves.size() != 1) {

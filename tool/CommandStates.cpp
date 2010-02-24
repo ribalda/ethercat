@@ -32,6 +32,7 @@
 using namespace std;
 
 #include "CommandStates.h"
+#include "MasterDevice.h"
 
 /*****************************************************************************/
 
@@ -65,7 +66,7 @@ string CommandStates::helpString() const
 
 /****************************************************************************/
 
-void CommandStates::execute(MasterDevice &m, const StringVector &args)
+void CommandStates::execute(const StringVector &args)
 {
     SlaveList slaves;
     SlaveList::const_iterator si;
@@ -97,15 +98,16 @@ void CommandStates::execute(MasterDevice &m, const StringVector &args)
         throwInvalidUsageException(err);
     }
 
-    m.open(MasterDevice::ReadWrite);
-    slaves = selectedSlaves(m);
+    MasterIndexList::const_iterator mi;
+    for (mi = getMasterIndices().begin();
+            mi != getMasterIndices().end(); mi++) {
+        MasterDevice m(*mi);
+        m.open(MasterDevice::ReadWrite);
+        slaves = selectedSlaves(m);
 
-    if (!slaves.size() && getVerbosity() != Quiet) {
-        cerr << "Warning: Selection matches no slaves!" << endl;
-    }
-
-    for (si = slaves.begin(); si != slaves.end(); si++) {
-        m.requestState(si->position, state);
+        for (si = slaves.begin(); si != slaves.end(); si++) {
+            m.requestState(si->position, state);
+        }
     }
 }
 

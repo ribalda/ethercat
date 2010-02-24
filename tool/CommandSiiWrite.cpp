@@ -34,6 +34,7 @@ using namespace std;
 
 #include "CommandSiiWrite.h"
 #include "sii_crc.h"
+#include "MasterDevice.h"
 
 /*****************************************************************************/
 
@@ -75,7 +76,7 @@ string CommandSiiWrite::helpString() const
 
 /****************************************************************************/
 
-void CommandSiiWrite::execute(MasterDevice &m, const StringVector &args)
+void CommandSiiWrite::execute(const StringVector &args)
 {
     stringstream err;
     ec_ioctl_slave_sii_t data;
@@ -86,6 +87,12 @@ void CommandSiiWrite::execute(MasterDevice &m, const StringVector &args)
         err << "'" << getName() << "' takes exactly one argument!";
         throwInvalidUsageException(err);
     }
+
+    if (getMasterIndices().size() != 1) {
+        err << getName() << " requires to select a single master!";
+        throwInvalidUsageException(err);
+    }
+    MasterDevice m(getMasterIndices().front());
 
     if (args[0] == "-") {
         loadSiiData(&data, cin);

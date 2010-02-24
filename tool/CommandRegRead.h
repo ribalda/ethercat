@@ -41,7 +41,7 @@ class CommandRegRead:
         CommandRegRead();
 
         string helpString() const;
-        void execute(MasterDevice &, const StringVector &);
+        void execute(const StringVector &);
 };
 
 /****************************************************************************/

@@ -32,6 +32,7 @@
 using namespace std;
 
 #include "CommandDebug.h"
+#include "MasterDevice.h"
 
 /*****************************************************************************/
 
@@ -65,7 +66,7 @@ string CommandDebug::helpString() const
 
 /****************************************************************************/
 
-void CommandDebug::execute(MasterDevice &m, const StringVector &args)
+void CommandDebug::execute(const StringVector &args)
 {
     stringstream str;
     int debugLevel;
@@ -86,8 +87,13 @@ void CommandDebug::execute(MasterDevice &m, const StringVector &args)
         throwInvalidUsageException(err);
     }
 
-    m.open(MasterDevice::ReadWrite);
-    m.setDebug(debugLevel);
+    MasterIndexList::const_iterator mi;
+    for (mi = getMasterIndices().begin();
+            mi != getMasterIndices().end(); mi++) {
+        MasterDevice m(*mi);
+        m.open(MasterDevice::ReadWrite);
+        m.setDebug(debugLevel);
+    }
 }
 
 /*****************************************************************************/

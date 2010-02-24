@@ -65,6 +65,8 @@ Changes since 1.4.0:
 * Significantly improved EoE bandwidth by running EoE processing in a kthread.
 * Switched version control from Subversion to Mercurial.
 * Implemented CompleteAccess for SDO downloads.
+* ethercat tool is now able to handle multiple masters. The --masters option
+  supports ranges like '0,3,8-10'.
 
 Changes in 1.4.0:
 

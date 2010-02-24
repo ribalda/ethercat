@@ -33,6 +33,7 @@
 using namespace std;
 
 #include "CommandXml.h"
+#include "MasterDevice.h"
 
 /*****************************************************************************/
 
@@ -68,7 +69,7 @@ string CommandXml::helpString() const
 
 /****************************************************************************/
 
-void CommandXml::execute(MasterDevice &m, const StringVector &args)
+void CommandXml::execute(const StringVector &args)
 {
     SlaveList slaves;
     SlaveList::const_iterator si;
@@ -79,6 +80,12 @@ void CommandXml::execute(MasterDevice &m, const StringVector &args)
         throwInvalidUsageException(err);
     }
 
+    if (getMasterIndices().size() != 1) {
+        stringstream err;
+        err << getName() << " requires to select a single master!";
+        throwInvalidUsageException(err);
+    }
+    MasterDevice m(getMasterIndices().front());
     m.open(MasterDevice::Read);
     slaves = selectedSlaves(m);
 

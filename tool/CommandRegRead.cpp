@@ -32,6 +32,7 @@
 using namespace std;
 
 #include "CommandRegRead.h"
+#include "MasterDevice.h"
 
 /*****************************************************************************/
 
@@ -78,7 +79,7 @@ string CommandRegRead::helpString() const
 
 /****************************************************************************/
 
-void CommandRegRead::execute(MasterDevice &m, const StringVector &args)
+void CommandRegRead::execute(const StringVector &args)
 {
     SlaveList slaves;
     ec_ioctl_slave_reg_t data;
@@ -141,6 +142,11 @@ void CommandRegRead::execute(MasterDevice &m, const StringVector &args)
         throwInvalidUsageException(err);
     }
     
+    if (getMasterIndices().size() != 1) {
+        err << getName() << " requires to select a single master!";
+        throwInvalidUsageException(err);
+    }
+    MasterDevice m(getMasterIndices().front());
     m.open(MasterDevice::Read);
     slaves = selectedSlaves(m);
 

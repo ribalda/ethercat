@@ -71,7 +71,8 @@ ec_master_t *ecrt_request_master(unsigned int master_index)
 ec_master_t *ecrt_open_master(unsigned int master_index)
 {
     char path[MAX_PATH_LEN];
-    ec_master_t *master;
+    ec_master_t *master = NULL;
+    ec_ioctl_module_t module_data;
 
     master = malloc(sizeof(ec_master_t));
     if (!master) {
@@ -87,11 +88,30 @@ ec_master_t *ecrt_open_master(unsigned int master_index)
     master->fd = open(path, O_RDWR);
     if (master->fd == -1) {
         fprintf(stderr, "Failed to open %s: %s\n", path, strerror(errno));
-        free(master);
-        return 0;
+        goto out_free;
+    }
+
+    if (ioctl(master->fd, EC_IOCTL_MODULE, &module_data) < 0) {
+        fprintf(stderr, "Failed to get module information from %s: %s\n",
+                path, strerror(errno));
+        goto out_close;
+    }
+
+    if (module_data.ioctl_version_magic != EC_IOCTL_VERSION_MAGIC) {
+        fprintf(stderr, "ioctl() version magic is differing:"
+                " %s: %u, libethercat: %u.\n",
+                path, module_data.ioctl_version_magic,
+                EC_IOCTL_VERSION_MAGIC);
+        goto out_close;
     }
 
     return master;
+
+out_close:
+    close(master->fd);
+out_free:
+    free(master);
+    return 0;
 }
 
 /*****************************************************************************/

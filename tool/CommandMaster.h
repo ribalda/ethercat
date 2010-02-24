@@ -41,7 +41,7 @@ class CommandMaster:
         CommandMaster();
 
         string helpString() const;
-        void execute(MasterDevice &, const StringVector &);
+        void execute(const StringVector &);
 };
 
 /****************************************************************************/

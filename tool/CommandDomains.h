@@ -41,10 +41,10 @@ class CommandDomains:
         CommandDomains();
 
         string helpString() const;
-        void execute(MasterDevice &, const StringVector &);
+        void execute(const StringVector &);
 
     protected:
-        void showDomain(MasterDevice &, const ec_ioctl_domain_t &);
+        void showDomain(MasterDevice &, const ec_ioctl_domain_t &, bool);
 };
 
 /****************************************************************************/

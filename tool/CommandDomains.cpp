@@ -32,6 +32,7 @@
 using namespace std;
 
 #include "CommandDomains.h"
+#include "MasterDevice.h"
 
 /*****************************************************************************/
 
@@ -89,10 +90,11 @@ string CommandDomains::helpString() const
 
 /****************************************************************************/
 
-void CommandDomains::execute(MasterDevice &m, const StringVector &args)
+void CommandDomains::execute(const StringVector &args)
 {
     DomainList domains;
     DomainList::const_iterator di;
+    bool doIndent;
 
     if (args.size()) {
         stringstream err;
@@ -100,11 +102,21 @@ void CommandDomains::execute(MasterDevice &m, const StringVector &args)
         throwInvalidUsageException(err);
     }
 
-    m.open(MasterDevice::Read);
-    domains = selectedDomains(m);
+    doIndent = getMasterIndices().size() > 1;
+    MasterIndexList::const_iterator mi;
+    for (mi = getMasterIndices().begin();
+            mi != getMasterIndices().end(); mi++) {
+        MasterDevice m(*mi);
+        m.open(MasterDevice::Read);
+        domains = selectedDomains(m);
 
-    for (di = domains.begin(); di != domains.end(); di++) {
-        showDomain(m, *di);
+        if (doIndent) {
+            cout << "Master" << dec << *mi << endl;
+        }
+
+        for (di = domains.begin(); di != domains.end(); di++) {
+            showDomain(m, *di, doIndent);
+        }
     }
 }
 
@@ -112,7 +124,8 @@ void CommandDomains::execute(MasterDevice &m, const StringVector &args)
 
 void CommandDomains::showDomain(
         MasterDevice &m,
-        const ec_ioctl_domain_t &domain
+        const ec_ioctl_domain_t &domain,
+        bool doIndent
         )
 {
     unsigned char *processData;
@@ -120,8 +133,9 @@ void CommandDomains::showDomain(
     unsigned int i, j;
     ec_ioctl_domain_fmmu_t fmmu;
     unsigned int dataOffset;
+    string indent(doIndent ? "  " : "");
 
-    cout << "Domain" << dec << domain.index << ":"
+    cout << indent << "Domain" << dec << domain.index << ":"
         << " LogBaseAddr 0x"
         << hex << setfill('0')
         << setw(8) << domain.logical_base_address
@@ -146,7 +160,7 @@ void CommandDomains::showDomain(
     for (i = 0; i < domain.fmmu_count; i++) {
         m.getFmmu(&fmmu, domain.index, i);
 
-        cout << "  SlaveConfig "
+        cout << indent << "  SlaveConfig "
             << dec << fmmu.slave_config_alias
             << ":" << fmmu.slave_config_position
             << ", SM" << (unsigned int) fmmu.sync_index << " ("
@@ -165,10 +179,10 @@ void CommandDomains::showDomain(
             throwCommandException(err);
         }
 
-        cout << "    " << hex << setfill('0');
+        cout << indent << "    " << hex << setfill('0');
         for (j = 0; j < fmmu.data_size; j++) {
             if (j && !(j % BreakAfterBytes))
-                cout << endl << "    ";
+                cout << endl << indent << "    ";
             cout << "0x" << setw(2)
                 << (unsigned int) *(processData + dataOffset + j) << " ";
         }

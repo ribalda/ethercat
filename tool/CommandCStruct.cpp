@@ -33,6 +33,7 @@
 using namespace std;
 
 #include "CommandCStruct.h"
+#include "MasterDevice.h"
 
 /*****************************************************************************/
 
@@ -67,7 +68,7 @@ string CommandCStruct::helpString() const
 
 /****************************************************************************/
 
-void CommandCStruct::execute(MasterDevice &m, const StringVector &args)
+void CommandCStruct::execute(const StringVector &args)
 {
     SlaveList slaves;
     SlaveList::const_iterator si;
@@ -78,11 +79,16 @@ void CommandCStruct::execute(MasterDevice &m, const StringVector &args)
         throwInvalidUsageException(err);
     }
 
-    m.open(MasterDevice::Read);
-    slaves = selectedSlaves(m);
+    MasterIndexList::const_iterator mi;
+    for (mi = getMasterIndices().begin();
+            mi != getMasterIndices().end(); mi++) {
+        MasterDevice m(*mi);
+        m.open(MasterDevice::Read);
+        slaves = selectedSlaves(m);
 
-    for (si = slaves.begin(); si != slaves.end(); si++) {
-        generateSlaveCStruct(m, *si);
+        for (si = slaves.begin(); si != slaves.end(); si++) {
+            generateSlaveCStruct(m, *si);
+        }
     }
 }
 

@@ -41,7 +41,7 @@ class CommandAlias:
         CommandAlias();
 
         string helpString() const;
-        void execute(MasterDevice &, const StringVector &);
+        void execute(const StringVector &);
 
     protected:
         void writeSlaveAlias(MasterDevice &, const ec_ioctl_slave_t &,

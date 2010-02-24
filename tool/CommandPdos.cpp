@@ -32,6 +32,7 @@
 using namespace std;
 
 #include "CommandPdos.h"
+#include "MasterDevice.h"
 
 /*****************************************************************************/
 
@@ -88,11 +89,11 @@ string CommandPdos::helpString() const
 
 /****************************************************************************/
 
-void CommandPdos::execute(MasterDevice &m, const StringVector &args)
+void CommandPdos::execute(const StringVector &args)
 {
     SlaveList slaves;
     SlaveList::const_iterator si;
-    bool showHeader;
+    bool showHeader, multiMaster;
     
     if (args.size()) {
         stringstream err;
@@ -100,12 +101,18 @@ void CommandPdos::execute(MasterDevice &m, const StringVector &args)
         throwInvalidUsageException(err);
     }
 
-    m.open(MasterDevice::Read);
-    slaves = selectedSlaves(m);
-    showHeader = slaves.size() > 1;
+    multiMaster = getMasterIndices().size() > 1;
+    MasterIndexList::const_iterator mi;
+    for (mi = getMasterIndices().begin();
+            mi != getMasterIndices().end(); mi++) {
+        MasterDevice m(*mi);
+        m.open(MasterDevice::Read);
+        slaves = selectedSlaves(m);
+        showHeader = multiMaster || slaves.size() > 1;
 
-    for (si = slaves.begin(); si != slaves.end(); si++) {
-        listSlavePdos(m, *si, showHeader);
+        for (si = slaves.begin(); si != slaves.end(); si++) {
+            listSlavePdos(m, *si, showHeader);
+        }
     }
 }
 
@@ -123,7 +130,8 @@ void CommandPdos::listSlavePdos(
     unsigned int i, j, k;
     
     if (showHeader)
-        cout << "=== Slave " << slave.position << " ===" << endl;
+        cout << "=== Master " << m.getIndex()
+            << ", Slave " << slave.position << " ===" << endl;
 
     for (i = 0; i < slave.sync_count; i++) {
         m.getSync(&sync, slave.position, i);

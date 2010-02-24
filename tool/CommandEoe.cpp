@@ -34,6 +34,7 @@
 using namespace std;
 
 #include "CommandEoe.h"
+#include "MasterDevice.h"
 
 /*****************************************************************************/
 
@@ -60,11 +61,13 @@ string CommandEoe::helpString() const
 
 /****************************************************************************/
 
-void CommandEoe::execute(MasterDevice &m, const StringVector &args)
+void CommandEoe::execute(const StringVector &args)
 {
     ec_ioctl_master_t master;
     unsigned int i;
     ec_ioctl_eoe_handler_t eoe;
+    bool doIndent;
+    string indent;
     
     if (args.size()) {
         stringstream err;
@@ -72,31 +75,42 @@ void CommandEoe::execute(MasterDevice &m, const StringVector &args)
         throwInvalidUsageException(err);
     }
 
-    m.open(MasterDevice::Read);
-    m.getMaster(&master);
+    doIndent = getMasterIndices().size();
+    indent = doIndent ? "  " : "";
+    MasterIndexList::const_iterator mi;
+    for (mi = getMasterIndices().begin();
+            mi != getMasterIndices().end(); mi++) {
+        MasterDevice m(*mi);
+        m.open(MasterDevice::Read);
+        m.getMaster(&master);
 
-    cout << "Interface  Slave  State  "
-        << "RxBytes  RxRate  "
-        << "TxBytes  TxRate  TxQueue"
-        << endl;
+        if (doIndent) {
+            cout << "Master" << dec << *mi << endl;
+        }
 
-    for (i = 0; i < master.eoe_handler_count; i++) {
-        stringstream queue;
-
-        m.getEoeHandler(&eoe, i);
-
-        queue << eoe.tx_queued_frames << "/" << eoe.tx_queue_size;
-
-        cout 
-            << setw(9) << eoe.name << "  "
-            << setw(5) << dec << eoe.slave_position << "  "
-            << setw(5) << (eoe.open ? "up" : "down") << "  "
-            << setw(7) << eoe.rx_bytes << "  "
-            << setw(6) << eoe.rx_rate << "  "
-            << setw(7) << eoe.tx_bytes << "  "
-            << setw(6) << eoe.tx_rate << "  "
-            << setw(7) << queue.str()
+        cout << indent << "Interface  Slave  State  "
+            << "RxBytes  RxRate  "
+            << "TxBytes  TxRate  TxQueue"
             << endl;
+
+        for (i = 0; i < master.eoe_handler_count; i++) {
+            stringstream queue;
+
+            m.getEoeHandler(&eoe, i);
+
+            queue << eoe.tx_queued_frames << "/" << eoe.tx_queue_size;
+
+            cout << indent
+                << setw(9) << eoe.name << "  "
+                << setw(5) << dec << eoe.slave_position << "  "
+                << setw(5) << (eoe.open ? "up" : "down") << "  "
+                << setw(7) << eoe.rx_bytes << "  "
+                << setw(6) << eoe.rx_rate << "  "
+                << setw(7) << eoe.tx_bytes << "  "
+                << setw(6) << eoe.tx_rate << "  "
+                << setw(7) << queue.str()
+                << endl;
+        }
     }
 }
 

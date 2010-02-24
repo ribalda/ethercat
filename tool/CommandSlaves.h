@@ -41,7 +41,7 @@ class CommandSlaves:
         CommandSlaves();
 
         string helpString() const;
-        void execute(MasterDevice &, const StringVector &);
+        void execute(const StringVector &);
 
     protected:
         struct Info {
@@ -53,7 +53,7 @@ class CommandSlaves:
             string name;
         };
 
-        void listSlaves(MasterDevice &, const SlaveList &);
+        void listSlaves(MasterDevice &, const SlaveList &, bool);
         void showSlaves(MasterDevice &, const SlaveList &);
         
         static bool slaveInList( const ec_ioctl_slave_t &, const SlaveList &);

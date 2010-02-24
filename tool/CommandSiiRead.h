@@ -41,7 +41,7 @@ class CommandSiiRead:
         CommandSiiRead();
 
         string helpString() const;
-        void execute(MasterDevice &, const StringVector &);
+        void execute(const StringVector &);
 
     protected:
         struct CategoryName {

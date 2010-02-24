@@ -42,10 +42,11 @@ using namespace std;
 
 /****************************************************************************/
 
-MasterDevice::MasterDevice()
+MasterDevice::MasterDevice(unsigned int index):
+    index(index),
+    masterCount(0U),
+    fd(-1)
 {
-    index = 0;
-    fd = -1;
 }
 
 /****************************************************************************/
@@ -69,6 +70,7 @@ void MasterDevice::open(Permissions perm)
     stringstream deviceName;
 
     if (fd == -1) { // not already open
+        ec_ioctl_module_t module_data;
         deviceName << "/dev/EtherCAT" << index;
 
         if ((fd = ::open(deviceName.str().c_str(),
@@ -78,6 +80,16 @@ void MasterDevice::open(Permissions perm)
                 << strerror(errno);
             throw MasterDeviceException(err);
         }
+
+        getModule(&module_data);
+        if (module_data.ioctl_version_magic != EC_IOCTL_VERSION_MAGIC) {
+            stringstream err;
+            err << "ioctl() version magic is differing: "
+                << deviceName << ": " << module_data.ioctl_version_magic
+                << ", ethercat tool: " << EC_IOCTL_VERSION_MAGIC;
+            throw MasterDeviceException(err);
+        }
+        masterCount = module_data.master_count;
     }
 }
 
@@ -88,6 +100,17 @@ void MasterDevice::close()
     if (fd != -1) {
         ::close(fd);
         fd = -1;
+    }
+}
+
+/****************************************************************************/
+
+void MasterDevice::getModule(ec_ioctl_module_t *data)
+{
+    if (ioctl(fd, EC_IOCTL_MODULE, data) < 0) {
+        stringstream err;
+        err << "Failed to get module information: " << strerror(errno);
+        throw MasterDeviceException(err);
     }
 }
 

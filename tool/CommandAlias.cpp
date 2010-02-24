@@ -34,6 +34,7 @@ using namespace std;
 
 #include "CommandAlias.h"
 #include "sii_crc.h"
+#include "MasterDevice.h"
 
 /*****************************************************************************/
 
@@ -75,7 +76,7 @@ string CommandAlias::helpString() const
 
 /** Writes the Secondary slave address (alias) to the slave's SII.
  */
-void CommandAlias::execute(MasterDevice &m, const StringVector &args)
+void CommandAlias::execute(const StringVector &args)
 {
     uint16_t alias;
     stringstream err, strAlias;
@@ -98,6 +99,11 @@ void CommandAlias::execute(MasterDevice &m, const StringVector &args)
     }
     alias = number;
 
+    if (getMasterIndices().size() != 1) {
+        err << getName() << " requires to select a single master!";
+        throwInvalidUsageException(err);
+    }
+    MasterDevice m(getMasterIndices().front());
     m.open(MasterDevice::ReadWrite);
     slaves = selectedSlaves(m);
     

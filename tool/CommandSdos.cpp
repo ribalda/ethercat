@@ -32,6 +32,7 @@
 using namespace std;
 
 #include "CommandSdos.h"
+#include "MasterDevice.h"
 
 /*****************************************************************************/
 
@@ -86,11 +87,11 @@ string CommandSdos::helpString() const
 
 /****************************************************************************/
 
-void CommandSdos::execute(MasterDevice &m, const StringVector &args)
+void CommandSdos::execute(const StringVector &args)
 {
     SlaveList slaves;
     SlaveList::const_iterator si;
-    bool showHeader;
+    bool showHeader, multiMaster;
 
     if (args.size()) {
         stringstream err;
@@ -98,12 +99,18 @@ void CommandSdos::execute(MasterDevice &m, const StringVector &args)
         throwInvalidUsageException(err);
     }
 
-    m.open(MasterDevice::Read);
-    slaves = selectedSlaves(m);
-    showHeader = slaves.size() > 1;
+    multiMaster = getMasterIndices().size() > 1;
+    MasterIndexList::const_iterator mi;
+    for (mi = getMasterIndices().begin();
+            mi != getMasterIndices().end(); mi++) {
+        MasterDevice m(*mi);
+        m.open(MasterDevice::Read);
+        slaves = selectedSlaves(m);
+        showHeader = multiMaster || slaves.size() > 1;
 
-    for (si = slaves.begin(); si != slaves.end(); si++) {
-        listSlaveSdos(m, *si, showHeader);
+        for (si = slaves.begin(); si != slaves.end(); si++) {
+            listSlaveSdos(m, *si, showHeader);
+        }
     }
 }
 
@@ -121,7 +128,8 @@ void CommandSdos::listSlaveSdos(
     const DataType *d;
     
     if (showHeader)
-        cout << "=== Slave " << slave.position << " ===" << endl;
+        cout << "=== Master " << m.getIndex()
+            << ", Slave " << slave.position << " ===" << endl;
 
     for (i = 0; i < slave.sdo_count; i++) {
         m.getSdo(&sdo, slave.position, i);

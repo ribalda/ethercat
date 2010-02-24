@@ -33,9 +33,12 @@
 #include <stdexcept>
 #include <vector>
 #include <list>
+#include <sstream>
 using namespace std;
 
-#include "MasterDevice.h"
+#include "../master/ioctl.h"
+
+class MasterDevice;
 
 /****************************************************************************/
 
@@ -76,6 +79,9 @@ class Command
         const string &getName() const;
         const string &getBriefDescription() const;
 
+        typedef list<unsigned int> MasterIndexList;
+        void setMasterIndices(const MasterIndexList &);
+        const MasterIndexList &getMasterIndices() const;
         enum Verbosity {
             Quiet,
             Normal,
@@ -102,7 +108,7 @@ class Command
         virtual string helpString() const = 0;
 
         typedef vector<string> StringVector;
-        virtual void execute(MasterDevice &, const StringVector &) = 0;
+        virtual void execute(const StringVector &) = 0;
 
         static string numericInfo();
 
@@ -125,6 +131,7 @@ class Command
     private:
         string name;
         string briefDesc;
+        MasterIndexList masterIndices;
         Verbosity verbosity;
         int alias;
         int position;
@@ -148,6 +155,13 @@ inline const string &Command::getName() const
 inline const string &Command::getBriefDescription() const
 {
     return briefDesc;
+}
+
+/****************************************************************************/
+
+inline const Command::MasterIndexList &Command::getMasterIndices() const
+{
+    return masterIndices;
 }
 
 /****************************************************************************/

@@ -37,6 +37,7 @@ using namespace std;
 
 #include "CommandFoeWrite.h"
 #include "foe.h"
+#include "MasterDevice.h"
 
 /*****************************************************************************/
 
@@ -79,7 +80,7 @@ string CommandFoeWrite::helpString() const
 
 /****************************************************************************/
 
-void CommandFoeWrite::execute(MasterDevice &m, const StringVector &args)
+void CommandFoeWrite::execute(const StringVector &args)
 {
     stringstream err;
     ec_ioctl_slave_foe_t data;
@@ -91,6 +92,12 @@ void CommandFoeWrite::execute(MasterDevice &m, const StringVector &args)
         err << "'" << getName() << "' takes exactly one argument!";
         throwInvalidUsageException(err);
     }
+
+    if (getMasterIndices().size() != 1) {
+        err << getName() << " requires to select a single master!";
+        throwInvalidUsageException(err);
+    }
+    MasterDevice m(getMasterIndices().front());
 
     if (args[0] == "-") {
         loadFoeData(&data, cin);

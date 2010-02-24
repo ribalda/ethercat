@@ -157,6 +157,25 @@ void ec_cdev_strcpy(
 
 /*****************************************************************************/
 
+/** Get module information.
+ */
+int ec_cdev_ioctl_module(
+        unsigned long arg /**< Userspace address to store the results. */
+        )
+{
+    ec_ioctl_module_t data;
+
+    data.ioctl_version_magic = EC_IOCTL_VERSION_MAGIC;
+    data.master_count = ec_master_count();
+
+    if (copy_to_user((void __user *) arg, &data, sizeof(data)))
+        return -EFAULT;
+
+    return 0;
+}
+
+/*****************************************************************************/
+
 /** Get master information.
  */
 int ec_cdev_ioctl_master(
@@ -3281,6 +3300,8 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 #endif
 
     switch (cmd) {
+        case EC_IOCTL_MODULE:
+            return ec_cdev_ioctl_module(arg);
         case EC_IOCTL_MASTER:
             return ec_cdev_ioctl_master(master, arg);
         case EC_IOCTL_SLAVE:

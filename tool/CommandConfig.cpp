@@ -34,6 +34,7 @@
 using namespace std;
 
 #include "CommandConfig.h"
+#include "MasterDevice.h"
 
 /*****************************************************************************/
 
@@ -101,9 +102,10 @@ string CommandConfig::helpString() const
 
 /** Lists the bus configuration.
  */
-void CommandConfig::execute(MasterDevice &m, const StringVector &args)
+void CommandConfig::execute(const StringVector &args)
 {
     ConfigList configs;
+    bool doIndent;
 
     if (args.size()) {
         stringstream err;
@@ -111,13 +113,23 @@ void CommandConfig::execute(MasterDevice &m, const StringVector &args)
         throwInvalidUsageException(err);
     }
 
-    m.open(MasterDevice::Read);
-    configs = selectedConfigs(m);
+    doIndent = getMasterIndices().size() > 1;
+    MasterIndexList::const_iterator mi;
+    for (mi = getMasterIndices().begin();
+            mi != getMasterIndices().end(); mi++) {
+        MasterDevice m(*mi);
+        m.open(MasterDevice::Read);
+        configs = selectedConfigs(m);
 
-    if (getVerbosity() == Verbose) {
-        showDetailedConfigs(m, configs);
-    } else {
-        listConfigs(m, configs);
+        if (doIndent) {
+            cout << "Master" << dec << *mi << endl;
+        }
+
+        if (getVerbosity() == Verbose) {
+            showDetailedConfigs(m, configs, doIndent);
+        } else {
+            listConfigs(m, configs, doIndent);
+        }
     }
 }
 
@@ -127,7 +139,8 @@ void CommandConfig::execute(MasterDevice &m, const StringVector &args)
  */
 void CommandConfig::showDetailedConfigs(
         MasterDevice &m,
-        const ConfigList &configList
+        const ConfigList &configList,
+        bool doIndent
         )
 {
     ConfigList::const_iterator configIter;
@@ -136,19 +149,21 @@ void CommandConfig::showDetailedConfigs(
     ec_ioctl_config_pdo_t pdo;
     ec_ioctl_config_pdo_entry_t entry;
     ec_ioctl_config_sdo_t sdo;
+    string indent(doIndent ? "  " : "");
 
     for (configIter = configList.begin();
             configIter != configList.end();
             configIter++) {
 
-        cout << "Alias: "
-            << dec << configIter->alias << endl
-            << "Position: " << configIter->position << endl
+        cout << indent
+            << "Alias: "
+            << dec << configIter->alias << endl << indent
+            << "Position: " << configIter->position << endl << indent
             << "Vendor Id: 0x"
             << hex << setfill('0')
-            << setw(8) << configIter->vendor_id << endl
+            << setw(8) << configIter->vendor_id << endl << indent
             << "Product code: 0x"
-            << setw(8) << configIter->product_code << endl
+            << setw(8) << configIter->product_code << endl << indent
             << "Attached slave: ";
         
         if (configIter->slave_position != -1) {
@@ -159,13 +174,13 @@ void CommandConfig::showDetailedConfigs(
             cout << "none" << endl;
         }
 
-        cout << "Watchdog divider: ";
+        cout << indent << "Watchdog divider: ";
         if (configIter->watchdog_divider) {
             cout << dec << configIter->watchdog_divider;
         } else {
             cout << "(Default)";
         }
-        cout << endl
+        cout << endl << indent
             << "Watchdog intervals: ";
         if (configIter->watchdog_intervals) {
             cout << dec << configIter->watchdog_intervals;
@@ -176,7 +191,7 @@ void CommandConfig::showDetailedConfigs(
 
         for (j = 0; j < EC_MAX_SYNC_MANAGERS; j++) {
             if (configIter->syncs[j].pdo_count) {
-                cout << "SM" << dec << j << ", Dir: "
+                cout << indent << "SM" << dec << j << ", Dir: "
                     << (configIter->syncs[j].dir == EC_DIR_INPUT
                             ? "Input" : "Output") << ", Watchdog: ";
                 switch (configIter->syncs[j].watchdog_mode) {
@@ -190,14 +205,15 @@ void CommandConfig::showDetailedConfigs(
                 for (k = 0; k < configIter->syncs[j].pdo_count; k++) {
                     m.getConfigPdo(&pdo, configIter->config_index, j, k);
 
-                    cout << "  PDO 0x" << hex << setfill('0')
+                    cout << indent << "  PDO 0x" << hex << setfill('0')
                         << setw(4) << pdo.index << endl;
 
                     for (l = 0; l < pdo.entry_count; l++) {
                         m.getConfigPdoEntry(&entry,
                                 configIter->config_index, j, k, l);
 
-                        cout << "    PDO entry 0x" << hex << setfill('0')
+                        cout << indent << "    PDO entry 0x"
+                            << hex << setfill('0')
                             << setw(4) << entry.index << ":"
                             << setw(2) << (unsigned int) entry.subindex
                             << ", " << dec << setfill(' ')
@@ -208,23 +224,23 @@ void CommandConfig::showDetailedConfigs(
             }
         }
 
-        cout << "SDO configuration:" << endl;
+        cout << indent << "SDO configuration:" << endl;
         if (configIter->sdo_count) {
             for (j = 0; j < configIter->sdo_count; j++) {
                 m.getConfigSdo(&sdo, configIter->config_index, j);
 
-                cout << "  0x"
+                cout << indent << "  0x"
                     << hex << setfill('0')
                     << setw(4) << sdo.index << ":"
                     << setw(2) << (unsigned int) sdo.subindex
                     << ", " << dec << sdo.size << " byte" << endl;
 
-                cout << "    " << hex;
+                cout << indent << "    " << hex;
                 for (i = 0; i < min((uint32_t) sdo.size,
                             (uint32_t) EC_MAX_SDO_DATA_SIZE); i++) {
                     cout << setw(2) << (unsigned int) sdo.data[i];
                     if ((i + 1) % 16 == 0 && i < sdo.size - 1) {
-                        cout << endl << "    ";
+                        cout << endl << indent << "    ";
                     } else {
                         cout << " ";
                     }
@@ -232,23 +248,23 @@ void CommandConfig::showDetailedConfigs(
 
                 cout << endl;
                 if (sdo.size > EC_MAX_SDO_DATA_SIZE) {
-                    cout << "    ..." << endl;
+                    cout << indent << "    ..." << endl;
                 }
             }
         } else {
-            cout << "  None." << endl;
+            cout << indent << "  None." << endl;
         }
 
         if (configIter->dc_assign_activate) {
             int i;
 
-            cout << "DC configuration:" << endl
-                << "  AssignActivate: 0x" << hex << setfill('0')
+            cout << indent << "DC configuration:" << endl
+                << indent << "  AssignActivate: 0x" << hex << setfill('0')
                 << setw(4) << configIter->dc_assign_activate << endl;
 
-            cout << "         Cycle [ns]   Shift [ns]" << endl;
+            cout << indent << "         Cycle [ns]   Shift [ns]" << endl;
             for (i = 0; i < EC_SYNC_SIGNAL_COUNT; i++) {
-                cout << "  SYNC" << dec << i << "  "
+                cout << indent << "  SYNC" << dec << i << "  "
                     << setfill(' ') << right
                     << setw(11) << configIter->dc_sync[i].cycle_time
                     << "  "
@@ -266,7 +282,8 @@ void CommandConfig::showDetailedConfigs(
  */
 void CommandConfig::listConfigs(
         MasterDevice &m,
-        const ConfigList &configList
+        const ConfigList &configList,
+        bool doIndent
         )
 {
     ConfigList::const_iterator configIter;
@@ -278,6 +295,7 @@ void CommandConfig::listConfigs(
     unsigned int maxAliasWidth = 0, maxPosWidth = 0,
                  maxSlavePosWidth = 0, maxStateWidth = 0;
     ec_ioctl_slave_t slave;
+    string indent(doIndent ? "  " : "");
 
     for (configIter = configList.begin();
             configIter != configList.end();
@@ -337,7 +355,7 @@ void CommandConfig::listConfigs(
     }
 
     for (iter = list.begin(); iter != list.end(); iter++) {
-        cout << setfill(' ') << right
+        cout << indent << setfill(' ') << right
             << setw(maxAliasWidth) << iter->alias
             << ":" << left
             << setw(maxPosWidth) << iter->pos

@@ -263,6 +263,7 @@ extern char *ec_master_version_str;
 
 /*****************************************************************************/
 
+unsigned int ec_master_count(void);
 void ec_print_data(const uint8_t *, size_t);
 void ec_print_data_diff(const uint8_t *, const uint8_t *, size_t);
 size_t ec_state_string(uint8_t, char *, uint8_t);

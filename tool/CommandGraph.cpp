@@ -32,6 +32,7 @@
 using namespace std;
 
 #include "CommandGraph.h"
+#include "MasterDevice.h"
 
 /*****************************************************************************/
 
@@ -64,7 +65,7 @@ string CommandGraph::helpString() const
 
 /****************************************************************************/
 
-void CommandGraph::execute(MasterDevice &m, const StringVector &args)
+void CommandGraph::execute(const StringVector &args)
 {
     ec_ioctl_master_t master;
     unsigned int i;
@@ -89,6 +90,12 @@ void CommandGraph::execute(MasterDevice &m, const StringVector &args)
         throwInvalidUsageException(err);
     }
 
+    if (getMasterIndices().size() != 1) {
+        stringstream err;
+        err << getName() << " requires to select a single master!";
+        throwInvalidUsageException(err);
+    }
+    MasterDevice m(getMasterIndices().front());
     m.open(MasterDevice::Read);
     m.getMaster(&master);
 

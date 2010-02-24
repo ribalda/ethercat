@@ -79,7 +79,7 @@ class MasterDeviceSdoAbortException:
 class MasterDevice
 {
     public:
-        MasterDevice();
+        MasterDevice(unsigned int = 0U);
         ~MasterDevice();
 
         void setIndex(unsigned int);
@@ -88,6 +88,8 @@ class MasterDevice
         enum Permissions {Read, ReadWrite};
         void open(Permissions);
         void close();
+
+        void getModule(ec_ioctl_module_t *);
 
         void getMaster(ec_ioctl_master_t *);
         void getConfig(ec_ioctl_config_t *, unsigned int);
@@ -121,8 +123,11 @@ class MasterDevice
         void getEoeHandler(ec_ioctl_eoe_handler_t *, uint16_t);
 #endif
 
+        unsigned int getMasterCount() const {return masterCount;}
+
     private:
         unsigned int index;
+        unsigned int masterCount;
         int fd;
 };
 

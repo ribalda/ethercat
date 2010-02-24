@@ -195,6 +195,15 @@ void __exit ec_cleanup_module(void)
     EC_INFO("Master module cleaned up.\n");
 }
 
+/*****************************************************************************/
+
+/** Get the number of masters.
+ */
+unsigned int ec_master_count(void)
+{
+    return master_count;
+}
+
 /*****************************************************************************
  * MAC address functions
  ****************************************************************************/

@@ -41,7 +41,7 @@ class CommandRegWrite:
         CommandRegWrite();
 
         string helpString() const;
-        void execute(MasterDevice &, const StringVector &);
+        void execute(const StringVector &);
 
     private:
         void loadRegData(ec_ioctl_slave_reg_t *, const istream &);

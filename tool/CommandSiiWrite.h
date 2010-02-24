@@ -41,7 +41,7 @@ class CommandSiiWrite:
         CommandSiiWrite();
 
         string helpString() const;
-        void execute(MasterDevice &, const StringVector &);
+        void execute(const StringVector &);
 
     protected:
         void loadSiiData(ec_ioctl_slave_sii_t *, const istream &);

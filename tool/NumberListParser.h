@@ -27,26 +27,33 @@
  *
  ****************************************************************************/
 
-#ifndef __COMMANDFOEWRITE_H__
-#define __COMMANDFOEWRITE_H__
+#include <list>
+using namespace std;
 
-#include "FoeCommand.h"
+/*****************************************************************************/
 
-/****************************************************************************/
-
-class CommandFoeWrite:
-    public FoeCommand
+class NumberListParser
 {
     public:
-        CommandFoeWrite();
+        NumberListParser();
+        ~NumberListParser();
 
-        string helpString() const;
-        void execute(const StringVector &);
+        typedef list<unsigned int> NumberList;
 
-    protected:
-        void loadFoeData(ec_ioctl_slave_foe_t *, const istream &);
+        NumberList parse(const char *);
+
+        virtual unsigned int getMax() = 0;
+
+    private:
+        unsigned int max;
+        bool hasMax;
+
+        unsigned int maximum();
+
+        static bool isNumeric(char);
+        static unsigned int parseNumber(const char *, unsigned int *,
+                unsigned int);
+        static NumberList range(unsigned int, unsigned int);
 };
 
 /****************************************************************************/
-
-#endif

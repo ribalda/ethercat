@@ -41,7 +41,7 @@ class CommandPdos:
         CommandPdos();
 
         string helpString() const;
-        void execute(MasterDevice &, const StringVector &);
+        void execute(const StringVector &);
 
     protected:
         void listSlavePdos(MasterDevice &, const ec_ioctl_slave_t &, bool);

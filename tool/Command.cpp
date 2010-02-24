@@ -28,6 +28,7 @@
  ****************************************************************************/
 
 #include "Command.h"
+#include "MasterDevice.h"
 
 /*****************************************************************************/
 
@@ -43,6 +44,13 @@ Command::Command(const string &name, const string &briefDesc):
 Command::~Command()
 {
 }
+
+/*****************************************************************************/
+
+void Command::setMasterIndices(const MasterIndexList &indices)
+{
+    masterIndices = indices;
+};
 
 /*****************************************************************************/
 

@@ -44,7 +44,7 @@ class CommandConfig:
         CommandConfig();
 
         string helpString() const;
-        void execute(MasterDevice &, const StringVector &);
+        void execute(const StringVector &);
 
     protected:
         struct Info {
@@ -55,8 +55,8 @@ class CommandConfig:
             string state;
         };
 
-        void showDetailedConfigs(MasterDevice &, const ConfigList &);
-        void listConfigs(MasterDevice &m, const ConfigList &);
+        void showDetailedConfigs(MasterDevice &, const ConfigList &, bool);
+        void listConfigs(MasterDevice &m, const ConfigList &, bool);
 };
 
 /****************************************************************************/

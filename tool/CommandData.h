@@ -41,7 +41,7 @@ class CommandData:
         CommandData();
 
         string helpString() const;
-        void execute(MasterDevice &, const StringVector &);
+        void execute(const StringVector &);
 
     protected:
         void outputDomainData(MasterDevice &, const ec_ioctl_domain_t &);

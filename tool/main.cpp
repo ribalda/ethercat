@@ -61,19 +61,21 @@ using namespace std;
 #include "CommandVersion.h"
 #include "CommandXml.h"
 
+#include "NumberListParser.h"
+#include "MasterDevice.h"
+
 /*****************************************************************************/
 
 typedef list<Command *> CommandList;
 CommandList commandList;
-
-MasterDevice masterDev;
 
 string binaryBaseName;
 string commandName;
 Command::StringVector commandArgs;
 
 // option variables
-unsigned int masterIndex = 0;
+list<unsigned int> masterIndices;
+string masterIndexList = "-"; // all masters
 int slavePosition = -1;
 int slaveAlias = -1;
 int domainIndex = -1;
@@ -128,6 +130,20 @@ string usage()
 
 /*****************************************************************************/
 
+class MasterIndexParser:
+    public NumberListParser
+{
+    unsigned int getMax()
+    {
+        MasterDevice dev;
+        dev.setIndex(0U);
+        dev.open(MasterDevice::Read);
+        return dev.getMasterCount() - 1;
+    };
+};
+
+/*****************************************************************************/
+
 void getOptions(int argc, char **argv)
 {
     int c, argCount;
@@ -153,16 +169,7 @@ void getOptions(int argc, char **argv)
 
         switch (c) {
             case 'm':
-                str.clear();
-                str.str("");
-                str << optarg;
-                str >> resetiosflags(ios::basefield) // guess base from prefix
-                    >> masterIndex;
-                if (str.fail() || masterIndex < 0) {
-                    cerr << "Invalid master number " << optarg << "!" << endl
-                        << endl << usage();
-                    exit(1);
-                }
+                masterIndexList = optarg;
                 break;
 
             case 'a':
@@ -252,6 +259,19 @@ void getOptions(int argc, char **argv)
         }
     }
 
+    try {
+        MasterIndexParser p;
+        masterIndices = p.parse(masterIndexList.c_str());
+    } catch (MasterDeviceException &e) {
+        cerr << "Failed to obtain number of masters: " << e.what() << endl;
+        exit(1);
+    } catch (runtime_error &e) {
+        cerr << "Invalid master argument " << masterIndexList
+            << ": " << e.what() << endl
+            << endl << usage();
+        exit(1);
+    }
+
     commandName = argv[optind];
     while (++optind < argc)
         commandArgs.push_back(string(argv[optind]));
@@ -323,13 +343,19 @@ int main(int argc, char **argv)
     getOptions(argc, argv);
 
     matchingCommands = getMatchingCommands(commandName);
-    masterDev.setIndex(masterIndex);
+
+    if (masterIndices.empty()) {
+        cerr << "List of master indices may not be empty!" << endl
+            << endl << usage();
+        exit(1);
+    }
 
     if (matchingCommands.size()) {
         if (matchingCommands.size() == 1) {
             cmd = matchingCommands.front();
             if (!helpRequested) {
                 try {
+                    cmd->setMasterIndices(masterIndices);
                     cmd->setVerbosity(verbosity);
                     cmd->setAlias(slaveAlias);
                     cmd->setPosition(slavePosition);
@@ -337,7 +363,7 @@ int main(int argc, char **argv)
                     cmd->setDataType(dataTypeStr);
                     cmd->setOutputFile(outputFile);
                     cmd->setForce(force);
-                    cmd->execute(masterDev, commandArgs);
+                    cmd->execute(commandArgs);
                 } catch (InvalidUsageException &e) {
                     cerr << e.what() << endl << endl;
                     cerr << binaryBaseName << " " << cmd->helpString();

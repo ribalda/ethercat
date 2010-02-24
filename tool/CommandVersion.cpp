@@ -54,7 +54,7 @@ string CommandVersion::helpString() const
 
 /****************************************************************************/
 
-void CommandVersion::execute(MasterDevice &m, const StringVector &args)
+void CommandVersion::execute(const StringVector &args)
 {
     if (args.size()) {
         stringstream err;
