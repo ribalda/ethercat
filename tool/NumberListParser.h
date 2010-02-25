@@ -36,7 +36,7 @@ class NumberListParser
 {
     public:
         NumberListParser();
-        ~NumberListParser();
+        virtual ~NumberListParser();
 
         typedef list<unsigned int> NumberList;
 
