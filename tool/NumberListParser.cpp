@@ -219,8 +219,8 @@ NumberListParser::NumberList NumberListParser::range(
             ret.push_back(i);
         }
     } else {
-        for (; i >= j; i--) {
-            ret.push_back(i);
+        for (; j <= i; j++) {
+            ret.push_front(j);
         }
     }
 
