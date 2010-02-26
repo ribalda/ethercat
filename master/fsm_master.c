@@ -208,6 +208,7 @@ void ec_fsm_master_state_broadcast(
         ec_master_clear_eoe_handlers(master);
 #endif
         ec_master_clear_slaves(master);
+        fsm->slave_states = 0x00;
     }
     fsm->link_state = master->main_device.link_state;
 
