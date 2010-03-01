@@ -108,7 +108,7 @@ void CommandSoeRead::execute(const StringVector &args)
         m.readSoe(&data);
     } catch (MasterDeviceSoeException &e) {
         delete [] data.data;
-        err << "CoE read command aborted with code 0x"
+        err << "SoE read command aborted with code 0x"
             << setfill('0') << hex << setw(4) << e.errorCode;
         throwCommandException(err);
     } catch (MasterDeviceException &e) {
