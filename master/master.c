@@ -417,7 +417,8 @@ void ec_master_clear_slaves(ec_master_t *master)
             request = list_entry(slave->slave_sdo_requests.next,
                     ec_master_sdo_request_t, list);
             list_del_init(&request->list); // dequeue
-            EC_INFO("Discarding SDO request, slave %u does not exist anymore.\n",
+            EC_INFO("Discarding SDO request,"
+					" slave %u does not exist anymore.\n",
                     slave->ring_position);
             request->req.state = EC_INT_REQUEST_FAILURE;
             wake_up(&slave->sdo_queue);
@@ -431,10 +432,26 @@ void ec_master_clear_slaves(ec_master_t *master)
             request = list_entry(slave->foe_requests.next,
                     ec_master_foe_request_t, list);
             list_del_init(&request->list); // dequeue
-            EC_INFO("Discarding FOE request, slave %u does not exist anymore.\n",
+            EC_INFO("Discarding FoE request,"
+					" slave %u does not exist anymore.\n",
                     slave->ring_position);
             request->req.state = EC_INT_REQUEST_FAILURE;
             wake_up(&slave->foe_queue);
+        }
+        // SoE requests
+        while (1) {
+            ec_master_soe_request_t *request;
+            if (list_empty(&slave->soe_requests))
+                break;
+            // get first request
+            request = list_entry(slave->soe_requests.next,
+                    ec_master_soe_request_t, list);
+            list_del_init(&request->list); // dequeue
+            EC_INFO("Discarding SoE request,"
+					" slave %u does not exist anymore.\n",
+                    slave->ring_position);
+            request->req.state = EC_INT_REQUEST_FAILURE;
+            wake_up(&slave->soe_queue);
         }
         ec_slave_clear(slave);
     }

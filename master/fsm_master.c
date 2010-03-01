@@ -426,8 +426,8 @@ int ec_fsm_master_action_process_sdo(
                 if (ec_sdo_request_timed_out(req)) {
                     req->state = EC_INT_REQUEST_FAILURE;
                     if (master->debug_level)
-                        EC_DBG("Internal SDO request for slave %u timed out...\n",
-                                slave->ring_position);
+						EC_DBG("Internal SDO request for slave %u"
+								" timed out...\n", slave->ring_position);
                     continue;
                 }
 
@@ -472,7 +472,7 @@ void ec_fsm_master_action_idle(
     if (ec_fsm_master_action_process_sdo(fsm))
         return;
 
-    // enable processing of SDO/FOE requests
+    // enable processing of requests
     for (slave = master->slaves;
             slave < master->slaves + master->slave_count;
             slave++) {

@@ -67,10 +67,28 @@ class MasterDeviceSdoAbortException:
         uint32_t abortCode;
     
     protected:
-        /** Constructor with stringstream parameter. */
+        /** Constructor with abort code parameter. */
         MasterDeviceSdoAbortException(uint32_t code):
             MasterDeviceException("SDO transfer aborted.") {
                 abortCode = code;
+            };
+};
+
+/****************************************************************************/
+
+class MasterDeviceSoeException:
+    public MasterDeviceException 
+{
+    friend class MasterDevice;
+
+    public:
+        uint16_t errorCode;
+    
+    protected:
+        /** Constructor with error code parameter. */
+        MasterDeviceSoeException(uint16_t code):
+            MasterDeviceException("SoE transfer aborted.") {
+                errorCode = code;
             };
 };
 
@@ -122,6 +140,7 @@ class MasterDevice
 #ifdef EC_EOE
         void getEoeHandler(ec_ioctl_eoe_handler_t *, uint16_t);
 #endif
+        void readSoe(ec_ioctl_slave_soe_t *);
 
         unsigned int getMasterCount() const {return masterCount;}
 

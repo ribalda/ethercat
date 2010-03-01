@@ -1964,7 +1964,7 @@ void ec_fsm_coe_up_response(ec_fsm_coe_t *fsm /**< finite state machine */)
 
         if (rec_size < 6 + fsm->complete_size) {
             fsm->state = ec_fsm_coe_error;
-            EC_ERR("Received currupted SDO expedited upload"
+            EC_ERR("Received corrupted SDO expedited upload"
                     " response (only %zu bytes)!\n", rec_size);
             ec_print_data(data, rec_size);
             return;

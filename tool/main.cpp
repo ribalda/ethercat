@@ -56,6 +56,7 @@ using namespace std;
 #include "CommandSiiRead.h"
 #include "CommandSiiWrite.h"
 #include "CommandSlaves.h"
+#include "CommandSoeRead.h"
 #include "CommandStates.h"
 #include "CommandUpload.h"
 #include "CommandVersion.h"
@@ -335,6 +336,7 @@ int main(int argc, char **argv)
     commandList.push_back(new CommandSiiRead());
     commandList.push_back(new CommandSiiWrite());
     commandList.push_back(new CommandSlaves());
+    commandList.push_back(new CommandSoeRead());
     commandList.push_back(new CommandStates());
     commandList.push_back(new CommandUpload());
     commandList.push_back(new CommandVersion());

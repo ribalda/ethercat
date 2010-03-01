@@ -41,6 +41,7 @@
 #include "datagram.h"
 #include "foe_request.h"
 #include "sdo_request.h"
+#include "soe_request.h"
 #include "fsm_slave_config.h"
 #include "fsm_slave_scan.h"
 #include "fsm_pdo.h"
@@ -85,13 +86,23 @@ typedef struct {
 
 /*****************************************************************************/
 
-/** FoE write request.
+/** FoE request.
  */
 typedef struct {
     struct list_head list; /**< List head. */
     ec_slave_t *slave; /**< EtherCAT slave. */
     ec_foe_request_t req; /**< FoE request. */
 } ec_master_foe_request_t;
+
+/*****************************************************************************/
+
+/** SoE request.
+ */
+typedef struct {
+    struct list_head list; /**< List head. */
+    ec_slave_t *slave; /**< EtherCAT slave. */
+    ec_soe_request_t req; /**< SoE request. */
+} ec_master_soe_request_t;
 
 /*****************************************************************************/
 

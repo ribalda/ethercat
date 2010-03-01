@@ -28,7 +28,7 @@
  *****************************************************************************/
 
 /** \file
- * Canopen over EtherCAT SDO request functions.
+ * Sercos-over-EtherCAT request functions.
  */
 
 /*****************************************************************************/
@@ -36,71 +36,84 @@
 #include <linux/module.h>
 #include <linux/jiffies.h>
 
-#include "sdo_request.h"
+#include "soe_request.h"
 
 /*****************************************************************************/
 
-/** Default timeout in ms to wait for SDO transfer responses.
+/** Default timeout in ms to wait for SoE responses.
  */
-#define EC_SDO_REQUEST_RESPONSE_TIMEOUT 1000
+#define EC_SOE_REQUEST_RESPONSE_TIMEOUT 1000
 
 /*****************************************************************************/
 
-void ec_sdo_request_clear_data(ec_sdo_request_t *);
+void ec_soe_request_clear_data(ec_soe_request_t *);
 
 /*****************************************************************************/
 
-/** SDO request constructor.
+/** SoE request constructor.
  */
-void ec_sdo_request_init(
-        ec_sdo_request_t *req /**< SDO request. */
+void ec_soe_request_init(
+        ec_soe_request_t *req /**< SoE request. */
         )
 {
-    req->complete_access = 0;
     req->data = NULL;
     req->mem_size = 0;
     req->data_size = 0;
     req->dir = EC_DIR_INVALID;
-    req->issue_timeout = 0; // no timeout
-    req->response_timeout = EC_SDO_REQUEST_RESPONSE_TIMEOUT;
     req->state = EC_INT_REQUEST_INIT;
-    req->abort_code = 0x00000000;
+    //req->jiffies_start = 0U;
+    req->jiffies_sent = 0U;
+    req->error_code = 0x0000;
 }
 
 /*****************************************************************************/
 
-/** SDO request destructor.
+/** SoE request destructor.
  */
-void ec_sdo_request_clear(
-        ec_sdo_request_t *req /**< SDO request. */
+void ec_soe_request_clear(
+        ec_soe_request_t *req /**< SoE request. */
         )
 {
-    ec_sdo_request_clear_data(req);
+    ec_soe_request_clear_data(req);
 }
 
 /*****************************************************************************/
 
-/** Copy another SDO request.
+/** Set IDN.
+ */
+void ec_soe_request_set_idn(
+        ec_soe_request_t *req, /**< SoE request. */
+        uint16_t idn /** IDN. */
+        )
+{
+    req->idn = idn;
+}
+
+#if 0
+/*****************************************************************************/
+
+/** Copy another SoE request.
  *
  * \attention Only the index subindex and data are copied.
  */
-int ec_sdo_request_copy(
-        ec_sdo_request_t *req, /**< SDO request. */
-        const ec_sdo_request_t *other /**< Other SDO request to copy from. */
+int ec_soe_request_copy(
+        ec_soe_request_t *req, /**< SoE request. */
+        const ec_soe_request_t *other /**< Other SoE request to copy from. */
         )
 {
     req->complete_access = other->complete_access;
     req->index = other->index;
     req->subindex = other->subindex;
-    return ec_sdo_request_copy_data(req, other->data, other->data_size);
+    return ec_soe_request_copy_data(req, other->data, other->data_size);
 }
+#endif
 
 /*****************************************************************************/
 
-/** SDO request destructor.
+/** Free allocated memory.
  */
-void ec_sdo_request_clear_data(
-        ec_sdo_request_t *req /**< SDO request. */
+void ec_soe_request_clear_data(
+        ec_soe_request_t *req /**< SoE request. */
         )
 {
     if (req->data) {
@@ -114,38 +127,24 @@ void ec_sdo_request_clear_data(
 
 /*****************************************************************************/
 
-/** Set the SDO address.
- */
-void ec_sdo_request_address(
-        ec_sdo_request_t *req, /**< SDO request. */
-        uint16_t index, /**< SDO index. */
-        uint8_t subindex /**< SDO subindex. */
-        )
-{
-    req->index = index;
-    req->subindex = subindex;
-}
-
-/*****************************************************************************/
-
 /** Pre-allocates the data memory.
  *
  * If the \a mem_size is already bigger than \a size, nothing is done.
  *
  * \return 0 on success, otherwise -ENOMEM.
  */
-int ec_sdo_request_alloc(
-        ec_sdo_request_t *req, /**< SDO request. */
+int ec_soe_request_alloc(
+        ec_soe_request_t *req, /**< SoE request. */
         size_t size /**< Data size to allocate. */
         )
 {
     if (size <= req->mem_size)
         return 0;
 
-    ec_sdo_request_clear_data(req);
+    ec_soe_request_clear_data(req);
 
     if (!(req->data = (uint8_t *) kmalloc(size, GFP_KERNEL))) {
-        EC_ERR("Failed to allocate %zu bytes of SDO memory.\n", size);
+        EC_ERR("Failed to allocate %zu bytes of SoE memory.\n", size);
         return -ENOMEM;
     }
 
@@ -156,20 +155,20 @@ int ec_sdo_request_alloc(
 
 /*****************************************************************************/
 
-/** Copies SDO data from an external source.
+/** Copies SoE data from an external source.
  *
  * If the \a mem_size is to small, new memory is allocated.
  *
  * \retval  0 Success.
  * \retval <0 Error code.
  */
-int ec_sdo_request_copy_data(
-        ec_sdo_request_t *req, /**< SDO request. */
+int ec_soe_request_copy_data(
+        ec_soe_request_t *req, /**< SoE request. */
         const uint8_t *source, /**< Source data. */
         size_t size /**< Number of bytes in \a source. */
         )
 {
-    int ret = ec_sdo_request_alloc(req, size);
+    int ret = ec_soe_request_alloc(req, size);
     if (ret < 0)
         return ret;
 
@@ -180,77 +179,20 @@ int ec_sdo_request_copy_data(
 
 /*****************************************************************************/
 
-/** Checks, if the timeout was exceeded.
- *
- * \return non-zero if the timeout was exceeded, else zero.
- */
-int ec_sdo_request_timed_out(const ec_sdo_request_t *req /**< SDO request. */)
-{
-    return req->issue_timeout
-        && jiffies - req->jiffies_start > HZ * req->issue_timeout / 1000;
-}
-
-/*****************************************************************************
- * Application interface.
- ****************************************************************************/
-
-void ecrt_sdo_request_timeout(ec_sdo_request_t *req, uint32_t timeout)
-{
-    req->issue_timeout = timeout;
-}
-
-/*****************************************************************************/
-
-uint8_t *ecrt_sdo_request_data(ec_sdo_request_t *req)
-{
-    return req->data;
-}
-
-/*****************************************************************************/
-
-size_t ecrt_sdo_request_data_size(const ec_sdo_request_t *req)
-{
-    return req->data_size;
-}
-
-/*****************************************************************************/
-
-ec_request_state_t ecrt_sdo_request_state(const ec_sdo_request_t *req)
-{
-   return ec_request_state_translation_table[req->state];
-}
-
-/*****************************************************************************/
-
-void ecrt_sdo_request_read(ec_sdo_request_t *req)
+void ec_soe_request_read(ec_soe_request_t *req)
 {
     req->dir = EC_DIR_INPUT;
     req->state = EC_INT_REQUEST_QUEUED;
-    req->abort_code = 0x00000000;
-    req->jiffies_start = jiffies;
+    req->error_code = 0x0000;
 }
 
 /*****************************************************************************/
 
-void ecrt_sdo_request_write(ec_sdo_request_t *req)
+void ec_soe_request_write(ec_soe_request_t *req)
 {
     req->dir = EC_DIR_OUTPUT;
     req->state = EC_INT_REQUEST_QUEUED;
-    req->abort_code = 0x00000000;
-    req->jiffies_start = jiffies;
+    req->error_code = 0x0000;
 }
-
-/*****************************************************************************/
-
-/** \cond */
-
-EXPORT_SYMBOL(ecrt_sdo_request_timeout);
-EXPORT_SYMBOL(ecrt_sdo_request_data);
-EXPORT_SYMBOL(ecrt_sdo_request_data_size);
-EXPORT_SYMBOL(ecrt_sdo_request_state);
-EXPORT_SYMBOL(ecrt_sdo_request_read);
-EXPORT_SYMBOL(ecrt_sdo_request_write);
-
-/** \endcond */
 
 /*****************************************************************************/

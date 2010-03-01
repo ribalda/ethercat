@@ -29,48 +29,45 @@
 
 /**
    \file
-   EtherCAT slave request (SDO) state machine.
+   EtherCAT CoE state machines.
 */
 
 /*****************************************************************************/
-#ifndef __EC_FSM_SLAVE_H__
-#define __EC_FSM_SLAVE_H__
+
+#ifndef __EC_FSM_SOE_H__
+#define __EC_FSM_SOE_H__
 
 #include "globals.h"
 #include "datagram.h"
-#include "sdo_request.h"
-#include "fsm_coe.h"
-#include "fsm_foe.h"
-#include "fsm_soe.h"
+#include "slave.h"
+#include "soe_request.h"
 
-typedef struct ec_fsm_slave ec_fsm_slave_t; /**< \see ec_fsm_slave */
+/*****************************************************************************/
 
-/** Finite state machine of an EtherCAT slave.
+typedef struct ec_fsm_soe ec_fsm_soe_t; /**< \see ec_fsm_soe */
+
+/** Finite state machines for the Sercos over EtherCAT protocol.
  */
-struct ec_fsm_slave {
+struct ec_fsm_soe {
     ec_slave_t *slave; /**< slave the FSM runs on */
     ec_datagram_t *datagram; /**< datagram used in the state machine */
+    unsigned int retries; /**< retries upon datagram timeout */
 
-    void (*state)(ec_fsm_slave_t *); /**< master state function */
-    ec_sdo_request_t *sdo_request; /**< SDO request to process. */
-    ec_foe_request_t *foe_request; /**< FoE request to process. */
-    off_t foe_index; /**< index to FoE write request data */
-    ec_soe_request_t *soe_request; /**< SoE request to process. */
-
-    ec_fsm_coe_t fsm_coe; /**< CoE state machine */
-    ec_fsm_foe_t fsm_foe; /**< FoE state machine */
-    ec_fsm_soe_t fsm_soe; /**< SoE state machine */
+    void (*state)(ec_fsm_soe_t *); /**< CoE state function */
+    unsigned long jiffies_start; /**< CoE timestamp. */
+    ec_soe_request_t *request; /**< SoE request */
 };
 
 /*****************************************************************************/
 
-void ec_fsm_slave_init(ec_fsm_slave_t *, ec_slave_t *, ec_datagram_t *);
-void ec_fsm_slave_clear(ec_fsm_slave_t *);
+void ec_fsm_soe_init(ec_fsm_soe_t *, ec_datagram_t *);
+void ec_fsm_soe_clear(ec_fsm_soe_t *);
 
-void ec_fsm_slave_exec(ec_fsm_slave_t *);
-void ec_fsm_slave_ready(ec_fsm_slave_t *);
+void ec_fsm_soe_transfer(ec_fsm_soe_t *, ec_slave_t *, ec_soe_request_t *);
+
+int ec_fsm_soe_exec(ec_fsm_soe_t *);
+int ec_fsm_soe_success(ec_fsm_soe_t *);
 
 /*****************************************************************************/
 
-
-#endif // __EC_FSM_SLAVE_H__
+#endif

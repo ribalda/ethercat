@@ -284,10 +284,12 @@ int ec_cdev_ioctl_slave(
         data.ports[i].desc = slave->ports[i].desc;
         data.ports[i].link.link_up = slave->ports[i].link.link_up;
         data.ports[i].link.loop_closed = slave->ports[i].link.loop_closed;
-        data.ports[i].link.signal_detected = slave->ports[i].link.signal_detected;
+        data.ports[i].link.signal_detected =
+            slave->ports[i].link.signal_detected;
         data.ports[i].receive_time = slave->ports[i].receive_time;
         if (slave->ports[i].next_slave) {
-            data.ports[i].next_slave = slave->ports[i].next_slave->ring_position;
+            data.ports[i].next_slave =
+                slave->ports[i].next_slave->ring_position;
         } else {
             data.ports[i].next_slave = 0xffff;
         }
@@ -825,7 +827,8 @@ int ec_cdev_ioctl_slave_sdo_upload(
     }
 
     if (master->debug_level)
-        EC_DBG("Schedule SDO upload request for slave %u\n",request.slave->ring_position);
+        EC_DBG("Schedule SDO upload request for slave %u\n",
+                request.slave->ring_position);
     // schedule request.
     list_add_tail(&request.list, &request.slave->slave_sdo_requests);
 
@@ -847,10 +850,12 @@ int ec_cdev_ioctl_slave_sdo_upload(
     }
 
     // wait until master FSM has finished processing
-    wait_event(request.slave->sdo_queue, request.req.state != EC_INT_REQUEST_BUSY);
+    wait_event(request.slave->sdo_queue,
+            request.req.state != EC_INT_REQUEST_BUSY);
 
     if (master->debug_level)
-        EC_DBG("Scheduled SDO upload request for slave %u done\n",request.slave->ring_position);
+        EC_DBG("Scheduled SDO upload request for slave %u done\n",
+                request.slave->ring_position);
 
     data.abort_code = request.req.abort_code;
 
@@ -931,7 +936,8 @@ int ec_cdev_ioctl_slave_sdo_download(
     }
     
     if (master->debug_level)
-        EC_DBG("Schedule SDO download request for slave %u\n",request.slave->ring_position);
+        EC_DBG("Schedule SDO download request for slave %u\n",
+                request.slave->ring_position);
     // schedule request.
     list_add_tail(&request.list, &request.slave->slave_sdo_requests);
 
@@ -953,10 +959,12 @@ int ec_cdev_ioctl_slave_sdo_download(
     }
 
     // wait until master FSM has finished processing
-    wait_event(request.slave->sdo_queue, request.req.state != EC_INT_REQUEST_BUSY);
+    wait_event(request.slave->sdo_queue,
+            request.req.state != EC_INT_REQUEST_BUSY);
 
     if (master->debug_level)
-        EC_DBG("Scheduled SDO download request for slave %u done\n",request.slave->ring_position);
+        EC_DBG("Scheduled SDO download request for slave %u done\n",
+                request.slave->ring_position);
 
     data.abort_code = request.req.abort_code;
 
@@ -1120,7 +1128,8 @@ int ec_cdev_ioctl_slave_reg_read(
         return 0;
 
     if (!(contents = kmalloc(data.length, GFP_KERNEL))) {
-        EC_ERR("Failed to allocate %u bytes for register data.\n", data.length);
+        EC_ERR("Failed to allocate %u bytes for register data.\n",
+                data.length);
         return -ENOMEM;
     }
 
@@ -1197,7 +1206,8 @@ int ec_cdev_ioctl_slave_reg_write(
         return 0;
 
     if (!(contents = kmalloc(data.length, GFP_KERNEL))) {
-        EC_ERR("Failed to allocate %u bytes for register data.\n", data.length);
+        EC_ERR("Failed to allocate %u bytes for register data.\n",
+                data.length);
         return -ENOMEM;
     }
 
@@ -2240,7 +2250,8 @@ int ec_cdev_ioctl_sc_sdo(
     up(&master->master_sem); // FIXME
 
     if (data.complete_access) {
-        ret = ecrt_slave_config_complete_sdo(sc, data.index, sdo_data, data.size);
+        ret = ecrt_slave_config_complete_sdo(sc,
+                data.index, sdo_data, data.size);
     } else {
         ret = ecrt_slave_config_sdo(sc, data.index, data.subindex, sdo_data,
                 data.size);
@@ -3102,7 +3113,8 @@ int ec_cdev_ioctl_slave_foe_read(
     }
 
     // wait until master FSM has finished processing
-    wait_event(request.slave->foe_queue, request.req.state != EC_INT_REQUEST_BUSY);
+    wait_event(request.slave->foe_queue,
+            request.req.state != EC_INT_REQUEST_BUSY);
 
     data.result = request.req.result;
     data.error_code = request.req.error_code;
@@ -3212,7 +3224,8 @@ int ec_cdev_ioctl_slave_foe_write(
     }
 
     // wait until master FSM has finished processing
-    wait_event(request.slave->foe_queue, request.req.state != EC_INT_REQUEST_BUSY);
+    wait_event(request.slave->foe_queue,
+            request.req.state != EC_INT_REQUEST_BUSY);
 
     data.result = request.req.result;
     data.error_code = request.req.error_code;
@@ -3226,7 +3239,195 @@ int ec_cdev_ioctl_slave_foe_write(
     ec_foe_request_clear(&request.req);
 
     if (master->debug_level) {
-        printk("Finished FoE writing.\n");
+        EC_DBG("Finished FoE writing.\n");
+    }
+
+    return retval;
+}
+
+/*****************************************************************************/
+
+/** Read an SoE IDN.
+ */
+int ec_cdev_ioctl_slave_soe_read(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg /**< ioctl() argument. */
+        )
+{
+    ec_ioctl_slave_soe_t data;
+    ec_master_soe_request_t request;
+    int retval;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+        return -EFAULT;
+    }
+
+    ec_soe_request_init(&request.req);
+    ec_soe_request_set_idn(&request.req, data.idn);
+    ec_soe_request_read(&request.req);
+
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
+
+    if (!(request.slave = ec_master_find_slave(
+                    master, 0, data.slave_position))) {
+        up(&master->master_sem);
+        ec_soe_request_clear(&request.req);
+        EC_ERR("Slave %u does not exist!\n", data.slave_position);
+        return -EINVAL;
+    }
+
+    // schedule request.
+    list_add_tail(&request.list, &request.slave->soe_requests);
+
+    up(&master->master_sem);
+
+    if (master->debug_level) {
+        EC_DBG("Scheduled SoE read request on slave %u.\n",
+                request.slave->ring_position);
+    }
+
+    // wait for processing through FSM
+    if (wait_event_interruptible(request.slave->soe_queue,
+                request.req.state != EC_INT_REQUEST_QUEUED)) {
+        // interrupted by signal
+        down(&master->master_sem);
+        if (request.req.state == EC_INT_REQUEST_QUEUED) {
+            list_del(&request.list);
+            up(&master->master_sem);
+            ec_soe_request_clear(&request.req);
+            return -EINTR;
+        }
+        // request already processing: interrupt not possible.
+        up(&master->master_sem);
+    }
+
+    // wait until master FSM has finished processing
+    wait_event(request.slave->soe_queue,
+            request.req.state != EC_INT_REQUEST_BUSY);
+
+    data.error_code = request.req.error_code;
+
+    if (master->debug_level) {
+        EC_DBG("Read %zd bytes via SoE.\n", request.req.data_size);
+    }
+
+    if (request.req.state != EC_INT_REQUEST_SUCCESS) {
+        data.data_size = 0;
+        retval = -EIO;
+    } else {
+        if (request.req.data_size > data.mem_size) {
+            EC_ERR("Buffer too small.\n");
+            ec_soe_request_clear(&request.req);
+            return -EOVERFLOW;
+        }
+        data.data_size = request.req.data_size;
+        if (copy_to_user((void __user *) data.data,
+                    request.req.data, data.data_size)) {
+            ec_soe_request_clear(&request.req);
+            return -EFAULT;
+        }
+        retval = 0;
+    }
+
+    if (__copy_to_user((void __user *) arg, &data, sizeof(data))) {
+        retval = -EFAULT;
+    }
+
+    if (master->debug_level)
+        EC_DBG("SoE read request finished on slave %u.\n",
+                request.slave->ring_position);
+
+    ec_soe_request_clear(&request.req);
+
+    return retval;
+}
+
+/*****************************************************************************/
+
+/** Write an IDN to a slave via SoE.
+ */
+int ec_cdev_ioctl_slave_soe_write(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg /**< ioctl() argument. */
+        )
+{
+    ec_ioctl_slave_soe_t data;
+    ec_master_soe_request_t request;
+    int retval;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+        return -EFAULT;
+    }
+
+    INIT_LIST_HEAD(&request.list);
+
+    ec_soe_request_init(&request.req);
+    ec_soe_request_set_idn(&request.req, data.idn);
+
+    if (ec_soe_request_alloc(&request.req, data.mem_size)) {
+        ec_soe_request_clear(&request.req);
+        return -ENOMEM;
+    }
+    if (copy_from_user(request.req.data,
+                (void __user *) data.data, data.mem_size)) {
+        ec_soe_request_clear(&request.req);
+        return -EFAULT;
+    }
+    request.req.data_size = data.mem_size;
+    ec_soe_request_write(&request.req);
+
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
+
+    if (!(request.slave = ec_master_find_slave(
+                    master, 0, data.slave_position))) {
+        up(&master->master_sem);
+        EC_ERR("Slave %u does not exist!\n", data.slave_position);
+        ec_soe_request_clear(&request.req);
+        return -EINVAL;
+    }
+
+    if (master->debug_level) {
+        EC_DBG("Scheduling SoE write request.\n");
+    }
+
+    // schedule SoE write request.
+    list_add_tail(&request.list, &request.slave->soe_requests);
+
+    up(&master->master_sem);
+
+    // wait for processing through FSM
+    if (wait_event_interruptible(request.slave->soe_queue,
+                request.req.state != EC_INT_REQUEST_QUEUED)) {
+        // interrupted by signal
+        down(&master->master_sem);
+        if (request.req.state == EC_INT_REQUEST_QUEUED) {
+            // abort request
+            list_del(&request.list);
+            up(&master->master_sem);
+            ec_soe_request_clear(&request.req);
+            return -EINTR;
+        }
+        up(&master->master_sem);
+    }
+
+    // wait until master FSM has finished processing
+    wait_event(request.slave->soe_queue,
+            request.req.state != EC_INT_REQUEST_BUSY);
+
+    //data.result = request.req.result;
+
+    retval = request.req.state == EC_INT_REQUEST_SUCCESS ? 0 : -EIO;
+
+    if (__copy_to_user((void __user *) arg, &data, sizeof(data))) {
+        retval = -EFAULT;
+    }
+
+    ec_soe_request_clear(&request.req);
+
+    if (master->debug_level) {
+        EC_DBG("Finished SoE writing.\n");
     }
 
     return retval;
@@ -3354,6 +3555,12 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             if (!(filp->f_mode & FMODE_WRITE))
                 return -EPERM;
             return ec_cdev_ioctl_slave_foe_write(master, arg);
+        case EC_IOCTL_SLAVE_SOE_READ:
+            return ec_cdev_ioctl_slave_soe_read(master, arg);
+        case EC_IOCTL_SLAVE_SOE_WRITE:
+            if (!(filp->f_mode & FMODE_WRITE))
+                return -EPERM;
+            return ec_cdev_ioctl_slave_soe_write(master, arg);
         case EC_IOCTL_CONFIG:
             return ec_cdev_ioctl_config(master, arg);
         case EC_IOCTL_CONFIG_PDO:
