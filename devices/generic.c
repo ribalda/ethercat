@@ -408,7 +408,7 @@ int __init ec_gen_init_module(void)
     for_each_netdev(&init_net, netdev) {
         if (netdev->type != ARPHRD_ETHER)
             continue;
-        desc = kmalloc(sizeof(ec_gen_interface_desc_t), GFP_KERNEL);
+        desc = kmalloc(sizeof(ec_gen_interface_desc_t), GFP_ATOMIC);
         if (!desc) {
             ret = -ENOMEM;
             read_unlock(&dev_base_lock);
