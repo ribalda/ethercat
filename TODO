@@ -32,6 +32,7 @@ Version 1.5.0:
 * Implement 0xXXXX:YY format for specifying SDOs.
 * Lookup CoE codes for 64bit data types.
 * Move data type usage string into DataTypeHandler.
+* Implement interpretation of SoE '[SP]-x-yyy' strings.
 
 Future issues:
 
