@@ -64,16 +64,12 @@ typedef struct {
 void ec_soe_request_init(ec_soe_request_t *);
 void ec_soe_request_clear(ec_soe_request_t *);
 
+int ec_soe_request_copy(ec_soe_request_t *, const ec_soe_request_t *);
 void ec_soe_request_set_idn(ec_soe_request_t *, uint16_t);
 int ec_soe_request_alloc(ec_soe_request_t *, size_t);
 int ec_soe_request_copy_data(ec_soe_request_t *, const uint8_t *, size_t);
 void ec_soe_request_read(ec_soe_request_t *);
 void ec_soe_request_write(ec_soe_request_t *);
-
-#if 0
-int ec_soe_request_copy(ec_soe_request_t *, const ec_soe_request_t *);
-int ec_soe_request_timed_out(const ec_soe_request_t *);
-#endif
 
 /*****************************************************************************/
 

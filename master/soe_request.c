@@ -61,7 +61,6 @@ void ec_soe_request_init(
     req->data_size = 0;
     req->dir = EC_DIR_INVALID;
     req->state = EC_INT_REQUEST_INIT;
-    //req->jiffies_start = 0U;
     req->jiffies_sent = 0U;
     req->error_code = 0x0000;
 }
@@ -79,6 +78,19 @@ void ec_soe_request_clear(
 
 /*****************************************************************************/
 
+/** Copy another SoE request.
+ */
+int ec_soe_request_copy(
+        ec_soe_request_t *req, /**< SoE request. */
+        const ec_soe_request_t *other /**< Other SoE request to copy from. */
+        )
+{
+    req->idn = other->idn;
+    return ec_soe_request_copy_data(req, other->data, other->data_size);
+}
+
+/*****************************************************************************/
+
 /** Set IDN.
  */
 void ec_soe_request_set_idn(
@@ -88,25 +100,6 @@ void ec_soe_request_set_idn(
 {
     req->idn = idn;
 }
-
-#if 0
-/*****************************************************************************/
-
-/** Copy another SoE request.
- *
- * \attention Only the index subindex and data are copied.
- */
-int ec_soe_request_copy(
-        ec_soe_request_t *req, /**< SoE request. */
-        const ec_soe_request_t *other /**< Other SoE request to copy from. */
-        )
-{
-    req->complete_access = other->complete_access;
-    req->index = other->index;
-    req->subindex = other->subindex;
-    return ec_soe_request_copy_data(req, other->data, other->data_size);
-}
-#endif
 
 /*****************************************************************************/
 
