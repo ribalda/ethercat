@@ -3416,6 +3416,7 @@ int ec_cdev_ioctl_slave_soe_write(
     wait_event(request.slave->soe_queue,
             request.req.state != EC_INT_REQUEST_BUSY);
 
+    ioctl.error_code = request.req.error_code;
     retval = request.req.state == EC_INT_REQUEST_SUCCESS ? 0 : -EIO;
 
     if (__copy_to_user((void __user *) arg, &ioctl, sizeof(ioctl))) {
