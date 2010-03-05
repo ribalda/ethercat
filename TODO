@@ -35,6 +35,7 @@ Version 1.5.0:
 * Implement interpretation of SoE '[SP]-x-yyy' strings.
 * Implement reading from stream for soe_write.
 * Implement SoE fragmenting.
+* User-space implementation for SoE.
 * Add -x switch for hex display.
 
 Future issues:
