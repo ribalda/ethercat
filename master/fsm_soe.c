@@ -338,7 +338,7 @@ void ec_fsm_soe_read_response(ec_fsm_soe_t *fsm /**< finite state machine */)
         return;
     }
 
-	opcode = EC_READ_U8(data) & 0x3;
+	opcode = EC_READ_U8(data) & 0x7;
     if (opcode != EC_SOE_OPCODE_READ_RESPONSE) {
         EC_ERR("Received no read response (opcode %x).\n", opcode);
         ec_print_data(data, rec_size);
@@ -579,7 +579,7 @@ void ec_fsm_soe_write_response(ec_fsm_soe_t *fsm /**< finite state machine */)
         return;
     }
 
-	opcode = EC_READ_U8(data) & 0x3;
+	opcode = EC_READ_U8(data) & 0x7;
     if (opcode != EC_SOE_OPCODE_WRITE_RESPONSE) {
         EC_ERR("Received no write response (opcode %x).\n", opcode);
         ec_print_data(data, rec_size);
