@@ -597,18 +597,19 @@ void ec_fsm_soe_write_response(ec_fsm_soe_t *fsm /**< finite state machine */)
 
 	error_flag = (EC_READ_U8(data) >> 4) & 1;
 	if (error_flag) {
-		req->error_code = EC_READ_U16(data + rec_size - 2);
-		EC_ERR("Received error response: 0x%04x.\n",
-				req->error_code);
-        fsm->state = ec_fsm_soe_error;
+		if (rec_size < EC_SOE_WRITE_RESPONSE_SIZE + 2) {
+			EC_ERR("Received corrupted error response - error flag set,"
+					" but received size is %zu.\n", rec_size);
+		} else {
+			req->error_code = EC_READ_U16(data + EC_SOE_WRITE_RESPONSE_SIZE);
+			EC_ERR("Received error response: 0x%04x.\n",
+					req->error_code);
+		}
+		ec_print_data(data, rec_size);
+		fsm->state = ec_fsm_soe_error;
         return;
 	} else {
 		req->error_code = 0x0000;
-	}
-
-	if (master->debug_level) {
-		EC_DBG("IDN data:\n");
-		ec_print_data(req->data, req->data_size);
 	}
 
     fsm->state = ec_fsm_soe_end; // success
