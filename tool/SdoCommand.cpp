@@ -38,32 +38,6 @@ SdoCommand::SdoCommand(const string &name, const string &briefDesc):
 
 /****************************************************************************/
 
-const SdoCommand::DataType *SdoCommand::findDataType(const string &str)
-{
-    const DataType *d;
-    
-    for (d = dataTypes; d->name; d++)
-        if (str == d->name)
-            return d;
-
-    return NULL;
-}
-
-/****************************************************************************/
-
-const SdoCommand::DataType *SdoCommand::findDataType(uint16_t code)
-{
-    const DataType *d;
-    
-    for (d = dataTypes; d->name; d++)
-        if (code == d->coeCode)
-            return d;
-
-    return NULL;
-}
-
-/****************************************************************************/
-
 const char *SdoCommand::abortText(uint32_t abortCode)
 {
     const AbortMessage *abortMsg;
@@ -76,21 +50,6 @@ const char *SdoCommand::abortText(uint32_t abortCode)
 
     return "???";
 }
-
-/****************************************************************************/
-
-const SdoCommand::DataType SdoCommand::dataTypes[] = {
-    {"int8",         0x0002, 1},
-    {"int16",        0x0003, 2},
-    {"int32",        0x0004, 4},
-    {"uint8",        0x0005, 1},
-    {"uint16",       0x0006, 2},
-    {"uint32",       0x0007, 4},
-    {"string",       0x0009, 0},
-    {"octet_string", 0x000a, 0},
-    {"raw",          0xffff, 0},
-    {}
-};
 
 /*****************************************************************************/
 

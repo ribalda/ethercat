@@ -31,20 +31,19 @@
 #define __COMMANDSOEREAD_H__
 
 #include "Command.h"
+#include "DataTypeHandler.h"
 
 /****************************************************************************/
 
 class CommandSoeRead:
-    public Command
+    public Command,
+    public DataTypeHandler
 {
     public:
         CommandSoeRead();
 
         string helpString() const;
         void execute(const StringVector &);
-
-    protected:
-        static void printRawData(const uint8_t *, unsigned int);
 };
 
 /****************************************************************************/

@@ -173,87 +173,14 @@ void CommandUpload::execute(const StringVector &args)
 
     m.close();
 
-    if (dataType->byteSize && data.data_size != dataType->byteSize) {
-        err << "Data type mismatch. Expected " << dataType->name
-            << " with " << dataType->byteSize << " byte, but got "
-            << data.data_size << " byte.";
-        throwCommandException(err);
-    }
-
-    cout << setfill('0');
-    switch (dataType->coeCode) {
-        case 0x0002: // int8
-            {
-                int val = (int) *data.target;
-                cout << "0x" << hex << setw(2) << val
-                    << " " << dec << val << endl;
-            }
-            break;
-        case 0x0003: // int16
-            {
-                int16_t val = le16_to_cpup(data.target);
-                cout << "0x" << hex << setw(4) << val
-                    << " " << dec << val << endl;
-            }
-            break;
-        case 0x0004: // int32
-            {
-                int32_t val = le32_to_cpup(data.target);
-                cout << "0x" << hex << setw(8) << val
-                    << " " << dec << val << endl;
-            }
-            break;
-        case 0x0005: // uint8
-            {
-                unsigned int val = (unsigned int) *data.target;
-                cout << "0x" << hex << setw(2) << val
-                    << " " << dec << val << endl;
-            }
-            break;
-        case 0x0006: // uint16
-            {
-                uint16_t val = le16_to_cpup(data.target);
-                cout << "0x" << hex << setw(4) << val
-                    << " " << dec << val << endl;
-            }
-            break;
-        case 0x0007: // uint32
-            {
-                uint32_t val = le32_to_cpup(data.target);
-                cout << "0x" << hex << setw(8) << val
-                    << " " << dec << val << endl;
-            }
-            break;
-        case 0x0009: // string
-            cout << string((const char *) data.target, data.data_size)
-                << endl;
-            break;
-        case 0x000a: // octet_string
-            cout << string((const char *) data.target, data.data_size)
-                << endl;
-            break;
-        default:
-            printRawData(data.target, data.data_size); // FIXME
-            break;
+    try {
+        outputData(cout, dataType, data.target, data.data_size);
+    } catch (SizeException &e) {
+        delete [] data.target;
+        throwCommandException(e.what());
     }
 
     delete [] data.target;
-}
-
-/****************************************************************************/
-
-void CommandUpload::printRawData(
-        const uint8_t *data,
-        unsigned int size
-        )
-{
-    cout << hex << setfill('0');
-    while (size--) {
-        cout << "0x" << setw(2) << (unsigned int) *data++;
-        if (size)
-            cout << " ";
-    }
-    cout << endl;
 }
 
 /*****************************************************************************/

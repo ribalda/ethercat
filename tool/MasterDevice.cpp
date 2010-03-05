@@ -534,10 +534,10 @@ void MasterDevice::readSoe(ec_ioctl_slave_soe_t *data)
         if (errno == EIO && data->error_code) {
             throw MasterDeviceSoeException(data->error_code);
         } else {
-			stringstream err;
-			err << "Failed to read IDN: " << strerror(errno);
-			throw MasterDeviceException(err);
-		}
+            stringstream err;
+            err << "Failed to read IDN: " << strerror(errno);
+            throw MasterDeviceException(err);
+        }
     }
 }
 

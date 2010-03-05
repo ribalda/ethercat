@@ -86,7 +86,7 @@ string CommandDownload::helpString() const
 
 void CommandDownload::execute(const StringVector &args)
 {
-    stringstream strIndex, strSubIndex, strValue, err;
+    stringstream strIndex, strSubIndex, err;
     ec_ioctl_slave_sdo_download_t data;
     unsigned int number;
     const DataType *dataType = NULL;
@@ -160,80 +160,12 @@ void CommandDownload::execute(const StringVector &args)
 
     data.data = new uint8_t[data.data_size + 1];
 
-    strValue << args[2];
-    strValue >> resetiosflags(ios::basefield); // guess base from prefix
-    strValue.exceptions(ios::failbit);
-
     try {
-        switch (dataType->coeCode) {
-            case 0x0002: // int8
-                {
-                    int16_t val; // uint8_t is interpreted as char
-                    strValue >> val;
-                    if (val > 127 || val < -128)
-                        throw ios::failure("Value out of range");
-                    *data.data = val;
-                    break;
-                }
-            case 0x0003: // int16
-                {
-                    int16_t val;
-                    strValue >> val;
-                    *(int16_t *) data.data = cpu_to_le16(val);
-                    break;
-                }
-            case 0x0004: // int32
-                {
-                    int32_t val;
-                    strValue >> val;
-                    *(int32_t *) data.data = cpu_to_le32(val);
-                    break;
-                }
-            case 0x0005: // uint8
-                {
-                    uint16_t val; // uint8_t is interpreted as char
-                    strValue >> val;
-                    if (val > 0xff)
-                        throw ios::failure("Value out of range");
-                    *data.data = val;
-                    break;
-                }
-            case 0x0006: // uint16
-                {
-                    uint16_t val;
-                    strValue >> val;
-                    *(uint16_t *) data.data = cpu_to_le16(val);
-                    break;
-                }
-            case 0x0007: // uint32
-                {
-                    uint32_t val;
-                    strValue >> val;
-                    *(uint32_t *) data.data = cpu_to_le32(val);
-                    break;
-                }
-            case 0x0009: // string
-                if (strValue.str().size() >= data.data_size) {
-                    err << "String too large";
-                    throwCommandException(err);
-                }
-                data.data_size = strValue.str().size();
-                strValue >> (char *) data.data;
-                break;
-            case 0x000a: // octet_string
-                if (strValue.str().size() >= data.data_size) {
-                    err << "String too large";
-                    throwCommandException(err);
-                }
-                data.data_size = strValue.str().size();
-                strValue >> (char *) data.data;
-                break;
-
-            default:
-                delete [] data.data;
-                err << "Unknown data type 0x" << hex << dataType->coeCode;
-                throwCommandException(err);
-        }
+        data.data_size = interpretAsType(
+                dataType, args[2], data.data, data.data_size);
+    } catch (SizeException &e) {
+        delete [] data.data;
+        throwCommandException(e.what());
     } catch (ios::failure &e) {
         delete [] data.data;
         err << "Invalid value argument '" << args[2]

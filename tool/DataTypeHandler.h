@@ -27,44 +27,51 @@
  *
  ****************************************************************************/
 
-#include "CommandReg.h"
-
-/*****************************************************************************/
-
-CommandReg::CommandReg(const string &name, const string &briefDesc):
-    Command(name, briefDesc)
-{
-}
+#ifndef __DATATYPEHANDLER_H__
+#define __DATATYPEHANDLER_H__
 
 /****************************************************************************/
 
-const CommandReg::DataType *CommandReg::findDataType(
-        const string &str
-        )
-{
-    const DataType *d;
-    
-    for (d = dataTypes; d->name; d++)
-        if (str == d->name)
-            return d;
-
-    return NULL;
-}
+#include <stdint.h>
+#include <string>
+#include <stdexcept>
+#include <ostream>
 
 /****************************************************************************/
 
-const CommandReg::DataType CommandReg::dataTypes[] = {
-    {"int8",         1},
-    {"int16",        2},
-    {"int32",        4},
-    {"int64",        8},
-    {"uint8",        1},
-    {"uint16",       2},
-    {"uint32",       4},
-    {"uint64",       8},
-    {"string",       0},
-    {"raw",          0},
-    {}
+class DataTypeHandler
+{
+    public:
+        DataTypeHandler();
+
+    protected:
+        struct DataType {
+            const char *name;
+            uint16_t code;
+            size_t byteSize;
+        };
+
+        static const DataType *findDataType(const std::string &);
+        static const DataType *findDataType(uint16_t);
+        static size_t interpretAsType(const DataType *, const std::string &,
+                void *, size_t);
+
+        class SizeException:
+            public std::runtime_error
+        {
+            public:
+                SizeException(const std::string &msg):
+                    runtime_error(msg) {}
+        };
+
+        static void outputData(std::ostream &, const DataType *,
+                void *, size_t);
+        static void printRawData(ostream &, const uint8_t *, size_t);
+
+    private:
+        static const DataType dataTypes[];
 };
 
-/*****************************************************************************/
+/****************************************************************************/
+
+#endif

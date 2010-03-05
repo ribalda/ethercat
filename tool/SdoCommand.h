@@ -31,22 +31,17 @@
 #define __SDOCOMMAND_H__
 
 #include "Command.h"
+#include "DataTypeHandler.h"
 
 /****************************************************************************/
 
 class SdoCommand:
-    public Command
+    public Command,
+    public DataTypeHandler
 {
     public:
         SdoCommand(const string &, const string &);
 
-        struct DataType {
-            const char *name;
-            uint16_t coeCode;
-            unsigned int byteSize;
-        };
-        static const DataType *findDataType(const string &);
-        static const DataType *findDataType(uint16_t);
         static const char *abortText(uint32_t);
 
     private:
@@ -55,7 +50,6 @@ class SdoCommand:
             const char *message;
         };
 
-        static const DataType dataTypes[];
         static const AbortMessage abortMessages[];
 };
 

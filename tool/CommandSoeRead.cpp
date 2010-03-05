@@ -73,6 +73,7 @@ void CommandSoeRead::execute(const StringVector &args)
 {
     SlaveList slaves;
     stringstream err, strIdn;
+    const DataType *dataType = NULL;
     ec_ioctl_slave_soe_t data;
 
     if (args.size() != 1) {
@@ -101,7 +102,21 @@ void CommandSoeRead::execute(const StringVector &args)
     }
     data.slave_position = slaves.front().position;
 
-	data.mem_size = 1024;
+    if (getDataType().empty()) {
+        dataType = findDataType("raw"); // FIXME
+    } else { // no data type specified
+        if (!(dataType = findDataType(getDataType()))) {
+            err << "Invalid data type '" << getDataType() << "'!";
+            throwInvalidUsageException(err);
+        }
+    }
+
+    if (dataType->byteSize) {
+        data.mem_size = dataType->byteSize;
+    } else {
+        data.mem_size = 1024;
+    }
+
     data.data = new uint8_t[data.mem_size + 1];
 
     try {
@@ -118,25 +133,14 @@ void CommandSoeRead::execute(const StringVector &args)
 
     m.close();
 
-	printRawData(data.data, data.data_size);
+    try {
+        outputData(cout, dataType, data.data, data.data_size);
+    } catch (SizeException &e) {
+        delete [] data.data;
+        throwCommandException(e.what());
+    }
 
     delete [] data.data;
-}
-
-/****************************************************************************/
-
-void CommandSoeRead::printRawData(
-        const uint8_t *data,
-        unsigned int size
-        )
-{
-    cout << hex << setfill('0');
-    while (size--) {
-        cout << "0x" << setw(2) << (unsigned int) *data++;
-        if (size)
-            cout << " ";
-    }
-    cout << endl;
 }
 
 /*****************************************************************************/

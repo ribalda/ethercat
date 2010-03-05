@@ -30,12 +30,14 @@
 #ifndef __COMMANDREGREAD_H__
 #define __COMMANDREGREAD_H__
 
-#include "CommandReg.h"
+#include "Command.h"
+#include "DataTypeHandler.h"
 
 /****************************************************************************/
 
 class CommandRegRead:
-    public CommandReg
+    public Command,
+    public DataTypeHandler
 {
     public:
         CommandRegRead();

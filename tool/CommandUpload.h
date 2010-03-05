@@ -45,8 +45,6 @@ class CommandUpload:
 
     protected:
         enum {DefaultBufferSize = 64 * 1024};
-
-        static void printRawData(const uint8_t *, unsigned int);
 };
 
 /****************************************************************************/

@@ -30,12 +30,14 @@
 #ifndef __COMMANDREGWRITE_H__
 #define __COMMANDREGWRITE_H__
 
-#include "CommandReg.h"
+#include "Command.h"
+#include "DataTypeHandler.h"
 
 /****************************************************************************/
 
 class CommandRegWrite:
-    public CommandReg
+    public Command,
+    public DataTypeHandler
 {
     public:
         CommandRegWrite();

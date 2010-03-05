@@ -39,7 +39,7 @@ using namespace std;
 /*****************************************************************************/
 
 CommandRegWrite::CommandRegWrite():
-    CommandReg("reg_write", "Write data to a slave's registers.")
+    Command("reg_write", "Write data to a slave's registers.")
 {
 }
 
@@ -131,63 +131,18 @@ void CommandRegWrite::execute(const StringVector &args)
 
         if (dataType->byteSize) {
             data.length = dataType->byteSize;
-            data.data = new uint8_t[data.length];
+        } else {
+            data.length = 1024; // FIXME
         }
 
-        strValue << args[1];
-        strValue >> resetiosflags(ios::basefield); // guess base from prefix
-        strValue.exceptions(ios::failbit);
+        data.data = new uint8_t[data.length];
 
         try {
-            if (string(dataType->name) == "int8") {
-                int16_t val; // uint8_t is interpreted as char
-                strValue >> val;
-                if (val > 127 || val < -128)
-                    throw ios::failure("Value out of range");
-                *data.data = (int8_t) val;
-            } else if (string(dataType->name) == "int16") {
-                int16_t val;
-                strValue >> val;
-                *(int16_t *) data.data = cpu_to_le16(val);
-            } else if (string(dataType->name) == "int32") {
-                int32_t val;
-                strValue >> val;
-                *(int32_t *) data.data = cpu_to_le32(val);
-            } else if (string(dataType->name) == "int64") {
-                int64_t val;
-                strValue >> val;
-                *(int64_t *) data.data = cpu_to_le64(val);
-            } else if (string(dataType->name) == "uint8") {
-                uint16_t val; // uint8_t is interpreted as char
-                strValue >> val;
-                if (val > 0xff)
-                    throw ios::failure("Value out of range");
-                *data.data = (uint8_t) val;
-            } else if (string(dataType->name) == "uint16") {
-                uint16_t val;
-                strValue >> val;
-                *(uint16_t *) data.data = cpu_to_le16(val);
-            } else if (string(dataType->name) == "uint32") {
-                uint32_t val;
-                strValue >> val;
-                *(uint32_t *) data.data = cpu_to_le32(val);
-            } else if (string(dataType->name) == "uint64") {
-                uint64_t val;
-                strValue >> val;
-                *(uint64_t *) data.data = cpu_to_le64(val);
-            } else if (string(dataType->name) == "string" ||
-                    string(dataType->name) == "octet_string") {
-                data.length = strValue.str().size();
-                if (!data.length) {
-                    err << "Zero-size string now allowed!";
-                    throwCommandException(err);
-                }
-                data.data = new uint8_t[data.length];
-                strValue >> (char *) data.data;
-            } else {
-                err << "Invalid data type " << dataType->name;
-                throwCommandException(err);
-            }
+            data.length = interpretAsType(
+                    dataType, args[1], data.data, data.length);
+        } catch (SizeException &e) {
+            delete [] data.data;
+            throwCommandException(e.what());
         } catch (ios::failure &e) {
             delete [] data.data;
             err << "Invalid value argument '" << args[1]

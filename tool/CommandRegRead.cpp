@@ -37,7 +37,7 @@ using namespace std;
 /*****************************************************************************/
 
 CommandRegRead::CommandRegRead():
-    CommandReg("reg_read", "Output a slave's register contents.")
+    Command("reg_read", "Output a slave's register contents.")
 {
 }
 
@@ -164,49 +164,11 @@ void CommandRegRead::execute(const StringVector &args)
         throw e;
     }
 
-    cout << setfill('0');
-    if (!dataType || string(dataType->name) == "string") {
-        uint16_t i;
-        for (i = 0; i < data.length; i++) {
-            cout << data.data[i];
-        }
-        if (dataType)
-            cout << endl;
-    } else if (string(dataType->name) == "int8") {
-        int val = (int) *data.data;
-        cout << "0x" << hex << setw(2) << val << " " << dec << val << endl;
-    } else if (string(dataType->name) == "int16") {
-        int16_t val = le16_to_cpup(data.data);
-        cout << "0x" << hex << setw(4) << val << " " << dec << val << endl;
-    } else if (string(dataType->name) == "int32") {
-        int32_t val = le32_to_cpup(data.data);
-        cout << "0x" << hex << setw(8) << val << " " << dec << val << endl;
-    } else if (string(dataType->name) == "int64") {
-        int64_t val = le64_to_cpup(data.data);
-        cout << "0x" << hex << setw(16) << val << " " << dec << val << endl;
-    } else if (string(dataType->name) == "uint8") {
-        unsigned int val = (unsigned int) *data.data;
-        cout << "0x" << hex << setw(2) << val << " " << dec << val << endl;
-    } else if (string(dataType->name) == "uint16") {
-        uint16_t val = le16_to_cpup(data.data);
-        cout << "0x" << hex << setw(4) << val << " " << dec << val << endl;
-    } else if (string(dataType->name) == "uint32") {
-        uint32_t val = le32_to_cpup(data.data);
-        cout << "0x" << hex << setw(8) << val << " " << dec << val << endl;
-    } else if (string(dataType->name) == "uint64") {
-        uint64_t val = le64_to_cpup(data.data);
-        cout << "0x" << hex << setw(16) << val << " " << dec << val << endl;
-    } else { // raw
-        uint8_t *d = data.data;
-        unsigned int size = data.length;
-
-        cout << hex << setfill('0');
-        while (size--) {
-            cout << "0x" << setw(2) << (unsigned int) *d++;
-            if (size)
-                cout << " ";
-        }
-        cout << endl;
+    try {
+        outputData(cout, dataType, data.data, data.length);
+    } catch (SizeException &e) {
+        delete [] data.data;
+        throwCommandException(e.what());
     }
 
     delete [] data.data;

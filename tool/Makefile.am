@@ -49,7 +49,6 @@ ethercat_SOURCES = \
 	CommandGraph.cpp \
 	CommandMaster.cpp \
 	CommandPdos.cpp \
-	CommandReg.cpp \
 	CommandRegRead.cpp \
 	CommandRegWrite.cpp \
 	CommandSdos.cpp \
@@ -61,6 +60,7 @@ ethercat_SOURCES = \
 	CommandUpload.cpp \
 	CommandVersion.cpp \
 	CommandXml.cpp \
+	DataTypeHandler.cpp \
 	FoeCommand.cpp \
 	MasterDevice.cpp \
 	NumberListParser.cpp \
@@ -88,7 +88,6 @@ noinst_HEADERS = \
 	CommandGraph.h \
 	CommandMaster.h \
 	CommandPdos.h \
-	CommandReg.h \
 	CommandRegRead.h \
 	CommandRegWrite.h \
 	CommandSdos.h \
@@ -100,6 +99,7 @@ noinst_HEADERS = \
 	CommandUpload.h \
 	CommandVersion.h \
 	CommandXml.h \
+	DataTypeHandler.h \
 	FoeCommand.h \
 	MasterDevice.h \
 	NumberListParser.h \
@@ -118,6 +118,9 @@ REV = `if test -s $(top_srcdir)/revision; then \
 		hg id -i $(top_srcdir) 2>/dev/null || echo "unknown"; \
 	fi`
 
-ethercat_CXXFLAGS = -I$(top_srcdir)/master -Wall -DREV=$(REV)
+ethercat_CXXFLAGS = \
+	-I$(top_srcdir)/include \
+	-I$(top_srcdir)/master \
+	-Wall -DREV=$(REV)
 
 #------------------------------------------------------------------------------

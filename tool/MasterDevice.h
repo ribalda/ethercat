@@ -34,8 +34,8 @@
 #include <sstream>
 using namespace std;
 
-#include "../include/ecrt.h"
-#include "../master/ioctl.h"
+#include "ecrt.h"
+#include "ioctl.h"
 
 /****************************************************************************/
 
