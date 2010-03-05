@@ -45,7 +45,6 @@
 #include "fsm_slave_config.h"
 #include "fsm_slave_scan.h"
 #include "fsm_pdo.h"
-#include "fsm_foe.h"
 
 /*****************************************************************************/
 
