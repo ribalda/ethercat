@@ -54,6 +54,7 @@ void ec_fsm_slave_config_state_dc_write_offset(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_mbox_sync(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_boot_preop(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_sdo_conf(ec_fsm_slave_config_t *);
+void ec_fsm_slave_config_state_soe_conf(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_watchdog_divider(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_watchdog(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_pdo_sync(ec_fsm_slave_config_t *);
@@ -71,6 +72,7 @@ void ec_fsm_slave_config_enter_dc_clear_assign(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_mbox_sync(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_boot_preop(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_sdo_conf(ec_fsm_slave_config_t *);
+void ec_fsm_slave_config_enter_soe_conf(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_pdo_conf(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_watchdog_divider(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_watchdog(ec_fsm_slave_config_t *);
@@ -113,6 +115,7 @@ void ec_fsm_slave_config_clear(
         )
 {
     ec_sdo_request_clear(&fsm->request_copy);
+    ec_soe_request_clear(&fsm->soe_request_copy);
 }
 
 /*****************************************************************************/
@@ -759,7 +762,7 @@ void ec_fsm_slave_config_enter_sdo_conf(
 
     // No CoE configuration to be applied?
     if (list_empty(&slave->config->sdo_configs)) { // skip SDO configuration
-        ec_fsm_slave_config_enter_pdo_conf(fsm);
+        ec_fsm_slave_config_enter_soe_conf(fsm);
         return;
     }
 
@@ -804,6 +807,81 @@ void ec_fsm_slave_config_state_sdo_conf(
         ecrt_sdo_request_write(&fsm->request_copy);
         ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, &fsm->request_copy);
         ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
+        return;
+    }
+
+    // All SDOs are now configured.
+	ec_fsm_slave_config_enter_soe_conf(fsm);
+}
+
+/*****************************************************************************/
+
+/** Check for SoE configurations to be applied.
+ */
+void ec_fsm_slave_config_enter_soe_conf(
+        ec_fsm_slave_config_t *fsm /**< slave state machine */
+        )
+{
+    ec_slave_t *slave = fsm->slave;
+	ec_fsm_soe_t *fsm_soe = &slave->fsm.fsm_soe;
+
+    if (!slave->config) {
+        ec_fsm_slave_config_enter_pdo_sync(fsm);
+        return;
+    }
+
+    // No SoE configuration to be applied?
+    if (list_empty(&slave->config->soe_configs)) { // skip configuration
+        ec_fsm_slave_config_enter_pdo_conf(fsm);
+        return;
+    }
+
+    // start SoE configuration
+    fsm->state = ec_fsm_slave_config_state_soe_conf;
+    fsm->soe_request = list_entry(fsm->slave->config->soe_configs.next,
+            ec_soe_request_t, list);
+    ec_soe_request_copy(&fsm->soe_request_copy, fsm->soe_request);
+	ec_soe_request_write(&fsm->soe_request_copy);
+    ec_fsm_soe_transfer(fsm_soe, fsm->slave, &fsm->soe_request_copy);
+    ec_fsm_soe_exec(fsm_soe); // execute immediately
+}
+
+/*****************************************************************************/
+
+/** Slave configuration state: SOE_CONF.
+ */
+void ec_fsm_slave_config_state_soe_conf(
+        ec_fsm_slave_config_t *fsm /**< slave state machine */
+        )
+{
+    ec_slave_t *slave = fsm->slave;
+	ec_fsm_soe_t *fsm_soe = &slave->fsm.fsm_soe;
+
+    if (ec_fsm_soe_exec(fsm_soe)) {
+		return;
+	}
+
+    if (!ec_fsm_soe_success(fsm_soe)) {
+        EC_ERR("SoE configuration failed for slave %u.\n",
+                fsm->slave->ring_position);
+        fsm->slave->error_flag = 1;
+        fsm->state = ec_fsm_slave_config_state_error;
+        return;
+    }
+
+    if (!fsm->slave->config) { // config removed in the meantime
+        ec_fsm_slave_config_reconfigure(fsm);
+        return;
+    }
+
+    // Another IDN to configure?
+    if (fsm->soe_request->list.next != &fsm->slave->config->soe_configs) {
+        fsm->soe_request = list_entry(fsm->soe_request->list.next,
+                ec_soe_request_t, list);
+        ec_soe_request_copy(&fsm->soe_request_copy, fsm->soe_request);
+        ec_soe_request_write(&fsm->soe_request_copy);
+        ec_fsm_soe_transfer(fsm_soe, fsm->slave, &fsm->soe_request_copy);
+        ec_fsm_soe_exec(fsm_soe); // execute immediately
         return;
     }
 

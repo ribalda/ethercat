@@ -86,6 +86,7 @@ void ec_slave_config_init(
     INIT_LIST_HEAD(&sc->sdo_configs);
     INIT_LIST_HEAD(&sc->sdo_requests);
     INIT_LIST_HEAD(&sc->voe_handlers);
+    INIT_LIST_HEAD(&sc->soe_configs);
 }
 
 /*****************************************************************************/
@@ -101,6 +102,7 @@ void ec_slave_config_clear(
     unsigned int i;
     ec_sdo_request_t *req, *next_req;
     ec_voe_handler_t *voe, *next_voe;
+    ec_soe_request_t *soe, *next_soe;
 
     ec_slave_config_detach(sc);
 
@@ -127,6 +129,13 @@ void ec_slave_config_clear(
         list_del(&voe->list);
         ec_voe_handler_clear(voe);
         kfree(voe);
+    }
+
+    // free all SoE configurations
+    list_for_each_entry_safe(soe, next_soe, &sc->soe_configs, list) {
+        list_del(&soe->list);
+        ec_soe_request_clear(soe);
+        kfree(soe);
     }
 }
 
@@ -950,6 +959,46 @@ void ecrt_slave_config_state(const ec_slave_config_t *sc,
 
 /*****************************************************************************/
 
+int ecrt_slave_config_idn(ec_slave_config_t *sc, uint16_t idn,
+		const uint8_t *data, size_t size)
+{
+    ec_slave_t *slave = sc->slave;
+    ec_soe_request_t *req;
+    int ret;
+
+    if (sc->master->debug_level)
+        EC_DBG("ecrt_slave_config_idn(sc = 0x%p, idn = 0x%04X, "
+                "data = 0x%p, size = %zu)\n", sc, idn, data, size);
+
+    if (slave && !(slave->sii.mailbox_protocols & EC_MBOX_SOE)) {
+        EC_ERR("Slave %u does not support SoE!\n", slave->ring_position);
+        return -EPROTONOSUPPORT; // protocol not supported
+    }
+
+    if (!(req = (ec_soe_request_t *)
+          kmalloc(sizeof(ec_soe_request_t), GFP_KERNEL))) {
+        EC_ERR("Failed to allocate memory for IDN configuration!\n");
+        return -ENOMEM;
+    }
+
+    ec_soe_request_init(req);
+    ec_soe_request_set_idn(req, idn);
+
+    ret = ec_soe_request_copy_data(req, data, size);
+    if (ret < 0) {
+        ec_soe_request_clear(req);
+        kfree(req);
+        return ret;
+    }
+        
+    down(&sc->master->master_sem);
+    list_add_tail(&req->list, &sc->soe_configs);
+    up(&sc->master->master_sem);
+    return 0;
+}
+
+/*****************************************************************************/
+
 /** \cond */
 
 EXPORT_SYMBOL(ecrt_slave_config_sync_manager);
@@ -969,6 +1018,7 @@ EXPORT_SYMBOL(ecrt_slave_config_complete_sdo);
 EXPORT_SYMBOL(ecrt_slave_config_create_sdo_request);
 EXPORT_SYMBOL(ecrt_slave_config_create_voe_handler);
 EXPORT_SYMBOL(ecrt_slave_config_state);
+EXPORT_SYMBOL(ecrt_slave_config_idn);
 
 /** \endcond */
 

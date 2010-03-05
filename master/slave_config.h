@@ -77,6 +77,7 @@ struct ec_slave_config {
     struct list_head sdo_configs; /**< List of SDO configurations. */
     struct list_head sdo_requests; /**< List of SDO requests. */
     struct list_head voe_handlers; /**< List of VoE handlers. */
+    struct list_head soe_configs; /**< List of SoE configurations. */
 };
 
 /*****************************************************************************/

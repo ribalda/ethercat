@@ -13,6 +13,7 @@ Changes since 1.4.0:
 * Added distributed clocks support.
 * Added watchdog configuration via application interface (thanks to J. Mohre).
 * Added VoE mailbox protocol support.
+* Added SoE mailbox protocol support.
 * Improved the callback mechanism. ecrt_master_callbacks() now takes two
   callback functions for sending and receiving datagrams.
   ecrt_master_send_ext() is used to execute the sending of non-application

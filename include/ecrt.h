@@ -75,6 +75,7 @@
  * - Removed 'const' from argument of ecrt_sdo_request_state(), because the
  *   userspace library has to modify object internals.
  * - Added 64-bit data access macros.
+ * - Added ecrt_slave_config_idn() method for storing SoE IDN configurations.
  *
  * @{
  */
@@ -1132,6 +1133,27 @@ ec_voe_handler_t *ecrt_slave_config_create_voe_handler(
 void ecrt_slave_config_state(
         const ec_slave_config_t *sc, /**< Slave configuration */
         ec_slave_config_state_t *state /**< State object to write to. */
+        );
+
+/** Add an SoE IDN configuration.
+ *
+ * A configuration for a Sercos-over-EtherCAT IDN is stored in the slave
+ * configuration object and is written to the slave whenever the slave is
+ * being configured by the master. This usually happens once on master
+ * activation, but can be repeated subsequently, for example after the slave's
+ * power supply failed.
+ *
+ * Please note that the this function does not do any endianess correction.
+ * Data have to be passed in EtherCAT endianess (little-endian).
+ *
+ * \retval  0 Success.
+ * \retval <0 Error code.
+ */
+int ecrt_slave_config_idn(
+        ec_slave_config_t *sc, /**< Slave configuration. */
+        uint16_t idn, /**< SoE IDN. */
+        const uint8_t *data, /**< Pointer to the data. */
+        size_t size /**< Size of the \a data. */
         );
 
 /******************************************************************************
