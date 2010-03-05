@@ -56,6 +56,7 @@ ethercat_SOURCES = \
 	CommandSiiWrite.cpp \
 	CommandSlaves.cpp \
 	CommandSoeRead.cpp \
+	CommandSoeWrite.cpp \
 	CommandStates.cpp \
 	CommandUpload.cpp \
 	CommandVersion.cpp \
@@ -95,6 +96,7 @@ noinst_HEADERS = \
 	CommandSiiWrite.h \
 	CommandSlaves.h \
 	CommandSoeRead.h \
+	CommandSoeWrite.h \
 	CommandStates.h \
 	CommandUpload.h \
 	CommandVersion.h \

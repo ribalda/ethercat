@@ -30,9 +30,10 @@ Version 1.5.0:
 * Implement indent in 'ethercat ma'
 * Add master index to log messages.
 * Implement 0xXXXX:YY format for specifying SDOs.
-* Lookup CoE codes for 64bit data types.
+* Lookup codes for 64bit data types.
 * Move data type usage string into DataTypeHandler.
 * Implement interpretation of SoE '[SP]-x-yyy' strings.
+* Implement reading from stream for soe_write.
 
 Future issues:
 

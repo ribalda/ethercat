@@ -45,11 +45,15 @@
  */
 #define EC_MBOX_TYPE_SOE 0x05
 
-#define EC_SOE_OPCODE_READ_REQUEST  0x01
-#define EC_SOE_OPCODE_READ_RESPONSE 0x02
+#define EC_SOE_OPCODE_READ_REQUEST   0x01
+#define EC_SOE_OPCODE_READ_RESPONSE  0x02
+#define EC_SOE_OPCODE_WRITE_REQUEST  0x03
+#define EC_SOE_OPCODE_WRITE_RESPONSE 0x04
 
-#define EC_SOE_READ_REQUEST_SIZE 0x04
-#define EC_SOE_READ_RESPONSE_SIZE 0x04
+#define EC_SOE_READ_REQUEST_SIZE   0x04
+#define EC_SOE_READ_RESPONSE_SIZE  0x04
+#define EC_SOE_WRITE_REQUEST_SIZE  0x04
+#define EC_SOE_WRITE_RESPONSE_SIZE 0x04
 
 #define EC_SOE_RESPONSE_TIMEOUT 1000
 
@@ -59,6 +63,11 @@ void ec_fsm_soe_read_start(ec_fsm_soe_t *);
 void ec_fsm_soe_read_request(ec_fsm_soe_t *);
 void ec_fsm_soe_read_check(ec_fsm_soe_t *);
 void ec_fsm_soe_read_response(ec_fsm_soe_t *);
+
+void ec_fsm_soe_write_start(ec_fsm_soe_t *);
+void ec_fsm_soe_write_request(ec_fsm_soe_t *);
+void ec_fsm_soe_write_check(ec_fsm_soe_t *);
+void ec_fsm_soe_write_response(ec_fsm_soe_t *);
 
 void ec_fsm_soe_end(ec_fsm_soe_t *);
 void ec_fsm_soe_error(ec_fsm_soe_t *);
@@ -99,7 +108,7 @@ void ec_fsm_soe_transfer(
     fsm->slave = slave;
     fsm->request = request;
     if (request->dir == EC_DIR_OUTPUT) {
-        //fsm->state = ec_fsm_soe_write_start;
+        fsm->state = ec_fsm_soe_write_start;
 	} else {
         fsm->state = ec_fsm_soe_read_start;
 	}
@@ -360,6 +369,241 @@ void ec_fsm_soe_read_response(ec_fsm_soe_t *fsm /**< finite state machine */)
 				data + EC_SOE_READ_RESPONSE_SIZE, data_size)) {
 		fsm->state = ec_fsm_soe_error;
 		return;
+	}
+
+	if (master->debug_level) {
+		EC_DBG("IDN data:\n");
+		ec_print_data(req->data, req->data_size);
+	}
+
+    fsm->state = ec_fsm_soe_end; // success
+}
+
+/******************************************************************************
+ * SoE write state machine
+ *****************************************************************************/
+
+/** SoE state: WRITE START.
+ */
+void ec_fsm_soe_write_start(ec_fsm_soe_t *fsm /**< finite state machine */)
+{
+    ec_datagram_t *datagram = fsm->datagram;
+    ec_slave_t *slave = fsm->slave;
+    ec_master_t *master = slave->master;
+    ec_soe_request_t *request = fsm->request;
+    uint8_t *data;
+
+    if (master->debug_level)
+        EC_DBG("Writing IDN 0x%04X to slave %u.\n",
+               request->idn, slave->ring_position);
+
+    if (!(slave->sii.mailbox_protocols & EC_MBOX_SOE)) {
+        EC_ERR("Slave %u does not support SoE!\n", slave->ring_position);
+        fsm->state = ec_fsm_soe_error;
+        return;
+    }
+
+    data = ec_slave_mbox_prepare_send(slave, datagram, EC_MBOX_TYPE_SOE,
+			EC_SOE_WRITE_REQUEST_SIZE + request->data_size);
+    if (IS_ERR(data)) {
+        fsm->state = ec_fsm_soe_error;
+        return;
+    }
+
+    EC_WRITE_U8(data, EC_SOE_OPCODE_WRITE_REQUEST);
+    EC_WRITE_U8(data + 1, 1 << 6); // only value included
+    EC_WRITE_U16(data + 2, request->idn);
+	memcpy(data + 4, request->data, request->data_size);
+
+    if (master->debug_level) {
+        EC_DBG("SCC write request:\n");
+        ec_print_data(data, EC_SOE_WRITE_REQUEST_SIZE + request->data_size);
+    }
+
+    fsm->request->jiffies_sent = jiffies;
+    fsm->retries = EC_FSM_RETRIES;
+    fsm->state = ec_fsm_soe_write_request;
+}
+
+/*****************************************************************************/
+
+/** SoE state: WRITE REQUEST.
+ */
+void ec_fsm_soe_write_request(ec_fsm_soe_t *fsm /**< finite state machine */)
+{
+    ec_datagram_t *datagram = fsm->datagram;
+    ec_slave_t *slave = fsm->slave;
+    unsigned long diff_ms;
+
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+        return; // FIXME: check for response first?
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED) {
+        fsm->state = ec_fsm_soe_error;
+        EC_ERR("Failed to receive SoE write request for slave %u: ",
+               slave->ring_position);
+        ec_datagram_print_state(datagram);
+        return;
+    }
+
+    diff_ms = (jiffies - fsm->request->jiffies_sent) * 1000 / HZ;
+
+    if (datagram->working_counter != 1) {
+        if (!datagram->working_counter) {
+            if (diff_ms < EC_SOE_RESPONSE_TIMEOUT) {
+                // no response; send request datagram again
+                return;
+            }
+        }
+        fsm->state = ec_fsm_soe_error;
+        EC_ERR("Reception of SoE write request for IDN 0x%04x failed"
+                " after %u ms on slave %u: ",
+                fsm->request->idn, (u32) diff_ms,
+                fsm->slave->ring_position);
+        ec_datagram_print_wc_error(datagram);
+        return;
+    }
+
+    fsm->jiffies_start = datagram->jiffies_sent;
+
+    ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
+    fsm->retries = EC_FSM_RETRIES;
+    fsm->state = ec_fsm_soe_write_check;
+}
+
+/*****************************************************************************/
+
+/** CoE state: WRITE CHECK.
+ */
+void ec_fsm_soe_write_check(ec_fsm_soe_t *fsm /**< finite state machine */)
+{
+    ec_datagram_t *datagram = fsm->datagram;
+    ec_slave_t *slave = fsm->slave;
+
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+        return;
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED) {
+        fsm->state = ec_fsm_soe_error;
+        EC_ERR("Failed to receive SoE mailbox check datagram from slave %u: ",
+               slave->ring_position);
+        ec_datagram_print_state(datagram);
+        return;
+    }
+
+    if (datagram->working_counter != 1) {
+        fsm->state = ec_fsm_soe_error;
+        EC_ERR("Reception of SoE mailbox check datagram failed on slave %u: ",
+				slave->ring_position);
+        ec_datagram_print_wc_error(datagram);
+        return;
+    }
+
+    if (!ec_slave_mbox_check(datagram)) {
+        unsigned long diff_ms =
+            (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
+        if (diff_ms >= EC_SOE_RESPONSE_TIMEOUT) {
+            fsm->state = ec_fsm_soe_error;
+            EC_ERR("Timeout after %u ms while waiting for IDN 0x%04x"
+                    " write response on slave %u.\n", (u32) diff_ms,
+                    fsm->request->idn, slave->ring_position);
+            return;
+        }
+
+        ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
+        fsm->retries = EC_FSM_RETRIES;
+        return;
+    }
+
+    // Fetch response
+    ec_slave_mbox_prepare_fetch(slave, datagram); // can not fail.
+    fsm->retries = EC_FSM_RETRIES;
+    fsm->state = ec_fsm_soe_write_response;
+}
+
+/*****************************************************************************/
+
+/** SoE state: WRITE RESPONSE.
+ */
+void ec_fsm_soe_write_response(ec_fsm_soe_t *fsm /**< finite state machine */)
+{
+    ec_datagram_t *datagram = fsm->datagram;
+    ec_slave_t *slave = fsm->slave;
+    ec_master_t *master = slave->master;
+    uint8_t *data, mbox_prot, opcode, error_flag;
+	uint16_t idn;
+    size_t rec_size;
+    ec_soe_request_t *req = fsm->request;
+
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+        return; // FIXME: request again?
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED) {
+        fsm->state = ec_fsm_soe_error;
+        EC_ERR("Failed to receive SoE write response datagram for"
+               " slave %u: ", slave->ring_position);
+        ec_datagram_print_state(datagram);
+        return;
+    }
+
+    if (datagram->working_counter != 1) {
+        fsm->state = ec_fsm_soe_error;
+        EC_ERR("Reception of SoE write response failed on slave %u: ",
+                slave->ring_position);
+        ec_datagram_print_wc_error(datagram);
+        return;
+    }
+
+    data = ec_slave_mbox_fetch(slave, datagram, &mbox_prot, &rec_size);
+    if (IS_ERR(data)) {
+        fsm->state = ec_fsm_soe_error;
+        return;
+    }
+
+    if (master->debug_level) {
+        EC_DBG("SCC write response:\n");
+        ec_print_data(data, rec_size);
+    }
+
+    if (mbox_prot != EC_MBOX_TYPE_SOE) {
+        fsm->state = ec_fsm_soe_error;
+        EC_WARN("Received mailbox protocol 0x%02X as response.\n", mbox_prot);
+        return;
+    }
+
+    if (rec_size < EC_SOE_WRITE_RESPONSE_SIZE) {
+        fsm->state = ec_fsm_soe_error;
+        EC_ERR("Received currupted SoE write response (%zu bytes)!\n",
+				rec_size);
+        ec_print_data(data, rec_size);
+        return;
+    }
+
+	opcode = EC_READ_U8(data) & 0x3;
+    if (opcode != EC_SOE_OPCODE_WRITE_RESPONSE) {
+        EC_ERR("Received no write response (opcode %x).\n", opcode);
+        ec_print_data(data, rec_size);
+        fsm->state = ec_fsm_soe_error;
+        return;
+    }
+
+	idn = EC_READ_U16(data + 2);
+	if (idn != req->idn) {
+		EC_ERR("Received response for wrong IDN 0x%04x.\n", idn);
+        ec_print_data(data, rec_size);
+        fsm->state = ec_fsm_soe_error;
+		return;
+	}
+
+	error_flag = (EC_READ_U8(data) >> 4) & 1;
+	if (error_flag) {
+		req->error_code = EC_READ_U16(data + rec_size - 2);
+		EC_ERR("Received error response: 0x%04x.\n",
+				req->error_code);
+        fsm->state = ec_fsm_soe_error;
+        return;
+	} else {
+		req->error_code = 0x0000;
 	}
 
 	if (master->debug_level) {

@@ -31,23 +31,23 @@
 #include <iomanip>
 using namespace std;
 
-#include "CommandSoeRead.h"
+#include "CommandSoeWrite.h"
 #include "MasterDevice.h"
 
 /*****************************************************************************/
 
-CommandSoeRead::CommandSoeRead():
-    Command("soe_read", "Read an SoE IDN from a slave.")
+CommandSoeWrite::CommandSoeWrite():
+    Command("soe_write", "Write an SoE IDN to a slave.")
 {
 }
 
 /*****************************************************************************/
 
-string CommandSoeRead::helpString() const
+string CommandSoeWrite::helpString() const
 {
     stringstream str;
 
-    str << getName() << " [OPTIONS] <INDEX> <SUBINDEX>" << endl
+    str << getName() << " [OPTIONS] <INDEX> <SUBINDEX> <VALUE>" << endl
         << endl
         << getBriefDescription() << endl
         << endl
@@ -56,11 +56,14 @@ string CommandSoeRead::helpString() const
         << "Arguments:" << endl
         << "  IDN      is the IDN and must be an unsigned" << endl
         << "           16 bit number." << endl
+        << "  VALUE    is the value to write and is interpreted" << endl
+        << "           as the given datatype (see above)." << endl
         << endl
         << "Command-specific options:" << endl
         << "  --alias    -a <alias>" << endl
         << "  --position -p <pos>    Slave selection. See the help of" << endl
         << "                         the 'slaves' command." << endl
+        << "  --type     -t <type>   Data type (see above)." << endl
         << endl
         << numericInfo();
 
@@ -69,15 +72,16 @@ string CommandSoeRead::helpString() const
 
 /****************************************************************************/
 
-void CommandSoeRead::execute(const StringVector &args)
+void CommandSoeWrite::execute(const StringVector &args)
 {
-    SlaveList slaves;
-    stringstream err, strIdn;
+    stringstream strIdn, err;
     const DataType *dataType = NULL;
-    ec_ioctl_slave_soe_read_t ioctl;
+    ec_ioctl_slave_soe_write_t ioctl;
+    SlaveList slaves;
+    size_t memSize;
 
-    if (args.size() != 1) {
-        err << "'" << getName() << "' takes one argument!";
+    if (args.size() != 2) {
+        err << "'" << getName() << "' takes 2 arguments!";
         throwInvalidUsageException(err);
     }
 
@@ -95,49 +99,59 @@ void CommandSoeRead::execute(const StringVector &args)
         throwInvalidUsageException(err);
     }
     MasterDevice m(getMasterIndices().front());
-    m.open(MasterDevice::Read);
+    m.open(MasterDevice::ReadWrite);
     slaves = selectedSlaves(m);
     if (slaves.size() != 1) {
         throwSingleSlaveRequired(slaves.size());
     }
     ioctl.slave_position = slaves.front().position;
 
-    if (getDataType().empty()) {
-        dataType = findDataType("raw"); // FIXME
-    } else { // no data type specified
+    if (!getDataType().empty()) { // data type specified
         if (!(dataType = findDataType(getDataType()))) {
             err << "Invalid data type '" << getDataType() << "'!";
             throwInvalidUsageException(err);
         }
+    } else { // no data type specified
+        err << "Please specify a data type.";
+        throwInvalidUsageException(err); // FIXME read from stream
     }
 
     if (dataType->byteSize) {
-        ioctl.mem_size = dataType->byteSize;
+        memSize = dataType->byteSize;
     } else {
-        ioctl.mem_size = 1024;
+        // guess string type size
+        memSize = args[1].size();
+        if (!memSize) {
+            err << "Empty argument not allowed.";
+            throwInvalidUsageException(err);
+        }
     }
 
-    ioctl.data = new uint8_t[ioctl.mem_size + 1];
+    ioctl.data = new uint8_t[memSize + 1];
 
     try {
-        m.readSoe(&ioctl);
+        ioctl.data_size = interpretAsType(
+                dataType, args[1], ioctl.data, memSize);
+    } catch (SizeException &e) {
+        delete [] ioctl.data;
+        throwCommandException(e.what());
+    } catch (ios::failure &e) {
+        delete [] ioctl.data;
+        err << "Invalid value argument '" << args[1]
+            << "' for type '" << dataType->name << "'!";
+        throwInvalidUsageException(err);
+    }
+
+    try {
+        m.writeSoe(&ioctl);
     } catch (MasterDeviceSoeException &e) {
         delete [] ioctl.data;
-        err << "SoE read command aborted with code 0x"
-            << setfill('0') << hex << setw(4) << e.errorCode;
+        err << "SoE write command aborted with code 0x"
+            << setfill('0') << hex << setw(4) << e.errorCode << ".";
         throwCommandException(err);
     } catch (MasterDeviceException &e) {
         delete [] ioctl.data;
         throw e;
-    }
-
-    m.close();
-
-    try {
-        outputData(cout, dataType, ioctl.data, ioctl.data_size);
-    } catch (SizeException &e) {
-        delete [] ioctl.data;
-        throwCommandException(e.what());
     }
 
     delete [] ioctl.data;

@@ -56,7 +56,7 @@
  *
  * Increment this when changing the ioctl interface!
  */
-#define EC_IOCTL_VERSION_MAGIC 2
+#define EC_IOCTL_VERSION_MAGIC 3
 
 // Command-line tool
 #define EC_IOCTL_MODULE                EC_IOR(0x00, ec_ioctl_module_t)
@@ -80,8 +80,8 @@
 #define EC_IOCTL_SLAVE_REG_WRITE       EC_IOW(0x12, ec_ioctl_slave_reg_t)
 #define EC_IOCTL_SLAVE_FOE_READ       EC_IOWR(0x13, ec_ioctl_slave_foe_t)
 #define EC_IOCTL_SLAVE_FOE_WRITE       EC_IOW(0x14, ec_ioctl_slave_foe_t)
-#define EC_IOCTL_SLAVE_SOE_READ       EC_IOWR(0x15, ec_ioctl_slave_soe_t)
-#define EC_IOCTL_SLAVE_SOE_WRITE      EC_IOWR(0x16, ec_ioctl_slave_soe_t)
+#define EC_IOCTL_SLAVE_SOE_READ       EC_IOWR(0x15, ec_ioctl_slave_soe_read_t)
+#define EC_IOCTL_SLAVE_SOE_WRITE      EC_IOWR(0x16, ec_ioctl_slave_soe_write_t)
 #define EC_IOCTL_CONFIG               EC_IOWR(0x17, ec_ioctl_config_t)
 #define EC_IOCTL_CONFIG_PDO           EC_IOWR(0x18, ec_ioctl_config_pdo_t)
 #define EC_IOCTL_CONFIG_PDO_ENTRY     EC_IOWR(0x19, ec_ioctl_config_pdo_entry_t)
@@ -413,9 +413,21 @@ typedef struct {
 
     // outputs
     uint32_t data_size;
-    uint32_t result;
     uint16_t error_code;
-} ec_ioctl_slave_soe_t;
+} ec_ioctl_slave_soe_read_t;
+
+/*****************************************************************************/
+
+typedef struct {
+    // inputs
+    uint16_t slave_position;
+    uint16_t idn;
+    uint32_t data_size;
+    uint8_t *data;
+
+    // outputs
+    uint16_t error_code;
+} ec_ioctl_slave_soe_write_t;
 
 /*****************************************************************************/
 

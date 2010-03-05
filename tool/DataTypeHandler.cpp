@@ -27,6 +27,12 @@
  *
  ****************************************************************************/
 
+#define DEBUG 0
+
+#if DEBUG
+#include <iostream>
+#endif
+
 #include <iomanip>
 #include <sstream>
 using namespace std;
@@ -81,9 +87,17 @@ size_t DataTypeHandler::interpretAsType(
     stringstream str;
     size_t dataSize = type->byteSize;
 
+#if DEBUG
+	cerr << __func__ << "(targetSize=" << targetSize << ")" << endl;
+#endif
+
     str << source;
     str >> resetiosflags(ios::basefield); // guess base from prefix
     str.exceptions(ios::failbit);
+
+#if DEBUG
+	cerr << "code=" << type->code << endl;
+#endif
 
     switch (type->code) {
         case 0x0002: // int8
@@ -150,6 +164,10 @@ size_t DataTypeHandler::interpretAsType(
                 throw runtime_error(err.str());
             }
     }
+
+#if DEBUG
+	printRawData(cerr, (const uint8_t *) target, dataSize);
+#endif
 
     return dataSize;
 }

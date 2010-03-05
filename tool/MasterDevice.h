@@ -140,7 +140,8 @@ class MasterDevice
 #ifdef EC_EOE
         void getEoeHandler(ec_ioctl_eoe_handler_t *, uint16_t);
 #endif
-        void readSoe(ec_ioctl_slave_soe_t *);
+        void readSoe(ec_ioctl_slave_soe_read_t *);
+        void writeSoe(ec_ioctl_slave_soe_write_t *);
 
         unsigned int getMasterCount() const {return masterCount;}
 

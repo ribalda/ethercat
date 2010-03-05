@@ -3254,26 +3254,26 @@ int ec_cdev_ioctl_slave_soe_read(
         unsigned long arg /**< ioctl() argument. */
         )
 {
-    ec_ioctl_slave_soe_t data;
+    ec_ioctl_slave_soe_read_t ioctl;
     ec_master_soe_request_t request;
     int retval;
 
-    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+    if (copy_from_user(&ioctl, (void __user *) arg, sizeof(ioctl))) {
         return -EFAULT;
     }
 
     ec_soe_request_init(&request.req);
-    ec_soe_request_set_idn(&request.req, data.idn);
+    ec_soe_request_set_idn(&request.req, ioctl.idn);
     ec_soe_request_read(&request.req);
 
     if (down_interruptible(&master->master_sem))
         return -EINTR;
 
     if (!(request.slave = ec_master_find_slave(
-                    master, 0, data.slave_position))) {
+                    master, 0, ioctl.slave_position))) {
         up(&master->master_sem);
         ec_soe_request_clear(&request.req);
-        EC_ERR("Slave %u does not exist!\n", data.slave_position);
+        EC_ERR("Slave %u does not exist!\n", ioctl.slave_position);
         return -EINVAL;
     }
 
@@ -3306,31 +3306,31 @@ int ec_cdev_ioctl_slave_soe_read(
     wait_event(request.slave->soe_queue,
             request.req.state != EC_INT_REQUEST_BUSY);
 
-    data.error_code = request.req.error_code;
+    ioctl.error_code = request.req.error_code;
 
     if (master->debug_level) {
         EC_DBG("Read %zd bytes via SoE.\n", request.req.data_size);
     }
 
     if (request.req.state != EC_INT_REQUEST_SUCCESS) {
-        data.data_size = 0;
+        ioctl.data_size = 0;
         retval = -EIO;
     } else {
-        if (request.req.data_size > data.mem_size) {
+        if (request.req.data_size > ioctl.mem_size) {
             EC_ERR("Buffer too small.\n");
             ec_soe_request_clear(&request.req);
             return -EOVERFLOW;
         }
-        data.data_size = request.req.data_size;
-        if (copy_to_user((void __user *) data.data,
-                    request.req.data, data.data_size)) {
+        ioctl.data_size = request.req.data_size;
+        if (copy_to_user((void __user *) ioctl.data,
+                    request.req.data, ioctl.data_size)) {
             ec_soe_request_clear(&request.req);
             return -EFAULT;
         }
         retval = 0;
     }
 
-    if (__copy_to_user((void __user *) arg, &data, sizeof(data))) {
+    if (__copy_to_user((void __user *) arg, &ioctl, sizeof(ioctl))) {
         retval = -EFAULT;
     }
 
@@ -3352,38 +3352,38 @@ int ec_cdev_ioctl_slave_soe_write(
         unsigned long arg /**< ioctl() argument. */
         )
 {
-    ec_ioctl_slave_soe_t data;
+    ec_ioctl_slave_soe_write_t ioctl;
     ec_master_soe_request_t request;
     int retval;
 
-    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+    if (copy_from_user(&ioctl, (void __user *) arg, sizeof(ioctl))) {
         return -EFAULT;
     }
 
     INIT_LIST_HEAD(&request.list);
 
     ec_soe_request_init(&request.req);
-    ec_soe_request_set_idn(&request.req, data.idn);
+    ec_soe_request_set_idn(&request.req, ioctl.idn);
 
-    if (ec_soe_request_alloc(&request.req, data.mem_size)) {
+    if (ec_soe_request_alloc(&request.req, ioctl.data_size)) {
         ec_soe_request_clear(&request.req);
         return -ENOMEM;
     }
     if (copy_from_user(request.req.data,
-                (void __user *) data.data, data.mem_size)) {
+                (void __user *) ioctl.data, ioctl.data_size)) {
         ec_soe_request_clear(&request.req);
         return -EFAULT;
     }
-    request.req.data_size = data.mem_size;
+    request.req.data_size = ioctl.data_size;
     ec_soe_request_write(&request.req);
 
     if (down_interruptible(&master->master_sem))
         return -EINTR;
 
     if (!(request.slave = ec_master_find_slave(
-                    master, 0, data.slave_position))) {
+                    master, 0, ioctl.slave_position))) {
         up(&master->master_sem);
-        EC_ERR("Slave %u does not exist!\n", data.slave_position);
+        EC_ERR("Slave %u does not exist!\n", ioctl.slave_position);
         ec_soe_request_clear(&request.req);
         return -EINVAL;
     }
@@ -3416,11 +3416,9 @@ int ec_cdev_ioctl_slave_soe_write(
     wait_event(request.slave->soe_queue,
             request.req.state != EC_INT_REQUEST_BUSY);
 
-    //data.result = request.req.result;
-
     retval = request.req.state == EC_INT_REQUEST_SUCCESS ? 0 : -EIO;
 
-    if (__copy_to_user((void __user *) arg, &data, sizeof(data))) {
+    if (__copy_to_user((void __user *) arg, &ioctl, sizeof(ioctl))) {
         retval = -EFAULT;
     }
 

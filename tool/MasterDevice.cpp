@@ -528,7 +528,7 @@ void MasterDevice::getEoeHandler(
 
 /****************************************************************************/
 
-void MasterDevice::readSoe(ec_ioctl_slave_soe_t *data)
+void MasterDevice::readSoe(ec_ioctl_slave_soe_read_t *data)
 {
     if (ioctl(fd, EC_IOCTL_SLAVE_SOE_READ, data) < 0) {
         if (errno == EIO && data->error_code) {
@@ -536,6 +536,21 @@ void MasterDevice::readSoe(ec_ioctl_slave_soe_t *data)
         } else {
             stringstream err;
             err << "Failed to read IDN: " << strerror(errno);
+            throw MasterDeviceException(err);
+        }
+    }
+}
+
+/****************************************************************************/
+
+void MasterDevice::writeSoe(ec_ioctl_slave_soe_write_t *data)
+{
+    if (ioctl(fd, EC_IOCTL_SLAVE_SOE_WRITE, data) < 0) {
+        if (errno == EIO && data->error_code) {
+            throw MasterDeviceSoeException(data->error_code);
+        } else {
+            stringstream err;
+            err << "Failed to write IDN: " << strerror(errno);
             throw MasterDeviceException(err);
         }
     }
