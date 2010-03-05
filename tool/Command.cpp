@@ -146,6 +146,13 @@ void Command::throwInvalidUsageException(const stringstream &s) const
 
 /*****************************************************************************/
 
+void Command::throwCommandException(const string &msg) const
+{
+    throw CommandException(msg);
+}
+
+/*****************************************************************************/
+
 void Command::throwCommandException(const stringstream &s) const
 {
     throw CommandException(s);

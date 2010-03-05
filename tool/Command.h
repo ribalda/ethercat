@@ -62,6 +62,11 @@ class CommandException:
     friend class Command;
 
     protected:
+        /** Constructor with char * parameter. */
+        CommandException(
+                const string &msg /**< Message. */
+                ): runtime_error(msg) {}
+
         /** Constructor with stringstream parameter. */
         CommandException(
                 const stringstream &s /**< Message. */
@@ -116,6 +121,7 @@ class Command
         enum {BreakAfterBytes = 16};
 
         void throwInvalidUsageException(const stringstream &) const;
+        void throwCommandException(const string &) const;
         void throwCommandException(const stringstream &) const;
         void throwSingleSlaveRequired(unsigned int) const;
 
