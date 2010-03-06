@@ -37,17 +37,18 @@ Version 1.5.0:
 * Implement SoE fragmenting.
 * User-space implementation for SoE.
 * Add -x switch for hex display.
+* Implement CompleteAccess for command-line tool.
+* Implement CompleteAccess for SDO uploads.
+* Check for Enable SDO Complete Access flag.
+* Remove allow_scanning flag.
+* ethercat tool:
+    - Data type abbreviations.
+    - Implement ranges for slaves and domains.
 
 Future issues:
 
 * Implement ecrt_slave_config_request_state().
-* Implement CompleteAccess for command-line tool.
-* Implement CompleteAccess for SDO uploads.
-* Check for Enable SDO Complete Access flag.
 * Remove default buffer size in SDO upload.
-* Improve application-triggered SDO transfers by moving the state machine into
-  the SDO handlers.
-* Remove allow_scanning flag.
 * Override sync manager size?
 * Show Record / Array / List type of SDOs.
 * Distributed clocks:
@@ -76,10 +77,8 @@ Future issues:
 * Interface/buffers for asynchronous domain IO.
 * Make scanning and configuration run parallel (each).
 * ethercat tool:
-    - Data type abbreviations.
     - Add a -n (numeric) switch.
 	- Check for unwanted options.
-    - Implement ranges for slaves, domains, etc.
 * Simplify master fsm by introducing a common request state to handle external
   requests (replace write_sii, sdo_request, etc).
 
