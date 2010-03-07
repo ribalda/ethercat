@@ -161,8 +161,6 @@ struct ec_master {
 
     unsigned int debug_level; /**< Master debug level. */
     ec_stats_t stats; /**< Cyclic statistics. */
-    unsigned int frames_timed_out; /**< There were frame timeouts in the last
-                                     call to ecrt_master_receive(). */
 
     struct task_struct *thread; /**< Master thread. */
 

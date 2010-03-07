@@ -170,7 +170,6 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     master->stats.corrupted = 0;
     master->stats.unmatched = 0;
     master->stats.output_jiffies = 0;
-    master->frames_timed_out = 0;
 
     master->thread = NULL;
 
@@ -2097,7 +2096,6 @@ void ecrt_master_send(ec_master_t *master)
 void ecrt_master_receive(ec_master_t *master)
 {
     ec_datagram_t *datagram, *next;
-    unsigned int frames_timed_out = 0;
 
     // receive datagrams
     ec_device_poll(&master->main_device);
@@ -2113,7 +2111,6 @@ void ecrt_master_receive(ec_master_t *master)
         if (master->main_device.jiffies_poll - datagram->jiffies_sent
                 > timeout_jiffies) {
 #endif
-            frames_timed_out = 1;
             list_del_init(&datagram->queue);
             datagram->state = EC_DATAGRAM_TIMED_OUT;
             master->stats.timeouts++;
@@ -2133,8 +2130,6 @@ void ecrt_master_receive(ec_master_t *master)
             }
         }
     }
-
-    master->frames_timed_out = frames_timed_out;
 }
 
 /*****************************************************************************/
