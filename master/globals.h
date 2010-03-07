@@ -70,6 +70,9 @@
 /** Maximum SII size in words, to avoid infinite reading. */
 #define EC_MAX_SII_SIZE 4096
 
+/** Number of statistic rate intervals to maintain. */
+#define EC_RATE_COUNT 3
+
 /******************************************************************************
  * EtherCAT protocol
  *****************************************************************************/

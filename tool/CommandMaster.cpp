@@ -69,7 +69,7 @@ void CommandMaster::execute(const StringVector &args)
 {
     ec_ioctl_master_t data;
     stringstream err;
-    unsigned int i;
+    unsigned int i, j;
     time_t epoch;
     char time_str[MAX_TIME_STR_SIZE + 1];
     size_t time_str_size;
@@ -130,7 +130,36 @@ void CommandMaster::execute(const StringVector &args)
                     << "      Link: "
                     << (data.devices[i].link_state ? "UP" : "DOWN") << endl
                     << "      Tx count: " << data.devices[i].tx_count << endl
-                    << "      Rx count: " << data.devices[i].rx_count;
+                    << "      Rx count: " << data.devices[i].rx_count << endl
+                    << "      Tx rates: ";
+                for (j = 0; j < EC_RATE_COUNT; j++) {
+                    cout << data.devices[i].tx_rates[j] / 1000;
+                    if (j < EC_RATE_COUNT - 1) {
+                        cout << " ";
+                    }
+                }
+                cout << endl
+                    << "      Loss rates: ";
+                for (j = 0; j < EC_RATE_COUNT; j++) {
+                    cout << data.devices[i].loss_rates[j] / 1000;
+                    if (j < EC_RATE_COUNT - 1) {
+                        cout << " ";
+                    }
+                }
+                cout << endl
+                    << "      Loss percentages: " << setprecision(1);
+                for (j = 0; j < EC_RATE_COUNT; j++) {
+                    double perc = 0.0;
+                    if (data.devices[i].tx_rates[j]) {
+                        perc = 100.0 * data.devices[i].loss_rates[j] /
+                            data.devices[i].tx_rates[j];
+                    }
+                    cout << perc;
+                    if (j < EC_RATE_COUNT - 1) {
+                        cout << " ";
+                    }
+                }
+                cout << setprecision(0) << endl;
             }
             cout << endl;
         }

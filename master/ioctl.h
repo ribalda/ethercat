@@ -56,7 +56,7 @@
  *
  * Increment this when changing the ioctl interface!
  */
-#define EC_IOCTL_VERSION_MAGIC 3
+#define EC_IOCTL_VERSION_MAGIC 4
 
 // Command-line tool
 #define EC_IOCTL_MODULE                EC_IOR(0x00, ec_ioctl_module_t)
@@ -163,6 +163,8 @@ typedef struct {
         uint8_t link_state;
         uint32_t tx_count;
         uint32_t rx_count;
+        uint32_t tx_rates[EC_RATE_COUNT];
+        int32_t loss_rates[EC_RATE_COUNT];
     } devices[2];
     uint64_t app_time;
     uint16_t ref_clock;

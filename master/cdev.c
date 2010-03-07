@@ -184,6 +184,7 @@ int ec_cdev_ioctl_master(
         )
 {
     ec_ioctl_master_t data;
+    unsigned int i;
 
     if (down_interruptible(&master->master_sem))
         return -EINTR;
@@ -211,6 +212,10 @@ int ec_cdev_ioctl_master(
     data.devices[0].link_state = master->main_device.link_state ? 1 : 0;
     data.devices[0].tx_count = master->main_device.tx_count;
     data.devices[0].rx_count = master->main_device.rx_count;
+    for (i = 0; i < EC_RATE_COUNT; i++) {
+        data.devices[0].tx_rates[i] = master->main_device.tx_rates[i];
+        data.devices[0].loss_rates[i] = master->main_device.loss_rates[i];
+    }
 
     if (master->backup_device.dev) {
         memcpy(data.devices[1].address,
@@ -222,6 +227,10 @@ int ec_cdev_ioctl_master(
     data.devices[1].link_state = master->backup_device.link_state ? 1 : 0;
     data.devices[1].tx_count = master->backup_device.tx_count;
     data.devices[1].rx_count = master->backup_device.rx_count;
+    for (i = 0; i < EC_RATE_COUNT; i++) {
+        data.devices[1].tx_rates[i] = master->backup_device.tx_rates[i];
+        data.devices[1].loss_rates[i] = master->backup_device.loss_rates[i];
+    }
 
     up(&master->device_sem);
 

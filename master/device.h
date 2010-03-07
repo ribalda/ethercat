@@ -98,6 +98,11 @@ struct ec_device
     unsigned long jiffies_poll; /**< jiffies of last poll */
     unsigned int tx_count; /**< number of frames sent */
     unsigned int rx_count; /**< number of frames received */
+    unsigned int last_tx_count;
+    unsigned int tx_rates[EC_RATE_COUNT];
+    int last_loss; /**< Tx/Rx difference of last cycle. */
+    int loss_rates[EC_RATE_COUNT];
+    unsigned long stats_jiffies;
 #ifdef EC_DEBUG_IF
     ec_debug_t dbg; /**< debug device */
 #endif

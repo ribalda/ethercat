@@ -54,6 +54,10 @@
     } while (0)
 #endif
 
+static const unsigned int rate_intervals[] = {
+    1, 10, 60
+};
+
 /*****************************************************************************/
 
 /** Constructor.
@@ -196,6 +200,13 @@ void ec_device_detach(
     device->link_state = 0; // down
     device->tx_count = 0;
     device->rx_count = 0;
+    device->last_tx_count = 0;
+    device->last_loss = 0;
+    for (i = 0; i < EC_RATE_COUNT; i++) {
+        device->tx_rates[i] = 0;
+        device->loss_rates[i] = 0;
+    }
+    device->stats_jiffies = 0;
     for (i = 0; i < EC_TX_RING_SIZE; i++)
         device->tx_skb[i]->dev = NULL;
 }
@@ -211,6 +222,7 @@ int ec_device_open(
         )
 {
     int ret;
+    unsigned int i;
 
     if (!device->dev) {
         EC_ERR("No net_device to open!\n");
@@ -225,6 +237,13 @@ int ec_device_open(
     device->link_state = 0;
     device->tx_count = 0;
     device->rx_count = 0;
+    device->last_tx_count = 0;
+    device->last_loss = 0;
+    for (i = 0; i < EC_RATE_COUNT; i++) {
+        device->tx_rates[i] = 0;
+        device->loss_rates[i] = 0;
+    }
+    device->stats_jiffies = 0;
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 29)
     ret = device->dev->netdev_ops->ndo_open(device->dev);
@@ -301,6 +320,26 @@ void ec_device_send(
         )
 {
     struct sk_buff *skb = device->tx_skb[device->tx_ring_index];
+
+    // frame statistics
+    if (unlikely(jiffies - device->stats_jiffies >= HZ)) {
+        unsigned int i;
+        unsigned int tx_rate = device->tx_count - device->last_tx_count;
+        int loss = device->tx_count - device->rx_count;
+        int loss_rate = (loss - device->last_loss) * 1000;
+        for (i = 0; i < EC_RATE_COUNT; i++) {
+            unsigned int n = rate_intervals[i];
+            device->tx_rates[i] =
+                device->tx_rates[i] * (n - 1) +
+                tx_rate * n;
+            device->loss_rates[i] =
+                device->loss_rates[i] * (n - 1) +
+                loss_rate * n;
+        }
+        device->last_tx_count = device->tx_count;
+        device->last_loss = loss;
+        device->stats_jiffies += HZ;
+    }
 
     if (unlikely(!device->link_state)) // Link down
         return;
