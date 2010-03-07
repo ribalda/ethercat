@@ -99,6 +99,7 @@ void ec_fsm_slave_config_init(
         )
 {
     ec_sdo_request_init(&fsm->request_copy);
+    ec_soe_request_init(&fsm->soe_request_copy);
 
     fsm->datagram = datagram;
     fsm->fsm_change = fsm_change;
