@@ -85,7 +85,7 @@ void MasterDevice::open(Permissions perm)
         if (module_data.ioctl_version_magic != EC_IOCTL_VERSION_MAGIC) {
             stringstream err;
             err << "ioctl() version magic is differing: "
-                << deviceName << ": " << module_data.ioctl_version_magic
+                << deviceName.str() << ": " << module_data.ioctl_version_magic
                 << ", ethercat tool: " << EC_IOCTL_VERSION_MAGIC;
             throw MasterDeviceException(err);
         }
