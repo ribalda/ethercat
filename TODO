@@ -46,6 +46,7 @@ Version 1.5.0:
     - Implement ranges for slaves and domains.
 * Output send errors in frame statistics.
 * Output tx rate [bytes/s] in frame statistics.
+* Fix clearing statistics on link down.
 
 Future issues:
 
