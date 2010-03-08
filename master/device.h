@@ -96,13 +96,19 @@ struct ec_device
     struct timeval timeval_poll;
 #endif
     unsigned long jiffies_poll; /**< jiffies of last poll */
-    unsigned int tx_count; /**< number of frames sent */
-    unsigned int rx_count; /**< number of frames received */
-    unsigned int last_tx_count;
-    unsigned int tx_rates[EC_RATE_COUNT];
-    int last_loss; /**< Tx/Rx difference of last cycle. */
-    int loss_rates[EC_RATE_COUNT];
-    unsigned long stats_jiffies;
+
+    // Frame statistics
+    unsigned int tx_count; /**< Number of frames sent. */
+    unsigned int rx_count; /**< Number of frames received. */
+    unsigned int last_tx_count; /**< Number of frames sent of last statistics
+                                  cycle. */
+    unsigned int tx_rates[EC_RATE_COUNT]; /**< Transmit rates for different
+                                            statistics cycle periods. */
+    int last_loss; /**< Tx/Rx difference of last statistics cycle. */
+    int loss_rates[EC_RATE_COUNT]; /**< Frame loss rates for different
+                                     statistics cycle periods. */
+    unsigned long stats_jiffies; /**< Jiffies of last statistic cycle. */
+
 #ifdef EC_DEBUG_IF
     ec_debug_t dbg; /**< debug device */
 #endif
