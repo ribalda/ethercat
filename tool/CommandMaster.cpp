@@ -131,30 +131,33 @@ void CommandMaster::execute(const StringVector &args)
                     << (data.devices[i].link_state ? "UP" : "DOWN") << endl
                     << "      Tx count: " << data.devices[i].tx_count << endl
                     << "      Rx count: " << data.devices[i].rx_count << endl
-                    << "      Tx rates: ";
+                    << "      Tx rate [frames/s]:   "
+                    << setfill(' ') << setprecision(0) << fixed;
                 for (j = 0; j < EC_RATE_COUNT; j++) {
-                    cout << data.devices[i].tx_rates[j] / 1000;
+                    cout << setw(5) << data.devices[i].tx_rates[j] / 1000.0;
                     if (j < EC_RATE_COUNT - 1) {
                         cout << " ";
                     }
                 }
                 cout << endl
-                    << "      Loss rates: ";
+                    << "      Loss rate [frames/s]: "
+                    << setprecision(0) << fixed;
                 for (j = 0; j < EC_RATE_COUNT; j++) {
-                    cout << data.devices[i].loss_rates[j] / 1000;
+                    cout << setw(5) << data.devices[i].loss_rates[j] / 1000.0;
                     if (j < EC_RATE_COUNT - 1) {
                         cout << " ";
                     }
                 }
                 cout << endl
-                    << "      Loss percentages: " << setprecision(1);
+                    << "      Frame loss [%]:       "
+                    << setprecision(1) << fixed;
                 for (j = 0; j < EC_RATE_COUNT; j++) {
                     double perc = 0.0;
                     if (data.devices[i].tx_rates[j]) {
                         perc = 100.0 * data.devices[i].loss_rates[j] /
                             data.devices[i].tx_rates[j];
                     }
-                    cout << perc;
+                    cout << setw(5) << perc;
                     if (j < EC_RATE_COUNT - 1) {
                         cout << " ";
                     }
