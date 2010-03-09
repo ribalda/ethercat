@@ -212,8 +212,13 @@ int ec_cdev_ioctl_master(
     data.devices[0].link_state = master->main_device.link_state ? 1 : 0;
     data.devices[0].tx_count = master->main_device.tx_count;
     data.devices[0].rx_count = master->main_device.rx_count;
+    data.devices[0].tx_bytes = master->main_device.tx_bytes;
+    data.devices[0].tx_errors = master->main_device.tx_errors;
     for (i = 0; i < EC_RATE_COUNT; i++) {
-        data.devices[0].tx_rates[i] = master->main_device.tx_rates[i];
+        data.devices[0].tx_frame_rates[i] =
+            master->main_device.tx_frame_rates[i];
+        data.devices[0].tx_byte_rates[i] =
+            master->main_device.tx_byte_rates[i];
         data.devices[0].loss_rates[i] = master->main_device.loss_rates[i];
     }
 
@@ -227,8 +232,13 @@ int ec_cdev_ioctl_master(
     data.devices[1].link_state = master->backup_device.link_state ? 1 : 0;
     data.devices[1].tx_count = master->backup_device.tx_count;
     data.devices[1].rx_count = master->backup_device.rx_count;
+    data.devices[1].tx_bytes = master->backup_device.tx_bytes;
+    data.devices[1].tx_errors = master->backup_device.tx_errors;
     for (i = 0; i < EC_RATE_COUNT; i++) {
-        data.devices[1].tx_rates[i] = master->backup_device.tx_rates[i];
+        data.devices[1].tx_frame_rates[i] =
+            master->backup_device.tx_frame_rates[i];
+        data.devices[1].tx_byte_rates[i] =
+            master->backup_device.tx_byte_rates[i];
         data.devices[1].loss_rates[i] = master->backup_device.loss_rates[i];
     }
 

@@ -100,10 +100,18 @@ struct ec_device
     // Frame statistics
     unsigned int tx_count; /**< Number of frames sent. */
     unsigned int rx_count; /**< Number of frames received. */
+    unsigned int tx_bytes; /**< Number of frames sent. */
+    unsigned int tx_errors; /**< Number of transmit errors. */
+    unsigned int tx_frame_rates[EC_RATE_COUNT]; /**< Transmit rates in
+                                                  frames/s for different
+                                                  statistics cycle periods. */
+    unsigned int tx_byte_rates[EC_RATE_COUNT]; /**< Transmit rates in byte/s
+                                                 for different statistics
+                                                 cycle periods. */
     unsigned int last_tx_count; /**< Number of frames sent of last statistics
                                   cycle. */
-    unsigned int tx_rates[EC_RATE_COUNT]; /**< Transmit rates for different
-                                            statistics cycle periods. */
+    unsigned int last_tx_bytes; /**< Number of bytes sent of last statistics
+                                  cycle. */
     int last_loss; /**< Tx/Rx difference of last statistics cycle. */
     int loss_rates[EC_RATE_COUNT]; /**< Frame loss rates for different
                                      statistics cycle periods. */
