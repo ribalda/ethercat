@@ -74,6 +74,7 @@ documentation/images/master-locks.pdf
 documentation/images/masters.pdf
 documentation/images/phases.pdf
 documentation/images/statetrans.pdf
+doxygen-output
 ethercat.spec
 examples/Kbuild
 examples/Makefile
