@@ -120,14 +120,14 @@ void CommandSoeWrite::execute(const StringVector &args)
         memSize = dataType->byteSize;
     } else {
         // guess string type size
-        memSize = args[1].size();
+        memSize = args[1].size() + 1;
         if (!memSize) {
             err << "Empty argument not allowed.";
             throwInvalidUsageException(err);
         }
     }
 
-    ioctl.data = new uint8_t[memSize + 1];
+    ioctl.data = new uint8_t[memSize];
 
     try {
         ioctl.data_size = interpretAsType(
