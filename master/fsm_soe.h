@@ -56,6 +56,7 @@ struct ec_fsm_soe {
     void (*state)(ec_fsm_soe_t *); /**< CoE state function */
     unsigned long jiffies_start; /**< CoE timestamp. */
     ec_soe_request_t *request; /**< SoE request */
+    off_t offset; /**< IDN data offset during fragmented write. */
 };
 
 /*****************************************************************************/

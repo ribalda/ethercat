@@ -110,7 +110,6 @@ void ec_fsm_soe_transfer(
     if (request->dir == EC_DIR_OUTPUT) {
         fsm->state = ec_fsm_soe_write_start;
 	} else {
-        fsm->request->data_size = 0;
         fsm->state = ec_fsm_soe_read_start;
 	}
 }
@@ -181,6 +180,7 @@ void ec_fsm_soe_read_start(ec_fsm_soe_t *fsm /**< finite state machine */)
         ec_print_data(data, EC_SOE_READ_REQUEST_SIZE);
     }
 
+    fsm->request->data_size = 0;
     fsm->request->jiffies_sent = jiffies;
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_soe_read_request;
@@ -398,19 +398,73 @@ void ec_fsm_soe_read_response(ec_fsm_soe_t *fsm /**< finite state machine */)
  * SoE write state machine
  *****************************************************************************/
 
-/** SoE state: WRITE START.
+/** Write next fragment.
  */
-void ec_fsm_soe_write_start(ec_fsm_soe_t *fsm /**< finite state machine */)
+void ec_fsm_soe_write_next_fragment(
+        ec_fsm_soe_t *fsm /**< finite state machine */
+        )
 {
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
     ec_master_t *master = slave->master;
-    ec_soe_request_t *request = fsm->request;
-    uint8_t *data;
+    ec_soe_request_t *req = fsm->request;
+    uint8_t incomplete, *data;
+    size_t header_size, max_fragment_size, remaining_size, fragment_size;
+    uint16_t fragments_left;
+
+    header_size = EC_MBOX_HEADER_SIZE + EC_SOE_WRITE_REQUEST_SIZE;
+    if (slave->configured_rx_mailbox_size <= header_size) {
+        EC_ERR("Mailbox size (%u) too small for SoE write.\n",
+                slave->configured_rx_mailbox_size);
+        fsm->state = ec_fsm_soe_error;
+        return;
+    }
+
+    remaining_size = req->data_size - fsm->offset;
+    max_fragment_size = slave->configured_rx_mailbox_size - header_size;
+    incomplete = remaining_size > max_fragment_size;
+    fragment_size = incomplete ? max_fragment_size : remaining_size;
+    fragments_left = remaining_size / fragment_size;
+    if (remaining_size % fragment_size) {
+        fragments_left++;
+    }
+
+    data = ec_slave_mbox_prepare_send(slave, datagram, EC_MBOX_TYPE_SOE,
+			EC_SOE_WRITE_REQUEST_SIZE + fragment_size);
+    if (IS_ERR(data)) {
+        fsm->state = ec_fsm_soe_error;
+        return;
+    }
+
+    EC_WRITE_U8(data, EC_SOE_OPCODE_WRITE_REQUEST | incomplete << 3);
+    EC_WRITE_U8(data + 1, 1 << 6); // only value included
+    EC_WRITE_U16(data + 2, fsm->offset ? fragments_left : req->idn);
+	memcpy(data + 4, req->data + fsm->offset, fragment_size);
+    fsm->offset += fragment_size;
+
+    if (master->debug_level) {
+        EC_DBG("SCC write request:\n");
+        ec_print_data(data, EC_SOE_WRITE_REQUEST_SIZE + fragment_size);
+    }
+
+    req->jiffies_sent = jiffies;
+    fsm->retries = EC_FSM_RETRIES;
+    fsm->state = ec_fsm_soe_write_request;
+}
+
+/*****************************************************************************/
+
+/** SoE state: WRITE START.
+ */
+void ec_fsm_soe_write_start(ec_fsm_soe_t *fsm /**< finite state machine */)
+{
+    ec_slave_t *slave = fsm->slave;
+    ec_master_t *master = slave->master;
+    ec_soe_request_t *req = fsm->request;
 
     if (master->debug_level)
         EC_DBG("Writing IDN 0x%04X to slave %u.\n",
-               request->idn, slave->ring_position);
+               req->idn, slave->ring_position);
 
     if (!(slave->sii.mailbox_protocols & EC_MBOX_SOE)) {
         EC_ERR("Slave %u does not support SoE!\n", slave->ring_position);
@@ -418,26 +472,8 @@ void ec_fsm_soe_write_start(ec_fsm_soe_t *fsm /**< finite state machine */)
         return;
     }
 
-    data = ec_slave_mbox_prepare_send(slave, datagram, EC_MBOX_TYPE_SOE,
-			EC_SOE_WRITE_REQUEST_SIZE + request->data_size);
-    if (IS_ERR(data)) {
-        fsm->state = ec_fsm_soe_error;
-        return;
-    }
-
-    EC_WRITE_U8(data, EC_SOE_OPCODE_WRITE_REQUEST);
-    EC_WRITE_U8(data + 1, 1 << 6); // only value included
-    EC_WRITE_U16(data + 2, request->idn);
-	memcpy(data + 4, request->data, request->data_size);
-
-    if (master->debug_level) {
-        EC_DBG("SCC write request:\n");
-        ec_print_data(data, EC_SOE_WRITE_REQUEST_SIZE + request->data_size);
-    }
-
-    fsm->request->jiffies_sent = jiffies;
-    fsm->retries = EC_FSM_RETRIES;
-    fsm->state = ec_fsm_soe_write_request;
+    fsm->offset = 0;
+    ec_fsm_soe_write_next_fragment(fsm);
 }
 
 /*****************************************************************************/
@@ -627,7 +663,11 @@ void ec_fsm_soe_write_response(ec_fsm_soe_t *fsm /**< finite state machine */)
 		req->error_code = 0x0000;
 	}
 
-    fsm->state = ec_fsm_soe_end; // success
+    if (fsm->offset < req->data_size) {
+        ec_fsm_soe_write_next_fragment(fsm);
+    } else {
+        fsm->state = ec_fsm_soe_end; // success
+    }
 }
 
 /*****************************************************************************/
