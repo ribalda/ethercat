@@ -471,3 +471,23 @@ void ecrt_slave_config_state(const ec_slave_config_t *sc,
 }
 
 /*****************************************************************************/
+
+int ecrt_slave_config_idn(ec_slave_config_t *sc, uint16_t idn,
+        const uint8_t *data, size_t size)
+{
+    ec_ioctl_sc_idn_t io;
+
+    io.config_index = sc->index;
+    io.idn = idn;
+    io.data = data;
+    io.size = size;
+
+    if (ioctl(sc->master->fd, EC_IOCTL_SC_IDN, &io) == -1) {
+        fprintf(stderr, "Failed to configure IDN.\n");
+        return -1; // FIXME
+    }
+
+    return 0;
+}
+
+/*****************************************************************************/

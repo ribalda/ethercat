@@ -24,7 +24,6 @@ Version 1.5.0:
 * Output warning when send_ext() is called in illegal context.
 * Add master index to log messages.
 * Implement SoE fragmenting.
-* User-space implementation for SoE.
 * Implement CompleteAccess for SDO uploads.
 * Check for Enable SDO Complete Access flag.
 * Remove allow_scanning flag.

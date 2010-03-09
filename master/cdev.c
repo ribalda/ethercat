@@ -2417,6 +2417,57 @@ int ec_cdev_ioctl_sc_state(
 
 /*****************************************************************************/
 
+/** Configures an IDN.
+ */
+int ec_cdev_ioctl_sc_idn(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    ec_ioctl_sc_idn_t ioctl;
+    ec_slave_config_t *sc;
+    uint8_t *data = NULL;
+    int ret;
+
+    if (unlikely(!priv->requested))
+        return -EPERM;
+
+    if (copy_from_user(&ioctl, (void __user *) arg, sizeof(ioctl)))
+        return -EFAULT;
+
+    if (!ioctl.size)
+        return -EINVAL;
+
+    if (!(data = kmalloc(ioctl.size, GFP_KERNEL))) {
+        return -ENOMEM;
+    }
+
+    if (copy_from_user(data, (void __user *) ioctl.data, ioctl.size)) {
+        kfree(data);
+        return -EFAULT;
+    }
+
+    if (down_interruptible(&master->master_sem)) {
+        kfree(data);
+        return -EINTR;
+    }
+
+    if (!(sc = ec_master_get_config(master, ioctl.config_index))) {
+        up(&master->master_sem);
+        kfree(data);
+        return -ENOENT;
+    }
+
+    up(&master->master_sem); // FIXME
+
+    ret = ecrt_slave_config_idn(sc, ioctl.idn, data, ioctl.size);
+    kfree(data);
+    return ret;
+}
+
+/*****************************************************************************/
+
 /** Gets the domain's offset in the total process data.
  */
 int ec_cdev_ioctl_domain_offset(
@@ -3687,6 +3738,10 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             return ec_cdev_ioctl_sc_create_voe_handler(master, arg, priv);
         case EC_IOCTL_SC_STATE:
             return ec_cdev_ioctl_sc_state(master, arg, priv);
+        case EC_IOCTL_SC_IDN:
+            if (!(filp->f_mode & FMODE_WRITE))
+                return -EPERM;
+            return ec_cdev_ioctl_sc_idn(master, arg, priv);
         case EC_IOCTL_DOMAIN_OFFSET:
             return ec_cdev_ioctl_domain_offset(master, arg, priv);
         case EC_IOCTL_DOMAIN_PROCESS:
