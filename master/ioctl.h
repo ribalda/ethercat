@@ -162,10 +162,10 @@ typedef struct {
         uint8_t address[6];
         uint8_t attached;
         uint8_t link_state;
-        uint32_t tx_count;
-        uint32_t rx_count;
-        uint32_t tx_bytes;
-        uint32_t tx_errors;
+        uint64_t tx_count;
+        uint64_t rx_count;
+        uint64_t tx_bytes;
+        uint64_t tx_errors;
         uint32_t tx_frame_rates[EC_RATE_COUNT];
         uint32_t tx_byte_rates[EC_RATE_COUNT];
         int32_t loss_rates[EC_RATE_COUNT];

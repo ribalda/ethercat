@@ -310,12 +310,12 @@ void ec_device_send(
     // frame statistics
     if (unlikely(jiffies - device->stats_jiffies >= HZ)) {
         unsigned int i;
-        unsigned int tx_frame_rate =
-            (device->tx_count - device->last_tx_count) * 1000;
-        unsigned int tx_byte_rate =
+        u32 tx_frame_rate =
+            (u32) (device->tx_count - device->last_tx_count) * 1000;
+        u32 tx_byte_rate =
             (device->tx_bytes - device->last_tx_bytes) * 1000;
-        int loss = device->tx_count - device->rx_count;
-        int loss_rate = (loss - device->last_loss) * 1000;
+        u64 loss = device->tx_count - device->rx_count;
+        s32 loss_rate = (s32) (loss - device->last_loss) * 1000;
         for (i = 0; i < EC_RATE_COUNT; i++) {
             unsigned int n = rate_intervals[i];
             device->tx_frame_rates[i] =

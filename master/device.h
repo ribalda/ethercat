@@ -98,21 +98,19 @@ struct ec_device
     unsigned long jiffies_poll; /**< jiffies of last poll */
 
     // Frame statistics
-    unsigned int tx_count; /**< Number of frames sent. */
-    unsigned int rx_count; /**< Number of frames received. */
-    unsigned int tx_bytes; /**< Number of frames sent. */
-    unsigned int tx_errors; /**< Number of transmit errors. */
+    u64 tx_count; /**< Number of frames sent. */
+    u64 last_tx_count; /**< Number of frames sent of last statistics cycle. */
+    u64 rx_count; /**< Number of frames received. */
+    u64 tx_bytes; /**< Number of frames sent. */
+    u64 last_tx_bytes; /**< Number of bytes sent of last statistics cycle. */
+    u64 tx_errors; /**< Number of transmit errors. */
+    u64 last_loss; /**< Tx/Rx difference of last statistics cycle. */
     unsigned int tx_frame_rates[EC_RATE_COUNT]; /**< Transmit rates in
                                                   frames/s for different
                                                   statistics cycle periods. */
     unsigned int tx_byte_rates[EC_RATE_COUNT]; /**< Transmit rates in byte/s
                                                  for different statistics
                                                  cycle periods. */
-    unsigned int last_tx_count; /**< Number of frames sent of last statistics
-                                  cycle. */
-    unsigned int last_tx_bytes; /**< Number of bytes sent of last statistics
-                                  cycle. */
-    int last_loss; /**< Tx/Rx difference of last statistics cycle. */
     int loss_rates[EC_RATE_COUNT]; /**< Frame loss rates for different
                                      statistics cycle periods. */
     unsigned long stats_jiffies; /**< Jiffies of last statistic cycle. */
