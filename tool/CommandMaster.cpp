@@ -112,6 +112,12 @@ void CommandMaster::execute(const StringVector &args)
                     && data.devices[i].address[5] == 0x00) {
                 cout << "None.";
             } else {
+                unsigned int lost =
+                    data.devices[i].tx_count - data.devices[i].rx_count;
+                if (lost == 1) {
+                    // allow one frame travelling
+                    lost = 0;
+                }
                 cout << hex << setfill('0')
                     << setw(2) << (unsigned int) data.devices[i].address[0]
                     << ":"
@@ -129,10 +135,15 @@ void CommandMaster::execute(const StringVector &args)
                     << ")" << endl << dec
                     << "      Link: "
                     << (data.devices[i].link_state ? "UP" : "DOWN") << endl
-                    << "      Tx count: " << data.devices[i].tx_count << endl
-                    << "      Rx count: " << data.devices[i].rx_count << endl
-                    << "      Tx bytes: " << data.devices[i].tx_bytes << endl
-                    << "      Tx errors: " << data.devices[i].tx_errors << endl
+                    << "      Tx frames:   "
+                    << data.devices[i].tx_count << endl
+                    << "      Rx frames:   "
+                    << data.devices[i].rx_count << endl
+                    << "      Lost frames: " << lost << endl
+                    << "      Tx bytes:    "
+                    << data.devices[i].tx_bytes << endl
+                    << "      Tx errors:   "
+                    << data.devices[i].tx_errors << endl
                     << "      Tx frame rate [1/s]: "
                     << setfill(' ') << setprecision(0) << fixed;
                 for (j = 0; j < EC_RATE_COUNT; j++) {
@@ -144,10 +155,10 @@ void CommandMaster::execute(const StringVector &args)
                 }
                 cout << endl
                     << "      Tx rate [KByte/s]:   "
-                    << setprecision(0) << fixed;
+                    << setprecision(1) << fixed;
                 for (j = 0; j < EC_RATE_COUNT; j++) {
-                    cout <<
-                        setw(5) << data.devices[i].tx_byte_rates[j] / 1000.0;
+                    cout << setw(5)
+                        << data.devices[i].tx_byte_rates[j] / 1024000.0;
                     if (j < EC_RATE_COUNT - 1) {
                         cout << " ";
                     }
