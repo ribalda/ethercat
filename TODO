@@ -10,40 +10,41 @@ vim700: spelllang=en spell
 
 Version 1.5.0:
 
-* Fix link detection in generic driver.
+* Ethernet drivers:
+    - Fix link detection in generic driver.
+    - Add native drivers from 2.6.24 up to 2.6.31.
 * Remove byte-swapping functions from user space.
-* Implement 'ethercat foe_read --output-file ...'.
 * Use ec_datagram_zero() wherever possible.
-* Fix arguments of reg_read.
-* Number layout for reg_read.
 * Finish library implementation.
 * Rescan command.
 * Document ec_fsm_foe members.
-* Implement identifier parameter for cstruct command.
-* Implement sync delimiter for cstruct command.
 * Change SDO index at runtime for SDO request.
 * Output skipped datagrams again.
 * Output warning on unmatched slave configuration.
 * Output warning when send_ext() is called in illegal context.
-* Output hexadecimal values in 'ethercat xml'.
-* Add native drivers from 2.6.24 up to 2.6.31.
-* Implement indent in 'ethercat ma'
 * Add master index to log messages.
-* Implement 0xXXXX:YY format for specifying SDOs.
-* Lookup codes for 64bit data types.
-* Move data type usage string into DataTypeHandler.
-* Implement interpretation of SoE '[SP]-x-yyy' strings.
-* Implement reading from stream for soe_write.
 * Implement SoE fragmenting.
 * User-space implementation for SoE.
-* Add -x switch for hex display.
-* Implement CompleteAccess for command-line tool.
 * Implement CompleteAccess for SDO uploads.
 * Check for Enable SDO Complete Access flag.
 * Remove allow_scanning flag.
 * ethercat tool:
     - Data type abbreviations.
     - Implement ranges for slaves and domains.
+    - Add -x switch for hex display.
+    - Implement CompleteAccess
+    - Output hexadecimal values in xml command.
+    - Implement --output-file argument in foe_read.
+    - Fix arguments of reg_read.
+    - Number layout for reg_read.
+    - Implement identifier parameter for cstruct command.
+    - Implement sync delimiter for cstruct command.
+    - Implement indent in 'ethercat ma'
+    - Implement 0xXXXX:YY format for specifying SDOs.
+    - Lookup codes for 64bit data types.
+    - Move data type usage string into DataTypeHandler.
+    - Implement interpretation of SoE '[SP]-x-yyy' strings.
+    - Implement reading from stream for soe_write.
 
 Future issues:
 
