@@ -172,6 +172,40 @@ int ec_soe_request_copy_data(
 
 /*****************************************************************************/
 
+/** Copies SoE data from an external source.
+ *
+ * If the \a mem_size is to small, new memory is allocated.
+ *
+ * \retval  0 Success.
+ * \retval <0 Error code.
+ */
+int ec_soe_request_append_data(
+        ec_soe_request_t *req, /**< SoE request. */
+        const uint8_t *source, /**< Source data. */
+        size_t size /**< Number of bytes in \a source. */
+        )
+{
+    if (req->data_size + size > req->mem_size) {
+        size_t new_size = req->mem_size ? req->mem_size * 2 : size;
+        uint8_t *new_data = (uint8_t *) kmalloc(new_size, GFP_KERNEL);
+        if (!new_data) {
+            EC_ERR("Failed to allocate %zu bytes of SoE memory.\n",
+                    new_size);
+            return -ENOMEM;
+        }
+        memcpy(new_data, req->data, req->data_size);
+        kfree(req->data);
+        req->data = new_data;
+        req->mem_size = new_size;
+    }
+
+    memcpy(req->data + req->data_size, source, size);
+    req->data_size += size;
+    return 0;
+}
+
+/*****************************************************************************/
+
 void ec_soe_request_read(ec_soe_request_t *req)
 {
     req->dir = EC_DIR_INPUT;

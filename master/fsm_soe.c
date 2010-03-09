@@ -110,6 +110,7 @@ void ec_fsm_soe_transfer(
     if (request->dir == EC_DIR_OUTPUT) {
         fsm->state = ec_fsm_soe_write_start;
 	} else {
+        fsm->request->data_size = 0;
         fsm->state = ec_fsm_soe_read_start;
 	}
 }
@@ -225,7 +226,6 @@ void ec_fsm_soe_read_request(ec_fsm_soe_t *fsm /**< finite state machine */)
     }
 
     fsm->jiffies_start = datagram->jiffies_sent;
-
     ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_soe_read_check;
@@ -290,7 +290,8 @@ void ec_fsm_soe_read_response(ec_fsm_soe_t *fsm /**< finite state machine */)
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
     ec_master_t *master = slave->master;
-    uint8_t *data, mbox_prot, opcode, error_flag, value_included;
+    uint8_t *data, mbox_prot, header, opcode, incomplete, error_flag,
+            value_included;
     size_t rec_size, data_size;
     ec_soe_request_t *req = fsm->request;
 
@@ -338,7 +339,11 @@ void ec_fsm_soe_read_response(ec_fsm_soe_t *fsm /**< finite state machine */)
         return;
     }
 
-	opcode = EC_READ_U8(data) & 0x7;
+    header = EC_READ_U8(data);
+	opcode = header & 0x7;
+    incomplete = (header >> 3) & 1;
+	error_flag = (header >> 4) & 1;
+
     if (opcode != EC_SOE_OPCODE_READ_RESPONSE) {
         EC_ERR("Received no read response (opcode %x).\n", opcode);
         ec_print_data(data, rec_size);
@@ -346,7 +351,6 @@ void ec_fsm_soe_read_response(ec_fsm_soe_t *fsm /**< finite state machine */)
         return;
     }
 
-	error_flag = (EC_READ_U8(data) >> 4) & 1;
 	if (error_flag) {
 		req->error_code = EC_READ_U16(data + rec_size - 2);
 		EC_ERR("Received error response: 0x%04x.\n",
@@ -365,18 +369,29 @@ void ec_fsm_soe_read_response(ec_fsm_soe_t *fsm /**< finite state machine */)
 	}
 
 	data_size = rec_size - EC_SOE_READ_RESPONSE_SIZE;
-	if (ec_soe_request_copy_data(req,
-				data + EC_SOE_READ_RESPONSE_SIZE, data_size)) {
+	if (ec_soe_request_append_data(req,
+                data + EC_SOE_READ_RESPONSE_SIZE, data_size)) {
 		fsm->state = ec_fsm_soe_error;
 		return;
 	}
 
-	if (master->debug_level) {
-		EC_DBG("IDN data:\n");
-		ec_print_data(req->data, req->data_size);
-	}
+    if (incomplete) {
+        if (master->debug_level) {
+            EC_DBG("SoE data incomplete. Waiting for fragment"
+                    " at offset %zu.\n", req->data_size);
+        }
+        fsm->jiffies_start = datagram->jiffies_sent;
+        ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
+        fsm->retries = EC_FSM_RETRIES;
+        fsm->state = ec_fsm_soe_read_check;
+    } else {
+        if (master->debug_level) {
+            EC_DBG("IDN data:\n");
+            ec_print_data(req->data, req->data_size);
+        }
 
-    fsm->state = ec_fsm_soe_end; // success
+        fsm->state = ec_fsm_soe_end; // success
+    }
 }
 
 /******************************************************************************
