@@ -1143,8 +1143,13 @@ void ecrt_slave_config_state(
  * activation, but can be repeated subsequently, for example after the slave's
  * power supply failed.
  *
+ * The \a idn parameter can be separated into serveral sections:
+ *  - Bit 15: Standard data (0) or Product data (1)
+ *  - Bit 14 - 12: Parameter set (0 - 7)
+ *  - Bit 11 - 0: Data block number (0 - 4095)
+ *
  * Please note that the this function does not do any endianess correction.
- * Data have to be passed in EtherCAT endianess (little-endian).
+ * Multi-byte data have to be passed in EtherCAT endianess (little-endian).
  *
  * \retval  0 Success.
  * \retval <0 Error code.
