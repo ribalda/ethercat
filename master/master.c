@@ -2084,6 +2084,9 @@ void ecrt_master_send(ec_master_t *master)
 
         // query link state
         ec_device_poll(&master->main_device);
+
+        // clear frame statistics
+        ec_device_clear_stats(&master->main_device);
         return;
     }
 

@@ -324,36 +324,21 @@ void ec_device_send(
     // frame statistics
     if (unlikely(jiffies - device->stats_jiffies >= HZ)) {
         unsigned int i;
-        if (device->link_state) {
-            unsigned int tx_rate =
-                (device->tx_count - device->last_tx_count) * 1000;
-            int loss = device->tx_count - device->rx_count;
-            int loss_rate = (loss - device->last_loss) * 1000;
-            for (i = 0; i < EC_RATE_COUNT; i++) {
-                unsigned int n = rate_intervals[i];
-                device->tx_rates[i] =
-                    (device->tx_rates[i] * (n - 1) + tx_rate) / n;
-                device->loss_rates[i] =
-                    (device->loss_rates[i] * (n - 1) + loss_rate) / n;
-            }
-            device->last_tx_count = device->tx_count;
-            device->last_loss = loss;
-        } else {
-            // zero frame statistics
-            device->tx_count = 0;
-            device->rx_count = 0;
-            device->last_tx_count = 0;
-            device->last_loss = 0;
-            for (i = 0; i < EC_RATE_COUNT; i++) {
-                device->tx_rates[i] = 0;
-                device->loss_rates[i] = 0;
-            }
+        unsigned int tx_rate =
+            (device->tx_count - device->last_tx_count) * 1000;
+        int loss = device->tx_count - device->rx_count;
+        int loss_rate = (loss - device->last_loss) * 1000;
+        for (i = 0; i < EC_RATE_COUNT; i++) {
+            unsigned int n = rate_intervals[i];
+            device->tx_rates[i] =
+                (device->tx_rates[i] * (n - 1) + tx_rate) / n;
+            device->loss_rates[i] =
+                (device->loss_rates[i] * (n - 1) + loss_rate) / n;
         }
+        device->last_tx_count = device->tx_count;
+        device->last_loss = loss;
         device->stats_jiffies = jiffies;
     }
-
-    if (unlikely(!device->link_state)) // Link down
-        return;
 
     // set the right length for the data
     skb->len = ETH_HLEN + size;
@@ -379,6 +364,27 @@ void ec_device_send(
         ec_device_debug_ring_append(
                 device, TX, skb->data + ETH_HLEN, size);
 #endif
+    }
+}
+
+/*****************************************************************************/
+
+/** Clears the frame statistics.
+ */
+void ec_device_clear_stats(
+        ec_device_t *device /**< EtherCAT device */
+        )
+{
+    unsigned int i;
+
+    // zero frame statistics
+    device->tx_count = 0;
+    device->rx_count = 0;
+    device->last_tx_count = 0;
+    device->last_loss = 0;
+    for (i = 0; i < EC_RATE_COUNT; i++) {
+        device->tx_rates[i] = 0;
+        device->loss_rates[i] = 0;
     }
 }
 

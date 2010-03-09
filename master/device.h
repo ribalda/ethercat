@@ -134,6 +134,7 @@ int ec_device_close(ec_device_t *);
 void ec_device_poll(ec_device_t *);
 uint8_t *ec_device_tx_data(ec_device_t *);
 void ec_device_send(ec_device_t *, size_t);
+void ec_device_clear_stats(ec_device_t *);
 
 #ifdef EC_DEBUG_RING
 void ec_device_debug_ring_append(ec_device_t *, ec_debug_frame_dir_t,
