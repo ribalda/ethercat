@@ -71,8 +71,11 @@ string DataTypeHandler::typeInfo()
 	s
 		<< "These are valid data types to use with" << endl
 		<< "the --type option:" << endl
-		<< "  int8, int16, int32, uint8, uint16, uint32, string," << endl
-		<< "  octet_string." << endl;
+		<< "  bool," << endl
+		<< "  int8, int16, int32, int64," << endl
+		<< "  uint8, uint16, uint32, uint64," << endl
+		<< "  float, double" << endl
+		<< "  string, octet_string, unicode_string." << endl;
 	return s.str();
 }
 
@@ -114,6 +117,15 @@ size_t DataTypeHandler::interpretAsType(
 #endif
 
     switch (type->code) {
+        case 0x0001: // bool
+            {
+                int16_t val; // uint8_t is interpreted as char
+                str >> val;
+                if (val > 1 || val < 0)
+                    throw ios::failure("Value out of range");
+                *(uint8_t *) target = val;
+                break;
+            }
         case 0x0002: // int8
             {
                 int16_t val; // uint8_t is interpreted as char
@@ -160,8 +172,17 @@ size_t DataTypeHandler::interpretAsType(
                 *(uint32_t *) target = cpu_to_le32(val);
                 break;
             }
+        case 0x0008: // float
+            {
+                float val;
+                str >> val;
+                *(uint32_t *) target =
+					cpu_to_le32(*(uint32_t *) (void *) &val);
+                break;
+            }
         case 0x0009: // string
         case 0x000a: // octet_string
+        case 0x000b: // unicode_string
             dataSize = str.str().size();
             if (dataSize >= targetSize) {
                 stringstream err;
@@ -170,6 +191,46 @@ size_t DataTypeHandler::interpretAsType(
             }
             str >> (char *) target;
             break;
+        case 0x0011: // double
+            {
+                double val;
+                str >> val;
+                *(uint64_t *) target =
+					cpu_to_le64(*(uint64_t *) (void *) &val);
+                break;
+            }
+            break;
+        case 0x0015: // int64
+            {
+                int64_t val;
+                str >> val;
+                *(int64_t *) target = cpu_to_le64(val);
+                break;
+            }
+            break;
+        case 0x001b: // uint64
+            {
+                uint64_t val;
+                str >> val;
+                *(uint64_t *) target = cpu_to_le64(val);
+                break;
+            }
+            break;
+
+        case 0x0010: // int24
+        case 0x0012: // int40
+        case 0x0013: // int48
+        case 0x0014: // int56
+        case 0x0016: // uint24
+        case 0x0018: // uint40
+        case 0x0019: // uint48
+        case 0x001a: // uint56
+            {
+                stringstream err;
+                err << "Non-native integer type " << type->name
+					<< " is not yet implemented.";
+                throw runtime_error(err.str());
+            }
 
         default:
             {
@@ -206,6 +267,13 @@ void DataTypeHandler::outputData(
     o << setfill('0');
 
     switch (type->code) {
+        case 0x0001: // bool
+            {
+                int val = (int) *(int8_t *) data;
+                o << "0x" << hex << setw(2) << val
+                    << " " << dec << val << endl;
+            }
+            break;
         case 0x0002: // int8
             {
                 int val = (int) *(int8_t *) data;
@@ -248,12 +316,45 @@ void DataTypeHandler::outputData(
                     << " " << dec << val << endl;
             }
             break;
+        case 0x0008: // float
+            {
+                uint32_t val = le32_to_cpup(data);
+				float fval = *(float *) (void *) &val;
+                o << fval << endl;
+            }
+            break;
         case 0x0009: // string
             o << string((const char *) data, dataSize) << endl;
             break;
         case 0x000a: // octet_string
             o << string((const char *) data, dataSize) << endl;
             break;
+        case 0x000b: // unicode_string
+			// FIXME encoding
+            o << string((const char *) data, dataSize) << endl;
+            break;
+        case 0x0011: // double
+            {
+                uint64_t val = le64_to_cpup(data);
+				double fval = *(double *) (void *) &val;
+                o << fval << endl;
+            }
+            break;
+        case 0x0015: // int64
+            {
+                int64_t val = le64_to_cpup(data);
+                o << "0x" << hex << setw(16) << val
+                    << " " << dec << val << endl;
+            }
+            break;
+        case 0x001b: // uint64
+            {
+                uint64_t val = le64_to_cpup(data);
+                o << "0x" << hex << setw(16) << val
+                    << " " << dec << val << endl;
+            }
+            break;
+
         default:
             printRawData(o, (const uint8_t *) data, dataSize); // FIXME
             break;
@@ -280,17 +381,32 @@ void DataTypeHandler::printRawData(
 /****************************************************************************/
 
 const DataTypeHandler::DataType DataTypeHandler::dataTypes[] = {
-    {"int8",         0x0002, 1},
-    {"int16",        0x0003, 2},
-    {"int32",        0x0004, 4},
-    {"uint8",        0x0005, 1},
-    {"uint16",       0x0006, 2},
-    {"uint32",       0x0007, 4},
-    {"string",       0x0009, 0},
-    {"octet_string", 0x000a, 0},
-    {"raw",          0xffff, 0},
-    //{"int64",        8},
-    //{"uint64",       8},
+    {"bool",           0x0001, 1},
+    {"int8",           0x0002, 1},
+    {"int16",          0x0003, 2},
+    {"int32",          0x0004, 4},
+    {"uint8",          0x0005, 1},
+    {"uint16",         0x0006, 2},
+    {"uint32",         0x0007, 4},
+    {"float",          0x0008, 4},
+    {"string",         0x0009, 0}, // a. k. a. visible_string
+    {"octet_string",   0x000a, 0},
+    {"unicode_string", 0x000b, 0},
+	// ... not implemented yet
+    {"int24",          0x0010, 3},
+    {"double",         0x0011, 8},
+    {"int40",          0x0012, 5},
+    {"int48",          0x0013, 6},
+    {"int56",          0x0014, 7},
+    {"int64",          0x0015, 8},
+    {"uint24",         0x0016, 3},
+	// reserved        0x0017
+    {"uint40",         0x0018, 5},
+    {"uint48",         0x0019, 6},
+    {"uint56",         0x001a, 7},
+    {"uint64",         0x001b, 8},
+	// reserved        0x001c-0x001f
+    {"raw",            0xffff, 0},
     {}
 };
 

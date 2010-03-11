@@ -39,7 +39,6 @@ Version 1.5.0:
     - Implement sync delimiter for cstruct command.
     - Implement indent in 'ethercat ma'
     - Implement 0xXXXX:YY format for specifying SDOs.
-    - Lookup codes for 64bit data types.
     - Implement reading from stream for soe_write.
 
 Future issues:
