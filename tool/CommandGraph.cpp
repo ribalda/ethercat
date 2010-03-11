@@ -67,7 +67,6 @@ string CommandGraph::helpString() const
 
 void CommandGraph::execute(const StringVector &args)
 {
-	MasterIndexList masterIndices;
     ec_ioctl_master_t master;
     unsigned int i;
     typedef vector<ec_ioctl_slave_t> SlaveVector;
@@ -91,13 +90,7 @@ void CommandGraph::execute(const StringVector &args)
         throwInvalidUsageException(err);
     }
 
-	masterIndices = getMasterIndices();
-    if (masterIndices.size() != 1) {
-        stringstream err;
-        err << getName() << " requires to select a single master!";
-        throwInvalidUsageException(err);
-    }
-    MasterDevice m(masterIndices.front());
+    MasterDevice m(getSingleMasterIndex());
     m.open(MasterDevice::Read);
     m.getMaster(&master);
 

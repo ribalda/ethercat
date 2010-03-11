@@ -209,6 +209,19 @@ Command::MasterIndexList Command::getMasterIndices() const
 
 /*****************************************************************************/
 
+unsigned int Command::getSingleMasterIndex() const
+{
+	MasterIndexList masterIndices = getMasterIndices();
+    if (masterIndices.size() != 1) {
+		stringstream err;
+        err << getName() << " requires to select a single master!";
+        throwInvalidUsageException(err);
+    }
+	return masterIndices.front();
+}
+
+/*****************************************************************************/
+
 Command::SlaveList Command::selectedSlaves(MasterDevice &m)
 {
     ec_ioctl_master_t master;

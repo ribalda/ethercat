@@ -87,6 +87,7 @@ class Command
         typedef list<unsigned int> MasterIndexList;
         void setMasters(const string &);
         MasterIndexList getMasterIndices() const;
+		unsigned int getSingleMasterIndex() const;
 
         enum Verbosity {
             Quiet,

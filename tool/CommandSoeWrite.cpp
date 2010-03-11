@@ -80,7 +80,6 @@ string CommandSoeWrite::helpString() const
 
 void CommandSoeWrite::execute(const StringVector &args)
 {
-	MasterIndexList masterIndices;
     stringstream strIdn, err;
     const DataType *dataType = NULL;
     ec_ioctl_slave_soe_write_t ioctl;
@@ -99,12 +98,7 @@ void CommandSoeWrite::execute(const StringVector &args)
         throwInvalidUsageException(err);
     }
 
-	masterIndices = getMasterIndices();
-    if (masterIndices.size() != 1) {
-        err << getName() << " requires to select a single master!";
-        throwInvalidUsageException(err);
-    }
-    MasterDevice m(masterIndices.front());
+    MasterDevice m(getSingleMasterIndex());
     m.open(MasterDevice::ReadWrite);
     slaves = selectedSlaves(m);
     if (slaves.size() != 1) {

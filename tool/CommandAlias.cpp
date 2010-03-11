@@ -81,7 +81,6 @@ void CommandAlias::execute(const StringVector &args)
     uint16_t alias;
     stringstream err, strAlias;
     int number;
-	MasterIndexList masterIndices;
     SlaveList slaves;
     SlaveList::const_iterator si;
 
@@ -100,12 +99,7 @@ void CommandAlias::execute(const StringVector &args)
     }
     alias = number;
 
-	masterIndices = getMasterIndices();
-    if (masterIndices.size() != 1) {
-        err << getName() << " requires to select a single master!";
-        throwInvalidUsageException(err);
-    }
-    MasterDevice m(masterIndices.front());
+    MasterDevice m(getSingleMasterIndex());
     m.open(MasterDevice::ReadWrite);
     slaves = selectedSlaves(m);
     
