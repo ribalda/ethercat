@@ -59,9 +59,7 @@ string CommandDownload::helpString() const
         << "information service or the SDO is not in the dictionary," << endl
         << "the --type option is mandatory." << endl
         << endl
-        << "These are the valid SDO entry data types:" << endl
-        << "  int8, int16, int32, uint8, uint16, uint32, string," << endl
-        << "  octet_string." << endl
+        << typeInfo()
         << endl
         << "Arguments:" << endl
         << "  INDEX    is the SDO index and must be an unsigned" << endl

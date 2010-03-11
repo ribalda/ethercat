@@ -62,9 +62,7 @@ string CommandRegRead::helpString() const
         << "         can be omitted), if a selected data type" << endl
         << "         implies a length." << endl
         << endl
-        << "These are the valid data types:" << endl
-        << "  int8, int16, int32, int64, uint8, uint16, uint32," << endl
-        << "  uint64, string, raw." << endl
+        << typeInfo()
         << endl
         << "Command-specific options:" << endl
         << "  --alias    -a <alias>" << endl

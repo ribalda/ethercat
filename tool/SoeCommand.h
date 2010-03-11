@@ -27,21 +27,23 @@
  *
  ****************************************************************************/
 
-#ifndef __COMMANDSOEREAD_H__
-#define __COMMANDSOEREAD_H__
+#ifndef __SOECOMMAND_H__
+#define __SOECOMMAND_H__
 
-#include "SoeCommand.h"
+#include "Command.h"
+#include "DataTypeHandler.h"
 
 /****************************************************************************/
 
-class CommandSoeRead:
-    public SoeCommand
+class SoeCommand:
+    public Command,
+    public DataTypeHandler
 {
     public:
-        CommandSoeRead();
+        SoeCommand(const string &, const string &);
 
-        string helpString() const;
-        void execute(const StringVector &);
+    protected:
+        static uint16_t parseIdn(const string &);
 };
 
 /****************************************************************************/

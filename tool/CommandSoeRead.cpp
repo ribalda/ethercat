@@ -37,7 +37,7 @@ using namespace std;
 /*****************************************************************************/
 
 CommandSoeRead::CommandSoeRead():
-    Command("soe_read", "Read an SoE IDN from a slave.")
+    SoeCommand("soe_read", "Read an SoE IDN from a slave.")
 {
 }
 
@@ -47,20 +47,27 @@ string CommandSoeRead::helpString() const
 {
     stringstream str;
 
-    str << getName() << " [OPTIONS] <INDEX> <SUBINDEX>" << endl
+    str << getName() << " [OPTIONS] <IDN>" << endl
         << endl
         << getBriefDescription() << endl
         << endl
         << "This command requires a single slave to be selected." << endl
         << endl
         << "Arguments:" << endl
-        << "  IDN      is the IDN and must be an unsigned" << endl
-        << "           16 bit number." << endl
+        << "  IDN      is the IDN and must be either an unsigned" << endl
+        << "           16 bit number acc. to IEC 61800-7-204:" << endl
+        << "             Bit 15: (0) Standard data, (1) Product data" << endl
+        << "             Bit 14 - 12: Parameter set (0 - 7)" << endl
+        << "             Bit 11 - 0: Data block number" << endl
+        << "           or a string like 'P-0-150'." << endl
+        << endl
+        << typeInfo()
         << endl
         << "Command-specific options:" << endl
         << "  --alias    -a <alias>" << endl
         << "  --position -p <pos>    Slave selection. See the help of" << endl
         << "                         the 'slaves' command." << endl
+        << "  --type     -t <type>   Data type (see above)." << endl
         << endl
         << numericInfo();
 
@@ -72,7 +79,7 @@ string CommandSoeRead::helpString() const
 void CommandSoeRead::execute(const StringVector &args)
 {
     SlaveList slaves;
-    stringstream err, strIdn;
+    stringstream err;
     const DataType *dataType = NULL;
     ec_ioctl_slave_soe_read_t ioctl;
 
@@ -81,12 +88,10 @@ void CommandSoeRead::execute(const StringVector &args)
         throwInvalidUsageException(err);
     }
 
-    strIdn << args[0];
-    strIdn
-        >> resetiosflags(ios::basefield) // guess base from prefix
-        >> ioctl.idn;
-    if (strIdn.fail()) {
-        err << "Invalid IDN '" << args[0] << "'!";
+    try {
+        ioctl.idn = parseIdn(args[0]);
+    } catch (runtime_error &e) {
+        err << "Invalid IDN '" << args[0] << "': " << e.what();
         throwInvalidUsageException(err);
     }
 

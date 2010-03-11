@@ -64,6 +64,20 @@ const DataTypeHandler::DataType *DataTypeHandler::findDataType(
 
 /****************************************************************************/
 
+string DataTypeHandler::typeInfo()
+{
+	stringstream s;
+
+	s
+		<< "These are valid data types to use with" << endl
+		<< "the --type option:" << endl
+		<< "  int8, int16, int32, uint8, uint16, uint32, string," << endl
+		<< "  octet_string." << endl;
+	return s.str();
+}
+
+/****************************************************************************/
+
 const DataTypeHandler::DataType *DataTypeHandler::findDataType(uint16_t code)
 {
     const DataType *d;

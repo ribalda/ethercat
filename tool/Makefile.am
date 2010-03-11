@@ -66,6 +66,7 @@ ethercat_SOURCES = \
 	MasterDevice.cpp \
 	NumberListParser.cpp \
 	SdoCommand.cpp \
+	SoeCommand.cpp \
 	main.cpp \
 	sii_crc.cpp
 
@@ -106,6 +107,7 @@ noinst_HEADERS = \
 	MasterDevice.h \
 	NumberListParser.h \
 	SdoCommand.h \
+	SoeCommand.h \
 	sii_crc.h
 
 if ENABLE_EOE

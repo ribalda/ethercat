@@ -37,7 +37,7 @@ using namespace std;
 /*****************************************************************************/
 
 CommandSoeWrite::CommandSoeWrite():
-    Command("soe_write", "Write an SoE IDN to a slave.")
+    SoeCommand("soe_write", "Write an SoE IDN to a slave.")
 {
 }
 
@@ -47,17 +47,23 @@ string CommandSoeWrite::helpString() const
 {
     stringstream str;
 
-    str << getName() << " [OPTIONS] <INDEX> <SUBINDEX> <VALUE>" << endl
+    str << getName() << " [OPTIONS] <IDN> <VALUE>" << endl
         << endl
         << getBriefDescription() << endl
         << endl
         << "This command requires a single slave to be selected." << endl
         << endl
         << "Arguments:" << endl
-        << "  IDN      is the IDN and must be an unsigned" << endl
-        << "           16 bit number." << endl
+        << "  IDN      is the IDN and must be either an unsigned" << endl
+        << "           16 bit number acc. to IEC 61800-7-204:" << endl
+        << "             Bit 15: (0) Standard data, (1) Product data" << endl
+        << "             Bit 14 - 12: Parameter set (0 - 7)" << endl
+        << "             Bit 11 - 0: Data block number" << endl
+        << "           or a string like 'P-0-150'." << endl
         << "  VALUE    is the value to write and is interpreted" << endl
         << "           as the given datatype (see above)." << endl
+		<< endl
+		<< typeInfo()
         << endl
         << "Command-specific options:" << endl
         << "  --alias    -a <alias>" << endl
@@ -85,12 +91,10 @@ void CommandSoeWrite::execute(const StringVector &args)
         throwInvalidUsageException(err);
     }
 
-    strIdn << args[0];
-    strIdn
-        >> resetiosflags(ios::basefield) // guess base from prefix
-        >> ioctl.idn;
-    if (strIdn.fail()) {
-        err << "Invalid IDN '" << args[0] << "'!";
+    try {
+        ioctl.idn = parseIdn(args[0]);
+    } catch (runtime_error &e) {
+        err << "Invalid IDN '" << args[0] << "': " << e.what();
         throwInvalidUsageException(err);
     }
 

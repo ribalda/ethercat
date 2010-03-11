@@ -30,14 +30,12 @@
 #ifndef __COMMANDSOEWRITE_H__
 #define __COMMANDSOEWRITE_H__
 
-#include "Command.h"
-#include "DataTypeHandler.h"
+#include "SoeCommand.h"
 
 /****************************************************************************/
 
 class CommandSoeWrite:
-    public Command,
-    public DataTypeHandler
+    public SoeCommand
 {
     public:
         CommandSoeWrite();

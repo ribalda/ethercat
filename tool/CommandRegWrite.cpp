@@ -64,9 +64,7 @@ string CommandRegWrite::helpString() const
         << "          stdin. If a datatype was specified, VALUE is" << endl
         << "          interpreted respective to the given type." << endl
         << endl
-        << "These are the valid data types:" << endl
-        << "  int8, int16, int32, int64, uint8, uint16, uint32," << endl
-        << "  uint64, string." << endl
+        << typeInfo()
         << endl
         << "Command-specific options:" << endl
         << "  --alias    -a <alias>" << endl

@@ -51,6 +51,8 @@ class DataTypeHandler
             size_t byteSize;
         };
 
+		static std::string typeInfo();
+
         static const DataType *findDataType(const std::string &);
         static const DataType *findDataType(uint16_t);
         static size_t interpretAsType(const DataType *, const std::string &,
