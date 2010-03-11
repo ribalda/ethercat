@@ -92,9 +92,10 @@ string CommandDomains::helpString() const
 
 void CommandDomains::execute(const StringVector &args)
 {
+	MasterIndexList masterIndices;
+    bool doIndent;
     DomainList domains;
     DomainList::const_iterator di;
-    bool doIndent;
 
     if (args.size()) {
         stringstream err;
@@ -102,10 +103,11 @@ void CommandDomains::execute(const StringVector &args)
         throwInvalidUsageException(err);
     }
 
-    doIndent = getMasterIndices().size() > 1;
+	masterIndices = getMasterIndices();
+    doIndent = masterIndices.size() > 1;
     MasterIndexList::const_iterator mi;
-    for (mi = getMasterIndices().begin();
-            mi != getMasterIndices().end(); mi++) {
+    for (mi = masterIndices.begin();
+            mi != masterIndices.end(); mi++) {
         MasterDevice m(*mi);
         m.open(MasterDevice::Read);
         domains = selectedDomains(m);

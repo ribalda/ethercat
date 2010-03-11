@@ -78,6 +78,7 @@ string CommandSiiWrite::helpString() const
 
 void CommandSiiWrite::execute(const StringVector &args)
 {
+	MasterIndexList masterIndices;
     stringstream err;
     ec_ioctl_slave_sii_t data;
     ifstream file;
@@ -88,11 +89,12 @@ void CommandSiiWrite::execute(const StringVector &args)
         throwInvalidUsageException(err);
     }
 
-    if (getMasterIndices().size() != 1) {
+	masterIndices = getMasterIndices();
+    if (masterIndices.size() != 1) {
         err << getName() << " requires to select a single master!";
         throwInvalidUsageException(err);
     }
-    MasterDevice m(getMasterIndices().front());
+    MasterDevice m(masterIndices.front());
 
     if (args[0] == "-") {
         loadSiiData(&data, cin);

@@ -91,6 +91,7 @@ string CommandPdos::helpString() const
 
 void CommandPdos::execute(const StringVector &args)
 {
+	MasterIndexList masterIndices;
     SlaveList slaves;
     SlaveList::const_iterator si;
     bool showHeader, multiMaster;
@@ -101,10 +102,11 @@ void CommandPdos::execute(const StringVector &args)
         throwInvalidUsageException(err);
     }
 
-    multiMaster = getMasterIndices().size() > 1;
+	masterIndices = getMasterIndices();
+    multiMaster = masterIndices.size() > 1;
     MasterIndexList::const_iterator mi;
-    for (mi = getMasterIndices().begin();
-            mi != getMasterIndices().end(); mi++) {
+    for (mi = masterIndices.begin();
+            mi != masterIndices.end(); mi++) {
         MasterDevice m(*mi);
         m.open(MasterDevice::Read);
         slaves = selectedSlaves(m);

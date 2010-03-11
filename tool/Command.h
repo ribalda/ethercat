@@ -85,8 +85,9 @@ class Command
         const string &getBriefDescription() const;
 
         typedef list<unsigned int> MasterIndexList;
-        void setMasterIndices(const MasterIndexList &);
-        const MasterIndexList &getMasterIndices() const;
+        void setMasters(const string &);
+        MasterIndexList getMasterIndices() const;
+
         enum Verbosity {
             Quiet,
             Normal,
@@ -137,7 +138,7 @@ class Command
     private:
         string name;
         string briefDesc;
-        MasterIndexList masterIndices;
+        string masters;
         Verbosity verbosity;
         int alias;
         int position;
@@ -161,13 +162,6 @@ inline const string &Command::getName() const
 inline const string &Command::getBriefDescription() const
 {
     return briefDesc;
-}
-
-/****************************************************************************/
-
-inline const Command::MasterIndexList &Command::getMasterIndices() const
-{
-    return masterIndices;
 }
 
 /****************************************************************************/

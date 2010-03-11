@@ -63,6 +63,7 @@ string CommandEoe::helpString() const
 
 void CommandEoe::execute(const StringVector &args)
 {
+	MasterIndexList masterIndices;
     ec_ioctl_master_t master;
     unsigned int i;
     ec_ioctl_eoe_handler_t eoe;
@@ -75,11 +76,12 @@ void CommandEoe::execute(const StringVector &args)
         throwInvalidUsageException(err);
     }
 
-    doIndent = getMasterIndices().size();
+	masterIndices = getMasterIndices();
+    doIndent = masterIndices.size();
     indent = doIndent ? "  " : "";
     MasterIndexList::const_iterator mi;
-    for (mi = getMasterIndices().begin();
-            mi != getMasterIndices().end(); mi++) {
+    for (mi = masterIndices.begin();
+            mi != masterIndices.end(); mi++) {
         MasterDevice m(*mi);
         m.open(MasterDevice::Read);
         m.getMaster(&master);

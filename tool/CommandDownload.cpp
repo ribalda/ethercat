@@ -85,6 +85,7 @@ string CommandDownload::helpString() const
 void CommandDownload::execute(const StringVector &args)
 {
     stringstream strIndex, strSubIndex, err;
+	MasterIndexList masterIndices;
     ec_ioctl_slave_sdo_download_t data;
     unsigned int number;
     const DataType *dataType = NULL;
@@ -114,11 +115,12 @@ void CommandDownload::execute(const StringVector &args)
     }
     data.sdo_entry_subindex = number;
 
-    if (getMasterIndices().size() != 1) {
+	masterIndices = getMasterIndices();
+    if (masterIndices.size() != 1) {
         err << getName() << " requires to select a single master!";
         throwInvalidUsageException(err);
     }
-    MasterDevice m(getMasterIndices().front());
+    MasterDevice m(masterIndices.front());
     m.open(MasterDevice::ReadWrite);
     slaves = selectedSlaves(m);
     if (slaves.size() != 1) {

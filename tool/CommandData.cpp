@@ -66,6 +66,7 @@ string CommandData::helpString() const
 
 void CommandData::execute(const StringVector &args)
 {
+	MasterIndexList masterIndices;
     DomainList domains;
     DomainList::const_iterator di;
 
@@ -75,9 +76,10 @@ void CommandData::execute(const StringVector &args)
         throwInvalidUsageException(err);
     }
 
+	masterIndices = getMasterIndices();
     MasterIndexList::const_iterator mi;
-    for (mi = getMasterIndices().begin();
-            mi != getMasterIndices().end(); mi++) {
+    for (mi = masterIndices.begin();
+            mi != masterIndices.end(); mi++) {
         MasterDevice m(*mi);
         m.open(MasterDevice::Read);
         domains = selectedDomains(m);

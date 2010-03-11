@@ -82,6 +82,7 @@ string CommandUpload::helpString() const
 
 void CommandUpload::execute(const StringVector &args)
 {
+	MasterIndexList masterIndices;
     SlaveList slaves;
     stringstream err, strIndex, strSubIndex;
     ec_ioctl_slave_sdo_upload_t data;
@@ -112,11 +113,12 @@ void CommandUpload::execute(const StringVector &args)
     }
     data.sdo_entry_subindex = uval;
 
-    if (getMasterIndices().size() != 1) {
+	masterIndices = getMasterIndices();
+    if (masterIndices.size() != 1) {
         err << getName() << " requires to select a single master!";
         throwInvalidUsageException(err);
     }
-    MasterDevice m(getMasterIndices().front());
+    MasterDevice m(masterIndices.front());
     m.open(MasterDevice::Read);
     slaves = selectedSlaves(m);
     if (slaves.size() != 1) {

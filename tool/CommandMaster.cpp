@@ -67,6 +67,7 @@ string CommandMaster::helpString() const
 
 void CommandMaster::execute(const StringVector &args)
 {
+	MasterIndexList masterIndices;
     ec_ioctl_master_t data;
     stringstream err;
     unsigned int i, j;
@@ -79,9 +80,10 @@ void CommandMaster::execute(const StringVector &args)
         throwInvalidUsageException(err);
     }
 
+	masterIndices = getMasterIndices();
     MasterIndexList::const_iterator mi;
-    for (mi = getMasterIndices().begin();
-            mi != getMasterIndices().end(); mi++) {
+    for (mi = masterIndices.begin();
+            mi != masterIndices.end(); mi++) {
         MasterDevice m(*mi);
         m.open(MasterDevice::Read);
         m.getMaster(&data);

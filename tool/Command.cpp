@@ -29,6 +29,21 @@
 
 #include "Command.h"
 #include "MasterDevice.h"
+#include "NumberListParser.h"
+
+/*****************************************************************************/
+
+class MasterIndexParser:
+    public NumberListParser
+{
+    unsigned int getMax()
+    {
+        MasterDevice dev;
+        dev.setIndex(0U);
+        dev.open(MasterDevice::Read);
+        return dev.getMasterCount() - 1;
+    };
+};
 
 /*****************************************************************************/
 
@@ -47,9 +62,9 @@ Command::~Command()
 
 /*****************************************************************************/
 
-void Command::setMasterIndices(const MasterIndexList &indices)
+void Command::setMasters(const string &m)
 {
-    masterIndices = indices;
+    masters = m;
 };
 
 /*****************************************************************************/
@@ -168,6 +183,28 @@ void Command::throwSingleSlaveRequired(unsigned int size) const
         << name << "' requires a single slave.";
 
     throwInvalidUsageException(err);
+}
+
+/*****************************************************************************/
+
+Command::MasterIndexList Command::getMasterIndices() const
+{
+	MasterIndexList indices;
+
+    try {
+        MasterIndexParser p;
+        indices = p.parse(masters.c_str());
+    } catch (MasterDeviceException &e) {
+		stringstream err;
+		err << "Failed to obtain number of masters: " << e.what();
+		throwCommandException(err);
+    } catch (runtime_error &e) {
+		stringstream err;
+        err << "Invalid master argument '" << masters << "': " << e.what();
+		throwInvalidUsageException(err);
+    }
+
+	return indices;
 }
 
 /*****************************************************************************/

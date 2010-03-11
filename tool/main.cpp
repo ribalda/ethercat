@@ -63,7 +63,6 @@ using namespace std;
 #include "CommandVersion.h"
 #include "CommandXml.h"
 
-#include "NumberListParser.h"
 #include "MasterDevice.h"
 
 /*****************************************************************************/
@@ -76,8 +75,7 @@ string commandName;
 Command::StringVector commandArgs;
 
 // option variables
-list<unsigned int> masterIndices;
-string masterIndexList = "-"; // all masters
+string masters = "-"; // all masters
 int slavePosition = -1;
 int slaveAlias = -1;
 int domainIndex = -1;
@@ -113,7 +111,10 @@ string usage()
 
     str << endl
         << "Global options:" << endl
-        << "  --master  -m <master>  Index of the master to use. Default: 0."
+        << "  --master  -m <master>  Comma separated list of masters" << endl
+        << "                         to select, ranges are allowed." << endl
+        << "                         Examples: '1,3', '5-7,9', '-3'." << endl
+        << "                         Default: '-' (all)."
         << endl
         << "  --force   -f           Force a command." << endl
         << "  --quiet   -q           Output less information." << endl
@@ -129,20 +130,6 @@ string usage()
 
     return str.str();
 }
-
-/*****************************************************************************/
-
-class MasterIndexParser:
-    public NumberListParser
-{
-    unsigned int getMax()
-    {
-        MasterDevice dev;
-        dev.setIndex(0U);
-        dev.open(MasterDevice::Read);
-        return dev.getMasterCount() - 1;
-    };
-};
 
 /*****************************************************************************/
 
@@ -171,7 +158,7 @@ void getOptions(int argc, char **argv)
 
         switch (c) {
             case 'm':
-                masterIndexList = optarg;
+                masters = optarg;
                 break;
 
             case 'a':
@@ -261,19 +248,6 @@ void getOptions(int argc, char **argv)
         }
     }
 
-    try {
-        MasterIndexParser p;
-        masterIndices = p.parse(masterIndexList.c_str());
-    } catch (MasterDeviceException &e) {
-        cerr << "Failed to obtain number of masters: " << e.what() << endl;
-        exit(1);
-    } catch (runtime_error &e) {
-        cerr << "Invalid master argument " << masterIndexList
-            << ": " << e.what() << endl
-            << endl << usage();
-        exit(1);
-    }
-
     commandName = argv[optind];
     while (++optind < argc)
         commandArgs.push_back(string(argv[optind]));
@@ -348,18 +322,12 @@ int main(int argc, char **argv)
 
     matchingCommands = getMatchingCommands(commandName);
 
-    if (masterIndices.empty()) {
-        cerr << "List of master indices may not be empty!" << endl
-            << endl << usage();
-        exit(1);
-    }
-
     if (matchingCommands.size()) {
         if (matchingCommands.size() == 1) {
             cmd = matchingCommands.front();
             if (!helpRequested) {
                 try {
-                    cmd->setMasterIndices(masterIndices);
+                    cmd->setMasters(masters);
                     cmd->setVerbosity(verbosity);
                     cmd->setAlias(slaveAlias);
                     cmd->setPosition(slavePosition);

@@ -71,6 +71,7 @@ string CommandXml::helpString() const
 
 void CommandXml::execute(const StringVector &args)
 {
+	MasterIndexList masterIndices;
     SlaveList slaves;
     SlaveList::const_iterator si;
 
@@ -80,12 +81,13 @@ void CommandXml::execute(const StringVector &args)
         throwInvalidUsageException(err);
     }
 
-    if (getMasterIndices().size() != 1) {
+	masterIndices = getMasterIndices();
+    if (masterIndices.size() != 1) {
         stringstream err;
         err << getName() << " requires to select a single master!";
         throwInvalidUsageException(err);
     }
-    MasterDevice m(getMasterIndices().front());
+    MasterDevice m(masterIndices.front());
     m.open(MasterDevice::Read);
     slaves = selectedSlaves(m);
 

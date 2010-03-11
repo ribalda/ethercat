@@ -70,6 +70,7 @@ string CommandCStruct::helpString() const
 
 void CommandCStruct::execute(const StringVector &args)
 {
+	MasterIndexList masterIndices;
     SlaveList slaves;
     SlaveList::const_iterator si;
 
@@ -79,9 +80,10 @@ void CommandCStruct::execute(const StringVector &args)
         throwInvalidUsageException(err);
     }
 
+	masterIndices = getMasterIndices();
     MasterIndexList::const_iterator mi;
-    for (mi = getMasterIndices().begin();
-            mi != getMasterIndices().end(); mi++) {
+    for (mi = masterIndices.begin();
+            mi != masterIndices.end(); mi++) {
         MasterDevice m(*mi);
         m.open(MasterDevice::Read);
         slaves = selectedSlaves(m);

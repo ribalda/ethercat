@@ -82,6 +82,7 @@ string CommandFoeWrite::helpString() const
 
 void CommandFoeWrite::execute(const StringVector &args)
 {
+	MasterIndexList masterIndices;
     stringstream err;
     ec_ioctl_slave_foe_t data;
     ifstream file;
@@ -93,11 +94,12 @@ void CommandFoeWrite::execute(const StringVector &args)
         throwInvalidUsageException(err);
     }
 
-    if (getMasterIndices().size() != 1) {
+	masterIndices = getMasterIndices();
+    if (masterIndices.size() != 1) {
         err << getName() << " requires to select a single master!";
         throwInvalidUsageException(err);
     }
-    MasterDevice m(getMasterIndices().front());
+    MasterDevice m(masterIndices.front());
 
     if (args[0] == "-") {
         loadFoeData(&data, cin);

@@ -68,6 +68,7 @@ string CommandStates::helpString() const
 
 void CommandStates::execute(const StringVector &args)
 {
+	MasterIndexList masterIndices;
     SlaveList slaves;
     SlaveList::const_iterator si;
     stringstream err;
@@ -98,9 +99,10 @@ void CommandStates::execute(const StringVector &args)
         throwInvalidUsageException(err);
     }
 
+	masterIndices = getMasterIndices();
     MasterIndexList::const_iterator mi;
-    for (mi = getMasterIndices().begin();
-            mi != getMasterIndices().end(); mi++) {
+    for (mi = masterIndices.begin();
+            mi != masterIndices.end(); mi++) {
         MasterDevice m(*mi);
         m.open(MasterDevice::ReadWrite);
         slaves = selectedSlaves(m);

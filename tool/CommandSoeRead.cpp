@@ -78,6 +78,7 @@ string CommandSoeRead::helpString() const
 
 void CommandSoeRead::execute(const StringVector &args)
 {
+	MasterIndexList masterIndices;
     SlaveList slaves;
     stringstream err;
     const DataType *dataType = NULL;
@@ -95,11 +96,12 @@ void CommandSoeRead::execute(const StringVector &args)
         throwInvalidUsageException(err);
     }
 
-    if (getMasterIndices().size() != 1) {
+	masterIndices = getMasterIndices();
+    if (masterIndices.size() != 1) {
         err << getName() << " requires to select a single master!";
         throwInvalidUsageException(err);
     }
-    MasterDevice m(getMasterIndices().front());
+    MasterDevice m(masterIndices.front());
     m.open(MasterDevice::Read);
     slaves = selectedSlaves(m);
     if (slaves.size() != 1) {

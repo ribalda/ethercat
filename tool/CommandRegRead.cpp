@@ -79,6 +79,7 @@ string CommandRegRead::helpString() const
 
 void CommandRegRead::execute(const StringVector &args)
 {
+	MasterIndexList masterIndices;
     SlaveList slaves;
     ec_ioctl_slave_reg_t data;
     stringstream strOffset, err;
@@ -140,11 +141,12 @@ void CommandRegRead::execute(const StringVector &args)
         throwInvalidUsageException(err);
     }
     
-    if (getMasterIndices().size() != 1) {
+	masterIndices = getMasterIndices();
+    if (masterIndices.size() != 1) {
         err << getName() << " requires to select a single master!";
         throwInvalidUsageException(err);
     }
-    MasterDevice m(getMasterIndices().front());
+    MasterDevice m(masterIndices.front());
     m.open(MasterDevice::Read);
     slaves = selectedSlaves(m);
 

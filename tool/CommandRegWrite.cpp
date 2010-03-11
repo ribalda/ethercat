@@ -81,6 +81,7 @@ string CommandRegWrite::helpString() const
 
 void CommandRegWrite::execute(const StringVector &args)
 {
+	MasterIndexList masterIndices;
     stringstream strOffset, err;
     ec_ioctl_slave_reg_t data;
     ifstream file;
@@ -100,11 +101,12 @@ void CommandRegWrite::execute(const StringVector &args)
         throwInvalidUsageException(err);
     }
   
-    if (getMasterIndices().size() != 1) {
+	masterIndices = getMasterIndices();
+    if (masterIndices.size() != 1) {
         err << getName() << " requires to select a single master!";
         throwInvalidUsageException(err);
     }
-    MasterDevice m(getMasterIndices().front());
+    MasterDevice m(masterIndices.front());
 
     if (getDataType().empty()) {
         if (args[1] == "-") {

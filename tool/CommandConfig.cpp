@@ -104,8 +104,9 @@ string CommandConfig::helpString() const
  */
 void CommandConfig::execute(const StringVector &args)
 {
-    ConfigList configs;
+	MasterIndexList masterIndices;
     bool doIndent;
+    ConfigList configs;
 
     if (args.size()) {
         stringstream err;
@@ -113,10 +114,11 @@ void CommandConfig::execute(const StringVector &args)
         throwInvalidUsageException(err);
     }
 
-    doIndent = getMasterIndices().size() > 1;
+	masterIndices = getMasterIndices();
+    doIndent = masterIndices.size() > 1;
     MasterIndexList::const_iterator mi;
-    for (mi = getMasterIndices().begin();
-            mi != getMasterIndices().end(); mi++) {
+    for (mi = masterIndices.begin();
+            mi != masterIndices.end(); mi++) {
         MasterDevice m(*mi);
         m.open(MasterDevice::Read);
         configs = selectedConfigs(m);
