@@ -61,6 +61,9 @@ string CommandSoeRead::helpString() const
         << "             Bit 11 - 0: Data block number" << endl
         << "           or a string like 'P-0-150'." << endl
         << endl
+        << "Data of the given IDN are read and displayed according to" << endl
+        << "the given datatype, or as raw hex bytes." << endl
+        << endl
         << typeInfo()
         << endl
         << "Command-specific options:" << endl
