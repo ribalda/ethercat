@@ -1811,6 +1811,29 @@ int ec_cdev_ioctl_master_state(
 
 /*****************************************************************************/
 
+/** Get the master state of all configured slaves.
+ */
+int ec_cdev_ioctl_master_sc_state(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    ec_master_state_t data;
+
+    if (unlikely(!priv->requested))
+        return -EPERM;
+
+    ecrt_master_configured_slaves_state(master, &data);
+
+    if (copy_to_user((void __user *) arg, &data, sizeof(data)))
+        return -EFAULT;
+
+    return 0;
+}
+
+/*****************************************************************************/
+
 /** Get the master state.
  */
 int ec_cdev_ioctl_app_time(
@@ -3672,6 +3695,8 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             return ec_cdev_ioctl_receive(master, arg, priv);
         case EC_IOCTL_MASTER_STATE:
             return ec_cdev_ioctl_master_state(master, arg, priv);
+        case EC_IOCTL_MASTER_SC_STATE:
+            return ec_cdev_ioctl_master_sc_state(master, arg, priv);
         case EC_IOCTL_APP_TIME:
             if (!(filp->f_mode & FMODE_WRITE))
                 return -EPERM;

@@ -134,6 +134,7 @@
 #define EC_IOCTL_VOE_EXEC             EC_IOWR(0x44, ec_ioctl_voe_t)
 #define EC_IOCTL_VOE_DATA             EC_IOWR(0x45, ec_ioctl_voe_t)
 #define EC_IOCTL_SET_SEND_INTERVAL     EC_IOW(0x46, size_t)
+#define EC_IOCTL_MASTER_SC_STATE        EC_IOR(0x47, ec_master_state_t)
 
 /*****************************************************************************/
 

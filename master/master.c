@@ -2296,6 +2296,25 @@ void ecrt_master_state(const ec_master_t *master, ec_master_state_t *state)
 
 /*****************************************************************************/
 
+void ecrt_master_configured_slaves_state(const ec_master_t *master, ec_master_state_t *state)
+{
+    const ec_slave_config_t *sc;
+    ec_slave_config_state_t sc_state;
+
+    // collect al_states of all configured online slaves
+    state->al_states = 0;
+    list_for_each_entry(sc, &master->configs, list) {
+        ecrt_slave_config_state(sc,&sc_state);
+        if (sc_state.online)
+            state->al_states |= sc_state.al_state;
+    }
+
+    state->slaves_responding = master->fsm.slaves_responding;
+    state->link_up = master->main_device.link_state;
+}
+
+/*****************************************************************************/
+
 void ecrt_master_application_time(ec_master_t *master, uint64_t app_time)
 {
     master->app_time = app_time;

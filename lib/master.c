@@ -388,6 +388,16 @@ void ecrt_master_state(const ec_master_t *master, ec_master_state_t *state)
 
 /*****************************************************************************/
 
+void ecrt_master_configured_slaves_state(const ec_master_t *master,
+                                         ec_master_state_t *state)
+{
+    if (ioctl(master->fd, EC_IOCTL_MASTER_SC_STATE, state) == -1) {
+        fprintf(stderr, "Failed to get master state: %s\n", strerror(errno));
+    }
+}
+
+/*****************************************************************************/
+
 void ecrt_master_application_time(ec_master_t *master, uint64_t app_time)
 {
     ec_ioctl_app_time_t data;

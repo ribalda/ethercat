@@ -748,6 +748,18 @@ void ecrt_master_state(
         ec_master_state_t *state /**< Structure to store the information. */
         );
 
+/** Reads the current master state and the al_state of all configured slaves.
+ *
+ * use this function instead of ecrt_master_state if there are unused
+ * slaves on the bus
+ * Stores the master state information in the given \a state structure.
+ * \see ecrt_master_state()
+ */
+void ecrt_master_configured_slaves_state(
+        const ec_master_t *master, /**< EtherCAT master. */
+        ec_master_state_t *state /**< Structure to store the information. */
+        );
+
 /** Sets the application time.
  *
  * The master has to know the application's time when operating slaves with
