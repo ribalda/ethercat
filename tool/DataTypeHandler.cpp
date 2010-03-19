@@ -327,7 +327,7 @@ void DataTypeHandler::outputData(
             o << string((const char *) data, dataSize) << endl;
             break;
         case 0x000a: // octet_string
-            o << string((const char *) data, dataSize) << endl;
+            o << string((const char *) data, dataSize) << flush;
             break;
         case 0x000b: // unicode_string
 			// FIXME encoding
