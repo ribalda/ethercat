@@ -25,6 +25,8 @@
  *  EtherCAT technology and brand is only permitted in compliance with the
  *  industrial property and similar rights of Beckhoff Automation GmbH.
  *
+ *  vim: expandtab
+ *
  ****************************************************************************/
 
 #ifndef __SOECOMMAND_H__
@@ -44,6 +46,7 @@ class SoeCommand:
 
     protected:
         static uint16_t parseIdn(const string &);
+        static std::string errorMsg(uint16_t);
 };
 
 /****************************************************************************/

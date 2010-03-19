@@ -74,6 +74,29 @@ void ec_fsm_soe_error(ec_fsm_soe_t *);
 
 /*****************************************************************************/
 
+extern const ec_code_msg_t soe_error_codes[];
+
+/*****************************************************************************/
+
+/** Outputs an SoE error code.
+*/
+void ec_print_soe_error(uint16_t error_code)
+{
+    const ec_code_msg_t *error_msg;
+
+    for (error_msg = soe_error_codes; error_msg->code; error_msg++) {
+        if (error_msg->code == error_code) {
+            EC_ERR("SoE error 0x%04X: \"%s\".\n",
+                   error_msg->code, error_msg->message);
+            return;
+        }
+    }
+
+    EC_ERR("Unknown SoE error 0x%04X.\n", error_code);
+}
+
+/*****************************************************************************/
+
 /** Constructor.
  */
 void ec_fsm_soe_init(
@@ -353,8 +376,8 @@ void ec_fsm_soe_read_response(ec_fsm_soe_t *fsm /**< finite state machine */)
 
     if (error_flag) {
         req->error_code = EC_READ_U16(data + rec_size - 2);
-        EC_ERR("Received error response: 0x%04x.\n",
-                req->error_code);
+        EC_ERR("Received error response:\n");
+        ec_print_soe_error(req->error_code);
         fsm->state = ec_fsm_soe_error;
         return;
     } else {
@@ -658,8 +681,8 @@ void ec_fsm_soe_write_response(ec_fsm_soe_t *fsm /**< finite state machine */)
                     " but received size is %zu.\n", rec_size);
         } else {
             req->error_code = EC_READ_U16(data + EC_SOE_WRITE_RESPONSE_SIZE);
-            EC_ERR("Received error response: 0x%04x.\n",
-                    req->error_code);
+            EC_ERR("Received error response:\n");
+            ec_print_soe_error(req->error_code);
         }
         ec_print_data(data, rec_size);
         fsm->state = ec_fsm_soe_error;

@@ -62,6 +62,7 @@ ec_master-objs := \
 	sdo_request.o \
 	slave.o \
 	slave_config.o \
+	soe_errors.o \
 	soe_request.o \
 	sync.o \
 	sync_config.o \

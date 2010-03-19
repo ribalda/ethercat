@@ -28,7 +28,6 @@
  ****************************************************************************/
 
 #include <iostream>
-#include <iomanip>
 using namespace std;
 
 #include "CommandSoeRead.h"
@@ -127,8 +126,7 @@ void CommandSoeRead::execute(const StringVector &args)
         m.readSoe(&ioctl);
     } catch (MasterDeviceSoeException &e) {
         delete [] ioctl.data;
-        err << "SoE read command aborted with code 0x"
-            << setfill('0') << hex << setw(4) << e.errorCode;
+        err << "SoE read command failed with code " << errorMsg(e.errorCode);
         throwCommandException(err);
     } catch (MasterDeviceException &e) {
         delete [] ioctl.data;
