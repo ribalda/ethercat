@@ -236,7 +236,7 @@ void ec_fsm_slave_state_sdo_request(
         return;
     }
     if (!ec_fsm_coe_success(&fsm->fsm_coe)) {
-        EC_DBG("Failed to process SDO request for slave %u.\n",
+        EC_ERR("Failed to process SDO request for slave %u.\n",
                 fsm->slave->ring_position);
         request->state = EC_INT_REQUEST_FAILURE;
         wake_up(&slave->sdo_queue);
@@ -411,7 +411,7 @@ void ec_fsm_slave_state_soe_request(
     }
 
     if (!ec_fsm_soe_success(&fsm->fsm_soe)) {
-        EC_DBG("Failed to process SoE request for slave %u.\n",
+        EC_ERR("Failed to process SoE request for slave %u.\n",
                 fsm->slave->ring_position);
         request->state = EC_INT_REQUEST_FAILURE;
         wake_up(&slave->soe_queue);
