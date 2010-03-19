@@ -179,7 +179,7 @@ void ec_fsm_soe_print_error(ec_fsm_soe_t *fsm /**< Finite state machine */)
         printk("Reading");
     }
 
-    printk("IDN 0x%04X failed on slave %u.\n",
+    printk(" IDN 0x%04X failed on slave %u.\n",
             request->idn, fsm->slave->ring_position);
 }
 
