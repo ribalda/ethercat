@@ -40,6 +40,7 @@ Version 1.5.0:
     - Implement indent in 'ethercat ma'
     - Implement 0xXXXX:YY format for specifying SDOs.
     - Implement reading from stream for soe_write.
+* recompile tool/CommandVersion.cpp if revision changes.
 
 Future issues:
 
