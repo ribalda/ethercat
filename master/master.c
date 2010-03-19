@@ -25,6 +25,8 @@
  *  EtherCAT technology and brand is only permitted in compliance with the
  *  industrial property and similar rights of Beckhoff Automation GmbH.
  *
+ *  vim: expandtab
+ *
  *****************************************************************************/
 
 /**
@@ -417,7 +419,7 @@ void ec_master_clear_slaves(ec_master_t *master)
                     ec_master_sdo_request_t, list);
             list_del_init(&request->list); // dequeue
             EC_INFO("Discarding SDO request,"
-					" slave %u does not exist anymore.\n",
+                    " slave %u does not exist anymore.\n",
                     slave->ring_position);
             request->req.state = EC_INT_REQUEST_FAILURE;
             wake_up(&slave->sdo_queue);
@@ -432,7 +434,7 @@ void ec_master_clear_slaves(ec_master_t *master)
                     ec_master_foe_request_t, list);
             list_del_init(&request->list); // dequeue
             EC_INFO("Discarding FoE request,"
-					" slave %u does not exist anymore.\n",
+                    " slave %u does not exist anymore.\n",
                     slave->ring_position);
             request->req.state = EC_INT_REQUEST_FAILURE;
             wake_up(&slave->foe_queue);
@@ -447,7 +449,7 @@ void ec_master_clear_slaves(ec_master_t *master)
                     ec_master_soe_request_t, list);
             list_del_init(&request->list); // dequeue
             EC_INFO("Discarding SoE request,"
-					" slave %u does not exist anymore.\n",
+                    " slave %u does not exist anymore.\n",
                     slave->ring_position);
             request->req.state = EC_INT_REQUEST_FAILURE;
             wake_up(&slave->soe_queue);
