@@ -52,7 +52,6 @@ Future issues:
 * Override sync manager size?
 * Show Record / Array / List type of SDOs.
 * Distributed clocks:
-    - Check 32/64 bit operations.
     - Use vendor correction factors when calculating transmission delays.
     - Skip setting system time offset when application detached.
     - How to use the SYNC1 shift time?
