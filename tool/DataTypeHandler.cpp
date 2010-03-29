@@ -75,7 +75,9 @@ string DataTypeHandler::typeInfo()
 		<< "  int8, int16, int32, int64," << endl
 		<< "  uint8, uint16, uint32, uint64," << endl
 		<< "  float, double" << endl
-		<< "  string, octet_string, unicode_string." << endl;
+		<< "  string, octet_string, unicode_string." << endl
+        << "For sign-and-magnitude coding, use the following types:" << endl
+        << "  sm8, sm16, sm32, sm64" << endl;
 	return s.str();
 }
 
@@ -232,6 +234,17 @@ size_t DataTypeHandler::interpretAsType(
                 throw runtime_error(err.str());
             }
 
+        case 0xfffb: // sm8
+        case 0xfffc: // sm16
+        case 0xfffd: // sm32
+        case 0xfffe: // sm64
+            {
+                stringstream err;
+                err << "Sign-and-magitude types not yet"
+                    " implemented for input direction.";
+                throw runtime_error(err.str());
+            }
+
         default:
             {
                 stringstream err;
@@ -354,6 +367,43 @@ void DataTypeHandler::outputData(
                     << " " << dec << val << endl;
             }
             break;
+        case 0xfffb: // sm8
+            {
+                int8_t val = *(uint8_t *) data;
+                int8_t smval = val < 0 ? (val & 0x7f) * -1 : val;
+                
+                o << "0x" << hex << setw(2) << (int) val
+                    << " " << dec << (int) smval << endl;
+            }
+            break;
+        case 0xfffc: // sm16
+            {
+                int16_t val = le16_to_cpup(data);
+                int16_t smval = val < 0 ? (val & 0x7fff) * -1 : val;
+                
+                o << "0x" << hex << setw(4) << val
+                    << " " << dec << smval << endl;
+            }
+            break;
+        case 0xfffd: // sm32
+            {
+                int32_t val = le32_to_cpup(data);
+                int32_t smval = val < 0 ? (val & 0x7fffffffUL) * -1 : val;
+                
+                o << "0x" << hex << setw(8) << val
+                    << " " << dec << smval << endl;
+            }
+            break;
+        case 0xfffe: // sm64
+            {
+                int64_t val = le64_to_cpup(data);
+                int64_t smval =
+                    val < 0 ? (val & 0x7fffffffffffffffULL) * -1 : val;
+                
+                o << "0x" << hex << setw(16) << val
+                    << " " << dec << smval << endl;
+            }
+            break;
 
         default:
             printRawData(o, (const uint8_t *) data, dataSize); // FIXME
@@ -406,6 +456,10 @@ const DataTypeHandler::DataType DataTypeHandler::dataTypes[] = {
     {"uint56",         0x001a, 7},
     {"uint64",         0x001b, 8},
 	// reserved        0x001c-0x001f
+    {"sm8",            0xfffb, 1}, // sign-and-magnitude coding
+    {"sm16",           0xfffc, 2}, // sign-and-magnitude coding
+    {"sm32",           0xfffd, 4}, // sign-and-magnitude coding
+    {"sm64",           0xfffe, 8}, // sign-and-magnitude coding
     {"raw",            0xffff, 0},
     {}
 };
