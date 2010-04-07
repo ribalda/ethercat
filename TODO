@@ -31,7 +31,6 @@ Version 1.5.0:
     - Implement ranges for slaves and domains.
     - Add -x switch for hex display.
     - Implement CompleteAccess
-    - Output hexadecimal values in xml command.
     - Implement --output-file argument in foe_read.
     - Fix arguments of reg_read.
     - Number layout for reg_read.

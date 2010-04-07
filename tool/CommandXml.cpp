@@ -143,9 +143,9 @@ void CommandXml::generateSlaveXml(
 
         cout
             << in << "        <Sm Enable=\"" << dec << (unsigned int) sync.enable
-            << "\" StartAddress=\"" << sync.physical_start_address
-            << "\" ControlByte=\"" << (unsigned int) sync.control_register
-            << "\" DefaultSize=\"" << sync.default_size
+            << "\" StartAddress=\"#x" << hex << sync.physical_start_address
+            << "\" ControlByte=\"#x" << hex << (unsigned int) sync.control_register
+            << "\" DefaultSize=\"" << dec << sync.default_size
             << "\" />" << endl;
     }
 
