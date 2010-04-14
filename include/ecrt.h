@@ -1128,7 +1128,12 @@ ec_voe_handler_t *ecrt_slave_config_create_voe_handler(
 
 /** Outputs the state of the slave configuration.
  *
- * Stores the state information in the given \a state structure.
+ * Stores the state information in the given \a state structure. The state
+ * information is updated by the master state machine, so it may take a few
+ * cycles, until it changes.
+ *
+ * \attention If the state of process data exchange shall be monitored in
+ * realtime, ecrt_domain_state() should be used.
  */
 void ecrt_slave_config_state(
         const ec_slave_config_t *sc, /**< Slave configuration */
@@ -1244,6 +1249,8 @@ void ecrt_domain_queue(
 /** Reads the state of a domain.
  *
  * Stores the domain state in the given \a state structure.
+ *
+ * Using this method, the process data exchange can be monitored in realtime.
  */
 void ecrt_domain_state(
         const ec_domain_t *domain, /**< Domain. */
