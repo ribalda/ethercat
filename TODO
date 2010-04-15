@@ -13,7 +13,6 @@ Version 1.5.0:
 * Ethernet drivers:
     - Fix link detection in generic driver.
     - Add native drivers from 2.6.24 up to 2.6.31.
-* Remove byte-swapping functions from user space.
 * Use ec_datagram_zero() wherever possible.
 * Finish library implementation.
 * Rescan command.
