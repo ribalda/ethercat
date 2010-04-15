@@ -316,7 +316,7 @@ void ec_fsm_slave_config_enter_clear_sync(
 
     // clear sync manager configurations
     ec_datagram_fpwr(datagram, slave->station_address, 0x0800, sync_size);
-    memset(datagram->data, 0x00, sync_size);
+    ec_datagram_zero(datagram);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_slave_config_state_clear_sync;
 }
@@ -630,7 +630,7 @@ void ec_fsm_slave_config_enter_mbox_sync(
 
         ec_datagram_fpwr(datagram, slave->station_address, 0x0800,
                 EC_SYNC_PAGE_SIZE * 2);
-        memset(datagram->data, 0x00, EC_SYNC_PAGE_SIZE * 2);
+        ec_datagram_zero(datagram);
 
         ec_sync_init(&sync, slave);
         sync.physical_start_address = slave->sii.boot_rx_mailbox_offset;
