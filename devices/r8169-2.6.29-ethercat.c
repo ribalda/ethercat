@@ -2212,11 +2212,11 @@ rtl8169_init_one(struct pci_dev *pdev, const struct pci_device_id *ent)
 
 	rtl8169_init_phy(dev, tp);
 	device_set_wakeup_enable(&pdev->dev, tp->features & RTL_FEATURE_WOL);
+
 	if (tp->ecdev && ecdev_open(tp->ecdev)) {
 		ecdev_withdraw(tp->ecdev);
 		goto err_out_msi_5;
 	}
-
 
 out:
 	return rc;
@@ -2427,8 +2427,6 @@ static void rtl_hw_start_8169(struct net_device *dev)
 	struct rtl8169_private *tp = netdev_priv(dev);
 	void __iomem *ioaddr = tp->mmio_addr;
 	struct pci_dev *pdev = tp->pci_dev;
-
-	printk(KERN_INFO "%s\n", __func__);
 
 	if (tp->mac_version == RTL_GIGA_MAC_VER_05) {
 		RTL_W16(CPlusCmd, RTL_R16(CPlusCmd) | PCIMulRW);
