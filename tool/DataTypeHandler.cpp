@@ -269,12 +269,19 @@ void DataTypeHandler::outputData(
         size_t dataSize
         )
 { 
-    if (type->byteSize && dataSize != type->byteSize) {
-        stringstream err;
-        err << "Data type mismatch. Expected " << type->name
-            << " with " << type->byteSize << " byte, but got "
-            << dataSize << " byte.";
-        throw SizeException(err.str());
+    uint16_t typeCode;
+
+    if (type) {
+        if (type->byteSize && dataSize != type->byteSize) {
+            stringstream err;
+            err << "Data type mismatch. Expected " << type->name
+                << " with " << type->byteSize << " byte, but got "
+                << dataSize << " byte.";
+            throw SizeException(err.str());
+        }
+        typeCode = type->code;
+    } else {
+        typeCode = 0xffff; // raw data
     }
 
     o << setfill('0');
