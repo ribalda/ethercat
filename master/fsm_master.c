@@ -998,8 +998,12 @@ void ec_fsm_master_state_reg_request(
         }
 
         request->state = EC_INT_REQUEST_SUCCESS;
+        if (master->debug_level) {
+            EC_DBG("Register request successful.\n");
+        }
     } else {
         request->state = EC_INT_REQUEST_FAILURE;
+        EC_ERR("Register request failed.\n");
     }
 
     wake_up(&master->reg_queue);
