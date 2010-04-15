@@ -80,6 +80,7 @@ Future issues:
     - Fix number of digits in negative integer hex output.
 * Simplify master fsm by introducing a common request state to handle external
   requests (replace write_sii, sdo_request, etc).
+* Write PDO mapping/assignment by default?
 
 Smaller issues:
 
