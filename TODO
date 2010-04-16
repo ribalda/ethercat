@@ -15,7 +15,6 @@ Version 1.5.0:
     - Add native drivers from 2.6.24 up to 2.6.31.
 * Finish library implementation.
 * Rescan command.
-* Document ec_fsm_foe members.
 * Change SDO index at runtime for SDO request.
 * Output skipped datagrams again.
 * Output warning on unmatched slave configuration.
