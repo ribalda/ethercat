@@ -50,6 +50,8 @@ int ec_dbgdev_tx(struct sk_buff *, struct net_device *);
 struct net_device_stats *ec_dbgdev_stats(struct net_device *);
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 31)
+/** Device operations for debug interfaces.
+ */
 static const struct net_device_ops ec_dbg_netdev_ops =
 {
     .ndo_open = ec_dbgdev_open,

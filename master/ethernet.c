@@ -83,6 +83,8 @@ struct net_device_stats *ec_eoedev_stats(struct net_device *);
 /*****************************************************************************/
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 29)
+/** Device operations for EoE interfaces.
+ */
 static const struct net_device_ops ec_eoedev_ops = {
     .ndo_open = ec_eoedev_open,
     .ndo_stop = ec_eoedev_stop,

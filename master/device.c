@@ -54,6 +54,8 @@
     } while (0)
 #endif
 
+/** List of intervals for frame statistics [s].
+ */
 static const unsigned int rate_intervals[] = {
     1, 10, 60
 };

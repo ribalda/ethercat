@@ -206,7 +206,11 @@ int ec_soe_request_append_data(
 
 /*****************************************************************************/
 
-void ec_soe_request_read(ec_soe_request_t *req)
+/** Request a read operation.
+ */
+void ec_soe_request_read(
+        ec_soe_request_t *req /**< SoE request. */
+       )
 {
     req->dir = EC_DIR_INPUT;
     req->state = EC_INT_REQUEST_QUEUED;
@@ -215,7 +219,11 @@ void ec_soe_request_read(ec_soe_request_t *req)
 
 /*****************************************************************************/
 
-void ec_soe_request_write(ec_soe_request_t *req)
+/** Request a write operation.
+ */
+void ec_soe_request_write(
+        ec_soe_request_t *req /**< SoE request. */
+        )
 {
     req->dir = EC_DIR_OUTPUT;
     req->state = EC_INT_REQUEST_QUEUED;
