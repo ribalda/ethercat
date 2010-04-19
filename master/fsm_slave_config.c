@@ -416,8 +416,6 @@ void ec_fsm_slave_config_state_dc_clear_assign(
 
 /*****************************************************************************/
 
-#define ABS(X) ((X) >= 0 ? (X) : -(X))
-
 /** Configure 32 bit time offset.
  */
 u64 ec_fsm_slave_config_dc_offset32(
@@ -445,7 +443,7 @@ u64 ec_fsm_slave_config_dc_offset32(
                 slave->ring_position, system_time32, correction,
                 (u32) slave->master->app_time, time_diff);
 
-    if (ABS(time_diff) > EC_SYSTEM_TIME_TOLERANCE_NS) {
+    if (EC_ABS(time_diff) > EC_SYSTEM_TIME_TOLERANCE_NS) {
         new_offset = time_diff + old_offset32;
         if (slave->master->debug_level)
             EC_DBG("Slave %u: Setting time offset to %u (was %u)\n",
@@ -486,7 +484,7 @@ u64 ec_fsm_slave_config_dc_offset64(
                 slave->master->app_time, time_diff);
 
 
-    if (ABS(time_diff) > EC_SYSTEM_TIME_TOLERANCE_NS) {
+    if (EC_ABS(time_diff) > EC_SYSTEM_TIME_TOLERANCE_NS) {
         new_offset = time_diff + old_offset;
         if (slave->master->debug_level)
             EC_DBG("Slave %u: Setting time offset to %llu (was %llu)\n",
