@@ -65,13 +65,20 @@
 /** Frame timeout in cycles.
  */
 static cycles_t timeout_cycles;
-static cycles_t sdo_injection_timeout_cycles;
+
+/** Timeout for external datagram injection [cycles].
+ */
+static cycles_t ext_injection_timeout_cycles;
+
 #else
 
 /** Frame timeout in jiffies.
  */
 static unsigned long timeout_jiffies;
-static unsigned long sdo_injection_timeout_jiffies;
+
+/** Timeout for external datagram injection [jiffies].
+ */
+static unsigned long ext_injection_timeout_jiffies;
 
 #endif
 
@@ -94,11 +101,11 @@ void ec_master_init_static(void)
 {
 #ifdef EC_HAVE_CYCLES
     timeout_cycles = (cycles_t) EC_IO_TIMEOUT /* us */ * (cpu_khz / 1000);
-    sdo_injection_timeout_cycles = (cycles_t) EC_SDO_INJECTION_TIMEOUT /* us */ * (cpu_khz / 1000);
+    ext_injection_timeout_cycles = (cycles_t) EC_SDO_INJECTION_TIMEOUT /* us */ * (cpu_khz / 1000);
 #else
     // one jiffy may always elapse between time measurement
     timeout_jiffies = max(EC_IO_TIMEOUT * HZ / 1000000, 1);
-    sdo_injection_timeout_jiffies = max(EC_SDO_INJECTION_TIMEOUT * HZ / 1000000, 1);
+    ext_injection_timeout_jiffies = max(EC_SDO_INJECTION_TIMEOUT * HZ / 1000000, 1);
 #endif
 }
 
@@ -753,10 +760,10 @@ void ec_master_inject_external_datagrams(
                 cycles_t cycles_now = get_cycles();
 
                 if (cycles_now - datagram->cycles_sent
-                        > sdo_injection_timeout_cycles)
+                        > ext_injection_timeout_cycles)
 #else
                 if (jiffies - datagram->jiffies_sent
-                        > sdo_injection_timeout_jiffies)
+                        > ext_injection_timeout_jiffies)
 #endif
                 {
                     unsigned int time_us;
