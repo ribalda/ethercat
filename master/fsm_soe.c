@@ -45,16 +45,21 @@
  */
 #define EC_MBOX_TYPE_SOE 0x05
 
-#define EC_SOE_OPCODE_READ_REQUEST   0x01
-#define EC_SOE_OPCODE_READ_RESPONSE  0x02
-#define EC_SOE_OPCODE_WRITE_REQUEST  0x03
-#define EC_SOE_OPCODE_WRITE_RESPONSE 0x04
+/** SoE operations
+ */
+enum ec_soe_opcodes {
+    OPCODE_READ_REQUEST   = 0x01, /**< Read request. */
+    OPCODE_READ_RESPONSE  = 0x02, /**< Read response. */
+    OPCODE_WRITE_REQUEST  = 0x03, /**< Write request. */
+    OPCODE_WRITE_RESPONSE = 0x04  /**< Write response. */
+};
 
-#define EC_SOE_READ_REQUEST_SIZE   0x04
-#define EC_SOE_READ_RESPONSE_SIZE  0x04
-#define EC_SOE_WRITE_REQUEST_SIZE  0x04
-#define EC_SOE_WRITE_RESPONSE_SIZE 0x04
+/** Size of all SoE headers.
+ */
+#define EC_SOE_SIZE 0x04
 
+/** SoE response timeout [ms].
+ */
 #define EC_SOE_RESPONSE_TIMEOUT 1000
 
 /*****************************************************************************/
@@ -209,20 +214,20 @@ void ec_fsm_soe_read_start(ec_fsm_soe_t *fsm /**< finite state machine */)
     }
 
     data = ec_slave_mbox_prepare_send(slave, datagram, EC_MBOX_TYPE_SOE,
-            EC_SOE_READ_REQUEST_SIZE);
+            EC_SOE_SIZE);
     if (IS_ERR(data)) {
         fsm->state = ec_fsm_soe_error;
         ec_fsm_soe_print_error(fsm);
         return;
     }
 
-    EC_WRITE_U8(data, EC_SOE_OPCODE_READ_REQUEST);
+    EC_WRITE_U8(data, OPCODE_READ_REQUEST);
     EC_WRITE_U8(data + 1, 1 << 6); // request value
     EC_WRITE_U16(data + 2, request->idn);
 
     if (master->debug_level) {
         EC_DBG("SCC read request:\n");
-        ec_print_data(data, EC_SOE_READ_REQUEST_SIZE);
+        ec_print_data(data, EC_SOE_SIZE);
     }
 
     fsm->request->data_size = 0;
@@ -377,7 +382,7 @@ void ec_fsm_soe_read_response(ec_fsm_soe_t *fsm /**< finite state machine */)
         return;
     }
 
-    if (rec_size < EC_SOE_READ_RESPONSE_SIZE) {
+    if (rec_size < EC_SOE_SIZE) {
         fsm->state = ec_fsm_soe_error;
         EC_ERR("Received currupted SoE read response"
                 " (%zu bytes)!\n", rec_size);
@@ -391,7 +396,7 @@ void ec_fsm_soe_read_response(ec_fsm_soe_t *fsm /**< finite state machine */)
     incomplete = (header >> 3) & 1;
     error_flag = (header >> 4) & 1;
 
-    if (opcode != EC_SOE_OPCODE_READ_RESPONSE) {
+    if (opcode != OPCODE_READ_RESPONSE) {
         EC_ERR("Received no read response (opcode %x).\n", opcode);
         ec_print_data(data, rec_size);
         ec_fsm_soe_print_error(fsm);
@@ -418,9 +423,9 @@ void ec_fsm_soe_read_response(ec_fsm_soe_t *fsm /**< finite state machine */)
         return;
     }
 
-    data_size = rec_size - EC_SOE_READ_RESPONSE_SIZE;
+    data_size = rec_size - EC_SOE_SIZE;
     if (ec_soe_request_append_data(req,
-                data + EC_SOE_READ_RESPONSE_SIZE, data_size)) {
+                data + EC_SOE_SIZE, data_size)) {
         fsm->state = ec_fsm_soe_error;
         ec_fsm_soe_print_error(fsm);
         return;
@@ -463,7 +468,7 @@ void ec_fsm_soe_write_next_fragment(
     size_t header_size, max_fragment_size, remaining_size, fragment_size;
     uint16_t fragments_left;
 
-    header_size = EC_MBOX_HEADER_SIZE + EC_SOE_WRITE_REQUEST_SIZE;
+    header_size = EC_MBOX_HEADER_SIZE + EC_SOE_SIZE;
     if (slave->configured_rx_mailbox_size <= header_size) {
         EC_ERR("Mailbox size (%u) too small for SoE write.\n",
                 slave->configured_rx_mailbox_size);
@@ -482,14 +487,14 @@ void ec_fsm_soe_write_next_fragment(
     }
 
     data = ec_slave_mbox_prepare_send(slave, datagram, EC_MBOX_TYPE_SOE,
-            EC_SOE_WRITE_REQUEST_SIZE + fragment_size);
+            EC_SOE_SIZE + fragment_size);
     if (IS_ERR(data)) {
         fsm->state = ec_fsm_soe_error;
         ec_fsm_soe_print_error(fsm);
         return;
     }
 
-    EC_WRITE_U8(data, EC_SOE_OPCODE_WRITE_REQUEST | incomplete << 3);
+    EC_WRITE_U8(data, OPCODE_WRITE_REQUEST | incomplete << 3);
     EC_WRITE_U8(data + 1, 1 << 6); // only value included
     EC_WRITE_U16(data + 2, incomplete ? fragments_left : req->idn);
     memcpy(data + 4, req->data + fsm->offset, fragment_size);
@@ -497,7 +502,7 @@ void ec_fsm_soe_write_next_fragment(
 
     if (master->debug_level) {
         EC_DBG("SCC write request:\n");
-        ec_print_data(data, EC_SOE_WRITE_REQUEST_SIZE + fragment_size);
+        ec_print_data(data, EC_SOE_SIZE + fragment_size);
     }
 
     req->jiffies_sent = jiffies;
@@ -682,7 +687,7 @@ void ec_fsm_soe_write_response(ec_fsm_soe_t *fsm /**< finite state machine */)
         return;
     }
 
-    if (rec_size < EC_SOE_WRITE_RESPONSE_SIZE) {
+    if (rec_size < EC_SOE_SIZE) {
         fsm->state = ec_fsm_soe_error;
         EC_ERR("Received currupted SoE write response (%zu bytes)!\n",
                 rec_size);
@@ -692,7 +697,7 @@ void ec_fsm_soe_write_response(ec_fsm_soe_t *fsm /**< finite state machine */)
     }
 
     opcode = EC_READ_U8(data) & 0x7;
-    if (opcode != EC_SOE_OPCODE_WRITE_RESPONSE) {
+    if (opcode != OPCODE_WRITE_RESPONSE) {
         EC_ERR("Received no write response (opcode %x).\n", opcode);
         ec_print_data(data, rec_size);
         ec_fsm_soe_print_error(fsm);
@@ -711,11 +716,11 @@ void ec_fsm_soe_write_response(ec_fsm_soe_t *fsm /**< finite state machine */)
 
     error_flag = (EC_READ_U8(data) >> 4) & 1;
     if (error_flag) {
-        if (rec_size < EC_SOE_WRITE_RESPONSE_SIZE + 2) {
+        if (rec_size < EC_SOE_SIZE + 2) {
             EC_ERR("Received corrupted error response - error flag set,"
                     " but received size is %zu.\n", rec_size);
         } else {
-            req->error_code = EC_READ_U16(data + EC_SOE_WRITE_RESPONSE_SIZE);
+            req->error_code = EC_READ_U16(data + EC_SOE_SIZE);
             EC_ERR("Received error response:\n");
             ec_print_soe_error(req->error_code);
         }
