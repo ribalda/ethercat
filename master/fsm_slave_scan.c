@@ -609,6 +609,7 @@ void ec_fsm_slave_scan_state_sii_data(ec_fsm_slave_scan_t *fsm /**< slave state 
 
     slave->sii.alias =
         EC_READ_U16(slave->sii_words + 0x0004);
+    slave->effective_alias = slave->sii.alias;
     slave->sii.vendor_id =
         EC_READ_U32(slave->sii_words + 0x0008);
     slave->sii.product_code =
@@ -738,9 +739,9 @@ void ec_fsm_slave_scan_enter_regalias(
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
-    // read alias from register 0x0012
+    // read alias from register
     if (slave->master->debug_level)
-         EC_DBG("Reading alias from register 0x0012 of slave %u.\n",
+         EC_DBG("Reading alias from register of slave %u.\n",
                  slave->ring_position);
     ec_datagram_fprd(datagram, slave->station_address, 0x0012, 2);
     ec_datagram_zero(datagram);
@@ -775,10 +776,10 @@ void ec_fsm_slave_scan_state_regalias(
         EC_WARN("Failed to read reg alias of slave %u.\n",
         fsm->slave->ring_position);
     } else {
-        slave->sii.alias = EC_READ_U16(datagram->data);
+        slave->effective_alias = EC_READ_U16(datagram->data);
         if (slave->master->debug_level)
-            EC_DBG("Alias of slave %u is %u.\n",
-        slave->ring_position,slave->sii.alias);
+            EC_DBG("Read alias %u from register of slave %u.\n",
+                    slave->effective_alias, slave->ring_position);
     }
     if (slave->sii.mailbox_protocols & EC_MBOX_COE) {
         ec_fsm_slave_scan_enter_preop(fsm);

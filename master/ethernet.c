@@ -136,9 +136,9 @@ int ec_eoe_init(
 
     /* device name eoe<MASTER>[as]<SLAVE>, because networking scripts don't
      * like hyphens etc. in interface names. */
-    if (slave->sii.alias) {
+    if (slave->effective_alias) {
         snprintf(name, EC_DATAGRAM_NAME_SIZE,
-                "eoe%ua%u", slave->master->index, slave->sii.alias);
+                "eoe%ua%u", slave->master->index, slave->effective_alias);
     } else {
         snprintf(name, EC_DATAGRAM_NAME_SIZE,
                 "eoe%us%u", slave->master->index, slave->ring_position);

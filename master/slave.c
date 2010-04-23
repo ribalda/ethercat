@@ -72,6 +72,7 @@ void ec_slave_init(
     slave->master = master;
     slave->ring_position = ring_position;
     slave->station_address = station_address;
+    slave->effective_alias = 0x0000;
 
     slave->config = NULL;
     slave->requested_state = EC_SLAVE_STATE_PREOP;

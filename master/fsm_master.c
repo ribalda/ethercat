@@ -877,6 +877,7 @@ void ec_fsm_master_state_write_sii(
         // alias was written
         slave->sii.alias = EC_READ_U16(request->words + 4);
         // TODO: read alias from register 0x0012
+        slave->effective_alias = slave->sii.alias;
     }
     // TODO: Evaluate other SII contents!
 

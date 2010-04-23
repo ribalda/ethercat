@@ -1526,7 +1526,7 @@ void ec_master_attach_slave_configs(
         if (alias) { \
             for (; slave < master->slaves + master->slave_count; \
                     slave++) { \
-                if (slave->sii.alias == alias) \
+                if (slave->effective_alias == alias) \
                 break; \
             } \
             if (slave == master->slaves + master->slave_count) \
@@ -2262,7 +2262,7 @@ int ecrt_master_get_slave(ec_master_t *master, uint16_t slave_position,
     slave_info->product_code = slave->sii.product_code;
     slave_info->revision_number = slave->sii.revision_number;
     slave_info->serial_number = slave->sii.serial_number;
-    slave_info->alias = slave->sii.alias;
+    slave_info->alias = slave->effective_alias;
     slave_info->current_on_ebus = slave->sii.current_on_ebus;
     slave_info->al_state = slave->current_state;
     slave_info->error_flag = slave->error_flag;

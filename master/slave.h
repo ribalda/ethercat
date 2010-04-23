@@ -116,6 +116,7 @@ struct ec_slave
     // addresses
     uint16_t ring_position; /**< Ring position. */
     uint16_t station_address; /**< Configured station address. */
+    uint16_t effective_alias; /**< Effective alias address. */
 
     ec_slave_port_t ports[EC_MAX_PORTS]; /**< Ports. */
 
