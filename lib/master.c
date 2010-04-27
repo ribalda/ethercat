@@ -304,6 +304,54 @@ int ecrt_master_sdo_upload(ec_master_t *master, uint16_t slave_position,
 
 /*****************************************************************************/
 
+int ecrt_master_write_idn(ec_master_t *master, uint16_t slave_position,
+        uint16_t idn, uint8_t *data, size_t data_size, uint32_t *error_code)
+{
+    ec_ioctl_slave_soe_write_t io;
+
+    io.slave_position = slave_position;
+    io.idn = idn;
+    io.data_size = data_size;
+    io.data = data;
+
+    if (ioctl(master->fd, EC_IOCTL_SLAVE_SOE_WRITE, &io) == -1) {
+        if (errno == EIO && error_code) {
+            *error_code = io.error_code;
+        }
+        fprintf(stderr, "Failed to write IDN: %s\n", strerror(errno));
+        return -1;
+    }
+
+    return 0;
+}
+
+/*****************************************************************************/
+
+int ecrt_master_read_idn(ec_master_t *master, uint16_t slave_position,
+        uint16_t idn, uint8_t *target, size_t target_size,
+        size_t *result_size, uint32_t *error_code)
+{
+    ec_ioctl_slave_soe_read_t io;
+
+    io.slave_position = slave_position;
+    io.idn = idn;
+    io.mem_size = target_size;
+    io.data = target;
+
+    if (ioctl(master->fd, EC_IOCTL_SLAVE_SOE_READ, &io) == -1) {
+        if (errno == EIO && error_code) {
+            *error_code = io.error_code;
+        }
+        fprintf(stderr, "Failed to read IDN: %s\n", strerror(errno));
+        return -1;
+    }
+
+    *result_size = io.data_size;
+    return 0;
+}
+
+/*****************************************************************************/
+
 int ecrt_master_activate(ec_master_t *master)
 {
     if (ioctl(master->fd, EC_IOCTL_ACTIVATE,
