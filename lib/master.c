@@ -264,10 +264,8 @@ int ecrt_master_sdo_download(ec_master_t *master, uint16_t slave_position,
     download.data = data;
 
     if (ioctl(master->fd, EC_IOCTL_SLAVE_SDO_DOWNLOAD, &download) == -1) {
-        if (errno == -EIO) {
-            if (abort_code) {
-                *abort_code = download.abort_code;
-            }
+        if (errno == EIO && abort_code) {
+            *abort_code = download.abort_code;
         }
         fprintf(stderr, "Failed to execute SDO download: %s\n",
             strerror(errno));
@@ -292,10 +290,8 @@ int ecrt_master_sdo_upload(ec_master_t *master, uint16_t slave_position,
     upload.target = target;
 
     if (ioctl(master->fd, EC_IOCTL_SLAVE_SDO_UPLOAD, &upload) == -1) {
-        if (errno == -EIO) {
-            if (abort_code) {
-                *abort_code = upload.abort_code;
-            }
+        if (errno == EIO && abort_code) {
+            *abort_code = upload.abort_code;
         }
         fprintf(stderr, "Failed to execute SDO upload: %s\n",
                 strerror(errno));
