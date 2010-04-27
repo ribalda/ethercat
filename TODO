@@ -24,6 +24,7 @@ Version 1.5.0:
 * Check for Enable SDO Complete Access flag.
 * Remove allow_scanning flag.
 * ethercat tool:
+    - Output error after usage.
     - Data type abbreviations.
     - Implement ranges for slaves and domains.
     - Add -x switch for hex display.
