@@ -1941,6 +1941,9 @@ int ecrt_master_activate(ec_master_t *master)
     uint32_t domain_offset;
     ec_domain_t *domain;
     int ret;
+#ifdef EC_EOE
+    int eoe_was_running;
+#endif
 
     if (master->debug_level)
         EC_DBG("ecrt_master_activate(master = 0x%p)\n", master);
@@ -1972,10 +1975,12 @@ int ecrt_master_activate(ec_master_t *master)
     up(&master->master_sem);
 
     // restart EoE process and master thread with new locking
+
+    ec_master_thread_stop(master);
 #ifdef EC_EOE
+    eoe_was_running = master->eoe_thread != NULL;
     ec_master_eoe_stop(master);
 #endif
-    ec_master_thread_stop(master);
 
     if (master->debug_level)
         EC_DBG("FSM datagram is %p.\n", &master->fsm_datagram);
@@ -1987,15 +1992,17 @@ int ecrt_master_activate(ec_master_t *master)
     master->receive_cb = master->app_receive_cb;
     master->cb_data = master->app_cb_data;
     
+#ifdef EC_EOE
+    if (eoe_was_running) {
+        ec_master_eoe_start(master);
+    }
+#endif
     ret = ec_master_thread_start(master, ec_master_operation_thread,
                 "EtherCAT-OP");
     if (ret < 0) {
         EC_ERR("Failed to start master thread!\n");
         return ret;
     }
-#ifdef EC_EOE
-    ec_master_eoe_start(master);
-#endif
 
     master->allow_config = 1; // request the current configuration
     master->allow_scan = 1; // allow re-scanning on topology change
@@ -2010,6 +2017,7 @@ void ecrt_master_deactivate(ec_master_t *master)
     ec_slave_t *slave;
 #ifdef EC_EOE
     ec_eoe_t *eoe;
+    int eoe_was_running;
 #endif
 
     if (master->debug_level)
@@ -2020,10 +2028,11 @@ void ecrt_master_deactivate(ec_master_t *master)
         return;
     }
 
+    ec_master_thread_stop(master);
 #ifdef EC_EOE
+    eoe_was_running = master->eoe_thread != NULL;
     ec_master_eoe_stop(master);
 #endif
-    ec_master_thread_stop(master);
     
     master->send_cb = ec_master_internal_send_cb;
     master->receive_cb = ec_master_internal_receive_cb;
@@ -2059,12 +2068,14 @@ void ecrt_master_deactivate(ec_master_t *master)
     master->app_start_time = 0ULL;
     master->has_start_time = 0;
 
+#ifdef EC_EOE
+    if (eoe_was_running) {
+        ec_master_eoe_start(master);
+    }
+#endif
     if (ec_master_thread_start(master, ec_master_idle_thread,
                 "EtherCAT-IDLE"))
         EC_WARN("Failed to restart master thread!\n");
-#ifdef EC_EOE
-    ec_master_eoe_start(master);
-#endif
 
     master->allow_scan = 1;
     master->allow_config = 1;
