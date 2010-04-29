@@ -135,6 +135,7 @@
 #define EC_IOCTL_VOE_DATA             EC_IOWR(0x45, ec_ioctl_voe_t)
 #define EC_IOCTL_SET_SEND_INTERVAL     EC_IOW(0x46, size_t)
 #define EC_IOCTL_MASTER_SC_STATE        EC_IOR(0x47, ec_master_state_t)
+#define EC_IOCTL_SC_OVERLAPPING_IO      EC_IOW(0x48, ec_ioctl_config_t)
 
 /*****************************************************************************/
 
@@ -455,6 +456,7 @@ typedef struct {
     } syncs[EC_MAX_SYNC_MANAGERS];
     uint16_t watchdog_divider;
     uint16_t watchdog_intervals;
+    uint8_t allow_overlapping_pdos;
     uint32_t sdo_count;
     int32_t slave_position;
     uint16_t dc_assign_activate;

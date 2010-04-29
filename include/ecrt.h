@@ -78,6 +78,9 @@
  * - Added ecrt_slave_config_idn() method for storing SoE IDN configurations,
  *   and ecrt_master_read_idn() and ecrt_master_write_idn() to read/write IDNs
  *   ad-hoc via the user-space library.
+ * - Added support for overlapping PDOs which allows inputs to use the same
+ *   space as outputs on the frame. This reduces the frame length.
+ *
  *
  * @{
  */
@@ -890,6 +893,17 @@ void ecrt_slave_config_watchdog(
                                       is not written, so the default is used.
                                      */
         );
+
+/** Configure wether a slave allows overlapping PDOs.
+ *
+ * Overlapping PDOs allows inputs to use the same space as outputs on the frame.
+ * This reduces the frame length.
+ */
+void ecrt_slave_config_overlapping_pdos(
+        ec_slave_config_t *sc, /**< Slave configuration. */
+        uint8_t allow_overlapping_pdos /**< Allow overlapping PDOs */
+        );
+
 
 /** Add a PDO to a sync manager's PDO assignment.
  *

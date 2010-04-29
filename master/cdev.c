@@ -2031,6 +2031,50 @@ out_return:
     return ret;
 }
 
+
+/*****************************************************************************/
+
+/** Configure wether a slave allows overlapping PDOs.
+ */
+int ec_cdev_ioctl_sc_allow_overlapping_pdos(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    ec_ioctl_config_t data;
+    ec_slave_config_t *sc;
+    int ret = 0;
+
+    if (unlikely(!priv->requested)) {
+        ret = -EPERM;
+        goto out_return;
+    }
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+        ret = -EFAULT;
+        goto out_return;
+    }
+
+    if (down_interruptible(&master->master_sem)) {
+        ret = -EINTR;
+        goto out_return;
+    }
+
+    if (!(sc = ec_master_get_config(master, data.config_index))) {
+        ret = -ENOENT;
+        goto out_up;
+    }
+
+    ecrt_slave_config_overlapping_pdos(sc,
+            data.allow_overlapping_pdos);
+
+out_up:
+    up(&master->master_sem);
+out_return:
+    return ret;
+}
+
 /*****************************************************************************/
 
 /** Add a PDO to the assignment.
@@ -3725,6 +3769,10 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             if (!(filp->f_mode & FMODE_WRITE))
                 return -EPERM;
             return ec_cdev_ioctl_sc_watchdog(master, arg, priv);
+        case EC_IOCTL_SC_OVERLAPPING_IO:
+            if (!(filp->f_mode & FMODE_WRITE))
+                return -EPERM;
+            return ec_cdev_ioctl_sc_allow_overlapping_pdos(master,arg,priv);
         case EC_IOCTL_SC_ADD_PDO:
             if (!(filp->f_mode & FMODE_WRITE))
                 return -EPERM;

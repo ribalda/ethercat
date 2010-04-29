@@ -94,6 +94,7 @@ void ec_datagram_init(ec_datagram_t *datagram /**< EtherCAT datagram. */)
     datagram->data_origin = EC_ORIG_INTERNAL;
     datagram->mem_size = 0;
     datagram->data_size = 0;
+    datagram->domain = NULL;
     datagram->index = 0x00;
     datagram->working_counter = 0x0000;
     datagram->state = EC_DATAGRAM_INIT;

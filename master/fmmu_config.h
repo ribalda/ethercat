@@ -50,13 +50,18 @@ typedef struct {
     uint8_t sync_index; /**< Index of sync manager to use. */
     ec_direction_t dir; /**< FMMU direction. */
     uint32_t logical_start_address; /**< Logical start address. */
+    size_t tx_size; /**< Transmitted (bus) size. */
+    uint32_t domain_address;    /** Domain start address */
     unsigned int data_size; /**< Covered PDO size. */
 } ec_fmmu_config_t;
 
 /*****************************************************************************/
 
 void ec_fmmu_config_init(ec_fmmu_config_t *, ec_slave_config_t *,
-        ec_domain_t *, uint8_t, ec_direction_t);
+        uint8_t, ec_direction_t);
+
+void ec_fmmu_config_domain(ec_fmmu_config_t *, ec_domain_t *,
+        uint32_t , size_t);
 
 void ec_fmmu_config_page(const ec_fmmu_config_t *, const ec_sync_t *,
         uint8_t *);

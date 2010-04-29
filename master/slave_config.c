@@ -70,7 +70,7 @@ void ec_slave_config_init(
     sc->product_code = product_code;
     sc->watchdog_divider = 0; // use default
     sc->watchdog_intervals = 0; // use default
-
+    sc->allow_overlapping_pdos = 0; // default not allowed
     sc->slave = NULL;
 
     for (i = 0; i < EC_MAX_SYNC_MANAGERS; i++)
@@ -164,12 +164,15 @@ int ec_slave_config_prepare_fmmu(
 {
     unsigned int i;
     ec_fmmu_config_t *fmmu;
+    ec_fmmu_config_t *prev_fmmu;
+    uint32_t fmmu_logical_start_address;
+    size_t tx_size;
 
     // FMMU configuration already prepared?
     for (i = 0; i < sc->used_fmmus; i++) {
         fmmu = &sc->fmmu_configs[i];
         if (fmmu->domain == domain && fmmu->sync_index == sync_index)
-            return fmmu->logical_start_address;
+            return fmmu->domain_address;
     }
 
     if (sc->used_fmmus == EC_MAX_FMMUS) {
@@ -178,13 +181,25 @@ int ec_slave_config_prepare_fmmu(
         return -EOVERFLOW;
     }
 
-    fmmu = &sc->fmmu_configs[sc->used_fmmus++];
+    fmmu = &sc->fmmu_configs[sc->used_fmmus];
 
     down(&sc->master->master_sem);
-    ec_fmmu_config_init(fmmu, sc, domain, sync_index, dir);
+    ec_fmmu_config_init(fmmu, sc, sync_index, dir);
+    fmmu_logical_start_address = domain->tx_size;
+    tx_size = fmmu->data_size;
+    if (sc->allow_overlapping_pdos && sc->used_fmmus > 0) {
+        prev_fmmu = &sc->fmmu_configs[sc->used_fmmus-1];
+        if (fmmu->dir != prev_fmmu->dir) {
+            prev_fmmu->tx_size = max(fmmu->data_size,prev_fmmu->data_size);
+            tx_size = 0;
+            fmmu_logical_start_address = prev_fmmu->logical_start_address;
+        }
+    }
+    ec_fmmu_config_domain(fmmu,domain,fmmu_logical_start_address,tx_size);
     up(&sc->master->master_sem);
 
-    return fmmu->logical_start_address;
+    ++sc->used_fmmus;
+    return fmmu->domain_address;
 }
 
 /*****************************************************************************/
@@ -461,6 +476,18 @@ void ecrt_slave_config_watchdog(ec_slave_config_t *sc,
 
     sc->watchdog_divider = divider;
     sc->watchdog_intervals = intervals;
+}
+
+/*****************************************************************************/
+
+void ecrt_slave_config_overlapping_pdos(ec_slave_config_t *sc,
+        uint8_t allow_overlapping_pdos )
+{
+    if (sc->master->debug_level)
+        EC_DBG("%s(sc = 0x%p, allow_overlapping_pdos = %u)\n",
+                __func__, sc, allow_overlapping_pdos);
+
+    sc->allow_overlapping_pdos = allow_overlapping_pdos;
 }
 
 /*****************************************************************************/
@@ -1005,6 +1032,7 @@ int ecrt_slave_config_idn(ec_slave_config_t *sc, uint16_t idn,
 
 EXPORT_SYMBOL(ecrt_slave_config_sync_manager);
 EXPORT_SYMBOL(ecrt_slave_config_watchdog);
+EXPORT_SYMBOL(ecrt_slave_config_overlapping_pdos);
 EXPORT_SYMBOL(ecrt_slave_config_pdo_assign_add);
 EXPORT_SYMBOL(ecrt_slave_config_pdo_assign_clear);
 EXPORT_SYMBOL(ecrt_slave_config_pdo_mapping_add);

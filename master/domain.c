@@ -60,6 +60,7 @@ void ec_domain_init(
     domain->index = index;
     INIT_LIST_HEAD(&domain->fmmu_configs);
     domain->data_size = 0;
+    domain->tx_size = 0;
     domain->data = NULL;
     domain->data_origin = EC_ORIG_INTERNAL;
     domain->logical_base_address = 0x00000000;
@@ -113,6 +114,7 @@ void ec_domain_add_fmmu_config(
     fmmu->domain = domain;
 
     domain->data_size += fmmu->data_size;
+    domain->tx_size += fmmu->tx_size;
     list_add_tail(&fmmu->list, &domain->fmmu_configs);
 
     if (domain->master->debug_level)
@@ -178,6 +180,7 @@ int ec_domain_add_datagram(
 
     ec_datagram_zero(datagram);
     list_add_tail(&datagram->list, &domain->datagrams);
+    datagram->domain = domain;
     return 0;
 }
 
@@ -236,6 +239,7 @@ int ec_domain_finish(
     list_for_each_entry(fmmu, &domain->fmmu_configs, list) {
         // Correct logical FMMU address
         fmmu->logical_start_address += base_address;
+        fmmu->domain_address += base_address;
 
         // Increment Input/Output counter to determine datagram types
         // and calculate expected working counters
@@ -247,7 +251,7 @@ int ec_domain_finish(
 
         // If the current FMMU's data do not fit in the current datagram,
         // allocate a new one.
-        if (datagram_size + fmmu->data_size > EC_MAX_DATA_SIZE) {
+        if (datagram_size + fmmu->tx_size > EC_MAX_DATA_SIZE) {
             ret = ec_domain_add_datagram(domain,
                     domain->logical_base_address + datagram_offset,
                     datagram_size, domain->data + datagram_offset,
@@ -265,7 +269,7 @@ int ec_domain_finish(
             }
         }
 
-        datagram_size += fmmu->data_size;
+        datagram_size += fmmu->tx_size;
     }
 
     // Allocate last datagram, if data are left (this is also the case if the
