@@ -19,10 +19,14 @@ digraph master {
     action_process_sdo [shape=point,label=""]
     action_process_sdo -> sdo_request
 
+    action_process_register [shape=point,label=""]
+    action_process_register -> reg_request
+
     action_idle [shape=point,label=""]
     action_idle -> action_process_sdo
     action_idle -> sdo_dictionary
     action_idle -> action_process_sii
+    action_idle -> action_process_register
     action_idle -> start
 
     action_next_slave_state [shape=point,label=""]
@@ -54,4 +58,7 @@ digraph master {
 
     sdo_request -> action_process_sdo
     sdo_request -> start
+
+    reg_request -> action_process_register
+    reg_request -> start
 }
