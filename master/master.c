@@ -25,6 +25,8 @@
  *  EtherCAT technology and brand is only permitted in compliance with the
  *  industrial property and similar rights of Beckhoff Automation GmbH.
  *
+ *  vim: expandtab
+ *
  *****************************************************************************/
 
 /**
@@ -63,13 +65,20 @@
 /** Frame timeout in cycles.
  */
 static cycles_t timeout_cycles;
-static cycles_t sdo_injection_timeout_cycles;
+
+/** Timeout for external datagram injection [cycles].
+ */
+static cycles_t ext_injection_timeout_cycles;
+
 #else
 
 /** Frame timeout in jiffies.
  */
 static unsigned long timeout_jiffies;
-static unsigned long sdo_injection_timeout_jiffies;
+
+/** Timeout for external datagram injection [jiffies].
+ */
+static unsigned long ext_injection_timeout_jiffies;
 
 #endif
 
@@ -92,11 +101,11 @@ void ec_master_init_static(void)
 {
 #ifdef EC_HAVE_CYCLES
     timeout_cycles = (cycles_t) EC_IO_TIMEOUT /* us */ * (cpu_khz / 1000);
-    sdo_injection_timeout_cycles = (cycles_t) EC_SDO_INJECTION_TIMEOUT /* us */ * (cpu_khz / 1000);
+    ext_injection_timeout_cycles = (cycles_t) EC_SDO_INJECTION_TIMEOUT /* us */ * (cpu_khz / 1000);
 #else
     // one jiffy may always elapse between time measurement
     timeout_jiffies = max(EC_IO_TIMEOUT * HZ / 1000000, 1);
-    sdo_injection_timeout_jiffies = max(EC_SDO_INJECTION_TIMEOUT * HZ / 1000000, 1);
+    ext_injection_timeout_jiffies = max(EC_SDO_INJECTION_TIMEOUT * HZ / 1000000, 1);
 #endif
 }
 
@@ -417,7 +426,7 @@ void ec_master_clear_slaves(ec_master_t *master)
                     ec_master_sdo_request_t, list);
             list_del_init(&request->list); // dequeue
             EC_INFO("Discarding SDO request,"
-					" slave %u does not exist anymore.\n",
+                    " slave %u does not exist anymore.\n",
                     slave->ring_position);
             request->req.state = EC_INT_REQUEST_FAILURE;
             wake_up(&slave->sdo_queue);
@@ -432,7 +441,7 @@ void ec_master_clear_slaves(ec_master_t *master)
                     ec_master_foe_request_t, list);
             list_del_init(&request->list); // dequeue
             EC_INFO("Discarding FoE request,"
-					" slave %u does not exist anymore.\n",
+                    " slave %u does not exist anymore.\n",
                     slave->ring_position);
             request->req.state = EC_INT_REQUEST_FAILURE;
             wake_up(&slave->foe_queue);
@@ -447,7 +456,7 @@ void ec_master_clear_slaves(ec_master_t *master)
                     ec_master_soe_request_t, list);
             list_del_init(&request->list); // dequeue
             EC_INFO("Discarding SoE request,"
-					" slave %u does not exist anymore.\n",
+                    " slave %u does not exist anymore.\n",
                     slave->ring_position);
             request->req.state = EC_INT_REQUEST_FAILURE;
             wake_up(&slave->soe_queue);
@@ -751,10 +760,10 @@ void ec_master_inject_external_datagrams(
                 cycles_t cycles_now = get_cycles();
 
                 if (cycles_now - datagram->cycles_sent
-                        > sdo_injection_timeout_cycles)
+                        > ext_injection_timeout_cycles)
 #else
                 if (jiffies - datagram->jiffies_sent
-                        > sdo_injection_timeout_jiffies)
+                        > ext_injection_timeout_jiffies)
 #endif
                 {
                     unsigned int time_us;
@@ -1517,7 +1526,7 @@ void ec_master_attach_slave_configs(
         if (alias) { \
             for (; slave < master->slaves + master->slave_count; \
                     slave++) { \
-                if (slave->sii.alias == alias) \
+                if (slave->effective_alias == alias) \
                 break; \
             } \
             if (slave == master->slaves + master->slave_count) \
@@ -1932,6 +1941,9 @@ int ecrt_master_activate(ec_master_t *master)
     uint32_t domain_offset;
     ec_domain_t *domain;
     int ret;
+#ifdef EC_EOE
+    int eoe_was_running;
+#endif
 
     if (master->debug_level)
         EC_DBG("ecrt_master_activate(master = 0x%p)\n", master);
@@ -1963,10 +1975,12 @@ int ecrt_master_activate(ec_master_t *master)
     up(&master->master_sem);
 
     // restart EoE process and master thread with new locking
+
+    ec_master_thread_stop(master);
 #ifdef EC_EOE
+    eoe_was_running = master->eoe_thread != NULL;
     ec_master_eoe_stop(master);
 #endif
-    ec_master_thread_stop(master);
 
     if (master->debug_level)
         EC_DBG("FSM datagram is %p.\n", &master->fsm_datagram);
@@ -1978,15 +1992,17 @@ int ecrt_master_activate(ec_master_t *master)
     master->receive_cb = master->app_receive_cb;
     master->cb_data = master->app_cb_data;
     
+#ifdef EC_EOE
+    if (eoe_was_running) {
+        ec_master_eoe_start(master);
+    }
+#endif
     ret = ec_master_thread_start(master, ec_master_operation_thread,
                 "EtherCAT-OP");
     if (ret < 0) {
         EC_ERR("Failed to start master thread!\n");
         return ret;
     }
-#ifdef EC_EOE
-    ec_master_eoe_start(master);
-#endif
 
     master->allow_config = 1; // request the current configuration
     master->allow_scan = 1; // allow re-scanning on topology change
@@ -2001,6 +2017,7 @@ void ecrt_master_deactivate(ec_master_t *master)
     ec_slave_t *slave;
 #ifdef EC_EOE
     ec_eoe_t *eoe;
+    int eoe_was_running;
 #endif
 
     if (master->debug_level)
@@ -2011,10 +2028,11 @@ void ecrt_master_deactivate(ec_master_t *master)
         return;
     }
 
+    ec_master_thread_stop(master);
 #ifdef EC_EOE
+    eoe_was_running = master->eoe_thread != NULL;
     ec_master_eoe_stop(master);
 #endif
-    ec_master_thread_stop(master);
     
     master->send_cb = ec_master_internal_send_cb;
     master->receive_cb = ec_master_internal_receive_cb;
@@ -2050,12 +2068,14 @@ void ecrt_master_deactivate(ec_master_t *master)
     master->app_start_time = 0ULL;
     master->has_start_time = 0;
 
+#ifdef EC_EOE
+    if (eoe_was_running) {
+        ec_master_eoe_start(master);
+    }
+#endif
     if (ec_master_thread_start(master, ec_master_idle_thread,
                 "EtherCAT-IDLE"))
         EC_WARN("Failed to restart master thread!\n");
-#ifdef EC_EOE
-    ec_master_eoe_start(master);
-#endif
 
     master->allow_scan = 1;
     master->allow_config = 1;
@@ -2253,7 +2273,7 @@ int ecrt_master_get_slave(ec_master_t *master, uint16_t slave_position,
     slave_info->product_code = slave->sii.product_code;
     slave_info->revision_number = slave->sii.revision_number;
     slave_info->serial_number = slave->sii.serial_number;
-    slave_info->alias = slave->sii.alias;
+    slave_info->alias = slave->effective_alias;
     slave_info->current_on_ebus = slave->sii.current_on_ebus;
     slave_info->al_state = slave->current_state;
     slave_info->error_flag = slave->error_flag;

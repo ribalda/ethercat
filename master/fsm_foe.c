@@ -104,37 +104,29 @@ void ec_fsm_foe_read_start(ec_fsm_foe_t *);
 
 /*****************************************************************************/
 
-/**
-   Constructor.
-*/
-
+/** Constructor.
+ */
 void ec_fsm_foe_init(ec_fsm_foe_t *fsm, /**< finite state machine */
                      ec_datagram_t *datagram /**< datagram */
                      )
 {
     fsm->state     = NULL;
     fsm->datagram  = datagram;
-    fsm->rx_errors = 0;
-    fsm->tx_errors = 0;
 }
 
 /*****************************************************************************/
 
-/**
-   Destructor.
-*/
-
+/** Destructor.
+ */
 void ec_fsm_foe_clear(ec_fsm_foe_t *fsm /**< finite state machine */)
 {
 }
 
 /*****************************************************************************/
 
-/**
-   Executes the current state of the state machine.
-   \return false, if state machine has terminated
-*/
-
+/** Executes the current state of the state machine.
+ * \return false, if state machine has terminated
+ */
 int ec_fsm_foe_exec(ec_fsm_foe_t *fsm /**< finite state machine */)
 {
     fsm->state(fsm);
@@ -144,11 +136,9 @@ int ec_fsm_foe_exec(ec_fsm_foe_t *fsm /**< finite state machine */)
 
 /*****************************************************************************/
 
-/**
-   Returns, if the state machine terminated with success.
-   \return non-zero if successful.
-*/
-
+/** Returns, if the state machine terminated with success.
+ * \return non-zero if successful.
+ */
 int ec_fsm_foe_success(ec_fsm_foe_t *fsm /**< Finite state machine */)
 {
     return fsm->state == ec_fsm_foe_end;
@@ -176,10 +166,8 @@ void ec_fsm_foe_transfer(
 
 /*****************************************************************************/
 
-/**
-   State: ERROR.
-*/
-
+/** State: ERROR.
+ */
 void ec_fsm_foe_error(ec_fsm_foe_t *fsm /**< finite state machine */)
 {
 #ifdef DEBUG_FOE
@@ -189,10 +177,8 @@ void ec_fsm_foe_error(ec_fsm_foe_t *fsm /**< finite state machine */)
 
 /*****************************************************************************/
 
-/**
-   State: END.
-*/
-
+/** State: END.
+ */
 void ec_fsm_foe_end(ec_fsm_foe_t *fsm /**< finite state machine */)
 {
 #ifdef DEBUG_FOE
@@ -201,10 +187,9 @@ void ec_fsm_foe_end(ec_fsm_foe_t *fsm /**< finite state machine */)
 }
 
 /*****************************************************************************/
-/**
-   Sends a file or the next fragment.
-*/
 
+/** Sends a file or the next fragment.
+ */
 int ec_foe_prepare_data_send(ec_fsm_foe_t *fsm)
 {
     size_t remaining_size, current_size;
@@ -238,10 +223,9 @@ int ec_foe_prepare_data_send(ec_fsm_foe_t *fsm)
 }
 
 /*****************************************************************************/
-/**
-   Prepare a write request (WRQ) with filename
-*/
 
+/** Prepare a write request (WRQ) with filename
+ */
 int ec_foe_prepare_wrq_send(ec_fsm_foe_t *fsm)
 {
     size_t current_size;
@@ -532,10 +516,9 @@ void ec_fsm_foe_state_data_sent(
 }
 
 /*****************************************************************************/
-/**
-   Prepare a read request (RRQ) with filename
-*/
 
+/** Prepare a read request (RRQ) with filename
+ */
 int ec_foe_prepare_rrq_send(ec_fsm_foe_t *fsm)
 {
     size_t current_size;
@@ -559,7 +542,6 @@ int ec_foe_prepare_rrq_send(ec_fsm_foe_t *fsm)
 
     return 0;
 }
-
 
 /*****************************************************************************/
 
@@ -653,8 +635,6 @@ void ec_fsm_foe_read_start(
     ec_slave_t *slave = fsm->slave;
 
     fsm->rx_buffer_offset = 0;
-    fsm->rx_current_size = 0;
-    fsm->rx_packet_no = 0;
     fsm->rx_expected_packet_no = 1;
     fsm->rx_last_packet = 0;
 
@@ -914,7 +894,6 @@ void ec_foe_set_tx_error(
         uint32_t errorcode /**< FoE error code. */
         )
 {
-    fsm->tx_errors++;
     fsm->request->result = errorcode;
     fsm->state = ec_fsm_foe_error;
 }
@@ -928,7 +907,6 @@ void ec_foe_set_rx_error(
         uint32_t errorcode /**< FoE error code. */
         )
 {
-    fsm->rx_errors++;
     fsm->request->result = errorcode;
     fsm->state = ec_fsm_foe_error;
 }

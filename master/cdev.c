@@ -285,7 +285,7 @@ int ec_cdev_ioctl_slave(
     data.product_code = slave->sii.product_code;
     data.revision_number = slave->sii.revision_number;
     data.serial_number = slave->sii.serial_number;
-    data.alias = slave->sii.alias;
+    data.alias = slave->effective_alias;
     data.boot_rx_mailbox_offset = slave->sii.boot_rx_mailbox_offset;
     data.boot_rx_mailbox_size = slave->sii.boot_rx_mailbox_size;
     data.boot_tx_mailbox_offset = slave->sii.boot_tx_mailbox_offset;

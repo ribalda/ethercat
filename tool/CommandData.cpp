@@ -25,6 +25,8 @@
  *  EtherCAT technology and brand is only permitted in compliance with the
  *  industrial property and similar rights of Beckhoff Automation GmbH.
  *
+ *  vim: expandtab
+ *
  ****************************************************************************/
 
 #include <iostream>
@@ -66,7 +68,7 @@ string CommandData::helpString() const
 
 void CommandData::execute(const StringVector &args)
 {
-	MasterIndexList masterIndices;
+    MasterIndexList masterIndices;
     DomainList domains;
     DomainList::const_iterator di;
 
@@ -76,7 +78,7 @@ void CommandData::execute(const StringVector &args)
         throwInvalidUsageException(err);
     }
 
-	masterIndices = getMasterIndices();
+    masterIndices = getMasterIndices();
     MasterIndexList::const_iterator mi;
     for (mi = masterIndices.begin();
             mi != masterIndices.end(); mi++) {

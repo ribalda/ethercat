@@ -28,8 +28,8 @@ Changes since 1.4.0:
     - Added e100 driver for 2.6.31.
 * Added 8139too driver for kernels 2.6.25 (F. Pose), 2.6.26 (M. Luescher),
   2.6.27, 2.6.28 and 2.6.29 (M. Goetze).
-* Added e1000 driver for 2.6.26 (M. Luescher).
-* Added r8169 driver for 2.6.24, 2.6.28 and 2.6.29.
+* Added e1000 driver for 2.6.26 (M. Luescher) and 2.6.27.
+* Added r8169 driver for 2.6.24, 2.6.27, 2.6.28, 2.6.29 and 2.6.31.
 * Debug interfaces are created with the Ethernet addresses of the attached
   physical device.
 * Improved error case return codes of many functions.

@@ -36,8 +36,6 @@
 #ifndef __EC_MASTER_GLOBALS_H__
 #define __EC_MASTER_GLOBALS_H__
 
-#include <linux/types.h>
-
 #include "../globals.h"
 #include "../include/ecrt.h"
 
@@ -259,6 +257,12 @@ enum {
  */
 #define EC_DBG(fmt, args...) \
     printk(KERN_DEBUG "EtherCAT DEBUG: " fmt, ##args)
+
+/*****************************************************************************/
+
+/** Absolute value.
+ */
+#define EC_ABS(X) ((X) >= 0 ? (X) : -(X))
 
 /*****************************************************************************/
 

@@ -13,11 +13,9 @@ Version 1.5.0:
 * Ethernet drivers:
     - Fix link detection in generic driver.
     - Add native drivers from 2.6.24 up to 2.6.31.
-* Remove byte-swapping functions from user space.
-* Use ec_datagram_zero() wherever possible.
 * Finish library implementation.
+  - Remove stdio uses?
 * Rescan command.
-* Document ec_fsm_foe members.
 * Change SDO index at runtime for SDO request.
 * Output skipped datagrams again.
 * Output warning on unmatched slave configuration.
@@ -27,11 +25,11 @@ Version 1.5.0:
 * Check for Enable SDO Complete Access flag.
 * Remove allow_scanning flag.
 * ethercat tool:
+    - Output error after usage.
     - Data type abbreviations.
     - Implement ranges for slaves and domains.
     - Add -x switch for hex display.
     - Implement CompleteAccess
-    - Output hexadecimal values in xml command.
     - Implement --output-file argument in foe_read.
     - Fix arguments of reg_read.
     - Number layout for reg_read.
@@ -40,6 +38,12 @@ Version 1.5.0:
     - Implement indent in 'ethercat ma'
     - Implement 0xXXXX:YY format for specifying SDOs.
     - Implement reading from stream for soe_write.
+    - Fix AL state display if error bit set.
+* recompile tool/CommandVersion.cpp if revision changes.
+* Log SoE IDNs with real name ([SP]-x-yyyy).
+* Output SoE IDN configurations in 'ethercat config'.
+* Output AL status error flag correctly in 'ethercat slaves'.
+* Fix casting away constness during expected WC calculation.
 
 Future issues:
 
@@ -48,7 +52,6 @@ Future issues:
 * Override sync manager size?
 * Show Record / Array / List type of SDOs.
 * Distributed clocks:
-    - Check 32/64 bit operations.
     - Use vendor correction factors when calculating transmission delays.
     - Skip setting system time offset when application detached.
     - How to use the SYNC1 shift time?
@@ -75,8 +78,10 @@ Future issues:
 * ethercat tool:
     - Add a -n (numeric) switch.
 	- Check for unwanted options.
+    - Fix number of digits in negative integer hex output.
 * Simplify master fsm by introducing a common request state to handle external
   requests (replace write_sii, sdo_request, etc).
+* Write PDO mapping/assignment by default?
 
 Smaller issues:
 

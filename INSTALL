@@ -18,6 +18,8 @@ section of the documentation available from http://etherlab.org/en/ethercat.
 
 For the impatient: The procedure mainly consists of calling
 
+$ ./boostrap # to create the configure script, if downloaded from the repo
+
 $ ./configure
 $ make all modules
 

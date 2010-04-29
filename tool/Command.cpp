@@ -25,6 +25,8 @@
  *  EtherCAT technology and brand is only permitted in compliance with the
  *  industrial property and similar rights of Beckhoff Automation GmbH.
  *
+ *  vim: expandtab
+ *
  ****************************************************************************/
 
 #include "Command.h"
@@ -189,35 +191,35 @@ void Command::throwSingleSlaveRequired(unsigned int size) const
 
 Command::MasterIndexList Command::getMasterIndices() const
 {
-	MasterIndexList indices;
+    MasterIndexList indices;
 
     try {
         MasterIndexParser p;
         indices = p.parse(masters.c_str());
     } catch (MasterDeviceException &e) {
-		stringstream err;
-		err << "Failed to obtain number of masters: " << e.what();
-		throwCommandException(err);
+        stringstream err;
+        err << "Failed to obtain number of masters: " << e.what();
+        throwCommandException(err);
     } catch (runtime_error &e) {
-		stringstream err;
+        stringstream err;
         err << "Invalid master argument '" << masters << "': " << e.what();
-		throwInvalidUsageException(err);
+        throwInvalidUsageException(err);
     }
 
-	return indices;
+    return indices;
 }
 
 /*****************************************************************************/
 
 unsigned int Command::getSingleMasterIndex() const
 {
-	MasterIndexList masterIndices = getMasterIndices();
+    MasterIndexList masterIndices = getMasterIndices();
     if (masterIndices.size() != 1) {
-		stringstream err;
+        stringstream err;
         err << getName() << " requires to select a single master!";
         throwInvalidUsageException(err);
     }
-	return masterIndices.front();
+    return masterIndices.front();
 }
 
 /*****************************************************************************/

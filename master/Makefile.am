@@ -63,6 +63,7 @@ noinst_HEADERS = \
 	sdo_request.c sdo_request.h \
 	slave.c slave.h \
 	slave_config.c slave_config.h \
+	soe_errors.c \
 	soe_request.c soe_request.h \
 	sync.c sync.h \
 	sync_config.c sync_config.h \

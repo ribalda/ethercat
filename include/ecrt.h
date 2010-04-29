@@ -75,7 +75,9 @@
  * - Removed 'const' from argument of ecrt_sdo_request_state(), because the
  *   userspace library has to modify object internals.
  * - Added 64-bit data access macros.
- * - Added ecrt_slave_config_idn() method for storing SoE IDN configurations.
+ * - Added ecrt_slave_config_idn() method for storing SoE IDN configurations,
+ *   and ecrt_master_read_idn() and ecrt_master_write_idn() to read/write IDNs
+ *   ad-hoc via the user-space library.
  *
  * @{
  */
@@ -661,6 +663,44 @@ int ecrt_master_sdo_upload(
         uint32_t *abort_code /**< Abort code of the SDO upload. */
         );
 
+/** Executes an SoE write request.
+ *
+ * Starts writing an IDN and blocks until the request was processed, or an
+ * error occurred.
+ *
+ * \retval  0 Success.
+ * \retval -1 An error occured.
+ */
+int ecrt_master_write_idn(
+        ec_master_t *master, /**< EtherCAT master. */
+        uint16_t slave_position, /**< Slave position. */
+        uint16_t idn, /**< SoE IDN (see ecrt_slave_config_idn()). */
+        uint8_t *data, /**< Pointer to data to write. */
+        size_t data_size, /**< Size of data to write. */
+        uint32_t *error_code /**< Pointer to variable, where an SoE error code
+                               can be stored. */
+        );
+
+/** Executes an SoE read request.
+ *
+ * Starts reading an IDN and blocks until the request was processed, or an
+ * error occurred.
+ *
+ * \retval  0 Success.
+ * \retval -1 An error occured.
+ */
+int ecrt_master_read_idn(
+        ec_master_t *master, /**< EtherCAT master. */
+        uint16_t slave_position, /**< Slave position. */
+        uint16_t idn, /**< SoE IDN (see ecrt_slave_config_idn()). */
+        uint8_t *target, /**< Pointer to memory where the read data can be
+                           stored. */
+        size_t target_size, /**< Size of the memory \a target points to. */
+        size_t *result_size, /**< Actual size of the received data. */
+        uint32_t *error_code /**< Pointer to variable, where an SoE error code
+                               can be stored. */
+        );
+
 #endif /* #ifndef __KERNEL__ */
 
 /** Finishes the configuration phase and prepares for cyclic operation.
@@ -1140,7 +1180,12 @@ ec_voe_handler_t *ecrt_slave_config_create_voe_handler(
 
 /** Outputs the state of the slave configuration.
  *
- * Stores the state information in the given \a state structure.
+ * Stores the state information in the given \a state structure. The state
+ * information is updated by the master state machine, so it may take a few
+ * cycles, until it changes.
+ *
+ * \attention If the state of process data exchange shall be monitored in
+ * realtime, ecrt_domain_state() should be used.
  */
 void ecrt_slave_config_state(
         const ec_slave_config_t *sc, /**< Slave configuration */
@@ -1256,6 +1301,8 @@ void ecrt_domain_queue(
 /** Reads the state of a domain.
  *
  * Stores the domain state in the given \a state structure.
+ *
+ * Using this method, the process data exchange can be monitored in realtime.
  */
 void ecrt_domain_state(
         const ec_domain_t *domain, /**< Domain. */

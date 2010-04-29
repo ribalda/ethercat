@@ -335,7 +335,9 @@ void ec_fsm_change_state_status(ec_fsm_change_t *fsm
 */
 
 const ec_code_msg_t al_status_messages[] = {
+    {0x0000, "No error"},
     {0x0001, "Unspecified error"},
+    {0x0002, "No Memory"},
     {0x0011, "Invalid requested state change"},
     {0x0012, "Unknown requested state"},
     {0x0013, "Bootstrap not supported"},
@@ -345,7 +347,7 @@ const ec_code_msg_t al_status_messages[] = {
     {0x0017, "Invalid sync manager configuration"},
     {0x0018, "No valid inputs available"},
     {0x0019, "No valid outputs"},
-    {0x001A, "Synchronisation error"},
+    {0x001A, "Synchronization error"},
     {0x001B, "Sync manager watchdog"},
     {0x001C, "Invalid sync manager types"},
     {0x001D, "Invalid output configuration"},
@@ -355,18 +357,36 @@ const ec_code_msg_t al_status_messages[] = {
     {0x0021, "Slave needs INIT"},
     {0x0022, "Slave needs PREOP"},
     {0x0023, "Slave needs SAFEOP"},
+    {0x0024, "Invalid Input Mapping"},
+    {0x0025, "Invalid Output Mapping"},
+    {0x0026, "Inconsistent Settings"},
+    {0x0027, "Freerun not supported"},
+    {0x0028, "Synchronization not supported"},
+    {0x0029, "Freerun needs 3 Buffer Mode"},
+    {0x002A, "Background Watchdog"},
+    {0x002B, "No Valid Inputs and Outputs"},
+    {0x002C, "Fatal Sync Error"},
+    {0x002D, "No Sync Error"},
     {0x0030, "Invalid DC SYNCH configuration"},
     {0x0031, "Invalid DC latch configuration"},
     {0x0032, "PLL error"},
-    {0x0033, "Invalid DC IO error"},
-    {0x0034, "Invalid DC timeout error"},
-    {0x0042, "MBOX EOE"},
-    {0x0043, "MBOX COE"},
-    {0x0044, "MBOX FOE"},
-    {0x0045, "MBOX SOE"},
-    {0x004F, "MBOX VOE"},
-    {}
+    {0x0033, "DC Sync IO Error"},
+    {0x0034, "DC Sync Timeout Error"},
+    {0x0035, "DC Invalid Sync Cycle Time"},
+    {0x0036, "DC Sync0 Cycle Time"},
+    {0x0037, "DC Sync1 Cycle Time"},
+    {0x0041, "MBX_AOE"},
+    {0x0042, "MBX_EOE"},
+    {0x0043, "MBX_COE"},
+    {0x0044, "MBX_FOE"},
+    {0x0045, "MBX_SOE"},
+    {0x004F, "MBX_VOE"},
+    {0x0050, "EEPROM No Access"},
+    {0x0051, "EEPROM Error"},
+    {0x0060, "Slave Restarted Locally"},
+    {0xffff}
 };
+
 
 /*****************************************************************************/
 
@@ -397,7 +417,7 @@ void ec_fsm_change_state_code(ec_fsm_change_t *fsm
         ec_datagram_print_wc_error(datagram);
     } else {
         code = EC_READ_U16(datagram->data);
-        for (al_msg = al_status_messages; al_msg->code; al_msg++) {
+        for (al_msg = al_status_messages; al_msg->code != 0xffff; al_msg++) {
             if (al_msg->code != code) continue;
             EC_ERR("AL status message 0x%04X: \"%s\".\n",
                     al_msg->code, al_msg->message);

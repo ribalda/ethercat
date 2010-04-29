@@ -51,12 +51,13 @@
 struct ec_tty;
 typedef struct ec_tty ec_tty_t; /**< \see ec_tty */
 
-/**
- * \param cflag_changed This callback function is called when the serial
- * settings shall be changed. The \a cflag argument contains the new settings.
+/** Operations on the virtual TTY interface.
  */
 typedef struct {
-    int (*cflag_changed)(void *, tcflag_t);
+    int (*cflag_changed)(void *, tcflag_t); /**< Called when the serial
+                                              * settings shall be changed. The
+                                              * \a cflag argument contains the
+                                              * new settings. */
 } ec_tty_operations_t;
 
 /******************************************************************************

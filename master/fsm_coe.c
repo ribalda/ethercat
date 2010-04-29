@@ -45,11 +45,24 @@
  */
 #define EC_FSM_COE_DICT_TIMEOUT 1000
 
-#define EC_COE_DOWN_REQ_HEADER_SIZE      10
-#define EC_COE_DOWN_SEG_REQ_HEADER_SIZE  3
-#define EC_COE_DOWN_SEG_MIN_DATA_SIZE    7
+/** CoE download request header size.
+ */
+#define EC_COE_DOWN_REQ_HEADER_SIZE 10
 
+/** CoE download segment request header size.
+ */
+#define EC_COE_DOWN_SEG_REQ_HEADER_SIZE 3
+
+/** Minimum size of download segment.
+ */
+#define EC_COE_DOWN_SEG_MIN_DATA_SIZE 7
+
+/** Enable debug output for CoE retries.
+ */
 #define DEBUG_RETRIES 0
+
+/** Enable warning output if transfers take too long.
+ */
 #define DEBUG_LONG 0
 
 /*****************************************************************************/
@@ -1256,10 +1269,8 @@ void ec_fsm_coe_down_request(ec_fsm_coe_t *fsm /**< finite state machine */)
 
 /*****************************************************************************/
 
-/**
-   CoE state: DOWN CHECK.
-*/
-
+/** CoE state: DOWN CHECK.
+ */
 void ec_fsm_coe_down_check(ec_fsm_coe_t *fsm /**< finite state machine */)
 {
     ec_datagram_t *datagram = fsm->datagram;
@@ -1309,6 +1320,8 @@ void ec_fsm_coe_down_check(ec_fsm_coe_t *fsm /**< finite state machine */)
 
 /*****************************************************************************/
 
+/** Prepare a download segment request.
+ */
 void ec_fsm_coe_down_prepare_segment_request(
         ec_fsm_coe_t *fsm /**< finite state machine */
         )

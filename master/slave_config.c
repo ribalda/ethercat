@@ -25,6 +25,8 @@
  *  EtherCAT technology and brand is only permitted in compliance with the
  *  industrial property and similar rights of Beckhoff Automation GmbH.
  *
+ *  vim: expandtab
+ *
  *****************************************************************************/
 
 /**
@@ -960,7 +962,7 @@ void ecrt_slave_config_state(const ec_slave_config_t *sc,
 /*****************************************************************************/
 
 int ecrt_slave_config_idn(ec_slave_config_t *sc, uint16_t idn,
-		const uint8_t *data, size_t size)
+        const uint8_t *data, size_t size)
 {
     ec_slave_t *slave = sc->slave;
     ec_soe_request_t *req;

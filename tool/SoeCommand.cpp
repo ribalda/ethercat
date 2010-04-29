@@ -32,6 +32,8 @@ using namespace std;
 
 #include "SoeCommand.h"
 
+extern const ec_code_msg_t soe_error_codes[];
+
 /*****************************************************************************/
 
 SoeCommand::SoeCommand(const string &name, const string &briefDesc):
@@ -103,6 +105,28 @@ uint16_t SoeCommand::parseIdn(const string &str)
     }
 
     return idn;
+}
+
+/*****************************************************************************/
+
+/** Outputs an SoE error code.
+*/
+std::string SoeCommand::errorMsg(uint16_t code)
+{
+    const ec_code_msg_t *error_msg;
+	stringstream str;
+
+	str << "0x" << hex << setfill('0') << setw(4) << code << ": ";
+
+    for (error_msg = soe_error_codes; error_msg->code; error_msg++) {
+        if (error_msg->code == code) {
+			str << error_msg->message;
+			return str.str();
+        }
+    }
+
+	str << "(Unknown)";
+	return str.str();
 }
 
 /****************************************************************************/

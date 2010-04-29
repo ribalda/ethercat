@@ -426,8 +426,8 @@ int ec_fsm_master_action_process_sdo(
                 if (ec_sdo_request_timed_out(req)) {
                     req->state = EC_INT_REQUEST_FAILURE;
                     if (master->debug_level)
-						EC_DBG("Internal SDO request for slave %u"
-								" timed out...\n", slave->ring_position);
+                        EC_DBG("Internal SDO request for slave %u"
+                                " timed out...\n", slave->ring_position);
                     continue;
                 }
 
@@ -877,6 +877,7 @@ void ec_fsm_master_state_write_sii(
         // alias was written
         slave->sii.alias = EC_READ_U16(request->words + 4);
         // TODO: read alias from register 0x0012
+        slave->effective_alias = slave->sii.alias;
     }
     // TODO: Evaluate other SII contents!
 
@@ -998,8 +999,12 @@ void ec_fsm_master_state_reg_request(
         }
 
         request->state = EC_INT_REQUEST_SUCCESS;
+        if (master->debug_level) {
+            EC_DBG("Register request successful.\n");
+        }
     } else {
         request->state = EC_INT_REQUEST_FAILURE;
+        EC_ERR("Register request failed.\n");
     }
 
     wake_up(&master->reg_queue);

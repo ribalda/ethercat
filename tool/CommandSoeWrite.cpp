@@ -28,7 +28,6 @@
  ****************************************************************************/
 
 #include <iostream>
-#include <iomanip>
 using namespace std;
 
 #include "CommandSoeWrite.h"
@@ -148,8 +147,7 @@ void CommandSoeWrite::execute(const StringVector &args)
         m.writeSoe(&ioctl);
     } catch (MasterDeviceSoeException &e) {
         delete [] ioctl.data;
-        err << "SoE write command aborted with code 0x"
-            << setfill('0') << hex << setw(4) << e.errorCode << ".";
+        err << "SoE write command failed with code " << errorMsg(e.errorCode);
         throwCommandException(err);
     } catch (MasterDeviceException &e) {
         delete [] ioctl.data;

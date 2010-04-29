@@ -83,6 +83,8 @@ struct net_device_stats *ec_eoedev_stats(struct net_device *);
 /*****************************************************************************/
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 29)
+/** Device operations for EoE interfaces.
+ */
 static const struct net_device_ops ec_eoedev_ops = {
     .ndo_open = ec_eoedev_open,
     .ndo_stop = ec_eoedev_stop,
@@ -134,9 +136,9 @@ int ec_eoe_init(
 
     /* device name eoe<MASTER>[as]<SLAVE>, because networking scripts don't
      * like hyphens etc. in interface names. */
-    if (slave->sii.alias) {
+    if (slave->effective_alias) {
         snprintf(name, EC_DATAGRAM_NAME_SIZE,
-                "eoe%ua%u", slave->master->index, slave->sii.alias);
+                "eoe%ua%u", slave->master->index, slave->effective_alias);
     } else {
         snprintf(name, EC_DATAGRAM_NAME_SIZE,
                 "eoe%us%u", slave->master->index, slave->ring_position);

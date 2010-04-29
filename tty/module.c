@@ -545,9 +545,6 @@ static int ec_tty_ioctl(struct tty_struct *tty, struct file *file,
             }
             break;
 
-        case TIOCSSERIAL: // TODO
-            break;
-
         default:
 #if EC_TTY_DEBUG >= 2
             printk(KERN_INFO PFX "no ioctl() -> handled by tty core!\n");

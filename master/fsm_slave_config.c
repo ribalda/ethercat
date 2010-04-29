@@ -44,6 +44,12 @@
 
 /*****************************************************************************/
 
+/** Time difference [ns] to tolerate without setting a new system time offset.
+ */
+#define EC_SYSTEM_TIME_TOLERANCE_NS 100000000
+
+/*****************************************************************************/
+
 void ec_fsm_slave_config_state_start(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_init(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_clear_fmmus(ec_fsm_slave_config_t *);
@@ -310,7 +316,7 @@ void ec_fsm_slave_config_enter_clear_sync(
 
     // clear sync manager configurations
     ec_datagram_fpwr(datagram, slave->station_address, 0x0800, sync_size);
-    memset(datagram->data, 0x00, sync_size);
+    ec_datagram_zero(datagram);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_slave_config_state_clear_sync;
 }
@@ -400,10 +406,97 @@ void ec_fsm_slave_config_state_dc_clear_assign(
         ec_datagram_print_wc_error(datagram);
     }
 
-    // read DC system time and system time offset
+    // read DC system time (0x0910, 64 bit)
+    //                         gap (64 bit)
+    //     and time offset (0x0920, 64 bit)
     ec_datagram_fprd(fsm->datagram, fsm->slave->station_address, 0x0910, 24);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_slave_config_state_dc_read_offset;
+}
+
+/*****************************************************************************/
+
+/** Configure 32 bit time offset.
+ */
+u64 ec_fsm_slave_config_dc_offset32(
+        ec_fsm_slave_config_t *fsm, /**< slave state machine */
+        u64 system_time, /**< System time register. */
+        u64 old_offset, /**< Time offset register. */
+        unsigned long jiffies_since_read /**< Jiffies for correction. */
+        )
+{
+    ec_slave_t *slave = fsm->slave;
+    u32 correction, system_time32, old_offset32, new_offset;
+    s32 time_diff;
+
+    system_time32 = (u32) system_time;
+    old_offset32 = (u32) old_offset;
+
+    // correct read system time by elapsed time since read operation
+    correction = jiffies_since_read * 1000 / HZ * 1000000;
+    system_time32 += correction;
+    time_diff = (u32) slave->master->app_time - system_time32;
+
+    if (slave->master->debug_level)
+        EC_DBG("Slave %u: system_time=%u (corrected with %u),"
+                " app_time=%u, diff=%i\n",
+                slave->ring_position, system_time32, correction,
+                (u32) slave->master->app_time, time_diff);
+
+    if (EC_ABS(time_diff) > EC_SYSTEM_TIME_TOLERANCE_NS) {
+        new_offset = time_diff + old_offset32;
+        if (slave->master->debug_level)
+            EC_DBG("Slave %u: Setting time offset to %u (was %u)\n",
+                    slave->ring_position, new_offset, old_offset32);
+        return (u64) new_offset;
+    } else {
+        if (slave->master->debug_level)
+            EC_DBG("Slave %u: Not touching time offset.\n",
+                    slave->ring_position);
+        return old_offset;
+    }
+}
+
+/*****************************************************************************/
+
+/** Configure 64 bit time offset.
+ */
+u64 ec_fsm_slave_config_dc_offset64(
+        ec_fsm_slave_config_t *fsm, /**< slave state machine */
+        u64 system_time, /**< System time register. */
+        u64 old_offset, /**< Time offset register. */
+        unsigned long jiffies_since_read /**< Jiffies for correction. */
+        )
+{
+    ec_slave_t *slave = fsm->slave;
+    u64 new_offset, correction;
+    s64 time_diff;
+
+    // correct read system time by elapsed time since read operation
+    correction = (u64) (jiffies_since_read * 1000 / HZ) * 1000000;
+    system_time += correction;
+    time_diff = fsm->slave->master->app_time - system_time;
+
+    if (slave->master->debug_level)
+        EC_DBG("Slave %u: system_time=%llu (corrected with %llu),"
+                " app_time=%llu, diff=%lli\n",
+                slave->ring_position, system_time, correction,
+                slave->master->app_time, time_diff);
+
+
+    if (EC_ABS(time_diff) > EC_SYSTEM_TIME_TOLERANCE_NS) {
+        new_offset = time_diff + old_offset;
+        if (slave->master->debug_level)
+            EC_DBG("Slave %u: Setting time offset to %llu (was %llu)\n",
+                    slave->ring_position, new_offset, old_offset);
+    } else {
+        new_offset = old_offset;
+        if (slave->master->debug_level)
+            EC_DBG("Slave %u: Not touching time offset.\n",
+                    slave->ring_position);
+    }
+
+    return new_offset;
 }
 
 /*****************************************************************************/
@@ -417,6 +510,7 @@ void ec_fsm_slave_config_state_dc_read_offset(
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
     u64 system_time, old_offset, new_offset;
+    unsigned long jiffies_since_read;
 
     if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
         return;
@@ -438,15 +532,17 @@ void ec_fsm_slave_config_state_dc_read_offset(
         return;
     }
 
-    system_time = EC_READ_U64(datagram->data);
-    old_offset = EC_READ_U64(datagram->data + 16);
-    new_offset = slave->master->app_time - system_time + old_offset;
+    system_time = EC_READ_U64(datagram->data);     // 0x0910
+    old_offset = EC_READ_U64(datagram->data + 16); // 0x0920
+    jiffies_since_read = jiffies - datagram->jiffies_sent;
 
-    if (slave->master->debug_level)
-        EC_DBG("Slave %u: DC system_time=%llu old_offset=%llu, "
-                "app_time=%llu, new_offset=%llu\n",
-                slave->ring_position, system_time, old_offset,
-                slave->master->app_time, new_offset);
+    if (slave->base_dc_range == EC_DC_32) {
+        new_offset = ec_fsm_slave_config_dc_offset32(fsm,
+                system_time, old_offset, jiffies_since_read);
+    } else {
+        new_offset = ec_fsm_slave_config_dc_offset64(fsm,
+                system_time, old_offset, jiffies_since_read);
+    }
 
     // set DC system time offset and transmission delay
     ec_datagram_fpwr(datagram, slave->station_address, 0x0920, 12);
@@ -532,7 +628,7 @@ void ec_fsm_slave_config_enter_mbox_sync(
 
         ec_datagram_fpwr(datagram, slave->station_address, 0x0800,
                 EC_SYNC_PAGE_SIZE * 2);
-        memset(datagram->data, 0x00, EC_SYNC_PAGE_SIZE * 2);
+        ec_datagram_zero(datagram);
 
         ec_sync_init(&sync, slave);
         sync.physical_start_address = slave->sii.boot_rx_mailbox_offset;
@@ -812,7 +908,7 @@ void ec_fsm_slave_config_state_sdo_conf(
     }
 
     // All SDOs are now configured.
-	ec_fsm_slave_config_enter_soe_conf(fsm);
+    ec_fsm_slave_config_enter_soe_conf(fsm);
 }
 
 /*****************************************************************************/
@@ -824,7 +920,7 @@ void ec_fsm_slave_config_enter_soe_conf(
         )
 {
     ec_slave_t *slave = fsm->slave;
-	ec_fsm_soe_t *fsm_soe = &slave->fsm.fsm_soe;
+    ec_fsm_soe_t *fsm_soe = &slave->fsm.fsm_soe;
 
     if (!slave->config) {
         ec_fsm_slave_config_enter_pdo_sync(fsm);
@@ -842,9 +938,10 @@ void ec_fsm_slave_config_enter_soe_conf(
     fsm->soe_request = list_entry(fsm->slave->config->soe_configs.next,
             ec_soe_request_t, list);
     ec_soe_request_copy(&fsm->soe_request_copy, fsm->soe_request);
-	ec_soe_request_write(&fsm->soe_request_copy);
+    ec_soe_request_write(&fsm->soe_request_copy);
     ec_fsm_soe_transfer(fsm_soe, fsm->slave, &fsm->soe_request_copy);
     ec_fsm_soe_exec(fsm_soe); // execute immediately
+    ec_master_queue_external_datagram(slave->master, fsm_soe->datagram);
 }
 
 /*****************************************************************************/
@@ -856,11 +953,12 @@ void ec_fsm_slave_config_state_soe_conf(
         )
 {
     ec_slave_t *slave = fsm->slave;
-	ec_fsm_soe_t *fsm_soe = &slave->fsm.fsm_soe;
+    ec_fsm_soe_t *fsm_soe = &slave->fsm.fsm_soe;
 
     if (ec_fsm_soe_exec(fsm_soe)) {
-		return;
-	}
+        ec_master_queue_external_datagram(slave->master, fsm_soe->datagram);
+        return;
+    }
 
     if (!ec_fsm_soe_success(fsm_soe)) {
         EC_ERR("SoE configuration failed for slave %u.\n",
@@ -883,6 +981,7 @@ void ec_fsm_slave_config_state_soe_conf(
         ec_soe_request_write(&fsm->soe_request_copy);
         ec_fsm_soe_transfer(fsm_soe, fsm->slave, &fsm->soe_request_copy);
         ec_fsm_soe_exec(fsm_soe); // execute immediately
+        ec_master_queue_external_datagram(slave->master, fsm_soe->datagram);
         return;
     }
 
