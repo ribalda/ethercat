@@ -136,7 +136,7 @@ int ecrt_master_get_slave(ec_master_t *master, uint16_t slave_position,
         ec_slave_info_t *slave_info)
 {
     ec_ioctl_slave_t data;
-    int index;
+    int index, i;
 
     data.position = slave_position;
 
@@ -152,7 +152,15 @@ int ecrt_master_get_slave(ec_master_t *master, uint16_t slave_position,
     slave_info->serial_number = data.serial_number;
     slave_info->alias = data.alias;
     slave_info->current_on_ebus = data.current_on_ebus;
-    strncpy((char*) slave_info->ports, (char*) data.ports, sizeof(slave_info->ports));
+    for ( i = 0; i < EC_MAX_PORTS; i++ ) {
+    	slave_info->ports[i].desc = data.ports[i].desc;
+    	slave_info->ports[i].link.link_up = data.ports[i].link.link_up;
+    	slave_info->ports[i].link.loop_closed = data.ports[i].link.loop_closed;
+    	slave_info->ports[i].link.signal_detected = data.ports[i].link.signal_detected;
+    	slave_info->ports[i].receive_time = data.ports[i].receive_time;
+    	slave_info->ports[i].next_slave = data.ports[i].next_slave;
+    	slave_info->ports[i].delay_to_next_dc = data.ports[i].delay_to_next_dc;
+    }
     slave_info->al_state = data.al_state;
     slave_info->error_flag = data.error_flag;
     slave_info->sync_count = data.sync_count;
