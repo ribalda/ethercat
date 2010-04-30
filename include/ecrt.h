@@ -5,7 +5,7 @@
  *  Copyright (C) 2006-2008  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT master userspace library.
- *  
+ *
  *  The IgH EtherCAT master userspace library is free software; you can
  *  redistribute it and/or modify it under the terms of the GNU Lesser General
  *  Public License as published by the Free Software Foundation; version 2.1
@@ -19,9 +19,9 @@
  *  You should have received a copy of the GNU Lesser General Public License
  *  along with the IgH EtherCAT master userspace library. If not, see
  *  <http://www.gnu.org/licenses/>.
- *  
+ *
  *  ---
- *  
+ *
  *  The license mentioned above concerns the source code only. Using the
  *  EtherCAT technology and brand is only permitted in compliance with the
  *  industrial property and similar rights of Beckhoff Automation GmbH.
@@ -47,7 +47,7 @@
  *   ecrt_master_sync_slave_clocks() for offset and drift compensation. The
  *   EC_TIMEVAL2NANO() macro can be used for epoch time conversion, while the
  *   ecrt_master_sync_monitor_queue() and ecrt_master_sync_monitor_process()
- *   methods can be used to monitor the synchrony. 
+ *   methods can be used to monitor the synchrony.
  * - Improved the callback mechanism. ecrt_master_callbacks() now takes two
  *   callback functions for sending and receiving datagrams.
  *   ecrt_master_send_ext() is used to execute the sending of non-application
@@ -138,6 +138,9 @@
  */
 #define EC_MAX_STRING_LENGTH 64
 
+/** Maximum number of slave ports. */
+#define EC_MAX_PORTS 4
+
 /** Timeval to nanoseconds conversion.
  *
  * This macro converts a Unix epoch time to EtherCAT DC time.
@@ -150,7 +153,7 @@
     (((TV).tv_sec - 946684800ULL) * 1000000000ULL + (TV).tv_usec * 1000ULL)
 
 /******************************************************************************
- * Data types 
+ * Data types
  *****************************************************************************/
 
 struct ec_master;
@@ -195,7 +198,7 @@ typedef struct {
 /** Slave configuration state.
  *
  * This is used as an output parameter of ecrt_slave_config_state().
- * 
+ *
  * \see ecrt_slave_config_state().
  */
 typedef struct  {
@@ -223,9 +226,30 @@ typedef struct  {
 typedef struct {
    unsigned int slave_count; /**< Number of slaves in the bus. */
    unsigned int link_up : 1; /**< \a true, if the network link is up. */
-   uint8_t scan_busy; /**< \a true, while the master is scanning the bus */   
+   uint8_t scan_busy; /**< \a true, while the master is scanning the bus */
    uint64_t app_time; /**< Application time. */
 } ec_master_info_t;
+
+/*****************************************************************************/
+
+/** EtherCAT slave port descriptor.
+ */
+typedef enum {
+    EC_PORT_NOT_IMPLEMENTED, /**< Port is not implemented. */
+    EC_PORT_NOT_CONFIGURED, /**< Port is not configured. */
+    EC_PORT_EBUS, /**< Port is an e-bus. */
+    EC_PORT_MII /**< Port is a mii. */
+} ec_slave_port_desc_t;
+
+/*****************************************************************************/
+
+/** EtherCAT slave port information.
+ */
+typedef struct {
+    uint8_t link_up; /**< Link detected. */
+    uint8_t loop_closed; /**< Loop closed. */
+    uint8_t signal_detected; /**< Detected signal on RX port. */
+} ec_slave_port_link_t;
 
 /*****************************************************************************/
 
@@ -243,6 +267,13 @@ typedef struct {
     uint32_t serial_number; /**< Serial-Number stored on the slave. */
     uint16_t alias; /**< The slaves alias if not equal to 0. */
     int16_t current_on_ebus; /**< Used current in mA. */
+    struct {
+        ec_slave_port_desc_t desc;
+        ec_slave_port_link_t link;
+        uint32_t receive_time;
+        uint16_t next_slave;
+        uint32_t delay_to_next_dc;
+    } ports[EC_MAX_PORTS];
     uint8_t al_state; /**< Current state of the slave. */
     uint8_t error_flag; /**< Error flag for that slave. */
     uint8_t sync_count; /**< Number of sync managers. */
@@ -314,9 +345,9 @@ typedef struct {
 /*****************************************************************************/
 
 /** PDO configuration information.
- * 
+ *
  * This is the data type of the \a pdos field in ec_sync_info_t.
- * 
+ *
  * \see ecrt_slave_config_pdos().
  */
 typedef struct {
@@ -365,7 +396,7 @@ typedef struct {
     uint8_t subindex; /**< PDO entry subindex. */
     unsigned int *offset; /**< Pointer to a variable to store the PDO entry's
                        (byte-)offset in the process data. */
-    unsigned int *bit_position; /**< Pointer to a variable to store a bit 
+    unsigned int *bit_position; /**< Pointer to a variable to store a bit
                                   position (0-7) within the \a offset. Can be
                                   NULL, in which case an error is raised if the
                                   PDO entry does not byte-align. */
@@ -400,7 +431,7 @@ extern "C" {
 unsigned int ecrt_version_magic(void);
 
 /** Requests an EtherCAT master for realtime operation.
- * 
+ *
  * Before an application can access an EtherCAT master, it has to reserve one
  * for exclusive use.
  *
@@ -808,12 +839,12 @@ void ecrt_master_configured_slaves_state(
  * The master has to know the application's time when operating slaves with
  * distributed clocks. The time is not incremented by the master itself, so
  * this method has to be called cyclically.
- * 
+ *
  * The time is used when setting the slaves' <tt>System Time Offset</tt> and
  * <tt>Cyclic Operation Start Time</tt> registers and when synchronizing the
  * DC reference clock to the application time via
  * ecrt_master_sync_reference_clock().
- * 
+ *
  * The time is defined as nanoseconds from 2000-01-01 00:00. Converting an
  * epoch time can be done with the EC_TIMEVAL2NANO() macro.
  */
@@ -922,7 +953,7 @@ int ecrt_slave_config_pdo_assign_add(
  * This can be called before assigning PDOs via
  * ecrt_slave_config_pdo_assign_add(), to clear the default assignment of a
  * sync manager.
- * 
+ *
  * \see ecrt_slave_config_pdos()
  */
 void ecrt_slave_config_pdo_assign_clear(
@@ -976,28 +1007,28 @@ void ecrt_slave_config_pdo_mapping_clear(
  *     {0x3101, 1,  8}, // status
  *     {0x3101, 2, 16}  // value
  * };
- * 
+ *
  * ec_pdo_entry_info_t el3162_channel2[] = {
  *     {0x3102, 1,  8}, // status
  *     {0x3102, 2, 16}  // value
  * };
- * 
+ *
  * ec_pdo_info_t el3162_pdos[] = {
  *     {0x1A00, 2, el3162_channel1},
  *     {0x1A01, 2, el3162_channel2}
  * };
- * 
+ *
  * ec_sync_info_t el3162_syncs[] = {
  *     {2, EC_DIR_OUTPUT},
  *     {3, EC_DIR_INPUT, 2, el3162_pdos},
  *     {0xff}
  * };
- * 
+ *
  * if (ecrt_slave_config_pdos(sc_ana_in, EC_END, el3162_syncs)) {
  *     // handle error
  * }
  * \endcode
- * 
+ *
  * The next example shows, how to configure the PDO assignment only. The
  * entries for each assigned PDO are taken from the PDO's default mapping.
  * Please note, that PDO entry registration will fail, if the PDO
@@ -1008,11 +1039,11 @@ void ecrt_slave_config_pdo_mapping_clear(
  *     {0x1600}, // Channel 1
  *     {0x1601}  // Channel 2
  * };
- * 
+ *
  * ec_sync_info_t syncs[] = {
  *     {3, EC_DIR_INPUT, 2, pdos},
  * };
- * 
+ *
  * if (ecrt_slave_config_pdos(slave_config_ana_in, 1, syncs)) {
  *     // handle error
  * }
@@ -1054,7 +1085,7 @@ int ecrt_slave_config_reg_pdo_entry(
         uint16_t entry_index, /**< Index of the PDO entry to register. */
         uint8_t entry_subindex, /**< Subindex of the PDO entry to register. */
         ec_domain_t *domain, /**< Domain. */
-        unsigned int *bit_position /**< Optional address if bit addressing 
+        unsigned int *bit_position /**< Optional address if bit addressing
                                  is desired */
         );
 

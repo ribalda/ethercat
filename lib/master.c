@@ -1,11 +1,11 @@
 /******************************************************************************
- *  
+ *
  *  $Id$
- *  
+ *
  *  Copyright (C) 2006-2009  Florian Pose, Ingenieurgemeinschaft IgH
- *  
+ *
  *  This file is part of the IgH EtherCAT master userspace library.
- *  
+ *
  *  The IgH EtherCAT master userspace library is free software; you can
  *  redistribute it and/or modify it under the terms of the GNU Lesser General
  *  Public License as published by the Free Software Foundation; version 2.1
@@ -19,9 +19,9 @@
  *  You should have received a copy of the GNU Lesser General Public License
  *  along with the IgH EtherCAT master userspace library. If not, see
  *  <http://www.gnu.org/licenses/>.
- *  
+ *
  *  ---
- *  
+ *
  *  The license mentioned above concerns the source code only. Using the
  *  EtherCAT technology and brand is only permitted in compliance with the
  *  industrial property and similar rights of Beckhoff Automation GmbH.
@@ -63,12 +63,12 @@ ec_domain_t *ecrt_master_create_domain(ec_master_t *master)
         fprintf(stderr, "Failed to allocate memory.\n");
         return 0;
     }
-    
+
     index = ioctl(master->fd, EC_IOCTL_CREATE_DOMAIN, NULL);
     if (index == -1) {
         fprintf(stderr, "Failed to create domain: %s\n", strerror(errno));
         free(domain);
-        return 0; 
+        return 0;
     }
 
     domain->index = (unsigned int) index;
@@ -92,17 +92,17 @@ ec_slave_config_t *ecrt_master_slave_config(ec_master_t *master,
         fprintf(stderr, "Failed to allocate memory.\n");
         return 0;
     }
-    
+
     data.alias = alias;
     data.position = position;
     data.vendor_id = vendor_id;
     data.product_code = product_code;
-    
+
     if (ioctl(master->fd, EC_IOCTL_CREATE_SLAVE_CONFIG, &data) == -1) {
         fprintf(stderr, "Failed to create slave config: %s\n",
                 strerror(errno));
         free(sc);
-        return 0; 
+        return 0;
     }
 
     sc->master = master;
@@ -152,6 +152,7 @@ int ecrt_master_get_slave(ec_master_t *master, uint16_t slave_position,
     slave_info->serial_number = data.serial_number;
     slave_info->alias = data.alias;
     slave_info->current_on_ebus = data.current_on_ebus;
+    strncpy((char*) slave_info->ports, (char*) data.ports, sizeof(slave_info->ports));
     slave_info->al_state = data.al_state;
     slave_info->error_flag = data.error_flag;
     slave_info->sync_count = data.sync_count;

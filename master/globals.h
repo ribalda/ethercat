@@ -97,9 +97,6 @@
 /** Word offset of first SII category. */
 #define EC_FIRST_SII_CATEGORY_OFFSET 0x40
 
-/** Maximum number of slave ports. */
-#define EC_MAX_PORTS 4
-
 /** Size of a sync manager configuration page. */
 #define EC_SYNC_PAGE_SIZE 8
 
@@ -172,23 +169,6 @@ typedef struct {
     uint8_t enable_safeop : 1; /**< ?. */
     uint8_t enable_not_lrw : 1; /**< Slave does not support LRW. */
 } ec_sii_general_flags_t;
-
-/** EtherCAT slave port descriptor.
- */
-typedef enum {
-    EC_PORT_NOT_IMPLEMENTED,
-    EC_PORT_NOT_CONFIGURED,
-    EC_PORT_EBUS,
-    EC_PORT_MII
-} ec_slave_port_desc_t;
-
-/** EtherCAT slave port information.
- */
-typedef struct {
-    uint8_t link_up; /**< Link detected. */
-    uint8_t loop_closed; /**< Loop closed. */
-    uint8_t signal_detected; /**< Detected signal on RX port. */
-} ec_slave_port_link_t;
 
 /** EtherCAT slave distributed clocks range.
  */
