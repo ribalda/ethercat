@@ -330,10 +330,7 @@ void CommandConfig::listConfigs(
             str.clear();
             str.str("");
 
-            str << alStateString(slave.al_state);
-            info.state = str.str();
-            str.clear();
-            str.str("");
+            info.state = alStateString(slave.al_state);
         } else {
             str << "-";
             info.slavePos = str.str();
