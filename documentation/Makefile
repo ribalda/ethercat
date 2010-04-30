@@ -30,6 +30,8 @@ COMMANDS := \
 	sii_read \
 	sii_write \
 	slaves \
+	soe_read \
+	soe_write \
 	states \
 	upload \
 	version \
