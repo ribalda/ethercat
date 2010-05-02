@@ -11,7 +11,8 @@ digraph master {
 
     broadcast -> start
     broadcast -> clear_addresses
-    broadcast -> read_state [weight=10]
+    broadcast -> read_state
+    broadcast -> write_system_times
 
     action_process_sii [shape=point,label=""]
     action_process_sii -> write_sii
@@ -47,7 +48,9 @@ digraph master {
 
     dc_measure_delays -> scan_slave [weight=10]
 
-    scan_slave -> start
+    scan_slave -> write_system_times
+
+    write_system_times -> start
 
     configure_slave -> action_next_slave_state
 
