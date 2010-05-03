@@ -18,7 +18,6 @@ Version 1.5.0:
 * Rescan command.
 * Change SDO index at runtime for SDO request.
 * Output skipped datagrams again.
-* Output warning on unmatched slave configuration.
 * Output warning when send_ext() is called in illegal context.
 * Add master and slave index to log messages.
 * Implement CompleteAccess for SDO uploads.
