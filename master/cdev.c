@@ -123,7 +123,7 @@ int ec_cdev_init(
     ret = cdev_add(&cdev->cdev,
             MKDEV(MAJOR(dev_num), master->index), 1);
     if (ret) {
-        EC_ERR("Failed to add character device!\n");
+        EC_MASTER_ERR(master, "Failed to add character device!\n");
     }
 
     return ret;
@@ -277,7 +277,7 @@ int ec_cdev_ioctl_slave(
     if (!(slave = ec_master_find_slave_const(
                     master, 0, data.position))) {
         up(&master->master_sem);
-        EC_ERR("Slave %u does not exist!\n", data.position);
+        EC_MASTER_ERR(master, "Slave %u does not exist!\n", data.position);
         return -EINVAL;
     }
 
@@ -361,14 +361,15 @@ int ec_cdev_ioctl_slave_sync(
     if (!(slave = ec_master_find_slave_const(
                     master, 0, data.slave_position))) {
         up(&master->master_sem);
-        EC_ERR("Slave %u does not exist!\n", data.slave_position);
+        EC_MASTER_ERR(master, "Slave %u does not exist!\n",
+                data.slave_position);
         return -EINVAL;
     }
 
     if (data.sync_index >= slave->sii.sync_count) {
         up(&master->master_sem);
-        EC_ERR("Sync manager %u does not exist in slave %u!\n",
-                data.sync_index, data.slave_position);
+        EC_SLAVE_ERR(slave, "Sync manager %u does not exist!\n",
+                data.sync_index);
         return -EINVAL;
     }
 
@@ -412,14 +413,15 @@ int ec_cdev_ioctl_slave_sync_pdo(
     if (!(slave = ec_master_find_slave_const(
                     master, 0, data.slave_position))) {
         up(&master->master_sem);
-        EC_ERR("Slave %u does not exist!\n", data.slave_position);
+        EC_MASTER_ERR(master, "Slave %u does not exist!\n",
+                data.slave_position);
         return -EINVAL;
     }
 
     if (data.sync_index >= slave->sii.sync_count) {
         up(&master->master_sem);
-        EC_ERR("Sync manager %u does not exist in slave %u!\n",
-                data.sync_index, data.slave_position);
+        EC_SLAVE_ERR(slave, "Sync manager %u does not exist!\n",
+                data.sync_index);
         return -EINVAL;
     }
 
@@ -427,9 +429,8 @@ int ec_cdev_ioctl_slave_sync_pdo(
     if (!(pdo = ec_pdo_list_find_pdo_by_pos_const(
                     &sync->pdos, data.pdo_pos))) {
         up(&master->master_sem);
-        EC_ERR("Sync manager %u does not contain a PDO with "
-                "position %u in slave %u!\n", data.sync_index,
-                data.pdo_pos, data.slave_position);
+        EC_SLAVE_ERR(slave, "Sync manager %u does not contain a PDO with "
+                "position %u!\n", data.sync_index, data.pdo_pos);
         return -EINVAL;
     }
 
@@ -470,14 +471,15 @@ int ec_cdev_ioctl_slave_sync_pdo_entry(
     if (!(slave = ec_master_find_slave_const(
                     master, 0, data.slave_position))) {
         up(&master->master_sem);
-        EC_ERR("Slave %u does not exist!\n", data.slave_position);
+        EC_MASTER_ERR(master, "Slave %u does not exist!\n",
+                data.slave_position);
         return -EINVAL;
     }
 
     if (data.sync_index >= slave->sii.sync_count) {
         up(&master->master_sem);
-        EC_ERR("Sync manager %u does not exist in slave %u!\n",
-                data.sync_index, data.slave_position);
+        EC_SLAVE_ERR(slave, "Sync manager %u does not exist!\n",
+                data.sync_index);
         return -EINVAL;
     }
 
@@ -485,18 +487,16 @@ int ec_cdev_ioctl_slave_sync_pdo_entry(
     if (!(pdo = ec_pdo_list_find_pdo_by_pos_const(
                     &sync->pdos, data.pdo_pos))) {
         up(&master->master_sem);
-        EC_ERR("Sync manager %u does not contain a PDO with "
-                "position %u in slave %u!\n", data.sync_index,
-                data.pdo_pos, data.slave_position);
+        EC_SLAVE_ERR(slave, "Sync manager %u does not contain a PDO with "
+                "position %u!\n", data.sync_index, data.pdo_pos);
         return -EINVAL;
     }
 
     if (!(entry = ec_pdo_find_entry_by_pos_const(
                     pdo, data.entry_pos))) {
         up(&master->master_sem);
-        EC_ERR("PDO 0x%04X does not contain an entry with "
-                "position %u in slave %u!\n", data.pdo_pos,
-                data.entry_pos, data.slave_position);
+        EC_SLAVE_ERR(slave, "PDO 0x%04X does not contain an entry with "
+                "position %u!\n", data.pdo_pos, data.entry_pos);
         return -EINVAL;
     }
 
@@ -534,7 +534,7 @@ int ec_cdev_ioctl_domain(
 
     if (!(domain = ec_master_find_domain_const(master, data.index))) {
         up(&master->master_sem);
-        EC_ERR("Domain %u does not exist!\n", data.index);
+        EC_MASTER_ERR(master, "Domain %u does not exist!\n", data.index);
         return -EINVAL;
     }
 
@@ -574,13 +574,15 @@ int ec_cdev_ioctl_domain_fmmu(
 
     if (!(domain = ec_master_find_domain_const(master, data.domain_index))) {
         up(&master->master_sem);
-        EC_ERR("Domain %u does not exist!\n", data.domain_index);
+        EC_MASTER_ERR(master, "Domain %u does not exist!\n",
+                data.domain_index);
         return -EINVAL;
     }
 
     if (!(fmmu = ec_domain_find_fmmu(domain, data.fmmu_index))) {
         up(&master->master_sem);
-        EC_ERR("Domain %u has less than %u fmmu configurations.\n",
+        EC_MASTER_ERR(master, "Domain %u has less than %u"
+                " fmmu configurations.\n",
                 data.domain_index, data.fmmu_index + 1);
         return -EINVAL;
     }
@@ -621,13 +623,14 @@ int ec_cdev_ioctl_domain_data(
 
     if (!(domain = ec_master_find_domain_const(master, data.domain_index))) {
         up(&master->master_sem);
-        EC_ERR("Domain %u does not exist!\n", data.domain_index);
+        EC_MASTER_ERR(master, "Domain %u does not exist!\n",
+                data.domain_index);
         return -EINVAL;
     }
 
     if (domain->data_size != data.data_size) {
         up(&master->master_sem);
-        EC_ERR("Data size mismatch %u/%zu!\n",
+        EC_MASTER_ERR(master, "Data size mismatch %u/%zu!\n",
                 data.data_size, domain->data_size);
         return -EFAULT;
     }
@@ -676,7 +679,8 @@ int ec_cdev_ioctl_slave_state(
     if (!(slave = ec_master_find_slave(
                     master, 0, data.slave_position))) {
         up(&master->master_sem);
-        EC_ERR("Slave %u does not exist!\n", data.slave_position);
+        EC_MASTER_ERR(master, "Slave %u does not exist!\n",
+                data.slave_position);
         return -EINVAL;
     }
 
@@ -709,15 +713,15 @@ int ec_cdev_ioctl_slave_sdo(
     if (!(slave = ec_master_find_slave_const(
                     master, 0, data.slave_position))) {
         up(&master->master_sem);
-        EC_ERR("Slave %u does not exist!\n", data.slave_position);
+        EC_MASTER_ERR(master, "Slave %u does not exist!\n",
+                data.slave_position);
         return -EINVAL;
     }
 
     if (!(sdo = ec_slave_get_sdo_by_pos_const(
                     slave, data.sdo_position))) {
         up(&master->master_sem);
-        EC_ERR("SDO %u does not exist in slave %u!\n",
-                data.sdo_position, data.slave_position);
+        EC_SLAVE_ERR(slave, "SDO %u does not exist!\n", data.sdo_position);
         return -EINVAL;
     }
 
@@ -757,7 +761,8 @@ int ec_cdev_ioctl_slave_sdo_entry(
     if (!(slave = ec_master_find_slave_const(
                     master, 0, data.slave_position))) {
         up(&master->master_sem);
-        EC_ERR("Slave %u does not exist!\n", data.slave_position);
+        EC_MASTER_ERR(master, "Slave %u does not exist!\n",
+                data.slave_position);
         return -EINVAL;
     }
 
@@ -765,16 +770,15 @@ int ec_cdev_ioctl_slave_sdo_entry(
         if (!(sdo = ec_slave_get_sdo_by_pos_const(
                         slave, -data.sdo_spec))) {
             up(&master->master_sem);
-            EC_ERR("SDO %u does not exist in slave %u!\n",
-                    -data.sdo_spec, data.slave_position);
+            EC_SLAVE_ERR(slave, "SDO %u does not exist!\n", -data.sdo_spec);
             return -EINVAL;
         }
     } else {
         if (!(sdo = ec_slave_get_sdo_const(
                         slave, data.sdo_spec))) {
             up(&master->master_sem);
-            EC_ERR("SDO 0x%04X does not exist in slave %u!\n",
-                    data.sdo_spec, data.slave_position);
+            EC_SLAVE_ERR(slave, "SDO 0x%04X does not exist!\n",
+                    data.sdo_spec);
             return -EINVAL;
         }
     }
@@ -782,9 +786,8 @@ int ec_cdev_ioctl_slave_sdo_entry(
     if (!(entry = ec_sdo_get_entry_const(
                     sdo, data.sdo_entry_subindex))) {
         up(&master->master_sem);
-        EC_ERR("SDO entry 0x%04X:%02X does not exist "
-                "in slave %u!\n", sdo->index,
-                data.sdo_entry_subindex, data.slave_position);
+        EC_SLAVE_ERR(slave, "SDO entry 0x%04X:%02X does not exist!\n",
+                sdo->index, data.sdo_entry_subindex);
         return -EINVAL;
     }
 
@@ -841,13 +844,13 @@ int ec_cdev_ioctl_slave_sdo_upload(
                     master, 0, data.slave_position))) {
         up(&master->master_sem);
         ec_sdo_request_clear(&request.req);
-        EC_ERR("Slave %u does not exist!\n", data.slave_position);
+        EC_MASTER_ERR(master, "Slave %u does not exist!\n",
+                data.slave_position);
         return -EINVAL;
     }
 
-    if (master->debug_level)
-        EC_DBG("Schedule SDO upload request for slave %u\n",
-                request.slave->ring_position);
+    EC_SLAVE_DBG(request.slave, 1, "Schedule SDO upload request.\n");
+
     // schedule request.
     list_add_tail(&request.list, &request.slave->slave_sdo_requests);
 
@@ -872,9 +875,7 @@ int ec_cdev_ioctl_slave_sdo_upload(
     wait_event(request.slave->sdo_queue,
             request.req.state != EC_INT_REQUEST_BUSY);
 
-    if (master->debug_level)
-        EC_DBG("Scheduled SDO upload request for slave %u done\n",
-                request.slave->ring_position);
+    EC_SLAVE_DBG(request.slave, 1, "Finished SDO upload request.\n");
 
     data.abort_code = request.req.abort_code;
 
@@ -883,7 +884,7 @@ int ec_cdev_ioctl_slave_sdo_upload(
         retval = -EIO;
     } else {
         if (request.req.data_size > data.target_size) {
-            EC_ERR("Buffer too small.\n");
+            EC_MASTER_ERR(master, "Buffer too small.\n");
             ec_sdo_request_clear(&request.req);
             return -EOVERFLOW;
         }
@@ -924,7 +925,7 @@ int ec_cdev_ioctl_slave_sdo_download(
 
     // copy data to download
     if (!data.data_size) {
-        EC_ERR("Zero data size!\n");
+        EC_MASTER_ERR(master, "Zero data size!\n");
         return -EINVAL;
     }
 
@@ -949,14 +950,14 @@ int ec_cdev_ioctl_slave_sdo_download(
     if (!(request.slave = ec_master_find_slave(
                     master, 0, data.slave_position))) {
         up(&master->master_sem);
-        EC_ERR("Slave %u does not exist!\n", data.slave_position);
+        EC_MASTER_ERR(master, "Slave %u does not exist!\n",
+                data.slave_position);
         ec_sdo_request_clear(&request.req);
         return -EINVAL;
     }
     
-    if (master->debug_level)
-        EC_DBG("Schedule SDO download request for slave %u\n",
-                request.slave->ring_position);
+    EC_SLAVE_DBG(request.slave, 1, "Schedule SDO download request.\n");
+
     // schedule request.
     list_add_tail(&request.list, &request.slave->slave_sdo_requests);
 
@@ -981,9 +982,7 @@ int ec_cdev_ioctl_slave_sdo_download(
     wait_event(request.slave->sdo_queue,
             request.req.state != EC_INT_REQUEST_BUSY);
 
-    if (master->debug_level)
-        EC_DBG("Scheduled SDO download request for slave %u done\n",
-                request.slave->ring_position);
+    EC_SLAVE_DBG(request.slave, 1, "Finished SDO download request.\n");
 
     data.abort_code = request.req.abort_code;
 
@@ -1020,16 +1019,16 @@ int ec_cdev_ioctl_slave_sii_read(
     if (!(slave = ec_master_find_slave_const(
                     master, 0, data.slave_position))) {
         up(&master->master_sem);
-        EC_ERR("Slave %u does not exist!\n", data.slave_position);
+        EC_MASTER_ERR(master, "Slave %u does not exist!\n",
+                data.slave_position);
         return -EINVAL;
     }
 
     if (!data.nwords
             || data.offset + data.nwords > slave->sii_nwords) {
         up(&master->master_sem);
-        EC_ERR("Invalid SII read offset/size %u/%u for slave "
-                "SII size %zu!\n", data.offset,
-                data.nwords, slave->sii_nwords);
+        EC_SLAVE_ERR(slave, "Invalid SII read offset/size %u/%u for slave SII"
+                " size %zu!\n", data.offset, data.nwords, slave->sii_nwords);
         return -EINVAL;
     }
 
@@ -1067,8 +1066,8 @@ int ec_cdev_ioctl_slave_sii_write(
 
     byte_size = sizeof(uint16_t) * data.nwords;
     if (!(words = kmalloc(byte_size, GFP_KERNEL))) {
-        EC_ERR("Failed to allocate %u bytes for SII contents.\n",
-                byte_size);
+        EC_MASTER_ERR(master, "Failed to allocate %u bytes"
+                " for SII contents.\n", byte_size);
         return -ENOMEM;
     }
 
@@ -1084,7 +1083,8 @@ int ec_cdev_ioctl_slave_sii_write(
     if (!(slave = ec_master_find_slave(
                     master, 0, data.slave_position))) {
         up(&master->master_sem);
-        EC_ERR("Slave %u does not exist!\n", data.slave_position);
+        EC_MASTER_ERR(master, "Slave %u does not exist!\n",
+                data.slave_position);
         kfree(words);
         return -EINVAL;
     }
@@ -1147,8 +1147,8 @@ int ec_cdev_ioctl_slave_reg_read(
         return 0;
 
     if (!(contents = kmalloc(data.length, GFP_KERNEL))) {
-        EC_ERR("Failed to allocate %u bytes for register data.\n",
-                data.length);
+        EC_MASTER_ERR(master, "Failed to allocate %u bytes"
+                " for register data.\n", data.length);
         return -ENOMEM;
     }
 
@@ -1158,7 +1158,8 @@ int ec_cdev_ioctl_slave_reg_read(
     if (!(slave = ec_master_find_slave(
                     master, 0, data.slave_position))) {
         up(&master->master_sem);
-        EC_ERR("Slave %u does not exist!\n", data.slave_position);
+        EC_MASTER_ERR(master, "Slave %u does not exist!\n",
+                data.slave_position);
         return -EINVAL;
     }
 
@@ -1225,8 +1226,8 @@ int ec_cdev_ioctl_slave_reg_write(
         return 0;
 
     if (!(contents = kmalloc(data.length, GFP_KERNEL))) {
-        EC_ERR("Failed to allocate %u bytes for register data.\n",
-                data.length);
+        EC_MASTER_ERR(master, "Failed to allocate %u bytes"
+                " for register data.\n", data.length);
         return -ENOMEM;
     }
 
@@ -1241,7 +1242,8 @@ int ec_cdev_ioctl_slave_reg_write(
     if (!(slave = ec_master_find_slave(
                     master, 0, data.slave_position))) {
         up(&master->master_sem);
-        EC_ERR("Slave %u does not exist!\n", data.slave_position);
+        EC_MASTER_ERR(master, "Slave %u does not exist!\n",
+                data.slave_position);
         kfree(contents);
         return -EINVAL;
     }
@@ -1306,7 +1308,7 @@ int ec_cdev_ioctl_config(
     if (!(sc = ec_master_get_config_const(
                     master, data.config_index))) {
         up(&master->master_sem);
-        EC_ERR("Slave config %u does not exist!\n",
+        EC_MASTER_ERR(master, "Slave config %u does not exist!\n",
                 data.config_index);
         return -EINVAL;
     }
@@ -1356,7 +1358,7 @@ int ec_cdev_ioctl_config_pdo(
     }
 
     if (data.sync_index >= EC_MAX_SYNC_MANAGERS) {
-        EC_ERR("Invalid sync manager index %u!\n",
+        EC_MASTER_ERR(master, "Invalid sync manager index %u!\n",
                 data.sync_index);
         return -EINVAL;
     }
@@ -1367,7 +1369,7 @@ int ec_cdev_ioctl_config_pdo(
     if (!(sc = ec_master_get_config_const(
                     master, data.config_index))) {
         up(&master->master_sem);
-        EC_ERR("Slave config %u does not exist!\n",
+        EC_MASTER_ERR(master, "Slave config %u does not exist!\n",
                 data.config_index);
         return -EINVAL;
     }
@@ -1376,7 +1378,7 @@ int ec_cdev_ioctl_config_pdo(
                     &sc->sync_configs[data.sync_index].pdos,
                     data.pdo_pos))) {
         up(&master->master_sem);
-        EC_ERR("Invalid PDO position!\n");
+        EC_MASTER_ERR(master, "Invalid PDO position!\n");
         return -EINVAL;
     }
 
@@ -1411,7 +1413,7 @@ int ec_cdev_ioctl_config_pdo_entry(
     }
 
     if (data.sync_index >= EC_MAX_SYNC_MANAGERS) {
-        EC_ERR("Invalid sync manager index %u!\n",
+        EC_MASTER_ERR(master, "Invalid sync manager index %u!\n",
                 data.sync_index);
         return -EINVAL;
     }
@@ -1422,7 +1424,7 @@ int ec_cdev_ioctl_config_pdo_entry(
     if (!(sc = ec_master_get_config_const(
                     master, data.config_index))) {
         up(&master->master_sem);
-        EC_ERR("Slave config %u does not exist!\n",
+        EC_MASTER_ERR(master, "Slave config %u does not exist!\n",
                 data.config_index);
         return -EINVAL;
     }
@@ -1431,14 +1433,14 @@ int ec_cdev_ioctl_config_pdo_entry(
                     &sc->sync_configs[data.sync_index].pdos,
                     data.pdo_pos))) {
         up(&master->master_sem);
-        EC_ERR("Invalid PDO position!\n");
+        EC_MASTER_ERR(master, "Invalid PDO position!\n");
         return -EINVAL;
     }
 
     if (!(entry = ec_pdo_find_entry_by_pos_const(
                     pdo, data.entry_pos))) {
         up(&master->master_sem);
-        EC_ERR("Entry not found!\n");
+        EC_MASTER_ERR(master, "Entry not found!\n");
         return -EINVAL;
     }
 
@@ -1478,7 +1480,7 @@ int ec_cdev_ioctl_config_sdo(
     if (!(sc = ec_master_get_config_const(
                     master, data.config_index))) {
         up(&master->master_sem);
-        EC_ERR("Slave config %u does not exist!\n",
+        EC_MASTER_ERR(master, "Slave config %u does not exist!\n",
                 data.config_index);
         return -EINVAL;
     }
@@ -1486,7 +1488,7 @@ int ec_cdev_ioctl_config_sdo(
     if (!(req = ec_slave_config_get_sdo_by_pos_const(
                     sc, data.sdo_pos))) {
         up(&master->master_sem);
-        EC_ERR("Invalid SDO position!\n");
+        EC_MASTER_ERR(master, "Invalid SDO position!\n");
         return -EINVAL;
     }
 
@@ -1527,7 +1529,8 @@ int ec_cdev_ioctl_eoe_handler(
 
     if (!(eoe = ec_master_get_eoe_handler_const(master, data.eoe_index))) {
         up(&master->master_sem);
-        EC_ERR("EoE handler %u does not exist!\n", data.eoe_index);
+        EC_MASTER_ERR(master, "EoE handler %u does not exist!\n",
+                data.eoe_index);
         return -EINVAL;
     }
 
@@ -2740,7 +2743,7 @@ int ec_cdev_ioctl_sdo_request_write(
         return -EFAULT;
 
     if (!data.size) {
-        EC_ERR("Sdo download: Data size may not be zero!\n");
+        EC_MASTER_ERR(master, "SDO download: Data size may not be zero!\n");
         return -EINVAL;
     }
 
@@ -3153,7 +3156,8 @@ int ec_cdev_ioctl_slave_foe_read(
                     master, 0, data.slave_position))) {
         up(&master->master_sem);
         ec_foe_request_clear(&request.req);
-        EC_ERR("Slave %u does not exist!\n", data.slave_position);
+        EC_MASTER_ERR(master, "Slave %u does not exist!\n",
+                data.slave_position);
         return -EINVAL;
     }
 
@@ -3162,10 +3166,7 @@ int ec_cdev_ioctl_slave_foe_read(
 
     up(&master->master_sem);
 
-    if (master->debug_level) {
-        EC_DBG("Scheduled FoE read request on slave %u.\n",
-                request.slave->ring_position);
-    }
+    EC_SLAVE_DBG(request.slave, 1, "Scheduled FoE read request.\n");
 
     // wait for processing through FSM
     if (wait_event_interruptible(request.slave->foe_queue,
@@ -3189,17 +3190,15 @@ int ec_cdev_ioctl_slave_foe_read(
     data.result = request.req.result;
     data.error_code = request.req.error_code;
 
-    if (master->debug_level) {
-        EC_DBG("Read %zd bytes via FoE (result = 0x%x).\n",
-                request.req.data_size, request.req.result);
-    }
+    EC_SLAVE_DBG(request.slave, 1, "Read %zd bytes via FoE"
+            " (result = 0x%x).\n", request.req.data_size, request.req.result);
 
     if (request.req.state != EC_INT_REQUEST_SUCCESS) {
         data.data_size = 0;
         retval = -EIO;
     } else {
         if (request.req.data_size > data.buffer_size) {
-            EC_ERR("Buffer too small.\n");
+            EC_MASTER_ERR(master, "Buffer too small.\n");
             ec_foe_request_clear(&request.req);
             return -EOVERFLOW;
         }
@@ -3216,9 +3215,7 @@ int ec_cdev_ioctl_slave_foe_read(
         retval = -EFAULT;
     }
 
-    if (master->debug_level)
-        EC_DBG("FoE read request finished on slave %u.\n",
-                request.slave->ring_position);
+    EC_SLAVE_DBG(request.slave, 1, "Finished FoE read request.\n");
 
     ec_foe_request_clear(&request.req);
 
@@ -3264,14 +3261,13 @@ int ec_cdev_ioctl_slave_foe_write(
     if (!(request.slave = ec_master_find_slave(
                     master, 0, data.slave_position))) {
         up(&master->master_sem);
-        EC_ERR("Slave %u does not exist!\n", data.slave_position);
+        EC_MASTER_ERR(master, "Slave %u does not exist!\n",
+                data.slave_position);
         ec_foe_request_clear(&request.req);
         return -EINVAL;
     }
 
-    if (master->debug_level) {
-        EC_DBG("Scheduling FoE write request.\n");
-    }
+    EC_SLAVE_DBG(request.slave, 1, "Scheduling FoE write request.\n");
 
     // schedule FoE write request.
     list_add_tail(&request.list, &request.slave->foe_requests);
@@ -3308,9 +3304,7 @@ int ec_cdev_ioctl_slave_foe_write(
 
     ec_foe_request_clear(&request.req);
 
-    if (master->debug_level) {
-        EC_DBG("Finished FoE writing.\n");
-    }
+    EC_SLAVE_DBG(request.slave, 1, "Finished FoE write request.\n");
 
     return retval;
 }
@@ -3343,7 +3337,8 @@ int ec_cdev_ioctl_slave_soe_read(
                     master, 0, ioctl.slave_position))) {
         up(&master->master_sem);
         ec_soe_request_clear(&request.req);
-        EC_ERR("Slave %u does not exist!\n", ioctl.slave_position);
+        EC_MASTER_ERR(master, "Slave %u does not exist!\n",
+                ioctl.slave_position);
         return -EINVAL;
     }
 
@@ -3352,10 +3347,7 @@ int ec_cdev_ioctl_slave_soe_read(
 
     up(&master->master_sem);
 
-    if (master->debug_level) {
-        EC_DBG("Scheduled SoE read request on slave %u.\n",
-                request.slave->ring_position);
-    }
+    EC_SLAVE_DBG(request.slave, 1, "Scheduled SoE read request.\n");
 
     // wait for processing through FSM
     if (wait_event_interruptible(request.slave->soe_queue,
@@ -3378,16 +3370,15 @@ int ec_cdev_ioctl_slave_soe_read(
 
     ioctl.error_code = request.req.error_code;
 
-    if (master->debug_level) {
-        EC_DBG("Read %zd bytes via SoE.\n", request.req.data_size);
-    }
+    EC_SLAVE_DBG(request.slave, 1, "Read %zd bytes via SoE.\n",
+            request.req.data_size);
 
     if (request.req.state != EC_INT_REQUEST_SUCCESS) {
         ioctl.data_size = 0;
         retval = -EIO;
     } else {
         if (request.req.data_size > ioctl.mem_size) {
-            EC_ERR("Buffer too small.\n");
+            EC_MASTER_ERR(master, "Buffer too small.\n");
             ec_soe_request_clear(&request.req);
             return -EOVERFLOW;
         }
@@ -3404,9 +3395,7 @@ int ec_cdev_ioctl_slave_soe_read(
         retval = -EFAULT;
     }
 
-    if (master->debug_level)
-        EC_DBG("SoE read request finished on slave %u.\n",
-                request.slave->ring_position);
+    EC_SLAVE_DBG(request.slave, 1, "Finished SoE read request.\n");
 
     ec_soe_request_clear(&request.req);
 
@@ -3453,14 +3442,13 @@ int ec_cdev_ioctl_slave_soe_write(
     if (!(request.slave = ec_master_find_slave(
                     master, 0, ioctl.slave_position))) {
         up(&master->master_sem);
-        EC_ERR("Slave %u does not exist!\n", ioctl.slave_position);
+        EC_MASTER_ERR(master, "Slave %u does not exist!\n",
+                ioctl.slave_position);
         ec_soe_request_clear(&request.req);
         return -EINVAL;
     }
 
-    if (master->debug_level) {
-        EC_DBG("Scheduling SoE write request.\n");
-    }
+    EC_SLAVE_DBG(request.slave, 1, "Scheduling SoE write request.\n");
 
     // schedule SoE write request.
     list_add_tail(&request.list, &request.slave->soe_requests);
@@ -3495,9 +3483,7 @@ int ec_cdev_ioctl_slave_soe_write(
 
     ec_soe_request_clear(&request.req);
 
-    if (master->debug_level) {
-        EC_DBG("Finished SoE writing.\n");
-    }
+    EC_SLAVE_DBG(request.slave, 1, "Finished SoE write request.\n");
 
     return retval;
 }
@@ -3527,7 +3513,7 @@ int eccdev_open(struct inode *inode, struct file *filp)
     filp->private_data = priv;
 
 #if DEBUG_IOCTL
-    EC_DBG("File opened.\n");
+    EC_MASTER_DBG(cdev->master, "File opened.\n");
 #endif
     return 0;
 }
@@ -3548,7 +3534,7 @@ int eccdev_release(struct inode *inode, struct file *filp)
         vfree(priv->process_data);
 
 #if DEBUG_IOCTL
-    EC_DBG("File closed.\n");
+    EC_MASTER_DBG(master, "File closed.\n");
 #endif
 
     kfree(priv);
@@ -3565,8 +3551,9 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
     ec_master_t *master = priv->cdev->master;
 
 #if DEBUG_IOCTL
-    EC_DBG("ioctl(filp = 0x%x, cmd = 0x%08x (0x%02x), arg = 0x%x)\n",
-            (u32) filp, (u32) cmd, (u32) _IOC_NR(cmd), (u32) arg);
+    EC_MASTER_DBG(master, "ioctl(filp = 0x%x, cmd = 0x%08x (0x%02x),"
+            " arg = 0x%x)\n", (u32) filp, (u32) cmd, (u32) _IOC_NR(cmd),
+            (u32) arg);
 #endif
 
     switch (cmd) {
@@ -3797,7 +3784,7 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
         case EC_IOCTL_SET_SEND_INTERVAL:
             if (!(filp->f_mode & FMODE_WRITE))
                 return -EPERM;
-            return ec_cdev_ioctl_set_send_interval(master,arg,priv);
+            return ec_cdev_ioctl_set_send_interval(master, arg, priv);
         default:
             return -ENOTTY;
     }
@@ -3817,8 +3804,7 @@ int eccdev_mmap(
 {
     ec_cdev_priv_t *priv = (ec_cdev_priv_t *) filp->private_data;
 
-    if (priv->cdev->master->debug_level)
-        EC_DBG("mmap()\n");
+    EC_MASTER_DBG(priv->cdev->master, 1, "mmap()\n");
 
     vma->vm_ops = &eccdev_vm_ops;
     vma->vm_flags |= VM_RESERVED; /* Pages will not be swapped out */
@@ -3855,9 +3841,8 @@ static int eccdev_vma_fault(
     get_page(page);
     vmf->page = page;
 
-    if (priv->cdev->master->debug_level)
-        EC_DBG("Vma fault, virtual_address = %p, offset = %lu, page = %p\n",
-                vmf->virtual_address, offset, page);
+    EC_MASTER_DBG(priv->cdev->master, 1, "Vma fault, virtual_address = %p,"
+            " offset = %lu, page = %p\n", vmf->virtual_address, offset, page);
 
     return 0;
 }
@@ -3887,9 +3872,8 @@ struct page *eccdev_vma_nopage(
 
     page = vmalloc_to_page(priv->process_data + offset);
 
-    if (priv->cdev->master->debug_level)
-        EC_DBG("Nopage fault vma, address = %#lx, offset = %#lx, page = %p\n",
-                address, offset, page);
+    EC_MASTER_DBG(master, "Nopage fault vma, address = %#lx,"
+            " offset = %#lx, page = %p\n", address, offset, page);
 
     get_page(page);
     if (type)

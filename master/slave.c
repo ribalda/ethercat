@@ -161,17 +161,17 @@ void ec_slave_init(
 
     // init state machine datagram
     ec_datagram_init(&slave->fsm_datagram);
-    snprintf(slave->fsm_datagram.name, EC_DATAGRAM_NAME_SIZE, "slave%u-fsm",slave->ring_position);
+    snprintf(slave->fsm_datagram.name, EC_DATAGRAM_NAME_SIZE,
+            "slave%u-fsm", slave->ring_position);
     ret = ec_datagram_prealloc(&slave->fsm_datagram, EC_MAX_DATA_SIZE);
     if (ret < 0) {
         ec_datagram_clear(&slave->fsm_datagram);
-        EC_ERR("Failed to allocate Slave %u FSM datagram.\n",slave->ring_position);
+        EC_SLAVE_ERR(slave, "Failed to allocate FSM datagram.\n");
         return;
     }
 
     // create state machine object
     ec_fsm_slave_init(&slave->fsm, slave, &slave->fsm_datagram);
-
 }
 
 /*****************************************************************************/
@@ -186,6 +186,41 @@ void ec_slave_clear(ec_slave_t *slave /**< EtherCAT slave */)
     ec_sdo_t *sdo, *next_sdo;
     unsigned int i;
     ec_pdo_t *pdo, *next_pdo;
+
+    // abort all pending requests
+
+    while (!list_empty(&slave->slave_sdo_requests)) {
+        ec_master_sdo_request_t *request =
+            list_entry(slave->slave_sdo_requests.next,
+                ec_master_sdo_request_t, list);
+        list_del_init(&request->list); // dequeue
+        EC_SLAVE_WARN(slave, "Discarding SDO request,"
+                " slave about to be deleted.\n");
+        request->req.state = EC_INT_REQUEST_FAILURE;
+        wake_up(&slave->sdo_queue);
+    }
+
+    while (!list_empty(&slave->foe_requests)) {
+        ec_master_foe_request_t *request =
+            list_entry(slave->foe_requests.next,
+                ec_master_foe_request_t, list);
+        list_del_init(&request->list); // dequeue
+        EC_SLAVE_WARN(slave, "Discarding FoE request,"
+                " slave about to be deleted.\n");
+        request->req.state = EC_INT_REQUEST_FAILURE;
+        wake_up(&slave->foe_queue);
+    }
+
+    while (!list_empty(&slave->soe_requests)) {
+        ec_master_soe_request_t *request =
+            list_entry(slave->soe_requests.next,
+                ec_master_soe_request_t, list);
+        list_del_init(&request->list); // dequeue
+        EC_SLAVE_WARN(slave, "Discarding SoE request,"
+                " slave about to be deleted.\n");
+        request->req.state = EC_INT_REQUEST_FAILURE;
+        wake_up(&slave->soe_queue);
+    }
 
     if (slave->config)
         ec_slave_config_detach(slave->config);
@@ -218,7 +253,6 @@ void ec_slave_clear(ec_slave_t *slave /**< EtherCAT slave */)
         kfree(slave->sii_words);
     ec_fsm_slave_clear(&slave->fsm);
     ec_datagram_clear(&slave->fsm_datagram);
-
 }
 
 /*****************************************************************************/
@@ -254,8 +288,7 @@ void ec_slave_set_state(ec_slave_t *slave, /**< EtherCAT slave */
                 cur_state[EC_STATE_STRING_SIZE];
             ec_state_string(slave->current_state, old_state, 0);
             ec_state_string(new_state, cur_state, 0);
-            EC_DBG("Slave %u: %s -> %s.\n",
-                   slave->ring_position, old_state, cur_state);
+            EC_SLAVE_DBG(slave, 0, "%s -> %s.\n", old_state, cur_state);
         }
         slave->current_state = new_state;
     }
@@ -299,7 +332,7 @@ int ec_slave_fetch_sii_strings(
         if (!(slave->sii.strings =
                     kmalloc(sizeof(char *) * slave->sii.string_count,
                         GFP_KERNEL))) {
-            EC_ERR("Failed to allocate string array memory.\n");
+            EC_SLAVE_ERR(slave, "Failed to allocate string array memory.\n");
             err = -ENOMEM;
             goto out_zero;
         }
@@ -310,7 +343,7 @@ int ec_slave_fetch_sii_strings(
             // allocate memory for string structure and data at a single blow
             if (!(slave->sii.strings[i] =
                         kmalloc(sizeof(char) * size + 1, GFP_KERNEL))) {
-                EC_ERR("Failed to allocate string memory.\n");
+                EC_SLAVE_ERR(slave, "Failed to allocate string memory.\n");
                 err = -ENOMEM;
                 goto out_free;
             }
@@ -349,8 +382,8 @@ int ec_slave_fetch_sii_general(
     uint8_t flags;
 
     if (data_size != 32) {
-        EC_ERR("Wrong size of general category (%zu/32) in slave %u.\n",
-                data_size, slave->ring_position);
+        EC_SLAVE_ERR(slave, "Wrong size of general category (%zu/32).\n",
+                data_size);
         return -EINVAL;
     }
 
@@ -404,8 +437,8 @@ int ec_slave_fetch_sii_syncs(
 
     // one sync manager struct is 4 words long
     if (data_size % 8) {
-        EC_ERR("Invalid SII sync manager category size %zu in slave %u.\n",
-                data_size, slave->ring_position);
+        EC_SLAVE_ERR(slave, "Invalid SII sync manager category size %zu.\n",
+                data_size);
         return -EINVAL;
     }
 
@@ -414,13 +447,14 @@ int ec_slave_fetch_sii_syncs(
     if (count) {
         total_count = count + slave->sii.sync_count;
         if (total_count > EC_MAX_SYNC_MANAGERS) {
-            EC_ERR("Exceeded maximum number of sync managers!\n");
+            EC_SLAVE_ERR(slave, "Exceeded maximum number of"
+                    " sync managers!\n");
             return -EOVERFLOW;
         }
         memsize = sizeof(ec_sync_t) * total_count;
         if (!(syncs = kmalloc(memsize, GFP_KERNEL))) {
-            EC_ERR("Failed to allocate %zu bytes for sync managers.\n",
-                    memsize);
+            EC_SLAVE_ERR(slave, "Failed to allocate %zu bytes"
+                    " for sync managers.\n", memsize);
             return -ENOMEM;
         }
 
@@ -469,7 +503,7 @@ int ec_slave_fetch_sii_pdos(
 
     while (data_size >= 8) {
         if (!(pdo = kmalloc(sizeof(ec_pdo_t), GFP_KERNEL))) {
-            EC_ERR("Failed to allocate PDO memory.\n");
+            EC_SLAVE_ERR(slave, "Failed to allocate PDO memory.\n");
             return -ENOMEM;
         }
 
@@ -491,7 +525,7 @@ int ec_slave_fetch_sii_pdos(
 
         for (i = 0; i < entry_count; i++) {
             if (!(entry = kmalloc(sizeof(ec_pdo_entry_t), GFP_KERNEL))) {
-                EC_ERR("Failed to allocate PDO entry memory.\n");
+                EC_SLAVE_ERR(slave, "Failed to allocate PDO entry memory.\n");
                 return -ENOMEM;
             }
 
@@ -517,8 +551,8 @@ int ec_slave_fetch_sii_pdos(
             ec_sync_t *sync;
 
             if (!(sync = ec_slave_get_sync(slave, pdo->sync_index))) {
-                EC_ERR("Invalid SM index %i for PDO 0x%04X in slave %u.",
-                        pdo->sync_index, pdo->index, slave->ring_position);
+                EC_SLAVE_ERR(slave, "Invalid SM index %i for PDO 0x%04X.",
+                        pdo->sync_index, pdo->index);
                 return -ENOENT;
             }
 
@@ -548,8 +582,7 @@ char *ec_slave_sii_string(
 
     if (index >= slave->sii.string_count) {
         if (slave->master->debug_level)
-            EC_WARN("String %u not found in slave %u.\n",
-                    index, slave->ring_position);
+            EC_SLAVE_WARN(slave, "String %u not found.\n", index);
         return NULL;
     }
 
@@ -848,7 +881,8 @@ void ec_slave_calc_port_delays(
         next_dc->ports[0].delay_to_next_dc = (rtt - next_rtt_sum) / 2;
 
 #if 0
-        EC_DBG("delay %u:%u rtt=%u next_rtt_sum=%u delay=%u\n",
+        EC_SLAVE_DBG(slave, 1, "delay %u:%u rtt=%u"
+                " next_rtt_sum=%u delay=%u\n",
                 slave->ring_position, i, rtt, next_rtt_sum,
                 slave->ports[i].delay_to_next_dc);
 #endif
@@ -868,7 +902,7 @@ void ec_slave_calc_transmission_delays_rec(
     ec_slave_t *next, *next_dc;
 
 #if 0
-    EC_DBG("%u: %u\n", slave->ring_position, *delay);
+    EC_SLAVE_DBG(slave, 1, "%u\n", *delay);
 #endif
 
     slave->transmission_delay = *delay;
@@ -884,7 +918,7 @@ void ec_slave_calc_transmission_delays_rec(
 
         *delay = *delay + port->delay_to_next_dc;
 #if 0
-        EC_DBG("%u:%u %u\n", slave->ring_position, i, *delay);
+        EC_SLAVE_DBG(slave, 1, "%u:%u %u\n", slave->ring_position, i, *delay);
 #endif
         ec_slave_calc_transmission_delays_rec(next_dc, delay);
     }

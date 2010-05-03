@@ -94,9 +94,9 @@ int ec_device_init(
 
     sprintf(ifname, "ecdbg%c%u", mb, master->index);
 
-    ret = ec_debug_init(&device->dbg, ifname);
+    ret = ec_debug_init(&device->dbg, device, ifname);
     if (ret < 0) {
-        EC_ERR("Failed to init debug device!\n");
+        EC_MASTER_ERR(master, "Failed to init debug device!\n");
         goto out_return;
     }
 #endif
@@ -106,7 +106,7 @@ int ec_device_init(
 
     for (i = 0; i < EC_TX_RING_SIZE; i++) {
         if (!(device->tx_skb[i] = dev_alloc_skb(ETH_FRAME_LEN))) {
-            EC_ERR("Error allocating device socket buffer!\n");
+            EC_MASTER_ERR(master, "Error allocating device socket buffer!\n");
             ret = -ENOMEM;
             goto out_tx_ring;
         }
@@ -220,12 +220,12 @@ int ec_device_open(
     int ret;
 
     if (!device->dev) {
-        EC_ERR("No net_device to open!\n");
+        EC_MASTER_ERR(device->master, "No net_device to open!\n");
         return -ENODEV;
     }
 
     if (device->open) {
-        EC_WARN("Device already opened!\n");
+        EC_MASTER_WARN(device->master, "Device already opened!\n");
         return 0;
     }
 
@@ -257,12 +257,12 @@ int ec_device_close(
     int ret;
 
     if (!device->dev) {
-        EC_ERR("No device to close!\n");
+        EC_MASTER_ERR(device->master, "No device to close!\n");
         return -ENODEV;
     }
 
     if (!device->open) {
-        EC_WARN("Device already closed!\n");
+        EC_MASTER_WARN(device->master, "Device already closed!\n");
         return 0;
     }
 
@@ -337,7 +337,7 @@ void ec_device_send(
     skb->len = ETH_HLEN + size;
 
     if (unlikely(device->master->debug_level > 1)) {
-        EC_DBG("Sending frame:\n");
+        EC_MASTER_DBG(device->master, 2, "Sending frame:\n");
         ec_print_data(skb->data, ETH_HLEN + size);
     }
 
@@ -434,7 +434,7 @@ void ec_device_debug_ring_print(
         % EC_DEBUG_RING_SIZE;
     t0 = device->debug_frames[ring_index].t;
 
-    EC_DBG("Debug ring %u:\n", ring_index);
+    EC_MASTER_DBG(device->master, 1, "Debug ring %u:\n", ring_index);
 
     // calculate index of the oldest frame in the ring
     ring_index = (device->debug_frame_index + EC_DEBUG_RING_SIZE
@@ -444,7 +444,7 @@ void ec_device_debug_ring_print(
         df = &device->debug_frames[ring_index];
         timersub(&t0, &df->t, &diff);
 
-        EC_DBG("Frame %u, dt=%u.%06u s, %s:\n",
+        EC_MASTER_DBG(device->master, 1, "Frame %u, dt=%u.%06u s, %s:\n",
                 i + 1 - device->debug_frame_count,
                 (unsigned int) diff.tv_sec,
                 (unsigned int) diff.tv_usec,
@@ -499,7 +499,7 @@ void ecdev_withdraw(ec_device_t *device /**< EtherCAT device */)
     char str[20];
 
     ec_mac_print(device->dev->dev_addr, str);
-    EC_INFO("Master %u releasing main device %s.\n", master->index, str);
+    EC_MASTER_INFO(master, "Releasing main device %s.\n", str);
     
     down(&master->device_sem);
     ec_device_detach(device);
@@ -519,13 +519,13 @@ int ecdev_open(ec_device_t *device /**< EtherCAT device */)
 
     ret = ec_device_open(device);
     if (ret) {
-        EC_ERR("Failed to open device!\n");
+        EC_MASTER_ERR(device->master, "Failed to open device!\n");
         return ret;
     }
 
     ret = ec_master_enter_idle_phase(device->master);
     if (ret) {
-        EC_ERR("Failed to enter IDLE phase!\n");
+        EC_MASTER_ERR(device->master, "Failed to enter IDLE phase!\n");
         return ret;
     }
 
@@ -544,7 +544,7 @@ void ecdev_close(ec_device_t *device /**< EtherCAT device */)
     ec_master_leave_idle_phase(device->master);
 
     if (ec_device_close(device))
-        EC_WARN("Failed to close device!\n");
+        EC_MASTER_WARN(device->master, "Failed to close device!\n");
 }
 
 /*****************************************************************************/
@@ -566,14 +566,15 @@ void ecdev_receive(
     size_t ec_size = size - ETH_HLEN;
 
     if (unlikely(!data)) {
-        EC_WARN("%s() called with NULL data.\n", __func__);
+        EC_MASTER_WARN(device->master, "%s() called with NULL data.\n",
+                __func__);
         return;
     }
 
     device->rx_count++;
 
     if (unlikely(device->master->debug_level > 1)) {
-        EC_DBG("Received frame:\n");
+        EC_MASTER_DBG(device->master, 2, "Received frame:\n");
         ec_print_data(data, size);
     }
 
@@ -602,13 +603,14 @@ void ecdev_set_link(
         )
 {
     if (unlikely(!device)) {
-        EC_WARN("ecdev_set_link(): No device!\n");
+        EC_MASTER_WARN(device->master, "ecdev_set_link(): No device!\n");
         return;
     }
 
     if (likely(state != device->link_state)) {
         device->link_state = state;
-        EC_INFO("Link state changed to %s.\n", (state ? "UP" : "DOWN"));
+        EC_MASTER_INFO(device->master,
+                "Link state changed to %s.\n", (state ? "UP" : "DOWN"));
     }
 }
 
@@ -623,7 +625,7 @@ uint8_t ecdev_get_link(
         )
 {
     if (unlikely(!device)) {
-        EC_WARN("ecdev_get_link(): No device!\n");
+        EC_MASTER_WARN(device->master, "ecdev_get_link(): No device!\n");
         return 0;
     }
 

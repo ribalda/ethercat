@@ -19,7 +19,6 @@ Version 1.5.0:
 * Change SDO index at runtime for SDO request.
 * Output skipped datagrams again.
 * Output warning when send_ext() is called in illegal context.
-* Add master and slave index to log messages.
 * Implement CompleteAccess for SDO uploads.
 * Check for Enable SDO Complete Access flag.
 * Remove allow_scanning flag.
@@ -42,6 +41,7 @@ Version 1.5.0:
 * Log SoE IDNs with real name ([SP]-x-yyyy).
 * Output SoE IDN configurations in 'ethercat config'.
 * Fix casting away constness during expected WC calculation.
+* Read AL status code on spontaneous state change.
 
 Future issues:
 

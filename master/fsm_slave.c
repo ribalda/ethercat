@@ -64,8 +64,7 @@ void ec_fsm_slave_init(
     fsm->datagram = datagram;
     fsm->datagram->data_size = 0;
 
-    if (slave->master->debug_level)
-        EC_DBG("Init FSM for slave %u...\n", slave->ring_position);
+    EC_SLAVE_DBG(slave, 1, "Init FSM.\n");
 
     fsm->state = ec_fsm_slave_state_idle;
 
@@ -119,10 +118,7 @@ void ec_fsm_slave_ready(
         )
 {
     if (fsm->state == ec_fsm_slave_state_idle) {
-        if (fsm->slave->master->debug_level) {
-            EC_DBG("Slave %u ready for requests.\n",
-                    fsm->slave->ring_position);
-        }
+        EC_SLAVE_DBG(fsm->slave, 1, "Ready for requests.\n");
         fsm->state = ec_fsm_slave_state_ready;
     }
 }
@@ -173,7 +169,6 @@ int ec_fsm_slave_action_process_sdo(
         )
 {
     ec_slave_t *slave = fsm->slave;
-    ec_master_t *master = slave->master;
     ec_master_sdo_request_t *request, *next;
 
     // search the first external request to be processed
@@ -181,8 +176,8 @@ int ec_fsm_slave_action_process_sdo(
 
         list_del_init(&request->list); // dequeue
         if (slave->current_state & EC_SLAVE_STATE_ACK_ERR) {
-            EC_WARN("Aborting SDO request, slave %u has ERROR.\n",
-                    slave->ring_position);
+            EC_SLAVE_WARN(slave, "Aborting SDO request,"
+                    " slave has error flag set.\n");
             request->req.state = EC_INT_REQUEST_FAILURE;
             wake_up(&slave->sdo_queue);
             fsm->sdo_request = NULL;
@@ -191,8 +186,7 @@ int ec_fsm_slave_action_process_sdo(
         }
 
         if (slave->current_state == EC_SLAVE_STATE_INIT) {
-            EC_WARN("Aborting SDO request, slave %u is in INIT.\n",
-                    slave->ring_position);
+            EC_SLAVE_WARN(slave, "Aborting SDO request, slave is in INIT.\n");
             request->req.state = EC_INT_REQUEST_FAILURE;
             wake_up(&slave->sdo_queue);
             fsm->sdo_request = NULL;
@@ -203,9 +197,7 @@ int ec_fsm_slave_action_process_sdo(
         request->req.state = EC_INT_REQUEST_BUSY;
 
         // Found pending SDO request. Execute it!
-        if (master->debug_level)
-            EC_DBG("Processing SDO request for slave %u...\n",
-                    slave->ring_position);
+        EC_SLAVE_DBG(slave, 1, "Processing SDO request...\n");
 
         // Start SDO transfer
         fsm->sdo_request = &request->req;
@@ -227,7 +219,6 @@ void ec_fsm_slave_state_sdo_request(
         )
 {
     ec_slave_t *slave = fsm->slave;
-    ec_master_t *master = slave->master;
     ec_sdo_request_t *request = fsm->sdo_request;
 
     if (ec_fsm_coe_exec(&fsm->fsm_coe))
@@ -236,8 +227,7 @@ void ec_fsm_slave_state_sdo_request(
         return;
     }
     if (!ec_fsm_coe_success(&fsm->fsm_coe)) {
-        EC_ERR("Failed to process SDO request for slave %u.\n",
-                fsm->slave->ring_position);
+        EC_SLAVE_ERR(slave, "Failed to process SDO request.\n");
         request->state = EC_INT_REQUEST_FAILURE;
         wake_up(&slave->sdo_queue);
         fsm->sdo_request = NULL;
@@ -245,9 +235,7 @@ void ec_fsm_slave_state_sdo_request(
         return;
     }
 
-    if (master->debug_level)
-        EC_DBG("Finished SDO request for slave %u.\n",
-                fsm->slave->ring_position);
+    EC_SLAVE_DBG(slave, 1, "Finished SDO request.\n");
 
     // SDO request finished
     request->state = EC_INT_REQUEST_SUCCESS;
@@ -268,14 +256,13 @@ int ec_fsm_slave_action_process_foe(
         )
 {
     ec_slave_t *slave = fsm->slave;
-    ec_master_t *master = slave->master;
     ec_master_foe_request_t *request, *next;
 
     // search the first request to be processed
     list_for_each_entry_safe(request, next, &slave->foe_requests, list) {
         if (slave->current_state & EC_SLAVE_STATE_ACK_ERR) {
-            EC_WARN("Aborting FOE request, slave %u has ERROR.\n",
-                    slave->ring_position);
+            EC_SLAVE_WARN(slave, "Aborting FOE request,"
+                    " slave has error flag set.\n");
             request->req.state = EC_INT_REQUEST_FAILURE;
             wake_up(&slave->sdo_queue);
             fsm->sdo_request = NULL;
@@ -285,9 +272,7 @@ int ec_fsm_slave_action_process_foe(
         list_del_init(&request->list); // dequeue
         request->req.state = EC_INT_REQUEST_BUSY;
 
-        if (master->debug_level)
-            EC_DBG("Processing FOE request for slave %u.\n",
-                    slave->ring_position);
+        EC_SLAVE_DBG(slave, 1, "Processing FoE request.\n");
 
         fsm->foe_request = &request->req;
         fsm->state = ec_fsm_slave_state_foe_request;
@@ -308,7 +293,6 @@ void ec_fsm_slave_state_foe_request(
         )
 {
     ec_slave_t *slave = fsm->slave;
-    ec_master_t *master = slave->master;
     ec_foe_request_t *request = fsm->foe_request;
 
     if (ec_fsm_foe_exec(&fsm->fsm_foe))
@@ -318,8 +302,7 @@ void ec_fsm_slave_state_foe_request(
     }
 
     if (!ec_fsm_foe_success(&fsm->fsm_foe)) {
-        EC_ERR("Failed to handle FoE request to slave %u.\n",
-                slave->ring_position);
+        EC_SLAVE_ERR(slave, "Failed to handle FoE request.\n");
         request->state = EC_INT_REQUEST_FAILURE;
         wake_up(&slave->foe_queue);
         fsm->foe_request = NULL;
@@ -328,9 +311,8 @@ void ec_fsm_slave_state_foe_request(
     }
 
     // finished transferring FoE
-    if (master->debug_level)
-        EC_DBG("Successfully transferred %u bytes of FoE data from/to"
-                " slave %u.\n", request->data_size, slave->ring_position);
+    EC_SLAVE_DBG(slave, 1, "Successfully transferred %u bytes of FoE"
+            " data.\n", request->data_size);
 
     request->state = EC_INT_REQUEST_SUCCESS;
     wake_up(&slave->foe_queue);
@@ -350,7 +332,6 @@ int ec_fsm_slave_action_process_soe(
         )
 {
     ec_slave_t *slave = fsm->slave;
-    ec_master_t *master = slave->master;
     ec_master_soe_request_t *req, *next;
 
     // search the first request to be processed
@@ -358,8 +339,8 @@ int ec_fsm_slave_action_process_soe(
 
         list_del_init(&req->list); // dequeue
         if (slave->current_state & EC_SLAVE_STATE_ACK_ERR) {
-            EC_WARN("Aborting SoE request, slave %u has ERROR.\n",
-                    slave->ring_position);
+            EC_SLAVE_WARN(slave, "Aborting SoE request,"
+                    " slave has error flag set.\n");
             req->req.state = EC_INT_REQUEST_FAILURE;
             wake_up(&slave->soe_queue);
             fsm->state = ec_fsm_slave_state_idle;
@@ -367,8 +348,7 @@ int ec_fsm_slave_action_process_soe(
         }
 
         if (slave->current_state == EC_SLAVE_STATE_INIT) {
-            EC_WARN("Aborting SoE request, slave %u is in INIT.\n",
-                    slave->ring_position);
+            EC_SLAVE_WARN(slave, "Aborting SoE request, slave is in INIT.\n");
             req->req.state = EC_INT_REQUEST_FAILURE;
             wake_up(&slave->soe_queue);
             fsm->state = ec_fsm_slave_state_idle;
@@ -378,9 +358,7 @@ int ec_fsm_slave_action_process_soe(
         req->req.state = EC_INT_REQUEST_BUSY;
 
         // Found pending request. Execute it!
-        if (master->debug_level)
-            EC_DBG("Processing SoE request for slave %u...\n",
-                    slave->ring_position);
+        EC_SLAVE_DBG(slave, 1, "Processing SoE request...\n");
 
         // Start SoE transfer
         fsm->soe_request = &req->req;
@@ -402,7 +380,6 @@ void ec_fsm_slave_state_soe_request(
         )
 {
     ec_slave_t *slave = fsm->slave;
-    ec_master_t *master = slave->master;
     ec_soe_request_t *request = fsm->soe_request;
 
     if (ec_fsm_soe_exec(&fsm->fsm_soe)) {
@@ -411,8 +388,7 @@ void ec_fsm_slave_state_soe_request(
     }
 
     if (!ec_fsm_soe_success(&fsm->fsm_soe)) {
-        EC_ERR("Failed to process SoE request for slave %u.\n",
-                fsm->slave->ring_position);
+        EC_SLAVE_ERR(slave, "Failed to process SoE request.\n");
         request->state = EC_INT_REQUEST_FAILURE;
         wake_up(&slave->soe_queue);
         fsm->soe_request = NULL;
@@ -420,9 +396,7 @@ void ec_fsm_slave_state_soe_request(
         return;
     }
 
-    if (master->debug_level)
-        EC_DBG("Finished SoE request for slave %u.\n",
-                fsm->slave->ring_position);
+    EC_SLAVE_DBG(slave, 1, "Finished SoE request.\n");
 
     // SoE request finished
     request->state = EC_INT_REQUEST_SUCCESS;

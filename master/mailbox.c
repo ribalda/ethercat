@@ -58,15 +58,15 @@ uint8_t *ec_slave_mbox_prepare_send(const ec_slave_t *slave, /**< slave */
     int ret;
 
     if (unlikely(!slave->sii.mailbox_protocols)) {
-        EC_ERR("Slave %u does not support mailbox communication!\n",
-               slave->ring_position);
+        EC_SLAVE_ERR(slave, "Slave does not support mailbox"
+                " communication!\n");
         return ERR_PTR(-EPROTONOSUPPORT);
     }
 
     total_size = EC_MBOX_HEADER_SIZE + size;
 
     if (unlikely(total_size > slave->configured_rx_mailbox_size)) {
-        EC_ERR("Data size (%zu) does not fit in mailbox (%u)!\n",
+        EC_SLAVE_ERR(slave, "Data size (%zu) does not fit in mailbox (%u)!\n",
                 total_size, slave->configured_rx_mailbox_size);
         return ERR_PTR(-EOVERFLOW);
     }
@@ -173,8 +173,7 @@ uint8_t *ec_slave_mbox_fetch(const ec_slave_t *slave, /**< slave */
     data_size = EC_READ_U16(datagram->data);
 
     if (data_size + EC_MBOX_HEADER_SIZE > slave->configured_tx_mailbox_size) {
-        EC_ERR("Corrupt mailbox response received from slave %u!\n",
-                slave->ring_position);
+        EC_SLAVE_ERR(slave, "Corrupt mailbox response received!\n");
         ec_print_data(datagram->data, slave->configured_tx_mailbox_size);
         return ERR_PTR(-EPROTO);
     }
@@ -186,8 +185,7 @@ uint8_t *ec_slave_mbox_fetch(const ec_slave_t *slave, /**< slave */
         const ec_code_msg_t *mbox_msg;
         uint16_t code = EC_READ_U16(datagram->data + 8);
 
-        EC_ERR("Mailbox error response received from slave %u - ",
-                slave->ring_position);
+        EC_SLAVE_ERR(slave, "Mailbox error response received - ");
 
         for (mbox_msg = mbox_error_messages; mbox_msg->code; mbox_msg++) {
             if (mbox_msg->code != code)

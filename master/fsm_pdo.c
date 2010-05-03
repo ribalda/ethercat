@@ -213,8 +213,8 @@ void ec_fsm_pdo_read_action_next_sync(
         if (!(fsm->sync = ec_slave_get_sync(slave, fsm->sync_index)))
             continue;
 
-        if (slave->master->debug_level)
-            EC_DBG("Reading PDO assignment of SM%u.\n", fsm->sync_index);
+        EC_SLAVE_DBG(slave, 1, "Reading PDO assignment of SM%u.\n",
+                fsm->sync_index);
 
         ec_pdo_list_clear_pdos(&fsm->pdos);
 
@@ -226,8 +226,7 @@ void ec_fsm_pdo_read_action_next_sync(
         return;
     }
 
-    if (slave->master->debug_level)
-        EC_DBG("Reading of PDO configuration finished.\n");
+    EC_SLAVE_DBG(slave, 1, "Reading of PDO configuration finished.\n");
 
     ec_pdo_list_clear_pdos(&fsm->pdos);
     fsm->state = ec_fsm_pdo_state_end;
@@ -244,24 +243,22 @@ void ec_fsm_pdo_read_state_pdo_count(
     if (ec_fsm_coe_exec(fsm->fsm_coe)) return;
 
     if (!ec_fsm_coe_success(fsm->fsm_coe)) {
-        EC_ERR("Failed to read number of assigned PDOs for SM%u"
-                " of slave %u.\n", fsm->sync_index, fsm->slave->ring_position);
+        EC_SLAVE_ERR(fsm->slave, "Failed to read number of assigned PDOs"
+                " for SM%u.\n", fsm->sync_index);
         ec_fsm_pdo_read_action_next_sync(fsm);
         return;
     }
 
     if (fsm->request.data_size != sizeof(uint8_t)) {
-        EC_ERR("Invalid data size %zu returned when uploading SDO 0x%04X:%02X "
-                "from slave %u.\n", fsm->request.data_size,
-                fsm->request.index, fsm->request.subindex,
-                fsm->slave->ring_position);
+        EC_SLAVE_ERR(fsm->slave, "Invalid data size %zu returned"
+                " when uploading SDO 0x%04X:%02X.\n", fsm->request.data_size,
+                fsm->request.index, fsm->request.subindex);
         ec_fsm_pdo_read_action_next_sync(fsm);
         return;
     }
     fsm->pdo_count = EC_READ_U8(fsm->request.data);
 
-    if (fsm->slave->master->debug_level)
-        EC_DBG("%u PDOs assigned.\n", fsm->pdo_count);
+    EC_SLAVE_DBG(fsm->slave, 1, "%u PDOs assigned.\n", fsm->pdo_count);
 
     // read first PDO
     fsm->pdo_pos = 1;
@@ -306,24 +303,24 @@ void ec_fsm_pdo_read_state_pdo(
     if (ec_fsm_coe_exec(fsm->fsm_coe)) return;
 
     if (!ec_fsm_coe_success(fsm->fsm_coe)) {
-        EC_ERR("Failed to read index of assigned PDO %u from SM%u.\n",
+        EC_SLAVE_ERR(fsm->slave, "Failed to read index of"
+                " assigned PDO %u from SM%u.\n",
                 fsm->pdo_pos, fsm->sync_index);
         ec_fsm_pdo_read_action_next_sync(fsm);
         return;
     }
 
     if (fsm->request.data_size != sizeof(uint16_t)) {
-        EC_ERR("Invalid data size %zu returned when uploading SDO 0x%04X:%02X "
-                "from slave %u.\n", fsm->request.data_size,
-                fsm->request.index, fsm->request.subindex,
-                fsm->slave->ring_position);
+        EC_SLAVE_ERR(fsm->slave, "Invalid data size %zu returned"
+                " when uploading SDO 0x%04X:%02X.\n", fsm->request.data_size,
+                fsm->request.index, fsm->request.subindex);
         ec_fsm_pdo_read_action_next_sync(fsm);
         return;
     }
 
     if (!(fsm->pdo = (ec_pdo_t *)
                 kmalloc(sizeof(ec_pdo_t), GFP_KERNEL))) {
-        EC_ERR("Failed to allocate PDO.\n");
+        EC_SLAVE_ERR(fsm->slave, "Failed to allocate PDO.\n");
         ec_fsm_pdo_read_action_next_sync(fsm);
         return;
     }
@@ -332,8 +329,7 @@ void ec_fsm_pdo_read_state_pdo(
     fsm->pdo->index = EC_READ_U16(fsm->request.data);
     fsm->pdo->sync_index = fsm->sync_index;
 
-    if (fsm->slave->master->debug_level)
-        EC_DBG("PDO 0x%04X.\n", fsm->pdo->index);
+    EC_SLAVE_DBG(fsm->slave, 1, "PDO 0x%04X.\n", fsm->pdo->index);
 
     list_add_tail(&fsm->pdo->list, &fsm->pdos.list);
 
@@ -354,8 +350,8 @@ void ec_fsm_pdo_read_state_pdo_entries(
         return;
 
     if (!ec_fsm_pdo_entry_success(&fsm->fsm_pdo_entry)) {
-        EC_ERR("Failed to read mapped PDO entries for PDO 0x%04X.\n",
-                fsm->pdo->index);
+        EC_SLAVE_ERR(fsm->slave, "Failed to read mapped PDO entries"
+                " for PDO 0x%04X.\n", fsm->pdo->index);
         ec_fsm_pdo_read_action_next_sync(fsm);
         return;
     }
@@ -410,22 +406,25 @@ void ec_fsm_pdo_conf_action_next_sync(
     fsm->sync_index++;
 
     for (; fsm->sync_index < EC_MAX_SYNC_MANAGERS; fsm->sync_index++) {
-        if (!fsm->slave->config) { // slave configuration removed in the meantime
+        if (!fsm->slave->config) { 
+            // slave configuration removed in the meantime
             fsm->state = ec_fsm_pdo_state_error;
             return;
         }
 
         if (ec_pdo_list_copy(&fsm->pdos,
-                    &fsm->slave->config->sync_configs[fsm->sync_index].pdos)) {
+                    &fsm->slave->config->sync_configs[fsm->sync_index].pdos))
+        {
             fsm->state = ec_fsm_pdo_state_error;
             return;
         }
         
         if (!(fsm->sync = ec_slave_get_sync(fsm->slave, fsm->sync_index))) {
             if (!list_empty(&fsm->pdos.list))
-                EC_WARN("PDOs configured for SM%u, but slave %u does not "
-                        "provide the sync manager information!\n",
-                        fsm->sync_index, fsm->slave->ring_position);
+                EC_SLAVE_WARN(fsm->slave, "PDOs configured for SM%u,"
+                        " but slave does not provide the"
+                        " sync manager information!\n",
+                        fsm->sync_index);
             continue;
         }
 
@@ -462,10 +461,8 @@ void ec_fsm_pdo_conf_action_pdo_mapping(
     }
 
     if (list_empty(&fsm->slave_pdo.entries)) {
-
-        if (fsm->slave->master->debug_level)
-            EC_DBG("Reading mapping of PDO 0x%04X.\n",
-                    fsm->pdo->index);
+        EC_SLAVE_DBG(fsm->slave, 1, "Reading mapping of PDO 0x%04X.\n",
+                fsm->pdo->index);
             
         // pdo mapping is unknown; start loading it
         ec_fsm_pdo_entry_start_reading(&fsm->fsm_pdo_entry, fsm->slave,
@@ -491,7 +488,8 @@ void ec_fsm_pdo_conf_state_read_mapping(
         return;
 
     if (!ec_fsm_pdo_entry_success(&fsm->fsm_pdo_entry))
-        EC_WARN("Failed to read mapped PDO entries for PDO 0x%04X.\n",
+        EC_SLAVE_WARN(fsm->slave,
+                "Failed to read PDO entries for PDO 0x%04X.\n",
                 fsm->pdo->index);
 
     // check if the mapping must be re-configured
@@ -509,9 +507,8 @@ void ec_fsm_pdo_conf_action_check_mapping(
         )
 {
     if (ec_pdo_equal_entries(fsm->pdo, &fsm->slave_pdo)) {
-        if (fsm->slave->master->debug_level)
-            EC_DBG("Mapping of PDO 0x%04X is already configured correctly.\n",
-                    fsm->pdo->index);
+        EC_SLAVE_DBG(fsm->slave, 1, "Mapping of PDO 0x%04X"
+                " is already configured correctly.\n", fsm->pdo->index);
         ec_fsm_pdo_conf_action_next_pdo_mapping(fsm);
         return;
     }
@@ -534,7 +531,8 @@ void ec_fsm_pdo_conf_state_mapping(
         return;
 
     if (!ec_fsm_pdo_entry_success(&fsm->fsm_pdo_entry))
-        EC_WARN("Failed to configure mapping of PDO 0x%04X.\n",
+        EC_SLAVE_WARN(fsm->slave,
+                "Failed to configure mapping of PDO 0x%04X.\n",
                 fsm->pdo->index);
 
     ec_fsm_pdo_conf_action_next_pdo_mapping(fsm);
@@ -568,27 +566,24 @@ void ec_fsm_pdo_conf_action_check_assignment(
 {
     // check if assignment has to be re-configured
     if (ec_pdo_list_equal(&fsm->sync->pdos, &fsm->pdos)) {
-
-        if (fsm->slave->master->debug_level)
-            EC_DBG("PDO assignment for SM%u is already configured "
-                    "correctly.\n", fsm->sync_index);
-
+        EC_SLAVE_DBG(fsm->slave, 1, "PDO assignment for SM%u"
+                " is already configured correctly.\n", fsm->sync_index);
         ec_fsm_pdo_conf_action_next_sync(fsm);
         return;
     }
 
     if (fsm->slave->master->debug_level) {
-        EC_DBG("PDO assignment of SM%u differs:\n", fsm->sync_index);
-        EC_DBG(""); ec_fsm_pdo_print(fsm);
+        EC_SLAVE_DBG(fsm->slave, 1, "PDO assignment of SM%u differs:\n",
+                fsm->sync_index);
+        EC_SLAVE_DBG(fsm->slave, 1, ""); ec_fsm_pdo_print(fsm);
     }
 
     // PDO assignment has to be changed. Does the slave support this?
     if (!(fsm->slave->sii.mailbox_protocols & EC_MBOX_COE)
             || (fsm->slave->sii.has_general
                 && !fsm->slave->sii.coe_details.enable_pdo_assign)) {
-        EC_WARN("Slave %u does not support assigning PDOs!\n",
-                fsm->slave->ring_position);
-        EC_WARN(""); ec_fsm_pdo_print(fsm);
+        EC_SLAVE_WARN(fsm->slave, "Slave does not support assigning PDOs!\n");
+        EC_SLAVE_WARN(fsm->slave, ""); ec_fsm_pdo_print(fsm);
         ec_fsm_pdo_conf_action_next_sync(fsm);
         return;
     }
@@ -604,8 +599,7 @@ void ec_fsm_pdo_conf_action_check_assignment(
     ec_sdo_request_address(&fsm->request, 0x1C10 + fsm->sync_index, 0);
     ecrt_sdo_request_write(&fsm->request);
 
-    if (fsm->slave->master->debug_level)
-        EC_DBG("Setting number of assigned PDOs to zero.\n");
+    EC_SLAVE_DBG(fsm->slave, 1, "Setting number of assigned PDOs to zero.\n");
 
     fsm->state = ec_fsm_pdo_conf_state_zero_pdo_count;
     ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, &fsm->request);
@@ -624,8 +618,9 @@ void ec_fsm_pdo_conf_state_zero_pdo_count(
         return;
 
     if (!ec_fsm_coe_success(fsm->fsm_coe)) {
-        EC_WARN("Failed to clear PDO assignment of SM%u.\n", fsm->sync_index);
-        EC_WARN(""); ec_fsm_pdo_print(fsm);
+        EC_SLAVE_WARN(fsm->slave, "Failed to clear PDO assignment of SM%u.\n",
+                fsm->sync_index);
+        EC_SLAVE_WARN(fsm->slave, ""); ec_fsm_pdo_print(fsm);
         fsm->state = ec_fsm_pdo_state_error;
         return;
     }
@@ -637,9 +632,7 @@ void ec_fsm_pdo_conf_state_zero_pdo_count(
     
     // find first PDO
     if (!(fsm->pdo = ec_fsm_pdo_conf_action_next_pdo(fsm, &fsm->pdos.list))) {
-
-        if (fsm->slave->master->debug_level)
-            EC_DBG("No PDOs to assign.\n");
+        EC_SLAVE_DBG(fsm->slave, 1, "No PDOs to assign.\n");
 
         // check for mapping to be altered
         ec_fsm_pdo_conf_action_next_sync(fsm);
@@ -665,9 +658,8 @@ void ec_fsm_pdo_conf_action_assign_pdo(
             0x1C10 + fsm->sync_index, fsm->pdo_pos);
     ecrt_sdo_request_write(&fsm->request);
 
-    if (fsm->slave->master->debug_level)
-        EC_DBG("Assigning PDO 0x%04X at position %u.\n",
-                fsm->pdo->index, fsm->pdo_pos);
+    EC_SLAVE_DBG(fsm->slave, 1, "Assigning PDO 0x%04X at position %u.\n",
+            fsm->pdo->index, fsm->pdo_pos);
     
     fsm->state = ec_fsm_pdo_conf_state_assign_pdo;
     ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, &fsm->request);
@@ -685,9 +677,10 @@ void ec_fsm_pdo_conf_state_assign_pdo(
     if (ec_fsm_coe_exec(fsm->fsm_coe)) return;
 
     if (!ec_fsm_coe_success(fsm->fsm_coe)) {
-        EC_WARN("Failed to assign PDO 0x%04X at position %u of SM%u.\n",
+        EC_SLAVE_WARN(fsm->slave, "Failed to assign PDO 0x%04X at position %u"
+                " of SM%u.\n",
                 fsm->pdo->index, fsm->pdo_pos, fsm->sync_index);
-        EC_WARN(""); ec_fsm_pdo_print(fsm);
+        EC_SLAVE_WARN(fsm->slave, ""); ec_fsm_pdo_print(fsm);
         fsm->state = ec_fsm_pdo_state_error;
         return;
     }
@@ -701,8 +694,9 @@ void ec_fsm_pdo_conf_state_assign_pdo(
         ec_sdo_request_address(&fsm->request, 0x1C10 + fsm->sync_index, 0);
         ecrt_sdo_request_write(&fsm->request);
 
-        if (fsm->slave->master->debug_level)
-            EC_DBG("Setting number of assigned PDOs to %u.\n", fsm->pdo_pos);
+        EC_SLAVE_DBG(fsm->slave, 1,
+                "Setting number of assigned PDOs to %u.\n",
+                fsm->pdo_pos);
         
         fsm->state = ec_fsm_pdo_conf_state_set_pdo_count;
         ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, &fsm->request);
@@ -726,9 +720,9 @@ void ec_fsm_pdo_conf_state_set_pdo_count(
     if (ec_fsm_coe_exec(fsm->fsm_coe)) return;
 
     if (!ec_fsm_coe_success(fsm->fsm_coe)) {
-        EC_WARN("Failed to set number of assigned PDOs of SM%u.\n",
-                fsm->sync_index);
-        EC_WARN(""); ec_fsm_pdo_print(fsm);
+        EC_SLAVE_WARN(fsm->slave, "Failed to set number of"
+                " assigned PDOs of SM%u.\n", fsm->sync_index);
+        EC_SLAVE_WARN(fsm->slave, ""); ec_fsm_pdo_print(fsm);
         fsm->state = ec_fsm_pdo_state_error;
         return;
     }
@@ -736,9 +730,8 @@ void ec_fsm_pdo_conf_state_set_pdo_count(
     // PDOs have been configured
     ec_pdo_list_copy(&fsm->sync->pdos, &fsm->pdos);
 
-    if (fsm->slave->master->debug_level)
-        EC_DBG("Successfully configured PDO assignment of SM%u.\n",
-                fsm->sync_index);
+    EC_SLAVE_DBG(fsm->slave, 1, "Successfully configured"
+            " PDO assignment of SM%u.\n", fsm->sync_index);
 
     // check if PDO mapping has to be altered
     ec_fsm_pdo_conf_action_next_sync(fsm);

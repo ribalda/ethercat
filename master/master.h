@@ -57,6 +57,61 @@
 
 /*****************************************************************************/
 
+/** Convenience macro for printing master-specific information to syslog.
+ *
+ * This will print the message in \a fmt with a prefixed "EtherCAT <INDEX>: ",
+ * where INDEX is the master index.
+ *
+ * \param master EtherCAT master
+ * \param fmt format string (like in printf())
+ * \param args arguments (optional)
+ */
+#define EC_MASTER_INFO(master, fmt, args...) \
+    printk(KERN_INFO "EtherCAT %u: " fmt, master->index, ##args)
+
+/** Convenience macro for printing master-specific errors to syslog.
+ *
+ * This will print the message in \a fmt with a prefixed "EtherCAT <INDEX>: ",
+ * where INDEX is the master index.
+ *
+ * \param master EtherCAT master
+ * \param fmt format string (like in printf())
+ * \param args arguments (optional)
+ */
+#define EC_MASTER_ERR(master, fmt, args...) \
+    printk(KERN_ERR "EtherCAT ERROR %u: " fmt, master->index, ##args)
+
+/** Convenience macro for printing master-specific warnings to syslog.
+ *
+ * This will print the message in \a fmt with a prefixed "EtherCAT <INDEX>: ",
+ * where INDEX is the master index.
+ *
+ * \param master EtherCAT master
+ * \param fmt format string (like in printf())
+ * \param args arguments (optional)
+ */
+#define EC_MASTER_WARN(master, fmt, args...) \
+    printk(KERN_WARNING "EtherCAT WARNING %u: " fmt, master->index, ##args)
+
+/** Convenience macro for printing master-specific debug messages to syslog.
+ *
+ * This will print the message in \a fmt with a prefixed "EtherCAT <INDEX>: ",
+ * where INDEX is the master index.
+ *
+ * \param master EtherCAT master
+ * \param fmt format string (like in printf())
+ * \param args arguments (optional)
+ */
+#define EC_MASTER_DBG(master, level, fmt, args...) \
+    do { \
+        if (master->debug_level >= level) { \
+            printk(KERN_DEBUG "EtherCAT DEBUG %u: " fmt, \
+                    master->index, ##args); \
+        } \
+    } while (0)
+
+/*****************************************************************************/
+
 /** EtherCAT master phase.
  */
 typedef enum {

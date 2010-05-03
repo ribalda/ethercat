@@ -104,7 +104,8 @@ int __init ec_init_module(void)
     sema_init(&master_sem, 1);
 
     if (master_count) {
-        if (alloc_chrdev_region(&device_number, 0, master_count, "EtherCAT")) {
+        if (alloc_chrdev_region(&device_number,
+                    0, master_count, "EtherCAT")) {
             EC_ERR("Failed to obtain device number(s)!\n");
             ret = -EBUSY;
             goto out_return;
@@ -140,7 +141,8 @@ int __init ec_init_module(void)
     if (master_count) {
         if (!(masters = kmalloc(sizeof(ec_master_t) * master_count,
                         GFP_KERNEL))) {
-            EC_ERR("Failed to allocate memory for EtherCAT masters.\n");
+            EC_ERR("Failed to allocate memory"
+                    " for EtherCAT masters.\n");
             ret = -ENOMEM;
             goto out_class;
         }
@@ -489,7 +491,8 @@ ec_device_t *ecdev_offer(
 
             if (master->debug_level) {
                 ec_mac_print(net_dev->dev_addr, str);
-                EC_DBG("Master %u declined device %s.\n", master->index, str);
+                EC_MASTER_DBG(master, 0, "Master declined device %s.\n",
+                        str);
             }
         }
     }
@@ -527,7 +530,7 @@ ec_master_t *ecrt_request_master_err(
 
     if (master->reserved) {
         up(&master_sem);
-        EC_ERR("Master %u is already in use!\n", master_index);
+        EC_MASTER_ERR(master, "Master already in use!\n");
         errptr = ERR_PTR(-EBUSY);
         goto out_return;
     }
@@ -541,7 +544,7 @@ ec_master_t *ecrt_request_master_err(
     
     if (master->phase != EC_IDLE) {
         up(&master->device_sem);
-        EC_ERR("Master %u still waiting for devices!\n", master_index);
+        EC_MASTER_ERR(master, "Master still waiting for devices!\n");
         errptr = ERR_PTR(-ENODEV);
         goto out_release;
     }
@@ -556,7 +559,7 @@ ec_master_t *ecrt_request_master_err(
     up(&master->device_sem);
 
     if (ec_master_enter_operation_phase(master)) {
-        EC_ERR("Failed to enter OPERATION phase!\n");
+        EC_MASTER_ERR(master, "Failed to enter OPERATION phase!\n");
         errptr = ERR_PTR(-EIO);
         goto out_module_put;
     }
@@ -584,10 +587,11 @@ ec_master_t *ecrt_request_master(unsigned int master_index)
 
 void ecrt_release_master(ec_master_t *master)
 {
-    EC_INFO("Releasing master %u...\n", master->index);
+    EC_MASTER_INFO(master, "Releasing master...\n");
 
     if (!master->reserved) {
-        EC_WARN("Master %u was was not requested!\n", master->index);
+        EC_MASTER_WARN(master, "%s(): Master was was not requested!\n",
+                __func__);
         return;
     }
 
@@ -596,7 +600,7 @@ void ecrt_release_master(ec_master_t *master)
     module_put(master->main_device.module);
     master->reserved = 0;
 
-    EC_INFO("Released master %u.\n", master->index);
+    EC_MASTER_INFO(master, "Released.\n");
 }
 
 /*****************************************************************************/

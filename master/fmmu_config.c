@@ -79,12 +79,11 @@ void ec_fmmu_config_page(
         uint8_t *data /**> Configuration page memory. */
         )
 {
-    if (fmmu->sc->master->debug_level) {
-        EC_DBG("FMMU: LogAddr 0x%08X, Size %3u, PhysAddr 0x%04X, SM%u, "
-                "Dir %s\n", fmmu->logical_start_address, fmmu->data_size,
-               sync->physical_start_address, fmmu->sync_index,
-               fmmu->dir == EC_DIR_INPUT ? "in" : "out");
-    }
+    EC_CONFIG_DBG(fmmu->sc, 1, "FMMU: LogAddr 0x%08X, Size %3u,"
+            " PhysAddr 0x%04X, SM%u, Dir %s\n",
+            fmmu->logical_start_address, fmmu->data_size,
+            sync->physical_start_address, fmmu->sync_index,
+            fmmu->dir == EC_DIR_INPUT ? "in" : "out");
 
     EC_WRITE_U32(data,      fmmu->logical_start_address);
     EC_WRITE_U16(data + 4,  fmmu->data_size); // size of fmmu
