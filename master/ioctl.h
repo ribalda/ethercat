@@ -277,6 +277,7 @@ typedef struct {
 
     // outputs
     uint32_t data_size;
+    uint32_t tx_size;
     uint32_t logical_base_address;
     uint16_t working_counter;
     uint16_t expected_working_counter;
@@ -296,6 +297,7 @@ typedef struct {
     uint8_t sync_index;
     ec_direction_t dir;
     uint32_t logical_address;
+    uint32_t domain_address;
     uint32_t data_size;
 } ec_ioctl_domain_fmmu_t;
 

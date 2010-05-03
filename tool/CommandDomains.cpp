@@ -143,6 +143,8 @@ void CommandDomains::showDomain(
         << setw(8) << domain.logical_base_address
         << ", Size " << dec << setfill(' ')
         << setw(3) << domain.data_size
+        << ", TxSize " << dec << setfill(' ')
+        << setw(3) << domain.tx_size
         << ", WorkingCounter "
         << domain.working_counter << "/"
         << domain.expected_working_counter << endl;
@@ -173,7 +175,7 @@ void CommandDomains::showDomain(
             << setw(8) << fmmu.logical_address
             << ", Size " << dec << fmmu.data_size << endl;
 
-        dataOffset = fmmu.logical_address - domain.logical_base_address;
+        dataOffset = fmmu.domain_address - domain.logical_base_address;
         if (dataOffset + fmmu.data_size > domain.data_size) {
             stringstream err;
             delete [] processData;

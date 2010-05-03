@@ -539,6 +539,7 @@ int ec_cdev_ioctl_domain(
     }
 
     data.data_size = domain->data_size;
+    data.tx_size = domain->tx_size;
     data.logical_base_address = domain->logical_base_address;
     data.working_counter = domain->working_counter;
     data.expected_working_counter = domain->expected_working_counter;
@@ -590,6 +591,7 @@ int ec_cdev_ioctl_domain_fmmu(
     data.sync_index = fmmu->sync_index;
     data.dir = fmmu->dir;
     data.logical_address = fmmu->logical_start_address;
+    data.domain_address = fmmu->domain_address;
     data.data_size = fmmu->data_size;
 
     up(&master->master_sem);
