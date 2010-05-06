@@ -523,7 +523,7 @@ void ec_fsm_coe_dict_response(ec_fsm_coe_t *fsm /**< finite state machine */)
     }
 
     fragments_left = EC_READ_U16(data + 4);
-    if (slave->master->debug_level && fragments_left) {
+    if (fragments_left) {
         EC_SLAVE_DBG(slave, 1, "SDO list fragments left: %u\n",
                 fragments_left);
     }
