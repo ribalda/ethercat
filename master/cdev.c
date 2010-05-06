@@ -3501,7 +3501,8 @@ int eccdev_open(struct inode *inode, struct file *filp)
 
     priv = kmalloc(sizeof(ec_cdev_priv_t), GFP_KERNEL);
     if (!priv) {
-        EC_ERR("Failed to allocate memory for private data structure.\n");
+        EC_MASTER_ERR(cdev->master,
+                "Failed to allocate memory for private data structure.\n");
         return -ENOMEM;
     }
 
