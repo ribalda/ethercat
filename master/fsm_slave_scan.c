@@ -682,9 +682,8 @@ void ec_fsm_slave_scan_state_sii_data(ec_fsm_slave_scan_t *fsm /**< slave state 
                     goto end;
                 break;
             default:
-                if (fsm->slave->master->debug_level)
-                    EC_SLAVE_WARN(slave, "Unknown category type 0x%04X.\n",
-                            cat_type);
+                EC_SLAVE_DBG(slave, 1, "Unknown category type 0x%04X.\n",
+                        cat_type);
         }
 
         cat_word += cat_size;

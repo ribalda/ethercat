@@ -581,8 +581,7 @@ char *ec_slave_sii_string(
         return NULL;
 
     if (index >= slave->sii.string_count) {
-        if (slave->master->debug_level)
-            EC_SLAVE_WARN(slave, "String %u not found.\n", index);
+        EC_SLAVE_DBG(slave, 1, "String %u not found.\n", index);
         return NULL;
     }
 
