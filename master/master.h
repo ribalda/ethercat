@@ -164,6 +164,7 @@ struct ec_master {
     ec_datagram_t fsm_datagram; /**< Datagram used for state machines. */
     ec_master_phase_t phase; /**< Master phase. */
     unsigned int active; /**< Master has been activated. */
+    unsigned int config_changed; /**< The configuration changed. */
     unsigned int injection_seq_fsm; /**< Datagram injection sequence number
                                       for the FSM side. */
     unsigned int injection_seq_rt; /**< Datagram injection sequence number
@@ -177,7 +178,7 @@ struct ec_master {
     
     u64 app_time; /**< Time of the last ecrt_master_sync() call. */
     u64 app_start_time; /**< Application start time. */
-    u8 has_start_time; /**< Start time already taken. */
+    u8 has_app_time; /**< Application time is valid. */
     ec_datagram_t ref_sync_datagram; /**< Datagram used for synchronizing the
                                        reference clock to the master clock. */
     ec_datagram_t sync_datagram; /**< Datagram used for DC drift
@@ -306,6 +307,7 @@ ec_slave_config_t *ecrt_master_slave_config_err(ec_master_t *, uint16_t,
         uint16_t, uint32_t, uint32_t);
 
 void ec_master_calc_dc(ec_master_t *);
+void ec_master_request_op(ec_master_t *);
 
 void ec_master_internal_send_cb(void *);
 void ec_master_internal_receive_cb(void *);

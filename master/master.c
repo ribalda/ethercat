@@ -139,6 +139,7 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
 
     master->phase = EC_ORPHANED;
     master->active = 0;
+    master->config_changed = 0;
     master->injection_seq_fsm = 0;
     master->injection_seq_rt = 0;
 
@@ -149,7 +150,7 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
 
     master->app_time = 0ULL;
     master->app_start_time = 0ULL;
-    master->has_start_time = 0;
+    master->has_app_time = 0;
 
     master->scan_busy = 0;
     master->allow_scan = 1;
@@ -1824,6 +1825,37 @@ void ec_master_calc_dc(
     ec_master_calc_transmission_delays(master);
 }
 
+/*****************************************************************************/
+
+/** Request OP state for configured slaves.
+ */
+void ec_master_request_op(
+        ec_master_t *master /**< EtherCAT master. */
+        )
+{
+    unsigned int i;
+    ec_slave_t *slave;
+
+    if (!master->active)
+        return;
+
+    EC_MASTER_DBG(master, 1, "Requesting OP...\n");
+
+    // request OP for all configured slaves
+    for (i = 0; i < master->slave_count; i++) {
+        slave = master->slaves + i;
+        if (slave->config) {
+            ec_slave_request_state(slave, EC_SLAVE_STATE_OP);
+        }
+    }
+
+    // always set DC reference clock to OP
+    if (master->dc_ref_clock) {
+        ec_slave_request_state(master->dc_ref_clock,
+                EC_SLAVE_STATE_OP);
+    }
+}
+
 /******************************************************************************
  *  Application interface
  *****************************************************************************/
@@ -1906,11 +1938,6 @@ int ecrt_master_activate(ec_master_t *master)
         domain_offset += domain->data_size;
     }
     
-    // always set DC reference clock to OP
-    if (master->dc_ref_clock) {
-        ec_slave_request_state(master->dc_ref_clock, EC_SLAVE_STATE_OP);
-    }
-
     up(&master->master_sem);
 
     // restart EoE process and master thread with new locking
@@ -1945,6 +1972,10 @@ int ecrt_master_activate(ec_master_t *master)
     master->allow_config = 1; // request the current configuration
     master->allow_scan = 1; // allow re-scanning on topology change
     master->active = 1;
+
+    // notify state machine, that the configuration shall now be applied
+    master->config_changed = 1;
+
     return 0;
 }
 
@@ -2004,7 +2035,7 @@ void ecrt_master_deactivate(ec_master_t *master)
 
     master->app_time = 0ULL;
     master->app_start_time = 0ULL;
-    master->has_start_time = 0;
+    master->has_app_time = 0;
 
 #ifdef EC_EOE
     if (eoe_was_running) {
@@ -2258,9 +2289,9 @@ void ecrt_master_application_time(ec_master_t *master, uint64_t app_time)
 {
     master->app_time = app_time;
 
-    if (unlikely(!master->has_start_time)) {
+    if (unlikely(!master->has_app_time)) {
         master->app_start_time = app_time;
-        master->has_start_time = 1;
+        master->has_app_time = 1;
     }
 }
 

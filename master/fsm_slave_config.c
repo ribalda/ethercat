@@ -44,9 +44,20 @@
 
 /*****************************************************************************/
 
-/** Time difference [ns] to tolerate without setting a new system time offset.
+/** Maximum clock difference (in ns) before going to SAFEOP.
+ *
+ * Wait for DC time difference to drop under this absolute value before
+ * requesting SAFEOP.
  */
-#define EC_SYSTEM_TIME_TOLERANCE_NS 100000000
+#define EC_DC_MAX_SYNC_DIFF_NS 5000
+
+/** Maximum time (in ms) to wait for clock discipline.
+ */
+#define EC_DC_SYNC_WAIT_MS 5000
+
+/** Time offset (in ns), that is added to cyclic start time.
+ */
+#define EC_DC_START_OFFSET 100000000ULL
 
 /*****************************************************************************/
 
@@ -55,8 +66,6 @@ void ec_fsm_slave_config_state_init(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_clear_fmmus(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_clear_sync(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_dc_clear_assign(ec_fsm_slave_config_t *);
-void ec_fsm_slave_config_state_dc_read_offset(ec_fsm_slave_config_t *);
-void ec_fsm_slave_config_state_dc_write_offset(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_mbox_sync(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_boot_preop(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_sdo_conf(ec_fsm_slave_config_t *);
@@ -67,6 +76,7 @@ void ec_fsm_slave_config_state_pdo_sync(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_pdo_conf(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_fmmu(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_dc_cycle(ec_fsm_slave_config_t *);
+void ec_fsm_slave_config_state_dc_sync_check(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_dc_start(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_dc_assign(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_safeop(ec_fsm_slave_config_t *);
@@ -389,172 +399,6 @@ void ec_fsm_slave_config_state_dc_clear_assign(
         // clearing the DC assignment does not succeed on simple slaves
         EC_SLAVE_DBG(fsm->slave, 1, "Failed to clear DC assignment: ");
         ec_datagram_print_wc_error(datagram);
-    }
-
-    // read DC system time (0x0910, 64 bit)
-    //                         gap (64 bit)
-    //     and time offset (0x0920, 64 bit)
-    ec_datagram_fprd(fsm->datagram, fsm->slave->station_address, 0x0910, 24);
-    fsm->retries = EC_FSM_RETRIES;
-    fsm->state = ec_fsm_slave_config_state_dc_read_offset;
-}
-
-/*****************************************************************************/
-
-/** Configure 32 bit time offset.
- */
-u64 ec_fsm_slave_config_dc_offset32(
-        ec_fsm_slave_config_t *fsm, /**< slave state machine */
-        u64 system_time, /**< System time register. */
-        u64 old_offset, /**< Time offset register. */
-        unsigned long jiffies_since_read /**< Jiffies for correction. */
-        )
-{
-    ec_slave_t *slave = fsm->slave;
-    u32 correction, system_time32, old_offset32, new_offset;
-    s32 time_diff;
-
-    system_time32 = (u32) system_time;
-    old_offset32 = (u32) old_offset;
-
-    // correct read system time by elapsed time since read operation
-    correction = jiffies_since_read * 1000 / HZ * 1000000;
-    system_time32 += correction;
-    time_diff = (u32) slave->master->app_time - system_time32;
-
-    EC_SLAVE_DBG(slave, 1, "Calculating DC time offset (32 bit):"
-            " system_time=%u (corrected with %u), app_time=%u, diff=%i\n",
-            system_time32, correction,
-            (u32) slave->master->app_time, time_diff);
-
-    if (EC_ABS(time_diff) > EC_SYSTEM_TIME_TOLERANCE_NS) {
-        new_offset = time_diff + old_offset32;
-        EC_SLAVE_DBG(slave, 1, "Setting time offset to %u (was %u)\n",
-                new_offset, old_offset32);
-        return (u64) new_offset;
-    } else {
-        EC_SLAVE_DBG(slave, 1, "Not touching time offset.\n");
-        return old_offset;
-    }
-}
-
-/*****************************************************************************/
-
-/** Configure 64 bit time offset.
- */
-u64 ec_fsm_slave_config_dc_offset64(
-        ec_fsm_slave_config_t *fsm, /**< slave state machine */
-        u64 system_time, /**< System time register. */
-        u64 old_offset, /**< Time offset register. */
-        unsigned long jiffies_since_read /**< Jiffies for correction. */
-        )
-{
-    ec_slave_t *slave = fsm->slave;
-    u64 new_offset, correction;
-    s64 time_diff;
-
-    // correct read system time by elapsed time since read operation
-    correction = (u64) (jiffies_since_read * 1000 / HZ) * 1000000;
-    system_time += correction;
-    time_diff = fsm->slave->master->app_time - system_time;
-
-    EC_SLAVE_DBG(slave, 1, "Calculating DC time offset (64 bit):"
-            " system_time=%llu (corrected with %llu),"
-            " app_time=%llu, diff=%lli\n",
-            system_time, correction,
-            slave->master->app_time, time_diff);
-
-    if (EC_ABS(time_diff) > EC_SYSTEM_TIME_TOLERANCE_NS) {
-        new_offset = time_diff + old_offset;
-        EC_SLAVE_DBG(slave, 1, "Setting time offset to %llu (was %llu)\n",
-                new_offset, old_offset);
-    } else {
-        new_offset = old_offset;
-        EC_SLAVE_DBG(slave, 1, "Not touching time offset.\n");
-    }
-
-    return new_offset;
-}
-
-/*****************************************************************************/
-
-/** Slave configuration state: DC READ OFFSET.
- */
-void ec_fsm_slave_config_state_dc_read_offset(
-        ec_fsm_slave_config_t *fsm /**< slave state machine */
-        )
-{
-    ec_datagram_t *datagram = fsm->datagram;
-    ec_slave_t *slave = fsm->slave;
-    u64 system_time, old_offset, new_offset;
-    unsigned long jiffies_since_read;
-
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
-        return;
-
-    if (datagram->state != EC_DATAGRAM_RECEIVED) {
-        fsm->state = ec_fsm_slave_config_state_error;
-        EC_SLAVE_ERR(slave, "Failed to receive DC times datagram: ");
-        ec_datagram_print_state(datagram);
-        return;
-    }
-
-    if (datagram->working_counter != 1) {
-        slave->error_flag = 1;
-        fsm->state = ec_fsm_slave_config_state_error;
-        EC_SLAVE_ERR(slave, "Failed to get DC times: ");
-        ec_datagram_print_wc_error(datagram);
-        return;
-    }
-
-    system_time = EC_READ_U64(datagram->data);     // 0x0910
-    old_offset = EC_READ_U64(datagram->data + 16); // 0x0920
-    jiffies_since_read = jiffies - datagram->jiffies_sent;
-
-    if (slave->base_dc_range == EC_DC_32) {
-        new_offset = ec_fsm_slave_config_dc_offset32(fsm,
-                system_time, old_offset, jiffies_since_read);
-    } else {
-        new_offset = ec_fsm_slave_config_dc_offset64(fsm,
-                system_time, old_offset, jiffies_since_read);
-    }
-
-    // set DC system time offset and transmission delay
-    ec_datagram_fpwr(datagram, slave->station_address, 0x0920, 12);
-    EC_WRITE_U64(datagram->data, new_offset);
-    EC_WRITE_U32(datagram->data + 8, slave->transmission_delay);
-    fsm->retries = EC_FSM_RETRIES;
-    fsm->state = ec_fsm_slave_config_state_dc_write_offset;
-}
-
-/*****************************************************************************/
-
-/** Slave configuration state: DC WRITE OFFSET.
- */
-void ec_fsm_slave_config_state_dc_write_offset(
-        ec_fsm_slave_config_t *fsm /**< slave state machine */
-        )
-{
-    ec_datagram_t *datagram = fsm->datagram;
-    ec_slave_t *slave = fsm->slave;
-
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
-        return;
-
-    if (datagram->state != EC_DATAGRAM_RECEIVED) {
-        fsm->state = ec_fsm_slave_config_state_error;
-        EC_SLAVE_ERR(slave, "Failed to receive DC system time offset"
-                " datagram: ");
-        ec_datagram_print_state(datagram);
-        return;
-    }
-
-    if (datagram->working_counter != 1) {
-        slave->error_flag = 1;
-        fsm->state = ec_fsm_slave_config_state_error;
-        EC_SLAVE_ERR(slave, "Failed to set DC system time offset: ");
-        ec_datagram_print_wc_error(datagram);
-        return;
     }
 
     ec_fsm_slave_config_enter_mbox_sync(fsm);
@@ -1319,10 +1163,7 @@ void ec_fsm_slave_config_state_dc_cycle(
 {
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
-    ec_master_t *master = slave->master;
     ec_slave_config_t *config = slave->config;
-    ec_sync_signal_t *sync0 = &config->dc_sync[0];
-    u64 start_time;
 
     if (!config) { // config removed in the meantime
         ec_fsm_slave_config_reconfigure(fsm);
@@ -1347,13 +1188,83 @@ void ec_fsm_slave_config_state_dc_cycle(
         return;
     }
 
+    EC_SLAVE_DBG(slave, 1, "Checking for synchrony.\n");
+
+    fsm->jiffies_start = jiffies;
+    ec_datagram_fprd(datagram, slave->station_address, 0x092c, 4);
+    fsm->retries = EC_FSM_RETRIES;
+    fsm->state = ec_fsm_slave_config_state_dc_sync_check;
+}
+
+/*****************************************************************************/
+
+/** Slave configuration state: DC SYNC CHECK.
+ */
+void ec_fsm_slave_config_state_dc_sync_check(
+        ec_fsm_slave_config_t *fsm /**< slave state machine */
+        )
+{
+    ec_datagram_t *datagram = fsm->datagram;
+    ec_slave_t *slave = fsm->slave;
+    ec_master_t *master = slave->master;
+    ec_slave_config_t *config = slave->config;
+    uint32_t abs_sync_diff;
+    unsigned long diff_ms;
+    ec_sync_signal_t *sync0 = &config->dc_sync[0];
+    u64 start_time;
+
+    if (!config) { // config removed in the meantime
+        ec_fsm_slave_config_reconfigure(fsm);
+        return;
+    }
+
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+        return;
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED) {
+        fsm->state = ec_fsm_slave_config_state_error;
+        EC_SLAVE_ERR(slave, "Failed to receive DC sync check datagram: ");
+        ec_datagram_print_state(datagram);
+        return;
+    }
+
+    if (datagram->working_counter != 1) {
+        slave->error_flag = 1;
+        fsm->state = ec_fsm_slave_config_state_error;
+        EC_SLAVE_ERR(slave, "Failed to check DC synchrony: ");
+        ec_datagram_print_wc_error(datagram);
+        return;
+    }
+
+    abs_sync_diff = EC_READ_U32(datagram->data) & 0x7fffffff;
+    diff_ms = (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
+
+    if (abs_sync_diff > EC_DC_MAX_SYNC_DIFF_NS) {
+
+        if (diff_ms >= EC_DC_SYNC_WAIT_MS) {
+            EC_SLAVE_WARN(slave, "Slave did not sync after %u ms.\n",
+                    (u32) diff_ms);
+        } else {
+            EC_SLAVE_DBG(slave, 1, "Sync after %4u ms: %10u ns\n",
+                    (u32) diff_ms, abs_sync_diff);
+
+            // check synchrony again
+            ec_datagram_fprd(datagram, slave->station_address, 0x092c, 4);
+            fsm->retries = EC_FSM_RETRIES;
+            return;
+        }
+    } else {
+        EC_SLAVE_DBG(slave, 1, "%u ns difference after %u ms.\n",
+                abs_sync_diff, (u32) diff_ms);
+    }
+
     // set DC start time
-    start_time = master->app_time + 100000000ULL; // now + X ns
+    start_time = master->app_time + EC_DC_START_OFFSET; // now + X ns
     // FIXME use slave's local system time here?
 
     if (sync0->cycle_time) {
         // find correct phase
-        if (master->has_start_time) {
+        if (master->has_app_time) {
             u64 diff, start;
             u32 remainder;
 
@@ -1363,20 +1274,13 @@ void ec_fsm_slave_config_state_dc_cycle(
             start = start_time +
                 sync0->cycle_time - remainder + sync0->shift_time;
 
-            if (master->debug_level) {
-                EC_SLAVE_DBG(slave, 1, "app_start_time=%llu\n",
-                        master->app_start_time);
-                EC_SLAVE_DBG(slave, 1, "    start_time=%llu\n",
-                        start_time);
-                EC_SLAVE_DBG(slave, 1, "    cycle_time=%u\n",
-                        sync0->cycle_time);
-                EC_SLAVE_DBG(slave, 1, "    shift_time=%u\n",
-                        sync0->shift_time);
-                EC_SLAVE_DBG(slave, 1, "     remainder=%u\n",
-                        remainder);
-                EC_SLAVE_DBG(slave, 1, "         start=%llu\n",
-                        start);
-            }
+            EC_SLAVE_DBG(slave, 1, "app_start_time=%llu\n",
+                    master->app_start_time);
+            EC_SLAVE_DBG(slave, 1, "    start_time=%llu\n", start_time);
+            EC_SLAVE_DBG(slave, 1, "    cycle_time=%u\n", sync0->cycle_time);
+            EC_SLAVE_DBG(slave, 1, "    shift_time=%u\n", sync0->shift_time);
+            EC_SLAVE_DBG(slave, 1, "     remainder=%u\n", remainder);
+            EC_SLAVE_DBG(slave, 1, "         start=%llu\n", start);
             start_time = start;
         } else {
             EC_SLAVE_WARN(slave, "No application time supplied."
