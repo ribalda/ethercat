@@ -41,7 +41,6 @@ Version 1.5.0:
 * Log SoE IDNs with real name ([SP]-x-yyyy).
 * Output SoE IDN configurations in 'ethercat config'.
 * Fix casting away constness during expected WC calculation.
-* Only set system time offset, if application time is present.
 * Read AL status code on spontaneous state change.
 
 Future issues:
