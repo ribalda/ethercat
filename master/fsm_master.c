@@ -1207,7 +1207,7 @@ void ec_fsm_master_state_reg_request(
         }
 
         request->state = EC_INT_REQUEST_SUCCESS;
-        EC_SLAVE_DBG(fsm->slave, 1, "Register request successful.\n");
+        EC_SLAVE_DBG(request->slave, 1, "Register request successful.\n");
     } else {
         request->state = EC_INT_REQUEST_FAILURE;
         EC_MASTER_ERR(master, "Register request failed.\n");
