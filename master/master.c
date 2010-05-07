@@ -144,10 +144,14 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
 
     master->slaves = NULL;
     master->slave_count = 0;
-    
+
     INIT_LIST_HEAD(&master->configs);
 
     master->app_time = 0ULL;
+#ifdef EC_HAVE_CYCLES
+    master->dc_cycles_app_time = 0;
+#endif
+    master->dc_jiffies_app_time = 0;
     master->app_start_time = 0ULL;
     master->has_start_time = 0;
 
@@ -2381,6 +2385,10 @@ void ecrt_master_configured_slaves_state(const ec_master_t *master, ec_master_st
 void ecrt_master_application_time(ec_master_t *master, uint64_t app_time)
 {
     master->app_time = app_time;
+#ifdef EC_HAVE_CYCLES
+    master->dc_cycles_app_time = get_cycles();
+#endif
+    master->dc_jiffies_app_time = jiffies;
 
     if (unlikely(!master->has_start_time)) {
         master->app_start_time = app_time;
