@@ -85,9 +85,9 @@
   \begin{center}
     \rule{\textwidth}{1.5mm}
 
-    {\Huge\bf IgH \includegraphics[height=2.4ex]{images/ethercat}
-      Master \masterversion\\[1ex]
-      Documentation}
+    {\Huge\sf\textbf{IgH \includegraphics[height=2.4ex]{images/ethercat}
+      Master \masterversion}\\[1ex]
+      \textbf{Documentation}}
 
     \vspace{1ex}
     \rule{\textwidth}{1.5mm}
@@ -293,6 +293,21 @@ EtherCAT functionality (see chap.~\ref{chap:api}).
 
   \end{itemize}
 
+\item Servo Profile over EtherCAT (SoE)
+
+  \begin{itemize}
+
+  \item Implemented according to IEC 61800-7 \cite{soespec}.
+
+  \item Storing IDN configurations, that are written to the slave during
+  startup.
+
+  \item Accessing IDNs via the command-line tool.
+
+  \item Accessing IDNs at runtime via the the user-space library.
+
+  \end{itemize}
+
 \item Userspace command-line-tool ``ethercat'' (see sec.~\ref{sec:tool})
 
   \begin{itemize}
@@ -305,6 +320,7 @@ EtherCAT functionality (see chap.~\ref{chap:api}).
   \item Viewing process data.
   \item SDO download/upload; listing SDO dictionaries.
   \item Loading and storing files via FoE.
+  \item SoE IDN access.
   \item Access to slave registers.
   \item Slave SII (EEPROM) access.
   \item Controlling application-layer states.
@@ -614,6 +630,8 @@ physical memory to logical process data images.
 % PDO entry registration
 % SDO configuration
 % SDO access
+% IDN configurations
+% IDN access
 
 The application interface provides functions and data structures for
 applications to access an EtherCAT master. The complete documentation of the
@@ -919,7 +937,7 @@ registers can also be cyclically read via the command-line-tool (see
 sec.~\ref{sec:regaccess}):
 
 \begin{lstlisting}
-$ `\textbf{watch -n0 "ethercat reg\_read -p4 -tint32 0x92c"}`
+$ `\textbf{watch -n0 "ethercat reg\_read -p4 -tsm32 0x92c"}`
 \end{lstlisting}
 
 \paragraph{Sync Signals} Synchronous clocks are only the prerequisite for
@@ -1959,8 +1977,10 @@ mapped PDO entry index, subindex and bit size.
 \chapter{Mailbox Protocol Implementations}
 \index{Mailbox}
 
-The EtherCAT master implements the EoE and the CoE mailbox
-protocols. See the below section for details.
+The EtherCAT master implements the CANopen over EtherCAT (CoE), Ethernet over
+EtherCAT (EoE), File-access over EtherCAT (FoE), Vendor-specific over EtherCAT
+(VoE) and Servo Profile over EtherCAT (SoE) mailbox protocols. See the below
+sections for details.
 
 %------------------------------------------------------------------------------
 
@@ -2139,8 +2159,6 @@ exchange data objects on application level.
 % SDO Info Services
 %
 
-\ldots
-
 \paragraph{SDO Download State Machine}
 
 The best time to apply SDO configurations is during the slave's PREOP state,
@@ -2215,6 +2233,40 @@ handlers contain the state machine necessary for the communication via VoE.
 
 For more information about using VoE handlers, see sec.~\ref{sec:api-voe} or
 the example applications provided in the \textit{examples/} subdirectory.
+
+%------------------------------------------------------------------------------
+
+\section{Servo Profile over EtherCAT (SoE)}
+\label{sec:soe}
+\index{SoE}
+
+The SoE protocol implements the Service Channel layer, specified in IEC
+61800-7 \cite{soespec} via EtherCAT mailboxes.
+
+The SoE protocol is quite similar to the CoE protocol (see
+sec.~\ref{sec:coe}). Instead of SDO indices and subindices, so-called
+identification numbers (IDNs) identify parameters.
+
+The implementation covers the ``SCC Read'' and ``SCC Write'' primitives, each
+with the ability to fragment data.
+
+There are several ways to use the SoE implementation:
+
+\begin{itemize}
+
+\item Reading and writing IDNs via the command-line tool (see
+sec.~\ref{sec:soeaccess}).
+
+\item Storing configurations for arbitrary IDNs via the application interface
+(see chap.~\ref{chap:api}, i.\,e.~\lstinline+ecrt_slave_config_idn()+). These
+configurations are written to the slave during configuration in PREOP state,
+before going to SAFEOP.
+
+\item The user-space library (see sec.~\ref{sec:userlib}), offers functions to
+read/write IDNs in blocking mode (\lstinline+ecrt_master_read_idn()+,
+\lstinline+ecrt_master_write_idn()+).
+
+\end{itemize}
 
 %------------------------------------------------------------------------------
 
@@ -2433,6 +2485,15 @@ $ `\textbf{ethercat slaves}`
 2  5555:1  PREOP  +  EL4102 2K. Ana. Ausgang 0-10V
 3  5555:2  PREOP  +  EL2004 4K. Dig. Ausgang 24V, 0,5A
 \end{lstlisting}
+
+%------------------------------------------------------------------------------
+
+\subsection{SoE IDN Access}
+\label{sec:soeaccess}
+
+\lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_soe_read}
+
+\lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_soe_write}
 
 %------------------------------------------------------------------------------
 
@@ -3183,6 +3244,11 @@ misunderstandings. In: IEE journal ``Computing and Control Engineering'',
 
 \bibitem{autoconf} Autoconf -- GNU Project -- Free Software Foundation (FSF).
 \url{http://www.gnu.org/software/autoconf}, 2010.
+
+\bibitem{soespec} IEC 61800-7-304: Adjustable speed electrical power drive
+systems - Part 7-300: Generic interface and use of profiles for power drive
+systems - Mapping of profiles to network technologies. International
+Electrotechnical Commission (IEC), 2007.
 
 \end{thebibliography}
 

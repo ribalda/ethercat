@@ -39,6 +39,7 @@
 #include <linux/etherdevice.h>
 
 #include "globals.h"
+#include "master.h"
 #include "debug.h"
 
 /*****************************************************************************/
@@ -71,10 +72,12 @@ static const struct net_device_ops ec_dbg_netdev_ops =
  * \retval <0 Error code.
  */
 int ec_debug_init(
-        ec_debug_t *dbg, /**< debug object */
-        const char *name /**< interface name */
+        ec_debug_t *dbg, /**< Debug object. */
+        ec_device_t *device, /**< EtherCAT device. */
+        const char *name /**< Interface name. */
         )
 {
+    dbg->device = device;
     dbg->registered = 0;
     dbg->opened = 0;
 
@@ -82,7 +85,8 @@ int ec_debug_init(
 
     if (!(dbg->dev =
           alloc_netdev(sizeof(ec_debug_t *), name, ether_setup))) {
-        EC_ERR("Unable to allocate net_device for debug object!\n");
+        EC_MASTER_ERR(device->master, "Unable to allocate net_device"
+                " for debug object!\n");
         return -ENODEV;
     }
 
@@ -134,7 +138,8 @@ void ec_debug_register(
 
     // connect the net_device to the kernel
     if ((result = register_netdev(dbg->dev))) {
-        EC_WARN("Unable to register net_device: error %i\n", result);
+        EC_MASTER_WARN(dbg->device->master, "Unable to register net_device:"
+                " error %i\n", result);
     } else {
         dbg->registered = 1;
     }
@@ -202,7 +207,8 @@ int ec_dbgdev_open(
 {
     ec_debug_t *dbg = *((ec_debug_t **) netdev_priv(dev));
     dbg->opened = 1;
-    EC_INFO("Debug interface %s opened.\n", dev->name);
+    EC_MASTER_INFO(dbg->device->master, "Debug interface %s opened.\n",
+            dev->name);
     return 0;
 }
 
@@ -216,7 +222,8 @@ int ec_dbgdev_stop(
 {
     ec_debug_t *dbg = *((ec_debug_t **) netdev_priv(dev));
     dbg->opened = 0;
-    EC_INFO("Debug interface %s stopped.\n", dev->name);
+    EC_MASTER_INFO(dbg->device->master, "Debug interface %s stopped.\n",
+            dev->name);
     return 0;
 }
 

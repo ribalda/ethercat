@@ -131,8 +131,9 @@ void ec_fsm_pdo_entry_start_configuration(
     fsm->cur_pdo = cur_pdo;
 
     if (fsm->slave->master->debug_level) {
-        EC_DBG("Changing mapping of PDO 0x%04X.\n", pdo->index);
-        EC_DBG(""); ec_fsm_pdo_entry_print(fsm);
+        EC_SLAVE_DBG(slave, 1, "Changing mapping of PDO 0x%04X.\n",
+                pdo->index);
+        EC_SLAVE_DBG(slave, 1, ""); ec_fsm_pdo_entry_print(fsm);
     }
 
     fsm->state = ec_fsm_pdo_entry_conf_state_start;
@@ -209,13 +210,15 @@ void ec_fsm_pdo_entry_read_state_count(
         return;
 
     if (!ec_fsm_coe_success(fsm->fsm_coe)) {
-        EC_ERR("Failed to read number of mapped PDO entries.\n");
+        EC_SLAVE_ERR(fsm->slave,
+                "Failed to read number of mapped PDO entries.\n");
         fsm->state = ec_fsm_pdo_entry_state_error;
         return;
     }
 
     if (fsm->request.data_size != sizeof(uint8_t)) {
-        EC_ERR("Invalid data size %zu at uploading SDO 0x%04X:%02X.\n",
+        EC_SLAVE_ERR(fsm->slave, "Invalid data size %zu at uploading"
+                " SDO 0x%04X:%02X.\n",
                 fsm->request.data_size, fsm->request.index,
                 fsm->request.subindex);
         fsm->state = ec_fsm_pdo_entry_state_error;
@@ -224,8 +227,7 @@ void ec_fsm_pdo_entry_read_state_count(
 
     fsm->entry_count = EC_READ_U8(fsm->request.data);
 
-    if (fsm->slave->master->debug_level)
-        EC_DBG("%u PDO entries mapped.\n", fsm->entry_count);
+    EC_SLAVE_DBG(fsm->slave, 1, "%u PDO entries mapped.\n", fsm->entry_count);
 
     // read first PDO entry
     fsm->entry_pos = 1;
@@ -264,13 +266,14 @@ void ec_fsm_pdo_entry_read_state_entry(
     if (ec_fsm_coe_exec(fsm->fsm_coe)) return;
 
     if (!ec_fsm_coe_success(fsm->fsm_coe)) {
-        EC_ERR("Failed to read mapped PDO entry.\n");
+        EC_SLAVE_ERR(fsm->slave, "Failed to read mapped PDO entry.\n");
         fsm->state = ec_fsm_pdo_entry_state_error;
         return;
     }
 
     if (fsm->request.data_size != sizeof(uint32_t)) {
-        EC_ERR("Invalid data size %zu at uploading SDO 0x%04X:%02X.\n",
+        EC_SLAVE_ERR(fsm->slave, "Invalid data size %zu at"
+                " uploading SDO 0x%04X:%02X.\n",
                 fsm->request.data_size, fsm->request.index,
                 fsm->request.subindex);
         fsm->state = ec_fsm_pdo_entry_state_error;
@@ -282,7 +285,7 @@ void ec_fsm_pdo_entry_read_state_entry(
 
         if (!(pdo_entry = (ec_pdo_entry_t *)
                     kmalloc(sizeof(ec_pdo_entry_t), GFP_KERNEL))) {
-            EC_ERR("Failed to allocate PDO entry.\n");
+            EC_SLAVE_ERR(fsm->slave, "Failed to allocate PDO entry.\n");
             fsm->state = ec_fsm_pdo_entry_state_error;
             return;
         }
@@ -301,12 +304,11 @@ void ec_fsm_pdo_entry_read_state_entry(
             }
         }
 
-        if (fsm->slave->master->debug_level) {
-            EC_DBG("PDO entry 0x%04X:%02X, %u bit, \"%s\".\n",
-                    pdo_entry->index, pdo_entry->subindex,
-                    pdo_entry->bit_length,
-                    pdo_entry->name ? pdo_entry->name : "???");
-        }
+        EC_SLAVE_DBG(fsm->slave, 1,
+                "PDO entry 0x%04X:%02X, %u bit, \"%s\".\n",
+                pdo_entry->index, pdo_entry->subindex,
+                pdo_entry->bit_length,
+                pdo_entry->name ? pdo_entry->name : "???");
 
         list_add_tail(&pdo_entry->list, &fsm->target_pdo->entries);
 
@@ -330,9 +332,9 @@ void ec_fsm_pdo_entry_conf_state_start(
     if (!(fsm->slave->sii.mailbox_protocols & EC_MBOX_COE)
             || (fsm->slave->sii.has_general
                 && !fsm->slave->sii.coe_details.enable_pdo_configuration)) {
-        EC_WARN("Slave %u does not support changing the PDO mapping!\n",
-                fsm->slave->ring_position);
-        EC_WARN(""); ec_fsm_pdo_entry_print(fsm);
+            EC_SLAVE_WARN(fsm->slave, "Slave does not support"
+                    " changing the PDO mapping!\n");
+        EC_SLAVE_WARN(fsm->slave, ""); ec_fsm_pdo_entry_print(fsm);
         fsm->state = ec_fsm_pdo_entry_state_error;
         return;
     }
@@ -348,8 +350,7 @@ void ec_fsm_pdo_entry_conf_state_start(
     ec_sdo_request_address(&fsm->request, fsm->source_pdo->index, 0);
     ecrt_sdo_request_write(&fsm->request);
 
-    if (fsm->slave->master->debug_level)
-        EC_DBG("Setting entry count to zero.\n");
+    EC_SLAVE_DBG(fsm->slave, 1, "Setting entry count to zero.\n");
 
     fsm->state = ec_fsm_pdo_entry_conf_state_zero_entry_count;
     ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, &fsm->request);
@@ -383,8 +384,8 @@ void ec_fsm_pdo_entry_conf_state_zero_entry_count(
         return;
 
     if (!ec_fsm_coe_success(fsm->fsm_coe)) {
-        EC_WARN("Failed to clear PDO mapping.\n");
-        EC_WARN(""); ec_fsm_pdo_entry_print(fsm);
+        EC_SLAVE_WARN(fsm->slave, "Failed to clear PDO mapping.\n");
+        EC_SLAVE_WARN(fsm->slave, ""); ec_fsm_pdo_entry_print(fsm);
         fsm->state = ec_fsm_pdo_entry_state_error;
         return;
     }
@@ -393,8 +394,7 @@ void ec_fsm_pdo_entry_conf_state_zero_entry_count(
     if (!(fsm->entry = ec_fsm_pdo_entry_conf_next_entry(
                     fsm, &fsm->source_pdo->entries))) {
         
-        if (fsm->slave->master->debug_level)
-            EC_DBG("No entries to map.\n");
+        EC_SLAVE_DBG(fsm->slave, 1, "No entries to map.\n");
 
         fsm->state = ec_fsm_pdo_entry_state_end; // finished
         return;
@@ -415,10 +415,10 @@ void ec_fsm_pdo_entry_conf_action_map(
 {
     uint32_t value;
 
-    if (fsm->slave->master->debug_level)
-        EC_DBG("Mapping PDO entry 0x%04X:%02X (%u bit) at position %u.\n",
-                fsm->entry->index, fsm->entry->subindex,
-                fsm->entry->bit_length, fsm->entry_pos);
+    EC_SLAVE_DBG(fsm->slave, 1, "Mapping PDO entry 0x%04X:%02X (%u bit)"
+            " at position %u.\n",
+            fsm->entry->index, fsm->entry->subindex,
+            fsm->entry->bit_length, fsm->entry_pos);
 
     value = fsm->entry->index << 16
         | fsm->entry->subindex << 8 | fsm->entry->bit_length;
@@ -443,10 +443,11 @@ void ec_fsm_pdo_entry_conf_state_map_entry(
     if (ec_fsm_coe_exec(fsm->fsm_coe)) return;
 
     if (!ec_fsm_coe_success(fsm->fsm_coe)) {
-        EC_WARN("Failed to map PDO entry 0x%04X:%02X (%u bit) to "
-                "position %u.\n", fsm->entry->index, fsm->entry->subindex,
+        EC_SLAVE_WARN(fsm->slave, "Failed to map PDO entry"
+                " 0x%04X:%02X (%u bit) to position %u.\n",
+                fsm->entry->index, fsm->entry->subindex,
                 fsm->entry->bit_length, fsm->entry_pos);
-        EC_WARN(""); ec_fsm_pdo_entry_print(fsm);
+        EC_SLAVE_WARN(fsm->slave, ""); ec_fsm_pdo_entry_print(fsm);
         fsm->state = ec_fsm_pdo_entry_state_error;
         return;
     }
@@ -461,8 +462,8 @@ void ec_fsm_pdo_entry_conf_state_map_entry(
         ec_sdo_request_address(&fsm->request, fsm->source_pdo->index, 0);
         ecrt_sdo_request_write(&fsm->request);
 
-        if (fsm->slave->master->debug_level)
-            EC_DBG("Setting number of PDO entries to %u.\n", fsm->entry_pos);
+        EC_SLAVE_DBG(fsm->slave, 1, "Setting number of PDO entries to %u.\n",
+                fsm->entry_pos);
         
         fsm->state = ec_fsm_pdo_entry_conf_state_set_entry_count;
         ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, &fsm->request);
@@ -486,15 +487,14 @@ void ec_fsm_pdo_entry_conf_state_set_entry_count(
     if (ec_fsm_coe_exec(fsm->fsm_coe)) return;
 
     if (!ec_fsm_coe_success(fsm->fsm_coe)) {
-        EC_WARN("Failed to set number of entries.\n");
-        EC_WARN(""); ec_fsm_pdo_entry_print(fsm);
+        EC_SLAVE_WARN(fsm->slave, "Failed to set number of entries.\n");
+        EC_SLAVE_WARN(fsm->slave, ""); ec_fsm_pdo_entry_print(fsm);
         fsm->state = ec_fsm_pdo_entry_state_error;
         return;
     }
 
-    if (fsm->slave->master->debug_level)
-        EC_DBG("Successfully configured mapping for PDO 0x%04X.\n",
-                fsm->source_pdo->index);
+    EC_SLAVE_DBG(fsm->slave, 1, "Successfully configured"
+            " mapping for PDO 0x%04X.\n", fsm->source_pdo->index);
 
     fsm->state = ec_fsm_pdo_entry_state_end; // finished
 }

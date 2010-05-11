@@ -129,10 +129,10 @@ void ec_sync_page(
         }
     }
 
-    if (sync->slave->master->debug_level)
-        EC_DBG("SM%u: Addr 0x%04X, Size %3u, Ctrl 0x%02X, En %u\n",
-               sync_index, sync->physical_start_address,
-               data_size, control, enable);
+    EC_SLAVE_DBG(sync->slave, 1, "SM%u: Addr 0x%04X, Size %3u,"
+            " Ctrl 0x%02X, En %u\n",
+            sync_index, sync->physical_start_address,
+            data_size, control, enable);
 
     EC_WRITE_U16(data,     sync->physical_start_address);
     EC_WRITE_U16(data + 2, data_size);

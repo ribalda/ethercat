@@ -371,14 +371,22 @@ Command::DomainList Command::selectedDomains(MasterDevice &m)
 
 string Command::alStateString(uint8_t state)
 {
-    switch (state) {
-        case 1: return "INIT";
-        case 2: return "PREOP";
-        case 3: return "BOOT";
-        case 4: return "SAFEOP";
-        case 8: return "OP";
-        default: return "???";
+    string ret;
+
+    switch (state & EC_SLAVE_STATE_MASK) {
+        case 1: ret = "INIT"; break;
+        case 2: ret = "PREOP"; break;
+        case 3: ret = "BOOT"; break;
+        case 4: ret = "SAFEOP"; break;
+        case 8: ret = "OP"; break;
+        default: ret = "???";
     }
+
+    if (state & EC_SLAVE_STATE_ACK_ERR) { 
+        ret += "+ERROR";
+    }
+
+    return ret;
 }
 
 /****************************************************************************/

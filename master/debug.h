@@ -34,16 +34,18 @@
 
 /*****************************************************************************/
 
-#include <linux/netdevice.h>
+#ifndef __EC_DEBUG_H__
+#define __EC_DEBUG_H__
+
+#include "../devices/ecdev.h"
 
 /*****************************************************************************/
 
-/**
-   Debugging network interface.
-*/
-
+/** Debugging network interface.
+ */
 typedef struct
 {
+    ec_device_t *device; /**< Parent device. */
     struct net_device *dev; /**< net_device for virtual ethernet device */
     struct net_device_stats stats; /**< device statistics */
     uint8_t registered; /**< net_device is opened */
@@ -53,10 +55,12 @@ ec_debug_t;
 
 /*****************************************************************************/
 
-int ec_debug_init(ec_debug_t *, const char *);
+int ec_debug_init(ec_debug_t *, ec_device_t *, const char *);
 void ec_debug_clear(ec_debug_t *);
 void ec_debug_register(ec_debug_t *, const struct net_device *);
 void ec_debug_unregister(ec_debug_t *);
 void ec_debug_send(ec_debug_t *, const uint8_t *, size_t);
+
+#endif
 
 /*****************************************************************************/

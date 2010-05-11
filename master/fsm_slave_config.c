@@ -44,9 +44,20 @@
 
 /*****************************************************************************/
 
-/** Time difference [ns] to tolerate without setting a new system time offset.
+/** Maximum clock difference (in ns) before going to SAFEOP.
+ *
+ * Wait for DC time difference to drop under this absolute value before
+ * requesting SAFEOP.
  */
-#define EC_SYSTEM_TIME_TOLERANCE_NS 100000000
+#define EC_DC_MAX_SYNC_DIFF_NS 5000
+
+/** Maximum time (in ms) to wait for clock discipline.
+ */
+#define EC_DC_SYNC_WAIT_MS 5000
+
+/** Time offset (in ns), that is added to cyclic start time.
+ */
+#define EC_DC_START_OFFSET 100000000ULL
 
 /*****************************************************************************/
 
@@ -55,8 +66,6 @@ void ec_fsm_slave_config_state_init(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_clear_fmmus(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_clear_sync(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_dc_clear_assign(ec_fsm_slave_config_t *);
-void ec_fsm_slave_config_state_dc_read_offset(ec_fsm_slave_config_t *);
-void ec_fsm_slave_config_state_dc_write_offset(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_mbox_sync(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_boot_preop(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_sdo_conf(ec_fsm_slave_config_t *);
@@ -67,6 +76,7 @@ void ec_fsm_slave_config_state_pdo_sync(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_pdo_conf(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_fmmu(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_dc_cycle(ec_fsm_slave_config_t *);
+void ec_fsm_slave_config_state_dc_sync_check(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_dc_start(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_dc_assign(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_safeop(ec_fsm_slave_config_t *);
@@ -196,10 +206,7 @@ void ec_fsm_slave_config_state_start(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-    if (fsm->slave->master->debug_level) {
-        EC_DBG("Configuring slave %u...\n", fsm->slave->ring_position);
-    }
-    
+    EC_SLAVE_DBG(fsm->slave, 1, "Configuring...\n");
     ec_fsm_slave_config_enter_init(fsm);
 }
 
@@ -224,7 +231,6 @@ void ec_fsm_slave_config_state_init(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-    ec_master_t *master = fsm->slave->master;
     ec_slave_t *slave = fsm->slave;
     ec_datagram_t *datagram = fsm->datagram;
 
@@ -237,18 +243,14 @@ void ec_fsm_slave_config_state_init(
         return;
     }
 
-    if (master->debug_level) {
-        EC_DBG("Slave %u is now in INIT.\n", slave->ring_position);
-    }
+    EC_SLAVE_DBG(slave, 1, "Now in INIT.\n");
 
     if (!slave->base_fmmu_count) { // skip FMMU configuration
         ec_fsm_slave_config_enter_clear_sync(fsm);
         return;
     }
 
-    if (master->debug_level)
-        EC_DBG("Clearing FMMU configurations of slave %u...\n",
-               slave->ring_position);
+    EC_SLAVE_DBG(slave, 1, "Clearing FMMU configurations...\n");
 
     // clear FMMU configurations
     ec_datagram_fpwr(datagram, slave->station_address,
@@ -273,16 +275,14 @@ void ec_fsm_slave_config_state_clear_fmmus(
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_config_state_error;
-        EC_ERR("Failed receive FMMU clearing datagram for slave %u.\n",
-               fsm->slave->ring_position);
+        EC_SLAVE_ERR(fsm->slave, "Failed receive FMMU clearing datagram.\n");
         return;
     }
 
     if (datagram->working_counter != 1) {
         fsm->slave->error_flag = 1;
         fsm->state = ec_fsm_slave_config_state_error;
-        EC_ERR("Failed to clear FMMUs of slave %u: ",
-               fsm->slave->ring_position);
+        EC_SLAVE_ERR(fsm->slave, "Failed to clear FMMUs: ");
         ec_datagram_print_wc_error(datagram);
         return;
     }
@@ -308,9 +308,7 @@ void ec_fsm_slave_config_enter_clear_sync(
         return;
     }
 
-    if (slave->master->debug_level)
-        EC_DBG("Clearing sync manager configurations of slave %u...\n",
-                slave->ring_position);
+    EC_SLAVE_DBG(slave, 1, "Clearing sync manager configurations...\n");
 
     sync_size = EC_SYNC_PAGE_SIZE * slave->base_sync_count;
 
@@ -336,16 +334,16 @@ void ec_fsm_slave_config_state_clear_sync(
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_config_state_error;
-        EC_ERR("Failed receive sync manager clearing datagram"
-                " for slave %u.\n", fsm->slave->ring_position);
+        EC_SLAVE_ERR(fsm->slave, "Failed receive sync manager"
+                " clearing datagram.\n");
         return;
     }
 
     if (datagram->working_counter != 1) {
         fsm->slave->error_flag = 1;
         fsm->state = ec_fsm_slave_config_state_error;
-        EC_ERR("Failed to clear sync manager configurations of slave %u: ",
-               fsm->slave->ring_position);
+        EC_SLAVE_ERR(fsm->slave,
+                "Failed to clear sync manager configurations: ");
         ec_datagram_print_wc_error(datagram);
         return;
     }
@@ -369,9 +367,7 @@ void ec_fsm_slave_config_enter_dc_clear_assign(
         return;
     }
 
-    if (slave->master->debug_level)
-        EC_DBG("Clearing DC assignment of slave %u...\n",
-                slave->ring_position);
+    EC_SLAVE_DBG(slave, 1, "Clearing DC assignment...\n");
 
     ec_datagram_fpwr(datagram, slave->station_address, 0x0980, 2);
     ec_datagram_zero(datagram);
@@ -394,200 +390,15 @@ void ec_fsm_slave_config_state_dc_clear_assign(
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_config_state_error;
-        EC_ERR("Failed receive DC assignment clearing datagram"
-                " for slave %u.\n", fsm->slave->ring_position);
+        EC_SLAVE_ERR(fsm->slave, "Failed receive DC assignment"
+                " clearing datagram.\n");
         return;
     }
 
-    if (fsm->slave->master->debug_level && datagram->working_counter != 1) {
+    if (datagram->working_counter != 1) {
         // clearing the DC assignment does not succeed on simple slaves
-        EC_DBG("Failed to clear DC assignment of slave %u: ",
-               fsm->slave->ring_position);
+        EC_SLAVE_DBG(fsm->slave, 1, "Failed to clear DC assignment: ");
         ec_datagram_print_wc_error(datagram);
-    }
-
-    // read DC system time (0x0910, 64 bit)
-    //                         gap (64 bit)
-    //     and time offset (0x0920, 64 bit)
-    ec_datagram_fprd(fsm->datagram, fsm->slave->station_address, 0x0910, 24);
-    fsm->retries = EC_FSM_RETRIES;
-    fsm->state = ec_fsm_slave_config_state_dc_read_offset;
-}
-
-/*****************************************************************************/
-
-/** Configure 32 bit time offset.
- */
-u64 ec_fsm_slave_config_dc_offset32(
-        ec_fsm_slave_config_t *fsm, /**< slave state machine */
-        u64 system_time, /**< System time register. */
-        u64 old_offset, /**< Time offset register. */
-        u64 correction /**< Correction. */
-        )
-{
-    ec_slave_t *slave = fsm->slave;
-    u32 correction32, system_time32, old_offset32, new_offset;
-    s32 time_diff;
-
-    system_time32 = (u32) system_time;
-    old_offset32 = (u32) old_offset;
-
-    // correct read system time by elapsed time since read operation
-    correction32 = (u32)correction;
-    system_time32 -= correction32;
-    time_diff = (u32) slave->master->app_time - system_time32;
-
-    if (slave->master->debug_level)
-        EC_DBG("Slave %u: system_time=%u (corrected with %u),"
-                " app_time=%u, diff=%i\n",
-                slave->ring_position, system_time32, correction32,
-                (u32) slave->master->app_time, time_diff);
-
-    if (EC_ABS(time_diff) > EC_SYSTEM_TIME_TOLERANCE_NS) {
-        new_offset = time_diff + old_offset32;
-        if (slave->master->debug_level)
-            EC_DBG("Slave %u: Setting time offset to %u (was %u)\n",
-                    slave->ring_position, new_offset, old_offset32);
-        return (u64) new_offset;
-    } else {
-        if (slave->master->debug_level)
-            EC_DBG("Slave %u: Not touching time offset.\n",
-                    slave->ring_position);
-        return old_offset;
-    }
-}
-
-/*****************************************************************************/
-
-/** Configure 64 bit time offset.
- */
-u64 ec_fsm_slave_config_dc_offset64(
-        ec_fsm_slave_config_t *fsm, /**< slave state machine */
-        u64 system_time, /**< System time register. */
-        u64 old_offset, /**< Time offset register. */
-        u64 correction /**< Correction. */
-        )
-{
-    ec_slave_t *slave = fsm->slave;
-    u64 new_offset;
-    s64 time_diff;
-
-    system_time -= correction;
-    time_diff = fsm->slave->master->app_time - system_time;
-
-    if (slave->master->debug_level)
-        EC_DBG("Slave %u: system_time=%llu (corrected with %llu),"
-                " app_time=%llu, diff=%lli\n",
-                slave->ring_position, system_time, correction,
-                slave->master->app_time, time_diff);
-
-
-    if (EC_ABS(time_diff) > EC_SYSTEM_TIME_TOLERANCE_NS) {
-        new_offset = time_diff + old_offset;
-        if (slave->master->debug_level)
-            EC_DBG("Slave %u: Setting time offset to %llu (was %llu)\n",
-                    slave->ring_position, new_offset, old_offset);
-    } else {
-        new_offset = old_offset;
-        if (slave->master->debug_level)
-            EC_DBG("Slave %u: Not touching time offset.\n",
-                    slave->ring_position);
-    }
-
-    return new_offset;
-}
-
-/*****************************************************************************/
-
-/** Slave configuration state: DC READ OFFSET.
- */
-void ec_fsm_slave_config_state_dc_read_offset(
-        ec_fsm_slave_config_t *fsm /**< slave state machine */
-        )
-{
-    ec_datagram_t *datagram = fsm->datagram;
-    ec_slave_t *slave = fsm->slave;
-    u64 system_time, old_offset, new_offset, correction;
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
-        return;
-
-    if (datagram->state != EC_DATAGRAM_RECEIVED) {
-        fsm->state = ec_fsm_slave_config_state_error;
-        EC_ERR("Failed to receive DC times datagram for slave %u: ",
-                slave->ring_position);
-        ec_datagram_print_state(datagram);
-        return;
-    }
-
-    if (datagram->working_counter != 1) {
-        slave->error_flag = 1;
-        fsm->state = ec_fsm_slave_config_state_error;
-        EC_ERR("Failed to get DC times of slave %u: ",
-                slave->ring_position);
-        ec_datagram_print_wc_error(datagram);
-        return;
-    }
-
-    system_time = EC_READ_U64(datagram->data);     // 0x0910
-    old_offset = EC_READ_U64(datagram->data + 16); // 0x0920
-    /* correct read system time by elapsed time since read operation
-       and the app_time set time */
-#ifdef EC_HAVE_CYCLES
-    correction =
-            (datagram->cycles_sent - slave->master->dc_cycles_app_time)
-            * 1000000LL;
-    do_div(correction,cpu_khz);
-#else
-    correction =
-            (u64) ((datagram->jiffies_sent-slave->master->dc_jiffies_app_time) * 1000 / HZ)
-            * 1000000;
-#endif
-
-    if (slave->base_dc_range == EC_DC_32) {
-        new_offset = ec_fsm_slave_config_dc_offset32(fsm,
-                system_time, old_offset, correction);
-    } else {
-        new_offset = ec_fsm_slave_config_dc_offset64(fsm,
-                system_time, old_offset, correction);
-    }
-
-    // set DC system time offset and transmission delay
-    ec_datagram_fpwr(datagram, slave->station_address, 0x0920, 12);
-    EC_WRITE_U64(datagram->data, new_offset);
-    EC_WRITE_U32(datagram->data + 8, slave->transmission_delay);
-    fsm->retries = EC_FSM_RETRIES;
-    fsm->state = ec_fsm_slave_config_state_dc_write_offset;
-}
-
-/*****************************************************************************/
-
-/** Slave configuration state: DC WRITE OFFSET.
- */
-void ec_fsm_slave_config_state_dc_write_offset(
-        ec_fsm_slave_config_t *fsm /**< slave state machine */
-        )
-{
-    ec_datagram_t *datagram = fsm->datagram;
-    ec_slave_t *slave = fsm->slave;
-
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
-        return;
-
-    if (datagram->state != EC_DATAGRAM_RECEIVED) {
-        fsm->state = ec_fsm_slave_config_state_error;
-        EC_ERR("Failed to receive DC system time offset datagram for"
-                " slave %u: ", slave->ring_position);
-        ec_datagram_print_state(datagram);
-        return;
-    }
-
-    if (datagram->working_counter != 1) {
-        slave->error_flag = 1;
-        fsm->state = ec_fsm_slave_config_state_error;
-        EC_ERR("Failed to set DC system time offset of slave %u: ",
-                slave->ring_position);
-        ec_datagram_print_wc_error(datagram);
-        return;
     }
 
     ec_fsm_slave_config_enter_mbox_sync(fsm);
@@ -601,7 +412,6 @@ void ec_fsm_slave_config_enter_mbox_sync(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-    ec_master_t *master = fsm->slave->master;
     ec_slave_t *slave = fsm->slave;
     ec_datagram_t *datagram = fsm->datagram;
     unsigned int i;
@@ -609,26 +419,19 @@ void ec_fsm_slave_config_enter_mbox_sync(
     // slave is now in INIT
     if (slave->current_state == slave->requested_state) {
         fsm->state = ec_fsm_slave_config_state_end; // successful
-        if (master->debug_level) {
-            EC_DBG("Finished configuration of slave %u.\n",
-                   slave->ring_position);
-        }
+        EC_SLAVE_DBG(slave, 1, "Finished configuration.\n");
         return;
     }
 
     if (!slave->sii.mailbox_protocols) {
         // no mailbox protocols supported
-        if (master->debug_level)
-            EC_DBG("Slave %u does not support mailbox communication.\n",
-                    slave->ring_position);
+        EC_SLAVE_DBG(slave, 1, "Slave does not support"
+                " mailbox communication.\n");
         ec_fsm_slave_config_enter_boot_preop(fsm);
         return;
     }
 
-    if (master->debug_level) {
-        EC_DBG("Configuring mailbox sync managers of slave %u.\n",
-               slave->ring_position);
-    }
+    EC_SLAVE_DBG(slave, 1, "Configuring mailbox sync managers...\n");
 
     if (slave->requested_state == EC_SLAVE_STATE_BOOT) {
         ec_sync_t sync;
@@ -684,10 +487,8 @@ void ec_fsm_slave_config_enter_mbox_sync(
     } else { // no mailbox sync manager configurations provided
         ec_sync_t sync;
 
-        if (master->debug_level)
-            EC_DBG("Slave %u does not provide"
-                    " mailbox sync manager configurations.\n",
-                    slave->ring_position);
+        EC_SLAVE_DBG(slave, 1, "Slave does not provide"
+                " mailbox sync manager configurations.\n");
 
         ec_datagram_fpwr(datagram, slave->station_address, 0x0800,
                 EC_SYNC_PAGE_SIZE * 2);
@@ -742,8 +543,8 @@ void ec_fsm_slave_config_state_mbox_sync(
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_config_state_error;
-        EC_ERR("Failed to receive sync manager configuration datagram for"
-               " slave %u: ", slave->ring_position);
+        EC_SLAVE_ERR(slave, "Failed to receive sync manager"
+                " configuration datagram: ");
         ec_datagram_print_state(datagram);
         return;
     }
@@ -764,12 +565,11 @@ void ec_fsm_slave_config_state_mbox_sync(
         if (diff >= HZ) {
             slave->error_flag = 1;
             fsm->state = ec_fsm_slave_config_state_error;
-            EC_ERR("Timeout while configuring mailbox sync managers of"
-                    " slave %u.\n", slave->ring_position);
+            EC_SLAVE_ERR(slave, "Timeout while configuring"
+                    " mailbox sync managers.\n");
             return;
-        }
-        else if (slave->master->debug_level) {
-            EC_DBG("Resending after %u ms...\n",
+        } else {
+            EC_SLAVE_DBG(slave, 1, "Resending after %u ms...\n",
                     (unsigned int) diff * 1000 / HZ);
         }
 
@@ -780,8 +580,7 @@ void ec_fsm_slave_config_state_mbox_sync(
     else if (datagram->working_counter != 1) {
         slave->error_flag = 1;
         fsm->state = ec_fsm_slave_config_state_error;
-        EC_ERR("Failed to set sync managers of slave %u: ",
-               slave->ring_position);
+        EC_SLAVE_ERR(slave, "Failed to set sync managers: ");
         ec_datagram_print_wc_error(datagram);
         return;
     }
@@ -817,7 +616,6 @@ void ec_fsm_slave_config_state_boot_preop(
         )
 {
     ec_slave_t *slave = fsm->slave;
-    ec_master_t *master = fsm->slave->master;
 
     if (ec_fsm_change_exec(fsm->fsm_change)) return;
 
@@ -831,18 +629,12 @@ void ec_fsm_slave_config_state_boot_preop(
     // slave is now in BOOT or PREOP
     slave->jiffies_preop = fsm->datagram->jiffies_received;
 
-    if (master->debug_level) {
-        EC_DBG("Slave %u is now in %s.\n", slave->ring_position,
-                slave->requested_state != EC_SLAVE_STATE_BOOT
-                ? "PREOP" : "BOOT");
-    }
+    EC_SLAVE_DBG(slave, 1, "Now in %s.\n",
+            slave->requested_state != EC_SLAVE_STATE_BOOT ? "PREOP" : "BOOT");
 
     if (slave->current_state == slave->requested_state) {
         fsm->state = ec_fsm_slave_config_state_end; // successful
-        if (master->debug_level) {
-            EC_DBG("Finished configuration of slave %u.\n",
-                   slave->ring_position);
-        }
+        EC_SLAVE_DBG(slave, 1, "Finished configuration.\n");
         return;
     }
 
@@ -891,8 +683,7 @@ void ec_fsm_slave_config_state_sdo_conf(
     if (ec_fsm_coe_exec(fsm->fsm_coe)) return;
 
     if (!ec_fsm_coe_success(fsm->fsm_coe)) {
-        EC_ERR("SDO configuration failed for slave %u.\n",
-                fsm->slave->ring_position);
+        EC_SLAVE_ERR(fsm->slave, "SDO configuration failed.\n");
         fsm->slave->error_flag = 1;
         fsm->state = ec_fsm_slave_config_state_error;
         return;
@@ -968,8 +759,7 @@ void ec_fsm_slave_config_state_soe_conf(
     }
 
     if (!ec_fsm_soe_success(fsm_soe)) {
-        EC_ERR("SoE configuration failed for slave %u.\n",
-                fsm->slave->ring_position);
+        EC_SLAVE_ERR(slave, "SoE configuration failed.\n");
         fsm->slave->error_flag = 1;
         fsm->state = ec_fsm_slave_config_state_error;
         return;
@@ -1029,8 +819,7 @@ void ec_fsm_slave_config_state_pdo_conf(
     }
 
     if (!ec_fsm_pdo_success(fsm->fsm_pdo)) {
-        EC_WARN("PDO configuration failed on slave %u.\n",
-                fsm->slave->ring_position);
+        EC_SLAVE_WARN(fsm->slave, "PDO configuration failed.\n");
     }
 
     ec_fsm_slave_config_enter_watchdog_divider(fsm);
@@ -1046,13 +835,11 @@ void ec_fsm_slave_config_enter_watchdog_divider(
 {
     ec_slave_t *slave = fsm->slave;
     ec_datagram_t *datagram = fsm->datagram;
-    ec_master_t *master = slave->master;    
     ec_slave_config_t *config = slave->config;
 
     if (config && config->watchdog_divider) {
-        if (master->debug_level)
-            EC_DBG("Setting watchdog divider to %u.\n",
-                    config->watchdog_divider);
+        EC_SLAVE_DBG(slave, 1, "Setting watchdog divider to %u.\n",
+                config->watchdog_divider);
 
         ec_datagram_fpwr(datagram, slave->station_address, 0x0400, 2);
         EC_WRITE_U16(datagram->data, config->watchdog_divider);
@@ -1079,16 +866,15 @@ void ec_fsm_slave_config_state_watchdog_divider(
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_config_state_error;
-        EC_ERR("Failed to receive watchdog divider configuration datagram for"
-               " slave %u: ", slave->ring_position);
+        EC_SLAVE_ERR(slave, "Failed to receive watchdog divider"
+                " configuration datagram: ");
         ec_datagram_print_state(datagram);
         return;
     }
 
     if (datagram->working_counter != 1) {
         slave->error_flag = 1;
-        EC_WARN("Failed to set watchdog divider of slave %u: ",
-               slave->ring_position);
+        EC_SLAVE_WARN(slave, "Failed to set watchdog divider: ");
         ec_datagram_print_wc_error(datagram);
         return;
     }
@@ -1109,9 +895,8 @@ void ec_fsm_slave_config_enter_watchdog(
     ec_slave_config_t *config = slave->config;
 
     if (config && config->watchdog_intervals) {
-        if (slave->master->debug_level)
-            EC_DBG("Setting process data watchdog intervals to %u.\n",
-                    config->watchdog_intervals);
+        EC_SLAVE_DBG(slave, 1, "Setting process data"
+                " watchdog intervals to %u.\n", config->watchdog_intervals);
 
         ec_datagram_fpwr(datagram, slave->station_address, 0x0420, 2);
         EC_WRITE_U16(datagram->data, config->watchdog_intervals);
@@ -1140,15 +925,15 @@ void ec_fsm_slave_config_state_watchdog(
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_config_state_error;
-        EC_ERR("Failed to receive sync manager watchdog configuration "
-                "datagram for slave %u: ", slave->ring_position);
+        EC_SLAVE_ERR(slave, "Failed to receive sync manager"
+                " watchdog configuration datagram: ");
         ec_datagram_print_state(datagram);
         return;
     }
 
     if (datagram->working_counter != 1) {
-        EC_WARN("Failed to set process data watchdog intervals of slave %u: ",
-               slave->ring_position);
+        EC_SLAVE_WARN(slave, "Failed to set process data"
+                " watchdog intervals: ");
         ec_datagram_print_wc_error(datagram);
     }
 
@@ -1227,8 +1012,8 @@ void ec_fsm_slave_config_state_pdo_sync(
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_config_state_error;
-        EC_ERR("Failed to receive process data sync manager configuration"
-               " datagram for slave %u: ", slave->ring_position);
+        EC_SLAVE_ERR(slave, "Failed to receive process data sync"
+                " manager configuration datagram: ");
         ec_datagram_print_state(datagram);
         return;
     }
@@ -1236,8 +1021,7 @@ void ec_fsm_slave_config_state_pdo_sync(
     if (datagram->working_counter != 1) {
         slave->error_flag = 1;
         fsm->state = ec_fsm_slave_config_state_error;
-        EC_ERR("Failed to set process data sync managers of slave %u: ",
-                slave->ring_position);
+        EC_SLAVE_ERR(slave, "Failed to set process data sync managers: ");
         ec_datagram_print_wc_error(datagram);
         return;
     }
@@ -1267,8 +1051,8 @@ void ec_fsm_slave_config_enter_fmmu(
     if (slave->base_fmmu_count < slave->config->used_fmmus) {
         slave->error_flag = 1;
         fsm->state = ec_fsm_slave_config_state_error;
-        EC_ERR("Slave %u has less FMMUs (%u) than requested (%u).\n",
-                slave->ring_position, slave->base_fmmu_count,
+        EC_SLAVE_ERR(slave, "Slave has less FMMUs (%u)"
+                " than requested (%u).\n", slave->base_fmmu_count,
                 slave->config->used_fmmus);
         return;
     }
@@ -1287,8 +1071,8 @@ void ec_fsm_slave_config_enter_fmmu(
         if (!(sync = ec_slave_get_sync(slave, fmmu->sync_index))) {
             slave->error_flag = 1;
             fsm->state = ec_fsm_slave_config_state_error;
-            EC_ERR("Failed to determine PDO sync manager for FMMU on slave"
-                    " %u!\n", slave->ring_position);
+            EC_SLAVE_ERR(slave, "Failed to determine PDO sync manager"
+                    " for FMMU!\n");
             return;
         }
         ec_fmmu_config_page(fmmu, sync,
@@ -1315,8 +1099,7 @@ void ec_fsm_slave_config_state_fmmu(
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_config_state_error;
-        EC_ERR("Failed to receive FMMUs datagram for slave %u: ",
-               slave->ring_position);
+        EC_SLAVE_ERR(slave, "Failed to receive FMMUs datagram: ");
         ec_datagram_print_state(datagram);
         return;
     }
@@ -1324,8 +1107,7 @@ void ec_fsm_slave_config_state_fmmu(
     if (datagram->working_counter != 1) {
         slave->error_flag = 1;
         fsm->state = ec_fsm_slave_config_state_error;
-        EC_ERR("Failed to set FMMUs of slave %u: ",
-               slave->ring_position);
+        EC_SLAVE_ERR(slave, "Failed to set FMMUs: ");
         ec_datagram_print_wc_error(datagram);
         return;
     }
@@ -1352,15 +1134,12 @@ void ec_fsm_slave_config_enter_dc_cycle(
 
     if (config->dc_assign_activate) {
         if (!slave->base_dc_supported || !slave->has_dc_system_time) {
-            EC_WARN("Slave %u seems not to support distributed clocks!\n",
-                    slave->ring_position);
+            EC_SLAVE_WARN(slave, "Slave seems not to support"
+                    " distributed clocks!\n");
         }
 
-        if (slave->master->debug_level)
-            EC_DBG("Slave %u: Setting DC cycle times to %u / %u.\n",
-                    slave->ring_position,
-                    config->dc_sync[0].cycle_time,
-                    config->dc_sync[1].cycle_time);
+        EC_SLAVE_DBG(slave, 1, "Setting DC cycle times to %u / %u.\n",
+                config->dc_sync[0].cycle_time, config->dc_sync[1].cycle_time);
 
         // set DC cycle times
         ec_datagram_fpwr(datagram, slave->station_address, 0x09A0, 8);
@@ -1384,8 +1163,53 @@ void ec_fsm_slave_config_state_dc_cycle(
 {
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
+    ec_slave_config_t *config = slave->config;
+
+    if (!config) { // config removed in the meantime
+        ec_fsm_slave_config_reconfigure(fsm);
+        return;
+    }
+
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+        return;
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED) {
+        fsm->state = ec_fsm_slave_config_state_error;
+        EC_SLAVE_ERR(slave, "Failed to receive DC cycle times datagram: ");
+        ec_datagram_print_state(datagram);
+        return;
+    }
+
+    if (datagram->working_counter != 1) {
+        slave->error_flag = 1;
+        fsm->state = ec_fsm_slave_config_state_error;
+        EC_SLAVE_ERR(slave, "Failed to set DC cycle times: ");
+        ec_datagram_print_wc_error(datagram);
+        return;
+    }
+
+    EC_SLAVE_DBG(slave, 1, "Checking for synchrony.\n");
+
+    fsm->jiffies_start = jiffies;
+    ec_datagram_fprd(datagram, slave->station_address, 0x092c, 4);
+    fsm->retries = EC_FSM_RETRIES;
+    fsm->state = ec_fsm_slave_config_state_dc_sync_check;
+}
+
+/*****************************************************************************/
+
+/** Slave configuration state: DC SYNC CHECK.
+ */
+void ec_fsm_slave_config_state_dc_sync_check(
+        ec_fsm_slave_config_t *fsm /**< slave state machine */
+        )
+{
+    ec_datagram_t *datagram = fsm->datagram;
+    ec_slave_t *slave = fsm->slave;
     ec_master_t *master = slave->master;
     ec_slave_config_t *config = slave->config;
+    uint32_t abs_sync_diff;
+    unsigned long diff_ms;
     ec_sync_signal_t *sync0 = &config->dc_sync[0];
     u64 start_time;
 
@@ -1399,8 +1223,7 @@ void ec_fsm_slave_config_state_dc_cycle(
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_config_state_error;
-        EC_ERR("Failed to receive DC cycle times datagram for slave %u: ",
-                slave->ring_position);
+        EC_SLAVE_ERR(slave, "Failed to receive DC sync check datagram: ");
         ec_datagram_print_state(datagram);
         return;
     }
@@ -1408,19 +1231,40 @@ void ec_fsm_slave_config_state_dc_cycle(
     if (datagram->working_counter != 1) {
         slave->error_flag = 1;
         fsm->state = ec_fsm_slave_config_state_error;
-        EC_ERR("Failed to set DC cycle times of slave %u: ",
-                slave->ring_position);
+        EC_SLAVE_ERR(slave, "Failed to check DC synchrony: ");
         ec_datagram_print_wc_error(datagram);
         return;
     }
 
+    abs_sync_diff = EC_READ_U32(datagram->data) & 0x7fffffff;
+    diff_ms = (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
+
+    if (abs_sync_diff > EC_DC_MAX_SYNC_DIFF_NS) {
+
+        if (diff_ms >= EC_DC_SYNC_WAIT_MS) {
+            EC_SLAVE_WARN(slave, "Slave did not sync after %u ms.\n",
+                    (u32) diff_ms);
+        } else {
+            EC_SLAVE_DBG(slave, 1, "Sync after %4u ms: %10u ns\n",
+                    (u32) diff_ms, abs_sync_diff);
+
+            // check synchrony again
+            ec_datagram_fprd(datagram, slave->station_address, 0x092c, 4);
+            fsm->retries = EC_FSM_RETRIES;
+            return;
+        }
+    } else {
+        EC_SLAVE_DBG(slave, 1, "%u ns difference after %u ms.\n",
+                abs_sync_diff, (u32) diff_ms);
+    }
+
     // set DC start time
-    start_time = master->app_time + 100000000ULL; // now + X ns
+    start_time = master->app_time + EC_DC_START_OFFSET; // now + X ns
     // FIXME use slave's local system time here?
 
     if (sync0->cycle_time) {
         // find correct phase
-        if (master->has_start_time) {
+        if (master->has_app_time) {
             u64 diff, start;
             u32 remainder;
 
@@ -1430,24 +1274,22 @@ void ec_fsm_slave_config_state_dc_cycle(
             start = start_time +
                 sync0->cycle_time - remainder + sync0->shift_time;
 
-            if (master->debug_level) {
-                EC_DBG("app_start_time=%llu\n", master->app_start_time);
-                EC_DBG("    start_time=%llu\n", start_time);
-                EC_DBG("    cycle_time=%u\n", sync0->cycle_time);
-                EC_DBG("    shift_time=%u\n", sync0->shift_time);
-                EC_DBG("     remainder=%u\n", remainder);
-                EC_DBG("         start=%llu\n", start);
-            }
+            EC_SLAVE_DBG(slave, 1, "app_start_time=%llu\n",
+                    master->app_start_time);
+            EC_SLAVE_DBG(slave, 1, "    start_time=%llu\n", start_time);
+            EC_SLAVE_DBG(slave, 1, "    cycle_time=%u\n", sync0->cycle_time);
+            EC_SLAVE_DBG(slave, 1, "    shift_time=%u\n", sync0->shift_time);
+            EC_SLAVE_DBG(slave, 1, "     remainder=%u\n", remainder);
+            EC_SLAVE_DBG(slave, 1, "         start=%llu\n", start);
             start_time = start;
         } else {
-            EC_WARN("No application time supplied. Cyclic start time will "
-                    "not be in phase for slave %u.\n", slave->ring_position);
+            EC_SLAVE_WARN(slave, "No application time supplied."
+                    " Cyclic start time will not be in phase.\n");
         }
     }
 
-    if (master->debug_level)
-        EC_DBG("Slave %u: Setting DC cyclic operation start time to %llu.\n",
-                slave->ring_position, start_time);
+    EC_SLAVE_DBG(slave, 1, "Setting DC cyclic operation"
+            " start time to %llu.\n", start_time);
 
     ec_datagram_fpwr(datagram, slave->station_address, 0x0990, 8);
     EC_WRITE_U64(datagram->data, start_time);
@@ -1477,8 +1319,7 @@ void ec_fsm_slave_config_state_dc_start(
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_config_state_error;
-        EC_ERR("Failed to receive DC start time datagram for slave %u: ",
-                slave->ring_position);
+        EC_SLAVE_ERR(slave, "Failed to receive DC start time datagram: ");
         ec_datagram_print_state(datagram);
         return;
     }
@@ -1486,15 +1327,13 @@ void ec_fsm_slave_config_state_dc_start(
     if (datagram->working_counter != 1) {
         slave->error_flag = 1;
         fsm->state = ec_fsm_slave_config_state_error;
-        EC_ERR("Failed to set DC start time of slave %u: ",
-                slave->ring_position);
+        EC_SLAVE_ERR(slave, "Failed to set DC start time: ");
         ec_datagram_print_wc_error(datagram);
         return;
     }
 
-    if (slave->master->debug_level)
-        EC_DBG("Slave %u: Setting DC AssignActivate to 0x%04x.\n",
-                slave->ring_position, config->dc_assign_activate);
+    EC_SLAVE_DBG(slave, 1, "Setting DC AssignActivate to 0x%04x.\n",
+            config->dc_assign_activate);
 
     // assign sync unit to EtherCAT or PDI
     ec_datagram_fpwr(datagram, slave->station_address, 0x0980, 2);
@@ -1519,8 +1358,7 @@ void ec_fsm_slave_config_state_dc_assign(
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_config_state_error;
-        EC_ERR("Failed to receive DC activation datagram for slave %u: ",
-                slave->ring_position);
+        EC_SLAVE_ERR(slave, "Failed to receive DC activation datagram: ");
         ec_datagram_print_state(datagram);
         return;
     }
@@ -1528,8 +1366,7 @@ void ec_fsm_slave_config_state_dc_assign(
     if (datagram->working_counter != 1) {
         slave->error_flag = 1;
         fsm->state = ec_fsm_slave_config_state_error;
-        EC_ERR("Failed to set DC cyclic operation state of slave %u: ",
-                slave->ring_position);
+        EC_SLAVE_ERR(slave, "Failed to activate DC: ");
         ec_datagram_print_wc_error(datagram);
         return;
     }
@@ -1558,7 +1395,6 @@ void ec_fsm_slave_config_state_safeop(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-    ec_master_t *master = fsm->slave->master;
     ec_slave_t *slave = fsm->slave;
 
     if (ec_fsm_change_exec(fsm->fsm_change)) return;
@@ -1572,16 +1408,11 @@ void ec_fsm_slave_config_state_safeop(
 
     // slave is now in SAFEOP
 
-    if (master->debug_level) {
-        EC_DBG("Slave %u is now in SAFEOP.\n", slave->ring_position);
-    }
+    EC_SLAVE_DBG(slave, 1, "Now in SAFEOP.\n");
 
     if (fsm->slave->current_state == fsm->slave->requested_state) {
         fsm->state = ec_fsm_slave_config_state_end; // successful
-        if (master->debug_level) {
-            EC_DBG("Finished configuration of slave %u.\n",
-                   slave->ring_position);
-        }
+        EC_SLAVE_DBG(slave, 1, "Finished configuration.\n");
         return;
     }
 
@@ -1599,7 +1430,6 @@ void ec_fsm_slave_config_state_op(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-    ec_master_t *master = fsm->slave->master;
     ec_slave_t *slave = fsm->slave;
 
     if (ec_fsm_change_exec(fsm->fsm_change)) return;
@@ -1613,10 +1443,7 @@ void ec_fsm_slave_config_state_op(
 
     // slave is now in OP
 
-    if (master->debug_level) {
-        EC_DBG("Slave %u is now in OP.\n", slave->ring_position);
-        EC_DBG("Finished configuration of slave %u.\n", slave->ring_position);
-    }
+    EC_SLAVE_DBG(slave, 1, "Now in OP. Finished configuration.\n");
 
     fsm->state = ec_fsm_slave_config_state_end; // successful
 }
@@ -1629,10 +1456,8 @@ void ec_fsm_slave_config_reconfigure(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-    if (fsm->slave->master->debug_level) {
-        EC_DBG("Slave configuration for slave %u detached during "
-                "configuration. Reconfiguring.", fsm->slave->ring_position);
-    }
+    EC_SLAVE_DBG(fsm->slave, 1, "Slave configuration detached during "
+            "configuration. Reconfiguring.");
 
     ec_fsm_slave_config_enter_init(fsm); // reconfigure
 }

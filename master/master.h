@@ -57,6 +57,61 @@
 
 /*****************************************************************************/
 
+/** Convenience macro for printing master-specific information to syslog.
+ *
+ * This will print the message in \a fmt with a prefixed "EtherCAT <INDEX>: ",
+ * where INDEX is the master index.
+ *
+ * \param master EtherCAT master
+ * \param fmt format string (like in printf())
+ * \param args arguments (optional)
+ */
+#define EC_MASTER_INFO(master, fmt, args...) \
+    printk(KERN_INFO "EtherCAT %u: " fmt, master->index, ##args)
+
+/** Convenience macro for printing master-specific errors to syslog.
+ *
+ * This will print the message in \a fmt with a prefixed "EtherCAT <INDEX>: ",
+ * where INDEX is the master index.
+ *
+ * \param master EtherCAT master
+ * \param fmt format string (like in printf())
+ * \param args arguments (optional)
+ */
+#define EC_MASTER_ERR(master, fmt, args...) \
+    printk(KERN_ERR "EtherCAT ERROR %u: " fmt, master->index, ##args)
+
+/** Convenience macro for printing master-specific warnings to syslog.
+ *
+ * This will print the message in \a fmt with a prefixed "EtherCAT <INDEX>: ",
+ * where INDEX is the master index.
+ *
+ * \param master EtherCAT master
+ * \param fmt format string (like in printf())
+ * \param args arguments (optional)
+ */
+#define EC_MASTER_WARN(master, fmt, args...) \
+    printk(KERN_WARNING "EtherCAT WARNING %u: " fmt, master->index, ##args)
+
+/** Convenience macro for printing master-specific debug messages to syslog.
+ *
+ * This will print the message in \a fmt with a prefixed "EtherCAT <INDEX>: ",
+ * where INDEX is the master index.
+ *
+ * \param master EtherCAT master
+ * \param fmt format string (like in printf())
+ * \param args arguments (optional)
+ */
+#define EC_MASTER_DBG(master, level, fmt, args...) \
+    do { \
+        if (master->debug_level >= level) { \
+            printk(KERN_DEBUG "EtherCAT DEBUG %u: " fmt, \
+                    master->index, ##args); \
+        } \
+    } while (0)
+
+/*****************************************************************************/
+
 /** EtherCAT master phase.
  */
 typedef enum {
@@ -109,6 +164,7 @@ struct ec_master {
     ec_datagram_t fsm_datagram; /**< Datagram used for state machines. */
     ec_master_phase_t phase; /**< Master phase. */
     unsigned int active; /**< Master has been activated. */
+    unsigned int config_changed; /**< The configuration changed. */
     unsigned int injection_seq_fsm; /**< Datagram injection sequence number
                                       for the FSM side. */
     unsigned int injection_seq_rt; /**< Datagram injection sequence number
@@ -122,7 +178,7 @@ struct ec_master {
     
     u64 app_time; /**< Time of the last ecrt_master_sync() call. */
     u64 app_start_time; /**< Application start time. */
-    u8 has_start_time; /**< Start time already taken. */
+    u8 has_app_time; /**< Application time is valid. */
     ec_datagram_t ref_sync_datagram; /**< Datagram used for synchronizing the
                                        reference clock to the master clock. */
     ec_datagram_t sync_datagram; /**< Datagram used for DC drift
@@ -255,6 +311,7 @@ ec_slave_config_t *ecrt_master_slave_config_err(ec_master_t *, uint16_t,
         uint16_t, uint32_t, uint32_t);
 
 void ec_master_calc_dc(ec_master_t *);
+void ec_master_request_op(ec_master_t *);
 
 void ec_master_internal_send_cb(void *);
 void ec_master_internal_receive_cb(void *);
