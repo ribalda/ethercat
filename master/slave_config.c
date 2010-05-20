@@ -428,7 +428,7 @@ int ecrt_slave_config_sync_manager(ec_slave_config_t *sc, uint8_t sync_index,
     }
 
     if (dir != EC_DIR_OUTPUT && dir != EC_DIR_INPUT) {
-        EC_CONFIG_ERR(sc, "Invalid direction %u!\n", (u32) dir);
+        EC_CONFIG_ERR(sc, "Invalid direction %u!\n", (unsigned int) dir);
         return -EINVAL;
     }
 
@@ -743,7 +743,7 @@ int ecrt_slave_config_sdo8(ec_slave_config_t *sc, uint16_t index,
 
     EC_CONFIG_DBG(sc, 1, "%s(sc = 0x%p, index = 0x%04X, "
             "subindex = 0x%02X, value = %u)\n",
-            __func__, sc, index, subindex, (u32) value);
+            __func__, sc, index, subindex, (unsigned int) value);
 
     EC_WRITE_U8(data, value);
     return ecrt_slave_config_sdo(sc, index, subindex, data, 1);

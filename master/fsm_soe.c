@@ -265,7 +265,7 @@ void ec_fsm_soe_read_request(ec_fsm_soe_t *fsm /**< finite state machine */)
         }
         fsm->state = ec_fsm_soe_error;
         EC_SLAVE_ERR(slave, "Reception of SoE read request"
-                " failed after %u ms: ", (u32) diff_ms);
+                " failed after %lu ms: ", diff_ms);
         ec_datagram_print_wc_error(datagram);
         ec_fsm_soe_print_error(fsm);
         return;
@@ -311,8 +311,8 @@ void ec_fsm_soe_read_check(ec_fsm_soe_t *fsm /**< finite state machine */)
             (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
         if (diff_ms >= EC_SOE_RESPONSE_TIMEOUT) {
             fsm->state = ec_fsm_soe_error;
-            EC_SLAVE_ERR(slave, "Timeout after %u ms while waiting for"
-                    " read response.\n", (u32) diff_ms);
+            EC_SLAVE_ERR(slave, "Timeout after %lu ms while waiting for"
+                    " read response.\n", diff_ms);
             ec_fsm_soe_print_error(fsm);
             return;
         }
@@ -563,7 +563,7 @@ void ec_fsm_soe_write_request(ec_fsm_soe_t *fsm /**< finite state machine */)
         }
         fsm->state = ec_fsm_soe_error;
         EC_SLAVE_ERR(slave, "Reception of SoE write request"
-                " failed after %u ms: ", (u32) diff_ms);
+                " failed after %lu ms: ", diff_ms);
         ec_datagram_print_wc_error(datagram);
         ec_fsm_soe_print_error(fsm);
         return;
@@ -613,8 +613,8 @@ void ec_fsm_soe_write_check(ec_fsm_soe_t *fsm /**< finite state machine */)
                 (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
             if (diff_ms >= EC_SOE_RESPONSE_TIMEOUT) {
                 fsm->state = ec_fsm_soe_error;
-                EC_SLAVE_ERR(slave, "Timeout after %u ms while waiting"
-                        " for write response.\n", (u32) diff_ms);
+                EC_SLAVE_ERR(slave, "Timeout after %lu ms while waiting"
+                        " for write response.\n", diff_ms);
                 ec_fsm_soe_print_error(fsm);
                 return;
             }

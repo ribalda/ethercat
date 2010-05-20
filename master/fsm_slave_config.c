@@ -1242,11 +1242,11 @@ void ec_fsm_slave_config_state_dc_sync_check(
     if (abs_sync_diff > EC_DC_MAX_SYNC_DIFF_NS) {
 
         if (diff_ms >= EC_DC_SYNC_WAIT_MS) {
-            EC_SLAVE_WARN(slave, "Slave did not sync after %u ms.\n",
-                    (u32) diff_ms);
+            EC_SLAVE_WARN(slave, "Slave did not sync after %lu ms.\n",
+                    diff_ms);
         } else {
-            EC_SLAVE_DBG(slave, 1, "Sync after %4u ms: %10u ns\n",
-                    (u32) diff_ms, abs_sync_diff);
+            EC_SLAVE_DBG(slave, 1, "Sync after %4lu ms: %10u ns\n",
+                    diff_ms, abs_sync_diff);
 
             // check synchrony again
             ec_datagram_fprd(datagram, slave->station_address, 0x092c, 4);
@@ -1254,8 +1254,8 @@ void ec_fsm_slave_config_state_dc_sync_check(
             return;
         }
     } else {
-        EC_SLAVE_DBG(slave, 1, "%u ns difference after %u ms.\n",
-                abs_sync_diff, (u32) diff_ms);
+        EC_SLAVE_DBG(slave, 1, "%u ns difference after %lu ms.\n",
+                abs_sync_diff, diff_ms);
     }
 
     // set DC start time

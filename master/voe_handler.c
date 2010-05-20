@@ -267,8 +267,8 @@ void ec_voe_handler_state_write_response(ec_voe_handler_t *voe)
                 (jiffies - voe->jiffies_start) * 1000 / HZ;
             if (diff_ms < EC_VOE_RESPONSE_TIMEOUT) {
                 EC_SLAVE_DBG(slave, 1, "Slave did not respond to"
-                        " VoE write request. Retrying after %u ms...\n",
-                        (u32) diff_ms);
+                        " VoE write request. Retrying after %lu ms...\n",
+                        diff_ms);
                 // no response; send request datagram again
                 return;
             }

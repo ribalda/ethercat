@@ -1225,9 +1225,9 @@ void ec_fsm_coe_down_request(ec_fsm_coe_t *fsm /**< finite state machine */)
         if (!datagram->working_counter) {
             if (diff_ms < fsm->request->response_timeout) {
 #if DEBUG_RETRIES
-                EC_SLAVE_DBG(slave, 1, "Slave did not respond to"
-                        " SDO download request. Retrying after %u ms...\n",
-                        (u32) diff_ms);
+                EC_SLAVE_DBG(slave, 1, "Slave did not respond to SDO"
+                        " download request. Retrying after %lu ms...\n",
+                        diff_ms);
 #endif
                 // no response; send request datagram again
                 return;
@@ -1235,16 +1235,16 @@ void ec_fsm_coe_down_request(ec_fsm_coe_t *fsm /**< finite state machine */)
         }
         fsm->state = ec_fsm_coe_error;
         EC_SLAVE_ERR(slave, "Reception of CoE download request"
-                " for SDO 0x%04x:%x failed with timeout after %u ms: ",
-                fsm->request->index, fsm->request->subindex, (u32) diff_ms);
+                " for SDO 0x%04x:%x failed with timeout after %lu ms: ",
+                fsm->request->index, fsm->request->subindex, diff_ms);
         ec_datagram_print_wc_error(datagram);
         return;
     }
 
 #if DEBUG_LONG
     if (diff_ms > 200) {
-        EC_SLAVE_WARN(slave, "SDO 0x%04x:%x download took %u ms.\n",
-                fsm->request->index, fsm->request->subindex, (u32) diff_ms);
+        EC_SLAVE_WARN(slave, "SDO 0x%04x:%x download took %lu ms.\n",
+                fsm->request->index, fsm->request->subindex, diff_ms);
     }
 #endif
 
@@ -1288,8 +1288,8 @@ void ec_fsm_coe_down_check(ec_fsm_coe_t *fsm /**< finite state machine */)
             (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
         if (diff_ms >= fsm->request->response_timeout) {
             fsm->state = ec_fsm_coe_error;
-            EC_SLAVE_ERR(slave, "Timeout after %u ms while waiting"
-                    " for SDO 0x%04x:%x download response.\n", (u32) diff_ms,
+            EC_SLAVE_ERR(slave, "Timeout after %lu ms while waiting"
+                    " for SDO 0x%04x:%x download response.\n", diff_ms,
                     fsm->request->index, fsm->request->subindex);
             return;
         }
@@ -1727,8 +1727,8 @@ void ec_fsm_coe_up_request(ec_fsm_coe_t *fsm /**< finite state machine */)
             if (diff_ms < fsm->request->response_timeout) {
 #if DEBUG_RETRIES
                 EC_SLAVE_DBG(slave, 1, "Slave did not respond to"
-                        " SDO upload request. Retrying after %u ms...\n",
-                        (u32) diff_ms);
+                        " SDO upload request. Retrying after %lu ms...\n",
+                        diff_ms);
 #endif
                 // no response; send request datagram again
                 return;
@@ -1736,16 +1736,16 @@ void ec_fsm_coe_up_request(ec_fsm_coe_t *fsm /**< finite state machine */)
         }
         fsm->state = ec_fsm_coe_error;
         EC_SLAVE_ERR(slave, "Reception of CoE upload request for"
-                " SDO 0x%04x:%x failed with timeout after %u ms: ",
-                fsm->request->index, fsm->request->subindex, (u32) diff_ms);
+                " SDO 0x%04x:%x failed with timeout after %lu ms: ",
+                fsm->request->index, fsm->request->subindex, diff_ms);
         ec_datagram_print_wc_error(datagram);
         return;
     }
 
 #if DEBUG_LONG
     if (diff_ms > 200) {
-        EC_SLAVE_WARN(slave, "SDO 0x%04x:%x upload took %u ms.\n",
-                fsm->request->index, fsm->request->subindex, (u32) diff_ms);
+        EC_SLAVE_WARN(slave, "SDO 0x%04x:%x upload took %lu ms.\n",
+                fsm->request->index, fsm->request->subindex, diff_ms);
     }
 #endif
 
@@ -1790,8 +1790,8 @@ void ec_fsm_coe_up_check(ec_fsm_coe_t *fsm /**< finite state machine */)
             (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
         if (diff_ms >= fsm->request->response_timeout) {
             fsm->state = ec_fsm_coe_error;
-            EC_SLAVE_ERR(slave, "Timeout after %u ms while waiting for"
-                    " SDO 0x%04x:%x upload response.\n", (u32) diff_ms,
+            EC_SLAVE_ERR(slave, "Timeout after %lu ms while waiting for"
+                    " SDO 0x%04x:%x upload response.\n", diff_ms,
                     fsm->request->index, fsm->request->subindex);
             return;
         }

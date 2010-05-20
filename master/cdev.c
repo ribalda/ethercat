@@ -3514,7 +3514,7 @@ int eccdev_open(struct inode *inode, struct file *filp)
     filp->private_data = priv;
 
 #if DEBUG_IOCTL
-    EC_MASTER_DBG(cdev->master, "File opened.\n");
+    EC_MASTER_DBG(cdev->master, 0, "File opened.\n");
 #endif
     return 0;
 }
@@ -3535,7 +3535,7 @@ int eccdev_release(struct inode *inode, struct file *filp)
         vfree(priv->process_data);
 
 #if DEBUG_IOCTL
-    EC_MASTER_DBG(master, "File closed.\n");
+    EC_MASTER_DBG(master, 0, "File closed.\n");
 #endif
 
     kfree(priv);
@@ -3552,9 +3552,8 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
     ec_master_t *master = priv->cdev->master;
 
 #if DEBUG_IOCTL
-    EC_MASTER_DBG(master, "ioctl(filp = 0x%x, cmd = 0x%08x (0x%02x),"
-            " arg = 0x%x)\n", (u32) filp, (u32) cmd, (u32) _IOC_NR(cmd),
-            (u32) arg);
+    EC_MASTER_DBG(master, 0, "ioctl(filp = 0x%p, cmd = 0x%08x (0x%02x),"
+            " arg = 0x%lx)\n", filp, cmd, _IOC_NR(cmd), arg);
 #endif
 
     switch (cmd) {

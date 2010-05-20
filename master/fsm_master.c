@@ -792,8 +792,8 @@ void ec_fsm_master_state_scan_slave(
         return;
     }
 
-    EC_MASTER_INFO(master, "Bus scanning completed in %u ms.\n",
-            (u32) (jiffies - fsm->scan_jiffies) * 1000 / HZ);
+    EC_MASTER_INFO(master, "Bus scanning completed in %lu ms.\n",
+            (jiffies - fsm->scan_jiffies) * 1000 / HZ);
 
     master->scan_busy = 0;
     wake_up_interruptible(&master->scan_queue);
@@ -907,9 +907,9 @@ u64 ec_fsm_master_dc_offset32(
 
     EC_SLAVE_DBG(slave, 1, "DC system time offset calculation:"
             " system_time=%u (corrected with %u),"
-            " app_time=%u, diff=%i\n",
+            " app_time=%llu, diff=%i\n",
             system_time32, correction,
-            (u32) slave->master->app_time, time_diff);
+            slave->master->app_time, time_diff);
 
     if (EC_ABS(time_diff) > EC_SYSTEM_TIME_TOLERANCE_NS) {
         new_offset = time_diff + old_offset32;
