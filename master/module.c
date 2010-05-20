@@ -341,13 +341,14 @@ void ec_print_data(const uint8_t *data, /**< pointer to data */
     EC_DBG("");
     for (i = 0; i < size; i++) {
         printk("%02X ", data[i]);
+
         if ((i + 1) % 16 == 0 && i < size - 1) {
             printk("\n");
             EC_DBG("");
         }
-        if (i+1 == 128 && size > 256)
-        {
-            printk("dropped %d bytes\n",size-128-i);
+
+        if (i + 1 == 128 && size > 256) {
+            printk("dropped %zu bytes\n", size - 128 - i);
             i = size - 128;
             EC_DBG("");
         }

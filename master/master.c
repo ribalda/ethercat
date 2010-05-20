@@ -698,7 +698,7 @@ void ec_master_inject_external_datagrams(
                 list_del_init(&datagram->queue);
                 datagram->state = EC_DATAGRAM_ERROR;
                 EC_MASTER_ERR(master, "External datagram %p is too large,"
-                        " size=%u, max_queue_size=%u\n",
+                        " size=%zu, max_queue_size=%zu\n",
                         datagram, datagram->data_size,
                         master->max_queue_size);
             } else {
@@ -725,8 +725,8 @@ void ec_master_inject_external_datagrams(
                         ((jiffies - datagram->jiffies_sent) * 1000000 / HZ);
 #endif
                     EC_MASTER_ERR(master, "Timeout %u us: Injecting"
-                            " external datagram %p size=%u,"
-                            " max_queue_size=%u\n", time_us, datagram,
+                            " external datagram %p size=%zu,"
+                            " max_queue_size=%zu\n", time_us, datagram,
                             datagram->data_size, master->max_queue_size);
                 }
 #if DEBUG_INJECT
@@ -749,7 +749,7 @@ void ec_master_inject_external_datagrams(
  */
 void ec_master_set_send_interval(
         ec_master_t *master, /**< EtherCAT master */
-        size_t send_interval /**< Send interval */
+        unsigned int send_interval /**< Send interval */
         )
 {
     master->send_interval = send_interval;
@@ -1198,8 +1198,8 @@ static int ec_master_idle_thread(void *priv_data)
     // send interval in IDLE phase
     ec_master_set_send_interval(master, 1000000 / HZ); 
 
-    EC_MASTER_DBG(master, 1, "Idle thread running with send interval = %d us,"
-            " max data size=%d\n", master->send_interval,
+    EC_MASTER_DBG(master, 1, "Idle thread running with send interval = %u us,"
+            " max data size=%zu\n", master->send_interval,
             master->max_queue_size);
 
     while (!kthread_should_stop()) {
@@ -1265,7 +1265,7 @@ static int ec_master_operation_thread(void *priv_data)
     int fsm_exec;
 
     EC_MASTER_DBG(master, 1, "Operation thread running"
-            " with fsm interval = %d us, max data size=%d\n",
+            " with fsm interval = %u us, max data size=%zu\n",
             master->send_interval, master->max_queue_size);
 
     while (!kthread_should_stop()) {
@@ -1989,8 +1989,8 @@ void ecrt_master_deactivate(ec_master_t *master)
     int eoe_was_running;
 #endif
 
-    EC_MASTER_DBG(master, 1, "ecrt_master_deactivate(master = 0x%x)\n",
-            (u32) master);
+    EC_MASTER_DBG(master, 1, "ecrt_master_deactivate(master = 0x%p)\n",
+            master);
 
     if (!master->active) {
         EC_MASTER_WARN(master, "%s: Master not active.\n", __func__);

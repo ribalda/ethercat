@@ -211,7 +211,7 @@ struct ec_master {
                                       ext_datagram_queue. */
 
     struct list_head external_datagram_queue; /**< External Datagram queue. */
-    size_t send_interval; /**< Interval between calls to ecrt_master_send */
+    unsigned int send_interval; /**< Interval between calls to ecrt_master_send */
     size_t max_queue_size; /**< Maximum size of datagram queue */
     struct list_head domains; /**< List of domains. */
 
@@ -275,7 +275,7 @@ void ec_master_queue_external_datagram(ec_master_t *, ec_datagram_t *);
 void ec_master_inject_external_datagrams(ec_master_t *);
 
 // misc.
-void ec_master_set_send_interval(ec_master_t *,size_t);
+void ec_master_set_send_interval(ec_master_t *, unsigned int);
 void ec_master_attach_slave_configs(ec_master_t *);
 ec_slave_t *ec_master_find_slave(ec_master_t *, uint16_t, uint16_t);
 const ec_slave_t *ec_master_find_slave_const(const ec_master_t *, uint16_t,
