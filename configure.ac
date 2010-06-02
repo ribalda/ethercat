@@ -513,6 +513,30 @@ if test "x${hrtimer}" = "x1"; then
 fi
 
 #------------------------------------------------------------------------------
+# Read alias address from register
+#------------------------------------------------------------------------------
+
+AC_ARG_ENABLE([regalias],
+    AS_HELP_STRING([--enable-regalias],
+                   [Read alias adresses from register (default: no)]),
+    [
+        case "${enableval}" in
+            yes) regalias=1
+                ;;
+            no) regalias=0
+                ;;
+            *) AC_MSG_ERROR([Invalid value for --enable-regalias])
+                ;;
+        esac
+    ],
+    [regalias=0]
+)
+
+if test "x${regalias}" = "x1"; then
+    AC_DEFINE([EC_REGALIAS], [1], [Read alias adresses from register])
+fi
+
+#------------------------------------------------------------------------------
 # Command-line tool
 #-----------------------------------------------------------------------------
 
