@@ -56,6 +56,7 @@ void ec_soe_request_init(
         ec_soe_request_t *req /**< SoE request. */
         )
 {
+    req->al_state = EC_AL_STATE_INIT;
     req->data = NULL;
     req->mem_size = 0;
     req->data_size = 0;
@@ -86,6 +87,7 @@ int ec_soe_request_copy(
         )
 {
     req->idn = other->idn;
+    req->al_state = other->al_state;
     return ec_soe_request_copy_data(req, other->data, other->data_size);
 }
 

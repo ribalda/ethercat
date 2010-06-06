@@ -48,6 +48,7 @@
 typedef struct {
     struct list_head list; /**< List item. */
     uint16_t idn; /**< Sercos ID-Number. */
+    ec_al_state_t al_state; /**< AL state (only valid for IDN config). */
     uint8_t *data; /**< Pointer to SDO data. */
     size_t mem_size; /**< Size of SDO data memory. */
     size_t data_size; /**< Size of SDO data. */

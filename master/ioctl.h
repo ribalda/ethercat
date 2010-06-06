@@ -583,6 +583,7 @@ typedef struct {
     // inputs
     uint32_t config_index;
     uint16_t idn;
+    ec_al_state_t state;
     const uint8_t *data;
     size_t size;
 } ec_ioctl_sc_idn_t;

@@ -473,12 +473,13 @@ void ecrt_slave_config_state(const ec_slave_config_t *sc,
 /*****************************************************************************/
 
 int ecrt_slave_config_idn(ec_slave_config_t *sc, uint16_t idn,
-        const uint8_t *data, size_t size)
+        ec_al_state_t state, const uint8_t *data, size_t size)
 {
     ec_ioctl_sc_idn_t io;
 
     io.config_index = sc->index;
     io.idn = idn;
+    io.state = state;
     io.data = data;
     io.size = size;
 

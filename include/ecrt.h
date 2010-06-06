@@ -382,6 +382,17 @@ typedef enum {
     EC_REQUEST_ERROR, /**< Request processing failed. */
 } ec_request_state_t;
 
+/*****************************************************************************/
+
+/** Application-layer state.
+ */
+typedef enum {
+    EC_AL_STATE_INIT = 1, /**< Init. */
+    EC_AL_STATE_PREOP = 2, /**< Pre-operational. */
+    EC_AL_STATE_SAFEOP = 4, /**< Safe-operational. */
+    EC_AL_STATE_OP = 8, /**< Operational. */
+} ec_al_state_t;
+
 /******************************************************************************
  * Global functions
  *****************************************************************************/
@@ -1202,6 +1213,8 @@ void ecrt_slave_config_state(
 int ecrt_slave_config_idn(
         ec_slave_config_t *sc, /**< Slave configuration. */
         uint16_t idn, /**< SoE IDN. */
+        ec_al_state_t state, /**< AL state in which to write the IDN (PREOP or
+                               SAFEOP). */
         const uint8_t *data, /**< Pointer to the data. */
         size_t size /**< Size of the \a data. */
         );
