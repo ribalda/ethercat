@@ -56,7 +56,7 @@
  *
  * Increment this when changing the ioctl interface!
  */
-#define EC_IOCTL_VERSION_MAGIC 5
+#define EC_IOCTL_VERSION_MAGIC 6
 
 // Command-line tool
 #define EC_IOCTL_MODULE                EC_IOR(0x00, ec_ioctl_module_t)
@@ -583,7 +583,7 @@ typedef struct {
     // inputs
     uint32_t config_index;
     uint16_t idn;
-    ec_al_state_t state;
+    ec_al_state_t al_state;
     const uint8_t *data;
     size_t size;
 } ec_ioctl_sc_idn_t;

@@ -2463,7 +2463,8 @@ int ec_cdev_ioctl_sc_idn(
 
     up(&master->master_sem); // FIXME
 
-    ret = ecrt_slave_config_idn(sc, ioctl.idn, ioctl.state, data, ioctl.size);
+    ret = ecrt_slave_config_idn(
+            sc, ioctl.idn, ioctl.al_state, data, ioctl.size);
     kfree(data);
     return ret;
 }
