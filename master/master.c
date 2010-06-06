@@ -439,6 +439,20 @@ void ec_master_clear_domains(ec_master_t *master)
 
 /*****************************************************************************/
 
+/** Clear the configuration applied by the application.
+ */
+void ec_master_clear_config(
+        ec_master_t *master /**< EtherCAT master. */
+        )
+{
+    down(&master->master_sem);
+    ec_master_clear_domains(master);
+    ec_master_clear_slave_configs(master);
+    up(&master->master_sem);
+}
+
+/*****************************************************************************/
+
 /** Internal sending callback.
  */
 void ec_master_internal_send_cb(
@@ -653,14 +667,16 @@ void ec_master_leave_operation_phase(
         ec_master_t *master /**< EtherCAT master */
         )
 {
-    if (master->active)
-        ecrt_master_deactivate(master);
+    if (master->active) {
+        ecrt_master_deactivate(master); // also clears config
+    } else {
+        ec_master_clear_config(master);
+    }
 
     EC_MASTER_DBG(master, 1, "OPERATION -> IDLE.\n");
 
     master->phase = EC_IDLE;
 }
-
 
 /*****************************************************************************/
 
@@ -1989,8 +2005,7 @@ void ecrt_master_deactivate(ec_master_t *master)
     int eoe_was_running;
 #endif
 
-    EC_MASTER_DBG(master, 1, "ecrt_master_deactivate(master = 0x%p)\n",
-            master);
+    EC_MASTER_DBG(master, 1, "%s(master = 0x%p)\n", __func__, master);
 
     if (!master->active) {
         EC_MASTER_WARN(master, "%s: Master not active.\n", __func__);
@@ -2007,10 +2022,7 @@ void ecrt_master_deactivate(ec_master_t *master)
     master->receive_cb = ec_master_internal_receive_cb;
     master->cb_data = master;
     
-    down(&master->master_sem);
-    ec_master_clear_domains(master);
-    ec_master_clear_slave_configs(master);
-    up(&master->master_sem);
+    ec_master_clear_config(master);
 
     for (slave = master->slaves;
             slave < master->slaves + master->slave_count;

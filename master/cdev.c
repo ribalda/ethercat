@@ -1724,7 +1724,6 @@ int ec_cdev_ioctl_deactivate(
     return 0;
 }
 
-
 /*****************************************************************************/
 
 /** Set max. number of databytes in a cycle
