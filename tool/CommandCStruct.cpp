@@ -117,7 +117,7 @@ void CommandCStruct::generateSlaveCStruct(
     for (i = 0; i < slave.sync_count; i++) {
         m.getSync(&sync, slave.position, i);
 
-        syncs << "   {" << dec << sync.sync_index
+        syncs << "    {" << dec << sync.sync_index
             << ", " << (EC_READ_BIT(&sync.control_register, 2) ?
                     "EC_DIR_OUTPUT" : "EC_DIR_INPUT")
             << ", " << dec << (unsigned int) sync.pdo_count
@@ -136,7 +136,7 @@ void CommandCStruct::generateSlaveCStruct(
         for (j = 0; j < sync.pdo_count; j++) {
             m.getPdo(&pdo, slave.position, i, j);
 
-            pdos << "   {0x" << hex << setfill('0')
+            pdos << "    {0x" << hex << setfill('0')
                 << setw(4) << pdo.index
                 << ", " << dec << (unsigned int) pdo.entry_count
                 << ", ";
@@ -155,7 +155,7 @@ void CommandCStruct::generateSlaveCStruct(
             for (k = 0; k < pdo.entry_count; k++) {
                 m.getPdoEntry(&entry, slave.position, i, j, k);
 
-                entries << "   {0x" << hex << setfill('0')
+                entries << "    {0x" << hex << setfill('0')
                     << setw(4) << entry.index
                     << ", 0x" << setw(2) << (unsigned int) entry.subindex
                     << ", " << dec << (unsigned int) entry.bit_length
@@ -201,6 +201,7 @@ void CommandCStruct::generateSlaveCStruct(
 
     cout << "ec_sync_info_t " << id.str() << "syncs[] = {" << endl
         << syncs.str()
+        << "    {0xff}" << endl
         << "};" << endl
         << endl;
 }
