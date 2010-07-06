@@ -881,7 +881,11 @@ int ec_cdev_ioctl_slave_sdo_upload(
 
     if (request.req.state != EC_INT_REQUEST_SUCCESS) {
         data.data_size = 0;
-        retval = -EIO;
+        if (request.req.errno) {
+            retval = -request.req.errno;
+        } else {
+            retval = -EIO;
+        }
     } else {
         if (request.req.data_size > data.target_size) {
             EC_MASTER_ERR(master, "Buffer too small.\n");
@@ -986,7 +990,13 @@ int ec_cdev_ioctl_slave_sdo_download(
 
     data.abort_code = request.req.abort_code;
 
-    retval = request.req.state == EC_INT_REQUEST_SUCCESS ? 0 : -EIO;
+    if (request.req.state == EC_INT_REQUEST_SUCCESS) {
+        retval = 0;
+    } else if (request.req.errno) {
+        retval = -request.req.errno;
+    } else {
+        retval = -EIO;
+    }
 
     if (__copy_to_user((void __user *) arg, &data, sizeof(data))) {
         retval = -EFAULT;

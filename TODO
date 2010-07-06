@@ -43,7 +43,6 @@ Version 1.5.0:
 * Fix casting away constness during expected WC calculation.
 * Read AL status code on spontaneous state change.
 * Fix clearing domains etc. when not activated and releasing.
-* Output -EPROTO if mailbox protocol is not supported.
 * Only output watchdog config if not default.
 * Do not output 'SDO does not exist' when querying data type.
 * Always write down PDO assignment/mapping in doubt? If not, add an interface
