@@ -674,6 +674,8 @@ int ecrt_master_sdo_upload(
         uint32_t *abort_code /**< Abort code of the SDO upload. */
         );
 
+#endif /* #ifndef __KERNEL__ */
+
 /** Executes an SoE write request.
  *
  * Starts writing an IDN and blocks until the request was processed, or an
@@ -688,7 +690,7 @@ int ecrt_master_write_idn(
         uint16_t idn, /**< SoE IDN (see ecrt_slave_config_idn()). */
         uint8_t *data, /**< Pointer to data to write. */
         size_t data_size, /**< Size of data to write. */
-        uint32_t *error_code /**< Pointer to variable, where an SoE error code
+        uint16_t *error_code /**< Pointer to variable, where an SoE error code
                                can be stored. */
         );
 
@@ -708,11 +710,9 @@ int ecrt_master_read_idn(
                            stored. */
         size_t target_size, /**< Size of the memory \a target points to. */
         size_t *result_size, /**< Actual size of the received data. */
-        uint32_t *error_code /**< Pointer to variable, where an SoE error code
+        uint16_t *error_code /**< Pointer to variable, where an SoE error code
                                can be stored. */
         );
-
-#endif /* #ifndef __KERNEL__ */
 
 /** Finishes the configuration phase and prepares for cyclic operation.
  *

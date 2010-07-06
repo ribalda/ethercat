@@ -2344,6 +2344,150 @@ uint32_t ecrt_master_sync_monitor_process(ec_master_t *master)
 
 /*****************************************************************************/
 
+int ecrt_master_write_idn(ec_master_t *master, uint16_t slave_position,
+        uint16_t idn, uint8_t *data, size_t data_size, uint16_t *error_code)
+{
+    ec_master_soe_request_t request;
+    int retval;
+
+    INIT_LIST_HEAD(&request.list);
+    ec_soe_request_init(&request.req);
+    ec_soe_request_set_idn(&request.req, idn);
+
+    if (ec_soe_request_alloc(&request.req, data_size)) {
+        ec_soe_request_clear(&request.req);
+        return -ENOMEM;
+    }
+
+    memcpy(request.req.data, data, data_size);
+    request.req.data_size = data_size;
+    ec_soe_request_write(&request.req);
+
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
+
+    if (!(request.slave = ec_master_find_slave(
+                    master, 0, slave_position))) {
+        up(&master->master_sem);
+        EC_MASTER_ERR(master, "Slave %u does not exist!\n",
+                slave_position);
+        ec_soe_request_clear(&request.req);
+        return -EINVAL;
+    }
+
+    EC_SLAVE_DBG(request.slave, 1, "Scheduling SoE write request.\n");
+
+    // schedule SoE write request.
+    list_add_tail(&request.list, &request.slave->soe_requests);
+
+    up(&master->master_sem);
+
+    // wait for processing through FSM
+    if (wait_event_interruptible(request.slave->soe_queue,
+                request.req.state != EC_INT_REQUEST_QUEUED)) {
+        // interrupted by signal
+        down(&master->master_sem);
+        if (request.req.state == EC_INT_REQUEST_QUEUED) {
+            // abort request
+            list_del(&request.list);
+            up(&master->master_sem);
+            ec_soe_request_clear(&request.req);
+            return -EINTR;
+        }
+        up(&master->master_sem);
+    }
+
+    // wait until master FSM has finished processing
+    wait_event(request.slave->soe_queue,
+            request.req.state != EC_INT_REQUEST_BUSY);
+
+    if (error_code) {
+        *error_code = request.req.error_code;
+    }
+    retval = request.req.state == EC_INT_REQUEST_SUCCESS ? 0 : -EIO;
+    ec_soe_request_clear(&request.req);
+
+    return retval;
+}
+
+/*****************************************************************************/
+
+int ecrt_master_read_idn(ec_master_t *master, uint16_t slave_position,
+        uint16_t idn, uint8_t *target, size_t target_size,
+        size_t *result_size, uint16_t *error_code)
+{
+    ec_master_soe_request_t request;
+
+    INIT_LIST_HEAD(&request.list);
+    ec_soe_request_init(&request.req);
+    ec_soe_request_set_idn(&request.req, idn);
+    ec_soe_request_read(&request.req);
+
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
+
+    if (!(request.slave = ec_master_find_slave(master, 0, slave_position))) {
+        up(&master->master_sem);
+        ec_soe_request_clear(&request.req);
+        EC_MASTER_ERR(master, "Slave %u does not exist!\n", slave_position);
+        return -EINVAL;
+    }
+
+    // schedule request.
+    list_add_tail(&request.list, &request.slave->soe_requests);
+
+    up(&master->master_sem);
+
+    EC_SLAVE_DBG(request.slave, 1, "Scheduled SoE read request.\n");
+
+    // wait for processing through FSM
+    if (wait_event_interruptible(request.slave->soe_queue,
+                request.req.state != EC_INT_REQUEST_QUEUED)) {
+        // interrupted by signal
+        down(&master->master_sem);
+        if (request.req.state == EC_INT_REQUEST_QUEUED) {
+            list_del(&request.list);
+            up(&master->master_sem);
+            ec_soe_request_clear(&request.req);
+            return -EINTR;
+        }
+        // request already processing: interrupt not possible.
+        up(&master->master_sem);
+    }
+
+    // wait until master FSM has finished processing
+    wait_event(request.slave->soe_queue,
+            request.req.state != EC_INT_REQUEST_BUSY);
+
+    if (error_code) {
+        *error_code = request.req.error_code;
+    }
+
+    EC_SLAVE_DBG(request.slave, 1, "Read %zd bytes via SoE.\n",
+            request.req.data_size);
+
+    if (request.req.state != EC_INT_REQUEST_SUCCESS) {
+        if (result_size) {
+            *result_size = 0;
+        }
+        ec_soe_request_clear(&request.req);
+        return -EIO;
+    } else {
+        if (request.req.data_size > target_size) {
+            EC_MASTER_ERR(master, "Buffer too small.\n");
+            ec_soe_request_clear(&request.req);
+            return -EOVERFLOW;
+        }
+        if (result_size) {
+            *result_size = request.req.data_size;
+        }
+        memcpy(target, request.req.data, request.req.data_size);
+        return 0;
+    }
+}
+
+/*****************************************************************************/
+
 /** \cond */
 
 EXPORT_SYMBOL(ecrt_master_create_domain);
@@ -2362,6 +2506,8 @@ EXPORT_SYMBOL(ecrt_master_sync_reference_clock);
 EXPORT_SYMBOL(ecrt_master_sync_slave_clocks);
 EXPORT_SYMBOL(ecrt_master_sync_monitor_queue);
 EXPORT_SYMBOL(ecrt_master_sync_monitor_process);
+EXPORT_SYMBOL(ecrt_master_write_idn);
+EXPORT_SYMBOL(ecrt_master_read_idn);
 
 /** \endcond */
 
