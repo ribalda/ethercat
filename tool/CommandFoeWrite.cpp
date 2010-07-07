@@ -139,7 +139,8 @@ void CommandFoeWrite::execute(const StringVector &args)
 
     // write data via foe to the slave
     data.offset = 0;
-    strncpy(data.file_name, storeFileName.c_str(), sizeof(data.file_name));
+    strncpy(data.file_name, storeFileName.c_str(), sizeof(data.file_name)-1);
+    data.file_name[sizeof(data.file_name)-1] = '\0';
 
     try {
         m.writeFoe(&data);
