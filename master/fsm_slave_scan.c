@@ -498,12 +498,14 @@ void ec_fsm_slave_scan_state_sii_size(ec_fsm_slave_scan_t *fsm /**< slave state 
     ec_slave_t *slave = fsm->slave;
     uint16_t cat_type, cat_size;
 
-    if (ec_fsm_sii_exec(&fsm->fsm_sii)) return;
+    if (ec_fsm_sii_exec(&fsm->fsm_sii))
+        return;
 
     if (!ec_fsm_sii_success(&fsm->fsm_sii)) {
         fsm->slave->error_flag = 1;
         fsm->state = ec_fsm_slave_scan_state_error;
-        EC_SLAVE_ERR(slave, "Failed to read SII size.\n");
+        EC_SLAVE_ERR(slave, "Failed to determine SII content size:"
+                " Reading word offset 0x%04x failed.\n", fsm->sii_offset);
         return;
     }
 
