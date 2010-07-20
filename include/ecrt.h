@@ -687,6 +687,7 @@ int ecrt_master_sdo_upload(
 int ecrt_master_write_idn(
         ec_master_t *master, /**< EtherCAT master. */
         uint16_t slave_position, /**< Slave position. */
+        uint8_t drive_no, /**< Drive number. */
         uint16_t idn, /**< SoE IDN (see ecrt_slave_config_idn()). */
         uint8_t *data, /**< Pointer to data to write. */
         size_t data_size, /**< Size of data to write. */
@@ -705,6 +706,7 @@ int ecrt_master_write_idn(
 int ecrt_master_read_idn(
         ec_master_t *master, /**< EtherCAT master. */
         uint16_t slave_position, /**< Slave position. */
+        uint8_t drive_no, /**< Drive number. */
         uint16_t idn, /**< SoE IDN (see ecrt_slave_config_idn()). */
         uint8_t *target, /**< Pointer to memory where the read data can be
                            stored. */
@@ -1212,6 +1214,7 @@ void ecrt_slave_config_state(
  */
 int ecrt_slave_config_idn(
         ec_slave_config_t *sc, /**< Slave configuration. */
+        uint8_t drive_no, /**< Drive number. */
         uint16_t idn, /**< SoE IDN. */
         ec_al_state_t state, /**< AL state in which to write the IDN (PREOP or
                                SAFEOP). */

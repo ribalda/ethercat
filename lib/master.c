@@ -305,11 +305,13 @@ int ecrt_master_sdo_upload(ec_master_t *master, uint16_t slave_position,
 /*****************************************************************************/
 
 int ecrt_master_write_idn(ec_master_t *master, uint16_t slave_position,
-        uint16_t idn, uint8_t *data, size_t data_size, uint16_t *error_code)
+        uint8_t drive_no, uint16_t idn, uint8_t *data, size_t data_size,
+        uint16_t *error_code)
 {
     ec_ioctl_slave_soe_write_t io;
 
     io.slave_position = slave_position;
+    io.drive_no = drive_no;
     io.idn = idn;
     io.data_size = data_size;
     io.data = data;
@@ -328,12 +330,13 @@ int ecrt_master_write_idn(ec_master_t *master, uint16_t slave_position,
 /*****************************************************************************/
 
 int ecrt_master_read_idn(ec_master_t *master, uint16_t slave_position,
-        uint16_t idn, uint8_t *target, size_t target_size,
+        uint8_t drive_no, uint16_t idn, uint8_t *target, size_t target_size,
         size_t *result_size, uint16_t *error_code)
 {
     ec_ioctl_slave_soe_read_t io;
 
     io.slave_position = slave_position;
+    io.drive_no = drive_no;
     io.idn = idn;
     io.mem_size = target_size;
     io.data = target;

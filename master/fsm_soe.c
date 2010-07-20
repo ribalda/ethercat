@@ -201,7 +201,8 @@ void ec_fsm_soe_read_start(ec_fsm_soe_t *fsm /**< finite state machine */)
     ec_soe_request_t *request = fsm->request;
     uint8_t *data;
 
-    EC_SLAVE_DBG(slave, 1, "Reading IDN 0x%04X.\n", request->idn);
+    EC_SLAVE_DBG(slave, 1, "Reading IDN 0x%04X of drive %u.\n", request->idn,
+            request->drive_no);
 
     if (!(slave->sii.mailbox_protocols & EC_MBOX_SOE)) {
         EC_SLAVE_ERR(slave, "Slave does not support SoE!\n");
@@ -218,7 +219,7 @@ void ec_fsm_soe_read_start(ec_fsm_soe_t *fsm /**< finite state machine */)
         return;
     }
 
-    EC_WRITE_U8(data, OPCODE_READ_REQUEST);
+    EC_WRITE_U8(data, OPCODE_READ_REQUEST | (request->drive_no & 0x07) << 5);
     EC_WRITE_U8(data + 1, 1 << 6); // request value
     EC_WRITE_U16(data + 2, request->idn);
 
@@ -492,7 +493,8 @@ void ec_fsm_soe_write_next_fragment(
         return;
     }
 
-    EC_WRITE_U8(data, OPCODE_WRITE_REQUEST | incomplete << 3);
+    EC_WRITE_U8(data, OPCODE_WRITE_REQUEST | incomplete << 3 |
+            (req->drive_no & 0x07) << 5);
     EC_WRITE_U8(data + 1, 1 << 6); // only value included
     EC_WRITE_U16(data + 2, incomplete ? fragments_left : req->idn);
     memcpy(data + 4, req->data + fsm->offset, fragment_size);
@@ -517,8 +519,8 @@ void ec_fsm_soe_write_start(ec_fsm_soe_t *fsm /**< finite state machine */)
     ec_slave_t *slave = fsm->slave;
     ec_soe_request_t *req = fsm->request;
 
-    EC_SLAVE_DBG(slave, 1, "Writing IDN 0x%04X (%zu byte).\n",
-            req->idn, req->data_size);
+    EC_SLAVE_DBG(slave, 1, "Writing IDN 0x%04X of drive %u (%zu byte).\n",
+            req->idn, req->drive_no, req->data_size);
 
     if (!(slave->sii.mailbox_protocols & EC_MBOX_SOE)) {
         EC_SLAVE_ERR(slave, "Slave does not support SoE!\n");

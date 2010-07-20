@@ -938,16 +938,22 @@ void ecrt_slave_config_state(const ec_slave_config_t *sc,
 
 /*****************************************************************************/
 
-int ecrt_slave_config_idn(ec_slave_config_t *sc, uint16_t idn,
-        ec_al_state_t state, const uint8_t *data, size_t size)
+int ecrt_slave_config_idn(ec_slave_config_t *sc, uint8_t drive_no, 
+        uint16_t idn, ec_al_state_t state, const uint8_t *data,
+        size_t size)
 {
     ec_slave_t *slave = sc->slave;
     ec_soe_request_t *req;
     int ret;
 
-    EC_CONFIG_DBG(sc, 1, "%s(sc = 0x%p, idn = 0x%04X, state = %u, "
-            "data = 0x%p, size = %zu)\n",
-            __func__, sc, idn, state, data, size);
+    EC_CONFIG_DBG(sc, 1, "%s(sc = 0x%p, drive_no = %u, idn = 0x%04X, "
+            "state = %u, data = 0x%p, size = %zu)\n",
+            __func__, sc, drive_no, idn, state, data, size);
+
+    if (drive_no > 7) {
+        EC_CONFIG_ERR(sc, "Invalid drive number!\n");
+        return -EINVAL;
+    }
 
     if (state != EC_AL_STATE_PREOP && state != EC_AL_STATE_SAFEOP) {
         EC_CONFIG_ERR(sc, "AL state for IDN config"
@@ -967,6 +973,7 @@ int ecrt_slave_config_idn(ec_slave_config_t *sc, uint16_t idn,
     }
 
     ec_soe_request_init(req);
+    ec_soe_request_set_drive_no(req, drive_no);
     ec_soe_request_set_idn(req, idn);
     req->al_state = state;
 

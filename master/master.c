@@ -2345,13 +2345,20 @@ uint32_t ecrt_master_sync_monitor_process(ec_master_t *master)
 /*****************************************************************************/
 
 int ecrt_master_write_idn(ec_master_t *master, uint16_t slave_position,
-        uint16_t idn, uint8_t *data, size_t data_size, uint16_t *error_code)
+        uint8_t drive_no, uint16_t idn, uint8_t *data, size_t data_size,
+        uint16_t *error_code)
 {
     ec_master_soe_request_t request;
     int retval;
 
+    if (drive_no > 7) {
+        EC_MASTER_ERR(master, "Invalid drive number!\n");
+        return -EINVAL;
+    }
+
     INIT_LIST_HEAD(&request.list);
     ec_soe_request_init(&request.req);
+    ec_soe_request_set_drive_no(&request.req, drive_no);
     ec_soe_request_set_idn(&request.req, idn);
 
     if (ec_soe_request_alloc(&request.req, data_size)) {
@@ -2413,13 +2420,19 @@ int ecrt_master_write_idn(ec_master_t *master, uint16_t slave_position,
 /*****************************************************************************/
 
 int ecrt_master_read_idn(ec_master_t *master, uint16_t slave_position,
-        uint16_t idn, uint8_t *target, size_t target_size,
+        uint8_t drive_no, uint16_t idn, uint8_t *target, size_t target_size,
         size_t *result_size, uint16_t *error_code)
 {
     ec_master_soe_request_t request;
 
+    if (drive_no > 7) {
+        EC_MASTER_ERR(master, "Invalid drive number!\n");
+        return -EINVAL;
+    }
+
     INIT_LIST_HEAD(&request.list);
     ec_soe_request_init(&request.req);
+    ec_soe_request_set_drive_no(&request.req, drive_no);
     ec_soe_request_set_idn(&request.req, idn);
     ec_soe_request_read(&request.req);
 

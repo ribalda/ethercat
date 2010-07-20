@@ -2474,7 +2474,7 @@ int ec_cdev_ioctl_sc_idn(
     up(&master->master_sem); // FIXME
 
     ret = ecrt_slave_config_idn(
-            sc, ioctl.idn, ioctl.al_state, data, ioctl.size);
+            sc, ioctl.drive_no, ioctl.idn, ioctl.al_state, data, ioctl.size);
     kfree(data);
     return ret;
 }
@@ -3344,7 +3344,7 @@ int ec_cdev_ioctl_slave_soe_read(
     }
 
     retval = ecrt_master_read_idn(master, ioctl.slave_position,
-            ioctl.idn, data, ioctl.mem_size, &ioctl.data_size,
+            ioctl.drive_no, ioctl.idn, data, ioctl.mem_size, &ioctl.data_size,
             &ioctl.error_code);
     if (retval) {
         kfree(data);
@@ -3395,7 +3395,8 @@ int ec_cdev_ioctl_slave_soe_write(
     }
 
     retval = ecrt_master_write_idn(master, ioctl.slave_position,
-            ioctl.idn, data, ioctl.data_size, &ioctl.error_code);
+            ioctl.drive_no, ioctl.idn, data, ioctl.data_size,
+            &ioctl.error_code);
     kfree(data);
     if (retval) {
         return retval;
