@@ -90,6 +90,8 @@ void CommandSoeRead::execute(const StringVector &args)
         throwInvalidUsageException(err);
     }
 
+    ioctl.drive_no = 0; // FIXME
+
     try {
         ioctl.idn = parseIdn(args[0]);
     } catch (runtime_error &e) {
