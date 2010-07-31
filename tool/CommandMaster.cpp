@@ -160,7 +160,7 @@ void CommandMaster::execute(const StringVector &args)
                     << setprecision(1) << fixed;
                 for (j = 0; j < EC_RATE_COUNT; j++) {
                     cout << setw(5)
-                        << data.devices[i].tx_byte_rates[j] / 1024000.0;
+                        << data.devices[i].tx_byte_rates[j] / 1024.0;
                     if (j < EC_RATE_COUNT - 1) {
                         cout << " ";
                     }

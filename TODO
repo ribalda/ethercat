@@ -21,7 +21,6 @@ Version 1.5.0:
     - Implement ranges for slaves and domains.
 * Fix casting away constness during expected WC calculation.
 * Include SoE drive_no in ethercat tool.
-* Fix frame statistics overflow.
 
 Future issues:
 
