@@ -149,8 +149,8 @@ void CommandMaster::execute(const StringVector &args)
                     << "      Tx frame rate [1/s]: "
                     << setfill(' ') << setprecision(0) << fixed;
                 for (j = 0; j < EC_RATE_COUNT; j++) {
-                    cout <<
-                        setw(5) << data.devices[i].tx_frame_rates[j] / 1000.0;
+                    cout << setw(ColWidth)
+                        << data.devices[i].tx_frame_rates[j] / 1000.0;
                     if (j < EC_RATE_COUNT - 1) {
                         cout << " ";
                     }
@@ -159,7 +159,7 @@ void CommandMaster::execute(const StringVector &args)
                     << "      Tx rate [KByte/s]:   "
                     << setprecision(1) << fixed;
                 for (j = 0; j < EC_RATE_COUNT; j++) {
-                    cout << setw(5)
+                    cout << setw(ColWidth)
                         << data.devices[i].tx_byte_rates[j] / 1024.0;
                     if (j < EC_RATE_COUNT - 1) {
                         cout << " ";
@@ -169,7 +169,8 @@ void CommandMaster::execute(const StringVector &args)
                     << "      Loss rate [1/s]:     "
                     << setprecision(0) << fixed;
                 for (j = 0; j < EC_RATE_COUNT; j++) {
-                    cout << setw(5) << data.devices[i].loss_rates[j] / 1000.0;
+                    cout << setw(ColWidth)
+                        << data.devices[i].loss_rates[j] / 1000.0;
                     if (j < EC_RATE_COUNT - 1) {
                         cout << " ";
                     }
@@ -183,7 +184,7 @@ void CommandMaster::execute(const StringVector &args)
                         perc = 100.0 * data.devices[i].loss_rates[j] /
                             data.devices[i].tx_frame_rates[j];
                     }
-                    cout << setw(5) << perc;
+                    cout << setw(ColWidth) << perc;
                     if (j < EC_RATE_COUNT - 1) {
                         cout << " ";
                     }

@@ -42,6 +42,9 @@ class CommandMaster:
 
         string helpString() const;
         void execute(const StringVector &);
+
+    private:
+        enum {ColWidth = 6};
 };
 
 /****************************************************************************/
