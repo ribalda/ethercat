@@ -53,14 +53,10 @@ int ecrt_master_reserve(ec_master_t *master)
 
 /*****************************************************************************/
 
-void ec_master_clear(ec_master_t *master)
+void ec_master_clear_config(ec_master_t *master)
 {
     ec_domain_t *d, *next_d;
     ec_slave_config_t *c, *next_c;
-
-    if (master->process_data)  {
-        munmap(master->process_data, master->process_data_size);
-    }
 
     d = master->first_domain;
     while (d) {
@@ -68,6 +64,7 @@ void ec_master_clear(ec_master_t *master)
         ec_domain_clear(d);
         d = next_d;
     }
+    master->first_domain = NULL;
 
     c = master->first_config;
     while (c) {
@@ -75,6 +72,18 @@ void ec_master_clear(ec_master_t *master)
         ec_slave_config_clear(c);
         c = next_c;
     }
+    master->first_config = NULL;
+}
+
+/*****************************************************************************/
+
+void ec_master_clear(ec_master_t *master)
+{
+    if (master->process_data)  {
+        munmap(master->process_data, master->process_data_size);
+    }
+
+    ec_master_clear_config(master);
 
     if (master->fd != -1) {
         close(master->fd);
@@ -456,8 +465,9 @@ void ecrt_master_deactivate(ec_master_t *master)
         fprintf(stderr, "Failed to deactivate master: %s\n", strerror(errno));
         return;
     }
-}
 
+    ec_master_clear_config(master);
+}
 
 /*****************************************************************************/
 
@@ -471,7 +481,6 @@ int ecrt_master_set_send_interval(ec_master_t *master,size_t send_interval_us)
     }
     return 0;
 }
-
 
 /*****************************************************************************/
 
