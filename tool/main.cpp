@@ -52,6 +52,7 @@ using namespace std;
 #include "CommandPdos.h"
 #include "CommandRegRead.h"
 #include "CommandRegWrite.h"
+#include "CommandRescan.h"
 #include "CommandSdos.h"
 #include "CommandSiiRead.h"
 #include "CommandSiiWrite.h"
@@ -307,6 +308,7 @@ int main(int argc, char **argv)
     commandList.push_back(new CommandPdos());
     commandList.push_back(new CommandRegRead());
     commandList.push_back(new CommandRegWrite());
+    commandList.push_back(new CommandRescan());
     commandList.push_back(new CommandSdos());
     commandList.push_back(new CommandSiiRead());
     commandList.push_back(new CommandSiiWrite());

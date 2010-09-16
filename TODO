@@ -13,7 +13,6 @@ Version 1.5.0:
 * Ethernet drivers:
     - Fix link detection in generic driver.
     - Add native drivers from 2.6.24 up to 2.6.31.
-* Rescan command.
 * Change SDO index at runtime for SDO request.
 * Output skipped datagrams again.
 * Output warning when send_ext() is called in illegal context.
