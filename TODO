@@ -13,9 +13,6 @@ Version 1.5.0:
 * Ethernet drivers:
     - Fix link detection in generic driver.
     - Add native drivers from 2.6.24 up to 2.6.31.
-* Finish library implementation.
-  - Remove stdio uses?
-* Rescan command.
 * ethercat tool:
     - Output error after usage.
     - Implement ranges for slaves and domains.
@@ -80,6 +77,7 @@ Future issues:
 * Simplify master fsm by introducing a common request state to handle external
   requests (replace write_sii, sdo_request, etc).
 * Write PDO mapping/assignment by default?
+* Remove stdio uses in userspace library?
 
 Smaller issues:
 

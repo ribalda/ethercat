@@ -659,6 +659,19 @@ int ec_cdev_ioctl_master_debug(
 
 /*****************************************************************************/
 
+/** Issue a bus scan.
+ */
+int ec_cdev_ioctl_master_rescan(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg /**< ioctl() argument. */
+        )
+{
+    master->fsm.rescan_required = 1;
+    return 0;
+}
+
+/*****************************************************************************/
+
 /** Set slave state.
  */
 int ec_cdev_ioctl_slave_state(
@@ -3501,6 +3514,10 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             if (!(filp->f_mode & FMODE_WRITE))
                 return -EPERM;
             return ec_cdev_ioctl_master_debug(master, arg);
+        case EC_IOCTL_MASTER_RESCAN:
+            if (!(filp->f_mode & FMODE_WRITE))
+                return -EPERM;
+            return ec_cdev_ioctl_master_rescan(master, arg);
         case EC_IOCTL_SLAVE_STATE:
             if (!(filp->f_mode & FMODE_WRITE))
                 return -EPERM;

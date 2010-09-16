@@ -47,6 +47,14 @@
 
 /*****************************************************************************/
 
+void ec_voe_handler_clear(ec_voe_handler_t *voe)
+{
+    if (voe->data)
+        free(voe->data);
+}
+
+/*****************************************************************************/
+
 void ecrt_voe_handler_send_header(ec_voe_handler_t *voe, uint32_t vendor_id,
         uint16_t vendor_type)
 {
