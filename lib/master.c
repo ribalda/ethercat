@@ -53,6 +53,51 @@ int ecrt_master_reserve(ec_master_t *master)
 
 /*****************************************************************************/
 
+void ec_master_clear(ec_master_t *master)
+{
+    ec_domain_t *d, *next_d;
+    ec_slave_config_t *c, *next_c;
+
+    if (master->process_data)  {
+        munmap(master->process_data, master->process_data_size);
+    }
+
+    d = master->first_domain;
+    while (d) {
+        next_d = d->next;
+        ec_domain_clear(d);
+        d = next_d;
+    }
+
+    c = master->first_config;
+    while (c) {
+        next_c = c->next;
+        ec_slave_config_clear(c);
+        c = next_c;
+    }
+
+    if (master->fd != -1) {
+        close(master->fd);
+    }
+}
+
+/*****************************************************************************/
+
+void ec_master_add_domain(ec_master_t *master, ec_domain_t *domain)
+{
+    if (master->first_domain) {
+        ec_domain_t *d = master->first_domain;
+        while (d->next) {
+            d = d->next;
+        }
+        d->next = domain;
+    } else {
+        master->first_domain = domain;
+    }
+}
+
+/*****************************************************************************/
+
 ec_domain_t *ecrt_master_create_domain(ec_master_t *master)
 {
     ec_domain_t *domain;
@@ -71,10 +116,29 @@ ec_domain_t *ecrt_master_create_domain(ec_master_t *master)
         return 0; 
     }
 
+    domain->next = NULL;
     domain->index = (unsigned int) index;
     domain->master = master;
     domain->process_data = NULL;
+
+    ec_master_add_domain(master, domain);
+
     return domain;
+}
+
+/*****************************************************************************/
+
+void ec_master_add_slave_config(ec_master_t *master, ec_slave_config_t *sc)
+{
+    if (master->first_config) {
+        ec_slave_config_t *c = master->first_config;
+        while (c->next) {
+            c = c->next;
+        }
+        c->next = sc;
+    } else {
+        master->first_config = sc;
+    }
 }
 
 /*****************************************************************************/
@@ -105,10 +169,16 @@ ec_slave_config_t *ecrt_master_slave_config(ec_master_t *master,
         return 0; 
     }
 
+    sc->next = NULL;
     sc->master = master;
     sc->index = data.config_index;
     sc->alias = alias;
     sc->position = position;
+    sc->first_sdo_request = NULL;
+    sc->first_voe_handler = NULL;
+
+    ec_master_add_slave_config(master, sc);
+
     return sc;
 }
 

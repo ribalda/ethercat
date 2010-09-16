@@ -47,6 +47,13 @@
 
 /*****************************************************************************/
 
+void ec_domain_clear(ec_domain_t *domain)
+{
+    // nothing to do
+}
+
+/*****************************************************************************/
+
 int ecrt_domain_reg_pdo_entry_list(ec_domain_t *domain,
         const ec_pdo_entry_reg_t *regs)
 {

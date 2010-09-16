@@ -36,6 +36,13 @@ struct ec_master {
     int fd;
     uint8_t *process_data;
     size_t process_data_size;
+
+    ec_domain_t *first_domain;
+    ec_slave_config_t *first_config;
 };
+
+/*****************************************************************************/
+
+void ec_master_clear(ec_master_t *);
 
 /*****************************************************************************/

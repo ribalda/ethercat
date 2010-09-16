@@ -33,6 +33,7 @@
 /*****************************************************************************/
 
 struct ec_sdo_request {
+    ec_sdo_request_t *next; /**< List header. */
     ec_slave_config_t *config; /**< Parent slave configuration. */
     unsigned int index; /**< Request index (identifier). */
     uint16_t sdo_index; /**< SDO index. */
@@ -41,5 +42,9 @@ struct ec_sdo_request {
     size_t mem_size; /**< Size of SDO data memory. */
     size_t data_size; /**< Size of SDO data. */
 };
+
+/*****************************************************************************/
+
+void ec_sdo_request_clear(ec_sdo_request_t *);
 
 /*****************************************************************************/

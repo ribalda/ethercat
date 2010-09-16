@@ -55,9 +55,9 @@ ec_master_t *ecrt_request_master(unsigned int master_index)
     ec_master_t *master = ecrt_open_master(master_index);
     if (master) {
         if (ecrt_master_reserve(master) < 0) {
-            close(master->fd);
+            ec_master_clear(master);
             free(master);
-            master = 0;
+            master = NULL;
         }
     }
 
@@ -82,19 +82,21 @@ ec_master_t *ecrt_open_master(unsigned int master_index)
 
     master->process_data = NULL;
     master->process_data_size = 0;
+    master->first_domain = NULL;
+    master->first_config = NULL;
 
     snprintf(path, MAX_PATH_LEN - 1, "/dev/EtherCAT%u", master_index);
 
     master->fd = open(path, O_RDWR);
     if (master->fd == -1) {
         fprintf(stderr, "Failed to open %s: %s\n", path, strerror(errno));
-        goto out_free;
+        goto out_clear;
     }
 
     if (ioctl(master->fd, EC_IOCTL_MODULE, &module_data) < 0) {
         fprintf(stderr, "Failed to get module information from %s: %s\n",
                 path, strerror(errno));
-        goto out_close;
+        goto out_clear;
     }
 
     if (module_data.ioctl_version_magic != EC_IOCTL_VERSION_MAGIC) {
@@ -102,14 +104,13 @@ ec_master_t *ecrt_open_master(unsigned int master_index)
                 " %s: %u, libethercat: %u.\n",
                 path, module_data.ioctl_version_magic,
                 EC_IOCTL_VERSION_MAGIC);
-        goto out_close;
+        goto out_clear;
     }
 
     return master;
 
-out_close:
-    close(master->fd);
-out_free:
+out_clear:
+    ec_master_clear(master);
     free(master);
     return 0;
 }
@@ -118,11 +119,7 @@ out_free:
 
 void ecrt_release_master(ec_master_t *master)
 {
-    if (master->process_data)  {
-        munmap(master->process_data, master->process_data_size);
-    }
-
-    close(master->fd);
+    ec_master_clear(master);
     free(master);
 }
 

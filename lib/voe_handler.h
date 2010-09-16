@@ -33,11 +33,16 @@
 /*****************************************************************************/
 
 struct ec_voe_handler {
+    ec_voe_handler_t *next;
     ec_slave_config_t *config;
     unsigned int index;
     size_t data_size;
     size_t mem_size;
     uint8_t *data;
 };
+
+/*****************************************************************************/
+
+void ec_voe_handler_clear(ec_voe_handler_t *);
 
 /*****************************************************************************/
