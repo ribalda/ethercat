@@ -505,8 +505,10 @@ void ec_fsm_slave_scan_state_sii_size(ec_fsm_slave_scan_t *fsm /**< slave state 
         fsm->slave->error_flag = 1;
         fsm->state = ec_fsm_slave_scan_state_error;
         EC_SLAVE_ERR(slave, "Failed to determine SII content size:"
-                " Reading word offset 0x%04x failed.\n", fsm->sii_offset);
-        return;
+                " Reading word offset 0x%04x failed. Assuming %u words.\n",
+                fsm->sii_offset, EC_FIRST_SII_CATEGORY_OFFSET);
+        slave->sii_nwords = EC_FIRST_SII_CATEGORY_OFFSET;
+        goto alloc_sii;
     }
 
     cat_type = EC_READ_U16(fsm->fsm_sii.value);
