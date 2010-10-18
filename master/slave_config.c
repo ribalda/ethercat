@@ -188,7 +188,9 @@ int ec_slave_config_prepare_fmmu(
     tx_size = fmmu->data_size;
     if (sc->allow_overlapping_pdos && sc->used_fmmus > 0) {
         prev_fmmu = &sc->fmmu_configs[sc->used_fmmus-1];
-        if (fmmu->dir != prev_fmmu->dir) {
+        if (fmmu->dir != prev_fmmu->dir && prev_fmmu->tx_size != 0) {
+            // prev fmmu has opposite direction
+            // and is not already paired with prev-prev fmmu
             prev_fmmu->tx_size = max(fmmu->data_size,prev_fmmu->data_size);
             tx_size = 0;
             fmmu_logical_start_address = prev_fmmu->logical_start_address;
