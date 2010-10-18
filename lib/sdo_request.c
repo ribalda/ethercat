@@ -43,8 +43,17 @@
 #include "slave_config.h"
 #include "master.h"
 
+/*****************************************************************************/
+
+void ec_sdo_request_clear(ec_sdo_request_t *req)
+{
+    if (req->data) {
+        free(req->data);
+    }
+}
+
 /*****************************************************************************
- * Realtime interface.
+ * Application interface.
  ****************************************************************************/
 
 void ecrt_sdo_request_timeout(ec_sdo_request_t *req, uint32_t timeout)

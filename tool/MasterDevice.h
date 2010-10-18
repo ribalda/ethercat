@@ -132,6 +132,7 @@ class MasterDevice
         void readReg(ec_ioctl_slave_reg_t *);
         void writeReg(ec_ioctl_slave_reg_t *);
         void setDebug(unsigned int);
+        void rescan();
         void sdoDownload(ec_ioctl_slave_sdo_download_t *);
         void sdoUpload(ec_ioctl_slave_sdo_upload_t *);
         void requestState(uint16_t, uint8_t);

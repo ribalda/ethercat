@@ -704,7 +704,7 @@ static void e100_enable_irq(struct nic *nic)
 
 static void e100_disable_irq(struct nic *nic)
 {
-	unsigned long flags;
+	unsigned long flags = 0;
 
 	if (!nic->ecdev)
 		spin_lock_irqsave(&nic->cmd_lock, flags);

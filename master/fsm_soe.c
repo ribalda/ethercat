@@ -201,7 +201,8 @@ void ec_fsm_soe_read_start(ec_fsm_soe_t *fsm /**< finite state machine */)
     ec_soe_request_t *request = fsm->request;
     uint8_t *data;
 
-    EC_SLAVE_DBG(slave, 1, "Reading IDN 0x%04X.\n", request->idn);
+    EC_SLAVE_DBG(slave, 1, "Reading IDN 0x%04X of drive %u.\n", request->idn,
+            request->drive_no);
 
     if (!(slave->sii.mailbox_protocols & EC_MBOX_SOE)) {
         EC_SLAVE_ERR(slave, "Slave does not support SoE!\n");
@@ -218,7 +219,7 @@ void ec_fsm_soe_read_start(ec_fsm_soe_t *fsm /**< finite state machine */)
         return;
     }
 
-    EC_WRITE_U8(data, OPCODE_READ_REQUEST);
+    EC_WRITE_U8(data, OPCODE_READ_REQUEST | (request->drive_no & 0x07) << 5);
     EC_WRITE_U8(data + 1, 1 << 6); // request value
     EC_WRITE_U16(data + 2, request->idn);
 
@@ -265,7 +266,7 @@ void ec_fsm_soe_read_request(ec_fsm_soe_t *fsm /**< finite state machine */)
         }
         fsm->state = ec_fsm_soe_error;
         EC_SLAVE_ERR(slave, "Reception of SoE read request"
-                " failed after %u ms: ", (u32) diff_ms);
+                " failed after %lu ms: ", diff_ms);
         ec_datagram_print_wc_error(datagram);
         ec_fsm_soe_print_error(fsm);
         return;
@@ -311,8 +312,8 @@ void ec_fsm_soe_read_check(ec_fsm_soe_t *fsm /**< finite state machine */)
             (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
         if (diff_ms >= EC_SOE_RESPONSE_TIMEOUT) {
             fsm->state = ec_fsm_soe_error;
-            EC_SLAVE_ERR(slave, "Timeout after %u ms while waiting for"
-                    " read response.\n", (u32) diff_ms);
+            EC_SLAVE_ERR(slave, "Timeout after %lu ms while waiting for"
+                    " read response.\n", diff_ms);
             ec_fsm_soe_print_error(fsm);
             return;
         }
@@ -492,7 +493,8 @@ void ec_fsm_soe_write_next_fragment(
         return;
     }
 
-    EC_WRITE_U8(data, OPCODE_WRITE_REQUEST | incomplete << 3);
+    EC_WRITE_U8(data, OPCODE_WRITE_REQUEST | incomplete << 3 |
+            (req->drive_no & 0x07) << 5);
     EC_WRITE_U8(data + 1, 1 << 6); // only value included
     EC_WRITE_U16(data + 2, incomplete ? fragments_left : req->idn);
     memcpy(data + 4, req->data + fsm->offset, fragment_size);
@@ -517,8 +519,8 @@ void ec_fsm_soe_write_start(ec_fsm_soe_t *fsm /**< finite state machine */)
     ec_slave_t *slave = fsm->slave;
     ec_soe_request_t *req = fsm->request;
 
-    EC_SLAVE_DBG(slave, 1, "Writing IDN 0x%04X (%zu byte).\n",
-            req->idn, req->data_size);
+    EC_SLAVE_DBG(slave, 1, "Writing IDN 0x%04X of drive %u (%zu byte).\n",
+            req->idn, req->drive_no, req->data_size);
 
     if (!(slave->sii.mailbox_protocols & EC_MBOX_SOE)) {
         EC_SLAVE_ERR(slave, "Slave does not support SoE!\n");
@@ -563,7 +565,7 @@ void ec_fsm_soe_write_request(ec_fsm_soe_t *fsm /**< finite state machine */)
         }
         fsm->state = ec_fsm_soe_error;
         EC_SLAVE_ERR(slave, "Reception of SoE write request"
-                " failed after %u ms: ", (u32) diff_ms);
+                " failed after %lu ms: ", diff_ms);
         ec_datagram_print_wc_error(datagram);
         ec_fsm_soe_print_error(fsm);
         return;
@@ -613,8 +615,8 @@ void ec_fsm_soe_write_check(ec_fsm_soe_t *fsm /**< finite state machine */)
                 (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
             if (diff_ms >= EC_SOE_RESPONSE_TIMEOUT) {
                 fsm->state = ec_fsm_soe_error;
-                EC_SLAVE_ERR(slave, "Timeout after %u ms while waiting"
-                        " for write response.\n", (u32) diff_ms);
+                EC_SLAVE_ERR(slave, "Timeout after %lu ms while waiting"
+                        " for write response.\n", diff_ms);
                 ec_fsm_soe_print_error(fsm);
                 return;
             }

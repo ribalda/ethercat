@@ -52,7 +52,9 @@ void ec_fsm_slave_scan_state_dc_times(ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_state_datalink(ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_state_sii_size(ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_state_sii_data(ec_fsm_slave_scan_t *);
+#ifdef EC_REGALIAS
 void ec_fsm_slave_scan_state_regalias(ec_fsm_slave_scan_t *);
+#endif
 void ec_fsm_slave_scan_state_preop(ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_state_sync(ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_state_pdos(ec_fsm_slave_scan_t *);
@@ -61,7 +63,9 @@ void ec_fsm_slave_scan_state_end(ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_state_error(ec_fsm_slave_scan_t *);
 
 void ec_fsm_slave_scan_enter_datalink(ec_fsm_slave_scan_t *);
+#ifdef EC_REGALIAS
 void ec_fsm_slave_scan_enter_regalias(ec_fsm_slave_scan_t *);
+#endif
 void ec_fsm_slave_scan_enter_preop(ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_enter_pdos(ec_fsm_slave_scan_t *);
 
@@ -494,13 +498,17 @@ void ec_fsm_slave_scan_state_sii_size(ec_fsm_slave_scan_t *fsm /**< slave state 
     ec_slave_t *slave = fsm->slave;
     uint16_t cat_type, cat_size;
 
-    if (ec_fsm_sii_exec(&fsm->fsm_sii)) return;
+    if (ec_fsm_sii_exec(&fsm->fsm_sii))
+        return;
 
     if (!ec_fsm_sii_success(&fsm->fsm_sii)) {
         fsm->slave->error_flag = 1;
         fsm->state = ec_fsm_slave_scan_state_error;
-        EC_SLAVE_ERR(slave, "Failed to read SII size.\n");
-        return;
+        EC_SLAVE_ERR(slave, "Failed to determine SII content size:"
+                " Reading word offset 0x%04x failed. Assuming %u words.\n",
+                fsm->sii_offset, EC_FIRST_SII_CATEGORY_OFFSET);
+        slave->sii_nwords = EC_FIRST_SII_CATEGORY_OFFSET;
+        goto alloc_sii;
     }
 
     cat_type = EC_READ_U16(fsm->fsm_sii.value);
@@ -694,7 +702,15 @@ void ec_fsm_slave_scan_state_sii_data(ec_fsm_slave_scan_t *fsm /**< slave state 
         }
     }
 
+#ifdef EC_REGALIAS
     ec_fsm_slave_scan_enter_regalias(fsm);
+#else
+    if (slave->sii.mailbox_protocols & EC_MBOX_COE) {
+        ec_fsm_slave_scan_enter_preop(fsm);
+    } else {
+        fsm->state = ec_fsm_slave_scan_state_end;
+    }
+#endif
     return;
 
 end:
@@ -703,13 +719,12 @@ end:
     fsm->state = ec_fsm_slave_scan_state_error;
 }
 
-
 /*****************************************************************************/
 
-/**
-   Slave scan entry function: REGALIAS.
-*/
+#ifdef EC_REGALIAS
 
+/** Slave scan entry function: REGALIAS.
+ */
 void ec_fsm_slave_scan_enter_regalias(
         ec_fsm_slave_scan_t *fsm /**< slave state machine */
         )
@@ -727,9 +742,8 @@ void ec_fsm_slave_scan_enter_regalias(
 
 /*****************************************************************************/
 
-/**
-   Slave scan state: REGALIAS.
-*/
+/** Slave scan state: REGALIAS.
+ */
 void ec_fsm_slave_scan_state_regalias(
         ec_fsm_slave_scan_t *fsm /**< slave state machine */
         )
@@ -754,12 +768,15 @@ void ec_fsm_slave_scan_state_regalias(
         EC_SLAVE_DBG(slave, 1, "Read alias %u from register.\n",
                 slave->effective_alias);
     }
+
     if (slave->sii.mailbox_protocols & EC_MBOX_COE) {
         ec_fsm_slave_scan_enter_preop(fsm);
     } else {
         fsm->state = ec_fsm_slave_scan_state_end;
     }
 }
+
+#endif // defined EC_REGALIAS
 
 /*****************************************************************************/
 

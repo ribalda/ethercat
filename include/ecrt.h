@@ -416,6 +416,17 @@ typedef enum {
     EC_REQUEST_ERROR, /**< Request processing failed. */
 } ec_request_state_t;
 
+/*****************************************************************************/
+
+/** Application-layer state.
+ */
+typedef enum {
+    EC_AL_STATE_INIT = 1, /**< Init. */
+    EC_AL_STATE_PREOP = 2, /**< Pre-operational. */
+    EC_AL_STATE_SAFEOP = 4, /**< Safe-operational. */
+    EC_AL_STATE_OP = 8, /**< Operational. */
+} ec_al_state_t;
+
 /******************************************************************************
  * Global functions
  *****************************************************************************/
@@ -697,6 +708,8 @@ int ecrt_master_sdo_upload(
         uint32_t *abort_code /**< Abort code of the SDO upload. */
         );
 
+#endif /* #ifndef __KERNEL__ */
+
 /** Executes an SoE write request.
  *
  * Starts writing an IDN and blocks until the request was processed, or an
@@ -708,10 +721,11 @@ int ecrt_master_sdo_upload(
 int ecrt_master_write_idn(
         ec_master_t *master, /**< EtherCAT master. */
         uint16_t slave_position, /**< Slave position. */
+        uint8_t drive_no, /**< Drive number. */
         uint16_t idn, /**< SoE IDN (see ecrt_slave_config_idn()). */
         uint8_t *data, /**< Pointer to data to write. */
         size_t data_size, /**< Size of data to write. */
-        uint32_t *error_code /**< Pointer to variable, where an SoE error code
+        uint16_t *error_code /**< Pointer to variable, where an SoE error code
                                can be stored. */
         );
 
@@ -726,16 +740,15 @@ int ecrt_master_write_idn(
 int ecrt_master_read_idn(
         ec_master_t *master, /**< EtherCAT master. */
         uint16_t slave_position, /**< Slave position. */
+        uint8_t drive_no, /**< Drive number. */
         uint16_t idn, /**< SoE IDN (see ecrt_slave_config_idn()). */
         uint8_t *target, /**< Pointer to memory where the read data can be
                            stored. */
         size_t target_size, /**< Size of the memory \a target points to. */
         size_t *result_size, /**< Actual size of the received data. */
-        uint32_t *error_code /**< Pointer to variable, where an SoE error code
+        uint16_t *error_code /**< Pointer to variable, where an SoE error code
                                can be stored. */
         );
-
-#endif /* #ifndef __KERNEL__ */
 
 /** Finishes the configuration phase and prepares for cyclic operation.
  *
@@ -1258,7 +1271,10 @@ void ecrt_slave_config_state(
  */
 int ecrt_slave_config_idn(
         ec_slave_config_t *sc, /**< Slave configuration. */
+        uint8_t drive_no, /**< Drive number. */
         uint16_t idn, /**< SoE IDN. */
+        ec_al_state_t state, /**< AL state in which to write the IDN (PREOP or
+                               SAFEOP). */
         const uint8_t *data, /**< Pointer to the data. */
         size_t size /**< Size of the \a data. */
         );

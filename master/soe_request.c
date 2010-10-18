@@ -56,6 +56,9 @@ void ec_soe_request_init(
         ec_soe_request_t *req /**< SoE request. */
         )
 {
+    req->drive_no = 0x00;
+    req->idn = 0x0000;
+    req->al_state = EC_AL_STATE_INIT;
     req->data = NULL;
     req->mem_size = 0;
     req->data_size = 0;
@@ -85,8 +88,22 @@ int ec_soe_request_copy(
         const ec_soe_request_t *other /**< Other SoE request to copy from. */
         )
 {
+    req->drive_no = other->drive_no;
     req->idn = other->idn;
+    req->al_state = other->al_state;
     return ec_soe_request_copy_data(req, other->data, other->data_size);
+}
+
+/*****************************************************************************/
+
+/** Set drive number.
+ */
+void ec_soe_request_set_drive_no(
+        ec_soe_request_t *req, /**< SoE request. */
+        uint8_t drive_no /** Drive Number. */
+        )
+{
+    req->drive_no = drive_no;
 }
 
 /*****************************************************************************/

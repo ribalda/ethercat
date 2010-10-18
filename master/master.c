@@ -443,6 +443,20 @@ void ec_master_clear_domains(ec_master_t *master)
 
 /*****************************************************************************/
 
+/** Clear the configuration applied by the application.
+ */
+void ec_master_clear_config(
+        ec_master_t *master /**< EtherCAT master. */
+        )
+{
+    down(&master->master_sem);
+    ec_master_clear_domains(master);
+    ec_master_clear_slave_configs(master);
+    up(&master->master_sem);
+}
+
+/*****************************************************************************/
+
 /** Internal sending callback.
  */
 void ec_master_internal_send_cb(
@@ -657,14 +671,16 @@ void ec_master_leave_operation_phase(
         ec_master_t *master /**< EtherCAT master */
         )
 {
-    if (master->active)
-        ecrt_master_deactivate(master);
+    if (master->active) {
+        ecrt_master_deactivate(master); // also clears config
+    } else {
+        ec_master_clear_config(master);
+    }
 
     EC_MASTER_DBG(master, 1, "OPERATION -> IDLE.\n");
 
     master->phase = EC_IDLE;
 }
-
 
 /*****************************************************************************/
 
@@ -702,7 +718,7 @@ void ec_master_inject_external_datagrams(
                 list_del_init(&datagram->queue);
                 datagram->state = EC_DATAGRAM_ERROR;
                 EC_MASTER_ERR(master, "External datagram %p is too large,"
-                        " size=%u, max_queue_size=%u\n",
+                        " size=%zu, max_queue_size=%zu\n",
                         datagram, datagram->data_size,
                         master->max_queue_size);
             } else {
@@ -729,8 +745,8 @@ void ec_master_inject_external_datagrams(
                         ((jiffies - datagram->jiffies_sent) * 1000000 / HZ);
 #endif
                     EC_MASTER_ERR(master, "Timeout %u us: Injecting"
-                            " external datagram %p size=%u,"
-                            " max_queue_size=%u\n", time_us, datagram,
+                            " external datagram %p size=%zu,"
+                            " max_queue_size=%zu\n", time_us, datagram,
                             datagram->data_size, master->max_queue_size);
                 }
 #if DEBUG_INJECT
@@ -753,7 +769,7 @@ void ec_master_inject_external_datagrams(
  */
 void ec_master_set_send_interval(
         ec_master_t *master, /**< EtherCAT master */
-        size_t send_interval /**< Send interval */
+        unsigned int send_interval /**< Send interval */
         )
 {
     master->send_interval = send_interval;
@@ -1245,8 +1261,8 @@ static int ec_master_idle_thread(void *priv_data)
     // send interval in IDLE phase
     ec_master_set_send_interval(master, 1000000 / HZ); 
 
-    EC_MASTER_DBG(master, 1, "Idle thread running with send interval = %d us,"
-            " max data size=%d\n", master->send_interval,
+    EC_MASTER_DBG(master, 1, "Idle thread running with send interval = %u us,"
+            " max data size=%zu\n", master->send_interval,
             master->max_queue_size);
 
     while (!kthread_should_stop()) {
@@ -1312,7 +1328,7 @@ static int ec_master_operation_thread(void *priv_data)
     int fsm_exec;
 
     EC_MASTER_DBG(master, 1, "Operation thread running"
-            " with fsm interval = %d us, max data size=%d\n",
+            " with fsm interval = %u us, max data size=%zu\n",
             master->send_interval, master->max_queue_size);
 
     while (!kthread_should_stop()) {
@@ -2036,8 +2052,7 @@ void ecrt_master_deactivate(ec_master_t *master)
     int eoe_was_running;
 #endif
 
-    EC_MASTER_DBG(master, 1, "ecrt_master_deactivate(master = 0x%x)\n",
-            (u32) master);
+    EC_MASTER_DBG(master, 1, "%s(master = 0x%p)\n", __func__, master);
 
     if (!master->active) {
         EC_MASTER_WARN(master, "%s: Master not active.\n", __func__);
@@ -2054,10 +2069,7 @@ void ecrt_master_deactivate(ec_master_t *master)
     master->receive_cb = ec_master_internal_receive_cb;
     master->cb_data = master;
     
-    down(&master->master_sem);
-    ec_master_clear_domains(master);
-    ec_master_clear_slave_configs(master);
-    up(&master->master_sem);
+    ec_master_clear_config(master);
 
     for (slave = master->slaves;
             slave < master->slaves + master->slave_count;
@@ -2403,6 +2415,163 @@ uint32_t ecrt_master_sync_monitor_process(ec_master_t *master)
 
 /*****************************************************************************/
 
+int ecrt_master_write_idn(ec_master_t *master, uint16_t slave_position,
+        uint8_t drive_no, uint16_t idn, uint8_t *data, size_t data_size,
+        uint16_t *error_code)
+{
+    ec_master_soe_request_t request;
+    int retval;
+
+    if (drive_no > 7) {
+        EC_MASTER_ERR(master, "Invalid drive number!\n");
+        return -EINVAL;
+    }
+
+    INIT_LIST_HEAD(&request.list);
+    ec_soe_request_init(&request.req);
+    ec_soe_request_set_drive_no(&request.req, drive_no);
+    ec_soe_request_set_idn(&request.req, idn);
+
+    if (ec_soe_request_alloc(&request.req, data_size)) {
+        ec_soe_request_clear(&request.req);
+        return -ENOMEM;
+    }
+
+    memcpy(request.req.data, data, data_size);
+    request.req.data_size = data_size;
+    ec_soe_request_write(&request.req);
+
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
+
+    if (!(request.slave = ec_master_find_slave(
+                    master, 0, slave_position))) {
+        up(&master->master_sem);
+        EC_MASTER_ERR(master, "Slave %u does not exist!\n",
+                slave_position);
+        ec_soe_request_clear(&request.req);
+        return -EINVAL;
+    }
+
+    EC_SLAVE_DBG(request.slave, 1, "Scheduling SoE write request.\n");
+
+    // schedule SoE write request.
+    list_add_tail(&request.list, &request.slave->soe_requests);
+
+    up(&master->master_sem);
+
+    // wait for processing through FSM
+    if (wait_event_interruptible(request.slave->soe_queue,
+                request.req.state != EC_INT_REQUEST_QUEUED)) {
+        // interrupted by signal
+        down(&master->master_sem);
+        if (request.req.state == EC_INT_REQUEST_QUEUED) {
+            // abort request
+            list_del(&request.list);
+            up(&master->master_sem);
+            ec_soe_request_clear(&request.req);
+            return -EINTR;
+        }
+        up(&master->master_sem);
+    }
+
+    // wait until master FSM has finished processing
+    wait_event(request.slave->soe_queue,
+            request.req.state != EC_INT_REQUEST_BUSY);
+
+    if (error_code) {
+        *error_code = request.req.error_code;
+    }
+    retval = request.req.state == EC_INT_REQUEST_SUCCESS ? 0 : -EIO;
+    ec_soe_request_clear(&request.req);
+
+    return retval;
+}
+
+/*****************************************************************************/
+
+int ecrt_master_read_idn(ec_master_t *master, uint16_t slave_position,
+        uint8_t drive_no, uint16_t idn, uint8_t *target, size_t target_size,
+        size_t *result_size, uint16_t *error_code)
+{
+    ec_master_soe_request_t request;
+
+    if (drive_no > 7) {
+        EC_MASTER_ERR(master, "Invalid drive number!\n");
+        return -EINVAL;
+    }
+
+    INIT_LIST_HEAD(&request.list);
+    ec_soe_request_init(&request.req);
+    ec_soe_request_set_drive_no(&request.req, drive_no);
+    ec_soe_request_set_idn(&request.req, idn);
+    ec_soe_request_read(&request.req);
+
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
+
+    if (!(request.slave = ec_master_find_slave(master, 0, slave_position))) {
+        up(&master->master_sem);
+        ec_soe_request_clear(&request.req);
+        EC_MASTER_ERR(master, "Slave %u does not exist!\n", slave_position);
+        return -EINVAL;
+    }
+
+    // schedule request.
+    list_add_tail(&request.list, &request.slave->soe_requests);
+
+    up(&master->master_sem);
+
+    EC_SLAVE_DBG(request.slave, 1, "Scheduled SoE read request.\n");
+
+    // wait for processing through FSM
+    if (wait_event_interruptible(request.slave->soe_queue,
+                request.req.state != EC_INT_REQUEST_QUEUED)) {
+        // interrupted by signal
+        down(&master->master_sem);
+        if (request.req.state == EC_INT_REQUEST_QUEUED) {
+            list_del(&request.list);
+            up(&master->master_sem);
+            ec_soe_request_clear(&request.req);
+            return -EINTR;
+        }
+        // request already processing: interrupt not possible.
+        up(&master->master_sem);
+    }
+
+    // wait until master FSM has finished processing
+    wait_event(request.slave->soe_queue,
+            request.req.state != EC_INT_REQUEST_BUSY);
+
+    if (error_code) {
+        *error_code = request.req.error_code;
+    }
+
+    EC_SLAVE_DBG(request.slave, 1, "Read %zd bytes via SoE.\n",
+            request.req.data_size);
+
+    if (request.req.state != EC_INT_REQUEST_SUCCESS) {
+        if (result_size) {
+            *result_size = 0;
+        }
+        ec_soe_request_clear(&request.req);
+        return -EIO;
+    } else {
+        if (request.req.data_size > target_size) {
+            EC_MASTER_ERR(master, "Buffer too small.\n");
+            ec_soe_request_clear(&request.req);
+            return -EOVERFLOW;
+        }
+        if (result_size) {
+            *result_size = request.req.data_size;
+        }
+        memcpy(target, request.req.data, request.req.data_size);
+        return 0;
+    }
+}
+
+/*****************************************************************************/
+
 /** \cond */
 
 EXPORT_SYMBOL(ecrt_master_create_domain);
@@ -2421,6 +2590,8 @@ EXPORT_SYMBOL(ecrt_master_sync_reference_clock);
 EXPORT_SYMBOL(ecrt_master_sync_slave_clocks);
 EXPORT_SYMBOL(ecrt_master_sync_monitor_queue);
 EXPORT_SYMBOL(ecrt_master_sync_monitor_process);
+EXPORT_SYMBOL(ecrt_master_write_idn);
+EXPORT_SYMBOL(ecrt_master_read_idn);
 
 /** \endcond */
 

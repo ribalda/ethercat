@@ -43,6 +43,29 @@
 
 /*****************************************************************************/
 
+void ec_slave_config_clear(ec_slave_config_t *sc)
+{
+    ec_sdo_request_t *r, *next_r;
+    ec_voe_handler_t *v, *next_v;
+
+    r = sc->first_sdo_request;
+    while (r) {
+        next_r = r->next;
+        ec_sdo_request_clear(r);
+        r = next_r;
+    }
+
+
+    v = sc->first_voe_handler;
+    while (v) {
+        next_v = v->next;
+        ec_voe_handler_clear(v);
+        v = next_v;
+    }
+}
+
+/*****************************************************************************/
+
 int ecrt_slave_config_sync_manager(ec_slave_config_t *sc, uint8_t sync_index,
         ec_direction_t dir, ec_watchdog_mode_t watchdog_mode)
 {
@@ -378,6 +401,22 @@ int ecrt_slave_config_sdo32(ec_slave_config_t *sc, uint16_t index,
 
 /*****************************************************************************/
 
+void ec_slave_config_add_sdo_request(ec_slave_config_t *sc,
+        ec_sdo_request_t *req)
+{
+    if (sc->first_sdo_request) {
+        ec_sdo_request_t *r = sc->first_sdo_request;
+        while (r->next) {
+            r = r->next;
+        }
+        r->next = req;
+    } else {
+        sc->first_sdo_request = req;
+    }
+}
+
+/*****************************************************************************/
+
 ec_sdo_request_t *ecrt_slave_config_create_sdo_request(ec_slave_config_t *sc,
         uint16_t index, uint8_t subindex, size_t size)
 {
@@ -410,19 +449,38 @@ ec_sdo_request_t *ecrt_slave_config_create_sdo_request(ec_slave_config_t *sc,
     if (ioctl(sc->master->fd, EC_IOCTL_SC_SDO_REQUEST, &data) == -1) {
         fprintf(stderr, "Failed to create SDO request: %s\n",
                 strerror(errno));
-        if (req->data)
-            free(req->data);
+        ec_sdo_request_clear(req);
         free(req);
         return NULL; 
     }
 
+    req->next = NULL;
     req->config = sc;
     req->index = data.request_index;
     req->sdo_index = data.sdo_index;
     req->sdo_subindex = data.sdo_subindex;
     req->data_size = size;
     req->mem_size = size;
+
+    ec_slave_config_add_sdo_request(sc, req);
+
     return req;
+}
+
+/*****************************************************************************/
+
+void ec_slave_config_add_voe_handler(ec_slave_config_t *sc,
+        ec_voe_handler_t *voe)
+{
+    if (sc->first_voe_handler) {
+        ec_voe_handler_t *v = sc->first_voe_handler;
+        while (v->next) {
+            v = v->next;
+        }
+        v->next = voe;
+    } else {
+        sc->first_voe_handler = voe;
+    }
 }
 
 /*****************************************************************************/
@@ -458,16 +516,19 @@ ec_voe_handler_t *ecrt_slave_config_create_voe_handler(ec_slave_config_t *sc,
     if (ioctl(sc->master->fd, EC_IOCTL_SC_VOE, &data) == -1) {
         fprintf(stderr, "Failed to create VoE handler: %s\n",
                 strerror(errno));
-        if (voe->data)
-            free(voe->data);
+        ec_voe_handler_clear(voe);
         free(voe);
         return NULL; 
     }
 
+    voe->next = NULL;
     voe->config = sc;
     voe->index = data.voe_index;
     voe->data_size = size;
     voe->mem_size = size;
+
+    ec_slave_config_add_voe_handler(sc, voe);
+
     return voe;
 }
 
@@ -489,13 +550,15 @@ void ecrt_slave_config_state(const ec_slave_config_t *sc,
 
 /*****************************************************************************/
 
-int ecrt_slave_config_idn(ec_slave_config_t *sc, uint16_t idn,
-        const uint8_t *data, size_t size)
+int ecrt_slave_config_idn(ec_slave_config_t *sc, uint8_t drive_no,
+        uint16_t idn, ec_al_state_t al_state, const uint8_t *data, size_t size)
 {
     ec_ioctl_sc_idn_t io;
 
     io.config_index = sc->index;
+    io.drive_no = drive_no;
     io.idn = idn;
+    io.al_state = al_state;
     io.data = data;
     io.size = size;
 

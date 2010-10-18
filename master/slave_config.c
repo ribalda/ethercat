@@ -445,7 +445,7 @@ int ecrt_slave_config_sync_manager(ec_slave_config_t *sc, uint8_t sync_index,
     }
 
     if (dir != EC_DIR_OUTPUT && dir != EC_DIR_INPUT) {
-        EC_CONFIG_ERR(sc, "Invalid direction %u!\n", (u32) dir);
+        EC_CONFIG_ERR(sc, "Invalid direction %u!\n", (unsigned int) dir);
         return -EINVAL;
     }
 
@@ -716,6 +716,12 @@ void ecrt_slave_config_dc(ec_slave_config_t *sc, uint16_t assign_activate,
         uint32_t sync0_cycle_time, uint32_t sync0_shift_time,
         uint32_t sync1_cycle_time, uint32_t sync1_shift_time)
 {
+    EC_CONFIG_DBG(sc, 1, "%s(sc = 0x%p, assign_activate = 0x%04X,"
+            " sync0_cycle = %u, sync0_shift = %u,"
+            " sync1_cycle = %u, sync1_shift = %u\n",
+            __func__, sc, assign_activate, sync0_cycle_time, sync0_shift_time,
+            sync1_cycle_time, sync1_shift_time);
+
     sc->dc_assign_activate = assign_activate;
     sc->dc_sync[0].cycle_time = sync0_cycle_time;
     sc->dc_sync[0].shift_time = sync0_shift_time;
@@ -772,7 +778,7 @@ int ecrt_slave_config_sdo8(ec_slave_config_t *sc, uint16_t index,
 
     EC_CONFIG_DBG(sc, 1, "%s(sc = 0x%p, index = 0x%04X, "
             "subindex = 0x%02X, value = %u)\n",
-            __func__, sc, index, subindex, (u32) value);
+            __func__, sc, index, subindex, (unsigned int) value);
 
     EC_WRITE_U8(data, value);
     return ecrt_slave_config_sdo(sc, index, subindex, data, 1);
@@ -961,15 +967,28 @@ void ecrt_slave_config_state(const ec_slave_config_t *sc,
 
 /*****************************************************************************/
 
-int ecrt_slave_config_idn(ec_slave_config_t *sc, uint16_t idn,
-        const uint8_t *data, size_t size)
+int ecrt_slave_config_idn(ec_slave_config_t *sc, uint8_t drive_no, 
+        uint16_t idn, ec_al_state_t state, const uint8_t *data,
+        size_t size)
 {
     ec_slave_t *slave = sc->slave;
     ec_soe_request_t *req;
     int ret;
 
-    EC_CONFIG_DBG(sc, 1, "%s(sc = 0x%p, idn = 0x%04X, "
-            "data = 0x%p, size = %zu)\n", __func__, sc, idn, data, size);
+    EC_CONFIG_DBG(sc, 1, "%s(sc = 0x%p, drive_no = %u, idn = 0x%04X, "
+            "state = %u, data = 0x%p, size = %zu)\n",
+            __func__, sc, drive_no, idn, state, data, size);
+
+    if (drive_no > 7) {
+        EC_CONFIG_ERR(sc, "Invalid drive number!\n");
+        return -EINVAL;
+    }
+
+    if (state != EC_AL_STATE_PREOP && state != EC_AL_STATE_SAFEOP) {
+        EC_CONFIG_ERR(sc, "AL state for IDN config"
+                " must be PREOP or SAFEOP!\n");
+        return -EINVAL;
+    }
 
     if (slave && !(slave->sii.mailbox_protocols & EC_MBOX_SOE)) {
         EC_CONFIG_WARN(sc, "Attached slave does not support SoE!\n");
@@ -983,7 +1002,9 @@ int ecrt_slave_config_idn(ec_slave_config_t *sc, uint16_t idn,
     }
 
     ec_soe_request_init(req);
+    ec_soe_request_set_drive_no(req, drive_no);
     ec_soe_request_set_idn(req, idn);
+    req->al_state = state;
 
     ret = ec_soe_request_copy_data(req, data, size);
     if (ret < 0) {

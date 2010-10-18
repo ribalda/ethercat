@@ -71,7 +71,7 @@ string CommandDomains::helpString() const
         << endl
         << "  SlaveConfig 1001:0, SM3 ( Input), LogAddr 0x00000006, Size 6"
         << endl
-        << "    0x00 0x00 0x00 0x00 0x00 0x00" << endl
+        << "    00 00 00 00 00 00" << endl
         << endl
         << "The process data are displayed as hexadecimal bytes." << endl
         << endl
@@ -187,7 +187,7 @@ void CommandDomains::showDomain(
         for (j = 0; j < fmmu.data_size; j++) {
             if (j && !(j % BreakAfterBytes))
                 cout << endl << indent << "    ";
-            cout << "0x" << setw(2)
+            cout << setw(2)
                 << (unsigned int) *(processData + dataOffset + j) << " ";
         }
         cout << endl;

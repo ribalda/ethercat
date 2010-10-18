@@ -85,7 +85,7 @@ void ec_fsm_master_init(
     fsm->idle = 0;
     fsm->link_state = 0;
     fsm->slaves_responding = 0;
-    fsm->topology_change_pending = 0;
+    fsm->rescan_required = 0;
     fsm->slave_states = EC_SLAVE_STATE_UNKNOWN;
 
     // init sub-state-machines
@@ -201,7 +201,7 @@ void ec_fsm_master_state_broadcast(
 
     // bus topology change?
     if (datagram->working_counter != fsm->slaves_responding) {
-        fsm->topology_change_pending = 1;
+        fsm->rescan_required = 1;
         fsm->slaves_responding = datagram->working_counter;
         EC_MASTER_INFO(master, "%u slave(s) responding.\n",
                 fsm->slaves_responding);
@@ -237,7 +237,7 @@ void ec_fsm_master_state_broadcast(
         fsm->slave_states = 0x00;
     }
 
-    if (fsm->topology_change_pending) {
+    if (fsm->rescan_required) {
         down(&master->scan_sem);
         if (!master->allow_scan) {
             up(&master->scan_sem);
@@ -245,9 +245,8 @@ void ec_fsm_master_state_broadcast(
             master->scan_busy = 1;
             up(&master->scan_sem);
 
-            // topology change when scan is allowed:
             // clear all slaves and scan the bus
-            fsm->topology_change_pending = 0;
+            fsm->rescan_required = 0;
             fsm->idle = 0;
             fsm->scan_jiffies = jiffies;
 
@@ -630,7 +629,7 @@ void ec_fsm_master_state_read_state(
             slave->error_flag = 1;
             EC_SLAVE_DBG(slave, 1, "Slave did not respond to state query.\n");
         }
-        fsm->topology_change_pending = 1;
+        fsm->rescan_required = 1;
         ec_fsm_master_restart(fsm);
         return;
     }
@@ -792,8 +791,8 @@ void ec_fsm_master_state_scan_slave(
         return;
     }
 
-    EC_MASTER_INFO(master, "Bus scanning completed in %u ms.\n",
-            (u32) (jiffies - fsm->scan_jiffies) * 1000 / HZ);
+    EC_MASTER_INFO(master, "Bus scanning completed in %lu ms.\n",
+            (jiffies - fsm->scan_jiffies) * 1000 / HZ);
 
     master->scan_busy = 0;
     wake_up_interruptible(&master->scan_queue);
@@ -908,9 +907,9 @@ u64 ec_fsm_master_dc_offset32(
 
     EC_SLAVE_DBG(slave, 1, "DC system time offset calculation:"
             " system_time=%u (corrected with %u),"
-            " app_time=%u, diff=%i\n",
+            " app_time=%llu, diff=%i\n",
 			system_time32, correction32,
-            (u32) slave->master->app_time, time_diff);
+            slave->master->app_time, time_diff);
 
     if (EC_ABS(time_diff) > EC_SYSTEM_TIME_TOLERANCE_NS) {
         new_offset = time_diff + old_offset32;

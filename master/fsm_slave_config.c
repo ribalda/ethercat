@@ -69,7 +69,7 @@ void ec_fsm_slave_config_state_dc_clear_assign(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_mbox_sync(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_boot_preop(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_sdo_conf(ec_fsm_slave_config_t *);
-void ec_fsm_slave_config_state_soe_conf(ec_fsm_slave_config_t *);
+void ec_fsm_slave_config_state_soe_conf_preop(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_watchdog_divider(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_watchdog(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_pdo_sync(ec_fsm_slave_config_t *);
@@ -80,6 +80,7 @@ void ec_fsm_slave_config_state_dc_sync_check(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_dc_start(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_dc_assign(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_safeop(ec_fsm_slave_config_t *);
+void ec_fsm_slave_config_state_soe_conf_safeop(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_op(ec_fsm_slave_config_t *);
 
 void ec_fsm_slave_config_enter_init(ec_fsm_slave_config_t *);
@@ -88,7 +89,7 @@ void ec_fsm_slave_config_enter_dc_clear_assign(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_mbox_sync(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_boot_preop(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_sdo_conf(ec_fsm_slave_config_t *);
-void ec_fsm_slave_config_enter_soe_conf(ec_fsm_slave_config_t *);
+void ec_fsm_slave_config_enter_soe_conf_preop(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_pdo_conf(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_watchdog_divider(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_watchdog(ec_fsm_slave_config_t *);
@@ -96,6 +97,8 @@ void ec_fsm_slave_config_enter_pdo_sync(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_fmmu(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_dc_cycle(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_enter_safeop(ec_fsm_slave_config_t *);
+void ec_fsm_slave_config_enter_soe_conf_safeop(ec_fsm_slave_config_t *);
+void ec_fsm_slave_config_enter_op(ec_fsm_slave_config_t *);
 
 void ec_fsm_slave_config_state_end(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_error(ec_fsm_slave_config_t *);
@@ -658,7 +661,7 @@ void ec_fsm_slave_config_enter_sdo_conf(
 
     // No CoE configuration to be applied?
     if (list_empty(&slave->config->sdo_configs)) { // skip SDO configuration
-        ec_fsm_slave_config_enter_soe_conf(fsm);
+        ec_fsm_slave_config_enter_soe_conf_preop(fsm);
         return;
     }
 
@@ -706,47 +709,50 @@ void ec_fsm_slave_config_state_sdo_conf(
     }
 
     // All SDOs are now configured.
-    ec_fsm_slave_config_enter_soe_conf(fsm);
+    ec_fsm_slave_config_enter_soe_conf_preop(fsm);
 }
 
 /*****************************************************************************/
 
 /** Check for SoE configurations to be applied.
  */
-void ec_fsm_slave_config_enter_soe_conf(
+void ec_fsm_slave_config_enter_soe_conf_preop(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
     ec_slave_t *slave = fsm->slave;
     ec_fsm_soe_t *fsm_soe = &slave->fsm.fsm_soe;
+    ec_soe_request_t *req;
 
     if (!slave->config) {
         ec_fsm_slave_config_enter_pdo_sync(fsm);
         return;
     }
 
-    // No SoE configuration to be applied?
-    if (list_empty(&slave->config->soe_configs)) { // skip configuration
-        ec_fsm_slave_config_enter_pdo_conf(fsm);
-        return;
+    list_for_each_entry(req, &slave->config->soe_configs, list) {
+        if (req->al_state == EC_AL_STATE_PREOP) {
+            // start SoE configuration
+            fsm->state = ec_fsm_slave_config_state_soe_conf_preop;
+            fsm->soe_request = req;
+            ec_soe_request_copy(&fsm->soe_request_copy, fsm->soe_request);
+            ec_soe_request_write(&fsm->soe_request_copy);
+            ec_fsm_soe_transfer(fsm_soe, fsm->slave, &fsm->soe_request_copy);
+            ec_fsm_soe_exec(fsm_soe); // execute immediately
+            ec_master_queue_external_datagram(slave->master,
+                    fsm_soe->datagram);
+            return;
+        }
     }
 
-    // start SoE configuration
-    fsm->state = ec_fsm_slave_config_state_soe_conf;
-    fsm->soe_request = list_entry(fsm->slave->config->soe_configs.next,
-            ec_soe_request_t, list);
-    ec_soe_request_copy(&fsm->soe_request_copy, fsm->soe_request);
-    ec_soe_request_write(&fsm->soe_request_copy);
-    ec_fsm_soe_transfer(fsm_soe, fsm->slave, &fsm->soe_request_copy);
-    ec_fsm_soe_exec(fsm_soe); // execute immediately
-    ec_master_queue_external_datagram(slave->master, fsm_soe->datagram);
+    // No SoE configuration to be applied in PREOP
+    ec_fsm_slave_config_enter_pdo_conf(fsm);
 }
 
 /*****************************************************************************/
 
 /** Slave configuration state: SOE_CONF.
  */
-void ec_fsm_slave_config_state_soe_conf(
+void ec_fsm_slave_config_state_soe_conf_preop(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
@@ -770,19 +776,22 @@ void ec_fsm_slave_config_state_soe_conf(
         return;
     }
 
-    // Another IDN to configure?
-    if (fsm->soe_request->list.next != &fsm->slave->config->soe_configs) {
+    // Another IDN to configure in PREOP?
+    while (fsm->soe_request->list.next != &fsm->slave->config->soe_configs) {
         fsm->soe_request = list_entry(fsm->soe_request->list.next,
                 ec_soe_request_t, list);
-        ec_soe_request_copy(&fsm->soe_request_copy, fsm->soe_request);
-        ec_soe_request_write(&fsm->soe_request_copy);
-        ec_fsm_soe_transfer(fsm_soe, fsm->slave, &fsm->soe_request_copy);
-        ec_fsm_soe_exec(fsm_soe); // execute immediately
-        ec_master_queue_external_datagram(slave->master, fsm_soe->datagram);
-        return;
+        if (fsm->soe_request->al_state == EC_AL_STATE_PREOP) {
+            ec_soe_request_copy(&fsm->soe_request_copy, fsm->soe_request);
+            ec_soe_request_write(&fsm->soe_request_copy);
+            ec_fsm_soe_transfer(fsm_soe, fsm->slave, &fsm->soe_request_copy);
+            ec_fsm_soe_exec(fsm_soe); // execute immediately
+            ec_master_queue_external_datagram(slave->master,
+                    fsm_soe->datagram);
+            return;
+        }
     }
 
-    // All SDOs are now configured.
+    // All PREOP IDNs are now configured.
     ec_fsm_slave_config_enter_pdo_conf(fsm);
 }
 
@@ -1242,11 +1251,11 @@ void ec_fsm_slave_config_state_dc_sync_check(
     if (0 && abs_sync_diff > EC_DC_MAX_SYNC_DIFF_NS) {
 
         if (diff_ms >= EC_DC_SYNC_WAIT_MS) {
-            EC_SLAVE_WARN(slave, "Slave did not sync after %u ms.\n",
-                    (u32) diff_ms);
+            EC_SLAVE_WARN(slave, "Slave did not sync after %lu ms.\n",
+                    diff_ms);
         } else {
-            EC_SLAVE_DBG(slave, 1, "Sync after %4u ms: %10u ns\n",
-                    (u32) diff_ms, abs_sync_diff);
+            EC_SLAVE_DBG(slave, 1, "Sync after %4lu ms: %10u ns\n",
+                    diff_ms, abs_sync_diff);
 
             // check synchrony again
             ec_datagram_fprd(datagram, slave->station_address, 0x092c, 4);
@@ -1254,8 +1263,8 @@ void ec_fsm_slave_config_state_dc_sync_check(
             return;
         }
     } else {
-        EC_SLAVE_DBG(slave, 1, "%u ns difference after %u ms.\n",
-                abs_sync_diff, (u32) diff_ms);
+        EC_SLAVE_DBG(slave, 1, "%u ns difference after %lu ms.\n",
+                abs_sync_diff, diff_ms);
     }
 
     // set DC start time
@@ -1416,9 +1425,103 @@ void ec_fsm_slave_config_state_safeop(
         return;
     }
 
+    ec_fsm_slave_config_enter_soe_conf_safeop(fsm);
+}
+
+/*****************************************************************************/
+
+/** Check for SoE configurations to be applied in SAFEOP.
+ */
+void ec_fsm_slave_config_enter_soe_conf_safeop(
+        ec_fsm_slave_config_t *fsm /**< slave state machine */
+        )
+{
+    ec_slave_t *slave = fsm->slave;
+    ec_fsm_soe_t *fsm_soe = &slave->fsm.fsm_soe;
+    ec_soe_request_t *req;
+
+    if (!slave->config) {
+        ec_fsm_slave_config_enter_op(fsm);
+        return;
+    }
+
+    list_for_each_entry(req, &slave->config->soe_configs, list) {
+        if (req->al_state == EC_AL_STATE_SAFEOP) {
+            // start SoE configuration
+            fsm->state = ec_fsm_slave_config_state_soe_conf_safeop;
+            fsm->soe_request = req;
+            ec_soe_request_copy(&fsm->soe_request_copy, fsm->soe_request);
+            ec_soe_request_write(&fsm->soe_request_copy);
+            ec_fsm_soe_transfer(fsm_soe, fsm->slave, &fsm->soe_request_copy);
+            ec_fsm_soe_exec(fsm_soe); // execute immediately
+            ec_master_queue_external_datagram(slave->master,
+                    fsm_soe->datagram);
+            return;
+        }
+    }
+
+    // No SoE configuration to be applied in SAFEOP
+    ec_fsm_slave_config_enter_op(fsm);
+}
+
+/*****************************************************************************/
+
+/** Slave configuration state: SOE_CONF.
+ */
+void ec_fsm_slave_config_state_soe_conf_safeop(
+        ec_fsm_slave_config_t *fsm /**< slave state machine */
+        )
+{
+    ec_slave_t *slave = fsm->slave;
+    ec_fsm_soe_t *fsm_soe = &slave->fsm.fsm_soe;
+
+    if (ec_fsm_soe_exec(fsm_soe)) {
+        ec_master_queue_external_datagram(slave->master, fsm_soe->datagram);
+        return;
+    }
+
+    if (!ec_fsm_soe_success(fsm_soe)) {
+        EC_SLAVE_ERR(slave, "SoE configuration failed.\n");
+        fsm->slave->error_flag = 1;
+        fsm->state = ec_fsm_slave_config_state_error;
+        return;
+    }
+
+    if (!fsm->slave->config) { // config removed in the meantime
+        ec_fsm_slave_config_reconfigure(fsm);
+        return;
+    }
+
+    // Another IDN to configure in SAFEOP?
+    while (fsm->soe_request->list.next != &fsm->slave->config->soe_configs) {
+        fsm->soe_request = list_entry(fsm->soe_request->list.next,
+                ec_soe_request_t, list);
+        if (fsm->soe_request->al_state == EC_AL_STATE_SAFEOP) {
+            ec_soe_request_copy(&fsm->soe_request_copy, fsm->soe_request);
+            ec_soe_request_write(&fsm->soe_request_copy);
+            ec_fsm_soe_transfer(fsm_soe, fsm->slave, &fsm->soe_request_copy);
+            ec_fsm_soe_exec(fsm_soe); // execute immediately
+            ec_master_queue_external_datagram(slave->master,
+                    fsm_soe->datagram);
+            return;
+        }
+    }
+
+    // All SAFEOP IDNs are now configured.
+    ec_fsm_slave_config_enter_op(fsm);
+}
+
+/*****************************************************************************/
+
+/** Bring slave to OP.
+ */
+void ec_fsm_slave_config_enter_op(
+        ec_fsm_slave_config_t *fsm /**< slave state machine */
+        )
+{
     // set state to OP
     fsm->state = ec_fsm_slave_config_state_op;
-    ec_fsm_change_start(fsm->fsm_change, slave, EC_SLAVE_STATE_OP);
+    ec_fsm_change_start(fsm->fsm_change, fsm->slave, EC_SLAVE_STATE_OP);
     ec_fsm_change_exec(fsm->fsm_change); // execute immediately
 }
 

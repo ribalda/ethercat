@@ -661,6 +661,19 @@ int ec_cdev_ioctl_master_debug(
 
 /*****************************************************************************/
 
+/** Issue a bus scan.
+ */
+int ec_cdev_ioctl_master_rescan(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg /**< ioctl() argument. */
+        )
+{
+    master->fsm.rescan_required = 1;
+    return 0;
+}
+
+/*****************************************************************************/
+
 /** Set slave state.
  */
 int ec_cdev_ioctl_slave_state(
@@ -883,7 +896,11 @@ int ec_cdev_ioctl_slave_sdo_upload(
 
     if (request.req.state != EC_INT_REQUEST_SUCCESS) {
         data.data_size = 0;
-        retval = -EIO;
+        if (request.req.errno) {
+            retval = -request.req.errno;
+        } else {
+            retval = -EIO;
+        }
     } else {
         if (request.req.data_size > data.target_size) {
             EC_MASTER_ERR(master, "Buffer too small.\n");
@@ -988,7 +1005,13 @@ int ec_cdev_ioctl_slave_sdo_download(
 
     data.abort_code = request.req.abort_code;
 
-    retval = request.req.state == EC_INT_REQUEST_SUCCESS ? 0 : -EIO;
+    if (request.req.state == EC_INT_REQUEST_SUCCESS) {
+        retval = 0;
+    } else if (request.req.errno) {
+        retval = -request.req.errno;
+    } else {
+        retval = -EIO;
+    }
 
     if (__copy_to_user((void __user *) arg, &data, sizeof(data))) {
         retval = -EFAULT;
@@ -1725,7 +1748,6 @@ int ec_cdev_ioctl_deactivate(
     ecrt_master_deactivate(master);
     return 0;
 }
-
 
 /*****************************************************************************/
 
@@ -2533,7 +2555,8 @@ int ec_cdev_ioctl_sc_idn(
 
     up(&master->master_sem); // FIXME
 
-    ret = ecrt_slave_config_idn(sc, ioctl.idn, data, ioctl.size);
+    ret = ecrt_slave_config_idn(
+            sc, ioctl.drive_no, ioctl.idn, ioctl.al_state, data, ioctl.size);
     kfree(data);
     return ret;
 }
@@ -3388,86 +3411,40 @@ int ec_cdev_ioctl_slave_soe_read(
         )
 {
     ec_ioctl_slave_soe_read_t ioctl;
-    ec_master_soe_request_t request;
+    u8 *data;
     int retval;
 
     if (copy_from_user(&ioctl, (void __user *) arg, sizeof(ioctl))) {
         return -EFAULT;
     }
 
-    ec_soe_request_init(&request.req);
-    ec_soe_request_set_idn(&request.req, ioctl.idn);
-    ec_soe_request_read(&request.req);
-
-    if (down_interruptible(&master->master_sem))
-        return -EINTR;
-
-    if (!(request.slave = ec_master_find_slave(
-                    master, 0, ioctl.slave_position))) {
-        up(&master->master_sem);
-        ec_soe_request_clear(&request.req);
-        EC_MASTER_ERR(master, "Slave %u does not exist!\n",
-                ioctl.slave_position);
-        return -EINVAL;
+    data = kmalloc(ioctl.mem_size, GFP_KERNEL);
+    if (!data) {
+        EC_MASTER_ERR(master, "Failed to allocate %u bytes of IDN data.\n",
+                ioctl.mem_size);
+        return -ENOMEM;
     }
 
-    // schedule request.
-    list_add_tail(&request.list, &request.slave->soe_requests);
-
-    up(&master->master_sem);
-
-    EC_SLAVE_DBG(request.slave, 1, "Scheduled SoE read request.\n");
-
-    // wait for processing through FSM
-    if (wait_event_interruptible(request.slave->soe_queue,
-                request.req.state != EC_INT_REQUEST_QUEUED)) {
-        // interrupted by signal
-        down(&master->master_sem);
-        if (request.req.state == EC_INT_REQUEST_QUEUED) {
-            list_del(&request.list);
-            up(&master->master_sem);
-            ec_soe_request_clear(&request.req);
-            return -EINTR;
-        }
-        // request already processing: interrupt not possible.
-        up(&master->master_sem);
+    retval = ecrt_master_read_idn(master, ioctl.slave_position,
+            ioctl.drive_no, ioctl.idn, data, ioctl.mem_size, &ioctl.data_size,
+            &ioctl.error_code);
+    if (retval) {
+        kfree(data);
+        return retval;
     }
 
-    // wait until master FSM has finished processing
-    wait_event(request.slave->soe_queue,
-            request.req.state != EC_INT_REQUEST_BUSY);
-
-    ioctl.error_code = request.req.error_code;
-
-    EC_SLAVE_DBG(request.slave, 1, "Read %zd bytes via SoE.\n",
-            request.req.data_size);
-
-    if (request.req.state != EC_INT_REQUEST_SUCCESS) {
-        ioctl.data_size = 0;
-        retval = -EIO;
-    } else {
-        if (request.req.data_size > ioctl.mem_size) {
-            EC_MASTER_ERR(master, "Buffer too small.\n");
-            ec_soe_request_clear(&request.req);
-            return -EOVERFLOW;
-        }
-        ioctl.data_size = request.req.data_size;
-        if (copy_to_user((void __user *) ioctl.data,
-                    request.req.data, ioctl.data_size)) {
-            ec_soe_request_clear(&request.req);
-            return -EFAULT;
-        }
-        retval = 0;
+    if (copy_to_user((void __user *) ioctl.data,
+                data, ioctl.data_size)) {
+        kfree(data);
+        return -EFAULT;
     }
+    kfree(data);
 
     if (__copy_to_user((void __user *) arg, &ioctl, sizeof(ioctl))) {
         retval = -EFAULT;
     }
 
-    EC_SLAVE_DBG(request.slave, 1, "Finished SoE read request.\n");
-
-    ec_soe_request_clear(&request.req);
-
+    EC_MASTER_DBG(master, 1, "Finished SoE read request.\n");
     return retval;
 }
 
@@ -3481,79 +3458,37 @@ int ec_cdev_ioctl_slave_soe_write(
         )
 {
     ec_ioctl_slave_soe_write_t ioctl;
-    ec_master_soe_request_t request;
+    u8 *data;
     int retval;
 
     if (copy_from_user(&ioctl, (void __user *) arg, sizeof(ioctl))) {
         return -EFAULT;
     }
 
-    INIT_LIST_HEAD(&request.list);
-
-    ec_soe_request_init(&request.req);
-    ec_soe_request_set_idn(&request.req, ioctl.idn);
-
-    if (ec_soe_request_alloc(&request.req, ioctl.data_size)) {
-        ec_soe_request_clear(&request.req);
+    data = kmalloc(ioctl.data_size, GFP_KERNEL);
+    if (!data) {
+        EC_MASTER_ERR(master, "Failed to allocate %u bytes of IDN data.\n",
+                ioctl.data_size);
         return -ENOMEM;
     }
-    if (copy_from_user(request.req.data,
-                (void __user *) ioctl.data, ioctl.data_size)) {
-        ec_soe_request_clear(&request.req);
+    if (copy_from_user(data, (void __user *) ioctl.data, ioctl.data_size)) {
+        kfree(data);
         return -EFAULT;
     }
-    request.req.data_size = ioctl.data_size;
-    ec_soe_request_write(&request.req);
 
-    if (down_interruptible(&master->master_sem))
-        return -EINTR;
-
-    if (!(request.slave = ec_master_find_slave(
-                    master, 0, ioctl.slave_position))) {
-        up(&master->master_sem);
-        EC_MASTER_ERR(master, "Slave %u does not exist!\n",
-                ioctl.slave_position);
-        ec_soe_request_clear(&request.req);
-        return -EINVAL;
+    retval = ecrt_master_write_idn(master, ioctl.slave_position,
+            ioctl.drive_no, ioctl.idn, data, ioctl.data_size,
+            &ioctl.error_code);
+    kfree(data);
+    if (retval) {
+        return retval;
     }
-
-    EC_SLAVE_DBG(request.slave, 1, "Scheduling SoE write request.\n");
-
-    // schedule SoE write request.
-    list_add_tail(&request.list, &request.slave->soe_requests);
-
-    up(&master->master_sem);
-
-    // wait for processing through FSM
-    if (wait_event_interruptible(request.slave->soe_queue,
-                request.req.state != EC_INT_REQUEST_QUEUED)) {
-        // interrupted by signal
-        down(&master->master_sem);
-        if (request.req.state == EC_INT_REQUEST_QUEUED) {
-            // abort request
-            list_del(&request.list);
-            up(&master->master_sem);
-            ec_soe_request_clear(&request.req);
-            return -EINTR;
-        }
-        up(&master->master_sem);
-    }
-
-    // wait until master FSM has finished processing
-    wait_event(request.slave->soe_queue,
-            request.req.state != EC_INT_REQUEST_BUSY);
-
-    ioctl.error_code = request.req.error_code;
-    retval = request.req.state == EC_INT_REQUEST_SUCCESS ? 0 : -EIO;
 
     if (__copy_to_user((void __user *) arg, &ioctl, sizeof(ioctl))) {
         retval = -EFAULT;
     }
 
-    ec_soe_request_clear(&request.req);
-
-    EC_SLAVE_DBG(request.slave, 1, "Finished SoE write request.\n");
-
+    EC_MASTER_DBG(master, 1, "Finished SoE write request.\n");
     return retval;
 }
 
@@ -3583,7 +3518,7 @@ int eccdev_open(struct inode *inode, struct file *filp)
     filp->private_data = priv;
 
 #if DEBUG_IOCTL
-    EC_MASTER_DBG(cdev->master, "File opened.\n");
+    EC_MASTER_DBG(cdev->master, 0, "File opened.\n");
 #endif
     return 0;
 }
@@ -3604,7 +3539,7 @@ int eccdev_release(struct inode *inode, struct file *filp)
         vfree(priv->process_data);
 
 #if DEBUG_IOCTL
-    EC_MASTER_DBG(master, "File closed.\n");
+    EC_MASTER_DBG(master, 0, "File closed.\n");
 #endif
 
     kfree(priv);
@@ -3621,9 +3556,8 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
     ec_master_t *master = priv->cdev->master;
 
 #if DEBUG_IOCTL
-    EC_MASTER_DBG(master, "ioctl(filp = 0x%x, cmd = 0x%08x (0x%02x),"
-            " arg = 0x%x)\n", (u32) filp, (u32) cmd, (u32) _IOC_NR(cmd),
-            (u32) arg);
+    EC_MASTER_DBG(master, 0, "ioctl(filp = 0x%p, cmd = 0x%08x (0x%02x),"
+            " arg = 0x%lx)\n", filp, cmd, _IOC_NR(cmd), arg);
 #endif
 
     switch (cmd) {
@@ -3649,6 +3583,10 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             if (!(filp->f_mode & FMODE_WRITE))
                 return -EPERM;
             return ec_cdev_ioctl_master_debug(master, arg);
+        case EC_IOCTL_MASTER_RESCAN:
+            if (!(filp->f_mode & FMODE_WRITE))
+                return -EPERM;
+            return ec_cdev_ioctl_master_rescan(master, arg);
         case EC_IOCTL_SLAVE_STATE:
             if (!(filp->f_mode & FMODE_WRITE))
                 return -EPERM;

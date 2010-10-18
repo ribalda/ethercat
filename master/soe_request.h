@@ -47,7 +47,9 @@
  */
 typedef struct {
     struct list_head list; /**< List item. */
+    uint8_t drive_no; /**< Drive number. */
     uint16_t idn; /**< Sercos ID-Number. */
+    ec_al_state_t al_state; /**< AL state (only valid for IDN config). */
     uint8_t *data; /**< Pointer to SDO data. */
     size_t mem_size; /**< Size of SDO data memory. */
     size_t data_size; /**< Size of SDO data. */
@@ -65,6 +67,7 @@ void ec_soe_request_init(ec_soe_request_t *);
 void ec_soe_request_clear(ec_soe_request_t *);
 
 int ec_soe_request_copy(ec_soe_request_t *, const ec_soe_request_t *);
+void ec_soe_request_set_drive_no(ec_soe_request_t *, uint8_t);
 void ec_soe_request_set_idn(ec_soe_request_t *, uint16_t);
 int ec_soe_request_alloc(ec_soe_request_t *, size_t);
 int ec_soe_request_copy_data(ec_soe_request_t *, const uint8_t *, size_t);

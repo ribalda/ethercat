@@ -27,24 +27,21 @@
  *
  ****************************************************************************/
 
-#ifndef __COMMANDMASTER_H__
-#define __COMMANDMASTER_H__
+#ifndef __COMMANDRESCAN_H__
+#define __COMMANDRESCAN_H__
 
 #include "Command.h"
 
 /****************************************************************************/
 
-class CommandMaster:
+class CommandRescan:
     public Command
 {
     public:
-        CommandMaster();
+        CommandRescan();
 
         string helpString() const;
         void execute(const StringVector &);
-
-    private:
-        enum {ColWidth = 6};
 };
 
 /****************************************************************************/

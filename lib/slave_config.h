@@ -33,10 +33,17 @@
 /*****************************************************************************/
 
 struct ec_slave_config {
+    ec_slave_config_t *next;
     ec_master_t *master;
     unsigned int index;
     uint16_t alias;
     uint16_t position;
+    ec_sdo_request_t *first_sdo_request;
+    ec_voe_handler_t *first_voe_handler;
 };
+
+/*****************************************************************************/
+
+void ec_slave_config_clear(ec_slave_config_t *);
 
 /*****************************************************************************/

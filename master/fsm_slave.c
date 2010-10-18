@@ -311,7 +311,7 @@ void ec_fsm_slave_state_foe_request(
     }
 
     // finished transferring FoE
-    EC_SLAVE_DBG(slave, 1, "Successfully transferred %u bytes of FoE"
+    EC_SLAVE_DBG(slave, 1, "Successfully transferred %zu bytes of FoE"
             " data.\n", request->data_size);
 
     request->state = EC_INT_REQUEST_SUCCESS;

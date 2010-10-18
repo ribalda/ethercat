@@ -119,7 +119,7 @@ struct ec_fsm_master {
     unsigned long scan_jiffies; /**< beginning of slave scanning */
     uint8_t link_state; /**< Last main device link state. */
     unsigned int slaves_responding; /**< number of responding slaves */
-    unsigned int topology_change_pending; /**< bus topology changed */
+    unsigned int rescan_required; /**< A bus rescan is required. */
     ec_slave_state_t slave_states; /**< states of responding slaves */
     ec_slave_t *slave; /**< current slave */
     ec_sii_write_request_t *sii_request; /**< SII write request */

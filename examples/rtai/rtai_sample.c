@@ -76,8 +76,8 @@ static cycles_t t_last_cycle = 0, t_critical;
 // process data
 static uint8_t *domain1_pd; // process data memory
 
-#define AnaInSlavePos  0, 1
-#define DigOutSlavePos 0, 3
+#define AnaInSlavePos  0, 3
+#define DigOutSlavePos 0, 2
 
 #define Beckhoff_EL2004 0x00000002, 0x07D43052
 #define Beckhoff_EL3162 0x00000002, 0x0C5A3052
@@ -286,8 +286,8 @@ int __init init_mod(void)
     t_critical = cpu_khz * 1000 / FREQUENCY - cpu_khz * INHIBIT_TIME / 1000;
 
     master = ecrt_request_master(0);
-    if (IS_ERR(master)) {
-        ret = PTR_ERR(master); 
+    if (!master) {
+        ret = -EBUSY; 
         printk(KERN_ERR PFX "Requesting master 0 failed!\n");
         goto out_return;
     }

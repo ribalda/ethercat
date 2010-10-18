@@ -170,11 +170,12 @@ struct ec_master {
     unsigned int injection_seq_rt; /**< Datagram injection sequence number
                                      for the realtime side. */
 
-
     ec_slave_t *slaves; /**< Array of slaves on the bus. */
     unsigned int slave_count; /**< Number of slaves on the bus. */
 
+    /* Configuration applied by the application. */
     struct list_head configs; /**< List of slave configurations. */
+    struct list_head domains; /**< List of domains. */
     
     u64 app_time; /**< Time of the last ecrt_master_sync() call. */
     u64 app_start_time; /**< Application start time. */
@@ -215,9 +216,8 @@ struct ec_master {
                                       ext_datagram_queue. */
 
     struct list_head external_datagram_queue; /**< External Datagram queue. */
-    size_t send_interval; /**< Interval between calls to ecrt_master_send */
+    unsigned int send_interval; /**< Interval between calls to ecrt_master_send */
     size_t max_queue_size; /**< Maximum size of datagram queue */
-    struct list_head domains; /**< List of domains. */
 
     unsigned int debug_level; /**< Master debug level. */
     ec_stats_t stats; /**< Cyclic statistics. */
@@ -246,7 +246,6 @@ struct ec_master {
 
     struct list_head reg_requests; /**< Register requests. */
     wait_queue_head_t reg_queue; /**< Wait queue for register requests. */
-
 };
 
 /*****************************************************************************/
@@ -279,7 +278,7 @@ void ec_master_queue_external_datagram(ec_master_t *, ec_datagram_t *);
 void ec_master_inject_external_datagrams(ec_master_t *);
 
 // misc.
-void ec_master_set_send_interval(ec_master_t *,size_t);
+void ec_master_set_send_interval(ec_master_t *, unsigned int);
 void ec_master_attach_slave_configs(ec_master_t *);
 ec_slave_t *ec_master_find_slave(ec_master_t *, uint16_t, uint16_t);
 const ec_slave_t *ec_master_find_slave_const(const ec_master_t *, uint16_t,

@@ -376,7 +376,7 @@ void ec_fsm_pdo_conf_state_start(
         return;
     }
 
-    fsm->sync_index = 0xff; // next is zero
+    fsm->sync_index = 1; // next is 2
     ec_fsm_pdo_conf_action_next_sync(fsm);
 }
 
@@ -429,7 +429,8 @@ void ec_fsm_pdo_conf_action_next_sync(
         }
 
         // get first configured PDO
-        if (!(fsm->pdo = ec_fsm_pdo_conf_action_next_pdo(fsm, &fsm->pdos.list))) {
+        if (!(fsm->pdo =
+                    ec_fsm_pdo_conf_action_next_pdo(fsm, &fsm->pdos.list))) {
             // no pdos configured
             ec_fsm_pdo_conf_action_check_assignment(fsm);
             return;
@@ -506,17 +507,30 @@ void ec_fsm_pdo_conf_action_check_mapping(
         ec_fsm_pdo_t *fsm /**< PDO configuration state machine. */
         )
 {
-    if (ec_pdo_equal_entries(fsm->pdo, &fsm->slave_pdo)) {
-        EC_SLAVE_DBG(fsm->slave, 1, "Mapping of PDO 0x%04X"
-                " is already configured correctly.\n", fsm->pdo->index);
-        ec_fsm_pdo_conf_action_next_pdo_mapping(fsm);
+    // check, if slave supports PDO configuration
+    if ((fsm->slave->sii.mailbox_protocols & EC_MBOX_COE)
+            && fsm->slave->sii.has_general
+            && fsm->slave->sii.coe_details.enable_pdo_configuration) {
+
+        // always write PDO mapping
+        ec_fsm_pdo_entry_start_configuration(&fsm->fsm_pdo_entry, fsm->slave,
+                fsm->pdo, &fsm->slave_pdo);
+        fsm->state = ec_fsm_pdo_conf_state_mapping;
+        fsm->state(fsm); // execure immediately
         return;
     }
+    else if (!ec_pdo_equal_entries(fsm->pdo, &fsm->slave_pdo)) {
+        EC_SLAVE_WARN(fsm->slave, "Slave does not support"
+                " changing the PDO mapping!\n");
+        EC_SLAVE_WARN(fsm->slave, "");
+        printk("Currently mapped PDO entries: ");
+        ec_pdo_print_entries(&fsm->slave_pdo);
+        printk(". Entries to map: ");
+        ec_pdo_print_entries(fsm->pdo);
+        printk("\n");
+    }
 
-    ec_fsm_pdo_entry_start_configuration(&fsm->fsm_pdo_entry, fsm->slave,
-            fsm->pdo, &fsm->slave_pdo);
-    fsm->state = ec_fsm_pdo_conf_state_mapping;
-    fsm->state(fsm); // execure immediately
+    ec_fsm_pdo_conf_action_next_pdo_mapping(fsm);
 }
 
 /*****************************************************************************/
@@ -564,46 +578,42 @@ void ec_fsm_pdo_conf_action_check_assignment(
         ec_fsm_pdo_t *fsm /**< PDO configuration state machine. */
         )
 {
-    // check if assignment has to be re-configured
-    if (ec_pdo_list_equal(&fsm->sync->pdos, &fsm->pdos)) {
-        EC_SLAVE_DBG(fsm->slave, 1, "PDO assignment for SM%u"
-                " is already configured correctly.\n", fsm->sync_index);
-        ec_fsm_pdo_conf_action_next_sync(fsm);
+    if ((fsm->slave->sii.mailbox_protocols & EC_MBOX_COE)
+            && fsm->slave->sii.has_general
+            && fsm->slave->sii.coe_details.enable_pdo_assign) {
+
+        // always write PDO assignment
+        if (fsm->slave->master->debug_level) {
+            EC_SLAVE_DBG(fsm->slave, 1, "Setting PDO assignment of SM%u:\n",
+                    fsm->sync_index);
+            EC_SLAVE_DBG(fsm->slave, 1, ""); ec_fsm_pdo_print(fsm);
+        }
+
+        if (ec_sdo_request_alloc(&fsm->request, 2)) {
+            fsm->state = ec_fsm_pdo_state_error;
+            return;
+        }
+
+        // set mapped PDO count to zero
+        EC_WRITE_U8(fsm->request.data, 0); // zero PDOs mapped
+        fsm->request.data_size = 1;
+        ec_sdo_request_address(&fsm->request, 0x1C10 + fsm->sync_index, 0);
+        ecrt_sdo_request_write(&fsm->request);
+
+        EC_SLAVE_DBG(fsm->slave, 1, "Setting number of assigned"
+                " PDOs to zero.\n");
+
+        fsm->state = ec_fsm_pdo_conf_state_zero_pdo_count;
+        ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, &fsm->request);
+        ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
         return;
     }
-
-    if (fsm->slave->master->debug_level) {
-        EC_SLAVE_DBG(fsm->slave, 1, "PDO assignment of SM%u differs:\n",
-                fsm->sync_index);
-        EC_SLAVE_DBG(fsm->slave, 1, ""); ec_fsm_pdo_print(fsm);
-    }
-
-    // PDO assignment has to be changed. Does the slave support this?
-    if (!(fsm->slave->sii.mailbox_protocols & EC_MBOX_COE)
-            || (fsm->slave->sii.has_general
-                && !fsm->slave->sii.coe_details.enable_pdo_assign)) {
+    else if (!ec_pdo_list_equal(&fsm->sync->pdos, &fsm->pdos)) {
         EC_SLAVE_WARN(fsm->slave, "Slave does not support assigning PDOs!\n");
         EC_SLAVE_WARN(fsm->slave, ""); ec_fsm_pdo_print(fsm);
-        ec_fsm_pdo_conf_action_next_sync(fsm);
-        return;
     }
 
-    if (ec_sdo_request_alloc(&fsm->request, 2)) {
-        fsm->state = ec_fsm_pdo_state_error;
-        return;
-    }
-
-    // set mapped PDO count to zero
-    EC_WRITE_U8(fsm->request.data, 0); // zero PDOs mapped
-    fsm->request.data_size = 1;
-    ec_sdo_request_address(&fsm->request, 0x1C10 + fsm->sync_index, 0);
-    ecrt_sdo_request_write(&fsm->request);
-
-    EC_SLAVE_DBG(fsm->slave, 1, "Setting number of assigned PDOs to zero.\n");
-
-    fsm->state = ec_fsm_pdo_conf_state_zero_pdo_count;
-    ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, &fsm->request);
-    ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
+    ec_fsm_pdo_conf_action_next_sync(fsm);
 }
 
 /*****************************************************************************/
@@ -621,7 +631,7 @@ void ec_fsm_pdo_conf_state_zero_pdo_count(
         EC_SLAVE_WARN(fsm->slave, "Failed to clear PDO assignment of SM%u.\n",
                 fsm->sync_index);
         EC_SLAVE_WARN(fsm->slave, ""); ec_fsm_pdo_print(fsm);
-        fsm->state = ec_fsm_pdo_state_error;
+        ec_fsm_pdo_conf_action_next_sync(fsm);
         return;
     }
 
@@ -632,7 +642,6 @@ void ec_fsm_pdo_conf_state_zero_pdo_count(
     
     // find first PDO
     if (!(fsm->pdo = ec_fsm_pdo_conf_action_next_pdo(fsm, &fsm->pdos.list))) {
-        EC_SLAVE_DBG(fsm->slave, 1, "No PDOs to assign.\n");
 
         // check for mapping to be altered
         ec_fsm_pdo_conf_action_next_sync(fsm);

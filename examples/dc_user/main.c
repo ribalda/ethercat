@@ -143,7 +143,6 @@ void cyclic_task()
 
         // check for master state (optional)
         check_master_state();
-
     }
 
     if (blink_counter) {

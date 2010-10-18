@@ -455,6 +455,17 @@ void MasterDevice::setDebug(unsigned int debugLevel)
 
 /****************************************************************************/
 
+void MasterDevice::rescan()
+{
+    if (ioctl(fd, EC_IOCTL_MASTER_RESCAN, 0) < 0) {
+        stringstream err;
+        err << "Failed to command rescan: " << strerror(errno);
+        throw MasterDeviceException(err);
+    }
+}
+
+/****************************************************************************/
+
 void MasterDevice::sdoDownload(ec_ioctl_slave_sdo_download_t *data)
 {
     if (ioctl(fd, EC_IOCTL_SLAVE_SDO_DOWNLOAD, data) < 0) {

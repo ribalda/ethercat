@@ -25,28 +25,61 @@
  *  EtherCAT technology and brand is only permitted in compliance with the
  *  industrial property and similar rights of Beckhoff Automation GmbH.
  *
+ *  vim: expandtab
+ *
  ****************************************************************************/
 
-#ifndef __COMMANDMASTER_H__
-#define __COMMANDMASTER_H__
+#include <sstream>
+#include <iomanip>
+using namespace std;
 
-#include "Command.h"
+#include "CommandRescan.h"
+#include "MasterDevice.h"
 
-/****************************************************************************/
+/*****************************************************************************/
 
-class CommandMaster:
-    public Command
+CommandRescan::CommandRescan():
+    Command("rescan", "Rescan the bus.")
 {
-    public:
-        CommandMaster();
+}
 
-        string helpString() const;
-        void execute(const StringVector &);
+/*****************************************************************************/
 
-    private:
-        enum {ColWidth = 6};
-};
+string CommandRescan::helpString() const
+{
+    stringstream str;
+
+    str << getName() << endl
+        << endl
+        << getBriefDescription() << endl
+        << endl
+        << "Command a bus rescan. Gathered slave information will be" << endl
+        << "forgotten and slaves will be read in again." << endl
+        << endl;
+
+    return str.str();
+}
 
 /****************************************************************************/
 
-#endif
+void CommandRescan::execute(const StringVector &args)
+{
+	MasterIndexList masterIndices;
+    
+    if (args.size() != 0) {
+        stringstream err;
+        err << "'" << getName() << "' takes no arguments!";
+        throwInvalidUsageException(err);
+    }
+
+	masterIndices = getMasterIndices();
+    MasterIndexList::const_iterator mi;
+    for (mi = masterIndices.begin();
+            mi != masterIndices.end(); mi++) {
+        MasterDevice m(*mi);
+        m.open(MasterDevice::ReadWrite);
+        m.rescan();
+    }
+}
+
+/*****************************************************************************/

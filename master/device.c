@@ -315,7 +315,7 @@ void ec_device_send(
         u32 tx_frame_rate =
             (u32) (device->tx_count - device->last_tx_count) * 1000;
         u32 tx_byte_rate =
-            (device->tx_bytes - device->last_tx_bytes) * 1000;
+            (device->tx_bytes - device->last_tx_bytes);
         u64 loss = device->tx_count - device->rx_count;
         s32 loss_rate = (s32) (loss - device->last_loss) * 1000;
         for (i = 0; i < EC_RATE_COUNT; i++) {

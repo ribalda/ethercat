@@ -328,17 +328,6 @@ void ec_fsm_pdo_entry_conf_state_start(
         ec_fsm_pdo_entry_t *fsm /**< PDO mapping state machine. */
         )
 {
-    // PDO mapping has to be changed. Does the slave support this?
-    if (!(fsm->slave->sii.mailbox_protocols & EC_MBOX_COE)
-            || (fsm->slave->sii.has_general
-                && !fsm->slave->sii.coe_details.enable_pdo_configuration)) {
-            EC_SLAVE_WARN(fsm->slave, "Slave does not support"
-                    " changing the PDO mapping!\n");
-        EC_SLAVE_WARN(fsm->slave, ""); ec_fsm_pdo_entry_print(fsm);
-        fsm->state = ec_fsm_pdo_entry_state_error;
-        return;
-    }
-
     if (ec_sdo_request_alloc(&fsm->request, 4)) {
         fsm->state = ec_fsm_pdo_entry_state_error;
         return;
