@@ -34,11 +34,13 @@
 using namespace std;
 
 #include "Command.h"
+#include "SoeCommand.h"
 
 /****************************************************************************/
 
 class CommandConfig:
-    public Command
+    public Command,
+    public SoeCommand
 {
     public:
         CommandConfig();

@@ -200,6 +200,24 @@ void MasterDevice::getConfigSdo(
 
 /****************************************************************************/
 
+void MasterDevice::getConfigIdn(
+        ec_ioctl_config_idn_t *data,
+        unsigned int index,
+        unsigned int pos
+        )
+{
+    data->config_index = index;
+    data->idn_pos = pos;
+
+    if (ioctl(fd, EC_IOCTL_CONFIG_IDN, data) < 0) {
+        stringstream err;
+        err << "Failed to get slave config IDN: " << strerror(errno);
+        throw MasterDeviceException(err);
+    }
+}
+
+/****************************************************************************/
+
 void MasterDevice::getDomain(ec_ioctl_domain_t *data, unsigned int index)
 {
     data->index = index;

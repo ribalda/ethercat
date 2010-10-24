@@ -36,7 +36,7 @@ using namespace std;
 /*****************************************************************************/
 
 CommandSoeWrite::CommandSoeWrite():
-    SoeCommand("soe_write", "Write an SoE IDN to a slave.")
+    Command("soe_write", "Write an SoE IDN to a slave.")
 {
 }
 

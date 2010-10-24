@@ -35,6 +35,8 @@
 /****************************************************************************/
 
 class CommandSoeRead:
+    public Command,
+    public DataTypeHandler,
     public SoeCommand
 {
     public:

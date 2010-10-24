@@ -36,7 +36,7 @@ using namespace std;
 /*****************************************************************************/
 
 CommandSoeRead::CommandSoeRead():
-    SoeCommand("soe_read", "Read an SoE IDN from a slave.")
+    Command("soe_read", "Read an SoE IDN from a slave.")
 {
 }
 

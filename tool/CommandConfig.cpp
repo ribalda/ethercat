@@ -153,6 +153,7 @@ void CommandConfig::showDetailedConfigs(
     ec_ioctl_config_pdo_t pdo;
     ec_ioctl_config_pdo_entry_t entry;
     ec_ioctl_config_sdo_t sdo;
+    ec_ioctl_config_idn_t idn;
     string indent(doIndent ? "  " : "");
 
     for (configIter = configList.begin();
@@ -259,6 +260,34 @@ void CommandConfig::showDetailedConfigs(
             cout << indent << "  None." << endl;
         }
 
+        cout << indent << "IDN configuration:" << endl;
+        if (configIter->idn_count) {
+            for (j = 0; j < configIter->idn_count; j++) {
+                m.getConfigIdn(&idn, configIter->config_index, j);
+
+                cout << indent << "  Drive " << (unsigned int) idn.drive_no
+                    << ", " << outputIdn(idn.idn)
+                    << ", " << dec << idn.size << " byte" << endl;
+
+                cout << indent << "    " << hex << setfill('0');
+                for (i = 0; i < min((uint32_t) idn.size,
+                            (uint32_t) EC_MAX_IDN_DATA_SIZE); i++) {
+                    cout << setw(2) << (unsigned int) idn.data[i];
+                    if ((i + 1) % 16 == 0 && i < idn.size - 1) {
+                        cout << endl << indent << "    ";
+                    } else {
+                        cout << " ";
+                    }
+                }
+
+                cout << endl;
+                if (idn.size > EC_MAX_IDN_DATA_SIZE) {
+                    cout << indent << "    ..." << endl;
+                }
+            }
+        } else {
+            cout << indent << "  None." << endl;
+        }
         if (configIter->dc_assign_activate) {
             int i;
 

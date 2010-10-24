@@ -30,7 +30,6 @@ Future issues:
 * Read AL status code on spontaneous state change.
 * recompile tool/CommandVersion.cpp if revision changes.
 * Log SoE IDNs with real name ([SP]-x-yyyy).
-* Output SoE IDN configurations in 'ethercat config'.
 * Only output watchdog config if not default.
 * Implement CompleteAccess for SDO uploads.
 * Output warning when send_ext() is called in illegal context.

@@ -35,6 +35,8 @@
 /****************************************************************************/
 
 class CommandSoeWrite:
+    public Command,
+    public DataTypeHandler,
     public SoeCommand
 {
     public:
