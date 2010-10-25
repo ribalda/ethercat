@@ -3449,7 +3449,7 @@ int ec_cdev_ioctl_slave_soe_write(
 
     data = kmalloc(ioctl.data_size, GFP_KERNEL);
     if (!data) {
-        EC_MASTER_ERR(master, "Failed to allocate %u bytes of IDN data.\n",
+        EC_MASTER_ERR(master, "Failed to allocate %zu bytes of IDN data.\n",
                 ioctl.data_size);
         return -ENOMEM;
     }

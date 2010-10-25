@@ -56,7 +56,7 @@
  *
  * Increment this when changing the ioctl interface!
  */
-#define EC_IOCTL_VERSION_MAGIC 9
+#define EC_IOCTL_VERSION_MAGIC 10
 
 // Command-line tool
 #define EC_IOCTL_MODULE                EC_IOR(0x00, ec_ioctl_module_t)
@@ -421,7 +421,7 @@ typedef struct {
     uint8_t *data;
 
     // outputs
-    uint32_t data_size;
+    size_t data_size;
     uint16_t error_code;
 } ec_ioctl_slave_soe_read_t;
 
@@ -432,7 +432,7 @@ typedef struct {
     uint16_t slave_position;
     uint8_t drive_no;
     uint16_t idn;
-    uint32_t data_size;
+    size_t data_size;
     uint8_t *data;
 
     // outputs
@@ -530,7 +530,7 @@ typedef struct {
     uint8_t drive_no;
     uint16_t idn;
     ec_al_state_t state;
-    uint32_t size;
+    size_t size;
     uint8_t data[EC_MAX_IDN_DATA_SIZE];
 } ec_ioctl_config_idn_t;
 
