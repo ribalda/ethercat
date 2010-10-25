@@ -35,6 +35,7 @@
 
 #include <linux/module.h>
 #include <linux/jiffies.h>
+#include <linux/slab.h>
 
 #include "foe_request.h"
 #include "foe.h"

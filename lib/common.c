@@ -37,6 +37,8 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
+#include <unistd.h>
+#include <sys/socket.h>
 
 #include "master.h"
 #include "master/ioctl.h"
