@@ -39,6 +39,7 @@
 
 #include <linux/list.h>
 #include <linux/netdevice.h>
+#include <linux/semaphore.h>
 
 #include "globals.h"
 #include "slave.h"
