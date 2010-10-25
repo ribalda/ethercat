@@ -231,7 +231,7 @@ void cyclic_task()
 
 		// write application time to master
 		clock_gettime(CLOCK_TO_USE, &time);
-		ecrt_master_application_time(master, timespec2u64(time));
+		ecrt_master_application_time(master, TIMESPEC2NS(time));
 
 		if (sync_ref_counter) {
 			sync_ref_counter--;
