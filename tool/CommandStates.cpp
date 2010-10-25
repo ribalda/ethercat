@@ -43,11 +43,11 @@ CommandStates::CommandStates():
 
 /*****************************************************************************/
 
-string CommandStates::helpString() const
+string CommandStates::helpString(const string &binaryBaseName) const
 {
     stringstream str;
 
-    str << getName() << " [OPTIONS] <STATE>" << endl
+    str << binaryBaseName << " " << getName() << " [OPTIONS] <STATE>" << endl
         << endl
         << getBriefDescription() << endl
         << endl

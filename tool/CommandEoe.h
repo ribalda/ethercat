@@ -40,7 +40,7 @@ class CommandEoe:
     public:
         CommandEoe();
 
-        string helpString() const;
+        string helpString(const string &) const;
         void execute(const StringVector &);
 };
 

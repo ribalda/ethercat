@@ -17,7 +17,6 @@ Version 1.5.0:
     - Output error after usage.
     - Implement ranges for slaves and domains.
 * Fix casting away constness during expected WC calculation.
-* Include SoE drive_no in ethercat tool.
 
 Future issues:
 

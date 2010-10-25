@@ -45,11 +45,11 @@ CommandAlias::CommandAlias():
 
 /*****************************************************************************/
 
-string CommandAlias::helpString() const
+string CommandAlias::helpString(const string &binaryBaseName) const
 {
     stringstream str;
 
-    str << getName() << " [OPTIONS] <ALIAS>" << endl
+    str << binaryBaseName << " " << getName() << " [OPTIONS] <ALIAS>" << endl
         << endl
         << getBriefDescription() << endl
         << endl

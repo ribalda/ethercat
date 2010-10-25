@@ -40,7 +40,7 @@ class CommandStates:
     public:
         CommandStates();
 
-        string helpString() const;
+        string helpString(const string &) const;
         void execute(const StringVector &);
 };
 

@@ -40,7 +40,7 @@ class CommandDebug:
     public:
         CommandDebug();
 
-        string helpString() const;
+        string helpString(const string &) const;
         void execute(const StringVector &);
 };
 

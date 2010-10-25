@@ -43,11 +43,11 @@ CommandGraph::CommandGraph():
 
 /*****************************************************************************/
 
-string CommandGraph::helpString() const
+string CommandGraph::helpString(const string &binaryBaseName) const
 {
     stringstream str;
 
-    str << getName() << " [OPTIONS]" << endl
+    str << binaryBaseName << " " << getName() << " [OPTIONS]" << endl
         << endl
         << getBriefDescription() << endl
         << endl
