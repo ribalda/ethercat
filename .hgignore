@@ -135,3 +135,5 @@ tool/Makefile
 tool/Makefile.in
 tool/TAGS
 tool/ethercat
+debuild.log
+
