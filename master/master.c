@@ -1814,7 +1814,8 @@ int ec_master_calc_topology_rec(
 
     slave->ports[0].next_slave = port0_slave;
 
-    for (i = 1; i < EC_MAX_PORTS; i++) {
+    i = 3;
+    while (i != 0) {
         if (!slave->ports[i].link.loop_closed) {
             *slave_position = *slave_position + 1;
             if (*slave_position < master->slave_count) {
@@ -1826,6 +1827,14 @@ int ec_master_calc_topology_rec(
             } else {
                 return -1;
             }
+        }
+        switch (i)
+        {
+        case 0: i = 3; break;
+        case 1: i = 2; break;
+        case 3: i = 1; break;
+        case 2:
+        default:i = 0; break;
         }
     }
 

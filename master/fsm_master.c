@@ -48,7 +48,11 @@
 
 /** Time difference [ns] to tolerate without setting a new system time offset.
  */
+#ifdef EC_HAVE_CYCLES
+#define EC_SYSTEM_TIME_TOLERANCE_NS 10000
+#else
 #define EC_SYSTEM_TIME_TOLERANCE_NS 100000000
+#endif
 
 /*****************************************************************************/
 
