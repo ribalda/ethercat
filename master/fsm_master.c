@@ -907,13 +907,13 @@ u64 ec_fsm_master_dc_offset32(
 	system_time32 -= correction32;
 	old_offset32 = (u32) old_offset;
 
-    time_diff = (u32) slave->master->app_time - system_time32;
+    time_diff = (u32) slave->master->app_start_time - system_time32;
 
     EC_SLAVE_DBG(slave, 1, "DC system time offset calculation:"
             " system_time=%u (corrected with %u),"
-            " app_time=%llu, diff=%i\n",
+            " app_start_time=%llu, diff=%i\n",
 			system_time32, correction32,
-            slave->master->app_time, time_diff);
+            slave->master->app_start_time, time_diff);
 
     if (EC_ABS(time_diff) > EC_SYSTEM_TIME_TOLERANCE_NS) {
         new_offset = time_diff + old_offset32;
@@ -944,13 +944,13 @@ u64 ec_fsm_master_dc_offset64(
 	// correct read system time by elapsed time between read operation
 	// and app_time set time
 	system_time -= correction;
-	time_diff = fsm->slave->master->app_time - system_time;
+    time_diff = fsm->slave->master->app_start_time - system_time;
 
     EC_SLAVE_DBG(slave, 1, "DC system time offset calculation:"
             " system_time=%llu (corrected with %llu),"
-            " app_time=%llu, diff=%lli\n",
+            " app_start_time=%llu, diff=%lli\n",
             system_time, correction,
-            slave->master->app_time, time_diff);
+            slave->master->app_start_time, time_diff);
 
     if (EC_ABS(time_diff) > EC_SYSTEM_TIME_TOLERANCE_NS) {
         new_offset = time_diff + old_offset;

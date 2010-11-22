@@ -2375,14 +2375,14 @@ void ecrt_master_configured_slaves_state(const ec_master_t *master, ec_master_st
 void ecrt_master_application_time(ec_master_t *master, uint64_t app_time)
 {
     master->app_time = app_time;
-#ifdef EC_HAVE_CYCLES
-    master->dc_cycles_app_time = get_cycles();
-#endif
-    master->dc_jiffies_app_time = jiffies;
 
     if (unlikely(!master->has_app_time)) {
 		EC_MASTER_DBG(master, 1, "set application start time = %llu\n",app_time);
 		master->app_start_time = app_time;
+#ifdef EC_HAVE_CYCLES
+    master->dc_cycles_app_time = get_cycles();
+#endif
+    master->dc_jiffies_app_time = jiffies;
         master->has_app_time = 1;
     }
 }
