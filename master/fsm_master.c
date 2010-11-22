@@ -1001,7 +1001,7 @@ void ec_fsm_master_state_dc_read_offset(
 	   and the app_time set time */
 #ifdef EC_HAVE_CYCLES
 	correction =
-			(datagram->cycles_sent - slave->master->dc_cycles_app_time)
+            (datagram->cycles_sent - slave->master->dc_cycles_app_start_time)
 			* 1000000LL;
 	do_div(correction,cpu_khz);
 #else

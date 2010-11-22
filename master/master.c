@@ -150,9 +150,9 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
 
     master->app_time = 0ULL;
 #ifdef EC_HAVE_CYCLES
-    master->dc_cycles_app_time = 0;
+    master->dc_cycles_app_start_time = 0;
 #endif
-    master->dc_jiffies_app_time = 0;
+    master->dc_jiffies_app_start_time = 0;
     master->app_start_time = 0ULL;
     master->has_app_time = 0;
 
@@ -2381,9 +2381,9 @@ void ecrt_master_application_time(ec_master_t *master, uint64_t app_time)
 		EC_MASTER_DBG(master, 1, "set application start time = %llu\n",app_time);
 		master->app_start_time = app_time;
 #ifdef EC_HAVE_CYCLES
-    master->dc_cycles_app_time = get_cycles();
+    master->dc_cycles_app_start_time = get_cycles();
 #endif
-    master->dc_jiffies_app_time = jiffies;
+    master->dc_jiffies_app_start_time = jiffies;
         master->has_app_time = 1;
     }
 }

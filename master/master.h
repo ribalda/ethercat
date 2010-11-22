@@ -188,9 +188,9 @@ struct ec_master {
                                        monitoring. */
     ec_slave_t *dc_ref_clock; /**< DC reference clock slave. */
 #ifdef EC_HAVE_CYCLES
-    cycles_t dc_cycles_app_time; /** cycles at last ecrt_master_sync() call.*/
+    cycles_t dc_cycles_app_start_time; /** cycles at last ecrt_master_sync() call.*/
 #endif
-    unsigned long dc_jiffies_app_time;/** jiffies at last
+    unsigned long dc_jiffies_app_start_time;/** jiffies at last
                                             ecrt_master_sync() call.*/
     unsigned int scan_busy; /**< Current scan state. */
     unsigned int allow_scan; /**< \a True, if slave scanning is allowed. */
