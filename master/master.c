@@ -1273,24 +1273,25 @@ static int ec_master_idle_thread(void *priv_data)
         ecrt_master_receive(master);
         up(&master->io_sem);
 
-        fsm_exec = 0;
-        // execute master & slave state machines
-        if (down_interruptible(&master->master_sem))
-            break;
-        fsm_exec = ec_fsm_master_exec(&master->fsm);
-        for (slave = master->slaves;
-                slave < master->slaves + master->slave_count;
-                slave++) {
-            ec_fsm_slave_exec(&slave->fsm);
-        }
-        up(&master->master_sem);
+        if (master->injection_seq_rt == master->injection_seq_fsm) {
+            fsm_exec = 0;
+            // execute master & slave state machines
+            if (down_interruptible(&master->master_sem))
+                break;
+            fsm_exec = ec_fsm_master_exec(&master->fsm);
+            for (slave = master->slaves;
+                    slave < master->slaves + master->slave_count;
+                    slave++) {
+                ec_fsm_slave_exec(&slave->fsm);
+            }
+            up(&master->master_sem);
 
-        // queue and send
-        down(&master->io_sem);
-        if (fsm_exec) {
-            ec_master_queue_datagram(master, &master->fsm_datagram);
+            // queue and send
+            down(&master->io_sem);
+            if (fsm_exec) {
+                master->injection_seq_rt++;
+            }
         }
-        ec_master_inject_external_datagrams(master);
         ecrt_master_send(master);
         sent_bytes = master->main_device.tx_skb[
             master->main_device.tx_ring_index]->len;
@@ -1342,7 +1343,7 @@ static int ec_master_operation_thread(void *priv_data)
             // execute master & slave state machines
             if (down_interruptible(&master->master_sem))
                 break;
-            fsm_exec += ec_fsm_master_exec(&master->fsm);
+            fsm_exec = ec_fsm_master_exec(&master->fsm);
             for (slave = master->slaves;
                     slave < master->slaves + master->slave_count;
                     slave++) {
