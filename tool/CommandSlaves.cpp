@@ -45,11 +45,11 @@ CommandSlaves::CommandSlaves():
 
 /*****************************************************************************/
 
-string CommandSlaves::helpString() const
+string CommandSlaves::helpString(const string &binaryBaseName) const
 {
     stringstream str;
 
-    str << getName() << " [OPTIONS]" << endl
+    str << binaryBaseName << " " << getName() << " [OPTIONS]" << endl
         << endl
         << getBriefDescription() << endl
         << endl

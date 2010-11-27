@@ -1351,6 +1351,7 @@ int ec_cdev_ioctl_config(
     data.watchdog_divider = sc->watchdog_divider;
     data.watchdog_intervals = sc->watchdog_intervals;
     data.sdo_count = ec_slave_config_sdo_count(sc);
+    data.idn_count = ec_slave_config_idn_count(sc);
     data.slave_position = sc->slave ? sc->slave->ring_position : -1;
     data.dc_assign_activate = sc->dc_assign_activate;
     for (i = 0; i < EC_SYNC_SIGNAL_COUNT; i++) {
@@ -1522,6 +1523,56 @@ int ec_cdev_ioctl_config_sdo(
     data.size = req->data_size;
     memcpy(&data.data, req->data,
             min((u32) data.size, (u32) EC_MAX_SDO_DATA_SIZE));
+
+    up(&master->master_sem);
+
+    if (copy_to_user((void __user *) arg, &data, sizeof(data)))
+        return -EFAULT;
+
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Get slave configuration IDN information.
+ */
+int ec_cdev_ioctl_config_idn(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg /**< ioctl() argument. */
+        )
+{
+    ec_ioctl_config_idn_t data;
+    const ec_slave_config_t *sc;
+    const ec_soe_request_t *req;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+        return -EFAULT;
+    }
+
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
+
+    if (!(sc = ec_master_get_config_const(
+                    master, data.config_index))) {
+        up(&master->master_sem);
+        EC_MASTER_ERR(master, "Slave config %u does not exist!\n",
+                data.config_index);
+        return -EINVAL;
+    }
+
+    if (!(req = ec_slave_config_get_idn_by_pos_const(
+                    sc, data.idn_pos))) {
+        up(&master->master_sem);
+        EC_MASTER_ERR(master, "Invalid IDN position!\n");
+        return -EINVAL;
+    }
+
+    data.drive_no = req->drive_no;
+    data.idn = req->idn;
+    data.state = req->state;
+    data.size = req->data_size;
+    memcpy(&data.data, req->data,
+            min((u32) data.size, (u32) EC_MAX_IDN_DATA_SIZE));
 
     up(&master->master_sem);
 
@@ -3467,7 +3518,7 @@ int ec_cdev_ioctl_slave_soe_write(
 
     data = kmalloc(ioctl.data_size, GFP_KERNEL);
     if (!data) {
-        EC_MASTER_ERR(master, "Failed to allocate %u bytes of IDN data.\n",
+        EC_MASTER_ERR(master, "Failed to allocate %zu bytes of IDN data.\n",
                 ioctl.data_size);
         return -ENOMEM;
     }
@@ -3633,6 +3684,8 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             return ec_cdev_ioctl_config_pdo_entry(master, arg);
         case EC_IOCTL_CONFIG_SDO:
             return ec_cdev_ioctl_config_sdo(master, arg);
+        case EC_IOCTL_CONFIG_IDN:
+            return ec_cdev_ioctl_config_idn(master, arg);
 #ifdef EC_EOE
         case EC_IOCTL_EOE_HANDLER:
             return ec_cdev_ioctl_eoe_handler(master, arg);

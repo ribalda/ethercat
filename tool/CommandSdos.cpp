@@ -43,11 +43,11 @@ CommandSdos::CommandSdos():
 
 /*****************************************************************************/
 
-string CommandSdos::helpString() const
+string CommandSdos::helpString(const string &binaryBaseName) const
 {
     stringstream str;
 
-    str << getName() << " [OPTIONS]" << endl
+    str << binaryBaseName << " " << getName() << " [OPTIONS]" << endl
         << endl
         << getBriefDescription() << endl
         << endl

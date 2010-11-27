@@ -46,11 +46,12 @@ CommandFoeRead::CommandFoeRead():
 
 /*****************************************************************************/
 
-string CommandFoeRead::helpString() const
+string CommandFoeRead::helpString(const string &binaryBaseName) const
 {
     stringstream str;
 
-    str << getName() << " [OPTIONS] <SOURCEFILE>" << endl
+    str << binaryBaseName << " " << getName()
+        << " [OPTIONS] <SOURCEFILE>" << endl
         << endl
         << getBriefDescription() << endl
         << endl

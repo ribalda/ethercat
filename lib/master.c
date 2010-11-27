@@ -49,6 +49,7 @@ int ecrt_master_reserve(ec_master_t *master)
                 strerror(errno));
         return -1;
     }
+    return 0;
 }
 
 /*****************************************************************************/

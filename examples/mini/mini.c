@@ -33,6 +33,10 @@
 #include <linux/interrupt.h>
 #include <linux/err.h>
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 34)
+#include <linux/slab.h>
+#endif
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)
 #include <linux/semaphore.h>
 #else

@@ -46,11 +46,11 @@ CommandCStruct::CommandCStruct():
 
 /*****************************************************************************/
 
-string CommandCStruct::helpString() const
+string CommandCStruct::helpString(const string &binaryBaseName) const
 {
     stringstream str;
 
-    str << getName() << " [OPTIONS]" << endl
+    str << binaryBaseName << " " << getName() << " [OPTIONS]" << endl
         << endl
         << getBriefDescription() << endl
         << endl

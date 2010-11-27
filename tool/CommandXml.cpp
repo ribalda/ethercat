@@ -44,11 +44,11 @@ CommandXml::CommandXml():
 
 /*****************************************************************************/
 
-string CommandXml::helpString() const
+string CommandXml::helpString(const string &binaryBaseName) const
 {
     stringstream str;
 
-    str << getName() << " [OPTIONS]" << endl
+    str << binaryBaseName << " " << getName() << " [OPTIONS]" << endl
         << endl
         << getBriefDescription() << endl
         << endl

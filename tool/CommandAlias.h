@@ -40,7 +40,7 @@ class CommandAlias:
     public:
         CommandAlias();
 
-        string helpString() const;
+        string helpString(const string &) const;
         void execute(const StringVector &);
 
     protected:

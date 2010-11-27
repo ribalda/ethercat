@@ -44,11 +44,11 @@ CommandData::CommandData():
 
 /*****************************************************************************/
 
-string CommandData::helpString() const
+string CommandData::helpString(const string &binaryBaseName) const
 {
     stringstream str;
 
-    str << getName() << " [OPTIONS]" << endl
+    str << binaryBaseName << " " << getName() << " [OPTIONS]" << endl
         << endl
         << getBriefDescription() << endl
         << endl

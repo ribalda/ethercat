@@ -45,11 +45,11 @@ CommandEoe::CommandEoe():
 
 /*****************************************************************************/
 
-string CommandEoe::helpString() const
+string CommandEoe::helpString(const string &binaryBaseName) const
 {
     stringstream str;
 
-    str << getName() << endl
+    str << binaryBaseName << " " << getName() << endl
         << endl
         << getBriefDescription() << endl
         << endl

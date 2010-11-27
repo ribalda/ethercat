@@ -40,7 +40,7 @@ class CommandDomains:
     public:
         CommandDomains();
 
-        string helpString() const;
+        string helpString(const string &) const;
         void execute(const StringVector &);
 
     protected:

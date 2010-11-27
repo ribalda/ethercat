@@ -43,6 +43,7 @@
 #include <linux/version.h>
 #include <linux/serial.h>
 #include <linux/uaccess.h>
+#include <linux/slab.h>
 
 #include "../master/globals.h"
 #include "../include/ectty.h"

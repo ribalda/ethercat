@@ -43,11 +43,12 @@ CommandDownload::CommandDownload():
 
 /*****************************************************************************/
 
-string CommandDownload::helpString() const
+string CommandDownload::helpString(const string &binaryBaseName) const
 {
     stringstream str;
 
-    str << getName() << " [OPTIONS] <INDEX> <SUBINDEX> <VALUE>" << endl
+    str << binaryBaseName << " " << getName()
+        << " [OPTIONS] <INDEX> <SUBINDEX> <VALUE>" << endl
         << endl
         << getBriefDescription() << endl
         << endl

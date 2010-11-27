@@ -43,11 +43,11 @@ CommandDomains::CommandDomains():
 
 /*****************************************************************************/
 
-string CommandDomains::helpString() const
+string CommandDomains::helpString(const string &binaryBaseName) const
 {
     stringstream str;
 
-    str << getName() << " [OPTIONS]" << endl
+    str << binaryBaseName << " " << getName() << " [OPTIONS]" << endl
         << endl
         << getBriefDescription() << endl
         << endl

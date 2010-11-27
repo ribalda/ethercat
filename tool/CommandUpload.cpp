@@ -43,11 +43,12 @@ CommandUpload::CommandUpload():
 
 /*****************************************************************************/
 
-string CommandUpload::helpString() const
+string CommandUpload::helpString(const string &binaryBaseName) const
 {
     stringstream str;
 
-    str << getName() << " [OPTIONS] <INDEX> <SUBINDEX>" << endl
+    str << binaryBaseName << " " << getName()
+        << " [OPTIONS] <INDEX> <SUBINDEX>" << endl
         << endl
         << getBriefDescription() << endl
         << endl

@@ -45,11 +45,11 @@ CommandRescan::CommandRescan():
 
 /*****************************************************************************/
 
-string CommandRescan::helpString() const
+string CommandRescan::helpString(const string &binaryBaseName) const
 {
     stringstream str;
 
-    str << getName() << endl
+    str << binaryBaseName << " " << getName() << endl
         << endl
         << getBriefDescription() << endl
         << endl

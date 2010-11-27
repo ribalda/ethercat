@@ -43,11 +43,12 @@ CommandRegRead::CommandRegRead():
 
 /*****************************************************************************/
 
-string CommandRegRead::helpString() const
+string CommandRegRead::helpString(const string &binaryBaseName) const
 {
     stringstream str;
 
-    str << getName() << " [OPTIONS] <OFFSET> [LENGTH]" << endl
+    str << binaryBaseName << " " << getName()
+        << " [OPTIONS] <OFFSET> [LENGTH]" << endl
         << endl
         << getBriefDescription() << endl
         << endl

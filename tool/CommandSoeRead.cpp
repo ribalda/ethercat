@@ -28,6 +28,7 @@
  ****************************************************************************/
 
 #include <iostream>
+#include <iomanip>
 using namespace std;
 
 #include "CommandSoeRead.h"
@@ -36,23 +37,28 @@ using namespace std;
 /*****************************************************************************/
 
 CommandSoeRead::CommandSoeRead():
-    SoeCommand("soe_read", "Read an SoE IDN from a slave.")
+    Command("soe_read", "Read an SoE IDN from a slave.")
 {
 }
 
 /*****************************************************************************/
 
-string CommandSoeRead::helpString() const
+string CommandSoeRead::helpString(const string &binaryBaseName) const
 {
     stringstream str;
 
-    str << getName() << " [OPTIONS] <IDN>" << endl
+    str << binaryBaseName << " " << getName()
+        << " [OPTIONS] <IDN>" << endl
+        << binaryBaseName << " " << getName()
+        << " [OPTIONS] <DRIVE> <IDN>" << endl
         << endl
         << getBriefDescription() << endl
         << endl
         << "This command requires a single slave to be selected." << endl
         << endl
         << "Arguments:" << endl
+        << "  DRIVE    is the drive number (0 - 7). If omitted, 0 is assumed."
+        << endl
         << "  IDN      is the IDN and must be either an unsigned" << endl
         << "           16 bit number acc. to IEC 61800-7-204:" << endl
         << "             Bit 15: (0) Standard data, (1) Product data" << endl
@@ -84,18 +90,38 @@ void CommandSoeRead::execute(const StringVector &args)
     stringstream err;
     const DataType *dataType = NULL;
     ec_ioctl_slave_soe_read_t ioctl;
+    int driveArgIndex = -1, idnArgIndex = -1;
 
-    if (args.size() != 1) {
-        err << "'" << getName() << "' takes one argument!";
+    if (args.size() == 1) {
+        idnArgIndex = 0;
+    } else if (args.size() == 2) {
+        driveArgIndex = 0;
+        idnArgIndex = 1;
+    } else {
+        err << "'" << getName() << "' takes eiter 1 or 2 arguments!";
         throwInvalidUsageException(err);
     }
 
-    ioctl.drive_no = 0; // FIXME
+    if (driveArgIndex >= 0) {
+        stringstream str;
+        unsigned int number;
+        str << args[driveArgIndex];
+        str
+            >> resetiosflags(ios::basefield) // guess base from prefix
+            >> number;
+        if (str.fail() || number > 7) {
+            err << "Invalid drive number '" << args[driveArgIndex] << "'!";
+            throwInvalidUsageException(err);
+        }
+        ioctl.drive_no = number;
+    } else {
+        ioctl.drive_no = 0;
+    }
 
     try {
-        ioctl.idn = parseIdn(args[0]);
+        ioctl.idn = parseIdn(args[idnArgIndex]);
     } catch (runtime_error &e) {
-        err << "Invalid IDN '" << args[0] << "': " << e.what();
+        err << "Invalid IDN '" << args[idnArgIndex] << "': " << e.what();
         throwInvalidUsageException(err);
     }
 
