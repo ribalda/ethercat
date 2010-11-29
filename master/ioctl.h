@@ -56,7 +56,7 @@
  *
  * Increment this when changing the ioctl interface!
  */
-#define EC_IOCTL_VERSION_MAGIC 10
+#define EC_IOCTL_VERSION_MAGIC 11
 
 // Command-line tool
 #define EC_IOCTL_MODULE                EC_IOR(0x00, ec_ioctl_module_t)
@@ -136,8 +136,8 @@
 #define EC_IOCTL_VOE_EXEC             EC_IOWR(0x46, ec_ioctl_voe_t)
 #define EC_IOCTL_VOE_DATA             EC_IOWR(0x47, ec_ioctl_voe_t)
 #define EC_IOCTL_SET_SEND_INTERVAL     EC_IOW(0x48, size_t)
-#define EC_IOCTL_MASTER_SC_STATE        EC_IOR(0x47, ec_master_state_t)
-#define EC_IOCTL_SC_OVERLAPPING_IO      EC_IOW(0x48, ec_ioctl_config_t)
+#define EC_IOCTL_MASTER_SC_STATE        EC_IOR(0x49, ec_master_state_t)
+#define EC_IOCTL_SC_OVERLAPPING_IO      EC_IOW(0x50, ec_ioctl_config_t)
 
 /*****************************************************************************/
 
