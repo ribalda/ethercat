@@ -933,7 +933,7 @@ void ec_master_send_datagrams(ec_master_t *master /**< EtherCAT master */)
                         unsigned int frame_offset = domain_fmmu->logical_start_address-datagram_address;
                         memcpy(frame_datagram_data+frame_offset, domain_data, domain_fmmu->data_size);
                         if (unlikely(master->debug_level > 1)) {
-                            EC_DBG("sending dg 0x%02X fmmu %u fp=%u dp=%u size=%u\n",
+							EC_DBG("sending dg 0x%02X fmmu %u fp=%u dp=%zu size=%u\n",
                                    datagram->index, i,frame_offset,domain_data-datagram->data,domain_fmmu->data_size);
                             ec_print_data(domain_data, domain_fmmu->data_size);
                         }
@@ -1109,7 +1109,7 @@ void ec_master_receive_datagrams(ec_master_t *master, /**< EtherCAT master */
                     unsigned int frame_offset = domain_fmmu->logical_start_address-datagram_address;
                     memcpy(domain_data, frame_datagram_data+frame_offset, domain_fmmu->data_size);
                     if (unlikely(master->debug_level > 1)) {
-                        EC_DBG("receiving dg 0x%02X fmmu %u fp=%u dp=%u size=%u\n",
+						EC_DBG("receiving dg 0x%02X fmmu %u fp=%u dp=%zu size=%u\n",
                                datagram->index, i,frame_offset,domain_data-datagram->data,domain_fmmu->data_size);
                         ec_print_data(domain_data, domain_fmmu->data_size);
                     }
