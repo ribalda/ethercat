@@ -78,6 +78,7 @@
  * - Added ecrt_slave_config_idn() method for storing SoE IDN configurations,
  *   and ecrt_master_read_idn() and ecrt_master_write_idn() to read/write IDNs
  *   ad-hoc via the user-space library.
+ * - Added ecrt_master_reset() to initiate retrying to configure slaves.
  *
  * @{
  */
@@ -856,6 +857,17 @@ void ecrt_master_sync_monitor_queue(
  * \return Upper estination of the maximum time difference in ns.
  */
 uint32_t ecrt_master_sync_monitor_process(
+        ec_master_t *master /**< EtherCAT master. */
+        );
+
+/** Retry configuring slaves.
+ *
+ * Via this method, the application can tell the master to bring all slaves to
+ * OP state. In general, this is not necessary, because it is automatically
+ * done by the master. But with special slaves, that can be reconfigured by
+ * the vendor during runtime, it can be useful.
+ */
+void ecrt_master_reset(
         ec_master_t *master /**< EtherCAT master. */
         );
 
