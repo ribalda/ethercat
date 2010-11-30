@@ -1006,7 +1006,7 @@ void ec_fsm_master_state_dc_read_offset(
 	do_div(correction,cpu_khz);
 #else
 	correction =
-			(u64) ((datagram->jiffies_sent-slave->master->dc_jiffies_app_time) * 1000 / HZ)
+			(u64) ((datagram->jiffies_sent-slave->master->dc_jiffies_app_start_time) * 1000 / HZ)
 			* 1000000;
 #endif
 
