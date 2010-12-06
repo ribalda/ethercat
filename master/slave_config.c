@@ -166,7 +166,7 @@ int ec_slave_config_prepare_fmmu(
     ec_fmmu_config_t *fmmu;
     ec_fmmu_config_t *prev_fmmu;
     uint32_t fmmu_logical_start_address;
-    size_t tx_size;
+    size_t tx_size, old_prev_tx_size;
 
     // FMMU configuration already prepared?
     for (i = 0; i < sc->used_fmmus; i++) {
@@ -191,7 +191,9 @@ int ec_slave_config_prepare_fmmu(
         if (fmmu->dir != prev_fmmu->dir && prev_fmmu->tx_size != 0) {
             // prev fmmu has opposite direction
             // and is not already paired with prev-prev fmmu
+            old_prev_tx_size = prev_fmmu->tx_size;
             prev_fmmu->tx_size = max(fmmu->data_size,prev_fmmu->data_size);
+            domain->tx_size += prev_fmmu->tx_size - old_prev_tx_size;
             tx_size = 0;
             fmmu_logical_start_address = prev_fmmu->logical_start_address;
         }
@@ -712,10 +714,6 @@ int ecrt_slave_config_reg_pdo_entry(
     ec_pdo_entry_t *entry;
     int sync_offset;
 
-    EC_CONFIG_DBG(sc, 1, "%s(sc = 0x%p, index = 0x%04X, "
-            "subindex = 0x%02X, domain = 0x%p, bit_position = 0x%p)\n",
-            __func__, sc, index, subindex, domain, bit_position);
-
     for (sync_index = 0; sync_index < EC_MAX_SYNC_MANAGERS; sync_index++) {
         sync_config = &sc->sync_configs[sync_index];
         bit_offset = 0;
@@ -739,7 +737,11 @@ int ecrt_slave_config_reg_pdo_entry(
                     if (sync_offset < 0)
                         return sync_offset;
 
-                    return sync_offset + bit_offset / 8;
+                    EC_CONFIG_DBG(sc, 1, "%s(index = 0x%04X, "
+                                  "subindex = 0x%02X, domain = %u, bytepos=%u, bitpos=%u)\n",
+                                  __func__,index, subindex,
+                                  domain->index, sync_offset + bit_offset / 8, bit_pos);
+					return sync_offset + bit_offset / 8;
                 }
             }
         }
