@@ -796,6 +796,7 @@ void ec_master_queue_external_datagram(
             queue) {
         if (queued_datagram == datagram) {
             datagram->state = EC_DATAGRAM_QUEUED;
+            up(&master->io_sem);
             return;
         }
     }
