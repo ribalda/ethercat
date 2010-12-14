@@ -38,22 +38,22 @@ class NumberListParser
         NumberListParser();
         virtual ~NumberListParser();
 
-        typedef list<unsigned int> NumberList;
+        typedef list<unsigned int> List;
 
-        NumberList parse(const char *);
+        List parse(const char *);
 
-        virtual unsigned int getMax() = 0;
+        virtual int getMax() = 0;
 
     private:
-        unsigned int max;
+        int max;
         bool hasMax;
 
-        unsigned int maximum();
+        int maximum();
 
         static bool isNumeric(char);
         static unsigned int parseNumber(const char *, unsigned int *,
                 unsigned int);
-        static NumberList range(unsigned int, unsigned int);
+        static List range(unsigned int, unsigned int);
 };
 
 /****************************************************************************/

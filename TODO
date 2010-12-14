@@ -15,7 +15,6 @@ Version 1.5.0:
     - Add native drivers from 2.6.24 up to 2.6.31.
 * ethercat tool:
     - Output error after usage.
-    - Implement ranges for slaves and domains.
 * Fix casting away constness during expected WC calculation.
 * Include SoE drive_no in ethercat tool.
 

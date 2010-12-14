@@ -50,9 +50,9 @@ NumberListParser::~NumberListParser()
 
 /*****************************************************************************/
 
-NumberListParser::NumberList NumberListParser::parse(const char *data)
+NumberListParser::List NumberListParser::parse(const char *data)
 {
-    NumberList ret;
+    List ret;
     unsigned int i = 0, size = strlen(data), firstNum = 0U, secondNum = 0U;
     typedef enum {
         SectionStart,
@@ -108,18 +108,22 @@ NumberListParser::NumberList NumberListParser::parse(const char *data)
 
             case Range:
                 if (i >= size) {
-                    secondNum = maximum();
-                    NumberList r = range(firstNum, secondNum);
-                    ret.splice(ret.end(), r);
+                    int max = maximum();
+                    if (max >= 0) {
+                        List r = range(firstNum, max);
+                        ret.splice(ret.end(), r);
+                    }
                     state = Finished;
                 } else if (isNumeric(data[i])) {
                     secondNum = parseNumber(data, &i, size);
                     state = SecondNumber;
                 } else if (data[i] == ',') {
+                    int max = maximum();
                     i++;
-                    secondNum = maximum();
-                    NumberList r = range(firstNum, secondNum);
-                    ret.splice(ret.end(), r);
+                    if (max >= 0) {
+                        List r = range(firstNum, max);
+                        ret.splice(ret.end(), r);
+                    }
                     state = SectionStart;
                 } else {
                     stringstream err;
@@ -132,12 +136,12 @@ NumberListParser::NumberList NumberListParser::parse(const char *data)
 
             case SecondNumber:
                 if (i >= size) {
-                    NumberList r = range(firstNum, secondNum);
+                    List r = range(firstNum, secondNum);
                     ret.splice(ret.end(), r);
                     state = Finished;
                 } else if (data[i] == ',') {
                     i++;
-                    NumberList r = range(firstNum, secondNum);
+                    List r = range(firstNum, secondNum);
                     ret.splice(ret.end(), r);
                     state = SectionStart;
                 } else {
@@ -163,7 +167,7 @@ NumberListParser::NumberList NumberListParser::parse(const char *data)
 
 /*****************************************************************************/
 
-unsigned int NumberListParser::maximum()
+int NumberListParser::maximum()
 {
     if (!hasMax) {
         max = getMax();
@@ -207,12 +211,12 @@ unsigned int NumberListParser::parseNumber(
 
 /****************************************************************************/
 
-NumberListParser::NumberList NumberListParser::range(
+NumberListParser::List NumberListParser::range(
         unsigned int i,
         unsigned int j
         )
 {
-    NumberList ret;
+    List ret;
 
     if (i <= j) {
         for (; i <= j; i++) {
