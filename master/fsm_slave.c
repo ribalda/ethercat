@@ -94,19 +94,21 @@ void ec_fsm_slave_clear(
  *
  * If the state machine's datagram is not sent or received yet, the execution
  * of the state machine is delayed to the next cycle.
+ *
+ * \return true, if the state machine was executed
  */
-void ec_fsm_slave_exec(
+int ec_fsm_slave_exec(
         ec_fsm_slave_t *fsm /**< Slave state machine. */
         )
 {
     if (fsm->datagram->state == EC_DATAGRAM_SENT
         || fsm->datagram->state == EC_DATAGRAM_QUEUED) {
         // datagram was not sent or received yet.
-        return;
+        return 0;
     }
 
     fsm->state(fsm);
-    return;
+    return 1;
 }
 
 /*****************************************************************************/

@@ -1256,7 +1256,6 @@ static int ec_master_idle_thread(void *priv_data)
 {
     ec_master_t *master = (ec_master_t *) priv_data;
     ec_slave_t *slave = NULL;
-    int fsm_exec;
     size_t sent_bytes;
 
     // send interval in IDLE phase
@@ -1275,24 +1274,21 @@ static int ec_master_idle_thread(void *priv_data)
         up(&master->io_sem);
 
         if (master->injection_seq_rt == master->injection_seq_fsm) {
-            fsm_exec = 0;
             // execute master & slave state machines
             if (down_interruptible(&master->master_sem))
                 break;
-            fsm_exec = ec_fsm_master_exec(&master->fsm);
+            if (ec_fsm_master_exec(&master->fsm))
+                master->injection_seq_fsm++;
             for (slave = master->slaves;
                     slave < master->slaves + master->slave_count;
                     slave++) {
-                ec_fsm_slave_exec(&slave->fsm);
+                if (ec_fsm_slave_exec(&slave->fsm))
+                    master->injection_seq_fsm++;
             }
             up(&master->master_sem);
-
-            // queue and send
-            down(&master->io_sem);
-            if (fsm_exec) {
-                master->injection_seq_rt++;
-            }
         }
+        // queue and send
+        down(&master->io_sem);
         ecrt_master_send(master);
         sent_bytes = master->main_device.tx_skb[
             master->main_device.tx_ring_index]->len;
@@ -1327,7 +1323,6 @@ static int ec_master_operation_thread(void *priv_data)
 {
     ec_master_t *master = (ec_master_t *) priv_data;
     ec_slave_t *slave = NULL;
-    int fsm_exec;
 
     EC_MASTER_DBG(master, 1, "Operation thread running"
             " with fsm interval = %u us, max data size=%zu\n",
@@ -1340,21 +1335,18 @@ static int ec_master_operation_thread(void *priv_data)
             // output statistics
             ec_master_output_stats(master);
 
-            fsm_exec = 0;
             // execute master & slave state machines
             if (down_interruptible(&master->master_sem))
                 break;
-            fsm_exec = ec_fsm_master_exec(&master->fsm);
+            if (ec_fsm_master_exec(&master->fsm))
+                master->injection_seq_fsm++;
             for (slave = master->slaves;
                     slave < master->slaves + master->slave_count;
                     slave++) {
-                ec_fsm_slave_exec(&slave->fsm);
+                if (ec_fsm_slave_exec(&slave->fsm))
+                    master->injection_seq_fsm++;
             }
             up(&master->master_sem);
-
-            // inject datagrams (let the rt thread queue them, see ecrt_master_send)
-            if (fsm_exec)
-                master->injection_seq_fsm++;
         }
 
 #ifdef EC_USE_HRTIMER
