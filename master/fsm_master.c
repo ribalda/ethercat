@@ -215,10 +215,6 @@ void ec_fsm_master_state_broadcast(
         EC_MASTER_DBG(master, 1, "Master state machine detected "
                 "link down. Clearing slave list.\n");
 
-#ifdef EC_EOE
-        ec_master_eoe_stop(master);
-        ec_master_clear_eoe_handlers(master);
-#endif
         ec_master_clear_slaves(master);
         fsm->slave_states = 0x00;
     }
@@ -255,7 +251,6 @@ void ec_fsm_master_state_broadcast(
             fsm->scan_jiffies = jiffies;
 
 #ifdef EC_EOE
-            ec_master_eoe_stop(master);
             ec_master_clear_eoe_handlers(master);
 #endif
             ec_master_clear_slaves(master);
@@ -805,11 +800,6 @@ void ec_fsm_master_state_scan_slave(
 
     // Attach slave configurations
     ec_master_attach_slave_configs(master);
-
-#ifdef EC_EOE
-    // check if EoE processing has to be started
-    ec_master_eoe_start(master);
-#endif
 
     if (master->slave_count) {
         fsm->slave = master->slaves; // begin with first slave

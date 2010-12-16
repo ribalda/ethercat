@@ -264,12 +264,6 @@ void ec_master_leave_idle_phase(ec_master_t *);
 int ec_master_enter_operation_phase(ec_master_t *);
 void ec_master_leave_operation_phase(ec_master_t *);
 
-#ifdef EC_EOE
-// EoE
-void ec_master_eoe_start(ec_master_t *);
-void ec_master_eoe_stop(ec_master_t *);
-#endif
-
 // datagram IO
 void ec_master_receive_datagrams(ec_master_t *, const uint8_t *, size_t);
 void ec_master_queue_datagram(ec_master_t *, ec_datagram_t *);
