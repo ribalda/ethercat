@@ -1617,10 +1617,10 @@ int ec_cdev_ioctl_eoe_handler(
     }
     snprintf(data.name, EC_DATAGRAM_NAME_SIZE, eoe->dev->name);
     data.open = eoe->opened;
-    data.rx_bytes = eoe->stats.tx_bytes;
-    data.rx_rate = eoe->tx_rate;
-    data.tx_bytes = eoe->stats.rx_bytes;
+    data.tx_bytes = eoe->stats.tx_bytes;
     data.tx_rate = eoe->tx_rate;
+    data.rx_bytes = eoe->stats.rx_bytes;
+    data.rx_rate = eoe->tx_rate;
     data.tx_queued_frames = eoe->tx_queued_frames;
     data.tx_queue_size = eoe->tx_queue_size;
 
