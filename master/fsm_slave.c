@@ -206,7 +206,7 @@ int ec_fsm_slave_action_process_sdo(
         fsm->state = ec_fsm_slave_state_sdo_request;
         ec_fsm_coe_transfer(&fsm->fsm_coe, slave, &request->req);
         ec_fsm_coe_exec(&fsm->fsm_coe); // execute immediately
-        ec_master_queue_external_datagram(fsm->slave->master,fsm->datagram);
+        ec_master_queue_request_fsm_datagram(fsm->slave->master,fsm->datagram);
         return 1;
     }
     return 0;
@@ -225,7 +225,7 @@ void ec_fsm_slave_state_sdo_request(
 
     if (ec_fsm_coe_exec(&fsm->fsm_coe))
     {
-        ec_master_queue_external_datagram(fsm->slave->master,fsm->datagram);
+        ec_master_queue_request_fsm_datagram(fsm->slave->master,fsm->datagram);
         return;
     }
     if (!ec_fsm_coe_success(&fsm->fsm_coe)) {
@@ -280,7 +280,7 @@ int ec_fsm_slave_action_process_foe(
         fsm->state = ec_fsm_slave_state_foe_request;
         ec_fsm_foe_transfer(&fsm->fsm_foe, slave, &request->req);
         ec_fsm_foe_exec(&fsm->fsm_foe);
-        ec_master_queue_external_datagram(fsm->slave->master,fsm->datagram);
+        ec_master_queue_request_fsm_datagram(fsm->slave->master,fsm->datagram);
         return 1;
     }
     return 0;
@@ -299,7 +299,7 @@ void ec_fsm_slave_state_foe_request(
 
     if (ec_fsm_foe_exec(&fsm->fsm_foe))
     {
-        ec_master_queue_external_datagram(fsm->slave->master,fsm->datagram);
+        ec_master_queue_request_fsm_datagram(fsm->slave->master,fsm->datagram);
         return;
     }
 
@@ -367,7 +367,7 @@ int ec_fsm_slave_action_process_soe(
         fsm->state = ec_fsm_slave_state_soe_request;
         ec_fsm_soe_transfer(&fsm->fsm_soe, slave, &req->req);
         ec_fsm_soe_exec(&fsm->fsm_soe); // execute immediately
-        ec_master_queue_external_datagram(fsm->slave->master, fsm->datagram);
+        ec_master_queue_request_fsm_datagram(fsm->slave->master, fsm->datagram);
         return 1;
     }
     return 0;
@@ -385,7 +385,7 @@ void ec_fsm_slave_state_soe_request(
     ec_soe_request_t *request = fsm->soe_request;
 
     if (ec_fsm_soe_exec(&fsm->fsm_soe)) {
-        ec_master_queue_external_datagram(fsm->slave->master, fsm->datagram);
+        ec_master_queue_request_fsm_datagram(fsm->slave->master, fsm->datagram);
         return;
     }
 

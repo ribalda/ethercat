@@ -172,7 +172,7 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     INIT_LIST_HEAD(&master->ext_datagram_queue);
     sema_init(&master->ext_queue_sem, 1);
 
-    INIT_LIST_HEAD(&master->external_datagram_queue);
+    INIT_LIST_HEAD(&master->fsm_datagram_queue);
     
     // send interval in IDLE phase
     ec_master_set_send_interval(master, 1000000 / HZ);
@@ -684,27 +684,30 @@ void ec_master_leave_operation_phase(
 
 /*****************************************************************************/
 
-/** Injects external datagrams that fit into the datagram queue.
+/** Injects fsm datagrams that fit into the datagram queue.
  */
-void ec_master_inject_external_datagrams(
+void ec_master_inject_fsm_datagrams(
         ec_master_t *master /**< EtherCAT master */
         )
 {
     ec_datagram_t *datagram, *n;
     size_t queue_size = 0;
 
+    if (list_empty(&master->fsm_datagram_queue)) {
+        return;
+    }
     list_for_each_entry(datagram, &master->datagram_queue, queue) {
         queue_size += datagram->data_size;
     }
 
-    list_for_each_entry_safe(datagram, n, &master->external_datagram_queue,
+    list_for_each_entry_safe(datagram, n, &master->fsm_datagram_queue,
             queue) {
         queue_size += datagram->data_size;
         if (queue_size <= master->max_queue_size) {
             list_del_init(&datagram->queue);
 #if DEBUG_INJECT
-            EC_MASTER_DBG(master, 0, "Injecting external datagram %08x"
-                    " size=%u, queue_size=%u\n", (unsigned int) datagram,
+            EC_MASTER_DBG(master, 0, "Injecting fsm datagram %p"
+                    " size=%zu, queue_size=%zu\n", datagram,
                     datagram->data_size, queue_size);
 #endif
 #ifdef EC_HAVE_CYCLES
@@ -717,7 +720,7 @@ void ec_master_inject_external_datagrams(
             if (datagram->data_size > master->max_queue_size) {
                 list_del_init(&datagram->queue);
                 datagram->state = EC_DATAGRAM_ERROR;
-                EC_MASTER_ERR(master, "External datagram %p is too large,"
+                EC_MASTER_ERR(master, "Fsm datagram %p is too large,"
                         " size=%zu, max_queue_size=%zu\n",
                         datagram, datagram->data_size,
                         master->max_queue_size);
@@ -745,15 +748,15 @@ void ec_master_inject_external_datagrams(
                         ((jiffies - datagram->jiffies_sent) * 1000000 / HZ);
 #endif
                     EC_MASTER_ERR(master, "Timeout %u us: Injecting"
-                            " external datagram %p size=%zu,"
+                            " fsm datagram %p size=%zu,"
                             " max_queue_size=%zu\n", time_us, datagram,
                             datagram->data_size, master->max_queue_size);
                 }
 #if DEBUG_INJECT
                 else {
                     EC_MASTER_DBG(master, 0, "Deferred injecting"
-                            " of external datagram %p"
-                            " size=%u, queue_size=%u\n",
+                            " of fsm datagram %p"
+                            " size=%zu, queue_size=%zu\n",
                             datagram, datagram->data_size, queue_size);
                 }
 #endif
@@ -780,9 +783,22 @@ void ec_master_set_send_interval(
 
 /*****************************************************************************/
 
-/** Places an external datagram in the sdo datagram queue.
+/** Places an request (SDO/FoE/SoE/EoE) fsm datagram in the sdo datagram queue.
  */
-void ec_master_queue_external_datagram(
+void ec_master_queue_request_fsm_datagram(
+        ec_master_t *master, /**< EtherCAT master */
+        ec_datagram_t *datagram /**< datagram */
+        )
+{
+    ec_master_queue_fsm_datagram(master,datagram);
+    master->fsm.idle = 0;   // pump the bus as fast as possible
+}
+
+/*****************************************************************************/
+
+/** Places an fsm datagram in the sdo datagram queue.
+ */
+void ec_master_queue_fsm_datagram(
         ec_master_t *master, /**< EtherCAT master */
         ec_datagram_t *datagram /**< datagram */
         )
@@ -792,7 +808,7 @@ void ec_master_queue_external_datagram(
     down(&master->io_sem);
 
     // check, if the datagram is already queued
-    list_for_each_entry(queued_datagram, &master->external_datagram_queue,
+    list_for_each_entry(queued_datagram, &master->fsm_datagram_queue,
             queue) {
         if (queued_datagram == datagram) {
             datagram->state = EC_DATAGRAM_QUEUED;
@@ -802,18 +818,17 @@ void ec_master_queue_external_datagram(
     }
 
 #if DEBUG_INJECT
-    EC_MASTER_DBG(master, 0, "Requesting external datagram %p size=%u\n",
+    EC_MASTER_DBG(master, 0, "Requesting fsm datagram %p size=%zu\n",
             datagram, datagram->data_size);
 #endif
 
-    list_add_tail(&datagram->queue, &master->external_datagram_queue);
+    list_add_tail(&datagram->queue, &master->fsm_datagram_queue);
     datagram->state = EC_DATAGRAM_QUEUED;
 #ifdef EC_HAVE_CYCLES
     datagram->cycles_sent = get_cycles();
 #endif
     datagram->jiffies_sent = jiffies;
 
-    master->fsm.idle = 0;
     up(&master->io_sem);
 }
 
@@ -1257,7 +1272,6 @@ static int ec_master_idle_thread(void *priv_data)
     ec_master_t *master = (ec_master_t *) priv_data;
     ec_slave_t *slave = NULL;
     size_t sent_bytes;
-
     // send interval in IDLE phase
     ec_master_set_send_interval(master, 1000000 / HZ); 
 
@@ -1273,20 +1287,19 @@ static int ec_master_idle_thread(void *priv_data)
         ecrt_master_receive(master);
         up(&master->io_sem);
 
-        if (master->injection_seq_rt == master->injection_seq_fsm) {
-            // execute master & slave state machines
-            if (down_interruptible(&master->master_sem))
-                break;
-            if (ec_fsm_master_exec(&master->fsm))
-                master->injection_seq_fsm++;
-            for (slave = master->slaves;
-                    slave < master->slaves + master->slave_count;
-                    slave++) {
-                if (ec_fsm_slave_exec(&slave->fsm))
-                    master->injection_seq_fsm++;
-            }
-            up(&master->master_sem);
+        // execute master & slave state machines
+        if (down_interruptible(&master->master_sem))
+            break;
+        if (ec_fsm_master_exec(&master->fsm)) {
+            ec_master_queue_fsm_datagram(master, &master->fsm_datagram);
         }
+        for (slave = master->slaves;
+                slave < master->slaves + master->slave_count;
+                slave++) {
+            ec_fsm_slave_exec(&slave->fsm); // may queue datagram in external queue
+        }
+        up(&master->master_sem);
+
         // queue and send
         down(&master->io_sem);
         ecrt_master_send(master);
@@ -1331,23 +1344,20 @@ static int ec_master_operation_thread(void *priv_data)
     while (!kthread_should_stop()) {
         ec_datagram_output_stats(&master->fsm_datagram);
 
-        if (master->injection_seq_rt == master->injection_seq_fsm) {
-            // output statistics
-            ec_master_output_stats(master);
+        // output statistics
+        ec_master_output_stats(master);
 
-            // execute master & slave state machines
-            if (down_interruptible(&master->master_sem))
-                break;
-            if (ec_fsm_master_exec(&master->fsm))
-                master->injection_seq_fsm++;
-            for (slave = master->slaves;
-                    slave < master->slaves + master->slave_count;
-                    slave++) {
-                if (ec_fsm_slave_exec(&slave->fsm))
-                    master->injection_seq_fsm++;
-            }
-            up(&master->master_sem);
+        // execute master & slave state machines
+        if (down_interruptible(&master->master_sem))
+            break;
+        if (ec_fsm_master_exec(&master->fsm))
+            ec_master_queue_fsm_datagram(master, &master->fsm_datagram);
+        for (slave = master->slaves;
+                slave < master->slaves + master->slave_count;
+                slave++) {
+            ec_fsm_slave_exec(&slave->fsm); // may queue datagram in external queue
         }
+        up(&master->master_sem);
 
 #ifdef EC_USE_HRTIMER
         // the op thread should not work faster than the sending RT thread
@@ -2119,12 +2129,7 @@ void ecrt_master_send(ec_master_t *master)
 {
     ec_datagram_t *datagram, *n;
 
-    if (master->injection_seq_rt != master->injection_seq_fsm) {
-        // inject datagrams produced by master & slave FSMs
-        ec_master_queue_datagram(master, &master->fsm_datagram);
-        master->injection_seq_rt = master->injection_seq_fsm;
-    }
-    ec_master_inject_external_datagrams(master);
+    ec_master_inject_fsm_datagrams(master);
 
     if (unlikely(!master->main_device.link_state)) {
         // link is down, no datagram can be sent
