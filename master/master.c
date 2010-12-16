@@ -169,9 +169,7 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     INIT_LIST_HEAD(&master->datagram_queue);
     master->datagram_index = 0;
 
-    INIT_LIST_HEAD(&master->ext_datagram_queue);
-    sema_init(&master->ext_queue_sem, 1);
-
+    sema_init(&master->fsm_queue_sem, 1);
     INIT_LIST_HEAD(&master->fsm_datagram_queue);
     
     // send interval in IDLE phase
@@ -690,9 +688,9 @@ void ec_master_inject_fsm_datagrams(
     ec_datagram_t *datagram, *n;
     size_t queue_size = 0;
 
-    down(&master->ext_queue_sem);
+    down(&master->fsm_queue_sem);
     if (list_empty(&master->fsm_datagram_queue)) {
-        up(&master->ext_queue_sem);
+        up(&master->fsm_queue_sem);
         return;
     }
     list_for_each_entry(datagram, &master->datagram_queue, queue) {
@@ -762,7 +760,7 @@ void ec_master_inject_fsm_datagrams(
             }
         }
     }
-    up(&master->ext_queue_sem);
+    up(&master->fsm_queue_sem);
 }
 
 /*****************************************************************************/
@@ -805,14 +803,14 @@ void ec_master_queue_fsm_datagram(
 {
     ec_datagram_t *queued_datagram;
 
-    down(&master->ext_queue_sem);
+    down(&master->fsm_queue_sem);
 
     // check, if the datagram is already queued
     list_for_each_entry(queued_datagram, &master->fsm_datagram_queue,
             queue) {
         if (queued_datagram == datagram) {
             datagram->state = EC_DATAGRAM_QUEUED;
-            up(&master->ext_queue_sem);
+            up(&master->fsm_queue_sem);
             return;
         }
     }
@@ -829,7 +827,7 @@ void ec_master_queue_fsm_datagram(
 #endif
     datagram->jiffies_sent = jiffies;
 
-    up(&master->ext_queue_sem);
+    up(&master->fsm_queue_sem);
 }
 
 /*****************************************************************************/
@@ -859,19 +857,6 @@ void ec_master_queue_datagram(
     datagram->state = EC_DATAGRAM_QUEUED;
 }
 
-/*****************************************************************************/
-
-/** Places a datagram in the non-application datagram queue.
- */
-void ec_master_queue_datagram_ext(
-        ec_master_t *master, /**< EtherCAT master */
-        ec_datagram_t *datagram /**< datagram */
-        )
-{
-    down(&master->ext_queue_sem);
-    list_add_tail(&datagram->queue, &master->ext_datagram_queue);
-    up(&master->ext_queue_sem);
-}
 
 /*****************************************************************************/
 
@@ -2115,14 +2100,6 @@ void ecrt_master_receive(ec_master_t *master)
 
 void ecrt_master_send_ext(ec_master_t *master)
 {
-    ec_datagram_t *datagram, *next;
-
-    list_for_each_entry_safe(datagram, next, &master->ext_datagram_queue,
-            queue) {
-        list_del(&datagram->queue);
-        ec_master_queue_datagram(master, datagram);
-    }
-
     ecrt_master_send(master);
 }
 

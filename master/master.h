@@ -210,12 +210,10 @@ struct ec_master {
     struct list_head datagram_queue; /**< Datagram queue. */
     uint8_t datagram_index; /**< Current datagram index. */
 
-    struct list_head ext_datagram_queue; /**< Queue for non-application
-                                           datagrams. */
-    struct semaphore ext_queue_sem; /**< Semaphore protecting the \a
-                                      ext_datagram_queue. */
-
+    struct semaphore fsm_queue_sem; /**< Semaphore protecting the \a
+                                      fsm_datagram_queue. */
     struct list_head fsm_datagram_queue; /**< External Datagram queue. */
+
     unsigned int send_interval; /**< Interval between calls to ecrt_master_send */
     size_t max_queue_size; /**< Maximum size of datagram queue */
 
@@ -267,7 +265,6 @@ void ec_master_leave_operation_phase(ec_master_t *);
 // datagram IO
 void ec_master_receive_datagrams(ec_master_t *, const uint8_t *, size_t);
 void ec_master_queue_datagram(ec_master_t *, ec_datagram_t *);
-void ec_master_queue_datagram_ext(ec_master_t *, ec_datagram_t *);
 void ec_master_queue_request_fsm_datagram(ec_master_t *, ec_datagram_t *);
 void ec_master_queue_fsm_datagram(ec_master_t *, ec_datagram_t *);
 void ec_master_inject_fsm_datagrams(ec_master_t *);
