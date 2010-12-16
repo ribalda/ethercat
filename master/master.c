@@ -693,7 +693,9 @@ void ec_master_inject_fsm_datagrams(
     ec_datagram_t *datagram, *n;
     size_t queue_size = 0;
 
+    down(&master->ext_queue_sem);
     if (list_empty(&master->fsm_datagram_queue)) {
+        up(&master->ext_queue_sem);
         return;
     }
     list_for_each_entry(datagram, &master->datagram_queue, queue) {
@@ -763,6 +765,7 @@ void ec_master_inject_fsm_datagrams(
             }
         }
     }
+    up(&master->ext_queue_sem);
 }
 
 /*****************************************************************************/
@@ -805,14 +808,14 @@ void ec_master_queue_fsm_datagram(
 {
     ec_datagram_t *queued_datagram;
 
-    down(&master->io_sem);
+    down(&master->ext_queue_sem);
 
     // check, if the datagram is already queued
     list_for_each_entry(queued_datagram, &master->fsm_datagram_queue,
             queue) {
         if (queued_datagram == datagram) {
             datagram->state = EC_DATAGRAM_QUEUED;
-            up(&master->io_sem);
+            up(&master->ext_queue_sem);
             return;
         }
     }
@@ -829,7 +832,7 @@ void ec_master_queue_fsm_datagram(
 #endif
     datagram->jiffies_sent = jiffies;
 
-    up(&master->io_sem);
+    up(&master->ext_queue_sem);
 }
 
 /*****************************************************************************/
