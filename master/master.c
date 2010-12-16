@@ -191,12 +191,12 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
 #endif
 
     sema_init(&master->io_sem, 1);
-    master->send_cb = NULL;
-    master->receive_cb = NULL;
-    master->cb_data = NULL;
-    master->app_send_cb = NULL;
-    master->app_receive_cb = NULL;
-    master->app_cb_data = NULL;
+    master->fsm_queue_lock_cb = NULL;
+    master->fsm_queue_unlock_cb = NULL;
+    master->fsm_queue_locking_data = NULL;
+    master->app_fsm_queue_lock_cb = NULL;
+    master->app_fsm_queue_unlock_cb = NULL;
+    master->app_fsm_queue_locking_data = NULL;
 
     INIT_LIST_HEAD(&master->sii_requests);
     init_waitqueue_head(&master->sii_queue);
@@ -455,34 +455,6 @@ void ec_master_clear_config(
 
 /*****************************************************************************/
 
-/** Internal sending callback.
- */
-void ec_master_internal_send_cb(
-        void *cb_data /**< Callback data. */
-        )
-{
-    ec_master_t *master = (ec_master_t *) cb_data;
-    down(&master->io_sem);
-    ecrt_master_send_ext(master);
-    up(&master->io_sem);
-}
-
-/*****************************************************************************/
-
-/** Internal receiving callback.
- */
-void ec_master_internal_receive_cb(
-        void *cb_data /**< Callback data. */
-        )
-{
-    ec_master_t *master = (ec_master_t *) cb_data;
-    down(&master->io_sem);
-    ecrt_master_receive(master);
-    up(&master->io_sem);
-}
-
-/*****************************************************************************/
-
 /** Starts the master thread.
  *
  * \retval  0 Success.
@@ -548,9 +520,9 @@ int ec_master_enter_idle_phase(
 
     EC_MASTER_DBG(master, 1, "ORPHANED -> IDLE.\n");
 
-    master->send_cb = ec_master_internal_send_cb;
-    master->receive_cb = ec_master_internal_receive_cb;
-    master->cb_data = master;
+    master->fsm_queue_lock_cb = NULL;
+    master->fsm_queue_unlock_cb = NULL;
+    master->fsm_queue_locking_data = NULL;
 
     master->phase = EC_IDLE;
     ret = ec_master_thread_start(master, ec_master_idle_thread,
@@ -647,9 +619,9 @@ int ec_master_enter_operation_phase(ec_master_t *master /**< EtherCAT master */)
 #endif
 
     master->phase = EC_OPERATION;
-    master->app_send_cb = NULL;
-    master->app_receive_cb = NULL;
-    master->app_cb_data = NULL;
+    master->app_fsm_queue_lock_cb = NULL;
+    master->app_fsm_queue_unlock_cb = NULL;
+    master->app_fsm_queue_locking_data = NULL;
     return ret;
     
 out_allow:
@@ -688,9 +660,13 @@ void ec_master_inject_fsm_datagrams(
     ec_datagram_t *datagram, *n;
     size_t queue_size = 0;
 
+    if (master->fsm_queue_lock_cb)
+        master->fsm_queue_lock_cb(master->fsm_queue_locking_data);
     down(&master->fsm_queue_sem);
     if (list_empty(&master->fsm_datagram_queue)) {
         up(&master->fsm_queue_sem);
+        if (master->fsm_queue_unlock_cb)
+            master->fsm_queue_unlock_cb(master->fsm_queue_locking_data);
         return;
     }
     list_for_each_entry(datagram, &master->datagram_queue, queue) {
@@ -761,6 +737,8 @@ void ec_master_inject_fsm_datagrams(
         }
     }
     up(&master->fsm_queue_sem);
+    if (master->fsm_queue_unlock_cb)
+        master->fsm_queue_unlock_cb(master->fsm_queue_locking_data);
 }
 
 /*****************************************************************************/
@@ -803,6 +781,8 @@ void ec_master_queue_fsm_datagram(
 {
     ec_datagram_t *queued_datagram;
 
+    if (master->fsm_queue_lock_cb)
+        master->fsm_queue_lock_cb(master->fsm_queue_locking_data);
     down(&master->fsm_queue_sem);
 
     // check, if the datagram is already queued
@@ -811,6 +791,8 @@ void ec_master_queue_fsm_datagram(
         if (queued_datagram == datagram) {
             datagram->state = EC_DATAGRAM_QUEUED;
             up(&master->fsm_queue_sem);
+            if (master->fsm_queue_unlock_cb)
+                master->fsm_queue_unlock_cb(master->fsm_queue_locking_data);
             return;
         }
     }
@@ -828,6 +810,8 @@ void ec_master_queue_fsm_datagram(
     datagram->jiffies_sent = jiffies;
 
     up(&master->fsm_queue_sem);
+    if (master->fsm_queue_unlock_cb)
+        master->fsm_queue_unlock_cb(master->fsm_queue_locking_data);
 }
 
 /*****************************************************************************/
@@ -1943,9 +1927,9 @@ int ecrt_master_activate(ec_master_t *master)
     master->injection_seq_fsm = 0;
     master->injection_seq_rt = 0;
 
-    master->send_cb = master->app_send_cb;
-    master->receive_cb = master->app_receive_cb;
-    master->cb_data = master->app_cb_data;
+    master->fsm_queue_lock_cb = master->app_fsm_queue_lock_cb;
+    master->fsm_queue_unlock_cb = master->app_fsm_queue_unlock_cb;
+    master->fsm_queue_locking_data = master->app_fsm_queue_locking_data;
     
     ret = ec_master_thread_start(master, ec_master_operation_thread,
                 "EtherCAT-OP");
@@ -1982,9 +1966,9 @@ void ecrt_master_deactivate(ec_master_t *master)
 
     ec_master_thread_stop(master);
     
-    master->send_cb = ec_master_internal_send_cb;
-    master->receive_cb = ec_master_internal_receive_cb;
-    master->cb_data = master;
+    master->fsm_queue_lock_cb = NULL;
+    master->fsm_queue_unlock_cb= NULL;
+    master->fsm_queue_locking_data = NULL;
     
     ec_master_clear_config(master);
 
@@ -2096,12 +2080,6 @@ void ecrt_master_receive(ec_master_t *master)
     }
 }
 
-/*****************************************************************************/
-
-void ecrt_master_send_ext(ec_master_t *master)
-{
-    ecrt_master_send(master);
-}
 
 /*****************************************************************************/
 
@@ -2226,16 +2204,18 @@ int ecrt_master_get_slave(ec_master_t *master, uint16_t slave_position,
 /*****************************************************************************/
 
 void ecrt_master_callbacks(ec_master_t *master,
-        void (*send_cb)(void *), void (*receive_cb)(void *), void *cb_data)
+                           void (*lock_cb)(void *), void (*unlock_cb)(void *),
+                           void *cb_data)
 {
-    EC_MASTER_DBG(master, 1, "ecrt_master_callbacks(master = 0x%p,"
-            " send_cb = 0x%p, receive_cb = 0x%p, cb_data = 0x%p)\n",
-            master, send_cb, receive_cb, cb_data);
+    EC_MASTER_DBG(master, 1,"ecrt_master_callbacks(master = %p, "
+                            "lock_cb = %p, unlock_cb = %p, cb_data = %p)\n",
+                            master, lock_cb, unlock_cb, cb_data);
 
-    master->app_send_cb = send_cb;
-    master->app_receive_cb = receive_cb;
-    master->app_cb_data = cb_data;
+    master->app_fsm_queue_lock_cb = lock_cb;
+    master->app_fsm_queue_unlock_cb = unlock_cb;
+    master->app_fsm_queue_locking_data = cb_data;
 }
+
 
 /*****************************************************************************/
 
@@ -2482,7 +2462,6 @@ EXPORT_SYMBOL(ecrt_master_create_domain);
 EXPORT_SYMBOL(ecrt_master_activate);
 EXPORT_SYMBOL(ecrt_master_deactivate);
 EXPORT_SYMBOL(ecrt_master_send);
-EXPORT_SYMBOL(ecrt_master_send_ext);
 EXPORT_SYMBOL(ecrt_master_receive);
 EXPORT_SYMBOL(ecrt_master_callbacks);
 EXPORT_SYMBOL(ecrt_master);

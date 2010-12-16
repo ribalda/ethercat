@@ -49,9 +49,7 @@
  *   ecrt_master_sync_monitor_queue() and ecrt_master_sync_monitor_process()
  *   methods can be used to monitor the synchrony.
  * - Improved the callback mechanism. ecrt_master_callbacks() now takes two
- *   callback functions for sending and receiving datagrams.
- *   ecrt_master_send_ext() is used to execute the sending of non-application
- *   datagrams.
+ *   callback functions for locking and unlocking the fsm datagram queue.
  * - Added watchdog configuration (method ecrt_slave_config_watchdog(),
  *   #ec_watchdog_mode_t, \a watchdog_mode parameter in ec_sync_info_t and
  *   ecrt_slave_config_sync_manager()).
@@ -512,27 +510,18 @@ int ecrt_master_reserve(
 
 /** Sets the locking callbacks.
  *
- * For concurrent master access, i. e. if other instances than the application
- * want to send and receive datagrams on the bus, the application has to
- * provide a callback mechanism. This method takes two function pointers as
- * its parameters. Asynchronous master access (like EoE processing) is only
- * possible if the callbacks have been set.
+ * For concurrent master access, the application has to provide a locking
+ * mechanism. The method takes two function pointers and a data value as
+ * its parameters.
+ * The arbitrary \a cb_data value will be passed as argument on every callback.
  *
- * The task of the send callback (\a send_cb) is to decide, if the bus is
- * currently accessible and whether or not to call the ecrt_master_send_ext()
- * method.
- *
- * The task of the receive callback (\a receive_cb) is to decide, if a call to
- * ecrt_master_receive() is allowed and to execute it respectively.
  */
 void ecrt_master_callbacks(
         ec_master_t *master, /**< EtherCAT master */
-        void (*send_cb)(void *), /**< Datagram sending callback. */
-        void (*receive_cb)(void *), /**< Receive callback. */
-        void *cb_data /**< Arbitraty pointer passed to the callback functions.
-                       */
+        void (*lock_cb)(void *), /**< Lock function. */
+        void (*unlock_cb)(void *), /**< Unlock function. */
+        void *cb_data /**< Arbitrary user data. */
         );
-
 #endif /* __KERNEL__ */
 
 /** Creates a new process data domain.
@@ -814,15 +803,6 @@ void ecrt_master_send(
  * ecrt_master_activate() has returned.
  */
 void ecrt_master_receive(
-        ec_master_t *master /**< EtherCAT master. */
-        );
-
-/** Sends non-application datagrams.
- *
- * This method has to be called in the send callback function passed via
- * ecrt_master_callbacks() to allow the sending of non-application datagrams.
- */
-void ecrt_master_send_ext(
         ec_master_t *master /**< EtherCAT master. */
         );
 

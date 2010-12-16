@@ -229,14 +229,12 @@ struct ec_master {
 
     struct semaphore io_sem; /**< Semaphore used in \a IDLE phase. */
 
-    void (*send_cb)(void *); /**< Current send datagrams callback. */
-    void (*receive_cb)(void *); /**< Current receive datagrams callback. */
-    void *cb_data; /**< Current callback data. */
-    void (*app_send_cb)(void *); /**< Application's send datagrams
-                                          callback. */
-    void (*app_receive_cb)(void *); /**< Application's receive datagrams
-                                      callback. */
-    void *app_cb_data; /**< Application callback data. */
+    void (*fsm_queue_lock_cb)(void *); /**< FSM queue lock callback. */
+    void (*fsm_queue_unlock_cb)(void *); /**< FSM queue unlock callback. */
+    void *fsm_queue_locking_data; /**< Data parameter of fsm queue locking callbacks. */
+    void (*app_fsm_queue_lock_cb)(void *); /**< App's FSM queue lock callback. */
+    void (*app_fsm_queue_unlock_cb)(void *); /**< App's FSM queue unlock callback. */
+    void *app_fsm_queue_locking_data; /**< App's data parameter of fsm queue locking callbacks. */
 
     struct list_head sii_requests; /**< SII write requests. */
     wait_queue_head_t sii_queue; /**< Wait queue for SII
@@ -303,9 +301,6 @@ ec_slave_config_t *ecrt_master_slave_config_err(ec_master_t *, uint16_t,
 
 void ec_master_calc_dc(ec_master_t *);
 void ec_master_request_op(ec_master_t *);
-
-void ec_master_internal_send_cb(void *);
-void ec_master_internal_receive_cb(void *);
 
 /*****************************************************************************/
 

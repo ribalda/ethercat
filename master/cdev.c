@@ -1769,9 +1769,6 @@ int ec_cdev_ioctl_activate(
         }
     }
 
-    ecrt_master_callbacks(master, ec_master_internal_send_cb,
-            ec_master_internal_receive_cb, master);
-
     ret = ecrt_master_activate(master);
     if (ret < 0)
         return ret;
