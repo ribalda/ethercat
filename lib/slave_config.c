@@ -432,7 +432,7 @@ ec_sdo_request_t *ecrt_slave_config_create_sdo_request(ec_slave_config_t *sc,
     if (size) {
         req->data = malloc(size);
         if (!req->data) {
-            fprintf(stderr, "Failed to allocate %u bytes of SDO data"
+            fprintf(stderr, "Failed to allocate %zu bytes of SDO data"
                     " memory.\n", size);
             free(req);
             return 0;
@@ -501,7 +501,7 @@ ec_voe_handler_t *ecrt_slave_config_create_voe_handler(ec_slave_config_t *sc,
     if (size) {
         voe->data = malloc(size);
         if (!voe->data) {
-            fprintf(stderr, "Failed to allocate %u bytes of VoE data"
+            fprintf(stderr, "Failed to allocate %zu bytes of VoE data"
                     " memory.\n", size);
             free(voe);
             return 0;
