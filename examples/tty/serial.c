@@ -30,6 +30,7 @@
 #include <linux/module.h>
 #include <linux/err.h>
 #include <linux/termios.h>
+#include <linux/slab.h>
 
 #include "../../include/ecrt.h" // EtherCAT realtime interface
 #include "../../include/ectty.h" // EtherCAT TTY interface

@@ -35,12 +35,14 @@
 /****************************************************************************/
 
 class CommandSoeRead:
+    public Command,
+    public DataTypeHandler,
     public SoeCommand
 {
     public:
         CommandSoeRead();
 
-        string helpString() const;
+        string helpString(const string &) const;
         void execute(const StringVector &);
 };
 

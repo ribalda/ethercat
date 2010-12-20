@@ -184,7 +184,8 @@ void ec_fsm_sii_state_start_reading(
     EC_WRITE_U16(datagram->data + 2, fsm->word_offset);
 
 #ifdef SII_DEBUG
-    EC_SLAVE_DBG(slave, 0, "reading SII data:\n");
+    EC_SLAVE_DBG(fsm->slave, 0, "reading SII data, word %u:\n",
+            fsm->word_offset);
     ec_print_data(datagram->data, 4);
 #endif
 

@@ -45,11 +45,12 @@ CommandSiiWrite::CommandSiiWrite():
 
 /*****************************************************************************/
 
-string CommandSiiWrite::helpString() const
+string CommandSiiWrite::helpString(const string &binaryBaseName) const
 {
     stringstream str;
 
-    str << getName() << " [OPTIONS] <FILENAME>" << endl
+    str << binaryBaseName << " " << getName()
+        << " [OPTIONS] <FILENAME>" << endl
         << endl 
         << getBriefDescription() << endl
         << endl

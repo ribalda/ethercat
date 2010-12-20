@@ -116,7 +116,7 @@ class Command
         bool matchesSubstr(const string &) const;
         bool matchesAbbrev(const string &) const;
 
-        virtual string helpString() const = 0;
+        virtual string helpString(const string &) const = 0;
 
         typedef vector<string> StringVector;
         virtual void execute(const StringVector &) = 0;

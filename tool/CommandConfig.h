@@ -34,16 +34,18 @@
 using namespace std;
 
 #include "Command.h"
+#include "SoeCommand.h"
 
 /****************************************************************************/
 
 class CommandConfig:
-    public Command
+    public Command,
+    public SoeCommand
 {
     public:
         CommandConfig();
 
-        string helpString() const;
+        string helpString(const string &) const;
         void execute(const StringVector &);
 
     protected:

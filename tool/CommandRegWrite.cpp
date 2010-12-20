@@ -45,11 +45,12 @@ CommandRegWrite::CommandRegWrite():
 
 /*****************************************************************************/
 
-string CommandRegWrite::helpString() const
+string CommandRegWrite::helpString(const string &binaryBaseName) const
 {
     stringstream str;
 
-    str << getName() << " [OPTIONS] <OFFSET> <DATA>" << endl
+    str << binaryBaseName << " " << getName()
+        << " [OPTIONS] <OFFSET> <DATA>" << endl
         << endl 
         << getBriefDescription() << endl
         << endl

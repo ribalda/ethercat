@@ -49,6 +49,7 @@ int ecrt_master_reserve(ec_master_t *master)
                 strerror(errno));
         return -1;
     }
+    return 0;
 }
 
 /*****************************************************************************/
@@ -568,6 +569,15 @@ uint32_t ecrt_master_sync_monitor_process(ec_master_t *master)
     }
 
     return time_diff;
+}
+
+/*****************************************************************************/
+
+void ecrt_master_reset(ec_master_t *master)
+{
+    if (ioctl(master->fd, EC_IOCTL_RESET, NULL) == -1) {
+        fprintf(stderr, "Failed to reset master: %s\n", strerror(errno));
+    }
 }
 
 /*****************************************************************************/

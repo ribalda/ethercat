@@ -42,7 +42,7 @@
 
 /** Timeout while waiting for AL state change [s].
  */
-#define EC_AL_STATE_CHANGE_TIMEOUT 2
+#define EC_AL_STATE_CHANGE_TIMEOUT 5
 
 /*****************************************************************************/
 

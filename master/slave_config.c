@@ -371,6 +371,48 @@ const ec_sdo_request_t *ec_slave_config_get_sdo_by_pos_const(
 
 /*****************************************************************************/
 
+/** Get the number of IDN configurations.
+ *
+ * \return Number of SDO configurations.
+ */
+unsigned int ec_slave_config_idn_count(
+        const ec_slave_config_t *sc /**< Slave configuration. */
+        )
+{
+    const ec_soe_request_t *req;
+    unsigned int count = 0;
+
+    list_for_each_entry(req, &sc->soe_configs, list) {
+        count++;
+    }
+
+    return count;
+}
+
+/*****************************************************************************/
+
+/** Finds an IDN configuration via its position in the list.
+ *
+ * Const version.
+ */
+const ec_soe_request_t *ec_slave_config_get_idn_by_pos_const(
+        const ec_slave_config_t *sc, /**< Slave configuration. */
+        unsigned int pos /**< Position in the list. */
+        )
+{
+    const ec_soe_request_t *req;
+
+    list_for_each_entry(req, &sc->soe_configs, list) {
+        if (pos--)
+            continue;
+        return req;
+    }
+
+    return NULL;
+}
+
+/*****************************************************************************/
+
 /** Finds a VoE handler via its position in the list.
  */
 ec_sdo_request_t *ec_slave_config_find_sdo_request(
@@ -951,7 +993,8 @@ int ecrt_slave_config_idn(ec_slave_config_t *sc, uint8_t drive_no,
             __func__, sc, drive_no, idn, state, data, size);
 
     if (drive_no > 7) {
-        EC_CONFIG_ERR(sc, "Invalid drive number!\n");
+        EC_CONFIG_ERR(sc, "Invalid drive number %u!\n",
+                (unsigned int) drive_no);
         return -EINVAL;
     }
 

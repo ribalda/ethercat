@@ -36,13 +36,6 @@ extern const ec_code_msg_t soe_error_codes[];
 
 /*****************************************************************************/
 
-SoeCommand::SoeCommand(const string &name, const string &briefDesc):
-    Command(name, briefDesc)
-{
-}
-
-/*****************************************************************************/
-
 uint16_t SoeCommand::parseIdn(const string &str)
 {
     uint16_t idn = 0x0000;
@@ -105,6 +98,19 @@ uint16_t SoeCommand::parseIdn(const string &str)
     }
 
     return idn;
+}
+
+/*****************************************************************************/
+
+string SoeCommand::outputIdn(uint16_t idn)
+{
+    stringstream str;
+
+    str << ((idn & 0x8000) ? 'P' : 'S')
+        << "-" << ((idn >> 12) & 0x07)
+        << "-" << setfill('0') << setw(4) << (idn & 0x0fff);
+
+    return str.str();
 }
 
 /*****************************************************************************/

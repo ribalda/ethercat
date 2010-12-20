@@ -48,11 +48,12 @@ CommandFoeWrite::CommandFoeWrite():
 
 /*****************************************************************************/
 
-string CommandFoeWrite::helpString() const
+string CommandFoeWrite::helpString(const string &binaryBaseName) const
 {
     stringstream str;
 
-    str << getName() << " [OPTIONS] <FILENAME>" << endl
+    str << binaryBaseName << " " << getName()
+        << " [OPTIONS] <FILENAME>" << endl
         << endl
         << getBriefDescription() << endl
         << endl

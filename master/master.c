@@ -2501,6 +2501,19 @@ int ecrt_master_read_idn(ec_master_t *master, uint16_t slave_position,
 
 /*****************************************************************************/
 
+void ecrt_master_reset(ec_master_t *master)
+{
+    ec_slave_config_t *sc;
+
+    list_for_each_entry(sc, &master->configs, list) {
+        if (sc->slave) {
+            ec_slave_request_state(sc->slave, EC_SLAVE_STATE_OP);
+        }
+    }
+}
+
+/*****************************************************************************/
+
 /** \cond */
 
 EXPORT_SYMBOL(ecrt_master_create_domain);
@@ -2521,6 +2534,7 @@ EXPORT_SYMBOL(ecrt_master_sync_monitor_queue);
 EXPORT_SYMBOL(ecrt_master_sync_monitor_process);
 EXPORT_SYMBOL(ecrt_master_write_idn);
 EXPORT_SYMBOL(ecrt_master_read_idn);
+EXPORT_SYMBOL(ecrt_master_reset);
 
 /** \endcond */
 

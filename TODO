@@ -13,23 +13,15 @@ Version 1.5.0:
 * Ethernet drivers:
     - Fix link detection in generic driver.
     - Add native drivers from 2.6.24 up to 2.6.31.
-* ethercat tool:
-    - Output error after usage.
-* Fix casting away constness during expected WC calculation.
-* Include SoE drive_no in ethercat tool.
 
 Future issues:
 
 * Remove allow_scanning flag.
-* Output skipped datagrams again.
 * Check for Enable SDO Complete Access flag.
 * Do not output 'SDO does not exist' when querying data type.
-* Always write down PDO assignment/mapping in doubt? If not, add an interface
-  for enforcing this.
 * Read AL status code on spontaneous state change.
 * recompile tool/CommandVersion.cpp if revision changes.
 * Log SoE IDNs with real name ([SP]-x-yyyy).
-* Output SoE IDN configurations in 'ethercat config'.
 * Only output watchdog config if not default.
 * Implement CompleteAccess for SDO uploads.
 * Output warning when send_ext() is called in illegal context.
@@ -73,9 +65,12 @@ Future issues:
     - Implement indent in 'ethercat ma'
     - Implement 0xXXXX:YY format for specifying SDOs.
     - Implement reading from stream for soe_write.
+    - Output error after usage.
 * Simplify master fsm by introducing a common request state to handle external
   requests (replace write_sii, sdo_request, etc).
 * Remove stdio uses in userspace library?
+* Fix casting away constness during expected WC calculation.
+* Fix bus scan hang when calling ecrt_master_deactivate().
 
 Smaller issues:
 

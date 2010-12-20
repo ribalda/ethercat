@@ -40,7 +40,7 @@ class CommandXml:
     public:
         CommandXml();
 
-        string helpString() const;
+        string helpString(const string &) const;
         void execute(const StringVector &);
 
     protected:

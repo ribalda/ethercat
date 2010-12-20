@@ -28,6 +28,7 @@
  ****************************************************************************/
 
 #include <iostream>
+#include <iomanip>
 using namespace std;
 
 #include "CommandSoeWrite.h"
@@ -36,23 +37,28 @@ using namespace std;
 /*****************************************************************************/
 
 CommandSoeWrite::CommandSoeWrite():
-    SoeCommand("soe_write", "Write an SoE IDN to a slave.")
+    Command("soe_write", "Write an SoE IDN to a slave.")
 {
 }
 
 /*****************************************************************************/
 
-string CommandSoeWrite::helpString() const
+string CommandSoeWrite::helpString(const string &binaryBaseName) const
 {
     stringstream str;
 
-    str << getName() << " [OPTIONS] <IDN> <VALUE>" << endl
+    str << binaryBaseName << " " << getName()
+        << " [OPTIONS] <IDN> <VALUE>" << endl
+        << binaryBaseName << " " << getName()
+        << " [OPTIONS] <DRIVE> <IDN> <VALUE>" << endl
         << endl
         << getBriefDescription() << endl
         << endl
         << "This command requires a single slave to be selected." << endl
         << endl
         << "Arguments:" << endl
+        << "  DRIVE    is the drive number (0 - 7). If omitted, 0 is assumed."
+        << endl
         << "  IDN      is the IDN and must be either an unsigned" << endl
         << "           16 bit number acc. to IEC 61800-7-204:" << endl
         << "             Bit 15: (0) Standard data, (1) Product data" << endl
@@ -81,23 +87,45 @@ string CommandSoeWrite::helpString() const
 
 void CommandSoeWrite::execute(const StringVector &args)
 {
-    stringstream strIdn, err;
+    stringstream err;
     const DataType *dataType = NULL;
     ec_ioctl_slave_soe_write_t ioctl;
     SlaveList slaves;
     size_t memSize;
+    int driveArgIndex = -1, idnArgIndex = -1, valueArgIndex = -1;
 
-    if (args.size() != 2) {
-        err << "'" << getName() << "' takes 2 arguments!";
+    if (args.size() == 2) {
+        idnArgIndex = 0;
+        valueArgIndex = 1;
+    } else if (args.size() == 3) {
+        driveArgIndex = 0;
+        idnArgIndex = 1;
+        valueArgIndex = 2;
+    } else {
+        err << "'" << getName() << "' takes eiter 2 or 3 arguments!";
         throwInvalidUsageException(err);
     }
 
-    ioctl.drive_no = 0; // FIXME
+    if (driveArgIndex >= 0) {
+        stringstream str;
+        unsigned int number;
+        str << args[driveArgIndex];
+        str
+            >> resetiosflags(ios::basefield) // guess base from prefix
+            >> number;
+        if (str.fail() || number > 7) {
+            err << "Invalid drive number '" << args[driveArgIndex] << "'!";
+            throwInvalidUsageException(err);
+        }
+        ioctl.drive_no = number;
+    } else {
+        ioctl.drive_no = 0;
+    }
 
     try {
-        ioctl.idn = parseIdn(args[0]);
+        ioctl.idn = parseIdn(args[idnArgIndex]);
     } catch (runtime_error &e) {
-        err << "Invalid IDN '" << args[0] << "': " << e.what();
+        err << "Invalid IDN '" << args[idnArgIndex] << "': " << e.what();
         throwInvalidUsageException(err);
     }
 
@@ -123,7 +151,7 @@ void CommandSoeWrite::execute(const StringVector &args)
         memSize = dataType->byteSize;
     } else {
         // guess string type size
-        memSize = args[1].size() + 1;
+        memSize = args[valueArgIndex].size() + 1;
         if (!memSize) {
             err << "Empty argument not allowed.";
             throwInvalidUsageException(err);
@@ -134,13 +162,13 @@ void CommandSoeWrite::execute(const StringVector &args)
 
     try {
         ioctl.data_size = interpretAsType(
-                dataType, args[1], ioctl.data, memSize);
+                dataType, args[valueArgIndex], ioctl.data, memSize);
     } catch (SizeException &e) {
         delete [] ioctl.data;
         throwCommandException(e.what());
     } catch (ios::failure &e) {
         delete [] ioctl.data;
-        err << "Invalid value argument '" << args[1]
+        err << "Invalid value argument '" << args[valueArgIndex]
             << "' for type '" << dataType->name << "'!";
         throwInvalidUsageException(err);
     }

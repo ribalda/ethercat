@@ -128,6 +128,7 @@ REV = `if test -s $(top_srcdir)/revision; then \
 ethercat_CXXFLAGS = \
 	-I$(top_srcdir)/include \
 	-I$(top_srcdir)/master \
-	-Wall -DREV=$(REV)
+	-Wall -DREV=$(REV) \
+	-fno-strict-aliasing
 
 #------------------------------------------------------------------------------

@@ -37,15 +37,11 @@
 
 /****************************************************************************/
 
-class SoeCommand:
-    public Command,
-    public DataTypeHandler
+class SoeCommand
 {
-    public:
-        SoeCommand(const string &, const string &);
-
     protected:
         static uint16_t parseIdn(const string &);
+        static std::string outputIdn(uint16_t);
         static std::string errorMsg(uint16_t);
 };
 

@@ -45,11 +45,11 @@ CommandDebug::CommandDebug():
 
 /*****************************************************************************/
 
-string CommandDebug::helpString() const
+string CommandDebug::helpString(const string &binaryBaseName) const
 {
     stringstream str;
 
-    str << getName() << " <LEVEL>" << endl
+    str << binaryBaseName << " " << getName() << " <LEVEL>" << endl
         << endl
         << getBriefDescription() << endl
         << endl

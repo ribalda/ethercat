@@ -312,7 +312,7 @@ int main(int argc, char **argv)
                     cmd->execute(commandArgs);
                 } catch (InvalidUsageException &e) {
                     cerr << e.what() << endl << endl;
-                    cerr << binaryBaseName << " " << cmd->helpString();
+                    cerr << cmd->helpString(binaryBaseName);
                     retval = 1;
                 } catch (CommandException &e) {
                     cerr << e.what() << endl;
@@ -322,7 +322,7 @@ int main(int argc, char **argv)
                     retval = 1;
                 }
             } else {
-                cout << binaryBaseName << " " << cmd->helpString();
+                cout << cmd->helpString(binaryBaseName);
             }
         } else {
             cerr << "Ambiguous command abbreviation! Matching:" << endl;
