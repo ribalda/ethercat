@@ -42,6 +42,7 @@
 #include "fsm_coe.h"
 #include "fsm_foe.h"
 #include "fsm_soe.h"
+#include "fsm_master.h"
 
 typedef struct ec_fsm_slave ec_fsm_slave_t; /**< \see ec_fsm_slave */
 
@@ -52,7 +53,7 @@ struct ec_fsm_slave {
     ec_datagram_t *datagram; /**< datagram used in the state machine */
 
     void (*state)(ec_fsm_slave_t *); /**< master state function */
-    ec_sdo_request_t *sdo_request; /**< SDO request to process. */
+    ec_master_sdo_request_t *sdo_request; /**< SDO request to process. */
     ec_foe_request_t *foe_request; /**< FoE request to process. */
     off_t foe_index; /**< index to FoE write request data */
     ec_soe_request_t *soe_request; /**< SoE request to process. */

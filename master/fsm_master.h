@@ -73,6 +73,8 @@ typedef struct {
     ec_internal_request_state_t state; /**< State of the request. */
 } ec_reg_request_t;
 
+void ec_master_sdo_request_release(struct kref *);
+
 /*****************************************************************************/
 
 /** Slave/SDO request record for master's SDO request list.
@@ -81,6 +83,7 @@ typedef struct {
     struct list_head list; /**< List element. */
     ec_slave_t *slave; /**< Slave. */
     ec_sdo_request_t req; /**< SDO request. */
+    struct kref refcount;
 } ec_master_sdo_request_t;
 
 /*****************************************************************************/

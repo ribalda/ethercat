@@ -194,9 +194,10 @@ void ec_slave_clear(ec_slave_t *slave /**< EtherCAT slave */)
             list_entry(slave->slave_sdo_requests.next,
                 ec_master_sdo_request_t, list);
         list_del_init(&request->list); // dequeue
-        EC_SLAVE_WARN(slave, "Discarding SDO request,"
-                " slave about to be deleted.\n");
+        EC_SLAVE_WARN(slave, "Discarding SDO request %p,"
+                " slave about to be deleted.\n",request);
         request->req.state = EC_INT_REQUEST_FAILURE;
+        kref_put(&request->refcount,ec_master_sdo_request_release);
         wake_up(&slave->sdo_queue);
     }
 
