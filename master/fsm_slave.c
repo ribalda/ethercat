@@ -266,7 +266,7 @@ int ec_fsm_slave_action_process_foe(
             EC_SLAVE_WARN(slave, "Aborting FOE request,"
                     " slave has error flag set.\n");
             request->req.state = EC_INT_REQUEST_FAILURE;
-            wake_up(&slave->sdo_queue);
+            wake_up(&slave->foe_queue);
             fsm->sdo_request = NULL;
             fsm->state = ec_fsm_slave_state_idle;
             return 0;
