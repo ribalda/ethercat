@@ -109,7 +109,8 @@ NumberListParser::List NumberListParser::parse(const char *data)
             case Range:
                 if (i >= size) {
                     int max = maximum();
-                    if (max >= 0) {
+                    // only increasing ranges if second number omitted
+                    if (max >= 0 && firstNum <= (unsigned int) max) {
                         List r = range(firstNum, max);
                         ret.splice(ret.end(), r);
                     }
