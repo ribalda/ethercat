@@ -339,8 +339,10 @@ Command::SlaveList Command::selectedSlaves(MasterDevice &m)
         NumberListParser::List::const_iterator pi;
 
         for (pi = posList.begin(); pi != posList.end(); pi++) {
-            m.getSlave(&slave, *pi);
-            list.push_back(slave);
+            if (*pi < master.slave_count) {
+                m.getSlave(&slave, *pi);
+                list.push_back(slave);
+            }
         }
     } else { // aliases given
         SlaveAliasParser ap(master, m);
@@ -375,11 +377,6 @@ Command::SlaveList Command::selectedSlaves(MasterDevice &m)
             for (pi = posList.begin(); pi != posList.end(); pi++) {
                 if (*pi < aliasSlaves.size()) {
                     list.push_back(aliasSlaves[*pi]);
-                } else {
-                    stringstream err;
-                    err << "Warning: Slave " << *ai << ":" << *pi
-                        << " does not exist on master " << m.getIndex();
-                    throwCommandException(err);
                 }
             }
         }
@@ -475,9 +472,11 @@ Command::DomainList Command::selectedDomains(MasterDevice &m)
     NumberListParser::List::const_iterator di;
 
     for (di = domList.begin(); di != domList.end(); di++) {
-        ec_ioctl_domain_t d;
-        m.getDomain(&d, *di);
-        list.push_back(d);
+        if (*di < master.domain_count) {
+            ec_ioctl_domain_t d;
+            m.getDomain(&d, *di);
+            list.push_back(d);
+        }
     }
 
     return list;
