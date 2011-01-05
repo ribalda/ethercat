@@ -267,9 +267,10 @@ int ec_fsm_slave_action_process_foe(
     // search the first request to be processed
     list_for_each_entry_safe(request, next, &slave->foe_requests, list) {
         if (slave->current_state & EC_SLAVE_STATE_ACK_ERR) {
-            EC_SLAVE_WARN(slave, "Aborting FOE request,"
-                    " slave has error flag set.\n");
+            EC_SLAVE_WARN(slave, "Aborting FOE request %p,"
+                    " slave has error flag set.\n",request);
             request->req.state = EC_INT_REQUEST_FAILURE;
+            kref_put(&request->refcount,ec_master_foe_request_release);
             wake_up(&slave->foe_queue);
             fsm->sdo_request = NULL;
             fsm->state = ec_fsm_slave_state_idle;
@@ -278,9 +279,9 @@ int ec_fsm_slave_action_process_foe(
         list_del_init(&request->list); // dequeue
         request->req.state = EC_INT_REQUEST_BUSY;
 
-        EC_SLAVE_DBG(slave, 1, "Processing FoE request.\n");
+        EC_SLAVE_DBG(slave, 1, "Processing FoE request %p.\n",request);
 
-        fsm->foe_request = &request->req;
+        fsm->foe_request = request;
         fsm->state = ec_fsm_slave_state_foe_request;
         ec_fsm_foe_transfer(&fsm->fsm_foe, slave, &request->req);
         ec_fsm_foe_exec(&fsm->fsm_foe);
@@ -299,7 +300,7 @@ void ec_fsm_slave_state_foe_request(
         )
 {
     ec_slave_t *slave = fsm->slave;
-    ec_foe_request_t *request = fsm->foe_request;
+    ec_master_foe_request_t *request = fsm->foe_request;
 
     if (ec_fsm_foe_exec(&fsm->fsm_foe))
     {
@@ -308,8 +309,9 @@ void ec_fsm_slave_state_foe_request(
     }
 
     if (!ec_fsm_foe_success(&fsm->fsm_foe)) {
-        EC_SLAVE_ERR(slave, "Failed to handle FoE request.\n");
-        request->state = EC_INT_REQUEST_FAILURE;
+        EC_SLAVE_ERR(slave, "Failed to handle FoE request %p.\n",request);
+        request->req.state = EC_INT_REQUEST_FAILURE;
+        kref_put(&request->refcount,ec_master_foe_request_release);
         wake_up(&slave->foe_queue);
         fsm->foe_request = NULL;
         fsm->state = ec_fsm_slave_state_idle;
@@ -317,10 +319,11 @@ void ec_fsm_slave_state_foe_request(
     }
 
     // finished transferring FoE
-    EC_SLAVE_DBG(slave, 1, "Successfully transferred %zu bytes of FoE"
-            " data.\n", request->data_size);
+    EC_SLAVE_DBG(slave, 1, "FoE request %p successfully transferred %zu bytes.\n",
+            request,request->req.data_size);
 
-    request->state = EC_INT_REQUEST_SUCCESS;
+    request->req.state = EC_INT_REQUEST_SUCCESS;
+    kref_put(&request->refcount,ec_master_foe_request_release);
     wake_up(&slave->foe_queue);
 
     fsm->foe_request = NULL;

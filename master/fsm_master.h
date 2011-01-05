@@ -73,7 +73,6 @@ typedef struct {
     ec_internal_request_state_t state; /**< State of the request. */
 } ec_reg_request_t;
 
-void ec_master_sdo_request_release(struct kref *);
 
 /*****************************************************************************/
 
@@ -86,6 +85,8 @@ typedef struct {
     struct kref refcount;
 } ec_master_sdo_request_t;
 
+void ec_master_sdo_request_release(struct kref *);
+
 /*****************************************************************************/
 
 /** FoE request.
@@ -94,7 +95,10 @@ typedef struct {
     struct list_head list; /**< List head. */
     ec_slave_t *slave; /**< EtherCAT slave. */
     ec_foe_request_t req; /**< FoE request. */
+    struct kref refcount;
 } ec_master_foe_request_t;
+
+void ec_master_foe_request_release(struct kref *);
 
 /*****************************************************************************/
 

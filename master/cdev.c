@@ -3270,74 +3270,70 @@ int ec_cdev_ioctl_slave_foe_read(
         )
 {
     ec_ioctl_slave_foe_t data;
-    ec_master_foe_request_t request;
+    ec_master_foe_request_t* request;
     int retval;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
         return -EFAULT;
     }
 
-    ec_foe_request_init(&request.req, data.file_name);
-    ec_foe_request_read(&request.req);
-    ec_foe_request_alloc(&request.req, 10000); // FIXME
+    request = kmalloc(sizeof(*request), GFP_KERNEL);
+    if (!request)
+        return -ENOMEM;
+    kref_init(&request->refcount);
 
-    if (ec_mutex_lock_interruptible(&master->master_mutex))
+    ec_foe_request_init(&request->req, data.file_name);
+    ec_foe_request_read(&request->req);
+    ec_foe_request_alloc(&request->req, 10000); // FIXME
+
+    if (ec_mutex_lock_interruptible(&master->master_mutex))  {
+        kref_put(&request->refcount,ec_master_foe_request_release);
         return -EINTR;
-
-    if (!(request.slave = ec_master_find_slave(
+    }
+    if (!(request->slave = ec_master_find_slave(
                     master, 0, data.slave_position))) {
         ec_mutex_unlock(&master->master_mutex);
-        ec_foe_request_clear(&request.req);
+        kref_put(&request->refcount,ec_master_foe_request_release);
         EC_MASTER_ERR(master, "Slave %u does not exist!\n",
                 data.slave_position);
         return -EINVAL;
     }
 
     // schedule request.
-    list_add_tail(&request.list, &request.slave->foe_requests);
+    list_add_tail(&request->list, &request->slave->foe_requests);
+    kref_get(&request->refcount);
 
     ec_mutex_unlock(&master->master_mutex);
 
-    EC_SLAVE_DBG(request.slave, 1, "Scheduled FoE read request.\n");
+    EC_SLAVE_DBG(request->slave, 1, "Scheduled FoE read request %p.\n",request);
 
     // wait for processing through FSM
-    if (wait_event_interruptible(request.slave->foe_queue,
-                request.req.state != EC_INT_REQUEST_QUEUED)) {
+    if (wait_event_interruptible(request->slave->foe_queue,
+          ((request->req.state == EC_INT_REQUEST_SUCCESS) || (request->req.state == EC_INT_REQUEST_FAILURE)))) {
         // interrupted by signal
-        ec_mutex_lock(&master->master_mutex);
-        if (request.req.state == EC_INT_REQUEST_QUEUED) {
-            list_del(&request.list);
-            ec_mutex_unlock(&master->master_mutex);
-            ec_foe_request_clear(&request.req);
-            return -EINTR;
-        }
-        // request already processing: interrupt not possible.
-        ec_mutex_unlock(&master->master_mutex);
+        kref_put(&request->refcount,ec_master_foe_request_release);
+        return -EINTR;
     }
 
-    // wait until master FSM has finished processing
-    wait_event(request.slave->foe_queue,
-            request.req.state != EC_INT_REQUEST_BUSY);
+    data.result = request->req.result;
+    data.error_code = request->req.error_code;
 
-    data.result = request.req.result;
-    data.error_code = request.req.error_code;
+    EC_SLAVE_DBG(request->slave, 1, "Read %zd bytes via FoE"
+            " (result = 0x%x).\n", request->req.data_size, request->req.result);
 
-    EC_SLAVE_DBG(request.slave, 1, "Read %zd bytes via FoE"
-            " (result = 0x%x).\n", request.req.data_size, request.req.result);
-
-    if (request.req.state != EC_INT_REQUEST_SUCCESS) {
+    if (request->req.state != EC_INT_REQUEST_SUCCESS) {
         data.data_size = 0;
         retval = -EIO;
     } else {
-        if (request.req.data_size > data.buffer_size) {
+        if (request->req.data_size > data.buffer_size) {
             EC_MASTER_ERR(master, "Buffer too small.\n");
-            ec_foe_request_clear(&request.req);
+            kref_put(&request->refcount,ec_master_foe_request_release);
             return -EOVERFLOW;
         }
-        data.data_size = request.req.data_size;
+        data.data_size = request->req.data_size;
         if (copy_to_user((void __user *) data.buffer,
-                    request.req.buffer, data.data_size)) {
-            ec_foe_request_clear(&request.req);
+                    request->req.buffer, data.data_size)) {
+            kref_put(&request->refcount,ec_master_foe_request_release);
             return -EFAULT;
         }
         retval = 0;
@@ -3347,9 +3343,8 @@ int ec_cdev_ioctl_slave_foe_read(
         retval = -EFAULT;
     }
 
-    EC_SLAVE_DBG(request.slave, 1, "Finished FoE read request.\n");
-
-    ec_foe_request_clear(&request.req);
+    EC_SLAVE_DBG(request->slave, 1, "Finished FoE read request %p.\n",request);
+    kref_put(&request->refcount,ec_master_foe_request_release);
 
     return retval;
 }
@@ -3364,79 +3359,73 @@ int ec_cdev_ioctl_slave_foe_write(
         )
 {
     ec_ioctl_slave_foe_t data;
-    ec_master_foe_request_t request;
+    ec_master_foe_request_t* request;
     int retval;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
         return -EFAULT;
     }
 
-    INIT_LIST_HEAD(&request.list);
+    request = kmalloc(sizeof(*request), GFP_KERNEL);
+    if (!request)
+        return -ENOMEM;
+    kref_init(&request->refcount);
 
-    ec_foe_request_init(&request.req, data.file_name);
+    INIT_LIST_HEAD(&request->list);
 
-    if (ec_foe_request_alloc(&request.req, data.buffer_size)) {
-        ec_foe_request_clear(&request.req);
+    ec_foe_request_init(&request->req, data.file_name);
+
+    if (ec_foe_request_alloc(&request->req, data.buffer_size)) {
+        kref_put(&request->refcount,ec_master_foe_request_release);
         return -ENOMEM;
     }
-    if (copy_from_user(request.req.buffer,
+    if (copy_from_user(request->req.buffer,
                 (void __user *) data.buffer, data.buffer_size)) {
-        ec_foe_request_clear(&request.req);
+        kref_put(&request->refcount,ec_master_foe_request_release);
         return -EFAULT;
     }
-    request.req.data_size = data.buffer_size;
-    ec_foe_request_write(&request.req);
+    request->req.data_size = data.buffer_size;
+    ec_foe_request_write(&request->req);
 
     if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
 
-    if (!(request.slave = ec_master_find_slave(
+    if (!(request->slave = ec_master_find_slave(
                     master, 0, data.slave_position))) {
         ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "Slave %u does not exist!\n",
                 data.slave_position);
-        ec_foe_request_clear(&request.req);
+        kref_put(&request->refcount,ec_master_foe_request_release);
         return -EINVAL;
     }
 
-    EC_SLAVE_DBG(request.slave, 1, "Scheduling FoE write request.\n");
+    EC_SLAVE_DBG(request->slave, 1, "Scheduling FoE write request %p.\n",request);
 
     // schedule FoE write request.
-    list_add_tail(&request.list, &request.slave->foe_requests);
+    list_add_tail(&request->list, &request->slave->foe_requests);
+    kref_get(&request->refcount);
 
     ec_mutex_unlock(&master->master_mutex);
 
     // wait for processing through FSM
-    if (wait_event_interruptible(request.slave->foe_queue,
-                request.req.state != EC_INT_REQUEST_QUEUED)) {
+    if (wait_event_interruptible(request->slave->foe_queue,
+       ((request->req.state == EC_INT_REQUEST_SUCCESS) || (request->req.state == EC_INT_REQUEST_FAILURE)))) {
         // interrupted by signal
-        ec_mutex_lock(&master->master_mutex);
-        if (request.req.state == EC_INT_REQUEST_QUEUED) {
-            // abort request
-            list_del(&request.list);
-            ec_mutex_unlock(&master->master_mutex);
-            ec_foe_request_clear(&request.req);
-            return -EINTR;
-        }
-        ec_mutex_unlock(&master->master_mutex);
+        kref_put(&request->refcount,ec_master_foe_request_release);
+        return -EINTR;
     }
 
-    // wait until master FSM has finished processing
-    wait_event(request.slave->foe_queue,
-            request.req.state != EC_INT_REQUEST_BUSY);
+    data.result = request->req.result;
+    data.error_code = request->req.error_code;
 
-    data.result = request.req.result;
-    data.error_code = request.req.error_code;
-
-    retval = request.req.state == EC_INT_REQUEST_SUCCESS ? 0 : -EIO;
+    retval = request->req.state == EC_INT_REQUEST_SUCCESS ? 0 : -EIO;
 
     if (__copy_to_user((void __user *) arg, &data, sizeof(data))) {
         retval = -EFAULT;
     }
 
-    ec_foe_request_clear(&request.req);
-
-    EC_SLAVE_DBG(request.slave, 1, "Finished FoE write request.\n");
+    EC_SLAVE_DBG(request->slave, 1, "Finished FoE write request %p.\n",request);
+    kref_put(&request->refcount,ec_master_foe_request_release);
 
     return retval;
 }

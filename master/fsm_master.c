@@ -1228,13 +1228,26 @@ void ec_fsm_master_state_reg_request(
 
 /*****************************************************************************/
 
-/** called by kref_put if the request's refcount becomes zero.
+/** called by kref_put if the SDO request's refcount becomes zero.
  *
  */
 void ec_master_sdo_request_release(struct kref *ref)
 {
     ec_master_sdo_request_t *request = container_of(ref, ec_master_sdo_request_t, refcount);
-    EC_SLAVE_DBG(request->slave, 1, "Releasing request %p.\n",request);
+    EC_SLAVE_DBG(request->slave, 1, "Releasing SDO request %p.\n",request);
     ec_sdo_request_clear(&request->req);
+    kfree(request);
+}
+
+/*****************************************************************************/
+
+/** called by kref_put if the FoE request's refcount becomes zero.
+ *
+ */
+void ec_master_foe_request_release(struct kref *ref)
+{
+    ec_master_foe_request_t *request = container_of(ref, ec_master_foe_request_t, refcount);
+    EC_SLAVE_DBG(request->slave, 1, "Releasing FoE request %p.\n",request);
+    ec_foe_request_clear(&request->req);
     kfree(request);
 }
