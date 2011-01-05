@@ -1072,7 +1072,8 @@ int ec_cdev_ioctl_slave_sii_write(
     ec_slave_t *slave;
     unsigned int byte_size;
     uint16_t *words;
-    ec_sii_write_request_t request;
+    ec_sii_write_request_t* request;
+    int retval;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
         return -EFAULT;
@@ -1088,58 +1089,57 @@ int ec_cdev_ioctl_slave_sii_write(
         return -ENOMEM;
     }
 
+    request = kmalloc(sizeof(*request), GFP_KERNEL);
+    if (!request)
+        return -ENOMEM;
+    kref_init(&request->refcount);
+    // init SII write request
+    INIT_LIST_HEAD(&request->list);
+    request->words = words; // now "owned" by request, see ec_master_sii_write_request_release
+    request->offset = data.offset;
+    request->nwords = data.nwords;
+
     if (copy_from_user(words,
                 (void __user *) data.words, byte_size)) {
-        kfree(words);
+        kref_put(&request->refcount,ec_master_sii_write_request_release);
         return -EFAULT;
     }
 
-    if (ec_mutex_lock_interruptible(&master->master_mutex))
+    if (ec_mutex_lock_interruptible(&master->master_mutex)) {
+        kref_put(&request->refcount,ec_master_sii_write_request_release);
         return -EINTR;
-
+    }
     if (!(slave = ec_master_find_slave(
                     master, 0, data.slave_position))) {
         ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "Slave %u does not exist!\n",
                 data.slave_position);
-        kfree(words);
+        kref_put(&request->refcount,ec_master_sii_write_request_release);
         return -EINVAL;
     }
 
-    // init SII write request
-    INIT_LIST_HEAD(&request.list);
-    request.slave = slave;
-    request.words = words;
-    request.offset = data.offset;
-    request.nwords = data.nwords;
-    request.state = EC_INT_REQUEST_QUEUED;
+    request->slave = slave;
+    request->state = EC_INT_REQUEST_QUEUED;
 
     // schedule SII write request.
-    list_add_tail(&request.list, &master->sii_requests);
+    list_add_tail(&request->list, &master->sii_requests);
+    kref_get(&request->refcount);
 
     ec_mutex_unlock(&master->master_mutex);
 
     // wait for processing through FSM
     if (wait_event_interruptible(master->sii_queue,
-                request.state != EC_INT_REQUEST_QUEUED)) {
-        // interrupted by signal
-        ec_mutex_lock(&master->master_mutex);
-        if (request.state == EC_INT_REQUEST_QUEUED) {
-            // abort request
-            list_del(&request.list);
-            ec_mutex_unlock(&master->master_mutex);
-            kfree(words);
-            return -EINTR;
-        }
-        ec_mutex_unlock(&master->master_mutex);
+          ((request->state == EC_INT_REQUEST_SUCCESS) || (request->state == EC_INT_REQUEST_FAILURE)))) {
+           // interrupted by signal
+           kref_put(&request->refcount,ec_master_sii_write_request_release);
+           return -EINTR;
     }
 
-    // wait until master FSM has finished processing
-    wait_event(master->sii_queue, request.state != EC_INT_REQUEST_BUSY);
 
-    kfree(words);
+    retval = request->state == EC_INT_REQUEST_SUCCESS ? 0 : -EIO;
+    kref_put(&request->refcount,ec_master_sii_write_request_release);
 
-    return request.state == EC_INT_REQUEST_SUCCESS ? 0 : -EIO;
+    return retval;
 }
 
 /*****************************************************************************/

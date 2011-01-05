@@ -1068,6 +1068,7 @@ void ec_fsm_master_state_write_sii(
     if (!ec_fsm_sii_success(&fsm->fsm_sii)) {
         EC_SLAVE_ERR(slave, "Failed to write SII data.\n");
         request->state = EC_INT_REQUEST_FAILURE;
+        kref_put(&request->refcount,ec_master_sii_write_request_release);
         wake_up(&master->sii_queue);
         ec_fsm_master_restart(fsm);
         return;
@@ -1096,6 +1097,7 @@ void ec_fsm_master_state_write_sii(
     // TODO: Evaluate other SII contents!
 
     request->state = EC_INT_REQUEST_SUCCESS;
+    kref_put(&request->refcount,ec_master_sii_write_request_release);
     wake_up(&master->sii_queue);
 
     // check for another SII write request
@@ -1224,6 +1226,19 @@ void ec_fsm_master_state_reg_request(
         return; // processing another request
 
     ec_fsm_master_restart(fsm);
+}
+
+/*****************************************************************************/
+
+/** called by kref_put if the SII write request's refcount becomes zero.
+ *
+ */
+void ec_master_sii_write_request_release(struct kref *ref)
+{
+    ec_sii_write_request_t *request = container_of(ref, ec_sii_write_request_t, refcount);
+    EC_SLAVE_DBG(request->slave, 1, "Releasing SII write request %p.\n",request);
+    kfree(request->words);
+    kfree(request);
 }
 
 /*****************************************************************************/

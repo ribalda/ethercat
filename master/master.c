@@ -397,6 +397,7 @@ void ec_master_clear_slaves(ec_master_t *master)
         EC_MASTER_WARN(master, "Discarding SII request, slave %u about"
                 " to be deleted.\n", request->slave->ring_position);
         request->state = EC_INT_REQUEST_FAILURE;
+        kref_put(&request->refcount,ec_master_sii_write_request_release);
         wake_up(&master->sii_queue);
     }
 

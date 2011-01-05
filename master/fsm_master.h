@@ -57,7 +57,10 @@ typedef struct {
     size_t nwords; /**< Number of words. */
     const uint16_t *words; /**< Pointer to the data words. */
     ec_internal_request_state_t state; /**< State of the request. */
+    struct kref refcount;
 } ec_sii_write_request_t;
+
+void ec_master_sii_write_request_release(struct kref *);
 
 /*****************************************************************************/
 
