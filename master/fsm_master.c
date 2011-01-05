@@ -238,12 +238,12 @@ void ec_fsm_master_state_broadcast(
     }
 
     if (fsm->rescan_required) {
-        down(&master->scan_sem);
+        ec_mutex_lock(&master->scan_mutex);
         if (!master->allow_scan) {
-            up(&master->scan_sem);
+            ec_mutex_unlock(&master->scan_mutex);
         } else {
             master->scan_busy = 1;
-            up(&master->scan_sem);
+            ec_mutex_unlock(&master->scan_mutex);
 
             // clear all slaves and scan the bus
             fsm->rescan_required = 0;
@@ -570,12 +570,12 @@ void ec_fsm_master_action_configure(
                 || slave->force_config) && !slave->error_flag) {
 
         // Start slave configuration, if it is allowed.
-        down(&master->config_sem);
+        ec_mutex_lock(&master->config_mutex);
         if (!master->allow_config) {
-            up(&master->config_sem);
+            ec_mutex_unlock(&master->config_mutex);
         } else {
             master->config_busy = 1;
-            up(&master->config_sem);
+            ec_mutex_unlock(&master->config_mutex);
 
             if (master->debug_level) {
                 char old_state[EC_STATE_STRING_SIZE],

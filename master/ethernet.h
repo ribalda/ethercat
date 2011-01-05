@@ -92,7 +92,7 @@ struct ec_eoe
     unsigned int tx_queue_size; /**< Transmit queue size. */
     unsigned int tx_queue_active; /**< kernel netif queue started */
     unsigned int tx_queued_frames; /**< number of frames in the queue */
-    struct semaphore tx_queue_sem; /**< Semaphore for the send queue. */
+    struct ec_mutex_t tx_queue_mutex; /**< Mutex for the send queue. */
     ec_eoe_frame_t *tx_frame; /**< current TX frame */
     uint8_t tx_frame_number; /**< number of the transmitted frame */
     uint8_t tx_fragment_number; /**< number of the fragment */

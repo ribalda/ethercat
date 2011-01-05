@@ -122,7 +122,7 @@ int ec_eoe_init(
     eoe->tx_queue_size = EC_EOE_TX_QUEUE_SIZE;
     eoe->tx_queued_frames = 0;
 
-    sema_init(&eoe->tx_queue_sem, 1);
+    ec_mutex_init(&eoe->tx_queue_mutex);
     eoe->tx_frame_number = 0xFF;
     memset(&eoe->stats, 0, sizeof(struct net_device_stats));
 
@@ -231,7 +231,7 @@ void ec_eoe_flush(ec_eoe_t *eoe /**< EoE handler */)
 {
     ec_eoe_frame_t *frame, *next;
 
-    down(&eoe->tx_queue_sem);
+    ec_mutex_lock(&eoe->tx_queue_mutex);
 
     list_for_each_entry_safe(frame, next, &eoe->tx_queue, queue) {
         list_del(&frame->queue);
@@ -240,7 +240,7 @@ void ec_eoe_flush(ec_eoe_t *eoe /**< EoE handler */)
     }
     eoe->tx_queued_frames = 0;
 
-    up(&eoe->tx_queue_sem);
+    ec_mutex_unlock(&eoe->tx_queue_mutex);
 }
 
 /*****************************************************************************/
@@ -621,10 +621,10 @@ void ec_eoe_state_tx_start(ec_eoe_t *eoe /**< EoE handler */)
         return;
     }
 
-    down(&eoe->tx_queue_sem);
+    ec_mutex_lock(&eoe->tx_queue_mutex);
 
     if (!eoe->tx_queued_frames || list_empty(&eoe->tx_queue)) {
-        up(&eoe->tx_queue_sem);
+        ec_mutex_unlock(&eoe->tx_queue_mutex);
         eoe->tx_idle = 1;
         // no data available.
         // start a new receive immediately.
@@ -645,7 +645,7 @@ void ec_eoe_state_tx_start(ec_eoe_t *eoe /**< EoE handler */)
     }
 
     eoe->tx_queued_frames--;
-    up(&eoe->tx_queue_sem);
+    ec_mutex_unlock(&eoe->tx_queue_mutex);
 
     eoe->tx_idle = 0;
 
@@ -813,14 +813,14 @@ int ec_eoedev_tx(struct sk_buff *skb, /**< transmit socket buffer */
 
     frame->skb = skb;
 
-    down(&eoe->tx_queue_sem);
+    ec_mutex_lock(&eoe->tx_queue_mutex);
     list_add_tail(&frame->queue, &eoe->tx_queue);
     eoe->tx_queued_frames++;
     if (eoe->tx_queued_frames == eoe->tx_queue_size) {
         netif_stop_queue(dev);
         eoe->tx_queue_active = 0;
     }
-    up(&eoe->tx_queue_sem);
+    ec_mutex_unlock(&eoe->tx_queue_mutex);
 
 #if EOE_DEBUG_LEVEL >= 2
     EC_SLAVE_DBG(eoe->slave, 0, "EoE %s TX queued frame"

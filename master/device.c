@@ -501,9 +501,9 @@ void ecdev_withdraw(ec_device_t *device /**< EtherCAT device */)
     ec_mac_print(device->dev->dev_addr, str);
     EC_MASTER_INFO(master, "Releasing main device %s.\n", str);
     
-    down(&master->device_sem);
+    ec_mutex_lock(&master->device_mutex);
     ec_device_detach(device);
-    up(&master->device_sem);
+    ec_mutex_unlock(&master->device_mutex);
 }
 
 /*****************************************************************************/

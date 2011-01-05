@@ -39,6 +39,12 @@
 #include "../globals.h"
 #include "../include/ecrt.h"
 
+#ifdef __KERNEL__
+#ifdef EC_USE_MUTEX
+#include <linux/rtmutex.h>
+#endif  // EC_USE_MUTEX
+#endif // __KERNEL__
+
 /******************************************************************************
  * EtherCAT master
  *****************************************************************************/
@@ -304,5 +310,61 @@ typedef enum {
 typedef struct ec_slave ec_slave_t; /**< \see ec_slave. */
 
 /*****************************************************************************/
+
+/*****************************************************************************/
+
+#ifdef __KERNEL__
+
+/** Mutual exclusion helpers.
+ *
+ */
+#ifdef EC_USE_MUTEX
+#define ec_mutex_t rt_mutex
+static inline void ec_mutex_init(struct ec_mutex_t *mutex)
+{
+    rt_mutex_init(mutex);
+}
+static inline void ec_mutex_lock(struct ec_mutex_t *mutex)
+{
+    rt_mutex_lock(mutex);
+}
+static inline int ec_mutex_trylock(struct ec_mutex_t *mutex)
+{
+    return rt_mutex_trylock(mutex);
+}
+static inline int ec_mutex_lock_interruptible(struct ec_mutex_t *mutex)
+{
+    return rt_mutex_lock_interruptible(mutex,0);
+}
+static inline void ec_mutex_unlock(struct ec_mutex_t *mutex)
+{
+    rt_mutex_unlock(mutex);
+}
+#else   // EC_USE_MUTEX
+#define ec_mutex_t semaphore
+static inline void ec_mutex_init(struct ec_mutex_t *sem)
+{
+    sema_init(sem, 1);
+}
+static inline void ec_mutex_lock(struct ec_mutex_t *sem)
+{
+    down(sem);
+}
+static inline int ec_mutex_trylock(struct ec_mutex_t *sem)
+{
+    down(sem);
+    return 1;
+}
+static inline int ec_mutex_lock_interruptible(struct ec_mutex_t *sem)
+{
+    return down_interruptible(sem);
+}
+static inline void ec_mutex_unlock(struct ec_mutex_t *sem)
+{
+    up(sem);
+}
+
+#endif // EC_USE_MUTEX
+#endif // __KERNEL__
 
 #endif

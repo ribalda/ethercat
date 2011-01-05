@@ -43,17 +43,12 @@
 #include <linux/wait.h>
 #include <linux/kthread.h>
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)
-#include <linux/semaphore.h>
-#else
-#include <asm/semaphore.h>
-#endif
-
 #include "device.h"
 #include "domain.h"
 #include "ethernet.h"
 #include "fsm_master.h"
 #include "cdev.h"
+
 
 /*****************************************************************************/
 
@@ -152,13 +147,13 @@ struct ec_master {
     struct class_device *class_device; /**< Master class device. */
 #endif
 
-    struct semaphore master_sem; /**< Master semaphore. */
+    struct ec_mutex_t master_mutex; /**< Master mutex. */
 
     ec_device_t main_device; /**< EtherCAT main device. */
     const uint8_t *main_mac; /**< MAC address of main device. */
     ec_device_t backup_device; /**< EtherCAT backup device. */
     const uint8_t *backup_mac; /**< MAC address of backup device. */
-    struct semaphore device_sem; /**< Device semaphore. */
+    struct ec_mutex_t device_mutex; /**< Device mutex. */
 
     ec_fsm_master_t fsm; /**< Master state machine. */
     ec_datagram_t fsm_datagram; /**< Datagram used for state machines. */
@@ -194,7 +189,7 @@ struct ec_master {
                                             ecrt_master_sync() call.*/
     unsigned int scan_busy; /**< Current scan state. */
     unsigned int allow_scan; /**< \a True, if slave scanning is allowed. */
-    struct semaphore scan_sem; /**< Semaphore protecting the \a scan_busy
+    struct ec_mutex_t scan_mutex; /**< Mutex protecting the \a scan_busy
                                  variable and the \a allow_scan flag. */
     wait_queue_head_t scan_queue; /**< Queue for processes that wait for
                                     slave scanning. */
@@ -202,7 +197,7 @@ struct ec_master {
     unsigned int config_busy; /**< State of slave configuration. */
     unsigned int allow_config; /**< \a True, if slave configuration is
                                  allowed. */
-    struct semaphore config_sem; /**< Semaphore protecting the \a config_busy
+    struct ec_mutex_t config_mutex; /**< Mutex protecting the \a config_busy
                                    variable and the allow_config flag. */
     wait_queue_head_t config_queue; /**< Queue for processes that wait for
                                       slave configuration. */
@@ -210,7 +205,7 @@ struct ec_master {
     struct list_head datagram_queue; /**< Datagram queue. */
     uint8_t datagram_index; /**< Current datagram index. */
 
-    struct semaphore fsm_queue_sem; /**< Semaphore protecting the \a
+    struct ec_mutex_t fsm_queue_mutex; /**< Mutex protecting the \a
                                       fsm_datagram_queue. */
     struct list_head fsm_datagram_queue; /**< External Datagram queue. */
 
@@ -227,7 +222,7 @@ struct ec_master {
     struct list_head eoe_handlers; /**< Ethernet over EtherCAT handlers. */
 #endif
 
-    struct semaphore io_sem; /**< Semaphore used in \a IDLE phase. */
+    struct ec_mutex_t io_mutex; /**< Mutex used in \a IDLE phase. */
 
     void (*fsm_queue_lock_cb)(void *); /**< FSM queue lock callback. */
     void (*fsm_queue_unlock_cb)(void *); /**< FSM queue unlock callback. */

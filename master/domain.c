@@ -381,14 +381,14 @@ void ecrt_domain_external_memory(ec_domain_t *domain, uint8_t *mem)
     EC_MASTER_DBG(domain->master, 1, "ecrt_domain_external_memory("
             "domain = 0x%p, mem = 0x%p)\n", domain, mem);
 
-    down(&domain->master->master_sem);
+    ec_mutex_lock(&domain->master->master_mutex);
 
     ec_domain_clear_data(domain);
 
     domain->data = mem;
     domain->data_origin = EC_ORIG_EXTERNAL;
 
-    up(&domain->master->master_sem);
+    ec_mutex_unlock(&domain->master->master_mutex);
 }
 
 /*****************************************************************************/

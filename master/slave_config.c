@@ -182,7 +182,7 @@ int ec_slave_config_prepare_fmmu(
 
     fmmu = &sc->fmmu_configs[sc->used_fmmus];
 
-    down(&sc->master->master_sem);
+    ec_mutex_lock(&sc->master->master_mutex);
     ec_fmmu_config_init(fmmu, sc, sync_index, dir);
     fmmu_logical_start_address = domain->tx_size;
     tx_size = fmmu->data_size;
@@ -199,7 +199,7 @@ int ec_slave_config_prepare_fmmu(
         }
     }
     ec_fmmu_config_domain(fmmu,domain,fmmu_logical_start_address,tx_size);
-    up(&sc->master->master_sem);
+    ec_mutex_unlock(&sc->master->master_mutex);
 
     ++sc->used_fmmus;
     return fmmu->domain_address;
@@ -536,18 +536,18 @@ int ecrt_slave_config_pdo_assign_add(ec_slave_config_t *sc,
         return -EINVAL;
     }
 
-    down(&sc->master->master_sem);
+    ec_mutex_lock(&sc->master->master_mutex);
 
     pdo = ec_pdo_list_add_pdo(&sc->sync_configs[sync_index].pdos, pdo_index);
     if (IS_ERR(pdo)) {
-        up(&sc->master->master_sem);
+        ec_mutex_unlock(&sc->master->master_mutex);
         return PTR_ERR(pdo);
     }
     pdo->sync_index = sync_index;
 
     ec_slave_config_load_default_mapping(sc, pdo);
 
-    up(&sc->master->master_sem);
+    ec_mutex_unlock(&sc->master->master_mutex);
     return 0;
 }
 
@@ -564,9 +564,9 @@ void ecrt_slave_config_pdo_assign_clear(ec_slave_config_t *sc,
         return;
     }
 
-    down(&sc->master->master_sem);
+    ec_mutex_lock(&sc->master->master_mutex);
     ec_pdo_list_clear_pdos(&sc->sync_configs[sync_index].pdos);
-    up(&sc->master->master_sem);
+    ec_mutex_unlock(&sc->master->master_mutex);
 }
 
 /*****************************************************************************/
@@ -592,10 +592,10 @@ int ecrt_slave_config_pdo_mapping_add(ec_slave_config_t *sc,
             break;
 
     if (pdo) {
-        down(&sc->master->master_sem);
+        ec_mutex_lock(&sc->master->master_mutex);
         entry = ec_pdo_add_entry(pdo, entry_index, entry_subindex,
                 entry_bit_length);
-        up(&sc->master->master_sem);
+        ec_mutex_unlock(&sc->master->master_mutex);
         if (IS_ERR(entry))
             retval = PTR_ERR(entry);
     } else {
@@ -623,9 +623,9 @@ void ecrt_slave_config_pdo_mapping_clear(ec_slave_config_t *sc,
             break;
 
     if (pdo) {
-        down(&sc->master->master_sem);
+        ec_mutex_lock(&sc->master->master_mutex);
         ec_pdo_clear_entries(pdo);
-        up(&sc->master->master_sem);
+        ec_mutex_unlock(&sc->master->master_mutex);
     } else {
         EC_CONFIG_WARN(sc, "PDO 0x%04X is not assigned.\n", pdo_index);
     }
@@ -805,9 +805,9 @@ int ecrt_slave_config_sdo(ec_slave_config_t *sc, uint16_t index,
         return ret;
     }
         
-    down(&sc->master->master_sem);
+    ec_mutex_lock(&sc->master->master_mutex);
     list_add_tail(&req->list, &sc->sdo_configs);
-    up(&sc->master->master_sem);
+    ec_mutex_unlock(&sc->master->master_mutex);
     return 0;
 }
 
@@ -890,9 +890,9 @@ int ecrt_slave_config_complete_sdo(ec_slave_config_t *sc, uint16_t index,
         return ret;
     }
         
-    down(&sc->master->master_sem);
+    ec_mutex_lock(&sc->master->master_mutex);
     list_add_tail(&req->list, &sc->sdo_configs);
-    up(&sc->master->master_sem);
+    ec_mutex_unlock(&sc->master->master_mutex);
     return 0;
 }
 
@@ -931,9 +931,9 @@ ec_sdo_request_t *ecrt_slave_config_create_sdo_request_err(
     memset(req->data, 0x00, size);
     req->data_size = size;
     
-    down(&sc->master->master_sem);
+    ec_mutex_lock(&sc->master->master_mutex);
     list_add_tail(&req->list, &sc->sdo_requests);
-    up(&sc->master->master_sem);
+    ec_mutex_unlock(&sc->master->master_mutex);
 
     return req; 
 }
@@ -973,9 +973,9 @@ ec_voe_handler_t *ecrt_slave_config_create_voe_handler_err(
         return ERR_PTR(ret);
     }
 
-    down(&sc->master->master_sem);
+    ec_mutex_lock(&sc->master->master_mutex);
     list_add_tail(&voe->list, &sc->voe_handlers);
-    up(&sc->master->master_sem);
+    ec_mutex_unlock(&sc->master->master_mutex);
 
     return voe; 
 }
@@ -1056,9 +1056,9 @@ int ecrt_slave_config_idn(ec_slave_config_t *sc, uint8_t drive_no,
         return ret;
     }
         
-    down(&sc->master->master_sem);
+    ec_mutex_lock(&sc->master->master_mutex);
     list_add_tail(&req->list, &sc->soe_configs);
-    up(&sc->master->master_sem);
+    ec_mutex_unlock(&sc->master->master_mutex);
     return 0;
 }
 
