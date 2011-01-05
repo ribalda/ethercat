@@ -1154,7 +1154,8 @@ int ec_cdev_ioctl_slave_reg_read(
     ec_ioctl_slave_reg_t data;
     ec_slave_t *slave;
     uint8_t *contents;
-    ec_reg_request_t request;
+    ec_reg_request_t* request;
+    int retval;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
         return -EFAULT;
@@ -1169,56 +1170,58 @@ int ec_cdev_ioctl_slave_reg_read(
         return -ENOMEM;
     }
 
-    if (ec_mutex_lock_interruptible(&master->master_mutex))
-        return -EINTR;
+    request = kmalloc(sizeof(*request), GFP_KERNEL);
+    if (!request)
+        return -ENOMEM;
+    kref_init(&request->refcount);
 
+    // init register request
+    INIT_LIST_HEAD(&request->list);
+    request->dir = EC_DIR_INPUT;
+    request->data = contents;   // now "owned" by request, see ec_master_reg_request_release
+    request->offset = data.offset;
+    request->length = data.length;
+
+    if (ec_mutex_lock_interruptible(&master->master_mutex)) {
+        kref_put(&request->refcount,ec_master_reg_request_release);
+        return -EINTR;
+    }
     if (!(slave = ec_master_find_slave(
                     master, 0, data.slave_position))) {
         ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "Slave %u does not exist!\n",
                 data.slave_position);
+        kref_put(&request->refcount,ec_master_reg_request_release);
         return -EINVAL;
     }
 
-    // init register request
-    INIT_LIST_HEAD(&request.list);
-    request.slave = slave;
-    request.dir = EC_DIR_INPUT;
-    request.data = contents;
-    request.offset = data.offset;
-    request.length = data.length;
-    request.state = EC_INT_REQUEST_QUEUED;
+    request->slave = slave;
+    request->state = EC_INT_REQUEST_QUEUED;
 
     // schedule request.
-    list_add_tail(&request.list, &master->reg_requests);
+    list_add_tail(&request->list, &master->reg_requests);
+    kref_get(&request->refcount);
 
     ec_mutex_unlock(&master->master_mutex);
 
     // wait for processing through FSM
     if (wait_event_interruptible(master->reg_queue,
-                request.state != EC_INT_REQUEST_QUEUED)) {
-        // interrupted by signal
-        ec_mutex_lock(&master->master_mutex);
-        if (request.state == EC_INT_REQUEST_QUEUED) {
-            // abort request
-            list_del(&request.list);
-            ec_mutex_unlock(&master->master_mutex);
-            kfree(contents);
-            return -EINTR;
-        }
-        ec_mutex_unlock(&master->master_mutex);
+          ((request->state == EC_INT_REQUEST_SUCCESS) || (request->state == EC_INT_REQUEST_FAILURE)))) {
+           // interrupted by signal
+           kref_put(&request->refcount,ec_master_reg_request_release);
+           return -EINTR;
     }
 
-    // wait until master FSM has finished processing
-    wait_event(master->reg_queue, request.state != EC_INT_REQUEST_BUSY);
-
-    if (request.state == EC_INT_REQUEST_SUCCESS) {
-        if (copy_to_user((void __user *) data.data, contents, data.length))
+    if (request->state == EC_INT_REQUEST_SUCCESS) {
+        if (copy_to_user((void __user *) data.data, request->data, data.length)) {
+            kref_put(&request->refcount,ec_master_reg_request_release);
             return -EFAULT;
+        }
     }
-    kfree(contents);
+    retval = request->state == EC_INT_REQUEST_SUCCESS ? 0 : -EIO;
 
-    return request.state == EC_INT_REQUEST_SUCCESS ? 0 : -EIO;
+    kref_put(&request->refcount,ec_master_reg_request_release);
+    return retval;
 }
 
 /*****************************************************************************/
@@ -1233,7 +1236,8 @@ int ec_cdev_ioctl_slave_reg_write(
     ec_ioctl_slave_reg_t data;
     ec_slave_t *slave;
     uint8_t *contents;
-    ec_reg_request_t request;
+    ec_reg_request_t* request;
+    int retval;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
         return -EFAULT;
@@ -1253,53 +1257,52 @@ int ec_cdev_ioctl_slave_reg_write(
         return -EFAULT;
     }
 
-    if (ec_mutex_lock_interruptible(&master->master_mutex))
+    request = kmalloc(sizeof(*request), GFP_KERNEL);
+    if (!request)
+        return -ENOMEM;
+    kref_init(&request->refcount);
+    // init register request
+    INIT_LIST_HEAD(&request->list);
+    request->dir = EC_DIR_OUTPUT;
+    request->data = contents; // now "owned" by request, see ec_master_reg_request_release
+    request->offset = data.offset;
+    request->length = data.length;
+
+    if (ec_mutex_lock_interruptible(&master->master_mutex)) {
+        kref_put(&request->refcount,ec_master_reg_request_release);
         return -EINTR;
+    }
 
     if (!(slave = ec_master_find_slave(
                     master, 0, data.slave_position))) {
         ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "Slave %u does not exist!\n",
                 data.slave_position);
-        kfree(contents);
+        kref_put(&request->refcount,ec_master_reg_request_release);
         return -EINVAL;
     }
 
-    // init register request
-    INIT_LIST_HEAD(&request.list);
-    request.slave = slave;
-    request.dir = EC_DIR_OUTPUT;
-    request.data = contents;
-    request.offset = data.offset;
-    request.length = data.length;
-    request.state = EC_INT_REQUEST_QUEUED;
+    request->slave = slave;
+    request->state = EC_INT_REQUEST_QUEUED;
 
     // schedule request.
-    list_add_tail(&request.list, &master->reg_requests);
+    list_add_tail(&request->list, &master->reg_requests);
+    kref_get(&request->refcount);
 
     ec_mutex_unlock(&master->master_mutex);
 
     // wait for processing through FSM
     if (wait_event_interruptible(master->reg_queue,
-                request.state != EC_INT_REQUEST_QUEUED)) {
-        // interrupted by signal
-        ec_mutex_lock(&master->master_mutex);
-        if (request.state == EC_INT_REQUEST_QUEUED) {
-            // abort request
-            list_del(&request.list);
-            ec_mutex_unlock(&master->master_mutex);
-            kfree(contents);
-            return -EINTR;
-        }
-        ec_mutex_unlock(&master->master_mutex);
+          ((request->state == EC_INT_REQUEST_SUCCESS) || (request->state == EC_INT_REQUEST_FAILURE)))) {
+           // interrupted by signal
+           kref_put(&request->refcount,ec_master_reg_request_release);
+           return -EINTR;
     }
 
-    // wait until master FSM has finished processing
-    wait_event(master->reg_queue, request.state != EC_INT_REQUEST_BUSY);
+    retval = request->state == EC_INT_REQUEST_SUCCESS ? 0 : -EIO;
+    kref_put(&request->refcount,ec_master_reg_request_release);
+    return retval;
 
-    kfree(contents);
-
-    return request.state == EC_INT_REQUEST_SUCCESS ? 0 : -EIO;
 }
 
 /*****************************************************************************/

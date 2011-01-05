@@ -74,8 +74,10 @@ typedef struct {
     size_t length; /**< Number of bytes. */
     uint8_t *data; /**< Data to write / memory for read data. */
     ec_internal_request_state_t state; /**< State of the request. */
+    struct kref refcount;
 } ec_reg_request_t;
 
+void ec_master_reg_request_release(struct kref *);
 
 /*****************************************************************************/
 
