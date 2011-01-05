@@ -1284,3 +1284,16 @@ void ec_master_foe_request_release(struct kref *ref)
     ec_foe_request_clear(&request->req);
     kfree(request);
 }
+
+/*****************************************************************************/
+
+/** called by kref_put if the SoE request's refcount becomes zero.
+ *
+ */
+void ec_master_soe_request_release(struct kref *ref)
+{
+    ec_master_soe_request_t *request = container_of(ref, ec_master_soe_request_t, refcount);
+    EC_SLAVE_DBG(request->slave, 1, "Releasing SoE request %p.\n",request);
+    ec_soe_request_clear(&request->req);
+    kfree(request);
+}

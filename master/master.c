@@ -2306,7 +2306,7 @@ int ecrt_master_write_idn(ec_master_t *master, uint16_t slave_position,
         uint8_t drive_no, uint16_t idn, uint8_t *data, size_t data_size,
         uint16_t *error_code)
 {
-    ec_master_soe_request_t request;
+    ec_master_soe_request_t* request;
     int retval;
 
     if (drive_no > 7) {
@@ -2314,63 +2314,61 @@ int ecrt_master_write_idn(ec_master_t *master, uint16_t slave_position,
         return -EINVAL;
     }
 
-    INIT_LIST_HEAD(&request.list);
-    ec_soe_request_init(&request.req);
-    ec_soe_request_set_drive_no(&request.req, drive_no);
-    ec_soe_request_set_idn(&request.req, idn);
+    request = kmalloc(sizeof(*request), GFP_KERNEL);
+    if (!request)
+        return -ENOMEM;
+    kref_init(&request->refcount);
 
-    if (ec_soe_request_alloc(&request.req, data_size)) {
-        ec_soe_request_clear(&request.req);
+    INIT_LIST_HEAD(&request->list);
+    ec_soe_request_init(&request->req);
+    ec_soe_request_set_drive_no(&request->req, drive_no);
+    ec_soe_request_set_idn(&request->req, idn);
+
+    if (ec_soe_request_alloc(&request->req, data_size)) {
+        ec_soe_request_clear(&request->req);
+        kref_put(&request->refcount,ec_master_soe_request_release);
         return -ENOMEM;
     }
 
-    memcpy(request.req.data, data, data_size);
-    request.req.data_size = data_size;
-    ec_soe_request_write(&request.req);
+    memcpy(request->req.data, data, data_size);
+    request->req.data_size = data_size;
+    ec_soe_request_write(&request->req);
 
-    if (ec_mutex_lock_interruptible(&master->master_mutex))
+    if (ec_mutex_lock_interruptible(&master->master_mutex)) {
+        kref_put(&request->refcount,ec_master_soe_request_release);
         return -EINTR;
+    }
 
-    if (!(request.slave = ec_master_find_slave(
+    if (!(request->slave = ec_master_find_slave(
                     master, 0, slave_position))) {
         ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "Slave %u does not exist!\n",
                 slave_position);
-        ec_soe_request_clear(&request.req);
+        kref_put(&request->refcount,ec_master_soe_request_release);
         return -EINVAL;
     }
 
-    EC_SLAVE_DBG(request.slave, 1, "Scheduling SoE write request.\n");
+    EC_SLAVE_DBG(request->slave, 1, "Scheduled SoE write request %p.\n",request);
 
     // schedule SoE write request.
-    list_add_tail(&request.list, &request.slave->soe_requests);
+    list_add_tail(&request->list, &request->slave->soe_requests);
+    kref_get(&request->refcount);
 
     ec_mutex_unlock(&master->master_mutex);
 
     // wait for processing through FSM
-    if (wait_event_interruptible(request.slave->soe_queue,
-                request.req.state != EC_INT_REQUEST_QUEUED)) {
-        // interrupted by signal
-        ec_mutex_lock(&master->master_mutex);
-        if (request.req.state == EC_INT_REQUEST_QUEUED) {
-            // abort request
-            list_del(&request.list);
-            ec_mutex_unlock(&master->master_mutex);
-            ec_soe_request_clear(&request.req);
-            return -EINTR;
-        }
-        ec_mutex_unlock(&master->master_mutex);
+    if (wait_event_interruptible(request->slave->soe_queue,
+          ((request->req.state == EC_INT_REQUEST_SUCCESS) || (request->req.state == EC_INT_REQUEST_FAILURE)))) {
+           // interrupted by signal
+           kref_put(&request->refcount,ec_master_soe_request_release);
+           return -EINTR;
     }
-
-    // wait until master FSM has finished processing
-    wait_event(request.slave->soe_queue,
-            request.req.state != EC_INT_REQUEST_BUSY);
 
     if (error_code) {
-        *error_code = request.req.error_code;
+        *error_code = request->req.error_code;
     }
-    retval = request.req.state == EC_INT_REQUEST_SUCCESS ? 0 : -EIO;
-    ec_soe_request_clear(&request.req);
+    retval = request->req.state == EC_INT_REQUEST_SUCCESS ? 0 : -EIO;
+    kref_put(&request->refcount,ec_master_soe_request_release);
 
     return retval;
 }
@@ -2381,78 +2379,76 @@ int ecrt_master_read_idn(ec_master_t *master, uint16_t slave_position,
         uint8_t drive_no, uint16_t idn, uint8_t *target, size_t target_size,
         size_t *result_size, uint16_t *error_code)
 {
-    ec_master_soe_request_t request;
+    ec_master_soe_request_t* request;
 
     if (drive_no > 7) {
         EC_MASTER_ERR(master, "Invalid drive number!\n");
         return -EINVAL;
     }
 
-    INIT_LIST_HEAD(&request.list);
-    ec_soe_request_init(&request.req);
-    ec_soe_request_set_drive_no(&request.req, drive_no);
-    ec_soe_request_set_idn(&request.req, idn);
-    ec_soe_request_read(&request.req);
+    request = kmalloc(sizeof(*request), GFP_KERNEL);
+    if (!request)
+        return -ENOMEM;
+    kref_init(&request->refcount);
 
-    if (ec_mutex_lock_interruptible(&master->master_mutex))
+    INIT_LIST_HEAD(&request->list);
+    ec_soe_request_init(&request->req);
+    ec_soe_request_set_drive_no(&request->req, drive_no);
+    ec_soe_request_set_idn(&request->req, idn);
+    ec_soe_request_read(&request->req);
+
+    if (ec_mutex_lock_interruptible(&master->master_mutex)) {
+        kref_put(&request->refcount,ec_master_soe_request_release);
         return -EINTR;
+    }
 
-    if (!(request.slave = ec_master_find_slave(master, 0, slave_position))) {
+    if (!(request->slave = ec_master_find_slave(master, 0, slave_position))) {
         ec_mutex_unlock(&master->master_mutex);
-        ec_soe_request_clear(&request.req);
+        kref_put(&request->refcount,ec_master_soe_request_release);
         EC_MASTER_ERR(master, "Slave %u does not exist!\n", slave_position);
         return -EINVAL;
     }
 
     // schedule request.
-    list_add_tail(&request.list, &request.slave->soe_requests);
+    list_add_tail(&request->list, &request->slave->soe_requests);
+    kref_get(&request->refcount);
 
     ec_mutex_unlock(&master->master_mutex);
 
-    EC_SLAVE_DBG(request.slave, 1, "Scheduled SoE read request.\n");
+    EC_SLAVE_DBG(request->slave, 1, "Scheduled SoE read request %p.\n",request);
 
     // wait for processing through FSM
-    if (wait_event_interruptible(request.slave->soe_queue,
-                request.req.state != EC_INT_REQUEST_QUEUED)) {
-        // interrupted by signal
-        ec_mutex_lock(&master->master_mutex);
-        if (request.req.state == EC_INT_REQUEST_QUEUED) {
-            list_del(&request.list);
-            ec_mutex_unlock(&master->master_mutex);
-            ec_soe_request_clear(&request.req);
-            return -EINTR;
-        }
-        // request already processing: interrupt not possible.
-        ec_mutex_unlock(&master->master_mutex);
+    if (wait_event_interruptible(request->slave->soe_queue,
+          ((request->req.state == EC_INT_REQUEST_SUCCESS) || (request->req.state == EC_INT_REQUEST_FAILURE)))) {
+           // interrupted by signal
+           kref_put(&request->refcount,ec_master_soe_request_release);
+           return -EINTR;
     }
-
-    // wait until master FSM has finished processing
-    wait_event(request.slave->soe_queue,
-            request.req.state != EC_INT_REQUEST_BUSY);
 
     if (error_code) {
-        *error_code = request.req.error_code;
+        *error_code = request->req.error_code;
     }
 
-    EC_SLAVE_DBG(request.slave, 1, "Read %zd bytes via SoE.\n",
-            request.req.data_size);
+    EC_SLAVE_DBG(request->slave, 1, "SoE request %p read %zd bytes via SoE.\n",
+            request,request->req.data_size);
 
-    if (request.req.state != EC_INT_REQUEST_SUCCESS) {
+    if (request->req.state != EC_INT_REQUEST_SUCCESS) {
         if (result_size) {
             *result_size = 0;
         }
-        ec_soe_request_clear(&request.req);
+        kref_put(&request->refcount,ec_master_soe_request_release);
         return -EIO;
     } else {
-        if (request.req.data_size > target_size) {
+        if (request->req.data_size > target_size) {
             EC_MASTER_ERR(master, "Buffer too small.\n");
-            ec_soe_request_clear(&request.req);
+            kref_put(&request->refcount,ec_master_soe_request_release);
             return -EOVERFLOW;
         }
         if (result_size) {
-            *result_size = request.req.data_size;
+            *result_size = request->req.data_size;
         }
-        memcpy(target, request.req.data, request.req.data_size);
+        memcpy(target, request->req.data, request->req.data_size);
+        kref_put(&request->refcount,ec_master_soe_request_release);
         return 0;
     }
 }

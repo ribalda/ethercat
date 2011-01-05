@@ -56,7 +56,7 @@ struct ec_fsm_slave {
     ec_master_sdo_request_t *sdo_request; /**< SDO request to process. */
     ec_master_foe_request_t *foe_request; /**< FoE request to process. */
     off_t foe_index; /**< index to FoE write request data */
-    ec_soe_request_t *soe_request; /**< SoE request to process. */
+    ec_master_soe_request_t *soe_request; /**< SoE request to process. */
 
     ec_fsm_coe_t fsm_coe; /**< CoE state machine */
     ec_fsm_foe_t fsm_foe; /**< FoE state machine */

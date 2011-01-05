@@ -113,7 +113,10 @@ typedef struct {
     struct list_head list; /**< List head. */
     ec_slave_t *slave; /**< EtherCAT slave. */
     ec_soe_request_t req; /**< SoE request. */
+    struct kref refcount;
 } ec_master_soe_request_t;
+
+void ec_master_soe_request_release(struct kref *);
 
 /*****************************************************************************/
 

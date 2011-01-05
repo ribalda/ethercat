@@ -221,6 +221,7 @@ void ec_slave_clear(ec_slave_t *slave /**< EtherCAT slave */)
         EC_SLAVE_WARN(slave, "Discarding SoE request,"
                 " slave about to be deleted.\n");
         request->req.state = EC_INT_REQUEST_FAILURE;
+        kref_put(&request->refcount,ec_master_soe_request_release);
         wake_up(&slave->soe_queue);
     }
 
