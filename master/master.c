@@ -1958,6 +1958,7 @@ void ecrt_master_deactivate(ec_master_t *master)
     ec_slave_t *slave;
 #ifdef EC_EOE
     ec_eoe_t *eoe;
+    int is_eoe_slave;
 #endif
 
     EC_MASTER_DBG(master, 1, "%s(master = 0x%p)\n", __func__, master);
@@ -1981,15 +1982,18 @@ void ecrt_master_deactivate(ec_master_t *master)
 
         // set state to PREOP for all but eoe slaves
 #ifdef EC_EOE
+        is_eoe_slave = 0;
         // ... but leave EoE slaves in OP
         list_for_each_entry(eoe, &master->eoe_handlers, list) {
-            if (slave != eoe->slave || !ec_eoe_is_open(eoe)) {
-                ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
-                // mark for reconfiguration, because the master could have no
-                // possibility for a reconfiguration between two sequential operation
-                // phases.
-                slave->force_config = 1;
-            }
+            if (slave == eoe->slave && ec_eoe_is_open(eoe))
+                is_eoe_slave = 1;
+       }
+       if (!is_eoe_slave) {
+           ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
+           // mark for reconfiguration, because the master could have no
+           // possibility for a reconfiguration between two sequential operation
+           // phases.
+           slave->force_config = 1;
         }
 #else
         ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
