@@ -40,9 +40,10 @@
 #include "../include/ecrt.h"
 
 #ifdef __KERNEL__
-#ifdef EC_USE_MUTEX
+#include <linux/version.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,24)
 #include <linux/rtmutex.h>
-#endif  // EC_USE_MUTEX
+#endif  // KERNEL_VERSION(2,6,24)
 #endif // __KERNEL__
 
 /******************************************************************************
@@ -318,7 +319,7 @@ typedef struct ec_slave ec_slave_t; /**< \see ec_slave. */
 /** Mutual exclusion helpers.
  *
  */
-#ifdef EC_USE_MUTEX
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,24)
 #define ec_mutex_t rt_mutex
 static inline void ec_mutex_init(struct ec_mutex_t *mutex)
 {
@@ -340,7 +341,7 @@ static inline void ec_mutex_unlock(struct ec_mutex_t *mutex)
 {
     rt_mutex_unlock(mutex);
 }
-#else   // EC_USE_MUTEX
+#else   // < KERNEL_VERSION(2,6,24)
 #define ec_mutex_t semaphore
 static inline void ec_mutex_init(struct ec_mutex_t *sem)
 {
@@ -364,7 +365,7 @@ static inline void ec_mutex_unlock(struct ec_mutex_t *sem)
     up(sem);
 }
 
-#endif // EC_USE_MUTEX
+#endif // KERNEL_VERSION(2,6,24)
 #endif // __KERNEL__
 
 #endif

@@ -536,30 +536,6 @@ if test "x${regalias}" = "x1"; then
     AC_DEFINE([EC_REGALIAS], [1], [Read alias adresses from register])
 fi
 
-#------------------------------------------------------------------------------
-# use mutexes instead of semaphores
-#------------------------------------------------------------------------------
-
-AC_ARG_ENABLE([mutex],
-    AS_HELP_STRING([--enable-mutex],
-                   [Use mutex instead of semaphores for mutual exclusion (default: no)]),
-    [
-        case "${enableval}" in
-            yes) mutex=1
-                ;;
-            no) mutex=0
-                ;;
-            *) AC_MSG_ERROR([Invalid value for --enable-mutex])
-                ;;
-        esac
-    ],
-    [mutex=0]
-)
-
-if test "x${mutex}" = "x1"; then
-    AC_DEFINE([EC_USE_MUTEX], [1], [Use mutex for mutual exclusion])
-fi
-
 
 #------------------------------------------------------------------------------
 # Command-line tool
