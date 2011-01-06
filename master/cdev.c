@@ -864,9 +864,9 @@ int ec_cdev_ioctl_slave_sdo_upload(
     if (!(request->slave = ec_master_find_slave(
                     master, 0, data.slave_position))) {
         ec_mutex_unlock(&master->master_mutex);
-        kref_put(&request->refcount,ec_master_sdo_request_release);
         EC_MASTER_ERR(master, "Slave %u does not exist!\n",
                 data.slave_position);
+        kref_put(&request->refcount,ec_master_sdo_request_release);
         return -EINVAL;
     }
 

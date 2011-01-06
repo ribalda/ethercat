@@ -1240,7 +1240,8 @@ void ec_fsm_master_state_reg_request(
 void ec_master_sii_write_request_release(struct kref *ref)
 {
     ec_sii_write_request_t *request = container_of(ref, ec_sii_write_request_t, refcount);
-    EC_SLAVE_DBG(request->slave, 1, "Releasing SII write request %p.\n",request);
+    if (request->slave)
+        EC_SLAVE_DBG(request->slave, 1, "Releasing SII write request %p.\n",request);
     kfree(request->words);
     kfree(request);
 }
@@ -1253,7 +1254,8 @@ void ec_master_sii_write_request_release(struct kref *ref)
 void ec_master_reg_request_release(struct kref *ref)
 {
     ec_reg_request_t *request = container_of(ref, ec_reg_request_t, refcount);
-    EC_SLAVE_DBG(request->slave, 1, "Releasing reg request %p.\n",request);
+    if (request->slave)
+        EC_SLAVE_DBG(request->slave, 1, "Releasing reg request %p.\n",request);
     if (request->data)
         kfree(request->data);
     kfree(request);
@@ -1267,7 +1269,8 @@ void ec_master_reg_request_release(struct kref *ref)
 void ec_master_sdo_request_release(struct kref *ref)
 {
     ec_master_sdo_request_t *request = container_of(ref, ec_master_sdo_request_t, refcount);
-    EC_SLAVE_DBG(request->slave, 1, "Releasing SDO request %p.\n",request);
+    if (request->slave)
+        EC_SLAVE_DBG(request->slave, 1, "Releasing SDO request %p.\n",request);
     ec_sdo_request_clear(&request->req);
     kfree(request);
 }
@@ -1280,7 +1283,8 @@ void ec_master_sdo_request_release(struct kref *ref)
 void ec_master_foe_request_release(struct kref *ref)
 {
     ec_master_foe_request_t *request = container_of(ref, ec_master_foe_request_t, refcount);
-    EC_SLAVE_DBG(request->slave, 1, "Releasing FoE request %p.\n",request);
+    if (request->slave)
+        EC_SLAVE_DBG(request->slave, 1, "Releasing FoE request %p.\n",request);
     ec_foe_request_clear(&request->req);
     kfree(request);
 }
@@ -1293,7 +1297,8 @@ void ec_master_foe_request_release(struct kref *ref)
 void ec_master_soe_request_release(struct kref *ref)
 {
     ec_master_soe_request_t *request = container_of(ref, ec_master_soe_request_t, refcount);
-    EC_SLAVE_DBG(request->slave, 1, "Releasing SoE request %p.\n",request);
+    if (request->slave)
+        EC_SLAVE_DBG(request->slave, 1, "Releasing SoE request %p.\n",request);
     ec_soe_request_clear(&request->req);
     kfree(request);
 }
