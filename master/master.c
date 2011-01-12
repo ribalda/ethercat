@@ -58,7 +58,11 @@
 
 /** Set to 1 to enable external datagram injection debugging.
  */
+#ifdef USE_TRACE_PRINTK
+#define DEBUG_INJECT 1
+#else
 #define DEBUG_INJECT 0
+#endif
 
 #ifdef EC_HAVE_CYCLES
 
@@ -682,7 +686,7 @@ void ec_master_inject_fsm_datagrams(
         if (queue_size <= master->max_queue_size) {
             list_del_init(&datagram->queue);
 #if DEBUG_INJECT
-            EC_MASTER_DBG(master, 0, "Injecting fsm datagram %p"
+            EC_MASTER_DBG(master, 2, "Injecting fsm datagram %p"
                     " size=%zu, queue_size=%zu\n", datagram,
                     datagram->data_size, queue_size);
 #endif
@@ -730,7 +734,7 @@ void ec_master_inject_fsm_datagrams(
                 }
 #if DEBUG_INJECT
                 else {
-                    EC_MASTER_DBG(master, 0, "Deferred injecting"
+                    EC_MASTER_DBG(master, 2, "Deferred injecting"
                             " of fsm datagram %p"
                             " size=%zu, queue_size=%zu\n",
                             datagram, datagram->data_size, queue_size);
@@ -801,7 +805,7 @@ void ec_master_queue_fsm_datagram(
     }
 
 #if DEBUG_INJECT
-    EC_MASTER_DBG(master, 0, "Requesting fsm datagram %p size=%zu\n",
+    EC_MASTER_DBG(master, 2, "Requesting fsm datagram %p size=%zu\n",
             datagram, datagram->data_size);
 #endif
 
@@ -894,8 +898,8 @@ void ec_master_send_datagrams(ec_master_t *master /**< EtherCAT master */)
             list_add_tail(&datagram->sent, &sent_datagrams);
             datagram->index = master->datagram_index++;
 
-            EC_MASTER_DBG(master, 2, "adding datagram 0x%02X\n",
-                    datagram->index);
+            EC_MASTER_DBG(master, 2, "adding datagram %p i=0x%02X size=%zu\n",datagram,
+                    datagram->index,datagram_size);
 
             // set "datagram following" flag in previous frame
             if (follows_word)
@@ -921,8 +925,8 @@ void ec_master_send_datagrams(ec_master_t *master /**< EtherCAT master */)
                         unsigned int frame_offset = domain_fmmu->logical_start_address-datagram_address;
                         memcpy(frame_datagram_data+frame_offset, domain_data, domain_fmmu->data_size);
                         if (unlikely(master->debug_level > 1)) {
-							EC_DBG("sending dg 0x%02X fmmu %u fp=%u dp=%zu size=%u\n",
-                                   datagram->index, i,frame_offset,domain_data-datagram->data,domain_fmmu->data_size);
+                            EC_DBG("sending dg %p i=0x%02X fmmu %u fp=%u dp=%zu size=%u\n",
+                                   datagram,datagram->index, i,frame_offset,domain_data-datagram->data,domain_fmmu->data_size);
                             ec_print_data(domain_data, domain_fmmu->data_size);
                         }
                     }
@@ -1097,8 +1101,9 @@ void ec_master_receive_datagrams(ec_master_t *master, /**< EtherCAT master */
                     unsigned int frame_offset = domain_fmmu->logical_start_address-datagram_address;
                     memcpy(domain_data, frame_datagram_data+frame_offset, domain_fmmu->data_size);
                     if (unlikely(master->debug_level > 1)) {
-						EC_DBG("receiving dg 0x%02X fmmu %u fp=%u dp=%zu size=%u\n",
-                               datagram->index, i,frame_offset,domain_data-datagram->data,domain_fmmu->data_size);
+                        EC_DBG("receiving dg %p i=0x%02X fmmu %u fp=%u dp=%zu size=%u\n",
+                               datagram,datagram->index, i,
+                               frame_offset,domain_data-datagram->data,domain_fmmu->data_size);
                         ec_print_data(domain_data, domain_fmmu->data_size);
                     }
                 }
@@ -1122,6 +1127,8 @@ void ec_master_receive_datagrams(ec_master_t *master, /**< EtherCAT master */
         datagram->cycles_received = master->main_device.cycles_poll;
 #endif
         datagram->jiffies_received = master->main_device.jiffies_poll;
+        EC_MASTER_DBG(master, 2, "removing datagram %p i=0x%02X\n",datagram,
+                datagram->index);
         list_del_init(&datagram->queue);
     }
 }

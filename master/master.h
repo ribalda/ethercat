@@ -61,8 +61,16 @@
  * \param fmt format string (like in printf())
  * \param args arguments (optional)
  */
+#ifdef USE_TRACE_PRINTK
+#define EC_MASTER_INFO(master, fmt, args...) \
+    do { \
+        __trace_printk(_THIS_IP_,"EtherCAT %u: " fmt, master->index, ##args); \
+        printk(KERN_INFO "EtherCAT %u: " fmt, master->index, ##args);   \
+    } while (0)
+#else
 #define EC_MASTER_INFO(master, fmt, args...) \
     printk(KERN_INFO "EtherCAT %u: " fmt, master->index, ##args)
+#endif
 
 /** Convenience macro for printing master-specific errors to syslog.
  *
@@ -73,8 +81,16 @@
  * \param fmt format string (like in printf())
  * \param args arguments (optional)
  */
+#ifdef USE_TRACE_PRINTK
+#define EC_MASTER_ERR(master, fmt, args...) \
+    do { \
+        __trace_printk(_THIS_IP_,"EtherCAT ERROR %u: " fmt, master->index, ##args); \
+        printk(KERN_ERR "EtherCAT ERROR %u: " fmt, master->index, ##args); \
+    } while (0)
+#else
 #define EC_MASTER_ERR(master, fmt, args...) \
     printk(KERN_ERR "EtherCAT ERROR %u: " fmt, master->index, ##args)
+#endif
 
 /** Convenience macro for printing master-specific warnings to syslog.
  *
@@ -85,8 +101,16 @@
  * \param fmt format string (like in printf())
  * \param args arguments (optional)
  */
+#ifdef USE_TRACE_PRINTK
+#define EC_MASTER_WARN(master, fmt, args...) \
+    do { \
+        __trace_printk(_THIS_IP_,"EtherCAT WARNING %u: " fmt, master->index, ##args); \
+        printk(KERN_WARNING "EtherCAT WARNING %u: " fmt, master->index, ##args);    \
+    } while (0)
+#else
 #define EC_MASTER_WARN(master, fmt, args...) \
     printk(KERN_WARNING "EtherCAT WARNING %u: " fmt, master->index, ##args)
+#endif
 
 /** Convenience macro for printing master-specific debug messages to syslog.
  *
@@ -97,6 +121,17 @@
  * \param fmt format string (like in printf())
  * \param args arguments (optional)
  */
+#ifdef USE_TRACE_PRINTK
+#define EC_MASTER_DBG(master, level, fmt, args...) \
+    do { \
+        __trace_printk(_THIS_IP_,"EtherCAT DEBUG%u %u: " fmt, \
+            level,master->index, ##args); \
+        if (master->debug_level >= level) { \
+            printk(KERN_DEBUG "EtherCAT DEBUG %u: " fmt, \
+                    master->index, ##args); \
+        } \
+    } while (0)
+#else
 #define EC_MASTER_DBG(master, level, fmt, args...) \
     do { \
         if (master->debug_level >= level) { \
@@ -104,6 +139,7 @@
                     master->index, ##args); \
         } \
     } while (0)
+#endif
 
 /*****************************************************************************/
 
