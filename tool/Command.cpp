@@ -38,6 +38,11 @@ using namespace std;
 
 /*****************************************************************************/
 
+typedef map<uint16_t, ec_ioctl_config_t> AliasMap;
+typedef map<uint16_t, AliasMap> ConfigMap;
+
+/*****************************************************************************/
+
 class MasterIndexParser:
     public NumberListParser
 {
@@ -85,27 +90,14 @@ class ConfigAliasParser:
     public NumberListParser
 {
     public:
-        ConfigAliasParser(ec_ioctl_master_t &master, MasterDevice &dev):
-            master(master), dev(dev) {}
+        ConfigAliasParser(unsigned int maxAlias):
+            maxAlias(maxAlias) {}
 
     protected:
-        int getMax() {
-            unsigned int i;
-
-            uint16_t maxAlias = 0;
-            for (i = 0; i < master.config_count; i++) {
-                ec_ioctl_config_t config;
-                dev.getConfig(&config, i);
-                if (config.alias > maxAlias) {
-                    maxAlias = config.alias;
-                }
-            }
-            return maxAlias ? maxAlias : -1;
-        };
+        int getMax() { return maxAlias; };
 
     private:
-        ec_ioctl_master_t &master;
-        MasterDevice &dev;
+        unsigned int maxAlias;
 };
 
 /*****************************************************************************/
@@ -124,6 +116,33 @@ class PositionParser:
 
     private:
         const unsigned int count;
+};
+
+/*****************************************************************************/
+
+class AliasPositionParser:
+    public NumberListParser
+{
+    public:
+        AliasPositionParser(const AliasMap &aliasMap):
+            aliasMap(aliasMap) {}
+
+    protected:
+        int getMax() {
+            AliasMap::const_iterator i;
+            int maxPos = -1;
+
+            for (i = aliasMap.begin(); i != aliasMap.end(); i++) {
+                if (i->first > maxPos) {
+                    maxPos = i->first;
+                }
+            }
+
+            return maxPos;
+        };
+
+    private:
+        const AliasMap &aliasMap;
 };
 
 /*****************************************************************************/
@@ -293,11 +312,13 @@ Command::MasterIndexList Command::getMasterIndices() const
 unsigned int Command::getSingleMasterIndex() const
 {
     MasterIndexList masterIndices = getMasterIndices();
+
     if (masterIndices.size() != 1) {
         stringstream err;
         err << getName() << " requires to select a single master!";
         throwInvalidUsageException(err);
     }
+
     return masterIndices.front();
 }
 
@@ -316,9 +337,12 @@ Command::SlaveList Command::selectedSlaves(MasterDevice &m)
         PositionParser pp(master.slave_count);
         NumberListParser::List posList = pp.parse(positions.c_str());
         NumberListParser::List::const_iterator pi;
+
         for (pi = posList.begin(); pi != posList.end(); pi++) {
-            m.getSlave(&slave, *pi);
-            list.push_back(slave);
+            if (*pi < master.slave_count) {
+                m.getSlave(&slave, *pi);
+                list.push_back(slave);
+            }
         }
     } else { // aliases given
         SlaveAliasParser ap(master, m);
@@ -353,11 +377,6 @@ Command::SlaveList Command::selectedSlaves(MasterDevice &m)
             for (pi = posList.begin(); pi != posList.end(); pi++) {
                 if (*pi < aliasSlaves.size()) {
                     list.push_back(aliasSlaves[*pi]);
-                } else {
-                    stringstream err;
-                    err << "Warning: Slave " << *ai << ":" << *pi
-                        << " does not exist on master " << m.getIndex();
-                    throwCommandException(err);
                 }
             }
         }
@@ -389,50 +408,47 @@ Command::ConfigList Command::selectedConfigs(MasterDevice &m)
 
     m.getMaster(&master);
 
-    if (aliases == "-") { // no alias given
-        PositionParser pp(master.config_count);
-        NumberListParser::List posList = pp.parse(positions.c_str());
-        NumberListParser::List::const_iterator pi;
-        for (pi = posList.begin(); pi != posList.end(); pi++) {
-            m.getConfig(&config, *pi); // FIXME use sorted list
+    if (aliases == "-" && positions == "-") { // shortcut
+        for (i = 0; i < master.config_count; i++) {
+            m.getConfig(&config, i);
             list.push_back(config);
         }
-    } else { // alias given
-        ConfigAliasParser ap(master, m);
+    } else { // take the long way home...
+        ConfigMap configs;
+        uint16_t maxAlias = 0;
+
+        // fill cascaded map structure with all configs
+        for (i = 0; i < master.config_count; i++) {
+            m.getConfig(&config, i);
+            AliasMap &aliasMap = configs[config.alias];
+            aliasMap[config.position] = config;
+            if (config.alias > maxAlias) {
+                maxAlias = config.alias;
+            }
+        }
+
+        ConfigAliasParser ap(maxAlias);
         NumberListParser::List aliasList = ap.parse(aliases.c_str());
         NumberListParser::List::const_iterator ai;
 
         for (ai = aliasList.begin(); ai != aliasList.end(); ai++) {
 
-            // gather configs with that alias
-            map<uint16_t, ec_ioctl_config_t> aliasConfigs;
-
-            int maxPos = -1;
-            for (i = 0; i < master.config_count; i++) {
-                m.getConfig(&config, i);
-                if (config.alias == *ai) {
-                    aliasConfigs[config.position] = config;
-                    if (config.position > maxPos) {
-                        maxPos = config.position;
-                    }
-                }
+            ConfigMap::iterator ci = configs.find(*ai);
+            if (ci == configs.end()) {
+                continue;
             }
 
-            PositionParser pp(maxPos + 1);
+            AliasMap &aliasMap = configs[*ai];
+            AliasPositionParser pp(aliasMap);
             NumberListParser::List posList = pp.parse(positions.c_str());
             NumberListParser::List::const_iterator pi;
 
             for (pi = posList.begin(); pi != posList.end(); pi++) {
-                map<uint16_t, ec_ioctl_config_t>::const_iterator ci;
-                ci = aliasConfigs.find(*pi);
+                AliasMap::const_iterator ci;
 
-                if (ci != aliasConfigs.end()) {
+                ci = aliasMap.find(*pi);
+                if (ci != aliasMap.end()) {
                     list.push_back(ci->second);
-                } else { 
-                    stringstream err;
-                    err << "Warning: Config " << *ai << ":" << *pi
-                        << " does not exist on master " << m.getIndex();
-                    throwCommandException(err);
                 }
             }
         }
@@ -456,9 +472,11 @@ Command::DomainList Command::selectedDomains(MasterDevice &m)
     NumberListParser::List::const_iterator di;
 
     for (di = domList.begin(); di != domList.end(); di++) {
-        ec_ioctl_domain_t d;
-        m.getDomain(&d, *di);
-        list.push_back(d);
+        if (*di < master.domain_count) {
+            ec_ioctl_domain_t d;
+            m.getDomain(&d, *di);
+            list.push_back(d);
+        }
     }
 
     return list;
