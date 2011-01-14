@@ -86,7 +86,8 @@ typedef enum {
  */
 typedef struct {
     struct list_head list; /**< Needed by domain datagram lists. */
-    struct list_head queue; /**< Master datagram queue item. */
+    struct list_head queue; /**< Master datagram send-receive queue item. */
+    struct list_head fsm_queue; /**< Master datagram fsm queue item. */
     struct list_head sent; /**< Master list item for sent datagrams. */
     ec_datagram_type_t type; /**< Datagram type (APRD, BWR, etc.). */
     uint8_t address[EC_ADDR_LEN]; /**< Recipient address. */

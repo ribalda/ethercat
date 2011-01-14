@@ -416,11 +416,18 @@ void ec_master_clear_slaves(ec_master_t *master)
         wake_up(&master->reg_queue);
     }
 
+    // we must lock the fsm_queue here because the slave's fsm_datagram will be unqueued
+    if (master->fsm_queue_lock_cb)
+        master->fsm_queue_lock_cb(master->fsm_queue_locking_data);
+    ec_mutex_lock(&master->fsm_queue_mutex);
     for (slave = master->slaves;
             slave < master->slaves + master->slave_count;
             slave++) {
         ec_slave_clear(slave);
     }
+    ec_mutex_unlock(&master->fsm_queue_mutex);
+    if (master->fsm_queue_unlock_cb)
+        master->fsm_queue_unlock_cb(master->fsm_queue_locking_data);
 
     if (master->slaves) {
         kfree(master->slaves);
@@ -668,8 +675,11 @@ void ec_master_inject_fsm_datagrams(
 
     if (master->fsm_queue_lock_cb)
         master->fsm_queue_lock_cb(master->fsm_queue_locking_data);
-    if (ec_mutex_trylock(&master->fsm_queue_mutex) == 0)
-        return;
+    if (ec_mutex_trylock(&master->fsm_queue_mutex) == 0) {
+           if (master->fsm_queue_unlock_cb)
+               master->fsm_queue_unlock_cb(master->fsm_queue_locking_data);
+           return;
+    }
     if (list_empty(&master->fsm_datagram_queue)) {
         ec_mutex_unlock(&master->fsm_queue_mutex);
         if (master->fsm_queue_unlock_cb)
@@ -681,10 +691,10 @@ void ec_master_inject_fsm_datagrams(
     }
 
     list_for_each_entry_safe(datagram, n, &master->fsm_datagram_queue,
-            queue) {
+            fsm_queue) {
         queue_size += datagram->data_size;
         if (queue_size <= master->max_queue_size) {
-            list_del_init(&datagram->queue);
+            list_del_init(&datagram->fsm_queue);
 #if DEBUG_INJECT
             EC_MASTER_DBG(master, 2, "Injecting fsm datagram %p"
                     " size=%zu, queue_size=%zu\n", datagram,
@@ -698,7 +708,7 @@ void ec_master_inject_fsm_datagrams(
         }
         else {
             if (datagram->data_size > master->max_queue_size) {
-                list_del_init(&datagram->queue);
+                list_del_init(&datagram->fsm_queue);
                 datagram->state = EC_DATAGRAM_ERROR;
                 EC_MASTER_ERR(master, "Fsm datagram %p is too large,"
                         " size=%zu, max_queue_size=%zu\n",
@@ -717,7 +727,7 @@ void ec_master_inject_fsm_datagrams(
                 {
                     unsigned int time_us;
 
-                    list_del_init(&datagram->queue);
+                    list_del_init(&datagram->fsm_queue);
                     datagram->state = EC_DATAGRAM_ERROR;
 #ifdef EC_HAVE_CYCLES
                     time_us = (unsigned int)
@@ -794,7 +804,7 @@ void ec_master_queue_fsm_datagram(
 
     // check, if the datagram is already queued
     list_for_each_entry(queued_datagram, &master->fsm_datagram_queue,
-            queue) {
+            fsm_queue) {
         if (queued_datagram == datagram) {
             datagram->state = EC_DATAGRAM_QUEUED;
             ec_mutex_unlock(&master->fsm_queue_mutex);
@@ -809,7 +819,7 @@ void ec_master_queue_fsm_datagram(
             datagram, datagram->data_size);
 #endif
 
-    list_add_tail(&datagram->queue, &master->fsm_datagram_queue);
+    list_add_tail(&datagram->fsm_queue, &master->fsm_datagram_queue);
     datagram->state = EC_DATAGRAM_QUEUED;
 #ifdef EC_HAVE_CYCLES
     datagram->cycles_sent = get_cycles();

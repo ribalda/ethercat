@@ -87,7 +87,10 @@ static const char *type_strings[] = {
  */
 void ec_datagram_init(ec_datagram_t *datagram /**< EtherCAT datagram. */)
 {
+    INIT_LIST_HEAD(&datagram->list); // mark as unqueued
     INIT_LIST_HEAD(&datagram->queue); // mark as unqueued
+    INIT_LIST_HEAD(&datagram->fsm_queue); // mark as unqueued
+    INIT_LIST_HEAD(&datagram->sent); // mark as unqueued
     datagram->type = EC_DATAGRAM_NONE;
     memset(datagram->address, 0x00, EC_ADDR_LEN);
     datagram->data = NULL;
@@ -131,8 +134,8 @@ void ec_datagram_clear(ec_datagram_t *datagram /**< EtherCAT datagram. */)
  */
 void ec_datagram_unqueue(ec_datagram_t *datagram /**< EtherCAT datagram. */)
 {
-    if (!list_empty(&datagram->queue)) {
-        list_del_init(&datagram->queue);
+    if (!list_empty(&datagram->fsm_queue)) {
+        list_del_init(&datagram->fsm_queue);
     }
 }
 
