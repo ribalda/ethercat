@@ -56,7 +56,7 @@
 
 /*****************************************************************************/
 
-/** Set to 1 to enable external datagram injection debugging.
+/** Set to 1 to enable fsm datagram injection debugging.
  */
 #ifdef USE_TRACE_PRINTK
 #define DEBUG_INJECT 1
@@ -670,7 +670,7 @@ void ec_master_inject_fsm_datagrams(
         ec_master_t *master /**< EtherCAT master */
         )
 {
-    ec_datagram_t *datagram, *n;
+    ec_datagram_t *datagram, *next;
     size_t queue_size = 0;
 
     if (master->fsm_queue_lock_cb)
@@ -690,7 +690,7 @@ void ec_master_inject_fsm_datagrams(
         queue_size += datagram->data_size;
     }
 
-    list_for_each_entry_safe(datagram, n, &master->fsm_datagram_queue,
+    list_for_each_entry_safe(datagram, next, &master->fsm_datagram_queue,
             fsm_queue) {
         queue_size += datagram->data_size;
         if (queue_size <= master->max_queue_size) {
@@ -1285,7 +1285,7 @@ static int ec_master_idle_thread(void *priv_data)
         for (slave = master->slaves;
                 slave < master->slaves + master->slave_count;
                 slave++) {
-            ec_fsm_slave_exec(&slave->fsm); // may queue datagram in external queue
+            ec_fsm_slave_exec(&slave->fsm); // may queue datagram in fsm queue
         }
 #if defined(EC_EOE)
         if (!ec_master_eoe_processing(master))
@@ -1348,7 +1348,7 @@ static int ec_master_operation_thread(void *priv_data)
         for (slave = master->slaves;
                 slave < master->slaves + master->slave_count;
                 slave++) {
-            ec_fsm_slave_exec(&slave->fsm); // may queue datagram in external queue
+            ec_fsm_slave_exec(&slave->fsm); // may queue datagram in fsm queue
         }
 #if defined(EC_EOE)
         ec_master_eoe_processing(master);
@@ -2039,13 +2039,13 @@ void ecrt_master_deactivate(ec_master_t *master)
 
 void ecrt_master_send(ec_master_t *master)
 {
-    ec_datagram_t *datagram, *n;
+    ec_datagram_t *datagram, *next;
 
     ec_master_inject_fsm_datagrams(master);
 
     if (unlikely(!master->main_device.link_state)) {
         // link is down, no datagram can be sent
-        list_for_each_entry_safe(datagram, n, &master->datagram_queue, queue) {
+        list_for_each_entry_safe(datagram, next, &master->datagram_queue, queue) {
             datagram->state = EC_DATAGRAM_ERROR;
             list_del_init(&datagram->queue);
         }
