@@ -416,18 +416,14 @@ void ec_master_clear_slaves(ec_master_t *master)
         wake_up(&master->reg_queue);
     }
 
-    // we must lock the fsm_queue here because the slave's fsm_datagram will be unqueued
-    if (master->fsm_queue_lock_cb)
-        master->fsm_queue_lock_cb(master->fsm_queue_locking_data);
-    ec_mutex_lock(&master->fsm_queue_mutex);
+    // we must lock the io_mutex here because the slave's fsm_datagram will be unqueued
+    ec_mutex_lock(&master->io_mutex);
     for (slave = master->slaves;
             slave < master->slaves + master->slave_count;
             slave++) {
         ec_slave_clear(slave);
     }
-    ec_mutex_unlock(&master->fsm_queue_mutex);
-    if (master->fsm_queue_unlock_cb)
-        master->fsm_queue_unlock_cb(master->fsm_queue_locking_data);
+    ec_mutex_unlock(&master->io_mutex);
 
     if (master->slaves) {
         kfree(master->slaves);
@@ -445,11 +441,14 @@ void ec_master_clear_domains(ec_master_t *master)
 {
     ec_domain_t *domain, *next;
 
+    // we must lock the io_mutex here because the domains's datagram will be unqueued
+    ec_mutex_lock(&master->io_mutex);
     list_for_each_entry_safe(domain, next, &master->domains, list) {
         list_del(&domain->list);
         ec_domain_clear(domain);
         kfree(domain);
     }
+    ec_mutex_unlock(&master->io_mutex);
 }
 
 /*****************************************************************************/

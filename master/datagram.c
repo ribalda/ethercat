@@ -137,6 +137,9 @@ void ec_datagram_unqueue(ec_datagram_t *datagram /**< EtherCAT datagram. */)
     if (!list_empty(&datagram->fsm_queue)) {
         list_del_init(&datagram->fsm_queue);
     }
+    if (!list_empty(&datagram->queue)) {
+        list_del_init(&datagram->queue);
+    }
 }
 
 /*****************************************************************************/
