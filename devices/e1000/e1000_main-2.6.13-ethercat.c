@@ -2682,7 +2682,7 @@ e1000_intr(int irq, void *data, struct pt_regs *regs)
 #ifdef CONFIG_E1000_NAPI
 	if (adapter->ecdev) {
 		for(i = 0; i < E1000_MAX_INTR; i++)
-			if(unlikely(!adapter->clean_rx(adapter, &work_done, 100) &
+			if(unlikely(!adapter->clean_rx(adapter, &work_done, 100) &&
 						!e1000_clean_tx_irq(adapter)))
 				break;
 	} else {
