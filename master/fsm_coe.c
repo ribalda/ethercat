@@ -503,10 +503,13 @@ void ec_fsm_coe_dict_response(ec_fsm_coe_t *fsm /**< finite state machine */)
         return;
     }
 
-    sdo_count = (rec_size - 8) / 2;
+    bool first_segment = list_empty(&slave->sdo_dictionary) ? true : false;
+    size_t index_list_offset = first_segment ? 8 : 6;
+
+    sdo_count = (rec_size - index_list_offset) / 2;
 
     for (i = 0; i < sdo_count; i++) {
-        sdo_index = EC_READ_U16(data + 8 + i * 2);
+        sdo_index = EC_READ_U16(data + index_list_offset + i * 2);
         if (!sdo_index) {
             EC_SLAVE_DBG(slave, 1, "SDO dictionary contains index 0x0000.\n");
             continue;
