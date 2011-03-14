@@ -324,7 +324,7 @@ void ec_eoe_run(ec_eoe_t *eoe /**< EoE handler */)
 
     // if the datagram was not sent, or is not yet received, skip this cycle
     if (eoe->queue_datagram ||
-        eoe->datagram.state == EC_DATAGRAM_SENT || eoe->datagram.state == EC_DATAGRAM_QUEUED)
+        eoe->datagram.state == EC_DATAGRAM_QUEUED || eoe->datagram.state == EC_DATAGRAM_SENT)
         return;
 
     // call state function

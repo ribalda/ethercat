@@ -133,8 +133,8 @@ int ec_fsm_master_exec(
         ec_fsm_master_t *fsm /**< Master state machine. */
         )
 {
-    if (fsm->datagram->state == EC_DATAGRAM_SENT
-        || fsm->datagram->state == EC_DATAGRAM_QUEUED) {
+    if (fsm->datagram->state == EC_DATAGRAM_QUEUED
+        || fsm->datagram->state == EC_DATAGRAM_SENT) {
         // datagram was not sent or received yet.
         return 0;
     }

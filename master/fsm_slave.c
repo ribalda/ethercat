@@ -101,8 +101,8 @@ int ec_fsm_slave_exec(
         ec_fsm_slave_t *fsm /**< Slave state machine. */
         )
 {
-    if (fsm->datagram->state == EC_DATAGRAM_SENT
-        || fsm->datagram->state == EC_DATAGRAM_QUEUED) {
+    if (fsm->datagram->state == EC_DATAGRAM_QUEUED
+        || fsm->datagram->state == EC_DATAGRAM_SENT) {
         // datagram was not sent or received yet.
         return 0;
     }

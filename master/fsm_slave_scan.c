@@ -137,8 +137,8 @@ int ec_fsm_slave_scan_running(const ec_fsm_slave_scan_t *fsm /**< slave state ma
 
 int ec_fsm_slave_scan_exec(ec_fsm_slave_scan_t *fsm /**< slave state machine */)
 {
-    if (fsm->datagram->state == EC_DATAGRAM_SENT
-        || fsm->datagram->state == EC_DATAGRAM_QUEUED) {
+    if (fsm->datagram->state == EC_DATAGRAM_QUEUED
+        || fsm->datagram->state == EC_DATAGRAM_SENT) {
         // datagram was not sent or received yet.
         return ec_fsm_slave_scan_running(fsm);
     }
