@@ -85,6 +85,7 @@ void ec_fsm_master_init(
 {
     fsm->master = master;
     fsm->datagram = datagram;
+    fsm->mbox = &master->fsm_mbox;
     fsm->state = ec_fsm_master_state_start;
     fsm->idle = 0;
     fsm->link_state = 0;
@@ -93,7 +94,7 @@ void ec_fsm_master_init(
     fsm->slave_states = EC_SLAVE_STATE_UNKNOWN;
 
     // init sub-state-machines
-    ec_fsm_coe_init(&fsm->fsm_coe, fsm->datagram);
+    ec_fsm_coe_init(&fsm->fsm_coe, fsm->mbox);
     ec_fsm_pdo_init(&fsm->fsm_pdo, &fsm->fsm_coe);
     ec_fsm_change_init(&fsm->fsm_change, fsm->datagram);
     ec_fsm_slave_config_init(&fsm->fsm_slave_config, fsm->datagram,
@@ -133,12 +134,11 @@ int ec_fsm_master_exec(
         ec_fsm_master_t *fsm /**< Master state machine. */
         )
 {
-    if (fsm->datagram->state == EC_DATAGRAM_QUEUED
-        || fsm->datagram->state == EC_DATAGRAM_SENT) {
+    if (ec_mbox_is_datagram_state(fsm->mbox,EC_DATAGRAM_QUEUED)
+        || ec_mbox_is_datagram_state(fsm->mbox,EC_DATAGRAM_SENT)) {
         // datagram was not sent or received yet.
         return 0;
     }
-
     fsm->state(fsm);
     return 1;
 }

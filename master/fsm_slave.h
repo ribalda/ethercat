@@ -50,7 +50,7 @@ typedef struct ec_fsm_slave ec_fsm_slave_t; /**< \see ec_fsm_slave */
  */
 struct ec_fsm_slave {
     ec_slave_t *slave; /**< slave the FSM runs on */
-    ec_datagram_t *datagram; /**< datagram used in the state machine */
+    ec_mailbox_t *mbox; /**< mailbox used in the state machine */
 
     void (*state)(ec_fsm_slave_t *); /**< master state function */
     ec_master_sdo_request_t *sdo_request; /**< SDO request to process. */
@@ -65,7 +65,7 @@ struct ec_fsm_slave {
 
 /*****************************************************************************/
 
-void ec_fsm_slave_init(ec_fsm_slave_t *, ec_slave_t *, ec_datagram_t *);
+void ec_fsm_slave_init(ec_fsm_slave_t *, ec_slave_t *, ec_mailbox_t *);
 void ec_fsm_slave_clear(ec_fsm_slave_t *);
 
 int ec_fsm_slave_exec(ec_fsm_slave_t *);

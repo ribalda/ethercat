@@ -57,21 +57,21 @@ void ec_fsm_slave_state_soe_request(ec_fsm_slave_t *);
 void ec_fsm_slave_init(
         ec_fsm_slave_t *fsm, /**< Slave state machine. */
         ec_slave_t *slave, /**< EtherCAT slave. */
-        ec_datagram_t *datagram /**< Datagram object to use. */
+        ec_mailbox_t *mbox/**< Datagram object to use. */
         )
 {
     fsm->slave = slave;
-    fsm->datagram = datagram;
-    fsm->datagram->data_size = 0;
+    fsm->mbox = mbox;
+    slave->datagram.data_size = 0;
 
     EC_SLAVE_DBG(slave, 1, "Init FSM.\n");
 
     fsm->state = ec_fsm_slave_state_idle;
 
     // init sub-state-machines
-    ec_fsm_coe_init(&fsm->fsm_coe, fsm->datagram);
-    ec_fsm_foe_init(&fsm->fsm_foe, fsm->datagram);
-    ec_fsm_soe_init(&fsm->fsm_soe, fsm->datagram);
+    ec_fsm_coe_init(&fsm->fsm_coe, fsm->mbox);
+    ec_fsm_foe_init(&fsm->fsm_foe, fsm->mbox);
+    ec_fsm_soe_init(&fsm->fsm_soe, fsm->mbox);
 }
 
 /*****************************************************************************/
@@ -101,8 +101,8 @@ int ec_fsm_slave_exec(
         ec_fsm_slave_t *fsm /**< Slave state machine. */
         )
 {
-    if (fsm->datagram->state == EC_DATAGRAM_QUEUED
-        || fsm->datagram->state == EC_DATAGRAM_SENT) {
+    if (ec_mbox_is_datagram_state(fsm->mbox,EC_DATAGRAM_QUEUED)
+        || ec_mbox_is_datagram_state(fsm->mbox,EC_DATAGRAM_SENT)) {
         // datagram was not sent or received yet.
         return 0;
     }
@@ -208,7 +208,7 @@ int ec_fsm_slave_action_process_sdo(
         fsm->state = ec_fsm_slave_state_sdo_request;
         ec_fsm_coe_transfer(&fsm->fsm_coe, slave, &request->req);
         ec_fsm_coe_exec(&fsm->fsm_coe); // execute immediately
-        ec_master_queue_request_fsm_datagram(fsm->slave->master,fsm->datagram);
+        ec_slave_mbox_queue_datagrams(slave, fsm->mbox);
         return 1;
     }
     return 0;
@@ -227,7 +227,7 @@ void ec_fsm_slave_state_sdo_request(
 
     if (ec_fsm_coe_exec(&fsm->fsm_coe))
     {
-        ec_master_queue_request_fsm_datagram(fsm->slave->master,fsm->datagram);
+        ec_slave_mbox_queue_datagrams(slave, fsm->mbox);
         return;
     }
     if (!ec_fsm_coe_success(&fsm->fsm_coe)) {
@@ -285,7 +285,7 @@ int ec_fsm_slave_action_process_foe(
         fsm->state = ec_fsm_slave_state_foe_request;
         ec_fsm_foe_transfer(&fsm->fsm_foe, slave, &request->req);
         ec_fsm_foe_exec(&fsm->fsm_foe);
-        ec_master_queue_request_fsm_datagram(fsm->slave->master,fsm->datagram);
+        ec_slave_mbox_queue_datagrams(slave, fsm->mbox);
         return 1;
     }
     return 0;
@@ -304,7 +304,7 @@ void ec_fsm_slave_state_foe_request(
 
     if (ec_fsm_foe_exec(&fsm->fsm_foe))
     {
-        ec_master_queue_request_fsm_datagram(fsm->slave->master,fsm->datagram);
+        ec_slave_mbox_queue_datagrams(slave, fsm->mbox);
         return;
     }
 
@@ -376,7 +376,7 @@ int ec_fsm_slave_action_process_soe(
         fsm->state = ec_fsm_slave_state_soe_request;
         ec_fsm_soe_transfer(&fsm->fsm_soe, slave, &request->req);
         ec_fsm_soe_exec(&fsm->fsm_soe); // execute immediately
-        ec_master_queue_request_fsm_datagram(fsm->slave->master, fsm->datagram);
+        ec_slave_mbox_queue_datagrams(slave, fsm->mbox);
         return 1;
     }
     return 0;
@@ -394,7 +394,7 @@ void ec_fsm_slave_state_soe_request(
     ec_master_soe_request_t *request = fsm->soe_request;
 
     if (ec_fsm_soe_exec(&fsm->fsm_soe)) {
-        ec_master_queue_request_fsm_datagram(fsm->slave->master, fsm->datagram);
+        ec_slave_mbox_queue_datagrams(slave, fsm->mbox);
         return;
     }
 

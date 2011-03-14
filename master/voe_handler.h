@@ -50,6 +50,7 @@ struct ec_voe_handler {
     struct list_head list; /**< List item. */
     ec_slave_config_t *config; /**< Parent slave configuration. */
     ec_datagram_t datagram; /**< State machine datagram. */
+    ec_mailbox_t mbox; /**< State machine mailbox. */
     uint32_t vendor_id; /**< Vendor ID for the header. */
     uint16_t vendor_type; /**< Vendor type for the header. */
     size_t data_size; /**< Size of VoE data. */

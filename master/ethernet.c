@@ -111,6 +111,7 @@ int ec_eoe_init(
     eoe->slave = slave;
 
     ec_datagram_init(&eoe->datagram);
+    ec_mbox_init(&eoe->mbox,&eoe->datagram);
     eoe->queue_datagram = 0;
     eoe->state = ec_eoe_state_rx_start;
     eoe->opened = 0;
@@ -220,6 +221,7 @@ void ec_eoe_clear(ec_eoe_t *eoe /**< EoE handler */)
 
     free_netdev(eoe->dev);
 
+    ec_mbox_clear(&eoe->mbox);
     ec_datagram_clear(&eoe->datagram);
 }
 
@@ -294,7 +296,7 @@ int ec_eoe_send(ec_eoe_t *eoe /**< EoE handler */)
     printk("\n");
 #endif
 
-    data = ec_slave_mbox_prepare_send(eoe->slave, &eoe->datagram,
+    data = ec_slave_mbox_prepare_send(eoe->slave, &eoe->mbox,
             0x02, current_size + 4);
     if (IS_ERR(data))
         return PTR_ERR(data);
@@ -324,7 +326,8 @@ void ec_eoe_run(ec_eoe_t *eoe /**< EoE handler */)
 
     // if the datagram was not sent, or is not yet received, skip this cycle
     if (eoe->queue_datagram ||
-        eoe->datagram.state == EC_DATAGRAM_QUEUED || eoe->datagram.state == EC_DATAGRAM_SENT)
+        ec_mbox_is_datagram_state(&eoe->mbox,EC_DATAGRAM_QUEUED) ||
+        ec_mbox_is_datagram_state(&eoe->mbox,EC_DATAGRAM_SENT))
         return;
 
     // call state function
@@ -349,7 +352,7 @@ void ec_eoe_run(ec_eoe_t *eoe /**< EoE handler */)
 void ec_eoe_queue(ec_eoe_t *eoe /**< EoE handler */)
 {
    if (eoe->queue_datagram) {
-       ec_master_queue_fsm_datagram(eoe->slave->master, &eoe->datagram);
+       ec_master_mbox_queue_datagrams(eoe->slave->master, &eoe->mbox);
        eoe->queue_datagram = 0;
    }
 }
@@ -395,7 +398,7 @@ void ec_eoe_state_rx_start(ec_eoe_t *eoe /**< EoE handler */)
         return;
     }
 
-    ec_slave_mbox_prepare_check(eoe->slave, &eoe->datagram);
+    ec_slave_mbox_prepare_check(eoe->slave, &eoe->mbox);
     eoe->queue_datagram = 1;
     eoe->state = ec_eoe_state_rx_check;
 }
@@ -409,7 +412,7 @@ void ec_eoe_state_rx_start(ec_eoe_t *eoe /**< EoE handler */)
  */
 void ec_eoe_state_rx_check(ec_eoe_t *eoe /**< EoE handler */)
 {
-    if (eoe->datagram.state != EC_DATAGRAM_RECEIVED) {
+    if (!ec_mbox_is_datagram_state(&eoe->mbox,EC_DATAGRAM_RECEIVED)) {
         eoe->stats.rx_errors++;
 #if EOE_DEBUG_LEVEL >= 1
         EC_SLAVE_WARN(eoe->slave, "Failed to receive mbox"
@@ -419,14 +422,14 @@ void ec_eoe_state_rx_check(ec_eoe_t *eoe /**< EoE handler */)
         return;
     }
 
-    if (!ec_slave_mbox_check(&eoe->datagram)) {
+    if (!ec_slave_mbox_check(&eoe->mbox)) {
         eoe->rx_idle = 1;
         eoe->state = ec_eoe_state_tx_start;
         return;
     }
 
     eoe->rx_idle = 0;
-    ec_slave_mbox_prepare_fetch(eoe->slave, &eoe->datagram);
+    ec_slave_mbox_prepare_fetch(eoe->slave, &eoe->mbox);
     eoe->queue_datagram = 1;
     eoe->state = ec_eoe_state_rx_fetch;
 }
@@ -448,7 +451,7 @@ void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
     unsigned int i;
 #endif
 
-    if (eoe->datagram.state != EC_DATAGRAM_RECEIVED) {
+    if (!ec_mbox_is_datagram_state(&eoe->mbox,EC_DATAGRAM_RECEIVED)) {
         eoe->stats.rx_errors++;
 #if EOE_DEBUG_LEVEL >= 1
         EC_SLAVE_WARN(eoe->slave, "Failed to receive mbox"
@@ -458,7 +461,7 @@ void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
         return;
     }
 
-    data = ec_slave_mbox_fetch(eoe->slave, &eoe->datagram,
+    data = ec_slave_mbox_fetch(eoe->slave, &eoe->mbox,
             &mbox_prot, &rec_size);
     if (IS_ERR(data)) {
         eoe->stats.rx_errors++;
@@ -685,7 +688,7 @@ void ec_eoe_state_tx_start(ec_eoe_t *eoe /**< EoE handler */)
  */
 void ec_eoe_state_tx_sent(ec_eoe_t *eoe /**< EoE handler */)
 {
-    if (eoe->datagram.state != EC_DATAGRAM_RECEIVED) {
+    if (!ec_mbox_is_datagram_state(&eoe->mbox,EC_DATAGRAM_RECEIVED)) {
         if (eoe->tries) {
             eoe->tries--; // try again
             eoe->queue_datagram = 1;
@@ -701,7 +704,7 @@ void ec_eoe_state_tx_sent(ec_eoe_t *eoe /**< EoE handler */)
         return;
     }
 
-    if (eoe->datagram.working_counter != 1) {
+    if (!ec_mbox_is_datagram_wc(&eoe->mbox,1)) {
         if (eoe->tries) {
             eoe->tries--; // try again
             eoe->queue_datagram = 1;
