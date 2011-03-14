@@ -228,6 +228,7 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     }
 
     // create state machine object
+    ec_mbox_init(&master->fsm_mbox,&master->fsm_datagram);
     ec_fsm_master_init(&master->fsm, master, &master->fsm_datagram);
 
     // init reference sync datagram
@@ -329,7 +330,7 @@ void ec_master_clear(
 #endif
 
     ec_cdev_clear(&master->cdev);
-    
+
 #ifdef EC_EOE
     ec_master_clear_eoe_handlers(master);
 #endif
@@ -341,6 +342,7 @@ void ec_master_clear(
     ec_datagram_clear(&master->sync_datagram);
     ec_datagram_clear(&master->ref_sync_datagram);
     ec_fsm_master_clear(&master->fsm);
+    ec_mbox_clear(&master->fsm_mbox);
     ec_datagram_clear(&master->fsm_datagram);
     ec_device_clear(&master->backup_device);
     ec_device_clear(&master->main_device);
@@ -1279,7 +1281,7 @@ static int ec_master_idle_thread(void *priv_data)
         if (ec_mutex_lock_interruptible(&master->master_mutex))
             break;
         if (ec_fsm_master_exec(&master->fsm)) {
-            ec_master_queue_fsm_datagram(master, &master->fsm_datagram);
+            ec_master_mbox_queue_datagrams(master, &master->fsm_mbox);
         }
         for (slave = master->slaves;
                 slave < master->slaves + master->slave_count;
@@ -1343,7 +1345,7 @@ static int ec_master_operation_thread(void *priv_data)
         if (ec_mutex_lock_interruptible(&master->master_mutex))
             break;
         if (ec_fsm_master_exec(&master->fsm))
-            ec_master_queue_fsm_datagram(master, &master->fsm_datagram);
+            ec_master_mbox_queue_datagrams(master, &master->fsm_mbox);
         for (slave = master->slaves;
                 slave < master->slaves + master->slave_count;
                 slave++) {

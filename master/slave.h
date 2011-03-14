@@ -46,6 +46,7 @@
 #include "sync.h"
 #include "sdo.h"
 #include "fsm_slave.h"
+#include "mailbox.h"
 
 /*****************************************************************************/
 
@@ -274,7 +275,8 @@ struct ec_slave
     wait_queue_head_t soe_queue; /**< Wait queue for SoE requests from user
                                    space. */
     ec_fsm_slave_t fsm; /**< Slave state machine. */
-    ec_datagram_t fsm_datagram; /**< Datagram used for state machines. */
+    ec_datagram_t datagram; /** Datagram used for data transfers */
+    ec_mailbox_t mbox; /**< Mailbox used for data transfers. */
 };
 
 /*****************************************************************************/

@@ -193,6 +193,7 @@ struct ec_master {
 
     ec_fsm_master_t fsm; /**< Master state machine. */
     ec_datagram_t fsm_datagram; /**< Datagram used for state machines. */
+    ec_mailbox_t fsm_mbox; /**< Mailbox used for state machines. */
     ec_master_phase_t phase; /**< Master phase. */
     unsigned int active; /**< Master has been activated. */
     unsigned int config_changed; /**< The configuration changed. */
