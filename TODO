@@ -13,17 +13,12 @@ Version 1.5.0:
 * Ethernet drivers:
     - Fix link detection in generic driver.
     - Add native drivers from 2.6.24 up to 2.6.31.
-* ethercat tool:
-    - Implement ranges for slaves and domains.
 
 Future issues:
 
 * Remove allow_scanning flag.
-* Output skipped datagrams again.
 * Check for Enable SDO Complete Access flag.
 * Do not output 'SDO does not exist' when querying data type.
-* Always write down PDO assignment/mapping in doubt? If not, add an interface
-  for enforcing this.
 * Read AL status code on spontaneous state change.
 * recompile tool/CommandVersion.cpp if revision changes.
 * Log SoE IDNs with real name ([SP]-x-yyyy).

@@ -96,16 +96,20 @@ class Command
         };
         void setVerbosity(Verbosity);
         Verbosity getVerbosity() const;
-        void setAlias(int);
-        int getAlias() const;
-        void setPosition(int);
-        int getPosition() const;
-        void setDomain(int);
-        int getDomain() const;
+
+        void setAliases(const string &);
+        void setPositions(const string &);
+
+        void setDomains(const string &);
+        typedef list<unsigned int> DomainIndexList;
+        DomainIndexList getDomainIndices() const;
+
         void setDataType(const string &);
         const string &getDataType() const;
+
         void setForce(bool);
         bool getForce() const;
+
         void setOutputFile(const string &);
         const string &getOutputFile() const;
 
@@ -141,9 +145,9 @@ class Command
         string briefDesc;
         string masters;
         Verbosity verbosity;
-        int alias;
-        int position;
-        int domain;
+        string aliases;
+        string positions;
+        string domains;
         string dataType;
         bool force;
         string outputFile;
@@ -170,27 +174,6 @@ inline const string &Command::getBriefDescription() const
 inline Command::Verbosity Command::getVerbosity() const
 {
     return verbosity;
-}
-
-/****************************************************************************/
-
-inline int Command::getAlias() const
-{
-    return alias;
-}
-
-/****************************************************************************/
-
-inline int Command::getPosition() const
-{
-    return position;
-}
-
-/****************************************************************************/
-
-inline int Command::getDomain() const
-{
-    return domain;
 }
 
 /****************************************************************************/

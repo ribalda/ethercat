@@ -77,9 +77,9 @@ Command::StringVector commandArgs;
 
 // option variables
 string masters = "-"; // all masters
-int slavePosition = -1;
-int slaveAlias = -1;
-int domainIndex = -1;
+string positions = "-"; // all positions
+string aliases = "-"; // all aliases
+string domains = "-"; // all domains
 string dataTypeStr;
 Command::Verbosity verbosity = Command::Normal;
 bool force = false;
@@ -163,43 +163,15 @@ void getOptions(int argc, char **argv)
                 break;
 
             case 'a':
-                str.clear();
-                str.str("");
-                str << optarg;
-                str >> resetiosflags(ios::basefield) // guess base from prefix
-                    >> slaveAlias;
-                if (str.fail() || slaveAlias < 0 || slaveAlias > 0xFFFF) {
-                    cerr << "Invalid slave alias " << optarg << "!" << endl
-                        << endl << usage();
-                    exit(1);
-                }
+                aliases = optarg;
                 break;
 
             case 'p':
-                str.clear();
-                str.str("");
-                str << optarg;
-                str >> resetiosflags(ios::basefield) // guess base from prefix
-                    >> slavePosition;
-                if (str.fail()
-                        || slavePosition < 0 || slavePosition > 0xFFFF) {
-                    cerr << "Invalid slave position " << optarg << "!" << endl
-                        << endl << usage();
-                    exit(1);
-                }
+                positions = optarg;
                 break;
 
             case 'd':
-                str.clear();
-                str.str("");
-                str << optarg;
-                str >> resetiosflags(ios::basefield) // guess base from prefix
-                    >> domainIndex;
-                if (str.fail() || domainIndex < 0) {
-                    cerr << "Invalid domain index " << optarg << "!" << endl
-                        << endl << usage();
-                    exit(1);
-                }
+                domains = optarg;
                 break;
 
             case 't':
@@ -331,9 +303,9 @@ int main(int argc, char **argv)
                 try {
                     cmd->setMasters(masters);
                     cmd->setVerbosity(verbosity);
-                    cmd->setAlias(slaveAlias);
-                    cmd->setPosition(slavePosition);
-                    cmd->setDomain(domainIndex);
+                    cmd->setAliases(aliases);
+                    cmd->setPositions(positions);
+                    cmd->setDomains(domains);
                     cmd->setDataType(dataTypeStr);
                     cmd->setOutputFile(outputFile);
                     cmd->setForce(force);

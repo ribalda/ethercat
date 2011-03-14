@@ -2009,6 +2009,25 @@ int ec_cdev_ioctl_sync_mon_process(
 
 /*****************************************************************************/
 
+/** Reset configuration.
+ */
+int ec_cdev_ioctl_reset(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    if (unlikely(!priv->requested))
+        return -EPERM;
+
+    ec_mutex_lock(&master->master_mutex);
+    ecrt_master_reset(master);
+    ec_mutex_unlock(&master->master_mutex);
+    return 0;
+}
+
+/*****************************************************************************/
+
 /** Configure a sync manager.
  */
 int ec_cdev_ioctl_sc_sync(
@@ -3723,6 +3742,10 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             if (!(filp->f_mode & FMODE_WRITE))
                 return -EPERM;
             return ec_cdev_ioctl_sync_mon_process(master, arg, priv);
+        case EC_IOCTL_RESET:
+            if (!(filp->f_mode & FMODE_WRITE))
+                return -EPERM;
+            return ec_cdev_ioctl_reset(master, arg, priv);
         case EC_IOCTL_SC_SYNC:
             if (!(filp->f_mode & FMODE_WRITE))
                 return -EPERM;
