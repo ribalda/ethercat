@@ -365,7 +365,7 @@ AC_SUBST(KERNEL_R8169,[$kernel_r8169])
 AC_ARG_WITH([rtai-dir],
     AC_HELP_STRING(
         [--with-rtai-dir=<DIR>],
-        [RTAI path (only for RTAI examples)]
+        [RTAI path (only for RTDM Interface or RTAI examples)]
     ),
     [
         rtaidir=[$withval]
@@ -387,6 +387,67 @@ else
 fi
 
 AC_SUBST(RTAI_DIR,[$rtaidir])
+
+
+#------------------------------------------------------------------------------
+# Xenomai path (optional)
+#------------------------------------------------------------------------------
+
+AC_ARG_WITH([xenomai-dir],
+    AC_HELP_STRING(
+        [--with-xenomai-dir=<DIR>],
+        [Xenomai path (only for RTDM Interface or Xenomai examples)]
+    ),
+    [
+        xenomaidir=[$withval]
+    ],
+    [
+        xenomaidir=""
+    ]
+)
+
+AC_MSG_CHECKING([for Xenomai path])
+
+if test -z "${xenomaidir}"; then
+    AC_MSG_RESULT([not specified.])
+else
+    if test \! -r ${xenomaidir}/include/xeno_config.h; then
+        AC_MSG_ERROR([no Xenomai installation found in ${xenomaidir}!])
+    fi
+    AC_MSG_RESULT([$xenomaidir])
+fi
+
+AC_SUBST(XENOMAI_DIR,[$xenomaidir])
+
+
+#------------------------------------------------------------------------------
+# RTDM Interface (optional)
+#------------------------------------------------------------------------------
+
+AC_ARG_ENABLE([rtdm],
+    AC_HELP_STRING(
+        [--enable-rtdm],
+        [Enable RTDM Interface, depends on RTAI or Xenomai]
+    ),
+    [
+        case "${enableval}" in
+            yes) rtdm=1
+                ;;
+            no) rtdm=0
+                ;;
+            *) AC_MSG_ERROR([Invalid value for --enable-rtdm])
+                ;;
+        esac
+    ],
+    [rtdm=0]
+)
+
+if test "x${rtdm}" = "x1"; then
+    AC_DEFINE([EC_RTDM], [1], [RTDM interfaces enabled])
+fi
+AM_CONDITIONAL(ENABLE_RTDM, test "x$rtdm" = "x1")
+AC_SUBST(ENABLE_RTDM,[$rtdm])
+
 
 #------------------------------------------------------------------------------
 # Debug interface
@@ -626,6 +687,7 @@ AC_CONFIG_FILES([
         examples/tty/Kbuild
         examples/tty/Makefile
         examples/user/Makefile
+        examples/xenomai/Makefile
         include/Makefile
         lib/Makefile
         m4/Makefile
@@ -638,6 +700,8 @@ AC_CONFIG_FILES([
         tool/Makefile
         tty/Kbuild
         tty/Makefile
+        rtdm/Makefile
+        rtdm/Kbuild
 ])
 AC_OUTPUT
 

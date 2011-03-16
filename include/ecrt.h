@@ -455,6 +455,23 @@ void ecrt_release_master(
         ec_master_t *master /**< EtherCAT master */
         );
 
+
+#ifdef __KERNEL__
+/** Attach to a running master
+ *   
+ * This function returns the master handle for the RTDM-Interface
+ *
+ * \return Pointer to the opened master, otherwise \a NULL.
+ */
+ec_master_t *ecrt_attach_master(
+       unsigned int master_index /**< Index of the master to request. */
+       );
+
+#endif // #ifdef __KERNEL__
+
+
+
+
 /******************************************************************************
  * Master methods
  *****************************************************************************/
@@ -500,7 +517,37 @@ void ecrt_master_callbacks(
                        */
         );
 
+
+/** Returns domain structure pointer
+ *
+ * This functions return the domain structure pointer for usage inside the
+ * RTDM-Interface.
+ *
+ * \return Pointer to the domain on success, else NULL.
+ */
+ec_domain_t *ecrt_master_find_domain(
+        ec_master_t *master, 
+        unsigned int index);
+
+
 #endif /* __KERNEL__ */
+
+
+#ifndef __KERNEL__
+/** Return the domain index of a given domain strucure
+ *
+ * Return the domain index of a given domain strucure. Usage inside of the
+ * RTDM Interface
+ *
+ * \return Index of the domain strucure
+ *
+ */
+ unsigned int ecrt_domain_index(
+         ec_domain_t *domain
+         );
+
+#endif // #ifndef __KERNEL__
+
 
 /** Creates a new process data domain.
  *
@@ -514,6 +561,7 @@ void ecrt_master_callbacks(
 ec_domain_t *ecrt_master_create_domain(
         ec_master_t *master /**< EtherCAT master. */
         );
+
 
 /** Obtains a slave configuration.
  *

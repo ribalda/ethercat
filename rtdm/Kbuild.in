@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 #
-#  $Id: Kbuild.in 1097 2008-04-03 15:31:34Z fp $
+#  $Id$
 #
 #  Copyright (C) 2006-2008  Florian Pose, Ingenieurgemeinschaft IgH
 #
@@ -21,19 +21,36 @@
 #
 #  ---
 #  
-#  The license mentioned above concerns the source code only. Using the
-#  EtherCAT technology and brand is only permitted in compliance with the
-#  industrial property and similar rights of Beckhoff Automation GmbH.
+#  The license mentioned above concerns the source code only. Using the EtherCAT
+#  technology and brand is only permitted in compliance with the industrial
+#  property and similar rights of Beckhoff Automation GmbH.
+#
+#  ---
 #
 #  vi: syntax=make
 #
 #------------------------------------------------------------------------------
 
-obj-m := mini/
+obj-m := ec_rtdm.o
 
-ifeq (@ENABLE_TTY@,1)
-	obj-m += tty/
-endif
+ec_rtdm-objs := \
+        module.o
 
 
+### Xenomai directory, xeno-config and library directory ###########
+XENO_DIR          := @XENOMAI_DIR@
+XENO_CONFIG       := $(XENO_DIR)/bin/xeno-config
+XENO_LIB_DIR      := $(shell $(XENO_CONFIG) --library-dir)
+
+REV := $(shell if test -s $(src)/../revision; then \
+		cat $(src)/../revision; \
+	else \
+		hg id -i $(src)/.. 2>/dev/null || echo "unknown"; \
+	fi)
+
+CFLAGS_module.o := -DREV=$(REV) -I$(XENO_DIR)/include 
+
+KBUILD_EXTRA_SYMBOLS := \
+        @abs_top_builddir@/$(LINUX_SYMVERS) \
+        @abs_top_builddir@/master/$(LINUX_SYMVERS)
 #------------------------------------------------------------------------------

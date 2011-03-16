@@ -611,6 +611,37 @@ unsigned int ecrt_version_magic(void)
     return ECRT_VERSION_MAGIC;
 }
 
+
+
+/** Return pointer to running master
+/*****************************************************************************/
+ec_master_t *ecrt_attach_master(unsigned int master_index)
+{
+    ec_master_t *master = NULL;
+
+    EC_INFO("Requesting master %u...\n", master_index);
+
+    if (master_index >= master_count) {
+        EC_ERR("Invalid master index %u.\n", master_index);
+        return master;
+    }
+
+    master = &masters[master_index];
+    if (master->reserved) 
+      {
+       // ok master is attached
+        EC_INFO("attaching Master %u!\n", master_index);
+      }
+    else
+      {
+        EC_ERR("No Master %u in use!\n", master_index);
+        master = NULL;
+    }
+    return master;
+}
+
+
+
 /*****************************************************************************/
 
 /** Global request state type translation table.
@@ -637,6 +668,7 @@ EXPORT_SYMBOL(ecdev_offer);
 EXPORT_SYMBOL(ecrt_request_master);
 EXPORT_SYMBOL(ecrt_release_master);
 EXPORT_SYMBOL(ecrt_version_magic);
+EXPORT_SYMBOL(ecrt_attach_master);
 
 /** \endcond */
 

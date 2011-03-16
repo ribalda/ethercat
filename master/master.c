@@ -1636,6 +1636,20 @@ ec_domain_t *ec_master_find_domain(
     EC_FIND_DOMAIN;
 }
 
+/** Wrapper Function for external usage
+ *
+ * \return Domain pointer, or \a NULL if not found.
+ */
+ec_domain_t *ecrt_master_find_domain(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned int index /**< Domain index. */
+        )
+{
+    return ec_master_find_domain(
+        master,
+        index);
+}
+
 /** Get a domain via its position in the list.
  *
  * Const version.
@@ -2535,7 +2549,7 @@ EXPORT_SYMBOL(ecrt_master_sync_monitor_process);
 EXPORT_SYMBOL(ecrt_master_write_idn);
 EXPORT_SYMBOL(ecrt_master_read_idn);
 EXPORT_SYMBOL(ecrt_master_reset);
-
+EXPORT_SYMBOL(ecrt_master_find_domain);
 /** \endcond */
 
 /*****************************************************************************/

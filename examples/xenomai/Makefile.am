@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 #
-#  $Id: Kbuild.in 1097 2008-04-03 15:31:34Z fp $
+#  $Id$
 #
 #  Copyright (C) 2006-2008  Florian Pose, Ingenieurgemeinschaft IgH
 #
@@ -15,9 +15,9 @@
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General
 #  Public License for more details.
 #
-#  You should have received a copy of the GNU General Public License along
-#  with the IgH EtherCAT Master; if not, write to the Free Software
-#  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+#  You should have received a copy of the GNU General Public License along with
+#  the IgH EtherCAT Master; if not, write to the Free Software Foundation,
+#  Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 #  ---
 #  
@@ -25,15 +25,15 @@
 #  EtherCAT technology and brand is only permitted in compliance with the
 #  industrial property and similar rights of Beckhoff Automation GmbH.
 #
-#  vi: syntax=make
-#
 #------------------------------------------------------------------------------
 
-obj-m := mini/
 
-ifeq (@ENABLE_TTY@,1)
-	obj-m += tty/
-endif
+AM_CFLAGS = -Wall
 
+noinst_PROGRAMS = ec_xenomai_example
+
+ec_xenomai_example_SOURCES = main.c
+ec_xenomai_example_CFLAGS = -I/opt/etherlab/xenomai/include -D_GNU_SOURCE -D_REENTRANT -Wall -pipe -D__XENO__ -I$(top_srcdir)/include
+ec_xenomai_example_LDFLAGS = -lrtdm -L$(top_builddir)/lib/.libs -lethercat -lnative -L/opt/etherlab/xenomai/lib -lxenomai -lpthread
 
 #------------------------------------------------------------------------------

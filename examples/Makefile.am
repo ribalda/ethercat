@@ -40,12 +40,18 @@ SUBDIRS += \
 	tty
 endif
 
+if ENABLE_RTDM
+SUBDIRS += \
+	xenomai
+endif
+
 DIST_SUBDIRS = \
 	dc_rtai \
 	dc_user \
 	mini \
 	rtai \
 	tty \
+	xenomai \
 	user
 
 EXTRA_DIST = \
