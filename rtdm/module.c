@@ -5,11 +5,10 @@
  *  ec_rtdm.c	Copyright (C) 2009-2010  Moehwald GmbH B.Benner
  *                            2011       IgH Andreas Stewering-Bone
  *								  
- *  This file is used for Prisma RT to interface to EtherCAT devices
  *								  
- *  This file is part of ethercatrtdm interface to IgH EtherCAT master 
+ *  This file is part of the IgH EtherCAT master 
  *  
- *  The Moehwald ec_rtdm interface is free software; you can
+ *  The IgH EtherCAT master is free software; you can
  *  redistribute it and/or modify it under the terms of the GNU Lesser General
  *  Public License as published by the Free Software Foundation; version 2.1
  *  of the License.
@@ -43,23 +42,23 @@
 #define EC_RTDM_MAX_MASTERS 5 /**< Maximum number of masters. */
 
 #define EC_RTDM_GINFO(fmt, args...) \
-    printk(KERN_INFO "EtherCATrtdm: " fmt,  ##args)
+    rtdm_printk(KERN_INFO "EtherCATrtdm: " fmt,  ##args)
 
 #define EC_RTDM_GERR(fmt, args...) \
-    printk(KERN_ERR "EtherCATrtdm ERROR: " fmt, ##args)
+    rtdm_printk(KERN_ERR "EtherCATrtdm ERROR: " fmt, ##args)
 
 #define EC_RTDM_GWARN(fmt, args...) \
-    printk(KERN_WARNING "EtherCATrtdm WARNING: " fmt, ##args)
+    rtdm_printk(KERN_WARNING "EtherCATrtdm WARNING: " fmt, ##args)
 
 
 #define EC_RTDM_INFO(devno, fmt, args...) \
-    printk(KERN_INFO "EtherCATrtdm %u: " fmt, devno, ##args)
+    rtdm_printk(KERN_INFO "EtherCATrtdm %u: " fmt, devno, ##args)
 
 #define EC_RTDM_ERR(devno, fmt, args...) \
-    printk(KERN_ERR "EtherCATrtdm %u ERROR: " fmt, devno, ##args)
+    rtdm_printk(KERN_ERR "EtherCATrtdm %u ERROR: " fmt, devno, ##args)
 
 #define EC_RTDM_WARN(devno, fmt, args...) \
-    printk(KERN_WARNING "EtherCATrtdm %u WARNING: " fmt, devno, ##args)
+    rtdm_printk(KERN_WARNING "EtherCATrtdm %u WARNING: " fmt, devno, ##args)
 
 
 
@@ -161,29 +160,8 @@ void receive_callback(void *cb_data)
     }
 }
 
-void receive_process(EC_RTDM_DRV_STRUCT * pdrvstruc)
-{
-    if (pdrvstruc->master)
-        {
-            rt_mutex_acquire(&pdrvstruc->masterlock,TM_INFINITE);
-            ecrt_master_receive(pdrvstruc->master);
-            ecrt_domain_process(pdrvstruc->domain);
-            pdrvstruc->reccnt++;
-            rt_mutex_release(&pdrvstruc->masterlock);
-      }
-}
 
-void send_process(EC_RTDM_DRV_STRUCT * pdrvstruc)
-{
-  if (pdrvstruc->master)
-      {
-         rt_mutex_acquire(&pdrvstruc->masterlock,TM_INFINITE);
-         ecrt_domain_queue(pdrvstruc->domain);
-         ecrt_master_send(pdrvstruc->master);
-         pdrvstruc->sendcnt++;
-         rt_mutex_release(&pdrvstruc->masterlock);
-      }
-}  
+
 
 void detach_master(EC_RTDM_DRV_STRUCT * pdrvstruc)
 {
@@ -342,46 +320,76 @@ int ec_rtdm_ioctl_rt(struct rtdm_dev_context   *context,
             }
     }
     break;
-    
-    case EC_RTDM_MSTRRECEIVE:
+    case EC_RTDM_MASTER_RECEIVE:
     {	       
         if (pdrvstruc->isattached)
             {
-                receive_process(pdrvstruc);
+                if (pdrvstruc->master)
+                    {
+                        rt_mutex_acquire(&pdrvstruc->masterlock,TM_INFINITE);
+                        ecrt_master_receive(pdrvstruc->master);
+                        pdrvstruc->reccnt++;
+                        rt_mutex_release(&pdrvstruc->masterlock);
+                    }
             }
     }
     break;
-    case EC_RTDM_MSTRSEND:
+    case EC_RTDM_DOMAIN_PROCESS:
+    {	       
+        if (pdrvstruc->isattached)
+            {
+                rt_mutex_acquire(&pdrvstruc->masterlock,TM_INFINITE);
+                ecrt_domain_process(pdrvstruc->domain);
+                rt_mutex_release(&pdrvstruc->masterlock);
+            }
+    }
+    break;
+    case EC_RTDM_MASTER_SEND:
     {
         
         if (pdrvstruc->isattached)
             {
-                send_process(pdrvstruc);
+                if (pdrvstruc->master)
+                    {
+                        rt_mutex_acquire(&pdrvstruc->masterlock,TM_INFINITE);
+                        ecrt_master_send(pdrvstruc->master);
+                        pdrvstruc->sendcnt++;
+                        rt_mutex_release(&pdrvstruc->masterlock);
+                    }
             }
     }
     break;
+    case EC_RTDM_DOMAIN_QUEQUE:
+    {	       
+        if (pdrvstruc->isattached)
+            {
+                rt_mutex_acquire(&pdrvstruc->masterlock,TM_INFINITE);
+                ecrt_domain_queue(pdrvstruc->domain);
+                rt_mutex_release(&pdrvstruc->masterlock);
+            }
+    }
+    break;
+
     case EC_RTDM_MASTER_APP_TIME:
     {
 		if (!pdrvstruc->isattached)
             {
+                rtdm_printk("ERROR : No Master attached\n");
                 return -EFAULT;
             }
-        if  (rtdm_rw_user_ok(user_info, arg, sizeof(app_time)))
+        if (rtdm_safe_copy_from_user(user_info, &app_time, arg, sizeof(app_time)))
             {
-                // copy data from user
-                if (rtdm_copy_from_user(user_info, &app_time, arg, sizeof(app_time)))
-                    {
-                        return -EFAULT;
-                    }
-                if (pdrvstruc->master)
-                    {
-                        rt_mutex_acquire(&pdrvstruc->masterlock,TM_INFINITE);
-                        
-                        ecrt_master_application_time(pdrvstruc->master, app_time);
-                        
-                        rt_mutex_release(&pdrvstruc->masterlock);
-                        
-                    }
+                rtdm_printk("ERROR : can't copy data to driver\n");
+                return -EFAULT;
+            }
+            
+        if (pdrvstruc->master)
+            {
+                rt_mutex_acquire(&pdrvstruc->masterlock,TM_INFINITE);
+                
+                ecrt_master_application_time(pdrvstruc->master, app_time);
+                rt_mutex_release(&pdrvstruc->masterlock);
+                
             }
     }
     break;
@@ -416,6 +424,40 @@ int ec_rtdm_ioctl_rt(struct rtdm_dev_context   *context,
                 
                 rt_mutex_release(&pdrvstruc->masterlock);
                 
+            }
+    }
+    break;
+    case EC_RTDM_MASTER_SYNC_MONITOR_QUEQUE:
+    {
+		if (!pdrvstruc->isattached)
+            {
+                return -EFAULT;
+            }
+        if (pdrvstruc->master)
+            {
+                rt_mutex_acquire(&pdrvstruc->masterlock,TM_INFINITE);
+                ecrt_master_sync_monitor_queue(pdrvstruc->master);
+                rt_mutex_release(&pdrvstruc->masterlock);
+            }
+    }
+    break;
+    case EC_RTDM_MASTER_SYNC_MONITOR_PROCESS:
+    {
+        uint32_t ret;
+		if (!pdrvstruc->isattached)
+            {
+                return -EFAULT;
+            }
+        if (pdrvstruc->master)
+            {
+                rt_mutex_acquire(&pdrvstruc->masterlock,TM_INFINITE);
+                ret = ecrt_master_sync_monitor_process(pdrvstruc->master);
+                rt_mutex_release(&pdrvstruc->masterlock);
+                if (rtdm_safe_copy_to_user(user_info, arg, &ret, sizeof(ret)))
+                    {
+                        EC_RTDM_ERR(pdrvstruc->masterno,"copy to user param failed!\n");
+                        ret=-EFAULT;
+                    }
             }
     }
     break;
@@ -650,7 +692,7 @@ static struct rtdm_device ec_rtdm_device_t = {
     driver_name:        EC_RTDM_DEV_FILE_NAME,
     driver_version:     RTDM_DRIVER_VER(1,0,1),
     peripheral_name:    EC_RTDM_DEV_FILE_NAME,
-    provider_name:      "Moehwald GmbH - Bosch Group",
+    provider_name:      "EtherLab Community",
 //    proc_name:          ethcatrtdm_device.device_name,
 };
 
@@ -703,7 +745,7 @@ void cleanup_module(void)
 {
     unsigned int i;
 
-    EC_RTDM_GINFO("Cleanup EtherCAT RTDM Interface to Igh EtherCAT Master - Moehwald GmbH\n");
+    EC_RTDM_GINFO("Cleanup EtherCAT RTDM Interface \n");
     for (i=0;i<EC_RTDM_MAX_MASTERS;i++)
       {
          if (ec_rtdm_masterintf[i].isattached)
@@ -716,4 +758,4 @@ void cleanup_module(void)
 }
 
 MODULE_LICENSE("GPL");
-MODULE_DESCRIPTION("EtherCAT RTDM Interface to Igh EtherCAT Master");
+MODULE_DESCRIPTION("EtherCAT RTDM Interface");

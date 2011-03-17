@@ -45,6 +45,7 @@
 #include <native/sem.h>
 #include <native/mutex.h>
 #include <native/timer.h>
+#include <rtdk.h>
 #include <pthread.h>
 
 /****************************************************************************/
@@ -58,7 +59,7 @@ RT_TASK my_task;
 int rt_fd = -1;
 int run=0;
 
-struct timeval tv;
+//struct timeval tv;
 unsigned int sync_ref_counter = 0;
 
 CstructMstrAttach MstrAttach;
@@ -66,8 +67,8 @@ CstructMstrAttach MstrAttach;
 /****************************************************************************/
 
 // Application parameters
-#define FREQUENCY 1000
-#define PRIORITY 1
+//#define FREQUENCY 1000
+//#define PRIORITY 1
 
 // Optional features
 #define CONFIGURE_PDOS  1
@@ -102,7 +103,7 @@ static uint8_t *domain1_pd = NULL;
 #define AnaInSlave01_Pos    0, 5
 #define BusCoupler02_Pos    0, 6
 #define AnaInSlave02_Pos    0, 7
-
+#define DPSlave01_Pos       0, 8
 
 
 #define Beckhoff_EK1100 0x00000002, 0x044c2c52
@@ -429,116 +430,56 @@ uint8_t *sdo_adr = NULL;
 void rt_check_domain_state(void)
 {
     ec_domain_state_t ds;
-    unsigned int printed=0;
 
     if (rt_fd>=0)
       {
           ecrt_rtdm_domain_state(rt_fd,&ds);  
       }
 
-/*    if (ds.working_counter != domain1_state.working_counter)
+    if (ds.working_counter != domain1_state.working_counter)
      {
-        printf("Domain1: WC %u.\n", ds.working_counter);
-        printed=1;
-
+        rt_printf("Domain1: WC %u.\n", ds.working_counter);
      }
     if (ds.wc_state != domain1_state.wc_state)
      {
-    	printf("Domain1: State %u.\n", ds.wc_state);
-        printed=1;
-
+    	rt_printf("Domain1: State %u.\n", ds.wc_state);
      }
-    if (printed)
-    {
-    	int ret;
 
-        // return to realtime mode after print
-
-        ret = rt_task_set_mode(0, T_PRIMARY, NULL);
-        if (ret)
-         {
-            printf("error while rt_task_set_mode, code %d\n",ret);
-         }
-    }
-*/
     domain1_state = ds;
 }
 
 void rt_check_master_state(void)
 {
     ec_master_state_t ms;
-    unsigned int printed=0;
 
     if (rt_fd>=0)
       {
           ecrt_rtdm_master_state(rt_fd,&ms);
       }
 
-/*
     if (ms.slaves_responding != master_state.slaves_responding)
     {
-        printf("%u slave(s).\n", ms.slaves_responding);
-        printed=1;
-
+        rt_printf("%u slave(s).\n", ms.slaves_responding);
     }
     if (ms.al_states != master_state.al_states)
     {
-        printf("AL states: 0x%02X.\n", ms.al_states);
-        printed=1;
-
+        rt_printf("AL states: 0x%02X.\n", ms.al_states);
     }
     if (ms.link_up != master_state.link_up)
     {
-        printf("Link is %s.\n", ms.link_up ? "up" : "down");
-        printed=1;
-
+        rt_printf("Link is %s.\n", ms.link_up ? "up" : "down");
     }
-    if (printed)
-    {
-    	int ret;
-
-        // return to realtime mode after print
-
-        ret = rt_task_set_mode(0, T_PRIMARY, NULL);
-        if (ret)
-         {
-            printf("error while rt_task_set_mode, code %d\n",ret);
-         }
-         }*/
     master_state = ms;
 }
 
-void rt_receive()
-{
 
-	if (rt_fd>=0)
-	{
-		ecrt_rtdm_master_recieve(rt_fd);
-	}
-}
 
-void rt_send()
-{
-
-	if (rt_fd>=0)
-	{
-		ecrt_rtdm_master_send(rt_fd);
-	}
-}
 
 void rt_sync()
 {
   RTIME now;
-  int ret;
   now = rt_timer_read();
-  //now -= 946684800ULL * 1000000000ULL;
 
-  printf("Write Sync Time %i\n",now);
-  ret = rt_task_set_mode(0, T_PRIMARY, NULL);
-  if (ret)
-      {
-          printf("error while rt_task_set_mode, code %d\n",ret);
-      }
 
   if (rt_fd>=0)
   {
@@ -565,45 +506,45 @@ void rt_sync()
 #if SDO_ACCESS
 void read_sdo(void)
 {
-  switch (ecrt_sdo_request_state(sdo))
-  {
-    case EC_REQUEST_UNUSED: // request was not used yet
-        ecrt_sdo_request_read(sdo); // trigger first read
-        break;
-    case EC_REQUEST_BUSY:
-        fprintf(stderr, "Still busy...\n");
-        break;
-    case EC_REQUEST_SUCCESS:
-        fprintf(stderr, "SDO value: 0x%04X\n",
-                EC_READ_U16(ecrt_sdo_request_data(sdo)));
-        ecrt_sdo_request_read(sdo); // trigger next read
-        break;
-    case EC_REQUEST_ERROR:
-        fprintf(stderr, "Failed to read SDO!\n");
-        ecrt_sdo_request_read(sdo); // retry reading
-        break;
-  }
+    switch (ecrt_sdo_request_state(sdo))
+        {
+        case EC_REQUEST_UNUSED: // request was not used yet
+            ecrt_sdo_request_read(sdo); // trigger first read
+            break;
+        case EC_REQUEST_BUSY:
+            fprintf(stderr, "Still busy...\n");
+            break;
+        case EC_REQUEST_SUCCESS:
+            fprintf(stderr, "SDO value: 0x%04X\n",
+                    EC_READ_U16(ecrt_sdo_request_data(sdo)));
+            ecrt_sdo_request_read(sdo); // trigger next read
+            break;
+        case EC_REQUEST_ERROR:
+            fprintf(stderr, "Failed to read SDO!\n");
+            ecrt_sdo_request_read(sdo); // retry reading
+            break;
+        }
 }
 
 void  PrintSDOState(void)
 {
-  switch (ecrt_sdo_request_state(sdo))
-  {
-    case EC_REQUEST_UNUSED: // request was not used yet
-      fprintf(stderr, "SDO State: EC_REQUEST_UNUSED\n"); // trigger first read
-      break;
-    case EC_REQUEST_BUSY:
-      fprintf(stderr, "SDO State: EC_REQUEST_BUSY\n");
-      break;
-    case EC_REQUEST_SUCCESS:
-      fprintf(stderr, "SDO State: EC_REQUEST_SUCCESS\n");
-      break;
-    case EC_REQUEST_ERROR:
-      fprintf(stderr, "SDO State: EC_REQUEST_ERROR\n");
-      break;
-    default:
-      fprintf(stderr, "SDO State: undefined\n");
-      break;
+    switch (ecrt_sdo_request_state(sdo))
+        {
+        case EC_REQUEST_UNUSED: // request was not used yet
+            fprintf(stderr, "SDO State: EC_REQUEST_UNUSED\n"); // trigger first read
+            break;
+        case EC_REQUEST_BUSY:
+            fprintf(stderr, "SDO State: EC_REQUEST_BUSY\n");
+            break;
+        case EC_REQUEST_SUCCESS:
+            fprintf(stderr, "SDO State: EC_REQUEST_SUCCESS\n");
+            break;
+        case EC_REQUEST_ERROR:
+            fprintf(stderr, "SDO State: EC_REQUEST_ERROR\n");
+            break;
+        default:
+            fprintf(stderr, "SDO State: undefined\n");
+            break;
   }
 }
 #endif
@@ -646,7 +587,7 @@ void my_task_proc(void *arg)
 
   ret = rt_task_set_mode(0, T_PRIMARY, NULL);
   if (ret) {
-      printf("error while rt_task_set_mode, code %d\n",ret);
+      rt_printf("error while rt_task_set_mode, code %d\n",ret);
       return;
   }
   
@@ -661,7 +602,9 @@ void my_task_proc(void *arg)
       }
       
       // receive ethercat
-      rt_receive();
+      ecrt_rtdm_master_recieve(rt_fd);
+      ecrt_rtdm_domain_process(rt_fd);
+
       rt_check_domain_state();
       
       if (divcounter ==0)
@@ -684,7 +627,8 @@ void my_task_proc(void *arg)
       rt_sync();
       
       // send process data
-      rt_send();
+      ecrt_rtdm_domain_queque(rt_fd);
+      ecrt_rtdm_master_send(rt_fd);
   }
   
 }
@@ -723,6 +667,9 @@ int main(int argc, char **argv)
     int rtstatus;
 
     mlockall(MCL_CURRENT | MCL_FUTURE);
+
+    /* Perform auto-init of rt_print buffers if the task doesn't do so */
+    rt_print_auto_init(1);
 
     signal(SIGTERM, catch_signal);
     signal(SIGINT, catch_signal);
@@ -850,6 +797,92 @@ int main(int argc, char **argv)
         fprintf(stderr, "PDO entry registration failed!\n");
         return -1;
     }
+#endif
+
+
+    printf("Get Configuring EL6731...\n");
+    sc_dpslv_01 = ecrt_master_slave_config(master, DPSlave01_Pos, Beckhoff_EL6731);
+    if (!sc_dpslv_01) {
+        fprintf(stderr, "Failed to get slave configuration.\n");
+        return -1;
+    }
+    
+    printf("Configuring EL6731...\n");
+    if (ecrt_slave_config_pdos(sc_dpslv_01, EC_END, slave_7_syncs))
+        {
+            fprintf(stderr, "Failed to configure PDOs.\n");
+            return -1;
+        }
+    
+#if SDO_ACCESS
+    
+    
+    // DP Slave Parameter Set
+    fprintf(stderr, "Creating SDO requests...\n");
+    if (!(sdo = ecrt_slave_config_create_sdo_request(sc_dpslv_01, 0x8000, 0, 1))) {
+        fprintf(stderr, "Failed to create SDO request.\n");
+        return -1;
+    }
+    ecrt_sdo_request_timeout(sdo, 500); // ms
+    EC_WRITE_U8(ecrt_sdo_request_data(sdo), 0);
+    PrintSDOState();
+    ecrt_sdo_request_write(sdo);
+    PrintSDOState();
+    
+    // Station Address
+    if (!(sdo = ecrt_slave_config_create_sdo_request(sc_dpslv_01, 0x8000, 1, 2))) {
+        fprintf(stderr, "Failed to create SDO request.\n");
+        return -1;
+    }
+    ecrt_sdo_request_timeout(sdo, 500); // ms
+    EC_WRITE_U16(ecrt_sdo_request_data(sdo), 5);
+    //EC_WRITE_U8(ecrt_sdo_request_data(sdo), 00);
+    //EC_WRITE_U8(ecrt_sdo_request_data(sdo)+1, 10);
+    PrintSDOState();
+    ecrt_sdo_request_write(sdo);
+    PrintSDOState();
+    
+    // Device Type (DP Ident Number)
+    if (!(sdo = ecrt_slave_config_create_sdo_request(sc_dpslv_01, 0x8000, 4, 4))) {
+        fprintf(stderr, "Failed to create SDO request.\n");
+        return -1;
+    }
+    ecrt_sdo_request_timeout(sdo, 500); // ms
+    sdo_adr = ecrt_sdo_request_data(sdo);
+    EC_WRITE_U32(sdo_adr, 0x095F);
+    //EC_WRITE_U8(sdo_ad, 0x00); // Device Type
+    //EC_WRITE_U8(sdo_adr+1, 0x00);
+    //EC_WRITE_U8(sdo_adr+2, 0x09);
+    //EC_WRITE_U8(sdo_adr+3, 0x5F);
+    PrintSDOState();
+    ecrt_sdo_request_write(sdo);
+    PrintSDOState();
+    
+    // DP CfgData Slave
+    if (!(sdo = ecrt_slave_config_create_sdo_request(sc_dpslv_01, 0x8002, 0, 244))) {
+        fprintf(stderr, "Failed to create SDO request.\n");
+        return -1;
+    }
+    ecrt_sdo_request_timeout(sdo, 500); // ms
+    sdo_adr = ecrt_sdo_request_data(sdo);
+    EC_WRITE_U8(sdo_adr, 0x10); // Device Type
+    EC_WRITE_U8(sdo_adr+1, 0x20);
+    PrintSDOState();
+    ecrt_sdo_request_write(sdo);
+    PrintSDOState();
+    
+    // DP Slave Parameter Set
+    if (!(sdo = ecrt_slave_config_create_sdo_request(sc_dpslv_01, 0x8000, 0, 1))) {
+        fprintf(stderr, "Failed to create SDO request.\n");
+        return -1;
+    }
+    
+    ecrt_sdo_request_timeout(sdo, 500); // ms
+    
+    EC_WRITE_U8(ecrt_sdo_request_data(sdo), 0x33); // DP Slave Parameter Set
+    PrintSDOState();
+    ecrt_sdo_request_write(sdo);
+    PrintSDOState();
 #endif
     
 

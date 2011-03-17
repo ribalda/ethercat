@@ -34,6 +34,6 @@ noinst_PROGRAMS = ec_xenomai_example
 
 ec_xenomai_example_SOURCES = main.c
 ec_xenomai_example_CFLAGS = -I/opt/etherlab/xenomai/include -D_GNU_SOURCE -D_REENTRANT -Wall -pipe -D__XENO__ -I$(top_srcdir)/include
-ec_xenomai_example_LDFLAGS = -lrtdm -L$(top_builddir)/lib/.libs -lethercat -lnative -L/opt/etherlab/xenomai/lib -lxenomai -lpthread
+ec_xenomai_example_LDFLAGS = -lrtdm -L$(top_builddir)/lib/.libs -lethercat -lnative -L/opt/etherlab/xenomai/lib -lrtdk -lxenomai -lpthread
 
 #------------------------------------------------------------------------------
