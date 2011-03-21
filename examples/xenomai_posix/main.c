@@ -40,9 +40,6 @@
 #include <string.h>
 #include <unistd.h>
 #include <limits.h>
-#include <getopt.h>
-#include <netinet/in.h>
-#include <net/if.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <time.h>
@@ -481,16 +478,7 @@ void rt_sync()
 /**********************************************************/
 void cleanup_all(void)
 {
-    printf("delete my_task\n");
-
-    pthread_kill(cyclicthread, SIGHUP);
-    pthread_join(cyclicthread, NULL);
-    
-    if (rt_fd >= 0) {
-        printf("closing rt device %s\n", &rt_dev_file[0]);
-        rt_dev_close(rt_fd);
-        
-    }
+    run = 0;   
 }
 
 void catch_signal(int sig)
@@ -504,30 +492,34 @@ void catch_signal(int sig)
 
 void *my_thread(void *arg)
 {
-    struct sched_param param = { .sched_priority = 1 };
     struct timespec next_period;
+
     int counter = 0;
     int divcounter = 0;
     int divider = 10;
-    pthread_set_name_np(pthread_self(), "ec_xenomai_posix_test");
-    pthread_setschedparam(pthread_self(), SCHED_FIFO, &param);
 
-    clock_gettime(CLOCK_MONOTONIC, &next_period);
 
+    clock_gettime(CLOCK_REALTIME, &next_period);
     while(1) {
         next_period.tv_nsec += cycle * 1000;
         while (next_period.tv_nsec >= NSEC_PER_SEC) {
                 next_period.tv_nsec -= NSEC_PER_SEC;
                 next_period.tv_sec++;
-        }
+                }
 
-        clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &next_period, NULL);
+        clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &next_period, NULL);
+
 
         counter++;
-        if (counter>600000) {
+        if (counter>60000) {
             run=0;
             return NULL;
         }
+
+        if(run ==  0) {
+            return NULL;
+        }
+
         
         // receive ethercat
         ecrt_rtdm_master_recieve(rt_fd);
@@ -565,8 +557,6 @@ void *my_thread(void *arg)
 
 int main(int argc, char *argv[])
 {
-    struct sched_param param = { .sched_priority = 1 };
-    pthread_attr_t thattr;
     ec_slave_config_t *sc;
     int rtstatus;
 
@@ -727,16 +717,21 @@ int main(int argc, char *argv[])
     run=1;
 
     /* Create cyclic RT-thread */
+    struct sched_param param = { .sched_priority = 82 };
+    pthread_attr_t thattr;
     pthread_attr_init(&thattr);
     pthread_attr_setdetachstate(&thattr, PTHREAD_CREATE_JOINABLE);
-    pthread_attr_setstacksize(&thattr, PTHREAD_STACK_MIN);
+    pthread_attr_setinheritsched(&thattr, PTHREAD_EXPLICIT_SCHED);
+    pthread_attr_setschedpolicy(&thattr, SCHED_FIFO);
+    pthread_setschedparam(cyclicthread, SCHED_FIFO, &param);
+    pthread_set_name_np(cyclicthread, "ec_xenomai_posix_test");
     ret = pthread_create(&cyclicthread, &thattr, &my_thread, NULL);
     if (ret) {
         fprintf(stderr, "%s: pthread_create cyclic task failed\n",
                 strerror(-ret));
         goto failure;
     }
-    pthread_setschedparam(pthread_self(), SCHED_FIFO, &param);
+
 
 
 
@@ -745,12 +740,9 @@ int main(int argc, char *argv[])
     	sched_yield();
       }
 
-    //rt_task_delete(&my_task);
 
 
 
-    pthread_kill(cyclicthread, SIGHUP);
-    pthread_join(cyclicthread, NULL);
 
 
     if (rt_fd >= 0)
