@@ -2,12 +2,11 @@
  *
  *  $Id$
  *
- *  main.c	        Copyright (C) 2009-2010  Moehwald GmbH B.Benner
- *                                2011       IgH Andreas Stewering-Bone
+ *  main.c	        Copyright (C) 2011       IgH Andreas Stewering-Bone
  *
  *  This file is part of ethercatrtdm interface to IgH EtherCAT master 
  *  
- *  The Moehwald ethercatrtdm interface is free software; you can
+ *  The IgH EtherCAT master is free software; you can
  *  redistribute it and/or modify it under the terms of the GNU Lesser General
  *  Public License as published by the Free Software Foundation; version 2.1
  *  of the License.
@@ -31,30 +30,34 @@
  *
  *****************************************************************************/
 
-#include <errno.h>
-#include <signal.h>
-#include <stdio.h>
-#include <string.h>
-#include <sys/resource.h>
-#include <sys/time.h>
-#include <sys/types.h>
-#include <unistd.h>
-#include <sys/mman.h>
-#include <rtdm/rtdm.h>
-#include <native/task.h>
-#include <native/sem.h>
-#include <native/mutex.h>
-#include <native/timer.h>
-#include <rtdk.h>
-#include <pthread.h>
 
-/****************************************************************************/
+#include <errno.h>
+#include <mqueue.h>
+#include <signal.h>
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <limits.h>
+#include <getopt.h>
+#include <netinet/in.h>
+#include <net/if.h>
+#include <sys/ioctl.h>
+#include <sys/mman.h>
+#include <time.h>
+
+#include <rtdm/rtdm.h>
+#include <rtdk.h>
 
 #include "../../include/ecrt.h"
 #include "../../include/ec_rtdm.h"
 
+#define NSEC_PER_SEC 1000000000
 
-RT_TASK my_task;
+static unsigned int cycle = 1000; /* 1 ms */
+
+static pthread_t cyclicthread;
 
 int rt_fd = -1;
 int run=0;
@@ -67,9 +70,10 @@ CstructMstrAttach MstrAttach;
 
 
 
+
 // Optional features
 #define CONFIGURE_PDOS  1
-//#define SDO_ACCESS      1
+
 
 /****************************************************************************/
 
@@ -80,12 +84,6 @@ static ec_master_state_t master_state = {};
 static ec_domain_t *domain1 = NULL;
 static ec_domain_state_t domain1_state = {};
 
-//static ec_slave_config_t *sc_ana_in = NULL;
-//static ec_slave_config_state_t sc_ana_in_state = {};
-
-// Timer
-static unsigned int sig_alarms = 0;
-//static unsigned int user_alarms = 0;
 
 /****************************************************************************/
 static uint8_t *domain1_pd = NULL;
@@ -100,7 +98,6 @@ static uint8_t *domain1_pd = NULL;
 #define AnaInSlave01_Pos    0, 5
 #define BusCoupler02_Pos    0, 6
 #define AnaInSlave02_Pos    0, 7
-#define DPSlave01_Pos       0, 8
 
 
 #define Beckhoff_EK1100 0x00000002, 0x044c2c52
@@ -120,26 +117,14 @@ static unsigned int off_dig_out0      = 0;
 static unsigned int off_dig_out1      = 0;
 static unsigned int off_dig_out2      = 0;
 static unsigned int off_dig_out3      = 0;
-static unsigned int off_dig_out4      = 0;
-static unsigned int off_dig_out5      = 0;
-static unsigned int off_dig_out6      = 0;
-static unsigned int off_dig_out7      = 0;
 static unsigned int off_dig_in0       = 0;
-static unsigned int off_dig_in1       = 0;
-static unsigned int off_dig_in2       = 0;
-static unsigned int off_dig_in3       = 0;
 static unsigned int off_ana_out0      = 0;
 static unsigned int off_ana_out1      = 0;
 static unsigned int off_ana_in0_status = 0;
 static unsigned int off_ana_in0_value  = 0;
 static unsigned int off_ana_in1_status = 0;
 static unsigned int off_ana_in1_value  = 0;
-static unsigned int off_ana_in2_status = 0;
-static unsigned int off_ana_in2_value  = 0;
-static unsigned int off_ana_in3_status = 0;
-static unsigned int off_ana_in3_value  = 0;
 
-//static unsigned int off_dp_slave;
 
 // process data
 unsigned int bit_position0=0; /* Pointer to a variable to store a bit */
@@ -163,7 +148,6 @@ const static ec_pdo_entry_reg_t domain1_regs[] = {
 };
 
 char rt_dev_file[64];
-static unsigned int counter = 0;
 static unsigned int blink = 0;
 
 static ec_slave_config_t *sc_dig_out_01 = NULL;
@@ -175,8 +159,6 @@ static ec_slave_config_t *sc_dig_in_01 = NULL;
 static ec_slave_config_t *sc_ana_out_01 = NULL;
 
 static ec_slave_config_t *sc_ana_in_01 = NULL;
-
-static ec_slave_config_t *sc_dpslv_01 = NULL;
 
 static ec_slave_config_t *sc_ana_in_02 = NULL;
 
@@ -417,12 +399,6 @@ ec_sync_info_t slave_8_syncs[] = {
 
 /*****************************************************************************/
 
-#if SDO_ACCESS
-static ec_sdo_request_t *sdo;
-uint8_t *sdo_adr = NULL;
-#endif
-
-
 
 void rt_check_domain_state(void)
 {
@@ -474,13 +450,15 @@ void rt_check_master_state(void)
 
 void rt_sync()
 {
-  RTIME now;
-  now = rt_timer_read();
+  struct timespec now;
+  uint64_t now_ns;
+  clock_gettime(CLOCK_REALTIME,&now);
 
+  now_ns = 1000000000LL*now.tv_sec + now.tv_nsec;
 
   if (rt_fd>=0)
   {
-      ecrt_rtdm_master_application_time(rt_fd, &now);
+      ecrt_rtdm_master_application_time(rt_fd, &now_ns);
   }
 
   if (sync_ref_counter) {
@@ -500,144 +478,13 @@ void rt_sync()
 
 /*****************************************************************************/
 
-#if SDO_ACCESS
-void read_sdo(void)
-{
-    switch (ecrt_sdo_request_state(sdo))
-        {
-        case EC_REQUEST_UNUSED: // request was not used yet
-            ecrt_sdo_request_read(sdo); // trigger first read
-            break;
-        case EC_REQUEST_BUSY:
-            fprintf(stderr, "Still busy...\n");
-            break;
-        case EC_REQUEST_SUCCESS:
-            fprintf(stderr, "SDO value: 0x%04X\n",
-                    EC_READ_U16(ecrt_sdo_request_data(sdo)));
-            ecrt_sdo_request_read(sdo); // trigger next read
-            break;
-        case EC_REQUEST_ERROR:
-            fprintf(stderr, "Failed to read SDO!\n");
-            ecrt_sdo_request_read(sdo); // retry reading
-            break;
-        }
-}
-
-void  PrintSDOState(void)
-{
-    switch (ecrt_sdo_request_state(sdo))
-        {
-        case EC_REQUEST_UNUSED: // request was not used yet
-            fprintf(stderr, "SDO State: EC_REQUEST_UNUSED\n"); // trigger first read
-            break;
-        case EC_REQUEST_BUSY:
-            fprintf(stderr, "SDO State: EC_REQUEST_BUSY\n");
-            break;
-        case EC_REQUEST_SUCCESS:
-            fprintf(stderr, "SDO State: EC_REQUEST_SUCCESS\n");
-            break;
-        case EC_REQUEST_ERROR:
-            fprintf(stderr, "SDO State: EC_REQUEST_ERROR\n");
-            break;
-        default:
-            fprintf(stderr, "SDO State: undefined\n");
-            break;
-  }
-}
-#endif
-
-
-static int cyccount=0;
-
-/****************************************************************************/
-
-void signal_handler(int signum) {
-    switch (signum) {
-        case SIGALRM:
-            sig_alarms++;
-            break;
-    }
-}
-
-
-/**********************************************************/
-/*            REAL TIME TASK                              */
-/**********************************************************/
-void my_task_proc(void *arg)
-{
-  int counter = 0;
-  int divcounter = 0;
-  int divider = 10;
-  int ret;
-
-  RTIME periodns;
-  float period;
-
-
-  period=1E-3; //1kHz
-
-  
-  periodns=(RTIME)(((double)period * 1E9) + 0.4999999);
-  rt_task_set_periodic(NULL, TM_NOW, periodns);
-
-  run=1;
-
-  ret = rt_task_set_mode(0, T_PRIMARY, NULL);
-  if (ret) {
-      rt_printf("error while rt_task_set_mode, code %d\n",ret);
-      return;
-  }
-  
-
-  while (run) {
-      rt_task_wait_period(NULL);
-      
-      counter++;
-      if (counter>600000) {
-          run=0;
-          return;
-      }
-      
-      // receive ethercat
-      ecrt_rtdm_master_recieve(rt_fd);
-      ecrt_rtdm_domain_process(rt_fd);
-
-      rt_check_domain_state();
-      
-      if (divcounter ==0)
-          {
-              divcounter=divider;
-              rt_check_master_state();
-          }
-      divcounter--;
-      if ((counter % 200)==0)
-          {
-              blink = !blink;
-              
-          }
-      
-
-      EC_WRITE_U8(domain1_pd + off_dig_out0, blink ? 0x0 : 0x0F);
-      EC_WRITE_U16(domain1_pd + off_ana_out0, blink ? 0x0: 0xfff);
-      
-      //sync DC
-      rt_sync();
-      
-      // send process data
-      ecrt_rtdm_domain_queque(rt_fd);
-      ecrt_rtdm_master_send(rt_fd);
-  }
-  
-}
-
-
-/**********************************************************/
-/*            CLEANING UP                                 */
 /**********************************************************/
 void cleanup_all(void)
 {
     printf("delete my_task\n");
-    rt_task_delete(&my_task);
+
+    pthread_kill(cyclicthread, SIGHUP);
+    pthread_join(cyclicthread, NULL);
     
     if (rt_fd >= 0) {
         printf("closing rt device %s\n", &rt_dev_file[0]);
@@ -645,31 +492,93 @@ void cleanup_all(void)
         
     }
 }
-/****************************************************************************/
 
-void catch_signal(int sig) {
-    cleanup_all();
-    printf("exit\n");
-    exit(0);
-    return;
+void catch_signal(int sig)
+{
+    cleanup_all();    
 }
 
 
-/****************************************************************************/
 
-int main(int argc, char **argv)
+
+
+void *my_thread(void *arg)
 {
-    ec_slave_config_t *sc;
+    struct sched_param param = { .sched_priority = 1 };
+    struct timespec next_period;
+    int counter = 0;
+    int divcounter = 0;
+    int divider = 10;
+    pthread_set_name_np(pthread_self(), "ec_xenomai_posix_test");
+    pthread_setschedparam(pthread_self(), SCHED_FIFO, &param);
 
+    clock_gettime(CLOCK_MONOTONIC, &next_period);
+
+    while(1) {
+        next_period.tv_nsec += cycle * 1000;
+        while (next_period.tv_nsec >= NSEC_PER_SEC) {
+                next_period.tv_nsec -= NSEC_PER_SEC;
+                next_period.tv_sec++;
+        }
+
+        clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &next_period, NULL);
+
+        counter++;
+        if (counter>600000) {
+            run=0;
+            return NULL;
+        }
+        
+        // receive ethercat
+        ecrt_rtdm_master_recieve(rt_fd);
+        ecrt_rtdm_domain_process(rt_fd);
+        
+        rt_check_domain_state();
+        
+        if (divcounter ==0)
+            {
+                divcounter=divider;
+                rt_check_master_state();
+            }
+        divcounter--;
+        if ((counter % 200)==0)
+            {
+                blink = !blink;
+                
+            }
+      
+
+        EC_WRITE_U8(domain1_pd + off_dig_out0, blink ? 0x0 : 0x0F);
+        EC_WRITE_U16(domain1_pd + off_ana_out0, blink ? 0x0: 0xfff);
+        
+        //sync DC
+        rt_sync();
+        
+        // send process data
+        ecrt_rtdm_domain_queque(rt_fd);
+        ecrt_rtdm_master_send(rt_fd);   
+    }
+    return NULL;
+}
+
+
+
+int main(int argc, char *argv[])
+{
+    struct sched_param param = { .sched_priority = 1 };
+    pthread_attr_t thattr;
+    ec_slave_config_t *sc;
     int rtstatus;
 
-    mlockall(MCL_CURRENT | MCL_FUTURE);
 
-    /* Perform auto-init of rt_print buffers if the task doesn't do so */
-    rt_print_auto_init(1);
 
     signal(SIGTERM, catch_signal);
     signal(SIGINT, catch_signal);
+    signal(SIGHUP, catch_signal);
+
+    mlockall(MCL_CURRENT|MCL_FUTURE);
+
+
 
     MstrAttach.masterindex = 0;
     
@@ -678,12 +587,12 @@ int main(int argc, char **argv)
     if (!master)
         return -1;
     
-
+    
     domain1 = ecrt_master_create_domain(master);
     if (!domain1)
         return -1;
     
-
+    
 #ifdef CONFIGURE_PDOS
 
     printf("Configuring PDOs...\n");
@@ -694,7 +603,7 @@ int main(int argc, char **argv)
         fprintf(stderr, "Failed to get slave configuration.\n");
         return -1;
     }
-
+    
     printf("Configuring EL2004...\n");
     if (ecrt_slave_config_pdos(sc_dig_out_01, EC_END, slave_1_syncs))
         {
@@ -761,21 +670,7 @@ int main(int argc, char **argv)
         return -1;
 	}
     
-	// DP Slave Parameter Set
 
-/*	printf( "Creating SDO requests...\n");
-	if (!(sdo = ecrt_slave_config_create_sdo_request(sc_ana_in_02, 0x8000, 0x06, 1))) {
-        fprintf(stderr, "Failed to create SDO request.\n");
-        return -1;
-	}
-	ecrt_sdo_request_timeout(sdo, 500); // ms
-
-	EC_WRITE_U8(ecrt_sdo_request_data(sdo), 00);
-	PrintSDOState();
-	ecrt_sdo_request_write(sdo);
-	PrintSDOState();
-
-*/    
 	printf("Configuring EL3602...\n");
 	if (ecrt_slave_config_pdos(sc_ana_in_02, EC_END, slave_7_syncs)) {
         fprintf(stderr, "Failed to configure PDOs.\n");
@@ -797,93 +692,7 @@ int main(int argc, char **argv)
 #endif
 
 
-    printf("Get Configuring EL6731...\n");
-    sc_dpslv_01 = ecrt_master_slave_config(master, DPSlave01_Pos, Beckhoff_EL6731);
-    if (!sc_dpslv_01) {
-        fprintf(stderr, "Failed to get slave configuration.\n");
-        return -1;
-    }
-    
-    printf("Configuring EL6731...\n");
-    if (ecrt_slave_config_pdos(sc_dpslv_01, EC_END, slave_7_syncs))
-        {
-            fprintf(stderr, "Failed to configure PDOs.\n");
-            return -1;
-        }
-    
-#if SDO_ACCESS
-    
-    
-    // DP Slave Parameter Set
-    fprintf(stderr, "Creating SDO requests...\n");
-    if (!(sdo = ecrt_slave_config_create_sdo_request(sc_dpslv_01, 0x8000, 0, 1))) {
-        fprintf(stderr, "Failed to create SDO request.\n");
-        return -1;
-    }
-    ecrt_sdo_request_timeout(sdo, 500); // ms
-    EC_WRITE_U8(ecrt_sdo_request_data(sdo), 0);
-    PrintSDOState();
-    ecrt_sdo_request_write(sdo);
-    PrintSDOState();
-    
-    // Station Address
-    if (!(sdo = ecrt_slave_config_create_sdo_request(sc_dpslv_01, 0x8000, 1, 2))) {
-        fprintf(stderr, "Failed to create SDO request.\n");
-        return -1;
-    }
-    ecrt_sdo_request_timeout(sdo, 500); // ms
-    EC_WRITE_U16(ecrt_sdo_request_data(sdo), 5);
-    //EC_WRITE_U8(ecrt_sdo_request_data(sdo), 00);
-    //EC_WRITE_U8(ecrt_sdo_request_data(sdo)+1, 10);
-    PrintSDOState();
-    ecrt_sdo_request_write(sdo);
-    PrintSDOState();
-    
-    // Device Type (DP Ident Number)
-    if (!(sdo = ecrt_slave_config_create_sdo_request(sc_dpslv_01, 0x8000, 4, 4))) {
-        fprintf(stderr, "Failed to create SDO request.\n");
-        return -1;
-    }
-    ecrt_sdo_request_timeout(sdo, 500); // ms
-    sdo_adr = ecrt_sdo_request_data(sdo);
-    EC_WRITE_U32(sdo_adr, 0x095F);
-    //EC_WRITE_U8(sdo_ad, 0x00); // Device Type
-    //EC_WRITE_U8(sdo_adr+1, 0x00);
-    //EC_WRITE_U8(sdo_adr+2, 0x09);
-    //EC_WRITE_U8(sdo_adr+3, 0x5F);
-    PrintSDOState();
-    ecrt_sdo_request_write(sdo);
-    PrintSDOState();
-    
-    // DP CfgData Slave
-    if (!(sdo = ecrt_slave_config_create_sdo_request(sc_dpslv_01, 0x8002, 0, 244))) {
-        fprintf(stderr, "Failed to create SDO request.\n");
-        return -1;
-    }
-    ecrt_sdo_request_timeout(sdo, 500); // ms
-    sdo_adr = ecrt_sdo_request_data(sdo);
-    EC_WRITE_U8(sdo_adr, 0x10); // Device Type
-    EC_WRITE_U8(sdo_adr+1, 0x20);
-    PrintSDOState();
-    ecrt_sdo_request_write(sdo);
-    PrintSDOState();
-    
-    // DP Slave Parameter Set
-    if (!(sdo = ecrt_slave_config_create_sdo_request(sc_dpslv_01, 0x8000, 0, 1))) {
-        fprintf(stderr, "Failed to create SDO request.\n");
-        return -1;
-    }
-    
-    ecrt_sdo_request_timeout(sdo, 500); // ms
-    
-    EC_WRITE_U8(ecrt_sdo_request_data(sdo), 0x33); // DP Slave Parameter Set
-    PrintSDOState();
-    ecrt_sdo_request_write(sdo);
-    PrintSDOState();
-#endif
-    
-
-    
+        
     sprintf(&rt_dev_file[0],"%s%u",EC_RTDM_DEV_FILE_NAME,0);
     
     
@@ -892,35 +701,43 @@ int main(int argc, char **argv)
         printf("can't open %s\n", &rt_dev_file[0]);
         return -1;
     }
-
+    
     MstrAttach.domainindex = ecrt_domain_index(domain1);
     
     // attach the master over rtdm driver
     rtstatus=ecrt_rtdm_master_attach(rt_fd, &MstrAttach);
     if (rtstatus < 0)
-      {
-        printf("cannot attach to master over rtdm\n");
-        return -1;
-      }
-
+        {
+            printf("cannot attach to master over rtdm\n");
+            return -1;
+        }
+    
     printf("Activating master...\n");
     if (ecrt_master_activate(master))
         return -1;
-
+    
     if (!(domain1_pd = ecrt_domain_data(domain1))) {
         return -1;
     }
     fprintf(stderr, "domain1_pd:  0x%.6x\n", (unsigned int)domain1_pd);
-
-
-
+    
+    
+    
     int ret;
     run=1;
 
-    ret = rt_task_create(&my_task,"my_task",0,80,T_FPU);
+    /* Create cyclic RT-thread */
+    pthread_attr_init(&thattr);
+    pthread_attr_setdetachstate(&thattr, PTHREAD_CREATE_JOINABLE);
+    pthread_attr_setstacksize(&thattr, PTHREAD_STACK_MIN);
+    ret = pthread_create(&cyclicthread, &thattr, &my_thread, NULL);
+    if (ret) {
+        fprintf(stderr, "%s: pthread_create cyclic task failed\n",
+                strerror(-ret));
+        goto failure;
+    }
+    pthread_setschedparam(pthread_self(), SCHED_FIFO, &param);
 
-    printf("starting my_task\n");
-    ret = rt_task_start(&my_task,&my_task_proc,NULL);
 
 
     while (run)
@@ -928,21 +745,32 @@ int main(int argc, char **argv)
     	sched_yield();
       }
 
-    rt_task_delete(&my_task);
+    //rt_task_delete(&my_task);
+
+
+
+    pthread_kill(cyclicthread, SIGHUP);
+    pthread_join(cyclicthread, NULL);
 
 
     if (rt_fd >= 0)
-     {
-        printf("closing rt device %s\n", &rt_dev_file[0]);
-
-        rt_dev_close(rt_fd);
-
-     }
- 
+        {
+            printf("closing rt device %s\n", &rt_dev_file[0]);
+            
+            rt_dev_close(rt_fd);
+            
+        }
+    
     printf("End of Program\n");
     ecrt_release_master(master);
 
     return 0;
+
+ failure:
+    pthread_kill(cyclicthread, SIGHUP);
+    pthread_join(cyclicthread, NULL);
+
+
+    return 1;
 }
 
-/****************************************************************************/

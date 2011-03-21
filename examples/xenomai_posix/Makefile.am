@@ -15,9 +15,9 @@
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General
 #  Public License for more details.
 #
-#  You should have received a copy of the GNU General Public License along
-#  with the IgH EtherCAT Master; if not, write to the Free Software
-#  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+#  You should have received a copy of the GNU General Public License along with
+#  the IgH EtherCAT Master; if not, write to the Free Software Foundation,
+#  Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 #  ---
 #  
@@ -27,39 +27,13 @@
 #
 #------------------------------------------------------------------------------
 
-SUBDIRS =
 
-if ENABLE_USERLIB
-SUBDIRS += \
-	dc_user \
-	user
-endif
+AM_CFLAGS = -Wall
 
-if ENABLE_TTY
-SUBDIRS += \
-	tty
-endif
+noinst_PROGRAMS = ec_xenomai_posix_example
 
-if ENABLE_RTDM
-SUBDIRS += \
-	xenomai \
-	xenomai_posix
-endif
-
-DIST_SUBDIRS = \
-	dc_rtai \
-	dc_user \
-	mini \
-	rtai \
-	tty \
-	xenomai \
-	xenomai_posix \
-	user
-
-EXTRA_DIST = \
-	Kbuild.in
-
-BUILT_SOURCES = \
-	Kbuild
+ec_xenomai_posix_example_SOURCES = main.c
+ec_xenomai_posix_example_CFLAGS = -I/opt/etherlab/xenomai/include -D_GNU_SOURCE -D_REENTRANT -Wall -pipe -D__XENO__ -I/opt/etherlab/xenomai/include/posix -I$(top_srcdir)/include
+ec_xenomai_posix_example_LDFLAGS = -Wl,@/opt/etherlab/xenomai/lib/posix.wrappers -L/opt/etherlab/xenomai/lib -lpthread_rt -lrtdm -L$(top_builddir)/lib/.libs -lethercat -L/opt/etherlab/xenomai/lib -lrtdk -lxenomai -lpthread
 
 #------------------------------------------------------------------------------

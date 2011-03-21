@@ -688,6 +688,7 @@ AC_CONFIG_FILES([
         examples/tty/Makefile
         examples/user/Makefile
         examples/xenomai/Makefile
+        examples/xenomai_posix/Makefile
         include/Makefile
         lib/Makefile
         m4/Makefile
