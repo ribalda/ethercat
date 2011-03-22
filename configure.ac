@@ -369,9 +369,11 @@ AC_ARG_WITH([rtai-dir],
     ),
     [
         rtaidir=[$withval]
+        rtai=1
     ],
     [
         rtaidir=""
+        rtai=0
     ]
 )
 
@@ -387,7 +389,8 @@ else
 fi
 
 AC_SUBST(RTAI_DIR,[$rtaidir])
-
+AM_CONDITIONAL(ENABLE_RTAI, test "x$rtai" = "x1")
+AC_SUBST(ENABLE_RTAI,[$rtai])
 
 #------------------------------------------------------------------------------
 # Xenomai path (optional)
@@ -396,13 +399,15 @@ AC_SUBST(RTAI_DIR,[$rtaidir])
 AC_ARG_WITH([xenomai-dir],
     AC_HELP_STRING(
         [--with-xenomai-dir=<DIR>],
-        [Xenomai path (only for RTDM Interface or Xenomai examples)]
+        [Xenomai path (only for RTDM Interface)]
     ),
     [
         xenomaidir=[$withval]
+        xeno=1
     ],
     [
         xenomaidir=""
+        xeno=0
     ]
 )
 
@@ -418,7 +423,8 @@ else
 fi
 
 AC_SUBST(XENOMAI_DIR,[$xenomaidir])
-
+AM_CONDITIONAL(ENABLE_XENOMAI, test "x$xeno" = "x1")
+AC_SUBST(ENABLE_XENOMAI,[$xeno])
 
 #------------------------------------------------------------------------------
 # RTDM Interface (optional)
@@ -689,6 +695,7 @@ AC_CONFIG_FILES([
         examples/user/Makefile
         examples/xenomai/Makefile
         examples/xenomai_posix/Makefile
+        examples/rtai_rtdm/Makefile
         include/Makefile
         lib/Makefile
         m4/Makefile

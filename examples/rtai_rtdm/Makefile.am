@@ -15,9 +15,9 @@
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General
 #  Public License for more details.
 #
-#  You should have received a copy of the GNU General Public License along
-#  with the IgH EtherCAT Master; if not, write to the Free Software
-#  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+#  You should have received a copy of the GNU General Public License along with
+#  the IgH EtherCAT Master; if not, write to the Free Software Foundation,
+#  Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 #  ---
 #  
@@ -27,47 +27,14 @@
 #
 #------------------------------------------------------------------------------
 
-SUBDIRS =
 
-if ENABLE_USERLIB
-SUBDIRS += \
-	dc_user \
-	user
-endif
+AM_CFLAGS = -Wall
 
-if ENABLE_TTY
-SUBDIRS += \
-	tty
-endif
+noinst_PROGRAMS = ec_rtai_rtdm_example
 
-if ENABLE_RTDM
-if ENABLE_XENOMAI
-SUBDIRS += \
-	xenomai \
-	xenomai_posix 
-endif
+ec_rtai_rtdm_example_SOURCES = main.c
+ec_rtai_rtdm_example_CFLAGS = -I. -I/opt/etherlab/rtai/include -O2 -I/home/ab/Download/rtai/linux-2.6.32.11/include -Wall -Wstrict-prototypes -pipe -I$(top_srcdir)/include
+ec_rtai_rtdm_example_LDFLAGS = -L/opt/etherlab/rtai/lib -llxrt -lrtdm -lpthread -L$(top_builddir)/lib/.libs -lethercat 
 
-if ENABLE_RTAI
-SUBDIRS += \
-	rtai_rtdm
-endif
-endif
-
-DIST_SUBDIRS = \
-	dc_rtai \
-	dc_user \
-	mini \
-	rtai \
-	tty \
-	xenomai \
-	xenomai_posix \
-	rtai_rtdm \
-	user
-
-EXTRA_DIST = \
-	Kbuild.in
-
-BUILT_SOURCES = \
-	Kbuild
 
 #------------------------------------------------------------------------------

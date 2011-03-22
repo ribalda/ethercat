@@ -30,14 +30,43 @@
 
 #include <linux/module.h>
 #include <linux/mman.h>
-#include <rtdm/rtdm_driver.h>
+
+
+#ifdef ENABLE_XENOMAI
 #include <native/task.h>
 #include <native/sem.h>
 #include <native/mutex.h>
 #include <native/timer.h>
+#endif
+
+#ifdef ENABLE_RTAI
+#include <rtai_sched.h>
+#include <rtai_sem.h>
+#endif
+
+
+#include <rtdm/rtdm_driver.h>
 
 #include "../include/ecrt.h"
 #include "../include/ec_rtdm.h"
+
+#ifdef ENABLE_XENOMAI
+#define my_mutex_create(X,Y)  rt_mutex_create(X, Y)
+#define my_mutex_acquire(X,Y) rt_mutex_acquire(X,Y)
+#define my_mutex_release(X)   rt_mutex_release(X)
+#define my_mutex_delete(X)    rt_mutex_delete(X)
+#endif
+
+#ifdef ENABLE_RTAI
+#define my_mutex_create(X,Y)  rt_sem_init(X, 1)
+#define my_mutex_acquire(X,Y) rt_sem_wait(X)
+#define my_mutex_release(X)   rt_sem_signal(X)
+#define my_mutex_delete(X)    rt_sem_delete(X)
+#define TM_INFINITE
+#endif
+
+
+
 
 #define EC_RTDM_MAX_MASTERS 5 /**< Maximum number of masters. */
 
@@ -66,8 +95,13 @@
 typedef struct _EC_RTDM_DRV_STRUCT {
     unsigned int	    isattached;
     ec_master_t *	    master;
-    ec_domain_t *	    domain;				   
-    RT_MUTEX                masterlock;
+    ec_domain_t *	    domain;	
+#ifdef ENABLE_XENOMAI			   
+    RT_MUTEX           masterlock;
+#endif
+#ifdef ENABLE_RTAI
+    SEM                masterlock;
+#endif
     unsigned int	    sendcnt;
     unsigned int	    reccnt;
     unsigned int	    sendcntlv;
@@ -139,9 +173,9 @@ void send_callback(void *cb_data)
     pdrvstruc = (EC_RTDM_DRV_STRUCT*)cb_data;
     if (pdrvstruc->master)
         {
-            rt_mutex_acquire(&pdrvstruc->masterlock,TM_INFINITE);
+            my_mutex_acquire(&pdrvstruc->masterlock,TM_INFINITE);
             ecrt_master_send_ext(pdrvstruc->master);
-            rt_mutex_release(&pdrvstruc->masterlock);
+            my_mutex_release(&pdrvstruc->masterlock);
       }
 }
 
@@ -154,9 +188,9 @@ void receive_callback(void *cb_data)
     pdrvstruc = (EC_RTDM_DRV_STRUCT*)cb_data;
     if (pdrvstruc->master)
       {
-          rt_mutex_acquire(&pdrvstruc->masterlock,TM_INFINITE);
+          my_mutex_acquire(&pdrvstruc->masterlock,TM_INFINITE);
           ecrt_master_receive(pdrvstruc->master);
-          rt_mutex_release(&pdrvstruc->masterlock);      
+          my_mutex_release(&pdrvstruc->masterlock);      
     }
 }
 
@@ -171,7 +205,7 @@ void detach_master(EC_RTDM_DRV_STRUCT * pdrvstruc)
           EC_RTDM_INFO(pdrvstruc->masterno,"reseting callbacks!\n");
           ecrt_master_callbacks(pdrvstruc->master,NULL,NULL,NULL);
           EC_RTDM_INFO(pdrvstruc->masterno,"deleting mutex!\n");
-          rt_mutex_delete(&pdrvstruc->masterlock);
+          my_mutex_delete(&pdrvstruc->masterlock);
           pdrvstruc->master = NULL;
           pdrvstruc->isattached=0;
           EC_RTDM_INFO(pdrvstruc->masterno,"master detach done!\n");
@@ -278,11 +312,11 @@ int ec_rtdm_ioctl_rt(struct rtdm_dev_context   *context,
             }
 		if (pdrvstruc->master)
             {
-                rt_mutex_acquire(&pdrvstruc->masterlock,TM_INFINITE);
+                my_mutex_acquire(&pdrvstruc->masterlock,TM_INFINITE);
                 
                 ecrt_master_state(pdrvstruc->master, &ms);
                 
-                rt_mutex_release(&pdrvstruc->masterlock);
+                my_mutex_release(&pdrvstruc->masterlock);
                 
             }
         if  (rtdm_rw_user_ok(user_info, arg, sizeof(ms)))
@@ -304,11 +338,11 @@ int ec_rtdm_ioctl_rt(struct rtdm_dev_context   *context,
             }
 	   	if (pdrvstruc->domain)
             {
-                rt_mutex_acquire(&pdrvstruc->masterlock,TM_INFINITE);
+                my_mutex_acquire(&pdrvstruc->masterlock,TM_INFINITE);
                 
                 ecrt_domain_state(pdrvstruc->domain, &ds);
                 
-                rt_mutex_release(&pdrvstruc->masterlock);
+                my_mutex_release(&pdrvstruc->masterlock);
             }
         if  (rtdm_rw_user_ok(user_info, arg, sizeof(ds)))
             {
@@ -326,10 +360,10 @@ int ec_rtdm_ioctl_rt(struct rtdm_dev_context   *context,
             {
                 if (pdrvstruc->master)
                     {
-                        rt_mutex_acquire(&pdrvstruc->masterlock,TM_INFINITE);
+                        my_mutex_acquire(&pdrvstruc->masterlock,TM_INFINITE);
                         ecrt_master_receive(pdrvstruc->master);
                         pdrvstruc->reccnt++;
-                        rt_mutex_release(&pdrvstruc->masterlock);
+                        my_mutex_release(&pdrvstruc->masterlock);
                     }
             }
     }
@@ -338,9 +372,9 @@ int ec_rtdm_ioctl_rt(struct rtdm_dev_context   *context,
     {	       
         if (pdrvstruc->isattached)
             {
-                rt_mutex_acquire(&pdrvstruc->masterlock,TM_INFINITE);
+                my_mutex_acquire(&pdrvstruc->masterlock,TM_INFINITE);
                 ecrt_domain_process(pdrvstruc->domain);
-                rt_mutex_release(&pdrvstruc->masterlock);
+                my_mutex_release(&pdrvstruc->masterlock);
             }
     }
     break;
@@ -351,10 +385,10 @@ int ec_rtdm_ioctl_rt(struct rtdm_dev_context   *context,
             {
                 if (pdrvstruc->master)
                     {
-                        rt_mutex_acquire(&pdrvstruc->masterlock,TM_INFINITE);
+                        my_mutex_acquire(&pdrvstruc->masterlock,TM_INFINITE);
                         ecrt_master_send(pdrvstruc->master);
                         pdrvstruc->sendcnt++;
-                        rt_mutex_release(&pdrvstruc->masterlock);
+                        my_mutex_release(&pdrvstruc->masterlock);
                     }
             }
     }
@@ -363,9 +397,9 @@ int ec_rtdm_ioctl_rt(struct rtdm_dev_context   *context,
     {	       
         if (pdrvstruc->isattached)
             {
-                rt_mutex_acquire(&pdrvstruc->masterlock,TM_INFINITE);
+                my_mutex_acquire(&pdrvstruc->masterlock,TM_INFINITE);
                 ecrt_domain_queue(pdrvstruc->domain);
-                rt_mutex_release(&pdrvstruc->masterlock);
+                my_mutex_release(&pdrvstruc->masterlock);
             }
     }
     break;
@@ -385,10 +419,10 @@ int ec_rtdm_ioctl_rt(struct rtdm_dev_context   *context,
             
         if (pdrvstruc->master)
             {
-                rt_mutex_acquire(&pdrvstruc->masterlock,TM_INFINITE);
+                my_mutex_acquire(&pdrvstruc->masterlock,TM_INFINITE);
                 
                 ecrt_master_application_time(pdrvstruc->master, app_time);
-                rt_mutex_release(&pdrvstruc->masterlock);
+                my_mutex_release(&pdrvstruc->masterlock);
                 
             }
     }
@@ -401,11 +435,11 @@ int ec_rtdm_ioctl_rt(struct rtdm_dev_context   *context,
             }
         if (pdrvstruc->master)
             {
-                rt_mutex_acquire(&pdrvstruc->masterlock,TM_INFINITE);
+                my_mutex_acquire(&pdrvstruc->masterlock,TM_INFINITE);
                 
                 ecrt_master_sync_reference_clock(pdrvstruc->master);
                 
-                rt_mutex_release(&pdrvstruc->masterlock);
+                my_mutex_release(&pdrvstruc->masterlock);
                 
             }
     }
@@ -418,11 +452,11 @@ int ec_rtdm_ioctl_rt(struct rtdm_dev_context   *context,
             }
         if (pdrvstruc->master)
             {
-                rt_mutex_acquire(&pdrvstruc->masterlock,TM_INFINITE);
+                my_mutex_acquire(&pdrvstruc->masterlock,TM_INFINITE);
                 
                 ecrt_master_sync_slave_clocks(pdrvstruc->master);
                 
-                rt_mutex_release(&pdrvstruc->masterlock);
+                my_mutex_release(&pdrvstruc->masterlock);
                 
             }
     }
@@ -435,9 +469,9 @@ int ec_rtdm_ioctl_rt(struct rtdm_dev_context   *context,
             }
         if (pdrvstruc->master)
             {
-                rt_mutex_acquire(&pdrvstruc->masterlock,TM_INFINITE);
+                my_mutex_acquire(&pdrvstruc->masterlock,TM_INFINITE);
                 ecrt_master_sync_monitor_queue(pdrvstruc->master);
-                rt_mutex_release(&pdrvstruc->masterlock);
+                my_mutex_release(&pdrvstruc->masterlock);
             }
     }
     break;
@@ -450,9 +484,9 @@ int ec_rtdm_ioctl_rt(struct rtdm_dev_context   *context,
             }
         if (pdrvstruc->master)
             {
-                rt_mutex_acquire(&pdrvstruc->masterlock,TM_INFINITE);
+                my_mutex_acquire(&pdrvstruc->masterlock,TM_INFINITE);
                 ret = ecrt_master_sync_monitor_process(pdrvstruc->master);
-                rt_mutex_release(&pdrvstruc->masterlock);
+                my_mutex_release(&pdrvstruc->masterlock);
                 if (rtdm_safe_copy_to_user(user_info, arg, &ret, sizeof(ret)))
                     {
                         EC_RTDM_ERR(pdrvstruc->masterno,"copy to user param failed!\n");
@@ -525,7 +559,7 @@ int ec_rtdm_ioctl_rt(struct rtdm_dev_context   *context,
                                 // set device name
                                 snprintf(&pdrvstruc->mutexname[0],sizeof(pdrvstruc->mutexname)-1,"ETHrtdmLOCK%d",pdrvstruc->masterno);
                                 EC_RTDM_INFO(pdrvstruc->masterno,"Creating Master mutex %s!\n",&pdrvstruc->mutexname[0]);
-                                rt_mutex_create(&pdrvstruc->masterlock,&pdrvstruc->mutexname[0]);
+                                my_mutex_create(&pdrvstruc->masterlock,&pdrvstruc->mutexname[0]);
                                 //ecrt_release_master(mstr);
                                 ecrt_master_callbacks(pdrvstruc->master, send_callback, receive_callback, pdrvstruc);
                                 EC_RTDM_INFO(pdrvstruc->masterno,"MSTR ATTACH done domain=%u!\n",(unsigned int)pdrvstruc->domain);
