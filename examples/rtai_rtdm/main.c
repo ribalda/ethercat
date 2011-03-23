@@ -447,16 +447,17 @@ void rt_check_master_state(void)
 
 
 
-void rt_sync()
+void rt_sync(void)
 {
 
-  uint64_t now_ns;
-  now_ns =  rt_get_real_time_ns();
-
+  RTIME now_ns;
+  uint64_t now;
+  now_ns = rt_get_cpu_time_ns();
+  now = (uint64_t)now_ns;
 
   if (rt_fd>=0)
   {
-      ecrt_rtdm_master_application_time(rt_fd, &now_ns);
+      ecrt_rtdm_master_application_time(rt_fd, &now);
   }
 
   if (sync_ref_counter) {
@@ -503,6 +504,8 @@ void my_cyclic(void)
     period = (int) nano2count((RTIME)cycle*1000);
     start_rt_timer(period);
     rt_make_hard_real_time();
+    rt_task_make_periodic(task, rt_get_time() + 10*period, period);
+
 
 
     while(1) {
@@ -517,6 +520,7 @@ void my_cyclic(void)
 
         if(run ==  0) {
             rt_make_soft_real_time();
+            stop_rt_timer();
             return;
         }
 

@@ -33,8 +33,8 @@ AM_CFLAGS = -Wall
 noinst_PROGRAMS = ec_xenomai_posix_example
 
 ec_xenomai_posix_example_SOURCES = main.c
-ec_xenomai_posix_example_CFLAGS = -I/opt/etherlab/xenomai/include -D_GNU_SOURCE -D_REENTRANT -Wall -pipe -D__XENO__ -I/opt/etherlab/xenomai/include/posix -I$(top_srcdir)/include
-ec_xenomai_posix_example_LDFLAGS = -Wl,@/opt/etherlab/xenomai/lib/posix.wrappers -L/opt/etherlab/xenomai/lib -lpthread_rt -lrtdm -L$(top_builddir)/lib/.libs -lethercat -L/opt/etherlab/xenomai/lib -lrtdk -lxenomai -lpthread
+ec_xenomai_posix_example_CFLAGS = -I"$(XENOMAI_DIR)"/include -D_GNU_SOURCE -D_REENTRANT -Wall -pipe -D__XENO__ -I"$(XENOMAI_DIR)"/include/posix -I$(top_srcdir)/include
+ec_xenomai_posix_example_LDFLAGS = -Wl,@"$(XENOMAI_DIR)"/lib/posix.wrappers -L"$(XENOMAI_DIR)"/lib -lpthread_rt -lrtdm -L$(top_builddir)/lib/.libs -lethercat -lrtdk -lxenomai -lpthread
 
 
 #------------------------------------------------------------------------------

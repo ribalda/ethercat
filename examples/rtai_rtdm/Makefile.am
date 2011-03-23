@@ -33,8 +33,8 @@ AM_CFLAGS = -Wall
 noinst_PROGRAMS = ec_rtai_rtdm_example
 
 ec_rtai_rtdm_example_SOURCES = main.c
-ec_rtai_rtdm_example_CFLAGS = -I. -I/opt/etherlab/rtai/include -O2 -I/home/ab/Download/rtai/linux-2.6.32.11/include -Wall -Wstrict-prototypes -pipe -I$(top_srcdir)/include
-ec_rtai_rtdm_example_LDFLAGS = -L/opt/etherlab/rtai/lib -llxrt -lrtdm -lpthread -L$(top_builddir)/lib/.libs -lethercat 
+ec_rtai_rtdm_example_CFLAGS = -I. -I"$(RTAI_DIR)"/include -O2 -I"$(LINUX_SOURCE_DIR)"/include -Wall -Wstrict-prototypes -pipe -I$(top_srcdir)/include
+ec_rtai_rtdm_example_LDFLAGS = -L"$(RTAI_DIR)"/lib -llxrt -lrtdm -lpthread -L$(top_builddir)/lib/.libs -lethercat 
 
 
 #------------------------------------------------------------------------------
