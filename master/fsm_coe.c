@@ -1406,7 +1406,7 @@ void ec_fsm_coe_down_prepare_segment_request(
 void ec_fsm_coe_down_response(ec_fsm_coe_t *fsm /**< finite state machine */)
 {
     ec_mailbox_t *mbox = fsm->mbox;
-    ec_datagram_t *datagram = datagram;
+    ec_datagram_t *datagram = fsm->mbox->datagram;
     ec_slave_t *slave = fsm->slave;
     uint8_t *data, mbox_prot;
     size_t rec_size;
