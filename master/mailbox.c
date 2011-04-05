@@ -37,9 +37,83 @@
 #include <linux/slab.h>
 #include <linux/delay.h>
 
+#include "slave.h"
 #include "mailbox.h"
 #include "datagram.h"
 #include "master.h"
+
+
+/*****************************************************************************/
+
+/**
+   Mailbox constructor.
+*/
+
+void ec_mbox_init(ec_mailbox_t* mbox, /** mailbox */
+                        ec_datagram_t* datagram  /**< Datagram used for the mailbox content. */
+                        )
+{
+    mbox->datagram = datagram;
+#ifdef EC_REDUCE_MBOXFRAMESIZE
+    ec_datagram_init(&mbox->end_datagram);
+#endif
+}
+
+
+/*****************************************************************************/
+
+/**
+   Clears mailbox datagrams.
+*/
+
+void ec_mbox_clear(ec_mailbox_t* mbox /** mailbox */
+                         )
+{
+#ifdef EC_REDUCE_MBOXFRAMESIZE
+    ec_datagram_clear(&mbox->end_datagram);
+#endif
+}
+
+
+/*****************************************************************************/
+
+/**
+   Queues the slave datagrams.
+*/
+
+void  ec_slave_mbox_queue_datagrams(const ec_slave_t* slave, /** slave */
+                                    ec_mailbox_t* mbox /** mailbox */
+                                    )
+{
+    ec_master_queue_request_fsm_datagram(slave->master, mbox->datagram);
+#ifdef EC_REDUCE_MBOXFRAMESIZE
+    if (mbox->end_datagram.type != EC_DATAGRAM_NONE)
+    {
+        ec_master_queue_request_fsm_datagram(slave->master, &mbox->end_datagram);
+    }
+#endif
+}
+
+
+/*****************************************************************************/
+
+/**
+   Queues the datagrams.
+*/
+
+void  ec_master_mbox_queue_datagrams(ec_master_t* master, /** master */
+                                    ec_mailbox_t* mbox /** mailbox */
+                                    )
+{
+    ec_master_queue_fsm_datagram(master, mbox->datagram);
+#ifdef EC_REDUCE_MBOXFRAMESIZE
+    if (mbox->end_datagram.type != EC_DATAGRAM_NONE)
+    {
+        ec_master_queue_fsm_datagram(master, &mbox->end_datagram);
+    }
+#endif
+}
+
 
 /*****************************************************************************/
 
@@ -48,12 +122,13 @@
    \return Pointer to mailbox datagram data, or ERR_PTR() code.
 */
 
-uint8_t *ec_slave_mbox_prepare_send(const ec_slave_t *slave, /**< slave */
-                                    ec_datagram_t *datagram, /**< datagram */
+uint8_t *ec_slave_mbox_prepare_send(const ec_slave_t* slave, /** slave */
+                                    ec_mailbox_t* mbox, /** mailbox */
                                     uint8_t type, /**< mailbox protocol */
                                     size_t size /**< size of the data */
                                     )
 {
+    ec_datagram_t* datagram = mbox->datagram;
     size_t total_size;
     int ret;
 
@@ -72,8 +147,13 @@ uint8_t *ec_slave_mbox_prepare_send(const ec_slave_t *slave, /**< slave */
     }
 
     ret = ec_datagram_fpwr(datagram, slave->station_address,
-            slave->configured_rx_mailbox_offset,
-            slave->configured_rx_mailbox_size);
+                           slave->configured_rx_mailbox_offset,
+#ifdef EC_REDUCE_MBOXFRAMESIZE
+                           total_size
+#else
+                           slave->configured_rx_mailbox_size
+#endif
+                           );
     if (ret)
         return ERR_PTR(ret);
 
@@ -82,6 +162,17 @@ uint8_t *ec_slave_mbox_prepare_send(const ec_slave_t *slave, /**< slave */
     EC_WRITE_U8 (datagram->data + 4, 0x00); // channel & priority
     EC_WRITE_U8 (datagram->data + 5, type); // underlying protocol type
 
+#ifdef EC_REDUCE_MBOXFRAMESIZE
+    /* in order to fulfil the ESC's mailbox protocol,
+       at least the last byte of the mailbox must be written */
+    if (total_size < slave->configured_rx_mailbox_size) {
+        ret = ec_datagram_fpwr(&mbox->end_datagram, slave->station_address,
+            slave->configured_rx_mailbox_offset+slave->configured_rx_mailbox_size-1,
+            1);
+        if (ret)
+            return ERR_PTR(ret);
+    }
+#endif
     return datagram->data + EC_MBOX_HEADER_SIZE;
 }
 
@@ -93,15 +184,19 @@ uint8_t *ec_slave_mbox_prepare_send(const ec_slave_t *slave, /**< slave */
    \return 0 in case of success, else < 0
 */
 
-int ec_slave_mbox_prepare_check(const ec_slave_t *slave, /**< slave */
-                                ec_datagram_t *datagram /**< datagram */
+int ec_slave_mbox_prepare_check(const ec_slave_t* slave, /** slave */
+                                ec_mailbox_t* mbox /** mailbox */
                                 )
 {
+    ec_datagram_t* datagram = mbox->datagram;
     int ret = ec_datagram_fprd(datagram, slave->station_address, 0x808, 8);
     if (ret)
         return ret;
 
     ec_datagram_zero(datagram);
+#ifdef EC_REDUCE_MBOXFRAMESIZE
+    mbox->end_datagram.type = EC_DATAGRAM_NONE;
+#endif
     return 0;
 }
 
@@ -112,9 +207,9 @@ int ec_slave_mbox_prepare_check(const ec_slave_t *slave, /**< slave */
    \return 0 in case of success, else < 0
 */
 
-int ec_slave_mbox_check(const ec_datagram_t *datagram /**< datagram */)
+int ec_slave_mbox_check(ec_mailbox_t* mbox /** mailbox */)
 {
-    return EC_READ_U8(datagram->data + 5) & 8 ? 1 : 0;
+    return EC_READ_U8(mbox->datagram->data + 5) & 8 ? 1 : 0;
 }
 
 /*****************************************************************************/
@@ -124,10 +219,11 @@ int ec_slave_mbox_check(const ec_datagram_t *datagram /**< datagram */)
    \return 0 in case of success, else < 0
 */
 
-int ec_slave_mbox_prepare_fetch(const ec_slave_t *slave, /**< slave */
-                                ec_datagram_t *datagram /**< datagram */
+int ec_slave_mbox_prepare_fetch(const ec_slave_t* slave, /** slave */
+                                ec_mailbox_t* mbox /** mailbox */
                                 )
 {
+    ec_datagram_t* datagram = mbox->datagram;
     int ret = ec_datagram_fprd(datagram, slave->station_address,
             slave->configured_tx_mailbox_offset,
             slave->configured_tx_mailbox_size);
@@ -135,6 +231,9 @@ int ec_slave_mbox_prepare_fetch(const ec_slave_t *slave, /**< slave */
         return ret;
 
     ec_datagram_zero(datagram);
+#ifdef EC_REDUCE_MBOXFRAMESIZE
+    mbox->end_datagram.type = EC_DATAGRAM_NONE;
+#endif
     return 0;
 }
 
@@ -162,12 +261,13 @@ const ec_code_msg_t mbox_error_messages[] = {
  *
  * \return Pointer to the received data, or ERR_PTR() code.
  */
-uint8_t *ec_slave_mbox_fetch(const ec_slave_t *slave, /**< slave */
-                             ec_datagram_t *datagram, /**< datagram */
+uint8_t *ec_slave_mbox_fetch(const ec_slave_t* slave, /** slave */
+                             ec_mailbox_t* mbox, /** mailbox */
                              uint8_t *type, /**< expected mailbox protocol */
                              size_t *size /**< size of the received data */
                              )
 {
+    ec_datagram_t* datagram = mbox->datagram;
     size_t data_size;
 
     data_size = EC_READ_U16(datagram->data);

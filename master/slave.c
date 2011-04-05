@@ -159,19 +159,20 @@ void ec_slave_init(
     INIT_LIST_HEAD(&slave->soe_requests);
     init_waitqueue_head(&slave->soe_queue);
 
-    // init state machine datagram
-    ec_datagram_init(&slave->fsm_datagram);
-    snprintf(slave->fsm_datagram.name, EC_DATAGRAM_NAME_SIZE,
+    // init datagram
+    ec_datagram_init(&slave->datagram);
+    snprintf(slave->datagram.name, EC_DATAGRAM_NAME_SIZE,
             "slave%u-fsm", slave->ring_position);
-    ret = ec_datagram_prealloc(&slave->fsm_datagram, EC_MAX_DATA_SIZE);
+    ret = ec_datagram_prealloc(&slave->datagram, EC_MAX_DATA_SIZE);
     if (ret < 0) {
-        ec_datagram_clear(&slave->fsm_datagram);
+        ec_datagram_clear(&slave->datagram);
         EC_SLAVE_ERR(slave, "Failed to allocate FSM datagram.\n");
         return;
     }
+    ec_mbox_init(&slave->mbox,&slave->datagram);
 
     // create state machine object
-    ec_fsm_slave_init(&slave->fsm, slave, &slave->fsm_datagram);
+    ec_fsm_slave_init(&slave->fsm, slave, &slave->mbox);
 }
 
 /*****************************************************************************/
@@ -255,7 +256,7 @@ void ec_slave_clear(ec_slave_t *slave /**< EtherCAT slave */)
     if (slave->sii_words)
         kfree(slave->sii_words);
     ec_fsm_slave_clear(&slave->fsm);
-    ec_datagram_clear(&slave->fsm_datagram);
+    ec_mbox_clear(&slave->mbox);
 }
 
 /*****************************************************************************/

@@ -73,6 +73,7 @@ struct ec_eoe
     struct list_head list; /**< list item */
     ec_slave_t *slave; /**< pointer to the corresponding slave */
     ec_datagram_t datagram; /**< datagram */
+    ec_mailbox_t mbox; /**< mailbox */
     unsigned int queue_datagram; /**< the datagram is ready for queuing */
     void (*state)(ec_eoe_t *); /**< state function for the state machine */
     struct net_device *dev; /**< net_device for virtual ethernet device */
