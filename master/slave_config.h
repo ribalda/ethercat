@@ -126,7 +126,8 @@ struct ec_slave_config {
                                  intervals (see spec. reg. 0x0400). */
     uint16_t watchdog_intervals; /**< Process data watchdog intervals (see
                                    spec. reg. 0x0420). */
-
+    uint8_t allow_overlapping_pdos;	/**< Allow input PDOs use the same frame space
+                                      as output PDOs. */
     ec_slave_t *slave; /**< Slave pointer. This is \a NULL, if the slave is
                          offline. */
 

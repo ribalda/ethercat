@@ -186,7 +186,7 @@ int ec_cdev_ioctl_master(
     ec_ioctl_master_t data;
     unsigned int i;
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
     data.slave_count = master->slave_count;
     data.config_count = ec_master_config_count(master);
@@ -197,9 +197,9 @@ int ec_cdev_ioctl_master(
     data.phase = (uint8_t) master->phase;
     data.active = (uint8_t) master->active;
     data.scan_busy = master->scan_busy;
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
 
-    if (down_interruptible(&master->device_sem))
+    if (ec_mutex_lock_interruptible(&master->device_mutex))
         return -EINTR;
 
     if (master->main_device.dev) {
@@ -242,7 +242,7 @@ int ec_cdev_ioctl_master(
         data.devices[1].loss_rates[i] = master->backup_device.loss_rates[i];
     }
 
-    up(&master->device_sem);
+    ec_mutex_unlock(&master->device_mutex);
 
     data.app_time = master->app_time;
     data.ref_clock =
@@ -271,12 +271,12 @@ int ec_cdev_ioctl_slave(
         return -EFAULT;
     }
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
 
     if (!(slave = ec_master_find_slave_const(
                     master, 0, data.position))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "Slave %u does not exist!\n", data.position);
         return -EINVAL;
     }
@@ -330,7 +330,7 @@ int ec_cdev_ioctl_slave(
     ec_cdev_strcpy(data.order, slave->sii.order);
     ec_cdev_strcpy(data.name, slave->sii.name);
 
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
 
     if (copy_to_user((void __user *) arg, &data, sizeof(data)))
         return -EFAULT;
@@ -355,19 +355,19 @@ int ec_cdev_ioctl_slave_sync(
         return -EFAULT;
     }
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
 
     if (!(slave = ec_master_find_slave_const(
                     master, 0, data.slave_position))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "Slave %u does not exist!\n",
                 data.slave_position);
         return -EINVAL;
     }
 
     if (data.sync_index >= slave->sii.sync_count) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         EC_SLAVE_ERR(slave, "Sync manager %u does not exist!\n",
                 data.sync_index);
         return -EINVAL;
@@ -381,7 +381,7 @@ int ec_cdev_ioctl_slave_sync(
     data.enable = sync->enable;
     data.pdo_count = ec_pdo_list_count(&sync->pdos);
 
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
 
     if (copy_to_user((void __user *) arg, &data, sizeof(data)))
         return -EFAULT;
@@ -407,19 +407,19 @@ int ec_cdev_ioctl_slave_sync_pdo(
         return -EFAULT;
     }
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
 
     if (!(slave = ec_master_find_slave_const(
                     master, 0, data.slave_position))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "Slave %u does not exist!\n",
                 data.slave_position);
         return -EINVAL;
     }
 
     if (data.sync_index >= slave->sii.sync_count) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         EC_SLAVE_ERR(slave, "Sync manager %u does not exist!\n",
                 data.sync_index);
         return -EINVAL;
@@ -428,7 +428,7 @@ int ec_cdev_ioctl_slave_sync_pdo(
     sync = &slave->sii.syncs[data.sync_index];
     if (!(pdo = ec_pdo_list_find_pdo_by_pos_const(
                     &sync->pdos, data.pdo_pos))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         EC_SLAVE_ERR(slave, "Sync manager %u does not contain a PDO with "
                 "position %u!\n", data.sync_index, data.pdo_pos);
         return -EINVAL;
@@ -438,7 +438,7 @@ int ec_cdev_ioctl_slave_sync_pdo(
     data.entry_count = ec_pdo_entry_count(pdo);
     ec_cdev_strcpy(data.name, pdo->name);
 
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
 
     if (copy_to_user((void __user *) arg, &data, sizeof(data)))
         return -EFAULT;
@@ -465,19 +465,19 @@ int ec_cdev_ioctl_slave_sync_pdo_entry(
         return -EFAULT;
     }
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
 
     if (!(slave = ec_master_find_slave_const(
                     master, 0, data.slave_position))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "Slave %u does not exist!\n",
                 data.slave_position);
         return -EINVAL;
     }
 
     if (data.sync_index >= slave->sii.sync_count) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         EC_SLAVE_ERR(slave, "Sync manager %u does not exist!\n",
                 data.sync_index);
         return -EINVAL;
@@ -486,7 +486,7 @@ int ec_cdev_ioctl_slave_sync_pdo_entry(
     sync = &slave->sii.syncs[data.sync_index];
     if (!(pdo = ec_pdo_list_find_pdo_by_pos_const(
                     &sync->pdos, data.pdo_pos))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         EC_SLAVE_ERR(slave, "Sync manager %u does not contain a PDO with "
                 "position %u!\n", data.sync_index, data.pdo_pos);
         return -EINVAL;
@@ -494,7 +494,7 @@ int ec_cdev_ioctl_slave_sync_pdo_entry(
 
     if (!(entry = ec_pdo_find_entry_by_pos_const(
                     pdo, data.entry_pos))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         EC_SLAVE_ERR(slave, "PDO 0x%04X does not contain an entry with "
                 "position %u!\n", data.pdo_pos, data.entry_pos);
         return -EINVAL;
@@ -505,7 +505,7 @@ int ec_cdev_ioctl_slave_sync_pdo_entry(
     data.bit_length = entry->bit_length;
     ec_cdev_strcpy(data.name, entry->name);
 
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
 
     if (copy_to_user((void __user *) arg, &data, sizeof(data)))
         return -EFAULT;
@@ -529,22 +529,23 @@ int ec_cdev_ioctl_domain(
         return -EFAULT;
     }
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
 
     if (!(domain = ec_master_find_domain_const(master, data.index))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "Domain %u does not exist!\n", data.index);
         return -EINVAL;
     }
 
     data.data_size = domain->data_size;
+    data.tx_size = domain->tx_size;
     data.logical_base_address = domain->logical_base_address;
     data.working_counter = domain->working_counter;
     data.expected_working_counter = domain->expected_working_counter;
     data.fmmu_count = ec_domain_fmmu_count(domain);
 
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
 
     if (copy_to_user((void __user *) arg, &data, sizeof(data)))
         return -EFAULT;
@@ -569,18 +570,18 @@ int ec_cdev_ioctl_domain_fmmu(
         return -EFAULT;
     }
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
 
     if (!(domain = ec_master_find_domain_const(master, data.domain_index))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "Domain %u does not exist!\n",
                 data.domain_index);
         return -EINVAL;
     }
 
     if (!(fmmu = ec_domain_find_fmmu(domain, data.fmmu_index))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "Domain %u has less than %u"
                 " fmmu configurations.\n",
                 data.domain_index, data.fmmu_index + 1);
@@ -592,9 +593,10 @@ int ec_cdev_ioctl_domain_fmmu(
     data.sync_index = fmmu->sync_index;
     data.dir = fmmu->dir;
     data.logical_address = fmmu->logical_start_address;
+    data.domain_address = fmmu->domain_address;
     data.data_size = fmmu->data_size;
 
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
 
     if (copy_to_user((void __user *) arg, &data, sizeof(data)))
         return -EFAULT;
@@ -618,18 +620,18 @@ int ec_cdev_ioctl_domain_data(
         return -EFAULT;
     }
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
 
     if (!(domain = ec_master_find_domain_const(master, data.domain_index))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "Domain %u does not exist!\n",
                 data.domain_index);
         return -EINVAL;
     }
 
     if (domain->data_size != data.data_size) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "Data size mismatch %u/%zu!\n",
                 data.data_size, domain->data_size);
         return -EFAULT;
@@ -637,11 +639,11 @@ int ec_cdev_ioctl_domain_data(
 
     if (copy_to_user((void __user *) data.target, domain->data,
                 domain->data_size)) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         return -EFAULT;
     }
 
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
     return 0;
 }
 
@@ -686,12 +688,12 @@ int ec_cdev_ioctl_slave_state(
         return -EFAULT;
     }
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
 
     if (!(slave = ec_master_find_slave(
                     master, 0, data.slave_position))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "Slave %u does not exist!\n",
                 data.slave_position);
         return -EINVAL;
@@ -699,7 +701,7 @@ int ec_cdev_ioctl_slave_state(
 
     ec_slave_request_state(slave, data.al_state);
 
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
     return 0;
 }
 
@@ -720,12 +722,12 @@ int ec_cdev_ioctl_slave_sdo(
         return -EFAULT;
     }
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
 
     if (!(slave = ec_master_find_slave_const(
                     master, 0, data.slave_position))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "Slave %u does not exist!\n",
                 data.slave_position);
         return -EINVAL;
@@ -733,7 +735,7 @@ int ec_cdev_ioctl_slave_sdo(
 
     if (!(sdo = ec_slave_get_sdo_by_pos_const(
                     slave, data.sdo_position))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         EC_SLAVE_ERR(slave, "SDO %u does not exist!\n", data.sdo_position);
         return -EINVAL;
     }
@@ -742,7 +744,7 @@ int ec_cdev_ioctl_slave_sdo(
     data.max_subindex = sdo->max_subindex;
     ec_cdev_strcpy(data.name, sdo->name);
 
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
 
     if (copy_to_user((void __user *) arg, &data, sizeof(data)))
         return -EFAULT;
@@ -768,12 +770,12 @@ int ec_cdev_ioctl_slave_sdo_entry(
         return -EFAULT;
     }
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
 
     if (!(slave = ec_master_find_slave_const(
                     master, 0, data.slave_position))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "Slave %u does not exist!\n",
                 data.slave_position);
         return -EINVAL;
@@ -782,14 +784,14 @@ int ec_cdev_ioctl_slave_sdo_entry(
     if (data.sdo_spec <= 0) {
         if (!(sdo = ec_slave_get_sdo_by_pos_const(
                         slave, -data.sdo_spec))) {
-            up(&master->master_sem);
+            ec_mutex_unlock(&master->master_mutex);
             EC_SLAVE_ERR(slave, "SDO %u does not exist!\n", -data.sdo_spec);
             return -EINVAL;
         }
     } else {
         if (!(sdo = ec_slave_get_sdo_const(
                         slave, data.sdo_spec))) {
-            up(&master->master_sem);
+            ec_mutex_unlock(&master->master_mutex);
             EC_SLAVE_ERR(slave, "SDO 0x%04X does not exist!\n",
                     data.sdo_spec);
             return -EINVAL;
@@ -798,7 +800,7 @@ int ec_cdev_ioctl_slave_sdo_entry(
 
     if (!(entry = ec_sdo_get_entry_const(
                     sdo, data.sdo_entry_subindex))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         EC_SLAVE_ERR(slave, "SDO entry 0x%04X:%02X does not exist!\n",
                 sdo->index, data.sdo_entry_subindex);
         return -EINVAL;
@@ -820,7 +822,7 @@ int ec_cdev_ioctl_slave_sdo_entry(
         entry->write_access[EC_SDO_ENTRY_ACCESS_OP];
     ec_cdev_strcpy(data.description, entry->description);
 
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
 
     if (copy_to_user((void __user *) arg, &data, sizeof(data)))
         return -EFAULT;
@@ -838,78 +840,74 @@ int ec_cdev_ioctl_slave_sdo_upload(
         )
 {
     ec_ioctl_slave_sdo_upload_t data;
-    ec_master_sdo_request_t request;
+    ec_master_sdo_request_t* request;
     int retval;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
         return -EFAULT;
     }
 
-    ec_sdo_request_init(&request.req);
-    ec_sdo_request_address(&request.req,
-            data.sdo_index, data.sdo_entry_subindex);
-    ecrt_sdo_request_read(&request.req);
+    request = kmalloc(sizeof(*request), GFP_KERNEL);
+    if (!request)
+        return -ENOMEM;
+    kref_init(&request->refcount);
 
-    if (down_interruptible(&master->master_sem))
+    ec_sdo_request_init(&request->req);
+    ec_sdo_request_address(&request->req,
+        data.sdo_index, data.sdo_entry_subindex);
+    ecrt_sdo_request_read(&request->req);
+
+    if (ec_mutex_lock_interruptible(&master->master_mutex))  {
+        kref_put(&request->refcount,ec_master_sdo_request_release);
         return -EINTR;
-
-    if (!(request.slave = ec_master_find_slave(
+    }
+    if (!(request->slave = ec_master_find_slave(
                     master, 0, data.slave_position))) {
-        up(&master->master_sem);
-        ec_sdo_request_clear(&request.req);
+        ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "Slave %u does not exist!\n",
                 data.slave_position);
+        kref_put(&request->refcount,ec_master_sdo_request_release);
         return -EINVAL;
     }
 
-    EC_SLAVE_DBG(request.slave, 1, "Schedule SDO upload request.\n");
+    EC_SLAVE_DBG(request->slave, 1, "Schedule SDO upload request %p.\n",request);
 
     // schedule request.
-    list_add_tail(&request.list, &request.slave->slave_sdo_requests);
+    kref_get(&request->refcount);
+    list_add_tail(&request->list, &request->slave->slave_sdo_requests);
 
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
 
     // wait for processing through FSM
-    if (wait_event_interruptible(request.slave->sdo_queue,
-                request.req.state != EC_INT_REQUEST_QUEUED)) {
+    if (wait_event_interruptible(request->slave->sdo_queue,
+          ((request->req.state == EC_INT_REQUEST_SUCCESS) || (request->req.state == EC_INT_REQUEST_FAILURE)))) {
         // interrupted by signal
-        down(&master->master_sem);
-        if (request.req.state == EC_INT_REQUEST_QUEUED) {
-            list_del(&request.list);
-            up(&master->master_sem);
-            ec_sdo_request_clear(&request.req);
-            return -EINTR;
-        }
-        // request already processing: interrupt not possible.
-        up(&master->master_sem);
+        kref_put(&request->refcount,ec_master_sdo_request_release);
+        return -EINTR;
     }
 
-    // wait until master FSM has finished processing
-    wait_event(request.slave->sdo_queue,
-            request.req.state != EC_INT_REQUEST_BUSY);
+    EC_SLAVE_DBG(request->slave, 1, "Finished SDO upload request %p.\n",request);
 
-    EC_SLAVE_DBG(request.slave, 1, "Finished SDO upload request.\n");
+    data.abort_code = request->req.abort_code;
 
-    data.abort_code = request.req.abort_code;
-
-    if (request.req.state != EC_INT_REQUEST_SUCCESS) {
+    if (request->req.state != EC_INT_REQUEST_SUCCESS) {
         data.data_size = 0;
-        if (request.req.errno) {
-            retval = -request.req.errno;
+        if (request->req.errno) {
+            retval = -request->req.errno;
         } else {
             retval = -EIO;
         }
     } else {
-        if (request.req.data_size > data.target_size) {
+        if (request->req.data_size > data.target_size) {
             EC_MASTER_ERR(master, "Buffer too small.\n");
-            ec_sdo_request_clear(&request.req);
+            kref_put(&request->refcount,ec_master_sdo_request_release);
             return -EOVERFLOW;
         }
-        data.data_size = request.req.data_size;
+        data.data_size = request->req.data_size;
 
         if (copy_to_user((void __user *) data.target,
-                    request.req.data, data.data_size)) {
-            ec_sdo_request_clear(&request.req);
+                    request->req.data, data.data_size)) {
+            kref_put(&request->refcount,ec_master_sdo_request_release);
             return -EFAULT;
         }
         retval = 0;
@@ -919,7 +917,7 @@ int ec_cdev_ioctl_slave_sdo_upload(
         retval = -EFAULT;
     }
 
-    ec_sdo_request_clear(&request.req);
+    kref_put(&request->refcount,ec_master_sdo_request_release);
     return retval;
 }
 
@@ -933,7 +931,7 @@ int ec_cdev_ioctl_slave_sdo_download(
         )
 {
     ec_ioctl_slave_sdo_download_t data;
-    ec_master_sdo_request_t request;
+    ec_master_sdo_request_t* request;
     int retval;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
@@ -946,67 +944,63 @@ int ec_cdev_ioctl_slave_sdo_download(
         return -EINVAL;
     }
 
-    ec_sdo_request_init(&request.req);
-    ec_sdo_request_address(&request.req,
+    request = kmalloc(sizeof(*request), GFP_KERNEL);
+    if (!request)
+        return -ENOMEM;
+    kref_init(&request->refcount);
+
+    ec_sdo_request_init(&request->req);
+    ec_sdo_request_address(&request->req,
             data.sdo_index, data.sdo_entry_subindex);
-    if (ec_sdo_request_alloc(&request.req, data.data_size)) {
-        ec_sdo_request_clear(&request.req);
+    if (ec_sdo_request_alloc(&request->req, data.data_size)) {
+        kref_put(&request->refcount,ec_master_sdo_request_release);
         return -ENOMEM;
     }
-    if (copy_from_user(request.req.data,
+    if (copy_from_user(request->req.data,
                 (void __user *) data.data, data.data_size)) {
-        ec_sdo_request_clear(&request.req);
+        kref_put(&request->refcount,ec_master_sdo_request_release);
         return -EFAULT;
     }
-    request.req.data_size = data.data_size;
-    ecrt_sdo_request_write(&request.req);
+    request->req.data_size = data.data_size;
+    ecrt_sdo_request_write(&request->req);
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex)) {
+        kref_put(&request->refcount,ec_master_sdo_request_release);
         return -EINTR;
-
-    if (!(request.slave = ec_master_find_slave(
+    }
+    if (!(request->slave = ec_master_find_slave(
                     master, 0, data.slave_position))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "Slave %u does not exist!\n",
                 data.slave_position);
-        ec_sdo_request_clear(&request.req);
+        kref_put(&request->refcount,ec_master_sdo_request_release);
         return -EINVAL;
     }
     
-    EC_SLAVE_DBG(request.slave, 1, "Schedule SDO download request.\n");
+    EC_SLAVE_DBG(request->slave, 1, "Schedule SDO download request %p.\n",request);
 
     // schedule request.
-    list_add_tail(&request.list, &request.slave->slave_sdo_requests);
+    kref_get(&request->refcount);
+    list_add_tail(&request->list, &request->slave->slave_sdo_requests);
 
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
 
     // wait for processing through FSM
-    if (wait_event_interruptible(request.slave->sdo_queue,
-                request.req.state != EC_INT_REQUEST_QUEUED)) {
+    if (wait_event_interruptible(request->slave->sdo_queue,
+       ((request->req.state == EC_INT_REQUEST_SUCCESS) || (request->req.state == EC_INT_REQUEST_FAILURE)))) {
         // interrupted by signal
-        down(&master->master_sem);
-        if (request.req.state == EC_INT_REQUEST_QUEUED) {
-            list_del(&request.list);
-            up(&master->master_sem);
-            ec_sdo_request_clear(&request.req);
-            return -EINTR;
-        }
-        // request already processing: interrupt not possible.
-        up(&master->master_sem);
+        kref_put(&request->refcount,ec_master_sdo_request_release);
+        return -EINTR;
     }
 
-    // wait until master FSM has finished processing
-    wait_event(request.slave->sdo_queue,
-            request.req.state != EC_INT_REQUEST_BUSY);
+    EC_SLAVE_DBG(request->slave, 1, "Finished SDO download request %p.\n",request);
 
-    EC_SLAVE_DBG(request.slave, 1, "Finished SDO download request.\n");
+    data.abort_code = request->req.abort_code;
 
-    data.abort_code = request.req.abort_code;
-
-    if (request.req.state == EC_INT_REQUEST_SUCCESS) {
+    if (request->req.state == EC_INT_REQUEST_SUCCESS) {
         retval = 0;
-    } else if (request.req.errno) {
-        retval = -request.req.errno;
+    } else if (request->req.errno) {
+        retval = -request->req.errno;
     } else {
         retval = -EIO;
     }
@@ -1015,7 +1009,7 @@ int ec_cdev_ioctl_slave_sdo_download(
         retval = -EFAULT;
     }
 
-    ec_sdo_request_clear(&request.req);
+    kref_put(&request->refcount,ec_master_sdo_request_release);
     return retval;
 }
 
@@ -1036,12 +1030,12 @@ int ec_cdev_ioctl_slave_sii_read(
         return -EFAULT;
     }
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
 
     if (!(slave = ec_master_find_slave_const(
                     master, 0, data.slave_position))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "Slave %u does not exist!\n",
                 data.slave_position);
         return -EINVAL;
@@ -1049,7 +1043,7 @@ int ec_cdev_ioctl_slave_sii_read(
 
     if (!data.nwords
             || data.offset + data.nwords > slave->sii_nwords) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         EC_SLAVE_ERR(slave, "Invalid SII read offset/size %u/%u for slave SII"
                 " size %zu!\n", data.offset, data.nwords, slave->sii_nwords);
         return -EINVAL;
@@ -1061,7 +1055,7 @@ int ec_cdev_ioctl_slave_sii_read(
     else
         retval = 0;
 
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
     return retval;
 }
 
@@ -1078,7 +1072,8 @@ int ec_cdev_ioctl_slave_sii_write(
     ec_slave_t *slave;
     unsigned int byte_size;
     uint16_t *words;
-    ec_sii_write_request_t request;
+    ec_sii_write_request_t* request;
+    int retval;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
         return -EFAULT;
@@ -1094,58 +1089,57 @@ int ec_cdev_ioctl_slave_sii_write(
         return -ENOMEM;
     }
 
+    request = kmalloc(sizeof(*request), GFP_KERNEL);
+    if (!request)
+        return -ENOMEM;
+    kref_init(&request->refcount);
+    // init SII write request
+    INIT_LIST_HEAD(&request->list);
+    request->words = words; // now "owned" by request, see ec_master_sii_write_request_release
+    request->offset = data.offset;
+    request->nwords = data.nwords;
+
     if (copy_from_user(words,
                 (void __user *) data.words, byte_size)) {
-        kfree(words);
+        kref_put(&request->refcount,ec_master_sii_write_request_release);
         return -EFAULT;
     }
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex)) {
+        kref_put(&request->refcount,ec_master_sii_write_request_release);
         return -EINTR;
-
+    }
     if (!(slave = ec_master_find_slave(
                     master, 0, data.slave_position))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "Slave %u does not exist!\n",
                 data.slave_position);
-        kfree(words);
+        kref_put(&request->refcount,ec_master_sii_write_request_release);
         return -EINVAL;
     }
 
-    // init SII write request
-    INIT_LIST_HEAD(&request.list);
-    request.slave = slave;
-    request.words = words;
-    request.offset = data.offset;
-    request.nwords = data.nwords;
-    request.state = EC_INT_REQUEST_QUEUED;
+    request->slave = slave;
+    request->state = EC_INT_REQUEST_QUEUED;
 
     // schedule SII write request.
-    list_add_tail(&request.list, &master->sii_requests);
+    list_add_tail(&request->list, &master->sii_requests);
+    kref_get(&request->refcount);
 
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
 
     // wait for processing through FSM
     if (wait_event_interruptible(master->sii_queue,
-                request.state != EC_INT_REQUEST_QUEUED)) {
-        // interrupted by signal
-        down(&master->master_sem);
-        if (request.state == EC_INT_REQUEST_QUEUED) {
-            // abort request
-            list_del(&request.list);
-            up(&master->master_sem);
-            kfree(words);
-            return -EINTR;
-        }
-        up(&master->master_sem);
+          ((request->state == EC_INT_REQUEST_SUCCESS) || (request->state == EC_INT_REQUEST_FAILURE)))) {
+           // interrupted by signal
+           kref_put(&request->refcount,ec_master_sii_write_request_release);
+           return -EINTR;
     }
 
-    // wait until master FSM has finished processing
-    wait_event(master->sii_queue, request.state != EC_INT_REQUEST_BUSY);
 
-    kfree(words);
+    retval = request->state == EC_INT_REQUEST_SUCCESS ? 0 : -EIO;
+    kref_put(&request->refcount,ec_master_sii_write_request_release);
 
-    return request.state == EC_INT_REQUEST_SUCCESS ? 0 : -EIO;
+    return retval;
 }
 
 /*****************************************************************************/
@@ -1160,7 +1154,8 @@ int ec_cdev_ioctl_slave_reg_read(
     ec_ioctl_slave_reg_t data;
     ec_slave_t *slave;
     uint8_t *contents;
-    ec_reg_request_t request;
+    ec_reg_request_t* request;
+    int retval;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
         return -EFAULT;
@@ -1175,56 +1170,58 @@ int ec_cdev_ioctl_slave_reg_read(
         return -ENOMEM;
     }
 
-    if (down_interruptible(&master->master_sem))
-        return -EINTR;
+    request = kmalloc(sizeof(*request), GFP_KERNEL);
+    if (!request)
+        return -ENOMEM;
+    kref_init(&request->refcount);
 
+    // init register request
+    INIT_LIST_HEAD(&request->list);
+    request->dir = EC_DIR_INPUT;
+    request->data = contents;   // now "owned" by request, see ec_master_reg_request_release
+    request->offset = data.offset;
+    request->length = data.length;
+
+    if (ec_mutex_lock_interruptible(&master->master_mutex)) {
+        kref_put(&request->refcount,ec_master_reg_request_release);
+        return -EINTR;
+    }
     if (!(slave = ec_master_find_slave(
                     master, 0, data.slave_position))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "Slave %u does not exist!\n",
                 data.slave_position);
+        kref_put(&request->refcount,ec_master_reg_request_release);
         return -EINVAL;
     }
 
-    // init register request
-    INIT_LIST_HEAD(&request.list);
-    request.slave = slave;
-    request.dir = EC_DIR_INPUT;
-    request.data = contents;
-    request.offset = data.offset;
-    request.length = data.length;
-    request.state = EC_INT_REQUEST_QUEUED;
+    request->slave = slave;
+    request->state = EC_INT_REQUEST_QUEUED;
 
     // schedule request.
-    list_add_tail(&request.list, &master->reg_requests);
+    list_add_tail(&request->list, &master->reg_requests);
+    kref_get(&request->refcount);
 
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
 
     // wait for processing through FSM
     if (wait_event_interruptible(master->reg_queue,
-                request.state != EC_INT_REQUEST_QUEUED)) {
-        // interrupted by signal
-        down(&master->master_sem);
-        if (request.state == EC_INT_REQUEST_QUEUED) {
-            // abort request
-            list_del(&request.list);
-            up(&master->master_sem);
-            kfree(contents);
-            return -EINTR;
-        }
-        up(&master->master_sem);
+          ((request->state == EC_INT_REQUEST_SUCCESS) || (request->state == EC_INT_REQUEST_FAILURE)))) {
+           // interrupted by signal
+           kref_put(&request->refcount,ec_master_reg_request_release);
+           return -EINTR;
     }
 
-    // wait until master FSM has finished processing
-    wait_event(master->reg_queue, request.state != EC_INT_REQUEST_BUSY);
-
-    if (request.state == EC_INT_REQUEST_SUCCESS) {
-        if (copy_to_user((void __user *) data.data, contents, data.length))
+    if (request->state == EC_INT_REQUEST_SUCCESS) {
+        if (copy_to_user((void __user *) data.data, request->data, data.length)) {
+            kref_put(&request->refcount,ec_master_reg_request_release);
             return -EFAULT;
+        }
     }
-    kfree(contents);
+    retval = request->state == EC_INT_REQUEST_SUCCESS ? 0 : -EIO;
 
-    return request.state == EC_INT_REQUEST_SUCCESS ? 0 : -EIO;
+    kref_put(&request->refcount,ec_master_reg_request_release);
+    return retval;
 }
 
 /*****************************************************************************/
@@ -1239,7 +1236,8 @@ int ec_cdev_ioctl_slave_reg_write(
     ec_ioctl_slave_reg_t data;
     ec_slave_t *slave;
     uint8_t *contents;
-    ec_reg_request_t request;
+    ec_reg_request_t* request;
+    int retval;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
         return -EFAULT;
@@ -1259,53 +1257,52 @@ int ec_cdev_ioctl_slave_reg_write(
         return -EFAULT;
     }
 
-    if (down_interruptible(&master->master_sem))
+    request = kmalloc(sizeof(*request), GFP_KERNEL);
+    if (!request)
+        return -ENOMEM;
+    kref_init(&request->refcount);
+    // init register request
+    INIT_LIST_HEAD(&request->list);
+    request->dir = EC_DIR_OUTPUT;
+    request->data = contents; // now "owned" by request, see ec_master_reg_request_release
+    request->offset = data.offset;
+    request->length = data.length;
+
+    if (ec_mutex_lock_interruptible(&master->master_mutex)) {
+        kref_put(&request->refcount,ec_master_reg_request_release);
         return -EINTR;
+    }
 
     if (!(slave = ec_master_find_slave(
                     master, 0, data.slave_position))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "Slave %u does not exist!\n",
                 data.slave_position);
-        kfree(contents);
+        kref_put(&request->refcount,ec_master_reg_request_release);
         return -EINVAL;
     }
 
-    // init register request
-    INIT_LIST_HEAD(&request.list);
-    request.slave = slave;
-    request.dir = EC_DIR_OUTPUT;
-    request.data = contents;
-    request.offset = data.offset;
-    request.length = data.length;
-    request.state = EC_INT_REQUEST_QUEUED;
+    request->slave = slave;
+    request->state = EC_INT_REQUEST_QUEUED;
 
     // schedule request.
-    list_add_tail(&request.list, &master->reg_requests);
+    list_add_tail(&request->list, &master->reg_requests);
+    kref_get(&request->refcount);
 
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
 
     // wait for processing through FSM
     if (wait_event_interruptible(master->reg_queue,
-                request.state != EC_INT_REQUEST_QUEUED)) {
-        // interrupted by signal
-        down(&master->master_sem);
-        if (request.state == EC_INT_REQUEST_QUEUED) {
-            // abort request
-            list_del(&request.list);
-            up(&master->master_sem);
-            kfree(contents);
-            return -EINTR;
-        }
-        up(&master->master_sem);
+          ((request->state == EC_INT_REQUEST_SUCCESS) || (request->state == EC_INT_REQUEST_FAILURE)))) {
+           // interrupted by signal
+           kref_put(&request->refcount,ec_master_reg_request_release);
+           return -EINTR;
     }
 
-    // wait until master FSM has finished processing
-    wait_event(master->reg_queue, request.state != EC_INT_REQUEST_BUSY);
+    retval = request->state == EC_INT_REQUEST_SUCCESS ? 0 : -EIO;
+    kref_put(&request->refcount,ec_master_reg_request_release);
+    return retval;
 
-    kfree(contents);
-
-    return request.state == EC_INT_REQUEST_SUCCESS ? 0 : -EIO;
 }
 
 /*****************************************************************************/
@@ -1325,12 +1322,12 @@ int ec_cdev_ioctl_config(
         return -EFAULT;
     }
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
 
     if (!(sc = ec_master_get_config_const(
                     master, data.config_index))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "Slave config %u does not exist!\n",
                 data.config_index);
         return -EINVAL;
@@ -1356,7 +1353,7 @@ int ec_cdev_ioctl_config(
         data.dc_sync[i] = sc->dc_sync[i];
     }
 
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
 
     if (copy_to_user((void __user *) arg, &data, sizeof(data)))
         return -EFAULT;
@@ -1387,12 +1384,12 @@ int ec_cdev_ioctl_config_pdo(
         return -EINVAL;
     }
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
 
     if (!(sc = ec_master_get_config_const(
                     master, data.config_index))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "Slave config %u does not exist!\n",
                 data.config_index);
         return -EINVAL;
@@ -1401,7 +1398,7 @@ int ec_cdev_ioctl_config_pdo(
     if (!(pdo = ec_pdo_list_find_pdo_by_pos_const(
                     &sc->sync_configs[data.sync_index].pdos,
                     data.pdo_pos))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "Invalid PDO position!\n");
         return -EINVAL;
     }
@@ -1410,7 +1407,7 @@ int ec_cdev_ioctl_config_pdo(
     data.entry_count = ec_pdo_entry_count(pdo);
     ec_cdev_strcpy(data.name, pdo->name);
 
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
 
     if (copy_to_user((void __user *) arg, &data, sizeof(data)))
         return -EFAULT;
@@ -1442,12 +1439,12 @@ int ec_cdev_ioctl_config_pdo_entry(
         return -EINVAL;
     }
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
 
     if (!(sc = ec_master_get_config_const(
                     master, data.config_index))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "Slave config %u does not exist!\n",
                 data.config_index);
         return -EINVAL;
@@ -1456,14 +1453,14 @@ int ec_cdev_ioctl_config_pdo_entry(
     if (!(pdo = ec_pdo_list_find_pdo_by_pos_const(
                     &sc->sync_configs[data.sync_index].pdos,
                     data.pdo_pos))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "Invalid PDO position!\n");
         return -EINVAL;
     }
 
     if (!(entry = ec_pdo_find_entry_by_pos_const(
                     pdo, data.entry_pos))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "Entry not found!\n");
         return -EINVAL;
     }
@@ -1473,7 +1470,7 @@ int ec_cdev_ioctl_config_pdo_entry(
     data.bit_length = entry->bit_length;
     ec_cdev_strcpy(data.name, entry->name);
 
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
 
     if (copy_to_user((void __user *) arg, &data, sizeof(data)))
         return -EFAULT;
@@ -1498,12 +1495,12 @@ int ec_cdev_ioctl_config_sdo(
         return -EFAULT;
     }
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
 
     if (!(sc = ec_master_get_config_const(
                     master, data.config_index))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "Slave config %u does not exist!\n",
                 data.config_index);
         return -EINVAL;
@@ -1511,7 +1508,7 @@ int ec_cdev_ioctl_config_sdo(
 
     if (!(req = ec_slave_config_get_sdo_by_pos_const(
                     sc, data.sdo_pos))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "Invalid SDO position!\n");
         return -EINVAL;
     }
@@ -1522,7 +1519,7 @@ int ec_cdev_ioctl_config_sdo(
     memcpy(&data.data, req->data,
             min((u32) data.size, (u32) EC_MAX_SDO_DATA_SIZE));
 
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
 
     if (copy_to_user((void __user *) arg, &data, sizeof(data)))
         return -EFAULT;
@@ -1547,12 +1544,12 @@ int ec_cdev_ioctl_config_idn(
         return -EFAULT;
     }
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
 
     if (!(sc = ec_master_get_config_const(
                     master, data.config_index))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "Slave config %u does not exist!\n",
                 data.config_index);
         return -EINVAL;
@@ -1560,7 +1557,7 @@ int ec_cdev_ioctl_config_idn(
 
     if (!(req = ec_slave_config_get_idn_by_pos_const(
                     sc, data.idn_pos))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "Invalid IDN position!\n");
         return -EINVAL;
     }
@@ -1572,7 +1569,7 @@ int ec_cdev_ioctl_config_idn(
     memcpy(&data.data, req->data,
             min((u32) data.size, (u32) EC_MAX_IDN_DATA_SIZE));
 
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
 
     if (copy_to_user((void __user *) arg, &data, sizeof(data)))
         return -EFAULT;
@@ -1598,11 +1595,11 @@ int ec_cdev_ioctl_eoe_handler(
         return -EFAULT;
     }
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
 
     if (!(eoe = ec_master_get_eoe_handler_const(master, data.eoe_index))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "EoE handler %u does not exist!\n",
                 data.eoe_index);
         return -EINVAL;
@@ -1615,14 +1612,14 @@ int ec_cdev_ioctl_eoe_handler(
     }
     snprintf(data.name, EC_DATAGRAM_NAME_SIZE, eoe->dev->name);
     data.open = eoe->opened;
-    data.rx_bytes = eoe->stats.tx_bytes;
-    data.rx_rate = eoe->tx_rate;
-    data.tx_bytes = eoe->stats.rx_bytes;
+    data.tx_bytes = eoe->stats.tx_bytes;
     data.tx_rate = eoe->tx_rate;
+    data.rx_bytes = eoe->stats.rx_bytes;
+    data.rx_rate = eoe->tx_rate;
     data.tx_queued_frames = eoe->tx_queued_frames;
     data.tx_queue_size = eoe->tx_queue_size;
 
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
 
     if (copy_to_user((void __user *) arg, &data, sizeof(data)))
         return -EFAULT;
@@ -1704,7 +1701,7 @@ int ec_cdev_ioctl_create_slave_config(
 
     data.config_index = 0;
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
 
     list_for_each_entry(entry, &master->configs, list) {
@@ -1713,7 +1710,7 @@ int ec_cdev_ioctl_create_slave_config(
         data.config_index++;
     }
 
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
 
     if (copy_to_user((void __user *) arg, &data, sizeof(data)))
         return -EFAULT;
@@ -1742,14 +1739,14 @@ int ec_cdev_ioctl_activate(
     
     priv->process_data_size = 0;
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
 
     list_for_each_entry(domain, &master->domains, list) {
         priv->process_data_size += ecrt_domain_size(domain);
     }
     
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
 
     if (priv->process_data_size) {
         priv->process_data = vmalloc(priv->process_data_size);
@@ -1766,9 +1763,6 @@ int ec_cdev_ioctl_activate(
             offset += ecrt_domain_size(domain);
         }
     }
-
-    ecrt_master_callbacks(master, ec_master_internal_send_cb,
-            ec_master_internal_receive_cb, master);
 
     ret = ecrt_master_activate(master);
     if (ret < 0)
@@ -1815,10 +1809,10 @@ int ec_cdev_ioctl_set_send_interval(
         return -EFAULT;
     }
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
     ec_master_set_send_interval(master,send_interval);
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
 
     return 0;
 }
@@ -1837,9 +1831,9 @@ int ec_cdev_ioctl_send(
     if (unlikely(!priv->requested))
         return -EPERM;
 
-    down(&master->io_sem);
+    ec_mutex_lock(&master->io_mutex);
     ecrt_master_send(master);
-    up(&master->io_sem);
+    ec_mutex_unlock(&master->io_mutex);
     return 0;
 }
 
@@ -1856,9 +1850,9 @@ int ec_cdev_ioctl_receive(
     if (unlikely(!priv->requested))
         return -EPERM;
 
-    down(&master->io_sem);
+    ec_mutex_lock(&master->io_mutex);
     ecrt_master_receive(master);
-    up(&master->io_sem);
+    ec_mutex_unlock(&master->io_mutex);
     return 0;
 }
 
@@ -1878,6 +1872,29 @@ int ec_cdev_ioctl_master_state(
         return -EPERM;
 
     ecrt_master_state(master, &data);
+
+    if (copy_to_user((void __user *) arg, &data, sizeof(data)))
+        return -EFAULT;
+
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Get the master state of all configured slaves.
+ */
+int ec_cdev_ioctl_master_sc_state(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    ec_master_state_t data;
+
+    if (unlikely(!priv->requested))
+        return -EPERM;
+
+    ecrt_master_configured_slaves_state(master, &data);
 
     if (copy_to_user((void __user *) arg, &data, sizeof(data)))
         return -EFAULT;
@@ -1921,9 +1938,9 @@ int ec_cdev_ioctl_sync_ref(
     if (unlikely(!priv->requested))
         return -EPERM;
 
-    down(&master->io_sem);
+    ec_mutex_lock(&master->io_mutex);
     ecrt_master_sync_reference_clock(master);
-    up(&master->io_sem);
+    ec_mutex_unlock(&master->io_mutex);
     return 0;
 }
 
@@ -1940,9 +1957,9 @@ int ec_cdev_ioctl_sync_slaves(
     if (unlikely(!priv->requested))
         return -EPERM;
 
-    down(&master->io_sem);
+    ec_mutex_lock(&master->io_mutex);
     ecrt_master_sync_slave_clocks(master);
-    up(&master->io_sem);
+    ec_mutex_unlock(&master->io_mutex);
     return 0;
 }
 
@@ -1959,9 +1976,9 @@ int ec_cdev_ioctl_sync_mon_queue(
     if (unlikely(!priv->requested))
         return -EPERM;
 
-    down(&master->io_sem);
+    ec_mutex_lock(&master->io_mutex);
     ecrt_master_sync_monitor_queue(master);
-    up(&master->io_sem);
+    ec_mutex_unlock(&master->io_mutex);
     return 0;
 }
 
@@ -1980,9 +1997,9 @@ int ec_cdev_ioctl_sync_mon_process(
     if (unlikely(!priv->requested))
         return -EPERM;
 
-    down(&master->io_sem);
+    ec_mutex_lock(&master->io_mutex);
     time_diff = ecrt_master_sync_monitor_process(master);
-    up(&master->io_sem);
+    ec_mutex_unlock(&master->io_mutex);
 
     if (copy_to_user((void __user *) arg, &time_diff, sizeof(time_diff)))
         return -EFAULT;
@@ -2003,9 +2020,9 @@ int ec_cdev_ioctl_reset(
     if (unlikely(!priv->requested))
         return -EPERM;
 
-    down(&master->master_sem);
+    ec_mutex_lock(&master->master_mutex);
     ecrt_master_reset(master);
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
     return 0;
 }
 
@@ -2034,7 +2051,7 @@ int ec_cdev_ioctl_sc_sync(
         goto out_return;
     }
 
-    if (down_interruptible(&master->master_sem)) {
+    if (ec_mutex_lock_interruptible(&master->master_mutex)) {
         ret = -EINTR;
         goto out_return;
     }
@@ -2055,7 +2072,7 @@ int ec_cdev_ioctl_sc_sync(
     }
 
 out_up:
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
 out_return:
     return ret;
 }
@@ -2084,7 +2101,7 @@ int ec_cdev_ioctl_sc_watchdog(
         goto out_return;
     }
 
-    if (down_interruptible(&master->master_sem)) {
+    if (ec_mutex_lock_interruptible(&master->master_mutex)) {
         ret = -EINTR;
         goto out_return;
     }
@@ -2098,7 +2115,51 @@ int ec_cdev_ioctl_sc_watchdog(
             data.watchdog_divider, data.watchdog_intervals);
 
 out_up:
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
+out_return:
+    return ret;
+}
+
+
+/*****************************************************************************/
+
+/** Configure wether a slave allows overlapping PDOs.
+ */
+int ec_cdev_ioctl_sc_allow_overlapping_pdos(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned long arg, /**< ioctl() argument. */
+        ec_cdev_priv_t *priv /**< Private data structure of file handle. */
+        )
+{
+    ec_ioctl_config_t data;
+    ec_slave_config_t *sc;
+    int ret = 0;
+
+    if (unlikely(!priv->requested)) {
+        ret = -EPERM;
+        goto out_return;
+    }
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+        ret = -EFAULT;
+        goto out_return;
+    }
+
+    if (ec_mutex_lock_interruptible(&master->master_mutex)) {
+        ret = -EINTR;
+        goto out_return;
+    }
+
+    if (!(sc = ec_master_get_config(master, data.config_index))) {
+        ret = -ENOENT;
+        goto out_up;
+    }
+
+    ecrt_slave_config_overlapping_pdos(sc,
+            data.allow_overlapping_pdos);
+
+out_up:
+    ec_mutex_unlock(&master->master_mutex);
 out_return:
     return ret;
 }
@@ -2122,15 +2183,15 @@ int ec_cdev_ioctl_sc_add_pdo(
     if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
         return -EFAULT;
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
 
     if (!(sc = ec_master_get_config(master, data.config_index))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         return -ENOENT;
     }
 
-    up(&master->master_sem); // FIXME
+    ec_mutex_unlock(&master->master_mutex); // FIXME
 
     return ecrt_slave_config_pdo_assign_add(sc, data.sync_index, data.index);
 }
@@ -2154,15 +2215,15 @@ int ec_cdev_ioctl_sc_clear_pdos(
     if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
         return -EFAULT;
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
 
     if (!(sc = ec_master_get_config(master, data.config_index))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         return -ENOENT;
     }
 
-    up(&master->master_sem); // FIXME
+    ec_mutex_unlock(&master->master_mutex); // FIXME
 
     ecrt_slave_config_pdo_assign_clear(sc, data.sync_index);
     return 0;
@@ -2187,15 +2248,15 @@ int ec_cdev_ioctl_sc_add_entry(
     if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
         return -EFAULT;
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
 
     if (!(sc = ec_master_get_config(master, data.config_index))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         return -ENOENT;
     }
 
-    up(&master->master_sem); // FIXME
+    ec_mutex_unlock(&master->master_mutex); // FIXME
 
     return ecrt_slave_config_pdo_mapping_add(sc, data.pdo_index,
             data.entry_index, data.entry_subindex, data.entry_bit_length);
@@ -2220,15 +2281,15 @@ int ec_cdev_ioctl_sc_clear_entries(
     if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
         return -EFAULT;
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
 
     if (!(sc = ec_master_get_config(master, data.config_index))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         return -ENOENT;
     }
 
-    up(&master->master_sem); // FIXME
+    ec_mutex_unlock(&master->master_mutex); // FIXME
 
     ecrt_slave_config_pdo_mapping_clear(sc, data.index);
     return 0;
@@ -2255,20 +2316,20 @@ int ec_cdev_ioctl_sc_reg_pdo_entry(
     if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
         return -EFAULT;
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
 
     if (!(sc = ec_master_get_config(master, data.config_index))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         return -ENOENT;
     }
 
     if (!(domain = ec_master_find_domain(master, data.domain_index))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         return -ENOENT;
     }
 
-    up(&master->master_sem); // FIXME
+    ec_mutex_unlock(&master->master_mutex); // FIXME
 
     ret = ecrt_slave_config_reg_pdo_entry(sc, data.entry_index,
             data.entry_subindex, domain, &data.bit_position);
@@ -2298,11 +2359,11 @@ int ec_cdev_ioctl_sc_dc(
     if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
         return -EFAULT;
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
 
     if (!(sc = ec_master_get_config(master, data.config_index))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         return -ENOENT;
     }
 
@@ -2312,7 +2373,7 @@ int ec_cdev_ioctl_sc_dc(
             data.dc_sync[1].cycle_time,
             data.dc_sync[1].shift_time);
 
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
 
     return 0;
 }
@@ -2350,18 +2411,18 @@ int ec_cdev_ioctl_sc_sdo(
         return -EFAULT;
     }
 
-    if (down_interruptible(&master->master_sem)) {
+    if (ec_mutex_lock_interruptible(&master->master_mutex)) {
         kfree(sdo_data);
         return -EINTR;
     }
 
     if (!(sc = ec_master_get_config(master, data.config_index))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         kfree(sdo_data);
         return -ENOENT;
     }
 
-    up(&master->master_sem); // FIXME
+    ec_mutex_unlock(&master->master_mutex); // FIXME
 
     if (data.complete_access) {
         ret = ecrt_slave_config_complete_sdo(sc,
@@ -2397,12 +2458,12 @@ int ec_cdev_ioctl_sc_create_sdo_request(
 
     data.request_index = 0;
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
 
     sc = ec_master_get_config(master, data.config_index);
     if (!sc) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         return -ENOENT;
     }
 
@@ -2410,7 +2471,7 @@ int ec_cdev_ioctl_sc_create_sdo_request(
         data.request_index++;
     }
 
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
 
     req = ecrt_slave_config_create_sdo_request_err(sc, data.sdo_index,
             data.sdo_subindex, data.size);
@@ -2446,12 +2507,12 @@ int ec_cdev_ioctl_sc_create_voe_handler(
 
     data.voe_index = 0;
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
 
     sc = ec_master_get_config(master, data.config_index);
     if (!sc) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         return -ENOENT;
     }
 
@@ -2459,7 +2520,7 @@ int ec_cdev_ioctl_sc_create_voe_handler(
         data.voe_index++;
     }
 
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
 
     voe = ecrt_slave_config_create_voe_handler_err(sc, data.size);
     if (IS_ERR(voe))
@@ -2492,17 +2553,17 @@ int ec_cdev_ioctl_sc_state(
         return -EFAULT;
     }
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
 
     if (!(sc = ec_master_get_config_const(master, data.config_index))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         return -ENOENT;
     }
 
     ecrt_slave_config_state(sc, &state);
 
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
 
     if (copy_to_user((void __user *) data.state, &state, sizeof(state)))
         return -EFAULT;
@@ -2543,18 +2604,18 @@ int ec_cdev_ioctl_sc_idn(
         return -EFAULT;
     }
 
-    if (down_interruptible(&master->master_sem)) {
+    if (ec_mutex_lock_interruptible(&master->master_mutex)) {
         kfree(data);
         return -EINTR;
     }
 
     if (!(sc = ec_master_get_config(master, ioctl.config_index))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         kfree(data);
         return -ENOENT;
     }
 
-    up(&master->master_sem); // FIXME
+    ec_mutex_unlock(&master->master_mutex); // FIXME
 
     ret = ecrt_slave_config_idn(
             sc, ioctl.drive_no, ioctl.idn, ioctl.al_state, data, ioctl.size);
@@ -2578,19 +2639,19 @@ int ec_cdev_ioctl_domain_offset(
     if (unlikely(!priv->requested))
         return -EPERM;
 
-    if (down_interruptible(&master->master_sem)) {
+    if (ec_mutex_lock_interruptible(&master->master_mutex)) {
         return -EINTR;
     }
 
     list_for_each_entry(domain, &master->domains, list) {
         if (domain->index == arg) {
-            up(&master->master_sem);
+            ec_mutex_unlock(&master->master_mutex);
             return offset;
         }
         offset += ecrt_domain_size(domain);
     }
 
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
     return -ENOENT;
 }
 
@@ -2609,16 +2670,16 @@ int ec_cdev_ioctl_domain_process(
     if (unlikely(!priv->requested))
         return -EPERM;
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
 
     if (!(domain = ec_master_find_domain(master, arg))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         return -ENOENT;
     }
 
     ecrt_domain_process(domain);
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
     return 0;
 }
 
@@ -2637,16 +2698,16 @@ int ec_cdev_ioctl_domain_queue(
     if (unlikely(!priv->requested))
         return -EPERM;
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
 
     if (!(domain = ec_master_find_domain(master, arg))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         return -ENOENT;
     }
 
     ecrt_domain_queue(domain);
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
     return 0;
 }
 
@@ -2671,17 +2732,17 @@ int ec_cdev_ioctl_domain_state(
         return -EFAULT;
     }
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
 
     if (!(domain = ec_master_find_domain_const(master, data.domain_index))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         return -ENOENT;
     }
 
     ecrt_domain_state(domain, &state);
 
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
 
     if (copy_to_user((void __user *) data.state, &state, sizeof(state)))
         return -EFAULT;
@@ -2709,20 +2770,20 @@ int ec_cdev_ioctl_sdo_request_timeout(
     if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
         return -EFAULT;
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
 
     if (!(sc = ec_master_get_config(master, data.config_index))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         return -ENOENT;
     }
 
     if (!(req = ec_slave_config_find_sdo_request(sc, data.request_index))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         return -ENOENT;
     }
 
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
 
     ecrt_sdo_request_timeout(req, data.timeout);
     return 0;
@@ -2748,16 +2809,16 @@ int ec_cdev_ioctl_sdo_request_state(
     if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
         return -EFAULT;
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
 
     if (!(sc = ec_master_get_config(master, data.config_index))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         return -ENOENT;
     }
 
     if (!(req = ec_slave_config_find_sdo_request(sc, data.request_index))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         return -ENOENT;
     }
 
@@ -2767,7 +2828,7 @@ int ec_cdev_ioctl_sdo_request_state(
     else
         data.size = 0;
 
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
 
     if (copy_to_user((void __user *) arg, &data, sizeof(data)))
         return -EFAULT;
@@ -2795,20 +2856,20 @@ int ec_cdev_ioctl_sdo_request_read(
     if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
         return -EFAULT;
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
 
     if (!(sc = ec_master_get_config(master, data.config_index))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         return -ENOENT;
     }
 
     if (!(req = ec_slave_config_find_sdo_request(sc, data.request_index))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         return -ENOENT;
     }
 
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
 
     ecrt_sdo_request_read(req);
     return 0;
@@ -2840,20 +2901,20 @@ int ec_cdev_ioctl_sdo_request_write(
         return -EINVAL;
     }
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
 
     if (!(sc = ec_master_get_config(master, data.config_index))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         return -ENOENT;
     }
 
     if (!(req = ec_slave_config_find_sdo_request(sc, data.request_index))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         return -ENOENT;
     }
 
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
 
     ret = ec_sdo_request_alloc(req, data.size);
     if (ret)
@@ -2887,20 +2948,20 @@ int ec_cdev_ioctl_sdo_request_data(
     if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
         return -EFAULT;
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
 
     if (!(sc = ec_master_get_config(master, data.config_index))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         return -ENOENT;
     }
 
     if (!(req = ec_slave_config_find_sdo_request(sc, data.request_index))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         return -ENOENT;
     }
 
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
 
     if (copy_to_user((void __user *) data.data, ecrt_sdo_request_data(req),
                 ecrt_sdo_request_data_size(req)))
@@ -2937,20 +2998,20 @@ int ec_cdev_ioctl_voe_send_header(
     if (get_user(vendor_type, data.vendor_type))
         return -EFAULT;
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
 
     if (!(sc = ec_master_get_config(master, data.config_index))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         return -ENOENT;
     }
 
     if (!(voe = ec_slave_config_find_voe_handler(sc, data.voe_index))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         return -ENOENT;
     }
 
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
 
     ecrt_voe_handler_send_header(voe, vendor_id, vendor_type);
     return 0;
@@ -2978,22 +3039,22 @@ int ec_cdev_ioctl_voe_rec_header(
     if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
         return -EFAULT;
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
 
     if (!(sc = ec_master_get_config(master, data.config_index))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         return -ENOENT;
     }
 
     if (!(voe = ec_slave_config_find_voe_handler(sc, data.voe_index))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         return -ENOENT;
     }
 
     ecrt_voe_handler_received_header(voe, &vendor_id, &vendor_type);
 
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
 
     if (likely(data.vendor_id))
         if (put_user(vendor_id, data.vendor_id))
@@ -3026,20 +3087,20 @@ int ec_cdev_ioctl_voe_read(
     if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
         return -EFAULT;
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
 
     if (!(sc = ec_master_get_config(master, data.config_index))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         return -ENOENT;
     }
 
     if (!(voe = ec_slave_config_find_voe_handler(sc, data.voe_index))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         return -ENOENT;
     }
 
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
 
     ecrt_voe_handler_read(voe);
     return 0;
@@ -3065,20 +3126,20 @@ int ec_cdev_ioctl_voe_read_nosync(
     if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
         return -EFAULT;
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
 
     if (!(sc = ec_master_get_config(master, data.config_index))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         return -ENOENT;
     }
 
     if (!(voe = ec_slave_config_find_voe_handler(sc, data.voe_index))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         return -ENOENT;
     }
 
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
 
     ecrt_voe_handler_read_nosync(voe);
     return 0;
@@ -3104,20 +3165,20 @@ int ec_cdev_ioctl_voe_write(
     if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
         return -EFAULT;
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
 
     if (!(sc = ec_master_get_config(master, data.config_index))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         return -ENOENT;
     }
 
     if (!(voe = ec_slave_config_find_voe_handler(sc, data.voe_index))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         return -ENOENT;
     }
 
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
 
     if (data.size) {
         if (data.size > ec_voe_handler_mem_size(voe))
@@ -3152,20 +3213,20 @@ int ec_cdev_ioctl_voe_exec(
     if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
         return -EFAULT;
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
 
     if (!(sc = ec_master_get_config(master, data.config_index))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         return -ENOENT;
     }
 
     if (!(voe = ec_slave_config_find_voe_handler(sc, data.voe_index))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         return -ENOENT;
     }
 
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
 
     data.state = ecrt_voe_handler_execute(voe);
     if (data.state == EC_REQUEST_SUCCESS && voe->dir == EC_DIR_INPUT)
@@ -3199,20 +3260,20 @@ int ec_cdev_ioctl_voe_data(
     if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
         return -EFAULT;
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
 
     if (!(sc = ec_master_get_config(master, data.config_index))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         return -ENOENT;
     }
 
     if (!(voe = ec_slave_config_find_voe_handler(sc, data.voe_index))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         return -ENOENT;
     }
 
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
 
     if (copy_to_user((void __user *) data.data, ecrt_voe_handler_data(voe),
                 ecrt_voe_handler_data_size(voe)))
@@ -3231,74 +3292,70 @@ int ec_cdev_ioctl_slave_foe_read(
         )
 {
     ec_ioctl_slave_foe_t data;
-    ec_master_foe_request_t request;
+    ec_master_foe_request_t* request;
     int retval;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
         return -EFAULT;
     }
 
-    ec_foe_request_init(&request.req, data.file_name);
-    ec_foe_request_read(&request.req);
-    ec_foe_request_alloc(&request.req, 10000); // FIXME
+    request = kmalloc(sizeof(*request), GFP_KERNEL);
+    if (!request)
+        return -ENOMEM;
+    kref_init(&request->refcount);
 
-    if (down_interruptible(&master->master_sem))
+    ec_foe_request_init(&request->req, data.file_name);
+    ec_foe_request_read(&request->req);
+    ec_foe_request_alloc(&request->req, 10000); // FIXME
+
+    if (ec_mutex_lock_interruptible(&master->master_mutex))  {
+        kref_put(&request->refcount,ec_master_foe_request_release);
         return -EINTR;
-
-    if (!(request.slave = ec_master_find_slave(
+    }
+    if (!(request->slave = ec_master_find_slave(
                     master, 0, data.slave_position))) {
-        up(&master->master_sem);
-        ec_foe_request_clear(&request.req);
+        ec_mutex_unlock(&master->master_mutex);
+        kref_put(&request->refcount,ec_master_foe_request_release);
         EC_MASTER_ERR(master, "Slave %u does not exist!\n",
                 data.slave_position);
         return -EINVAL;
     }
 
     // schedule request.
-    list_add_tail(&request.list, &request.slave->foe_requests);
+    list_add_tail(&request->list, &request->slave->foe_requests);
+    kref_get(&request->refcount);
 
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
 
-    EC_SLAVE_DBG(request.slave, 1, "Scheduled FoE read request.\n");
+    EC_SLAVE_DBG(request->slave, 1, "Scheduled FoE read request %p.\n",request);
 
     // wait for processing through FSM
-    if (wait_event_interruptible(request.slave->foe_queue,
-                request.req.state != EC_INT_REQUEST_QUEUED)) {
+    if (wait_event_interruptible(request->slave->foe_queue,
+          ((request->req.state == EC_INT_REQUEST_SUCCESS) || (request->req.state == EC_INT_REQUEST_FAILURE)))) {
         // interrupted by signal
-        down(&master->master_sem);
-        if (request.req.state == EC_INT_REQUEST_QUEUED) {
-            list_del(&request.list);
-            up(&master->master_sem);
-            ec_foe_request_clear(&request.req);
-            return -EINTR;
-        }
-        // request already processing: interrupt not possible.
-        up(&master->master_sem);
+        kref_put(&request->refcount,ec_master_foe_request_release);
+        return -EINTR;
     }
 
-    // wait until master FSM has finished processing
-    wait_event(request.slave->foe_queue,
-            request.req.state != EC_INT_REQUEST_BUSY);
+    data.result = request->req.result;
+    data.error_code = request->req.error_code;
 
-    data.result = request.req.result;
-    data.error_code = request.req.error_code;
+    EC_SLAVE_DBG(request->slave, 1, "Read %zd bytes via FoE"
+            " (result = 0x%x).\n", request->req.data_size, request->req.result);
 
-    EC_SLAVE_DBG(request.slave, 1, "Read %zd bytes via FoE"
-            " (result = 0x%x).\n", request.req.data_size, request.req.result);
-
-    if (request.req.state != EC_INT_REQUEST_SUCCESS) {
+    if (request->req.state != EC_INT_REQUEST_SUCCESS) {
         data.data_size = 0;
         retval = -EIO;
     } else {
-        if (request.req.data_size > data.buffer_size) {
+        if (request->req.data_size > data.buffer_size) {
             EC_MASTER_ERR(master, "Buffer too small.\n");
-            ec_foe_request_clear(&request.req);
+            kref_put(&request->refcount,ec_master_foe_request_release);
             return -EOVERFLOW;
         }
-        data.data_size = request.req.data_size;
+        data.data_size = request->req.data_size;
         if (copy_to_user((void __user *) data.buffer,
-                    request.req.buffer, data.data_size)) {
-            ec_foe_request_clear(&request.req);
+                    request->req.buffer, data.data_size)) {
+            kref_put(&request->refcount,ec_master_foe_request_release);
             return -EFAULT;
         }
         retval = 0;
@@ -3308,9 +3365,8 @@ int ec_cdev_ioctl_slave_foe_read(
         retval = -EFAULT;
     }
 
-    EC_SLAVE_DBG(request.slave, 1, "Finished FoE read request.\n");
-
-    ec_foe_request_clear(&request.req);
+    EC_SLAVE_DBG(request->slave, 1, "Finished FoE read request %p.\n",request);
+    kref_put(&request->refcount,ec_master_foe_request_release);
 
     return retval;
 }
@@ -3325,79 +3381,73 @@ int ec_cdev_ioctl_slave_foe_write(
         )
 {
     ec_ioctl_slave_foe_t data;
-    ec_master_foe_request_t request;
+    ec_master_foe_request_t* request;
     int retval;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
         return -EFAULT;
     }
 
-    INIT_LIST_HEAD(&request.list);
+    request = kmalloc(sizeof(*request), GFP_KERNEL);
+    if (!request)
+        return -ENOMEM;
+    kref_init(&request->refcount);
 
-    ec_foe_request_init(&request.req, data.file_name);
+    INIT_LIST_HEAD(&request->list);
 
-    if (ec_foe_request_alloc(&request.req, data.buffer_size)) {
-        ec_foe_request_clear(&request.req);
+    ec_foe_request_init(&request->req, data.file_name);
+
+    if (ec_foe_request_alloc(&request->req, data.buffer_size)) {
+        kref_put(&request->refcount,ec_master_foe_request_release);
         return -ENOMEM;
     }
-    if (copy_from_user(request.req.buffer,
+    if (copy_from_user(request->req.buffer,
                 (void __user *) data.buffer, data.buffer_size)) {
-        ec_foe_request_clear(&request.req);
+        kref_put(&request->refcount,ec_master_foe_request_release);
         return -EFAULT;
     }
-    request.req.data_size = data.buffer_size;
-    ec_foe_request_write(&request.req);
+    request->req.data_size = data.buffer_size;
+    ec_foe_request_write(&request->req);
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
 
-    if (!(request.slave = ec_master_find_slave(
+    if (!(request->slave = ec_master_find_slave(
                     master, 0, data.slave_position))) {
-        up(&master->master_sem);
+        ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "Slave %u does not exist!\n",
                 data.slave_position);
-        ec_foe_request_clear(&request.req);
+        kref_put(&request->refcount,ec_master_foe_request_release);
         return -EINVAL;
     }
 
-    EC_SLAVE_DBG(request.slave, 1, "Scheduling FoE write request.\n");
+    EC_SLAVE_DBG(request->slave, 1, "Scheduling FoE write request %p.\n",request);
 
     // schedule FoE write request.
-    list_add_tail(&request.list, &request.slave->foe_requests);
+    list_add_tail(&request->list, &request->slave->foe_requests);
+    kref_get(&request->refcount);
 
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
 
     // wait for processing through FSM
-    if (wait_event_interruptible(request.slave->foe_queue,
-                request.req.state != EC_INT_REQUEST_QUEUED)) {
+    if (wait_event_interruptible(request->slave->foe_queue,
+       ((request->req.state == EC_INT_REQUEST_SUCCESS) || (request->req.state == EC_INT_REQUEST_FAILURE)))) {
         // interrupted by signal
-        down(&master->master_sem);
-        if (request.req.state == EC_INT_REQUEST_QUEUED) {
-            // abort request
-            list_del(&request.list);
-            up(&master->master_sem);
-            ec_foe_request_clear(&request.req);
-            return -EINTR;
-        }
-        up(&master->master_sem);
+        kref_put(&request->refcount,ec_master_foe_request_release);
+        return -EINTR;
     }
 
-    // wait until master FSM has finished processing
-    wait_event(request.slave->foe_queue,
-            request.req.state != EC_INT_REQUEST_BUSY);
+    data.result = request->req.result;
+    data.error_code = request->req.error_code;
 
-    data.result = request.req.result;
-    data.error_code = request.req.error_code;
-
-    retval = request.req.state == EC_INT_REQUEST_SUCCESS ? 0 : -EIO;
+    retval = request->req.state == EC_INT_REQUEST_SUCCESS ? 0 : -EIO;
 
     if (__copy_to_user((void __user *) arg, &data, sizeof(data))) {
         retval = -EFAULT;
     }
 
-    ec_foe_request_clear(&request.req);
-
-    EC_SLAVE_DBG(request.slave, 1, "Finished FoE write request.\n");
+    EC_SLAVE_DBG(request->slave, 1, "Finished FoE write request %p.\n",request);
+    kref_put(&request->refcount,ec_master_foe_request_release);
 
     return retval;
 }
@@ -3670,6 +3720,8 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             return ec_cdev_ioctl_receive(master, arg, priv);
         case EC_IOCTL_MASTER_STATE:
             return ec_cdev_ioctl_master_state(master, arg, priv);
+        case EC_IOCTL_MASTER_SC_STATE:
+            return ec_cdev_ioctl_master_sc_state(master, arg, priv);
         case EC_IOCTL_APP_TIME:
             if (!(filp->f_mode & FMODE_WRITE))
                 return -EPERM;
@@ -3702,6 +3754,10 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             if (!(filp->f_mode & FMODE_WRITE))
                 return -EPERM;
             return ec_cdev_ioctl_sc_watchdog(master, arg, priv);
+        case EC_IOCTL_SC_OVERLAPPING_IO:
+            if (!(filp->f_mode & FMODE_WRITE))
+                return -EPERM;
+            return ec_cdev_ioctl_sc_allow_overlapping_pdos(master,arg,priv);
         case EC_IOCTL_SC_ADD_PDO:
             if (!(filp->f_mode & FMODE_WRITE))
                 return -EPERM;

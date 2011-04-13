@@ -580,6 +580,31 @@ if test "x${hrtimer}" = "x1"; then
 fi
 
 #------------------------------------------------------------------------------
+# Use 2 datagrams (payload+last-byte) when sending to mailbox (reduces frame size)
+#------------------------------------------------------------------------------
+
+AC_ARG_ENABLE([mboxframesize],
+    AS_HELP_STRING([--enable-mboxframesize],
+                   [Reduced frame size when sending to mailbox, uses 2 datagrams (default: no)]),
+    [
+        case "${enableval}" in
+            yes) mboxframesize=1
+                ;;
+            no) mboxframesize=0
+                ;;
+            *) AC_MSG_ERROR([Invalid value for --enable-mboxframesize])
+                ;;
+        esac
+    ],
+    [mboxframesize=0]
+)
+
+if test "x${mboxframesize}" = "x1"; then
+    AC_DEFINE([EC_REDUCE_MBOXFRAMESIZE], [1], [Reduced frame size when sending to mailbox])
+fi
+
+
+#------------------------------------------------------------------------------
 # Read alias address from register
 #------------------------------------------------------------------------------
 
@@ -602,6 +627,7 @@ AC_ARG_ENABLE([regalias],
 if test "x${regalias}" = "x1"; then
     AC_DEFINE([EC_REGALIAS], [1], [Read alias adresses from register])
 fi
+
 
 #------------------------------------------------------------------------------
 # Command-line tool

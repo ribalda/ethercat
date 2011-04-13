@@ -86,7 +86,8 @@ typedef enum {
  */
 typedef struct {
     struct list_head list; /**< Needed by domain datagram lists. */
-    struct list_head queue; /**< Master datagram queue item. */
+    struct list_head queue; /**< Master datagram send-receive queue item. */
+    struct list_head fsm_queue; /**< Master datagram fsm queue item. */
     struct list_head sent; /**< Master list item for sent datagrams. */
     ec_datagram_type_t type; /**< Datagram type (APRD, BWR, etc.). */
     uint8_t address[EC_ADDR_LEN]; /**< Recipient address. */
@@ -94,6 +95,7 @@ typedef struct {
     ec_origin_t data_origin; /**< Origin of the \a data memory. */
     size_t mem_size; /**< Datagram \a data memory size. */
     size_t data_size; /**< Size of the data in \a data. */
+    ec_domain_t *domain; /**< Owning domain (may be null for non-domain datagrams) */
     uint8_t index; /**< Index (set by master). */
     uint16_t working_counter; /**< Working counter. */
     ec_datagram_state_t state; /**< State. */
