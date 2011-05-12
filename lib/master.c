@@ -455,7 +455,7 @@ int ecrt_master_activate(ec_master_t *master)
         }
 
         // Access the mapped region to cause the initial page fault
-        printf("pd: %x\n", master->process_data[0]);
+        master->process_data[0] = 0x00;
     }
 
     return 0;
