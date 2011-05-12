@@ -27,8 +27,8 @@ Changes since 1.4.0:
     - Added e100 driver for 2.6.29, thanks to Andre Puschmann.
     - Added e100 driver for 2.6.31.
 * Added 8139too driver for kernels 2.6.25 (F. Pose), 2.6.26 (M. Luescher),
-  2.6.27, 2.6.28, 2.6.29 (M. Goetze), 2.6.31 (F. Pose) and 2.6.34 (Malcolm
-  Lewis).
+  2.6.27, 2.6.28, 2.6.29 (M. Goetze), 2.6.31 (F. Pose), 2.6.34 (Malcolm
+  Lewis), 2.6.36 (F. Pose) and 2.6.37 (F. Pose).
 * Added e1000 driver for 2.6.26 (M. Luescher), 2.6.27 and 2.6.28.
 * Added r8169 driver for 2.6.24, 2.6.27, 2.6.28, 2.6.29, 2.6.31 and 2.6.32
   (latter thanks to Robbie K).
