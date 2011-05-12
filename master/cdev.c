@@ -3879,6 +3879,7 @@ struct page *eccdev_vma_nopage(
     unsigned long offset;
     struct page *page = NOPAGE_SIGBUS;
     ec_cdev_priv_t *priv = (ec_cdev_priv_t *) vma->vm_private_data;
+    ec_master_t *master = priv->cdev->master;
 
     offset = (address - vma->vm_start) + (vma->vm_pgoff << PAGE_SHIFT);
 
@@ -3887,7 +3888,7 @@ struct page *eccdev_vma_nopage(
 
     page = vmalloc_to_page(priv->process_data + offset);
 
-    EC_MASTER_DBG(master, "Nopage fault vma, address = %#lx,"
+    EC_MASTER_DBG(master, 1, "Nopage fault vma, address = %#lx,"
             " offset = %#lx, page = %p\n", address, offset, page);
 
     get_page(page);
