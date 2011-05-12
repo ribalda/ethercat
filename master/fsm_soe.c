@@ -106,11 +106,11 @@ void ec_print_soe_error(const ec_slave_t *slave, uint16_t error_code)
  */
 void ec_fsm_soe_init(
         ec_fsm_soe_t *fsm, /**< finite state machine */
-        ec_datagram_t *datagram /**< datagram */
+        ec_mailbox_t *mbox /**< mailbox */
         )
 {
     fsm->state = NULL;
-    fsm->datagram = datagram;
+    fsm->mbox = mbox;
 }
 
 /*****************************************************************************/
@@ -195,7 +195,7 @@ void ec_fsm_soe_print_error(ec_fsm_soe_t *fsm /**< Finite state machine */)
  */
 void ec_fsm_soe_read_start(ec_fsm_soe_t *fsm /**< finite state machine */)
 {
-    ec_datagram_t *datagram = fsm->datagram;
+    ec_mailbox_t *mbox = fsm->mbox;
     ec_slave_t *slave = fsm->slave;
     ec_master_t *master = slave->master;
     ec_soe_request_t *request = fsm->request;
@@ -211,7 +211,7 @@ void ec_fsm_soe_read_start(ec_fsm_soe_t *fsm /**< finite state machine */)
         return;
     }
 
-    data = ec_slave_mbox_prepare_send(slave, datagram, EC_MBOX_TYPE_SOE,
+    data = ec_slave_mbox_prepare_send(slave, mbox, EC_MBOX_TYPE_SOE,
             EC_SOE_SIZE);
     if (IS_ERR(data)) {
         fsm->state = ec_fsm_soe_error;
@@ -240,25 +240,25 @@ void ec_fsm_soe_read_start(ec_fsm_soe_t *fsm /**< finite state machine */)
  */
 void ec_fsm_soe_read_request(ec_fsm_soe_t *fsm /**< finite state machine */)
 {
-    ec_datagram_t *datagram = fsm->datagram;
+    ec_mailbox_t *mbox = fsm->mbox;
     ec_slave_t *slave = fsm->slave;
     unsigned long diff_ms;
 
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+    if (ec_mbox_is_datagram_state(mbox,EC_DATAGRAM_TIMED_OUT) && fsm->retries--)
         return; // FIXME: check for response first?
 
-    if (datagram->state != EC_DATAGRAM_RECEIVED) {
+    if (!ec_mbox_is_datagram_state(mbox,EC_DATAGRAM_RECEIVED)) {
         fsm->state = ec_fsm_soe_error;
         EC_SLAVE_ERR(slave, "Failed to receive SoE read request: ");
-        ec_datagram_print_state(datagram);
+        ec_datagram_print_state(mbox->datagram);
         ec_fsm_soe_print_error(fsm);
         return;
     }
 
     diff_ms = (jiffies - fsm->request->jiffies_sent) * 1000 / HZ;
 
-    if (datagram->working_counter != 1) {
-        if (!datagram->working_counter) {
+    if (!ec_mbox_is_datagram_wc(mbox,1)) {
+        if (ec_mbox_is_datagram_wc(mbox,0)) {
             if (diff_ms < EC_SOE_RESPONSE_TIMEOUT) {
                 // no response; send request datagram again
                 return;
@@ -267,13 +267,13 @@ void ec_fsm_soe_read_request(ec_fsm_soe_t *fsm /**< finite state machine */)
         fsm->state = ec_fsm_soe_error;
         EC_SLAVE_ERR(slave, "Reception of SoE read request"
                 " failed after %lu ms: ", diff_ms);
-        ec_datagram_print_wc_error(datagram);
+        ec_datagram_print_wc_error(mbox->datagram);
         ec_fsm_soe_print_error(fsm);
         return;
     }
 
-    fsm->jiffies_start = datagram->jiffies_sent;
-    ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
+    fsm->jiffies_start = mbox->datagram->jiffies_sent;
+    ec_slave_mbox_prepare_check(slave, mbox); // can not fail.
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_soe_read_check;
 }
@@ -284,32 +284,32 @@ void ec_fsm_soe_read_request(ec_fsm_soe_t *fsm /**< finite state machine */)
  */
 void ec_fsm_soe_read_check(ec_fsm_soe_t *fsm /**< finite state machine */)
 {
-    ec_datagram_t *datagram = fsm->datagram;
+    ec_mailbox_t *mbox = fsm->mbox;
     ec_slave_t *slave = fsm->slave;
 
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+    if (ec_mbox_is_datagram_state(mbox,EC_DATAGRAM_TIMED_OUT) && fsm->retries--)
         return;
 
-    if (datagram->state != EC_DATAGRAM_RECEIVED) {
+    if (!ec_mbox_is_datagram_state(mbox,EC_DATAGRAM_RECEIVED)) {
         fsm->state = ec_fsm_soe_error;
         EC_SLAVE_ERR(slave, "Failed to receive SoE mailbox check datagram: ");
-        ec_datagram_print_state(datagram);
+        ec_datagram_print_state(mbox->datagram);
         ec_fsm_soe_print_error(fsm);
         return;
     }
 
-    if (datagram->working_counter != 1) {
+    if (!ec_mbox_is_datagram_wc(mbox,1)) {
         fsm->state = ec_fsm_soe_error;
         EC_SLAVE_ERR(slave, "Reception of SoE mailbox check"
                 " datagram failed: ");
-        ec_datagram_print_wc_error(datagram);
+        ec_datagram_print_wc_error(mbox->datagram);
         ec_fsm_soe_print_error(fsm);
         return;
     }
 
-    if (!ec_slave_mbox_check(datagram)) {
+    if (!ec_slave_mbox_check(mbox)) {
         unsigned long diff_ms =
-            (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
+            (mbox->datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
         if (diff_ms >= EC_SOE_RESPONSE_TIMEOUT) {
             fsm->state = ec_fsm_soe_error;
             EC_SLAVE_ERR(slave, "Timeout after %lu ms while waiting for"
@@ -318,13 +318,13 @@ void ec_fsm_soe_read_check(ec_fsm_soe_t *fsm /**< finite state machine */)
             return;
         }
 
-        ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
+        ec_slave_mbox_prepare_check(slave, mbox); // can not fail.
         fsm->retries = EC_FSM_RETRIES;
         return;
     }
 
     // Fetch response
-    ec_slave_mbox_prepare_fetch(slave, datagram); // can not fail.
+    ec_slave_mbox_prepare_fetch(slave, mbox); // can not fail.
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_soe_read_response;
 }
@@ -335,7 +335,7 @@ void ec_fsm_soe_read_check(ec_fsm_soe_t *fsm /**< finite state machine */)
  */
 void ec_fsm_soe_read_response(ec_fsm_soe_t *fsm /**< finite state machine */)
 {
-    ec_datagram_t *datagram = fsm->datagram;
+    ec_mailbox_t *mbox = fsm->mbox;
     ec_slave_t *slave = fsm->slave;
     ec_master_t *master = slave->master;
     uint8_t *data, mbox_prot, header, opcode, incomplete, error_flag,
@@ -343,26 +343,26 @@ void ec_fsm_soe_read_response(ec_fsm_soe_t *fsm /**< finite state machine */)
     size_t rec_size, data_size;
     ec_soe_request_t *req = fsm->request;
 
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+    if (ec_mbox_is_datagram_state(mbox,EC_DATAGRAM_TIMED_OUT) && fsm->retries--)
         return; // FIXME: request again?
 
-    if (datagram->state != EC_DATAGRAM_RECEIVED) {
+    if (!ec_mbox_is_datagram_state(mbox,EC_DATAGRAM_RECEIVED)) {
         fsm->state = ec_fsm_soe_error;
         EC_SLAVE_ERR(slave, "Failed to receive SoE read response datagram: ");
-        ec_datagram_print_state(datagram);
+        ec_datagram_print_state(mbox->datagram);
         ec_fsm_soe_print_error(fsm);
         return;
     }
 
-    if (datagram->working_counter != 1) {
+    if (!ec_mbox_is_datagram_wc(mbox,1)) {
         fsm->state = ec_fsm_soe_error;
         EC_SLAVE_ERR(slave, "Reception of SoE read response failed: ");
-        ec_datagram_print_wc_error(datagram);
+        ec_datagram_print_wc_error(mbox->datagram);
         ec_fsm_soe_print_error(fsm);
         return;
     }
 
-    data = ec_slave_mbox_fetch(slave, datagram, &mbox_prot, &rec_size);
+    data = ec_slave_mbox_fetch(slave, mbox, &mbox_prot, &rec_size);
     if (IS_ERR(data)) {
         fsm->state = ec_fsm_soe_error;
         ec_fsm_soe_print_error(fsm);
@@ -435,8 +435,8 @@ void ec_fsm_soe_read_response(ec_fsm_soe_t *fsm /**< finite state machine */)
     if (incomplete) {
         EC_SLAVE_DBG(slave, 1, "SoE data incomplete. Waiting for fragment"
                 " at offset %zu.\n", req->data_size);
-        fsm->jiffies_start = datagram->jiffies_sent;
-        ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
+        fsm->jiffies_start = mbox->datagram->jiffies_sent;
+        ec_slave_mbox_prepare_check(slave, mbox); // can not fail.
         fsm->retries = EC_FSM_RETRIES;
         fsm->state = ec_fsm_soe_read_check;
     } else {
@@ -459,7 +459,7 @@ void ec_fsm_soe_write_next_fragment(
         ec_fsm_soe_t *fsm /**< finite state machine */
         )
 {
-    ec_datagram_t *datagram = fsm->datagram;
+    ec_mailbox_t *mbox = fsm->mbox;
     ec_slave_t *slave = fsm->slave;
     ec_master_t *master = slave->master;
     ec_soe_request_t *req = fsm->request;
@@ -485,7 +485,7 @@ void ec_fsm_soe_write_next_fragment(
         fragments_left++;
     }
 
-    data = ec_slave_mbox_prepare_send(slave, datagram, EC_MBOX_TYPE_SOE,
+    data = ec_slave_mbox_prepare_send(slave, mbox, EC_MBOX_TYPE_SOE,
             EC_SOE_SIZE + fragment_size);
     if (IS_ERR(data)) {
         fsm->state = ec_fsm_soe_error;
@@ -539,25 +539,25 @@ void ec_fsm_soe_write_start(ec_fsm_soe_t *fsm /**< finite state machine */)
  */
 void ec_fsm_soe_write_request(ec_fsm_soe_t *fsm /**< finite state machine */)
 {
-    ec_datagram_t *datagram = fsm->datagram;
+    ec_mailbox_t *mbox = fsm->mbox;
     ec_slave_t *slave = fsm->slave;
     unsigned long diff_ms;
 
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+    if (ec_mbox_is_datagram_state(mbox,EC_DATAGRAM_TIMED_OUT) && fsm->retries--)
         return; // FIXME: check for response first?
 
-    if (datagram->state != EC_DATAGRAM_RECEIVED) {
+    if (!ec_mbox_is_datagram_state(mbox,EC_DATAGRAM_RECEIVED)) {
         fsm->state = ec_fsm_soe_error;
         EC_SLAVE_ERR(slave, "Failed to receive SoE write request: ");
-        ec_datagram_print_state(datagram);
+        ec_datagram_print_state(mbox->datagram);
         ec_fsm_soe_print_error(fsm);
         return;
     }
 
     diff_ms = (jiffies - fsm->request->jiffies_sent) * 1000 / HZ;
 
-    if (datagram->working_counter != 1) {
-        if (!datagram->working_counter) {
+    if (!ec_mbox_is_datagram_wc(mbox,1)) {
+        if (ec_mbox_is_datagram_wc(mbox,0)) {
             if (diff_ms < EC_SOE_RESPONSE_TIMEOUT) {
                 // no response; send request datagram again
                 return;
@@ -566,14 +566,14 @@ void ec_fsm_soe_write_request(ec_fsm_soe_t *fsm /**< finite state machine */)
         fsm->state = ec_fsm_soe_error;
         EC_SLAVE_ERR(slave, "Reception of SoE write request"
                 " failed after %lu ms: ", diff_ms);
-        ec_datagram_print_wc_error(datagram);
+        ec_datagram_print_wc_error(mbox->datagram);
         ec_fsm_soe_print_error(fsm);
         return;
     }
 
-    fsm->jiffies_start = datagram->jiffies_sent;
+    fsm->jiffies_start = mbox->datagram->jiffies_sent;
 
-    ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
+    ec_slave_mbox_prepare_check(slave, mbox); // can not fail.
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_soe_write_check;
 }
@@ -584,25 +584,25 @@ void ec_fsm_soe_write_request(ec_fsm_soe_t *fsm /**< finite state machine */)
  */
 void ec_fsm_soe_write_check(ec_fsm_soe_t *fsm /**< finite state machine */)
 {
-    ec_datagram_t *datagram = fsm->datagram;
+    ec_mailbox_t *mbox = fsm->mbox;
     ec_slave_t *slave = fsm->slave;
     ec_soe_request_t *req = fsm->request;
 
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+    if (ec_mbox_is_datagram_state(mbox,EC_DATAGRAM_TIMED_OUT) && fsm->retries--)
         return;
 
-    if (datagram->state != EC_DATAGRAM_RECEIVED) {
+    if (!ec_mbox_is_datagram_state(mbox,EC_DATAGRAM_RECEIVED)) {
         fsm->state = ec_fsm_soe_error;
         EC_SLAVE_ERR(slave, "Failed to receive SoE write request datagram: ");
-        ec_datagram_print_state(datagram);
+        ec_datagram_print_state(mbox->datagram);
         ec_fsm_soe_print_error(fsm);
         return;
     }
 
-    if (datagram->working_counter != 1) {
+    if (!ec_mbox_is_datagram_wc(mbox,1)) {
         fsm->state = ec_fsm_soe_error;
         EC_SLAVE_ERR(slave, "Reception of SoE write request datagram: ");
-        ec_datagram_print_wc_error(datagram);
+        ec_datagram_print_wc_error(mbox->datagram);
         ec_fsm_soe_print_error(fsm);
         return;
     }
@@ -610,9 +610,9 @@ void ec_fsm_soe_write_check(ec_fsm_soe_t *fsm /**< finite state machine */)
     if (fsm->offset < req->data_size) {
         ec_fsm_soe_write_next_fragment(fsm);
     } else {
-        if (!ec_slave_mbox_check(datagram)) {
+        if (!ec_slave_mbox_check(mbox)) {
             unsigned long diff_ms =
-                (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
+                (mbox->datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
             if (diff_ms >= EC_SOE_RESPONSE_TIMEOUT) {
                 fsm->state = ec_fsm_soe_error;
                 EC_SLAVE_ERR(slave, "Timeout after %lu ms while waiting"
@@ -621,13 +621,13 @@ void ec_fsm_soe_write_check(ec_fsm_soe_t *fsm /**< finite state machine */)
                 return;
             }
 
-            ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
+            ec_slave_mbox_prepare_check(slave, mbox); // can not fail.
             fsm->retries = EC_FSM_RETRIES;
             return;
         }
 
         // Fetch response
-        ec_slave_mbox_prepare_fetch(slave, datagram); // can not fail.
+        ec_slave_mbox_prepare_fetch(slave, mbox); // can not fail.
         fsm->retries = EC_FSM_RETRIES;
         fsm->state = ec_fsm_soe_write_response;
     }
@@ -639,7 +639,7 @@ void ec_fsm_soe_write_check(ec_fsm_soe_t *fsm /**< finite state machine */)
  */
 void ec_fsm_soe_write_response(ec_fsm_soe_t *fsm /**< finite state machine */)
 {
-    ec_datagram_t *datagram = fsm->datagram;
+    ec_mailbox_t *mbox = fsm->mbox;
     ec_slave_t *slave = fsm->slave;
     ec_master_t *master = slave->master;
     ec_soe_request_t *req = fsm->request;
@@ -647,27 +647,27 @@ void ec_fsm_soe_write_response(ec_fsm_soe_t *fsm /**< finite state machine */)
     uint16_t idn;
     size_t rec_size;
 
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+    if (ec_mbox_is_datagram_state(mbox,EC_DATAGRAM_TIMED_OUT) && fsm->retries--)
         return; // FIXME: request again?
 
-    if (datagram->state != EC_DATAGRAM_RECEIVED) {
+    if (!ec_mbox_is_datagram_state(mbox,EC_DATAGRAM_RECEIVED)) {
         fsm->state = ec_fsm_soe_error;
         EC_SLAVE_ERR(slave, "Failed to receive SoE write"
                 " response datagram: ");
-        ec_datagram_print_state(datagram);
+        ec_datagram_print_state(mbox->datagram);
         ec_fsm_soe_print_error(fsm);
         return;
     }
 
-    if (datagram->working_counter != 1) {
+    if (!ec_mbox_is_datagram_wc(mbox,1)) {
         fsm->state = ec_fsm_soe_error;
         EC_SLAVE_ERR(slave, "Reception of SoE write response failed: ");
-        ec_datagram_print_wc_error(datagram);
+        ec_datagram_print_wc_error(mbox->datagram);
         ec_fsm_soe_print_error(fsm);
         return;
     }
 
-    data = ec_slave_mbox_fetch(slave, datagram, &mbox_prot, &rec_size);
+    data = ec_slave_mbox_fetch(slave, mbox, &mbox_prot, &rec_size);
     if (IS_ERR(data)) {
         fsm->state = ec_fsm_soe_error;
         ec_fsm_soe_print_error(fsm);

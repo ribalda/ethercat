@@ -61,7 +61,7 @@ static unsigned int backup_count; /**< Number of backup devices. */
 static unsigned int debug_level;  /**< Debug level parameter. */
 
 static ec_master_t *masters; /**< Array of masters. */
-static struct semaphore master_sem; /**< Master semaphore. */
+static struct ec_mutex_t master_mutex; /**< Master mutex. */
 
 dev_t device_number; /**< Device number for master cdevs. */
 struct class *class; /**< Device class. */
@@ -101,7 +101,7 @@ int __init ec_init_module(void)
 
     EC_INFO("Master driver %s\n", EC_MASTER_VERSION);
 
-    sema_init(&master_sem, 1);
+    ec_mutex_init(&master_mutex);
 
     if (master_count) {
         if (alloc_chrdev_region(&device_number,
@@ -468,9 +468,9 @@ ec_device_t *ecdev_offer(
     for (i = 0; i < master_count; i++) {
         master = &masters[i];
 
-        down(&master->device_sem);
+        ec_mutex_lock(&master->device_mutex);
         if (master->main_device.dev) { // master already has a device
-            up(&master->device_sem);
+            ec_mutex_unlock(&master->device_mutex);
             continue;
         }
             
@@ -481,14 +481,14 @@ ec_device_t *ecdev_offer(
                     str, master->index);
 
             ec_device_attach(&master->main_device, net_dev, poll, module);
-            up(&master->device_sem);
+            ec_mutex_unlock(&master->device_mutex);
             
             snprintf(net_dev->name, IFNAMSIZ, "ec%u", master->index);
 
             return &master->main_device; // offer accepted
         }
         else {
-            up(&master->device_sem);
+            ec_mutex_unlock(&master->device_mutex);
 
             if (master->debug_level) {
                 ec_mac_print(net_dev->dev_addr, str);
@@ -524,40 +524,40 @@ ec_master_t *ecrt_request_master_err(
     }
     master = &masters[master_index];
 
-    if (down_interruptible(&master_sem)) {
+    if (ec_mutex_lock_interruptible(&master_mutex)) {
         errptr = ERR_PTR(-EINTR);
         goto out_return;
     }
 
     if (master->reserved) {
-        up(&master_sem);
+        ec_mutex_unlock(&master_mutex);
         EC_MASTER_ERR(master, "Master already in use!\n");
         errptr = ERR_PTR(-EBUSY);
         goto out_return;
     }
     master->reserved = 1;
-    up(&master_sem);
+    ec_mutex_unlock(&master_mutex);
 
-    if (down_interruptible(&master->device_sem)) {
+    if (ec_mutex_lock_interruptible(&master->device_mutex)) {
         errptr = ERR_PTR(-EINTR);
         goto out_release;
     }
     
     if (master->phase != EC_IDLE) {
-        up(&master->device_sem);
+        ec_mutex_unlock(&master->device_mutex);
         EC_MASTER_ERR(master, "Master still waiting for devices!\n");
         errptr = ERR_PTR(-ENODEV);
         goto out_release;
     }
 
     if (!try_module_get(master->main_device.module)) {
-        up(&master->device_sem);
+        ec_mutex_unlock(&master->device_mutex);
         EC_ERR("Device module is unloading!\n");
         errptr = ERR_PTR(-ENODEV);
         goto out_release;
     }
 
-    up(&master->device_sem);
+    ec_mutex_unlock(&master->device_mutex);
 
     if (ec_master_enter_operation_phase(master)) {
         EC_MASTER_ERR(master, "Failed to enter OPERATION phase!\n");
@@ -611,6 +611,37 @@ unsigned int ecrt_version_magic(void)
     return ECRT_VERSION_MAGIC;
 }
 
+
+
+/** Return pointer to running master
+/*****************************************************************************/
+ec_master_t *ecrt_attach_master(unsigned int master_index)
+{
+    ec_master_t *master = NULL;
+
+    EC_INFO("Requesting master %u...\n", master_index);
+
+    if (master_index >= master_count) {
+        EC_ERR("Invalid master index %u.\n", master_index);
+        return master;
+    }
+
+    master = &masters[master_index];
+    if (master->reserved) 
+      {
+       // ok master is attached
+        EC_INFO("attaching Master %u!\n", master_index);
+      }
+    else
+      {
+        EC_ERR("No Master %u in use!\n", master_index);
+        master = NULL;
+    }
+    return master;
+}
+
+
+
 /*****************************************************************************/
 
 /** Global request state type translation table.
@@ -637,6 +668,7 @@ EXPORT_SYMBOL(ecdev_offer);
 EXPORT_SYMBOL(ecrt_request_master);
 EXPORT_SYMBOL(ecrt_release_master);
 EXPORT_SYMBOL(ecrt_version_magic);
+EXPORT_SYMBOL(ecrt_attach_master);
 
 /** \endcond */
 

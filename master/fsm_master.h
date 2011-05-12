@@ -39,6 +39,7 @@
 
 #include "globals.h"
 #include "datagram.h"
+#include "mailbox.h"
 #include "foe_request.h"
 #include "sdo_request.h"
 #include "soe_request.h"
@@ -57,7 +58,10 @@ typedef struct {
     size_t nwords; /**< Number of words. */
     const uint16_t *words; /**< Pointer to the data words. */
     ec_internal_request_state_t state; /**< State of the request. */
+    struct kref refcount;
 } ec_sii_write_request_t;
+
+void ec_master_sii_write_request_release(struct kref *);
 
 /*****************************************************************************/
 
@@ -71,7 +75,10 @@ typedef struct {
     size_t length; /**< Number of bytes. */
     uint8_t *data; /**< Data to write / memory for read data. */
     ec_internal_request_state_t state; /**< State of the request. */
+    struct kref refcount;
 } ec_reg_request_t;
+
+void ec_master_reg_request_release(struct kref *);
 
 /*****************************************************************************/
 
@@ -81,7 +88,10 @@ typedef struct {
     struct list_head list; /**< List element. */
     ec_slave_t *slave; /**< Slave. */
     ec_sdo_request_t req; /**< SDO request. */
+    struct kref refcount;
 } ec_master_sdo_request_t;
+
+void ec_master_sdo_request_release(struct kref *);
 
 /*****************************************************************************/
 
@@ -91,7 +101,10 @@ typedef struct {
     struct list_head list; /**< List head. */
     ec_slave_t *slave; /**< EtherCAT slave. */
     ec_foe_request_t req; /**< FoE request. */
+    struct kref refcount;
 } ec_master_foe_request_t;
+
+void ec_master_foe_request_release(struct kref *);
 
 /*****************************************************************************/
 
@@ -101,7 +114,10 @@ typedef struct {
     struct list_head list; /**< List head. */
     ec_slave_t *slave; /**< EtherCAT slave. */
     ec_soe_request_t req; /**< SoE request. */
+    struct kref refcount;
 } ec_master_soe_request_t;
+
+void ec_master_soe_request_release(struct kref *);
 
 /*****************************************************************************/
 
@@ -112,6 +128,7 @@ typedef struct ec_fsm_master ec_fsm_master_t; /**< \see ec_fsm_master */
 struct ec_fsm_master {
     ec_master_t *master; /**< master the FSM runs on */
     ec_datagram_t *datagram; /**< datagram used in the state machine */
+    ec_mailbox_t* mbox; /**< mailbox used in the CoE state machine */
     unsigned int retries; /**< retries on datagram timeout. */
 
     void (*state)(ec_fsm_master_t *); /**< master state function */
