@@ -46,6 +46,7 @@
 #include "sync.h"
 #include "sdo.h"
 #include "fsm_slave.h"
+#include "mailbox.h"
 
 /*****************************************************************************/
 
@@ -59,9 +60,19 @@
  * \param fmt format string (like in printf())
  * \param args arguments (optional)
  */
+#ifdef USE_TRACE_PRINTK
+#define EC_SLAVE_INFO(slave, fmt, args...) \
+    do { \
+        __trace_printk(_THIS_IP_,"EtherCAT %u-%u: " fmt, slave->master->index, \
+                slave->ring_position, ##args); \
+        printk(KERN_INFO "EtherCAT %u-%u: " fmt, slave->master->index, \
+                slave->ring_position, ##args);  \
+    } while (0)
+#else
 #define EC_SLAVE_INFO(slave, fmt, args...) \
     printk(KERN_INFO "EtherCAT %u-%u: " fmt, slave->master->index, \
             slave->ring_position, ##args)
+#endif
 
 /** Convenience macro for printing slave-specific errors to syslog.
  *
@@ -73,9 +84,19 @@
  * \param fmt format string (like in printf())
  * \param args arguments (optional)
  */
+#ifdef USE_TRACE_PRINTK
+#define EC_SLAVE_ERR(slave, fmt, args...) \
+    do { \
+        __trace_printk(_THIS_IP_,"EtherCAT ERROR %u-%u: " fmt, slave->master->index, \
+                slave->ring_position, ##args); \
+        printk(KERN_ERR "EtherCAT ERROR %u-%u: " fmt, slave->master->index, \
+                slave->ring_position, ##args);  \
+    } while (0)
+#else
 #define EC_SLAVE_ERR(slave, fmt, args...) \
     printk(KERN_ERR "EtherCAT ERROR %u-%u: " fmt, slave->master->index, \
             slave->ring_position, ##args)
+#endif
 
 /** Convenience macro for printing slave-specific warnings to syslog.
  *
@@ -87,9 +108,19 @@
  * \param fmt format string (like in printf())
  * \param args arguments (optional)
  */
+#ifdef USE_TRACE_PRINTK
+#define EC_SLAVE_WARN(slave, fmt, args...) \
+    do { \
+        __trace_printk(_THIS_IP_,"EtherCAT WARNING %u-%u: " fmt, \
+                slave->master->index, slave->ring_position, ##args); \
+        printk(KERN_WARNING "EtherCAT WARNING %u-%u: " fmt, \
+                slave->master->index, slave->ring_position, ##args);    \
+    } while (0)
+#else
 #define EC_SLAVE_WARN(slave, fmt, args...) \
     printk(KERN_WARNING "EtherCAT WARNING %u-%u: " fmt, \
             slave->master->index, slave->ring_position, ##args)
+#endif
 
 /** Convenience macro for printing slave-specific debug messages to syslog.
  *
@@ -101,6 +132,17 @@
  * \param fmt format string (like in printf())
  * \param args arguments (optional)
  */
+#ifdef USE_TRACE_PRINTK
+#define EC_SLAVE_DBG(slave, level, fmt, args...) \
+    do { \
+        __trace_printk(_THIS_IP_,"EtherCAT DEBUG%u %u-%u: " fmt, \
+            level,slave->master->index, slave->ring_position, ##args); \
+        if (slave->master->debug_level >= level) { \
+            printk(KERN_DEBUG "EtherCAT DEBUG %u-%u: " fmt, \
+                    slave->master->index, slave->ring_position, ##args); \
+        } \
+    } while (0)
+#else
 #define EC_SLAVE_DBG(slave, level, fmt, args...) \
     do { \
         if (slave->master->debug_level >= level) { \
@@ -108,6 +150,7 @@
                     slave->master->index, slave->ring_position, ##args); \
         } \
     } while (0)
+#endif
 
 /*****************************************************************************/
 
@@ -232,7 +275,8 @@ struct ec_slave
     wait_queue_head_t soe_queue; /**< Wait queue for SoE requests from user
                                    space. */
     ec_fsm_slave_t fsm; /**< Slave state machine. */
-    ec_datagram_t fsm_datagram; /**< Datagram used for state machines. */
+    ec_datagram_t datagram; /** Datagram used for data transfers */
+    ec_mailbox_t mbox; /**< Mailbox used for data transfers. */
 };
 
 /*****************************************************************************/

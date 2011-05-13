@@ -177,8 +177,8 @@ int ec_fsm_slave_config_exec(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-    if (fsm->datagram->state == EC_DATAGRAM_SENT
-        || fsm->datagram->state == EC_DATAGRAM_QUEUED) {
+    if (fsm->datagram->state == EC_DATAGRAM_QUEUED
+        || fsm->datagram->state == EC_DATAGRAM_SENT) {
         // datagram was not sent or received yet.
         return ec_fsm_slave_config_running(fsm);
     }
@@ -738,8 +738,7 @@ void ec_fsm_slave_config_enter_soe_conf_preop(
             ec_soe_request_write(&fsm->soe_request_copy);
             ec_fsm_soe_transfer(fsm_soe, fsm->slave, &fsm->soe_request_copy);
             ec_fsm_soe_exec(fsm_soe); // execute immediately
-            ec_master_queue_external_datagram(slave->master,
-                    fsm_soe->datagram);
+            ec_slave_mbox_queue_datagrams(slave, fsm_soe->mbox);
             return;
         }
     }
@@ -760,7 +759,7 @@ void ec_fsm_slave_config_state_soe_conf_preop(
     ec_fsm_soe_t *fsm_soe = &slave->fsm.fsm_soe;
 
     if (ec_fsm_soe_exec(fsm_soe)) {
-        ec_master_queue_external_datagram(slave->master, fsm_soe->datagram);
+        ec_slave_mbox_queue_datagrams(slave, fsm_soe->mbox);
         return;
     }
 
@@ -785,8 +784,7 @@ void ec_fsm_slave_config_state_soe_conf_preop(
             ec_soe_request_write(&fsm->soe_request_copy);
             ec_fsm_soe_transfer(fsm_soe, fsm->slave, &fsm->soe_request_copy);
             ec_fsm_soe_exec(fsm_soe); // execute immediately
-            ec_master_queue_external_datagram(slave->master,
-                    fsm_soe->datagram);
+            ec_slave_mbox_queue_datagrams(slave, fsm_soe->mbox);
             return;
         }
     }
@@ -1248,7 +1246,7 @@ void ec_fsm_slave_config_state_dc_sync_check(
     abs_sync_diff = EC_READ_U32(datagram->data) & 0x7fffffff;
     diff_ms = (datagram->jiffies_received - fsm->jiffies_start) * 1000 / HZ;
 
-    if (abs_sync_diff > EC_DC_MAX_SYNC_DIFF_NS) {
+	if (abs_sync_diff > EC_DC_MAX_SYNC_DIFF_NS) {
 
         if (diff_ms >= EC_DC_SYNC_WAIT_MS) {
             EC_SLAVE_WARN(slave, "Slave did not sync after %lu ms.\n",
@@ -1454,8 +1452,7 @@ void ec_fsm_slave_config_enter_soe_conf_safeop(
             ec_soe_request_write(&fsm->soe_request_copy);
             ec_fsm_soe_transfer(fsm_soe, fsm->slave, &fsm->soe_request_copy);
             ec_fsm_soe_exec(fsm_soe); // execute immediately
-            ec_master_queue_external_datagram(slave->master,
-                    fsm_soe->datagram);
+            ec_slave_mbox_queue_datagrams(slave, fsm_soe->mbox);
             return;
         }
     }
@@ -1476,7 +1473,7 @@ void ec_fsm_slave_config_state_soe_conf_safeop(
     ec_fsm_soe_t *fsm_soe = &slave->fsm.fsm_soe;
 
     if (ec_fsm_soe_exec(fsm_soe)) {
-        ec_master_queue_external_datagram(slave->master, fsm_soe->datagram);
+        ec_slave_mbox_queue_datagrams(slave, fsm_soe->mbox);
         return;
     }
 
@@ -1501,8 +1498,7 @@ void ec_fsm_slave_config_state_soe_conf_safeop(
             ec_soe_request_write(&fsm->soe_request_copy);
             ec_fsm_soe_transfer(fsm_soe, fsm->slave, &fsm->soe_request_copy);
             ec_fsm_soe_exec(fsm_soe); // execute immediately
-            ec_master_queue_external_datagram(slave->master,
-                    fsm_soe->datagram);
+            ec_slave_mbox_queue_datagrams(slave, fsm_soe->mbox);
             return;
         }
     }

@@ -70,7 +70,7 @@ void ec_slave_config_init(
     sc->product_code = product_code;
     sc->watchdog_divider = 0; // use default
     sc->watchdog_intervals = 0; // use default
-
+    sc->allow_overlapping_pdos = 0; // default not allowed
     sc->slave = NULL;
 
     for (i = 0; i < EC_MAX_SYNC_MANAGERS; i++)
@@ -164,12 +164,15 @@ int ec_slave_config_prepare_fmmu(
 {
     unsigned int i;
     ec_fmmu_config_t *fmmu;
+    ec_fmmu_config_t *prev_fmmu;
+    uint32_t fmmu_logical_start_address;
+    size_t tx_size, old_prev_tx_size;
 
     // FMMU configuration already prepared?
     for (i = 0; i < sc->used_fmmus; i++) {
         fmmu = &sc->fmmu_configs[i];
         if (fmmu->domain == domain && fmmu->sync_index == sync_index)
-            return fmmu->logical_start_address;
+            return fmmu->domain_address;
     }
 
     if (sc->used_fmmus == EC_MAX_FMMUS) {
@@ -177,13 +180,29 @@ int ec_slave_config_prepare_fmmu(
         return -EOVERFLOW;
     }
 
-    fmmu = &sc->fmmu_configs[sc->used_fmmus++];
+    fmmu = &sc->fmmu_configs[sc->used_fmmus];
 
-    down(&sc->master->master_sem);
-    ec_fmmu_config_init(fmmu, sc, domain, sync_index, dir);
-    up(&sc->master->master_sem);
+    ec_mutex_lock(&sc->master->master_mutex);
+    ec_fmmu_config_init(fmmu, sc, sync_index, dir);
+    fmmu_logical_start_address = domain->tx_size;
+    tx_size = fmmu->data_size;
+    if (sc->allow_overlapping_pdos && sc->used_fmmus > 0) {
+        prev_fmmu = &sc->fmmu_configs[sc->used_fmmus-1];
+        if (fmmu->dir != prev_fmmu->dir && prev_fmmu->tx_size != 0) {
+            // prev fmmu has opposite direction
+            // and is not already paired with prev-prev fmmu
+            old_prev_tx_size = prev_fmmu->tx_size;
+            prev_fmmu->tx_size = max(fmmu->data_size,prev_fmmu->data_size);
+            domain->tx_size += prev_fmmu->tx_size - old_prev_tx_size;
+            tx_size = 0;
+            fmmu_logical_start_address = prev_fmmu->logical_start_address;
+        }
+    }
+    ec_fmmu_config_domain(fmmu,domain,fmmu_logical_start_address,tx_size);
+    ec_mutex_unlock(&sc->master->master_mutex);
 
-    return fmmu->logical_start_address;
+    ++sc->used_fmmus;
+    return fmmu->domain_address;
 }
 
 /*****************************************************************************/
@@ -226,8 +245,6 @@ int ec_slave_config_attach(
     // attach slave
     slave->config = sc;
     sc->slave = slave;
-
-    ec_slave_request_state(slave, EC_SLAVE_STATE_OP);
 
     EC_CONFIG_DBG(sc, 1, "Attached slave %u.\n", slave->ring_position);
 
@@ -494,6 +511,18 @@ void ecrt_slave_config_watchdog(ec_slave_config_t *sc,
 
 /*****************************************************************************/
 
+void ecrt_slave_config_overlapping_pdos(ec_slave_config_t *sc,
+        uint8_t allow_overlapping_pdos )
+{
+    if (sc->master->debug_level)
+        EC_DBG("%s(sc = 0x%p, allow_overlapping_pdos = %u)\n",
+                __func__, sc, allow_overlapping_pdos);
+
+    sc->allow_overlapping_pdos = allow_overlapping_pdos;
+}
+
+/*****************************************************************************/
+
 int ecrt_slave_config_pdo_assign_add(ec_slave_config_t *sc,
         uint8_t sync_index, uint16_t pdo_index)
 {
@@ -507,18 +536,18 @@ int ecrt_slave_config_pdo_assign_add(ec_slave_config_t *sc,
         return -EINVAL;
     }
 
-    down(&sc->master->master_sem);
+    ec_mutex_lock(&sc->master->master_mutex);
 
     pdo = ec_pdo_list_add_pdo(&sc->sync_configs[sync_index].pdos, pdo_index);
     if (IS_ERR(pdo)) {
-        up(&sc->master->master_sem);
+        ec_mutex_unlock(&sc->master->master_mutex);
         return PTR_ERR(pdo);
     }
     pdo->sync_index = sync_index;
 
     ec_slave_config_load_default_mapping(sc, pdo);
 
-    up(&sc->master->master_sem);
+    ec_mutex_unlock(&sc->master->master_mutex);
     return 0;
 }
 
@@ -535,9 +564,9 @@ void ecrt_slave_config_pdo_assign_clear(ec_slave_config_t *sc,
         return;
     }
 
-    down(&sc->master->master_sem);
+    ec_mutex_lock(&sc->master->master_mutex);
     ec_pdo_list_clear_pdos(&sc->sync_configs[sync_index].pdos);
-    up(&sc->master->master_sem);
+    ec_mutex_unlock(&sc->master->master_mutex);
 }
 
 /*****************************************************************************/
@@ -563,10 +592,10 @@ int ecrt_slave_config_pdo_mapping_add(ec_slave_config_t *sc,
             break;
 
     if (pdo) {
-        down(&sc->master->master_sem);
+        ec_mutex_lock(&sc->master->master_mutex);
         entry = ec_pdo_add_entry(pdo, entry_index, entry_subindex,
                 entry_bit_length);
-        up(&sc->master->master_sem);
+        ec_mutex_unlock(&sc->master->master_mutex);
         if (IS_ERR(entry))
             retval = PTR_ERR(entry);
     } else {
@@ -594,9 +623,9 @@ void ecrt_slave_config_pdo_mapping_clear(ec_slave_config_t *sc,
             break;
 
     if (pdo) {
-        down(&sc->master->master_sem);
+        ec_mutex_lock(&sc->master->master_mutex);
         ec_pdo_clear_entries(pdo);
-        up(&sc->master->master_sem);
+        ec_mutex_unlock(&sc->master->master_mutex);
     } else {
         EC_CONFIG_WARN(sc, "PDO 0x%04X is not assigned.\n", pdo_index);
     }
@@ -685,10 +714,6 @@ int ecrt_slave_config_reg_pdo_entry(
     ec_pdo_entry_t *entry;
     int sync_offset;
 
-    EC_CONFIG_DBG(sc, 1, "%s(sc = 0x%p, index = 0x%04X, "
-            "subindex = 0x%02X, domain = 0x%p, bit_position = 0x%p)\n",
-            __func__, sc, index, subindex, domain, bit_position);
-
     for (sync_index = 0; sync_index < EC_MAX_SYNC_MANAGERS; sync_index++) {
         sync_config = &sc->sync_configs[sync_index];
         bit_offset = 0;
@@ -712,7 +737,11 @@ int ecrt_slave_config_reg_pdo_entry(
                     if (sync_offset < 0)
                         return sync_offset;
 
-                    return sync_offset + bit_offset / 8;
+                    EC_CONFIG_DBG(sc, 1, "%s(index = 0x%04X, "
+                                  "subindex = 0x%02X, domain = %u, bytepos=%u, bitpos=%u)\n",
+                                  __func__,index, subindex,
+                                  domain->index, sync_offset + bit_offset / 8, bit_pos);
+					return sync_offset + bit_offset / 8;
                 }
             }
         }
@@ -776,9 +805,9 @@ int ecrt_slave_config_sdo(ec_slave_config_t *sc, uint16_t index,
         return ret;
     }
         
-    down(&sc->master->master_sem);
+    ec_mutex_lock(&sc->master->master_mutex);
     list_add_tail(&req->list, &sc->sdo_configs);
-    up(&sc->master->master_sem);
+    ec_mutex_unlock(&sc->master->master_mutex);
     return 0;
 }
 
@@ -861,9 +890,9 @@ int ecrt_slave_config_complete_sdo(ec_slave_config_t *sc, uint16_t index,
         return ret;
     }
         
-    down(&sc->master->master_sem);
+    ec_mutex_lock(&sc->master->master_mutex);
     list_add_tail(&req->list, &sc->sdo_configs);
-    up(&sc->master->master_sem);
+    ec_mutex_unlock(&sc->master->master_mutex);
     return 0;
 }
 
@@ -902,9 +931,9 @@ ec_sdo_request_t *ecrt_slave_config_create_sdo_request_err(
     memset(req->data, 0x00, size);
     req->data_size = size;
     
-    down(&sc->master->master_sem);
+    ec_mutex_lock(&sc->master->master_mutex);
     list_add_tail(&req->list, &sc->sdo_requests);
-    up(&sc->master->master_sem);
+    ec_mutex_unlock(&sc->master->master_mutex);
 
     return req; 
 }
@@ -944,9 +973,9 @@ ec_voe_handler_t *ecrt_slave_config_create_voe_handler_err(
         return ERR_PTR(ret);
     }
 
-    down(&sc->master->master_sem);
+    ec_mutex_lock(&sc->master->master_mutex);
     list_add_tail(&voe->list, &sc->voe_handlers);
-    up(&sc->master->master_sem);
+    ec_mutex_unlock(&sc->master->master_mutex);
 
     return voe; 
 }
@@ -1027,9 +1056,9 @@ int ecrt_slave_config_idn(ec_slave_config_t *sc, uint8_t drive_no,
         return ret;
     }
         
-    down(&sc->master->master_sem);
+    ec_mutex_lock(&sc->master->master_mutex);
     list_add_tail(&req->list, &sc->soe_configs);
-    up(&sc->master->master_sem);
+    ec_mutex_unlock(&sc->master->master_mutex);
     return 0;
 }
 
@@ -1039,6 +1068,7 @@ int ecrt_slave_config_idn(ec_slave_config_t *sc, uint8_t drive_no,
 
 EXPORT_SYMBOL(ecrt_slave_config_sync_manager);
 EXPORT_SYMBOL(ecrt_slave_config_watchdog);
+EXPORT_SYMBOL(ecrt_slave_config_overlapping_pdos);
 EXPORT_SYMBOL(ecrt_slave_config_pdo_assign_add);
 EXPORT_SYMBOL(ecrt_slave_config_pdo_assign_clear);
 EXPORT_SYMBOL(ecrt_slave_config_pdo_mapping_add);

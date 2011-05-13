@@ -52,6 +52,13 @@ void ec_domain_clear(ec_domain_t *domain)
     // nothing to do
 }
 
+
+/*****************************************************************************/
+unsigned int ecrt_domain_index(ec_domain_t *domain)
+{
+    return domain->index;
+}
+
 /*****************************************************************************/
 
 int ecrt_domain_reg_pdo_entry_list(ec_domain_t *domain,

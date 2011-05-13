@@ -35,4 +35,8 @@ ifeq (@ENABLE_TTY@,1)
 	obj-m += tty/
 endif
 
+ifeq (@ENABLE_RTDM@,1)
+	obj-m += rtdm/
+endif
+
 #------------------------------------------------------------------------------

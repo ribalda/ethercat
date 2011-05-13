@@ -47,6 +47,10 @@ if ENABLE_TTY
 SUBDIRS += tty
 endif
 
+if ENABLE_RTDM
+SUBDIRS += rtdm
+endif
+
 # userspace example depends on lib/
 SUBDIRS += examples
 
@@ -59,6 +63,7 @@ DIST_SUBDIRS = \
     master \
     script \
     tool \
+	rtdm \
 	tty
 
 noinst_HEADERS = \
