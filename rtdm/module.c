@@ -164,9 +164,9 @@ static int _atoi(const char* text)
 
 
 /**********************************************************/
-/*            DRIVER sendcallback                         */
+/*            DRIVER lockcallback                         */
 /**********************************************************/
-void send_callback(void *cb_data)
+void request_lock_callback(void *cb_data)
 {
     EC_RTDM_DRV_STRUCT * pdrvstruc;
     
@@ -174,24 +174,20 @@ void send_callback(void *cb_data)
     if (pdrvstruc->master)
         {
             my_mutex_acquire(&pdrvstruc->masterlock,TM_INFINITE);
-            ecrt_master_send_ext(pdrvstruc->master);
-            my_mutex_release(&pdrvstruc->masterlock);
-      }
+        }
 }
 
 /*****************************************************************************/
 
-void receive_callback(void *cb_data)
+void release_lock_callback(void *cb_data)
 {
     EC_RTDM_DRV_STRUCT * pdrvstruc;
 
     pdrvstruc = (EC_RTDM_DRV_STRUCT*)cb_data;
     if (pdrvstruc->master)
       {
-          my_mutex_acquire(&pdrvstruc->masterlock,TM_INFINITE);
-          ecrt_master_receive(pdrvstruc->master);
           my_mutex_release(&pdrvstruc->masterlock);      
-    }
+      }
 }
 
 
@@ -560,8 +556,7 @@ int ec_rtdm_ioctl_rt(struct rtdm_dev_context   *context,
                                 snprintf(&pdrvstruc->mutexname[0],sizeof(pdrvstruc->mutexname)-1,"ETHrtdmLOCK%d",pdrvstruc->masterno);
                                 EC_RTDM_INFO(pdrvstruc->masterno,"Creating Master mutex %s!\n",&pdrvstruc->mutexname[0]);
                                 my_mutex_create(&pdrvstruc->masterlock,&pdrvstruc->mutexname[0]);
-                                //ecrt_release_master(mstr);
-                                ecrt_master_callbacks(pdrvstruc->master, send_callback, receive_callback, pdrvstruc);
+                                ecrt_master_callbacks(pdrvstruc->master, request_lock_callback, release_lock_callback, pdrvstruc);
                                 EC_RTDM_INFO(pdrvstruc->masterno,"MSTR ATTACH done domain=%u!\n",(unsigned int)pdrvstruc->domain);
                                 pdrvstruc->isattached=1;
                                 ret = 0;
