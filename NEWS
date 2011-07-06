@@ -6,7 +6,11 @@ vim: spelllang=en spell
 
 -------------------------------------------------------------------------------
 
-Changes since 1.4.0:
+Changes since 1.5:
+
+* Added e1000e driver for 2.6.34 (thanks to Siwei Zhuang).
+
+Changes in 1.5:
 
 * Added a userspace library for accessing the application interface. This
   library is licensed under LGPLv2.

@@ -27,9 +27,13 @@
 #
 #------------------------------------------------------------------------------
 
-SUBDIRS = e1000
+SUBDIRS = \
+	e1000 \
+	e1000e
 
-DIST_SUBDIRS = e1000
+DIST_SUBDIRS = \
+	e1000 \
+	e1000e
 
 # using HEADERS to enable tags target
 noinst_HEADERS = \
