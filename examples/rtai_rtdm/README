@@ -1,0 +1,40 @@
+-------------------------------------------------------------------------------
+
+$Id$
+
+-------------------------------------------------------------------------------
+
+This is a minimal example application for the use of the EtherCAT
+master realtime RTDM interface with an RTAI-LXRT thread.
+
+The application expects an RTAI installation. Configure the master sources
+specifying --enable-rtdm --with-rtai-dir to have the right include paths.
+
+Most probably you'll have different EtherCAT slaves present. Try adjusting the
+section "process data" in main.c to your bus configuration.
+
+There are some features that can be disabled by commenting out the respective
+defines at the head of main.c.
+
+---
+
+To build the example, call:
+
+make 
+
+To run it, load the appropriate RTAI modules:
+insmod $(RTAI_DIR)/modules/rtai_hal.ko
+insmod $(RTAI_DIR)/modules/rtai_lxrt.ko
+insmod $(RTAI_DIR)/modules/rtai_sem.ko
+insmod $(RTAI_DIR)/modules/rtai_rtdm.ko
+
+Preload the EtherCAT RTDM module:
+modprobe ec_rtdm
+
+and call as root:
+
+./ec_rtai_rtdm_example
+
+...and watch the system logs for the outputs.
+
+-------------------------------------------------------------------------------

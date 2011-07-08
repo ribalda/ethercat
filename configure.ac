@@ -304,6 +304,61 @@ fi
 AC_SUBST(KERNEL_E1000,[$kernele1000])
 
 #------------------------------------------------------------------------------
+# e1000e driver
+#------------------------------------------------------------------------------
+
+AC_ARG_ENABLE([e1000e],
+    AS_HELP_STRING([--enable-e1000e],
+                   [Enable e1000e driver]),
+    [
+        case "${enableval}" in
+            yes) enablee1000e=1
+                ;;
+            no) enablee1000e=0
+                ;;
+            *) AC_MSG_ERROR([Invalid value for --enable-e1000e])
+                ;;
+        esac
+    ],
+    [enablee1000e=0] # disabled by default
+)
+
+AM_CONDITIONAL(ENABLE_E1000E, test "x$enablee1000e" = "x1")
+AC_SUBST(ENABLE_E1000E,[$enablee1000e])
+
+AC_ARG_WITH([e1000e-kernel],
+    AC_HELP_STRING(
+        [--with-e1000e-kernel=<X.Y.Z>],
+        [e1000e kernel (only if differing)]
+    ),
+    [
+        kernele1000e=[$withval]
+    ],
+    [
+        kernele1000e=$linuxversion
+    ]
+)
+
+if test "x${enablee1000e}" = "x1"; then
+    AC_MSG_CHECKING([for kernel for e1000e driver])
+
+    kernels=`ls -1 ${srcdir}/devices/e1000e/ | grep -oE "^netdev-.*" | cut -d "-" -f 2 | uniq`
+    found=0
+    for k in $kernels; do
+        if test "$kernele1000e" = "$k"; then
+            found=1
+        fi
+    done
+    if test $found -ne 1; then
+        AC_MSG_ERROR([kernel $kernele1000e not available for e1000e driver!])
+    fi
+
+    AC_MSG_RESULT([$kernele1000e])
+fi
+
+AC_SUBST(KERNEL_E1000E,[$kernele1000e])
+
+#------------------------------------------------------------------------------
 # r8169 driver
 #------------------------------------------------------------------------------
 
@@ -365,13 +420,15 @@ AC_SUBST(KERNEL_R8169,[$kernel_r8169])
 AC_ARG_WITH([rtai-dir],
     AC_HELP_STRING(
         [--with-rtai-dir=<DIR>],
-        [RTAI path (only for RTAI examples)]
+        [RTAI path (only for RTDM Interface or RTAI examples)]
     ),
     [
         rtaidir=[$withval]
+        rtai=1
     ],
     [
         rtaidir=""
+        rtai=0
     ]
 )
 
@@ -387,6 +444,71 @@ else
 fi
 
 AC_SUBST(RTAI_DIR,[$rtaidir])
+AM_CONDITIONAL(ENABLE_RTAI, test "x$rtai" = "x1")
+AC_SUBST(ENABLE_RTAI,[$rtai])
+
+#------------------------------------------------------------------------------
+# Xenomai path (optional)
+#------------------------------------------------------------------------------
+
+AC_ARG_WITH([xenomai-dir],
+    AC_HELP_STRING(
+        [--with-xenomai-dir=<DIR>],
+        [Xenomai path (only for RTDM Interface)]
+    ),
+    [
+        xenomaidir=[$withval]
+        xeno=1
+    ],
+    [
+        xenomaidir=""
+        xeno=0
+    ]
+)
+
+AC_MSG_CHECKING([for Xenomai path])
+
+if test -z "${xenomaidir}"; then
+    AC_MSG_RESULT([not specified.])
+else
+    if test \! -r ${xenomaidir}/include/xeno_config.h; then
+        AC_MSG_ERROR([no Xenomai installation found in ${xenomaidir}!])
+    fi
+    AC_MSG_RESULT([$xenomaidir])
+fi
+
+AC_SUBST(XENOMAI_DIR,[$xenomaidir])
+AM_CONDITIONAL(ENABLE_XENOMAI, test "x$xeno" = "x1")
+AC_SUBST(ENABLE_XENOMAI,[$xeno])
+
+#------------------------------------------------------------------------------
+# RTDM Interface (optional)
+#------------------------------------------------------------------------------
+
+AC_ARG_ENABLE([rtdm],
+    AC_HELP_STRING(
+        [--enable-rtdm],
+        [Enable RTDM Interface, depends on RTAI or Xenomai]
+    ),
+    [
+        case "${enableval}" in
+            yes) rtdm=1
+                ;;
+            no) rtdm=0
+                ;;
+            *) AC_MSG_ERROR([Invalid value for --enable-rtdm])
+                ;;
+        esac
+    ],
+    [rtdm=0]
+)
+
+if test "x${rtdm}" = "x1"; then
+    AC_DEFINE([EC_RTDM], [1], [RTDM interfaces enabled])
+fi
+AM_CONDITIONAL(ENABLE_RTDM, test "x$rtdm" = "x1")
+AC_SUBST(ENABLE_RTDM,[$rtdm])
+
 
 #------------------------------------------------------------------------------
 # Debug interface
@@ -513,6 +635,31 @@ if test "x${hrtimer}" = "x1"; then
 fi
 
 #------------------------------------------------------------------------------
+# Use 2 datagrams (payload+last-byte) when sending to mailbox (reduces frame size)
+#------------------------------------------------------------------------------
+
+AC_ARG_ENABLE([mboxframesize],
+    AS_HELP_STRING([--enable-mboxframesize],
+                   [Reduced frame size when sending to mailbox, uses 2 datagrams (default: no)]),
+    [
+        case "${enableval}" in
+            yes) mboxframesize=1
+                ;;
+            no) mboxframesize=0
+                ;;
+            *) AC_MSG_ERROR([Invalid value for --enable-mboxframesize])
+                ;;
+        esac
+    ],
+    [mboxframesize=0]
+)
+
+if test "x${mboxframesize}" = "x1"; then
+    AC_DEFINE([EC_REDUCE_MBOXFRAMESIZE], [1], [Reduced frame size when sending to mailbox])
+fi
+
+
+#------------------------------------------------------------------------------
 # Read alias address from register
 #------------------------------------------------------------------------------
 
@@ -535,6 +682,7 @@ AC_ARG_ENABLE([regalias],
 if test "x${regalias}" = "x1"; then
     AC_DEFINE([EC_REGALIAS], [1], [Read alias adresses from register])
 fi
+
 
 #------------------------------------------------------------------------------
 # Command-line tool
@@ -613,6 +761,8 @@ AC_CONFIG_FILES([
         devices/Makefile
         devices/e1000/Kbuild
         devices/e1000/Makefile
+        devices/e1000e/Kbuild
+        devices/e1000e/Makefile
         ethercat.spec
         examples/Kbuild
         examples/Makefile
@@ -626,6 +776,9 @@ AC_CONFIG_FILES([
         examples/tty/Kbuild
         examples/tty/Makefile
         examples/user/Makefile
+        examples/xenomai/Makefile
+        examples/xenomai_posix/Makefile
+        examples/rtai_rtdm/Makefile
         include/Makefile
         lib/Makefile
         m4/Makefile
@@ -638,6 +791,8 @@ AC_CONFIG_FILES([
         tool/Makefile
         tty/Kbuild
         tty/Makefile
+        rtdm/Makefile
+        rtdm/Kbuild
 ])
 AC_OUTPUT
 

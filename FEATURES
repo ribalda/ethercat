@@ -27,6 +27,7 @@ General Features:
 
 * Supports any realtime environment through independent architecture.
   - RTAI, Xenomai, RT-Preempt, etc.
+  - RTDM Interface for userspace realtime enviroments
   - Operation possible without any realtime extension at all.
 
 * Common API for Realtime-Applications in kernel- and userspace.

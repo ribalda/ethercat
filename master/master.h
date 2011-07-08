@@ -43,17 +43,12 @@
 #include <linux/wait.h>
 #include <linux/kthread.h>
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)
-#include <linux/semaphore.h>
-#else
-#include <asm/semaphore.h>
-#endif
-
 #include "device.h"
 #include "domain.h"
 #include "ethernet.h"
 #include "fsm_master.h"
 #include "cdev.h"
+
 
 /*****************************************************************************/
 
@@ -66,8 +61,16 @@
  * \param fmt format string (like in printf())
  * \param args arguments (optional)
  */
+#ifdef USE_TRACE_PRINTK
+#define EC_MASTER_INFO(master, fmt, args...) \
+    do { \
+        __trace_printk(_THIS_IP_,"EtherCAT %u: " fmt, master->index, ##args); \
+        printk(KERN_INFO "EtherCAT %u: " fmt, master->index, ##args);   \
+    } while (0)
+#else
 #define EC_MASTER_INFO(master, fmt, args...) \
     printk(KERN_INFO "EtherCAT %u: " fmt, master->index, ##args)
+#endif
 
 /** Convenience macro for printing master-specific errors to syslog.
  *
@@ -78,8 +81,16 @@
  * \param fmt format string (like in printf())
  * \param args arguments (optional)
  */
+#ifdef USE_TRACE_PRINTK
+#define EC_MASTER_ERR(master, fmt, args...) \
+    do { \
+        __trace_printk(_THIS_IP_,"EtherCAT ERROR %u: " fmt, master->index, ##args); \
+        printk(KERN_ERR "EtherCAT ERROR %u: " fmt, master->index, ##args); \
+    } while (0)
+#else
 #define EC_MASTER_ERR(master, fmt, args...) \
     printk(KERN_ERR "EtherCAT ERROR %u: " fmt, master->index, ##args)
+#endif
 
 /** Convenience macro for printing master-specific warnings to syslog.
  *
@@ -90,8 +101,16 @@
  * \param fmt format string (like in printf())
  * \param args arguments (optional)
  */
+#ifdef USE_TRACE_PRINTK
+#define EC_MASTER_WARN(master, fmt, args...) \
+    do { \
+        __trace_printk(_THIS_IP_,"EtherCAT WARNING %u: " fmt, master->index, ##args); \
+        printk(KERN_WARNING "EtherCAT WARNING %u: " fmt, master->index, ##args);    \
+    } while (0)
+#else
 #define EC_MASTER_WARN(master, fmt, args...) \
     printk(KERN_WARNING "EtherCAT WARNING %u: " fmt, master->index, ##args)
+#endif
 
 /** Convenience macro for printing master-specific debug messages to syslog.
  *
@@ -102,6 +121,17 @@
  * \param fmt format string (like in printf())
  * \param args arguments (optional)
  */
+#ifdef USE_TRACE_PRINTK
+#define EC_MASTER_DBG(master, level, fmt, args...) \
+    do { \
+        __trace_printk(_THIS_IP_,"EtherCAT DEBUG%u %u: " fmt, \
+            level,master->index, ##args); \
+        if (master->debug_level >= level) { \
+            printk(KERN_DEBUG "EtherCAT DEBUG %u: " fmt, \
+                    master->index, ##args); \
+        } \
+    } while (0)
+#else
 #define EC_MASTER_DBG(master, level, fmt, args...) \
     do { \
         if (master->debug_level >= level) { \
@@ -109,6 +139,7 @@
                     master->index, ##args); \
         } \
     } while (0)
+#endif
 
 /*****************************************************************************/
 
@@ -152,16 +183,17 @@ struct ec_master {
     struct class_device *class_device; /**< Master class device. */
 #endif
 
-    struct semaphore master_sem; /**< Master semaphore. */
+    struct ec_mutex_t master_mutex; /**< Master mutex. */
 
     ec_device_t main_device; /**< EtherCAT main device. */
     const uint8_t *main_mac; /**< MAC address of main device. */
     ec_device_t backup_device; /**< EtherCAT backup device. */
     const uint8_t *backup_mac; /**< MAC address of backup device. */
-    struct semaphore device_sem; /**< Device semaphore. */
+    struct ec_mutex_t device_mutex; /**< Device mutex. */
 
     ec_fsm_master_t fsm; /**< Master state machine. */
     ec_datagram_t fsm_datagram; /**< Datagram used for state machines. */
+    ec_mailbox_t fsm_mbox; /**< Mailbox used for state machines. */
     ec_master_phase_t phase; /**< Master phase. */
     unsigned int active; /**< Master has been activated. */
     unsigned int config_changed; /**< The configuration changed. */
@@ -187,10 +219,14 @@ struct ec_master {
     ec_datagram_t sync_mon_datagram; /**< Datagram used for DC synchronisation
                                        monitoring. */
     ec_slave_t *dc_ref_clock; /**< DC reference clock slave. */
-    
+#ifdef EC_HAVE_CYCLES
+    cycles_t dc_cycles_app_start_time; /** cycles at last ecrt_master_sync() call.*/
+#endif
+    unsigned long dc_jiffies_app_start_time;/** jiffies at last
+                                            ecrt_master_sync() call.*/
     unsigned int scan_busy; /**< Current scan state. */
     unsigned int allow_scan; /**< \a True, if slave scanning is allowed. */
-    struct semaphore scan_sem; /**< Semaphore protecting the \a scan_busy
+    struct ec_mutex_t scan_mutex; /**< Mutex protecting the \a scan_busy
                                  variable and the \a allow_scan flag. */
     wait_queue_head_t scan_queue; /**< Queue for processes that wait for
                                     slave scanning. */
@@ -198,7 +234,7 @@ struct ec_master {
     unsigned int config_busy; /**< State of slave configuration. */
     unsigned int allow_config; /**< \a True, if slave configuration is
                                  allowed. */
-    struct semaphore config_sem; /**< Semaphore protecting the \a config_busy
+    struct ec_mutex_t config_mutex; /**< Mutex protecting the \a config_busy
                                    variable and the allow_config flag. */
     wait_queue_head_t config_queue; /**< Queue for processes that wait for
                                       slave configuration. */
@@ -206,12 +242,10 @@ struct ec_master {
     struct list_head datagram_queue; /**< Datagram queue. */
     uint8_t datagram_index; /**< Current datagram index. */
 
-    struct list_head ext_datagram_queue; /**< Queue for non-application
-                                           datagrams. */
-    struct semaphore ext_queue_sem; /**< Semaphore protecting the \a
-                                      ext_datagram_queue. */
+    struct ec_mutex_t fsm_queue_mutex; /**< Mutex protecting the \a
+                                      fsm_datagram_queue. */
+    struct list_head fsm_datagram_queue; /**< External Datagram queue. */
 
-    struct list_head external_datagram_queue; /**< External Datagram queue. */
     unsigned int send_interval; /**< Interval between calls to ecrt_master_send */
     size_t max_queue_size; /**< Maximum size of datagram queue */
 
@@ -225,16 +259,14 @@ struct ec_master {
     struct list_head eoe_handlers; /**< Ethernet over EtherCAT handlers. */
 #endif
 
-    struct semaphore io_sem; /**< Semaphore used in \a IDLE phase. */
+    struct ec_mutex_t io_mutex; /**< Mutex used in \a IDLE phase. */
 
-    void (*send_cb)(void *); /**< Current send datagrams callback. */
-    void (*receive_cb)(void *); /**< Current receive datagrams callback. */
-    void *cb_data; /**< Current callback data. */
-    void (*app_send_cb)(void *); /**< Application's send datagrams
-                                          callback. */
-    void (*app_receive_cb)(void *); /**< Application's receive datagrams
-                                      callback. */
-    void *app_cb_data; /**< Application callback data. */
+    void (*fsm_queue_lock_cb)(void *); /**< FSM queue lock callback. */
+    void (*fsm_queue_unlock_cb)(void *); /**< FSM queue unlock callback. */
+    void *fsm_queue_locking_data; /**< Data parameter of fsm queue locking callbacks. */
+    void (*app_fsm_queue_lock_cb)(void *); /**< App's FSM queue lock callback. */
+    void (*app_fsm_queue_unlock_cb)(void *); /**< App's FSM queue unlock callback. */
+    void *app_fsm_queue_locking_data; /**< App's data parameter of fsm queue locking callbacks. */
 
     struct list_head sii_requests; /**< SII write requests. */
     wait_queue_head_t sii_queue; /**< Wait queue for SII
@@ -260,18 +292,12 @@ void ec_master_leave_idle_phase(ec_master_t *);
 int ec_master_enter_operation_phase(ec_master_t *);
 void ec_master_leave_operation_phase(ec_master_t *);
 
-#ifdef EC_EOE
-// EoE
-void ec_master_eoe_start(ec_master_t *);
-void ec_master_eoe_stop(ec_master_t *);
-#endif
-
 // datagram IO
 void ec_master_receive_datagrams(ec_master_t *, const uint8_t *, size_t);
 void ec_master_queue_datagram(ec_master_t *, ec_datagram_t *);
-void ec_master_queue_datagram_ext(ec_master_t *, ec_datagram_t *);
-void ec_master_queue_external_datagram(ec_master_t *, ec_datagram_t *);
-void ec_master_inject_external_datagrams(ec_master_t *);
+void ec_master_queue_request_fsm_datagram(ec_master_t *, ec_datagram_t *);
+void ec_master_queue_fsm_datagram(ec_master_t *, ec_datagram_t *);
+void ec_master_inject_fsm_datagrams(ec_master_t *);
 
 // misc.
 void ec_master_set_send_interval(ec_master_t *, unsigned int);
@@ -307,9 +333,6 @@ ec_slave_config_t *ecrt_master_slave_config_err(ec_master_t *, uint16_t,
 
 void ec_master_calc_dc(ec_master_t *);
 void ec_master_request_op(ec_master_t *);
-
-void ec_master_internal_send_cb(void *);
-void ec_master_internal_receive_cb(void *);
 
 /*****************************************************************************/
 

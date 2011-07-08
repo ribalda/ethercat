@@ -39,6 +39,17 @@
 #include "../globals.h"
 #include "../include/ecrt.h"
 
+#ifdef __KERNEL__
+#include <linux/version.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,24)
+#include <linux/rtmutex.h>
+#endif  // KERNEL_VERSION(2,6,24)
+#endif // __KERNEL__
+
+#ifdef CONFIG_TRACING
+//#define USE_TRACE_PRINTK
+#endif
+
 /******************************************************************************
  * EtherCAT master
  *****************************************************************************/
@@ -46,8 +57,8 @@
 /** Datagram timeout in microseconds. */
 #define EC_IO_TIMEOUT 500
 
-/** SDO injection timeout in microseconds. */
-#define EC_SDO_INJECTION_TIMEOUT 10000
+/** FSM injection timeout in microseconds. */
+#define EC_FSM_INJECTION_TIMEOUT 10000
 
 /** Time to send a byte in nanoseconds.
  *
@@ -96,9 +107,6 @@
 
 /** Word offset of first SII category. */
 #define EC_FIRST_SII_CATEGORY_OFFSET 0x40
-
-/** Maximum number of slave ports. */
-#define EC_MAX_PORTS 4
 
 /** Size of a sync manager configuration page. */
 #define EC_SYNC_PAGE_SIZE 8
@@ -172,23 +180,6 @@ typedef struct {
     uint8_t enable_safeop : 1; /**< ?. */
     uint8_t enable_not_lrw : 1; /**< Slave does not support LRW. */
 } ec_sii_general_flags_t;
-
-/** EtherCAT slave port descriptor.
- */
-typedef enum {
-    EC_PORT_NOT_IMPLEMENTED,
-    EC_PORT_NOT_CONFIGURED,
-    EC_PORT_EBUS,
-    EC_PORT_MII
-} ec_slave_port_desc_t;
-
-/** EtherCAT slave port information.
- */
-typedef struct {
-    uint8_t link_up; /**< Link detected. */
-    uint8_t loop_closed; /**< Loop closed. */
-    uint8_t signal_detected; /**< Detected signal on RX port. */
-} ec_slave_port_link_t;
 
 /** EtherCAT slave distributed clocks range.
  */
@@ -324,5 +315,61 @@ typedef enum {
 typedef struct ec_slave ec_slave_t; /**< \see ec_slave. */
 
 /*****************************************************************************/
+
+/*****************************************************************************/
+
+#ifdef __KERNEL__
+
+/** Mutual exclusion helpers.
+ *
+ */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,24)
+#define ec_mutex_t rt_mutex
+static inline void ec_mutex_init(struct ec_mutex_t *mutex)
+{
+    rt_mutex_init(mutex);
+}
+static inline void ec_mutex_lock(struct ec_mutex_t *mutex)
+{
+    rt_mutex_lock(mutex);
+}
+static inline int ec_mutex_trylock(struct ec_mutex_t *mutex)
+{
+    return rt_mutex_trylock(mutex);
+}
+static inline int ec_mutex_lock_interruptible(struct ec_mutex_t *mutex)
+{
+    return rt_mutex_lock_interruptible(mutex,0);
+}
+static inline void ec_mutex_unlock(struct ec_mutex_t *mutex)
+{
+    rt_mutex_unlock(mutex);
+}
+#else   // < KERNEL_VERSION(2,6,24)
+#define ec_mutex_t semaphore
+static inline void ec_mutex_init(struct ec_mutex_t *sem)
+{
+    sema_init(sem, 1);
+}
+static inline void ec_mutex_lock(struct ec_mutex_t *sem)
+{
+    down(sem);
+}
+static inline int ec_mutex_trylock(struct ec_mutex_t *sem)
+{
+    down(sem);
+    return 1;
+}
+static inline int ec_mutex_lock_interruptible(struct ec_mutex_t *sem)
+{
+    return down_interruptible(sem);
+}
+static inline void ec_mutex_unlock(struct ec_mutex_t *sem)
+{
+    up(sem);
+}
+
+#endif // KERNEL_VERSION(2,6,24)
+#endif // __KERNEL__
 
 #endif

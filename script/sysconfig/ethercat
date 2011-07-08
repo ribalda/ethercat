@@ -19,8 +19,8 @@
 # the master to accept the first device offered by any Ethernet driver.
 #
 # The MASTER<X>_DEVICE variables also determine, how many masters will be
-# created: A non-empty variable MASTER0_DEVICE will create one master, adding
-# a non-empty variable MASTER1_DEVICE will create a second master, and so on.
+# created: A non-empty variable MASTER0_DEVICE will create one master, adding a
+# non-empty variable MASTER1_DEVICE will create a second master, and so on.
 #
 MASTER0_DEVICE=""
 #MASTER1_DEVICE=""
@@ -36,11 +36,11 @@ MASTER0_DEVICE=""
 # the EtherCAT-capable ones. If a certain (EtherCAT-capable) driver is not
 # found, a warning will appear.
 #
-# Possible values: 8139too, e100, e1000, r8169, generic.
-# Separate multiple drivers with spaces.
+# Possible values: 8139too, e100, e1000, e1000e, r8169, generic. Separate
+# multiple drivers with spaces.
 #
-# Note: The e100, e1000, r8169 and generic drivers are not built by default.
-# Enable them with the --enable-<driver> configure switches.
+# Note: The e100, e1000, e1000e, r8169 and generic drivers are not built by
+# default.  Enable them with the --enable-<driver> configure switches.
 # 
 DEVICE_MODULES=""
 

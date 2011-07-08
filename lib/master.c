@@ -1,11 +1,11 @@
 /******************************************************************************
- *  
+ *
  *  $Id$
- *  
+ *
  *  Copyright (C) 2006-2009  Florian Pose, Ingenieurgemeinschaft IgH
- *  
+ *
  *  This file is part of the IgH EtherCAT master userspace library.
- *  
+ *
  *  The IgH EtherCAT master userspace library is free software; you can
  *  redistribute it and/or modify it under the terms of the GNU Lesser General
  *  Public License as published by the Free Software Foundation; version 2.1
@@ -19,9 +19,9 @@
  *  You should have received a copy of the GNU Lesser General Public License
  *  along with the IgH EtherCAT master userspace library. If not, see
  *  <http://www.gnu.org/licenses/>.
- *  
+ *
  *  ---
- *  
+ *
  *  The license mentioned above concerns the source code only. Using the
  *  EtherCAT technology and brand is only permitted in compliance with the
  *  industrial property and similar rights of Beckhoff Automation GmbH.
@@ -118,12 +118,12 @@ ec_domain_t *ecrt_master_create_domain(ec_master_t *master)
         fprintf(stderr, "Failed to allocate memory.\n");
         return 0;
     }
-    
+
     index = ioctl(master->fd, EC_IOCTL_CREATE_DOMAIN, NULL);
     if (index == -1) {
         fprintf(stderr, "Failed to create domain: %s\n", strerror(errno));
         free(domain);
-        return 0; 
+        return 0;
     }
 
     domain->next = NULL;
@@ -166,17 +166,17 @@ ec_slave_config_t *ecrt_master_slave_config(ec_master_t *master,
         fprintf(stderr, "Failed to allocate memory.\n");
         return 0;
     }
-    
+
     data.alias = alias;
     data.position = position;
     data.vendor_id = vendor_id;
     data.product_code = product_code;
-    
+
     if (ioctl(master->fd, EC_IOCTL_CREATE_SLAVE_CONFIG, &data) == -1) {
         fprintf(stderr, "Failed to create slave config: %s\n",
                 strerror(errno));
         free(sc);
-        return 0; 
+        return 0;
     }
 
     sc->next = NULL;
@@ -216,7 +216,7 @@ int ecrt_master_get_slave(ec_master_t *master, uint16_t slave_position,
         ec_slave_info_t *slave_info)
 {
     ec_ioctl_slave_t data;
-    int index;
+    int index, i;
 
     data.position = slave_position;
 
@@ -232,6 +232,15 @@ int ecrt_master_get_slave(ec_master_t *master, uint16_t slave_position,
     slave_info->serial_number = data.serial_number;
     slave_info->alias = data.alias;
     slave_info->current_on_ebus = data.current_on_ebus;
+    for ( i = 0; i < EC_MAX_PORTS; i++ ) {
+    	slave_info->ports[i].desc = data.ports[i].desc;
+    	slave_info->ports[i].link.link_up = data.ports[i].link.link_up;
+    	slave_info->ports[i].link.loop_closed = data.ports[i].link.loop_closed;
+    	slave_info->ports[i].link.signal_detected = data.ports[i].link.signal_detected;
+    	slave_info->ports[i].receive_time = data.ports[i].receive_time;
+    	slave_info->ports[i].next_slave = data.ports[i].next_slave;
+    	slave_info->ports[i].delay_to_next_dc = data.ports[i].delay_to_next_dc;
+    }
     slave_info->al_state = data.al_state;
     slave_info->error_flag = data.error_flag;
     slave_info->sync_count = data.sync_count;
@@ -455,7 +464,7 @@ int ecrt_master_activate(ec_master_t *master)
         }
 
         // Access the mapped region to cause the initial page fault
-        printf("pd: %x\n", master->process_data[0]);
+        memset(master->process_data, 0, master->process_data_size);
     }
 
     return 0;
@@ -509,6 +518,16 @@ void ecrt_master_receive(ec_master_t *master)
 void ecrt_master_state(const ec_master_t *master, ec_master_state_t *state)
 {
     if (ioctl(master->fd, EC_IOCTL_MASTER_STATE, state) == -1) {
+        fprintf(stderr, "Failed to get master state: %s\n", strerror(errno));
+    }
+}
+
+/*****************************************************************************/
+
+void ecrt_master_configured_slaves_state(const ec_master_t *master,
+                                         ec_master_state_t *state)
+{
+    if (ioctl(master->fd, EC_IOCTL_MASTER_SC_STATE, state) == -1) {
         fprintf(stderr, "Failed to get master state: %s\n", strerror(errno));
     }
 }

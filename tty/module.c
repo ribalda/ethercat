@@ -65,7 +65,7 @@ unsigned int debug_level = 0;
 
 static struct tty_driver *tty_driver = NULL;
 ec_tty_t *ttys[EC_TTY_MAX_DEVICES];
-struct semaphore tty_sem;
+struct ec_mutex_t tty_sem;
 
 void ec_tty_wakeup(unsigned long);
 
@@ -111,7 +111,7 @@ struct ec_tty {
     struct timer_list timer;
     struct tty_struct *tty;
     unsigned int open_count;
-    struct semaphore sem;
+    struct ec_mutex_t sem;
 
     ec_tty_operations_t ops;
     void *cb_data;
@@ -131,7 +131,7 @@ int __init ec_tty_init_module(void)
 
     printk(KERN_INFO PFX "TTY driver %s\n", EC_MASTER_VERSION);
 
-    sema_init(&tty_sem, 1);
+    ec_mutex_init(&tty_sem);
 
     for (i = 0; i < EC_TTY_MAX_DEVICES; i++) {
         ttys[i] = NULL;
@@ -202,7 +202,7 @@ int ec_tty_init(ec_tty_t *t, int minor,
     init_timer(&t->timer);
     t->tty = NULL;
     t->open_count = 0;
-    sema_init(&t->sem, 1);
+    ec_mutex_init(&t->sem);
     t->ops = *ops;
     t->cb_data = cb_data;
 
@@ -391,9 +391,9 @@ static int ec_tty_open(struct tty_struct *tty, struct file *file)
         tty->driver_data = t;
     }
 
-    down(&t->sem);
+    ec_mutex_lock(&t->sem);
     t->open_count++;
-    up(&t->sem);
+    ec_mutex_unlock(&t->sem);
     return 0;
 }
 
@@ -409,11 +409,11 @@ static void ec_tty_close(struct tty_struct *tty, struct file *file)
 #endif
 
     if (t) {
-        down(&t->sem);
+        ec_mutex_lock(&t->sem);
         if (--t->open_count == 0) {
             t->tty = NULL;
         }
-        up(&t->sem);
+        ec_mutex_unlock(&t->sem);
     }
 }
 
@@ -676,7 +676,7 @@ ec_tty_t *ectty_create(const ec_tty_operations_t *ops, void *cb_data)
     ec_tty_t *tty;
     int minor, ret;
 
-    if (down_interruptible(&tty_sem)) {
+    if (ec_mutex_lock_interruptible(&tty_sem)) {
         return ERR_PTR(-EINTR);
     }
 
@@ -686,25 +686,25 @@ ec_tty_t *ectty_create(const ec_tty_operations_t *ops, void *cb_data)
 
             tty = kmalloc(sizeof(ec_tty_t), GFP_KERNEL);
             if (!tty) {
-                up(&tty_sem);
+                ec_mutex_unlock(&tty_sem);
                 printk(KERN_ERR PFX "Failed to allocate memory.\n");
                 return ERR_PTR(-ENOMEM);
             }
 
             ret = ec_tty_init(tty, minor, ops, cb_data);
             if (ret) {
-                up(&tty_sem);
+                ec_mutex_unlock(&tty_sem);
                 kfree(tty);
                 return ERR_PTR(ret);
             }
 
             ttys[minor] = tty;
-            up(&tty_sem);
+            ec_mutex_unlock(&tty_sem);
             return tty;
         }
     }
 
-    up(&tty_sem);
+    ec_mutex_unlock(&tty_sem);
     printk(KERN_ERR PFX "No free interfaces avaliable.\n");
     return ERR_PTR(-EBUSY);
 }

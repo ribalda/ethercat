@@ -50,7 +50,7 @@ typedef struct ec_fsm_soe ec_fsm_soe_t; /**< \see ec_fsm_soe */
  */
 struct ec_fsm_soe {
     ec_slave_t *slave; /**< slave the FSM runs on */
-    ec_datagram_t *datagram; /**< datagram used in the state machine */
+    ec_mailbox_t *mbox; /**< mailbox used in the state machine */
     unsigned int retries; /**< retries upon datagram timeout */
 
     void (*state)(ec_fsm_soe_t *); /**< CoE state function */
@@ -61,7 +61,7 @@ struct ec_fsm_soe {
 
 /*****************************************************************************/
 
-void ec_fsm_soe_init(ec_fsm_soe_t *, ec_datagram_t *);
+void ec_fsm_soe_init(ec_fsm_soe_t *, ec_mailbox_t *);
 void ec_fsm_soe_clear(ec_fsm_soe_t *);
 
 void ec_fsm_soe_transfer(ec_fsm_soe_t *, ec_slave_t *, ec_soe_request_t *);

@@ -26,6 +26,7 @@ config.h.in
 config.log
 config.status
 configure
+debuild.log
 devices/Kbuild
 devices/Makefile
 devices/Makefile.in
@@ -99,12 +100,15 @@ examples/modules.order
 examples/rtai/Kbuild
 examples/rtai/Makefile
 examples/rtai/Makefile.in
+examples/rtai_rtdm/.deps
 examples/user/.deps
 examples/user/.libs
 examples/user/Makefile
 examples/user/Makefile.in
 examples/user/TAGS
 examples/user/ec_user_example
+examples/xenomai/.deps
+examples/xenomai_posix/.deps
 include/Makefile
 include/Makefile.in
 include/TAGS

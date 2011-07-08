@@ -56,7 +56,7 @@
  *
  * Increment this when changing the ioctl interface!
  */
-#define EC_IOCTL_VERSION_MAGIC 11
+#define EC_IOCTL_VERSION_MAGIC 12
 
 // Command-line tool
 #define EC_IOCTL_MODULE                EC_IOR(0x00, ec_ioctl_module_t)
@@ -137,6 +137,8 @@
 #define EC_IOCTL_VOE_EXEC             EC_IOWR(0x47, ec_ioctl_voe_t)
 #define EC_IOCTL_VOE_DATA             EC_IOWR(0x48, ec_ioctl_voe_t)
 #define EC_IOCTL_SET_SEND_INTERVAL     EC_IOW(0x49, size_t)
+#define EC_IOCTL_MASTER_SC_STATE        EC_IOR(0x50, ec_master_state_t)
+#define EC_IOCTL_SC_OVERLAPPING_IO      EC_IOW(0x51, ec_ioctl_config_t)
 
 /*****************************************************************************/
 
@@ -278,6 +280,7 @@ typedef struct {
 
     // outputs
     uint32_t data_size;
+    uint32_t tx_size;
     uint32_t logical_base_address;
     uint16_t working_counter;
     uint16_t expected_working_counter;
@@ -297,6 +300,7 @@ typedef struct {
     uint8_t sync_index;
     ec_direction_t dir;
     uint32_t logical_address;
+    uint32_t domain_address;
     uint32_t data_size;
 } ec_ioctl_domain_fmmu_t;
 
@@ -459,6 +463,7 @@ typedef struct {
     } syncs[EC_MAX_SYNC_MANAGERS];
     uint16_t watchdog_divider;
     uint16_t watchdog_intervals;
+    uint8_t allow_overlapping_pdos;
     uint32_t sdo_count;
     uint32_t idn_count;
     int32_t slave_position;

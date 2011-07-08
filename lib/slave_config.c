@@ -110,6 +110,23 @@ void ecrt_slave_config_watchdog(ec_slave_config_t *sc,
 
 /*****************************************************************************/
 
+void ecrt_slave_config_overlapping_pdos(ec_slave_config_t *sc,
+        uint8_t allow_overlapping_pdos)
+{
+    ec_ioctl_config_t data;
+
+    memset(&data, 0x00, sizeof(ec_ioctl_config_t));
+    data.config_index = sc->index;
+    data.allow_overlapping_pdos = allow_overlapping_pdos;
+
+    if (ioctl(sc->master->fd, EC_IOCTL_SC_OVERLAPPING_IO, &data) == -1) {
+        fprintf(stderr, "Failed to config overlapping PDOs: %s\n",
+                strerror(errno));
+    }
+}
+
+/*****************************************************************************/
+
 int ecrt_slave_config_pdo_assign_add(ec_slave_config_t *sc,
         uint8_t sync_index, uint16_t pdo_index)
 {
@@ -415,7 +432,7 @@ ec_sdo_request_t *ecrt_slave_config_create_sdo_request(ec_slave_config_t *sc,
     if (size) {
         req->data = malloc(size);
         if (!req->data) {
-            fprintf(stderr, "Failed to allocate %u bytes of SDO data"
+            fprintf(stderr, "Failed to allocate %zu bytes of SDO data"
                     " memory.\n", size);
             free(req);
             return 0;
@@ -484,7 +501,7 @@ ec_voe_handler_t *ecrt_slave_config_create_voe_handler(ec_slave_config_t *sc,
     if (size) {
         voe->data = malloc(size);
         if (!voe->data) {
-            fprintf(stderr, "Failed to allocate %u bytes of VoE data"
+            fprintf(stderr, "Failed to allocate %zu bytes of VoE data"
                     " memory.\n", size);
             free(voe);
             return 0;

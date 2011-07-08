@@ -27,9 +27,13 @@
 #
 #------------------------------------------------------------------------------
 
-SUBDIRS = e1000
+SUBDIRS = \
+	e1000 \
+	e1000e
 
-DIST_SUBDIRS = e1000
+DIST_SUBDIRS = \
+	e1000 \
+	e1000e
 
 # using HEADERS to enable tags target
 noinst_HEADERS = \
@@ -59,8 +63,18 @@ noinst_HEADERS = \
 	8139too-2.6.29-orig.c \
 	8139too-2.6.31-ethercat.c \
 	8139too-2.6.31-orig.c \
+	8139too-2.6.32-ethercat.c \
+	8139too-2.6.32-orig.c \
+	8139too-2.6.33-ethercat.c \
+	8139too-2.6.33-orig.c \
 	8139too-2.6.34-ethercat.c \
 	8139too-2.6.34-orig.c \
+	8139too-2.6.35-ethercat.c \
+	8139too-2.6.35-orig.c \
+	8139too-2.6.36-ethercat.c \
+	8139too-2.6.36-orig.c \
+	8139too-2.6.37-ethercat.c \
+	8139too-2.6.37-orig.c \
 	e100-2.6.20-ethercat.c \
 	e100-2.6.20-orig.c \
 	e100-2.6.24-ethercat.c \
@@ -75,6 +89,8 @@ noinst_HEADERS = \
 	e100-2.6.29-orig.c \
 	e100-2.6.31-ethercat.c \
 	e100-2.6.31-orig.c \
+	e100-2.6.33-ethercat.c \
+	e100-2.6.33-orig.c \
 	ecdev.h \
 	generic.c \
 	r8169-2.6.24-ethercat.c \
@@ -87,6 +103,8 @@ noinst_HEADERS = \
 	r8169-2.6.29-orig.c \
 	r8169-2.6.31-ethercat.c \
 	r8169-2.6.31-orig.c
+	r8169-2.6.33-ethercat.c \
+	r8169-2.6.33-orig.c
 
 EXTRA_DIST = \
 	Kbuild.in

@@ -51,7 +51,7 @@ typedef struct ec_fsm_foe ec_fsm_foe_t; /**< \see ec_fsm_foe */
  */
 struct ec_fsm_foe {
     ec_slave_t *slave; /**< slave the FSM runs on */
-    ec_datagram_t *datagram; /**< datagram used in the state machine */
+    ec_mailbox_t *mbox; /**< mailbox used in the state machine */
     unsigned int retries; /**< retries upon datagram timeout */
 
     void (*state)(ec_fsm_foe_t *); /**< FoE state function */
@@ -80,7 +80,7 @@ struct ec_fsm_foe {
 
 /*****************************************************************************/
 
-void ec_fsm_foe_init(ec_fsm_foe_t *, ec_datagram_t *);
+void ec_fsm_foe_init(ec_fsm_foe_t *, ec_mailbox_t *);
 void ec_fsm_foe_clear(ec_fsm_foe_t *);
 
 int ec_fsm_foe_exec(ec_fsm_foe_t *);

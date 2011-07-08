@@ -59,6 +59,7 @@ struct ec_domain
 
     struct list_head fmmu_configs; /**< FMMU configurations contained. */
     size_t data_size; /**< Size of the process data. */
+    size_t tx_size; /**< Size of the transmitted data. */
     uint8_t *data; /**< Memory for the process data. */
     ec_origin_t data_origin; /**< Origin of the \a data memory. */
     uint32_t logical_base_address; /**< Logical offset address of the
