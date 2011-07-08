@@ -821,22 +821,24 @@ void ec_master_queue_datagram(
         ec_datagram_t *datagram /**< datagram */
         )
 {
-    ec_datagram_t *queued_datagram;
-
-    if (datagram->state == EC_DATAGRAM_SENT)
-        return;
-    // check, if the datagram is already queued
-    list_for_each_entry(queued_datagram, &master->datagram_queue, queue) {
-        if (queued_datagram == datagram) {
+    switch (datagram->state) {
+        case EC_DATAGRAM_QUEUED:
             datagram->skip_count++;
-            EC_MASTER_DBG(master, 1, "skipping datagram %p.\n", datagram);
-            datagram->state = EC_DATAGRAM_QUEUED;
-            return;
-        }
-    }
+            EC_MASTER_DBG(master, 1, "Skipping already queued datagram %p.\n",
+                    datagram);
+            break;
 
-    list_add_tail(&datagram->queue, &master->datagram_queue);
-    datagram->state = EC_DATAGRAM_QUEUED;
+        case EC_DATAGRAM_SENT:
+            datagram->skip_count++;
+            EC_MASTER_DBG(master, 1, "Skipping already sent datagram %p.\n",
+                    datagram);
+            break;
+
+        default:
+            list_add_tail(&datagram->queue, &master->datagram_queue);
+            datagram->state = EC_DATAGRAM_QUEUED;
+            break;
+    }
 }
 
 /*****************************************************************************/
@@ -1303,7 +1305,8 @@ static int ec_master_operation_thread(void *priv_data)
             }
             up(&master->master_sem);
 
-            // inject datagrams (let the rt thread queue them, see ecrt_master_send)
+            // inject datagrams (let the rt thread queue them, see
+            // ecrt_master_send)
             if (fsm_exec)
                 master->injection_seq_fsm++;
         }
