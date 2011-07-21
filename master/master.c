@@ -843,13 +843,34 @@ void ec_master_queue_datagram(
 {
     ec_datagram_t *queued_datagram;
 
-    if (datagram->state == EC_DATAGRAM_SENT)
-        return;
-    // check, if the datagram is already queued
+    switch (datagram->state) {
+        case EC_DATAGRAM_QUEUED:
+            datagram->skip_count++;
+            EC_MASTER_DBG(master, 1, "Skipping already queued datagram %p.\n",
+                    datagram);
+            break;
+
+        case EC_DATAGRAM_SENT:
+            datagram->skip_count++;
+            EC_MASTER_DBG(master, 1, "Skipping already sent datagram %p.\n",
+                    datagram);
+            break;
+
+        default:
+            break;
+    }
+
+    /* It is possible, that a datagram in the queue is re-initialized with the
+     * ec_datagram_<type>() methods and then shall be queued with this method.
+     * In that case, the state is already reset to EC_DATAGRAM_INIT. Check if
+     * the datagram is queued to avoid duplicate queuing (which results in an
+     * infinite loop!). Set the state to EC_DATAGRAM_QUEUED again, probably
+     * causing an unmatched datagram. */
     list_for_each_entry(queued_datagram, &master->datagram_queue, queue) {
         if (queued_datagram == datagram) {
             datagram->skip_count++;
-            EC_MASTER_DBG(master, 1, "skipping datagram %p.\n", datagram);
+            EC_MASTER_DBG(master, 1, "Skipping re-initialized datagram %p.\n",
+                    datagram);
             datagram->state = EC_DATAGRAM_QUEUED;
             return;
         }
@@ -858,7 +879,6 @@ void ec_master_queue_datagram(
     list_add_tail(&datagram->queue, &master->datagram_queue);
     datagram->state = EC_DATAGRAM_QUEUED;
 }
-
 
 /*****************************************************************************/
 

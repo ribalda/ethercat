@@ -304,6 +304,61 @@ fi
 AC_SUBST(KERNEL_E1000,[$kernele1000])
 
 #------------------------------------------------------------------------------
+# e1000e driver
+#------------------------------------------------------------------------------
+
+AC_ARG_ENABLE([e1000e],
+    AS_HELP_STRING([--enable-e1000e],
+                   [Enable e1000e driver]),
+    [
+        case "${enableval}" in
+            yes) enablee1000e=1
+                ;;
+            no) enablee1000e=0
+                ;;
+            *) AC_MSG_ERROR([Invalid value for --enable-e1000e])
+                ;;
+        esac
+    ],
+    [enablee1000e=0] # disabled by default
+)
+
+AM_CONDITIONAL(ENABLE_E1000E, test "x$enablee1000e" = "x1")
+AC_SUBST(ENABLE_E1000E,[$enablee1000e])
+
+AC_ARG_WITH([e1000e-kernel],
+    AC_HELP_STRING(
+        [--with-e1000e-kernel=<X.Y.Z>],
+        [e1000e kernel (only if differing)]
+    ),
+    [
+        kernele1000e=[$withval]
+    ],
+    [
+        kernele1000e=$linuxversion
+    ]
+)
+
+if test "x${enablee1000e}" = "x1"; then
+    AC_MSG_CHECKING([for kernel for e1000e driver])
+
+    kernels=`ls -1 ${srcdir}/devices/e1000e/ | grep -oE "^netdev-.*" | cut -d "-" -f 2 | uniq`
+    found=0
+    for k in $kernels; do
+        if test "$kernele1000e" = "$k"; then
+            found=1
+        fi
+    done
+    if test $found -ne 1; then
+        AC_MSG_ERROR([kernel $kernele1000e not available for e1000e driver!])
+    fi
+
+    AC_MSG_RESULT([$kernele1000e])
+fi
+
+AC_SUBST(KERNEL_E1000E,[$kernele1000e])
+
+#------------------------------------------------------------------------------
 # r8169 driver
 #------------------------------------------------------------------------------
 
@@ -706,6 +761,8 @@ AC_CONFIG_FILES([
         devices/Makefile
         devices/e1000/Kbuild
         devices/e1000/Makefile
+        devices/e1000e/Kbuild
+        devices/e1000e/Makefile
         ethercat.spec
         examples/Kbuild
         examples/Makefile
