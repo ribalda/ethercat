@@ -8,7 +8,7 @@ vim: spelllang=en spell
 
 Changes since 1.5:
 
-* Added e1000e driver for 2.6.34 (thanks to Siwei Zhuang).
+* Added e1000e driver for 2.6.34 (thanks to Siwei Zhuang), 2.6.37.
 
 Changes in 1.5:
 
