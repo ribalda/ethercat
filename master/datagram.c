@@ -569,7 +569,7 @@ void ec_datagram_output_stats(
         ec_datagram_t *datagram
         )
 {
-    if (jiffies - datagram->stats_output_jiffies < HZ) {
+    if (jiffies - datagram->stats_output_jiffies > HZ) {
         datagram->stats_output_jiffies = jiffies;
     
         if (unlikely(datagram->skip_count)) {
