@@ -359,7 +359,6 @@ void cyclic_task(unsigned long data)
 
 void request_lock_callback(void *cb_data)
 {
-    ec_master_t *m = (ec_master_t *) cb_data;
     down(&master_sem);
 }
 
@@ -367,7 +366,6 @@ void request_lock_callback(void *cb_data)
 
 void release_lock_callback(void *cb_data)
 {
-    ec_master_t *m = (ec_master_t *) cb_data;
     up(&master_sem);
 }
 
