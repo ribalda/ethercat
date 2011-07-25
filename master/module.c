@@ -611,10 +611,10 @@ unsigned int ecrt_version_magic(void)
     return ECRT_VERSION_MAGIC;
 }
 
-
+/*****************************************************************************/
 
 /** Return pointer to running master
-/*****************************************************************************/
+ */
 ec_master_t *ecrt_attach_master(unsigned int master_index)
 {
     ec_master_t *master = NULL;
@@ -627,20 +627,15 @@ ec_master_t *ecrt_attach_master(unsigned int master_index)
     }
 
     master = &masters[master_index];
-    if (master->reserved) 
-      {
+    if (master->reserved) {
        // ok master is attached
         EC_INFO("attaching Master %u!\n", master_index);
-      }
-    else
-      {
+    } else {
         EC_ERR("No Master %u in use!\n", master_index);
         master = NULL;
     }
     return master;
 }
-
-
 
 /*****************************************************************************/
 
