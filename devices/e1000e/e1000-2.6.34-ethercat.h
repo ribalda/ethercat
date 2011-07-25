@@ -375,7 +375,7 @@ struct e1000_adapter {
 	struct work_struct led_blink_task;
 	struct work_struct print_hang_task;
 
-	/* Ethercat device variables*/
+	/* EtherCAT device variables */
 	ec_device_t *ecdev;
 	unsigned long ec_watchdog_jiffies;
 };
