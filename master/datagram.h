@@ -95,7 +95,8 @@ typedef struct {
     ec_origin_t data_origin; /**< Origin of the \a data memory. */
     size_t mem_size; /**< Datagram \a data memory size. */
     size_t data_size; /**< Size of the data in \a data. */
-    ec_domain_t *domain; /**< Owning domain (may be null for non-domain datagrams) */
+    ec_domain_t *domain; /**< Owning domain (may be null for non-domain
+                           datagrams) */
     uint8_t index; /**< Index (set by master). */
     uint16_t working_counter; /**< Working counter. */
     ec_datagram_state_t state; /**< State. */

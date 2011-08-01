@@ -128,7 +128,7 @@ typedef struct ec_fsm_master ec_fsm_master_t; /**< \see ec_fsm_master */
 struct ec_fsm_master {
     ec_master_t *master; /**< master the FSM runs on */
     ec_datagram_t *datagram; /**< datagram used in the state machine */
-    ec_mailbox_t* mbox; /**< mailbox used in the CoE state machine */
+    ec_mailbox_t *mbox; /**< mailbox used in the state machine */
     unsigned int retries; /**< retries on datagram timeout. */
 
     void (*state)(ec_fsm_master_t *); /**< master state function */

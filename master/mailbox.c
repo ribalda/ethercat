@@ -77,43 +77,40 @@ void ec_mbox_clear(ec_mailbox_t* mbox /** mailbox */
 
 /*****************************************************************************/
 
-/**
-   Queues the slave datagrams.
-*/
-
-void  ec_slave_mbox_queue_datagrams(const ec_slave_t* slave, /** slave */
-                                    ec_mailbox_t* mbox /** mailbox */
-                                    )
+/** Queues the slave datagrams.
+ */
+void ec_slave_mbox_queue_datagrams(
+        const ec_slave_t *slave, /** slave */
+        ec_mailbox_t *mbox /** mailbox */
+        )
 {
     ec_master_queue_request_fsm_datagram(slave->master, mbox->datagram);
+
 #ifdef EC_REDUCE_MBOXFRAMESIZE
-    if (mbox->end_datagram.type != EC_DATAGRAM_NONE)
-    {
-        ec_master_queue_request_fsm_datagram(slave->master, &mbox->end_datagram);
+    if (mbox->end_datagram.type != EC_DATAGRAM_NONE) {
+        ec_master_queue_request_fsm_datagram(slave->master,
+                &mbox->end_datagram);
     }
 #endif
 }
 
-
 /*****************************************************************************/
 
-/**
-   Queues the datagrams.
-*/
-
-void  ec_master_mbox_queue_datagrams(ec_master_t* master, /** master */
-                                    ec_mailbox_t* mbox /** mailbox */
-                                    )
+/** Queues the datagrams.
+ */
+void ec_master_mbox_queue_datagrams(
+        ec_master_t *master, /** master */
+        ec_mailbox_t *mbox /** mailbox */
+        )
 {
     ec_master_queue_fsm_datagram(master, mbox->datagram);
+
 #ifdef EC_REDUCE_MBOXFRAMESIZE
-    if (mbox->end_datagram.type != EC_DATAGRAM_NONE)
-    {
+    if (mbox->end_datagram.type != EC_DATAGRAM_NONE) {
         ec_master_queue_fsm_datagram(master, &mbox->end_datagram);
     }
 #endif
 }
-
 
 /*****************************************************************************/
 

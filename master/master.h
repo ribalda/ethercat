@@ -246,7 +246,8 @@ struct ec_master {
                                       fsm_datagram_queue. */
     struct list_head fsm_datagram_queue; /**< External Datagram queue. */
 
-    unsigned int send_interval; /**< Interval between calls to ecrt_master_send */
+    unsigned int send_interval; /**< Interval between calls to
+                                  ecrt_master_send */
     size_t max_queue_size; /**< Maximum size of datagram queue */
 
     unsigned int debug_level; /**< Master debug level. */
@@ -263,10 +264,14 @@ struct ec_master {
 
     void (*fsm_queue_lock_cb)(void *); /**< FSM queue lock callback. */
     void (*fsm_queue_unlock_cb)(void *); /**< FSM queue unlock callback. */
-    void *fsm_queue_locking_data; /**< Data parameter of fsm queue locking callbacks. */
-    void (*app_fsm_queue_lock_cb)(void *); /**< App's FSM queue lock callback. */
-    void (*app_fsm_queue_unlock_cb)(void *); /**< App's FSM queue unlock callback. */
-    void *app_fsm_queue_locking_data; /**< App's data parameter of fsm queue locking callbacks. */
+    void *fsm_queue_locking_data; /**< Data parameter of fsm queue locking
+                                    callbacks. */
+    void (*app_fsm_queue_lock_cb)(void *); /**< App's FSM queue lock callback.
+                                            */
+    void (*app_fsm_queue_unlock_cb)(void *); /**< App's FSM queue unlock
+                                               callback. */
+    void *app_fsm_queue_locking_data; /**< App's data parameter of fsm queue
+                                        locking callbacks. */
 
     struct list_head sii_requests; /**< SII write requests. */
     wait_queue_head_t sii_queue; /**< Wait queue for SII

@@ -674,19 +674,18 @@ void ec_master_inject_fsm_datagrams(
     ec_datagram_t *datagram, *next;
     size_t queue_size = 0;
 
-    if (master->fsm_queue_lock_cb)
+    if (master->fsm_queue_lock_cb) {
         master->fsm_queue_lock_cb(master->fsm_queue_locking_data);
+    }
+
     if (ec_mutex_trylock(&master->fsm_queue_mutex) == 0) {
-           if (master->fsm_queue_unlock_cb)
-               master->fsm_queue_unlock_cb(master->fsm_queue_locking_data);
-           return;
+        goto unlock_cb;
     }
+
     if (list_empty(&master->fsm_datagram_queue)) {
-        ec_mutex_unlock(&master->fsm_queue_mutex);
-        if (master->fsm_queue_unlock_cb)
-            master->fsm_queue_unlock_cb(master->fsm_queue_locking_data);
-        return;
+        goto unlock;
     }
+
     list_for_each_entry(datagram, &master->datagram_queue, queue) {
         queue_size += datagram->data_size;
     }
@@ -704,10 +703,9 @@ void ec_master_inject_fsm_datagrams(
 #ifdef EC_HAVE_CYCLES
             datagram->cycles_sent = 0;
 #endif
-            datagram->jiffies_sent = 0;
+            datagram->jiffies_sent = 0; // FIXME why?
             ec_master_queue_datagram(master, datagram);
-        }
-        else {
+        } else {
             if (datagram->data_size > master->max_queue_size) {
                 list_del_init(&datagram->fsm_queue);
                 datagram->state = EC_DATAGRAM_ERROR;
@@ -754,9 +752,13 @@ void ec_master_inject_fsm_datagrams(
             }
         }
     }
+
+unlock:
     ec_mutex_unlock(&master->fsm_queue_mutex);
-    if (master->fsm_queue_unlock_cb)
+unlock_cb:
+    if (master->fsm_queue_unlock_cb) {
         master->fsm_queue_unlock_cb(master->fsm_queue_locking_data);
+    }
 }
 
 /*****************************************************************************/
@@ -777,15 +779,16 @@ void ec_master_set_send_interval(
 
 /*****************************************************************************/
 
-/** Places an request (SDO/FoE/SoE/EoE) fsm datagram in the sdo datagram queue.
+/** Places an request (SDO/FoE/SoE/EoE) fsm datagram in the sdo datagram
+ * queue.
  */
 void ec_master_queue_request_fsm_datagram(
         ec_master_t *master, /**< EtherCAT master */
         ec_datagram_t *datagram /**< datagram */
         )
 {
-    ec_master_queue_fsm_datagram(master,datagram);
-    master->fsm.idle = 0;   // pump the bus as fast as possible
+    ec_master_queue_fsm_datagram(master, datagram);
+    master->fsm.idle = 0; // pump the bus as fast as possible
 }
 
 /*****************************************************************************/
@@ -799,8 +802,9 @@ void ec_master_queue_fsm_datagram(
 {
     ec_datagram_t *queued_datagram;
 
-    if (master->fsm_queue_lock_cb)
+    if (master->fsm_queue_lock_cb) {
         master->fsm_queue_lock_cb(master->fsm_queue_locking_data);
+    }
     ec_mutex_lock(&master->fsm_queue_mutex);
 
     // check, if the datagram is already queued
@@ -808,10 +812,7 @@ void ec_master_queue_fsm_datagram(
             fsm_queue) {
         if (queued_datagram == datagram) {
             datagram->state = EC_DATAGRAM_QUEUED;
-            ec_mutex_unlock(&master->fsm_queue_mutex);
-            if (master->fsm_queue_unlock_cb)
-                master->fsm_queue_unlock_cb(master->fsm_queue_locking_data);
-            return;
+            goto unlock;
         }
     }
 
@@ -825,11 +826,13 @@ void ec_master_queue_fsm_datagram(
 #ifdef EC_HAVE_CYCLES
     datagram->cycles_sent = get_cycles();
 #endif
-    datagram->jiffies_sent = jiffies;
+    datagram->jiffies_sent = jiffies; // FIXME why?
 
+unlock:
     ec_mutex_unlock(&master->fsm_queue_mutex);
-    if (master->fsm_queue_unlock_cb)
+    if (master->fsm_queue_unlock_cb) {
         master->fsm_queue_unlock_cb(master->fsm_queue_locking_data);
+    }
 }
 
 /*****************************************************************************/
@@ -929,12 +932,14 @@ void ec_master_send_datagrams(ec_master_t *master /**< EtherCAT master */)
             list_add_tail(&datagram->sent, &sent_datagrams);
             datagram->index = master->datagram_index++;
 
-            EC_MASTER_DBG(master, 2, "adding datagram %p i=0x%02X size=%zu\n",datagram,
-                    datagram->index,datagram_size);
+            EC_MASTER_DBG(master, 2, "Adding datagram %p i=0x%02X size=%zu\n",
+                    datagram, datagram->index,datagram_size);
 
             // set "datagram following" flag in previous frame
-            if (follows_word)
-                EC_WRITE_U16(follows_word, EC_READ_U16(follows_word) | 0x8000);
+            if (follows_word) {
+                EC_WRITE_U16(follows_word,
+                        EC_READ_U16(follows_word) | 0x8000);
+            }
 
             // EtherCAT datagram header
             EC_WRITE_U8 (cur_data,     datagram->type);
@@ -948,25 +953,35 @@ void ec_master_send_datagrams(ec_master_t *master /**< EtherCAT master */)
             // EtherCAT datagram data
             frame_datagram_data = cur_data;
             if (datagram->domain) {
-                unsigned int datagram_address = EC_READ_U32(datagram->address);
+                unsigned int datagram_address =
+                    EC_READ_U32(datagram->address);
                 int i = 0;
                 uint8_t *domain_data = datagram->data;
-                list_for_each_entry(domain_fmmu, &datagram->domain->fmmu_configs, list) {
+                list_for_each_entry(domain_fmmu,
+                        &datagram->domain->fmmu_configs, list) {
                     if (domain_fmmu->dir == EC_DIR_OUTPUT ) {
-                        unsigned int frame_offset = domain_fmmu->logical_start_address-datagram_address;
-                        memcpy(frame_datagram_data+frame_offset, domain_data, domain_fmmu->data_size);
+                        unsigned int frame_offset =
+                            domain_fmmu->logical_start_address
+                            - datagram_address;
+                        memcpy(frame_datagram_data+frame_offset, domain_data,
+                                domain_fmmu->data_size);
                         if (unlikely(master->debug_level > 1)) {
-                            EC_DBG("sending dg %p i=0x%02X fmmu %u fp=%u dp=%zu size=%u\n",
-                                   datagram,datagram->index, i,frame_offset,domain_data-datagram->data,domain_fmmu->data_size);
-                            ec_print_data(domain_data, domain_fmmu->data_size);
+                            EC_DBG("sending dg %p i=0x%02X fmmu %u fp=%u"
+                                    " dp=%zu size=%u\n",
+                                   datagram, datagram->index, i,
+                                   frame_offset,
+                                   domain_data - datagram->data,
+                                   domain_fmmu->data_size);
+                            ec_print_data(domain_data,
+                                    domain_fmmu->data_size);
                         }
                     }
                     domain_data += domain_fmmu->data_size;
                     ++i;
                 }
-            }
-            else {
-                memcpy(frame_datagram_data, datagram->data, datagram->data_size);
+            } else {
+                memcpy(frame_datagram_data, datagram->data,
+                        datagram->data_size);
             }
             cur_data += datagram->data_size;
 
@@ -1123,26 +1138,32 @@ void ec_master_receive_datagrams(ec_master_t *master, /**< EtherCAT master */
             continue;
         }
         frame_datagram_data = cur_data;
+
         if (datagram->domain) {
             size_t datagram_address = EC_READ_U32(datagram->address);
             int i = 0;
             uint8_t *domain_data = datagram->data;
-            list_for_each_entry(domain_fmmu, &datagram->domain->fmmu_configs, list) {
-                if (domain_fmmu->dir == EC_DIR_INPUT ) {
-                    unsigned int frame_offset = domain_fmmu->logical_start_address-datagram_address;
-                    memcpy(domain_data, frame_datagram_data+frame_offset, domain_fmmu->data_size);
+
+            list_for_each_entry(domain_fmmu, &datagram->domain->fmmu_configs,
+                    list) {
+                if (domain_fmmu->dir == EC_DIR_INPUT) {
+                    unsigned int frame_offset =
+                        domain_fmmu->logical_start_address - datagram_address;
+                    memcpy(domain_data, frame_datagram_data + frame_offset,
+                            domain_fmmu->data_size);
                     if (unlikely(master->debug_level > 1)) {
-                        EC_DBG("receiving dg %p i=0x%02X fmmu %u fp=%u dp=%zu size=%u\n",
-                               datagram,datagram->index, i,
-                               frame_offset,domain_data-datagram->data,domain_fmmu->data_size);
+                        EC_DBG("receiving dg %p i=0x%02X fmmu %u fp=%u"
+                                " dp=%zu size=%u\n",
+                               datagram, datagram->index, i,
+                               frame_offset, domain_data - datagram->data,
+                               domain_fmmu->data_size);
                         ec_print_data(domain_data, domain_fmmu->data_size);
                     }
                 }
                 domain_data += domain_fmmu->data_size;
                 ++i;
             }
-        }
-        else {
+        } else {
             // copy received data into the datagram memory
             memcpy(datagram->data, frame_datagram_data, data_size);
         }
@@ -1282,6 +1303,7 @@ static int ec_master_idle_thread(void *priv_data)
     ec_master_t *master = (ec_master_t *) priv_data;
     ec_slave_t *slave = NULL;
     size_t sent_bytes;
+
     // send interval in IDLE phase
     ec_master_set_send_interval(master, 1000000 / HZ); 
 
@@ -1298,8 +1320,9 @@ static int ec_master_idle_thread(void *priv_data)
         ec_mutex_unlock(&master->io_mutex);
 
         // execute master & slave state machines
-        if (ec_mutex_lock_interruptible(&master->master_mutex))
+        if (ec_mutex_lock_interruptible(&master->master_mutex)) {
             break;
+        }
         if (ec_fsm_master_exec(&master->fsm)) {
             ec_master_mbox_queue_datagrams(master, &master->fsm_mbox);
         }
@@ -1309,8 +1332,9 @@ static int ec_master_idle_thread(void *priv_data)
             ec_fsm_slave_exec(&slave->fsm); // may queue datagram in fsm queue
         }
 #if defined(EC_EOE)
-        if (!ec_master_eoe_processing(master))
-            master->fsm.idle = 0;  // pump the bus as fast as possible
+        if (!ec_master_eoe_processing(master)) {
+            master->fsm.idle = 0; // pump the bus as fast as possible
+        }
 #endif
         ec_mutex_unlock(&master->master_mutex);
 
@@ -1362,10 +1386,12 @@ static int ec_master_operation_thread(void *priv_data)
         ec_master_output_stats(master);
 
         // execute master & slave state machines
-        if (ec_mutex_lock_interruptible(&master->master_mutex))
+        if (ec_mutex_lock_interruptible(&master->master_mutex)) {
             break;
-        if (ec_fsm_master_exec(&master->fsm))
+        }
+        if (ec_fsm_master_exec(&master->fsm)) {
             ec_master_mbox_queue_datagrams(master, &master->fsm_mbox);
+        }
         for (slave = master->slaves;
                 slave < master->slaves + master->slave_count;
                 slave++) {
@@ -2080,7 +2106,8 @@ void ecrt_master_send(ec_master_t *master)
 
     if (unlikely(!master->main_device.link_state)) {
         // link is down, no datagram can be sent
-        list_for_each_entry_safe(datagram, next, &master->datagram_queue, queue) {
+        list_for_each_entry_safe(datagram, next, &master->datagram_queue,
+                queue) {
             datagram->state = EC_DATAGRAM_ERROR;
             list_del_init(&datagram->queue);
         }

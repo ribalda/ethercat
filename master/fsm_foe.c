@@ -207,7 +207,7 @@ int ec_foe_prepare_data_send(ec_fsm_foe_t *fsm)
     }
 
     data = ec_slave_mbox_prepare_send(fsm->slave,
-            fsm->mbox,EC_MBOX_TYPE_FILEACCESS,
+            fsm->mbox, EC_MBOX_TYPE_FILEACCESS,
             current_size + EC_FOE_HEADER_SIZE);
     if (IS_ERR(data))
         return -1;
@@ -316,14 +316,14 @@ void ec_fsm_foe_state_ack_check(
     printk("ec_fsm_foe_ack_check()\n");
 #endif
 
-    if (!ec_mbox_is_datagram_state(mbox,EC_DATAGRAM_RECEIVED)) {
+    if (!ec_mbox_is_datagram_state(mbox, EC_DATAGRAM_RECEIVED)) {
         ec_foe_set_rx_error(fsm, FOE_RECEIVE_ERROR);
         EC_SLAVE_ERR(slave, "Failed to receive FoE mailbox check datagram: ");
         ec_datagram_print_state(datagram);
         return;
     }
 
-    if (!ec_mbox_is_datagram_wc(mbox,1)) {
+    if (!ec_mbox_is_datagram_wc(mbox, 1)) {
         // slave did not put anything in the mailbox yet
         ec_foe_set_rx_error(fsm, FOE_WC_ERROR);
         EC_SLAVE_ERR(slave, "Reception of FoE mailbox check datagram"
@@ -372,14 +372,14 @@ void ec_fsm_foe_state_ack_read(
     printk("ec_fsm_foe_ack_read()\n");
 #endif
 
-    if (!ec_mbox_is_datagram_state(mbox,EC_DATAGRAM_RECEIVED)) {
+    if (!ec_mbox_is_datagram_state(mbox, EC_DATAGRAM_RECEIVED)) {
         ec_foe_set_rx_error(fsm, FOE_RECEIVE_ERROR);
         EC_SLAVE_ERR(slave, "Failed to receive FoE ack response datagram: ");
         ec_datagram_print_state(datagram);
         return;
     }
 
-    if (!ec_mbox_is_datagram_wc(mbox,1)) {
+    if (!ec_mbox_is_datagram_wc(mbox, 1)) {
         ec_foe_set_rx_error(fsm, FOE_WC_ERROR);
         EC_SLAVE_ERR(slave, "Reception of FoE ack response failed: ");
         ec_datagram_print_wc_error(datagram);
@@ -450,14 +450,14 @@ void ec_fsm_foe_state_wrq_sent(
     printk("ec_foe_state_sent_wrq()\n");
 #endif
 
-    if (!ec_mbox_is_datagram_state(mbox,EC_DATAGRAM_RECEIVED)) {
+    if (!ec_mbox_is_datagram_state(mbox, EC_DATAGRAM_RECEIVED)) {
         ec_foe_set_rx_error(fsm, FOE_RECEIVE_ERROR);
         EC_SLAVE_ERR(slave, "Failed to send FoE WRQ: ");
         ec_datagram_print_state(datagram);
         return;
     }
 
-    if (!ec_mbox_is_datagram_wc(mbox,1)) {
+    if (!ec_mbox_is_datagram_wc(mbox, 1)) {
         // slave did not put anything in the mailbox yet
         ec_foe_set_rx_error(fsm, FOE_WC_ERROR);
         EC_SLAVE_ERR(slave, "Reception of FoE WRQ failed: ");
@@ -492,14 +492,14 @@ void ec_fsm_foe_state_data_sent(
     printk("ec_fsm_foe_state_data_sent()\n");
 #endif
 
-    if (!ec_mbox_is_datagram_state(mbox,EC_DATAGRAM_RECEIVED)) {
+    if (!ec_mbox_is_datagram_state(mbox, EC_DATAGRAM_RECEIVED)) {
         ec_foe_set_tx_error(fsm, FOE_RECEIVE_ERROR);
         EC_SLAVE_ERR(slave, "Failed to receive FoE ack response datagram: ");
         ec_datagram_print_state(datagram);
         return;
     }
 
-    if (!ec_mbox_is_datagram_wc(mbox,1)) {
+    if (!ec_mbox_is_datagram_wc(mbox, 1)) {
         ec_foe_set_tx_error(fsm, FOE_WC_ERROR);
         EC_SLAVE_ERR(slave, "Reception of FoE data send failed: ");
         ec_datagram_print_wc_error(datagram);
@@ -580,14 +580,14 @@ void ec_fsm_foe_state_rrq_sent(
     printk("ec_foe_state_rrq_sent()\n");
 #endif
 
-    if (!ec_mbox_is_datagram_state(mbox,EC_DATAGRAM_RECEIVED)) {
+    if (!ec_mbox_is_datagram_state(mbox, EC_DATAGRAM_RECEIVED)) {
         ec_foe_set_rx_error(fsm, FOE_RECEIVE_ERROR);
         EC_SLAVE_ERR(slave, "Failed to send FoE RRQ: ");
         ec_datagram_print_state(datagram);
         return;
     }
 
-    if (!ec_mbox_is_datagram_wc(mbox,1)) {
+    if (!ec_mbox_is_datagram_wc(mbox, 1)) {
         // slave did not put anything in the mailbox yet
         ec_foe_set_rx_error(fsm, FOE_WC_ERROR);
         EC_SLAVE_ERR(slave, "Reception of FoE RRQ failed: ");
@@ -670,14 +670,14 @@ void ec_fsm_foe_state_data_check(
     printk("ec_fsm_foe_state_data_check()\n");
 #endif
 
-    if (!ec_mbox_is_datagram_state(mbox,EC_DATAGRAM_RECEIVED)) {
+    if (!ec_mbox_is_datagram_state(mbox, EC_DATAGRAM_RECEIVED)) {
         ec_foe_set_rx_error(fsm, FOE_RECEIVE_ERROR);
         EC_SLAVE_ERR(slave, "Failed to send FoE DATA READ: ");
         ec_datagram_print_state(datagram);
         return;
     }
 
-    if (!ec_mbox_is_datagram_wc(mbox,1)) {
+    if (!ec_mbox_is_datagram_wc(mbox, 1)) {
         ec_foe_set_rx_error(fsm, FOE_WC_ERROR);
         EC_SLAVE_ERR(slave, "Reception of FoE DATA READ: ");
         ec_datagram_print_wc_error(datagram);
@@ -725,14 +725,14 @@ void ec_fsm_foe_state_data_read(
     printk("ec_fsm_foe_state_data_read()\n");
 #endif
 
-    if (!ec_mbox_is_datagram_state(mbox,EC_DATAGRAM_RECEIVED)) {
+    if (!ec_mbox_is_datagram_state(mbox, EC_DATAGRAM_RECEIVED)) {
         ec_foe_set_rx_error(fsm, FOE_RECEIVE_ERROR);
         EC_SLAVE_ERR(slave, "Failed to receive FoE DATA READ datagram: ");
         ec_datagram_print_state(datagram);
         return;
     }
 
-    if (!ec_mbox_is_datagram_wc(mbox,1)) {
+    if (!ec_mbox_is_datagram_wc(mbox, 1)) {
         ec_foe_set_rx_error(fsm, FOE_WC_ERROR);
         EC_SLAVE_ERR(slave, "Reception of FoE DATA READ failed: ");
         ec_datagram_print_wc_error(datagram);
@@ -846,14 +846,14 @@ void ec_fsm_foe_state_sent_ack(
     printk("ec_foe_state_sent_ack()\n");
 #endif
 
-    if (!ec_mbox_is_datagram_state(mbox,EC_DATAGRAM_RECEIVED)) {
+    if (!ec_mbox_is_datagram_state(mbox, EC_DATAGRAM_RECEIVED)) {
         ec_foe_set_rx_error(fsm, FOE_RECEIVE_ERROR);
         EC_SLAVE_ERR(slave, "Failed to send FoE ACK: ");
         ec_datagram_print_state(datagram);
         return;
     }
 
-    if (!ec_mbox_is_datagram_wc(mbox,1)) {
+    if (!ec_mbox_is_datagram_wc(mbox, 1)) {
         // slave did not put anything into the mailbox yet
         ec_foe_set_rx_error(fsm, FOE_WC_ERROR);
         EC_SLAVE_ERR(slave, "Reception of FoE ACK failed: ");

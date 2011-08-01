@@ -134,11 +134,12 @@ int ec_fsm_master_exec(
         ec_fsm_master_t *fsm /**< Master state machine. */
         )
 {
-    if (ec_mbox_is_datagram_state(fsm->mbox,EC_DATAGRAM_QUEUED)
-        || ec_mbox_is_datagram_state(fsm->mbox,EC_DATAGRAM_SENT)) {
+    if (ec_mbox_is_datagram_state(fsm->mbox, EC_DATAGRAM_QUEUED)
+        || ec_mbox_is_datagram_state(fsm->mbox, EC_DATAGRAM_SENT)) {
         // datagram was not sent or received yet.
         return 0;
     }
+
     fsm->state(fsm);
     return 1;
 }
@@ -391,7 +392,7 @@ int ec_fsm_master_action_process_register(
                     "datagram size (%zu)!\n", request->length,
                     fsm->datagram->mem_size);
             request->state = EC_INT_REQUEST_FAILURE;
-            kref_put(&request->refcount,ec_master_reg_request_release);
+            kref_put(&request->refcount, ec_master_reg_request_release);
             wake_up(&master->reg_queue);
             continue;
         }
@@ -994,7 +995,7 @@ void ec_fsm_master_state_dc_read_offset(
 	correction =
             (datagram->cycles_sent - slave->master->dc_cycles_app_start_time)
 			* 1000000LL;
-	do_div(correction,cpu_khz);
+	do_div(correction, cpu_khz);
 #else
 	correction =
 			(u64) ((datagram->jiffies_sent-slave->master->dc_jiffies_app_start_time) * 1000 / HZ)
@@ -1069,7 +1070,7 @@ void ec_fsm_master_state_write_sii(
     if (!ec_fsm_sii_success(&fsm->fsm_sii)) {
         EC_SLAVE_ERR(slave, "Failed to write SII data.\n");
         request->state = EC_INT_REQUEST_FAILURE;
-        kref_put(&request->refcount,ec_master_sii_write_request_release);
+        kref_put(&request->refcount, ec_master_sii_write_request_release);
         wake_up(&master->sii_queue);
         ec_fsm_master_restart(fsm);
         return;
@@ -1098,7 +1099,7 @@ void ec_fsm_master_state_write_sii(
     // TODO: Evaluate other SII contents!
 
     request->state = EC_INT_REQUEST_SUCCESS;
-    kref_put(&request->refcount,ec_master_sii_write_request_release);
+    kref_put(&request->refcount, ec_master_sii_write_request_release);
     wake_up(&master->sii_queue);
 
     // check for another SII write request
@@ -1192,7 +1193,7 @@ void ec_fsm_master_state_reg_request(
                 " request datagram: ");
         ec_datagram_print_state(datagram);
         request->state = EC_INT_REQUEST_FAILURE;
-        kref_put(&request->refcount,ec_master_reg_request_release);
+        kref_put(&request->refcount, ec_master_reg_request_release);
         wake_up(&master->reg_queue);
         ec_fsm_master_restart(fsm);
         return;
@@ -1207,7 +1208,7 @@ void ec_fsm_master_state_reg_request(
                 EC_MASTER_ERR(master, "Failed to allocate %zu bytes"
                         " of memory for register data.\n", request->length);
                 request->state = EC_INT_REQUEST_FAILURE;
-                kref_put(&request->refcount,ec_master_reg_request_release);
+                kref_put(&request->refcount, ec_master_reg_request_release);
                 wake_up(&master->reg_queue);
                 ec_fsm_master_restart(fsm);
                 return;
@@ -1222,7 +1223,7 @@ void ec_fsm_master_state_reg_request(
         EC_MASTER_ERR(master, "Register request failed.\n");
     }
 
-    kref_put(&request->refcount,ec_master_reg_request_release);
+    kref_put(&request->refcount, ec_master_reg_request_release);
     wake_up(&master->reg_queue);
 
     // check for another register request
@@ -1241,7 +1242,8 @@ void ec_master_sii_write_request_release(struct kref *ref)
 {
     ec_sii_write_request_t *request = container_of(ref, ec_sii_write_request_t, refcount);
     if (request->slave)
-        EC_SLAVE_DBG(request->slave, 1, "Releasing SII write request %p.\n",request);
+        EC_SLAVE_DBG(request->slave, 1, "Releasing SII write request %p.\n",
+                request);
     kfree(request->words);
     kfree(request);
 }
@@ -1255,7 +1257,8 @@ void ec_master_reg_request_release(struct kref *ref)
 {
     ec_reg_request_t *request = container_of(ref, ec_reg_request_t, refcount);
     if (request->slave)
-        EC_SLAVE_DBG(request->slave, 1, "Releasing reg request %p.\n",request);
+        EC_SLAVE_DBG(request->slave, 1, "Releasing reg request %p.\n",
+                request);
     if (request->data)
         kfree(request->data);
     kfree(request);
@@ -1270,7 +1273,8 @@ void ec_master_sdo_request_release(struct kref *ref)
 {
     ec_master_sdo_request_t *request = container_of(ref, ec_master_sdo_request_t, refcount);
     if (request->slave)
-        EC_SLAVE_DBG(request->slave, 1, "Releasing SDO request %p.\n",request);
+        EC_SLAVE_DBG(request->slave, 1, "Releasing SDO request %p.\n",
+                request);
     ec_sdo_request_clear(&request->req);
     kfree(request);
 }
@@ -1284,7 +1288,8 @@ void ec_master_foe_request_release(struct kref *ref)
 {
     ec_master_foe_request_t *request = container_of(ref, ec_master_foe_request_t, refcount);
     if (request->slave)
-        EC_SLAVE_DBG(request->slave, 1, "Releasing FoE request %p.\n",request);
+        EC_SLAVE_DBG(request->slave, 1, "Releasing FoE request %p.\n",
+                request);
     ec_foe_request_clear(&request->req);
     kfree(request);
 }
@@ -1298,7 +1303,8 @@ void ec_master_soe_request_release(struct kref *ref)
 {
     ec_master_soe_request_t *request = container_of(ref, ec_master_soe_request_t, refcount);
     if (request->slave)
-        EC_SLAVE_DBG(request->slave, 1, "Releasing SoE request %p.\n",request);
+        EC_SLAVE_DBG(request->slave, 1, "Releasing SoE request %p.\n",
+                request);
     ec_soe_request_clear(&request->req);
     kfree(request);
 }

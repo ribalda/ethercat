@@ -326,9 +326,10 @@ void ec_eoe_run(ec_eoe_t *eoe /**< EoE handler */)
 
     // if the datagram was not sent, or is not yet received, skip this cycle
     if (eoe->queue_datagram ||
-        ec_mbox_is_datagram_state(&eoe->mbox,EC_DATAGRAM_QUEUED) ||
-        ec_mbox_is_datagram_state(&eoe->mbox,EC_DATAGRAM_SENT))
+        ec_mbox_is_datagram_state(&eoe->mbox, EC_DATAGRAM_QUEUED) ||
+        ec_mbox_is_datagram_state(&eoe->mbox, EC_DATAGRAM_SENT)) {
         return;
+    }
 
     // call state function
     eoe->state(eoe);
@@ -412,7 +413,7 @@ void ec_eoe_state_rx_start(ec_eoe_t *eoe /**< EoE handler */)
  */
 void ec_eoe_state_rx_check(ec_eoe_t *eoe /**< EoE handler */)
 {
-    if (!ec_mbox_is_datagram_state(&eoe->mbox,EC_DATAGRAM_RECEIVED)) {
+    if (!ec_mbox_is_datagram_state(&eoe->mbox, EC_DATAGRAM_RECEIVED)) {
         eoe->stats.rx_errors++;
 #if EOE_DEBUG_LEVEL >= 1
         EC_SLAVE_WARN(eoe->slave, "Failed to receive mbox"
@@ -451,7 +452,7 @@ void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
     unsigned int i;
 #endif
 
-    if (!ec_mbox_is_datagram_state(&eoe->mbox,EC_DATAGRAM_RECEIVED)) {
+    if (!ec_mbox_is_datagram_state(&eoe->mbox, EC_DATAGRAM_RECEIVED)) {
         eoe->stats.rx_errors++;
 #if EOE_DEBUG_LEVEL >= 1
         EC_SLAVE_WARN(eoe->slave, "Failed to receive mbox"
@@ -688,7 +689,7 @@ void ec_eoe_state_tx_start(ec_eoe_t *eoe /**< EoE handler */)
  */
 void ec_eoe_state_tx_sent(ec_eoe_t *eoe /**< EoE handler */)
 {
-    if (!ec_mbox_is_datagram_state(&eoe->mbox,EC_DATAGRAM_RECEIVED)) {
+    if (!ec_mbox_is_datagram_state(&eoe->mbox, EC_DATAGRAM_RECEIVED)) {
         if (eoe->tries) {
             eoe->tries--; // try again
             eoe->queue_datagram = 1;
@@ -704,7 +705,7 @@ void ec_eoe_state_tx_sent(ec_eoe_t *eoe /**< EoE handler */)
         return;
     }
 
-    if (!ec_mbox_is_datagram_wc(&eoe->mbox,1)) {
+    if (!ec_mbox_is_datagram_wc(&eoe->mbox, 1)) {
         if (eoe->tries) {
             eoe->tries--; // try again
             eoe->queue_datagram = 1;
