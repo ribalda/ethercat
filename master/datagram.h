@@ -141,6 +141,7 @@ void ec_datagram_print_state(const ec_datagram_t *);
 void ec_datagram_print_wc_error(const ec_datagram_t *);
 void ec_datagram_output_stats(ec_datagram_t *);
 const char *ec_datagram_type_string(const ec_datagram_t *);
+void ec_datagram_output_info(const ec_datagram_t *);
 
 /*****************************************************************************/
 

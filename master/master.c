@@ -846,23 +846,6 @@ void ec_master_queue_datagram(
 {
     ec_datagram_t *queued_datagram;
 
-    switch (datagram->state) {
-        case EC_DATAGRAM_QUEUED:
-            datagram->skip_count++;
-            EC_MASTER_DBG(master, 1, "Skipping already queued datagram %p.\n",
-                    datagram);
-            break;
-
-        case EC_DATAGRAM_SENT:
-            datagram->skip_count++;
-            EC_MASTER_DBG(master, 1, "Skipping already sent datagram %p.\n",
-                    datagram);
-            break;
-
-        default:
-            break;
-    }
-
     /* It is possible, that a datagram in the queue is re-initialized with the
      * ec_datagram_<type>() methods and then shall be queued with this method.
      * In that case, the state is already reset to EC_DATAGRAM_INIT. Check if
@@ -872,14 +855,17 @@ void ec_master_queue_datagram(
     list_for_each_entry(queued_datagram, &master->datagram_queue, queue) {
         if (queued_datagram == datagram) {
             datagram->skip_count++;
-            EC_MASTER_DBG(master, 1, "Skipping re-initialized datagram %p.\n",
-                    datagram);
-            datagram->state = EC_DATAGRAM_QUEUED;
-            return;
+            if (master->debug_level) {
+                EC_MASTER_DBG(master, 1, "Skipping datagram %p (", datagram);
+                ec_datagram_output_info(datagram);
+                printk(")\n");
+            }
+            goto queued;
         }
     }
 
     list_add_tail(&datagram->queue, &master->datagram_queue);
+queued:
     datagram->state = EC_DATAGRAM_QUEUED;
 }
 
@@ -933,7 +919,7 @@ void ec_master_send_datagrams(ec_master_t *master /**< EtherCAT master */)
             datagram->index = master->datagram_index++;
 
             EC_MASTER_DBG(master, 2, "Adding datagram %p i=0x%02X size=%zu\n",
-                    datagram, datagram->index,datagram_size);
+                    datagram, datagram->index, datagram_size);
 
             // set "datagram following" flag in previous frame
             if (follows_word) {

@@ -594,3 +594,53 @@ const char *ec_datagram_type_string(
 }
 
 /*****************************************************************************/
+
+/** Output datagram information.
+ */
+void ec_datagram_output_info(
+        const ec_datagram_t *datagram /**< EtherCAT datagram. */
+        )
+{
+    printk("state=%s ", ec_datagram_type_string(datagram));
+
+    switch (datagram->type) {
+        case EC_DATAGRAM_APRD:
+        case EC_DATAGRAM_APWR:
+        case EC_DATAGRAM_APRW:
+        case EC_DATAGRAM_ARMW:
+            printk("pos=%i mem=0x%04x",
+                    EC_READ_S16(datagram->address) * (-1),
+                    EC_READ_U16(datagram->address + 2)
+                    );
+            break;
+
+        case EC_DATAGRAM_FPRD:
+        case EC_DATAGRAM_FPWR:
+        case EC_DATAGRAM_FPRW:
+        case EC_DATAGRAM_FRMW:
+            printk("node=%u mem=0x%04x",
+                    EC_READ_U16(datagram->address),
+                    EC_READ_U16(datagram->address + 2));
+            break;
+
+        case EC_DATAGRAM_BRD:
+        case EC_DATAGRAM_BWR:
+        case EC_DATAGRAM_BRW:
+            printk("mem=0x%04x", EC_READ_U16(datagram->address + 2));
+            break;
+
+        case EC_DATAGRAM_LRD:
+        case EC_DATAGRAM_LWR:
+        case EC_DATAGRAM_LRW:
+            printk("log=0x%08x", EC_READ_U32(datagram->address));
+            break;
+
+        default:
+            printk("??");
+            break;
+    }
+
+    printk(" size=%zu", datagram->data_size);
+}
+
+/*****************************************************************************/
