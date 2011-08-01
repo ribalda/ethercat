@@ -43,7 +43,7 @@
 
 /** FMMU configuration constructor.
  *
- * Inits an FMMU configuration and the process data size forthe mapped PDOs
+ * Inits an FMMU configuration and the process data size for the mapped PDOs
  * of the given direction to the domain data size.
  */
 void ec_fmmu_config_init(
