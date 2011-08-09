@@ -1,5 +1,5 @@
 
-/* $Id: fsm_master.dot,v df2b21f15939 2010/05/02 06:03:05 fp $ */
+/* $Id$ */
 
 digraph master {
     size="7,9"
@@ -37,6 +37,7 @@ digraph master {
     action_configure [shape=point,label=""]
     action_configure -> configure_slave [weight=10]
     action_configure -> action_next_slave_state
+    action_configure -> write_system_times
 
     read_state -> acknowledge [weight=10]
     read_state -> action_configure

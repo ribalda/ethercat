@@ -567,6 +567,17 @@ void ec_fsm_master_action_configure(
     ec_master_t *master = fsm->master;
     ec_slave_t *slave = fsm->slave;
 
+    if (master->config_changed) {
+        // abort iterating through slaves,
+        // first compensate DC system time offsets,
+        // then begin configuring at slave 0
+        EC_MASTER_DBG(master, 1, "Configuration changed"
+                " (aborting state check).\n");
+
+        fsm->slave = master->slaves; // begin with first slave
+        ec_fsm_master_enter_write_system_times(fsm);
+    }
+
     // Does the slave have to be configured?
     if ((slave->current_state != slave->requested_state
                 || slave->force_config) && !slave->error_flag) {
@@ -853,6 +864,7 @@ void ec_fsm_master_enter_write_system_times(
     EC_MASTER_DBG(master, 1, "Writing system time offsets...\n");
 
     if (master->has_app_time) {
+
         while (fsm->slave < master->slaves + master->slave_count) {
             if (!fsm->slave->base_dc_supported
                     || !fsm->slave->has_dc_system_time) {
@@ -869,8 +881,14 @@ void ec_fsm_master_enter_write_system_times(
             fsm->state = ec_fsm_master_state_dc_read_offset;
             return;
         }
+
     } else {
-        EC_MASTER_DBG(master, 1, "No app_time received up to now.\n");
+        if (master->active) {
+            EC_MASTER_ERR(master, "No app_time received up to now,"
+                    " but master already active).\n");
+        } else {
+            EC_MASTER_DBG(master, 1, "No app_time received up to now.\n");
+        }
     }
 
     ec_master_request_op(master);
