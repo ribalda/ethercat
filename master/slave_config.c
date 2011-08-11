@@ -77,8 +77,6 @@ void ec_slave_config_init(
         ec_sync_config_init(&sc->sync_configs[i]);
 
     sc->used_fmmus = 0;
-    sc->used_for_fmmu_datagram[EC_DIR_INPUT] = 0;
-    sc->used_for_fmmu_datagram[EC_DIR_OUTPUT] = 0;
     sc->dc_assign_activate = 0x0000;
     sc->dc_sync[0].cycle_time = 0x00000000;
     sc->dc_sync[1].cycle_time = 0x00000000;
