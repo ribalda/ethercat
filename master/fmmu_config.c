@@ -61,7 +61,6 @@ void ec_fmmu_config_init(
             &sc->sync_configs[sync_index].pdos);
 }
 
-
 /*****************************************************************************/
 
 /** Sets FMMU domain
@@ -81,7 +80,6 @@ void ec_fmmu_config_domain(
     fmmu->tx_size = tx_size;
     ec_domain_add_fmmu_config(domain, fmmu);
 }
-
 
 /*****************************************************************************/
 
