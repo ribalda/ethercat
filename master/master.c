@@ -938,24 +938,32 @@ void ec_master_send_datagrams(ec_master_t *master /**< EtherCAT master */)
 
             // EtherCAT datagram data
             frame_datagram_data = cur_data;
+
+            // distinguish between domain and non-domain datagrams...
+            // this is not nice... FIXME
             if (datagram->domain) {
                 unsigned int datagram_address =
                     EC_READ_U32(datagram->address);
                 int i = 0;
                 uint8_t *domain_data = datagram->data;
+
+                // FIXME all FMMU configs are taken into acount,
+                // maybe the belong to another datagram?
+                // test with large process data!
+
                 list_for_each_entry(domain_fmmu,
                         &datagram->domain->fmmu_configs, list) {
-                    if (domain_fmmu->dir == EC_DIR_OUTPUT ) {
+                    if (domain_fmmu->dir == EC_DIR_OUTPUT) {
                         unsigned int frame_offset =
                             domain_fmmu->logical_start_address
                             - datagram_address;
-                        memcpy(frame_datagram_data+frame_offset, domain_data,
-                                domain_fmmu->data_size);
+                        memcpy(frame_datagram_data + frame_offset,
+                                domain_data, domain_fmmu->data_size);
                         if (unlikely(master->debug_level > 1)) {
-                            EC_DBG("sending dg %p i=0x%02X fmmu %u fp=%u"
+                            EC_MASTER_DBG(master, 0, "Sending datagram %p"
+                                    " i=0x%02X FMMU %u fp=%u"
                                     " dp=%zu size=%u\n",
-                                   datagram, datagram->index, i,
-                                   frame_offset,
+                                   datagram, datagram->index, i, frame_offset,
                                    domain_data - datagram->data,
                                    domain_fmmu->data_size);
                             ec_print_data(domain_data,
@@ -963,7 +971,7 @@ void ec_master_send_datagrams(ec_master_t *master /**< EtherCAT master */)
                         }
                     }
                     domain_data += domain_fmmu->data_size;
-                    ++i;
+                    i++;
                 }
             } else {
                 memcpy(frame_datagram_data, datagram->data,
@@ -1030,14 +1038,15 @@ void ec_master_send_datagrams(ec_master_t *master /**< EtherCAT master */)
  * 
  * \return 0 in case of success, else < 0
  */
-void ec_master_receive_datagrams(ec_master_t *master, /**< EtherCAT master */
-                                 const uint8_t *frame_data, /**< frame data */
-                                 size_t size /**< size of the received data */
-                                 )
+void ec_master_receive_datagrams(
+        ec_master_t *master, /**< EtherCAT master */
+        const uint8_t *frame_data, /**< Frame data */
+        size_t size /**< Size of the received data */
+        )
 {
     size_t frame_size, data_size;
     uint8_t datagram_type, datagram_index;
-    unsigned int cmd_follows, matched;
+    unsigned int datagram_follows, matched;
     const uint8_t *cur_data, *frame_datagram_data;
     ec_datagram_t *datagram;
     ec_fmmu_config_t* domain_fmmu;
@@ -1072,13 +1081,15 @@ void ec_master_receive_datagrams(ec_master_t *master, /**< EtherCAT master */
         return;
     }
 
-    cmd_follows = 1;
-    while (cmd_follows) {
+    datagram_follows = 1;
+
+    while (datagram_follows) {
+
         // process datagram header
-        datagram_type  = EC_READ_U8 (cur_data);
-        datagram_index = EC_READ_U8 (cur_data + 1);
-        data_size      = EC_READ_U16(cur_data + 6) & 0x07FF;
-        cmd_follows    = EC_READ_U16(cur_data + 6) & 0x8000;
+        datagram_type = EC_READ_U8(cur_data);
+        datagram_index = EC_READ_U8(cur_data + 1);
+        data_size = EC_READ_U16(cur_data + 6) & 0x07FF;
+        datagram_follows = EC_READ_U16(cur_data + 6) & 0x8000;
         cur_data += EC_DATAGRAM_HEADER_SIZE;
 
         if (unlikely(cur_data - frame_data
@@ -1123,12 +1134,19 @@ void ec_master_receive_datagrams(ec_master_t *master, /**< EtherCAT master */
             cur_data += data_size + EC_DATAGRAM_FOOTER_SIZE;
             continue;
         }
+
         frame_datagram_data = cur_data;
 
+        // distinguish between domain and non-domain datagrams
+        // this is not nice FIXME
         if (datagram->domain) {
             size_t datagram_address = EC_READ_U32(datagram->address);
             int i = 0;
             uint8_t *domain_data = datagram->data;
+
+            // FIXME see ecrt_master_send_datagrams()
+            // it is not correct to walk though *all* FMMU configs,
+            // because they may not all belong to the same frame!
 
             list_for_each_entry(domain_fmmu, &datagram->domain->fmmu_configs,
                     list) {
@@ -1138,7 +1156,8 @@ void ec_master_receive_datagrams(ec_master_t *master, /**< EtherCAT master */
                     memcpy(domain_data, frame_datagram_data + frame_offset,
                             domain_fmmu->data_size);
                     if (unlikely(master->debug_level > 1)) {
-                        EC_DBG("receiving dg %p i=0x%02X fmmu %u fp=%u"
+                        EC_MASTER_DBG(master, 0, "Receiving datagram %p"
+                                " i=0x%02X fmmu %u fp=%u"
                                 " dp=%zu size=%u\n",
                                datagram, datagram->index, i,
                                frame_offset, domain_data - datagram->data,
@@ -1147,12 +1166,13 @@ void ec_master_receive_datagrams(ec_master_t *master, /**< EtherCAT master */
                     }
                 }
                 domain_data += domain_fmmu->data_size;
-                ++i;
+                i++;
             }
         } else {
             // copy received data into the datagram memory
             memcpy(datagram->data, frame_datagram_data, data_size);
         }
+
         cur_data += data_size;
 
         // set the datagram's working counter

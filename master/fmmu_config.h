@@ -50,7 +50,7 @@ typedef struct {
     uint8_t sync_index; /**< Index of sync manager to use. */
     ec_direction_t dir; /**< FMMU direction. */
     uint32_t logical_start_address; /**< Logical start address. */
-    size_t tx_size; /**< Transmitted (bus) size. */
+    size_t tx_size; /**< Transmitted (bus) size. FIXME */
     uint32_t domain_address;    /** Domain start address */
     unsigned int data_size; /**< Covered PDO size. */
 } ec_fmmu_config_t;

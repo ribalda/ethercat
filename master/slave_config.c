@@ -161,8 +161,7 @@ int ec_slave_config_prepare_fmmu(
         )
 {
     unsigned int i;
-    ec_fmmu_config_t *fmmu;
-    ec_fmmu_config_t *prev_fmmu;
+    ec_fmmu_config_t *fmmu, *prev_fmmu;
     uint32_t fmmu_logical_start_address;
     size_t tx_size, old_prev_tx_size;
 
@@ -184,22 +183,26 @@ int ec_slave_config_prepare_fmmu(
     ec_fmmu_config_init(fmmu, sc, sync_index, dir);
     fmmu_logical_start_address = domain->tx_size;
     tx_size = fmmu->data_size;
+
+    // FIXME is it enough to take only the *previous* FMMU into account?
+
     if (sc->allow_overlapping_pdos && sc->used_fmmus > 0) {
-        prev_fmmu = &sc->fmmu_configs[sc->used_fmmus-1];
+        prev_fmmu = &sc->fmmu_configs[sc->used_fmmus - 1];
         if (fmmu->dir != prev_fmmu->dir && prev_fmmu->tx_size != 0) {
             // prev fmmu has opposite direction
             // and is not already paired with prev-prev fmmu
             old_prev_tx_size = prev_fmmu->tx_size;
-            prev_fmmu->tx_size = max(fmmu->data_size,prev_fmmu->data_size);
+            prev_fmmu->tx_size = max(fmmu->data_size, prev_fmmu->data_size);
             domain->tx_size += prev_fmmu->tx_size - old_prev_tx_size;
             tx_size = 0;
             fmmu_logical_start_address = prev_fmmu->logical_start_address;
         }
     }
-    ec_fmmu_config_domain(fmmu,domain,fmmu_logical_start_address,tx_size);
+
+    ec_fmmu_config_domain(fmmu, domain, fmmu_logical_start_address, tx_size);
     ec_mutex_unlock(&sc->master->master_mutex);
 
-    ++sc->used_fmmus;
+    sc->used_fmmus++;
     return fmmu->domain_address;
 }
 
