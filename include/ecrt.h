@@ -701,14 +701,16 @@ int ecrt_master_get_pdo_entry(
         ec_pdo_entry_info_t *entry /**< Pointer to output structure. */
         );
 
-/** Executes an SDO write request to download data.
+#endif /* #ifndef __KERNEL__ */
+
+/** Executes an SDO download request to write data to a slave.
  *
- * This function operates aside of the normal way to request SDOs. Before the
- * activation of the master, these requests are processed by the master state
- * machine itself. After activation the user has to ensure cyclic processing.
+ * This request is processed by the master state machine. This method blocks,
+ * until the request has been processed and may not be called in realtime
+ * context.
  *
  * \retval  0 Success.
- * \retval -1 An error occured.
+ * \retval <0 Error code.
  */
 int ecrt_master_sdo_download(
         ec_master_t *master, /**< EtherCAT master. */
@@ -720,15 +722,14 @@ int ecrt_master_sdo_download(
         uint32_t *abort_code /**< Abort code of the SDO download. */
         );
 
-/** Executes a SDO read request to upload data.
+/** Executes an SDO upload request to read data from a slave.
  *
- * This function operates aside of the normal way to request SDOs. Before the
- * activation of the master, these requests are processed by the master state
- * machine itself. After activation the user have to ensure cyclic
- * processing.
+ * This request is processed by the master state machine. This method blocks,
+ * until the request has been processed and may not be called in realtime
+ * context.
  *
  * \retval  0 Success.
- * \retval -1 Error occurred.
+ * \retval <0 Error code.
  */
 int ecrt_master_sdo_upload(
         ec_master_t *master, /**< EtherCAT master. */
@@ -740,8 +741,6 @@ int ecrt_master_sdo_upload(
         size_t *result_size, /**< Uploaded data size. */
         uint32_t *abort_code /**< Abort code of the SDO upload. */
         );
-
-#endif /* #ifndef __KERNEL__ */
 
 /** Executes an SoE write request.
  *

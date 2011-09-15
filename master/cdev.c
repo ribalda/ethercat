@@ -840,88 +840,38 @@ int ec_cdev_ioctl_slave_sdo_upload(
         )
 {
     ec_ioctl_slave_sdo_upload_t data;
-    ec_master_sdo_request_t* request;
-    int retval;
+    uint8_t *target;
+    int ret;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
         return -EFAULT;
     }
 
-    request = kmalloc(sizeof(*request), GFP_KERNEL);
-    if (!request)
+    if (!(target = kmalloc(data.target_size, GFP_KERNEL))) {
+        EC_MASTER_ERR(master, "Failed to allocate %u bytes"
+                " for SDO upload.\n", data.target_size);
         return -ENOMEM;
-    kref_init(&request->refcount);
-
-    ec_sdo_request_init(&request->req);
-    ec_sdo_request_address(&request->req,
-        data.sdo_index, data.sdo_entry_subindex);
-    ecrt_sdo_request_read(&request->req);
-
-    if (ec_mutex_lock_interruptible(&master->master_mutex))  {
-        kref_put(&request->refcount, ec_master_sdo_request_release);
-        return -EINTR;
-    }
-    if (!(request->slave = ec_master_find_slave(
-                    master, 0, data.slave_position))) {
-        ec_mutex_unlock(&master->master_mutex);
-        EC_MASTER_ERR(master, "Slave %u does not exist!\n",
-                data.slave_position);
-        kref_put(&request->refcount, ec_master_sdo_request_release);
-        return -EINVAL;
     }
 
-    EC_SLAVE_DBG(request->slave, 1, "Schedule SDO upload request %p.\n",
-            request);
+    ret = ecrt_master_sdo_upload(master, data.slave_position,
+            data.sdo_index, data.sdo_entry_subindex, target,
+            data.target_size, &data.data_size, &data.abort_code);
 
-    // schedule request.
-    kref_get(&request->refcount);
-    list_add_tail(&request->list, &request->slave->slave_sdo_requests);
-
-    ec_mutex_unlock(&master->master_mutex);
-
-    // wait for processing through FSM
-    if (wait_event_interruptible(request->slave->sdo_queue,
-          ((request->req.state == EC_INT_REQUEST_SUCCESS) ||
-           (request->req.state == EC_INT_REQUEST_FAILURE)))) {
-        // interrupted by signal
-        kref_put(&request->refcount, ec_master_sdo_request_release);
-        return -EINTR;
-    }
-
-    EC_SLAVE_DBG(request->slave, 1, "Finished SDO upload request %p.\n",
-            request);
-
-    data.abort_code = request->req.abort_code;
-
-    if (request->req.state != EC_INT_REQUEST_SUCCESS) {
-        data.data_size = 0;
-        if (request->req.errno) {
-            retval = -request->req.errno;
-        } else {
-            retval = -EIO;
-        }
-    } else {
-        if (request->req.data_size > data.target_size) {
-            EC_MASTER_ERR(master, "Buffer too small.\n");
-            kref_put(&request->refcount, ec_master_sdo_request_release);
-            return -EOVERFLOW;
-        }
-        data.data_size = request->req.data_size;
-
+    if (!ret) {
         if (copy_to_user((void __user *) data.target,
-                    request->req.data, data.data_size)) {
-            kref_put(&request->refcount, ec_master_sdo_request_release);
+                    target, data.data_size)) {
+            kfree(target);
             return -EFAULT;
         }
-        retval = 0;
     }
+
+    kfree(target);
 
     if (__copy_to_user((void __user *) arg, &data, sizeof(data))) {
-        retval = -EFAULT;
+        return -EFAULT;
     }
 
-    kref_put(&request->refcount, ec_master_sdo_request_release);
-    return retval;
+    return 0;
 }
 
 /*****************************************************************************/
@@ -934,88 +884,34 @@ int ec_cdev_ioctl_slave_sdo_download(
         )
 {
     ec_ioctl_slave_sdo_download_t data;
-    ec_master_sdo_request_t* request;
+    uint8_t *sdo_data;
     int retval;
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
         return -EFAULT;
     }
 
-    // copy data to download
-    if (!data.data_size) {
-        EC_MASTER_ERR(master, "Zero data size!\n");
-        return -EINVAL;
-    }
-
-    request = kmalloc(sizeof(*request), GFP_KERNEL);
-    if (!request)
-        return -ENOMEM;
-    kref_init(&request->refcount);
-
-    ec_sdo_request_init(&request->req);
-    ec_sdo_request_address(&request->req,
-            data.sdo_index, data.sdo_entry_subindex);
-    if (ec_sdo_request_alloc(&request->req, data.data_size)) {
-        kref_put(&request->refcount, ec_master_sdo_request_release);
+    if (!(sdo_data = kmalloc(data.data_size, GFP_KERNEL))) {
+        EC_MASTER_ERR(master, "Failed to allocate %u bytes"
+                " for SDO download.\n", data.data_size);
         return -ENOMEM;
     }
-    if (copy_from_user(request->req.data,
-                (void __user *) data.data, data.data_size)) {
-        kref_put(&request->refcount, ec_master_sdo_request_release);
+
+    if (copy_from_user(sdo_data, (void __user *) data.data, data.data_size)) {
+        kfree(sdo_data);
         return -EFAULT;
     }
-    request->req.data_size = data.data_size;
-    ecrt_sdo_request_write(&request->req);
 
-    if (ec_mutex_lock_interruptible(&master->master_mutex)) {
-        kref_put(&request->refcount, ec_master_sdo_request_release);
-        return -EINTR;
-    }
-    if (!(request->slave = ec_master_find_slave(
-                    master, 0, data.slave_position))) {
-        ec_mutex_unlock(&master->master_mutex);
-        EC_MASTER_ERR(master, "Slave %u does not exist!\n",
-                data.slave_position);
-        kref_put(&request->refcount, ec_master_sdo_request_release);
-        return -EINVAL;
-    }
-    
-    EC_SLAVE_DBG(request->slave, 1, "Schedule SDO download request %p.\n",
-            request);
+    retval = ecrt_master_sdo_download(master, data.slave_position,
+            data.sdo_index, data.sdo_entry_subindex, sdo_data, data.data_size,
+            &data.abort_code);
 
-    // schedule request.
-    kref_get(&request->refcount);
-    list_add_tail(&request->list, &request->slave->slave_sdo_requests);
-
-    ec_mutex_unlock(&master->master_mutex);
-
-    // wait for processing through FSM
-    if (wait_event_interruptible(request->slave->sdo_queue,
-       ((request->req.state == EC_INT_REQUEST_SUCCESS) ||
-        (request->req.state == EC_INT_REQUEST_FAILURE)))) {
-        // interrupted by signal
-        kref_put(&request->refcount, ec_master_sdo_request_release);
-        return -EINTR;
-    }
-
-    EC_SLAVE_DBG(request->slave, 1, "Finished SDO download request %p.\n",
-            request);
-
-    data.abort_code = request->req.abort_code;
-
-    if (request->req.state == EC_INT_REQUEST_SUCCESS) {
-        retval = 0;
-    } else if (request->req.errno) {
-        retval = -request->req.errno;
-    } else {
-        retval = -EIO;
-    }
+    kfree(sdo_data);
 
     if (__copy_to_user((void __user *) arg, &data, sizeof(data))) {
         retval = -EFAULT;
     }
 
-    kref_put(&request->refcount, ec_master_sdo_request_release);
     return retval;
 }
 

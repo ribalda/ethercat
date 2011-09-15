@@ -418,7 +418,8 @@ void ec_master_clear_slaves(ec_master_t *master)
         wake_up(&master->reg_queue);
     }
 
-    // we must lock the io_mutex here because the slave's fsm_datagram will be unqueued
+    // we must lock the io_mutex here because the slave's fsm_datagram
+    // will be unqueued
     ec_mutex_lock(&master->io_mutex);
     for (slave = master->slaves;
             slave < master->slaves + master->slave_count;
@@ -443,7 +444,8 @@ void ec_master_clear_domains(ec_master_t *master)
 {
     ec_domain_t *domain, *next;
 
-    // we must lock the io_mutex here because the domains's datagram will be unqueued
+    // we must lock the io_mutex here because the domains's datagram
+    // will be unqueued
     ec_mutex_lock(&master->io_mutex);
     list_for_each_entry_safe(domain, next, &master->domains, list) {
         list_del(&domain->list);
@@ -568,7 +570,9 @@ void ec_master_leave_idle_phase(ec_master_t *master /**< EtherCAT master */)
 
 /** Transition function from IDLE to OPERATION phase.
  */
-int ec_master_enter_operation_phase(ec_master_t *master /**< EtherCAT master */)
+int ec_master_enter_operation_phase(i
+        ec_master_t *master /**< EtherCAT master */
+        )
 {
     int ret = 0;
     ec_slave_t *slave;
@@ -1940,7 +1944,8 @@ ec_domain_t *ecrt_master_create_domain_err(
     EC_MASTER_DBG(master, 1, "ecrt_master_create_domain(master = 0x%p)\n",
             master);
 
-    if (!(domain = (ec_domain_t *) kmalloc(sizeof(ec_domain_t), GFP_KERNEL))) {
+    if (!(domain =
+                (ec_domain_t *) kmalloc(sizeof(ec_domain_t), GFP_KERNEL))) {
         EC_MASTER_ERR(master, "Error allocating domain memory!\n");
         return ERR_PTR(-ENOMEM);
     }
@@ -2075,8 +2080,8 @@ void ecrt_master_deactivate(ec_master_t *master)
        if (!is_eoe_slave) {
            ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
            // mark for reconfiguration, because the master could have no
-           // possibility for a reconfiguration between two sequential operation
-           // phases.
+           // possibility for a reconfiguration between two sequential
+           // operation phases.
            slave->force_config = 1;
         }
 #else
@@ -2320,7 +2325,10 @@ void ecrt_master_state(const ec_master_t *master, ec_master_state_t *state)
 
 /*****************************************************************************/
 
-void ecrt_master_configured_slaves_state(const ec_master_t *master, ec_master_state_t *state)
+void ecrt_master_configured_slaves_state(
+        const ec_master_t *master,
+        ec_master_state_t *state
+        )
 {
     const ec_slave_config_t *sc;
     ec_slave_config_state_t sc_state;
@@ -2344,12 +2352,13 @@ void ecrt_master_application_time(ec_master_t *master, uint64_t app_time)
     master->app_time = app_time;
 
     if (unlikely(!master->has_app_time)) {
-		EC_MASTER_DBG(master, 1, "set application start time = %llu\n",app_time);
-		master->app_start_time = app_time;
+		EC_MASTER_DBG(master, 1, "Set application start time = %llu\n",
+                app_time);
+        master->app_start_time = app_time;
 #ifdef EC_HAVE_CYCLES
-    master->dc_cycles_app_start_time = get_cycles();
+        master->dc_cycles_app_start_time = get_cycles();
 #endif
-    master->dc_jiffies_app_start_time = jiffies;
+        master->dc_jiffies_app_start_time = jiffies;
         master->has_app_time = 1;
     }
 }
@@ -2387,6 +2396,160 @@ uint32_t ecrt_master_sync_monitor_process(ec_master_t *master)
     } else {
         return 0xffffffff;
     }
+}
+
+/*****************************************************************************/
+
+int ecrt_master_sdo_download(ec_master_t *master, uint16_t slave_position,
+        uint16_t index, uint8_t subindex, uint8_t *data,
+        size_t data_size, uint32_t *abort_code)
+{
+    ec_master_sdo_request_t* request;
+    int retval;
+
+    if (!data_size) {
+        EC_MASTER_ERR(master, "Zero data size!\n");
+        return -EINVAL;
+    }
+
+    request = kmalloc(sizeof(*request), GFP_KERNEL);
+    if (!request) {
+        return -ENOMEM;
+    }
+    kref_init(&request->refcount);
+
+    ec_sdo_request_init(&request->req);
+    ec_sdo_request_address(&request->req, index, subindex);
+    if (ec_sdo_request_alloc(&request->req, data_size)) {
+        kref_put(&request->refcount, ec_master_sdo_request_release);
+        return -ENOMEM;
+    }
+    memcpy(request->req.data, data, data_size);
+    request->req.data_size = data_size;
+    ecrt_sdo_request_write(&request->req);
+
+    if (ec_mutex_lock_interruptible(&master->master_mutex)) {
+        kref_put(&request->refcount, ec_master_sdo_request_release);
+        return -EINTR;
+    }
+
+    if (!(request->slave = ec_master_find_slave(
+                    master, 0, slave_position))) {
+        ec_mutex_unlock(&master->master_mutex);
+        EC_MASTER_ERR(master, "Slave %u does not exist!\n", slave_position);
+        kref_put(&request->refcount, ec_master_sdo_request_release);
+        return -EINVAL;
+    }
+    
+    EC_SLAVE_DBG(request->slave, 1, "Schedule SDO download request %p.\n",
+            request);
+
+    // schedule request
+    kref_get(&request->refcount);
+    list_add_tail(&request->list, &request->slave->slave_sdo_requests);
+
+    ec_mutex_unlock(&master->master_mutex);
+
+    // wait for processing through FSM
+    if (wait_event_interruptible(request->slave->sdo_queue,
+       ((request->req.state == EC_INT_REQUEST_SUCCESS) ||
+        (request->req.state == EC_INT_REQUEST_FAILURE)))) {
+        // interrupted by signal
+        kref_put(&request->refcount, ec_master_sdo_request_release);
+        return -EINTR;
+    }
+
+    EC_SLAVE_DBG(request->slave, 1, "Finished SDO download request %p.\n",
+            request);
+
+    *abort_code = request->req.abort_code;
+
+    if (request->req.state == EC_INT_REQUEST_SUCCESS) {
+        retval = 0;
+    } else if (request->req.errno) {
+        retval = -request->req.errno;
+    } else {
+        retval = -EIO;
+    }
+
+    kref_put(&request->refcount, ec_master_sdo_request_release);
+    return retval;
+}
+
+/*****************************************************************************/
+
+int ecrt_master_sdo_upload(ec_master_t *master, uint16_t slave_position,
+        uint16_t index, uint8_t subindex, uint8_t *target,
+        size_t target_size, size_t *result_size, uint32_t *abort_code)
+{
+    ec_master_sdo_request_t* request;
+    int retval;
+
+    request = kmalloc(sizeof(*request), GFP_KERNEL);
+    if (!request)
+        return -ENOMEM;
+    kref_init(&request->refcount);
+
+    ec_sdo_request_init(&request->req);
+    ec_sdo_request_address(&request->req, index, subindex);
+    ecrt_sdo_request_read(&request->req);
+
+    if (ec_mutex_lock_interruptible(&master->master_mutex))  {
+        kref_put(&request->refcount, ec_master_sdo_request_release);
+        return -EINTR;
+    }
+
+    if (!(request->slave = ec_master_find_slave(
+                    master, 0, slave_position))) {
+        ec_mutex_unlock(&master->master_mutex);
+        EC_MASTER_ERR(master, "Slave %u does not exist!\n", slave_position);
+        kref_put(&request->refcount, ec_master_sdo_request_release);
+        return -EINVAL;
+    }
+
+    EC_SLAVE_DBG(request->slave, 1, "Schedule SDO upload request %p.\n",
+            request);
+
+    // schedule request
+    kref_get(&request->refcount);
+    list_add_tail(&request->list, &request->slave->slave_sdo_requests);
+
+    ec_mutex_unlock(&master->master_mutex);
+
+    // wait for processing through FSM
+    if (wait_event_interruptible(request->slave->sdo_queue,
+          ((request->req.state == EC_INT_REQUEST_SUCCESS) ||
+           (request->req.state == EC_INT_REQUEST_FAILURE)))) {
+        // interrupted by signal
+        kref_put(&request->refcount, ec_master_sdo_request_release);
+        return -EINTR;
+    }
+
+    EC_SLAVE_DBG(request->slave, 1, "Finished SDO upload request %p.\n",
+            request);
+
+    *abort_code = request->req.abort_code;
+
+    if (request->req.state != EC_INT_REQUEST_SUCCESS) {
+        *result_size = 0;
+        if (request->req.errno) {
+            retval = -request->req.errno;
+        } else {
+            retval = -EIO;
+        }
+    } else {
+        if (request->req.data_size > target_size) {
+            EC_MASTER_ERR(master, "Buffer too small.\n");
+            kref_put(&request->refcount, ec_master_sdo_request_release);
+            return -EOVERFLOW;
+        }
+        memcpy(target, request->req.data, request->req.data_size);
+        *result_size = request->req.data_size;
+        retval = 0;
+    }
+
+    kref_put(&request->refcount, ec_master_sdo_request_release);
+    return retval;
 }
 
 /*****************************************************************************/
@@ -2437,7 +2600,8 @@ int ecrt_master_write_idn(ec_master_t *master, uint16_t slave_position,
         return -EINVAL;
     }
 
-    EC_SLAVE_DBG(request->slave, 1, "Scheduled SoE write request %p.\n",request);
+    EC_SLAVE_DBG(request->slave, 1, "Scheduled SoE write request %p.\n",
+            request);
 
     // schedule SoE write request.
     list_add_tail(&request->list, &request->slave->soe_requests);
@@ -2447,7 +2611,8 @@ int ecrt_master_write_idn(ec_master_t *master, uint16_t slave_position,
 
     // wait for processing through FSM
     if (wait_event_interruptible(request->slave->soe_queue,
-          ((request->req.state == EC_INT_REQUEST_SUCCESS) || (request->req.state == EC_INT_REQUEST_FAILURE)))) {
+          ((request->req.state == EC_INT_REQUEST_SUCCESS) ||
+           (request->req.state == EC_INT_REQUEST_FAILURE)))) {
            // interrupted by signal
            kref_put(&request->refcount,ec_master_soe_request_release);
            return -EINTR;
@@ -2504,11 +2669,13 @@ int ecrt_master_read_idn(ec_master_t *master, uint16_t slave_position,
 
     ec_mutex_unlock(&master->master_mutex);
 
-    EC_SLAVE_DBG(request->slave, 1, "Scheduled SoE read request %p.\n",request);
+    EC_SLAVE_DBG(request->slave, 1, "Scheduled SoE read request %p.\n",
+            request);
 
     // wait for processing through FSM
     if (wait_event_interruptible(request->slave->soe_queue,
-          ((request->req.state == EC_INT_REQUEST_SUCCESS) || (request->req.state == EC_INT_REQUEST_FAILURE)))) {
+          ((request->req.state == EC_INT_REQUEST_SUCCESS) ||
+           (request->req.state == EC_INT_REQUEST_FAILURE)))) {
            // interrupted by signal
            kref_put(&request->refcount,ec_master_soe_request_release);
            return -EINTR;
@@ -2518,8 +2685,8 @@ int ecrt_master_read_idn(ec_master_t *master, uint16_t slave_position,
         *error_code = request->req.error_code;
     }
 
-    EC_SLAVE_DBG(request->slave, 1, "SoE request %p read %zd bytes via SoE.\n",
-            request,request->req.data_size);
+    EC_SLAVE_DBG(request->slave, 1, "SoE request %p read %zd bytes"
+            " via SoE.\n", request, request->req.data_size);
 
     if (request->req.state != EC_INT_REQUEST_SUCCESS) {
         if (result_size) {
@@ -2574,6 +2741,8 @@ EXPORT_SYMBOL(ecrt_master_sync_reference_clock);
 EXPORT_SYMBOL(ecrt_master_sync_slave_clocks);
 EXPORT_SYMBOL(ecrt_master_sync_monitor_queue);
 EXPORT_SYMBOL(ecrt_master_sync_monitor_process);
+EXPORT_SYMBOL(ecrt_master_sdo_download);
+EXPORT_SYMBOL(ecrt_master_sdo_upload);
 EXPORT_SYMBOL(ecrt_master_write_idn);
 EXPORT_SYMBOL(ecrt_master_read_idn);
 EXPORT_SYMBOL(ecrt_master_reset);
