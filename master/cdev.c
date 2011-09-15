@@ -858,7 +858,7 @@ int ec_cdev_ioctl_slave_sdo_upload(
     ecrt_sdo_request_read(&request->req);
 
     if (ec_mutex_lock_interruptible(&master->master_mutex))  {
-        kref_put(&request->refcount,ec_master_sdo_request_release);
+        kref_put(&request->refcount, ec_master_sdo_request_release);
         return -EINTR;
     }
     if (!(request->slave = ec_master_find_slave(
@@ -866,11 +866,12 @@ int ec_cdev_ioctl_slave_sdo_upload(
         ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "Slave %u does not exist!\n",
                 data.slave_position);
-        kref_put(&request->refcount,ec_master_sdo_request_release);
+        kref_put(&request->refcount, ec_master_sdo_request_release);
         return -EINVAL;
     }
 
-    EC_SLAVE_DBG(request->slave, 1, "Schedule SDO upload request %p.\n",request);
+    EC_SLAVE_DBG(request->slave, 1, "Schedule SDO upload request %p.\n",
+            request);
 
     // schedule request.
     kref_get(&request->refcount);
@@ -880,13 +881,15 @@ int ec_cdev_ioctl_slave_sdo_upload(
 
     // wait for processing through FSM
     if (wait_event_interruptible(request->slave->sdo_queue,
-          ((request->req.state == EC_INT_REQUEST_SUCCESS) || (request->req.state == EC_INT_REQUEST_FAILURE)))) {
+          ((request->req.state == EC_INT_REQUEST_SUCCESS) ||
+           (request->req.state == EC_INT_REQUEST_FAILURE)))) {
         // interrupted by signal
-        kref_put(&request->refcount,ec_master_sdo_request_release);
+        kref_put(&request->refcount, ec_master_sdo_request_release);
         return -EINTR;
     }
 
-    EC_SLAVE_DBG(request->slave, 1, "Finished SDO upload request %p.\n",request);
+    EC_SLAVE_DBG(request->slave, 1, "Finished SDO upload request %p.\n",
+            request);
 
     data.abort_code = request->req.abort_code;
 
@@ -900,14 +903,14 @@ int ec_cdev_ioctl_slave_sdo_upload(
     } else {
         if (request->req.data_size > data.target_size) {
             EC_MASTER_ERR(master, "Buffer too small.\n");
-            kref_put(&request->refcount,ec_master_sdo_request_release);
+            kref_put(&request->refcount, ec_master_sdo_request_release);
             return -EOVERFLOW;
         }
         data.data_size = request->req.data_size;
 
         if (copy_to_user((void __user *) data.target,
                     request->req.data, data.data_size)) {
-            kref_put(&request->refcount,ec_master_sdo_request_release);
+            kref_put(&request->refcount, ec_master_sdo_request_release);
             return -EFAULT;
         }
         retval = 0;
@@ -917,7 +920,7 @@ int ec_cdev_ioctl_slave_sdo_upload(
         retval = -EFAULT;
     }
 
-    kref_put(&request->refcount,ec_master_sdo_request_release);
+    kref_put(&request->refcount, ec_master_sdo_request_release);
     return retval;
 }
 
@@ -953,19 +956,19 @@ int ec_cdev_ioctl_slave_sdo_download(
     ec_sdo_request_address(&request->req,
             data.sdo_index, data.sdo_entry_subindex);
     if (ec_sdo_request_alloc(&request->req, data.data_size)) {
-        kref_put(&request->refcount,ec_master_sdo_request_release);
+        kref_put(&request->refcount, ec_master_sdo_request_release);
         return -ENOMEM;
     }
     if (copy_from_user(request->req.data,
                 (void __user *) data.data, data.data_size)) {
-        kref_put(&request->refcount,ec_master_sdo_request_release);
+        kref_put(&request->refcount, ec_master_sdo_request_release);
         return -EFAULT;
     }
     request->req.data_size = data.data_size;
     ecrt_sdo_request_write(&request->req);
 
     if (ec_mutex_lock_interruptible(&master->master_mutex)) {
-        kref_put(&request->refcount,ec_master_sdo_request_release);
+        kref_put(&request->refcount, ec_master_sdo_request_release);
         return -EINTR;
     }
     if (!(request->slave = ec_master_find_slave(
@@ -973,11 +976,12 @@ int ec_cdev_ioctl_slave_sdo_download(
         ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "Slave %u does not exist!\n",
                 data.slave_position);
-        kref_put(&request->refcount,ec_master_sdo_request_release);
+        kref_put(&request->refcount, ec_master_sdo_request_release);
         return -EINVAL;
     }
     
-    EC_SLAVE_DBG(request->slave, 1, "Schedule SDO download request %p.\n",request);
+    EC_SLAVE_DBG(request->slave, 1, "Schedule SDO download request %p.\n",
+            request);
 
     // schedule request.
     kref_get(&request->refcount);
@@ -987,13 +991,15 @@ int ec_cdev_ioctl_slave_sdo_download(
 
     // wait for processing through FSM
     if (wait_event_interruptible(request->slave->sdo_queue,
-       ((request->req.state == EC_INT_REQUEST_SUCCESS) || (request->req.state == EC_INT_REQUEST_FAILURE)))) {
+       ((request->req.state == EC_INT_REQUEST_SUCCESS) ||
+        (request->req.state == EC_INT_REQUEST_FAILURE)))) {
         // interrupted by signal
-        kref_put(&request->refcount,ec_master_sdo_request_release);
+        kref_put(&request->refcount, ec_master_sdo_request_release);
         return -EINTR;
     }
 
-    EC_SLAVE_DBG(request->slave, 1, "Finished SDO download request %p.\n",request);
+    EC_SLAVE_DBG(request->slave, 1, "Finished SDO download request %p.\n",
+            request);
 
     data.abort_code = request->req.abort_code;
 
@@ -1009,7 +1015,7 @@ int ec_cdev_ioctl_slave_sdo_download(
         retval = -EFAULT;
     }
 
-    kref_put(&request->refcount,ec_master_sdo_request_release);
+    kref_put(&request->refcount, ec_master_sdo_request_release);
     return retval;
 }
 
@@ -1093,20 +1099,22 @@ int ec_cdev_ioctl_slave_sii_write(
     if (!request)
         return -ENOMEM;
     kref_init(&request->refcount);
+
     // init SII write request
     INIT_LIST_HEAD(&request->list);
-    request->words = words; // now "owned" by request, see ec_master_sii_write_request_release
+    request->words = words; /* now "owned" by request, see
+                             * ec_master_sii_write_request_release */
     request->offset = data.offset;
     request->nwords = data.nwords;
 
     if (copy_from_user(words,
                 (void __user *) data.words, byte_size)) {
-        kref_put(&request->refcount,ec_master_sii_write_request_release);
+        kref_put(&request->refcount, ec_master_sii_write_request_release);
         return -EFAULT;
     }
 
     if (ec_mutex_lock_interruptible(&master->master_mutex)) {
-        kref_put(&request->refcount,ec_master_sii_write_request_release);
+        kref_put(&request->refcount, ec_master_sii_write_request_release);
         return -EINTR;
     }
     if (!(slave = ec_master_find_slave(
@@ -1114,7 +1122,7 @@ int ec_cdev_ioctl_slave_sii_write(
         ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "Slave %u does not exist!\n",
                 data.slave_position);
-        kref_put(&request->refcount,ec_master_sii_write_request_release);
+        kref_put(&request->refcount, ec_master_sii_write_request_release);
         return -EINVAL;
     }
 
@@ -1129,15 +1137,15 @@ int ec_cdev_ioctl_slave_sii_write(
 
     // wait for processing through FSM
     if (wait_event_interruptible(master->sii_queue,
-          ((request->state == EC_INT_REQUEST_SUCCESS) || (request->state == EC_INT_REQUEST_FAILURE)))) {
+          ((request->state == EC_INT_REQUEST_SUCCESS) ||
+           (request->state == EC_INT_REQUEST_FAILURE)))) {
            // interrupted by signal
-           kref_put(&request->refcount,ec_master_sii_write_request_release);
+           kref_put(&request->refcount, ec_master_sii_write_request_release);
            return -EINTR;
     }
 
-
     retval = request->state == EC_INT_REQUEST_SUCCESS ? 0 : -EIO;
-    kref_put(&request->refcount,ec_master_sii_write_request_release);
+    kref_put(&request->refcount, ec_master_sii_write_request_release);
 
     return retval;
 }
@@ -1178,12 +1186,13 @@ int ec_cdev_ioctl_slave_reg_read(
     // init register request
     INIT_LIST_HEAD(&request->list);
     request->dir = EC_DIR_INPUT;
-    request->data = contents;   // now "owned" by request, see ec_master_reg_request_release
+    request->data = contents; /* now "owned" by request, see
+                               * ec_master_reg_request_release */
     request->offset = data.offset;
     request->length = data.length;
 
     if (ec_mutex_lock_interruptible(&master->master_mutex)) {
-        kref_put(&request->refcount,ec_master_reg_request_release);
+        kref_put(&request->refcount, ec_master_reg_request_release);
         return -EINTR;
     }
     if (!(slave = ec_master_find_slave(
@@ -1191,7 +1200,7 @@ int ec_cdev_ioctl_slave_reg_read(
         ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "Slave %u does not exist!\n",
                 data.slave_position);
-        kref_put(&request->refcount,ec_master_reg_request_release);
+        kref_put(&request->refcount, ec_master_reg_request_release);
         return -EINVAL;
     }
 
@@ -1206,21 +1215,23 @@ int ec_cdev_ioctl_slave_reg_read(
 
     // wait for processing through FSM
     if (wait_event_interruptible(master->reg_queue,
-          ((request->state == EC_INT_REQUEST_SUCCESS) || (request->state == EC_INT_REQUEST_FAILURE)))) {
+          ((request->state == EC_INT_REQUEST_SUCCESS) ||
+           (request->state == EC_INT_REQUEST_FAILURE)))) {
            // interrupted by signal
-           kref_put(&request->refcount,ec_master_reg_request_release);
+           kref_put(&request->refcount, ec_master_reg_request_release);
            return -EINTR;
     }
 
     if (request->state == EC_INT_REQUEST_SUCCESS) {
-        if (copy_to_user((void __user *) data.data, request->data, data.length)) {
-            kref_put(&request->refcount,ec_master_reg_request_release);
+        if (copy_to_user((void __user *) data.data, request->data,
+                    data.length)) {
+            kref_put(&request->refcount, ec_master_reg_request_release);
             return -EFAULT;
         }
     }
     retval = request->state == EC_INT_REQUEST_SUCCESS ? 0 : -EIO;
 
-    kref_put(&request->refcount,ec_master_reg_request_release);
+    kref_put(&request->refcount, ec_master_reg_request_release);
     return retval;
 }
 
@@ -1264,12 +1275,13 @@ int ec_cdev_ioctl_slave_reg_write(
     // init register request
     INIT_LIST_HEAD(&request->list);
     request->dir = EC_DIR_OUTPUT;
-    request->data = contents; // now "owned" by request, see ec_master_reg_request_release
+    request->data = contents; /* now "owned" by request, see
+                               * ec_master_reg_request_release */
     request->offset = data.offset;
     request->length = data.length;
 
     if (ec_mutex_lock_interruptible(&master->master_mutex)) {
-        kref_put(&request->refcount,ec_master_reg_request_release);
+        kref_put(&request->refcount, ec_master_reg_request_release);
         return -EINTR;
     }
 
@@ -1278,7 +1290,7 @@ int ec_cdev_ioctl_slave_reg_write(
         ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "Slave %u does not exist!\n",
                 data.slave_position);
-        kref_put(&request->refcount,ec_master_reg_request_release);
+        kref_put(&request->refcount, ec_master_reg_request_release);
         return -EINVAL;
     }
 
@@ -1293,16 +1305,16 @@ int ec_cdev_ioctl_slave_reg_write(
 
     // wait for processing through FSM
     if (wait_event_interruptible(master->reg_queue,
-          ((request->state == EC_INT_REQUEST_SUCCESS) || (request->state == EC_INT_REQUEST_FAILURE)))) {
+          ((request->state == EC_INT_REQUEST_SUCCESS) ||
+           (request->state == EC_INT_REQUEST_FAILURE)))) {
            // interrupted by signal
-           kref_put(&request->refcount,ec_master_reg_request_release);
+           kref_put(&request->refcount, ec_master_reg_request_release);
            return -EINTR;
     }
 
     retval = request->state == EC_INT_REQUEST_SUCCESS ? 0 : -EIO;
-    kref_put(&request->refcount,ec_master_reg_request_release);
+    kref_put(&request->refcount, ec_master_reg_request_release);
     return retval;
-
 }
 
 /*****************************************************************************/
@@ -1811,7 +1823,7 @@ int ec_cdev_ioctl_set_send_interval(
 
     if (ec_mutex_lock_interruptible(&master->master_mutex))
         return -EINTR;
-    ec_master_set_send_interval(master,send_interval);
+    ec_master_set_send_interval(master, send_interval);
     ec_mutex_unlock(&master->master_mutex);
 
     return 0;
@@ -3309,13 +3321,13 @@ int ec_cdev_ioctl_slave_foe_read(
     ec_foe_request_alloc(&request->req, 10000); // FIXME
 
     if (ec_mutex_lock_interruptible(&master->master_mutex))  {
-        kref_put(&request->refcount,ec_master_foe_request_release);
+        kref_put(&request->refcount, ec_master_foe_request_release);
         return -EINTR;
     }
     if (!(request->slave = ec_master_find_slave(
                     master, 0, data.slave_position))) {
         ec_mutex_unlock(&master->master_mutex);
-        kref_put(&request->refcount,ec_master_foe_request_release);
+        kref_put(&request->refcount, ec_master_foe_request_release);
         EC_MASTER_ERR(master, "Slave %u does not exist!\n",
                 data.slave_position);
         return -EINVAL;
@@ -3327,13 +3339,15 @@ int ec_cdev_ioctl_slave_foe_read(
 
     ec_mutex_unlock(&master->master_mutex);
 
-    EC_SLAVE_DBG(request->slave, 1, "Scheduled FoE read request %p.\n",request);
+    EC_SLAVE_DBG(request->slave, 1, "Scheduled FoE read request %p.\n",
+            request);
 
     // wait for processing through FSM
     if (wait_event_interruptible(request->slave->foe_queue,
-          ((request->req.state == EC_INT_REQUEST_SUCCESS) || (request->req.state == EC_INT_REQUEST_FAILURE)))) {
+          ((request->req.state == EC_INT_REQUEST_SUCCESS) ||
+           (request->req.state == EC_INT_REQUEST_FAILURE)))) {
         // interrupted by signal
-        kref_put(&request->refcount,ec_master_foe_request_release);
+        kref_put(&request->refcount, ec_master_foe_request_release);
         return -EINTR;
     }
 
@@ -3341,7 +3355,8 @@ int ec_cdev_ioctl_slave_foe_read(
     data.error_code = request->req.error_code;
 
     EC_SLAVE_DBG(request->slave, 1, "Read %zd bytes via FoE"
-            " (result = 0x%x).\n", request->req.data_size, request->req.result);
+            " (result = 0x%x).\n", request->req.data_size,
+            request->req.result);
 
     if (request->req.state != EC_INT_REQUEST_SUCCESS) {
         data.data_size = 0;
@@ -3349,13 +3364,13 @@ int ec_cdev_ioctl_slave_foe_read(
     } else {
         if (request->req.data_size > data.buffer_size) {
             EC_MASTER_ERR(master, "Buffer too small.\n");
-            kref_put(&request->refcount,ec_master_foe_request_release);
+            kref_put(&request->refcount, ec_master_foe_request_release);
             return -EOVERFLOW;
         }
         data.data_size = request->req.data_size;
         if (copy_to_user((void __user *) data.buffer,
                     request->req.buffer, data.data_size)) {
-            kref_put(&request->refcount,ec_master_foe_request_release);
+            kref_put(&request->refcount, ec_master_foe_request_release);
             return -EFAULT;
         }
         retval = 0;
@@ -3365,8 +3380,9 @@ int ec_cdev_ioctl_slave_foe_read(
         retval = -EFAULT;
     }
 
-    EC_SLAVE_DBG(request->slave, 1, "Finished FoE read request %p.\n",request);
-    kref_put(&request->refcount,ec_master_foe_request_release);
+    EC_SLAVE_DBG(request->slave, 1, "Finished FoE read request %p.\n",
+            request);
+    kref_put(&request->refcount, ec_master_foe_request_release);
 
     return retval;
 }
@@ -3398,12 +3414,12 @@ int ec_cdev_ioctl_slave_foe_write(
     ec_foe_request_init(&request->req, data.file_name);
 
     if (ec_foe_request_alloc(&request->req, data.buffer_size)) {
-        kref_put(&request->refcount,ec_master_foe_request_release);
+        kref_put(&request->refcount, ec_master_foe_request_release);
         return -ENOMEM;
     }
     if (copy_from_user(request->req.buffer,
                 (void __user *) data.buffer, data.buffer_size)) {
-        kref_put(&request->refcount,ec_master_foe_request_release);
+        kref_put(&request->refcount, ec_master_foe_request_release);
         return -EFAULT;
     }
     request->req.data_size = data.buffer_size;
@@ -3417,11 +3433,12 @@ int ec_cdev_ioctl_slave_foe_write(
         ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "Slave %u does not exist!\n",
                 data.slave_position);
-        kref_put(&request->refcount,ec_master_foe_request_release);
+        kref_put(&request->refcount, ec_master_foe_request_release);
         return -EINVAL;
     }
 
-    EC_SLAVE_DBG(request->slave, 1, "Scheduling FoE write request %p.\n",request);
+    EC_SLAVE_DBG(request->slave, 1, "Scheduling FoE write request %p.\n",
+            request);
 
     // schedule FoE write request.
     list_add_tail(&request->list, &request->slave->foe_requests);
@@ -3431,9 +3448,10 @@ int ec_cdev_ioctl_slave_foe_write(
 
     // wait for processing through FSM
     if (wait_event_interruptible(request->slave->foe_queue,
-       ((request->req.state == EC_INT_REQUEST_SUCCESS) || (request->req.state == EC_INT_REQUEST_FAILURE)))) {
+       ((request->req.state == EC_INT_REQUEST_SUCCESS) ||
+        (request->req.state == EC_INT_REQUEST_FAILURE)))) {
         // interrupted by signal
-        kref_put(&request->refcount,ec_master_foe_request_release);
+        kref_put(&request->refcount, ec_master_foe_request_release);
         return -EINTR;
     }
 
@@ -3446,8 +3464,9 @@ int ec_cdev_ioctl_slave_foe_write(
         retval = -EFAULT;
     }
 
-    EC_SLAVE_DBG(request->slave, 1, "Finished FoE write request %p.\n",request);
-    kref_put(&request->refcount,ec_master_foe_request_release);
+    EC_SLAVE_DBG(request->slave, 1, "Finished FoE write request %p.\n",
+            request);
+    kref_put(&request->refcount, ec_master_foe_request_release);
 
     return retval;
 }
@@ -3484,8 +3503,7 @@ int ec_cdev_ioctl_slave_soe_read(
         return retval;
     }
 
-    if (copy_to_user((void __user *) ioctl.data,
-                data, ioctl.data_size)) {
+    if (copy_to_user((void __user *) ioctl.data, data, ioctl.data_size)) {
         kfree(data);
         return -EFAULT;
     }
@@ -3757,7 +3775,7 @@ long eccdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
         case EC_IOCTL_SC_OVERLAPPING_IO:
             if (!(filp->f_mode & FMODE_WRITE))
                 return -EPERM;
-            return ec_cdev_ioctl_sc_allow_overlapping_pdos(master,arg,priv);
+            return ec_cdev_ioctl_sc_allow_overlapping_pdos(master, arg, priv);
         case EC_IOCTL_SC_ADD_PDO:
             if (!(filp->f_mode & FMODE_WRITE))
                 return -EPERM;
