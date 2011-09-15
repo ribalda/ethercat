@@ -570,7 +570,7 @@ void ec_master_leave_idle_phase(ec_master_t *master /**< EtherCAT master */)
 
 /** Transition function from IDLE to OPERATION phase.
  */
-int ec_master_enter_operation_phase(i
+int ec_master_enter_operation_phase(
         ec_master_t *master /**< EtherCAT master */
         )
 {
@@ -2407,6 +2407,12 @@ int ecrt_master_sdo_download(ec_master_t *master, uint16_t slave_position,
     ec_master_sdo_request_t* request;
     int retval;
 
+    EC_MASTER_DBG(master, 1, "%s(master = 0x%p,"
+            " slave_position = %u, index = 0x%04X, subindex = 0x%02X,"
+            " data = 0x%p, data_size = %zu, abort_code = 0x%p)\n",
+            __func__, master, slave_position, index, subindex,
+            data, data_size, abort_code);
+
     if (!data_size) {
         EC_MASTER_ERR(master, "Zero data size!\n");
         return -EINVAL;
@@ -2484,6 +2490,13 @@ int ecrt_master_sdo_upload(ec_master_t *master, uint16_t slave_position,
 {
     ec_master_sdo_request_t* request;
     int retval;
+
+    EC_MASTER_DBG(master, 1, "%s(master = 0x%p,"
+            " slave_position = %u, index = 0x%04X, subindex = 0x%02X,"
+            " target = 0x%p, target_size = %zu, result_size = 0x%p, "
+            " abort_code = 0x%p)\n",
+            __func__, master, slave_position, index, subindex, target,
+            target_size, result_size, abort_code);
 
     request = kmalloc(sizeof(*request), GFP_KERNEL);
     if (!request)
