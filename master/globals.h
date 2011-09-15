@@ -40,14 +40,19 @@
 #include "../include/ecrt.h"
 
 #ifdef __KERNEL__
+
 #include <linux/version.h>
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,24)
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 24)
 #include <linux/rtmutex.h>
-#endif  // KERNEL_VERSION(2,6,24)
+#endif // KERNEL_VERSION(2, 6, 24)
+
 #endif // __KERNEL__
 
+#if 0
 #ifdef CONFIG_TRACING
-//#define USE_TRACE_PRINTK
+#define USE_TRACE_PRINTK
+#endif
 #endif
 
 /******************************************************************************
@@ -316,60 +321,73 @@ typedef struct ec_slave ec_slave_t; /**< \see ec_slave. */
 
 /*****************************************************************************/
 
-/*****************************************************************************/
-
 #ifdef __KERNEL__
 
 /** Mutual exclusion helpers.
- *
  */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,24)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 24)
+
 #define ec_mutex_t rt_mutex
+
 static inline void ec_mutex_init(struct ec_mutex_t *mutex)
 {
     rt_mutex_init(mutex);
 }
+
 static inline void ec_mutex_lock(struct ec_mutex_t *mutex)
 {
     rt_mutex_lock(mutex);
 }
+
 static inline int ec_mutex_trylock(struct ec_mutex_t *mutex)
 {
     return rt_mutex_trylock(mutex);
 }
+
 static inline int ec_mutex_lock_interruptible(struct ec_mutex_t *mutex)
 {
-    return rt_mutex_lock_interruptible(mutex,0);
+    return rt_mutex_lock_interruptible(mutex, 0);
 }
+
 static inline void ec_mutex_unlock(struct ec_mutex_t *mutex)
 {
     rt_mutex_unlock(mutex);
 }
-#else   // < KERNEL_VERSION(2,6,24)
+
+#else // < KERNEL_VERSION(2, 6, 24)
+
 #define ec_mutex_t semaphore
+
 static inline void ec_mutex_init(struct ec_mutex_t *sem)
 {
     sema_init(sem, 1);
 }
+
 static inline void ec_mutex_lock(struct ec_mutex_t *sem)
 {
     down(sem);
 }
+
 static inline int ec_mutex_trylock(struct ec_mutex_t *sem)
 {
     down(sem);
     return 1;
 }
+
 static inline int ec_mutex_lock_interruptible(struct ec_mutex_t *sem)
 {
     return down_interruptible(sem);
 }
+
 static inline void ec_mutex_unlock(struct ec_mutex_t *sem)
 {
     up(sem);
 }
 
-#endif // KERNEL_VERSION(2,6,24)
+#endif // KERNEL_VERSION(2, 6, 24)
+
 #endif // __KERNEL__
+
+/*****************************************************************************/
 
 #endif
