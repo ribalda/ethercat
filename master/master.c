@@ -161,12 +161,10 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     master->has_app_time = 0;
 
     master->scan_busy = 0;
-    master->allow_scan = 1;
     ec_mutex_init(&master->scan_mutex);
     init_waitqueue_head(&master->scan_queue);
 
     master->config_busy = 0;
-    master->allow_config = 1;
     ec_mutex_init(&master->config_mutex);
     init_waitqueue_head(&master->config_queue);
     
@@ -583,7 +581,6 @@ int ec_master_enter_operation_phase(
     EC_MASTER_DBG(master, 1, "IDLE -> OPERATION.\n");
 
     ec_mutex_lock(&master->config_mutex);
-    master->allow_config = 0; // temporarily disable slave configuration
     if (master->config_busy) {
         ec_mutex_unlock(&master->config_mutex);
 
@@ -644,7 +641,6 @@ int ec_master_enter_operation_phase(
     
 out_allow:
     master->allow_scan = 1;
-    master->allow_config = 1;
     return ret;
 }
 
@@ -2034,7 +2030,6 @@ int ecrt_master_activate(ec_master_t *master)
         return ret;
     }
 
-    master->allow_config = 1; // request the current configuration
     master->allow_scan = 1; // allow re-scanning on topology change
     master->active = 1;
 
@@ -2107,7 +2102,6 @@ void ecrt_master_deactivate(ec_master_t *master)
         EC_MASTER_WARN(master, "Failed to restart master thread!\n");
 
     master->allow_scan = 1;
-    master->allow_config = 1;
     master->active = 0;
 }
 
