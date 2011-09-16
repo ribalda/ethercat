@@ -1172,8 +1172,12 @@ void ec_master_receive_datagrams(
                 domain_data += domain_fmmu->data_size;
                 i++;
             }
-        } else {
-            // copy received data into the datagram memory
+        } else if (datagram->type != EC_DATAGRAM_APWR &&
+                datagram->type != EC_DATAGRAM_FPWR &&
+                datagram->type != EC_DATAGRAM_BWR &&
+                datagram->type != EC_DATAGRAM_LWR) {
+            // copy received data into the datagram memory,
+            // if something has been read
             memcpy(datagram->data, frame_datagram_data, data_size);
         }
 
