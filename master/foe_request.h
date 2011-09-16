@@ -37,8 +37,6 @@
 #ifndef __EC_FOE_REQUEST_H__
 #define __EC_FOE_REQUEST_H__
 
-#include <linux/list.h>
-
 #include "../include/ecrt.h"
 
 #include "globals.h"
