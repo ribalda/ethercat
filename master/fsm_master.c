@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- *  $Id$
+ *  $Id: fsm_master.c,v 0ce254664c81 2011/08/09 20:10:45 fp $
  *
  *  Copyright (C) 2006-2008  Florian Pose, Ingenieurgemeinschaft IgH
  *
@@ -568,6 +568,8 @@ void ec_fsm_master_action_configure(
     ec_slave_t *slave = fsm->slave;
 
     if (master->config_changed) {
+        master->config_changed = 0;
+
         // abort iterating through slaves,
         // first compensate DC system time offsets,
         // then begin configuring at slave 0
@@ -815,6 +817,8 @@ void ec_fsm_master_state_scan_slave(
     ec_master_attach_slave_configs(master);
 
     if (master->slave_count) {
+        master->config_changed = 0;
+
         fsm->slave = master->slaves; // begin with first slave
         ec_fsm_master_enter_write_system_times(fsm);
     } else {
