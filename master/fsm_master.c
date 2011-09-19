@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- *  $Id$
+ *  $Id: fsm_master.c,v afb40fd6018e 2011/09/16 12:10:23 fp $
  *
  *  Copyright (C) 2006-2008  Florian Pose, Ingenieurgemeinschaft IgH
  *
@@ -885,7 +885,7 @@ void ec_fsm_master_enter_write_system_times(
     } else {
         if (master->active) {
             EC_MASTER_ERR(master, "No app_time received up to now,"
-                    " but master already active).\n");
+                    " but master already active.\n");
         } else {
             EC_MASTER_DBG(master, 1, "No app_time received up to now.\n");
         }
