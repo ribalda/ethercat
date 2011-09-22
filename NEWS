@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 
-$Id$
+$Id: NEWS,v 2cefec773772 2011/10/28 15:07:00 fp $
 
 vim: spelllang=en spell
 
@@ -30,6 +30,7 @@ Changes in 1.5:
     - Added e100 driver for 2.6.28, thanks to Kim. H. Madsen.
     - Added e100 driver for 2.6.29, thanks to Andre Puschmann.
     - Added e100 driver for 2.6.31.
+    - Added e100 driver for 2.6.32.
 * Added 8139too driver for kernels 2.6.25 (F. Pose), 2.6.26 (M. Luescher),
   2.6.27, 2.6.28, 2.6.29 (M. Goetze), 2.6.31 (F. Pose), 2.6.34 (Malcolm
   Lewis), 2.6.36 (F. Pose) and 2.6.37 (F. Pose).
