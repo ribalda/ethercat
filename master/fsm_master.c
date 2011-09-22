@@ -212,7 +212,8 @@ void ec_fsm_master_state_broadcast(
                 fsm->slaves_responding);
     }
 
-    if (fsm->link_state && !master->main_device.link_state) { // link went down
+    if (fsm->link_state && !master->main_device.link_state) {
+        // link went down
         EC_MASTER_DBG(master, 1, "Master state machine detected "
                 "link down. Clearing slave list.\n");
 
@@ -267,7 +268,8 @@ void ec_fsm_master_state_broadcast(
             }
 
             size = sizeof(ec_slave_t) * master->slave_count;
-            if (!(master->slaves = (ec_slave_t *) kmalloc(size, GFP_KERNEL))) {
+            if (!(master->slaves =
+                        (ec_slave_t *) kmalloc(size, GFP_KERNEL))) {
                 EC_MASTER_ERR(master, "Failed to allocate %u bytes"
                         " of slave memory!\n", size);
                 master->slave_count = 0; // TODO avoid retrying scan!
@@ -578,6 +580,7 @@ void ec_fsm_master_action_configure(
 
         fsm->slave = master->slaves; // begin with first slave
         ec_fsm_master_enter_write_system_times(fsm);
+        return;
     }
 
     // Does the slave have to be configured?
