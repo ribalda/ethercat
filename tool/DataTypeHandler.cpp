@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  $Id$
+ *  $Id: DataTypeHandler.cpp,v 9a136c0c30a2 2010/04/15 10:33:48 fp $
  *
  *  Copyright (C) 2006-2009  Florian Pose, Ingenieurgemeinschaft IgH
  *
@@ -74,7 +74,7 @@ string DataTypeHandler::typeInfo()
 		<< "  bool," << endl
 		<< "  int8, int16, int32, int64," << endl
 		<< "  uint8, uint16, uint32, uint64," << endl
-		<< "  float, double" << endl
+		<< "  float, double," << endl
 		<< "  string, octet_string, unicode_string." << endl
         << "For sign-and-magnitude coding, use the following types:" << endl
         << "  sm8, sm16, sm32, sm64" << endl;
