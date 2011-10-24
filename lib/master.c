@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- *  $Id$
+ *  $Id: master.c,v b544025bd696 2011/05/12 14:45:02 fp $
  *
  *  Copyright (C) 2006-2009  Florian Pose, Ingenieurgemeinschaft IgH
  *
@@ -349,6 +349,34 @@ int ecrt_master_sdo_download(ec_master_t *master, uint16_t slave_position,
     download.slave_position = slave_position;
     download.sdo_index = index;
     download.sdo_entry_subindex = subindex;
+    download.complete_access = 0;
+    download.data_size = data_size;
+    download.data = data;
+
+    if (ioctl(master->fd, EC_IOCTL_SLAVE_SDO_DOWNLOAD, &download) == -1) {
+        if (errno == EIO && abort_code) {
+            *abort_code = download.abort_code;
+        }
+        fprintf(stderr, "Failed to execute SDO download: %s\n",
+            strerror(errno));
+        return -1;
+    }
+
+    return 0;
+}
+
+/*****************************************************************************/
+
+int ecrt_master_sdo_download_complete(ec_master_t *master,
+        uint16_t slave_position, uint16_t index, uint8_t *data,
+        size_t data_size, uint32_t *abort_code)
+{
+    ec_ioctl_slave_sdo_download_t download;
+
+    download.slave_position = slave_position;
+    download.sdo_index = index;
+    download.sdo_entry_subindex = 0;
+    download.complete_access = 1;
     download.data_size = data_size;
     download.data = data;
 

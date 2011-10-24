@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- *  $Id$
+ *  $Id: cdev.c,v ebda087981e1 2011/09/15 13:58:58 fp $
  *
  *  Copyright (C) 2006-2008  Florian Pose, Ingenieurgemeinschaft IgH
  *
@@ -902,9 +902,14 @@ int ec_cdev_ioctl_slave_sdo_download(
         return -EFAULT;
     }
 
-    retval = ecrt_master_sdo_download(master, data.slave_position,
-            data.sdo_index, data.sdo_entry_subindex, sdo_data, data.data_size,
-            &data.abort_code);
+    if (data.complete_access) {
+        retval = ecrt_master_sdo_download_complete(master, data.slave_position,
+                data.sdo_index, sdo_data, data.data_size, &data.abort_code);
+    } else {
+        retval = ecrt_master_sdo_download(master, data.slave_position,
+                data.sdo_index, data.sdo_entry_subindex, sdo_data,
+                data.data_size, &data.abort_code);
+    }
 
     kfree(sdo_data);
 

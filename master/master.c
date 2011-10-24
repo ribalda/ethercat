@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- *  $Id$
+ *  $Id: master.c,v afb40fd6018e 2011/09/16 12:10:23 fp $
  *
  *  Copyright (C) 2006-2008  Florian Pose, Ingenieurgemeinschaft IgH
  *
@@ -2482,6 +2482,88 @@ int ecrt_master_sdo_download(ec_master_t *master, uint16_t slave_position,
 
 /*****************************************************************************/
 
+int ecrt_master_sdo_download_complete(ec_master_t *master,
+        uint16_t slave_position, uint16_t index, uint8_t *data,
+        size_t data_size, uint32_t *abort_code)
+{
+    ec_master_sdo_request_t request;
+
+    EC_MASTER_DBG(master, 1, "%s(master = 0x%p,"
+            " slave_position = %u, index = 0x%04X,"
+            " data = 0x%p, data_size = %zu, abort_code = 0x%p)\n",
+            __func__, master, slave_position, index, data, data_size,
+            abort_code);
+
+    if (!data_size) {
+        EC_MASTER_ERR(master, "Zero data size!\n");
+        return -EINVAL;
+    }
+
+    ec_sdo_request_init(&request.req);
+    ec_sdo_request_address(&request.req, index, 0);
+    if (ec_sdo_request_alloc(&request.req, data_size)) {
+        ec_sdo_request_clear(&request.req);
+        return -ENOMEM;
+    }
+
+    request.req.complete_access = 1;
+    memcpy(request.req.data, data, data_size);
+    request.req.data_size = data_size;
+    ecrt_sdo_request_write(&request.req);
+
+    if (down_interruptible(&master->master_sem))
+        return -EINTR;
+
+    if (!(request.slave = ec_master_find_slave(master, 0, slave_position))) {
+        up(&master->master_sem);
+        EC_MASTER_ERR(master, "Slave %u does not exist!\n", slave_position);
+        ec_sdo_request_clear(&request.req);
+        return -EINVAL;
+    }
+
+    EC_SLAVE_DBG(request.slave, 1, "Schedule SDO download request"
+            " (complete access).\n");
+
+    // schedule request.
+    list_add_tail(&request.list, &request.slave->slave_sdo_requests);
+
+    up(&master->master_sem);
+
+    // wait for processing through FSM
+    if (wait_event_interruptible(request.slave->sdo_queue,
+                request.req.state != EC_INT_REQUEST_QUEUED)) {
+        // interrupted by signal
+        down(&master->master_sem);
+        if (request.req.state == EC_INT_REQUEST_QUEUED) {
+            list_del(&request.list);
+            up(&master->master_sem);
+            ec_sdo_request_clear(&request.req);
+            return -EINTR;
+        }
+        // request already processing: interrupt not possible.
+        up(&master->master_sem);
+    }
+
+    // wait until master FSM has finished processing
+    wait_event(request.slave->sdo_queue,
+            request.req.state != EC_INT_REQUEST_BUSY);
+
+    EC_SLAVE_DBG(request.slave, 1, "Finished SDO download request"
+            " (complete access).\n");
+
+    *abort_code = request.req.abort_code;
+
+    if (request.req.state == EC_INT_REQUEST_SUCCESS) {
+        return 0;
+    } else if (request.req.errno) {
+        return -request.req.errno;
+    } else {
+        return -EIO;
+    }
+}
+
+/*****************************************************************************/
+
 int ecrt_master_sdo_upload(ec_master_t *master, uint16_t slave_position,
         uint16_t index, uint8_t subindex, uint8_t *target,
         size_t target_size, size_t *result_size, uint32_t *abort_code)
@@ -2753,6 +2835,7 @@ EXPORT_SYMBOL(ecrt_master_sync_slave_clocks);
 EXPORT_SYMBOL(ecrt_master_sync_monitor_queue);
 EXPORT_SYMBOL(ecrt_master_sync_monitor_process);
 EXPORT_SYMBOL(ecrt_master_sdo_download);
+EXPORT_SYMBOL(ecrt_master_sdo_download_complete);
 EXPORT_SYMBOL(ecrt_master_sdo_upload);
 EXPORT_SYMBOL(ecrt_master_write_idn);
 EXPORT_SYMBOL(ecrt_master_read_idn);

@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- *  $Id$
+ *  $Id: ecrt.h,v ebda087981e1 2011/09/15 13:58:58 fp $
  *
  *  Copyright (C) 2006-2008  Florian Pose, Ingenieurgemeinschaft IgH
  *
@@ -62,8 +62,9 @@
  *   ecrt_master_get_slave(), ecrt_master_get_sync_manager(),
  *   ecrt_master_get_pdo() and ecrt_master_get_pdo_entry()) to get information
  *   about the currently connected slaves and the PDO entries provided.
- * - Added ecrt_master_sdo_download() and ecrt_master_sdo_upload()
- *   methods to let an application transfer SDOs before activating the master.
+ * - Added ecrt_master_sdo_download(), ecrt_master_sdo_download_complete() and
+ *   ecrt_master_sdo_upload() methods to let an application transfer SDOs
+ *   before activating the master.
  * - Changed the meaning of the negative return values of
  *   ecrt_slave_config_reg_pdo_entry() and ecrt_slave_config_sdo*().
  * - Implemented the Vendor-specific over EtherCAT mailbox protocol. See
@@ -717,6 +718,25 @@ int ecrt_master_sdo_download(
         uint16_t slave_position, /**< Slave position. */
         uint16_t index, /**< Index of the SDO. */
         uint8_t subindex, /**< Subindex of the SDO. */
+        uint8_t *data, /**< Data buffer to download. */
+        size_t data_size, /**< Size of the data buffer. */
+        uint32_t *abort_code /**< Abort code of the SDO download. */
+        );
+
+/** Executes an SDO download request to write data to a slave via complete
+ * access.
+ *
+ * This request is processed by the master state machine. This method blocks,
+ * until the request has been processed and may not be called in realtime
+ * context.
+ *
+ * \retval  0 Success.
+ * \retval <0 Error code.
+ */
+int ecrt_master_sdo_download_complete(
+        ec_master_t *master, /**< EtherCAT master. */
+        uint16_t slave_position, /**< Slave position. */
+        uint16_t index, /**< Index of the SDO. */
         uint8_t *data, /**< Data buffer to download. */
         size_t data_size, /**< Size of the data buffer. */
         uint32_t *abort_code /**< Abort code of the SDO download. */

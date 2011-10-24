@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  $Id$
+ *  $Id: CommandDownload.cpp,v 4f682084c643 2010/10/25 08:12:26 fp $
  *
  *  Copyright (C) 2006-2009  Florian Pose, Ingenieurgemeinschaft IgH
  *
@@ -49,6 +49,7 @@ string CommandDownload::helpString(const string &binaryBaseName) const
 
     str << binaryBaseName << " " << getName()
         << " [OPTIONS] <INDEX> <SUBINDEX> <VALUE>" << endl
+        << " [OPTIONS] <INDEX> <VALUE>" << endl
         << endl
         << getBriefDescription() << endl
         << endl
@@ -60,6 +61,9 @@ string CommandDownload::helpString(const string &binaryBaseName) const
         << "information service or the SDO is not in the dictionary," << endl
         << "the --type option is mandatory." << endl
         << endl
+        << "The second call (without <SUBINDEX>) uses the complete" << endl
+        << "access method." << endl
+        << endl
         << typeInfo()
         << endl
         << "Arguments:" << endl
@@ -68,7 +72,8 @@ string CommandDownload::helpString(const string &binaryBaseName) const
         << "  SUBINDEX is the SDO entry subindex and must be an" << endl
         << "           unsigned 8 bit number." << endl
         << "  VALUE    is the value to download and must correspond" << endl
-        << "           to the SDO entry datatype (see above)." << endl
+        << "           to the SDO entry datatype (see above). Use" << endl
+        << "           '-' to read from standard input." << endl
         << endl
         << "Command-specific options:" << endl
         << "  --alias    -a <alias>" << endl
@@ -85,16 +90,18 @@ string CommandDownload::helpString(const string &binaryBaseName) const
 
 void CommandDownload::execute(const StringVector &args)
 {
-    stringstream strIndex, strSubIndex, err;
+    stringstream strIndex, err;
     ec_ioctl_slave_sdo_download_t data;
-    unsigned int number;
+    unsigned int valueIndex;
     const DataType *dataType = NULL;
     SlaveList slaves;
 
-    if (args.size() != 3) {
-        err << "'" << getName() << "' takes 3 arguments!";
+    if (args.size() != 2 && args.size() != 3) {
+        err << "'" << getName() << "' takes 2 or 3 arguments!";
         throwInvalidUsageException(err);
     }
+    data.complete_access = args.size() == 2;
+    valueIndex = data.complete_access ? 1 : 2;
 
     strIndex << args[0];
     strIndex
@@ -105,15 +112,22 @@ void CommandDownload::execute(const StringVector &args)
         throwInvalidUsageException(err);
     }
 
-    strSubIndex << args[1];
-    strSubIndex
-        >> resetiosflags(ios::basefield) // guess base from prefix
-        >> number;
-    if (strSubIndex.fail() || number > 0xff) {
-        err << "Invalid SDO subindex '" << args[1] << "'!";
-        throwInvalidUsageException(err);
+    if (data.complete_access) {
+        data.sdo_entry_subindex = 0;
+    } else {
+        stringstream strSubIndex;
+        unsigned int number;
+
+        strSubIndex << args[1];
+        strSubIndex
+            >> resetiosflags(ios::basefield) // guess base from prefix
+            >> number;
+        if (strSubIndex.fail() || number > 0xff) {
+            err << "Invalid SDO subindex '" << args[1] << "'!";
+            throwInvalidUsageException(err);
+        }
+        data.sdo_entry_subindex = number;
     }
-    data.sdo_entry_subindex = number;
 
     MasterDevice m(getSingleMasterIndex());
     m.open(MasterDevice::ReadWrite);
@@ -147,17 +161,59 @@ void CommandDownload::execute(const StringVector &args)
         }
     }
 
-    if (dataType->byteSize) {
-        data.data_size = dataType->byteSize;
-    } else {
-        data.data_size = DefaultBufferSize;
-    }
+    if (args[valueIndex] == "-") {
+        ostringstream tmp;
 
-    data.data = new uint8_t[data.data_size + 1];
+        tmp << cin.rdbuf();
+        string const &contents = tmp.str();
+
+        if (!contents.size()) {
+            err << "Invalid data size " << contents.size() << "! "
+                << "Must be non-zero.";
+            throwCommandException(err);
+        }
+        data.data_size = contents.size();
+        data.data = new uint8_t[data.data_size + 1];
+
+        try {
+            data.data_size = interpretAsType(
+                    dataType, contents, data.data, data.data_size);
+        } catch (SizeException &e) {
+            delete [] data.data;
+            throwCommandException(e.what());
+        } catch (ios::failure &e) {
+            delete [] data.data;
+            err << "Invalid value argument '" << args[2]
+                << "' for type '" << dataType->name << "'!";
+            throwInvalidUsageException(err);
+        }
+
+    } else {
+        if (dataType->byteSize) {
+            data.data_size = dataType->byteSize;
+        } else {
+            data.data_size = DefaultBufferSize;
+        }
+
+        data.data = new uint8_t[data.data_size + 1];
+
+        try {
+            data.data_size = interpretAsType(
+                    dataType, args[valueIndex], data.data, data.data_size);
+        } catch (SizeException &e) {
+            delete [] data.data;
+            throwCommandException(e.what());
+        } catch (ios::failure &e) {
+            delete [] data.data;
+            err << "Invalid value argument '" << args[2]
+                << "' for type '" << dataType->name << "'!";
+            throwInvalidUsageException(err);
+        }
+    }
 
     try {
         data.data_size = interpretAsType(
-                dataType, args[2], data.data, data.data_size);
+                dataType, args[valueIndex], data.data, data.data_size);
     } catch (SizeException &e) {
         delete [] data.data;
         throwCommandException(e.what());
