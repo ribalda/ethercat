@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- *  $Id$
+ *  $Id: fsm_slave_config.c,v ff2a13a4603c 2011/03/14 15:55:09 ch1010277 $
  *
  *  Copyright (C) 2006-2008  Florian Pose, Ingenieurgemeinschaft IgH
  *
@@ -449,6 +449,7 @@ void ec_fsm_slave_config_enter_mbox_sync(
         sync.enable = 1;
         ec_sync_page(&sync, 0, slave->sii.boot_rx_mailbox_size,
                 EC_DIR_INVALID, // use default direction
+                0, // no PDO xfer
                 datagram->data);
         slave->configured_rx_mailbox_offset =
             slave->sii.boot_rx_mailbox_offset;
@@ -461,6 +462,7 @@ void ec_fsm_slave_config_enter_mbox_sync(
         sync.enable = 1;
         ec_sync_page(&sync, 1, slave->sii.boot_tx_mailbox_size,
                 EC_DIR_INVALID, // use default direction
+                0, // no PDO xfer
                 datagram->data + EC_SYNC_PAGE_SIZE);
         slave->configured_tx_mailbox_offset =
             slave->sii.boot_tx_mailbox_offset;
@@ -476,6 +478,7 @@ void ec_fsm_slave_config_enter_mbox_sync(
             ec_sync_page(&slave->sii.syncs[i], i,
                     slave->sii.syncs[i].default_length,
                     NULL, // use default sync manager configuration
+                    0, // no PDO xfer
                     datagram->data + EC_SYNC_PAGE_SIZE * i);
         }
 
@@ -503,6 +506,7 @@ void ec_fsm_slave_config_enter_mbox_sync(
         sync.enable = 1;
         ec_sync_page(&sync, 0, slave->sii.std_rx_mailbox_size,
                 NULL, // use default sync manager configuration
+                0, // no PDO xfer
                 datagram->data);
         slave->configured_rx_mailbox_offset =
             slave->sii.std_rx_mailbox_offset;
@@ -515,6 +519,7 @@ void ec_fsm_slave_config_enter_mbox_sync(
         sync.enable = 1;
         ec_sync_page(&sync, 1, slave->sii.std_tx_mailbox_size,
                 NULL, // use default sync manager configuration
+                0, // no PDO xfer
                 datagram->data + EC_SYNC_PAGE_SIZE);
         slave->configured_tx_mailbox_offset =
             slave->sii.std_tx_mailbox_offset;
@@ -957,7 +962,7 @@ void ec_fsm_slave_config_enter_pdo_sync(
 {
     ec_slave_t *slave = fsm->slave;
     ec_datagram_t *datagram = fsm->datagram;
-    unsigned int i, offset, num_pdo_syncs;
+    unsigned int i, j, offset, num_pdo_syncs;
     uint8_t sync_index;
     const ec_sync_t *sync;
     uint16_t size;
@@ -984,18 +989,30 @@ void ec_fsm_slave_config_enter_pdo_sync(
 
     for (i = 0; i < num_pdo_syncs; i++) {
         const ec_sync_config_t *sync_config;
+        uint8_t pdo_xfer = 0;
         sync_index = i + offset;
         sync = &slave->sii.syncs[sync_index];
 
         if (slave->config) {
-            sync_config = &slave->config->sync_configs[sync_index];
+            const ec_slave_config_t *sc = slave->config;
+            sync_config = &sc->sync_configs[sync_index];
             size = ec_pdo_list_total_size(&sync_config->pdos);
+
+            // determine, if PDOs shall be transferred via this SM
+            // inthat case, enable sync manager in every case
+            for (j = 0; j < sc->used_fmmus; j++) {
+                if (sc->fmmu_configs[j].sync_index == sync_index) {
+                    pdo_xfer = 1;
+                    break;
+                }
+            }
+
         } else {
             sync_config = NULL;
             size = sync->default_length;
         }
 
-        ec_sync_page(sync, sync_index, size, sync_config,
+        ec_sync_page(sync, sync_index, size, sync_config, pdo_xfer,
                 datagram->data + EC_SYNC_PAGE_SIZE * i);
     }
 

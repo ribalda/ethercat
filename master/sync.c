@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- *  $Id$
+ *  $Id: sync.c,v d9cf40facbc4 2010/05/03 16:07:57 fp $
  *
  *  Copyright (C) 2006-2008  Florian Pose, Ingenieurgemeinschaft IgH
  *
@@ -96,11 +96,14 @@ void ec_sync_page(
         uint8_t sync_index, /**< Index of the sync manager. */
         uint16_t data_size, /**< Data size. */
         const ec_sync_config_t *sync_config, /**< Configuration. */
+        uint8_t pdo_xfer, /**< Non-zero, if PDOs will be transferred via this
+                            sync manager. */
         uint8_t *data /**> Configuration memory. */
         )
 {
-    // enable only if SII enable is set and size is > 0 and SM is not virtual
-    uint16_t enable = (sync->enable & 0x01)
+    // enable only if (SII enable is set or PDO xfer)
+    // and size is > 0 and SM is not virtual
+    uint16_t enable = ((sync->enable & 0x01) || pdo_xfer)
                         && data_size
                         && ((sync->enable & 0x04) == 0);
     uint8_t control = sync->control_register;

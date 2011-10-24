@@ -75,6 +75,7 @@ Changes in 1.5:
 * Implemented CompleteAccess for SDO downloads.
 * ethercat tool is now able to handle multiple masters. The --masters option
   supports ranges like '0,3,8-10'.
+* A sync manager is always enabled, if it contains registered process data.
 
 Changes in 1.4.0:
 
