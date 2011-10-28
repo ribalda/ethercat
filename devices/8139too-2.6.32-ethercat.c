@@ -1779,7 +1779,7 @@ static netdev_tx_t rtl8139_start_xmit (struct sk_buff *skb,
 	void __iomem *ioaddr = tp->mmio_addr;
 	unsigned int entry;
 	unsigned int len = skb->len;
-	unsigned long flags;
+	unsigned long flags = 0;
 
 	/* Calculate the next Tx descriptor entry. */
 	entry = tp->cur_tx % NUM_TX_DESC;
