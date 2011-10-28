@@ -1,0 +1,44 @@
+$Id$
+
+vim: spelllang=en tw=78
+
+This is a short introduction to the coding style that shall be used. The below
+rules are applicable for all C source files, except the Ethernet drivers, for
+which the Linux Kernel coding style shall be used to minimize the
+differences).
+
+* Lines shall not exceed 78 characters.
+
+* Indentation shall be done using 4 space characters
+
+* No whitespace shall be left at the end of a line.
+
+* After a comma, a single space shall be placed (if not followed by a
+  line break).
+
+* Braces shall be placed in the following way (K&R style):
+
+    if (...) {
+        ...
+    } else if (...) {
+        ...
+    } else {
+        ...
+    }
+
+    int function(...)
+    {
+        ...
+    }
+
+* Macros shall be named in CAPITAL letters. If a macro contains multiple
+  statements, they should be enclosed by a 'do {} while (0)' loop. Macro
+  parameters shall also be capital letters and shall be enclosed py parantheses
+  if necessary.
+
+    #define MACRO(A, B) \
+        do { \
+            if ((A) == 1) { \
+                statement(B); \
+        } while (0)
+

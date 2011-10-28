@@ -1,12 +1,12 @@
--------------------------------------------------------------------------------
+------------------------------------------------------------------------------
 
 This is the README file of the IgH EtherCAT Master.
 
-$Id$
+$Id: README,v 11c0b2caa253 2009/02/24 12:51:39 fp $
 
 vim: spelllang=en spell tw=78
 
--------------------------------------------------------------------------------
+------------------------------------------------------------------------------
 
 Contents:
 1) General Information
@@ -14,8 +14,9 @@ Contents:
 3) Building and installing
 4) Realtime & Tuning
 5) License
+6) Coding Style
 
--------------------------------------------------------------------------------
+------------------------------------------------------------------------------
 
 1) General Information
 ======================
@@ -33,7 +34,7 @@ Heinz-Baecker-Str. 34
 D-45356 Essen
 http://igh-essen.com
 
--------------------------------------------------------------------------------
+------------------------------------------------------------------------------
 
 2) Requirements
 ===============
@@ -48,27 +49,27 @@ master.
 A table of supported hardware can be found at
 http://etherlab.org/en/ethercat/hardware.php.
 
--------------------------------------------------------------------------------
+------------------------------------------------------------------------------
 
 3) Building and installing
 ==========================
 
 See the INSTALL file.
 
--------------------------------------------------------------------------------
+------------------------------------------------------------------------------
 
 4) Realtime & Tuning
 ====================
 
 Realtime patches for the Linux kernel are supported, but not required. The
 realtime processing has to be done by the calling module (see API
-documentation). The EtherCAT master code itself is passive (except for the idle
-mode and EoE).
+documentation). The EtherCAT master code itself is passive (except for the
+idle mode and EoE).
 
 To avoid frame timeouts, deactivating DMA access for hard drives is
 recommended (hdparm -d0 <DEV>).
 
--------------------------------------------------------------------------------
+------------------------------------------------------------------------------
 
 5) License
 ==========
@@ -96,4 +97,11 @@ The license mentioned above concerns the source code only. Using the EtherCAT
 technology and brand is only permitted in compliance with the industrial
 property and similar rights of Beckhoff Automation GmbH.
 
--------------------------------------------------------------------------------
+------------------------------------------------------------------------------
+
+6) Coding Style
+===============
+
+Developers shall use the coding style rules in the CodingStyle.txt file.
+
+------------------------------------------------------------------------------
