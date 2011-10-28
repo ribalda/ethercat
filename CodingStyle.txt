@@ -7,16 +7,25 @@ rules are applicable for all C source files, except the Ethernet drivers, for
 which the Linux Kernel coding style shall be used to minimize the
 differences).
 
-* Lines shall not exceed 78 characters.
+1) Line length
 
-* Indentation shall be done using 4 space characters
+- Lines shall not exceed 78 characters.
 
-* No whitespace shall be left at the end of a line.
+2) Whitespace
 
-* After a comma, a single space shall be placed (if not followed by a
-  line break).
+- Indentation shall be done using 4 space characters
 
-* Braces shall be placed in the following way (K&R style):
+- No whitespace shall be left at the end of a line.
+
+- After commas, colons and semicolons, a single space shall be
+  placed (if not followed by a line break).
+
+- Binary operators (=, ==, ~=, |, ||, etc.) shall be enclosed by 2 spaces
+  (except . and ->).
+
+3) Placing braces
+
+- Braces shall be placed in the following way (K&R style):
 
     if (...) {
         ...
@@ -31,10 +40,12 @@ differences).
         ...
     }
 
-* Macros shall be named in CAPITAL letters. If a macro contains multiple
-  statements, they should be enclosed by a 'do {} while (0)' loop. Macro
-  parameters shall also be capital letters and shall be enclosed py parantheses
-  if necessary.
+4) Defines and Macros
+
+- Defines and macros shall be named in CAPITAL letters. If a macro contains
+  multiple statements, they should be enclosed by a 'do {} while (0)' loop.
+  Macro parameters shall also be capital letters and shall be enclosed py
+  parantheses if necessary.
 
     #define MACRO(A, B) \
         do { \
