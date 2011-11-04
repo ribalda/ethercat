@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- *  $Id$
+ *  $Id: slave_config.c,v 8c63d804ead9 2011/08/11 18:44:18 fp $
  *
  *  Copyright (C) 2006-2008  Florian Pose, Ingenieurgemeinschaft IgH
  *
@@ -234,12 +234,28 @@ int ec_slave_config_attach(
         return -EEXIST;
     }
 
-    if (slave->sii.vendor_id != sc->vendor_id
-            || slave->sii.product_code != sc->product_code) {
-        EC_CONFIG_DBG(sc, 1, "Slave %u has an invalid type (0x%08X/0x%08X)"
-                " for configuration (0x%08X/0x%08X).\n",
-                slave->ring_position, slave->sii.vendor_id,
-                slave->sii.product_code, sc->vendor_id, sc->product_code);
+    if (
+#ifdef EC_IDENT_WILDCARDS
+            sc->vendor_id != 0xffffffff &&
+#endif
+            slave->sii.vendor_id != sc->vendor_id
+       ) {
+        EC_CONFIG_DBG(sc, 1, "Slave %u has no matching vendor ID (0x%08X)"
+                " for configuration (0x%08X).\n",
+                slave->ring_position, slave->sii.vendor_id, sc->vendor_id);
+        return -EINVAL;
+    }
+
+    if (
+#ifdef EC_IDENT_WILDCARDS
+            sc->product_code != 0xffffffff &&
+#endif
+            slave->sii.product_code != sc->product_code
+       ) {
+        EC_CONFIG_DBG(sc, 1, "Slave %u has no matching product code (0x%08X)"
+                " for configuration (0x%08X).\n",
+                slave->ring_position, slave->sii.product_code,
+                sc->product_code);
         return -EINVAL;
     }
 

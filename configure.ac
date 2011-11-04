@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 #
-#  $Id$
+#  $Id: configure.ac,v 1baafcd263cc 2011/07/06 14:37:40 fp $
 #
 #  Copyright (C) 2006-2009  Florian Pose, Ingenieurgemeinschaft IgH
 #
@@ -750,6 +750,31 @@ AC_ARG_ENABLE([tty],
 
 AM_CONDITIONAL(ENABLE_TTY, test "x$tty" = "x1")
 AC_SUBST(ENABLE_TTY,[$tty])
+
+#------------------------------------------------------------------------------
+# Slave identification wildcards
+#------------------------------------------------------------------------------
+
+AC_ARG_ENABLE([wildcards],
+    AS_HELP_STRING([--enable-wildcards],
+                   [Enable vendor ID / product code wildcards (default: no)]),
+    [
+        case "${enableval}" in
+            yes) wildcards=1
+                ;;
+            no) wildcards=0
+                ;;
+            *) AC_MSG_ERROR([Invalid value for --enable-wildcards])
+                ;;
+        esac
+    ],
+    [wildcards=0]
+)
+
+if test "x${wildcards}" = "x1"; then
+    AC_DEFINE([EC_IDENT_WILDCARDS], [1],
+        [Use vendor id / product code wildcards])
+fi
 
 #------------------------------------------------------------------------------
 

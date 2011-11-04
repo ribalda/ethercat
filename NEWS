@@ -76,6 +76,8 @@ Changes in 1.5:
 * ethercat tool is now able to handle multiple masters. The --masters option
   supports ranges like '0,3,8-10'.
 * A sync manager is always enabled, if it contains registered process data.
+* Added a configuration switch --enable-wildcards to use 0xffffffff as a
+* wildcard for vendor ID and product code.
 
 Changes in 1.4.0:
 
