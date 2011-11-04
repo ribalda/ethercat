@@ -41,12 +41,12 @@
 
 #include "hw-2.6.34-ethercat.h"
 
-/* Ethecat header file */
+/* EtherCAT header file */
 #include "../ecdev.h"
 
 struct e1000_info;
 
-/* Ethecat */
+/* EtherCAT */
 #define e_printk(level, adapter, format, arg...) \
 	printk(level "ec_%s: %s: " format, pci_name(adapter->pdev), \
 	       adapter->netdev->name, ## arg)
