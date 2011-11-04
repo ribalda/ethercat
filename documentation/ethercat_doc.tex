@@ -2,7 +2,7 @@
 %
 %  IgH EtherCAT Master Documentation
 %
-%  $Id$
+%  $Id: ethercat_doc.tex,v 1baafcd263cc 2011/07/06 14:37:40 fp $
 %
 %  vi: spell spelllang=en tw=78
 % 
@@ -19,6 +19,7 @@
 \usepackage[nofancy]{rcsinfo}
 \usepackage{SIunits}
 \usepackage{amsmath} % for \text{}
+\usepackage{longtable}
 \usepackage{hyperref}
 
 \hypersetup{pdfpagelabels,plainpages=false}
@@ -62,7 +63,7 @@
 \newcommand{\IgH}{\raisebox{-0.7667ex}
   {\includegraphics[height=2.2ex]{images/ighsign}}}
 
-\rcsInfo $RCSId$
+\rcsInfo $RCSId: ethercat_doc.tex,v 1baafcd263cc 2011/07/06 14:37:40 fp exp $
 
 \newcommand{\masterversion}{1.5.0}
 \newcommand{\linenum}[1]{\normalfont\textcircled{\tiny #1}}
@@ -2987,37 +2988,27 @@ follow the below commands:
 
 Table~\ref{tab:config} lists important configuration switches and options.
 
-\begin{table}
-  \caption{Configuration options}
-  \label{tab:config}
-  \vspace{2mm}
-  \begin{tabular}{l|p{.3\textwidth}|l}
+\begin{longtable}{l|p{.4\textwidth}|l}
+  \caption{Configuration options}\rule[-5ex]{0mm}{0mm}
+  \label{tab:config}\\
 
-\bf Option/Switch & \bf Description & \bf Default\\\hline
+\textbf{Option/Switch} & \textbf{Description} & \textbf{Default}\\\hline
+\endfirsthead
+
+\textbf{Option/Switch} & \textbf{Description} & \textbf{Default}\\\hline
+\endhead
 
 \lstinline+--prefix+ & Installation prefix & \textit{/opt/etherlab}\\
 
 \lstinline+--with-linux-dir+ & Linux kernel sources & Use running kernel\\
 
-\lstinline+--with-rtai-dir+ & RTAI path (only for RTAI example) & \\
+\lstinline+--with-module-dir+ & Subdirectory in the kernel module tree, where
+the EtherCAT kernel modules shall be installed. & \textit{ethercat}\\
 
 \hline
 
-\lstinline+--enable-tool+ & Build the command-line tool ``ethercat'' (see
-sec.~\ref{sec:tool}). & yes\\
-
-\lstinline+--enable-userlib+ & Build the userspace library. & yes\\
-
-\lstinline+--enable-eoe+ & Enable EoE support & yes\\
-
-\lstinline+--enable-cycles+ & Use CPU timestamp counter. Enable this on Intel
-architecture to get finer timing calculation. & no\\
-
-\lstinline+--enable-debug-if+ & Create a debug interface for each master & no\\
-
-\lstinline+--enable-debug-ring+ & Create a debug ring to record frames & no\\
-
-\hline
+\lstinline+--enable-generic+ & Build the generic Ethernet driver (see
+sec.~\ref{sec:generic-driver}). & no\\
 
 \lstinline+--enable-8139too+ & Build the 8139too driver & yes\\
 
@@ -3039,11 +3030,37 @@ architecture to get finer timing calculation. & no\\
 
 \lstinline+--with-r8169-kernel+ & r8169 kernel & $\dagger$\\
 
-\lstinline+--enable-generic+ & Build the generic Ethernet driver (see
-sec.~\ref{sec:generic-driver}). & no\\
+\hline
 
-  \end{tabular}
-  \vspace{2mm}
+\lstinline+--with-rtai-dir+ & RTAI path (only for RTAI example) & \\
+
+\lstinline+--enable-debug-if+ & Create a debug interface for each master & no\\
+
+\lstinline+--enable-debug-ring+ & Create a debug ring to record frames & no\\
+
+\lstinline+--enable-eoe+ & Enable EoE support & yes\\
+
+\lstinline+--enable-cycles+ & Use CPU timestamp counter. Enable this on Intel
+architecture to get finer timing calculation. & no\\
+
+\lstinline+--enable-hrtimer+ & Use high-resolution timer to let the master
+state machine sleep between sending frames. & no\\
+
+\lstinline+--enable-regalias+ & Read alias address from register. & no\\
+
+\lstinline+--enable-tool+ & Build the command-line tool ``ethercat'' (see
+sec.~\ref{sec:tool}). & yes\\
+
+\lstinline+--enable-userlib+ & Build the userspace library. & yes\\
+
+\lstinline+--enable-tty+ & Build the TTY driver. & no\\
+
+\lstinline+--enable-wildcards+ & Enable \textit{0xffffffff} to be wildcards
+for vendor ID and product code. & no\\
+
+\hline
+
+\end{longtable}
 
 \begin{description}
 
@@ -3051,8 +3068,6 @@ sec.~\ref{sec:generic-driver}). & no\\
 extracted from the Linux kernel sources.
 
 \end{description}
-
-\end{table}
 
 \section{Building the Interface Documentation}
 \label{sec:gendoc}
