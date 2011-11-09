@@ -2984,18 +2984,15 @@ static int __devinit e100_probe(struct pci_dev *pdev,
 
 	// offer device to EtherCAT master module
 	nic->ecdev = ecdev_offer(netdev, e100_ec_poll, THIS_MODULE);
-	if (nic->ecdev) {
-		if (ecdev_open(nic->ecdev)) {
-			ecdev_withdraw(nic->ecdev);
-			goto err_out_free;
-		}
-	} else {
+
+	if (!nic->ecdev) {
 		strcpy(netdev->name, "eth%d");
 		if((err = register_netdev(netdev))) {
 			DPRINTK(PROBE, ERR, "Cannot register net device, aborting.\n");
 			goto err_out_free;
 		}
 	}
+
 	nic->cbs_pool = pci_pool_create(netdev->name,
 			   nic->pdev,
 			   nic->params.cbs.count * sizeof(struct cb),
@@ -3004,6 +3001,13 @@ static int __devinit e100_probe(struct pci_dev *pdev,
 	DPRINTK(PROBE, INFO, "addr 0x%llx, irq %d, MAC addr %pM\n",
 		(unsigned long long)pci_resource_start(pdev, use_io ? 1 : 0),
 		pdev->irq, netdev->dev_addr);
+
+	if (nic->ecdev) {
+		if (ecdev_open(nic->ecdev)) {
+			ecdev_withdraw(nic->ecdev);
+			goto err_out_free;
+		}
+	}
 
 	return 0;
 
