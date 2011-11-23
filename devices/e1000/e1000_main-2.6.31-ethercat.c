@@ -3804,7 +3804,7 @@ static irqreturn_t e1000_intr_msi(int irq, void *data)
 		int i, ec_work_done = 0;
 		for (i = 0; i < E1000_MAX_INTR; i++) {
 			if (unlikely(!adapter->clean_rx(adapter, adapter->rx_ring,
-						&ec_work_done, 100) &
+						&ec_work_done, 100) &&
 					!e1000_clean_tx_irq(adapter, adapter->tx_ring))) {
 				break;
 			}
