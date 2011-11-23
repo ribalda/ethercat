@@ -1315,7 +1315,12 @@ static void __devexit e1000_remove(struct pci_dev *pdev)
 	 * would have already happened in close and is redundant. */
 	e1000_release_hw_control(adapter);
 
-	unregister_netdev(netdev);
+	if (adapter->ecdev) {
+		ecdev_close(adapter->ecdev);
+		ecdev_withdraw(adapter->ecdev);
+	} else {
+		unregister_netdev(netdev);
+	}
 
 	if (!e1000_check_phy_reset_block(hw))
 		e1000_phy_hw_reset(hw);
