@@ -2402,7 +2402,7 @@ int ecrt_master_sdo_download(ec_master_t *master, uint16_t slave_position,
         uint16_t index, uint8_t subindex, uint8_t *data,
         size_t data_size, uint32_t *abort_code)
 {
-    ec_master_sdo_request_t* request;
+    ec_master_sdo_request_t *request;
     int retval;
 
     EC_MASTER_DBG(master, 1, "%s(master = 0x%p,"
@@ -2486,7 +2486,8 @@ int ecrt_master_sdo_download_complete(ec_master_t *master,
         uint16_t slave_position, uint16_t index, uint8_t *data,
         size_t data_size, uint32_t *abort_code)
 {
-    ec_master_sdo_request_t request;
+    ec_master_sdo_request_t *request;
+    int retval;
 
     EC_MASTER_DBG(master, 1, "%s(master = 0x%p,"
             " slave_position = %u, index = 0x%04X,"
@@ -2499,67 +2500,70 @@ int ecrt_master_sdo_download_complete(ec_master_t *master,
         return -EINVAL;
     }
 
-    ec_sdo_request_init(&request.req);
-    ec_sdo_request_address(&request.req, index, 0);
-    if (ec_sdo_request_alloc(&request.req, data_size)) {
-        ec_sdo_request_clear(&request.req);
+    request = kmalloc(sizeof(*request), GFP_KERNEL);
+    if (!request) {
+        return -ENOMEM;
+    }
+    kref_init(&request->refcount);
+
+    ec_sdo_request_init(&request->req);
+    ec_sdo_request_address(&request->req, index, 0);
+    if (ec_sdo_request_alloc(&request->req, data_size)) {
+        kref_put(&request->refcount, ec_master_sdo_request_release);
         return -ENOMEM;
     }
 
-    request.req.complete_access = 1;
-    memcpy(request.req.data, data, data_size);
-    request.req.data_size = data_size;
-    ecrt_sdo_request_write(&request.req);
+    request->req.complete_access = 1;
+    memcpy(request->req.data, data, data_size);
+    request->req.data_size = data_size;
+    ecrt_sdo_request_write(&request->req);
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_mutex_lock_interruptible(&master->master_mutex)) {
+        kref_put(&request->refcount, ec_master_sdo_request_release);
         return -EINTR;
+    }
 
-    if (!(request.slave = ec_master_find_slave(master, 0, slave_position))) {
-        up(&master->master_sem);
+    if (!(request->slave = ec_master_find_slave(
+                    master, 0, slave_position))) {
+        ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "Slave %u does not exist!\n", slave_position);
-        ec_sdo_request_clear(&request.req);
+        kref_put(&request->refcount, ec_master_sdo_request_release);
         return -EINVAL;
     }
 
-    EC_SLAVE_DBG(request.slave, 1, "Schedule SDO download request"
-            " (complete access).\n");
+    EC_SLAVE_DBG(request->slave, 1, "Schedule SDO download request %p"
+            " (complete access).\n", request);
 
-    // schedule request.
-    list_add_tail(&request.list, &request.slave->slave_sdo_requests);
+    // schedule request
+    kref_get(&request->refcount);
+    list_add_tail(&request->list, &request->slave->slave_sdo_requests);
 
-    up(&master->master_sem);
+    ec_mutex_unlock(&master->master_mutex);
 
     // wait for processing through FSM
-    if (wait_event_interruptible(request.slave->sdo_queue,
-                request.req.state != EC_INT_REQUEST_QUEUED)) {
+    if (wait_event_interruptible(request->slave->sdo_queue,
+       ((request->req.state == EC_INT_REQUEST_SUCCESS) ||
+        (request->req.state == EC_INT_REQUEST_FAILURE)))) {
         // interrupted by signal
-        down(&master->master_sem);
-        if (request.req.state == EC_INT_REQUEST_QUEUED) {
-            list_del(&request.list);
-            up(&master->master_sem);
-            ec_sdo_request_clear(&request.req);
-            return -EINTR;
-        }
-        // request already processing: interrupt not possible.
-        up(&master->master_sem);
+        kref_put(&request->refcount, ec_master_sdo_request_release);
+        return -EINTR;
     }
 
-    // wait until master FSM has finished processing
-    wait_event(request.slave->sdo_queue,
-            request.req.state != EC_INT_REQUEST_BUSY);
+    EC_SLAVE_DBG(request->slave, 1, "Finished SDO download request %p"
+            " (complete access).\n", request);
 
-    EC_SLAVE_DBG(request.slave, 1, "Finished SDO download request"
-            " (complete access).\n");
+    *abort_code = request->req.abort_code;
 
-    *abort_code = request.req.abort_code;
-
-    if (request.req.state == EC_INT_REQUEST_SUCCESS) {
-        return 0;
-    } else if (request.req.errno) {
-        return -request.req.errno;
+    if (request->req.state == EC_INT_REQUEST_SUCCESS) {
+        retval = 0;
+    } else if (request->req.errno) {
+        retval = -request->req.errno;
     } else {
-        return -EIO;
+        retval = -EIO;
     }
+
+    kref_put(&request->refcount, ec_master_sdo_request_release);
+    return retval;
 }
 
 /*****************************************************************************/
@@ -2568,7 +2572,7 @@ int ecrt_master_sdo_upload(ec_master_t *master, uint16_t slave_position,
         uint16_t index, uint8_t subindex, uint8_t *target,
         size_t target_size, size_t *result_size, uint32_t *abort_code)
 {
-    ec_master_sdo_request_t* request;
+    ec_master_sdo_request_t *request;
     int retval;
 
     EC_MASTER_DBG(master, 1, "%s(master = 0x%p,"
@@ -2579,8 +2583,9 @@ int ecrt_master_sdo_upload(ec_master_t *master, uint16_t slave_position,
             target_size, result_size, abort_code);
 
     request = kmalloc(sizeof(*request), GFP_KERNEL);
-    if (!request)
+    if (!request) {
         return -ENOMEM;
+    }
     kref_init(&request->refcount);
 
     ec_sdo_request_init(&request->req);
@@ -2651,7 +2656,7 @@ int ecrt_master_write_idn(ec_master_t *master, uint16_t slave_position,
         uint8_t drive_no, uint16_t idn, uint8_t *data, size_t data_size,
         uint16_t *error_code)
 {
-    ec_master_soe_request_t* request;
+    ec_master_soe_request_t *request;
     int retval;
 
     if (drive_no > 7) {
@@ -2660,8 +2665,9 @@ int ecrt_master_write_idn(ec_master_t *master, uint16_t slave_position,
     }
 
     request = kmalloc(sizeof(*request), GFP_KERNEL);
-    if (!request)
+    if (!request) {
         return -ENOMEM;
+    }
     kref_init(&request->refcount);
 
     INIT_LIST_HEAD(&request->list);
@@ -2726,7 +2732,7 @@ int ecrt_master_read_idn(ec_master_t *master, uint16_t slave_position,
         uint8_t drive_no, uint16_t idn, uint8_t *target, size_t target_size,
         size_t *result_size, uint16_t *error_code)
 {
-    ec_master_soe_request_t* request;
+    ec_master_soe_request_t *request;
 
     if (drive_no > 7) {
         EC_MASTER_ERR(master, "Invalid drive number!\n");
@@ -2734,8 +2740,9 @@ int ecrt_master_read_idn(ec_master_t *master, uint16_t slave_position,
     }
 
     request = kmalloc(sizeof(*request), GFP_KERNEL);
-    if (!request)
+    if (!request) {
         return -ENOMEM;
+    }
     kref_init(&request->refcount);
 
     INIT_LIST_HEAD(&request->list);
@@ -2841,6 +2848,7 @@ EXPORT_SYMBOL(ecrt_master_write_idn);
 EXPORT_SYMBOL(ecrt_master_read_idn);
 EXPORT_SYMBOL(ecrt_master_reset);
 EXPORT_SYMBOL(ecrt_master_find_domain);
+
 /** \endcond */
 
 /*****************************************************************************/
