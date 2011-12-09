@@ -219,6 +219,8 @@ void ec_fsm_master_state_broadcast(
 
         ec_master_clear_slaves(master);
         fsm->slave_states = 0x00;
+        fsm->slaves_responding = 0; /* reset to trigger rescan on next link
+                                       up. */
     }
     fsm->link_state = master->main_device.link_state;
 

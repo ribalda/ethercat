@@ -539,6 +539,10 @@ int ec_master_enter_idle_phase(
     master->fsm_queue_locking_data = NULL;
 
     master->phase = EC_IDLE;
+
+    // reset number of responding slaves to trigger scanning
+    master->fsm.slaves_responding = 0;
+
     ret = ec_master_thread_start(master, ec_master_idle_thread,
             "EtherCAT-IDLE");
     if (ret)
