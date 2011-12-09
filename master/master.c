@@ -151,16 +151,18 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     master->slave_count = 0;
 
     INIT_LIST_HEAD(&master->configs);
+    INIT_LIST_HEAD(&master->domains);
 
     master->app_time = 0ULL;
+    master->app_start_time = 0ULL;
+    master->has_app_time = 0;
 #ifdef EC_HAVE_CYCLES
     master->dc_cycles_app_start_time = 0;
 #endif
     master->dc_jiffies_app_start_time = 0;
-    master->app_start_time = 0ULL;
-    master->has_app_time = 0;
 
     master->scan_busy = 0;
+    master->allow_scan = 1;
     ec_mutex_init(&master->scan_mutex);
     init_waitqueue_head(&master->scan_queue);
 
@@ -176,8 +178,6 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     
     // send interval in IDLE phase
     ec_master_set_send_interval(master, 1000000 / HZ);
-
-    INIT_LIST_HEAD(&master->domains);
 
     master->debug_level = debug_level;
     master->stats.timeouts = 0;
@@ -226,7 +226,7 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     }
 
     // create state machine object
-    ec_mbox_init(&master->fsm_mbox,&master->fsm_datagram);
+    ec_mbox_init(&master->fsm_mbox, &master->fsm_datagram);
     ec_fsm_master_init(&master->fsm, master, &master->fsm_datagram);
 
     // init reference sync datagram
