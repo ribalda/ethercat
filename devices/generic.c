@@ -207,9 +207,10 @@ int ec_gen_device_create_socket(
         return -ENOMEM;
     }
 
-    ret = sock_create_kern(PF_PACKET, SOCK_RAW, htons(ETH_P_ETHERCAT), &dev->socket);
+    ret = sock_create_kern(PF_PACKET, SOCK_RAW, htons(ETH_P_ETHERCAT),
+            &dev->socket);
     if (ret) {
-        printk(KERN_ERR PFX "Failed to create socket.\n");
+        printk(KERN_ERR PFX "Failed to create socket (ret = %i).\n", ret);
         return ret;
     }
 
@@ -222,7 +223,8 @@ int ec_gen_device_create_socket(
     sa.sll_ifindex = desc->ifindex;
     ret = kernel_bind(dev->socket, (struct sockaddr *) &sa, sizeof(sa));
     if (ret) {
-        printk(KERN_ERR PFX "Failed to bind() socket to interface.\n");
+        printk(KERN_ERR PFX "Failed to bind() socket to interface"
+                " (ret = %i).\n", ret);
         sock_release(dev->socket);
         dev->socket = NULL;
         return ret;
