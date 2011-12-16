@@ -49,8 +49,8 @@
 void ec_fsm_change_state_start(ec_fsm_change_t *);
 void ec_fsm_change_state_check(ec_fsm_change_t *);
 void ec_fsm_change_state_status(ec_fsm_change_t *);
+void ec_fsm_change_state_start_code(ec_fsm_change_t *);
 void ec_fsm_change_state_code(ec_fsm_change_t *);
-void ec_fsm_change_state_start_ack(ec_fsm_change_t *);
 void ec_fsm_change_state_ack(ec_fsm_change_t *);
 void ec_fsm_change_state_check_ack(ec_fsm_change_t *);
 void ec_fsm_change_state_end(ec_fsm_change_t *);
@@ -111,7 +111,7 @@ void ec_fsm_change_ack(ec_fsm_change_t *fsm, /**< finite state machine */
     fsm->mode = EC_FSM_CHANGE_MODE_ACK_ONLY;
     fsm->slave = slave;
     fsm->requested_state = EC_SLAVE_STATE_UNKNOWN;
-    fsm->state = ec_fsm_change_state_start_ack;
+    fsm->state = ec_fsm_change_state_start_code;
 }
 
 /*****************************************************************************/
@@ -295,11 +295,8 @@ void ec_fsm_change_state_status(ec_fsm_change_t *fsm
 
         EC_SLAVE_ERR(slave, "Failed to set %s state, slave refused state"
                 " change (%s).\n", req_state, cur_state);
-        // fetch AL status error code
-        ec_datagram_fprd(datagram, slave->station_address, 0x0134, 2);
-        ec_datagram_zero(datagram);
-        fsm->retries = EC_FSM_RETRIES;
-        fsm->state = ec_fsm_change_state_code;
+
+        ec_fsm_change_state_start_code(fsm);
         return;
     }
 
@@ -320,6 +317,24 @@ void ec_fsm_change_state_status(ec_fsm_change_t *fsm
     ec_datagram_fprd(datagram, slave->station_address, 0x0130, 2);
     ec_datagram_zero(datagram);
     fsm->retries = EC_FSM_RETRIES;
+}
+
+/*****************************************************************************/
+
+/** Enter reading AL status code.
+ */
+void ec_fsm_change_state_start_code(
+        ec_fsm_change_t *fsm /**< finite state machine */
+        )
+{
+    ec_slave_t *slave = fsm->slave;
+    ec_datagram_t *datagram = fsm->datagram;
+
+    // fetch AL status error code
+    ec_datagram_fprd(datagram, slave->station_address, 0x0134, 2);
+    ec_datagram_zero(datagram);
+    fsm->retries = EC_FSM_RETRIES;
+    fsm->state = ec_fsm_change_state_code;
 }
 
 /*****************************************************************************/
@@ -424,23 +439,8 @@ void ec_fsm_change_state_code(ec_fsm_change_t *fsm
     }
 
     // acknowledge "old" slave state
-    ec_fsm_change_state_start_ack(fsm); // execute immediately
-}
-
-/*****************************************************************************/
-
-/**
-   Change state: START ACK.
-*/
-
-void ec_fsm_change_state_start_ack(ec_fsm_change_t *fsm
-                                   /**< finite state machine */)
-{
-    ec_slave_t *slave = fsm->slave;
-    ec_datagram_t *datagram = fsm->datagram;
-
-    ec_datagram_fpwr(datagram, slave->station_address, 0x0120, 2);
-    EC_WRITE_U16(datagram->data, slave->current_state);
+    ec_datagram_fpwr(datagram, fsm->slave->station_address, 0x0120, 2);
+    EC_WRITE_U16(datagram->data, fsm->slave->current_state);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_change_state_ack;
 }
