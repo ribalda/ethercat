@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- *  $Id$
+ *  $Id: fsm_slave.c,v 83e9160319ec 2011/08/01 15:02:45 fp $
  *
  *  Copyright (C) 2006-2008  Florian Pose, Ingenieurgemeinschaft IgH
  *
@@ -138,7 +138,6 @@ void ec_fsm_slave_state_idle(
     // do nothing
 }
 
-
 /*****************************************************************************/
 
 /** Slave state: READY.
@@ -189,7 +188,8 @@ int ec_fsm_slave_action_process_sdo(
         }
 
         if (slave->current_state == EC_SLAVE_STATE_INIT) {
-            EC_SLAVE_WARN(slave, "Aborting SDO request %p, slave is in INIT.\n",request);
+            EC_SLAVE_WARN(slave, "Aborting SDO request %p,"
+                    " slave is in INIT.\n", request);
             request->req.state = EC_INT_REQUEST_FAILURE;
             kref_put(&request->refcount,ec_master_sdo_request_release);
             wake_up(&slave->sdo_queue);
@@ -201,7 +201,7 @@ int ec_fsm_slave_action_process_sdo(
         request->req.state = EC_INT_REQUEST_BUSY;
 
         // Found pending SDO request. Execute it!
-        EC_SLAVE_DBG(slave, 1, "Processing SDO request %p...\n",request);
+        EC_SLAVE_DBG(slave, 1, "Processing SDO request %p...\n", request);
 
         // Start SDO transfer
         fsm->sdo_request = request;
@@ -225,26 +225,25 @@ void ec_fsm_slave_state_sdo_request(
     ec_slave_t *slave = fsm->slave;
     ec_master_sdo_request_t *request = fsm->sdo_request;
 
-    if (ec_fsm_coe_exec(&fsm->fsm_coe))
-    {
+    if (ec_fsm_coe_exec(&fsm->fsm_coe)) {
         ec_slave_mbox_queue_datagrams(slave, fsm->mbox);
         return;
     }
     if (!ec_fsm_coe_success(&fsm->fsm_coe)) {
-        EC_SLAVE_ERR(slave, "Failed to process SDO request %p.\n",request);
+        EC_SLAVE_ERR(slave, "Failed to process SDO request %p.\n", request);
         request->req.state = EC_INT_REQUEST_FAILURE;
-        kref_put(&request->refcount,ec_master_sdo_request_release);
+        kref_put(&request->refcount, ec_master_sdo_request_release);
         wake_up(&slave->sdo_queue);
         fsm->sdo_request = NULL;
         fsm->state = ec_fsm_slave_state_idle;
         return;
     }
 
-    EC_SLAVE_DBG(slave, 1, "Finished SDO request %p.\n",request);
+    EC_SLAVE_DBG(slave, 1, "Finished SDO request %p.\n", request);
 
     // SDO request finished
     request->req.state = EC_INT_REQUEST_SUCCESS;
-    kref_put(&request->refcount,ec_master_sdo_request_release);
+    kref_put(&request->refcount, ec_master_sdo_request_release);
     wake_up(&slave->sdo_queue);
 
     fsm->sdo_request = NULL;
@@ -268,9 +267,9 @@ int ec_fsm_slave_action_process_foe(
     list_for_each_entry_safe(request, next, &slave->foe_requests, list) {
         if (slave->current_state & EC_SLAVE_STATE_ACK_ERR) {
             EC_SLAVE_WARN(slave, "Aborting FOE request %p,"
-                    " slave has error flag set.\n",request);
+                    " slave has error flag set.\n", request);
             request->req.state = EC_INT_REQUEST_FAILURE;
-            kref_put(&request->refcount,ec_master_foe_request_release);
+            kref_put(&request->refcount, ec_master_foe_request_release);
             wake_up(&slave->foe_queue);
             fsm->sdo_request = NULL;
             fsm->state = ec_fsm_slave_state_idle;
@@ -279,7 +278,7 @@ int ec_fsm_slave_action_process_foe(
         list_del_init(&request->list); // dequeue
         request->req.state = EC_INT_REQUEST_BUSY;
 
-        EC_SLAVE_DBG(slave, 1, "Processing FoE request %p.\n",request);
+        EC_SLAVE_DBG(slave, 1, "Processing FoE request %p.\n", request);
 
         fsm->foe_request = request;
         fsm->state = ec_fsm_slave_state_foe_request;
@@ -302,16 +301,15 @@ void ec_fsm_slave_state_foe_request(
     ec_slave_t *slave = fsm->slave;
     ec_master_foe_request_t *request = fsm->foe_request;
 
-    if (ec_fsm_foe_exec(&fsm->fsm_foe))
-    {
+    if (ec_fsm_foe_exec(&fsm->fsm_foe)) {
         ec_slave_mbox_queue_datagrams(slave, fsm->mbox);
         return;
     }
 
     if (!ec_fsm_foe_success(&fsm->fsm_foe)) {
-        EC_SLAVE_ERR(slave, "Failed to handle FoE request %p.\n",request);
+        EC_SLAVE_ERR(slave, "Failed to handle FoE request %p.\n", request);
         request->req.state = EC_INT_REQUEST_FAILURE;
-        kref_put(&request->refcount,ec_master_foe_request_release);
+        kref_put(&request->refcount, ec_master_foe_request_release);
         wake_up(&slave->foe_queue);
         fsm->foe_request = NULL;
         fsm->state = ec_fsm_slave_state_idle;
@@ -319,11 +317,11 @@ void ec_fsm_slave_state_foe_request(
     }
 
     // finished transferring FoE
-    EC_SLAVE_DBG(slave, 1, "FoE request %p successfully transferred %zu bytes.\n",
-            request,request->req.data_size);
+    EC_SLAVE_DBG(slave, 1, "FoE request %p successfully"
+            " transferred %zu bytes.\n", request, request->req.data_size);
 
     request->req.state = EC_INT_REQUEST_SUCCESS;
-    kref_put(&request->refcount,ec_master_foe_request_release);
+    kref_put(&request->refcount, ec_master_foe_request_release);
     wake_up(&slave->foe_queue);
 
     fsm->foe_request = NULL;
@@ -351,7 +349,7 @@ int ec_fsm_slave_action_process_soe(
             EC_SLAVE_WARN(slave, "Aborting SoE request,"
                     " slave has error flag set.\n");
             request->req.state = EC_INT_REQUEST_FAILURE;
-            kref_put(&request->refcount,ec_master_soe_request_release);
+            kref_put(&request->refcount, ec_master_soe_request_release);
             wake_up(&slave->soe_queue);
             fsm->state = ec_fsm_slave_state_idle;
             return 0;
@@ -360,7 +358,7 @@ int ec_fsm_slave_action_process_soe(
         if (slave->current_state == EC_SLAVE_STATE_INIT) {
             EC_SLAVE_WARN(slave, "Aborting SoE request, slave is in INIT.\n");
             request->req.state = EC_INT_REQUEST_FAILURE;
-            kref_put(&request->refcount,ec_master_soe_request_release);
+            kref_put(&request->refcount, ec_master_soe_request_release);
             wake_up(&slave->soe_queue);
             fsm->state = ec_fsm_slave_state_idle;
             return 0;
@@ -401,7 +399,7 @@ void ec_fsm_slave_state_soe_request(
     if (!ec_fsm_soe_success(&fsm->fsm_soe)) {
         EC_SLAVE_ERR(slave, "Failed to process SoE request.\n");
         request->req.state = EC_INT_REQUEST_FAILURE;
-        kref_put(&request->refcount,ec_master_soe_request_release);
+        kref_put(&request->refcount, ec_master_soe_request_release);
         wake_up(&slave->soe_queue);
         fsm->soe_request = NULL;
         fsm->state = ec_fsm_slave_state_idle;
@@ -412,7 +410,7 @@ void ec_fsm_slave_state_soe_request(
 
     // SoE request finished
     request->req.state = EC_INT_REQUEST_SUCCESS;
-    kref_put(&request->refcount,ec_master_soe_request_release);
+    kref_put(&request->refcount, ec_master_soe_request_release);
     wake_up(&slave->soe_queue);
 
     fsm->soe_request = NULL;
