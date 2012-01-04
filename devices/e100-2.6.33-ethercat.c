@@ -206,15 +206,13 @@
 #include <linux/ethtool.h>
 #include <linux/string.h>
 #include <linux/firmware.h>
+#include <asm/unaligned.h>
 
 // EtherCAT includes
 #include "../globals.h"
 #include "ecdev.h"
 
 #define DRV_NAME		"ec_e100"
-#include <asm/unaligned.h>
-
-
 #define DRV_EXT			"-NAPI"
 #define DRV_VERSION		"3.5.24-k2"DRV_EXT
 #define DRV_DESCRIPTION		"Intel(R) PRO/100 Network Driver"
@@ -2994,26 +2992,30 @@ static int __devinit e100_probe(struct pci_dev *pdev,
 
 	// offer device to EtherCAT master module
 	nic->ecdev = ecdev_offer(netdev, e100_ec_poll, THIS_MODULE);
-	if (nic->ecdev) {
-		if (ecdev_open(nic->ecdev)) {
-			ecdev_withdraw(nic->ecdev);
-			goto err_out_free;
-		}
-	} else {
+
+	if (!nic->ecdev) {
 		strcpy(netdev->name, "eth%d");
 		if((err = register_netdev(netdev))) {
 			DPRINTK(PROBE, ERR, "Cannot register net device, aborting.\n");
 			goto err_out_free;
 		}
-		nic->cbs_pool = pci_pool_create(netdev->name,
+	}
+
+	nic->cbs_pool = pci_pool_create(netdev->name,
 			   nic->pdev,
 			   nic->params.cbs.max * sizeof(struct cb),
 			   sizeof(u32),
 			   0);
-	}
 	DPRINTK(PROBE, INFO, "addr 0x%llx, irq %d, MAC addr %pM\n",
 		(unsigned long long)pci_resource_start(pdev, use_io ? 1 : 0),
 		pdev->irq, netdev->dev_addr);
+
+	if (nic->ecdev) {
+		if (ecdev_open(nic->ecdev)) {
+			ecdev_withdraw(nic->ecdev);
+			goto err_out_free;
+		}
+	}
 
 	return 0;
 
