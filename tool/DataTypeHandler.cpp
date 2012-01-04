@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  $Id: DataTypeHandler.cpp,v 9a136c0c30a2 2010/04/15 10:33:48 fp $
+ *  $Id$
  *
  *  Copyright (C) 2006-2009  Florian Pose, Ingenieurgemeinschaft IgH
  *
@@ -54,7 +54,7 @@ const DataTypeHandler::DataType *DataTypeHandler::findDataType(
         )
 {
     const DataType *d;
-    
+
     for (d = dataTypes; d->name; d++)
         if (str == d->name)
             return d;
@@ -86,7 +86,7 @@ string DataTypeHandler::typeInfo()
 const DataTypeHandler::DataType *DataTypeHandler::findDataType(uint16_t code)
 {
     const DataType *d;
-    
+
     for (d = dataTypes; d->name; d++)
         if (code == d->code)
             return d;
@@ -286,7 +286,7 @@ void DataTypeHandler::outputData(
 
     o << setfill('0');
 
-    switch (type->code) {
+    switch (typeCode) {
         case 0x0001: // bool
             {
                 int val = (int) *(int8_t *) data;
@@ -378,7 +378,7 @@ void DataTypeHandler::outputData(
             {
                 int8_t val = *(uint8_t *) data;
                 int8_t smval = val < 0 ? (val & 0x7f) * -1 : val;
-                
+
                 o << "0x" << hex << setw(2) << (int) val
                     << " " << dec << (int) smval << endl;
             }
@@ -387,7 +387,7 @@ void DataTypeHandler::outputData(
             {
                 int16_t val = le16_to_cpup(data);
                 int16_t smval = val < 0 ? (val & 0x7fff) * -1 : val;
-                
+
                 o << "0x" << hex << setw(4) << val
                     << " " << dec << smval << endl;
             }
@@ -396,7 +396,7 @@ void DataTypeHandler::outputData(
             {
                 int32_t val = le32_to_cpup(data);
                 int32_t smval = val < 0 ? (val & 0x7fffffffUL) * -1 : val;
-                
+
                 o << "0x" << hex << setw(8) << val
                     << " " << dec << smval << endl;
             }
@@ -406,7 +406,7 @@ void DataTypeHandler::outputData(
                 int64_t val = le64_to_cpup(data);
                 int64_t smval =
                     val < 0 ? (val & 0x7fffffffffffffffULL) * -1 : val;
-                
+
                 o << "0x" << hex << setw(16) << val
                     << " " << dec << smval << endl;
             }
