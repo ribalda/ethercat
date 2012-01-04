@@ -26,12 +26,9 @@ Changes in 1.5:
 * Separated datagram initialization from filling the payload with zeros.
   Introduced new method ec_datagram_zero() for that.
 * Added phy_read and phy_write commands to ethercat tool.
-* Added e100 driver for Intel PRO/100 NICs.
-    - Added e100 driver for 2.6.27.
-    - Added e100 driver for 2.6.28, thanks to Kim. H. Madsen.
-    - Added e100 driver for 2.6.29, thanks to Andre Puschmann.
-    - Added e100 driver for 2.6.31.
-    - Added e100 driver for 2.6.32.
+* Added e100 driver for Intel PRO/100 NICs for 2.6.27, 2.6.28 (thanks to
+  Kim. H. Madsen), 2.6.29 (thanks to Andre Puschmann), 2.6.31, 2.6.32, 2.6.33
+  and 2.6.37.
 * Added 8139too driver for kernels 2.6.25 (F. Pose), 2.6.26 (M. Luescher),
   2.6.27, 2.6.28, 2.6.29 (M. Goetze), 2.6.31 (F. Pose), 2.6.34 (Malcolm
   Lewis), 2.6.36 (F. Pose) and 2.6.37 (F. Pose).

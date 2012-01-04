@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 #
-#  $Id: Makefile.am,v 1baafcd263cc 2011/07/06 14:37:40 fp $
+#  $Id$
 #
 #  Copyright (C) 2006-2008  Florian Pose, Ingenieurgemeinschaft IgH
 #
@@ -93,6 +93,8 @@ noinst_HEADERS = \
 	e100-2.6.32-orig.c \
 	e100-2.6.33-ethercat.c \
 	e100-2.6.33-orig.c \
+	e100-2.6.37-ethercat.c \
+	e100-2.6.37-orig.c \
 	ecdev.h \
 	generic.c \
 	r8169-2.6.24-ethercat.c \
