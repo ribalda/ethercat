@@ -125,7 +125,7 @@ start)
             exit 1
         fi
 
-        LOADED_MODULES=${ECMODULE} ${LOADED_MODULES}
+        LOADED_MODULES="${ECMODULE} ${LOADED_MODULES}"
     done
 
     exit 0
