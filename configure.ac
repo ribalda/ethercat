@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 #
-#  $Id: configure.ac,v 1baafcd263cc 2011/07/06 14:37:40 fp $
+#  $Id$
 #
 #  Copyright (C) 2006-2009  Florian Pose, Ingenieurgemeinschaft IgH
 #
@@ -798,26 +798,28 @@ AC_CONFIG_FILES([
         examples/mini/Makefile
         examples/rtai/Kbuild
         examples/rtai/Makefile
+        examples/rtai_rtdm/Makefile
         examples/tty/Kbuild
         examples/tty/Makefile
         examples/user/Makefile
         examples/xenomai/Makefile
         examples/xenomai_posix/Makefile
-        examples/rtai_rtdm/Makefile
         include/Makefile
         lib/Makefile
         m4/Makefile
         master/Kbuild
         master/Makefile
+        rtdm/Kbuild
+        rtdm/Makefile
         script/Makefile
+        script/ethercat.service
+        script/ethercatctl
         script/init.d/Makefile
         script/init.d/ethercat
         script/sysconfig/Makefile
         tool/Makefile
         tty/Kbuild
         tty/Makefile
-        rtdm/Makefile
-        rtdm/Kbuild
 ])
 AC_OUTPUT
 

@@ -1,0 +1,12 @@
+#
+# EtherCAT Master Kernel Modules
+#
+
+[Unit]
+Description=EtherCAT Master Kernel Modules
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=@prefix@/sbin/ethercatctl start
+ExecStop=@prefix@/sbin/ethercatctl stop

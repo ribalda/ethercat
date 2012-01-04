@@ -77,6 +77,7 @@ Changes in 1.5:
 * A sync manager is always enabled, if it contains registered process data.
 * Added a configuration switch --enable-wildcards to use 0xffffffff as a
 * wildcard for vendor ID and product code.
+* Added support for systemd.
 
 Changes in 1.4.0:
 

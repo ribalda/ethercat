@@ -24,15 +24,29 @@
 #  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 #  ---
-#  
-#  The license mentioned above concerns the source code only. Using the EtherCAT
-#  technology and brand is only permitted in compliance with the industrial
-#  property and similar rights of Beckhoff Automation GmbH.
+#
+#  The license mentioned above concerns the source code only. Using the
+#  EtherCAT technology and brand is only permitted in compliance with the
+#  industrial property and similar rights of Beckhoff Automation GmbH.
 #
 #------------------------------------------------------------------------------
 
 SUBDIRS = init.d sysconfig
 
-EXTRA_DIST = ifup-eoe.sh
+sbin_SCRIPTS = ethercatctl
+
+systemddir = $(libdir)/systemd/system
+systemd_DATA = ethercat.service
+
+sysconf_DATA = ethercat.conf
+
+EXTRA_DIST = \
+	ethercatctl.in \
+	ethercat.service.in \
+	ifup-eoe.sh
+
+BUILT_SOURCES = \
+	ethercatctl \
+	ethercat.service
 
 #------------------------------------------------------------------------------

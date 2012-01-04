@@ -129,6 +129,8 @@ m4/lt~obsolete.m4
 modules.order
 script/Makefile
 script/Makefile.in
+script/ethercat.service
+script/ethercatctl
 script/init.d/Makefile
 script/init.d/Makefile.in
 script/init.d/ethercat
