@@ -34,8 +34,8 @@ Changes in 1.5:
   Lewis), 2.6.36 (F. Pose) and 2.6.37 (F. Pose).
 * Added e1000 driver for 2.6.26 (M. Luescher), 2.6.27, 2.6.28, 2.6.29, 2.6.31,
   2.6.32, 2.6.33 and 2.6.37.
-* Added r8169 driver for 2.6.24, 2.6.27, 2.6.28, 2.6.29, 2.6.31 and 2.6.32
-  (latter thanks to Robbie K).
+* Added r8169 driver for 2.6.24, 2.6.27, 2.6.28, 2.6.29, 2.6.31, 2.6.32
+  (latter thanks to Robbie K), 2.6.33 and 2.6.37.
 * Debug interfaces are created with the Ethernet addresses of the attached
   physical device.
 * Improved error case return codes of many functions.
