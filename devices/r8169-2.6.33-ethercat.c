@@ -3233,6 +3233,7 @@ rtl8169_init_one(struct pci_dev *pdev, const struct pci_device_id *ent)
 		RTL_W16(CPlusCmd, RTL_R16(CPlusCmd) | RxVlan);
 
 	device_set_wakeup_enable(&pdev->dev, tp->features & RTL_FEATURE_WOL);
+
 	if (tp->ecdev && ecdev_open(tp->ecdev)) {
 		ecdev_withdraw(tp->ecdev);
 		goto err_out_msi_5;
@@ -4783,7 +4784,6 @@ static void rtl8169_down(struct net_device *dev)
 		netif_stop_queue(dev);
 
 		napi_disable(&tp->napi);
- 
 	}
 
 core_down:
