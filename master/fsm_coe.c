@@ -507,15 +507,15 @@ void ec_fsm_coe_dict_response(ec_fsm_coe_t *fsm /**< finite state machine */)
         return;
     }
 
-    if (rec_size < 8 || rec_size % 2) {
-        EC_SLAVE_ERR(slave, "Invalid data size %zu!\n", rec_size);
+    first_segment = list_empty(&slave->sdo_dictionary) ? true : false;
+    index_list_offset = first_segment ? 8 : 6;
+
+    if (rec_size < index_list_offset || rec_size % 2) {
+        EC_SLAVE_ERR(slave, "Invalid data size %zu !\n", rec_size);
         ec_print_data(data, rec_size);
         fsm->state = ec_fsm_coe_error;
         return;
     }
-
-    first_segment = list_empty(&slave->sdo_dictionary) ? true : false;
-    index_list_offset = first_segment ? 8 : 6;
 
     sdo_count = (rec_size - index_list_offset) / 2;
 
