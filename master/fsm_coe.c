@@ -983,80 +983,83 @@ void ec_fsm_coe_dict_entry_response(ec_fsm_coe_t *fsm
 
     if (EC_READ_U16(data) >> 12 == 0x8 && // SDO information
         (EC_READ_U8 (data + 2) & 0x7F) == 0x07) { // error response
-        EC_SLAVE_ERR(slave, "SDO information error response while"
+        EC_SLAVE_WARN(slave, "SDO information error response while"
                " fetching SDO entry 0x%04X:%02X!\n",
                sdo->index, fsm->subindex);
         ec_canopen_abort_msg(slave, EC_READ_U32(data + 6));
-        fsm->state = ec_fsm_coe_error;
-        return;
-    }
 
-    if (rec_size < 9) {
-        EC_SLAVE_ERR(slave, "Received corrupted SDO entry"
-                " description response (size %zu).\n", rec_size);
-        fsm->state = ec_fsm_coe_error;
-        return;
-    }
+        /* There may be gaps in the subindices, so try to continue with next
+         * subindex. */
 
-    if (EC_READ_U16(data) >> 12 != 0x8 || // SDO information
-        (EC_READ_U8(data + 2) & 0x7F) != 0x06 || // Entry desc. response
-        EC_READ_U16(data + 6) != sdo->index || // SDO index
-        EC_READ_U8(data + 8) != fsm->subindex) { // SDO subindex
-        if (fsm->slave->master->debug_level) {
-            EC_SLAVE_DBG(slave, 1, "Invalid entry description response while"
-                    " fetching SDO entry 0x%04X:%02X!\n",
-                    sdo->index, fsm->subindex);
-            ec_print_data(data, rec_size);
-        }
-        // check for CoE response again
-        ec_slave_mbox_prepare_check(slave, mbox); // can not fail.
-        fsm->retries = EC_FSM_RETRIES;
-        fsm->state = ec_fsm_coe_dict_entry_check;
-        return;
-    }
+    } else {
 
-    if (rec_size < 16) {
-        EC_SLAVE_ERR(slave, "Invalid data size %zu!\n", rec_size);
-        ec_print_data(data, rec_size);
-        fsm->state = ec_fsm_coe_error;
-        return;
-    }
-
-    data_size = rec_size - 16;
-
-    if (!(entry = (ec_sdo_entry_t *)
-          kmalloc(sizeof(ec_sdo_entry_t), GFP_KERNEL))) {
-        EC_SLAVE_ERR(slave, "Failed to allocate entry!\n");
-        fsm->state = ec_fsm_coe_error;
-        return;
-    }
-
-    ec_sdo_entry_init(entry, sdo, fsm->subindex);
-    entry->data_type = EC_READ_U16(data + 10);
-    entry->bit_length = EC_READ_U16(data + 12);
-
-    // read access rights
-    word = EC_READ_U16(data + 14);
-    entry->read_access[EC_SDO_ENTRY_ACCESS_PREOP] = word & 0x0001;
-    entry->read_access[EC_SDO_ENTRY_ACCESS_SAFEOP] = (word >> 1)  & 0x0001;
-    entry->read_access[EC_SDO_ENTRY_ACCESS_OP] = (word >> 2)  & 0x0001;
-    entry->write_access[EC_SDO_ENTRY_ACCESS_PREOP] = (word >> 3) & 0x0001;
-    entry->write_access[EC_SDO_ENTRY_ACCESS_SAFEOP] = (word >> 4)  & 0x0001;
-    entry->write_access[EC_SDO_ENTRY_ACCESS_OP] = (word >> 5)  & 0x0001;
-
-    if (data_size) {
-        uint8_t *desc;
-        if (!(desc = kmalloc(data_size + 1, GFP_KERNEL))) {
-            EC_SLAVE_ERR(slave, "Failed to allocate SDO entry name!\n");
+        if (rec_size < 9) {
+            EC_SLAVE_ERR(slave, "Received corrupted SDO entry"
+                    " description response (size %zu).\n", rec_size);
             fsm->state = ec_fsm_coe_error;
             return;
         }
-        memcpy(desc, data + 16, data_size);
-        desc[data_size] = 0;
-        entry->description = desc;
-    }
 
-    list_add_tail(&entry->list, &sdo->entries);
+        if (EC_READ_U16(data) >> 12 != 0x8 || // SDO information
+                (EC_READ_U8(data + 2) & 0x7F) != 0x06 || // Entry desc. resp.
+                EC_READ_U16(data + 6) != sdo->index || // SDO index
+                EC_READ_U8(data + 8) != fsm->subindex) { // SDO subindex
+            if (fsm->slave->master->debug_level) {
+                EC_SLAVE_DBG(slave, 1, "Invalid entry description response"
+                        " while fetching SDO entry 0x%04X:%02X!\n",
+                        sdo->index, fsm->subindex);
+                ec_print_data(data, rec_size);
+            }
+            // check for CoE response again
+            ec_slave_mbox_prepare_check(slave, mbox); // can not fail.
+            fsm->retries = EC_FSM_RETRIES;
+            fsm->state = ec_fsm_coe_dict_entry_check;
+            return;
+        }
+
+        if (rec_size < 16) {
+            EC_SLAVE_ERR(slave, "Invalid data size %zu!\n", rec_size);
+            ec_print_data(data, rec_size);
+            fsm->state = ec_fsm_coe_error;
+            return;
+        }
+
+        data_size = rec_size - 16;
+
+        if (!(entry = (ec_sdo_entry_t *)
+                    kmalloc(sizeof(ec_sdo_entry_t), GFP_KERNEL))) {
+            EC_SLAVE_ERR(slave, "Failed to allocate entry!\n");
+            fsm->state = ec_fsm_coe_error;
+            return;
+        }
+
+        ec_sdo_entry_init(entry, sdo, fsm->subindex);
+        entry->data_type = EC_READ_U16(data + 10);
+        entry->bit_length = EC_READ_U16(data + 12);
+
+        // read access rights
+        word = EC_READ_U16(data + 14);
+        entry->read_access[EC_SDO_ENTRY_ACCESS_PREOP] = word & 0x0001;
+        entry->read_access[EC_SDO_ENTRY_ACCESS_SAFEOP] = (word >> 1)  & 0x0001;
+        entry->read_access[EC_SDO_ENTRY_ACCESS_OP] = (word >> 2)  & 0x0001;
+        entry->write_access[EC_SDO_ENTRY_ACCESS_PREOP] = (word >> 3) & 0x0001;
+        entry->write_access[EC_SDO_ENTRY_ACCESS_SAFEOP] = (word >> 4)  & 0x0001;
+        entry->write_access[EC_SDO_ENTRY_ACCESS_OP] = (word >> 5)  & 0x0001;
+
+        if (data_size) {
+            uint8_t *desc;
+            if (!(desc = kmalloc(data_size + 1, GFP_KERNEL))) {
+                EC_SLAVE_ERR(slave, "Failed to allocate SDO entry name!\n");
+                fsm->state = ec_fsm_coe_error;
+                return;
+            }
+            memcpy(desc, data + 16, data_size);
+            desc[data_size] = 0;
+            entry->description = desc;
+        }
+
+        list_add_tail(&entry->list, &sdo->entries);
+    }
 
     if (fsm->subindex < sdo->max_subindex) {
         fsm->subindex++;
