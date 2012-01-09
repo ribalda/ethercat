@@ -39,8 +39,8 @@ MASTER0_DEVICE=""
 # Possible values: 8139too, e100, e1000, e1000e, r8169, generic. Separate
 # multiple drivers with spaces.
 #
-# Note: The e100, e1000, e1000e, r8169 and generic drivers are not built by
-# default.  Enable them with the --enable-<driver> configure switches.
+# Note: The e100, e1000, e1000e and r8169 drivers are not built by default.
+# Enable them with the --enable-<driver> configure switches.
 # 
 DEVICE_MODULES=""
 

@@ -132,7 +132,7 @@ AC_ARG_ENABLE([generic],
                 ;;
         esac
     ],
-    [enablegeneric=0]
+    [enablegeneric=1]
 )
 
 AM_CONDITIONAL(ENABLE_GENERIC, test "x$enablegeneric" = "x1")
