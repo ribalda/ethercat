@@ -400,7 +400,7 @@ static void e1000_configure(struct e1000_adapter *adapter)
 			/* fill rx ring completely! */
 			adapter->alloc_rx_buf(adapter, ring, ring->count);
 		} else {
-            /* this one leaves the last ring element unallocated! */
+			/* this one leaves the last ring element unallocated! */
 			adapter->alloc_rx_buf(adapter, ring,
 					E1000_DESC_UNUSED(ring));
 		}
@@ -1079,7 +1079,7 @@ static int __devinit e1000_probe(struct pci_dev *pdev,
 	/* reset the hardware with the new settings */
 	e1000_reset(adapter);
 
- 	// offer device to EtherCAT master module
+	// offer device to EtherCAT master module
 	adapter->ecdev = ecdev_offer(netdev, ec_poll, THIS_MODULE);
 	if (adapter->ecdev) {
 		if (ecdev_open(adapter->ecdev)) {
@@ -2099,7 +2099,7 @@ static void e1000_leave_82542_rst(struct e1000_adapter *adapter)
 			/* fill rx ring completely! */
 			adapter->alloc_rx_buf(adapter, ring, ring->count);
 		} else {
-            /* this one leaves the last ring element unallocated! */
+			/* this one leaves the last ring element unallocated! */
 			adapter->alloc_rx_buf(adapter, ring, E1000_DESC_UNUSED(ring));
 		}
 
