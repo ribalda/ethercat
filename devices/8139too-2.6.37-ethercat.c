@@ -795,8 +795,10 @@ static __devinit struct net_device * rtl8139_init_board (struct pci_dev *pdev)
 	u8 tmp8;
 	int rc, disable_dev_on_err = 0;
 	unsigned int i;
-	unsigned long pio_start, pio_end, pio_flags, pio_len;
-	unsigned long mmio_start, mmio_end, mmio_flags, mmio_len;
+	unsigned long pio_start, pio_end __attribute__ ((unused)), pio_flags,
+                  pio_len;
+	unsigned long mmio_start __attribute__ ((unused)),
+                  mmio_end __attribute__ ((unused)), mmio_flags, mmio_len;
 	u32 version;
 
 	assert (pdev != NULL);
