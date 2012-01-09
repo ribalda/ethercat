@@ -3812,7 +3812,7 @@ static irqreturn_t e1000_intr_msi(int irq, void *data)
 	} else {
 		/* in NAPI mode read ICR disables interrupts using IAM */
 
-		if ( !adapter->ecdev && (icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC)) ) {
+		if (icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC)) {
 			hw->get_link_status = 1;
 			/* 80003ES2LAN workaround-- For packet buffer work-around on
 			 * link down event; disable receives here in the ISR and reset
@@ -3866,7 +3866,7 @@ static irqreturn_t e1000_intr(int irq, void *data)
 	/* Interrupt Auto-Mask...upon reading ICR, interrupts are masked.  No
 	 * need for the IMC write */
 
-	if (unlikely(icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC))) {
+	if (!adapter->ecdev && unlikely(icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC))) {
 		hw->get_link_status = 1;
 		/* 80003ES2LAN workaround--
 		 * For packet buffer work-around on link down event;
@@ -3884,22 +3884,33 @@ static irqreturn_t e1000_intr(int irq, void *data)
 			mod_timer(&adapter->watchdog_timer, jiffies + 1);
 	}
 
-	if (unlikely(hw->mac_type < e1000_82571)) {
-		/* disable interrupts, without the synchronize_irq bit */
-		ew32(IMC, ~0);
-		E1000_WRITE_FLUSH();
-	}
-	if (likely(napi_schedule_prep(&adapter->napi))) {
-		adapter->total_tx_bytes = 0;
-		adapter->total_tx_packets = 0;
-		adapter->total_rx_bytes = 0;
-		adapter->total_rx_packets = 0;
-		__napi_schedule(&adapter->napi);
+	if (adapter->ecdev) {
+		int i, ec_work_done = 0;
+		for (i = 0; i < E1000_MAX_INTR; i++) {
+			if (unlikely(!adapter->clean_rx(adapter, adapter->rx_ring,
+							&ec_work_done, 100) &&
+						!e1000_clean_tx_irq(adapter, adapter->tx_ring))) {
+				break;
+			}
+		}
 	} else {
-		/* this really should not happen! if it does it is basically a
-		 * bug, but not a hard error, so enable ints and continue */
-		if (!test_bit(__E1000_DOWN, &adapter->flags))
-			e1000_irq_enable(adapter);
+		if (unlikely(hw->mac_type < e1000_82571)) {
+			/* disable interrupts, without the synchronize_irq bit */
+			ew32(IMC, ~0);
+			E1000_WRITE_FLUSH();
+		}
+		if (likely(napi_schedule_prep(&adapter->napi))) {
+			adapter->total_tx_bytes = 0;
+			adapter->total_tx_packets = 0;
+			adapter->total_rx_bytes = 0;
+			adapter->total_rx_packets = 0;
+			__napi_schedule(&adapter->napi);
+		} else {
+			/* this really should not happen! if it does it is basically a
+			 * bug, but not a hard error, so enable ints and continue */
+			if (!test_bit(__E1000_DOWN, &adapter->flags))
+				e1000_irq_enable(adapter);
+		}
 	}
 
 	return IRQ_HANDLED;
