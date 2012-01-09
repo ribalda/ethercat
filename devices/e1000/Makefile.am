@@ -193,7 +193,7 @@ EXTRA_DIST = \
 	e1000_param-2.6.29-ethercat.c \
 	e1000_param-2.6.29-orig.c \
 	e1000_param-2.6.32-ethercat.c \
-	e1000_param-2.6.32-orig.c
+	e1000_param-2.6.32-orig.c \
 	e1000_param-2.6.33-ethercat.c \
 	e1000_param-2.6.33-orig.c \
 	e1000_param-2.6.37-ethercat.c \
