@@ -2790,7 +2790,7 @@ static void e1000_setup_rctl(struct e1000_adapter *adapter)
 
 	/* Workaround Si errata on 82579 - configure jumbo frame flow */
 	if (hw->mac.type == e1000_pch2lan) {
-		s32 ret_val;
+		s32 ret_val __attribute__ ((unused));
 
 		if (adapter->netdev->mtu > ETH_DATA_LEN)
 			ret_val = e1000_lv_jumbo_workaround_ich8lan(hw, true);

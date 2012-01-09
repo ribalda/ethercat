@@ -2978,7 +2978,7 @@ static s32 e1000_reset_hw_ich8lan(struct e1000_hw *hw)
 {
 	struct e1000_dev_spec_ich8lan *dev_spec = &hw->dev_spec.ich8lan;
 	u16 reg;
-	u32 ctrl, icr, kab;
+	u32 ctrl, icr __attribute__ ((unused)), kab;
 	s32 ret_val;
 
 	/*

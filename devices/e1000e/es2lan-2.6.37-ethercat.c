@@ -784,7 +784,7 @@ static s32 e1000_get_link_up_info_80003es2lan(struct e1000_hw *hw, u16 *speed,
  **/
 static s32 e1000_reset_hw_80003es2lan(struct e1000_hw *hw)
 {
-	u32 ctrl, icr;
+	u32 ctrl, icr __attribute__ ((unused));
 	s32 ret_val;
 
 	/*

@@ -82,7 +82,7 @@ static void e1000_power_down_phy_copper_82571(struct e1000_hw *hw);
 static s32 e1000_init_phy_params_82571(struct e1000_hw *hw)
 {
 	struct e1000_phy_info *phy = &hw->phy;
-	s32 ret_val;
+	s32 ret_val __attribute__ ((unused));
 
 	if (hw->phy.media_type != e1000_media_type_copper) {
 		phy->type = e1000_phy_none;
@@ -853,7 +853,7 @@ static s32 e1000_set_d0_lplu_state_82571(struct e1000_hw *hw, bool active)
  **/
 static s32 e1000_reset_hw_82571(struct e1000_hw *hw)
 {
-	u32 ctrl, extcnf_ctrl, ctrl_ext, icr;
+	u32 ctrl, extcnf_ctrl, ctrl_ext, icr __attribute__ ((unused));
 	s32 ret_val;
 	u16 i = 0;
 
