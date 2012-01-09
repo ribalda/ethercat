@@ -2435,7 +2435,7 @@ static void e1000_watchdog(unsigned long data)
 		if ((adapter->ecdev && !ecdev_get_link(adapter->ecdev))
 				|| (!adapter->ecdev && !netif_carrier_ok(netdev))) {
 			u32 ctrl;
-			bool txb2b = true;
+			bool txb2b __attribute__ ((unused)) = true;
 			/* update snapshot of PHY registers on LSC */
 			e1000_get_speed_and_duplex(hw,
 			                           &adapter->link_speed,

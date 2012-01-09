@@ -149,7 +149,7 @@ static s32 e1000_set_phy_type(struct e1000_hw *hw)
  */
 static void e1000_phy_init_script(struct e1000_hw *hw)
 {
-	u32 ret_val;
+	u32 ret_val __attribute__ ((unused));
 	u16 phy_saved_data;
 
 	e_dbg("e1000_phy_init_script");
@@ -396,7 +396,7 @@ s32 e1000_reset_hw(struct e1000_hw *hw)
 {
 	u32 ctrl;
 	u32 ctrl_ext;
-	u32 icr;
+	u32 icr __attribute__ ((unused));
 	u32 manc;
 	u32 led_ctrl;
 	s32 ret_val;
@@ -2302,12 +2302,12 @@ static s32 e1000_check_for_serdes_link_generic(struct e1000_hw *hw)
  */
 s32 e1000_check_for_link(struct e1000_hw *hw)
 {
-	u32 rxcw = 0;
-	u32 ctrl;
+	u32 rxcw __attribute__ ((unused)) = 0;
+	u32 ctrl __attribute__ ((unused));
 	u32 status;
 	u32 rctl;
 	u32 icr;
-	u32 signal = 0;
+	u32 signal __attribute__ ((unused)) = 0;
 	s32 ret_val;
 	u16 phy_data;
 
@@ -4539,7 +4539,7 @@ s32 e1000_led_off(struct e1000_hw *hw)
  */
 static void e1000_clear_hw_cntrs(struct e1000_hw *hw)
 {
-	volatile u32 temp;
+	volatile u32 temp __attribute__ ((unused));
 
 	temp = er32(CRCERRS);
 	temp = er32(SYMERRS);
