@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- *  $Id: master.c,v afb40fd6018e 2011/09/16 12:10:23 fp $
+ *  $Id$
  *
  *  Copyright (C) 2006-2008  Florian Pose, Ingenieurgemeinschaft IgH
  *
@@ -1316,7 +1316,9 @@ static int ec_master_idle_thread(void *priv_data)
 {
     ec_master_t *master = (ec_master_t *) priv_data;
     ec_slave_t *slave = NULL;
+#ifdef EC_USE_HRTIMER
     size_t sent_bytes;
+#endif
 
     // send interval in IDLE phase
     ec_master_set_send_interval(master, 1000000 / HZ); 
@@ -1355,8 +1357,10 @@ static int ec_master_idle_thread(void *priv_data)
         // queue and send
         ec_mutex_lock(&master->io_mutex);
         ecrt_master_send(master);
+#ifdef EC_USE_HRTIMER
         sent_bytes = master->main_device.tx_skb[
             master->main_device.tx_ring_index]->len;
+#endif
         ec_mutex_unlock(&master->io_mutex);
 
         if (ec_fsm_master_idle(&master->fsm)) {

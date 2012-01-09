@@ -446,7 +446,10 @@ void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
 {
     size_t rec_size, data_size;
     uint8_t *data, frame_type, last_fragment, time_appended, mbox_prot;
-    uint8_t frame_number, fragment_offset, fragment_number;
+    uint8_t fragment_offset, fragment_number;
+#if EOE_DEBUG_LEVEL >= 2
+    uint8_t frame_number;
+#endif
     off_t offset;
 #if EOE_DEBUG_LEVEL >= 3
     unsigned int i;
@@ -502,7 +505,9 @@ void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
     time_appended = (EC_READ_U16(data) >> 9) & 0x0001;
     fragment_number = EC_READ_U16(data + 2) & 0x003F;
     fragment_offset = (EC_READ_U16(data + 2) >> 6) & 0x003F;
+#if EOE_DEBUG_LEVEL >= 2
     frame_number = (EC_READ_U16(data + 2) >> 12) & 0x000F;
+#endif
 
 #if EOE_DEBUG_LEVEL >= 2
     EC_SLAVE_DBG(eoe->slave, 0, "EoE %s RX fragment %u%s, offset %u,"

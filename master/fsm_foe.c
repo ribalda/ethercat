@@ -627,14 +627,11 @@ void ec_fsm_foe_read_start(
         ec_fsm_foe_t *fsm /**< FoE statemachine. */
         )
 {
-    size_t current_size;
     ec_slave_t *slave = fsm->slave;
 
     fsm->rx_buffer_offset = 0;
     fsm->rx_expected_packet_no = 1;
     fsm->rx_last_packet = 0;
-
-    current_size = fsm->rx_filename_len;
 
 #ifdef DEBUG_FOE
     printk("ec_fsm_foe_read_start()\n");
