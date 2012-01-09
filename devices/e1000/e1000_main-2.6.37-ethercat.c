@@ -3548,7 +3548,7 @@ static irqreturn_t e1000_intr(int irq, void *data)
     if (unlikely(icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC))) {
 		hw->get_link_status = 1;
 		/* guard against interrupt when we're going down */
-		if (!test_bit(__E1000_DOWN, &adapter->flags))
+		if (!adapter->ecdev && !test_bit(__E1000_DOWN, &adapter->flags))
 			mod_timer(&adapter->watchdog_timer, jiffies + 1);
 	}
 
