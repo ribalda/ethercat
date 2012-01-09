@@ -1789,43 +1789,41 @@ static netdev_tx_t rtl8139_start_xmit (struct sk_buff *skb,
 		if (len < ETH_ZLEN)
 			memset(tp->tx_buf[entry], 0, ETH_ZLEN);
 		skb_copy_and_csum_dev(skb, tp->tx_buf[entry]);
-		if (!tp->ecdev) dev_kfree_skb(skb);
+		if (!tp->ecdev) {
+			dev_kfree_skb(skb);
+		}
 	} else {
-		if (!tp->ecdev) dev_kfree_skb(skb);
+		if (!tp->ecdev) {
+			dev_kfree_skb(skb);
+		}
 		dev->stats.tx_dropped++;
 		return NETDEV_TX_OK;
 	}
 
-	if (tp->ecdev) {
-		wmb();
-		RTL_W32_F (TxStatus0 + (entry * sizeof (u32)),
-			tp->tx_flag | max(len, (unsigned int)ETH_ZLEN));
- 
-		dev->trans_start = jiffies;
- 
-		tp->cur_tx++;
-	} else {
+	if (!tp->ecdev) {
 		spin_lock_irqsave(&tp->lock, flags);
-		/*
-		 * Writing to TxStatus triggers a DMA transfer of the data
-		 * copied to tp->tx_buf[entry] above. Use a memory barrier
-		 * to make sure that the device sees the updated data.
-		 */
-		wmb();
-		RTL_W32_F (TxStatus0 + (entry * sizeof (u32)),
-			   tp->tx_flag | max(len, (unsigned int)ETH_ZLEN));
+	}
+	/*
+	 * Writing to TxStatus triggers a DMA transfer of the data
+	 * copied to tp->tx_buf[entry] above. Use a memory barrier
+	 * to make sure that the device sees the updated data.
+	 */
+	wmb();
+	RTL_W32_F (TxStatus0 + (entry * sizeof (u32)),
+		   tp->tx_flag | max(len, (unsigned int)ETH_ZLEN));
 
-		dev->trans_start = jiffies;
+	dev->trans_start = jiffies;
 
-		tp->cur_tx++;
+	tp->cur_tx++;
 
+	if (!tp->ecdev) {
 		if ((tp->cur_tx - NUM_TX_DESC) == tp->dirty_tx)
 			netif_stop_queue (dev);
 		spin_unlock_irqrestore(&tp->lock, flags);
 
 		if (netif_msg_tx_queued(tp))
 			pr_debug("%s: Queued Tx packet size %u to slot %d.\n",
-				dev->name, len, entry);
+					dev->name, len, entry);
 	}
 
 	return NETDEV_TX_OK;
