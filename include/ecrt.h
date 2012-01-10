@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- *  $Id: ecrt.h,v ebda087981e1 2011/09/15 13:58:58 fp $
+ *  $Id$
  *
  *  Copyright (C) 2006-2008  Florian Pose, Ingenieurgemeinschaft IgH
  *
@@ -80,7 +80,6 @@
  * - Added ecrt_master_reset() to initiate retrying to configure slaves.
  * - Added support for overlapping PDOs which allows inputs to use the same
  *   space as outputs on the frame. This reduces the frame length.
- *
  *
  * @{
  */
@@ -175,9 +174,11 @@ typedef struct ec_voe_handler ec_voe_handler_t; /**< \see ec_voe_handler. */
 
 /** Master state.
  *
- * This is used for the output parameter of ecrt_master_state().
+ * This is used for the output parameter of ecrt_master_state() and
+ * ecrt_master_configured_slaves_state().
  *
  * \see ecrt_master_state().
+ * \see ecrt_master_configured_slaves_state().
  */
 typedef struct {
     unsigned int slaves_responding; /**< Number of slaves in the bus. */
@@ -491,7 +492,7 @@ void ecrt_release_master(
 #ifdef __KERNEL__
 
 /** Attach to a running master
- *   
+ *
  * This function returns the master handle for the RTDM-Interface
  *
  * \return Pointer to the opened master, otherwise \a NULL.
@@ -541,15 +542,16 @@ void ecrt_master_callbacks(
 
 /** Returns domain structure pointer
  *
+ * \fixme The application knows the domain pointers!
+ *
  * This functions return the domain structure pointer for usage inside the
  * RTDM-Interface.
  *
  * \return Pointer to the domain on success, else NULL.
  */
 ec_domain_t *ecrt_master_find_domain(
-        ec_master_t *master, 
+        ec_master_t *master,
         unsigned int index);
-
 
 #endif /* __KERNEL__ */
 
@@ -879,9 +881,10 @@ void ecrt_master_state(
 
 /** Reads the current master state and the al_state of all configured slaves.
  *
- * use this function instead of ecrt_master_state if there are unused
- * slaves on the bus
- * Stores the master state information in the given \a state structure.
+ * Use this function instead of ecrt_master_state() if there are unused slaves
+ * on the bus. Stores the master state information in the given \a state
+ * structure.
+ *
  * \see ecrt_master_state()
  */
 void ecrt_master_configured_slaves_state(
