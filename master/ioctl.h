@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- *  $Id: ioctl.h,v 8b358effa78b 2011/03/14 10:20:05 ch1010277 $
+ *  $Id$
  *
  *  Copyright (C) 2006-2008  Florian Pose, Ingenieurgemeinschaft IgH
  *
@@ -137,8 +137,8 @@
 #define EC_IOCTL_VOE_EXEC             EC_IOWR(0x47, ec_ioctl_voe_t)
 #define EC_IOCTL_VOE_DATA             EC_IOWR(0x48, ec_ioctl_voe_t)
 #define EC_IOCTL_SET_SEND_INTERVAL     EC_IOW(0x49, size_t)
-#define EC_IOCTL_MASTER_SC_STATE        EC_IOR(0x50, ec_master_state_t)
-#define EC_IOCTL_SC_OVERLAPPING_IO      EC_IOW(0x51, ec_ioctl_config_t)
+#define EC_IOCTL_MASTER_SC_STATE       EC_IOR(0x50, ec_master_state_t)
+#define EC_IOCTL_SC_OVERLAPPING_IO     EC_IOW(0x51, ec_ioctl_config_t)
 
 /*****************************************************************************/
 
