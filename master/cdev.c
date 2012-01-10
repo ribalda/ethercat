@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- *  $Id: cdev.c,v ebda087981e1 2011/09/15 13:58:58 fp $
+ *  $Id$
  *
  *  Copyright (C) 2006-2008  Florian Pose, Ingenieurgemeinschaft IgH
  *
@@ -1406,43 +1406,55 @@ int ec_cdev_ioctl_config_sdo(
         unsigned long arg /**< ioctl() argument. */
         )
 {
-    ec_ioctl_config_sdo_t data;
+    ec_ioctl_config_sdo_t *ioctl;
     const ec_slave_config_t *sc;
     const ec_sdo_request_t *req;
 
-    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+    if (!(ioctl = kmalloc(sizeof(*ioctl), GFP_KERNEL))) {
+        return -ENOMEM;
+    }
+
+    if (copy_from_user(ioctl, (void __user *) arg, sizeof(*ioctl))) {
+        kfree(ioctl);
         return -EFAULT;
     }
 
-    if (ec_mutex_lock_interruptible(&master->master_mutex))
+    if (ec_mutex_lock_interruptible(&master->master_mutex)) {
+        kfree(ioctl);
         return -EINTR;
+    }
 
     if (!(sc = ec_master_get_config_const(
-                    master, data.config_index))) {
+                    master, ioctl->config_index))) {
         ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "Slave config %u does not exist!\n",
-                data.config_index);
+                ioctl->config_index);
+        kfree(ioctl);
         return -EINVAL;
     }
 
     if (!(req = ec_slave_config_get_sdo_by_pos_const(
-                    sc, data.sdo_pos))) {
+                    sc, ioctl->sdo_pos))) {
         ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "Invalid SDO position!\n");
+        kfree(ioctl);
         return -EINVAL;
     }
 
-    data.index = req->index;
-    data.subindex = req->subindex;
-    data.size = req->data_size;
-    memcpy(&data.data, req->data,
-            min((u32) data.size, (u32) EC_MAX_SDO_DATA_SIZE));
+    ioctl->index = req->index;
+    ioctl->subindex = req->subindex;
+    ioctl->size = req->data_size;
+    memcpy(ioctl->data, req->data,
+            min((u32) ioctl->size, (u32) EC_MAX_SDO_DATA_SIZE));
 
     ec_mutex_unlock(&master->master_mutex);
 
-    if (copy_to_user((void __user *) arg, &data, sizeof(data)))
+    if (copy_to_user((void __user *) arg, ioctl, sizeof(*ioctl))) {
+        kfree(ioctl);
         return -EFAULT;
+    }
 
+    kfree(ioctl);
     return 0;
 }
 
@@ -1455,44 +1467,56 @@ int ec_cdev_ioctl_config_idn(
         unsigned long arg /**< ioctl() argument. */
         )
 {
-    ec_ioctl_config_idn_t data;
+    ec_ioctl_config_idn_t *ioctl;
     const ec_slave_config_t *sc;
     const ec_soe_request_t *req;
 
-    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+    if (!(ioctl = kmalloc(sizeof(*ioctl), GFP_KERNEL))) {
+        return -ENOMEM;
+    }
+
+    if (copy_from_user(ioctl, (void __user *) arg, sizeof(*ioctl))) {
+        kfree(ioctl);
         return -EFAULT;
     }
 
-    if (ec_mutex_lock_interruptible(&master->master_mutex))
+    if (ec_mutex_lock_interruptible(&master->master_mutex)) {
+        kfree(ioctl);
         return -EINTR;
+    }
 
     if (!(sc = ec_master_get_config_const(
-                    master, data.config_index))) {
+                    master, ioctl->config_index))) {
         ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "Slave config %u does not exist!\n",
-                data.config_index);
+                ioctl->config_index);
+        kfree(ioctl);
         return -EINVAL;
     }
 
     if (!(req = ec_slave_config_get_idn_by_pos_const(
-                    sc, data.idn_pos))) {
+                    sc, ioctl->idn_pos))) {
         ec_mutex_unlock(&master->master_mutex);
         EC_MASTER_ERR(master, "Invalid IDN position!\n");
+        kfree(ioctl);
         return -EINVAL;
     }
 
-    data.drive_no = req->drive_no;
-    data.idn = req->idn;
-    data.state = req->state;
-    data.size = req->data_size;
-    memcpy(&data.data, req->data,
-            min((u32) data.size, (u32) EC_MAX_IDN_DATA_SIZE));
+    ioctl->drive_no = req->drive_no;
+    ioctl->idn = req->idn;
+    ioctl->state = req->state;
+    ioctl->size = req->data_size;
+    memcpy(ioctl->data, req->data,
+            min((u32) ioctl->size, (u32) EC_MAX_IDN_DATA_SIZE));
 
     ec_mutex_unlock(&master->master_mutex);
 
-    if (copy_to_user((void __user *) arg, &data, sizeof(data)))
+    if (copy_to_user((void __user *) arg, ioctl, sizeof(*ioctl))) {
+        kfree(ioctl);
         return -EFAULT;
+    }
 
+    kfree(ioctl);
     return 0;
 }
 
