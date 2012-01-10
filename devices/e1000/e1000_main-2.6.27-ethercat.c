@@ -4252,22 +4252,13 @@ static bool e1000_clean_rx_irq(struct e1000_adapter *adapter,
 
 		length = le16_to_cpu(rx_desc->length);
 		/* !EOP means multiple descriptors were used to store a single
-		 * packet, if thats the case we need to toss it.  In fact, we
-		 * to toss every packet with the EOP bit clear and the next
-		 * frame that _does_ have the EOP bit set, as it is by
-		 * definition only a frame fragment
-		 */
-		if (unlikely(!(status & E1000_RXD_STAT_EOP)))
-			set_bit(__E1000_DISCARDING, &adapter->flags);
-
-		if (test_bit(__E1000_DISCARDING, &adapter->flags)) {
+		 * packet, also make sure the frame isn't just CRC only */
+		if (unlikely(!(status & E1000_RXD_STAT_EOP) || (length <= 4))) {
 			/* All receives must fit into a single buffer */
 			E1000_DBG("%s: Receive packet consumed multiple"
 				  " buffers\n", netdev->name);
 			/* recycle */
 			buffer_info->skb = skb;
-			if (status & E1000_RXD_STAT_EOP)
-				clear_bit(__E1000_DISCARDING, &adapter->flags);
 			goto next_desc;
 		}
 
@@ -4485,8 +4476,12 @@ static bool e1000_clean_rx_irq_ps(struct e1000_adapter *adapter,
 			pci_unmap_page(pdev, ps_page_dma->ps_page_dma[j],
 					PAGE_SIZE, PCI_DMA_FROMDEVICE);
 			ps_page_dma->ps_page_dma[j] = 0;
-			skb_add_rx_frag(skb, j, ps_page->ps_page[j], 0, length);
+			skb_fill_page_desc(skb, j, ps_page->ps_page[j], 0,
+			                   length);
 			ps_page->ps_page[j] = NULL;
+			skb->len += length;
+			skb->data_len += length;
+			skb->truesize += length;
 		}
 
 		/* strip the ethernet crc, problem is we're using pages now so
@@ -4691,7 +4686,7 @@ static void e1000_alloc_rx_buffers_ps(struct e1000_adapter *adapter,
 			if (j < adapter->rx_ps_pages) {
 				if (likely(!ps_page->ps_page[j])) {
 					ps_page->ps_page[j] =
-						netdev_alloc_page(netdev);
+						alloc_page(GFP_ATOMIC);
 					if (unlikely(!ps_page->ps_page[j])) {
 						adapter->alloc_rx_buff_failed++;
 						goto no_buffers;
@@ -5313,9 +5308,6 @@ static pci_ers_result_t e1000_io_error_detected(struct pci_dev *pdev,
 	struct e1000_adapter *adapter = netdev->priv;
 
 	netif_device_detach(netdev);
-
-	if (state == pci_channel_io_perm_failure)
-		return PCI_ERS_RESULT_DISCONNECT;
 
 	if (netif_running(netdev))
 		e1000_down(adapter);
