@@ -762,7 +762,7 @@ void ec_fsm_foe_state_data_read(
         EC_SLAVE_ERR(slave, "Received FoE Error Request (code 0x%08x).\n",
                 fsm->request->error_code);
         if (rec_size > 6) {
-            uint8_t text[1024];
+            uint8_t text[256];
             strncpy(text, data + 6, min(rec_size - 6, sizeof(text)));
             EC_SLAVE_ERR(slave, "FoE Error Text: %s\n", text);
         }
