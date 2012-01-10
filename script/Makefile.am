@@ -38,7 +38,7 @@ sbin_SCRIPTS = ethercatctl
 systemddir = $(libdir)/systemd/system
 systemd_DATA = ethercat.service
 
-sysconf_DATA = ethercat.conf
+dist_sysconf_DATA = ethercat.conf
 
 EXTRA_DIST = \
 	ethercatctl.in \
