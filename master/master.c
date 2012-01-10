@@ -2275,6 +2275,7 @@ int ecrt_master_get_slave(ec_master_t *master, uint16_t slave_position,
         ec_slave_info_t *slave_info)
 {
     const ec_slave_t *slave;
+    unsigned int i;
 
     if (ec_mutex_lock_interruptible(&master->master_mutex)) {
         return -EINTR;
@@ -2289,6 +2290,25 @@ int ecrt_master_get_slave(ec_master_t *master, uint16_t slave_position,
     slave_info->serial_number = slave->sii.serial_number;
     slave_info->alias = slave->effective_alias;
     slave_info->current_on_ebus = slave->sii.current_on_ebus;
+
+    for (i = 0; i < EC_MAX_PORTS; i++) {
+        slave_info->ports[i].desc = slave->ports[i].desc;
+        slave_info->ports[i].link.link_up = slave->ports[i].link.link_up;
+        slave_info->ports[i].link.loop_closed =
+            slave->ports[i].link.loop_closed;
+        slave_info->ports[i].link.signal_detected =
+            slave->ports[i].link.signal_detected;
+        slave_info->ports[i].receive_time = slave->ports[i].receive_time;
+        if (slave->ports[i].next_slave) {
+            slave_info->ports[i].next_slave =
+                slave->ports[i].next_slave->ring_position;
+        } else {
+            slave_info->ports[i].next_slave = 0xffff;
+        }
+        slave_info->ports[i].delay_to_next_dc =
+            slave->ports[i].delay_to_next_dc;
+    }
+
     slave_info->al_state = slave->current_state;
     slave_info->error_flag = slave->error_flag;
     slave_info->sync_count = slave->sii.sync_count;
