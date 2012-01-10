@@ -269,12 +269,14 @@ typedef struct {
     uint16_t alias; /**< The slaves alias if not equal to 0. */
     int16_t current_on_ebus; /**< Used current in mA. */
     struct {
-        ec_slave_port_desc_t desc;
-        ec_slave_port_link_t link;
-        uint32_t receive_time;
-        uint16_t next_slave;
-        uint32_t delay_to_next_dc;
-    } ports[EC_MAX_PORTS];
+        ec_slave_port_desc_t desc; /**< Physical port type. */
+        ec_slave_port_link_t link; /**< Port link state. */
+        uint32_t receive_time; /**< Receive time on DC transmission delay
+                                 measurement. */
+        uint16_t next_slave; /**< Ring position of next DC slave on that
+                               port.  */
+        uint32_t delay_to_next_dc; /**< Delay [ns] to next DC slave. */
+    } ports[EC_MAX_PORTS]; /**< Port information. */
     uint8_t al_state; /**< Current state of the slave. */
     uint8_t error_flag; /**< Error flag for that slave. */
     uint8_t sync_count; /**< Number of sync managers. */
