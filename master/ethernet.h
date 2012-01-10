@@ -39,7 +39,12 @@
 
 #include <linux/list.h>
 #include <linux/netdevice.h>
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)
 #include <linux/semaphore.h>
+#else
+#include <asm/semaphore.h>
+#endif
 
 #include "globals.h"
 #include "slave.h"
