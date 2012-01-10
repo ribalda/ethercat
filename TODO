@@ -8,12 +8,6 @@ vim700: spelllang=en spell
 
 -------------------------------------------------------------------------------
 
-Version 1.5.0:
-
-* Ethernet drivers:
-    - Fix link detection in generic driver.
-    - Add native drivers from 2.6.24 up to 2.6.31.
-
 Future issues:
 
 * Remove allow_scanning flag.
@@ -71,6 +65,7 @@ Future issues:
 * Remove stdio uses in userspace library?
 * Fix casting away constness during expected WC calculation.
 * Fix bus scan hang when calling ecrt_master_deactivate().
+* Fix link detection in generic driver.
 
 Smaller issues:
 
