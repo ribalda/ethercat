@@ -3237,7 +3237,7 @@ static int rtl8169_suspend(struct pci_dev *pdev, pm_message_t state)
 	void __iomem *ioaddr = tp->mmio_addr;
 
 	if (tp->ecdev)
-		return;
+		return -EBUSY;
 
 	if (!netif_running(dev))
 		goto out_pci_suspend;
@@ -3269,7 +3269,7 @@ static int rtl8169_resume(struct pci_dev *pdev)
 	struct rtl8169_private *tp = netdev_priv(dev);
 
 	if (tp->ecdev)
-		return;
+		return -EBUSY;
 
 	pci_set_power_state(pdev, PCI_D0);
 	pci_restore_state(pdev);
