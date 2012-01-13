@@ -346,9 +346,10 @@ void cyclic_task(unsigned long data)
     EC_WRITE_U8(domain1_pd + off_dig_out, blink ? 0x06 : 0x09);
 
     // send process data
+    down(&master_sem);
     ecrt_domain_queue(domain1);
-    up(&master_sem);
     ecrt_master_send(master);
+    up(&master_sem);
 
     // restart timer
     timer.expires += HZ / FREQUENCY;
@@ -391,7 +392,8 @@ int __init init_mini_module(void)
     }
 
     sema_init(&master_sem, 1);
-    ecrt_master_callbacks(master, request_lock_callback, release_lock_callback, master);
+    ecrt_master_callbacks(master,
+            request_lock_callback, release_lock_callback, master);
 
     printk(KERN_INFO PFX "Registering domain...\n");
     if (!(domain1 = ecrt_master_create_domain(master))) {
@@ -437,7 +439,8 @@ int __init init_mini_module(void)
 
 #if SDO_ACCESS
     printk(KERN_INFO PFX "Creating SDO requests...\n");
-    if (!(sdo = ecrt_slave_config_create_sdo_request(sc_ana_in, 0x3102, 2, 2))) {
+    if (!(sdo = ecrt_slave_config_create_sdo_request(
+                    sc_ana_in, 0x3102, 2, 2))) {
         printk(KERN_ERR PFX "Failed to create SDO request.\n");
         goto out_release_master;
     }
