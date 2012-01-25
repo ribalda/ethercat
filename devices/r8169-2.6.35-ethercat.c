@@ -3214,6 +3214,7 @@ rtl8169_init_one(struct pci_dev *pdev, const struct pci_device_id *ent)
 
 	// offer device to EtherCAT master module
 	tp->ecdev = ecdev_offer(dev, ec_poll, THIS_MODULE);
+	tp->ec_watchdog_jiffies = jiffies;
 
 	if (!tp->ecdev) {
 		rc = register_netdev(dev);
@@ -3244,6 +3245,11 @@ rtl8169_init_one(struct pci_dev *pdev, const struct pci_device_id *ent)
 		pm_runtime_enable(&pdev->dev);
 	}
 	pm_runtime_idle(&pdev->dev);
+
+	if (tp->ecdev && ecdev_open(tp->ecdev)) {
+		ecdev_withdraw(tp->ecdev);
+		goto err_out_msi_4;
+	}
 
 out:
 	return rc;
@@ -4687,7 +4693,7 @@ static irqreturn_t rtl8169_interrupt(int irq, void *dev_instance)
 		}
 
 		/* Work around for rx fifo overflow */
-		if (unlikely(status & RxFIFOOver) &&
+		if (unlikely(!tp->ecdev && (status & RxFIFOOver)) &&
 		(tp->mac_version == RTL_GIGA_MAC_VER_11)) {
 			netif_stop_queue(dev);
 			rtl8169_tx_timeout(dev);
