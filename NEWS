@@ -10,6 +10,7 @@ Changes since 1.5:
 
 * Added e1000e driver for 2.3.32, 2.6.33, 2.6.34 (thanks to Siwei Zhuang) and
   2.6.37.
+* Added r8169 driver for 2.6.35.
 
 Changes in 1.5:
 
