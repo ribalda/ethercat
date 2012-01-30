@@ -54,6 +54,8 @@ EXTRA_DIST = \
 	e1000-2.6.32-orig.h \
 	e1000-2.6.33-ethercat.h \
 	e1000-2.6.33-orig.h \
+	e1000-2.6.35-ethercat.h \
+	e1000-2.6.35-orig.h \
 	e1000-2.6.37-ethercat.h \
 	e1000-2.6.37-orig.h \
 	e1000_ethtool-2.6.13-ethercat.c \
@@ -80,6 +82,8 @@ EXTRA_DIST = \
 	e1000_ethtool-2.6.32-orig.c \
 	e1000_ethtool-2.6.33-ethercat.c \
 	e1000_ethtool-2.6.33-orig.c \
+	e1000_ethtool-2.6.35-ethercat.c \
+	e1000_ethtool-2.6.35-orig.c \
 	e1000_ethtool-2.6.37-ethercat.c \
 	e1000_ethtool-2.6.37-orig.c \
 	e1000_hw-2.6.13-ethercat.c \
@@ -130,6 +134,10 @@ EXTRA_DIST = \
 	e1000_hw-2.6.33-ethercat.h \
 	e1000_hw-2.6.33-orig.c \
 	e1000_hw-2.6.33-orig.h \
+	e1000_hw-2.6.35-ethercat.c \
+	e1000_hw-2.6.35-ethercat.h \
+	e1000_hw-2.6.35-orig.c \
+	e1000_hw-2.6.35-orig.h \
 	e1000_hw-2.6.37-ethercat.c \
 	e1000_hw-2.6.37-ethercat.h \
 	e1000_hw-2.6.37-orig.c \
@@ -158,6 +166,8 @@ EXTRA_DIST = \
 	e1000_main-2.6.32-orig.c \
 	e1000_main-2.6.33-ethercat.c \
 	e1000_main-2.6.33-orig.c \
+	e1000_main-2.6.35-ethercat.c \
+	e1000_main-2.6.35-orig.c \
 	e1000_main-2.6.37-ethercat.c \
 	e1000_main-2.6.37-orig.c \
 	e1000_osdep-2.6.13-ethercat.h \
@@ -184,6 +194,8 @@ EXTRA_DIST = \
 	e1000_osdep-2.6.32-orig.h \
 	e1000_osdep-2.6.33-ethercat.h \
 	e1000_osdep-2.6.33-orig.h \
+	e1000_osdep-2.6.35-ethercat.h \
+	e1000_osdep-2.6.35-orig.h \
 	e1000_osdep-2.6.37-ethercat.h \
 	e1000_osdep-2.6.37-orig.h \
 	e1000_param-2.6.13-ethercat.c \
@@ -210,6 +222,8 @@ EXTRA_DIST = \
 	e1000_param-2.6.32-orig.c \
 	e1000_param-2.6.33-ethercat.c \
 	e1000_param-2.6.33-orig.c \
+	e1000_param-2.6.35-ethercat.c \
+	e1000_param-2.6.35-orig.c \
 	e1000_param-2.6.37-ethercat.c \
 	e1000_param-2.6.37-orig.c
 

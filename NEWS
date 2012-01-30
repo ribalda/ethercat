@@ -12,6 +12,7 @@ Changes since 1.5:
   2.6.37.
 * Added r8169 driver for 2.6.35.
 * Added e100 driver for 2.6.35.
+* Added e1000 driver for 2.6.35.
 
 Changes in 1.5:
 
