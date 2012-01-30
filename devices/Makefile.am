@@ -93,6 +93,8 @@ noinst_HEADERS = \
 	e100-2.6.32-orig.c \
 	e100-2.6.33-ethercat.c \
 	e100-2.6.33-orig.c \
+	e100-2.6.35-ethercat.c \
+	e100-2.6.35-orig.c \
 	e100-2.6.37-ethercat.c \
 	e100-2.6.37-orig.c \
 	ecdev.h \
