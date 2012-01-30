@@ -278,8 +278,9 @@ static int e1000_request_irq(struct e1000_adapter *adapter)
 	int irq_flags = IRQF_SHARED;
 	int err;
 
-	if (adapter->ecdev)
+	if (adapter->ecdev) {
 		return 0;
+	}
 
 	err = request_irq(adapter->pdev->irq, handler, irq_flags, netdev->name,
 	                  netdev);
@@ -294,8 +295,9 @@ static void e1000_free_irq(struct e1000_adapter *adapter)
 {
 	struct net_device *netdev = adapter->netdev;
 
-	if (adapter->ecdev)
+	if (adapter->ecdev) {
 		return;
+	}
 
 	free_irq(adapter->pdev->irq, netdev);
 }
@@ -309,8 +311,9 @@ static void e1000_irq_disable(struct e1000_adapter *adapter)
 {
 	struct e1000_hw *hw = &adapter->hw;
 
-	if (adapter->ecdev)
+	if (adapter->ecdev) {
 		return;
+	}
 
 	ew32(IMC, ~0);
 	E1000_WRITE_FLUSH();
@@ -326,8 +329,9 @@ static void e1000_irq_enable(struct e1000_adapter *adapter)
 {
 	struct e1000_hw *hw = &adapter->hw;
 
-	if (adapter->ecdev)
+	if (adapter->ecdev) {
 		return;
+	}
  
 	ew32(IMS, IMS_ENABLE_MASK);
 	E1000_WRITE_FLUSH();
@@ -1933,8 +1937,9 @@ void e1000_free_all_tx_resources(struct e1000_adapter *adapter)
 static void e1000_unmap_and_free_tx_resource(struct e1000_adapter *adapter,
 					     struct e1000_buffer *buffer_info)
 {
-	if (adapter->ecdev)
+	if (adapter->ecdev) {
 		return;
+	}
 
 	if (buffer_info->dma) {
 		if (buffer_info->mapped_as_page)
@@ -2372,10 +2377,13 @@ static void e1000_82547_tx_fifo_stall_task(struct work_struct *work)
 
 			adapter->tx_fifo_head = 0;
 			atomic_set(&adapter->tx_fifo_stall, 0);
-			if (!adapter->ecdev) netif_wake_queue(netdev);
+			if (!adapter->ecdev) {
+				netif_wake_queue(netdev);
+			}
 		} else if (!test_bit(__E1000_DOWN, &adapter->flags)) {
-			if (!adapter->ecdev) 
+			if (!adapter->ecdev) {
 				mod_timer(&adapter->tx_fifo_stall_timer, jiffies + 1);
+			}
 		}
 	}
 	rtnl_unlock();
@@ -2550,7 +2558,9 @@ link_up:
 	ew32(ICS, E1000_ICS_RXDMT0);
 
 	/* Force detection of hung controller every watchdog period */
-	if (!adapter->ecdev) adapter->detect_tx_hung = true;
+	if (!adapter->ecdev) {
+		adapter->detect_tx_hung = true;
+	}
 
 	/* Reset the timer */
 	if (!adapter->ecdev) {
@@ -3110,8 +3120,9 @@ static netdev_tx_t e1000_xmit_frame(struct sk_buff *skb,
 	tx_ring = adapter->tx_ring;
 
 	if (unlikely(skb->len <= 0)) {
-		if (!adapter->ecdev)
+		if (!adapter->ecdev) {
 			dev_kfree_skb_any(skb);
+		}
 		return NETDEV_TX_OK;
 	}
 
@@ -3238,7 +3249,9 @@ static netdev_tx_t e1000_xmit_frame(struct sk_buff *skb,
 		}
 
 	} else {
-		if (!adapter->ecdev) dev_kfree_skb_any(skb);
+		if (!adapter->ecdev) {
+			dev_kfree_skb_any(skb);
+		}
 		tx_ring->buffer_info[first].time_stamp = 0;
 		tx_ring->next_to_use = first;
 	}
@@ -3296,8 +3309,9 @@ static int e1000_change_mtu(struct net_device *netdev, int new_mtu)
 	struct e1000_hw *hw = &adapter->hw;
 	int max_frame = new_mtu + ENET_HEADER_SIZE + ETHERNET_FCS_SIZE;
 
-	if (adapter->ecdev)
+	if (adapter->ecdev) {
 		return -EBUSY;
+	}
 
 	if ((max_frame < MINIMUM_ETHERNET_FRAME_SIZE) ||
 	    (max_frame > MAX_JUMBO_FRAME_SIZE)) {
@@ -3385,8 +3399,9 @@ void e1000_update_stats(struct e1000_adapter *adapter)
 	if (pci_channel_offline(pdev))
 		return;
 
-	if (!adapter->ecdev)
+	if (!adapter->ecdev) {
 		spin_lock_irqsave(&adapter->stats_lock, flags);
+	}
 
 	/* these counters are modified from e1000_tbi_adjust_stats,
 	 * called from the interrupt context, so they must only
@@ -3514,8 +3529,9 @@ void e1000_update_stats(struct e1000_adapter *adapter)
 		adapter->stats.mgpdc += er32(MGTPDC);
 	}
 
-	if (!adapter->ecdev)
+	if (!adapter->ecdev) {
 		spin_unlock_irqrestore(&adapter->stats_lock, flags);
+	}
 }
 
 void ec_poll(struct net_device *netdev)
@@ -3830,7 +3846,9 @@ static bool e1000_clean_jumbo_rx_irq(struct e1000_adapter *adapter,
 
 		status = rx_desc->status;
 		skb = buffer_info->skb;
-		if (!adapter->ecdev) buffer_info->skb = NULL;
+		if (!adapter->ecdev) {
+			buffer_info->skb = NULL;
+		}
 
 		if (++i == rx_ring->count) i = 0;
 		next_rxd = E1000_RX_DESC(*rx_ring, i);
@@ -4047,7 +4065,9 @@ static bool e1000_clean_rx_irq(struct e1000_adapter *adapter,
 
 		status = rx_desc->status;
 		skb = buffer_info->skb;
-		if (!adapter->ecdev) buffer_info->skb = NULL;
+		if (!adapter->ecdev) {
+			buffer_info->skb = NULL;
+		}
 
 		prefetch(skb->data - NET_IP_ALIGN);
 
@@ -4485,7 +4505,9 @@ static int e1000_mii_ioctl(struct net_device *netdev, struct ifreq *ifr,
 		data->phy_id = hw->phy_addr;
 		break;
 	case SIOCGMIIREG:
-		if (adapter->ecdev) return -EPERM;
+		if (adapter->ecdev) {
+			return -EPERM;
+		}
 		spin_lock_irqsave(&adapter->stats_lock, flags);
 		if (e1000_read_phy_reg(hw, data->reg_num & 0x1F,
 				   &data->val_out)) {
@@ -4495,7 +4517,9 @@ static int e1000_mii_ioctl(struct net_device *netdev, struct ifreq *ifr,
 		spin_unlock_irqrestore(&adapter->stats_lock, flags);
 		break;
 	case SIOCSMIIREG:
-		if (adapter->ecdev) return -EPERM;
+		if (adapter->ecdev) {
+			return -EPERM;
+		}
 		if (data->reg_num & ~(0x1F))
 			return -EFAULT;
 		mii_reg = data->val_in;
@@ -4736,8 +4760,9 @@ static int __e1000_shutdown(struct pci_dev *pdev, bool *enable_wake)
 	int retval = 0;
 #endif
 
-	if (adapter->ecdev)
+	if (adapter->ecdev) {
 		return -EBUSY;
+	}
 
 	netif_device_detach(netdev);
 
@@ -4836,8 +4861,9 @@ static int e1000_resume(struct pci_dev *pdev)
 	struct e1000_hw *hw = &adapter->hw;
 	u32 err;
 
-	if (adapter->ecdev)
+	if (adapter->ecdev) {
 		return -EBUSY;
+	}
 
 	pci_set_power_state(pdev, PCI_D0);
 	pci_restore_state(pdev);
@@ -4871,7 +4897,9 @@ static int e1000_resume(struct pci_dev *pdev)
 	if (netif_running(netdev))
 		e1000_up(adapter);
 
-	if (!adapter->ecdev) netif_device_attach(netdev);
+	if (!adapter->ecdev) {
+		netif_device_attach(netdev);
+	}
 
 	return 0;
 }
