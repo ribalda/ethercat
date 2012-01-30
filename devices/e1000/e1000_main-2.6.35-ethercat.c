@@ -2298,7 +2298,8 @@ static void e1000_82547_tx_fifo_stall(unsigned long data)
 
 			adapter->tx_fifo_head = 0;
 			atomic_set(&adapter->tx_fifo_stall, 0);
-			if (!adapter->ecdev) netif_wake_queue(netdev);
+			if (!adapter->ecdev)
+				netif_wake_queue(netdev);
 		} else if (!test_bit(__E1000_DOWN, &adapter->flags)) {
 			if (!adapter->ecdev) 
 				mod_timer(&adapter->tx_fifo_stall_timer, jiffies + 1);
@@ -2475,7 +2476,8 @@ link_up:
 	ew32(ICS, E1000_ICS_RXDMT0);
 
 	/* Force detection of hung controller every watchdog period */
-	if (!adapter->ecdev) adapter->detect_tx_hung = true;
+	if (!adapter->ecdev)
+		adapter->detect_tx_hung = true;
 
 	/* Reset the timer */
 	if (!adapter->ecdev) {
@@ -3161,7 +3163,8 @@ static netdev_tx_t e1000_xmit_frame(struct sk_buff *skb,
 		}
 
 	} else {
-		if (!adapter->ecdev) dev_kfree_skb_any(skb);
+		if (!adapter->ecdev)
+			dev_kfree_skb_any(skb);
 		tx_ring->buffer_info[first].time_stamp = 0;
 		tx_ring->next_to_use = first;
 	}
@@ -3751,7 +3754,8 @@ static bool e1000_clean_jumbo_rx_irq(struct e1000_adapter *adapter,
 
 		status = rx_desc->status;
 		skb = buffer_info->skb;
-		if (!adapter->ecdev) buffer_info->skb = NULL;
+		if (!adapter->ecdev)
+			buffer_info->skb = NULL;
 
 		if (++i == rx_ring->count) i = 0;
 		next_rxd = E1000_RX_DESC(*rx_ring, i);
@@ -3970,7 +3974,8 @@ static bool e1000_clean_rx_irq(struct e1000_adapter *adapter,
 
 		status = rx_desc->status;
 		skb = buffer_info->skb;
-		if (!adapter->ecdev) buffer_info->skb = NULL;
+		if (!adapter->ecdev)
+			buffer_info->skb = NULL;
 
 		prefetch(skb->data - NET_IP_ALIGN);
 
@@ -4410,7 +4415,8 @@ static int e1000_mii_ioctl(struct net_device *netdev, struct ifreq *ifr,
 		data->phy_id = hw->phy_addr;
 		break;
 	case SIOCGMIIREG:
-		if (adapter->ecdev) return -EPERM;
+		if (adapter->ecdev)
+			return -EPERM;
 		spin_lock_irqsave(&adapter->stats_lock, flags);
 		if (e1000_read_phy_reg(hw, data->reg_num & 0x1F,
 				   &data->val_out)) {
@@ -4420,7 +4426,8 @@ static int e1000_mii_ioctl(struct net_device *netdev, struct ifreq *ifr,
 		spin_unlock_irqrestore(&adapter->stats_lock, flags);
 		break;
 	case SIOCSMIIREG:
-		if (adapter->ecdev) return -EPERM;
+		if (adapter->ecdev)
+			return -EPERM;
 		if (data->reg_num & ~(0x1F))
 			return -EFAULT;
 		mii_reg = data->val_in;
@@ -4796,7 +4803,8 @@ static int e1000_resume(struct pci_dev *pdev)
 	if (netif_running(netdev))
 		e1000_up(adapter);
 
-	if (!adapter->ecdev) netif_device_attach(netdev);
+	if (!adapter->ecdev)
+		netif_device_attach(netdev);
 
 	return 0;
 }
