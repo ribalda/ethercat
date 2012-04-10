@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 
-$Id$
+$Id: NEWS,v 8ebecea534d3 2012/01/30 14:12:21 fp $
 
 vim: spelllang=en spell
 
@@ -11,7 +11,7 @@ Changes since 1.5:
 * Added e1000e driver for 2.3.32, 2.6.33, 2.6.34 (thanks to Siwei Zhuang),
   2.6.35 and 2.6.37.
 * Added r8169 driver for 2.6.35.
-* Added e100 driver for 2.6.35.
+* Added e100 driver for 2.6.35, 3.0.
 * Added e1000 driver for 2.6.35.
 
 Changes in 1.5:

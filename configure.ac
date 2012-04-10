@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 #
-#  $Id$
+#  $Id: configure.ac,v 97c7c202fa78 2012/01/09 14:16:40 fp $
 #
 #  Copyright (C) 2006-2009  Florian Pose, Ingenieurgemeinschaft IgH
 #
@@ -92,8 +92,14 @@ if test -z "$kernelrelease"; then
     AC_MSG_ERROR([Failed to extract Linux kernel version!])
 fi
 
-# Extract three numbers from kernel release string
-linuxversion=`echo $kernelrelease | grep -oE "^[[0-9]]+\.[[0-9]]+\.[[0-9]]+"`
+if test ${kernelrelease%%.*} -gt 2; then
+    regex="^[[0-9]]+\.[[0-9]]+"
+else
+    regex="^[[0-9]]+\.[[0-9]]+\.[[0-9]]+"
+fi
+
+# Extract numbers from kernel release
+linuxversion=`echo $kernelrelease | grep -oE "$regex"`
 
 AC_SUBST(LINUX_SOURCE_DIR,[$sourcedir])
 AC_MSG_RESULT([$LINUX_SOURCE_DIR (Kernel $linuxversion)])
