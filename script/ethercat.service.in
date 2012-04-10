@@ -10,3 +10,6 @@ Type=oneshot
 RemainAfterExit=yes
 ExecStart=@prefix@/sbin/ethercatctl start
 ExecStop=@prefix@/sbin/ethercatctl stop
+
+[Install]
+WantedBy=multi-user.target
