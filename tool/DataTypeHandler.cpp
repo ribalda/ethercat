@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  $Id$
+ *  $Id: DataTypeHandler.cpp,v 08f547145c91 2012/01/04 14:57:10 fp $
  *
  *  Copyright (C) 2006-2009  Florian Pose, Ingenieurgemeinschaft IgH
  *
@@ -186,9 +186,10 @@ size_t DataTypeHandler::interpretAsType(
         case 0x000a: // octet_string
         case 0x000b: // unicode_string
             dataSize = str.str().size();
-            if (dataSize >= targetSize) {
+            if (dataSize > targetSize) {
                 stringstream err;
-                err << "String too large";
+                err << "String too large ("
+                    << dataSize << " > " << targetSize << ")";
                 throw SizeException(err.str());
             }
             str >> (char *) target;
