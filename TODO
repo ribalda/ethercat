@@ -10,6 +10,7 @@ vim700: spelllang=en spell
 
 Future issues:
 
+* Port port order patch from stable-1.5.
 * Remove allow_scanning flag.
 * Check for Enable SDO Complete Access flag.
 * Do not output 'SDO does not exist' when querying data type.
