@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- *  $Id$
+ *  $Id: module.c,v 55854f070c4a 2011/01/05 07:36:53 ch1010277 $
  *
  *  Copyright (C) 2006-2008  Florian Pose, Ingenieurgemeinschaft IgH
  *
@@ -162,7 +162,7 @@ int __init ec_tty_init_module(void)
     }
 
     return ret;
-        
+
 out_put:
     put_tty_driver(tty_driver);
 out_return:
@@ -248,7 +248,7 @@ void ec_tty_clear(ec_tty_t *tty)
 unsigned int ec_tty_tx_size(ec_tty_t *tty)
 {
     unsigned int ret;
-    
+
     if (tty->tx_write_idx >= tty->tx_read_idx) {
         ret = tty->tx_write_idx - tty->tx_read_idx;
     } else {
@@ -270,7 +270,7 @@ unsigned int ec_tty_tx_space(ec_tty_t *tty)
 unsigned int ec_tty_rx_size(ec_tty_t *tty)
 {
     unsigned int ret;
-    
+
     if (tty->rx_write_idx >= tty->rx_read_idx) {
         ret = tty->rx_write_idx - tty->rx_read_idx;
     } else {
@@ -356,7 +356,7 @@ void ec_tty_wakeup(unsigned long data)
             tty_flip_buffer_push(tty->tty);
         }
     }
-    
+
     tty->timer.expires += 1;
     add_timer(&tty->timer);
 }
@@ -427,7 +427,7 @@ static int ec_tty_write(
 {
     ec_tty_t *t = (ec_tty_t *) tty->driver_data;
     unsigned int data_size, i;
-    
+
 #if EC_TTY_DEBUG >= 1
     printk(KERN_INFO PFX "%s(count=%i)\n", __func__, count);
 #endif
