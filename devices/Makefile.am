@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 #
-#  $Id: Makefile.am,v b63281ec5e4a 2012/01/30 08:54:50 fp $
+#  $Id$
 #
 #  Copyright (C) 2006-2008  Florian Pose, Ingenieurgemeinschaft IgH
 #
@@ -117,6 +117,8 @@ noinst_HEADERS = \
 	r8169-2.6.33-orig.c \
 	r8169-2.6.35-ethercat.c \
 	r8169-2.6.35-orig.c \
+	r8169-2.6.36-ethercat.c \
+	r8169-2.6.36-orig.c \
 	r8169-2.6.37-ethercat.c \
 	r8169-2.6.37-orig.c
 
