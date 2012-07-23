@@ -378,6 +378,9 @@ static int e1000_set_rx_csum(struct net_device *netdev, u32 data)
 {
 	struct e1000_adapter *adapter = netdev_priv(netdev);
 
+	if (adapter->ecdev)
+		return -EBUSY;
+
 	if (data)
 		adapter->flags |= FLAG_RX_CSUM_ENABLED;
 	else
@@ -397,10 +400,6 @@ static u32 e1000_get_tx_csum(struct net_device *netdev)
 
 static int e1000_set_tx_csum(struct net_device *netdev, u32 data)
 {
-	struct e1000_adapter *adapter = netdev_priv(netdev);
-	if (adapter->ecdev)
-		return -EBUSY;
-
 	if (data)
 		netdev->features |= NETIF_F_HW_CSUM;
 	else
@@ -1945,6 +1944,10 @@ static int e1000_set_coalesce(struct net_device *netdev,
 static int e1000_nway_reset(struct net_device *netdev)
 {
 	struct e1000_adapter *adapter = netdev_priv(netdev);
+
+	if (adapter->ecdev)
+		return -EBUSY;
+
 	if (netif_running(netdev))
 		e1000e_reinit_locked(adapter);
 	return 0;
