@@ -10,7 +10,7 @@ Changes since 1.5:
 
 * Added e1000e driver for 2.3.32, 2.6.33, 2.6.34 (thanks to Siwei Zhuang),
   2.6.35 and 2.6.37.
-* Added r8169 driver for 2.6.35 (F. Pose), 2.6.36 (J. Kunz).
+* Added r8169 driver for 2.6.35 (F. Pose), 2.6.36 (J. Kunz), 3.2 (J. Kunz).
 * Added e100 driver for 2.6.35, 3.0.
 * Added e1000 driver for 2.6.35, 3.0.
 
