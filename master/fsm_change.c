@@ -428,14 +428,18 @@ void ec_fsm_change_state_code(ec_fsm_change_t *fsm
     } else {
         code = EC_READ_U16(datagram->data);
         for (al_msg = al_status_messages; al_msg->code != 0xffff; al_msg++) {
-            if (al_msg->code != code) continue;
+            if (al_msg->code != code) {
+                continue;
+            }
+
             EC_SLAVE_ERR(fsm->slave, "AL status message 0x%04X: \"%s\".\n",
                     al_msg->code, al_msg->message);
             break;
         }
-        if (!al_msg->code)
+        if (al_msg->code == 0xffff) { /* not found in our list. */
             EC_SLAVE_ERR(fsm->slave, "Unknown AL status code 0x%04X.\n",
                     code);
+        }
     }
 
     // acknowledge "old" slave state
