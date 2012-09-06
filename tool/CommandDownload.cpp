@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  $Id: CommandDownload.cpp,v 4f682084c643 2010/10/25 08:12:26 fp $
+ *  $Id$
  *
  *  Copyright (C) 2006-2009  Florian Pose, Ingenieurgemeinschaft IgH
  *

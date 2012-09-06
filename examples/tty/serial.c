@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- *  $Id: serial.c,v 8e173dddd183 2010/10/25 14:45:33 fp $
+ *  $Id$
  *
  *  Copyright (C) 2006-2008  Florian Pose, Ingenieurgemeinschaft IgH
  *

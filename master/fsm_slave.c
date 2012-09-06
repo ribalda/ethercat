@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- *  $Id: fsm_slave.c,v 83e9160319ec 2011/08/01 15:02:45 fp $
+ *  $Id$
  *
  *  Copyright (C) 2006-2008  Florian Pose, Ingenieurgemeinschaft IgH
  *

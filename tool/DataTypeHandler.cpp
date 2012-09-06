@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  $Id: DataTypeHandler.cpp,v 08f547145c91 2012/01/04 14:57:10 fp $
+ *  $Id$
  *
  *  Copyright (C) 2006-2009  Florian Pose, Ingenieurgemeinschaft IgH
  *

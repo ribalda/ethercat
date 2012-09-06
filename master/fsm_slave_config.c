@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- *  $Id: fsm_slave_config.c,v ff2a13a4603c 2011/03/14 15:55:09 ch1010277 $
+ *  $Id$
  *
  *  Copyright (C) 2006-2008  Florian Pose, Ingenieurgemeinschaft IgH
  *

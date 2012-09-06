@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 #
-#  $Id: configure.ac,v 97c7c202fa78 2012/01/09 14:16:40 fp $
+#  $Id$
 #
 #  Copyright (C) 2006-2009  Florian Pose, Ingenieurgemeinschaft IgH
 #
