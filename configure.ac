@@ -479,6 +479,61 @@ fi
 AC_SUBST(KERNEL_IGB,[$kerneligb])
 
 #------------------------------------------------------------------------------
+# cx2100 driver
+#------------------------------------------------------------------------------
+
+AC_ARG_ENABLE([cx2100],
+    AS_HELP_STRING([--enable-cx2100],
+                   [Enable cx2100 driver]),
+    [
+        case "${enableval}" in
+            yes) enablecx2100=1
+                ;;
+            no) enablecx2100=0
+                ;;
+            *) AC_MSG_ERROR([Invalid value for --enable-cx2100])
+                ;;
+        esac
+    ],
+    [enablecx2100=0] # disabled by default
+)
+
+AM_CONDITIONAL(ENABLE_CX2100, test "x$enablecx2100" = "x1")
+AC_SUBST(ENABLE_CX2100,[$enablecx2100])
+
+AC_ARG_WITH([cx2100-kernel],
+    AC_HELP_STRING(
+        [--with-cx2100-kernel=<X.Y.Z>],
+        [cx2100 kernel (only if differing)]
+    ),
+    [
+        kernelcx2100=[$withval]
+    ],
+    [
+        kernelcx2100=$linuxversion
+    ]
+)
+
+if test "x${enablecx2100}" = "x1"; then
+    AC_MSG_CHECKING([for kernel for cx2100 driver])
+
+    kernels=`ls -1 ${srcdir}/devices/cx2100/ | grep -oE "^cx2100-.*" | cut -d "-" -f 2 | uniq`
+    found=0
+    for k in $kernels; do
+        if test "$kernelcx2100" = "$k"; then
+            found=1
+        fi
+    done
+    if test $found -ne 1; then
+        AC_MSG_ERROR([kernel $kernelcx2100 not available for cx2100 driver!])
+    fi
+
+    AC_MSG_RESULT([$kernelcx2100])
+fi
+
+AC_SUBST(KERNEL_CX2100,[$kernelcx2100])
+
+#------------------------------------------------------------------------------
 # r8169 driver
 #------------------------------------------------------------------------------
 
@@ -1145,6 +1200,8 @@ AC_CONFIG_FILES([
         devices/Makefile
         devices/ccat/Kbuild
         devices/ccat/Makefile
+        devices/cx2100/Kbuild
+        devices/cx2100/Makefile
         devices/e1000/Kbuild
         devices/e1000/Makefile
         devices/e1000e/Kbuild
