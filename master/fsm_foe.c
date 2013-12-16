@@ -42,9 +42,10 @@
 
 /*****************************************************************************/
 
-/** Maximum time in ms to wait for responses when reading out the dictionary.
+/** Maximum time in jiffies to wait for responses when reading out the
+ * dictionary.
  */
-#define EC_FSM_FOE_TIMEOUT 3000
+#define EC_FSM_FOE_TIMEOUT_JIFFIES (3 * HZ)
 
 /** Size of the FoE header.
  */
@@ -365,9 +366,8 @@ void ec_fsm_foe_state_ack_check(
 
     if (!ec_slave_mbox_check(fsm->datagram)) {
         // slave did not put anything in the mailbox yet
-        unsigned long diff_ms = (fsm->datagram->jiffies_received -
-                fsm->jiffies_start) * 1000 / HZ;
-        if (diff_ms >= EC_FSM_FOE_TIMEOUT) {
+        if (time_after(datagram->jiffies_received,
+                    fsm->jiffies_start + EC_FSM_FOE_TIMEOUT_JIFFIES)) {
             ec_foe_set_tx_error(fsm, FOE_TIMEOUT_ERROR);
             EC_SLAVE_ERR(slave, "Timeout while waiting for ack response.\n");
             return;
@@ -704,9 +704,8 @@ void ec_fsm_foe_state_data_check(
     }
 
     if (!ec_slave_mbox_check(fsm->datagram)) {
-        unsigned long diff_ms = (fsm->datagram->jiffies_received -
-                fsm->jiffies_start) * 1000 / HZ;
-        if (diff_ms >= EC_FSM_FOE_TIMEOUT) {
+        if (time_after(datagram->jiffies_received,
+                    fsm->jiffies_start + EC_FSM_FOE_TIMEOUT_JIFFIES)) {
             ec_foe_set_tx_error(fsm, FOE_TIMEOUT_ERROR);
             EC_SLAVE_ERR(slave, "Timeout while waiting for ack response.\n");
             return;
