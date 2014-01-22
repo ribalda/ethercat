@@ -257,6 +257,10 @@ int ec_foe_prepare_data_send(
 
     EC_WRITE_U16(data, EC_FOE_OPCODE_DATA);    // OpCode = DataBlock req.
     EC_WRITE_U32(data + 2, fsm->tx_packet_no); // PacketNo, Password
+#ifdef DEBUG_FOE
+    EC_SLAVE_DBG(fsm->slave, 0, "sending opcode %u packet %u\n",
+            EC_FOE_OPCODE_DATA, fsm->tx_packet_no);
+#endif
 
     memcpy(data + EC_FOE_HEADER_SIZE,
             fsm->tx_buffer + fsm->tx_buffer_offset, current_size);
@@ -294,6 +298,10 @@ int ec_foe_prepare_wrq_send(
 
     EC_WRITE_U16( data, EC_FOE_OPCODE_WRQ); // fsm write request
     EC_WRITE_U32( data + 2, fsm->tx_packet_no );
+#ifdef DEBUG_FOE
+    EC_SLAVE_DBG(fsm->slave, 0, "sending opcode %u packet %u\n",
+            EC_FOE_OPCODE_WRQ, fsm->tx_packet_no);
+#endif
 
     memcpy(data + EC_FOE_HEADER_SIZE, fsm->tx_filename, current_size);
 
@@ -431,6 +439,9 @@ void ec_fsm_foe_state_ack_read(
     }
 
     opCode = EC_READ_U8(data);
+#ifdef DEBUG_FOE
+    EC_SLAVE_DBG(fsm->slave, 0, "received opcode %u\n", opCode);
+#endif
 
     if (opCode == EC_FOE_OPCODE_BUSY) {
         // slave not ready
@@ -440,6 +451,20 @@ void ec_fsm_foe_state_ack_read(
             return;
         }
         fsm->state = ec_fsm_foe_state_data_sent;
+        return;
+    }
+
+    if (opCode == EC_FOE_OPCODE_ERR) {
+        fsm->request->error_code = EC_READ_U32(data + 2);
+        EC_SLAVE_ERR(slave, "Received FoE Error Request (code 0x%08x).\n",
+                fsm->request->error_code);
+        if (rec_size > 6 && data[6]) {
+            uint8_t text[256];
+            strncpy(text, data + 6, min(rec_size - 6, sizeof(text)));
+            text[sizeof(text)-1] = 0;
+            EC_SLAVE_ERR(slave, "FoE Error Text: %s\n", text);
+        }
+        ec_foe_set_tx_error(fsm, FOE_OPCODE_ERROR);
         return;
     }
 
@@ -566,6 +591,9 @@ int ec_foe_prepare_rrq_send(
     EC_WRITE_U16(data, EC_FOE_OPCODE_RRQ); // fsm read request
     EC_WRITE_U32(data + 2, 0x00000000); // no passwd
     memcpy(data + EC_FOE_HEADER_SIZE, fsm->rx_filename, current_size);
+#ifdef DEBUG_FOE
+    EC_SLAVE_DBG(fsm->slave, 0, "sending opcode %u\n", EC_FOE_OPCODE_RRQ);
+#endif
 
     if (fsm->slave->master->debug_level) {
         EC_SLAVE_DBG(fsm->slave, 1, "FoE Read Request:\n");
@@ -596,6 +624,10 @@ int ec_foe_prepare_send_ack(
 
     EC_WRITE_U16(data, EC_FOE_OPCODE_ACK);
     EC_WRITE_U32(data + 2, fsm->rx_expected_packet_no);
+#ifdef DEBUG_FOE
+    EC_SLAVE_DBG(fsm->slave, 0, "sending opcode %u packet %u\n",
+            EC_FOE_OPCODE_ACK, fsm->rx_expected_packet_no);
+#endif
 
     return 0;
 }
@@ -770,13 +802,17 @@ void ec_fsm_foe_state_data_read(
     }
 
     opCode = EC_READ_U8(data);
+#ifdef DEBUG_FOE
+    EC_SLAVE_DBG(fsm->slave, 0, "received opcode %u\n", opCode);
+#endif
 
     if (opCode == EC_FOE_OPCODE_BUSY) {
         fsm->rx_expected_packet_no--;
         if (ec_foe_prepare_send_ack(fsm, datagram)) {
             ec_foe_set_rx_error(fsm, FOE_PROT_ERROR);
+        } else {
+            fsm->state = ec_fsm_foe_state_sent_ack;
         }
-        fsm->state = ec_fsm_foe_state_sent_ack;
 #ifdef DEBUG_FOE
         EC_SLAVE_DBG(fsm->slave, 0, "%s() busy. Next pkt %u\n", __func__,
                 fsm->rx_expected_packet_no);
@@ -788,9 +824,10 @@ void ec_fsm_foe_state_data_read(
         fsm->request->error_code = EC_READ_U32(data + 2);
         EC_SLAVE_ERR(slave, "Received FoE Error Request (code 0x%08x).\n",
                 fsm->request->error_code);
-        if (rec_size > 6) {
+        if (rec_size > 6 && data[6]) {
             uint8_t text[256];
             strncpy(text, data + 6, min(rec_size - 6, sizeof(text)));
+            text[sizeof(text)-1] = 0;
             EC_SLAVE_ERR(slave, "FoE Error Text: %s\n", text);
         }
         ec_foe_set_rx_error(fsm, FOE_OPCODE_ERROR);
