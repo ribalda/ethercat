@@ -772,10 +772,15 @@ void ec_fsm_foe_state_data_read(
     opCode = EC_READ_U8(data);
 
     if (opCode == EC_FOE_OPCODE_BUSY) {
+        fsm->rx_expected_packet_no--;
         if (ec_foe_prepare_send_ack(fsm, datagram)) {
             ec_foe_set_rx_error(fsm, FOE_PROT_ERROR);
         }
         fsm->state = ec_fsm_foe_state_sent_ack;
+#ifdef DEBUG_FOE
+        EC_SLAVE_DBG(fsm->slave, 0, "%s() busy. Next pkt %u\n", __func__,
+                fsm->rx_expected_packet_no);
+#endif
         return;
     }
 
