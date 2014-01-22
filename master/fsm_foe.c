@@ -733,7 +733,8 @@ void ec_fsm_foe_state_data_read(
         )
 {
     size_t rec_size;
-    uint8_t *data, opCode, packet_no, mbox_prot;
+    uint32_t packet_no;
+    uint8_t *data, opCode, mbox_prot;
 
     ec_slave_t *slave = fsm->slave;
 
@@ -799,9 +800,10 @@ void ec_fsm_foe_state_data_read(
         return;
     }
 
-    packet_no = EC_READ_U16(data + 2);
+    packet_no = EC_READ_U32(data + 2);
     if (packet_no != fsm->rx_expected_packet_no) {
-        EC_SLAVE_ERR(slave, "Received unexpected packet number.\n");
+        EC_SLAVE_ERR(slave, "Received packet number %u, expected %u.\n",
+                packet_no, fsm->rx_expected_packet_no);
         ec_foe_set_rx_error(fsm, FOE_PACKETNO_ERROR);
         return;
     }
