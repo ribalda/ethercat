@@ -60,6 +60,11 @@ void ec_master_clear_config(ec_master_t *master)
     ec_domain_t *d, *next_d;
     ec_slave_config_t *c, *next_c;
 
+    if (master->process_data)  {
+        munmap(master->process_data, master->process_data_size);
+        master->process_data = NULL;
+    }
+
     d = master->first_domain;
     while (d) {
         next_d = d->next;
@@ -81,10 +86,6 @@ void ec_master_clear_config(ec_master_t *master)
 
 void ec_master_clear(ec_master_t *master)
 {
-    if (master->process_data)  {
-        munmap(master->process_data, master->process_data_size);
-    }
-
     ec_master_clear_config(master);
 
     if (master->fd != -1) {
