@@ -2849,7 +2849,7 @@ uint32_t ecrt_master_sync_monitor_process(ec_master_t *master)
 /*****************************************************************************/
 
 int ecrt_master_sdo_download(ec_master_t *master, uint16_t slave_position,
-        uint16_t index, uint8_t subindex, uint8_t *data,
+        uint16_t index, uint8_t subindex, const uint8_t *data,
         size_t data_size, uint32_t *abort_code)
 {
     ec_sdo_request_t request;
@@ -2933,7 +2933,7 @@ int ecrt_master_sdo_download(ec_master_t *master, uint16_t slave_position,
 /*****************************************************************************/
 
 int ecrt_master_sdo_download_complete(ec_master_t *master,
-        uint16_t slave_position, uint16_t index, uint8_t *data,
+        uint16_t slave_position, uint16_t index, const uint8_t *data,
         size_t data_size, uint32_t *abort_code)
 {
     ec_sdo_request_t request;

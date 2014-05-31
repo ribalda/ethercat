@@ -400,7 +400,7 @@ typedef struct {
     uint8_t sdo_entry_subindex;
     uint8_t complete_access;
     size_t data_size;
-    uint8_t *data;
+    const uint8_t *data;
 
     // outputs
     uint32_t abort_code;

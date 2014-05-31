@@ -390,7 +390,7 @@ int ecrt_master_get_pdo_entry(ec_master_t *master, uint16_t slave_position,
 /****************************************************************************/
 
 int ecrt_master_sdo_download(ec_master_t *master, uint16_t slave_position,
-        uint16_t index, uint8_t subindex, uint8_t *data,
+        uint16_t index, uint8_t subindex, const uint8_t *data,
         size_t data_size, uint32_t *abort_code)
 {
     ec_ioctl_slave_sdo_download_t download;
@@ -419,7 +419,7 @@ int ecrt_master_sdo_download(ec_master_t *master, uint16_t slave_position,
 /****************************************************************************/
 
 int ecrt_master_sdo_download_complete(ec_master_t *master,
-        uint16_t slave_position, uint16_t index, uint8_t *data,
+        uint16_t slave_position, uint16_t index, const uint8_t *data,
         size_t data_size, uint32_t *abort_code)
 {
     ec_ioctl_slave_sdo_download_t download;

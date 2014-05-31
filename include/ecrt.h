@@ -815,7 +815,7 @@ int ecrt_master_sdo_download(
         uint16_t slave_position, /**< Slave position. */
         uint16_t index, /**< Index of the SDO. */
         uint8_t subindex, /**< Subindex of the SDO. */
-        uint8_t *data, /**< Data buffer to download. */
+        const uint8_t *data, /**< Data buffer to download. */
         size_t data_size, /**< Size of the data buffer. */
         uint32_t *abort_code /**< Abort code of the SDO download. */
         );
@@ -834,7 +834,7 @@ int ecrt_master_sdo_download_complete(
         ec_master_t *master, /**< EtherCAT master. */
         uint16_t slave_position, /**< Slave position. */
         uint16_t index, /**< Index of the SDO. */
-        uint8_t *data, /**< Data buffer to download. */
+        const uint8_t *data, /**< Data buffer to download. */
         size_t data_size, /**< Size of the data buffer. */
         uint32_t *abort_code /**< Abort code of the SDO download. */
         );

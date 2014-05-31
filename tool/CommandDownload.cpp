@@ -173,16 +173,17 @@ void CommandDownload::execute(const StringVector &args)
             throwCommandException(err);
         }
         data.data_size = contents.size();
-        data.data = new uint8_t[data.data_size + 1];
+        uint8_t *sdo_data = new uint8_t[data.data_size + 1];
+        data.data = sdo_data;
 
         try {
             data.data_size = interpretAsType(
-                    dataType, contents, data.data, data.data_size);
+                    dataType, contents, sdo_data, data.data_size);
         } catch (SizeException &e) {
-            delete [] data.data;
+            delete [] sdo_data;
             throwCommandException(e.what());
         } catch (ios::failure &e) {
-            delete [] data.data;
+            delete [] sdo_data;
             err << "Invalid value argument '" << args[2]
                 << "' for type '" << dataType->name << "'!";
             throwInvalidUsageException(err);
@@ -195,33 +196,21 @@ void CommandDownload::execute(const StringVector &args)
             data.data_size = DefaultBufferSize;
         }
 
-        data.data = new uint8_t[data.data_size + 1];
+        uint8_t *sdo_data = new uint8_t[data.data_size + 1];
+        data.data = sdo_data;
 
         try {
             data.data_size = interpretAsType(
-                    dataType, args[valueIndex], data.data, data.data_size);
+                    dataType, args[valueIndex], sdo_data, data.data_size);
         } catch (SizeException &e) {
-            delete [] data.data;
+            delete [] sdo_data;
             throwCommandException(e.what());
         } catch (ios::failure &e) {
-            delete [] data.data;
+            delete [] sdo_data;
             err << "Invalid value argument '" << args[2]
                 << "' for type '" << dataType->name << "'!";
             throwInvalidUsageException(err);
         }
-    }
-
-    try {
-        data.data_size = interpretAsType(
-                dataType, args[valueIndex], data.data, data.data_size);
-    } catch (SizeException &e) {
-        delete [] data.data;
-        throwCommandException(e.what());
-    } catch (ios::failure &e) {
-        delete [] data.data;
-        err << "Invalid value argument '" << args[2]
-            << "' for type '" << dataType->name << "'!";
-        throwInvalidUsageException(err);
     }
 
     try {
