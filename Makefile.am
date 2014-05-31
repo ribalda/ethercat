@@ -119,7 +119,11 @@ mrproper: clean cleandoc
 		configure \
 		configure.in \
 		libtool \
-		stamp-h1
+		stamp-h1 \
+		ethercat.spec \
+		script/init.d/ethercat \
+		m4/*.m4 \
+		`find -path ./documentation -prune -o "(" -name Makefile -o -name Makefile.in -o -name Kbuild -o -name .deps -o -name Module.symvers -o -name .tmp_versions ")" -print`
 
 doc:
 	doxygen Doxyfile
