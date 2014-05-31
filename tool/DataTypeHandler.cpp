@@ -33,6 +33,7 @@
 #include <iostream>
 #endif
 
+#include <string.h>
 #include <iomanip>
 #include <sstream>
 using namespace std;
@@ -105,6 +106,8 @@ size_t DataTypeHandler::interpretAsType(
 {
     stringstream str;
     size_t dataSize = type->byteSize;
+
+    memset(target, 0, targetSize);
 
 #if DEBUG
 	cerr << __func__ << "(targetSize=" << targetSize << ")" << endl;
@@ -192,7 +195,7 @@ size_t DataTypeHandler::interpretAsType(
                     << dataSize << " > " << targetSize << ")";
                 throw SizeException(err.str());
             }
-            str >> (char *) target;
+            str.read((char *) target, dataSize);
             break;
         case 0x0011: // double
             {
