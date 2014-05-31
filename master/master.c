@@ -2224,10 +2224,12 @@ void ec_master_request_op(
         }
     }
 
+#ifdef EC_REFCLKOP
     // always set DC reference clock to OP
     if (master->dc_ref_clock) {
         ec_slave_request_state(master->dc_ref_clock, EC_SLAVE_STATE_OP);
     }
+#endif
 }
 
 /******************************************************************************

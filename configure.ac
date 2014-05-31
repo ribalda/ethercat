@@ -820,6 +820,35 @@ else
 fi
 
 #------------------------------------------------------------------------------
+# Force the reference clock to OP even if unconfigured
+#------------------------------------------------------------------------------
+
+AC_MSG_CHECKING([whether to force the reference clock to OP])
+
+AC_ARG_ENABLE([refclkop],
+    AS_HELP_STRING([--enable-refclkop],
+                   [Force reference clock to OP (default: no)]),
+    [
+        case "${enableval}" in
+            yes) refclkop=1
+                ;;
+            no) refclkop=0
+                ;;
+            *) AC_MSG_ERROR([Invalid value for --enable-refclkop])
+                ;;
+        esac
+    ],
+    [refclkop=0]
+)
+
+if test "x${refclkop}" = "x1"; then
+    AC_DEFINE([EC_REFCLKOP], [1], [Force refclk to OP])
+    AC_MSG_RESULT([yes])
+else
+    AC_MSG_RESULT([no])
+fi
+
+#------------------------------------------------------------------------------
 # Command-line tool
 #-----------------------------------------------------------------------------
 
