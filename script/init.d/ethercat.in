@@ -227,6 +227,7 @@ restart)
     $0 stop || exit 1
     sleep 1
     $0 start
+    exit
     ;;
 
 status)
