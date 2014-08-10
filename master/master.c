@@ -55,6 +55,7 @@
 #include "slave_config.h"
 #include "device.h"
 #include "datagram.h"
+#include "mailbox.h"
 #ifdef EC_EOE
 #include "ethernet.h"
 #endif
@@ -967,8 +968,10 @@ void ec_master_queue_datagram(
         }
     }
 
-    list_add_tail(&datagram->queue, &master->datagram_queue);
-    datagram->state = EC_DATAGRAM_QUEUED;
+    if (datagram->state != EC_DATAGRAM_INVALID) {
+        list_add_tail(&datagram->queue, &master->datagram_queue);
+        datagram->state = EC_DATAGRAM_QUEUED;
+    }
 }
 
 /*****************************************************************************/
@@ -1161,10 +1164,11 @@ void ec_master_receive_datagrams(
         )
 {
     size_t frame_size, data_size;
-    uint8_t datagram_type, datagram_index;
-    unsigned int cmd_follows, matched;
+    uint8_t datagram_type, datagram_index, datagram_mbox_prot;
+    unsigned int cmd_follows, datagram_slave_addr, datagram_offset_addr, datagram_wc, matched;
     const uint8_t *cur_data;
     ec_datagram_t *datagram;
+    ec_slave_t *slave;
 
     if (unlikely(size < EC_FRAME_HEADER_SIZE)) {
         if (master->debug_level || FORCE_OUTPUT_CORRUPTED) {
@@ -1206,6 +1210,8 @@ void ec_master_receive_datagrams(
         // process datagram header
         datagram_type  = EC_READ_U8 (cur_data);
         datagram_index = EC_READ_U8 (cur_data + 1);
+        datagram_slave_addr  = EC_READ_U16(cur_data + 2);
+        datagram_offset_addr = EC_READ_U16(cur_data + 4);
         data_size      = EC_READ_U16(cur_data + 6) & 0x07FF;
         cmd_follows    = EC_READ_U16(cur_data + 6) & 0x8000;
         cur_data += EC_DATAGRAM_HEADER_SIZE;
@@ -1262,9 +1268,84 @@ void ec_master_receive_datagrams(
                 datagram->type != EC_DATAGRAM_FPWR &&
                 datagram->type != EC_DATAGRAM_BWR &&
                 datagram->type != EC_DATAGRAM_LWR) {
-            // copy received data into the datagram memory,
-            // if something has been read
-            memcpy(datagram->data, cur_data, data_size);
+
+            // common mailbox dispatcher for mailboxes read using the physical slave address
+            if (datagram->type == EC_DATAGRAM_FPRD) {
+                datagram_wc = EC_READ_U16(cur_data + data_size);
+                if (datagram_wc) {
+                    if (master->slaves != NULL) {
+                        for (slave = master->slaves; slave < master->slaves + master->slave_count; slave++) {
+                            if (slave->station_address == datagram_slave_addr) {
+                                break;
+                            }
+                        }
+                        if (slave->station_address == datagram_slave_addr) {
+                            if (slave->configured_tx_mailbox_offset != 0) {
+                                if (datagram_offset_addr == slave->configured_tx_mailbox_offset) {
+                                    datagram_mbox_prot = EC_READ_U8(cur_data + 5) & 0x0F;
+                                    switch (datagram_mbox_prot) {
+#ifdef EC_EOE
+                                    case EC_MBOX_TYPE_EOE:
+                                        if ((slave->mbox_eoe_data.data) && (data_size <= slave->mbox_eoe_data.data_size)) {
+                                            memcpy(slave->mbox_eoe_data.data, cur_data, data_size);
+                                            slave->mbox_eoe_data.payload_size = data_size;
+                                        }
+                                        break;
+#endif
+                                    case EC_MBOX_TYPE_COE:
+                                        if ((slave->mbox_coe_data.data) && (data_size <= slave->mbox_coe_data.data_size)) {
+                                            memcpy(slave->mbox_coe_data.data, cur_data, data_size);
+                                            slave->mbox_coe_data.payload_size = data_size;
+                                        }
+                                        break;
+                                    case EC_MBOX_TYPE_FOE:
+                                        if ((slave->mbox_foe_data.data) && (data_size <= slave->mbox_foe_data.data_size)) {
+                                            memcpy(slave->mbox_foe_data.data, cur_data, data_size);
+                                            slave->mbox_foe_data.payload_size = data_size;
+                                        }
+                                        break;
+                                    case EC_MBOX_TYPE_SOE:
+                                        if ((slave->mbox_soe_data.data) && (data_size <= slave->mbox_soe_data.data_size)) {
+                                            memcpy(slave->mbox_soe_data.data, cur_data, data_size);
+                                            slave->mbox_soe_data.payload_size = data_size;
+                                        }
+                                        break;
+                                    case EC_MBOX_TYPE_VOE:
+                                        if ((slave->mbox_voe_data.data) && (data_size <= slave->mbox_voe_data.data_size)) {
+                                            memcpy(slave->mbox_voe_data.data, cur_data, data_size);
+                                            slave->mbox_voe_data.payload_size = data_size;
+                                        }
+                                        break;
+                                    default:
+                                        EC_MASTER_DBG(master, 1, "Unknown mailbox protocol from slave: %u Protocol: %u\n", datagram_slave_addr, datagram_mbox_prot);
+                                        // copy instead received data into the datagram memory.
+                                        memcpy(datagram->data, cur_data, data_size);
+                                        break;
+                                    }
+                                } else {
+                                    // copy instead received data into the datagram memory.
+                                    memcpy(datagram->data, cur_data, data_size);
+                                }
+                            } else {
+                                // copy instead received data into the datagram memory.
+                                memcpy(datagram->data, cur_data, data_size);
+                            }
+                        } else {
+                            EC_MASTER_DBG(master, 1, "No slave matching datagram slave address: %u\n", datagram_slave_addr);
+                        }
+                    } else {
+                        EC_MASTER_DBG(master, 1, "No configured slaves!\n");
+                        // copy instead received data into the datagram memory.
+                        memcpy(datagram->data, cur_data, data_size);
+                    }
+                } else {
+                    // copy instead received data into the datagram memory.
+                    memcpy(datagram->data, cur_data, data_size);
+                }
+            } else {
+                // copy instead received data into the datagram memory.
+                memcpy(datagram->data, cur_data, data_size);
+            }
         }
         cur_data += data_size;
 
@@ -2512,6 +2593,9 @@ void ecrt_master_deactivate(ec_master_t *master)
 
         // set states for all slaves
         ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
+
+        // clear read_mbox_busy flag in case slave CoE FSM were interrupted
+        ec_read_mbox_lock_clear(slave);
 
         // mark for reconfiguration, because the master could have no
         // possibility for a reconfiguration between two sequential operation

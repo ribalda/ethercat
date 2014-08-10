@@ -587,6 +587,9 @@ void ec_datagram_print_state(
         case EC_DATAGRAM_ERROR:
             printk(KERN_CONT "error");
             break;
+        case EC_DATAGRAM_INVALID:
+            printk(KERN_CONT "invalid");
+            break;
         default:
             printk(KERN_CONT "???");
     }
@@ -645,6 +648,107 @@ const char *ec_datagram_type_string(
         )
 {
     return type_strings[datagram->type];
+}
+
+/*****************************************************************************/
+
+/** Initialize mailbox response data.
+ *
+ */
+void ec_mbox_data_init(
+        ec_mbox_data_t *mbox_data /**< Mailbox response data. */
+        )
+{
+    mbox_data->data = NULL;
+    mbox_data->data_size = 0;
+    mbox_data->payload_size = 0;
+}
+
+
+/*****************************************************************************/
+
+/** Free internal memory for mailbox response data.
+ *
+ */
+void ec_mbox_data_clear(
+        ec_mbox_data_t *mbox_data /**< Mailbox response data. */
+        )
+{
+    if (mbox_data->data) {
+        kfree(mbox_data->data);
+        mbox_data->data = NULL;
+        mbox_data->data_size = 0;
+    }
+}
+
+
+/*****************************************************************************/
+
+/** Allocates internal memory for mailbox response data.
+ *
+ * \return 0 in case of success, otherwise \a -ENOMEM.
+ */
+int ec_mbox_data_prealloc(
+        ec_mbox_data_t *mbox_data, /**< Mailbox response data. */
+        size_t size /**< Mailbox size in bytes. */
+        )
+{
+    if (mbox_data->data) {
+        kfree(mbox_data->data);
+        mbox_data->data = NULL;
+        mbox_data->data_size = 0;
+    }
+
+    if (!(mbox_data->data = kmalloc(size, GFP_KERNEL))) {
+        EC_ERR("Failed to allocate %zu bytes of mailbox data memory!\n", size);
+        return -ENOMEM;
+    }
+    mbox_data->data_size = size;
+    return 0;
+}
+
+
+/*****************************************************************************/
+
+/** Allocates internal memory for mailbox response data for all slave
+ *  supported mailbox protocols .
+ *
+  */
+void ec_mbox_prot_data_prealloc(
+        ec_slave_t *slave, /**< EtherCAT slave. */
+        uint16_t protocols, /**< Supported protocols. */
+        size_t size /**< Mailbox size in bytes. */
+        )
+{
+    if ((size > 0) && (size <= EC_MAX_DATA_SIZE)) {
+#ifdef EC_EOE
+        if (protocols & EC_MBOX_EOE) {
+            ec_mbox_data_prealloc(&slave->mbox_eoe_data, size);
+        } else {
+            ec_mbox_data_clear(&slave->mbox_eoe_data);
+        }
+#endif
+        if (protocols & EC_MBOX_COE) {
+            ec_mbox_data_prealloc(&slave->mbox_coe_data, size);
+        } else {
+            ec_mbox_data_clear(&slave->mbox_coe_data);
+        }
+        if (protocols & EC_MBOX_FOE) {
+            ec_mbox_data_prealloc(&slave->mbox_foe_data, size);
+        } else {
+            ec_mbox_data_clear(&slave->mbox_foe_data);
+        }
+        if (protocols & EC_MBOX_SOE) {
+            ec_mbox_data_prealloc(&slave->mbox_soe_data, size);
+        } else {
+            ec_mbox_data_clear(&slave->mbox_soe_data);
+        }
+        if (protocols & EC_MBOX_VOE) {
+            ec_mbox_data_prealloc(&slave->mbox_voe_data, size);
+        } else {
+            ec_mbox_data_clear(&slave->mbox_voe_data);
+        }
+    }
 }
 
 /*****************************************************************************/

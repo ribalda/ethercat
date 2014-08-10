@@ -71,6 +71,7 @@ void ec_eoe_flush(ec_eoe_t *);
 void ec_eoe_state_rx_start(ec_eoe_t *);
 void ec_eoe_state_rx_check(ec_eoe_t *);
 void ec_eoe_state_rx_fetch(ec_eoe_t *);
+void ec_eoe_state_rx_fetch_data(ec_eoe_t *);
 void ec_eoe_state_tx_start(ec_eoe_t *);
 void ec_eoe_state_tx_sent(ec_eoe_t *);
 
@@ -494,9 +495,14 @@ void ec_eoe_state_rx_start(ec_eoe_t *eoe /**< EoE handler */)
         return;
     }
 
-    ec_slave_mbox_prepare_check(eoe->slave, &eoe->datagram);
-    eoe->queue_datagram = 1;
-    eoe->state = ec_eoe_state_rx_check;
+    // mailbox read check is skipped if a read request is already ongoing
+    if (ec_read_mbox_locked(eoe->slave)) {
+        eoe->state = ec_eoe_state_rx_fetch_data;
+    } else {
+        ec_slave_mbox_prepare_check(eoe->slave, &eoe->datagram);
+        eoe->queue_datagram = 1;
+        eoe->state = ec_eoe_state_rx_check;
+    }
 }
 
 /*****************************************************************************/
@@ -515,12 +521,20 @@ void ec_eoe_state_rx_check(ec_eoe_t *eoe /**< EoE handler */)
                 " check datagram for %s.\n", eoe->dev->name);
 #endif
         eoe->state = ec_eoe_state_tx_start;
+        ec_read_mbox_lock_clear(eoe->slave);
         return;
     }
 
     if (!ec_slave_mbox_check(&eoe->datagram)) {
         eoe->rx_idle = 1;
-        eoe->state = ec_eoe_state_tx_start;
+        ec_read_mbox_lock_clear(eoe->slave);
+        // check that data is not already received by another read request
+        if (eoe->slave->mbox_eoe_data.payload_size > 0) {
+            eoe->state = ec_eoe_state_rx_fetch_data;
+            eoe->state(eoe);
+        } else {
+            eoe->state = ec_eoe_state_tx_start;
+        }
         return;
     }
 
@@ -539,6 +553,32 @@ void ec_eoe_state_rx_check(ec_eoe_t *eoe /**< EoE handler */)
  */
 void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
 {
+
+    if (eoe->datagram.state != EC_DATAGRAM_RECEIVED) {
+        eoe->stats.rx_errors++;
+#if EOE_DEBUG_LEVEL >= 1
+        EC_SLAVE_WARN(eoe->slave, "Failed to receive mbox"
+                " fetch datagram for %s.\n", eoe->dev->name);
+#endif
+        eoe->state = ec_eoe_state_tx_start;
+        ec_read_mbox_lock_clear(eoe->slave);
+        return;
+    }
+    ec_read_mbox_lock_clear(eoe->slave);
+    eoe->state = ec_eoe_state_rx_fetch_data;
+    eoe->state(eoe);
+}
+
+
+
+/*****************************************************************************/
+
+/** State: RX_FETCH DATA.
+ *
+ * Processes the EoE data.
+ */
+void ec_eoe_state_rx_fetch_data(ec_eoe_t *eoe /**< EoE handler */)
+{
     size_t rec_size, data_size;
     uint8_t *data, frame_type, last_fragment, time_appended, mbox_prot;
     uint8_t fragment_offset, fragment_number;
@@ -550,17 +590,19 @@ void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
     unsigned int i;
 #endif
 
-    if (eoe->datagram.state != EC_DATAGRAM_RECEIVED) {
-        eoe->stats.rx_errors++;
-#if EOE_DEBUG_LEVEL >= 1
-        EC_SLAVE_WARN(eoe->slave, "Failed to receive mbox"
-                " fetch datagram for %s.\n", eoe->dev->name);
-#endif
-        eoe->state = ec_eoe_state_tx_start;
+    if (eoe->slave->mbox_eoe_data.payload_size > 0) {
+        eoe->slave->mbox_eoe_data.payload_size = 0;
+    } else {
+        // initiate a new mailbox read check if required data is not available
+        if (!ec_read_mbox_locked(eoe->slave)) {
+            ec_slave_mbox_prepare_check(eoe->slave, &eoe->datagram);
+            eoe->queue_datagram = 1;
+            eoe->state = ec_eoe_state_rx_check;
+        }
         return;
     }
 
-    data = ec_slave_mbox_fetch(eoe->slave, &eoe->datagram,
+    data = ec_slave_mbox_fetch(eoe->slave, &eoe->slave->mbox_eoe_data,
             &mbox_prot, &rec_size);
     if (IS_ERR(data)) {
         eoe->stats.rx_errors++;

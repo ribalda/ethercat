@@ -272,6 +272,10 @@ void ec_fsm_slave_config_state_init(
     ec_datagram_zero(datagram);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_slave_config_state_clear_fmmus;
+
+    EC_SLAVE_DBG(slave, 1, "Clearing mailbox check flag...\n");
+
+    ec_read_mbox_lock_clear(slave);
 }
 
 /*****************************************************************************/
@@ -541,6 +545,9 @@ void ec_fsm_slave_config_enter_mbox_sync(
         slave->configured_tx_mailbox_size =
             slave->sii.std_tx_mailbox_size;
     }
+
+    // allocate memory for mailbox response data for supported mailbox protocols
+    ec_mbox_prot_data_prealloc(slave, slave->sii.mailbox_protocols, slave->configured_tx_mailbox_size);
 
     fsm->take_time = 1;
 

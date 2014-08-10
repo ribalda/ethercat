@@ -164,7 +164,51 @@ void ec_slave_init(
 
     // create state machine object
     ec_fsm_slave_init(&slave->fsm, slave);
+
+    slave->read_mbox_busy = 0;
+    rt_mutex_init(&slave->mbox_sem);
+
+#ifdef EC_EOE
+    ec_mbox_data_init(&slave->mbox_eoe_data);
+#endif
+    ec_mbox_data_init(&slave->mbox_coe_data);
+    ec_mbox_data_init(&slave->mbox_foe_data);
+    ec_mbox_data_init(&slave->mbox_soe_data);
+    ec_mbox_data_init(&slave->mbox_voe_data);
 }
+
+
+/*****************************************************************************/
+
+/**
+   Clears the mailbox lock.
+*/
+void ec_read_mbox_lock_clear(ec_slave_t *slave)
+{
+    rt_mutex_lock(&slave->mbox_sem);
+    slave->read_mbox_busy = 0;
+    rt_mutex_unlock(&slave->mbox_sem);
+}
+
+
+/*****************************************************************************/
+
+/**
+   Return the current mailbox lock status and lock it if not locked.
+*/
+int ec_read_mbox_locked(ec_slave_t *slave)
+{
+    int rc;
+
+    rt_mutex_lock(&slave->mbox_sem);
+    rc = slave->read_mbox_busy;
+    if (!slave->read_mbox_busy) {
+        slave->read_mbox_busy = 1;
+    }
+    rt_mutex_unlock(&slave->mbox_sem);
+    return rc;
+}
+
 
 /*****************************************************************************/
 
@@ -259,6 +303,15 @@ void ec_slave_clear(ec_slave_t *slave /**< EtherCAT slave */)
     if (slave->sii_words) {
         kfree(slave->sii_words);
     }
+
+    // free mailbox response data
+#ifdef EC_EOE
+    ec_mbox_data_clear(&slave->mbox_eoe_data);
+#endif
+    ec_mbox_data_clear(&slave->mbox_coe_data);
+    ec_mbox_data_clear(&slave->mbox_foe_data);
+    ec_mbox_data_clear(&slave->mbox_soe_data);
+    ec_mbox_data_clear(&slave->mbox_voe_data);
 
     ec_fsm_slave_clear(&slave->fsm);
 }

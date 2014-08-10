@@ -56,6 +56,7 @@ void ec_voe_handler_state_write_response(ec_voe_handler_t *);
 void ec_voe_handler_state_read_start(ec_voe_handler_t *);
 void ec_voe_handler_state_read_check(ec_voe_handler_t *);
 void ec_voe_handler_state_read_response(ec_voe_handler_t *);
+void ec_voe_handler_state_read_response_data(ec_voe_handler_t *);
 
 void ec_voe_handler_state_read_nosync_start(ec_voe_handler_t *);
 void ec_voe_handler_state_read_nosync_response(ec_voe_handler_t *);
@@ -303,11 +304,19 @@ void ec_voe_handler_state_read_start(ec_voe_handler_t *voe)
         return;
     }
 
-    ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
-
     voe->jiffies_start = jiffies;
-    voe->retries = EC_FSM_RETRIES;
-    voe->state = ec_voe_handler_state_read_check;
+
+    // mailbox read check is skipped if a read request is already ongoing
+    if (ec_read_mbox_locked(slave)) {
+        voe->state = ec_voe_handler_state_read_response_data;
+        // the datagram is not used and marked as invalid
+        datagram->state = EC_DATAGRAM_INVALID;
+    } else {
+        ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
+        voe->jiffies_start = jiffies;
+        voe->retries = EC_FSM_RETRIES;
+        voe->state = ec_voe_handler_state_read_check;
+    }
 }
 
 /*****************************************************************************/
@@ -324,6 +333,7 @@ void ec_voe_handler_state_read_check(ec_voe_handler_t *voe)
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         voe->state = ec_voe_handler_state_error;
+        ec_read_mbox_lock_clear(slave);
         voe->request_state = EC_INT_REQUEST_FAILURE;
         EC_SLAVE_ERR(slave, "Failed to receive VoE mailbox check datagram: ");
         ec_datagram_print_state(datagram);
@@ -332,6 +342,7 @@ void ec_voe_handler_state_read_check(ec_voe_handler_t *voe)
 
     if (datagram->working_counter != 1) {
         voe->state = ec_voe_handler_state_error;
+        ec_read_mbox_lock_clear(slave);
         voe->request_state = EC_INT_REQUEST_FAILURE;
         EC_SLAVE_ERR(slave, "Reception of VoE mailbox check"
                 " datagram failed: ");
@@ -340,10 +351,21 @@ void ec_voe_handler_state_read_check(ec_voe_handler_t *voe)
     }
 
     if (!ec_slave_mbox_check(datagram)) {
-        unsigned long diff_ms =
-            (datagram->jiffies_received - voe->jiffies_start) * 1000 / HZ;
+        unsigned long diff_ms = 0;
+
+        // check that data is not already received by another read request
+        if (slave->mbox_voe_data.payload_size > 0) {
+            ec_read_mbox_lock_clear(slave);
+            voe->state = ec_voe_handler_state_read_response_data;
+            voe->state(voe);
+            return;
+        }
+
+        diff_ms = (datagram->jiffies_received - voe->jiffies_start) * 1000 / HZ;
+
         if (diff_ms >= EC_VOE_RESPONSE_TIMEOUT) {
             voe->state = ec_voe_handler_state_error;
+            ec_read_mbox_lock_clear(slave);
             voe->request_state = EC_INT_REQUEST_FAILURE;
             EC_SLAVE_ERR(slave, "Timeout while waiting for VoE data.\n");
             return;
@@ -368,15 +390,13 @@ void ec_voe_handler_state_read_response(ec_voe_handler_t *voe)
 {
     ec_datagram_t *datagram = &voe->datagram;
     ec_slave_t *slave = voe->config->slave;
-    ec_master_t *master = voe->config->master;
-    uint8_t *data, mbox_prot;
-    size_t rec_size;
 
     if (datagram->state == EC_DATAGRAM_TIMED_OUT && voe->retries--)
         return;
 
     if (datagram->state != EC_DATAGRAM_RECEIVED) {
         voe->state = ec_voe_handler_state_error;
+        ec_read_mbox_lock_clear(slave);
         voe->request_state = EC_INT_REQUEST_FAILURE;
         EC_SLAVE_ERR(slave, "Failed to receive VoE read datagram: ");
         ec_datagram_print_state(datagram);
@@ -384,14 +404,53 @@ void ec_voe_handler_state_read_response(ec_voe_handler_t *voe)
     }
 
     if (datagram->working_counter != 1) {
-        voe->state = ec_voe_handler_state_error;
-        voe->request_state = EC_INT_REQUEST_FAILURE;
-        EC_SLAVE_ERR(slave, "Reception of VoE read response failed: ");
-        ec_datagram_print_wc_error(datagram);
+        // only an error if data has not already been read by another read request
+        if (slave->mbox_voe_data.payload_size == 0) {
+            voe->state = ec_voe_handler_state_error;
+            ec_read_mbox_lock_clear(slave);
+            voe->request_state = EC_INT_REQUEST_FAILURE;
+            EC_SLAVE_ERR(slave, "Reception of VoE read response failed: ");
+            ec_datagram_print_wc_error(datagram);
+            return;
+        }
+    }
+    ec_read_mbox_lock_clear(slave);
+    voe->state = ec_voe_handler_state_read_response_data;
+    voe->state(voe);
+}
+
+
+/*****************************************************************************/
+
+/**
+   VoE state: READ RESPONSE DATA.
+
+*/
+
+void ec_voe_handler_state_read_response_data(ec_voe_handler_t *voe)
+{
+    ec_datagram_t *datagram = &voe->datagram;
+    ec_slave_t *slave = voe->config->slave;
+    ec_master_t *master = voe->config->master;
+    uint8_t *data, mbox_prot;
+    size_t rec_size;
+
+    // process the data available or initiate a new mailbox read check
+    if (slave->mbox_voe_data.payload_size > 0) {
+        slave->mbox_voe_data.payload_size = 0;
+    } else {
+        // initiate a new mailbox read check if required data is not available
+        if (ec_read_mbox_locked(slave)) {
+            // await current read request and mark the datagram as invalid
+            datagram->state = EC_DATAGRAM_INVALID;
+        } else {
+            ec_slave_mbox_prepare_check(slave, datagram); // can not fail.
+            voe->state = ec_voe_handler_state_read_check;
+        }
         return;
     }
 
-    data = ec_slave_mbox_fetch(slave, datagram, &mbox_prot, &rec_size);
+    data = ec_slave_mbox_fetch(slave, &slave->mbox_voe_data, &mbox_prot, &rec_size);
     if (IS_ERR(data)) {
         voe->state = ec_voe_handler_state_error;
         voe->request_state = EC_INT_REQUEST_FAILURE;
@@ -421,6 +480,7 @@ void ec_voe_handler_state_read_response(ec_voe_handler_t *voe)
     }
 
     voe->data_size = rec_size - EC_VOE_HEADER_SIZE;
+    memcpy(voe->datagram.data + EC_MBOX_HEADER_SIZE, data, rec_size);
     voe->request_state = EC_INT_REQUEST_SUCCESS;
     voe->state = ec_voe_handler_state_end; // success
 }
@@ -489,8 +549,10 @@ void ec_voe_handler_state_read_nosync_response(ec_voe_handler_t *voe)
         return;
     }
 
-    if (!(data = ec_slave_mbox_fetch(slave, datagram,
-                    &mbox_prot, &rec_size))) {
+    if (slave->mbox_voe_data.payload_size > 0) {
+        slave->mbox_voe_data.payload_size = 0;
+        data = ec_slave_mbox_fetch(slave, &slave->mbox_voe_data, &mbox_prot, &rec_size);
+    } else {
         voe->state = ec_voe_handler_state_error;
         voe->request_state = EC_INT_REQUEST_FAILURE;
         return;
@@ -519,6 +581,7 @@ void ec_voe_handler_state_read_nosync_response(ec_voe_handler_t *voe)
     }
 
     voe->data_size = rec_size - EC_VOE_HEADER_SIZE;
+    memcpy(voe->datagram.data + EC_MBOX_HEADER_SIZE, data, rec_size);
     voe->request_state = EC_INT_REQUEST_SUCCESS;
     voe->state = ec_voe_handler_state_end; // success
 }

@@ -39,6 +39,7 @@
 
 #include <linux/list.h>
 #include <linux/kobject.h>
+#include <linux/rtmutex.h>
 
 #include "globals.h"
 #include "datagram.h"
@@ -255,6 +256,17 @@ struct ec_slave
     struct list_head eoe_requests; /**< EoE set IP parameter requests. */
 
     ec_fsm_slave_t fsm; /**< Slave state machine. */
+
+    uint8_t read_mbox_busy; /**< Flag set during a mailbox read request. */
+    struct rt_mutex mbox_sem; /**< Semaphore protecting the check_mbox variable. */
+
+#ifdef EC_EOE
+    ec_mbox_data_t mbox_eoe_data; /**< Received mailbox data for EoE. */
+#endif
+    ec_mbox_data_t mbox_coe_data; /**< Received mailbox data for CoE. */
+    ec_mbox_data_t mbox_foe_data; /**< Received mailbox data for FoE. */
+    ec_mbox_data_t mbox_soe_data; /**< Received mailbox data for SoE. */
+    ec_mbox_data_t mbox_voe_data; /**< Received mailbox data for VoE. */
 };
 
 /*****************************************************************************/
@@ -291,6 +303,9 @@ void ec_slave_attach_pdo_names(ec_slave_t *);
 
 void ec_slave_calc_port_delays(ec_slave_t *);
 void ec_slave_calc_transmission_delays_rec(ec_slave_t *, uint32_t *);
+
+void ec_read_mbox_lock_clear(ec_slave_t *);
+int ec_read_mbox_locked(ec_slave_t *);
 
 /*****************************************************************************/
 
