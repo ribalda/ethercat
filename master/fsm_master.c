@@ -1104,6 +1104,9 @@ void ec_fsm_master_state_scan_slave(
     if (ec_fsm_slave_scan_exec(&fsm->fsm_slave_scan)) {
         return;
     }
+    // Assume that the slaves mailbox data is valid even if the slave scanning skipped
+    // the clear mailbox state, e.g. if the slave refused to enter state INIT.
+    fsm->slave->valid_mbox_data = 1;
 
 #ifdef EC_EOE
     if (slave->sii.mailbox_protocols & EC_MBOX_EOE) {
