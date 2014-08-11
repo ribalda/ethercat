@@ -67,4 +67,12 @@ DEVICE_MODULES=""
 #
 #MODPROBE_FLAGS="-b"
 
+#
+# Ethernet devices to bring up when starting EtherCAT.
+#
+# Specify one or more network devices that you want to control link state of.
+# Listed devices will have set link state to "up" when starting EtherCAT.
+#
+#LINK_DEVICES="eth0"
+
 #------------------------------------------------------------------------------
