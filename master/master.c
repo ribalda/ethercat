@@ -1285,67 +1285,72 @@ void ec_master_receive_datagrams(
                         if (slave->station_address == datagram_slave_addr) {
                             if (slave->configured_tx_mailbox_offset != 0) {
                                 if (datagram_offset_addr == slave->configured_tx_mailbox_offset) {
-                                    datagram_mbox_prot = EC_READ_U8(cur_data + 5) & 0x0F;
-                                    switch (datagram_mbox_prot) {
+                                    if (slave->valid_mbox_data) {
+                                        datagram_mbox_prot = EC_READ_U8(cur_data + 5) & 0x0F;
+                                        switch (datagram_mbox_prot) {
 #ifdef EC_EOE
-                                    case EC_MBOX_TYPE_EOE:
-                                            // check EOE type and store in correct handlers mbox data cache
-                                            eoe_type = EC_READ_U8(cur_data + 6) & 0x0F;
+                                        case EC_MBOX_TYPE_EOE:
+                                                // check EOE type and store in correct handlers mbox data cache
+                                                eoe_type = EC_READ_U8(cur_data + 6) & 0x0F;
 
-                                            switch (eoe_type) {
+                                                switch (eoe_type) {
                                               
-                                            case EC_EOE_TYPE_FRAME_FRAG:
-                                                // EoE Frame Fragment handler
-                                                if ((slave->mbox_eoe_frag_data.data) && (data_size <= slave->mbox_eoe_frag_data.data_size)) {
-                                                    memcpy(slave->mbox_eoe_frag_data.data, cur_data, data_size);
-                                                    slave->mbox_eoe_frag_data.payload_size = data_size;
-                                                }
-                                                break;
-                                            case EC_EOE_TYPE_INIT_RES:
-                                                // EoE Init / Set IP response handler
-                                                if ((slave->mbox_eoe_init_data.data) && (data_size <= slave->mbox_eoe_init_data.data_size)) {
-                                                    memcpy(slave->mbox_eoe_init_data.data, cur_data, data_size);
-                                                    slave->mbox_eoe_init_data.payload_size = data_size;
-                                                }
-                                                break;
-                                            default:
-                                                EC_MASTER_DBG(master, 1, "Unhandled EoE protocol type from slave: %u Protocol: %u, Type: %x\n",
-                                                        datagram_slave_addr, datagram_mbox_prot, eoe_type);
-                                                // copy instead received data into the datagram memory.
-                                                memcpy(datagram->data, cur_data, data_size);
-                                                break;
-                                        }
-                                        break;
+                                                case EC_EOE_TYPE_FRAME_FRAG:
+                                                    // EoE Frame Fragment handler
+                                                    if ((slave->mbox_eoe_frag_data.data) && (data_size <= slave->mbox_eoe_frag_data.data_size)) {
+                                                        memcpy(slave->mbox_eoe_frag_data.data, cur_data, data_size);
+                                                        slave->mbox_eoe_frag_data.payload_size = data_size;
+                                                    }
+                                                    break;
+                                                case EC_EOE_TYPE_INIT_RES:
+                                                    // EoE Init / Set IP response handler
+                                                    if ((slave->mbox_eoe_init_data.data) && (data_size <= slave->mbox_eoe_init_data.data_size)) {
+                                                        memcpy(slave->mbox_eoe_init_data.data, cur_data, data_size);
+                                                        slave->mbox_eoe_init_data.payload_size = data_size;
+                                                    }
+                                                    break;
+                                                default:
+                                                    EC_MASTER_DBG(master, 1, "Unhandled EoE protocol type from slave: %u Protocol: %u, Type: %x\n",
+                                                            datagram_slave_addr, datagram_mbox_prot, eoe_type);
+                                                    // copy instead received data into the datagram memory.
+                                                    memcpy(datagram->data, cur_data, data_size);
+                                                    break;
+                                            }
+                                            break;
 #endif
-                                    case EC_MBOX_TYPE_COE:
-                                        if ((slave->mbox_coe_data.data) && (data_size <= slave->mbox_coe_data.data_size)) {
-                                            memcpy(slave->mbox_coe_data.data, cur_data, data_size);
-                                            slave->mbox_coe_data.payload_size = data_size;
+                                        case EC_MBOX_TYPE_COE:
+                                            if ((slave->mbox_coe_data.data) && (data_size <= slave->mbox_coe_data.data_size)) {
+                                                memcpy(slave->mbox_coe_data.data, cur_data, data_size);
+                                                slave->mbox_coe_data.payload_size = data_size;
+                                            }
+                                            break;
+                                        case EC_MBOX_TYPE_FOE:
+                                            if ((slave->mbox_foe_data.data) && (data_size <= slave->mbox_foe_data.data_size)) {
+                                                memcpy(slave->mbox_foe_data.data, cur_data, data_size);
+                                                slave->mbox_foe_data.payload_size = data_size;
+                                            }
+                                            break;
+                                        case EC_MBOX_TYPE_SOE:
+                                            if ((slave->mbox_soe_data.data) && (data_size <= slave->mbox_soe_data.data_size)) {
+                                                memcpy(slave->mbox_soe_data.data, cur_data, data_size);
+                                                slave->mbox_soe_data.payload_size = data_size;
+                                            }
+                                            break;
+                                        case EC_MBOX_TYPE_VOE:
+                                            if ((slave->mbox_voe_data.data) && (data_size <= slave->mbox_voe_data.data_size)) {
+                                                memcpy(slave->mbox_voe_data.data, cur_data, data_size);
+                                                slave->mbox_voe_data.payload_size = data_size;
+                                            }
+                                            break;
+                                        default:
+                                            EC_MASTER_DBG(master, 1, "Unknown mailbox protocol from slave: %u Protocol: %u\n", datagram_slave_addr, datagram_mbox_prot);
+                                            // copy instead received data into the datagram memory.
+                                            memcpy(datagram->data, cur_data, data_size);
+                                            break;
                                         }
-                                        break;
-                                    case EC_MBOX_TYPE_FOE:
-                                        if ((slave->mbox_foe_data.data) && (data_size <= slave->mbox_foe_data.data_size)) {
-                                            memcpy(slave->mbox_foe_data.data, cur_data, data_size);
-                                            slave->mbox_foe_data.payload_size = data_size;
-                                        }
-                                        break;
-                                    case EC_MBOX_TYPE_SOE:
-                                        if ((slave->mbox_soe_data.data) && (data_size <= slave->mbox_soe_data.data_size)) {
-                                            memcpy(slave->mbox_soe_data.data, cur_data, data_size);
-                                            slave->mbox_soe_data.payload_size = data_size;
-                                        }
-                                        break;
-                                    case EC_MBOX_TYPE_VOE:
-                                        if ((slave->mbox_voe_data.data) && (data_size <= slave->mbox_voe_data.data_size)) {
-                                            memcpy(slave->mbox_voe_data.data, cur_data, data_size);
-                                            slave->mbox_voe_data.payload_size = data_size;
-                                        }
-                                        break;
-                                    default:
-                                        EC_MASTER_DBG(master, 1, "Unknown mailbox protocol from slave: %u Protocol: %u\n", datagram_slave_addr, datagram_mbox_prot);
+                                    } else {
                                         // copy instead received data into the datagram memory.
                                         memcpy(datagram->data, cur_data, data_size);
-                                        break;
                                     }
                                 } else {
                                     // copy instead received data into the datagram memory.
@@ -1404,7 +1409,6 @@ void ec_master_output_stats(ec_master_t *master /**< EtherCAT master */)
 {
     if (unlikely(jiffies - master->stats.output_jiffies >= HZ)) {
         master->stats.output_jiffies = jiffies;
-
         if (master->stats.timeouts) {
             EC_MASTER_WARN(master, "%u datagram%s TIMED OUT!\n",
                     master->stats.timeouts,

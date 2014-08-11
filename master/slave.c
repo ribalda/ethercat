@@ -176,6 +176,8 @@ void ec_slave_init(
     ec_mbox_data_init(&slave->mbox_foe_data);
     ec_mbox_data_init(&slave->mbox_soe_data);
     ec_mbox_data_init(&slave->mbox_voe_data);
+
+    slave->valid_mbox_data = 0;
 }
 
 

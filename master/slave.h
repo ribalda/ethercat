@@ -268,6 +268,8 @@ struct ec_slave
     ec_mbox_data_t mbox_foe_data; /**< Received mailbox data for FoE. */
     ec_mbox_data_t mbox_soe_data; /**< Received mailbox data for SoE. */
     ec_mbox_data_t mbox_voe_data; /**< Received mailbox data for VoE. */
+
+    uint8_t valid_mbox_data; /**< Received mailbox data is valid. */
 };
 
 /*****************************************************************************/
