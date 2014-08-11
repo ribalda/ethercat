@@ -1408,24 +1408,26 @@ void ec_master_receive_datagrams(
 void ec_master_output_stats(ec_master_t *master /**< EtherCAT master */)
 {
     if (unlikely(jiffies - master->stats.output_jiffies >= HZ)) {
-        master->stats.output_jiffies = jiffies;
-        if (master->stats.timeouts) {
-            EC_MASTER_WARN(master, "%u datagram%s TIMED OUT!\n",
-                    master->stats.timeouts,
-                    master->stats.timeouts == 1 ? "" : "s");
-            master->stats.timeouts = 0;
-        }
-        if (master->stats.corrupted) {
-            EC_MASTER_WARN(master, "%u frame%s CORRUPTED!\n",
-                    master->stats.corrupted,
-                    master->stats.corrupted == 1 ? "" : "s");
-            master->stats.corrupted = 0;
-        }
-        if (master->stats.unmatched) {
-            EC_MASTER_WARN(master, "%u datagram%s UNMATCHED!\n",
-                    master->stats.unmatched,
-                    master->stats.unmatched == 1 ? "" : "s");
-            master->stats.unmatched = 0;
+        if (!master->scan_busy || (master->debug_level > 0)) {
+            master->stats.output_jiffies = jiffies;
+            if (master->stats.timeouts) {
+                EC_MASTER_WARN(master, "%u datagram%s TIMED OUT!\n",
+                        master->stats.timeouts,
+                        master->stats.timeouts == 1 ? "" : "s");
+                master->stats.timeouts = 0;
+            }
+            if (master->stats.corrupted) {
+                EC_MASTER_WARN(master, "%u frame%s CORRUPTED!\n",
+                        master->stats.corrupted,
+                        master->stats.corrupted == 1 ? "" : "s");
+                master->stats.corrupted = 0;
+            }
+            if (master->stats.unmatched) {
+                EC_MASTER_WARN(master, "%u datagram%s UNMATCHED!\n",
+                        master->stats.unmatched,
+                        master->stats.unmatched == 1 ? "" : "s");
+                master->stats.unmatched = 0;
+            }
         }
     }
 }
