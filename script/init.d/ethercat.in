@@ -165,6 +165,13 @@ start)
         MASTER_INDEX=$(expr ${MASTER_INDEX} + 1)
     done
 
+    # Set link state UP on selected devices
+    if [ -n "${LINK_DEVICES}" ]; then
+        for LINK_DEVICE in ${LINK_DEVICES}; do
+            ip link set ${LINK_DEVICE} up
+        done
+    fi
+
     # load master module
     if ! ${MODPROBE} ${MODPROBE_FLAGS} ec_master ${MASTER_ARGS} \
             main_devices=${DEVICES} backup_devices=${BACKUPS}; then
