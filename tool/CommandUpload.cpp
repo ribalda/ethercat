@@ -134,13 +134,15 @@ void CommandUpload::execute(const StringVector &args)
                     data.sdo_index, data.sdo_entry_subindex);
         } catch (MasterDeviceException &e) {
             err << "Failed to determine SDO entry data type. "
-                << "Please specify --type.";
+                << "Please specify --type or fetch directory "
+                << "with ethercat sdos command.";
             throwCommandException(err);
         }
         if (!(dataType = findDataType(entry.data_type))) {
             err << "PDO entry has unknown data type 0x"
                 << hex << setfill('0') << setw(4) << entry.data_type << "!"
-                << " Please specify --type.";
+                << " Please specify --type or fetch directory "
+                << "with ethercat sdos command.";;
             throwCommandException(err);
         }
     }

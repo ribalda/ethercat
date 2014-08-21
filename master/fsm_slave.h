@@ -42,6 +42,7 @@
 #include "sdo_request.h"
 #include "reg_request.h"
 #include "eoe_request.h"
+#include "dict_request.h"
 #include "fsm_coe.h"
 #include "fsm_foe.h"
 #include "fsm_soe.h"
@@ -65,6 +66,7 @@ struct ec_fsm_slave {
     off_t foe_index; /**< Index to FoE write request data. */
     ec_soe_request_t *soe_request; /**< SoE request to process. */
     ec_eoe_request_t *eoe_request; /**< SoE request to process. */
+    ec_dict_request_t *dict_request; /**< Dictionary request to process. */
 
     ec_fsm_coe_t fsm_coe; /**< CoE state machine. */
     ec_fsm_foe_t fsm_foe; /**< FoE state machine. */

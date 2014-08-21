@@ -553,6 +553,7 @@ void ec_fsm_master_action_idle(
     for (slave = master->slaves;
             slave < master->slaves + master->slave_count;
             slave++) {
+#if !EC_SKIP_SDO_DICT
         if (!(slave->sii.mailbox_protocols & EC_MBOX_COE)
                 || (slave->sii.has_general
                     && !slave->sii.coe_details.enable_sdo_info)
@@ -565,8 +566,10 @@ void ec_fsm_master_action_idle(
                     || (slave->sii.has_general
                         && !slave->sii.coe_details.enable_sdo_info)
                     ){
+#endif
                 // SDO info not supported. Enable processing of requests
                 ec_fsm_slave_set_ready(&slave->fsm);
+#if !EC_SKIP_SDO_DICT
             }
             continue;
         }
@@ -583,6 +586,7 @@ void ec_fsm_master_action_idle(
         ec_fsm_coe_exec(&fsm->fsm_coe, fsm->datagram); // execute immediately
         fsm->datagram->device_index = fsm->slave->device_index;
         return;
+#endif
     }
 
     // check for pending SII write operations.
