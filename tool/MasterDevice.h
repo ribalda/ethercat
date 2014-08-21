@@ -161,6 +161,7 @@ class MasterDevice
 #endif
         void readSoe(ec_ioctl_slave_soe_read_t *);
         void writeSoe(ec_ioctl_slave_soe_write_t *);
+        void dictUpload(ec_ioctl_slave_dict_upload_t *);
         void setIpParam(ec_ioctl_slave_eoe_ip_t *);
 
         unsigned int getMasterCount() const {return masterCount;}

@@ -254,6 +254,7 @@ struct ec_slave
     struct list_head foe_requests; /**< FoE requests. */
     struct list_head soe_requests; /**< SoE requests. */
     struct list_head eoe_requests; /**< EoE set IP parameter requests. */
+    struct list_head dict_requests; /**< Dictionary read requests. */
 
     ec_fsm_slave_t fsm; /**< Slave state machine. */
 
