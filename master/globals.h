@@ -62,6 +62,9 @@
     after slave entered PREOP state. */
 #define EC_WAIT_SDO_DICT 3
 
+/** If set, skip fetching SDO dictionary during slave scan. */
+#define EC_SKIP_SDO_DICT 1
+
 /** Minimum size of a buffer used with ec_state_string(). */
 #define EC_STATE_STRING_SIZE 32
 

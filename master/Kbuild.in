@@ -70,7 +70,8 @@ ec_master-objs := \
 	soe_request.o \
 	sync.o \
 	sync_config.o \
-	voe_handler.o
+	voe_handler.o \
+	dict_request.o
 
 ifeq (@ENABLE_EOE@,1)
 ec_master-objs += eoe_request.o

@@ -94,6 +94,8 @@ void CommandSdos::execute(const StringVector &args)
     SlaveList::const_iterator si;
     bool showHeader, multiMaster;
 
+    ec_ioctl_slave_dict_upload_t data;
+
     if (args.size()) {
         stringstream err;
         err << "'" << getName() << "' takes no arguments!";
@@ -106,6 +108,19 @@ void CommandSdos::execute(const StringVector &args)
     for (mi = masterIndices.begin();
             mi != masterIndices.end(); mi++) {
         MasterDevice m(*mi);
+        m.open(MasterDevice::Read);
+        slaves = selectedSlaves(m);
+        for (si = slaves.begin(); si != slaves.end(); si++) {
+            if (si->coe_details.enable_sdo_info) {
+                data.slave_position = si->position;
+                try {
+                    m.dictUpload(&data);
+                } catch (MasterDeviceException &e) {
+                    throw e;
+                }
+            }
+        }
+        m.close();
         m.open(MasterDevice::Read);
         slaves = selectedSlaves(m);
         showHeader = multiMaster || slaves.size() > 1;

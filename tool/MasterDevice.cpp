@@ -514,6 +514,17 @@ void MasterDevice::sdoUpload(ec_ioctl_slave_sdo_upload_t *data)
 
 /****************************************************************************/
 
+void MasterDevice::dictUpload(ec_ioctl_slave_dict_upload_t *data)
+{
+    if (ioctl(fd, EC_IOCTL_SLAVE_DICT_UPLOAD, data) < 0) {
+        stringstream err;
+        err << "Failed to upload dictionary: " << strerror(errno);
+        throw MasterDeviceException(err);
+    }
+}
+
+/****************************************************************************/
+
 void MasterDevice::requestState(
         uint16_t slavePosition,
         uint8_t state

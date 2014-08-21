@@ -56,6 +56,8 @@ void ec_fsm_slave_state_soe_request(ec_fsm_slave_t *, ec_datagram_t *);
 int ec_fsm_slave_action_process_eoe(ec_fsm_slave_t *, ec_datagram_t *);
 void ec_fsm_slave_state_eoe_request(ec_fsm_slave_t *, ec_datagram_t *);
 #endif
+int ec_fsm_slave_action_process_dict(ec_fsm_slave_t *, ec_datagram_t *);
+void ec_fsm_slave_state_dict_request(ec_fsm_slave_t *, ec_datagram_t *);
 
 /*****************************************************************************/
 
@@ -172,6 +174,10 @@ void ec_fsm_slave_set_ready(
     if (fsm->state == ec_fsm_slave_state_idle) {
         EC_SLAVE_DBG(fsm->slave, 1, "Ready for requests.\n");
         fsm->state = ec_fsm_slave_state_ready;
+    }
+    // Check for pending dictionary requests
+    if (ec_fsm_slave_action_process_dict(fsm, datagram)) {
+        return;
     }
 }
 
@@ -615,6 +621,121 @@ void ec_fsm_slave_state_soe_request(
     request->state = EC_INT_REQUEST_SUCCESS;
     wake_up_all(&slave->master->request_queue);
     fsm->soe_request = NULL;
+    fsm->state = ec_fsm_slave_state_ready;
+}
+
+/*****************************************************************************/
+
+/** Check for pending dictionary requests and process one.
+ *
+ * \return non-zero, if a request is processed.
+ */
+int ec_fsm_slave_action_process_dict(
+        ec_fsm_slave_t *fsm, /**< Slave state machine. */
+        ec_datagram_t *datagram /**< Datagram to use. */
+        )
+{
+    ec_slave_t *slave = fsm->slave;
+    ec_dict_request_t *request;
+
+    if (list_empty(&slave->dict_requests)) {
+        return 0;
+    }
+
+    // take the first request to be processed
+    request = list_entry(slave->dict_requests.next, ec_dict_request_t, list);
+    list_del_init(&request->list); // dequeue
+
+    if (!(slave->sii.mailbox_protocols & EC_MBOX_COE)
+            || (slave->sii.has_general
+                && !slave->sii.coe_details.enable_sdo_info))
+    {
+        EC_SLAVE_INFO(slave, "Aborting dictionary request,"
+                        " slave does not support SDO Info.\n");
+        request->state = EC_INT_REQUEST_SUCCESS;
+        wake_up_all(&slave->master->request_queue);
+        fsm->dict_request = NULL;
+        fsm->state = ec_fsm_slave_state_ready;
+        return 1;
+    }
+
+    if (slave->sdo_dictionary_fetched)
+    {
+        EC_SLAVE_DBG(slave, 1, "Aborting dictionary request,"
+                        " dictionary already uploaded.\n");
+        request->state = EC_INT_REQUEST_SUCCESS;
+        wake_up_all(&slave->master->request_queue);
+        fsm->dict_request = NULL;
+        fsm->state = ec_fsm_slave_state_ready;
+        return 1;
+    }
+
+    if (slave->current_state & EC_SLAVE_STATE_ACK_ERR) {
+        EC_SLAVE_WARN(slave, "Aborting dictionary request,"
+                " slave has error flag set.\n");
+        request->state = EC_INT_REQUEST_FAILURE;
+        wake_up_all(&slave->master->request_queue);
+        fsm->state = ec_fsm_slave_state_idle;
+        return 1;
+    }
+
+    if (slave->current_state == EC_SLAVE_STATE_INIT) {
+        EC_SLAVE_WARN(slave, "Aborting dictioanry request, slave is in INIT.\n");
+        request->state = EC_INT_REQUEST_FAILURE;
+        wake_up_all(&slave->master->request_queue);
+        fsm->state = ec_fsm_slave_state_idle;
+        return 1;
+    }
+
+    fsm->dict_request = request;
+    request->state = EC_INT_REQUEST_BUSY;
+
+    // Found pending dictionary request. Execute it!
+    EC_SLAVE_DBG(slave, 1, "Processing dictionary request...\n");
+
+    // Start dictionary transfer
+    fsm->state = ec_fsm_slave_state_dict_request;
+    ec_fsm_coe_dictionary(&fsm->fsm_coe, slave);
+    ec_fsm_coe_exec(&fsm->fsm_coe, datagram); // execute immediately
+    return 1;
+}
+
+/*****************************************************************************/
+
+/** Slave state: DICT_REQUEST.
+ */
+void ec_fsm_slave_state_dict_request(
+        ec_fsm_slave_t *fsm, /**< Slave state machine. */
+        ec_datagram_t *datagram /**< Datagram to use. */
+        )
+{
+    ec_slave_t *slave = fsm->slave;
+    ec_dict_request_t *request = fsm->dict_request;
+
+    if (ec_fsm_coe_exec(&fsm->fsm_coe, datagram)) {
+        return;
+    }
+
+    if (!ec_fsm_coe_success(&fsm->fsm_coe)) {
+        EC_SLAVE_ERR(slave, "Failed to process dictionary request.\n");
+        request->state = EC_INT_REQUEST_FAILURE;
+        wake_up_all(&slave->master->request_queue);
+        fsm->dict_request = NULL;
+        fsm->state = ec_fsm_slave_state_ready;
+        return;
+    }
+
+    EC_SLAVE_DBG(slave, 1, "Finished dictionary request.\n");
+
+    // Dictionary request finished
+    slave->sdo_dictionary_fetched = 1;
+
+    // attach pdo names from dictionary
+    ec_slave_attach_pdo_names(slave);
+
+    request->state = EC_INT_REQUEST_SUCCESS;
+    wake_up_all(&slave->master->request_queue);
+    fsm->dict_request = NULL;
     fsm->state = ec_fsm_slave_state_ready;
 }
 

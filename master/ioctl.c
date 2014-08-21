@@ -4448,6 +4448,28 @@ static ATTRIBUTES int ec_ioctl_slave_soe_write(
 }
 
 /*****************************************************************************/
+/** Upload Dictionary.
+ *
+ * \return Zero on success, otherwise a negative error code.
+ */
+static ATTRIBUTES int ec_ioctl_slave_dict_upload(
+        ec_master_t *master, /**< EtherCAT master. */
+        void *arg /**< ioctl() argument. */
+        )
+{
+    ec_ioctl_slave_dict_upload_t data;
+    int ret;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+        return -EFAULT;
+    }
+
+    ret = ec_master_dict_upload(master, data.slave_position);
+
+    return ret;
+}
+
+/*****************************************************************************/
 
 /** ioctl() function to use.
  */
@@ -5010,6 +5032,9 @@ long EC_IOCTL(
                 break;
             }
             ret = ec_ioctl_set_send_interval(master, arg, ctx);
+            break;
+        case EC_IOCTL_SLAVE_DICT_UPLOAD:
+            ret = ec_ioctl_slave_dict_upload(master, arg);
             break;
         default:
             ret = -ENOTTY;

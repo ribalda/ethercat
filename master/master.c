@@ -2404,6 +2404,60 @@ void ec_master_request_op(
 #endif
 }
 
+/*****************************************************************************/
+
+int ec_master_dict_upload(ec_master_t *master, uint16_t slave_position)
+{
+    ec_dict_request_t request;
+    ec_slave_t *slave;
+    int ret = 0;
+
+    EC_MASTER_DBG(master, 1, "%s(master = 0x%p, slave_position = %u\n",
+            __func__, master, slave_position);
+
+    ec_dict_request_init(&request);
+    ec_dict_request_read(&request);
+
+    if (ec_lock_down_interruptible(&master->master_sem)) {
+        return -EINTR;
+    }
+
+    if (!(slave = ec_master_find_slave(master, 0, slave_position))) {
+        ec_lock_up(&master->master_sem);
+        EC_MASTER_ERR(master, "Slave %u does not exist!\n", slave_position);
+        return -EINVAL;
+    }
+
+    EC_SLAVE_DBG(slave, 1, "Scheduling dictionary upload request.\n");
+
+    // schedule request.
+    list_add_tail(&request.list, &slave->dict_requests);
+
+    ec_lock_up(&master->master_sem);
+
+    // wait for processing through FSM
+    if (wait_event_interruptible(master->request_queue,
+                request.state != EC_INT_REQUEST_QUEUED)) {
+        // interrupted by signal
+        ec_lock_down(&master->master_sem);
+        if (request.state == EC_INT_REQUEST_QUEUED) {
+            list_del(&request.list);
+            ec_lock_up(&master->master_sem);
+            return -EINTR;
+        }
+        // request already processing: interrupt not possible.
+        ec_lock_up(&master->master_sem);
+    }
+
+    // wait until master FSM has finished processing
+    wait_event(master->request_queue, request.state != EC_INT_REQUEST_BUSY);
+
+    if (request.state != EC_INT_REQUEST_SUCCESS) {
+        ret = -EIO;
+    }
+    return ret;
+}
+
 /******************************************************************************
  *  Application interface
  *****************************************************************************/

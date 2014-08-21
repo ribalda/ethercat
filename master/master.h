@@ -384,6 +384,8 @@ void ec_master_request_op(ec_master_t *);
 void ec_master_internal_send_cb(void *);
 void ec_master_internal_receive_cb(void *);
 
+int ec_master_dict_upload(ec_master_t *, uint16_t);
+
 extern const unsigned int rate_intervals[EC_RATE_COUNT]; // see master.c
 
 /*****************************************************************************/
