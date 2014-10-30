@@ -704,6 +704,23 @@ void ec_fsm_slave_scan_state_sii_data(ec_fsm_slave_scan_t *fsm /**< slave state 
     slave->sii.mailbox_protocols =
         EC_READ_U16(slave->sii_words + 0x001C);
 
+    // clear mailbox settings if invalid values due to invalid sii file
+    if ((slave->sii.boot_rx_mailbox_offset == 0xFFFF) ||
+        (slave->sii.boot_tx_mailbox_offset == 0xFFFF) ||
+        (slave->sii.std_rx_mailbox_offset  == 0xFFFF) ||
+        (slave->sii.std_tx_mailbox_offset  == 0xFFFF)) {
+        slave->sii.boot_rx_mailbox_offset = 0;
+        slave->sii.boot_tx_mailbox_offset = 0;
+        slave->sii.boot_rx_mailbox_size = 0;
+        slave->sii.boot_tx_mailbox_size = 0;
+        slave->sii.std_rx_mailbox_offset = 0;
+        slave->sii.std_tx_mailbox_offset = 0;
+        slave->sii.std_rx_mailbox_size = 0;
+        slave->sii.std_tx_mailbox_size = 0;
+        slave->sii.mailbox_protocols = 0;
+        EC_SLAVE_ERR(slave, "Unexpected mailbox offset in SII data.\n");
+    }
+
     if (slave->sii_nwords == EC_FIRST_SII_CATEGORY_OFFSET) {
         // sii does not contain category data
         fsm->state = ec_fsm_slave_scan_state_end;
