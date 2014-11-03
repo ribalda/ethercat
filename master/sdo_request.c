@@ -85,6 +85,8 @@ void ec_sdo_request_clear(
 /** Copy another SDO request.
  *
  * \attention Only the index subindex and data are copied.
+ *
+ * \return Zero on success, otherwise a negative error code.
  */
 int ec_sdo_request_copy(
         ec_sdo_request_t *req, /**< SDO request. */
@@ -112,20 +114,6 @@ void ec_sdo_request_clear_data(
 
     req->mem_size = 0;
     req->data_size = 0;
-}
-
-/*****************************************************************************/
-
-/** Set the SDO address.
- */
-void ec_sdo_request_address(
-        ec_sdo_request_t *req, /**< SDO request. */
-        uint16_t index, /**< SDO index. */
-        uint8_t subindex /**< SDO subindex. */
-        )
-{
-    req->index = index;
-    req->subindex = subindex;
 }
 
 /*****************************************************************************/
@@ -196,6 +184,15 @@ int ec_sdo_request_timed_out(const ec_sdo_request_t *req /**< SDO request. */)
  * Application interface.
  ****************************************************************************/
 
+void ecrt_sdo_request_index(ec_sdo_request_t *req, uint16_t index,
+        uint8_t subindex)
+{
+    req->index = index;
+    req->subindex = subindex;
+}
+
+/*****************************************************************************/
+
 void ecrt_sdo_request_timeout(ec_sdo_request_t *req, uint32_t timeout)
 {
     req->issue_timeout = timeout;
@@ -248,6 +245,7 @@ void ecrt_sdo_request_write(ec_sdo_request_t *req)
 
 /** \cond */
 
+EXPORT_SYMBOL(ecrt_sdo_request_index);
 EXPORT_SYMBOL(ecrt_sdo_request_timeout);
 EXPORT_SYMBOL(ecrt_sdo_request_data);
 EXPORT_SYMBOL(ecrt_sdo_request_data_size);

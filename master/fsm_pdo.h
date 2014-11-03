@@ -53,7 +53,7 @@ typedef struct ec_fsm_pdo ec_fsm_pdo_t;
  */
 struct ec_fsm_pdo
 {
-    void (*state)(ec_fsm_pdo_t *); /**< State function. */
+    void (*state)(ec_fsm_pdo_t *, ec_datagram_t *); /**< State function. */
     ec_fsm_coe_t *fsm_coe; /**< CoE state machine to use. */
     ec_fsm_pdo_entry_t fsm_pdo_entry; /**< PDO entry state machine. */
     ec_pdo_list_t pdos; /**< PDO configuration. */
@@ -76,7 +76,7 @@ void ec_fsm_pdo_clear(ec_fsm_pdo_t *);
 void ec_fsm_pdo_start_reading(ec_fsm_pdo_t *, ec_slave_t *);
 void ec_fsm_pdo_start_configuration(ec_fsm_pdo_t *, ec_slave_t *);
 
-int ec_fsm_pdo_exec(ec_fsm_pdo_t *);
+int ec_fsm_pdo_exec(ec_fsm_pdo_t *, ec_datagram_t *);
 int ec_fsm_pdo_success(const ec_fsm_pdo_t *);
 
 /*****************************************************************************/

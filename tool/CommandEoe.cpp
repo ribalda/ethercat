@@ -69,7 +69,7 @@ void CommandEoe::execute(const StringVector &args)
     ec_ioctl_eoe_handler_t eoe;
     bool doIndent;
     string indent;
-    
+
     if (args.size()) {
         stringstream err;
         err << "'" << getName() << "' takes no arguments!";

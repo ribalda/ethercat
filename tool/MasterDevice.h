@@ -43,7 +43,7 @@ class MasterDeviceException:
     public runtime_error
 {
     friend class MasterDevice;
-    
+
     protected:
         /** Constructor with string parameter. */
         MasterDeviceException(
@@ -59,13 +59,13 @@ class MasterDeviceException:
 /****************************************************************************/
 
 class MasterDeviceSdoAbortException:
-    public MasterDeviceException 
+    public MasterDeviceException
 {
     friend class MasterDevice;
 
     public:
         uint32_t abortCode;
-    
+
     protected:
         /** Constructor with abort code parameter. */
         MasterDeviceSdoAbortException(uint32_t code):
@@ -77,13 +77,13 @@ class MasterDeviceSdoAbortException:
 /****************************************************************************/
 
 class MasterDeviceSoeException:
-    public MasterDeviceException 
+    public MasterDeviceException
 {
     friend class MasterDevice;
 
     public:
         uint16_t errorCode;
-    
+
     protected:
         /** Constructor with error code parameter. */
         MasterDeviceSoeException(uint16_t code):

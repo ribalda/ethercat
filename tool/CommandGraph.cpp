@@ -83,7 +83,7 @@ void CommandGraph::execute(const StringVector &args)
 
     portMedia[EC_PORT_EBUS] = "EBUS";
     mediaWeights[EC_PORT_EBUS] = 5;
-    
+
     if (args.size()) {
         stringstream err;
         err << "'" << getName() << "' takes no arguments!";
@@ -111,7 +111,7 @@ void CommandGraph::execute(const StringVector &args)
         << "    master [label=\"EtherCAT\\nMaster\"]" << endl;
 
     if (slaves.size()) {
-        cout << "    master -- slave0"; 
+        cout << "    master -- slave0";
         mi = portMedia.find(slaves.front().ports[0].desc);
         if (mi != portMedia.end())
             cout << "[label=\"" << mi->second << "\"]";
@@ -176,14 +176,14 @@ void CommandGraph::execute(const StringVector &args)
                 /* Try medium of next-hop slave. */
                 mi = portMedia.find(next->ports[0].desc);
             }
-            
+
             if (mi != portMedia.end())
                 cout << ",label=\"" << mi->second << "\"";
 
             wi = mediaWeights.find(si->ports[i].desc);
             if (wi != mediaWeights.end())
                 cout << ",weight=\"" << wi->second << "\"";
-            
+
             cout << "]" << endl;
         }
 

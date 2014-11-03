@@ -4,10 +4,12 @@
 #
 #  $Id$
 #
+#  vim: spelllang=en spell tw=78
+#
 #------------------------------------------------------------------------------
 
 #
-# Master devices.
+# Main Ethernet devices.
 #
 # The MASTER<X>_DEVICE variable specifies the Ethernet device for a master
 # with index 'X'.
@@ -26,6 +28,15 @@ MASTER0_DEVICE=""
 #MASTER1_DEVICE=""
 
 #
+# Backup Ethernet devices
+#
+# The MASTER<X>_BACKUP variables specify the devices used for redundancy. They
+# behaves nearly the same as the MASTER<X>_DEVICE variable, except that it
+# does not interpret the ff:ff:ff:ff:ff:ff address.
+#
+#MASTER0_BACKUP=""
+
+#
 # Ethernet driver modules to use for EtherCAT operation.
 #
 # Specify a non-empty list of Ethernet drivers, that shall be used for EtherCAT
@@ -36,12 +47,16 @@ MASTER0_DEVICE=""
 # the EtherCAT-capable ones. If a certain (EtherCAT-capable) driver is not
 # found, a warning will appear.
 #
-# Possible values: 8139too, e100, e1000, e1000e, r8169, generic. Separate
-# multiple drivers with spaces.
+# Possible values: 8139too, e100, e1000, e1000e, r8169, generic, ccat.
+# Separate multiple drivers with spaces.
 #
-# Note: The e100, e1000, e1000e and r8169 drivers are not built by default.
-# Enable them with the --enable-<driver> configure switches.
-# 
+# Note: The e100, e1000, e1000e, r8169 and ccat drivers are not built by
+# default. Enable them with the --enable-<driver> configure switches.
+#
+# Attention: When using the generic driver, the corresponding Ethernet device
+# has to be activated (with OS methods, for example 'ip link set ethX up'),
+# before the master is started, otherwise all frames will time out.
+#
 DEVICE_MODULES=""
 
 #
@@ -49,7 +64,7 @@ DEVICE_MODULES=""
 #
 # This can usually be left empty. Adjust this variable, if you have problems
 # with module loading.
-# 
+#
 #MODPROBE_FLAGS="-b"
 
 #------------------------------------------------------------------------------

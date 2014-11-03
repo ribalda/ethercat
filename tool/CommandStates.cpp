@@ -74,7 +74,7 @@ void CommandStates::execute(const StringVector &args)
     stringstream err;
     string stateStr;
     uint8_t state = 0x00;
-    
+
     if (args.size() != 1) {
         err << "'" << getName() << "' takes exactly one argument!";
         throwInvalidUsageException(err);

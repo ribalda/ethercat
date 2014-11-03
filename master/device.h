@@ -64,7 +64,6 @@ typedef enum {
 typedef struct {
     ec_debug_frame_dir_t dir;
     struct timeval t;
-    unsigned int addr;
     uint8_t data[EC_MAX_DATA_SIZE];
     unsigned int data_size;
 } ec_debug_frame_t;
@@ -101,19 +100,24 @@ struct ec_device
     u64 tx_count; /**< Number of frames sent. */
     u64 last_tx_count; /**< Number of frames sent of last statistics cycle. */
     u64 rx_count; /**< Number of frames received. */
-    u64 tx_bytes; /**< Number of frames sent. */
+    u64 last_rx_count; /**< Number of frames received of last statistics
+                         cycle. */
+    u64 tx_bytes; /**< Number of bytes sent. */
     u64 last_tx_bytes; /**< Number of bytes sent of last statistics cycle. */
+    u64 rx_bytes; /**< Number of bytes received. */
+    u64 last_rx_bytes; /**< Number of bytes received of last statistics cycle.
+                        */
     u64 tx_errors; /**< Number of transmit errors. */
-    u64 last_loss; /**< Tx/Rx difference of last statistics cycle. */
-    unsigned int tx_frame_rates[EC_RATE_COUNT]; /**< Transmit rates in
-                                                  frames/s for different
-                                                  statistics cycle periods. */
-    unsigned int tx_byte_rates[EC_RATE_COUNT]; /**< Transmit rates in byte/s
-                                                 for different statistics
-                                                 cycle periods. */
-    int loss_rates[EC_RATE_COUNT]; /**< Frame loss rates for different
-                                     statistics cycle periods. */
-    unsigned long stats_jiffies; /**< Jiffies of last statistic cycle. */
+    s32 tx_frame_rates[EC_RATE_COUNT]; /**< Transmit rates in frames/s for
+                                         different statistics cycle periods.
+                                        */
+    s32 rx_frame_rates[EC_RATE_COUNT]; /**< Receive rates in frames/s for
+                                         different statistics cycle periods.
+                                        */
+    s32 tx_byte_rates[EC_RATE_COUNT]; /**< Transmit rates in byte/s for
+                                        different statistics cycle periods. */
+    s32 rx_byte_rates[EC_RATE_COUNT]; /**< Receive rates in byte/s for
+                                        different statistics cycle periods. */
 
 #ifdef EC_DEBUG_IF
     ec_debug_t dbg; /**< debug device */
@@ -141,6 +145,7 @@ void ec_device_poll(ec_device_t *);
 uint8_t *ec_device_tx_data(ec_device_t *);
 void ec_device_send(ec_device_t *, size_t);
 void ec_device_clear_stats(ec_device_t *);
+void ec_device_update_stats(ec_device_t *);
 
 #ifdef EC_DEBUG_RING
 void ec_device_debug_ring_append(ec_device_t *, ec_debug_frame_dir_t,

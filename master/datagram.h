@@ -85,18 +85,16 @@ typedef enum {
 /** EtherCAT datagram.
  */
 typedef struct {
-    struct list_head list; /**< Needed by domain datagram lists. */
-    struct list_head queue; /**< Master datagram send-receive queue item. */
-    struct list_head fsm_queue; /**< Master datagram fsm queue item. */
+    struct list_head queue; /**< Master datagram queue item. */
     struct list_head sent; /**< Master list item for sent datagrams. */
+    ec_device_index_t device_index; /**< Device via which the datagram shall
+                                      be / was sent. */
     ec_datagram_type_t type; /**< Datagram type (APRD, BWR, etc.). */
     uint8_t address[EC_ADDR_LEN]; /**< Recipient address. */
     uint8_t *data; /**< Datagram payload. */
     ec_origin_t data_origin; /**< Origin of the \a data memory. */
     size_t mem_size; /**< Datagram \a data memory size. */
     size_t data_size; /**< Size of the data in \a data. */
-    ec_domain_t *domain; /**< Owning domain (may be null for non-domain
-                           datagrams) */
     uint8_t index; /**< Index (set by master). */
     uint16_t working_counter; /**< Working counter. */
     ec_datagram_state_t state; /**< State. */
@@ -133,15 +131,17 @@ int ec_datagram_frmw(ec_datagram_t *, uint16_t, uint16_t, size_t);
 int ec_datagram_brd(ec_datagram_t *, uint16_t, size_t);
 int ec_datagram_bwr(ec_datagram_t *, uint16_t, size_t);
 int ec_datagram_brw(ec_datagram_t *, uint16_t, size_t);
-int ec_datagram_lrd(ec_datagram_t *, uint32_t, size_t, uint8_t *);
-int ec_datagram_lwr(ec_datagram_t *, uint32_t, size_t, uint8_t *);
-int ec_datagram_lrw(ec_datagram_t *, uint32_t, size_t, uint8_t *);
+int ec_datagram_lrd(ec_datagram_t *, uint32_t, size_t);
+int ec_datagram_lwr(ec_datagram_t *, uint32_t, size_t);
+int ec_datagram_lrw(ec_datagram_t *, uint32_t, size_t);
+int ec_datagram_lrd_ext(ec_datagram_t *, uint32_t, size_t, uint8_t *);
+int ec_datagram_lwr_ext(ec_datagram_t *, uint32_t, size_t, uint8_t *);
+int ec_datagram_lrw_ext(ec_datagram_t *, uint32_t, size_t, uint8_t *);
 
 void ec_datagram_print_state(const ec_datagram_t *);
 void ec_datagram_print_wc_error(const ec_datagram_t *);
 void ec_datagram_output_stats(ec_datagram_t *);
 const char *ec_datagram_type_string(const ec_datagram_t *);
-void ec_datagram_output_info(const ec_datagram_t *);
 
 /*****************************************************************************/
 

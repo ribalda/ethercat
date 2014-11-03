@@ -84,7 +84,7 @@ void ec_sdo_clear(
 /*****************************************************************************/
 
 /** Get an SDO entry from an SDO via its subindex.
- * 
+ *
  * \retval >0 Pointer to the requested SDO entry.
  * \retval NULL SDO entry not found.
  */
@@ -109,7 +109,7 @@ ec_sdo_entry_t *ec_sdo_get_entry(
 /** Get an SDO entry from an SDO via its subindex.
  *
  * const version.
- * 
+ *
  * \retval >0 Pointer to the requested SDO entry.
  * \retval NULL SDO entry not found.
  */

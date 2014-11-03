@@ -44,7 +44,8 @@ class CommandDomains:
         void execute(const StringVector &);
 
     protected:
-        void showDomain(MasterDevice &, const ec_ioctl_domain_t &, bool);
+        void showDomain(MasterDevice &, const ec_ioctl_master_t &,
+                const ec_ioctl_domain_t &, bool);
 };
 
 /****************************************************************************/

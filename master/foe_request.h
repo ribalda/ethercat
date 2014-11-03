@@ -37,6 +37,8 @@
 #ifndef __EC_FOE_REQUEST_H__
 #define __EC_FOE_REQUEST_H__
 
+#include <linux/list.h>
+
 #include "../include/ecrt.h"
 
 #include "globals.h"
@@ -46,6 +48,7 @@
 /** FoE request.
  */
 typedef struct {
+    struct list_head list; /**< List item. */
     uint8_t *buffer; /**< Pointer to FoE data. */
     size_t buffer_size; /**< Size of FoE data memory. */
     size_t data_size; /**< Size of FoE data. */
@@ -68,7 +71,7 @@ typedef struct {
 
 /*****************************************************************************/
 
-void ec_foe_request_init(ec_foe_request_t *, uint8_t* file_name);
+void ec_foe_request_init(ec_foe_request_t *, uint8_t *file_name);
 void ec_foe_request_clear(ec_foe_request_t *);
 
 int ec_foe_request_alloc(ec_foe_request_t *, size_t);

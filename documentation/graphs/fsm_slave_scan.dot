@@ -2,34 +2,34 @@
 /* $Id$ */
 
 digraph slavescan {
-    size="1,7"
+    node [fontname="Helvetica"]
 
-    start [fontname="Helvetica"]
+    start
     start -> address [weight=10]
 
-    address [fontname="Helvetica"]
+    address
     address -> state [weight=10]
 
-    state [fontname="Helvetica"]
+    state
     state -> base [weight=10]
 
-    base [fontname="Helvetica"]
+    base
     base -> dc_cap [weight=10]
     base -> enter_datalink [fontname="Helvetica", label="DC not\nsupported"]
 
-    dc_cap [fontname="Helvetica"]
+    dc_cap
     dc_cap -> enter_datalink [weight=10]
 
     enter_datalink [shape=point, label=""]
     enter_datalink -> datalink [weight=10]
 
-    datalink [fontname="Helvetica"]
+    datalink
     datalink -> sii_size [weight=10]
 
-    sii_size [fontname="Helvetica"]
+    sii_size
     sii_size -> sii_data [weight=10]
 
-    sii_data [fontname="Helvetica"]
+    sii_data
     sii_data -> end [fontname="Helvetica", label="No category\ndata"]
     sii_data -> enter_preop [weight=10]
 
@@ -37,17 +37,17 @@ digraph slavescan {
     enter_preop -> preop [fontname="Helvetica", label="Not in\nPREOP"]
     enter_preop -> sync [weight=10]
 
-    preop [fontname="Helvetica"]
+    preop
     preop -> enter_pdos [weight=10]
 
-    sync [fontname="Helvetica"]
+    sync
     sync -> enter_pdos [weight=10]
 
     enter_pdos [shape=point, label=""]
     enter_pdos -> pdos [weight=10]
 
-    pdos [fontname="Helvetica"]
+    pdos
     pdos -> end [weight=10]
 
-    end [fontname="Helvetica"]
+    end
 }

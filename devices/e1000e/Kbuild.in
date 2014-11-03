@@ -20,7 +20,7 @@
 #  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 #  ---
-#  
+#
 #  The license mentioned above concerns the source code only. Using the
 #  EtherCAT technology and brand is only permitted in compliance with the
 #  industrial property and similar rights of Beckhoff Automation GmbH.
@@ -42,15 +42,38 @@ REV := $(shell if test -s $(TOPDIR)/revision; then \
 ifeq (@ENABLE_E1000E@,1)
 	EC_E1000E_OBJ := \
 		82571-@KERNEL_E1000E@-ethercat.o \
-		es2lan-@KERNEL_E1000E@-ethercat.o \
 		ethtool-@KERNEL_E1000E@-ethercat.o \
 		ich8lan-@KERNEL_E1000E@-ethercat.o \
-		lib-@KERNEL_E1000E@-ethercat.o \
 		netdev-@KERNEL_E1000E@-ethercat.o \
 		param-@KERNEL_E1000E@-ethercat.o \
 		phy-@KERNEL_E1000E@-ethercat.o
+
+	ifeq (@E1000E_LAYOUT@,2)
+		EC_E1000E_OBJ += \
+			80003es2lan-@KERNEL_E1000E@-ethercat.o \
+			mac-@KERNEL_E1000E@-ethercat.o \
+			manage-@KERNEL_E1000E@-ethercat.o \
+			nvm-@KERNEL_E1000E@-ethercat.o \
+			ptp-@KERNEL_E1000E@-ethercat.o
+	endif
+
+	ifeq (@E1000E_LAYOUT@,1)
+		EC_E1000E_OBJ += \
+			80003es2lan-@KERNEL_E1000E@-ethercat.o \
+			mac-@KERNEL_E1000E@-ethercat.o \
+			manage-@KERNEL_E1000E@-ethercat.o \
+			nvm-@KERNEL_E1000E@-ethercat.o
+	endif
+
+	ifeq (@E1000E_LAYOUT@,0)
+		EC_E1000E_OBJ += \
+			es2lan-@KERNEL_E1000E@-ethercat.o \
+			lib-@KERNEL_E1000E@-ethercat.o
+	endif
+
 	obj-m += ec_e1000e.o
 	ec_e1000e-objs := $(EC_E1000E_OBJ)
+
 	CFLAGS_netdev-@KERNEL_E1000E@-ethercat.o = -DREV=$(REV)
 endif
 

@@ -102,7 +102,7 @@ void CommandAlias::execute(const StringVector &args)
     MasterDevice m(getSingleMasterIndex());
     m.open(MasterDevice::ReadWrite);
     slaves = selectedSlaves(m);
-    
+
     if (slaves.size() > 1 && !getForce()) {
         err << "This will write the alias addresses of "
             << slaves.size() << " slaves to " << alias

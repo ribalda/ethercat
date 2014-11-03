@@ -2,24 +2,26 @@
 /* $Id$ */
 
 digraph pdo_entry_conf {
+    node [fontname="Helvetica"]
+    edge [fontname="Helvetica", fontsize="12"]
 
-    start [fontname="Helvetica"]
+    start
     start -> zero_entry_count [weight=10]
 
-    zero_entry_count [fontname="Helvetica"]
-    zero_entry_count -> end [fontname="Helvetica",label="No Entries"]
-    zero_entry_count -> action_map [fontname="Helvetica",label="Add first entry", weight=10]
+    zero_entry_count
+    zero_entry_count -> end [label="No Entries"]
+    zero_entry_count -> action_map [label="Add first entry", weight=10]
 
     action_map [shape=point,label=""]
     action_map -> map_entry [weight=10]
 
-    map_entry [fontname="Helvetica"]
-    map_entry -> action_map [fontname="Helvetica",label="Next entry"]
-    map_entry -> set_entry_count [fontname="Helvetica",label="No more Entries", weight=10]
+    map_entry
+    map_entry -> action_map [label="Next entry"]
+    map_entry -> set_entry_count [label="No more Entries", weight=10]
 
-    set_entry_count [fontname="Helvetica"]
+    set_entry_count
     set_entry_count -> end [weight=10]
 
-    end [fontname="Helvetica"]
+    end
     end
 }

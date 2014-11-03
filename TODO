@@ -10,17 +10,20 @@ vim700: spelllang=en spell
 
 Future issues:
 
-* Port port order patch from stable-1.5.
+• Remove fprintf() calls from user-space library (define return codes).
+• Move SII request to slave FSM.
+• Move SDO request to slave FSM.
+• Simplify slave FSM by introducing a common request state to handle external
+  requests.
+* Fix link detection in generic driver.
 * Remove allow_scanning flag.
 * Check for Enable SDO Complete Access flag.
 * Do not output 'SDO does not exist' when querying data type.
-* Read AL status code on spontaneous state change.
 * recompile tool/CommandVersion.cpp if revision changes.
 * Log SoE IDNs with real name ([SP]-x-yyyy).
 * Only output watchdog config if not default.
 * Implement CompleteAccess for SDO uploads.
 * Output warning when send_ext() is called in illegal context.
-* Change SDO index at runtime for SDO request.
 * Implement ecrt_slave_config_request_state().
 * Remove default buffer size in SDO upload.
 * Override sync manager size?
@@ -30,15 +33,11 @@ Future issues:
     - Skip setting system time offset when application detached.
     - How to use the SYNC1 shift time?
     - Do not output graph, if topology calculation failed.
-    - Set the "Cyclic Generation Start Time" based on the slave's
-      "System Time" register instead of using the application time.
     - Check if register 0x0980 is working, to avoid clearing it when
       configuring.
 * Mailbox protocol handlers.
 * Mailbox state machine using toggle bits.
 * External memory for SDO transfers.
-* C++ implementation of the library.
-* Bus simulator interface.
 * Move master threads, slave handlers and state machines into a user
   space daemon.
 * Allow master requesting when in ORPHANED phase
@@ -46,7 +45,6 @@ Future issues:
 * Separate CoE debugging.
 * Evaluate EEPROM contents after writing.
 * Optimize alignment of process data.
-* Redundancy with 2 network adapters.
 * Interface/buffers for asynchronous domain IO.
 * Make scanning and configuration run parallel (each).
 * ethercat tool:
@@ -55,18 +53,12 @@ Future issues:
     - Fix number of digits in negative integer hex output.
     - Data type abbreviations.
     - Add -x switch for hex display.
-    - Implement CompleteAccess
     - Implement --output-file argument in foe_read.
     - Implement indent in 'ethercat ma'
     - Implement 0xXXXX:YY format for specifying SDOs.
     - Implement reading from stream for soe_write.
     - Output error after usage.
-* Simplify master fsm by introducing a common request state to handle external
-  requests (replace write_sii, sdo_request, etc).
-* Remove stdio uses in userspace library?
-* Fix casting away constness during expected WC calculation.
 * Fix bus scan hang when calling ecrt_master_deactivate().
-* Fix link detection in generic driver.
 
 Smaller issues:
 

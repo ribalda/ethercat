@@ -2,50 +2,51 @@
 /* $Id$ */
 
 digraph pdo_conf {
+    node [fontname="Helvetica"]
+    edge [fontname="Helvetica", fontsize="12"]
 
-    start [fontname="Helvetica"]
-    start -> action_next_sync [fontname="Helvetica",label="First SM",weight=10]
-    start -> end [fontname="Helvetica",label="No config"]
+    start
+    start -> action_next_sync [label="First SM",weight=10]
+    start -> end [label="No config"]
 
     action_next_sync [shape=point,label=""]
-    action_next_sync -> action_check_assignment [fontname="Helvetica",label="No PDOs"]
-    action_next_sync -> action_pdo_mapping [fontname="Helvetica",label="First PDO",weight=10]
-    action_next_sync -> end [fontname="Helvetica",label="No more SMs"]
+    action_next_sync -> action_check_assignment [label="No PDOs"]
+    action_next_sync -> action_pdo_mapping [label="First PDO",weight=10]
+    action_next_sync -> end [label="No more SMs"]
 
     action_pdo_mapping [shape=point,label=""]
-    action_pdo_mapping -> read_mapping [fontname="Helvetica",label="Unknown"]
+    action_pdo_mapping -> read_mapping [label="Unknown"]
     action_pdo_mapping -> action_check_mapping [weight=10]
 
-    read_mapping [fontname="Helvetica"]
+    read_mapping
     read_mapping -> action_check_mapping
 
     action_check_mapping [shape=point,label=""]
     action_check_mapping -> action_next_pdo_mapping
     action_check_mapping -> mapping [weight=10]
 
-    mapping [fontname="Helvetica"]
+    mapping
     mapping -> action_next_pdo_mapping [weight=10]
 
     action_next_pdo_mapping [shape=point,label=""]
     action_next_pdo_mapping -> action_check_assignment [weight=10]
-    action_next_pdo_mapping -> action_pdo_mapping
-    [fontname="Helvetica",label="Next PDO"]
+    action_next_pdo_mapping -> action_pdo_mapping [label="Next PDO"]
 
     action_check_assignment [shape=point,label=""]
-    action_check_assignment -> action_next_sync [fontname="Helvetica",label="Assign ok"]
+    action_check_assignment -> action_next_sync [label="Assign ok"]
     action_check_assignment -> zero_pdo_count [weight=10]
 
-    zero_pdo_count [fontname="Helvetica"]
-    zero_pdo_count -> action_next_sync [fontname="Helvetica",label="No PDOs"]
-    zero_pdo_count -> action_assign_pdo [fontname="Helvetica",label="First PDO", weight=10]
+    zero_pdo_count
+    zero_pdo_count -> action_next_sync [label="No PDOs"]
+    zero_pdo_count -> action_assign_pdo [label="First PDO", weight=10]
 
     action_assign_pdo [shape=point,label=""]
     action_assign_pdo -> assign_pdo [weight=10]
 
-    assign_pdo [fontname="Helvetica"]
-    assign_pdo -> set_pdo_count [fontname="Helvetica",label="No more PDOs", weight=10]
-    assign_pdo -> action_assign_pdo [fontname="Helvetica",label="Next PDO"]
+    assign_pdo
+    assign_pdo -> set_pdo_count [label="No more PDOs", weight=10]
+    assign_pdo -> action_assign_pdo [label="Next PDO"]
 
-    set_pdo_count [fontname="Helvetica"]
+    set_pdo_count
     set_pdo_count -> action_next_sync
 }

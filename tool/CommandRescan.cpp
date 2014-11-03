@@ -65,7 +65,7 @@ string CommandRescan::helpString(const string &binaryBaseName) const
 void CommandRescan::execute(const StringVector &args)
 {
 	MasterIndexList masterIndices;
-    
+
     if (args.size() != 0) {
         stringstream err;
         err << "'" << getName() << "' takes no arguments!";

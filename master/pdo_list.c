@@ -152,7 +152,7 @@ int ec_pdo_list_add_pdo_copy(
         EC_ERR("PDO 0x%04X is already mapped!\n", pdo->index);
         return -EEXIST;
     }
-    
+
     if (!(mapped_pdo = kmalloc(sizeof(ec_pdo_t), GFP_KERNEL))) {
         EC_ERR("Failed to allocate PDO memory.\n");
         return -ENOMEM;
@@ -190,7 +190,7 @@ int ec_pdo_list_copy(
         if (ret)
             return ret;
     }
-    
+
     return 0;
 }
 
@@ -237,6 +237,8 @@ int ec_pdo_list_equal(
 /*****************************************************************************/
 
 /** Finds a PDO with the given index.
+ *
+ * \return Search result, or NULL.
  */
 ec_pdo_t *ec_pdo_list_find_pdo(
         const ec_pdo_list_t *pl, /**< PDO list. */
@@ -257,6 +259,8 @@ ec_pdo_t *ec_pdo_list_find_pdo(
 /*****************************************************************************/
 
 /** Finds a PDO with the given index and returns a const pointer.
+ *
+ * \return Search result, or NULL.
  */
 const ec_pdo_t *ec_pdo_list_find_pdo_const(
         const ec_pdo_list_t *pl, /**< PDO list. */
@@ -279,6 +283,8 @@ const ec_pdo_t *ec_pdo_list_find_pdo_const(
 /** Finds a PDO via its position in the list.
  *
  * Const version.
+ *
+ * \return Zero on success, otherwise a negative error code.
  */
 const ec_pdo_t *ec_pdo_list_find_pdo_by_pos_const(
         const ec_pdo_list_t *pl, /**< PDO list. */

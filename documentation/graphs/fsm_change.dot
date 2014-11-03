@@ -2,33 +2,35 @@
 /* $Id$ */
 
 digraph change {
+    node [fontname="Helvetica"]
+    edge [fontname="Helvetica", fontsize="12"]
 
-    start [fontname="Helvetica"]
+    start
     start -> check [weight=5]
 
-    check [fontname="Helvetica"]
+    check
     check -> status [weight=5]
-    check -> error [fontname="Helvetica", label="Response\ntimeout"]
+    check -> error [label="Response\ntimeout"]
 
-    status [fontname="Helvetica"]
-    status -> end [fontname="Helvetica", label="Success", weight=5]
-    status -> code [fontname="Helvetica", label="Refuse", weight=5]
-    status -> error [fontname="Helvetica", label="Change\ntimeout"]
+    status
+    status -> end [label="Success", weight=5]
+    status -> code [label="Refuse", weight=5]
+    status -> error [label="Change\ntimeout"]
 
-    code [fontname="Helvetica"]
+    code
     code -> ack [weight=2]
 
-    start_ack [fontname="Helvetica"]
-    start_ack -> ack [fontname="Helvetica", label="Ack only"]
+    start_ack
+    start_ack -> ack [label="Ack only"]
 
-    ack [fontname="Helvetica"]
+    ack
     ack -> check_ack [weight=2]
 
-    check_ack [fontname="Helvetica"]
-    check_ack -> end [fontname="Helvetica", label="Ack only"]
+    check_ack
+    check_ack -> end [label="Ack only"]
     check_ack -> error [weight=2]
 
-    end [fontname="Helvetica"]
+    end
 
-    error [fontname="Helvetica"]
+    error
 }

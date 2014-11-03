@@ -523,7 +523,7 @@ void MasterDevice::requestState(
 
     data.slave_position = slavePosition;
     data.al_state = state;
-    
+
     if (ioctl(fd, EC_IOCTL_SLAVE_STATE, &data)) {
         stringstream err;
         err << "Failed to request slave state: ";

@@ -150,7 +150,9 @@ class AliasPositionParser:
 Command::Command(const string &name, const string &briefDesc):
     name(name),
     briefDesc(briefDesc),
-    verbosity(Normal)
+    verbosity(Normal),
+    emergency(false),
+    force(false)
 {
 }
 
@@ -204,6 +206,13 @@ void Command::setDataType(const string &t)
 
 /*****************************************************************************/
 
+void Command::setEmergency(bool e)
+{
+    emergency = e;
+};
+
+/*****************************************************************************/
+
 void Command::setForce(bool f)
 {
     force = f;
@@ -216,13 +225,20 @@ void Command::setOutputFile(const string &f)
     outputFile = f;
 };
 
+/*****************************************************************************/
+
+void Command::setSkin(const string &s)
+{
+    skin = s;
+};
+
 /****************************************************************************/
 
 bool Command::matchesSubstr(const string &cmd) const
 {
     return name.substr(0, cmd.length()) == cmd;
 }
-    
+
 /****************************************************************************/
 
 bool Command::matchesAbbrev(const string &abb) const
@@ -238,7 +254,7 @@ bool Command::matchesAbbrev(const string &abb) const
 
     return true;
 }
-    
+
 /*****************************************************************************/
 
 string Command::numericInfo()
@@ -460,19 +476,17 @@ Command::ConfigList Command::selectedConfigs(MasterDevice &m)
 
 /****************************************************************************/
 
-Command::DomainList Command::selectedDomains(MasterDevice &m)
+Command::DomainList Command::selectedDomains(MasterDevice &m,
+        const ec_ioctl_master_t &io)
 {
-    ec_ioctl_master_t master;
     DomainList list;
 
-    m.getMaster(&master);
-
-    PositionParser pp(master.domain_count);
+    PositionParser pp(io.domain_count);
     NumberListParser::List domList = pp.parse(domains.c_str());
     NumberListParser::List::const_iterator di;
 
     for (di = domList.begin(); di != domList.end(); di++) {
-        if (*di < master.domain_count) {
+        if (*di < io.domain_count) {
             ec_ioctl_domain_t d;
             m.getDomain(&d, *di);
             list.push_back(d);
@@ -480,6 +494,19 @@ Command::DomainList Command::selectedDomains(MasterDevice &m)
     }
 
     return list;
+}
+
+/****************************************************************************/
+
+int Command::emergencySlave() const
+{
+    unsigned int ret;
+
+    stringstream str;
+    str << positions;
+    str >> ret;
+
+    return ret;
 }
 
 /****************************************************************************/
@@ -497,7 +524,7 @@ string Command::alStateString(uint8_t state)
         default: ret = "???";
     }
 
-    if (state & EC_SLAVE_STATE_ACK_ERR) { 
+    if (state & EC_SLAVE_STATE_ACK_ERR) {
         ret += "+ERROR";
     }
 

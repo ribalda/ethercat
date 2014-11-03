@@ -1204,7 +1204,7 @@ static void e100_configure(struct nic *nic, struct cb *cb, struct sk_buff *skb)
 		config->multicast_all = 0x1;		/* 1=accept, 0=no */
 
 	/* disable WoL when up */
-	if (nic->ecdev || 
+	if (nic->ecdev ||
 			(netif_running(nic->netdev) || !(nic->flags & wol_magic)))
 		config->magic_packet_disable = 0x1;	/* 1=off, 0=on */
 
@@ -3037,7 +3037,8 @@ static int __devinit e100_probe(struct pci_dev *pdev,
 		   pdev->irq, netdev->dev_addr);
 
 	if (nic->ecdev) {
-		if (ecdev_open(nic->ecdev)) {
+		err = ecdev_open(nic->ecdev);
+		if (err) {
 			ecdev_withdraw(nic->ecdev);
 			goto err_out_free;
 		}

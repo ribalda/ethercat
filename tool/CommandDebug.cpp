@@ -73,7 +73,7 @@ void CommandDebug::execute(const StringVector &args)
 	MasterIndexList masterIndices;
     stringstream str;
     int debugLevel;
-    
+
     if (args.size() != 1) {
         stringstream err;
         err << "'" << getName() << "' takes exactly one argument!";

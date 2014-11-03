@@ -51,11 +51,12 @@ class CommandSlaves:
             string state;
             string flag;
             string name;
+            unsigned int device;
         };
 
         void listSlaves(MasterDevice &, const SlaveList &, bool);
         void showSlaves(MasterDevice &, const SlaveList &);
-        
+
         static bool slaveInList( const ec_ioctl_slave_t &, const SlaveList &);
 };
 

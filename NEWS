@@ -2,19 +2,81 @@
 
 $Id$
 
-vim: spelllang=en spell
+vim: spelllang=en spell tw=78
 
 -------------------------------------------------------------------------------
 
-Changes since 1.5:
+Changes since 1.5.2:
 
-* Added e1000e driver for 2.3.32, 2.6.33, 2.6.34 (thanks to Siwei Zhuang),
-  2.6.35, 2.6.37 (F. Pose), 3.2 (J. Kunz).
-* Added r8169 driver for 2.6.35 (F. Pose), 2.6.36 (J. Kunz), 3.2 (J. Kunz).
-* Added e100 driver for 2.6.35, 3.0.
-* Added e1000 driver for 2.6.35, 3.0.
+* Fixed FoE timeout calculation bug.
 
-Changes in 1.5:
+Changes in 1.5.2:
+
+* API extensions (find the complete description in include/ecrt.h)
+    * Added redundancy features; enable using --with-devices.
+    * Re-designed and seamlessly integrated RTDM interface.
+    * Added ecrt_sdo_request_index() method to change index and subindex.
+    * Changed the data types of the shift times in ecrt_slave_config_dc()
+      to int32_t to correctly display negative shift times.
+    * Added API for querying CoE emergency requests.
+    * Added interface to read/write register contents; re-worked register
+      requests.
+    * Added interface to select the reference clock and to sync to it.
+    * Exported ecrt_domain_size() to userspace.
+    * Added ecrt_slave_config_reg_so_entry_pos() to register non-unique
+      PDO entries.
+* Ethernet drivers
+    * Added 8139too driver for 3.0, 3.2, 3.4.
+    * Added r8169 driver for 2.6.36 (J. Kunz), 3.2 (J. Kunz), 3.4 (F. Pose).
+    * Added e1000 driver for 3.0, 3.4.
+    * Added e1000e driver for 3.2 (J. Kunz), 3.4 (F. Pose).
+    * Added e100 driver for 3.0, 3.4.
+    * Fixes regarding 8139too driver for 2.6.36.
+    * Some fixes for all e1000 and e1000e drivers.
+* General behaviour
+    * Avoided semaphore locking from userspace/rtdm library: Implemented
+      datagram ring instead of queue.
+    * Assign SII to PDI during PREOP transition; Introduced
+      --enable-sii-assign to switch this on.
+    * Avoided re-allocating memory in userspace library implementations of
+      ecrt_sdo_request_state() and in VoE handlers.
+    * Send sync datagrams only if reference clock is found.
+    * Adjusted some DC clock discipline parameters.
+    * Fixed AL status code lookup.
+    * Fixed some ioctl() return values and permissions.
+    * Fixed FoE data OpCode, thanks to R. Roesch.
+    * Fixed and improved cancelling requests when clearing configuration.
+    * Using common wait queue for requests.
+    * Removed some unnecessary request types.
+    * Output slave FSM datagram statistics.
+    * Removed some state-dependent datagram skip messages.
+    * Immediately restart slave FSM on several failed requests.
+    * Reset master state machine when going to orphaned phase.
+* Command-line tool:
+    * Show complete access flag in config view.
+    * Added EtherLab skin for 'ethercat pdos' command.
+    * Fixed 'String too large' bug.
+* Infrastructure:
+    * Added AM_PROG_AR necessary for autoconf 1.12.
+    * Avoided use of AM_CFLAGS, which is not used in some situations.
+    * Added vmalloc() include fix for ARM architecture, thanks to Andrea
+      Scian.
+    * Install ethercat service to multi-user target by default.
+    * Fixed COPYING.LESSER to be LGPL 2.1 (like in file headers).
+    * More detailed output of configure script.
+    * Added rtai_rtdm_dc example, thanks to Graeme Foot.
+
+Changes in 1.5.1:
+
+* Fixed reset of allow_scanning flag if ecrt_master_activate() was not called.
+* Fixed missing distribution for r8169 for 2.6.32 and e1000 driver for 2.6.31.
+* Added e100 for 2.6.35.
+* Added r8169 driver for 2.6.35 (F. Pose).
+* Added e1000e driver for 2.6.35 (F. Pose).
+* Added fix for ESC port order (DC delay calculation).
+* Added e1000 driver for 2.6.35.
+
+Changes in 1.5.0:
 
 * Added a userspace library for accessing the application interface. This
   library is licensed under LGPLv2.
@@ -29,16 +91,23 @@ Changes in 1.5:
 * Separated datagram initialization from filling the payload with zeros.
   Introduced new method ec_datagram_zero() for that.
 * Added phy_read and phy_write commands to ethercat tool.
-* Added e100 driver for Intel PRO/100 NICs for 2.6.27, 2.6.28 (thanks to
-  Kim. H. Madsen), 2.6.29 (thanks to Andre Puschmann), 2.6.31, 2.6.32, 2.6.33
-  and 2.6.37.
+* Added e100 driver for Intel PRO/100 NICs.
+    - Added e100 driver for 2.6.27.
+    - Added e100 driver for 2.6.28, thanks to Kim. H. Madsen.
+    - Added e100 driver for 2.6.29, thanks to Andre Puschmann.
+    - Added e100 driver for 2.6.31.
+    - Added e100 driver for 2.6.32.
+    - Added e100 driver for 2.6.33, thanks to J. Kunz.
+    - Added e100 driver for 2.6.37.
 * Added 8139too driver for kernels 2.6.25 (F. Pose), 2.6.26 (M. Luescher),
-  2.6.27, 2.6.28, 2.6.29 (M. Goetze), 2.6.31 (F. Pose), 2.6.34 (Malcolm
-  Lewis), 2.6.36 (F. Pose) and 2.6.37 (F. Pose).
-* Added e1000 driver for 2.6.26 (M. Luescher), 2.6.27, 2.6.28, 2.6.29, 2.6.31,
-  2.6.32, 2.6.33 and 2.6.37.
+  2.6.27, 2.6.28, 2.6.29 (M. Goetze), 2.6.31 (F. Pose), 2.6.32 (F. Pose),
+  2.6.33 (J. Kunz), 2.6.34 (Malcolm Lewis), 2.6.35 (B. Benner),
+  2.6.36 (F. Pose) and 2.6.37 (F. Pose).
+* Added e1000 driver for 2.6.26 (M. Luescher), 2.6.27, 2.6.28, 2.6.29, 2.6.32,
+  2.6.33 (J. Kunz), 2.6.35, 2.6.37.
 * Added r8169 driver for 2.6.24, 2.6.27, 2.6.28, 2.6.29, 2.6.31, 2.6.32
-  (latter thanks to Robbie K), 2.6.33 and 2.6.37.
+  (Robbie K), 2.6.33 (J. Kunz), 2.6.35, 2.6.37.
+* Added e1000e driver for 2.6.32, 2.6.33, 2.6.34 (thanks to Siwei Zhuang).
 * Debug interfaces are created with the Ethernet addresses of the attached
   physical device.
 * Improved error case return codes of many functions.
@@ -79,7 +148,7 @@ Changes in 1.5:
   supports ranges like '0,3,8-10'.
 * A sync manager is always enabled, if it contains registered process data.
 * Added a configuration switch --enable-wildcards to use 0xffffffff as a
-* wildcard for vendor ID and product code.
+  wildcard for vendor ID and product code.
 * Added support for systemd.
 
 Changes in 1.4.0:

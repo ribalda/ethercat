@@ -161,6 +161,8 @@ int ec_sync_add_pdo(
 /*****************************************************************************/
 
 /** Determines the default direction from the control register.
+ *
+ * \return Direction.
  */
 ec_direction_t ec_sync_default_direction(
         const ec_sync_t *sync /**< EtherCAT sync manager. */

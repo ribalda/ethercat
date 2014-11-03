@@ -51,7 +51,8 @@ typedef struct ec_fsm_pdo_entry ec_fsm_pdo_entry_t;
  */
 struct ec_fsm_pdo_entry
 {
-    void (*state)(ec_fsm_pdo_entry_t *); /**< state function */
+    void (*state)(ec_fsm_pdo_entry_t *, ec_datagram_t *); /**< state function
+                                                           */
     ec_fsm_coe_t *fsm_coe; /**< CoE state machine to use */
     ec_sdo_request_t request; /**< SDO request. */
 
@@ -74,7 +75,7 @@ void ec_fsm_pdo_entry_start_reading(ec_fsm_pdo_entry_t *, ec_slave_t *,
 void ec_fsm_pdo_entry_start_configuration(ec_fsm_pdo_entry_t *, ec_slave_t *,
         const ec_pdo_t *, const ec_pdo_t *);
 
-int ec_fsm_pdo_entry_exec(ec_fsm_pdo_entry_t *);
+int ec_fsm_pdo_entry_exec(ec_fsm_pdo_entry_t *, ec_datagram_t *);
 int ec_fsm_pdo_entry_success(const ec_fsm_pdo_entry_t *);
 
 /*****************************************************************************/

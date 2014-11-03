@@ -50,6 +50,9 @@ void ec_fsm_slave_scan_state_base(ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_state_dc_cap(ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_state_dc_times(ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_state_datalink(ec_fsm_slave_scan_t *);
+#ifdef EC_SII_ASSIGN
+void ec_fsm_slave_scan_state_assign_sii(ec_fsm_slave_scan_t *);
+#endif
 void ec_fsm_slave_scan_state_sii_size(ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_state_sii_data(ec_fsm_slave_scan_t *);
 #ifdef EC_REGALIAS
@@ -137,8 +140,8 @@ int ec_fsm_slave_scan_running(const ec_fsm_slave_scan_t *fsm /**< slave state ma
 
 int ec_fsm_slave_scan_exec(ec_fsm_slave_scan_t *fsm /**< slave state machine */)
 {
-    if (fsm->datagram->state == EC_DATAGRAM_QUEUED
-        || fsm->datagram->state == EC_DATAGRAM_SENT) {
+    if (fsm->datagram->state == EC_DATAGRAM_SENT
+        || fsm->datagram->state == EC_DATAGRAM_QUEUED) {
         // datagram was not sent or received yet.
         return ec_fsm_slave_scan_running(fsm);
     }
@@ -439,11 +442,54 @@ void ec_fsm_slave_scan_enter_datalink(
 
 /*****************************************************************************/
 
+/** Enter slave scan state SII_SIZE.
+ */
+void ec_fsm_slave_scan_enter_sii_size(
+        ec_fsm_slave_scan_t *fsm /**< slave state machine */
+        )
+{
+    // Start fetching SII size
+
+    fsm->sii_offset = EC_FIRST_SII_CATEGORY_OFFSET; // first category header
+    ec_fsm_sii_read(&fsm->fsm_sii, fsm->slave, fsm->sii_offset,
+            EC_FSM_SII_USE_CONFIGURED_ADDRESS);
+    fsm->state = ec_fsm_slave_scan_state_sii_size;
+    fsm->state(fsm); // execute state immediately
+}
+
+/*****************************************************************************/
+
+#ifdef EC_SII_ASSIGN
+
+/** Enter slave scan state ASSIGN_SII.
+ */
+void ec_fsm_slave_scan_enter_assign_sii(
+        ec_fsm_slave_scan_t *fsm /**< slave state machine */
+        )
+{
+    ec_datagram_t *datagram = fsm->datagram;
+    ec_slave_t *slave = fsm->slave;
+
+    EC_SLAVE_DBG(slave, 1, "Assigning SII access to EtherCAT.\n");
+
+    // assign SII to ECAT
+    ec_datagram_fpwr(datagram, slave->station_address, 0x0500, 1);
+    EC_WRITE_U8(datagram->data, 0x00); // EtherCAT
+    fsm->retries = EC_FSM_RETRIES;
+    fsm->state = ec_fsm_slave_scan_state_assign_sii;
+}
+
+#endif
+
+/*****************************************************************************/
+
 /**
    Slave scan state: DATALINK.
 */
 
-void ec_fsm_slave_scan_state_datalink(ec_fsm_slave_scan_t *fsm /**< slave state machine */)
+void ec_fsm_slave_scan_state_datalink(
+        ec_fsm_slave_scan_t *fsm /**< slave state machine */
+        )
 {
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
@@ -478,14 +524,50 @@ void ec_fsm_slave_scan_state_datalink(ec_fsm_slave_scan_t *fsm /**< slave state 
             dl_status & (1 << (9 + i * 2)) ? 1 : 0;
     }
 
-    // Start fetching SII size
-
-    fsm->sii_offset = EC_FIRST_SII_CATEGORY_OFFSET; // first category header
-    ec_fsm_sii_read(&fsm->fsm_sii, slave, fsm->sii_offset,
-            EC_FSM_SII_USE_CONFIGURED_ADDRESS);
-    fsm->state = ec_fsm_slave_scan_state_sii_size;
-    fsm->state(fsm); // execute state immediately
+#ifdef EC_SII_ASSIGN
+    ec_fsm_slave_scan_enter_assign_sii(fsm);
+#else
+    ec_fsm_slave_scan_enter_sii_size(fsm);
+#endif
 }
+
+/*****************************************************************************/
+
+#ifdef EC_SII_ASSIGN
+
+/**
+   Slave scan state: ASSIGN_SII.
+*/
+
+void ec_fsm_slave_scan_state_assign_sii(
+        ec_fsm_slave_scan_t *fsm /**< slave state machine */
+        )
+{
+    ec_datagram_t *datagram = fsm->datagram;
+    ec_slave_t *slave = fsm->slave;
+
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        return;
+    }
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED) {
+        EC_SLAVE_WARN(slave, "Failed to receive SII assignment datagram: ");
+        ec_datagram_print_state(datagram);
+        // Try to go on, probably assignment is correct
+        goto continue_with_sii_size;
+    }
+
+    if (datagram->working_counter != 1) {
+        EC_SLAVE_WARN(slave, "Failed to assign SII to EtherCAT: ");
+        ec_datagram_print_wc_error(datagram);
+        // Try to go on, probably assignment is correct
+    }
+
+continue_with_sii_size:
+    ec_fsm_slave_scan_enter_sii_size(fsm);
+}
+
+#endif
 
 /*****************************************************************************/
 
@@ -493,7 +575,9 @@ void ec_fsm_slave_scan_state_datalink(ec_fsm_slave_scan_t *fsm /**< slave state 
    Slave scan state: SII SIZE.
 */
 
-void ec_fsm_slave_scan_state_sii_size(ec_fsm_slave_scan_t *fsm /**< slave state machine */)
+void ec_fsm_slave_scan_state_sii_size(
+        ec_fsm_slave_scan_t *fsm /**< slave state machine */
+        )
 {
     ec_slave_t *slave = fsm->slave;
     uint16_t cat_type, cat_size;
@@ -894,7 +978,7 @@ void ec_fsm_slave_scan_enter_pdos(
     EC_SLAVE_DBG(slave, 1, "Scanning PDO assignment and mapping.\n");
     fsm->state = ec_fsm_slave_scan_state_pdos;
     ec_fsm_pdo_start_reading(fsm->fsm_pdo, slave);
-    ec_fsm_pdo_exec(fsm->fsm_pdo); // execute immediately
+    ec_fsm_pdo_exec(fsm->fsm_pdo, fsm->datagram); // execute immediately
 }
 
 /*****************************************************************************/
@@ -905,8 +989,9 @@ void ec_fsm_slave_scan_state_pdos(
         ec_fsm_slave_scan_t *fsm /**< slave state machine */
         )
 {
-    if (ec_fsm_pdo_exec(fsm->fsm_pdo))
+    if (ec_fsm_pdo_exec(fsm->fsm_pdo, fsm->datagram)) {
         return;
+    }
 
     if (!ec_fsm_pdo_success(fsm->fsm_pdo)) {
         fsm->state = ec_fsm_slave_scan_state_error;

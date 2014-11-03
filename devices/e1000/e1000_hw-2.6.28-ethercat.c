@@ -31,7 +31,7 @@
  */
 
 
-#include "e1000_hw-2.6.27-ethercat.h"
+#include "e1000_hw-2.6.28-ethercat.h"
 
 static s32 e1000_swfw_sync_acquire(struct e1000_hw *hw, u16 mask);
 static void e1000_swfw_sync_release(struct e1000_hw *hw, u16 mask);

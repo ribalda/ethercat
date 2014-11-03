@@ -26,7 +26,7 @@
 
 *******************************************************************************/
 
-#include "e1000-2.6.27-ethercat.h"
+#include "e1000.h"
 
 /* This is the only thing that needs to be changed to adjust the
  * maximum number of ports that the driver can manage.

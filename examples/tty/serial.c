@@ -113,7 +113,7 @@ typedef struct {
 } el6002_t;
 
 LIST_HEAD(handlers);
-        
+
 /*****************************************************************************/
 
 /* Beckhoff EL6002
@@ -300,7 +300,7 @@ int el60xx_cflag_changed(void *data, tcflag_t cflag)
     rtscts = cflag & CRTSCTS;
     printk(KERN_INFO PFX "%s: Requested RTS/CTS: %s.\n",
             port->name, rtscts ? "yes" : "no");
-    
+
     cbaud = cflag & CBAUD;
 
     for (i = 0; i < sizeof(el600x_baud_rate) / sizeof(el600x_baud_rate_t);

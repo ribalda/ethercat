@@ -2,7 +2,7 @@
  *
  *  $Id$
  *
- *  Copyright (C) 2006-2008  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2012  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -39,7 +39,6 @@
 
 #include "globals.h"
 #include "datagram.h"
-#include "mailbox.h"
 #include "foe_request.h"
 #include "sdo_request.h"
 #include "soe_request.h"
@@ -58,66 +57,7 @@ typedef struct {
     size_t nwords; /**< Number of words. */
     const uint16_t *words; /**< Pointer to the data words. */
     ec_internal_request_state_t state; /**< State of the request. */
-    struct kref refcount;
 } ec_sii_write_request_t;
-
-void ec_master_sii_write_request_release(struct kref *);
-
-/*****************************************************************************/
-
-/** Register request.
- */
-typedef struct {
-    struct list_head list; /**< List head. */
-    ec_slave_t *slave; /**< EtherCAT slave. */
-    ec_direction_t dir; /**< Direction. */
-    uint16_t offset; /**< Register address. */
-    size_t length; /**< Number of bytes. */
-    uint8_t *data; /**< Data to write / memory for read data. */
-    ec_internal_request_state_t state; /**< State of the request. */
-    struct kref refcount;
-} ec_reg_request_t;
-
-void ec_master_reg_request_release(struct kref *);
-
-/*****************************************************************************/
-
-/** Slave/SDO request record for master's SDO request list.
- */
-typedef struct {
-    struct list_head list; /**< List element. */
-    ec_slave_t *slave; /**< Slave. */
-    ec_sdo_request_t req; /**< SDO request. */
-    struct kref refcount;
-} ec_master_sdo_request_t;
-
-void ec_master_sdo_request_release(struct kref *);
-
-/*****************************************************************************/
-
-/** FoE request.
- */
-typedef struct {
-    struct list_head list; /**< List head. */
-    ec_slave_t *slave; /**< EtherCAT slave. */
-    ec_foe_request_t req; /**< FoE request. */
-    struct kref refcount;
-} ec_master_foe_request_t;
-
-void ec_master_foe_request_release(struct kref *);
-
-/*****************************************************************************/
-
-/** SoE request.
- */
-typedef struct {
-    struct list_head list; /**< List head. */
-    ec_slave_t *slave; /**< EtherCAT slave. */
-    ec_soe_request_t req; /**< SoE request. */
-    struct kref refcount;
-} ec_master_soe_request_t;
-
-void ec_master_soe_request_release(struct kref *);
 
 /*****************************************************************************/
 
@@ -128,23 +68,29 @@ typedef struct ec_fsm_master ec_fsm_master_t; /**< \see ec_fsm_master */
 struct ec_fsm_master {
     ec_master_t *master; /**< master the FSM runs on */
     ec_datagram_t *datagram; /**< datagram used in the state machine */
-    ec_mailbox_t *mbox; /**< mailbox used in the state machine */
     unsigned int retries; /**< retries on datagram timeout. */
 
     void (*state)(ec_fsm_master_t *); /**< master state function */
+    ec_device_index_t dev_idx; /**< Current device index (for scanning etc.).
+                                */
     int idle; /**< state machine is in idle phase */
     unsigned long scan_jiffies; /**< beginning of slave scanning */
-    uint8_t link_state; /**< Last main device link state. */
-    unsigned int slaves_responding; /**< number of responding slaves */
+    uint8_t link_state[EC_MAX_NUM_DEVICES]; /**< Last link state for every
+                                              device. */
+    unsigned int slaves_responding[EC_MAX_NUM_DEVICES]; /**< Number of
+                                                          responding slaves
+                                                          for every device. */
     unsigned int rescan_required; /**< A bus rescan is required. */
-    ec_slave_state_t slave_states; /**< states of responding slaves */
+    ec_slave_state_t slave_states[EC_MAX_NUM_DEVICES]; /**< AL states of
+                                                         responding slaves for
+                                                         every device. */
     ec_slave_t *slave; /**< current slave */
     ec_sii_write_request_t *sii_request; /**< SII write request */
     off_t sii_index; /**< index to SII write request data */
     ec_sdo_request_t *sdo_request; /**< SDO request to process. */
-    ec_reg_request_t *reg_request; /**< Register request to process. */
 
     ec_fsm_coe_t fsm_coe; /**< CoE state machine */
+    ec_fsm_soe_t fsm_soe; /**< SoE state machine */
     ec_fsm_pdo_t fsm_pdo; /**< PDO configuration state machine. */
     ec_fsm_change_t fsm_change; /**< State change state machine */
     ec_fsm_slave_config_t fsm_slave_config; /**< slave state machine */
@@ -156,6 +102,8 @@ struct ec_fsm_master {
 
 void ec_fsm_master_init(ec_fsm_master_t *, ec_master_t *, ec_datagram_t *);
 void ec_fsm_master_clear(ec_fsm_master_t *);
+
+void ec_fsm_master_reset(ec_fsm_master_t *);
 
 int ec_fsm_master_exec(ec_fsm_master_t *);
 int ec_fsm_master_idle(const ec_fsm_master_t *);

@@ -2,7 +2,7 @@
 #
 #  $Id$
 #
-#  Copyright (C) 2006-2008  Florian Pose, Ingenieurgemeinschaft IgH
+#  Copyright (C) 2006-2012  Florian Pose, Ingenieurgemeinschaft IgH
 #
 #  This file is part of the IgH EtherCAT Master.
 #
@@ -20,7 +20,7 @@
 #  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 #  ---
-#  
+#
 #  The license mentioned above concerns the source code only. Using the
 #  EtherCAT technology and brand is only permitted in compliance with the
 #  industrial property and similar rights of Beckhoff Automation GmbH.
@@ -44,12 +44,13 @@ if ENABLE_RTDM
 if ENABLE_XENOMAI
 SUBDIRS += \
 	xenomai \
-	xenomai_posix 
+	xenomai_posix
 endif
 
 if ENABLE_RTAI
 SUBDIRS += \
-	rtai_rtdm
+	rtai_rtdm \
+	rtai_rtdm_dc
 endif
 endif
 
@@ -58,11 +59,12 @@ DIST_SUBDIRS = \
 	dc_user \
 	mini \
 	rtai \
-	tty \
-	xenomai \
-	xenomai_posix \
 	rtai_rtdm \
-	user
+	rtai_rtdm_dc \
+	tty \
+	user \
+	xenomai \
+	xenomai_posix
 
 EXTRA_DIST = \
 	Kbuild.in

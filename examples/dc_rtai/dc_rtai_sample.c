@@ -220,7 +220,7 @@ void run(long data)
             tv.tv_sec++;
         }
         ecrt_master_application_time(master, EC_TIMEVAL2NANO(tv));
-            
+
         if (sync_ref_counter) {
             sync_ref_counter--;
         } else {
@@ -229,8 +229,8 @@ void run(long data)
         }
         ecrt_master_sync_slave_clocks(master);
         ecrt_domain_queue(domain1);
-        rt_sem_signal(&master_sem);
         ecrt_master_send(master);
+        rt_sem_signal(&master_sem);
 
         rt_task_wait_period();
     }
@@ -238,18 +238,30 @@ void run(long data)
 
 /*****************************************************************************/
 
-void request_lock_callback(void *cb_data)
+void send_callback(void *cb_data)
 {
     ec_master_t *m = (ec_master_t *) cb_data;
-    rt_sem_wait(&master_sem);
+
+    // too close to the next real time cycle: deny access...
+    if (get_cycles() - t_last_cycle <= t_critical) {
+        rt_sem_wait(&master_sem);
+        ecrt_master_send_ext(m);
+        rt_sem_signal(&master_sem);
+    }
 }
 
 /*****************************************************************************/
 
-void release_lock_callback(void *cb_data)
+void receive_callback(void *cb_data)
 {
     ec_master_t *m = (ec_master_t *) cb_data;
-    rt_sem_signal(&master_sem);
+
+    // too close to the next real time cycle: deny access...
+    if (get_cycles() - t_last_cycle <= t_critical) {
+        rt_sem_wait(&master_sem);
+        ecrt_master_receive(m);
+        rt_sem_signal(&master_sem);
+    }
 }
 
 /*****************************************************************************/
@@ -268,12 +280,12 @@ int __init init_mod(void)
 
     master = ecrt_request_master(0);
     if (!master) {
-        ret = -EBUSY; 
+        ret = -EBUSY;
         printk(KERN_ERR PFX "Requesting master 0 failed!\n");
         goto out_return;
     }
 
-    ecrt_master_callbacks(master, request_lock_callback, release_lock_callback, master);
+    ecrt_master_callbacks(master, send_callback, receive_callback, master);
 
     printk(KERN_INFO PFX "Registering domain...\n");
     if (!(domain1 = ecrt_master_create_domain(master))) {

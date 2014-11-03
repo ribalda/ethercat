@@ -58,6 +58,7 @@ void ec_foe_request_init(
         ec_foe_request_t *req, /**< FoE request. */
         uint8_t* file_name /** filename */)
 {
+    INIT_LIST_HEAD(&req->list);
     req->buffer = NULL;
     req->file_name = file_name;
     req->buffer_size = 0;
@@ -102,21 +103,25 @@ void ec_foe_request_clear_data(
 
 /** Pre-allocates the data memory.
  *
- * If the \a buffer_size is already bigger than \a size, nothing is done.
+ * If the internal \a buffer_size is already bigger than \a size, nothing is
+ * done.
+ *
+ * \return Zero on success, otherwise a negative error code.
  */
 int ec_foe_request_alloc(
         ec_foe_request_t *req, /**< FoE request. */
         size_t size /**< Data size to allocate. */
         )
 {
-    if (size <= req->buffer_size)
+    if (size <= req->buffer_size) {
         return 0;
+    }
 
     ec_foe_request_clear_data(req);
 
     if (!(req->buffer = (uint8_t *) kmalloc(size, GFP_KERNEL))) {
         EC_ERR("Failed to allocate %zu bytes of FoE memory.\n", size);
-        return -1;
+        return -ENOMEM;
     }
 
     req->buffer_size = size;
@@ -129,6 +134,8 @@ int ec_foe_request_alloc(
 /** Copies FoE data from an external source.
  *
  * If the \a buffer_size is to small, new memory is allocated.
+ *
+ * \return Zero on success, otherwise a negative error code.
  */
 int ec_foe_request_copy_data(
         ec_foe_request_t *req, /**< FoE request. */
@@ -136,8 +143,12 @@ int ec_foe_request_copy_data(
         size_t size /**< Number of bytes in \a source. */
         )
 {
-    if (ec_foe_request_alloc(req, size))
-        return -1;
+    int ret;
+
+    ret = ec_foe_request_alloc(req, size);
+    if (ret) {
+        return ret;
+    }
 
     memcpy(req->buffer, source, size);
     req->data_size = size;

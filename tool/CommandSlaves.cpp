@@ -111,7 +111,7 @@ void CommandSlaves::execute(const StringVector &args)
 	MasterIndexList masterIndices;
     SlaveList slaves;
     bool doIndent;
-    
+
     if (args.size()) {
         stringstream err;
         err << "'" << getName() << "' takes no arguments!";
@@ -144,7 +144,7 @@ void CommandSlaves::listSlaves(
         )
 {
     ec_ioctl_master_t master;
-    unsigned int i;
+    unsigned int i, lastDevice;
     ec_ioctl_slave_t slave;
     uint16_t lastAlias, aliasIndex;
     Info info;
@@ -155,14 +155,14 @@ void CommandSlaves::listSlaves(
     unsigned int maxPosWidth = 0, maxAliasWidth = 0,
                  maxRelPosWidth = 0, maxStateWidth = 0;
     string indent(doIndent ? "  " : "");
-    
+
     m.getMaster(&master);
 
     lastAlias = 0;
     aliasIndex = 0;
     for (i = 0; i < master.slave_count; i++) {
         m.getSlave(&slave, i);
-        
+
         if (slave.alias) {
             lastAlias = slave.alias;
             aliasIndex = 0;
@@ -184,6 +184,7 @@ void CommandSlaves::listSlaves(
 
             info.state = alStateString(slave.al_state);
             info.flag = (slave.error_flag ? 'E' : '+');
+            info.device = slave.device_index;
 
             if (strlen(slave.name)) {
                 info.name = slave.name;
@@ -215,7 +216,12 @@ void CommandSlaves::listSlaves(
         cout << "Master" << dec << m.getIndex() << endl;
     }
 
+    lastDevice = EC_DEVICE_MAIN;
     for (iter = infoList.begin(); iter != infoList.end(); iter++) {
+        if (iter->device != lastDevice) {
+            lastDevice = iter->device;
+            cout << "xxx LINK FAILURE xxx" << endl;
+        }
         cout << indent << setfill(' ') << right
             << setw(maxPosWidth) << iter->pos << "  "
             << setw(maxAliasWidth) << iter->alias
@@ -245,6 +251,7 @@ void CommandSlaves::showSlaves(
             cout << "Alias: " << si->alias << endl;
 
         cout
+            << "Device: " << (si->device_index ? "Backup" : "Main") << endl
             << "State: " << alStateString(si->al_state) << endl
             << "Flag: " << (si->error_flag ? 'E' : '+') << endl
             << "Identity:" << endl
@@ -289,7 +296,7 @@ void CommandSlaves::showSlaves(
         if (si->dc_supported)
             cout << "  RxTime [ns]  Diff [ns]   NextDc [ns]";
         cout << endl;
-            
+
         for (i = 0; i < EC_MAX_PORTS; i++) {
             cout << "   " << i << "  " << setfill(' ') << left << setw(4);
             switch (si->ports[i].desc) {
@@ -322,7 +329,7 @@ void CommandSlaves::showSlaves(
             } else {
                 cout << "-";
             }
-            
+
             if (si->dc_supported) {
                 cout << "  " << setw(11) << right;
                 if (!si->ports[i].link.loop_closed) {
@@ -332,7 +339,8 @@ void CommandSlaves::showSlaves(
                 }
                 cout << "  " << setw(10);
                 if (!si->ports[i].link.loop_closed) {
-                    cout << si->ports[i].receive_time - si->ports[0].receive_time;
+                    cout << si->ports[i].receive_time -
+                        si->ports[0].receive_time;
                 } else {
                     cout << "-";
                 }
@@ -406,7 +414,8 @@ void CommandSlaves::showSlaves(
                     << "    Enable SDO: "
                     << (si->coe_details.enable_sdo ? "yes" : "no") << endl
                     << "    Enable SDO Info: "
-                    << (si->coe_details.enable_sdo_info ? "yes" : "no") << endl
+                    << (si->coe_details.enable_sdo_info ? "yes" : "no")
+                    << endl
                     << "    Enable PDO Assign: "
                     << (si->coe_details.enable_pdo_assign
                             ? "yes" : "no") << endl

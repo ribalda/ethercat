@@ -2,7 +2,7 @@
  *
  *  $Id$
  *
- *  Copyright (C) 2006-2008  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2012  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -46,7 +46,6 @@
 #include "sync.h"
 #include "sdo.h"
 #include "fsm_slave.h"
-#include "mailbox.h"
 
 /*****************************************************************************/
 
@@ -60,19 +59,9 @@
  * \param fmt format string (like in printf())
  * \param args arguments (optional)
  */
-#ifdef USE_TRACE_PRINTK
-#define EC_SLAVE_INFO(slave, fmt, args...) \
-    do { \
-        __trace_printk(_THIS_IP_,"EtherCAT %u-%u: " fmt, slave->master->index, \
-                slave->ring_position, ##args); \
-        printk(KERN_INFO "EtherCAT %u-%u: " fmt, slave->master->index, \
-                slave->ring_position, ##args);  \
-    } while (0)
-#else
 #define EC_SLAVE_INFO(slave, fmt, args...) \
     printk(KERN_INFO "EtherCAT %u-%u: " fmt, slave->master->index, \
             slave->ring_position, ##args)
-#endif
 
 /** Convenience macro for printing slave-specific errors to syslog.
  *
@@ -84,19 +73,9 @@
  * \param fmt format string (like in printf())
  * \param args arguments (optional)
  */
-#ifdef USE_TRACE_PRINTK
-#define EC_SLAVE_ERR(slave, fmt, args...) \
-    do { \
-        __trace_printk(_THIS_IP_,"EtherCAT ERROR %u-%u: " fmt, slave->master->index, \
-                slave->ring_position, ##args); \
-        printk(KERN_ERR "EtherCAT ERROR %u-%u: " fmt, slave->master->index, \
-                slave->ring_position, ##args);  \
-    } while (0)
-#else
 #define EC_SLAVE_ERR(slave, fmt, args...) \
     printk(KERN_ERR "EtherCAT ERROR %u-%u: " fmt, slave->master->index, \
             slave->ring_position, ##args)
-#endif
 
 /** Convenience macro for printing slave-specific warnings to syslog.
  *
@@ -108,19 +87,9 @@
  * \param fmt format string (like in printf())
  * \param args arguments (optional)
  */
-#ifdef USE_TRACE_PRINTK
-#define EC_SLAVE_WARN(slave, fmt, args...) \
-    do { \
-        __trace_printk(_THIS_IP_,"EtherCAT WARNING %u-%u: " fmt, \
-                slave->master->index, slave->ring_position, ##args); \
-        printk(KERN_WARNING "EtherCAT WARNING %u-%u: " fmt, \
-                slave->master->index, slave->ring_position, ##args);    \
-    } while (0)
-#else
 #define EC_SLAVE_WARN(slave, fmt, args...) \
     printk(KERN_WARNING "EtherCAT WARNING %u-%u: " fmt, \
             slave->master->index, slave->ring_position, ##args)
-#endif
 
 /** Convenience macro for printing slave-specific debug messages to syslog.
  *
@@ -129,20 +98,11 @@
  * POSITION is the slave's ring position.
  *
  * \param slave EtherCAT slave
+ * \param level Debug level. Master's debug level must be >= \a level for
+ * output.
  * \param fmt format string (like in printf())
  * \param args arguments (optional)
  */
-#ifdef USE_TRACE_PRINTK
-#define EC_SLAVE_DBG(slave, level, fmt, args...) \
-    do { \
-        __trace_printk(_THIS_IP_,"EtherCAT DEBUG%u %u-%u: " fmt, \
-            level,slave->master->index, slave->ring_position, ##args); \
-        if (slave->master->debug_level >= level) { \
-            printk(KERN_DEBUG "EtherCAT DEBUG %u-%u: " fmt, \
-                    slave->master->index, slave->ring_position, ##args); \
-        } \
-    } while (0)
-#else
 #define EC_SLAVE_DBG(slave, level, fmt, args...) \
     do { \
         if (slave->master->debug_level >= level) { \
@@ -150,7 +110,6 @@
                     slave->master->index, slave->ring_position, ##args); \
         } \
     } while (0)
-#endif
 
 /*****************************************************************************/
 
@@ -171,7 +130,7 @@ typedef struct {
 /** Slave information interface data.
  */
 typedef struct {
-    // Non-category data 
+    // Non-category data
     uint16_t alias; /**< Configured station alias. */
     uint32_t vendor_id; /**< Vendor ID. */
     uint32_t product_code; /**< Vendor-specific product code. */
@@ -217,6 +176,8 @@ typedef struct {
 struct ec_slave
 {
     ec_master_t *master; /**< Master owning the slave. */
+    ec_device_index_t device_index; /**< Index of device the slave responds
+                                      on. */
 
     // addresses
     uint16_t ring_position; /**< Ring position. */
@@ -265,24 +226,19 @@ struct ec_slave
     uint8_t sdo_dictionary_fetched; /**< Dictionary has been fetched. */
     unsigned long jiffies_preop; /**< Time, the slave went to PREOP. */
 
-    struct list_head slave_sdo_requests; /**< SDO access requests. */
-    wait_queue_head_t sdo_queue; /**< Wait queue for SDO access requests
-                                   from user space. */
+    struct list_head sdo_requests; /**< SDO access requests. */
+    struct list_head reg_requests; /**< Register access requests. */
     struct list_head foe_requests; /**< FoE write requests. */
-    wait_queue_head_t foe_queue; /**< Wait queue for FoE requests from user
-                                   space. */
-    struct list_head soe_requests; /**< FoE write requests. */
-    wait_queue_head_t soe_queue; /**< Wait queue for SoE requests from user
-                                   space. */
+    struct list_head soe_requests; /**< SoE write requests. */
+
     ec_fsm_slave_t fsm; /**< Slave state machine. */
-    ec_datagram_t datagram; /** Datagram used for data transfers */
-    ec_mailbox_t mbox; /**< Mailbox used for data transfers. */
 };
 
 /*****************************************************************************/
 
 // slave construction/destruction
-void ec_slave_init(ec_slave_t *, ec_master_t *, uint16_t, uint16_t);
+void ec_slave_init(ec_slave_t *, ec_master_t *, ec_device_index_t,
+        uint16_t, uint16_t);
 void ec_slave_clear(ec_slave_t *);
 
 void ec_slave_clear_sync_managers(ec_slave_t *);
@@ -298,7 +254,7 @@ int ec_slave_fetch_sii_pdos(ec_slave_t *, const uint8_t *, size_t,
         ec_direction_t);
 
 // misc.
-ec_sync_t *ec_slave_get_sync(ec_slave_t *, uint8_t); 
+ec_sync_t *ec_slave_get_sync(ec_slave_t *, uint8_t);
 
 void ec_slave_sdo_dict_info(const ec_slave_t *,
         unsigned int *, unsigned int *);

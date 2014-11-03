@@ -2,7 +2,7 @@
  *
  *  $Id$
  *
- *  Copyright (C) 2006-2009  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2014  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -115,10 +115,10 @@ void CommandXml::generateSlaveXml(
     for (i = 0; i < indent; i++) {
         in += "  ";
     }
-    
+
     cout
         << in << "<EtherCATInfo>" << endl
-        << in << "  <!-- Slave " << slave.position << " -->" << endl
+        << in << "  <!-- Slave " << dec << slave.position << " -->" << endl
         << in << "  <Vendor>" << endl
         << in << "    <Id>" << slave.vendor_id << "</Id>" << endl
         << in << "  </Vendor>" << endl
@@ -142,9 +142,11 @@ void CommandXml::generateSlaveXml(
         m.getSync(&sync, slave.position, i);
 
         cout
-            << in << "        <Sm Enable=\"" << dec << (unsigned int) sync.enable
+            << in << "        <Sm Enable=\""
+            << dec << (unsigned int) sync.enable
             << "\" StartAddress=\"#x" << hex << sync.physical_start_address
-            << "\" ControlByte=\"#x" << hex << (unsigned int) sync.control_register
+            << "\" ControlByte=\"#x"
+            << hex << (unsigned int) sync.control_register
             << "\" DefaultSize=\"" << dec << sync.default_size
             << "\" />" << endl;
     }
@@ -178,7 +180,7 @@ void CommandXml::generateSlaveXml(
                         << in << "            <SubIndex>"
                         << dec << (unsigned int) entry.subindex
                         << "</SubIndex>" << endl;
-                
+
                 cout
                     << in << "            <BitLen>"
                     << dec << (unsigned int) entry.bit_length

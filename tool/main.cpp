@@ -83,8 +83,10 @@ string domains = "-"; // all domains
 string dataTypeStr;
 Command::Verbosity verbosity = Command::Normal;
 bool force = false;
+bool emergency = false;
 bool helpRequested = false;
 string outputFile;
+string skin;
 
 /*****************************************************************************/
 
@@ -147,6 +149,8 @@ void getOptions(int argc, char **argv)
         {"domain",      required_argument, NULL, 'd'},
         {"type",        required_argument, NULL, 't'},
         {"output-file", required_argument, NULL, 'o'},
+        {"skin",        required_argument, NULL, 's'},
+        {"emergency",   no_argument,       NULL, 'e'},
         {"force",       no_argument,       NULL, 'f'},
         {"quiet",       no_argument,       NULL, 'q'},
         {"verbose",     no_argument,       NULL, 'v'},
@@ -155,7 +159,7 @@ void getOptions(int argc, char **argv)
     };
 
     do {
-        c = getopt_long(argc, argv, "m:a:p:d:t:o:fqvh", longOptions, NULL);
+        c = getopt_long(argc, argv, "m:a:p:d:t:o:s:efqvh", longOptions, NULL);
 
         switch (c) {
             case 'm':
@@ -180,6 +184,14 @@ void getOptions(int argc, char **argv)
 
             case 'o':
                 outputFile = optarg;
+                break;
+
+            case 's':
+                skin = optarg;
+                break;
+
+            case 'e':
+                emergency = true;
                 break;
 
             case 'f':
@@ -308,6 +320,8 @@ int main(int argc, char **argv)
                     cmd->setDomains(domains);
                     cmd->setDataType(dataTypeStr);
                     cmd->setOutputFile(outputFile);
+                    cmd->setSkin(skin);
+                    cmd->setEmergency(emergency);
                     cmd->setForce(force);
                     cmd->execute(commandArgs);
                 } catch (InvalidUsageException &e) {

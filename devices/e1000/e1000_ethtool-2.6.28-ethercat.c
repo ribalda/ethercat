@@ -28,7 +28,7 @@
 
 /* ethtool support for e1000 */
 
-#include "e1000-2.6.27-ethercat.h"
+#include "e1000-2.6.28-ethercat.h"
 #include <asm/uaccess.h>
 
 struct e1000_stats {

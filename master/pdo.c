@@ -47,7 +47,7 @@ void ec_pdo_init(
         ec_pdo_t *pdo /**< EtherCAT PDO */
         )
 {
-    pdo->sync_index = -1; // not assigned 
+    pdo->sync_index = -1; // not assigned
     pdo->name = NULL;
     INIT_LIST_HEAD(&pdo->entries);
 }
@@ -131,7 +131,7 @@ int ec_pdo_set_name(
 
     if (pdo->name && name && !strcmp(pdo->name, name))
         return 0;
-    
+
     if (pdo->name)
         kfree(pdo->name);
 
@@ -273,6 +273,8 @@ unsigned int ec_pdo_entry_count(
 /** Finds a PDO entry via its position in the list.
  *
  * Const version.
+ *
+ * \return Search result, or NULL.
  */
 const ec_pdo_entry_t *ec_pdo_find_entry_by_pos_const(
         const ec_pdo_t *pdo, /**< PDO. */

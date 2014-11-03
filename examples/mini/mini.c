@@ -331,7 +331,7 @@ void cyclic_task(unsigned long data)
 
         // check for islave configuration state(s) (optional)
         check_slave_config_states();
-        
+
 #if SDO_ACCESS
         // read process data SDO
         read_sdo();
@@ -358,15 +358,21 @@ void cyclic_task(unsigned long data)
 
 /*****************************************************************************/
 
-void request_lock_callback(void *cb_data)
+void send_callback(void *cb_data)
 {
+    ec_master_t *m = (ec_master_t *) cb_data;
     down(&master_sem);
+    ecrt_master_send_ext(m);
+    up(&master_sem);
 }
 
 /*****************************************************************************/
 
-void release_lock_callback(void *cb_data)
+void receive_callback(void *cb_data)
 {
+    ec_master_t *m = (ec_master_t *) cb_data;
+    down(&master_sem);
+    ecrt_master_receive(m);
     up(&master_sem);
 }
 
@@ -381,19 +387,18 @@ int __init init_mini_module(void)
 #if EXTERNAL_MEMORY
     unsigned int size;
 #endif
-    
+
     printk(KERN_INFO PFX "Starting...\n");
 
     master = ecrt_request_master(0);
     if (!master) {
-        ret = -EBUSY; 
+        ret = -EBUSY;
         printk(KERN_ERR PFX "Requesting master 0 failed.\n");
         goto out_return;
     }
 
     sema_init(&master_sem, 1);
-    ecrt_master_callbacks(master,
-            request_lock_callback, release_lock_callback, master);
+    ecrt_master_callbacks(master, send_callback, receive_callback, master);
 
     printk(KERN_INFO PFX "Registering domain...\n");
     if (!(domain1 = ecrt_master_create_domain(master))) {
@@ -439,8 +444,7 @@ int __init init_mini_module(void)
 
 #if SDO_ACCESS
     printk(KERN_INFO PFX "Creating SDO requests...\n");
-    if (!(sdo = ecrt_slave_config_create_sdo_request(
-                    sc_ana_in, 0x3102, 2, 2))) {
+    if (!(sdo = ecrt_slave_config_create_sdo_request(sc_ana_in, 0x3102, 2, 2))) {
         printk(KERN_ERR PFX "Failed to create SDO request.\n");
         goto out_release_master;
     }

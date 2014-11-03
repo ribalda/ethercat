@@ -43,12 +43,14 @@
 
 /** FMMU configuration constructor.
  *
- * Inits an FMMU configuration and the process data size for the mapped PDOs
- * of the given direction to the domain data size.
+ * Inits an FMMU configuration, sets the logical start address and adds the
+ * process data size for the mapped PDOs of the given direction to the domain
+ * data size.
  */
 void ec_fmmu_config_init(
         ec_fmmu_config_t *fmmu, /**< EtherCAT FMMU configuration. */
         ec_slave_config_t *sc, /**< EtherCAT slave configuration. */
+        ec_domain_t *domain, /**< EtherCAT domain. */
         uint8_t sync_index, /**< Sync manager index to use. */
         ec_direction_t dir /**< PDO direction. */
         )
@@ -57,27 +59,11 @@ void ec_fmmu_config_init(
     fmmu->sc = sc;
     fmmu->sync_index = sync_index;
     fmmu->dir = dir;
+
+    fmmu->logical_start_address = domain->data_size;
     fmmu->data_size = ec_pdo_list_total_size(
             &sc->sync_configs[sync_index].pdos);
-}
 
-/*****************************************************************************/
-
-/** Sets FMMU domain
- *
- * Sets the logical start address and the size of the transmitted data
- */
-void ec_fmmu_config_domain(
-        ec_fmmu_config_t *fmmu, /**< EtherCAT FMMU configuration. */
-        ec_domain_t *domain, /**< EtherCAT domain. */
-        uint32_t logical_start_address, /**< FMMU logical start address. */
-        size_t tx_size /**< Size of transmitted data */
-        )
-{
-    fmmu->domain = domain;
-    fmmu->domain_address = domain->data_size;
-    fmmu->logical_start_address = logical_start_address;
-    fmmu->tx_size = tx_size;
     ec_domain_add_fmmu_config(domain, fmmu);
 }
 
@@ -93,11 +79,9 @@ void ec_fmmu_config_page(
         uint8_t *data /**> Configuration page memory. */
         )
 {
-    EC_CONFIG_DBG(fmmu->sc, 1, "FMMU: LogAddr 0x%08X, DomAddr 0x%08X,"
-            " Size %3u, Tx %3u"
+    EC_CONFIG_DBG(fmmu->sc, 1, "FMMU: LogAddr 0x%08X, Size %3u,"
             " PhysAddr 0x%04X, SM%u, Dir %s\n",
-            fmmu->logical_start_address, fmmu->domain_address,
-            fmmu->data_size, fmmu->data_size,
+            fmmu->logical_start_address, fmmu->data_size,
             sync->physical_start_address, fmmu->sync_index,
             fmmu->dir == EC_DIR_INPUT ? "in" : "out");
 

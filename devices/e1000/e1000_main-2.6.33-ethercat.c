@@ -317,7 +317,7 @@ static void e1000_irq_enable(struct e1000_adapter *adapter)
 
 	if (adapter->ecdev)
 		return;
- 
+
 	ew32(IMS, IMS_ENABLE_MASK);
 	E1000_WRITE_FLUSH();
 }
@@ -1082,7 +1082,8 @@ static int __devinit e1000_probe(struct pci_dev *pdev,
 	// offer device to EtherCAT master module
 	adapter->ecdev = ecdev_offer(netdev, ec_poll, THIS_MODULE);
 	if (adapter->ecdev) {
-		if (ecdev_open(adapter->ecdev)) {
+		err = ecdev_open(adapter->ecdev);
+		if (err) {
 			ecdev_withdraw(adapter->ecdev);
 			goto err_register;
 		}
@@ -1332,11 +1333,13 @@ static int e1000_open(struct net_device *netdev)
 	/* From here on the code is the same as e1000_up() */
 	clear_bit(__E1000_DOWN, &adapter->flags);
 
-	napi_enable(&adapter->napi);
+	if (!adapter->ecdev) {
+		napi_enable(&adapter->napi);
 
-	e1000_irq_enable(adapter);
+		e1000_irq_enable(adapter);
 
-	netif_start_queue(netdev);
+		netif_start_queue(netdev);
+	}
 
 	/* fire a link status change interrupt to start the watchdog */
 	ew32(ICS, E1000_ICS_LSC);
@@ -2095,7 +2098,7 @@ static void e1000_leave_82542_rst(struct e1000_adapter *adapter)
 		/* No need to loop, because 82542 supports only 1 queue */
 		struct e1000_rx_ring *ring = &adapter->rx_ring[0];
 		e1000_configure_rx(adapter);
-		if (adapter->ecdev) { 
+		if (adapter->ecdev) {
 			/* fill rx ring completely! */
 			adapter->alloc_rx_buf(adapter, ring, ring->count);
 		} else {
@@ -2298,7 +2301,7 @@ static void e1000_82547_tx_fifo_stall(unsigned long data)
 			atomic_set(&adapter->tx_fifo_stall, 0);
 			if (!adapter->ecdev) netif_wake_queue(netdev);
 		} else if (!test_bit(__E1000_DOWN, &adapter->flags)) {
-			if (!adapter->ecdev) 
+			if (!adapter->ecdev)
 				mod_timer(&adapter->tx_fifo_stall_timer, jiffies + 1);
 		}
 	}
@@ -2972,6 +2975,10 @@ static int __e1000_maybe_stop_tx(struct net_device *netdev, int size)
 {
 	struct e1000_adapter *adapter = netdev_priv(netdev);
 	struct e1000_tx_ring *tx_ring = adapter->tx_ring;
+
+	if (adapter->ecdev) {
+		return -EBUSY;
+	}
 
 	netif_stop_queue(netdev);
 	/* Herbert's original patch had:

@@ -255,8 +255,6 @@ void read_sdo(void)
 
 void cyclic_task()
 {
-    int i;
-
     // receive process data
     ecrt_master_receive(master);
     ecrt_domain_process(domain1);
@@ -319,7 +317,7 @@ int main(int argc, char **argv)
     ec_slave_config_t *sc;
     struct sigaction sa;
     struct itimerval tv;
-    
+
     master = ecrt_request_master(0);
     if (!master)
         return -1;

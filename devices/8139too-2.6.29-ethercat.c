@@ -654,7 +654,7 @@ struct rtl8139_private {
 	struct mii_if_info	mii;
 	unsigned int		regs_len;
 	unsigned long		fifo_copy_timeout;
-    
+
 	ec_device_t *ecdev;
 };
 
@@ -1066,7 +1066,7 @@ static int __devinit rtl8139_init_one (struct pci_dev *pdev,
 	tp->mii.reg_num_mask = 0x1f;
 
 	/* dev is fully set up and ready to use now */
-    
+
 	// offer device to EtherCAT master module
 	tp->ecdev = ecdev_offer(dev, ec_poll, THIS_MODULE);
 
@@ -1145,9 +1145,12 @@ static int __devinit rtl8139_init_one (struct pci_dev *pdev,
 	if (rtl_chip_info[tp->chipset].flags & HasHltClk)
 		RTL_W8 (HltClk, 'H');	/* 'R' would leave the clock running. */
 
-	if (tp->ecdev && ecdev_open(tp->ecdev)) {
-		ecdev_withdraw(tp->ecdev);
-		goto err_out;
+	if (tp->ecdev) {
+		i = ecdev_open(tp->ecdev);
+		if (i) {
+			ecdev_withdraw(tp->ecdev);
+			goto err_out;
+		}
 	}
 
 	return 0;
@@ -1811,24 +1814,24 @@ static int rtl8139_start_xmit (struct sk_buff *skb, struct net_device *dev)
 		wmb();
 		RTL_W32_F (TxStatus0 + (entry * sizeof (u32)),
 			tp->tx_flag | max(len, (unsigned int)ETH_ZLEN));
- 
+
 		dev->trans_start = jiffies;
- 
+
 		tp->cur_tx++;
 	} else {
 		spin_lock_irqsave(&tp->lock, flags);
 		wmb();
 		RTL_W32_F (TxStatus0 + (entry * sizeof (u32)),
 			   tp->tx_flag | max(len, (unsigned int)ETH_ZLEN));
- 
+
 		dev->trans_start = jiffies;
- 
+
 		tp->cur_tx++;
- 
+
 		if ((tp->cur_tx - NUM_TX_DESC) == tp->dirty_tx)
 			netif_stop_queue (dev);
 		spin_unlock_irqrestore(&tp->lock, flags);
- 
+
 		if (netif_msg_tx_queued(tp))
 			printk (KERN_DEBUG "%s: Queued Tx packet size %u to slot %d.\n",
 				dev->name, len, entry);

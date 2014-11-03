@@ -170,7 +170,7 @@ void CommandConfig::showDetailedConfigs(
             << "Product code: 0x"
             << setw(8) << configIter->product_code << endl << indent
             << "Attached slave: ";
-        
+
         if (configIter->slave_position != -1) {
             m.getSlave(&slave, configIter->slave_position);
             cout << dec << configIter->slave_position
@@ -236,9 +236,14 @@ void CommandConfig::showDetailedConfigs(
 
                 cout << indent << "  0x"
                     << hex << setfill('0')
-                    << setw(4) << sdo.index << ":"
-                    << setw(2) << (unsigned int) sdo.subindex
-                    << ", " << dec << sdo.size << " byte" << endl;
+                    << setw(4) << sdo.index;
+                if (sdo.complete_access) {
+                    cout << " C";
+                }
+                else {
+                    cout << ":" << setw(2) << (unsigned int) sdo.subindex;
+                }
+                cout << ", " << dec << sdo.size << " byte" << endl;
 
                 cout << indent << "    " << hex;
                 for (i = 0; i < min((uint32_t) sdo.size,

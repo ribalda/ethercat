@@ -102,7 +102,7 @@ size_t DataTypeHandler::interpretAsType(
         void *target,
         size_t targetSize
         )
-{ 
+{
     stringstream str;
     size_t dataSize = type->byteSize;
 
@@ -269,7 +269,7 @@ void DataTypeHandler::outputData(
         void *data,
         size_t dataSize
         )
-{ 
+{
     uint16_t typeCode;
 
     if (type) {

@@ -161,7 +161,7 @@ void CommandSiiRead::execute(const StringVector &args)
 
                 if (categoryHeader + 2 + categorySize + 1
                         > data.words + data.nwords) {
-                    err << "SII data seem to be corrupted!"; 
+                    err << "SII data seem to be corrupted!";
                     throwCommandException(err);
                 }
                 categoryHeader += 2 + categorySize;

@@ -108,16 +108,18 @@ void CommandDomains::execute(const StringVector &args)
     MasterIndexList::const_iterator mi;
     for (mi = masterIndices.begin();
             mi != masterIndices.end(); mi++) {
+        ec_ioctl_master_t io;
         MasterDevice m(*mi);
         m.open(MasterDevice::Read);
-        domains = selectedDomains(m);
+        m.getMaster(&io);
+        domains = selectedDomains(m, io);
 
         if (domains.size() && doIndent) {
             cout << "Master" << dec << *mi << endl;
         }
 
         for (di = domains.begin(); di != domains.end(); di++) {
-            showDomain(m, *di, doIndent);
+            showDomain(m, io, *di, doIndent);
         }
     }
 }
@@ -126,6 +128,7 @@ void CommandDomains::execute(const StringVector &args)
 
 void CommandDomains::showDomain(
         MasterDevice &m,
+        const ec_ioctl_master_t &master,
         const ec_ioctl_domain_t &domain,
         bool doIndent
         )
@@ -136,6 +139,11 @@ void CommandDomains::showDomain(
     ec_ioctl_domain_fmmu_t fmmu;
     unsigned int dataOffset;
     string indent(doIndent ? "  " : "");
+    unsigned int wc_sum = 0, dev_idx;
+
+    for (dev_idx = EC_DEVICE_MAIN; dev_idx < master.num_devices; dev_idx++) {
+        wc_sum += domain.working_counter[dev_idx];
+    }
 
     cout << indent << "Domain" << dec << domain.index << ":"
         << " LogBaseAddr 0x"
@@ -143,11 +151,21 @@ void CommandDomains::showDomain(
         << setw(8) << domain.logical_base_address
         << ", Size " << dec << setfill(' ')
         << setw(3) << domain.data_size
-        << ", TxSize " << dec << setfill(' ')
-        << setw(3) << domain.tx_size
         << ", WorkingCounter "
-        << domain.working_counter << "/"
-        << domain.expected_working_counter << endl;
+        << wc_sum << "/"
+        << domain.expected_working_counter;
+    if (master.num_devices > 1) {
+        cout << " (";
+        for (dev_idx = EC_DEVICE_MAIN; dev_idx < master.num_devices;
+                dev_idx++) {
+            cout << domain.working_counter[dev_idx];
+            if (dev_idx + 1 < master.num_devices) {
+                cout << "+";
+            }
+        }
+        cout << ")";
+    }
+    cout << endl;
 
     if (!domain.data_size || getVerbosity() != Verbose)
         return;
@@ -175,7 +193,7 @@ void CommandDomains::showDomain(
             << setw(8) << fmmu.logical_address
             << ", Size " << dec << fmmu.data_size << endl;
 
-        dataOffset = fmmu.domain_address - domain.logical_base_address;
+        dataOffset = fmmu.logical_address - domain.logical_base_address;
         if (dataOffset + fmmu.data_size > domain.data_size) {
             stringstream err;
             delete [] processData;

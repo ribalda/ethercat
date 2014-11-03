@@ -45,6 +45,7 @@ class CommandPdos:
 
     protected:
         void listSlavePdos(MasterDevice &, const ec_ioctl_slave_t &, bool);
+        void etherlabConfig(MasterDevice &, const ec_ioctl_slave_t &);
 };
 
 /****************************************************************************/

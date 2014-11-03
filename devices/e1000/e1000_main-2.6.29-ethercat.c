@@ -261,7 +261,7 @@ static int e1000_request_irq(struct e1000_adapter *adapter)
 
  	if (adapter->ecdev)
  		return 0;
- 
+
 	if (hw->mac_type >= e1000_82571) {
 		adapter->have_msi = !pci_enable_msi(adapter->pdev);
 		if (adapter->have_msi) {
@@ -323,7 +323,7 @@ static void e1000_irq_enable(struct e1000_adapter *adapter)
 
 	if (adapter->ecdev)
 		return;
- 
+
 	ew32(IMS, IMS_ENABLE_MASK);
 	E1000_WRITE_FLUSH();
 }
@@ -496,7 +496,7 @@ static void e1000_configure(struct e1000_adapter *adapter)
 			/* fill rx ring completely! */
 			adapter->alloc_rx_buf(adapter, ring, ring->count);
 		} else {
-            /* this one leaves the last ring element unallocated! */
+			/* this one leaves the last ring element unallocated! */
 			adapter->alloc_rx_buf(adapter, ring,
 					E1000_DESC_UNUSED(ring));
 		}
@@ -618,7 +618,7 @@ void e1000_down(struct e1000_adapter *adapter)
 	netdev->tx_queue_len = adapter->tx_queue_len;
 	adapter->link_speed = 0;
 	adapter->link_duplex = 0;
- 	if (!adapter->ecdev) {
+	if (!adapter->ecdev) {
 		netif_carrier_off(netdev);
 		netif_stop_queue(netdev);
 	}
@@ -1245,14 +1245,15 @@ static int __devinit e1000_probe(struct pci_dev *pdev,
 	    !e1000_check_mng_mode(hw))
 		e1000_get_hw_control(adapter);
 
- 	// offer device to EtherCAT master module
- 	adapter->ecdev = ecdev_offer(netdev, ec_poll, THIS_MODULE);
- 	if (adapter->ecdev) {
- 		if (ecdev_open(adapter->ecdev)) {
- 			ecdev_withdraw(adapter->ecdev);
- 			goto err_register;
- 		}
- 	} else {
+	// offer device to EtherCAT master module
+	adapter->ecdev = ecdev_offer(netdev, ec_poll, THIS_MODULE);
+	if (adapter->ecdev) {
+		err = ecdev_open(adapter->ecdev);
+		if (err) {
+			ecdev_withdraw(adapter->ecdev);
+			goto err_register;
+		}
+	} else {
 		/* tell the stack to leave us alone until e1000_open() is called */
 		netif_carrier_off(netdev);
 		netif_stop_queue(netdev);
@@ -1261,7 +1262,7 @@ static int __devinit e1000_probe(struct pci_dev *pdev,
 		err = register_netdev(netdev);
 		if (err)
 			goto err_register;
- 	}
+	}
 
 	DPRINTK(PROBE, INFO, "Intel(R) PRO/1000 Network Connection\n");
 
@@ -1505,11 +1506,13 @@ static int e1000_open(struct net_device *netdev)
 	/* From here on the code is the same as e1000_up() */
 	clear_bit(__E1000_DOWN, &adapter->flags);
 
-	napi_enable(&adapter->napi);
+	if (!adapter->ecdev) {
+		napi_enable(&adapter->napi);
 
-	e1000_irq_enable(adapter);
+		e1000_irq_enable(adapter);
 
-	netif_start_queue(netdev);
+		netif_start_queue(netdev);
+	}
 
 	/* fire a link status change interrupt to start the watchdog */
 	ew32(ICS, E1000_ICS_LSC);
@@ -2296,11 +2299,11 @@ static void e1000_leave_82542_rst(struct e1000_adapter *adapter)
 		/* No need to loop, because 82542 supports only 1 queue */
 		struct e1000_rx_ring *ring = &adapter->rx_ring[0];
 		e1000_configure_rx(adapter);
-		if (adapter->ecdev) { 
+		if (adapter->ecdev) {
 			/* fill rx ring completely! */
 			adapter->alloc_rx_buf(adapter, ring, ring->count);
 		} else {
-            /* this one leaves the last ring element unallocated! */
+			/* this one leaves the last ring element unallocated! */
 			adapter->alloc_rx_buf(adapter, ring, E1000_DESC_UNUSED(ring));
 		}
 
@@ -2638,7 +2641,7 @@ static void e1000_watchdog(unsigned long data)
 			adapter->link_duplex = 0;
 			printk(KERN_INFO "e1000: %s NIC Link is Down\n",
 			       netdev->name);
-            if (adapter->ecdev) {
+			if (adapter->ecdev) {
 				ecdev_set_link(adapter->ecdev, 0);
 			} else {
 				netif_carrier_off(netdev);
@@ -3212,6 +3215,10 @@ static int __e1000_maybe_stop_tx(struct net_device *netdev, int size)
 	struct e1000_adapter *adapter = netdev_priv(netdev);
 	struct e1000_tx_ring *tx_ring = adapter->tx_ring;
 
+	if (adapter->ecdev) {
+		return -EBUSY;
+	}
+
 	netif_stop_queue(netdev);
 	/* Herbert's original patch had:
 	 *  smp_mb__after_netif_stop_queue();
@@ -3353,8 +3360,8 @@ static int e1000_xmit_frame(struct sk_buff *skb, struct net_device *netdev)
 	    (hw->mac_type == e1000_82573))
 		e1000_transfer_dhcp_info(adapter, skb);
 
- 	if (!adapter->ecdev &&
- 			!spin_trylock_irqsave(&tx_ring->tx_lock, flags))
+	if (!adapter->ecdev &&
+			!spin_trylock_irqsave(&tx_ring->tx_lock, flags))
 		/* Collision - tell upper layer to requeue */
 		return NETDEV_TX_LOCKED;
 
@@ -3735,17 +3742,17 @@ void e1000_update_stats(struct e1000_adapter *adapter)
 
 void ec_poll(struct net_device *netdev)
 {
-    struct e1000_adapter *adapter = netdev_priv(netdev);
+	struct e1000_adapter *adapter = netdev_priv(netdev);
 
-    if (jiffies - adapter->ec_watchdog_jiffies >= 2 * HZ) {
-        e1000_watchdog((unsigned long) adapter);
-        adapter->ec_watchdog_jiffies = jiffies;
-    }
+	if (jiffies - adapter->ec_watchdog_jiffies >= 2 * HZ) {
+		e1000_watchdog((unsigned long) adapter);
+		adapter->ec_watchdog_jiffies = jiffies;
+	}
 
 #ifdef CONFIG_PCI_MSI
 	e1000_intr_msi(0, netdev);
 #else
-    e1000_intr(0, netdev);
+	e1000_intr(0, netdev);
 #endif
 }
 
@@ -3762,16 +3769,16 @@ static irqreturn_t e1000_intr_msi(int irq, void *data)
 	struct e1000_hw *hw = &adapter->hw;
 	u32 icr = er32(ICR);
 
- 	if (adapter->ecdev) {
- 		int i, ec_work_done = 0;
- 		for (i = 0; i < E1000_MAX_INTR; i++) {
- 			if (unlikely(!adapter->clean_rx(adapter, adapter->rx_ring,
-                             &ec_work_done, 100) &&
- 						!e1000_clean_tx_irq(adapter, adapter->tx_ring))) {
- 				break;
- 			}
- 		}
- 	} else {
+	if (adapter->ecdev) {
+		int i, ec_work_done = 0;
+		for (i = 0; i < E1000_MAX_INTR; i++) {
+			if (unlikely(!adapter->clean_rx(adapter, adapter->rx_ring,
+							&ec_work_done, 100) &&
+						!e1000_clean_tx_irq(adapter, adapter->tx_ring))) {
+				break;
+			}
+		}
+	} else {
 		/* in NAPI mode read ICR disables interrupts using IAM */
 
 		if (icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC)) {
@@ -4135,7 +4142,7 @@ static bool e1000_clean_rx_irq(struct e1000_adapter *adapter,
 		}
 
 		if (!adapter->ecdev &&
-                unlikely(rx_desc->errors & E1000_RXD_ERR_FRAME_ERR_MASK)) {
+				unlikely(rx_desc->errors & E1000_RXD_ERR_FRAME_ERR_MASK)) {
 			last_byte = *(skb->data + length - 1);
 			if (TBI_ACCEPT(hw, status, rx_desc->errors, length,
 				       last_byte)) {

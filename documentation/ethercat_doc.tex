@@ -5,7 +5,7 @@
 %  $Id$
 %
 %  vi: spell spelllang=en tw=78
-% 
+%
 %------------------------------------------------------------------------------
 
 \documentclass[a4paper,12pt,BCOR6mm,bibtotoc,idxtotoc]{scrbook}
@@ -36,7 +36,7 @@
 }{}
 
 \lstset{basicstyle=\ttfamily\small,numberstyle=\tiny,aboveskip=4mm,
-  belowskip=2mm,escapechar=`}
+  belowskip=2mm,escapechar=`,breaklines=true}
 \renewcommand\lstlistlistingname{List of Listings}
 
 % Workaround for lstlistoflistings bug
@@ -65,7 +65,7 @@
 
 \rcsInfo $RCSId$
 
-\newcommand{\masterversion}{1.5.0}
+\newcommand{\masterversion}{1.5.2}
 \newcommand{\linenum}[1]{\normalfont\textcircled{\tiny #1}}
 
 \makeindex
@@ -174,7 +174,7 @@ The list below gives a short summary of the master features.
 
 \begin{itemize}
 
-\item Designed as a kernel module for Linux 2.6.
+\item Designed as a kernel module for Linux 2.6 / 3.x.
 
 \item Implemented according to IEC 61158-12 \cite{dlspec} \cite{alspec}.
 
@@ -187,7 +187,7 @@ kernel.
   \item The native drivers operate the hardware without interrupts.
 
   \item Native drivers for additional Ethernet hardware can easily be
-  implemented using the common device interface (see sec.~\ref{sec:ecdev})
+  implemented using the common device interface (see~\autoref{sec:ecdev})
   provided by the master module.
 
   \item For any other hardware, the generic driver can be used. It uses the
@@ -203,16 +203,17 @@ independent architecture.
 
   \begin{itemize}
 
-  \item RTAI\nomenclature{RTAI}{Realtime Application Interface} \cite{rtai},
-  ADEOS\nomenclature{ADEOS}{Adaptive Domain Environment for Operating
-  Systems}, RT-Preempt \cite{rt-preempt}, etc.
+  \item RTAI\nomenclature{RTAI}{Realtime Application Interface} \cite{rtai}
+  (including LXRT via RTDM), ADEOS\nomenclature{ADEOS}{Adaptive Domain
+  Environment for Operating Systems}, RT-Preempt \cite{rt-preempt}, Xenomai
+  (including RTDM), etc.
 
   \item It runs well even without realtime extensions.
 
   \end{itemize}
 
 \item Common ``Application Interface'' for applications, that want to use
-EtherCAT functionality (see chap.~\ref{chap:api}).
+EtherCAT functionality (see \autoref{chap:api}).
 
 \item \textit{Domains} are introduced, to allow grouping of process
   data transfers with different slave groups and task periods.
@@ -239,7 +240,7 @@ EtherCAT functionality (see chap.~\ref{chap:api}).
 
   \end{itemize}
 
-\item Distributed Clocks support (see sec.~\ref{sec:dc}).
+\item Distributed Clocks support (see \autoref{sec:dc}).
 
   \begin{itemize}
 
@@ -249,7 +250,8 @@ EtherCAT functionality (see chap.~\ref{chap:api}).
   \item Synchronization (offset and drift compensation) of the distributed
   slave clocks to the reference clock.
 
-  \item Optional synchronization of the reference clock to the master clock.
+  \item Optional synchronization of the reference clock to the master clock or
+  the other way round.
 
   \end{itemize}
 
@@ -309,7 +311,7 @@ EtherCAT functionality (see chap.~\ref{chap:api}).
 
   \end{itemize}
 
-\item Userspace command-line-tool ``ethercat'' (see sec.~\ref{sec:tool})
+\item Userspace command-line-tool ``ethercat'' (see \autoref{sec:tool})
 
   \begin{itemize}
 
@@ -338,6 +340,8 @@ EtherCAT functionality (see chap.~\ref{chap:api}).
 
   \item Init script for master control.
 
+  \item Service file for systemd.
+
   \end{itemize}
 
 \item Virtual read-only network interface for monitoring and debugging
@@ -356,8 +360,8 @@ want to use EtherCAT with Linux systems, are invited to use the master code or
 even participate on development.
 
 To allow static linking of userspace application against the master's
-application interface (see chap.~\ref{chap:api}), the userspace library (see
-sec.~\ref{sec:userlib}) is licensed under the terms and conditions of the GNU
+application interface (see \autoref{chap:api}), the userspace library (see
+\autoref{sec:userlib}) is licensed under the terms and conditions of the GNU
 Lesser General Public License (LGPL \cite{lgpl})\index{LGPL}, version 2.1.
 
 %------------------------------------------------------------------------------
@@ -366,8 +370,8 @@ Lesser General Public License (LGPL \cite{lgpl})\index{LGPL}, version 2.1.
 \label{chap:arch}
 \index{Master!Architecture}
 
-The EtherCAT master is integrated into the Linux 2.6 kernel. This was
-an early design decision, which has been made for several reasons:
+The EtherCAT master is integrated into the Linux kernel. This was an early
+design decision, which has been made for several reasons:
 
 \begin{itemize}
 
@@ -385,7 +389,7 @@ master code being in kernelspace.
 
 \end{itemize}
 
-Figure~\ref{fig:arch} gives a general overview of the master architecture.
+\autoref{fig:arch} gives a general overview of the master architecture.
 
 \begin{figure}[htbp]
   \centering
@@ -399,13 +403,13 @@ The components of the master environment are described below:
 \begin{description}
 
 \item[Master Module]\index{Master Module} Kernel module containing one or more
-EtherCAT master instances (see sec.~\ref{sec:mastermod}), the ``Device
-Interface'' (see sec.~\ref{sec:ecdev}) and the ``Application Interface'' (see
-chap.~\ref{chap:api}).
+EtherCAT master instances (see \autoref{sec:mastermod}), the ``Device
+Interface'' (see \autoref{sec:ecdev}) and the ``Application Interface'' (see
+\autoref{chap:api}).
 
 \item[Device Modules]\index{Device modules} EtherCAT-capable Ethernet device
 driver modules\index{Device modules}, that offer their devices to the EtherCAT
-master via the device interface (see sec.~\ref{sec:ecdev}). These modified
+master via the device interface (see \autoref{sec:ecdev}). These modified
 network drivers can handle network devices used for EtherCAT operation and
 ``normal'' Ethernet devices in parallel. A master can accept a certain device
 and then is able to send and receive EtherCAT frames. Ethernet devices
@@ -416,13 +420,13 @@ usual.
 (usually for cyclic exchange of process data with EtherCAT slaves). These
 programs are not part of the EtherCAT master code\footnote{Although there are
 some examples provided in the \textit{examples/} directory.}, but have to be
-generated or written by the user. An application can ``request'' a master
-through the application interface (see chap.~\ref{chap:api}). If this
-succeeds, it has the control over the master: It can provide a bus
-configuration and exchange process data.  Applications can be kernel modules
-(that use the kernel application interface directly) or userspace programs,
-that use the application interface via the EtherCAT library (see
-sec.~\ref{sec:userlib}).
+generated or written by the user. An application can request a master through
+the application interface (see \autoref{chap:api}). If this succeeds, it has
+the control over the master: It can provide a bus configuration and exchange
+process data.  Applications can be kernel modules (that use the kernel
+application interface directly) or userspace programs, that use the
+application interface via the EtherCAT library (see \autoref{sec:userlib}), or
+the RTDM library (see~\autoref{sec:rtdm}).
 
 \end{description}
 
@@ -433,14 +437,14 @@ sec.~\ref{sec:userlib}).
 \index{Master module}
 
 The EtherCAT master kernel module \textit{ec\_master} can contain multiple
-master instances. Each master waits for a certain Ethernet device identified
-by its MAC address\index{MAC address}. These addresses have to be specified on
-module loading via the \textit{main\_devices} module parameter. The number of
-master instances to initialize is taken from the number of MAC addresses
-given.
+master instances. Each master waits for certain Ethernet device(s) identified
+by its MAC address(es)\index{MAC address}. These addresses have to be
+specified on module loading via the \textit{main\_devices} (and optional:
+\textit{backup\_devices}) module parameter.  The number of master instances to
+initialize is taken from the number of MAC addresses given.
 
 The below command loads the master module with a single master instance that
-waits for the Ethernet device with the MAC address
+waits for one Ethernet device with the MAC address
 \lstinline+00:0E:0C:DA:A2:20+. The master will be accessible via index $0$.
 
 \begin{lstlisting}
@@ -454,10 +458,10 @@ MAC addresses for multiple masters have to be separated by commas:
 \end{lstlisting}
 
 The two masters can be addressed by their indices 0 and 1 respectively (see
-figure~\ref{fig:masters}). The master index is needed for the
+\autoref{fig:masters}). The master index is needed for the
 \lstinline+ecrt_master_request()+ function of the application interface (see
-chap.~\ref{chap:api}) and the \lstinline+--master+ option of the
-\textit{ethercat} command-line tool (see sec.~\ref{sec:tool}), which defaults
+\autoref{chap:api}) and the \lstinline+--master+ option of the
+\textit{ethercat} command-line tool (see \autoref{sec:tool}), which defaults
 to $0$.
 
 \begin{figure}[htbp]
@@ -469,19 +473,20 @@ to $0$.
 
 \paragraph{Debug Level} The master module also has a parameter
 \textit{debug\_level} to set the initial debug level for all masters (see
-also~\ref{sec:ethercat-debug}).
+also~\autoref{sec:ethercat-debug}).
 
 \paragraph{Init Script}
 \index{Init script}
 
 In most cases it is not necessary to load the master module and the Ethernet
 driver modules manually. There is an init script available, so the master can
-be started as a service (see sec.~\ref{sec:system}).
+be started as a service (see \autoref{sec:system}). For systems that are
+managed by systemd \cite{systemd}, there is also a service file available.
 
 \paragraph{Syslog}
 
 The master module outputs information about its state and events to the kernel
-ring buffer. These also end up in the system logs.  The above module loading
+ring buffer. These also end up in the system logs. The above module loading
 command should result in the messages below:
 
 \begin{lstlisting}
@@ -495,8 +500,8 @@ Jul  4 10:22:45 ethercat kernel: EtherCAT: 2 masters waiting
                                  for devices.
 \end{lstlisting}
 
-All EtherCAT master output is prefixed with \lstinline+EtherCAT+ which makes
-searching the logs easier.
+Master output is prefixed with \lstinline+EtherCAT+ which makes searching the
+logs easier.
 
 %------------------------------------------------------------------------------
 
@@ -504,8 +509,8 @@ searching the logs easier.
 \index{Master phases}
 
 Every EtherCAT master provided by the master module (see
-sec.~\ref{sec:mastermod}) runs through several phases (see
-fig.~\ref{fig:phases}):
+\autoref{sec:mastermod}) runs through several phases (see
+\autoref{fig:phases}):
 
 \begin{figure}[htbp]
   \centering
@@ -517,16 +522,16 @@ fig.~\ref{fig:phases}):
 \begin{description}
 
 \item[Orphaned phase]\index{Orphaned phase} This mode takes effect, when the
-master still waits for its Ethernet device to connect. No bus communication is
-possible until then.
+master still waits for its Ethernet device(s) to connect. No bus communication
+is possible until then.
 
 \item[Idle phase]\index{Idle phase} takes effect when the master has accepted
-an Ethernet device, but is not requested by any application yet. The master
-runs its state machine (see sec.~\ref{sec:fsm-master}), that automatically
-scans the bus for slaves and executes pending operations from the userspace
-interface (for example SDO access). The command-line tool can be used to
-access the bus, but there is no process data exchange because of the missing
-bus configuration.
+all required Ethernet devices, but is not requested by any application yet.
+The master runs its state machine (see \autoref{sec:fsm-master}), that
+automatically scans the bus for slaves and executes pending operations from
+the userspace interface (for example SDO access). The command-line tool can be
+used to access the bus, but there is no process data exchange because of the
+missing bus configuration.
 
 \item[Operation phase]\index{Operation phase} The master is requested by an
 application that can provide a bus configuration and exchange process data.
@@ -546,9 +551,9 @@ process data.
 
 Slaves offer their inputs and outputs by presenting the master so-called
 ``Process Data Objects'' (PDOs\index{PDO}). The available PDOs can be either
-determined by reading out the slave's TXPDO and RXPDO SII categories from the
+determined by reading out the slave's TxPDO and RxPDO SII categories from the
 E$^2$PROM (in case of fixed PDOs) or by reading out the appropriate CoE
-objects (see sec.~\ref{sec:coe}), if available.  The application can register
+objects (see \autoref{sec:coe}), if available.  The application can register
 the PDOs' entries for exchange during cyclic operation. The sum of all
 registered PDO entries defines the ``process data image'', which is exchanged
 via datagrams with ``logical'' memory access (like LWR, LRD or LRW) introduced
@@ -605,7 +610,7 @@ desired memory is already part of the domain's process data image. If the
 second PDO entry would belong to another sync-manager-protected area, this
 complete area would also be included into the domains process data image.
 
-Figure~\ref{fig:fmmus} gives an overview, how FMMUs are configured to map
+\autoref{fig:fmmus} gives an overview, how FMMUs are configured to map
 physical memory to logical process data images.
 
 \begin{figure}[htbp]
@@ -639,7 +644,7 @@ applications to access an EtherCAT master. The complete documentation of the
 interface is included as Doxygen~\cite{doxygen} comments in the header file
 \textit{include/ecrt.h}. It can either be read directly from the file
 comments, or as a more comfortable HTML documentation. The HTML generation is
-described in sec.~\ref{sec:gendoc}.
+described in \autoref{sec:gendoc}.
 
 The following sections cover a general description of the application
 interface.
@@ -650,10 +655,10 @@ Every application should use the master in two steps:
 
 \item[Configuration] The master is requested and the configuration is applied.
 For example, domains are created, slaves are configured and PDO entries are
-registered (see sec.~\ref{sec:masterconfig}).
+registered (see \autoref{sec:masterconfig}).
 
 \item[Operation] Cyclic code is run and process data are exchanged (see
-sec.~\ref{sec:cyclic}).
+\autoref{sec:cyclic}).
 
 \end{description}
 
@@ -667,7 +672,7 @@ code. They are documented in the source code.
 \label{sec:masterconfig}
 
 The bus configuration is supplied via the application interface.
-Figure~\ref{fig:app-config} gives an overview of the objects, that can be
+\autoref{fig:app-config} gives an overview of the objects, that can be
 configured by the application.
 
 \begin{figure}[htbp]
@@ -690,14 +695,14 @@ the case, the slave configuration is ``attached'' to the real slave on the bus
 and the slave is configured according to the settings provided by the
 application. The state of a slave configuration can either be queried via the
 application interface or via the command-line tool (see
-sec.~\ref{sec:ethercat-config}).
+\autoref{sec:ethercat-config}).
 
 \paragraph{Slave Position} The slave position has to be specified as a tuple
 of ``alias'' and ``position''. This allows addressing slaves either via an
 absolute bus position, or a stored identifier called ``alias'', or a mixture
 of both. The alias is a 16-bit value stored in the slave's E$^2$PROM. It can
-be modified via the command-line tool (see sec.~\ref{sec:ethercat-alias}).
-Table~\ref{tab:slaveposition} shows, how the values are interpreted.
+be modified via the command-line tool (see \autoref{sec:ethercat-alias}).
+\autoref{tab:slaveposition} shows, how the values are interpreted.
 
 \begin{table}[htbp]
   \centering
@@ -721,7 +726,7 @@ Table~\ref{tab:slaveposition} shows, how the values are interpreted.
   \end{tabular}
 \end{table}
 
-Figure~\ref{fig:attach} shows an example of how slave configurations are
+\autoref{fig:attach} shows an example of how slave configurations are
 attached. Some of the configurations were attached, while others remain
 detached. The below lists gives the reasons beginning with the top slave
 configuration.
@@ -753,6 +758,9 @@ position is now 1, so slave 3 is attached.
 
 \end{enumerate}
 
+If the master sources are configured with \lstinline+--enable-wildcards+, then
+\lstinline+0xffffffff+ matches every vendor ID and/or product code.
+
 %------------------------------------------------------------------------------
 
 \section{Cyclic Operation}
@@ -762,7 +770,7 @@ position is now 1, so slave 3 is attached.
 To enter cyclic operation mode, the master has to be ``activated'' to
 calculate the process data image and apply the bus configuration for the first
 time. After activation, the application is in charge to send and receive
-frames.
+frames. The configuration can not be changed after activation.
 
 % TODO
 %
@@ -775,7 +783,7 @@ frames.
 \label{sec:api-voe}
 
 During the configuration phase, the application can create handlers for the
-VoE mailbox protocol described in sec.~\ref{sec:voe}. One VoE handler always
+VoE mailbox protocol described in \autoref{sec:voe}. One VoE handler always
 belongs to a certain slave configuration, so the creation function is a method
 of the slave configuration.
 
@@ -807,7 +815,7 @@ the \textit{examples/} directory.
 In some cases, one master is used by several instances, for example when an
 application does cyclic process data exchange, and there are EoE-capable
 slaves that require to exchange Ethernet data with the kernel (see
-sec.~\ref{sec:eoe}). For this reason, the master is a shared resource, and
+\autoref{sec:eoe}). For this reason, the master is a shared resource, and
 access to it has to be sequentialized. This is usually done by locking with
 semaphores, or other methods to protect critical sections.
 
@@ -829,14 +837,14 @@ at the moment.
   \label{fig:locks}
 \end{figure}
 
-Figure~\ref{fig:locks} exemplary shows, how two processes share one master:
+\autoref{fig:locks} exemplary shows, how two processes share one master:
 The application's cyclic task uses the master for process data exchange, while
 the master-internal EoE process uses it to communicate with EoE-capable
 slaves. Both have to access the bus from time to time, but the EoE process
 does this by ``asking'' the application to do the bus access for it. In this
 way, the application can use the appropriate locking mechanism to avoid
 accessing the bus at the same time. See the application interface
-documentation (chap.~\ref{chap:api}) for how to use these callbacks.
+documentation (\autoref{chap:api}) for how to use these callbacks.
 
 %------------------------------------------------------------------------------
 
@@ -849,7 +857,7 @@ feature. It is possible to synchronize the slave clocks on the bus to the
 ``reference clock'' (which is the local clock of the first slave with DC
 support) and to synchronize the reference clock to the ``master clock'' (which
 is the local clock of the master). All other clocks on the bus (after the
-reference clock) are considered as ``slave clocks'' (see fig.~\ref{fig:dc}).
+reference clock) are considered as ``slave clocks'' (see \autoref{fig:dc}).
 
 \begin{figure}[htbp]
   \centering
@@ -926,7 +934,7 @@ the corresponding port. The master can read out the relative receive times,
 then calculate time delays between the slaves (using its knowledge of the bus
 topology), and finally calculate the time delays from the reference clock to
 each slave. These values are programmed into the slaves' transmission delay
-registers. In this way, the drift compensation can reach nanosecond synchrony. 
+registers. In this way, the drift compensation can reach nanosecond synchrony.
 
 \paragraph{Checking Synchrony} DC-capable slaves provide the 32-bit ``System
 time difference'' register at address \lstinline+0x092c+, where the system
@@ -935,7 +943,7 @@ resolution and in sign-and-magnitude coding\footnote{This allows
 broadcast-reading all system time difference registers on the bus to get an
 upper approximation}. To check for bus synchrony, the system time difference
 registers can also be cyclically read via the command-line-tool (see
-sec.~\ref{sec:regaccess}):
+\autoref{sec:regaccess}):
 
 \begin{lstlisting}
 $ `\textbf{watch -n0 "ethercat reg\_read -p4 -tsm32 0x92c"}`
@@ -965,10 +973,10 @@ The term \textit{device} is used as a synonym for Ethernet network interface
 hardware.
 
 \paragraph{Native Ethernet Device Drivers} There are native device driver
-modules (see sec.~\ref{sec:native-drivers}) that handle Ethernet hardware,
+modules (see \autoref{sec:native-drivers}) that handle Ethernet hardware,
 which a master can use to connect to an EtherCAT bus. They offer their
 Ethernet hardware to the master module via the device interface (see
-sec.~\ref{sec:ecdev}) and must be capable to prepare Ethernet devices either
+\autoref{sec:ecdev}) and must be capable to prepare Ethernet devices either
 for EtherCAT (realtime) operation or for ``normal'' operation using the
 kernel's network stack. The advantage of this approach is that the master can
 operate nearly directly on the hardware, which allows a high performance. The
@@ -976,7 +984,7 @@ disadvantage is, that there has to be an EtherCAT-capable version of the
 original Ethernet driver.
 
 \paragraph{Generic Ethernet Device Driver} From master version 1.5, there is a
-generic Ethernet device driver module (see sec.~\ref{sec:generic-driver}),
+generic Ethernet device driver module (see \autoref{sec:generic-driver}),
 that uses the lower layers of the network stack to connect to the hardware.
 The advantage is, that arbitrary Ethernet hardware can be used for EtherCAT
 operation, independently of the actual hardware driver (so all Linux Ethernet
@@ -1126,7 +1134,7 @@ again after a constant time, so there is no need to notify the driver about
 frame reception: The master can instead query the hardware for received
 frames, if it expects them to be already received.
 
-Figure~\ref{fig:interrupt} shows two workflows for cyclic frame transmission
+\autoref{fig:interrupt} shows two workflows for cyclic frame transmission
 and reception with and without interrupts.
 
 \begin{figure}[htbp]
@@ -1199,7 +1207,7 @@ The chosen approach has the following disadvantages:
 Since there are approaches to enable the complete Linux kernel for realtime
 operation \cite{rt-preempt}, it is possible to operate without native
 implementations of EtherCAT-capable Ethernet device drivers and use the Linux
-network stack instead. Fig.~\ref{fig:arch} shows the ``Generic Ethernet Driver
+network stack instead. \autoref{fig:arch} shows the ``Generic Ethernet Driver
 Module'', that connects to local Ethernet devices via the network stack. The
 kernel module is named \lstinline+ec_generic+ and can be loaded after the
 master module like a native EtherCAT-capable Ethernet driver.
@@ -1209,7 +1217,7 @@ been registered by Ethernet device drivers. It offers all possible devices to
 the EtherCAT master. If the master accepts a device, the generic driver
 creates a packet socket (see \lstinline+man 7 packet+) with
 \lstinline+socket_type+ set to \lstinline+SOCK_RAW+, bound to that device. All
-functions of the device interface (see sec.~\ref{sec:ecdev}) will then operate
+functions of the device interface (see \autoref{sec:ecdev}) will then operate
 on that socket.
 
 Below are the advantages of this solution:
@@ -1231,26 +1239,73 @@ allocations and other things, that could cause the system to freeze in
 realtime context.
 \end{itemize}
 
+\paragraph{Device Activation} In order to send and receive frames through a
+socket, the Ethernet device linked to that socket has to be activated,
+otherwise all frames will be rejected. Activation has to take place before the
+master module is loaded and can happen in several ways:
+
+\begin{itemize}
+
+\item Ad-hoc, using the command \lstinline+ip link set dev ethX up+ (or the
+older \lstinline+ifconfig ethX up+),
+
+\item Configured, depending on the distribution, for example using
+\lstinline+ifcfg+ files (\lstinline+/etc/sysconfig/network/ifcfg-ethX+) in
+openSUSE and others. This is the better choice, if the EtherCAT master shall
+start at system boot time. Since the Ethernet device shall only be activated,
+but no IP address etc.\ shall be assigned, it is enough to use
+\lstinline+STARTMODE=auto+ as configuration.
+
+\end{itemize}
+
 %------------------------------------------------------------------------------
 
 \section{Providing Ethernet Devices}
 \label{sec:providing-devices}
 
 After loading the master module, additional module(s) have to be loaded to
-offer devices to the master(s) (see sec.~\ref{sec:ecdev}). The master module
+offer devices to the master(s) (see \autoref{sec:ecdev}). The master module
 knows the devices to choose from the module parameters (see
-sec.~\ref{sec:mastermod}). If the init script is used to start the master, the
+\autoref{sec:mastermod}). If the init script is used to start the master, the
 drivers and devices to use can be specified in the sysconfig file (see
-sec.~\ref{sec:sysconfig}).
+\autoref{sec:sysconfig}).
 
 Modules offering Ethernet devices can be
 
 \begin{itemize}
 \item native EtherCAT-capable network driver modules (see
-sec.~\ref{sec:native-drivers}) or
+\autoref{sec:native-drivers}) or
 \item the generic EtherCAT device driver module (see
-sec.~\ref{sec:generic-driver}).
+\autoref{sec:generic-driver}).
 \end{itemize}
+
+%------------------------------------------------------------------------------
+
+\section{Redundancy}
+\label{sec:redundancy}
+\index{Redundancy}
+
+Redundant bus operation means, that there is more than one Ethernet connection
+from the master to the slaves. Process data exchange datagrams are sent out on
+every master link, so that the exchange is still complete, even if the bus is
+disconnected somewhere in between.
+
+Prerequisite for fully redundant bus operation is, that every slave can be
+reached by at least one master link. In this case a single connection failure
+(i.\,e.~cable break) will never lead to incomplete process data. Double-faults
+can not be handled with two Ethernet devices.
+
+Redundancy is configured with the \lstinline+--with-devices+ switch at
+configure time (see \autoref{sec:installation}) and using the
+\lstinline+backup_devices+ parameter of the \lstinline+ec_master+ kernel
+module (see \autoref{sec:mastermod}) or the appropriate variable
+\lstinline+MASTERx_BACKUP+ in the (sys-)config file (see
+\autoref{sec:sysconfig}).
+
+Bus scanning is done after a topology change on any Ethernet link. The
+application interface (see \autoref{chap:api}) and the command-line tool (see
+\autoref{sec:tool}) both have methods to query the status of the redundant
+operation.
 
 %------------------------------------------------------------------------------
 
@@ -1259,7 +1314,7 @@ sec.~\ref{sec:generic-driver}).
 \index{Device interface}
 
 An anticipation to the section about the master module
-(sec.~\ref{sec:mastermod}) has to be made in order to understand the way, a
+(\autoref{sec:mastermod}) has to be made in order to understand the way, a
 network device driver module can connect a device to a specific EtherCAT
 master.
 
@@ -1272,7 +1327,7 @@ devices. All functions of the device interface are named with the prefix
 
 The documentation of the device interface can be found in the header file or
 in the appropriate module of the interface documentation (see
-sec.~\ref{sec:gendoc} for generation instructions).
+\autoref{sec:gendoc} for generation instructions).
 
 % TODO general description of the device interface
 
@@ -1284,7 +1339,7 @@ sec.~\ref{sec:gendoc} for generation instructions).
 
 This section will describe, how to make a standard Ethernet driver
 EtherCAT-capable, using the native approach (see
-sec.~\ref{sec:native-drivers}). Unfortunately, there is no standard procedure
+\autoref{sec:native-drivers}). Unfortunately, there is no standard procedure
 to enable an Ethernet driver for use with the EtherCAT master, but there are a
 few common techniques.
 
@@ -1313,7 +1368,7 @@ attach driver-dependent data to the structure. To distinguish between normal
 Ethernet devices and the ones used by EtherCAT masters, the private data
 structure used by the driver could be extended by a pointer, that points to an
 \lstinline+ec_device_t+ object returned by \lstinline+ecdev_offer()+ (see
-sec.~\ref{sec:ecdev}) if the device is used by a master and otherwise is zero.
+\autoref{sec:ecdev}) if the device is used by a master and otherwise is zero.
 
 The RealTek RTL-8139 Fast Ethernet driver is a ``simple'' Ethernet driver and
 can be taken as an example to patch new drivers. The interesting sections can
@@ -1354,7 +1409,7 @@ code. The disadvantage is, that the master is blocked for the time it waits
 for datagram reception. There is no difficulty when only one instance is using
 the master, but if more instances want to (synchronously\footnote{At this
 time, synchronous master access will be adequate to show the advantages of an
-FSM. The asynchronous approach will be discussed in sec.~\ref{sec:eoe}}) use
+FSM. The asynchronous approach will be discussed in \autoref{sec:eoe}}) use
 the master, it is inevitable to think about an alternative to the sequential
 model.
 
@@ -1375,7 +1430,7 @@ new ones.
 This approach results in all instances having to retain their state,
 when giving the control back to the higher instance. It is quite
 obvious to use a \textit{finite state machine} model in this case.
-Section~\ref{sec:fsmtheory} will introduce some of the theory used,
+\autoref{sec:fsmtheory} will introduce some of the theory used,
 while the listings below show the basic approach by coding the example
 from above as a state machine:
 
@@ -1401,7 +1456,7 @@ states are executed:
   // state processing finished.
 \end{lstlisting}
 
-See sec.~\ref{sec:statemodel} for an introduction to the state machine
+See \autoref{sec:statemodel} for an introduction to the state machine
 programming concept used in the master code.
 
 %------------------------------------------------------------------------------
@@ -1432,7 +1487,7 @@ S, s_0, \delta, \omega)$, with
 The state transition function $\delta$ is often specified by a
 \textit{state transition table}, or by a \textit{state transition
   diagram}. The transition table offers a matrix view of the state
-machine behavior (see table~\ref{tab:statetrans}). The matrix rows
+machine behavior (see \autoref{tab:statetrans}). The matrix rows
 correspond to the states ($S = \{s_0, s_1, s_2\}$) and the columns
 correspond to the input symbols ($\Gamma = \{a, b, \varepsilon\}$).
 The table contents in a certain row $i$ and column $j$ then represent
@@ -1453,7 +1508,7 @@ input symbol $\sigma_j$ is read in the state $s_i$.
 \end{table}
 
 The state diagram for the same example looks like the one in
-figure~\ref{fig:statetrans}. The states are represented as circles or
+\autoref{fig:statetrans}. The states are represented as circles or
 ellipses and the transitions are drawn as arrows between them. Close
 to a transition arrow can be the condition that must be fulfilled to
 allow the transition. The initial state is marked by a filled black
@@ -1580,7 +1635,7 @@ available and can be started on demand.
 If a closer look is taken to the above listing, it can be seen that the
 actions executed (the ``outputs'' of the state machine) only depend on the
 current state. This accords to the ``Moore'' model introduced in
-sec.~\ref{sec:fsmtheory}. As mentioned, the ``Mealy'' model offers a higher
+\autoref{sec:fsmtheory}. As mentioned, the ``Mealy'' model offers a higher
 flexibility, which can be seen in the listing below:
 
 \begin{lstlisting}[gobble=2,language=C,numbers=left]
@@ -1629,7 +1684,7 @@ approaches.
 To avoid having too much states, certain functions of the EtherCAT master
 state machine have been sourced out into sub state machines.  This helps to
 encapsulate the related workflows and moreover avoids the ``state explosion''
-phenomenon described in sec.~\ref{sec:fsmtheory}. If the master would instead
+phenomenon described in \autoref{sec:fsmtheory}. If the master would instead
 use one big state machine, the number of states would be a multiple of the
 actual number. This would increase the level of complexity to a non-manageable
 grade.
@@ -1689,7 +1744,7 @@ explicitly. These transitions are drawn as dashed arrows in the diagrams.
 \index{FSM!Master}
 
 The master state machine is executed in the context of the master thread.
-Figure~\ref{fig:fsm-master} shows its transition diagram. Its purposes are:
+\autoref{fig:fsm-master} shows its transition diagram. Its purposes are:
 
 \begin{figure}[htbp]
   \centering
@@ -1720,7 +1775,7 @@ process asynchronously, for example an SII access, SDO access, or similar.
 \index{FSM!Slave Scan}
 
 The slave scan state machine, which can be seen in
-figure~\ref{fig:fsm-slavescan}, leads through the process of reading desired
+\autoref{fig:fsm-slavescan}, leads through the process of reading desired
 slave information.
 
 \begin{figure}[htbp]
@@ -1750,11 +1805,11 @@ image memory.
 \item[SII Data] The SII contents are read into the master's image.
 
 \item[PREOP] If the slave supports CoE, it is set to PREOP state using the
-State change FSM (see sec.~\ref{sec:fsm-change}) to enable mailbox
+State change FSM (see \autoref{sec:fsm-change}) to enable mailbox
 communication and read the PDO configuration via CoE.
 
 \item[PDOs] The PDOs are read via CoE (if supported) using the PDO Reading FSM
-(see sec.~\ref{sec:fsm-pdo}). If this is successful, the PDO information from
+(see \autoref{sec:fsm-pdo}). If this is successful, the PDO information from
 the SII (if any) is overwritten.
 
 \end{description}
@@ -1766,7 +1821,7 @@ the SII (if any) is overwritten.
 \index{FSM!Slave Configuration}
 
 The slave configuration state machine, which can be seen in
-figure~\ref{fig:fsm-slaveconf}, leads through the process of configuring a
+\autoref{fig:fsm-slaveconf}, leads through the process of configuring a
 slave and bringing it to a certain application-layer state.
 
 \begin{figure}[htbp]
@@ -1794,7 +1849,7 @@ is skipped.
 If this is the requested state, the state machine is finished.
 
 \item[SDO Configuration] If there is a slave configuration attached (see
-sec.~\ref{sec:masterconfig}), and there are any SDO configurations are
+\autoref{sec:masterconfig}), and there are any SDO configurations are
 provided by the application, these are sent to the slave.
 
 \item[PDO Configuration] The PDO configuration state machine is executed to
@@ -1805,7 +1860,7 @@ configured.
 
 \item[FMMU Configuration] If there are FMMUs configurations supplied by the
 application (i.\,e.\ if the application registered PDO entries), they are
-applied. 
+applied.
 
 \item[SAFEOP] The state change FSM is used to bring the slave to SAFEOP state.
 If this is the requested state, the state machine is finished.
@@ -1822,7 +1877,7 @@ If this is the requested state, the state machine is finished.
 \index{FSM!State Change}
 
 The state change state machine, which can be seen in
-figure~\ref{fig:fsm-change}, leads through the process of changing a slave's
+\autoref{fig:fsm-change}, leads through the process of changing a slave's
 application-layer state. This implements the states and transitions described
 in \cite[sec.~6.4.1]{alspec}.
 
@@ -1869,7 +1924,7 @@ requested.
 \label{sec:fsm-sii}
 \index{FSM!SII}
 
-The SII\index{SII} state machine (shown in figure~\ref{fig:fsm-sii})
+The SII\index{SII} state machine (shown in \autoref{fig:fsm-sii})
 implements the process of reading or writing SII data via the Slave
 Information Interface described in \cite[sec.~6.4]{dlspec}.
 
@@ -1923,13 +1978,13 @@ this state to avoid that another write operation is issued too early.
 The PDO state machines are a set of state machines that read or write the PDO
 assignment and the PDO mapping via the ``CoE Communication Area'' described in
 \cite[sec. 5.6.7.4]{alspec}. For the object access, the CANopen over EtherCAT
-access primitives are used (see sec.~\ref{sec:coe}), so the slave must support
+access primitives are used (see \autoref{sec:coe}), so the slave must support
 the CoE mailbox protocol.
 
-\paragraph{PDO Reading FSM} This state machine (fig.~\ref{fig:fsm-pdo-read})
+\paragraph{PDO Reading FSM} This state machine (\autoref{fig:fsm-pdo-read})
 has the purpose to read the complete PDO configuration of a slave. It reads
 the PDO assignment for each Sync Manager and uses the PDO Entry Reading FSM
-(fig.~\ref{fig:fsm-pdo-entry-read}) to read the mapping for each assigned PDO.
+(\autoref{fig:fsm-pdo-entry-read}) to read the mapping for each assigned PDO.
 
 \begin{figure}[htbp]
   \centering
@@ -1945,7 +2000,7 @@ the assigned PDO's indices. When a PDO index is read, the PDO Entry Reading
 FSM is executed to read the PDO's mapped PDO entries.
 
 \paragraph{PDO Entry Reading FSM} This state machine
-(fig.~\ref{fig:fsm-pdo-entry-read}) reads the PDO mapping (the PDO entries) of
+(\autoref{fig:fsm-pdo-entry-read}) reads the PDO mapping (the PDO entries) of
 a PDO. It reads the respective mapping SDO (\lstinline+0x1600+ --
 \lstinline+0x17ff+, or \lstinline+0x1a00+ -- \lstinline+0x1bff+) for the given
 PDO by reading first the subindex zero (number of elements) to determine the
@@ -2003,7 +2058,7 @@ slave. These interfaces are called either
 \begin{description}
 
 \item[eoeXsY] for a slave without an alias address (see
-sec.~\ref{sec:ethercat-alias}), where X is the master index and Y is the
+\autoref{sec:ethercat-alias}), where X is the master index and Y is the
 slave's ring position, or
 
 \item[eoeXaY] for a slave with a non-zero alias address, where X is the master
@@ -2050,7 +2105,7 @@ up, the passing of new socket buffers is suspended with a call to
 
 \paragraph{Creation of EoE Handlers}
 
-During bus scanning (see sec.~\ref{sec:fsm-scan}), the master determines the
+During bus scanning (see \autoref{sec:fsm-scan}), the master determines the
 supported mailbox protocols foe each slave. This is done by examining the
 ``Supported Mailbox Protocols'' mask field at word address 0x001C of the
 SII\index{SII}. If bit 1 is set, the slave supports the EoE protocol. In this
@@ -2062,7 +2117,7 @@ case, an EoE handler is created for that slave.
 Every EoE handler owns an EoE state machine, that is used to send frames to
 the corresponding slave and receive frames from the it via the EoE
 communication primitives. This state machine is showed in
-figure~\ref{fig:fsm-eoe}.
+\autoref{fig:fsm-eoe}.
 
 \begin{figure}[htbp]
   \centering
@@ -2123,7 +2178,7 @@ figure~\ref{fig:fsm-eoe}.
 To execute the EoE state machine of every active EoE handler, there must be a
 cyclic process. The easiest solution would be to execute the EoE state
 machines synchronously with the master state machine (see
-sec.~\ref{sec:fsm-master}). This approach has the following disadvantage:
+\autoref{sec:fsm-master}). This approach has the following disadvantage:
 
 Only one EoE fragment could be sent or received every few cycles. This
 causes the data rate to be very low, because the EoE state machines are not
@@ -2134,7 +2189,7 @@ To overcome this problem, an own cyclic process is needed to asynchronously
 execute the EoE state machines. For that, the master owns a kernel timer, that
 is executed each timer interrupt. This guarantees a constant bandwidth, but
 poses the new problem of concurrent access to the master. The locking
-mechanisms needed for this are introduced in sec.~\ref{sec:concurr}.
+mechanisms needed for this are introduced in \autoref{sec:concurr}.
 
 \paragraph{Automatic Configuration}
 
@@ -2166,13 +2221,13 @@ The best time to apply SDO configurations is during the slave's PREOP state,
 because mailbox communication is already possible and slave's application will
 start with updating input data in the succeeding SAFEOP state. Therefore the
 SDO configuration has to be part of the slave configuration state machine (see
-sec.~\ref{sec:fsm-conf}): It is implemented via an SDO download state machine,
+\autoref{sec:fsm-conf}): It is implemented via an SDO download state machine,
 that is executed just before entering the slave's SAFEOP state. In this way,
 it is guaranteed that the SDO configurations are applied each time, the slave
 is reconfigured.
 
 The transition diagram of the SDO Download state machine can be seen
-in figure~\ref{fig:fsm-coedown}.
+in \autoref{fig:fsm-coedown}.
 
 \begin{figure}[htbp]
   \centering
@@ -2229,10 +2284,10 @@ containing a 32-bit vendor ID and a 16-bit vendor-type. There are no more
 constraints regarding this protocol.
 
 The EtherCAT master allows to create multiple VoE handlers per slave
-configuration via the application interface (see chap.~\ref{chap:api}). These
+configuration via the application interface (see \autoref{chap:api}). These
 handlers contain the state machine necessary for the communication via VoE.
 
-For more information about using VoE handlers, see sec.~\ref{sec:api-voe} or
+For more information about using VoE handlers, see \autoref{sec:api-voe} or
 the example applications provided in the \textit{examples/} subdirectory.
 
 %------------------------------------------------------------------------------
@@ -2245,7 +2300,7 @@ The SoE protocol implements the Service Channel layer, specified in IEC
 61800-7 \cite{soespec} via EtherCAT mailboxes.
 
 The SoE protocol is quite similar to the CoE protocol (see
-sec.~\ref{sec:coe}). Instead of SDO indices and subindices, so-called
+\autoref{sec:coe}). Instead of SDO indices and subindices, so-called
 identification numbers (IDNs) identify parameters.
 
 The implementation covers the ``SCC Read'' and ``SCC Write'' primitives, each
@@ -2256,14 +2311,14 @@ There are several ways to use the SoE implementation:
 \begin{itemize}
 
 \item Reading and writing IDNs via the command-line tool (see
-sec.~\ref{sec:soeaccess}).
+\autoref{sec:soeaccess}).
 
 \item Storing configurations for arbitrary IDNs via the application interface
-(see chap.~\ref{chap:api}, i.\,e.~\lstinline+ecrt_slave_config_idn()+). These
+(see \autoref{chap:api}, i.\,e.~\lstinline+ecrt_slave_config_idn()+). These
 configurations are written to the slave during configuration in PREOP state,
 before going to SAFEOP.
 
-\item The user-space library (see sec.~\ref{sec:userlib}), offers functions to
+\item The user-space library (see \autoref{sec:userlib}), offers functions to
 read/write IDNs in blocking mode (\lstinline+ecrt_master_read_idn()+,
 \lstinline+ecrt_master_write_idn()+).
 
@@ -2284,20 +2339,20 @@ to view and to change special parameters at runtime.
 
 Bus visualization is another point: For development and debugging purposes it
 is necessary to show the connected slaves with a single command, for instance
-(see sec.~\ref{sec:tool}).
+(see \autoref{sec:tool}).
 
 The application interface has to be available in userspace, to allow userspace
 programs to use EtherCAT master functionality. This was implemented via a
-character device and a userspace library (see sec.~\ref{sec:userlib}).
+character device and a userspace library (see \autoref{sec:userlib}).
 
 Another aspect is automatic startup and configuration. The master must be able
 to automatically start up with a persistent configuration (see
-sec.~\ref{sec:system}).
+\autoref{sec:system}).
 
 A last thing is monitoring EtherCAT communication. For debugging purposes,
 there had to be a way to analyze EtherCAT datagrams. The best way would be
-with a popular network analyzer, like Wireshark \cite{wireshark} (the former
-Ethereal) or others (see sec.~\ref{sec:debug}).
+with a popular network analyzer, like Wireshark \cite{wireshark} or others
+(see \autoref{sec:debug}).
 
 This chapter covers all these points and introduces the interfaces and tools
 to make all that possible.
@@ -2318,7 +2373,7 @@ the index of the master.
 
 \paragraph{Device Node Creation} The character device nodes are automatically
 created, if the \lstinline+udev+ Package is installed. See
-sec.~\ref{sec:autonode} for how to install and configure it.
+\autoref{sec:autonode} for how to install and configure it.
 
 %------------------------------------------------------------------------------
 
@@ -2458,7 +2513,7 @@ $ `\textbf{ethercat sii\_read --position 3 > sii-of-slave3.bin}`
 \end{lstlisting}
 
 To download SII contents to a slave, writing access to the master's character
-device is necessary (see sec.~\ref{sec:cdev}).
+device is necessary (see \autoref{sec:cdev}).
 
 \lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_sii_write}
 
@@ -2519,7 +2574,7 @@ $ `\textbf{ethercat slaves}`
 \section{Userspace Library}
 \label{sec:userlib}
 
-The native application interface (see chap.~\ref{chap:api}) resides in
+The native application interface (see \autoref{chap:api}) resides in
 kernelspace and hence is only accessible from inside the kernel. To make the
 application interface available from userspace programs, a userspace library
 has been created, that can be linked to programs under the terms and
@@ -2559,7 +2614,8 @@ int main(void)
 The program can be compiled and dynamically linked to the library with the
 below command:
 
-\begin{lstlisting}
+\begin{lstlisting}[caption=Linker command for using the userspace library,
+label=lst:linker-user]
 gcc ethercat.c -o ectest -I/opt/etherlab/include \
     -L/opt/etherlab/lib -lethercat \
     -Wl,--rpath -Wl,/opt/etherlab/lib
@@ -2576,17 +2632,17 @@ gcc -static ectest.c -o ectest -I/opt/etherlab/include \
 \label{sec:userimp}
 
 Basically the kernel API was transferred into userspace via the master
-character device (see chap.~\ref{chap:arch}, fig.~\ref{fig:arch} and
-sec.~\ref{sec:cdev}).
+character device (see \autoref{chap:arch}, \autoref{fig:arch} and
+\autoref{sec:cdev}).
 
 The function calls of the kernel API are mapped to the userspace via an
 \lstinline+ioctl()+ interface. The userspace API functions share a set of
 generic \lstinline+ioctl()+ calls. The kernel part of the interface calls the
 according API functions directly, what results in a minimum additional delay
-(see sec.~\ref{sec:usertiming}).
+(see \autoref{sec:usertiming}).
 
 For performance reasons, the actual domain process data (see
-sec.~\ref{sec:processdata}) are not copied between kernel and user memory on
+\autoref{sec:processdata}) are not copied between kernel and user memory on
 every access: Instead, the data are memory-mapped to the userspace
 application. Once the master is configured and activated, the master module
 creates one process data memory area spanning all domains and maps it to
@@ -2604,7 +2660,7 @@ This is the only difference when using the application interface in userspace.
 \label{sec:usertiming}
 
 An interesting aspect is the timing of the userspace library calls compared to
-those of the kernel API. Table~\ref{tab:usertiming} shows the call times and
+those of the kernel API. \autoref{tab:usertiming} shows the call times and
 standard deviancies of typical (and time-critical) API functions measured on
 an Intel Pentium 4 M CPU with \unit{2.2}{\giga\hertz} and a standard 2.6.26
 kernel.
@@ -2660,11 +2716,41 @@ the kernel API.
 
 %------------------------------------------------------------------------------
 
+\section{RTDM Interface}
+\label{sec:rtdm}
+
+When using the userspace interfaces of realtime extensions like Xenomai or
+RTAI, the use of \textit{ioctl()} is not recommended, because it may disturb
+realtime operation. To accomplish this, the Real-Time Device Model (RTDM)
+\cite{rtdm} has been developed.  The master module provides an RTDM interface
+(see \autoref{fig:arch}) in addition to the normal character device, if the
+master sources were configured with \lstinline+--enable-rtdm+ (see
+\autoref{sec:installation}).
+
+To force an application to use the RTDM interface instead of the normal
+character device, it has to be linked with the \textit{libethercat\_rtdm}
+library instead of \textit{libethercat}. The use of the
+\textit{libethercat\_rtdm} is transparent, so the EtherCAT header
+\textit{ecrt.h} with the complete API can be used as usual.
+
+To make the example in \autoref{lst:linker-user} use the RTDM library, the
+linker command has to be altered as follows:
+
+\begin{lstlisting}
+gcc ethercat-with-rtdm.c -o ectest -I/opt/etherlab/include \
+    -L/opt/etherlab/lib -lethercat_rtdm \
+    -Wl,--rpath -Wl,/opt/etherlab/lib
+\end{lstlisting}
+
+%------------------------------------------------------------------------------
+
 \section{System Integration}
 \label{sec:system}
 
 To integrate the EtherCAT master as a service into a running system, it comes
-with an init script and a sysconfig file, that are described below.
+with an init script and a sysconfig file, that are described below. Modern
+systems may be managed by systemd \cite{systemd}. Integration of the master
+with systemd is described in \autoref{sec:systemd}.
 
 \subsection{Init Script}
 \label{sec:init}
@@ -2674,7 +2760,7 @@ The EtherCAT master init script conforms to the requirements of the ``Linux
 Standard Base'' (LSB\index{LSB}, \cite{lsb}). The script is installed to
 \textit{etc/init.d/ethercat} below the installation prefix and has to be
 copied (or better: linked) to the appropriate location (see
-sec.~\ref{sec:installation}), before the master can be inserted as a service.
+\autoref{sec:installation}), before the master can be inserted as a service.
 Please note, that the init script depends on the sysconfig file described
 below.
 
@@ -2698,6 +2784,10 @@ the file and included below:
 
 \lstinputlisting[numbers=left,firstline=9,basicstyle=\ttfamily\scriptsize]
     {../script/sysconfig/ethercat}
+
+For systems managed by systemd (see \autoref{sec:systemd}), the sysconfig file
+has moved to \lstinline+/etc/ethercat.conf+. Both versions are part of the
+master sources and are meant to used alternatively.
 
 \subsection{Starting the Master as a Service}
 \label{sec:service}
@@ -2723,6 +2813,29 @@ the EtherCAT master. It has to be executed with one of the parameters
   Starting EtherCAT master                     done
 \end{lstlisting}
 
+\subsection{Integration with systemd}
+\label{sec:systemd}
+\index{systemd}
+
+Distributions using \textit{systemd} instead of the SysV init system are using service files to describe how a service is to be maintained. \autoref{lst:service} lists the master's service file:
+
+\lstinputlisting[basicstyle=\ttfamily\footnotesize,caption=Service file,
+label=lst:service]{../script/ethercat.service}
+
+The \textit{ethercatctl} command is used to load and unload the master and
+network driver modules in a similar way to the former init script
+(\autoref{sec:init}). Because it is installed into the \textit{sbin/}
+directory, it can also be used separately:
+
+\begin{lstlisting}[gobble=2]
+  # `\textbf{ethercatctl start}`
+\end{lstlisting}
+
+When using systemd and/or the \textit{ethercatctl} command, the master
+configuration must be in \texttt{/etc/ethercat.conf} instead of
+\texttt{/etc/sysconfig/ethercat}! The latter is ignored. The configuration
+options are exactly the same.
+
 %------------------------------------------------------------------------------
 
 \section{Debug Interfaces}
@@ -2733,11 +2846,11 @@ EtherCAT buses can always be monitored by inserting a switch between master
 and slaves. This allows to connect another PC with a network monitor like
 Wireshark~\cite{wireshark}, for example. It is also possible to listen to
 local network interfaces on the machine running the EtherCAT master directly.
-If the generic Ethernet driver (see sec.~\ref{sec:generic-driver}) is used,
+If the generic Ethernet driver (see \autoref{sec:generic-driver}) is used,
 the network monitor can directly listen on the network interface connected to
 the EtherCAT bus.
 
-When using native Ethernet drivers (see sec.~\ref{sec:native-drivers}), there
+When using native Ethernet drivers (see \autoref{sec:native-drivers}), there
 are no local network interfaces to listen to, because the Ethernet devices
 used for EtherCAT are not registered at the network stack. For that case,
 so-called ``debug interfaces'' are supported, which are virtual network
@@ -2745,13 +2858,13 @@ interfaces allowing to capture EtherCAT traffic with a network monitor (like
 Wireshark or tcpdump) running on the master machine without using external
 hardware. To use this functionality, the master sources have to be configured
 with the \lstinline+--enable-debug-if+ switch (see
-sec.~\ref{sec:installation}).
+\autoref{sec:installation}).
 
 Every EtherCAT master registers a read-only network interface per attached
 physical Ethernet device. The network interfaces are named \textit{ecdbgmX}
-for the main device, and \textit{ecdbgbX} for the backup device (for future
-use), where X is the master index. The below listing shows a debug interface
-among some standard network interfaces:
+for the main device, and \textit{ecdbgbX} for the backup device, where X is
+the master index. The below listing shows a debug interface among some
+standard network interfaces:
 
 \begin{lstlisting}
 # `\textbf{ip link}`
@@ -2820,7 +2933,7 @@ The counter differences are converted to \micro\second\ with help of the
 For the actual measuring, a system with a \unit{2.0}{\giga\hertz} CPU was used,
 that ran the above code in an RTAI thread with a period of
 \unit{100}{\micro\second}. The measuring was repeated $n = 100$ times and the
-results were averaged. These can be seen in table~\ref{tab:profile}.
+results were averaged. These can be seen in \autoref{tab:profile}.
 
 \begin{table}[htpb]
   \centering
@@ -2866,7 +2979,7 @@ realtime cycles.
 
 \item The EtherCAT frame must be sent and received, before the next realtime
 cycle begins. The determination of the bus cycle time is difficult and covered
-in sec.~\ref{sec:timing-bus}.
+in \autoref{sec:timing-bus}.
 
 \end{enumerate}
 
@@ -2957,7 +3070,7 @@ pages\footnote{\url{http://etherlabmaster.hg.sourceforge.net/hgweb/etherlabmaste
 \section{Building the Software}
 
 After downloading a tarball or cloning the repository as described in
-sec.~\ref{sec:getting}, the sources have to be prepared and configured for the
+\autoref{sec:getting}, the sources have to be prepared and configured for the
 build process.
 
 When a tarball was downloaded, it has to be extracted with the following
@@ -2986,7 +3099,7 @@ follow the below commands:
   $ `\textbf{make modules}`
 \end{lstlisting}
 
-Table~\ref{tab:config} lists important configuration switches and options.
+\autoref{tab:config} lists important configuration switches and options.
 
 \begin{longtable}{l|p{.4\textwidth}|l}
   \caption{Configuration options}\rule[-5ex]{0mm}{0mm}
@@ -3008,7 +3121,7 @@ the EtherCAT kernel modules shall be installed. & \textit{ethercat}\\
 \hline
 
 \lstinline+--enable-generic+ & Build the generic Ethernet driver (see
-sec.~\ref{sec:generic-driver}). & yes\\
+\autoref{sec:generic-driver}). & yes\\
 
 \lstinline+--enable-8139too+ & Build the 8139too driver & yes\\
 
@@ -3032,7 +3145,17 @@ sec.~\ref{sec:generic-driver}). & yes\\
 
 \hline
 
-\lstinline+--with-rtai-dir+ & RTAI path (only for RTAI example) & \\
+\lstinline+--enable-rtdm+ & Create the RTDM interface (RTAI or Xenomai
+directory needed, see below) & no\\
+
+\lstinline+--with-rtai-dir+ & RTAI path (for RTAI examples and RTDM interface)
+& \\
+
+\lstinline+--with-xenomai-dir+ & Xenomai path (for Xenomai examples and RTDM
+interface) & \\
+
+\lstinline+--with-devices+ & Number of Ethernet devices for redundant
+operation ($>1$ switches redundancy on) & 1\\
 
 \lstinline+--enable-debug-if+ & Create a debug interface for each master & no\\
 
@@ -3049,7 +3172,7 @@ state machine sleep between sending frames. & no\\
 \lstinline+--enable-regalias+ & Read alias address from register. & no\\
 
 \lstinline+--enable-tool+ & Build the command-line tool ``ethercat'' (see
-sec.~\ref{sec:tool}). & yes\\
+\autoref{sec:tool}). & yes\\
 
 \lstinline+--enable-userlib+ & Build the userspace library. & yes\\
 
@@ -3057,6 +3180,9 @@ sec.~\ref{sec:tool}). & yes\\
 
 \lstinline+--enable-wildcards+ & Enable \textit{0xffffffff} to be wildcards
 for vendor ID and product code. & no\\
+
+\lstinline+--enable-sii-assign+ & Enable assigning SII access to the PDI layer
+during slave configuration. & no\\
 
 \hline
 
@@ -3092,12 +3218,11 @@ install the EtherCAT header, init script, sysconfig file and the userspace
 tool to the prefix path. The second one will install the kernel modules to the
 kernel's modules directory. The final \lstinline+depmod+ call is necessary to
 include the kernel modules into the \textit{modules.dep} file to make it
-available to the \lstinline+modprobe+ command, used in the init script. 
+available to the \lstinline+modprobe+ command, used in the init script.
 
 \begin{lstlisting}
 # `\textbf{make install}`
 # `\textbf{make modules\_install}`
-# `\textbf{depmod}`
 \end{lstlisting}
 
 If the target kernel's modules directory is not under \textit{/lib/modules}, a
@@ -3113,10 +3238,10 @@ This command will install the compiled kernel modules to
 
 If the EtherCAT master shall be run as a service\footnote{Even if the EtherCAT
 master shall not be loaded on system startup, the use of the init script is
-recommended for manual (un-)loading.} (see sec.~\ref{sec:system}), the init
-script and the sysconfig file have to be copied (or linked) to the appropriate
-locations. The below example is suitable for SUSE Linux. It may vary for other
-distributions.
+recommended for manual (un-)loading.} (see \autoref{sec:system}), the init
+script and the sysconfig file (or the systemd service file, respectively) have
+to be copied (or linked) to the appropriate locations. The below example is
+suitable for SUSE Linux. It may vary for other distributions.
 
 % FIXME relative ln -s?
 \begin{lstlisting}
@@ -3127,10 +3252,11 @@ distributions.
 \end{lstlisting}
 
 Now the sysconfig file \texttt{/etc/sysconfig/ethercat} (see
-sec.~\ref{sec:sysconfig}) has to be customized. The minimal customization is
-to set the \lstinline+MASTER0_DEVICE+ variable to the MAC address of the
-Ethernet device to use (or \lstinline+ff:ff:ff:ff:ff:ff+ to use the first
-device offered) and selecting the driver(s) to load via the
+\autoref{sec:sysconfig}), or the configuration file
+\textit{/etc/ethercat.conf}, if using systemd, has to be customized. The
+minimal customization is to set the \lstinline+MASTER0_DEVICE+ variable to the
+MAC address of the Ethernet device to use (or \lstinline+ff:ff:ff:ff:ff:ff+ to
+use the first device offered) and selecting the driver(s) to load via the
 \lstinline+DEVICE_MODULES+ variable.
 
 After the basic configuration is done, the master can be started with the
@@ -3138,6 +3264,12 @@ below command:
 
 \begin{lstlisting}
 # `\textbf{/etc/init.d/ethercat start}`
+\end{lstlisting}
+
+When using systemd, the following command can be used alternatively:
+
+\begin{lstlisting}
+# `\textbf{ethercatctl start}`
 \end{lstlisting}
 
 At this time, the operation of the master can be observed by viewing the
@@ -3183,7 +3315,7 @@ state machine and begins scanning the bus.
 \section{Automatic Device Node Creation}
 \label{sec:autonode}
 
-The \lstinline+ethercat+ command-line tool (see sec.~\ref{sec:tool})
+The \lstinline+ethercat+ command-line tool (see \autoref{sec:tool})
 communicates with the master via a character device. The corresponding device
 nodes are created automatically, if the udev daemon is running.  Note, that on
 some distributions, the \lstinline+udev+ package is not installed by default.
@@ -3206,7 +3338,7 @@ will be automatically created with the desired rights:
 crw-rw-r--  1 root root 252, 0 2008-09-03 16:19 /dev/EtherCAT0
 \end{lstlisting}
 
-Now, the \lstinline+ethercat+ tool can be used (see sec.~\ref{sec:tool}) even
+Now, the \lstinline+ethercat+ tool can be used (see \autoref{sec:tool}) even
 as a non-root user.
 
 If non-root users shall have writing access, the following udev rule can be
@@ -3240,6 +3372,9 @@ International Electrotechnical Commission (IEC), 2005.
 \bibitem{lsb} Linux Standard Base.
 \url{http://www.linuxfoundation.org/en/LSB}. August~9, 2006.
 
+\bibitem{systemd} systemd System and Service Manager
+\url{http://freedesktop.org/wiki/Software/systemd}. January~18, 2013.
+
 \bibitem{wireshark} Wireshark. \url{http://www.wireshark.org}. 2008.
 
 \bibitem{automata} {\it Hopcroft, J.\,E.\ / Ullman, J.\,D.}: Introduction to
@@ -3268,6 +3403,11 @@ misunderstandings. In: IEE journal ``Computing and Control Engineering'',
 systems - Part 7-300: Generic interface and use of profiles for power drive
 systems - Mapping of profiles to network technologies. International
 Electrotechnical Commission (IEC), 2007.
+
+\bibitem{rtdm} {\it J. Kiszka}: The Real-Time Driver Model and First
+Applications.
+\url{http://svn.gna.org/svn/xenomai/tags/v2.4.0/doc/nodist/pdf/RTDM-and-Applications.pdf},
+2013.
 
 \end{thebibliography}
 

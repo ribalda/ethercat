@@ -20,7 +20,7 @@
 #  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 #  ---
-#  
+#
 #  The license mentioned above concerns the source code only. Using the
 #  EtherCAT technology and brand is only permitted in compliance with the
 #  industrial property and similar rights of Beckhoff Automation GmbH.
@@ -30,10 +30,13 @@
 ACLOCAL_AMFLAGS = -I m4
 
 SUBDIRS = \
-    devices \
-    include \
-    master \
-    script
+	include \
+	script
+
+if ENABLE_KERNEL
+SUBDIRS += devices
+SUBDIRS += master
+endif
 
 if BUILD_TOOL
 SUBDIRS += tool
@@ -47,23 +50,18 @@ if ENABLE_TTY
 SUBDIRS += tty
 endif
 
-if ENABLE_RTDM
-SUBDIRS += rtdm
-endif
-
 # userspace example depends on lib/
 SUBDIRS += examples
 
 DIST_SUBDIRS = \
-    devices \
-    examples \
-    include \
-    lib \
-    m4 \
-    master \
-    script \
-    tool \
-	rtdm \
+	devices \
+	examples \
+	include \
+	lib \
+	m4 \
+	master \
+	script \
+	tool \
 	tty
 
 noinst_HEADERS = \

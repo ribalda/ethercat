@@ -59,7 +59,7 @@
 	(B).tv_nsec - (A).tv_nsec)
 
 #define TIMESPEC2NS(T) ((uint64_t) (T).tv_sec * NSEC_PER_SEC + (T).tv_nsec)
-  
+
 /****************************************************************************/
 
 // EtherCAT
@@ -208,11 +208,11 @@ void cyclic_task()
 #ifdef MEASURE_TIMING
             // output timing stats
             printf("period     %10u ... %10u\n",
-                    period_min_ns, period_max_ns); 
+                    period_min_ns, period_max_ns);
             printf("exec       %10u ... %10u\n",
-                    exec_min_ns, exec_max_ns); 
+                    exec_min_ns, exec_max_ns);
             printf("latency    %10u ... %10u\n",
-                    latency_min_ns, latency_max_ns); 
+                    latency_min_ns, latency_max_ns);
             period_max_ns = 0;
             period_min_ns = 0xffffffff;
             exec_max_ns = 0;
@@ -261,7 +261,7 @@ int main(int argc, char **argv)
 		perror("mlockall failed");
 		return -1;
 	}
-    
+
     master = ecrt_request_master(0);
     if (!master)
         return -1;
@@ -320,7 +320,7 @@ int main(int argc, char **argv)
 
 	printf("Starting cyclic function.\n");
     cyclic_task();
-    
+
     return 0;
 }
 

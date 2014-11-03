@@ -82,9 +82,12 @@ void CommandData::execute(const StringVector &args)
     MasterIndexList::const_iterator mi;
     for (mi = masterIndices.begin();
             mi != masterIndices.end(); mi++) {
+        ec_ioctl_master_t io;
         MasterDevice m(*mi);
         m.open(MasterDevice::Read);
-        domains = selectedDomains(m);
+        m.getMaster(&io);
+
+        domains = selectedDomains(m, io);
 
         for (di = domains.begin(); di != domains.end(); di++) {
             outputDomainData(m, *di);
@@ -102,7 +105,7 @@ void CommandData::outputDomainData(
     ec_ioctl_domain_data_t data;
     unsigned char *processData;
     unsigned int i;
-    
+
     if (!domain.data_size)
         return;
 

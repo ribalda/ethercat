@@ -66,7 +66,7 @@ General Features:
     and configurable with standard tools.
 
 * Implementation of the "Vendor-specific over EtherCAT" (VoE) mailbox protocol.
-  - Communication with vendor-specific mailbox protocols via the API. 
+  - Communication with vendor-specific mailbox protocols via the API.
 
 * Implementation of the "File Access over EtherCAT" (FoE) mailbox protocol.
   - Loading and storing files via the command-line tool.

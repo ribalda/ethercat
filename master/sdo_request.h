@@ -74,7 +74,6 @@ void ec_sdo_request_init(ec_sdo_request_t *);
 void ec_sdo_request_clear(ec_sdo_request_t *);
 
 int ec_sdo_request_copy(ec_sdo_request_t *, const ec_sdo_request_t *);
-void ec_sdo_request_address(ec_sdo_request_t *, uint16_t, uint8_t);
 int ec_sdo_request_alloc(ec_sdo_request_t *, size_t);
 int ec_sdo_request_copy_data(ec_sdo_request_t *, const uint8_t *, size_t);
 int ec_sdo_request_timed_out(const ec_sdo_request_t *);

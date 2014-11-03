@@ -80,24 +80,21 @@ static const char *type_strings[] = {
     "ARMW",
     "FRMW"
 };
-    
+
 /*****************************************************************************/
 
 /** Constructor.
  */
 void ec_datagram_init(ec_datagram_t *datagram /**< EtherCAT datagram. */)
 {
-    INIT_LIST_HEAD(&datagram->list); // mark as unqueued
     INIT_LIST_HEAD(&datagram->queue); // mark as unqueued
-    INIT_LIST_HEAD(&datagram->fsm_queue); // mark as unqueued
-    INIT_LIST_HEAD(&datagram->sent); // mark as unqueued
+    datagram->device_index = EC_DEVICE_MAIN;
     datagram->type = EC_DATAGRAM_NONE;
     memset(datagram->address, 0x00, EC_ADDR_LEN);
     datagram->data = NULL;
     datagram->data_origin = EC_ORIG_INTERNAL;
     datagram->mem_size = 0;
     datagram->data_size = 0;
-    datagram->domain = NULL;
     datagram->index = 0x00;
     datagram->working_counter = 0x0000;
     datagram->state = EC_DATAGRAM_INIT;
@@ -134,9 +131,6 @@ void ec_datagram_clear(ec_datagram_t *datagram /**< EtherCAT datagram. */)
  */
 void ec_datagram_unqueue(ec_datagram_t *datagram /**< EtherCAT datagram. */)
 {
-    if (!list_empty(&datagram->fsm_queue)) {
-        list_del_init(&datagram->fsm_queue);
-    }
     if (!list_empty(&datagram->queue)) {
         list_del_init(&datagram->queue);
     }
@@ -434,12 +428,69 @@ int ec_datagram_brw(
 
 /** Initializes an EtherCAT LRD datagram.
  *
+ * \return Return value of ec_datagram_prealloc().
+ */
+int ec_datagram_lrd(
+        ec_datagram_t *datagram, /**< EtherCAT datagram. */
+        uint32_t offset, /**< Logical address. */
+        size_t data_size /**< Number of bytes to read/write. */
+        )
+{
+    int ret;
+    EC_FUNC_HEADER;
+    datagram->type = EC_DATAGRAM_LRD;
+    EC_WRITE_U32(datagram->address, offset);
+    EC_FUNC_FOOTER;
+}
+
+/*****************************************************************************/
+
+/** Initializes an EtherCAT LWR datagram.
+ *
+ * \return Return value of ec_datagram_prealloc().
+ */
+int ec_datagram_lwr(
+        ec_datagram_t *datagram, /**< EtherCAT datagram. */
+        uint32_t offset, /**< Logical address. */
+        size_t data_size /**< Number of bytes to read/write. */
+        )
+{
+    int ret;
+    EC_FUNC_HEADER;
+    datagram->type = EC_DATAGRAM_LWR;
+    EC_WRITE_U32(datagram->address, offset);
+    EC_FUNC_FOOTER;
+}
+
+/*****************************************************************************/
+
+/** Initializes an EtherCAT LRW datagram.
+ *
+ * \return Return value of ec_datagram_prealloc().
+ */
+int ec_datagram_lrw(
+        ec_datagram_t *datagram, /**< EtherCAT datagram. */
+        uint32_t offset, /**< Logical address. */
+        size_t data_size /**< Number of bytes to read/write. */
+        )
+{
+    int ret;
+    EC_FUNC_HEADER;
+    datagram->type = EC_DATAGRAM_LRW;
+    EC_WRITE_U32(datagram->address, offset);
+    EC_FUNC_FOOTER;
+}
+
+/*****************************************************************************/
+
+/** Initializes an EtherCAT LRD datagram with external memory.
+ *
  * \attention It is assumed, that the external memory is at least \a data_size
  *            bytes large.
  *
  * \return Return value of ec_datagram_prealloc().
  */
-int ec_datagram_lrd(
+int ec_datagram_lrd_ext(
         ec_datagram_t *datagram, /**< EtherCAT datagram. */
         uint32_t offset, /**< Logical address. */
         size_t data_size, /**< Number of bytes to read/write. */
@@ -457,14 +508,14 @@ int ec_datagram_lrd(
 
 /*****************************************************************************/
 
-/** Initializes an EtherCAT LWR datagram.
+/** Initializes an EtherCAT LWR datagram with external memory.
  *
  * \attention It is assumed, that the external memory is at least \a data_size
  *            bytes large.
  *
  * \return Return value of ec_datagram_prealloc().
  */
-int ec_datagram_lwr(
+int ec_datagram_lwr_ext(
         ec_datagram_t *datagram, /**< EtherCAT datagram. */
         uint32_t offset, /**< Logical address. */
         size_t data_size, /**< Number of bytes to read/write. */
@@ -482,14 +533,14 @@ int ec_datagram_lwr(
 
 /*****************************************************************************/
 
-/** Initializes an EtherCAT LRW datagram.
+/** Initializes an EtherCAT LRW datagram with external memory.
  *
  * \attention It is assumed, that the external memory is at least \a data_size
  *            bytes large.
  *
  * \return Return value of ec_datagram_prealloc().
  */
-int ec_datagram_lrw(
+int ec_datagram_lrw_ext(
         ec_datagram_t *datagram, /**< EtherCAT datagram. */
         uint32_t offset, /**< Logical address. */
         size_t data_size, /**< Number of bytes to read/write. */
@@ -571,7 +622,7 @@ void ec_datagram_output_stats(
 {
     if (jiffies - datagram->stats_output_jiffies > HZ) {
         datagram->stats_output_jiffies = jiffies;
-    
+
         if (unlikely(datagram->skip_count)) {
             EC_WARN("Datagram %p (%s) was SKIPPED %u time%s.\n",
                     datagram, datagram->name,
@@ -585,62 +636,14 @@ void ec_datagram_output_stats(
 /*****************************************************************************/
 
 /** Returns a string describing the datagram type.
+ *
+ * \return Pointer on a static memory containing the requested string.
  */
 const char *ec_datagram_type_string(
         const ec_datagram_t *datagram /**< EtherCAT datagram. */
         )
 {
     return type_strings[datagram->type];
-}
-
-/*****************************************************************************/
-
-/** Output datagram information.
- */
-void ec_datagram_output_info(
-        const ec_datagram_t *datagram /**< EtherCAT datagram. */
-        )
-{
-    printk("state=%s ", ec_datagram_type_string(datagram));
-
-    switch (datagram->type) {
-        case EC_DATAGRAM_APRD:
-        case EC_DATAGRAM_APWR:
-        case EC_DATAGRAM_APRW:
-        case EC_DATAGRAM_ARMW:
-            printk("pos=%i mem=0x%04x",
-                    EC_READ_S16(datagram->address) * (-1),
-                    EC_READ_U16(datagram->address + 2)
-                    );
-            break;
-
-        case EC_DATAGRAM_FPRD:
-        case EC_DATAGRAM_FPWR:
-        case EC_DATAGRAM_FPRW:
-        case EC_DATAGRAM_FRMW:
-            printk("node=%u mem=0x%04x",
-                    EC_READ_U16(datagram->address),
-                    EC_READ_U16(datagram->address + 2));
-            break;
-
-        case EC_DATAGRAM_BRD:
-        case EC_DATAGRAM_BWR:
-        case EC_DATAGRAM_BRW:
-            printk("mem=0x%04x", EC_READ_U16(datagram->address + 2));
-            break;
-
-        case EC_DATAGRAM_LRD:
-        case EC_DATAGRAM_LWR:
-        case EC_DATAGRAM_LRW:
-            printk("log=0x%08x", EC_READ_U32(datagram->address));
-            break;
-
-        default:
-            printk("??");
-            break;
-    }
-
-    printk(" size=%zu", datagram->data_size);
 }
 
 /*****************************************************************************/

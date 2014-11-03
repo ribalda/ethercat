@@ -983,7 +983,8 @@ e1000_probe(struct pci_dev *pdev,
 	// offer device to EtherCAT master module
 	adapter->ecdev = ecdev_offer(netdev, ec_poll, THIS_MODULE);
 	if (adapter->ecdev) {
-		if (ecdev_open(adapter->ecdev)) {
+		err = ecdev_open(adapter->ecdev);
+		if (err) {
 			ecdev_withdraw(adapter->ecdev);
 			goto err_register;
 		}
@@ -2178,7 +2179,7 @@ e1000_leave_82542_rst(struct e1000_adapter *adapter)
 		/* No need to loop, because 82542 supports only 1 queue */
 		struct e1000_rx_ring *ring = &adapter->rx_ring[0];
 		e1000_configure_rx(adapter);
-		if (adapter->ecdev) { 
+		if (adapter->ecdev) {
 			/* fill rx ring completely! */
 			adapter->alloc_rx_buf(adapter, ring, ring->count);
 		} else {

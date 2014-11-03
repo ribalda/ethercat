@@ -51,7 +51,7 @@ string CommandSiiWrite::helpString(const string &binaryBaseName) const
 
     str << binaryBaseName << " " << getName()
         << " [OPTIONS] <FILENAME>" << endl
-        << endl 
+        << endl
         << getBriefDescription() << endl
         << endl
         << "This command requires a single slave to be selected." << endl

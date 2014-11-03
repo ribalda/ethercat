@@ -24,6 +24,8 @@
   e1000-devel Mailing List <e1000-devel@lists.sourceforge.net>
   Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
 
+  vim: noexpandtab
+
 *******************************************************************************/
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
@@ -1532,10 +1534,10 @@ static irqreturn_t e1000_intr_msi(int irq, void *data)
 	struct e1000_hw *hw = &adapter->hw;
 	u32 icr = er32(ICR);
 
- 	if (adapter->ecdev) {
- 		int ec_work_done = 0;
- 		adapter->clean_rx(adapter, &ec_work_done, 100);
- 		e1000_clean_tx_irq(adapter);
+	if (adapter->ecdev) {
+		int ec_work_done = 0;
+		adapter->clean_rx(adapter, &ec_work_done, 100);
+		e1000_clean_tx_irq(adapter);
 		return IRQ_HANDLED;
 	}
 	/*
@@ -1636,10 +1638,10 @@ static irqreturn_t e1000_intr(int irq, void *data)
 			mod_timer(&adapter->watchdog_timer, jiffies + 1);
 	}
 
- 	if (adapter->ecdev) {
- 		int ec_work_done = 0;
- 		adapter->clean_rx(adapter, &ec_work_done, 100);
- 		e1000_clean_tx_irq(adapter);
+	if (adapter->ecdev) {
+		int ec_work_done = 0;
+		adapter->clean_rx(adapter, &ec_work_done, 100);
+		e1000_clean_tx_irq(adapter);
 		return IRQ_HANDLED;
 	}
 
@@ -1719,9 +1721,9 @@ static irqreturn_t e1000_intr_msix_rx(int irq, void *data)
 		adapter->rx_ring->set_itr = 0;
 	}
 
- 	if (adapter->ecdev) {
- 		int ec_work_done = 0;
- 		adapter->clean_rx(adapter, &ec_work_done, 100);
+	if (adapter->ecdev) {
+		int ec_work_done = 0;
+		adapter->clean_rx(adapter, &ec_work_done, 100);
 	} else {
 		if (napi_schedule_prep(&adapter->napi)) {
 			adapter->total_rx_bytes = 0;
@@ -3270,20 +3272,20 @@ int e1000e_up(struct e1000_adapter *adapter)
 
 	if (!adapter->ecdev) {
 		napi_enable(&adapter->napi);
-    }
+	}
 
 	if (adapter->msix_entries)
 		e1000_configure_msix(adapter);
 	if (!adapter->ecdev) {
-        e1000_irq_enable(adapter);
+		e1000_irq_enable(adapter);
 
-        netif_wake_queue(adapter->netdev);
+		netif_wake_queue(adapter->netdev);
 
-        /* fire a link change interrupt to start the watchdog */
-        if (adapter->msix_entries)
-            ew32(ICS, E1000_ICS_LSC | E1000_ICR_OTHER);
-        else
-            ew32(ICS, E1000_ICS_LSC);
+		/* fire a link change interrupt to start the watchdog */
+		if (adapter->msix_entries)
+			ew32(ICS, E1000_ICS_LSC | E1000_ICR_OTHER);
+		else
+			ew32(ICS, E1000_ICS_LSC);
 	}
 
 	return 0;
@@ -3306,7 +3308,7 @@ void e1000e_down(struct e1000_adapter *adapter)
 	ew32(RCTL, rctl & ~E1000_RCTL_EN);
 	/* flush and sleep below */
 
-	if (!adapter->ecdev) 
+	if (!adapter->ecdev)
 		netif_stop_queue(netdev);
 
 	/* disable transmits in the hardware */
@@ -3609,11 +3611,13 @@ static int e1000_open(struct net_device *netdev)
 	/* From here on the code is the same as e1000e_up() */
 	clear_bit(__E1000_DOWN, &adapter->state);
 
-	napi_enable(&adapter->napi);
+	if (!adapter->ecdev) {
+		napi_enable(&adapter->napi);
 
-	e1000_irq_enable(adapter);
+		e1000_irq_enable(adapter);
 
-	netif_start_queue(netdev);
+		netif_start_queue(netdev);
+	}
 
 	adapter->idle_check = true;
 	pm_runtime_put(&pdev->dev);
@@ -4031,7 +4035,7 @@ static void e1000_watchdog_task(struct work_struct *work)
 
 	link = e1000e_has_link(adapter);
 	if ((adapter->ecdev && (ecdev_get_link(adapter->ecdev)) && link)
-            || (!adapter->ecdev && (netif_carrier_ok(netdev)) && link)) {
+			|| (!adapter->ecdev && (netif_carrier_ok(netdev)) && link)) {
 		/* Cancel scheduled suspend requests. */
 		pm_runtime_resume(netdev->dev.parent);
 
@@ -4044,7 +4048,7 @@ static void e1000_watchdog_task(struct work_struct *work)
 		e1000_update_mng_vlan(adapter);
 
 	if (link) {
-		if ((adapter->ecdev && !ecdev_get_link(adapter->ecdev)) 
+		if ((adapter->ecdev && !ecdev_get_link(adapter->ecdev))
 				|| (!adapter->ecdev && !netif_carrier_ok(netdev))) {
 			bool txb2b = 1;
 
@@ -4142,7 +4146,7 @@ static void e1000_watchdog_task(struct work_struct *work)
 
 			if (adapter->ecdev)
 				ecdev_set_link(adapter->ecdev, 1);
-			else 
+			else
 				netif_carrier_on(netdev);
 
 			if (!adapter->ecdev && !test_bit(__E1000_DOWN, &adapter->state))
@@ -4150,7 +4154,7 @@ static void e1000_watchdog_task(struct work_struct *work)
 					  round_jiffies(jiffies + 2 * HZ));
 		}
 	} else {
-		if ((adapter->ecdev && ecdev_get_link(adapter->ecdev)) 
+		if ((adapter->ecdev && ecdev_get_link(adapter->ecdev))
 				|| (!adapter->ecdev && netif_carrier_ok(netdev))) {
 			adapter->link_speed = 0;
 			adapter->link_duplex = 0;
@@ -4188,8 +4192,7 @@ link_up:
 
 	e1000e_update_adaptive(&adapter->hw);
 
-	if ((adapter->ecdev && !ecdev_get_link(adapter->ecdev)) 
-			|| (!adapter->ecdev && !netif_carrier_ok(netdev))) {
+	if (!adapter->ecdev && !netif_carrier_ok(netdev)) {
 		tx_pending = (e1000_desc_unused(tx_ring) + 1 <
 			       tx_ring->count);
 		if (tx_pending) {
@@ -4588,6 +4591,10 @@ static int e1000_transfer_dhcp_info(struct e1000_adapter *adapter,
 static int __e1000_maybe_stop_tx(struct net_device *netdev, int size)
 {
 	struct e1000_adapter *adapter = netdev_priv(netdev);
+
+	if (adapter->ecdev) {
+		return -EBUSY;
+	}
 
 	netif_stop_queue(netdev);
 	/*
@@ -5277,9 +5284,9 @@ static int e1000_suspend(struct device *dev)
 	struct net_device *netdev = pci_get_drvdata(pdev);
 	struct e1000_adapter *adapter = netdev_priv(netdev);
 
-    if (adapter->ecdev) {
-        return -EBUSY;
-    }
+	if (adapter->ecdev) {
+		return -EBUSY;
+	}
 
 	retval = __e1000_shutdown(pdev, &wake, false);
 	if (!retval)
@@ -5294,9 +5301,9 @@ static int e1000_resume(struct device *dev)
 	struct net_device *netdev = pci_get_drvdata(pdev);
 	struct e1000_adapter *adapter = netdev_priv(netdev);
 
-    if (adapter->ecdev) {
-        return -EBUSY;
-    }
+	if (adapter->ecdev) {
+		return -EBUSY;
+	}
 
 	if (e1000e_pm_ready(adapter))
 		adapter->idle_check = true;
@@ -5359,7 +5366,7 @@ static void e1000_shutdown(struct pci_dev *pdev)
 	bool wake = false;
 	struct net_device *netdev = pci_get_drvdata(pdev);
 	struct e1000_adapter *adapter = netdev_priv(netdev);
-	
+
 	if (adapter->ecdev)
 		return;
 
@@ -5856,7 +5863,8 @@ static int __devinit e1000_probe(struct pci_dev *pdev,
 
 	adapter->ecdev = ecdev_offer(netdev,ec_poll,THIS_MODULE);
 	if (adapter->ecdev) {
-		if (ecdev_open(adapter->ecdev)) {
+		err = ecdev_open(adapter->ecdev);
+		if (err) {
 			ecdev_withdraw(adapter->ecdev);
 			goto err_register;
 		}

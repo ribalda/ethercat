@@ -200,6 +200,8 @@ void ec_debug_send(
  *****************************************************************************/
 
 /** Opens the virtual network device.
+ *
+ * \return Always zero (success).
  */
 int ec_dbgdev_open(
         struct net_device *dev /**< debug net_device */
@@ -215,6 +217,8 @@ int ec_dbgdev_open(
 /*****************************************************************************/
 
 /** Stops the virtual network device.
+ *
+ * \return Always zero (success).
  */
 int ec_dbgdev_stop(
         struct net_device *dev /**< debug net_device */
@@ -230,6 +234,8 @@ int ec_dbgdev_stop(
 /*****************************************************************************/
 
 /** Transmits data via the virtual network device.
+ *
+ * \return Always zero (success).
  */
 int ec_dbgdev_tx(
         struct sk_buff *skb, /**< transmit socket buffer */
@@ -246,6 +252,8 @@ int ec_dbgdev_tx(
 /*****************************************************************************/
 
 /** Gets statistics about the virtual network device.
+ *
+ * \return Statistics.
  */
 struct net_device_stats *ec_dbgdev_stats(
         struct net_device *dev /**< debug net_device */

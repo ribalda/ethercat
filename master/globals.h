@@ -39,22 +39,6 @@
 #include "../globals.h"
 #include "../include/ecrt.h"
 
-#ifdef __KERNEL__
-
-#include <linux/version.h>
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 24)
-#include <linux/rtmutex.h>
-#endif // KERNEL_VERSION(2, 6, 24)
-
-#endif // __KERNEL__
-
-#if 0
-#ifdef CONFIG_TRACING
-#define USE_TRACE_PRINTK
-#endif
-#endif
-
 /******************************************************************************
  * EtherCAT master
  *****************************************************************************/
@@ -62,8 +46,8 @@
 /** Datagram timeout in microseconds. */
 #define EC_IO_TIMEOUT 500
 
-/** FSM injection timeout in microseconds. */
-#define EC_FSM_INJECTION_TIMEOUT 10000
+/** SDO injection timeout in microseconds. */
+#define EC_SDO_INJECTION_TIMEOUT 10000
 
 /** Time to send a byte in nanoseconds.
  *
@@ -198,7 +182,7 @@ typedef enum {
  */
 typedef struct {
     uint32_t cycle_time; /**< Cycle time [ns]. */
-    uint32_t shift_time; /**< Shift time [ns]. */
+    int32_t shift_time; /**< Shift time [ns]. */
 } ec_sync_signal_t;
 
 /** Access states for SDO entries.
@@ -211,6 +195,15 @@ enum {
     EC_SDO_ENTRY_ACCESS_OP, /**< Access rights in OP. */
     EC_SDO_ENTRY_ACCESS_COUNT /**< Number of states. */
 };
+
+/** Master devices.
+ */
+typedef enum {
+    EC_DEVICE_MAIN, /**< Main device. */
+    EC_DEVICE_BACKUP /**< Backup device */
+} ec_device_index_t;
+
+extern const char *ec_device_names[2]; // only main and backup!
 
 /*****************************************************************************/
 
@@ -318,75 +311,6 @@ typedef enum {
 /*****************************************************************************/
 
 typedef struct ec_slave ec_slave_t; /**< \see ec_slave. */
-
-/*****************************************************************************/
-
-#ifdef __KERNEL__
-
-/** Mutual exclusion helpers.
- */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 24)
-
-#define ec_mutex_t rt_mutex
-
-static inline void ec_mutex_init(struct ec_mutex_t *mutex)
-{
-    rt_mutex_init(mutex);
-}
-
-static inline void ec_mutex_lock(struct ec_mutex_t *mutex)
-{
-    rt_mutex_lock(mutex);
-}
-
-static inline int ec_mutex_trylock(struct ec_mutex_t *mutex)
-{
-    return rt_mutex_trylock(mutex);
-}
-
-static inline int ec_mutex_lock_interruptible(struct ec_mutex_t *mutex)
-{
-    return rt_mutex_lock_interruptible(mutex, 0);
-}
-
-static inline void ec_mutex_unlock(struct ec_mutex_t *mutex)
-{
-    rt_mutex_unlock(mutex);
-}
-
-#else // < KERNEL_VERSION(2, 6, 24)
-
-#define ec_mutex_t semaphore
-
-static inline void ec_mutex_init(struct ec_mutex_t *sem)
-{
-    sema_init(sem, 1);
-}
-
-static inline void ec_mutex_lock(struct ec_mutex_t *sem)
-{
-    down(sem);
-}
-
-static inline int ec_mutex_trylock(struct ec_mutex_t *sem)
-{
-    down(sem);
-    return 1;
-}
-
-static inline int ec_mutex_lock_interruptible(struct ec_mutex_t *sem)
-{
-    return down_interruptible(sem);
-}
-
-static inline void ec_mutex_unlock(struct ec_mutex_t *sem)
-{
-    up(sem);
-}
-
-#endif // KERNEL_VERSION(2, 6, 24)
-
-#endif // __KERNEL__
 
 /*****************************************************************************/
 

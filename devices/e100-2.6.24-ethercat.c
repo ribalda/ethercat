@@ -2817,7 +2817,8 @@ static int __devinit e100_probe(struct pci_dev *pdev,
 	// offer device to EtherCAT master module
 	nic->ecdev = ecdev_offer(netdev, e100_ec_poll, THIS_MODULE);
 	if (nic->ecdev) {
-		if (ecdev_open(nic->ecdev)) {
+		err = ecdev_open(nic->ecdev);
+		if (err) {
 			ecdev_withdraw(nic->ecdev);
 			goto err_out_free;
 		}
@@ -2965,7 +2966,7 @@ static pci_ers_result_t e100_io_error_detected(struct pci_dev *pdev, pci_channel
 
 	/* Similar to calling e100_down(), but avoids adpater I/O. */
 	netdev->stop(netdev);
-    
+
     if (!nic->ecdev) {
     	/* Detach; put netif into state similar to hotplug unplug. */
 	    napi_enable(&nic->napi);

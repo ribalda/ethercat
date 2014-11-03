@@ -1,7 +1,7 @@
 
 /* $Id$ */
 
-digraph sii {
+digraph eoe {
     node [fontname="Helvetica"]
     edge [fontname="Helvetica",fontsize=12]
 

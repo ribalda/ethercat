@@ -180,7 +180,7 @@ void CommandCStruct::generateSlaveCStruct(
         << " * Product code:    0x" << hex << setfill('0')
         << setw(8) << slave.product_code << endl
         << " * Revision number: 0x" << hex << setfill('0')
-        << setw(8) << slave.revision_number << endl 
+        << setw(8) << slave.revision_number << endl
         << " */" << endl
         << endl;
 

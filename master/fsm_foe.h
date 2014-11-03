@@ -2,7 +2,8 @@
  *
  *  $Id$
  *
- *  Copyright (C) 2008  Olav Zarges, imc Messsysteme GmbH
+ *  Copyright (C) 2008       Olav Zarges, imc Messsysteme GmbH
+ *                2009-2012  Florian Pose <fp@igh-essen.com>
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -50,15 +51,15 @@ typedef struct ec_fsm_foe ec_fsm_foe_t; /**< \see ec_fsm_foe */
 /** Finite state machines for the CANopen-over-EtherCAT protocol.
  */
 struct ec_fsm_foe {
-    ec_slave_t *slave; /**< slave the FSM runs on */
-    ec_mailbox_t *mbox; /**< mailbox used in the state machine */
-    unsigned int retries; /**< retries upon datagram timeout */
+    ec_slave_t *slave; /**< Slave the FSM runs on. */
+    unsigned int retries; /**< Retries upon datagram timeout */
 
-    void (*state)(ec_fsm_foe_t *); /**< FoE state function */
+    void (*state)(ec_fsm_foe_t *, ec_datagram_t *); /**< FoE state function. */
+    ec_datagram_t *datagram; /**< Datagram used in previous step. */
     unsigned long jiffies_start; /**< FoE timestamp. */
-    uint8_t subindex; /**< current subindex */
-    ec_foe_request_t *request; /**< FoE request */
-    uint8_t toggle; /**< toggle bit for segment commands */
+    uint8_t subindex; /**< Current subindex. */
+    ec_foe_request_t *request; /**< FoE request. */
+    uint8_t toggle; /**< Toggle bit for segment commands. */
 
     uint8_t *tx_buffer; /**< Buffer with data to transmit. */
     uint32_t tx_buffer_size; /**< Size of data to transmit. */
@@ -80,11 +81,11 @@ struct ec_fsm_foe {
 
 /*****************************************************************************/
 
-void ec_fsm_foe_init(ec_fsm_foe_t *, ec_mailbox_t *);
+void ec_fsm_foe_init(ec_fsm_foe_t *);
 void ec_fsm_foe_clear(ec_fsm_foe_t *);
 
-int ec_fsm_foe_exec(ec_fsm_foe_t *);
-int ec_fsm_foe_success(ec_fsm_foe_t *);
+int ec_fsm_foe_exec(ec_fsm_foe_t *, ec_datagram_t *);
+int ec_fsm_foe_success(const ec_fsm_foe_t *);
 
 void ec_fsm_foe_transfer(ec_fsm_foe_t *, ec_slave_t *, ec_foe_request_t *);
 

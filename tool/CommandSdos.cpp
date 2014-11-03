@@ -128,7 +128,7 @@ void CommandSdos::listSlaveSdos(
     ec_ioctl_slave_sdo_entry_t entry;
     unsigned int i, j;
     const DataType *d;
-    
+
     if (showHeader && slave.sdo_count)
         cout << "=== Master " << m.getIndex()
             << ", Slave " << slave.position << " ===" << endl;

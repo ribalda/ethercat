@@ -4196,11 +4196,15 @@ rtl8169_init_one(struct pci_dev *pdev, const struct pci_device_id *ent)
 	if (pci_dev_run_wake(pdev))
 		pm_runtime_put_noidle(&pdev->dev);
 
-	netif_carrier_off(dev);
-
-	if (tp->ecdev && ecdev_open(tp->ecdev)) {
-		ecdev_withdraw(tp->ecdev);
-		goto err_out_msi_4;
+	if (tp->ecdev) {
+		rc = ecdev_open(tp->ecdev);
+		if (rc) {
+			ecdev_withdraw(tp->ecdev);
+			goto err_out_msi_4;
+		}
+	}
+	else {
+		netif_carrier_off(dev);
 	}
 
 out:

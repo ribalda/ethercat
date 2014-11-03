@@ -24,7 +24,7 @@
 #  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 #  ---
-#  
+#
 #  The license mentioned above concerns the source code only. Using the EtherCAT
 #  technology and brand is only permitted in compliance with the industrial
 #  property and similar rights of Beckhoff Automation GmbH.
@@ -47,6 +47,7 @@
 
 #------------------------------------------------------------------------------
 
+LSMOD=/sbin/lsmod
 MODPROBE=/sbin/modprobe
 RMMOD=/sbin/rmmod
 MODINFO=/sbin/modinfo
@@ -126,7 +127,7 @@ parse_mac_address() {
     else
         echo Invalid MAC address \"${1}\" in ${ETHERCAT_CONFIG}
         exit_fail
-    fi 
+    fi
 }
 
 #------------------------------------------------------------------------------
@@ -157,7 +158,7 @@ start)
 
         parse_mac_address ${DEVICE}
         DEVICES=${DEVICES}${MAC}
-        
+
         parse_mac_address ${BACKUP}
         BACKUPS=${BACKUPS}${MAC}
 
@@ -177,7 +178,7 @@ start)
             continue # ec_* module not found
         fi
         if [ ${MODULE} != "generic" ]; then
-            if lsmod | grep "^${MODULE} " > /dev/null; then
+            if ${LSMOD} | grep "^${MODULE} " > /dev/null; then
                 if ! ${RMMOD} ${MODULE}; then
                     exit_fail
                 fi
@@ -200,7 +201,7 @@ stop)
     # unload EtherCAT device modules
     for MODULE in ${DEVICE_MODULES} master; do
         ECMODULE=ec_${MODULE}
-        if ! lsmod | grep -q "^${ECMODULE} "; then
+        if ! ${LSMOD} | grep -q "^${ECMODULE} "; then
             continue # ec_* module not loaded
         fi
         if ! ${RMMOD} ${ECMODULE}; then
@@ -243,7 +244,7 @@ status)
 
     for i in `seq 0 $(expr ${MASTER_COUNT} - 1)`; do
         echo -n "Master${i} "
-        
+
         # Check if the master is in idle or operation phase
         ${ETHERCAT} master --master ${i} 2>/dev/null | \
             grep -qE 'Phase:[[:space:]]*Idle|Phase:[[:space:]]*Operation'

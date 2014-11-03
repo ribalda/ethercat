@@ -70,11 +70,11 @@ void CommandMaster::execute(const StringVector &args)
 	MasterIndexList masterIndices;
     ec_ioctl_master_t data;
     stringstream err;
-    unsigned int i, j;
+    unsigned int dev_idx, j;
     time_t epoch;
     char time_str[MAX_TIME_STR_SIZE + 1];
     size_t time_str_size;
-    
+
     if (args.size()) {
         err << "'" << getName() << "' takes no arguments!";
         throwInvalidUsageException(err);
@@ -93,7 +93,7 @@ void CommandMaster::execute(const StringVector &args)
             << "  Phase: ";
 
         switch (data.phase) {
-            case 0:  cout << "Waiting for device..."; break;
+            case 0:  cout << "Waiting for device(s)..."; break;
             case 1:  cout << "Idle"; break;
             case 2:  cout << "Operation"; break;
             default: cout << "???";
@@ -104,95 +104,157 @@ void CommandMaster::execute(const StringVector &args)
             << "  Slaves: " << data.slave_count << endl
             << "  Ethernet devices:" << endl;
 
-        for (i = 0; i < 2; i++) {
-            cout << "    " << (i == 0 ? "Main" : "Backup") << ": ";
-            if (data.devices[i].address[0] == 0x00
-                    && data.devices[i].address[1] == 0x00
-                    && data.devices[i].address[2] == 0x00
-                    && data.devices[i].address[3] == 0x00
-                    && data.devices[i].address[4] == 0x00
-                    && data.devices[i].address[5] == 0x00) {
-                cout << "None.";
-            } else {
-                unsigned int lost =
-                    data.devices[i].tx_count - data.devices[i].rx_count;
-                if (lost == 1) {
-                    // allow one frame travelling
-                    lost = 0;
+        for (dev_idx = EC_DEVICE_MAIN; dev_idx < data.num_devices;
+                dev_idx++) {
+            cout << "    " << (dev_idx == EC_DEVICE_MAIN ? "Main" : "Backup")
+                << ": ";
+            cout << hex << setfill('0')
+                << setw(2) << (unsigned int) data.devices[dev_idx].address[0]
+                << ":"
+                << setw(2) << (unsigned int) data.devices[dev_idx].address[1]
+                << ":"
+                << setw(2) << (unsigned int) data.devices[dev_idx].address[2]
+                << ":"
+                << setw(2) << (unsigned int) data.devices[dev_idx].address[3]
+                << ":"
+                << setw(2) << (unsigned int) data.devices[dev_idx].address[4]
+                << ":"
+                << setw(2) << (unsigned int) data.devices[dev_idx].address[5]
+                << " ("
+                << (data.devices[dev_idx].attached ?
+                        "attached" : "waiting...")
+                << ")" << endl << dec
+                << "      Link: "
+                << (data.devices[dev_idx].link_state ? "UP" : "DOWN") << endl
+                << "      Tx frames:   "
+                << data.devices[dev_idx].tx_count << endl
+                << "      Tx bytes:    "
+                << data.devices[dev_idx].tx_bytes << endl
+                << "      Rx frames:   "
+                << data.devices[dev_idx].rx_count << endl
+                << "      Rx bytes:    "
+                << data.devices[dev_idx].rx_bytes << endl
+                << "      Tx errors:   "
+                << data.devices[dev_idx].tx_errors << endl
+                << "      Tx frame rate [1/s]: "
+                << setfill(' ') << setprecision(0) << fixed;
+            for (j = 0; j < EC_RATE_COUNT; j++) {
+                cout << setw(ColWidth)
+                    << data.devices[dev_idx].tx_frame_rates[j] / 1000.0;
+                if (j < EC_RATE_COUNT - 1) {
+                    cout << " ";
                 }
-                cout << hex << setfill('0')
-                    << setw(2) << (unsigned int) data.devices[i].address[0]
-                    << ":"
-                    << setw(2) << (unsigned int) data.devices[i].address[1]
-                    << ":"
-                    << setw(2) << (unsigned int) data.devices[i].address[2]
-                    << ":"
-                    << setw(2) << (unsigned int) data.devices[i].address[3]
-                    << ":"
-                    << setw(2) << (unsigned int) data.devices[i].address[4]
-                    << ":"
-                    << setw(2) << (unsigned int) data.devices[i].address[5]
-                    << " ("
-                    << (data.devices[i].attached ? "attached" : "waiting...")
-                    << ")" << endl << dec
-                    << "      Link: "
-                    << (data.devices[i].link_state ? "UP" : "DOWN") << endl
-                    << "      Tx frames:   "
-                    << data.devices[i].tx_count << endl
-                    << "      Rx frames:   "
-                    << data.devices[i].rx_count << endl
-                    << "      Lost frames: " << lost << endl
-                    << "      Tx bytes:    "
-                    << data.devices[i].tx_bytes << endl
-                    << "      Tx errors:   "
-                    << data.devices[i].tx_errors << endl
-                    << "      Tx frame rate [1/s]: "
-                    << setfill(' ') << setprecision(0) << fixed;
-                for (j = 0; j < EC_RATE_COUNT; j++) {
-                    cout << setw(ColWidth)
-                        << data.devices[i].tx_frame_rates[j] / 1000.0;
-                    if (j < EC_RATE_COUNT - 1) {
-                        cout << " ";
-                    }
-                }
-                cout << endl
-                    << "      Tx rate [KByte/s]:   "
-                    << setprecision(1) << fixed;
-                for (j = 0; j < EC_RATE_COUNT; j++) {
-                    cout << setw(ColWidth)
-                        << data.devices[i].tx_byte_rates[j] / 1024.0;
-                    if (j < EC_RATE_COUNT - 1) {
-                        cout << " ";
-                    }
-                }
-                cout << endl
-                    << "      Loss rate [1/s]:     "
-                    << setprecision(0) << fixed;
-                for (j = 0; j < EC_RATE_COUNT; j++) {
-                    cout << setw(ColWidth)
-                        << data.devices[i].loss_rates[j] / 1000.0;
-                    if (j < EC_RATE_COUNT - 1) {
-                        cout << " ";
-                    }
-                }
-                cout << endl
-                    << "      Frame loss [%]:      "
-                    << setprecision(1) << fixed;
-                for (j = 0; j < EC_RATE_COUNT; j++) {
-                    double perc = 0.0;
-                    if (data.devices[i].tx_frame_rates[j]) {
-                        perc = 100.0 * data.devices[i].loss_rates[j] /
-                            data.devices[i].tx_frame_rates[j];
-                    }
-                    cout << setw(ColWidth) << perc;
-                    if (j < EC_RATE_COUNT - 1) {
-                        cout << " ";
-                    }
-                }
-                cout << setprecision(0) << endl;
             }
-            cout << endl;
+            cout << endl
+                << "      Tx rate [KByte/s]:   "
+                << setprecision(1) << fixed;
+            for (j = 0; j < EC_RATE_COUNT; j++) {
+                cout << setw(ColWidth)
+                    << data.devices[dev_idx].tx_byte_rates[j] / 1024.0;
+                if (j < EC_RATE_COUNT - 1) {
+                    cout << " ";
+                }
+            }
+            cout << endl
+                << "      Rx frame rate [1/s]: "
+                << setfill(' ') << setprecision(0) << fixed;
+            for (j = 0; j < EC_RATE_COUNT; j++) {
+                cout << setw(ColWidth)
+                    << data.devices[dev_idx].rx_frame_rates[j] / 1000.0;
+                if (j < EC_RATE_COUNT - 1) {
+                    cout << " ";
+                }
+            }
+            cout << endl
+                << "      Rx rate [KByte/s]:   "
+                << setprecision(1) << fixed;
+            for (j = 0; j < EC_RATE_COUNT; j++) {
+                cout << setw(ColWidth)
+                    << data.devices[dev_idx].rx_byte_rates[j] / 1024.0;
+                if (j < EC_RATE_COUNT - 1) {
+                    cout << " ";
+                }
+            }
+            cout << setprecision(0) << endl;
         }
+        unsigned int lost = data.tx_count - data.rx_count;
+        if (lost == 1) {
+            // allow one frame travelling
+            lost = 0;
+        }
+        cout << "    Common:" << endl
+            << "      Tx frames:   "
+            << data.tx_count << endl
+            << "      Tx bytes:    "
+            << data.tx_bytes << endl
+            << "      Rx frames:   "
+            << data.rx_count << endl
+            << "      Rx bytes:    "
+            << data.rx_bytes << endl
+            << "      Lost frames: " << lost << endl
+            << "      Tx frame rate [1/s]: "
+            << setfill(' ') << setprecision(0) << fixed;
+        for (j = 0; j < EC_RATE_COUNT; j++) {
+            cout << setw(ColWidth)
+                << data.tx_frame_rates[j] / 1000.0;
+            if (j < EC_RATE_COUNT - 1) {
+                cout << " ";
+            }
+        }
+        cout << endl
+            << "      Tx rate [KByte/s]:   "
+            << setprecision(1) << fixed;
+        for (j = 0; j < EC_RATE_COUNT; j++) {
+            cout << setw(ColWidth)
+                << data.tx_byte_rates[j] / 1024.0;
+            if (j < EC_RATE_COUNT - 1) {
+                cout << " ";
+            }
+        }
+        cout << endl
+            << "      Rx frame rate [1/s]: "
+            << setfill(' ') << setprecision(0) << fixed;
+        for (j = 0; j < EC_RATE_COUNT; j++) {
+            cout << setw(ColWidth)
+                << data.rx_frame_rates[j] / 1000.0;
+            if (j < EC_RATE_COUNT - 1) {
+                cout << " ";
+            }
+        }
+        cout << endl
+            << "      Rx rate [KByte/s]:   "
+            << setprecision(1) << fixed;
+        for (j = 0; j < EC_RATE_COUNT; j++) {
+            cout << setw(ColWidth)
+                << data.rx_byte_rates[j] / 1024.0;
+            if (j < EC_RATE_COUNT - 1) {
+                cout << " ";
+            }
+        }
+        cout << endl
+            << "      Loss rate [1/s]:     "
+            << setprecision(0) << fixed;
+        for (j = 0; j < EC_RATE_COUNT; j++) {
+            cout << setw(ColWidth)
+                << data.loss_rates[j] / 1000.0;
+            if (j < EC_RATE_COUNT - 1) {
+                cout << " ";
+            }
+        }
+        cout << endl
+            << "      Frame loss [%]:      "
+            << setprecision(1) << fixed;
+        for (j = 0; j < EC_RATE_COUNT; j++) {
+            double perc = 0.0;
+            if (data.tx_frame_rates[j]) {
+                perc = 100.0 * data.loss_rates[j] / data.tx_frame_rates[j];
+            }
+            cout << setw(ColWidth) << perc;
+            if (j < EC_RATE_COUNT - 1) {
+                cout << " ";
+            }
+        }
+        cout << setprecision(0) << endl;
 
         cout << "  Distributed clocks:" << endl
             << "    Reference clock: ";

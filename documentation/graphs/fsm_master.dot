@@ -33,7 +33,7 @@ digraph master {
     action_next_slave_state [shape=point,label=""]
     action_next_slave_state -> read_state
     action_next_slave_state -> action_idle [weight=10]
-    
+
     action_configure [shape=point,label=""]
     action_configure -> configure_slave [weight=10]
     action_configure -> action_next_slave_state

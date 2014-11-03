@@ -2,7 +2,7 @@
  *
  *  $Id$
  *
- *  Copyright (C) 2006-2009  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2012  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -51,13 +51,13 @@ string CommandRegWrite::helpString(const string &binaryBaseName) const
 
     str << binaryBaseName << " " << getName()
         << " [OPTIONS] <OFFSET> <DATA>" << endl
-        << endl 
+        << endl
         << getBriefDescription() << endl
         << endl
         << "This command requires a single slave to be selected." << endl
         << endl
         << "Arguments:" << endl
-        << "  OFFSET  is the register address to write to." << endl
+        << "  ADDRESS is the register address to write to." << endl
         << "  DATA    depends on whether a datatype was specified" << endl
         << "          with the --type option: If not, DATA must be" << endl
         << "          either a path to a file with data to write," << endl
@@ -68,10 +68,12 @@ string CommandRegWrite::helpString(const string &binaryBaseName) const
         << typeInfo()
         << endl
         << "Command-specific options:" << endl
-        << "  --alias    -a <alias>" << endl
-        << "  --position -p <pos>    Slave selection. See the help of" << endl
-        << "                         the 'slaves' command." << endl
-        << "  --type     -t <type>   Data type (see above)." << endl
+        << "  --alias     -a <alias>" << endl
+        << "  --position  -p <pos>    Slave selection. See the help of"
+        << endl
+        << "                          the 'slaves' command." << endl
+        << "  --type      -t <type>   Data type (see above)." << endl
+        << "  --emergency -e          Send as emergency request." << endl
         << endl
         << numericInfo();
 
@@ -83,34 +85,33 @@ string CommandRegWrite::helpString(const string &binaryBaseName) const
 void CommandRegWrite::execute(const StringVector &args)
 {
     stringstream strOffset, err;
-    ec_ioctl_slave_reg_t data;
+    ec_ioctl_slave_reg_t io;
     ifstream file;
-    SlaveList slaves;
 
     if (args.size() != 2) {
         err << "'" << getName() << "' takes exactly two arguments!";
         throwInvalidUsageException(err);
     }
-    
+
     strOffset << args[0];
     strOffset
         >> resetiosflags(ios::basefield) // guess base from prefix
-        >> data.offset;
+        >> io.address;
     if (strOffset.fail()) {
-        err << "Invalid offset '" << args[0] << "'!";
+        err << "Invalid address '" << args[0] << "'!";
         throwInvalidUsageException(err);
     }
-  
+
     if (getDataType().empty()) {
         if (args[1] == "-") {
-            loadRegData(&data, cin);
+            loadRegData(&io, cin);
         } else {
             file.open(args[1].c_str(), ifstream::in | ifstream::binary);
             if (file.fail()) {
                 err << "Failed to open '" << args[1] << "'!";
                 throwCommandException(err);
             }
-            loadRegData(&data, file);
+            loadRegData(&io, file);
             file.close();
         }
     } else {
@@ -123,30 +124,30 @@ void CommandRegWrite::execute(const StringVector &args)
         }
 
         if (dataType->byteSize) {
-            data.length = dataType->byteSize;
+            io.size = dataType->byteSize;
         } else {
-            data.length = 1024; // FIXME
+            io.size = 1024; // FIXME
         }
 
-        data.data = new uint8_t[data.length];
+        io.data = new uint8_t[io.size];
 
         try {
-            data.length = interpretAsType(
-                    dataType, args[1], data.data, data.length);
+            io.size = interpretAsType(
+                    dataType, args[1], io.data, io.size);
         } catch (SizeException &e) {
-            delete [] data.data;
+            delete [] io.data;
             throwCommandException(e.what());
         } catch (ios::failure &e) {
-            delete [] data.data;
+            delete [] io.data;
             err << "Invalid value argument '" << args[1]
                 << "' for type '" << dataType->name << "'!";
             throwInvalidUsageException(err);
         }
     }
 
-    if ((uint32_t) data.offset + data.length > 0xffff) {
-        err << "Offset and length exceeding 64k!";
-        delete [] data.data;
+    if ((uint32_t) io.address + io.size > 0xffff) {
+        err << "Address and size exceeding 64k!";
+        delete [] io.data;
         throwInvalidUsageException(err);
     }
 
@@ -154,22 +155,29 @@ void CommandRegWrite::execute(const StringVector &args)
     try {
         m.open(MasterDevice::ReadWrite);
     } catch (MasterDeviceException &e) {
-        delete [] data.data;
+        delete [] io.data;
         throw e;
     }
 
-    slaves = selectedSlaves(m);
-    if (slaves.size() != 1) {
-        delete [] data.data;
-        throwSingleSlaveRequired(slaves.size());
+    if (getEmergency()) {
+        io.slave_position = emergencySlave();
+        io.emergency = true;
     }
-    data.slave_position = slaves.front().position;
+    else {
+        SlaveList slaves = selectedSlaves(m);
+        if (slaves.size() != 1) {
+            delete [] io.data;
+            throwSingleSlaveRequired(slaves.size());
+        }
+        io.slave_position = slaves.front().position;
+        io.emergency = false;
+    }
 
     // send data to master
     try {
-        m.writeReg(&data);
+        m.writeReg(&io);
     } catch (MasterDeviceException &e) {
-        delete [] data.data;
+        delete [] io.data;
         throw e;
     }
 
@@ -177,13 +185,13 @@ void CommandRegWrite::execute(const StringVector &args)
         cerr << "Register writing finished." << endl;
     }
 
-    delete [] data.data;
+    delete [] io.data;
 }
 
 /*****************************************************************************/
 
 void CommandRegWrite::loadRegData(
-        ec_ioctl_slave_reg_t *data,
+        ec_ioctl_slave_reg_t *io,
         const istream &in
         )
 {
@@ -201,11 +209,11 @@ void CommandRegWrite::loadRegData(
         err << "Invalid data size " << contents.size() << "!";
         throwInvalidUsageException(err);
     }
-    data->length = contents.size();
+    io->size = contents.size();
 
     // allocate buffer and read file into buffer
-    data->data = new uint8_t[data->length];
-    contents.copy((char *) data->data, contents.size());
+    io->data = new uint8_t[io->size];
+    contents.copy((char *) io->data, contents.size());
 }
 
 /*****************************************************************************/

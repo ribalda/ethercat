@@ -2,7 +2,7 @@
  *
  *  $Id$
  *
- *  Copyright (C) 2006-2008  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2012  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -62,14 +62,15 @@ char *ec_slave_sii_string(ec_slave_t *, unsigned int);
 void ec_slave_init(
         ec_slave_t *slave, /**< EtherCAT slave */
         ec_master_t *master, /**< EtherCAT master */
+        ec_device_index_t dev_idx, /**< Device index. */
         uint16_t ring_position, /**< ring position */
         uint16_t station_address /**< station address to configure */
         )
 {
     unsigned int i;
-    int ret;
 
     slave->master = master;
+    slave->device_index = dev_idx;
     slave->ring_position = ring_position;
     slave->station_address = station_address;
     slave->effective_alias = 0x0000;
@@ -150,29 +151,13 @@ void ec_slave_init(
     slave->sdo_dictionary_fetched = 0;
     slave->jiffies_preop = 0;
 
-    INIT_LIST_HEAD(&slave->slave_sdo_requests);
-    init_waitqueue_head(&slave->sdo_queue);
-
+    INIT_LIST_HEAD(&slave->sdo_requests);
+    INIT_LIST_HEAD(&slave->reg_requests);
     INIT_LIST_HEAD(&slave->foe_requests);
-    init_waitqueue_head(&slave->foe_queue);
-
     INIT_LIST_HEAD(&slave->soe_requests);
-    init_waitqueue_head(&slave->soe_queue);
-
-    // init datagram
-    ec_datagram_init(&slave->datagram);
-    snprintf(slave->datagram.name, EC_DATAGRAM_NAME_SIZE,
-            "slave%u-fsm", slave->ring_position);
-    ret = ec_datagram_prealloc(&slave->datagram, EC_MAX_DATA_SIZE);
-    if (ret < 0) {
-        ec_datagram_clear(&slave->datagram);
-        EC_SLAVE_ERR(slave, "Failed to allocate FSM datagram.\n");
-        return;
-    }
-    ec_mbox_init(&slave->mbox,&slave->datagram);
 
     // create state machine object
-    ec_fsm_slave_init(&slave->fsm, slave, &slave->mbox);
+    ec_fsm_slave_init(&slave->fsm, slave);
 }
 
 /*****************************************************************************/
@@ -190,44 +175,47 @@ void ec_slave_clear(ec_slave_t *slave /**< EtherCAT slave */)
 
     // abort all pending requests
 
-    while (!list_empty(&slave->slave_sdo_requests)) {
-        ec_master_sdo_request_t *request =
-            list_entry(slave->slave_sdo_requests.next,
-                ec_master_sdo_request_t, list);
+    while (!list_empty(&slave->sdo_requests)) {
+        ec_sdo_request_t *request =
+            list_entry(slave->sdo_requests.next, ec_sdo_request_t, list);
         list_del_init(&request->list); // dequeue
-        EC_SLAVE_WARN(slave, "Discarding SDO request %p,"
-                " slave about to be deleted.\n",request);
-        request->req.state = EC_INT_REQUEST_FAILURE;
-        kref_put(&request->refcount,ec_master_sdo_request_release);
-        wake_up(&slave->sdo_queue);
+        EC_SLAVE_WARN(slave, "Discarding SDO request,"
+                " slave about to be deleted.\n");
+        request->state = EC_INT_REQUEST_FAILURE;
+    }
+
+    while (!list_empty(&slave->reg_requests)) {
+        ec_reg_request_t *reg =
+            list_entry(slave->reg_requests.next, ec_reg_request_t, list);
+        list_del_init(&reg->list); // dequeue
+        EC_SLAVE_WARN(slave, "Discarding register request,"
+                " slave about to be deleted.\n");
+        reg->state = EC_INT_REQUEST_FAILURE;
     }
 
     while (!list_empty(&slave->foe_requests)) {
-        ec_master_foe_request_t *request =
-            list_entry(slave->foe_requests.next,
-                ec_master_foe_request_t, list);
+        ec_foe_request_t *request =
+            list_entry(slave->foe_requests.next, ec_foe_request_t, list);
         list_del_init(&request->list); // dequeue
         EC_SLAVE_WARN(slave, "Discarding FoE request,"
                 " slave about to be deleted.\n");
-        request->req.state = EC_INT_REQUEST_FAILURE;
-        kref_put(&request->refcount,ec_master_foe_request_release);
-        wake_up(&slave->foe_queue);
+        request->state = EC_INT_REQUEST_FAILURE;
     }
 
     while (!list_empty(&slave->soe_requests)) {
-        ec_master_soe_request_t *request =
-            list_entry(slave->soe_requests.next,
-                ec_master_soe_request_t, list);
+        ec_soe_request_t *request =
+            list_entry(slave->soe_requests.next, ec_soe_request_t, list);
         list_del_init(&request->list); // dequeue
         EC_SLAVE_WARN(slave, "Discarding SoE request,"
                 " slave about to be deleted.\n");
-        request->req.state = EC_INT_REQUEST_FAILURE;
-        kref_put(&request->refcount,ec_master_soe_request_release);
-        wake_up(&slave->soe_queue);
+        request->state = EC_INT_REQUEST_FAILURE;
     }
 
-    if (slave->config)
+    wake_up_all(&slave->master->request_queue);
+
+    if (slave->config) {
         ec_slave_config_detach(slave->config);
+    }
 
     // free all SDOs
     list_for_each_entry_safe(sdo, next_sdo, &slave->sdo_dictionary, list) {
@@ -253,15 +241,16 @@ void ec_slave_clear(ec_slave_t *slave /**< EtherCAT slave */)
         kfree(pdo);
     }
 
-    if (slave->sii_words)
+    if (slave->sii_words) {
         kfree(slave->sii_words);
+    }
+
     ec_fsm_slave_clear(&slave->fsm);
-    ec_mbox_clear(&slave->mbox);
 }
 
 /*****************************************************************************/
 
-/** Clear the sync manager array. 
+/** Clear the sync manager array.
  */
 void ec_slave_clear_sync_managers(ec_slave_t *slave /**< EtherCAT slave. */)
 {
@@ -581,7 +570,7 @@ char *ec_slave_sii_string(
         unsigned int index /**< string index */
         )
 {
-    if (!index--) 
+    if (!index--)
         return NULL;
 
     if (index >= slave->sii.string_count) {
@@ -796,7 +785,7 @@ void ec_slave_attach_pdo_names(
     unsigned int i;
     ec_sync_t *sync;
     ec_pdo_t *pdo;
-    
+
     for (i = 0; i < slave->sii.sync_count; i++) {
         sync = slave->sii.syncs + i;
         list_for_each_entry(pdo, &sync->pdos.list, list) {
@@ -807,71 +796,85 @@ void ec_slave_attach_pdo_names(
 
 /*****************************************************************************/
 
-/** returns the previous connected port of a given port.
+/** Returns the previous connected port of a given port.
+ *
+ * \return Port index.
  */
-
 unsigned int ec_slave_get_previous_port(
-    ec_slave_t *slave, /**< EtherCAT slave. */
-    unsigned int i /**< Port index */
-    )
+        ec_slave_t *slave, /**< EtherCAT slave. */
+        unsigned int port_index /**< Port index. */
+        )
 {
-    do
-    {
-        switch (i)
-        {
-        case 0: i = 2; break;
-        case 1: i = 3; break;
-        case 2: i = 1; break;
-        case 3:
-        default:i = 0; break;
+    static const unsigned int prev_table[EC_MAX_PORTS] = {
+        2, 3, 1, 0
+    };
+
+    if (port_index >= EC_MAX_PORTS) {
+        EC_SLAVE_WARN(slave, "%s(port_index=%u): Invalid port index!\n",
+                __func__, port_index);
+    }
+
+    do {
+        port_index = prev_table[port_index];
+        if (slave->ports[port_index].next_slave) {
+            return port_index;
         }
-        if (slave->ports[i].next_slave)
-            return i;
-    } while (i);
+    } while (port_index);
+
     return 0;
 }
 
 /*****************************************************************************/
 
-/** returns the next connected port of a given port.
+/** Returns the next connected port of a given port.
+ *
+ * \return Port index.
  */
-
 unsigned int ec_slave_get_next_port(
-    ec_slave_t *slave, /**< EtherCAT slave. */
-    unsigned int i /**< Port index */
-    )
+        ec_slave_t *slave, /**< EtherCAT slave. */
+        unsigned int port_index /**< Port index. */
+        )
 {
-    do
-    {
-        switch (i)
-        {
-        case 0: i = 3; break;
-        case 1: i = 2; break;
-        case 3: i = 1; break;
-        case 2:
-        default:i = 0; break;
+    static const unsigned int next_table[EC_MAX_PORTS] = {
+        3, 2, 0, 1
+    };
+
+    if (port_index >= EC_MAX_PORTS) {
+        EC_SLAVE_WARN(slave, "%s(port_index=%u): Invalid port index!\n",
+                __func__, port_index);
+    }
+
+    do {
+        port_index = next_table[port_index];
+        if (slave->ports[port_index].next_slave) {
+            return port_index;
         }
-        if (slave->ports[i].next_slave)
-            return i;
-    } while (i);
+    } while (port_index);
+
     return 0;
 }
-
 
 /*****************************************************************************/
 
 /** Calculates the sum of round-trip-times of connected ports 1-3.
+ *
+ * \return Round-trip-time in ns.
  */
 uint32_t ec_slave_calc_rtt_sum(
         ec_slave_t *slave /**< EtherCAT slave. */
         )
 {
     uint32_t rtt_sum = 0, rtt;
-    unsigned int i = ec_slave_get_next_port(slave,0);
-    while (i != 0) {
-        rtt = slave->ports[i].receive_time - slave->ports[ec_slave_get_previous_port(slave,i)].receive_time;
+    unsigned int port_index = ec_slave_get_next_port(slave, 0);
+
+    while (port_index != 0) {
+        unsigned int prev_index =
+            ec_slave_get_previous_port(slave, port_index);
+
+        rtt = slave->ports[port_index].receive_time -
+            slave->ports[prev_index].receive_time;
         rtt_sum += rtt;
-        i = ec_slave_get_next_port(slave,i);
+        port_index = ec_slave_get_next_port(slave, port_index);
     }
 
     return rtt_sum;
@@ -880,26 +883,32 @@ uint32_t ec_slave_calc_rtt_sum(
 /*****************************************************************************/
 
 /** Finds the next slave supporting DC delay measurement.
+ *
+ * \return Next DC slave, or NULL.
  */
 ec_slave_t *ec_slave_find_next_dc_slave(
         ec_slave_t *slave /**< EtherCAT slave. */
         )
 {
-    unsigned int i;
+    unsigned int port_index;
     ec_slave_t *dc_slave = NULL;
 
     if (slave->base_dc_supported) {
         dc_slave = slave;
     } else {
-        i = ec_slave_get_next_port(slave,0);
-        while (i != 0) {
-            ec_slave_t *next = slave->ports[i].next_slave;
+        port_index = ec_slave_get_next_port(slave, 0);
+
+        while (port_index != 0) {
+            ec_slave_t *next = slave->ports[port_index].next_slave;
+
             if (next) {
                 dc_slave = ec_slave_find_next_dc_slave(next);
-                if (dc_slave)
+
+                if (dc_slave) {
                     break;
+                }
             }
-            i = ec_slave_get_next_port(slave,i);
+            port_index = ec_slave_get_next_port(slave, port_index);
         }
     }
 
@@ -914,31 +923,41 @@ void ec_slave_calc_port_delays(
         ec_slave_t *slave /**< EtherCAT slave. */
         )
 {
-    unsigned int i;
-    ec_slave_t *next_dc;
+    unsigned int port_index;
+    ec_slave_t *next_slave, *next_dc;
     uint32_t rtt, next_rtt_sum;
 
     if (!slave->base_dc_supported)
         return;
 
-    i = ec_slave_get_next_port(slave,0);
-    while (i != 0) {
-        next_dc = ec_slave_find_next_dc_slave(slave->ports[i].next_slave);
+    port_index = ec_slave_get_next_port(slave, 0);
+
+    while (port_index != 0) {
+        next_slave = slave->ports[port_index].next_slave;
+        next_dc = ec_slave_find_next_dc_slave(next_slave);
+
         if (next_dc) {
-            rtt = slave->ports[i].receive_time - slave->ports[ec_slave_get_previous_port(slave,i)].receive_time;
+            unsigned int prev_port =
+                ec_slave_get_previous_port(slave, port_index);
+
+            rtt = slave->ports[port_index].receive_time -
+                slave->ports[prev_port].receive_time;
             next_rtt_sum = ec_slave_calc_rtt_sum(next_dc);
 
-            slave->ports[i].delay_to_next_dc = (rtt - next_rtt_sum) / 2; // FIXME
-            next_dc->ports[0].delay_to_next_dc = (rtt - next_rtt_sum) / 2;
+            slave->ports[port_index].delay_to_next_dc =
+                (rtt - next_rtt_sum) / 2; // FIXME
+            next_dc->ports[0].delay_to_next_dc =
+                (rtt - next_rtt_sum) / 2;
 
 #if 0
             EC_SLAVE_DBG(slave, 1, "delay %u:%u rtt=%u"
                     " next_rtt_sum=%u delay=%u\n",
-                    slave->ring_position, i, rtt, next_rtt_sum,
-                    slave->ports[i].delay_to_next_dc);
+                    slave->ring_position, port_index, rtt, next_rtt_sum,
+                    slave->ports[port_index].delay_to_next_dc);
 #endif
         }
-        i = ec_slave_get_next_port(slave,i);
+
+        port_index = ec_slave_get_next_port(slave, port_index);
     }
 }
 
@@ -954,24 +973,25 @@ void ec_slave_calc_transmission_delays_rec(
     unsigned int i;
     ec_slave_t *next_dc;
 
-#if 1
-    EC_SLAVE_DBG(slave, 1, "%u\n", *delay);
-#endif
+    EC_SLAVE_DBG(slave, 1, "%s(delay = %u ns)\n", __func__, *delay);
 
     slave->transmission_delay = *delay;
 
-    i = ec_slave_get_next_port(slave,0);
+    i = ec_slave_get_next_port(slave, 0);
+
     while (i != 0) {
         ec_slave_port_t *port = &slave->ports[i];
         next_dc = ec_slave_find_next_dc_slave(port->next_slave);
         if (next_dc) {
             *delay = *delay + port->delay_to_next_dc;
 #if 0
-            EC_SLAVE_DBG(slave, 1, "%u:%u %u\n", slave->ring_position, i, *delay);
+            EC_SLAVE_DBG(slave, 1, "%u:%u %u\n",
+                    slave->ring_position, i, *delay);
 #endif
             ec_slave_calc_transmission_delays_rec(next_dc, delay);
         }
-        i = ec_slave_get_next_port(slave,i);
+
+        i = ec_slave_get_next_port(slave, i);
     }
 
     *delay = *delay + slave->ports[0].delay_to_next_dc;

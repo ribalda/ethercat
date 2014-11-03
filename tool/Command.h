@@ -107,11 +107,17 @@ class Command
         void setDataType(const string &);
         const string &getDataType() const;
 
+        void setEmergency(bool);
+        bool getEmergency() const;
+
         void setForce(bool);
         bool getForce() const;
 
         void setOutputFile(const string &);
         const string &getOutputFile() const;
+
+        void setSkin(const string &);
+        const string &getSkin() const;
 
         bool matchesSubstr(const string &) const;
         bool matchesAbbrev(const string &) const;
@@ -136,7 +142,8 @@ class Command
         typedef list<ec_ioctl_config_t> ConfigList;
         ConfigList selectedConfigs(MasterDevice &);
         typedef list<ec_ioctl_domain_t> DomainList;
-        DomainList selectedDomains(MasterDevice &);
+        DomainList selectedDomains(MasterDevice &, const ec_ioctl_master_t &);
+        int emergencySlave() const;
 
         static string alStateString(uint8_t);
 
@@ -149,8 +156,10 @@ class Command
         string positions;
         string domains;
         string dataType;
+        bool emergency;
         bool force;
         string outputFile;
+        string skin;
 
         Command();
 };
@@ -185,6 +194,13 @@ inline const string &Command::getDataType() const
 
 /****************************************************************************/
 
+inline bool Command::getEmergency() const
+{
+    return emergency;
+}
+
+/****************************************************************************/
+
 inline bool Command::getForce() const
 {
     return force;
@@ -195,6 +211,13 @@ inline bool Command::getForce() const
 inline const string &Command::getOutputFile() const
 {
     return outputFile;
+}
+
+/****************************************************************************/
+
+inline const string &Command::getSkin() const
+{
+    return skin;
 }
 
 /****************************************************************************/

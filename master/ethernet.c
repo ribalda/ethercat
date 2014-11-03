@@ -98,6 +98,8 @@ static const struct net_device_ops ec_eoedev_ops = {
 /** EoE constructor.
  *
  * Initializes the EoE handler, creates a net_device and registers it.
+ *
+ * \return Zero on success, otherwise a negative error code.
  */
 int ec_eoe_init(
         ec_eoe_t *eoe, /**< EoE handler */
@@ -111,7 +113,6 @@ int ec_eoe_init(
     eoe->slave = slave;
 
     ec_datagram_init(&eoe->datagram);
-    ec_mbox_init(&eoe->mbox,&eoe->datagram);
     eoe->queue_datagram = 0;
     eoe->state = ec_eoe_state_rx_start;
     eoe->opened = 0;
@@ -123,7 +124,7 @@ int ec_eoe_init(
     eoe->tx_queue_size = EC_EOE_TX_QUEUE_SIZE;
     eoe->tx_queued_frames = 0;
 
-    ec_mutex_init(&eoe->tx_queue_mutex);
+    sema_init(&eoe->tx_queue_sem, 1);
     eoe->tx_frame_number = 0xFF;
     memset(&eoe->stats, 0, sizeof(struct net_device_stats));
 
@@ -221,7 +222,6 @@ void ec_eoe_clear(ec_eoe_t *eoe /**< EoE handler */)
 
     free_netdev(eoe->dev);
 
-    ec_mbox_clear(&eoe->mbox);
     ec_datagram_clear(&eoe->datagram);
 }
 
@@ -233,7 +233,7 @@ void ec_eoe_flush(ec_eoe_t *eoe /**< EoE handler */)
 {
     ec_eoe_frame_t *frame, *next;
 
-    ec_mutex_lock(&eoe->tx_queue_mutex);
+    down(&eoe->tx_queue_sem);
 
     list_for_each_entry_safe(frame, next, &eoe->tx_queue, queue) {
         list_del(&frame->queue);
@@ -242,12 +242,14 @@ void ec_eoe_flush(ec_eoe_t *eoe /**< EoE handler */)
     }
     eoe->tx_queued_frames = 0;
 
-    ec_mutex_unlock(&eoe->tx_queue_mutex);
+    up(&eoe->tx_queue_sem);
 }
 
 /*****************************************************************************/
 
 /** Sends a frame or the next fragment.
+ *
+ * \return Zero on success, otherwise a negative error code.
  */
 int ec_eoe_send(ec_eoe_t *eoe /**< EoE handler */)
 {
@@ -296,7 +298,7 @@ int ec_eoe_send(ec_eoe_t *eoe /**< EoE handler */)
     printk("\n");
 #endif
 
-    data = ec_slave_mbox_prepare_send(eoe->slave, &eoe->mbox,
+    data = ec_slave_mbox_prepare_send(eoe->slave, &eoe->datagram,
             0x02, current_size + 4);
     if (IS_ERR(data))
         return PTR_ERR(data);
@@ -325,11 +327,8 @@ void ec_eoe_run(ec_eoe_t *eoe /**< EoE handler */)
         return;
 
     // if the datagram was not sent, or is not yet received, skip this cycle
-    if (eoe->queue_datagram ||
-        ec_mbox_is_datagram_state(&eoe->mbox, EC_DATAGRAM_QUEUED) ||
-        ec_mbox_is_datagram_state(&eoe->mbox, EC_DATAGRAM_SENT)) {
+    if (eoe->queue_datagram || eoe->datagram.state == EC_DATAGRAM_SENT)
         return;
-    }
 
     // call state function
     eoe->state(eoe);
@@ -353,7 +352,7 @@ void ec_eoe_run(ec_eoe_t *eoe /**< EoE handler */)
 void ec_eoe_queue(ec_eoe_t *eoe /**< EoE handler */)
 {
    if (eoe->queue_datagram) {
-       ec_master_mbox_queue_datagrams(eoe->slave->master, &eoe->mbox);
+       ec_master_queue_datagram_ext(eoe->slave->master, &eoe->datagram);
        eoe->queue_datagram = 0;
    }
 }
@@ -389,17 +388,19 @@ int ec_eoe_is_idle(const ec_eoe_t *eoe /**< EoE handler */)
  *
  * Starts a new receiving sequence by queueing a datagram that checks the
  * slave's mailbox for a new EoE datagram.
+ *
+ * \todo Use both devices.
  */
 void ec_eoe_state_rx_start(ec_eoe_t *eoe /**< EoE handler */)
 {
     if (eoe->slave->error_flag ||
-            !eoe->slave->master->main_device.link_state) {
+            !eoe->slave->master->devices[EC_DEVICE_MAIN].link_state) {
         eoe->rx_idle = 1;
         eoe->tx_idle = 1;
         return;
     }
 
-    ec_slave_mbox_prepare_check(eoe->slave, &eoe->mbox);
+    ec_slave_mbox_prepare_check(eoe->slave, &eoe->datagram);
     eoe->queue_datagram = 1;
     eoe->state = ec_eoe_state_rx_check;
 }
@@ -413,7 +414,7 @@ void ec_eoe_state_rx_start(ec_eoe_t *eoe /**< EoE handler */)
  */
 void ec_eoe_state_rx_check(ec_eoe_t *eoe /**< EoE handler */)
 {
-    if (!ec_mbox_is_datagram_state(&eoe->mbox, EC_DATAGRAM_RECEIVED)) {
+    if (eoe->datagram.state != EC_DATAGRAM_RECEIVED) {
         eoe->stats.rx_errors++;
 #if EOE_DEBUG_LEVEL >= 1
         EC_SLAVE_WARN(eoe->slave, "Failed to receive mbox"
@@ -423,14 +424,14 @@ void ec_eoe_state_rx_check(ec_eoe_t *eoe /**< EoE handler */)
         return;
     }
 
-    if (!ec_slave_mbox_check(&eoe->mbox)) {
+    if (!ec_slave_mbox_check(&eoe->datagram)) {
         eoe->rx_idle = 1;
         eoe->state = ec_eoe_state_tx_start;
         return;
     }
 
     eoe->rx_idle = 0;
-    ec_slave_mbox_prepare_fetch(eoe->slave, &eoe->mbox);
+    ec_slave_mbox_prepare_fetch(eoe->slave, &eoe->datagram);
     eoe->queue_datagram = 1;
     eoe->state = ec_eoe_state_rx_fetch;
 }
@@ -455,7 +456,7 @@ void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
     unsigned int i;
 #endif
 
-    if (!ec_mbox_is_datagram_state(&eoe->mbox, EC_DATAGRAM_RECEIVED)) {
+    if (eoe->datagram.state != EC_DATAGRAM_RECEIVED) {
         eoe->stats.rx_errors++;
 #if EOE_DEBUG_LEVEL >= 1
         EC_SLAVE_WARN(eoe->slave, "Failed to receive mbox"
@@ -465,7 +466,7 @@ void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
         return;
     }
 
-    data = ec_slave_mbox_fetch(eoe->slave, &eoe->mbox,
+    data = ec_slave_mbox_fetch(eoe->slave, &eoe->datagram,
             &mbox_prot, &rec_size);
     if (IS_ERR(data)) {
         eoe->stats.rx_errors++;
@@ -512,7 +513,7 @@ void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
 #if EOE_DEBUG_LEVEL >= 2
     EC_SLAVE_DBG(eoe->slave, 0, "EoE %s RX fragment %u%s, offset %u,"
             " frame %u%s, %u octets\n", eoe->dev->name, fragment_number,
-           last_fragment ? "" : "+", fragment_offset, frame_number, 
+           last_fragment ? "" : "+", fragment_offset, frame_number,
            time_appended ? ", + timestamp" : "",
            time_appended ? rec_size - 8 : rec_size - 4);
 #endif
@@ -616,6 +617,8 @@ void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
  *
  * Starts a new transmit sequence. If no data is available, a new receive
  * sequence is started instead.
+ *
+ * \todo Use both devices.
  */
 void ec_eoe_state_tx_start(ec_eoe_t *eoe /**< EoE handler */)
 {
@@ -624,16 +627,16 @@ void ec_eoe_state_tx_start(ec_eoe_t *eoe /**< EoE handler */)
 #endif
 
     if (eoe->slave->error_flag ||
-            !eoe->slave->master->main_device.link_state) {
+            !eoe->slave->master->devices[EC_DEVICE_MAIN].link_state) {
         eoe->rx_idle = 1;
         eoe->tx_idle = 1;
         return;
     }
 
-    ec_mutex_lock(&eoe->tx_queue_mutex);
+    down(&eoe->tx_queue_sem);
 
     if (!eoe->tx_queued_frames || list_empty(&eoe->tx_queue)) {
-        ec_mutex_unlock(&eoe->tx_queue_mutex);
+        up(&eoe->tx_queue_sem);
         eoe->tx_idle = 1;
         // no data available.
         // start a new receive immediately.
@@ -654,7 +657,7 @@ void ec_eoe_state_tx_start(ec_eoe_t *eoe /**< EoE handler */)
     }
 
     eoe->tx_queued_frames--;
-    ec_mutex_unlock(&eoe->tx_queue_mutex);
+    up(&eoe->tx_queue_sem);
 
     eoe->tx_idle = 0;
 
@@ -694,7 +697,7 @@ void ec_eoe_state_tx_start(ec_eoe_t *eoe /**< EoE handler */)
  */
 void ec_eoe_state_tx_sent(ec_eoe_t *eoe /**< EoE handler */)
 {
-    if (!ec_mbox_is_datagram_state(&eoe->mbox, EC_DATAGRAM_RECEIVED)) {
+    if (eoe->datagram.state != EC_DATAGRAM_RECEIVED) {
         if (eoe->tries) {
             eoe->tries--; // try again
             eoe->queue_datagram = 1;
@@ -710,7 +713,7 @@ void ec_eoe_state_tx_sent(ec_eoe_t *eoe /**< EoE handler */)
         return;
     }
 
-    if (!ec_mbox_is_datagram_wc(&eoe->mbox, 1)) {
+    if (eoe->datagram.working_counter != 1) {
         if (eoe->tries) {
             eoe->tries--; // try again
             eoe->queue_datagram = 1;
@@ -755,6 +758,8 @@ void ec_eoe_state_tx_sent(ec_eoe_t *eoe /**< EoE handler */)
  *****************************************************************************/
 
 /** Opens the virtual network device.
+ *
+ * \return Always zero (success).
  */
 int ec_eoedev_open(struct net_device *dev /**< EoE net_device */)
 {
@@ -775,6 +780,8 @@ int ec_eoedev_open(struct net_device *dev /**< EoE net_device */)
 /*****************************************************************************/
 
 /** Stops the virtual network device.
+ *
+ * \return Always zero (success).
  */
 int ec_eoedev_stop(struct net_device *dev /**< EoE net_device */)
 {
@@ -795,6 +802,8 @@ int ec_eoedev_stop(struct net_device *dev /**< EoE net_device */)
 /*****************************************************************************/
 
 /** Transmits data via the virtual network device.
+ *
+ * \return Zero on success, non-zero on failure.
  */
 int ec_eoedev_tx(struct sk_buff *skb, /**< transmit socket buffer */
                  struct net_device *dev /**< EoE net_device */
@@ -822,14 +831,14 @@ int ec_eoedev_tx(struct sk_buff *skb, /**< transmit socket buffer */
 
     frame->skb = skb;
 
-    ec_mutex_lock(&eoe->tx_queue_mutex);
+    down(&eoe->tx_queue_sem);
     list_add_tail(&frame->queue, &eoe->tx_queue);
     eoe->tx_queued_frames++;
     if (eoe->tx_queued_frames == eoe->tx_queue_size) {
         netif_stop_queue(dev);
         eoe->tx_queue_active = 0;
     }
-    ec_mutex_unlock(&eoe->tx_queue_mutex);
+    up(&eoe->tx_queue_sem);
 
 #if EOE_DEBUG_LEVEL >= 2
     EC_SLAVE_DBG(eoe->slave, 0, "EoE %s TX queued frame"
@@ -845,6 +854,8 @@ int ec_eoedev_tx(struct sk_buff *skb, /**< transmit socket buffer */
 /*****************************************************************************/
 
 /** Gets statistics about the virtual network device.
+ *
+ * \return Statistics.
  */
 struct net_device_stats *ec_eoedev_stats(
         struct net_device *dev /**< EoE net_device */

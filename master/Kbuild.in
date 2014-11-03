@@ -2,7 +2,7 @@
 #
 #  $Id$
 #
-#  Copyright (C) 2006-2008  Florian Pose, Ingenieurgemeinschaft IgH
+#  Copyright (C) 2006-2012  Florian Pose, Ingenieurgemeinschaft IgH
 #
 #  This file is part of the IgH EtherCAT Master.
 #
@@ -20,7 +20,7 @@
 #  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 #  ---
-#  
+#
 #  The license mentioned above concerns the source code only. Using the EtherCAT
 #  technology and brand is only permitted in compliance with the industrial
 #  property and similar rights of Beckhoff Automation GmbH.
@@ -35,7 +35,9 @@ obj-m := ec_master.o
 
 ec_master-objs := \
 	cdev.o \
+	coe_emerg_ring.o \
 	datagram.o \
+	datagram_pair.o \
 	device.o \
 	domain.o \
 	fmmu_config.o \
@@ -51,12 +53,14 @@ ec_master-objs := \
 	fsm_slave_config.o \
 	fsm_slave_scan.o \
 	fsm_soe.o \
+	ioctl.o \
 	mailbox.o \
 	master.o \
 	module.o \
 	pdo.o \
 	pdo_entry.o \
 	pdo_list.o \
+	reg_request.o \
 	sdo.o \
 	sdo_entry.o \
 	sdo_request.o \
@@ -69,11 +73,29 @@ ec_master-objs := \
 	voe_handler.o
 
 ifeq (@ENABLE_EOE@,1)
-	ec_master-objs += ethernet.o
+ec_master-objs += ethernet.o
 endif
+
 ifeq (@ENABLE_DEBUG_IF@,1)
-	ec_master-objs += debug.o
+ec_master-objs += debug.o
 endif
+
+ifeq (@ENABLE_RTDM@,1)
+
+ec_master-objs += rtdm.o
+
+ifeq (@ENABLE_XENOMAI@, 1)
+CFLAGS_rtdm.o := -I@XENOMAI_DIR@/include
+endif
+
+ifeq (@ENABLE_RTAI@, 1)
+CFLAGS_rtdm.o := -I@RTAI_DIR@/include
+endif
+
+ec_master-objs += rtdm-ioctl.o
+CFLAGS_rtdm-ioctl.o := -DEC_IOCTL_RTDM
+
+endif # ENABLE_RTDM
 
 REV := $(shell if test -s $(src)/../revision; then \
 		cat $(src)/../revision; \

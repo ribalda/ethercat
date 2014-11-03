@@ -2,7 +2,7 @@
 #
 #  $Id$
 #
-#  Copyright (C) 2006-2008  Florian Pose, Ingenieurgemeinschaft IgH
+#  Copyright (C) 2006-2012  Florian Pose, Ingenieurgemeinschaft IgH
 #
 #  This file is part of the IgH EtherCAT Master.
 #
@@ -20,21 +20,24 @@
 #  Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 #  ---
-#  
+#
 #  The license mentioned above concerns the source code only. Using the
 #  EtherCAT technology and brand is only permitted in compliance with the
 #  industrial property and similar rights of Beckhoff Automation GmbH.
 #
 #------------------------------------------------------------------------------
 
-
-AM_CFLAGS = -Wall
-
 noinst_PROGRAMS = ec_rtai_rtdm_example
 
 ec_rtai_rtdm_example_SOURCES = main.c
-ec_rtai_rtdm_example_CFLAGS = -I. -I"$(RTAI_DIR)"/include -O2 -I"$(LINUX_SOURCE_DIR)"/include -Wall -Wstrict-prototypes -pipe -I$(top_srcdir)/include
-ec_rtai_rtdm_example_LDFLAGS = -L"$(RTAI_DIR)"/lib -llxrt -lrtdm -lpthread -L$(top_builddir)/lib/.libs -lethercat 
 
+ec_rtai_rtdm_example_CFLAGS = \
+	-Wall \
+	-I$(top_srcdir)/include \
+	$(RTAI_LXRT_CFLAGS)
+
+ec_rtai_rtdm_example_LDFLAGS = \
+	$(RTAI_LXRT_LDFLAGS) -llxrt -lrtdm \
+	-L$(top_builddir)/lib/.libs -lethercat_rtdm
 
 #------------------------------------------------------------------------------

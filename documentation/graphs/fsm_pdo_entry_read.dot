@@ -2,19 +2,21 @@
 /* $Id$ */
 
 digraph pdo_entry_read {
+    node [fontname="Helvetica"]
+    edge [fontname="Helvetica", fontsize="12"]
 
-    start [fontname="Helvetica"]
+    start
     start -> count [weight=5]
 
-    count [fontname="Helvetica"]
+    count
     count -> action_next [weight=5]
 
     action_next [shape=point,label=""]
-    action_next -> pdo_entry [fontname="Helvetica", label="Next entry", weight=5]
-    action_next -> end [fontname="Helvetica", label="No more entries"]
+    action_next -> pdo_entry [label="Next entry", weight=5]
+    action_next -> end [label="No more entries"]
 
-    pdo_entry [fontname="Helvetica"]
+    pdo_entry
     pdo_entry -> action_next
 
-    end [fontname="Helvetica"]
+    end
 }

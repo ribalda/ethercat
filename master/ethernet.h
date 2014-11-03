@@ -78,7 +78,6 @@ struct ec_eoe
     struct list_head list; /**< list item */
     ec_slave_t *slave; /**< pointer to the corresponding slave */
     ec_datagram_t datagram; /**< datagram */
-    ec_mailbox_t mbox; /**< mailbox */
     unsigned int queue_datagram; /**< the datagram is ready for queuing */
     void (*state)(ec_eoe_t *); /**< state function for the state machine */
     struct net_device *dev; /**< net_device for virtual ethernet device */
@@ -98,7 +97,7 @@ struct ec_eoe
     unsigned int tx_queue_size; /**< Transmit queue size. */
     unsigned int tx_queue_active; /**< kernel netif queue started */
     unsigned int tx_queued_frames; /**< number of frames in the queue */
-    struct ec_mutex_t tx_queue_mutex; /**< Mutex for the send queue. */
+    struct semaphore tx_queue_sem; /**< Semaphore for the send queue. */
     ec_eoe_frame_t *tx_frame; /**< current TX frame */
     uint8_t tx_frame_number; /**< number of the transmitted frame */
     uint8_t tx_fragment_number; /**< number of the fragment */

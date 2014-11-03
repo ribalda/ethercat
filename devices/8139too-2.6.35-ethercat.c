@@ -648,7 +648,7 @@ struct rtl8139_private {
 	struct mii_if_info	mii;
 	unsigned int		regs_len;
 	unsigned long		fifo_copy_timeout;
-    
+
 	ec_device_t *ecdev;
 };
 
@@ -1136,9 +1136,12 @@ static int __devinit rtl8139_init_one (struct pci_dev *pdev,
 	if (rtl_chip_info[tp->chipset].flags & HasHltClk)
 		RTL_W8 (HltClk, 'H');	/* 'R' would leave the clock running. */
 
-	if (tp->ecdev && ecdev_open(tp->ecdev)) {
-		ecdev_withdraw(tp->ecdev);
-		goto err_out;
+	if (tp->ecdev) {
+		i = ecdev_open(tp->ecdev);
+		if (i) {
+			ecdev_withdraw(tp->ecdev);
+			goto err_out;
+		}
 	}
 
 	return 0;
@@ -1801,8 +1804,7 @@ static int rtl8139_start_xmit (struct sk_buff *skb, struct net_device *dev)
 		wmb();
 		RTL_W32_F (TxStatus0 + (entry * sizeof (u32)),
 			tp->tx_flag | max(len, (unsigned int)ETH_ZLEN));
- 
- 
+
 		tp->cur_tx++;
 	} else {
 		spin_lock_irqsave(&tp->lock, flags);

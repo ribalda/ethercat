@@ -42,21 +42,24 @@
 
 /*****************************************************************************/
 
-void ec_fsm_pdo_entry_read_state_start(ec_fsm_pdo_entry_t *);
-void ec_fsm_pdo_entry_read_state_count(ec_fsm_pdo_entry_t *);
-void ec_fsm_pdo_entry_read_state_entry(ec_fsm_pdo_entry_t *);
+void ec_fsm_pdo_entry_read_state_start(ec_fsm_pdo_entry_t *, ec_datagram_t *);
+void ec_fsm_pdo_entry_read_state_count(ec_fsm_pdo_entry_t *, ec_datagram_t *);
+void ec_fsm_pdo_entry_read_state_entry(ec_fsm_pdo_entry_t *, ec_datagram_t *);
 
-void ec_fsm_pdo_entry_read_action_next(ec_fsm_pdo_entry_t *);
+void ec_fsm_pdo_entry_read_action_next(ec_fsm_pdo_entry_t *, ec_datagram_t *);
 
-void ec_fsm_pdo_entry_conf_state_start(ec_fsm_pdo_entry_t *);
-void ec_fsm_pdo_entry_conf_state_zero_entry_count(ec_fsm_pdo_entry_t *);
-void ec_fsm_pdo_entry_conf_state_map_entry(ec_fsm_pdo_entry_t *);
-void ec_fsm_pdo_entry_conf_state_set_entry_count(ec_fsm_pdo_entry_t *);
+void ec_fsm_pdo_entry_conf_state_start(ec_fsm_pdo_entry_t *, ec_datagram_t *);
+void ec_fsm_pdo_entry_conf_state_zero_entry_count(ec_fsm_pdo_entry_t *,
+        ec_datagram_t *);
+void ec_fsm_pdo_entry_conf_state_map_entry(ec_fsm_pdo_entry_t *,
+        ec_datagram_t *);
+void ec_fsm_pdo_entry_conf_state_set_entry_count(ec_fsm_pdo_entry_t *,
+        ec_datagram_t *);
 
-void ec_fsm_pdo_entry_conf_action_map(ec_fsm_pdo_entry_t *);
+void ec_fsm_pdo_entry_conf_action_map(ec_fsm_pdo_entry_t *, ec_datagram_t *);
 
-void ec_fsm_pdo_entry_state_end(ec_fsm_pdo_entry_t *);
-void ec_fsm_pdo_entry_state_error(ec_fsm_pdo_entry_t *);
+void ec_fsm_pdo_entry_state_end(ec_fsm_pdo_entry_t *, ec_datagram_t *);
+void ec_fsm_pdo_entry_state_error(ec_fsm_pdo_entry_t *, ec_datagram_t *);
 
 /*****************************************************************************/
 
@@ -87,7 +90,7 @@ void ec_fsm_pdo_entry_clear(
 /** Print the current and desired PDO mapping.
  */
 void ec_fsm_pdo_entry_print(
-        ec_fsm_pdo_entry_t *fsm /**< PDO configuration state machine. */
+        ec_fsm_pdo_entry_t *fsm /**< PDO mapping state machine. */
         )
 {
     printk("Currently mapped PDO entries: ");
@@ -103,7 +106,7 @@ void ec_fsm_pdo_entry_print(
  */
 void ec_fsm_pdo_entry_start_reading(
         ec_fsm_pdo_entry_t *fsm, /**< PDO mapping state machine. */
-        ec_slave_t *slave, /**< slave to configure */
+        ec_slave_t *slave, /**< Slave to configure. */
         ec_pdo_t *pdo /**< PDO to read entries for. */
         )
 {
@@ -111,7 +114,7 @@ void ec_fsm_pdo_entry_start_reading(
     fsm->target_pdo = pdo;
 
     ec_pdo_clear_entries(fsm->target_pdo);
-    
+
     fsm->state = ec_fsm_pdo_entry_read_state_start;
 }
 
@@ -121,7 +124,7 @@ void ec_fsm_pdo_entry_start_reading(
  */
 void ec_fsm_pdo_entry_start_configuration(
         ec_fsm_pdo_entry_t *fsm, /**< PDO mapping state machine. */
-        ec_slave_t *slave, /**< slave to configure */
+        ec_slave_t *slave, /**< Slave to configure. */
         const ec_pdo_t *pdo, /**< PDO with the desired entries. */
         const ec_pdo_t *cur_pdo /**< Current PDO mapping. */
         )
@@ -160,10 +163,12 @@ int ec_fsm_pdo_entry_running(
  * \return false, if state machine has terminated
  */
 int ec_fsm_pdo_entry_exec(
-        ec_fsm_pdo_entry_t *fsm /**< PDO mapping state machine. */
+        ec_fsm_pdo_entry_t *fsm, /**< PDO mapping state machine. */
+        ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
-    fsm->state(fsm);
+    fsm->state(fsm, datagram);
+
     return ec_fsm_pdo_entry_running(fsm);
 }
 
@@ -187,15 +192,16 @@ int ec_fsm_pdo_entry_success(
 /** Request reading the number of mapped PDO entries.
  */
 void ec_fsm_pdo_entry_read_state_start(
-        ec_fsm_pdo_entry_t *fsm /**< PDO mapping state machine. */
+        ec_fsm_pdo_entry_t *fsm, /**< PDO mapping state machine. */
+        ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
-    ec_sdo_request_address(&fsm->request, fsm->target_pdo->index, 0);
+    ecrt_sdo_request_index(&fsm->request, fsm->target_pdo->index, 0);
     ecrt_sdo_request_read(&fsm->request);
 
     fsm->state = ec_fsm_pdo_entry_read_state_count;
     ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, &fsm->request);
-    ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
+    ec_fsm_coe_exec(fsm->fsm_coe, datagram); // execute immediately
 }
 
 /*****************************************************************************/
@@ -203,11 +209,13 @@ void ec_fsm_pdo_entry_read_state_start(
 /** Read number of mapped PDO entries.
  */
 void ec_fsm_pdo_entry_read_state_count(
-        ec_fsm_pdo_entry_t *fsm /**< finite state machine */
+        ec_fsm_pdo_entry_t *fsm, /**< finite state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
-    if (ec_fsm_coe_exec(fsm->fsm_coe))
+    if (ec_fsm_coe_exec(fsm->fsm_coe, datagram)) {
         return;
+    }
 
     if (!ec_fsm_coe_success(fsm->fsm_coe)) {
         EC_SLAVE_ERR(fsm->slave,
@@ -231,7 +239,7 @@ void ec_fsm_pdo_entry_read_state_count(
 
     // read first PDO entry
     fsm->entry_pos = 1;
-    ec_fsm_pdo_entry_read_action_next(fsm);
+    ec_fsm_pdo_entry_read_action_next(fsm, datagram);
 }
 
 /*****************************************************************************/
@@ -239,15 +247,17 @@ void ec_fsm_pdo_entry_read_state_count(
 /** Read next PDO entry.
  */
 void ec_fsm_pdo_entry_read_action_next(
-        ec_fsm_pdo_entry_t *fsm /**< finite state machine */
+        ec_fsm_pdo_entry_t *fsm, /**< finite state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
     if (fsm->entry_pos <= fsm->entry_count) {
-        ec_sdo_request_address(&fsm->request, fsm->target_pdo->index, fsm->entry_pos);
+        ecrt_sdo_request_index(&fsm->request, fsm->target_pdo->index,
+                fsm->entry_pos);
         ecrt_sdo_request_read(&fsm->request);
         fsm->state = ec_fsm_pdo_entry_read_state_entry;
         ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, &fsm->request);
-        ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
+        ec_fsm_coe_exec(fsm->fsm_coe, datagram); // execute immediately
         return;
     }
 
@@ -260,10 +270,13 @@ void ec_fsm_pdo_entry_read_action_next(
 /** Read PDO entry information.
  */
 void ec_fsm_pdo_entry_read_state_entry(
-        ec_fsm_pdo_entry_t *fsm /**< finite state machine */
+        ec_fsm_pdo_entry_t *fsm, /**< finite state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
-    if (ec_fsm_coe_exec(fsm->fsm_coe)) return;
+    if (ec_fsm_coe_exec(fsm->fsm_coe, datagram)) {
+        return;
+    }
 
     if (!ec_fsm_coe_success(fsm->fsm_coe)) {
         EC_SLAVE_ERR(fsm->slave, "Failed to read mapped PDO entry.\n");
@@ -314,7 +327,7 @@ void ec_fsm_pdo_entry_read_state_entry(
 
         // next PDO entry
         fsm->entry_pos++;
-        ec_fsm_pdo_entry_read_action_next(fsm);
+        ec_fsm_pdo_entry_read_action_next(fsm, datagram);
     }
 }
 
@@ -325,7 +338,8 @@ void ec_fsm_pdo_entry_read_state_entry(
 /** Start PDO mapping.
  */
 void ec_fsm_pdo_entry_conf_state_start(
-        ec_fsm_pdo_entry_t *fsm /**< PDO mapping state machine. */
+        ec_fsm_pdo_entry_t *fsm, /**< PDO mapping state machine. */
+        ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
     if (ec_sdo_request_alloc(&fsm->request, 4)) {
@@ -336,26 +350,28 @@ void ec_fsm_pdo_entry_conf_state_start(
     // set mapped PDO entry count to zero
     EC_WRITE_U8(fsm->request.data, 0);
     fsm->request.data_size = 1;
-    ec_sdo_request_address(&fsm->request, fsm->source_pdo->index, 0);
+    ecrt_sdo_request_index(&fsm->request, fsm->source_pdo->index, 0);
     ecrt_sdo_request_write(&fsm->request);
 
     EC_SLAVE_DBG(fsm->slave, 1, "Setting entry count to zero.\n");
 
     fsm->state = ec_fsm_pdo_entry_conf_state_zero_entry_count;
     ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, &fsm->request);
-    ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
+    ec_fsm_coe_exec(fsm->fsm_coe, datagram); // execute immediately
 }
 
 /*****************************************************************************/
 
 /** Process next PDO entry.
+ *
+ * \return Next PDO entry, or NULL.
  */
 ec_pdo_entry_t *ec_fsm_pdo_entry_conf_next_entry(
         const ec_fsm_pdo_entry_t *fsm, /**< PDO mapping state machine. */
         const struct list_head *list /**< current entry list item */
         )
 {
-    list = list->next; 
+    list = list->next;
     if (list == &fsm->source_pdo->entries)
         return NULL; // no next entry
     return list_entry(list, ec_pdo_entry_t, list);
@@ -366,11 +382,13 @@ ec_pdo_entry_t *ec_fsm_pdo_entry_conf_next_entry(
 /** Set the number of mapped entries to zero.
  */
 void ec_fsm_pdo_entry_conf_state_zero_entry_count(
-        ec_fsm_pdo_entry_t *fsm /**< PDO mapping state machine. */
+        ec_fsm_pdo_entry_t *fsm, /**< PDO mapping state machine. */
+        ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
-    if (ec_fsm_coe_exec(fsm->fsm_coe))
+    if (ec_fsm_coe_exec(fsm->fsm_coe, datagram)) {
         return;
+    }
 
     if (!ec_fsm_coe_success(fsm->fsm_coe)) {
         EC_SLAVE_WARN(fsm->slave, "Failed to clear PDO mapping.\n");
@@ -382,7 +400,7 @@ void ec_fsm_pdo_entry_conf_state_zero_entry_count(
     // find first entry
     if (!(fsm->entry = ec_fsm_pdo_entry_conf_next_entry(
                     fsm, &fsm->source_pdo->entries))) {
-        
+
         EC_SLAVE_DBG(fsm->slave, 1, "No entries to map.\n");
 
         fsm->state = ec_fsm_pdo_entry_state_end; // finished
@@ -391,7 +409,7 @@ void ec_fsm_pdo_entry_conf_state_zero_entry_count(
 
     // add first entry
     fsm->entry_pos = 1;
-    ec_fsm_pdo_entry_conf_action_map(fsm);
+    ec_fsm_pdo_entry_conf_action_map(fsm, datagram);
 }
 
 /*****************************************************************************/
@@ -399,7 +417,8 @@ void ec_fsm_pdo_entry_conf_state_zero_entry_count(
 /** Starts to add a PDO entry.
  */
 void ec_fsm_pdo_entry_conf_action_map(
-        ec_fsm_pdo_entry_t *fsm /**< PDO mapping state machine. */
+        ec_fsm_pdo_entry_t *fsm, /**< PDO mapping state machine. */
+        ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
     uint32_t value;
@@ -413,12 +432,13 @@ void ec_fsm_pdo_entry_conf_action_map(
         | fsm->entry->subindex << 8 | fsm->entry->bit_length;
     EC_WRITE_U32(fsm->request.data, value);
     fsm->request.data_size = 4;
-    ec_sdo_request_address(&fsm->request, fsm->source_pdo->index, fsm->entry_pos);
+    ecrt_sdo_request_index(&fsm->request, fsm->source_pdo->index,
+            fsm->entry_pos);
     ecrt_sdo_request_write(&fsm->request);
-    
+
     fsm->state = ec_fsm_pdo_entry_conf_state_map_entry;
     ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, &fsm->request);
-    ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
+    ec_fsm_coe_exec(fsm->fsm_coe, datagram); // execute immediately
 }
 
 /*****************************************************************************/
@@ -426,10 +446,13 @@ void ec_fsm_pdo_entry_conf_action_map(
 /** Add a PDO entry.
  */
 void ec_fsm_pdo_entry_conf_state_map_entry(
-        ec_fsm_pdo_entry_t *fsm /**< PDO mapping state machine. */
+        ec_fsm_pdo_entry_t *fsm, /**< PDO mapping state machine. */
+        ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
-    if (ec_fsm_coe_exec(fsm->fsm_coe)) return;
+    if (ec_fsm_coe_exec(fsm->fsm_coe, datagram)) {
+        return;
+    }
 
     if (!ec_fsm_coe_success(fsm->fsm_coe)) {
         EC_SLAVE_WARN(fsm->slave, "Failed to map PDO entry"
@@ -448,21 +471,21 @@ void ec_fsm_pdo_entry_conf_state_map_entry(
         // No more entries to add. Write entry count.
         EC_WRITE_U8(fsm->request.data, fsm->entry_pos);
         fsm->request.data_size = 1;
-        ec_sdo_request_address(&fsm->request, fsm->source_pdo->index, 0);
+        ecrt_sdo_request_index(&fsm->request, fsm->source_pdo->index, 0);
         ecrt_sdo_request_write(&fsm->request);
 
         EC_SLAVE_DBG(fsm->slave, 1, "Setting number of PDO entries to %u.\n",
                 fsm->entry_pos);
-        
+
         fsm->state = ec_fsm_pdo_entry_conf_state_set_entry_count;
         ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, &fsm->request);
-        ec_fsm_coe_exec(fsm->fsm_coe); // execute immediately
+        ec_fsm_coe_exec(fsm->fsm_coe, datagram); // execute immediately
         return;
     }
 
     // add next entry
     fsm->entry_pos++;
-    ec_fsm_pdo_entry_conf_action_map(fsm);
+    ec_fsm_pdo_entry_conf_action_map(fsm, datagram);
 }
 
 /*****************************************************************************/
@@ -470,10 +493,13 @@ void ec_fsm_pdo_entry_conf_state_map_entry(
 /** Set the number of entries.
  */
 void ec_fsm_pdo_entry_conf_state_set_entry_count(
-        ec_fsm_pdo_entry_t *fsm /**< PDO mapping state machine. */
+        ec_fsm_pdo_entry_t *fsm, /**< PDO mapping state machine. */
+        ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
-    if (ec_fsm_coe_exec(fsm->fsm_coe)) return;
+    if (ec_fsm_coe_exec(fsm->fsm_coe, datagram)) {
+        return;
+    }
 
     if (!ec_fsm_coe_success(fsm->fsm_coe)) {
         EC_SLAVE_WARN(fsm->slave, "Failed to set number of entries.\n");
@@ -495,7 +521,8 @@ void ec_fsm_pdo_entry_conf_state_set_entry_count(
 /** State: ERROR.
  */
 void ec_fsm_pdo_entry_state_error(
-        ec_fsm_pdo_entry_t *fsm /**< PDO mapping state machine. */
+        ec_fsm_pdo_entry_t *fsm, /**< PDO mapping state machine. */
+        ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
 }
@@ -505,7 +532,8 @@ void ec_fsm_pdo_entry_state_error(
 /** State: END.
  */
 void ec_fsm_pdo_entry_state_end(
-        ec_fsm_pdo_entry_t *fsm /**< PDO mapping state machine. */
+        ec_fsm_pdo_entry_t *fsm, /**< PDO mapping state machine. */
+        ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
 }

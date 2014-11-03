@@ -2,7 +2,6 @@
 /* $Id$ */
 
 digraph slaveconf {
-    size="3,5"
     node [fontname="Helvetica"]
     edge [fontname="Helvetica", fontsize="12"]
 

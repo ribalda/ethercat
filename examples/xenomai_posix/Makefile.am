@@ -2,7 +2,7 @@
 #
 #  $Id$
 #
-#  Copyright (C) 2006-2008  Florian Pose, Ingenieurgemeinschaft IgH
+#  Copyright (C) 2006-2012  Florian Pose, Ingenieurgemeinschaft IgH
 #
 #  This file is part of the IgH EtherCAT Master.
 #
@@ -20,21 +20,26 @@
 #  Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 #  ---
-#  
+#
 #  The license mentioned above concerns the source code only. Using the
 #  EtherCAT technology and brand is only permitted in compliance with the
 #  industrial property and similar rights of Beckhoff Automation GmbH.
 #
 #------------------------------------------------------------------------------
 
-
-AM_CFLAGS = -Wall
-
 noinst_PROGRAMS = ec_xenomai_posix_example
 
 ec_xenomai_posix_example_SOURCES = main.c
-ec_xenomai_posix_example_CFLAGS = -I"$(XENOMAI_DIR)"/include -D_GNU_SOURCE -D_REENTRANT -Wall -pipe -D__XENO__ -I"$(XENOMAI_DIR)"/include/posix -I$(top_srcdir)/include
-ec_xenomai_posix_example_LDFLAGS = -Wl,@"$(XENOMAI_DIR)"/lib/posix.wrappers -L"$(XENOMAI_DIR)"/lib -lpthread_rt -lrtdm -L$(top_builddir)/lib/.libs -lethercat -lrtdk -lxenomai -lpthread
 
+ec_xenomai_posix_example_CFLAGS = \
+	-Wall \
+	-I$(top_srcdir)/include \
+	$(XENOMAI_POSIX_CFLAGS) \
+	$(XENOMAI_RTDM_CFLAGS)
+
+ec_xenomai_posix_example_LDFLAGS = \
+	-L$(top_builddir)/lib/.libs -lethercat_rtdm \
+	$(XENOMAI_POSIX_LDFLAGS) \
+	$(XENOMAI_RTDM_LDFLAGS)
 
 #------------------------------------------------------------------------------

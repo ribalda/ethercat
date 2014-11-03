@@ -2,7 +2,7 @@
  *
  *  $Id$
  *
- *  Copyright (C) 2006-2008  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2012  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT master userspace library.
  *
@@ -39,6 +39,37 @@
  * request a master, to map process data, to communicate with slaves via CoE
  * and to configure and activate the bus.
  *
+ * Changes in version 1.5.2:
+ *
+ * - Added redundancy_active flag to ec_domain_state_t.
+ * - Added ecrt_master_link_state() method and ec_master_link_state_t to query
+ *   the state of a redundant link.
+ * - Added the EC_HAVE_REDUNDANCY define, to check, if the interface contains
+ *   redundancy features.
+ * - Added ecrt_sdo_request_index() to change SDO index and subindex after
+ *   handler creation.
+ * - Added interface for retrieving CoE emergency messages, i. e.
+ *   ecrt_slave_config_emerg_size(), ecrt_slave_config_emerg_pop(),
+ *   ecrt_slave_config_emerg_clear(), ecrt_slave_config_emerg_overruns() and
+ *   the defines EC_HAVE_EMERGENCY and EC_COE_EMERGENCY_MSG_SIZE.
+ * - Added interface for direct EtherCAT register access: Added data type
+ *   ec_reg_request_t and methods ecrt_slave_config_create_reg_request(),
+ *   ecrt_reg_request_data(), ecrt_reg_request_state(),
+ *   ecrt_reg_request_write(), ecrt_reg_request_read() and the feature flag
+ *   EC_HAVE_REG_ACCESS.
+ * - Added method to select the reference clock,
+ *   ecrt_master_select_reference_clock() and the feature flag
+ *   EC_HAVE_SELECT_REF_CLOCK to check, if the method is available.
+ * - Added method to get the reference clock time,
+ *   ecrt_master_reference_clock_time() and the feature flag
+ *   EC_HAVE_REF_CLOCK_TIME to have the possibility to synchronize the master
+ *   clock to the reference clock.
+ * - Changed the data types of the shift times in ecrt_slave_config_dc() to
+ *   int32_t to correctly display negative shift times.
+ * - Added ecrt_slave_config_reg_pdo_entry_pos() and the feature flag
+ *   EC_HAVE_REG_BY_POS for registering PDO entries with non-unique indices
+ *   via their positions in the mapping.
+ *
  * Changes in version 1.5:
  *
  * - Added the distributed clocks feature and the respective method
@@ -49,7 +80,9 @@
  *   ecrt_master_sync_monitor_queue() and ecrt_master_sync_monitor_process()
  *   methods can be used to monitor the synchrony.
  * - Improved the callback mechanism. ecrt_master_callbacks() now takes two
- *   callback functions for locking and unlocking the fsm datagram queue.
+ *   callback functions for sending and receiving datagrams.
+ *   ecrt_master_send_ext() is used to execute the sending of non-application
+ *   datagrams.
  * - Added watchdog configuration (method ecrt_slave_config_watchdog(),
  *   #ec_watchdog_mode_t, \a watchdog_mode parameter in ec_sync_info_t and
  *   ecrt_slave_config_sync_manager()).
@@ -78,8 +111,6 @@
  *   and ecrt_master_read_idn() and ecrt_master_write_idn() to read/write IDNs
  *   ad-hoc via the user-space library.
  * - Added ecrt_master_reset() to initiate retrying to configure slaves.
- * - Added support for overlapping PDOs which allows inputs to use the same
- *   space as outputs on the frame. This reduces the frame length.
  *
  * @{
  */
@@ -119,6 +150,43 @@
  */
 #define ECRT_VERSION_MAGIC ECRT_VERSION(ECRT_VER_MAJOR, ECRT_VER_MINOR)
 
+/******************************************************************************
+ * Feature flags
+ *****************************************************************************/
+
+/** Defined, if the redundancy features are available.
+ *
+ * I. e. if the \a redundancy_active flag in ec_domain_state_t and the
+ * ecrt_master_link_state() method are available.
+ */
+#define EC_HAVE_REDUNDANCY
+
+/** Defined, if the CoE emergency ring feature is available.
+ *
+ * I. e. if the ecrt_slave_config_emerg_*() methods are available.
+ */
+#define EC_HAVE_EMERGENCY
+
+/** Defined, if the register access interface is available.
+ *
+ * I. e. if the methods ecrt_slave_config_create_reg_request(),
+ * ecrt_reg_request_data(), ecrt_reg_request_state(), ecrt_reg_request_write()
+ * and ecrt_reg_request_read() are available.
+ */
+#define EC_HAVE_REG_ACCESS
+
+/** Defined if the method ecrt_master_select_reference_clock() is available.
+ */
+#define EC_HAVE_SELECT_REF_CLOCK
+
+/** Defined if the method ecrt_master_reference_clock_time() is available.
+ */
+#define EC_HAVE_REF_CLOCK_TIME
+
+/** Defined if the method ecrt_slave_config_reg_pdo_entry_pos() is available.
+ */
+#define EC_HAVE_REG_BY_POS
+
 /*****************************************************************************/
 
 /** End of list marker.
@@ -151,6 +219,12 @@
 #define EC_TIMEVAL2NANO(TV) \
     (((TV).tv_sec - 946684800ULL) * 1000000000ULL + (TV).tv_usec * 1000ULL)
 
+/** Size of a CoE emergency message in byte.
+ *
+ * \see ecrt_slave_config_emerg_pop().
+ */
+#define EC_COE_EMERGENCY_MSG_SIZE 8
+
 /******************************************************************************
  * Data types
  *****************************************************************************/
@@ -170,18 +244,20 @@ typedef struct ec_sdo_request ec_sdo_request_t; /**< \see ec_sdo_request. */
 struct ec_voe_handler;
 typedef struct ec_voe_handler ec_voe_handler_t; /**< \see ec_voe_handler. */
 
+struct ec_reg_request;
+typedef struct ec_reg_request ec_reg_request_t; /**< \see ec_sdo_request. */
+
 /*****************************************************************************/
 
 /** Master state.
  *
- * This is used for the output parameter of ecrt_master_state() and
- * ecrt_master_configured_slaves_state().
+ * This is used for the output parameter of ecrt_master_state().
  *
  * \see ecrt_master_state().
- * \see ecrt_master_configured_slaves_state().
  */
 typedef struct {
-    unsigned int slaves_responding; /**< Number of slaves in the bus. */
+    unsigned int slaves_responding; /**< Sum of responding slaves on all
+                                      Ethernet devices. */
     unsigned int al_states : 4; /**< Application-layer states of all slaves.
                                   The states are coded in the lower 4 bits.
                                   If a bit is set, it means that at least one
@@ -191,8 +267,33 @@ typedef struct {
                                   - Bit 1: \a PREOP
                                   - Bit 2: \a SAFEOP
                                   - Bit 3: \a OP */
-    unsigned int link_up : 1; /**< \a true, if the network link is up. */
+    unsigned int link_up : 1; /**< \a true, if at least one Ethernet link is
+                                up. */
 } ec_master_state_t;
+
+/*****************************************************************************/
+
+/** Redundant link state.
+ *
+ * This is used for the output parameter of ecrt_master_link_state().
+ *
+ * \see ecrt_master_link_state().
+ */
+typedef struct {
+    unsigned int slaves_responding; /**< Sum of responding slaves on the given
+                                      link. */
+    unsigned int al_states : 4; /**< Application-layer states of the slaves on
+                                  the given link.  The states are coded in the
+                                  lower 4 bits.  If a bit is set, it means
+                                  that at least one slave in the bus is in the
+                                  corresponding state:
+                                  - Bit 0: \a INIT
+                                  - Bit 1: \a PREOP
+                                  - Bit 2: \a SAFEOP
+                                  - Bit 3: \a OP */
+    unsigned int link_up : 1; /**< \a true, if the given Ethernet link is up.
+                               */
+} ec_master_link_state_t;
 
 /*****************************************************************************/
 
@@ -238,8 +339,8 @@ typedef struct {
 typedef enum {
     EC_PORT_NOT_IMPLEMENTED, /**< Port is not implemented. */
     EC_PORT_NOT_CONFIGURED, /**< Port is not configured. */
-    EC_PORT_EBUS, /**< Port is an e-bus. */
-    EC_PORT_MII /**< Port is a mii. */
+    EC_PORT_EBUS, /**< Port is an E-Bus. */
+    EC_PORT_MII /**< Port is a MII. */
 } ec_slave_port_desc_t;
 
 /*****************************************************************************/
@@ -306,6 +407,7 @@ typedef enum {
 typedef struct {
     unsigned int working_counter; /**< Value of the last working counter. */
     ec_wc_state_t wc_state; /**< Working counter interpretation. */
+    unsigned int redundancy_active; /**< Redundant link is in use. */
 } ec_domain_state_t;
 
 /*****************************************************************************/
@@ -486,24 +588,15 @@ ec_master_t *ecrt_open_master(
  *
  * After use, a master it has to be released to make it available for other
  * applications.
+ *
+ * This method frees all created data structures. It should not be called in
+ * realtime context.
+ *
+ * If the master was activated, ecrt_master_deactivate() is called internally.
  */
 void ecrt_release_master(
         ec_master_t *master /**< EtherCAT master */
         );
-
-#ifdef __KERNEL__
-
-/** Attach to a running master
- *
- * This function returns the master handle for the RTDM-Interface
- *
- * \return Pointer to the opened master, otherwise \a NULL.
- */
-ec_master_t *ecrt_attach_master(
-       unsigned int master_index /**< Index of the master to request. */
-       );
-
-#endif // #ifdef __KERNEL__
 
 /******************************************************************************
  * Master methods
@@ -517,7 +610,6 @@ ec_master_t *ecrt_attach_master(
  * request functions on the master, it has to reserve one for exclusive use.
  *
  * \return 0 in case of success, else < 0
- *
  */
 int ecrt_master_reserve(
         ec_master_t *master /**< EtherCAT master */
@@ -529,49 +621,30 @@ int ecrt_master_reserve(
 
 /** Sets the locking callbacks.
  *
- * For concurrent master access, the application has to provide a locking
- * mechanism. The method takes two function pointers and a data value as
- * its parameters.
- * The arbitrary \a cb_data value will be passed as argument on every callback.
+ * For concurrent master access, i. e. if other instances than the application
+ * want to send and receive datagrams on the bus, the application has to
+ * provide a callback mechanism. This method takes two function pointers as
+ * its parameters. Asynchronous master access (like EoE processing) is only
+ * possible if the callbacks have been set.
  *
+ * The task of the send callback (\a send_cb) is to decide, if the bus is
+ * currently accessible and whether or not to call the ecrt_master_send_ext()
+ * method.
+ *
+ * The task of the receive callback (\a receive_cb) is to decide, if a call to
+ * ecrt_master_receive() is allowed and to execute it respectively.
+ *
+ * \attention This method has to be called before ecrt_master_activate().
  */
 void ecrt_master_callbacks(
         ec_master_t *master, /**< EtherCAT master */
-        void (*lock_cb)(void *), /**< Lock function. */
-        void (*unlock_cb)(void *), /**< Unlock function. */
-        void *cb_data /**< Arbitrary user data. */
+        void (*send_cb)(void *), /**< Datagram sending callback. */
+        void (*receive_cb)(void *), /**< Receive callback. */
+        void *cb_data /**< Arbitrary pointer passed to the callback functions.
+                       */
         );
 
-/** Returns domain structure pointer
- *
- * \fixme The application knows the domain pointers!
- *
- * This functions return the domain structure pointer for usage inside the
- * RTDM-Interface.
- *
- * \return Pointer to the domain on success, else NULL.
- */
-ec_domain_t *ecrt_master_find_domain(
-        ec_master_t *master,
-        unsigned int index);
-
 #endif /* __KERNEL__ */
-
-#ifndef __KERNEL__
-
-/** Return the domain index of a given domain strucure
- *
- * Return the domain index of a given domain strucure. Usage inside of the
- * RTDM Interface
- *
- * \return Index of the domain strucure
- *
- */
- unsigned int ecrt_domain_index(
-         ec_domain_t *domain
-         );
-
-#endif // #ifndef __KERNEL__
 
 /** Creates a new process data domain.
  *
@@ -579,6 +652,9 @@ ec_domain_t *ecrt_master_find_domain(
  * This method creates a new process data domain and returns a pointer to the
  * new domain object. This object can be used for registering PDOs and
  * exchanging them in cyclic operation.
+ *
+ * This method allocates memory and should be called in non-realtime context
+ * before ecrt_master_activate().
  *
  * \return Pointer to the new domain on success, else NULL.
  */
@@ -610,6 +686,9 @@ ec_domain_t *ecrt_master_create_domain(
  * configuration, a warning is raised and only the first configuration is
  * applied.
  *
+ * This method allocates memory and should be called in non-realtime context
+ * before ecrt_master_activate().
+ *
  * \retval >0 Pointer to the slave configuration structure.
  * \retval NULL in the error case.
  */
@@ -619,6 +698,20 @@ ec_slave_config_t *ecrt_master_slave_config(
         uint16_t position, /**< Slave position. */
         uint32_t vendor_id, /**< Expected vendor ID. */
         uint32_t product_code /**< Expected product code. */
+        );
+
+/** Selects the reference clock for distributed clocks.
+ *
+ * If this method is not called for a certain master, or if the slave
+ * configuration pointer is NULL, then the first slave with DC functionality
+ * will provide the reference clock.
+ *
+ * \return 0 on success, otherwise negative error code.
+ */
+int ecrt_master_select_reference_clock(
+        ec_master_t *master, /**< EtherCAT master. */
+        ec_slave_config_t *sc /**< Slave config of the slave to use as the
+                               * reference slave (or NULL). */
         );
 
 /** Obtains master information.
@@ -772,7 +865,7 @@ int ecrt_master_sdo_upload(
  * error occurred.
  *
  * \retval  0 Success.
- * \retval -1 An error occured.
+ * \retval <0 Error code.
  */
 int ecrt_master_write_idn(
         ec_master_t *master, /**< EtherCAT master. */
@@ -791,7 +884,7 @@ int ecrt_master_write_idn(
  * error occurred.
  *
  * \retval  0 Success.
- * \retval -1 An error occured.
+ * \retval <0 Error code.
  */
 int ecrt_master_read_idn(
         ec_master_t *master, /**< EtherCAT master. */
@@ -818,7 +911,8 @@ int ecrt_master_read_idn(
  * in charge of cyclically calling ecrt_master_send() and
  * ecrt_master_receive() to ensure bus communication. Before calling this
  * function, the master thread is responsible for that, so these functions may
- * not be called!
+ * not be called! The method itself allocates memory and should not be called
+ * in realtime context.
  *
  * \return 0 in case of success, else < 0
  */
@@ -833,13 +927,22 @@ int ecrt_master_activate(
  * ecrt_slave_config_create_sdo_request() and
  * ecrt_slave_config_create_voe_handler() are freed, so pointers to them
  * become invalid.
+ *
+ * This method should not be called in realtime context.
  */
 void ecrt_master_deactivate(
         ec_master_t *master /**< EtherCAT master. */
         );
 
-/** Set interval between calls to ecrt_master_send
+/** Set interval between calls to ecrt_master_send().
  *
+ * This information helps the master to decide, how much data can be appended
+ * to a frame by the master state machine. When the master is configured with
+ * --enable-hrtimers, this is used to calculate the scheduling of the master
+ * thread.
+ *
+ * \retval 0 on success.
+ * \retval <0 Error code.
  */
 int ecrt_master_set_send_interval(
         ec_master_t *master, /**< EtherCAT master. */
@@ -872,26 +975,39 @@ void ecrt_master_receive(
         ec_master_t *master /**< EtherCAT master. */
         );
 
+/** Sends non-application datagrams.
+ *
+ * This method has to be called in the send callback function passed via
+ * ecrt_master_callbacks() to allow the sending of non-application datagrams.
+ */
+void ecrt_master_send_ext(
+        ec_master_t *master /**< EtherCAT master. */
+        );
+
 /** Reads the current master state.
  *
  * Stores the master state information in the given \a state structure.
+ *
+ * This method returns a global state. For the link-specific states in a
+ * redundant bus topology, use the ecrt_master_link_state() method.
  */
 void ecrt_master_state(
         const ec_master_t *master, /**< EtherCAT master. */
         ec_master_state_t *state /**< Structure to store the information. */
         );
 
-/** Reads the current master state and the al_state of all configured slaves.
+/** Reads the current state of a redundant link.
  *
- * Use this function instead of ecrt_master_state() if there are unused slaves
- * on the bus. Stores the master state information in the given \a state
- * structure.
+ * Stores the link state information in the given \a state structure.
  *
- * \see ecrt_master_state()
+ * \return Zero on success, otherwise negative error code.
  */
-void ecrt_master_configured_slaves_state(
+int ecrt_master_link_state(
         const ec_master_t *master, /**< EtherCAT master. */
-        ec_master_state_t *state /**< Structure to store the information. */
+        unsigned int dev_idx, /**< Index of the device (0 = main device, 1 =
+                                first backup device, ...). */
+        ec_master_link_state_t *state /**< Structure to store the information.
+                                       */
         );
 
 /** Sets the application time.
@@ -899,6 +1015,12 @@ void ecrt_master_configured_slaves_state(
  * The master has to know the application's time when operating slaves with
  * distributed clocks. The time is not incremented by the master itself, so
  * this method has to be called cyclically.
+ *
+ * \attention The first call of this method is used to calculate the phase
+ * delay for the slaves' SYNC0/1 interrupts. Either the method has to be
+ * called during the realtime cycle *only*, or the first time submitted must
+ * be in-phase with the realtime cycle. Otherwise synchronisation problems can
+ * occur.
  *
  * The time is used when setting the slaves' <tt>System Time Offset</tt> and
  * <tt>Cyclic Operation Start Time</tt> registers and when synchronizing the
@@ -930,23 +1052,44 @@ void ecrt_master_sync_slave_clocks(
         ec_master_t *master /**< EtherCAT master. */
         );
 
-/** Queues the DC synchonity monitoring datagram for sending.
+/** Get the lower 32 bit of the reference clock system time.
+ *
+ * This method can be used to synchronize the master to the reference clock.
+ *
+ * The reference clock system time is queried via the
+ * ecrt_master_sync_slave_clocks() method, that reads the system time of the
+ * reference clock and writes it to the slave clocks (so be sure to call it
+ * cyclically to get valid data).
+ *
+ * \attention The returned time is the system time of the reference clock
+ * minus the transmission delay of the reference clock.
+ *
+ * \retval 0 success, system time was written into \a time.
+ * \retval -ENXIO No reference clock found.
+ * \retval -EIO Slave synchronization datagram was not received.
+ */
+int ecrt_master_reference_clock_time(
+        ec_master_t *master, /**< EtherCAT master. */
+        uint32_t *time /**< Pointer to store the queried system time. */
+        );
+
+/** Queues the DC synchrony monitoring datagram for sending.
  *
  * The datagram broadcast-reads all "System time difference" registers (\a
- * 0x092c) to get an upper estiomation of the DC synchony. The result can be
+ * 0x092c) to get an upper estimation of the DC synchrony. The result can be
  * checked with the ecrt_master_sync_monitor_process() method.
  */
 void ecrt_master_sync_monitor_queue(
         ec_master_t *master /**< EtherCAT master. */
         );
 
-/** Processes the DC synchonity monitoring datagram.
+/** Processes the DC synchrony monitoring datagram.
  *
  * If the sync monitoring datagram was sent before with
  * ecrt_master_sync_monitor_queue(), the result can be queried with this
  * method.
  *
- * \return Upper estination of the maximum time difference in ns.
+ * \return Upper estimation of the maximum time difference in ns.
  */
 uint32_t ecrt_master_sync_monitor_process(
         ec_master_t *master /**< EtherCAT master. */
@@ -972,6 +1115,9 @@ void ecrt_master_reset(
  * Sets the direction of a sync manager. This overrides the direction bits
  * from the default control register from SII.
  *
+ * This method has to be called in non-realtime context before
+ * ecrt_master_activate().
+ *
  * \return zero on success, else non-zero
  */
 int ecrt_slave_config_sync_manager(
@@ -983,31 +1129,26 @@ int ecrt_slave_config_sync_manager(
         );
 
 /** Configure a slave's watchdog times.
+ *
+ * This method has to be called in non-realtime context before
+ * ecrt_master_activate().
  */
 void ecrt_slave_config_watchdog(
         ec_slave_config_t *sc, /**< Slave configuration. */
         uint16_t watchdog_divider, /**< Number of 40 ns intervals. Used as a
                                      base unit for all slave watchdogs. If set
                                      to zero, the value is not written, so the
-                                     default ist used. */
+                                     default is used. */
         uint16_t watchdog_intervals /**< Number of base intervals for process
                                       data watchdog. If set to zero, the value
                                       is not written, so the default is used.
                                      */
         );
 
-/** Configure wether a slave allows overlapping PDOs.
- *
- * Overlapping PDOs allows inputs to use the same space as outputs on the frame.
- * This reduces the frame length.
- */
-void ecrt_slave_config_overlapping_pdos(
-        ec_slave_config_t *sc, /**< Slave configuration. */
-        uint8_t allow_overlapping_pdos /**< Allow overlapping PDOs */
-        );
-
-
 /** Add a PDO to a sync manager's PDO assignment.
+ *
+ * This method has to be called in non-realtime context before
+ * ecrt_master_activate().
  *
  * \see ecrt_slave_config_pdos()
  * \return zero on success, else non-zero
@@ -1025,6 +1166,9 @@ int ecrt_slave_config_pdo_assign_add(
  * ecrt_slave_config_pdo_assign_add(), to clear the default assignment of a
  * sync manager.
  *
+ * This method has to be called in non-realtime context before
+ * ecrt_master_activate().
+ *
  * \see ecrt_slave_config_pdos()
  */
 void ecrt_slave_config_pdo_assign_clear(
@@ -1034,6 +1178,9 @@ void ecrt_slave_config_pdo_assign_clear(
         );
 
 /** Add a PDO entry to the given PDO's mapping.
+ *
+ * This method has to be called in non-realtime context before
+ * ecrt_master_activate().
  *
  * \see ecrt_slave_config_pdos()
  * \return zero on success, else non-zero
@@ -1052,6 +1199,9 @@ int ecrt_slave_config_pdo_mapping_add(
  *
  * This can be called before mapping PDO entries via
  * ecrt_slave_config_pdo_mapping_add(), to clear the default mapping.
+ *
+ * This method has to be called in non-realtime context before
+ * ecrt_master_activate().
  *
  * \see ecrt_slave_config_pdos()
  */
@@ -1126,6 +1276,9 @@ void ecrt_slave_config_pdo_mapping_clear(
  *   \a n_syncs should set to a number greater than the number of list items;
  *   using EC_END is recommended.
  *
+ * This method has to be called in non-realtime context before
+ * ecrt_master_activate().
+ *
  * \return zero on success, else non-zero
  */
 int ecrt_slave_config_pdos(
@@ -1148,6 +1301,9 @@ int ecrt_slave_config_pdos(
  * This pointer may be \a NULL, in this case an error is raised if the PDO
  * entry does not byte-align.
  *
+ * This method has to be called in non-realtime context before
+ * ecrt_master_activate().
+ *
  * \retval >=0 Success: Offset of the PDO entry's process data.
  * \retval  <0 Error code.
  */
@@ -1155,6 +1311,29 @@ int ecrt_slave_config_reg_pdo_entry(
         ec_slave_config_t *sc, /**< Slave configuration. */
         uint16_t entry_index, /**< Index of the PDO entry to register. */
         uint8_t entry_subindex, /**< Subindex of the PDO entry to register. */
+        ec_domain_t *domain, /**< Domain. */
+        unsigned int *bit_position /**< Optional address if bit addressing
+                                 is desired */
+        );
+
+/** Registers a PDO entry using its position.
+ *
+ * Similar to ecrt_slave_config_reg_pdo_entry(), but not using PDO indices but
+ * offsets in the PDO mapping, because PDO entry indices may not be unique
+ * inside a slave's PDO mapping. An error is raised, if
+ * one of the given positions is out of range.
+ *
+ * This method has to be called in non-realtime context before
+ * ecrt_master_activate().
+ *
+ * \retval >=0 Success: Offset of the PDO entry's process data.
+ * \retval  <0 Error code.
+ */
+int ecrt_slave_config_reg_pdo_entry_pos(
+        ec_slave_config_t *sc, /**< Slave configuration. */
+        uint8_t sync_index, /**< Sync manager index. */
+        unsigned int pdo_pos, /**< Position of the PDO inside the SM. */
+        unsigned int entry_pos, /**< Position of the entry inside the PDO. */
         ec_domain_t *domain, /**< Domain. */
         unsigned int *bit_position /**< Optional address if bit addressing
                                  is desired */
@@ -1168,14 +1347,19 @@ int ecrt_slave_config_reg_pdo_entry(
  * The AssignActivate word is vendor-specific and can be taken from the XML
  * device description file (Device -> Dc -> AssignActivate). Set this to zero,
  * if the slave shall be operated without distributed clocks (default).
+ *
+ * This method has to be called in non-realtime context before
+ * ecrt_master_activate().
+ *
+ * \attention The \a sync1_shift time is ignored.
  */
 void ecrt_slave_config_dc(
         ec_slave_config_t *sc, /**< Slave configuration. */
         uint16_t assign_activate, /**< AssignActivate word. */
         uint32_t sync0_cycle, /**< SYNC0 cycle time [ns]. */
-        uint32_t sync0_shift, /**< SYNC0 shift time [ns]. */
+        int32_t sync0_shift, /**< SYNC0 shift time [ns]. */
         uint32_t sync1_cycle, /**< SYNC1 cycle time [ns]. */
-        uint32_t sync1_shift /**< SYNC1 shift time [ns]. */
+        int32_t sync1_shift /**< SYNC1 shift time [ns]. */
         );
 
 /** Add an SDO configuration.
@@ -1192,10 +1376,13 @@ void ecrt_slave_config_dc(
  * friends instead.
  *
  * This is the generic function for adding an SDO configuration. Please note
- * that the this function does not do any endianess correction. If
+ * that the this function does not do any endianness correction. If
  * datatype-specific functions are needed (that automatically correct the
- * endianess), have a look at ecrt_slave_config_sdo8(),
+ * endianness), have a look at ecrt_slave_config_sdo8(),
  * ecrt_slave_config_sdo16() and ecrt_slave_config_sdo32().
+ *
+ * This method has to be called in non-realtime context before
+ * ecrt_master_activate().
  *
  * \retval  0 Success.
  * \retval <0 Error code.
@@ -1209,6 +1396,9 @@ int ecrt_slave_config_sdo(
         );
 
 /** Add a configuration value for an 8-bit SDO.
+ *
+ * This method has to be called in non-realtime context before
+ * ecrt_master_activate().
  *
  * \see ecrt_slave_config_sdo().
  *
@@ -1224,6 +1414,9 @@ int ecrt_slave_config_sdo8(
 
 /** Add a configuration value for a 16-bit SDO.
  *
+ * This method has to be called in non-realtime context before
+ * ecrt_master_activate().
+ *
  * \see ecrt_slave_config_sdo().
  *
  * \retval  0 Success.
@@ -1237,6 +1430,9 @@ int ecrt_slave_config_sdo16(
         );
 
 /** Add a configuration value for a 32-bit SDO.
+ *
+ * This method has to be called in non-realtime context before
+ * ecrt_master_activate().
  *
  * \see ecrt_slave_config_sdo().
  *
@@ -1255,6 +1451,9 @@ int ecrt_slave_config_sdo32(
  * The SDO data are transferred via CompleteAccess. Data for the first
  * subindex (0) have to be included.
  *
+ * This method has to be called in non-realtime context before
+ * ecrt_master_activate().
+ *
  * \see ecrt_slave_config_sdo().
  *
  * \retval  0 Success.
@@ -1267,10 +1466,67 @@ int ecrt_slave_config_complete_sdo(
         size_t size /**< Size of the \a data. */
         );
 
+/** Set the size of the CoE emergency ring buffer.
+ *
+ * The initial size is zero, so all messages will be dropped. This method can
+ * be called even after master activation, but it will clear the ring buffer!
+ *
+ * This method has to be called in non-realtime context before
+ * ecrt_master_activate().
+ *
+ * \return 0 on success, or negative error code.
+ */
+int ecrt_slave_config_emerg_size(
+        ec_slave_config_t *sc, /**< Slave configuration. */
+        size_t elements /**< Number of records of the CoE emergency ring. */
+        );
+
+/** Read and remove one record from the CoE emergency ring buffer.
+ *
+ * A record consists of 8 bytes:
+ *
+ * Byte 0-1: Error code (little endian)
+ * Byte   2: Error register
+ * Byte 3-7: Data
+ *
+ * \return 0 on success (record popped), or negative error code (i. e.
+ * -ENOENT, if ring is empty).
+ */
+int ecrt_slave_config_emerg_pop(
+        ec_slave_config_t *sc, /**< Slave configuration. */
+        uint8_t *target /**< Pointer to target memory (at least
+                          EC_COE_EMERGENCY_MSG_SIZE bytes). */
+        );
+
+/** Clears CoE emergency ring buffer and the overrun counter.
+ *
+ * \return 0 on success, or negative error code.
+ */
+int ecrt_slave_config_emerg_clear(
+        ec_slave_config_t *sc /**< Slave configuration. */
+        );
+
+/** Read the number of CoE emergency overruns.
+ *
+ * The overrun counter will be incremented when a CoE emergency message could
+ * not be stored in the ring buffer and had to be dropped. Call
+ * ecrt_slave_config_emerg_clear() to reset the counter.
+ *
+ * \return Number of overruns since last clear, or negative error code.
+ */
+int ecrt_slave_config_emerg_overruns(
+        ec_slave_config_t *sc /**< Slave configuration. */
+        );
+
 /** Create an SDO request to exchange SDOs during realtime operation.
  *
  * The created SDO request object is freed automatically when the master is
  * released.
+ *
+ * This method has to be called in non-realtime context before
+ * ecrt_master_activate().
+ *
+ * \return New SDO request, or NULL on error.
  */
 ec_sdo_request_t *ecrt_slave_config_create_sdo_request(
         ec_slave_config_t *sc, /**< Slave configuration. */
@@ -1288,8 +1544,32 @@ ec_sdo_request_t *ecrt_slave_config_create_sdo_request(
  *
  * The created VoE handler object is freed automatically when the master is
  * released.
+ *
+ * This method has to be called in non-realtime context before
+ * ecrt_master_activate().
+ *
+ * \return New VoE handler, or NULL on error.
  */
 ec_voe_handler_t *ecrt_slave_config_create_voe_handler(
+        ec_slave_config_t *sc, /**< Slave configuration. */
+        size_t size /**< Data size to reserve. */
+        );
+
+/** Create a register request to exchange EtherCAT register contents during
+ * realtime operation.
+ *
+ * This interface should not be used to take over master functionality,
+ * instead it is intended for debugging and monitoring reasons.
+ *
+ * The created register request object is freed automatically when the master
+ * is released.
+ *
+ * This method has to be called in non-realtime context before
+ * ecrt_master_activate().
+ *
+ * \return New register request, or NULL on error.
+ */
+ec_reg_request_t *ecrt_slave_config_create_reg_request(
         ec_slave_config_t *sc, /**< Slave configuration. */
         size_t size /**< Data size to reserve. */
         );
@@ -1316,13 +1596,16 @@ void ecrt_slave_config_state(
  * activation, but can be repeated subsequently, for example after the slave's
  * power supply failed.
  *
- * The \a idn parameter can be separated into serveral sections:
+ * The \a idn parameter can be separated into several sections:
  *  - Bit 15: Standard data (0) or Product data (1)
  *  - Bit 14 - 12: Parameter set (0 - 7)
  *  - Bit 11 - 0: Data block number (0 - 4095)
  *
- * Please note that the this function does not do any endianess correction.
- * Multi-byte data have to be passed in EtherCAT endianess (little-endian).
+ * Please note that the this function does not do any endianness correction.
+ * Multi-byte data have to be passed in EtherCAT endianness (little-endian).
+ *
+ * This method has to be called in non-realtime context before
+ * ecrt_master_activate().
  *
  * \retval  0 Success.
  * \retval <0 Error code.
@@ -1343,7 +1626,11 @@ int ecrt_slave_config_idn(
 
 /** Registers a bunch of PDO entries for a domain.
  *
- * \todo doc
+ * This method has to be called in non-realtime context before
+ * ecrt_master_activate().
+ *
+ * \see ecrt_slave_config_reg_pdo_entry()
+ *
  * \attention The registration array has to be terminated with an empty
  *            structure, or one with the \a index field set to zero!
  * \return 0 on success, else non-zero.
@@ -1354,15 +1641,15 @@ int ecrt_domain_reg_pdo_entry_list(
                                                    registrations. */
         );
 
-#ifdef __KERNEL__
-
 /** Returns the current size of the domain's process data.
  *
- * \return Size of the process data image.
+ * \return Size of the process data image, or a negative error code.
  */
 size_t ecrt_domain_size(
         const ec_domain_t *domain /**< Domain. */
         );
+
+#ifdef __KERNEL__
 
 /** Provide external memory to store the domain's process data.
  *
@@ -1371,6 +1658,10 @@ size_t ecrt_domain_size(
  *
  * The size of the allocated memory must be at least ecrt_domain_size(), after
  * all PDO entries have been registered.
+ *
+ * This method has to be called in non-realtime context before
+ * ecrt_master_activate().
+ *
  */
 void ecrt_domain_external_memory(
         ec_domain_t *domain, /**< Domain. */
@@ -1432,6 +1723,18 @@ void ecrt_domain_state(
 /*****************************************************************************
  * SDO request methods.
  ****************************************************************************/
+
+/** Set the SDO index and subindex.
+ *
+ * \attention If the SDO index and/or subindex is changed while
+ * ecrt_sdo_request_state() returns EC_REQUEST_BUSY, this may lead to
+ * unexpected results.
+ */
+void ecrt_sdo_request_index(
+        ec_sdo_request_t *req, /**< SDO request. */
+        uint16_t index, /**< SDO index. */
+        uint8_t subindex /**< SDO subindex. */
+        );
 
 /** Set the timeout for an SDO request.
  *
@@ -1503,7 +1806,7 @@ ec_request_state_t ecrt_sdo_request_state(
 /** Schedule an SDO write operation.
  *
  * \attention This method may not be called while ecrt_sdo_request_state()
- * returns EC_SDO_REQUEST_BUSY.
+ * returns EC_REQUEST_BUSY.
  */
 void ecrt_sdo_request_write(
         ec_sdo_request_t *req /**< SDO request. */
@@ -1512,11 +1815,11 @@ void ecrt_sdo_request_write(
 /** Schedule an SDO read operation.
  *
  * \attention This method may not be called while ecrt_sdo_request_state()
- * returns EC_SDO_REQUEST_BUSY.
+ * returns EC_REQUEST_BUSY.
  *
  * \attention After calling this function, the return value of
  * ecrt_sdo_request_data() must be considered as invalid while
- * ecrt_sdo_request_state() returns EC_SDO_REQUEST_BUSY.
+ * ecrt_sdo_request_state() returns EC_REQUEST_BUSY.
  */
 void ecrt_sdo_request_read(
         ec_sdo_request_t *req /**< SDO request. */
@@ -1643,14 +1946,83 @@ void ecrt_voe_handler_read_nosync(
 
 /** Execute the handler.
  *
- * This method executes the VoE handler. It has to be called in every bus cycle
- * as long as it returns EC_REQUEST_BUSY.
+ * This method executes the VoE handler. It has to be called in every bus
+ * cycle as long as it returns EC_REQUEST_BUSY.
  *
  * \return Handler state.
  */
 ec_request_state_t ecrt_voe_handler_execute(
     ec_voe_handler_t *voe /**< VoE handler. */
     );
+
+/*****************************************************************************
+ * Register request methods.
+ ****************************************************************************/
+
+/** Access to the register request's data.
+ *
+ * This function returns a pointer to the request's internal memory.
+ *
+ * - After a read operation was successful, integer data can be evaluated
+ *   using the EC_READ_*() macros as usual. Example:
+ *   \code
+ *   uint16_t value = EC_READ_U16(ecrt_reg_request_data(reg_request)));
+ *   \endcode
+ * - If a write operation shall be triggered, the data have to be written to
+ *   the internal memory. Use the EC_WRITE_*() macros, if you are writing
+ *   integer data. Be sure, that the data fit into the memory. The memory size
+ *   is a parameter of ecrt_slave_config_create_reg_request().
+ *   \code
+ *   EC_WRITE_U16(ecrt_reg_request_data(reg_request), 0xFFFF);
+ *   \endcode
+ *
+ * \return Pointer to the internal memory.
+ */
+uint8_t *ecrt_reg_request_data(
+        ec_reg_request_t *req /**< Register request. */
+        );
+
+/** Get the current state of the register request.
+ *
+ * \return Request state.
+ */
+#ifdef __KERNEL__
+ec_request_state_t ecrt_reg_request_state(
+        const ec_reg_request_t *req /**< Register request. */
+    );
+#else
+ec_request_state_t ecrt_reg_request_state(
+        ec_reg_request_t *req /**< Register request. */
+    );
+#endif
+
+/** Schedule an register write operation.
+ *
+ * \attention This method may not be called while ecrt_reg_request_state()
+ * returns EC_REQUEST_BUSY.
+ *
+ * \attention The \a size parameter is truncated to the size given at request
+ * creation.
+ */
+void ecrt_reg_request_write(
+        ec_reg_request_t *req, /**< Register request. */
+        uint16_t address, /**< Register address. */
+        size_t size /**< Size to write. */
+        );
+
+/** Schedule a register read operation.
+ *
+ * \attention This method may not be called while ecrt_reg_request_state()
+ * returns EC_REQUEST_BUSY.
+ *
+ * \attention The \a size parameter is truncated to the size given at request
+ * creation.
+ */
+void ecrt_reg_request_read(
+        ec_reg_request_t *req, /**< Register request. */
+        uint16_t address, /**< Register address. */
+        size_t size /**< Size to write. */
+        );
 
 /*****************************************************************************/
 

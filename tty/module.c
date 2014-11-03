@@ -65,7 +65,7 @@ unsigned int debug_level = 0;
 
 static struct tty_driver *tty_driver = NULL;
 ec_tty_t *ttys[EC_TTY_MAX_DEVICES];
-struct ec_mutex_t tty_sem;
+struct semaphore tty_sem;
 
 void ec_tty_wakeup(unsigned long);
 
@@ -111,7 +111,7 @@ struct ec_tty {
     struct timer_list timer;
     struct tty_struct *tty;
     unsigned int open_count;
-    struct ec_mutex_t sem;
+    struct semaphore sem;
 
     ec_tty_operations_t ops;
     void *cb_data;
@@ -131,7 +131,7 @@ int __init ec_tty_init_module(void)
 
     printk(KERN_INFO PFX "TTY driver %s\n", EC_MASTER_VERSION);
 
-    ec_mutex_init(&tty_sem);
+    sema_init(&tty_sem, 1);
 
     for (i = 0; i < EC_TTY_MAX_DEVICES; i++) {
         ttys[i] = NULL;
@@ -192,6 +192,7 @@ int ec_tty_init(ec_tty_t *t, int minor,
     int ret;
     tcflag_t cflag;
     struct tty_struct *tty;
+    struct ktermios *termios;
 
     t->minor = minor;
     t->tx_read_idx = 0;
@@ -202,7 +203,7 @@ int ec_tty_init(ec_tty_t *t, int minor,
     init_timer(&t->timer);
     t->tty = NULL;
     t->open_count = 0;
-    ec_mutex_init(&t->sem);
+    sema_init(&t->sem, 1);
     t->ops = *ops;
     t->cb_data = cb_data;
 
@@ -215,8 +216,16 @@ int ec_tty_init(ec_tty_t *t, int minor,
     // Tell the device-specific implementation about the initial cflags
     tty = tty_driver->ttys[minor];
 
-    if (tty && tty->termios) { // already opened before
-        cflag = tty->termios->c_cflag;
+    termios =
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
+        &tty->termios
+#else
+        tty->termios
+#endif
+        ;
+
+    if (tty && termios) { // already opened before
+        cflag = termios->c_cflag;
     } else {
         cflag = tty_driver->init_termios.c_cflag;
     }
@@ -391,9 +400,9 @@ static int ec_tty_open(struct tty_struct *tty, struct file *file)
         tty->driver_data = t;
     }
 
-    ec_mutex_lock(&t->sem);
+    down(&t->sem);
     t->open_count++;
-    ec_mutex_unlock(&t->sem);
+    up(&t->sem);
     return 0;
 }
 
@@ -409,11 +418,11 @@ static void ec_tty_close(struct tty_struct *tty, struct file *file)
 #endif
 
     if (t) {
-        ec_mutex_lock(&t->sem);
+        down(&t->sem);
         if (--t->open_count == 0) {
             t->tty = NULL;
         }
-        ec_mutex_unlock(&t->sem);
+        up(&t->sem);
     }
 }
 
@@ -482,7 +491,7 @@ static int ec_tty_write_room(struct tty_struct *tty)
 {
     ec_tty_t *t = (ec_tty_t *) tty->driver_data;
     int ret = ec_tty_tx_space(t);
-    
+
 #if EC_TTY_DEBUG >= 2
     printk(KERN_INFO PFX "%s() = %i.\n", __func__, ret);
 #endif
@@ -496,7 +505,7 @@ static int ec_tty_chars_in_buffer(struct tty_struct *tty)
 {
     ec_tty_t *t = (ec_tty_t *) tty->driver_data;
     int ret;
-    
+
 #if EC_TTY_DEBUG >= 2
     printk(KERN_INFO PFX "%s().\n", __func__);
 #endif
@@ -506,7 +515,7 @@ static int ec_tty_chars_in_buffer(struct tty_struct *tty)
 #if EC_TTY_DEBUG >= 2
     printk(KERN_INFO PFX "%s() = %i.\n", __func__, ret);
 #endif
-    
+
     return ret;
 }
 
@@ -523,15 +532,26 @@ static void ec_tty_flush_buffer(struct tty_struct *tty)
 
 /*****************************************************************************/
 
-static int ec_tty_ioctl(struct tty_struct *tty, struct file *file,
+static int ec_tty_ioctl(struct tty_struct *tty,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 39)
+        struct file *file,
+#endif
         unsigned int cmd, unsigned long arg)
 {
     ec_tty_t *t = (ec_tty_t *) tty->driver_data;
     int ret = -ENOTTY;
-    
+
 #if EC_TTY_DEBUG >= 2
-    printk(KERN_INFO PFX "%s(tty=%p, file=%p, cmd=%08x, arg=%08lx).\n",
-            __func__, tty, file, cmd, arg);
+    printk(KERN_INFO PFX "%s(tty=%p, "
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 39)
+            "file=%p, "
+#endif
+            "cmd=%08x, arg=%08lx).\n",
+            __func__, tty,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 39)
+            file,
+#endif
+            cmd, arg);
     printk(KERN_INFO PFX "decoded: type=%02x nr=%u\n",
             _IOC_TYPE(cmd), _IOC_NR(cmd));
 #endif
@@ -564,24 +584,33 @@ static void ec_tty_set_termios(struct tty_struct *tty,
 {
     ec_tty_t *t = (ec_tty_t *) tty->driver_data;
     int ret;
+    struct ktermios *termios;
 
 #if EC_TTY_DEBUG >= 2
     printk(KERN_INFO PFX "%s().\n", __func__);
 #endif
 
-    if (tty->termios->c_cflag == old_termios->c_cflag)
+    termios =
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
+        &tty->termios
+#else
+        tty->termios
+#endif
+        ;
+
+    if (termios->c_cflag == old_termios->c_cflag)
         return;
 
 #if EC_TTY_DEBUG >= 2
     printk(KERN_INFO "cflag changed from %x to %x.\n",
-            old_termios->c_cflag, tty->termios->c_cflag);
+            old_termios->c_cflag, termios->c_cflag);
 #endif
 
-    ret = t->ops.cflag_changed(t->cb_data, tty->termios->c_cflag);
+    ret = t->ops.cflag_changed(t->cb_data, termios->c_cflag);
     if (ret) {
         printk(KERN_ERR PFX "ERROR: cflag 0x%x not accepted.\n",
-                tty->termios->c_cflag);
-        tty->termios->c_cflag = old_termios->c_cflag;
+                termios->c_cflag);
+        termios->c_cflag = old_termios->c_cflag;
     }
 }
 
@@ -676,7 +705,7 @@ ec_tty_t *ectty_create(const ec_tty_operations_t *ops, void *cb_data)
     ec_tty_t *tty;
     int minor, ret;
 
-    if (ec_mutex_lock_interruptible(&tty_sem)) {
+    if (down_interruptible(&tty_sem)) {
         return ERR_PTR(-EINTR);
     }
 
@@ -686,25 +715,25 @@ ec_tty_t *ectty_create(const ec_tty_operations_t *ops, void *cb_data)
 
             tty = kmalloc(sizeof(ec_tty_t), GFP_KERNEL);
             if (!tty) {
-                ec_mutex_unlock(&tty_sem);
+                up(&tty_sem);
                 printk(KERN_ERR PFX "Failed to allocate memory.\n");
                 return ERR_PTR(-ENOMEM);
             }
 
             ret = ec_tty_init(tty, minor, ops, cb_data);
             if (ret) {
-                ec_mutex_unlock(&tty_sem);
+                up(&tty_sem);
                 kfree(tty);
                 return ERR_PTR(ret);
             }
 
             ttys[minor] = tty;
-            ec_mutex_unlock(&tty_sem);
+            up(&tty_sem);
             return tty;
         }
     }
 
-    ec_mutex_unlock(&tty_sem);
+    up(&tty_sem);
     printk(KERN_ERR PFX "No free interfaces avaliable.\n");
     return ERR_PTR(-EBUSY);
 }
