@@ -270,21 +270,21 @@ string Command::numericInfo()
 
 /*****************************************************************************/
 
-void Command::throwInvalidUsageException(const stringstream &s) const
+void Command::throwInvalidUsageException(const stringstream &s)
 {
     throw InvalidUsageException(s);
 }
 
 /*****************************************************************************/
 
-void Command::throwCommandException(const string &msg) const
+void Command::throwCommandException(const string &msg)
 {
     throw CommandException(msg);
 }
 
 /*****************************************************************************/
 
-void Command::throwCommandException(const stringstream &s) const
+void Command::throwCommandException(const stringstream &s)
 {
     throw CommandException(s);
 }
