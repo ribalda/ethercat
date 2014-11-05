@@ -40,10 +40,6 @@
 #include "mailbox.h"
 #include "voe_handler.h"
 
-/** VoE mailbox type.
- */
-#define EC_MBOX_TYPE_VOE 0x0f
-
 /** VoE header size.
  */
 #define EC_VOE_HEADER_SIZE 6

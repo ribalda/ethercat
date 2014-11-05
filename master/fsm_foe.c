@@ -46,10 +46,6 @@
  */
 #define EC_FSM_FOE_TIMEOUT 3000
 
-/** Mailbox type FoE.
- */
-#define EC_MBOX_TYPE_FILEACCESS 0x04
-
 /** Size of the FoE header.
  */
 #define EC_FOE_HEADER_SIZE 6
@@ -253,8 +249,7 @@ int ec_foe_prepare_data_send(
     }
 
     data = ec_slave_mbox_prepare_send(fsm->slave,
-            datagram, EC_MBOX_TYPE_FILEACCESS,
-            current_size + EC_FOE_HEADER_SIZE);
+            datagram, EC_MBOX_TYPE_FOE, current_size + EC_FOE_HEADER_SIZE);
     if (IS_ERR(data)) {
         return -1;
     }
@@ -291,7 +286,7 @@ int ec_foe_prepare_wrq_send(
     current_size = fsm->tx_filename_len;
 
     data = ec_slave_mbox_prepare_send(fsm->slave, datagram,
-            EC_MBOX_TYPE_FILEACCESS, current_size + EC_FOE_HEADER_SIZE);
+            EC_MBOX_TYPE_FOE, current_size + EC_FOE_HEADER_SIZE);
     if (IS_ERR(data)) {
         return -1;
     }
@@ -428,7 +423,7 @@ void ec_fsm_foe_state_ack_read(
         return;
     }
 
-    if (mbox_prot != EC_MBOX_TYPE_FILEACCESS) { // FoE
+    if (mbox_prot != EC_MBOX_TYPE_FOE) {
         ec_foe_set_tx_error(fsm, FOE_MBOX_PROT_ERROR);
         EC_SLAVE_ERR(slave, "Received mailbox protocol 0x%02X as response.\n",
                 mbox_prot);
@@ -563,7 +558,7 @@ int ec_foe_prepare_rrq_send(
     current_size = fsm->rx_filename_len;
 
     data = ec_slave_mbox_prepare_send(fsm->slave, datagram,
-            EC_MBOX_TYPE_FILEACCESS, current_size + EC_FOE_HEADER_SIZE);
+            EC_MBOX_TYPE_FOE, current_size + EC_FOE_HEADER_SIZE);
     if (IS_ERR(data)) {
         return -1;
     }
@@ -594,7 +589,7 @@ int ec_foe_prepare_send_ack(
     uint8_t *data;
 
     data = ec_slave_mbox_prepare_send(fsm->slave, datagram,
-            EC_MBOX_TYPE_FILEACCESS, EC_FOE_HEADER_SIZE);
+            EC_MBOX_TYPE_FOE, EC_FOE_HEADER_SIZE);
     if (IS_ERR(data)) {
         return -1;
     }
@@ -767,7 +762,7 @@ void ec_fsm_foe_state_data_read(
         return;
     }
 
-    if (mbox_prot != EC_MBOX_TYPE_FILEACCESS) { // FoE
+    if (mbox_prot != EC_MBOX_TYPE_FOE) {
         EC_SLAVE_ERR(slave, "Received mailbox protocol 0x%02X as response.\n",
                 mbox_prot);
         ec_foe_set_rx_error(fsm, FOE_PROT_ERROR);

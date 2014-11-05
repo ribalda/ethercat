@@ -45,6 +45,16 @@
  */
 #define EC_MBOX_HEADER_SIZE 6
 
+/** Mailbox types.
+ */
+enum ec_mbox_types {
+    EC_MBOX_TYPE_EOE = 0x02,
+    EC_MBOX_TYPE_COE = 0x03,
+    EC_MBOX_TYPE_FOE = 0x04,
+    EC_MBOX_TYPE_SOE = 0x05,
+    EC_MBOX_TYPE_VOE = 0x0f,
+};
+
 /*****************************************************************************/
 
 uint8_t *ec_slave_mbox_prepare_send(const ec_slave_t *, ec_datagram_t *,

@@ -299,7 +299,7 @@ int ec_eoe_send(ec_eoe_t *eoe /**< EoE handler */)
 #endif
 
     data = ec_slave_mbox_prepare_send(eoe->slave, &eoe->datagram,
-            0x02, current_size + 4);
+            EC_MBOX_TYPE_EOE, current_size + 4);
     if (IS_ERR(data))
         return PTR_ERR(data);
 
@@ -478,7 +478,7 @@ void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
         return;
     }
 
-    if (mbox_prot != 0x02) { // EoE FIXME mailbox handler necessary
+    if (mbox_prot != EC_MBOX_TYPE_EOE) { // FIXME mailbox handler necessary
         eoe->stats.rx_errors++;
 #if EOE_DEBUG_LEVEL >= 1
         EC_SLAVE_WARN(eoe->slave, "Other mailbox protocol response for %s.\n",
