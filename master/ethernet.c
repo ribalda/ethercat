@@ -303,7 +303,7 @@ int ec_eoe_send(ec_eoe_t *eoe /**< EoE handler */)
     if (IS_ERR(data))
         return PTR_ERR(data);
 
-    EC_WRITE_U8 (data,     0x00); // eoe fragment req.
+    EC_WRITE_U8 (data, EC_EOE_FRAMETYPE_FRAG_REQ);
     EC_WRITE_U8 (data + 1, last_fragment);
     EC_WRITE_U16(data + 2, ((eoe->tx_fragment_number & 0x3F) |
                             (complete_offset & 0x3F) << 6 |
@@ -490,7 +490,7 @@ void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
 
     frame_type = EC_READ_U16(data) & 0x000F;
 
-    if (frame_type != 0x00) {
+    if (frame_type != EC_EOE_FRAMETYPE_FRAG_REQ) {
 #if EOE_DEBUG_LEVEL >= 1
         EC_SLAVE_WARN(eoe->slave, "%s: Other frame received."
                 " Dropping.\n", eoe->dev->name);
