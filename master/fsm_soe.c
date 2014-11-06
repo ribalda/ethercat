@@ -43,7 +43,7 @@
 
 /** SoE operations
  */
-enum ec_soe_opcodes {
+enum {
     OPCODE_READ_REQUEST   = 0x01, /**< Read request. */
     OPCODE_READ_RESPONSE  = 0x02, /**< Read response. */
     OPCODE_WRITE_REQUEST  = 0x03, /**< Write request. */
