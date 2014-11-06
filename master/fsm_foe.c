@@ -66,7 +66,7 @@ enum {
     EC_FOE_OPCODE_ACK  = 4, /**< Acknowledge. */
     EC_FOE_OPCODE_ERR  = 5, /**< Error. */
     EC_FOE_OPCODE_BUSY = 6  /**< Busy. */
-} ec_foe_opcode_t;
+};
 
 /*****************************************************************************/
 
