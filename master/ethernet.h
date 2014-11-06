@@ -55,11 +55,11 @@
 /** EoE frame types.
  */
 enum {
-    EC_EOE_FRAMETYPE_FRAG_REQ = 0x00, /** EoE Fragment Request. */
-    EC_EOE_FRAMETYPE_INIT_REQ = 0x02, /** Initiate EoE Request. */
-    EC_EOE_FRAMETYPE_INIT_RES = 0x03, /** Initiate EoE Response. */
-    EC_EOE_FRAMETYPE_FILT_REQ = 0x04, /** Set Address Filter Request. */
-    EC_EOE_FRAMETYPE_FILT_RES = 0x05, /** Set Address Filter Response. */
+    EC_EOE_FRAMETYPE_INIT_REQ =   0x00, /** Initiate EoE Request. */
+    EC_EOE_FRAMETYPE_SET_IP_REQ = 0x02, /** Set IP Parameter Request. */
+    EC_EOE_FRAMETYPE_SET_IP_RES = 0x03, /** Set IP Parameter Response. */
+    EC_EOE_FRAMETYPE_FILT_REQ =   0x04, /** Set Address Filter Request. */
+    EC_EOE_FRAMETYPE_FILT_RES =   0x05, /** Set Address Filter Response. */
 };
 
 /*****************************************************************************/
