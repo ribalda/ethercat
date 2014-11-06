@@ -46,8 +46,10 @@
 #define EC_MBOX_HEADER_SIZE 6
 
 /** Mailbox types.
+ *
+ * These are used in the 'Type' field of the mailbox header.
  */
-enum ec_mbox_types {
+enum {
     EC_MBOX_TYPE_EOE = 0x02,
     EC_MBOX_TYPE_COE = 0x03,
     EC_MBOX_TYPE_FOE = 0x04,

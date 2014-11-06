@@ -142,6 +142,9 @@ typedef enum {
 } ec_slave_state_t;
 
 /** Supported mailbox protocols.
+ *
+ * Not to mix up with the mailbox type field in the mailbox header defined in
+ * master/mailbox.h.
  */
 enum {
     EC_MBOX_AOE = 0x01, /**< ADS over EtherCAT */
