@@ -196,7 +196,7 @@ void ec_debug_send(
     skb->dev = dbg->dev;
     skb->protocol = eth_type_trans(skb, dbg->dev);
     skb->ip_summed = CHECKSUM_UNNECESSARY;
-    netif_rx(skb);
+    netif_rx_ni(skb);
 }
 
 /******************************************************************************
