@@ -52,6 +52,8 @@ int ec_fsm_slave_action_process_foe(ec_fsm_slave_t *, ec_datagram_t *);
 void ec_fsm_slave_state_foe_request(ec_fsm_slave_t *, ec_datagram_t *);
 int ec_fsm_slave_action_process_soe(ec_fsm_slave_t *, ec_datagram_t *);
 void ec_fsm_slave_state_soe_request(ec_fsm_slave_t *, ec_datagram_t *);
+int ec_fsm_slave_action_process_eoe(ec_fsm_slave_t *, ec_datagram_t *);
+void ec_fsm_slave_state_eoe_request(ec_fsm_slave_t *, ec_datagram_t *);
 
 /*****************************************************************************/
 
@@ -71,11 +73,13 @@ void ec_fsm_slave_init(
     fsm->reg_request = NULL;
     fsm->foe_request = NULL;
     fsm->soe_request = NULL;
+    fsm->eoe_request = NULL;
 
     // Init sub-state-machines
     ec_fsm_coe_init(&fsm->fsm_coe);
     ec_fsm_foe_init(&fsm->fsm_foe);
     ec_fsm_soe_init(&fsm->fsm_soe);
+    ec_fsm_eoe_init(&fsm->fsm_eoe);
 }
 
 /*****************************************************************************/
@@ -108,10 +112,16 @@ void ec_fsm_slave_clear(
         wake_up_all(&fsm->slave->master->request_queue);
     }
 
+    if (fsm->eoe_request) {
+        fsm->soe_request->state = EC_INT_REQUEST_FAILURE;
+        wake_up_all(&fsm->slave->master->request_queue);
+    }
+
     // clear sub-state machines
     ec_fsm_coe_clear(&fsm->fsm_coe);
     ec_fsm_foe_clear(&fsm->fsm_foe);
     ec_fsm_soe_clear(&fsm->fsm_soe);
+    ec_fsm_eoe_clear(&fsm->fsm_eoe);
 }
 
 /*****************************************************************************/
@@ -210,6 +220,11 @@ void ec_fsm_slave_state_ready(
     if (ec_fsm_slave_action_process_soe(fsm, datagram)) {
         return;
     }
+
+    // Check for pending EoE IP parameter requests
+    if (ec_fsm_slave_action_process_eoe(fsm, datagram)) {
+        return;
+    }
 }
 
 /*****************************************************************************/
@@ -240,7 +255,7 @@ int ec_fsm_slave_action_process_sdo(
         request->state = EC_INT_REQUEST_FAILURE;
         wake_up_all(&slave->master->request_queue);
         fsm->state = ec_fsm_slave_state_idle;
-        return 1;
+        return 0;
     }
 
     if (slave->current_state == EC_SLAVE_STATE_INIT) {
@@ -248,7 +263,7 @@ int ec_fsm_slave_action_process_sdo(
         request->state = EC_INT_REQUEST_FAILURE;
         wake_up_all(&slave->master->request_queue);
         fsm->state = ec_fsm_slave_state_idle;
-        return 1;
+        return 0;
     }
 
     fsm->sdo_request = request;
@@ -342,7 +357,7 @@ int ec_fsm_slave_action_process_reg(
         wake_up_all(&slave->master->request_queue);
         fsm->reg_request = NULL;
         fsm->state = ec_fsm_slave_state_idle;
-        return 1;
+        return 0;
     }
 
     // Found pending register request. Execute it!
@@ -444,7 +459,7 @@ int ec_fsm_slave_action_process_foe(
         request->state = EC_INT_REQUEST_FAILURE;
         wake_up_all(&slave->master->request_queue);
         fsm->state = ec_fsm_slave_state_idle;
-        return 1;
+        return 0;
     }
 
     request->state = EC_INT_REQUEST_BUSY;
@@ -521,7 +536,7 @@ int ec_fsm_slave_action_process_soe(
         req->state = EC_INT_REQUEST_FAILURE;
         wake_up_all(&slave->master->request_queue);
         fsm->state = ec_fsm_slave_state_idle;
-        return 1;
+        return 0;
     }
 
     if (slave->current_state == EC_SLAVE_STATE_INIT) {
@@ -576,6 +591,88 @@ void ec_fsm_slave_state_soe_request(
     request->state = EC_INT_REQUEST_SUCCESS;
     wake_up_all(&slave->master->request_queue);
     fsm->soe_request = NULL;
+    fsm->state = ec_fsm_slave_state_ready;
+}
+
+/*****************************************************************************/
+
+/** Check for pending EoE IP parameter requests and process one.
+ *
+ * \return non-zero, if a request is processed.
+ */
+int ec_fsm_slave_action_process_eoe(
+        ec_fsm_slave_t *fsm, /**< Slave state machine. */
+        ec_datagram_t *datagram /**< Datagram to use. */
+        )
+{
+    ec_slave_t *slave = fsm->slave;
+    ec_eoe_request_t *request;
+
+    if (list_empty(&slave->eoe_requests)) {
+        return 0;
+    }
+
+    // take the first request to be processed
+    request = list_entry(slave->eoe_requests.next, ec_eoe_request_t, list);
+    list_del_init(&request->list); // dequeue
+
+    if (slave->current_state & EC_SLAVE_STATE_ACK_ERR) {
+        EC_SLAVE_WARN(slave, "Aborting EoE request,"
+                " slave has error flag set.\n");
+        request->state = EC_INT_REQUEST_FAILURE;
+        wake_up_all(&slave->master->request_queue);
+        fsm->state = ec_fsm_slave_state_idle;
+        return 0;
+    }
+
+    if (slave->current_state == EC_SLAVE_STATE_INIT) {
+        EC_SLAVE_WARN(slave, "Aborting EoE request, slave is in INIT.\n");
+        request->state = EC_INT_REQUEST_FAILURE;
+        wake_up_all(&slave->master->request_queue);
+        fsm->state = ec_fsm_slave_state_idle;
+        return 0;
+    }
+
+    fsm->eoe_request = request;
+    request->state = EC_INT_REQUEST_BUSY;
+
+    // Found pending request. Execute it!
+    EC_SLAVE_DBG(slave, 1, "Processing EoE request...\n");
+
+    // Start EoE command
+    fsm->state = ec_fsm_slave_state_eoe_request;
+    ec_fsm_eoe_set_ip_param(&fsm->fsm_eoe, slave, request);
+    ec_fsm_eoe_exec(&fsm->fsm_eoe, datagram); // execute immediately
+    return 1;
+}
+
+/*****************************************************************************/
+
+/** Slave state: EOE_REQUEST.
+ */
+void ec_fsm_slave_state_eoe_request(
+        ec_fsm_slave_t *fsm, /**< Slave state machine. */
+        ec_datagram_t *datagram /**< Datagram to use. */
+        )
+{
+    ec_slave_t *slave = fsm->slave;
+    ec_eoe_request_t *req = fsm->eoe_request;
+
+    if (ec_fsm_eoe_exec(&fsm->fsm_eoe, datagram)) {
+        return;
+    }
+
+    if (ec_fsm_eoe_success(&fsm->fsm_eoe)) {
+		req->state = EC_INT_REQUEST_SUCCESS;
+		EC_SLAVE_DBG(slave, 1, "Finished EoE request.\n");
+    }
+	else {
+        req->state = EC_INT_REQUEST_FAILURE;
+        EC_SLAVE_ERR(slave, "Failed to process EoE request.\n");
+	}
+
+    wake_up_all(&slave->master->request_queue);
+    fsm->eoe_request = NULL;
     fsm->state = ec_fsm_slave_state_ready;
 }
 

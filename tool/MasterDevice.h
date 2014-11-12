@@ -94,6 +94,23 @@ class MasterDeviceSoeException:
 
 /****************************************************************************/
 
+class MasterDeviceEoeException:
+    public MasterDeviceException
+{
+    friend class MasterDevice;
+
+    public:
+        uint16_t result;
+
+    protected:
+        /** Constructor with error code parameter. */
+        MasterDeviceEoeException(uint16_t result):
+            MasterDeviceException("EoE set IP parameter failed."),
+            result(result) {};
+};
+
+/****************************************************************************/
+
 class MasterDevice
 {
     public:
@@ -144,6 +161,7 @@ class MasterDevice
 #endif
         void readSoe(ec_ioctl_slave_soe_read_t *);
         void writeSoe(ec_ioctl_slave_soe_write_t *);
+        void setIpParam(ec_ioctl_slave_eoe_ip_t *);
 
         unsigned int getMasterCount() const {return masterCount;}
 

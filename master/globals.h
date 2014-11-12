@@ -115,6 +115,12 @@
  **/
 #define EC_DATAGRAM_NAME_SIZE 20
 
+/** Maximum hostname size.
+ *
+ * Used inside the EoE set IP parameter request.
+ */
+#define EC_MAX_HOSTNAME_SIZE 32
+
 /** Slave state mask.
  *
  * Apply this mask to a slave state byte to get the slave state without

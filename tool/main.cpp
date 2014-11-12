@@ -48,6 +48,7 @@ using namespace std;
 #include "CommandFoeRead.h"
 #include "CommandFoeWrite.h"
 #include "CommandGraph.h"
+#include "CommandIp.h"
 #include "CommandMaster.h"
 #include "CommandPdos.h"
 #include "CommandRegRead.h"
@@ -288,6 +289,7 @@ int main(int argc, char **argv)
     commandList.push_back(new CommandFoeRead());
     commandList.push_back(new CommandFoeWrite());
     commandList.push_back(new CommandGraph());
+    commandList.push_back(new CommandIp());
     commandList.push_back(new CommandMaster());
     commandList.push_back(new CommandPdos());
     commandList.push_back(new CommandRegRead());

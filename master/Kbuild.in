@@ -40,10 +40,12 @@ ec_master-objs := \
 	datagram_pair.o \
 	device.o \
 	domain.o \
+	eoe_request.o \
 	fmmu_config.o \
 	foe_request.o \
 	fsm_change.o \
 	fsm_coe.o \
+	fsm_eoe.o \
 	fsm_foe.o \
 	fsm_master.o \
 	fsm_pdo.o \

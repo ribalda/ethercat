@@ -1550,6 +1550,89 @@ static ATTRIBUTES int ec_ioctl_eoe_handler(
 
 /*****************************************************************************/
 
+/** Request EoE IP parameter setting.
+ *
+ * \return Zero on success, otherwise a negative error code.
+ */
+static ATTRIBUTES int ec_ioctl_slave_eoe_ip_param(
+        ec_master_t *master, /**< EtherCAT master. */
+        void *arg /**< ioctl() argument. */
+        )
+{
+    ec_ioctl_slave_eoe_ip_t io;
+    ec_eoe_request_t req;
+    ec_slave_t *slave;
+
+    if (copy_from_user(&io, (void __user *) arg, sizeof(io))) {
+        return -EFAULT;
+    }
+
+    // init EoE request
+    ec_eoe_request_init(&req);
+
+    req.mac_address_included = io.mac_address_included;
+    req.ip_address_included = io.ip_address_included;
+    req.subnet_mask_included = io.subnet_mask_included;
+    req.gateway_included = io.gateway_included;
+    req.dns_included = io.dns_included;
+    req.name_included = io.name_included;
+
+    memcpy(req.mac_address, io.mac_address, ETH_ALEN);
+    req.ip_address = io.ip_address;
+    req.subnet_mask = io.subnet_mask;
+    req.gateway = io.gateway;
+    req.dns = io.dns;
+    memcpy(req.name, io.name, EC_MAX_HOSTNAME_SIZE);
+
+    req.state = EC_INT_REQUEST_QUEUED;
+
+    if (down_interruptible(&master->master_sem)) {
+        return -EINTR;
+    }
+
+    if (!(slave = ec_master_find_slave(
+                    master, 0, io.slave_position))) {
+        up(&master->master_sem);
+        EC_MASTER_ERR(master, "Slave %u does not exist!\n",
+                io.slave_position);
+        return -EINVAL;
+    }
+
+    EC_MASTER_DBG(master, 1, "Scheduling EoE request.\n");
+
+    // schedule request.
+    list_add_tail(&req.list, &slave->eoe_requests);
+
+    up(&master->master_sem);
+
+    // wait for processing through FSM
+    if (wait_event_interruptible(master->request_queue,
+                req.state != EC_INT_REQUEST_QUEUED)) {
+        // interrupted by signal
+        down(&master->master_sem);
+        if (req.state == EC_INT_REQUEST_QUEUED) {
+            // abort request
+            list_del(&req.list);
+            up(&master->master_sem);
+            return -EINTR;
+        }
+        up(&master->master_sem);
+    }
+
+    // wait until master FSM has finished processing
+    wait_event(master->request_queue, req.state != EC_INT_REQUEST_BUSY);
+
+    io.result = req.result;
+
+    if (copy_to_user((void __user *) arg, &io, sizeof(io))) {
+        return -EFAULT;
+    }
+
+    return req.state == EC_INT_REQUEST_SUCCESS ? 0 : -EIO;
+}
+
+/*****************************************************************************/
+
 /** Request the master from userspace.
  *
  * \return Zero on success, otherwise a negative error code.
@@ -4204,6 +4287,13 @@ long EC_IOCTL(
             break;
         case EC_IOCTL_SLAVE_SOE_READ:
             ret = ec_ioctl_slave_soe_read(master, arg);
+            break;
+        case EC_IOCTL_SLAVE_EOE_IP_PARAM:
+            if (!ctx->writable) {
+                ret = -EPERM;
+                break;
+            }
+            ret = ec_ioctl_slave_eoe_ip_param(master, arg);
             break;
         case EC_IOCTL_SLAVE_SOE_WRITE:
             if (!ctx->writable) {

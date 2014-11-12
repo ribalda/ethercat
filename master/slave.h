@@ -228,8 +228,9 @@ struct ec_slave
 
     struct list_head sdo_requests; /**< SDO access requests. */
     struct list_head reg_requests; /**< Register access requests. */
-    struct list_head foe_requests; /**< FoE write requests. */
-    struct list_head soe_requests; /**< SoE write requests. */
+    struct list_head foe_requests; /**< FoE requests. */
+    struct list_head soe_requests; /**< SoE requests. */
+    struct list_head eoe_requests; /**< EoE set IP parameter requests. */
 
     ec_fsm_slave_t fsm; /**< Slave state machine. */
 };

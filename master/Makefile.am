@@ -37,12 +37,14 @@ noinst_HEADERS = \
 	device.c device.h \
 	domain.c domain.h \
 	doxygen.c \
+	eoe_request.c eoe_request.h \
 	ethernet.c ethernet.h \
 	fmmu_config.c fmmu_config.h \
 	foe.h \
 	foe_request.c foe_request.h \
 	fsm_change.c fsm_change.h \
 	fsm_coe.c fsm_coe.h \
+	fsm_eoe.c fsm_eoe.h \
 	fsm_foe.c fsm_foe.h \
 	fsm_master.c fsm_master.h \
 	fsm_pdo.c fsm_pdo.h \
