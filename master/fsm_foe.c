@@ -330,7 +330,14 @@ void ec_fsm_foe_write_start(
     EC_SLAVE_DBG(fsm->slave, 0, "%s()\n", __func__);
 #endif
 
-    if (!(slave->sii.mailbox_protocols & EC_MBOX_FOE)) {
+    if (!slave->sii_image) {
+        ec_foe_set_tx_error(fsm, FOE_BUSY);
+        EC_SLAVE_ERR(slave, "Slave cannot process FoE write request."
+                " SII data not available.\n");
+        return;
+    }
+
+    if (!(slave->sii_image->sii.mailbox_protocols & EC_MBOX_FOE)) {
         ec_foe_set_tx_error(fsm, FOE_MBOX_PROT_ERROR);
         EC_SLAVE_ERR(slave, "Slave does not support FoE!\n");
         return;
@@ -763,8 +770,15 @@ void ec_fsm_foe_read_start(
     EC_SLAVE_DBG(fsm->slave, 0, "%s()\n", __func__);
 #endif
 
-    if (!(slave->sii.mailbox_protocols & EC_MBOX_FOE)) {
-        ec_foe_set_tx_error(fsm, FOE_MBOX_PROT_ERROR);
+    if (!slave->sii_image) {
+        ec_foe_set_rx_error(fsm, FOE_BUSY);
+        EC_SLAVE_ERR(slave, "Slave cannot process FoE read request."
+                " SII data not available.\n");
+        return;
+    }
+
+    if (!(slave->sii_image->sii.mailbox_protocols & EC_MBOX_FOE)) {
+        ec_foe_set_rx_error(fsm, FOE_MBOX_PROT_ERROR);
         EC_SLAVE_ERR(slave, "Slave does not support FoE!\n");
         return;
     }

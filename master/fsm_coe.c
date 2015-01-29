@@ -351,13 +351,20 @@ void ec_fsm_coe_dict_start(
 {
     ec_slave_t *slave = fsm->slave;
 
-    if (!(slave->sii.mailbox_protocols & EC_MBOX_COE)) {
+    if (!slave->sii_image) {
+        EC_SLAVE_ERR(slave, "Slave cannot process CoE dictionary request."
+                " SII data not available.\n");
+        fsm->state = ec_fsm_coe_error;
+        return;
+    }
+
+    if (!(slave->sii_image->sii.mailbox_protocols & EC_MBOX_COE)) {
         EC_SLAVE_ERR(slave, "Slave does not support CoE!\n");
         fsm->state = ec_fsm_coe_error;
         return;
     }
 
-    if (slave->sii.has_general && !slave->sii.coe_details.enable_sdo_info) {
+    if (slave->sii_image->sii.has_general && !slave->sii_image->sii.coe_details.enable_sdo_info) {
         EC_SLAVE_ERR(slave, "Slave does not support"
                 " SDO information service!\n");
         fsm->state = ec_fsm_coe_error;
@@ -1487,7 +1494,15 @@ void ec_fsm_coe_down_start(
         ec_print_data(request->data, request->data_size);
     }
 
-    if (!(slave->sii.mailbox_protocols & EC_MBOX_COE)) {
+    if (!slave->sii_image) {
+        EC_SLAVE_ERR(slave, "Slave cannot process CoE download request."
+                " SII data not available.\n");
+        request->errno = EAGAIN;
+        fsm->state = ec_fsm_coe_error;
+        return;
+    }
+
+    if (!(slave->sii_image->sii.mailbox_protocols & EC_MBOX_COE)) {
         EC_SLAVE_ERR(slave, "Slave does not support CoE!\n");
         request->errno = EPROTONOSUPPORT;
         fsm->state = ec_fsm_coe_error;
@@ -2178,7 +2193,15 @@ void ec_fsm_coe_up_start(
     EC_SLAVE_DBG(slave, 1, "Uploading SDO 0x%04X:%02X.\n",
             request->index, request->subindex);
 
-    if (!(slave->sii.mailbox_protocols & EC_MBOX_COE)) {
+    if (!slave->sii_image) {
+        EC_SLAVE_ERR(slave, "Slave cannot process CoE upload request."
+                " SII data not available.\n");
+        request->errno = EAGAIN;
+        fsm->state = ec_fsm_coe_error;
+        return;
+    }
+
+    if (!(slave->sii_image->sii.mailbox_protocols & EC_MBOX_COE)) {
         EC_SLAVE_ERR(slave, "Slave does not support CoE!\n");
         request->errno = EPROTONOSUPPORT;
         fsm->state = ec_fsm_coe_error;
