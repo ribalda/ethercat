@@ -264,7 +264,15 @@ void ec_fsm_soe_read_start(
     EC_SLAVE_DBG(slave, 1, "Reading IDN 0x%04X of drive %u.\n", request->idn,
             request->drive_no);
 
-    if (!(slave->sii.mailbox_protocols & EC_MBOX_SOE)) {
+    if (!slave->sii_image) {
+        EC_SLAVE_ERR(slave, "Slave cannot process SoE read request."
+                " SII data not available.\n");
+        fsm->state = ec_fsm_soe_error;
+        ec_fsm_soe_print_error(fsm);
+        return;
+    }
+
+    if (!(slave->sii_image->sii.mailbox_protocols & EC_MBOX_SOE)) {
         EC_SLAVE_ERR(slave, "Slave does not support SoE!\n");
         fsm->state = ec_fsm_soe_error;
         ec_fsm_soe_print_error(fsm);
@@ -640,7 +648,15 @@ void ec_fsm_soe_write_start(
     EC_SLAVE_DBG(slave, 1, "Writing IDN 0x%04X of drive %u (%zu byte).\n",
             req->idn, req->drive_no, req->data_size);
 
-    if (!(slave->sii.mailbox_protocols & EC_MBOX_SOE)) {
+    if (!slave->sii_image) {
+        EC_SLAVE_ERR(slave, "Slave cannot process SoE write request."
+                " SII data not available.\n");
+        fsm->state = ec_fsm_soe_error;
+        ec_fsm_soe_print_error(fsm);
+        return;
+    }
+
+    if (!(slave->sii_image->sii.mailbox_protocols & EC_MBOX_SOE)) {
         EC_SLAVE_ERR(slave, "Slave does not support SoE!\n");
         fsm->state = ec_fsm_soe_error;
         ec_fsm_soe_print_error(fsm);

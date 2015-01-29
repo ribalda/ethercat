@@ -528,27 +528,31 @@ void ec_fsm_pdo_conf_action_check_mapping(
         ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
-    // check, if slave supports PDO configuration
-    if ((fsm->slave->sii.mailbox_protocols & EC_MBOX_COE)
-            && fsm->slave->sii.has_general
-            && fsm->slave->sii.coe_details.enable_pdo_configuration) {
+    if (fsm->slave->sii_image) {
+        // check, if slave supports PDO configuration
+        if ((fsm->slave->sii_image->sii.mailbox_protocols & EC_MBOX_COE)
+                && fsm->slave->sii_image->sii.has_general
+                && fsm->slave->sii_image->sii.coe_details.enable_pdo_configuration) {
 
-        // always write PDO mapping
-        ec_fsm_pdo_entry_start_configuration(&fsm->fsm_pdo_entry, fsm->slave,
-                fsm->pdo, &fsm->slave_pdo);
-        fsm->state = ec_fsm_pdo_conf_state_mapping;
-        fsm->state(fsm, datagram); // execure immediately
-        return;
-    }
-    else if (!ec_pdo_equal_entries(fsm->pdo, &fsm->slave_pdo)) {
-        EC_SLAVE_WARN(fsm->slave, "Slave does not support"
-                " changing the PDO mapping!\n");
-        EC_SLAVE_WARN(fsm->slave, "");
-        printk(KERN_CONT "Currently mapped PDO entries: ");
-        ec_pdo_print_entries(&fsm->slave_pdo);
-        printk(KERN_CONT ". Entries to map: ");
-        ec_pdo_print_entries(fsm->pdo);
-        printk(KERN_CONT "\n");
+            // always write PDO mapping
+            ec_fsm_pdo_entry_start_configuration(&fsm->fsm_pdo_entry, fsm->slave,
+                    fsm->pdo, &fsm->slave_pdo);
+            fsm->state = ec_fsm_pdo_conf_state_mapping;
+            fsm->state(fsm, datagram); // execure immediately
+            return;
+        } else if (!ec_pdo_equal_entries(fsm->pdo, &fsm->slave_pdo)) {
+            EC_SLAVE_WARN(fsm->slave, "Slave does not support"
+                    " changing the PDO mapping!\n");
+            EC_SLAVE_WARN(fsm->slave, "");
+            printk(KERN_CONT "Currently mapped PDO entries: ");
+            ec_pdo_print_entries(&fsm->slave_pdo);
+            printk(KERN_CONT ". Entries to map: ");
+            ec_pdo_print_entries(fsm->pdo);
+            printk(KERN_CONT "\n");
+        } 
+    } else {
+        EC_SLAVE_ERR(fsm->slave, "Slave cannot do PDO mapping."
+                " SII data not available.\n");
     }
 
     ec_fsm_pdo_conf_action_next_pdo_mapping(fsm, datagram);
@@ -603,39 +607,45 @@ void ec_fsm_pdo_conf_action_check_assignment(
         ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
-    if ((fsm->slave->sii.mailbox_protocols & EC_MBOX_COE)
-            && fsm->slave->sii.has_general
-            && fsm->slave->sii.coe_details.enable_pdo_assign) {
+    if (fsm->slave->sii_image) {
+        if ((fsm->slave->sii_image->sii.mailbox_protocols & EC_MBOX_COE)
+                && fsm->slave->sii_image->sii.has_general
+                && fsm->slave->sii_image->sii.coe_details.enable_pdo_assign) {
 
-        // always write PDO assignment
-        if (fsm->slave->master->debug_level) {
-            EC_SLAVE_DBG(fsm->slave, 1, "Setting PDO assignment of SM%u:\n",
-                    fsm->sync_index);
-            EC_SLAVE_DBG(fsm->slave, 1, ""); ec_fsm_pdo_print(fsm);
-        }
+            // always write PDO assignment
+            if (fsm->slave->master->debug_level) {
+                EC_SLAVE_DBG(fsm->slave, 1, "Setting PDO assignment of SM%u:\n",
+                        fsm->sync_index);
+                EC_SLAVE_DBG(fsm->slave, 1, ""); ec_fsm_pdo_print(fsm);
+            }
 
-        if (ec_sdo_request_alloc(&fsm->request, 2)) {
-            fsm->state = ec_fsm_pdo_state_error;
+            if (ec_sdo_request_alloc(&fsm->request, 2)) {
+                fsm->state = ec_fsm_pdo_state_error;
+                return;
+            }
+
+            // set mapped PDO count to zero
+            EC_WRITE_U8(fsm->request.data, 0); // zero PDOs mapped
+            fsm->request.data_size = 1;
+            ecrt_sdo_request_index(&fsm->request, 0x1C10 + fsm->sync_index, 0);
+            ecrt_sdo_request_write(&fsm->request);
+
+            EC_SLAVE_DBG(fsm->slave, 1, "Setting number of assigned"
+                    " PDOs to zero.\n");
+
+            fsm->state = ec_fsm_pdo_conf_state_zero_pdo_count;
+            ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, &fsm->request);
+            ec_fsm_coe_exec(fsm->fsm_coe, datagram); // execute immediately
             return;
         }
-
-        // set mapped PDO count to zero
-        EC_WRITE_U8(fsm->request.data, 0); // zero PDOs mapped
-        fsm->request.data_size = 1;
-        ecrt_sdo_request_index(&fsm->request, 0x1C10 + fsm->sync_index, 0);
-        ecrt_sdo_request_write(&fsm->request);
-
-        EC_SLAVE_DBG(fsm->slave, 1, "Setting number of assigned"
-                " PDOs to zero.\n");
-
-        fsm->state = ec_fsm_pdo_conf_state_zero_pdo_count;
-        ec_fsm_coe_transfer(fsm->fsm_coe, fsm->slave, &fsm->request);
-        ec_fsm_coe_exec(fsm->fsm_coe, datagram); // execute immediately
-        return;
+        else if (!ec_pdo_list_equal(&fsm->sync->pdos, &fsm->pdos)) {
+            EC_SLAVE_WARN(fsm->slave, "Slave does not support assigning PDOs!\n");
+            EC_SLAVE_WARN(fsm->slave, ""); ec_fsm_pdo_print(fsm);
+        }
     }
-    else if (!ec_pdo_list_equal(&fsm->sync->pdos, &fsm->pdos)) {
-        EC_SLAVE_WARN(fsm->slave, "Slave does not support assigning PDOs!\n");
-        EC_SLAVE_WARN(fsm->slave, ""); ec_fsm_pdo_print(fsm);
+    else {
+        EC_SLAVE_ERR(fsm->slave, "Slave cannot do PDO assignment."
+                " SII data not available.\n");
     }
 
     ec_fsm_pdo_conf_action_next_sync(fsm, datagram);

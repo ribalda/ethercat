@@ -259,16 +259,21 @@ int ec_slave_config_attach(
         return -EEXIST;
     }
 
+    if (!slave->sii_image) {
+        EC_CONFIG_DBG(sc, 1, "Slave cannot access its SII data!\n");
+        return -EAGAIN;
+    }
+
     if (
 #ifdef EC_IDENT_WILDCARDS
             sc->vendor_id != 0xffffffff &&
 #endif
-            slave->sii.vendor_id != sc->vendor_id
+            slave->sii_image->sii.vendor_id != sc->vendor_id
        ) {
         EC_CONFIG_DBG(sc, 1, "Slave %s-%u has no matching vendor ID (0x%08X)"
                 " for configuration (0x%08X).\n",
                 ec_device_names[slave->device_index!=0], slave->ring_position,
-                slave->sii.vendor_id, sc->vendor_id);
+                slave->sii_image->sii.vendor_id, sc->vendor_id);
         return -EINVAL;
     }
 
@@ -276,12 +281,12 @@ int ec_slave_config_attach(
 #ifdef EC_IDENT_WILDCARDS
             sc->product_code != 0xffffffff &&
 #endif
-            slave->sii.product_code != sc->product_code
+            slave->sii_image->sii.product_code != sc->product_code
        ) {
         EC_CONFIG_DBG(sc, 1, "Slave %s-%u has no matching product code (0x%08X)"
                 " for configuration (0x%08X).\n",
                 ec_device_names[slave->device_index!=0], slave->ring_position,
-                slave->sii.product_code, sc->product_code);
+                slave->sii_image->sii.product_code, sc->product_code);
         return -EINVAL;
     }
 
@@ -367,9 +372,14 @@ void ec_slave_config_load_default_mapping(
     EC_CONFIG_DBG(sc, 1, "Loading default mapping for PDO 0x%04X.\n",
             pdo->index);
 
+    if (!sc->slave->sii_image) {
+        EC_CONFIG_DBG(sc, 1, "Slave cannot access its SII data!\n");
+        return;
+    }
+
     // find PDO in any sync manager (it could be reassigned later)
-    for (i = 0; i < sc->slave->sii.sync_count; i++) {
-        sync = &sc->slave->sii.syncs[i];
+    for (i = 0; i < sc->slave->sii_image->sii.sync_count; i++) {
+        sync = &sc->slave->sii_image->sii.syncs[i];
 
         list_for_each_entry(default_pdo, &sync->pdos.list, list) {
             if (default_pdo->index != pdo->index)
@@ -984,7 +994,7 @@ int ecrt_slave_config_sdo(ec_slave_config_t *sc, uint16_t index,
             "subindex = 0x%02X, data = 0x%p, size = %zu)\n",
             __func__, sc, index, subindex, data, size);
 
-    if (slave && !(slave->sii.mailbox_protocols & EC_MBOX_COE)) {
+    if (slave && slave->sii_image && !(slave->sii_image->sii.mailbox_protocols & EC_MBOX_COE)) {
         EC_CONFIG_WARN(sc, "Attached slave does not support CoE!\n");
     }
 
@@ -1068,7 +1078,7 @@ int ecrt_slave_config_complete_sdo(ec_slave_config_t *sc, uint16_t index,
     EC_CONFIG_DBG(sc, 1, "%s(sc = 0x%p, index = 0x%04X, "
             "data = 0x%p, size = %zu)\n", __func__, sc, index, data, size);
 
-    if (slave && !(slave->sii.mailbox_protocols & EC_MBOX_COE)) {
+    if (slave && !(slave->sii_image->sii.mailbox_protocols & EC_MBOX_COE)) {
         EC_CONFIG_WARN(sc, "Attached slave does not support CoE!\n");
     }
 
@@ -1304,7 +1314,7 @@ int ecrt_slave_config_idn(ec_slave_config_t *sc, uint8_t drive_no,
         return -EINVAL;
     }
 
-    if (slave && !(slave->sii.mailbox_protocols & EC_MBOX_SOE)) {
+    if (slave && slave->sii_image && !(slave->sii_image->sii.mailbox_protocols & EC_MBOX_SOE)) {
         EC_CONFIG_WARN(sc, "Attached slave does not support SoE!\n");
     }
 

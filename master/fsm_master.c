@@ -293,6 +293,7 @@ void ec_fsm_master_state_broadcast(
         ec_master_clear_eoe_handlers(master);
 #endif
         ec_master_clear_slaves(master);
+        ec_master_clear_sii_images(master);
 
         for (dev_idx = EC_DEVICE_MAIN;
                 dev_idx < ec_master_num_devices(master); dev_idx++) {
@@ -347,6 +348,7 @@ void ec_fsm_master_state_broadcast(
             ec_master_clear_eoe_handlers(master);
 #endif
             ec_master_clear_slaves(master);
+            ec_master_clear_sii_images(master);
 
             for (dev_idx = EC_DEVICE_MAIN;
                     dev_idx < ec_master_num_devices(master); dev_idx++) {
@@ -554,17 +556,17 @@ void ec_fsm_master_action_idle(
             slave < master->slaves + master->slave_count;
             slave++) {
 #if !EC_SKIP_SDO_DICT
-        if (!(slave->sii.mailbox_protocols & EC_MBOX_COE)
-                || (slave->sii.has_general
-                    && !slave->sii.coe_details.enable_sdo_info)
+        if (slave->sii_image && (!(slave->sii_image->sii.mailbox_protocols & EC_MBOX_COE)
+                || (slave->sii_image->sii.has_general
+                    && !slave->sii_image->sii.coe_details.enable_sdo_info)
                 || slave->sdo_dictionary_fetched
                 || slave->current_state == EC_SLAVE_STATE_INIT
                 || slave->current_state == EC_SLAVE_STATE_UNKNOWN
                 || jiffies - slave->jiffies_preop < EC_WAIT_SDO_DICT * HZ
-                ) {
-            if (!(slave->sii.mailbox_protocols & EC_MBOX_COE)
-                    || (slave->sii.has_general
-                        && !slave->sii.coe_details.enable_sdo_info)
+                )) {
+            if (!(slave->sii_image->sii.mailbox_protocols & EC_MBOX_COE)
+                    || (slave->sii_image->sii.has_general
+                        && !slave->sii_image->sii.coe_details.enable_sdo_info)
                     ){
 #endif
                 // SDO info not supported. Enable processing of requests
@@ -1113,7 +1115,7 @@ void ec_fsm_master_state_scan_slave(
     fsm->slave->valid_mbox_data = 1;
 
 #ifdef EC_EOE
-    if (slave->sii.mailbox_protocols & EC_MBOX_EOE) {
+    if (slave->sii_image && (slave->sii_image->sii.mailbox_protocols & EC_MBOX_EOE)) {
         // create EoE handler for this slave
         ec_eoe_t *eoe;
         if (!(eoe = kmalloc(sizeof(ec_eoe_t), GFP_KERNEL))) {
@@ -1520,9 +1522,15 @@ void ec_fsm_master_state_write_sii(
 
     if (request->offset <= 4 && request->offset + request->nwords > 4) {
         // alias was written
-        slave->sii.alias = EC_READ_U16(request->words + 4);
-        // TODO: read alias from register 0x0012
-        slave->effective_alias = slave->sii.alias;
+        if (slave->sii_image) {
+            slave->sii_image->sii.alias = EC_READ_U16(request->words + 4);
+            // TODO: read alias from register 0x0012
+            slave->effective_alias = slave->sii_image->sii.alias;
+        }
+        else {
+            EC_SLAVE_WARN(slave, "Slave could not update effective alias."
+                    " SII data not available.\n");
+        }
     }
     // TODO: Evaluate other SII contents!
 

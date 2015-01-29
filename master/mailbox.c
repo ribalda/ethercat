@@ -57,7 +57,13 @@ uint8_t *ec_slave_mbox_prepare_send(const ec_slave_t *slave, /**< slave */
     size_t total_size;
     int ret;
 
-    if (unlikely(!slave->sii.mailbox_protocols)) {
+    if (unlikely(!slave->sii_image)) {
+        EC_SLAVE_ERR(slave, "Slave cannot verify if mailbox communication"
+                " is supported!\n");
+        return ERR_PTR(-EAGAIN);
+    }
+
+    if (unlikely(!slave->sii_image->sii.mailbox_protocols)) {
         EC_SLAVE_ERR(slave, "Slave does not support mailbox"
                 " communication!\n");
         return ERR_PTR(-EPROTONOSUPPORT);
