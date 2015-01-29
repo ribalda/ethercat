@@ -646,9 +646,17 @@ int ec_fsm_slave_action_process_dict(
     request = list_entry(slave->dict_requests.next, ec_dict_request_t, list);
     list_del_init(&request->list); // dequeue
 
-    if (!(slave->sii.mailbox_protocols & EC_MBOX_COE)
-            || (slave->sii.has_general
-                && !slave->sii.coe_details.enable_sdo_info))
+    if (!slave->sii_image) {
+        EC_SLAVE_ERR(slave, "Slave not ready to process dictionary request\n");
+        request->state = EC_INT_REQUEST_FAILURE;
+        wake_up_all(&slave->master->request_queue);
+        fsm->state = ec_fsm_slave_state_idle;
+        return 1;
+    }
+
+    if (!(slave->sii_image->sii.mailbox_protocols & EC_MBOX_COE)
+            || (slave->sii_image->sii.has_general
+                && !slave->sii_image->sii.coe_details.enable_sdo_info))
     {
         EC_SLAVE_INFO(slave, "Aborting dictionary request,"
                         " slave does not support SDO Info.\n");

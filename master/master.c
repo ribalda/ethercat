@@ -184,6 +184,7 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
 
     INIT_LIST_HEAD(&master->configs);
     INIT_LIST_HEAD(&master->domains);
+    INIT_LIST_HEAD(&master->sii_images);
 
     master->app_time = 0ULL;
     master->dc_ref_time = 0ULL;
@@ -426,6 +427,7 @@ void ec_master_clear(
     ec_master_clear_domains(master);
     ec_master_clear_slave_configs(master);
     ec_master_clear_slaves(master);
+    ec_master_clear_sii_images(master);
 
     ec_datagram_clear(&master->sync_mon_datagram);
     ec_datagram_clear(&master->sync64_datagram);
@@ -479,6 +481,66 @@ void ec_master_clear_slave_configs(ec_master_t *master)
         list_del(&sc->list);
         ec_slave_config_clear(sc);
         kfree(sc);
+    }
+}
+
+/*****************************************************************************/
+
+/** Clear the SII data.
+ */
+void ec_sii_image_clear(ec_sii_image_t *sii_image)
+{
+    unsigned int i;
+    ec_pdo_t *pdo, *next_pdo;
+
+    // free all sync managers
+    if (sii_image->sii.syncs) {
+        for (i = 0; i < sii_image->sii.sync_count; i++) {
+            ec_sync_clear(&sii_image->sii.syncs[i]);
+        }
+        kfree(sii_image->sii.syncs);
+        sii_image->sii.syncs = NULL;
+    }
+
+    // free all strings
+    if (sii_image->sii.strings) {
+        for (i = 0; i < sii_image->sii.string_count; i++)
+            kfree(sii_image->sii.strings[i]);
+        kfree(sii_image->sii.strings);
+    }
+
+    // free all SII PDOs
+    list_for_each_entry_safe(pdo, next_pdo, &sii_image->sii.pdos, list) {
+        list_del(&pdo->list);
+        ec_pdo_clear(pdo);
+        kfree(pdo);
+    }
+
+    if (sii_image->words) {
+        kfree(sii_image->words);
+    }
+}
+
+/*****************************************************************************/
+
+/** Clear the SII data applied during bus scanning.
+ */
+void ec_master_clear_sii_images(
+        ec_master_t *master /**< EtherCAT master. */
+        )
+{
+    ec_sii_image_t *sii_image, *next;
+
+    list_for_each_entry_safe(sii_image, next, &master->sii_images, list) {
+#if EC_REUSE_SII_IMAGE
+        if ((master->phase != EC_OPERATION) ||
+           ((sii_image->sii.serial_number == 0) && (sii_image->sii.alias == 0)))
+#endif
+        {
+            list_del(&sii_image->list);
+            ec_sii_image_clear(sii_image);
+            kfree(sii_image);
+        }
     }
 }
 
@@ -690,6 +752,7 @@ void ec_master_leave_idle_phase(ec_master_t *master /**< EtherCAT master */)
 
     ec_lock_down(&master->master_sem);
     ec_master_clear_slaves(master);
+    ec_master_clear_sii_images(master);
     ec_lock_up(&master->master_sem);
 
     ec_fsm_master_reset(&master->fsm);
@@ -2982,13 +3045,19 @@ int ecrt_master_get_slave(ec_master_t *master, uint16_t slave_position,
        goto out_get_slave;
     }
 
+    if (slave->sii_image == NULL) {
+        EC_MASTER_WARN(master, "Cannot access SII data from slave position %u", slave->ring_position);
+        ret = -ENOENT;
+        goto out_get_slave;
+    }
+
     slave_info->position = slave->ring_position;
-    slave_info->vendor_id = slave->sii.vendor_id;
-    slave_info->product_code = slave->sii.product_code;
-    slave_info->revision_number = slave->sii.revision_number;
-    slave_info->serial_number = slave->sii.serial_number;
+    slave_info->vendor_id = slave->sii_image->sii.vendor_id;
+    slave_info->product_code = slave->sii_image->sii.product_code;
+    slave_info->revision_number = slave->sii_image->sii.revision_number;
+    slave_info->serial_number = slave->sii_image->sii.serial_number;
     slave_info->alias = slave->effective_alias;
-    slave_info->current_on_ebus = slave->sii.current_on_ebus;
+    slave_info->current_on_ebus = slave->sii_image->sii.current_on_ebus;
 
     for (i = 0; i < EC_MAX_PORTS; i++) {
         slave_info->ports[i].desc = slave->ports[i].desc;
@@ -3010,10 +3079,10 @@ int ecrt_master_get_slave(ec_master_t *master, uint16_t slave_position,
 
     slave_info->al_state = slave->current_state;
     slave_info->error_flag = slave->error_flag;
-    slave_info->sync_count = slave->sii.sync_count;
+    slave_info->sync_count = slave->sii_image->sii.sync_count;
     slave_info->sdo_count = ec_slave_sdo_count(slave);
-    if (slave->sii.name) {
-        strncpy(slave_info->name, slave->sii.name, EC_MAX_STRING_LENGTH);
+    if (slave->sii_image->sii.name) {
+        strncpy(slave_info->name, slave->sii_image->sii.name, EC_MAX_STRING_LENGTH);
     } else {
         slave_info->name[0] = 0;
     }

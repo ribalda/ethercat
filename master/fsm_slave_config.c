@@ -441,7 +441,14 @@ void ec_fsm_slave_config_enter_mbox_sync(
         return;
     }
 
-    if (!slave->sii.mailbox_protocols) {
+    if (!slave->sii_image) {
+        fsm->state = ec_fsm_slave_config_state_error;
+        EC_SLAVE_ERR(slave, "Slave cannot configure SyncManager."
+                " SII data not available.\n");
+        return;
+    }
+
+    if (!slave->sii_image->sii.mailbox_protocols) {
         // no mailbox protocols supported
         EC_SLAVE_DBG(slave, 1, "Slave does not support"
                 " mailbox communication.\n");
@@ -463,52 +470,57 @@ void ec_fsm_slave_config_enter_mbox_sync(
         ec_datagram_zero(datagram);
 
         ec_sync_init(&sync, slave);
-        sync.physical_start_address = slave->sii.boot_rx_mailbox_offset;
+        sync.physical_start_address = slave->sii_image->sii.boot_rx_mailbox_offset;
         sync.control_register = 0x26;
         sync.enable = 1;
-        ec_sync_page(&sync, 0, slave->sii.boot_rx_mailbox_size,
+        ec_sync_page(&sync, 0, slave->sii_image->sii.boot_rx_mailbox_size,
                 EC_DIR_INVALID, // use default direction
                 0, // no PDO xfer
                 datagram->data);
         slave->configured_rx_mailbox_offset =
-            slave->sii.boot_rx_mailbox_offset;
+            slave->sii_image->sii.boot_rx_mailbox_offset;
         slave->configured_rx_mailbox_size =
-            slave->sii.boot_rx_mailbox_size;
+            slave->sii_image->sii.boot_rx_mailbox_size;
 
         ec_sync_init(&sync, slave);
-        sync.physical_start_address = slave->sii.boot_tx_mailbox_offset;
+        sync.physical_start_address = slave->sii_image->sii.boot_tx_mailbox_offset;
         sync.control_register = 0x22;
         sync.enable = 1;
-        ec_sync_page(&sync, 1, slave->sii.boot_tx_mailbox_size,
+        ec_sync_page(&sync, 1, slave->sii_image->sii.boot_tx_mailbox_size,
                 EC_DIR_INVALID, // use default direction
                 0, // no PDO xfer
                 datagram->data + EC_SYNC_PAGE_SIZE);
         slave->configured_tx_mailbox_offset =
-            slave->sii.boot_tx_mailbox_offset;
+            slave->sii_image->sii.boot_tx_mailbox_offset;
         slave->configured_tx_mailbox_size =
-            slave->sii.boot_tx_mailbox_size;
+            slave->sii_image->sii.boot_tx_mailbox_size;
 
-    } else if (slave->sii.sync_count >= 2) { // mailbox configuration provided
+    } else if (slave->sii_image->sii.sync_count >= 2) { // mailbox configuration provided
         ec_datagram_fpwr(datagram, slave->station_address, 0x0800,
-                EC_SYNC_PAGE_SIZE * slave->sii.sync_count);
+                EC_SYNC_PAGE_SIZE * slave->sii_image->sii.sync_count);
         ec_datagram_zero(datagram);
 
-        for (i = 0; i < 2; i++) {
-            ec_sync_page(&slave->sii.syncs[i], i,
-                    slave->sii.syncs[i].default_length,
-                    NULL, // use default sync manager configuration
-                    0, // no PDO xfer
-                    datagram->data + EC_SYNC_PAGE_SIZE * i);
-        }
+        if (slave->sii_image->sii.syncs) {
+            for (i = 0; i < 2; i++) {
+                ec_sync_page(&slave->sii_image->sii.syncs[i], i,
+                        slave->sii_image->sii.syncs[i].default_length,
+                        NULL, // use default sync manager configuration
+                        0, // no PDO xfer
+                        datagram->data + EC_SYNC_PAGE_SIZE * i);
+            }
 
-        slave->configured_rx_mailbox_offset =
-            slave->sii.syncs[0].physical_start_address;
-        slave->configured_rx_mailbox_size =
-            slave->sii.syncs[0].default_length;
-        slave->configured_tx_mailbox_offset =
-            slave->sii.syncs[1].physical_start_address;
-        slave->configured_tx_mailbox_size =
-            slave->sii.syncs[1].default_length;
+            slave->configured_rx_mailbox_offset =
+                slave->sii_image->sii.syncs[0].physical_start_address;
+            slave->configured_rx_mailbox_size =
+                slave->sii_image->sii.syncs[0].default_length;
+            slave->configured_tx_mailbox_offset =
+                slave->sii_image->sii.syncs[1].physical_start_address;
+            slave->configured_tx_mailbox_size =
+                slave->sii_image->sii.syncs[1].default_length;
+        }
+        else {
+            EC_SLAVE_ERR(slave, "Slave has no SyncManager\n");
+        }
     } else { // no mailbox sync manager configurations provided
         ec_sync_t sync;
 
@@ -520,34 +532,34 @@ void ec_fsm_slave_config_enter_mbox_sync(
         ec_datagram_zero(datagram);
 
         ec_sync_init(&sync, slave);
-        sync.physical_start_address = slave->sii.std_rx_mailbox_offset;
+        sync.physical_start_address = slave->sii_image->sii.std_rx_mailbox_offset;
         sync.control_register = 0x26;
         sync.enable = 1;
-        ec_sync_page(&sync, 0, slave->sii.std_rx_mailbox_size,
+        ec_sync_page(&sync, 0, slave->sii_image->sii.std_rx_mailbox_size,
                 NULL, // use default sync manager configuration
                 0, // no PDO xfer
                 datagram->data);
         slave->configured_rx_mailbox_offset =
-            slave->sii.std_rx_mailbox_offset;
+            slave->sii_image->sii.std_rx_mailbox_offset;
         slave->configured_rx_mailbox_size =
-            slave->sii.std_rx_mailbox_size;
+            slave->sii_image->sii.std_rx_mailbox_size;
 
         ec_sync_init(&sync, slave);
-        sync.physical_start_address = slave->sii.std_tx_mailbox_offset;
+        sync.physical_start_address = slave->sii_image->sii.std_tx_mailbox_offset;
         sync.control_register = 0x22;
         sync.enable = 1;
-        ec_sync_page(&sync, 1, slave->sii.std_tx_mailbox_size,
+        ec_sync_page(&sync, 1, slave->sii_image->sii.std_tx_mailbox_size,
                 NULL, // use default sync manager configuration
                 0, // no PDO xfer
                 datagram->data + EC_SYNC_PAGE_SIZE);
         slave->configured_tx_mailbox_offset =
-            slave->sii.std_tx_mailbox_offset;
+            slave->sii_image->sii.std_tx_mailbox_offset;
         slave->configured_tx_mailbox_size =
-            slave->sii.std_tx_mailbox_size;
+            slave->sii_image->sii.std_tx_mailbox_size;
     }
 
     // allocate memory for mailbox response data for supported mailbox protocols
-    ec_mbox_prot_data_prealloc(slave, slave->sii.mailbox_protocols, slave->configured_tx_mailbox_size);
+    ec_mbox_prot_data_prealloc(slave, slave->sii_image->sii.mailbox_protocols, slave->configured_tx_mailbox_size);
 
     fsm->take_time = 1;
 
@@ -1104,19 +1116,26 @@ void ec_fsm_slave_config_enter_pdo_sync(
     const ec_sync_t *sync;
     uint16_t size;
 
-    if (slave->sii.mailbox_protocols) {
+    if (!slave->sii_image) {
+        fsm->state = ec_fsm_slave_config_state_error;
+        EC_SLAVE_ERR(slave, "Slave cannot configure PDO SyncManager."
+                " SII data not available.\n");
+        return;
+    }
+
+    if (slave->sii_image->sii.mailbox_protocols) {
         offset = 2; // slave has mailboxes
     } else {
         offset = 0;
     }
 
-    if (slave->sii.sync_count <= offset) {
+    if (slave->sii_image->sii.sync_count <= offset) {
         // no PDO sync managers to configure
         ec_fsm_slave_config_enter_fmmu(fsm);
         return;
     }
 
-    num_pdo_syncs = slave->sii.sync_count - offset;
+    num_pdo_syncs = slave->sii_image->sii.sync_count - offset;
 
     // configure sync managers for process data
     ec_datagram_fpwr(datagram, slave->station_address,
@@ -1128,7 +1147,7 @@ void ec_fsm_slave_config_enter_pdo_sync(
         const ec_sync_config_t *sync_config;
         uint8_t pdo_xfer = 0;
         sync_index = i + offset;
-        sync = &slave->sii.syncs[sync_index];
+        sync = &slave->sii_image->sii.syncs[sync_index];
 
         if (slave->config) {
             const ec_slave_config_t *sc = slave->config;

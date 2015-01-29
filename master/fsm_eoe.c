@@ -257,7 +257,13 @@ void ec_fsm_eoe_set_ip_start(
 
     EC_SLAVE_DBG(slave, 1, "Setting IP parameters.\n");
 
-    if (!(slave->sii.mailbox_protocols & EC_MBOX_EOE)) {
+    if (!slave->sii_image) {
+        EC_SLAVE_ERR(slave, "Slave not ready to execute EoE FSM\n");
+        fsm->state = ec_fsm_eoe_error;
+        return;
+    }
+
+    if (!(slave->sii_image->sii.mailbox_protocols & EC_MBOX_EOE)) {
         EC_SLAVE_ERR(slave, "Slave does not support EoE!\n");
         fsm->state = ec_fsm_eoe_error;
         return;

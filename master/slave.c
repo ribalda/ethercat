@@ -71,10 +71,15 @@ void ec_slave_init(
 
     slave->master = master;
     slave->device_index = dev_idx;
+
     slave->ring_position = ring_position;
     slave->station_address = station_address;
     slave->effective_alias = 0x0000;
-
+#if EC_REUSE_SII_IMAGE
+    slave->effective_vendor_id = 0x00000000;
+    slave->effective_product_code = 0x00000000;
+    slave->effective_serial_number = 0x00000000;
+#endif
     slave->config = NULL;
     slave->requested_state = EC_SLAVE_STATE_PREOP;
     slave->current_state = EC_SLAVE_STATE_UNKNOWN;
@@ -97,7 +102,6 @@ void ec_slave_init(
         slave->ports[i].link.link_up = 0;
         slave->ports[i].link.loop_closed = 1;
         slave->ports[i].link.signal_detected = 0;
-        slave->sii.physical_layer[i] = 0xFF;
 
         slave->ports[i].receive_time = 0U;
 
@@ -116,40 +120,8 @@ void ec_slave_init(
     slave->has_dc_system_time = 0;
     slave->transmission_delay = 0U;
 
-    slave->sii_words = NULL;
-    slave->sii_nwords = 0;
+    slave->sii_image = NULL;
 
-    slave->sii.alias = 0x0000;
-    slave->sii.vendor_id = 0x00000000;
-    slave->sii.product_code = 0x00000000;
-    slave->sii.revision_number = 0x00000000;
-    slave->sii.serial_number = 0x00000000;
-    slave->sii.boot_rx_mailbox_offset = 0x0000;
-    slave->sii.boot_rx_mailbox_size = 0x0000;
-    slave->sii.boot_tx_mailbox_offset = 0x0000;
-    slave->sii.boot_tx_mailbox_size = 0x0000;
-    slave->sii.std_rx_mailbox_offset = 0x0000;
-    slave->sii.std_rx_mailbox_size = 0x0000;
-    slave->sii.std_tx_mailbox_offset = 0x0000;
-    slave->sii.std_tx_mailbox_size = 0x0000;
-    slave->sii.mailbox_protocols = 0;
-
-    slave->sii.strings = NULL;
-    slave->sii.string_count = 0;
-
-    slave->sii.has_general = 0;
-    slave->sii.group = NULL;
-    slave->sii.image = NULL;
-    slave->sii.order = NULL;
-    slave->sii.name = NULL;
-    memset(&slave->sii.coe_details, 0x00, sizeof(ec_sii_coe_details_t));
-    memset(&slave->sii.general_flags, 0x00, sizeof(ec_sii_general_flags_t));
-    slave->sii.current_on_ebus = 0;
-
-    slave->sii.syncs = NULL;
-    slave->sii.sync_count = 0;
-
-    INIT_LIST_HEAD(&slave->sii.pdos);
 
     INIT_LIST_HEAD(&slave->sdo_dictionary);
 
@@ -181,6 +153,51 @@ void ec_slave_init(
     slave->valid_mbox_data = 0;
 }
 
+
+void ec_slave_sii_image_init(
+        ec_sii_image_t *sii_image /**< SII image */
+        )
+{
+    unsigned int i;
+
+    sii_image->words = NULL;
+    sii_image->nwords = 0;
+
+    sii_image->sii.alias = 0x0000;
+    sii_image->sii.vendor_id = 0x00000000;
+    sii_image->sii.product_code = 0x00000000;
+    sii_image->sii.revision_number = 0x00000000;
+    sii_image->sii.serial_number = 0x00000000;
+    sii_image->sii.boot_rx_mailbox_offset = 0x0000;
+    sii_image->sii.boot_rx_mailbox_size = 0x0000;
+    sii_image->sii.boot_tx_mailbox_offset = 0x0000;
+    sii_image->sii.boot_tx_mailbox_size = 0x0000;
+    sii_image->sii.std_rx_mailbox_offset = 0x0000;
+    sii_image->sii.std_rx_mailbox_size = 0x0000;
+    sii_image->sii.std_tx_mailbox_offset = 0x0000;
+    sii_image->sii.std_tx_mailbox_size = 0x0000;
+    sii_image->sii.mailbox_protocols = 0;
+    sii_image->sii.strings = NULL;
+    sii_image->sii.string_count = 0;
+
+    sii_image->sii.has_general = 0;
+    sii_image->sii.group = NULL;
+    sii_image->sii.image = NULL;
+    sii_image->sii.order = NULL;
+    sii_image->sii.name = NULL;
+    memset(&sii_image->sii.coe_details, 0x00, sizeof(ec_sii_coe_details_t));
+    memset(&sii_image->sii.general_flags, 0x00, sizeof(ec_sii_general_flags_t));
+    sii_image->sii.current_on_ebus = 0;
+
+    sii_image->sii.syncs = NULL;
+    sii_image->sii.sync_count = 0;
+
+    INIT_LIST_HEAD(&sii_image->sii.pdos);
+
+    for (i = 0; i < EC_MAX_PORTS; i++) {
+        sii_image->sii.physical_layer[i] = 0xFF;
+    }
+}
 
 /*****************************************************************************/
 
@@ -224,8 +241,6 @@ int ec_read_mbox_locked(ec_slave_t *slave)
 void ec_slave_clear(ec_slave_t *slave /**< EtherCAT slave */)
 {
     ec_sdo_t *sdo, *next_sdo;
-    unsigned int i;
-    ec_pdo_t *pdo, *next_pdo;
 
     // abort all pending requests
 
@@ -296,26 +311,6 @@ void ec_slave_clear(ec_slave_t *slave /**< EtherCAT slave */)
         kfree(sdo);
     }
 
-    // free all strings
-    if (slave->sii.strings) {
-        for (i = 0; i < slave->sii.string_count; i++)
-            kfree(slave->sii.strings[i]);
-        kfree(slave->sii.strings);
-    }
-
-    // free all sync managers
-    ec_slave_clear_sync_managers(slave);
-
-    // free all SII PDOs
-    list_for_each_entry_safe(pdo, next_pdo, &slave->sii.pdos, list) {
-        list_del(&pdo->list);
-        ec_pdo_clear(pdo);
-        kfree(pdo);
-    }
-
-    if (slave->sii_words) {
-        kfree(slave->sii_words);
-    }
 
     // free mailbox response data
 #ifdef EC_EOE
@@ -338,12 +333,12 @@ void ec_slave_clear_sync_managers(ec_slave_t *slave /**< EtherCAT slave. */)
 {
     unsigned int i;
 
-    if (slave->sii.syncs) {
-        for (i = 0; i < slave->sii.sync_count; i++) {
-            ec_sync_clear(&slave->sii.syncs[i]);
+    if (slave->sii_image && slave->sii_image->sii.syncs) {
+        for (i = 0; i < slave->sii_image->sii.sync_count; i++) {
+            ec_sync_clear(&slave->sii_image->sii.syncs[i]);
         }
-        kfree(slave->sii.syncs);
-        slave->sii.syncs = NULL;
+        kfree(slave->sii_image->sii.syncs);
+        slave->sii_image->sii.syncs = NULL;
     }
 }
 
@@ -441,11 +436,16 @@ int ec_slave_fetch_sii_strings(
     size_t size;
     off_t offset;
 
-    slave->sii.string_count = data[0];
+    if (!slave->sii_image) {
+        EC_SLAVE_ERR(slave, "SII data not attached!\n");
+        return -EINVAL;
+    }
 
-    if (slave->sii.string_count) {
-        if (!(slave->sii.strings =
-                    kmalloc(sizeof(char *) * slave->sii.string_count,
+    slave->sii_image->sii.string_count = data[0];
+
+    if (slave->sii_image->sii.string_count) {
+        if (!(slave->sii_image->sii.strings =
+                    kmalloc(sizeof(char *) * slave->sii_image->sii.string_count,
                         GFP_KERNEL))) {
             EC_SLAVE_ERR(slave, "Failed to allocate string array memory.\n");
             err = -ENOMEM;
@@ -453,17 +453,17 @@ int ec_slave_fetch_sii_strings(
         }
 
         offset = 1;
-        for (i = 0; i < slave->sii.string_count; i++) {
+        for (i = 0; i < slave->sii_image->sii.string_count; i++) {
             size = data[offset];
             // allocate memory for string structure and data at a single blow
-            if (!(slave->sii.strings[i] =
+            if (!(slave->sii_image->sii.strings[i] =
                         kmalloc(sizeof(char) * size + 1, GFP_KERNEL))) {
                 EC_SLAVE_ERR(slave, "Failed to allocate string memory.\n");
                 err = -ENOMEM;
                 goto out_free;
             }
-            memcpy(slave->sii.strings[i], data + offset + 1, size);
-            slave->sii.strings[i][size] = 0x00; // append binary zero
+            memcpy(slave->sii_image->sii.strings[i], data + offset + 1, size);
+            slave->sii_image->sii.strings[i][size] = 0x00; // append binary zero
             offset += 1 + size;
         }
     }
@@ -472,11 +472,11 @@ int ec_slave_fetch_sii_strings(
 
 out_free:
     for (i--; i >= 0; i--)
-        kfree(slave->sii.strings[i]);
-    kfree(slave->sii.strings);
-    slave->sii.strings = NULL;
+        kfree(slave->sii_image->sii.strings[i]);
+    kfree(slave->sii_image->sii.strings);
+    slave->sii_image->sii.strings = NULL;
 out_zero:
-    slave->sii.string_count = 0;
+    slave->sii_image->sii.string_count = 0;
     return err;
 }
 
@@ -502,31 +502,36 @@ int ec_slave_fetch_sii_general(
         return -EINVAL;
     }
 
-    slave->sii.group = ec_slave_sii_string(slave, data[0]);
-    slave->sii.image = ec_slave_sii_string(slave, data[1]);
-    slave->sii.order = ec_slave_sii_string(slave, data[2]);
-    slave->sii.name = ec_slave_sii_string(slave, data[3]);
+    if (!slave->sii_image) {
+        EC_SLAVE_ERR(slave, "SII data not attached!\n");
+        return -EINVAL;
+    }
+
+    slave->sii_image->sii.group = ec_slave_sii_string(slave, data[0]);
+    slave->sii_image->sii.image = ec_slave_sii_string(slave, data[1]);
+    slave->sii_image->sii.order = ec_slave_sii_string(slave, data[2]);
+    slave->sii_image->sii.name = ec_slave_sii_string(slave, data[3]);
 
     for (i = 0; i < 4; i++)
-        slave->sii.physical_layer[i] =
+        slave->sii_image->sii.physical_layer[i] =
             (data[4] & (0x03 << (i * 2))) >> (i * 2);
 
     // read CoE details
     flags = EC_READ_U8(data + 5);
-    slave->sii.coe_details.enable_sdo =                 (flags >> 0) & 0x01;
-    slave->sii.coe_details.enable_sdo_info =            (flags >> 1) & 0x01;
-    slave->sii.coe_details.enable_pdo_assign =          (flags >> 2) & 0x01;
-    slave->sii.coe_details.enable_pdo_configuration =   (flags >> 3) & 0x01;
-    slave->sii.coe_details.enable_upload_at_startup =   (flags >> 4) & 0x01;
-    slave->sii.coe_details.enable_sdo_complete_access = (flags >> 5) & 0x01;
+    slave->sii_image->sii.coe_details.enable_sdo =                 (flags >> 0) & 0x01;
+    slave->sii_image->sii.coe_details.enable_sdo_info =            (flags >> 1) & 0x01;
+    slave->sii_image->sii.coe_details.enable_pdo_assign =          (flags >> 2) & 0x01;
+    slave->sii_image->sii.coe_details.enable_pdo_configuration =   (flags >> 3) & 0x01;
+    slave->sii_image->sii.coe_details.enable_upload_at_startup =   (flags >> 4) & 0x01;
+    slave->sii_image->sii.coe_details.enable_sdo_complete_access = (flags >> 5) & 0x01;
 
     // read general flags
     flags = EC_READ_U8(data + 0x000B);
-    slave->sii.general_flags.enable_safeop =  (flags >> 0) & 0x01;
-    slave->sii.general_flags.enable_not_lrw = (flags >> 1) & 0x01;
+    slave->sii_image->sii.general_flags.enable_safeop =  (flags >> 0) & 0x01;
+    slave->sii_image->sii.general_flags.enable_not_lrw = (flags >> 1) & 0x01;
 
-    slave->sii.current_on_ebus = EC_READ_S16(data + 0x0C);
-    slave->sii.has_general = 1;
+    slave->sii_image->sii.current_on_ebus = EC_READ_S16(data + 0x0C);
+    slave->sii_image->sii.has_general = 1;
     return 0;
 }
 
@@ -557,10 +562,15 @@ int ec_slave_fetch_sii_syncs(
         return -EINVAL;
     }
 
+    if (!slave->sii_image) {
+        EC_SLAVE_ERR(slave, "SII data not attached!\n");
+        return -EINVAL;
+    }
+
     count = data_size / 8;
 
     if (count) {
-        total_count = count + slave->sii.sync_count;
+        total_count = count + slave->sii_image->sii.sync_count;
         if (total_count > EC_MAX_SYNC_MANAGERS) {
             EC_SLAVE_ERR(slave, "Exceeded maximum number of"
                     " sync managers!\n");
@@ -573,12 +583,12 @@ int ec_slave_fetch_sii_syncs(
             return -ENOMEM;
         }
 
-        for (i = 0; i < slave->sii.sync_count; i++)
-            ec_sync_init_copy(syncs + i, slave->sii.syncs + i);
+        for (i = 0; i < slave->sii_image->sii.sync_count; i++)
+            ec_sync_init_copy(syncs + i, slave->sii_image->sii.syncs + i);
 
         // initialize new sync managers
         for (i = 0; i < count; i++, data += 8) {
-            index = i + slave->sii.sync_count;
+            index = i + slave->sii_image->sii.sync_count;
             sync = &syncs[index];
 
             ec_sync_init(sync, slave);
@@ -588,10 +598,10 @@ int ec_slave_fetch_sii_syncs(
             sync->enable = EC_READ_U8(data + 6);
         }
 
-        if (slave->sii.syncs)
-            kfree(slave->sii.syncs);
-        slave->sii.syncs = syncs;
-        slave->sii.sync_count = total_count;
+        if (slave->sii_image->sii.syncs)
+            kfree(slave->sii_image->sii.syncs);
+        slave->sii_image->sii.syncs = syncs;
+        slave->sii_image->sii.sync_count = total_count;
     }
 
     return 0;
@@ -616,6 +626,11 @@ int ec_slave_fetch_sii_pdos(
     ec_pdo_entry_t *entry;
     unsigned int entry_count, i;
 
+    if (!slave->sii_image) {
+        EC_SLAVE_ERR(slave, "SII data not attached!\n");
+        return -EINVAL;
+    }
+
     while (data_size >= 8) {
         if (!(pdo = kmalloc(sizeof(ec_pdo_t), GFP_KERNEL))) {
             EC_SLAVE_ERR(slave, "Failed to allocate PDO memory.\n");
@@ -633,7 +648,7 @@ int ec_slave_fetch_sii_pdos(
             kfree(pdo);
             return ret;
         }
-        list_add_tail(&pdo->list, &slave->sii.pdos);
+        list_add_tail(&pdo->list, &slave->sii_image->sii.pdos);
 
         data_size -= 8;
         data += 8;
@@ -695,12 +710,17 @@ char *ec_slave_sii_string(
     if (!index--)
         return NULL;
 
-    if (index >= slave->sii.string_count) {
+    if (!slave->sii_image) {
+        EC_SLAVE_ERR(slave, "SII data not attached!\n");
+        return NULL;
+    }
+
+    if (index >= slave->sii_image->sii.string_count) {
         EC_SLAVE_DBG(slave, 1, "String %u not found.\n", index);
         return NULL;
     }
 
-    return slave->sii.strings[index];
+    return slave->sii_image->sii.strings[index];
 }
 
 /*****************************************************************************/
@@ -714,8 +734,14 @@ ec_sync_t *ec_slave_get_sync(
         uint8_t sync_index /**< Sync manager index. */
         )
 {
-    if (sync_index < slave->sii.sync_count) {
-        return &slave->sii.syncs[sync_index];
+
+    if (!slave->sii_image) {
+        EC_SLAVE_ERR(slave, "SII data not attached!\n");
+        return NULL;
+    }
+
+    if (sync_index < slave->sii_image->sii.sync_count) {
+        return &slave->sii_image->sii.syncs[sync_index];
     } else {
         return NULL;
     }
@@ -853,8 +879,13 @@ const ec_pdo_t *ec_slave_find_pdo(
     const ec_sync_t *sync;
     const ec_pdo_t *pdo;
 
-    for (i = 0; i < slave->sii.sync_count; i++) {
-        sync = &slave->sii.syncs[i];
+    if (!slave->sii_image) {
+        EC_SLAVE_ERR(slave, "SII data not attached!\n");
+        return NULL;
+    }
+
+    for (i = 0; i < slave->sii_image->sii.sync_count; i++) {
+        sync = &slave->sii_image->sii.syncs[i];
 
         if (!(pdo = ec_pdo_list_find_pdo_const(&sync->pdos, index)))
             continue;
@@ -908,8 +939,13 @@ void ec_slave_attach_pdo_names(
     ec_sync_t *sync;
     ec_pdo_t *pdo;
 
-    for (i = 0; i < slave->sii.sync_count; i++) {
-        sync = slave->sii.syncs + i;
+    if (!slave->sii_image) {
+        EC_SLAVE_ERR(slave, "SII data not attached!\n");
+        return;
+    }
+
+    for (i = 0; i < slave->sii_image->sii.sync_count; i++) {
+        sync = slave->sii_image->sii.syncs + i;
         list_for_each_entry(pdo, &sync->pdos.list, list) {
             ec_slave_find_names_for_pdo(slave, pdo);
         }

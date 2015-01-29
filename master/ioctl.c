@@ -231,24 +231,63 @@ static ATTRIBUTES int ec_ioctl_slave(
     }
 
     data.device_index = slave->device_index;
-    data.vendor_id = slave->sii.vendor_id;
-    data.product_code = slave->sii.product_code;
-    data.revision_number = slave->sii.revision_number;
-    data.serial_number = slave->sii.serial_number;
     data.alias = slave->effective_alias;
-    data.boot_rx_mailbox_offset = slave->sii.boot_rx_mailbox_offset;
-    data.boot_rx_mailbox_size = slave->sii.boot_rx_mailbox_size;
-    data.boot_tx_mailbox_offset = slave->sii.boot_tx_mailbox_offset;
-    data.boot_tx_mailbox_size = slave->sii.boot_tx_mailbox_size;
-    data.std_rx_mailbox_offset = slave->sii.std_rx_mailbox_offset;
-    data.std_rx_mailbox_size = slave->sii.std_rx_mailbox_size;
-    data.std_tx_mailbox_offset = slave->sii.std_tx_mailbox_offset;
-    data.std_tx_mailbox_size = slave->sii.std_tx_mailbox_size;
-    data.mailbox_protocols = slave->sii.mailbox_protocols;
-    data.has_general_category = slave->sii.has_general;
-    data.coe_details = slave->sii.coe_details;
-    data.general_flags = slave->sii.general_flags;
-    data.current_on_ebus = slave->sii.current_on_ebus;
+    if (slave->sii_image) {
+        data.vendor_id = slave->sii_image->sii.vendor_id;
+        data.product_code = slave->sii_image->sii.product_code;
+        data.revision_number = slave->sii_image->sii.revision_number;
+        data.serial_number = slave->sii_image->sii.serial_number;
+        data.boot_rx_mailbox_offset = slave->sii_image->sii.boot_rx_mailbox_offset;
+        data.boot_rx_mailbox_size = slave->sii_image->sii.boot_rx_mailbox_size;
+        data.boot_tx_mailbox_offset = slave->sii_image->sii.boot_tx_mailbox_offset;
+        data.boot_tx_mailbox_size = slave->sii_image->sii.boot_tx_mailbox_size;
+        data.std_rx_mailbox_offset = slave->sii_image->sii.std_rx_mailbox_offset;
+        data.std_rx_mailbox_size = slave->sii_image->sii.std_rx_mailbox_size;
+        data.std_tx_mailbox_offset = slave->sii_image->sii.std_tx_mailbox_offset;
+        data.std_tx_mailbox_size = slave->sii_image->sii.std_tx_mailbox_size;
+        data.mailbox_protocols = slave->sii_image->sii.mailbox_protocols;
+        data.has_general_category = slave->sii_image->sii.has_general;
+        data.coe_details = slave->sii_image->sii.coe_details;
+        data.general_flags = slave->sii_image->sii.general_flags;
+        data.current_on_ebus = slave->sii_image->sii.current_on_ebus;
+        data.sync_count = slave->sii_image->sii.sync_count;
+        data.sii_nwords = slave->sii_image->nwords;
+        ec_ioctl_strcpy(data.group, slave->sii_image->sii.group);
+        ec_ioctl_strcpy(data.image, slave->sii_image->sii.image);
+        ec_ioctl_strcpy(data.order, slave->sii_image->sii.order);
+        ec_ioctl_strcpy(data.name, slave->sii_image->sii.name);
+    }
+    else {
+        data.vendor_id = 0x00000000;
+        data.product_code = 0x00000000;
+        data.revision_number = 0x00000000;
+        data.serial_number = 0x00000000;
+        data.boot_rx_mailbox_offset = 0x0000;
+        data.boot_rx_mailbox_size = 0x0000;
+        data.boot_tx_mailbox_offset = 0x0000;
+        data.boot_tx_mailbox_size = 0x0000;
+        data.std_rx_mailbox_offset = 0x0000;
+        data.std_rx_mailbox_size = 0x0000;
+        data.std_tx_mailbox_offset = 0x0000;
+        data.std_tx_mailbox_size = 0x0000;
+        data.mailbox_protocols = 0;
+        data.has_general_category = 0;
+        data.coe_details.enable_pdo_assign = 0;
+        data.coe_details.enable_pdo_configuration = 0;
+        data.coe_details.enable_sdo = 0;
+        data.coe_details.enable_sdo_complete_access = 0;
+        data.coe_details.enable_sdo_info = 0;
+        data.coe_details.enable_upload_at_startup = 0;
+        data.general_flags.enable_not_lrw = 0;
+        data.general_flags.enable_safeop = 0;
+        data.sync_count = 0;
+        data.sii_nwords = 0;
+        ec_ioctl_strcpy(data.group, "");
+        ec_ioctl_strcpy(data.image, "");
+        ec_ioctl_strcpy(data.order, "");
+        ec_ioctl_strcpy(data.name, "");
+    }
+
     for (i = 0; i < EC_MAX_PORTS; i++) {
         data.ports[i].desc = slave->ports[i].desc;
         data.ports[i].link.link_up = slave->ports[i].link.link_up;
@@ -271,14 +310,7 @@ static ATTRIBUTES int ec_ioctl_slave(
     data.transmission_delay = slave->transmission_delay;
     data.al_state = slave->current_state;
     data.error_flag = slave->error_flag;
-
-    data.sync_count = slave->sii.sync_count;
     data.sdo_count = ec_slave_sdo_count(slave);
-    data.sii_nwords = slave->sii_nwords;
-    ec_ioctl_strcpy(data.group, slave->sii.group);
-    ec_ioctl_strcpy(data.image, slave->sii.image);
-    ec_ioctl_strcpy(data.order, slave->sii.order);
-    ec_ioctl_strcpy(data.name, slave->sii.name);
 
     ec_lock_up(&master->master_sem);
 
@@ -318,21 +350,32 @@ static ATTRIBUTES int ec_ioctl_slave_sync(
         return -EINVAL;
     }
 
-    if (data.sync_index >= slave->sii.sync_count) {
-        ec_lock_up(&master->master_sem);
-        EC_SLAVE_ERR(slave, "Sync manager %u does not exist!\n",
-                data.sync_index);
-        return -EINVAL;
+    if (slave->sii_image) {
+        if (data.sync_index >= slave->sii_image->sii.sync_count) {
+            ec_lock_up(&master->master_sem);
+            EC_SLAVE_ERR(slave, "Sync manager %u does not exist!\n",
+                    data.sync_index);
+            return -EINVAL;
+        }
+
+        sync = &slave->sii_image->sii.syncs[data.sync_index];
+
+        data.physical_start_address = sync->physical_start_address;
+        data.default_size = sync->default_length;
+        data.control_register = sync->control_register;
+        data.enable = sync->enable;
+        data.pdo_count = ec_pdo_list_count(&sync->pdos);
     }
+    else {
+        EC_SLAVE_INFO(slave, "No access to SII data for SyncManager %u!\n",
+                data.sync_index);
 
-    sync = &slave->sii.syncs[data.sync_index];
-
-    data.physical_start_address = sync->physical_start_address;
-    data.default_size = sync->default_length;
-    data.control_register = sync->control_register;
-    data.enable = sync->enable;
-    data.pdo_count = ec_pdo_list_count(&sync->pdos);
-
+        data.physical_start_address = 0;
+        data.default_size = 0;
+        data.control_register = 0;
+        data.enable = 0;
+        data.pdo_count = 0;
+    }
     ec_lock_up(&master->master_sem);
 
     if (copy_to_user((void __user *) arg, &data, sizeof(data)))
@@ -372,26 +415,35 @@ static ATTRIBUTES int ec_ioctl_slave_sync_pdo(
         return -EINVAL;
     }
 
-    if (data.sync_index >= slave->sii.sync_count) {
-        ec_lock_up(&master->master_sem);
-        EC_SLAVE_ERR(slave, "Sync manager %u does not exist!\n",
+    if (slave->sii_image) {
+        if (data.sync_index >= slave->sii_image->sii.sync_count) {
+            ec_lock_up(&master->master_sem);
+            EC_SLAVE_ERR(slave, "Sync manager %u does not exist!\n",
+                    data.sync_index);
+            return -EINVAL;
+        }
+
+        sync = &slave->sii_image->sii.syncs[data.sync_index];
+        if (!(pdo = ec_pdo_list_find_pdo_by_pos_const(
+                        &sync->pdos, data.pdo_pos))) {
+            ec_lock_up(&master->master_sem);
+            EC_SLAVE_ERR(slave, "Sync manager %u does not contain a PDO with "
+                    "position %u!\n", data.sync_index, data.pdo_pos);
+            return -EINVAL;
+        }
+
+        data.index = pdo->index;
+        data.entry_count = ec_pdo_entry_count(pdo);
+        ec_ioctl_strcpy(data.name, pdo->name);
+    }
+    else {
+        EC_SLAVE_INFO(slave, "No access to SII data for SyncManager %u!\n",
                 data.sync_index);
-        return -EINVAL;
+
+        data.index = 0;
+        data.entry_count = 0;
+        ec_ioctl_strcpy(data.name, "");
     }
-
-    sync = &slave->sii.syncs[data.sync_index];
-    if (!(pdo = ec_pdo_list_find_pdo_by_pos_const(
-                    &sync->pdos, data.pdo_pos))) {
-        ec_lock_up(&master->master_sem);
-        EC_SLAVE_ERR(slave, "Sync manager %u does not contain a PDO with "
-                "position %u!\n", data.sync_index, data.pdo_pos);
-        return -EINVAL;
-    }
-
-    data.index = pdo->index;
-    data.entry_count = ec_pdo_entry_count(pdo);
-    ec_ioctl_strcpy(data.name, pdo->name);
-
     ec_lock_up(&master->master_sem);
 
     if (copy_to_user((void __user *) arg, &data, sizeof(data)))
@@ -432,35 +484,45 @@ static ATTRIBUTES int ec_ioctl_slave_sync_pdo_entry(
         return -EINVAL;
     }
 
-    if (data.sync_index >= slave->sii.sync_count) {
-        ec_lock_up(&master->master_sem);
-        EC_SLAVE_ERR(slave, "Sync manager %u does not exist!\n",
+    if (slave->sii_image) {
+        if (data.sync_index >= slave->sii_image->sii.sync_count) {
+            ec_lock_up(&master->master_sem);
+            EC_SLAVE_ERR(slave, "Sync manager %u does not exist!\n",
+                    data.sync_index);
+            return -EINVAL;
+        }
+
+        sync = &slave->sii_image->sii.syncs[data.sync_index];
+        if (!(pdo = ec_pdo_list_find_pdo_by_pos_const(
+                        &sync->pdos, data.pdo_pos))) {
+            ec_lock_up(&master->master_sem);
+            EC_SLAVE_ERR(slave, "Sync manager %u does not contain a PDO with "
+                    "position %u!\n", data.sync_index, data.pdo_pos);
+            return -EINVAL;
+        }
+
+        if (!(entry = ec_pdo_find_entry_by_pos_const(
+                        pdo, data.entry_pos))) {
+            ec_lock_up(&master->master_sem);
+            EC_SLAVE_ERR(slave, "PDO 0x%04X does not contain an entry with "
+                    "position %u!\n", data.pdo_pos, data.entry_pos);
+            return -EINVAL;
+        }
+
+        data.index = entry->index;
+        data.subindex = entry->subindex;
+        data.bit_length = entry->bit_length;
+        ec_ioctl_strcpy(data.name, entry->name);
+    }
+    else {
+        EC_SLAVE_INFO(slave, "No access to SII data for Sync manager %u!\n",
                 data.sync_index);
-        return -EINVAL;
+
+        data.index = 0;
+        data.subindex = 0;
+        data.bit_length = 0;
+        ec_ioctl_strcpy(data.name, "");
     }
-
-    sync = &slave->sii.syncs[data.sync_index];
-    if (!(pdo = ec_pdo_list_find_pdo_by_pos_const(
-                    &sync->pdos, data.pdo_pos))) {
-        ec_lock_up(&master->master_sem);
-        EC_SLAVE_ERR(slave, "Sync manager %u does not contain a PDO with "
-                "position %u!\n", data.sync_index, data.pdo_pos);
-        return -EINVAL;
-    }
-
-    if (!(entry = ec_pdo_find_entry_by_pos_const(
-                    pdo, data.entry_pos))) {
-        ec_lock_up(&master->master_sem);
-        EC_SLAVE_ERR(slave, "PDO 0x%04X does not contain an entry with "
-                "position %u!\n", data.pdo_pos, data.entry_pos);
-        return -EINVAL;
-    }
-
-    data.index = entry->index;
-    data.subindex = entry->subindex;
-    data.bit_length = entry->bit_length;
-    ec_ioctl_strcpy(data.name, entry->name);
-
     ec_lock_up(&master->master_sem);
 
     if (copy_to_user((void __user *) arg, &data, sizeof(data)))
@@ -928,16 +990,21 @@ static ATTRIBUTES int ec_ioctl_slave_sii_read(
         return -EINVAL;
     }
 
+    if (!slave->sii_image) {
+        EC_SLAVE_INFO(slave, "No access to SII data. Try again!\n");
+        return -EAGAIN;
+    }
+
     if (!data.nwords
-            || data.offset + data.nwords > slave->sii_nwords) {
+            || data.offset + data.nwords > slave->sii_image->nwords) {
         ec_lock_up(&master->master_sem);
         EC_SLAVE_ERR(slave, "Invalid SII read offset/size %u/%u for slave SII"
-                " size %zu!\n", data.offset, data.nwords, slave->sii_nwords);
+                " size %zu!\n", data.offset, data.nwords, slave->sii_image->nwords);
         return -EINVAL;
     }
 
     if (copy_to_user((void __user *) data.words,
-                slave->sii_words + data.offset, data.nwords * 2))
+                slave->sii_image->words + data.offset, data.nwords * 2))
         retval = -EFAULT;
     else
         retval = 0;

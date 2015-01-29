@@ -217,7 +217,15 @@ void ec_voe_handler_state_write_start(ec_voe_handler_t *voe)
         ec_print_data(ecrt_voe_handler_data(voe), voe->data_size);
     }
 
-    if (!(slave->sii.mailbox_protocols & EC_MBOX_VOE)) {
+    if (!slave->sii_image) {
+        EC_SLAVE_ERR(slave, "Slave cannot process VoE write request."
+                " SII data not available.\n");
+        voe->state = ec_voe_handler_state_error;
+        voe->request_state = EC_INT_REQUEST_FAILURE;
+        return;
+    }
+
+    if (!(slave->sii_image->sii.mailbox_protocols & EC_MBOX_VOE)) {
         EC_SLAVE_ERR(slave, "Slave does not support VoE!\n");
         voe->state = ec_voe_handler_state_error;
         voe->request_state = EC_INT_REQUEST_FAILURE;
@@ -297,7 +305,14 @@ void ec_voe_handler_state_read_start(ec_voe_handler_t *voe)
 
     EC_SLAVE_DBG(slave, 1, "Reading VoE data.\n");
 
-    if (!(slave->sii.mailbox_protocols & EC_MBOX_VOE)) {
+    if (!slave->sii_image) {
+        EC_SLAVE_ERR(slave, "Slave not ready to process VoE request\n");
+        voe->state = ec_voe_handler_state_error;
+        voe->request_state = EC_INT_REQUEST_FAILURE;
+        return;
+    }
+
+    if (!(slave->sii_image->sii.mailbox_protocols & EC_MBOX_VOE)) {
         EC_SLAVE_ERR(slave, "Slave does not support VoE!\n");
         voe->state = ec_voe_handler_state_error;
         voe->request_state = EC_INT_REQUEST_FAILURE;
@@ -496,7 +511,15 @@ void ec_voe_handler_state_read_nosync_start(ec_voe_handler_t *voe)
 
     EC_SLAVE_DBG(slave, 1, "Reading VoE data.\n");
 
-    if (!(slave->sii.mailbox_protocols & EC_MBOX_VOE)) {
+    if (!slave->sii_image) {
+        EC_SLAVE_ERR(slave, "Slave cannot process VoE read request."
+                " SII data not available.\n");
+        voe->state = ec_voe_handler_state_error;
+        voe->request_state = EC_INT_REQUEST_FAILURE;
+        return;
+    }
+
+    if (!(slave->sii_image->sii.mailbox_protocols & EC_MBOX_VOE)) {
         EC_SLAVE_ERR(slave, "Slave does not support VoE!\n");
         voe->state = ec_voe_handler_state_error;
         voe->request_state = EC_INT_REQUEST_FAILURE;

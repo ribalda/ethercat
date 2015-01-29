@@ -230,6 +230,9 @@ struct ec_master {
     struct list_head configs; /**< List of slave configurations. */
     struct list_head domains; /**< List of domains. */
 
+    /* Configuration applied during bus scanning. */
+    struct list_head sii_images; /**< List of slave SII images. */
+
     u64 app_time; /**< Time of the last ecrt_master_sync() call. */
     u64 dc_ref_time; /**< Common reference timestamp for DC start times. */
     u8 dc_offset_valid; /**< DC slaves have valid system time offsets*/
@@ -319,6 +322,8 @@ int ec_master_init(ec_master_t *, unsigned int, const uint8_t *,
         const uint8_t *, dev_t, struct class *, unsigned int);
 void ec_master_clear(ec_master_t *);
 
+void ec_sii_image_clear(ec_sii_image_t *);
+
 /** Number of Ethernet devices.
  */
 #if EC_MAX_NUM_DEVICES > 1
@@ -357,6 +362,7 @@ void ec_master_output_stats(ec_master_t *);
 void ec_master_clear_eoe_handlers(ec_master_t *);
 #endif
 void ec_master_clear_slaves(ec_master_t *);
+void ec_master_clear_sii_images(ec_master_t *);
 
 unsigned int ec_master_config_count(const ec_master_t *);
 ec_slave_config_t *ec_master_get_config(

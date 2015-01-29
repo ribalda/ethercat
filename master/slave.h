@@ -152,7 +152,7 @@ typedef struct {
 
 /*****************************************************************************/
 
-/** Slave information interface data.
+/** Extracted slave information interface data.
  */
 typedef struct {
     // Non-category data
@@ -196,6 +196,19 @@ typedef struct {
 
 /*****************************************************************************/
 
+/** Complete slave information interface data image.
+ */
+typedef struct {
+    struct list_head list; /**< List item. */
+
+    uint16_t *words;
+    size_t nwords; /**< Size of the SII contents in words. */
+
+    ec_sii_t sii; /**< Extracted SII data. */
+} ec_sii_image_t;
+
+/*****************************************************************************/
+
 /** EtherCAT slave.
  */
 struct ec_slave
@@ -208,7 +221,12 @@ struct ec_slave
     uint16_t ring_position; /**< Ring position. */
     uint16_t station_address; /**< Configured station address. */
     uint16_t effective_alias; /**< Effective alias address. */
-
+    // identification
+#if EC_REUSE_SII_IMAGE
+    uint32_t effective_vendor_id; /**< Effective vendor ID. */
+    uint32_t effective_product_code; /**< Effective product code. */
+    uint32_t effective_serial_number; /**< Effective serial number. */
+#endif
     ec_slave_port_t ports[EC_MAX_PORTS]; /**< Ports. */
 
     // configuration
@@ -240,12 +258,8 @@ struct ec_slave
     uint32_t transmission_delay; /**< DC system time transmission delay
                                    (offset from reference clock). */
 
-    // SII
-    uint16_t *sii_words; /**< Complete SII image. */
-    size_t sii_nwords; /**< Size of the SII contents in words. */
-
     // Slave information interface
-    ec_sii_t sii; /**< Extracted SII data. */
+    ec_sii_image_t *sii_image;  /**< Current complete SII image. */
 
     struct list_head sdo_dictionary; /**< SDO dictionary list */
     uint8_t sdo_dictionary_fetched; /**< Dictionary has been fetched. */
@@ -280,6 +294,9 @@ struct ec_slave
 // slave construction/destruction
 void ec_slave_init(ec_slave_t *, ec_master_t *, ec_device_index_t,
         uint16_t, uint16_t);
+
+void ec_slave_sii_image_init(ec_sii_image_t *);
+
 void ec_slave_clear(ec_slave_t *);
 
 void ec_slave_clear_sync_managers(ec_slave_t *);
