@@ -4004,7 +4004,9 @@ static bool e1000_clean_tx_irq(struct e1000_adapter *adapter,
 
 	tx_ring->next_to_clean = i;
 
-	netdev_completed_queue(netdev, pkts_compl, bytes_compl);
+	if (!adapter->ecdev) {
+		netdev_completed_queue(netdev, pkts_compl, bytes_compl);
+	}
 
 #define TX_WAKE_THRESHOLD 32
 	if (!adapter->ecdev && unlikely(count && netif_carrier_ok(netdev) &&
