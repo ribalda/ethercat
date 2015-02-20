@@ -95,7 +95,7 @@ void ec_slave_init(
         slave->ports[i].desc = EC_PORT_NOT_IMPLEMENTED;
 
         slave->ports[i].link.link_up = 0;
-        slave->ports[i].link.loop_closed = 0;
+        slave->ports[i].link.loop_closed = 1;
         slave->ports[i].link.signal_detected = 0;
         slave->sii.physical_layer[i] = 0xFF;
 
@@ -103,6 +103,11 @@ void ec_slave_init(
 
         slave->ports[i].next_slave = NULL;
         slave->ports[i].delay_to_next_dc = 0U;
+
+#ifdef EC_LOOP_CONTROL
+        slave->ports[i].state = EC_SLAVE_PORT_DOWN;
+        slave->ports[i].link_detection_jiffies = 0;
+#endif
     }
 
     slave->base_fmmu_bit_operation = 0;
@@ -278,10 +283,50 @@ void ec_slave_clear_sync_managers(ec_slave_t *slave /**< EtherCAT slave. */)
 /*****************************************************************************/
 
 /**
+ * Sets the data-link state of a slave.
+ */
+
+void ec_slave_set_dl_status(ec_slave_t *slave, /**< EtherCAT slave */
+        uint16_t new_state /**< content of registers 0x0110-0x0111. */
+        )
+{
+    unsigned int i;
+    uint8_t state;
+
+    for (i = 0; i < EC_MAX_PORTS; i++) {
+        // link status
+        state = new_state & (1 << (4 + i)) ? 1 : 0;
+        if (slave->ports[i].link.link_up != state) {
+            EC_SLAVE_DBG(slave, 1, "Port %u link status changed to %s.\n",
+                    i, state ? "up" : "down");
+            slave->ports[i].link.link_up = state;
+        }
+
+        // loop status
+        state = new_state & (1 << (8 + i * 2)) ? 1 : 0;
+        if (slave->ports[i].link.loop_closed != state) {
+            EC_SLAVE_DBG(slave, 1, "Port %u loop status changed to %s.\n",
+                    i, state ? "closed" : "open");
+            slave->ports[i].link.loop_closed = state;
+        }
+
+        // signal detection
+        state = new_state & (1 << (9 + i * 2)) ? 1 : 0;
+        if (slave->ports[i].link.signal_detected != state) {
+            EC_SLAVE_DBG(slave, 1, "Port %u signal status changed to %s.\n",
+                    i, state ? "yes" : "no");
+            slave->ports[i].link.signal_detected = state;
+        }
+    }
+}
+
+/*****************************************************************************/
+
+/**
  * Sets the application state of a slave.
  */
 
-void ec_slave_set_state(ec_slave_t *slave, /**< EtherCAT slave */
+void ec_slave_set_al_status(ec_slave_t *slave, /**< EtherCAT slave */
         ec_slave_state_t new_state /**< new application state */
         )
 {

@@ -1031,6 +1031,35 @@ else
 fi
 
 #------------------------------------------------------------------------------
+# use loop control registers to open slave ports
+#------------------------------------------------------------------------------
+
+AC_MSG_CHECKING([whether to use loop control registers])
+
+AC_ARG_ENABLE([loop-control],
+    AS_HELP_STRING([--enable-loop-control],
+                   [Use loop control registers (default: no)]),
+    [
+        case "${enableval}" in
+            yes) loopctl=1
+                ;;
+            no) loopctl=0
+                ;;
+            *) AC_MSG_ERROR([Invalid value for --enable-loop-control])
+                ;;
+        esac
+    ],
+    [loopctl=0]
+)
+
+if test "x${loopctl}" = "x1"; then
+    AC_DEFINE([EC_LOOP_CONTROL], [1], [Use loop control registers])
+    AC_MSG_RESULT([yes])
+else
+    AC_MSG_RESULT([no])
+fi
+
+#------------------------------------------------------------------------------
 
 AC_CONFIG_FILES([
         Doxyfile

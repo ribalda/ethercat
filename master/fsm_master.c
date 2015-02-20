@@ -54,10 +54,17 @@
 
 void ec_fsm_master_state_start(ec_fsm_master_t *);
 void ec_fsm_master_state_broadcast(ec_fsm_master_t *);
-void ec_fsm_master_state_read_state(ec_fsm_master_t *);
+void ec_fsm_master_state_read_al_status(ec_fsm_master_t *);
+#ifdef EC_LOOP_CONTROL
+void ec_fsm_master_state_read_dl_status(ec_fsm_master_t *);
+void ec_fsm_master_state_open_port(ec_fsm_master_t *);
+#endif
 void ec_fsm_master_state_acknowledge(ec_fsm_master_t *);
 void ec_fsm_master_state_configure_slave(ec_fsm_master_t *);
 void ec_fsm_master_state_clear_addresses(ec_fsm_master_t *);
+#ifdef EC_LOOP_CONTROL
+void ec_fsm_master_state_loop_control(ec_fsm_master_t *);
+#endif
 void ec_fsm_master_state_dc_measure_delays(ec_fsm_master_t *);
 void ec_fsm_master_state_scan_slave(ec_fsm_master_t *);
 void ec_fsm_master_state_dc_read_offset(ec_fsm_master_t *);
@@ -415,7 +422,7 @@ void ec_fsm_master_state_broadcast(
             ec_datagram_zero(datagram);
             fsm->datagram->device_index = fsm->slave->device_index;
             fsm->retries = EC_FSM_RETRIES;
-            fsm->state = ec_fsm_master_state_read_state;
+            fsm->state = ec_fsm_master_state_read_al_status;
         }
     } else {
         ec_fsm_master_restart(fsm);
@@ -594,13 +601,158 @@ void ec_fsm_master_action_next_slave_state(
         ec_datagram_zero(fsm->datagram);
         fsm->datagram->device_index = fsm->slave->device_index;
         fsm->retries = EC_FSM_RETRIES;
-        fsm->state = ec_fsm_master_state_read_state;
+        fsm->state = ec_fsm_master_state_read_al_status;
         return;
     }
 
     // all slaves processed
     ec_fsm_master_action_idle(fsm);
 }
+
+/*****************************************************************************/
+
+#ifdef EC_LOOP_CONTROL
+
+/** Master action: Read DL status of current slave.
+ */
+void ec_fsm_master_action_read_dl_status(
+        ec_fsm_master_t *fsm /**< Master state machine. */
+        )
+{
+    ec_datagram_fprd(fsm->datagram, fsm->slave->station_address, 0x0110, 2);
+    ec_datagram_zero(fsm->datagram);
+    fsm->datagram->device_index = fsm->slave->device_index;
+    fsm->retries = EC_FSM_RETRIES;
+    fsm->state = ec_fsm_master_state_read_dl_status;
+}
+
+/*****************************************************************************/
+
+/** Master action: Open slave port.
+ */
+void ec_fsm_master_action_open_port(
+        ec_fsm_master_t *fsm /**< Master state machine. */
+        )
+{
+    EC_SLAVE_INFO(fsm->slave, "Opening ports.\n");
+
+    ec_datagram_fpwr(fsm->datagram, fsm->slave->station_address, 0x0101, 1);
+    EC_WRITE_U8(fsm->datagram->data, 0x54); // port 0 auto, 1-3 auto-close
+    fsm->datagram->device_index = fsm->slave->device_index;
+    fsm->retries = EC_FSM_RETRIES;
+    fsm->state = ec_fsm_master_state_open_port;
+}
+
+/*****************************************************************************/
+
+/** Master state: READ DL STATUS.
+ *
+ * Fetches the DL state of a slave.
+ */
+void ec_fsm_master_state_read_dl_status(
+        ec_fsm_master_t *fsm /**< Master state machine. */
+        )
+{
+    ec_slave_t *slave = fsm->slave;
+    ec_datagram_t *datagram = fsm->datagram;
+    unsigned int i;
+
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        return;
+    }
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED) {
+        EC_SLAVE_ERR(slave, "Failed to receive AL state datagram: ");
+        ec_datagram_print_state(datagram);
+        ec_fsm_master_restart(fsm);
+        return;
+    }
+
+    // did the slave not respond to its station address?
+    if (datagram->working_counter != 1) {
+        // try again next time
+        ec_fsm_master_action_next_slave_state(fsm);
+        return;
+    }
+
+    ec_slave_set_dl_status(slave, EC_READ_U16(datagram->data));
+
+    // process port state machines
+    for (i = 0; i < EC_MAX_PORTS; i++) {
+        ec_slave_port_t *port = &slave->ports[i];
+
+        switch (port->state) {
+            case EC_SLAVE_PORT_DOWN:
+                if (port->link.loop_closed) {
+                    if (port->link.link_up) {
+                        port->link_detection_jiffies = jiffies;
+                        port->state = EC_SLAVE_PORT_WAIT;
+                    }
+                }
+                else { // loop open
+                    port->state = EC_SLAVE_PORT_UP;
+                }
+                break;
+            case EC_SLAVE_PORT_WAIT:
+                if (port->link.link_up) {
+                    if (jiffies - port->link_detection_jiffies >
+                            HZ * EC_PORT_WAIT_MS / 1000) {
+                        port->state = EC_SLAVE_PORT_UP;
+                        ec_fsm_master_action_open_port(fsm);
+                        return;
+                    }
+                }
+                else { // link down
+                    port->state = EC_SLAVE_PORT_DOWN;
+                }
+                break;
+            default: // EC_SLAVE_PORT_UP
+                if (!port->link.link_up) {
+                    port->state = EC_SLAVE_PORT_DOWN;
+                }
+                break;
+        }
+    }
+
+    // process next slave
+    ec_fsm_master_action_next_slave_state(fsm);
+}
+
+/*****************************************************************************/
+
+/** Master state: OPEN_PORT.
+ *
+ * Opens slave ports.
+ */
+void ec_fsm_master_state_open_port(
+        ec_fsm_master_t *fsm /**< Master state machine. */
+        )
+{
+    ec_slave_t *slave = fsm->slave;
+    ec_datagram_t *datagram = fsm->datagram;
+
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        return;
+    }
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED) {
+        EC_SLAVE_ERR(slave, "Failed to receive port open datagram: ");
+        ec_datagram_print_state(datagram);
+        ec_fsm_master_restart(fsm);
+        return;
+    }
+
+    // did the slave not respond to its station address?
+    if (datagram->working_counter != 1) {
+        EC_SLAVE_ERR(slave, "Did not respond to port open command!\n");
+        return;
+    }
+
+    // process next slave
+    ec_fsm_master_action_next_slave_state(fsm);
+}
+
+#endif
 
 /*****************************************************************************/
 
@@ -654,17 +806,22 @@ void ec_fsm_master_action_configure(
         return;
     }
 
+#ifdef EC_LOOP_CONTROL
+    // read DL status
+    ec_fsm_master_action_read_dl_status(fsm);
+#else
     // process next slave
     ec_fsm_master_action_next_slave_state(fsm);
+#endif
 }
 
 /*****************************************************************************/
 
-/** Master state: READ STATE.
+/** Master state: READ AL STATUS.
  *
  * Fetches the AL state of a slave.
  */
-void ec_fsm_master_state_read_state(
+void ec_fsm_master_state_read_al_status(
         ec_fsm_master_t *fsm /**< Master state machine. */
         )
 {
@@ -694,7 +851,7 @@ void ec_fsm_master_state_read_state(
     }
 
     // A single slave responded
-    ec_slave_set_state(slave, EC_READ_U8(datagram->data));
+    ec_slave_set_al_status(slave, EC_READ_U8(datagram->data));
 
     if (!slave->error_flag) {
         // Check, if new slave state has to be acknowledged
@@ -711,8 +868,13 @@ void ec_fsm_master_state_read_state(
         return;
     }
 
-    // slave has error flag set; process next one
+#ifdef EC_LOOP_CONTROL
+    // read DL status
+    ec_fsm_master_action_read_dl_status(fsm);
+#else
+    // process next slave
     ec_fsm_master_action_next_slave_state(fsm);
+#endif
 }
 
 /*****************************************************************************/
@@ -755,6 +917,73 @@ void ec_fsm_master_enter_clear_addresses(
 
 /*****************************************************************************/
 
+/** Start measuring DC delays.
+ */
+void ec_fsm_master_enter_dc_measure_delays(
+        ec_fsm_master_t *fsm /**< Master state machine. */
+        )
+{
+    EC_MASTER_DBG(fsm->master, 1, "Sending broadcast-write"
+            " to measure transmission delays on %s link.\n",
+            ec_device_names[fsm->dev_idx != 0]);
+
+    ec_datagram_bwr(fsm->datagram, 0x0900, 1);
+    ec_datagram_zero(fsm->datagram);
+    fsm->datagram->device_index = fsm->dev_idx;
+    fsm->retries = EC_FSM_RETRIES;
+    fsm->state = ec_fsm_master_state_dc_measure_delays;
+}
+
+/*****************************************************************************/
+
+#ifdef EC_LOOP_CONTROL
+
+/** Start writing loop control registers.
+ */
+void ec_fsm_master_enter_loop_control(
+        ec_fsm_master_t *fsm /**< Master state machine. */
+        )
+{
+    EC_MASTER_DBG(fsm->master, 1, "Broadcast-writing"
+            " loop control registers on %s link.\n",
+            ec_device_names[fsm->dev_idx != 0]);
+
+    ec_datagram_bwr(fsm->datagram, 0x0101, 1);
+    EC_WRITE_U8(fsm->datagram->data, 0x54); // port 0 auto, 1-3 auto-close
+    fsm->datagram->device_index = fsm->dev_idx;
+    fsm->retries = EC_FSM_RETRIES;
+    fsm->state = ec_fsm_master_state_loop_control;
+}
+
+/*****************************************************************************/
+
+/** Master state: LOOP CONTROL.
+ */
+void ec_fsm_master_state_loop_control(
+        ec_fsm_master_t *fsm /**< Master state machine. */
+        )
+{
+    ec_master_t *master = fsm->master;
+    ec_datagram_t *datagram = fsm->datagram;
+
+    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        return;
+    }
+
+    if (datagram->state != EC_DATAGRAM_RECEIVED) {
+        EC_MASTER_ERR(master, "Failed to receive loop control"
+                " datagram on %s link: ",
+                ec_device_names[fsm->dev_idx != 0]);
+        ec_datagram_print_state(datagram);
+    }
+
+    ec_fsm_master_enter_dc_measure_delays(fsm);
+}
+
+#endif
+
+/*****************************************************************************/
+
 /** Master state: CLEAR ADDRESSES.
  */
 void ec_fsm_master_state_clear_addresses(
@@ -786,15 +1015,11 @@ void ec_fsm_master_state_clear_addresses(
                 fsm->slaves_responding[fsm->dev_idx]);
     }
 
-    EC_MASTER_DBG(master, 1, "Sending broadcast-write"
-            " to measure transmission delays on %s link.\n",
-            ec_device_names[fsm->dev_idx != 0]);
-
-    ec_datagram_bwr(datagram, 0x0900, 1);
-    ec_datagram_zero(datagram);
-    fsm->datagram->device_index = fsm->dev_idx;
-    fsm->retries = EC_FSM_RETRIES;
-    fsm->state = ec_fsm_master_state_dc_measure_delays;
+#ifdef EC_LOOP_CONTROL
+    ec_fsm_master_enter_loop_control(fsm);
+#else
+    ec_fsm_master_enter_dc_measure_delays(fsm);
+#endif
 }
 
 /*****************************************************************************/
@@ -947,7 +1172,14 @@ void ec_fsm_master_state_configure_slave(
     }
 
     fsm->idle = 1;
+
+#ifdef EC_LOOP_CONTROL
+    // read DL status
+    ec_fsm_master_action_read_dl_status(fsm);
+#else
+    // process next slave
     ec_fsm_master_action_next_slave_state(fsm);
+#endif
 }
 
 /*****************************************************************************/
