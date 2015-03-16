@@ -54,7 +54,7 @@
 // uint8_t  reserved
 // uint32_t PacketNo, Password, ErrorCode
 
-//#define DEBUG_FOE
+#define DEBUG_FOE
 
 /*****************************************************************************/
 
