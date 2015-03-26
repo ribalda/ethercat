@@ -2254,6 +2254,48 @@ out_return:
 
 /*****************************************************************************/
 
+/** Configure wether a slave allows overlapping PDOs.
+ */
+static ATTRIBUTES int ec_ioctl_sc_allow_overlapping_pdos(
+        ec_master_t *master, /**< EtherCAT master. */
+        void *arg, /**< ioctl() argument. */
+        ec_ioctl_context_t *ctx /**< Private data structure of file handle. */
+        )
+{
+    ec_ioctl_config_t data;
+    ec_slave_config_t *sc;
+    int ret = 0;
+
+    if (unlikely(!ctx->requested)) {
+        ret = -EPERM;
+        goto out_return;
+    }
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+        ret = -EFAULT;
+        goto out_return;
+    }
+
+    if (down_interruptible(&master->master_sem)) {
+        ret = -EINTR;
+        goto out_return;
+    }
+
+    if (!(sc = ec_master_get_config(master, data.config_index))) {
+        ret = -ENOENT;
+        goto out_up;
+    }
+
+    ecrt_slave_config_overlapping_pdos(sc,
+            data.allow_overlapping_pdos);
+
+out_up:
+    up(&master->master_sem);
+out_return:
+    return ret;
+}
+/*****************************************************************************/
+
 /** Add a PDO to the assignment.
  *
  * \return Zero on success, otherwise a negative error code.
@@ -4446,6 +4488,13 @@ long EC_IOCTL(
                 break;
             }
             ret = ec_ioctl_sc_watchdog(master, arg, ctx);
+            break;
+        case EC_IOCTL_SC_OVERLAPPING_IO:
+            if (!ctx->writable) {
+                ret = -EPERM;
+                break;
+            }
+            ret = ec_ioctl_sc_allow_overlapping_pdos(master, arg, ctx);
             break;
         case EC_IOCTL_SC_ADD_PDO:
             if (!ctx->writable) {

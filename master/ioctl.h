@@ -56,7 +56,7 @@
  *
  * Increment this when changing the ioctl interface!
  */
-#define EC_IOCTL_VERSION_MAGIC 29
+#define EC_IOCTL_VERSION_MAGIC 30
 
 // Command-line tool
 #define EC_IOCTL_MODULE                EC_IOR(0x00, ec_ioctl_module_t)
@@ -153,6 +153,7 @@
 #define EC_IOCTL_VOE_EXEC             EC_IOWR(0x57, ec_ioctl_voe_t)
 #define EC_IOCTL_VOE_DATA             EC_IOWR(0x58, ec_ioctl_voe_t)
 #define EC_IOCTL_SET_SEND_INTERVAL     EC_IOW(0x59, size_t)
+#define EC_IOCTL_SC_OVERLAPPING_IO     EC_IOW(0x5a, ec_ioctl_config_t)
 
 /*****************************************************************************/
 
@@ -495,6 +496,7 @@ typedef struct {
     int32_t slave_position;
     uint16_t dc_assign_activate;
     ec_sync_signal_t dc_sync[EC_SYNC_SIGNAL_COUNT];
+    uint8_t allow_overlapping_pdos;
 } ec_ioctl_config_t;
 
 /*****************************************************************************/
