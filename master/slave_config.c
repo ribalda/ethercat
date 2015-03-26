@@ -182,7 +182,7 @@ int ec_slave_config_prepare_fmmu(
     for (i = 0; i < sc->used_fmmus; i++) {
         fmmu = &sc->fmmu_configs[i];
         if (fmmu->domain == domain && fmmu->sync_index == sync_index)
-            return fmmu->logical_start_address;
+            return fmmu->logical_domain_offset;
     }
 
     if (sc->used_fmmus == EC_MAX_FMMUS) {
@@ -216,7 +216,7 @@ int ec_slave_config_prepare_fmmu(
             prev_fmmu->tx_size = max(fmmu->data_size, prev_fmmu->data_size);
             domain->tx_size += prev_fmmu->tx_size - old_prev_tx_size;
             tx_size = 0;
-            fmmu_logical_start_address = prev_fmmu->logical_start_address;
+            fmmu_logical_start_address = prev_fmmu->logical_domain_offset;
         }
     }
 
@@ -227,7 +227,7 @@ int ec_slave_config_prepare_fmmu(
     sc->used_fmmus++;
     up(&sc->master->master_sem);
 
-    return fmmu->logical_start_address;
+    return fmmu->logical_domain_offset;
 }
 
 /*****************************************************************************/

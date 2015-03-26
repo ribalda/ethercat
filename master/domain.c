@@ -130,8 +130,8 @@ void ec_domain_add_fmmu_config(
     list_add_tail(&fmmu->list, &domain->fmmu_configs);
 
     EC_MASTER_DBG(domain->master, 1, "Domain %u:"
-            " Added %u bytes, total %zu.\n",
-            domain->index, fmmu->data_size, domain->data_size);
+            " Added %u bytes.\n",
+            domain->index, fmmu->data_size);
 }
 
 /*****************************************************************************/
@@ -237,6 +237,15 @@ int ec_domain_finish(
     const ec_datagram_pair_t *datagram_pair;
     int ret;
 
+#if 0
+    // Determine domain size from furthest extent of FMMU data
+    domain->data_size = 0;
+    list_for_each_entry(fmmu, &domain->fmmu_configs, list) {
+        domain->data_size = max(domain->data_size,
+            fmmu->logical_domain_offset + fmmu->data_size);
+    }
+#endif
+
     domain->logical_base_address = base_address;
 
     if (domain->data_size && domain->data_origin == EC_ORIG_INTERNAL) {
@@ -265,10 +274,6 @@ int ec_domain_finish(
     }
 
     list_for_each_entry(fmmu, &domain->fmmu_configs, list) {
-
-        // Correct logical FMMU address
-        fmmu->logical_start_address += base_address;
-
         // Increment Input/Output counter to determine datagram types
         // and calculate expected working counters
         if (shall_count(fmmu, datagram_first_fmmu)) {
@@ -503,19 +508,17 @@ void ecrt_domain_process(ec_domain_t *domain)
                     continue;
                 }
 
-                if (fmmu->logical_start_address >=
-                        logical_datagram_address + datagram_size) {
+                if (fmmu->logical_domain_offset >= datagram_size) {
                     // fmmu data contained in next datagram pair
                     break;
                 }
 
-                datagram_offset =
-                    fmmu->logical_start_address - logical_datagram_address;
+                datagram_offset = fmmu->logical_domain_offset;
 
 #if DEBUG_REDUNDANCY
                 EC_MASTER_DBG(domain->master, 1,
-                        "input fmmu log=%u size=%u offset=%u\n",
-                        fmmu->logical_start_address, fmmu->data_size,
+                        "input fmmu log_off=%u size=%u offset=%u\n",
+                        fmmu->logical_domain_offset, fmmu->data_size,
                         datagram_offset);
                 if (domain->master->debug_level > 0) {
                     ec_print_data(pair->send_buffer + datagram_offset,

@@ -49,7 +49,8 @@ typedef struct {
     const ec_domain_t *domain; /**< Domain. */
     uint8_t sync_index; /**< Index of sync manager to use. */
     ec_direction_t dir; /**< FMMU direction. */
-    uint32_t logical_start_address; /**< Logical start address. */
+    uint32_t logical_domain_offset; /**< Logical offset address relative to
+                domain->logical_base_address. */
     unsigned int data_size; /**< Covered PDO size. */
 } ec_fmmu_config_t;
 

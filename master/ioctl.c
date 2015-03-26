@@ -544,7 +544,7 @@ static ATTRIBUTES int ec_ioctl_domain_fmmu(
     data.slave_config_position = fmmu->sc->position;
     data.sync_index = fmmu->sync_index;
     data.dir = fmmu->dir;
-    data.logical_address = fmmu->logical_start_address;
+    data.logical_address = fmmu->domain->logical_base_address + fmmu->logical_domain_offset;
     data.data_size = fmmu->data_size;
 
     up(&master->master_sem);

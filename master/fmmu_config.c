@@ -60,7 +60,7 @@ void ec_fmmu_config_init(
     fmmu->sync_index = sync_index;
     fmmu->dir = dir;
 
-    fmmu->logical_start_address = domain->data_size;
+    fmmu->logical_domain_offset = domain->data_size;
     fmmu->data_size = ec_pdo_list_total_size(
             &sc->sync_configs[sync_index].pdos);
 
@@ -79,13 +79,14 @@ void ec_fmmu_config_page(
         uint8_t *data /**> Configuration page memory. */
         )
 {
-    EC_CONFIG_DBG(fmmu->sc, 1, "FMMU: LogAddr 0x%08X, Size %3u,"
+    EC_CONFIG_DBG(fmmu->sc, 1, "FMMU: LogOff 0x%08X, Size %3u,"
             " PhysAddr 0x%04X, SM%u, Dir %s\n",
-            fmmu->logical_start_address, fmmu->data_size,
+            fmmu->logical_domain_offset, fmmu->data_size,
             sync->physical_start_address, fmmu->sync_index,
             fmmu->dir == EC_DIR_INPUT ? "in" : "out");
 
-    EC_WRITE_U32(data,      fmmu->logical_start_address);
+    EC_WRITE_U32(data,      fmmu->domain->logical_base_address +
+        fmmu->logical_domain_offset);
     EC_WRITE_U16(data + 4,  fmmu->data_size); // size of fmmu
     EC_WRITE_U8 (data + 6,  0x00); // logical start bit
     EC_WRITE_U8 (data + 7,  0x07); // logical end bit
