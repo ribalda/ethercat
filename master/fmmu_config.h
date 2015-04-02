@@ -59,6 +59,15 @@ typedef struct {
 void ec_fmmu_config_init(ec_fmmu_config_t *, ec_slave_config_t *,
         ec_domain_t *, uint8_t, ec_direction_t);
 
+/**
+ * @param fmmu EtherCAT FMMU configuration.
+ * @param logical_domain_offset Logical offset address 
+        relative to domain->logical_base_address.
+ * @param data_size Covered PDO size.
+*/        
+void ec_fmmu_set_domain_offset_size(ec_fmmu_config_t *fmmu, 
+        uint32_t logical_domain_offset, unsigned data_size);
+
 void ec_fmmu_config_page(const ec_fmmu_config_t *, const ec_sync_t *,
         uint8_t *);
 

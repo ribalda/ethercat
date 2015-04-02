@@ -79,6 +79,7 @@ void ec_domain_init(
     domain->working_counter_changes = 0;
     domain->redundancy_active = 0;
     domain->notify_jiffies = 0;
+    memset(domain->offset_used, 0, sizeof(domain->offset_used));
 }
 
 /*****************************************************************************/
@@ -124,14 +125,43 @@ void ec_domain_add_fmmu_config(
         ec_fmmu_config_t *fmmu /**< FMMU configuration. */
         )
 {
-    fmmu->domain = domain;
+    const ec_slave_config_t *sc;
+    uint32_t logical_domain_offset;
+    unsigned fmmu_data_size;
 
-    domain->data_size += fmmu->data_size;
+    fmmu->domain = domain;
+    sc = fmmu->sc;
+
+    fmmu_data_size = ec_pdo_list_total_size(
+        &sc->sync_configs[fmmu->sync_index].pdos);
+
+    if (sc->allow_overlapping_pdos && sc->used_fmmus) {
+        // If we permit overlapped PDOs, and we already have an allocated FMMU
+        // for this slave, alocate the subsequent FMMU offsets by direction
+        logical_domain_offset = domain->offset_used[fmmu->dir];
+    } else {
+        // otherwise, allocate to the furthest extent of any allocated
+        // FMMU on this domain.
+        logical_domain_offset = max(domain->offset_used[EC_DIR_INPUT],
+            domain->offset_used[EC_DIR_OUTPUT]);
+        // rebase the free offsets to the current position
+        domain->offset_used[EC_DIR_INPUT] = logical_domain_offset;
+        domain->offset_used[EC_DIR_OUTPUT] = logical_domain_offset;
+    }
+    // consume the offset space for this FMMU's direction
+    domain->offset_used[fmmu->dir] += fmmu_data_size;
+
+    ec_fmmu_set_domain_offset_size(fmmu, logical_domain_offset, fmmu_data_size);
+
     list_add_tail(&fmmu->list, &domain->fmmu_configs);
+    
+    // Determine domain size from furthest extent of FMMU data
+    domain->data_size = max(domain->offset_used[EC_DIR_INPUT],
+            domain->offset_used[EC_DIR_OUTPUT]);
 
     EC_MASTER_DBG(domain->master, 1, "Domain %u:"
-            " Added %u bytes.\n",
-            domain->index, fmmu->data_size);
+            " Added %u bytes at %u.\n",
+            domain->index, fmmu->data_size, logical_domain_offset);
 }
 
 /*****************************************************************************/
@@ -236,15 +266,6 @@ int ec_domain_finish(
     const ec_fmmu_config_t *datagram_first_fmmu = NULL;
     const ec_datagram_pair_t *datagram_pair;
     int ret;
-
-#if 0
-    // Determine domain size from furthest extent of FMMU data
-    domain->data_size = 0;
-    list_for_each_entry(fmmu, &domain->fmmu_configs, list) {
-        domain->data_size = max(domain->data_size,
-            fmmu->logical_domain_offset + fmmu->data_size);
-    }
-#endif
 
     domain->logical_base_address = base_address;
 

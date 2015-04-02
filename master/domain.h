@@ -72,6 +72,8 @@ struct ec_domain
                                              since last notification. */
     unsigned int redundancy_active; /**< Non-zero, if redundancy is in use. */
     unsigned long notify_jiffies; /**< Time of last notification. */
+    uint32_t offset_used[EC_DIR_COUNT]; /**< Next available domain offset of
+        PDO, by direction */
 };
 
 /*****************************************************************************/

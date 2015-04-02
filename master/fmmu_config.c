@@ -60,11 +60,21 @@ void ec_fmmu_config_init(
     fmmu->sync_index = sync_index;
     fmmu->dir = dir;
 
-    fmmu->logical_domain_offset = domain->data_size;
-    fmmu->data_size = ec_pdo_list_total_size(
-            &sc->sync_configs[sync_index].pdos);
+    fmmu->logical_domain_offset = 0;
+    fmmu->data_size = 0;
 
     ec_domain_add_fmmu_config(domain, fmmu);
+}
+
+void ec_fmmu_set_domain_offset_size(
+        ec_fmmu_config_t *fmmu, /**< EtherCAT FMMU configuration. */
+        uint32_t logical_domain_offset, /**< Logical offset address
+            relative to domain->logical_base_address. */
+        unsigned data_size /**< Covered PDO size. */
+        )
+{
+    fmmu->logical_domain_offset = logical_domain_offset;
+    fmmu->data_size = data_size;
 }
 
 /*****************************************************************************/
