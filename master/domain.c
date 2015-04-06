@@ -79,7 +79,10 @@ void ec_domain_init(
     domain->working_counter_changes = 0;
     domain->redundancy_active = 0;
     domain->notify_jiffies = 0;
+
+    /* Used by ec_domain_add_fmmu_config */
     memset(domain->offset_used, 0, sizeof(domain->offset_used));
+    domain->sc_in_work = 0;
 }
 
 /*****************************************************************************/
@@ -135,9 +138,9 @@ void ec_domain_add_fmmu_config(
     fmmu_data_size = ec_pdo_list_total_size(
         &sc->sync_configs[fmmu->sync_index].pdos);
 
-    if (sc->allow_overlapping_pdos && sc->used_fmmus) {
+    if (sc->allow_overlapping_pdos && (sc == domain->sc_in_work)) {
         // If we permit overlapped PDOs, and we already have an allocated FMMU
-        // for this slave, alocate the subsequent FMMU offsets by direction
+        // for this slave, allocate the subsequent FMMU offsets by direction
         logical_domain_offset = domain->offset_used[fmmu->dir];
     } else {
         // otherwise, allocate to the furthest extent of any allocated
@@ -148,13 +151,15 @@ void ec_domain_add_fmmu_config(
         domain->offset_used[EC_DIR_INPUT] = logical_domain_offset;
         domain->offset_used[EC_DIR_OUTPUT] = logical_domain_offset;
     }
+    domain->sc_in_work = sc;
+
     // consume the offset space for this FMMU's direction
     domain->offset_used[fmmu->dir] += fmmu_data_size;
 
     ec_fmmu_set_domain_offset_size(fmmu, logical_domain_offset, fmmu_data_size);
 
     list_add_tail(&fmmu->list, &domain->fmmu_configs);
-    
+
     // Determine domain size from furthest extent of FMMU data
     domain->data_size = max(domain->offset_used[EC_DIR_INPUT],
             domain->offset_used[EC_DIR_OUTPUT]);
@@ -222,7 +227,7 @@ int ec_domain_add_datagram_pair(
  *
  * \return Non-zero if slave connfig was already counted.
  */
-int shall_count(
+static int shall_count(
         const ec_fmmu_config_t *cur_fmmu, /**< Current FMMU with direction to
                                             search for. */
         const ec_fmmu_config_t *first_fmmu /**< Datagram's first FMMU. */
@@ -243,12 +248,54 @@ int shall_count(
 
 /*****************************************************************************/
 
+/** Domain finish helper function.
+ *
+ * Known boundaries for a datagram have been identified. Scans the datagram
+ * FMMU boundaries for WKC counters and then creates the datagram_pair.
+ *
+ * \param domain The parent domain
+ * \param datagram_begin_offset Datagram's logical beginning offset
+ * \param datagram_end_offset Logical end offset (one past last byte)
+ * \param datagram_first_fmmu The begin FMMU in the datagram
+ * \param datagram_end_fmmu The end (one past last) FMMU
+ *
+ * \return Non-zero if error emplacing domain
+ */
+ static int emplace_datagram(ec_domain_t *domain,
+        uint32_t datagram_begin_offset,
+        uint32_t datagram_end_offset,
+        const ec_fmmu_config_t *datagram_first_fmmu,
+        const ec_fmmu_config_t *datagram_end_fmmu
+)
+{
+    unsigned int datagram_used[EC_DIR_COUNT];
+    const ec_fmmu_config_t *curr_fmmu;
+    size_t data_size;
+
+    data_size = datagram_end_offset - datagram_begin_offset;
+
+    memset(datagram_used, 0, sizeof(datagram_used));
+    for (curr_fmmu = datagram_first_fmmu;
+            &curr_fmmu->list != &datagram_end_fmmu->list;
+            curr_fmmu = list_next_entry(curr_fmmu, list)) {
+        if (shall_count(curr_fmmu, datagram_first_fmmu)) {
+            datagram_used[curr_fmmu->dir]++;
+        }
+    }
+
+    return ec_domain_add_datagram_pair(domain,
+            domain->logical_base_address + datagram_begin_offset,
+            data_size,
+            domain->data + datagram_begin_offset,
+            datagram_used);
+}
+
+/*****************************************************************************/
+
 /** Finishes a domain.
  *
  * This allocates the necessary datagrams and writes the correct logical
  * addresses to every configured FMMU.
- *
- * \todo Check for FMMUs that do not fit into any datagram.
  *
  * \retval  0 Success
  * \retval <0 Error code.
@@ -258,12 +305,13 @@ int ec_domain_finish(
         uint32_t base_address /**< Logical base address. */
         )
 {
-    uint32_t datagram_offset;
-    size_t datagram_size;
-    unsigned int datagram_count;
-    unsigned int datagram_used[EC_DIR_COUNT];
+    uint32_t datagram_offset = 0;
+    unsigned int datagram_count = 0;
     ec_fmmu_config_t *fmmu;
     const ec_fmmu_config_t *datagram_first_fmmu = NULL;
+    const ec_fmmu_config_t *valid_fmmu = NULL;
+    unsigned candidate_start = 0;
+    unsigned valid_start = 0;
     const ec_datagram_pair_t *datagram_pair;
     int ret;
 
@@ -283,52 +331,48 @@ int ec_domain_finish(
     // - correct the logical base addresses
     // - set up the datagrams to carry the process data
     // - calculate the datagrams' expected working counters
-    datagram_offset = 0;
-    datagram_size = 0;
-    datagram_count = 0;
-    datagram_used[EC_DIR_OUTPUT] = 0;
-    datagram_used[EC_DIR_INPUT] = 0;
-
     if (!list_empty(&domain->fmmu_configs)) {
         datagram_first_fmmu =
             list_entry(domain->fmmu_configs.next, ec_fmmu_config_t, list);
     }
 
     list_for_each_entry(fmmu, &domain->fmmu_configs, list) {
-        // Increment Input/Output counter to determine datagram types
-        // and calculate expected working counters
-        if (shall_count(fmmu, datagram_first_fmmu)) {
-            datagram_used[fmmu->dir]++;
+        if (fmmu->data_size > EC_MAX_DATA_SIZE) {
+            EC_MASTER_ERR(domain->master,
+                "FMMU size %u bytes exceeds maximum data size %u",
+                fmmu->data_size, EC_MAX_DATA_SIZE);
+            return -EINVAL;
         }
+        if (fmmu->logical_domain_offset >= candidate_start) {
+            // As FMMU offsets increase monotonically, and candidate start
+            // offset has never been contradicted, it can now never be
+            // contradicted, as no future FMMU can cross it.
+            if (candidate_start - datagram_offset > EC_MAX_DATA_SIZE) {
+                // yet the new candidate exceeds the datagram size, so we
+                // use the last known valid candidate to create the datagram
+                ret = emplace_datagram(domain, datagram_offset, valid_start,
+                    datagram_first_fmmu, valid_fmmu);
+                if (ret < 0)
+                    return ret;
 
-        // If the current FMMU's data do not fit in the current datagram,
-        // allocate a new one.
-        if (datagram_size + fmmu->data_size > EC_MAX_DATA_SIZE) {
-            ret = ec_domain_add_datagram_pair(domain,
-                    domain->logical_base_address + datagram_offset,
-                    datagram_size, domain->data + datagram_offset,
-                    datagram_used);
-            if (ret < 0)
-                return ret;
-
-            datagram_offset += datagram_size;
-            datagram_size = 0;
-            datagram_count++;
-            datagram_used[EC_DIR_OUTPUT] = 0;
-            datagram_used[EC_DIR_INPUT] = 0;
-            datagram_first_fmmu = fmmu;
+                datagram_offset = valid_start;
+                datagram_count++;
+                datagram_first_fmmu = fmmu;
+            }
+            // All FMMUs prior to this point approved for next datagram
+            valid_fmmu = fmmu;
+            valid_start = candidate_start;
         }
-
-        datagram_size += fmmu->data_size;
+        if (fmmu->logical_domain_offset + fmmu->data_size > candidate_start) {
+            candidate_start = fmmu->logical_domain_offset + fmmu->data_size;
+        }
     }
 
     /* Allocate last datagram pair, if data are left (this is also the case if
      * the process data fit into a single datagram) */
-    if (datagram_size) {
-        ret = ec_domain_add_datagram_pair(domain,
-                domain->logical_base_address + datagram_offset,
-                datagram_size, domain->data + datagram_offset,
-                datagram_used);
+    if (domain->data_size > datagram_offset) {
+        ret = emplace_datagram(domain, datagram_offset, domain->data_size,
+            datagram_first_fmmu, fmmu);
         if (ret < 0)
             return ret;
         datagram_count++;

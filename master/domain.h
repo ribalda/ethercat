@@ -74,6 +74,11 @@ struct ec_domain
     unsigned long notify_jiffies; /**< Time of last notification. */
     uint32_t offset_used[EC_DIR_COUNT]; /**< Next available domain offset of
         PDO, by direction */
+    const ec_slave_config_t *sc_in_work; /**< slave_config which is actively
+        being registered in this domain
+        (i.e. ecrt_slave_config_reg_pdo_entry() ) */
+    unsigned sc_in_work_start_offset; /**< Starting domain offset of slave
+        config in work */
 };
 
 /*****************************************************************************/
