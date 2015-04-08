@@ -347,7 +347,11 @@ int ec_domain_finish(
             // As FMMU offsets increase monotonically, and candidate start
             // offset has never been contradicted, it can now never be
             // contradicted, as no future FMMU can cross it.
-            if (candidate_start - datagram_offset > EC_MAX_DATA_SIZE) {
+            // All FMMUs prior to this point approved for next datagram
+            valid_fmmu = fmmu;
+            valid_start = candidate_start;
+            if (fmmu->logical_domain_offset + fmmu->data_size - datagram_offset
+                    > EC_MAX_DATA_SIZE) {
                 // yet the new candidate exceeds the datagram size, so we
                 // use the last known valid candidate to create the datagram
                 ret = emplace_datagram(domain, datagram_offset, valid_start,
@@ -359,9 +363,6 @@ int ec_domain_finish(
                 datagram_count++;
                 datagram_first_fmmu = fmmu;
             }
-            // All FMMUs prior to this point approved for next datagram
-            valid_fmmu = fmmu;
-            valid_start = candidate_start;
         }
         if (fmmu->logical_domain_offset + fmmu->data_size > candidate_start) {
             candidate_start = fmmu->logical_domain_offset + fmmu->data_size;
@@ -387,9 +388,9 @@ int ec_domain_finish(
         const ec_datagram_t *datagram =
             &datagram_pair->datagrams[EC_DEVICE_MAIN];
         EC_MASTER_INFO(domain->master, "  Datagram %s: Logical offset 0x%08x,"
-                " %zu byte, type %s.\n", datagram->name,
+                " %zu byte, type %s at %p.\n", datagram->name,
                 EC_READ_U32(datagram->address), datagram->data_size,
-                ec_datagram_type_string(datagram));
+                ec_datagram_type_string(datagram), datagram);
     }
 
     return 0;
