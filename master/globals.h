@@ -88,8 +88,14 @@
 #define EC_ADDR_LEN 4
 
 /** Resulting maximum data size of a single datagram in a frame. */
+#ifdef DEBUG_DATAGRAM_OVERFLOW
+// Define a runt datagram which can be easily overflowed on 
+// available hardware for use when testing ec_domain_finish()
+#define EC_MAX_DATA_SIZE (128)
+#else
 #define EC_MAX_DATA_SIZE (ETH_DATA_LEN - EC_FRAME_HEADER_SIZE \
                           - EC_DATAGRAM_HEADER_SIZE - EC_DATAGRAM_FOOTER_SIZE)
+#endif // DEBUG_DATAGRAM_OVERFLOW
 
 /** Mailbox header size.  */
 #define EC_MBOX_HEADER_SIZE 6
