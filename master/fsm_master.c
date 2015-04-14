@@ -493,6 +493,11 @@ int ec_fsm_master_action_process_sdo(
             continue;
         }
 
+        if (!ec_fsm_slave_is_ready(&slave->fsm)) {
+            EC_SLAVE_DBG(slave, 1, "Busy - processing external request!\n");
+            continue;
+        }
+
         list_for_each_entry(req, &slave->config->sdo_requests, list) {
             if (req->state == EC_INT_REQUEST_QUEUED) {
 
