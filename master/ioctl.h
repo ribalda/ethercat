@@ -440,7 +440,7 @@ typedef struct {
     size_t data_size;
     uint32_t result;
     uint32_t error_code;
-    char file_name[32];
+    char file_name[255];
 } ec_ioctl_slave_foe_t;
 
 /*****************************************************************************/
