@@ -1913,11 +1913,18 @@ static ATTRIBUTES int ec_ioctl_send(
         ec_ioctl_context_t *ctx /**< Private data structure of file handle. */
         )
 {
+    size_t sent_bytes;
+
     if (unlikely(!ctx->requested)) {
         return -EPERM;
     }
 
-    ecrt_master_send(master);
+    sent_bytes = ecrt_master_send(master);
+
+    if (copy_to_user((void __user *) arg, &sent_bytes, sizeof(sent_bytes))) {
+        return -EFAULT;
+    }
+
     return 0;
 }
 

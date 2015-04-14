@@ -48,7 +48,7 @@
  * different memory regions, because otherwise the network device DMA could
  * send the same data twice, if it is called twice.
  */
-#define EC_TX_RING_SIZE 2
+#define EC_TX_RING_SIZE 0x10
 
 #ifdef EC_DEBUG_IF
 #include "debug.h"

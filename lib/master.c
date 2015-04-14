@@ -607,15 +607,18 @@ int ecrt_master_set_send_interval(ec_master_t *master,
 
 /****************************************************************************/
 
-void ecrt_master_send(ec_master_t *master)
+size_t ecrt_master_send(ec_master_t *master)
 {
     int ret;
+    size_t sent_bytes = 0;
 
-    ret = ioctl(master->fd, EC_IOCTL_SEND, NULL);
+    ret = ioctl(master->fd, EC_IOCTL_SEND, &sent_bytes);
     if (EC_IOCTL_IS_ERROR(ret)) {
         fprintf(stderr, "Failed to send: %s\n",
                 strerror(EC_IOCTL_ERRNO(ret)));
     }
+
+    return sent_bytes;
 }
 
 /****************************************************************************/
