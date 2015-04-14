@@ -1785,6 +1785,21 @@ void ec_master_attach_slave_configs(
 
 /*****************************************************************************/
 
+/** Abort active requests for slave configs without attached slaves.
+ */
+void ec_master_expire_slave_config_requests(
+        ec_master_t *master /**< EtherCAT master. */
+        )
+{
+    ec_slave_config_t *sc;
+
+    list_for_each_entry(sc, &master->configs, list) {
+        ec_slave_config_expire_disconnected_requests(sc);
+    }
+}
+
+/*****************************************************************************/
+
 /** Common implementation for ec_master_find_slave()
  * and ec_master_find_slave_const().
  */

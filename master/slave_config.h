@@ -174,6 +174,7 @@ ec_reg_request_t *ec_slave_config_find_reg_request(ec_slave_config_t *,
         unsigned int);
 ec_voe_handler_t *ec_slave_config_find_voe_handler(ec_slave_config_t *,
         unsigned int);
+void ec_slave_config_expire_disconnected_requests(ec_slave_config_t *);
 
 ec_sdo_request_t *ecrt_slave_config_create_sdo_request_err(
         ec_slave_config_t *, uint16_t, uint8_t, size_t);

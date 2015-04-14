@@ -553,6 +553,36 @@ ec_voe_handler_t *ec_slave_config_find_voe_handler(
     return NULL;
 }
 
+/*****************************************************************************/
+
+/** Expires any requests that have been started on a detached slave.
+ */
+void ec_slave_config_expire_disconnected_requests(
+        ec_slave_config_t *sc /**< Slave configuration. */
+        )
+{
+    ec_sdo_request_t *sdo_req;
+    ec_reg_request_t *reg_req;
+
+    if (sc->slave) { return; }
+    
+    list_for_each_entry(sdo_req, &sc->sdo_requests, list) {
+        if (sdo_req->state == EC_INT_REQUEST_QUEUED ||
+                sdo_req->state == EC_INT_REQUEST_BUSY) {
+            EC_CONFIG_DBG(sc, 1, "Aborting SDO request; no slave attached.\n");
+            sdo_req->state = EC_INT_REQUEST_FAILURE;
+        }
+    }
+    
+    list_for_each_entry(reg_req, &sc->reg_requests, list) {
+        if (reg_req->state == EC_INT_REQUEST_QUEUED ||
+                reg_req->state == EC_INT_REQUEST_BUSY) {
+            EC_CONFIG_DBG(sc, 1, "Aborting register request; no slave attached.\n");
+            reg_req->state = EC_INT_REQUEST_FAILURE;
+        }
+    }
+}
+
 /******************************************************************************
  *  Application interface
  *****************************************************************************/
