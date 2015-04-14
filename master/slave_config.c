@@ -308,6 +308,10 @@ void ec_slave_config_detach(
         list_for_each_entry(reg, &sc->reg_requests, list) {
             if (sc->slave->fsm.reg_request == reg) {
                 sc->slave->fsm.reg_request = NULL;
+                EC_SLAVE_WARN(sc->slave, "Aborting register request,"
+                        " slave is detaching.\n");
+                reg->state = EC_INT_REQUEST_FAILURE;
+                wake_up_all(&sc->slave->master->request_queue);
                 break;
             }
         }
