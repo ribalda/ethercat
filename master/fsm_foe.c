@@ -54,7 +54,7 @@
 // uint8_t  reserved
 // uint32_t PacketNo, Password, ErrorCode
 
-#define DEBUG_FOE
+//#define DEBUG_FOE
 
 /*****************************************************************************/
 
@@ -887,7 +887,7 @@ void ec_fsm_foe_state_sent_ack(
         fsm->state = ec_fsm_foe_end;
     }
     else {
-        fsm->rx_expected_packet_no++; // this should not be incremented when BUSY
+        fsm->rx_expected_packet_no++;
         fsm->retries = EC_FSM_RETRIES;
         fsm->state = ec_fsm_foe_state_data_check;
     }
