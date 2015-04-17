@@ -47,6 +47,11 @@
  */
 #define DEBUG_REDUNDANCY 0
 
+#ifndef list_next_entry
+#define list_next_entry(pos, member) \
+    list_entry((pos)->member.next, typeof(*(pos)), member)
+#endif
+
 /*****************************************************************************/
 
 void ec_domain_clear_data(ec_domain_t *);
@@ -261,12 +266,12 @@ static int shall_count(
  *
  * \return Non-zero if error emplacing domain
  */
- static int emplace_datagram(ec_domain_t *domain,
+static int emplace_datagram(ec_domain_t *domain,
         uint32_t datagram_begin_offset,
         uint32_t datagram_end_offset,
         const ec_fmmu_config_t *datagram_first_fmmu,
         const ec_fmmu_config_t *datagram_end_fmmu
-)
+        )
 {
     unsigned int datagram_used[EC_DIR_COUNT];
     const ec_fmmu_config_t *curr_fmmu;
