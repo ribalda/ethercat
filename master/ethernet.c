@@ -193,20 +193,25 @@ int ec_eoe_init(
     eoe->dev->get_stats = ec_eoedev_stats;
 #endif
 
-    // First check if the MAC address assigned to the master is globally unique
-    if ((slave->master->devices[EC_DEVICE_MAIN].dev->dev_addr[0] & 0x02) != 0x02) {
-        // The master MAC is unique and the NIC part can be used for the EoE interface MAC
+    // First check if the MAC address assigned to the master is globally
+    // unique
+    if ((slave->master->devices[EC_DEVICE_MAIN].dev->dev_addr[0] & 0x02) !=
+            0x02) {
+        // The master MAC is unique and the NIC part can be used for the EoE
+        // interface MAC
         use_master_mac = 1;
     }
     else {
-        // The master MAC is not unique, so we check for unique MAC in other interfaces
+        // The master MAC is not unique, so we check for unique MAC in other
+        // interfaces
         dev = first_net_device(&init_net);
         while (dev) {
             // Check if globally unique MAC address
             if (dev->addr_len == ETH_ALEN) {
                 if (memcmp(dev->dev_addr, lo_mac, ETH_ALEN) != 0) {
                     if ((dev->dev_addr[0] & 0x02) != 0x02) {
-                        // The first globally unique MAC address has been identified
+                        // The first globally unique MAC address has been
+                        // identified
                         break;
                     }
                 }
@@ -215,9 +220,11 @@ int ec_eoe_init(
         }
         if (eoe->dev->addr_len == ETH_ALEN) {
             if (dev) {
-                // A unique MAC were identified in one of the other network interfaces
-                // and the NIC part can be used for the EoE interface MAC.
-                EC_SLAVE_INFO(slave, "%s MAC address derived from NIC part of %s MAC address",
+                // A unique MAC were identified in one of the other network
+                // interfaces and the NIC part can be used for the EoE
+                // interface MAC.
+                EC_SLAVE_INFO(slave, "%s MAC address derived from"
+                        " NIC part of %s MAC address",
                     eoe->dev->name, dev->name);
                 eoe->dev->dev_addr[1] = dev->dev_addr[3];
                 eoe->dev->dev_addr[2] = dev->dev_addr[4];
@@ -230,11 +237,16 @@ int ec_eoe_init(
     }
     if (eoe->dev->addr_len == ETH_ALEN) {
         if (use_master_mac) {
-            EC_SLAVE_INFO(slave, "%s MAC address derived from NIC part of %s MAC address",
-                eoe->dev->name, slave->master->devices[EC_DEVICE_MAIN].dev->name);
-            eoe->dev->dev_addr[1] = slave->master->devices[EC_DEVICE_MAIN].dev->dev_addr[3];
-            eoe->dev->dev_addr[2] = slave->master->devices[EC_DEVICE_MAIN].dev->dev_addr[4];
-            eoe->dev->dev_addr[3] = slave->master->devices[EC_DEVICE_MAIN].dev->dev_addr[5];
+            EC_SLAVE_INFO(slave, "%s MAC address derived"
+                    " from NIC part of %s MAC address",
+                eoe->dev->name,
+                slave->master->devices[EC_DEVICE_MAIN].dev->name);
+            eoe->dev->dev_addr[1] =
+                slave->master->devices[EC_DEVICE_MAIN].dev->dev_addr[3];
+            eoe->dev->dev_addr[2] =
+                slave->master->devices[EC_DEVICE_MAIN].dev->dev_addr[4];
+            eoe->dev->dev_addr[3] =
+                slave->master->devices[EC_DEVICE_MAIN].dev->dev_addr[5];
         }
         eoe->dev->dev_addr[0] = 0x02;
         eoe->dev->dev_addr[4] = (uint8_t)(slave->ring_position >> 8);
@@ -337,7 +349,8 @@ int ec_eoe_send(ec_eoe_t *eoe /**< EoE handler */)
         current_size = remaining_size;
         last_fragment = 1;
     } else {
-        current_size = ((eoe->slave->configured_tx_mailbox_size - 10) / 32) * 32;
+        current_size =
+            ((eoe->slave->configured_tx_mailbox_size - 10) / 32) * 32;
         last_fragment = 0;
     }
 
