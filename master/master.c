@@ -1886,12 +1886,16 @@ static int ec_master_eoe_thread(void *priv_data)
         // actual EoE processing
         sth_to_send = 0;
         list_for_each_entry(eoe, &master->eoe_handlers, list) {
-            ec_eoe_run(eoe);
-            if (eoe->queue_datagram) {
-                sth_to_send = 1;
-            }
-            if (!ec_eoe_is_idle(eoe)) {
-                all_idle = 0;
+            if ((eoe->slave->current_state == EC_SLAVE_STATE_PREOP) ||
+                (eoe->slave->current_state == EC_SLAVE_STATE_SAFEOP) ||
+                (eoe->slave->current_state == EC_SLAVE_STATE_OP)) {
+                ec_eoe_run(eoe);
+                if (eoe->queue_datagram) {
+                    sth_to_send = 1;
+                }
+                if (!ec_eoe_is_idle(eoe)) {
+                    all_idle = 0;
+                }
             }
         }
 
